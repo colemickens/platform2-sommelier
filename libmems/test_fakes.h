@@ -30,9 +30,21 @@ class LIBMEMS_EXPORT FakeIioChannel : public IioChannel {
   bool IsEnabled() const override { return enabled_; }
   bool SetEnabled(bool en) override;
 
+  base::Optional<std::string> ReadStringAttribute(
+      const std::string& name) const override;
+
+  base::Optional<int64_t> ReadNumberAttribute(
+      const std::string& name) const override;
+
+  void WriteStringAttribute(const std::string& name,
+                            const std::string& value);
+  void WriteNumberAttribute(const std::string& name, int64_t value);
+
  private:
   std::string id_;
   bool enabled_;
+  std::map<std::string, int> numeric_attributes_;
+  std::map<std::string, std::string> text_attributes_;
 };
 
 class FakeIioContext;

@@ -39,6 +39,39 @@ SensorTestBase::SensorTestBase(const char* name,
 
 void SensorTestBase::SetSingleSensor(const char* location) {
   mock_device_->WriteStringAttribute("location", location);
+
+  if (sensor_kind_ == SensorKind::ACCELEROMETER) {
+    channels_.push_back(std::make_unique<FakeIioChannel>("accel_x", false));
+    channels_.push_back(std::make_unique<FakeIioChannel>("accel_y", false));
+    channels_.push_back(std::make_unique<FakeIioChannel>("accel_z", false));
+
+    channels_.push_back(std::make_unique<FakeIioChannel>("timestamp", true));
+  }
+
+  for (const auto& channel : channels_) {
+    mock_device_->AddChannel(channel.get());
+  }
+}
+
+void SensorTestBase::SetSharedSensor() {
+  if (sensor_kind_ == SensorKind::ACCELEROMETER) {
+    channels_.push_back(
+        std::make_unique<FakeIioChannel>("accel_x_base", false));
+    channels_.push_back(
+        std::make_unique<FakeIioChannel>("accel_y_base", false));
+    channels_.push_back(
+        std::make_unique<FakeIioChannel>("accel_z_base", false));
+
+    channels_.push_back(std::make_unique<FakeIioChannel>("accel_x_lid", false));
+    channels_.push_back(std::make_unique<FakeIioChannel>("accel_y_lid", false));
+    channels_.push_back(std::make_unique<FakeIioChannel>("accel_z_lid", false));
+
+    channels_.push_back(std::make_unique<FakeIioChannel>("timestamp", true));
+  }
+
+  for (const auto& channel : channels_) {
+    mock_device_->AddChannel(channel.get());
+  }
 }
 
 void SensorTestBase::ConfigureVpd(

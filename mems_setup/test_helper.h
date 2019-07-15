@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -58,9 +59,12 @@ class SensorTestBase : public ::testing::Test {
   SensorTestBase(const char* name, const char* id, SensorKind kind);
 
   void SetSingleSensor(const char* location);
+  void SetSharedSensor();
 
   void ConfigureVpd(
       std::initializer_list<std::pair<const char*, const char*>> values);
+
+  std::vector<std::unique_ptr<libmems::fakes::FakeIioChannel>> channels_;
 };
 
 }  // namespace testing

@@ -4,6 +4,7 @@
 
 #include "mems_setup/configuration.h"
 
+#include <initializer_list>
 #include <vector>
 
 #include <base/files/file_util.h>
@@ -31,6 +32,12 @@ constexpr char kCalibrationBias[] = "bias";
 constexpr int kGyroMaxVpdCalibration = 16384;  // 16dps
 constexpr int kAccelMaxVpdCalibration = 256;   // .250g
 constexpr int kAccelSysfsTriggerId = 0;
+
+constexpr std::initializer_list<const char*> kAccelAxes = {
+    "x",
+    "y",
+    "z",
+};
 }  // namespace
 
 Configuration::Configuration(libmems::IioDevice* sensor,
@@ -179,6 +186,54 @@ bool Configuration::AddSysfsTrigger(int trigger_id) {
   return true;
 }
 
+bool Configuration::EnableAccelScanElements() {
+  auto timestamp = sensor_->GetChannel("timestamp");
+  if (!timestamp) {
+    LOG(ERROR) << "cannot find timestamp channel";
+    return false;
+  }
+  if (!timestamp->SetEnabledAndCheck(false)) {
+    LOG(ERROR) << "failed to disable timestamp channel";
+    return false;
+  }
+
+  std::vector<std::string> channels_to_enable;
+
+  if (sensor_->IsSingleSensor()) {
+    for (const auto& axis : kAccelAxes) {
+      channels_to_enable.push_back(base::StringPrintf("accel_%s", axis));
+    }
+  } else {
+    for (const auto& axis : kAccelAxes) {
+      channels_to_enable.push_back(
+          base::StringPrintf("accel_%s_%s", axis, kBaseSensorLocation));
+      channels_to_enable.push_back(
+          base::StringPrintf("accel_%s_%s", axis, kLidSensorLocation));
+    }
+  }
+
+  for (const auto& chan_name : channels_to_enable) {
+    auto channel = sensor_->GetChannel(chan_name);
+    if (!channel) {
+      LOG(ERROR) << "cannot find channel " << chan_name;
+      return false;
+    }
+    if (!channel->SetEnabledAndCheck(true)) {
+      LOG(ERROR) << "failed to enable channel " << chan_name;
+      return false;
+    }
+  }
+
+  sensor_->EnableBuffer(1);
+  if (!sensor_->IsBufferEnabled()) {
+    LOG(ERROR) << "failed to enable buffer";
+    return false;
+  }
+
+  LOG(INFO) << "buffer enabled";
+  return true;
+}
+
 bool Configuration::ConfigGyro() {
   if (!CopyCalibrationBiasFromVpd(kGyroMaxVpdCalibration))
     return false;
@@ -192,6 +247,9 @@ bool Configuration::ConfigAccelerometer() {
     return false;
 
   if (!AddSysfsTrigger(kAccelSysfsTriggerId))
+    return false;
+
+  if (!EnableAccelScanElements())
     return false;
 
   LOG(INFO) << "accelerometer configuration complete";

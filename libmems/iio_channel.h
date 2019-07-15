@@ -33,6 +33,14 @@ class IioChannel {
   // Returns false on failure.
   virtual bool SetEnabled(bool en) = 0;
 
+  // Sets the channel's enabled status to |en|,
+  // and returns true if the channel's enabled status matches
+  // what was set, false otherwise.
+  bool SetEnabledAndCheck(bool en) {
+      SetEnabled(en);
+      return en == IsEnabled();
+  }
+
   // Reads the |name| attribute of this channel and returns the value
   // as a string. It will return base::nullopt if the attribute cannot
   // be read.

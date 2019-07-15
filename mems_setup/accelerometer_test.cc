@@ -11,6 +11,7 @@
 #include <libmems/test_fakes.h>
 #include "mems_setup/configuration.h"
 #include "mems_setup/delegate.h"
+#include "mems_setup/sensor_location.h"
 #include "mems_setup/test_fakes.h"
 #include "mems_setup/test_helper.h"
 
@@ -36,7 +37,7 @@ class AccelerometerTest : public SensorTestBase {
 };
 
 TEST_F(AccelerometerTest, MissingVpd) {
-  SetSingleSensor("base");
+  SetSingleSensor(kBaseSensorLocation);
   ConfigureVpd({{"in_accel_x_base_calibbias", "100"}});
 
   EXPECT_TRUE(GetConfiguration()->Configure());
@@ -53,7 +54,7 @@ TEST_F(AccelerometerTest, MissingVpd) {
 }
 
 TEST_F(AccelerometerTest, NotNumericVpd) {
-  SetSingleSensor("base");
+  SetSingleSensor(kBaseSensorLocation);
   ConfigureVpd({{"in_accel_x_base_calibbias", "blah"},
                 {"in_accel_y_base_calibbias", "104"}});
 
@@ -70,7 +71,7 @@ TEST_F(AccelerometerTest, NotNumericVpd) {
 }
 
 TEST_F(AccelerometerTest, VpdOutOfRange) {
-  SetSingleSensor("base");
+  SetSingleSensor(kBaseSensorLocation);
   ConfigureVpd({{"in_accel_x_base_calibbias", "123456789"},
                 {"in_accel_y_base_calibbias", "104"},
                 {"in_accel_z_base_calibbias", "85"}});
@@ -91,7 +92,7 @@ TEST_F(AccelerometerTest, VpdOutOfRange) {
 }
 
 TEST_F(AccelerometerTest, NotLoadingTriggerModule) {
-  SetSingleSensor("base");
+  SetSingleSensor(kBaseSensorLocation);
   ConfigureVpd({{"in_accel_x_base_calibbias", "50"},
                 {"in_accel_y_base_calibbias", "104"},
                 {"in_accel_z_base_calibbias", "85"}});
@@ -102,6 +103,7 @@ TEST_F(AccelerometerTest, NotLoadingTriggerModule) {
 }
 
 TEST_F(AccelerometerTest, MultipleSensorDevice) {
+  SetSharedSensor();
   ConfigureVpd({{"in_accel_x_base_calibbias", "50"},
                 {"in_accel_y_base_calibbias", "104"},
                 {"in_accel_z_base_calibbias", "85"},
@@ -129,7 +131,7 @@ TEST_F(AccelerometerTest, MultipleSensorDevice) {
 }
 
 TEST_F(AccelerometerTest, TriggerPermissions) {
-  SetSingleSensor("lid");
+  SetSingleSensor(kLidSensorLocation);
   EXPECT_TRUE(GetConfiguration()->Configure());
 
   base::FilePath trigger_now = mock_trigger0_->GetPath().Append("trigger_now");
@@ -138,6 +140,35 @@ TEST_F(AccelerometerTest, TriggerPermissions) {
   gid_t gid = 0;
   mock_delegate_->GetOwnership(trigger_now, nullptr, &gid);
   EXPECT_EQ(kChronosGroupId, gid);
+}
+
+TEST_F(AccelerometerTest, SingleSensorEnableChannels) {
+  SetSingleSensor(kLidSensorLocation);
+  EXPECT_TRUE(GetConfiguration()->Configure());
+
+  for (const auto& channel : channels_) {
+    EXPECT_EQ(channel->IsEnabled(), 0 != strcmp(channel->GetId(), "timestamp"));
+  }
+}
+
+TEST_F(AccelerometerTest, MultipleSensorEnableChannels) {
+  SetSharedSensor();
+  EXPECT_TRUE(GetConfiguration()->Configure());
+
+  for (const auto& channel : channels_) {
+    EXPECT_EQ(channel->IsEnabled(), 0 != strcmp(channel->GetId(), "timestamp"));
+  }
+}
+
+TEST_F(AccelerometerTest, BufferEnabled) {
+  SetSingleSensor("lid");
+  EXPECT_FALSE(mock_device_->IsBufferEnabled());
+
+  EXPECT_TRUE(GetConfiguration()->Configure());
+
+  size_t accel_buffer_len = 0;
+  EXPECT_TRUE(mock_device_->IsBufferEnabled(&accel_buffer_len));
+  EXPECT_EQ(1, accel_buffer_len);
 }
 
 }  // namespace

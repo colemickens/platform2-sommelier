@@ -17,6 +17,30 @@ bool FakeIioChannel::SetEnabled(bool en) {
   return true;
 }
 
+base::Optional<std::string> FakeIioChannel::ReadStringAttribute(
+    const std::string& name) const {
+  auto k = text_attributes_.find(name);
+  if (k == text_attributes_.end())
+    return base::nullopt;
+  return k->second;
+}
+base::Optional<int64_t> FakeIioChannel::ReadNumberAttribute(
+    const std::string& name) const {
+  auto k = numeric_attributes_.find(name);
+  if (k == numeric_attributes_.end())
+    return base::nullopt;
+  return k->second;
+}
+
+void FakeIioChannel::WriteStringAttribute(const std::string& name,
+                                         const std::string& value) {
+  text_attributes_[name] = value;
+}
+void FakeIioChannel::WriteNumberAttribute(const std::string& name,
+                                         int64_t value) {
+  numeric_attributes_[name] = value;
+}
+
 FakeIioDevice::FakeIioDevice(FakeIioContext* ctx,
                              const std::string& name,
                              const std::string& id)

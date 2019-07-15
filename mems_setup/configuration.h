@@ -33,6 +33,10 @@ class Configuration {
 
   bool AddSysfsTrigger(int trigger_id);
 
+  bool EnableAccelScanElements();
+
+  bool EnableBuffer();
+
   Delegate* delegate_;  // non-owned
   SensorKind kind_;
   libmems::IioDevice* sensor_;  // non-owned
