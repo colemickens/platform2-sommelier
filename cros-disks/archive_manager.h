@@ -109,6 +109,10 @@ class ArchiveManager : public MountManager {
   // |virtual_paths_|. It is a no-op if no such mapping exists.
   void RemoveMountVirtualPath(const std::string& mount_path);
 
+  // Creates directory with given |path| if it does not already exist.
+  // Sets its user ID, group ID and permissions.
+  bool CreateMountDirectory(const std::string& path) const;
+
   // A mapping of supported archive file extensions to corresponding AVFS
   // handlers.
   std::map<std::string, std::string> extension_handlers_;
@@ -126,6 +130,19 @@ class ArchiveManager : public MountManager {
   FRIEND_TEST(ArchiveManagerTest, GetFileExtension);
   FRIEND_TEST(ArchiveManagerTest, SuggestMountPath);
   FRIEND_TEST(ArchiveManagerTest, DoMountFailedWithUnsupportedExtension);
+  FRIEND_TEST(ArchiveManagerTest,
+              CreateMountDirectoryFailsIfCannotCleanLeftOverDirectory);
+  FRIEND_TEST(ArchiveManagerTest,
+              CreateMountDirectoryFailsIfCannotCreateDirectory);
+  FRIEND_TEST(ArchiveManagerTest,
+              CreateMountDirectoryFailsIfCannotSetPermissions);
+  FRIEND_TEST(ArchiveManagerTest, CreateMountDirectoryFailsIfCannotGetUserId);
+  FRIEND_TEST(ArchiveManagerTest,
+              CreateMountDirectoryFailsIfCannotSetOwnership);
+  FRIEND_TEST(ArchiveManagerTest,
+              CreateMountDirectorySucceedsWithoutExistingDirectory);
+  FRIEND_TEST(ArchiveManagerTest,
+              CreateMountDirectorySucceedsWithExistingDirectory);
 };
 
 }  // namespace cros_disks

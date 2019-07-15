@@ -337,6 +337,34 @@ bool ArchiveManager::StopAVFS() {
   return all_unmounted;
 }
 
+bool ArchiveManager::CreateMountDirectory(const std::string& path) const {
+  // If an empty directory was left behind for any reason, remove it first.
+  if (platform()->DirectoryExists(path) &&
+      !platform()->RemoveEmptyDirectory(path)) {
+    return false;
+  }
+
+  // Create directory. This works because /run/avfsroot is owned by avfs:avfs,
+  // and cros-disks is in the avfs group.
+  if (!platform()->CreateDirectory(path)) {
+    return false;
+  }
+
+  uid_t uid;
+  gid_t gid;
+
+  // Set directory's permissions and owner.
+  if (!platform()->SetPermissions(path, kAVFSDirectoryPermissions) ||
+      !platform()->GetUserAndGroupId(kAVFSMountUser, &uid, &gid) ||
+      !platform()->SetOwnership(path, uid, gid)) {
+    // Remove directory in case of error.
+    platform()->RemoveEmptyDirectory(path);
+    return false;
+  }
+
+  return true;
+}
+
 MountErrorType ArchiveManager::MountAVFSPath(
     const std::string& base_path, const std::string& avfs_path) const {
   MountInfo mount_info;
@@ -348,6 +376,12 @@ MountErrorType ArchiveManager::MountAVFSPath(
     // Not using MOUNT_ERROR_PATH_ALREADY_MOUNTED here because that implies an
     // error on the user-requested mount. The error here is for the avfsd
     // daemon.
+    return MOUNT_ERROR_INTERNAL;
+  }
+
+  // Create avfs_path with the right uid, gid and permissions.
+  if (!CreateMountDirectory(avfs_path)) {
+    LOG(ERROR) << "Cannot create mount directory '" << avfs_path << "'";
     return MOUNT_ERROR_INTERNAL;
   }
 

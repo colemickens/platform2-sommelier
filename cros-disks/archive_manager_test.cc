@@ -5,18 +5,42 @@
 #include "cros-disks/archive_manager.h"
 
 #include <brillo/process_reaper.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "cros-disks/metrics.h"
 #include "cros-disks/platform.h"
 
+namespace cros_disks {
 namespace {
+
+using ::testing::_;
+using ::testing::DoAll;
+using ::testing::InSequence;
+using ::testing::Return;
+using ::testing::SetArgPointee;
 
 const char kMountRootDirectory[] = "/media/archive";
 
-}  // namespace
+// Mock Platform implementation for testing.
+class MockPlatform : public Platform {
+ public:
+  MOCK_CONST_METHOD1(CreateDirectory, bool(const std::string& path));
+  MOCK_CONST_METHOD1(DirectoryExists, bool(const std::string& path));
+  MOCK_CONST_METHOD3(GetUserAndGroupId,
+                     bool(const std::string& user_name,
+                          uid_t* user_id,
+                          gid_t* group_id));
+  MOCK_CONST_METHOD1(RemoveEmptyDirectory, bool(const std::string& path));
+  MOCK_CONST_METHOD3(SetOwnership,
+                     bool(const std::string& path,
+                          uid_t user_id,
+                          gid_t group_id));
+  MOCK_CONST_METHOD2(SetPermissions,
+                     bool(const std::string& path, mode_t mode));
+};
 
-namespace cros_disks {
+}  // namespace
 
 class ArchiveManagerTest : public ::testing::Test {
  public:
@@ -26,7 +50,7 @@ class ArchiveManagerTest : public ::testing::Test {
 
  protected:
   Metrics metrics_;
-  Platform platform_;
+  MockPlatform platform_;
   brillo::ProcessReaper process_reaper_;
   ArchiveManager manager_;
 };
@@ -268,6 +292,118 @@ TEST_F(ArchiveManagerTest, GetAVFSPathWithNestedArchives) {
   manager_.RemoveMountVirtualPath("/media/archive/l2.zip");
   EXPECT_EQ("/run/avfsroot/media/archive/l2.zip/l1.zip#uzip",
             manager_.GetAVFSPath("/media/archive/l2.zip/l1.zip", "zip"));
+}
+
+TEST_F(ArchiveManagerTest,
+       CreateMountDirectoryFailsIfCannotCleanLeftOverDirectory) {
+  const std::string path = "/dummy/path";
+
+  InSequence s;
+  EXPECT_CALL(platform_, DirectoryExists(path)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(path)).WillOnce(Return(false));
+  EXPECT_CALL(platform_, CreateDirectory(_)).Times(0);
+  EXPECT_CALL(platform_, SetPermissions(_, _)).Times(0);
+  EXPECT_CALL(platform_, GetUserAndGroupId(_, _, _)).Times(0);
+  EXPECT_CALL(platform_, SetOwnership(_, _, _)).Times(0);
+
+  EXPECT_FALSE(manager_.CreateMountDirectory(path));
+}
+
+TEST_F(ArchiveManagerTest, CreateMountDirectoryFailsIfCannotCreateDirectory) {
+  const std::string path = "/dummy/path";
+
+  InSequence s;
+  EXPECT_CALL(platform_, DirectoryExists(path)).WillOnce(Return(false));
+  EXPECT_CALL(platform_, CreateDirectory(path)).WillOnce(Return(false));
+  EXPECT_CALL(platform_, GetUserAndGroupId(_, _, _)).Times(0);
+  EXPECT_CALL(platform_, SetPermissions(_, _)).Times(0);
+  EXPECT_CALL(platform_, SetOwnership(_, _, _)).Times(0);
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(_)).Times(0);
+
+  EXPECT_FALSE(manager_.CreateMountDirectory(path));
+}
+
+TEST_F(ArchiveManagerTest, CreateMountDirectoryFailsIfCannotSetPermissions) {
+  const std::string path = "/dummy/path";
+
+  InSequence s;
+  EXPECT_CALL(platform_, DirectoryExists(path)).WillOnce(Return(false));
+  EXPECT_CALL(platform_, CreateDirectory(path)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, SetPermissions(path, _)).WillOnce(Return(false));
+  EXPECT_CALL(platform_, GetUserAndGroupId(_, _, _)).Times(0);
+  EXPECT_CALL(platform_, SetOwnership(_, _, _)).Times(0);
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(path)).WillOnce(Return(true));
+
+  EXPECT_FALSE(manager_.CreateMountDirectory(path));
+}
+
+TEST_F(ArchiveManagerTest, CreateMountDirectoryFailsIfCannotGetUserId) {
+  const std::string path = "/dummy/path";
+
+  InSequence s;
+  EXPECT_CALL(platform_, DirectoryExists(path)).WillOnce(Return(false));
+  EXPECT_CALL(platform_, CreateDirectory(path)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, SetPermissions(path, _)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, GetUserAndGroupId(_, _, _)).WillOnce(Return(false));
+  EXPECT_CALL(platform_, SetOwnership(_, _, _)).Times(0);
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(path)).WillOnce(Return(true));
+
+  EXPECT_FALSE(manager_.CreateMountDirectory(path));
+}
+
+TEST_F(ArchiveManagerTest, CreateMountDirectoryFailsIfCannotSetOwnership) {
+  const std::string path = "/dummy/path";
+  const uid_t uid = 54854;
+  const gid_t gid = 21456;
+
+  InSequence s;
+  EXPECT_CALL(platform_, DirectoryExists(path)).WillOnce(Return(false));
+  EXPECT_CALL(platform_, CreateDirectory(path)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, SetPermissions(path, _)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, GetUserAndGroupId(_, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(uid), SetArgPointee<2>(gid), Return(true)));
+  EXPECT_CALL(platform_, SetOwnership(path, uid, gid)).WillOnce(Return(false));
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(path)).WillOnce(Return(true));
+
+  EXPECT_FALSE(manager_.CreateMountDirectory(path));
+}
+
+TEST_F(ArchiveManagerTest,
+       CreateMountDirectorySucceedsWithoutExistingDirectory) {
+  const std::string path = "/dummy/path";
+  const uid_t uid = 54854;
+  const gid_t gid = 21456;
+
+  InSequence s;
+  EXPECT_CALL(platform_, DirectoryExists(path)).WillOnce(Return(false));
+  EXPECT_CALL(platform_, CreateDirectory(path)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, SetPermissions(path, _)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, GetUserAndGroupId(_, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(uid), SetArgPointee<2>(gid), Return(true)));
+  EXPECT_CALL(platform_, SetOwnership(path, uid, gid)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(_)).Times(0);
+
+  EXPECT_TRUE(manager_.CreateMountDirectory(path));
+}
+
+TEST_F(ArchiveManagerTest, CreateMountDirectorySucceedsWithExistingDirectory) {
+  const std::string path = "/dummy/path";
+  const uid_t uid = 54854;
+  const gid_t gid = 21456;
+
+  InSequence s;
+  EXPECT_CALL(platform_, DirectoryExists(path)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(path)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, CreateDirectory(path)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, SetPermissions(path, _)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, GetUserAndGroupId(_, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(uid), SetArgPointee<2>(gid), Return(true)));
+  EXPECT_CALL(platform_, SetOwnership(path, uid, gid)).WillOnce(Return(true));
+
+  EXPECT_TRUE(manager_.CreateMountDirectory(path));
 }
 
 }  // namespace cros_disks
