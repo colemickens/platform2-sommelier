@@ -331,6 +331,10 @@ class UserDataAuth {
   // user.
   bool OwnerUserExists();
 
+  // Get a JSON string that represents various state of this service.
+  // Note: This can only be called on mount thread.
+  std::string GetStatusString();
+
   // =============== Miscellaneous ===============
 
   // This is called by tpm_init_ when there's any update on ownership status

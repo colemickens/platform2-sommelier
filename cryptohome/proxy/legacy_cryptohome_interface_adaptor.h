@@ -689,6 +689,9 @@ class LegacyCryptohomeInterfaceAdaptor
   void Pkcs11TerminateOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<>> response,
       const user_data_auth::Pkcs11TerminateReply& reply);
+  void GetStatusStringOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<std::string>> response,
+      const user_data_auth::GetStatusStringReply& reply);
   void InstallAttributesGetOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>, bool>>
           response,

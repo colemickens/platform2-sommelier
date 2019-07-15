@@ -377,10 +377,14 @@ class CryptohomeMiscAdaptor
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::GetLoginStatusReply>> response,
       const user_data_auth::GetLoginStatusRequest& in_request) override;
+
   void GetStatusString(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::GetStatusStringReply>> response,
       const user_data_auth::GetStatusStringRequest& in_request) override;
+  void DoGetStatusString(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                             user_data_auth::GetStatusStringReply>> response);
+
   void LockToSingleUserMountUntilReboot(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::LockToSingleUserMountUntilRebootReply>> response,

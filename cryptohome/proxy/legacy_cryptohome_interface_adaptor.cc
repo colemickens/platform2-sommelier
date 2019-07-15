@@ -1735,10 +1735,23 @@ void LegacyCryptohomeInterfaceAdaptor::Pkcs11TerminateOnSuccess(
 void LegacyCryptohomeInterfaceAdaptor::GetStatusString(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::string>>
         response) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<std::string>>(
+          std::move(response));
+
+  user_data_auth::GetStatusStringRequest request;
+  misc_proxy_->GetStatusStringAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::GetStatusStringOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<std::string>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::GetStatusStringOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<std::string>> response,
+    const user_data_auth::GetStatusStringReply& reply) {
+  response->Return(reply.status());
 }
 
 void LegacyCryptohomeInterfaceAdaptor::InstallAttributesGet(
