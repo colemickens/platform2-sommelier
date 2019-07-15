@@ -38,6 +38,7 @@ copies.
 | [chromeos-common-script](./chromeos-common-script/) | Shared scripts for partitions and basic disk information |
 | [chromeos-config](./chromeos-config/) | CrOS unified build runtime config manager |
 | [chromeos-dbus-bindings](./chromeos-dbus-bindings/) | Simplifies the implementation of D-Bus daemons and proxies |
+| [codelab](./codelab/) | Codelab exercise |
 | [common-mk](./common-mk/) | Common build & test logic for platform2 projects |
 | [crash-reporter](./crash-reporter/) | The system crash handler & reporter |
 | [cros-disks](./cros-disks/) | Daemon for mounting removable media (e.g. USB sticks and SD cards) |

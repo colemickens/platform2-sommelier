@@ -1,0 +1,60 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":codelab",
+    ":libcodelab",
+  ]
+  if (use.test) {
+    deps += [ ":codelab_test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libchrome-${libbase_ver}",
+    "libbrillo-${libbase_ver}",
+  ]
+}
+
+static_library("libcodelab") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "codelab.cc",
+  ]
+}
+
+executable("codelab") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "main.cc",
+  ]
+  deps = [
+    ":libcodelab",
+  ]
+}
+
+if (use.test) {
+  pkg_config("codelab_test_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+
+  executable("codelab_test") {
+    configs += [
+      "//common-mk:test",
+      ":codelab_test_config",
+      ":target_defaults",
+    ]
+    sources = [
+      "codelab_test.cc",
+    ]
+    deps = [
+      ":libcodelab",
+      "//common-mk/testrunner",
+    ]
+  }
+}
