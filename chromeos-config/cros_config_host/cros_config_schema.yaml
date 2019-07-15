@@ -196,6 +196,14 @@ properties:
                   - monotonic
                   - boottime
               additionalProperties: false
+            fingerprint:
+              type: object
+              description: Contains details about the model's fingerprint implementation.
+              properties:
+                board:
+                  type: string
+                  description: Specifies the fingerprint board in use.
+              additionalProperties: false
             firmware:
               type: object
               build-only-element: true

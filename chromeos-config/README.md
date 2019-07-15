@@ -283,6 +283,7 @@ In the tables below,
 | bluetooth | [bluetooth](#bluetooth) |  | False |  | False |  |
 | brand-code | string |  | False |  | False | Brand code of the model (also called RLZ code). |
 | camera | [camera](#camera) |  | False |  | False |  |
+| fingerprint | [fingerprint](#fingerprint) |  | False |  | False | Contains details about the model's fingerprint implementation. |
 | firmware | [firmware](#firmware) |  | True |  | True |  |
 | firmware-signing | [firmware-signing](#firmware-signing) |  | False |  | True |  |
 | hardware-properties | [hardware-properties](#hardware-properties) |  | False |  | False | Contains boolean flags or enums for hardware properties of this board, for example if it's convertible, has a touchscreen, has a camera, etc. This information is used to auto-generate C code that is consumed by the EC build process in order to do run-time configuration. If a value is defined within a config file, but not for a specific model, that value will be assumed to be false for that model. If a value is an enum and is not specified for a specific model, it will default to "none". All properties must be booleans or enums. If non-boolean properties are desired, the generation code in cros_config_schema.py must be updated to support them. |
@@ -358,6 +359,11 @@ In the tables below,
 | clock | string |  | False |  | False | Specified the camera clock on the model. |
 | config-path | string |  | False |  | False | Specified the camera configuration file path on the model. |
 | count | integer |  | False |  | False | Specified the number of cameras on the model. |
+
+### fingerprint
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| board | string |  | False |  | False | Specifies the fingerprint board in use. |
 
 ### firmware
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
