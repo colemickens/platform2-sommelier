@@ -41,6 +41,9 @@ const char kFilterPath[] = "/opt/google/crash-reporter/filter";
 // Core pattern lock file: only exists on linux-3.18 and earlier.
 const char kCorePatternLockFile[] = "/proc/sys/kernel/lock_core_pattern";
 
+// Filename we touch in our state directory when we get enabled.
+constexpr char kCrashHandlingEnabledFlagFile[] = "crash-handling-enabled";
+
 // Returns true if the given executable name matches that of Chrome.  This
 // includes checks for threads that Chrome has renamed.
 bool IsChromeExecName(const std::string& exec);
@@ -158,6 +161,15 @@ bool UserCollector::SetUpInternal(bool enabled, bool early) {
   if (!base::CreateDirectory(dir)) {
     PLOG(ERROR) << "Creating directory failed: " << dir.value();
     return false;
+  }
+
+  // Write out a flag file for testing to indicate we have started correctly.
+  char data[] = "enabled";
+  size_t write_len = sizeof(data) - 1;
+  if (base::WriteFile(base::FilePath(crash_reporter_state_path_)
+                          .Append(kCrashHandlingEnabledFlagFile),
+                      data, write_len) != write_len) {
+    PLOG(WARNING) << "Unable to create flag file for crash reporter enabled";
   }
 
   return true;
