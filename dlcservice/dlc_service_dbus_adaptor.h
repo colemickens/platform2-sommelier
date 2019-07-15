@@ -45,8 +45,7 @@ class DlcServiceDBusAdaptor
 
   // org::chromium::DlServiceInterfaceInterface overrides:
   bool Install(brillo::ErrorPtr* err,
-               const std::string& id_in,
-               const std::string& omaha_url_in) override;
+               const DlcModuleList& dlc_module_list_in) override;
   bool Uninstall(brillo::ErrorPtr* err, const std::string& id_in) override;
   bool GetInstalled(brillo::ErrorPtr* err,
                     DlcModuleList* dlc_module_list_out) override;
@@ -85,9 +84,8 @@ class DlcServiceDBusAdaptor
   base::FilePath manifest_dir_;
   base::FilePath content_dir_;
 
-  // ID of the DLC module being installed. Empty means no DLC module is being
-  // installed.
-  std::string dlc_id_being_installed_;
+  // DLC modules being installed. An empty module infos signifies no install.
+  DlcModuleList dlc_modules_being_installed_;
 
   std::string current_boot_slot_name_;
 

@@ -138,67 +138,75 @@ void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
 }
 
 bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
-                                    const std::string& id_in,
-                                    const std::string& omaha_url_in) {
-  if (supported_dlc_modules_.find(id_in) == supported_dlc_modules_.end()) {
-    LogAndSetError(err, "The DLC ID provided is not supported.");
-    return false;
-  }
-  std::string package = ScanDlcModulePackage(id_in);
-
-  // Create the DLC ID directory with correct permissions.
-  base::FilePath module_path = utils::GetDlcModulePath(content_dir_, id_in);
-  if (base::PathExists(module_path)) {
-    LogAndSetError(err, "The DLC module is installed.");
-    return false;
-  }
-  if (!CreateDirWithDlcPermissions(module_path)) {
-    LogAndSetError(err, "Failed to create DLC ID directory.");
+                                    const DlcModuleList& dlc_module_list_in) {
+  const auto& dlc_modules = dlc_module_list_in.dlc_module_infos();
+  if (dlc_modules.empty()) {
+    LOG(ERROR) << "Must provide at least one DLC to install";
     return false;
   }
 
-  // Create the DLC package directory with correct permissions.
-  base::FilePath module_package_path =
-      utils::GetDlcModulePackagePath(content_dir_, id_in, package);
-  if (base::PathExists(module_package_path)) {
-    LogAndSetError(err, "The DLC module is installed.");
-    return false;
-  }
-  if (!CreateDirWithDlcPermissions(module_package_path)) {
-    LogAndSetError(err, "Failed to create DLC Package directory.");
-    return false;
-  }
+  for (const DlcModuleInfo& dlc_module : dlc_modules) {
+    const std::string& id_in = dlc_module.dlc_id();
+    if (supported_dlc_modules_.find(id_in) == supported_dlc_modules_.end()) {
+      LogAndSetError(err, "The DLC ID provided is not supported.");
+      return false;
+    }
 
-  // Creates DLC module storage.
-  // TODO(xiaochu): Manifest currently returns a signed integer, which means
-  // this will likely fail for modules >= 2 GiB in size.
-  // https://crbug.com/904539
-  imageloader::Manifest manifest;
-  if (!dlcservice::utils::GetDlcManifest(manifest_dir_, id_in, package,
-                                         &manifest)) {
-    LogAndSetError(err, "Failed to get DLC module manifest.");
-    return false;
-  }
-  int64_t image_size = manifest.preallocated_size();
-  if (image_size <= 0) {
-    LogAndSetError(err, "Preallocated size in manifest is illegal.");
-    return false;
-  }
+    const std::string& package = ScanDlcModulePackage(id_in);
+    base::FilePath module_path = utils::GetDlcModulePath(content_dir_, id_in);
+    base::FilePath module_package_path =
+        utils::GetDlcModulePackagePath(content_dir_, id_in, package);
 
-  // Creates image A.
-  base::FilePath image_a_path =
-      utils::GetDlcModuleImagePath(content_dir_, id_in, package, 0);
-  if (!CreateImageFile(image_a_path, image_size)) {
-    LogAndSetError(err, "Failed to create slot A DLC image file");
-    return false;
-  }
+    // Create the DLC ID directory with correct permissions.
+    if (base::PathExists(module_path)) {
+      LogAndSetError(err, "The DLC module is installed.");
+      return false;
+    }
+    if (!CreateDirWithDlcPermissions(module_path)) {
+      LogAndSetError(err, "Failed to create DLC ID directory.");
+      return false;
+    }
 
-  // Creates image B.
-  base::FilePath image_b_path =
-      utils::GetDlcModuleImagePath(content_dir_, id_in, package, 1);
-  if (!CreateImageFile(image_b_path, image_size)) {
-    LogAndSetError(err, "Failed to create slot B image file");
-    return false;
+    // Create the DLC package directory with correct permissions.
+    if (base::PathExists(module_package_path)) {
+      LogAndSetError(err, "The DLC module is installed.");
+      return false;
+    }
+    if (!CreateDirWithDlcPermissions(module_package_path)) {
+      LogAndSetError(err, "Failed to create DLC Package directory.");
+      return false;
+    }
+
+    // Creates DLC module storage.
+    // TODO(xiaochu): Manifest currently returns a signed integer, which means
+    // will likely fail for modules >= 2 GiB in size. https://crbug.com/904539
+    imageloader::Manifest manifest;
+    if (!dlcservice::utils::GetDlcManifest(manifest_dir_, id_in, package,
+                                           &manifest)) {
+      LogAndSetError(err, "Failed to get DLC module manifest.");
+      return false;
+    }
+    int64_t image_size = manifest.preallocated_size();
+    if (image_size <= 0) {
+      LogAndSetError(err, "Preallocated size in manifest is illegal.");
+      return false;
+    }
+
+    // Creates image A.
+    base::FilePath image_a_path =
+        utils::GetDlcModuleImagePath(content_dir_, id_in, package, 0);
+    if (!CreateImageFile(image_a_path, image_size)) {
+      LogAndSetError(err, "Failed to create slot A DLC image file");
+      return false;
+    }
+
+    // Creates image B.
+    base::FilePath image_b_path =
+        utils::GetDlcModuleImagePath(content_dir_, id_in, package, 1);
+    if (!CreateImageFile(image_b_path, image_size)) {
+      LogAndSetError(err, "Failed to create slot B image file");
+      return false;
+    }
   }
 
   if (!CheckForUpdateEngineStatus({update_engine::kUpdateStatusIdle})) {
@@ -208,22 +216,19 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
   }
 
   // Invokes update_engine to install the DLC module.
-  dlcservice::DlcModuleList dlc_parameters;
-  dlc_parameters.set_omaha_url(omaha_url_in);
-  dlcservice::DlcModuleInfo* dlc_info = dlc_parameters.add_dlc_module_infos();
-  dlc_info->set_dlc_id(id_in);
-  if (!update_engine_proxy_->AttemptInstall(dlc_parameters, nullptr)) {
+  if (!update_engine_proxy_->AttemptInstall(dlc_module_list_in, nullptr)) {
     LogAndSetError(err, "Update Engine failed to schedule install operations.");
     return false;
   }
 
-  dlc_id_being_installed_ = id_in;
+  dlc_modules_being_installed_ = dlc_module_list_in;
   // Note: Do NOT add to installed indication. Let |OnStatusUpdateSignaled()|
   // handle since hat's truly when the DLC(s) are installed.
 
   return true;
 }
 
+// TODO(crbug/986391): Need to take a protobuf as argument and not a single DLC.
 bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
                                       const std::string& id_in) {
   if (installed_dlc_modules_.find(id_in) == installed_dlc_modules_.end()) {
@@ -325,49 +330,53 @@ void DlcServiceDBusAdaptor::OnStatusUpdateSignal(
     const std::string& new_version,
     int64_t new_size) {
   // This signal is for DLC install only when have DLC modules being installed.
-  if (dlc_id_being_installed_.empty())
+  if (dlc_modules_being_installed_.dlc_module_infos_size() == 0)
     return;
   // Install is complete when we receive kUpdateStatusIdle signal.
   if (current_operation != update_engine::kUpdateStatusIdle)
     return;
 
   // At this point, update_engine finished installation of the requested DLC
-  // module (failure or success).
-  std::string dlc_id = dlc_id_being_installed_;
-  dlc_id_being_installed_.clear();
+  // modules (failure or success).
+  DlcModuleList dlc_module_list = dlc_modules_being_installed_;
+  dlc_modules_being_installed_.clear_dlc_module_infos();
 
   InstallResult install_result;
   install_result.set_success(false);
-  install_result.set_dlc_id(dlc_id);
+  install_result.mutable_dlc_module_list()->CopyFrom(dlc_module_list);
 
-  std::string package = ScanDlcModulePackage(dlc_id);
-
-  // Mount the installed DLC module image.
-  std::string mount_point;
-  if (!image_loader_proxy_->LoadDlcImage(
-          dlc_id, package, current_boot_slot_name_, &mount_point, nullptr)) {
-    LOG(ERROR) << "Imageloader is not available.";
-    install_result.set_error_code(
-        static_cast<int>(OnInstalledSignalErrorCode::kImageLoaderReturnsFalse));
-    SendOnInstalledSignal(install_result);
-    return;
-  }
-  if (mount_point.empty()) {
-    LOG(ERROR) << "Imageloader LoadDlcImage failed.";
-    install_result.set_error_code(
-        static_cast<int>(OnInstalledSignalErrorCode::kMountFailure));
-    SendOnInstalledSignal(install_result);
-    return;
+  // Mount the installed DLC module images.
+  for (auto& dlc_module :
+       *install_result.mutable_dlc_module_list()->mutable_dlc_module_infos()) {
+    const std::string& dlc_id = dlc_module.dlc_id();
+    std::string package = ScanDlcModulePackage(dlc_id);
+    std::string mount_point;
+    if (!image_loader_proxy_->LoadDlcImage(
+            dlc_id, package, current_boot_slot_name_, &mount_point, nullptr)) {
+      LOG(ERROR) << "Imageloader is not available.";
+      install_result.set_error_code(static_cast<int>(
+          OnInstalledSignalErrorCode::kImageLoaderReturnsFalse));
+      SendOnInstalledSignal(install_result);
+      return;
+    }
+    if (mount_point.empty()) {
+      LOG(ERROR) << "Imageloader LoadDlcImage failed.";
+      install_result.set_error_code(
+          static_cast<int>(OnInstalledSignalErrorCode::kMountFailure));
+      SendOnInstalledSignal(install_result);
+      return;
+    }
+    dlc_module.set_dlc_root(
+        utils::GetDlcRootInModulePath(base::FilePath(mount_point)).value());
   }
 
   // Install was a success so keep track.
-  installed_dlc_modules_.insert(dlc_id);
+  for (const DlcModuleInfo& dlc_module : dlc_module_list.dlc_module_infos())
+    installed_dlc_modules_.insert(dlc_module.dlc_id());
 
   install_result.set_success(true);
   install_result.set_error_code(
       static_cast<int>(OnInstalledSignalErrorCode::kNone));
-  install_result.set_dlc_root(
-      utils::GetDlcRootInModulePath(base::FilePath(mount_point)).value());
   SendOnInstalledSignal(install_result);
 }
 

@@ -9,17 +9,16 @@
 <interface name="org.chromium.DlcServiceInterface">
   <method name="Install">
     <tp:docstring>
-      Install Downloadable Content (DLC).
+      Install a list of Downloadable Content (DLC).
     </tp:docstring>
-    <arg name="id" type="s" direction="in">
+    <arg name="dlc_module_list" type="ay" direction="in">
       <tp:docstring>
-        ID of the DLC module.
+        A serialized protobuf (DlcModuleList,
+        src/platform2/system_api/dbus/dlcservice/dlcservice.proto) of a list of
+        installed DLC modules.
       </tp:docstring>
-    </arg>
-    <arg name="omaha_url" type="s" direction="in">
-      <tp:docstring>
-        Overrides Omaha URL to query for update (empty for default URL).
-      </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="dlcservice::DlcModuleList"/>
     </arg>
   </method>
   <method name="Uninstall">

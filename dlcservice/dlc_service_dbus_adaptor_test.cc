@@ -158,7 +158,17 @@ TEST_F(DlcServiceDBusAdaptorTest, UninstallUnmountFailureTest) {
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
 }
 
+TEST_F(DlcServiceDBusAdaptorTest, InstallEmptyDlcModuleListFailsTest) {
+  EXPECT_FALSE(dlc_service_dbus_adaptor_->Install(nullptr, {}));
+}
+
 TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
+  const std::string omaha_url_default = "";
+  DlcModuleList dlc_module_list;
+  DlcModuleInfo* dlc_info = dlc_module_list.add_dlc_module_infos();
+  dlc_info->set_dlc_id(kSecondDlc);
+  dlc_module_list.set_omaha_url(omaha_url_default);
+
   std::string mount_path_expected = "/run/imageloader/dlc-id/package";
   ON_CALL(*mock_image_loader_proxy_ptr_,
           LoadDlcImage(testing::_, testing::_, testing::_, testing::_,
@@ -174,14 +184,12 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
                     testing::_, testing::_))
       .WillByDefault(DoAll(testing::SetArgPointee<2>(update_status_idle),
                            testing::Return(true)));
-  const std::string omaha_url_default = "";
   EXPECT_CALL(
       *mock_update_engine_proxy_ptr_,
       AttemptInstall(ProtoHasUrl(omaha_url_default), testing::_, testing::_))
       .Times(1);
 
-  EXPECT_TRUE(dlc_service_dbus_adaptor_->Install(nullptr, kSecondDlc,
-                                                 omaha_url_default));
+  EXPECT_TRUE(dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list));
   base::RunLoop().RunUntilIdle();
 
   constexpr int expected_permissions = 0755;
@@ -201,6 +209,12 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
 }
 
 TEST_F(DlcServiceDBusAdaptorTest, InstallUrlTest) {
+  const std::string omaha_url_override = "http://random.url";
+  DlcModuleList dlc_module_list;
+  DlcModuleInfo* dlc_info = dlc_module_list.add_dlc_module_infos();
+  dlc_info->set_dlc_id(kSecondDlc);
+  dlc_module_list.set_omaha_url(omaha_url_override);
+
   ON_CALL(*mock_update_engine_proxy_ptr_,
           AttemptInstall(testing::_, testing::_, testing::_))
       .WillByDefault(testing::Return(true));
@@ -210,13 +224,12 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallUrlTest) {
                     testing::_, testing::_))
       .WillByDefault(DoAll(testing::SetArgPointee<2>(update_status_idle),
                            testing::Return(true)));
-  const std::string omaha_url_override = "http://random.url";
   EXPECT_CALL(
       *mock_update_engine_proxy_ptr_,
       AttemptInstall(ProtoHasUrl(omaha_url_override), testing::_, testing::_))
       .Times(1);
 
-  dlc_service_dbus_adaptor_->Install(nullptr, kSecondDlc, omaha_url_override);
+  dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list);
   base::RunLoop().RunUntilIdle();
 }
 

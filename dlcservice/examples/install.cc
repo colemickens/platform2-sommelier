@@ -34,16 +34,17 @@ class ExampleDaemon : public brillo::Daemon {
 
   int OnEventLoopStarted() override {
     brillo::ErrorPtr error;
+    dlcservice::DlcModuleList dlc_module_list;
+    dlcservice::DlcModuleInfo* dlc_module_info =
+        dlc_module_list.add_dlc_module_infos();
+    dlc_module_info->set_dlc_id(dlc_id_to_install_);
 
     dlc_service_proxy_->RegisterOnInstalledSignalHandler(
-        base::Bind(&ExampleDaemon::OnInstalled, base::Unretained(this),
-                   dlc_id_to_install_),
+        base::Bind(&ExampleDaemon::OnInstalled, base::Unretained(this)),
         base::Bind(&ExampleDaemon::OnInstalledConnect, base::Unretained(this)));
 
     // Call dlcservice Install API to install a DLC module.
-    if (!dlc_service_proxy_->Install(
-            dlc_id_to_install_, "" /* Omaha URL, leave it empty for default */,
-            &error)) {
+    if (!dlc_service_proxy_->Install(dlc_module_list, &error)) {
       // Install failed immediately due to errors.
       LOG(ERROR) << error->GetMessage();
       return EX_SOFTWARE;
@@ -51,16 +52,12 @@ class ExampleDaemon : public brillo::Daemon {
     return EX_OK;
   }
 
-  void OnInstalled(const std::string& dlc_id,
-                   const dlcservice::InstallResult& install_result) {
+  void OnInstalled(const dlcservice::InstallResult& install_result) {
     if (!install_result.success()) {
-      LOG(ERROR) << "Failed to install " << install_result.dlc_id()
-                 << " with error code:" << install_result.error_code();
+      LOG(ERROR) << "Failed to install with error code:"
+                 << install_result.error_code();
     } else {
-      // Install completed successfully!
-      LOG(INFO) << "'" << install_result.dlc_id()
-                << "' installed and available at '" << install_result.dlc_root()
-                << "'.";
+      LOG(INFO) << "Install successful!";
     }
   }
 
