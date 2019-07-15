@@ -178,9 +178,13 @@ void PluginVmCreateOperation::Finalize() {
 }
 
 std::unique_ptr<VmExportOperation> VmExportOperation::Create(
-    const VmId vm_id, const base::FilePath disk_path, base::ScopedFD fd) {
-  auto op = base::WrapUnique(new VmExportOperation(
-      std::move(vm_id), std::move(disk_path), std::move(fd)));
+    const VmId vm_id,
+    const base::FilePath disk_path,
+    base::ScopedFD fd,
+    ArchiveFormat out_fmt) {
+  auto op = base::WrapUnique(
+      new VmExportOperation(std::move(vm_id), std::move(disk_path),
+                            std::move(fd), std::move(out_fmt)));
 
   if (op->PrepareInput() && op->PrepareOutput()) {
     op->set_status(DISK_STATUS_IN_PROGRESS);
@@ -191,11 +195,13 @@ std::unique_ptr<VmExportOperation> VmExportOperation::Create(
 
 VmExportOperation::VmExportOperation(const VmId vm_id,
                                      const base::FilePath disk_path,
-                                     base::ScopedFD out_fd)
+                                     base::ScopedFD out_fd,
+                                     ArchiveFormat out_fmt)
     : vm_id_(std::move(vm_id)),
       src_image_path_(std::move(disk_path)),
       out_fd_(std::move(out_fd)),
-      copying_data_(false) {
+      copying_data_(false),
+      out_fmt_(std::move(out_fmt)) {
   base::File::Info info;
   if (GetFileInfo(src_image_path_, &info) && !info.is_directory) {
     set_source_size(info.size);
@@ -236,12 +242,34 @@ bool VmExportOperation::PrepareOutput() {
     return false;
   }
 
-  int ret = archive_write_set_format_zip(out_.get());
-  if (ret != ARCHIVE_OK) {
-    set_failure_reason(
-        base::StringPrintf("libarchive: failed to initialize zip format: %s",
-                           archive_error_string(out_.get())));
-    return false;
+  int ret;
+  switch (out_fmt_) {
+    case ArchiveFormat::ZIP:
+      ret = archive_write_set_format_zip(out_.get());
+      if (ret != ARCHIVE_OK) {
+        set_failure_reason(base::StringPrintf(
+            "libarchive: failed to initialize zip format: %s",
+            archive_error_string(out_.get())));
+        return false;
+      }
+      break;
+    case ArchiveFormat::TAR_GZ:
+      ret = archive_write_add_filter_gzip(out_.get());
+      if (ret != ARCHIVE_OK) {
+        set_failure_reason(base::StringPrintf(
+            "libarchive: failed to initialize gzip filter: %s",
+            archive_error_string(out_.get())));
+        return false;
+      }
+
+      ret = archive_write_set_format_pax_restricted(out_.get());
+      if (ret != ARCHIVE_OK) {
+        set_failure_reason(base::StringPrintf(
+            "libarchive: failed to initialize pax format: %s",
+            archive_error_string(out_.get())));
+        return false;
+      }
+      break;
   }
 
   ret = archive_write_open_fd(out_.get(), out_fd_.get());

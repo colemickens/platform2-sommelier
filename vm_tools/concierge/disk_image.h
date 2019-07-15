@@ -130,10 +130,18 @@ struct ArchiveWriteDeleter {
 };
 using ArchiveWriter = std::unique_ptr<struct archive, ArchiveWriteDeleter>;
 
+enum class ArchiveFormat {
+  ZIP,
+  TAR_GZ,
+};
+
 class VmExportOperation : public DiskImageOperation {
  public:
   static std::unique_ptr<VmExportOperation> Create(
-      const VmId vm_id, const base::FilePath disk_path, base::ScopedFD out_fd);
+      const VmId vm_id,
+      const base::FilePath disk_path,
+      base::ScopedFD out_fd,
+      ArchiveFormat out_fmt);
 
  protected:
   bool ExecuteIo(uint64_t io_limit) override;
@@ -142,7 +150,8 @@ class VmExportOperation : public DiskImageOperation {
  private:
   VmExportOperation(const VmId vm_id,
                     const base::FilePath disk_path,
-                    base::ScopedFD out_fd);
+                    base::ScopedFD out_fd,
+                    ArchiveFormat out_fmt);
 
   bool PrepareInput();
   bool PrepareOutput();
@@ -176,6 +185,9 @@ class VmExportOperation : public DiskImageOperation {
 
   // Output archive backed by the file descriptor.
   ArchiveWriter out_;
+
+  // Output archive format.
+  ArchiveFormat out_fmt_;
 
   DISALLOW_COPY_AND_ASSIGN(VmExportOperation);
 };

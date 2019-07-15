@@ -2239,32 +2239,35 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
     return dbus_response;
   }
 
+  ArchiveFormat fmt;
   switch (location) {
     case STORAGE_CRYPTOHOME_ROOT:
-    case STORAGE_CRYPTOHOME_PLUGINVM: {
-      auto op = VmExportOperation::Create(
-          VmId(request.cryptohome_id(), request.disk_path()), disk_path,
-          std::move(storage_fd));
-
-      response.set_status(op->status());
-      response.set_command_uuid(op->uuid());
-      response.set_failure_reason(op->failure_reason());
-
-      if (op->status() == DISK_STATUS_IN_PROGRESS) {
-        std::string uuid = op->uuid();
-        disk_image_ops_.emplace_back(DiskOpInfo(std::move(op)));
-        base::ThreadTaskRunnerHandle::Get()->PostTask(
-            FROM_HERE,
-            base::Bind(&Service::RunDiskImageOperation,
-                       weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
-      }
+      fmt = ArchiveFormat::TAR_GZ;
       break;
-    }
-
+    case STORAGE_CRYPTOHOME_PLUGINVM:
+      fmt = ArchiveFormat::ZIP;
+      break;
     default:
       LOG(ERROR) << "Unsupported location for source image";
       response.set_failure_reason("Unsupported location for image");
-      break;
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+  }
+
+  auto op = VmExportOperation::Create(
+      VmId(request.cryptohome_id(), request.disk_path()), disk_path,
+      std::move(storage_fd), fmt);
+
+  response.set_status(op->status());
+  response.set_command_uuid(op->uuid());
+  response.set_failure_reason(op->failure_reason());
+
+  if (op->status() == DISK_STATUS_IN_PROGRESS) {
+    std::string uuid = op->uuid();
+    disk_image_ops_.emplace_back(DiskOpInfo(std::move(op)));
+    base::ThreadTaskRunnerHandle::Get()->PostTask(
+        FROM_HERE, base::Bind(&Service::RunDiskImageOperation,
+                              weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
   }
 
   writer.AppendProtoAsArrayOfBytes(response);
