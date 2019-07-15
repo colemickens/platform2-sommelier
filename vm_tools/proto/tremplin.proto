@@ -389,6 +389,28 @@ message ExportContainerResponse {
   uint64 transaction_id = 3;
 }
 
+message CancelExportContainerRequest {
+  // Name of the container currently being exported.
+  string in_progress_container_name = 1;
+}
+
+message CancelExportContainerResponse {
+  enum Status {
+    // The result is unknown.
+    UNKNOWN = 0;
+
+    // The cancel for the in-progress request has been queued.
+    // The in-progress request may yet complete before the cancel is processed.
+    CANCEL_QUEUED = 1;
+
+    // No in-progress request was found with that container name.
+    OPERATION_NOT_FOUND = 2;
+  }
+
+  // The status of the cancellation.
+  Status status = 1;
+}
+
 // Sent by tremplin to update the host on the export progress of a container.
 message ContainerExportProgress {
   // Name of the container to export.
@@ -422,6 +444,9 @@ message ContainerExportProgress {
     // EXPORTING_STREAMING. The exported image file is being tar'd, compressed'd
     // and download'd out of the container.
     EXPORTING_STREAMING = 7;
+
+    // The export has been cancelled.
+    CANCELLED = 8;
   }
 
   // Container status.
@@ -489,6 +514,28 @@ message ImportContainerResponse {
   uint64 transaction_id = 3;
 }
 
+message CancelImportContainerRequest {
+  // Name of the container currently being imported.
+  string in_progress_container_name = 1;
+}
+
+message CancelImportContainerResponse {
+  enum Status {
+    // The result is unknown.
+    UNKNOWN = 0;
+
+    // The cancel for the in-progress request has been queued.
+    // The in-progress request may yet complete before the cancel is processed.
+    CANCEL_QUEUED = 1;
+
+    // No in-progress request was found with that container name.
+    OPERATION_NOT_FOUND = 2;
+  }
+
+  // The status of the cancellation.
+  Status status = 1;
+}
+
 // Sent by tremplin to update the host on the import progress of a container.
 message ContainerImportProgress {
   // Name of the container to import.
@@ -515,6 +562,9 @@ message ContainerImportProgress {
 
     // The container could not be imported due to insufficient space.
     FAILED_SPACE = 6;
+
+    // The import has been cancelled.
+    CANCELLED = 7;
   }
 
   // Container status.
