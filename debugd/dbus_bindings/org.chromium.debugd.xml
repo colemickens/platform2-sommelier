@@ -585,6 +585,12 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
+    <tp:property name="CrashSenderTestMode" type="b">
+      <tp:docstring>
+        If true, any UploadSingleCrash call will invoke crash_sender with
+        --test_mode.
+      </tp:docstring>
+    </tp:property>
     <method name="RemoveRootfsVerification">
       <tp:docstring>
         Removes rootfs verification. Requires a system reboot before it will

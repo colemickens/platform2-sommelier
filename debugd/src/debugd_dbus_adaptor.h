@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <brillo/dbus/exported_object_manager.h>
+#include <brillo/dbus/exported_property_set.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
@@ -196,6 +197,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
+  brillo::dbus_utils::ExportedProperty<bool> crash_sender_test_mode_;
 
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
 

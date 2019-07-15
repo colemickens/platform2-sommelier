@@ -62,20 +62,22 @@ int RunChildMain(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  if (util::IsTestImage() && !flags.allow_dev_sending) {
-    LOG(INFO) << "Exiting early due to test image.";
-    return EXIT_FAILURE;
-  }
-
-  if (util::IsOsTimestampTooOldForUploads(util::GetOsTimestamp()) &&
-      !flags.allow_dev_sending) {
-    LOG(INFO) << "Version is too old, will not upload crash reports";
-    return EXIT_FAILURE;
-  }
-
-  if (flags.allow_dev_sending) {
+  if (flags.test_mode) {
+    LOG(INFO) << "--test_mode present; will not actually upload to server.";
+  } else if (flags.allow_dev_sending) {
     LOG(INFO) << "--dev flag present, ignore image checks and uploading "
               << "crashes to staging server at go/crash-staging";
+  } else {
+    // Normal mode (not test, not dev).
+    if (util::IsTestImage()) {
+      LOG(INFO) << "Exiting early due to test image.";
+      return EXIT_FAILURE;
+    }
+
+    if (util::IsOsTimestampTooOldForUploads(util::GetOsTimestamp())) {
+      LOG(INFO) << "Version is too old, will not upload crash reports";
+      return EXIT_FAILURE;
+    }
   }
 
   auto metrics_lib = std::make_unique<MetricsLibrary>();
@@ -88,6 +90,7 @@ int RunChildMain(int argc, char* argv[]) {
     options.hold_off_time = base::TimeDelta::FromSeconds(0);
   }
   options.allow_dev_sending = flags.allow_dev_sending;
+  options.test_mode = flags.test_mode;
   util::Sender sender(std::move(metrics_lib),
                       std::make_unique<base::DefaultClock>(), options);
   if (!sender.Init()) {

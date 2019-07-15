@@ -15,6 +15,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
+#include <brillo/dbus/exported_property_set.h>
 
 #include "debugd/src/error_utils.h"
 #include "debugd/src/process_with_id.h"
@@ -141,7 +142,22 @@ void CrashSenderTool::RunCrashSender(bool ignore_hold_off_time,
     p->AddArg("--crash_directory=" + crash_directory.value());
   }
 
+  if (test_mode_) {
+    p->AddArg("--test_mode");
+  }
+
   p->Run();
 }
+
+void CrashSenderTool::OnTestModeChanged(
+  const brillo::dbus_utils::ExportedPropertyBase* test_mode_property) {
+  const auto* property =
+      dynamic_cast<const brillo::dbus_utils::ExportedProperty<bool>*>(
+        test_mode_property);
+  DCHECK(property);
+  test_mode_ = property->value();
+  LOG(INFO) << "CrashSenderTestMode set to " << std::boolalpha << test_mode_;
+}
+
 
 }  // namespace debugd

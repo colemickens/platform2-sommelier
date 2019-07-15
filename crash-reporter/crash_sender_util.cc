@@ -56,6 +56,10 @@ constexpr char kOsTimestamp[] = "os_millis";
 // removed.
 constexpr size_t kClientIdLength = 32U;
 
+// Must match testModeSuccessful in the tast-test chrome_crash_loop.go.
+constexpr char kTestModeSuccessful[] =
+    "Test Mode: Logging success and exiting instead of actually uploading";
+
 // Returns true if the given report kind is known.
 // TODO(satorux): Move collector constants to a common file.
 bool IsKnownKind(const std::string& kind) {
@@ -109,6 +113,9 @@ void ParseCommandLine(int argc,
               "and upload them to the staging server instead.");
   DEFINE_bool(ignore_pause_file, false,
               "Ignore the existence of the pause file and run anyways");
+  DEFINE_bool(test_mode, false,
+              "Do not upload crashes; instead, log a special message if the "
+              "crash is valid. Used by tast test ChromeCrashLoop.");
   brillo::FlagHelper::Init(argc, argv, "Chromium OS Crash Sender");
   if (FLAGS_max_spread_time < 0) {
     LOG(ERROR) << "Invalid value for max spread time: "
@@ -121,6 +128,7 @@ void ParseCommandLine(int argc,
   flags->ignore_hold_off_time = FLAGS_ignore_hold_off_time;
   flags->allow_dev_sending = FLAGS_dev;
   flags->ignore_pause_file = FLAGS_ignore_pause_file;
+  flags->test_mode = FLAGS_test_mode;
 }
 
 void RecordCrashDone() {
@@ -533,6 +541,7 @@ Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
       hold_off_time_(options.hold_off_time),
       sleep_function_(options.sleep_function),
       allow_dev_sending_(options.allow_dev_sending),
+      test_mode_(options.test_mode),
       clock_(std::move(clock)) {}
 
 bool Sender::Init() {
@@ -592,8 +601,8 @@ void Sender::RemoveAndPickCrashFiles(const base::FilePath& crash_dir,
 
     std::string reason;
     CrashInfo info;
-    switch (ChooseAction(meta_file, metrics_lib_.get(), allow_dev_sending_,
-                         &reason, &info)) {
+    switch (ChooseAction(meta_file, metrics_lib_.get(),
+                         allow_dev_sending_ || test_mode_, &reason, &info)) {
       case kRemove:
         LOG(INFO) << "Removing: " << reason;
         RemoveReportFiles(meta_file);
@@ -855,6 +864,12 @@ bool Sender::RequestToSendCrash(const CrashDetails& details) {
   std::string product_name;
   std::unique_ptr<brillo::http::FormData> form_data =
       CreateCrashFormData(details, &product_name);
+
+  if (test_mode_) {
+    LOG(WARNING) << kTestModeSuccessful;
+    return true;
+  }
+
   std::string report_id;
   if (!IsMock()) {
     // Determine the proxy server if it's not given from the options.

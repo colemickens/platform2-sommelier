@@ -44,6 +44,7 @@ struct CommandLineFlags {
   bool ignore_hold_off_time = false;
   bool allow_dev_sending = false;
   bool ignore_pause_file = false;
+  bool test_mode = false;
 };
 
 // Crash information obtained in ChooseAction().
@@ -215,6 +216,10 @@ class Sender {
     // If true, we allow sending crash reports for unofficial test images and
     // the reports are uploaded to a staging crash server instead.
     bool allow_dev_sending = false;
+
+    // If true, just log the kTestModeSuccessful message if the crash report
+    // looks legible instead of actually uploading it.
+    bool test_mode = false;
   };
 
   Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
@@ -294,6 +299,7 @@ class Sender {
   const base::TimeDelta hold_off_time_;
   base::Callback<void(base::TimeDelta)> sleep_function_;
   bool allow_dev_sending_;
+  const bool test_mode_;
   std::unique_ptr<base::Clock> clock_;
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<brillo::OsReleaseReader> os_release_reader_;

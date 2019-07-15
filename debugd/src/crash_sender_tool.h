@@ -16,6 +16,12 @@
 
 #include "debugd/src/subprocess_tool.h"
 
+namespace brillo {
+namespace dbus_utils {
+class ExportedPropertyBase;
+}  // namespace dbus_utils
+}  // namespace brillo
+
 namespace debugd {
 
 class CrashSenderTool : public SubprocessTool {
@@ -34,8 +40,17 @@ class CrashSenderTool : public SubprocessTool {
       const std::vector<std::tuple<std::string, base::ScopedFD>>& in_files,
       brillo::ErrorPtr* error);
 
+  // Called when the CrashSenderTestMode dbus property is changed.
+  void OnTestModeChanged(
+    const brillo::dbus_utils::ExportedPropertyBase* test_mode_property);
+
  private:
   int next_crash_directory_id_ = 1;
+
+  // If true, pass the "--test_mode" flag to crash_sender. This is bound to the
+  // "CrashSenderTestMode" dbus property, so tast tests (and anyone else) can
+  // change it easily.
+  bool test_mode_ = false;
 
   void RunCrashSender(bool ignore_hold_off_time,
                       const base::FilePath& crash_directory);

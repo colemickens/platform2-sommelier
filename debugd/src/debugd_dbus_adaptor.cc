@@ -84,6 +84,15 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
 
 void DebugdDBusAdaptor::RegisterAsync(
     const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+  auto* my_interface = dbus_object_.AddOrGetInterface(kDebugdInterface);
+  DCHECK(my_interface);
+  my_interface->AddProperty(kCrashSenderTestMode, &crash_sender_test_mode_);
+  crash_sender_test_mode_.SetUpdateCallback(
+    base::Bind(&CrashSenderTool::OnTestModeChanged,
+               base::Unretained(crash_sender_tool_.get())));
+  crash_sender_test_mode_.SetValue(false);
+  crash_sender_test_mode_.SetAccessMode(
+    brillo::dbus_utils::ExportedPropertyBase::Access::kReadWrite);
   RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAsync(cb);
 }
