@@ -21,10 +21,15 @@ namespace mems_setup {
 
 namespace {
 
-struct VpdCalibrationEntry {
-  std::string name_;
-  std::string calib_;
-  base::Optional<int> value_;
+struct ImuVpdCalibrationEntry {
+  std::string name;
+  std::string calib;
+  base::Optional<int> value;
+};
+
+struct LightVpdCalibrationEntry {
+  std::string vpd_name;
+  std::string iio_name;
 };
 
 constexpr char kCalibrationBias[] = "bias";
@@ -51,34 +56,63 @@ bool Configuration::Configure() {
       return ConfigAccelerometer();
     case SensorKind::GYROSCOPE:
       return ConfigGyro();
+    case SensorKind::LIGHT:
+      return ConfigIlluminance();
     default:
-      LOG(ERROR) << "unimplemented";
+      LOG(ERROR) << SensorKindToString(kind_) << " unimplemented";
+      return false;
   }
-  return false;
 }
 
-bool Configuration::CopyCalibrationBiasFromVpd(int max_value) {
+bool Configuration::CopyLightCalibrationFromVpd() {
+  std::vector<LightVpdCalibrationEntry> calib_attributes = {
+      {"als_cal_intercept", "in_illuminance_calibbias"},
+      {"als_cal_slope", "in_illuminance_calibscale"},
+  };
+
+  for (auto& calib_attribute : calib_attributes) {
+    auto attrib_value = delegate_->ReadVpdValue(calib_attribute.vpd_name);
+    if (!attrib_value.has_value()) {
+      LOG(ERROR) << "VPD missing calibration value "
+                 << calib_attribute.vpd_name;
+      continue;
+    }
+
+    double value;
+    if (!base::StringToDouble(attrib_value.value(), &value)) {
+      LOG(ERROR) << "VPD calibration value " << calib_attribute.vpd_name
+                 << " has invalid value " << attrib_value.value();
+      continue;
+    }
+    if (!sensor_->WriteDoubleAttribute(calib_attribute.iio_name, value))
+      LOG(ERROR) << "failed to set calibration value "
+                 << calib_attribute.iio_name;
+  }
+
+  return true;
+}
+
+bool Configuration::CopyImuCalibationFromVpd(int max_value) {
   if (sensor_->IsSingleSensor()) {
     auto location = sensor_->ReadStringAttribute("location");
     if (!location || location->empty()) {
       LOG(ERROR) << "cannot read a valid sensor location";
       return false;
     }
-    return CopyCalibrationBiasFromVpd(max_value, location->c_str());
+    return CopyImuCalibationFromVpd(max_value, location->c_str());
   } else {
-    bool base_config =
-        CopyCalibrationBiasFromVpd(max_value, kBaseSensorLocation);
-    bool lid_config = CopyCalibrationBiasFromVpd(max_value, kLidSensorLocation);
+    bool base_config = CopyImuCalibationFromVpd(max_value, kBaseSensorLocation);
+    bool lid_config = CopyImuCalibationFromVpd(max_value, kLidSensorLocation);
     return base_config && lid_config;
   }
 }
 
-bool Configuration::CopyCalibrationBiasFromVpd(int max_value,
-                                               const std::string& location) {
+bool Configuration::CopyImuCalibationFromVpd(int max_value,
+                                             const std::string& location) {
   const bool is_single_sensor = sensor_->IsSingleSensor();
   std::string kind = SensorKindToString(kind_);
 
-  std::vector<VpdCalibrationEntry> calib_attributes = {
+  std::vector<ImuVpdCalibrationEntry> calib_attributes = {
       {"x", kCalibrationBias, base::nullopt},
       {"y", kCalibrationBias, base::nullopt},
       {"z", kCalibrationBias, base::nullopt},
@@ -86,8 +120,8 @@ bool Configuration::CopyCalibrationBiasFromVpd(int max_value,
 
   for (auto& calib_attribute : calib_attributes) {
     auto attrib_name = base::StringPrintf(
-        "in_%s_%s_%s_calib%s", kind.c_str(), calib_attribute.name_.c_str(),
-        location.c_str(), calib_attribute.calib_.c_str());
+        "in_%s_%s_%s_calib%s", kind.c_str(), calib_attribute.name.c_str(),
+        location.c_str(), calib_attribute.calib.c_str());
     auto attrib_value = delegate_->ReadVpdValue(attrib_name.c_str());
     if (!attrib_value.has_value()) {
       LOG(ERROR) << "VPD missing calibration value " << attrib_name;
@@ -105,23 +139,23 @@ bool Configuration::CopyCalibrationBiasFromVpd(int max_value,
                  << " has out-of-range value " << attrib_value.value();
       continue;
     } else {
-      calib_attribute.value_ = value;
+      calib_attribute.value = value;
     }
   }
 
   for (const auto& calib_attribute : calib_attributes) {
-    if (!calib_attribute.value_)
+    if (!calib_attribute.value)
       continue;
     auto attrib_name = base::StringPrintf("in_%s_%s", kind.c_str(),
-                                          calib_attribute.name_.c_str());
+                                          calib_attribute.name.c_str());
 
     if (!is_single_sensor)
       attrib_name =
           base::StringPrintf("%s_%s", attrib_name.c_str(), location.c_str());
     attrib_name = base::StringPrintf("%s_calib%s", attrib_name.c_str(),
-                                     calib_attribute.calib_.c_str());
+                                     calib_attribute.calib.c_str());
 
-    if (!sensor_->WriteNumberAttribute(attrib_name, *calib_attribute.value_))
+    if (!sensor_->WriteNumberAttribute(attrib_name, *calib_attribute.value))
       LOG(ERROR) << "failed to set calibration value " << attrib_name;
   }
 
@@ -264,7 +298,7 @@ bool Configuration::EnableKeyboardAngle() {
 }
 
 bool Configuration::ConfigGyro() {
-  if (!CopyCalibrationBiasFromVpd(kGyroMaxVpdCalibration))
+  if (!CopyImuCalibationFromVpd(kGyroMaxVpdCalibration))
     return false;
 
   LOG(INFO) << "gyroscope configuration complete";
@@ -272,7 +306,7 @@ bool Configuration::ConfigGyro() {
 }
 
 bool Configuration::ConfigAccelerometer() {
-  if (!CopyCalibrationBiasFromVpd(kAccelMaxVpdCalibration))
+  if (!CopyImuCalibationFromVpd(kAccelMaxVpdCalibration))
     return false;
 
   if (!AddSysfsTrigger(kAccelSysfsTriggerId))
@@ -285,6 +319,14 @@ bool Configuration::ConfigAccelerometer() {
     return false;
 
   LOG(INFO) << "accelerometer configuration complete";
+  return true;
+}
+
+bool Configuration::ConfigIlluminance() {
+  if (!CopyLightCalibrationFromVpd())
+    return false;
+
+  LOG(INFO) << "light configuration complete";
   return true;
 }
 
