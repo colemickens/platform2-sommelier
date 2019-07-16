@@ -131,6 +131,9 @@
 - xkb:us:intl:eng
 - xkb:us:intl:nld
 - xkb:us:intl:por
+- xkb:us:intl_pc:eng
+- xkb:us:intl_pc:nld
+- xkb:us:intl_pc:por
 - xkb:us:workman-intl:eng
 - xkb:us:workman:eng
 - yue-hant-t-i0-und
