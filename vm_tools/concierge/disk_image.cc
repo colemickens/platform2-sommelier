@@ -213,9 +213,10 @@ bool VmExportOperation::PrepareInput() {
     return false;
   }
 
-  // Do not cross mount points.
-  archive_read_disk_set_behavior(in_.get(),
-                                 ARCHIVE_READDISK_NO_TRAVERSE_MOUNTS);
+  // Do not cross mount points and do not archive chattr and xattr attributes.
+  archive_read_disk_set_behavior(
+      in_.get(), ARCHIVE_READDISK_NO_TRAVERSE_MOUNTS |
+                     ARCHIVE_READDISK_NO_FFLAGS | ARCHIVE_READDISK_NO_XATTR);
   // Do not traverse symlinks.
   archive_read_disk_set_symlink_physical(in_.get());
 
