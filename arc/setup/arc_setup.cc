@@ -337,17 +337,24 @@ bool CreateArtContainerDataDirectory(
 }
 
 // Stores relative path, mode_t for sdcard mounts.
+// mode is an octal mask for file persmissions here.
 struct EsdfsMount {
   const char* relative_path;
   mode_t mode;
   gid_t gid;
 };
 
-constexpr std::array<EsdfsMount, 3> kEsdfsMounts{{
-    {"default/emulated", 0006, kSdcardRwGid},
-    {"read/emulated", 0027, kEverybodyGid},
-    {"write/emulated", 0007, kEverybodyGid},
-}};
+const std::vector<EsdfsMount> GetEsdfsMounts(AndroidSdkVersion version) {
+  std::vector<EsdfsMount> mounts{
+      {"default/emulated", 0006, kSdcardRwGid},
+      {"read/emulated", 0027, kEverybodyGid},
+      {"write/emulated", 0007, kEverybodyGid},
+  };
+  if (version >= AndroidSdkVersion::ANDROID_Q)
+    mounts.push_back({"full/emulated", 0007, kEverybodyGid});
+
+  return mounts;
+}
 
 // Esdfs mount options:
 // --------------------
@@ -820,7 +827,7 @@ void ArcSetup::UnmountSdcard() {
   // We unmount here in both the ESDFS and the FUSE cases in order to
   // clean up after Android's /system/bin/sdcard. However, the paths
   // must be the same in both cases.
-  for (auto mount : kEsdfsMounts) {
+  for (const auto& mount : GetEsdfsMounts(GetSdkVersion())) {
     base::FilePath kDestDirectory =
         arc_paths_->sdcard_mount_directory.Append(mount.relative_path);
     IGNORE_ERRORS(arc_mounter_->Umount(kDestDirectory));
@@ -978,7 +985,7 @@ void ArcSetup::SetUpSdcard() {
   // Wait for setup
   EXIT_IF(!WaitForSdcardSource(arc_paths_->android_mutable_source));
 
-  for (auto mount : kEsdfsMounts) {
+  for (const auto& mount : GetEsdfsMounts(GetSdkVersion())) {
     base::FilePath dest_directory =
         arc_paths_->sdcard_mount_directory.Append(mount.relative_path);
     EXIT_IF(!arc_mounter_->Mount(
@@ -1007,6 +1014,11 @@ void ArcSetup::SetUpSharedTmpfsForExternalStorage() {
   EXIT_IF(
       !InstallDirectory(0755, kRootUid, kRootGid,
                         arc_paths_->sdcard_mount_directory.Append("write")));
+  if (GetSdkVersion() >= AndroidSdkVersion::ANDROID_Q) {
+    EXIT_IF(
+        !InstallDirectory(0755, kRootUid, kRootGid,
+                          arc_paths_->sdcard_mount_directory.Append("full")));
+  }
 
   // Create the mount directories. In original Android, these are created in
   // EmulatedVolume.cpp just before /system/bin/sdcard is fork()/exec()'ed.
@@ -1023,6 +1035,11 @@ void ArcSetup::SetUpSharedTmpfsForExternalStorage() {
   EXIT_IF(!InstallDirectory(
       0755, kRootUid, kRootGid,
       arc_paths_->sdcard_mount_directory.Append("write/emulated")));
+  if (GetSdkVersion() >= AndroidSdkVersion::ANDROID_Q) {
+    EXIT_IF(!InstallDirectory(
+        0755, kRootUid, kRootGid,
+        arc_paths_->sdcard_mount_directory.Append("full/emulated")));
+  }
 }
 
 void ArcSetup::SetUpFilesystemForObbMounter() {
