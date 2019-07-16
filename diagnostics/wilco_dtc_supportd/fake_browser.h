@@ -10,6 +10,7 @@
 #include <base/callback.h>
 #include <base/macros.h>
 #include <dbus/mock_exported_object.h>
+#include <gmock/gmock.h>
 #include <mojo/public/cpp/bindings/binding.h>
 
 #include "diagnostics/common/mojo_test_utils.h"
@@ -44,7 +45,8 @@ class FakeBrowser final {
 
   // Returns a mock WilcoDtcSupportdClient instance, whose methods are invoked
   // when FakeBrowser receives incoming Mojo calls from the tested code.
-  MockMojomWilcoDtcSupportdClient* wilco_dtc_supportd_client() {
+  testing::StrictMock<MockMojomWilcoDtcSupportdClient>*
+  wilco_dtc_supportd_client() {
     return &wilco_dtc_supportd_client_;
   }
 
@@ -102,7 +104,8 @@ class FakeBrowser final {
   // Mock WilcoDtcSupportdClient instance. After an invocation of
   // CallGetServiceMojoMethod() it becomes registered to receive incoming Mojo
   // requests from the tested code.
-  MockMojomWilcoDtcSupportdClient wilco_dtc_supportd_client_;
+  testing::StrictMock<MockMojomWilcoDtcSupportdClient>
+      wilco_dtc_supportd_client_;
   // Mojo binding that is associated with |wilco_dtc_supportd_client_|.
   mojo::Binding<MojomWilcoDtcSupportdClient> wilco_dtc_supportd_client_binding_;
 
