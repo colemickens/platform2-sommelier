@@ -1333,39 +1333,36 @@ void Metrics::NotifyAp80211vBSSTransitionSupport(
 }
 
 #if !defined(DISABLE_WIFI)
-// TODO(zqiu): Change argument type from IEEE_80211::WiFiReasonCode to
-// Metrics::WiFiStatusType, to remove dependency for IEEE_80211.
 void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
                                     IEEE_80211::WiFiReasonCode reason) {
   string metric_disconnect_reason;
   string metric_disconnect_type;
-  WiFiStatusType type;
+  WiFiReasonType type;
 
   if (by_whom == kDisconnectedByAp) {
     metric_disconnect_reason = kMetricLinkApDisconnectReason;
     metric_disconnect_type = kMetricLinkApDisconnectType;
-    type = kStatusCodeTypeByAp;
+    type = kReasonCodeTypeByAp;
   } else {
     metric_disconnect_reason = kMetricLinkClientDisconnectReason;
     metric_disconnect_type = kMetricLinkClientDisconnectType;
     switch (reason) {
       case IEEE_80211::kReasonCodeSenderHasLeft:
       case IEEE_80211::kReasonCodeDisassociatedHasLeft:
-        type = kStatusCodeTypeByUser;
+        type = kReasonCodeTypeByUser;
         break;
 
       case IEEE_80211::kReasonCodeInactivity:
-        type = kStatusCodeTypeConsideredDead;
+        type = kReasonCodeTypeConsideredDead;
         break;
 
       default:
-        type = kStatusCodeTypeByClient;
+        type = kReasonCodeTypeByClient;
         break;
     }
   }
-  SendEnumToUMA(metric_disconnect_reason, reason,
-                IEEE_80211::kStatusCodeMax);
-  SendEnumToUMA(metric_disconnect_type, type, kStatusCodeTypeMax);
+  SendEnumToUMA(metric_disconnect_reason, reason, IEEE_80211::kReasonCodeMax);
+  SendEnumToUMA(metric_disconnect_type, type, kReasonCodeTypeMax);
 }
 #endif  // DISABLE_WIFI
 

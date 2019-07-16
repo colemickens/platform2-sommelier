@@ -223,12 +223,12 @@ class Metrics {
     kWiFiRoamCompleteMax
   };
 
-  enum WiFiStatusType {
-    kStatusCodeTypeByAp,
-    kStatusCodeTypeByClient,
-    kStatusCodeTypeByUser,
-    kStatusCodeTypeConsideredDead,
-    kStatusCodeTypeMax
+  enum WiFiReasonType {
+    kReasonCodeTypeByAp,
+    kReasonCodeTypeByClient,
+    kReasonCodeTypeByUser,
+    kReasonCodeTypeConsideredDead,
+    kReasonCodeTypeMax
   };
 
   enum WiFiDisconnectByWhom {
