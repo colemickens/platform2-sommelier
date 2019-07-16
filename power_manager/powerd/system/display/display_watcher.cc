@@ -101,7 +101,18 @@ void DisplayWatcher::OnUdevEvent(const UdevEvent& event) {
 }
 
 base::FilePath DisplayWatcher::GetI2CDevicePath(const base::FilePath& drm_dir) {
-  base::FileEnumerator enumerator(drm_dir,
+  base::FilePath i2c_dev;
+
+  i2c_dev = FindI2CDeviceInDir(drm_dir.AppendASCII("ddc/i2c-dev"));
+  if (!base::PathExists(i2c_dev))
+    i2c_dev = FindI2CDeviceInDir(drm_dir);
+
+  return i2c_dev;
+}
+
+base::FilePath DisplayWatcher::FindI2CDeviceInDir(
+    const base::FilePath& dir) {
+  base::FileEnumerator enumerator(dir,
                                   false,  // recursive
                                   base::FileEnumerator::DIRECTORIES,
                                   kI2CDeviceNamePattern);

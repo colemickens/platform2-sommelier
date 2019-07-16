@@ -87,6 +87,10 @@ class DisplayWatcher : public DisplayWatcherInterface,
   // the device isn't found.
   base::FilePath GetI2CDevicePath(const base::FilePath& drm_dir);
 
+  // Helper used by GetI2CDevicePath() to locate the I2C device used for DDC/CI
+  // communication. Returns an empty path if the device isn't found.
+  base::FilePath FindI2CDeviceInDir(const base::FilePath& dir);
+
   // Invoked by |debounce_timer_| used to delay publishing display changes. This
   // helps aggregating multiple display configuration events when they are
   // reported in short time spans.
