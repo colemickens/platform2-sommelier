@@ -9,6 +9,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/strings/string_number_conversions.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/fake_prefs.h"
@@ -29,6 +30,23 @@ static constexpr char kSuspendModeShallow[] = "shallow";
 
 // deep sleep(S3) suspend mode
 static constexpr char kSuspendModeDeep[] = "deep";
+
+static constexpr char kECLastResumeResultPath[] =
+    "/sys/kernel/debug/cros_ec/last_resume_result";
+
+static constexpr char kECResumeResultHang[] = "0x80000001";
+static constexpr char kECResumeResultNoHang[] = "0x7FFFFFFF";
+
+// Creates an empty sysfs file rooted in |temp_root_dir|. For example if
+// |temp_root_dir| is "/tmp/xxx" and |sys_path| is "/sys/power/temp", creates
+// "/tmp/xxx/sys/power/temp" with all necessary root directories.
+void CreateSysfsFileInTempRootDir(const base::FilePath& temp_root_dir,
+                                  const std::string& sys_path) {
+  base::FilePath path = temp_root_dir.Append(sys_path.substr(1));
+  ASSERT_TRUE(base::CreateDirectory(path.DirName()));
+  CHECK_EQ(base::WriteFile(path, "", 0), 0);
+}
+
 }  // namespace
 
 class SuspendConfiguratorTest : public ::testing::Test {
@@ -36,18 +54,12 @@ class SuspendConfiguratorTest : public ::testing::Test {
   SuspendConfiguratorTest() {
     // Temporary directory mimicking a root directory.
     CHECK(temp_root_dir_.CreateUniqueTempDir());
-    suspend_configurator_.set_prefix_path_for_testing(temp_root_dir_.GetPath());
+    base::FilePath temp_root_dir_path = temp_root_dir_.GetPath();
+    suspend_configurator_.set_prefix_path_for_testing(temp_root_dir_path);
 
-    base::FilePath console_suspend_path = temp_root_dir_.GetPath().Append(
-        SuspendConfigurator::kConsoleSuspendPath.value().substr(1));
-    base::FilePath suspend_mode_path = temp_root_dir_.GetPath().Append(
-        std::string(kSuspendModePath).substr(1));
-
-    // Creates empty files.
-    CHECK(base::CreateDirectory(console_suspend_path.DirName()));
-    CHECK_EQ(base::WriteFile(console_suspend_path, "", 0), 0);
-    CHECK(base::CreateDirectory(suspend_mode_path.DirName()));
-    CHECK_EQ(base::WriteFile(suspend_mode_path, "", 0), 0);
+    CreateSysfsFileInTempRootDir(
+        temp_root_dir_path, SuspendConfigurator::kConsoleSuspendPath.value());
+    CreateSysfsFileInTempRootDir(temp_root_dir_path, kSuspendModePath);
   }
 
   ~SuspendConfiguratorTest() override = default;
@@ -137,6 +149,39 @@ TEST_F(SuspendConfiguratorTest, TestSuspendModeDeep) {
 
   suspend_configurator_.PrepareForSuspend(base::TimeDelta());
   EXPECT_EQ(kSuspendModeDeep, ReadFile(suspend_mode_path));
+}
+
+// Test that UndoPrepareForSuspend() returns success when
+// |kECLastResumeResultPath| does not exist .
+TEST_F(SuspendConfiguratorTest, TestNokECLastResumeResultPath) {
+  EXPECT_TRUE(suspend_configurator_.UndoPrepareForSuspend());
+}
+
+// Test that UndoPrepareForSuspend() returns success/failure based on value in
+// |kECLastResumeResultPath|.
+TEST_F(SuspendConfiguratorTest, TestkECLastResumeResultPathExist) {
+  CreateSysfsFileInTempRootDir(temp_root_dir_.GetPath(),
+                               kECLastResumeResultPath);
+  // Empty |kECLastResumeResultPath| file should not fail suspend.
+  EXPECT_TRUE(suspend_configurator_.UndoPrepareForSuspend());
+
+  // Write a value that indicates hang to |kECLastResumeResultPath| and test
+  // UndoPrepareForSuspend() returns false.
+  std::string last_resume_result_string = kECResumeResultHang;
+  ASSERT_EQ(base::WriteFile(GetPath(base::FilePath(kECLastResumeResultPath)),
+                            last_resume_result_string.c_str(),
+                            last_resume_result_string.length()),
+            last_resume_result_string.length());
+  EXPECT_FALSE(suspend_configurator_.UndoPrepareForSuspend());
+
+  // Write a value that does not indicate hang to |kECLastResumeResultPath| and
+  // test UndoPrepareForSuspend() returns true.
+  last_resume_result_string = kECResumeResultNoHang;
+  ASSERT_EQ(base::WriteFile(GetPath(base::FilePath(kECLastResumeResultPath)),
+                            last_resume_result_string.c_str(),
+                            last_resume_result_string.length()),
+            last_resume_result_string.length());
+  EXPECT_TRUE(suspend_configurator_.UndoPrepareForSuspend());
 }
 
 }  // namespace system

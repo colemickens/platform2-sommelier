@@ -661,7 +661,6 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   const int exit_code =
       RunSetuidHelper("suspend", base::JoinString(args, " "), true);
   LOG(INFO) << "powerd_suspend returned " << exit_code;
-  suspend_configurator_->UndoPrepareForSuspend();
 
   if (log_suspend_with_mosys_eventlog_)
     RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa8", false);
@@ -670,6 +669,9 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     if (!base::DeleteFile(base::FilePath(suspended_state_path_), false))
       PLOG(ERROR) << "Failed to delete " << suspended_state_path_.value();
   }
+
+  if (!suspend_configurator_->UndoPrepareForSuspend())
+    return policy::Suspender::Delegate::SuspendResult::FAILURE;
 
   // These exit codes are defined in powerd/powerd_suspend.
   switch (exit_code) {

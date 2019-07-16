@@ -28,8 +28,9 @@ class SuspendConfiguratorInterface {
   // Do pre-suspend configuration and logging just before asking kernel to
   // suspend.
   virtual void PrepareForSuspend(const base::TimeDelta& suspend_duration) = 0;
-  // Do post-suspend logging and cleaning just after resuming from suspend.
-  virtual void UndoPrepareForSuspend() = 0;
+  // Do post-suspend work just after resuming from suspend. Returns false if the
+  // last suspend was a failure. Returns true otherwise.
+  virtual bool UndoPrepareForSuspend() = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SuspendConfiguratorInterface);
@@ -47,7 +48,7 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
 
   // SuspendConfiguratorInterface implementation.
   void PrepareForSuspend(const base::TimeDelta& suspend_duration) override;
-  void UndoPrepareForSuspend() override;
+  bool UndoPrepareForSuspend() override;
 
   // Sets a prefix path which is used as file system root when testing.
   // Setting to an empty path removes the prefix.

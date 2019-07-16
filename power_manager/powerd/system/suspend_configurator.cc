@@ -9,6 +9,7 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
+#include "power_manager/common/util.h"
 
 namespace power_manager {
 namespace system {
@@ -26,6 +27,14 @@ static constexpr char kSuspendModeShallow[] = "shallow";
 // deep sleep(S3) suspend mode
 static constexpr char kSuspendModeDeep[] = "deep";
 
+// Last resume result as reported by ChromeOS EC.
+static constexpr char kECLastResumeResultPath[] =
+    "/sys/kernel/debug/cros_ec/last_resume_result";
+
+// Bit that is set in |kECLastResumeResultPath| when EC times out waiting for AP
+// s0ix transition after suspend.  Please look at
+// Documentation/ABI/testing/debugfs-cros-ec kernel documentation for more info.
+static constexpr unsigned kECResumeResultHangBit = 1 << 31;
 }  // namespace
 
 // Static.
@@ -62,7 +71,20 @@ void SuspendConfigurator::PrepareForSuspend(
   }
 }
 
-void SuspendConfigurator::UndoPrepareForSuspend() {}
+bool SuspendConfigurator::UndoPrepareForSuspend() {
+  base::FilePath resume_result_path =
+      GetPrefixedFilePath(base::FilePath(kECLastResumeResultPath));
+  unsigned resume_result = 0;
+  if (base::PathExists(resume_result_path) &&
+      util::ReadHexUint32File(resume_result_path, &resume_result) &&
+      resume_result & kECResumeResultHangBit) {
+    // EC woke the system due to SLP_S0 transition timeout.
+    LOG(INFO) << "Suspend failure. EC woke the system due to a timeout when "
+                 "watching for SLP_S0 transitions";
+    return false;
+  }
+  return true;
+}
 
 void SuspendConfigurator::ConfigureConsoleForSuspend() {
   bool pref_val = true;

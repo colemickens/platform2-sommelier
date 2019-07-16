@@ -23,6 +23,28 @@
 namespace power_manager {
 namespace util {
 
+namespace {
+
+template <typename T, bool (*StringToType)(const base::StringPiece&, T*)>
+bool ReadIntegerFile(const base::FilePath& path, T* value_out) {
+  DCHECK(value_out);
+
+  std::string str;
+  if (!base::ReadFileToString(path, &str)) {
+    PLOG(ERROR) << "Unable to read from " << path.value();
+    return false;
+  }
+
+  base::TrimWhitespaceASCII(str, base::TRIM_TRAILING, &str);
+  if (!StringToType(str, value_out)) {
+    LOG(ERROR) << "Unable to parse \"" << str << "\" from " << path.value();
+    return false;
+  }
+  return true;
+}
+
+}  // namespace
+
 double ClampPercent(double percent) {
   return std::max(0.0, std::min(100.0, percent));
 }
@@ -55,24 +77,6 @@ bool WriteFileFully(const base::FilePath& filename,
   return base::WriteFile(filename, data, size) == size;
 }
 
-bool ReadInt64File(const base::FilePath& path, int64_t* value_out) {
-  DCHECK(value_out);
-
-  std::string str;
-  if (!base::ReadFileToString(path, &str)) {
-    PLOG(ERROR) << "Unable to read from " << path.value();
-    return false;
-  }
-
-  base::TrimWhitespaceASCII(str, base::TRIM_TRAILING, &str);
-  if (!base::StringToInt64(str, value_out)) {
-    LOG(ERROR) << "Unable to parse \"" << str << "\" from " << path.value();
-    return false;
-  }
-
-  return true;
-}
-
 bool WriteInt64File(const base::FilePath& path, int64_t value) {
   std::string buf = base::Int64ToString(value);
   if (!WriteFileFully(path, buf.data(), buf.size())) {
@@ -82,23 +86,9 @@ bool WriteInt64File(const base::FilePath& path, int64_t value) {
   return true;
 }
 
-bool ReadUint64File(const base::FilePath& path, uint64_t* value_out) {
-  DCHECK(value_out);
-
-  std::string str;
-  if (!base::ReadFileToString(path, &str)) {
-    PLOG(ERROR) << "Unable to read from " << path.value();
-    return false;
-  }
-
-  base::TrimWhitespaceASCII(str, base::TRIM_TRAILING, &str);
-  if (!base::StringToUint64(str, value_out)) {
-    LOG(ERROR) << "Unable to parse \"" << str << "\" from " << path.value();
-    return false;
-  }
-
-  return true;
-}
+auto ReadInt64File = ReadIntegerFile<int64_t, base::StringToInt64>;
+auto ReadUint64File = ReadIntegerFile<uint64_t, base::StringToUint64>;
+auto ReadHexUint32File = ReadIntegerFile<uint32_t, base::HexStringToUInt>;
 
 std::string JoinPaths(const std::vector<base::FilePath>& paths,
                       const std::string& separator) {

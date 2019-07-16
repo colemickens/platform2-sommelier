@@ -20,7 +20,7 @@ class SuspendConfiguratorStub : public SuspendConfiguratorInterface {
 
   // SuspendConfiguratorInterface implementation.
   void PrepareForSuspend(const base::TimeDelta& suspend_duration) override {}
-  void UndoPrepareForSuspend() override {}
+  bool UndoPrepareForSuspend() override { return true; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SuspendConfiguratorStub);
