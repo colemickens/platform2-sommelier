@@ -23,7 +23,11 @@ bool FakeDelegate::ProbeKernelModule(const std::string& module) {
 }
 
 bool FakeDelegate::Exists(const base::FilePath& fp) {
-  return false;
+  return existing_files_.count(fp) > 0;
+}
+
+void FakeDelegate::CreateFile(const base::FilePath& fp) {
+  existing_files_.emplace(fp);
 }
 
 base::Optional<gid_t> FakeDelegate::FindGroupId(const char* group) {

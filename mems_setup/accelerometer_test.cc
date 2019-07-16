@@ -26,6 +26,7 @@ namespace mems_setup {
 namespace {
 
 static gid_t kChronosGroupId = 666;
+static gid_t kPowerGroupId = 999;
 
 class AccelerometerTest : public SensorTestBase {
  public:
@@ -161,7 +162,7 @@ TEST_F(AccelerometerTest, MultipleSensorEnableChannels) {
 }
 
 TEST_F(AccelerometerTest, BufferEnabled) {
-  SetSingleSensor("lid");
+  SetSingleSensor(kLidSensorLocation);
   EXPECT_FALSE(mock_device_->IsBufferEnabled());
 
   EXPECT_TRUE(GetConfiguration()->Configure());
@@ -169,6 +170,36 @@ TEST_F(AccelerometerTest, BufferEnabled) {
   size_t accel_buffer_len = 0;
   EXPECT_TRUE(mock_device_->IsBufferEnabled(&accel_buffer_len));
   EXPECT_EQ(1, accel_buffer_len);
+}
+
+TEST_F(AccelerometerTest, SingleSensorKbWakeAnglePermissions) {
+  base::FilePath kb_path("/sys/class/chromeos/cros_ec/kb_wake_angle");
+
+  SetSingleSensor(kLidSensorLocation);
+  mock_delegate_->CreateFile(kb_path);
+  mock_delegate_->AddGroup("power", kPowerGroupId);
+  EXPECT_TRUE(GetConfiguration()->Configure());
+
+  EXPECT_NE(0, mock_delegate_->GetPermissions(kb_path) &
+                   base::FILE_PERMISSION_WRITE_BY_GROUP);
+  gid_t gid = 0;
+  mock_delegate_->GetOwnership(kb_path, nullptr, &gid);
+  EXPECT_EQ(kPowerGroupId, gid);
+}
+
+TEST_F(AccelerometerTest, SharedSensorKbWakeAnglePermissions) {
+  base::FilePath kb_path = mock_device_->GetPath().Append("in_angl_offset");
+
+  SetSharedSensor();
+  mock_delegate_->CreateFile(kb_path);
+  mock_delegate_->AddGroup("power", kPowerGroupId);
+  EXPECT_TRUE(GetConfiguration()->Configure());
+
+  EXPECT_NE(0, mock_delegate_->GetPermissions(kb_path) &
+                   base::FILE_PERMISSION_WRITE_BY_GROUP);
+  gid_t gid = 0;
+  mock_delegate_->GetOwnership(kb_path, nullptr, &gid);
+  EXPECT_EQ(kPowerGroupId, gid);
 }
 
 }  // namespace

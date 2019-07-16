@@ -234,6 +234,35 @@ bool Configuration::EnableAccelScanElements() {
   return true;
 }
 
+bool Configuration::EnableKeyboardAngle() {
+  base::FilePath kb_wake_angle;
+  if (sensor_->IsSingleSensor()) {
+    kb_wake_angle = base::FilePath("/sys/class/chromeos/cros_ec/kb_wake_angle");
+  } else {
+    kb_wake_angle = sensor_->GetPath().Append("in_angl_offset");
+  }
+
+  if (!delegate_->Exists(kb_wake_angle)) {
+    LOG(INFO) << kb_wake_angle.value()
+              << " not found; will not enable EC wake angle";
+    return true;
+  }
+
+  base::Optional<gid_t> power_gid = delegate_->FindGroupId("power");
+  if (!power_gid) {
+    LOG(ERROR) << "cannot configure ownership on the wake angle file";
+    return false;
+  }
+
+  delegate_->SetOwnership(kb_wake_angle, -1, power_gid.value());
+  int permission = delegate_->GetPermissions(kb_wake_angle);
+  permission |= base::FILE_PERMISSION_WRITE_BY_GROUP;
+  delegate_->SetPermissions(kb_wake_angle, permission);
+
+  LOG(INFO) << "keyboard angle enabled";
+  return true;
+}
+
 bool Configuration::ConfigGyro() {
   if (!CopyCalibrationBiasFromVpd(kGyroMaxVpdCalibration))
     return false;
@@ -250,6 +279,9 @@ bool Configuration::ConfigAccelerometer() {
     return false;
 
   if (!EnableAccelScanElements())
+    return false;
+
+  if (!EnableKeyboardAngle())
     return false;
 
   LOG(INFO) << "accelerometer configuration complete";

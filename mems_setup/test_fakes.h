@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -35,6 +36,8 @@ class FakeDelegate : public Delegate {
 
   bool Exists(const base::FilePath&) override;
 
+  void CreateFile(const base::FilePath&);
+
   base::Optional<gid_t> FindGroupId(const char* group) override;
 
   int GetPermissions(const base::FilePath& path) override;
@@ -55,6 +58,7 @@ class FakeDelegate : public Delegate {
   std::map<std::string, gid_t> groups_;
   std::map<std::string, int> permissions_;
   std::map<std::string, std::pair<uid_t, gid_t>> ownerships_;
+  std::set<base::FilePath> existing_files_;
 };
 
 }  // namespace fakes

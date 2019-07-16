@@ -37,6 +37,8 @@ class Configuration {
 
   bool EnableBuffer();
 
+  bool EnableKeyboardAngle();
+
   Delegate* delegate_;  // non-owned
   SensorKind kind_;
   libmems::IioDevice* sensor_;  // non-owned
