@@ -202,6 +202,14 @@ TEST_F(AccelerometerTest, SharedSensorKbWakeAnglePermissions) {
   EXPECT_EQ(kPowerGroupId, gid);
 }
 
+TEST_F(AccelerometerTest, OkWithTrigger0Defined) {
+  SetSingleSensor(kLidSensorLocation);
+
+  mock_context_->AddDevice(mock_trigger0_.get());
+
+  EXPECT_TRUE(GetConfiguration()->Configure());
+}
+
 }  // namespace
 
 }  // namespace mems_setup
