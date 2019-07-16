@@ -171,13 +171,14 @@ MountErrorType ArchiveManager::DoUnmount(
     return MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS;
   }
 
-  // TODO(benchan): Extract error from low-level unmount operation.
-  if (platform()->Unmount(path, unmount_flags)) {
-    // DoUnmount() is always called with |path| being the mount path.
-    RemoveMountVirtualPath(path);
-    return MOUNT_ERROR_NONE;
+  const MountErrorType error = platform()->Unmount(path, unmount_flags);
+  if (error != MOUNT_ERROR_NONE) {
+    return error;
   }
-  return MOUNT_ERROR_UNKNOWN;
+
+  // DoUnmount() is always called with |path| being the mount path.
+  RemoveMountVirtualPath(path);
+  return MOUNT_ERROR_NONE;
 }
 
 std::string ArchiveManager::SuggestMountPath(
@@ -328,9 +329,11 @@ bool ArchiveManager::StopAVFS() {
     if (!base::PathExists(base::FilePath(path)))
       continue;
 
-    if (!platform()->Unmount(path, 0))
+    const MountErrorType error = platform()->Unmount(path, 0);
+    if (error != MOUNT_ERROR_NONE)
       all_unmounted = false;
   }
+
   return all_unmounted;
 }
 
