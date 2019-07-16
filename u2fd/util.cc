@@ -39,9 +39,19 @@ void AppendSubstringToVector(const std::string& from,
 
 base::Optional<std::vector<uint8_t>> SignatureToDerBytes(const uint8_t* r,
                                                          const uint8_t* s) {
+  crypto::ScopedBIGNUM sig_r(BN_new()), sig_s(BN_new());
   crypto::ScopedECDSA_SIG sig(ECDSA_SIG_new());
+  if (!sig_r || !sig_s || !sig) {
+    LOG(ERROR) << "Failed to allocate ECDSA_SIG or BIGNUM.";
+    return base::nullopt;
+  }
+  if (!BN_bin2bn(r, 32, sig_r.get()) ||
+      !BN_bin2bn(s, 32, sig_s.get())) {
+    LOG(ERROR) << "Failed to convert ECDSA_SIG parameters to BIGNUM";
+    return base::nullopt;
+  }
 
-  if (!BN_bin2bn(r, 32, sig->r) || !BN_bin2bn(s, 32, sig->s)) {
+  if (!ECDSA_SIG_set0(sig.get(), sig_r.release(), sig_s.release())) {
     LOG(ERROR) << "Failed to initialize ECDSA_SIG";
     return base::nullopt;
   }
