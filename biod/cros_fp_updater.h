@@ -9,6 +9,7 @@
 
 #include <base/files/file_path.h>
 #include <chromeos/ec/ec_commands.h>
+#include <cros_config/cros_config_interface.h>
 
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_firmware.h"
@@ -49,12 +50,15 @@ enum class FindFirmwareFileStatus {
 
 // Searches for the externally packaged firmware binary using a glob.
 // The returned firmware has not been validated.
-FindFirmwareFileStatus FindFirmwareFile(const base::FilePath& directory,
-                                        base::FilePath* file);
+FindFirmwareFileStatus FindFirmwareFile(
+    const base::FilePath& directory,
+    brillo::CrosConfigInterface* cros_config,
+    base::FilePath* file);
 std::string FindFirmwareFileStatusToString(FindFirmwareFileStatus status);
 
 // Checks for external firmware disable mechanism.
 bool UpdateDisallowed();
+bool FingerprintUnsupported(brillo::CrosConfigInterface* cros_config);
 
 enum class UpdateStatus {
   kUpdateNotNecessary,

@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <chromeos/ec/ec_commands.h>
+#include <cros_config/fake_cros_config.h>
 
 #include "biod/cros_fp_firmware.h"
 
@@ -36,14 +37,23 @@ constexpr char kTestImageRWVersion[] = "nocturne_fp_v2.2.110-b936c0a3c";
 constexpr char kTestImageFileName[] = "nocturne_fp_v2.2.110-b936c0a3c.bin";
 const base::FilePath kInitFilePath("/UNTOUCHED_PATH");
 
-const std::vector<std::string> kValidFirmwareFileNames = {
-    kTestImageFileName,
-    "unknown_fp_v123.123.123-123456789.bin",
-    "0_fp_0.bin",
-    "_fp_.bin",
+// (board_name, file_name)
+// All |file_name|'s should be unique, so that tests can pull any
+// combination of elements to test with.
+// All |board_name|'s should be unique, so that tests can check for
+// proper firmware name fetching when multiple valid firmwares are present.
+// When |board_name| is "", use legacy update path.
+const std::vector<std::pair<std::string, std::string>> kValidFirmwareNames = {
+    std::make_pair("", kTestImageFileName),
+    std::make_pair("", "unknown_fp_v123.123.123-123456789.bin"),
+    std::make_pair("", "0_fp_0.bin"),
+    std::make_pair("", "_fp_.bin"),
+    std::make_pair("hatch_fp", "hatch_fp_v2.2.110-b936c0a3c.bin"),
+    std::make_pair("dragonclaw", "dragonclaw_v1.0.4-b936c0a3c.bin"),
+    std::make_pair("dragonguts", "dragonguts_v1.2.3-d00d8badf00d.bin"),
 };
 
-const std::vector<std::string> kInvalidFirmwareFileNames = {
+const std::vector<std::string> kInvalidFirmwareNames = {
     "nocturne_fp_v2.2.110-b936c0a3c.txt",
     "not_fpmcu_firmware.bin",
     "not_fpmcu_firmware.txt",
@@ -93,6 +103,27 @@ namespace biod {
 
 namespace updater {
 
+TEST(CrosFpUpdaterFingerprintUnsupportedTest, HasFingerprintUnset) {
+  // Given a device that does not indicate if it has-fingerprint-sensor,
+  brillo::FakeCrosConfig cros_config;
+  // expect FingerprintUnsupported to report false.
+  EXPECT_FALSE(FingerprintUnsupported(&cros_config));
+}
+
+TEST(CrosFpUpdaterFingerprintUnsupportedTest, HasFingerprintSetTrue) {
+  brillo::FakeCrosConfig cros_config;
+  cros_config.SetString("/hardware-properties", "has-fingerprint-sensor",
+                        "true");
+  EXPECT_FALSE(FingerprintUnsupported(&cros_config));
+}
+
+TEST(CrosFpUpdaterFingerprintUnsupportedTest, HasFingerprintSetFalse) {
+  brillo::FakeCrosConfig cros_config;
+  cros_config.SetString("/hardware-properties", "has-fingerprint-sensor",
+                        "false");
+  EXPECT_TRUE(FingerprintUnsupported(&cros_config));
+}
+
 class CrosFpUpdaterFindFirmwareTest : public ::testing::Test {
  protected:
   void SetUp() override { CHECK(ResetTestTempDir()); }
@@ -109,6 +140,7 @@ class CrosFpUpdaterFindFirmwareTest : public ::testing::Test {
   }
 
   const base::FilePath& GetTestTempDir() const { return temp_dir_.GetPath(); }
+
   bool TouchFile(const base::FilePath& abspath) const {
     if (!GetTestTempDir().IsParent(abspath)) {
       LOG(ERROR) << "Asked to TouchFile outside test environment.";
@@ -124,6 +156,10 @@ class CrosFpUpdaterFindFirmwareTest : public ::testing::Test {
     return true;
   }
 
+  bool RemoveFile(const base::FilePath& abspath) const {
+    return base::DeleteFile(abspath, true);
+  }
+
   CrosFpUpdaterFindFirmwareTest() = default;
   ~CrosFpUpdaterFindFirmwareTest() override = default;
 
@@ -134,9 +170,11 @@ class CrosFpUpdaterFindFirmwareTest : public ::testing::Test {
 };
 
 TEST_F(CrosFpUpdaterFindFirmwareTest, InvalidPathBlank) {
+  brillo::FakeCrosConfig cros_config;
   base::FilePath out_file_path(kInitFilePath);
   // Given an empty directory path, searching for a firmware file
-  auto status = FindFirmwareFile(base::FilePath(""), &out_file_path);
+  auto status =
+      FindFirmwareFile(base::FilePath(""), &cros_config, &out_file_path);
   // fails with a no directory error
   EXPECT_EQ(status, FindFirmwareFileStatus::kNoDirectory);
   // without modifying the output file path.
@@ -144,9 +182,11 @@ TEST_F(CrosFpUpdaterFindFirmwareTest, InvalidPathBlank) {
 }
 
 TEST_F(CrosFpUpdaterFindFirmwareTest, InvalidPathOddChars) {
+  brillo::FakeCrosConfig cros_config;
   base::FilePath out_file_path(kInitFilePath);
   // Given "--" as directory path, searching for a firmware file
-  auto status = FindFirmwareFile(base::FilePath("--"), &out_file_path);
+  auto status =
+      FindFirmwareFile(base::FilePath("--"), &cros_config, &out_file_path);
   // fails with a no directory error
   EXPECT_EQ(status, FindFirmwareFileStatus::kNoDirectory);
   // without modifying the output file path.
@@ -154,9 +194,11 @@ TEST_F(CrosFpUpdaterFindFirmwareTest, InvalidPathOddChars) {
 }
 
 TEST_F(CrosFpUpdaterFindFirmwareTest, DirectoryWithoutFirmware) {
+  brillo::FakeCrosConfig cros_config;
   base::FilePath out_file_path(kInitFilePath);
   // Given a directory with no firmware files, searching for a firmware file
-  auto status = FindFirmwareFile(GetTestTempDir(), &out_file_path);
+  auto status =
+      FindFirmwareFile(GetTestTempDir(), &cros_config, &out_file_path);
   // fails with a file not found error
   EXPECT_EQ(status, FindFirmwareFileStatus::kFileNotFound);
   // without modifying the output file path.
@@ -164,16 +206,22 @@ TEST_F(CrosFpUpdaterFindFirmwareTest, DirectoryWithoutFirmware) {
 }
 
 TEST_F(CrosFpUpdaterFindFirmwareTest, OneGoodFirmwareFilePattern) {
-  for (const auto& good_fw_name : kValidFirmwareFileNames) {
+  for (const auto& good_fw : kValidFirmwareNames) {
+    brillo::FakeCrosConfig cros_config;
     base::FilePath fw_file_path, out_file_path;
     CHECK(ResetTestTempDir());
 
-    // Given a directory with one correctly named firmware file,
-    fw_file_path = GetTestTempDir().Append(good_fw_name);
+    // Given a directory with one correctly named firmware file
+    fw_file_path = GetTestTempDir().Append(good_fw.second);
     EXPECT_TRUE(TouchFile(fw_file_path));
+    // and a cros-config with an appropriate fingerprint board name,
+    if (!good_fw.first.empty()) {
+      cros_config.SetString("/fingerprint", "board", good_fw.first);
+    }
 
     // searching for a firmware file
-    auto status = FindFirmwareFile(GetTestTempDir(), &out_file_path);
+    auto status =
+        FindFirmwareFile(GetTestTempDir(), &cros_config, &out_file_path);
     // succeeds
     EXPECT_EQ(status, FindFirmwareFileStatus::kFoundFile);
     // and returns the path to the original firmware file.
@@ -182,7 +230,8 @@ TEST_F(CrosFpUpdaterFindFirmwareTest, OneGoodFirmwareFilePattern) {
 }
 
 TEST_F(CrosFpUpdaterFindFirmwareTest, OneBadFirmwareFilePattern) {
-  for (const auto& bad_fw_name : kInvalidFirmwareFileNames) {
+  for (const auto& bad_fw_name : kInvalidFirmwareNames) {
+    brillo::FakeCrosConfig cros_config;
     base::FilePath fw_file_path, out_file_path(kInitFilePath);
     CHECK(ResetTestTempDir());
 
@@ -191,7 +240,8 @@ TEST_F(CrosFpUpdaterFindFirmwareTest, OneBadFirmwareFilePattern) {
     EXPECT_TRUE(TouchFile(fw_file_path));
 
     // searching for a firmware file
-    auto status = FindFirmwareFile(GetTestTempDir(), &out_file_path);
+    auto status =
+        FindFirmwareFile(GetTestTempDir(), &cros_config, &out_file_path);
     // fails with a file not found error
     EXPECT_EQ(status, FindFirmwareFileStatus::kFileNotFound);
     // without modifying the output file path.
@@ -199,16 +249,78 @@ TEST_F(CrosFpUpdaterFindFirmwareTest, OneBadFirmwareFilePattern) {
   }
 }
 
-TEST_F(CrosFpUpdaterFindFirmwareTest, MultipleFiles) {
+TEST_F(CrosFpUpdaterFindFirmwareTest, MultipleValidFiles) {
+  // Given a directory with multiple correctly named firmware files
+  for (const auto& good_fw : kValidFirmwareNames) {
+    EXPECT_TRUE(TouchFile(GetTestTempDir().Append(good_fw.second)));
+  }
+
+  for (const auto& good_fw : kValidFirmwareNames) {
+    brillo::FakeCrosConfig cros_config;
+    base::FilePath fw_file_path, out_file_path;
+
+    // and a cros-config fingerprint board name,
+    if (good_fw.first.empty()) {
+      continue;
+    }
+    cros_config.SetString("/fingerprint", "board", good_fw.first);
+
+    // searching for a firmware file
+    auto status =
+        FindFirmwareFile(GetTestTempDir(), &cros_config, &out_file_path);
+    // succeeds
+    EXPECT_EQ(status, FindFirmwareFileStatus::kFoundFile);
+    // and returns the path to the corresponding firmware file.
+    EXPECT_EQ(out_file_path, GetTestTempDir().Append(good_fw.second));
+  }
+}
+
+TEST_F(CrosFpUpdaterFindFirmwareTest, MultipleValidFilesExceptSpecifc) {
+  // Given a directory with multiple correctly named firmware files and
+  for (const auto& good_fw : kValidFirmwareNames) {
+    EXPECT_TRUE(TouchFile(GetTestTempDir().Append(good_fw.second)));
+  }
+
+  for (const auto& good_fw : kValidFirmwareNames) {
+    brillo::FakeCrosConfig cros_config;
+    base::FilePath fw_file_path, out_file_path(kInitFilePath);
+    const auto good_file_path = GetTestTempDir().Append(good_fw.second);
+
+    // a cros-config fingerprint board name,
+    if (good_fw.first.empty()) {
+      continue;
+    }
+    cros_config.SetString("/fingerprint", "board", good_fw.first);
+
+    // but missing the board specific firmware file,
+    EXPECT_TRUE(RemoveFile(good_file_path));
+
+    // searching for a firmware file
+    auto status =
+        FindFirmwareFile(GetTestTempDir(), &cros_config, &out_file_path);
+    // fails with a file not found error
+    EXPECT_EQ(status, FindFirmwareFileStatus::kFileNotFound);
+    // without modifying the output file path.
+    EXPECT_EQ(out_file_path, kInitFilePath);
+
+    EXPECT_TRUE(TouchFile(good_file_path));
+  }
+}
+
+TEST_F(CrosFpUpdaterFindFirmwareTest, MultipleFilesError) {
+  brillo::FakeCrosConfig cros_config;
   base::FilePath out_file_path(kInitFilePath);
 
   // Given a directory with two correctly named firmware files,
-  EXPECT_GE(kValidFirmwareFileNames.size(), 2);
-  EXPECT_TRUE(TouchFile(GetTestTempDir().Append(kValidFirmwareFileNames[0])));
-  EXPECT_TRUE(TouchFile(GetTestTempDir().Append(kValidFirmwareFileNames[1])));
+  EXPECT_GE(kValidFirmwareNames.size(), 2);
+  EXPECT_TRUE(
+      TouchFile(GetTestTempDir().Append(kValidFirmwareNames[0].second)));
+  EXPECT_TRUE(
+      TouchFile(GetTestTempDir().Append(kValidFirmwareNames[1].second)));
 
   // searching for a firmware file
-  auto status = FindFirmwareFile(GetTestTempDir(), &out_file_path);
+  auto status =
+      FindFirmwareFile(GetTestTempDir(), &cros_config, &out_file_path);
 
   // fails with a multiple files error
   EXPECT_EQ(status, FindFirmwareFileStatus::kMultipleFiles);
@@ -217,17 +329,19 @@ TEST_F(CrosFpUpdaterFindFirmwareTest, MultipleFiles) {
 }
 
 TEST_F(CrosFpUpdaterFindFirmwareTest, OneGoodAndOneBadFirmwareFilePattern) {
+  brillo::FakeCrosConfig cros_config;
   base::FilePath out_file_path, good_file_path, bad_file_path;
 
   // Given a directory with one correctly named and one incorrectly named
   // firmware file,
-  good_file_path = GetTestTempDir().Append(kValidFirmwareFileNames[0]);
-  bad_file_path = GetTestTempDir().Append(kInvalidFirmwareFileNames[0]);
+  good_file_path = GetTestTempDir().Append(kValidFirmwareNames[0].second);
+  bad_file_path = GetTestTempDir().Append(kInvalidFirmwareNames[0]);
   EXPECT_TRUE(TouchFile(good_file_path));
   EXPECT_TRUE(TouchFile(bad_file_path));
 
   // searching for a firmware file
-  auto status = FindFirmwareFile(GetTestTempDir(), &out_file_path);
+  auto status =
+      FindFirmwareFile(GetTestTempDir(), &cros_config, &out_file_path);
   // succeeds
   EXPECT_EQ(status, FindFirmwareFileStatus::kFoundFile);
   // and returns the path to the single correctly named firmware file.

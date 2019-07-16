@@ -13,6 +13,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <base/strings/stringprintf.h>
+#include <cros_config/cros_config.h>
 
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_updater.h"
@@ -78,10 +79,21 @@ int main(int argc, char* argv[]) {
     return EXIT_SUCCESS;
   }
 
+  // Check if model supports fingerprint
+  brillo::CrosConfig cros_config;
+  if (!cros_config.InitModel()) {
+    LOG(WARNING) << "Cros config is not supported on this model, continuing "
+                    "with legacy update.";
+  }
+  if (biod::updater::FingerprintUnsupported(&cros_config)) {
+    LOG(INFO) << "Fingerprint is not supported on this model, exiting.";
+    return EXIT_SUCCESS;
+  }
+
   // Find a firmware file that matches the firmware file pattern
   base::FilePath file;
   auto status = biod::updater::FindFirmwareFile(
-      base::FilePath(biod::updater::kFirmwareDir), &file);
+      base::FilePath(biod::updater::kFirmwareDir), &cros_config, &file);
 
   if (status == biod::updater::FindFirmwareFileStatus::kNoDirectory ||
       status == biod::updater::FindFirmwareFileStatus::kFileNotFound) {

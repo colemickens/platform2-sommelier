@@ -20,6 +20,7 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_split.h>
 #include <chromeos/ec/ec_commands.h>
+#include <cros_config/cros_config_interface.h>
 
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_firmware.h"
@@ -33,7 +34,8 @@ constexpr char kFlashromPath[] = "/usr/sbin/flashrom";
 constexpr char kRebootFile[] = "/tmp/force_reboot_after_fw_update";
 
 constexpr char kUpdateDisableFile[] = "/opt/google/biod/fw/.disable_fp_updater";
-constexpr char kFirmwareGlob[] = "*_fp_*.bin";
+constexpr char kFirmwareLegacyBoardPattern[] = "*_fp";
+constexpr char kFirmwareGlobSuffix[] = "_*.bin";
 
 bool UpdateImage(const biod::CrosFpDeviceUpdate& ec_dev,
                  const biod::CrosFpBootUpdateCtrl& boot_ctrl,
@@ -204,17 +206,19 @@ namespace updater {
 constexpr char kFirmwareDir[] = "/opt/google/biod/fw";
 
 // FindFirmwareFile searches |directory| for a single firmware file
-// that matches the |kFirmwareGlob| file pattern.
+// that matches the |board_name|+|kFirmwareGlobSuffix| file pattern.
 // If a single matching firmware file is found is found,
 // its path is written to |file|. Otherwise, |file| will be untouched.
 FindFirmwareFileStatus FindFirmwareFile(const base::FilePath& directory,
+                                        const std::string& board_name,
                                         base::FilePath* file) {
   if (!base::DirectoryExists(directory)) {
     return FindFirmwareFileStatus::kNoDirectory;
   }
 
-  base::FileEnumerator fw_bin_list(
-      directory, false, base::FileEnumerator::FileType::FILES, kFirmwareGlob);
+  std::string glob(board_name + std::string(kFirmwareGlobSuffix));
+  base::FileEnumerator fw_bin_list(directory, false,
+                                   base::FileEnumerator::FileType::FILES, glob);
 
   // Find provided firmware file
   base::FilePath fw_bin = fw_bin_list.Next();
@@ -238,6 +242,22 @@ FindFirmwareFileStatus FindFirmwareFile(const base::FilePath& directory,
   return FindFirmwareFileStatus::kFoundFile;
 }
 
+FindFirmwareFileStatus FindFirmwareFile(
+    const base::FilePath& directory,
+    brillo::CrosConfigInterface* cros_config,
+    base::FilePath* file) {
+  std::string board_name;
+  if (cros_config->GetString("/fingerprint", "board", &board_name)) {
+    LOG(INFO) << "Identified fingerprint board name as '" << board_name << "'.";
+  } else {
+    LOG(WARNING) << "Fingerprint board name is unavailable, continuing with "
+                    "legacy update.";
+    board_name = kFirmwareLegacyBoardPattern;
+  }
+
+  return FindFirmwareFile(directory, board_name, file);
+}
+
 std::string FindFirmwareFileStatusToString(FindFirmwareFileStatus status) {
   switch (status) {
     case FindFirmwareFileStatus::kFoundFile:
@@ -256,6 +276,21 @@ std::string FindFirmwareFileStatusToString(FindFirmwareFileStatus status) {
 
 bool UpdateDisallowed() {
   return base::PathExists(base::FilePath(kUpdateDisableFile));
+}
+
+// Since /hardware-properties/has-fingerprint-sensor is an optional field,
+// the only information that is relevant to the updater is if fingerprint
+// is explicitly not supported.
+bool FingerprintUnsupported(brillo::CrosConfigInterface* cros_config) {
+  std::string has_fingerprint;
+  if (cros_config->GetString("/hardware-properties", "has-fingerprint-sensor",
+                             &has_fingerprint)) {
+    if (has_fingerprint == "false") {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 UpdateStatus DoUpdate(const CrosFpDeviceUpdate& ec_dev,
