@@ -333,6 +333,17 @@ class SHILL_EXPORT PmksaCandidateMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(PmksaCandidateMessage);
 };
 
+class SHILL_EXPORT ProbeMeshLinkMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  ProbeMeshLinkMessage();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ProbeMeshLinkMessage);
+};
+
 class SHILL_EXPORT RegBeaconHintMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;

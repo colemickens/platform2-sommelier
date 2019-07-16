@@ -292,6 +292,23 @@ const uint8_t PmksaCandidateMessage::kCommand = NL80211_ATTR_PMKSA_CANDIDATE;
 const char PmksaCandidateMessage::kCommandString[] =
     "NL80211_ATTR_PMKSA_CANDIDATE";
 
+const uint8_t ProbeMeshLinkMessage::kCommand = NL80211_CMD_PROBE_MESH_LINK;
+const char ProbeMeshLinkMessage::kCommandString[] =
+    "NL80211_CMD_PROBE_MESH_LINK";
+
+ProbeMeshLinkMessage::ProbeMeshLinkMessage()
+    : Nl80211Message(kCommand, kCommandString) {
+  attributes()->CreateAttribute(
+      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                                 NetlinkMessage::MessageContext()));
+  attributes()->CreateAttribute(
+      NL80211_ATTR_MAC, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                             NetlinkMessage::MessageContext()));
+  attributes()->CreateAttribute(
+      NL80211_ATTR_FRAME, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                               NetlinkMessage::MessageContext()));
+}
+
 const uint8_t RegBeaconHintMessage::kCommand = NL80211_CMD_REG_BEACON_HINT;
 const char RegBeaconHintMessage::kCommandString[] =
     "NL80211_CMD_REG_BEACON_HINT";
@@ -466,6 +483,8 @@ std::unique_ptr<NetlinkMessage> Nl80211Message::CreateMessage(
       return std::make_unique<NotifyCqmMessage>();
     case PmksaCandidateMessage::kCommand:
       return std::make_unique<PmksaCandidateMessage>();
+    case ProbeMeshLinkMessage::kCommand:
+      return std::make_unique<ProbeMeshLinkMessage>();
     case RegBeaconHintMessage::kCommand:
       return std::make_unique<RegBeaconHintMessage>();
     case RegChangeMessage::kCommand:
