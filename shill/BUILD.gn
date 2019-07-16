@@ -430,7 +430,6 @@ static_library("libshill") {
 
   if (use.wifi) {
     sources += [
-      "wifi/callback80211_metrics.cc",
       "wifi/mac80211_monitor.cc",
       "wifi/tdls_manager.cc",
       "wifi/wake_on_wifi.cc",
@@ -855,7 +854,6 @@ if (use.test) {
         "net/netlink_socket_test.cc",
         "net/nl80211_attribute_test.cc",
         "supplicant/mock_supplicant_bss_proxy.cc",
-        "wifi/callback80211_metrics_test.cc",
         "wifi/mac80211_monitor_test.cc",
         "wifi/mock_mac80211_monitor.cc",
         "wifi/mock_tdls_manager.cc",

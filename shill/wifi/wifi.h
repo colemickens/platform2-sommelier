@@ -89,6 +89,7 @@
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
 #include "shill/key_value_store.h"
+#include "shill/net/ieee80211.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/power_manager.h"
 #include "shill/refptr_types.h"
@@ -343,9 +344,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Number of milliseconds to wait after failing to launch a scan before
   // resetting the scan state to idle.
   static const int kPostScanFailedDelayMilliseconds;
-  // Used to distinguish between a disconnect reason explicitly set by
-  // supplicant and a default.
-  static const int kDefaultDisconnectReason;
   // Used when enabling MAC randomization to request that the OUI remain
   // constant and the last three octets are randomized.
   static const std::vector<unsigned char> kRandomMACMask;
@@ -645,7 +643,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   RpcIdentifier supplicant_bss_;
   int32_t supplicant_assoc_status_;
   int32_t supplicant_auth_status_;
-  int32_t supplicant_disconnect_reason_;
+  // Sanitized disconnect reason received from supplicant. If there is currently
+  // no disconnect reason set, this will be of value
+  // IEEE_80211::kDisconnectReasonInvalid.
+  IEEE_80211::WiFiReasonCode supplicant_disconnect_reason_;
   int16_t disconnect_signal_dbm_;
   int16_t disconnect_threshold_dbm_;
 

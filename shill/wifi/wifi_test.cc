@@ -934,7 +934,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   const string& GetSupplicantState() {
     return wifi_->supplicant_state_;
   }
-  int GetSupplicantDisconnectReason() {
+  IEEE_80211::WiFiReasonCode GetSupplicantDisconnectReason() {
     return wifi_->supplicant_disconnect_reason_;
   }
   void ClearCachedCredentials(const WiFiService* service) {
@@ -1001,7 +1001,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void ReportStateChanged(const string& new_state) {
     wifi_->StateChanged(new_state);
   }
-  void ReportDisconnectReasonChanged(int reason) {
+  void ReportDisconnectReasonChanged(int32_t reason) {
     wifi_->DisconnectReasonChanged(reason);
   }
   void ReportCurrentAuthModeChanged(const string& auth_mode) {
@@ -2555,24 +2555,25 @@ TEST_F(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint) {
 
 TEST_F(WiFiMainTest, DisconnectReasonUpdated) {
   ScopedMockLog log;
-  int test_reason = 4;
-  int test_reason_second = 0;
+  IEEE_80211::WiFiReasonCode test_reason = IEEE_80211::kReasonCodeInactivity;
   EXPECT_CALL(*adaptor_, EmitBoolChanged(kPoweredProperty, _))
       .Times(AnyNumber());
-  EXPECT_EQ(GetSupplicantDisconnectReason(), WiFi::kDefaultDisconnectReason);
+  EXPECT_EQ(GetSupplicantDisconnectReason(), IEEE_80211::kReasonCodeInvalid);
   EXPECT_CALL(log, Log(logging::LOG_INFO, _, EndsWith(
               " DisconnectReason to 4 (Disassociated due to inactivity)")));
   ReportDisconnectReasonChanged(test_reason);
   EXPECT_EQ(GetSupplicantDisconnectReason(), test_reason);
+
+  test_reason = IEEE_80211::kReasonCodeReserved0;
   EXPECT_CALL(log,
               Log(logging::LOG_INFO, _, EndsWith(
                     "Reason from 4 to 0 (Success)")));
-  ReportDisconnectReasonChanged(test_reason_second);
-  EXPECT_EQ(GetSupplicantDisconnectReason(), test_reason_second);
+  ReportDisconnectReasonChanged(test_reason);
+  EXPECT_EQ(GetSupplicantDisconnectReason(), test_reason);
 }
 
 TEST_F(WiFiMainTest, DisconnectReasonCleared) {
-  int test_reason = 4;
+  IEEE_80211::WiFiReasonCode test_reason = IEEE_80211::kReasonCodeInactivity;
   // Clearing the value for supplicant_disconnect_reason_ is done prior to any
   // early exits in the WiFi::StateChanged method.  This allows the value to be
   // checked without a mock pending or current service.
@@ -2581,7 +2582,7 @@ TEST_F(WiFiMainTest, DisconnectReasonCleared) {
   ReportStateChanged(WPASupplicant::kInterfaceStateDisconnected);
   ReportStateChanged(WPASupplicant::kInterfaceStateAssociated);
   EXPECT_EQ(wifi().get()->supplicant_disconnect_reason_,
-            WiFi::kDefaultDisconnectReason);
+            IEEE_80211::kReasonCodeInvalid);
 }
 
 TEST_F(WiFiMainTest, GetSuffixFromAuthMode) {

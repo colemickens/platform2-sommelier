@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <cstdint>
 #include <cstdlib>
 #include <map>
 #include <memory>
@@ -91,8 +92,6 @@ const size_t WiFi::kStuckQueueLengthThreshold = 40;  // ~1 full-channel scan
 const int WiFi::kPostWakeConnectivityReportDelayMilliseconds = 1000;
 const uint32_t WiFi::kDefaultWiphyIndex = UINT32_MAX;
 const int WiFi::kPostScanFailedDelayMilliseconds = 10000;
-// Invalid 802.11 disconnect reason code.
-const int WiFi::kDefaultDisconnectReason = INT32_MAX;
 
 // The default random MAC mask is FF:FF:FF:00:00:00. Bits which are a 1 in
 // the mask stay the same during randomization, and bits which are 0 are
@@ -131,7 +130,7 @@ WiFi::WiFi(Manager* manager,
       supplicant_bss_("(unknown)"),
       supplicant_assoc_status_(IEEE_80211::kStatusCodeSuccessful),
       supplicant_auth_status_(IEEE_80211::kStatusCodeSuccessful),
-      supplicant_disconnect_reason_(kDefaultDisconnectReason),
+      supplicant_disconnect_reason_(IEEE_80211::kReasonCodeInvalid),
       disconnect_signal_dbm_(kDefaultDisconnectDbm),
       disconnect_threshold_dbm_(kDefaultDisconnectThresholdDbm),
       supplicant_auth_mode_(WPASupplicant::kAuthModeUnknown),
@@ -893,29 +892,37 @@ void WiFi::CurrentBSSChanged(const RpcIdentifier& new_bss) {
   }
 }
 
-void WiFi::DisconnectReasonChanged(const int32_t new_disconnect_reason) {
-  if (new_disconnect_reason == kDefaultDisconnectReason) {
-    SLOG(this, 3) << "WiFi clearing DisconnectReason for " << link_name();
-  } else {
-    std::string update;
-    std::string new_disconnect_description = "Success";
-
-    if (supplicant_disconnect_reason_ != kDefaultDisconnectReason) {
-      update = StringPrintf(" from %d", supplicant_disconnect_reason_);
-    }
-    if (new_disconnect_reason != 0) {
-      uint16_t sanitized_reason = base::saturated_cast<uint16_t>(
-              abs(new_disconnect_reason));
-      new_disconnect_description = IEEE_80211::ReasonToString(
-              static_cast<IEEE_80211::WiFiReasonCode>(sanitized_reason));
-    }
-
-    LOG(INFO) << StringPrintf(
-        "WiFi %s supplicant updated DisconnectReason%s to %d (%s)",
-        link_name().c_str(), update.c_str(), new_disconnect_reason,
-        new_disconnect_description.c_str());
+void WiFi::DisconnectReasonChanged(const int32_t new_value) {
+  int32_t sanitized_value = (new_value == INT32_MIN) ? INT32_MAX
+                                                     : abs(new_value);
+  if (sanitized_value > IEEE_80211::kReasonCodeMax) {
+    LOG(WARNING) << "Received disconnect reason " << sanitized_value
+                 << " from supplicant greater than kReasonCodeMax."
+                 << " Perhaps WiFiReasonCode needs to be updated.";
+    sanitized_value = IEEE_80211::kReasonCodeMax;
   }
-  supplicant_disconnect_reason_ = new_disconnect_reason;
+  auto new_reason = static_cast<IEEE_80211::WiFiReasonCode>(sanitized_value);
+
+  std::string update;
+  if (supplicant_disconnect_reason_ != IEEE_80211::kReasonCodeInvalid) {
+    update = StringPrintf(" from %d", supplicant_disconnect_reason_);
+  }
+
+  std::string new_disconnect_description = "Success";
+  if (new_reason != 0) {
+    new_disconnect_description = IEEE_80211::ReasonToString(new_reason);
+  }
+
+  LOG(INFO) << StringPrintf(
+      "WiFi %s supplicant updated DisconnectReason%s to %d (%s)",
+      link_name().c_str(), update.c_str(), new_reason,
+      new_disconnect_description.c_str());
+  supplicant_disconnect_reason_ = new_reason;
+
+  Metrics::WiFiDisconnectByWhom by_whom = (new_value < 0)
+                                              ? Metrics::kDisconnectedNotByAp
+                                              : Metrics::kDisconnectedByAp;
+  metrics()->Notify80211Disconnect(by_whom, new_reason);
 }
 
 void WiFi::CurrentAuthModeChanged(const string& auth_mode) {
@@ -1019,12 +1026,13 @@ void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service) {
 
     // Determine disconnect failure reason.
     Service::ConnectFailure failure;
-    int32_t disconnect_reason = abs(supplicant_disconnect_reason_);
     if (SuspectCredentials(affected_service, &failure)) {
       // If we've reached here, |SuspectCredentials| has already set
       // |failure| to the appropriate value.
-    } else if ((disconnect_reason == IEEE_80211::kReasonCodeInactivity ||
-                disconnect_reason == IEEE_80211::kReasonCodeSenderHasLeft) &&
+    } else if ((supplicant_disconnect_reason_ ==
+                    IEEE_80211::kReasonCodeInactivity ||
+                supplicant_disconnect_reason_ ==
+                    IEEE_80211::kReasonCodeSenderHasLeft) &&
                disconnect_signal_dbm_ <= disconnect_threshold_dbm_ &&
                disconnect_signal_dbm_ != kDefaultDisconnectDbm) {
       // Disconnected due to service being out of range.
@@ -1032,7 +1040,7 @@ void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service) {
     } else {
       // Disconnected for some other reason.
       // Map IEEE error codes to shill error codes.
-      switch (disconnect_reason) {
+      switch (supplicant_disconnect_reason_) {
         case IEEE_80211::kReasonCodeNonAuthenticated:
         case IEEE_80211::kReasonCodeReassociationNotAuthenticated:
         case IEEE_80211::kReasonCodePreviousAuthenticationInvalid:
@@ -1804,7 +1812,8 @@ void WiFi::StateChanged(const string& new_state) {
       new_state != WPASupplicant::kInterfaceStateDisconnected) {
     // The state has been changed from disconnect to something else, clearing
     // out disconnect reason to avoid confusion about future disconnects.
-    DisconnectReasonChanged(kDefaultDisconnectReason);
+    SLOG(this, 3) << "WiFi clearing DisconnectReason for " << link_name();
+    supplicant_disconnect_reason_ = IEEE_80211::kReasonCodeInvalid;
   }
 
   // Identify the service to which the state change applies. If

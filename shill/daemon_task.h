@@ -13,9 +13,6 @@
 #include <base/macros.h>
 
 #include "shill/event_dispatcher.h"
-#if !defined(DISABLE_WIFI)
-#include "shill/wifi/callback80211_metrics.h"
-#endif  // DISABLE_WIFI
 
 namespace shill {
 
@@ -31,7 +28,7 @@ class RTNLHandler;
 
 #if !defined(DISABLE_WIFI)
 class NetlinkManager;
-#endif  // DISABLE_WIFI
+#endif  // !defined(DISABLE_WIFI)
 
 // DaemonTask contains most of the logic used in ShillDaemon (e.g.
 // init/shutdown, start/stop). This class is kept separate from ShillDaemon to
@@ -111,8 +108,7 @@ class DaemonTask {
   DHCPProvider* dhcp_provider_;
 #if !defined(DISABLE_WIFI)
   NetlinkManager* netlink_manager_;
-  std::unique_ptr<Callback80211Metrics> callback80211_metrics_;
-#endif  // DISABLE_WIFI
+#endif  // !defined(DISABLE_WIFI)
   ProcessManager* process_manager_;
   std::unique_ptr<Manager> manager_;
   base::Closure termination_completed_callback_;

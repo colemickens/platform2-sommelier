@@ -29,8 +29,7 @@
 #if !defined(DISABLE_WIFI)
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/nl80211_message.h"
-#include "shill/wifi/callback80211_metrics.h"
-#endif  // DISABLE_WIFI
+#endif  // !defined(DISABLE_WIFI)
 
 using base::Bind;
 using base::Unretained;
@@ -73,9 +72,6 @@ class DaemonTaskTest : public Test {
         control_(new MockControl()),
         metrics_(new MockMetrics()),
         manager_(new MockManager(control_, dispatcher_, metrics_)),
-#if !defined(DISABLE_WIFI)
-        callback_metrics_(new Callback80211Metrics(metrics_)),
-#endif  // DISABLE_WIFI
         device_info_(manager_) {
   }
   ~DaemonTaskTest() override = default;
@@ -92,9 +88,7 @@ class DaemonTaskTest : public Test {
 
 #if !defined(DISABLE_WIFI)
     daemon_.netlink_manager_ = &netlink_manager_;
-    // Passes ownership
-    daemon_.callback80211_metrics_.reset(callback_metrics_);
-#endif  // DISABLE_WIFI
+#endif  // !defined(DISABLE_WIFI)
   }
   void StartDaemon() { daemon_.Start(); }
 
@@ -123,8 +117,7 @@ class DaemonTaskTest : public Test {
   MockManager* manager_;
 #if !defined(DISABLE_WIFI)
   MockNetlinkManager netlink_manager_;
-  Callback80211Metrics* callback_metrics_;
-#endif  // DISABLE_WIFI
+#endif  // !defined(DISABLE_WIFI)
   DeviceInfo device_info_;
 };
 
@@ -151,7 +144,7 @@ TEST_F(DaemonTaskTest, StartStop) {
               GetFamily(Nl80211Message::kMessageTypeString, _))
       .WillOnce(Return(kNl80211MessageType));
   EXPECT_CALL(netlink_manager_, Start());
-#endif  // DISABLE_WIFI
+#endif  // !defined(DISABLE_WIFI)
   EXPECT_CALL(*manager_, Start()).After(routing_table_started);
   StartDaemon();
   Mock::VerifyAndClearExpectations(metrics_);

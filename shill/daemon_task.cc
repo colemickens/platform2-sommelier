@@ -23,7 +23,7 @@
 #if !defined(DISABLE_WIFI)
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
-#endif  // DISABLE_WIFI
+#endif  // !defined(DISABLE_WIFI)
 
 using base::Bind;
 using base::Unretained;
@@ -43,7 +43,7 @@ DaemonTask::DaemonTask(const Settings& settings, Config* config)
       dhcp_provider_(nullptr),
 #if !defined(DISABLE_WIFI)
       netlink_manager_(nullptr),
-#endif  // DISABLE_WIFI
+#endif  // !defined(DISABLE_WIFI)
       process_manager_(nullptr) {
 }
 
@@ -96,8 +96,7 @@ void DaemonTask::Init() {
   process_manager_ = ProcessManager::GetInstance();
 #if !defined(DISABLE_WIFI)
   netlink_manager_ = NetlinkManager::GetInstance();
-  callback80211_metrics_.reset(new Callback80211Metrics(metrics_.get()));
-#endif  // DISABLE_WIFI
+#endif  // !defined(DISABLE_WIFI)
   manager_.reset(new Manager(control_.get(), dispatcher_.get(), metrics_.get(),
                              config_->GetRunDirectory(),
                              config_->GetStorageDirectory(),
@@ -151,6 +150,9 @@ void DaemonTask::Start() {
   routing_table_->Start();
   dhcp_provider_->Init(control_.get(), dispatcher_.get(), metrics_.get());
   process_manager_->Init(dispatcher_.get());
+  // Note that NetlinkManager initialization is not necessarily
+  // WiFi-specific. It just happens that we currently only use NetlinkManager
+  // for WiFi.
 #if !defined(DISABLE_WIFI)
   if (netlink_manager_) {
     netlink_manager_->Init();
@@ -162,24 +164,14 @@ void DaemonTask::Start() {
     }
     Nl80211Message::SetMessageType(nl80211_family_id);
     netlink_manager_->Start();
-
-    // Install handlers for NetlinkMessages that don't have specific handlers
-    // (which are registered by message sequence number).
-    netlink_manager_->AddBroadcastHandler(
-        Bind(&Callback80211Metrics::CollectDisconnectStatistics,
-             callback80211_metrics_->AsWeakPtr()));
   }
-#endif  // DISABLE_WIFI
-
+#endif  // !defined(DISABLE_WIFI)
   manager_->Start();
 }
 
 void DaemonTask::Stop() {
   manager_->Stop();
   manager_ = nullptr;  // Release manager resources, including DBus adaptor.
-#if !defined(DISABLE_WIFI)
-  callback80211_metrics_ = nullptr;
-#endif  // DISABLE_WIFI
   metrics_->Stop();
   dhcp_provider_->Stop();
   process_manager_->Stop();
