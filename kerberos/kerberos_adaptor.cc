@@ -21,6 +21,8 @@
 
 #include "kerberos/account_manager.h"
 #include "kerberos/error_strings.h"
+#include "kerberos/kerberos_metrics.h"
+#include "kerberos/krb5_interface.h"
 #include "kerberos/krb5_interface_impl.h"
 #include "kerberos/krb5_jail_wrapper.h"
 #include "kerberos/platform_helper.h"
@@ -117,14 +119,23 @@ void KerberosAdaptor::RegisterAsync(
     }
   }
 
+  // Might have already been set for testing.
+  if (!metrics_)
+    metrics_ = std::make_unique<KerberosMetrics>(storage_dir);
+
+  // Create krb5 or use the one given for testing.
+  auto krb5 = krb5_for_testing_ ? std::move(krb5_for_testing_)
+                                : std::make_unique<Krb5JailWrapper>(
+                                      std::make_unique<Krb5InterfaceImpl>());
+
   manager_ = std::make_unique<AccountManager>(
       storage_dir,
       base::BindRepeating(&KerberosAdaptor::OnKerberosFilesChanged,
                           base::Unretained(this)),
       base::BindRepeating(&KerberosAdaptor::OnKerberosTicketExpiring,
                           base::Unretained(this)),
-      std::make_unique<Krb5JailWrapper>(std::make_unique<Krb5InterfaceImpl>()),
-      std::make_unique<password_provider::PasswordProvider>());
+      std::move(krb5), std::make_unique<password_provider::PasswordProvider>(),
+      metrics_.get());
   manager_->LoadAccounts();
 
   // Wait a little before calling StartObservingTickets. Apparently, signals
@@ -149,6 +160,7 @@ ByteArray KerberosAdaptor::AddAccount(const ByteArray& request_blob) {
   }
 
   PrintResult(__FUNCTION__, error);
+  metrics_->ReportDBusCallResult(__FUNCTION__, error);
   AddAccountResponse response;
   response.set_error(error);
   return SerializeProto(response);
@@ -163,6 +175,7 @@ ByteArray KerberosAdaptor::RemoveAccount(const ByteArray& request_blob) {
     error = manager_->RemoveAccount(request.principal_name());
 
   PrintResult(__FUNCTION__, error);
+  metrics_->ReportDBusCallResult(__FUNCTION__, error);
   RemoveAccountResponse response;
   response.set_error(error);
   return SerializeProto(response);
@@ -183,6 +196,7 @@ ByteArray KerberosAdaptor::ClearAccounts(const ByteArray& request_blob) {
   }
 
   PrintResult(__FUNCTION__, error);
+  metrics_->ReportDBusCallResult(__FUNCTION__, error);
   ClearAccountsResponse response;
   response.set_error(error);
   return SerializeProto(response);
@@ -199,6 +213,7 @@ ByteArray KerberosAdaptor::ListAccounts(const ByteArray& request_blob) {
     error = manager_->ListAccounts(&accounts);
 
   PrintResult(__FUNCTION__, error);
+  metrics_->ReportDBusCallResult(__FUNCTION__, error);
   ListAccountsResponse response;
   response.set_error(error);
   for (const auto& account : accounts)
@@ -215,6 +230,7 @@ ByteArray KerberosAdaptor::SetConfig(const ByteArray& request_blob) {
     error = manager_->SetConfig(request.principal_name(), request.krb5conf());
 
   PrintResult(__FUNCTION__, error);
+  metrics_->ReportDBusCallResult(__FUNCTION__, error);
   SetConfigResponse response;
   response.set_error(error);
   return SerializeProto(response);
@@ -231,6 +247,8 @@ ByteArray KerberosAdaptor::ValidateConfig(const ByteArray& request_blob) {
   }
 
   PrintResult(__FUNCTION__, error);
+  metrics_->ReportDBusCallResult(__FUNCTION__, error);
+  metrics_->ReportValidateConfigErrorCode(error_info.code());
   ValidateConfigResponse response;
   response.set_error(error);
   *response.mutable_error_info() = error_info;
@@ -253,12 +271,15 @@ ByteArray KerberosAdaptor::AcquireKerberosTgt(
   }
 
   if (error == ERROR_NONE) {
+    metrics_->StartAcquireTgtTimer();
     error = manager_->AcquireTgt(request.principal_name(), password.value(),
                                  request.remember_password(),
                                  request.use_login_password());
+    metrics_->StopAcquireTgtTimerAndReport();
   }
 
   PrintResult(__FUNCTION__, error);
+  metrics_->ReportDBusCallResult(__FUNCTION__, error);
   AcquireKerberosTgtResponse response;
   response.set_error(error);
   return SerializeProto(response);
@@ -276,8 +297,26 @@ ByteArray KerberosAdaptor::GetKerberosFiles(const ByteArray& request_blob) {
   }
 
   PrintResult(__FUNCTION__, error);
+  metrics_->ReportDBusCallResult(__FUNCTION__, error);
   response.set_error(error);
   return SerializeProto(response);
+}
+
+void KerberosAdaptor::set_storage_dir_for_testing(const base::FilePath& dir) {
+  DCHECK(!manager_);
+  storage_dir_for_testing_ = dir;
+}
+
+void KerberosAdaptor::set_krb5_for_testing(
+    std::unique_ptr<Krb5Interface> krb5) {
+  DCHECK(!manager_);
+  krb5_for_testing_ = std::move(krb5);
+}
+
+void KerberosAdaptor::set_metrics_for_testing(
+    std::unique_ptr<KerberosMetrics> metrics) {
+  DCHECK(!manager_);
+  metrics_ = std::move(metrics);
 }
 
 void KerberosAdaptor::StartObservingTickets() {

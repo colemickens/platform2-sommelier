@@ -19,6 +19,10 @@
 #include <gtest/gtest.h>
 
 #include "kerberos/account_manager.h"
+#include "kerberos/fake_krb5_interface.h"
+#include "kerberos/kerberos_metrics.h"
+#include "kerberos/krb5_jail_wrapper.h"
+#include "kerberos/platform_helper.h"
 #include "kerberos/proto_bindings/kerberos_service.pb.h"
 
 using brillo::dbus_utils::DBusObject;
@@ -29,6 +33,8 @@ using dbus::ObjectPath;
 using testing::_;
 using testing::AnyNumber;
 using testing::Invoke;
+using testing::Mock;
+using testing::NiceMock;
 using testing::Return;
 using ByteArray = kerberos::KerberosAdaptor::ByteArray;
 
@@ -42,12 +48,32 @@ const int kDBusSerial = 123;
 constexpr char kUser[] = "user";
 constexpr char kUserHash[] = "user-hash";
 constexpr char kPrincipalName[] = "user@REALM.COM";
+constexpr char kPassword[] = "hello123";
 
 // Stub D-Bus object path for the mock daemon.
 constexpr char kObjectPath[] = "/object/path";
 
 // Real storage base dir.
 constexpr char KDaemonStore[] = "/run/daemon-store/kerberosd";
+
+// Empty Kerberos configuration.
+constexpr char kEmptyConfig[] = "";
+
+class MockMetrics : public KerberosMetrics {
+ public:
+  explicit MockMetrics(const base::FilePath& storage_dir)
+      : KerberosMetrics(storage_dir) {}
+  ~MockMetrics() override = default;
+
+  MOCK_METHOD0(StartAcquireTgtTimer, void());
+  MOCK_METHOD0(StopAcquireTgtTimerAndReport, void());
+  MOCK_METHOD1(ReportValidateConfigErrorCode, void(ConfigErrorCode));
+  MOCK_METHOD2(ReportDBusCallResult, void(const char*, ErrorType));
+  MOCK_METHOD0(ShouldReportDailyUsageStats, bool());
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MockMetrics);
+};
 
 // Stub completion callback for RegisterAsync().
 void DoNothing(bool /* unused */) {}
@@ -112,14 +138,25 @@ class KerberosAdaptorTest : public ::testing::Test {
     // Create temp directory for files written during tests.
     CHECK(storage_dir_.CreateUniqueTempDir());
 
+    // Create mock metrics.
+    auto metrics =
+        std::make_unique<NiceMock<MockMetrics>>(storage_dir_.GetPath());
+    metrics_ = metrics.get();
+    ON_CALL(*metrics_, ShouldReportDailyUsageStats)
+        .WillByDefault(Return(false));
+
     // Create KerberosAdaptor instance. Do this AFTER creating the proxy mocks
     // since they might be accessed during initialization.
     auto dbus_object =
         std::make_unique<DBusObject>(nullptr, mock_bus_, object_path);
     adaptor_ = std::make_unique<KerberosAdaptor>(std::move(dbus_object));
     adaptor_->set_storage_dir_for_testing(storage_dir_.GetPath());
+    adaptor_->set_metrics_for_testing(std::move(metrics));
+    adaptor_->set_krb5_for_testing(std::make_unique<FakeKrb5Interface>());
     adaptor_->RegisterAsync(base::BindRepeating(&DoNothing));
   }
+
+  void TearDown() override { adaptor_.reset(); }
 
  protected:
   void OnKerberosFilesChanged(dbus::Signal* signal) {
@@ -137,8 +174,7 @@ class KerberosAdaptorTest : public ::testing::Test {
     request.set_principal_name(kPrincipalName);
     request.set_is_managed(false);
     ByteArray response_blob = adaptor_->AddAccount(SerializeAsBlob(request));
-    auto response = ParseResponse<AddAccountResponse>(response_blob);
-    return response.error();
+    return ParseResponse<AddAccountResponse>(response_blob).error();
   }
 
   // Removes the default account.
@@ -146,8 +182,57 @@ class KerberosAdaptorTest : public ::testing::Test {
     RemoveAccountRequest request;
     request.set_principal_name(kPrincipalName);
     ByteArray response_blob = adaptor_->RemoveAccount(SerializeAsBlob(request));
-    auto response = ParseResponse<RemoveAccountResponse>(response_blob);
-    return response.error();
+    return ParseResponse<RemoveAccountResponse>(response_blob).error();
+  }
+
+  // Removes all accounts.
+  ErrorType ClearAccounts() {
+    ClearAccountsRequest request;
+    ByteArray response_blob = adaptor_->ClearAccounts(SerializeAsBlob(request));
+    return ParseResponse<ClearAccountsResponse>(response_blob).error();
+  }
+
+  // Lists accounts.
+  ErrorType ListAccounts() {
+    ListAccountsRequest request;
+    ByteArray response_blob = adaptor_->ListAccounts(SerializeAsBlob(request));
+    return ParseResponse<ListAccountsResponse>(response_blob).error();
+  }
+
+  // Sets a default config.
+  ErrorType SetConfig() {
+    SetConfigRequest request;
+    request.set_principal_name(kPrincipalName);
+    request.set_krb5conf(kEmptyConfig);
+    ByteArray response_blob = adaptor_->SetConfig(SerializeAsBlob(request));
+    return ParseResponse<SetConfigResponse>(response_blob).error();
+  }
+
+  // Validates a default config.
+  ErrorType ValidateConfig() {
+    ValidateConfigRequest request;
+    request.set_krb5conf(kEmptyConfig);
+    ByteArray response_blob =
+        adaptor_->ValidateConfig(SerializeAsBlob(request));
+    return ParseResponse<ValidateConfigResponse>(response_blob).error();
+  }
+
+  // Acquires a default Kerberos ticket.
+  ErrorType AcquireKerberosTgt() {
+    AcquireKerberosTgtRequest request;
+    request.set_principal_name(kPrincipalName);
+    ByteArray response_blob = adaptor_->AcquireKerberosTgt(
+        SerializeAsBlob(request), WriteStringToPipe(kPassword));
+    return ParseResponse<AcquireKerberosTgtResponse>(response_blob).error();
+  }
+
+  // Acquires a default Kerberos ticket.
+  ErrorType GetKerberosFiles() {
+    GetKerberosFilesRequest request;
+    request.set_principal_name(kPrincipalName);
+    ByteArray response_blob =
+        adaptor_->GetKerberosFiles(SerializeAsBlob(request));
+    return ParseResponse<GetKerberosFilesResponse>(response_blob).error();
   }
 
   // KEEP ORDER between these. It's important for destruction.
@@ -157,6 +242,8 @@ class KerberosAdaptorTest : public ::testing::Test {
   base::MessageLoop loop_;
 
   base::ScopedTempDir storage_dir_;
+
+  NiceMock<MockMetrics>* metrics_ = nullptr;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(KerberosAdaptorTest);
@@ -191,6 +278,42 @@ TEST_F(KerberosAdaptorTest, RetrievesPrimarySession) {
 TEST_F(KerberosAdaptorTest, AddRemoveAccountSucceess) {
   EXPECT_EQ(ERROR_NONE, AddAccount());
   EXPECT_EQ(ERROR_NONE, RemoveAccount());
+}
+
+// Checks that metrics are reported for all D-Bus calls.
+TEST_F(KerberosAdaptorTest, Metrics_ReportDBusCallResult) {
+  EXPECT_CALL(*metrics_, ReportDBusCallResult("AddAccount", ERROR_NONE));
+  EXPECT_CALL(*metrics_, ReportDBusCallResult("ListAccounts", ERROR_NONE));
+  EXPECT_CALL(*metrics_, ReportDBusCallResult("SetConfig", ERROR_NONE));
+  EXPECT_CALL(*metrics_, ReportDBusCallResult("ValidateConfig", ERROR_NONE));
+  EXPECT_CALL(*metrics_,
+              ReportDBusCallResult("AcquireKerberosTgt", ERROR_NONE));
+  EXPECT_CALL(*metrics_, ReportDBusCallResult("GetKerberosFiles", ERROR_NONE));
+  EXPECT_CALL(*metrics_, ReportDBusCallResult("RemoveAccount", ERROR_NONE));
+  EXPECT_CALL(*metrics_, ReportDBusCallResult("ClearAccounts", ERROR_NONE));
+
+  EXPECT_EQ(ERROR_NONE, AddAccount());
+  EXPECT_EQ(ERROR_NONE, ListAccounts());
+  EXPECT_EQ(ERROR_NONE, SetConfig());
+  EXPECT_EQ(ERROR_NONE, ValidateConfig());
+  EXPECT_EQ(ERROR_NONE, AcquireKerberosTgt());
+  EXPECT_EQ(ERROR_NONE, GetKerberosFiles());
+  EXPECT_EQ(ERROR_NONE, RemoveAccount());
+  EXPECT_EQ(ERROR_NONE, ClearAccounts());
+}
+
+// AcquireKerberosTgt should trigger timing events.
+TEST_F(KerberosAdaptorTest, Metrics_AcquireTgtTimer) {
+  EXPECT_CALL(*metrics_, StartAcquireTgtTimer());
+  EXPECT_CALL(*metrics_, StopAcquireTgtTimerAndReport());
+  EXPECT_EQ(ERROR_UNKNOWN_PRINCIPAL_NAME, AcquireKerberosTgt());
+}
+
+// AcquireKerberosTgt should trigger timing events.
+TEST_F(KerberosAdaptorTest, Metrics_ValidateConfigErrorCode) {
+  EXPECT_CALL(*metrics_, ReportValidateConfigErrorCode(CONFIG_ERROR_NONE));
+  EXPECT_EQ(ERROR_NONE, AddAccount());
+  EXPECT_EQ(ERROR_NONE, ValidateConfig());
 }
 
 // TODO(https://crbug.com/952247): Add more tests.

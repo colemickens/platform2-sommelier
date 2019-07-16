@@ -73,6 +73,7 @@ static_library("libkerberos") {
     "fake_krb5_interface.cc",
     "kerberos_adaptor.cc",
     "kerberos_daemon.cc",
+    "kerberos_metrics.cc",
     "krb5_interface_impl.cc",
     "krb5_jail_wrapper.cc",
     "platform_helper.cc",
@@ -88,6 +89,7 @@ pkg_config("kerberosd_config") {
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "libmetrics-${libbase_ver}",
     "libminijail",
 
     # system_api depends on protobuf (or protobuf-lite). It must
@@ -119,6 +121,7 @@ if (use.test) {
       "libbrillo-${libbase_ver}",
       "libchrome-${libbase_ver}",
       "libchrome-test-${libbase_ver}",
+      "libmetrics-${libbase_ver}",
       "libminijail",
 
       # system_api depends on protobuf (or protobuf-lite). It must
@@ -139,6 +142,7 @@ if (use.test) {
       "account_manager_test.cc",
       "config_validator_test.cc",
       "kerberos_adaptor_test.cc",
+      "kerberos_metrics_test.cc",
       "krb5_interface_impl_test.cc",
       "krb5_jail_wrapper_test.cc",
       "tgt_renewal_scheduler_test.cc",

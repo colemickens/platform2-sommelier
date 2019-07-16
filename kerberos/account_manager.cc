@@ -16,6 +16,7 @@
 #include <libpasswordprovider/password_provider.h>
 
 #include "kerberos/error_strings.h"
+#include "kerberos/kerberos_metrics.h"
 #include "kerberos/krb5_interface.h"
 #include "kerberos/krb5_jail_wrapper.h"
 
@@ -66,7 +67,8 @@ WARN_UNUSED_RESULT ErrorType LoadFile(const base::FilePath& path,
 
 // Writes |data| to the file at |path|. Returns |ERROR_LOCAL_IO| if the file
 // could not be written.
-ErrorType SaveFile(const base::FilePath& path, const std::string& data) {
+WARN_UNUSED_RESULT ErrorType SaveFile(const base::FilePath& path,
+                                      const std::string& data) {
   const int data_size = static_cast<int>(data.size());
   if (base::WriteFile(path, data.data(), data_size) != data_size) {
     LOG(ERROR) << "Failed to write '" << path.value() << "'";
@@ -93,12 +95,15 @@ AccountManager::AccountManager(
     KerberosTicketExpiringCallback kerberos_ticket_expiring,
     std::unique_ptr<Krb5Interface> krb5,
     std::unique_ptr<password_provider::PasswordProviderInterface>
-        password_provider)
+        password_provider,
+    KerberosMetrics* metrics)
     : storage_dir_(std::move(storage_dir)),
+      accounts_path_(storage_dir_.Append(kAccountsFile)),
       kerberos_files_changed_(std::move(kerberos_files_changed)),
       kerberos_ticket_expiring_(std::move(kerberos_ticket_expiring)),
       krb5_(std::move(krb5)),
-      password_provider_(std::move(password_provider)) {
+      password_provider_(std::move(password_provider)),
+      metrics_(metrics) {
   DCHECK(kerberos_files_changed_);
   DCHECK(kerberos_ticket_expiring_);
 }
@@ -118,27 +123,25 @@ ErrorType AccountManager::SaveAccounts() const {
     return ERROR_LOCAL_IO;
   }
 
-  const base::FilePath accounts_path = GetAccountsPath();
-  ErrorType error = SaveFile(accounts_path, accounts_blob);
+  ErrorType error = SaveFile(accounts_path_, accounts_blob);
   if (error != ERROR_NONE)
     return error;
 
   // Remove group and other read access. This prevents kerberosd-exec from
   // reading it (it's none of its business).
-  return SetFilePermissions(accounts_path, kFileMode_rw);
+  return SetFilePermissions(accounts_path_, kFileMode_rw);
 }
 
 ErrorType AccountManager::LoadAccounts() {
   accounts_.clear();
 
   // A missing file counts as a file with empty data.
-  const base::FilePath accounts_path = GetAccountsPath();
-  if (!base::PathExists(accounts_path))
+  if (!base::PathExists(accounts_path_))
     return ERROR_NONE;
 
   // Load serialized proto blob.
   std::string accounts_blob;
-  ErrorType error = LoadFile(accounts_path, &accounts_blob);
+  ErrorType error = LoadFile(accounts_path_, &accounts_blob);
   if (error != ERROR_NONE)
     return error;
 
@@ -355,11 +358,19 @@ ErrorType AccountManager::AcquireTgt(const std::string& principal_name,
     TriggerKerberosFilesChanged(principal_name);
   }
 
+  // Trying to acquire a ticket qualifies this user as an active user, so report
+  // stats.
+  MaybeReportDailyUsageStats();
+
   return error;
 }
 
 ErrorType AccountManager::GetKerberosFiles(const std::string& principal_name,
                                            KerberosFiles* files) const {
+  // Trying to get Kerberos files qualifies this user as an active user, so
+  // report stats.
+  MaybeReportDailyUsageStats();
+
   files->clear_krb5cc();
   files->clear_krb5conf();
 
@@ -516,10 +527,6 @@ base::FilePath AccountManager::GetPasswordPath(
   return GetAccountDir(principal_name).Append(kPasswordFilePart);
 }
 
-base::FilePath AccountManager::GetAccountsPath() const {
-  return storage_dir_.Append(kAccountsFile);
-}
-
 ErrorType AccountManager::UpdatePasswordFromLogin(
     const std::string& principal_name, std::string* password) {
   // Erase a previously remembered password.
@@ -550,11 +557,13 @@ ErrorType AccountManager::UpdatePasswordFromSaved(
   // Remember password (even if authentication is going to fail below).
   const base::FilePath password_path = GetPasswordPath(principal_name);
   if (!password->empty() && remember_password) {
-    SaveFile(password_path, *password);
+    ErrorType error = SaveFile(password_path, *password);
+    if (error != ERROR_NONE)
+      return error;
 
     // Remove group and other read access, just keep kerberosd rw. This prevents
     // kerberosd-exec from accessing the password.
-    ErrorType error = SetFilePermissions(password_path, kFileMode_rw);
+    error = SetFilePermissions(password_path, kFileMode_rw);
     if (error != ERROR_NONE) {
       // Do a best effort removing the password.
       base::DeleteFile(password_path, false /* recursive */);
@@ -574,6 +583,35 @@ ErrorType AccountManager::UpdatePasswordFromSaved(
     base::DeleteFile(password_path, false /* recursive */);
 
   return ERROR_NONE;
+}
+
+void AccountManager::MaybeReportDailyUsageStats() const {
+  // Did a day pass already?
+  if (!metrics_->ShouldReportDailyUsageStats())
+    return;
+
+  // Count different kinds of accounts.
+  int total_count = static_cast<int>(accounts_.size());
+  int managed_count = 0;
+  int unmanaged_count = 0;
+  int remembered_password_count = 0;
+  int use_login_password_count = 0;
+
+  for (const auto& account : accounts_) {
+    if (account.data.is_managed())
+      managed_count++;
+    else
+      unmanaged_count++;
+    if (base::PathExists(GetPasswordPath(account.data.principal_name())))
+      remembered_password_count++;
+    if (account.data.use_login_password())
+      use_login_password_count++;
+  }
+
+  // Report UMA stats.
+  metrics_->ReportDailyUsageStats(total_count, managed_count, unmanaged_count,
+                                  remembered_password_count,
+                                  use_login_password_count);
 }
 
 AccountManager::InternalAccount::InternalAccount(

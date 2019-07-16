@@ -26,6 +26,8 @@ class PasswordProviderInterface;
 
 namespace kerberos {
 
+class KerberosMetrics;
+
 // Manages Kerberos tickets for a set of accounts keyed by principal name
 // (user@REALM.COM).
 class AccountManager : public TgtRenewalScheduler::Delegate {
@@ -49,7 +51,8 @@ class AccountManager : public TgtRenewalScheduler::Delegate {
                  KerberosTicketExpiringCallback kerberos_ticket_expiring,
                  std::unique_ptr<Krb5Interface> krb5,
                  std::unique_ptr<password_provider::PasswordProviderInterface>
-                     password_provider);
+                     password_provider,
+                 KerberosMetrics* metrics);
   ~AccountManager() override;
 
   // Saves all accounts to disk. Returns ERROR_LOCAL_IO and logs on error.
@@ -162,9 +165,6 @@ class AccountManager : public TgtRenewalScheduler::Delegate {
   // File path of the Kerberos password for the given |principal_name|.
   base::FilePath GetPasswordPath(const std::string& principal_name) const;
 
-  // File path where |accounts_| is stored.
-  base::FilePath GetAccountsPath() const;
-
   // Deletes all files (credential cache, password etc.) for the given
   // |principal_name|. Triggers KerberosFilesChanged if the credential cache was
   // deleted.
@@ -189,8 +189,15 @@ class AccountManager : public TgtRenewalScheduler::Delegate {
                                     bool remember_password,
                                     std::string* password);
 
+  // Sends UMA stats for daily usage counts. The stats are sent at most once a
+  // day, even if this method is called more often.
+  void MaybeReportDailyUsageStats() const;
+
   // Directory where all account data is stored.
   const base::FilePath storage_dir_;
+
+  // File path where |accounts_| is stored.
+  const base::FilePath accounts_path_;
 
   // Gets called when the Kerberos configuration or credential cache changes for
   // a specific account.
@@ -236,6 +243,9 @@ class AccountManager : public TgtRenewalScheduler::Delegate {
   // Interface to retrieve the login password.
   std::unique_ptr<password_provider::PasswordProviderInterface>
       password_provider_;
+
+  // For collecting UMA stats. Not owned.
+  KerberosMetrics* metrics_;
 
   ErrorType last_renew_tgt_error_for_testing_ = ERROR_NONE;
 

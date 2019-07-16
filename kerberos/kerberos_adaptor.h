@@ -26,6 +26,8 @@ class DBusObject;
 namespace kerberos {
 
 class AccountManager;
+class KerberosMetrics;
+class Krb5Interface;
 
 // Implementation of the Kerberos D-Bus interface.
 class KerberosAdaptor : public org::chromium::KerberosAdaptor,
@@ -55,11 +57,17 @@ class KerberosAdaptor : public org::chromium::KerberosAdaptor,
 
   AccountManager* GetAccountManagerForTesting() { return manager_.get(); }
 
-  // Overrides the directory where data is stored. Must be called before
-  // RegisterAsync().
-  void set_storage_dir_for_testing(const base::FilePath& dir) {
-    storage_dir_for_testing_ = dir;
-  }
+  // Overrides the directory where data is stored.
+  // Must be called before RegisterAsync().
+  void set_storage_dir_for_testing(const base::FilePath& dir);
+
+  // Overrides the Krb5Interface instance passed to |manager_|.
+  // Must be called before RegisterAsync().
+  void set_krb5_for_testing(std::unique_ptr<Krb5Interface> krb5);
+
+  // Overrides the KerberosMetrics instance passed to |manager_|.
+  // Must be called before RegisterAsync().
+  void set_metrics_for_testing(std::unique_ptr<KerberosMetrics> metrics);
 
  private:
   // Calls |manager_|->StartObservingTickets().
@@ -77,11 +85,18 @@ class KerberosAdaptor : public org::chromium::KerberosAdaptor,
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
+  // For collecting UMA stats.
+  // Must be before |manager_| since that keeps a pointer to |metrics_|.
+  std::unique_ptr<KerberosMetrics> metrics_;
+
   // Manages Kerberos accounts and tickets.
   std::unique_ptr<AccountManager> manager_;
 
   // If set, overrides the directory where data is stored.
   base::Optional<base::FilePath> storage_dir_for_testing_;
+
+  // If set, overrides the Krb5Interface instance passed to |manager_|.
+  std::unique_ptr<Krb5Interface> krb5_for_testing_;
 
   base::WeakPtrFactory<KerberosAdaptor> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(KerberosAdaptor);

@@ -23,6 +23,10 @@ namespace kerberos {
 // exceeded (see code).
 base::Optional<std::string> ReadPipeToString(int fd);
 
+// Creates a non-blocking pipe and writes the given string to it. |str| must be
+// small enough to fit into the pipe buffer. Returns base::ScopedFD() on error.
+base::ScopedFD WriteStringToPipe(const std::string& str);
+
 }  // namespace kerberos
 
 #endif  // KERBEROS_PLATFORM_HELPER_H_

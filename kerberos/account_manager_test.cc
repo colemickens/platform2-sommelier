@@ -14,12 +14,19 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
 #include <base/test/test_mock_time_task_runner.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libpasswordprovider/fake_password_provider.h>
 #include <libpasswordprovider/password_provider_test_utils.h>
 
 #include "kerberos/fake_krb5_interface.h"
+#include "kerberos/kerberos_metrics.h"
 #include "kerberos/krb5_jail_wrapper.h"
+
+using testing::_;
+using testing::Mock;
+using testing::NiceMock;
+using testing::Return;
 
 namespace kerberos {
 namespace {
@@ -47,6 +54,19 @@ constexpr bool kUseLoginPassword = true;
 constexpr bool kDontUseLoginPassword = false;
 
 constexpr char kEmptyPassword[] = "";
+
+class MockMetrics : public KerberosMetrics {
+ public:
+  explicit MockMetrics(const base::FilePath& storage_dir)
+      : KerberosMetrics(storage_dir) {}
+  ~MockMetrics() override = default;
+
+  MOCK_METHOD0(ShouldReportDailyUsageStats, bool());
+  MOCK_METHOD5(ReportDailyUsageStats, void(int, int, int, int, int));
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MockMetrics);
+};
 
 }  // namespace
 
@@ -77,12 +97,13 @@ class AccountManagerTest : public ::testing::Test {
     auto krb5 = std::make_unique<FakeKrb5Interface>();
     auto password_provider =
         std::make_unique<password_provider::FakePasswordProvider>();
+    metrics_ = std::make_unique<NiceMock<MockMetrics>>(storage_dir_.GetPath());
     krb5_ = krb5.get();
     password_provider_ = password_provider.get();
     manager_ = std::make_unique<AccountManager>(
         storage_dir_.GetPath(), kerberos_files_changed_,
         kerberos_ticket_expiring_, std::move(krb5),
-        std::move(password_provider));
+        std::move(password_provider), metrics_.get());
   }
 
   void TearDown() override {
@@ -96,7 +117,8 @@ class AccountManagerTest : public ::testing::Test {
       AccountManager other_manager(
           storage_dir_.GetPath(), kerberos_files_changed_,
           kerberos_ticket_expiring_, std::make_unique<FakeKrb5Interface>(),
-          std::make_unique<password_provider::FakePasswordProvider>());
+          std::make_unique<password_provider::FakePasswordProvider>(),
+          metrics_.get());
       other_manager.LoadAccounts();
       std::vector<Account> other_accounts;
       EXPECT_EQ(ERROR_NONE, other_manager.ListAccounts(&other_accounts));
@@ -163,6 +185,9 @@ class AccountManagerTest : public ::testing::Test {
 
   // Fake password provider to get the login password. Not owned.
   password_provider::FakePasswordProvider* password_provider_;
+
+  // Mock metrics for testing UMA stat recording.
+  std::unique_ptr<NiceMock<MockMetrics>> metrics_;
 
   // Paths of files stored by |manager_|.
   base::ScopedTempDir storage_dir_;
@@ -705,7 +730,8 @@ TEST_F(AccountManagerTest, SerializationSuccess) {
   AccountManager other_manager(
       storage_dir_.GetPath(), kerberos_files_changed_,
       kerberos_ticket_expiring_, std::make_unique<FakeKrb5Interface>(),
-      std::make_unique<password_provider::FakePasswordProvider>());
+      std::make_unique<password_provider::FakePasswordProvider>(),
+      metrics_.get());
   other_manager.LoadAccounts();
   std::vector<Account> accounts;
   EXPECT_EQ(ERROR_NONE, other_manager.ListAccounts(&accounts));
@@ -907,6 +933,63 @@ TEST_F(AccountManagerTest, FilePermissions) {
 
   EXPECT_TRUE(GetPosixFilePermissions(password_path_, &mode));
   EXPECT_EQ(kFileMode_rw, mode);
+}
+
+// Tests that [Should]ReportDailyUsageStats is called as advertised.
+TEST_F(AccountManagerTest, ReportDailyUsageStats) {
+  // ShouldReportDailyUsageStats() should be called by GetKerberosFiles() even
+  // if there is no account, and if that returns true, ReportDailyUsageStats()
+  // should be called as well.
+  EXPECT_CALL(*metrics_, ShouldReportDailyUsageStats()).WillOnce(Return(true));
+  EXPECT_CALL(*metrics_, ReportDailyUsageStats(0, 0, 0, 0, 0));
+  KerberosFiles files;
+  EXPECT_EQ(ERROR_UNKNOWN_PRINCIPAL_NAME,
+            manager_->GetKerberosFiles(kUser, &files));
+  Mock::VerifyAndClearExpectations(metrics_.get());
+
+  AddAccount();
+
+  // ShouldReportDailyUsageStats() should be called by AcquireTgt(), but if that
+  // returns false, ReportDailyUsageStats() should NOT be called.
+  EXPECT_CALL(*metrics_, ShouldReportDailyUsageStats()).WillOnce(Return(false));
+  EXPECT_CALL(*metrics_, ReportDailyUsageStats(_, _, _, _, _)).Times(0);
+  AcquireTgt();
+  Mock::VerifyAndClearExpectations(metrics_.get());
+
+  // ShouldReportDailyUsageStats() should be called by AcquireTgt(), and if that
+  // returns true, ReportDailyUsageStats() should be called as well.
+  EXPECT_CALL(*metrics_, ShouldReportDailyUsageStats()).WillOnce(Return(true));
+  EXPECT_CALL(*metrics_, ReportDailyUsageStats(_, _, _, _, _));
+  AcquireTgt();
+  Mock::VerifyAndClearExpectations(metrics_.get());
+}
+
+TEST_F(AccountManagerTest, AccountStats) {
+  SaveLoginPassword(kPassword);
+
+  EXPECT_EQ(ERROR_NONE, manager_->AddAccount(kUser, kManaged));
+  EXPECT_EQ(ERROR_NONE, manager_->AddAccount(kUser2, kManaged));
+  EXPECT_EQ(ERROR_NONE, manager_->AddAccount(kUser3, kUnmanaged));
+
+  // Set metrics up so that the stats are reported on the last call.
+  EXPECT_CALL(*metrics_, ShouldReportDailyUsageStats())
+      .WillOnce(Return(false))
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+
+  // 3 accounts total, 2 managed, 1 unmanaged, 1 remembering the password, 1
+  // using the login password.
+  EXPECT_CALL(*metrics_, ReportDailyUsageStats(3, 2, 1, 1, 1));
+
+  EXPECT_EQ(ERROR_NONE,
+            manager_->AcquireTgt(kUser, kPassword, kDontRememberPassword,
+                                 kDontUseLoginPassword));
+  EXPECT_EQ(ERROR_NONE,
+            manager_->AcquireTgt(kUser2, kPassword, kRememberPassword,
+                                 kDontUseLoginPassword));
+  EXPECT_EQ(ERROR_NONE,
+            manager_->AcquireTgt(kUser3, kEmptyPassword, kDontRememberPassword,
+                                 kUseLoginPassword));
 }
 
 }  // namespace kerberos
