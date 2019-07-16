@@ -734,23 +734,15 @@ bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
     keyset->set_reset_seed(reset_seed);
   }
 
-  // Perform sanity check to ensure vault keyset is not tampered with.
-  SecureBlob included_hash(SHA_DIGEST_LENGTH);
+  // There is a SHA hash included at the end of the decrypted blob. However,
+  // scrypt already appends a MAC, so if the payload is corrupted we will fail
+  // on the first call to DecryptScryptBlob.
+  // TODO(crbug.com/984782): get rid of this entirely.
   if (decrypted.size() < SHA_DIGEST_LENGTH) {
     LOG(ERROR) << "Message length underflow: " << decrypted.size() << " bytes?";
     return false;
   }
-  memcpy(included_hash.data(), &decrypted[decrypted.size() - SHA_DIGEST_LENGTH],
-         SHA_DIGEST_LENGTH);
   decrypted.resize(decrypted.size() - SHA_DIGEST_LENGTH);
-  brillo::SecureBlob hash = CryptoLib::Sha1(decrypted);
-  if (brillo::SecureMemcmp(hash.data(), included_hash.data(), hash.size())) {
-    LOG(ERROR) << "Scrypt hash verification failed";
-    if (error) {
-      *error = CE_SCRYPT_CRYPTO;
-    }
-    return false;
-  }
   keyset->FromKeysBlob(decrypted);
   return true;
 }
@@ -1041,7 +1033,10 @@ bool Crypto::EncryptScrypt(const VaultKeyset& vault_keyset,
     LOG(ERROR) << "Failure serializing keyset to buffer";
     return false;
   }
-  // Append the SHA1 hash of the keyset blob
+  // Append the SHA1 hash of the keyset blob. This is done solely for
+  // backwards-compatibility purposes, since scrypt already creates a
+  // MAC for the encrypted blob. It is ignored in DecryptScrypt since
+  // it is redundant.
   SecureBlob hash = CryptoLib::Sha1(blob);
   SecureBlob local_blob = SecureBlob::Combine(blob, hash);
   SecureBlob cipher_text(local_blob.size() + kScryptHeaderLength);
