@@ -76,6 +76,14 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
   bool DisableBuffer() override;
   bool IsBufferEnabled(size_t* n = nullptr) const override;
 
+  base::Optional<size_t> GetSampleSize() const override {
+    return base::nullopt;
+  }
+
+  bool ReadEvents(uint32_t num_samples, std::vector<uint8_t>* events) override {
+    return false;
+  }
+
  private:
   FakeIioContext* context_;
   std::string name_;
