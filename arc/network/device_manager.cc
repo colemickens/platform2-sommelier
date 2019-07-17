@@ -19,7 +19,7 @@ namespace {
 constexpr const char kArcDevicePrefix[] = "arc_";
 constexpr const char kVpnInterfaceHostPattern[] = "tun";
 constexpr const char kVpnInterfaceGuestPrefix[] = "cros_";
-constexpr const char kEthernetInterfacePrefix[] = "eth";
+constexpr std::array<const char*, 2> kEthernetInterfacePrefixes{{"eth", "usb"}};
 constexpr std::array<const char*, 2> kWifiInterfacePrefixes{{"wlan", "mlan"}};
 
 bool IsArcDevice(const std::string& ifname) {
@@ -33,8 +33,13 @@ bool IsHostVpnInterface(const std::string& ifname) {
 }
 
 bool IsEthernetInterface(const std::string& ifname) {
-  return base::StartsWith(ifname, kEthernetInterfacePrefix,
-                          base::CompareCase::INSENSITIVE_ASCII);
+  for (const auto& prefix : kEthernetInterfacePrefixes) {
+    if (base::StartsWith(ifname, prefix,
+                         base::CompareCase::INSENSITIVE_ASCII)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool IsWifiInterface(const std::string& ifname) {

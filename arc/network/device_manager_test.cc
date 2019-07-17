@@ -106,14 +106,26 @@ class DeviceManagerTest : public testing::Test {
 
 }  // namespace
 
-TEST_F(DeviceManagerTest, MakeEthernetDevice) {
+TEST_F(DeviceManagerTest, MakeEthernetDevices) {
   auto mgr = NewManager();
   DeviceConfig msg;
-  mgr->MakeDevice("eth0")->FillProto(&msg);
+
+  auto eth_device0 = mgr->MakeDevice("eth0");
+  eth_device0->FillProto(&msg);
   EXPECT_EQ(msg.br_ifname(), "arc_eth0");
   EXPECT_EQ(msg.arc_ifname(), "eth0");
   EXPECT_EQ(msg.br_ipv4(), "100.115.92.9");
   EXPECT_EQ(msg.arc_ipv4(), "100.115.92.10");
+  EXPECT_FALSE(msg.mac_addr().empty());
+  EXPECT_TRUE(msg.fwd_multicast());
+  EXPECT_TRUE(msg.find_ipv6_routes());
+
+  auto eth_device1 = mgr->MakeDevice("usb0");
+  eth_device1->FillProto(&msg);
+  EXPECT_EQ(msg.br_ifname(), "arc_usb0");
+  EXPECT_EQ(msg.arc_ifname(), "usb0");
+  EXPECT_EQ(msg.br_ipv4(), "100.115.92.13");
+  EXPECT_EQ(msg.arc_ipv4(), "100.115.92.14");
   EXPECT_FALSE(msg.mac_addr().empty());
   EXPECT_TRUE(msg.fwd_multicast());
   EXPECT_TRUE(msg.find_ipv6_routes());
