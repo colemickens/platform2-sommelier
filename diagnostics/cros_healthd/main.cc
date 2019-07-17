@@ -40,19 +40,19 @@ int main(int argc, char** argv) {
     }
   } else if (FLAGS_probe_battery_metrics) {
     auto batteries = diagnostics::FetchBatteryInfo();
-    if (batteries.size() != 1) {
-      LOG(ERROR) << "Did not properly fetch information for main battery.";
-      return EXIT_FAILURE;
-    }
-    VLOG(1) << "Found information for main battery.";
     printf(
         "charge_full,charge_full_design,cycle_count,serial_number,"
         "vendor(manufacturer),voltage_now,voltage_min_design\n");
-    const auto& battery = batteries[0];
-    printf("%f,%f,%ld,%s,%s,%f,%f\n", battery->charge_full,
-           battery->charge_full_design, battery->cycle_count,
-           battery->serial_number.c_str(), battery->vendor.c_str(),
-           battery->voltage_now, battery->voltage_min_design);
+    if (batteries.size() == 0) {
+      VLOG(1) << "No main battery information found.";
+    } else if (batteries.size() == 1) {
+      VLOG(1) << "Found information for main battery.";
+      const auto& battery = batteries[0];
+      printf("%f,%f,%ld,%s,%s,%f,%f\n", battery->charge_full,
+             battery->charge_full_design, battery->cycle_count,
+             battery->serial_number.c_str(), battery->vendor.c_str(),
+             battery->voltage_now, battery->voltage_min_design);
+    }
   } else if (FLAGS_probe_cached_vpd) {
     auto vpd_info =
         diagnostics::disk_utils::FetchCachedVpdInfo(base::FilePath("/"));
