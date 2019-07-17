@@ -11,6 +11,8 @@
 #include <unistd.h>
 
 #include <base/bind.h>
+#include <base/files/file_util.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -18,7 +20,7 @@ namespace cros_disks {
 
 namespace {
 
-constexpr int kUSleepDelay = 100000;
+constexpr auto kTimeout = base::TimeDelta::FromSeconds(30);
 
 int CallFunc(std::function<int()> func) {
   return func();
@@ -56,6 +58,7 @@ class SandboxedInitTest : public testing::Test {
     });
     ctrl_ = init.TakeInitControlFD(&in_, &out_, &err_);
     CHECK(ctrl_.is_valid());
+    CHECK(base::SetNonBlocking(ctrl_.get()));
   }
 
   bool Wait(int* status, bool no_hang) {
@@ -73,6 +76,28 @@ class SandboxedInitTest : public testing::Test {
       return true;
     }
     return false;
+  }
+
+  bool Poll(const base::TimeDelta& timeout, std::function<bool()> func) {
+    constexpr int64_t kUSleepDelay = 100000;
+    auto counter = timeout.InMicroseconds() / kUSleepDelay;
+    while (!func()) {
+      if (counter-- <= 0) {
+        return false;
+      }
+      usleep(kUSleepDelay);
+    }
+    return true;
+  }
+
+  bool PollForExitStatus(const base::TimeDelta& timeout, int* status) {
+    return Poll(timeout, [status, this]() {
+      return SandboxedInit::PollLauncherStatus(&ctrl_, status);
+    });
+  }
+
+  bool PollWait(const base::TimeDelta& timeout, int* status) {
+    return Poll(timeout, [status, this]() { return Wait(status, true); });
   }
 
   pid_t pid_ = -1;
@@ -113,7 +138,6 @@ TEST_F(SandboxedInitTest, RunInitNoDaemon_IO) {
     EXPECT_EQ(4, write(1, "abcd", 4));
     return 12;
   });
-  usleep(kUSleepDelay);
 
   char buffer[5] = {0};
   ssize_t rd = read(out_.get(), buffer, 4);
@@ -127,11 +151,10 @@ TEST_F(SandboxedInitTest, RunInitNoDaemon_IO) {
 
 TEST_F(SandboxedInitTest, RunInitNoDaemon_ReadLauncherCode) {
   RunUnderInit([]() { return 12; });
-  usleep(kUSleepDelay);
 
-  int status;
   ASSERT_TRUE(ctrl_.is_valid());
-  ASSERT_TRUE(SandboxedInit::PollLauncherStatus(&ctrl_, &status));
+  int status;
+  ASSERT_TRUE(PollForExitStatus(kTimeout, &status));
   ASSERT_FALSE(ctrl_.is_valid());
   EXPECT_EQ(12, WEXITSTATUS(status));
 
@@ -150,21 +173,68 @@ TEST_F(SandboxedInitTest, RunInitWithDaemon) {
     EXPECT_EQ(4, read(comm[0], buffer, 4));
     return 42;
   });
-  usleep(kUSleepDelay);
 
   int status;
-  ASSERT_TRUE(SandboxedInit::PollLauncherStatus(&ctrl_, &status));
+  ASSERT_TRUE(PollForExitStatus(kTimeout, &status));
   EXPECT_EQ(0, WEXITSTATUS(status));
 
   EXPECT_FALSE(Wait(&status, true));
 
   // Tell the daemon to stop.
   EXPECT_EQ(4, write(comm[1], "die", 4));
-  usleep(kUSleepDelay);
+  EXPECT_TRUE(Wait(&status, false));
+  close(comm[0]);
+  close(comm[1]);
+  EXPECT_EQ(42, WEXITSTATUS(status));
+}
+
+TEST_F(SandboxedInitTest, RunInitNoDaemon_NonBlockingWait) {
+  int comm[2];
+  CHECK_NE(-1, pipe(comm));
+  RunUnderInit([comm]() {
+    char buffer[4] = {0};
+    EXPECT_EQ(4, read(comm[0], buffer, 4));
+    return 6;
+  });
+
+  int status;
+  EXPECT_FALSE(Wait(&status, true));
+
+  EXPECT_EQ(4, write(comm[1], "die", 4));
+  EXPECT_TRUE(PollWait(kTimeout, &status));
+  close(comm[0]);
+  close(comm[1]);
+  EXPECT_EQ(6, WEXITSTATUS(status));
+}
+
+TEST_F(SandboxedInitTest, RunInitWithDaemon_NonBlockingWait) {
+  int comm[2];
+  CHECK_NE(-1, pipe(comm));
+  RunUnderInit([comm]() {
+    if (daemon(0, 0) == -1) {
+      PLOG(FATAL) << "Can't daemon";
+    }
+    sigset_t s = {};
+    PCHECK(0 == sigemptyset(&s));
+    PCHECK(0 == sigaddset(&s, SIGPIPE));
+    PCHECK(0 == sigprocmask(SIG_BLOCK, &s, nullptr));
+    char buffer[4] = {0};
+    EXPECT_EQ(4, read(comm[0], buffer, 4));
+    return 42;
+  });
+
+  int status;
+  ASSERT_TRUE(PollForExitStatus(kTimeout, &status));
+  EXPECT_EQ(0, WEXITSTATUS(status));
+
+  EXPECT_FALSE(Wait(&status, true));
+
+  // Tell the daemon to stop.
+  EXPECT_EQ(4, write(comm[1], "die", 4));
   close(comm[0]);
   close(comm[1]);
 
-  EXPECT_TRUE(Wait(&status, true));
+  EXPECT_TRUE(PollWait(kTimeout, &status));
   EXPECT_EQ(42, WEXITSTATUS(status));
 }
 
