@@ -56,6 +56,7 @@ class DeviceManager {
   // Adds a new device by name. Returns whether the device was successfully
   // added.
   bool Add(const std::string& name);
+  bool Remove(const std::string& name);
 
   // Callback from ShillClient, invoked whenever the default network
   // interface changes or goes away.

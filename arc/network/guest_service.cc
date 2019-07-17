@@ -4,11 +4,18 @@
 
 #include "arc/network/guest_service.h"
 
+#include <base/bind.h>
+
 namespace arc_networkd {
 
 GuestService::GuestService(GuestMessage::GuestType guest,
                            DeviceManager* dev_mgr)
-    : guest_(guest), dev_mgr_(dev_mgr) {}
+    : guest_(guest), dev_mgr_(dev_mgr) {
+  dev_mgr_->RegisterDeviceAddedHandler(
+      base::Bind(&GuestService::OnDeviceAdded, base::Unretained(this)));
+  dev_mgr_->RegisterDeviceRemovedHandler(
+      base::Bind(&GuestService::OnDeviceRemoved, base::Unretained(this)));
+}
 
 void GuestService::RegisterMessageHandler(const MessageHandler& handler) {
   handler_ = handler;
