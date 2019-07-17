@@ -27,6 +27,7 @@ static_library("overalls_library") {
     "//common-mk:pic",
   ]
   sources = [
+    "overalls/overalls_api.cc",
     "overalls/overalls_singleton.cc",
   ]
 }
@@ -68,7 +69,10 @@ if (use.test) {
       "//common-mk/testrunner",
     ]
     if (!use.tpm2) {
-      sources += [ "overalls/overalls_singleton_test.cc" ]
+      sources += [
+        "overalls/overalls_api_test.cc",
+        "overalls/overalls_singleton_test.cc",
+      ]
     }
   }
 }
