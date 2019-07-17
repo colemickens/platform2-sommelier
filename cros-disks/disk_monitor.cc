@@ -19,10 +19,10 @@
 #include <base/time/time.h>
 
 #include "cros-disks/device_ejector.h"
+#include "cros-disks/quote.h"
 #include "cros-disks/udev_device.h"
 
 namespace cros_disks {
-
 namespace {
 
 const char kBlockSubsystem[] = "block";
@@ -76,6 +76,31 @@ bool MatchDiskByPath(const std::string& path,
   return false;  // Match. Stop enumeration.
 }
 
+// Logs a device with its properties.
+void LogUdevDevice(udev_device* const dev) {
+  if (!VLOG_IS_ON(1))
+    return;
+
+  // Some device events (eg USB drive removal) result in devnode being null.
+  // This is gracefully handled by quote() without crashing.
+  VLOG(1) << "   node: " << quote(udev_device_get_devnode(dev));
+  VLOG(1) << "   subsystem: " << quote(udev_device_get_subsystem(dev));
+  VLOG(1) << "   devtype: " << quote(udev_device_get_devtype(dev));
+  VLOG(1) << "   devpath: " << quote(udev_device_get_devpath(dev));
+  VLOG(1) << "   sysname: " << quote(udev_device_get_sysname(dev));
+  VLOG(1) << "   syspath: " << quote(udev_device_get_syspath(dev));
+
+  if (!VLOG_IS_ON(2))
+    return;
+
+  // Log all properties.
+  for (udev_list_entry* entry = udev_device_get_properties_list_entry(dev);
+       entry; entry = udev_list_entry_get_next(entry)) {
+    VLOG(2) << "   " << udev_list_entry_get_name(entry) << ": "
+            << quote(udev_list_entry_get_value(entry));
+  }
+}
+
 }  // namespace
 
 DiskMonitor::DiskMonitor() : udev_(udev_new()), udev_monitor_fd_(0) {
@@ -101,18 +126,18 @@ bool DiskMonitor::Initialize() {
   // Since there are no udev add events for the devices that already exist
   // when the disk manager starts, emulate udev add events for these devices
   // to correctly populate |disks_detected_|.
-  EnumerateBlockDevices(base::Bind(&DiskMonitor::EmulateBlockDeviceEvent,
-                                   base::Unretained(this), kUdevAddAction));
+  EnumerateBlockDevices(base::Bind(&DiskMonitor::EmulateAddBlockDeviceEvent,
+                                   base::Unretained(this)));
   return true;
 }
 
-bool DiskMonitor::EmulateBlockDeviceEvent(const char* action,
-                                          udev_device* dev) {
+bool DiskMonitor::EmulateAddBlockDeviceEvent(udev_device* dev) {
   DCHECK(dev);
-
   DeviceEventList events;
-  ProcessBlockDeviceEvents(dev, action, &events);
-
+  ProcessBlockDeviceEvents(dev, kUdevAddAction, &events);
+  LOG(INFO) << "Emulated action 'add' on device "
+            << quote(udev_device_get_sysname(dev));
+  LogUdevDevice(dev);
   return true;  // Continue the enumeration.
 }
 
@@ -137,21 +162,8 @@ void DiskMonitor::EnumerateBlockDevices(
     if (dev == nullptr)
       continue;
 
-    LOG(INFO) << "Device";
-    LOG(INFO) << "   Node: " << udev_device_get_devnode(dev);
-    VLOG(1) << "   Subsystem: " << udev_device_get_subsystem(dev);
-    VLOG(1) << "   Devtype: " << udev_device_get_devtype(dev);
-    VLOG(1) << "   Devpath: " << udev_device_get_devpath(dev);
-    VLOG(1) << "   Sysname: " << udev_device_get_sysname(dev);
-    VLOG(1) << "   Syspath: " << udev_device_get_syspath(dev);
-    VLOG(2) << "   Properties: ";
-    udev_list_entry *property_list, *property_list_entry;
-    property_list = udev_device_get_properties_list_entry(dev);
-    udev_list_entry_foreach(property_list_entry, property_list) {
-      const char* key = udev_list_entry_get_name(property_list_entry);
-      const char* value = udev_list_entry_get_value(property_list_entry);
-      VLOG(2) << "      " << key << " = " << value;
-    }
+    VLOG(1) << "Found device " << quote(udev_device_get_sysname(dev));
+    LogUdevDevice(dev);
 
     bool continue_enumeration = callback.Run(dev);
     udev_device_unref(dev);
@@ -262,19 +274,14 @@ bool DiskMonitor::GetDeviceEvents(DeviceEventList* events) {
     return false;
   }
 
-  LOG(INFO) << "Got Device";
-  LOG(INFO) << "   Syspath: " << udev_device_get_syspath(dev);
-  // Some device events (i.e. USB drive removal) result in devnode being NULL,
-  // which ostream::operator<<(char*) can't handle. Wrapping the output in a
-  // base::StringPiece() lets the LOG handle NULL without crashing.
-  LOG(INFO) << "   Node: " << base::StringPiece(udev_device_get_devnode(dev));
-  LOG(INFO) << "   Subsystem: " << udev_device_get_subsystem(dev);
-  LOG(INFO) << "   Devtype: " << udev_device_get_devtype(dev);
-  LOG(INFO) << "   Action: " << udev_device_get_action(dev);
-
   const char* sys_path = udev_device_get_syspath(dev);
   const char* subsystem = udev_device_get_subsystem(dev);
   const char* action = udev_device_get_action(dev);
+
+  LOG(INFO) << "Got action " << quote(action) << " on device "
+            << quote(udev_device_get_sysname(dev));
+  LogUdevDevice(dev);
+
   if (!sys_path || !subsystem || !action) {
     udev_device_unref(dev);
     return false;

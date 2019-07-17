@@ -59,10 +59,10 @@ class DiskMonitor : public DeviceEventSourceInterface {
   bool GetDeviceEvents(DeviceEventList* events) override;
 
  private:
-  // An EnumerateBlockDevices callback that emulates a block device event
-  // defined by |action| on |device|. Always returns true to continue
-  // enumeration in EnumerateBlockDevices.
-  bool EmulateBlockDeviceEvent(const char* action, udev_device* device);
+  // An EnumerateBlockDevices callback that emulates an 'add' action on
+  // |device|. Always returns true to continue enumeration in
+  // EnumerateBlockDevices.
+  bool EmulateAddBlockDeviceEvent(udev_device* device);
 
   // Enumerates the block devices on the system and invokes |callback| for each
   // device found during the enumeration. The ownership of |udev_device| is not

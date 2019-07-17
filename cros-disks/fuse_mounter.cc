@@ -320,7 +320,7 @@ MountErrorType FUSEMounter::MountImpl() const {
       LOG(ERROR) << "FUSE mount program outputted " << output.size()
                  << " lines:";
       for (const std::string& line : output) {
-        LOG(ERROR) << "  " << line;
+        LOG(ERROR) << line;
       }
     }
     return MOUNT_ERROR_MOUNT_PROGRAM_FAILED;

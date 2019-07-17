@@ -196,7 +196,7 @@ int Process::Run(std::vector<std::string>* output) {
   if (LOG_IS_ON(INFO) && output && !output->empty()) {
     LOG(INFO) << "Process outputted " << output->size() << " lines:";
     for (const std::string& line : *output) {
-      LOG(INFO) << "  " << line;
+      LOG(INFO) << line;
     }
   }
 
