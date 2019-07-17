@@ -106,6 +106,12 @@ const int CrashCollector::kMaxCrashDirectorySize = 32;
 
 const uid_t CrashCollector::kRootUid = 0;
 
+// metrics user for creating /run/metrics/external/crash-reporter.
+constexpr char kMetricsUserName[] = "metrics";
+
+// metrics group for creating /run/metrics/external/crash-reporter.
+constexpr char kMetricsGroupName[] = "metrics";
+
 using base::FileEnumerator;
 using base::FilePath;
 using base::StringPrintf;
@@ -1253,25 +1259,39 @@ bool CrashCollector::InitializeSystemCrashDirectories(bool early) {
 }
 
 bool CrashCollector::InitializeSystemMetricsDirectories() {
+  uid_t metrics_user_id;
+  gid_t metrics_group_id;
+
+  if (!brillo::userdb::GetUserInfo(kMetricsUserName, &metrics_user_id,
+                                   &metrics_group_id)) {
+    PLOG(ERROR) << "Could not find user " << kMetricsUserName;
+    return false;
+  }
+
+  if (!brillo::userdb::GetGroupInfo(kMetricsGroupName, &metrics_group_id)) {
+    PLOG(ERROR) << "Could not find group " << kMetricsGroupName;
+    return false;
+  }
+
   FilePath metrics_flag_directory(paths::kSystemRunMetricsFlagDirectory);
   FilePath metrics_external_dir = metrics_flag_directory.DirName();
   FilePath metrics_dir = metrics_external_dir.DirName();
 
   // Ensure /run/metrics directory exists.
   if (!CreateDirectoryWithSettings(metrics_dir, kSystemRunMetricsFlagMode,
-                                   kRootUid, kRootGroup, nullptr))
+                                   metrics_user_id, metrics_group_id, nullptr))
     return false;
 
   // Ensure metrics/external exists.
   if (!CreateDirectoryWithSettings(metrics_external_dir,
-                                   kSystemRunMetricsFlagMode, kRootUid,
-                                   kRootGroup, nullptr))
+                                   kSystemRunMetricsFlagMode, metrics_user_id,
+                                   metrics_group_id, nullptr))
     return false;
 
   // Create final crash-reporter flag directory.
   if (!CreateDirectoryWithSettings(metrics_flag_directory,
-                                   kSystemRunMetricsFlagMode, kRootUid,
-                                   kRootGroup, nullptr))
+                                   kSystemRunMetricsFlagMode, metrics_user_id,
+                                   metrics_group_id, nullptr))
     return false;
 
   return true;
