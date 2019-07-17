@@ -227,7 +227,9 @@ bool ScanDir(const base::FilePath& dir,
       if (!fd.is_valid()) {
         // This routine can be executed over encrypted filesystems.
         // ENOKEY is normal for encrypted files, so don't log in that case.
-        if (errno != ENOKEY)
+        // We might be running in parallel with other programs which might
+        // delete paths on the fly, so ignore ENOENT too.
+        if (errno != ENOKEY || errno != ENOENT)
           PLOG(WARNING) << "Skipping path: " << path.value();
 
         // This is a best effort routine so don't fail if the path cannot be
