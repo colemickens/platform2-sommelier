@@ -104,6 +104,7 @@ copies.
 | [salsa](./salsa/) | Touchpad experimentation framework |
 | [screenshot](./screenshot/) | Tiny command to take a screenshot |
 | [sealed_storage](./sealed_storage/) | Library for sealing data to device identity and state |
+| [secure-wipe](./secure-wipe/) | Secure disk wipe |
 | [secure_erase_file](./secure_erase_file/) | Helper tools for securely erasing files from storage (e.g. keys and PII data) |
 | [sepolicy](./sepolicy/) | SELinux policy for Chrome OS |
 | [shill](./shill/) | Chrome OS Connection Manager |
