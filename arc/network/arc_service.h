@@ -18,6 +18,10 @@ class ArcService : public GuestService {
   void OnStart() override;
   void OnStop() override;
 
+ protected:
+  void OnDeviceAdded(Device* device) override;
+  void OnDeviceRemoved(Device* device) override;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(ArcService);
 };

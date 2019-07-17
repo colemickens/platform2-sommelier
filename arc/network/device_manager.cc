@@ -98,23 +98,18 @@ DeviceManager::DeviceManager(std::unique_ptr<ShillClient> shill_client,
       shill::RTNLHandler::kRequestLink,
       Bind(&DeviceManager::LinkMsgHandler, weak_factory_.GetWeakPtr()));
   shill::RTNLHandler::GetInstance()->Start(RTMGRP_LINK);
-  Add(is_arc_legacy_ ? kAndroidLegacyDevice : kAndroidDevice);
 
-  // In the legacy (single network) ARC++ world, we need to track the
-  // default shill interface since it's always routed to the arc bridge.
-  // But when mulitple networks are used, this feature is ignored and we
-  // need instead to keep track of all the host devices that shill tells us
-  // about.
-  if (!is_arc_legacy_) {
-    shill_client_->RegisterDevicesChangedHandler(base::Bind(
-        &DeviceManager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
-    shill_client_->ScanDevices(base::Bind(&DeviceManager::OnDevicesChanged,
-                                          weak_factory_.GetWeakPtr()));
-  }
+  shill_client_->RegisterDefaultInterfaceChangedHandler(base::Bind(
+      &DeviceManager::OnDefaultInterfaceChanged, weak_factory_.GetWeakPtr()));
+  shill_client_->RegisterDevicesChangedHandler(
+      base::Bind(&DeviceManager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
+  shill_client_->ScanDevices(
+      base::Bind(&DeviceManager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
 }
 
 DeviceManager::~DeviceManager() {
   shill_client_->UnregisterDevicesChangedHandler();
+  shill_client_->UnregisterDefaultInterfaceChangedHandler();
 }
 
 void DeviceManager::RegisterDeviceAddedHandler(const DeviceHandler& handler) {
@@ -132,21 +127,16 @@ void DeviceManager::ProcessDevices(const DeviceHandler& handler) {
 }
 
 void DeviceManager::OnGuestStart(GuestMessage::GuestType guest) {
-  if (is_arc_legacy_) {
-    shill_client_->RegisterDefaultInterfaceChangedHandler(base::Bind(
-        &DeviceManager::OnDefaultInterfaceChanged, weak_factory_.GetWeakPtr()));
-  }
+  Add(is_arc_legacy_ ? kAndroidLegacyDevice : kAndroidDevice);
 }
 
 void DeviceManager::OnGuestStop(GuestMessage::GuestType guest) {
-  if (is_arc_legacy_) {
-    shill_client_->UnregisterDefaultInterfaceChangedHandler();
-    default_ifname_.clear();
-  }
+  Remove(is_arc_legacy_ ? kAndroidLegacyDevice : kAndroidDevice);
 }
 
 bool DeviceManager::Add(const std::string& name) {
-  if (name.empty() || Exists(name))
+  if (name.empty() || Exists(name) ||
+      (is_arc_legacy_ && name != kAndroidLegacyDevice))
     return false;
 
   auto device = MakeDevice(name);
@@ -159,7 +149,25 @@ bool DeviceManager::Add(const std::string& name) {
     h.Run(device.get());
   }
 
+  if (is_arc_legacy_ && !default_ifname_.empty())
+    device->Enable(default_ifname_);
+
   devices_.emplace(name, std::move(device));
+  return true;
+}
+
+bool DeviceManager::Remove(const std::string& name) {
+  auto it = devices_.find(name);
+  if (it == devices_.end())
+    return false;
+
+  LOG(INFO) << "Removing device " << name;
+
+  for (auto& h : rm_handlers_) {
+    h.Run(it->second.get());
+  }
+
+  devices_.erase(it);
   return true;
 }
 
@@ -294,9 +302,12 @@ void DeviceManager::OnDefaultInterfaceChanged(const std::string& ifname) {
             << ifname << "]";
   default_ifname_ = ifname;
 
+  if (!is_arc_legacy_)
+    return;
+
   const auto it = devices_.find(kAndroidLegacyDevice);
   if (it == devices_.end()) {
-    LOG(DFATAL) << "Expected device not found: " << kAndroidLegacyDevice;
+    LOG(INFO) << "Legacy Android device not yet available";
     return;
   }
   it->second->Disable();
@@ -305,19 +316,19 @@ void DeviceManager::OnDefaultInterfaceChanged(const std::string& ifname) {
 }
 
 void DeviceManager::OnDevicesChanged(const std::set<std::string>& devices) {
-  for (auto it = devices_.begin(); it != devices_.end();) {
-    const std::string& name = it->first;
+  std::vector<std::string> removed;
+  for (const auto& d : devices_) {
+    const std::string& name = d.first;
     if (name != kAndroidDevice && name != kAndroidLegacyDevice &&
-        devices.find(name) == devices.end()) {
-      LOG(INFO) << "Removing device " << name;
-      it = devices_.erase(it);
-    } else {
-      ++it;
-    }
+        devices.find(name) == devices.end())
+      removed.emplace_back(name);
   }
-  for (const std::string& name : devices) {
+
+  for (const std::string& name : removed)
+    Remove(name);
+
+  for (const std::string& name : devices)
     Add(name);
-  }
 }
 
 }  // namespace arc_networkd
