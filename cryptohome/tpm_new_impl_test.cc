@@ -7,6 +7,7 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/test_utils/tpm1/test_fixture.h>
 #include <tpm_manager/client/mock_tpm_manager_utility.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
@@ -19,7 +20,6 @@ using ::testing::ElementsAreArray;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgPointee;
-using ::testing::Test;
 
 using brillo::Blob;
 using brillo::BlobToString;
@@ -31,10 +31,10 @@ using tpm_manager::MockTpmManagerUtility;
 
 namespace cryptohome {
 
-class TpmNewImplTest : public Test {
+class TpmNewImplTest : public ::hwsec::Tpm1HwsecTest {
  public:
   TpmNewImplTest() = default;
-  ~TpmNewImplTest() = default;
+  ~TpmNewImplTest() override = default;
 
  protected:
   NiceMock<MockTpmManagerUtility> mock_tpm_manager_utility_;

@@ -22,6 +22,7 @@
 #include <base/time/time.h>
 #include <base/values.h>
 #include <crypto/scoped_openssl_types.h>
+#include <libhwsec/overalls/overalls_api.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
@@ -43,6 +44,7 @@ using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
+using hwsec::overalls::GetOveralls;
 using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
 using trousers::ScopedTssMemory;
@@ -571,8 +573,8 @@ bool TpmImpl::OpenAndConnectTpm(TSS_HCONTEXT* context_handle,
   }
 
   for (unsigned int i = 0; i < kTpmConnectRetries; i++) {
-    if (TPM_ERROR(local_result = Tspi_Context_Connect(local_context_handle,
-                                                      NULL))) {
+    if (TPM_ERROR(local_result = GetOveralls()->Ospi_Context_Connect(
+                      local_context_handle, NULL))) {
       // If there was a communications failure, try sleeping a bit here--it may
       // be that tcsd is still starting
       if (ERROR_CODE(local_result) == TSS_E_COMM_FAILURE) {

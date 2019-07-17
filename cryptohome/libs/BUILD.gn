@@ -226,7 +226,10 @@ static_library("libcrostpm") {
       "../tpm_metrics.cc",
       "../tpm_new_impl.cc",
     ]
-    libs += [ "tspi" ]
+    libs += [
+      "hwsec",
+      "tspi",
+    ]
   }
 }
 
