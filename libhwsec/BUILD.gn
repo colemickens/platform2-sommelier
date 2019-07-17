@@ -21,11 +21,31 @@ pkg_config("target_defaults") {
   ]
 }
 
+static_library("overalls_library") {
+  configs += [
+    ":target_defaults",
+    "//common-mk:pic",
+  ]
+  sources = [
+    "overalls/overalls_singleton.cc",
+  ]
+}
+
+config("libhwsec_tpm1_config") {
+  libs = [ "tspi" ]
+}
+
 shared_library("libhwsec") {
   configs += [ ":target_defaults" ]
   sources = [
     "crypto_utility.cc",
   ]
+  if (!use.tpm2) {
+    deps = [
+      ":overalls_library",
+    ]
+    all_dependent_configs = [ ":libhwsec_tpm1_config" ]
+  }
 }
 
 if (use.test) {
@@ -47,5 +67,8 @@ if (use.test) {
       ":libhwsec",
       "//common-mk/testrunner",
     ]
+    if (!use.tpm2) {
+      sources += [ "overalls/overalls_singleton_test.cc" ]
+    }
   }
 }
