@@ -90,10 +90,17 @@ class CrosFpBiometricsManager : public BiometricsManager {
     bool SetLabel(std::string label) override;
     bool Remove() override;
     bool SupportsPositiveMatchSecret() const override;
+    bool NeedsNewValidationValue() const override;
 
    private:
     base::WeakPtr<CrosFpBiometricsManager> biometrics_manager_;
     int index_;
+  };
+
+  enum class MigrationStatus {
+    kNotDoingMigration,
+    kSuccess,
+    kError,
   };
 
   explicit CrosFpBiometricsManager(
@@ -124,14 +131,16 @@ class CrosFpBiometricsManager : public BiometricsManager {
   bool ComputeValidationValue(const brillo::SecureBlob& secret,
                               const std::string& user_id,
                               std::vector<uint8_t>* out);
-  bool GetValidationValue(InternalRecord* record, int index);
   bool ValidationValueIsCorrect(uint32_t match_idx);
   BiometricsManager::AttemptMatches CalculateMatches(int match_idx,
                                                      bool matched);
+  MigrationStatus MigrateToValidationValue(int match_idx);
 
   void KillMcuSession();
 
   void OnTaskComplete();
+
+  static void InsertEmptyPositiveMatchSalt(VendorTemplate* tmpl);
 
   bool LoadRecord(int record_format_version,
                   const std::string& user_id,

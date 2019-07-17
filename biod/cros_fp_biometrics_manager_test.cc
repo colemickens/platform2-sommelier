@@ -51,6 +51,8 @@ class FakeCrosFpDevice : public CrosFpDeviceInterface {
   bool GetDirtyMap(std::bitset<32>* bitmap) override { return false; }
   bool SupportsPositiveMatchSecret() override { return true; }
   bool GetPositiveMatchSecret(int index, brillo::SecureBlob* secret) override {
+    if (positive_match_secret_.empty())
+      return false;
     secret->resize(FP_POSITIVE_MATCH_SECRET_BYTES);
     // Zero-pad the secret if it's too short.
     std::fill(secret->begin(), secret->end(), 0);
@@ -86,7 +88,6 @@ class FakeCrosFpDeviceFactoryImpl : public CrosFpDeviceFactory {
 
 // Using a peer class to control access to the class under test is better than
 // making the text fixture a friend class.
-// http://go/totw/135#using-peers-to-avoid-exposing-implementation
 class CrosFpBiometricsManagerPeer {
  public:
   CrosFpBiometricsManagerPeer() {
@@ -114,16 +115,20 @@ class CrosFpBiometricsManagerPeer {
         cros_fp_biometrics_manager_->cros_dev_.get());
   }
 
+  // Methods to access or modify the fake device.
+
+  void SetDevicePositiveMatchSecret(const std::vector<uint8_t>& new_secret) {
+    fake_cros_dev_->positive_match_secret_ = new_secret;
+  }
+
+  // Methods to access or modify CrosFpBiometricsManager private fields.
+
   bool SupportsPositiveMatchSecret() {
     return cros_fp_biometrics_manager_->use_positive_match_secret_;
   }
 
   void SetUsePositiveMatchSecret(bool use) {
     cros_fp_biometrics_manager_->use_positive_match_secret_ = use;
-  }
-
-  void SetDevicePositiveMatchSecret(const std::vector<uint8_t>& new_secret) {
-    fake_cros_dev_->positive_match_secret_ = new_secret;
   }
 
   // Add a record to cros_fp_biometrics_manager_, return the index.
@@ -138,6 +143,14 @@ class CrosFpBiometricsManagerPeer {
         std::move(internal_record));
     return cros_fp_biometrics_manager_->records_.size() - 1;
   }
+
+  bool ValidationValueEquals(int index,
+                             const std::vector<uint8_t>& reference_value) {
+    return cros_fp_biometrics_manager_->records_[index].validation_val ==
+           reference_value;
+  }
+
+  // Methods to execute CrosFpBiometricsManager private methods.
 
   bool ComputeValidationValue(const std::vector<uint8_t>& secret,
                               const std::string& user_id,
@@ -156,12 +169,34 @@ class CrosFpBiometricsManagerPeer {
     return cros_fp_biometrics_manager_->CalculateMatches(match_idx, matched);
   }
 
+  bool MigrateToValidationValue(int match_idx) {
+    CrosFpBiometricsManager::MigrationStatus status =
+        cros_fp_biometrics_manager_->MigrateToValidationValue(match_idx);
+    return status == CrosFpBiometricsManager::MigrationStatus::kSuccess;
+  }
+
+  static void InsertEmptyPositiveMatchSalt(VendorTemplate* tmpl) {
+    CrosFpBiometricsManager::InsertEmptyPositiveMatchSalt(tmpl);
+  }
+
+  bool RecordNeedsValidationValue(int index) {
+    CrosFpBiometricsManager::Record current_record(
+        cros_fp_biometrics_manager_->weak_factory_.GetWeakPtr(), index);
+    return current_record.NeedsNewValidationValue();
+  }
+
  private:
   std::unique_ptr<CrosFpBiometricsManager> cros_fp_biometrics_manager_;
   FakeCrosFpDevice* fake_cros_dev_;
 };
 
 class CrosFpBiometricsManagerTest : public ::testing::Test {
+ public:
+  bool BytesAreZeros(const uint8_t* start, size_t size) {
+    const std::vector<uint8_t> zeros(size);
+    return std::memcmp(start, zeros.data(), size) == 0;
+  }
+
  protected:
   CrosFpBiometricsManagerPeer cros_fp_biometrics_manager_peer_;
 };
@@ -237,6 +272,58 @@ TEST_F(CrosFpBiometricsManagerTest,
       cros_fp_biometrics_manager_peer_.CalculateMatches(index, true);
   EXPECT_EQ(matches,
             BiometricsManager::AttemptMatches({{kUserID, {kRecordID}}}));
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestCalculateMatchesOnMigration) {
+  int index = cros_fp_biometrics_manager_peer_.AddRecord(
+      kRecordFormatVersionNoValidationValue, kRecordID, kUserID, kLabel,
+      std::vector<uint8_t>());
+
+  // IF firmware supports positive match secret but the record does not have
+  // validation value:
+  EXPECT_TRUE(cros_fp_biometrics_manager_peer_.SupportsPositiveMatchSecret());
+  EXPECT_TRUE(
+      cros_fp_biometrics_manager_peer_.RecordNeedsValidationValue(index));
+
+  // THEN we accept the match since we are going to do migration.
+  auto matches = cros_fp_biometrics_manager_peer_.CalculateMatches(index, true);
+  EXPECT_EQ(matches,
+            BiometricsManager::AttemptMatches({{kUserID, {kRecordID}}}));
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestMigrateToValidationValue) {
+  int index = cros_fp_biometrics_manager_peer_.AddRecord(
+      kRecordFormatVersion, kRecordID, kUserID, kLabel, std::vector<uint8_t>());
+  bool ret = cros_fp_biometrics_manager_peer_.MigrateToValidationValue(index);
+  EXPECT_TRUE(ret);
+  // After migration, the record at |index| should have the validation value
+  // corresponding to the device's positive match secret.
+  EXPECT_TRUE(cros_fp_biometrics_manager_peer_.ValidationValueEquals(
+      index, kFakeValidationValue1));
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestMigrateToValidationValueFailures) {
+  int index = cros_fp_biometrics_manager_peer_.AddRecord(
+      kRecordFormatVersion, kRecordID, kUserID, kLabel, std::vector<uint8_t>());
+
+  // Setting the devices positive match secret to empty will make the fake
+  // device return false when asked for positive match secret.
+  cros_fp_biometrics_manager_peer_.SetDevicePositiveMatchSecret(
+      std::vector<uint8_t>());
+  EXPECT_FALSE(
+      cros_fp_biometrics_manager_peer_.MigrateToValidationValue(index));
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestInsertEmptyPositiveMatchSalt) {
+  // Prepare a template of old format, with zero-length template field.
+  size_t metadata_size = sizeof(struct ec_fp_template_encryption_metadata);
+  std::vector<uint8_t> tmpl(metadata_size, 0xff);
+
+  CrosFpBiometricsManagerPeer::InsertEmptyPositiveMatchSalt(&tmpl);
+
+  EXPECT_EQ(tmpl.size(), metadata_size + FP_POSITIVE_MATCH_SALT_BYTES);
+  EXPECT_TRUE(
+      BytesAreZeros(tmpl.data() + metadata_size, FP_POSITIVE_MATCH_SALT_BYTES));
 }
 
 }  // namespace biod
