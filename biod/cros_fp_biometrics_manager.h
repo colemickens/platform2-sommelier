@@ -69,6 +69,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
   using SessionAction = base::Callback<void(const uint32_t event)>;
 
   struct InternalRecord {
+    int record_format_version;
     std::string record_id;
     std::string user_id;
     std::string label;
@@ -88,6 +89,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
     const std::vector<uint8_t>& GetValidationVal() const override;
     bool SetLabel(std::string label) override;
     bool Remove() override;
+    bool SupportsPositiveMatchSecret() const override;
 
    private:
     base::WeakPtr<CrosFpBiometricsManager> biometrics_manager_;
@@ -127,7 +129,8 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   void OnTaskComplete();
 
-  bool LoadRecord(const std::string& user_id,
+  bool LoadRecord(int record_format_version,
+                  const std::string& user_id,
                   const std::string& label,
                   const std::string& record_id,
                   const std::vector<uint8_t>& validation_val,

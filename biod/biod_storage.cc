@@ -41,8 +41,6 @@ constexpr char kLabel[] = "label";
 constexpr char kRecordId[] = "record_id";
 constexpr char kValidationVal[] = "match_validation_value";
 constexpr char kVersionMember[] = "version";
-// Version of the file format.
-constexpr int kFormatVersion = 1;
 }  // namespace
 
 BiodStorage::BiodStorage(const std::string& biometrics_manager_name,
@@ -68,10 +66,15 @@ bool BiodStorage::WriteRecord(const BiometricsManager::Record& record,
   record_value.SetString(kLabel, record.GetLabel());
   record_value.SetString(kRecordId, record_id);
 
-  record_value.SetString(kValidationVal, record.GetValidationValBase64());
+  if (record.SupportsPositiveMatchSecret()) {
+    record_value.SetString(kValidationVal, record.GetValidationValBase64());
+    record_value.SetInteger(kVersionMember, kRecordFormatVersion);
+  } else {
+    record_value.SetInteger(kVersionMember,
+                            kRecordFormatVersionNoValidationValue);
+  }
 
   record_value.Set(kData, std::move(data));
-  record_value.SetInteger(kVersionMember, kFormatVersion);
   record_value.SetString(kBioManagerMember, biometrics_manager_name_);
 
   std::string json_string;
@@ -105,6 +108,34 @@ bool BiodStorage::WriteRecord(const BiometricsManager::Record& record,
   LOG(INFO) << "Done writing record with id " << record_id
             << " to file successfully. ";
   return true;
+}
+
+std::unique_ptr<std::vector<uint8_t>>
+BiodStorage::ReadValidationValueFromRecord(
+    int record_format_version,
+    base::DictionaryValue* record_dictionary,
+    const FilePath& record_path) {
+  std::string validation_val_str;
+  if (record_format_version == kRecordFormatVersion) {
+    if (!record_dictionary->GetString(kValidationVal, &validation_val_str)) {
+      LOG(ERROR) << "Cannot read validation value from " << record_path.value()
+                 << ".";
+      return nullptr;
+    }
+    base::Base64Decode(validation_val_str, &validation_val_str);
+  } else if (record_format_version == kRecordFormatVersionNoValidationValue) {
+    // If the record has format version 1, it should have no validation value
+    // field. In that case, load an empty validation value.
+    LOG(INFO) << "Record from " << record_path.value() << " does not have "
+              << "validation value and needs migration.";
+  } else {
+    LOG(ERROR) << "Invalid format version from record " << record_path.value()
+               << ".";
+    return nullptr;
+  }
+
+  return std::make_unique<std::vector<uint8_t>>(validation_val_str.begin(),
+                                                validation_val_str.end());
 }
 
 bool BiodStorage::ReadRecords(const std::unordered_set<std::string>& user_ids) {
@@ -178,17 +209,22 @@ bool BiodStorage::ReadRecordsForSingleUser(const std::string& user_id) {
       continue;
     }
 
-    std::string validation_val_str;
-
-    if (!record_dictionary->GetString(kValidationVal, &validation_val_str)) {
-      LOG(ERROR) << "Cannot read validation value from " << record_path.value();
+    int record_format_version;
+    if (!record_dictionary->GetInteger(kVersionMember,
+                                       &record_format_version)) {
+      LOG(ERROR) << "Cannot read record format version from "
+                 << record_path.value() << ".";
       read_all_records_successfully = false;
       continue;
     }
 
-    base::Base64Decode(validation_val_str, &validation_val_str);
-    std::vector<uint8_t> validation_val(validation_val_str.begin(),
-                                        validation_val_str.end());
+    std::unique_ptr<std::vector<uint8_t>> validation_value =
+        ReadValidationValueFromRecord(record_format_version, record_dictionary,
+                                      record_path);
+    if (!validation_value) {
+      read_all_records_successfully = false;
+      continue;
+    }
 
     base::Value* data = nullptr;
 
@@ -198,7 +234,8 @@ bool BiodStorage::ReadRecordsForSingleUser(const std::string& user_id) {
       continue;
     }
 
-    if (!load_record_.Run(user_id, label, record_id, validation_val, *data)) {
+    if (!load_record_.Run(record_format_version, user_id, label, record_id,
+                          *validation_value, *data)) {
       LOG(ERROR) << "Cannot load record from " << record_path.value() << ".";
       read_all_records_successfully = false;
       continue;

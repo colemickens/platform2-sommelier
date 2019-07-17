@@ -118,6 +118,10 @@ bool CrosFpBiometricsManager::Record::SetLabel(std::string label) {
   return true;
 }
 
+bool CrosFpBiometricsManager::Record::SupportsPositiveMatchSecret() const {
+  return biometrics_manager_->use_positive_match_secret_;
+}
+
 bool CrosFpBiometricsManager::Record::Remove() {
   if (!biometrics_manager_)
     return false;
@@ -171,9 +175,9 @@ BiometricsManager::EnrollSession CrosFpBiometricsManager::StartEnrollSession(
   }
 
   std::vector<uint8_t> validation_val;
-  if (!RequestEnrollImage(InternalRecord{biod_storage_.GenerateNewRecordId(),
-                                         std::move(user_id), std::move(label),
-                                         std::move(validation_val)}))
+  if (!RequestEnrollImage(InternalRecord{
+          kRecordFormatVersion, biod_storage_.GenerateNewRecordId(),
+          std::move(user_id), std::move(label), std::move(validation_val)}))
     return BiometricsManager::EnrollSession();
 
   return BiometricsManager::EnrollSession(session_weak_factory_.GetWeakPtr());
@@ -684,6 +688,7 @@ void CrosFpBiometricsManager::OnTaskComplete() {
 }
 
 bool CrosFpBiometricsManager::LoadRecord(
+    int record_format_version,
     const std::string& user_id,
     const std::string& label,
     const std::string& record_id,
@@ -720,7 +725,8 @@ bool CrosFpBiometricsManager::LoadRecord(
     return false;
   }
 
-  InternalRecord internal_record = {record_id, user_id, label, validation_val};
+  InternalRecord internal_record = {record_format_version, record_id, user_id,
+                                    label, validation_val};
   records_.emplace_back(std::move(internal_record));
   return true;
 }

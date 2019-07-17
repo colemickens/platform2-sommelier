@@ -37,6 +37,11 @@ const char kLabel3[] = "record3";
 const std::vector<uint8_t> kValidationVal3 = {0x00, 0x03};
 const char kData3[] = "Hello, world3!";
 
+// Flag to control whether to run tests with positive match secret support.
+// This can't be a member of the test fixture because it's accessed in the
+// TestRecord class in anonymous namespace.
+bool test_record_supports_positive_match_secret = true;
+
 class TestRecord : public BiometricsManager::Record {
  public:
   TestRecord(const std::string& id,
@@ -60,6 +65,11 @@ class TestRecord : public BiometricsManager::Record {
   const std::string& GetData() const { return data_; }
   bool SetLabel(std::string label) override { return true; }
   bool Remove() override { return true; }
+  bool SupportsPositiveMatchSecret() const override {
+    return test_record_supports_positive_match_secret;
+  }
+
+  void ClearValidationValue() { validation_val_.clear(); }
 
   friend bool operator==(const TestRecord& lhs, const TestRecord& rhs) {
     return lhs.id_ == rhs.id_ && lhs.user_id_ == rhs.user_id_ &&
@@ -79,20 +89,20 @@ class TestRecord : public BiometricsManager::Record {
 };
 }  // namespace
 
-class BiodStorageTest : public ::testing::Test {
+class BiodStorageBaseTest : public ::testing::Test {
  public:
-  BiodStorageTest() {
+  BiodStorageBaseTest() {
     CHECK(temp_dir_.CreateUniqueTempDir());
     root_path_ = temp_dir_.GetPath().AppendASCII("biod_storage_unittest_root");
     biod_storage_.reset(new BiodStorage(
         kBiometricsManagerName,
-        base::Bind(&BiodStorageTest::LoadRecord, base::Unretained(this))));
+        base::Bind(&BiodStorageBaseTest::LoadRecord, base::Unretained(this))));
     // Since there is no session manager, allow accesses by default.
     biod_storage_->set_allow_access(true);
     biod_storage_->SetRootPathForTesting(root_path_);
   }
 
-  ~BiodStorageTest() override {
+  ~BiodStorageBaseTest() override {
     EXPECT_TRUE(base::DeleteFile(temp_dir_.GetPath(), true));
   }
 
@@ -106,7 +116,8 @@ class BiodStorageTest : public ::testing::Test {
   // LoadRecord is a callback passed to biod_storage_. It gets called when
   // biod_storage_ reads a record from storage. It loads the new record into
   // records_.
-  bool LoadRecord(const std::string& user_id,
+  bool LoadRecord(int record_format_version,
+                  const std::string& user_id,
                   const std::string& label,
                   const std::string& record_id,
                   const std::vector<uint8_t>& validation_val,
@@ -118,14 +129,30 @@ class BiodStorageTest : public ::testing::Test {
     return true;
   }
 
-  DISALLOW_COPY_AND_ASSIGN(BiodStorageTest);
+  DISALLOW_COPY_AND_ASSIGN(BiodStorageBaseTest);
 };
 
-TEST_F(BiodStorageTest, WriteAndReadRecords) {
+class BiodStorageTest : public BiodStorageBaseTest,
+                        public ::testing::WithParamInterface<bool> {
+ public:
+  BiodStorageTest() { test_record_supports_positive_match_secret = GetParam(); }
+};
+
+TEST_P(BiodStorageTest, WriteAndReadRecords) {
+  const std::vector<uint8_t> kEmpty;
   const std::vector<TestRecord> kRecords = {
-      TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1),
-      TestRecord(kRecordId2, kUserId2, kLabel2, kValidationVal2, kData2),
-      TestRecord(kRecordId3, kUserId2, kLabel3, kValidationVal3, kData3)};
+      TestRecord(
+          kRecordId1, kUserId1, kLabel1,
+          test_record_supports_positive_match_secret ? kValidationVal1 : kEmpty,
+          kData1),
+      TestRecord(
+          kRecordId2, kUserId2, kLabel2,
+          test_record_supports_positive_match_secret ? kValidationVal2 : kEmpty,
+          kData2),
+      TestRecord(
+          kRecordId3, kUserId2, kLabel3,
+          test_record_supports_positive_match_secret ? kValidationVal3 : kEmpty,
+          kData3)};
 
   // Write the record.
   for (auto const& record : kRecords) {
@@ -140,9 +167,12 @@ TEST_F(BiodStorageTest, WriteAndReadRecords) {
       std::is_permutation(kRecords.begin(), kRecords.end(), records_.begin()));
 }
 
-TEST_F(BiodStorageTest, DeleteRecord) {
-  const TestRecord kRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1,
-                           kData1);
+TEST_P(BiodStorageTest, DeleteRecord) {
+  const std::vector<uint8_t> kEmpty;
+  const TestRecord kRecord(
+      kRecordId1, kUserId1, kLabel1,
+      test_record_supports_positive_match_secret ? kValidationVal1 : kEmpty,
+      kData1);
 
   // Delete a non-existent record.
   EXPECT_TRUE(biod_storage_->DeleteRecord(kUserId1, kRecordId1));
@@ -166,18 +196,22 @@ TEST_F(BiodStorageTest, DeleteRecord) {
   EXPECT_TRUE(records_.empty());
 }
 
-TEST_F(BiodStorageTest, GenerateNewRecordId) {
+TEST_F(BiodStorageBaseTest, GenerateNewRecordId) {
   // Check the two record ids are different.
   std::string record_id1(biod_storage_->GenerateNewRecordId());
   std::string record_id2(biod_storage_->GenerateNewRecordId());
   EXPECT_NE(record_id1, record_id2);
 }
 
-TEST_F(BiodStorageTest, TestEqualOperator) {
+TEST_F(BiodStorageBaseTest, TestEqualOperator) {
   EXPECT_EQ(TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1),
             TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1));
 
   EXPECT_NE(TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1),
             TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal2, kData1));
 }
+
+INSTANTIATE_TEST_CASE_P(RecordsSupportPositiveMatchSecret,
+                        BiodStorageTest,
+                        ::testing::Values(true, false));
 }  // namespace biod

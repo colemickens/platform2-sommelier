@@ -109,6 +109,9 @@ class BiometricsManager {
     // Returns true on success.
     virtual bool SetLabel(std::string label) = 0;
 
+    // Whether the BiometricsManager's device supports positive match secret.
+    virtual bool SupportsPositiveMatchSecret() const = 0;
+
     // Returns true on success.
     virtual bool Remove() = 0;
 
