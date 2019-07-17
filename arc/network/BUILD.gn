@@ -51,6 +51,11 @@ shared_library("libarcnetwork-util") {
   sources = util_sources
 }
 
+guest_sources = [
+  "arc_service.cc",
+  "guest_service.cc",
+]
+
 static_library("libarcnetwork") {
   configs += [ ":target_defaults" ]
   sources = [
@@ -78,6 +83,7 @@ static_library("libarcnetwork") {
     "shill_client.cc",
     "socket_forwarder.cc",
   ]
+  sources += guest_sources
   sources += util_sources
   deps = [
     ":protos",

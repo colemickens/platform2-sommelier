@@ -24,6 +24,8 @@ namespace arc_networkd {
 // presentation in the container.
 class DeviceManager {
  public:
+  using DeviceHandler = base::Callback<void(Device*)>;
+
   // |addr_mgr| must not be null.
   DeviceManager(std::unique_ptr<ShillClient> shill_client,
                 AddressManager* addr_mgr,
@@ -31,10 +33,17 @@ class DeviceManager {
                 bool is_arc_legacy);
   ~DeviceManager();
 
-  // Invoked when the ARC guest starts or stops.
-  // TODO(garrick): When appropriate, pass in specific guest type.
-  void OnGuestStart();
-  void OnGuestStop();
+  // Used by guest service implementations to be notified when tracked devices
+  // are updated.
+  void RegisterDeviceAddedHandler(const DeviceHandler& handler);
+  void RegisterDeviceRemovedHandler(const DeviceHandler& handler);
+
+  // Invoked when a guest starts or stops.
+  void OnGuestStart(GuestMessage::GuestType guest);
+  void OnGuestStop(GuestMessage::GuestType guest);
+
+  // Used by a guest service to examine and potentially mutate tracked devices.
+  void ProcessDevices(const DeviceHandler& handler);
 
   // Returns a new fully configured device.
   // Note this is public mainly for testing and should not be called directly.
@@ -72,6 +81,11 @@ class DeviceManager {
 
   // Enables the devices to send messages to the helper process.
   const Device::MessageSink msg_sink_;
+
+  // Callbacks for notifying clients when devices are added or removed from
+  // |devices_|.
+  std::vector<DeviceHandler> add_handlers_;
+  std::vector<DeviceHandler> rm_handlers_;
 
   // Connected devices keyed by the interface name.
   // The legacy device is mapped to the Android interface name.

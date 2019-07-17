@@ -14,13 +14,10 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <base/posix/unix_domain_socket.h>
 #include <base/strings/stringprintf.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/minijail/minijail.h>
@@ -29,28 +26,8 @@
 #include "arc/network/ipc.pb.h"
 
 namespace {
-
 constexpr uint64_t kManagerCapMask = CAP_TO_MASK(CAP_NET_RAW);
 constexpr char kUnprivilegedUser[] = "arc-networkd";
-
-// TODO(garrick): Remove this workaround ASAP.
-int GetContainerPID() {
-  const base::FilePath path("/run/containers/android-run_oci/container.pid");
-  std::string pid_str;
-  if (!base::ReadFileToStringWithMaxSize(path, &pid_str, 16 /* max size */)) {
-    LOG(ERROR) << "Failed to read pid file";
-    return -1;
-  }
-  int pid;
-  if (!base::StringToInt(base::TrimWhitespaceASCII(pid_str, base::TRIM_ALL),
-                         &pid)) {
-    LOG(ERROR) << "Failed to convert container pid string";
-    return -1;
-  }
-  LOG(INFO) << "Read container pid as " << pid;
-  return pid;
-}
-
 }  // namespace
 
 namespace arc_networkd {
@@ -65,10 +42,7 @@ Manager::Manager(std::unique_ptr<HelperProcess> ip_helper,
           AddressManager::Guest::ARC_NET,
       }),
       enable_multinet_(enable_multinet),
-      arc_pid_(-1),
       gsock_(AF_UNIX, SOCK_DGRAM) {}
-
-Manager::~Manager() = default;
 
 int Manager::OnInit() {
   // Run with minimal privileges.
@@ -99,6 +73,7 @@ int Manager::OnInit() {
       << "Failed to watch adb-proxy child process";
 
   // Setup the socket for guests to connect and notify certain events.
+  // TODO(garrick): Remove once DBus API available.
   struct sockaddr_un addr = {0};
   socklen_t addrlen = 0;
   FillGuestSocketAddr(&addr, &addrlen);
@@ -131,6 +106,10 @@ void Manager::InitialSetup() {
       std::make_unique<ShillClient>(std::move(bus_)), &addr_mgr_,
       base::Bind(&Manager::SendDeviceMessage, weak_factory_.GetWeakPtr()),
       !enable_multinet_);
+
+  arc_svc_ = std::make_unique<ArcService>(device_mgr_.get(), !enable_multinet_);
+  arc_svc_->RegisterMessageHandler(
+      base::Bind(&Manager::OnGuestMessage, weak_factory_.GetWeakPtr()));
 }
 
 void Manager::OnFileCanReadWithoutBlocking() {
@@ -144,54 +123,25 @@ void Manager::OnFileCanReadWithoutBlocking() {
     return;
   }
 
-  std::string msg(buf);
-  OnGuestNotification(msg);
+  // Only expecting ARCVM start/stop events from Concierge here.
+  auto event = ArcGuestEvent::Parse(buf);
+  if (!event || !event->isVm()) {
+    LOG(WARNING) << "Unexpected message received: " << buf;
+    return;
+  }
+
+  GuestMessage msg;
+  msg.set_type(GuestMessage::ARC_VM);
+  msg.set_arcvm_vsock_cid(event->id());
+  msg.set_event(event->isStarting() ? GuestMessage::START : GuestMessage::STOP);
+  OnGuestMessage(msg);
 }
 
 // TODO(garrick): Remove this workaround ASAP.
 bool Manager::OnSignal(const struct signalfd_siginfo& info) {
-  // Only ARC++ scripts send signals so noting to do for VM.
-  if (info.ssi_signo == SIGUSR1) {
-    arc_pid_ = GetContainerPID();
-    if (arc_pid_ > 0) {
-      OnGuestEvent(ArcGuestEvent(false /* vm */, true /* start */, arc_pid_));
-    }
-  } else {
-    if (arc_pid_ > 0) {
-      OnGuestEvent(ArcGuestEvent(false /* vm */, false /* start */, arc_pid_));
-    }
-  }
-
+  // Only ARC++ scripts send signals so nothing to do for VM.
+  (info.ssi_signo == SIGUSR1) ? arc_svc_->OnStart() : arc_svc_->OnStop();
   return false;
-}
-
-void Manager::OnGuestNotification(const std::string& notification) {
-  if (auto event = ArcGuestEvent::Parse(notification)) {
-    OnGuestEvent(*event.get());
-  }
-}
-
-void Manager::OnGuestEvent(const ArcGuestEvent& event) {
-  GuestMessage msg;
-
-  if (event.isVm()) {
-    msg.set_type(GuestMessage::ARC_VM);
-    msg.set_arcvm_vsock_cid(event.id());
-  } else {
-    msg.set_type(enable_multinet_ ? GuestMessage::ARC
-                                  : GuestMessage::ARC_LEGACY);
-    msg.set_arc_pid(event.id());
-  }
-
-  if (event.isStarting()) {
-    msg.set_event(GuestMessage::START);
-    device_mgr_->OnGuestStart();
-  } else {
-    msg.set_event(GuestMessage::STOP);
-    device_mgr_->OnGuestStop();
-  }
-
-  SendGuestMessage(msg);
 }
 
 void Manager::OnShutdown(int* exit_code) {
@@ -203,7 +153,7 @@ void Manager::OnSubprocessExited(pid_t pid, const siginfo_t& info) {
   Quit();
 }
 
-void Manager::SendGuestMessage(const GuestMessage& msg) {
+void Manager::OnGuestMessage(const GuestMessage& msg) {
   IpHelperMessage ipm;
   *ipm.mutable_guest_message() = msg;
   ip_helper_->SendMessage(ipm);

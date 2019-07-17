@@ -72,7 +72,8 @@ class DeviceManagerTest : public testing::Test {
         std::move(shill_client), &addr_mgr_,
         base::Bind(&DeviceManagerTest::RecvMsg, base::Unretained(this)),
         is_arc_legacy);
-    mgr->OnGuestStart();
+    mgr->OnGuestStart(is_arc_legacy ? GuestMessage::ARC_LEGACY
+                                    : GuestMessage::ARC);
     return mgr;
   }
 
