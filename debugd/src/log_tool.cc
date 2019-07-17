@@ -355,17 +355,6 @@ const std::vector<Log> kBigFeedbackLogs{
     kRoot, kRoot, 10 * 1024 * 1024, LogTool::Encoding::kUtf8},
 };
 
-// List of log files that must directly be collected by Chrome. This is because
-// debugd is running under a VFS namespace and does not have access to later
-// cryptohome mounts.
-using UserLog = std::pair<std::string, std::string>;
-const std::vector<UserLog> kUserLogs = {
-  {"chrome_user_log", "log/chrome"},
-  {"libassistant_user_log", "log/libassistant.log"},
-  {"login-times", "login-times"},
-  {"logout-times", "logout-times"},
-};
-
 // Fills |dictionary| with the anonymized contents of the logs in |logs|.
 void GetLogsInDictionary(const std::vector<Log>& logs,
                          AnonymizerTool* anonymizer,
