@@ -227,7 +227,7 @@ void ArcVm::HandleSuspendImminent() {
 }
 
 void ArcVm::HandleSuspendDone() {
-  RunCrosvmCommand("suspend", GetVmSocketPath());
+  RunCrosvmCommand("resume", GetVmSocketPath());
 }
 
 uint32_t ArcVm::GatewayAddress() const {
