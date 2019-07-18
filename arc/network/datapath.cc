@@ -5,10 +5,44 @@
 #include "arc/network/datapath.h"
 
 namespace arc_networkd {
+namespace {
+constexpr char kDefaultNetmask[] = "255.255.255.252";
+}  // namespace
 
 Datapath::Datapath(MinijailedProcessRunner* process_runner)
     : process_runner_(process_runner) {
   CHECK(process_runner_);
+}
+
+bool Datapath::AddBridge(const std::string& ifname,
+                         const std::string& ipv4_addr) {
+  // Configure the persistent Chrome OS bridge interface with static IP.
+  if (process_runner_->Run({kBrctlPath, "addbr", ifname}) != 0) {
+    return false;
+  }
+
+  if (process_runner_->Run({kIfConfigPath, ifname, ipv4_addr, "netmask",
+                            kDefaultNetmask, "up"}) != 0) {
+    RemoveBridge(ifname);
+    return false;
+  }
+
+  // See nat.conf in chromeos-nat-init for the rest of the NAT setup rules.
+  if (process_runner_->Run({kIpTablesPath, "-t", "mangle", "-A", "PREROUTING",
+                            "-i", ifname, "-j", "MARK", "--set-mark", "1",
+                            "-w"}) != 0) {
+    RemoveBridge(ifname);
+    return false;
+  }
+
+  return true;
+}
+
+void Datapath::RemoveBridge(const std::string& ifname) {
+  process_runner_->Run({kIpTablesPath, "-t", "mangle", "-D", "PREROUTING", "-i",
+                        ifname, "-j", "MARK", "--set-mark", "1", "-w"});
+  process_runner_->Run({kIfConfigPath, ifname, "down"});
+  process_runner_->Run({kBrctlPath, "delbr", ifname});
 }
 
 bool Datapath::AddLegacyIPv4DNAT(const std::string& ipv4_addr) {

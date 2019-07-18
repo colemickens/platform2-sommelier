@@ -76,94 +76,37 @@ class ArcIpConfigTest : public testing::Test {
   std::vector<std::string> runs_;
 };
 
-TEST_F(ArcIpConfigTest, VerifySetupCmds) {
+TEST_F(ArcIpConfigTest, VerifySetupTeardownDatapath) {
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("br"), StrEq("1.2.3.4")))
+      .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddInboundIPv4DNAT(StrEq("eth0"), StrEq("6.7.8.9")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddOutboundIPv4(StrEq("br"))).WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, RemoveBridge(StrEq("br")));
 
-  // Setup called in ctor.
-  runner_->Capture(true);
-  auto cfg = Config();
-  runner_->VerifyRuns(
-      {"/sbin/brctl addbr br",
-       "/bin/ifconfig br 1.2.3.4 netmask 255.255.255.252 up",
-       "/sbin/iptables -t mangle -A PREROUTING -i br -j MARK --set-mark 1 -w"});
+  Config();
 }
 
-TEST_F(ArcIpConfigTest, VerifyTeardownCmds) {
-  EXPECT_CALL(*datapath_, RemoveOutboundIPv4(StrEq("br")));
-  EXPECT_CALL(*datapath_,
-              RemoveInboundIPv4DNAT(StrEq("eth0"), StrEq("6.7.8.9")));
+TEST_F(ArcIpConfigTest, VerifySetupTeardownDatapathForAndroidDevice) {
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), StrEq("100.115.92.1")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arcbr0")));
 
-  std::vector<std::string> runs;
-  {
-    // Teardown called in dtor.
-    auto cfg = Config();
-    runner_->Capture(true, &runs);
-  }
-  FakeProcessRunner::VerifyRuns(
-      {"/bin/ip link delete veth_eth0",
-       "/sbin/iptables -t mangle -D PREROUTING -i br -j MARK --set-mark 1 "
-       "-w",
-       "/bin/ifconfig br down", "/sbin/brctl delbr br"},
-      runs);
+  AndroidConfig();
 }
 
-TEST_F(ArcIpConfigTest, VerifySetupCmdsForAndroidDevice) {
-  runner_->Capture(true);
-  auto cfg = AndroidConfig();
-  runner_->VerifyRuns(
-      {"/sbin/brctl addbr arcbr0",
-       "/bin/ifconfig arcbr0 100.115.92.1 netmask 255.255.255.252 up",
-       "/sbin/iptables -t mangle -A PREROUTING -i arcbr0 -j MARK --set-mark 1 "
-       "-w"});
-}
-
-TEST_F(ArcIpConfigTest, VerifySetupCmdsForLegacyAndroidDevice) {
+TEST_F(ArcIpConfigTest, VerifySetupTeardownDatapathForLegacyAndroidDevice) {
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), StrEq("100.115.92.1")))
+      .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddLegacyIPv4DNAT(StrEq("100.115.92.2")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddOutboundIPv4(StrEq("arcbr0")))
       .WillOnce(Return(true));
-
-  runner_->Capture(true);
-  auto cfg = LegacyAndroidConfig();
-  runner_->VerifyRuns({
-      "/sbin/brctl addbr arcbr0",
-      "/bin/ifconfig arcbr0 100.115.92.1 netmask 255.255.255.252 up",
-      "/sbin/iptables -t mangle -A PREROUTING -i arcbr0 -j MARK --set-mark 1 "
-      "-w",
-  });
-}
-
-TEST_F(ArcIpConfigTest, VerifyTeardownCmdsForAndroidDevice) {
-  std::vector<std::string> runs;
-  {
-    auto cfg = AndroidConfig();
-    runner_->Capture(true, &runs);
-  }
-  FakeProcessRunner::VerifyRuns(
-      {
-          "/sbin/iptables -t mangle -D PREROUTING -i arcbr0 -j MARK --set-mark "
-          "1 -w",
-          "/bin/ifconfig arcbr0 down",
-          "/sbin/brctl delbr arcbr0",
-      },
-      runs);
-}
-
-TEST_F(ArcIpConfigTest, VerifyTeardownCmdsForLegacyAndroidDevice) {
   EXPECT_CALL(*datapath_, RemoveOutboundIPv4(StrEq("arcbr0")));
   EXPECT_CALL(*datapath_, RemoveLegacyIPv4DNAT());
-  std::vector<std::string> runs;
-  {
-    auto cfg = LegacyAndroidConfig();
-    runner_->Capture(true, &runs);
-  }
-  FakeProcessRunner::VerifyRuns(
-      {"/sbin/iptables -t mangle -D PREROUTING -i arcbr0 -j MARK --set-mark "
-       "1 -w",
-       "/bin/ifconfig arcbr0 down", "/sbin/brctl delbr arcbr0"},
-      runs);
+  EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arcbr0")));
+
+  LegacyAndroidConfig();
 }
 
 TEST_F(ArcIpConfigTest, VerifyInitCmds) {

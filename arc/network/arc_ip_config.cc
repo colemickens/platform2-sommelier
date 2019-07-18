@@ -110,7 +110,7 @@ void ArcIpConfig::Setup() {
   LOG(INFO) << "Setting up " << ifname_ << " bridge: " << config_.br_ifname()
             << " guest_iface: " << config_.arc_ifname();
 
-  if (!AddBridge(config_.br_ifname(), config_.br_ipv4())) {
+  if (!datapath_->AddBridge(config_.br_ifname(), config_.br_ipv4())) {
     LOG(ERROR) << "Failed to create ARC bridge " << config_.br_ifname();
     return;
   }
@@ -155,38 +155,7 @@ void ArcIpConfig::Teardown() {
                          true /* log_failures */);
   }
 
-  RemoveBridge(config_.br_ifname());
-}
-
-bool ArcIpConfig::AddBridge(const std::string& ifname,
-                            const std::string& ipv4_addr) const {
-  // Configure the persistent Chrome OS bridge interface with static IP.
-  if (process_runner_->Run({kBrctlPath, "addbr", ifname}) != 0) {
-    return false;
-  }
-
-  if (process_runner_->Run({kIfConfigPath, ifname, ipv4_addr, "netmask",
-                            kDefaultNetmask, "up"}) != 0) {
-    RemoveBridge(ifname);
-    return false;
-  }
-
-  // See nat.conf in chromeos-nat-init for the rest of the NAT setup rules.
-  if (process_runner_->Run({kIpTablesPath, "-t", "mangle", "-A", "PREROUTING",
-                            "-i", ifname, "-j", "MARK", "--set-mark", "1",
-                            "-w"}) != 0) {
-    RemoveBridge(ifname);
-    return false;
-  }
-
-  return true;
-}
-
-void ArcIpConfig::RemoveBridge(const std::string& ifname) const {
-  process_runner_->Run({kIpTablesPath, "-t", "mangle", "-D", "PREROUTING", "-i",
-                        ifname, "-j", "MARK", "--set-mark", "1", "-w"});
-  process_runner_->Run({kIfConfigPath, ifname, "down"});
-  process_runner_->Run({kBrctlPath, "delbr", ifname});
+  datapath_->RemoveBridge(config_.br_ifname());
 }
 
 bool ArcIpConfig::Init(pid_t con_netns) {

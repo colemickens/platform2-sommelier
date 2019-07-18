@@ -20,6 +20,12 @@ class Datapath {
   explicit Datapath(MinijailedProcessRunner* process_runner);
   virtual ~Datapath() = default;
 
+  // The following are interface builders.
+
+  virtual bool AddBridge(const std::string& ifname,
+                         const std::string& ipv4_addr);
+  virtual void RemoveBridge(const std::string& ifname);
+
   // The following are iptables methods.
   // When specified, |ipv4_addr| is always singlar dotted-form (a.b.c.d)
   // IPv4 address (not a CIDR representation).

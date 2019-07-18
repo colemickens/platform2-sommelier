@@ -67,8 +67,6 @@ class ArcIpConfig {
  private:
   void Setup();
   void Teardown();
-  bool AddBridge(const std::string& ifname, const std::string& ipv4_addr) const;
-  void RemoveBridge(const std::string& ifname) const;
 
   void AssignTableIdForArcInterface();
 

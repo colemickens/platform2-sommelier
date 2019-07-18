@@ -15,6 +15,27 @@
 
 namespace arc_networkd {
 
+TEST(DatapathTest, AddBridge) {
+  FakeProcessRunner runner;
+  runner.Capture(true);
+  Datapath datapath(&runner);
+  datapath.AddBridge("br", "1.2.3.4");
+  runner.VerifyRuns(
+      {"/sbin/brctl addbr br",
+       "/bin/ifconfig br 1.2.3.4 netmask 255.255.255.252 up",
+       "/sbin/iptables -t mangle -A PREROUTING -i br -j MARK --set-mark 1 -w"});
+}
+
+TEST(DatapathTest, RemoveBridge) {
+  FakeProcessRunner runner;
+  runner.Capture(true);
+  Datapath datapath(&runner);
+  datapath.RemoveBridge("br");
+  runner.VerifyRuns(
+      {"/sbin/iptables -t mangle -D PREROUTING -i br -j MARK --set-mark 1 -w",
+       "/bin/ifconfig br down", "/sbin/brctl delbr br"});
+}
+
 TEST(DatapathTest, AddLegacyIPv4DNAT) {
   FakeProcessRunner runner;
   runner.Capture(true);

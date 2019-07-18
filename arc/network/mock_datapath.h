@@ -19,6 +19,10 @@ class MockDatapath : public Datapath {
   explicit MockDatapath(MinijailedProcessRunner* runner) : Datapath(runner) {}
   ~MockDatapath() = default;
 
+  MOCK_METHOD2(AddBridge,
+               bool(const std::string& ifname, const std::string& ipv4_addr));
+  MOCK_METHOD1(RemoveBridge, void(const std::string& ifname));
+
   MOCK_METHOD1(AddLegacyIPv4DNAT, bool(const std::string& ipv4_addr));
   MOCK_METHOD0(RemoveLegacyIPv4DNAT, void());
   MOCK_METHOD2(AddInboundIPv4DNAT,
