@@ -13,9 +13,14 @@
 // mount-encrypted. Consequently, closing the FD should be enough to delete
 // the file.
 
+#include "biod/tools/bio_crypto_init.h"
+
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#include <algorithm>
+#include <vector>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -26,7 +31,6 @@
 #include <brillo/flag_helper.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
-#include <chromeos/ec/ec_commands.h>
 
 #include "biod/biod_version.h"
 #include "biod/cros_fp_device.h"
@@ -72,13 +76,35 @@ bool WriteSeedToCrosFp(const brillo::SecureBlob& seed) {
     return false;
   }
 
-  biod::EcCommand<struct ec_params_fp_seed, biod::EmptyParam> cmd(
+  biod::EcCommand<biod::EmptyParam, struct ec_response_fp_info> cmd_fp_info(
+      EC_CMD_FP_INFO, biod::kVersionOne);
+  if (!cmd_fp_info.RunWithMultipleAttempts(
+          fd.get(), biod::CrosFpDevice::kMaxIoAttempts)) {
+    LOG(ERROR) << "Checking template format compatibility: failed to get FP "
+                  "information.";
+    return false;
+  }
+
+  const uint32_t firmware_fp_template_format_version =
+      cmd_fp_info.Resp()->template_version;
+  if (!biod::CrosFpTemplateVersionCompatible(
+          firmware_fp_template_format_version, FP_TEMPLATE_FORMAT_VERSION)) {
+    LOG(ERROR) << "Incompatible template version between FPMCU ("
+               << firmware_fp_template_format_version << ") and biod ("
+               << FP_TEMPLATE_FORMAT_VERSION << ").";
+    return false;
+  }
+
+  biod::EcCommand<struct ec_params_fp_seed, biod::EmptyParam> cmd_seed(
       EC_CMD_FP_SEED);
-  struct ec_params_fp_seed* req = cmd.Req();
-  req->struct_version = FP_TEMPLATE_FORMAT_VERSION;
+  struct ec_params_fp_seed* req = cmd_seed.Req();
+  // We have ensured that the format versions of the firmware and biod are
+  // compatible, so use the format version of the firmware.
+  req->struct_version =
+      static_cast<uint16_t>(firmware_fp_template_format_version);
   std::copy(seed.char_data(), seed.char_data() + sizeof(req->seed), req->seed);
 
-  if (!cmd.Run(fd.get())) {
+  if (!cmd_seed.Run(fd.get())) {
     LOG(ERROR) << "Failed to set TPM seed.";
     ret = false;
   } else {
@@ -87,7 +113,7 @@ bool WriteSeedToCrosFp(const brillo::SecureBlob& seed) {
   std::fill(req->seed, req->seed + sizeof(req->seed), 0);
   // Clear intermediate buffers. We expect the command to fail since the SBP
   // will reject the new seed.
-  cmd.Run(fd.get());
+  cmd_seed.Run(fd.get());
 
   return ret;
 }

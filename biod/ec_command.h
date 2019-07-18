@@ -32,6 +32,9 @@ constexpr size_t realsizeof() {
   return std::is_empty<T>::value ? 0 : sizeof(T);
 }
 
+constexpr uint32_t kVersionZero = 0;
+constexpr uint32_t kVersionOne = 1;
+
 static constexpr auto kEcCommandUninitializedResult =
     std::numeric_limits<uint32_t>::max();
 

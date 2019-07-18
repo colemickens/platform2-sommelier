@@ -142,6 +142,7 @@ if (use.test) {
       "fp_mode_test.cc",
       "power_button_filter_test.cc",
       "power_manager_client_test.cc",
+      "tools/bio_crypto_init_test.cc",
     ]
     deps = [
       ":fake_libbiod",

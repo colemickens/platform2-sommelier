@@ -25,10 +25,6 @@ namespace {
 
 // Upper bound of the host command packet transfer size.
 constexpr int kMaxPacketSize = 544;
-// Although very rare, we have seen device commands fail due
-// to ETIMEDOUT. For this reason, we attempt certain critical
-// device IO operation twice.
-constexpr int kMaxIoAttempts = 2;
 
 std::string FourCC(const uint32_t a) {
   return base::StringPrintf(
@@ -141,7 +137,7 @@ void CrosFpDevice::OnEventReadable() {
 
 bool CrosFpDevice::SetFpMode(const FpMode& mode) {
   EcCommand<struct ec_params_fp_mode, struct ec_response_fp_mode> cmd(
-      EC_CMD_FP_MODE, 0, {.mode = mode.RawVal()});
+      EC_CMD_FP_MODE, kVersionZero, {.mode = mode.RawVal()});
   bool ret = cmd.Run(cros_fd_.get());
   if (ret) {
     return true;
@@ -169,7 +165,8 @@ bool CrosFpDevice::SetFpMode(const FpMode& mode) {
 
 bool CrosFpDevice::GetFpMode(FpMode* mode) {
   EcCommand<struct ec_params_fp_mode, struct ec_response_fp_mode> cmd(
-      EC_CMD_FP_MODE, 0, {.mode = static_cast<uint32_t>(FP_MODE_DONT_CHANGE)});
+      EC_CMD_FP_MODE, kVersionZero,
+      {.mode = static_cast<uint32_t>(FP_MODE_DONT_CHANGE)});
   if (!cmd.Run(cros_fd_.get())) {
     LOG(ERROR) << "Failed to get FP mode from MCU.";
     return false;
@@ -237,9 +234,10 @@ EcCmdVersionSupportStatus CrosFpDevice::EcCmdVersionSupported(uint16_t cmd_code,
 }
 
 bool CrosFpDevice::UpdateFpInfo() {
-  EcCommand<EmptyParam, struct ec_response_fp_info> cmd(EC_CMD_FP_INFO, 1);
+  EcCommand<EmptyParam, struct ec_response_fp_info> cmd(EC_CMD_FP_INFO,
+                                                        kVersionOne);
   if (!cmd.Run(cros_fd_.get())) {
-    LOG(ERROR) << "Failed to get FP information";
+    LOG(ERROR) << "Failed to get FP information.";
     return false;
   }
   info_ = *cmd.Resp();

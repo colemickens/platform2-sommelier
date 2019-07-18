@@ -69,6 +69,11 @@ class CrosFpDevice : public CrosFpDeviceInterface {
   // Kernel device exposing the MCU command interface.
   static constexpr char kCrosFpPath[] = "/dev/cros_fp";
 
+  // Although very rare, we have seen device commands fail due
+  // to ETIMEDOUT. For this reason, we attempt certain critical
+  // device IO operation twice.
+  static constexpr int kMaxIoAttempts = 2;
+
   static constexpr int kLastTemplate = -1;
 
  private:
