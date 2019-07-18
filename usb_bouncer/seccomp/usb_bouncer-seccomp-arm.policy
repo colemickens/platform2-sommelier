@@ -28,6 +28,7 @@ getuid32: 1
 lstat64: 1
 mkdirat: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 openat: 1
 poll: 1
 read: 1

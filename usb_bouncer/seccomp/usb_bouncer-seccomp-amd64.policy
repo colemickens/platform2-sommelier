@@ -28,6 +28,7 @@ lstat: 1
 lseek: 1
 mkdirat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 openat: 1
 poll: 1
 read: 1
