@@ -1632,10 +1632,36 @@ void LegacyCryptohomeInterfaceAdaptor::TpmGetVersionStructured(
                                                            uint64_t,
                                                            std::string>>
         response) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared = std::make_shared<SharedDBusMethodResponse<
+      uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, std::string>>(
+      std::move(response));
+
+  tpm_manager::GetTpmStatusRequest request;
+  request.set_include_version_info(true);
+  tpm_ownership_proxy_->GetTpmStatusAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::TpmGetVersionStructuredOnSuccess,
+          base::Unretained(this), response_shared),
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardError<
+              uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, std::string>,
+          base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::TpmGetVersionStructuredOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<uint32_t,
+                                             uint64_t,
+                                             uint32_t,
+                                             uint32_t,
+                                             uint64_t,
+                                             std::string>> response,
+    const tpm_manager::GetTpmStatusReply& reply) {
+  response->Return(
+      reply.version_info().family(), reply.version_info().spec_level(),
+      reply.version_info().manufacturer(), reply.version_info().tpm_model(),
+      reply.version_info().firmware_version(),
+      reply.version_info().vendor_specific());
 }
 
 void LegacyCryptohomeInterfaceAdaptor::Pkcs11IsTpmTokenReady(
