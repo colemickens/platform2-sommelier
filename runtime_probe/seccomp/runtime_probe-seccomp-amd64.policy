@@ -89,3 +89,4 @@ sendto: 1
 ftruncate: 1
 geteuid: 1
 sendmsg: 1
+select: 1
