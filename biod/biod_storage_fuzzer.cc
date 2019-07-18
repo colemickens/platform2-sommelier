@@ -14,6 +14,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/values.h>
+#include <openssl/sha.h>
 
 class Environment {
  public:
@@ -25,33 +26,46 @@ class TestRecord : public biod::BiometricsManager::Record {
   TestRecord(const std::string& id,
              const std::string& user_id,
              const std::string& label,
+             const std::vector<uint8_t>& validation_val,
              const std::string& data)
-      : id_(id), user_id_(user_id), label_(label), data_(data) {}
+      : id_(id),
+        user_id_(user_id),
+        label_(label),
+        validation_val_(validation_val),
+        data_(data) {}
 
   const std::string& GetId() const override { return id_; }
   const std::string& GetUserId() const override { return user_id_; }
   const std::string& GetLabel() const override { return label_; }
+  const std::vector<uint8_t>& GetValidationVal() const override {
+    return validation_val_;
+  }
   const std::string& GetData() const { return data_; }
 
   bool SetLabel(std::string label) override { return true; }
   bool Remove() override { return true; }
+  bool SupportsPositiveMatchSecret() const override { return true; }
 
  private:
   std::string id_;
   std::string user_id_;
   std::string label_;
+  std::vector<uint8_t> validation_val_;
   std::string data_;
 };
 
 static std::vector<TestRecord> records;
 
-static bool LoadRecord(const std::string& user_id,
+static bool LoadRecord(int record_format_version,
+                       const std::string& user_id,
                        const std::string& label,
                        const std::string& record_id,
+                       const std::vector<uint8_t>& validation_val,
                        const base::Value& data_value) {
   std::string data;
   data_value.GetAsString(&data);
-  records.push_back(TestRecord(record_id, user_id, label, data));
+  records.push_back(
+      TestRecord(record_id, user_id, label, validation_val, data));
   return true;
 }
 
@@ -71,6 +85,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   const std::string id = data_provider.ConsumeBytesAsString(id_len);
   const std::string user_id = data_provider.ConsumeBytesAsString(user_id_len);
   const std::string label = data_provider.ConsumeBytesAsString(label_len);
+  std::vector<uint8_t> validation_val =
+      data_provider.ConsumeBytes<uint8_t>(SHA256_DIGEST_LENGTH);
+
   std::string biod_data;
 
   if (data_provider.remaining_bytes() > data_len)
@@ -82,8 +99,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         biod::BiodStorage("BiometricsManager", base::Bind(&LoadRecord));
   biod_storage.set_allow_access(true);
 
-  std::unique_ptr<TestRecord> record
-    (new TestRecord(id, user_id, label, (const std::string) biod_data));
+  std::unique_ptr<TestRecord> record(new TestRecord(
+      id, user_id, label, validation_val, (const std::string)biod_data));
 
   base::FilePath root_path("/tmp/biod_storage_fuzzing_data");
   biod_storage.SetRootPathForTesting(root_path);
