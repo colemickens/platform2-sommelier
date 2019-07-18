@@ -51,6 +51,12 @@ class DlcServiceDBusAdaptor
                     DlcModuleList* dlc_module_list_out) override;
 
  private:
+  // Creates the necessary directories and images for DLC installation. Will set
+  // |path| to the top DLC directory for cleanup scoping.
+  bool CreateDlc(brillo::ErrorPtr* err,
+                 const std::string& id,
+                 base::FilePath* path);
+
   // Scans a specific DLC |id| to discover all its packages. Currently, we only
   // support one package per DLC. If at some point in the future we decided to
   // support multiple packages, then appropriate changes to this function is

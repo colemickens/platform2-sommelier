@@ -56,7 +56,8 @@ bool GetDlcManifest(const base::FilePath& dlc_manifest_path,
                     imageloader::Manifest* manifest_out) {
   std::string dlc_json_str;
   base::FilePath dlc_manifest_file =
-      dlc_manifest_path.Append(id).Append(package).Append(kManifestName);
+      GetDlcModulePackagePath(dlc_manifest_path, id, package)
+          .Append(kManifestName);
 
   if (!base::ReadFileToString(dlc_manifest_file, &dlc_json_str)) {
     LOG(ERROR) << "Failed to read DLC manifest file '"

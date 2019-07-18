@@ -20,6 +20,8 @@
 #include "dlcservice/mock_boot_device.h"
 #include "dlcservice/utils.h"
 
+using testing::_;
+
 namespace dlcservice {
 
 namespace {
@@ -81,7 +83,7 @@ class DlcServiceDBusAdaptorTest : public testing::Test {
     mock_boot_device_ = std::make_unique<MockBootDevice>();
     ON_CALL(*(mock_boot_device_.get()), GetBootDevice())
         .WillByDefault(testing::Return("/dev/sdb5"));
-    ON_CALL(*(mock_boot_device_.get()), IsRemovableDevice(testing::_))
+    ON_CALL(*(mock_boot_device_.get()), IsRemovableDevice(_))
         .WillByDefault(testing::Return(false));
     mock_image_loader_proxy_ =
         std::make_unique<org::chromium::ImageLoaderInterfaceProxyMock>();
@@ -95,6 +97,18 @@ class DlcServiceDBusAdaptorTest : public testing::Test {
         std::move(mock_update_engine_proxy_),
         std::make_unique<BootSlot>(std::move(mock_boot_device_)),
         manifest_path_, content_path_);
+  }
+
+  void SetMountPath(const std::string& mount_path_expected) {
+    ON_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
+        .WillByDefault(DoAll(testing::SetArgPointee<3>(mount_path_expected),
+                             testing::Return(true)));
+    ON_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _))
+        .WillByDefault(testing::Return(true));
+    std::string update_status_idle = update_engine::kUpdateStatusIdle;
+    ON_CALL(*mock_update_engine_proxy_ptr_, GetStatus(_, _, _, _, _, _, _))
+        .WillByDefault(DoAll(testing::SetArgPointee<2>(update_status_idle),
+                             testing::Return(true)));
   }
 
  protected:
@@ -127,15 +141,11 @@ TEST_F(DlcServiceDBusAdaptorTest, GetInstalledTest) {
 }
 
 TEST_F(DlcServiceDBusAdaptorTest, UninstallTest) {
-  ON_CALL(*mock_image_loader_proxy_ptr_,
-          UnloadDlcImage(testing::_, testing::_, testing::_, testing::_,
-                         testing::_))
+  ON_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
       .WillByDefault(
           DoAll(testing::SetArgPointee<2>(true), testing::Return(true)));
   std::string update_status_idle = update_engine::kUpdateStatusIdle;
-  ON_CALL(*mock_update_engine_proxy_ptr_,
-          GetStatus(testing::_, testing::_, testing::_, testing::_, testing::_,
-                    testing::_, testing::_))
+  ON_CALL(*mock_update_engine_proxy_ptr_, GetStatus(_, _, _, _, _, _, _))
       .WillByDefault(DoAll(testing::SetArgPointee<2>(update_status_idle),
                            testing::Return(true)));
 
@@ -148,9 +158,7 @@ TEST_F(DlcServiceDBusAdaptorTest, UninstallFailureTest) {
 }
 
 TEST_F(DlcServiceDBusAdaptorTest, UninstallUnmountFailureTest) {
-  ON_CALL(*mock_image_loader_proxy_ptr_,
-          UnloadDlcImage(testing::_, testing::_, testing::_, testing::_,
-                         testing::_))
+  ON_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
       .WillByDefault(
           DoAll(testing::SetArgPointee<2>(false), testing::Return(true)));
 
@@ -169,24 +177,9 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
   dlc_info->set_dlc_id(kSecondDlc);
   dlc_module_list.set_omaha_url(omaha_url_default);
 
-  std::string mount_path_expected = "/run/imageloader/dlc-id/package";
-  ON_CALL(*mock_image_loader_proxy_ptr_,
-          LoadDlcImage(testing::_, testing::_, testing::_, testing::_,
-                       testing::_, testing::_))
-      .WillByDefault(DoAll(testing::SetArgPointee<3>(mount_path_expected),
-                           testing::Return(true)));
-  ON_CALL(*mock_update_engine_proxy_ptr_,
-          AttemptInstall(testing::_, testing::_, testing::_))
-      .WillByDefault(testing::Return(true));
-  std::string update_status_idle = update_engine::kUpdateStatusIdle;
-  ON_CALL(*mock_update_engine_proxy_ptr_,
-          GetStatus(testing::_, testing::_, testing::_, testing::_, testing::_,
-                    testing::_, testing::_))
-      .WillByDefault(DoAll(testing::SetArgPointee<2>(update_status_idle),
-                           testing::Return(true)));
-  EXPECT_CALL(
-      *mock_update_engine_proxy_ptr_,
-      AttemptInstall(ProtoHasUrl(omaha_url_default), testing::_, testing::_))
+  SetMountPath("/run/imageloader/dlc-id/package");
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
+              AttemptInstall(ProtoHasUrl(omaha_url_default), _, _))
       .Times(1);
 
   EXPECT_TRUE(dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list));
@@ -208,6 +201,42 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
   EXPECT_EQ(permissions, expected_permissions);
 }
 
+TEST_F(DlcServiceDBusAdaptorTest, InstallFailureInstalledSticky) {
+  const std::string omaha_url_default = "";
+  DlcModuleList dlc_module_list;
+  DlcModuleInfo* dlc_info = dlc_module_list.add_dlc_module_infos();
+  dlc_info->set_dlc_id(kFirstDlc);
+
+  SetMountPath("/run/imageloader/dlc-id/package");
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
+              AttemptInstall(ProtoHasUrl(omaha_url_default), _, _))
+      .Times(0);
+
+  EXPECT_FALSE(dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list));
+  base::RunLoop().RunUntilIdle();
+  EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
+}
+
+TEST_F(DlcServiceDBusAdaptorTest, InstallFailureInstallingCleanup) {
+  const std::string omaha_url_default = "";
+  DlcModuleList dlc_module_list;
+  for (const std::string& dlc_id : {kSecondDlc, kSecondDlc}) {
+    DlcModuleInfo* dlc_info = dlc_module_list.add_dlc_module_infos();
+    dlc_info->set_dlc_id(dlc_id);
+  }
+
+  SetMountPath("/run/imageloader/dlc-id/package");
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
+              AttemptInstall(ProtoHasUrl(omaha_url_default), _, _))
+      .Times(0);
+
+  EXPECT_FALSE(dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list));
+  base::RunLoop().RunUntilIdle();
+
+  EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
+  EXPECT_FALSE(base::PathExists(content_path_.Append(kSecondDlc)));
+}
+
 TEST_F(DlcServiceDBusAdaptorTest, InstallUrlTest) {
   const std::string omaha_url_override = "http://random.url";
   DlcModuleList dlc_module_list;
@@ -215,18 +244,14 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallUrlTest) {
   dlc_info->set_dlc_id(kSecondDlc);
   dlc_module_list.set_omaha_url(omaha_url_override);
 
-  ON_CALL(*mock_update_engine_proxy_ptr_,
-          AttemptInstall(testing::_, testing::_, testing::_))
+  ON_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _))
       .WillByDefault(testing::Return(true));
   std::string update_status_idle = update_engine::kUpdateStatusIdle;
-  ON_CALL(*mock_update_engine_proxy_ptr_,
-          GetStatus(testing::_, testing::_, testing::_, testing::_, testing::_,
-                    testing::_, testing::_))
+  ON_CALL(*mock_update_engine_proxy_ptr_, GetStatus(_, _, _, _, _, _, _))
       .WillByDefault(DoAll(testing::SetArgPointee<2>(update_status_idle),
                            testing::Return(true)));
-  EXPECT_CALL(
-      *mock_update_engine_proxy_ptr_,
-      AttemptInstall(ProtoHasUrl(omaha_url_override), testing::_, testing::_))
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
+              AttemptInstall(ProtoHasUrl(omaha_url_override), _, _))
       .Times(1);
 
   dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list);
