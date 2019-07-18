@@ -128,27 +128,6 @@ class ScopedMount {
   DISALLOW_COPY_AND_ASSIGN(ScopedMount);
 };
 
-// A class that restores a mount namespace when it goes out of scope. This can
-// be done by entering another process' mount namespace by using
-// CreateScopedMountNamespaceForPid(), or supplying a mount namespace FD
-// directly.
-class ScopedMountNamespace {
- public:
-  // Enters the process identified by |pid|'s mount namespace and returns a
-  // unique_ptr that restores the original mount namespace when it goes out of
-  // scope.
-  static std::unique_ptr<ScopedMountNamespace> CreateScopedMountNamespaceForPid(
-      pid_t pid);
-
-  explicit ScopedMountNamespace(base::ScopedFD mount_namespace_fd);
-  ~ScopedMountNamespace();
-
- private:
-  base::ScopedFD mount_namespace_fd_;
-
-  DISALLOW_COPY_AND_ASSIGN(ScopedMountNamespace);
-};
-
 // Resolves |path| to an absolute path that does not include symbolic links
 // or the special .  or ..  directory entries.
 base::FilePath Realpath(const base::FilePath& path);

@@ -566,39 +566,6 @@ std::unique_ptr<ScopedMount> ScopedMount::CreateScopedBindMount(
   return std::make_unique<ScopedMount>(new_path, mounter, false /*is_loop*/);
 }
 
-ScopedMountNamespace::ScopedMountNamespace(base::ScopedFD mount_namespace_fd)
-    : mount_namespace_fd_(std::move(mount_namespace_fd)) {}
-
-ScopedMountNamespace::~ScopedMountNamespace() {
-  PLOG_IF(ERROR, setns(mount_namespace_fd_.get(), CLONE_NEWNS) != 0)
-      << "Ignoring failure to restore original mount namespace";
-}
-
-// static
-std::unique_ptr<ScopedMountNamespace>
-ScopedMountNamespace::CreateScopedMountNamespaceForPid(pid_t pid) {
-  constexpr char kCurrentMountNamespacePath[] = "/proc/self/ns/mnt";
-  base::ScopedFD original_mount_namespace_fd(
-      open(kCurrentMountNamespacePath, O_RDONLY));
-  if (!original_mount_namespace_fd.is_valid()) {
-    PLOG(ERROR) << "Failed to get the original mount namespace FD";
-    return nullptr;
-  }
-  base::ScopedFD mount_namespace_fd(
-      open(base::StringPrintf("/proc/%d/ns/mnt", pid).c_str(), O_RDONLY));
-  if (!mount_namespace_fd.is_valid()) {
-    PLOG(ERROR) << "Failed to get PID " << pid << "'s mount namespace FD";
-    return nullptr;
-  }
-
-  if (setns(mount_namespace_fd.get(), CLONE_NEWNS) != 0) {
-    PLOG(ERROR) << "Failed to enter PID " << pid << "'s mount namespace";
-    return nullptr;
-  }
-  return std::make_unique<ScopedMountNamespace>(
-      std::move(original_mount_namespace_fd));
-}
-
 base::FilePath Realpath(const base::FilePath& path) {
   // We cannot use base::NormalizeFilePath because the function fails
   // if |path| points to a directory (for Windows compatibility.)

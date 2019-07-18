@@ -42,6 +42,7 @@
 #include <base/timer/elapsed_timer.h>
 #include <brillo/cryptohome.h>
 #include <brillo/file_utils.h>
+#include <brillo/scoped_mount_namespace.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <crypto/random.h>
 #include <metrics/bootstat.h>
@@ -2251,8 +2252,8 @@ void ArcSetup::OnPreChroot() {
 
   // Enter the container namespace since the paths we want to re-label here
   // are easier to access from inside of it.
-  std::unique_ptr<ScopedMountNamespace> container_mount_ns =
-      ScopedMountNamespace::CreateScopedMountNamespaceForPid(container_pid);
+  std::unique_ptr<brillo::ScopedMountNamespace> container_mount_ns =
+      brillo::ScopedMountNamespace::CreateForPid(container_pid);
   PLOG_IF(FATAL, !container_mount_ns)
       << "Failed to enter the container mount namespace";
 

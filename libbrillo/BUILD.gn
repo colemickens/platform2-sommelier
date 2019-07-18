@@ -73,6 +73,7 @@ libbrillo_sublibs = [
       "brillo/process_information.cc",
       "brillo/process_reaper.cc",
       "brillo/safe_fd.cc",
+      "brillo/scoped_mount_namespace.cc",
       "brillo/secure_blob.cc",
       "brillo/strings/string_utils.cc",
       "brillo/syslog_logging.cc",
