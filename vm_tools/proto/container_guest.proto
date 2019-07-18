@@ -146,6 +146,9 @@ message InstallLinuxPackageRequest {
   // Package ID to install in the form "package_name;version;arch;data". Used
   // when |file_path| is empty.
   string package_id = 5;
+
+  // Command identifier to track installation progress.
+  string command_uuid = 6;
 }
 
 // Response sent back from a request to install a Linux package.
