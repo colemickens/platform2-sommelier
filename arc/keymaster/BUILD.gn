@@ -78,6 +78,7 @@ config("libkeymaster_config") {
   cflags = [
     "-Wno-defaulted-function-deleted",
     "-Wno-format-nonliteral",
+    "-Wno-implicit-fallthrough",
   ]
 }
 
