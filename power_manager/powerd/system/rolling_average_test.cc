@@ -84,5 +84,23 @@ TEST(RollingAverageTest, Clear) {
   EXPECT_DOUBLE_EQ(0.0, average.GetAverage());
 }
 
+TEST(RollingAverageTest, HasMaxSamples) {
+  RollingAverage average(3);
+  average.AddSample(1.0, base::TimeTicks());
+  EXPECT_EQ(false, average.HasMaxSamples());
+  average.AddSample(2.0, base::TimeTicks());
+  EXPECT_EQ(false, average.HasMaxSamples());
+  average.AddSample(3.0, base::TimeTicks());
+  EXPECT_EQ(true, average.HasMaxSamples());
+  average.AddSample(4.0, base::TimeTicks());
+  EXPECT_EQ(true, average.HasMaxSamples());
+  average.Clear();
+  EXPECT_EQ(false, average.HasMaxSamples());
+  average.AddSample(1.0, base::TimeTicks());
+  EXPECT_EQ(false, average.HasMaxSamples());
+  average.AddSample(2.0, base::TimeTicks());
+  EXPECT_EQ(false, average.HasMaxSamples());
+}
+
 }  // namespace system
 }  // namespace power_manager

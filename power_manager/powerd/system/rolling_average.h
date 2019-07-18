@@ -38,6 +38,9 @@ class RollingAverage {
   // Clears all samples.
   void Clear();
 
+  // Returns True if size of |samples_| is equal to |window_size|.
+  bool HasMaxSamples() const;
+
  private:
   // A timestamped data point.
   struct Sample {

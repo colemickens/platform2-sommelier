@@ -51,6 +51,10 @@ void RollingAverage::Clear() {
   samples_ = std::queue<Sample>();
 }
 
+bool RollingAverage::HasMaxSamples() const {
+  return samples_.size() >= window_size_;
+}
+
 void RollingAverage::DeleteSample() {
   if (!samples_.empty()) {
     running_total_ -= samples_.front().value;

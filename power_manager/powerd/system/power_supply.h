@@ -518,6 +518,13 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // update.
   base::TimeDelta poll_delay_;
 
+  // Amount of time to wait before updating |power_status_| again after an
+  // update when the number of samples is less than |kMaxCurrentSamplesPref|.
+  base::TimeDelta poll_delay_initial_;
+
+  // Set to true when number of battery samplings is |kMaxCurrentSamplesPref|.
+  bool has_max_samples_ = false;
+
   // Calls HandlePollTimeout().
   base::OneShotTimer poll_timer_;
 

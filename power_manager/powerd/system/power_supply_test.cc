@@ -843,6 +843,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
   WriteDefaultValues(PowerSource::AC);
 
   const base::TimeDelta kPollDelay = base::TimeDelta::FromSeconds(30);
+  const base::TimeDelta kPollDelayInitial = base::TimeDelta::FromSeconds(1);
   const base::TimeDelta kStartupDelay = base::TimeDelta::FromSeconds(6);
   const base::TimeDelta kACDelay = base::TimeDelta::FromSeconds(7);
   const base::TimeDelta kBatteryDelay = base::TimeDelta::FromSeconds(8);
@@ -851,6 +852,8 @@ TEST_F(PowerSupplyTest, PollDelays) {
       base::TimeDelta::FromMilliseconds(PowerSupply::kBatteryStabilizedSlackMs);
 
   prefs_.SetInt64(kBatteryPollIntervalPref, kPollDelay.InMilliseconds());
+  prefs_.SetInt64(kBatteryPollIntervalInitialPref,
+                  kPollDelayInitial.InMilliseconds());
   prefs_.SetInt64(kBatteryStabilizedAfterStartupMsPref,
                   kStartupDelay.InMilliseconds());
   prefs_.SetInt64(kBatteryStabilizedAfterLinePowerConnectedMsPref,
@@ -859,6 +862,9 @@ TEST_F(PowerSupplyTest, PollDelays) {
                   kBatteryDelay.InMilliseconds());
   prefs_.SetInt64(kBatteryStabilizedAfterResumeMsPref,
                   kResumeDelay.InMilliseconds());
+
+  // Set max sample to 3 for simplicity.
+  prefs_.SetInt64(kMaxCurrentSamplesPref, 3);
 
   base::TimeTicks current_time = kStartTime;
   Init();
@@ -872,15 +878,36 @@ TEST_F(PowerSupplyTest, PollDelays) {
   EXPECT_EQ((kStartupDelay + kSlack).InMilliseconds(),
             test_api_->current_poll_delay().InMilliseconds());
 
-  // After enough time has elapsed, the battery times should be reported.
+  // After enough time has elapsed, the battery times should not be reported
+  // until the we have |kMaxCurrentSamplesPref| samples.
   current_time += kStartupDelay + kSlack;
   test_api_->SetCurrentTime(current_time);
   ASSERT_TRUE(test_api_->TriggerPollTimeout());
   status = power_supply_->GetPowerStatus();
   EXPECT_TRUE(status.line_power_on);
-  EXPECT_FALSE(status.is_calculating_battery_time);
+  EXPECT_TRUE(status.is_calculating_battery_time);
+  EXPECT_EQ(kPollDelayInitial.InMilliseconds(),
+            test_api_->current_poll_delay().InMilliseconds());
+  EXPECT_TRUE(status.is_calculating_battery_time);
+
+  // 2nd sample
+  current_time += kPollDelayInitial;
+  test_api_->SetCurrentTime(current_time);
+  ASSERT_TRUE(test_api_->TriggerPollTimeout());
+  status = power_supply_->GetPowerStatus();
+  EXPECT_EQ(kPollDelayInitial.InMilliseconds(),
+            test_api_->current_poll_delay().InMilliseconds());
+  EXPECT_TRUE(status.is_calculating_battery_time);
+
+  // 3rd sample. We should start reporting when the number of samples is
+  // equal to |kMaxCurrentSamplesPref|.
+  current_time += kPollDelayInitial;
+  test_api_->SetCurrentTime(current_time);
+  ASSERT_TRUE(test_api_->TriggerPollTimeout());
+  status = power_supply_->GetPowerStatus();
   EXPECT_EQ(kPollDelay.InMilliseconds(),
             test_api_->current_poll_delay().InMilliseconds());
+  EXPECT_FALSE(status.is_calculating_battery_time);
 
   // Polling should stop when the system is about to suspend.
   power_supply_->SetSuspended(true);
@@ -899,12 +926,27 @@ TEST_F(PowerSupplyTest, PollDelays) {
   EXPECT_EQ((kResumeDelay + kSlack).InMilliseconds(),
             test_api_->current_poll_delay().InMilliseconds());
 
-  // Check that the updated times are returned after a delay.
+  // Check that the polling starts after |kResumeDelay| + |kSlack| and the
+  // updated time returns after having |kMaxCurrentSamplesPref| samples.
   current_time += kResumeDelay + kSlack;
   test_api_->SetCurrentTime(current_time);
   ASSERT_TRUE(test_api_->TriggerPollTimeout());
   status = power_supply_->GetPowerStatus();
   EXPECT_FALSE(status.line_power_on);
+  EXPECT_TRUE(status.is_calculating_battery_time);
+
+  // 2nd sample
+  current_time += kPollDelayInitial;
+  test_api_->SetCurrentTime(current_time);
+  ASSERT_TRUE(test_api_->TriggerPollTimeout());
+  status = power_supply_->GetPowerStatus();
+  EXPECT_TRUE(status.is_calculating_battery_time);
+
+  // 3rd sample. We should start reporting estimates now.
+  current_time += kPollDelayInitial;
+  test_api_->SetCurrentTime(current_time);
+  ASSERT_TRUE(test_api_->TriggerPollTimeout());
+  status = power_supply_->GetPowerStatus();
   EXPECT_FALSE(status.is_calculating_battery_time);
 
   // Connect AC, report a udev event, and check that the status is updated.
@@ -916,12 +958,28 @@ TEST_F(PowerSupplyTest, PollDelays) {
   EXPECT_EQ((kACDelay + kSlack).InMilliseconds(),
             test_api_->current_poll_delay().InMilliseconds());
 
-  // After the delay, estimates should be made again.
+  // After the delay, estimates should be made again after after having
+  // |kMaxCurrentSamplesPref| samples because we clear previous data as
+  // AC power can be vary a lot between different chargers.
   current_time += kACDelay + kSlack;
   test_api_->SetCurrentTime(current_time);
   ASSERT_TRUE(test_api_->TriggerPollTimeout());
   status = power_supply_->GetPowerStatus();
   EXPECT_TRUE(status.line_power_on);
+  EXPECT_TRUE(status.is_calculating_battery_time);
+
+  // 2nd sample
+  current_time += kPollDelayInitial;
+  test_api_->SetCurrentTime(current_time);
+  ASSERT_TRUE(test_api_->TriggerPollTimeout());
+  status = power_supply_->GetPowerStatus();
+  EXPECT_TRUE(status.is_calculating_battery_time);
+
+  // 3rd sample. We should start reporting estimates now.
+  current_time += kPollDelayInitial;
+  test_api_->SetCurrentTime(current_time);
+  ASSERT_TRUE(test_api_->TriggerPollTimeout());
+  status = power_supply_->GetPowerStatus();
   EXPECT_FALSE(status.is_calculating_battery_time);
 
   // Now test the delay when going back to battery power.
@@ -934,7 +992,8 @@ TEST_F(PowerSupplyTest, PollDelays) {
   EXPECT_EQ((kBatteryDelay + kSlack).InMilliseconds(),
             test_api_->current_poll_delay().InMilliseconds());
 
-  // After the delay, estimates should be made again.
+  // After the delay, estimates should be made again on the first sampling
+  // because switching from AC to battery power won't clear previous data.
   current_time += kBatteryDelay + kSlack;
   test_api_->SetCurrentTime(current_time);
   ASSERT_TRUE(test_api_->TriggerPollTimeout());
@@ -958,6 +1017,10 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   // advance the clock so the current will be used.
   UpdateChargeAndCurrent(0.5, 0.5);
   SetStabilizedTime();
+
+  // First update should report as "calculating" number of sample is less than
+  // |kMaxCurrentSamplesPref|.
+  EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
   EXPECT_EQ(MakeEstimateString(false, 0, 3600), UpdateAndGetEstimateString());
 
   // Let half an hour pass and report that the battery is 75% full.
@@ -986,8 +1049,10 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
 
   // After the current has had time to stabilize, the average should be
-  // reset and the time-to-empty should be estimated.
+  // reset and the time-to-empty should be estimated after having
+  // |kMaxCurrentSamplesPref| samples.
   SetStabilizedTime();
+  EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
   EXPECT_EQ(MakeEstimateString(false, 3600, 0), UpdateAndGetEstimateString());
 
   // Thirty minutes later, decrease the charge and report a significantly
@@ -1019,6 +1084,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   UpdateChargeAndCurrent(0.5, 0.25);
   EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
   SetStabilizedTime();
+  EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
   EXPECT_EQ(MakeEstimateString(false, 0, 7200), UpdateAndGetEstimateString());
 
   // Go back to battery and check that the previous on-battery current sample
@@ -1041,6 +1107,7 @@ TEST_F(PowerSupplyTest, UsbBatteryTimeEstimates) {
 
   // Start out charging on USB power.
   SetStabilizedTime();
+  EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
   EXPECT_EQ(MakeEstimateString(false, 0, 1800), UpdateAndGetEstimateString());
 
   // Now discharge while still on USB. Since the averaged charge is still
@@ -1066,6 +1133,7 @@ TEST_F(PowerSupplyTest, UsbBatteryTimeEstimates) {
   UpdateChargeAndCurrent(0.5, -1.0);
   EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
   SetStabilizedTime();
+  EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
   EXPECT_EQ(MakeEstimateString(false, 1800, 0), UpdateAndGetEstimateString());
 
   // Go back to USB.
@@ -1076,12 +1144,14 @@ TEST_F(PowerSupplyTest, UsbBatteryTimeEstimates) {
   // Since different USB chargers can provide different current, the previous
   // on-line-power average should be thrown out.
   SetStabilizedTime();
+  EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
   EXPECT_EQ(MakeEstimateString(false, 0, 1800), UpdateAndGetEstimateString());
 }
 
 TEST_F(PowerSupplyTest, BatteryTimeEstimatesWithZeroCurrent) {
   WriteDefaultValues(PowerSource::AC);
   UpdateChargeAndCurrent(0.5, 0.1 * kEpsilon);
+  prefs_.SetInt64(kMaxCurrentSamplesPref, 1);
   Init();
 
   // When the only available current readings are close to 0 (which would
@@ -1358,6 +1428,7 @@ TEST_F(PowerSupplyTest, ShutdownPercentAffectsBatteryTime) {
   WriteDefaultValues(PowerSource::BATTERY);
   UpdateChargeAndCurrent(0.5, kCurrent);
   prefs_.SetDouble(kPowerSupplyFullFactorPref, 1.0);
+  prefs_.SetInt64(kMaxCurrentSamplesPref, 1);
   Init();
   SetStabilizedTime();
 
@@ -1471,6 +1542,7 @@ TEST_F(PowerSupplyTest, LowBatteryShutdownSafetyPercent) {
   UpdateChargeAndCurrent(0.5, kCurrent);
   prefs_.SetInt64(kLowBatteryShutdownTimePref, 180);
   prefs_.SetDouble(kPowerSupplyFullFactorPref, 1.0);
+  prefs_.SetInt64(kMaxCurrentSamplesPref, 1);
   Init();
 
   // The system shouldn't shut down initially since it's on AC power and a
@@ -1526,7 +1598,7 @@ TEST_F(PowerSupplyTest, RegisterForUdevEvents) {
 TEST_F(PowerSupplyTest, IgnoreSpuriousUdevEvents) {
   TestObserver observer(power_supply_.get());
   WriteDefaultValues(PowerSource::AC);
-  prefs_.SetInt64(kMaxCurrentSamplesPref, 3);
+  prefs_.SetInt64(kMaxCurrentSamplesPref, 1);
   prefs_.SetInt64(kLowBatteryShutdownTimePref, 0);
   prefs_.SetInt64(kBatteryStabilizedAfterStartupMsPref, 0);
   prefs_.SetInt64(kBatteryStabilizedAfterLinePowerConnectedMsPref, 0);

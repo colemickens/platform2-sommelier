@@ -50,6 +50,8 @@ const char kAlsSmoothingConstantPref[] = "als_smoothing_constant";
 const char kRequireUsbInputDeviceToSuspendPref[] =
     "require_usb_input_device_to_suspend";
 const char kBatteryPollIntervalPref[] = "battery_poll_interval_ms";
+const char kBatteryPollIntervalInitialPref[] =
+    "battery_poll_interval_initial_ms";
 const char kBatteryStabilizedAfterStartupMsPref[] =
     "battery_stabilized_after_startup_ms";
 const char kBatteryStabilizedAfterLinePowerConnectedMsPref[] =

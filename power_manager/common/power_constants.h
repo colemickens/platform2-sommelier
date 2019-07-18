@@ -123,12 +123,17 @@ extern const char kAlsSmoothingConstantPref[];
 // input device is connected.
 extern const char kRequireUsbInputDeviceToSuspendPref[];
 
-// Milliseconds to wait before polling the power status again.
+// Milliseconds to wait before polling the power status again after the number
+// of samples is equal to |kMaxCurrentSamplesPref|.
 extern const char kBatteryPollIntervalPref[];
 
+// Milliseconds to wait before polling the power status again when the number of
+// samples is less than |kMaxCurrentSamplesPref|.
+extern const char kBatteryPollIntervalInitialPref[];
+
 // Milliseconds to wait after boot, line power being connected or disconnected,
-// or the system resuming before collecting the battery current to provide
-// time-to-empty/full estimates.
+// or the system resuming before start collecting the battery current to
+// provide time-to-empty/full estimates.
 extern const char kBatteryStabilizedAfterStartupMsPref[];
 extern const char kBatteryStabilizedAfterLinePowerConnectedMsPref[];
 extern const char kBatteryStabilizedAfterLinePowerDisconnectedMsPref[];
@@ -137,7 +142,8 @@ extern const char kBatteryStabilizedAfterResumeMsPref[];
 // If true, multiple battery directories will be read from sysfs if present.
 extern const char kMultipleBatteriesPref[];
 
-// Maximum number of current and charge samples that should be averaged.
+// Number of current and charge samples that need to be averaged before
+// providing time-to-empty/full estimates.
 extern const char kMaxCurrentSamplesPref[];
 extern const char kMaxChargeSamplesPref[];
 

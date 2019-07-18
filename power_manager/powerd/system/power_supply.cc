@@ -44,6 +44,10 @@ const double kDoubleScaleFactor = 0.000001;
 // Default time interval between polls, in milliseconds.
 const int kDefaultPollMs = 30000;
 
+// Default time interval between polls when the number of samples is less than
+// |kMaxCurrentSamplesPref|, in milliseconds.
+const int kDefaultPollInitialMs = 1000;
+
 // Default values for |battery_stabilized_after_*_delay_|, in milliseconds.
 const int kDefaultBatteryStabilizedAfterStartupDelayMs = 5000;
 const int kDefaultBatteryStabilizedAfterLinePowerConnectedDelayMs = 5000;
@@ -503,6 +507,8 @@ void PowerSupply::Init(
   prefs_->GetBool(kMultipleBatteriesPref, &allow_multiple_batteries_);
 
   poll_delay_ = GetMsPref(kBatteryPollIntervalPref, kDefaultPollMs);
+  poll_delay_initial_ =
+      GetMsPref(kBatteryPollIntervalInitialPref, kDefaultPollInitialMs);
   battery_stabilized_after_startup_delay_ =
       GetMsPref(kBatteryStabilizedAfterStartupMsPref,
                 kDefaultBatteryStabilizedAfterStartupDelayMs);
@@ -605,6 +611,7 @@ void PowerSupply::SetSuspended(bool suspended) {
     DeferBatterySampling(battery_stabilized_after_resume_delay_);
     charge_samples_->Clear();
     current_samples_on_line_power_->Clear();
+    has_max_samples_ = false;
     PerformUpdate(UpdatePolicy::UNCONDITIONALLY, NotifyPolicy::ASYNCHRONOUSLY);
   }
 }
@@ -750,6 +757,7 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
               ? battery_stabilized_after_line_power_connected_delay_
               : battery_stabilized_after_line_power_disconnected_delay_);
       charge_samples_->Clear();
+      has_max_samples_ = false;
 
       // Chargers can deliver highly-variable currents depending on various
       // factors (e.g. negotiated current for USB chargers, charge level, etc.).
@@ -768,10 +776,13 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
              PowerSupplyProperties_BatteryState_DISCHARGING)
                 ? -status.battery_current
                 : status.battery_current;
-        if (status.line_power_on)
-          current_samples_on_line_power_->AddSample(signed_current, now);
-        else
-          current_samples_on_battery_power_->AddSample(signed_current, now);
+
+        const auto& current_samples = status.line_power_on
+                                          ? current_samples_on_line_power_
+                                          : current_samples_on_battery_power_;
+        current_samples->AddSample(signed_current, now);
+        if (!has_max_samples_)
+          has_max_samples_ = current_samples->HasMaxSamples();
       }
     }
 
@@ -1121,6 +1132,9 @@ bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
   status->battery_time_to_empty = base::TimeDelta();
   status->battery_time_to_shutdown = base::TimeDelta();
 
+  if (!has_max_samples_)
+    return false;
+
   if (clock_->GetCurrentTime() < battery_stabilized_timestamp_)
     return false;
 
@@ -1230,12 +1244,20 @@ bool PowerSupply::PerformUpdate(UpdatePolicy update_policy,
 }
 
 void PowerSupply::SchedulePoll() {
-  base::TimeDelta delay = poll_delay_;
+  base::TimeDelta delay;
   base::TimeTicks now = clock_->GetCurrentTime();
+
+  // Wait |kBatteryStabilizedSlackMs| after |battery_stabilized_timestamp_| to
+  // start polling for the current and charge to stabilized.
+  // Poll every |poll_delay_initial_| ms until having |kMaxCurrentSamplesPref|
+  // samples then poll every |poll_delay_|.
   if (battery_stabilized_timestamp_ > now) {
-    delay = std::min(delay, battery_stabilized_timestamp_ - now +
-                                base::TimeDelta::FromMilliseconds(
-                                    kBatteryStabilizedSlackMs));
+    delay = battery_stabilized_timestamp_ - now +
+            base::TimeDelta::FromMilliseconds(kBatteryStabilizedSlackMs);
+  } else if (!has_max_samples_) {
+    delay = poll_delay_initial_;
+  } else {
+    delay = poll_delay_;
   }
 
   VLOG(1) << "Scheduling update in " << delay.InMilliseconds() << " ms";
