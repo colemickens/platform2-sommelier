@@ -47,7 +47,6 @@
 #include "shill/resolver.h"
 #include "shill/result_aggregator.h"
 #include "shill/service.h"
-#include "shill/service_sorter.h"
 #include "shill/technology.h"
 #include "shill/throttler.h"
 #include "shill/vpn/vpn_provider.h"
@@ -1745,9 +1744,11 @@ void Manager::SortServicesTask() {
   SLOG(this, 4) << "In " << __func__;
   sort_services_task_.Cancel();
 
-  const bool kCompareConnectivityState = true;
   sort(services_.begin(), services_.end(),
-       ServiceSorter(this, kCompareConnectivityState, technology_order_));
+       [&order = technology_order_](ServiceRefPtr a, ServiceRefPtr b) {
+         return Service::Compare(a, b, true /* compare connectivity */,
+                                 order).first;
+       });
 
   std::vector<IPAddress> vpn_addresses;
   for (const auto& service : services_) {
@@ -1890,9 +1891,9 @@ void Manager::AutoConnect() {
       const char* compare_reason = nullptr;
       if (i + 1 < services_.size()) {
         const bool kCompareConnectivityState = true;
-        Service::Compare(
-            this, service, services_[i+1], kCompareConnectivityState,
-            technology_order_, &compare_reason);
+        compare_reason = Service::Compare(service, services_[i + 1],
+                                          kCompareConnectivityState,
+                                          technology_order_).second;
       } else {
         compare_reason = "last";
       }
@@ -1939,9 +1940,11 @@ void Manager::ConnectToBestServices(Error* /*error*/) {
 
 void Manager::ConnectToBestServicesTask() {
   vector<ServiceRefPtr> services_copy = services_;
-  const bool kCompareConnectivityState = false;
+  constexpr bool kCompareConnectivityState = false;
   sort(services_copy.begin(), services_copy.end(),
-       ServiceSorter(this, kCompareConnectivityState, technology_order_));
+       [&order = technology_order_](ServiceRefPtr a, ServiceRefPtr b) {
+         return Service::Compare(a, b, kCompareConnectivityState, order).first;
+       });
   set<Technology> connecting_technologies;
   for (const auto& service : services_copy) {
     if (!service->connectable()) {
@@ -1989,10 +1992,9 @@ void Manager::ConnectToBestServicesTask() {
           // this one are connectable either.
           break;
         }
-        Service::Compare(
-            this, service, services_copy[i+1],
-            kCompareConnectivityState, technology_order_,
-            &compare_reason);
+        compare_reason = Service::Compare(service, services_copy[i + 1],
+                                          kCompareConnectivityState,
+                                          technology_order_).second;
       } else {
         compare_reason = "last";
       }

@@ -1040,73 +1040,62 @@ uint16_t Service::SecurityLevel() {
 }
 
 // static
-bool Service::Compare(Manager* manager,
-                      ServiceRefPtr a,
-                      ServiceRefPtr b,
-                      bool compare_connectivity_state,
-                      const vector<Technology>& tech_order,
-                      const char** reason) {
+std::pair<bool, const char*> Service::Compare(
+    ServiceRefPtr a,
+    ServiceRefPtr b,
+    bool compare_connectivity_state,
+    const vector<Technology>& tech_order) {
+  CHECK_EQ(a->manager(), b->manager());
   bool ret;
 
   if (compare_connectivity_state && a->state() != b->state()) {
     if (DecideBetween(a->IsOnline(), b->IsOnline(), &ret)) {
-      *reason = kServiceSortIsOnline;
-      return ret;
+      return std::make_pair(ret, kServiceSortIsOnline);
     }
 
     if (DecideBetween(a->IsConnected(), b->IsConnected(), &ret)) {
-      *reason = kServiceSortIsConnected;
-      return ret;
+      return std::make_pair(ret, kServiceSortIsConnected);
     }
 
     if (DecideBetween(!a->IsPortalled(), !b->IsPortalled(), &ret)) {
-      *reason = kServiceSortIsPortalled;
-      return ret;
+      return std::make_pair(ret, kServiceSortIsPortalled);
     }
 
     if (DecideBetween(a->IsConnecting(), b->IsConnecting(), &ret)) {
-      *reason = kServiceSortIsConnecting;
-      return ret;
+      return std::make_pair(ret, kServiceSortIsConnecting);
     }
 
     if (DecideBetween(!a->IsFailed(), !b->IsFailed(), &ret)) {
-      *reason = kServiceSortIsFailed;
-      return ret;
+      return std::make_pair(ret, kServiceSortIsFailed);
     }
   }
 
   if (DecideBetween(a->connectable(), b->connectable(), &ret)) {
-    *reason = kServiceSortConnectable;
-    return ret;
+    return std::make_pair(ret, kServiceSortConnectable);
   }
 
   for (auto technology : tech_order) {
     if (DecideBetween(a->technology() == technology,
                       b->technology() == technology,
                       &ret)) {
-      *reason = kServiceSortTechnology;
-      return ret;
+      return std::make_pair(ret, kServiceSortTechnology);
     }
   }
 
   if (DecideBetween(a->priority(), b->priority(), &ret)) {
-    *reason = kServiceSortPriority;
-    return ret;
+    return std::make_pair(ret, kServiceSortPriority);
   }
 
   if (DecideBetween(a->managed_credentials_, b->managed_credentials_, &ret)) {
-    *reason = kServiceSortManagedCredentials;
-    return ret;
+    return std::make_pair(ret, kServiceSortManagedCredentials);
   }
 
   if (DecideBetween(a->auto_connect(), b->auto_connect(), &ret)) {
-    *reason = kServiceSortAutoConnect;
-    return ret;
+    return std::make_pair(ret, kServiceSortAutoConnect);
   }
 
   if (DecideBetween(a->SecurityLevel(), b->SecurityLevel(), &ret)) {
-    *reason = kServiceSortSecurity;
-    return ret;
+    return std::make_pair(ret, kServiceSortSecurity);
   }
 
   // If the profiles for the two services are different,
@@ -1114,30 +1103,23 @@ bool Service::Compare(Manager* manager,
   // ephemeral profile is explicitly tested for since it is not
   // listed in the manager profiles_ list.
   if (a->profile() != b->profile()) {
-    *reason = kServiceSortProfileOrder;
-    if (manager->IsServiceEphemeral(b)) {
-      return true;
-    } else if (manager->IsServiceEphemeral(a)) {
-      return false;
-    } else if (manager->IsProfileBefore(b->profile(), a->profile())) {
-      return true;
-    } else {
-      return false;
-    }
+    Manager* manager = a->manager();
+    ret = manager->IsServiceEphemeral(b) ||
+          (!manager->IsServiceEphemeral(a) &&
+           manager->IsProfileBefore(b->profile(), a->profile()));
+    return std::make_pair(ret, kServiceSortProfileOrder);
   }
 
   if (DecideBetween(a->has_ever_connected(), b->has_ever_connected(), &ret)) {
-    *reason = kServiceSortHasEverConnected;
-    return ret;
+    return std::make_pair(ret, kServiceSortHasEverConnected);
   }
 
   if (DecideBetween(a->strength(), b->strength(), &ret)) {
-    *reason = kServiceSortEtc;
-    return ret;
+    return std::make_pair(ret, kServiceSortEtc);
   }
 
-  *reason = kServiceSortSerialNumber;
-  return a->serial_number_ < b->serial_number_;
+  ret = a->serial_number_ < b->serial_number_;
+  return std::make_pair(ret, kServiceSortSerialNumber);
 }
 
 // static

@@ -423,19 +423,19 @@ class Service : public base::RefCounted<Service> {
   static const char* ConnectFailureToString(const ConnectFailure& state);
   static const char* ConnectStateToString(const ConnectState& state);
 
-  // Compare two services.  Returns true if Service |a| should be displayed
-  // above |b|.  If |compare_connectivity_state| is true, the connectivity
-  // state of the service (service->state()) is used as the most significant
-  // criteria for comparsion, otherwise the service state is ignored.  Use
-  // |tech_order| to rank services if more decisive criteria do not yield a
-  // difference.  |reason| is populated with the exact criteria used for the
-  // ultimate comparison.
-  static bool Compare(Manager* manager,
-                      ServiceRefPtr a,
-                      ServiceRefPtr b,
-                      bool compare_connectivity_state,
-                      const std::vector<Technology>& tech_order,
-                      const char** reason);
+  // Compare two services.  The first element of the result pair is true if
+  // Service |a| should be displayed above |b|.  If |compare_connectivity_state|
+  // is true, the connectivity state of the service (service->state()) is used
+  // as the most significant criteria for comparsion, otherwise the service
+  // state is ignored.  Use |tech_order| to rank services if more decisive
+  // criteria do not yield a difference.  The second element of the result pair
+  // contains a string describing the criterion used for the ultimate
+  // comparison.
+  static std::pair<bool, const char*> Compare(
+      ServiceRefPtr a,
+      ServiceRefPtr b,
+      bool compare_connectivity_state,
+      const std::vector<Technology>& tech_order);
 
   // Returns a sanitized version of |identifier| for use as a service storage
   // identifier by replacing any character in |identifier| that is not

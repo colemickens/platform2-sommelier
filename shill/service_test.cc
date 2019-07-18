@@ -32,7 +32,6 @@
 #include "shill/net/mock_time.h"
 #include "shill/property_store_test.h"
 #include "shill/service_property_change_test.h"
-#include "shill/service_sorter.h"
 #include "shill/service_under_test.h"
 #include "shill/testing.h"
 
@@ -180,12 +179,9 @@ class ServiceTest : public PropertyStoreTest {
   bool SortingOrderIs(const ServiceRefPtr& service0,
                       const ServiceRefPtr& service1,
                       bool should_compare_connectivity_state) {
-    vector<ServiceRefPtr> services = {service1, service0};
-    std::sort(services.begin(), services.end(),
-              ServiceSorter(&mock_manager_, should_compare_connectivity_state,
-                            technology_order_for_sorting_));
-    return (service0.get() == services[0].get() &&
-            service1.get() == services[1].get());
+    return Service::Compare(service0, service1,
+                            should_compare_connectivity_state,
+                            technology_order_for_sorting_).first;
   }
 
   bool DefaultSortingOrderIs(const ServiceRefPtr& service0,
@@ -2037,7 +2033,7 @@ TEST_F(ServiceTest, Compare) {
   // serial_number_.
   vector<scoped_refptr<MockService>> mock_services;
   for (size_t i = 0; i < 11; ++i) {
-    mock_services.push_back(new NiceMock<MockService>(manager()));
+    mock_services.push_back(new NiceMock<MockService>(&mock_manager_));
   }
   scoped_refptr<MockService> service2 = mock_services[2];
   scoped_refptr<MockService> service10 = mock_services[10];
