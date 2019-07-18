@@ -4,7 +4,7 @@ type move-widevine-data-sh_exec;
 type shell_exec;
 type toolbox_exec;
 type file_contexts_file;
-type media_data_file;
+type media_data_file, file_type, android_file_type;
 type mediadrm_vendor_data_file;
 attribute data_between_core_and_vendor_violators;
 

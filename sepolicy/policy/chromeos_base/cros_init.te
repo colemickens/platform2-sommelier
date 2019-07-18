@@ -43,6 +43,8 @@ auditallow cros_init cros_init_shell_scripts:file execute;
 
 allow cros_init cros_chrt_exec:file rx_file_perms;
 
+allow {cros_init cros_init_scripts} cros_systemd_cat_exec:file rx_file_perms;
+
 # init/metrics_library.conf
 filetrans_pattern(cros_init_scripts, cros_var_lib, cros_metrics_file, dir, "metrics");
 filetrans_pattern(cros_init_scripts, cros_metrics_file, cros_metrics_uma_events_file, file, "uma-events");

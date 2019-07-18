@@ -18,10 +18,12 @@ type cros_arc_sdcard_mountpoint, file_type, cros_file_type, cros_system_file_typ
 
 # SYSTEM_EXE_START_HERE
 type cros_accelerator_logs_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_agetty_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_anomaly_detector_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_apk_cache_cleaner_jailed_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_camera_service_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_networkd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_arc_obb_mounter_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_oemcrypto_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_setup_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_atrusd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -73,6 +75,8 @@ type cros_ml_service_exec, exec_type, file_type, cros_file_type, cros_system_fil
 type cros_modem_manager_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_modemfwd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_modprobe_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_mount_passthrough_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_mount_passthrough_jailed_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_mtpd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_newblued_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_oobe_config_restore_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -86,6 +90,7 @@ type cros_session_manager_exec, exec_type, file_type, cros_file_type, cros_syste
 type cros_shill_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_sshd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_sslh_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_systemd_cat_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_tcsd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_timberslide_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_tlsdated_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -117,7 +122,7 @@ type cros_home_shadow_uid_root_shill, file_type, cros_file_type, cros_home_file_
 type cros_home_shadow_uid_root_shill_logs, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid_root_usb_bouncer, file_type, cros_file_type, cros_home_file_type;
 
-type system_data_file, file_type; # this is Android file label.
+type system_data_file, file_type, android_file_type; # this is Android file label.
 type cache_file, file_type, cros_file_type, cros_home_file_type;
 allow domain cros_home:dir r_dir_perms;
 
@@ -130,6 +135,8 @@ type upstart_socket_bridge_exec, exec_type, file_type, cros_file_type, cros_syst
 type chrome_browser_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 
 type cros_unconfined_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+
+type sdcardd_exec, exec_type, file_type, android_file_type;
 
 type cros_init_activate_date_script, exec_type, file_type, cros_init_scripts_file_type, cros_file_type, cros_system_file_type;
 type cros_init_chapsd_shell_script, exec_type, file_type, cros_init_scripts_file_type, cros_file_type, cros_system_file_type;
@@ -289,5 +296,3 @@ neverallow domain cros_system_file_type:file { unlink append write };
 allow chromeos_domain cros_system_file_type:dir { read search getattr open };
 allow chromeos_domain cros_system_file_type:file { read open getattr };
 allow chromeos_domain cros_system_file_type:lnk_file { read getattr };
-
-

@@ -12,4 +12,6 @@ attribute cros_var_file_type;
 attribute cros_run_file_type;
 attribute cros_uncategorized_file_type;
 
+attribute android_file_type;
+
 attribute cros_rotate_by_cleanup_logs_file_type;

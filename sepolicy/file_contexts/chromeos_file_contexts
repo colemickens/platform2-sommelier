@@ -15,8 +15,9 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /sbin/init                      u:object_r:chromeos_init_exec:s0
 
 # SBIN_START_HERE
-/sbin/auditd                    u:object_r:cros_auditd_exec:s0
+/sbin/agetty                    u:object_r:cros_agetty_exec:s0
 /sbin/audispd                   u:object_r:cros_audispd_exec:s0
+/sbin/auditd                    u:object_r:cros_auditd_exec:s0
 /sbin/chromeos_startup          u:object_r:chromeos_startup_script_exec:s0
 /sbin/crash_reporter            u:object_r:cros_crash_reporter_exec:s0
 /sbin/crash_sender              u:object_r:cros_crash_sender_exec:s0
@@ -43,6 +44,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 # USR_BIN_START_HERE
 /usr/bin/anomaly_detector       u:object_r:cros_anomaly_detector_exec:s0
 /usr/bin/arc-networkd           u:object_r:cros_arc_networkd_exec:s0
+/usr/bin/arc-obb-mounter        u:object_r:cros_arc_obb_mounter_exec:s0
 /usr/bin/arc_camera_service     u:object_r:cros_arc_camera_service_exec:s0
 /usr/bin/biod                   u:object_r:cros_biod_exec:s0
 /usr/bin/btdispatch             u:object_r:cros_btdispatch_exec:s0
@@ -65,12 +67,15 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/midis                  u:object_r:cros_midis_exec:s0
 /usr/bin/ml_service             u:object_r:cros_ml_service_exec:s0
 /usr/bin/modemfwd               u:object_r:cros_modemfwd_exec:s0
+/usr/bin/mount-passthrough      u:object_r:cros_mount_passthrough_exec:s0
+/usr/bin/mount-passthrough-jailed u:object_r:cros_mount_passthrough_jailed_exec:s0
 /usr/bin/newblued               u:object_r:cros_newblued_exec:s0
 /usr/bin/periodic_scheduler     u:object_r:cros_periodic_scheduler_exec:s0
 /usr/bin/permission_broker      u:object_r:cros_permission_broker_exec:s0
 /usr/bin/powerd                 u:object_r:cros_powerd_exec:s0
 /usr/bin/run_oci                u:object_r:cros_run_oci_exec:s0
 /usr/bin/shill                  u:object_r:cros_shill_exec:s0
+/usr/bin/systemd-cat            u:object_r:cros_systemd_cat_exec:s0
 /usr/bin/timberslide            u:object_r:cros_timberslide_exec:s0
 /usr/bin/tlsdated               u:object_r:cros_tlsdated_exec:s0
 /usr/bin/u2fd                   u:object_r:cros_u2fd_exec:s0
