@@ -415,14 +415,14 @@ void SessionManagerImpl::SetUiLogSymlinkPathForTesting(
 void SessionManagerImpl::AnnounceSessionStoppingIfNeeded() {
   if (session_started_) {
     session_stopping_ = true;
-    DLOG(INFO) << "Emitting D-Bus signal SessionStateChanged:" << kStopping;
+    DLOG(INFO) << "Emitting D-Bus signal SessionStateChanged: " << kStopping;
     adaptor_.SendSessionStateChangedSignal(kStopping);
   }
 }
 
 void SessionManagerImpl::AnnounceSessionStopped() {
   session_stopping_ = session_started_ = false;
-  DLOG(INFO) << "Emitting D-Bus signal SessionStateChanged:" << kStopped;
+  DLOG(INFO) << "Emitting D-Bus signal SessionStateChanged: " << kStopped;
   adaptor_.SendSessionStateChangedSignal(kStopped);
 }
 
@@ -650,7 +650,7 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
     DCHECK(primary_user_account_id_.empty());
     primary_user_account_id_ = actual_account_id;
   }
-  DLOG(INFO) << "Emitting D-Bus signal SessionStateChanged:" << kStarted;
+  DLOG(INFO) << "Emitting D-Bus signal SessionStateChanged: " << kStarted;
   adaptor_.SendSessionStateChangedSignal(kStarted);
 
   // Active Directory managed devices are not expected to have a policy key.
