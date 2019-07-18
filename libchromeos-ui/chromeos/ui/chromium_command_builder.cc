@@ -232,6 +232,9 @@ bool ChromiumCommandBuilder::SetUpChromium() {
   if (UseFlagIsSet("passive_event_listeners"))
     AddArg("--passive-listeners-default=true");
 
+  if (UseFlagIsSet("disable_cros_video_decoder"))
+    AddFeatureDisableOverride("ChromeosVideoDecoder");
+
   AddArg("--enable-logging");
   AddArg("--log-level=1");
   AddArg("--use-cras");
