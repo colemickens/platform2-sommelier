@@ -75,7 +75,7 @@ class Connection : public base::RefCounted<Connection> {
   Connection(int interface_index,
              const std::string& interface_name,
              bool fixed_ip_params,
-             Technology::Identifier technology_,
+             Technology technology_,
              const DeviceInfo* device_info,
              ControlInterface* control_interface);
 
@@ -149,7 +149,7 @@ class Connection : public base::RefCounted<Connection> {
 
   virtual const IPAddress& local() const { return local_; }
   virtual const IPAddress& gateway() const { return gateway_; }
-  virtual Technology::Identifier technology() const { return technology_; }
+  virtual Technology technology() const { return technology_; }
   void set_allowed_addrs(std::vector<IPAddress> addresses);
   virtual const std::string& tethering() const { return tethering_; }
   void set_tethering(const std::string& tethering) { tethering_ = tethering; }
@@ -197,7 +197,7 @@ class Connection : public base::RefCounted<Connection> {
   int routing_request_count_;
   int interface_index_;
   const std::string interface_name_;
-  Technology::Identifier technology_;
+  Technology technology_;
   std::vector<std::string> dns_servers_;
   std::vector<std::string> dns_domain_search_;
   std::vector<std::string> excluded_ips_cidr_;

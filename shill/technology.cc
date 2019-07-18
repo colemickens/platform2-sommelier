@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -31,7 +31,47 @@ constexpr char kUnknownName[] = "unknown";
 }  // namespace
 
 // static
-Technology::Identifier Technology::IdentifierFromName(const string& name) {
+bool GetTechnologyVectorFromString(const string& technologies_string,
+                                   vector<Technology>* technologies_vector,
+                                   Error* error) {
+  CHECK(technologies_vector);
+  CHECK(error);
+
+  technologies_vector->clear();
+
+  // Check if |technologies_string| is empty as some versions of
+  // base::SplitString return a vector with one empty string when given an
+  // empty string.
+  if (technologies_string.empty()) {
+    return true;
+  }
+
+  set<Technology> seen;
+  vector<string> technology_parts = base::SplitString(
+      technologies_string, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  for (const auto& name : technology_parts) {
+    Technology technology = Technology::CreateFromName(name);
+
+    if (technology == Technology::kUnknown) {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                            name + " is an unknown technology name");
+      return false;
+    }
+
+    if (base::ContainsKey(seen, technology)) {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                            name + " is duplicated in the list");
+      return false;
+    }
+    seen.insert(technology);
+    technologies_vector->push_back(technology);
+  }
+
+  return true;
+}
+
+// static
+Technology Technology::CreateFromName(const string& name) {
   if (name == kTypeEthernet) {
     return kEthernet;
   } else if (name == kTypeEthernetEap) {
@@ -56,88 +96,47 @@ Technology::Identifier Technology::IdentifierFromName(const string& name) {
 }
 
 // static
-string Technology::NameFromIdentifier(Technology::Identifier id) {
-  if (id == kEthernet) {
+Technology Technology::CreateFromStorageGroup(const string& group) {
+  vector<string> group_parts = base::SplitString(
+      group, "_", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  if (group_parts.empty()) {
+    return kUnknown;
+  }
+  return CreateFromName(group_parts[0]);
+}
+
+string Technology::GetName() const {
+  if (type_ == kEthernet) {
     return kTypeEthernet;
-  } else if (id == kEthernetEap) {
+  } else if (type_ == kEthernetEap) {
     return kTypeEthernetEap;
-  } else if (id == kWifi) {
+  } else if (type_ == kWifi) {
     return kTypeWifi;
-  } else if (id == kCellular) {
+  } else if (type_ == kCellular) {
     return kTypeCellular;
-  } else if (id == kVPN) {
+  } else if (type_ == kVPN) {
     return kTypeVPN;
-  } else if (id == kLoopback) {
+  } else if (type_ == kLoopback) {
     return kLoopbackName;
-  } else if (id == kTunnel) {
+  } else if (type_ == kTunnel) {
     return kTunnelName;
-  } else if (id == kPPP) {
+  } else if (type_ == kPPP) {
     return kPPPName;
-  } else if (id == kPPPoE) {
+  } else if (type_ == kPPPoE) {
     return kTypePPPoE;
   } else {
     return kUnknownName;
   }
 }
 
-// static
-Technology::Identifier Technology::IdentifierFromStorageGroup(
-    const string& group) {
-  vector<string> group_parts = base::SplitString(
-      group, "_", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-  if (group_parts.empty()) {
-    return kUnknown;
-  }
-  return IdentifierFromName(group_parts[0]);
+bool Technology::IsPrimaryConnectivityTechnology() const {
+  return (type_ == kCellular || type_ == kEthernet || type_ == kWifi ||
+          type_ == kPPPoE);
 }
 
-// static
-bool Technology::GetTechnologyVectorFromString(
-    const string& technologies_string,
-    vector<Identifier>* technologies_vector,
-    Error* error) {
-  CHECK(technologies_vector);
-  CHECK(error);
-
-  vector<string> technology_parts;
-  set<Technology::Identifier> seen;
-  technologies_vector->clear();
-
-  // Check if |technologies_string| is empty as some versions of
-  // base::SplitString return a vector with one empty string when given an
-  // empty string.
-  if (!technologies_string.empty()) {
-    technology_parts = base::SplitString(
-        technologies_string, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-  }
-
-  for (const auto& name : technology_parts) {
-    Technology::Identifier identifier = Technology::IdentifierFromName(name);
-
-    if (identifier == Technology::kUnknown) {
-      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                            name + " is an unknown technology name");
-      return false;
-    }
-
-    if (base::ContainsKey(seen, identifier)) {
-      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                            name + " is duplicated in the list");
-      return false;
-    }
-    seen.insert(identifier);
-    technologies_vector->push_back(identifier);
-  }
-
-  return true;
-}
-
-// static
-bool Technology::IsPrimaryConnectivityTechnology(Identifier technology) {
-  return (technology == kCellular ||
-          technology == kEthernet ||
-          technology == kWifi ||
-          technology == kPPPoE);
+std::ostream& operator<<(std::ostream& os, const Technology& technology) {
+  os << technology.GetName();
+  return os;
 }
 
 }  // namespace shill

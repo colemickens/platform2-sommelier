@@ -110,7 +110,7 @@ class DeviceInfoTest : public Test {
   DeviceRefPtr CreateDevice(const std::string& link_name,
                             const std::string& address,
                             int interface_index,
-                            Technology::Identifier technology) {
+                            Technology technology) {
     return device_info_.CreateDevice(link_name, address, interface_index,
                                      technology);
   }
@@ -362,15 +362,13 @@ TEST_F(DeviceInfoTest, GetUninitializedTechnologies) {
 
   device_info_.infos_[1].technology = Technology::kCellular;
   technologies = device_info_.GetUninitializedTechnologies();
-  expected_technologies.insert(Technology::NameFromIdentifier(
-      Technology::kCellular));
+  expected_technologies.insert(Technology(Technology::kCellular).GetName());
   EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 
   device_info_.infos_[2].technology = Technology::kWifi;
   technologies = device_info_.GetUninitializedTechnologies();
-  expected_technologies.insert(Technology::NameFromIdentifier(
-      Technology::kWifi));
+  expected_technologies.insert(Technology(Technology::kWifi).GetName());
   EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 
@@ -378,8 +376,7 @@ TEST_F(DeviceInfoTest, GetUninitializedTechnologies) {
       new MockDevice(&manager_, "null0", "addr0", 1));
   device_info_.infos_[1].device = device;
   technologies = device_info_.GetUninitializedTechnologies();
-  expected_technologies.erase(Technology::NameFromIdentifier(
-      Technology::kCellular));
+  expected_technologies.erase(Technology(Technology::kCellular).GetName());
   EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 
@@ -542,8 +539,8 @@ TEST_F(DeviceInfoTest, CreateDeviceTunnelAccepted) {
   MockVPNProvider* vpn_provider = new StrictMock<MockVPNProvider>;
   SetVPNProvider(vpn_provider);
   EXPECT_CALL(*vpn_provider,
-              OnDeviceInfoAvailable(
-                  kTestDeviceName, kTestDeviceIndex, Technology::kTunnel))
+              OnDeviceInfoAvailable(kTestDeviceName, kTestDeviceIndex,
+                                    Technology(Technology::kTunnel)))
       .WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
@@ -560,8 +557,8 @@ TEST_F(DeviceInfoTest, CreateDeviceTunnelRejected) {
   MockVPNProvider* vpn_provider = new StrictMock<MockVPNProvider>;
   SetVPNProvider(vpn_provider);
   EXPECT_CALL(*vpn_provider,
-              OnDeviceInfoAvailable(
-                  kTestDeviceName, kTestDeviceIndex, Technology::kTunnel))
+              OnDeviceInfoAvailable(kTestDeviceName, kTestDeviceIndex,
+                                    Technology(Technology::kTunnel)))
       .WillOnce(Return(false));
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
@@ -580,8 +577,8 @@ TEST_F(DeviceInfoTest, CreateDevicePPP) {
   MockVPNProvider* vpn_provider = new StrictMock<MockVPNProvider>;
   SetVPNProvider(vpn_provider);
   EXPECT_CALL(*vpn_provider,
-              OnDeviceInfoAvailable(
-                  kTestDeviceName, kTestDeviceIndex, Technology::kPPP))
+              OnDeviceInfoAvailable(kTestDeviceName, kTestDeviceIndex,
+                                    Technology(Technology::kPPP)))
       .WillOnce(Return(false));
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
@@ -1322,7 +1319,7 @@ class DeviceInfoTechnologyTest : public DeviceInfoTest {
     CreateInfoFile("uevent", "xxx");
   }
 
-  Technology::Identifier GetDeviceTechnology() {
+  Technology GetDeviceTechnology() {
     return device_info_.GetDeviceTechnology(test_device_name_);
   }
   FilePath GetInfoPath(const string& name);
@@ -1523,12 +1520,12 @@ class DeviceInfoForDelayedCreationTest : public DeviceInfo {
  public:
   explicit DeviceInfoForDelayedCreationTest(Manager* manager)
       : DeviceInfo(manager) {}
-  MOCK_METHOD4(CreateDevice, DeviceRefPtr(const std::string& link_name,
-                                          const std::string& address,
-                                          int interface_index,
-                                          Technology::Identifier technology));
-  MOCK_METHOD1(GetDeviceTechnology,
-               Technology::Identifier(const string& iface_name));
+  MOCK_METHOD4(CreateDevice,
+               DeviceRefPtr(const std::string& link_name,
+                            const std::string& address,
+                            int interface_index,
+                            Technology technology));
+  MOCK_METHOD1(GetDeviceTechnology, Technology(const string& iface_name));
 };
 
 class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
@@ -1544,7 +1541,7 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
     test_device_info_.DelayedDeviceCreationTask();
   }
 
-  void AddDelayedDevice(Technology::Identifier delayed_technology) {
+  void AddDelayedDevice(Technology delayed_technology) {
     unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
     EXPECT_CALL(test_device_info_, GetDeviceTechnology(kTestDeviceName))
         .WillOnce(Return(delayed_technology));
@@ -1559,8 +1556,8 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
     GetDelayedDevices().insert(kTestDeviceIndex);
   }
 
-  void EnsureDelayedDevice(Technology::Identifier reported_device_technology,
-                           Technology::Identifier created_device_technology) {
+  void EnsureDelayedDevice(Technology reported_device_technology,
+                           Technology created_device_technology) {
     EXPECT_CALL(test_device_info_, GetDeviceTechnology(_))
         .WillOnce(Return(reported_device_technology));
     EXPECT_CALL(test_device_info_, CreateDevice(

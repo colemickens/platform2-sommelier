@@ -22,7 +22,7 @@ class MockEapCredentials : public EapCredentials {
   MOCK_CONST_METHOD0(IsConnectableUsingPassphrase, bool());
   MOCK_METHOD2(Load, void(StoreInterface* store, const std::string& id));
   MOCK_CONST_METHOD2(OutputConnectionMetrics,
-                     void(Metrics* metrics, Technology::Identifier technology));
+                     void(Metrics* metrics, Technology technology));
   MOCK_CONST_METHOD2(PopulateSupplicantProperties,
                      void(CertificateFile* certificate_file,
                           KeyValueStore* params));

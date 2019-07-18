@@ -77,7 +77,7 @@ class TestDevice : public Device {
              const std::string& link_name,
              const std::string& address,
              int interface_index,
-             Technology::Identifier technology)
+             Technology technology)
       : Device(manager, link_name, address, interface_index, technology) {
     ON_CALL(*this, IsIPv6Allowed())
         .WillByDefault(Invoke(this, &TestDevice::DeviceIsIPv6Allowed));
@@ -1113,7 +1113,8 @@ TEST_F(DeviceTest, LinkMonitor) {
   SetLinkMonitor(link_monitor);  // Passes ownership.
   SetManager(&manager);
   EXPECT_CALL(*link_monitor, Start()).Times(0);
-  EXPECT_CALL(manager, IsTechnologyLinkMonitorEnabled(Technology::kUnknown))
+  EXPECT_CALL(manager,
+              IsTechnologyLinkMonitorEnabled(Technology(Technology::kUnknown)))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_FALSE(StartLinkMonitor());

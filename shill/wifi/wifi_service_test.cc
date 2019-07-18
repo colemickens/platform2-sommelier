@@ -2167,7 +2167,7 @@ TEST_F(WiFiServiceTest, ChooseDevice) {
   // No preferred device.
   EXPECT_CALL(*mock_manager(), GetEnabledDeviceByLinkName(_)).Times(0);
   EXPECT_CALL(*mock_manager(),
-              GetEnabledDeviceWithTechnology(Technology::kWifi))
+              GetEnabledDeviceWithTechnology(Technology(Technology::kWifi)))
       .WillOnce(Return(wifi1));
   EXPECT_EQ(wifi1, service->ChooseDevice());
   Mock::VerifyAndClearExpectations(mock_manager());

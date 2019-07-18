@@ -66,7 +66,7 @@ class MockService : public Service {
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   MOCK_CONST_METHOD0(eap, const EapCredentials*());
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
-  MOCK_CONST_METHOD0(technology, Technology::Identifier());
+  MOCK_CONST_METHOD0(technology, Technology());
   MOCK_METHOD1(OnPropertyChanged, void(const std::string& property));
   MOCK_METHOD0(ClearExplicitlyDisconnected, void());
   MOCK_CONST_METHOD0(is_dns_auto_fallback_allowed, bool());

@@ -64,7 +64,7 @@ class EthernetService : public Service {
   // EthernetService behavior, while still retaining their own technology
   // identifier.
   EthernetService(Manager* manager,
-                  Technology::Identifier technology,
+                  Technology technology,
                   const Properties& props);
 
   void SetUp();

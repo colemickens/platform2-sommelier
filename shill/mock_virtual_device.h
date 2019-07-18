@@ -18,7 +18,7 @@ class MockVirtualDevice : public VirtualDevice {
   MockVirtualDevice(Manager* manager,
                     const std::string& link_name,
                     int interface_index,
-                    Technology::Identifier technology);
+                    Technology technology);
   ~MockVirtualDevice() override;
 
   MOCK_METHOD2(Stop,

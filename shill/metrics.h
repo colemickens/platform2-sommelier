@@ -987,7 +987,7 @@ class Metrics {
 
   // Specializes |metric_suffix| for the specified |technology_id|.
   std::string GetFullMetricName(const char* metric_suffix,
-                                Technology::Identifier technology_id);
+                                Technology technology_id);
 
   std::string GetSuspendDurationMetricNameFromStatus(
         WiFiConnectionStatusAfterWake status);
@@ -1057,18 +1057,16 @@ class Metrics {
   void NotifyDarkResumeScanResultsReceived();
 
   // Notifies this object of a failure in LinkMonitor.
-  void NotifyLinkMonitorFailure(
-      Technology::Identifier technology,
-      LinkMonitorFailure failure,
-      int seconds_to_failure,
-      int broadcast_error_count,
-      int unicast_error_count);
+  void NotifyLinkMonitorFailure(Technology technology,
+                                LinkMonitorFailure failure,
+                                int seconds_to_failure,
+                                int broadcast_error_count,
+                                int unicast_error_count);
 
   // Notifies this object that LinkMonitor has added a response time sample
   // for |connection| with a value of |response_time_milliseconds|.
-  void NotifyLinkMonitorResponseTimeSampleAdded(
-      Technology::Identifier technology,
-      int response_time_milliseconds);
+  void NotifyLinkMonitorResponseTimeSampleAdded(Technology technology,
+                                                int response_time_milliseconds);
 
   // Notifies this object that an AP was discovered and of that AP's 802.11k
   // support.
@@ -1109,12 +1107,10 @@ class Metrics {
 
   // Registers a device with this object so the device can use the timers to
   // track state transition metrics.
-  void RegisterDevice(int interface_index,
-                      Technology::Identifier technology);
+  void RegisterDevice(int interface_index, Technology technology);
 
   // Checks to see if the device has already been registered.
-  bool IsDeviceRegistered(int interface_index,
-                          Technology::Identifier technology);
+  bool IsDeviceRegistered(int interface_index, Technology technology);
 
   // Deregisters the device from this class.  All state transition timers
   // will be removed.
@@ -1207,13 +1203,13 @@ class Metrics {
   virtual void NotifyUserInitiatedEvent(int event);
 
   // Notifies this object about the result of the fallback DNS test.
-  virtual void NotifyFallbackDNSTestResult(Technology::Identifier technology_id,
+  virtual void NotifyFallbackDNSTestResult(Technology technology_id,
                                            int result);
 
   // Notifies this object about a network problem detected on the currently
   // connected network.
-  virtual void NotifyNetworkProblemDetected(
-      Technology::Identifier technology_id, int reason);
+  virtual void NotifyNetworkProblemDetected(Technology technology_id,
+                                            int reason);
 
   // Notifies this object about current connection status (online vs offline).
   virtual void NotifyDeviceConnectionStatus(Metrics::ConnectionStatus status);
@@ -1222,20 +1218,20 @@ class Metrics {
   virtual void NotifyDhcpClientStatus(Metrics::DhcpClientStatus status);
 
   // Notifies this object about the IP type of the current network connection.
-  virtual void NotifyNetworkConnectionIPType(
-      Technology::Identifier technology_id, NetworkConnectionIPType type);
+  virtual void NotifyNetworkConnectionIPType(Technology technology_id,
+                                             NetworkConnectionIPType type);
 
   // Notifies this object about the IPv6 connectivity status.
-  virtual void NotifyIPv6ConnectivityStatus(
-      Technology::Identifier technology_id, bool status);
+  virtual void NotifyIPv6ConnectivityStatus(Technology technology_id,
+                                            bool status);
 
   // Notifies this object about the presence of given technology type device.
-  virtual void NotifyDevicePresenceStatus(Technology::Identifier technology_id,
+  virtual void NotifyDevicePresenceStatus(Technology technology_id,
                                           bool status);
 
   // Notifies this object about the signal strength when link is unreliable.
-  virtual void NotifyUnreliableLinkSignalStrength(
-      Technology::Identifier technology_id, int signal_strength);
+  virtual void NotifyUnreliableLinkSignalStrength(Technology technology_id,
+                                                  int signal_strength);
 
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string& name, int sample, int max);
@@ -1340,7 +1336,7 @@ class Metrics {
 
   struct DeviceMetrics {
     DeviceMetrics() : auto_connect_tries(0) {}
-    Technology::Identifier technology;
+    Technology technology;
     std::unique_ptr<chromeos_metrics::TimerReporter> initialization_timer;
     std::unique_ptr<chromeos_metrics::TimerReporter> enable_timer;
     std::unique_ptr<chromeos_metrics::TimerReporter> disable_timer;
@@ -1378,11 +1374,11 @@ class Metrics {
 
   // Notifies this object about the removal/resetting of a device with given
   // technology type.
-  void NotifyDeviceRemovedEvent(Technology::Identifier technology_id);
+  void NotifyDeviceRemovedEvent(Technology technology_id);
 
   // Returns |true| if and only if a device that supports |technology_id| is
   // registered.
-  bool IsTechnologyPresent(Technology::Identifier technology_id) const;
+  bool IsTechnologyPresent(Technology technology_id) const;
 
   // For unit test purposes.
   void set_library(MetricsLibraryInterface* library);
@@ -1429,7 +1425,7 @@ class Metrics {
   MetricsLibrary metrics_library_;
   MetricsLibraryInterface* library_;
   ServiceMetricsLookupMap services_metrics_;
-  Technology::Identifier last_default_technology_;
+  Technology last_default_technology_;
   bool was_last_online_;
   std::unique_ptr<chromeos_metrics::Timer> time_online_timer_;
   std::unique_ptr<chromeos_metrics::Timer> time_to_drop_timer_;

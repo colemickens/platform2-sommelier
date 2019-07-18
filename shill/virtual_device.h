@@ -25,7 +25,7 @@ class VirtualDevice : public Device {
   VirtualDevice(Manager* manager,
                 const std::string& link_name,
                 int interface_index,
-                Technology::Identifier technology);
+                Technology technology);
   ~VirtualDevice() override;
 
   bool Load(StoreInterface* storage) override;

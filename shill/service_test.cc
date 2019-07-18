@@ -204,7 +204,7 @@ class ServiceTest : public PropertyStoreTest {
   MockEapCredentials* eap_;  // Owned by |service_|.
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   MockPowerManager* power_manager_;  // Owned by |mock_manager_|.
-  vector<Technology::Identifier> technology_order_for_sorting_;
+  vector<Technology> technology_order_for_sorting_;
 };
 
 class AllMockServiceTest : public testing::Test {

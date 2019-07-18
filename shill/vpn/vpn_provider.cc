@@ -179,7 +179,7 @@ ServiceRefPtr VPNProvider::FindSimilarService(const KeyValueStore& args,
 
 bool VPNProvider::OnDeviceInfoAvailable(const string& link_name,
                                         int interface_index,
-                                        Technology::Identifier technology) {
+                                        Technology technology) {
   if (technology == Technology::kArc) {
     arc_device_ = new VirtualDevice(manager_, link_name, interface_index,
                                     Technology::kArc);

@@ -42,7 +42,7 @@ EthernetService::EthernetService(Manager* manager, const Properties& props)
 }
 
 EthernetService::EthernetService(Manager* manager,
-                                 Technology::Identifier technology,
+                                 Technology technology,
                                  const Properties& props)
     : Service(manager, technology), props_(props) {}
 
@@ -85,10 +85,8 @@ RpcIdentifier EthernetService::GetDeviceRpcId(Error* error) const {
 
 string EthernetService::GetStorageIdentifier() const {
   return props_.ethernet_
-             ? base::StringPrintf(
-                   "%s_%s",
-                   Technology::NameFromIdentifier(technology()).c_str(),
-                   props_.ethernet_->address().c_str())
+             ? base::StringPrintf("%s_%s", technology().GetName().c_str(),
+                                  props_.ethernet_->address().c_str())
              : props_.storage_id_;
 }
 

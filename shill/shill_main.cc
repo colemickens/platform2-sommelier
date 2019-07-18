@@ -168,11 +168,11 @@ int main(int argc, char** argv) {
     shill::Error error;
     string order_flag = cl->GetSwitchValueASCII(
         switches::kTechnologyOrder);
-    vector<shill::Technology::Identifier> test_order_vector;
-    if (shill::Technology::GetTechnologyVectorFromString(
-        order_flag, &test_order_vector, &error)) {
+    vector<shill::Technology> test_order_vector;
+    if (shill::GetTechnologyVectorFromString(order_flag, &test_order_vector,
+                                             &error)) {
       settings.default_technology_order = order_flag;
-    }  else {
+    } else {
       LOG(ERROR) << "Invalid default technology order: [" << order_flag
                  << "] Error: " << error.message();
     }

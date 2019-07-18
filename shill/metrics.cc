@@ -932,8 +932,8 @@ void Metrics::ReportTimeOnTechnology(
 void Metrics::NotifyDefaultServiceChanged(const Service* service) {
   base::TimeDelta elapsed_seconds;
 
-  Technology::Identifier technology = (service) ? service->technology() :
-                                                  Technology::kUnknown;
+  Technology technology =
+      service ? service->technology() : Technology(Technology::kUnknown);
   if (technology != last_default_technology_) {
     if (last_default_technology_ != Technology::kUnknown) {
       string histogram = GetFullMetricName(kMetricTimeOnlineSecondsSuffix,
@@ -987,9 +987,9 @@ void Metrics::NotifyServiceStateChanged(const Service& service,
 
   if (collect_bootstats_) {
     bootstat_log(base::StringPrintf("network-%s-%s",
-                                    Technology::NameFromIdentifier(
-                                        service.technology()).c_str(),
-                                    service.GetStateString().c_str()).c_str());
+                                    service.technology().GetName().c_str(),
+                                    service.GetStateString().c_str())
+                     .c_str());
   }
 
   if (new_state != Service::kStateConnected)
@@ -1002,8 +1002,8 @@ void Metrics::NotifyServiceStateChanged(const Service& service,
 }
 
 string Metrics::GetFullMetricName(const char* metric_suffix,
-                                  Technology::Identifier technology_id) {
-  string technology = Technology::NameFromIdentifier(technology_id);
+                                  Technology technology_id) {
+  string technology = technology_id.GetName();
   technology[0] = base::ToUpperASCII(technology[0]);
   return base::StringPrintf("%s.%s.%s", kMetricPrefix, technology.c_str(),
                             metric_suffix);
@@ -1033,7 +1033,7 @@ string Metrics::GetSuspendDurationMetricNameFromStatus(
 }
 
 void Metrics::NotifyServiceDisconnect(const Service& service) {
-  Technology::Identifier technology = service.technology();
+  Technology technology = service.technology();
   string histogram = GetFullMetricName(kMetricDisconnectSuffix, technology);
   SendToUMA(histogram,
             service.explicitly_disconnected(),
@@ -1046,7 +1046,7 @@ void Metrics::NotifySignalAtDisconnect(const Service& service,
                                        int16_t signal_strength) {
   // Negate signal_strength (goes from dBm to -dBm) because the metrics don't
   // seem to handle negative values well.  Now everything's positive.
-  Technology::Identifier technology = service.technology();
+  Technology technology = service.technology();
   string histogram = GetFullMetricName(kMetricSignalAtDisconnectSuffix,
                                        technology);
   SendToUMA(histogram,
@@ -1210,12 +1210,11 @@ void Metrics::NotifyDarkResumeScanResultsReceived() {
   --num_scan_results_expected_in_dark_resume_;
 }
 
-void Metrics::NotifyLinkMonitorFailure(
-    Technology::Identifier technology,
-    LinkMonitorFailure failure,
-    int seconds_to_failure,
-    int broadcast_error_count,
-    int unicast_error_count) {
+void Metrics::NotifyLinkMonitorFailure(Technology technology,
+                                       LinkMonitorFailure failure,
+                                       int seconds_to_failure,
+                                       int broadcast_error_count,
+                                       int unicast_error_count) {
   string histogram = GetFullMetricName(kMetricLinkMonitorFailureSuffix,
                                        technology);
   SendEnumToUMA(histogram, failure, kLinkMonitorFailureMax);
@@ -1249,8 +1248,7 @@ void Metrics::NotifyLinkMonitorFailure(
 }
 
 void Metrics::NotifyLinkMonitorResponseTimeSampleAdded(
-    Technology::Identifier technology,
-    int response_time_milliseconds) {
+    Technology technology, int response_time_milliseconds) {
   string histogram = GetFullMetricName(
       kMetricLinkMonitorResponseTimeSampleSuffix,  technology);
   SendToUMA(histogram,
@@ -1386,8 +1384,7 @@ void Metrics::NotifyWiFiSupplicantSuccess(int attempts) {
             kMetricWifiSupplicantAttemptsNumBuckets);
 }
 
-void Metrics::RegisterDevice(int interface_index,
-                             Technology::Identifier technology) {
+void Metrics::RegisterDevice(int interface_index, Technology technology) {
   SLOG(this, 2) << __func__ << ": " << interface_index;
   auto device_metrics = std::make_unique<DeviceMetrics>();
   device_metrics->technology = technology;
@@ -1451,8 +1448,7 @@ void Metrics::RegisterDevice(int interface_index,
   devices_metrics_[interface_index] = std::move(device_metrics);
 }
 
-bool Metrics::IsDeviceRegistered(int interface_index,
-                                 Technology::Identifier technology) {
+bool Metrics::IsDeviceRegistered(int interface_index, Technology technology) {
   SLOG(this, 2) << __func__ << ": interface index: " << interface_index
                             << ", technology: " << technology;
   DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
@@ -1769,7 +1765,7 @@ void Metrics::NotifyUserInitiatedConnectionFailureReason(
                 kUserInitiatedConnectionFailureReasonMax);
 }
 
-void Metrics::NotifyFallbackDNSTestResult(Technology::Identifier technology_id,
+void Metrics::NotifyFallbackDNSTestResult(Technology technology_id,
                                           int result) {
   string histogram = GetFullMetricName(kMetricFallbackDNSTestResultSuffix,
                                        technology_id);
@@ -1778,7 +1774,7 @@ void Metrics::NotifyFallbackDNSTestResult(Technology::Identifier technology_id,
                 kFallbackDNSTestResultMax);
 }
 
-void Metrics::NotifyNetworkProblemDetected(Technology::Identifier technology_id,
+void Metrics::NotifyNetworkProblemDetected(Technology technology_id,
                                            int reason) {
   string histogram = GetFullMetricName(kMetricNetworkProblemDetectedSuffix,
                                        technology_id);
@@ -1795,14 +1791,14 @@ void Metrics::NotifyDhcpClientStatus(DhcpClientStatus status) {
   SendEnumToUMA(kMetricDhcpClientStatus, status, kDhcpClientStatusMax);
 }
 
-void Metrics::NotifyNetworkConnectionIPType(
-    Technology::Identifier technology_id, NetworkConnectionIPType type) {
+void Metrics::NotifyNetworkConnectionIPType(Technology technology_id,
+                                            NetworkConnectionIPType type) {
   string histogram = GetFullMetricName(kMetricNetworkConnectionIPTypeSuffix,
                                        technology_id);
   SendEnumToUMA(histogram, type, kNetworkConnectionIPTypeMax);
 }
 
-void Metrics::NotifyIPv6ConnectivityStatus(Technology::Identifier technology_id,
+void Metrics::NotifyIPv6ConnectivityStatus(Technology technology_id,
                                            bool status) {
   string histogram = GetFullMetricName(kMetricIPv6ConnectivityStatusSuffix,
                                        technology_id);
@@ -1811,7 +1807,7 @@ void Metrics::NotifyIPv6ConnectivityStatus(Technology::Identifier technology_id,
   SendEnumToUMA(histogram, ipv6_status, kIPv6ConnectivityStatusMax);
 }
 
-void Metrics::NotifyDevicePresenceStatus(Technology::Identifier technology_id,
+void Metrics::NotifyDevicePresenceStatus(Technology technology_id,
                                          bool status) {
   string histogram = GetFullMetricName(kMetricDevicePresenceStatusSuffix,
                                        technology_id);
@@ -1820,7 +1816,7 @@ void Metrics::NotifyDevicePresenceStatus(Technology::Identifier technology_id,
   SendEnumToUMA(histogram, presence, kDevicePresenceStatusMax);
 }
 
-void Metrics::NotifyDeviceRemovedEvent(Technology::Identifier technology_id) {
+void Metrics::NotifyDeviceRemovedEvent(Technology technology_id) {
   DeviceTechnologyType type;
   switch (technology_id) {
     case Technology::kEthernet:
@@ -1839,8 +1835,8 @@ void Metrics::NotifyDeviceRemovedEvent(Technology::Identifier technology_id) {
   SendEnumToUMA(kMetricDeviceRemovedEvent, type, kDeviceTechnologyTypeMax);
 }
 
-void Metrics::NotifyUnreliableLinkSignalStrength(
-    Technology::Identifier technology_id, int signal_strength) {
+void Metrics::NotifyUnreliableLinkSignalStrength(Technology technology_id,
+                                                 int signal_strength) {
   string histogram = GetFullMetricName(
       kMetricUnreliableLinkSignalStrengthSuffix, technology_id);
   SendToUMA(histogram,
@@ -2020,7 +2016,7 @@ void Metrics::NotifyPortalDetectionMultiProbeResult(
 }
 
 void Metrics::InitializeCommonServiceMetrics(const Service& service) {
-  Technology::Identifier technology = service.technology();
+  Technology technology = service.technology();
   string histogram = GetFullMetricName(kMetricTimeToConfigMillisecondsSuffix,
                                        technology);
   AddServiceStateTransitionTimer(
@@ -2166,7 +2162,7 @@ Metrics::DeviceMetrics* Metrics::GetDeviceMetrics(int interface_index) const {
   return it->second.get();
 }
 
-bool Metrics::IsTechnologyPresent(Technology::Identifier technology_id) const {
+bool Metrics::IsTechnologyPresent(Technology technology_id) const {
   for (const auto& metrics : devices_metrics_) {
     if (metrics.second->technology == technology_id)
       return true;

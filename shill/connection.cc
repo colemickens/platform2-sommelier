@@ -84,7 +84,7 @@ void Connection::Binder::OnDisconnect() {
 Connection::Connection(int interface_index,
                        const std::string& interface_name,
                        bool fixed_ip_params,
-                       Technology::Identifier technology,
+                       Technology technology,
                        const DeviceInfo* device_info,
                        ControlInterface* control_interface)
     : weak_ptr_factory_(this),
@@ -108,9 +108,8 @@ Connection::Connection(int interface_index,
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
       control_interface_(control_interface) {
-  SLOG(this, 2) << __func__ << "(" << interface_index << ", "
-                << interface_name << ", "
-                << Technology::NameFromIdentifier(technology) << ")";
+  SLOG(this, 2) << __func__ << "(" << interface_index << ", " << interface_name
+                << ", " << technology << ")";
 }
 
 Connection::~Connection() {
@@ -161,8 +160,8 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   const IPConfig::Properties& properties = config->properties();
   allowed_uids_ = properties.allowed_uids;
   allowed_iifs_ = properties.allowed_iifs;
-  use_if_addrs_ = properties.use_if_addrs ||
-      Technology::IsPrimaryConnectivityTechnology(technology_);
+  use_if_addrs_ =
+      properties.use_if_addrs || technology_.IsPrimaryConnectivityTechnology();
 
   if (table_id_ == RT_TABLE_MAIN) {
     table_id_ = routing_table_->AllocTableId();

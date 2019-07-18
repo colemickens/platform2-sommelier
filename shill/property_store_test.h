@@ -184,7 +184,7 @@ class PropertyStoreTest : public testing::TestWithParam<brillo::Any> {
   MockControl* control_interface() { return &control_interface_; }
   EventDispatcher* dispatcher() { return &dispatcher_; }
   MockMetrics* metrics() { return &metrics_; }
-  const std::vector<Technology::Identifier>& default_technology_order() const {
+  const std::vector<Technology>& default_technology_order() const {
     return default_technology_order_;
   }
 
@@ -205,7 +205,7 @@ class PropertyStoreTest : public testing::TestWithParam<brillo::Any> {
   MockControl control_interface_;
   EventDispatcherForTest dispatcher_;
   testing::NiceMock<MockMetrics> metrics_;
-  const std::vector<Technology::Identifier> default_technology_order_;
+  const std::vector<Technology> default_technology_order_;
   Manager manager_;
 };
 

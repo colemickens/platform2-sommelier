@@ -22,7 +22,7 @@ class DeviceStub : public Device {
              const std::string& link_name,
              const std::string& address,
              int interface_index,
-             Technology::Identifier technology)
+             Technology technology)
       : Device(manager, link_name, address, interface_index, technology) {}
   void Start(Error* /*error*/,
              const EnabledStateChangedCallback& /*callback*/) override {}

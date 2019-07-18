@@ -24,7 +24,7 @@ const char kHardwareAddressEmpty[] = "";
 VirtualDevice::VirtualDevice(Manager* manager,
                              const std::string& link_name,
                              int interface_index,
-                             Technology::Identifier technology)
+                             Technology technology)
     : Device(manager,
              link_name,
              kHardwareAddressEmpty,

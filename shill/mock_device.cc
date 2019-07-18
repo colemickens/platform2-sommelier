@@ -23,7 +23,7 @@ MockDevice::MockDevice(Manager* manager,
                        int interface_index)
     : Device(
           manager, link_name, address, interface_index, Technology::kUnknown) {
-  DefaultValue<Technology::Identifier>::Set(Technology::kUnknown);
+  DefaultValue<Technology>::Set(Technology::kUnknown);
   ON_CALL(*this, connection())
       .WillByDefault(testing::ReturnRef(Device::connection()));
 }

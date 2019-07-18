@@ -153,8 +153,7 @@ class ManagerTest : public PropertyStoreTest {
     mock_devices_.clear();
   }
 
-  bool IsDeviceRegistered(const DeviceRefPtr& device,
-                          Technology::Identifier tech) {
+  bool IsDeviceRegistered(const DeviceRefPtr& device, Technology tech) {
     auto devices = manager()->FilterByTechnology(tech);
     return (devices.size() == 1 && devices[0].get() == device.get());
   }
@@ -438,7 +437,7 @@ class ManagerTest : public PropertyStoreTest {
   }
 #endif  // DISABLE_WIRED_8021X
 
-  const std::vector<Technology::Identifier>& GetTechnologyOrder() {
+  const std::vector<Technology>& GetTechnologyOrder() {
     return manager()->technology_order_;
   }
 
@@ -2265,12 +2264,12 @@ TEST_F(ManagerTest, DevicePresenceStatusCheck) {
   ON_CALL(*mock_devices_[2], technology())
       .WillByDefault(Return(Technology::kEthernet));
 
+  EXPECT_CALL(*metrics(), NotifyDevicePresenceStatus(
+                              Technology(Technology::kEthernet), true));
   EXPECT_CALL(*metrics(),
-      NotifyDevicePresenceStatus(Technology::kEthernet, true));
-  EXPECT_CALL(*metrics(),
-      NotifyDevicePresenceStatus(Technology::kWifi, true));
-  EXPECT_CALL(*metrics(),
-      NotifyDevicePresenceStatus(Technology::kCellular, false));
+              NotifyDevicePresenceStatus(Technology(Technology::kWifi), true));
+  EXPECT_CALL(*metrics(), NotifyDevicePresenceStatus(
+                              Technology(Technology::kCellular), false));
   manager()->DevicePresenceStatusCheck();
 }
 
@@ -2585,12 +2584,9 @@ TEST_F(ManagerTest, AvailableTechnologies) {
       .WillByDefault(Return(Technology::kWifi));
 
   set<string> expected_technologies;
-  expected_technologies.insert(Technology::NameFromIdentifier(
-      Technology::kEthernet));
-  expected_technologies.insert(Technology::NameFromIdentifier(
-      Technology::kWifi));
-  expected_technologies.insert(Technology::NameFromIdentifier(
-      Technology::kCellular));
+  expected_technologies.insert(Technology(Technology::kEthernet).GetName());
+  expected_technologies.insert(Technology(Technology::kWifi).GetName());
+  expected_technologies.insert(Technology(Technology::kCellular).GetName());
   Error error;
   vector<string> technologies = manager()->AvailableTechnologies(&error);
 
@@ -2632,10 +2628,8 @@ TEST_F(ManagerTest, ConnectedTechnologies) {
   mock_devices_[3]->SelectService(connected_service2);
 
   set<string> expected_technologies;
-  expected_technologies.insert(Technology::NameFromIdentifier(
-      Technology::kEthernet));
-  expected_technologies.insert(Technology::NameFromIdentifier(
-      Technology::kWifi));
+  expected_technologies.insert(Technology(Technology::kEthernet).GetName());
+  expected_technologies.insert(Technology(Technology::kWifi).GetName());
   Error error;
 
   vector<string> technologies = manager()->ConnectedTechnologies(&error);
@@ -2667,8 +2661,7 @@ TEST_F(ManagerTest, DefaultTechnology) {
   manager()->RegisterService(connected_service);
   CompleteServiceSort();
   // Connected service should be brought to the front now.
-  string expected_technology =
-      Technology::NameFromIdentifier(Technology::kWifi);
+  string expected_technology = Technology(Technology::kWifi).GetName();
   EXPECT_THAT(manager()->DefaultTechnology(&error), StrEq(expected_technology));
 }
 

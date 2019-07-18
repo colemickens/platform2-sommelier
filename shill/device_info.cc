@@ -219,20 +219,20 @@ void DeviceInfo::Stop() {
 
 vector<string> DeviceInfo::GetUninitializedTechnologies() const {
   set<string> unique_technologies;
-  set<Technology::Identifier> initialized_technologies;
+  set<Technology> initialized_technologies;
   for (const auto& info : infos_) {
-    Technology::Identifier technology = info.second.technology;
+    Technology technology = info.second.technology;
     if (info.second.device) {
       // If there is more than one device for a technology and at least
       // one of them has been initialized, make sure that it doesn't get
       // listed as uninitialized.
       initialized_technologies.insert(technology);
-      unique_technologies.erase(Technology::NameFromIdentifier(technology));
+      unique_technologies.erase(technology.GetName());
       continue;
     }
-    if (Technology::IsPrimaryConnectivityTechnology(technology) &&
+    if (technology.IsPrimaryConnectivityTechnology() &&
         !base::ContainsKey(initialized_technologies, technology))
-      unique_technologies.insert(Technology::NameFromIdentifier(technology));
+      unique_technologies.insert(technology.GetName());
   }
   return vector<string>(unique_technologies.begin(), unique_technologies.end());
 }
@@ -250,7 +250,7 @@ void DeviceInfo::RegisterDevice(const DeviceRefPtr& device) {
   } else {
     metrics()->RegisterDevice(device->interface_index(), device->technology());
   }
-  if (Technology::IsPrimaryConnectivityTechnology(device->technology())) {
+  if (device->technology().IsPrimaryConnectivityTechnology()) {
     manager_->RegisterDevice(device);
   }
 }
@@ -306,8 +306,7 @@ int DeviceInfo::GetDeviceArpType(const string& iface_name) {
   return arp_type;
 }
 
-Technology::Identifier DeviceInfo::GetDeviceTechnology(
-    const string& iface_name) {
+Technology DeviceInfo::GetDeviceTechnology(const string& iface_name) {
   int arp_type = GetDeviceArpType(iface_name);
 
   if (IsGuestDevice(iface_name)) {
@@ -502,7 +501,7 @@ bool DeviceInfo::HasSubdir(const FilePath& base_dir, const FilePath& subdir) {
 DeviceRefPtr DeviceInfo::CreateDevice(const string& link_name,
                                       const string& address,
                                       int interface_index,
-                                      Technology::Identifier technology) {
+                                      Technology technology) {
   DeviceRefPtr device;
   delayed_devices_.erase(interface_index);
   infos_[interface_index].technology = technology;
@@ -657,7 +656,7 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
   DCHECK(msg.type() == RTNLMessage::kTypeLink &&
          msg.mode() == RTNLMessage::kModeAdd);
   int dev_index = msg.interface_index();
-  Technology::Identifier technology = Technology::kUnknown;
+  Technology technology = Technology::kUnknown;
   unsigned int flags = msg.link_status().flags;
   unsigned int change = msg.link_status().change;
 
@@ -1208,7 +1207,7 @@ void DeviceInfo::DelayedDeviceCreationTask() {
     DCHECK(!GetDevice(dev_index));
 
     const string& link_name = infos_[dev_index].name;
-    Technology::Identifier technology = GetDeviceTechnology(link_name);
+    Technology technology = GetDeviceTechnology(link_name);
 
     if (technology == Technology::kCDCEthernet) {
       LOG(INFO) << "In " << __func__ << ": device " << link_name
@@ -1231,8 +1230,7 @@ void DeviceInfo::DelayedDeviceCreationTask() {
     } else if (technology != Technology::kCellular &&
                technology != Technology::kTunnel) {
       LOG(WARNING) << "In " << __func__ << ": device " << link_name
-                   << " is unexpected technology "
-                   << Technology::NameFromIdentifier(technology);
+                   << " is unexpected technology " << technology;
     }
 
     string address = infos_[dev_index].mac_address.HexEncode();

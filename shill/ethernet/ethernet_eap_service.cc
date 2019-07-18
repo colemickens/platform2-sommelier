@@ -26,8 +26,7 @@ EthernetEapService::EthernetEapService(Manager* manager)
 EthernetEapService::~EthernetEapService() = default;
 
 string EthernetEapService::GetStorageIdentifier() const {
-  return base::StringPrintf(
-      "%s_all", Technology::NameFromIdentifier(technology()).c_str());
+  return base::StringPrintf("%s_all", technology().GetName().c_str());
 }
 
 RpcIdentifier EthernetEapService::GetDeviceRpcId(Error* /*error*/) const {

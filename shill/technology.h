@@ -1,22 +1,31 @@
-// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef SHILL_TECHNOLOGY_H_
 #define SHILL_TECHNOLOGY_H_
 
+#include <iostream>
 #include <string>
 #include <vector>
 
 namespace shill {
 
 class Error;
+class Technology;
 
-// A class that provides functions for converting between technology names
-// and identifiers.
+// Convert a comma-separated list of technology names (with no whitespace
+// around commas) into a vector of Technology instances output in
+// |technologies_vector|. Returns true if the |technologies_string| contains a
+// valid set of technologies with no duplicate elements, false otherwise.
+bool GetTechnologyVectorFromString(const std::string& technologies_string,
+                                   std::vector<Technology>* technologies_vector,
+                                   Error* error);
+
+// A class representing a particular network technology type.
 class Technology {
  public:
-  enum Identifier {
+  enum Type {
     kEthernet,
     kEthernetEap,
     kWifi,
@@ -38,35 +47,36 @@ class Technology {
     kUnknown,
   };
 
-  // Returns the technology identifier for a technology name in |name|,
-  // or Technology::kUnknown if the technology name is unknown.
-  static Identifier IdentifierFromName(const std::string& name);
+  // Return a Technology instance given the technology name, or
+  // Technology::kUnknown if the technology name is unknown.
+  static Technology CreateFromName(const std::string& name);
 
-  // Returns the technology name for a technology identifier in |id|,
-  // or Technology::kUnknownName ("Unknown") if the technology identifier
-  // is unknown.
-  static std::string NameFromIdentifier(Identifier id);
+  // Return a Technology instance for a storage group identifier in |group|
+  // |group|, which should have the format of <technology name>_<suffix>, or
+  // Technology::kUnknown if |group| is not prefixed with a known technology
+  // name.
+  static Technology CreateFromStorageGroup(const std::string& group);
 
-  // Returns the technology identifier for a storage group identifier in
-  // |group|, which should have the format of <technology name>_<suffix>,
-  // or Technology::kUnknown if |group| is not prefixed with a known
-  // technology name.
-  static Identifier IdentifierFromStorageGroup(const std::string& group);
+  Technology() : Technology(kUnknown) {}
+  // Not explicit so that Types can be passed to methods taking Technologies.
+  Technology(Type type) : type_(type) {}
 
-  // Converts the comma-separated list of technology names (with no whitespace
-  // around commas) in |technologies_string| into a vector of technology
-  // identifiers output in |technologies_vector|. Returns true if the
-  // |technologies_string| contains a valid set of technologies with no
-  // duplicate elements, false otherwise.
-  static bool GetTechnologyVectorFromString(
-      const std::string& technologies_string,
-      std::vector<Identifier>* technologies_vector,
-      Error* error);
+  // Allow for Technology to be used as a Type (useful for
+  // comparisons/switch-cases involving Types).
+  operator Type() const { return type_; }
 
-  // Returns true if |technology| is a primary connectivity technology, i.e.
+  std::string GetName() const;
+
+  // Return true if |technology| is a primary connectivity technology, i.e.
   // Ethernet, Cellular, WiFi, or PPPoE.
-  static bool IsPrimaryConnectivityTechnology(Identifier technology);
+  bool IsPrimaryConnectivityTechnology() const;
+
+ private:
+  Type type_;
 };
+
+// Add the Technology name to the ostream.
+std::ostream& operator<<(std::ostream& os, const Technology& technology);
 
 }  // namespace shill
 

@@ -159,8 +159,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual void UpdateWiFiProvider();
 #endif  // DISABLE_WIFI
 
-  std::vector<DeviceRefPtr>
-      FilterByTechnology(Technology::Identifier tech) const;
+  std::vector<DeviceRefPtr> FilterByTechnology(Technology tech) const;
 
   ServiceRefPtr FindService(const std::string& name);
   RpcIdentifiers EnumerateAvailableServices(Error* error);
@@ -296,7 +295,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
                                     Error* error,
                                     const ResultCallback& callback);
   // Return whether a technology is marked as enabled for portal detection.
-  virtual bool IsPortalDetectionEnabled(Technology::Identifier tech);
+  virtual bool IsPortalDetectionEnabled(Technology tech);
   // Set the start-up value for the portal detection list.  This list will
   // be used until a value set explicitly over the control API.  Until
   // then, we ignore but do not overwrite whatever value is stored in the
@@ -312,28 +311,26 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual bool IsServiceEphemeral(const ServiceConstRefPtr& service) const;
 
   // Return whether a Technology has any connected Services.
-  virtual bool IsTechnologyConnected(Technology::Identifier technology) const;
+  virtual bool IsTechnologyConnected(Technology technology) const;
 
   // Return whether a technology is enabled for link monitoring.
-  virtual bool IsTechnologyLinkMonitorEnabled(
-      Technology::Identifier technology) const;
+  virtual bool IsTechnologyLinkMonitorEnabled(Technology technology) const;
 
   // Return whether the Wake on LAN feature is enabled.
   virtual bool IsWakeOnLanEnabled() const { return is_wake_on_lan_enabled_; }
 
   // Return whether a technology is disabled for auto-connect.
-  virtual bool IsTechnologyAutoConnectDisabled(
-      Technology::Identifier technology) const;
+  virtual bool IsTechnologyAutoConnectDisabled(Technology technology) const;
 
   // Report whether |technology| is prohibited from being enabled.
-  virtual bool IsTechnologyProhibited(Technology::Identifier technology) const;
+  virtual bool IsTechnologyProhibited(Technology technology) const;
 
   // Called by Profile when a |storage| completes initialization.
   void OnProfileStorageInitialized(Profile* storage);
 
   // Return a Device with technology |technology| in the enabled state.
   virtual DeviceRefPtr GetEnabledDeviceWithTechnology(
-      Technology::Identifier technology) const;
+      Technology technology) const;
 
   // Return a Device with link_name |link_name| in the enabled state.
   virtual DeviceRefPtr GetEnabledDeviceByLinkName(
@@ -607,7 +604,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   bool SetPortalFallbackUrlsString(const std::string& urls, Error* error);
   void EmitDefaultService();
   bool IsTechnologyInList(const std::string& technology_list,
-                          Technology::Identifier tech) const;
+                          Technology tech) const;
   void EmitDeviceProperties();
 #if !defined(DISABLE_WIFI)
   bool SetDisableWiFiVHT(const bool& disable_wifi_vht, Error* error);
@@ -616,8 +613,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   bool SetProhibitedTechnologies(const std::string& prohibited_technologies,
                                  Error* error);
   std::string GetProhibitedTechnologies(Error* error);
-  void OnTechnologyProhibited(Technology::Identifier technology,
-                              const Error& error);
+  void OnTechnologyProhibited(Technology technology, const Error& error);
 
   // For every device instance that is sharing the same connectivity with
   // another device, enable the multi-home flag.
@@ -778,7 +774,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Map of technologies to Provider instances.  These pointers are owned
   // by the respective scoped_reptr objects that are held over the lifetime
   // of the Manager object.
-  std::map<Technology::Identifier, ProviderInterface*> providers_;
+  std::map<Technology, ProviderInterface*> providers_;
   // List of startup profile names to push on the profile stack on startup.
   std::vector<ProfileRefPtr> profiles_;
   ProfileRefPtr ephemeral_profile_;
@@ -786,7 +782,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   std::unique_ptr<Upstart> upstart_;
 
   // The priority order of technologies
-  std::vector<Technology::Identifier> technology_order_;
+  std::vector<Technology> technology_order_;
 
   // This is the last Service RPC Identifier for which we emitted a
   // "DefaultService" signal for.

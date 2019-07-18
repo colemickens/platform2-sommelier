@@ -31,7 +31,7 @@ class MockConnection : public Connection {
   MOCK_CONST_METHOD0(dns_servers, const std::vector<std::string>&());
   MOCK_CONST_METHOD0(local, const IPAddress&());
   MOCK_CONST_METHOD0(gateway, const IPAddress&());
-  MOCK_CONST_METHOD0(technology, Technology::Identifier());
+  MOCK_CONST_METHOD0(technology, Technology());
   MOCK_CONST_METHOD0(tethering, std::string&());
   MOCK_METHOD1(UpdateDNSServers,
                void(const std::vector<std::string>& dns_servers));

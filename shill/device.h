@@ -53,7 +53,7 @@ class Device : public base::RefCounted<Device> {
          const std::string& link_name,
          const std::string& address,
          int interface_index,
-         Technology::Identifier technology);
+         Technology technology);
 
   // Initialize type-specific network interface properties.
   virtual void Initialize();
@@ -217,7 +217,7 @@ class Device : public base::RefCounted<Device> {
   virtual const ConnectionRefPtr& connection() const { return connection_; }
   bool enabled() const { return enabled_; }
   bool enabled_persistent() const { return enabled_persistent_; }
-  virtual Technology::Identifier technology() const { return technology_; }
+  virtual Technology technology() const { return technology_; }
   std::string GetTechnologyString(Error* error);
 
   virtual const IPConfigRefPtr& ipconfig() const { return ipconfig_; }
@@ -825,7 +825,7 @@ class Device : public base::RefCounted<Device> {
   // DNS servers obtained from ipconfig (either from DHCP or static config)
   // that are not working.
   std::vector<std::string> config_dns_servers_;
-  Technology::Identifier technology_;
+  Technology technology_;
 
   int portal_check_interval_seconds_;
 

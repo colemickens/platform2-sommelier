@@ -109,7 +109,7 @@ string VPNService::GetPhysicalTechnologyProperty(Error* error) {
     return "";
   }
 
-  return Technology::NameFromIdentifier(underlying_connection->technology());
+  return underlying_connection->technology().GetName();
 }
 
 RpcIdentifier VPNService::GetDeviceRpcId(Error* error) const {

@@ -9,7 +9,7 @@ namespace shill {
 MockVirtualDevice::MockVirtualDevice(Manager* manager,
                                      const std::string& link_name,
                                      int interface_index,
-                                     Technology::Identifier technology)
+                                     Technology technology)
     : VirtualDevice(manager, link_name, interface_index, technology) {}
 
 MockVirtualDevice::~MockVirtualDevice() = default;

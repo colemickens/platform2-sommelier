@@ -50,7 +50,7 @@ class EapCredentials {
   // Output metrics about this EAP connection to |metrics| with technology
   // |technology|.
   virtual void OutputConnectionMetrics(Metrics* metrics,
-                                       Technology::Identifier technology) const;
+                                       Technology technology) const;
 
   // Populate the wpa_supplicant DBus parameter map |params| with the
   // credentials in |this|.  To do so, this function may use |certificate_file|

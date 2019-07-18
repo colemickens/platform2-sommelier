@@ -24,7 +24,7 @@ class MockVPNProvider : public VPNProvider {
   MOCK_METHOD3(OnDeviceInfoAvailable,
                bool(const std::string& link_name,
                     int interface_index,
-                    Technology::Identifier technology));
+                    Technology technology));
   MOCK_CONST_METHOD0(HasActiveService, bool());
 
  private:

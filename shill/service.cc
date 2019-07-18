@@ -117,7 +117,7 @@ const int Service::kMaxMisconnectEventHistory = 20;
 // static
 unsigned int Service::next_serial_number_ = 0;
 
-Service::Service(Manager* manager, Technology::Identifier technology)
+Service::Service(Manager* manager, Technology technology)
     : weak_ptr_factory_(this),
       state_(kStateIdle),
       previous_state_(kStateIdle),
@@ -259,8 +259,7 @@ Service::Service(Manager* manager, Technology::Identifier technology)
 
   dhcp_properties_->InitPropertyStore(&store_);
 
-  SLOG(this, 1) << Technology::NameFromIdentifier(technology) << " service "
-                << unique_name_ << " constructed.";
+  SLOG(this, 1) << technology << " service " << unique_name_ << " constructed.";
 }
 
 Service::~Service() {
@@ -947,7 +946,7 @@ const char* Service::ConnectStateToString(const ConnectState& state) {
 }
 
 string Service::GetTechnologyString() const {
-  return Technology::NameFromIdentifier(technology());
+  return technology().GetName();
 }
 
 void Service::NoteDisconnectEvent() {
@@ -1045,7 +1044,7 @@ bool Service::Compare(Manager* manager,
                       ServiceRefPtr a,
                       ServiceRefPtr b,
                       bool compare_connectivity_state,
-                      const vector<Technology::Identifier>& tech_order,
+                      const vector<Technology>& tech_order,
                       const char** reason) {
   bool ret;
 
@@ -1299,7 +1298,7 @@ bool Service::IsAutoConnectable(const char** reason) const {
     return false;
   }
 
-  if (!Technology::IsPrimaryConnectivityTechnology(technology_) &&
+  if (!technology_.IsPrimaryConnectivityTechnology() &&
       !manager_->IsConnected()) {
     *reason = kAutoConnOffline;
     return false;

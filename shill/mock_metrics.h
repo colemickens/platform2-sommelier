@@ -59,21 +59,21 @@ class MockMetrics : public Metrics {
                void(const std::string& name,
                     const Service::ConnectFailure failure));
   MOCK_METHOD2(NotifyNetworkProblemDetected,
-               void(Technology::Identifier technology_id, int reason));
+               void(Technology technology_id, int reason));
   MOCK_METHOD2(NotifyFallbackDNSTestResult,
-               void(Technology::Identifier technology_id, int result));
+               void(Technology technology_id, int result));
   MOCK_METHOD1(NotifyDeviceConnectionStatus,
                void(Metrics::ConnectionStatus status));
   MOCK_METHOD1(NotifyDhcpClientStatus, void(Metrics::DhcpClientStatus status));
   MOCK_METHOD2(NotifyNetworkConnectionIPType,
-               void(Technology::Identifier technology_id,
+               void(Technology technology_id,
                     Metrics::NetworkConnectionIPType type));
   MOCK_METHOD2(NotifyIPv6ConnectivityStatus,
-               void(Technology::Identifier technology_id, bool status));
+               void(Technology technology_id, bool status));
   MOCK_METHOD2(NotifyDevicePresenceStatus,
-               void(Technology::Identifier technology_id, bool status));
+               void(Technology technology_id, bool status));
   MOCK_METHOD2(NotifyUnreliableLinkSignalStrength,
-               void(Technology::Identifier technology_id, int signal_strength));
+               void(Technology technology_id, int signal_strength));
   MOCK_METHOD1(NotifyVerifyWakeOnWiFiSettingsResult,
                void(VerifyWakeOnWiFiSettingsResult result));
   MOCK_METHOD1(NotifyConnectedToServiceAfterWake,

@@ -563,10 +563,10 @@ TEST_F(EthernetTest, TogglePPPoE) {
   EXPECT_CALL(manager_, DeregisterService(TechnologyEq(Technology::kPPPoE)));
   EXPECT_CALL(manager_, RegisterService(_));
 
-  const vector<pair<bool, Technology::Identifier>> transitions = {
-    {false, Technology::kEthernet},
-    {true,  Technology::kPPPoE},
-    {false, Technology::kEthernet},
+  const vector<pair<bool, Technology>> transitions = {
+      {false, Technology::kEthernet},
+      {true, Technology::kPPPoE},
+      {false, Technology::kEthernet},
   };
   for (const auto& transition : transitions) {
     Error error;

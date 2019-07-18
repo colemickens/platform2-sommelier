@@ -115,7 +115,7 @@ const char* const kProbeTechnologies[] = {
 // user has logged in. This is particularly problematic for cellular services,
 // which may incur data cost. To err on the side of caution, we temporarily
 // disable auto-connect for cellular before a user session has started.
-const Technology::Identifier kNoAutoConnectTechnologiesBeforeLoggedIn[] = {
+const Technology kNoAutoConnectTechnologiesBeforeLoggedIn[] = {
     Technology::kCellular,
 };
 
@@ -845,8 +845,7 @@ ServiceRefPtr Manager::GetServiceWithStorageIdentifier(
 
 ServiceRefPtr Manager::CreateTemporaryServiceFromProfile(
     const ProfileRefPtr& profile, const std::string& entry_name, Error* error) {
-  Technology::Identifier technology =
-      Technology::IdentifierFromStorageGroup(entry_name);
+  Technology technology = Technology::CreateFromStorageGroup(entry_name);
   if (technology == Technology::kUnknown) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kInternalError,
@@ -910,18 +909,18 @@ RpcIdentifier Manager::GetDefaultServiceRpcIdentifier(Error* /*error*/) {
 }
 
 bool Manager::IsTechnologyInList(const string& technology_list,
-                                 Technology::Identifier tech) const {
+                                 Technology tech) const {
   if (technology_list.empty())
     return false;
 
   Error error;
-  vector<Technology::Identifier> technologies;
-  return Technology::GetTechnologyVectorFromString(technology_list,
-                                                   &technologies, &error) &&
+  vector<Technology> technologies;
+  return GetTechnologyVectorFromString(technology_list, &technologies,
+                                       &error) &&
          base::ContainsValue(technologies, tech);
 }
 
-bool Manager::IsPortalDetectionEnabled(Technology::Identifier tech) {
+bool Manager::IsPortalDetectionEnabled(Technology tech) {
   return IsTechnologyInList(GetCheckPortalList(nullptr), tech);
 }
 
@@ -949,13 +948,11 @@ bool Manager::IsServiceEphemeral(const ServiceConstRefPtr& service) const {
   return service->profile() == ephemeral_profile_;
 }
 
-bool Manager::IsTechnologyLinkMonitorEnabled(
-    Technology::Identifier technology) const {
+bool Manager::IsTechnologyLinkMonitorEnabled(Technology technology) const {
   return IsTechnologyInList(props_.link_monitor_technologies, technology);
 }
 
-bool Manager::IsTechnologyAutoConnectDisabled(
-    Technology::Identifier technology) const {
+bool Manager::IsTechnologyAutoConnectDisabled(Technology technology) const {
   if (!has_user_session_) {
     for (auto disabled_technology : kNoAutoConnectTechnologiesBeforeLoggedIn) {
       if (technology == disabled_technology)
@@ -965,8 +962,7 @@ bool Manager::IsTechnologyAutoConnectDisabled(
   return IsTechnologyInList(props_.no_auto_connect_technologies, technology);
 }
 
-bool Manager::IsTechnologyProhibited(
-    Technology::Identifier technology) const {
+bool Manager::IsTechnologyProhibited(Technology technology) const {
   return IsTechnologyInList(props_.prohibited_technologies, technology);
 }
 
@@ -977,7 +973,7 @@ void Manager::OnProfileStorageInitialized(Profile* profile) {
 }
 
 DeviceRefPtr Manager::GetEnabledDeviceWithTechnology(
-    Technology::Identifier technology) const {
+    Technology technology) const {
   for (const auto& device : FilterByTechnology(technology)) {
     if (device->enabled()) {
       return device;
@@ -1063,7 +1059,7 @@ void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
                                            const ResultCallback& callback) {
   CHECK(error);
   DCHECK(error->IsOngoing());
-  Technology::Identifier id = Technology::IdentifierFromName(technology_name);
+  Technology id = Technology::CreateFromName(technology_name);
   if (id == Technology::kUnknown) {
     error->Populate(Error::kInvalidArguments, "Unknown technology");
     return;
@@ -1210,7 +1206,7 @@ void Manager::RegisterDevice(const DeviceRefPtr& to_manage) {
   UpdateDevice(to_manage);
 
   if (network_throttling_enabled_ &&
-      Technology::IsPrimaryConnectivityTechnology(to_manage->technology())) {
+      to_manage->technology().IsPrimaryConnectivityTechnology()) {
     if (devices_.size() == 1) {
       ResultCallback dummy;
       throttler_->ThrottleInterfaces(dummy, upload_rate_kbits_,
@@ -1328,10 +1324,9 @@ bool Manager::GetDisableWiFiVHT(Error* error) {
 
 bool Manager::SetProhibitedTechnologies(const string& prohibited_technologies,
                                         Error* error) {
-  vector<Technology::Identifier> technology_vector;
-  if (!Technology::GetTechnologyVectorFromString(prohibited_technologies,
-                                                 &technology_vector,
-                                                 error)) {
+  vector<Technology> technology_vector;
+  if (!GetTechnologyVectorFromString(prohibited_technologies,
+                                     &technology_vector, error)) {
     return false;
   }
   for (const auto& technology : technology_vector) {
@@ -1339,21 +1334,17 @@ bool Manager::SetProhibitedTechnologies(const string& prohibited_technologies,
     ResultCallback result_callback(Bind(
         &Manager::OnTechnologyProhibited, Unretained(this), technology));
     const bool kPersistentSave = false;
-    SetEnabledStateForTechnology(Technology::NameFromIdentifier(technology),
-                                 false,
-                                 kPersistentSave,
-                                 &unused_error,
-                                 result_callback);
+    SetEnabledStateForTechnology(technology.GetName(), false, kPersistentSave,
+                                 &unused_error, result_callback);
   }
   props_.prohibited_technologies = prohibited_technologies;
 
   return true;
 }
 
-void Manager::OnTechnologyProhibited(Technology::Identifier technology,
+void Manager::OnTechnologyProhibited(Technology technology,
                                      const Error& error) {
-  SLOG(this, 2) << __func__ << " for "
-                << Technology::NameFromIdentifier(technology);
+  SLOG(this, 2) << __func__ << " for " << technology;
 }
 
 string Manager::GetProhibitedTechnologies(Error* error) {
@@ -1678,9 +1669,7 @@ void Manager::OnDarkResumeActionsComplete(const Error& error) {
   power_manager_->ReportDarkSuspendReadiness();
 }
 
-
-vector<DeviceRefPtr>
-Manager::FilterByTechnology(Technology::Identifier tech) const {
+vector<DeviceRefPtr> Manager::FilterByTechnology(Technology tech) const {
   vector<DeviceRefPtr> found;
   for (const auto& device : devices_) {
     if (device->technology() == tech)
@@ -1860,8 +1849,8 @@ void Manager::DevicePresenceStatusCheck() {
 
   for (const auto& technology : kProbeTechnologies) {
     bool presence = base::ContainsValue(available_technologies, technology);
-    metrics_->NotifyDevicePresenceStatus(
-        Technology::IdentifierFromName(technology), presence);
+    metrics_->NotifyDevicePresenceStatus(Technology::CreateFromName(technology),
+                                         presence);
   }
 }
 
@@ -1953,7 +1942,7 @@ void Manager::ConnectToBestServicesTask() {
   const bool kCompareConnectivityState = false;
   sort(services_copy.begin(), services_copy.end(),
        ServiceSorter(this, kCompareConnectivityState, technology_order_));
-  set<Technology::Identifier> connecting_technologies;
+  set<Technology> connecting_technologies;
   for (const auto& service : services_copy) {
     if (!service->connectable()) {
       // Due to service sort order, it is guaranteed that no services beyond
@@ -1963,9 +1952,8 @@ void Manager::ConnectToBestServicesTask() {
     if (!service->auto_connect() || !service->IsVisible()) {
       continue;
     }
-    Technology::Identifier technology = service->technology();
-    if (!Technology::IsPrimaryConnectivityTechnology(technology) &&
-        !IsConnected()) {
+    Technology technology = service->technology();
+    if (!technology.IsPrimaryConnectivityTechnology() && !IsConnected()) {
       // Non-primary services need some other service connected first.
       continue;
     }
@@ -2094,8 +2082,7 @@ void Manager::RefreshConnectionState() {
 vector<string> Manager::AvailableTechnologies(Error* /*error*/) {
   set<string> unique_technologies;
   for (const auto& device : devices_) {
-    unique_technologies.insert(
-        Technology::NameFromIdentifier(device->technology()));
+    unique_technologies.insert(device->technology().GetName());
   }
   return vector<string>(unique_technologies.begin(), unique_technologies.end());
 }
@@ -2104,13 +2091,12 @@ vector<string> Manager::ConnectedTechnologies(Error* /*error*/) {
   set<string> unique_technologies;
   for (const auto& device : devices_) {
     if (device->IsConnected())
-      unique_technologies.insert(
-          Technology::NameFromIdentifier(device->technology()));
+      unique_technologies.insert(device->technology().GetName());
   }
   return vector<string>(unique_technologies.begin(), unique_technologies.end());
 }
 
-bool Manager::IsTechnologyConnected(Technology::Identifier technology) const {
+bool Manager::IsTechnologyConnected(Technology technology) const {
   for (const auto& device : devices_) {
     if (device->technology() == technology && device->IsConnected())
       return true;
@@ -2127,8 +2113,7 @@ vector<string> Manager::EnabledTechnologies(Error* /*error*/) {
   set<string> unique_technologies;
   for (const auto& device : devices_) {
     if (device->enabled())
-      unique_technologies.insert(
-          Technology::NameFromIdentifier(device->technology()));
+      unique_technologies.insert(device->technology().GetName());
   }
   return vector<string>(unique_technologies.begin(), unique_technologies.end());
 }
@@ -2270,7 +2255,7 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore& args,
   }
 
   string type = args.GetString(kTypeProperty);
-  Technology::Identifier technology = Technology::IdentifierFromName(type);
+  Technology technology = Technology::CreateFromName(type);
   if (!base::ContainsKey(providers_, technology)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           kErrorUnsupportedServiceType);
@@ -2363,7 +2348,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
   }
 
   string type = args.GetString(kTypeProperty);
-  Technology::Identifier technology = Technology::IdentifierFromName(type);
+  Technology technology = Technology::CreateFromName(type);
 
   if (!base::ContainsKey(providers_, technology)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
@@ -2480,7 +2465,7 @@ ServiceRefPtr Manager::GetPrimaryPhysicalService() {
   // Note that |services_| is kept sorted in order of highest priority to
   // lowest.
   for (const auto& service : services_) {
-    if (Technology::IsPrimaryConnectivityTechnology(service->technology())) {
+    if (service->technology().IsPrimaryConnectivityTechnology()) {
       return service;
     }
   }
@@ -2554,7 +2539,7 @@ void Manager::RecheckPortalOnService(const ServiceRefPtr& service) {
 }
 
 void Manager::RequestScan(const string& technology, Error* error) {
-  Technology::Identifier technology_identifier;
+  Technology technology_identifier;
   // TODO(benchan): To maintain backward compatibility, we treat an unspecified
   // technology as WiFi. We should remove this special handling and treat an
   // unspecified technology as an error after we update existing clients of
@@ -2562,7 +2547,7 @@ void Manager::RequestScan(const string& technology, Error* error) {
   if (technology.empty()) {
     technology_identifier = Technology::kWifi;
   } else {
-    technology_identifier = Technology::IdentifierFromName(technology);
+    technology_identifier = Technology::CreateFromName(technology);
   }
 
   switch (technology_identifier) {
@@ -2607,16 +2592,16 @@ void Manager::SetSchedScan(bool enable, Error* error) {
 string Manager::GetTechnologyOrder() {
   vector<string> technology_names;
   for (const auto& technology : technology_order_) {
-    technology_names.push_back(Technology::NameFromIdentifier(technology));
+    technology_names.push_back(technology.GetName());
   }
 
   return base::JoinString(technology_names, ",");
 }
 
 void Manager::SetTechnologyOrder(const string& order, Error* error) {
-  vector<Technology::Identifier> new_order;
+  vector<Technology> new_order;
   SLOG(this, 2) << "Setting technology order to " << order;
-  if (!Technology::GetTechnologyVectorFromString(order, &new_order, error)) {
+  if (!GetTechnologyVectorFromString(order, &new_order, error)) {
     return;
   }
 
@@ -2657,8 +2642,8 @@ std::vector<std::string> Manager::GetDeviceInterfaceNames() {
   std::vector<std::string> interfaces;
 
   for (const auto& device : devices_) {
-    Technology::Identifier technology = device->technology();
-    if (Technology::IsPrimaryConnectivityTechnology(technology)) {
+    Technology technology = device->technology();
+    if (technology.IsPrimaryConnectivityTechnology()) {
       interfaces.push_back(device->link_name());
       SLOG(this, 4) << "Adding device: " << device->link_name();
     }

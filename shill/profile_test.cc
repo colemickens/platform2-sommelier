@@ -271,10 +271,10 @@ TEST_F(ProfileTest, Save) {
 TEST_F(ProfileTest, EntryEnumeration) {
   scoped_refptr<MockService> service1 = CreateMockService();
   scoped_refptr<MockService> service2 = CreateMockService();
-  string service1_storage_name = Technology::NameFromIdentifier(
-      Technology::kCellular) + "_1";
-  string service2_storage_name = Technology::NameFromIdentifier(
-      Technology::kCellular) + "_2";
+  string service1_storage_name =
+      Technology(Technology::kCellular).GetName() + "_1";
+  string service2_storage_name =
+      Technology(Technology::kCellular).GetName() + "_2";
   EXPECT_CALL(*service1, Save(_))
       .WillRepeatedly(Invoke(service1.get(), &MockService::FauxSave));
   EXPECT_CALL(*service2, Save(_))

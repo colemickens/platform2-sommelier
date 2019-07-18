@@ -178,7 +178,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
     // only the ip_addresses field is valid.
     bool has_addresses_only;
 
-    Technology::Identifier technology;
+    Technology technology;
   };
 
   // Create a Device object for the interface named |linkname|, with a
@@ -187,7 +187,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   virtual DeviceRefPtr CreateDevice(const std::string& link_name,
                                     const std::string& address,
                                     int interface_index,
-                                    Technology::Identifier technology);
+                                    Technology technology);
 
   // Return the ARP type (ARPHRD_* from <net/if_arp.h>) of interface
   // |iface_name|.
@@ -211,8 +211,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
                                  base::FilePath* path_out);
   // Classify the device named |iface_name|, and return an identifier
   // indicating its type.
-  virtual Technology::Identifier GetDeviceTechnology(
-      const std::string& iface_name);
+  virtual Technology GetDeviceTechnology(const std::string& iface_name);
   // Checks the device specified by |iface_name| to see if it's a modem device.
   // This method assumes that |iface_name| has already been determined to be
   // using the cdc_ether / cdc_ncm driver.

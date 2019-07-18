@@ -128,7 +128,7 @@ Device::Device(Manager* manager,
                const string& link_name,
                const string& address,
                int interface_index,
-               Technology::Identifier technology)
+               Technology technology)
     : enabled_(false),
       enabled_persistent_(true),
       enabled_pending_(enabled_),
@@ -418,7 +418,7 @@ vector<GeolocationInfo> Device::GetGeolocationObjects() const {
 }
 
 string Device::GetTechnologyString(Error* /*error*/) {
-  return Technology::NameFromIdentifier(technology());
+  return technology().GetName();
 }
 
 const string& Device::UniqueName() const {
@@ -1900,9 +1900,8 @@ void Device::SetEnabledChecked(bool enable,
   SLOG(this, 2) << "Device " << link_name_ << " "
                 << (enable ? "starting" : "stopping");
   if (enable && manager_->IsTechnologyProhibited(technology())) {
-    error->Populate(Error::kPermissionDenied, "The " +
-                    Technology::NameFromIdentifier(technology()) +
-                    " technology is prohibited");
+    error->Populate(Error::kPermissionDenied, "The " + technology().GetName() +
+                                                  " technology is prohibited");
     return;
   }
 

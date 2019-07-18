@@ -149,7 +149,7 @@ class Service : public base::RefCounted<Service> {
   static const int kPriorityNone;
 
   // A constructor for the Service object
-  Service(Manager* manager, Technology::Identifier technology);
+  Service(Manager* manager, Technology technology);
 
   // AutoConnect MAY choose to ignore the connection request in some
   // cases. For example, if the corresponding Device only supports one
@@ -403,7 +403,7 @@ class Service : public base::RefCounted<Service> {
   // it prints as a number.
   uint16_t strength() const { return strength_; }
 
-  virtual Technology::Identifier technology() const { return technology_; }
+  virtual Technology technology() const { return technology_; }
   std::string GetTechnologyString() const;
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
@@ -434,7 +434,7 @@ class Service : public base::RefCounted<Service> {
                       ServiceRefPtr a,
                       ServiceRefPtr b,
                       bool compare_connectivity_state,
-                      const std::vector<Technology::Identifier>& tech_order,
+                      const std::vector<Technology>& tech_order,
                       const char** reason);
 
   // Returns a sanitized version of |identifier| for use as a service storage
@@ -828,7 +828,7 @@ class Service : public base::RefCounted<Service> {
   std::unique_ptr<EapCredentials> eap_;
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   std::unique_ptr<DhcpProperties> dhcp_properties_;
-  Technology::Identifier technology_;
+  Technology technology_;
   // The time of the most recent failure. Value is 0 if the service is
   // not currently failed.
   time_t failed_time_;

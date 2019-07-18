@@ -68,18 +68,15 @@ class MockManager : public Manager {
                              Error* error));
   MOCK_CONST_METHOD0(IsConnected, bool());
   MOCK_METHOD0(UpdateEnabledTechnologies, void());
-  MOCK_METHOD1(IsPortalDetectionEnabled, bool(Technology::Identifier tech));
+  MOCK_METHOD1(IsPortalDetectionEnabled, bool(Technology tech));
   MOCK_CONST_METHOD1(IsServiceEphemeral,
                      bool(const ServiceConstRefPtr& service));
   MOCK_CONST_METHOD2(IsProfileBefore,
                      bool(const ProfileRefPtr& a,
                           const ProfileRefPtr& b));
-  MOCK_CONST_METHOD1(IsTechnologyConnected,
-                     bool(Technology::Identifier tech));
-  MOCK_CONST_METHOD1(IsTechnologyLinkMonitorEnabled,
-                     bool(Technology::Identifier tech));
-  MOCK_CONST_METHOD1(IsTechnologyAutoConnectDisabled,
-                     bool(Technology::Identifier tech));
+  MOCK_CONST_METHOD1(IsTechnologyConnected, bool(Technology tech));
+  MOCK_CONST_METHOD1(IsTechnologyLinkMonitorEnabled, bool(Technology tech));
+  MOCK_CONST_METHOD1(IsTechnologyAutoConnectDisabled, bool(Technology tech));
   MOCK_METHOD2(RequestScan, void(const std::string& technology, Error* error));
   MOCK_CONST_METHOD0(GetPortalCheckHttpUrl, const std::string&());
   MOCK_CONST_METHOD0(GetPortalCheckHttpsUrl, const std::string&());
@@ -87,7 +84,7 @@ class MockManager : public Manager {
                      const std::vector<std::string>&());
   MOCK_METHOD0(IsSuspending, bool());
   MOCK_CONST_METHOD1(GetEnabledDeviceWithTechnology,
-                     DeviceRefPtr(Technology::Identifier technology));
+                     DeviceRefPtr(Technology technology));
   MOCK_CONST_METHOD1(GetEnabledDeviceByLinkName,
                      DeviceRefPtr(const std::string& link_name));
   MOCK_CONST_METHOD0(GetMinimumMTU, int());

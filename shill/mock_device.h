@@ -49,7 +49,7 @@ class MockDevice : public Device {
   MOCK_METHOD0(GetReceiveByteCount, uint64_t());
   MOCK_METHOD0(GetTransmitByteCount, uint64_t());
   MOCK_CONST_METHOD1(IsConnectedToService, bool(const ServiceRefPtr& service));
-  MOCK_CONST_METHOD0(technology, Technology::Identifier());
+  MOCK_CONST_METHOD0(technology, Technology());
   MOCK_METHOD1(OnBeforeSuspend, void(const ResultCallback& callback));
   MOCK_METHOD1(OnDarkResume, void(const ResultCallback& callback));
   MOCK_METHOD0(OnAfterResume, void());
