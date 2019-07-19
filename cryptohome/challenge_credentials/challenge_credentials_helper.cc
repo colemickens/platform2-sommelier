@@ -118,6 +118,7 @@ void ChallengeCredentialsHelper::OnGenerateNewCompleted(
 
 void ChallengeCredentialsHelper::OnDecryptCompleted(
     DecryptCallback original_callback,
+    Tpm::TpmRetryAction /* retry_action */,
     std::unique_ptr<Credentials> credentials) {
   DCHECK(thread_checker_.CalledOnValidThread());
   CancelRunningOperation();

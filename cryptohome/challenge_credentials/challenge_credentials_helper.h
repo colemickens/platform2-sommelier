@@ -17,6 +17,8 @@
 #include <base/threading/thread_checker.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/tpm.h"
+
 #include "key.pb.h"           // NOLINT(build/include)
 #include "rpc.pb.h"           // NOLINT(build/include)
 #include "vault_keyset.pb.h"  // NOLINT(build/include)
@@ -26,7 +28,6 @@ namespace cryptohome {
 class ChallengeCredentialsOperation;
 class Credentials;
 class KeyChallengeService;
-class Tpm;
 
 // This class provides generation of credentials for challenge-protected vault
 // keysets, and verification of key validity for such keysets.
@@ -152,6 +153,7 @@ class ChallengeCredentialsHelper final {
   // associated with the operation and forwards results to the original
   // callback.
   void OnDecryptCompleted(DecryptCallback original_callback,
+                          Tpm::TpmRetryAction retry_action,
                           std::unique_ptr<Credentials> credentials);
 
   // Non-owned.

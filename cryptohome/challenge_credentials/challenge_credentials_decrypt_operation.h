@@ -16,6 +16,7 @@
 
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
 #include "cryptohome/signature_sealing_backend.h"
+#include "cryptohome/tpm.h"
 
 #include "key.pb.h"           // NOLINT(build/include)
 #include "vault_keyset.pb.h"  // NOLINT(build/include)
@@ -24,7 +25,6 @@ namespace cryptohome {
 
 class Credentials;
 class KeyChallengeService;
-class Tpm;
 
 // This operation decrypts the credentials for the given user and the referenced
 // cryptographic key. This operation involves making challenge request(s)
@@ -41,7 +41,8 @@ class ChallengeCredentialsDecryptOperation final
   // If the operation succeeds, |credentials| will contain the decrypted
   // credentials that can be used for decryption of the user's vault keyset.
   using CompletionCallback =
-      base::OnceCallback<void(std::unique_ptr<Credentials> credentials)>;
+      base::OnceCallback<void(Tpm::TpmRetryAction retry_action,
+                              std::unique_ptr<Credentials> credentials)>;
 
   // |key_challenge_service| is a non-owned pointer which must outlive the
   // created instance.
@@ -65,15 +66,15 @@ class ChallengeCredentialsDecryptOperation final
   void Abort() override;
 
  private:
-  // Starts the processing. Returns |false| on fatal error.
-  bool StartProcessing();
+  // Starts the processing.
+  Tpm::TpmRetryAction StartProcessing();
 
-  // Makes a challenge request with the salt. Returns |false| on fatal error.
-  bool StartProcessingSalt();
+  // Makes a challenge request with the salt.
+  Tpm::TpmRetryAction StartProcessingSalt();
 
   // Begins unsealing the secret, and makes a challenge request for unsealing
-  // it. Returns |false| on fatal error.
-  bool StartProcessingSealedSecret();
+  // it.
+  Tpm::TpmRetryAction StartProcessingSealedSecret();
 
   // Called when signature for the salt is received.
   void OnSaltChallengeResponse(std::unique_ptr<brillo::Blob> salt_signature);
@@ -84,6 +85,10 @@ class ChallengeCredentialsDecryptOperation final
 
   // Generates the result if all necessary challenges are completed.
   void ProceedIfChallengesDone();
+
+  // Completes with returning the specified results.
+  void Resolve(Tpm::TpmRetryAction retry_action,
+               std::unique_ptr<Credentials> credentials);
 
   Tpm* const tpm_;
   const brillo::Blob delegate_blob_;
