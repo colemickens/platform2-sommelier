@@ -7,9 +7,10 @@
 #ifndef CAMERA_INCLUDE_CROS_CAMERA_JPEG_COMPRESSOR_H_
 #define CAMERA_INCLUDE_CROS_CAMERA_JPEG_COMPRESSOR_H_
 
+#include <system/window.h>
+
 #include <memory>
 
-#include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/export.h"
 
 namespace cros {
