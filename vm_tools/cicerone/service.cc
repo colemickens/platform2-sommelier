@@ -1210,6 +1210,8 @@ bool Service::Init(
       {kSetUpLxdContainerUserMethod, &Service::SetUpLxdContainerUser},
       {kExportLxdContainerMethod, &Service::ExportLxdContainer},
       {kImportLxdContainerMethod, &Service::ImportLxdContainer},
+      {kCancelExportLxdContainerMethod, &Service::CancelExportLxdContainer},
+      {kCancelImportLxdContainerMethod, &Service::CancelImportLxdContainer},
       {kGetDebugInformationMethod, &Service::GetDebugInformation},
       {kAppSearchMethod, &Service::AppSearch},
   };
@@ -2342,6 +2344,52 @@ std::unique_ptr<dbus::Response> Service::ExportLxdContainer(
   return dbus_response;
 }
 
+std::unique_ptr<dbus::Response> Service::CancelExportLxdContainer(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received CancelExportLxdContainer request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  CancelExportLxdContainerRequest request;
+  CancelExportLxdContainerResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse CancelExportLxdContainerRequest from message";
+    response.set_status(CancelExportLxdContainerResponse::FAILED);
+    response.set_failure_reason(
+        "unable to parse CancelExportLxdContainerRequest from message");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_status(CancelExportLxdContainerResponse::FAILED);
+    response.set_failure_reason(base::StringPrintf(
+        "requested VM does not exist: %s", request.vm_name().c_str()));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string error_msg;
+  VirtualMachine::CancelExportLxdContainerStatus status =
+      vm->CancelExportLxdContainer(request.in_progress_container_name(),
+                                   &error_msg);
+
+  response.set_status(CancelExportLxdContainerResponse::UNKNOWN);
+  if (CancelExportLxdContainerResponse::Status_IsValid(static_cast<int>(status))) {
+    response.set_status(
+        static_cast<CancelExportLxdContainerResponse::Status>(status));
+  }
+  response.set_failure_reason(error_msg);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
 std::unique_ptr<dbus::Response> Service::ImportLxdContainer(
     dbus::MethodCall* method_call) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
@@ -2394,6 +2442,52 @@ std::unique_ptr<dbus::Response> Service::ImportLxdContainer(
   if (ImportLxdContainerResponse::Status_IsValid(static_cast<int>(status))) {
     response.set_status(
         static_cast<ImportLxdContainerResponse::Status>(status));
+  }
+  response.set_failure_reason(error_msg);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::CancelImportLxdContainer(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received CancelImportLxdContainer request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  CancelImportLxdContainerRequest request;
+  CancelImportLxdContainerResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse CancelImportLxdContainerRequest from message";
+    response.set_status(CancelImportLxdContainerResponse::FAILED);
+    response.set_failure_reason(
+        "unable to parse CancelImportLxdContainerRequest from message");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_status(CancelImportLxdContainerResponse::FAILED);
+    response.set_failure_reason(base::StringPrintf(
+        "requested VM does not exist: %s", request.vm_name().c_str()));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string error_msg;
+  VirtualMachine::CancelImportLxdContainerStatus status =
+      vm->CancelImportLxdContainer(request.in_progress_container_name(),
+                                   &error_msg);
+
+  response.set_status(CancelImportLxdContainerResponse::UNKNOWN);
+  if (CancelImportLxdContainerResponse::Status_IsValid(static_cast<int>(status))) {
+    response.set_status(
+        static_cast<CancelImportLxdContainerResponse::Status>(status));
   }
   response.set_failure_reason(error_msg);
   writer.AppendProtoAsArrayOfBytes(response);

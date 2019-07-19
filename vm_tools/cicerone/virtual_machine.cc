@@ -549,7 +549,8 @@ VirtualMachine::ExportLxdContainerStatus VirtualMachine::ExportLxdContainer(
   grpc::Status status =
       tremplin_stub_->ExportContainer(&ctx, request, &response);
   if (!status.ok()) {
-    LOG(ERROR) << "ExportLxdContainer RPC failed: " << status.error_message();
+    LOG(ERROR) << "ExportLxdContainer RPC failed: " << status.error_message()
+               << " " << status.error_code();
     out_error->assign(status.error_message());
     return VirtualMachine::ExportLxdContainerStatus::FAILED;
   }
@@ -561,6 +562,45 @@ VirtualMachine::ExportLxdContainerStatus VirtualMachine::ExportLxdContainer(
       return VirtualMachine::ExportLxdContainerStatus::FAILED;
     default:
       return VirtualMachine::ExportLxdContainerStatus::UNKNOWN;
+  }
+}
+
+VirtualMachine::CancelExportLxdContainerStatus
+VirtualMachine::CancelExportLxdContainer(
+    const std::string& in_progress_container_name, std::string* out_error) {
+  DCHECK(out_error);
+  if (!tremplin_stub_) {
+    *out_error = "tremplin is not connected";
+    return VirtualMachine::CancelExportLxdContainerStatus::FAILED;
+  }
+
+  vm_tools::tremplin::CancelExportContainerRequest request;
+  vm_tools::tremplin::CancelExportContainerResponse response;
+
+  request.set_in_progress_container_name(in_progress_container_name);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status =
+      tremplin_stub_->CancelExportContainer(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "CancelExportLxdContainer RPC failed: "
+               << status.error_message() << " " << status.error_code();
+    out_error->assign(status.error_message());
+    return VirtualMachine::CancelExportLxdContainerStatus::FAILED;
+  }
+
+  switch (response.status()) {
+    case tremplin::CancelExportContainerResponse::CANCEL_QUEUED:
+      return VirtualMachine::CancelExportLxdContainerStatus::CANCEL_QUEUED;
+    case tremplin::CancelExportContainerResponse::OPERATION_NOT_FOUND:
+      return VirtualMachine::CancelExportLxdContainerStatus::
+          OPERATION_NOT_FOUND;
+    default:
+      return VirtualMachine::CancelExportLxdContainerStatus::UNKNOWN;
   }
 }
 
@@ -590,7 +630,8 @@ VirtualMachine::ImportLxdContainerStatus VirtualMachine::ImportLxdContainer(
   grpc::Status status =
       tremplin_stub_->ImportContainer(&ctx, request, &response);
   if (!status.ok()) {
-    LOG(ERROR) << "ImportLxdContainer RPC failed: " << status.error_message();
+    LOG(ERROR) << "ImportLxdContainer RPC failed: " << status.error_message()
+               << " " << status.error_code();
     out_error->assign(status.error_message());
     return VirtualMachine::ImportLxdContainerStatus::FAILED;
   }
@@ -602,6 +643,45 @@ VirtualMachine::ImportLxdContainerStatus VirtualMachine::ImportLxdContainer(
       return VirtualMachine::ImportLxdContainerStatus::FAILED;
     default:
       return VirtualMachine::ImportLxdContainerStatus::UNKNOWN;
+  }
+}
+
+VirtualMachine::CancelImportLxdContainerStatus
+VirtualMachine::CancelImportLxdContainer(
+    const std::string& in_progress_container_name, std::string* out_error) {
+  DCHECK(out_error);
+  if (!tremplin_stub_) {
+    *out_error = "tremplin is not connected";
+    return VirtualMachine::CancelImportLxdContainerStatus::FAILED;
+  }
+
+  vm_tools::tremplin::CancelImportContainerRequest request;
+  vm_tools::tremplin::CancelImportContainerResponse response;
+
+  request.set_in_progress_container_name(in_progress_container_name);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status =
+      tremplin_stub_->CancelImportContainer(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "CancelImportLxdContainer RPC failed: "
+               << status.error_message() << " " << status.error_code();
+    out_error->assign(status.error_message());
+    return VirtualMachine::CancelImportLxdContainerStatus::FAILED;
+  }
+
+  switch (response.status()) {
+    case tremplin::CancelImportContainerResponse::CANCEL_QUEUED:
+      return VirtualMachine::CancelImportLxdContainerStatus::CANCEL_QUEUED;
+    case tremplin::CancelImportContainerResponse::OPERATION_NOT_FOUND:
+      return VirtualMachine::CancelImportLxdContainerStatus::
+          OPERATION_NOT_FOUND;
+    default:
+      return VirtualMachine::CancelImportLxdContainerStatus::UNKNOWN;
   }
 }
 }  // namespace cicerone

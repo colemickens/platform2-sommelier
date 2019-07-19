@@ -351,8 +351,16 @@ class Service final : public base::MessageLoopForIO::Watcher {
   std::unique_ptr<dbus::Response> ExportLxdContainer(
       dbus::MethodCall* method_call);
 
+  // Handles a request to cancel an ongoing LXD container export.
+  std::unique_ptr<dbus::Response> CancelExportLxdContainer(
+      dbus::MethodCall* method_call);
+
   // Handles a request to import an LXD container.
   std::unique_ptr<dbus::Response> ImportLxdContainer(
+      dbus::MethodCall* method_call);
+
+  // Handles a request to cancel an ongoing LXD container import.
+  std::unique_ptr<dbus::Response> CancelImportLxdContainer(
       dbus::MethodCall* method_call);
 
   // Handles a request to get debug information.

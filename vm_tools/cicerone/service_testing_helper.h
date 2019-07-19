@@ -62,6 +62,8 @@ class ServiceTestingHelper {
     kAppSearch,
     kExportLxdContainer,
     kImportLxdContainer,
+    kCancelExportLxdContainer,
+    kCancelImportLxdContainer,
     kGetDebugInformation,
 
     kNumDbusCalls

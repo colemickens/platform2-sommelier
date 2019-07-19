@@ -495,6 +495,10 @@ void ServiceTestingHelper::SetDbusCallbackNames() {
       kExportLxdContainerMethod;
   dbus_callbacks_[kImportLxdContainer].method_name =
       kImportLxdContainerMethod;
+  dbus_callbacks_[kCancelExportLxdContainer].method_name =
+      kCancelExportLxdContainerMethod;
+  dbus_callbacks_[kCancelImportLxdContainer].method_name =
+      kCancelImportLxdContainerMethod;
   dbus_callbacks_[kGetDebugInformation].method_name =
       kGetDebugInformationMethod;
 

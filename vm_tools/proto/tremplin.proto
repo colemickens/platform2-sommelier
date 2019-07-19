@@ -602,7 +602,9 @@ service Tremplin {
       returns (GetContainerInfoResponse);
   rpc SetTimezone(SetTimezoneRequest) returns (SetTimezoneResponse);
   rpc ExportContainer(ExportContainerRequest) returns (ExportContainerResponse);
+  rpc CancelExportContainer(CancelExportContainerRequest) returns (CancelExportContainerResponse);
   rpc ImportContainer(ImportContainerRequest) returns (ImportContainerResponse);
+  rpc CancelImportContainer(CancelImportContainerRequest) returns (CancelImportContainerResponse);
 }
 
 // Service that is notified of events from tremplin.

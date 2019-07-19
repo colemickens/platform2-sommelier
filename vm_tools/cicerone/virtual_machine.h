@@ -77,9 +77,23 @@ class VirtualMachine {
     FAILED,
   };
 
+  enum class CancelExportLxdContainerStatus {
+    UNKNOWN,
+    CANCEL_QUEUED,
+    OPERATION_NOT_FOUND,
+    FAILED,
+  };
+
   enum class ImportLxdContainerStatus {
     UNKNOWN,
     IMPORTING,
+    FAILED,
+  };
+
+  enum class CancelImportLxdContainerStatus {
+    UNKNOWN,
+    CANCEL_QUEUED,
+    OPERATION_NOT_FOUND,
     FAILED,
   };
 
@@ -228,16 +242,21 @@ class VirtualMachine {
       std::string* out_error);
 
   // Exports an LXD container.
-  ExportLxdContainerStatus ExportLxdContainer(
-      const std::string& container_name,
-      const std::string& export_path,
-      std::string* out_error);
+  ExportLxdContainerStatus ExportLxdContainer(const std::string& container_name,
+                                              const std::string& export_path,
+                                              std::string* out_error);
+
+  CancelExportLxdContainerStatus CancelExportLxdContainer(
+      const std::string& in_progress_container_name, std::string* out_error);
 
   // Imports an LXD container. |available_disk_space| of zero means unlimited
   ImportLxdContainerStatus ImportLxdContainer(const std::string& container_name,
                                               const std::string& import_path,
                                               uint64_t available_disk_space,
                                               std::string* out_error);
+
+  CancelImportLxdContainerStatus CancelImportLxdContainer(
+      const std::string& in_progress_container_name, std::string* out_error);
 
   // Gets a list of all the active container names in this VM.
   std::vector<std::string> GetContainerNames();
