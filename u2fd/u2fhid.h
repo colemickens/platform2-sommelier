@@ -18,12 +18,6 @@
 #include "u2fd/u2f_adpu.h"
 #include "u2fd/user_state.h"
 
-namespace attestation {
-
-class DBusProxy;
-
-}
-
 namespace u2f {
 
 constexpr uint32_t kDefaultVendorId = 0x18d1;
@@ -115,7 +109,6 @@ class U2fHid {
          const TpmG2fCertCallback& g2f_cert_fn,
          const IgnoreButtonCallback& ignore_button_func,
          const WinkCallback& wink_fn,
-         dbus::ObjectProxy* attestation_proxy,  /* not owned */
          std::unique_ptr<UserState> user_state);
   ~U2fHid();
   bool Init();
@@ -188,9 +181,6 @@ class U2fHid {
   // Process a U2F_AUTHENTICATE ADPU.
   int ProcessU2fAuthenticate(U2fAuthenticateRequestAdpu request,
                              std::string* resp);
-  // Process vendor-specific extension to retreive G2F certificate, which is
-  // stored in resp. Returns 0 on success.
-  int ProcessAttestationCertRequest(std::string* resp);
 
   // Wrapper functions for cr50 U2F vendor commands.
   //////
@@ -227,7 +217,6 @@ class U2fHid {
   TpmG2fCertCallback tpm_g2f_cert_;
   IgnoreButtonCallback ignore_button_;
   WinkCallback wink_;
-  dbus::ObjectProxy* const attestation_proxy_;
   uint32_t free_cid_;
   uint32_t locked_cid_;
   base::OneShotTimer lock_timeout_;

@@ -20,10 +20,9 @@ namespace u2f {
 
 // INS codes used in U2F Command ADPUs.
 enum class U2fIns : uint8_t {
-  kU2fRegister = 1,       // U2F_REGISTER
-  kU2fAuthenticate = 2,   // U2F_AUTHENTICATE
-  kU2fVersion = 3,        // U2F_VERSION
-  kU2fAttestCert = 0xbe,  // Vendor command to retrieve G2F certificate.
+  kU2fRegister = 1,      // U2F_REGISTER
+  kU2fAuthenticate = 2,  // U2F_AUTHENTICATE
+  kU2fVersion = 3,       // U2F_VERSION
   kInsInvalid = 0xff,
 };
 

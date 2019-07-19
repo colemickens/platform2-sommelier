@@ -6,7 +6,6 @@
 #include <memory>
 #include <utility>
 
-#include <attestation/proto_bindings/interface.pb.h>
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/optional.h>
@@ -16,9 +15,7 @@
 #include <openssl/bn.h>
 #include <openssl/ecdsa.h>
 #include <trunks/cr50_headers/u2f.h>
-#include <trunks/cr50_headers/virtual_nvmem.h>
 
-#include "attestation-client/attestation/dbus-constants.h"
 #include "u2fd/u2f_adpu.h"
 #include "u2fd/u2fhid.h"
 #include "u2fd/user_state.h"
@@ -223,7 +220,6 @@ U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
                const TpmG2fCertCallback& g2f_cert_fn,
                const IgnoreButtonCallback& ignore_fn,
                const WinkCallback& wink_fn,
-               dbus::ObjectProxy* attestation_proxy,
                std::unique_ptr<UserState> user_state)
     : hid_(std::move(hid)),
       g2f_mode_(g2f_mode),
@@ -236,7 +232,6 @@ U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
       tpm_g2f_cert_(g2f_cert_fn),
       ignore_button_(ignore_fn),
       wink_(wink_fn),
-      attestation_proxy_(attestation_proxy),
       free_cid_(1),
       locked_cid_(0),
       user_state_(std::move(user_state)),
@@ -507,9 +502,6 @@ int U2fHid::ProcessMsg(std::string* resp) {
       response.ToString(resp);
       return 0;
     }
-    case U2fIns::kU2fAttestCert: {
-      return ProcessAttestationCertRequest(resp);
-    }
     default:
       break;  // Handled below.
   }
@@ -659,35 +651,6 @@ int U2fHid::ProcessU2fAuthenticate(U2fAuthenticateRequestAdpu request,
   auth_resp.AppendBytes(signature);
   auth_resp.SetStatus(U2F_SW_NO_ERROR);
   auth_resp.ToString(resp);
-
-  return 0;
-}
-
-int U2fHid::ProcessAttestationCertRequest(std::string* resp) {
-  attestation::GetCertifiedNvIndexRequest request;
-  attestation::GetCertifiedNvIndexReply reply;
-
-  request.set_nv_index(VIRTUAL_NV_INDEX_G2F_CERT);
-  request.set_nv_size(VIRTUAL_NV_INDEX_G2F_CERT_SIZE);
-
-  brillo::ErrorPtr error;
-
-  std::unique_ptr<dbus::Response> dbus_response =
-      brillo::dbus_utils::CallMethodAndBlock(
-          attestation_proxy_, attestation::kAttestationInterface,
-          attestation::kGetCertifiedNvIndex, &error, request);
-
-  if (!dbus_response) {
-    return -EINVAL;
-  }
-
-  dbus::MessageReader reader(dbus_response.get());
-  if (!reader.PopArrayOfBytesAsProto(&reply)) {
-    LOG(ERROR) << "Failed parsing proto response";
-    return -EINVAL;
-  }
-
-  reply.SerializeToString(resp);
 
   return 0;
 }
