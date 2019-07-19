@@ -438,6 +438,24 @@ class NewblueDaemonTest : public ::testing::Test {
                                         bluetooth_adapter::kRemoveDevice)),
             Return(true)));
 
+    EXPECT_CALL(
+        *exported_adapter_object,
+        ExportMethodAndBlock(bluetooth_adapter::kBluetoothAdapterInterface,
+                             bluetooth_adapter::kHandleSuspendImminent, _))
+        .WillOnce(DoAll(SaveArg<2>(GetMethodHandler(
+                            adapter_method_handlers,
+                            bluetooth_adapter::kHandleSuspendImminent)),
+                        Return(true)));
+
+    EXPECT_CALL(
+        *exported_adapter_object,
+        ExportMethodAndBlock(bluetooth_adapter::kBluetoothAdapterInterface,
+                             bluetooth_adapter::kHandleSuspendDone, _))
+        .WillOnce(DoAll(
+            SaveArg<2>(GetMethodHandler(adapter_method_handlers,
+                                        bluetooth_adapter::kHandleSuspendDone)),
+            Return(true)));
+
     EXPECT_CALL(*libnewblue_, HciIsUp()).WillOnce(Return(true));
     EXPECT_CALL(*libnewblue_, L2cInit()).WillOnce(Return(0));
     EXPECT_CALL(*libnewblue_, AttInit()).WillOnce(Return(true));

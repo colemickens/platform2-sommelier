@@ -149,7 +149,7 @@ void SuspendManager::OnSuspendDelayRegistered(dbus::Response* response) {
 }
 
 void SuspendManager::OnSuspendImminentHandled(dbus::Response* response) {
-  VLOG(1) << "Received return of SuspendImminent from BlueZ and NewBlue";
+  VLOG(1) << "Received return of SuspendImminent from BlueZ and/or NewBlue";
 
   is_suspend_operation_in_progress_ = false;
 
@@ -181,7 +181,8 @@ void SuspendManager::OnSuspendImminentHandled(dbus::Response* response) {
 }
 
 void SuspendManager::OnSuspendDoneHandled(dbus::Response* response) {
-  VLOG(1) << "Received return of OnSuspendDoneHandled from BlueZ and NewBlue";
+  VLOG(1) << "Received return of OnSuspendDoneHandled from BlueZ and/or "
+             "NewBlue";
 
   is_suspend_operation_in_progress_ = false;
 
@@ -210,7 +211,7 @@ void SuspendManager::HandleSuspendImminent(int new_suspend_id) {
   dbus::MethodCall method_call(bluetooth_adapter::kBluetoothAdapterInterface,
                                bluetooth_adapter::kHandleSuspendImminent);
 
-  VLOG(1) << "Calling SuspendImminent to BlueZ and NewBlue";
+  VLOG(1) << "Calling SuspendImminent to BlueZ and/or NewBlue";
   btdispatch_dbus_proxy_->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
       base::Bind(&SuspendManager::OnSuspendImminentHandled,
@@ -234,7 +235,7 @@ void SuspendManager::HandleSuspendDone() {
   dbus::MethodCall method_call(bluetooth_adapter::kBluetoothAdapterInterface,
                                bluetooth_adapter::kHandleSuspendDone);
 
-  VLOG(1) << "Calling HandleSuspendDone to BlueZ and NewBlue";
+  VLOG(1) << "Calling HandleSuspendDone to BlueZ and/or NewBlue";
   btdispatch_dbus_proxy_->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
       base::Bind(&SuspendManager::OnSuspendDoneHandled,

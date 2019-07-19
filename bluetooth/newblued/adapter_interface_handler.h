@@ -23,6 +23,26 @@
 
 namespace bluetooth {
 
+// Suspend and resume state. Corresponded BlueZ suspend/resume state names are
+// SUS_RES_STATE_RUNNING, SUS_RES_STATE_SUS_IMMINT,
+// SUS_RES_STATE_SUS_IMMINT_ACKED, and SUS_RES_STATE_SUS_DONE
+enum SuspendResumeState : uint8_t {
+  // System is running normally (awake)
+  RUNNING,
+  // Preparing for suspend upon suspend imminent signal sent by powerd
+  SUSPEND_IMMINT,
+  // Ack on suspend preparations sent to powerd
+  SUSPEND_IMMINT_ACKED,
+  // Resuming from suspend (notified by powerd)
+  SUSPEND_DONE
+};
+
+// Lists the tasks that need to be done upon suspend and resume
+enum SuspendResumeTask : uint8_t {
+  NONE = (0),
+  // Pause/unpause discovery
+  PAUSE_UNPAUSE_DISCOVERY = (1 << 0),
+};
 // Handles org.bluez.Adapter1 interface.
 class AdapterInterfaceHandler {
  public:
@@ -64,6 +84,21 @@ class AdapterInterfaceHandler {
   // Called when a client is disconnected from D-Bus.
   void OnClientUnavailable(const std::string& client_address);
 
+  // D-Bus method handlers for suspend/resume related methods
+  void HandleSuspendImminent(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      dbus::Message* message);
+  void HandleSuspendDone(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      dbus::Message* message);
+
+  // Perform pause/unpause discovery action
+  void PauseUnpauseDiscovery(void);
+  // Update suspend/resume task status
+  void UpdateSuspendResumeTasks(SuspendResumeTask task, bool is_completed);
+  // Update suspend/resume state machine
+  void UpdateSuspendResumeState(SuspendResumeState new_state);
+
   scoped_refptr<dbus::Bus> bus_;
 
   Newblue* newblue_;
@@ -81,6 +116,15 @@ class AdapterInterfaceHandler {
   bool is_background_scan_enabled_ = false;
 
   bool is_discovering_ = false;
+
+  bool is_in_suspension_ = false;
+
+  // A bit map holding all suspend/resume related task status
+  uint8_t suspend_resume_tasks_;
+
+  SuspendResumeState suspend_resume_state_;
+
+  std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> suspend_response_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.

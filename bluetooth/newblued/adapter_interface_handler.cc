@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
@@ -65,6 +66,17 @@ void AdapterInterfaceHandler::Init(
   adapter_interface->AddSimpleMethodHandlerWithErrorAndMessage(
       bluetooth_adapter::kRemoveDevice, base::Unretained(this),
       &AdapterInterfaceHandler::HandleRemoveDevice);
+
+  adapter_interface->AddMethodHandlerWithMessage(
+      bluetooth_adapter::kHandleSuspendImminent,
+      base::Bind(&AdapterInterfaceHandler::HandleSuspendImminent,
+                 base::Unretained(this)));
+  adapter_interface->AddMethodHandlerWithMessage(
+      bluetooth_adapter::kHandleSuspendDone,
+      base::Bind(&AdapterInterfaceHandler::HandleSuspendDone,
+                 base::Unretained(this)));
+
+  suspend_resume_state_ = SuspendResumeState::RUNNING;
 
   adapter_interface->ExportAndBlock();
 }
@@ -150,10 +162,10 @@ bool AdapterInterfaceHandler::UpdateDiscovery(int n_discovery_clients) {
   VLOG(1) << "Updating discovery for would be " << n_discovery_clients
           << " clients and background scan = " << is_background_scan_enabled_;
   if ((n_discovery_clients > 0 || is_background_scan_enabled_) &&
-      !is_discovering_) {
+      !is_discovering_ && !is_in_suspension_) {
     // It's not currently discovering, should it start discovery?
-    // Yes if there is at least 1 client requesting it or background scan is
-    // enabled.
+    // Yes if the system is not suspended and there is at least 1 client
+    // requesting it or background scan is enabled.
     VLOG(1) << "Trying to start discovery";
     if (!newblue_->StartDiscovery(
             base::Bind(&AdapterInterfaceHandler::DeviceDiscoveryCallback,
@@ -162,11 +174,12 @@ bool AdapterInterfaceHandler::UpdateDiscovery(int n_discovery_clients) {
       return false;
     }
     is_discovering_ = true;
-  } else if (n_discovery_clients == 0 && !is_background_scan_enabled_ &&
+  } else if (((n_discovery_clients == 0 && !is_background_scan_enabled_) ||
+              is_in_suspension_) &&
              is_discovering_) {
     // It's currently discovering, should it stop discovery?
-    // Yes if there is no client requesting discovery and background scan is not
-    // enabled.
+    // Yes if the system is suspending or there is no client requesting
+    // discovery and background scan is not enabled.
     VLOG(1) << "Trying to stop discovery";
     if (!newblue_->StopDiscovery()) {
       LOG(ERROR) << "Failed to stop discovery";
@@ -181,6 +194,7 @@ bool AdapterInterfaceHandler::UpdateDiscovery(int n_discovery_clients) {
 }
 
 void AdapterInterfaceHandler::SetBackgroundScanEnable(bool enabled) {
+  VLOG(1) << __FUNCTION__ << "Enabled: " << enabled;
   if (enabled == is_background_scan_enabled_)
     return;
 
@@ -205,6 +219,105 @@ void AdapterInterfaceHandler::OnClientUnavailable(
   VLOG(1) << "Discovery client becomes unavailable, address " << client_address;
   discovery_clients_.erase(client_address);
   UpdateDiscovery(discovery_clients_.size());
+}
+
+void AdapterInterfaceHandler::HandleSuspendImminent(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    dbus::Message* message) {
+  VLOG(1) << __func__;
+  CHECK(message != nullptr);
+  CHECK(response != nullptr);
+
+  UpdateSuspendResumeState(SuspendResumeState::SUSPEND_IMMINT);
+  suspend_response_ = std::move(response);
+
+  // Perform suspend tasks.
+  PauseUnpauseDiscovery();
+}
+
+void AdapterInterfaceHandler::HandleSuspendDone(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    dbus::Message* message) {
+  VLOG(1) << __func__;
+  CHECK(message != nullptr);
+  CHECK(response != nullptr);
+
+  UpdateSuspendResumeState(SuspendResumeState::SUSPEND_DONE);
+  suspend_response_ = std::move(response);
+
+  // Perform resume tasks.
+  PauseUnpauseDiscovery();
+}
+
+void AdapterInterfaceHandler::PauseUnpauseDiscovery(void) {
+  VLOG(1) << __func__;
+
+  // Flip the corresponding task bit.
+  UpdateSuspendResumeTasks(SuspendResumeTask::PAUSE_UNPAUSE_DISCOVERY, false);
+  if (!UpdateDiscovery(discovery_clients_.size()))
+    return;
+
+  // Update discovery is synchronous function call. If async, call the following
+  // update function in the callback instead of here.
+  UpdateSuspendResumeTasks(SuspendResumeTask::PAUSE_UNPAUSE_DISCOVERY, true);
+}
+
+void AdapterInterfaceHandler::UpdateSuspendResumeTasks(SuspendResumeTask task,
+                                                       bool is_completed) {
+  VLOG(1) << __func__;
+
+  // Update suspend_resume_tasks_ bit map. Clear the corresponding bit if task
+  // completed, set the bit to 1 otherwise.
+  if (!is_completed) {
+    suspend_resume_tasks_ |= task;
+    return;
+  }
+  suspend_resume_tasks_ &= ~task;
+
+  if (SuspendResumeTask::NONE != suspend_resume_tasks_)
+    return;
+
+  if (SuspendResumeState::SUSPEND_IMMINT == suspend_resume_state_)
+    UpdateSuspendResumeState(SuspendResumeState::SUSPEND_IMMINT_ACKED);
+  else
+    UpdateSuspendResumeState(SuspendResumeState::RUNNING);
+}
+
+void AdapterInterfaceHandler::UpdateSuspendResumeState(
+    SuspendResumeState new_state) {
+  // No state transition.
+  if (new_state == suspend_resume_state_)
+    return;
+
+  VLOG(1) << "Suspend/resume state transition from: " << suspend_resume_state_
+          << " to: " << new_state;
+  switch (new_state) {
+    case SuspendResumeState::RUNNING:
+      if (SuspendResumeState::SUSPEND_DONE == suspend_resume_state_) {
+        suspend_response_->SendRawResponse(
+            suspend_response_->CreateCustomResponse());
+      }
+      break;
+    case SuspendResumeState::SUSPEND_IMMINT:
+      if (SuspendResumeState::RUNNING != suspend_resume_state_)
+        LOG(WARNING) << "Suspend imminent called in wrong state.";
+      is_in_suspension_ = true;
+      suspend_resume_tasks_ = SuspendResumeTask::NONE;
+      break;
+    case SuspendResumeState::SUSPEND_IMMINT_ACKED:
+      suspend_response_->SendRawResponse(
+          suspend_response_->CreateCustomResponse());
+      break;
+    case SuspendResumeState::SUSPEND_DONE:
+      if (SuspendResumeState::SUSPEND_IMMINT_ACKED != suspend_resume_state_)
+        LOG(WARNING) << "Suspend Done called in wrong state.";
+      is_in_suspension_ = false;
+      break;
+    default:
+      LOG(ERROR) << "Invalid suspend resume state.";
+      break;
+  }
+  suspend_resume_state_ = new_state;
 }
 
 }  // namespace bluetooth
