@@ -23,16 +23,16 @@
 #include "power_manager/common/action_recorder.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/test_main_loop_runner.h"
-#include "power_manager/powerd/system/sar_observer.h"
 #include "power_manager/powerd/system/sar_watcher.h"
 #include "power_manager/powerd/system/udev_stub.h"
+#include "power_manager/powerd/system/user_proximity_observer.h"
 
 namespace power_manager {
 namespace system {
 
 namespace {
 
-class TestObserver : public SarObserver, public ActionRecorder {
+class TestObserver : public UserProximityObserver, public ActionRecorder {
  public:
   explicit TestObserver(SarWatcher* watcher, TestMainLoopRunner* runner)
       : watcher_(watcher), loop_runner_(runner) {
@@ -40,7 +40,7 @@ class TestObserver : public SarObserver, public ActionRecorder {
   }
   ~TestObserver() override { watcher_->RemoveObserver(this); }
 
-  // SarObserver implementation:
+  // UserProximityObserver implementation:
   void OnNewSensor(int id, uint32_t roles) override {
     const auto action = base::StringPrintf("OnNewSensor(roles=0x%x)", roles);
     AppendAction(action);

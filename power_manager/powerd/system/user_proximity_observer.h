@@ -2,20 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_SYSTEM_SAR_OBSERVER_H_
-#define POWER_MANAGER_POWERD_SYSTEM_SAR_OBSERVER_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_OBSERVER_H_
+#define POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_OBSERVER_H_
 
 #include "power_manager/common/power_constants.h"
 
 namespace power_manager {
 namespace system {
 
-// Interface for classes interested in observing events announced by the
-// SarWatcher class.
-class SarObserver {
+// Interface for classes interested in observing events announced by any
+// kind of user proximity sensor (i.e. any piece of hardware, software or mix
+// thereof that is capable of providing a signal as to whether a human user
+// is physically in close proximity to the device).
+class UserProximityObserver {
  public:
-  SarObserver() = default;
-  virtual ~SarObserver() = default;
+  UserProximityObserver() = default;
+  virtual ~UserProximityObserver() = default;
 
   // Called when a new proximity sensor is detected. |id| is a unique key
   // that will be used to identify this sensor in all future events; |roles|
@@ -29,4 +31,4 @@ class SarObserver {
 }  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_SYSTEM_SAR_OBSERVER_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_OBSERVER_H_

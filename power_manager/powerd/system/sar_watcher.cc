@@ -26,8 +26,8 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
-#include "power_manager/powerd/system/sar_observer.h"
 #include "power_manager/powerd/system/udev.h"
+#include "power_manager/powerd/system/user_proximity_observer.h"
 
 namespace power_manager {
 namespace system {
@@ -99,12 +99,12 @@ bool SarWatcher::Init(PrefsInterface* prefs, UdevInterface* udev) {
   return true;
 }
 
-void SarWatcher::AddObserver(SarObserver* observer) {
+void SarWatcher::AddObserver(UserProximityObserver* observer) {
   DCHECK(observer);
   observers_.AddObserver(observer);
 }
 
-void SarWatcher::RemoveObserver(SarObserver* observer) {
+void SarWatcher::RemoveObserver(UserProximityObserver* observer) {
   DCHECK(observer);
   observers_.RemoveObserver(observer);
 }

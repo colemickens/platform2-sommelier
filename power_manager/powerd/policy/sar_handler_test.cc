@@ -11,8 +11,8 @@
 #include "power_manager/common/action_recorder.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/sar_handler.h"
-#include "power_manager/powerd/system/sar_observer.h"
 #include "power_manager/powerd/system/sar_watcher_stub.h"
+#include "power_manager/powerd/system/user_proximity_observer.h"
 
 namespace power_manager {
 namespace policy {

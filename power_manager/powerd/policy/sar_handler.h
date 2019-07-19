@@ -11,8 +11,8 @@
 #include <base/macros.h>
 
 #include "power_manager/powerd/policy/user_proximity_voting.h"
-#include "power_manager/powerd/system/sar_observer.h"
 #include "power_manager/powerd/system/sar_watcher.h"
+#include "power_manager/powerd/system/user_proximity_observer.h"
 
 namespace power_manager {
 
@@ -27,7 +27,7 @@ class WifiController;
 // SarHandler responds to events from SAR (Specific Absorption Rate) sensors,
 // and routes them to controllers responsible for adjusting radio transmit
 // power in response to the physical proximity of the user to their Chromebook.
-class SarHandler : public system::SarObserver {
+class SarHandler : public system::UserProximityObserver {
  public:
   class Delegate {
    public:
@@ -43,7 +43,7 @@ class SarHandler : public system::SarObserver {
             Delegate* wifi_delegate,
             Delegate* lte_delegate);
 
-  // SarObserver implementations:
+  // UserProximityObserver implementations:
   void OnNewSensor(int id, uint32_t roles) override;
   void OnProximityEvent(int id, UserProximity value) override;
 

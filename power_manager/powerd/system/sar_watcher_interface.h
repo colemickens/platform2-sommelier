@@ -10,7 +10,7 @@
 namespace power_manager {
 namespace system {
 
-class SarObserver;
+class UserProximityObserver;
 
 // An interface for querying proximity information via Specific Absorption
 // Rate (SAR) sensors.
@@ -20,8 +20,8 @@ class SarWatcherInterface {
   virtual ~SarWatcherInterface() = default;
 
   // Adds or removes an observer.
-  virtual void AddObserver(SarObserver* observer) = 0;
-  virtual void RemoveObserver(SarObserver* observer) = 0;
+  virtual void AddObserver(UserProximityObserver* observer) = 0;
+  virtual void RemoveObserver(UserProximityObserver* observer) = 0;
 
   // TODO(egranata): add querying mechanisms
  private:

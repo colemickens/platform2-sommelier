@@ -21,14 +21,14 @@ class SarWatcherStub : public SarWatcherInterface {
   ~SarWatcherStub() override = default;
 
   // SarWatcherInterface overrides:
-  void AddObserver(SarObserver* observer) override;
-  void RemoveObserver(SarObserver* observer) override;
+  void AddObserver(UserProximityObserver* observer) override;
+  void RemoveObserver(UserProximityObserver* observer) override;
 
   void AddSensor(int id, uint32_t role);
   void SendEvent(int id, UserProximity proximity);
 
  private:
-  base::ObserverList<SarObserver> observers_;
+  base::ObserverList<UserProximityObserver> observers_;
 
   DISALLOW_COPY_AND_ASSIGN(SarWatcherStub);
 };

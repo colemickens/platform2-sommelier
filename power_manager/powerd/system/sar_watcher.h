@@ -25,7 +25,7 @@ class PrefsInterface;
 
 namespace system {
 
-class SarObserver;
+class UserProximityObserver;
 struct UdevEvent;
 class UdevInterface;
 
@@ -60,8 +60,8 @@ class SarWatcher : public SarWatcherInterface,
   bool Init(PrefsInterface* prefs, UdevInterface* udev);
 
   // SarWatcherInterface implementation:
-  void AddObserver(SarObserver* observer) override;
-  void RemoveObserver(SarObserver* observer) override;
+  void AddObserver(UserProximityObserver* observer) override;
+  void RemoveObserver(UserProximityObserver* observer) override;
 
   // UdevSubsystemObserver implementation:
   void OnUdevEvent(const UdevEvent& event) override;
@@ -100,7 +100,7 @@ class SarWatcher : public SarWatcherInterface,
   OpenIioEventsFunc open_iio_events_func_;
 
   UdevInterface* udev_ = nullptr;  // non-owned
-  base::ObserverList<SarObserver> observers_;
+  base::ObserverList<UserProximityObserver> observers_;
 
   // Mapping between IIO event file descriptors and sensor details.
   std::unordered_map<int, SensorInfo> sensors_;

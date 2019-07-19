@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/system/sar_observer.h"
 #include "power_manager/powerd/system/sar_watcher_stub.h"
+#include "power_manager/powerd/system/user_proximity_observer.h"
 
 namespace power_manager {
 namespace system {
 
-void SarWatcherStub::AddObserver(SarObserver* observer) {
+void SarWatcherStub::AddObserver(UserProximityObserver* observer) {
   DCHECK(observer);
   observers_.AddObserver(observer);
 }
 
-void SarWatcherStub::RemoveObserver(SarObserver* observer) {
+void SarWatcherStub::RemoveObserver(UserProximityObserver* observer) {
   DCHECK(observer);
   observers_.RemoveObserver(observer);
 }
