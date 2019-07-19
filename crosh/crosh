@@ -578,6 +578,52 @@ cmd_bt_console() (
   "${EXEC_bt_console}" "${1:+--agent=$1}"
 )
 
+USAGE_cras='[ enable <flag> | disable <flag> ]'
+HELP_cras='Set flags inside CRAS(CrOS Audio Server). Note that all flag
+changes made through this command do not persist after reboot.
+Available flags:
+ - wbs: Turn on this flag to make CRAS try to use wideband speech mode in
+    Bluetooth HFP, if both the Bluetooth controller and peripheral supports
+    this feature.
+'
+cmd_cras() (
+  if [ $# -lt 1 ]; then
+    help "unexpected number of argument"
+    return 1
+  fi
+
+  local enabled
+
+  case "$1" in
+  enable)
+    enabled="true"
+    ;;
+  disable)
+    enabled="false"
+    ;;
+  *)
+    help "Unknown option $1"
+    return 1
+    ;;
+  esac
+
+  if [ $# -ne 2 ]; then
+    help "specify flag to set"
+    return 1
+  fi
+  case "$2" in
+  wbs)
+    dbus-send --system --type=method_call --print-reply \
+        --dest=org.chromium.cras /org/chromium/cras \
+        org.chromium.cras.Control.SetWbsEnabled "boolean:${enabled}"
+    ;;
+  *)
+    help "Unkown flag $2"
+    return 1
+    ;;
+  esac
+)
+
 USAGE_newblue='< status | enable | disable >'
 HELP_newblue='Set the preference of enabling/disabling the use of Newblue
 Bluetooth stack. In order for the preference to take effect, please login as
