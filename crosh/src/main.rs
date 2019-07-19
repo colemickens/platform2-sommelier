@@ -2,13 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use libc::{kill, sigaction, SA_RESTART, SIGHUP, SIGINT};
 use std::io::{stdin, stdout, Write};
 use std::mem;
 use std::process::Command;
 use std::ptr::null_mut;
 use std::sync::atomic::{AtomicI32, Ordering};
+use std::thread::sleep;
+use std::time::Duration;
+
+use libc::{kill, sigaction, SA_RESTART, SIGHUP, SIGINT};
 use sys_util::error;
+use termion::event::Key;
+use termion::input::TermRead;
+use termion::raw::IntoRawMode;
 
 fn usage(error: bool) {
     let usage_msg = r#"
@@ -69,6 +75,7 @@ fn handle_cmd(args: Vec<&str>) -> Result<(), ()> {
     result
 }
 
+// Handle Ctrl-c/SIGINT by sending a SIGINT to any running child process.
 unsafe extern "C" fn sigint_handler() -> () {
     let mut command_pid: i32 = COMMAND_RUNNING_PID.load(Ordering::Acquire);
     if command_pid >= 0 {
@@ -85,6 +92,7 @@ unsafe extern "C" fn sigint_handler() -> () {
     COMMAND_RUNNING_PID.store(command_pid, Ordering::Release);
 }
 
+// Ignore SIGHUP.
 extern "C" fn sighup_handler() -> () {}
 
 fn register_signal_handlers() {
@@ -109,6 +117,76 @@ fn register_signal_handlers() {
     }
 }
 
+// Handle user input to obtain a signal command. This includes handling cases like history lookups
+// and command completion.
+fn next_command() -> String {
+    let mut stdin_keys = stdin().keys();
+    new_prompt();
+    let mut command = String::new();
+
+    // Use the function scope to return stdout to normal mode before executing a command.
+    let mut stdout = stdout().into_raw_mode().unwrap();
+    loop {
+        if let Some(Ok(key)) = stdin_keys.next() {
+            match key {
+                Key::Char('\t') => {
+                    // TODO command completion
+                }
+                Key::Char('\n') => {
+                    print!("\n\r");
+                    if !command.is_empty() {
+                        break;
+                    } else {
+                        new_prompt();
+                    }
+                }
+                Key::Char(value) => {
+                    print!("{}", value);
+                    command.push(value);
+                }
+                Key::Backspace => {
+                    if !command.is_empty() {
+                        command.pop();
+                        // Move cursor back one and clear rest of line.
+                        print!("\x1b[D\x1b[K");
+                    }
+                }
+                Key::Ctrl('d') => {
+                    if command.is_empty() {
+                        command = "exit".to_owned();
+                        println!("\n\r");
+                        break;
+                    }
+                }
+                _ => {
+                    // Ignore
+                }
+            }
+            let _ = stdout.flush();
+        } else {
+            // If no input was returned, don't busy wait because stdin_keys.next() doesn't block.
+            sleep(Duration::from_millis(25));
+        }
+    }
+    let _ = stdout.flush();
+    command
+}
+
+// Loop for getting each command from the user and dispatching it to the handler.
+fn input_loop() {
+    loop {
+        let line = next_command();
+        let command = line.trim();
+
+        if command == "exit" || command == "quit" {
+            break;
+        } else if !command.is_empty() {
+            handle_cmd(command.split_whitespace().collect())
+                .unwrap_or_else(|_| println!("Command failed."));
+        }
+    }
+}
+
 fn main() -> Result<(), ()> {
     let mut args = std::env::args();
 
@@ -128,6 +206,7 @@ fn main() -> Result<(), ()> {
             match arg.as_ref() {
                 "--help" | "-h" => {
                     usage(false);
+                    return Ok(());
                 }
                 "--" => {
                     args_as_command = true;
@@ -146,21 +225,7 @@ fn main() -> Result<(), ()> {
 
         intro();
 
-        loop {
-            new_prompt();
-
-            let mut line = String::new();
-            stdin().read_line(&mut line).expect("Error getting stdin.");
-            let command = line.trim();
-
-            if command == "exit" || command == "quit" {
-                break;
-            } else if !command.is_empty() {
-                if handle_cmd(command.split_whitespace().collect()).is_err() {
-                    println!("Command failed.");
-                }
-            }
-        }
+        input_loop();
         Ok(())
     }
 }
