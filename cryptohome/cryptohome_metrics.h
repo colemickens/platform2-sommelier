@@ -202,11 +202,19 @@ enum class DiskCleanupProgress {
 // https://uma.googleplex.com/histograms/?histograms=Platform.Cryptohome.DeprecatedApiCalled
 enum class DeprecatedApiEvent {
   kInitializeCastKey = 0,
-  kGetBootAttribute,
-  kSetBootAttribute,
-  kFlushAndSignBootAttributes,
-  kMaxValue,
+  kGetBootAttribute,            // 1
+  kSetBootAttribute,            // 2
+  kFlushAndSignBootAttributes,  // 3
+  kSignBootLockbox,             // 4
+  kVerifyBootLockbox,           // 5
+  kFinalizeBootLockbox,         // 6
+  kTpmIsBeingOwned,             // 7
+  kMaxValue,                    // 8
 };
+
+// Just to make sure I count correctly.
+static_assert(static_cast<int>(DeprecatedApiEvent::kMaxValue) == 8,
+              "DeprecatedApiEvent Enum miscounted");
 
 // Cros events emitted by cryptohome.
 const char kAttestationOriginSpecificIdentifiersExhausted[] =

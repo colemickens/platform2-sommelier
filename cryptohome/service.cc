@@ -2663,6 +2663,7 @@ gboolean Service::TpmIsOwned(gboolean* OUT_owned, GError** error) {
 }
 
 gboolean Service::TpmIsBeingOwned(gboolean* OUT_owning, GError** error) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kTpmIsBeingOwned);
   *OUT_owning = tpm_init_->IsTpmBeingOwned();
   return TRUE;
 }
@@ -2845,6 +2846,8 @@ gboolean Service::InstallAttributesIsFirstInstall(
 
 void Service::DoSignBootLockbox(const brillo::Blob& request,
                                 DBusGMethodInvocation* context) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kSignBootLockbox);
+
   SignBootLockboxRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size()) ||
       !request_pb.has_data()) {
@@ -2874,6 +2877,8 @@ gboolean Service::SignBootLockbox(const GArray* request,
 
 void Service::DoVerifyBootLockbox(const brillo::Blob& request,
                                   DBusGMethodInvocation* context) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kVerifyBootLockbox);
+
   VerifyBootLockboxRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size()) ||
       !request_pb.has_data() ||
@@ -2900,6 +2905,7 @@ gboolean Service::VerifyBootLockbox(const GArray* request,
 
 void Service::DoFinalizeBootLockbox(const brillo::Blob& request,
                                     DBusGMethodInvocation* context) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kFinalizeBootLockbox);
   FinalizeBootLockboxRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size())) {
     SendInvalidArgsReply(context, "Bad FinalizeBootLockboxRequest");
