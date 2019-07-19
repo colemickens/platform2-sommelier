@@ -42,6 +42,8 @@ preserve_log() {
 
   if [ -s "${source_path}" ]; then
     tail -n "${MAX_KEEP_LOG_LINES}" "${source_path}" >"${dest_path}"
+  else
+    echo "No prior clobber-log found" >>"${dest_path}"
   fi
   echo "$(log_prefix) (preserve log): $*" >>"${dest_path}"
 }
