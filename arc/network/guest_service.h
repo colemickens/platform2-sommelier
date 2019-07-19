@@ -22,18 +22,19 @@ class GuestService {
 
  protected:
   // |dev_mgr| cannot be null and must outlive this object.
-  GuestService(GuestMessage::GuestType guest, DeviceManager* dev_mgr);
+  GuestService(GuestMessage::GuestType guest, DeviceManagerBase* dev_mgr);
 
   virtual void OnStart();
   virtual void OnStop();
 
   virtual void OnDeviceAdded(Device* device) {}
   virtual void OnDeviceRemoved(Device* device) {}
+  virtual void OnDefaultInterfaceChanged(const std::string& ifname) {}
 
   void DispatchMessage(const GuestMessage& msg);
 
   const GuestMessage::GuestType guest_;
-  DeviceManager* dev_mgr_;
+  DeviceManagerBase* dev_mgr_;
 
  private:
   MessageHandler handler_;

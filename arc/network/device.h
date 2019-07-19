@@ -80,14 +80,22 @@ class Device {
   ~Device();
 
   void FillProto(DeviceConfig* msg) const;
+  const std::string& ifname() const;
   Config& config() const;
+  const Options& options() const;
 
-  // |ifname| should always be empty for devices that represent physical host
-  // interfaces. For others, like the ARC device 'android' that represents the
-  // arcbr0 and arc0 interfaces, this function enables traffic to flow from a
-  // real interfaces (e.g. eth0) to the container.
+  bool IsAndroid() const;
+  bool IsLegacyAndroid() const;
+
   void Enable(const std::string& ifname);
   void Disable();
+
+  void OnGuestStart(GuestMessage::GuestType guest);
+  void OnGuestStop(GuestMessage::GuestType guest);
+
+  // Updates the link status and returns whether the status was changed.
+  // ifname must match either host_ifname or guest_ifname in the config.
+  bool LinkUp(const std::string& ifname, bool up);
 
   friend std::ostream& operator<<(std::ostream& stream, const Device& device);
 
@@ -110,6 +118,11 @@ class Device {
   // Only used for the legacy Android device; points to the interface currently
   // used by the container.
   std::string legacy_lan_ifname_;
+
+  // Link status.
+  // TODO(garrick): Scope by guest.
+  bool host_link_up_;
+  bool guest_link_up_;
 
   struct in6_addr random_address_;
   int random_address_prefix_len_;

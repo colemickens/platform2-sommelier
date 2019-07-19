@@ -44,18 +44,9 @@ class ArcIpConfig {
   // if 0, this configuration will be reset and uninitialized.
   bool Init(pid_t con_netns);
 
-  // Used to indicate that the container is ready and has brought up this
-  // interface.
-  void ContainerReady(bool ready);
-
   // Set or Clear the IPv6 configuration/routes/rules for the containerized OS.
   void Set(const SetArcIp& arc_ip);
   void Clear();
-
-  // Enable or Disable inbound connections on |lan_ifname| by manipulating
-  // a DNAT rule matching unclaimed traffic on the interface.
-  void EnableInbound(const std::string& lan_ifname);
-  void DisableInbound();
 
   friend std::ostream& operator<<(std::ostream& stream,
                                   const ArcIpConfig& conf);
@@ -65,9 +56,6 @@ class ArcIpConfig {
   static void GenerateRandom(struct in6_addr* prefix, int prefix_len);
 
  private:
-  void Setup();
-  void Teardown();
-
   void AssignTableIdForArcInterface();
 
   const std::string ifname_;
@@ -77,13 +65,7 @@ class ArcIpConfig {
   int routing_table_id_;
   int routing_table_attempts_;
 
-  bool if_up_;
   bool ipv6_configured_;
-  bool inbound_configured_;
-
-  // These commands require the container to be ready.
-  std::string pending_inbound_ifname_;
-  std::unique_ptr<SetArcIp> pending_ipv6_;
 
   // These track the current ipv6 configuration, if any.
   std::string ipv6_dev_ifname_;

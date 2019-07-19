@@ -26,6 +26,29 @@ TEST(DatapathTest, AddBridge) {
        "/sbin/iptables -t mangle -A PREROUTING -i br -j MARK --set-mark 1 -w"});
 }
 
+TEST(DatapathTest, AddVirtualBridgedInterface) {
+  FakeProcessRunner runner;
+  runner.Capture(true);
+  Datapath datapath(&runner);
+  std::string peer =
+      datapath.AddVirtualBridgedInterface("foo", "00:11:22", "brfoo");
+  EXPECT_EQ(peer, "peer_foo");
+  runner.VerifyRuns(
+      {"/bin/ip link delete veth_foo",  // RemoveInterface is run first
+       "/bin/ip link add veth_foo type veth peer name peer_foo",
+       "/bin/ifconfig veth_foo up",
+       "/bin/ip link set dev peer_foo addr 00:11:22 down",
+       "/sbin/brctl addif brfoo veth_foo"});
+}
+
+TEST(DatapathTest, RemoveInterface) {
+  FakeProcessRunner runner;
+  runner.Capture(true);
+  Datapath datapath(&runner);
+  datapath.RemoveInterface("foo");
+  runner.VerifyRuns({"/bin/ip link delete foo"});
+}
+
 TEST(DatapathTest, RemoveBridge) {
   FakeProcessRunner runner;
   runner.Capture(true);
@@ -34,6 +57,16 @@ TEST(DatapathTest, RemoveBridge) {
   runner.VerifyRuns(
       {"/sbin/iptables -t mangle -D PREROUTING -i br -j MARK --set-mark 1 -w",
        "/bin/ifconfig br down", "/sbin/brctl delbr br"});
+}
+
+TEST(DatapathTest, AddInterfaceToContainer) {
+  FakeProcessRunner runner;
+  runner.Capture(true);
+  Datapath datapath(&runner);
+  datapath.AddInterfaceToContainer(123, "src", "dst", "1.2.3.4", true);
+  runner.VerifyRuns({"/bin/ip link set src netns 123"});
+  runner.VerifyAddInterface("src", "dst", "1.2.3.4", "255.255.255.252", true,
+                            "123");
 }
 
 TEST(DatapathTest, AddLegacyIPv4DNAT) {
@@ -66,6 +99,23 @@ TEST(DatapathTest, RemoveLegacyIPv4DNAT) {
        "/sbin/iptables -t nat -X try_arc -w",
        "/sbin/iptables -t nat -F dnat_arc -w",
        "/sbin/iptables -t nat -X dnat_arc -w"});
+}
+
+TEST(DatapathTest, AddLegacyIPv4InboundDNAT) {
+  FakeProcessRunner runner;
+  runner.Capture(true);
+  Datapath datapath(&runner);
+  datapath.AddLegacyIPv4InboundDNAT("wlan0");
+  runner.VerifyRuns(
+      {"/sbin/iptables -t nat -A try_arc -i wlan0 -j dnat_arc -w"});
+}
+
+TEST(DatapathTest, RemoveLegacyIPv4InboundDNAT) {
+  FakeProcessRunner runner;
+  runner.Capture(true);
+  Datapath datapath(&runner);
+  datapath.RemoveLegacyIPv4InboundDNAT();
+  runner.VerifyRuns({"/sbin/iptables -t nat -F try_arc -w"});
 }
 
 TEST(DatapathTest, AddInboundIPv4DNAT) {

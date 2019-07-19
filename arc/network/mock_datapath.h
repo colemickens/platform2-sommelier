@@ -22,7 +22,17 @@ class MockDatapath : public Datapath {
   MOCK_METHOD2(AddBridge,
                bool(const std::string& ifname, const std::string& ipv4_addr));
   MOCK_METHOD1(RemoveBridge, void(const std::string& ifname));
-
+  MOCK_METHOD3(AddVirtualBridgedInterface,
+               std::string(const std::string& ifname,
+                           const std::string& mac_addr,
+                           const std::string& br_ifname));
+  MOCK_METHOD1(RemoveInterface, void(const std::string& ifname));
+  MOCK_METHOD5(AddInterfaceToContainer,
+               bool(int ns,
+                    const std::string& src_ifname,
+                    const std::string& dst_ifname,
+                    const std::string& dst_ipv4,
+                    bool fwd_multicast));
   MOCK_METHOD1(AddLegacyIPv4DNAT, bool(const std::string& ipv4_addr));
   MOCK_METHOD0(RemoveLegacyIPv4DNAT, void());
   MOCK_METHOD2(AddInboundIPv4DNAT,

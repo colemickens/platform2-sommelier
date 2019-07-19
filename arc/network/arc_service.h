@@ -5,6 +5,11 @@
 #ifndef ARC_NETWORK_ARC_SERVICE_H_
 #define ARC_NETWORK_ARC_SERVICE_H_
 
+#include <base/memory/weak_ptr.h>
+#include <shill/net/rtnl_handler.h>
+#include <shill/net/rtnl_listener.h>
+
+#include "arc/network/datapath.h"
 #include "arc/network/guest_service.h"
 
 namespace arc_networkd {
@@ -12,17 +17,35 @@ namespace arc_networkd {
 class ArcService : public GuestService {
  public:
   // |dev_mgr| cannot be null.
-  ArcService(DeviceManager* dev_mgr, bool is_legacy);
+  ArcService(DeviceManagerBase* dev_mgr,
+             bool is_legacy,
+             std::unique_ptr<Datapath> datapath = nullptr);
   ~ArcService() = default;
 
   void OnStart() override;
   void OnStop() override;
 
- protected:
   void OnDeviceAdded(Device* device) override;
   void OnDeviceRemoved(Device* device) override;
+  void OnDefaultInterfaceChanged(const std::string& ifname) override;
+
+  // Handles RT netlink messages in the container net namespace and if it
+  // determines the link status has changed, toggles the device services
+  // accordingly.
+  void LinkMsgHandler(const shill::RTNLMessage& msg);
+
+  // Do not use. Only for testing.
+  void SetPIDForTestingOnly();
 
  private:
+  MinijailedProcessRunner runner_;
+  std::unique_ptr<Datapath> datapath_;
+
+  pid_t pid_;
+  std::unique_ptr<shill::RTNLHandler> rtnl_handler_;
+  std::unique_ptr<shill::RTNLListener> link_listener_;
+
+  base::WeakPtrFactory<ArcService> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(ArcService);
 };
 

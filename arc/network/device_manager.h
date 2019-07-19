@@ -19,38 +19,75 @@
 #include "arc/network/shill_client.h"
 
 namespace arc_networkd {
+using DeviceHandler = base::Callback<void(Device*)>;
+using NameHandler = base::Callback<void(const std::string&)>;
+
+// Mockable base class for DeviceManager.
+class DeviceManagerBase {
+ public:
+  DeviceManagerBase() = default;
+  virtual ~DeviceManagerBase() = default;
+
+  // Used by guest service implementations to be notified when tracked devices
+  // are updated.
+  virtual void RegisterDeviceAddedHandler(const DeviceHandler& handler) = 0;
+  virtual void RegisterDeviceRemovedHandler(const DeviceHandler& handler) = 0;
+  virtual void RegisterDefaultInterfaceChangedHandler(
+      const NameHandler& handler) = 0;
+
+  // Invoked when a guest starts or stops.
+  virtual void OnGuestStart(GuestMessage::GuestType guest) = 0;
+  virtual void OnGuestStop(GuestMessage::GuestType guest) = 0;
+
+  // Used by a guest service to examine and potentially mutate tracked devices.
+  virtual void ProcessDevices(const DeviceHandler& handler) = 0;
+
+  // Returns whether a particular device is tracked. For testing only.
+  virtual bool Exists(const std::string& name) const = 0;
+
+  virtual Device* FindByHostInterface(const std::string& ifname) const = 0;
+  virtual Device* FindByGuestInterface(const std::string& ifname) const = 0;
+
+  virtual const std::string& DefaultInterface() const = 0;
+};
 
 // Convenience class for managing the collection of host devices and their
 // presentation in the container.
-class DeviceManager {
+// Virtual methods for testing.
+class DeviceManager : public DeviceManagerBase {
  public:
-  using DeviceHandler = base::Callback<void(Device*)>;
-
   // |addr_mgr| must not be null.
   DeviceManager(std::unique_ptr<ShillClient> shill_client,
                 AddressManager* addr_mgr,
                 const Device::MessageSink& msg_sink,
                 bool is_arc_legacy);
-  ~DeviceManager();
+  virtual ~DeviceManager();
 
   // Used by guest service implementations to be notified when tracked devices
   // are updated.
-  void RegisterDeviceAddedHandler(const DeviceHandler& handler);
-  void RegisterDeviceRemovedHandler(const DeviceHandler& handler);
+  void RegisterDeviceAddedHandler(const DeviceHandler& handler) override;
+  void RegisterDeviceRemovedHandler(const DeviceHandler& handler) override;
+  void RegisterDefaultInterfaceChangedHandler(
+      const NameHandler& handler) override;
 
   // Invoked when a guest starts or stops.
-  void OnGuestStart(GuestMessage::GuestType guest);
-  void OnGuestStop(GuestMessage::GuestType guest);
+  void OnGuestStart(GuestMessage::GuestType guest) override;
+  void OnGuestStop(GuestMessage::GuestType guest) override;
 
   // Used by a guest service to examine and potentially mutate tracked devices.
-  void ProcessDevices(const DeviceHandler& handler);
+  void ProcessDevices(const DeviceHandler& handler) override;
+
+  // Returns whether a particular device is tracked. For testing only.
+  bool Exists(const std::string& name) const override;
+
+  Device* FindByHostInterface(const std::string& ifname) const override;
+  Device* FindByGuestInterface(const std::string& ifname) const override;
+
+  const std::string& DefaultInterface() const override;
 
   // Returns a new fully configured device.
   // Note this is public mainly for testing and should not be called directly.
   std::unique_ptr<Device> MakeDevice(const std::string& name) const;
-
-  // Returns whether a particular device is traced. For testing only.
-  bool Exists(const std::string& name) const;
 
  private:
   // Adds a new device by name. Returns whether the device was successfully
@@ -87,12 +124,11 @@ class DeviceManager {
   // |devices_|.
   std::vector<DeviceHandler> add_handlers_;
   std::vector<DeviceHandler> rm_handlers_;
+  std::vector<NameHandler> default_iface_handlers_;
 
   // Connected devices keyed by the interface name.
   // The legacy device is mapped to the Android interface name.
   std::map<std::string, std::unique_ptr<Device>> devices_;
-  // Running devices by the host interface name.
-  std::set<std::string> running_devices_;
 
   const bool is_arc_legacy_;
   std::string default_ifname_;
