@@ -42,11 +42,12 @@ class MounterForTest : public Mounter {
                                     std::vector<std::string> options,
                                     MountErrorType* error) const override {
     *error = MountImpl(source, target_path);
-    if (*error == MOUNT_ERROR_NONE) {
-      return std::make_unique<MountPoint>(
-          target_path, std::make_unique<MockUnmounter>(this));
+    if (*error != MOUNT_ERROR_NONE) {
+      return nullptr;
     }
-    return nullptr;
+
+    return std::make_unique<MountPoint>(target_path,
+                                        std::make_unique<MockUnmounter>(this));
   }
 
  private:

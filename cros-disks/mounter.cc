@@ -60,11 +60,12 @@ std::unique_ptr<MountPoint> MounterCompat::Mount(
     std::vector<std::string> options,
     MountErrorType* error) const {
   *error = MountImpl();
-  if (*error == MOUNT_ERROR_NONE) {
-    // Makes mountpoint that won't unmount for compatibility with old behavior.
-    return std::make_unique<MountPoint>(target_path_, nullptr);
+  if (*error != MOUNT_ERROR_NONE) {
+    return nullptr;
   }
-  return nullptr;
+
+  // Makes mountpoint that won't unmount for compatibility with old behavior.
+  return std::make_unique<MountPoint>(target_path_, nullptr);
 }
 
 bool MounterCompat::CanMount(const std::string& source,

@@ -155,10 +155,12 @@ MountErrorType ArchiveManager::DoMount(const std::string& source_path,
                         avfs_path, base::FilePath(mount_path), mount_options);
 
   MountErrorType error_type = mounter.Mount();
-  if (error_type == MOUNT_ERROR_NONE) {
-    AddMountVirtualPath(mount_path, avfs_path);
+  if (error_type != MOUNT_ERROR_NONE) {
+    return error_type;
   }
-  return error_type;
+
+  AddMountVirtualPath(mount_path, avfs_path);
+  return MOUNT_ERROR_NONE;
 }
 
 MountErrorType ArchiveManager::DoUnmount(

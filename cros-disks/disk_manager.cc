@@ -262,12 +262,13 @@ MountErrorType DiskManager::DoMount(const std::string& source_path,
     }
   }
 
-  if (error_type == MOUNT_ERROR_NONE) {
-    ScheduleEjectOnUnmount(mount_path, disk);
+  if (error_type != MOUNT_ERROR_NONE) {
+    return error_type;
   }
-  *applied_options = mounter->mount_options();
 
-  return error_type;
+  ScheduleEjectOnUnmount(mount_path, disk);
+  *applied_options = mounter->mount_options();
+  return MOUNT_ERROR_NONE;
 }
 
 MountErrorType DiskManager::DoUnmount(const std::string& path,

@@ -265,12 +265,12 @@ MountErrorType MountManager::Unmount(const std::string& path,
     UnreserveMountPath(mount_path);
   } else {
     error_type = DoUnmount(mount_path, options);
-    if (error_type == MOUNT_ERROR_NONE) {
-      LOG(INFO) << "Unmounted '" << mount_path << "'";
-    } else {
+    if (error_type != MOUNT_ERROR_NONE) {
       LOG(ERROR) << "Failed to unmount '" << mount_path << "': " << error_type;
       return error_type;
     }
+
+    LOG(INFO) << "Unmounted '" << mount_path << "'";
   }
 
   RemoveMountPathFromCache(mount_path);
