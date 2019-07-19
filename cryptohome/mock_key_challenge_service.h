@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_MOCK_KEY_CHALLENGE_SERVICE_H_
 #define CRYPTOHOME_MOCK_KEY_CHALLENGE_SERVICE_H_
 
+#include <queue>
 #include <string>
 
 #include <base/callback.h>
@@ -63,7 +64,7 @@ class KeyChallengeServiceMockController final {
   //
   // It's allowed to call the Simulate*() methods only after this returns true.
   bool is_challenge_requested() const {
-    return !intercepted_response_callback_.is_null();
+    return !intercepted_response_callbacks_.empty();
   }
 
   // Simulates a successful response for the given challenge request.
@@ -74,8 +75,10 @@ class KeyChallengeServiceMockController final {
  private:
   // Not owned.
   MockKeyChallengeService* const mock_service_;
-  // The response callback that was passed to the mocked ChallengeKey() method.
-  KeyChallengeService::ResponseCallback intercepted_response_callback_;
+  // The accumulated response callbacks that was passed to the mocked
+  // ChallengeKey() method.
+  std::queue<KeyChallengeService::ResponseCallback>
+      intercepted_response_callbacks_;
 };
 
 }  // namespace cryptohome

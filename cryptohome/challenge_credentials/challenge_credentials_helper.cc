@@ -15,11 +15,21 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/signature_sealing_backend.h"
-#include "cryptohome/tpm.h"
 
 using brillo::Blob;
 
 namespace cryptohome {
+
+namespace {
+
+bool IsOperationFailureTransient(Tpm::TpmRetryAction retry_action) {
+  return retry_action == Tpm::kTpmRetryCommFailure ||
+         retry_action == Tpm::kTpmRetryInvalidHandle ||
+         retry_action == Tpm::kTpmRetryLoadFail ||
+         retry_action == Tpm::kTpmRetryLater;
+}
+
+}  // namespace
 
 ChallengeCredentialsHelper::ChallengeCredentialsHelper(
     Tpm* tpm,
@@ -45,7 +55,6 @@ void ChallengeCredentialsHelper::GenerateNew(
   DCHECK_EQ(key_data.type(), KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
   DCHECK(!callback.is_null());
   CancelRunningOperation();
-  DCHECK(!key_challenge_service_);
   key_challenge_service_ = std::move(key_challenge_service);
   operation_ = std::make_unique<ChallengeCredentialsGenerateNewOperation>(
       key_challenge_service_.get(), tpm_, delegate_blob_, delegate_secret_,
@@ -65,14 +74,9 @@ void ChallengeCredentialsHelper::Decrypt(
   DCHECK_EQ(key_data.type(), KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
   DCHECK(!callback.is_null());
   CancelRunningOperation();
-  DCHECK(!key_challenge_service_);
   key_challenge_service_ = std::move(key_challenge_service);
-  operation_ = std::make_unique<ChallengeCredentialsDecryptOperation>(
-      key_challenge_service_.get(), tpm_, delegate_blob_, delegate_secret_,
-      account_id, key_data, keyset_challenge_info,
-      base::BindOnce(&ChallengeCredentialsHelper::OnDecryptCompleted,
-                     base::Unretained(this), std::move(callback)));
-  operation_->Start();
+  StartDecryptOperation(account_id, key_data, keyset_challenge_info,
+                        1 /* attempt_number */, std::move(callback));
 }
 
 void ChallengeCredentialsHelper::VerifyKey(
@@ -92,6 +96,23 @@ void ChallengeCredentialsHelper::VerifyKey(
   NOTIMPLEMENTED() << "ChallengeCredentialsHelper::VerifyKey";
 }
 
+void ChallengeCredentialsHelper::StartDecryptOperation(
+    const std::string& account_id,
+    const KeyData& key_data,
+    const KeysetSignatureChallengeInfo& keyset_challenge_info,
+    int attempt_number,
+    DecryptCallback callback) {
+  DCHECK(!operation_);
+  operation_ = std::make_unique<ChallengeCredentialsDecryptOperation>(
+      key_challenge_service_.get(), tpm_, delegate_blob_, delegate_secret_,
+      account_id, key_data, keyset_challenge_info,
+      base::BindOnce(&ChallengeCredentialsHelper::OnDecryptCompleted,
+                     base::Unretained(this), account_id, key_data,
+                     keyset_challenge_info, attempt_number,
+                     std::move(callback)));
+  operation_->Start();
+}
+
 void ChallengeCredentialsHelper::CancelRunningOperation() {
   // Destroy the previous Operation before instantiating a new one, to keep the
   // resource usage constrained (for example, there must be only one instance of
@@ -103,8 +124,6 @@ void ChallengeCredentialsHelper::CancelRunningOperation() {
     // It's illegal for the consumer code to request a new operation in
     // immediate response to completion of a previous one.
     DCHECK(!operation_);
-
-    key_challenge_service_.reset();
   }
 }
 
@@ -117,12 +136,25 @@ void ChallengeCredentialsHelper::OnGenerateNewCompleted(
 }
 
 void ChallengeCredentialsHelper::OnDecryptCompleted(
+    const std::string& account_id,
+    const KeyData& key_data,
+    const KeysetSignatureChallengeInfo& keyset_challenge_info,
+    int attempt_number,
     DecryptCallback original_callback,
-    Tpm::TpmRetryAction /* retry_action */,
+    Tpm::TpmRetryAction retry_action,
     std::unique_ptr<Credentials> credentials) {
   DCHECK(thread_checker_.CalledOnValidThread());
+  DCHECK_EQ(credentials == nullptr, retry_action != Tpm::kTpmRetryNone);
   CancelRunningOperation();
-  std::move(original_callback).Run(std::move(credentials));
+  if (retry_action != Tpm::kTpmRetryNone &&
+      IsOperationFailureTransient(retry_action) &&
+      attempt_number < kRetryAttemptCount) {
+    LOG(WARNING) << "Retrying the decryption operation after transient error";
+    StartDecryptOperation(account_id, key_data, keyset_challenge_info,
+                          attempt_number + 1, std::move(original_callback));
+  } else {
+    std::move(original_callback).Run(std::move(credentials));
+  }
 }
 
 }  // namespace cryptohome

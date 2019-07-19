@@ -535,7 +535,11 @@ TEST_F(ChallengeCredentialsHelperBasicTest, DecryptSuccessUnsealingThenSalt) {
 // creation.
 TEST_F(ChallengeCredentialsHelperBasicTest,
        DecryptFailureInUnsealingSessionCreation) {
-  ExpectSaltChallenge(kAlgorithm /* salt_challenge_algorithm */);
+  for (int attempt_number = 0;
+       attempt_number < ChallengeCredentialsHelper::kRetryAttemptCount;
+       ++attempt_number) {
+    ExpectSaltChallenge(kAlgorithm /* salt_challenge_algorithm */);
+  }
   MakeUnsealingMocker({kAlgorithm} /* key_algorithms */,
                       kAlgorithm /* unsealing_algorithm */)
       ->SetUpCreationFailingMock(true /* mock_repeatedly */);
@@ -554,21 +558,29 @@ TEST_F(ChallengeCredentialsHelperBasicTest,
 
 // Test failure of the Decrypt() operation due to failure of unsealing.
 TEST_F(ChallengeCredentialsHelperBasicTest, DecryptFailureInUnsealing) {
-  ExpectSaltChallenge(kAlgorithm /* salt_challenge_algorithm */);
-  ExpectUnsealingChallenge(kAlgorithm /* unsealing_algorithm */);
-  MakeUnsealingMocker({kAlgorithm} /* key_algorithms */,
-                      kAlgorithm /* unsealing_algorithm */)
-      ->SetUpUsealingFailingMock();
+  for (int attempt_number = 0;
+       attempt_number < ChallengeCredentialsHelper::kRetryAttemptCount;
+       ++attempt_number) {
+    ExpectSaltChallenge(kAlgorithm /* salt_challenge_algorithm */);
+    ExpectUnsealingChallenge(kAlgorithm /* unsealing_algorithm */);
+    MakeUnsealingMocker({kAlgorithm} /* key_algorithms */,
+                        kAlgorithm /* unsealing_algorithm */)
+        ->SetUpUsealingFailingMock();
+  }
 
   std::unique_ptr<ChallengeCredentialsDecryptResult> decrypt_result;
   CallDecrypt({kAlgorithm} /* key_algorithms */,
               kAlgorithm /* salt_challenge_algorithm */, kSalt,
               &decrypt_result);
   EXPECT_TRUE(is_salt_challenge_requested());
-  EXPECT_TRUE(is_unsealing_challenge_requested());
-  EXPECT_FALSE(decrypt_result);
 
-  SimulateUnsealingChallengeResponse();
+  for (int attempt_number = 0;
+       attempt_number < ChallengeCredentialsHelper::kRetryAttemptCount;
+       ++attempt_number) {
+    EXPECT_TRUE(is_unsealing_challenge_requested());
+    EXPECT_FALSE(decrypt_result);
+    SimulateUnsealingChallengeResponse();
+  }
   ASSERT_TRUE(decrypt_result);
   VerifyFailedChallengeCredentialsDecryptResult(*decrypt_result);
 

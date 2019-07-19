@@ -71,6 +71,10 @@ class ChallengeCredentialsHelper final {
   // the provided key is valid for decryption of the given vault keyset.
   using VerifyKeyCallback = base::OnceCallback<void(bool /* is_key_valid */)>;
 
+  // The maximum number of attempts that will be made for a single operation
+  // when it fails with a transient error.
+  static constexpr int kRetryAttemptCount = 3;
+
   // |tpm| is a non-owned pointer that must stay valid for the whole lifetime of
   // the created object.
   // |delegate_blob| and |delegate_secret| should correspond to a TPM delegate
@@ -139,6 +143,13 @@ class ChallengeCredentialsHelper final {
                  VerifyKeyCallback callback);
 
  private:
+  void StartDecryptOperation(
+      const std::string& account_id,
+      const KeyData& key_data,
+      const KeysetSignatureChallengeInfo& keyset_challenge_info,
+      int attempt_number,
+      DecryptCallback callback);
+
   // Aborts the currently running operation, if any, and destroys all resources
   // associated with it.
   void CancelRunningOperation();
@@ -152,9 +163,14 @@ class ChallengeCredentialsHelper final {
   // Wrapper for the completion callback of Decrypt(). Cleans up resources
   // associated with the operation and forwards results to the original
   // callback.
-  void OnDecryptCompleted(DecryptCallback original_callback,
-                          Tpm::TpmRetryAction retry_action,
-                          std::unique_ptr<Credentials> credentials);
+  void OnDecryptCompleted(
+      const std::string& account_id,
+      const KeyData& key_data,
+      const KeysetSignatureChallengeInfo& keyset_challenge_info,
+      int attempt_number,
+      DecryptCallback original_callback,
+      Tpm::TpmRetryAction retry_action,
+      std::unique_ptr<Credentials> credentials);
 
   // Non-owned.
   Tpm* const tpm_;

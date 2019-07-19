@@ -111,11 +111,11 @@ MockUnsealingSession* SignatureSealedUnsealingMocker::AddSessionCreationMock() {
   const SignatureSealedData expected_sealed_data =
       MakeFakeSignatureSealedData(public_key_spki_der_);
   EXPECT_CALL(*mock_backend_,
-              CreateUnsealingSessionImpl(
-                  ProtobufEquals(expected_sealed_data),
-                  public_key_spki_der_, key_algorithms_,
-                  delegate_blob_, delegate_secret_))
-      .WillOnce(Return(mock_unsealing_session));
+              CreateUnsealingSessionImpl(ProtobufEquals(expected_sealed_data),
+                                         public_key_spki_der_, key_algorithms_,
+                                         delegate_blob_, delegate_secret_))
+      .WillOnce(Return(mock_unsealing_session))
+      .RetiresOnSaturation();
   EXPECT_CALL(*mock_unsealing_session, GetChallengeAlgorithm())
       .WillRepeatedly(Return(chosen_algorithm_));
   EXPECT_CALL(*mock_unsealing_session, GetChallengeValue())

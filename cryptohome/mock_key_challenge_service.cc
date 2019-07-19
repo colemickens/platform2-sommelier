@@ -36,8 +36,6 @@ void KeyChallengeServiceMockController::ExpectSignatureChallenge(
     const Blob& expected_public_key_spki_der,
     const Blob& expected_challenge_value,
     ChallengeSignatureAlgorithm expected_signature_algorithm) {
-  ASSERT_TRUE(intercepted_response_callback_.is_null());
-
   AccountIdentifier account_identifier;
   account_identifier.set_account_id(expected_username);
 
@@ -60,28 +58,33 @@ void KeyChallengeServiceMockController::ExpectSignatureChallenge(
                  KeyChallengeService::ResponseCallback* response_callback) {
             // Can't use SaveArg or SaveArgPointee here because
             // response_callback is move only.
-            this->intercepted_response_callback_ =
-                std::move(*response_callback);
-          }));
+            this->intercepted_response_callbacks_.push(
+                std::move(*response_callback));
+          }))
+      .RetiresOnSaturation();
 }
 
 void KeyChallengeServiceMockController::SimulateSignatureChallengeResponse(
     const Blob& signature_value) {
-  ASSERT_FALSE(intercepted_response_callback_.is_null());
+  ASSERT_FALSE(intercepted_response_callbacks_.empty());
 
   auto response = std::make_unique<KeyChallengeResponse>();
   SignatureKeyChallengeResponseData& response_data =
       *response->mutable_signature_response_data();
   response_data.set_signature(BlobToString(signature_value));
 
-  std::move(intercepted_response_callback_).Run(std::move(response));
-  intercepted_response_callback_.Reset();
+  KeyChallengeService::ResponseCallback callback_to_run =
+      std::move(intercepted_response_callbacks_.front());
+  intercepted_response_callbacks_.pop();
+  std::move(callback_to_run).Run(std::move(response));
 }
 
 void KeyChallengeServiceMockController::SimulateFailureResponse() {
-  ASSERT_FALSE(intercepted_response_callback_.is_null());
-  std::move(intercepted_response_callback_).Run(nullptr /* response */);
-  intercepted_response_callback_.Reset();
+  ASSERT_FALSE(intercepted_response_callbacks_.empty());
+  KeyChallengeService::ResponseCallback callback_to_run =
+      std::move(intercepted_response_callbacks_.front());
+  intercepted_response_callbacks_.pop();
+  std::move(callback_to_run).Run(nullptr /* response */);
 }
 
 }  // namespace cryptohome
