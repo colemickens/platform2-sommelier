@@ -14,7 +14,6 @@
 #include <base/bind.h>
 #include <base/lazy_instance.h>
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 
 #include "arc/network/arc_ip_config.h"
 #include "arc/network/net_util.h"
@@ -27,19 +26,11 @@ const char kAndroidDevice[] = "arc0";
 const char kAndroidLegacyDevice[] = "android";
 
 namespace {
-
 constexpr uint32_t kMdnsMcastAddress = Ipv4Addr(224, 0, 0, 251);
 constexpr uint16_t kMdnsPort = 5353;
 constexpr uint32_t kSsdpMcastAddress = Ipv4Addr(239, 255, 255, 250);
 constexpr uint16_t kSsdpPort = 1900;
-
 constexpr int kMaxRandomAddressTries = 3;
-
-std::string MacAddressToString(const MacAddress& addr) {
-  return base::StringPrintf("%02x:%02x:%02x:%02x:%02x:%02x", addr[0], addr[1],
-                            addr[2], addr[3], addr[4], addr[5]);
-}
-
 }  // namespace
 
 Device::Config::Config(const std::string& host_ifname,
@@ -62,7 +53,9 @@ Device::Device(const std::string& ifname,
     : ifname_(ifname),
       config_(std::move(config)),
       options_(options),
-      msg_sink_(msg_sink) {
+      msg_sink_(msg_sink),
+      host_link_up_(false),
+      guest_link_up_(false) {
   DCHECK(config_);
   if (msg_sink_.is_null())
     return;
@@ -95,27 +88,50 @@ void Device::FillProto(DeviceConfig* msg) const {
   msg->set_find_ipv6_routes(options_.find_ipv6_routes);
 }
 
+const std::string& Device::ifname() const {
+  return ifname_;
+}
+
 Device::Config& Device::config() const {
   CHECK(config_);
   return *config_.get();
 }
 
-void Device::Enable(const std::string& ifname) {
-  // If operating in legacy single network mode, enable inbound traffic to ARC
-  // from the interface.
-  // TODO(b/77293260) Also enable inbound traffic rules specific to the input
-  // physical interface in multinetworking mode.
-  if (ifname_ == kAndroidLegacyDevice) {
-    LOG(INFO) << "Binding interface " << ifname << " to device " << ifname_;
-    legacy_lan_ifname_ = ifname;
+const Device::Options& Device::options() const {
+  return options_;
+}
 
-    if (!msg_sink_.is_null()) {
-      DeviceMessage msg;
-      msg.set_dev_ifname(ifname_);
-      msg.set_enable_inbound_ifname(legacy_lan_ifname_);
-      msg_sink_.Run(msg);
-    }
+bool Device::IsAndroid() const {
+  return ifname_ == kAndroidDevice;
+}
+
+bool Device::IsLegacyAndroid() const {
+  return ifname_ == kAndroidLegacyDevice;
+}
+
+bool Device::LinkUp(const std::string& ifname, bool up) {
+  bool* link_up =
+      (ifname == config_->host_ifname())
+          ? &host_link_up_
+          : (ifname == config_->guest_ifname()) ? &guest_link_up_ : nullptr;
+  if (!link_up) {
+    LOG(DFATAL) << "Unknown interface: " << ifname;
+    return false;
   }
+
+  if (up == *link_up)
+    return false;
+
+  if (!up)
+    Disable();
+
+  *link_up = up;
+  return true;
+}
+
+void Device::Enable(const std::string& ifname) {
+  if (!host_link_up_ || !guest_link_up_)
+    return;
 
   if (options_.fwd_multicast) {
     if (!mdns_forwarder_) {
@@ -145,7 +161,9 @@ void Device::Enable(const std::string& ifname) {
   }
 
   if (options_.find_ipv6_routes && !router_finder_) {
-    LOG(INFO) << "Enabling IPV6 route finding for device " << ifname_;
+    LOG(INFO) << "Enabling IPV6 route finding for device " << ifname_
+              << " on interface " << ifname;
+    legacy_lan_ifname_ = ifname;
     router_finder_.reset(new RouterFinder());
     router_finder_->Start(
         ifname, base::Bind(&Device::OnRouteFound, weak_factory_.GetWeakPtr()));
@@ -170,21 +188,14 @@ void Device::Disable() {
     msg.set_clear_arc_ip(true);
     msg_sink_.Run(msg);
   }
-
-  // Disable inbound traffic.
-  // TODO(b/77293260) Also disable inbound traffic rules in multinetworking
-  // mode.
-  if (ifname_ == kAndroidLegacyDevice && !legacy_lan_ifname_.empty()) {
-    LOG(INFO) << "Unbinding interface " << legacy_lan_ifname_ << " from device "
-              << ifname_;
-    legacy_lan_ifname_.clear();
-
-    DeviceMessage msg;
-    msg.set_dev_ifname(ifname_);
-    msg.set_disable_inbound(true);
-    msg_sink_.Run(msg);
-  }
 }
+
+void Device::OnGuestStart(GuestMessage::GuestType guest) {
+  host_link_up_ = false;
+  guest_link_up_ = false;
+}
+
+void Device::OnGuestStop(GuestMessage::GuestType guest) {}
 
 void Device::OnRouteFound(const struct in6_addr& prefix,
                           int prefix_len,

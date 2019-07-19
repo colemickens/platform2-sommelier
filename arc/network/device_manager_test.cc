@@ -168,21 +168,27 @@ TEST_F(DeviceManagerTest, MakeCellularDevice) {
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_Android) {
-  capture_msgs_ = true;
   auto mgr = NewManager();
-  VerifyMsgs({android_announce_msg_});
-
-  // Can't add another.
-  EXPECT_FALSE(mgr->MakeDevice(kAndroidDevice));
+  DeviceConfig msg;
+  mgr->MakeDevice(kAndroidDevice)->FillProto(&msg);
+  EXPECT_EQ(msg.br_ifname(), "arcbr0");
+  EXPECT_EQ(msg.arc_ifname(), "arc0");
+  EXPECT_EQ(msg.br_ipv4(), "100.115.92.1");
+  EXPECT_EQ(msg.arc_ipv4(), "100.115.92.2");
+  EXPECT_FALSE(msg.mac_addr().empty());
+  EXPECT_FALSE(msg.find_ipv6_routes());
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_LegacyAndroid) {
-  capture_msgs_ = true;
-  auto mgr = NewManager(false);
-  VerifyMsgs({android_announce_msg_});
-
-  // Can't add another.
-  EXPECT_FALSE(mgr->MakeDevice(kAndroidLegacyDevice));
+  auto mgr = NewManager();
+  DeviceConfig msg;
+  mgr->MakeDevice(kAndroidLegacyDevice)->FillProto(&msg);
+  EXPECT_EQ(msg.br_ifname(), "arcbr0");
+  EXPECT_EQ(msg.arc_ifname(), "arc0");
+  EXPECT_EQ(msg.br_ipv4(), "100.115.92.1");
+  EXPECT_EQ(msg.arc_ipv4(), "100.115.92.2");
+  EXPECT_FALSE(msg.mac_addr().empty());
+  EXPECT_TRUE(msg.find_ipv6_routes());
 }
 
 TEST_F(DeviceManagerTest, MakeVpnTunDevice) {
@@ -209,19 +215,6 @@ TEST_F(DeviceManagerTest, MakeDevice_NoMoreSubnets) {
   EXPECT_FALSE(mgr->MakeDevice("x"));
 }
 
-TEST_F(DeviceManagerTest, AndroidDeviceAddedByDefault) {
-  auto mgr = NewManager();
-  EXPECT_TRUE(mgr->Exists(kAndroidDevice));
-  EXPECT_FALSE(mgr->Exists(kAndroidLegacyDevice));
-}
-
-TEST_F(DeviceManagerTest,
-       AndroidLegacyDeviceAddedByDefaultWhenMultinetDisabled) {
-  auto mgr = NewManager(true /* is_arc_legacy */);
-  EXPECT_FALSE(mgr->Exists(kAndroidDevice));
-  EXPECT_TRUE(mgr->Exists(kAndroidLegacyDevice));
-}
-
 TEST_F(DeviceManagerTest, AddNewDevices) {
   auto mgr = NewManager();
   std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("eth0"),
@@ -230,8 +223,6 @@ TEST_F(DeviceManagerTest, AddNewDevices) {
   shill_client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
   EXPECT_TRUE(mgr->Exists("eth0"));
   EXPECT_TRUE(mgr->Exists("wlan0"));
-  // Verify Android device is not removed.
-  EXPECT_TRUE(mgr->Exists(kAndroidDevice));
 }
 
 TEST_F(DeviceManagerTest, NoDevicesAddedWhenMultinetDisabled) {
@@ -242,8 +233,6 @@ TEST_F(DeviceManagerTest, NoDevicesAddedWhenMultinetDisabled) {
   shill_client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
   EXPECT_FALSE(mgr->Exists("eth0"));
   EXPECT_FALSE(mgr->Exists("wlan0"));
-  // Verify Android device is not removed.
-  EXPECT_TRUE(mgr->Exists(kAndroidLegacyDevice));
 }
 
 TEST_F(DeviceManagerTest, PreviousDevicesRemoved) {

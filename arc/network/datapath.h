@@ -13,27 +13,48 @@
 
 namespace arc_networkd {
 
+// Returns for given interface name the host name of a ARC veth pair.
+std::string ArcVethHostName(std::string ifname);
+
+// Returns for given interface name the peer name of a ARC veth pair.
+std::string ArcVethPeerName(std::string ifname);
+
 // ARC networking data path configuration utility.
+// IPV4 addresses are always specified in singular dotted-form (a.b.c.d)
+// (not in CIDR representation
 class Datapath {
  public:
   // |process_runner| must not be null; it is not owned.
   explicit Datapath(MinijailedProcessRunner* process_runner);
   virtual ~Datapath() = default;
 
-  // The following are interface builders.
-
   virtual bool AddBridge(const std::string& ifname,
                          const std::string& ipv4_addr);
   virtual void RemoveBridge(const std::string& ifname);
 
-  // The following are iptables methods.
-  // When specified, |ipv4_addr| is always singlar dotted-form (a.b.c.d)
-  // IPv4 address (not a CIDR representation).
+  // Creates a virtual interface and adds one side to bridge |br_ifname} and
+  // returns the name of the other side.
+  virtual std::string AddVirtualBridgedInterface(const std::string& ifname,
+                                                 const std::string& mac_addr,
+                                                 const std::string& br_ifname);
+  virtual void RemoveInterface(const std::string& ifname);
+
+  // Inject an interace into the ARC++ container namespace.
+  virtual bool AddInterfaceToContainer(int ns,
+                                       const std::string& src_ifname,
+                                       const std::string& dst_ifname,
+                                       const std::string& dst_ipv4,
+                                       bool fwd_multicast);
 
   // Create (or flush and delete) pre-routing rules supporting legacy (ARC N)
   // single networking DNAT configuration.
   virtual bool AddLegacyIPv4DNAT(const std::string& ipv4_addr);
   virtual void RemoveLegacyIPv4DNAT();
+
+  // Enable ingress traffic from a specific physical device to the legacy
+  // single networkng DNAT configuration.
+  virtual bool AddLegacyIPv4InboundDNAT(const std::string& ifname);
+  virtual void RemoveLegacyIPv4InboundDNAT();
 
   // Create (or delete) pre-routing rules allowing direct ingress on |ifname|
   // to guest desintation |ipv4_addr|.

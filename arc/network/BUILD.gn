@@ -113,7 +113,7 @@ if (use.test) {
     ]
     sources = [
       "address_manager_test.cc",
-      "arc_ip_config_test.cc",
+      "arc_service_test.cc",
       "datapath_test.cc",
       "device_manager_test.cc",
       "device_test.cc",

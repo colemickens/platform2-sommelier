@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <stdint.h>
+#include <sys/prctl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
@@ -25,11 +26,6 @@
 #include "arc/network/guest_events.h"
 #include "arc/network/ipc.pb.h"
 
-namespace {
-constexpr uint64_t kManagerCapMask = CAP_TO_MASK(CAP_NET_RAW);
-constexpr char kUnprivilegedUser[] = "arc-networkd";
-}  // namespace
-
 namespace arc_networkd {
 
 Manager::Manager(std::unique_ptr<HelperProcess> ip_helper,
@@ -45,17 +41,7 @@ Manager::Manager(std::unique_ptr<HelperProcess> ip_helper,
       gsock_(AF_UNIX, SOCK_DGRAM) {}
 
 int Manager::OnInit() {
-  // Run with minimal privileges.
-  brillo::Minijail* m = brillo::Minijail::GetInstance();
-  struct minijail* jail = m->New();
-
-  // Most of these return void, but DropRoot() can fail if the user/group
-  // does not exist.
-  CHECK(m->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser))
-      << "Could not drop root privileges";
-  m->UseCapabilities(jail, kManagerCapMask);
-  m->Enter(jail);
-  m->Destroy(jail);
+  prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
 
   // Handle subprocess lifecycle.
   process_reaper_.Register(this);

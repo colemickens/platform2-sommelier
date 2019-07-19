@@ -4,10 +4,19 @@
 
 #include "arc/network/datapath.h"
 
+#include <base/strings/string_number_conversions.h>
+
 namespace arc_networkd {
-namespace {
+
 constexpr char kDefaultNetmask[] = "255.255.255.252";
-}  // namespace
+
+std::string ArcVethHostName(std::string ifname) {
+  return "veth_" + ifname;
+}
+
+std::string ArcVethPeerName(std::string ifname) {
+  return "peer_" + ifname;
+}
 
 Datapath::Datapath(MinijailedProcessRunner* process_runner)
     : process_runner_(process_runner) {
@@ -45,6 +54,57 @@ void Datapath::RemoveBridge(const std::string& ifname) {
   process_runner_->Run({kBrctlPath, "delbr", ifname});
 }
 
+std::string Datapath::AddVirtualBridgedInterface(const std::string& ifname,
+                                                 const std::string& mac_addr,
+                                                 const std::string& br_ifname) {
+  const std::string veth = ArcVethHostName(ifname);
+  const std::string peer = ArcVethPeerName(ifname);
+
+  RemoveInterface(veth);
+  if (process_runner_->Run({kIpPath, "link", "add", veth, "type", "veth",
+                            "peer", "name", peer}) != 0) {
+    return "";
+  }
+
+  if (process_runner_->Run({kIfConfigPath, veth, "up"}) != 0) {
+    RemoveInterface(veth);
+    RemoveInterface(peer);
+    return "";
+  }
+
+  if (process_runner_->Run({kIpPath, "link", "set", "dev", peer, "addr",
+                            mac_addr, "down"}) != 0) {
+    RemoveInterface(veth);
+    RemoveInterface(peer);
+    return "";
+  }
+
+  if (process_runner_->Run({kBrctlPath, "addif", br_ifname, veth}) != 0) {
+    RemoveInterface(veth);
+    RemoveInterface(peer);
+    return "";
+  }
+
+  return peer;
+}
+
+void Datapath::RemoveInterface(const std::string& ifname) {
+  process_runner_->Run({kIpPath, "link", "delete", ifname}, false /* log */);
+}
+
+bool Datapath::AddInterfaceToContainer(int ns,
+                                       const std::string& src_ifname,
+                                       const std::string& dst_ifname,
+                                       const std::string& dst_ipv4,
+                                       bool fwd_multicast) {
+  const std::string pid = base::IntToString(ns);
+  return (process_runner_->Run(
+              {kIpPath, "link", "set", src_ifname, "netns", pid}) == 0) &&
+         (process_runner_->AddInterfaceToContainer(src_ifname, dst_ifname,
+                                                   dst_ipv4, kDefaultNetmask,
+                                                   fwd_multicast, pid) == 0);
+}
+
 bool Datapath::AddLegacyIPv4DNAT(const std::string& ipv4_addr) {
   // Forward "unclaimed" packets to Android to allow inbound connections
   // from devices on the LAN.
@@ -55,7 +115,7 @@ bool Datapath::AddLegacyIPv4DNAT(const std::string& ipv4_addr) {
   if (process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "dnat_arc", "-j",
                             "DNAT", "--to-destination", ipv4_addr, "-w"}) !=
       0) {
-    //
+    RemoveLegacyIPv4DNAT();
     return false;
   }
 
@@ -100,6 +160,15 @@ void Datapath::RemoveLegacyIPv4DNAT() {
   process_runner_->Run({kIpTablesPath, "-t", "nat", "-X", "try_arc", "-w"});
   process_runner_->Run({kIpTablesPath, "-t", "nat", "-F", "dnat_arc", "-w"});
   process_runner_->Run({kIpTablesPath, "-t", "nat", "-X", "dnat_arc", "-w"});
+}
+
+bool Datapath::AddLegacyIPv4InboundDNAT(const std::string& ifname) {
+  return (process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "try_arc",
+                                "-i", ifname, "-j", "dnat_arc", "-w"}) != 0);
+}
+
+void Datapath::RemoveLegacyIPv4InboundDNAT() {
+  process_runner_->Run({kIpTablesPath, "-t", "nat", "-F", "try_arc", "-w"});
 }
 
 bool Datapath::AddInboundIPv4DNAT(const std::string& ifname,
