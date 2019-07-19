@@ -14,7 +14,8 @@ for ps in /sys/class/power_supply/*; do
   echo "${ps}"
   for f in "${ps}"/*; do
     base=$(basename "${f}")
-    if [ ! -f "${f}" ] || [ "${base}" = uevent ]; then
+    if [ ! -f "${f}" ] || [ "${base}" = uevent ] \
+      || [ "${base}" = serial_number ]; then
       continue
     fi
     printf "  %-20s %s\n" "${base}" "$(cat "${f}")"
