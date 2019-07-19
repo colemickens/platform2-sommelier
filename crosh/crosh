@@ -1742,6 +1742,120 @@ cmd_evtest() (
   fi
 )
 
+USAGE_gesture_prop="[ devices | list <device ID> \
+| get <device ID> <property name> | set <device ID> <property name> <value> ]"
+HELP_gesture_prop='
+  Read and change gesture properties for attached input devices. The "Enable
+  gesture properties D-Bus service" flag must be enabled for this command to
+  work.
+
+  Subcommands:
+    devices, devs:
+      List the devices managed by the gestures library, with their numeric IDs.
+
+    list <device ID>:
+      List the properties for the device with the given ID.
+
+    get <device ID> <property name>:
+      Get the current value of a property. Property names containing spaces
+      should be quoted. For example:
+      $ gesture_prop get 12 "Mouse CPI"
+
+    set <device ID> <property name> <value>:
+      Set the value of a property. Values use the same syntax as dbus-send
+      (https://dbus.freedesktop.org/doc/dbus-send.1.html#description), and
+      should either be arrays or strings. For example:
+      $ gesture_prop set 12 "Mouse CPI" array:double:500
+      $ gesture_prop set 12 "Log Path" string:/tmp/foo.txt
+'
+cmd_gesture_prop() (
+  local subcommand="$1"
+  if [ $# -eq 0 ]; then
+    help "no subcommand specified"
+    return 1
+  fi
+  case "${subcommand}" in
+  devices|devs|list|get|set) ;;
+  *)
+    help "invalid subcommand ${subcommand}"
+    return 1
+    ;;
+  esac
+  shift
+
+  if [ "${subcommand}" = "devices" ] || [ "${subcommand}" = "devs" ]; then
+    if [ $# -ne 0 ]; then
+      help "too many arguments for 'devices' subcommand"
+      return 1
+    fi
+    dbus-send --print-reply --system \
+      --dest=org.chromium.GesturePropertiesService \
+      /org/chromium/GesturePropertiesService \
+      org.chromium.GesturePropertiesServiceInterface.ListDevices
+    return
+  fi
+
+  local device_id="$1"
+  if [ -z "${device_id}" ]; then
+    help "missing parameter: device ID"
+    return 1
+  elif ! is_numeric "${device_id}"; then
+    help "invalid device ID (must be a number)"
+    return 1
+  fi
+  shift
+
+  if [ "${subcommand}" = "list" ]; then
+    dbus-send --print-reply --system \
+      --dest=org.chromium.GesturePropertiesService \
+      /org/chromium/GesturePropertiesService \
+      org.chromium.GesturePropertiesServiceInterface.ListProperties \
+      int32:"${device_id}"
+    return
+  fi
+
+  # All property names contain spaces, so we need to quote them, but quotes were
+  # not taken into account when splitting the command arguments, so treat the
+  # remaining arguments as one string and split by the quotes.
+  local property_name
+  local value
+  local remaining_args="$*"
+  local first_char="$(substr "${remaining_args}" "0" "2")"
+  if [ "${first_char}" != '"' ] && [ "${first_char}" != "'" ]; then
+    property_name=$1
+    value=$2
+  else
+    local args_without_quote="$(substr "${remaining_args}" "1")"
+    local quote_2_pos="$(expr index "${args_without_quote}" "${first_char}")"
+    property_name="$(substr "${args_without_quote}" "0" "${quote_2_pos}")"
+    # $value will have the quote and a space at the front, so trim that.
+    value="$(substr "${remaining_args}" "$((quote_2_pos + 2))")"
+  fi
+
+  case "${subcommand}" in
+  get)
+    if [ -n "${value}" ]; then
+      help "too many arguments for 'get' subcommand"
+      return 1
+    fi
+    dbus-send --print-reply --system \
+      --dest=org.chromium.GesturePropertiesService \
+      /org/chromium/GesturePropertiesService \
+      org.chromium.GesturePropertiesServiceInterface.GetProperty \
+      int32:"${device_id}" string:"${property_name}"
+    return
+    ;;
+  set)
+    dbus-send --print-reply --system \
+      --dest=org.chromium.GesturePropertiesService \
+      /org/chromium/GesturePropertiesService \
+      org.chromium.GesturePropertiesServiceInterface.SetProperty \
+      int32:"${device_id}" string:"${property_name}" "${value}"
+    return
+    ;;
+  esac
+)
+
 substr() {
   local str="$1"
   local start="$2"
