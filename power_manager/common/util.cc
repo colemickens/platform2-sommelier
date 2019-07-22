@@ -22,11 +22,14 @@
 
 namespace power_manager {
 namespace util {
-
 namespace {
 
-template <typename T, bool (*StringToType)(const base::StringPiece&, T*)>
-bool ReadIntegerFile(const base::FilePath& path, T* value_out) {
+// Reads a string value from |path| and uses StringToType function to convert it
+// to |value_out|. Logs an error and returns false on failure.
+template <typename T>
+bool ReadTypeFile(const base::FilePath& path,
+                  bool (*StringToType)(const base::StringPiece&, T*),
+                  T* value_out) {
   DCHECK(value_out);
 
   std::string str;
@@ -86,9 +89,17 @@ bool WriteInt64File(const base::FilePath& path, int64_t value) {
   return true;
 }
 
-auto ReadInt64File = ReadIntegerFile<int64_t, base::StringToInt64>;
-auto ReadUint64File = ReadIntegerFile<uint64_t, base::StringToUint64>;
-auto ReadHexUint32File = ReadIntegerFile<uint32_t, base::HexStringToUInt>;
+bool ReadInt64File(const base::FilePath& path, int64_t* value_out) {
+  return ReadTypeFile(path, base::StringToInt64, value_out);
+}
+
+bool ReadUint64File(const base::FilePath& path, uint64_t* value_out) {
+  return ReadTypeFile(path, base::StringToUint64, value_out);
+}
+
+bool ReadHexUint32File(const base::FilePath& path, uint32_t* value_out) {
+  return ReadTypeFile(path, base::HexStringToUInt, value_out);
+}
 
 std::string JoinPaths(const std::vector<base::FilePath>& paths,
                       const std::string& separator) {

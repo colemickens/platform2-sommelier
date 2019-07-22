@@ -30,16 +30,15 @@ bool WriteInt64File(const base::FilePath& path, int64_t value);
 
 // Reads a base-10 int64 value from |path| to |value|, ignoring trailing
 // whitespace. Logs an error and returns false on failure.
-extern bool (*ReadInt64File)(const base::FilePath& path, int64_t* value_out);
+bool ReadInt64File(const base::FilePath& path, int64_t* value_out);
 
 // Reads a base-10 uint64 value from |path| to |value|, ignoring trailing
 // whitespace. Logs an error and returns false on failure.
-extern bool (*ReadUint64File)(const base::FilePath& path, uint64_t* value_out);
+bool ReadUint64File(const base::FilePath& path, uint64_t* value_out);
 
 // Reads a base-16 uint32 value from |path| to |value|, ignoring trailing
 // whitespace. Logs an error and returns false on failure.
-extern bool (*ReadHexUint32File)(const base::FilePath& path,
-                                 uint32_t* value_out);
+bool ReadHexUint32File(const base::FilePath& path, uint32_t* value_out);
 
 // Joins |paths| using |separator|.
 std::string JoinPaths(const std::vector<base::FilePath>& paths,
