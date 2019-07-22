@@ -24,6 +24,7 @@
 
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_firmware.h"
+#include "biod/update_reason.h"
 
 namespace {
 
@@ -314,10 +315,12 @@ bool FingerprintUnsupported(brillo::CrosConfigInterface* cros_config) {
   return false;
 }
 
-UpdateStatus DoUpdate(const CrosFpDeviceUpdate& ec_dev,
+UpdateResult DoUpdate(const CrosFpDeviceUpdate& ec_dev,
                       const CrosFpBootUpdateCtrl& boot_ctrl,
                       const CrosFpFirmware& fw) {
   bool attempted = false;
+  UpdateResult result = {UpdateStatus::kUpdateNotNecessary,
+                         UpdateReason::kNone};
 
   // Grab the new firmware file's versions.
   CrosFpFirmware::ImageVersion fw_version = fw.GetVersion();
@@ -325,8 +328,8 @@ UpdateStatus DoUpdate(const CrosFpDeviceUpdate& ec_dev,
   // Grab the FPMCU's current firmware version and current active image.
   CrosFpDevice::EcVersion ecver;
   if (!ec_dev.GetVersion(&ecver)) {
-    LOG(INFO) << "Failed to fetch EC version, aborting.";
-    return UpdateStatus::kUpdateFailed;
+    result.status = UpdateStatus::kUpdateFailedGetVersion;
+    return result;
   }
 
   // If write protection is not enabled, the RO firmware should
@@ -334,17 +337,18 @@ UpdateStatus DoUpdate(const CrosFpDeviceUpdate& ec_dev,
   // and non-forward compatible changes.
   bool flashprotect_enabled;
   if (!ec_dev.IsFlashProtectEnabled(&flashprotect_enabled)) {
-    LOG(ERROR) << "Failed to fetch flash protect status, aborting.";
-    return UpdateStatus::kUpdateFailed;
+    result.status = UpdateStatus::kUpdateFailedFlashProtect;
+    return result;
   }
   if (!flashprotect_enabled) {
     LOG(INFO) << "Flashprotect is disabled.";
     if (ecver.ro_version != fw_version.ro_version) {
+      result.reason |= UpdateReason::kMismatchROVersion;
       attempted = true;
       LOG(INFO) << "FPMCU RO firmware mismatch, updating.";
       if (!UpdateImage(ec_dev, boot_ctrl, fw, EC_IMAGE_RO)) {
-        LOG(ERROR) << "Failed to update RO image, aborting.";
-        return UpdateStatus::kUpdateFailed;
+        result.status = UpdateStatus::kUpdateFailedRO;
+        return result;
       }
     } else {
       LOG(INFO) << "FPMCU RO firmware is up to date.";
@@ -355,20 +359,29 @@ UpdateStatus DoUpdate(const CrosFpDeviceUpdate& ec_dev,
 
   // The firmware should be updated if RO is active (i.e. RW is corrupted) or if
   // the firmware version available on the rootfs is different from the RW.
-  if (ecver.current_image != EC_IMAGE_RW ||
-      ecver.rw_version != fw_version.rw_version) {
+  bool active_image_ro = ecver.current_image != EC_IMAGE_RW;
+  bool rw_mismatch = ecver.rw_version != fw_version.rw_version;
+  if (active_image_ro) {
+    result.reason |= UpdateReason::kActiveImageRO;
+  }
+  if (rw_mismatch) {
+    result.reason |= UpdateReason::kMismatchRWVersion;
+  }
+  if (active_image_ro || rw_mismatch) {
     attempted = true;
     LOG(INFO)
         << "FPMCU RW firmware mismatch or failed RW boot detected, updating.";
     if (!UpdateImage(ec_dev, boot_ctrl, fw, EC_IMAGE_RW)) {
-      LOG(ERROR) << "Failed to update RW image, aborting.";
-      return UpdateStatus::kUpdateFailed;
+      result.status = UpdateStatus::kUpdateFailedRW;
+      return result;
     }
   } else {
     LOG(INFO) << "FPMCU RW firmware is up to date.";
   }
-  return attempted ? UpdateStatus::kUpdateSucceeded
-                   : UpdateStatus::kUpdateNotNecessary;
+
+  result.status = attempted ? UpdateStatus::kUpdateSucceeded
+                            : UpdateStatus::kUpdateNotNecessary;
+  return result;
 }
 
 }  // namespace updater

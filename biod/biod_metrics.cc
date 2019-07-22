@@ -6,6 +6,9 @@
 
 #include <metrics/metrics_library.h>
 
+#include "biod/update_reason.h"
+#include "biod/utils.h"
+
 namespace biod {
 
 namespace metrics {
@@ -27,7 +30,12 @@ constexpr char kFpNoMatchDurationOverall[] =
     "Fingerprint.Unlock.NoMatch.Duration.Overall";
 constexpr char kFpMatchIgnoredDueToPowerButtonPress[] =
     "Fingerprint.Unlock.MatchIgnoredDueToPowerButtonPress";
-
+constexpr char kUpdaterStatus[] = "Fingerprint.Updater.Status";
+constexpr char kUpdaterReason[] = "Fingerprint.Updater.Reason";
+constexpr char kUpdaterDurationNoUpdate[] =
+    "Fingerprint.Updater.NoUpdate.Duration.Overall";
+constexpr char kUpdaterDurationUpdate[] =
+    "Fingerprint.Updater.Update.Duration.Overall";
 }  // namespace metrics
 
 BiodMetrics::BiodMetrics() : metrics_lib_(std::make_unique<MetricsLibrary>()) {}
@@ -58,6 +66,52 @@ bool BiodMetrics::SendFpLatencyStats(bool matched,
                                        : metrics::kFpNoMatchDurationOverall,
                                overall_ms, 100, 1000, 50) &&
        rc;
+  return rc;
+}
+
+bool BiodMetrics::SendFwUpdaterStatus(FwUpdaterStatus status,
+                                      updater::UpdateReason reason,
+                                      int overall_ms) {
+  // The following presents the updater timing tests results for nocturne,
+  // which uses the dartmonkey board with a large 2M firmware image on a
+  // Cortex M7:
+  // * no update takes about 60ms at boot
+  // * 10s boot-splash-screen timeout with update RO+RW takes about 83s.
+  // * 10s boot-splash-screen timeout with update RW(~35s) takes about 44s.
+  // * 10s boot-splash-screen timeout with update RO(~32s) takes about 39s.
+  // Note, we strive to allocate as few bins as possible, so we let the target
+  // resolution steer our bucket counts.
+  constexpr int kNoUpdateMaxMSec = 500;
+  constexpr int kNoUpdateResolutionMSec = 10;
+  constexpr int kNoUpdateBuckets = kNoUpdateMaxMSec / kNoUpdateResolutionMSec;
+  constexpr int kUpdateMaxMSec = 2 * 60 * 1000;
+  constexpr int kUpdateResolutionMSec = 2400;
+  constexpr int kUpdateBuckets = kUpdateMaxMSec / kUpdateResolutionMSec;
+
+  bool rc = true;
+  if (!metrics_lib_->SendEnumToUMA(metrics::kUpdaterStatus, to_utype(status),
+                                   to_utype(FwUpdaterStatus::kMaxValue))) {
+    rc = false;
+  }
+
+  if (status == FwUpdaterStatus::kUnnecessary) {
+    if (!metrics_lib_->SendToUMA(metrics::kUpdaterDurationNoUpdate, overall_ms,
+                                 0, kNoUpdateMaxMSec, kNoUpdateBuckets)) {
+      rc = false;
+    }
+  } else {
+    if (!metrics_lib_->SendToUMA(metrics::kUpdaterDurationUpdate, overall_ms, 0,
+                                 kUpdateMaxMSec, kUpdateBuckets)) {
+      rc = false;
+    }
+  }
+
+  if (!metrics_lib_->SendEnumToUMA(
+          metrics::kUpdaterReason, to_utype(reason),
+          to_utype(updater::UpdateReason::kMaxValue))) {
+    rc = false;
+  }
+
   return rc;
 }
 

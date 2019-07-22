@@ -19,6 +19,7 @@
 #include <cros_config/fake_cros_config.h>
 
 #include "biod/cros_fp_firmware.h"
+#include "biod/utils.h"
 
 using ::testing::_;
 using ::testing::AtLeast;
@@ -377,7 +378,7 @@ TEST_F(CrosFpUpdaterFindFirmwareTest, NonblankStatusMessages) {
     // when we ask for the human readable string
     std::string msg = FindFirmwareFileStatusToString(status);
     // expect it to not be "".
-    EXPECT_FALSE(msg.empty()) << "Status " << static_cast<int>(status)
+    EXPECT_FALSE(msg.empty()) << "Status " << to_utype(status)
                               << " converts to a blank status string.";
   }
 }
@@ -436,7 +437,7 @@ class CrosFpUpdaterTest : public ::testing::Test {
         .WillOnce(DoAll(SetArgPointee<0>(flash_protect), Return(true)));
   }
 
-  UpdateStatus RunUpdater() { return DoUpdate(dev_update_, boot_ctrl_, fw_); }
+  UpdateResult RunUpdater() { return DoUpdate(dev_update_, boot_ctrl_, fw_); }
 
   CrosFpUpdaterTest() = default;
   ~CrosFpUpdaterTest() override = default;
@@ -457,7 +458,7 @@ TEST(CrosFpDeviceUpdateTest, NonblankEcCurrentImageString) {
     // when we ask for the human readable string
     std::string msg = CrosFpDeviceUpdate::EcCurrentImageToString(image);
     // expect it to not be "".
-    EXPECT_FALSE(msg.empty()) << "Status " << static_cast<int>(image)
+    EXPECT_FALSE(msg.empty()) << "Status " << to_utype(image)
                               << " converts to a blank status string.";
   }
 }
@@ -483,9 +484,10 @@ TEST_F(CrosFpUpdaterTest, GetDeviceVersionFails) {
   // Given a device which fails to report its version,
   EXPECT_CALL(dev_update_, GetVersion(NotNull())).WillOnce(Return(false));
 
-  // expect the updater to report a failure.
-  EXPECT_EQ(DoUpdate(dev_update_, boot_ctrl_, fw_),
-            UpdateStatus::kUpdateFailed);
+  // expect the updater to report a get version failure with no update reason.
+  auto result = RunUpdater();
+  EXPECT_EQ(result.status, UpdateStatus::kUpdateFailedGetVersion);
+  EXPECT_EQ(result.reason, UpdateReason::kNone);
 }
 
 TEST_F(CrosFpUpdaterTest, GetFlashProtectFails) {
@@ -495,9 +497,11 @@ TEST_F(CrosFpUpdaterTest, GetFlashProtectFails) {
   EXPECT_CALL(dev_update_, IsFlashProtectEnabled(NotNull()))
       .WillOnce(Return(false));
 
-  // expect the updater to report a failure.
-  EXPECT_EQ(DoUpdate(dev_update_, boot_ctrl_, fw_),
-            UpdateStatus::kUpdateFailed);
+  // expect the updater to report a flash protect failure
+  // with no update reason.
+  auto result = RunUpdater();
+  EXPECT_EQ(result.status, UpdateStatus::kUpdateFailedFlashProtect);
+  EXPECT_EQ(result.reason, UpdateReason::kNone);
 }
 
 TEST_F(CrosFpUpdaterTest, FPDisabled_ROMismatch_ROUpdateFail) {
@@ -516,8 +520,11 @@ TEST_F(CrosFpUpdaterTest, FPDisabled_ROMismatch_ROUpdateFail) {
   EXPECT_CALL(boot_ctrl_, ScheduleReboot()).Times(0);
   // an attempted RO flash,
   EXPECT_CALL(dev_update_, Flash(Ref(fw_), EC_IMAGE_RO));
-  // and the updater to have reported a failure.
-  EXPECT_EQ(RunUpdater(), UpdateStatus::kUpdateFailed);
+  // and the updater to report an RO update failure with
+  // an RO version mismatch update reason.
+  auto result = RunUpdater();
+  EXPECT_EQ(result.status, UpdateStatus::kUpdateFailedRO);
+  EXPECT_EQ(result.reason, UpdateReason::kMismatchROVersion);
 }
 
 TEST_F(CrosFpUpdaterTest, FPDisabled_RORWMismatch_ROUpdateFail) {
@@ -539,8 +546,11 @@ TEST_F(CrosFpUpdaterTest, FPDisabled_RORWMismatch_ROUpdateFail) {
   // an attempted RO flash (but no RW flash),
   EXPECT_CALL(dev_update_, Flash(Ref(fw_), EC_IMAGE_RO));
   EXPECT_CALL(dev_update_, Flash(Ref(fw_), EC_IMAGE_RW)).Times(0);
-  // and the updater to report a failure.
-  EXPECT_EQ(RunUpdater(), UpdateStatus::kUpdateFailed);
+  // and the updater to report an RO update failure with
+  // an RO version mismatch update reason.
+  auto result = RunUpdater();
+  EXPECT_EQ(result.status, UpdateStatus::kUpdateFailedRO);
+  EXPECT_EQ(result.reason, UpdateReason::kMismatchROVersion);
 }
 
 TEST_F(CrosFpUpdaterTest, FPEnabled_RWMismatch_RWUpdateFail) {
@@ -559,8 +569,11 @@ TEST_F(CrosFpUpdaterTest, FPEnabled_RWMismatch_RWUpdateFail) {
   EXPECT_CALL(boot_ctrl_, ScheduleReboot()).Times(0);
   // an attempted RW flash,
   EXPECT_CALL(dev_update_, Flash(Ref(fw_), EC_IMAGE_RW));
-  // and the updater to report a failure.
-  EXPECT_EQ(RunUpdater(), UpdateStatus::kUpdateFailed);
+  // and the updater to report an RW update failure with
+  // an RW version mismatch update reason.
+  auto result = RunUpdater();
+  EXPECT_EQ(result.status, UpdateStatus::kUpdateFailedRW);
+  EXPECT_EQ(result.reason, UpdateReason::kMismatchRWVersion);
 }
 
 TEST_F(CrosFpUpdaterTest, FPDisabled_RORWMismatch_BootCtrlsBothFail) {
@@ -582,8 +595,12 @@ TEST_F(CrosFpUpdaterTest, FPDisabled_RORWMismatch_BootCtrlsBothFail) {
   // both firmware images to be flashed,
   EXPECT_CALL(dev_update_, Flash(Ref(fw_), EC_IMAGE_RW));
   EXPECT_CALL(dev_update_, Flash(Ref(fw_), EC_IMAGE_RO));
-  // and the updater to report a success.
-  EXPECT_EQ(RunUpdater(), UpdateStatus::kUpdateSucceeded);
+  // and the updater to report a success with an
+  // RO and RW version mismatch update reason.
+  auto result = RunUpdater();
+  EXPECT_EQ(result.status, UpdateStatus::kUpdateSucceeded);
+  EXPECT_EQ(result.reason, UpdateReason::kMismatchROVersion |
+                               UpdateReason::kMismatchRWVersion);
 }
 
 // Abnormal code paths
@@ -599,8 +616,11 @@ TEST_F(CrosFpUpdaterTest, CurrentROImage_RORWMatch_UpdateRW) {
   EXPECT_CALL(boot_ctrl_, ScheduleReboot());
   // an attempted RW flash,
   EXPECT_CALL(dev_update_, Flash(Ref(fw_), EC_IMAGE_RW));
-  // and the updater to report a success.
-  EXPECT_EQ(RunUpdater(), UpdateStatus::kUpdateSucceeded);
+  // and the updater to report a success with an
+  // RO active image update reason.
+  auto result = RunUpdater();
+  EXPECT_EQ(result.status, UpdateStatus::kUpdateSucceeded);
+  EXPECT_EQ(result.reason, UpdateReason::kActiveImageRO);
 }
 
 // Normal code paths
@@ -616,8 +636,11 @@ TEST_F(CrosFpUpdaterTest, FPDisabled_RORWMatch_NoUpdate) {
   EXPECT_CALL(boot_ctrl_, ScheduleReboot()).Times(0);
   // no firmware images flashed,
   EXPECT_CALL(dev_update_, Flash(_, _)).Times(0);
-  // and the updater to report an update not necessary.
-  EXPECT_EQ(RunUpdater(), UpdateStatus::kUpdateNotNecessary);
+  // and the updater to report an update not necessary with
+  // no update reason.
+  auto result = RunUpdater();
+  EXPECT_EQ(result.status, UpdateStatus::kUpdateNotNecessary);
+  EXPECT_EQ(result.reason, UpdateReason::kNone);
 }
 
 TEST_F(CrosFpUpdaterTest, FPEnabled_RORWMatch_NoUpdate) {
@@ -631,8 +654,11 @@ TEST_F(CrosFpUpdaterTest, FPEnabled_RORWMatch_NoUpdate) {
   EXPECT_CALL(boot_ctrl_, ScheduleReboot()).Times(0);
   // no firmware images flashed,
   EXPECT_CALL(dev_update_, Flash(_, _)).Times(0);
-  // and the updater to report an update not necessary.
-  EXPECT_EQ(RunUpdater(), UpdateStatus::kUpdateNotNecessary);
+  // and the updater to report an update not necessary with
+  // no update reason.
+  auto result = RunUpdater();
+  EXPECT_EQ(result.status, UpdateStatus::kUpdateNotNecessary);
+  EXPECT_EQ(result.reason, UpdateReason::kNone);
 }
 
 TEST_F(CrosFpUpdaterTest, FPEnabled_ROMismatch_NoUpdate) {
@@ -648,8 +674,11 @@ TEST_F(CrosFpUpdaterTest, FPEnabled_ROMismatch_NoUpdate) {
   EXPECT_CALL(boot_ctrl_, ScheduleReboot()).Times(0);
   // no firmware images flashed,
   EXPECT_CALL(dev_update_, Flash(_, _)).Times(0);
-  // and the updater to report an update not necessary.
-  EXPECT_EQ(RunUpdater(), UpdateStatus::kUpdateNotNecessary);
+  // and the updater to report an update not necessary with
+  // no update reason.
+  auto result = RunUpdater();
+  EXPECT_EQ(result.status, UpdateStatus::kUpdateNotNecessary);
+  EXPECT_EQ(result.reason, UpdateReason::kNone);
 }
 
 TEST_F(CrosFpUpdaterTest, RWMismatch_UpdateRW) {
@@ -663,8 +692,11 @@ TEST_F(CrosFpUpdaterTest, RWMismatch_UpdateRW) {
   EXPECT_CALL(boot_ctrl_, ScheduleReboot());
   // RW to be flashed,
   EXPECT_CALL(dev_update_, Flash(Ref(fw_), EC_IMAGE_RW));
-  // and the updater to report a success.
-  EXPECT_EQ(RunUpdater(), UpdateStatus::kUpdateSucceeded);
+  // and the updater to report a success with an
+  // RW version mismatch update reason.
+  auto result = RunUpdater();
+  EXPECT_EQ(result.status, UpdateStatus::kUpdateSucceeded);
+  EXPECT_EQ(result.reason, UpdateReason::kMismatchRWVersion);
 }
 
 TEST_F(CrosFpUpdaterTest, FPDisabled_ROMismatch_UpdateRO) {
@@ -680,8 +712,11 @@ TEST_F(CrosFpUpdaterTest, FPDisabled_ROMismatch_UpdateRO) {
   EXPECT_CALL(boot_ctrl_, ScheduleReboot());
   // RO to be flashed,
   EXPECT_CALL(dev_update_, Flash(Ref(fw_), EC_IMAGE_RO));
-  // and the updater to report a success.
-  EXPECT_EQ(RunUpdater(), UpdateStatus::kUpdateSucceeded);
+  // and the updater to report a success with an
+  // RO version mismatch update reason.
+  auto result = RunUpdater();
+  EXPECT_EQ(result.status, UpdateStatus::kUpdateSucceeded);
+  EXPECT_EQ(result.reason, UpdateReason::kMismatchROVersion);
 }
 
 TEST_F(CrosFpUpdaterTest, FPDisabled_RORWMismatch_UpdateRORW) {
@@ -700,8 +735,12 @@ TEST_F(CrosFpUpdaterTest, FPDisabled_RORWMismatch_UpdateRORW) {
   // both firmware images to be flashed,
   EXPECT_CALL(dev_update_, Flash(Ref(fw_), EC_IMAGE_RO));
   EXPECT_CALL(dev_update_, Flash(Ref(fw_), EC_IMAGE_RW));
-  // and the updater to report a success.
-  EXPECT_EQ(RunUpdater(), UpdateStatus::kUpdateSucceeded);
+  // and the updater to report a success with an
+  // RW and RO version mismatch update reason.
+  auto result = RunUpdater();
+  EXPECT_EQ(result.status, UpdateStatus::kUpdateSucceeded);
+  EXPECT_EQ(result.reason, UpdateReason::kMismatchROVersion |
+                               UpdateReason::kMismatchRWVersion);
 }
 
 }  // namespace updater

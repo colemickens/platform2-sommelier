@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <stdint.h>
 #include <stdlib.h>
 
 #include <string>
@@ -9,14 +10,22 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/time/time.h>
+#include <base/timer/elapsed_timer.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <base/strings/stringprintf.h>
 #include <cros_config/cros_config.h>
 
+#include "biod/biod_metrics.h"
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_updater.h"
+#include "biod/update_reason.h"
+
+using UpdateStatus = biod::updater::UpdateStatus;
+using UpdateReason = biod::updater::UpdateReason;
+using FwUpdaterStatus = biod::BiodMetrics::FwUpdaterStatus;
+using FindFirmwareFileStatus = biod::updater::FindFirmwareFileStatus;
 
 namespace {
 
@@ -57,9 +66,27 @@ void LogSetupDirectory(const base::FilePath& log_dir_path) {
                        false);  // tickcount
 }
 
+class UpdaterMetrics {
+ public:
+  void SetUpdateReason(UpdateReason reason) { update_reason_ = reason; }
+  void Finished(FwUpdaterStatus status) {
+    uint64_t overall = runtime_.Elapsed().InMilliseconds();
+    DLOG(INFO) << "Runtime took " << overall << "ms.";
+    metrics_.SendFwUpdaterStatus(status, update_reason_,
+                                 static_cast<int>(overall));
+  }
+
+ private:
+  biod::BiodMetrics metrics_;
+  UpdateReason update_reason_ = UpdateReason::kNone;
+  base::ElapsedTimer runtime_;
+};
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
+  UpdaterMetrics metrics;
+
   DEFINE_string(log_dir, "/var/log/biod", "Directory where logs are written.");
   brillo::FlagHelper::Init(argc, argv, kHelpText);
 
@@ -95,19 +122,18 @@ int main(int argc, char* argv[]) {
   auto status = biod::updater::FindFirmwareFile(
       base::FilePath(biod::updater::kFirmwareDir), &cros_config, &file);
 
-  if (status == biod::updater::FindFirmwareFileStatus::kNoDirectory ||
-      status == biod::updater::FindFirmwareFileStatus::kFileNotFound) {
+  if (status == FindFirmwareFileStatus::kNoDirectory ||
+      status == FindFirmwareFileStatus::kFileNotFound) {
     LOG(INFO) << "No firmware "
-              << ((status ==
-                   biod::updater::FindFirmwareFileStatus::kNoDirectory)
-                      ? "directory"
-                      : "file")
+              << ((status == FindFirmwareFileStatus::kNoDirectory) ? "directory"
+                                                                   : "file")
               << " on rootfs, exiting.";
 
     return EXIT_SUCCESS;
   }
-  if (status == biod::updater::FindFirmwareFileStatus::kMultipleFiles) {
+  if (status == FindFirmwareFileStatus::kMultipleFiles) {
     LOG(ERROR) << "Found more than one firmware file, aborting.";
+    metrics.Finished(FwUpdaterStatus::kFailureFirmwareFileMultiple);
     return EXIT_FAILURE;
   }
 
@@ -116,7 +142,22 @@ int main(int argc, char* argv[]) {
     LOG(ERROR) << "Failed to load firmware file '" << fw.GetPath().value()
                << "': " << fw.GetStatusString();
     LOG(ERROR) << "We are aborting update.";
-    return EXIT_FAILURE;
+  }
+  switch (fw.GetStatus()) {
+    case biod::CrosFpFirmware::Status::kUninitialized:
+      NOTREACHED();
+      return EXIT_FAILURE;
+    case biod::CrosFpFirmware::Status::kOk:
+      break;
+    case biod::CrosFpFirmware::Status::kNotFound:
+      metrics.Finished(FwUpdaterStatus::kFailureFirmwareFileNotFound);
+      return EXIT_FAILURE;
+    case biod::CrosFpFirmware::Status::kOpenError:
+      metrics.Finished(FwUpdaterStatus::kFailureFirmwareFileOpen);
+      return EXIT_FAILURE;
+    case biod::CrosFpFirmware::Status::kBadFmap:
+      metrics.Finished(FwUpdaterStatus::kFailureFirmwareFileFmap);
+      return EXIT_FAILURE;
   }
   LogFWFileVersion(fw);
 
@@ -126,26 +167,46 @@ int main(int argc, char* argv[]) {
   biod::CrosFpDevice::EcVersion ecver;
   if (!ec_device.GetVersion(&ecver)) {
     LOG(INFO) << "Failed to fetch EC version, aborting.";
+    metrics.Finished(FwUpdaterStatus::kFailurePreUpdateVersionCheck);
     return EXIT_FAILURE;
   }
   LogFPMCUVersion(ecver);
 
-  switch (biod::updater::DoUpdate(ec_device, boot_ctrl, fw)) {
-    case biod::updater::UpdateStatus::kUpdateFailed:
-      LOG(ERROR) << "Failed to update FPMCU firmware, aborting.";
+  auto result = biod::updater::DoUpdate(ec_device, boot_ctrl, fw);
+  metrics.SetUpdateReason(result.reason);
+  switch (result.status) {
+    case UpdateStatus::kUpdateFailedGetVersion:
+      LOG(INFO) << "Failed to fetch EC version, aborting.";
+      metrics.Finished(FwUpdaterStatus::kFailureUpdateFlashProtect);
       return EXIT_FAILURE;
-    case biod::updater::UpdateStatus::kUpdateSucceeded:
+    case UpdateStatus::kUpdateFailedFlashProtect:
+      LOG(ERROR) << "Failed to fetch flash protect status, aborting.";
+      metrics.Finished(FwUpdaterStatus::kFailureUpdateFlashProtect);
+      return EXIT_FAILURE;
+    case UpdateStatus::kUpdateFailedRO:
+      LOG(ERROR) << "Failed to update RO image, aborting.";
+      metrics.Finished(FwUpdaterStatus::kFailureUpdateRO);
+      return EXIT_FAILURE;
+    case UpdateStatus::kUpdateFailedRW:
+      LOG(ERROR) << "Failed to update RW image, aborting.";
+      metrics.Finished(FwUpdaterStatus::kFailureUpdateRW);
+      return EXIT_FAILURE;
+    case UpdateStatus::kUpdateSucceeded:
       if (!ec_device.GetVersion(&ecver)) {
         LOG(ERROR) << "Failed to fetch final EC version, update failed.";
+        metrics.Finished(FwUpdaterStatus::kFailurePostUpdateVersionCheck);
         return EXIT_FAILURE;
       }
       LogFPMCUVersion(ecver);
       LOG(INFO) << "The update was successful.";
-      break;
-    case biod::updater::UpdateStatus::kUpdateNotNecessary:
+      metrics.Finished(FwUpdaterStatus::kSuccessful);
+      return EXIT_SUCCESS;
+    case UpdateStatus::kUpdateNotNecessary:
       LOG(INFO) << "Update was not necessary.";
-      break;
+      metrics.Finished(FwUpdaterStatus::kUnnecessary);
+      return EXIT_SUCCESS;
   }
 
+  NOTREACHED();
   return EXIT_SUCCESS;
 }

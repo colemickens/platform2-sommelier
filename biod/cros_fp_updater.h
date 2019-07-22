@@ -6,13 +6,16 @@
 #define BIOD_CROS_FP_UPDATER_H_
 
 #include <string>
+#include <utility>
 
 #include <base/files/file_path.h>
+#include <brillo/enum_flags.h>
 #include <chromeos/ec/ec_commands.h>
 #include <cros_config/cros_config_interface.h>
 
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_firmware.h"
+#include "biod/update_reason.h"
 
 namespace biod {
 
@@ -69,10 +72,18 @@ bool FingerprintUnsupported(brillo::CrosConfigInterface* cros_config);
 enum class UpdateStatus {
   kUpdateNotNecessary,
   kUpdateSucceeded,
-  kUpdateFailed,
+  kUpdateFailedGetVersion,
+  kUpdateFailedFlashProtect,
+  kUpdateFailedRO,
+  kUpdateFailedRW,
 };
 
-UpdateStatus DoUpdate(const CrosFpDeviceUpdate& ec_dev,
+struct UpdateResult {
+  UpdateStatus status;
+  UpdateReason reason;
+};
+
+UpdateResult DoUpdate(const CrosFpDeviceUpdate& ec_dev,
                       const CrosFpBootUpdateCtrl& boot_ctrl,
                       const CrosFpFirmware& fw);
 

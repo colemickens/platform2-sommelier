@@ -9,8 +9,9 @@
 #include <utility>
 
 #include <base/macros.h>
+#include <metrics/metrics_library.h>
 
-class MetricsLibraryInterface;
+#include "biod/update_reason.h"
 
 namespace biod {
 
@@ -22,6 +23,10 @@ extern const char kFpMatchDurationOverall[];
 extern const char kFpNoMatchDurationCapture[];
 extern const char kFpNoMatchDurationMatcher[];
 extern const char kFpNoMatchDurationOverall[];
+extern const char kUpdaterStatus[];
+extern const char kUpdaterReason[];
+extern const char kUpdaterDurationNoUpdate[];
+extern const char kUpdaterDurationUpdate[];
 
 }  // namespace metrics
 
@@ -29,6 +34,25 @@ class BiodMetrics {
  public:
   BiodMetrics();
   ~BiodMetrics() = default;
+
+  // This is the tools/bio_fw_updater overall status,
+  // which encapsulates an UpdateStatus.
+  enum class FwUpdaterStatus : int {
+    kUnnecessary = 0,
+    kSuccessful = 1,
+    kFailureFirmwareFileMultiple = 2,
+    kFailureFirmwareFileNotFound = 3,
+    kFailureFirmwareFileOpen = 4,
+    kFailureFirmwareFileFmap = 5,
+    kFailurePreUpdateVersionCheck = 6,
+    kFailurePostUpdateVersionCheck = 7,
+    kFailureUpdateVersionCheck = 8,
+    kFailureUpdateFlashProtect = 9,
+    kFailureUpdateRO = 10,
+    kFailureUpdateRW = 11,
+
+    kMaxValue = kFailureUpdateRW,
+  };
 
   // Send number of fingers enrolled.
   bool SendEnrolledFingerCount(int finger_count);
@@ -41,6 +65,10 @@ class BiodMetrics {
                           int capture_ms,
                           int match_ms,
                           int overall_ms);
+
+  bool SendFwUpdaterStatus(FwUpdaterStatus status,
+                           updater::UpdateReason reason,
+                           int overall_ms);
 
   // Is fingerprint ignored due to parallel power button press?
   bool SendIgnoreMatchEventOnPowerButtonPress(bool is_ignored);

@@ -21,6 +21,8 @@
 #include <fmap.h>
 #include <gtest/gtest.h>
 
+#include "biod/utils.h"
+
 namespace {
 
 constexpr int kTestImageBaseAddr = 0x8000000;
@@ -412,7 +414,7 @@ TEST_F(CrosFpFirmwareTest, NonblankStatusMessages) {
     // when we ask for the human readable string
     std::string msg = TestStatusToString(status);
     // expect it to not be "".
-    EXPECT_FALSE(msg.empty()) << "Status " << static_cast<int>(status)
+    EXPECT_FALSE(msg.empty()) << "Status " << to_utype(status)
                               << " converts to a blank status string.";
   }
 }
