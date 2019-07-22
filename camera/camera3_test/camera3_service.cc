@@ -735,8 +735,14 @@ void Camera3Service::Camera3DeviceService::
       it++;
     }
   }
-  // Process output buffers
-  bool stopping_preview =
+  // Process output buffers and record perf logs. We record preview and video
+  // perf logs only if there's no still capture in this result since it is
+  // expected to take longer time.
+  const bool has_still_capture = std::any_of(
+      buffers.begin(), buffers.end(), [](const ScopedBufferHandle& buffer) {
+        return Camera3TestGralloc::GetFormat(*buffer) == HAL_PIXEL_FORMAT_BLOB;
+      });
+  const bool stopping_preview =
       (preview_state_ == PREVIEW_STOPPING) && !still_capture_metadata_;
   bool have_yuv_buffer = false;
   for (auto& it : buffers) {
@@ -744,8 +750,8 @@ void Camera3Service::Camera3DeviceService::
              << " (format:" << Camera3TestGralloc::GetFormat(*it) << ")";
     switch (Camera3TestGralloc::GetFormat(*it)) {
       case HAL_PIXEL_FORMAT_BLOB:
-        Camera3PerfLog::GetInstance()->Update(
-            cam_id_, Camera3PerfLog::Key::STILL_IMAGE_CAPTURED,
+        Camera3PerfLog::GetInstance()->UpdateFrameEvent(
+            cam_id_, frame_number, FrameEvent::STILL_CAPTURE_RESULT,
             base::TimeTicks::Now());
         if (!process_still_capture_result_cb_.is_null()) {
           process_still_capture_result_cb_.Run(
@@ -754,6 +760,11 @@ void Camera3Service::Camera3DeviceService::
         break;
       case HAL_PIXEL_FORMAT_YCbCr_420_888:
         have_yuv_buffer = true;
+        if (!has_still_capture) {
+          Camera3PerfLog::GetInstance()->UpdateFrameEvent(
+              cam_id_, frame_number, FrameEvent::VIDEO_RECORD_RESULT,
+              base::TimeTicks::Now());
+        }
         if (!process_recording_result_cb_.is_null()) {
           process_recording_result_cb_.Run(cam_id_, frame_number,
                                            std::move(metadata));
@@ -768,6 +779,11 @@ void Camera3Service::Camera3DeviceService::
         }
         break;
       default:
+        if (!has_still_capture) {
+          Camera3PerfLog::GetInstance()->UpdateFrameEvent(
+              cam_id_, frame_number, FrameEvent::PREVIEW_RESULT,
+              base::TimeTicks::Now());
+        }
         if (!stopping_preview) {
           // Register buffer back to be used by future requests
           cam_device_.RegisterOutputBuffer(
@@ -780,8 +796,8 @@ void Camera3Service::Camera3DeviceService::
   }
   if (preview_state_ == PREVIEW_STARTING) {
     preview_state_ = PREVIEW_STARTED;
-    Camera3PerfLog::GetInstance()->Update(
-        cam_id_, Camera3PerfLog::Key::PREVIEW_STARTED, base::TimeTicks::Now());
+    Camera3PerfLog::GetInstance()->UpdateDeviceEvent(
+        cam_id_, DeviceEvent::PREVIEW_STARTED, base::TimeTicks::Now());
   }
   sem_post(&preview_frame_sem_);
 

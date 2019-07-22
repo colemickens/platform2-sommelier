@@ -7,29 +7,41 @@
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/time/time.h>
 
 namespace camera3_test {
 
+enum class DeviceEvent {
+  OPENING,
+  OPENED,
+  PREVIEW_STARTED,
+};
+
+enum class FrameEvent {
+  SHUTTER,
+  PREVIEW_RESULT,
+  STILL_CAPTURE_RESULT,
+  VIDEO_RECORD_RESULT,
+};
+
 class Camera3PerfLog final {
  public:
-  enum Key {
-    DEVICE_OPENING,
-    DEVICE_OPENED,
-    PREVIEW_STARTED,
-    STILL_IMAGE_CAPTURED,
-    END_OF_KEY
-  };
-
   // Gets the singleton instance
   static Camera3PerfLog* GetInstance();
 
   void SetCameraNameMap(const std::map<int, std::string>& camera_name_map);
 
-  // Update performance log
-  bool Update(int cam_id, Key key, base::TimeTicks time);
+  // Update one-time performance log
+  bool UpdateDeviceEvent(int cam_id, DeviceEvent event, base::TimeTicks time);
+
+  // Update per-frame performance log
+  bool UpdateFrameEvent(int cam_id,
+                        uint32_t frame_number,
+                        FrameEvent event,
+                        base::TimeTicks time);
 
  private:
   Camera3PerfLog() {}
@@ -40,16 +52,18 @@ class Camera3PerfLog final {
   // found in the map
   std::string GetCameraNameForId(int id);
 
+  std::vector<std::pair<std::string, int64_t>> CollectPerfLogs(
+      int cam_id) const;
+
   // The name used for output log for each id
   std::map<int, std::string> camera_name_map_;
 
-  // Record performance logs in a map with camera id and Camera3PerfLog::Key as
-  // the keys
-  std::map<int, std::map<Key, base::TimeTicks>> perf_log_map_;
+  // Record one-time performance logs with camera id and device event
+  std::map<int, std::map<DeviceEvent, base::TimeTicks>> device_events_;
 
-  // Record taking still picture performance logs in a map with camera id as
-  // the key
-  std::map<int, std::vector<base::TimeTicks>> still_capture_perf_log_map_;
+  // Record per-frame performance logs with camera id and frame event
+  std::map<int, std::map<uint32_t, std::map<FrameEvent, base::TimeTicks>>>
+      frame_events_;
 
   DISALLOW_COPY_AND_ASSIGN(Camera3PerfLog);
 };

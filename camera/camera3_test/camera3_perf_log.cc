@@ -6,9 +6,10 @@
 
 #include <inttypes.h>
 
-#include <string>
-#include <utility>
+#include <numeric>
 
+#include <base/optional.h>
+#include <base/stl_util.h>
 #include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
@@ -25,53 +26,30 @@ Camera3PerfLog* Camera3PerfLog::GetInstance() {
 
 Camera3PerfLog::~Camera3PerfLog() {
   VLOGF_ENTER();
-  if (base::CommandLine::ForCurrentProcess()->HasSwitch("output_log")) {
-    VLOGF(1) << "Outputing to log file: "
-             << base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
-                    "output_log");
-    base::FilePath file_path(
-        base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
-            "output_log"));
-    if (base::WriteFile(file_path, NULL, 0) < 0) {
-      LOGF(ERROR) << "Error writing to file " << file_path.value();
-      return;
-    }
-    std::map<Key, std::string> KeyNameMap = {
-        {DEVICE_OPENED, "device_open"},
-        {PREVIEW_STARTED, "preview_start"},
-        {STILL_IMAGE_CAPTURED, "still_image_capture"},
-    };
-    for (const auto& it : perf_log_map_) {
-      int cam_id = it.first;
-      if (it.second.find(DEVICE_OPENING) == it.second.end()) {
-        LOGF(ERROR) << "Failed to find device opening performance log";
-        continue;
-      }
-      std::string s = base::StringPrintf("Camera: %s\n",
-                                         GetCameraNameForId(cam_id).c_str());
+  if (!base::CommandLine::ForCurrentProcess()->HasSwitch("output_log"))
+    return;
+
+  VLOGF(1) << "Outputing to log file: "
+           << base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+                  "output_log");
+  base::FilePath file_path(
+      base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+          "output_log"));
+  if (base::WriteFile(file_path, NULL, 0) < 0) {
+    LOGF(ERROR) << "Error writing to file " << file_path.value();
+    return;
+  }
+
+  for (const auto& cam_id_name : camera_name_map_) {
+    const std::string s =
+        base::StringPrintf("Camera: %s\n", cam_id_name.second.c_str());
+    base::AppendToFile(file_path, s.c_str(), s.length());
+    const std::vector<std::pair<std::string, int64_t>> perf_logs =
+        CollectPerfLogs(cam_id_name.first);
+    for (const auto& perf_log : perf_logs) {
+      const std::string s = base::StringPrintf(
+          "%s: %" PRId64 " us\n", perf_log.first.c_str(), perf_log.second);
       base::AppendToFile(file_path, s.c_str(), s.length());
-      for (const auto& jt : it.second) {
-        Key key = jt.first;
-        if (KeyNameMap.find(key) == KeyNameMap.end()) {
-          continue;
-        }
-        base::TimeTicks end_ticks = jt.second;
-        base::TimeTicks start_ticks = it.second.at(DEVICE_OPENING);
-        std::string s =
-            base::StringPrintf("%s: %" PRId64 " us\n", KeyNameMap[key].c_str(),
-                               (end_ticks - start_ticks).InMicroseconds());
-        base::AppendToFile(file_path, s.c_str(), s.length());
-      }
-      if (still_capture_perf_log_map_.find(cam_id) !=
-              still_capture_perf_log_map_.end() &&
-          still_capture_perf_log_map_[cam_id].size() > 1) {
-        std::string s =
-            base::StringPrintf("shot_to_shot: %" PRId64 " us\n",
-                               (still_capture_perf_log_map_[cam_id][1] -
-                                still_capture_perf_log_map_[cam_id][0])
-                                   .InMicroseconds());
-        base::AppendToFile(file_path, s.c_str(), s.length());
-      }
     }
   }
 }
@@ -86,22 +64,139 @@ std::string Camera3PerfLog::GetCameraNameForId(int id) {
   return it != camera_name_map_.end() ? it->second : std::to_string(id);
 }
 
-bool Camera3PerfLog::Update(int cam_id, Key key, base::TimeTicks time) {
-  if (key >= END_OF_KEY) {
+bool Camera3PerfLog::UpdateDeviceEvent(int cam_id,
+                                       DeviceEvent event,
+                                       base::TimeTicks time) {
+  VLOGF(1) << "Updating device event " << static_cast<int>(event)
+           << " of camera " << cam_id << " at " << time << " us";
+  if (base::ContainsKey(device_events_[cam_id], event)) {
+    LOGF(ERROR) << "Device event " << static_cast<int>(event) << " of camera "
+                << cam_id << " is being updated multiple times";
     return false;
   }
-  VLOGF(1) << "Updating key " << key << " of camera " << cam_id << " at "
-           << time << " us";
-  if (perf_log_map_[cam_id].find(key) == perf_log_map_[cam_id].end()) {
-    perf_log_map_[cam_id][key] = time;
-  } else if (key != STILL_IMAGE_CAPTURED) {
-    LOGF(ERROR) << "The key " << key << " is being updated twice";
-    return false;
-  }
-  if (key == STILL_IMAGE_CAPTURED) {
-    still_capture_perf_log_map_[cam_id].push_back(time);
-  }
+  device_events_[cam_id][event] = time;
   return true;
+}
+
+bool Camera3PerfLog::UpdateFrameEvent(int cam_id,
+                                      uint32_t frame_number,
+                                      FrameEvent event,
+                                      base::TimeTicks time) {
+  VLOGF(1) << "Updating frame event " << static_cast<int>(event)
+           << " of camera " << cam_id << " for frame number " << frame_number
+           << " at " << time << " us";
+  if (base::ContainsKey(frame_events_[cam_id][frame_number], event)) {
+    LOGF(ERROR) << "Frame event " << static_cast<int>(event) << " of camera "
+                << cam_id << " frame number " << frame_number
+                << " is being updated multiple times";
+    return false;
+  }
+  frame_events_[cam_id][frame_number][event] = time;
+  return true;
+}
+
+std::vector<std::pair<std::string, int64_t>> Camera3PerfLog::CollectPerfLogs(
+    int cam_id) const {
+  std::vector<std::pair<std::string, int64_t>> perf_logs;
+
+  // Collect perf logs from device events.
+  constexpr std::pair<DeviceEvent, const char*> kDeviceEventNameMap[] = {
+      {DeviceEvent::OPENED, "device_open"},
+      {DeviceEvent::PREVIEW_STARTED, "preview_start"},
+  };
+  if (base::ContainsKey(device_events_, cam_id)) {
+    const std::map<DeviceEvent, base::TimeTicks>& events =
+        device_events_.at(cam_id);
+    if (!base::ContainsKey(events, DeviceEvent::OPENING)) {
+      LOGF(ERROR) << "Failed to find device opening performance log";
+      return perf_logs;
+    }
+    const base::TimeTicks start_ticks = events.at(DeviceEvent::OPENING);
+    for (const auto& event_name : kDeviceEventNameMap) {
+      if (!base::ContainsKey(events, event_name.first))
+        continue;
+      const base::TimeTicks end_ticks = events.at(event_name.first);
+      perf_logs.emplace_back(event_name.second,
+                             (end_ticks - start_ticks).InMicroseconds());
+    }
+
+    // The first still image captured time.
+    if (base::ContainsKey(frame_events_, cam_id)) {
+      const auto it = std::find_if(
+          frame_events_.at(cam_id).begin(), frame_events_.at(cam_id).end(),
+          [](const auto& fn_events) {
+            return base::ContainsKey(fn_events.second,
+                                     FrameEvent::STILL_CAPTURE_RESULT);
+          });
+      if (it != frame_events_.at(cam_id).end()) {
+        const base::TimeTicks end_ticks =
+            it->second.at(FrameEvent::STILL_CAPTURE_RESULT);
+        perf_logs.emplace_back("still_image_capture",
+                               (end_ticks - start_ticks).InMicroseconds());
+      }
+    }
+  }
+
+  // Collect perf logs from frame events.
+  constexpr std::pair<FrameEvent, const char*> kFrameEventNameMap[] = {
+      {FrameEvent::PREVIEW_RESULT, "preview_latency"},
+      {FrameEvent::STILL_CAPTURE_RESULT, "still_capture_latency"},
+      {FrameEvent::VIDEO_RECORD_RESULT, "video_record_latency"},
+  };
+  std::map<std::string, std::vector<int64_t>> frame_perf_logs;
+  if (base::ContainsKey(frame_events_, cam_id)) {
+    for (const auto& it : frame_events_.at(cam_id)) {
+      const uint32_t frame_number = it.first;
+      const std::map<FrameEvent, base::TimeTicks>& events = it.second;
+      if (!base::ContainsKey(events, FrameEvent::SHUTTER)) {
+        VLOGF(1) << "No shutter event found for frame " << frame_number
+                 << " of camera " << cam_id;
+        continue;
+      }
+      const base::TimeTicks start_ticks = events.at(FrameEvent::SHUTTER);
+      for (const auto& event_name : kFrameEventNameMap) {
+        if (!base::ContainsKey(events, event_name.first))
+          continue;
+        const base::TimeTicks end_ticks = events.at(event_name.first);
+        frame_perf_logs[event_name.second].push_back(
+            (end_ticks - start_ticks).InMicroseconds());
+      }
+    }
+    for (const auto& event_name : kFrameEventNameMap) {
+      if (!base::ContainsKey(frame_perf_logs, event_name.second))
+        continue;
+      const std::vector<int64_t>& logs = frame_perf_logs.at(event_name.second);
+      if (!logs.empty()) {
+        VLOGF(1) << "Calculate " << event_name.second << " from " << logs.size()
+                 << " frames";
+        perf_logs.emplace_back(
+            event_name.second,
+            std::accumulate(logs.begin(), logs.end(), 0) / logs.size());
+      }
+    }
+
+    // Still capture shot to shot times.
+    std::vector<int64_t> logs;
+    base::Optional<base::TimeTicks> start_ticks;
+    for (const auto& it : frame_events_.at(cam_id)) {
+      if (!base::ContainsKey(it.second, FrameEvent::STILL_CAPTURE_RESULT))
+        continue;
+      const base::TimeTicks end_ticks =
+          it.second.at(FrameEvent::STILL_CAPTURE_RESULT);
+      if (start_ticks)
+        logs.push_back((end_ticks - *start_ticks).InMicroseconds());
+      start_ticks.emplace(end_ticks);
+    }
+    if (!logs.empty()) {
+      VLOGF(1) << "Calculate shot_to_shot time from " << logs.size()
+               << " samples";
+      perf_logs.emplace_back(
+          "shot_to_shot",
+          std::accumulate(logs.begin(), logs.end(), 0) / logs.size());
+    }
+  }
+
+  return perf_logs;
 }
 
 }  // namespace camera3_test

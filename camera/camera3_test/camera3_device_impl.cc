@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/numerics/safe_conversions.h>
 #include <sync/sync.h>
 
 #include "camera3_test/camera3_perf_log.h"
@@ -215,8 +216,8 @@ void Camera3DeviceImpl::InitializeOnThread(Camera3Module* cam_module,
     return;
   }
   // Open camera device
-  Camera3PerfLog::GetInstance()->Update(
-      cam_id_, Camera3PerfLog::Key::DEVICE_OPENING, base::TimeTicks::Now());
+  Camera3PerfLog::GetInstance()->UpdateDeviceEvent(
+      cam_id_, DeviceEvent::OPENING, base::TimeTicks::Now());
   *result = -ENODEV;
   cam_device_ = cam_module->OpenDevice(cam_id_);
   ASSERT_NE(nullptr, cam_device_) << "Failed to open device " << cam_id_;
@@ -240,8 +241,8 @@ void Camera3DeviceImpl::InitializeOnThread(Camera3Module* cam_module,
       Camera3DeviceImpl::ProcessCaptureResultForwarder;
   *result = cam_device_->ops->initialize(cam_device_, this);
   ASSERT_EQ(0, *result) << "Camera device initialization fails";
-  Camera3PerfLog::GetInstance()->Update(
-      cam_id_, Camera3PerfLog::Key::DEVICE_OPENED, base::TimeTicks::Now());
+  Camera3PerfLog::GetInstance()->UpdateDeviceEvent(cam_id_, DeviceEvent::OPENED,
+                                                   base::TimeTicks::Now());
 
   sem_init(&shutter_sem_, 0, 0);
   sem_init(&capture_result_sem_, 0, 0);
@@ -600,6 +601,14 @@ void Camera3DeviceImpl::NotifyOnThread(camera3_notify_msg_t msg) {
   DCHECK(thread_checker_.CalledOnValidThread());
   EXPECT_EQ(CAMERA3_MSG_SHUTTER, msg.type)
       << "Shutter error = " << msg.message.error.error_code;
+
+  // Use the timestamp reported from camera instead of base::TimeTicks::Now()
+  // since HAL may not notify() shutter messages in time.
+  const int64_t timestamp_ns =
+      base::checked_cast<int64_t>(msg.message.shutter.timestamp / 1000LL);
+  Camera3PerfLog::GetInstance()->UpdateFrameEvent(
+      cam_id_, msg.message.shutter.frame_number, FrameEvent::SHUTTER,
+      base::TimeTicks() + base::TimeDelta::FromMicroseconds(timestamp_ns));
 
   if (msg.type == CAMERA3_MSG_SHUTTER) {
     sem_post(&shutter_sem_);
