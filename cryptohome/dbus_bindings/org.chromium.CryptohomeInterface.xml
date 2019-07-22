@@ -526,6 +526,22 @@
       <arg type="ay" name="challenge" direction="in" />
       <arg type="i" name="async_id" direction="out" />
     </method>
+    <!-- TODO(acostinas): Remove the temporary method when all callers are
+         updated. b/35580115 -->
+    <method name="TpmAttestationSignEnterpriseVaChallengeV2">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg type="i" name="va_type" direction="in" />
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
+      <arg type="s" name="domain" direction="in" />
+      <arg type="ay" name="device_id" direction="in" />
+      <arg type="b" name="include_signed_public_key" direction="in" />
+      <arg type="ay" name="challenge" direction="in" />
+      <arg type="s" name="key_name_for_spkac" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
     <method name="TpmAttestationSignSimpleChallenge">
       <annotation name="org.chromium.DBus.Method.Kind"
                   value="async"/>

@@ -320,6 +320,10 @@ class Attestation : public base::PlatformThread::Delegate,
   //               This value is opaque to this class.
   //   include_signed_public_key - Whether the challenge response should include
   //                               a SignedPublicKeyAndChallenge.
+  //   key_name_for_spkac - The name of the key used for
+  //                        SignedPublicKeyAndChallenge. If empty, the same key
+  //                        used to sign the challenge response will be used
+  //                        for SignedPublicKeyAndChallenge.
   //   challenge - The challenge to be signed.
   //   response - On success is populated with the challenge response.
   virtual bool SignEnterpriseVaChallenge(
@@ -331,6 +335,7 @@ class Attestation : public base::PlatformThread::Delegate,
       const brillo::SecureBlob& device_id,
       bool include_signed_public_key,
       const brillo::SecureBlob& challenge,
+      const std::string& key_name_for_spkac,
       brillo::SecureBlob* response);
 
   // Signs a challenge outside of an enterprise context.  This challenge is

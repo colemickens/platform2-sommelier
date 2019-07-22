@@ -320,6 +320,17 @@ class LegacyCryptohomeInterfaceAdaptor
       const std::vector<uint8_t>& in_device_id,
       bool in_include_signed_public_key,
       const std::vector<uint8_t>& in_challenge) override;
+  void TpmAttestationSignEnterpriseVaChallengeV2(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<int32_t>> response,
+      int32_t in_va_type,
+      bool in_is_user_specific,
+      const std::string& in_username,
+      const std::string& in_key_name,
+      const std::string& in_domain,
+      const std::vector<uint8_t>& in_device_id,
+      bool in_include_signed_public_key,
+      const std::vector<uint8_t>& in_challenge,
+      const std::string& in_key_name_for_spkac) override;
   void TpmAttestationSignSimpleChallenge(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<int32_t>> response,
       bool in_is_user_specific,

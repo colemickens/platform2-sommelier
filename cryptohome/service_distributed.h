@@ -123,6 +123,7 @@ class ServiceDistributed : public Service {
       GArray* device_id,
       gboolean include_signed_public_key,
       GArray* challenge,
+      gchar* key_name_for_spkac,
       gint* OUT_async_id,
       GError** error) override;
   gboolean TpmAttestationSignSimpleChallenge(gboolean is_user_specific,

@@ -154,6 +154,7 @@ SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
                                      const SecureBlob& device_id,
                                      bool include_signed_public_key,
                                      const SecureBlob& challenge,
+                                     const std::string& key_name_for_spkac,
                                      int sequence_id)
     : AttestationTask(observer, attestation, sequence_id),
       challenge_type_(kEnterpriseVaChallengeType),
@@ -164,8 +165,8 @@ SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
       domain_(domain),
       device_id_(device_id),
       include_signed_public_key_(include_signed_public_key),
-      challenge_(challenge) {
-}
+      challenge_(challenge),
+      key_name_for_spkac_(key_name_for_spkac) {}
 
 SignChallengeTask::~SignChallengeTask() {}
 
@@ -196,7 +197,8 @@ void SignChallengeTask::Run() {
                                                      &response);
       break;
     case kEnterpriseVaChallengeType:
-      status = attestation_->SignEnterpriseVaChallenge(va_type_,
+      status = attestation_->SignEnterpriseVaChallenge(
+          va_type_,
           is_user_specific_,
           username_,
           key_name_,
@@ -204,6 +206,7 @@ void SignChallengeTask::Run() {
           device_id_,
           include_signed_public_key_,
           challenge_,
+          key_name_for_spkac_,
           &response);
       break;
   }

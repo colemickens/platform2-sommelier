@@ -136,6 +136,7 @@ class SignChallengeTask : public AttestationTask {
                     const brillo::SecureBlob& device_id,
                     bool include_signed_public_key,
                     const brillo::SecureBlob& challenge,
+                    const std::string& key_name_for_spkac,
                     int sequence_id);
   virtual ~SignChallengeTask();
 
@@ -157,6 +158,7 @@ class SignChallengeTask : public AttestationTask {
   brillo::SecureBlob device_id_;
   bool include_signed_public_key_;
   brillo::SecureBlob challenge_;
+  std::string key_name_for_spkac_;
 
   DISALLOW_COPY_AND_ASSIGN(SignChallengeTask);
 };

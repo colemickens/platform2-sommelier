@@ -265,6 +265,19 @@ gboolean cryptohome_tpm_attestation_sign_enterprise_va_challenge(
     GArray* challenge,
     gint* OUT_async_id,
     GError** error);
+gboolean cryptohome_tpm_attestation_sign_enterprise_va_challenge_v2(
+    Cryptohome* self,
+    gint va_type,
+    gboolean is_user_specific,
+    gchar* username,
+    gchar* key_name,
+    gchar* domain,
+    GArray* device_id,
+    gboolean include_signed_public_key,
+    GArray* challenge,
+    gchar* key_name_for_spkac,
+    gint* OUT_async_id,
+    GError** error);
 gboolean cryptohome_tpm_attestation_sign_simple_challenge(
     Cryptohome* self,
     gboolean is_user_specific,

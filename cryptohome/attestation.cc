@@ -14,6 +14,7 @@
 
 #include <arpa/inet.h>
 #include <base/logging.h>
+#include <base/optional.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
@@ -1174,9 +1175,10 @@ bool Attestation::SignEnterpriseChallenge(
       const SecureBlob& challenge,
       SecureBlob* response) {
   return SignEnterpriseVaChallenge(kDefaultVA, is_user_specific, username,
-                                 key_name, domain, device_id,
-                                 include_signed_public_key, challenge,
-                                 response);
+                                   key_name, domain, device_id,
+                                   include_signed_public_key, challenge,
+                                   std::string() /*key_name_for_spkac*/,
+                                   response);
 }
 
 bool Attestation::SignEnterpriseVaChallenge(
@@ -1188,6 +1190,7 @@ bool Attestation::SignEnterpriseVaChallenge(
       const SecureBlob& device_id,
       bool include_signed_public_key,
       const SecureBlob& challenge,
+      const std::string& key_name_for_spkac,
       SecureBlob* response) {
   if (!IsTPMReady())
     return false;
@@ -1225,22 +1228,45 @@ bool Attestation::SignEnterpriseVaChallenge(
   key_info.set_key_type(is_user_specific ? EUK : EMK);
   key_info.set_domain(domain);
   key_info.set_device_id(device_id.to_string());
-  // Only include the certificate if this is a user key.
+
+  base::Optional<CertifiedKey> key_for_certificate_and_spkac;
   if (is_user_specific) {
+    // Always include the EUK certificate if an EUK is being challenged.
+    // Note that if including SPKAC has been requested when challenging an EUK,
+    // the SPKAC will also be created for the EUK. In other words,
+    // |key_name_for_spkac| is currently ignored for EUKs.
+    key_for_certificate_and_spkac = key;
+  } else if (include_signed_public_key && !key_name_for_spkac.empty()) {
+    // If a specific key name for SPKAC has been requested when challenging an
+    // EMK, include the certificate for that key.
+    CertifiedKey key_for_spkac;
+    if (!FindKeyByName(false /* is_user_specific */,
+                       std::string() /* username */,
+                       key_name_for_spkac,
+                       &key_for_spkac)) {
+      LOG(ERROR) << __func__ << ": Key " << key_name_for_spkac
+                 << " for SPKAC not found ";
+      return false;
+    }
+    key_for_certificate_and_spkac = key_for_spkac;
+  }
+  if (key_for_certificate_and_spkac) {
     SecureBlob certificate_chain;
-    if (!CreatePEMCertificateChain(key, &certificate_chain)) {
+    if (!CreatePEMCertificateChain(key_for_certificate_and_spkac.value(),
+                                   &certificate_chain)) {
       LOG(ERROR) << __func__ << ": Failed to construct certificate chain.";
       return false;
     }
     key_info.set_certificate(certificate_chain.to_string());
-  }
-  if (is_user_specific && include_signed_public_key) {
-    SecureBlob spkac;
-    if (!CreateSignedPublicKey(key, &spkac)) {
-      LOG(ERROR) << __func__ << ": Failed to create signed public key.";
-      return false;
+    if (include_signed_public_key) {
+      SecureBlob spkac;
+      if (!CreateSignedPublicKey(key_for_certificate_and_spkac.value(),
+                                 &spkac)) {
+        LOG(ERROR) << __func__ << ": Failed to create signed public key.";
+        return false;
+      }
+      key_info.set_signed_public_key_and_challenge(spkac.to_string());
     }
-    key_info.set_signed_public_key_and_challenge(spkac.to_string());
   }
   if (!EncryptEnterpriseKeyInfo(va_type, key_info,
                                 response_pb.mutable_encrypted_key_info())) {

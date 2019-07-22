@@ -66,15 +66,16 @@ class MockAttestation : public Attestation {
   MOCK_METHOD3(DoesKeyExist, bool(bool,
                                   const std::string&,
                                   const std::string&));
-  MOCK_METHOD8(SignEnterpriseChallenge, bool(bool,
+  MOCK_METHOD9(SignEnterpriseChallenge, bool(bool,
                                              const std::string&,
                                              const std::string&,
                                              const std::string&,
                                              const brillo::SecureBlob&,
                                              bool,
                                              const brillo::SecureBlob&,
+                                             const std::string&,
                                              brillo::SecureBlob*));
-  MOCK_METHOD9(SignEnterpriseVaChallenge, bool(Attestation::VAType,
+  MOCK_METHOD10(SignEnterpriseVaChallenge, bool(Attestation::VAType,
                                                bool,
                                                const std::string&,
                                                const std::string&,
@@ -82,6 +83,7 @@ class MockAttestation : public Attestation {
                                                const brillo::SecureBlob&,
                                                bool,
                                                const brillo::SecureBlob&,
+                                               const std::string&,
                                                brillo::SecureBlob*));
   MOCK_METHOD5(SignSimpleChallenge, bool(bool,
                                          const std::string&,

@@ -534,7 +534,8 @@ class Service : public brillo::dbus::AbstractDbusService,
       GArray* device_id,
       gboolean include_signed_public_key,
       GArray* challenge,
-      gint *OUT_async_id,
+      gchar* key_name_for_spkac,
+      gint* OUT_async_id,
       GError** error) = 0;
   virtual gboolean TpmAttestationSignSimpleChallenge(
       gboolean is_user_specific,

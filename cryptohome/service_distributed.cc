@@ -831,6 +831,7 @@ gboolean ServiceDistributed::TpmAttestationSignEnterpriseChallenge(
                                                  device_id,
                                                  include_signed_public_key,
                                                  challenge,
+                                                 nullptr,
                                                  OUT_async_id,
                                                  error);
 }
@@ -844,6 +845,7 @@ gboolean ServiceDistributed::TpmAttestationSignEnterpriseVaChallenge(
     GArray* device_id,
     gboolean include_signed_public_key,
     GArray* challenge,
+    gchar* key_name_for_spkac,
     gint* OUT_async_id,
     GError** error) {
   VLOG(1) << __func__;
@@ -863,6 +865,9 @@ gboolean ServiceDistributed::TpmAttestationSignEnterpriseVaChallenge(
   request.set_device_id(device_id->data, device_id->len);
   request.set_include_signed_public_key(include_signed_public_key);
   request.set_challenge(challenge->data, challenge->len);
+  if (key_name_for_spkac) {
+    request.set_key_name_for_spkac(key_name_for_spkac);
+  }
   auto callback =
       base::Bind(&ServiceDistributed::ProcessDataReply<
                      attestation::SignEnterpriseChallengeReply>,

@@ -445,6 +445,32 @@ gboolean cryptohome_tpm_attestation_sign_enterprise_va_challenge(
                          device_id,
                          include_signed_public_key,
                          challenge,
+                         NULL,
+                         OUT_async_id);
+}
+gboolean cryptohome_tpm_attestation_sign_enterprise_va_challenge_v2(
+    Cryptohome* self,
+    gint va_type,
+    gboolean is_user_specific,
+    gchar* username,
+    gchar* key_name,
+    gchar* domain,
+    GArray* device_id,
+    gboolean include_signed_public_key,
+    GArray* challenge,
+    gchar* key_name_for_spkac,
+    gint* OUT_async_id,
+    GError** error) {
+  CRYPTOHOME_WRAP_METHOD(TpmAttestationSignEnterpriseVaChallenge,
+                         va_type,
+                         is_user_specific,
+                         username,
+                         key_name,
+                         domain,
+                         device_id,
+                         include_signed_public_key,
+                         challenge,
+                         key_name_for_spkac,
                          OUT_async_id);
 }
 gboolean cryptohome_tpm_attestation_sign_simple_challenge(

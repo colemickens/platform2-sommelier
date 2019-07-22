@@ -417,6 +417,7 @@ gboolean ServiceMonolithic::TpmAttestationSignEnterpriseChallenge(
       device_id,
       include_signed_public_key,
       challenge,
+      NULL,
       OUT_async_id,
       error);
 }
@@ -430,6 +431,7 @@ gboolean ServiceMonolithic::TpmAttestationSignEnterpriseVaChallenge(
       GArray* device_id,
       gboolean include_signed_public_key,
       GArray* challenge,
+      gchar* key_name_for_spkac,
       gint *OUT_async_id,
       GError** error) {
   brillo::SecureBlob device_id_blob(device_id->data,
@@ -449,6 +451,7 @@ gboolean ServiceMonolithic::TpmAttestationSignEnterpriseVaChallenge(
                             device_id_blob,
                             include_signed_public_key,
                             challenge_blob,
+                            key_name_for_spkac ? key_name_for_spkac : "",
                             NextSequence());
   *OUT_async_id = task->sequence_id();
   LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());

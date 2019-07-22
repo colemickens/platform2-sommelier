@@ -1358,13 +1358,13 @@ TEST_P(AttestationTest, EMKChallenge) {
     SecureBlob bad_prefix_challenge =
         GetEnterpriseVaChallenge(va_type, "bad", true);
     EXPECT_FALSE(attestation_.SignEnterpriseVaChallenge(
-        va_type, false, kTestUser, "test", "test_domain",
-        SecureBlob("test_id"), false, bad_prefix_challenge, &blob));
+        va_type, false, kTestUser, "test", "test_domain", SecureBlob("test_id"),
+        false, bad_prefix_challenge, "" /* key_name_for_spkac */, &blob));
     SecureBlob challenge =
         GetEnterpriseVaChallenge(va_type, "EnterpriseKeyChallenge", true);
     EXPECT_TRUE(attestation_.SignEnterpriseVaChallenge(
-        va_type, false, kTestUser, "test", "test_domain",
-        SecureBlob("test_id"), false, challenge, &blob));
+        va_type, false, kTestUser, "test", "test_domain", SecureBlob("test_id"),
+        false, challenge, "" /* key_name_for_spkac */, &blob));
     EXPECT_TRUE(VerifyEnterpriseVaChallenge(va_type, blob, EMK, "test_domain",
                                             "test_id", "", "signature"));
   }
@@ -1382,6 +1382,47 @@ TEST_P(AttestationTest, EMKChallenge) {
   EXPECT_TRUE(VerifyEnterpriseVaChallenge(Attestation::kDefaultVA, blob, EMK,
                                           "test_domain", "test_id", "",
                                           "signature"));
+}
+
+TEST_P(AttestationTest, EMKChallengeDifferentKeyForSPKAC) {
+  std::string key_name_for_spkac = "attest-ent-machine_temp_id";
+  brillo::SecureBlob blob;
+  brillo::SecureBlob blob_spkac;
+  attestation_.PrepareForEnrollment();
+  EXPECT_TRUE(attestation_.CreateEnrollRequest(pca_type_, &blob));
+  EXPECT_TRUE(attestation_.Enroll(pca_type_, GetEnrollBlob()));
+
+  EXPECT_CALL(tpm_, CreateCertifiedKey(_, _, _, _, _, _, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<3>(GetPKCS1PublicKey()), Return(true)));
+  EXPECT_TRUE(attestation_.CreateCertRequest(
+      pca_type_, ENTERPRISE_MACHINE_CERTIFICATE, "", "", &blob));
+  EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob), false,
+                                             "", "test", &blob));
+  // Create key for spkac
+  EXPECT_TRUE(attestation_.CreateCertRequest(
+      pca_type_, ENTERPRISE_MACHINE_CERTIFICATE, "", "", &blob_spkac));
+  EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob_spkac),
+                                             false, "", key_name_for_spkac,
+                                             &blob_spkac));
+
+  SecureBlob challenge = GetEnterpriseVaChallenge(
+      Attestation::kDefaultVA, "EnterpriseKeyChallenge", true);
+  EXPECT_CALL(tpm_, Sign(_, _, _, _))
+      .Times(2)
+      .WillRepeatedly(
+          DoAll(SetArgPointee<3>(SecureBlob("signature")), Return(true)));
+  EXPECT_TRUE(attestation_.SignEnterpriseVaChallenge(
+      Attestation::kDefaultVA, false /*is_user_specific*/, kTestUser, "test",
+      "test_domain", SecureBlob("test_id"),
+      true /* include_signed_public_key */, challenge, key_name_for_spkac,
+      &blob));
+
+  // Verify that the key corresponding to |key_name_for_spkac| was used for
+  // SignedPublicKeyAndChallenge.
+  EXPECT_TRUE(VerifyEnterpriseVaChallenge(Attestation::kDefaultVA, blob, EMK,
+                                          "test_domain", "test_id",
+                                          blob_spkac.to_string(), "signature"));
 }
 
 TEST_P(AttestationTest, Payload) {
