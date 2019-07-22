@@ -577,6 +577,14 @@ class GetPreservedFilesListTest : public ::testing::Test {
     ASSERT_TRUE(WriteFile(extensions.Append("fileB.crx"), ""));
     ASSERT_TRUE(WriteFile(extensions.Append("fileC.tar"), ""));
     ASSERT_TRUE(WriteFile(extensions.Append("fileD.bmp"), ""));
+
+    base::FilePath crash_reports =
+        fake_stateful_.Append("unencrypted/preserve/crash");
+    ASSERT_TRUE(base::CreateDirectory(crash_reports));
+    ASSERT_TRUE(WriteFile(crash_reports.Append("fileA.core"), ""));
+    ASSERT_TRUE(WriteFile(crash_reports.Append("fileB.dmp"), ""));
+    ASSERT_TRUE(WriteFile(crash_reports.Append("fileC.meta"), ""));
+    ASSERT_TRUE(WriteFile(crash_reports.Append("fileD.proclog"), ""));
   }
 
   void SetCompare(std::set<std::string> expected,
@@ -599,11 +607,13 @@ class GetPreservedFilesListTest : public ::testing::Test {
 
 TEST_F(GetPreservedFilesListTest, NoOptions) {
   ASSERT_TRUE(cros_system_->SetInt(CrosSystem::kDebugBuild, 0));
-  EXPECT_EQ(clobber_.GetPreservedFilesList().size(), 0);
+  EXPECT_EQ(clobber_.GetPreservedFilesList(false /* preserve_sensitive_files */)
+                .size(),
+            0);
 
   ASSERT_TRUE(cros_system_->SetInt(CrosSystem::kDebugBuild, 1));
   std::vector<base::FilePath> preserved_files =
-      clobber_.GetPreservedFilesList();
+      clobber_.GetPreservedFilesList(false /* preserve_sensitive_files */);
   std::set<base::FilePath> preserved_set(preserved_files.begin(),
                                          preserved_files.end());
   std::set<std::string> expected_preserved_set{".labmachine"};
@@ -617,7 +627,7 @@ TEST_F(GetPreservedFilesListTest, SafeWipe) {
 
   ASSERT_TRUE(cros_system_->SetInt(CrosSystem::kDebugBuild, 0));
   std::vector<base::FilePath> preserved_files =
-      clobber_.GetPreservedFilesList();
+      clobber_.GetPreservedFilesList(false /* preserve_sensitive_files */);
   std::set<base::FilePath> preserved_set(preserved_files.begin(),
                                          preserved_files.end());
   std::set<std::string> expected_preserved_set{
@@ -647,7 +657,7 @@ TEST_F(GetPreservedFilesListTest, SafeAndRollbackWipe) {
   ASSERT_TRUE(cros_system_->SetInt(CrosSystem::kDebugBuild, 0));
 
   std::vector<base::FilePath> preserved_files =
-      clobber_.GetPreservedFilesList();
+      clobber_.GetPreservedFilesList(false /* preserve_sensitive_files */);
   std::set<base::FilePath> preserved_set(preserved_files.begin(),
                                          preserved_files.end());
   std::set<std::string> expected_preserved_set{
@@ -678,7 +688,7 @@ TEST_F(GetPreservedFilesListTest, FactoryWipe) {
 
   ASSERT_TRUE(cros_system_->SetInt(CrosSystem::kDebugBuild, 0));
   std::vector<base::FilePath> preserved_files =
-      clobber_.GetPreservedFilesList();
+      clobber_.GetPreservedFilesList(false /* preserve_sensitive_files */);
   std::set<base::FilePath> preserved_set(preserved_files.begin(),
                                          preserved_files.end());
   std::set<std::string> expected_preserved_set{
@@ -696,7 +706,7 @@ TEST_F(GetPreservedFilesListTest, SafeRollbackFactoryWipe) {
 
   ASSERT_TRUE(cros_system_->SetInt(CrosSystem::kDebugBuild, 0));
   std::vector<base::FilePath> preserved_files =
-      clobber_.GetPreservedFilesList();
+      clobber_.GetPreservedFilesList(false /* preserve_sensitive_files */);
   std::set<base::FilePath> preserved_set(preserved_files.begin(),
                                          preserved_files.end());
   std::set<std::string> expected_preserved_set{
@@ -719,6 +729,26 @@ TEST_F(GetPreservedFilesListTest, SafeRollbackFactoryWipe) {
       "unencrypted/preserve/rollback_data",
       "unencrypted/import_extensions/extensions/fileA.crx",
       "unencrypted/import_extensions/extensions/fileB.crx"};
+  SetCompare(expected_preserved_set, preserved_set);
+}
+
+TEST_F(GetPreservedFilesListTest, UserTriggeredPowerwash) {
+  ASSERT_TRUE(cros_system_->SetInt(CrosSystem::kDebugBuild, 0));
+  EXPECT_EQ(clobber_.GetPreservedFilesList(false /* preserve_sensitive_files */)
+                .size(),
+            0);
+
+  std::vector<base::FilePath> preserved_files =
+      clobber_.GetPreservedFilesList(true /* preserve_sensitive_files */);
+
+  std::set<base::FilePath> preserved_set(preserved_files.begin(),
+                                         preserved_files.end());
+
+  std::set<std::string> expected_preserved_set{
+      "unencrypted/preserve/crash/fileA.core",
+      "unencrypted/preserve/crash/fileB.dmp",
+      "unencrypted/preserve/crash/fileC.meta",
+      "unencrypted/preserve/crash/fileD.proclog"};
   SetCompare(expected_preserved_set, preserved_set);
 }
 

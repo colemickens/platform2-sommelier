@@ -46,6 +46,7 @@ constexpr char kClobberLogPath[] = "/tmp/clobber-state.log";
 constexpr char kBioWashPath[] = "/usr/bin/bio_wash";
 constexpr char kPreservedFilesTarPath[] = "/tmp/preserve.tar";
 constexpr char kPreservedCrashPath[] = "unencrypted/preserve/crash";
+constexpr char kStatefulClobberLogPath[] = "unencrypted/clobber.log";
 // The presence of this file indicates that crash report collection across
 // clobber is disabled in developer mode.
 constexpr char kDisableClobberCrashCollectionPath[] =
@@ -864,7 +865,8 @@ ClobberState::ClobberState(const Arguments& args,
   MakeTTYRaw(terminal_);
 }
 
-std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
+std::vector<base::FilePath> ClobberState::GetPreservedFilesList(
+    bool preserve_sensitive_files) {
   std::vector<std::string> stateful_paths;
   // Preserve these files in safe mode. (Please request a privacy review before
   // adding files.)
@@ -936,15 +938,17 @@ std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
   // Attempt to save the files in "unencrypted/preserve/crash". This is useful
   // when the stateful partition can be mounted but we cannot mount the
   // encrypted stateful mount.
-  base::FilePath preserve_crash_directory(
-      stateful_.Append(kPreservedCrashPath));
-  if (base::PathExists(preserve_crash_directory)) {
-    base::FileEnumerator enumerator(preserve_crash_directory, false,
-                                    base::FileEnumerator::FileType::FILES);
-    for (auto name = enumerator.Next(); !name.empty();
-         name = enumerator.Next()) {
-      preserved_files.push_back(
-          preserve_crash_directory.Append(name.BaseName()));
+  if (preserve_sensitive_files) {
+    base::FilePath preserve_crash_directory(
+        stateful_.Append(kPreservedCrashPath));
+    if (base::PathExists(preserve_crash_directory)) {
+      base::FileEnumerator enumerator(preserve_crash_directory, false,
+                                      base::FileEnumerator::FileType::FILES);
+      for (auto name = enumerator.Next(); !name.empty();
+           name = enumerator.Next()) {
+        preserved_files.push_back(
+            base::FilePath(kPreservedCrashPath).Append(name.BaseName()));
+      }
     }
   }
 
@@ -986,9 +990,24 @@ int ClobberState::Run() {
       },
       stateful_));
 
-  bool is_developer_mode =
+  // Check if this powerwash was triggered by a session manager request.
+  // StartDeviceWipe D-Bus call is restricted to "chronos" so it is probably
+  // safe to assume that such requests were initiated by the user.
+  bool user_triggered_powerwash =
+      (args_.reason.find("session_manager_dbus_request") != std::string::npos);
+
+  // Allow crash preservation across clobber if the device is in developer mode.
+  // For testing purposes, use a tmpfs path to disable collection.
+  bool preserve_dev_mode_crash_reports =
       IsInDeveloperMode() &&
       !base::PathExists(base::FilePath(kDisableClobberCrashCollectionPath));
+
+  // Check if sensitive files should be preserved. Sensitive files should be
+  // preserved if any of the following conditions are met:
+  // 1. The device is in developer mode and crash report collection is allowed.
+  // 2. The request doesn't originate from a user-triggered powerwash.
+  bool preserve_sensitive_files =
+      !user_triggered_powerwash || preserve_dev_mode_crash_reports;
 
   LOG(INFO) << "Beginning clobber-state run";
   LOG(INFO) << "Factory wipe: " << args_.factory_wipe;
@@ -1018,7 +1037,14 @@ int ClobberState::Run() {
     IncrementFileCounter(stateful_.Append(kPowerWashCountPath));
   }
 
-  std::vector<base::FilePath> preserved_files = GetPreservedFilesList();
+  // Clear clobber log if needed.
+  if (!preserve_sensitive_files) {
+    base::DeleteFile(stateful_.Append(kStatefulClobberLogPath),
+                     false /* recursive */);
+  }
+
+  std::vector<base::FilePath> preserved_files =
+      GetPreservedFilesList(user_triggered_powerwash);
   for (const base::FilePath& fp : preserved_files) {
     LOG(INFO) << "Preserving file: " << fp.value();
   }
@@ -1159,8 +1185,10 @@ int ClobberState::Run() {
     LOG(WARNING) << "Restoring clobber.log failed with code " << ret;
   }
 
-  // Attempt to collect crashes into the preserved crash directory.
-  if (is_developer_mode || IsDeviceEnrolled()) {
+  // Attempt to collect crashes into the preserved crash directory. Do not
+  // collect crashes if sensitive files should not be preserved.
+  if (!user_triggered_powerwash &&
+      (preserve_dev_mode_crash_reports || IsDeviceEnrolled())) {
     ReplayLogsIntoClobber();
     CollectClobberCrashReports();
   }
