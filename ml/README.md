@@ -56,16 +56,14 @@ The above request can be following:
 * CreateGraphExecutor
 * Execute (model inference)
 
-## Design docs
+## Original design docs
 
-* Overall design: [go/chromeos-ml-service]
-* Mojo interface: [go/chromeos-ml-service-mojo]
-* Deamon\<-\>Chromium IPC implementation: [go/chromeos-ml-service-impl]
-* Model publishing: [go/cros-ml-service-models]
+Note that aspects of the design may have evolved since the original design docs
+were written.
 
+* [Overall design](https://docs.google.com/document/d/1ezUf1hYTeFS2f5JUHZaNSracu2YmSBrjLkri6k6KB_w/edit#)
+* [Mojo interface](https://docs.google.com/document/d/1pMXTG-OIhkNifR2DCPa2bCF0X3jrAM-U6UK230pBv5I/edit#)
+* [Deamon\<-\>Chromium IPC implementation](https://docs.google.com/document/d/1EzBKLotvspe75GUB0Tdk_Namstyjm6rJHKvNmRCCAdM/edit#)
+* [Model publishing](https://docs.google.com/document/d/1LD8sn8rMOX8y6CUGKsF9-0ieTbl97xZORZ2D2MjZeMI/edit#)
 
-[go/chromeos-ml-service]: http://go/chromeos-ml-service
-[go/chromeos-ml-service-mojo]: http://go/chromeos-ml-service-mojo
-[go/chromeos-ml-service-impl]: http://go/chromeos-ml-service-impl
-[go/cros-ml-service-models]: http://go/cros-ml-service-models
 [//chromeos/services/machine_learning/public/cpp/]: https://cs.chromium.org/chromium/src/chromeos/services/machine_learning/public/cpp/service_connection.h
