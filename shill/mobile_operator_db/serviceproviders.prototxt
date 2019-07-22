@@ -13662,6 +13662,20 @@ mno {
 
 mno {
   data {
+    uuid : "f548af08-9a3c-4322-9f8a-b33a48f985be"
+    country : "us"
+    localized_name {
+      name : "Sprint Curiosity IoT"
+    }
+    mccmnc : "311882"
+    mobile_apn {
+      apn : "internet.curiosity.sprint.com"
+    }
+  }
+}
+
+mno {
+  data {
     uuid : "2951dc13-6c90-4200-b450-666efc95fa01"
     country : "us"
     localized_name {
