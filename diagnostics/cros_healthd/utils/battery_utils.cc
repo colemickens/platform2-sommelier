@@ -5,13 +5,18 @@
 #include "diagnostics/cros_healthd/utils/battery_utils.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
+#include <base/process/launch.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
+#include <re2/re2.h>
 
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
@@ -19,6 +24,48 @@ namespace diagnostics {
 
 using BatteryInfoPtr = ::chromeos::cros_healthd::mojom::BatteryInfoPtr;
 using BatteryInfo = ::chromeos::cros_healthd::mojom::BatteryInfo;
+
+// This is a temporary hack enabling the battery_prober to provide the
+// manufacture_date_smart property on Sona devices. The proper way to do this
+// will take some planning. Details will be tracked here:
+// https://crbug.com/978615.
+bool FetchManufactureDateSmart(int64_t* manufacture_date_smart) {
+  const char mosys_command[] = "mosys";
+  const char mosys_subcommand[] = "platform";
+  const char platform_subcommand[] = "model";
+  std::string model_name;
+  if (!base::GetAppOutput(
+          {mosys_command, mosys_subcommand, platform_subcommand},
+          &model_name)) {
+    return false;
+  }
+  // CollapseWhitespaceASCII() is used to remove the newline from model_name.
+  // This string is collected as output from the terminal.
+  if (base::CollapseWhitespaceASCII(base::ToLowerASCII(model_name), true) !=
+      "sona") {
+    return false;
+  }
+  std::string ectool_output;
+  // The command follows the format:
+  // ectool i2cread <8 | 16> <port> <addr8> <offset>
+  constexpr char num_bits[] = "16";
+  constexpr char port[] = "2";
+  constexpr char addr[] = "0x16";
+  constexpr char offset[] = "0x1b";
+  if (!base::GetAppOutput({"ectool", "i2cread", num_bits, port, addr, offset},
+                          &ectool_output)) {
+    return false;
+  }
+  constexpr auto kRegexPattern =
+      R"(^Read from I2C port [\d]+ at .* offset .* = (.+)$)";
+  std::string reg_value;
+  // CollapseWhitespaceASCII is used to remove the newline from ectool_output.
+  // This string is collected as output from the terminal.
+  if (!RE2::PartialMatch(base::CollapseWhitespaceASCII(ectool_output, true),
+                         kRegexPattern, &reg_value))
+    return false;
+  return base::HexStringToInt64(reg_value, manufacture_date_smart);
+}
 
 // Extract the battery metrics from the PowerSupplyProperties protobuf.
 // Return true if the metrics could be successfully extracted from |response|
@@ -35,28 +82,34 @@ bool ExtractBatteryMetrics(dbus::Response* response,
     LOG(ERROR) << "Could not successfully read power supply protobuf";
     return false;
   }
-
-  if (power_supply_proto.has_battery_cycle_count()) {
-    info.cycle_count = power_supply_proto.battery_cycle_count();
-  }
-  if (power_supply_proto.has_battery_vendor()) {
-    info.vendor = power_supply_proto.battery_vendor();
-  }
-  if (power_supply_proto.has_battery_voltage()) {
-    info.voltage_now = power_supply_proto.battery_voltage();
-  }
-  if (power_supply_proto.has_battery_charge_full()) {
-    info.charge_full = power_supply_proto.battery_charge_full();
-  }
-  if (power_supply_proto.has_battery_charge_full_design()) {
-    info.charge_full_design = power_supply_proto.battery_charge_full_design();
-  }
-  if (power_supply_proto.has_battery_serial_number()) {
-    info.serial_number = power_supply_proto.battery_serial_number();
-  }
-  if (power_supply_proto.has_battery_voltage_min_design()) {
-    info.voltage_min_design = power_supply_proto.battery_voltage_min_design();
-  }
+  info.cycle_count = power_supply_proto.has_battery_cycle_count()
+                         ? power_supply_proto.battery_cycle_count()
+                         : 0;
+  info.vendor = power_supply_proto.has_battery_vendor()
+                    ? power_supply_proto.battery_vendor()
+                    : "";
+  info.voltage_now = power_supply_proto.has_battery_voltage()
+                         ? power_supply_proto.battery_voltage()
+                         : 0.0;
+  info.charge_full = power_supply_proto.has_battery_charge_full()
+                         ? power_supply_proto.battery_charge_full()
+                         : 0.0;
+  info.charge_full_design =
+      power_supply_proto.has_battery_charge_full_design()
+          ? power_supply_proto.battery_charge_full_design()
+          : 0.0;
+  info.serial_number = power_supply_proto.has_battery_serial_number()
+                           ? power_supply_proto.battery_serial_number()
+                           : "";
+  info.voltage_min_design =
+      power_supply_proto.has_battery_voltage_min_design()
+          ? power_supply_proto.battery_voltage_min_design()
+          : 0.0;
+  int64_t manufacture_date_smart;
+  info.manufacture_date_smart =
+      FetchManufactureDateSmart(&manufacture_date_smart)
+          ? manufacture_date_smart
+          : 0;
 
   *output_info = info.Clone();
 

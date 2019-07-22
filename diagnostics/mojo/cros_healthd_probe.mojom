@@ -25,6 +25,10 @@ struct BatteryInfo {
   double charge_full;
   // Desired minimum output voltage (V)
   double voltage_min_design;
+  // Smart Manufacture Date is defined in
+  // http://sbs-forum.org/specs/sbdat110.pdf. The value is calculated by
+  // ((year-1980) * 512 + month * 32 + day).
+  int64 manufacture_date_smart;
 };
 
 struct NonRemovableBlockDeviceInfo {

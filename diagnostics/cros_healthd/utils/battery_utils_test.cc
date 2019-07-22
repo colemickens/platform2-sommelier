@@ -33,6 +33,7 @@ const char kBatterySerialNumber[] = "1000";
 const double kBatteryVoltageMinDesign = 114.00;
 const double kBatteryChargeFull = 4.3;
 const double kBatteryChargeFullDesign = 3.92;
+const int kBatteryManufactureDateSmart = 0;
 
 // Test the expected path of extracting battery metrics from a D-bus response.
 TEST(BatteryUtils, TestExtractingBatteryMetrics) {
@@ -59,6 +60,7 @@ TEST(BatteryUtils, TestExtractingBatteryMetrics) {
   ASSERT_EQ(kBatteryChargeFullDesign, info->charge_full_design);
   ASSERT_EQ(kBatterySerialNumber, info->serial_number);
   ASSERT_EQ(kBatteryVoltageMinDesign, info->voltage_min_design);
+  ASSERT_EQ(kBatteryManufactureDateSmart, info->manufacture_date_smart);
 }
 
 // Test that ExtractBatteryMetrics exits safely (returning false) when it

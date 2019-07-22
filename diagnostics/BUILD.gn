@@ -86,6 +86,7 @@ pkg_config("libcros_healthd_utils_pkg_deps") {
     "libmojo-${libbase_ver}",
     "libudev",
     "protobuf",
+    "re2",
     "system_api",
   ]
 }

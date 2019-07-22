@@ -43,16 +43,18 @@ int main(int argc, char** argv) {
     auto batteries = diagnostics::FetchBatteryInfo();
     printf(
         "charge_full,charge_full_design,cycle_count,serial_number,"
-        "vendor(manufacturer),voltage_now,voltage_min_design\n");
+        "vendor(manufacturer),voltage_now,voltage_min_design,"
+        "manufacture_date_smart\n");
     if (batteries.size() == 0) {
       VLOG(1) << "No main battery information found.";
     } else if (batteries.size() == 1) {
       VLOG(1) << "Found information for main battery.";
       const auto& battery = batteries[0];
-      printf("%f,%f,%ld,%s,%s,%f,%f\n", battery->charge_full,
+      printf("%f,%f,%ld,%s,%s,%f,%f,%ld\n", battery->charge_full,
              battery->charge_full_design, battery->cycle_count,
              battery->serial_number.c_str(), battery->vendor.c_str(),
-             battery->voltage_now, battery->voltage_min_design);
+             battery->voltage_now, battery->voltage_min_design,
+             battery->manufacture_date_smart);
     }
   } else if (FLAGS_probe_cached_vpd) {
     auto vpd_info =
