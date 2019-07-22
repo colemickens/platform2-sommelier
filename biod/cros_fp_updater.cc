@@ -68,6 +68,11 @@ bool UpdateImage(const biod::CrosFpDeviceUpdate& ec_dev,
 
 namespace biod {
 
+constexpr char kCrosConfigFPPath[] = "/fingerprint";
+constexpr char kCrosConfigFPBoard[] = "board";
+constexpr char kCrosConfigHWPropertiesPath[] = "/hardware-properties";
+constexpr char kCrosConfigHWPropertiesHasFP[] = "has-fingerprint-sensor";
+
 std::string CrosFpDeviceUpdate::EcCurrentImageToString(
     enum ec_current_image image) {
   switch (image) {
@@ -247,7 +252,8 @@ FindFirmwareFileStatus FindFirmwareFile(
     brillo::CrosConfigInterface* cros_config,
     base::FilePath* file) {
   std::string board_name;
-  if (cros_config->GetString("/fingerprint", "board", &board_name)) {
+  if (cros_config->GetString(kCrosConfigFPPath, kCrosConfigFPBoard,
+                             &board_name)) {
     LOG(INFO) << "Identified fingerprint board name as '" << board_name << "'.";
   } else {
     LOG(WARNING) << "Fingerprint board name is unavailable, continuing with "
@@ -283,8 +289,8 @@ bool UpdateDisallowed() {
 // is explicitly not supported.
 bool FingerprintUnsupported(brillo::CrosConfigInterface* cros_config) {
   std::string has_fingerprint;
-  if (cros_config->GetString("/hardware-properties", "has-fingerprint-sensor",
-                             &has_fingerprint)) {
+  if (cros_config->GetString(kCrosConfigHWPropertiesPath,
+                             kCrosConfigHWPropertiesHasFP, &has_fingerprint)) {
     if (has_fingerprint == "false") {
       return true;
     }

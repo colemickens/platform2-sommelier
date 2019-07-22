@@ -112,15 +112,15 @@ TEST(CrosFpUpdaterFingerprintUnsupportedTest, HasFingerprintUnset) {
 
 TEST(CrosFpUpdaterFingerprintUnsupportedTest, HasFingerprintSetTrue) {
   brillo::FakeCrosConfig cros_config;
-  cros_config.SetString("/hardware-properties", "has-fingerprint-sensor",
-                        "true");
+  cros_config.SetString(kCrosConfigHWPropertiesPath,
+                        kCrosConfigHWPropertiesHasFP, "true");
   EXPECT_FALSE(FingerprintUnsupported(&cros_config));
 }
 
 TEST(CrosFpUpdaterFingerprintUnsupportedTest, HasFingerprintSetFalse) {
   brillo::FakeCrosConfig cros_config;
-  cros_config.SetString("/hardware-properties", "has-fingerprint-sensor",
-                        "false");
+  cros_config.SetString(kCrosConfigHWPropertiesPath,
+                        kCrosConfigHWPropertiesHasFP, "false");
   EXPECT_TRUE(FingerprintUnsupported(&cros_config));
 }
 
@@ -216,7 +216,8 @@ TEST_F(CrosFpUpdaterFindFirmwareTest, OneGoodFirmwareFilePattern) {
     EXPECT_TRUE(TouchFile(fw_file_path));
     // and a cros-config with an appropriate fingerprint board name,
     if (!good_fw.first.empty()) {
-      cros_config.SetString("/fingerprint", "board", good_fw.first);
+      cros_config.SetString(kCrosConfigFPPath, kCrosConfigFPBoard,
+                            good_fw.first);
     }
 
     // searching for a firmware file
@@ -263,7 +264,7 @@ TEST_F(CrosFpUpdaterFindFirmwareTest, MultipleValidFiles) {
     if (good_fw.first.empty()) {
       continue;
     }
-    cros_config.SetString("/fingerprint", "board", good_fw.first);
+    cros_config.SetString(kCrosConfigFPPath, kCrosConfigFPBoard, good_fw.first);
 
     // searching for a firmware file
     auto status =
@@ -290,7 +291,7 @@ TEST_F(CrosFpUpdaterFindFirmwareTest, MultipleValidFilesExceptSpecifc) {
     if (good_fw.first.empty()) {
       continue;
     }
-    cros_config.SetString("/fingerprint", "board", good_fw.first);
+    cros_config.SetString(kCrosConfigFPPath, kCrosConfigFPBoard, good_fw.first);
 
     // but missing the board specific firmware file,
     EXPECT_TRUE(RemoveFile(good_file_path));
