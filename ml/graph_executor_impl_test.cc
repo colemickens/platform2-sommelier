@@ -84,7 +84,7 @@ TEST(GraphExecutorTest, TestOk) {
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
   const GraphExecutorImpl graph_executor_impl(
       input_names, output_names, IdentityInterpreter(),
-      mojo::MakeRequest(&graph_executor));
+      mojo::MakeRequest(&graph_executor), "TestModel");
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Execute once.
@@ -201,7 +201,7 @@ TEST(GraphExecutorTest, TestNarrowing) {
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
   const GraphExecutorImpl graph_executor_impl(
       input_names, output_names, std::move(interpreter),
-      mojo::MakeRequest(&graph_executor));
+      mojo::MakeRequest(&graph_executor), "TestModel");
   ASSERT_TRUE(graph_executor.is_bound());
 
   // We represent bools with int64 tensors.
@@ -246,7 +246,7 @@ TEST(GraphExecutorTest, TestInvalidOutputName) {
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
   const GraphExecutorImpl graph_executor_impl(
       input_names, output_names, IdentityInterpreter(),
-      mojo::MakeRequest(&graph_executor));
+      mojo::MakeRequest(&graph_executor), "TestModel");
   ASSERT_TRUE(graph_executor.is_bound());
 
   std::unordered_map<std::string, TensorPtr> inputs;
@@ -279,7 +279,7 @@ TEST(GraphExecutorTest, TestMissingOutputName) {
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
   const GraphExecutorImpl graph_executor_impl(
       input_names, output_names, IdentityInterpreter(),
-      mojo::MakeRequest(&graph_executor));
+      mojo::MakeRequest(&graph_executor), "TestModel");
   ASSERT_TRUE(graph_executor.is_bound());
 
   std::unordered_map<std::string, TensorPtr> inputs;
@@ -310,7 +310,7 @@ TEST(GraphExecutorTest, TestDuplicateOutputName) {
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
   const GraphExecutorImpl graph_executor_impl(
       input_names, output_names, IdentityInterpreter(),
-      mojo::MakeRequest(&graph_executor));
+      mojo::MakeRequest(&graph_executor), "TestModel");
   ASSERT_TRUE(graph_executor.is_bound());
 
   std::unordered_map<std::string, TensorPtr> inputs;
@@ -343,7 +343,7 @@ TEST(GraphExecutorTest, TestInvalidInputName) {
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
   const GraphExecutorImpl graph_executor_impl(
       input_names, output_names, IdentityInterpreter(),
-      mojo::MakeRequest(&graph_executor));
+      mojo::MakeRequest(&graph_executor), "TestModel");
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Specify a value for the output tensor (which isn't in our "inputs" list).
@@ -376,7 +376,7 @@ TEST(GraphExecutorTest, TestMissingInputName) {
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
   const GraphExecutorImpl graph_executor_impl(
       input_names, output_names, IdentityInterpreter(),
-      mojo::MakeRequest(&graph_executor));
+      mojo::MakeRequest(&graph_executor), "TestModel");
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Specify a value for the output tensor (which isn't in our "inputs" list).
@@ -407,7 +407,7 @@ TEST(GraphExecutorTest, TestWrongInputType) {
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
   const GraphExecutorImpl graph_executor_impl(
       input_names, output_names, IdentityInterpreter(),
-      mojo::MakeRequest(&graph_executor));
+      mojo::MakeRequest(&graph_executor), "TestModel");
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Give an int tensor when a float tensor is expected.
@@ -440,7 +440,7 @@ TEST(GraphExecutorTest, TestWrongInputShape) {
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
   const GraphExecutorImpl graph_executor_impl(
       input_names, output_names, IdentityInterpreter(),
-      mojo::MakeRequest(&graph_executor));
+      mojo::MakeRequest(&graph_executor), "TestModel");
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Give a 1x1 tensor when a scalar is expected.
@@ -474,7 +474,7 @@ TEST(GraphExecutorTest, TestInvalidInputFormat) {
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
   const GraphExecutorImpl graph_executor_impl(
       input_names, output_names, IdentityInterpreter(),
-      mojo::MakeRequest(&graph_executor));
+      mojo::MakeRequest(&graph_executor), "TestModel");
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Give a tensor with scalar shape but multiple values.
@@ -528,7 +528,7 @@ TEST(GraphExecutorTest, TestInvalidInputNodeType) {
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
   const GraphExecutorImpl graph_executor_impl(
       input_names, output_names, std::move(interpreter),
-      mojo::MakeRequest(&graph_executor));
+      mojo::MakeRequest(&graph_executor), "TestModel");
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Graph execution should fail before we get to input type checking.
@@ -560,7 +560,7 @@ TEST(GraphExecutorTest, TestExecutionFailure) {
   const std::map<std::string, int> inputs_outputs;
   const GraphExecutorImpl graph_executor_impl(
       inputs_outputs, inputs_outputs, std::make_unique<tflite::Interpreter>(),
-      mojo::MakeRequest(&graph_executor));
+      mojo::MakeRequest(&graph_executor), "TestModel");
   ASSERT_TRUE(graph_executor.is_bound());
 
   bool callback_done = false;
@@ -609,7 +609,7 @@ TEST(GraphExecutorTest, TestInvalidOutputNodeType) {
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
   const GraphExecutorImpl graph_executor_impl(
       input_names, output_names, std::move(interpreter),
-      mojo::MakeRequest(&graph_executor));
+      mojo::MakeRequest(&graph_executor), "TestModel");
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Populate input.
@@ -664,7 +664,7 @@ TEST(GraphExecutorTest, TestInvalidOutputNodeShape) {
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
   const GraphExecutorImpl graph_executor_impl(
       input_names, output_names, std::move(interpreter),
-      mojo::MakeRequest(&graph_executor));
+      mojo::MakeRequest(&graph_executor), "TestModel");
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Populate input.

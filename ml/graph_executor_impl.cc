@@ -24,7 +24,7 @@ using ::chromeos::machine_learning::mojom::TensorPtr;
 using ::chromeos::machine_learning::mojom::ValueList;
 
 // Base name for UMA metrics related to graph execution
-constexpr char kMetricsNameBase[] = "ExecuteResult";
+constexpr char kMetricsRequestName[] = "ExecuteResult";
 
 // Verifies |tensor| is valid (i.e. is of type |TensorType| and of the correct
 // shape for this input) and copies its data into the graph |interpreter| at
@@ -155,11 +155,13 @@ GraphExecutorImpl::GraphExecutorImpl(
     const std::map<std::string, int>& required_inputs,
     const std::map<std::string, int>& required_outputs,
     std::unique_ptr<tflite::Interpreter> interpreter,
-    GraphExecutorRequest request)
+    GraphExecutorRequest request,
+    const std::string& metrics_model_name)
     : required_inputs_(required_inputs),
       required_outputs_(required_outputs),
       interpreter_(std::move(interpreter)),
-      binding_(this, std::move(request)) {}
+      binding_(this, std::move(request)),
+      metrics_model_name_(metrics_model_name) {}
 
 void GraphExecutorImpl::set_connection_error_handler(
     base::Closure connection_error_handler) {
@@ -170,8 +172,10 @@ void GraphExecutorImpl::Execute(
     std::unordered_map<std::string, TensorPtr> tensors,
     const std::vector<std::string>& outputs,
     const ExecuteCallback& callback) {
+  DCHECK(!metrics_model_name_.empty());
 
-  RequestMetrics<ExecuteResult> request_metrics(kMetricsNameBase);
+  RequestMetrics<ExecuteResult> request_metrics(metrics_model_name_,
+                                                kMetricsRequestName);
   request_metrics.StartRecordingPerformanceMetrics();
 
   // Validate input and output names (before executing graph, for efficiency).

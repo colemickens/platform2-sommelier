@@ -35,7 +35,8 @@ class ModelImpl : public chromeos::machine_learning::mojom::Model {
   ModelImpl(const std::map<std::string, int>& required_inputs,
             const std::map<std::string, int>& required_outputs,
             std::unique_ptr<tflite::FlatBufferModel> model,
-            chromeos::machine_learning::mojom::ModelRequest request);
+            chromeos::machine_learning::mojom::ModelRequest request,
+            const std::string& metrics_model_name);
 
   void set_connection_error_handler(base::Closure connection_error_handler);
 
@@ -65,6 +66,9 @@ class ModelImpl : public chromeos::machine_learning::mojom::Model {
   // ModelImpl is destoyed, its entire collection of GraphExecutorImpls is also
   // destroyed.
   std::list<GraphExecutorImpl> graph_executors_;
+
+  // Model name as it should appear in UMA histogram names.
+  const std::string metrics_model_name_;
 
   DISALLOW_COPY_AND_ASSIGN(ModelImpl);
 };

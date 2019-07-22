@@ -21,16 +21,18 @@ using ::chromeos::machine_learning::mojom::GraphExecutorRequest;
 using ::chromeos::machine_learning::mojom::ModelRequest;
 
 // Base name for UMA metrics related to CreateGraphExecutor calls
-constexpr char kMetricsNameBase[] = "CreateGraphExecutorResult";
+constexpr char kMetricsRequestName[] = "CreateGraphExecutorResult";
 
 ModelImpl::ModelImpl(const std::map<std::string, int>& required_inputs,
                      const std::map<std::string, int>& required_outputs,
                      std::unique_ptr<tflite::FlatBufferModel> model,
-                     ModelRequest request)
+                     ModelRequest request,
+                     const std::string& metrics_model_name)
     : required_inputs_(required_inputs),
       required_outputs_(required_outputs),
       model_(std::move(model)),
-      binding_(this, std::move(request)) {}
+      binding_(this, std::move(request)),
+      metrics_model_name_(metrics_model_name) {}
 
 void ModelImpl::set_connection_error_handler(
     base::Closure connection_error_handler) {
@@ -43,8 +45,12 @@ int ModelImpl::num_graph_executors_for_testing() const {
 
 void ModelImpl::CreateGraphExecutor(
     GraphExecutorRequest request, const CreateGraphExecutorCallback& callback) {
-  RequestMetrics<CreateGraphExecutorResult> request_metrics(kMetricsNameBase);
+  DCHECK(!metrics_model_name_.empty());
+
+  RequestMetrics<CreateGraphExecutorResult> request_metrics(
+      metrics_model_name_, kMetricsRequestName);
   request_metrics.StartRecordingPerformanceMetrics();
+
   if (model_ == nullptr) {
     LOG(ERROR) << "Null model provided.";
     callback.Run(CreateGraphExecutorResult::MODEL_INTERPRETATION_ERROR);
@@ -76,7 +82,8 @@ void ModelImpl::CreateGraphExecutor(
 
   // Add graph executor and schedule its deletion on pipe closure.
   graph_executors_.emplace_front(required_inputs_, required_outputs_,
-                                 std::move(interpreter), std::move(request));
+                                 std::move(interpreter), std::move(request),
+                                 metrics_model_name_);
   graph_executors_.front().set_connection_error_handler(
       base::Bind(&ModelImpl::EraseGraphExecutor, base::Unretained(this),
                  graph_executors_.begin()));

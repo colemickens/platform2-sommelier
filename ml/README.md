@@ -39,22 +39,28 @@ understand its resource costs in the wild:
   consumed by the daemon every 5 minutes, in units of milli-percent (1/100,000).
 
 Additional metrics added in order to understand the resource costs of each
-request:
+request for a particular model:
 
-* MachineLearningService.|request|.Event: OK/ErrorType of the request.
-* MachineLearningService.|request|.TotalMemoryDeltaKb: Total (shared+unshared)
-  memory delta caused by the request.
-* MachineLearningService.|request|.ElapsedTimeMicrosec: Time cost of the
+* MachineLearningService.|MetricsModelName|.|request|.Event: OK/ErrorType of the
   request.
-* MachineLearningService.|request|.CpuTimeMicrosec: CPU time usage of the
-  request, which is scaled to one CPU core, namely it may be greater than
-  ElapsedTimeMicrosec if there are multi cores.
+* MachineLearningService.|MetricsModelName|.|request|.TotalMemoryDeltaKb: Total
+  (shared+unshared) memory delta caused by the request.
+* MachineLearningService.|MetricsModelName|.|request|.ElapsedTimeMicrosec: Time
+  cost of the request.
+* MachineLearningService.|MetricsModelName|.|request|.CpuTimeMicrosec: CPU time
+  usage of the request, which is scaled to one CPU core, namely it may be
+  greater than ElapsedTimeMicrosec if there are multi cores.
 
+|MetricsModelName| is specified in the model's [metadata][model_metadata.cc].
 The above request can be following:
 
 * LoadModel
 * CreateGraphExecutor
 * Execute (model inference)
+
+There is also an enum histogram "MachineLearningService.LoadModelResult"
+which records a generic model specification error event during a LoadModel
+request when the model name is unknown.
 
 ## Original design docs
 
@@ -66,4 +72,6 @@ were written.
 * [Deamon\<-\>Chromium IPC implementation](https://docs.google.com/document/d/1EzBKLotvspe75GUB0Tdk_Namstyjm6rJHKvNmRCCAdM/edit#)
 * [Model publishing](https://docs.google.com/document/d/1LD8sn8rMOX8y6CUGKsF9-0ieTbl97xZORZ2D2MjZeMI/edit#)
 
+
 [//chromeos/services/machine_learning/public/cpp/]: https://cs.chromium.org/chromium/src/chromeos/services/machine_learning/public/cpp/service_connection.h
+[model_metadata.cc]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/ml/model_metadata.cc

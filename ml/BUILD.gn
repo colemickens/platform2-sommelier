@@ -50,6 +50,7 @@ static_library("ml_common") {
     "metrics.cc",
     "model_impl.cc",
     "model_metadata.cc",
+    "request_metrics.cc",
     "tensor_view.cc",
     "util.cc",
   ]

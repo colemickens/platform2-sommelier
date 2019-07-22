@@ -20,6 +20,14 @@ struct ModelMetadata {
   // As accepted by the constructor of ModelImpl.
   std::map<std::string, int> required_inputs;
   std::map<std::string, int> required_outputs;
+
+  // Used in naming the UMA metric histograms of the model. An example of the
+  // names of the histograms is:
+  //
+  // MachineLearningService.|metrics_model_name|.ExecuteResult.CpuTimeMicrosec
+  //
+  // This variable must NOT be empty.
+  std::string metrics_model_name;
 };
 
 // Returns a map from model ID to model metdata for each supported model.

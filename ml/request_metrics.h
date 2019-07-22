@@ -35,10 +35,11 @@ namespace ml {
 template <class RequestEventEnum>
 class RequestMetrics {
  public:
-  // Creates a RequestMetrics with the specified metrics base name.
+  // Creates a RequestMetrics with the specified model and request names.
   // Records UMA metrics named with the prefix
-  // "MachineLearningService.|name_base|."
-  explicit RequestMetrics(const std::string& name_base);
+  // "MachineLearningService.|model_name|.|request_name|."
+  RequestMetrics(const std::string& model_name,
+                 const std::string& request_name);
 
   // Logs (to UMA) the specified |event| associated with this request.
   void RecordRequestEvent(RequestEventEnum event);
@@ -81,8 +82,10 @@ constexpr int kCpuTimeMaxMicrosec = 1800000000;  // 30 min
 constexpr int kCpuTimeBuckets = 100;
 
 template <class RequestEventEnum>
-RequestMetrics<RequestEventEnum>::RequestMetrics(const std::string& name_base)
-    : name_base_(std::string(kGlobalMetricsPrefix) + name_base),
+RequestMetrics<RequestEventEnum>::RequestMetrics(
+    const std::string& model_name, const std::string& request_name)
+    : name_base_(std::string(kGlobalMetricsPrefix) + model_name + "." +
+                 request_name),
       process_metrics_(nullptr) {}
 
 template <class RequestEventEnum>
@@ -156,6 +159,9 @@ void RequestMetrics<RequestEventEnum>::FinishRecordingPerformanceMetrics() {
                              kCpuTimeMaxMicrosec,
                              kCpuTimeBuckets);
 }
+
+// Records a generic model specification error event during a LoadModel Request
+void RecordModelSpecificationErrorEvent();
 
 }  // namespace ml
 

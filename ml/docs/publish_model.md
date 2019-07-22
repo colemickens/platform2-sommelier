@@ -118,6 +118,15 @@ There are three places to update here:
 
 See [this CL](https://crrev.com/c/1342736) for an example of all the above.
 
+### Step 4. Log the model.
+
+1. Specify |metrics_base_name| for your model in [model_metadata.cc].
+2. Update the "MachineLearningServiceModels" histogram_suffixes entry in
+   [histograms.xml].
+
+See the [logging section](#log-your-model-on-uma) for more details.
+
+
 ## Method #2: Use DLC to install a model inside the stateful partition
 
 > WARNING: This section is pending the implementation of DLC Service.
@@ -192,6 +201,67 @@ Finch rollout. Optionally, you can also take this shortcut (with caveats):
   of course.)
 
 
+## Log your model on UMA {#log-your-model-on-uma}
+
+### Introduction to the metrics
+There are 9 "request performance metric" histograms and 3 “request event” enums
+histograms that model owner MUST config to be logged on go/uma-.
+
+The name format of the 9 "request performance metric" histograms is,
+
+MachineLearningService.**MetricModelName**.**RequestEventName**.**ResourceName**
+
+**MetricModelName** is defined by specifying |metrics_model_name|
+in [model_metadata.cc].
+
+There are 3 different **RequestEventName** corresponding to 3 types of
+requests (e.g. from Chrome):
+
+1. LoadModelResult: request to load your model.
+2. CreateGraphExecutorResult: request to create graph executor for your model.
+3. ExecuteResult: request to execute your model.
+
+For each request, there are three **ResourceName** corresponding to
+three computer resources:
+
+1. CpuTimeMicrosec: cpu time in microseconds used in handling the request.
+2. ElapsedTimeMicrosec: wall-clock time in microseconds used in handling the
+   request.
+3. TotalMemoryDeltaKb: memory usage incurred by handling the request in Kb.
+
+
+For the enum histograms, the name format is,
+
+MachineLearningService.**MetricModelName**.**RequestEventName**.Event
+
+where **MetricModelName** and **RequestEventName** are same as defined above.
+
+### Enable the logging
+
+There are two tasks to enable the logging:
+
+* Specify |metrics_base_name| for your model in [model_metadata.cc]. Please note
+  that |metrics_base_name| must NOT be empty. And models with the same
+   **MetricModelName** will be logged exactly in the same histogram, even
+   if their model ids are different. (This lets you compare alternative versions
+   of a given model in Finch A/B experiments.)
+* Update histograms.xml. You need to add a new suffix including
+   your **MetricModelName** and a brief label of your model to
+   ```<histogram_suffixes name="MachineLearningServiceModels" separator="."></>```
+   You can see the suffixes of "SmartDimModel" or "TestModel" for examples.
+   Please note that, after modifying histograms.xml, one has to use
+   "pretty_print.py" and "validate_format.py" to validate the format of
+   "histograms.xml" before uploading your CL.
+
+In reviewing the CL of modifying histograms.xml, you need to specify one
+reviewer from the owners of histograms.xml. The owners can be found at
+[metrics-owner].
+
+### Further readings on histograms.xml
+1. [Histograms readme][hist-readme]
+2. [Histograms one-pager][hist-one-pager]
+
+
 [add-feature-flag]: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/how_to_add_your_feature_flag.md
 [CL/1125701]: http://crrev.com/c/1125701
 [CL/1140020]: http://crrev.com/c/1140020
@@ -199,7 +269,11 @@ Finch rollout. Optionally, you can also take this shortcut (with caveats):
 [go/dlc-service-proposal]: http://go/dlc-service-proposal
 [go/finch-best-practices]: http://go/finch-best-practices
 [toco]: https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/toco
+[hist-readme]: https://chromium.googlesource.com/chromium/src/tools/+/refs/heads/master/metrics/histograms/README.md
+[hist-one-pager]: https://chromium.googlesource.com/chromium/src/tools/+/refs/heads/master/metrics/histograms/one-pager.md
 [loading & inference test]: https://cs.corp.google.com/chromeos_public/src/platform2/ml/machine_learning_service_impl_test.cc
 [ML Service ebuild]: https://cs.corp.google.com/chromeos_public/src/third_party/chromiumos-overlay/chromeos-base/ml/ml-9999.ebuild
+[metrics-owner]: https://cs.chromium.org/chromium/src/base/metrics/OWNERS?q=base/metrics/OWNERS&sq=package:chromium&dr
 [model.mojom]: https://cs.corp.google.com/chromeos_public/src/platform2/ml/mojom/model.mojom
-[model_metadata.cc]: https://cs.corp.google.com/chromeos_public/src/platform2/ml/model_metadata.cc
+[model_metadata.cc]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/ml/model_metadata.cc
+[histograms.xml]: https://cs.chromium.org/chromium/src/tools/metrics/histograms/histograms.xml?q=histograms.xml&sq=package:chromium&dr

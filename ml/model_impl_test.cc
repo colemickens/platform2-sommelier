@@ -50,7 +50,7 @@ TEST_F(ModelImplTest, TestBadModel) {
   // Pass nullptr instead of a valid model.
   ModelPtr model_ptr;
   const ModelImpl model_impl(model_inputs_, model_outputs_, nullptr /*model*/,
-                             mojo::MakeRequest(&model_ptr));
+                             mojo::MakeRequest(&model_ptr), "TestModel");
   ASSERT_TRUE(model_ptr.is_bound());
 
   // Ensure that creating a graph executor fails.
@@ -80,7 +80,7 @@ TEST_F(ModelImplTest, TestExampleModel) {
   // Create model object.
   ModelPtr model_ptr;
   const ModelImpl model_impl(model_inputs_, model_outputs_, std::move(model),
-                             mojo::MakeRequest(&model_ptr));
+                             mojo::MakeRequest(&model_ptr), "TestModel");
   ASSERT_TRUE(model_ptr.is_bound());
 
   // Create a graph executor.
@@ -143,7 +143,7 @@ TEST_F(ModelImplTest, TestGraphExecutorCleanup) {
   // Create model object.
   ModelPtr model_ptr;
   const ModelImpl model_impl(model_inputs_, model_outputs_, std::move(model),
-                             mojo::MakeRequest(&model_ptr));
+                             mojo::MakeRequest(&model_ptr), "TestModel");
   ASSERT_TRUE(model_ptr.is_bound());
 
   // Create one graph executor.

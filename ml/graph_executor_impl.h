@@ -38,13 +38,16 @@ class GraphExecutorImpl
   // from required input / output tensor names to their indices in the TF lite
   // graph, and must outlive this object.
   //
+  // UMA metrics will be logged with the specified |metrics_model_name|.
+  //
   // As is standard, |interpreter| must outlive the model with which it was
   // constructed.
   GraphExecutorImpl(
       const std::map<std::string, int>& required_inputs,
       const std::map<std::string, int>& required_outputs,
       std::unique_ptr<tflite::Interpreter> interpreter,
-      chromeos::machine_learning::mojom::GraphExecutorRequest request);
+      chromeos::machine_learning::mojom::GraphExecutorRequest request,
+      const std::string& metrics_model_name);
 
   void set_connection_error_handler(base::Closure connection_error_handler);
 
@@ -62,6 +65,9 @@ class GraphExecutorImpl
   const std::unique_ptr<tflite::Interpreter> interpreter_;
 
   mojo::Binding<chromeos::machine_learning::mojom::GraphExecutor> binding_;
+
+  // Model name as it should appear in UMA histogram names.
+  const std::string metrics_model_name_;
 
   DISALLOW_COPY_AND_ASSIGN(GraphExecutorImpl);
 };

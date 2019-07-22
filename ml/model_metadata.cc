@@ -16,6 +16,7 @@ std::map<ModelId, ModelMetadata> GetModelMetadata() {
         "mlservice-model-test_add-20180914.tflite",
         {{"x", 1}, {"y", 2}},
         {{"z", 0}},
+        "TestModel",
       },
     },
     {
@@ -24,6 +25,7 @@ std::map<ModelId, ModelMetadata> GetModelMetadata() {
         "mlservice-model-smart_dim-20181115.tflite",
         {{"input", 3}},
         {{"output", 4}},
+        "SmartDimModel",
       },
     },
     {
@@ -32,6 +34,7 @@ std::map<ModelId, ModelMetadata> GetModelMetadata() {
         "mlservice-model-smart_dim-20190221.tflite",
         {{"input", 3}},
         {{"output", 4}},
+        "SmartDimModel",
       },
     },
   };
