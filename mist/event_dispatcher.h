@@ -14,11 +14,6 @@
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
 
-namespace base {
-
-
-}  // namespace base
-
 namespace mist {
 
 // An event dispatcher for posting a task to a message loop, and for monitoring
