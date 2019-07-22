@@ -43,8 +43,8 @@ int main(int argc, char* argv[]) {
     return daemon.Run();
   }
 
-  // TODO(hashimoto): Remove the old code.
-  const bool shouldRunDBusDaemon = true;
+  // TODO(hashimoto): Enable D-Bus mode to remove the old code.
+  const bool shouldRunDBusDaemon = false;
   if (shouldRunDBusDaemon) {
     // ArcCameraDBusDaemon waits for connection from container forever.
     // Once it accepted a connection, it forks a child process and passes the
