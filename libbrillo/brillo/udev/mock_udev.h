@@ -18,10 +18,9 @@ namespace brillo {
 
 class BRILLO_EXPORT MockUdev : public Udev {
  public:
-  MockUdev() = default;
+  MockUdev() : Udev(nullptr) {}
   ~MockUdev() override = default;
 
-  MOCK_METHOD0(Initialize, bool());
   MOCK_METHOD1(CreateDeviceFromSysPath,
                std::unique_ptr<UdevDevice>(const char* sys_path));
   MOCK_METHOD2(CreateDeviceFromDeviceNumber,

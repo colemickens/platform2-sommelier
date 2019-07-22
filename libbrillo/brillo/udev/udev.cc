@@ -17,7 +17,7 @@ using base::StringPrintf;
 
 namespace brillo {
 
-Udev::Udev() : udev_(nullptr) {}
+Udev::Udev(struct udev* udev) : udev_(udev) {}
 
 Udev::~Udev() {
   if (udev_) {
@@ -26,15 +26,13 @@ Udev::~Udev() {
   }
 }
 
-bool Udev::Initialize() {
-  CHECK(!udev_);
+// static
+std::unique_ptr<Udev> Udev::Create() {
+  struct udev* udev = udev_new();
+  if (!udev)
+    return nullptr;
 
-  udev_ = udev_new();
-  if (udev_)
-    return true;
-
-  VLOG(2) << "udev_new() returned nullptr.";
-  return false;
+  return std::unique_ptr<Udev>(new Udev(udev));
 }
 
 // static

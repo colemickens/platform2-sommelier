@@ -25,12 +25,9 @@ class UdevMonitor;
 // library functions into a C++ object.
 class BRILLO_EXPORT Udev {
  public:
-  Udev();
+  // Creates and initializes a Udev object. Returns nullptr on failure.
+  static std::unique_ptr<Udev> Create();
   virtual ~Udev();
-
-  // Initializes this object with a udev library context created via udev_new().
-  // Returns true on success.
-  virtual bool Initialize();
 
   // Wraps udev_device_new_from_syspath().
   virtual std::unique_ptr<UdevDevice> CreateDeviceFromSysPath(
@@ -52,6 +49,11 @@ class BRILLO_EXPORT Udev {
       const char* name);
 
  private:
+  friend class MockUdev;
+
+  // Creates a Udev by taking ownership of the |udev|.
+  explicit Udev(struct udev* udev);
+
   // Creates a UdevDevice object that wraps a given udev_device struct pointed
   // by |device|. The ownership of |device| is transferred to returned
   // UdevDevice object.

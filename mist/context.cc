@@ -32,9 +32,8 @@ bool Context::Initialize() {
   event_dispatcher_.reset(new EventDispatcher());
   CHECK(event_dispatcher_);
 
-  udev_.reset(new brillo::Udev());
-  CHECK(udev_);
-  if (!udev_->Initialize()) {
+  udev_ = brillo::Udev::Create();
+  if (!udev_) {
     LOG(ERROR) << "Could not create udev library context.";
     return false;
   }
