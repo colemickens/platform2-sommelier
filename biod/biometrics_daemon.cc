@@ -441,6 +441,7 @@ BiometricsDaemon::BiometricsDaemon() {
 
   if (RetrievePrimarySession()) {
     for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
+      biometrics_manager_wrapper->get().SetDiskAccesses(true);
       biometrics_manager_wrapper->get().ReadRecordsForSingleUser(primary_user_);
       biometrics_manager_wrapper->RefreshRecordObjects();
     }
@@ -506,7 +507,6 @@ void BiometricsDaemon::OnSessionStateChanged(dbus::Signal* signal) {
       return;
     }
     for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
-      biometrics_manager_wrapper->get().SetDiskAccesses(true);
       if (!biometrics_manager_wrapper->get().ResetSensor()) {
         LOG(ERROR) << "Failed to reset biometric sensor type: "
                    << biometrics_manager_wrapper->get().GetType();
@@ -514,6 +514,7 @@ void BiometricsDaemon::OnSessionStateChanged(dbus::Signal* signal) {
     }
     if (RetrievePrimarySession()) {
       for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
+        biometrics_manager_wrapper->get().SetDiskAccesses(true);
         biometrics_manager_wrapper->get().ReadRecordsForSingleUser(
             primary_user_);
         biometrics_manager_wrapper->RefreshRecordObjects();
