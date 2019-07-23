@@ -64,7 +64,7 @@ class UsbDeviceEventNotifierTest : public testing::Test {
   UsbDeviceEventNotifier notifier_;
 };
 
-TEST_F(UsbDeviceEventNotifierTest, ConvertNullToEmptyString) {
+TEST(UsbDeviceEventNotifierStaticTest, ConvertNullToEmptyString) {
   EXPECT_EQ("", UsbDeviceEventNotifier::ConvertNullToEmptyString(nullptr));
   EXPECT_EQ("", UsbDeviceEventNotifier::ConvertNullToEmptyString(""));
   EXPECT_EQ("a", UsbDeviceEventNotifier::ConvertNullToEmptyString("a"));
@@ -72,7 +72,7 @@ TEST_F(UsbDeviceEventNotifierTest, ConvertNullToEmptyString) {
             UsbDeviceEventNotifier::ConvertNullToEmptyString("test string"));
 }
 
-TEST_F(UsbDeviceEventNotifierTest, ConvertHexStringToUint16) {
+TEST(UsbDeviceEventNotifierStaticTest, ConvertHexStringToUint16) {
   uint16_t value = 0x0000;
 
   EXPECT_FALSE(UsbDeviceEventNotifier::ConvertHexStringToUint16("", &value));
@@ -94,7 +94,7 @@ TEST_F(UsbDeviceEventNotifierTest, ConvertHexStringToUint16) {
   EXPECT_EQ(0xffff, value);
 }
 
-TEST_F(UsbDeviceEventNotifierTest, ConvertStringToUint8) {
+TEST(UsbDeviceEventNotifierStaticTest, ConvertStringToUint8) {
   uint8_t value = 0;
 
   EXPECT_FALSE(UsbDeviceEventNotifier::ConvertStringToUint8("", &value));
@@ -112,7 +112,7 @@ TEST_F(UsbDeviceEventNotifierTest, ConvertStringToUint8) {
   EXPECT_EQ(255, value);
 }
 
-TEST_F(UsbDeviceEventNotifierTest, GetDeviceAttributes) {
+TEST(UsbDeviceEventNotifierStaticTest, GetDeviceAttributes) {
   uint8_t bus_number;
   uint8_t device_address;
   uint16_t vendor_id;

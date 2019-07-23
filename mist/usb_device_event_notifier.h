@@ -70,9 +70,9 @@ class UsbDeviceEventNotifier : public base::MessageLoopForIO::Watcher {
                                   uint16_t* product_id);
 
  private:
-  FRIEND_TEST(UsbDeviceEventNotifierTest, ConvertHexStringToUint16);
-  FRIEND_TEST(UsbDeviceEventNotifierTest, ConvertNullToEmptyString);
-  FRIEND_TEST(UsbDeviceEventNotifierTest, ConvertStringToUint8);
+  FRIEND_TEST(UsbDeviceEventNotifierStaticTest, ConvertHexStringToUint16);
+  FRIEND_TEST(UsbDeviceEventNotifierStaticTest, ConvertNullToEmptyString);
+  FRIEND_TEST(UsbDeviceEventNotifierStaticTest, ConvertStringToUint8);
   FRIEND_TEST(UsbDeviceEventNotifierTest, OnUsbDeviceEventNotAddOrRemove);
   FRIEND_TEST(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidBusNumber);
   FRIEND_TEST(UsbDeviceEventNotifierTest,
