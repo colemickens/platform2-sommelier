@@ -489,11 +489,6 @@ class SessionManagerImplTest : public ::testing::Test,
       return *this;
     }
 
-    UpgradeContainerExpectationsBuilder& SetEnableVendorPrivileged(bool v) {
-      enable_vendor_privileged_ = v;
-      return *this;
-    }
-
     UpgradeContainerExpectationsBuilder& SetIsDemoSession(bool v) {
       is_demo_session_ = v;
       return *this;
@@ -537,8 +532,6 @@ class SessionManagerImplTest : public ::testing::Test,
           "CHROMEOS_INSIDE_VM=0", std::string("CHROMEOS_USER=") + kSaneEmail,
           "DISABLE_BOOT_COMPLETED_BROADCAST=" +
               std::to_string(disable_boot_completed_callback_),
-          "ENABLE_VENDOR_PRIVILEGED=" +
-              std::to_string(enable_vendor_privileged_),
           // The upgrade signal has a PID.
           "CONTAINER_PID=" + std::to_string(kAndroidPid),
           "DEMO_SESSION_APPS_PATH=" + demo_session_apps_path_,
@@ -552,7 +545,6 @@ class SessionManagerImplTest : public ::testing::Test,
    private:
     bool dev_mode_ = false;
     bool disable_boot_completed_callback_ = false;
-    bool enable_vendor_privileged_ = false;
     bool is_demo_session_ = false;
     std::string demo_session_apps_path_;
     bool skip_packages_cache_ = false;
@@ -2157,7 +2149,6 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
       *init_controller_,
       TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
                              UpgradeContainerExpectationsBuilder()
-                                 .SetEnableVendorPrivileged(true)
                                  .Build(),
                              InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
@@ -2168,7 +2159,6 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
-  upgrade_request.set_scan_vendor_priv_app(true);
   EXPECT_TRUE(
       impl_->UpgradeArcContainer(&error, SerializeAsBlob(upgrade_request)));
   EXPECT_FALSE(error.get());

@@ -1914,7 +1914,6 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
       "-w",  // set the working directory
       "--", kCommand, "--serialno", serialnumber, "--disable-boot-completed",
       config_.GetStringOrDie("DISABLE_BOOT_COMPLETED_BROADCAST"),
-      "--vendor-privileged", config_.GetStringOrDie("ENABLE_VENDOR_PRIVILEGED"),
       "--container-boot-type", std::to_string(static_cast<int>(boot_type)),
       // When this COPY_PACKAGES_CACHE is set to "1", SystemServer copies
       // /data/system/pacakges.xml to /data/system/pacakges_copy.xml after the

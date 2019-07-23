@@ -1616,8 +1616,6 @@ std::vector<std::string> SessionManagerImpl::CreateUpgradeArcEnvVars(
       "CHROMEOS_USER=" + account_id,
       base::StringPrintf("DISABLE_BOOT_COMPLETED_BROADCAST=%d",
                          request.skip_boot_completed_broadcast()),
-      base::StringPrintf("ENABLE_VENDOR_PRIVILEGED=%d",
-                         request.scan_vendor_priv_app()),
       base::StringPrintf("CONTAINER_PID=%d", pid),
       "DEMO_SESSION_APPS_PATH=" + request.demo_session_apps_path(),
       base::StringPrintf("IS_DEMO_SESSION=%d", request.is_demo_session()),
