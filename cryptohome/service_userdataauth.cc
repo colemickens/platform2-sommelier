@@ -617,7 +617,29 @@ void CryptohomeMiscAdaptor::UpdateCurrentUserActivityTimestamp(
         user_data_auth::UpdateCurrentUserActivityTimestampReply>> response,
     const user_data_auth::UpdateCurrentUserActivityTimestampRequest&
         in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &CryptohomeMiscAdaptor::DoUpdateCurrentUserActivityTimestamp,
+          base::Unretained(this),
+          ThreadSafeDBusMethodResponse<
+              user_data_auth::UpdateCurrentUserActivityTimestampReply>::
+              MakeThreadSafe(std::move(response)),
+          in_request));
+}
+
+void CryptohomeMiscAdaptor::DoUpdateCurrentUserActivityTimestamp(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::UpdateCurrentUserActivityTimestampReply>> response,
+    const user_data_auth::UpdateCurrentUserActivityTimestampRequest&
+        in_request) {
   user_data_auth::UpdateCurrentUserActivityTimestampReply reply;
+  bool success =
+      service_->UpdateCurrentUserActivityTimestamp(in_request.time_shift_sec());
+  if (!success) {
+    reply.set_error(
+        user_data_auth::CRYPTOHOME_ERROR_UPDATE_USER_ACTIVITY_TIMESTAMP_FAILED);
+  }
   response->Return(reply);
 }
 

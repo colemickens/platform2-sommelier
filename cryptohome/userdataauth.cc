@@ -1940,4 +1940,17 @@ const brillo::SecureBlob& UserDataAuth::GetSystemSalt() {
   return system_salt_;
 }
 
+bool UserDataAuth::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
+  AssertOnMountThread();
+  // We are touching the mount object, so we'll need to be on mount thread.
+
+  bool success = true;
+  for (const auto& mount_pair : mounts_) {
+    success &=
+        mount_pair.second->UpdateCurrentUserActivityTimestamp(time_shift_sec);
+  }
+
+  return success;
+}
+
 }  // namespace cryptohome

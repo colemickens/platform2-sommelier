@@ -363,6 +363,12 @@ class CryptohomeMiscAdaptor
           user_data_auth::UpdateCurrentUserActivityTimestampReply>> response,
       const user_data_auth::UpdateCurrentUserActivityTimestampRequest&
           in_request) override;
+  void DoUpdateCurrentUserActivityTimestamp(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::UpdateCurrentUserActivityTimestampReply>> response,
+      const user_data_auth::UpdateCurrentUserActivityTimestampRequest&
+          in_request);
+
   void GetSanitizedUsername(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::GetSanitizedUsernameReply>> response,

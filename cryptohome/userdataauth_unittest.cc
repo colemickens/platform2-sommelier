@@ -392,9 +392,18 @@ static_assert(
     "Enum member CRYPTOHOME_ERROR_INSTALL_ATTRIBUTES_FINALIZE_FAILED differs "
     "between user_data_auth:: and cryptohome::");
 static_assert(
-    user_data_auth::CryptohomeErrorCode_MAX == 36,
+    static_cast<int>(
+        user_data_auth::
+            CRYPTOHOME_ERROR_UPDATE_USER_ACTIVITY_TIMESTAMP_FAILED) ==
+        static_cast<int>(
+            cryptohome::CRYPTOHOME_ERROR_UPDATE_USER_ACTIVITY_TIMESTAMP_FAILED),
+    "Enum member CRYPTOHOME_ERROR_UPDATE_USER_ACTIVITY_TIMESTAMP_FAILED "
+    "differs between user_data_auth:: and cryptohome::");
+
+static_assert(
+    user_data_auth::CryptohomeErrorCode_MAX == 37,
     "user_data_auth::CrytpohomeErrorCode's element count is incorrect");
-static_assert(cryptohome::CryptohomeErrorCode_MAX == 36,
+static_assert(cryptohome::CryptohomeErrorCode_MAX == 37,
               "cryptohome::CrytpohomeErrorCode's element count is incorrect");
 }  // namespace CryptohomeErrorCodeEquivalenceTest
 
@@ -961,6 +970,39 @@ TEST_F(UserDataAuthTest, GetSystemSaltSucess) {
 TEST_F(UserDataAuthTestNotInitialized, GetSystemSaltUninitialized) {
   EXPECT_DEATH(userdataauth_.GetSystemSalt(),
                "Cannot call GetSystemSalt before initialization");
+}
+
+TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {
+  constexpr int kTimeshift = 5;
+
+  // Test case for single mount
+  SetupMount("foo@gmail.com");
+  EXPECT_CALL(*mount_, UpdateCurrentUserActivityTimestamp(kTimeshift))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(userdataauth_.UpdateCurrentUserActivityTimestamp(kTimeshift));
+
+  // Test case for multiple mounts
+  scoped_refptr<MockMount> prev_mount = mount_;
+  SetupMount("bar@gmail.com");
+
+  EXPECT_CALL(*mount_, UpdateCurrentUserActivityTimestamp(kTimeshift))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*prev_mount, UpdateCurrentUserActivityTimestamp(kTimeshift))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(userdataauth_.UpdateCurrentUserActivityTimestamp(kTimeshift));
+}
+
+TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampFailure) {
+  constexpr int kTimeshift = 5;
+
+  // Test case for single mount
+  SetupMount("foo@gmail.com");
+  EXPECT_CALL(*mount_, UpdateCurrentUserActivityTimestamp(kTimeshift))
+      .WillOnce(Return(false));
+
+  EXPECT_FALSE(userdataauth_.UpdateCurrentUserActivityTimestamp(kTimeshift));
 }
 
 // ======================= CleanUpStaleMounts tests ==========================

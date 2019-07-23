@@ -308,6 +308,15 @@ class UserDataAuth {
   // otherwise an assertion will fail.
   const brillo::SecureBlob& GetSystemSalt();
 
+  // Update the current user activity timestamp for all mounts. time_shift_sec
+  // is the time, expressed in number of seconds since the last user activity.
+  // For instance, if the unix timestamp now is x, if this value is 5, then the
+  // last user activity happened at x-5 unix timestamp.
+  // This method will return true if the update is successful for all mounts.
+  // Note that negative |time_shift_sec| values are reserved and should not be
+  // used.
+  bool UpdateCurrentUserActivityTimestamp(int time_shift_sec);
+
   // =============== Miscellaneous ===============
 
   // This is called by tpm_init_ when there's any update on ownership status
