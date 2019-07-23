@@ -241,7 +241,7 @@ class ServerProxyFileSystemTest : public testing::Test {
   DISALLOW_COPY_AND_ASSIGN(ServerProxyFileSystemTest);
 };
 
-TEST_F(ServerProxyFileSystemTest, RegularFileReadTest) {
+TEST_F(ServerProxyFileSystemTest, DISABLED_RegularFileReadTest) {
   constexpr char kContentData[] = "abcdefghijklmnopqrstuvwxyz";
   // Remove trailing '\0'.
   constexpr size_t kContentSize = sizeof(kContentData) - 1;
