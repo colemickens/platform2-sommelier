@@ -10,7 +10,7 @@ openat: 1
 sendto: 1
 send: 1
 fstat64: 1
-socket: arg0 == AF_INET || arg0 == AF_NETLINK
+socket: arg0 == AF_INET || arg0 == AF_NETLINK || arg0 == AF_UNIX
 recvfrom: 1
 connect: 1
 fcntl64: 1
@@ -77,3 +77,5 @@ mlock: 1
 madvise: 1
 munlock: 1
 uname: 1
+flock: 1
+utimensat: 1
