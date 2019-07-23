@@ -56,6 +56,7 @@ CameraDeviceAdapter::CameraDeviceAdapter(camera3_device_t* camera_device,
       device_closed_(false),
       camera_device_(camera_device),
       static_info_(static_info),
+      zsl_helper_(static_info),
       camera_metrics_(CameraMetrics::New()) {
   VLOGF_ENTER() << ":" << camera_device_;
   camera3_callback_ops_t::process_capture_result = ProcessCaptureResult;
@@ -183,6 +184,7 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
     }
   }
   streams_.swap(new_streams);
+  zsl_helper_.SetZslEnabled(zsl_helper_.CanEnableZsl(streams_));
 
   camera3_stream_configuration_t stream_list;
   stream_list.num_streams = config->streams.size();
@@ -193,6 +195,9 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
   size_t i = 0;
   for (auto it = streams_.begin(); it != streams_.end(); it++) {
     stream_list.streams[i++] = it->second.get();
+  }
+  if (zsl_helper_.IsZslEnabled()) {
+    zsl_helper_.AttachZslStream(&stream_list, &streams);
   }
 
   int32_t result =
@@ -242,7 +247,6 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
 
   internal::ScopedCameraMetadata settings =
       internal::DeserializeCameraMetadata(request->settings);
-  req.settings = settings.get();
 
   // Deserialize input buffer.
   buffer_handle_t input_buffer_handle;
@@ -286,9 +290,16 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
       internal::DeserializeStreamBuffer(out_buf_ptr, streams_, buffer_handles_,
                                         &output_buffers.at(i));
     }
+    if (zsl_helper_.IsZslEnabled()) {
+      zsl_helper_.ProcessZslCaptureRequest(
+          &req, &output_buffers, &settings,
+          ZslHelper::SelectionStrategy::CLOSEST_3A);
+    }
     req.output_buffers =
         const_cast<const camera3_stream_buffer_t*>(output_buffers.data());
   }
+
+  req.settings = settings.get();
 
   if (camera_metadata_inspector_) {
     camera_metadata_inspector_->InspectRequest(&req);
@@ -449,6 +460,15 @@ void CameraDeviceAdapter::ProcessCaptureResult(
     if (res.result != nullptr) {
       self->reprocess_result_metadata_.erase(res.frame_number);
     }
+  }
+
+  if (!result_ptr->result->entries.has_value() &&
+      !result_ptr->output_buffers.has_value() &&
+      result_ptr->input_buffer.is_null()) {
+    // Android camera framework doesn't accept empty capture results. Since ZSL
+    // would remove the input buffer, output buffers and metadata it added, it's
+    // possible that we end up with an empty capture result.
+    return;
   }
 
   base::AutoLock l(self->callback_ops_delegate_lock_);
@@ -640,12 +660,24 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
 
   r->result = internal::SerializeCameraMetadata(result->result);
 
+  const camera3_stream_buffer_t* attached_output = nullptr;
+  const camera3_stream_buffer_t* transformed_input = nullptr;
+  if (zsl_helper_.IsZslEnabled()) {
+    base::AutoLock streams_lock(streams_lock_);
+    base::AutoLock buffer_handles_lock(buffer_handles_lock_);
+    zsl_helper_.ProcessZslCaptureResult(result, &attached_output,
+                                        &transformed_input);
+  }
+
   // Serialize output buffers.  This may be none as num_output_buffers may be 0.
   if (result->output_buffers) {
     base::AutoLock streams_lock(streams_lock_);
     base::AutoLock buffer_handles_lock(buffer_handles_lock_);
     std::vector<mojom::Camera3StreamBufferPtr> output_buffers;
     for (size_t i = 0; i < result->num_output_buffers; i++) {
+      if (result->output_buffers + i == attached_output) {
+        continue;
+      }
       mojom::Camera3StreamBufferPtr out_buf = internal::SerializeStreamBuffer(
           result->output_buffers + i, streams_, buffer_handles_);
       if (out_buf.is_null()) {
@@ -656,11 +688,13 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
       RemoveBufferLocked(*(result->output_buffers + i));
       output_buffers.push_back(std::move(out_buf));
     }
-    r->output_buffers = std::move(output_buffers);
+    if (output_buffers.size() > 0) {
+      r->output_buffers = std::move(output_buffers);
+    }
   }
 
   // Serialize input buffer.
-  if (result->input_buffer) {
+  if (result->input_buffer && result->input_buffer != transformed_input) {
     base::AutoLock streams_lock(streams_lock_);
     base::AutoLock buffer_handles_lock(buffer_handles_lock_);
     mojom::Camera3StreamBufferPtr input_buffer =

@@ -29,6 +29,7 @@
 #include "hal_adapter/common_types.h"
 #include "hal_adapter/cros_camera_mojo_utils.h"
 #include "hal_adapter/scoped_yuv_buffer_handle.h"
+#include "hal_adapter/zsl_helper.h"
 #include "mojo/camera3.mojom.h"
 
 namespace cros {
@@ -208,6 +209,9 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // The non-owning read-only view of the static camera characteristics of this
   // device.
   const camera_metadata_t* static_info_;
+
+  // A helper class that includes various functions for the mechanisms of ZSL.
+  ZslHelper zsl_helper_;
 
   // A mapping from Andoird HAL for all the configured streams.
   internal::ScopedStreams streams_;

@@ -55,6 +55,7 @@ executable("cros_camera_service") {
     "reprocess_effect/reprocess_effect_manager.cc",
     "scoped_yuv_buffer_handle.cc",
     "vendor_tag_ops_delegate.cc",
+    "zsl_helper.cc",
   ]
   configs += [ ":target_defaults" ]
   libs = [
