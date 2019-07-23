@@ -2671,20 +2671,44 @@ void AttestationService::SignEnterpriseChallengeTask(
   key_info.set_key_type(is_user_specific ? EUK : EMK);
   key_info.set_domain(request.domain());
   key_info.set_device_id(request.device_id());
-  // Only include the certificate if this is a user key.
+
+  base::Optional<CertifiedKey> key_for_certificate_and_spkac;
   if (is_user_specific) {
-    key_info.set_certificate(CreatePEMCertificateChain(key));
-  }
-  if (is_user_specific && request.include_signed_public_key()) {
-    std::string spkac;
-    if (!crypto_utility_->CreateSPKAC(key.key_blob(), key.public_key(),
-                                      &spkac)) {
-      LOG(ERROR) << __func__ << ": Failed to create signed public key.";
-      result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    // Always include the EUK certificate if an EUK is being challenged.
+    // Note that if including SPKAC has been requested when challenging an EUK,
+    // the SPKAC will also be created for the EUK. In other words,
+    // |key_name_for_spkac| is currently ignored for EUKs.
+    key_for_certificate_and_spkac = key;
+  } else if (request.include_signed_public_key() &&
+             !request.key_name_for_spkac().empty()) {
+    // If a specific key name for SPKAC has been requested when challenging an
+    // EMK, include the certificate for that key.
+    CertifiedKey key_for_spkac;
+    if (!FindKeyByLabel(std::string() /* username */,
+                        request.key_name_for_spkac(),
+                        &key_for_spkac)) {
+      result->set_status(STATUS_INVALID_PARAMETER);
       return;
     }
-    key_info.set_signed_public_key_and_challenge(spkac);
+    key_for_certificate_and_spkac = key_for_spkac;
   }
+  if (key_for_certificate_and_spkac) {
+    key_info.set_certificate(
+        CreatePEMCertificateChain(key_for_certificate_and_spkac.value()));
+    if (request.include_signed_public_key()) {
+      std::string spkac;
+      if (!crypto_utility_->CreateSPKAC(
+              key_for_certificate_and_spkac.value().key_blob(),
+              key_for_certificate_and_spkac.value().public_key(),
+              &spkac)) {
+        LOG(ERROR) << __func__ << ": Failed to create signed public key.";
+        result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+        return;
+      }
+      key_info.set_signed_public_key_and_challenge(spkac);
+    }
+  }
+
   ChallengeResponse response_pb;
   *response_pb.mutable_challenge() = signed_challenge;
   response_pb.set_nonce(nonce);

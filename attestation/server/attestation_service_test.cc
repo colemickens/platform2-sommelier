@@ -96,6 +96,25 @@ KeyInfo CreateChallengeKeyInfo() {
   return key_info;
 }
 
+KeyInfo CreateMachineChallengeKeyInfoWithSPKAC(
+    const std::string& certified_credential_of_key_for_spkac,
+    const std::string& spkac) {
+  // Create a PEM encoding of |certified_credential_of_key_for_spkac|.
+  std::string pem_certificate_of_key_for_spkac =
+      "-----BEGIN CERTIFICATE-----\n" +
+      brillo::data_encoding::Base64EncodeWrapLines(
+          certified_credential_of_key_for_spkac) +
+      "-----END CERTIFICATE-----";
+
+  KeyInfo key_info;
+  key_info.set_key_type(EMK);
+  key_info.set_domain("domain");
+  key_info.set_device_id("device_id");
+  key_info.set_certificate(pem_certificate_of_key_for_spkac);
+  key_info.set_signed_public_key_and_challenge(spkac);
+  return key_info;
+}
+
 std::string GetFakeCertificateChain() {
   const std::string kBeginCertificate = "-----BEGIN CERTIFICATE-----\n";
   const std::string kEndCertificate = "-----END CERTIFICATE-----";
@@ -872,6 +891,83 @@ TEST_P(AttestationServiceEnterpriseTest, SignEnterpriseChallengeBadPrefix) {
   request.set_challenge(CreateSignedChallenge("bad_prefix"));
   service_->SignEnterpriseChallenge(request,
                                     base::Bind(callback, QuitClosure()));
+  Run();
+}
+
+// Test that if |key_name_for_spkac| is not empty then the key associated to it
+// is used for SignedPublicKeyAndChallenge.
+TEST_P(AttestationServiceEnterpriseTest,
+       SignEnterpriseChallengeUseKeyForSPKAC) {
+  static const char kKeyNameForSpkac[] = "attest-ent-machine_temp_id";
+  static const char kKeyNameForSpkacPublicKey[] =
+      "attest-ent-machine_public_key";
+
+  CertifiedKey& key = *mock_database_.GetMutableProtobuf()->add_device_keys();
+  key.set_public_key("public_key");
+  key.set_key_name("label");
+
+  // Create a machine key for SPKAC
+  CertifiedKey& key_for_spkac =
+      *mock_database_.GetMutableProtobuf()->add_device_keys();
+  key_for_spkac.set_key_blob("key_blob");
+  key_for_spkac.set_public_key(kKeyNameForSpkacPublicKey);
+  key_for_spkac.set_key_name(kKeyNameForSpkac);
+  key_for_spkac.set_certified_key_credential("fake_cert_data");
+
+  KeyInfo expected_key_info =
+      CreateMachineChallengeKeyInfoWithSPKAC("fake_cert_data", "fake_spkac");
+  std::string expected_key_info_str;
+  expected_key_info.SerializeToString(&expected_key_info_str);
+
+  EXPECT_CALL(mock_crypto_utility_,
+              VerifySignatureUsingHexKey(
+                  _, service_->GetEnterpriseSigningHexKey(va_type_), _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(mock_crypto_utility_,
+              EncryptDataForGoogle(
+                  expected_key_info_str,
+                  service_->GetEnterpriseEncryptionHexKey(va_type_), _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<3>(MockEncryptedData(expected_key_info_str)),
+                Return(true)));
+
+  // Expect |CreateSPKAC| to be called for |key_name_for_spkac|.
+  EXPECT_CALL(mock_crypto_utility_, CreateSPKAC(key_for_spkac.key_blob(),
+                                                key_for_spkac.public_key(), _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(std::string("fake_spkac")),
+                Return(true)));
+
+  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(std::string("signature")), Return(true)));
+
+  auto callback = [](const std::string& expected_key_info_str,
+                     const base::Closure& quit_closure,
+                     const SignEnterpriseChallengeReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.has_challenge_response());
+    SignedData signed_data;
+    EXPECT_TRUE(signed_data.ParseFromString(reply.challenge_response()));
+    EXPECT_EQ("signature", signed_data.signature());
+    ChallengeResponse response_pb;
+    EXPECT_TRUE(response_pb.ParseFromString(signed_data.data()));
+    // This relies on the fact that the mock for EncryptDataForGoogle just
+    // passes the data unencrypted.
+    EXPECT_EQ(expected_key_info_str,
+              response_pb.encrypted_key_info().encrypted_data());
+    quit_closure.Run();
+  };
+  SignEnterpriseChallengeRequest request;
+  request.set_va_type(va_type_);
+  request.set_key_label("label");
+  request.set_domain(expected_key_info.domain());
+  request.set_device_id(expected_key_info.device_id());
+  request.set_include_signed_public_key(true);
+  request.set_key_name_for_spkac(kKeyNameForSpkac);
+  request.set_challenge(CreateSignedChallenge("EnterpriseKeyChallenge"));
+  service_->SignEnterpriseChallenge(
+      request, base::Bind(callback, expected_key_info_str, QuitClosure()));
   Run();
 }
 

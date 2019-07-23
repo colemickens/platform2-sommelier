@@ -644,6 +644,8 @@ class AttestationService : public AttestationInterface {
                            MigrateAttestationDatabaseAllEndorsementCredentials);
   FRIEND_TEST_ALL_PREFIXES(AttestationServiceEnterpriseTest,
                            SignEnterpriseChallengeSuccess);
+  FRIEND_TEST_ALL_PREFIXES(AttestationServiceEnterpriseTest,
+                           SignEnterpriseChallengeUseKeyForSPKAC);
 
   // Other than initialization and destruction, these are used only by the
   // worker thread.
