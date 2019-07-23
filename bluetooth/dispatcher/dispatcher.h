@@ -51,17 +51,6 @@ class Dispatcher {
   void Shutdown();
 
  private:
-  // Forwards org.freedesktop.DBus.Properties.Set methods.
-  void HandleForwardSetProperty(
-      scoped_refptr<dbus::Bus> bus,
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender);
-
-  // Registers our custom GetAll/Get/Set method handlers.
-  void SetupPropertyMethodHandlers(
-      brillo::dbus_utils::DBusInterface* prop_interface,
-      brillo::dbus_utils::ExportedPropertySet* property_set);
-
   scoped_refptr<dbus::Bus> bus_;
 
   // The exported ObjectManager interface which is the impersonation of BlueZ's

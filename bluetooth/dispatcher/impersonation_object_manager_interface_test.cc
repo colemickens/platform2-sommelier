@@ -146,34 +146,6 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
         bus_.get(), kTestServiceName1, dbus::ObjectPath(kTestObjectPath1));
   }
 
-  void SetPropertyHandlerSetupCallback(
-      ExportedObjectManagerWrapper* exported_object_manager_wrapper,
-      ImpersonationObjectManagerInterface* impersonation_om_interface) {
-    exported_object_manager_wrapper->SetPropertyHandlerSetupCallback(base::Bind(
-        &ImpersonationObjectManagerInterfaceTest::SetupPropertyMethodHandlers,
-        base::Unretained(this),
-        base::Bind(&ImpersonationObjectManagerInterface::HandleForwardMessage,
-                   base::Unretained(impersonation_om_interface),
-                   ForwardingRule::FORWARD_DEFAULT, bus_)));
-  }
-
-  void SetupPropertyMethodHandlers(
-      const base::Callback<void(dbus::MethodCall*,
-                                dbus::ExportedObject::ResponseSender)>&
-          set_property_handler,
-      brillo::dbus_utils::DBusInterface* prop_interface,
-      brillo::dbus_utils::ExportedPropertySet* property_set) {
-    // Install standard property handlers.
-    prop_interface->AddSimpleMethodHandler(
-        dbus::kPropertiesGetAll, base::Unretained(property_set),
-        &brillo::dbus_utils::ExportedPropertySet::HandleGetAll);
-    prop_interface->AddSimpleMethodHandlerWithError(
-        dbus::kPropertiesGet, base::Unretained(property_set),
-        &brillo::dbus_utils::ExportedPropertySet::HandleGet);
-    prop_interface->AddRawMethodHandler(dbus::kPropertiesSet,
-                                        set_property_handler);
-  }
-
   void StubHandlePropertiesSet(
       dbus::MethodCall* method_call,
       int timeout_ms,
@@ -402,8 +374,6 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, SingleInterface) {
           bus_, exported_object_manager_wrapper_.get(),
           std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1,
           client_manager_.get());
-  SetPropertyHandlerSetupCallback(exported_object_manager_wrapper_.get(),
-                                  impersonation_om_interface.get());
 
   EXPECT_CALL(*object_manager1_, RegisterInterface(kTestInterfaceName1, _));
   impersonation_om_interface->RegisterToObjectManager(object_manager1_.get(),
@@ -509,8 +479,6 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MultipleInterfaces) {
           bus_, exported_object_manager_wrapper_.get(),
           std::make_unique<TestInterfaceHandler>(), kTestInterfaceName2,
           client_manager_.get());
-  SetPropertyHandlerSetupCallback(exported_object_manager_wrapper_.get(),
-                                  impersonation_om_interface1.get());
 
   EXPECT_CALL(*object_manager1_, RegisterInterface(kTestInterfaceName1, _));
   EXPECT_CALL(*object_manager1_, RegisterInterface(kTestInterfaceName2, _));
@@ -604,8 +572,6 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, UnexpectedEvents) {
           bus_, exported_object_manager_wrapper_.get(),
           std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1,
           client_manager_.get());
-  SetPropertyHandlerSetupCallback(exported_object_manager_wrapper_.get(),
-                                  impersonation_om_interface.get());
 
   impersonation_om_interface->RegisterToObjectManager(object_manager1_.get(),
                                                       kTestServiceName1);
@@ -678,8 +644,6 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, PropertiesHandler) {
           bus_, exported_object_manager_wrapper_.get(),
           std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1,
           client_manager_.get());
-  SetPropertyHandlerSetupCallback(exported_object_manager_wrapper_.get(),
-                                  impersonation_om_interface.get());
 
   EXPECT_CALL(*object_manager1_, RegisterInterface(kTestInterfaceName1, _));
   impersonation_om_interface->RegisterToObjectManager(object_manager1_.get(),
@@ -735,8 +699,6 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MethodHandler) {
           bus_, exported_object_manager_wrapper_.get(),
           std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1,
           client_manager_.get());
-  SetPropertyHandlerSetupCallback(exported_object_manager_wrapper_.get(),
-                                  impersonation_om_interface.get());
 
   EXPECT_CALL(*object_manager1_, RegisterInterface(kTestInterfaceName1, _));
   impersonation_om_interface->RegisterToObjectManager(object_manager1_.get(),
@@ -800,8 +762,6 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MultiService) {
           bus_, exported_object_manager_wrapper_.get(),
           std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1,
           client_manager_.get());
-  SetPropertyHandlerSetupCallback(exported_object_manager_wrapper_.get(),
-                                  impersonation_om_interface.get());
 
   impersonation_om_interface->RegisterToObjectManager(object_manager1_.get(),
                                                       kTestServiceName1);
@@ -952,8 +912,6 @@ TEST_F(ImpersonationObjectManagerInterfaceTest,
           std::make_unique<TestInterfaceHandler>(
               ObjectExportRule::ALL_SERVICES),
           kTestInterfaceName1, client_manager_.get());
-  SetPropertyHandlerSetupCallback(exported_object_manager_wrapper_.get(),
-                                  impersonation_om_interface.get());
 
   impersonation_om_interface->RegisterToObjectManager(object_manager1_.get(),
                                                       kTestServiceName1);

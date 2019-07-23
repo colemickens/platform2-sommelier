@@ -287,16 +287,15 @@ TEST_F(ExportedObjectManagerWrapperTest, ExportedObjectManagerWrapper) {
   EXPECT_CALL(*bus_, GetExportedObject(object_path))
       .WillOnce(Return(exported_object.get()));
 
-  exported_om_wrapper.SetPropertyHandlerSetupCallback(
-      base::Bind(&ExportedObjectManagerWrapperTest::SetupPropertyMethodHandlers,
-                 base::Unretained(this)));
-
   // AddExportedInterface to the not-yet-exported object will trigger that
   // object to be exported.
   EXPECT_CALL(*exported_object_manager,
               ClaimInterface(object_path, dbus::kPropertiesInterface, _))
       .Times(1);
-  exported_om_wrapper.AddExportedInterface(object_path, kTestInterfaceName1);
+  exported_om_wrapper.AddExportedInterface(
+      object_path, kTestInterfaceName1,
+      base::Bind(&ExportedObjectManagerWrapperTest::SetupPropertyMethodHandlers,
+                 base::Unretained(this)));
 
   EXPECT_CALL(*exported_object_manager,
               ClaimInterface(object_path, kTestInterfaceName1, _))
@@ -307,7 +306,10 @@ TEST_F(ExportedObjectManagerWrapperTest, ExportedObjectManagerWrapper) {
   EXPECT_CALL(*exported_object_manager,
               ClaimInterface(object_path, kTestInterfaceName2, _))
       .Times(1);
-  exported_om_wrapper.AddExportedInterface(object_path, kTestInterfaceName2);
+  exported_om_wrapper.AddExportedInterface(
+      object_path, kTestInterfaceName2,
+      base::Bind(&ExportedObjectManagerWrapperTest::SetupPropertyMethodHandlers,
+                 base::Unretained(this)));
   exported_om_wrapper.GetExportedInterface(object_path, kTestInterfaceName2)
       ->ExportAsync(base::Bind([](bool success) {}));
 

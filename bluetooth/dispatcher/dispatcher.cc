@@ -54,10 +54,6 @@ bool Dispatcher::Init(PassthroughMode mode) {
       std::make_unique<ExportedObjectManagerWrapper>(
           bus_, std::move(exported_object_manager));
 
-  exported_object_manager_wrapper_->SetPropertyHandlerSetupCallback(
-      base::Bind(&Dispatcher::SetupPropertyMethodHandlers,
-                 weak_ptr_factory_.GetWeakPtr()));
-
   // Convenient temporary variable to hold InterfaceHandler's indexed by its
   // interface name to be registered.
   std::map<std::string, std::unique_ptr<InterfaceHandler>> interface_handlers;
@@ -128,45 +124,6 @@ void Dispatcher::Shutdown() {
   }
   impersonation_object_manager_interfaces_.clear();
   exported_object_manager_wrapper_.reset();
-}
-
-void Dispatcher::HandleForwardSetProperty(
-    scoped_refptr<dbus::Bus> bus,
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  // org.freedesktop.DBus.Properties.Set is intended for a particular interface
-  // which is specified in the first string parameter of the message body.
-  std::string interface_name;
-  dbus::MessageReader reader(method_call);
-  if (!reader.PopString(&interface_name))
-    return;
-
-  if (!base::ContainsKey(impersonation_object_manager_interfaces_,
-                         interface_name)) {
-    LOG(WARNING) << "Unable to forward Set property for object "
-                 << method_call->GetPath().value() << ", interface "
-                 << method_call->GetInterface() << " does not exist";
-    return;
-  }
-
-  impersonation_object_manager_interfaces_[interface_name]
-      ->HandleForwardMessage(ForwardingRule::FORWARD_DEFAULT, bus, method_call,
-                             response_sender);
-}
-
-void Dispatcher::SetupPropertyMethodHandlers(
-    brillo::dbus_utils::DBusInterface* prop_interface,
-    brillo::dbus_utils::ExportedPropertySet* property_set) {
-  // Install standard property handlers.
-  prop_interface->AddSimpleMethodHandler(
-      dbus::kPropertiesGetAll, base::Unretained(property_set),
-      &brillo::dbus_utils::ExportedPropertySet::HandleGetAll);
-  prop_interface->AddSimpleMethodHandlerWithError(
-      dbus::kPropertiesGet, base::Unretained(property_set),
-      &brillo::dbus_utils::ExportedPropertySet::HandleGet);
-  prop_interface->AddRawMethodHandler(
-      dbus::kPropertiesSet, base::Bind(&Dispatcher::HandleForwardSetProperty,
-                                       weak_ptr_factory_.GetWeakPtr(), bus_));
 }
 
 }  // namespace bluetooth

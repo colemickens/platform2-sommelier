@@ -148,6 +148,15 @@ class ImpersonationObjectManagerInterface
       int service_index,
       std::unique_ptr<dbus::Response> last_response);
 
+  void SetupPropertyHandlers(
+      brillo::dbus_utils::DBusInterface* prop_interface,
+      brillo::dbus_utils::ExportedPropertySet* property_set);
+
+  void HandleForwardSetProperty(
+      scoped_refptr<dbus::Bus> bus,
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender response_sender);
+
   scoped_refptr<dbus::Bus> bus_;
 
   // Keeps which services expose any object, in the form of map of

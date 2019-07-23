@@ -90,7 +90,8 @@ void AdvertisingManagerInterfaceHandler::Init() {
   dbus::ObjectPath adapter_object_path(kAdapterObjectPath);
   exported_object_manager_wrapper_->AddExportedInterface(
       adapter_object_path,
-      bluetooth_advertising_manager::kBluetoothAdvertisingManagerInterface);
+      bluetooth_advertising_manager::kBluetoothAdvertisingManagerInterface,
+      base::Bind(&ExportedObjectManagerWrapper::SetupStandardPropertyHandlers));
   ExportedInterface* advertising_manager_interface =
       exported_object_manager_wrapper_->GetExportedInterface(
           adapter_object_path,

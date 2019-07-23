@@ -38,7 +38,8 @@ void AdapterInterfaceHandler::Init(
 
   dbus::ObjectPath adapter_object_path(kAdapterObjectPath);
   exported_object_manager_wrapper_->AddExportedInterface(
-      adapter_object_path, bluetooth_adapter::kBluetoothAdapterInterface);
+      adapter_object_path, bluetooth_adapter::kBluetoothAdapterInterface,
+      base::Bind(&ExportedObjectManagerWrapper::SetupStandardPropertyHandlers));
   ExportedInterface* adapter_interface =
       exported_object_manager_wrapper_->GetExportedInterface(
           adapter_object_path, bluetooth_adapter::kBluetoothAdapterInterface);

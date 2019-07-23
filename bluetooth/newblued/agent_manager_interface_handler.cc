@@ -29,7 +29,8 @@ void AgentManagerInterfaceHandler::Init() {
       bluetooth_agent_manager::kBluetoothAgentManagerServicePath);
   exported_object_manager_wrapper_->AddExportedInterface(
       agent_manager_object_path,
-      bluetooth_agent_manager::kBluetoothAgentManagerInterface);
+      bluetooth_agent_manager::kBluetoothAgentManagerInterface,
+      base::Bind(&ExportedObjectManagerWrapper::SetupStandardPropertyHandlers));
   ExportedInterface* agent_manager_interface =
       exported_object_manager_wrapper_->GetExportedInterface(
           agent_manager_object_path,

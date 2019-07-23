@@ -464,7 +464,9 @@ void DeviceInterfaceHandler::ExportOrUpdateDevice(Device* device) {
     is_new_device = true;
 
     exported_object_manager_wrapper_->AddExportedInterface(
-        device_path, bluetooth_device::kBluetoothDeviceInterface);
+        device_path, bluetooth_device::kBluetoothDeviceInterface,
+        base::Bind(
+            &ExportedObjectManagerWrapper::SetupStandardPropertyHandlers));
 
     device_interface = exported_object_manager_wrapper_->GetExportedInterface(
         device_path, bluetooth_device::kBluetoothDeviceInterface);

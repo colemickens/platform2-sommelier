@@ -63,10 +63,6 @@ class AgentManagerInterfaceHandlerTest : public ::testing::Test {
     exported_object_manager_wrapper_ =
         std::make_unique<ExportedObjectManagerWrapper>(
             bus_, std::move(exported_object_manager));
-    exported_object_manager_wrapper_->SetPropertyHandlerSetupCallback(
-        base::Bind(
-            &AgentManagerInterfaceHandlerTest::SetupPropertyMethodHandlers,
-            base::Unretained(this)));
     agent_manager_interface_handler_ =
         std::make_unique<AgentManagerInterfaceHandler>(
             bus_, exported_object_manager_wrapper_.get());
@@ -74,17 +70,17 @@ class AgentManagerInterfaceHandlerTest : public ::testing::Test {
   }
 
  protected:
-  void SetupPropertyMethodHandlers(
-      brillo::dbus_utils::DBusInterface* prop_interface,
-      brillo::dbus_utils::ExportedPropertySet* property_set) {
-    // We don't care about property method handlers.
-  }
-
   void ExpectAgentManagerMethodsExported(
       dbus::ExportedObject::MethodCallCallback* register_agent_method_handler,
       dbus::ExportedObject::MethodCallCallback* unregister_agent_method_handler,
       dbus::ExportedObject::MethodCallCallback*
           request_default_agent_method_handler) {
+    // Catch the standard dbus property handler
+    EXPECT_CALL(*exported_agent_manager_object_,
+                ExportMethodAndBlock(dbus::kDBusPropertiesInterface, _, _))
+        .WillRepeatedly(DoAll(SaveArg<2>(request_default_agent_method_handler),
+                              Return(true)));
+
     EXPECT_CALL(*exported_agent_manager_object_,
                 ExportMethodAndBlock(
                     bluetooth_agent_manager::kBluetoothAgentManagerInterface,

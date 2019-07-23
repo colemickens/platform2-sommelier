@@ -50,10 +50,6 @@ bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus,
       std::make_unique<ExportedObjectManagerWrapper>(
           bus_, std::move(exported_object_manager));
 
-  exported_object_manager_wrapper_->SetPropertyHandlerSetupCallback(
-      base::Bind(&NewblueDaemon::SetupPropertyMethodHandlers,
-                 weak_ptr_factory_.GetWeakPtr()));
-
   if (!newblue_->Init()) {
     LOG(ERROR) << "Failed initializing NewBlue";
     return false;
@@ -121,21 +117,6 @@ void NewblueDaemon::OnHciReadyForUp() {
     dbus_daemon_->QuitWithExitCode(EX_UNAVAILABLE);
     return;
   }
-}
-
-void NewblueDaemon::SetupPropertyMethodHandlers(
-    brillo::dbus_utils::DBusInterface* prop_interface,
-    brillo::dbus_utils::ExportedPropertySet* property_set) {
-  // Install standard property handlers.
-  prop_interface->AddSimpleMethodHandler(
-      dbus::kPropertiesGetAll, base::Unretained(property_set),
-      &brillo::dbus_utils::ExportedPropertySet::HandleGetAll);
-  prop_interface->AddSimpleMethodHandlerWithError(
-      dbus::kPropertiesGet, base::Unretained(property_set),
-      &brillo::dbus_utils::ExportedPropertySet::HandleGet);
-  prop_interface->AddSimpleMethodHandlerWithError(
-      dbus::kPropertiesSet, base::Unretained(property_set),
-      &brillo::dbus_utils::ExportedPropertySet::HandleSet);
 }
 
 void NewblueDaemon::OnBluezDown() {

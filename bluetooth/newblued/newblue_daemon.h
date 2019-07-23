@@ -40,11 +40,6 @@ class NewblueDaemon : public BluetoothDaemon {
   void OnHciReadyForUp();
 
  private:
-  // Registers GetAll/Get/Set method handlers.
-  void SetupPropertyMethodHandlers(
-      brillo::dbus_utils::DBusInterface* prop_interface,
-      brillo::dbus_utils::ExportedPropertySet* property_set);
-
   void OnBluezDown();
 
   // True means that newblued does not do anything but only keeps itself alive.

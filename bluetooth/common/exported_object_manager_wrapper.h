@@ -181,8 +181,11 @@ class ExportedObjectManagerWrapper {
   // Adds an exported interface |interface_name| to object |object_path|.
   // If the object |object_path| is not yet exported, it will be exported
   // automatically.
-  void AddExportedInterface(const dbus::ObjectPath& object_path,
-                            const std::string& interface_name);
+  void AddExportedInterface(
+      const dbus::ObjectPath& object_path,
+      const std::string& interface_name,
+      const brillo::dbus_utils::DBusObject::PropertyHandlerSetupCallback&
+          property_handler_setup_callback);
 
   // Removes the previously exported interface |interface_name| from object
   // |object_path|. If there is no more exported interface to object
@@ -196,10 +199,18 @@ class ExportedObjectManagerWrapper {
   ExportedInterface* GetExportedInterface(const dbus::ObjectPath& object_path,
                                           const std::string& interface_name);
 
+  // Setup the standard org.freedesktop.DBus.Properties.Get / Set / GetAll
+  static void SetupStandardPropertyHandlers(
+      brillo::dbus_utils::DBusInterface* prop_interface,
+      brillo::dbus_utils::ExportedPropertySet* property_set);
+
  private:
   // Adds and registers an exported object. Does nothing if an exported object
   // with the same object path already exists.
-  void EnsureExportedObjectRegistered(const dbus::ObjectPath& object_path);
+  void EnsureExportedObjectRegistered(
+      const dbus::ObjectPath& object_path,
+      const brillo::dbus_utils::DBusObject::PropertyHandlerSetupCallback&
+          property_handler_setup_callback);
 
   // Returns the exported object having the specified object path. The returned
   // pointer is owned by this object so callers should not use the pointer
@@ -210,9 +221,6 @@ class ExportedObjectManagerWrapper {
 
   std::unique_ptr<brillo::dbus_utils::ExportedObjectManager>
       exported_object_manager_;
-
-  brillo::dbus_utils::DBusObject::PropertyHandlerSetupCallback
-      property_handler_setup_callback_;
 
   std::map<std::string, std::unique_ptr<ExportedObject>> exported_objects_;
 

@@ -54,8 +54,10 @@ dbus::PropertySet* ImpersonationObjectManagerInterface::CreateProperties(
   if (ShouldInterfaceBeExported(object_path.value()) &&
       exported_object_manager_wrapper_->GetExportedInterface(
           object_path, interface_name) == nullptr) {
-    exported_object_manager_wrapper_->AddExportedInterface(object_path,
-                                                           interface_name);
+    exported_object_manager_wrapper_->AddExportedInterface(
+        object_path, interface_name,
+        base::Bind(&ImpersonationObjectManagerInterface::SetupPropertyHandlers,
+                   weak_ptr_factory_.GetWeakPtr()));
     // If the exporting service is not the default service, that means the
     // default service has exported the object before. To avoid missing the
     // properties update by the default service, here we update them.
@@ -313,6 +315,30 @@ void ImpersonationObjectManagerInterface::ForwardMessageToNextService(
           &ImpersonationObjectManagerInterface::ForwardMessageToNextService,
           weak_ptr_factory_.GetWeakPtr(), bus, method_call, response_sender,
           service_index + 1));
+}
+
+void ImpersonationObjectManagerInterface::SetupPropertyHandlers(
+    brillo::dbus_utils::DBusInterface* prop_interface,
+    brillo::dbus_utils::ExportedPropertySet* property_set) {
+  // Install standard property handlers.
+  prop_interface->AddSimpleMethodHandler(
+      dbus::kPropertiesGetAll, base::Unretained(property_set),
+      &brillo::dbus_utils::ExportedPropertySet::HandleGetAll);
+  prop_interface->AddSimpleMethodHandlerWithError(
+      dbus::kPropertiesGet, base::Unretained(property_set),
+      &brillo::dbus_utils::ExportedPropertySet::HandleGet);
+  prop_interface->AddRawMethodHandler(
+      dbus::kPropertiesSet,
+      base::Bind(&ImpersonationObjectManagerInterface::HandleForwardSetProperty,
+                 weak_ptr_factory_.GetWeakPtr(), bus_));
+}
+
+void ImpersonationObjectManagerInterface::HandleForwardSetProperty(
+    scoped_refptr<dbus::Bus> bus,
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  HandleForwardMessage(ForwardingRule::FORWARD_DEFAULT, bus, method_call,
+                       response_sender);
 }
 
 }  // namespace bluetooth

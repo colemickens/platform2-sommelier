@@ -224,15 +224,12 @@ ExportedObjectManagerWrapper::ExportedObjectManagerWrapper(
       base::Bind(&OnExportedObjectManagerRegistered));
 }
 
-void ExportedObjectManagerWrapper::SetPropertyHandlerSetupCallback(
-    const brillo::dbus_utils::DBusObject::PropertyHandlerSetupCallback&
-        callback) {
-  property_handler_setup_callback_ = callback;
-}
-
 void ExportedObjectManagerWrapper::AddExportedInterface(
-    const dbus::ObjectPath& object_path, const std::string& interface_name) {
-  EnsureExportedObjectRegistered(object_path);
+    const dbus::ObjectPath& object_path,
+    const std::string& interface_name,
+    const brillo::dbus_utils::DBusObject::PropertyHandlerSetupCallback&
+        property_handler_setup_callback) {
+  EnsureExportedObjectRegistered(object_path, property_handler_setup_callback);
   GetExportedObject(object_path)->AddExportedInterface(interface_name);
 }
 
@@ -265,15 +262,31 @@ ExportedInterface* ExportedObjectManagerWrapper::GetExportedInterface(
   return exported_object->GetExportedInterface(interface_name);
 }
 
+void ExportedObjectManagerWrapper::SetupStandardPropertyHandlers(
+    brillo::dbus_utils::DBusInterface* prop_interface,
+    brillo::dbus_utils::ExportedPropertySet* property_set) {
+  prop_interface->AddSimpleMethodHandler(
+      dbus::kPropertiesGetAll, base::Unretained(property_set),
+      &brillo::dbus_utils::ExportedPropertySet::HandleGetAll);
+  prop_interface->AddSimpleMethodHandlerWithError(
+      dbus::kPropertiesGet, base::Unretained(property_set),
+      &brillo::dbus_utils::ExportedPropertySet::HandleGet);
+  prop_interface->AddSimpleMethodHandlerWithError(
+      dbus::kPropertiesSet, base::Unretained(property_set),
+      &brillo::dbus_utils::ExportedPropertySet::HandleSet);
+}
+
 void ExportedObjectManagerWrapper::EnsureExportedObjectRegistered(
-    const dbus::ObjectPath& object_path) {
+    const dbus::ObjectPath& object_path,
+    const brillo::dbus_utils::DBusObject::PropertyHandlerSetupCallback&
+        property_handler_setup_callback) {
   if (base::ContainsKey(exported_objects_, object_path.value()))
     return;
 
   VLOG(1) << "Adding new ExportedObject " << object_path.value();
   auto exported_object = std::make_unique<ExportedObject>(
       exported_object_manager_.get(), bus_, object_path,
-      property_handler_setup_callback_);
+      property_handler_setup_callback);
   exported_object->RegisterAndBlock();
   exported_objects_.emplace(object_path.value(), std::move(exported_object));
 }
