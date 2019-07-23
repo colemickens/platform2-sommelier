@@ -23,6 +23,7 @@
 
 #include "cros-camera/camera_buffer_manager.h"
 #include "hal_adapter/common_types.h"
+#include "hal_adapter/frame_number_mapper.h"
 
 namespace cros {
 
@@ -117,7 +118,8 @@ class ZslHelper {
   enum SelectionStrategy { LAST_SUBMITTED, CLOSEST, CLOSEST_3A };
 
   // Initialize static metadata and ZSL ring buffer.
-  explicit ZslHelper(const camera_metadata_t* static_info);
+  explicit ZslHelper(const camera_metadata_t* static_info,
+                     FrameNumberMapper* mapper);
 
   ~ZslHelper();
 
@@ -138,9 +140,12 @@ class ZslHelper {
   // queueing the ZSL ring buffer) or transforming the request by adding a RAW
   // input stream.
   void ProcessZslCaptureRequest(
+      uint32_t framework_frame_number,
       camera3_capture_request_t* request,
       std::vector<camera3_stream_buffer_t>* output_buffers,
       internal::ScopedCameraMetadata* settings,
+      camera3_capture_request_t* still_request,
+      std::vector<camera3_stream_buffer_t>* still_output_buffers,
       SelectionStrategy strategy = CLOSEST_3A);
 
   // Merges ZSL metadata and mark buffer as ready to be submitted.
@@ -240,6 +245,9 @@ class ZslHelper {
 
   // ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE from static metadata.
   camera_metadata_enum_android_sensor_info_timestamp_source_t timestamp_source_;
+
+  // Utility for mapping framework and HAL frame numbers.
+  FrameNumberMapper* frame_number_mapper_;
 };
 
 }  // namespace cros

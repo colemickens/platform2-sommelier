@@ -8,6 +8,7 @@
 
 #include <unistd.h>
 
+#include <algorithm>
 #include <map>
 #include <set>
 #include <utility>
@@ -52,11 +53,12 @@ CameraDeviceAdapter::CameraDeviceAdapter(camera3_device_t* camera_device,
       camera_callback_ops_thread_("CameraCallbackOpsThread"),
       fence_sync_thread_("FenceSyncThread"),
       reprocess_effect_thread_("ReprocessEffectThread"),
+      notify_error_thread_("NotifyErrorThread"),
       close_callback_(close_callback),
       device_closed_(false),
       camera_device_(camera_device),
       static_info_(static_info),
-      zsl_helper_(static_info),
+      zsl_helper_(static_info, &frame_number_mapper_),
       camera_metrics_(CameraMetrics::New()) {
   VLOGF_ENTER() << ":" << camera_device_;
   camera3_callback_ops_t::process_capture_result = ProcessCaptureResult;
@@ -91,7 +93,7 @@ bool CameraDeviceAdapter::Start(
   }
   device_ops_delegate_.reset(new Camera3DeviceOpsDelegate(
       this, camera_device_ops_thread_.task_runner()));
-  int partial_result_count = [&]() {
+  partial_result_count_ = [&]() {
     camera_metadata_ro_entry entry;
     if (find_camera_metadata_ro_entry(
             static_info_, ANDROID_REQUEST_PARTIAL_RESULT_COUNT, &entry) != 0) {
@@ -100,7 +102,7 @@ bool CameraDeviceAdapter::Start(
     return entry.data.i32[0];
   }();
   camera_metadata_inspector_ =
-      CameraMetadataInspector::Create(partial_result_count);
+      CameraMetadataInspector::Create(partial_result_count_);
   has_reprocess_effect_vendor_tag_callback_ =
       std::move(has_reprocess_effect_vendor_tag_callback);
   reprocess_effect_callback_ = std::move(reprocess_effect_callback);
@@ -125,6 +127,10 @@ int32_t CameraDeviceAdapter::Initialize(
   }
   if (!reprocess_effect_thread_.Start()) {
     LOGF(ERROR) << "Reprocessing effect thread failed to start";
+    return -ENODEV;
+  }
+  if (!notify_error_thread_.Start()) {
+    LOGF(ERROR) << "Notify error thread failed to start";
     return -ENODEV;
   }
   base::AutoLock l(callback_ops_delegate_lock_);
@@ -198,6 +204,7 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
   }
   if (zsl_helper_.IsZslEnabled()) {
     zsl_helper_.AttachZslStream(&stream_list, &streams);
+    zsl_stream_ = streams.back();
   }
 
   int32_t result =
@@ -243,7 +250,8 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
   VLOGF_ENTER();
   camera3_capture_request_t req;
 
-  req.frame_number = request->frame_number;
+  req.frame_number =
+      frame_number_mapper_.GetHalFrameNumber(request->frame_number);
 
   internal::ScopedCameraMetadata settings =
       internal::DeserializeCameraMetadata(request->settings);
@@ -273,9 +281,10 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
   // Deserialize output buffers.
   size_t num_output_buffers = request->output_buffers.size();
   DCHECK_GT(num_output_buffers, 0);
-  req.num_output_buffers = num_output_buffers;
 
   std::vector<camera3_stream_buffer_t> output_buffers(num_output_buffers);
+  std::vector<camera3_stream_buffer_t> still_output_buffers;
+  camera3_capture_request_t still_req{.num_output_buffers = 0};
   {
     base::AutoLock streams_lock(streams_lock_);
     base::AutoLock buffer_handles_lock(buffer_handles_lock_);
@@ -292,9 +301,10 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
     }
     if (zsl_helper_.IsZslEnabled()) {
       zsl_helper_.ProcessZslCaptureRequest(
-          &req, &output_buffers, &settings,
-          ZslHelper::SelectionStrategy::CLOSEST_3A);
+          request->frame_number, &req, &output_buffers, &settings, &still_req,
+          &still_output_buffers, ZslHelper::SelectionStrategy::CLOSEST_3A);
     }
+    req.num_output_buffers = output_buffers.size();
     req.output_buffers =
         const_cast<const camera3_stream_buffer_t*>(output_buffers.data());
   }
@@ -323,7 +333,28 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
     return 0;
   }
 
-  return camera_device_->ops->process_capture_request(camera_device_, &req);
+  bool is_request_split = still_req.num_output_buffers > 0;
+  frame_number_mapper_.RegisterCaptureRequest(&req, is_request_split,
+                                              false /* is_request_added */);
+  int ret = camera_device_->ops->process_capture_request(camera_device_, &req);
+  if (ret != 0) {
+    return ret;
+  }
+
+  if (is_request_split) {
+    frame_number_mapper_.RegisterCaptureRequest(&still_req, is_request_split,
+                                                true /* is_request_added */);
+    ret = camera_device_->ops->process_capture_request(camera_device_,
+                                                       &still_req);
+    free_camera_metadata(const_cast<camera_metadata_t*>(still_req.settings));
+    // No need to process -ENODEV here since it's not recoverable.
+    if (ret == -EINVAL) {
+      NotifyAddedFrameError(std::move(still_req),
+                            std::move(still_output_buffers));
+    }
+  }
+  // Any errors occurred in the split request are handled separately.
+  return 0;
 }
 
 void CameraDeviceAdapter::Dump(mojo::ScopedHandle fd) {
@@ -388,6 +419,7 @@ int32_t CameraDeviceAdapter::Close() {
     return 0;
   }
   reprocess_effect_thread_.Stop();
+  notify_error_thread_.Stop();
   int32_t ret = camera_device_->common.close(&camera_device_->common);
   device_closed_ = true;
   DCHECK_EQ(ret, 0);
@@ -486,18 +518,26 @@ void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
   VLOGF_ENTER();
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
       static_cast<const CameraDeviceAdapter*>(ops));
-  mojom::Camera3NotifyMsgPtr msg_ptr = self->PrepareNotifyMsg(msg);
-  base::AutoLock l(self->callback_ops_delegate_lock_);
-  if (msg->type == CAMERA3_MSG_ERROR) {
-    self->camera_metrics_->SendError(msg->message.error.error_code);
+  std::vector<camera3_notify_msg_t> msgs;
+  self->PreprocessNotifyMsg(msg, &msgs);
+  if (msgs.size() == 0) {
+    LOGF(INFO) << "Trimmed a Notify() call";
+    return;
   }
-  if (self->callback_ops_delegate_) {
-    self->callback_ops_delegate_->Notify(std::move(msg_ptr));
-  }
-  if (msg->type == CAMERA3_MSG_ERROR &&
-      msg->message.error.error_code == CAMERA3_MSG_ERROR_DEVICE) {
-    LOGF(ERROR) << "Fatal device error; aborting the camera service";
-    _exit(EIO);
+  for (auto& msg : msgs) {
+    mojom::Camera3NotifyMsgPtr msg_ptr = self->PrepareNotifyMsg(&msg);
+    base::AutoLock l(self->callback_ops_delegate_lock_);
+    if (msg.type == CAMERA3_MSG_ERROR) {
+      self->camera_metrics_->SendError(msg.message.error.error_code);
+    }
+    if (self->callback_ops_delegate_) {
+      self->callback_ops_delegate_->Notify(std::move(msg_ptr));
+    }
+    if (msg.type == CAMERA3_MSG_ERROR &&
+        msg.message.error.error_code == CAMERA3_MSG_ERROR_DEVICE) {
+      LOGF(ERROR) << "Fatal device error; aborting the camera service";
+      _exit(EIO);
+    }
   }
 }
 
@@ -656,9 +696,20 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
     const camera3_capture_result_t* result) {
   mojom::Camera3CaptureResultPtr r = mojom::Camera3CaptureResult::New();
 
-  r->frame_number = result->frame_number;
+  r->frame_number =
+      frame_number_mapper_.GetFrameworkFrameNumber(result->frame_number);
 
-  r->result = internal::SerializeCameraMetadata(result->result);
+  frame_number_mapper_.RegisterCaptureResult(result, partial_result_count_);
+  if (frame_number_mapper_.IsAddedFrame(result->frame_number)) {
+    // We use the metadata from the sister frame.
+    LOGF(INFO) << "Trimming metadata for " << result->frame_number
+               << " (framework frame number = " << r->frame_number << ")";
+    r->result = cros::mojom::CameraMetadata::New();
+    r->partial_result = 0;
+  } else {
+    r->result = internal::SerializeCameraMetadata(result->result);
+    r->partial_result = result->partial_result;
+  }
 
   const camera3_stream_buffer_t* attached_output = nullptr;
   const camera3_stream_buffer_t* transformed_input = nullptr;
@@ -708,9 +759,12 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
     r->input_buffer = std::move(input_buffer);
   }
 
-  r->partial_result = result->partial_result;
-
   return r;
+}
+
+void CameraDeviceAdapter::PreprocessNotifyMsg(
+    const camera3_notify_msg_t* msg, std::vector<camera3_notify_msg_t>* msgs) {
+  frame_number_mapper_.PreprocessNotifyMsg(msg, msgs, zsl_stream_);
 }
 
 mojom::Camera3NotifyMsgPtr CameraDeviceAdapter::PrepareNotifyMsg(
@@ -937,6 +991,49 @@ void CameraDeviceAdapter::ProcessReprocessRequestOnDeviceOpsThread(
   VLOGF_ENTER();
   callback.Run(
       camera_device_->ops->process_capture_request(camera_device_, req.get()));
+}
+
+void CameraDeviceAdapter::NotifyAddedFrameError(
+    camera3_capture_request_t req,
+    std::vector<camera3_stream_buffer_t> output_buffers) {
+  notify_error_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&CameraDeviceAdapter::NotifyAddedFrameErrorOnNotifyErrorThread,
+                 base::Unretained(this), base::Passed(&req),
+                 base::Passed(&output_buffers)));
+}
+
+void CameraDeviceAdapter::NotifyAddedFrameErrorOnNotifyErrorThread(
+    camera3_capture_request_t req,
+    std::vector<camera3_stream_buffer_t> output_buffers) {
+  uint32_t framework_frame_number =
+      frame_number_mapper_.GetFrameworkFrameNumber(req.frame_number);
+  if (callback_ops_delegate_) {
+    base::AutoLock l(callback_ops_delegate_lock_);
+    for (auto& buffer : output_buffers) {
+      camera3_notify_msg_t msg{
+          .type = CAMERA3_MSG_ERROR,
+          .message.error = {.frame_number = framework_frame_number,
+                            .error_stream = buffer.stream,
+                            .error_code = CAMERA3_MSG_ERROR_BUFFER}};
+      mojom::Camera3NotifyMsgPtr msg_ptr = PrepareNotifyMsg(&msg);
+      callback_ops_delegate_->Notify(std::move(msg_ptr));
+      // Result is not expected from the added frame so need to send
+      // CAMERA3_MSG_ERROR_RESULT here.
+    }
+
+    // We still need to return the buffer handles back if we use notify() to
+    // return  errors.
+    camera3_capture_result_t res{
+        .frame_number = framework_frame_number,
+        .result = nullptr,
+        .num_output_buffers = static_cast<uint32_t>(output_buffers.size()),
+        .output_buffers = output_buffers.data(),
+        .input_buffer = nullptr,  // Added requests don't have input buffer.
+        .partial_result = 0};
+    mojom::Camera3CaptureResultPtr result_ptr = PrepareCaptureResult(&res);
+    callback_ops_delegate_->ProcessCaptureResult(std::move(result_ptr));
+  }
 }
 
 void CameraDeviceAdapter::ResetDeviceOpsDelegateOnThread() {

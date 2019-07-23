@@ -29,6 +29,7 @@
 #include "hal_adapter/camera_metadata_inspector.h"
 #include "hal_adapter/common_types.h"
 #include "hal_adapter/cros_camera_mojo_utils.h"
+#include "hal_adapter/frame_number_mapper.h"
 #include "hal_adapter/scoped_yuv_buffer_handle.h"
 #include "hal_adapter/zsl_helper.h"
 #include "mojo/camera3.mojom.h"
@@ -154,6 +155,9 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   mojom::Camera3CaptureResultPtr PrepareCaptureResult(
       const camera3_capture_result_t* result);
 
+  void PreprocessNotifyMsg(const camera3_notify_msg_t* msg,
+                           std::vector<camera3_notify_msg_t>* msgs);
+
   mojom::Camera3NotifyMsgPtr PrepareNotifyMsg(const camera3_notify_msg_t* msg);
 
   // Caller must hold |buffer_handles_lock_|.
@@ -171,6 +175,14 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
       std::unique_ptr<Camera3CaptureRequest> req,
       base::Callback<void(int32_t)> callback);
 
+  void NotifyAddedFrameError(
+      camera3_capture_request_t req,
+      std::vector<camera3_stream_buffer_t> output_buffers);
+
+  void NotifyAddedFrameErrorOnNotifyErrorThread(
+      camera3_capture_request_t req,
+      std::vector<camera3_stream_buffer_t> output_buffers);
+
   void ResetDeviceOpsDelegateOnThread();
   void ResetCallbackOpsDelegateOnThread();
 
@@ -187,6 +199,9 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   // A thread to apply reprocessing effects
   base::Thread reprocess_effect_thread_;
+
+  // A thread to notify errors in added requests.
+  base::Thread notify_error_thread_;
 
   // The delegate that handles the Camera3DeviceOps mojo IPC.
   std::unique_ptr<Camera3DeviceOpsDelegate> device_ops_delegate_;
@@ -213,6 +228,9 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   // A helper class that includes various functions for the mechanisms of ZSL.
   ZslHelper zsl_helper_;
+
+  // The stream configured for ZSL requests.
+  camera3_stream_t* zsl_stream_;
 
   // A mapping from Andoird HAL for all the configured streams.
   internal::ScopedStreams streams_;
@@ -265,6 +283,12 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   // Metrics for camera service.
   std::unique_ptr<CameraMetrics> camera_metrics_;
+
+  // Utility for mapping framework and HAL frame numbers.
+  FrameNumberMapper frame_number_mapper_;
+
+  // ANDROID_PARTIAL_RESULT_COUNT from static metadata.
+  int32_t partial_result_count_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(CameraDeviceAdapter);
 };

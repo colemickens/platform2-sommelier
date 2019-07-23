@@ -105,10 +105,12 @@ bool ZslBufferManager::ReleaseBuffer(buffer_handle_t buffer_to_release) {
   return true;
 }
 
-ZslHelper::ZslHelper(const camera_metadata_t* static_info)
+ZslHelper::ZslHelper(const camera_metadata_t* static_info,
+                     FrameNumberMapper* mapper)
     : initialized_(false),
       enabled_(false),
-      fence_sync_thread_("FenceSyncThread") {
+      fence_sync_thread_("FenceSyncThread"),
+      frame_number_mapper_(mapper) {
   VLOGF_ENTER();
   if (IsCapabilitySupported(static_info, kZslCapability)) {
     uint32_t bi_width, bi_height;
@@ -280,22 +282,58 @@ bool ZslHelper::IsTransformedZslBuffer(const camera3_stream_buffer_t* buffer) {
 }
 
 void ZslHelper::ProcessZslCaptureRequest(
+    uint32_t framework_frame_number,
     camera3_capture_request_t* request,  // maybe just use *input_buffer?
     std::vector<camera3_stream_buffer_t>* output_buffers,
     internal::ScopedCameraMetadata* settings,
+    camera3_capture_request_t* still_request,
+    std::vector<camera3_stream_buffer_t>* still_output_buffers,
     SelectionStrategy strategy) {
   if (request->input_buffer != nullptr) {
     return;
   }
   if (IsZslRequested(settings->get())) {
-    camera_metadata_t* zsl_settings;
-    bool transformed = TransformRequest(request, &zsl_settings, strategy);
-    if (transformed) {
-      settings->reset(zsl_settings);
+    for (auto it = output_buffers->begin(); it != output_buffers->end();) {
+      if (it->stream->format == HAL_PIXEL_FORMAT_BLOB ||
+          (it->stream->usage & GRALLOC_USAGE_STILL_CAPTURE)) {
+        still_output_buffers->push_back(std::move(*it));
+        it = output_buffers->erase(it);
+      } else {
+        it++;
+      }
     }
-  } else {
-    AttachRequest(request, output_buffers);
+    if (still_output_buffers->empty()) {
+      LOGF(ERROR) << "ZSL is requested, but we couldn't find any still "
+                     "capture output buffers.";
+    } else {
+      camera_metadata_t* zsl_settings;
+      bool transformed =
+          TransformRequest(still_request, &zsl_settings, strategy);
+      if (transformed) {
+        still_request->frame_number =
+            frame_number_mapper_->GetHalFrameNumber(framework_frame_number);
+        still_request->settings = zsl_settings;
+      } else {
+        // TODO(lnishan): Implement 3A stabilization mechanism so that we
+        // would attempt to get a buffer in another time.
+        // Merging the buffers back for now.
+        LOGF(ERROR) << "Not splitting this request because we cannot find a "
+                       "suitable ZSL buffer";
+        for (size_t i = 0; i < still_output_buffers->size(); ++i) {
+          output_buffers->push_back(std::move((*still_output_buffers)[i]));
+        }
+        still_output_buffers->clear();
+      }
+    }
+    still_request->num_output_buffers = still_output_buffers->size();
+    still_request->output_buffers = const_cast<const camera3_stream_buffer_t*>(
+        still_output_buffers->data());
   }
+
+  // We might end up moving all output buffers to the added request. So here we
+  // unconditionally add a ZSL output buffer. We also need a placeholder request
+  // so that we can defer a request if a suitable ZSL buffer is not found.
+  AttachRequest(request, output_buffers);
 }
 
 void ZslHelper::AttachRequest(
