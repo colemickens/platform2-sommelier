@@ -4,6 +4,7 @@
 
 #include "dlcservice/utils.h"
 
+#include <base/bind.h>
 #include <base/files/file_util.h>
 #include <gtest/gtest.h>
 
@@ -57,6 +58,26 @@ TEST(UtilsTest, GetDlcRootInModulePath) {
   base::FilePath path("foo-path");
   base::FilePath expected_path("foo-path/root");
   EXPECT_EQ(utils::GetDlcRootInModulePath(path), expected_path);
+}
+
+TEST(UtilsTest, ScopedCleanupsTest) {
+  bool flag = false;
+  base::Callback<void()> cleanup =
+      base::Bind([](bool* flag_ptr) { *flag_ptr = true; }, &flag);
+
+  {
+    utils::ScopedCleanups<decltype(cleanup)> scoped_cleanups;
+    scoped_cleanups.Insert(cleanup);
+  }
+  EXPECT_TRUE(flag);
+
+  flag = false;
+  {
+    utils::ScopedCleanups<decltype(cleanup)> scoped_cleanups;
+    scoped_cleanups.Insert(cleanup);
+    scoped_cleanups.Cancel();
+  }
+  EXPECT_FALSE(flag);
 }
 
 }  // namespace dlcservice

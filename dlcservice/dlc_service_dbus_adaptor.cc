@@ -213,13 +213,7 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
     return false;
   }
   // Unmounts the DLC module image.
-  bool success = false;
-  if (!image_loader_proxy_->UnloadDlcImage(id_in, package, &success, nullptr)) {
-    LogAndSetError(err, "Imageloader is not available.");
-    return false;
-  }
-  if (!success) {
-    LogAndSetError(err, "Imageloader UnloadDlcImage failed.");
+  if (!UnmountDlcImage(err, id_in, package)) {
     return false;
   }
 
@@ -254,6 +248,13 @@ bool DlcServiceDBusAdaptor::GetInstalled(brillo::ErrorPtr* err,
   for_each(begin(installed_dlc_modules_), end(installed_dlc_modules_),
            InsertIntoDlcModuleListOut);
   return true;
+}
+
+// TODO(crbug.com/987019): the signal from update engine needs to indicate this.
+// It is very dangerous for |DlcService| to be determining this. Can be removed
+// once update engine provides this. Do not use this function anywhere.
+bool DlcServiceDBusAdaptor::IsInstalling() {
+  return !dlc_modules_being_installed_.dlc_module_infos().empty();
 }
 
 bool DlcServiceDBusAdaptor::CreateDlc(brillo::ErrorPtr* err,
@@ -320,6 +321,21 @@ bool DlcServiceDBusAdaptor::CreateDlc(brillo::ErrorPtr* err,
   return true;
 }
 
+bool DlcServiceDBusAdaptor::UnmountDlcImage(brillo::ErrorPtr* err,
+                                            const std::string& id,
+                                            const std::string& package) {
+  bool success = false;
+  if (!image_loader_proxy_->UnloadDlcImage(id, package, &success, nullptr)) {
+    LogAndSetError(err, "Imageloader is not available.");
+    return false;
+  }
+  if (!success) {
+    LogAndSetError(err, "Imageloader UnloadDlcImage failed.");
+    return false;
+  }
+  return true;
+}
+
 string DlcServiceDBusAdaptor::ScanDlcModulePackage(const string& id) {
   return *(utils::ScanDirectory(manifest_dir_.Append(id)).begin());
 }
@@ -358,8 +374,7 @@ void DlcServiceDBusAdaptor::OnStatusUpdateSignal(
     const string& current_operation,
     const string& new_version,
     int64_t new_size) {
-  // This signal is for DLC install only when have DLC modules being installed.
-  if (dlc_modules_being_installed_.dlc_module_infos_size() == 0)
+  if (!IsInstalling())
     return;
   // Install is complete when we receive kUpdateStatusIdle signal.
   if (current_operation != update_engine::kUpdateStatusIdle)
@@ -373,6 +388,23 @@ void DlcServiceDBusAdaptor::OnStatusUpdateSignal(
   InstallResult install_result;
   install_result.set_success(false);
   install_result.mutable_dlc_module_list()->CopyFrom(dlc_module_list);
+
+  // Keep track of the cleanups for DLC images.
+  utils::ScopedCleanups<base::Callback<void()>> scoped_cleanups;
+  for (const DlcModuleInfo& dlc_module : dlc_module_list.dlc_module_infos()) {
+    const string& dlc_id = dlc_module.dlc_id();
+    string package = ScanDlcModulePackage(dlc_id);
+    auto cleanup = base::Bind(
+        [](base::Callback<bool()> unmounter, base::Callback<bool()> deleter) {
+          unmounter.Run();
+          deleter.Run();
+        },
+        base::Bind(&DlcServiceDBusAdaptor::UnmountDlcImage,
+                   base::Unretained(this), nullptr, dlc_id, package),
+        base::Bind(&base::DeleteFile,
+                   utils::GetDlcModulePath(content_dir_, dlc_id), true));
+    scoped_cleanups.Insert(cleanup);
+  }
 
   // Mount the installed DLC module images.
   for (auto& dlc_module :
@@ -398,6 +430,9 @@ void DlcServiceDBusAdaptor::OnStatusUpdateSignal(
     dlc_module.set_dlc_root(
         utils::GetDlcRootInModulePath(base::FilePath(mount_point)).value());
   }
+
+  // Don't unmount+delete the images+directories as all successfully installed.
+  scoped_cleanups.Cancel();
 
   // Install was a success so keep track.
   for (const DlcModuleInfo& dlc_module : dlc_module_list.dlc_module_infos())

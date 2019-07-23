@@ -7,13 +7,33 @@
 
 #include <set>
 #include <string>
+#include <vector>
 
+#include <base/callback.h>
 #include <base/files/file_path.h>
 #include <libimageloader/manifest.h>
 
 namespace dlcservice {
 
 namespace utils {
+
+template <typename BindedCallback>
+class ScopedCleanups {
+ public:
+  ScopedCleanups() = default;
+  ~ScopedCleanups() {
+    for (const auto& cleanup : queue_)
+      cleanup.Run();
+  }
+  void Insert(BindedCallback cleanup) { queue_.push_back(cleanup); }
+  // Clears everything so destructor is a no-op.
+  void Cancel() { queue_.clear(); }
+
+ private:
+  std::vector<BindedCallback> queue_;
+
+  DISALLOW_COPY_AND_ASSIGN(ScopedCleanups<BindedCallback>);
+};
 
 // Returns the path to a DLC module ID's based directory given |id|.
 base::FilePath GetDlcModulePath(const base::FilePath& dlc_module_root_path,

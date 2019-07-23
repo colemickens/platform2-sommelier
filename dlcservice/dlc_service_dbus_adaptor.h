@@ -50,12 +50,27 @@ class DlcServiceDBusAdaptor
   bool GetInstalled(brillo::ErrorPtr* err,
                     DlcModuleList* dlc_module_list_out) override;
 
+  // Called on receiving update_engine's |StatusUpdate| signal.
+  void OnStatusUpdateSignal(int64_t last_checked_time,
+                            double progress,
+                            const std::string& current_operation,
+                            const std::string& new_version,
+                            int64_t new_size);
+
  private:
+  // Returns if an install has been sent to update engine.
+  bool IsInstalling();
+
   // Creates the necessary directories and images for DLC installation. Will set
   // |path| to the top DLC directory for cleanup scoping.
   bool CreateDlc(brillo::ErrorPtr* err,
                  const std::string& id,
                  base::FilePath* path);
+
+  // Tries to unmount DLC images.
+  bool UnmountDlcImage(brillo::ErrorPtr* err,
+                       const std::string& id,
+                       const std::string& package);
 
   // Scans a specific DLC |id| to discover all its packages. Currently, we only
   // support one package per DLC. If at some point in the future we decided to
@@ -68,13 +83,6 @@ class DlcServiceDBusAdaptor
 
   // Send |OnInstalled| D-Bus signal.
   void SendOnInstalledSignal(const InstallResult& install_result);
-
-  // Called on receiving update_engine's |StatusUpdate| signal.
-  void OnStatusUpdateSignal(int64_t last_checked_time,
-                            double progress,
-                            const std::string& current_operation,
-                            const std::string& new_version,
-                            int64_t new_size);
 
   // Called on being connected to update_engine's |StatusUpdate| signal.
   void OnStatusUpdateSignalConnected(const std::string& interface_name,
