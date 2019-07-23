@@ -41,6 +41,7 @@ static_library("libcamera_ipc") {
   pkg_deps = [
     "libcamera_common",
     "libcamera_metadata",
+    "libchrome-${libbase_ver}",
     "libmojo-${libbase_ver}",
   ]
   deps = [

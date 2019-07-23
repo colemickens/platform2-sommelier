@@ -42,6 +42,31 @@ CameraMojoChannelManagerImpl::~CameraMojoChannelManagerImpl() {
   VLOGF_ENTER();
 }
 
+void CameraMojoChannelManagerImpl::ConnectToDispatcher(
+    base::Closure on_connection_established,
+    base::Closure on_connection_error) {
+  ipc_thread_->task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&CameraMojoChannelManagerImpl::ConnectToDispatcherOnIpcThread,
+                 base::Unretained(this),
+                 base::Passed(std::move(on_connection_established)),
+                 base::Passed(std::move(on_connection_error))));
+}
+
+scoped_refptr<base::SingleThreadTaskRunner>
+CameraMojoChannelManagerImpl::GetIpcTaskRunner() {
+  CHECK(CameraMojoChannelManagerImpl::ipc_thread_);
+  return CameraMojoChannelManagerImpl::ipc_thread_->task_runner();
+}
+
+void CameraMojoChannelManagerImpl::RegisterServer(
+    mojom::CameraHalServerPtr hal_ptr) {
+  ipc_thread_->task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&CameraMojoChannelManagerImpl::RegisterServerOnIpcThread,
+                 base::Unretained(this), base::Passed(std::move(hal_ptr))));
+}
+
 void CameraMojoChannelManagerImpl::CreateMjpegDecodeAccelerator(
     mojom::MjpegDecodeAcceleratorRequest request) {
   ipc_thread_->task_runner()->PostTask(
@@ -82,26 +107,6 @@ CameraMojoChannelManagerImpl::CreateCameraAlgorithmOpsPtr() {
 
   VLOGF_EXIT();
   return algorithm_ops;
-}
-
-void CameraMojoChannelManagerImpl::CreateMjpegDecodeAcceleratorOnIpcThread(
-    mojom::MjpegDecodeAcceleratorRequest request) {
-  DCHECK(ipc_thread_->task_runner()->BelongsToCurrentThread());
-
-  EnsureDispatcherConnectedOnIpcThread();
-  if (dispatcher_.is_bound()) {
-    dispatcher_->GetMjpegDecodeAccelerator(std::move(request));
-  }
-}
-
-void CameraMojoChannelManagerImpl::CreateJpegEncodeAcceleratorOnIpcThread(
-    mojom::JpegEncodeAcceleratorRequest request) {
-  DCHECK(ipc_thread_->task_runner()->BelongsToCurrentThread());
-
-  EnsureDispatcherConnectedOnIpcThread();
-  if (dispatcher_.is_bound()) {
-    dispatcher_->GetJpegEncodeAccelerator(std::move(request));
-  }
 }
 
 bool CameraMojoChannelManagerImpl::InitializeMojoEnv() {
@@ -154,6 +159,59 @@ void CameraMojoChannelManagerImpl::EnsureDispatcherConnectedOnIpcThread() {
   LOGF(INFO) << "Connected to CameraHalDispatcher";
 
   VLOGF_EXIT();
+}
+
+void CameraMojoChannelManagerImpl::ConnectToDispatcherOnIpcThread(
+    base::Closure on_connection_established,
+    base::Closure on_connection_error) {
+  DCHECK(ipc_thread_->task_runner()->BelongsToCurrentThread());
+
+  EnsureDispatcherConnectedOnIpcThread();
+  if (!dispatcher_.is_bound()) {
+    on_connection_error.Run();
+    return;
+  }
+
+  auto callbacks_combined = [](base::Closure callback1,
+                               base::Closure callback2) {
+    callback1.Run();
+    callback2.Run();
+  };
+  dispatcher_.set_connection_error_handler(
+      base::Bind(callbacks_combined,
+                 base::Bind(&CameraMojoChannelManagerImpl::OnDispatcherError),
+                 std::move(on_connection_error)));
+  on_connection_established.Run();
+}
+
+void CameraMojoChannelManagerImpl::RegisterServerOnIpcThread(
+    mojom::CameraHalServerPtr hal_ptr) {
+  DCHECK(ipc_thread_->task_runner()->BelongsToCurrentThread());
+
+  EnsureDispatcherConnectedOnIpcThread();
+  if (dispatcher_.is_bound()) {
+    dispatcher_->RegisterServer(std::move(hal_ptr));
+  }
+}
+
+void CameraMojoChannelManagerImpl::CreateMjpegDecodeAcceleratorOnIpcThread(
+    mojom::MjpegDecodeAcceleratorRequest request) {
+  DCHECK(ipc_thread_->task_runner()->BelongsToCurrentThread());
+
+  EnsureDispatcherConnectedOnIpcThread();
+  if (dispatcher_.is_bound()) {
+    dispatcher_->GetMjpegDecodeAccelerator(std::move(request));
+  }
+}
+
+void CameraMojoChannelManagerImpl::CreateJpegEncodeAcceleratorOnIpcThread(
+    mojom::JpegEncodeAcceleratorRequest request) {
+  DCHECK(ipc_thread_->task_runner()->BelongsToCurrentThread());
+
+  EnsureDispatcherConnectedOnIpcThread();
+  if (dispatcher_.is_bound()) {
+    dispatcher_->GetJpegEncodeAccelerator(std::move(request));
+  }
 }
 
 // static

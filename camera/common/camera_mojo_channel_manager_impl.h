@@ -21,6 +21,13 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
   CameraMojoChannelManagerImpl();
   ~CameraMojoChannelManagerImpl() final;
 
+  void ConnectToDispatcher(base::Closure on_connection_established,
+                           base::Closure on_connection_error) final;
+
+  scoped_refptr<base::SingleThreadTaskRunner> GetIpcTaskRunner() final;
+
+  void RegisterServer(mojom::CameraHalServerPtr hal_ptr) final;
+
   // Creates a new MjpegDecodeAccelerator.
   // This API uses CameraHalDispatcher to pass |request| to another process to
   // create Mojo channel.
@@ -38,12 +45,23 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
   // create Mojo channel, and then return mojom::CameraAlgorithmOpsPtr.
   mojom::CameraAlgorithmOpsPtr CreateCameraAlgorithmOpsPtr() final;
 
+ protected:
+  friend class CameraMojoChannelManager;
+
+  // Thread for IPC chores.
+  static base::Thread* ipc_thread_;
+
  private:
   bool InitializeMojoEnv();
 
   // Ensure camera dispatcher Mojo channel connected.
   // It should be called for any public API that needs |dispatcher_|.
   void EnsureDispatcherConnectedOnIpcThread();
+
+  void ConnectToDispatcherOnIpcThread(base::Closure on_connection_established,
+                                      base::Closure on_connection_error);
+
+  void RegisterServerOnIpcThread(mojom::CameraHalServerPtr hal_ptr);
 
   void CreateMjpegDecodeAcceleratorOnIpcThread(
       mojom::MjpegDecodeAcceleratorRequest request);
@@ -62,8 +80,6 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
   // communication to |dispatcher_| happens on |ipc_thread_|.
   static mojom::CameraHalDispatcherPtr dispatcher_;
 
-  // Thread for IPC chores.
-  static base::Thread* ipc_thread_;
   // A mutex to guard static variable.
   static base::NoDestructor<base::Lock> static_lock_;
   static bool mojo_initialized_;

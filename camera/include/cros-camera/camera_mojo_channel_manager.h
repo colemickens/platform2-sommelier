@@ -9,9 +9,17 @@
 
 #include <memory>
 
+#include <base/callback_forward.h>
+#include <base/memory/ref_counted.h>
+
 #include "mojo/algorithm/camera_algorithm.mojom.h"
+#include "mojo/cros_camera_service.mojom.h"
 #include "mojo/jda/mjpeg_decode_accelerator.mojom.h"
 #include "mojo/jea/jpeg_encode_accelerator.mojom.h"
+
+namespace base {
+class SingleThreadTaskRunner;
+}
 
 namespace cros {
 
@@ -22,6 +30,18 @@ class CameraMojoChannelManager {
   static std::unique_ptr<CameraMojoChannelManager> CreateInstance();
 
   virtual ~CameraMojoChannelManager() {}
+
+  // Connects to the CameraHalDispatcher.  When the Mojo connection is
+  // established successfully, |on_connection_established| will be called and
+  // |on_connection_error| is set as the Mojo connection error handler.
+  virtual void ConnectToDispatcher(base::Closure on_connection_established,
+                                   base::Closure on_connection_error) = 0;
+
+  // Gets the task runner that the CameraHalDispatcher interface is bound to.
+  virtual scoped_refptr<base::SingleThreadTaskRunner> GetIpcTaskRunner() = 0;
+
+  // Registers the camera HAL server to the CameraHalDispatcher.
+  virtual void RegisterServer(mojom::CameraHalServerPtr hal_ptr) = 0;
 
   // Creates a new MjpegDecodeAccelerator.
   virtual void CreateMjpegDecodeAccelerator(

@@ -33,6 +33,7 @@
 #include <mojo/edk/embedder/platform_handle_vector.h>
 
 #include "common/utils/camera_hal_enumerator.h"
+#include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
 #include "cros-camera/ipc_util.h"
@@ -43,9 +44,7 @@
 namespace cros {
 
 CameraHalServerImpl::CameraHalServerImpl()
-    : ipc_thread_("IPCThread"),
-      main_task_runner_(base::ThreadTaskRunnerHandle::Get()),
-      binding_(this) {
+    : main_task_runner_(base::ThreadTaskRunnerHandle::Get()), binding_(this) {
   VLOGF_ENTER();
 }
 
@@ -56,13 +55,8 @@ CameraHalServerImpl::~CameraHalServerImpl() {
 
 bool CameraHalServerImpl::Start() {
   VLOGF_ENTER();
-  mojo::edk::Init();
-  if (!ipc_thread_.StartWithOptions(
-          base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
-    LOGF(ERROR) << "Failed to start IPCThread";
-    return false;
-  }
-  mojo::edk::InitIPCSupport(ipc_thread_.task_runner());
+  camera_mojo_channel_manager_ = CameraMojoChannelManager::CreateInstance();
+  ipc_task_runner_ = camera_mojo_channel_manager_->GetIpcTaskRunner();
 
   base::FilePath socket_path(constants::kCrosCameraSocketPathString);
   if (!watcher_.Watch(socket_path, false,
@@ -80,7 +74,8 @@ bool CameraHalServerImpl::Start() {
 void CameraHalServerImpl::CreateChannel(
     mojom::CameraModuleRequest camera_module_request) {
   VLOGF_ENTER();
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+
   camera_hal_adapter_->OpenCameraHal(std::move(camera_module_request));
 }
 
@@ -93,8 +88,9 @@ void CameraHalServerImpl::OnSocketFileStatusChange(
     const base::FilePath& socket_path, bool error) {
   VLOGF_ENTER();
   DCHECK(main_task_runner_->BelongsToCurrentThread());
+
   if (!PathExists(socket_path)) {
-    if (dispatcher_.is_bound()) {
+    if (binding_.is_bound()) {
       main_task_runner_->PostTask(
           FROM_HERE, base::Bind(&CameraHalServerImpl::ExitOnMainThread,
                                 base::Unretained(this), ECONNRESET));
@@ -102,31 +98,20 @@ void CameraHalServerImpl::OnSocketFileStatusChange(
     return;
   }
 
-  if (dispatcher_.is_bound()) {
+  if (binding_.is_bound()) {
     return;
   }
 
-  VLOG(1) << "Got socket: " << socket_path.value() << " error: " << error;
-  mojo::ScopedMessagePipeHandle child_pipe;
-  MojoResult result =
-      CreateMojoChannelToParentByUnixDomainSocket(socket_path, &child_pipe);
-  if (result != MOJO_RESULT_OK) {
-    LOGF(WARNING) << "Failed to create Mojo Channel to " << socket_path.value();
-    return;
-  }
-
-  dispatcher_ = mojo::MakeProxy(
-      mojom::CameraHalDispatcherPtrInfo(std::move(child_pipe), 0u),
-      ipc_thread_.task_runner());
-  LOGF(INFO) << "Connected to CameraHalDispatcher";
-  ipc_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&CameraHalServerImpl::RegisterCameraHal,
-                            base::Unretained(this)));
+  camera_mojo_channel_manager_->ConnectToDispatcher(
+      base::Bind(&CameraHalServerImpl::RegisterCameraHal,
+                 base::Unretained(this)),
+      base::Bind(&CameraHalServerImpl::OnServiceMojoChannelError,
+                 base::Unretained(this)));
 }
 
 void CameraHalServerImpl::RegisterCameraHal() {
   VLOGF_ENTER();
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
   std::vector<camera_module_t*> camera_modules;
   std::unique_ptr<CameraConfig> config =
@@ -181,15 +166,23 @@ void CameraHalServerImpl::RegisterCameraHal() {
     return;
   }
 
-  dispatcher_.set_connection_error_handler(base::Bind(
-      &CameraHalServerImpl::OnServiceMojoChannelError, base::Unretained(this)));
-  dispatcher_->RegisterServer(binding_.CreateInterfacePtrAndBind());
+  camera_mojo_channel_manager_->RegisterServer(
+      binding_.CreateInterfacePtrAndBind());
   LOGF(INFO) << "Registered camera HAL";
 }
 
 void CameraHalServerImpl::OnServiceMojoChannelError() {
   VLOGF_ENTER();
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+
+  if (!binding_.is_bound()) {
+    // We reach here because |camera_mojo_channel_manager_| failed to bootstrap
+    // the Mojo channel to Chrome, probably due to invalid socket file.  This
+    // can happen during `restart ui`, so simply return to wait for Chrome to
+    // reinitialize the socket file.
+    return;
+  }
+
   // The CameraHalDispatcher Mojo parent is probably dead. We need to restart
   // another process in order to connect to the new Mojo parent.
   LOGF(INFO) << "Mojo connection to CameraHalDispatcher is broken";
@@ -201,6 +194,7 @@ void CameraHalServerImpl::OnServiceMojoChannelError() {
 void CameraHalServerImpl::ExitOnMainThread(int exit_status) {
   VLOGF_ENTER();
   DCHECK(main_task_runner_->BelongsToCurrentThread());
+
   camera_hal_adapter_.reset();
   exit(exit_status);
 }

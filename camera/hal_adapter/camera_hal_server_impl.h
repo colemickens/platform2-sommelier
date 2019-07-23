@@ -19,6 +19,8 @@
 
 namespace cros {
 
+class CameraMojoChannelManager;
+
 // CameraHalServerImpl is the implementation of the CameraHalServer Mojo
 // interface.  It hosts the camera HAL v3 adapter and registers itself to the
 // CameraHalDispatcher Mojo proxy in started by Chrome.  Camera clients such
@@ -63,14 +65,12 @@ class CameraHalServerImpl final : public mojom::CameraHalServer {
   // connection to CameraHalDispatcher.
   base::FilePathWatcher watcher_;
 
-  // The Mojo IPC thread.
-  base::Thread ipc_thread_;
+  std::unique_ptr<CameraMojoChannelManager> camera_mojo_channel_manager_;
+
+  // The Mojo IPC task runner.
+  scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner_;
 
   const scoped_refptr<base::SingleThreadTaskRunner> main_task_runner_;
-
-  // The Mojo channel to CameraHalDispatcher in Chrome.  All the Mojo
-  // communication to |dispatcher_| happens on |ipc_thread_|.
-  mojom::CameraHalDispatcherPtr dispatcher_;
 
   // The CameraHalServer implementation binding.  All the function calls to
   // |binding_| runs on |ipc_thread_|.
