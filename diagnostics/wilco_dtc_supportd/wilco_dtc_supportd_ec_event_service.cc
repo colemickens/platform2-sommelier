@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/eventfd.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <utility>
 
@@ -55,10 +56,6 @@ class EcEventMonitoringThreadDelegate final
       int retval =
           HANDLE_EINTR(poll(fds, 2 /* nfds */, -1 /* infinite timeout */));
       if (retval < 0) {
-        if (errno == EINTR) {
-          // Non-critical error, we must retry.
-          continue;
-        }
         PLOG(ERROR)
             << "EC event poll error. Shutting down EC monitoring thread";
         break;
@@ -80,7 +77,14 @@ class EcEventMonitoringThreadDelegate final
       }
 
       WilcoDtcSupportdEcEventService::EcEvent ec_event;
-      if (HANDLE_EINTR(read(fds[0].fd, &ec_event, sizeof(ec_event))) > 0) {
+      ssize_t bytes_read =
+          HANDLE_EINTR(read(fds[0].fd, &ec_event, sizeof(ec_event)));
+      if (bytes_read < 0) {
+        PLOG(ERROR)
+            << "EC event read error. Shutting down EC monitoring thread";
+        break;
+      }
+      if (bytes_read > 0) {
         foreground_task_runner_->PostTask(
             FROM_HERE, base::BindOnce(on_event_available_callback_, ec_event));
       }
