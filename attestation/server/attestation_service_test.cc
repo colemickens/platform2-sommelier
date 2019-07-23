@@ -24,6 +24,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <brillo/data_encoding.h>
+#include <chromeos/libhwsec/message_loop_idle.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #if USE_TPM2
@@ -130,84 +131,6 @@ std::string GetFakeCertificateChain() {
 
 }  // namespace
 
-// MessageLoopIdleEvent: waits for the moment when the message loop becomes
-// idle. Note: it is still possible that there are deferred tasks.
-//
-// Posts the task to the message loop that checks the following:
-// If there are tasks in the incoming queue, the loop is not idle, so re-post
-// the task.
-// If there are no tasks in the incoming queue, it's still possible that there
-// are other tasks in the work queue already picked for processing after this
-// task. So, in this case, re-post once again, and check the number of
-// tasks between now and the next invocation of this task. If only 1 (this
-// task only), the task runner is idle.
-class MessageLoopIdleEvent : public base::MessageLoop::TaskObserver {
- public:
-  explicit MessageLoopIdleEvent(base::MessageLoop* message_loop)
-      : event_(base::WaitableEvent::ResetPolicy::MANUAL,
-               base::WaitableEvent::InitialState::NOT_SIGNALED),
-        observer_added_(false),
-        tasks_processed_(0),
-        was_idle_(false),
-        message_loop_(message_loop) {
-    PostTask();
-  }
-  ~MessageLoopIdleEvent() {
-  }
-  // Observer callbacks: WillProcessTask and DidProcessTask.
-  // Count the number of run tasks in WillProcessTask.
-  void WillProcessTask(const base::PendingTask& pending_task) {
-    tasks_processed_++;
-  }
-  void DidProcessTask(const base::PendingTask& pending_task) { }
-  // The task we put on the message loop.
-  void RunTask() {
-    // We need to add observer in RunTask, since it can only
-    // be done by the thread that runs MessageLoop
-    if (!observer_added_) {
-      message_loop_->AddTaskObserver(this);
-      observer_added_ = true;
-    }
-    bool is_idle = (tasks_processed_ <= 1) &&
-                   message_loop_->IsIdleForTesting();
-    if (was_idle_ && is_idle) {
-      // We need to remove observer in RunTask, since it can only
-      // be done by the thread that runs MessageLoop
-      if (observer_added_) {
-        message_loop_->RemoveTaskObserver(this);
-        observer_added_ = false;
-      }
-      event_.Signal();
-      return;
-    }
-    was_idle_ = is_idle;
-    tasks_processed_ = 0;
-    PostTask();
-  }
-  // Waits until the message loop becomes idle.
-  void Wait() {
-    event_.Wait();
-  }
-
- private:
-  void PostTask() {
-    auto task = base::Bind(&MessageLoopIdleEvent::RunTask,
-                           base::Unretained(this));
-    message_loop_->task_runner()->PostTask(FROM_HERE, task);
-  }
-
-  // Event to signal when we detect that the message loop is idle.
-  base::WaitableEvent event_;
-  // Was observer added to the mount loop?
-  bool observer_added_;
-  // Number of tasks run between previous invocation and now (including this).
-  int tasks_processed_;
-  // Did the loop appear idle during the previous task invocation?
-  bool was_idle_;
-  // MessageLoop we are waiting for.
-  base::MessageLoop* message_loop_;
-};
-
 class AttestationServiceBaseTest : public testing::Test {
  public:
   ~AttestationServiceBaseTest() override = default;
@@ -244,7 +167,8 @@ class AttestationServiceBaseTest : public testing::Test {
   base::Closure QuitClosure() { return run_loop_.QuitClosure(); }
 
   void WaitUntilIdleForTesting() {
-    MessageLoopIdleEvent idle_event(service_->worker_thread_->message_loop());
+    hwsec::MessageLoopIdleEvent idle_event(
+        service_->worker_thread_->message_loop());
     idle_event.Wait();
   }
 

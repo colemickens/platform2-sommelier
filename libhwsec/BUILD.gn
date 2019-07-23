@@ -8,9 +8,7 @@ group("all") {
   deps = [
     ":libhwsec",
   ]
-  if (!use.tpm2) {
-    deps += [ ":hwsec_test" ]
-  }
+  deps += [ ":libhwsec_test" ]
   if (use.test) {
     deps += [ ":hwsec_testrunner" ]
   }
@@ -36,15 +34,18 @@ static_library("overalls_library") {
   ]
 }
 
-static_library("hwsec_test") {
+static_library("libhwsec_test") {
   configs += [
     ":target_defaults",
     "//common-mk:nouse_thin_archive",
   ]
   configs -= [ "//common-mk:use_thin_archive" ]
   sources = [
-    "test_utils/tpm1/test_fixture.cc",
+    "message_loop_idle.cc",
   ]
+  if (!use.tpm2) {
+    sources += [ "test_utils/tpm1/test_fixture.cc" ]
+  }
 }
 
 config("libhwsec_tpm1_config") {
@@ -81,6 +82,7 @@ if (use.test) {
     ]
     deps = [
       ":libhwsec",
+      ":libhwsec_test",
       "//common-mk/testrunner",
     ]
     if (!use.tpm2) {

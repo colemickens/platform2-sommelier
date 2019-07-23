@@ -268,11 +268,13 @@ if (use.test) {
     if (use.tpm2) {
       sources += [ "common/tpm_utility_v2_test.cc" ]
       libs = [
+        "hwsec_test",
         "tpm_manager_test",
         "trunks_test",
       ]
     } else {
       sources += [ "common/tpm_utility_common_test.cc" ]
+      libs = [ "hwsec_test" ]
     }
     deps = [
       ":client_library",
