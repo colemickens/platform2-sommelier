@@ -9,7 +9,7 @@ group("all") {
     ":libhwsec",
   ]
   if (use.test) {
-    deps += [ ":hwsec_test" ]
+    deps += [ ":hwsec_testrunner" ]
   }
 }
 
@@ -33,7 +33,7 @@ if (use.test) {
     pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
 
-  executable("hwsec_test") {
+  executable("hwsec_testrunner") {
     configs += [
       "//common-mk:test",
       ":target_defaults",
