@@ -226,6 +226,7 @@ constexpr pid_t kAndroidPid = 10;
 
 constexpr char kSaneEmail[] = "user@somewhere.com";
 constexpr char kDeviceLocalAccountsDir[] = "device_local_accounts";
+constexpr char kLoginScreenStoragePath[] = "login_screen_storage";
 
 #if USE_CHEETS
 constexpr char kDefaultLocale[] = "en_US";
@@ -415,6 +416,11 @@ class SessionManagerImplTest : public ::testing::Test,
     tick_clock_ = new base::SimpleTestTickClock();
     tick_clock_->SetNowTicks(base::TimeTicks() + base::TimeDelta::FromHours(1));
     impl_->SetTickClockForTesting(base::WrapUnique(tick_clock_));
+
+    login_screen_storage_path_ =
+        tmpdir_.GetPath().Append(kLoginScreenStoragePath);
+    impl_->SetLoginScreenStorageForTesting(
+        std::make_unique<LoginScreenStorage>(login_screen_storage_path_));
 
     EXPECT_CALL(*powerd_proxy_,
                 ConnectToSignal(power_manager::kPowerManagerInterface,
@@ -750,6 +756,11 @@ class SessionManagerImplTest : public ::testing::Test,
     time_sync_callback.Run(response.get());
   }
 
+  base::FilePath GetTestLoginScreenStoragePath(const std::string& key) {
+    return base::FilePath(login_screen_storage_path_)
+        .Append(secret_util::StringToSafeFilename(key));
+  }
+
   // These are bare pointers, not unique_ptrs, because we need to give them
   // to a SessionManagerImpl instance, but also be able to set expectations
   // on them after we hand them off.
@@ -797,6 +808,7 @@ class SessionManagerImplTest : public ::testing::Test,
   std::unique_ptr<SessionManagerImpl> impl_;
   base::ScopedTempDir tmpdir_;
   base::FilePath device_local_accounts_dir_;
+  base::FilePath login_screen_storage_path_;
 
   static const pid_t kDummyPid;
   static const char kNothing[];
@@ -1137,29 +1149,6 @@ TEST_F(SessionManagerImplTest, StopSession) {
   impl_->StopSession("");
 }
 
-TEST_F(SessionManagerImplTest, LoginScreenStorage_StoreRetrieve) {
-  const string kTestKey("testkey");
-  const string kTestValue("testvalue");
-  const vector<uint8_t> kTestValueVector =
-      std::vector<uint8_t>(kTestValue.begin(), kTestValue.end());
-  base::ScopedFD value_fd =
-      secret_util::WriteSizeAndDataToPipe(kTestValueVector);
-
-  brillo::ErrorPtr error;
-  impl_->LoginScreenStorageStore(
-      &error, kTestKey,
-      MakeLoginScreenStorageMetadata(/*clear_on_session_exit=*/true), value_fd);
-  EXPECT_FALSE(error.get());
-
-  brillo::dbus_utils::FileDescriptor out_value_fd;
-  impl_->LoginScreenStorageRetrieve(&error, kTestKey, &out_value_fd);
-  EXPECT_FALSE(error.get());
-
-  std::vector<uint8_t> value;
-  EXPECT_TRUE(secret_util::ReadSecretFromPipe(out_value_fd.get(), &value));
-  EXPECT_EQ(kTestValueVector, value);
-}
-
 TEST_F(SessionManagerImplTest, LoginScreenStorage_StoreFailsInSession) {
   const string kTestKey("testkey");
   const string kTestValue("testvalue");
@@ -1173,7 +1162,12 @@ TEST_F(SessionManagerImplTest, LoginScreenStorage_StoreFailsInSession) {
   brillo::ErrorPtr error;
   impl_->LoginScreenStorageStore(
       &error, kTestKey,
-      MakeLoginScreenStorageMetadata(/*clear_on_session_exit=*/true), value_fd);
+      MakeLoginScreenStorageMetadata(/*clear_on_session_exit=*/false),
+      value_fd);
+  EXPECT_TRUE(error.get());
+  EXPECT_FALSE(base::PathExists(GetTestLoginScreenStoragePath(kTestKey)));
+  brillo::dbus_utils::FileDescriptor out_value_fd;
+  impl_->LoginScreenStorageRetrieve(&error, kTestKey, &out_value_fd);
   EXPECT_TRUE(error.get());
 }
 

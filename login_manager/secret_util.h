@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/files/scoped_file.h>
+#include <base/files/file_path.h>
 
 #include "libpasswordprovider/password_provider.h"
 
@@ -32,6 +33,11 @@ bool ReadSecretFromPipe(int in_secret_fd, std::vector<uint8_t>* out_secret);
 bool SaveSecretFromFileDescriptor(
     password_provider::PasswordProviderInterface* provider,
     const base::ScopedFD& in_secret_fd);
+
+// Gets a SHA256 hash of the given data and returns its hexadicimal
+// representation. This is used to generate a unique string that is safe to use
+// as a filename.
+base::FilePath StringToSafeFilename(std::string data);
 
 }  // namespace secret_util
 }  // namespace login_manager

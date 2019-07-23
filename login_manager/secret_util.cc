@@ -7,6 +7,8 @@
 #include <utility>
 
 #include <base/files/file_util.h>
+#include <base/strings/string_number_conversions.h>
+#include <crypto/sha2.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -95,6 +97,11 @@ bool SaveSecretFromFileDescriptor(
   }
 
   return true;
+}
+
+base::FilePath StringToSafeFilename(std::string data) {
+  std::string sha256hash = crypto::SHA256HashString(data);
+  return base::FilePath(base::HexEncode(sha256hash.data(), sha256hash.size()));
 }
 
 }  // namespace secret_util

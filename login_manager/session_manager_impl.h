@@ -28,6 +28,7 @@
 #include "login_manager/device_local_account_manager.h"
 #include "login_manager/device_policy_service.h"
 #include "login_manager/key_generator.h"
+#include "login_manager/login_screen_storage.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/regen_mitigator.h"
 #include "login_manager/server_backed_state_key_generator.h"
@@ -153,6 +154,8 @@ class SessionManagerImpl
       std::unique_ptr<DeviceLocalAccountManager> device_local_account_manager);
   void SetTickClockForTesting(std::unique_ptr<base::TickClock> clock);
   void SetUiLogSymlinkPathForTesting(const base::FilePath& path);
+  void SetLoginScreenStorageForTesting(
+      std::unique_ptr<LoginScreenStorage> login_screen_storage);
 
   // SessionManagerInterface implementation.
   // Should set up policy stuff; if false DIE.
@@ -444,7 +447,7 @@ class SessionManagerImpl
   std::unique_ptr<password_provider::PasswordProviderInterface>
       password_provider_;
 
-  std::map<std::string, std::vector<uint8_t>> login_screen_storage_;
+  std::unique_ptr<LoginScreenStorage> login_screen_storage_;
 
   base::WeakPtrFactory<SessionManagerImpl> weak_ptr_factory_;
 

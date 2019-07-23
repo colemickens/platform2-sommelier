@@ -34,7 +34,6 @@
 #include <brillo/dbus/dbus_object.h>
 #include <chromeos/dbus/service_constants.h>
 #include <crypto/scoped_nss_types.h>
-#include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 #include <install_attributes/libinstallattributes.h>
@@ -153,6 +152,10 @@ constexpr char kSigEncodeFailMessage[] = "Failed to retrieve policy data.";
 // Default path of symlink to log file where stdout and stderr from
 // session_manager and Chrome are redirected.
 constexpr char kDefaultUiLogSymlinkPath[] = "/var/log/ui/ui.LATEST";
+
+// A path of the directory that contains all the key-value pairs stored to the
+// pesistent login screen storage.
+const char kLoginScreenStoragePath[] = "/var/lib/login_screen_storage";
 
 const char* ToSuccessSignal(bool success) {
   return success ? "success" : "failure";
@@ -387,6 +390,8 @@ SessionManagerImpl::SessionManagerImpl(
       ui_log_symlink_path_(kDefaultUiLogSymlinkPath),
       password_provider_(
           std::make_unique<password_provider::PasswordProvider>()),
+      login_screen_storage_(std::make_unique<LoginScreenStorage>(
+          base::FilePath(kLoginScreenStoragePath))),
       weak_ptr_factory_(this) {
   DCHECK(delegate_);
 }
@@ -412,6 +417,11 @@ void SessionManagerImpl::SetTickClockForTesting(
 void SessionManagerImpl::SetUiLogSymlinkPathForTesting(
     const base::FilePath& path) {
   ui_log_symlink_path_ = path;
+}
+
+void SessionManagerImpl::SetLoginScreenStorageForTesting(
+    std::unique_ptr<LoginScreenStorage> login_screen_storage) {
+  login_screen_storage_ = std::move(login_screen_storage);
 }
 
 void SessionManagerImpl::AnnounceSessionStoppingIfNeeded() {
@@ -694,48 +704,20 @@ bool SessionManagerImpl::LoginScreenStorageStore(
     return false;
   }
 
-  std::vector<uint8_t> value;
-  if (!secret_util::ReadSecretFromPipe(in_value_fd.get(), &value)) {
-    *error = CreateError(DBUS_ERROR_IO_ERROR, "couldn't read value from pipe.");
-    return false;
-  }
   LoginScreenStorageMetadata metadata;
   if (!metadata.ParseFromArray(in_metadata.data(), in_metadata.size())) {
     *error = CreateError(DBUS_ERROR_INVALID_ARGS, "metadata parsing failed.");
     return false;
   }
 
-  // TODO(voit): Add support for the |in_metadata.clear_on_session_exit| =
-  // 'false' use case. Currently value is always cleared on session exit,
-  // because the SessionManager's process is terminated.
-  if (!metadata.clear_on_session_exit()) {
-    *error = CreateError(DBUS_ERROR_FAILED,
-                         "persistent storage is not supported "
-                         "at the moment.");
-    return false;
-  }
-  login_screen_storage_[in_key] = std::move(value);
-  return true;
+  return login_screen_storage_->Store(error, in_key, metadata, in_value_fd);
 }
 
 bool SessionManagerImpl::LoginScreenStorageRetrieve(
     brillo::ErrorPtr* error,
     const std::string& in_key,
     brillo::dbus_utils::FileDescriptor* out_value_fd) {
-  auto value_iter = login_screen_storage_.find(in_key);
-  if (value_iter == login_screen_storage_.end()) {
-    *error = CreateError(DBUS_ERROR_INVALID_ARGS,
-                         "no value was found for the given key.");
-    return false;
-  }
-
-  *out_value_fd = secret_util::WriteSizeAndDataToPipe(value_iter->second);
-  if (!out_value_fd->get()) {
-    *error = CreateError(DBUS_ERROR_IO_ERROR, "couldn't create a pipe");
-    return false;
-  }
-
-  return true;
+  return login_screen_storage_->Retrieve(error, in_key, out_value_fd);
 }
 
 void SessionManagerImpl::StopSession(const std::string& in_unique_identifier) {
