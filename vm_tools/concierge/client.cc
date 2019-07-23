@@ -412,7 +412,7 @@ int GetVmCid(dbus::ObjectProxy* proxy, string owner_id, string name) {
   if (!vm_info.has_value())
     return -1;
   const std::string cid = base::StringPrintf("%" PRId64 "\n", vm_info->cid());
-  return base::WriteFileDescriptor(STDERR_FILENO, cid.data(), cid.size()) ? 0
+  return base::WriteFileDescriptor(STDOUT_FILENO, cid.data(), cid.size()) ? 0
                                                                           : -1;
 }
 
