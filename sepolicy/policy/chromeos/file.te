@@ -21,6 +21,7 @@ type cros_accelerator_logs_exec, exec_type, file_type, cros_file_type, cros_syst
 type cros_agetty_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_anomaly_detector_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_apk_cache_cleaner_jailed_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_arc_appfuse_provider_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_camera_service_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_networkd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_obb_mounter_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -59,7 +60,7 @@ type cros_dhcpcd_exec, exec_type, file_type, cros_file_type, cros_system_file_ty
 type cros_disks_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_dlcservice_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_esif_ufd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
-type cros_huddy_monitor_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_huddly_monitor_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_hwclock_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_jetstream_update_stats_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_journald_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -83,6 +84,7 @@ type cros_oobe_config_restore_exec, exec_type, file_type, cros_file_type, cros_s
 type cros_periodic_scheduler_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_permission_broker_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_powerd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_recover_duts_script, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_restorecon_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_rsyslogd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_run_oci_exec, exec_type, file_type, cros_file_type, cros_system_file_type;

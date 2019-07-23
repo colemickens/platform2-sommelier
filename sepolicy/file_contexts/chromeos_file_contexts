@@ -43,6 +43,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 
 # USR_BIN_START_HERE
 /usr/bin/anomaly_detector       u:object_r:cros_anomaly_detector_exec:s0
+/usr/bin/arc-appfuse-provider   u:object_r:cros_arc_appfuse_provider_exec:s0
 /usr/bin/arc-networkd           u:object_r:cros_arc_networkd_exec:s0
 /usr/bin/arc-obb-mounter        u:object_r:cros_arc_obb_mounter_exec:s0
 /usr/bin/arc_camera_service     u:object_r:cros_arc_camera_service_exec:s0
@@ -103,7 +104,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/cryptohomed           u:object_r:cros_cryptohomed_exec:s0
 /usr/sbin/daisydog              u:object_r:cros_daisydog_exec:s0
 /usr/sbin/dlcservice            u:object_r:cros_dlcservice_exec:s0
-/usr/sbin/huddy-monitor         u:object_r:cros_huddy_monitor_exec:s0
+/usr/sbin/huddly-monitor         u:object_r:cros_huddly_monitor_exec:s0
 /usr/sbin/jetstream-update-stats u:object_r:cros_jetstream_update_stats_exec:s0
 /usr/sbin/mimo-monitor          u:object_r:cros_mimo_monitor_exec:s0
 /usr/sbin/mtpd                  u:object_r:cros_mtpd_exec:s0
@@ -117,6 +118,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/update_engine         u:object_r:cros_update_engine_exec:s0
 /usr/sbin/wpa_supplicant        u:object_r:cros_wpa_supplicant_exec:s0
 # USR_SBIN_END_HERE
+
+/usr/local/bin/recover_duts     u:object_r:cros_recover_duts_script:s0
 
 /usr/lib/systemd/systemd-journald u:object_r:cros_journald_exec:s0
 /usr/libexec/bluetooth/bluetoothd u:object_r:cros_bluetoothd_exec:s0
