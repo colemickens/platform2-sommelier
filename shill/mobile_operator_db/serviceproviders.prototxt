@@ -13588,9 +13588,9 @@ mno {
     mccmnc : "310120"
     mobile_apn {
       apn : "r.ispsn"
-      localized_name {
-        name : "Internet"
-      }
+    }
+    mobile_apn {
+      apn : "n.sprpre.ispsn"
     }
     sid : "4103"
     sid : "4106"
