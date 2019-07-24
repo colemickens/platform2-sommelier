@@ -279,10 +279,18 @@ class Crypto {
                                   brillo::SecureBlob* cipher_text,
                                   brillo::SecureBlob* wrapped_chaps_key) const;
 
+  // This generates keys and wraps them with the wrapping key in |key_blobs|.
+  bool GenerateAndWrapKeys(const VaultKeyset& vault_keyset,
+                           const brillo::SecureBlob& key,
+                           const brillo::SecureBlob& salt,
+                           const KeyBlobs& key_blobs,
+                           SerializedVaultKeyset* serialized) const;
+
   bool EncryptTPM(const VaultKeyset& vault_keyset,
                   const brillo::SecureBlob& key,
                   const brillo::SecureBlob& salt,
                   const std::string& obfuscated_username,
+                  KeyBlobs* out_blobs,
                   SerializedVaultKeyset* serialized) const;
 
   // Encrypt a provided blob using Scrypt encryption.
