@@ -79,19 +79,19 @@ bool TpmConnection::ConnectContextIfNeeded() {
     return false;
   }
   // We retry on failure. It might be that tcsd is starting up.
-  for (int i = 0; i < kTpmConnectRetries; i++) {
-    if (TPM_ERROR(result =
-                      GetOveralls()->Ospi_Context_Connect(context_, nullptr))) {
-      if (ERROR_CODE(result) == TSS_E_COMM_FAILURE) {
-        base::PlatformThread::Sleep(
-            base::TimeDelta::FromMilliseconds(kTpmConnectIntervalMs));
-      } else {
-        TPM_LOG(ERROR, result) << "Error connecting to TPM.";
-        return false;
-      }
-    } else {
+  int remaining_runs = kTpmConnectRetries;
+  while (true) {
+    result = GetOveralls()->Ospi_Context_Connect(context_, nullptr);
+    if (result != TSP_ERROR(TSS_E_COMM_FAILURE) || --remaining_runs == 0) {
       break;
     }
+    base::PlatformThread::Sleep(
+        base::TimeDelta::FromMilliseconds(kTpmConnectIntervalMs));
+  }
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Failed to connect context.";
+    context_.reset();
+    return false;
   }
   if (context_.value() == 0) {
     LOG(ERROR) << "Unexpected NULL context.";
