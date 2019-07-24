@@ -34,9 +34,6 @@ class BRILLO_EXPORT UdevMonitor {
   // Wraps udev_monitor_enable_receiving(). Returns true on success.
   virtual bool EnableReceiving();
 
-  // Wraps udev_monitor_set_receive_buffer_size(). Returns true on success.
-  virtual bool SetReceiveBufferSize(int size);
-
   // Wraps udev_monitor_get_fd().
   virtual int GetFileDescriptor() const;
 

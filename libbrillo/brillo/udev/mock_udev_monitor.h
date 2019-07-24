@@ -19,7 +19,6 @@ class BRILLO_EXPORT MockUdevMonitor : public UdevMonitor {
   ~MockUdevMonitor() override = default;
 
   MOCK_METHOD(bool, EnableReceiving, (), (override));
-  MOCK_METHOD(bool, SetReceiveBufferSize, (int), (override));
   MOCK_METHOD(int, GetFileDescriptor, (), (const, override));
   MOCK_METHOD(std::unique_ptr<UdevDevice>, ReceiveDevice, (), (override));
   MOCK_METHOD(bool,

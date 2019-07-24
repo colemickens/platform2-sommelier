@@ -39,18 +39,6 @@ bool UdevMonitor::EnableReceiving() {
   return false;
 }
 
-bool UdevMonitor::SetReceiveBufferSize(int size) {
-  int result = udev_monitor_set_receive_buffer_size(monitor_, size);
-  if (result == 0)
-    return true;
-
-  VLOG(2) << StringPrintf(
-      "udev_monitor_set_receive_buffer_size"
-      "(%p) returned %d.",
-      monitor_, result);
-  return false;
-}
-
 int UdevMonitor::GetFileDescriptor() const {
   int file_descriptor = udev_monitor_get_fd(monitor_);
   if (file_descriptor >= 0)
