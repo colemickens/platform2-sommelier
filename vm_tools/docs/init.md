@@ -31,6 +31,10 @@ e.g. `100-process.textproto` will start before `90-setup-process.textproto`.
 If a first process must start before a second, the first process will have to
 have the `wait_for_exit` flag set in the `LaunchProcessRequest` message.
 
+To launch a VM and without any of the processes in the /etc/maitred folder,
+you can provide a kernel parameter - `maitred.no\_startup\_processes`.
+Once the VM is launched, it will accept `LaunchProcess` rpcs like normal.
+
 ### Process Privileges
 
 Processes launched by `maitred` run as root with full privileges.  If the sender

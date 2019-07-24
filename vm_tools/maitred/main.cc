@@ -56,6 +56,7 @@ constexpr char kMaitredInitPath[] = "/etc/maitred/";
 // Kernel Command line parameter
 constexpr char kMaitredPortParam[] = "maitred.listen_port=";
 constexpr char kMaitredPortParamFmt[] = "maitred.listen_port=%d";
+constexpr char kMaitredStartProcessesParam[] = "maitred.no_startup_processes";
 
 // File descriptor that points to /dev/kmsg.  Needs to be a global variable
 // because logging::LogMessageHandlerFunction is just a function pointer so we
@@ -145,12 +146,39 @@ int main(int argc, char** argv) {
   g_kmsg_fd = kmsg_fd.get();
   logging::SetLogMessageHandler(LogToKmsg);
 
-  // Do init setup if we are running as init.
   std::unique_ptr<vm_tools::maitred::Init> init;
-  if (strcmp(program_invocation_short_name, "init") == 0) {
-    init = vm_tools::maitred::Init::Create();
-    CHECK(init);
+  init = vm_tools::maitred::Init::Create();
+  CHECK(init);
 
+  // Check for kernel parameter to set startup listener port.
+  int startup_port = vm_tools::kDefaultStartupListenerPort;
+  // Check for kernel parameter to disable startup processes.
+  bool run_startup_processes = true;
+
+  // Parse kernel command line
+  std::string kernel_parameters;
+  if (base::ReadFileToString(base::FilePath(kKernelCmdFile),
+                             &kernel_parameters)) {
+    std::vector<base::StringPiece> params = base::SplitStringPiece(
+        kernel_parameters, " ", base::WhitespaceHandling::TRIM_WHITESPACE,
+        base::SplitResult::SPLIT_WANT_NONEMPTY);
+
+    for (auto& p : params) {
+      if (base::StartsWith(p, kMaitredPortParam,
+                           base::CompareCase::SENSITIVE)) {
+        int read_port;
+        if (sscanf(p.as_string().c_str(), kMaitredPortParamFmt, &read_port) !=
+            1) {
+          continue;
+        }
+        startup_port = read_port;
+      } else if (p == kMaitredStartProcessesParam) {
+        run_startup_processes = false;
+      }
+    }
+  }
+
+  if (run_startup_processes) {
     // Check for startup applications in the maitred init folder.
     base::FileEnumerator file_enum(base::FilePath(kMaitredInitPath), true,
                                    base::FileEnumerator::FILES);
@@ -267,33 +295,6 @@ int main(int argc, char** argv) {
           base::Unretained(server.get()))));
 
   LOG(INFO) << "Server listening on port " << vm_tools::kMaitredPort;
-
-  // Check for kenel parameter to set startup listener port.
-  int startup_port = vm_tools::kDefaultStartupListenerPort;
-  std::string kernel_parameters;
-  if (base::ReadFileToString(base::FilePath(kKernelCmdFile),
-                             &kernel_parameters)) {
-    std::vector<base::StringPiece> params = base::SplitStringPiece(
-        kernel_parameters, " ", base::WhitespaceHandling::TRIM_WHITESPACE,
-        base::SplitResult::SPLIT_WANT_NONEMPTY);
-
-    for (auto& p : params) {
-      if (!base::StartsWith(p, kMaitredPortParam,
-                            base::CompareCase::SENSITIVE)) {
-        continue;
-      }
-
-      int read_port;
-      if (sscanf(p.as_string().c_str(), kMaitredPortParamFmt, &read_port) !=
-          1) {
-        continue;
-      }
-
-      startup_port = read_port;
-      break;
-    }
-  }
-
   LOG(INFO) << "Using startup listener port: " << startup_port;
 
   // Notify the host system that we are ready.
