@@ -50,6 +50,10 @@ void Container::set_homedir(const std::string& homedir) {
   homedir_ = homedir;
 }
 
+void Container::set_listening_tcp4_ports(std::vector<uint16_t> ports) {
+  listening_tcp4_ports_ = std::move(ports);
+}
+
 void Container::ConnectToGarcon(const std::string& addr) {
   garcon_stub_ = std::make_unique<vm_tools::container::Garcon::Stub>(
       grpc::CreateChannel(addr, grpc::InsecureChannelCredentials()));
@@ -105,6 +109,32 @@ bool Container::LaunchVshd(uint32_t port, std::string* out_error) {
     LOG(ERROR) << "Failed to launch vshd in container " << name_ << ": "
                << status.error_message() << " code: " << status.error_code();
     out_error->assign("gRPC failure launching vshd in container: " +
+                      status.error_message());
+    return false;
+  }
+  out_error->assign(container_response.failure_reason());
+  return container_response.success();
+}
+
+bool Container::ConnectChunnel(uint32_t chunneld_port,
+                               uint32_t tcp4_port,
+                               std::string* out_error) {
+  vm_tools::container::ConnectChunnelRequest container_request;
+  vm_tools::container::ConnectChunnelResponse container_response;
+  container_request.set_chunneld_port(chunneld_port);
+  container_request.set_target_tcp4_port(tcp4_port);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status = garcon_stub_->ConnectChunnel(&ctx, container_request,
+                                                     &container_response);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to connect chunnel in container " << name_ << ": "
+               << status.error_message() << " code: " << status.error_code();
+    out_error->assign("gRPC failure connecting chunnel in container: " +
                       status.error_message());
     return false;
   }

@@ -33,6 +33,7 @@
 #include <base/sys_info.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chunneld/proto_bindings/chunneld_service.pb.h>
 #include <dbus/object_proxy.h>
 
 #include "vm_tools/cicerone/tzif_parser.h"
@@ -70,9 +71,6 @@ constexpr char kRuntimeDir[] = "/run/vm_cicerone";
 // SSH port for containers.
 constexpr char kContainerSshPort[] = "2222";
 
-// SSH binary name.
-constexpr char kSshBin[] = "/usr/bin/ssh";
-
 // SSH identity file name.
 constexpr char kSshIdentityFilename[] = "private_key";
 
@@ -95,6 +93,12 @@ const uint16_t kStaticForwardPorts[] = {
     8888,  // ipython/jupyter
     9005,  // Firebase login
     9100,  // Flutter
+};
+
+// TCP4 ports blacklisted from tunneling to the container.
+const uint16_t kBlacklistedPorts[] = {
+    2222,  // cros-sftp service
+    5355,  // link-local mDNS
 };
 
 // Path to the unix domain socket Concierge listens on for connections
@@ -720,7 +724,9 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
         LOG(ERROR) << "Failed to get container " << container_name
                    << " username for SSH forwarding: " << error_msg;
       } else {
-        StartSshForwarding(owner_id, string_ip, username);
+        // TODO(crbug.com/990215): Remove SSH config setup once chunnel is
+        // stable.
+        SetUpSshConfig(owner_id, string_ip, username);
       }
     }
   }
@@ -803,6 +809,93 @@ void Service::ContainerShutdown(std::string container_name,
   exported_object_->SendSignal(&signal);
   *result = true;
   event->Signal();
+}
+
+void Service::UpdateListeningPorts(
+    std::map<std::string, std::vector<uint16_t>> listening_tcp4_ports,
+    const uint32_t cid,
+    bool* result,
+    base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  CHECK(result);
+  CHECK(event);
+
+  *result = false;
+  VirtualMachine* vm;
+  std::string owner_id;
+  std::string vm_name;
+
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
+    event->Signal();
+    return;
+  }
+
+  for (auto pair : listening_tcp4_ports) {
+    Container* c = vm->GetContainerForName(pair.first);
+    if (c == nullptr) {
+      // This is a container managed by LXD but not by cicerone.
+      continue;
+    }
+
+    c->set_listening_tcp4_ports(pair.second);
+  }
+
+  SendListeningPorts();
+
+  *result = true;
+  event->Signal();
+}
+
+void Service::SendListeningPorts() {
+  chunneld::UpdateListeningPortsRequest request;
+  auto tcp4_forward_targets = request.mutable_tcp4_forward_targets();
+
+  for (auto& vm_pair : vms_) {
+    std::vector<std::string> container_names =
+        vm_pair.second->GetContainerNames();
+
+    for (auto container_name : container_names) {
+      Container* c = vm_pair.second->GetContainerForName(container_name);
+      std::vector<uint16_t> listening_ports = c->listening_tcp4_ports();
+      for (uint16_t port : listening_ports) {
+        bool is_blacklisted = false;
+        for (uint16_t blacklisted_port : kBlacklistedPorts) {
+          if (port == blacklisted_port) {
+            is_blacklisted = true;
+            break;
+          }
+        }
+        if (is_blacklisted)
+          continue;
+
+        chunneld::UpdateListeningPortsRequest_Tcp4ForwardTarget target;
+        target.set_vm_name(vm_pair.first.second);
+        target.set_container_name(container_name);
+        target.set_owner_id(vm_pair.first.first);
+        target.set_vsock_cid(vm_pair.second->cid());
+        (*tcp4_forward_targets)[port] = target;
+      }
+    }
+  }
+
+  dbus::MethodCall method_call(chunneld::kChunneldInterface,
+                               chunneld::kUpdateListeningPortsMethod);
+  dbus::MessageWriter writer(&method_call);
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode UpdateListeningPorts protobuf";
+    return;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      chunneld_service_proxy_->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    // If there's some issue with the chunneld service, don't make that
+    // propagate to a higher level failure and just log it. We have logic for
+    // setting this up again if that service restarts.
+    LOG(WARNING) << "Failed to send dbus message to chunneld to update "
+                 << "listening ports";
+  }
 }
 
 void Service::ContainerExportProgress(
@@ -1210,6 +1303,7 @@ bool Service::Init(
       {kImportLxdContainerMethod, &Service::ImportLxdContainer},
       {kCancelExportLxdContainerMethod, &Service::CancelExportLxdContainer},
       {kCancelImportLxdContainerMethod, &Service::CancelImportLxdContainer},
+      {kConnectChunnelMethod, &Service::ConnectChunnel},
       {kGetDebugInformationMethod, &Service::GetDebugInformation},
       {kAppSearchMethod, &Service::AppSearch},
       {kApplyAnsiblePlaybookMethod, &Service::ApplyAnsiblePlaybook},
@@ -1248,6 +1342,14 @@ bool Service::Init(
   if (!url_handler_service_proxy_) {
     LOG(ERROR) << "Unable to get dbus proxy for "
                << chromeos::kUrlHandlerServiceName;
+    return false;
+  }
+  chunneld_service_proxy_ = bus_->GetObjectProxy(
+      vm_tools::chunneld::kChunneldServiceName,
+      dbus::ObjectPath(vm_tools::chunneld::kChunneldServicePath));
+  if (!chunneld_service_proxy_) {
+    LOG(ERROR) << "Unable to get dbus proxy for "
+               << vm_tools::chunneld::kChunneldServiceName;
     return false;
   }
   crosdns_service_proxy_ =
@@ -2502,6 +2604,62 @@ std::unique_ptr<dbus::Response> Service::CancelImportLxdContainer(
   return dbus_response;
 }
 
+std::unique_ptr<dbus::Response> Service::ConnectChunnel(
+    dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received ConnectChunnel request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  ConnectChunnelRequest request;
+  ConnectChunnelResponse response;
+  response.set_status(ConnectChunnelResponse::UNKNOWN);
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse ConnectChunnelRequest from message";
+    response.set_status(ConnectChunnelResponse::FAILED);
+    response.set_failure_reason(
+        "unable to parse ConnectChunnelRequest from message");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_status(ConnectChunnelResponse::FAILED);
+    response.set_failure_reason("Requested VM does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  std::string container_name = request.container_name().empty()
+                                   ? kDefaultContainerName
+                                   : request.container_name();
+  Container* container = vm->GetContainerForName(container_name);
+  if (!container) {
+    LOG(ERROR) << "Requested container does not exist: " << container_name;
+    response.set_status(ConnectChunnelResponse::FAILED);
+    response.set_failure_reason(base::StringPrintf(
+        "requested container does not exist: %s", container_name.c_str()));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string error_msg;
+  if (!container->ConnectChunnel(request.chunneld_port(),
+                                 request.target_tcp4_port(), &error_msg)) {
+    response.set_status(ConnectChunnelResponse::FAILED);
+    response.set_failure_reason(error_msg);
+  } else {
+    response.set_status(ConnectChunnelResponse::SUCCESS);
+  }
+
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
 std::unique_ptr<dbus::Response> Service::GetDebugInformation(
     dbus::MethodCall* method_call) {
   LOG(INFO) << "Received GetDebugInformation request";
@@ -2710,9 +2868,9 @@ bool Service::GetVirtualMachineForCidOrToken(const uint32_t cid,
   }
 }
 
-void Service::StartSshForwarding(const std::string& owner_id,
-                                 const std::string& ip,
-                                 const std::string& username) {
+void Service::SetUpSshConfig(const std::string& owner_id,
+                             const std::string& ip,
+                             const std::string& username) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
   std::string host_private_key, container_public_key, hostname;
@@ -2759,37 +2917,6 @@ void Service::StartSshForwarding(const std::string& owner_id,
                                      base::FILE_PERMISSION_READ_BY_USER |
                                          base::FILE_PERMISSION_WRITE_BY_USER)) {
     LOG(ERROR) << "Failed to set permissions on SSH identity file";
-    return;
-  }
-  ssh_process_.Reset(0);
-
-  ssh_process_.AddArg(kSshBin);
-
-  // Specify the identity file.
-  ssh_process_.AddArg("-i");
-  ssh_process_.AddArg(identity_path.value());
-
-  // Specify the known hosts file.
-  ssh_process_.AddArg("-o");
-  ssh_process_.AddArg(std::string("UserKnownHostsFile=") +
-                      known_hosts_path.value());
-
-  // Don't run a command; port forward only.
-  ssh_process_.AddArg("-N");
-
-  // cros-sftp uses a nonstandard port.
-  ssh_process_.AddArg("-p");
-  ssh_process_.AddArg(kContainerSshPort);
-
-  for (const uint16_t port : kStaticForwardPorts) {
-    ssh_process_.AddArg("-L");
-    ssh_process_.AddArg(base::StringPrintf("%u:localhost:%u", port, port));
-  }
-
-  ssh_process_.AddArg(username + "@" + ip);
-
-  if (!ssh_process_.Start()) {
-    LOG(ERROR) << "Failed to start SSH process";
     return;
   }
 }

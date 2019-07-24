@@ -164,6 +164,8 @@ void ServiceTestingHelper::VerifyAndClearMockExpectations() {
   ASSERT_TRUE(testing::Mock::VerifyAndClearExpectations(
       mock_url_handler_service_proxy_.get()));
   ASSERT_TRUE(testing::Mock::VerifyAndClearExpectations(
+      mock_chunneld_service_proxy_.get()));
+  ASSERT_TRUE(testing::Mock::VerifyAndClearExpectations(
       mock_crosdns_service_proxy_.get()));
   ASSERT_TRUE(testing::Mock::VerifyAndClearExpectations(
       mock_concierge_service_proxy_.get()));
@@ -176,7 +178,8 @@ void ServiceTestingHelper::ExpectNoDBusMessages() {
   EXPECT_CALL(*mock_exported_object_, SendSignal(_)).Times(0);
   for (const auto& object_proxy :
        {mock_vm_applications_service_proxy_, mock_url_handler_service_proxy_,
-        mock_crosdns_service_proxy_, mock_concierge_service_proxy_}) {
+        mock_chunneld_service_proxy_, mock_crosdns_service_proxy_,
+        mock_concierge_service_proxy_}) {
     EXPECT_CALL(*object_proxy, MockCallMethodAndBlockWithErrorDetails(_, _, _))
         .Times(0);
     EXPECT_CALL(*object_proxy, MockCallMethodAndBlock(_, _)).Times(0);
@@ -503,6 +506,7 @@ void ServiceTestingHelper::SetDbusCallbackNames() {
       kGetDebugInformationMethod;
   dbus_callbacks_[kApplyAnsiblePlaybook].method_name =
       kApplyAnsiblePlaybookMethod;
+  dbus_callbacks_[kConnectChunnel].method_name = kConnectChunnelMethod;
 
   // Check we didn't forget any.
   for (const auto& callback_info : dbus_callbacks_) {
@@ -560,6 +564,9 @@ void ServiceTestingHelper::SetupDBus(MockType mock_type) {
     mock_url_handler_service_proxy_ =
         new dbus::MockObjectProxy(mock_bus_.get(), "", dbus::ObjectPath());
 
+    mock_chunneld_service_proxy_ =
+        new dbus::MockObjectProxy(mock_bus_.get(), "", dbus::ObjectPath());
+
     mock_crosdns_service_proxy_ =
         new dbus::MockObjectProxy(mock_bus_.get(), "", dbus::ObjectPath());
 
@@ -576,6 +583,9 @@ void ServiceTestingHelper::SetupDBus(MockType mock_type) {
         mock_bus_.get(), "", dbus::ObjectPath());
 
     mock_url_handler_service_proxy_ = new NiceMock<dbus::MockObjectProxy>(
+        mock_bus_.get(), "", dbus::ObjectPath());
+
+    mock_chunneld_service_proxy_ = new NiceMock<dbus::MockObjectProxy>(
         mock_bus_.get(), "", dbus::ObjectPath());
 
     mock_crosdns_service_proxy_ = new NiceMock<dbus::MockObjectProxy>(
@@ -600,6 +610,9 @@ void ServiceTestingHelper::SetupDBus(MockType mock_type) {
 
   EXPECT_CALL(*mock_bus_, GetObjectProxy(chromeos::kUrlHandlerServiceName, _))
       .WillOnce(Return(mock_url_handler_service_proxy_.get()));
+
+  EXPECT_CALL(*mock_bus_, GetObjectProxy(chunneld::kChunneldServiceName, _))
+      .WillOnce(Return(mock_chunneld_service_proxy_.get()));
 
   EXPECT_CALL(*mock_bus_, GetObjectProxy(crosdns::kCrosDnsServiceName, _))
       .WillOnce(Return(mock_crosdns_service_proxy_.get()));

@@ -318,8 +318,35 @@ grpc::Status TremplinListenerImpl::UpdateListeningPorts(
     grpc::ServerContext* ctx,
     const vm_tools::tremplin::ListeningPortInfo* request,
     vm_tools::tremplin::EmptyMessage* response) {
-  return grpc::Status(grpc::UNIMPLEMENTED,
-                      "UpdateListeningPorts is not yet implemented");
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
+  if (cid == 0) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failed parsing vsock cid for TremplinListener");
+  }
+
+  std::map<std::string, std::vector<uint16_t>> listening_tcp4_ports;
+  for (auto& pair : request->container_ports()) {
+    std::vector<uint16_t> target_ports;
+    for (int i = 0; i < pair.second.listening_tcp4_ports_size(); i++) {
+      target_ports.push_back(pair.second.listening_tcp4_ports(i));
+    }
+
+    listening_tcp4_ports[pair.first] = target_ports;
+  }
+
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+
+  bool result = false;
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::Bind(&vm_tools::cicerone::Service::UpdateListeningPorts, service_,
+                 std::move(listening_tcp4_ports), cid, &result, &event));
+  event.Wait();
+  if (!result) {
+    LOG(ERROR) << "Error in tremplin listener UpdateListeningPorts";
+  }
+  return grpc::Status::OK;
 }
 
 // Returns 0 on failure, otherwise returns the 32-bit vsock cid.

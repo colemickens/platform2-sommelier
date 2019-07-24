@@ -66,6 +66,7 @@ class ServiceTestingHelper {
     kCancelImportLxdContainer,
     kGetDebugInformation,
     kApplyAnsiblePlaybook,
+    kConnectChunnel,
 
     kNumDbusCalls
   };
@@ -117,6 +118,9 @@ class ServiceTestingHelper {
   }
   dbus::MockObjectProxy& get_mock_url_handler_service_proxy() {
     return *mock_url_handler_service_proxy_;
+  }
+  dbus::MockObjectProxy& get_mock_chunneld_service_proxy() {
+    return *mock_chunneld_service_proxy_;
   }
   dbus::MockObjectProxy& get_mock_crosdns_service_proxy() {
     return *mock_crosdns_service_proxy_;
@@ -264,6 +268,7 @@ class ServiceTestingHelper {
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
   scoped_refptr<dbus::MockObjectProxy> mock_vm_applications_service_proxy_;
   scoped_refptr<dbus::MockObjectProxy> mock_url_handler_service_proxy_;
+  scoped_refptr<dbus::MockObjectProxy> mock_chunneld_service_proxy_;
   scoped_refptr<dbus::MockObjectProxy> mock_crosdns_service_proxy_;
   scoped_refptr<dbus::MockObjectProxy> mock_concierge_service_proxy_;
 

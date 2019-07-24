@@ -63,6 +63,14 @@ class Container {
   // Sets the container's uid=1000 primary user's homedir.
   void set_homedir(const std::string& homedir);
 
+  // Gets the listening TCP4 ports for the container.
+  const std::vector<uint16_t>& listening_tcp4_ports() const {
+    return listening_tcp4_ports_;
+  }
+
+  // Sets the listening TCP4 ports for the container.
+  void set_listening_tcp4_ports(std::vector<uint16_t> ports);
+
   Container(const std::string& name,
             const std::string& token,
             base::WeakPtr<VirtualMachine> vm);
@@ -109,12 +117,17 @@ class Container {
   vm_tools::container::ApplyAnsiblePlaybookResponse::Status
   ApplyAnsiblePlaybook(const std::string& playbook, std::string* out_error);
 
+  bool ConnectChunnel(uint32_t chunneld_port,
+                      uint32_t tcp4_port,
+                      std::string* out_error);
+
  private:
   std::string name_;
   std::string token_;
   uint32_t ipv4_address_;
   std::string drivefs_mount_path_;
   std::string homedir_;
+  std::vector<uint16_t> listening_tcp4_ports_;
 
   // The VM that owns this container.
   base::WeakPtr<VirtualMachine> vm_;

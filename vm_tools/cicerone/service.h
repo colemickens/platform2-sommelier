@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/files/file_descriptor_watcher_posix.h>
@@ -172,6 +173,15 @@ class Service final {
                          const uint32_t cid,
                          bool* result,
                          base::WaitableEvent* event);
+
+  // Notifies the service of a change in |listening_tcp4_ports| for the VM with
+  // |cid|. Sets |result| to true if this maps to a currently running VM; false
+  // otherwise. Signals |event| when done.
+  void UpdateListeningPorts(
+      std::map<std::string, std::vector<uint16_t>> listening_tcp4_ports,
+      const uint32_t cid,
+      bool* result,
+      base::WaitableEvent* event);
 
   // Sends a D-Bus signal to inform listeners on update for the progress or
   // completion of container export. It will use |cid| to resolve the request to
@@ -359,6 +369,9 @@ class Service final {
   std::unique_ptr<dbus::Response> CancelImportLxdContainer(
       dbus::MethodCall* method_call);
 
+  // Handles a request to connect to chunnel.
+  std::unique_ptr<dbus::Response> ConnectChunnel(dbus::MethodCall* method_call);
+
   // Handles a request to get debug information.
   std::unique_ptr<dbus::Response> GetDebugInformation(
       dbus::MethodCall* method_call);
@@ -380,11 +393,10 @@ class Service final {
                                       std::string* owner_id_out,
                                       std::string* name_out);
 
-  // Starts SSH port forwarding for known ports to the default VM/container.
-  // SSH forwarding will not work for other VMs/containers.
-  void StartSshForwarding(const std::string& owner_id,
-                          const std::string& ip,
-                          const std::string& username);
+  // Sets up the SSH config for connecting to the default VM/container.
+  void SetUpSshConfig(const std::string& owner_id,
+                      const std::string& ip,
+                      const std::string& username);
 
   // Gets the container's SSH keys from concierge.
   bool GetContainerSshKeys(const std::string& owner_id,
@@ -426,6 +438,9 @@ class Service final {
 
   void OnSignalReadable();
 
+  // Send all listening ports to chunneld.
+  void SendListeningPorts();
+
   // Gets a VirtualMachine pointer to the registered VM with corresponding
   // |owner_id| and |vm_name|. Returns a nullptr if not found.
   VirtualMachine* FindVm(const std::string& owner_id,
@@ -440,11 +455,16 @@ class Service final {
   // Running VMs.
   std::map<VmKey, std::unique_ptr<VirtualMachine>> vms_;
 
+  // Map of TCP4 ports to forwarding targets.
+  using TcpForwardTarget = std::pair<std::string, std::string>;
+  std::map<uint16_t, TcpForwardTarget> listening_tcp4_ports_;
+
   // Connection to the system bus.
   scoped_refptr<dbus::Bus> bus_;
   dbus::ExportedObject* exported_object_;             // Owned by |bus_|.
   dbus::ObjectProxy* vm_applications_service_proxy_;  // Owned by |bus_|.
   dbus::ObjectProxy* url_handler_service_proxy_;      // Owned by |bus_|.
+  dbus::ObjectProxy* chunneld_service_proxy_;         // Owned by |bus_|.
   dbus::ObjectProxy* crosdns_service_proxy_;          // Owned by |bus_|.
   dbus::ObjectProxy* concierge_service_proxy_;        // Owned by |bus_|.
 
