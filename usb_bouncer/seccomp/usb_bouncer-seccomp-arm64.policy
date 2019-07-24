@@ -48,6 +48,5 @@ set_tls: 1
 # For connecting to session_manager over dbus.
 socket: arg0 == AF_UNIX && arg1 == SOCK_STREAM|SOCK_CLOEXEC && arg2 == 0 || arg0 == AF_UNIX && arg1 == SOCK_DGRAM|SOCK_CLOEXEC && arg2 == 0
 tgkill: 1
-ugetrlimit: 1
 umask: 1
 write: 1
