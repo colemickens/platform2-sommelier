@@ -23,7 +23,9 @@ allow chromeos_domain self:process {
 allow chromeos_domain self:fd use;
 
 r_dir_file(chromeos_domain, self);
+
 r_dir_file(chromeos_domain, proc)
+allow chromeos_domain proc_cpuinfo:file r_file_perms;
 
 allow chromeos_domain self:{ fifo_file file } rw_file_perms;
 allow chromeos_domain self:unix_dgram_socket { create_socket_perms sendto };
@@ -36,6 +38,7 @@ allow chromeos_domain rootfs:lnk_file r_file_perms;
 
 allow chromeos_domain sysfs:dir search;
 allow chromeos_domain sysfs:lnk_file { read getattr };
+r_dir_file(chromeos_domain, sysfs_devices_system_cpu);
 
 allow chromeos_domain device:dir search;
 allow chromeos_domain cros_labeled_dev_type:lnk_file r_file_perms;
