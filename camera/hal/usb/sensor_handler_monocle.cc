@@ -11,13 +11,14 @@
 #include <rts_read_sensor.h>
 
 #include "cros-camera/common.h"
+#include "hal/usb/quirks.h"
 
 namespace cros {
 
 SensorHandlerMonocle::SensorHandlerMonocle(
     const DeviceInfo& device_info, const SupportedFormats& supported_formats)
     : handle_(nullptr) {
-  if (!device_info.monocle_quirks) {
+  if (!(device_info.quirks & kQuirkMonocle)) {
     return;
   }
 

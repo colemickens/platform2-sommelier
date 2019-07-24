@@ -31,7 +31,8 @@ std::vector<int32_t> GetJpegAvailableThumbnailSizes(
 
 // Find all formats in preference order.
 // The resolutions in returned SupportedFormats vector are unique.
-SupportedFormats GetQualifiedFormats(const SupportedFormats& supported_formats);
+SupportedFormats GetQualifiedFormats(const SupportedFormats& supported_formats,
+                                     uint32_t quirks);
 
 // Check |stream| is supported in |supported_formats|.
 bool IsFormatSupported(const SupportedFormats& supported_formats,

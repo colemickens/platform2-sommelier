@@ -17,6 +17,7 @@
 #include "hal/usb/camera_characteristics.h"
 #include "hal/usb/common_types.h"
 #include "hal/usb/metadata_handler.h"
+#include "hal/usb/quirks.h"
 #include "hal/usb/stream_format.h"
 #include "hal/usb/v4l2_camera_device.h"
 #include "hal/usb/vendor_tag.h"
@@ -41,7 +42,8 @@ ScopedCameraMetadata GetStaticInfoFromDeviceInfo(
   SupportedFormats supported_formats =
       V4L2CameraDevice::GetDeviceSupportedFormats(device_info.device_path);
   bool is_external = device_info.lens_facing == ANDROID_LENS_FACING_EXTERNAL;
-  SupportedFormats qualified_formats = GetQualifiedFormats(supported_formats);
+  SupportedFormats qualified_formats =
+      GetQualifiedFormats(supported_formats, device_info.quirks);
   if (MetadataHandler::FillMetadataFromSupportedFormats(
           qualified_formats, &metadata, is_external) != 0) {
     return nullptr;
@@ -364,6 +366,9 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
   info.usb_pid = pid;
   info.is_vivid = is_vivid;
   info.power_line_frequency = V4L2CameraDevice::GetPowerLineFrequency(path);
+  if (!is_vivid) {
+    info.quirks |= GetQuirks(vid, pid);
+  }
 
   if (info_ptr == nullptr) {
     info.lens_facing = ANDROID_LENS_FACING_EXTERNAL;

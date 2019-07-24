@@ -20,6 +20,7 @@
 
 #include "cros-camera/common.h"
 #include "cros-camera/timezone.h"
+#include "hal/usb/quirks.h"
 
 namespace cros {
 
@@ -55,6 +56,22 @@ std::vector<T> ParseCommaSeparated(const std::string& value) {
   return res;
 }
 
+uint32_t ParseQuirks(const std::string& value) {
+  static const std::map<std::string, uint32_t> kNameMap = {
+      {"monocle", kQuirkMonocle},
+      {"prefer_mjpeg", kQuirkPreferMjpeg},
+  };
+  std::vector<std::string> names = base::SplitString(
+      value, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  uint32_t quirks = 0;
+  for (const auto& name : names) {
+    auto it = kNameMap.find(name);
+    CHECK(it != kNameMap.end()) << "Invalid quirk name " << name;
+    quirks |= it->second;
+  }
+  return quirks;
+}
+
 void SetEntry(const std::string& key,
               const std::string& value,
               DeviceInfo* info) {
@@ -67,8 +84,8 @@ void SetEntry(const std::string& key,
   } else if (key == "constant_framerate_unsupported") {
     std::istringstream(value) >> std::boolalpha >>
         info->constant_framerate_unsupported;
-  } else if (key == "monocle_quirks") {
-    std::istringstream(value) >> std::boolalpha >> info->monocle_quirks;
+  } else if (key == "quirks") {
+    info->quirks = ParseQuirks(value);
   } else if (key == "lens_facing") {
     info->lens_facing = stoi(value);
   } else if (key == "sensor_orientation") {

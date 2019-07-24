@@ -13,21 +13,31 @@
 #include <system/graphics.h>
 
 #include "cros-camera/common.h"
+#include "hal/usb/quirks.h"
 
 namespace cros {
 
-static std::vector<int> kSupportedHalFormats{
+namespace {
+
+constexpr int kSupportedHalFormats[] = {
     HAL_PIXEL_FORMAT_BLOB, HAL_PIXEL_FORMAT_YCbCr_420_888,
     HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED};
 
-static const std::vector<uint32_t> GetSupportedFourCCs() {
+std::vector<uint32_t> GetSupportedFourCCs(bool prefer_mjpeg) {
   // The preference of supported fourccs in the list is from high to low.
-  static const std::vector<uint32_t> kSupportedFourCCs = {
+  if (prefer_mjpeg) {
+    return {
+        V4L2_PIX_FMT_MJPEG,
+        V4L2_PIX_FMT_YUYV,
+    };
+  }
+  return {
       V4L2_PIX_FMT_YUYV,
       V4L2_PIX_FMT_MJPEG,
   };
-  return kSupportedFourCCs;
 }
+
+}  // namespace
 
 // Return corresponding format by matching resolution |width|x|height| in
 // |formats|.
@@ -117,10 +127,12 @@ std::vector<int32_t> GetJpegAvailableThumbnailSizes(
   return ret;
 }
 
-SupportedFormats GetQualifiedFormats(
-    const SupportedFormats& supported_formats) {
+SupportedFormats GetQualifiedFormats(const SupportedFormats& supported_formats,
+                                     uint32_t quirks) {
   // The preference of supported fourccs in the list is from high to low.
-  const std::vector<uint32_t> supported_fourccs = GetSupportedFourCCs();
+  bool prefer_mjpeg = quirks & kQuirkPreferMjpeg;
+  const std::vector<uint32_t> supported_fourccs =
+      GetSupportedFourCCs(prefer_mjpeg);
   SupportedFormats qualified_formats;
   for (const auto& supported_fourcc : supported_fourccs) {
     for (const auto& supported_format : supported_formats) {
@@ -161,8 +173,9 @@ SupportedFormats GetQualifiedFormats(
 
 bool IsFormatSupported(const SupportedFormats& supported_formats,
                        const camera3_stream_t& stream) {
-  if (std::find(kSupportedHalFormats.begin(), kSupportedHalFormats.end(),
-                stream.format) == kSupportedHalFormats.end()) {
+  if (std::find(std::begin(kSupportedHalFormats),
+                std::end(kSupportedHalFormats),
+                stream.format) == std::end(kSupportedHalFormats)) {
     return false;
   }
   for (const auto& supported_format : supported_formats) {

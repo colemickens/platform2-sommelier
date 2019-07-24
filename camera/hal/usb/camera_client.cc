@@ -54,7 +54,8 @@ CameraClient::CameraClient(int id,
 
   SupportedFormats supported_formats =
       device_->GetDeviceSupportedFormats(device_info_.device_path);
-  qualified_formats_ = GetQualifiedFormats(supported_formats);
+  qualified_formats_ =
+      GetQualifiedFormats(supported_formats, device_info_.quirks);
 
   metadata_handler_ = std::make_unique<MetadataHandler>(
       static_info, device_info, qualified_formats_);
@@ -526,7 +527,8 @@ CameraClient::RequestHandler::RequestHandler(
       is_video_recording_(false) {
   SupportedFormats supported_formats =
       device_->GetDeviceSupportedFormats(device_info_.device_path);
-  qualified_formats_ = GetQualifiedFormats(supported_formats);
+  qualified_formats_ =
+      GetQualifiedFormats(supported_formats, device_info_.quirks);
 }
 
 CameraClient::RequestHandler::~RequestHandler() {}

@@ -12,6 +12,7 @@
 
 #include "cros-camera/common.h"
 #include "cros-camera/utils/camera_config.h"
+#include "hal/usb/quirks.h"
 #include "hal/usb/stream_format.h"
 #include "hal/usb/v4l2_camera_device.h"
 #include "hal/usb/vendor_tag.h"
@@ -634,7 +635,7 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
   UPDATE(ANDROID_CONTROL_AE_ANTIBANDING_MODE, &ae_antibanding_mode, 1);
 
   // Set vendor tags for specified boards.
-  if (device_info.monocle_quirks) {
+  if (device_info.quirks & kQuirkMonocle) {
     int32_t timestamp_sync =
         static_cast<int32_t>(mojom::CameraSensorSyncTimestamp::NEAREST);
     UPDATE(kVendorTagTimestampSync, &timestamp_sync, 1);

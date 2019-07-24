@@ -56,6 +56,7 @@
         'frame_buffer.cc',
         'image_processor.cc',
         'metadata_handler.cc',
+        'quirks.cc',
         'sensor_handler.cc',
         'stream_format.cc',
         'test_pattern.cc',

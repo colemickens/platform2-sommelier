@@ -49,6 +49,9 @@ struct DeviceInfo {
   uint32_t lens_facing;
   int32_t sensor_orientation = 0;
 
+  // Special settings for device specific quirks.
+  uint32_t quirks = 0;
+
   // These fields are not available for external cameras.
   std::vector<float> lens_info_available_apertures;
   std::vector<float> lens_info_available_focal_lengths;
@@ -58,9 +61,6 @@ struct DeviceInfo {
   int32_t sensor_info_pixel_array_size_height;
   float sensor_info_physical_size_width;
   float sensor_info_physical_size_height;
-
-  // Special setting for specified camera modules.
-  bool monocle_quirks = false;
 };
 
 typedef std::vector<DeviceInfo> DeviceInfos;
