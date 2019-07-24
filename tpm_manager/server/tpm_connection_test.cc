@@ -37,6 +37,7 @@ class TpmConnectionTest : public ::hwsec::Tpm1HwsecTest {
 };
 
 TEST_F(TpmConnectionTest, CannotCreateContext) {
+  EXPECT_CALL_OVERALLS(Ospi_Context_Connect(_, _)).Times(0);
   TpmConnection result_connection;
   EXPECT_CALL_OVERALLS(Ospi_Context_Create(_))
       .WillOnce(Return(TSP_ERROR(TSS_E_INTERNAL_ERROR)));

@@ -78,6 +78,11 @@ bool TpmConnection::ConnectContextIfNeeded() {
     TPM_LOG(ERROR, result) << "Error connecting to TPM.";
     return false;
   }
+  if (context_.value() == 0) {
+    LOG(ERROR) << "Unexpected NULL context.";
+    return false;
+  }
+
   // We retry on failure. It might be that tcsd is starting up.
   int remaining_runs = kTpmConnectRetries;
   while (true) {
@@ -91,10 +96,6 @@ bool TpmConnection::ConnectContextIfNeeded() {
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Failed to connect context.";
     context_.reset();
-    return false;
-  }
-  if (context_.value() == 0) {
-    LOG(ERROR) << "Unexpected NULL context.";
     return false;
   }
 
