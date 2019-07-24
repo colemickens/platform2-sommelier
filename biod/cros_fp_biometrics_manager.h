@@ -134,7 +134,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
   // raw pointer to BiodMetrics. We must ensure CrosFpDevice is destructed
   // first.
   std::unique_ptr<BiodMetrics> biod_metrics_;
-  std::unique_ptr<CrosFpDevice> cros_dev_;
+  std::unique_ptr<CrosFpDeviceInterface> cros_dev_;
 
   SessionAction next_session_action_;
 

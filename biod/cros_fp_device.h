@@ -14,30 +14,21 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_util.h>
 #include <chromeos/ec/cros_ec_dev.h>
-#include <chromeos/ec/ec_commands.h>
 
 #include "biod/biod_metrics.h"
+#include "biod/cros_fp_device_interface.h"
 #include "biod/fp_mode.h"
 #include "biod/uinput_device.h"
 
-using VendorTemplate = std::vector<uint8_t>;
-
 namespace biod {
 
-class CrosFpDevice {
+class CrosFpDevice : public CrosFpDeviceInterface {
  public:
   using MkbpCallback = base::Callback<void(const uint32_t event)>;
   explicit CrosFpDevice(const MkbpCallback& mkbp_event,
                         BiodMetrics* biod_metrics)
       : mkbp_event_(mkbp_event),
         biod_metrics_(biod_metrics) {}
-  ~CrosFpDevice();
-
-  struct EcVersion {
-    std::string ro_version;
-    std::string rw_version;
-    ec_current_image current_image = EC_IMAGE_UNKNOWN;
-  };
 
   static std::unique_ptr<CrosFpDevice> Open(const MkbpCallback& callback,
                                             BiodMetrics* biod_metrics);
@@ -52,21 +43,24 @@ class CrosFpDevice {
   // Returns true if successfully retrieved the version.
   static bool GetVersion(const base::ScopedFD& cros_fp_fd, EcVersion* ver);
 
-  bool SetFpMode(const FpMode& mode);
-  bool GetFpMode(FpMode* mode);
-  bool GetFpStats(int* capture_ms, int* matcher_ms, int* overall_ms);
-  bool GetDirtyMap(std::bitset<32>* bitmap);
-  bool GetTemplate(int index, VendorTemplate* out);
-  bool UploadTemplate(const VendorTemplate& tmpl);
-  bool SetContext(std::string user_id);
-  bool ResetContext();
+  // CrosFpDeviceInterface overrides:
+  ~CrosFpDevice() override;
+
+  bool SetFpMode(const FpMode& mode) override;
+  bool GetFpMode(FpMode* mode) override;
+  bool GetFpStats(int* capture_ms, int* matcher_ms, int* overall_ms) override;
+  bool GetDirtyMap(std::bitset<32>* bitmap) override;
+  bool GetTemplate(int index, VendorTemplate* out) override;
+  bool UploadTemplate(const VendorTemplate& tmpl) override;
+  bool SetContext(std::string user_id) override;
+  bool ResetContext() override;
   // Initialise the entropy in the SBP. If |reset| is true, the old entropy
   // will be deleted. If |reset| is false, we will only add entropy, and only
   // if no entropy had been added before.
-  bool InitEntropy(bool reset = false);
+  bool InitEntropy(bool reset) override;
 
-  int MaxTemplateCount() { return info_.template_max; }
-  int TemplateVersion() { return info_.template_version; }
+  int MaxTemplateCount() override { return info_.template_max; }
+  int TemplateVersion() override { return info_.template_version; }
 
   // Kernel device exposing the MCU command interface.
   static constexpr char kCrosFpPath[] = "/dev/cros_fp";
@@ -105,8 +99,6 @@ class CrosFpDevice {
   UinputDevice input_device_;
 
   BiodMetrics* biod_metrics_ = nullptr;  // Not owned.
-
-  DISALLOW_COPY_AND_ASSIGN(CrosFpDevice);
 };
 
 // Empty request or response for the EcCommand template below.
