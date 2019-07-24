@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <krb5.h>
+#include <profile.h>
 
 #include "kerberos/error_strings.h"
 
@@ -91,6 +92,8 @@ ErrorType TranslateErrorCode(errcode_t code) {
       return ERROR_NETWORK_PROBLEM;
 
     case KRB5_CONFIG_BADFORMAT:
+    case PROF_BAD_BOOLEAN:
+    case PROF_BAD_INTEGER:
       return ERROR_BAD_CONFIG;
 
     case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
@@ -449,11 +452,9 @@ ErrorType Krb5InterfaceImpl::GetTgtStatus(const base::FilePath& krb5cc_path,
 
 ErrorType Krb5InterfaceImpl::ValidateConfig(const std::string& krb5conf,
                                             ConfigErrorInfo* error_info) {
-  if (!config_validator_disabled_for_testing) {
-    *error_info = config_validator_.Validate(krb5conf);
-    if (error_info->code() != CONFIG_ERROR_NONE)
-      return ERROR_BAD_CONFIG;
-  }
+  *error_info = config_validator_.Validate(krb5conf);
+  if (error_info->code() != CONFIG_ERROR_NONE)
+    return ERROR_BAD_CONFIG;
 
   // Also try the mit krb5 code to parse the config.
   error_info->Clear();

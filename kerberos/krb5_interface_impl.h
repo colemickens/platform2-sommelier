@@ -43,13 +43,8 @@ class Krb5InterfaceImpl : public Krb5Interface {
   ErrorType ValidateConfig(const std::string& krb5conf,
                            ConfigErrorInfo* error_info) override;
 
-  void DisableConfigValidatorForTesting() {
-    config_validator_disabled_for_testing = true;
-  }
-
  private:
   ConfigValidator config_validator_;
-  bool config_validator_disabled_for_testing = false;
 
   DISALLOW_COPY_AND_ASSIGN(Krb5InterfaceImpl);
 };

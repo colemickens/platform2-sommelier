@@ -75,8 +75,9 @@ ConfigValidator::ConfigValidator()
 
 ConfigErrorInfo ConfigValidator::Validate(const std::string& krb5conf) const {
   // Keep empty lines, they're necessary to get the line numbers right.
+  // Note: The MIT krb5 parser does not count \r as newline.
   const std::vector<std::string> lines = base::SplitString(
-      krb5conf, "\r\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+      krb5conf, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
   // Level of nested curly braces {}.
   int group_level = 0;
@@ -89,7 +90,8 @@ ConfigErrorInfo ConfigValidator::Validate(const std::string& krb5conf) const {
   std::string current_section;
 
   for (size_t line_index = 0; line_index < lines.size(); ++line_index) {
-    const std::string& line = lines.at(line_index);
+    // Convert to c_str() and back to get rid of embedded \0's.
+    std::string line = lines.at(line_index).c_str();
 
     // Are we expecting a '{' to open a { group }?
     if (expect_opening_curly_brace) {
@@ -113,8 +115,11 @@ ConfigErrorInfo ConfigValidator::Validate(const std::string& krb5conf) const {
     // Bail on any |kDirectives|.
     for (const char* directive : kDirectives) {
       const int len = strlen(directive);
-      if (strncmp(line.c_str(), directive, len) == 0 && isspace(line.at(len)))
+      const int line_len = static_cast<int>(line.size());
+      if (strncmp(line.c_str(), directive, len) == 0 &&
+          (len >= line_len || isspace(line.at(len)))) {
         return MakeErrorInfo(CONFIG_ERROR_KEY_NOT_SUPPORTED, line_index);
+      }
     }
 
     // Check for '}' to close a { group }.
@@ -157,6 +162,10 @@ ConfigErrorInfo ConfigValidator::Validate(const std::string& krb5conf) const {
     if (key.back() == '*')
       key.pop_back();
 
+    // No space allowed in the key.
+    if (std::find_if(key.begin(), key.end(), isspace) != key.end())
+      return MakeErrorInfo(CONFIG_ERROR_RELATION_SYNTAX, line_index);
+
     // Final marker must come immediately after key.
     if (key.empty() || isspace(key.back()))
       return MakeErrorInfo(CONFIG_ERROR_RELATION_SYNTAX, line_index);
@@ -165,17 +174,21 @@ ConfigErrorInfo ConfigValidator::Validate(const std::string& krb5conf) const {
     if (parts.size() < 2)
       return MakeErrorInfo(CONFIG_ERROR_RELATION_SYNTAX, line_index);
 
-    // Check for a '{' to start a group. The '{' could also be on the next line.
-    // If there's anything except whitespace after '{', it counts as value, not
-    // as a group.
-    const std::string& value = parts.at(1);
-    if (value.empty()) {
-      expect_opening_curly_brace = true;
-      continue;
-    }
-    if (value == "{" && parts.size() == 2) {
-      group_level++;
-      continue;
+    if (parts.size() == 2) {
+      // Check for a '{' to start a group. The '{' could also be on the next
+      // line. If there's anything except whitespace after '{', it counts as
+      // value, not as a group.
+      // Note: If there is more than one '=', it cannot be the start of a group,
+      // e.g. key==\n{.
+      const std::string& value = parts.at(1);
+      if (value.empty()) {
+        expect_opening_curly_brace = true;
+        continue;
+      }
+      if (value == "{") {
+        group_level++;
+        continue;
+      }
     }
 
     // Check whether we support the key.

@@ -16,6 +16,9 @@ group("all") {
   if (use.test) {
     deps += [ ":kerberos_test" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":config_validator_fuzzer" ]
+  }
 }
 
 config("target_defaults") {
@@ -151,6 +154,41 @@ if (use.test) {
     deps = [
       ":libkerberos",
       "//common-mk/testrunner",
+    ]
+  }
+}
+
+# Fuzzers.
+if (use.fuzzer) {
+  pkg_config("fuzzer_config") {
+    pkg_deps = [
+      "libbrillo-${libbase_ver}",
+      "libchrome-${libbase_ver}",
+      "libmetrics-${libbase_ver}",
+      "libminijail",
+
+      # system_api depends on protobuf (or protobuf-lite). It must
+      # appear before protobuf or the linker flags won't be in the right
+      # order.
+      "system_api",
+      "protobuf-lite",
+    ]
+  }
+
+  #pkg_config("libchrome_test_config") {
+  #  pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  #}
+  executable("config_validator_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":fuzzer_config",
+      ":target_defaults",
+    ]
+    sources = [
+      "config_validator_fuzzer.cc",
+    ]
+    deps = [
+      ":libkerberos",
     ]
   }
 }

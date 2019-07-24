@@ -35,10 +35,6 @@ class TgtRenewalScheduler {
   static constexpr int kExpirationHeadsUpTimeSeconds = 180;
   static_assert(kExpirationHeadsUpTimeSeconds > 0, "");
 
-  // Don't try to renew TGTs more often than this interval.
-  static constexpr int kMinTgtRenewDelaySeconds = 60;
-  static_assert(kMinTgtRenewDelaySeconds > 0, "");
-
   // Fraction of the TGT validity lifetime to schedule automatic TGT renewal.
   // For instance, if the TGT is valid for another 1000 seconds and the factor
   // is 0.8, the TGT would be renewed after 800 seconds. Must be strictly

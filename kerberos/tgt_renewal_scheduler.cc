@@ -21,6 +21,10 @@ namespace {
 // Nice marker for TGT renewal related logs, for easy grepping.
 constexpr char kLogHeader[] = "TGT RENEWAL - ";
 
+// Don't try to renew TGTs more often than this interval.
+constexpr int kMinTgtRenewDelaySeconds = 60;
+static_assert(kMinTgtRenewDelaySeconds > 0, "");
+
 // Formats a time delta in 1h 2m 3s format.
 std::string FormatTimeDelta(int64_t delta_seconds) {
   int h = delta_seconds / 3600;

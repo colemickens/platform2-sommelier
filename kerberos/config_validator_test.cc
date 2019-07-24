@@ -57,7 +57,9 @@ class ConfigValidatorTest : public ::testing::Test {
     EXPECT_FALSE(error_info.has_line_index()) << error_info;
   }
 
-  void ExpectError(const char* krb5conf, ConfigErrorCode code, int line_index) {
+  void ExpectError(const std::string& krb5conf,
+                   ConfigErrorCode code,
+                   int line_index) {
     ConfigErrorInfo error_info = config_validator_.Validate(krb5conf);
 
     EXPECT_TRUE(error_info.has_code()) << error_info;
@@ -256,6 +258,28 @@ TEST_F(ConfigValidatorTest, ExtraCurlyBraceFound) {
   }
 })";
   ExpectError(kKrb5Conf, CONFIG_ERROR_EXTRA_CURLY_BRACE, 6);
+}
+
+// Things that the fuzzer found.
+TEST_F(ConfigValidatorTest, FuzzerRegressionTests) {
+  // Code was looking at character after "include" to check if it's a space.
+  ExpectError("include", CONFIG_ERROR_KEY_NOT_SUPPORTED, 0);
+
+  // Code was accepting "[realms\0]" as a valid section. Embedded \0's should be
+  // handled in a c_str() kind of way.
+  std::string krb5confWithZero = "[realms\0]";
+  krb5confWithZero[7] = 0;
+  ExpectError(krb5confWithZero, CONFIG_ERROR_SECTION_SYNTAX, 0);
+
+  // Code was allowing spaces in keys. Note that ConfigValidator allows all keys
+  // in the [domain_realm] section, but it should still check spaces!
+  ExpectError("[domain_realm]\nkey x=", CONFIG_ERROR_RELATION_SYNTAX, 1);
+
+  // \r should not be counted as newline character.
+  ExpectError("[domain_realm]\rkey=", CONFIG_ERROR_SECTION_SYNTAX, 0);
+
+  // Double == is always a relation, cannot be the start of a group.
+  ExpectError("[capaths]\nkey==\n{", CONFIG_ERROR_RELATION_SYNTAX, 2);
 }
 
 }  // namespace kerberos

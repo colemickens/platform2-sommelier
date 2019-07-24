@@ -14,6 +14,8 @@ namespace {
 
 constexpr char kValidConfig[] = "";
 constexpr char kBadKrb5conf[] = "\n\n[libdefaults";
+constexpr char kBadBoolKrb5conf[] =
+    "[libdefaults]\nignore_acceptor_hostname=bad_bool";
 
 }  // namespace
 
@@ -54,12 +56,12 @@ TEST_F(Krb5InterfaceImplTest, ValidateConfigFailure) {
 
 // Tests the krb5-part of config validation.
 TEST_F(Krb5InterfaceImplTest, ValidateConfigViaKrb5Failure) {
-  // I didn't see a way to make the krb5-part fail without making the
-  // ConfigValidator-part fail, so just disable the ConfigValidator-part.
-  krb5_.DisableConfigValidatorForTesting();
-
+  // |kBadBoolKrb5conf| contains a bool variable that's not true or false. The
+  // MIT parser doesn't accept this, but ConfigValidator does since it doesn't
+  // check values. Thus, the validator returns a generic KRB5 error without line
+  // index.
   ConfigErrorInfo error_info;
-  ErrorType error = krb5_.ValidateConfig(kBadKrb5conf, &error_info);
+  ErrorType error = krb5_.ValidateConfig(kBadBoolKrb5conf, &error_info);
   EXPECT_EQ(ERROR_BAD_CONFIG, error);
   EXPECT_EQ(CONFIG_ERROR_KRB5_FAILED_TO_PARSE, error_info.code());
   EXPECT_FALSE(error_info.has_line_index());
