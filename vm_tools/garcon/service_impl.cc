@@ -15,6 +15,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
+
 #include <algorithm>
 #include <cstdlib>
 #include <limits>
@@ -747,8 +749,29 @@ grpc::Status ServiceImpl::ConnectChunnel(
     grpc::ServerContext* ctx,
     const vm_tools::container::ConnectChunnelRequest* request,
     vm_tools::container::ConnectChunnelResponse* response) {
-  return grpc::Status(grpc::UNIMPLEMENTED,
-                      "ConnectChunnel is not yet implemented");
+  LOG(INFO) << "Received request to connect to chunnel";
+
+  if (request->chunneld_port() == 0)
+    return grpc::Status(grpc::INVALID_ARGUMENT, "invalid chunneld port");
+
+  if (request->target_tcp4_port() == 0)
+    return grpc::Status(grpc::INVALID_ARGUMENT, "invalid target TCP4 port");
+
+  std::vector<std::string> argv{
+      "/opt/google/cros-containers/bin/chunnel", "--remote",
+      base::StringPrintf("vsock:%u:%u", VMADDR_CID_HOST,
+                         request->chunneld_port()),
+      "--local",
+      base::StringPrintf("127.0.0.1:%u", request->target_tcp4_port())};
+
+  if (!Spawn(std::move(argv), {}, "")) {
+    response->set_success(false);
+    response->set_failure_reason("Failed to spawn chunnel");
+  } else {
+    response->set_success(true);
+  }
+
+  return grpc::Status::OK;
 }
 
 }  // namespace garcon
