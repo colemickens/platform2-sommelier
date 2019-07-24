@@ -743,5 +743,13 @@ grpc::Status ServiceImpl::AppSearch(
   return grpc::Status::OK;
 }
 
+grpc::Status ServiceImpl::ConnectChunnel(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::ConnectChunnelRequest* request,
+    vm_tools::container::ConnectChunnelResponse* response) {
+  return grpc::Status(grpc::UNIMPLEMENTED,
+                      "ConnectChunnel is not yet implemented");
+}
+
 }  // namespace garcon
 }  // namespace vm_tools

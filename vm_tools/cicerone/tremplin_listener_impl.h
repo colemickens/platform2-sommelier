@@ -69,6 +69,11 @@ class TremplinListenerImpl final
       const vm_tools::tremplin::ContainerShutdownInfo* request,
       vm_tools::tremplin::EmptyMessage* response) override;
 
+  grpc::Status UpdateListeningPorts(
+      grpc::ServerContext* ctx,
+      const vm_tools::tremplin::ListeningPortInfo* request,
+      vm_tools::tremplin::EmptyMessage* response) override;
+
  private:
   uint32_t ExtractCidFromPeerAddress(grpc::ServerContext* ctx);
 

@@ -8,8 +8,11 @@
 #include <inttypes.h>
 #include <stdio.h>
 
+#include <map>
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/logging.h>
@@ -310,6 +313,15 @@ grpc::Status TremplinListenerImpl::ContainerShutdown(
   }
   return grpc::Status::OK;
 }
+
+grpc::Status TremplinListenerImpl::UpdateListeningPorts(
+    grpc::ServerContext* ctx,
+    const vm_tools::tremplin::ListeningPortInfo* request,
+    vm_tools::tremplin::EmptyMessage* response) {
+  return grpc::Status(grpc::UNIMPLEMENTED,
+                      "UpdateListeningPorts is not yet implemented");
+}
+
 // Returns 0 on failure, otherwise returns the 32-bit vsock cid.
 uint32_t TremplinListenerImpl::ExtractCidFromPeerAddress(
     grpc::ServerContext* ctx) {

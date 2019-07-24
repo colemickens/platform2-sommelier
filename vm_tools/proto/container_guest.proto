@@ -225,6 +225,20 @@ message AppSearchResponse {
   repeated AppSearchResult packages = 1;
 }
 
+message ConnectChunnelRequest {
+  uint32 chunneld_port = 1;
+
+  uint32 target_tcp4_port = 2;
+}
+
+message ConnectChunnelResponse {
+  // If true, chunnel launched successfully.
+  bool success = 1;
+
+  // The failure_reason if chunnel could not be started.
+  string failure_reason = 2;
+}
+
 // Implemented by garcon inside of the container.
 service Garcon {
   // Called to launch an application in a container.
@@ -256,4 +270,7 @@ service Garcon {
 
   // Search for and return not installed apps matching passed query.
   rpc AppSearch(AppSearchRequest) returns (AppSearchResponse);
+
+  // Connects to chunnel to forward traffic to localhost.
+  rpc ConnectChunnel(ConnectChunnelRequest) returns (ConnectChunnelResponse);
 }

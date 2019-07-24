@@ -619,6 +619,19 @@ message ContainerShutdownInfo {
   string container_name = 1;
 }
 
+// Sent by tremplin to update the host on listening ports in containers.
+message ListeningPortInfo {
+  message ContainerPortInfo {
+    // All IPv4 TCP ports that are currently listening on the loopback
+    // interface.
+    repeated uint32 listening_tcp4_ports = 1;
+  }
+
+  // Map of container names to ContainerPortInfo, which contains information
+  // about listening ports.
+  map<string, ContainerPortInfo> container_ports = 1;
+}
+
 // Tremplin service methods.
 service Tremplin {
   rpc CreateContainer(CreateContainerRequest) returns (CreateContainerResponse);
@@ -647,4 +660,5 @@ service TremplinListener {
   rpc UpdateExportStatus(ContainerExportProgress) returns (EmptyMessage);
   rpc UpdateImportStatus(ContainerImportProgress) returns (EmptyMessage);
   rpc ContainerShutdown(ContainerShutdownInfo) returns (EmptyMessage);
+  rpc UpdateListeningPorts(ListeningPortInfo) returns (EmptyMessage);
 }
