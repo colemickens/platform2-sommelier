@@ -51,11 +51,8 @@ class DlcServiceDBusAdaptor
                     DlcModuleList* dlc_module_list_out) override;
 
   // Called on receiving update_engine's |StatusUpdate| signal.
-  void OnStatusUpdateSignal(int64_t last_checked_time,
-                            double progress,
-                            const std::string& current_operation,
-                            const std::string& new_version,
-                            int64_t new_size);
+  void OnStatusUpdateAdvancedSignal(
+      const update_engine::StatusResult& status_result);
 
  private:
   // Returns if an install has been sent to update engine.
@@ -85,9 +82,9 @@ class DlcServiceDBusAdaptor
   void SendOnInstalledSignal(const InstallResult& install_result);
 
   // Called on being connected to update_engine's |StatusUpdate| signal.
-  void OnStatusUpdateSignalConnected(const std::string& interface_name,
-                                     const std::string& signal_name,
-                                     bool success);
+  void OnStatusUpdateAdvancedSignalConnected(const std::string& interface_name,
+                                             const std::string& signal_name,
+                                             bool success);
 
   std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
       image_loader_proxy_;

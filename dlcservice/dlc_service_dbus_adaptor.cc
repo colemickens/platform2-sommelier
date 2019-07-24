@@ -24,6 +24,8 @@
 
 using std::string;
 using std::vector;
+using update_engine::Operation;
+using update_engine::StatusResult;
 
 namespace dlcservice {
 
@@ -106,10 +108,10 @@ DlcServiceDBusAdaptor::DlcServiceDBusAdaptor(
                                                    : imageloader::kSlotNameB;
 
   // Register D-Bus signal callbacks.
-  update_engine_proxy_->RegisterStatusUpdateSignalHandler(
-      base::Bind(&DlcServiceDBusAdaptor::OnStatusUpdateSignal,
+  update_engine_proxy_->RegisterStatusUpdateAdvancedSignalHandler(
+      base::Bind(&DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignal,
                  weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&DlcServiceDBusAdaptor::OnStatusUpdateSignalConnected,
+      base::Bind(&DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignalConnected,
                  weak_ptr_factory_.GetWeakPtr()));
 
   // Initalize installed DLC modules.
@@ -183,8 +185,9 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
   }
 
   dlc_modules_being_installed_ = dlc_module_list_in;
-  // Note: Do NOT add to installed indication. Let |OnStatusUpdateSignaled()|
-  // handle since hat's truly when the DLC(s) are installed.
+  // Note: Do NOT add to installed indication. Let
+  // |OnStatusUpdateAdvancedSignal()| handle since hat's truly when the DLC(s)
+  // are installed.
 
   // Safely take ownership of scoped paths for them not to be freed.
   for (const auto& scoped_path : scoped_paths)
@@ -368,16 +371,14 @@ void DlcServiceDBusAdaptor::SendOnInstalledSignal(
       install_result);
 }
 
-void DlcServiceDBusAdaptor::OnStatusUpdateSignal(
-    int64_t last_checked_time,
-    double progress,
-    const string& current_operation,
-    const string& new_version,
-    int64_t new_size) {
+void DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignal(
+    const StatusResult& status_result) {
+  const Operation& current_operation = status_result.current_operation();
+
   if (!IsInstalling())
     return;
   // Install is complete when we receive kUpdateStatusIdle signal.
-  if (current_operation != update_engine::kUpdateStatusIdle)
+  if (current_operation != Operation::IDLE)
     return;
 
   // At this point, update_engine finished installation of the requested DLC
@@ -444,7 +445,7 @@ void DlcServiceDBusAdaptor::OnStatusUpdateSignal(
   SendOnInstalledSignal(install_result);
 }
 
-void DlcServiceDBusAdaptor::OnStatusUpdateSignalConnected(
+void DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignalConnected(
     const string& interface_name, const string& signal_name, bool success) {
   if (!success) {
     LOG(ERROR) << "Failed to connect to update_engine's StatusUpdate signal.";

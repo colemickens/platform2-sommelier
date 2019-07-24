@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <utility>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -22,9 +23,12 @@
 
 using std::move;
 using std::string;
+using std::vector;
 using testing::_;
 using testing::Return;
 using testing::SetArgPointee;
+using update_engine::Operation;
+using update_engine::StatusResult;
 
 namespace dlcservice {
 
@@ -41,6 +45,17 @@ MATCHER_P(ProtoHasUrl,
           url,
           string("The protobuf provided does not have url: ") + url) {
   return url == arg.omaha_url();
+}
+
+DlcModuleList CreateDlcModuleList(const vector<string>& ids,
+                                  const string& omaha_url = "") {
+  DlcModuleList dlc_module_list;
+  dlc_module_list.set_omaha_url(omaha_url);
+  for (const string& id : ids) {
+    DlcModuleInfo* dlc_info = dlc_module_list.add_dlc_module_infos();
+    dlc_info->set_dlc_id(id);
+  }
+  return dlc_module_list;
 }
 
 }  // namespace
@@ -184,10 +199,8 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallEmptyDlcModuleListFailsTest) {
 
 TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
   const string omaha_url_default = "";
-  DlcModuleList dlc_module_list;
-  DlcModuleInfo* dlc_info = dlc_module_list.add_dlc_module_infos();
-  dlc_info->set_dlc_id(kSecondDlc);
-  dlc_module_list.set_omaha_url(omaha_url_default);
+  DlcModuleList dlc_module_list =
+      CreateDlcModuleList({kSecondDlc}, omaha_url_default);
 
   SetMountPath("/run/imageloader/dlc-id/package");
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
@@ -215,9 +228,8 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
 
 TEST_F(DlcServiceDBusAdaptorTest, InstallFailureInstalledSticky) {
   const string omaha_url_default = "";
-  DlcModuleList dlc_module_list;
-  DlcModuleInfo* dlc_info = dlc_module_list.add_dlc_module_infos();
-  dlc_info->set_dlc_id(kFirstDlc);
+  DlcModuleList dlc_module_list =
+      CreateDlcModuleList({kFirstDlc}, omaha_url_default);
 
   SetMountPath("/run/imageloader/dlc-id/package");
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
@@ -231,11 +243,8 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallFailureInstalledSticky) {
 
 TEST_F(DlcServiceDBusAdaptorTest, InstallFailureInstallingCleanup) {
   const string omaha_url_default = "";
-  DlcModuleList dlc_module_list;
-  for (const string& dlc_id : {kSecondDlc, kSecondDlc}) {
-    DlcModuleInfo* dlc_info = dlc_module_list.add_dlc_module_infos();
-    dlc_info->set_dlc_id(dlc_id);
-  }
+  DlcModuleList dlc_module_list =
+      CreateDlcModuleList({kSecondDlc, kSecondDlc}, omaha_url_default);
 
   SetMountPath("/run/imageloader/dlc-id/package");
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
@@ -251,10 +260,8 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallFailureInstallingCleanup) {
 
 TEST_F(DlcServiceDBusAdaptorTest, InstallUrlTest) {
   const string omaha_url_override = "http://random.url";
-  DlcModuleList dlc_module_list;
-  DlcModuleInfo* dlc_info = dlc_module_list.add_dlc_module_infos();
-  dlc_info->set_dlc_id(kSecondDlc);
-  dlc_module_list.set_omaha_url(omaha_url_override);
+  DlcModuleList dlc_module_list =
+      CreateDlcModuleList({kSecondDlc}, omaha_url_override);
 
   ON_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _))
       .WillByDefault(Return(true));
@@ -269,12 +276,9 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallUrlTest) {
   base::RunLoop().RunUntilIdle();
 }
 
-TEST_F(DlcServiceDBusAdaptorTest, OnStatusUpdateSignalTest) {
-  DlcModuleList dlc_module_list;
-  for (const string& dlc_id : {kSecondDlc, kThirdDlc}) {
-    DlcModuleInfo* dlc_info = dlc_module_list.add_dlc_module_infos();
-    dlc_info->set_dlc_id(dlc_id);
-  }
+TEST_F(DlcServiceDBusAdaptorTest, OnStatusUpdateAdvancedSignalTest) {
+  const vector<string>& dlc_ids = {kSecondDlc, kThirdDlc};
+  DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
 
   EXPECT_TRUE(dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list));
 
@@ -284,13 +288,14 @@ TEST_F(DlcServiceDBusAdaptorTest, OnStatusUpdateSignalTest) {
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
       .Times(2);
 
-  for (const string& dlc_id : {kSecondDlc, kThirdDlc})
+  for (const string& dlc_id : dlc_ids)
     EXPECT_TRUE(base::PathExists(content_path_.Append(dlc_id)));
 
-  dlc_service_dbus_adaptor_->OnStatusUpdateSignal(
-      0, 0., update_engine::kUpdateStatusIdle, "", 0);
+  StatusResult status_result;
+  status_result.set_current_operation(Operation::IDLE);
+  dlc_service_dbus_adaptor_->OnStatusUpdateAdvancedSignal(status_result);
 
-  for (const string& dlc_id : {kSecondDlc, kThirdDlc})
+  for (const string& dlc_id : dlc_ids)
     EXPECT_FALSE(base::PathExists(content_path_.Append(dlc_id)));
 }
 
