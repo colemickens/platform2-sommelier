@@ -12,8 +12,11 @@ namespace cros_disks {
 
 namespace {
 
-// Forbidden characters in volume name
-const char kForbiddenCharacters[] = "*?.,;:/\\|+=<>[]\"'\t";
+// A subset of known forbidden characters for testing
+const char kForbiddenTestCharacters[] = {
+    '*',  '?',  '.',  ',',    ';',    ':',    '/', '\\', '|',
+    '+',  '=',  '<',  '>',    '[',    ']',    '"', '\'', '\t',
+    '\v', '\r', '\n', '\x02', '\x10', '\x7f', '\0'};
 
 };  // namespace
 
@@ -39,32 +42,28 @@ TEST(FilesystemLabelTest, ValidateVolumeLabel) {
             ValidateVolumeLabel("ABC", "nonexistent-fs"));
 }
 
-class FilesystemLabelCharacterTest : public ::testing::TestWithParam<int> {};
+class FilesystemLabelCharacterTest
+    : public ::testing::TestWithParam<const char*> {};
 
 INSTANTIATE_TEST_CASE_P(AsciiRange,
                         FilesystemLabelCharacterTest,
-                        testing::Range(0, 256));
+                        testing::Values("vfat", "exfat", "ntfs"));
 
 TEST_P(FilesystemLabelCharacterTest, ValidateVolumeLabelCharacters) {
-  char value = GetParam();
-  std::string volume_name = std::string("ABC") + value;
+  const char* filesystem = GetParam();
 
-  if (!std::isprint(value) || strchr(kForbiddenCharacters, value)) {
+  // Test allowed characters in volume name
+  EXPECT_EQ(LabelErrorType::kLabelErrorNone,
+            ValidateVolumeLabel("AZaz09", filesystem));
+  EXPECT_EQ(LabelErrorType::kLabelErrorNone,
+            ValidateVolumeLabel(" !#$%&()", filesystem));
+  EXPECT_EQ(LabelErrorType::kLabelErrorNone,
+            ValidateVolumeLabel("-@^_`{}~", filesystem));
+
+  for (char c : kForbiddenTestCharacters) {
     // Test forbidden characters in volume name
     EXPECT_EQ(LabelErrorType::kLabelErrorInvalidCharacter,
-              ValidateVolumeLabel(volume_name, "vfat"));
-    EXPECT_EQ(LabelErrorType::kLabelErrorInvalidCharacter,
-              ValidateVolumeLabel(volume_name, "exfat"));
-    EXPECT_EQ(LabelErrorType::kLabelErrorInvalidCharacter,
-              ValidateVolumeLabel(volume_name, "ntfs"));
-  } else {
-    // Test allowed characters in volume name
-    EXPECT_EQ(LabelErrorType::kLabelErrorNone,
-              ValidateVolumeLabel(volume_name, "vfat"));
-    EXPECT_EQ(LabelErrorType::kLabelErrorNone,
-              ValidateVolumeLabel(volume_name, "exfat"));
-    EXPECT_EQ(LabelErrorType::kLabelErrorNone,
-              ValidateVolumeLabel(volume_name, "ntfs"));
+              ValidateVolumeLabel(std::string("ABC") + c, filesystem));
   }
 }
 

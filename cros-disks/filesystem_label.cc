@@ -8,6 +8,7 @@
 #include <cstring>
 
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 
 namespace cros_disks {
 
@@ -18,8 +19,11 @@ struct LabelParameters {
   const size_t max_label_length;
 };
 
-// Forbidden characters in volume label
-const char kForbiddenCharacters[] = "*?.,;:/\\|+=<>[]\"'\t";
+// Allowed non-alphanumeric characters in volume label for compatibility with
+// DOS short filenames
+// See https://en.wikipedia.org/wiki/8.3_filename#Directory_table for details
+const char kAllowedCharacters[] = {' ', '!', '#', '$', '%', '&', '(', ')',
+                                   '-', '@', '^', '_', '`', '{', '}', '~'};
 
 // Supported file systems and their parameters
 const LabelParameters kSupportedLabelParameters[] = {
@@ -58,10 +62,11 @@ LabelErrorType ValidateVolumeLabel(const std::string& volume_label,
     return LabelErrorType::kLabelErrorLongName;
   }
 
-  // Check if new volume label contains only printable ASCII characters and
-  // none of forbidden.
+  // Check if the new volume label contains only alphanumeric ASCII characters
+  // or allowed non-alphanumeric characters
   for (char value : volume_label) {
-    if (!std::isprint(value) || std::strchr(kForbiddenCharacters, value)) {
+    if (!base::IsAsciiAlpha(value) && !base::IsAsciiDigit(value) &&
+        !std::memchr(kAllowedCharacters, value, sizeof(kAllowedCharacters))) {
       LOG(WARNING) << "New volume label '" << volume_label << "' contains "
                    << "forbidden character: '" << value << "'";
       return LabelErrorType::kLabelErrorInvalidCharacter;
