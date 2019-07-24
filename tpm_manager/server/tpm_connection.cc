@@ -23,10 +23,11 @@
 #include <base/stl_util.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
-#include <trousers/tss.h>
-#include <trousers/trousers.h>  // NOLINT(build/include_alpha)
+#include <libhwsec/overalls/overalls_api.h>
 
 #include "tpm_manager/server/tpm_util.h"
+
+using ::hwsec::overalls::GetOveralls;
 
 namespace {
 
@@ -60,8 +61,8 @@ TSS_HTPM TpmConnection::GetTpm() {
   }
   TSS_RESULT result;
   TSS_HTPM tpm_handle;
-  if (TPM_ERROR(result =
-                    Tspi_Context_GetTpmObject(context_.value(), &tpm_handle))) {
+  if (TPM_ERROR(result = GetOveralls()->Ospi_Context_GetTpmObject(
+                    context_.value(), &tpm_handle))) {
     TPM_LOG(ERROR, result) << "Error getting a handle to the TPM.";
     return 0;
   }
@@ -73,13 +74,14 @@ bool TpmConnection::ConnectContextIfNeeded() {
     return true;
   }
   TSS_RESULT result;
-  if (TPM_ERROR(result = Tspi_Context_Create(context_.ptr()))) {
+  if (TPM_ERROR(result = GetOveralls()->Ospi_Context_Create(context_.ptr()))) {
     TPM_LOG(ERROR, result) << "Error connecting to TPM.";
     return false;
   }
   // We retry on failure. It might be that tcsd is starting up.
   for (int i = 0; i < kTpmConnectRetries; i++) {
-    if (TPM_ERROR(result = Tspi_Context_Connect(context_, nullptr))) {
+    if (TPM_ERROR(result =
+                      GetOveralls()->Ospi_Context_Connect(context_, nullptr))) {
       if (ERROR_CODE(result) == TSS_E_COMM_FAILURE) {
         base::PlatformThread::Sleep(
             base::TimeDelta::FromMilliseconds(kTpmConnectIntervalMs));

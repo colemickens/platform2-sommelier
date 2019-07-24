@@ -119,7 +119,10 @@ config("server_library_tpm2_config") {
 }
 
 config("server_library_tpm1_config") {
-  libs = [ "tspi" ]
+  libs = [
+    "hwsec",
+    "tspi",
+  ]
 }
 
 static_library("server_library") {
