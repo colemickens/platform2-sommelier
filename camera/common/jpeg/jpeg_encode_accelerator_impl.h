@@ -106,6 +106,11 @@ class JpegEncodeAcceleratorImpl : public JpegEncodeAccelerator {
                    uint32_t output_size,
                    cros::mojom::EncodeStatus status);
 
+  // Callback function for |jea_ptr_|->EncodeWithDmaBuf().
+  void OnEncodeDmaBufAck(EncodeWithDmaBufCallback callback,
+                         uint32_t output_size,
+                         cros::mojom::EncodeStatus status);
+
   // For synced Encode API.
   void EncodeSyncCallback(base::Callback<void(int)> callback,
                           uint32_t* output_data_size,

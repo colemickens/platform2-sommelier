@@ -338,8 +338,8 @@ void JpegEncodeAcceleratorImpl::EncodeOnIpcThread(
       task_id, input_format, std::move(mojo_input_planes),
       std::move(mojo_output_planes), std::move(exif_handle), exif_buffer_size,
       coded_size_width, coded_size_height,
-      base::Bind(&JpegEncodeAcceleratorImpl::OnEncodeAck,
-                 base::Unretained(this), callback, task_id));
+      base::Bind(&JpegEncodeAcceleratorImpl::OnEncodeDmaBufAck,
+                 base::Unretained(this), callback));
 }
 
 void JpegEncodeAcceleratorImpl::EncodeSyncCallback(
@@ -362,6 +362,14 @@ void JpegEncodeAcceleratorImpl::OnEncodeAck(EncodeWithFDCallback callback,
   DCHECK_EQ(exif_shm_map_.count(task_id), 1u);
   input_shm_map_.erase(task_id);
   exif_shm_map_.erase(task_id);
+  callback.Run(output_size, static_cast<int>(status));
+}
+
+void JpegEncodeAcceleratorImpl::OnEncodeDmaBufAck(
+    EncodeWithDmaBufCallback callback,
+    uint32_t output_size,
+    mojom::EncodeStatus status) {
+  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   callback.Run(output_size, static_cast<int>(status));
 }
 
