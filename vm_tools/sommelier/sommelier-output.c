@@ -15,6 +15,14 @@
 
 #define INCH_IN_MM 25.4
 
+// The ergonomic advice for monitor distance is 50-75cm away, with laptops
+// expected to be closer. This magic number is designed to correct that for the
+// purpose of calculating a "useful" DPI.
+//
+// TODO(crbug.com/988325) Fix sommelier's scaling logic s.t. this ratio is
+// unnecessary.
+#define LAPTOP_TO_DESKTOP_DISTANCE_RATIO 2.0 / 3.0
+
 double sl_output_aura_scale_factor_to_double(int scale_factor) {
   // Aura scale factor is an enum that for all currently know values
   // is a scale value multipled by 1000. For example, enum value for
@@ -32,6 +40,10 @@ void sl_output_get_host_output_state(struct sl_host_output* host,
       sl_output_aura_scale_factor_to_double(host->preferred_scale);
   double current_scale =
       sl_output_aura_scale_factor_to_double(host->current_scale);
+  // "Ideal" means the scale factor you would need in order to make a pixel in
+  // the buffer map 1:1 with a physical pixel. In the absence of any better
+  // information, we assume a device whose display density maps faithfully to
+  // true pixels (i.e. 1.0).
   double ideal_scale_factor = 1.0;
   double scale_factor = host->scale_factor;
 
@@ -55,6 +67,24 @@ void sl_output_get_host_output_state(struct sl_host_output* host,
         host->physical_height * ideal_scale_factor / scale_factor;
     *width = host->width * host->ctx->scale / scale_factor;
     *height = host->height * host->ctx->scale / scale_factor;
+
+    // Historically, X applications use DPI to decide their scale (which is not
+    // ideal). The main problem is that in order to facilitate this, many X
+    // utilities lie about the DPI of the device in order to achieve the desired
+    // scaling, e.g. most laptops report a dpi of 96 even if that is inaccurate.
+    //
+    // The reason they have to lie is because laptop screens are typically
+    // closer to your eye than desktop monitors (by a factor of roughly 2/3),
+    // meaning they have to have proportionally higher DPI in order to "look" as
+    // high-def as the monitor.
+    //
+    // Since sommelier is in the business of lying about the screen's
+    // dimensions, we will also lie a bit more when we are dealing with the
+    // internal display, to make its dpi scale like a desktop monitor's would.
+    if (host->internal) {
+      *physical_width /= LAPTOP_TO_DESKTOP_DISTANCE_RATIO;
+      *physical_height /= LAPTOP_TO_DESKTOP_DISTANCE_RATIO;
+    }
   } else {
     int s = MIN(ceil(scale_factor / host->ctx->scale), MAX_OUTPUT_SCALE);
 
@@ -72,11 +102,11 @@ void sl_output_get_host_output_state(struct sl_host_output* host,
     double mmpd;
     int* p;
 
+    // Choose the DPI bucket which is closest to the apparent DPI which we
+    // calculated above.
     wl_array_for_each(p, &host->ctx->dpi) {
-      if (*p > dpi)
-        break;
-
-      adjusted_dpi = *p;
+      if (abs(*p - dpi) < abs(adjusted_dpi - dpi))
+        adjusted_dpi = *p;
     }
 
     mmpd = INCH_IN_MM / adjusted_dpi;
