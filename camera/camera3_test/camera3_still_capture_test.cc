@@ -102,8 +102,9 @@ TEST_P(Camera3SimpleStillCaptureTest, JpegExifTest) {
           ->GetSortedOutputResolutions(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)
           .back();
   ResolutionInfo recording_resolution(0, 0);
-  cam_service_.StartPreview(cam_id_, preview_resolution, jpeg_resolution,
-                            recording_resolution);
+  ASSERT_EQ(
+      0, cam_service_.StartPreview(cam_id_, preview_resolution, jpeg_resolution,
+                                   recording_resolution));
 
   ExifTestData exif_test_data[] = {
       {thumbnail_resolutions.front(), 90, 80, 75},
@@ -181,8 +182,9 @@ void Camera3SimpleStillCaptureTest::TakePictureTest(
           ->GetSortedOutputResolutions(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)
           .back();
   ResolutionInfo recording_resolution(0, 0);
-  cam_service_.StartPreview(cam_id_, preview_resolution, jpeg_resolution,
-                            recording_resolution);
+  ASSERT_EQ(
+      0, cam_service_.StartPreview(cam_id_, preview_resolution, jpeg_resolution,
+                                   recording_resolution));
 
   // Trigger an auto focus run, and wait for AF locked.
   if (IsAFSupported()) {
@@ -242,8 +244,9 @@ TEST_P(Camera3JpegResolutionTest, JpegResolutionTest) {
            << jpeg_resolution.Height();
 
   ResolutionInfo recording_resolution(0, 0);
-  cam_service_.StartPreview(cam_id_, preview_resolution, jpeg_resolution,
-                            recording_resolution);
+  ASSERT_EQ(
+      0, cam_service_.StartPreview(cam_id_, preview_resolution, jpeg_resolution,
+                                   recording_resolution));
   ScopedCameraMetadata metadata(
       clone_camera_metadata(cam_service_.ConstructDefaultRequestSettings(
           cam_id_, CAMERA3_TEMPLATE_STILL_CAPTURE)));
