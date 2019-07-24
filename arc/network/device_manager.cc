@@ -6,6 +6,7 @@
 
 #include <linux/rtnetlink.h>
 #include <net/if.h>
+#include <sys/ioctl.h>
 
 #include <utility>
 
@@ -50,6 +51,34 @@ bool IsWifiInterface(const std::string& ifname) {
     }
   }
   return false;
+}
+
+bool IsMulticastInterface(const std::string& ifname) {
+  if (ifname.empty()) {
+    return false;
+  }
+
+  int fd = socket(AF_INET, SOCK_DGRAM, 0);
+  if (fd < 0) {
+    // If IPv4 fails, try to open a socket using IPv6.
+    fd = socket(AF_INET6, SOCK_DGRAM, 0);
+    if (fd < 0) {
+      LOG(ERROR) << "Unable to create socket";
+      return false;
+    }
+  }
+
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ);
+  if (ioctl(fd, SIOCGIFFLAGS, &ifr) < 0) {
+    PLOG(ERROR) << "SIOCGIFFLAGS failed for " << ifname;
+    close(fd);
+    return false;
+  }
+
+  close(fd);
+  return (ifr.ifr_flags & IFF_MULTICAST);
 }
 
 }  // namespace
@@ -186,9 +215,11 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
   } else {
     if (name == kAndroidDevice) {
       host_ifname = "arcbr0";
+      opts.fwd_multicast = false;
     } else {
       guest = AddressManager::Guest::ARC_NET;
       host_ifname = base::StringPrintf("arc_%s", name.c_str());
+      opts.fwd_multicast = IsMulticastInterface(name);
     }
     guest_ifname = name;
     // Android VPNs and native VPNs use the same "tun%d" name pattern for VPN
@@ -203,8 +234,6 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
     // TODO(crbug/726815) Also enable |find_ipv6_routes| for cellular networks
     // once IPv6 is enabled on cellular networks in shill.
     opts.find_ipv6_routes =
-        IsEthernetInterface(guest_ifname) || IsWifiInterface(guest_ifname);
-    opts.fwd_multicast =
         IsEthernetInterface(guest_ifname) || IsWifiInterface(guest_ifname);
   }
 

@@ -117,7 +117,6 @@ TEST_F(DeviceManagerTest, MakeEthernetDevices) {
   EXPECT_EQ(msg.br_ipv4(), "100.115.92.9");
   EXPECT_EQ(msg.arc_ipv4(), "100.115.92.10");
   EXPECT_FALSE(msg.mac_addr().empty());
-  EXPECT_TRUE(msg.fwd_multicast());
   EXPECT_TRUE(msg.find_ipv6_routes());
 
   auto eth_device1 = mgr->MakeDevice("usb0");
@@ -127,7 +126,6 @@ TEST_F(DeviceManagerTest, MakeEthernetDevices) {
   EXPECT_EQ(msg.br_ipv4(), "100.115.92.13");
   EXPECT_EQ(msg.arc_ipv4(), "100.115.92.14");
   EXPECT_FALSE(msg.mac_addr().empty());
-  EXPECT_TRUE(msg.fwd_multicast());
   EXPECT_TRUE(msg.find_ipv6_routes());
 }
 
@@ -142,7 +140,6 @@ TEST_F(DeviceManagerTest, MakeWifiDevices) {
   EXPECT_EQ(msg.br_ipv4(), "100.115.92.9");
   EXPECT_EQ(msg.arc_ipv4(), "100.115.92.10");
   EXPECT_FALSE(msg.mac_addr().empty());
-  EXPECT_TRUE(msg.fwd_multicast());
   EXPECT_TRUE(msg.find_ipv6_routes());
 
   auto wifi_device1 = mgr->MakeDevice("mlan0");
@@ -152,7 +149,6 @@ TEST_F(DeviceManagerTest, MakeWifiDevices) {
   EXPECT_EQ(msg.br_ipv4(), "100.115.92.13");
   EXPECT_EQ(msg.arc_ipv4(), "100.115.92.14");
   EXPECT_FALSE(msg.mac_addr().empty());
-  EXPECT_TRUE(msg.fwd_multicast());
   EXPECT_TRUE(msg.find_ipv6_routes());
 }
 
@@ -165,7 +161,6 @@ TEST_F(DeviceManagerTest, MakeCellularDevice) {
   EXPECT_EQ(msg.br_ipv4(), "100.115.92.9");
   EXPECT_EQ(msg.arc_ipv4(), "100.115.92.10");
   EXPECT_FALSE(msg.mac_addr().empty());
-  EXPECT_FALSE(msg.fwd_multicast());
   EXPECT_FALSE(msg.find_ipv6_routes());
 }
 
@@ -196,7 +191,6 @@ TEST_F(DeviceManagerTest, MakeVpnTunDevice) {
   EXPECT_EQ(msg.br_ipv4(), "100.115.92.9");
   EXPECT_EQ(msg.arc_ipv4(), "100.115.92.10");
   EXPECT_FALSE(msg.mac_addr().empty());
-  EXPECT_FALSE(msg.fwd_multicast());
   EXPECT_FALSE(msg.find_ipv6_routes());
 }
 
