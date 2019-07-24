@@ -41,6 +41,7 @@ getuid: 1
 #        arg1 == FIONREAD || arg1 == FIONBIO ||
 #        arg1 == SIOCGIFINDEX || arg1 == SIOCETHTOOL
 ioctl: arg1 == 0x5401 || arg1 == 0x5404 || arg1 == 0x541b || arg1 == 0x5421 || arg1 == 0x8933 || arg1 == 0x8946
+kill: 1
 lseek: 1
 lstat: 1
 madvise: 1

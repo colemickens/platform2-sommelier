@@ -35,6 +35,7 @@ gettimeofday: 1
 getuid: 1
 #ioctl: arg1 == SIOCETHTOOL || arg1 == TCGETS || arg1 == SIOCGIFINDEX
 ioctl: arg1 == 0x8946 || arg1 == 0x5401 || arg1 == 0x8933
+kill: 1
 lseek: 1
 madvise: 1
 mkdirat: 1

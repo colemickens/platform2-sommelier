@@ -41,6 +41,7 @@ getuid32: 1
 #        arg1 == FIONREAD || arg1 == FIONBIO ||
 #        arg1 == SIOCGIFINDEX || arg1 == SIOCETHTOOL
 ioctl: arg1 == TCGETS || arg1 == TCSETSF || arg1 == FIONREAD || arg1 == FIONBIO || arg1 == 0x8933 || arg1 == 0x8946
+kill: 1
 _llseek: 1
 lstat: 1
 lstat64: 1
