@@ -3,10 +3,12 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
+#include <brillo/dbus/mock_exported_object_manager.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
@@ -44,11 +46,22 @@ class DispatcherTest : public ::testing::Test {
     source_object_manager_ = new dbus::MockObjectManager(
         bus_.get(), bluez_object_manager::kBluezObjectManagerServiceName,
         object_manager_path);
+
+    auto exported_object_manager =
+        std::make_unique<brillo::dbus_utils::MockExportedObjectManager>(
+            bus_, dbus::ObjectPath(
+                      bluez_object_manager::kBluezObjectManagerServicePath));
+
+    exported_object_manager_wrapper_ =
+        std::make_unique<ExportedObjectManagerWrapper>(
+            bus_, std::move(exported_object_manager));
+
     // Force MessageLoop to run pending tasks as effect of instantiating
     // MockObjectManager. Needed to avoid memory leaks because pending tasks
     // are unowned pointers that will only self destruct after being run.
     base::RunLoop().RunUntilIdle();
-    dispatcher_ = std::make_unique<Dispatcher>(bus_);
+    dispatcher_ = std::make_unique<Dispatcher>(
+        bus_, exported_object_manager_wrapper_.get());
   }
 
  protected:
@@ -57,39 +70,10 @@ class DispatcherTest : public ::testing::Test {
     dbus::ObjectPath root_path(
         bluetooth_object_manager::kBluetoothObjectManagerServicePath);
 
-    scoped_refptr<dbus::MockExportedObject> exported_root_object =
-        new dbus::MockExportedObject(bus_.get(), root_path);
-    EXPECT_CALL(*bus_, GetExportedObject(root_path))
-        .WillOnce(Return(exported_root_object.get()));
-
-    EXPECT_CALL(
-        *bus_,
-        RequestOwnershipAndBlock(
-            bluetooth_object_manager::kBluetoothObjectManagerServiceName, _))
-        .WillOnce(Return(true));
-
     for (const std::string& service_name : service_names) {
       EXPECT_CALL(*bus_, GetObjectManager(service_name, root_path))
           .WillRepeatedly(Return(source_object_manager_.get()));
     }
-
-    // org.freedesktop.DBus.ObjectManager interface methods should be exported.
-    EXPECT_CALL(*exported_root_object,
-                ExportMethod(dbus::kObjectManagerInterface,
-                             dbus::kObjectManagerGetManagedObjects, _, _))
-        .Times(1);
-
-    // org.freedesktop.DBus.Properties interface methods should be exported.
-    EXPECT_CALL(*exported_root_object, ExportMethod(dbus::kPropertiesInterface,
-                                                    dbus::kPropertiesGet, _, _))
-        .Times(1);
-    EXPECT_CALL(*exported_root_object, ExportMethod(dbus::kPropertiesInterface,
-                                                    dbus::kPropertiesSet, _, _))
-        .Times(1);
-    EXPECT_CALL(
-        *exported_root_object,
-        ExportMethod(dbus::kPropertiesInterface, dbus::kPropertiesGetAll, _, _))
-        .Times(1);
 
     std::vector<std::string> bluez_interfaces = {
         bluetooth_adapter::kBluetoothAdapterInterface,
@@ -113,7 +97,6 @@ class DispatcherTest : public ::testing::Test {
     dispatcher_->Init(passthrough_mode);
 
     // Free up all resources.
-    EXPECT_CALL(*exported_root_object, Unregister()).Times(1);
     for (const std::string& interface_name : bluez_interfaces)
       EXPECT_CALL(*source_object_manager_, UnregisterInterface(interface_name))
           .Times(service_names.size());
@@ -124,6 +107,8 @@ class DispatcherTest : public ::testing::Test {
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockObjectProxy> object_manager_object_proxy_;
   scoped_refptr<dbus::MockObjectManager> source_object_manager_;
+  std::unique_ptr<ExportedObjectManagerWrapper>
+      exported_object_manager_wrapper_;
   std::unique_ptr<Dispatcher> dispatcher_;
 };
 

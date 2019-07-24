@@ -24,6 +24,10 @@ class DispatcherDaemon : public BluetoothDaemon {
   bool Init(scoped_refptr<dbus::Bus> bus, DBusDaemon* dbus_daemon) override;
 
  private:
+  // The exported object manager to be shared with other components
+  std::unique_ptr<ExportedObjectManagerWrapper>
+      exported_object_manager_wrapper_;
+
   // The suspend/resume handler for pausing/unpausing discovery during system
   // suspend.
   std::unique_ptr<SuspendManager> suspend_manager_;

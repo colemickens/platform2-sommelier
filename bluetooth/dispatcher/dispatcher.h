@@ -40,7 +40,10 @@ enum class PassthroughMode {
 // Exports BlueZ-compatible API and dispatches the requests to BlueZ or newblue.
 class Dispatcher {
  public:
-  explicit Dispatcher(scoped_refptr<dbus::Bus> bus);
+  // |exported_object_manager_wrapper| not owned, caller must make
+  // sure it outlives this object.
+  Dispatcher(scoped_refptr<dbus::Bus> bus,
+             ExportedObjectManagerWrapper* exported_object_manager_wrapper);
   ~Dispatcher();
 
   // Initializes the daemon D-Bus operations.
@@ -55,8 +58,7 @@ class Dispatcher {
 
   // The exported ObjectManager interface which is the impersonation of BlueZ's
   // ObjectManager.
-  std::unique_ptr<ExportedObjectManagerWrapper>
-      exported_object_manager_wrapper_;
+  ExportedObjectManagerWrapper* exported_object_manager_wrapper_;
 
   // Impersonates BlueZ's objects on various interfaces.
   std::map<std::string, std::unique_ptr<ImpersonationObjectManagerInterface>>

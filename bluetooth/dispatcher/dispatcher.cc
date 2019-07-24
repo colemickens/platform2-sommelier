@@ -16,11 +16,16 @@
 
 namespace bluetooth {
 
-Dispatcher::Dispatcher(scoped_refptr<dbus::Bus> bus)
+Dispatcher::Dispatcher(
+    scoped_refptr<dbus::Bus> bus,
+    ExportedObjectManagerWrapper* exported_object_manager_wrapper)
     : bus_(bus),
+      exported_object_manager_wrapper_(exported_object_manager_wrapper),
       client_manager_(std::make_unique<ClientManager>(
           bus, std::make_unique<DBusConnectionFactory>())),
-      weak_ptr_factory_(this) {}
+      weak_ptr_factory_(this) {
+  CHECK(exported_object_manager_wrapper_ != nullptr);
+}
 
 Dispatcher::~Dispatcher() = default;
 
@@ -36,23 +41,6 @@ bool Dispatcher::Init(PassthroughMode mode) {
     service_names_.push_back(
         newblue_object_manager::kNewblueObjectManagerServiceName);
   }
-
-  if (!bus_->RequestOwnershipAndBlock(
-          bluetooth_object_manager::kBluetoothObjectManagerServiceName,
-          dbus::Bus::REQUIRE_PRIMARY)) {
-    LOG(ERROR) << "Failed to acquire D-Bus name ownership";
-    return false;
-  }
-
-  auto exported_object_manager =
-      std::make_unique<brillo::dbus_utils::ExportedObjectManager>(
-          bus_,
-          dbus::ObjectPath(
-              bluetooth_object_manager::kBluetoothObjectManagerServicePath));
-
-  exported_object_manager_wrapper_ =
-      std::make_unique<ExportedObjectManagerWrapper>(
-          bus_, std::move(exported_object_manager));
 
   // Convenient temporary variable to hold InterfaceHandler's indexed by its
   // interface name to be registered.
@@ -93,8 +81,8 @@ bool Dispatcher::Init(PassthroughMode mode) {
   for (auto& kv : interface_handlers) {
     std::string interface_name = kv.first;
     auto interface = std::make_unique<ImpersonationObjectManagerInterface>(
-        bus_.get(), exported_object_manager_wrapper_.get(),
-        std::move(kv.second), interface_name, client_manager_.get());
+        bus_.get(), exported_object_manager_wrapper_, std::move(kv.second),
+        interface_name, client_manager_.get());
 
     for (const std::string& service_name : service_names_) {
       interface->RegisterToObjectManager(
@@ -123,7 +111,6 @@ void Dispatcher::Shutdown() {
     }
   }
   impersonation_object_manager_interfaces_.clear();
-  exported_object_manager_wrapper_.reset();
 }
 
 }  // namespace bluetooth
