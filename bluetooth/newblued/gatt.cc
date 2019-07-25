@@ -9,6 +9,24 @@
 
 namespace bluetooth {
 
+namespace {
+
+constexpr char kGattHumanInterfaceDeviceServiceUuid[] =
+    "00001812-0000-1000-8000-00805f9b34fb";
+
+// TODO(b:134425062): Implement profile manager so that the blacklist can be
+// removed.
+// Some GATT service should be kept only for newblued used due to security
+// concern, and this works as a blacklist-filter.
+bool IsHiddenGattService(const GattService& service) {
+  std::string uuid = service.uuid().value().canonical_value();
+  if (uuid.compare(kGattHumanInterfaceDeviceServiceUuid) == 0)
+    return true;
+  return false;
+}
+
+}  // namespace
+
 Gatt::Gatt(Newblue* newblue, DeviceInterfaceHandler* device_interface_handler)
     : newblue_(newblue),
       device_interface_handler_(device_interface_handler),
@@ -88,6 +106,9 @@ void Gatt::OnGattDisconnected(const std::string& device_address,
     VLOG(1) << "Clear the cached GATT services of device " << device_address;
     for (auto& observer : observers_) {
       for (const auto& service : services->second) {
+        if (IsHiddenGattService(*service.second))
+          continue;
+
         for (const auto& characteristic : service.second->characteristics()) {
           for (const auto& descriptor : characteristic.second->descriptors())
             observer.OnGattDescriptorRemoved(*descriptor.second);
@@ -193,6 +214,9 @@ void Gatt::OnGattClientEnumServices(bool finished,
                                device_address, first_handle,
                                first_handle + num_handles - 1, primary, uuid));
   for (auto& observer : observers_) {
+    if (IsHiddenGattService(*services->second.at(first_handle)))
+      continue;
+
     observer.OnGattServiceAdded(
         *remote_services_.at(device_address).at(first_handle));
   }
@@ -257,6 +281,9 @@ void Gatt::OnGattClientTravPrimaryService(
   // Notify observers on service-changed, characteristic-added and
   // descriptor-added events.
   for (auto& observer : observers_) {
+    if (IsHiddenGattService(*srv->second))
+      continue;
+
     observer.OnGattServiceChanged(*srv->second);
     for (const auto& characteristic : srv->second->characteristics()) {
       observer.OnGattCharacteristicAdded(*characteristic.second);
