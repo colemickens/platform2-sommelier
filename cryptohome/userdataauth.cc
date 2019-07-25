@@ -15,6 +15,7 @@
 #include "cryptohome/bootlockbox/boot_lockbox_client.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/cryptolib.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/key_challenge_service_impl.h"
 #include "cryptohome/obfuscated_username.h"
@@ -2009,6 +2010,38 @@ bool UserDataAuth::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
 
 bool UserDataAuth::GetRsuDeviceId(std::string* rsu_device_id) {
   return tpm_->GetRsuDeviceId(rsu_device_id);
+}
+
+user_data_auth::CryptohomeErrorCode
+UserDataAuth::LockToSingleUserMountUntilReboot(
+    const cryptohome::AccountIdentifier& account_id) {
+  const std::string obfuscated_username =
+      BuildObfuscatedUsername(GetAccountId(account_id), system_salt_);
+
+  homedirs_->SetLockedToSingleUser();
+  brillo::Blob pcr_value;
+
+  if (!tpm_->ReadPCR(kTpmSingleUserPCR, &pcr_value)) {
+    LOG(ERROR) << "Failed to read PCR for LockToSingleUserMountUntilReboot()";
+    return user_data_auth::CRYPTOHOME_ERROR_FAILED_TO_READ_PCR;
+  }
+
+  if (pcr_value != brillo::Blob(pcr_value.size(), 0)) {
+    return user_data_auth::CRYPTOHOME_ERROR_PCR_ALREADY_EXTENDED;
+  }
+
+  brillo::Blob extention_blob(obfuscated_username.begin(),
+                              obfuscated_username.end());
+
+  if (tpm_->GetVersion() == cryptohome::Tpm::TPM_1_2) {
+    extention_blob = CryptoLib::Sha1(extention_blob);
+  }
+
+  if (!tpm_->ExtendPCR(kTpmSingleUserPCR, extention_blob)) {
+    return user_data_auth::CRYPTOHOME_ERROR_FAILED_TO_EXTEND_PCR;
+  }
+
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
 }  // namespace cryptohome

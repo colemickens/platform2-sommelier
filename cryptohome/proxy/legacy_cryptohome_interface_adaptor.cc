@@ -2299,10 +2299,52 @@ void LegacyCryptohomeInterfaceAdaptor::LockToSingleUserMountUntilReboot(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::LockToSingleUserMountUntilRebootRequest& in_request) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
+          std::move(response));
+
+  user_data_auth::LockToSingleUserMountUntilRebootRequest request;
+  if (in_request.has_account_id()) {
+    *request.mutable_account_id() = request.account_id();
+  }
+  misc_proxy_->LockToSingleUserMountUntilRebootAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
+                     LockToSingleUserMountUntilRebootOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::
+    LockToSingleUserMountUntilRebootOnSuccess(
+        std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>>
+            response,
+        const user_data_auth::LockToSingleUserMountUntilRebootReply& reply) {
+  cryptohome::BaseReply result;
+  cryptohome::LockToSingleUserMountUntilRebootReply* result_extension =
+      result.MutableExtension(
+          cryptohome::LockToSingleUserMountUntilRebootReply::reply);
+  if (reply.error() == user_data_auth::CRYPTOHOME_ERROR_FAILED_TO_READ_PCR) {
+    result_extension->set_result(cryptohome::FAILED_TO_READ_PCR);
+    result.set_error(cryptohome::CRYPTOHOME_ERROR_TPM_COMM_ERROR);
+  } else if (reply.error() ==
+             user_data_auth::CRYPTOHOME_ERROR_PCR_ALREADY_EXTENDED) {
+    result_extension->set_result(cryptohome::PCR_ALREADY_EXTENDED);
+  } else if (reply.error() ==
+             user_data_auth::CRYPTOHOME_ERROR_FAILED_TO_EXTEND_PCR) {
+    result_extension->set_result(cryptohome::FAILED_TO_EXTEND_PCR);
+    result.set_error(cryptohome::CRYPTOHOME_ERROR_TPM_COMM_ERROR);
+  } else if (reply.error() == user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    result_extension->set_result(cryptohome::SUCCESS);
+  } else {
+    LOG(DFATAL) << "Invalid error code returned by "
+                   "LockToSingleUserMountUntilReboot() in UserDataAuth";
+    result.ClearExtension(
+        cryptohome::LockToSingleUserMountUntilRebootReply::reply);
+  }
+  response->Return(result);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::GetRsuDeviceId(

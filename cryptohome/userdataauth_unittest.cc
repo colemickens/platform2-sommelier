@@ -10,6 +10,7 @@
 #include <chaps/token_manager_client_mock.h>
 #include <vector>
 
+#include "cryptohome/cryptolib.h"
 #include "cryptohome/mock_arc_disk_quota.h"
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_firmware_management_parameters.h"
@@ -405,11 +406,26 @@ static_assert(
             cryptohome::CRYPTOHOME_ERROR_UPDATE_USER_ACTIVITY_TIMESTAMP_FAILED),
     "Enum member CRYPTOHOME_ERROR_UPDATE_USER_ACTIVITY_TIMESTAMP_FAILED "
     "differs between user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_FAILED_TO_READ_PCR) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_FAILED_TO_READ_PCR),
+    "Enum member CRYPTOHOME_ERROR_FAILED_TO_READ_PCR differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_PCR_ALREADY_EXTENDED) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_PCR_ALREADY_EXTENDED),
+    "Enum member CRYPTOHOME_ERROR_PCR_ALREADY_EXTENDED differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_FAILED_TO_EXTEND_PCR) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_FAILED_TO_EXTEND_PCR),
+    "Enum member CRYPTOHOME_ERROR_FAILED_TO_EXTEND_PCR differs between "
+    "user_data_auth:: and cryptohome::");
 
 static_assert(
-    user_data_auth::CryptohomeErrorCode_MAX == 37,
+    user_data_auth::CryptohomeErrorCode_MAX == 40,
     "user_data_auth::CrytpohomeErrorCode's element count is incorrect");
-static_assert(cryptohome::CryptohomeErrorCode_MAX == 37,
+static_assert(cryptohome::CryptohomeErrorCode_MAX == 40,
               "cryptohome::CrytpohomeErrorCode's element count is incorrect");
 }  // namespace CryptohomeErrorCodeEquivalenceTest
 
@@ -837,6 +853,103 @@ TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceForArcGid) {
   EXPECT_CALL(arc_disk_quota_, GetCurrentSpaceForGid(kGID))
       .WillOnce(Return(kSpaceUsage));
   EXPECT_EQ(kSpaceUsage, userdataauth_.GetCurrentSpaceForArcGid(kGID));
+}
+
+TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootSanity20) {
+  constexpr char kUsername1[] = "foo@gmail.com";
+  cryptohome::AccountIdentifier account_id;
+  account_id.set_account_id(kUsername1);
+  const std::string kUsername1Obfuscated = GetObfuscatedUsername(kUsername1);
+
+  // We'll test the TPM 2.0 case.
+  ON_CALL(tpm_, GetVersion()).WillByDefault(Return(cryptohome::Tpm::TPM_2_0));
+
+  EXPECT_CALL(homedirs_, SetLockedToSingleUser()).WillOnce(Return(true));
+  brillo::Blob empty_pcr = brillo::Blob(32, 0);
+  EXPECT_CALL(tpm_, ReadPCR(kTpmSingleUserPCR, _))
+      .WillOnce(DoAll(SetArgPointee<1>(empty_pcr), Return(true)));
+  brillo::Blob extention_blob(kUsername1Obfuscated.begin(),
+                              kUsername1Obfuscated.end());
+  EXPECT_CALL(tpm_, ExtendPCR(kTpmSingleUserPCR, extention_blob))
+      .WillOnce(Return(true));
+
+  EXPECT_EQ(userdataauth_.LockToSingleUserMountUntilReboot(account_id),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+}
+
+TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootSanity12) {
+  constexpr char kUsername1[] = "foo@gmail.com";
+  cryptohome::AccountIdentifier account_id;
+  account_id.set_account_id(kUsername1);
+  const std::string kUsername1Obfuscated = GetObfuscatedUsername(kUsername1);
+
+  // We'll test the TPM 1.2 case.
+  ON_CALL(tpm_, GetVersion()).WillByDefault(Return(cryptohome::Tpm::TPM_1_2));
+
+  EXPECT_CALL(homedirs_, SetLockedToSingleUser()).WillOnce(Return(true));
+  brillo::Blob empty_pcr = brillo::Blob(32, 0);
+  EXPECT_CALL(tpm_, ReadPCR(kTpmSingleUserPCR, _))
+      .WillOnce(DoAll(SetArgPointee<1>(empty_pcr), Return(true)));
+  brillo::Blob extention_blob(kUsername1Obfuscated.begin(),
+                              kUsername1Obfuscated.end());
+  extention_blob = CryptoLib::Sha1(extention_blob);
+  EXPECT_CALL(tpm_, ExtendPCR(kTpmSingleUserPCR, extention_blob))
+      .WillOnce(Return(true));
+
+  EXPECT_EQ(userdataauth_.LockToSingleUserMountUntilReboot(account_id),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+}
+
+TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootReadPCRFail) {
+  constexpr char kUsername1[] = "foo@gmail.com";
+  cryptohome::AccountIdentifier account_id;
+  account_id.set_account_id(kUsername1);
+
+  ON_CALL(homedirs_, SetLockedToSingleUser()).WillByDefault(Return(true));
+  EXPECT_CALL(tpm_, ReadPCR(kTpmSingleUserPCR, _)).WillOnce(Return(false));
+
+  EXPECT_EQ(userdataauth_.LockToSingleUserMountUntilReboot(account_id),
+            user_data_auth::CRYPTOHOME_ERROR_FAILED_TO_READ_PCR);
+}
+
+TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootAlreadyExtended) {
+  constexpr char kUsername1[] = "foo@gmail.com";
+  cryptohome::AccountIdentifier account_id;
+  account_id.set_account_id(kUsername1);
+
+  // We'll test the TPM 2.0 case.
+  ON_CALL(tpm_, GetVersion()).WillByDefault(Return(cryptohome::Tpm::TPM_2_0));
+
+  ON_CALL(homedirs_, SetLockedToSingleUser()).WillByDefault(Return(true));
+  brillo::Blob empty_pcr =
+      brillo::Blob(32, 0x42);  // Incorrect PCR value, should cause it to fail.
+  EXPECT_CALL(tpm_, ReadPCR(kTpmSingleUserPCR, _))
+      .WillOnce(DoAll(SetArgPointee<1>(empty_pcr), Return(true)));
+
+  EXPECT_EQ(userdataauth_.LockToSingleUserMountUntilReboot(account_id),
+            user_data_auth::CRYPTOHOME_ERROR_PCR_ALREADY_EXTENDED);
+}
+
+TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootExtendFail) {
+  constexpr char kUsername1[] = "foo@gmail.com";
+  cryptohome::AccountIdentifier account_id;
+  account_id.set_account_id(kUsername1);
+  const std::string kUsername1Obfuscated = GetObfuscatedUsername(kUsername1);
+
+  // We'll test the TPM 2.0 case.
+  ON_CALL(tpm_, GetVersion()).WillByDefault(Return(cryptohome::Tpm::TPM_2_0));
+
+  EXPECT_CALL(homedirs_, SetLockedToSingleUser()).WillOnce(Return(true));
+  brillo::Blob empty_pcr = brillo::Blob(32, 0);
+  EXPECT_CALL(tpm_, ReadPCR(kTpmSingleUserPCR, _))
+      .WillOnce(DoAll(SetArgPointee<1>(empty_pcr), Return(true)));
+  brillo::Blob extention_blob(kUsername1Obfuscated.begin(),
+                              kUsername1Obfuscated.end());
+  EXPECT_CALL(tpm_, ExtendPCR(kTpmSingleUserPCR, extention_blob))
+      .WillOnce(Return(false));
+
+  EXPECT_EQ(userdataauth_.LockToSingleUserMountUntilReboot(account_id),
+            user_data_auth::CRYPTOHOME_ERROR_FAILED_TO_EXTEND_PCR);
 }
 
 // ================== Firmware Management Parameters tests ==================

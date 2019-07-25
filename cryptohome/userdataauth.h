@@ -317,6 +317,12 @@ class UserDataAuth {
   // used.
   bool UpdateCurrentUserActivityTimestamp(int time_shift_sec);
 
+  // Calling this method will prevent another user from logging in later by
+  // extending PCR, causing PCR-bound VKKs to be inaccessible. This is used by
+  // ARC++. |account_id| contains the user that we'll lock to before reboot.
+  user_data_auth::CryptohomeErrorCode LockToSingleUserMountUntilReboot(
+      const cryptohome::AccountIdentifier& account_id);
+
   // Retrieve the RSU Device ID, return true if and only if |rsu_device_id| is
   // set to the RSU Device ID.
   bool GetRsuDeviceId(std::string* rsu_device_id);

@@ -670,6 +670,17 @@ void CryptohomeMiscAdaptor::GetStatusString(
   response->Return(reply);
 }
 
+void CryptohomeMiscAdaptor::LockToSingleUserMountUntilReboot(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::LockToSingleUserMountUntilRebootReply>> response,
+    const user_data_auth::LockToSingleUserMountUntilRebootRequest& in_request) {
+  user_data_auth::LockToSingleUserMountUntilRebootReply reply;
+  auto status =
+      service_->LockToSingleUserMountUntilReboot(in_request.account_id());
+  reply.set_error(status);
+  response->Return(reply);
+}
+
 void CryptohomeMiscAdaptor::GetRsuDeviceId(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::GetRsuDeviceIdReply>> response,

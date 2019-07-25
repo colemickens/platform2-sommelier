@@ -738,6 +738,9 @@ class LegacyCryptohomeInterfaceAdaptor
   void GetCurrentSpaceForGidOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<int64_t>> response,
       const user_data_auth::GetCurrentSpaceForArcGidReply& reply);
+  void LockToSingleUserMountUntilRebootOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+      const user_data_auth::LockToSingleUserMountUntilRebootReply& reply);
   void GetRsuDeviceIdOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
       const user_data_auth::GetRsuDeviceIdReply& reply);
