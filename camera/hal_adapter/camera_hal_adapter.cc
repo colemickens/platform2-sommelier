@@ -218,7 +218,7 @@ int32_t CameraHalAdapter::GetCameraInfo(int32_t camera_id,
 
   LOGF(INFO) << "camera_id = " << camera_id << ", facing = " << info.facing;
 
-  if (VLOG_IS_ON(1)) {
+  if (VLOG_IS_ON(2)) {
     dump_camera_metadata(info.static_camera_characteristics, 2, 3);
   }
 
