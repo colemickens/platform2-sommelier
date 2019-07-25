@@ -278,14 +278,14 @@ MountErrorType ArchiveManager::StartAVFS() {
   if (avfs_started_)
     return MOUNT_ERROR_NONE;
 
-  // As cros-disks is now an non-privileged process, the directory tree under
+  // As cros-disks is now a non-privileged process, the directory tree under
   // |kAVFSRootDirectory| is created by the pre-start script of the cros-disks
   // upstart job. We simply check to make sure the directory tree is created
   // with the expected file ownership and permissions.
   uid_t avfs_user_id, dir_user_id;
   gid_t avfs_group_id, dir_group_id;
   mode_t dir_mode;
-  if (!base::PathExists(base::FilePath(kAVFSRootDirectory)) ||
+  if (!platform()->PathExists(kAVFSRootDirectory) ||
       !platform()->GetUserAndGroupId(kAVFSMountUser, &avfs_user_id,
                                      &avfs_group_id) ||
       !platform()->GetOwnership(kAVFSRootDirectory, &dir_user_id,
@@ -328,7 +328,7 @@ bool ArchiveManager::StopAVFS() {
   bool all_unmounted = UnmountAll();
   for (const auto& mapping : kAVFSPathMapping) {
     const std::string& path = mapping.avfs_path;
-    if (!base::PathExists(base::FilePath(path)))
+    if (!platform()->PathExists(path))
       continue;
 
     const MountErrorType error = platform()->Unmount(path, 0);
