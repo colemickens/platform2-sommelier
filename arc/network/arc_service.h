@@ -5,6 +5,9 @@
 #ifndef ARC_NETWORK_ARC_SERVICE_H_
 #define ARC_NETWORK_ARC_SERVICE_H_
 
+#include <memory>
+#include <string>
+
 #include <base/memory/weak_ptr.h>
 #include <shill/net/rtnl_handler.h>
 #include <shill/net/rtnl_listener.h>

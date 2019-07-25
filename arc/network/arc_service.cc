@@ -7,8 +7,6 @@
 #include <linux/rtnetlink.h>
 #include <net/if.h>
 
-#include <memory>
-#include <string>
 #include <utility>
 
 #include <base/bind.h>
@@ -23,6 +21,7 @@
 #include "arc/network/datapath.h"
 #include "arc/network/ipc.pb.h"
 #include "arc/network/mac_address_generator.h"
+#include "arc/network/minijailed_process_runner.h"
 #include "arc/network/net_util.h"
 #include "arc/network/scoped_ns.h"
 
@@ -107,6 +106,41 @@ ArcService::ArcService(DeviceManagerBase* dev_mgr,
   datapath_ = std::move(datapath);
   dev_mgr_->RegisterDeviceIPv6AddressFoundHandler(
       base::Bind(&ArcService::SetupIPv6, weak_factory_.GetWeakPtr()));
+
+  // Load networking modules needed by Android that are not compiled in the
+  // kernel. Android does not allow auto-loading of kernel modules.
+  MinijailedProcessRunner runner;
+
+  // These must succeed.
+  if (runner.ModprobeAll({
+          // The netfilter modules needed by netd for iptables commands.
+          "ip6table_filter",
+          "ip6t_ipv6header",
+          "ip6t_REJECT",
+          // The xfrm modules needed for Android's ipsec APIs.
+          "xfrm4_mode_transport",
+          "xfrm4_mode_tunnel",
+          "xfrm6_mode_transport",
+          "xfrm6_mode_tunnel",
+          // The ipsec modules for AH and ESP encryption for ipv6.
+          "ah6",
+          "esp6",
+      }) != 0) {
+    LOG(ERROR) << "One or more required kernel modules failed to load.";
+  }
+
+  // Optional modules.
+  if (runner.ModprobeAll({
+          // This module is not available in kernels < 3.18
+          "nf_reject_ipv6",
+          // These modules are needed for supporting Chrome traffic on Android
+          // VPN which uses Android's NAT feature. Android NAT sets up iptables
+          // rules that use these conntrack modules for FTP/TFTP.
+          "nf_nat_ftp",
+          "nf_nat_tftp",
+      }) != 0) {
+    LOG(WARNING) << "One or more optional kernel modules failed to load.";
+  }
 }
 
 void ArcService::OnStart() {
@@ -449,8 +483,10 @@ void ArcService::TeardownIPv6(Device* device) {
                                        ipv6_config.prefix_len,
                                        ipv6_config.routing_table_id);
   } else {
-    LOG(ERROR) << "Invalid container namespace (" << pid_
-               << ") - cannot cleanup IPv6.";
+    // Doesn't actually matter if the namespace is gone then its configuration
+    // is as well.
+    LOG(WARNING) << "Invalid container namespace (" << pid_
+                 << ") - cannot cleanup IPv6.";
   }
 }
 
