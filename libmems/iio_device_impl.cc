@@ -187,6 +187,9 @@ bool IioDeviceImpl::ReadEvents(uint32_t num_samples,
     char errMsg[ERROR_BUFFER_SIZE];
     iio_strerror(-ret, errMsg, sizeof(errMsg));
     LOG(ERROR) << "Unable to refill buffer: " << errMsg;
+    buffer_.reset();
+    buffer_size_ = 0;
+
     return false;
   }
 
@@ -197,6 +200,8 @@ bool IioDeviceImpl::ReadEvents(uint32_t num_samples,
   if (buf_step != sample_size) {
     LOG(ERROR) << "sample_size doesn't match in refill: " << buf_step
                << ", sample_size: " << sample_size;
+    buffer_.reset();
+    buffer_size_ = 0;
 
     return false;
   }
@@ -227,8 +232,6 @@ bool IioDeviceImpl::CreateBuffer(uint32_t num_samples) {
       iio_device_get_sample_size(device_) == iio_buffer_step(buffer_.get()))
     return true;
 
-  buffer_size_ = num_samples;
-
   buffer_.reset();
   buffer_.reset(iio_device_create_buffer(device_, num_samples, false));
 
@@ -238,6 +241,8 @@ bool IioDeviceImpl::CreateBuffer(uint32_t num_samples) {
     LOG(ERROR) << "Unable to allocate buffer: " << errMsg;
     return false;
   }
+
+  buffer_size_ = num_samples;
 
   return true;
 }
