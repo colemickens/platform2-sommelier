@@ -438,6 +438,16 @@
     <method name="StartDeviceWipe" />
 
     <!--
+        StartRemoteDeviceWipe:
+
+        Same as StartDeviceWipe (sets the device up to "Powerwash" on reboot,
+        and triggers a reboot), except it also verifies the remote command.
+    -->
+    <method name="StartRemoteDeviceWipe">
+      <arg type="ay" name="signed_command" direction="in" />
+    </method>
+
+    <!--
         ClearForcedReEnrollmentVpd:
 
         Sets block_devmode=0 and check_enrollment=0 in RW_VPD.

@@ -1133,4 +1133,154 @@ TEST_F(DevicePolicyServiceTest, TestResilientStore) {
   EXPECT_TRUE(IsResilient());
 }
 
+namespace {
+
+em::RemoteCommand CreatePowerwashCommand() {
+  em::RemoteCommand command;
+  command.set_type(em::RemoteCommand_Type_DEVICE_REMOTE_POWERWASH);
+  command.set_command_id(123);
+  command.set_age_of_command(45678);
+  command.set_target_device_id("");
+  return command;
+}
+
+em::PolicyData CreatePolicydata(const em::RemoteCommand& command) {
+  em::PolicyData policy_data;
+  EXPECT_TRUE(command.SerializeToString(policy_data.mutable_policy_value()));
+  policy_data.set_policy_type("google/chromeos/remotecommand");
+  return policy_data;
+}
+
+em::SignedData CreateSignedCommand(const em::PolicyData& policy_data) {
+  em::SignedData data;
+  EXPECT_TRUE(policy_data.SerializeToString(data.mutable_data()));
+  data.set_signature("signature");
+  return data;
+}
+
+}  // namespace
+
+TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_Success) {
+  MockNssUtil nss;
+  InitService(&nss, false);
+
+  EXPECT_CALL(key_, Verify(_, _)).WillOnce(Return(true));
+  em::RemoteCommand command = CreatePowerwashCommand();
+  em::PolicyData policy_data = CreatePolicydata(command);
+  em::SignedData data = CreateSignedCommand(policy_data);
+
+  EXPECT_TRUE(service_->ValidateRemoteDeviceWipeCommand(SerializeAsBlob(data)));
+}
+
+TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_BadSignedData) {
+  MockNssUtil nss;
+  InitService(&nss, false);
+
+  em::RemoteCommand command = CreatePowerwashCommand();
+
+  // Passing over RemoteCommand proto instead of SignedData should fail.
+  EXPECT_FALSE(
+      service_->ValidateRemoteDeviceWipeCommand(SerializeAsBlob(command)));
+}
+
+TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_BadSignature) {
+  MockNssUtil nss;
+  InitService(&nss, false);
+
+  // Set the signature verification call to fail.
+  EXPECT_CALL(key_, Verify(_, _)).WillOnce(Return(false));
+  em::RemoteCommand command = CreatePowerwashCommand();
+  em::PolicyData policy_data = CreatePolicydata(command);
+  em::SignedData data = CreateSignedCommand(policy_data);
+
+  EXPECT_FALSE(
+      service_->ValidateRemoteDeviceWipeCommand(SerializeAsBlob(data)));
+}
+
+TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_BadPolicyData) {
+  MockNssUtil nss;
+  InitService(&nss, false);
+
+  EXPECT_CALL(key_, Verify(_, _)).WillOnce(Return(true));
+  em::RemoteCommand command = CreatePowerwashCommand();
+  em::PolicyData policy_data = CreatePolicydata(command);
+  em::SignedData data = CreateSignedCommand(policy_data);
+  // Corrupt PolicyData proto data by removing one byte.
+  data.mutable_data()->resize(data.data().size() - 1);
+
+  EXPECT_FALSE(
+      service_->ValidateRemoteDeviceWipeCommand(SerializeAsBlob(data)));
+}
+
+TEST_F(DevicePolicyServiceTest,
+       ValidateRemoteDeviceWipeCommand_BadPolicyDataType) {
+  MockNssUtil nss;
+  InitService(&nss, false);
+
+  EXPECT_CALL(key_, Verify(_, _)).WillOnce(Return(true));
+  em::RemoteCommand command = CreatePowerwashCommand();
+  em::PolicyData policy_data = CreatePolicydata(command);
+  // Corrupt the policy type.
+  policy_data.set_policy_type("acme-type");
+  em::SignedData data = CreateSignedCommand(policy_data);
+
+  EXPECT_FALSE(
+      service_->ValidateRemoteDeviceWipeCommand(SerializeAsBlob(data)));
+}
+
+TEST_F(DevicePolicyServiceTest,
+       ValidateRemoteDeviceWipeCommand_BadRemoteCommand) {
+  MockNssUtil nss;
+  InitService(&nss, false);
+
+  EXPECT_CALL(key_, Verify(_, _)).WillOnce(Return(true));
+  em::RemoteCommand command = CreatePowerwashCommand();
+  em::PolicyData policy_data = CreatePolicydata(command);
+  // Corrupt RemoteCommand proto data by removing one byte.
+  policy_data.mutable_policy_value()->resize(policy_data.policy_value().size() -
+                                             1);
+  em::SignedData data = CreateSignedCommand(policy_data);
+
+  EXPECT_FALSE(
+      service_->ValidateRemoteDeviceWipeCommand(SerializeAsBlob(data)));
+}
+
+TEST_F(DevicePolicyServiceTest,
+       ValidateRemoteDeviceWipeCommand_BadCommandType) {
+  MockNssUtil nss;
+  InitService(&nss, false);
+
+  EXPECT_CALL(key_, Verify(_, _)).WillOnce(Return(true));
+  em::RemoteCommand command = CreatePowerwashCommand();
+  // Set the command type here to reboot, that should fail.
+  command.set_type(em::RemoteCommand_Type_DEVICE_REBOOT);
+  em::PolicyData policy_data = CreatePolicydata(command);
+  em::SignedData data = CreateSignedCommand(policy_data);
+
+  EXPECT_FALSE(
+      service_->ValidateRemoteDeviceWipeCommand(SerializeAsBlob(data)));
+}
+
+TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_BadDeviceId) {
+  MockNssUtil nss;
+  InitService(&nss, true);
+
+  EXPECT_CALL(key_, Verify(_, _)).WillOnce(Return(true));
+  em::RemoteCommand command = CreatePowerwashCommand();
+  // Set bogus target device id.
+  command.set_target_device_id("acme-device");
+  em::PolicyData policy_data = CreatePolicydata(command);
+  em::SignedData data = CreateSignedCommand(policy_data);
+
+  // Set expected target device id.
+  em::PolicyData policy_data_id;
+  policy_data_id.set_device_id("coyote-device");
+  em::PolicyFetchResponse policy_proto;
+  policy_proto.set_policy_data(policy_data_id.SerializeAsString());
+  EXPECT_CALL(*store_, Get()).WillOnce(ReturnRef(policy_proto));
+
+  EXPECT_FALSE(
+      service_->ValidateRemoteDeviceWipeCommand(SerializeAsBlob(data)));
+}
+
 }  // namespace login_manager

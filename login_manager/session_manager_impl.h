@@ -243,6 +243,9 @@ class SessionManagerImpl
                   const std::vector<std::string>& in_argv) override;
 
   bool StartDeviceWipe(brillo::ErrorPtr* error) override;
+  bool StartRemoteDeviceWipe(
+      brillo::ErrorPtr* error,
+      const std::vector<uint8_t>& in_signed_command) override;
   void ClearForcedReEnrollmentVpd(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response)
       override;

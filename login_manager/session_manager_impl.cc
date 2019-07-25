@@ -943,6 +943,18 @@ bool SessionManagerImpl::StartDeviceWipe(brillo::ErrorPtr* error) {
   return true;
 }
 
+bool SessionManagerImpl::StartRemoteDeviceWipe(
+    brillo::ErrorPtr* error, const std::vector<uint8_t>& in_signed_command) {
+  if (!device_policy_->ValidateRemoteDeviceWipeCommand(in_signed_command)) {
+    *error = CreateError(dbus_error::kInvalidParameter,
+                         "Remote wipe command validation failed, aborting.");
+    return false;
+  }
+
+  InitiateDeviceWipe("remote_wipe_request");
+  return true;
+}
+
 void SessionManagerImpl::ClearForcedReEnrollmentVpd(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
   device_policy_->ClearForcedReEnrollmentFlags(

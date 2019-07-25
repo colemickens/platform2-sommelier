@@ -142,6 +142,9 @@ const char DevicePolicyService::kDevicePolicyType[] = "google/chromeos/device";
 const char DevicePolicyService::kExtensionPolicyType[] =
     "google/chrome/extension";
 // static
+const char DevicePolicyService::kRemoteCommandPolicyType[] =
+    "google/chromeos/remotecommand";
+// static
 const char DevicePolicyService::kAttrEnterpriseMode[] = "enterprise.mode";
 // static
 const char DevicePolicyService::kEnterpriseDeviceMode[] = "enterprise";
@@ -660,8 +663,77 @@ void DevicePolicyService::ClearForcedReEnrollmentFlags(
   }
 }
 
+bool DevicePolicyService::ValidateRemoteDeviceWipeCommand(
+    const std::vector<uint8_t>& in_signed_command) {
+  // Parse the SignedData that was sent over the DBus call.
+  em::SignedData signed_data;
+  if (!signed_data.ParseFromArray(in_signed_command.data(),
+                                  in_signed_command.size()) ||
+      !signed_data.has_data() || !signed_data.has_signature()) {
+    LOG(ERROR) << "SignedData parsing failed.";
+    return false;
+  }
+
+  // TODO(isandrk, 1000627): Move into a common Verify() function that everyone
+  // uses (signature verification & policy_type checking).
+
+  // Verify the command signature.
+  if (!key()->Verify(StringToBlob(signed_data.data()),
+                     StringToBlob(signed_data.signature()))) {
+    LOG(ERROR) << "Invalid command signature.";
+    return false;
+  }
+
+  // Parse the PolicyData from the raw data.
+  em::PolicyData policy_data;
+  if (!policy_data.ParseFromString(signed_data.data())) {
+    LOG(ERROR) << "PolicyData parsing failed.";
+    return false;
+  }
+
+  // Verify that this PolicyData really contains the RemoteCommand.
+  if (policy_data.policy_type() != kRemoteCommandPolicyType) {
+    LOG(ERROR) << "Received PolicyData doesn't contain the RemoteCommand.";
+    return false;
+  }
+
+  // Parse the RemoteCommand from the PolicyData.
+  em::RemoteCommand remote_command;
+  if (!remote_command.ParseFromString(policy_data.policy_value())) {
+    LOG(ERROR) << "RemoteCommand parsing failed.";
+    return false;
+  }
+
+  // Also verify command type and target device id here.
+  if (remote_command.type() != em::RemoteCommand_Type_DEVICE_REMOTE_POWERWASH) {
+    LOG(ERROR) << "Invalid remote command type.";
+    return false;
+  }
+  if (remote_command.target_device_id() != GetDeviceId()) {
+    LOG(ERROR) << "Invalid remote command target_device_id.";
+    return false;
+  }
+
+  // Note: the code here doesn't protect against replay attacks, but that is not
+  // an issue for remote powerwash since after execution the device ID will no
+  // longer match.  In case more commands are to be added in the future, replay
+  // protection must be considered and added if deemed necessary.
+
+  return true;
+}
+
 PolicyStore* DevicePolicyService::GetChromeStore() {
   return GetOrCreateStore(MakeChromePolicyNamespace());
+}
+
+std::string DevicePolicyService::GetDeviceId() {
+  em::PolicyData policy_data;
+  if (!policy_data.ParseFromString(GetChromeStore()->Get().policy_data()) ||
+      !policy_data.has_device_id()) {
+    LOG(ERROR) << "Failed to parse policy data, returning empty device id.";
+    return std::string();
+  }
+  return policy_data.device_id();
 }
 
 bool DevicePolicyService::IsChromeStoreResilientForTesting() {

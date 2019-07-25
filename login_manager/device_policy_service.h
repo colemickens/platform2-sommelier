@@ -120,6 +120,10 @@ class DevicePolicyService : public PolicyService {
   // otherwise, the completion is run with an error.
   virtual void ClearForcedReEnrollmentFlags(const Completion& completion);
 
+  // Validates the remote device wipe command received from the server.
+  virtual bool ValidateRemoteDeviceWipeCommand(
+      const std::vector<uint8_t>& in_signed_command);
+
   // PolicyService:
   bool Store(const PolicyNamespace& ns,
              const std::vector<uint8_t>& policy_blob,
@@ -135,6 +139,7 @@ class DevicePolicyService : public PolicyService {
   // Format of this string is documented in device_management_backend.proto.
   static const char kDevicePolicyType[];
   static const char kExtensionPolicyType[];
+  static const char kRemoteCommandPolicyType[];
 
   // These are defined in Chromium source at
   // chrome/browser/chromeos/policy/enterprise_install_attributes.cc.  Sadly,
@@ -194,6 +199,9 @@ class DevicePolicyService : public PolicyService {
 
   // Helper to return the policy store for the Chrome domain.
   PolicyStore* GetChromeStore();
+
+  // Returns the device_id from PolicyData.
+  std::string GetDeviceId();
 
   // Returns whether the store is resilent. To be used for testing only.
   bool IsChromeStoreResilientForTesting();

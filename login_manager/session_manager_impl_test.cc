@@ -1978,6 +1978,27 @@ TEST_F(SessionManagerImplTest, StartDeviceWipe_Enterprise) {
   EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
 }
 
+TEST_F(SessionManagerImplTest, StartRemoteDeviceWipe) {
+  ExpectDeviceRestart();
+  EXPECT_CALL(*device_policy_service_, ValidateRemoteDeviceWipeCommand(_))
+      .WillOnce(Return(true));
+
+  brillo::ErrorPtr error;
+  std::vector<uint8_t> in_signed_command;
+  EXPECT_TRUE(impl_->StartRemoteDeviceWipe(&error, in_signed_command));
+  EXPECT_FALSE(error.get());
+}
+
+TEST_F(SessionManagerImplTest, StartRemoteDeviceWipe_BadSignature) {
+  EXPECT_CALL(*device_policy_service_, ValidateRemoteDeviceWipeCommand(_))
+      .WillOnce(Return(false));
+
+  brillo::ErrorPtr error;
+  std::vector<uint8_t> in_signed_command;
+  EXPECT_FALSE(impl_->StartRemoteDeviceWipe(&error, in_signed_command));
+  EXPECT_TRUE(error.get());
+}
+
 TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {
   ASSERT_TRUE(
       utils_.RemoveFile(base::FilePath(SessionManagerImpl::kLoggedInFlag)));
