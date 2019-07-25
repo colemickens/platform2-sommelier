@@ -8,22 +8,23 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <base/json/json_reader.h>
+#include <base/json/json_writer.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/optional.h>
 #include <brillo/strings/string_utils.h>
 
 #include "runtime_probe/utils/file_utils.h"
+#include "runtime_probe/utils/type_utils.h"
 
 namespace runtime_probe {
 namespace {
 constexpr auto kStorageDirPath("/sys/class/block/");
 constexpr auto kReadFileMaxSize = 1024;
-// TODO(b/123097249): Remove the following hard-coded constant once
-// authenticated source of storage size to use is determined
-constexpr auto kBytesPerSector = 512;
+constexpr auto kDefaultBytesPerSector = 512;
 }  // namespace
 
-// Get paths of all non-removeable physical storage
+// Get paths of all non-removeable physical storage.
 std::vector<base::FilePath> StorageFunction::GetFixedDevices() const {
   std::vector<base::FilePath> res{};
   const base::FilePath storage_dir_path(kStorageDirPath);
@@ -36,7 +37,7 @@ std::vector<base::FilePath> StorageFunction::GetFixedDevices() const {
     const auto storage_path = storage_dir_it.Next();
     if (storage_path.empty())
       break;
-    // Only return non-removable devices
+    // Only return non-removable devices.
     const auto storage_removable_path = storage_path.Append("removable");
     std::string removable_res;
     if (!base::ReadFileToString(storage_removable_path, &removable_res)) {
@@ -52,7 +53,7 @@ std::vector<base::FilePath> StorageFunction::GetFixedDevices() const {
       continue;
     }
 
-    // Skip loobpack or dm-verity device
+    // Skip loobpack or dm-verity device.
     if (base::StartsWith(storage_path.BaseName().value(), "loop",
                          base::CompareCase::SENSITIVE) ||
         base::StartsWith(storage_path.BaseName().value(), "dm-",
@@ -65,10 +66,10 @@ std::vector<base::FilePath> StorageFunction::GetFixedDevices() const {
   return res;
 }
 
-// Get storage size based on |node_path|
+// Get storage size based on |node_path|.
 base::Optional<int64_t> StorageFunction::GetStorageSectorCount(
     const base::FilePath& node_path) const {
-  // The sysfs entry for size info
+  // The sysfs entry for size info.
   const auto size_path = node_path.Append("size");
   std::string size_content;
   if (!base::ReadFileToStringWithMaxSize(size_path, &size_content,
@@ -78,10 +79,8 @@ base::Optional<int64_t> StorageFunction::GetStorageSectorCount(
     return base::nullopt;
   }
 
-  const auto sector_str =
-      base::TrimWhitespaceASCII(size_content, base::TrimPositions::TRIM_ALL);
   int64_t sector_int;
-  if (!base::StringToInt64(sector_str, &sector_int)) {
+  if (!StringToInt64(size_content, &sector_int)) {
     LOG(ERROR) << "Failed to parse recorded sector of" << node_path.value()
                << " to integer!";
     return base::nullopt;
@@ -90,29 +89,71 @@ base::Optional<int64_t> StorageFunction::GetStorageSectorCount(
   return sector_int;
 }
 
-// Get logical block size of storage. Currently hard-coded.
-int32_t StorageFunction::GetLogicalBlockSize() const {
-  return kBytesPerSector;
+// Get the logical block size of the storage given the |node_path|.
+int32_t StorageFunction::GetStorageLogicalBlockSize(
+    const base::FilePath& node_path) const {
+  std::string block_size_str;
+  if (!base::ReadFileToString(
+          node_path.Append("queue").Append("logical_block_size"),
+          &block_size_str)) {
+    LOG(WARNING) << "The storage driver does not specify its logical block "
+                    "size in sysfs. Use default value instead.";
+    return kDefaultBytesPerSector;
+  }
+  int32_t logical_block_size;
+  if (!StringToInt(block_size_str, &logical_block_size)) {
+    LOG(WARNING) << "Failed to convert retrieved block size to integer. Use "
+                    "default value instead";
+    return kDefaultBytesPerSector;
+  }
+  if (logical_block_size <= 0) {
+    LOG(WARNING) << "The value of logical block size " << logical_block_size
+                 << " seems errorneous. Use default value instead.";
+    return kDefaultBytesPerSector;
+  }
+  return logical_block_size;
 }
 
 StorageFunction::DataType StorageFunction::Eval() const {
-  const auto storage_nodes_path_list = GetFixedDevices();
   DataType result{};
+  std::string json_output;
+  if (!InvokeHelper(&json_output)) {
+    LOG(ERROR)
+        << "Failed to invoke helper to retrieve cached storage information.";
+    return result;
+  }
+  const auto storage_results =
+      base::ListValue::From(base::JSONReader::Read(json_output));
+
+  for (int i = 0; i < storage_results->GetSize(); i++) {
+    base::DictionaryValue* storage_res;
+    storage_results->GetDictionary(i, &storage_res);
+    const auto storage_aux_res = EvalByDV(*storage_res);
+    if (!storage_aux_res.empty())
+      storage_res->MergeDictionary(&storage_aux_res);
+    result.push_back(std::move(*storage_res));
+  }
+  return result;
+}
+
+int StorageFunction::EvalInHelper(std::string* output) const {
+  const auto storage_nodes_path_list = GetFixedDevices();
+  base::ListValue result{};
 
   for (const auto& node_path : storage_nodes_path_list) {
     VLOG(2) << "Processnig the node " << node_path.value();
 
-    // Get type specific fields and their values
-    auto node_res = EvalByPath(node_path);
+    // Get type specific fields and their values.
+    auto node_res = EvalInHelperByPath(node_path);
     if (node_res.empty())
       continue;
 
-    // Report the absolute path we probe the reported info from
+    // Report the absolute path we probe the reported info from.
     node_res.SetString("path", node_path.value());
 
-    // Get size of storage
+    // Get size of storage.
     const auto sector_count = GetStorageSectorCount(node_path);
-    const int32_t logical_block_size = GetLogicalBlockSize();
+    const int32_t logical_block_size = GetStorageLogicalBlockSize(node_path);
     if (!sector_count) {
       node_res.SetString("sectors", "-1");
       node_res.SetString("size", "-1");
@@ -122,9 +163,14 @@ StorageFunction::DataType StorageFunction::Eval() const {
                                                      logical_block_size));
     }
 
-    result.push_back(std::move(node_res));
+    result.Append(node_res.CreateDeepCopy());
   }
-  return result;
+  if (!base::JSONWriter::Write(result, output)) {
+    LOG(ERROR) << "Failed to serialize storage probed result to json string";
+    return -1;
+  }
+
+  return 0;
 }
 
 }  // namespace runtime_probe

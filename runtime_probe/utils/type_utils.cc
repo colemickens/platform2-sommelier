@@ -36,6 +36,12 @@ bool StringToInt(const std::string& input, int* output) {
   return base::StringToInt(trimmed_input, output);
 }
 
+bool StringToInt64(const std::string& input, int64_t* output) {
+  std::string trimmed_input;
+  TrimWhitespaceASCII(input, base::TrimPositions::TRIM_ALL, &trimmed_input);
+  return base::StringToInt64(trimmed_input, output);
+}
+
 bool HexStringToInt(const std::string& input, int* output) {
   std::string trimmed_input;
   TrimWhitespaceASCII(input, base::TrimPositions::TRIM_ALL, &trimmed_input);

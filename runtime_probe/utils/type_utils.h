@@ -21,10 +21,13 @@ namespace runtime_probe {
 // Converts a string to double.
 bool StringToDouble(const std::string& input, double* output);
 
-// Converts a string to int
+// Converts a string to int.
 bool StringToInt(const std::string& input, int* output);
 
-// Converts a hex string to int
+// Converts a string to int64.
+bool StringToInt64(const std::string& input, int64_t* output);
+
+// Converts a hex string to int.
 bool HexStringToInt(const std::string& input, int* output);
 }  // namespace runtime_probe
 
