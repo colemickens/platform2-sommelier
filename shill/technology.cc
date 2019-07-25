@@ -21,16 +21,6 @@ using std::set;
 using std::string;
 using std::vector;
 
-namespace {
-
-constexpr char kLoopbackName[] = "loopback";
-constexpr char kTunnelName[] = "tunnel";
-constexpr char kPPPName[] = "ppp";
-constexpr char kGuestInterfaceName[] = "guest_interface";
-constexpr char kUnknownName[] = "unknown";
-
-}  // namespace
-
 // static
 bool GetTechnologyVectorFromString(const string& technologies_string,
                                    vector<Technology>* technologies_vector,
@@ -85,13 +75,13 @@ Technology Technology::CreateFromName(const string& name) {
     return kVPN;
   } else if (name == kTypePPPoE) {
     return kPPPoE;
-  } else if (name == kLoopbackName) {
-    return kLoopback;
-  } else if (name == kTunnelName) {
+  } else if (name == kTypeTunnel) {
     return kTunnel;
-  } else if (name == kPPPName) {
+  } else if (name == kTypeLoopback) {
+    return kLoopback;
+  } else if (name == kTypePPP) {
     return kPPP;
-  } else if (name == kGuestInterfaceName) {
+  } else if (name == kTypeGuestInterface) {
     return kGuestInterface;
   } else {
     return kUnknown;
@@ -119,18 +109,18 @@ string Technology::GetName() const {
     return kTypeCellular;
   } else if (type_ == kVPN) {
     return kTypeVPN;
-  } else if (type_ == kLoopback) {
-    return kLoopbackName;
   } else if (type_ == kTunnel) {
-    return kTunnelName;
+    return kTypeTunnel;
+  } else if (type_ == kLoopback) {
+    return kTypeLoopback;
   } else if (type_ == kPPP) {
-    return kPPPName;
+    return kTypePPP;
   } else if (type_ == kPPPoE) {
     return kTypePPPoE;
   } else if (type_ == kGuestInterface) {
-    return kGuestInterfaceName;
+    return kTypeGuestInterface;
   } else {
-    return kUnknownName;
+    return kTypeUnknown;
   }
 }
 
