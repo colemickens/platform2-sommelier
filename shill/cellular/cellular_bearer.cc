@@ -34,6 +34,7 @@ const char kPropertyDNS3[] = "dns3";
 const char kPropertyGateway[] = "gateway";
 const char kPropertyMethod[] = "method";
 const char kPropertyPrefix[] = "prefix";
+const char kPropertyMtu[] = "mtu";
 
 IPConfig::Method ConvertMMBearerIPConfigMethod(uint32_t method) {
   switch (method) {
@@ -146,6 +147,9 @@ void CellularBearer::GetIPConfigMethodAndProperties(
   if (properties.ContainsString(kPropertyDNS3)) {
     (*ipconfig_properties)
         ->dns_servers.push_back(properties.GetString(kPropertyDNS3));
+  }
+  if (properties.ContainsUint(kPropertyMtu)) {
+    (*ipconfig_properties)->mtu = properties.GetUint(kPropertyMtu);
   }
 }
 

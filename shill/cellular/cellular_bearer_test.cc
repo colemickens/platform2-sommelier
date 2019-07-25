@@ -30,10 +30,12 @@ const char kDataInterface[] = "/dev/ppp0";
 const char kIPv4Address[] = "10.0.0.1";
 const char kIPv4Gateway[] = "10.0.0.254";
 const int kIPv4SubnetPrefix = 8;
+const uint32_t kIPv4Mtu = 1300;
 const char* const kIPv4DNS[] = {"10.0.0.2", "8.8.4.4", "8.8.8.8"};
 const char kIPv6Address[] = "0:0:0:0:0:ffff:a00:1";
 const char kIPv6Gateway[] = "0:0:0:0:0:ffff:a00:fe";
 const int kIPv6SubnetPrefix = 16;
+const uint32_t kIPv6Mtu = 1400;
 const char* const kIPv6DNS[] = {"0:0:0:0:0:ffff:a00:fe",
                                 "0:0:0:0:0:ffff:808:404",
                                 "0:0:0:0:0:ffff:808:808"};
@@ -69,6 +71,7 @@ class CellularBearerTest : public testing::Test {
       ipconfig_properties.SetString("dns1", kIPv4DNS[0]);
       ipconfig_properties.SetString("dns2", kIPv4DNS[1]);
       ipconfig_properties.SetString("dns3", kIPv4DNS[2]);
+      ipconfig_properties.SetUint("mtu", kIPv4Mtu);
     }
     return ipconfig_properties;
   }
@@ -84,6 +87,7 @@ class CellularBearerTest : public testing::Test {
       ipconfig_properties.SetString("dns1", kIPv6DNS[0]);
       ipconfig_properties.SetString("dns2", kIPv6DNS[1]);
       ipconfig_properties.SetString("dns3", kIPv6DNS[2]);
+      ipconfig_properties.SetUint("mtu", kIPv6Mtu);
     }
     return ipconfig_properties;
   }
@@ -119,6 +123,7 @@ class CellularBearerTest : public testing::Test {
     EXPECT_EQ(kIPv4DNS[0], ipv4_config_properties->dns_servers[0]);
     EXPECT_EQ(kIPv4DNS[1], ipv4_config_properties->dns_servers[1]);
     EXPECT_EQ(kIPv4DNS[2], ipv4_config_properties->dns_servers[2]);
+    EXPECT_EQ(kIPv4Mtu, ipv4_config_properties->mtu);
   }
 
   void VerifyStaticIPv6ConfigMethodAndProperties() {
@@ -134,6 +139,7 @@ class CellularBearerTest : public testing::Test {
     EXPECT_EQ(kIPv6DNS[0], ipv6_config_properties->dns_servers[0]);
     EXPECT_EQ(kIPv6DNS[1], ipv6_config_properties->dns_servers[1]);
     EXPECT_EQ(kIPv6DNS[2], ipv6_config_properties->dns_servers[2]);
+    EXPECT_EQ(kIPv6Mtu, ipv6_config_properties->mtu);
   }
 
   std::unique_ptr<MockControl> control_;
