@@ -121,11 +121,10 @@ class StartedWilcoDtcSupportdEcEventServiceTest
 
 TEST_F(StartedWilcoDtcSupportdEcEventServiceTest, ReadEvent) {
   base::RunLoop run_loop;
-  const uint16_t data[6] = {0xaaaa, 0xbbbb, 0xcccc, 0xdddd, 0xeeee, 0xffff};
+  const uint16_t data[] = {0xaaaa, 0xbbbb, 0xcccc, 0xdddd, 0xeeee, 0xffff};
   WriteEventToEcEventFile(
       EcEvent(0x8888, static_cast<EcEvent::Type>(0x9999), data),
       run_loop.QuitClosure());
-  EXPECT_CALL(*delegate(), HandleMojoEvent(MojoEvent::kDockError));
   run_loop.Run();
 }
 
@@ -133,15 +132,80 @@ TEST_F(StartedWilcoDtcSupportdEcEventServiceTest, ReadManyEvent) {
   base::RunLoop run_loop;
   base::RepeatingClosure callback = BarrierClosure(
       2 /* num_closures */, run_loop.QuitClosure() /* done closure */);
-  const uint16_t data1[6] = {0xaaaa, 0xbbbb, 0xcccc, 0xdddd, 0xeeee, 0xffff};
+  const uint16_t data1[] = {0xaaaa, 0xbbbb, 0xcccc, 0xdddd, 0xeeee, 0xffff};
   WriteEventToEcEventFile(
       EcEvent(0x8888, static_cast<EcEvent::Type>(0x9999), data1), callback);
-  const uint16_t data2[6] = {0x0000, 0x1111, 0x2222, 0x3333, 0x4444, 0x5555};
+  const uint16_t data2[] = {0x0000, 0x1111, 0x2222, 0x3333, 0x4444, 0x5555};
   WriteEventToEcEventFile(
       EcEvent(0x6666, static_cast<EcEvent::Type>(0x7777), data2), callback);
-  EXPECT_CALL(*delegate(), HandleMojoEvent(MojoEvent::kDockError)).Times(2);
   run_loop.Run();
 }
+
+struct EcEventToMojoEventTestParams {
+  EcEvent source_ec_event;
+  base::Optional<MojoEvent> expected_mojo_event;
+};
+
+class EcEventToMojoEventTest
+    : public StartedWilcoDtcSupportdEcEventServiceTest,
+      public testing::WithParamInterface<EcEventToMojoEventTestParams> {};
+
+// Tests that HandleEvent() correctly interprets EC events, sometimes
+// translating them to Mojo events and forwarding them to |delegate_|.
+TEST_P(EcEventToMojoEventTest, SingleEvents) {
+  EcEventToMojoEventTestParams test_params = GetParam();
+  base::RunLoop run_loop;
+  WriteEventToEcEventFile(test_params.source_ec_event, run_loop.QuitClosure());
+  if (test_params.expected_mojo_event.has_value()) {
+    EXPECT_CALL(*delegate(),
+                HandleMojoEvent(test_params.expected_mojo_event.value()));
+  }
+  run_loop.Run();
+}
+
+// A meaningless and meaningful EcEvent::Type
+constexpr auto kGarbageType = static_cast<EcEvent::Type>(0xabcd);
+constexpr auto kSystemNotifyType = static_cast<EcEvent::Type>(0x0012);
+
+// Payloads for EcEvents that should trigger a Mojo event.
+constexpr uint16_t kEcEventPayloadNonWilcoCharger[]{0x0000, 0x0000, 0x0001,
+                                                    0x0000, 0x0000, 0x0000};
+constexpr uint16_t kEcEventPayloadBatteryAuth[]{0x0003, 0x0000, 0x0001,
+                                                0x0000, 0x0000, 0x0000};
+
+// These contain the right EcEvent::SystemNotifySubType to trigger a Mojo event,
+// but none of the flags are set, so these should not cause a Mojo event.
+constexpr uint16_t kEcEventPayloadAcAdapterNoFlags[]{0x0000, 0x0000, 0x0000,
+                                                     0x0000, 0x0000, 0x0000};
+constexpr uint16_t kEcEventPayloadChargerNoFlags[]{0x0003, 0x0000, 0x0000,
+                                                   0x0000, 0x0000, 0x0000};
+constexpr uint16_t kEcEventPayloadUsbCNoFlags[]{0x0008, 0x0000, 0x0000, 0x0000};
+
+// Contains the right flags to trigger MojoEvent::kNonWilcoCharger, but the
+// EcEvent::SystemNotifySubType is wrong.
+constexpr uint16_t kEcEventPayloadNonWilcoChargerBadSubType[]{
+    0xffff, 0x0000, 0x0001, 0x0000, 0x0000, 0x0000};
+
+const EcEventToMojoEventTestParams kEcEventToMojoEventTestParams[] = {
+    // Each of these EcEvents should trigger a Mojo event.
+    {EcEvent(6, kSystemNotifyType, kEcEventPayloadNonWilcoCharger),
+     MojoEvent::kNonWilcoCharger},
+    {EcEvent(6, kSystemNotifyType, kEcEventPayloadBatteryAuth),
+     MojoEvent::kBatteryAuth},
+    // These EcEvents should not trigger any mojo events.
+    {EcEvent(6, kGarbageType, kEcEventPayloadNonWilcoCharger), base::nullopt},
+    {EcEvent(4, kSystemNotifyType, kEcEventPayloadAcAdapterNoFlags),
+     base::nullopt},
+    {EcEvent(4, kSystemNotifyType, kEcEventPayloadChargerNoFlags),
+     base::nullopt},
+    {EcEvent(4, kSystemNotifyType, kEcEventPayloadUsbCNoFlags), base::nullopt},
+    {EcEvent(6, kSystemNotifyType, kEcEventPayloadNonWilcoChargerBadSubType),
+     base::nullopt},
+};
+
+INSTANTIATE_TEST_CASE_P(AllRealAndSomeAlmostMojoEvents,
+                        EcEventToMojoEventTest,
+                        testing::ValuesIn(kEcEventToMojoEventTestParams));
 
 }  // namespace
 

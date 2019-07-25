@@ -199,8 +199,30 @@ void WilcoDtcSupportdEcEventService::ShutdownMonitoringThread() {
 void WilcoDtcSupportdEcEventService::OnEventAvailable(const EcEvent& ec_event) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   delegate_->SendGrpcEcEventToWilcoDtc(ec_event);
-  // TODO(crbug.com/972105): set Mojo event according to ec_event
-  delegate_->HandleMojoEvent(MojoEvent::kDockError);
+
+  // Parse EcEvent into a MojoEvent and forward to the delegate.
+  // We only will forward certain events. If they aren't relevant, ignore.
+  if (ec_event.type != EcEvent::Type::SYSTEM_NOTIFY) {
+    return;
+  }
+  EcEvent::SystemNotifyPayload payload = ec_event.payload.system_notify;
+  switch (payload.sub_type) {
+    case EcEvent::SystemNotifySubType::AC_ADAPTER:
+      if (payload.flags.ac_adapter.cause &
+          EcEvent::AcAdapterFlags::Cause::NON_WILCO_CHARGER) {
+        delegate_->HandleMojoEvent(MojoEvent::kNonWilcoCharger);
+      }
+      break;
+    case EcEvent::SystemNotifySubType::BATTERY:
+      if (payload.flags.battery.cause &
+          EcEvent::BatteryFlags::Cause::BATTERY_AUTH) {
+        delegate_->HandleMojoEvent(MojoEvent::kBatteryAuth);
+      }
+      break;
+    default:
+      // Ignore EC events that aren't relevant.
+      break;
+  }
 }
 
 void WilcoDtcSupportdEcEventService::OnShutdown() {

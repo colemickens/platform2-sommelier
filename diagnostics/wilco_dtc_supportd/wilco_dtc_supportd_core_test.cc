@@ -828,7 +828,6 @@ class EcEventServiceBootstrappedWilcoDtcSupportdCoreTest
 TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
        SendGrpcEventToWilcoDtcSize0) {
   EmulateEcEvent(0, kFakeEcEventType1);
-  EXPECT_CALL(*wilco_dtc_supportd_client(), HandleEvent(_));
   ExpectAllFakeWilcoDtcReceivedEcEvents({{kFakeEcEventType1, GetPayload(0)}});
 }
 
@@ -837,7 +836,6 @@ TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
 TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
        SendGrpcEventToWilcoDtcSize5) {
   EmulateEcEvent(5, kFakeEcEventType1);
-  EXPECT_CALL(*wilco_dtc_supportd_client(), HandleEvent(_));
   ExpectAllFakeWilcoDtcReceivedEcEvents({{kFakeEcEventType1, GetPayload(10)}});
 }
 
@@ -846,7 +844,6 @@ TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
 TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
        SendGrpcEventToWilcoDtcSize6) {
   EmulateEcEvent(6, kFakeEcEventType1);
-  EXPECT_CALL(*wilco_dtc_supportd_client(), HandleEvent(_));
   ExpectAllFakeWilcoDtcReceivedEcEvents({{kFakeEcEventType1, GetPayload(12)}});
 }
 
@@ -856,7 +853,6 @@ TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
        SendGrpcEventToWilcoDtcMultipleEvents) {
   EmulateEcEvent(3, kFakeEcEventType1);
   EmulateEcEvent(4, kFakeEcEventType2);
-  EXPECT_CALL(*wilco_dtc_supportd_client(), HandleEvent(_)).Times(2);
   ExpectAllFakeWilcoDtcReceivedEcEvents(
       {{kFakeEcEventType1, GetPayload(6)}, {kFakeEcEventType2, GetPayload(8)}});
 }
@@ -868,7 +864,6 @@ TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
        SendGrpcEventToWilcoDtcInvalidSize) {
   EmulateEcEvent(3, kFakeEcEventType1);
   EmulateEcEvent(7, kFakeEcEventType2);
-  EXPECT_CALL(*wilco_dtc_supportd_client(), HandleEvent(_)).Times(2);
   // Expect only EC event with valid size.
   ExpectAllFakeWilcoDtcReceivedEcEvents({{kFakeEcEventType1, GetPayload(6)}});
 }
