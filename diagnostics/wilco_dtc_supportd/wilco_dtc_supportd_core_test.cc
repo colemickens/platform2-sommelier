@@ -70,6 +70,7 @@ const char kWilcoDtcGrpcUriTemplate[] = "unix:%s/test_wilco_dtc_socket";
 const char kUiMessageReceiverWilcoDtcGrpcUriTemplate[] =
     "unix:%s/test_ui_message_receiver_wilco_dtc_socket";
 
+using EcEvent = WilcoDtcSupportdEcEventService::EcEvent;
 using MojomWilcoDtcSupportdService =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService;
 using MojomWilcoDtcSupportdServiceFactory =
@@ -243,8 +244,7 @@ class StartedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
             }));
   }
 
-  void WriteEcEventToEcEventFile(
-      const WilcoDtcSupportdEcEventService::EcEvent& ec_event) const {
+  void WriteEcEventToEcEventFile(const EcEvent& ec_event) const {
     ASSERT_EQ(write(ec_event_service_fd_.get(), &ec_event, sizeof(ec_event)),
               sizeof(ec_event));
   }
@@ -801,9 +801,8 @@ class EcEventServiceBootstrappedWilcoDtcSupportdCoreTest
   const uint8_t kPayload[12]{0x02, 0x01, 0x14, 0x13, 0x26, 0x25,
                              0x38, 0x37, 0x4a, 0x49, 0x5c, 0x5b};
 
-  WilcoDtcSupportdEcEventService::EcEvent GetEcEvent(uint16_t size_in_words,
-                                                     uint16_t type) const {
-    return WilcoDtcSupportdEcEventService::EcEvent(size_in_words, type, kData);
+  EcEvent GetEcEvent(uint16_t size_in_words, uint16_t type) const {
+    return EcEvent(size_in_words, static_cast<EcEvent::Type>(type), kData);
   }
 
   void SetupFakeWilcoDtcEcEventCallback(const base::Closure& callback,

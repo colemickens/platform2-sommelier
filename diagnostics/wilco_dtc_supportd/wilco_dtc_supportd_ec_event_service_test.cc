@@ -29,13 +29,13 @@ namespace diagnostics {
 
 namespace {
 
+using EcEvent = WilcoDtcSupportdEcEventService::EcEvent;
+
 class MockWilcoDtcSupportdEcEventServiceDelegate
     : public WilcoDtcSupportdEcEventService::Delegate {
  public:
-  MOCK_METHOD1(SendGrpcEcEventToWilcoDtc,
-               void(const WilcoDtcSupportdEcEventService::EcEvent& ec_event));
-  MOCK_METHOD1(HandleEvent,
-               void(const WilcoDtcSupportdEcEventService::EcEvent& ec_event));
+  MOCK_METHOD1(SendGrpcEcEventToWilcoDtc, void(const EcEvent& ec_event));
+  MOCK_METHOD1(HandleEvent, void(const EcEvent& ec_event));
 };
 
 class WilcoDtcSupportdEcEventServiceTest : public testing::Test {
@@ -72,18 +72,14 @@ class WilcoDtcSupportdEcEventServiceTest : public testing::Test {
     ASSERT_NE(fifo_write_end_.get(), -1);
   }
 
-  void WriteEventToEcEventFile(
-      const WilcoDtcSupportdEcEventService::EcEvent& ec_event,
-      const base::RepeatingClosure& callback) {
+  void WriteEventToEcEventFile(const EcEvent& ec_event,
+                               const base::RepeatingClosure& callback) {
     ASSERT_EQ(write(fifo_write_end_.get(), &ec_event, sizeof(ec_event)),
               sizeof(ec_event));
 
     EXPECT_CALL(delegate_, SendGrpcEcEventToWilcoDtc(ec_event))
-        .WillOnce(Invoke(
-            [callback](
-                const WilcoDtcSupportdEcEventService::EcEvent& ec_event) {
-              callback.Run();
-            }));
+        .WillOnce(
+            Invoke([callback](const EcEvent& ec_event) { callback.Run(); }));
 
     EXPECT_CALL(delegate_, HandleEvent(ec_event));
   }
@@ -122,7 +118,7 @@ TEST_F(WilcoDtcSupportdEcEventServiceTest, ReadEvent) {
   base::RunLoop run_loop;
   const uint16_t data[6] = {0xaaaa, 0xbbbb, 0xcccc, 0xdddd, 0xeeee, 0xffff};
   WriteEventToEcEventFile(
-      WilcoDtcSupportdEcEventService::EcEvent(0x8888, 0x9999, data),
+      EcEvent(0x8888, static_cast<EcEvent::Type>(0x9999), data),
       run_loop.QuitClosure());
   run_loop.Run();
 }
@@ -138,10 +134,10 @@ TEST_F(WilcoDtcSupportdEcEventServiceTest, ReadManyEvent) {
       2 /* num_closures */, run_loop.QuitClosure() /* done closure */);
   const uint16_t data1[6] = {0xaaaa, 0xbbbb, 0xcccc, 0xdddd, 0xeeee, 0xffff};
   WriteEventToEcEventFile(
-      WilcoDtcSupportdEcEventService::EcEvent(0x8888, 0x9999, data1), callback);
+      EcEvent(0x8888, static_cast<EcEvent::Type>(0x9999), data1), callback);
   const uint16_t data2[6] = {0x0000, 0x1111, 0x2222, 0x3333, 0x4444, 0x5555};
   WriteEventToEcEventFile(
-      WilcoDtcSupportdEcEventService::EcEvent(0x6666, 0x7777, data2), callback);
+      EcEvent(0x6666, static_cast<EcEvent::Type>(0x7777), data2), callback);
   run_loop.Run();
 }
 

@@ -29,24 +29,92 @@ class EcEventMonitoringThreadDelegate;
 // Subscribes on EC events and redirects EC events to wilco_dtc.
 class WilcoDtcSupportdEcEventService final {
  public:
+  // A packet of data sent by the EC when it notices certain events have
+  // occured, such as the battery, AC adapter, or USB-C state changing.
+  // The format of this packet is a variable length sequence of 16-bit words.
+  // Word 0 is the |size| word, representing the number of following
+  // words in the struct. Word 1 is the |type| word. The following |size|-1
+  // words are the |payload|. Depending on the value of |type|, the |payload|
+  // is interpreted in different ways. There are other possible values of |type|
+  // and other interpretations of |payload| than those listed here. There will
+  // be, at most, 6 words in the |payload|. See section 2.3 "ACPI EC Event
+  // notification" of the Wilco EC specification at go/wilco-ec-spec for more
+  // information.
   struct alignas(2) EcEvent {
-    EcEvent() { memset(this, 0, sizeof(EcEvent)); }
+   public:
+    // The |type| member will be one of these.
+    enum Type : uint16_t {
+      // Interpret |payload| as SystemNotifyPayload.
+      SYSTEM_NOTIFY = 0x0012,
+    };
 
-    EcEvent(uint16_t size, uint16_t type, const uint16_t data[6])
-        : size(size), type(type) {
-      memset(this->data, 0, sizeof(this->data));
-      memcpy(this->data, data,
-             std::min(sizeof(this->data), size * sizeof(data[0])));
+    // Sub-types applicable for SystemNotifyPayload.
+    enum SystemNotifySubType : uint16_t {
+      AC_ADAPTER = 0x0000,
+      BATTERY = 0x0003,
+    };
+
+    // Flags used within |SystemNotifyPayload|.
+    struct alignas(2) AcAdapterFlags {
+      enum Cause : uint16_t {
+        // Barrel charger is incompatible and performance will be restricted.
+        NON_WILCO_CHARGER = 1 << 0,
+      };
+      uint16_t reserved0;
+      Cause cause;
+      uint16_t reserved2;
+      uint16_t reserved3;
+      uint16_t reserved4;
+    };
+
+    // Flags used within |SystemNotifyPayload|.
+    struct alignas(2) BatteryFlags {
+      enum Cause : uint16_t {
+        // An incompatible battery is connected and battery will not charge.
+        BATTERY_AUTH = 1 << 0,
+      };
+      uint16_t reserved0;
+      Cause cause;
+      uint16_t reserved2;
+      uint16_t reserved3;
+      uint16_t reserved4;
+    };
+
+    // Interpretation of |payload| applicable when |type|==Type::SYSTEM_NOTIFY.
+    struct alignas(2) SystemNotifyPayload {
+      SystemNotifySubType sub_type;
+      // Depending on |sub_type| we interpret the following data in different
+      // ways. Note that these flags aren't all the same size.
+      union SystemNotifyFlags {
+        AcAdapterFlags ac_adapter;
+        BatteryFlags battery;
+      } flags;
+    };
+
+    EcEvent() = default;
+
+    EcEvent(uint16_t num_words_in_payload, Type type, const uint16_t payload[6])
+        : size(num_words_in_payload + 1), type(type), payload{} {
+      memcpy(&this->payload, payload,
+             std::min(sizeof(this->payload),
+                      num_words_in_payload * sizeof(payload[0])));
     }
 
     bool operator==(const EcEvent& other) const {
       return memcmp(this, &other, sizeof(*this)) == 0;
     }
 
-    // |size| is number of received event words from EC driver items in |data|.
-    uint16_t size;
-    uint16_t type;
-    uint16_t data[6];
+    // Translate the |size| member into how many bytes of |payload| are used.
+    size_t PayloadSizeInBytes() const;
+
+    // |size| is the number of following 16-bit words in the event.
+    // Default is 1 to account for |type| word and empty |payload|.
+    uint16_t size = 1;
+    Type type = static_cast<Type>(0);
+    // Depending on |type| we interpret the following data in different ways.
+    union {
+      SystemNotifyPayload system_notify;
+    } payload = {};
   };
 
   class Delegate {

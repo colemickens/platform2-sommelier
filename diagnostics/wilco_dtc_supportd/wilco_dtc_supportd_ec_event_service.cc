@@ -110,6 +110,12 @@ class EcEventMonitoringThreadDelegate final
 
 }  // namespace internal
 
+size_t WilcoDtcSupportdEcEventService::EcEvent::PayloadSizeInBytes() const {
+  // Guard against the case when |size| == 0.
+  uint16_t sanitized_size = std::max(size, static_cast<uint16_t>(1));
+  return (sanitized_size - 1) * sizeof(uint16_t);
+}
+
 WilcoDtcSupportdEcEventService::WilcoDtcSupportdEcEventService(
     Delegate* delegate)
     : message_loop_(base::MessageLoop::current()), delegate_(delegate) {

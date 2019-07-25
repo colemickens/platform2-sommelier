@@ -25,6 +25,7 @@ namespace diagnostics {
 
 namespace {
 
+using EcEvent = WilcoDtcSupportdEcEventService::EcEvent;
 using MojomWilcoDtcSupportdWebRequestStatus =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestStatus;
 using MojomWilcoDtcSupportdWebRequestHttpMethod =
@@ -341,19 +342,18 @@ void WilcoDtcSupportdCore::PerformWebRequestToBrowser(
           callback));
 }
 
-void WilcoDtcSupportdCore::SendGrpcEcEventToWilcoDtc(
-    const WilcoDtcSupportdEcEventService::EcEvent& ec_event) {
+void WilcoDtcSupportdCore::SendGrpcEcEventToWilcoDtc(const EcEvent& ec_event) {
   VLOG(1) << "WilcoDtcSupportdCore::SendGrpcEcEventToWilcoDtc";
 
-  size_t data_size = ec_event.size * sizeof(ec_event.data[0]);
-  if (data_size > sizeof(ec_event.data)) {
-    VLOG(2) << "Received EC event with invalid size: " << ec_event.size;
+  size_t payload_size = ec_event.PayloadSizeInBytes();
+  if (payload_size > sizeof(ec_event.payload)) {
+    VLOG(2) << "Received EC event with invalid payload size: " << payload_size;
     return;
   }
 
   grpc_api::HandleEcNotificationRequest request;
   request.set_type(ec_event.type);
-  request.set_payload(ec_event.data, data_size);
+  request.set_payload(&ec_event.payload, payload_size);
 
   for (auto& client : wilco_dtc_grpc_clients_) {
     client->CallRpc(
@@ -372,8 +372,7 @@ void WilcoDtcSupportdCore::SendGrpcEcEventToWilcoDtc(
   }
 }
 
-void WilcoDtcSupportdCore::HandleEvent(
-    const WilcoDtcSupportdEcEventService::EcEvent& ec_event) {
+void WilcoDtcSupportdCore::HandleEvent(const EcEvent& ec_event) {
   VLOG(1) << "WilcoDtcSupportdCore::HandleEvent";
 
   if (!mojo_service_) {
