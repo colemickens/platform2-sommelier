@@ -74,7 +74,7 @@ class InputWatcherInterface;
 class LockfileCheckerInterface;
 class PeripheralBatteryWatcher;
 class PowerSupplyInterface;
-class SarWatcherInterface;
+class UserProximityWatcherInterface;
 class SuspendConfiguratorInterface;
 class UdevInterface;
 }  // namespace system
@@ -287,7 +287,8 @@ class Daemon : public policy::InputEventHandler::Delegate,
   std::unique_ptr<system::PeripheralBatteryWatcher>
       peripheral_battery_watcher_;  // May be null.
   std::unique_ptr<system::PowerSupplyInterface> power_supply_;
-  std::unique_ptr<system::SarWatcherInterface> sar_watcher_;
+  std::unique_ptr<system::UserProximityWatcherInterface>
+      user_proximity_watcher_;
   std::unique_ptr<policy::SarHandler> sar_handler_;
   std::unique_ptr<system::DarkResumeInterface> dark_resume_;
   std::unique_ptr<policy::ShutdownFromSuspend> shutdown_from_suspend_;

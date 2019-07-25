@@ -56,9 +56,9 @@
 #include "power_manager/powerd/system/lockfile_checker.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
-#include "power_manager/powerd/system/sar_watcher_interface.h"
 #include "power_manager/powerd/system/suspend_configurator.h"
 #include "power_manager/powerd/system/udev.h"
+#include "power_manager/powerd/system/user_proximity_watcher_interface.h"
 #include "power_manager/powerd/system/wilco_charge_controller_helper.h"
 #include "power_manager/proto_bindings/idle.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
@@ -416,9 +416,10 @@ void Daemon::Init() {
   power_override_lockfile_checker_ = delegate_->CreateLockfileChecker(
       base::FilePath(kPowerOverrideLockfileDir), {});
 
-  sar_watcher_ = delegate_->CreateSarWatcher(prefs_.get(), udev_.get());
+  user_proximity_watcher_ =
+      delegate_->CreateUserProximityWatcher(prefs_.get(), udev_.get());
   sar_handler_ = std::make_unique<policy::SarHandler>();
-  sar_handler_->Init(sar_watcher_.get(), wifi_controller_.get(),
+  sar_handler_->Init(user_proximity_watcher_.get(), wifi_controller_.get(),
                      cellular_controller_.get());
 
   arc_timer_manager_->Init(dbus_wrapper_.get());

@@ -41,9 +41,9 @@
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/power_supply_stub.h"
-#include "power_manager/powerd/system/sar_watcher_stub.h"
 #include "power_manager/powerd/system/suspend_configurator_stub.h"
 #include "power_manager/powerd/system/udev_stub.h"
+#include "power_manager/powerd/system/user_proximity_watcher_stub.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
 #include "power_manager/proto_bindings/switch_states.pb.h"
 
@@ -71,7 +71,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
         passed_acpi_wakeup_helper_(new system::AcpiWakeupHelperStub()),
         passed_ec_helper_(new system::EcHelperStub()),
         passed_power_supply_(new system::PowerSupplyStub()),
-        passed_sar_watcher_(new system::SarWatcherStub()),
+        passed_sar_watcher_(new system::UserProximityWatcherStub()),
         passed_dark_resume_(new system::DarkResumeStub()),
         passed_audio_client_(new system::AudioClientStub()),
         passed_lockfile_checker_(new system::LockfileCheckerStub()),
@@ -256,8 +256,9 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     EXPECT_TRUE(battery_percentage_converter);
     return std::move(passed_power_supply_);
   }
-  std::unique_ptr<system::SarWatcherInterface> CreateSarWatcher(
-      PrefsInterface* prefs, system::UdevInterface* udev) override {
+  std::unique_ptr<system::UserProximityWatcherInterface>
+      CreateUserProximityWatcher(PrefsInterface* prefs,
+                                 system::UdevInterface* udev) override {
     EXPECT_EQ(prefs_, prefs);
     EXPECT_EQ(udev_, udev);
     return std::move(passed_sar_watcher_);
@@ -346,7 +347,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<system::AcpiWakeupHelperStub> passed_acpi_wakeup_helper_;
   std::unique_ptr<system::EcHelperStub> passed_ec_helper_;
   std::unique_ptr<system::PowerSupplyStub> passed_power_supply_;
-  std::unique_ptr<system::SarWatcherStub> passed_sar_watcher_;
+  std::unique_ptr<system::UserProximityWatcherStub> passed_sar_watcher_;
   std::unique_ptr<system::DarkResumeStub> passed_dark_resume_;
   std::unique_ptr<system::AudioClientStub> passed_audio_client_;
   std::unique_ptr<system::LockfileCheckerStub> passed_lockfile_checker_;
@@ -374,7 +375,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   system::AcpiWakeupHelperStub* acpi_wakeup_helper_;
   system::EcHelperStub* ec_helper_;
   system::PowerSupplyStub* power_supply_;
-  system::SarWatcherStub* sar_watcher_;
+  system::UserProximityWatcherStub* sar_watcher_;
   system::DarkResumeStub* dark_resume_;
   system::AudioClientStub* audio_client_;
   system::LockfileCheckerStub* lockfile_checker_;

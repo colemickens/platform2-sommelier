@@ -10,7 +10,7 @@
 #include <base/logging.h>
 
 #include "power_manager/powerd/policy/wifi_controller.h"
-#include "power_manager/powerd/system/sar_watcher_interface.h"
+#include "power_manager/powerd/system/user_proximity_watcher_interface.h"
 
 namespace power_manager {
 namespace policy {
@@ -18,20 +18,20 @@ namespace policy {
 SarHandler::SarHandler() = default;
 
 SarHandler::~SarHandler() {
-  if (sar_watcher_)
-    sar_watcher_->RemoveObserver(this);
+  if (user_proximity_watcher_)
+    user_proximity_watcher_->RemoveObserver(this);
 }
 
-bool SarHandler::Init(system::SarWatcherInterface* sar_watcher,
+bool SarHandler::Init(system::UserProximityWatcherInterface* user_prox_watcher,
                       Delegate* wifi_delegate,
                       Delegate* lte_delegate) {
-  DCHECK(sar_watcher);
+  DCHECK(user_prox_watcher);
 
   wifi_delegate_ = wifi_delegate;
   lte_delegate_ = lte_delegate;
 
-  sar_watcher_ = sar_watcher;
-  sar_watcher_->AddObserver(this);
+  user_proximity_watcher_ = user_prox_watcher;
+  user_proximity_watcher_->AddObserver(this);
 
   return true;
 }

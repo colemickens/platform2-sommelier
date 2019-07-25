@@ -138,8 +138,8 @@ static_library("libsystem_stub") {
     "powerd/system/input_watcher_stub.cc",
     "powerd/system/lockfile_checker_stub.cc",
     "powerd/system/power_supply_stub.cc",
-    "powerd/system/sar_watcher_stub.cc",
     "powerd/system/udev_stub.cc",
+    "powerd/system/user_proximity_watcher_stub.cc",
     "powerd/system/wakeup_device_stub.cc",
   ]
 }

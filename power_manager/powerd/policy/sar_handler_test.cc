@@ -11,8 +11,8 @@
 #include "power_manager/common/action_recorder.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/sar_handler.h"
-#include "power_manager/powerd/system/sar_watcher_stub.h"
 #include "power_manager/powerd/system/user_proximity_observer.h"
+#include "power_manager/powerd/system/user_proximity_watcher_stub.h"
 
 namespace power_manager {
 namespace policy {
@@ -64,7 +64,7 @@ class SarHandlerTest : public ::testing::Test {
   }
 
  protected:
-  system::SarWatcherStub sar_watcher_;
+  system::UserProximityWatcherStub sar_watcher_;
   WifiDelegate wifi_delegate_;
   LteDelegate lte_delegate_;
   SarHandler sar_handler_;

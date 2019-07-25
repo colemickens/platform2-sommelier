@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_SYSTEM_SAR_WATCHER_INTERFACE_H_
-#define POWER_MANAGER_POWERD_SYSTEM_SAR_WATCHER_INTERFACE_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_INTERFACE_H_
+#define POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_INTERFACE_H_
 
 #include <base/macros.h>
 
@@ -12,12 +12,11 @@ namespace system {
 
 class UserProximityObserver;
 
-// An interface for querying proximity information via Specific Absorption
-// Rate (SAR) sensors.
-class SarWatcherInterface {
+// An interface for querying user proximity interfaces.
+class UserProximityWatcherInterface {
  public:
-  SarWatcherInterface() = default;
-  virtual ~SarWatcherInterface() = default;
+  UserProximityWatcherInterface() = default;
+  virtual ~UserProximityWatcherInterface() = default;
 
   // Adds or removes an observer.
   virtual void AddObserver(UserProximityObserver* observer) = 0;
@@ -25,10 +24,10 @@ class SarWatcherInterface {
 
   // TODO(egranata): add querying mechanisms
  private:
-  DISALLOW_COPY_AND_ASSIGN(SarWatcherInterface);
+  DISALLOW_COPY_AND_ASSIGN(UserProximityWatcherInterface);
 };
 
 }  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_SYSTEM_SAR_WATCHER_INTERFACE_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_INTERFACE_H_

@@ -17,7 +17,7 @@
 namespace power_manager {
 
 namespace system {
-class SarWatcherInterface;
+class UserProximityWatcherInterface;
 }
 
 namespace policy {
@@ -39,7 +39,7 @@ class SarHandler : public system::UserProximityObserver {
   ~SarHandler() override;
 
   // Delegates may be == nullptr. Ownership remains with the caller.
-  bool Init(system::SarWatcherInterface* sar_watcher_,
+  bool Init(system::UserProximityWatcherInterface* user_prox_watcher,
             Delegate* wifi_delegate,
             Delegate* lte_delegate);
 
@@ -55,7 +55,8 @@ class SarHandler : public system::UserProximityObserver {
   std::unordered_map<int, uint32_t> sensor_roles_;
   UserProximityVoting wifi_proximity_voting_;
   UserProximityVoting lte_proximity_voting_;
-  system::SarWatcherInterface* sar_watcher_ = nullptr;  //  Not owned.
+  system::UserProximityWatcherInterface* user_proximity_watcher_ =
+      nullptr;  //  Not owned.
 
   DISALLOW_COPY_AND_ASSIGN(SarHandler);
 };

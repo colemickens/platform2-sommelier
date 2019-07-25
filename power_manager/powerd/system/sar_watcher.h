@@ -16,8 +16,8 @@
 #include <base/observer_list.h>
 
 #include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/system/sar_watcher_interface.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
+#include "power_manager/powerd/system/user_proximity_watcher_interface.h"
 
 namespace power_manager {
 
@@ -29,9 +29,9 @@ class UserProximityObserver;
 struct UdevEvent;
 class UdevInterface;
 
-// Concrete implementation of SarWatcherInterface: detects proximity
+// Concrete implementation of UserProximityWatcherInterface: detects proximity
 // sensors and reports proximity events.
-class SarWatcher : public SarWatcherInterface,
+class SarWatcher : public UserProximityWatcherInterface,
                    public UdevSubsystemObserver,
                    public base::MessageLoopForIO::Watcher {
  public:
@@ -59,7 +59,7 @@ class SarWatcher : public SarWatcherInterface,
   // Returns true on success.
   bool Init(PrefsInterface* prefs, UdevInterface* udev);
 
-  // SarWatcherInterface implementation:
+  // UserProximityWatcherInterface implementation:
   void AddObserver(UserProximityObserver* observer) override;
   void RemoveObserver(UserProximityObserver* observer) override;
 

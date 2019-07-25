@@ -35,7 +35,7 @@ class InputWatcherInterface;
 class LockfileCheckerInterface;
 class PeripheralBatteryWatcher;
 class PowerSupplyInterface;
-class SarWatcherInterface;
+class UserProximityWatcherInterface;
 class SuspendConfiguratorInterface;
 class UdevInterface;
 }  // namespace system
@@ -124,8 +124,9 @@ class DaemonDelegate {
       system::DBusWrapperInterface* dbus_wrapper,
       BatteryPercentageConverter* battery_percentage_converter) = 0;
 
-  virtual std::unique_ptr<system::SarWatcherInterface> CreateSarWatcher(
-      PrefsInterface* prefs, system::UdevInterface* udev) = 0;
+  virtual std::unique_ptr<system::UserProximityWatcherInterface>
+      CreateUserProximityWatcher(PrefsInterface* prefs,
+                                 system::UdevInterface* udev) = 0;
 
   virtual std::unique_ptr<system::DarkResumeInterface> CreateDarkResume(
       PrefsInterface* prefs, system::InputWatcherInterface* input_watcher) = 0;

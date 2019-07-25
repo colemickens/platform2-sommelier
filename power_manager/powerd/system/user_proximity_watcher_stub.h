@@ -2,25 +2,25 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_SYSTEM_SAR_WATCHER_STUB_H_
-#define POWER_MANAGER_POWERD_SYSTEM_SAR_WATCHER_STUB_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_STUB_H_
+#define POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_STUB_H_
 
 #include <base/macros.h>
 #include <base/observer_list.h>
 
 #include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/system/sar_watcher_interface.h"
+#include "power_manager/powerd/system/user_proximity_watcher_interface.h"
 
 namespace power_manager {
 namespace system {
 
-// Stub implementation of SarWatcherInterface for use by tests.
-class SarWatcherStub : public SarWatcherInterface {
+// Stub implementation of UserProximityWatcherInterface for use by tests.
+class UserProximityWatcherStub : public UserProximityWatcherInterface {
  public:
-  SarWatcherStub() = default;
-  ~SarWatcherStub() override = default;
+  UserProximityWatcherStub() = default;
+  ~UserProximityWatcherStub() override = default;
 
-  // SarWatcherInterface overrides:
+  // UserProximityWatcherInterface overrides:
   void AddObserver(UserProximityObserver* observer) override;
   void RemoveObserver(UserProximityObserver* observer) override;
 
@@ -30,10 +30,10 @@ class SarWatcherStub : public SarWatcherInterface {
  private:
   base::ObserverList<UserProximityObserver> observers_;
 
-  DISALLOW_COPY_AND_ASSIGN(SarWatcherStub);
+  DISALLOW_COPY_AND_ASSIGN(UserProximityWatcherStub);
 };
 
 }  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_SYSTEM_SAR_WATCHER_STUB_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_STUB_H_

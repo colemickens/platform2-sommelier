@@ -204,8 +204,9 @@ class DaemonDelegateImpl : public DaemonDelegate {
     return supply;
   }
 
-  std::unique_ptr<system::SarWatcherInterface> CreateSarWatcher(
-      PrefsInterface* prefs, system::UdevInterface* udev) override {
+  std::unique_ptr<system::UserProximityWatcherInterface>
+  CreateUserProximityWatcher(PrefsInterface* prefs,
+                             system::UdevInterface* udev) override {
     auto watcher = std::make_unique<system::SarWatcher>();
     watcher->Init(prefs, udev);
     return watcher;
