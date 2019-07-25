@@ -20,6 +20,7 @@
 #include "diagnostics/wilco_dtc_supportd/bind_utils.h"
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_ec_event_service.h"
+#include "mojo/wilco_dtc_supportd.mojom.h"
 
 using testing::_;
 using testing::Invoke;
@@ -30,12 +31,13 @@ namespace diagnostics {
 namespace {
 
 using EcEvent = WilcoDtcSupportdEcEventService::EcEvent;
+using MojoEvent = chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
 
 class MockWilcoDtcSupportdEcEventServiceDelegate
     : public WilcoDtcSupportdEcEventService::Delegate {
  public:
   MOCK_METHOD1(SendGrpcEcEventToWilcoDtc, void(const EcEvent& ec_event));
-  MOCK_METHOD1(HandleEvent, void(const EcEvent& ec_event));
+  MOCK_METHOD1(HandleMojoEvent, void(const MojoEvent& mojo_event));
 };
 
 class WilcoDtcSupportdEcEventServiceTest : public testing::Test {
@@ -80,8 +82,6 @@ class WilcoDtcSupportdEcEventServiceTest : public testing::Test {
     EXPECT_CALL(delegate_, SendGrpcEcEventToWilcoDtc(ec_event))
         .WillOnce(
             Invoke([callback](const EcEvent& ec_event) { callback.Run(); }));
-
-    EXPECT_CALL(delegate_, HandleEvent(ec_event));
   }
 
   MockWilcoDtcSupportdEcEventServiceDelegate* delegate() { return &delegate_; }
@@ -120,6 +120,7 @@ TEST_F(WilcoDtcSupportdEcEventServiceTest, ReadEvent) {
   WriteEventToEcEventFile(
       EcEvent(0x8888, static_cast<EcEvent::Type>(0x9999), data),
       run_loop.QuitClosure());
+  EXPECT_CALL(*delegate(), HandleMojoEvent(MojoEvent::kDockError));
   run_loop.Run();
 }
 
@@ -138,6 +139,7 @@ TEST_F(WilcoDtcSupportdEcEventServiceTest, ReadManyEvent) {
   const uint16_t data2[6] = {0x0000, 0x1111, 0x2222, 0x3333, 0x4444, 0x5555};
   WriteEventToEcEventFile(
       EcEvent(0x6666, static_cast<EcEvent::Type>(0x7777), data2), callback);
+  EXPECT_CALL(*delegate(), HandleMojoEvent(MojoEvent::kDockError)).Times(2);
   run_loop.Run();
 }
 

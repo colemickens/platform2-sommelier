@@ -114,6 +114,7 @@ class WilcoDtcSupportdCore final
       brillo::dbus_utils::AsyncEventSequencer* sequencer);
 
  private:
+  using MojoEvent = chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
   using MojomWilcoDtcSupportdClientPtr =
       chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClientPtr;
   using MojomWilcoDtcSupportdServiceRequest =
@@ -129,8 +130,7 @@ class WilcoDtcSupportdCore final
   // WilcoDtcSupportdEcEventService::Delegate overrides:
   void SendGrpcEcEventToWilcoDtc(
       const WilcoDtcSupportdEcEventService::EcEvent& ec_event) override;
-  void HandleEvent(
-      const WilcoDtcSupportdEcEventService::EcEvent& ec_event) override;
+  void HandleMojoEvent(const MojoEvent& mojo_event) override;
 
   // WilcoDtcSupportdGrpcService::Delegate overrides:
   void PerformWebRequestToBrowser(

@@ -30,8 +30,6 @@ using MojomWilcoDtcSupportdWebRequestStatus =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestStatus;
 using MojomWilcoDtcSupportdWebRequestHttpMethod =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestHttpMethod;
-using MojomWilcoDtcSupportdEvent =
-    chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
 
 // Converts HTTP method into an appropriate mojom one.
 bool ConvertWebRequestHttpMethodToMojom(
@@ -372,7 +370,7 @@ void WilcoDtcSupportdCore::SendGrpcEcEventToWilcoDtc(const EcEvent& ec_event) {
   }
 }
 
-void WilcoDtcSupportdCore::HandleEvent(const EcEvent& ec_event) {
+void WilcoDtcSupportdCore::HandleMojoEvent(const MojoEvent& mojo_event) {
   VLOG(1) << "WilcoDtcSupportdCore::HandleEvent";
 
   if (!mojo_service_) {
@@ -381,9 +379,7 @@ void WilcoDtcSupportdCore::HandleEvent(const EcEvent& ec_event) {
     return;
   }
 
-  // TODO(crbug.com/972105): set event according to ec_event
-  MojomWilcoDtcSupportdEvent event = MojomWilcoDtcSupportdEvent::kDockError;
-  mojo_service_->HandleEvent(event);
+  mojo_service_->HandleEvent(mojo_event);
 }
 
 void WilcoDtcSupportdCore::GetAvailableRoutinesToService(

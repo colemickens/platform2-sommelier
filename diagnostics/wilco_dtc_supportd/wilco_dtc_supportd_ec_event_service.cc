@@ -18,7 +18,13 @@
 #include <base/memory/ref_counted.h>
 #include <base/posix/eintr_wrapper.h>
 
+#include "mojo/wilco_dtc_supportd.mojom.h"
+
 namespace diagnostics {
+
+namespace {
+using MojoEvent = chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
+}  // namespace
 
 namespace internal {
 
@@ -193,7 +199,8 @@ void WilcoDtcSupportdEcEventService::ShutdownMonitoringThread() {
 void WilcoDtcSupportdEcEventService::OnEventAvailable(const EcEvent& ec_event) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   delegate_->SendGrpcEcEventToWilcoDtc(ec_event);
-  delegate_->HandleEvent(ec_event);
+  // TODO(crbug.com/972105): set Mojo event according to ec_event
+  delegate_->HandleMojoEvent(MojoEvent::kDockError);
 }
 
 void WilcoDtcSupportdEcEventService::OnShutdown() {

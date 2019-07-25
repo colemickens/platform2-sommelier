@@ -19,6 +19,7 @@
 #include <base/threading/simple_thread.h>
 
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
+#include "mojo/wilco_dtc_supportd.mojom.h"
 
 namespace diagnostics {
 
@@ -126,9 +127,11 @@ class WilcoDtcSupportdEcEventService final {
     // Calls wilco_dtc |HandleEcNotification| gRPC function with |payload| in
     // request.
     virtual void SendGrpcEcEventToWilcoDtc(const EcEvent& ec_event) = 0;
-    // Calls browser's HandleEvent mojo function with parsed event type in order
+    // Forwards Mojo event to browser's HandleEvent Mojo function in order
     // to display relevant system notifications.
-    virtual void HandleEvent(const EcEvent& ec_event) = 0;
+    virtual void HandleMojoEvent(
+        const chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent&
+            mojo_event) = 0;
   };
 
   explicit WilcoDtcSupportdEcEventService(Delegate* delegate);
