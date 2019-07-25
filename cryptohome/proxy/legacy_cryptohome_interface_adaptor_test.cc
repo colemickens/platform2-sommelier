@@ -5,10 +5,13 @@
 #include "cryptohome/proxy/legacy_cryptohome_interface_adaptor.h"
 
 #include <attestation-client-test/attestation/dbus-proxy-mocks.h>
+#include <base/files/file_util.h>
+#include <chromeos/constants/cryptohome.h>
 #include <chromeos/libhwsec/mock_dbus_method_response.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
 #include "cryptohome/attestation.h"
+#include "cryptohome/mock_platform.h"
 #include "user_data_auth/dbus-proxy-mocks.h"
 
 namespace cryptohome {
@@ -71,7 +74,8 @@ class LegacyCryptohomeInterfaceAdaptorForTesting
       org::chromium::CryptohomePkcs11InterfaceProxyInterface* pkcs11_proxy,
       org::chromium::InstallAttributesInterfaceProxyInterface*
           install_attributes_proxy,
-      org::chromium::CryptohomeMiscInterfaceProxyInterface* misc_proxy)
+      org::chromium::CryptohomeMiscInterfaceProxyInterface* misc_proxy,
+      cryptohome::Platform* platform)
       : LegacyCryptohomeInterfaceAdaptor(attestation_proxy,
                                          tpm_ownership_proxy,
                                          tpm_nvram_proxy,
@@ -79,7 +83,8 @@ class LegacyCryptohomeInterfaceAdaptorForTesting
                                          arc_quota_proxy,
                                          pkcs11_proxy,
                                          install_attributes_proxy,
-                                         misc_proxy) {}
+                                         misc_proxy,
+                                         platform) {}
 
   MOCK_METHOD3(VirtualSendAsyncCallStatusSignal, void(int32_t, bool, int32_t));
   MOCK_METHOD3(VirtualSendAsyncCallStatusWithDataSignal,
@@ -103,7 +108,7 @@ class LegacyCryptohomeInterfaceAdaptorTest : public ::testing::Test {
   void SetUp() override {
     adaptor_.reset(new LegacyCryptohomeInterfaceAdaptorForTesting(
         &attestation_, &ownership_, &nvram_, &userdataauth_, &arc_quota_,
-        &pkcs11_, &install_attributes_, &misc_));
+        &pkcs11_, &install_attributes_, &misc_, &platform_));
 
     account_.set_account_id(kUsername1);
     auth_.mutable_key()->set_secret(kSecret);
@@ -120,6 +125,7 @@ class LegacyCryptohomeInterfaceAdaptorTest : public ::testing::Test {
   NiceMock<org::chromium::InstallAttributesInterfaceProxyMock>
       install_attributes_;
   NiceMock<org::chromium::CryptohomeMiscInterfaceProxyMock> misc_;
+  NiceMock<MockPlatform> platform_;
 
   // The adaptor that we'll be testing.
   std::unique_ptr<LegacyCryptohomeInterfaceAdaptorForTesting> adaptor_;
@@ -649,6 +655,426 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
       .WillOnce(Return());
 
   adaptor_->OnDircryptoMigrationProgressSignalForTestingOnly(progress);
+}
+
+// This class holds the various extra setups to facilitate testing GetTpmStatus
+class LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus
+    : public LegacyCryptohomeInterfaceAdaptorTest {
+ public:
+  LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus() = default;
+  ~LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus() override = default;
+
+ protected:
+  void SetUp() override {
+    LegacyCryptohomeInterfaceAdaptorTest::SetUp();
+
+    status_reply_.set_enabled(true);
+    status_reply_.set_owned(true);
+    status_reply_.mutable_local_data()->set_owner_password(kPassword);
+
+    da_reply_.set_dictionary_attack_counter(kDACounter);
+    da_reply_.set_dictionary_attack_threshold(kDAThreshold);
+    da_reply_.set_dictionary_attack_lockout_in_effect(false);
+    da_reply_.set_dictionary_attack_lockout_seconds_remaining(kDALockoutRem);
+
+    install_attr_reply_.set_state(
+        user_data_auth::InstallAttributesState::VALID);
+
+    attestation_reply_.set_prepared_for_enrollment(true);
+    attestation_reply_.set_enrolled(true);
+    attestation_reply_.set_verified_boot(true);
+    auto* identity1 = attestation_reply_.mutable_identities()->Add();
+    identity1->set_features(kFeature1);
+    auto* identity2 = attestation_reply_.mutable_identities()->Add();
+    identity2->set_features(kFeature2);
+
+    attestation::GetStatusReply::IdentityCertificate identity_cert1;
+    identity_cert1.set_identity(kFeature1);
+    identity_cert1.set_aca(kACA1);
+    attestation_reply_.mutable_identity_certificates()->insert(
+        google::protobuf::Map<
+            int, attestation::GetStatusReply::IdentityCertificate>::
+            value_type(kACA1, identity_cert1));
+
+    attestation::GetStatusReply::IdentityCertificate identity_cert2;
+    identity_cert2.set_identity(kFeature2);
+    identity_cert2.set_aca(kACA2);
+    attestation_reply_.mutable_identity_certificates()->insert(
+        google::protobuf::Map<
+            int, attestation::GetStatusReply::IdentityCertificate>::
+            value_type(kACA2, identity_cert2));
+  }
+
+  void ExpectGetTpmStatus(
+      const base::Optional<tpm_manager::GetTpmStatusReply>& reply) {
+    EXPECT_CALL(
+        ownership_,
+        GetTpmStatusAsync(_, _, _, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+        .WillOnce(Invoke(
+            [reply](const tpm_manager::GetTpmStatusRequest& in_request,
+                    const base::Callback<void(
+                        const tpm_manager::GetTpmStatusReply& /*reply*/)>&
+                        success_callback,
+                    const base::Callback<void(brillo::Error*)>& error_callback,
+                    int timeout_ms) {
+              if (reply.has_value()) {
+                // If |reply| has value, then the method will be successful and
+                // |reply| will be returned.
+                success_callback.Run(reply.value());
+              } else {
+                // If not, the method will return an error.
+                error_callback.Run(CreateDefaultError(FROM_HERE).get());
+              }
+            }));
+  }
+
+  void ExpectGetDictionaryAttackInfo(
+      const base::Optional<tpm_manager::GetDictionaryAttackInfoReply>& reply) {
+    EXPECT_CALL(ownership_,
+                GetDictionaryAttackInfoAsync(
+                    _, _, _, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+        .WillOnce(Invoke(
+            [reply](
+                const tpm_manager::GetDictionaryAttackInfoRequest& in_request,
+                const base::Callback<void(
+                    const tpm_manager::
+                        GetDictionaryAttackInfoReply& /*reply*/)>&
+                    success_callback,
+                const base::Callback<void(brillo::Error*)>& error_callback,
+                int timeout_ms) {
+              if (reply.has_value()) {
+                success_callback.Run(reply.value());
+              } else {
+                error_callback.Run(CreateDefaultError(FROM_HERE).get());
+              }
+            }));
+  }
+
+  void ExpectInstallAttributesGetStatus(
+      const base::Optional<user_data_auth::InstallAttributesGetStatusReply>&
+          reply) {
+    EXPECT_CALL(install_attributes_,
+                InstallAttributesGetStatusAsync(
+                    _, _, _, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+        .WillOnce(Invoke(
+            [reply](const user_data_auth::InstallAttributesGetStatusRequest&
+                        in_request,
+                    const base::Callback<void(
+                        const user_data_auth::
+                            InstallAttributesGetStatusReply& /*reply*/)>&
+                        success_callback,
+                    const base::Callback<void(brillo::Error*)>& error_callback,
+                    int timeout_ms) {
+              if (reply.has_value()) {
+                success_callback.Run(reply.value());
+              } else {
+                error_callback.Run(CreateDefaultError(FROM_HERE).get());
+              }
+            }));
+  }
+
+  void ExpectAttestationGetStatus(
+      const base::Optional<attestation::GetStatusReply>& reply) {
+    EXPECT_CALL(attestation_,
+                GetStatusAsync(_, _, _, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+        .WillOnce(Invoke(
+            [reply](const attestation::GetStatusRequest& in_request,
+                    const base::Callback<void(
+                        const attestation::GetStatusReply& /*reply*/)>&
+                        success_callback,
+                    const base::Callback<void(brillo::Error*)>& error_callback,
+                    int timeout_ms) {
+              if (reply.has_value()) {
+                success_callback.Run(reply.value());
+              } else {
+                error_callback.Run(CreateDefaultError(FROM_HERE).get());
+              }
+            }));
+  }
+
+  // The reply we'll get from various proxies.
+  tpm_manager::GetTpmStatusReply status_reply_;
+  tpm_manager::GetDictionaryAttackInfoReply da_reply_;
+  user_data_auth::InstallAttributesGetStatusReply install_attr_reply_;
+  attestation::GetStatusReply attestation_reply_;
+
+  // The request we send to GetTpmStatus()
+  cryptohome::GetTpmStatusRequest in_request_;
+
+  // Constants used during testing
+  static constexpr char kPassword[] = "YetAnotherPassword";
+  static constexpr int kDACounter = 42;      // The answer
+  static constexpr int kDAThreshold = 4200;  // 100x The answer!!
+  static constexpr int kDALockoutRem = 0;
+  static constexpr int kFeature1 = 0xDEADBEEF;
+  static constexpr int kFeature2 = 0xBAADF00D;
+  static constexpr int kACA1 = 1;
+  static constexpr int kACA2 = 2;
+
+ private:
+  static brillo::ErrorPtr CreateDefaultError(const base::Location& from_here) {
+    brillo::ErrorPtr error;
+    brillo::Error::AddTo(&error, from_here, brillo::errors::dbus::kDomain,
+                         DBUS_ERROR_FAILED, "Here's a fake error");
+    return error;
+  }
+
+  DISALLOW_COPY_AND_ASSIGN(LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus);
+};
+
+constexpr char LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus::kPassword[];
+constexpr int LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus::kDACounter;
+constexpr int LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus::kDAThreshold;
+constexpr int
+    LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus::kDALockoutRem;
+constexpr int LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus::kFeature1;
+constexpr int LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus::kFeature2;
+constexpr int LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus::kACA1;
+constexpr int LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus::kACA2;
+
+TEST_F(LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus,
+       GetTpmStatusSanity) {
+  // Setup GetTpmStatus in tpm_manager to successfully return |status_reply_|
+  ExpectGetTpmStatus(status_reply_);
+  // Setup GetDictionaryAttackInfo in tpm_manager to successfully return
+  // |da_reply_|
+  ExpectGetDictionaryAttackInfo(da_reply_);
+  // Setup GetStatus in cryptohome/install attributes interface to sucessfully
+  // return |install_attr_reply_|
+  ExpectInstallAttributesGetStatus(install_attr_reply_);
+  // Setup GetStatus in attestation to successfully return |attestation_reply_|
+  ExpectAttestationGetStatus(attestation_reply_);
+
+  EXPECT_CALL(platform_,
+              FileExists(base::FilePath(cryptohome::kLockedToSingleUserFile)))
+      .WillOnce(Return(true));
+
+  base::Optional<cryptohome::BaseReply> final_reply;
+
+  std::unique_ptr<MockDBusMethodResponse<cryptohome::BaseReply>> response(
+      new MockDBusMethodResponse<cryptohome::BaseReply>(nullptr));
+  EXPECT_CALL(*response, ReplyWithError(_)).Times(0);
+  EXPECT_CALL(*response, ReplyWithError(_, _, _, _)).Times(0);
+  response->save_return_args(&final_reply);
+
+  adaptor_->GetTpmStatus(std::move(response), in_request_);
+
+  ASSERT_TRUE(final_reply.has_value());
+  ASSERT_TRUE(final_reply->HasExtension(cryptohome::GetTpmStatusReply::reply));
+  const auto& ext =
+      final_reply->GetExtension(cryptohome::GetTpmStatusReply::reply);
+
+  EXPECT_EQ(ext.enabled(), status_reply_.enabled());
+  EXPECT_EQ(ext.owned(), status_reply_.owned());
+  // |initialized| should be false because the owner password is supplied in
+  // |status_reply_|.
+  EXPECT_FALSE(ext.initialized());
+  EXPECT_EQ(ext.owner_password(), status_reply_.local_data().owner_password());
+
+  EXPECT_EQ(ext.dictionary_attack_counter(),
+            da_reply_.dictionary_attack_counter());
+  EXPECT_EQ(ext.dictionary_attack_threshold(),
+            da_reply_.dictionary_attack_threshold());
+  EXPECT_EQ(ext.dictionary_attack_lockout_in_effect(),
+            da_reply_.dictionary_attack_lockout_in_effect());
+  EXPECT_EQ(ext.dictionary_attack_lockout_seconds_remaining(),
+            da_reply_.dictionary_attack_lockout_seconds_remaining());
+
+  // |install_lockbox_finalized| is true because |install_attr_reply_.state()|
+  // is VALID.
+  EXPECT_TRUE(ext.install_lockbox_finalized());
+  // |ext.boot_lockbox_finalized| is deprecated and always set to false.
+  EXPECT_FALSE(ext.boot_lockbox_finalized());
+  // |ext.is_locked_to_single_user| is set according to the flag file specified
+  // in kLockedToSingleUserFile.
+  EXPECT_TRUE(ext.is_locked_to_single_user());
+
+  EXPECT_EQ(ext.attestation_prepared(),
+            attestation_reply_.prepared_for_enrollment());
+  EXPECT_EQ(ext.attestation_enrolled(), attestation_reply_.enrolled());
+  EXPECT_EQ(ext.verified_boot_measured(), attestation_reply_.verified_boot());
+
+  EXPECT_EQ(ext.identities().size(), attestation_reply_.identities().size());
+  EXPECT_EQ(ext.identities().Get(0).features(),
+            attestation_reply_.identities().Get(0).features());
+  EXPECT_EQ(ext.identities().Get(1).features(),
+            attestation_reply_.identities().Get(1).features());
+
+  EXPECT_EQ(ext.identity_certificates().size(),
+            attestation_reply_.identity_certificates().size());
+  EXPECT_EQ(ext.identity_certificates().count(kACA1), 1);
+  EXPECT_EQ(ext.identity_certificates().at(kACA1).identity(),
+            attestation_reply_.identity_certificates().at(kACA1).identity());
+  EXPECT_EQ(ext.identity_certificates().at(kACA1).aca(),
+            attestation_reply_.identity_certificates().at(kACA1).aca());
+  EXPECT_EQ(ext.identity_certificates().count(kACA2), 1);
+  EXPECT_EQ(ext.identity_certificates().at(kACA2).identity(),
+            attestation_reply_.identity_certificates().at(kACA2).identity());
+  EXPECT_EQ(ext.identity_certificates().at(kACA2).aca(),
+            attestation_reply_.identity_certificates().at(kACA2).aca());
+}
+
+TEST_F(LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus,
+       GetTpmStatusInitialized) {
+  // If it's owned and no there's no owner_password, then it's initialized.
+  status_reply_.mutable_local_data()->clear_owner_password();
+
+  // Setup GetTpmStatus in tpm_manager to successfully return |status_reply_|
+  ExpectGetTpmStatus(status_reply_);
+  // Setup GetDictionaryAttackInfo in tpm_manager to successfully return
+  // |da_reply_|
+  ExpectGetDictionaryAttackInfo(da_reply_);
+  // Setup GetStatus in cryptohome/install attributes interface to sucessfully
+  // return |install_attr_reply_|
+  ExpectInstallAttributesGetStatus(install_attr_reply_);
+  // Setup GetStatus in attestation to successfully return |attestation_reply_|
+  ExpectAttestationGetStatus(attestation_reply_);
+
+  EXPECT_CALL(platform_,
+              FileExists(base::FilePath(cryptohome::kLockedToSingleUserFile)))
+      .WillOnce(Return(false));
+
+  base::Optional<cryptohome::BaseReply> final_reply;
+
+  std::unique_ptr<MockDBusMethodResponse<cryptohome::BaseReply>> response(
+      new MockDBusMethodResponse<cryptohome::BaseReply>(nullptr));
+  EXPECT_CALL(*response, ReplyWithError(_)).Times(0);
+  EXPECT_CALL(*response, ReplyWithError(_, _, _, _)).Times(0);
+  response->save_return_args(&final_reply);
+
+  adaptor_->GetTpmStatus(std::move(response), in_request_);
+
+  ASSERT_TRUE(final_reply.has_value());
+  ASSERT_TRUE(final_reply->HasExtension(cryptohome::GetTpmStatusReply::reply));
+  const auto& ext =
+      final_reply->GetExtension(cryptohome::GetTpmStatusReply::reply);
+
+  // |initialized| is set to true because owner_password is cleared but owned is
+  // true.
+  EXPECT_TRUE(ext.initialized());
+  EXPECT_EQ(ext.owner_password(), status_reply_.local_data().owner_password());
+
+  EXPECT_FALSE(ext.is_locked_to_single_user());
+}
+
+TEST_F(LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus,
+       GetTpmStatusStageOwnershipStatusFail) {
+  status_reply_.set_status(tpm_manager::STATUS_DEVICE_ERROR);
+
+  // Setup GetTpmStatus in tpm_manager to successfully return |status_reply_|
+  ExpectGetTpmStatus(status_reply_);
+
+  base::Optional<cryptohome::BaseReply> final_reply;
+
+  std::unique_ptr<MockDBusMethodResponse<cryptohome::BaseReply>> response(
+      new MockDBusMethodResponse<cryptohome::BaseReply>(nullptr));
+  EXPECT_CALL(*response, ReplyWithError(_, _, _, _)).WillOnce(Return());
+  response->save_return_args(&final_reply);
+
+  adaptor_->GetTpmStatus(std::move(response), in_request_);
+
+  ASSERT_FALSE(final_reply.has_value());
+}
+
+TEST_F(LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus,
+       GetTpmStatusStageDictionaryAttackFail) {
+  da_reply_.set_status(tpm_manager::STATUS_DEVICE_ERROR);
+
+  // Setup GetTpmStatus in tpm_manager to successfully return |status_reply_|
+  ExpectGetTpmStatus(status_reply_);
+  // Setup GetDictionaryAttackInfo in tpm_manager to successfully return
+  // |da_reply_|
+  ExpectGetDictionaryAttackInfo(da_reply_);
+  // Setup GetStatus in cryptohome/install attributes interface to sucessfully
+  // return |install_attr_reply_|
+  ExpectInstallAttributesGetStatus(install_attr_reply_);
+  // Setup GetStatus in attestation to successfully return |attestation_reply_|
+  ExpectAttestationGetStatus(attestation_reply_);
+
+  base::Optional<cryptohome::BaseReply> final_reply;
+
+  std::unique_ptr<MockDBusMethodResponse<cryptohome::BaseReply>> response(
+      new MockDBusMethodResponse<cryptohome::BaseReply>(nullptr));
+  EXPECT_CALL(*response, ReplyWithError(_)).Times(0);
+  EXPECT_CALL(*response, ReplyWithError(_, _, _, _)).Times(0);
+  response->save_return_args(&final_reply);
+
+  adaptor_->GetTpmStatus(std::move(response), in_request_);
+
+  ASSERT_TRUE(final_reply.has_value());
+  ASSERT_TRUE(final_reply->HasExtension(cryptohome::GetTpmStatusReply::reply));
+  const auto& ext =
+      final_reply->GetExtension(cryptohome::GetTpmStatusReply::reply);
+
+  // These are the default values when call to retrieve DictionaryAttack info
+  // failed.
+  EXPECT_EQ(ext.dictionary_attack_counter(), 0);
+  EXPECT_EQ(ext.dictionary_attack_threshold(), 0);
+  EXPECT_FALSE(ext.dictionary_attack_lockout_in_effect());
+  EXPECT_EQ(ext.dictionary_attack_lockout_seconds_remaining(), 0);
+}
+
+TEST_F(LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus,
+       GetTpmStatusStageInstallAttributesFail) {
+  install_attr_reply_.set_error(
+      user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+
+  // Setup GetTpmStatus in tpm_manager to successfully return |status_reply_|
+  ExpectGetTpmStatus(status_reply_);
+  // Setup GetDictionaryAttackInfo in tpm_manager to successfully return
+  // |da_reply_|
+  ExpectGetDictionaryAttackInfo(da_reply_);
+  // Setup GetStatus in cryptohome/install attributes interface to sucessfully
+  // return |install_attr_reply_|
+  ExpectInstallAttributesGetStatus(install_attr_reply_);
+
+  base::Optional<cryptohome::BaseReply> final_reply;
+
+  std::unique_ptr<MockDBusMethodResponse<cryptohome::BaseReply>> response(
+      new MockDBusMethodResponse<cryptohome::BaseReply>(nullptr));
+  EXPECT_CALL(*response, ReplyWithError(_, _, _, _)).WillOnce(Return());
+  response->save_return_args(&final_reply);
+
+  adaptor_->GetTpmStatus(std::move(response), in_request_);
+
+  ASSERT_FALSE(final_reply.has_value());
+}
+
+TEST_F(LegacyCryptohomeInterfaceAdaptorTestForGetTpmStatus,
+       GetTpmStatusStageAttestationFail) {
+  attestation_reply_.set_status(attestation::STATUS_NOT_AVAILABLE);
+
+  // Setup GetTpmStatus in tpm_manager to successfully return |status_reply_|
+  ExpectGetTpmStatus(status_reply_);
+  // Setup GetDictionaryAttackInfo in tpm_manager to successfully return
+  // |da_reply_|
+  ExpectGetDictionaryAttackInfo(da_reply_);
+  // Setup GetStatus in cryptohome/install attributes interface to sucessfully
+  // return |install_attr_reply_|
+  ExpectInstallAttributesGetStatus(install_attr_reply_);
+  // Setup GetStatus in attestation to successfully return |attestation_reply_|
+  ExpectAttestationGetStatus(attestation_reply_);
+
+  base::Optional<cryptohome::BaseReply> final_reply;
+
+  std::unique_ptr<MockDBusMethodResponse<cryptohome::BaseReply>> response(
+      new MockDBusMethodResponse<cryptohome::BaseReply>(nullptr));
+  EXPECT_CALL(*response, ReplyWithError(_)).Times(0);
+  EXPECT_CALL(*response, ReplyWithError(_, _, _, _)).Times(0);
+  response->save_return_args(&final_reply);
+
+  adaptor_->GetTpmStatus(std::move(response), in_request_);
+
+  ASSERT_TRUE(final_reply.has_value());
+  ASSERT_TRUE(final_reply->HasExtension(cryptohome::GetTpmStatusReply::reply));
+  const auto& ext =
+      final_reply->GetExtension(cryptohome::GetTpmStatusReply::reply);
+
+  // These are the default values when call to retrieve attestation status
+  // failed.
+  EXPECT_FALSE(ext.attestation_prepared());
+  EXPECT_FALSE(ext.attestation_enrolled());
+  EXPECT_FALSE(ext.verified_boot_measured());
 }
 
 }  // namespace

@@ -141,6 +141,7 @@ executable("cryptohomed") {
 executable("cryptohome-proxy") {
   configs += [ "libs:target_defaults" ]
   sources = [
+    "platform.cc",
     "proxy/cryptohome_proxy.cc",
     "proxy/dbus_proxy_service.cc",
     "proxy/legacy_cryptohome_interface_adaptor.cc",

@@ -19,6 +19,8 @@
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
+#include "cryptohome/platform.h"
+
 #include "rpc.pb.h"  // NOLINT(build/include)
 #include "UserDataAuth.pb.h"  // NOLINT(build/include)
 #include "dbus_adaptors/org.chromium.CryptohomeInterface.h"  // NOLINT(build/include_alpha)
@@ -90,7 +92,9 @@ class LegacyCryptohomeInterfaceAdaptor
         install_attributes_proxy_(default_install_attributes_proxy_.get()),
         default_misc_proxy_(
             new org::chromium::CryptohomeMiscInterfaceProxy(bus)),
-        misc_proxy_(default_misc_proxy_.get()) {}
+        misc_proxy_(default_misc_proxy_.get()),
+        default_platform_(new Platform()),
+        platform_(default_platform_.get()) {}
 
   void RegisterAsync(
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
@@ -519,7 +523,8 @@ class LegacyCryptohomeInterfaceAdaptor
       org::chromium::CryptohomePkcs11InterfaceProxyInterface* pkcs11_proxy,
       org::chromium::InstallAttributesInterfaceProxyInterface*
           install_attributes_proxy,
-      org::chromium::CryptohomeMiscInterfaceProxyInterface* misc_proxy)
+      org::chromium::CryptohomeMiscInterfaceProxyInterface* misc_proxy,
+      cryptohome::Platform* platform)
       : org::chromium::CryptohomeInterfaceAdaptor(this),
         dbus_object_(
             nullptr, nullptr, dbus::ObjectPath(kCryptohomeServicePath)),
@@ -530,7 +535,8 @@ class LegacyCryptohomeInterfaceAdaptor
         arc_quota_proxy_(arc_quota_proxy),
         pkcs11_proxy_(pkcs11_proxy),
         install_attributes_proxy_(install_attributes_proxy),
-        misc_proxy_(misc_proxy) {}
+        misc_proxy_(misc_proxy),
+        platform_(platform) {}
 
   // This is used in testing to be able to mock SendAsyncCallStatusSignal.
   virtual void VirtualSendAsyncCallStatusSignal(int32_t in_async_id,
@@ -720,6 +726,22 @@ class LegacyCryptohomeInterfaceAdaptor
   void GetLoginStatusOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
       const user_data_auth::GetLoginStatusReply& reply);
+  void GetTpmStatusOnStageOwnershipStatusDone(
+      std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+      const tpm_manager::GetTpmStatusReply& status_reply);
+  void GetTpmStatusOnStageDictionaryAttackDone(
+      std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+      BaseReply reply,
+      const tpm_manager::GetDictionaryAttackInfoReply& da_reply);
+  void GetTpmStatusOnStageInstallAttributesDone(
+      std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+      BaseReply reply,
+      const user_data_auth::InstallAttributesGetStatusReply&
+          install_attr_reply);
+  void GetTpmStatusOnStageAttestationDone(
+      std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+      BaseReply reply,
+      const attestation::GetStatusReply& attestation_reply);
   void GetEndorsementInfoOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
       const attestation::GetEndorsementInfoReply& reply);
@@ -941,6 +963,13 @@ class LegacyCryptohomeInterfaceAdaptor
 
   // An atomic incrementing sequence for setting asynchronous call ids.
   base::AtomicSequenceNumber sequence_holder_;
+
+  // The default platform object for accessing platform related functionalities
+  std::unique_ptr<cryptohome::Platform> default_platform_;
+
+  // The actual platform object used by this class, usually set to
+  // default_platform_, but can be overridden for testing
+  cryptohome::Platform* platform_;
 
   DISALLOW_COPY_AND_ASSIGN(LegacyCryptohomeInterfaceAdaptor);
 };

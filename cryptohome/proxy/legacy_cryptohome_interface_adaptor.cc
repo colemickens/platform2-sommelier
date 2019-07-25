@@ -8,6 +8,8 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/files/file_util.h>
+#include <chromeos/constants/cryptohome.h>
 
 #include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 #include "cryptohome/proxy/legacy_cryptohome_interface_adaptor.h"
@@ -2041,10 +2043,183 @@ void LegacyCryptohomeInterfaceAdaptor::GetTpmStatus(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::GetTpmStatusRequest& in_request) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  // This method requires the output of more than 1 method and thus is divided
+  // into various parts:
+  // - TpmManager stage: Calls GetTpmStatus() in tpm_manager
+  // - DictionaryAttack stage: Calls GetDictionaryAttackInfo() in tpm_manager
+  // - InstallAttributes stage: Calls InstallAttributesGetStatus() in
+  // UserDataAuth
+  // - Attestation stage: Calls GetStatus() in attestation
+  // The 4 stages is executed back to back according to the sequence listed
+  // above. After all of them are done, we'll take their results and form the
+  // response for this method call.
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
+          std::move(response));
+
+  tpm_manager::GetTpmStatusRequest request;
+  tpm_ownership_proxy_->GetTpmStatusAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
+                     GetTpmStatusOnStageOwnershipStatusDone,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::GetTpmStatusOnStageOwnershipStatusDone(
+    std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+    const tpm_manager::GetTpmStatusReply& status_reply) {
+  if (status_reply.status() != tpm_manager::STATUS_SUCCESS) {
+    LOG(ERROR) << "GetTpmStatus() failed to call GetTpmStatus in tpm_manager, "
+                  "error status "
+               << static_cast<int>(status_reply.status());
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_FAILED, "GetTpmStatus() failed");
+    return;
+  }
+
+  BaseReply reply;
+  GetTpmStatusReply* extension =
+      reply.MutableExtension(cryptohome::GetTpmStatusReply::reply);
+  extension->set_enabled(status_reply.enabled());
+  extension->set_owned(status_reply.owned());
+  if (!status_reply.local_data().owner_password().empty()) {
+    extension->set_initialized(false);
+    extension->set_owner_password(status_reply.local_data().owner_password());
+  } else {
+    // Initialized is true only when the TPM is owned and the owner password has
+    // already been destroyed.
+    extension->set_initialized(extension->owned());
+  }
+
+  tpm_manager::GetDictionaryAttackInfoRequest request;
+  tpm_ownership_proxy_->GetDictionaryAttackInfoAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
+                     GetTpmStatusOnStageDictionaryAttackDone,
+                 base::Unretained(this), response, reply),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::GetTpmStatusOnStageDictionaryAttackDone(
+    std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+    BaseReply reply,
+    const tpm_manager::GetDictionaryAttackInfoReply& da_reply) {
+  // Note that it is intentional that we do not fail even if
+  // GetDictionaryAttackInfo() fails. This failure is logged as an error, but
+  // not acted upon.
+
+  GetTpmStatusReply* extension =
+      reply.MutableExtension(cryptohome::GetTpmStatusReply::reply);
+  if (da_reply.status() == tpm_manager::STATUS_SUCCESS) {
+    extension->set_dictionary_attack_counter(
+        da_reply.dictionary_attack_counter());
+    extension->set_dictionary_attack_threshold(
+        da_reply.dictionary_attack_threshold());
+    extension->set_dictionary_attack_lockout_in_effect(
+        da_reply.dictionary_attack_lockout_in_effect());
+    extension->set_dictionary_attack_lockout_seconds_remaining(
+        da_reply.dictionary_attack_lockout_seconds_remaining());
+  } else {
+    LOG(ERROR) << "Failed to call GetDictionaryAttackInfo() in GetTpmStatus(), "
+                  "error status "
+               << static_cast<int>(da_reply.status());
+  }
+
+  user_data_auth::InstallAttributesGetStatusRequest request;
+  install_attributes_proxy_->InstallAttributesGetStatusAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
+                     GetTpmStatusOnStageInstallAttributesDone,
+                 base::Unretained(this), response, reply),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::GetTpmStatusOnStageInstallAttributesDone(
+    std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+    BaseReply reply,
+    const user_data_auth::InstallAttributesGetStatusReply& install_attr_reply) {
+  if (install_attr_reply.error() != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    LOG(ERROR) << "GetTpmStatus() failed to call InstallAttributesGetStatus in "
+                  "UserDataAuth, error status "
+               << static_cast<int>(install_attr_reply.error());
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             DBUS_ERROR_FAILED,
+                             "InstallAttributesGetStatus() failed");
+    return;
+  }
+
+  GetTpmStatusReply* extension =
+      reply.MutableExtension(cryptohome::GetTpmStatusReply::reply);
+
+  extension->set_install_lockbox_finalized(
+      extension->owned() && install_attr_reply.state() ==
+                                user_data_auth::InstallAttributesState::VALID);
+
+  // Set up the parameters for GetStatus() in attestationd.
+  attestation::GetStatusRequest request;
+  request.set_extended_status(true);
+
+  attestation_proxy_->GetStatusAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::GetTpmStatusOnStageAttestationDone,
+          base::Unretained(this), response, reply),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                     cryptohome::BaseReply>,
+                 base::Unretained(this), response));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::GetTpmStatusOnStageAttestationDone(
+    std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
+    BaseReply reply,
+    const attestation::GetStatusReply& attestation_reply) {
+  GetTpmStatusReply* extension =
+      reply.MutableExtension(cryptohome::GetTpmStatusReply::reply);
+
+  extension->set_boot_lockbox_finalized(false);
+  extension->set_is_locked_to_single_user(platform_->FileExists(
+      base::FilePath(cryptohome::kLockedToSingleUserFile)));
+
+  if (attestation_reply.status() ==
+      attestation::AttestationStatus::STATUS_SUCCESS) {
+    extension->set_attestation_prepared(
+        attestation_reply.prepared_for_enrollment());
+    extension->set_attestation_enrolled(attestation_reply.enrolled());
+    extension->set_verified_boot_measured(attestation_reply.verified_boot());
+    for (auto it = attestation_reply.identities().cbegin(),
+              end = attestation_reply.identities().cend();
+         it != end; ++it) {
+      auto* identity = extension->mutable_identities()->Add();
+      identity->set_features(it->features());
+    }
+    for (auto it = attestation_reply.identity_certificates().cbegin(),
+              end = attestation_reply.identity_certificates().cend();
+         it != end; ++it) {
+      GetTpmStatusReply::IdentityCertificate identity_certificate;
+      identity_certificate.set_identity(it->second.identity());
+      identity_certificate.set_aca(it->second.aca());
+      extension->mutable_identity_certificates()->insert(
+          google::protobuf::Map<int, GetTpmStatusReply::IdentityCertificate>::
+              value_type(it->first, identity_certificate));
+    }
+  } else {
+    LOG(ERROR) << "Failed to call GetStatus() in attestation during "
+                  "GetTpmStatus(), error status "
+               << static_cast<int>(attestation_reply.status());
+
+    extension->set_attestation_prepared(false);
+    extension->set_attestation_enrolled(false);
+    extension->set_verified_boot_measured(false);
+  }
+
+  response->Return(reply);
 }
 
 void LegacyCryptohomeInterfaceAdaptor::GetEndorsementInfo(
