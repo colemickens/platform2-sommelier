@@ -112,7 +112,7 @@ void Process::AddArgument(const std::string& argument) {
   arguments_.push_back(argument);
 }
 
-char** Process::GetArguments() {
+char* const* Process::GetArguments() {
   if (arguments_array_.empty())
     BuildArgumentsArray();
 
@@ -150,10 +150,9 @@ bool Process::BuildArgumentsArray() {
 bool Process::Start() {
   CHECK_EQ(kInvalidProcessId, pid_);
   CHECK(!finished_);
-  char** arguments = GetArguments();
-  CHECK(arguments) << "No arguments provided.";
+  CHECK(!arguments_.empty()) << "No arguments provided";
   LOG(INFO) << "Starting process " << quote(arguments_);
-  pid_ = StartImpl(arguments_array_, &in_fd_, &out_fd_, &err_fd_);
+  pid_ = StartImpl(&in_fd_, &out_fd_, &err_fd_);
   return pid_ != kInvalidProcessId;
 }
 

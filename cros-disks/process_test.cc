@@ -25,11 +25,8 @@ class ProcessUnderTest : public Process {
  public:
   ProcessUnderTest() = default;
 
-  MOCK_METHOD4(StartImpl,
-               pid_t(std::vector<char*>& args,
-                     base::ScopedFD*,
-                     base::ScopedFD*,
-                     base::ScopedFD*));
+  MOCK_METHOD3(StartImpl,
+               pid_t(base::ScopedFD*, base::ScopedFD*, base::ScopedFD*));
   MOCK_METHOD0(WaitImpl, int());
   MOCK_METHOD1(WaitNonBlockingImpl, bool(int*));
 };
@@ -40,14 +37,14 @@ class ProcessTest : public ::testing::Test {
 };
 
 TEST_F(ProcessTest, GetArguments) {
-  static const char* const kTestArguments[] = {"/bin/ls", "-l", "", "."};
+  const char* const kTestArguments[] = {"/bin/ls", "-l", "", "."};
   for (const char* test_argument : kTestArguments) {
     process_.AddArgument(test_argument);
   }
 
   EXPECT_THAT(process_.arguments(), ElementsAre("/bin/ls", "-l", "", "."));
 
-  char** arguments = process_.GetArguments();
+  char* const* arguments = process_.GetArguments();
   EXPECT_NE(nullptr, arguments);
   for (const char* test_argument : kTestArguments) {
     EXPECT_STREQ(test_argument, *arguments);
@@ -62,7 +59,7 @@ TEST_F(ProcessTest, GetArgumentsWithNoArgumentsAdded) {
 
 TEST_F(ProcessTest, Run_Success) {
   process_.AddArgument("foo");
-  EXPECT_CALL(process_, StartImpl(_, _, _, _)).WillOnce(Return(123));
+  EXPECT_CALL(process_, StartImpl(_, _, _)).WillOnce(Return(123));
   EXPECT_CALL(process_, WaitImpl()).WillOnce(Return(42));
   EXPECT_CALL(process_, WaitNonBlockingImpl(_)).Times(0);
   EXPECT_EQ(42, process_.Run());
@@ -70,7 +67,7 @@ TEST_F(ProcessTest, Run_Success) {
 
 TEST_F(ProcessTest, Run_Fail) {
   process_.AddArgument("foo");
-  EXPECT_CALL(process_, StartImpl(_, _, _, _)).WillOnce(Return(-1));
+  EXPECT_CALL(process_, StartImpl(_, _, _)).WillOnce(Return(-1));
   EXPECT_CALL(process_, WaitImpl()).Times(0);
   EXPECT_CALL(process_, WaitNonBlockingImpl(_)).Times(0);
   EXPECT_EQ(-1, process_.Run());

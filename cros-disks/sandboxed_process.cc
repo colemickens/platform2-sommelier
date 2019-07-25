@@ -17,15 +17,16 @@
 #include <chromeos/libminijail.h>
 
 #include "cros-disks/mount_options.h"
+#include "cros-disks/quote.h"
 #include "cros-disks/sandboxed_init.h"
 
 namespace cros_disks {
-
 namespace {
 
-int Exec(char** args) {
-  execv(args[0], args);
-  PLOG(FATAL) << "Can't exec " << args[0];
+int Exec(char* const args[]) {
+  const char* const path = args[0];
+  execv(path, args);
+  PLOG(FATAL) << "Cannot exec " << quote(path);
   return EXIT_FAILURE;
 }
 
@@ -143,16 +144,16 @@ int SandboxedProcess::WaitAll() {
   return WaitImpl();
 }
 
-pid_t SandboxedProcess::StartImpl(std::vector<char*>& args,
-                                  base::ScopedFD* in_fd,
+pid_t SandboxedProcess::StartImpl(base::ScopedFD* in_fd,
                                   base::ScopedFD* out_fd,
                                   base::ScopedFD* err_fd) {
-  char** arguments = args.data();
+  char* const* const args = GetArguments();
+  DCHECK(args && args[0]);
   pid_t child_pid = kInvalidProcessId;
   if (!run_custom_init_) {
     int in = kInvalidFD, out = kInvalidFD, err = kInvalidFD;
-    if (minijail_run_pid_pipes(jail_, arguments[0], arguments, &child_pid, &in,
-                               &out, &err) != 0) {
+    if (minijail_run_pid_pipes(jail_, args[0], args, &child_pid, &in, &out,
+                               &err) != 0) {
       return kInvalidProcessId;
     }
     in_fd->reset(in);
@@ -165,7 +166,7 @@ pid_t SandboxedProcess::StartImpl(std::vector<char*>& args,
       return kInvalidProcessId;
     }
     if (child_pid == 0) {
-      init_.RunInsideSandboxNoReturn(base::Bind(Exec, arguments));
+      init_.RunInsideSandboxNoReturn(base::Bind(Exec, args));
     } else {
       custom_init_control_fd_ = init_.TakeInitControlFD(in_fd, out_fd, err_fd);
       CHECK(base::SetNonBlocking(custom_init_control_fd_.get()));

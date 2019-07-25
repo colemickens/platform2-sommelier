@@ -88,8 +88,7 @@ class SandboxedProcess : public Process {
 
  protected:
   // Process overrides:
-  pid_t StartImpl(std::vector<char*>& args,
-                  base::ScopedFD* in_fd,
+  pid_t StartImpl(base::ScopedFD* in_fd,
                   base::ScopedFD* out_fd,
                   base::ScopedFD* err_fd) override;
   int WaitImpl() override;

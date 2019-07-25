@@ -58,10 +58,9 @@ class Process {
   // subsequent calls to AddArgument() do not change the return value of
   // this method. The returned array of arguments is managed by the base
   // class.
-  char** GetArguments();
+  char* const* GetArguments();
 
-  virtual pid_t StartImpl(std::vector<char*>& args,
-                          base::ScopedFD* in_fd,
+  virtual pid_t StartImpl(base::ScopedFD* in_fd,
                           base::ScopedFD* out_fd,
                           base::ScopedFD* err_fd) = 0;
   virtual int WaitImpl() = 0;
