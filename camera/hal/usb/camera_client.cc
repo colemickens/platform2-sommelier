@@ -545,6 +545,7 @@ void CameraClient::RequestHandler::StreamOn(
                          use_native_sensor_ratio);
   if (ret) {
     callback.Run(0, ret);
+    return;
   }
   default_resolution_ = stream_on_resolution;
   // Some camera modules need a lot of time to output the first frame.
