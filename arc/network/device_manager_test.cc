@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include "arc/network/fake_shill_client.h"
+#include "arc/network/net_util.h"
 
 namespace arc_networkd {
 
@@ -40,42 +41,21 @@ class DeviceManagerTest : public testing::Test {
  protected:
   DeviceManagerTest() = default;
 
-  void SetUp() override { capture_msgs_ = false; }
+  void SetUp() override {}
 
   std::unique_ptr<DeviceManager> NewManager(bool is_arc_legacy = false) {
     shill_helper_ = std::make_unique<FakeShillClientHelper>();
     auto shill_client = shill_helper_->FakeClient();
     shill_client_ = shill_client.get();
-    auto mgr = std::make_unique<DeviceManager>(
-        std::move(shill_client), &addr_mgr_,
-        base::Bind(&DeviceManagerTest::RecvMsg, base::Unretained(this)),
-        is_arc_legacy);
+    auto mgr = std::make_unique<DeviceManager>(std::move(shill_client),
+                                               &addr_mgr_, is_arc_legacy);
     return mgr;
   }
 
-  void VerifyMsgs(const std::vector<DeviceMessage>& expected) {
-    ASSERT_EQ(msgs_recv_.size(), expected.size());
-    for (size_t i = 0; i < msgs_recv_.size(); ++i) {
-      EXPECT_EQ(msgs_recv_[i], expected[i].SerializeAsString());
-    }
-  }
-
-  void ClearMsgs() { msgs_recv_.clear(); }
-
-  bool capture_msgs_;
   FakeShillClient* shill_client_;
-  DeviceMessage android_announce_msg_;
-  DeviceMessage legacy_android_announce_msg_;
 
  private:
-  void RecvMsg(const DeviceMessage& msg) {
-    if (capture_msgs_)
-      msgs_recv_.emplace_back(msg.SerializeAsString());
-  }
-
   std::unique_ptr<FakeShillClientHelper> shill_helper_;
-
-  std::vector<std::string> msgs_recv_;
   FakeAddressManager addr_mgr_;
 
   // This is required because of the RT netlink handler.
@@ -87,101 +67,88 @@ class DeviceManagerTest : public testing::Test {
 
 TEST_F(DeviceManagerTest, MakeEthernetDevices) {
   auto mgr = NewManager();
-  DeviceConfig msg;
+  auto eth0 = mgr->MakeDevice("eth0");
+  const auto& cfg = eth0->config();
+  EXPECT_EQ(cfg.host_ifname(), "arc_eth0");
+  EXPECT_EQ(cfg.guest_ifname(), "eth0");
+  EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 9));
+  EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 10));
+  EXPECT_TRUE(eth0->options().find_ipv6_routes);
 
-  auto eth_device0 = mgr->MakeDevice("eth0");
-  eth_device0->FillProto(&msg);
-  EXPECT_EQ(msg.br_ifname(), "arc_eth0");
-  EXPECT_EQ(msg.arc_ifname(), "eth0");
-  EXPECT_EQ(msg.br_ipv4(), "100.115.92.9");
-  EXPECT_EQ(msg.arc_ipv4(), "100.115.92.10");
-  EXPECT_FALSE(msg.mac_addr().empty());
-  EXPECT_TRUE(msg.find_ipv6_routes());
-
-  auto eth_device1 = mgr->MakeDevice("usb0");
-  eth_device1->FillProto(&msg);
-  EXPECT_EQ(msg.br_ifname(), "arc_usb0");
-  EXPECT_EQ(msg.arc_ifname(), "usb0");
-  EXPECT_EQ(msg.br_ipv4(), "100.115.92.13");
-  EXPECT_EQ(msg.arc_ipv4(), "100.115.92.14");
-  EXPECT_FALSE(msg.mac_addr().empty());
-  EXPECT_TRUE(msg.find_ipv6_routes());
+  auto usb0 = mgr->MakeDevice("usb0");
+  const auto& cfgu = usb0->config();
+  EXPECT_EQ(cfgu.host_ifname(), "arc_usb0");
+  EXPECT_EQ(cfgu.guest_ifname(), "usb0");
+  EXPECT_EQ(cfgu.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 13));
+  EXPECT_EQ(cfgu.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 14));
+  EXPECT_TRUE(usb0->options().find_ipv6_routes);
 }
 
 TEST_F(DeviceManagerTest, MakeWifiDevices) {
   auto mgr = NewManager();
-  DeviceConfig msg;
+  auto wlan0 = mgr->MakeDevice("wlan0");
+  const auto& cfg = wlan0->config();
+  EXPECT_EQ(cfg.host_ifname(), "arc_wlan0");
+  EXPECT_EQ(cfg.guest_ifname(), "wlan0");
+  EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 9));
+  EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 10));
+  EXPECT_TRUE(wlan0->options().find_ipv6_routes);
 
-  auto wifi_device0 = mgr->MakeDevice("wlan0");
-  wifi_device0->FillProto(&msg);
-  EXPECT_EQ(msg.br_ifname(), "arc_wlan0");
-  EXPECT_EQ(msg.arc_ifname(), "wlan0");
-  EXPECT_EQ(msg.br_ipv4(), "100.115.92.9");
-  EXPECT_EQ(msg.arc_ipv4(), "100.115.92.10");
-  EXPECT_FALSE(msg.mac_addr().empty());
-  EXPECT_TRUE(msg.find_ipv6_routes());
-
-  auto wifi_device1 = mgr->MakeDevice("mlan0");
-  wifi_device1->FillProto(&msg);
-  EXPECT_EQ(msg.br_ifname(), "arc_mlan0");
-  EXPECT_EQ(msg.arc_ifname(), "mlan0");
-  EXPECT_EQ(msg.br_ipv4(), "100.115.92.13");
-  EXPECT_EQ(msg.arc_ipv4(), "100.115.92.14");
-  EXPECT_FALSE(msg.mac_addr().empty());
-  EXPECT_TRUE(msg.find_ipv6_routes());
+  auto mlan0 = mgr->MakeDevice("mlan0");
+  const auto& cfgm = mlan0->config();
+  EXPECT_EQ(cfgm.host_ifname(), "arc_mlan0");
+  EXPECT_EQ(cfgm.guest_ifname(), "mlan0");
+  EXPECT_EQ(cfgm.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 13));
+  EXPECT_EQ(cfgm.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 14));
+  EXPECT_TRUE(mlan0->options().find_ipv6_routes);
 }
 
 TEST_F(DeviceManagerTest, MakeCellularDevice) {
   auto mgr = NewManager();
-  DeviceConfig msg;
-  mgr->MakeDevice("wwan0")->FillProto(&msg);
-  EXPECT_EQ(msg.br_ifname(), "arc_wwan0");
-  EXPECT_EQ(msg.arc_ifname(), "wwan0");
-  EXPECT_EQ(msg.br_ipv4(), "100.115.92.9");
-  EXPECT_EQ(msg.arc_ipv4(), "100.115.92.10");
-  EXPECT_FALSE(msg.mac_addr().empty());
-  EXPECT_FALSE(msg.find_ipv6_routes());
+  auto wwan0 = mgr->MakeDevice("wwan0");
+  const auto& cfg = wwan0->config();
+  EXPECT_EQ(cfg.host_ifname(), "arc_wwan0");
+  EXPECT_EQ(cfg.guest_ifname(), "wwan0");
+  EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 9));
+  EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 10));
+  EXPECT_FALSE(wwan0->options().find_ipv6_routes);
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_Android) {
   auto mgr = NewManager();
-  DeviceConfig msg;
-  mgr->MakeDevice(kAndroidDevice)->FillProto(&msg);
-  EXPECT_EQ(msg.br_ifname(), "arcbr0");
-  EXPECT_EQ(msg.arc_ifname(), "arc0");
-  EXPECT_EQ(msg.br_ipv4(), "100.115.92.1");
-  EXPECT_EQ(msg.arc_ipv4(), "100.115.92.2");
-  EXPECT_FALSE(msg.mac_addr().empty());
-  EXPECT_FALSE(msg.find_ipv6_routes());
+  auto arc0 = mgr->MakeDevice(kAndroidDevice);
+  const auto& cfg = arc0->config();
+  EXPECT_EQ(cfg.host_ifname(), "arcbr0");
+  EXPECT_EQ(cfg.guest_ifname(), "arc0");
+  EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 1));
+  EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 2));
+  EXPECT_FALSE(arc0->options().find_ipv6_routes);
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_LegacyAndroid) {
   auto mgr = NewManager(true /* is_arc_legacy */);
-  DeviceConfig msg;
-  mgr->MakeDevice(kAndroidLegacyDevice)->FillProto(&msg);
-  EXPECT_EQ(msg.br_ifname(), "arcbr0");
-  EXPECT_EQ(msg.arc_ifname(), "arc0");
-  EXPECT_EQ(msg.br_ipv4(), "100.115.92.1");
-  EXPECT_EQ(msg.arc_ipv4(), "100.115.92.2");
-  EXPECT_FALSE(msg.mac_addr().empty());
-  EXPECT_TRUE(msg.find_ipv6_routes());
+  auto arc0 = mgr->MakeDevice(kAndroidLegacyDevice);
+  const auto& cfg = arc0->config();
+  EXPECT_EQ(cfg.host_ifname(), "arcbr0");
+  EXPECT_EQ(cfg.guest_ifname(), "arc0");
+  EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 1));
+  EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 2));
+  EXPECT_TRUE(arc0->options().find_ipv6_routes);
 }
 
 TEST_F(DeviceManagerTest, MakeVpnTunDevice) {
   auto mgr = NewManager();
-  DeviceConfig msg;
-  mgr->MakeDevice("tun0")->FillProto(&msg);
-  EXPECT_EQ(msg.br_ifname(), "arc_tun0");
-  EXPECT_EQ(msg.arc_ifname(), "cros_tun0");
-  EXPECT_EQ(msg.br_ipv4(), "100.115.92.9");
-  EXPECT_EQ(msg.arc_ipv4(), "100.115.92.10");
-  EXPECT_FALSE(msg.mac_addr().empty());
-  EXPECT_FALSE(msg.find_ipv6_routes());
+  auto tun0 = mgr->MakeDevice("tun0");
+  const auto& cfg = tun0->config();
+  EXPECT_EQ(cfg.host_ifname(), "arc_tun0");
+  EXPECT_EQ(cfg.guest_ifname(), "cros_tun0");
+  EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 9));
+  EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 10));
+  EXPECT_FALSE(tun0->options().find_ipv6_routes);
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_NoMoreSubnets) {
   auto mgr = NewManager();
-  DeviceConfig msg;
   std::vector<std::unique_ptr<Device>> devices;
   for (int i = 0; i < 4; ++i) {
     auto dev = mgr->MakeDevice(base::StringPrintf("%d", i));

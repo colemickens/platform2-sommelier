@@ -60,7 +60,6 @@ static_library("libarcnetwork") {
   configs += [ ":target_defaults" ]
   sources = [
     "adb_proxy.cc",
-    "arc_helper.cc",
     "datapath.cc",
     "device.cc",
     "device_manager.cc",
@@ -68,7 +67,6 @@ static_library("libarcnetwork") {
     "dns/dns_response.cc",
     "dns/io_buffer.cc",
     "helper_process.cc",
-    "ip_helper.cc",
     "manager.cc",
     "message_dispatcher.cc",
     "minijailed_process_runner.cc",

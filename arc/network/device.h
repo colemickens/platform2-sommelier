@@ -38,7 +38,6 @@ extern const char kAndroidLegacyDevice[];
 // source for configuration events.
 class Device {
  public:
-  using MessageSink = base::Callback<void(const DeviceMessage&)>;
   using DeviceHandler = base::Callback<void(Device*)>;
 
   class Config {
@@ -97,11 +96,9 @@ class Device {
 
   Device(const std::string& ifname,
          std::unique_ptr<Config> config,
-         const Options& options,
-         const MessageSink& msg_sink);
+         const Options& options);
   ~Device() = default;
 
-  void FillProto(DeviceConfig* msg) const;
   const std::string& ifname() const;
   Config& config() const;
   IPv6Config& ipv6_config();
@@ -139,7 +136,6 @@ class Device {
   const std::string ifname_;
   std::unique_ptr<Config> config_;
   const Options options_;
-  const MessageSink msg_sink_;
 
   // Link status.
   // TODO(garrick): Scope by guest.

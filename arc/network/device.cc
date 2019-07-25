@@ -57,26 +57,13 @@ void Device::IPv6Config::clear() {
 
 Device::Device(const std::string& ifname,
                std::unique_ptr<Device::Config> config,
-               const Device::Options& options,
-               const MessageSink& msg_sink)
+               const Device::Options& options)
     : ifname_(ifname),
       config_(std::move(config)),
       options_(options),
-      msg_sink_(msg_sink),
       host_link_up_(false),
       guest_link_up_(false) {
   DCHECK(config_);
-}
-
-void Device::FillProto(DeviceConfig* msg) const {
-  msg->set_br_ifname(config_->host_ifname());
-  msg->set_br_ipv4(IPv4AddressToString(config_->host_ipv4_addr()));
-  msg->set_arc_ifname(config_->guest_ifname());
-  msg->set_arc_ipv4(IPv4AddressToString(config_->guest_ipv4_addr()));
-  msg->set_mac_addr(MacAddressToString(config_->guest_mac_addr()));
-
-  msg->set_fwd_multicast(options_.fwd_multicast);
-  msg->set_find_ipv6_routes(options_.find_ipv6_routes);
 }
 
 const std::string& Device::ifname() const {

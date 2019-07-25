@@ -9,7 +9,6 @@
 #include <sys/ioctl.h>
 
 #include <utility>
-#include <vector>
 
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -86,11 +85,9 @@ bool IsMulticastInterface(const std::string& ifname) {
 
 DeviceManager::DeviceManager(std::unique_ptr<ShillClient> shill_client,
                              AddressManager* addr_mgr,
-                             const Device::MessageSink& msg_sink,
                              bool is_arc_legacy)
     : shill_client_(std::move(shill_client)),
       addr_mgr_(addr_mgr),
-      msg_sink_(msg_sink),
       is_arc_legacy_(is_arc_legacy) {
   DCHECK(shill_client_);
   DCHECK(addr_mgr_);
@@ -308,7 +305,7 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
       std::move(ipv4_subnet), std::move(host_ipv4_addr),
       std::move(guest_ipv4_addr));
 
-  return std::make_unique<Device>(name, std::move(config), opts, msg_sink_);
+  return std::make_unique<Device>(name, std::move(config), opts);
 }
 
 void DeviceManager::OnDefaultInterfaceChanged(const std::string& ifname) {

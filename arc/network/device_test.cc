@@ -20,11 +20,15 @@ namespace {
 void DoNothing() {}
 
 class DeviceTest : public testing::Test {
- protected:
-  void SetUp() override { capture_msgs_ = false; }
+ public:
+  void IPv6Down(Device* device) { ipv6_down_ = true; }
 
-  std::unique_ptr<Device> NewDevice(const std::string& name,
-                                    const Device::Options& options) {
+ protected:
+  void SetUp() override { ipv6_down_ = false; }
+
+  std::unique_ptr<Device> NewDevice(
+      const std::string& name,
+      const Device::Options& options = Device::Options()) {
     auto ipv4_subnet = std::make_unique<Subnet>(Ipv4Addr(100, 100, 100, 100),
                                                 30, base::Bind(&DoNothing));
     EXPECT_TRUE(ipv4_subnet);
@@ -39,47 +43,38 @@ class DeviceTest : public testing::Test {
         "host", "guest", MacAddressGenerator().Generate(),
         std::move(ipv4_subnet), std::move(host_ipv4_addr),
         std::move(guest_ipv4_addr));
-    auto dev = std::make_unique<Device>(
-        name, std::move(config), options,
-        base::Bind(&DeviceTest::RecvMsg, base::Unretained(this)));
-
-    dev->FillProto(&msg_);
-    return dev;
+    return std::make_unique<Device>(name, std::move(config), options);
   }
 
-  void VerifyMsgs(const std::vector<DeviceMessage>& expected) {
-    ASSERT_EQ(msgs_recv_.size(), expected.size());
-    for (int i = 0; i < msgs_recv_.size(); ++i) {
-      EXPECT_EQ(msgs_recv_[i], expected[i].SerializeAsString());
-    }
-  }
-
-  bool capture_msgs_;
-  DeviceConfig msg_;
-
- private:
-  void RecvMsg(const DeviceMessage& msg) {
-    if (capture_msgs_)
-      msgs_recv_.emplace_back(msg.SerializeAsString());
-  }
-
-  std::vector<std::string> msgs_recv_;
+  bool ipv6_down_;
 };
 
-}  // namespace
-
-TEST_F(DeviceTest, FillProto) {
-  Device::Options opts = {true, true};
-  auto dev = NewDevice(kAndroidDevice, opts);
-  DeviceConfig msg;
-  dev->FillProto(&msg);
-  EXPECT_EQ(msg.br_ifname(), "host");
-  EXPECT_EQ(msg.arc_ifname(), "guest");
-  EXPECT_EQ(msg.br_ipv4(), "100.100.100.101");
-  EXPECT_EQ(msg.arc_ipv4(), "100.100.100.102");
-  EXPECT_FALSE(msg.mac_addr().empty());
-  EXPECT_TRUE(msg.fwd_multicast());
-  EXPECT_TRUE(msg.find_ipv6_routes());
+TEST_F(DeviceTest, IsAndroid) {
+  auto dev = NewDevice(kAndroidDevice);
+  EXPECT_TRUE(dev->IsAndroid());
+  dev = NewDevice(kAndroidLegacyDevice);
+  EXPECT_FALSE(dev->IsAndroid());
+  dev = NewDevice("eth0");
+  EXPECT_FALSE(dev->IsAndroid());
 }
+
+TEST_F(DeviceTest, IsLegacyAndroid) {
+  auto dev = NewDevice(kAndroidDevice);
+  EXPECT_FALSE(dev->IsLegacyAndroid());
+  dev = NewDevice(kAndroidLegacyDevice);
+  EXPECT_TRUE(dev->IsLegacyAndroid());
+  dev = NewDevice("eth0");
+  EXPECT_FALSE(dev->IsLegacyAndroid());
+}
+
+TEST_F(DeviceTest, IPv6TeardownHandlerCalledOnDisable) {
+  auto dev = NewDevice("foo");
+  dev->RegisterIPv6TeardownHandler(
+      base::Bind(&DeviceTest::IPv6Down, base::Unretained(this)));
+  dev->Disable();
+  EXPECT_TRUE(ipv6_down_);
+}
+
+}  // namespace
 
 }  // namespace arc_networkd

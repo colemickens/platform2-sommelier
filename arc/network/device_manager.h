@@ -9,6 +9,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <vector>
 
 #include <base/memory/weak_ptr.h>
 #include <shill/net/rtnl_listener.h>
@@ -64,7 +65,6 @@ class DeviceManager : public DeviceManagerBase {
   // |addr_mgr| must not be null.
   DeviceManager(std::unique_ptr<ShillClient> shill_client,
                 AddressManager* addr_mgr,
-                const Device::MessageSink& msg_sink,
                 bool is_arc_legacy);
   virtual ~DeviceManager();
 
@@ -127,9 +127,6 @@ class DeviceManager : public DeviceManagerBase {
 
   // Provisions and tracks subnets and addresses.
   AddressManager* addr_mgr_;
-
-  // Enables the devices to send messages to the helper process.
-  const Device::MessageSink msg_sink_;
 
   // Callbacks for notifying clients when devices are added or removed from
   // |devices_|.

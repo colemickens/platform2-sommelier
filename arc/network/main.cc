@@ -18,7 +18,6 @@
 
 #include "arc/network/adb_proxy.h"
 #include "arc/network/helper_process.h"
-#include "arc/network/ip_helper.h"
 #include "arc/network/manager.h"
 #include "arc/network/socket.h"
 
@@ -63,9 +62,6 @@ bool ShouldEnableMultinet() {
 int main(int argc, char* argv[]) {
   DEFINE_bool(log_to_stderr, false, "Log to both syslog and stderr");
   DEFINE_int32(
-      ip_helper_fd, -1,
-      "Control socket for starting an IpHelper subprocess. Used internally.");
-  DEFINE_int32(
       adb_proxy_fd, -1,
       "Control socket for starting the ADB proxy subprocess. Used internally.");
   DEFINE_string(force_multinet, "",
@@ -78,13 +74,6 @@ int main(int argc, char* argv[]) {
     flags |= brillo::kLogToStderr;
   brillo::InitLog(flags);
 
-  if (FLAGS_ip_helper_fd >= 0) {
-    LOG(INFO) << "Starting arc-networkd helper";
-    base::ScopedFD fd(FLAGS_ip_helper_fd);
-    arc_networkd::IpHelper ip_helper{std::move(fd)};
-    return ip_helper.Run();
-  }
-
   if (FLAGS_adb_proxy_fd >= 0) {
     LOG(INFO) << "Spawning adb proxy";
     base::ScopedFD fd(FLAGS_adb_proxy_fd);
@@ -92,17 +81,13 @@ int main(int argc, char* argv[]) {
     return adb_proxy.Run();
   }
 
-  LOG(INFO) << "Starting arc-networkd manager";
-  auto ip_helper = std::make_unique<arc_networkd::HelperProcess>();
-  ip_helper->Start(argc, argv, "--ip_helper_fd");
-
   auto adb_proxy = std::make_unique<arc_networkd::HelperProcess>();
   adb_proxy->Start(argc, argv, "--adb_proxy_fd");
 
   bool enable_mnet =
       (FLAGS_force_multinet == "on") ||
       ((FLAGS_force_multinet != "off") && ShouldEnableMultinet());
-  arc_networkd::Manager manager(std::move(ip_helper), std::move(adb_proxy),
-                                enable_mnet);
+  LOG(INFO) << "Starting arc-networkd manager";
+  arc_networkd::Manager manager(std::move(adb_proxy), enable_mnet);
   return manager.Run();
 }

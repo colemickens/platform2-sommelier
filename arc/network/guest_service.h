@@ -5,6 +5,8 @@
 #ifndef ARC_NETWORK_GUEST_SERVICE_H_
 #define ARC_NETWORK_GUEST_SERVICE_H_
 
+#include <string>
+
 #include <base/bind.h>
 #include <base/macros.h>
 

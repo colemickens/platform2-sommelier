@@ -46,8 +46,6 @@ class MockDeviceManager : public DeviceManagerBase {
   MOCK_METHOD1(Remove, bool(const std::string&));
 };
 
-void HandleDeviceMsg(const DeviceMessage&) {}
-
 }  // namespace
 
 class ArcServiceTest : public testing::Test {
@@ -91,8 +89,7 @@ class ArcServiceTest : public testing::Test {
         host, guest, addr_mgr_.GenerateMacAddress(), std::move(subnet),
         std::move(addr0), std::move(addr1));
     Device::Options opt{true, true};
-    return std::make_unique<Device>(name, std::move(cfg), opt,
-                                    base::Bind(HandleDeviceMsg));
+    return std::make_unique<Device>(name, std::move(cfg), opt);
   }
 
   AddressManager addr_mgr_;
