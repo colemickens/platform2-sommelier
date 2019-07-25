@@ -631,6 +631,15 @@ class LegacyCryptohomeInterfaceAdaptor
   void GetSupportedKeyPoliciesOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
       const user_data_auth::GetSupportedKeyPoliciesReply& reply);
+  void IsQuotaSupportedOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+      const user_data_auth::GetArcDiskFeaturesReply& reply);
+  void GetCurrentSpaceForUidOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<int64_t>> response,
+      const user_data_auth::GetCurrentSpaceForArcUidReply& reply);
+  void GetCurrentSpaceForGidOnSuccess(
+      std::shared_ptr<SharedDBusMethodResponse<int64_t>> response,
+      const user_data_auth::GetCurrentSpaceForArcGidReply& reply);
 
   // This method forwards the error received from calling the new interface back
   // to the old interface

@@ -1565,34 +1565,84 @@ void LegacyCryptohomeInterfaceAdaptor::GetSupportedKeyPoliciesOnSuccess(
 
 void LegacyCryptohomeInterfaceAdaptor::IsQuotaSupported(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
+
+  user_data_auth::GetArcDiskFeaturesRequest request;
+  arc_quota_proxy_->GetArcDiskFeaturesAsync(
+      request,
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::IsQuotaSupportedOnSuccess,
+                 base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::IsQuotaSupportedOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<bool>> response,
+    const user_data_auth::GetArcDiskFeaturesReply& reply) {
+  response->Return(reply.quota_supported());
 }
 
 void LegacyCryptohomeInterfaceAdaptor::GetCurrentSpaceForUid(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<int64_t>> response,
     uint32_t in_uid) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<int64_t>>(std::move(response));
+
+  user_data_auth::GetCurrentSpaceForArcUidRequest request;
+  request.set_uid(in_uid);
+  arc_quota_proxy_->GetCurrentSpaceForArcUidAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::GetCurrentSpaceForUidOnSuccess,
+          base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<int64_t>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::GetCurrentSpaceForUidOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<int64_t>> response,
+    const user_data_auth::GetCurrentSpaceForArcUidReply& reply) {
+  response->Return(reply.cur_space());
 }
 
 void LegacyCryptohomeInterfaceAdaptor::GetCurrentSpaceForGid(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<int64_t>> response,
     uint32_t in_gid) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
+  auto response_shared =
+      std::make_shared<SharedDBusMethodResponse<int64_t>>(std::move(response));
+
+  user_data_auth::GetCurrentSpaceForArcGidRequest request;
+  request.set_gid(in_gid);
+  arc_quota_proxy_->GetCurrentSpaceForArcGidAsync(
+      request,
+      base::Bind(
+          &LegacyCryptohomeInterfaceAdaptor::GetCurrentSpaceForGidOnSuccess,
+          base::Unretained(this), response_shared),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<int64_t>,
+                 base::Unretained(this), response_shared));
+}
+
+void LegacyCryptohomeInterfaceAdaptor::GetCurrentSpaceForGidOnSuccess(
+    std::shared_ptr<SharedDBusMethodResponse<int64_t>> response,
+    const user_data_auth::GetCurrentSpaceForArcGidReply& reply) {
+  response->Return(reply.cur_space());
 }
 
 void LegacyCryptohomeInterfaceAdaptor::LockToSingleUserMountUntilReboot(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
     const cryptohome::LockToSingleUserMountUntilRebootRequest& in_request) {
+  // Not implemented yet
+  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                           DBUS_ERROR_NOT_SUPPORTED,
+                           "Method unimplemented yet");
+}
+
+void LegacyCryptohomeInterfaceAdaptor::GetRsuDeviceId(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
+    const cryptohome::GetRsuDeviceIdRequest& in_request) {
   // Not implemented yet
   response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
                            DBUS_ERROR_NOT_SUPPORTED,
@@ -1634,16 +1684,6 @@ LegacyCryptohomeInterfaceAdaptor::IntegerToACAType(int type) {
     return base::nullopt;
   }
   return static_cast<attestation::ACAType>(type);
-}
-
-void LegacyCryptohomeInterfaceAdaptor::GetRsuDeviceId(
-    std::unique_ptr<
-        brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
-    const cryptohome::GetRsuDeviceIdRequest& in_request) {
-  // Not implemented yet
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           DBUS_ERROR_NOT_SUPPORTED,
-                           "Method unimplemented yet");
 }
 
 }  // namespace cryptohome
