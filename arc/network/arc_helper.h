@@ -15,7 +15,6 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 
-#include "arc/network/arc_ip_config.h"
 #include "arc/network/device.h"
 #include "arc/network/ipc.pb.h"
 
@@ -40,14 +39,6 @@ class ArcHelper {
 
   // ARC++ container PID.
   pid_t pid_ = 0;
-
-  // IP configurations for the devices representing both physical host
-  // interfaces (e.g. eth0) as well a pseudo devices (e.g. Android)
-  // that can be remapped between host interfaces. Keyed by device interface.
-  std::map<std::string, std::unique_ptr<ArcIpConfig>> arc_ip_configs_;
-  // Remapping of |arc_ip_configs_| (which owns the pointers) keyed by
-  // the container interface name.
-  std::map<std::string, ArcIpConfig*> configs_by_arc_ifname_;
 
   base::WeakPtrFactory<ArcHelper> weak_factory_{this};
 

@@ -61,11 +61,6 @@ void ArcHelper::Start(pid_t pid) {
   LOG(INFO) << "Container starting [" << pid << "]";
   pid_ = pid;
   CHECK_NE(pid_, 0);
-
-  // Initialize the container interfaces.
-  for (auto& config : arc_ip_configs_) {
-    config.second->Init(pid_);
-  }
 }
 
 void ArcHelper::Stop(pid_t pid) {
@@ -75,52 +70,18 @@ void ArcHelper::Stop(pid_t pid) {
   }
   LOG(INFO) << "Container stopping [" << pid_ << "]";
 
-  // Reset the container interfaces.
-  for (auto& config : arc_ip_configs_) {
-    config.second->Init(0);
-  }
-
   pid_ = 0;
 }
 
 void ArcHelper::AddDevice(const std::string& ifname,
                           const DeviceConfig& config) {
   LOG(INFO) << "Adding device " << ifname;
-  auto device = std::make_unique<ArcIpConfig>(ifname, config);
-  // If the container is already up, then this device needs to be initialized.
-  if (pid_ != 0)
-    device->Init(pid_);
-
-  configs_by_arc_ifname_.emplace(config.arc_ifname(), device.get());
-  arc_ip_configs_.emplace(ifname, std::move(device));
 }
 
 void ArcHelper::RemoveDevice(const std::string& ifname) {
   LOG(INFO) << "Removing device " << ifname;
-  configs_by_arc_ifname_.erase(ifname);
-  arc_ip_configs_.erase(ifname);
 }
 
-void ArcHelper::HandleCommand(const DeviceMessage& cmd) {
-  const std::string& dev_ifname = cmd.dev_ifname();
-  const auto it = arc_ip_configs_.find(dev_ifname);
-  if (it == arc_ip_configs_.end()) {
-    if (cmd.has_dev_config()) {
-      AddDevice(dev_ifname, cmd.dev_config());
-    } else {
-      LOG(ERROR) << "Unexpected device " << dev_ifname;
-    }
-    return;
-  }
-
-  auto* config = it->second.get();
-  if (cmd.has_clear_arc_ip()) {
-    config->Clear();
-  } else if (cmd.has_set_arc_ip()) {
-    config->Set(cmd.set_arc_ip());
-  } else if (cmd.has_teardown()) {
-    RemoveDevice(dev_ifname);
-  }
-}
+void ArcHelper::HandleCommand(const DeviceMessage& cmd) {}
 
 }  // namespace arc_networkd

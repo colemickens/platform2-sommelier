@@ -34,11 +34,14 @@ class ArcService : public GuestService {
   // accordingly.
   void LinkMsgHandler(const shill::RTNLMessage& msg);
 
+  void SetupIPv6(Device* device);
+  void TeardownIPv6(Device* device);
+
   // Do not use. Only for testing.
   void SetPIDForTestingOnly();
 
  private:
-  MinijailedProcessRunner runner_;
+  std::unique_ptr<MinijailedProcessRunner> runner_;
   std::unique_ptr<Datapath> datapath_;
 
   pid_t pid_;

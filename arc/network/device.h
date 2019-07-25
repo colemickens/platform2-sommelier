@@ -5,6 +5,7 @@
 #ifndef ARC_NETWORK_DEVICE_H_
 #define ARC_NETWORK_DEVICE_H_
 
+#include <linux/in6.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -38,6 +39,7 @@ extern const char kAndroidLegacyDevice[];
 class Device {
  public:
   using MessageSink = base::Callback<void(const DeviceMessage&)>;
+  using DeviceHandler = base::Callback<void(Device*)>;
 
   class Config {
    public:
@@ -73,19 +75,43 @@ class Device {
     bool find_ipv6_routes;
   };
 
+  struct IPv6Config {
+    IPv6Config()
+        : prefix_len(0),
+          routing_table_id(-1),
+          routing_table_attempts(0),
+          addr_attempts(0),
+          is_setup(0) {}
+
+    void clear();
+
+    struct in6_addr addr;
+    struct in6_addr router;
+    int prefix_len;
+    std::string ifname;
+    int routing_table_id;
+    int routing_table_attempts;
+    int addr_attempts;
+    bool is_setup;
+  };
+
   Device(const std::string& ifname,
          std::unique_ptr<Config> config,
          const Options& options,
          const MessageSink& msg_sink);
-  ~Device();
+  ~Device() = default;
 
   void FillProto(DeviceConfig* msg) const;
   const std::string& ifname() const;
   Config& config() const;
+  IPv6Config& ipv6_config();
   const Options& options() const;
 
   bool IsAndroid() const;
   bool IsLegacyAndroid() const;
+
+  void RegisterIPv6SetupHandler(const DeviceHandler& handler);
+  void RegisterIPv6TeardownHandler(const DeviceHandler& handler);
 
   void Enable(const std::string& ifname);
   void Disable();
@@ -115,18 +141,15 @@ class Device {
   const Options options_;
   const MessageSink msg_sink_;
 
-  // Only used for the legacy Android device; points to the interface currently
-  // used by the container.
-  std::string legacy_lan_ifname_;
-
   // Link status.
   // TODO(garrick): Scope by guest.
   bool host_link_up_;
   bool guest_link_up_;
 
-  struct in6_addr random_address_;
-  int random_address_prefix_len_;
-  int random_address_tries_;
+  bool link_up_;
+  IPv6Config ipv6_config_;
+  DeviceHandler ipv6_up_handler_;
+  DeviceHandler ipv6_down_handler_;
 
   std::unique_ptr<MulticastForwarder> mdns_forwarder_;
   std::unique_ptr<MulticastForwarder> ssdp_forwarder_;
