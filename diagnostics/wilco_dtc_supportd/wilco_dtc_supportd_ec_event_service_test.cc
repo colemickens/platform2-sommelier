@@ -22,13 +22,13 @@
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_ec_event_service.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"
 
-using testing::_;
-using testing::Invoke;
-using testing::StrictMock;
-
 namespace diagnostics {
 
 namespace {
+
+using testing::_;
+using testing::Invoke;
+using testing::StrictMock;
 
 using EcEvent = WilcoDtcSupportdEcEventService::EcEvent;
 using MojoEvent = chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
@@ -98,8 +98,6 @@ class WilcoDtcSupportdEcEventServiceTest : public testing::Test {
   base::ScopedFD fifo_write_end_;
 };
 
-}  // namespace
-
 TEST_F(WilcoDtcSupportdEcEventServiceTest, Start) {
   CreateEcEventFile();
   ASSERT_TRUE(service()->Start());
@@ -109,12 +107,19 @@ TEST_F(WilcoDtcSupportdEcEventServiceTest, StartFailure) {
   ASSERT_FALSE(service()->Start());
 }
 
-TEST_F(WilcoDtcSupportdEcEventServiceTest, ReadEvent) {
-  CreateEcEventFile();
-  ASSERT_TRUE(service()->Start());
+// Tests for the WilcoDtcSupportdEcEventService class that started successfully.
+class StartedWilcoDtcSupportdEcEventServiceTest
+    : public WilcoDtcSupportdEcEventServiceTest {
+ protected:
+  void SetUp() override {
+    ASSERT_NO_FATAL_FAILURE(WilcoDtcSupportdEcEventServiceTest::SetUp());
+    CreateEcEventFile();
+    ASSERT_TRUE(service()->Start());
+    InitFifoWriteEnd();
+  }
+};
 
-  InitFifoWriteEnd();
-
+TEST_F(StartedWilcoDtcSupportdEcEventServiceTest, ReadEvent) {
   base::RunLoop run_loop;
   const uint16_t data[6] = {0xaaaa, 0xbbbb, 0xcccc, 0xdddd, 0xeeee, 0xffff};
   WriteEventToEcEventFile(
@@ -124,12 +129,7 @@ TEST_F(WilcoDtcSupportdEcEventServiceTest, ReadEvent) {
   run_loop.Run();
 }
 
-TEST_F(WilcoDtcSupportdEcEventServiceTest, ReadManyEvent) {
-  CreateEcEventFile();
-  ASSERT_TRUE(service()->Start());
-
-  InitFifoWriteEnd();
-
+TEST_F(StartedWilcoDtcSupportdEcEventServiceTest, ReadManyEvent) {
   base::RunLoop run_loop;
   base::RepeatingClosure callback = BarrierClosure(
       2 /* num_closures */, run_loop.QuitClosure() /* done closure */);
@@ -142,5 +142,7 @@ TEST_F(WilcoDtcSupportdEcEventServiceTest, ReadManyEvent) {
   EXPECT_CALL(*delegate(), HandleMojoEvent(MojoEvent::kDockError)).Times(2);
   run_loop.Run();
 }
+
+}  // namespace
 
 }  // namespace diagnostics
