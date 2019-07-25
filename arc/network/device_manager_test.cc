@@ -40,29 +40,7 @@ class DeviceManagerTest : public testing::Test {
  protected:
   DeviceManagerTest() = default;
 
-  void SetUp() override {
-    capture_msgs_ = false;
-
-    android_announce_msg_.set_dev_ifname(kAndroidDevice);
-    auto* config = android_announce_msg_.mutable_dev_config();
-    config->set_br_ifname("arcbr0");
-    config->set_br_ipv4("100.115.92.1");
-    config->set_arc_ifname("arc0");
-    config->set_arc_ipv4("100.115.92.2");
-    config->set_mac_addr("f7:69:e5:c4:1f:74");
-    config->set_fwd_multicast(false);
-    config->set_find_ipv6_routes(false);
-
-    legacy_android_announce_msg_.set_dev_ifname(kAndroidLegacyDevice);
-    config = legacy_android_announce_msg_.mutable_dev_config();
-    config->set_br_ifname("arcbr0");
-    config->set_br_ipv4("100.115.92.1");
-    config->set_arc_ifname("arc0");
-    config->set_arc_ipv4("100.115.92.2");
-    config->set_mac_addr("f7:69:e5:c4:1f:74");
-    config->set_fwd_multicast(true);
-    config->set_find_ipv6_routes(true);
-  }
+  void SetUp() override { capture_msgs_ = false; }
 
   std::unique_ptr<DeviceManager> NewManager(bool is_arc_legacy = false) {
     shill_helper_ = std::make_unique<FakeShillClientHelper>();
@@ -72,8 +50,6 @@ class DeviceManagerTest : public testing::Test {
         std::move(shill_client), &addr_mgr_,
         base::Bind(&DeviceManagerTest::RecvMsg, base::Unretained(this)),
         is_arc_legacy);
-    mgr->OnGuestStart(is_arc_legacy ? GuestMessage::ARC_LEGACY
-                                    : GuestMessage::ARC);
     return mgr;
   }
 
@@ -180,7 +156,7 @@ TEST_F(DeviceManagerTest, MakeDevice_Android) {
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_LegacyAndroid) {
-  auto mgr = NewManager();
+  auto mgr = NewManager(true /* is_arc_legacy */);
   DeviceConfig msg;
   mgr->MakeDevice(kAndroidLegacyDevice)->FillProto(&msg);
   EXPECT_EQ(msg.br_ifname(), "arcbr0");
@@ -217,6 +193,7 @@ TEST_F(DeviceManagerTest, MakeDevice_NoMoreSubnets) {
 
 TEST_F(DeviceManagerTest, AddNewDevices) {
   auto mgr = NewManager();
+  mgr->OnGuestStart(GuestMessage::ARC);
   std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("eth0"),
                                            dbus::ObjectPath("wlan0")};
   auto value = brillo::Any(devices);
@@ -227,6 +204,7 @@ TEST_F(DeviceManagerTest, AddNewDevices) {
 
 TEST_F(DeviceManagerTest, NoDevicesAddedWhenMultinetDisabled) {
   auto mgr = NewManager(true /* is_arc_legacy */);
+  mgr->OnGuestStart(GuestMessage::ARC_LEGACY);
   std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("eth0"),
                                            dbus::ObjectPath("wlan0")};
   auto value = brillo::Any(devices);

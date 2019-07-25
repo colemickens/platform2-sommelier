@@ -30,6 +30,12 @@ namespace arc_networkd {
 namespace {
 constexpr pid_t kInvalidPID = -1;
 constexpr pid_t kTestPID = -2;
+constexpr int kInvalidTableID = -1;
+constexpr int kMaxTableRetries = 10;  // Based on 1 second delay.
+constexpr base::TimeDelta kTableRetryDelay = base::TimeDelta::FromSeconds(1);
+// Android adds a constant to the interface index to derive the table id.
+// This is defined in system/netd/server/RouteController.h
+constexpr int kRouteControllerRouteTableOffsetFromIndex = 1000;
 
 // This wrapper is required since the base class is a singleton that hides its
 // constructor. It is necessary here because the message loop thread has to be
@@ -43,6 +49,29 @@ class RTNetlinkHandler : public shill::RTNLHandler {
  private:
   DISALLOW_COPY_AND_ASSIGN(RTNetlinkHandler);
 };
+
+int GetAndroidRoutingTableId(const std::string& ifname, pid_t pid) {
+  base::FilePath ifindex_path(base::StringPrintf(
+      "/proc/%d/root/sys/class/net/%s/ifindex", pid, ifname.c_str()));
+  std::string contents;
+  if (!base::ReadFileToString(ifindex_path, &contents)) {
+    PLOG(WARNING) << "Could not read " << ifindex_path.value();
+    return kInvalidTableID;
+  }
+
+  base::TrimWhitespaceASCII(contents, base::TRIM_TRAILING, &contents);
+  int table_id = kInvalidTableID;
+  if (!base::StringToInt(contents, &table_id)) {
+    LOG(ERROR) << "Could not parse ifindex from " << ifindex_path.value()
+               << ": " << contents;
+    return kInvalidTableID;
+  }
+  table_id += kRouteControllerRouteTableOffsetFromIndex;
+
+  LOG(INFO) << "Found table id " << table_id << " for container interface "
+            << ifname;
+  return table_id;
+}
 
 // TODO(garrick): Remove this workaround ASAP.
 int GetContainerPID() {
@@ -70,10 +99,14 @@ ArcService::ArcService(DeviceManagerBase* dev_mgr,
     : GuestService(is_legacy ? GuestMessage::ARC_LEGACY : GuestMessage::ARC,
                    dev_mgr),
       pid_(kInvalidPID) {
-  if (!datapath)
-    datapath = std::make_unique<Datapath>(&runner_);
+  if (!datapath) {
+    runner_ = std::make_unique<MinijailedProcessRunner>();
+    datapath = std::make_unique<Datapath>(runner_.get());
+  }
 
   datapath_ = std::move(datapath);
+  dev_mgr_->RegisterDeviceIPv6AddressFoundHandler(
+      base::Bind(&ArcService::SetupIPv6, weak_factory_.GetWeakPtr()));
 }
 
 void ArcService::OnStart() {
@@ -222,8 +255,7 @@ void ArcService::StartDevice(Device* device) {
   // Signal the container that the network device is ready.
   // This is only applicable for arc0.
   if (device->IsAndroid() || device->IsLegacyAndroid()) {
-    MinijailedProcessRunner runner;
-    runner.WriteSentinelToContainer(base::IntToString(pid_));
+    datapath_->runner().WriteSentinelToContainer(base::IntToString(pid_));
   }
 }
 
@@ -239,6 +271,7 @@ void ArcService::OnDeviceRemoved(Device* device) {
             << " bridge: " << config.host_ifname()
             << " guest_iface: " << config.guest_ifname();
 
+  device->Disable();
   if (device->IsLegacyAndroid()) {
     datapath_->RemoveOutboundIPv4(config.host_ifname());
     datapath_->RemoveLegacyIPv4DNAT();
@@ -336,6 +369,132 @@ void ArcService::LinkMsgHandler(const shill::RTNLMessage& msg) {
   }
 
   device->Enable(ifname);
+}
+
+void ArcService::SetupIPv6(Device* device) {
+  device->RegisterIPv6TeardownHandler(
+      base::Bind(&ArcService::TeardownIPv6, weak_factory_.GetWeakPtr()));
+
+  auto& ipv6_config = device->ipv6_config();
+  if (ipv6_config.ifname.empty())
+    return;
+
+  LOG(INFO) << "Setting up IPv6 for " << ipv6_config.ifname;
+
+  ipv6_config.routing_table_id =
+      GetAndroidRoutingTableId(device->config().guest_ifname(), pid_);
+  if (ipv6_config.routing_table_id == kInvalidTableID) {
+    if (ipv6_config.routing_table_attempts++ < kMaxTableRetries) {
+      LOG(INFO) << "Could not look up routing table ID for container interface "
+                << device->config().guest_ifname() << " - trying again...";
+      base::MessageLoop::current()->task_runner()->PostDelayedTask(
+          FROM_HERE,
+          base::Bind(&ArcService::SetupIPv6, weak_factory_.GetWeakPtr(),
+                     device),
+          kTableRetryDelay);
+    } else {
+      LOG(DFATAL)
+          << "Could not look up routing table ID for container interface "
+          << device->config().guest_ifname();
+    }
+    return;
+  }
+
+  LOG(INFO) << "Setting IPv6 address " << ipv6_config.addr
+            << "/128, gateway=" << ipv6_config.router << " on "
+            << ipv6_config.ifname;
+
+  char buf[INET6_ADDRSTRLEN] = {0};
+  if (!inet_ntop(AF_INET6, &ipv6_config.addr, buf, sizeof(buf))) {
+    LOG(DFATAL) << "Invalid address: " << ipv6_config.addr;
+    return;
+  }
+  std::string addr = buf;
+
+  if (!inet_ntop(AF_INET6, &ipv6_config.router, buf, sizeof(buf))) {
+    LOG(DFATAL) << "Invalid router address: " << ipv6_config.router;
+    return;
+  }
+  std::string router = buf;
+
+  const auto& config = device->config();
+  {
+    ScopedNS ns(pid_);
+    if (!ns.IsValid()) {
+      LOG(ERROR) << "Invalid container namespace (" << pid_
+                 << ") - cannot configure IPv6.";
+      return;
+    }
+    if (!datapath_->AddIPv6GatewayRoutes(config.guest_ifname(), addr, router,
+                                         ipv6_config.prefix_len,
+                                         ipv6_config.routing_table_id)) {
+      LOG(ERROR) << "Failed to setup IPv6 routes in the container";
+      return;
+    }
+  }
+
+  if (!datapath_->AddIPv6HostRoute(config.host_ifname(), addr,
+                                   ipv6_config.prefix_len)) {
+    LOG(ERROR) << "Failed to setup the IPv6 route for interface "
+               << config.host_ifname();
+    return;
+  }
+
+  if (!datapath_->AddIPv6Neighbor(ipv6_config.ifname, addr)) {
+    LOG(ERROR) << "Failed to setup the IPv6 neighbor proxy";
+    datapath_->RemoveIPv6HostRoute(config.host_ifname(), addr,
+                                   ipv6_config.prefix_len);
+    return;
+  }
+
+  if (!datapath_->AddIPv6Forwarding(ipv6_config.ifname,
+                                    device->config().host_ifname())) {
+    LOG(ERROR) << "Failed to setup iptables for IPv6";
+    datapath_->RemoveIPv6Neighbor(ipv6_config.ifname, addr);
+    datapath_->RemoveIPv6HostRoute(config.host_ifname(), addr,
+                                   ipv6_config.prefix_len);
+    return;
+  }
+
+  ipv6_config.is_setup = true;
+}
+
+void ArcService::TeardownIPv6(Device* device) {
+  auto& ipv6_config = device->ipv6_config();
+  if (!ipv6_config.is_setup)
+    return;
+
+  LOG(INFO) << "Clearing IPv6 for " << ipv6_config.ifname;
+  ipv6_config.is_setup = false;
+
+  char buf[INET6_ADDRSTRLEN] = {0};
+  if (!inet_ntop(AF_INET6, &ipv6_config.addr, buf, sizeof(buf))) {
+    LOG(DFATAL) << "Invalid address: " << ipv6_config.addr;
+    return;
+  }
+  std::string addr = buf;
+
+  if (!inet_ntop(AF_INET6, &ipv6_config.router, buf, sizeof(buf))) {
+    LOG(DFATAL) << "Invalid router address: " << ipv6_config.router;
+    return;
+  }
+  std::string router = buf;
+
+  const auto& config = device->config();
+  datapath_->RemoveIPv6Forwarding(ipv6_config.ifname, config.host_ifname());
+  datapath_->RemoveIPv6Neighbor(ipv6_config.ifname, addr);
+  datapath_->RemoveIPv6HostRoute(config.host_ifname(), addr,
+                                 ipv6_config.prefix_len);
+
+  ScopedNS ns(pid_);
+  if (ns.IsValid()) {
+    datapath_->RemoveIPv6GatewayRoutes(config.guest_ifname(), addr, router,
+                                       ipv6_config.prefix_len,
+                                       ipv6_config.routing_table_id);
+  } else {
+    LOG(ERROR) << "Invalid container namespace (" << pid_
+               << ") - cannot cleanup IPv6.";
+  }
 }
 
 void ArcService::SetPIDForTestingOnly() {

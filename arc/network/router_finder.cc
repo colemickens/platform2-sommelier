@@ -13,8 +13,6 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 
-#include "arc/network/arc_ip_config.h"
-
 namespace {
 
 const int kInitialRtrSolicitationIntervalMs = 4000;

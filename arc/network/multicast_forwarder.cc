@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "arc/network/arc_ip_config.h"
 #include "arc/network/multicast_forwarder.h"
 
 #include <arpa/inet.h>
@@ -22,6 +21,7 @@
 
 #include "arc/network/dns/dns_protocol.h"
 #include "arc/network/dns/dns_response.h"
+#include "arc/network/net_util.h"
 
 namespace {
 

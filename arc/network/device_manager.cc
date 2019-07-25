@@ -120,6 +120,11 @@ void DeviceManager::RegisterDeviceRemovedHandler(const DeviceHandler& handler) {
   rm_handlers_.emplace_back(handler);
 }
 
+void DeviceManager::RegisterDeviceIPv6AddressFoundHandler(
+    const DeviceHandler& handler) {
+  ipv6_handlers_.emplace_back(handler);
+}
+
 void DeviceManager::RegisterDefaultInterfaceChangedHandler(
     const NameHandler& handler) {
   default_iface_handlers_.emplace_back(handler);
@@ -153,6 +158,9 @@ bool DeviceManager::Add(const std::string& name) {
     return false;
 
   LOG(INFO) << "Adding device " << *device;
+
+  device->RegisterIPv6SetupHandler(base::Bind(
+      &DeviceManager::OnIPv6AddressFound, weak_factory_.GetWeakPtr()));
 
   for (auto& h : add_handlers_) {
     h.Run(device.get());
@@ -224,6 +232,7 @@ void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
 
   if (!link_up) {
     LOG(INFO) << ifname << " is now down";
+    device->Disable();
     return;
   }
   // The link is now up.
@@ -329,6 +338,12 @@ void DeviceManager::OnDevicesChanged(const std::set<std::string>& devices) {
 
   for (const std::string& name : devices)
     Add(name);
+}
+
+void DeviceManager::OnIPv6AddressFound(Device* device) {
+  for (const auto& h : ipv6_handlers_) {
+    h.Run(device);
+  }
 }
 
 }  // namespace arc_networkd

@@ -15,7 +15,6 @@
 #include <base/lazy_instance.h>
 #include <base/logging.h>
 
-#include "arc/network/arc_ip_config.h"
 #include "arc/network/net_util.h"
 
 namespace arc_networkd {
@@ -46,6 +45,16 @@ Device::Config::Config(const std::string& host_ifname,
       host_ipv4_addr_(std::move(host_ipv4_addr)),
       guest_ipv4_addr_(std::move(guest_ipv4_addr)) {}
 
+void Device::IPv6Config::clear() {
+  memset(&addr, 0, sizeof(struct in6_addr));
+  memset(&router, 0, sizeof(struct in6_addr));
+  prefix_len = 0;
+  routing_table_id = -1;
+  routing_table_attempts = 0;
+  addr_attempts = 0;
+  is_setup = false;
+}
+
 Device::Device(const std::string& ifname,
                std::unique_ptr<Device::Config> config,
                const Device::Options& options,
@@ -57,24 +66,6 @@ Device::Device(const std::string& ifname,
       host_link_up_(false),
       guest_link_up_(false) {
   DCHECK(config_);
-  if (msg_sink_.is_null())
-    return;
-
-  DeviceMessage msg;
-  msg.set_dev_ifname(ifname_);
-  auto* dev_config = msg.mutable_dev_config();
-  FillProto(dev_config);
-  msg_sink_.Run(msg);
-}
-
-Device::~Device() {
-  if (msg_sink_.is_null())
-    return;
-
-  DeviceMessage msg;
-  msg.set_dev_ifname(ifname_);
-  msg.set_teardown(true);
-  msg_sink_.Run(msg);
 }
 
 void Device::FillProto(DeviceConfig* msg) const {
@@ -95,6 +86,10 @@ const std::string& Device::ifname() const {
 Device::Config& Device::config() const {
   CHECK(config_);
   return *config_.get();
+}
+
+Device::IPv6Config& Device::ipv6_config() {
+  return ipv6_config_;
 }
 
 const Device::Options& Device::options() const {
@@ -121,9 +116,6 @@ bool Device::LinkUp(const std::string& ifname, bool up) {
 
   if (up == *link_up)
     return false;
-
-  if (!up)
-    Disable();
 
   *link_up = up;
   return true;
@@ -163,7 +155,12 @@ void Device::Enable(const std::string& ifname) {
   if (options_.find_ipv6_routes && !router_finder_) {
     LOG(INFO) << "Enabling IPV6 route finding for device " << ifname_
               << " on interface " << ifname;
-    legacy_lan_ifname_ = ifname;
+    // In the case this is the Android device, |ifname| is the current default
+    // interface and must be used.
+    ipv6_config_.ifname = (IsAndroid() || IsLegacyAndroid()) ? ifname : ifname_;
+    ipv6_config_.addr_attempts = 0;
+    ipv6_config_.routing_table_attempts = 0;
+    ipv6_config_.is_setup = false;
     router_finder_.reset(new RouterFinder());
     router_finder_->Start(
         ifname, base::Bind(&Device::OnRouteFound, weak_factory_.GetWeakPtr()));
@@ -171,23 +168,32 @@ void Device::Enable(const std::string& ifname) {
 }
 
 void Device::Disable() {
-  LOG(INFO) << "Disabling device " << ifname_;
-
-  neighbor_finder_.reset();
-  router_finder_.reset();
-  ssdp_forwarder_.reset();
-  mdns_forwarder_.reset();
-
-  if (msg_sink_.is_null())
-    return;
-
-  // Clear IPv6 info, if necessary.
-  if (options_.find_ipv6_routes) {
-    DeviceMessage msg;
-    msg.set_dev_ifname(ifname_);
-    msg.set_clear_arc_ip(true);
-    msg_sink_.Run(msg);
+  if (neighbor_finder_ || router_finder_) {
+    LOG(INFO) << "Disabling IPv6 route finding for device " << ifname_;
+    neighbor_finder_.reset();
+    router_finder_.reset();
   }
+  if (ssdp_forwarder_) {
+    LOG(INFO) << "Disabling SSDP forwarding for device " << ifname_;
+    ssdp_forwarder_.reset();
+  }
+  if (mdns_forwarder_) {
+    LOG(INFO) << "Disabling mDNS forwarding for device " << ifname_;
+    mdns_forwarder_.reset();
+  }
+
+  if (!ipv6_down_handler_.is_null())
+    ipv6_down_handler_.Run(this);
+
+  ipv6_config_.clear();
+}
+
+void Device::RegisterIPv6SetupHandler(const DeviceHandler& handler) {
+  ipv6_up_handler_ = handler;
+}
+
+void Device::RegisterIPv6TeardownHandler(const DeviceHandler& handler) {
+  ipv6_down_handler_ = handler;
 }
 
 void Device::OnGuestStart(GuestMessage::GuestType guest) {
@@ -200,78 +206,59 @@ void Device::OnGuestStop(GuestMessage::GuestType guest) {}
 void Device::OnRouteFound(const struct in6_addr& prefix,
                           int prefix_len,
                           const struct in6_addr& router) {
-  const std::string& ifname =
-      legacy_lan_ifname_.empty() ? ifname_ : legacy_lan_ifname_;
-
-  if (prefix_len == 64) {
-    LOG(INFO) << "Found IPv6 network on iface " << ifname << " route=" << prefix
-              << "/" << prefix_len << ", gateway=" << router;
-
-    memcpy(&random_address_, &prefix, sizeof(random_address_));
-    random_address_prefix_len_ = prefix_len;
-    random_address_tries_ = 0;
-
-    ArcIpConfig::GenerateRandom(&random_address_, random_address_prefix_len_);
-
-    neighbor_finder_.reset(new NeighborFinder());
-    neighbor_finder_->Check(
-        ifname, random_address_,
-        base::Bind(&Device::OnNeighborCheckResult, weak_factory_.GetWeakPtr()));
-  } else {
-    LOG(INFO) << "No IPv6 connectivity available on " << ifname;
+  if (prefix_len != 64) {
+    LOG(INFO) << "No IPv6 connectivity available on " << ipv6_config_.ifname
+              << " - unsupported prefix length: " << prefix_len;
+    return;
   }
+
+  LOG(INFO) << "Found IPv6 network on iface " << ipv6_config_.ifname
+            << " route=" << prefix << "/" << prefix_len
+            << ", gateway=" << router;
+
+  memcpy(&ipv6_config_.addr, &prefix, sizeof(ipv6_config_.addr));
+  ipv6_config_.prefix_len = prefix_len;
+
+  GenerateRandomIPv6Prefix(&ipv6_config_.addr, ipv6_config_.prefix_len);
+
+  neighbor_finder_.reset(new NeighborFinder());
+  neighbor_finder_->Check(
+      ipv6_config_.ifname, ipv6_config_.addr,
+      base::Bind(&Device::OnNeighborCheckResult, weak_factory_.GetWeakPtr()));
 }
 
 void Device::OnNeighborCheckResult(bool found) {
-  const std::string& ifname =
-      legacy_lan_ifname_.empty() ? ifname_ : legacy_lan_ifname_;
-
   if (found) {
-    if (++random_address_tries_ >= kMaxRandomAddressTries) {
-      LOG(WARNING) << "Too many IP collisions, giving up.";
+    if (++ipv6_config_.addr_attempts >= kMaxRandomAddressTries) {
+      LOG(WARNING) << "Too many IPv6 collisions, giving up.";
       return;
     }
 
-    struct in6_addr previous_address = random_address_;
-    ArcIpConfig::GenerateRandom(&random_address_, random_address_prefix_len_);
+    struct in6_addr previous_address = ipv6_config_.addr;
+    GenerateRandomIPv6Prefix(&ipv6_config_.addr, ipv6_config_.prefix_len);
 
     LOG(INFO) << "Detected IP collision for " << previous_address
-              << ", retrying with new address " << random_address_;
+              << ", retrying with new address " << ipv6_config_.addr;
 
     neighbor_finder_->Check(
-        ifname, random_address_,
+        ipv6_config_.ifname, ipv6_config_.addr,
         base::Bind(&Device::OnNeighborCheckResult, weak_factory_.GetWeakPtr()));
-  } else {
-    struct in6_addr router;
-
-    if (!ArcIpConfig::GetV6Address(config_->host_ifname(), &router)) {
-      LOG(ERROR) << "Error reading link local address for "
-                 << config_->host_ifname();
-      return;
-    }
-
-    LOG(INFO) << "Setting IPv6 address " << random_address_
-              << "/128, gateway=" << router << " on " << ifname;
-
-    // Set up new ARC IPv6 address, NDP, and forwarding rules.
-    if (!msg_sink_.is_null()) {
-      DeviceMessage msg;
-      msg.set_dev_ifname(ifname_);
-      SetArcIp* setup_msg = msg.mutable_set_arc_ip();
-      setup_msg->set_prefix(&random_address_, sizeof(struct in6_addr));
-      setup_msg->set_prefix_len(128);
-      setup_msg->set_router(&router, sizeof(struct in6_addr));
-      setup_msg->set_lan_ifname(ifname);
-      msg_sink_.Run(msg);
-    }
+    return;
   }
+
+  if (!FindFirstIPv6Address(config_->host_ifname(), &ipv6_config_.router)) {
+    LOG(ERROR) << "Error reading link local address for "
+               << config_->host_ifname();
+    return;
+  }
+
+  if (!ipv6_up_handler_.is_null())
+    ipv6_up_handler_.Run(this);
 }
 
 std::ostream& operator<<(std::ostream& stream, const Device& device) {
-  stream << "{ ifname: " << device.ifname_;
-  if (!device.legacy_lan_ifname_.empty())
-    stream << ", legacy_lan_ifname: " << device.legacy_lan_ifname_;
-  stream << ", bridge_ifname: " << device.config_->host_ifname()
+  stream << "{ ifname: " << device.ifname_
+         << ", bridge_ifname: " << device.config_->host_ifname()
          << ", bridge_ipv4_addr: "
          << device.config_->host_ipv4_addr_->ToCidrString()
          << ", guest_ifname: " << device.config_->guest_ifname()
