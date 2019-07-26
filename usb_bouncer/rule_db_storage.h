@@ -8,8 +8,8 @@
 #include <memory>
 
 #include <base/files/file_path.h>
-#include <base/files/scoped_file.h>
 #include <base/macros.h>
+#include <brillo/files/safe_fd.h>
 
 #include "usb_bouncer/usb_bouncer.pb.h"
 
@@ -50,7 +50,7 @@ class RuleDBStorage {
 
  private:
   base::FilePath path_;
-  base::ScopedFD fd_;
+  brillo::SafeFD fd_;
   std::unique_ptr<RuleDB> val_;
 
   DISALLOW_COPY_AND_ASSIGN(RuleDBStorage);

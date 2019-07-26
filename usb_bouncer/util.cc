@@ -11,6 +11,7 @@
 #include <base/strings/string_util.h>
 #include <brillo/cryptohome.h>
 #include <brillo/file_utils.h>
+#include <brillo/files/file_util.h>
 #include <brillo/userdb_utils.h>
 #include <fcntl.h>
 #include <openssl/sha.h>
@@ -27,6 +28,7 @@
 #include <usbguard/DeviceManagerHooks.hpp>
 #include <usbguard/Rule.hpp>
 
+using brillo::SafeFD;
 using brillo::cryptohome::home::GetHashedUserPath;
 using org::chromium::SessionManagerInterfaceProxy;
 
@@ -35,6 +37,7 @@ namespace usb_bouncer {
 namespace {
 
 constexpr int kDbPermissions = S_IRUSR | S_IWUSR;
+constexpr int kDbDirPermissions = S_IRUSR | S_IWUSR | S_IXUSR;
 
 // Returns base64 encoded strings since proto strings must be valid UTF-8.
 std::string EncodeDigest(const std::vector<uint8_t>& digest) {
@@ -226,48 +229,53 @@ std::unordered_set<std::string> UniqueRules(const EntryMap& entries) {
   return aggregated_rules;
 }
 
-// Open the specified file. If necessary, create the parent directories and/or
-// the file. If run as root, the ownership of the created file is set to
-// kUsbBouncerUser.
-base::ScopedFD OpenPath(const base::FilePath& path, bool lock) {
+SafeFD OpenStateFile(const base::FilePath& base_path,
+                     const std::string& parent_dir,
+                     const std::string& state_file_name,
+                     bool lock) {
   uid_t proc_uid = getuid();
   uid_t uid = proc_uid;
   gid_t gid = getgid();
   if (uid == kRootUid &&
       !brillo::userdb::GetUserInfo(kUsbBouncerUser, &uid, &gid)) {
     LOG(ERROR) << "Failed to get uid & gid for \"" << kUsbBouncerUser << "\"";
-    return base::ScopedFD();
+    return SafeFD();
   }
 
-  base::FilePath parent_dir = path.DirName();
-  base::ScopedFD parent_fd = brillo::MkdirRecursively(parent_dir, 0755);
+  // Don't enforce permissions on the |base_path|. It is handled by the system.
+  SafeFD::Error err;
+  SafeFD base_fd;
+  std::tie(base_fd, err) = SafeFD::Root().first.OpenExistingDir(base_path);
+  if (!base_fd.is_valid()) {
+    LOG(ERROR) << "\"" << base_path.value() << "\" does not exist!";
+    return SafeFD();
+  }
+
+  // Ensure the parent directory has the correct permissions.
+  SafeFD parent_fd;
+  std::tie(parent_fd, err) =
+      OpenOrRemakeDir(&base_fd, parent_dir, kDbDirPermissions, uid, gid);
   if (!parent_fd.is_valid()) {
-    LOG(WARNING) << "Failed to create directory for \"" << path.value() << '"';
-    return base::ScopedFD();  // This is an invalid fd.
+    auto parent_path = base_path.Append(parent_dir);
+    LOG(ERROR) << "Failed to validate '" << parent_path.value() << "'";
+    return SafeFD();
   }
 
-  base::ScopedFD fd(brillo::OpenAtSafely(
-      parent_fd.get(), path.BaseName(), O_CREAT | O_RDWR, kDbPermissions));
+  // Create the DB file with the correct permissions.
+  SafeFD fd;
+  std::tie(fd, err) =
+      OpenOrRemakeFile(&parent_fd, state_file_name, kDbPermissions, uid, gid);
   if (!fd.is_valid()) {
-    PLOG(ERROR) << "Error opening \"" << path.value() << '"';
-    return base::ScopedFD();
-  }
-
-  if (proc_uid == kRootUid) {
-    if (fchown(parent_fd.get(), uid, gid) < 0) {
-      PLOG(ERROR) << "chown for \"" << parent_dir.value() << "\" failed";
-      return base::ScopedFD();
-    }
-    if (fchown(fd.get(), uid, gid) < 0) {
-      PLOG(ERROR) << "chown for \"" << path.value() << "\" failed";
-      return base::ScopedFD();
-    }
+    auto full_path = base_path.Append(parent_dir).Append(state_file_name);
+    LOG(ERROR) << "Failed to validate '" << full_path.value() << "'";
+    return SafeFD();
   }
 
   if (lock) {
     if (HANDLE_EINTR(flock(fd.get(), LOCK_EX)) < 0) {
-      PLOG(ERROR) << "failed to lock \"" << path.value() << '"';
-      return base::ScopedFD();
+      auto full_path = base_path.Append(parent_dir).Append(state_file_name);
+      PLOG(ERROR) << "Failed to lock \"" << full_path.value() << '"';
+      return SafeFD();
     }
   }
 

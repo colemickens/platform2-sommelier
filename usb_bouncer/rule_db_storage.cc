@@ -6,10 +6,14 @@
 #include <unistd.h>
 
 #include <string>
+#include <vector>
 
 #include <base/files/file_util.h>
+#include <brillo/files/safe_fd.h>
 
 #include "usb_bouncer/util.h"
+
+using brillo::SafeFD;
 
 namespace usb_bouncer {
 
@@ -20,8 +24,11 @@ constexpr size_t kMaxFileSize = 64 * 1024 * 1024;
 RuleDBStorage::RuleDBStorage() {}
 
 RuleDBStorage::RuleDBStorage(const base::FilePath& db_dir) {
-  path_ = GetDBPath(db_dir);
-  fd_ = OpenPath(path_, true /* lock */);
+  fd_ = OpenStateFile(db_dir.DirName(), db_dir.BaseName().value(),
+                      kDefaultDbName, true /* lock */);
+  if (fd_.is_valid()) {
+    path_ = db_dir.Append(kDefaultDbName);
+  }
   Reload();
 }
 
@@ -53,14 +60,9 @@ bool RuleDBStorage::Persist() {
   }
 
   std::string serialized = val_->SerializeAsString();
-  if (!base::WriteFileDescriptor(fd_.get(), serialized.data(),
-                                 serialized.size())) {
+  if (fd_.Write(serialized.data(), serialized.size()) !=
+      SafeFD::Error::kNoError) {
     PLOG(ERROR) << "Failed to write proto to file!";
-    return false;
-  }
-
-  if (HANDLE_EINTR(ftruncate(fd_.get(), serialized.size())) != 0) {
-    PLOG(ERROR) << "Failed to truncate file";
     return false;
   }
 
@@ -86,15 +88,18 @@ bool RuleDBStorage::Reload() {
     PLOG(ERROR) << "Failed to rewind DB";
     return false;
   }
-  auto buf = std::make_unique<char[]>(file_size);
-  if (!base::ReadFromFD(fd_.get(), buf.get(), file_size)) {
+
+  SafeFD::Error err;
+  std::vector<char> buf;
+  std::tie(buf, err) = fd_.ReadContents(kMaxFileSize);
+  if (err != SafeFD::Error::kNoError) {
     PLOG(ERROR) << "Failed to read DB";
     return false;
   }
 
   // Parse the results.
   val_ = std::make_unique<RuleDB>();
-  if (!val_->ParseFromArray(buf.get(), file_size)) {
+  if (!val_->ParseFromArray(buf.data(), buf.size())) {
     LOG(ERROR) << "Error parsing DB. Regenerating...";
     val_ = std::make_unique<RuleDB>();
   }

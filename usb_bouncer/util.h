@@ -8,6 +8,7 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/time/time.h>
+#include <brillo/files/safe_fd.h>
 #include <google/protobuf/repeated_field.h>
 #include <google/protobuf/timestamp.pb.h>
 #include <unistd.h>
@@ -38,8 +39,6 @@ constexpr uid_t kRootUid = 0;
 
 std::string Hash(const std::string& content);
 std::string Hash(const google::protobuf::RepeatedPtrField<std::string>& rules);
-
-base::FilePath GetDBPath(const base::FilePath& parent_dir);
 
 // Invokes usbguard to get a rule corresponding to |devpath|. Note that
 // |devpath| isn't actually a valid path until you prepend "/sys". This matches
@@ -75,11 +74,17 @@ std::string StripLeadingPathSeparators(const std::string& path);
 // de-duplicated by string value ignoring any metadata like the time last used.
 std::unordered_set<std::string> UniqueRules(const EntryMap& entries);
 
-// Attempts to open the specified |path| with the proper permissions. If |lock|
+// Attempts to open the specified statefile at
+// |base_path|/|parent|/|state_file_name| with the proper permissions. The
+// parent directory and state file will be cleared if the ownership or
+// permissions don't match. They will be created if they do not exist. If |lock|
 // is true, this call blocks until an exclusive lock can be obtained for |path|.
 // All runs of usb_bouncer are expected to be relatively fast (<250ms), so
 // blocking should be ok.
-base::ScopedFD OpenPath(const base::FilePath& path, bool lock);
+brillo::SafeFD OpenStateFile(const base::FilePath& base_path,
+                             const std::string& parent_dir,
+                             const std::string& state_file_name,
+                             bool lock);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Time related helper functions.
