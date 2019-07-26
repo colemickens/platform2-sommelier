@@ -68,9 +68,10 @@ class SarWatcherTest : public testing::Test {
 
   void Init(uint32_t roles) {
     prefs_.SetInt64(kSetCellularTransmitPowerForProximityPref,
-                    roles & SarWatcher::SensorRole::SENSOR_ROLE_LTE);
-    prefs_.SetInt64(kSetWifiTransmitPowerForProximityPref,
-                    roles & SarWatcher::SensorRole::SENSOR_ROLE_WIFI);
+                    roles & UserProximityObserver::SensorRole::SENSOR_ROLE_LTE);
+    prefs_.SetInt64(
+        kSetWifiTransmitPowerForProximityPref,
+        roles & UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI);
 
     CHECK(sar_watcher_->Init(&prefs_, &udev_));
     observer_.reset(new TestObserver(sar_watcher_.get(), &loop_runner_));
@@ -143,7 +144,7 @@ class SarWatcherTest : public testing::Test {
 };
 
 TEST_F(SarWatcherTest, DetectUsableWifiDevice) {
-  Init(SarWatcher::SensorRole::SENSOR_ROLE_WIFI);
+  Init(UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI);
 
   AddDevice("/sys/mockproximity", "/dev/proximity-wifi-right");
   EXPECT_EQ(JoinActions("OnNewSensor(roles=0x1)", nullptr),
@@ -152,7 +153,7 @@ TEST_F(SarWatcherTest, DetectUsableWifiDevice) {
 }
 
 TEST_F(SarWatcherTest, DetectUsableLteDevice) {
-  Init(SarWatcher::SensorRole::SENSOR_ROLE_LTE);
+  Init(UserProximityObserver::SensorRole::SENSOR_ROLE_LTE);
 
   AddDevice("/sys/mockproximity", "/dev/proximity-lte");
   EXPECT_EQ(JoinActions("OnNewSensor(roles=0x2)", nullptr),
@@ -161,7 +162,7 @@ TEST_F(SarWatcherTest, DetectUsableLteDevice) {
 }
 
 TEST_F(SarWatcherTest, DetectNotUsableWifiDevice) {
-  Init(SarWatcher::SensorRole::SENSOR_ROLE_LTE);
+  Init(UserProximityObserver::SensorRole::SENSOR_ROLE_LTE);
 
   AddDevice("/sys/mockproximity", "/dev/proximity-wifi-right");
   EXPECT_EQ(JoinActions(nullptr), observer_->GetActions());
@@ -169,7 +170,7 @@ TEST_F(SarWatcherTest, DetectNotUsableWifiDevice) {
 }
 
 TEST_F(SarWatcherTest, DetectNotUsableLteDevice) {
-  Init(SarWatcher::SensorRole::SENSOR_ROLE_WIFI);
+  Init(UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI);
 
   AddDevice("/sys/mockproximity", "/dev/proximity-lte");
   EXPECT_EQ(JoinActions(nullptr), observer_->GetActions());
@@ -177,7 +178,7 @@ TEST_F(SarWatcherTest, DetectNotUsableLteDevice) {
 }
 
 TEST_F(SarWatcherTest, DetectUsableMixDevice) {
-  Init(SarWatcher::SensorRole::SENSOR_ROLE_WIFI);
+  Init(UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI);
 
   AddDevice("/sys/mockproximity", "/dev/proximity-wifi-lte");
   EXPECT_EQ(JoinActions("OnNewSensor(roles=0x1)", nullptr),
@@ -186,7 +187,7 @@ TEST_F(SarWatcherTest, DetectUsableMixDevice) {
 }
 
 TEST_F(SarWatcherTest, ReceiveProximityInfo) {
-  Init(SarWatcher::SensorRole::SENSOR_ROLE_LTE);
+  Init(UserProximityObserver::SensorRole::SENSOR_ROLE_LTE);
 
   AddDevice("/sys/mockproximity", "/dev/proximity-lte");
   observer_->GetActions();  // consume OnNewSensor

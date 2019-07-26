@@ -178,7 +178,7 @@ bool SarWatcher::IsIioProximitySensor(const UdevDeviceInfo& dev,
 }
 
 uint32_t SarWatcher::GetUsableSensorRoles(const std::string& path) {
-  uint32_t responsibility = SarWatcher::SensorRole::SENSOR_ROLE_NONE;
+  uint32_t responsibility = UserProximityObserver::SensorRole::SENSOR_ROLE_NONE;
 
   const auto proximity_index = path.find("proximity-");
   if (proximity_index == std::string::npos)
@@ -186,11 +186,11 @@ uint32_t SarWatcher::GetUsableSensorRoles(const std::string& path) {
 
   if (use_proximity_for_cellular_ &&
       path.find("-lte", proximity_index) != std::string::npos)
-    responsibility |= SarWatcher::SensorRole::SENSOR_ROLE_LTE;
+    responsibility |= UserProximityObserver::SensorRole::SENSOR_ROLE_LTE;
 
   if (use_proximity_for_wifi_ &&
       path.find("-wifi", proximity_index) != std::string::npos)
-    responsibility |= SarWatcher::SensorRole::SENSOR_ROLE_WIFI;
+    responsibility |= UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI;
 
   return responsibility;
 }
@@ -201,7 +201,7 @@ bool SarWatcher::OnSensorDetected(const std::string& syspath,
 
   uint32_t role = GetUsableSensorRoles(devlink);
 
-  if (role == SensorRole::SENSOR_ROLE_NONE) {
+  if (role == UserProximityObserver::SensorRole::SENSOR_ROLE_NONE) {
     LOG(INFO) << "Sensor at " << devlink << " not usable for any subsystem";
     return true;
   }

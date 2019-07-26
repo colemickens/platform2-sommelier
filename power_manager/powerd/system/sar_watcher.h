@@ -35,13 +35,6 @@ class SarWatcher : public UserProximityWatcherInterface,
                    public UdevSubsystemObserver,
                    public base::MessageLoopForIO::Watcher {
  public:
-  // Defines which subsystem(s) a sensor can provide proximity data for.
-  enum SensorRole {
-    SENSOR_ROLE_NONE = 0,
-    SENSOR_ROLE_WIFI = 1u << 0,
-    SENSOR_ROLE_LTE = 1u << 1,
-  };
-
   // udev subsystem to watch.
   static const char kIioUdevSubsystem[];
 
@@ -75,7 +68,7 @@ class SarWatcher : public UserProximityWatcherInterface,
     std::string syspath;
     std::string devlink;
     int event_fd;
-    // Bitwise combination of SensorRole values
+    // Bitwise combination of UserProximityObserver::SensorRole values
     uint32_t role;
     std::unique_ptr<base::MessageLoopForIO::FileDescriptorWatcher> watcher;
   };

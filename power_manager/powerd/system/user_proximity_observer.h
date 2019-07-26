@@ -16,6 +16,13 @@ namespace system {
 // is physically in close proximity to the device).
 class UserProximityObserver {
  public:
+  // Defines which subsystem(s) a sensor can provide proximity data for.
+  enum SensorRole {
+    SENSOR_ROLE_NONE = 0,
+    SENSOR_ROLE_WIFI = 1u << 0,
+    SENSOR_ROLE_LTE = 1u << 1,
+  };
+
   UserProximityObserver() = default;
   virtual ~UserProximityObserver() = default;
 

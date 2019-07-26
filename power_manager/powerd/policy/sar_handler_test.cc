@@ -73,18 +73,22 @@ class SarHandlerTest : public ::testing::Test {
 }  // namespace
 
 TEST_F(SarHandlerTest, DetectSensor) {
-  sar_watcher_.AddSensor(1, system::SarWatcher::SensorRole::SENSOR_ROLE_WIFI);
+  sar_watcher_.AddSensor(
+      1, system::UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI);
   CHECK_EQ(JoinActions(kWifiSensorDetected, nullptr),
            wifi_delegate_.GetActions());
 
-  sar_watcher_.AddSensor(1, system::SarWatcher::SensorRole::SENSOR_ROLE_LTE);
+  sar_watcher_.AddSensor(
+      1, system::UserProximityObserver::SensorRole::SENSOR_ROLE_LTE);
   CHECK_EQ(JoinActions(kLteSensorDetected, nullptr),
            lte_delegate_.GetActions());
 }
 
 TEST_F(SarHandlerTest, ProximityChange) {
-  sar_watcher_.AddSensor(1, system::SarWatcher::SensorRole::SENSOR_ROLE_WIFI);
-  sar_watcher_.AddSensor(2, system::SarWatcher::SensorRole::SENSOR_ROLE_WIFI);
+  sar_watcher_.AddSensor(
+      1, system::UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI);
+  sar_watcher_.AddSensor(
+      2, system::UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI);
   wifi_delegate_.GetActions();  //  consume the detection events
 
   sar_watcher_.SendEvent(1, UserProximity::FAR);

@@ -44,9 +44,10 @@ void SarHandler::OnNewSensor(int id, uint32_t roles) {
   constexpr UserProximity default_initial_proximity = UserProximity::NEAR;
 
   const bool includes_wifi =
-      (roles & system::SarWatcher::SensorRole::SENSOR_ROLE_WIFI) != 0;
+      (roles & system::UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI) !=
+      0;
   const bool includes_lte =
-      (roles & system::SarWatcher::SensorRole::SENSOR_ROLE_LTE) != 0;
+      (roles & system::UserProximityObserver::SensorRole::SENSOR_ROLE_LTE) != 0;
 
   LOG(INFO) << "New proximity sensor with id " << id << ": "
             << (includes_wifi ? " wifi" : "") << (includes_lte ? " lte" : "");
@@ -76,9 +77,11 @@ void SarHandler::OnProximityEvent(int id, UserProximity value) {
   }
 
   const bool includes_wifi =
-      (iter->second & system::SarWatcher::SensorRole::SENSOR_ROLE_WIFI) != 0;
+      (iter->second &
+       system::UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI) != 0;
   const bool includes_lte =
-      (iter->second & system::SarWatcher::SensorRole::SENSOR_ROLE_LTE) != 0;
+      (iter->second &
+       system::UserProximityObserver::SensorRole::SENSOR_ROLE_LTE) != 0;
 
   const bool did_wifi_change =
       includes_wifi ? wifi_proximity_voting_.Vote(id, value) : false;
