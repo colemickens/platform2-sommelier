@@ -25,6 +25,7 @@ struct ImuVpdCalibrationEntry {
   std::string name;
   std::string calib;
   base::Optional<int> value;
+  bool missing_is_error;
 };
 
 struct LightVpdCalibrationEntry {
@@ -33,6 +34,7 @@ struct LightVpdCalibrationEntry {
 };
 
 constexpr char kCalibrationBias[] = "bias";
+constexpr char kCalibrationScale[] = "scale";
 
 constexpr int kGyroMaxVpdCalibration = 16384;  // 16dps
 constexpr int kAccelMaxVpdCalibration = 256;   // .250g
@@ -113,9 +115,13 @@ bool Configuration::CopyImuCalibationFromVpd(int max_value,
   std::string kind = SensorKindToString(kind_);
 
   std::vector<ImuVpdCalibrationEntry> calib_attributes = {
-      {"x", kCalibrationBias, base::nullopt},
-      {"y", kCalibrationBias, base::nullopt},
-      {"z", kCalibrationBias, base::nullopt},
+      {"x", kCalibrationBias, base::nullopt, true},
+      {"y", kCalibrationBias, base::nullopt, true},
+      {"z", kCalibrationBias, base::nullopt, true},
+
+      {"x", kCalibrationScale, base::nullopt, false},
+      {"y", kCalibrationScale, base::nullopt, false},
+      {"z", kCalibrationScale, base::nullopt, false},
   };
 
   for (auto& calib_attribute : calib_attributes) {
@@ -124,7 +130,8 @@ bool Configuration::CopyImuCalibationFromVpd(int max_value,
         location.c_str(), calib_attribute.calib.c_str());
     auto attrib_value = delegate_->ReadVpdValue(attrib_name.c_str());
     if (!attrib_value.has_value()) {
-      LOG(ERROR) << "VPD missing calibration value " << attrib_name;
+      if (calib_attribute.missing_is_error)
+        LOG(ERROR) << "VPD missing calibration value " << attrib_name;
       continue;
     }
 

@@ -92,6 +92,32 @@ TEST_F(AccelerometerTest, VpdOutOfRange) {
             mock_device_->ReadNumberAttribute("in_accel_z_calibbias").value());
 }
 
+TEST_F(AccelerometerTest, CalibscaleData) {
+  SetSingleSensor(kBaseSensorLocation);
+  ConfigureVpd({{"in_accel_x_base_calibscale", "5"},
+                {"in_accel_y_base_calibscale", "6"},
+                {"in_accel_z_base_calibscale", "7"}});
+
+  EXPECT_TRUE(GetConfiguration()->Configure());
+
+  EXPECT_TRUE(
+      mock_device_->ReadNumberAttribute("in_accel_x_calibscale").has_value());
+  EXPECT_TRUE(
+      mock_device_->ReadNumberAttribute("in_accel_y_calibscale").has_value());
+  EXPECT_TRUE(
+      mock_device_->ReadNumberAttribute("in_accel_z_calibscale").has_value());
+
+  EXPECT_EQ(
+      5,
+      mock_device_->ReadNumberAttribute("in_accel_x_calibscale").value_or(0));
+  EXPECT_EQ(
+      6,
+      mock_device_->ReadNumberAttribute("in_accel_y_calibscale").value_or(0));
+  EXPECT_EQ(
+      7,
+      mock_device_->ReadNumberAttribute("in_accel_z_calibscale").value_or(0));
+}
+
 TEST_F(AccelerometerTest, NotLoadingTriggerModule) {
   SetSingleSensor(kBaseSensorLocation);
   ConfigureVpd({{"in_accel_x_base_calibbias", "50"},
