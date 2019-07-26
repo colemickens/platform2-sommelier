@@ -53,6 +53,7 @@ std::string GetRandomSuffix() {
 class SafeFDTest : public testing::Test {
  public:
   static constexpr char kFileName[] = "test.temp";
+  static constexpr char kSubdirName[] = "test_dir";
   static constexpr char kSymbolicFileName[] = "sym_test.temp";
   static constexpr char kSymbolicDirName[] = "sym_dir";
 
@@ -63,13 +64,8 @@ class SafeFDTest : public testing::Test {
 
   SafeFDTest() {
     CHECK(temp_dir_.CreateUniqueTempDir()) << strerror(errno);
-    file_path_ = temp_dir_.GetPath().Append(kFileName);
-    symlink_file_path_ = temp_dir_.GetPath().Append(kSymbolicFileName);
-    CHECK(base::CreateSymbolicLink(file_path_, symlink_file_path_))
-        << strerror(errno);
-    symlink_dir_path_ = temp_dir_.GetPath().Append(kSymbolicDirName);
-    CHECK(base::CreateSymbolicLink(temp_dir_.GetPath(), symlink_dir_path_))
-        << strerror(errno);
+    sub_dir_path_ = temp_dir_.GetPath().Append(kSubdirName);
+    file_path_ = sub_dir_path_.Append(kFileName);
 
     std::string path = temp_dir_.GetPath().value();
     temp_dir_path_.reserve(path.size() + 1);
@@ -86,18 +82,59 @@ class SafeFDTest : public testing::Test {
  protected:
   std::vector<char> temp_dir_path_;
   base::FilePath file_path_;
+  base::FilePath sub_dir_path_;
   base::FilePath symlink_file_path_;
   base::FilePath symlink_dir_path_;
   base::ScopedTempDir temp_dir_;
   SafeFD root_;
 
+  bool SetupSubdir() WARN_UNUSED_RESULT {
+    if (!base::CreateDirectory(sub_dir_path_)) {
+      PLOG(ERROR) << "Failed to create '" << sub_dir_path_.value() << "'";
+      return false;
+    }
+    if (chmod(sub_dir_path_.value().c_str(), SafeFD::kDefaultDirPermissions) !=
+        0) {
+      PLOG(ERROR) << "Failed to set permissions of '" << sub_dir_path_.value()
+                  << "'";
+      return false;
+    }
+    return true;
+  }
+
+  bool SetupSymlinks() WARN_UNUSED_RESULT {
+    symlink_file_path_ = temp_dir_.GetPath().Append(kSymbolicFileName);
+    symlink_dir_path_ = temp_dir_.GetPath().Append(kSymbolicDirName);
+    if (!base::CreateSymbolicLink(file_path_, symlink_file_path_)) {
+      PLOG(ERROR) << "Failed to create symlink to '"
+                  << symlink_file_path_.value() << "'";
+      return false;
+    }
+    if (!base::CreateSymbolicLink(temp_dir_.GetPath(), symlink_dir_path_)) {
+      PLOG(ERROR) << "Failed to create symlink to'" << symlink_dir_path_.value()
+                  << "'";
+      return false;
+    }
+    return true;
+  }
+
   // Writes |contents| to |file_path_|. Pulled into a separate function just
   // to improve readability of tests.
-  void WriteFile(const std::string& contents) {
-    EXPECT_EQ(contents.length(),
-              base::WriteFile(file_path_, contents.c_str(), contents.length()));
-    EXPECT_EQ(
-        chmod(file_path_.value().c_str(), SafeFD::kDefaultFilePermissions), 0);
+  bool WriteFile(const std::string& contents) WARN_UNUSED_RESULT {
+    if (!SetupSubdir()) {
+      return false;
+    }
+    if (contents.length() !=
+        base::WriteFile(file_path_, contents.c_str(), contents.length())) {
+      PLOG(ERROR) << "base::WriteFile failed";
+      return false;
+    }
+    if (chmod(file_path_.value().c_str(), SafeFD::kDefaultFilePermissions) !=
+        0) {
+      PLOG(ERROR) << "chmod failed";
+      return false;
+    }
+    return true;
   }
 
   // Verifies that the file at |file_path_| exists and contains |contents|.
@@ -109,9 +146,10 @@ class SafeFDTest : public testing::Test {
   }
 
   // Verifies that the file at |file_path_| has |permissions|.
-  void ExpectFilePermissions(int permissions) {
-    int actual_permissions;
-    EXPECT_TRUE(base::GetPosixFilePermissions(file_path_, &actual_permissions));
+  void ExpectPermissions(base::FilePath path, int permissions) {
+    int actual_permissions = 0;
+    // This breaks out of the ExpectPermissions() call but not the test case.
+    ASSERT_TRUE(base::GetPosixFilePermissions(path, &actual_permissions));
     EXPECT_EQ(permissions, actual_permissions);
   }
 
@@ -122,6 +160,7 @@ class SafeFDTest : public testing::Test {
 };
 
 constexpr char SafeFDTest::kFileName[];
+constexpr char SafeFDTest::kSubdirName[];
 constexpr char SafeFDTest::kSymbolicFileName[];
 constexpr char SafeFDTest::kSymbolicDirName[];
 
@@ -151,8 +190,9 @@ TEST_F(SafeFDTest, reset) {
 }
 
 TEST_F(SafeFDTest, UnsafeReset) {
-  int fd = HANDLE_EINTR(
-      open(file_path_.value().c_str(), O_CREAT | O_NONBLOCK | O_CLOEXEC, 0777));
+  int fd =
+      HANDLE_EINTR(open(temp_dir_path_.data(),
+                        O_NONBLOCK | O_DIRECTORY | O_RDONLY | O_CLOEXEC, 0777));
   ASSERT_GE(fd, 0);
 
   {
@@ -171,11 +211,7 @@ TEST_F(SafeFDTest, UnsafeReset) {
 TEST_F(SafeFDTest, Write_Success) {
   std::string random_data = GetRandomSuffix();
   {
-    SafeFD::SafeFDResult file = root_.OpenExistingFile(file_path_);
-    EXPECT_STR_EQ(file.second, SafeFD::Error::kIOError);
-    ASSERT_FALSE(file.first.is_valid());
-
-    file = root_.MakeFile(file_path_);
+    SafeFD::SafeFDResult file = root_.MakeFile(file_path_);
     EXPECT_STR_EQ(file.second, SafeFD::Error::kNoError);
     ASSERT_TRUE(file.first.is_valid());
 
@@ -184,7 +220,22 @@ TEST_F(SafeFDTest, Write_Success) {
   }
 
   ExpectFileContains(random_data);
-  ExpectFilePermissions(SafeFD::kDefaultFilePermissions);
+  ExpectPermissions(file_path_, SafeFD::kDefaultFilePermissions);
+}
+
+TEST_F(SafeFDTest, Write_VerifyTruncate) {
+  std::string random_data = GetRandomSuffix();
+  ASSERT_TRUE(WriteFile(random_data));
+
+  {
+    SafeFD::SafeFDResult file = root_.OpenExistingFile(file_path_);
+    EXPECT_STR_EQ(file.second, SafeFD::Error::kNoError);
+    ASSERT_TRUE(file.first.is_valid());
+
+    EXPECT_STR_EQ(file.first.Write("", 0), SafeFD::Error::kNoError);
+  }
+
+  ExpectFileContains("");
 }
 
 TEST_F(SafeFDTest, Write_Failure) {
@@ -194,7 +245,7 @@ TEST_F(SafeFDTest, Write_Failure) {
 
 TEST_F(SafeFDTest, ReadContents_Success) {
   std::string random_data = GetRandomSuffix();
-  WriteFile(random_data);
+  ASSERT_TRUE(WriteFile(random_data));
 
   SafeFD::SafeFDResult file = root_.OpenExistingFile(file_path_);
   EXPECT_STR_EQ(file.second, SafeFD::Error::kNoError);
@@ -209,7 +260,7 @@ TEST_F(SafeFDTest, ReadContents_Success) {
 
 TEST_F(SafeFDTest, ReadContents_ExceededMaximum) {
   std::string random_data = GetRandomSuffix();
-  WriteFile(random_data);
+  ASSERT_TRUE(WriteFile(random_data));
 
   SafeFD::SafeFDResult file = root_.OpenExistingFile(file_path_);
   EXPECT_STR_EQ(file.second, SafeFD::Error::kNoError);
@@ -230,7 +281,7 @@ TEST_F(SafeFDTest, ReadContents_BadFD) {
 
 TEST_F(SafeFDTest, Read_Success) {
   std::string random_data = GetRandomSuffix();
-  WriteFile(random_data);
+  ASSERT_TRUE(WriteFile(random_data));
 
   SafeFD::SafeFDResult file = root_.OpenExistingFile(file_path_);
   EXPECT_STR_EQ(file.second, SafeFD::Error::kNoError);
@@ -252,7 +303,7 @@ TEST_F(SafeFDTest, Read_BadFD) {
 
 TEST_F(SafeFDTest, Read_IOError) {
   std::string random_data = GetRandomSuffix();
-  WriteFile(random_data);
+  ASSERT_TRUE(WriteFile(random_data));
 
   SafeFD::SafeFDResult file = root_.OpenExistingFile(file_path_);
   EXPECT_STR_EQ(file.second, SafeFD::Error::kNoError);
@@ -264,10 +315,14 @@ TEST_F(SafeFDTest, Read_IOError) {
 }
 
 TEST_F(SafeFDTest, OpenExistingFile_Success) {
-  WriteFile("");
-  SafeFD::SafeFDResult file = root_.OpenExistingFile(file_path_);
-  EXPECT_STR_EQ(file.second, SafeFD::Error::kNoError);
-  ASSERT_TRUE(file.first.is_valid());
+  std::string data = GetRandomSuffix();
+  ASSERT_TRUE(WriteFile(data));
+  {
+    SafeFD::SafeFDResult file = root_.OpenExistingFile(file_path_);
+    EXPECT_STR_EQ(file.second, SafeFD::Error::kNoError);
+    ASSERT_TRUE(file.first.is_valid());
+  }
+  ExpectFileContains(data);
 }
 
 TEST_F(SafeFDTest, OpenExistingFile_NotInitialized) {
@@ -283,14 +338,16 @@ TEST_F(SafeFDTest, OpenExistingFile_IOError) {
 }
 
 TEST_F(SafeFDTest, OpenExistingFile_SymlinkDetected) {
-  WriteFile("");
+  ASSERT_TRUE(SetupSymlinks());
+  ASSERT_TRUE(WriteFile(""));
   SafeFD::SafeFDResult file = root_.OpenExistingFile(symlink_file_path_);
   EXPECT_STR_EQ(file.second, SafeFD::Error::kSymlinkDetected);
   ASSERT_FALSE(file.first.is_valid());
 }
 
 TEST_F(SafeFDTest, OpenExistingFile_WrongType) {
-  WriteFile("");
+  ASSERT_TRUE(SetupSymlinks());
+  ASSERT_TRUE(WriteFile(""));
   SafeFD::SafeFDResult file =
       root_.OpenExistingFile(symlink_dir_path_.Append(kFileName));
   EXPECT_STR_EQ(file.second, SafeFD::Error::kWrongType);
@@ -316,6 +373,7 @@ TEST_F(SafeFDTest, OpenExistingDir_IOError) {
 }
 
 TEST_F(SafeFDTest, OpenExistingDir_WrongType) {
+  ASSERT_TRUE(SetupSymlinks());
   SafeFD::SafeFDResult dir = root_.OpenExistingDir(symlink_dir_path_);
   EXPECT_STR_EQ(dir.second, SafeFD::Error::kWrongType);
   ASSERT_FALSE(dir.first.is_valid());
@@ -328,21 +386,41 @@ TEST_F(SafeFDTest, MakeFile_DoesNotExistSuccess) {
     ASSERT_TRUE(file.first.is_valid());
   }
 
-  ExpectFilePermissions(SafeFD::kDefaultFilePermissions);
+  ExpectPermissions(file_path_, SafeFD::kDefaultFilePermissions);
+}
+
+TEST_F(SafeFDTest, MakeFile_LeadingSelfDirSuccess) {
+  ASSERT_TRUE(SetupSubdir());
+
+  SafeFD::Error err;
+  SafeFD dir;
+  std::tie(dir, err) = root_.OpenExistingDir(sub_dir_path_);
+  EXPECT_STR_EQ(err, SafeFD::Error::kNoError);
+
+  {
+    SafeFD file;
+    std::tie(file, err) = dir.MakeFile(file_path_.BaseName());
+    EXPECT_STR_EQ(err, SafeFD::Error::kNoError);
+    ASSERT_TRUE(file.is_valid());
+  }
+
+  ExpectPermissions(file_path_, SafeFD::kDefaultFilePermissions);
 }
 
 TEST_F(SafeFDTest, MakeFile_ExistsSuccess) {
-  WriteFile("");
+  std::string data = GetRandomSuffix();
+  ASSERT_TRUE(WriteFile(data));
   {
     SafeFD::SafeFDResult file = root_.MakeFile(file_path_);
     EXPECT_STR_EQ(file.second, SafeFD::Error::kNoError);
     ASSERT_TRUE(file.first.is_valid());
   }
-
-  ExpectFilePermissions(SafeFD::kDefaultFilePermissions);
+  ExpectPermissions(file_path_, SafeFD::kDefaultFilePermissions);
+  ExpectFileContains(data);
 }
 
 TEST_F(SafeFDTest, MakeFile_IOError) {
+  ASSERT_TRUE(SetupSubdir());
   ASSERT_EQ(mkfifo(file_path_.value().c_str(), 0), 0);
   SafeFD::SafeFDResult file = root_.MakeFile(file_path_);
   EXPECT_STR_EQ(file.second, SafeFD::Error::kIOError);
@@ -350,13 +428,21 @@ TEST_F(SafeFDTest, MakeFile_IOError) {
 }
 
 TEST_F(SafeFDTest, MakeFile_SymlinkDetected) {
+  ASSERT_TRUE(SetupSymlinks());
   SafeFD::SafeFDResult file = root_.MakeFile(symlink_file_path_);
   EXPECT_STR_EQ(file.second, SafeFD::Error::kSymlinkDetected);
   ASSERT_FALSE(file.first.is_valid());
 }
 
+TEST_F(SafeFDTest, MakeFile_WrongType) {
+  ASSERT_TRUE(SetupSubdir());
+  SafeFD::SafeFDResult file = root_.MakeFile(sub_dir_path_);
+  EXPECT_STR_EQ(file.second, SafeFD::Error::kWrongType);
+  ASSERT_FALSE(file.first.is_valid());
+}
+
 TEST_F(SafeFDTest, MakeFile_WrongGID) {
-  WriteFile("");
+  ASSERT_TRUE(WriteFile(""));
   EXPECT_EQ(chown(file_path_.value().c_str(), getuid(), 0), 0)
       << strerror(errno);
   {
@@ -367,7 +453,7 @@ TEST_F(SafeFDTest, MakeFile_WrongGID) {
 }
 
 TEST_F(SafeFDTest, MakeFile_WrongPermissions) {
-  WriteFile("");
+  ASSERT_TRUE(WriteFile(""));
   EXPECT_EQ(chmod(file_path_.value().c_str(), 0777), 0) << strerror(errno);
   {
     SafeFD::SafeFDResult file = root_.MakeFile(file_path_);
@@ -378,7 +464,7 @@ TEST_F(SafeFDTest, MakeFile_WrongPermissions) {
             0)
       << strerror(errno);
 
-  EXPECT_EQ(chmod(temp_dir_path_.data(), 0777), 0) << strerror(errno);
+  EXPECT_EQ(chmod(sub_dir_path_.value().c_str(), 0777), 0) << strerror(errno);
   {
     SafeFD::SafeFDResult file = root_.MakeFile(file_path_);
     EXPECT_STR_EQ(file.second, SafeFD::Error::kWrongPermissions);
@@ -388,53 +474,66 @@ TEST_F(SafeFDTest, MakeFile_WrongPermissions) {
 
 TEST_F(SafeFDTest, MakeDir_DoesNotExistSuccess) {
   {
-    SafeFD::SafeFDResult dir = root_.MakeDir(file_path_);
+    SafeFD::SafeFDResult dir = root_.MakeDir(sub_dir_path_);
     EXPECT_STR_EQ(dir.second, SafeFD::Error::kNoError);
     ASSERT_TRUE(dir.first.is_valid());
   }
 
-  ExpectFilePermissions(SafeFD::kDefaultDirPermissions);
+  ExpectPermissions(sub_dir_path_, SafeFD::kDefaultDirPermissions);
+}
+
+TEST_F(SafeFDTest, MakeFile_SingleComponentSuccess) {
+  ASSERT_TRUE(SetupSubdir());
+
+  SafeFD::Error err;
+  SafeFD dir;
+  std::tie(dir, err) = root_.OpenExistingDir(temp_dir_.GetPath());
+  EXPECT_STR_EQ(err, SafeFD::Error::kNoError);
+
+  {
+    SafeFD subdir;
+    std::tie(subdir, err) = dir.MakeDir(base::FilePath(kSubdirName));
+    EXPECT_STR_EQ(err, SafeFD::Error::kNoError);
+    ASSERT_TRUE(subdir.is_valid());
+  }
+
+  ExpectPermissions(sub_dir_path_, SafeFD::kDefaultDirPermissions);
 }
 
 TEST_F(SafeFDTest, MakeDir_ExistsSuccess) {
-  EXPECT_TRUE(base::CreateDirectory(file_path_));
-  EXPECT_EQ(chmod(file_path_.value().c_str(), SafeFD::kDefaultDirPermissions),
-            0)
-      << strerror(errno);
+  ASSERT_TRUE(SetupSubdir());
   {
-    SafeFD::SafeFDResult dir = root_.MakeDir(file_path_);
+    SafeFD::SafeFDResult dir = root_.MakeDir(sub_dir_path_);
     EXPECT_STR_EQ(dir.second, SafeFD::Error::kNoError);
     ASSERT_TRUE(dir.first.is_valid());
   }
 
-  ExpectFilePermissions(SafeFD::kDefaultDirPermissions);
+  ExpectPermissions(sub_dir_path_, SafeFD::kDefaultDirPermissions);
 }
 
 TEST_F(SafeFDTest, MakeDir_WrongType) {
-  SafeFD::SafeFDResult dir = root_.MakeDir(symlink_file_path_);
+  ASSERT_TRUE(SetupSymlinks());
+  SafeFD::SafeFDResult dir = root_.MakeDir(symlink_dir_path_);
   EXPECT_STR_EQ(dir.second, SafeFD::Error::kWrongType);
   ASSERT_FALSE(dir.first.is_valid());
 }
 
 TEST_F(SafeFDTest, MakeDir_WrongGID) {
-  EXPECT_TRUE(base::CreateDirectory(file_path_));
-  EXPECT_EQ(chmod(file_path_.value().c_str(), SafeFD::kDefaultDirPermissions),
-            0)
-      << strerror(errno);
-  EXPECT_EQ(chown(file_path_.value().c_str(), getuid(), 0), 0)
+  ASSERT_TRUE(SetupSubdir());
+  EXPECT_EQ(chown(sub_dir_path_.value().c_str(), getuid(), 0), 0)
       << strerror(errno);
   {
-    SafeFD::SafeFDResult dir = root_.MakeDir(file_path_);
+    SafeFD::SafeFDResult dir = root_.MakeDir(sub_dir_path_);
     EXPECT_STR_EQ(dir.second, SafeFD::Error::kWrongGID);
     ASSERT_FALSE(dir.first.is_valid());
   }
 }
 
 TEST_F(SafeFDTest, MakeDir_WrongPermissions) {
-  EXPECT_TRUE(base::CreateDirectory(file_path_));
-  EXPECT_EQ(chmod(file_path_.value().c_str(), 0777), 0) << strerror(errno);
+  ASSERT_TRUE(SetupSubdir());
+  EXPECT_EQ(chmod(sub_dir_path_.value().c_str(), 0777), 0) << strerror(errno);
 
-  SafeFD::SafeFDResult dir = root_.MakeDir(file_path_);
+  SafeFD::SafeFDResult dir = root_.MakeDir(sub_dir_path_);
   EXPECT_STR_EQ(dir.second, SafeFD::Error::kWrongPermissions);
   ASSERT_FALSE(dir.first.is_valid());
 }
