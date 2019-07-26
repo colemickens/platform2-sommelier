@@ -55,6 +55,7 @@ class SafeFD {
     kIOError,         // Check errno for specific cause.
     kDoesNotExist,    // The specified path does not exist.
     kSymlinkDetected,
+    kBoundaryDetected,  // Detected a file system boundary during recursion.
     kWrongType,  // (e.g. got a directory and expected a file)
     kWrongUID,
     kWrongGID,
@@ -69,6 +70,7 @@ class SafeFD {
 
   // 100 MiB
   BRILLO_EXPORT static constexpr size_t kDefaultMaxRead = 100 << 20;
+  BRILLO_EXPORT static constexpr size_t kDefaultMaxPathDepth = 256;
   // User read and write only.
   BRILLO_EXPORT static constexpr size_t kDefaultFilePermissions = 0640;
   // User read, write, and execute. Group read and execute.
@@ -157,13 +159,15 @@ class SafeFD {
           int flags = O_RDONLY | O_CLOEXEC) WARN_UNUSED_RESULT;
 
   // Hard link |fd| in the directory represented by |this| with the specified
-  // name |filename|.
+  // name |filename|. This requires CAP_DAC_READ_SEARCH.
   //
   // Parameters
   //  data - The buffer to write to the file.
   //  size - The number of bytes to write.
-  BRILLO_EXPORT Error Link(const std::string& filename,
-                           int fd) WARN_UNUSED_RESULT;
+  BRILLO_EXPORT Error Link(const SafeFD& source_dir,
+                           const std::string& source_name,
+                           const std::string& destination_name)
+      WARN_UNUSED_RESULT;
 
   // Deletes the child path named |name|.
   //
@@ -171,11 +175,18 @@ class SafeFD {
   //  name - the name of the filesystem object to delete.
   BRILLO_EXPORT Error Unlink(const std::string& name) WARN_UNUSED_RESULT;
 
-  // Deletes a child directory.
+  // Deletes a child directory. It will return kBoundaryDetected if a file
+  // system boundary is reached during recursion.
   //
   // Parameters
   //  name - the name of the directory to delete.
-  BRILLO_EXPORT Error Rmdir(const std::string& name) WARN_UNUSED_RESULT;
+  //  recursive - if true also unlink child paths.
+  //  max_depth - limit on recursion depth to prevent fd exhaustion and stack
+  //    overflows.
+  BRILLO_EXPORT Error Rmdir(const std::string& name,
+                            bool recursive = false,
+                            size_t max_depth = kDefaultMaxPathDepth)
+      WARN_UNUSED_RESULT;
 
  private:
   BRILLO_EXPORT static const char* RootPath;

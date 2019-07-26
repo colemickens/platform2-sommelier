@@ -566,4 +566,211 @@ TEST_F(SafeFDTest, MakeDir_WrongPermissions) {
   ASSERT_FALSE(dir.first.is_valid());
 }
 
+TEST_F(SafeFDTest, Link_Success) {
+  std::string data = GetRandomSuffix();
+  ASSERT_TRUE(WriteFile(data));
+
+  SafeFD::SafeFDResult dir = root_.OpenExistingDir(temp_dir_.GetPath());
+  EXPECT_STR_EQ(dir.second, SafeFD::Error::kNoError);
+
+  SafeFD::SafeFDResult subdir = root_.OpenExistingDir(sub_dir_path_);
+  EXPECT_STR_EQ(subdir.second, SafeFD::Error::kNoError);
+
+  EXPECT_STR_EQ(dir.first.Link(subdir.first, kFileName, kFileName),
+                SafeFD::Error::kNoError);
+
+  SafeFD::SafeFDResult new_file = dir.first.OpenExistingFile(
+      base::FilePath(kFileName), O_RDONLY | O_CLOEXEC);
+  EXPECT_STR_EQ(new_file.second, SafeFD::Error::kNoError);
+  std::pair<std::vector<char>, SafeFD::Error> contents =
+      new_file.first.ReadContents();
+  EXPECT_STR_EQ(contents.second, SafeFD::Error::kNoError);
+  EXPECT_EQ(data.size(), contents.first.size());
+  EXPECT_EQ(memcmp(data.data(), contents.first.data(), data.size()), 0);
+}
+
+TEST_F(SafeFDTest, Link_NotInitialized) {
+  std::string data = GetRandomSuffix();
+  ASSERT_TRUE(WriteFile(data));
+
+  SafeFD::SafeFDResult dir = root_.OpenExistingDir(temp_dir_.GetPath());
+  EXPECT_STR_EQ(dir.second, SafeFD::Error::kNoError);
+
+  SafeFD::SafeFDResult subdir = root_.OpenExistingDir(sub_dir_path_);
+  EXPECT_STR_EQ(subdir.second, SafeFD::Error::kNoError);
+
+  EXPECT_STR_EQ(SafeFD().Link(subdir.first, kFileName, kFileName),
+                SafeFD::Error::kNotInitialized);
+
+  EXPECT_STR_EQ(dir.first.Link(SafeFD(), kFileName, kFileName),
+                SafeFD::Error::kNotInitialized);
+}
+
+TEST_F(SafeFDTest, Link_BadArgument) {
+  ASSERT_TRUE(WriteFile(""));
+
+  SafeFD::SafeFDResult dir = root_.OpenExistingDir(temp_dir_.GetPath());
+  EXPECT_STR_EQ(dir.second, SafeFD::Error::kNoError);
+
+  SafeFD::SafeFDResult subdir = root_.OpenExistingDir(sub_dir_path_);
+  EXPECT_STR_EQ(subdir.second, SafeFD::Error::kNoError);
+
+  EXPECT_STR_EQ(dir.first.Link(subdir.first, "a/a", kFileName),
+                SafeFD::Error::kBadArgument);
+  EXPECT_STR_EQ(dir.first.Link(subdir.first, ".", kFileName),
+                SafeFD::Error::kBadArgument);
+  EXPECT_STR_EQ(dir.first.Link(subdir.first, "..", kFileName),
+                SafeFD::Error::kBadArgument);
+  EXPECT_STR_EQ(dir.first.Link(subdir.first, kFileName, "a/a"),
+                SafeFD::Error::kBadArgument);
+  EXPECT_STR_EQ(dir.first.Link(subdir.first, kFileName, "."),
+                SafeFD::Error::kBadArgument);
+  EXPECT_STR_EQ(dir.first.Link(subdir.first, kFileName, ".."),
+                SafeFD::Error::kBadArgument);
+}
+
+TEST_F(SafeFDTest, Link_IOError) {
+  ASSERT_TRUE(SetupSubdir());
+
+  SafeFD::SafeFDResult dir = root_.OpenExistingDir(temp_dir_.GetPath());
+  EXPECT_STR_EQ(dir.second, SafeFD::Error::kNoError);
+
+  SafeFD::SafeFDResult subdir = root_.OpenExistingDir(sub_dir_path_);
+  EXPECT_STR_EQ(subdir.second, SafeFD::Error::kNoError);
+
+  EXPECT_STR_EQ(dir.first.Link(subdir.first, kFileName, kFileName),
+                SafeFD::Error::kIOError);
+}
+
+TEST_F(SafeFDTest, Unlink_Success) {
+  ASSERT_TRUE(WriteFile(""));
+
+  SafeFD::SafeFDResult subdir = root_.OpenExistingDir(sub_dir_path_);
+  EXPECT_STR_EQ(subdir.second, SafeFD::Error::kNoError);
+
+  EXPECT_STR_EQ(subdir.first.Unlink(kFileName), SafeFD::Error::kNoError);
+  EXPECT_FALSE(base::PathExists(file_path_));
+}
+
+TEST_F(SafeFDTest, Unlink_NotInitialized) {
+  ASSERT_TRUE(WriteFile(""));
+
+  EXPECT_STR_EQ(SafeFD().Unlink(kFileName), SafeFD::Error::kNotInitialized);
+}
+
+TEST_F(SafeFDTest, Unlink_BadArgument) {
+  ASSERT_TRUE(WriteFile(""));
+
+  SafeFD::SafeFDResult subdir = root_.OpenExistingDir(sub_dir_path_);
+  EXPECT_STR_EQ(subdir.second, SafeFD::Error::kNoError);
+
+  EXPECT_STR_EQ(subdir.first.Unlink("a/a"), SafeFD::Error::kBadArgument);
+  EXPECT_STR_EQ(subdir.first.Unlink("."), SafeFD::Error::kBadArgument);
+  EXPECT_STR_EQ(subdir.first.Unlink(".."), SafeFD::Error::kBadArgument);
+}
+
+TEST_F(SafeFDTest, Unlink_IOError_Nonexistent) {
+  ASSERT_TRUE(SetupSubdir());
+
+  SafeFD::SafeFDResult subdir = root_.OpenExistingDir(sub_dir_path_);
+  EXPECT_STR_EQ(subdir.second, SafeFD::Error::kNoError);
+
+  EXPECT_STR_EQ(subdir.first.Unlink(kFileName), SafeFD::Error::kIOError);
+}
+
+TEST_F(SafeFDTest, Unlink_IOError_IsADir) {
+  ASSERT_TRUE(SetupSubdir());
+
+  SafeFD::SafeFDResult dir = root_.OpenExistingDir(temp_dir_.GetPath());
+  EXPECT_STR_EQ(dir.second, SafeFD::Error::kNoError);
+
+  EXPECT_STR_EQ(dir.first.Unlink(kSubdirName), SafeFD::Error::kIOError);
+}
+
+TEST_F(SafeFDTest, Rmdir_Recursive_Success) {
+  ASSERT_TRUE(WriteFile(""));
+
+  SafeFD::SafeFDResult dir = root_.OpenExistingDir(temp_dir_.GetPath());
+  EXPECT_STR_EQ(dir.second, SafeFD::Error::kNoError);
+
+  EXPECT_STR_EQ(dir.first.Rmdir(kSubdirName, true /*recursive*/),
+                SafeFD::Error::kNoError);
+  EXPECT_FALSE(base::PathExists(file_path_));
+  EXPECT_FALSE(base::PathExists(sub_dir_path_));
+}
+
+TEST_F(SafeFDTest, Rmdir_Recursive_SuccessMaxRecursion) {
+  SafeFD::Error err;
+  SafeFD dir;
+
+  // Create directory with the maximum depth.
+  std::tie(dir, err) = root_.OpenExistingDir(temp_dir_.GetPath());
+  EXPECT_STR_EQ(err, SafeFD::Error::kNoError);
+  ASSERT_TRUE(dir.is_valid());
+  for (size_t x = 0; x < SafeFD::kDefaultMaxPathDepth; ++x) {
+    std::tie(dir, err) = dir.MakeDir(base::FilePath(kSubdirName));
+    EXPECT_STR_EQ(err, SafeFD::Error::kNoError);
+    ASSERT_TRUE(dir.is_valid());
+  }
+
+  // Check if recursive Rmdir succeeds (i.e. there isn't a stack overflow).
+  std::tie(dir, err) = root_.OpenExistingDir(temp_dir_.GetPath());
+  EXPECT_STR_EQ(err, SafeFD::Error::kNoError);
+
+  EXPECT_STR_EQ(dir.Rmdir(kSubdirName, true /*recursive*/),
+                SafeFD::Error::kNoError);
+  EXPECT_FALSE(base::PathExists(file_path_));
+  EXPECT_FALSE(base::PathExists(sub_dir_path_));
+}
+
+TEST_F(SafeFDTest, Rmdir_NotInitialized) {
+  ASSERT_TRUE(WriteFile(""));
+
+  EXPECT_STR_EQ(SafeFD().Rmdir(kSubdirName, true /*recursive*/),
+                SafeFD::Error::kNotInitialized);
+}
+
+TEST_F(SafeFDTest, Rmdir_BadArgument) {
+  ASSERT_TRUE(WriteFile(""));
+
+  SafeFD::SafeFDResult dir = root_.OpenExistingDir(temp_dir_.GetPath());
+  EXPECT_STR_EQ(dir.second, SafeFD::Error::kNoError);
+
+  EXPECT_STR_EQ(dir.first.Rmdir("a/a"), SafeFD::Error::kBadArgument);
+  EXPECT_STR_EQ(dir.first.Rmdir("."), SafeFD::Error::kBadArgument);
+  EXPECT_STR_EQ(dir.first.Rmdir(".."), SafeFD::Error::kBadArgument);
+}
+
+TEST_F(SafeFDTest, Rmdir_ExceededMaximum) {
+  ASSERT_TRUE(SetupSubdir());
+  ASSERT_TRUE(base::CreateDirectory(sub_dir_path_.Append(kSubdirName)));
+
+  SafeFD::SafeFDResult dir = root_.OpenExistingDir(temp_dir_.GetPath());
+  EXPECT_STR_EQ(dir.second, SafeFD::Error::kNoError);
+
+  EXPECT_STR_EQ(dir.first.Rmdir(kSubdirName, true /*recursive*/, 1),
+                SafeFD::Error::kExceededMaximum);
+}
+
+TEST_F(SafeFDTest, Rmdir_IOError) {
+  SafeFD::SafeFDResult dir = root_.OpenExistingDir(temp_dir_.GetPath());
+  EXPECT_STR_EQ(dir.second, SafeFD::Error::kNoError);
+
+  // Dir doesn't exist.
+  EXPECT_STR_EQ(dir.first.Rmdir(kSubdirName), SafeFD::Error::kIOError);
+
+  // Dir not empty.
+  ASSERT_TRUE(WriteFile(""));
+  EXPECT_STR_EQ(dir.first.Rmdir(kSubdirName), SafeFD::Error::kIOError);
+}
+
+TEST_F(SafeFDTest, Rmdir_WrongType) {
+  ASSERT_TRUE(WriteFile(""));
+
+  SafeFD::SafeFDResult subdir = root_.OpenExistingDir(sub_dir_path_);
+  EXPECT_STR_EQ(subdir.second, SafeFD::Error::kNoError);
+
+  EXPECT_STR_EQ(subdir.first.Rmdir(kFileName), SafeFD::Error::kWrongType);
+}
+
 }  // namespace brillo

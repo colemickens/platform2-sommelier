@@ -11,17 +11,27 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <brillo/files/scoped_dir.h>
 #include <brillo/syslog_logging.h>
 
 namespace brillo {
 
 namespace {
+
 SafeFD::SafeFDResult MakeErrorResult(SafeFD::Error error) {
   return std::make_pair(SafeFD(), error);
 }
 
 SafeFD::SafeFDResult MakeSuccessResult(SafeFD&& fd) {
   return std::make_pair(std::move(fd), SafeFD::Error::kNoError);
+}
+
+SafeFD::Error ValidateFilename(const std::string& filename) {
+  if (filename == "." || filename == ".." ||
+      filename.find("/") != std::string::npos) {
+    return SafeFD::Error::kBadArgument;
+  }
+  return SafeFD::Error::kNoError;
 }
 
 SafeFD::SafeFDResult OpenPathComponentInternal(int parent_fd,
@@ -397,6 +407,139 @@ SafeFD::SafeFDResult SafeFD::MakeDir(const base::FilePath& path,
   }
 
   return MakeSuccessResult(std::move(dir));
+}
+
+SafeFD::Error SafeFD::Link(const SafeFD& source_dir,
+                           const std::string& source_name,
+                           const std::string& destination_name) {
+  if (!fd_.is_valid() || !source_dir.is_valid()) {
+    return SafeFD::Error::kNotInitialized;
+  }
+
+  SafeFD::Error err = ValidateFilename(source_name);
+  if (IsError(err)) {
+    return err;
+  }
+
+  err = ValidateFilename(destination_name);
+  if (IsError(err)) {
+    return err;
+  }
+
+  if (HANDLE_EINTR(linkat(source_dir.get(), source_name.c_str(), fd_.get(),
+                          destination_name.c_str(), 0)) != 0) {
+    PLOG(ERROR) << "Failed to link \"" << destination_name << "\"";
+    return SafeFD::Error::kIOError;
+  }
+  return SafeFD::Error::kNoError;
+}
+
+SafeFD::Error SafeFD::Unlink(const std::string& name) {
+  if (!fd_.is_valid()) {
+    return SafeFD::Error::kNotInitialized;
+  }
+
+  SafeFD::Error err = ValidateFilename(name);
+  if (IsError(err)) {
+    return err;
+  }
+
+  if (HANDLE_EINTR(unlinkat(fd_.get(), name.c_str(), 0 /*flags*/)) != 0) {
+    PLOG(ERROR) << "Failed to unlink \"" << name << "\"";
+    return SafeFD::Error::kIOError;
+  }
+  return SafeFD::Error::kNoError;
+}
+
+SafeFD::Error SafeFD::Rmdir(const std::string& name,
+                            bool recursive,
+                            size_t max_depth) {
+  if (!fd_.is_valid()) {
+    return SafeFD::Error::kNotInitialized;
+  }
+
+  if (max_depth == 0) {
+    return SafeFD::Error::kExceededMaximum;
+  }
+
+  SafeFD::Error err = ValidateFilename(name);
+  if (IsError(err)) {
+    return err;
+  }
+
+  if (recursive) {
+    SafeFD dir_fd;
+    std::tie(dir_fd, err) =
+        OpenPathComponentInternal(fd_.get(), name, O_DIRECTORY, 0);
+    if (!dir_fd.is_valid()) {
+      return err;
+    }
+
+    // The ScopedDIR takes ownership of this so dup_fd is not scoped on its own.
+    int dup_fd = dup(dir_fd.get());
+    if (dup_fd < 0) {
+      PLOG(ERROR) << "dup failed";
+      return SafeFD::Error::kIOError;
+    }
+
+    ScopedDIR dir(fdopendir(dup_fd));
+    if (!dir.is_valid()) {
+      PLOG(ERROR) << "fdopendir failed";
+      close(dup_fd);
+      return SafeFD::Error::kIOError;
+    }
+
+    struct stat dir_info;
+    if (fstat(dir_fd.get(), &dir_info) != 0) {
+      return SafeFD::Error::kIOError;
+    }
+
+    errno = 0;
+    const dirent* entry = HANDLE_EINTR_IF_EQ(readdir(dir.get()), nullptr);
+    while (entry != nullptr) {
+      if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+        goto continue_;
+      }
+
+      struct stat child_info;
+      if (fstatat(dir_fd.get(), entry->d_name, &child_info,
+                  AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW) != 0) {
+        return SafeFD::Error::kIOError;
+      }
+
+      if (child_info.st_dev != dir_info.st_dev) {
+        return SafeFD::Error::kBoundaryDetected;
+      }
+
+      SafeFD::Error err;
+      if (entry->d_type == DT_DIR) {
+        err = dir_fd.Rmdir(entry->d_name, true, max_depth - 1);
+      } else {
+        err = dir_fd.Unlink(entry->d_name);
+      }
+
+      if (IsError(err)) {
+        return err;
+      }
+
+    continue_:
+      errno = 0;
+      entry = HANDLE_EINTR_IF_EQ(readdir(dir.get()), nullptr);
+    }
+    if (errno != 0) {
+      PLOG(ERROR) << "readdir failed";
+      return SafeFD::Error::kIOError;
+    }
+  }
+
+  if (HANDLE_EINTR(unlinkat(fd_.get(), name.c_str(), AT_REMOVEDIR)) != 0) {
+    PLOG(ERROR) << "unlinkat failed";
+    if (errno == ENOTDIR) {
+      return SafeFD::Error::kWrongType;
+    }
+    return SafeFD::Error::kIOError;
+  }
+  return SafeFD::Error::kNoError;
 }
 
 }  // namespace brillo
