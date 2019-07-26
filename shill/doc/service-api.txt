@@ -638,6 +638,15 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			the service will be considered of equal priority to
 			other services that have been connected before.
 
+		boolean Metered [readwrite]
+
+			Whether or not this service is metered. If the user sets
+			this value, then Shill will store that setting for the
+			service. If the user does not set this value, then Shill
+			will try to infer whether or not the network is metered
+			based on details such as tethering state and technology
+			type.
+
 		string Mode [readonly]
 
 			If the service type is "wifi", then this property is

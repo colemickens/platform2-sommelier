@@ -1979,6 +1979,40 @@ TEST_F(ServiceTest, GetTethering) {
   EXPECT_EQ(Error::kNotSupported, error.type());
 }
 
+TEST_F(ServiceTest, MeteredOverride) {
+  Error error;
+  service_->SetMeteredProperty(true, &error);
+  EXPECT_TRUE(service_->IsMetered());
+
+  service_->SetMeteredProperty(false, &error);
+  EXPECT_FALSE(service_->IsMetered());
+}
+
+TEST_F(ServiceTest, SaveMeteredOverride) {
+  NiceMock<MockStore> storage;
+  // Newly created services should not have a metered override value
+  // since that is set by the user, and should thus have no value
+  // to save to the storage.
+  EXPECT_CALL(storage, SetBool(storage_id_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(storage,
+              SetBool(storage_id_, Service::kStorageMeteredOverride, _))
+      .Times(0);
+  EXPECT_TRUE(service_->Save(&storage));
+  Mock::VerifyAndClearExpectations(&storage);
+
+  Error error;
+  EXPECT_CALL(storage, SetBool(storage_id_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(storage,
+              SetBool(storage_id_, Service::kStorageMeteredOverride, true))
+      .Times(1);
+  service_->SetMeteredProperty(true, &error);
+  EXPECT_TRUE(service_->Save(&storage));
+}
+
+TEST_F(ServiceTest, IsNotMeteredByDefault) {
+  EXPECT_FALSE(service_->IsMetered());
+}
+
 class ServiceWithMockOnPropertyChanged : public ServiceUnderTest {
  public:
   explicit ServiceWithMockOnPropertyChanged(Manager* manager)

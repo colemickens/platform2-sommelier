@@ -102,6 +102,7 @@ const char Service::kStorageUIData[] = "UIData";
 const char Service::kStorageConnectionId[] = "ConnectionId";
 const char Service::kStorageLinkMonitorDisabled[] = "LinkMonitorDisabled";
 const char Service::kStorageManagedCredentials[] = "ManagedCredentials";
+const char Service::kStorageMeteredOverride[] = "MeteredOverride";
 
 const uint8_t Service::kStrengthMax = 100;
 const uint8_t Service::kStrengthMin = 0;
@@ -238,6 +239,10 @@ Service::Service(Manager* manager, Technology technology)
   store_.RegisterBool(kDnsAutoFallbackProperty, &is_dns_auto_fallback_allowed_);
   store_.RegisterBool(kLinkMonitorDisableProperty, &link_monitor_disabled_);
   store_.RegisterBool(kManagedCredentialsProperty, &managed_credentials_);
+  HelpRegisterDerivedBool(kMeteredProperty,
+                          &Service::GetMeteredProperty,
+                          &Service::SetMeteredProperty,
+                          nullptr);
 
   HelpRegisterDerivedBool(kVisibleProperty,
                           &Service::GetVisibleProperty,
@@ -536,6 +541,11 @@ bool Service::Load(StoreInterface* storage) {
     managed_credentials_ = false;
   }
 
+  bool metered_override;
+  if (storage->GetBool(id, kStorageMeteredOverride, &metered_override)) {
+    metered_override_ = metered_override;
+  }
+
   static_ip_parameters_.Load(storage, id);
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
@@ -624,6 +634,10 @@ bool Service::Save(StoreInterface* storage) {
   storage->SetBool(id, kStorageDNSAutoFallback, is_dns_auto_fallback_allowed_);
   storage->SetBool(id, kStorageLinkMonitorDisabled, link_monitor_disabled_);
   storage->SetBool(id, kStorageManagedCredentials, managed_credentials_);
+
+  if (metered_override_.has_value()) {
+    storage->SetBool(id, kStorageMeteredOverride, metered_override_.value());
+  }
 
   static_ip_parameters_.Save(storage, id);
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
@@ -1037,6 +1051,25 @@ bool Service::DecideBetween(int a, int b, bool* decision) {
 
 uint16_t Service::SecurityLevel() {
   return (crypto_algorithm_ << 2) | (key_rotation_ << 1) | endpoint_auth_;
+}
+
+bool Service::IsMetered() const {
+  if (metered_override_.has_value()) {
+    return metered_override_.value();
+  }
+
+  if (IsMeteredByServiceProperties()) {
+    return true;
+  }
+
+  Error unused_error;
+  std::string tethering = GetTethering(&unused_error);
+  return (tethering == kTetheringSuspectedState ||
+          tethering == kTetheringConfirmedState);
+}
+
+bool Service::IsMeteredByServiceProperties() const {
+  return false;
 }
 
 // static
@@ -1577,6 +1610,23 @@ Strings Service::GetDisconnectsProperty(Error* /*error*/) const {
 
 Strings Service::GetMisconnectsProperty(Error* /*error*/) const {
   return misconnects_.ExtractWallClockToStrings();
+}
+
+bool Service::GetMeteredProperty(Error* /*error*/) {
+  return IsMetered();
+}
+
+bool Service::SetMeteredProperty(const bool& metered, Error* /*error*/) {
+  // We always want to set the override, but only emit a signal if
+  // the value has actually changed as a result.
+  bool was_metered = IsMetered();
+  metered_override_ = metered;
+
+  if (was_metered == metered) {
+    return false;
+  }
+  adaptor_->EmitBoolChanged(kMeteredProperty, metered);
+  return true;
 }
 
 bool Service::GetVisibleProperty(Error* /*error*/) {

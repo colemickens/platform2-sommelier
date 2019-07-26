@@ -137,6 +137,12 @@ uint64_t CellularService::GetMaxAutoConnectCooldownTimeMilliseconds() const {
   return 30 * 60 * 1000;  // 30 minutes
 }
 
+bool CellularService::IsMeteredByServiceProperties() const {
+  // TODO(crbug.com/989639): see if we can detect unmetered cellular
+  // connections automatically.
+  return true;
+}
+
 void CellularService::HelpRegisterDerivedString(
     const string& name,
     string(CellularService::*get)(Error* error),

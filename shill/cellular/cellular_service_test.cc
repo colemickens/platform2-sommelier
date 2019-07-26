@@ -562,4 +562,9 @@ TEST_F(CellularServiceTest, CustomSetterNoopChange) {
   EXPECT_TRUE(error.IsSuccess());
 }
 
+TEST_F(CellularServiceTest, IsMeteredByDefault) {
+  // These services should be metered by default.
+  EXPECT_TRUE(service_->IsMetered());
+}
+
 }  // namespace shill

@@ -104,6 +104,9 @@ class CellularService : public Service {
   // as a cellular service requires a much longer cooldown period.
   uint64_t GetMaxAutoConnectCooldownTimeMilliseconds() const override;
 
+  // Overrides IsMeteredByServiceProperties from parent Service class.
+  bool IsMeteredByServiceProperties() const override;
+
  private:
   friend class CellularCapability3gppTest;
   friend class CellularServiceTest;

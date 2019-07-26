@@ -16,6 +16,7 @@
 #include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <base/optional.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/adaptor_interfaces.h"
@@ -79,6 +80,7 @@ class Service : public base::RefCounted<Service> {
   static const char kStorageConnectionId[];
   static const char kStorageLinkMonitorDisabled[];
   static const char kStorageManagedCredentials[];
+  static const char kStorageMeteredOverride[];
 
   static const uint8_t kStrengthMax;
   static const uint8_t kStrengthMin;
@@ -646,6 +648,10 @@ class Service : public base::RefCounted<Service> {
   // Emit property change notifications for all observed properties.
   void NotifyIfVisibilityChanged();
 
+  // True if the properties of this network connection (e.g. user contract)
+  // imply it is metered.
+  virtual bool IsMeteredByServiceProperties() const;
+
  private:
   friend class EthernetEapServiceTest;
   friend class EthernetServiceTest;
@@ -661,6 +667,7 @@ class Service : public base::RefCounted<Service> {
   friend void TestNamePropertyChange(ServiceRefPtr, ServiceMockAdaptor*);
   FRIEND_TEST(AllMockServiceTest, AutoConnectWithFailures);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
+  FRIEND_TEST(CellularServiceTest, IsMeteredByDefault);
   FRIEND_TEST(DeviceTest, AcquireIPConfigWithoutSelectedService);
   FRIEND_TEST(DeviceTest, AcquireIPConfigWithSelectedService);
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
@@ -679,11 +686,14 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, GetProperties);
   FRIEND_TEST(ServiceTest, GetTethering);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
+  FRIEND_TEST(ServiceTest, IsNotMeteredByDefault);
   FRIEND_TEST(ServiceTest, Load);
   FRIEND_TEST(ServiceTest, LoadAutoConnect);
+  FRIEND_TEST(ServiceTest, MeteredOverride);
   FRIEND_TEST(ServiceTest, PortalDetectionFailure);
   FRIEND_TEST(ServiceTest, RecheckPortal);
   FRIEND_TEST(ServiceTest, Save);
+  FRIEND_TEST(ServiceTest, SaveMeteredOverride);
   FRIEND_TEST(ServiceTest, SaveString);
   FRIEND_TEST(ServiceTest, SaveStringCrypted);
   FRIEND_TEST(ServiceTest, SaveStringDontSave);
@@ -755,6 +765,9 @@ class Service : public base::RefCounted<Service> {
   Strings GetDisconnectsProperty(Error* error) const;
   Strings GetMisconnectsProperty(Error* error) const;
 
+  bool GetMeteredProperty(Error* error);
+  bool SetMeteredProperty(const bool& metered, Error* error);
+
   void ReEnableAutoConnectTask();
   // Disables autoconnect and posts a task to re-enable it after a cooldown.
   // Note that autoconnect could be disabled for other reasons as well.
@@ -782,6 +795,11 @@ class Service : public base::RefCounted<Service> {
   // Linearize security parameters (crypto algorithm, key rotation, endpoint
   // authentication) for comparison.
   uint16_t SecurityLevel();
+
+  // If the user has explicitly designated this connection to be metered
+  // or unmetered, returns that value. Otherwise, returns whether or not the
+  // connection is confirmed or inferred to be metered.
+  bool IsMetered() const;
 
   // WeakPtrFactory comes first, so that other fields can use it.
   base::WeakPtrFactory<Service> weak_ptr_factory_;
@@ -821,6 +839,9 @@ class Service : public base::RefCounted<Service> {
   std::string ui_data_;
   std::string guid_;
   bool save_credentials_;
+  // If this is nullopt, try to infer whether or not this service is metered
+  // by e.g. technology type.
+  base::Optional<bool> metered_override_;
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   std::unique_ptr<EapCredentials> eap_;
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
