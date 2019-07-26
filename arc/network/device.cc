@@ -49,10 +49,7 @@ void Device::IPv6Config::clear() {
   memset(&addr, 0, sizeof(struct in6_addr));
   memset(&router, 0, sizeof(struct in6_addr));
   prefix_len = 0;
-  routing_table_id = -1;
-  routing_table_attempts = 0;
   addr_attempts = 0;
-  is_setup = false;
 }
 
 Device::Device(const std::string& ifname,
@@ -61,8 +58,7 @@ Device::Device(const std::string& ifname,
     : ifname_(ifname),
       config_(std::move(config)),
       options_(options),
-      host_link_up_(false),
-      guest_link_up_(false) {
+      host_link_up_(false) {
   DCHECK(config_);
 }
 
@@ -83,6 +79,19 @@ const Device::Options& Device::options() const {
   return options_;
 }
 
+void Device::set_context(GuestMessage::GuestType guest,
+                         std::unique_ptr<Device::Context> ctx) {
+  ctx_[guest] = std::move(ctx);
+}
+
+Device::Context* Device::context(GuestMessage::GuestType guest) {
+  auto it = ctx_.find(guest);
+  if (it != ctx_.end())
+    return it->second.get();
+
+  return nullptr;
+}
+
 bool Device::IsAndroid() const {
   return ifname_ == kAndroidDevice;
 }
@@ -91,26 +100,24 @@ bool Device::IsLegacyAndroid() const {
   return ifname_ == kAndroidLegacyDevice;
 }
 
-bool Device::LinkUp(const std::string& ifname, bool up) {
-  bool* link_up =
-      (ifname == config_->host_ifname())
-          ? &host_link_up_
-          : (ifname == config_->guest_ifname()) ? &guest_link_up_ : nullptr;
-  if (!link_up) {
-    LOG(DFATAL) << "Unknown interface: " << ifname;
-    return false;
-  }
-
-  if (up == *link_up)
+bool Device::HostLinkUp(bool link_up) {
+  if (link_up == host_link_up_)
     return false;
 
-  *link_up = up;
+  host_link_up_ = link_up;
   return true;
 }
 
 void Device::Enable(const std::string& ifname) {
-  if (!host_link_up_ || !guest_link_up_)
+  if (!host_link_up_)
     return;
+
+  // TODO(garrick): Clean this up when more guests are added.
+  // This is really just a hack around not having to worry about specific guests
+  for (const auto& c : ctx_) {
+    if (!c.second->IsLinkUp())
+      return;
+  }
 
   if (options_.fwd_multicast) {
     if (!mdns_forwarder_) {
@@ -146,8 +153,6 @@ void Device::Enable(const std::string& ifname) {
     // interface and must be used.
     ipv6_config_.ifname = (IsAndroid() || IsLegacyAndroid()) ? ifname : ifname_;
     ipv6_config_.addr_attempts = 0;
-    ipv6_config_.routing_table_attempts = 0;
-    ipv6_config_.is_setup = false;
     router_finder_.reset(new RouterFinder());
     router_finder_->Start(
         ifname, base::Bind(&Device::OnRouteFound, weak_factory_.GetWeakPtr()));
@@ -185,7 +190,6 @@ void Device::RegisterIPv6TeardownHandler(const DeviceHandler& handler) {
 
 void Device::OnGuestStart(GuestMessage::GuestType guest) {
   host_link_up_ = false;
-  guest_link_up_ = false;
 }
 
 void Device::OnGuestStop(GuestMessage::GuestType guest) {}

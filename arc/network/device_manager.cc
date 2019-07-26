@@ -224,7 +224,8 @@ void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
 
   bool link_up = msg.link_status().flags & IFF_UP;
   Device* device = FindByHostInterface(ifname);
-  if (!device || !device->LinkUp(ifname, link_up))
+
+  if (!device || !device->HostLinkUp(link_up))
     return;
 
   if (!link_up) {

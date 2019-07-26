@@ -248,7 +248,7 @@ void ArcService::OnDeviceAdded(Device* device) {
       LOG(ERROR) << "Failed to configure egress traffic rules";
   }
 
-  devices_.insert(config.guest_ifname());
+  device->set_context(guest_, std::make_unique<Context>());
 
   StartDevice(device);
 }
@@ -257,11 +257,18 @@ void ArcService::StartDevice(Device* device) {
   if (!ShouldProcessDevice(*device))
     return;
 
-  const auto& config = device->config();
-
-  // If the device is new then it needs to run through the full setup process.
-  if (devices_.find(config.guest_ifname()) == devices_.end())
+  // If there is no context, then this is a new device and it needs to run
+  // through the full setup process.
+  Context* ctx = dynamic_cast<Context*>(device->context(guest_));
+  if (!ctx)
     return OnDeviceAdded(device);
+
+  if (ctx->IsStarted()) {
+    LOG(ERROR) << "Attempt to restart device " << device->ifname();
+    return;
+  }
+
+  const auto& config = device->config();
 
   LOG(INFO) << "Starting device " << device->ifname()
             << " bridge: " << config.host_ifname()
@@ -291,6 +298,8 @@ void ArcService::StartDevice(Device* device) {
   if (device->IsAndroid() || device->IsLegacyAndroid()) {
     datapath_->runner().WriteSentinelToContainer(base::IntToString(pid_));
   }
+
+  ctx->Start();
 }
 
 void ArcService::OnDeviceRemoved(Device* device) {
@@ -317,18 +326,25 @@ void ArcService::OnDeviceRemoved(Device* device) {
 
   datapath_->RemoveBridge(config.host_ifname());
 
-  devices_.erase(config.guest_ifname());
+  device->set_context(guest_, nullptr);
 }
 
 void ArcService::StopDevice(Device* device) {
-  const auto& config = device->config();
-
-  // If the device isn't known then there is nothing to do...
-  if (devices_.find(config.guest_ifname()) == devices_.end())
-    return;
-
   if (!ShouldProcessDevice(*device))
     return;
+
+  Context* ctx = dynamic_cast<Context*>(device->context(guest_));
+  if (!ctx) {
+    LOG(ERROR) << "Attempt to stop removed device " << device->ifname();
+    return;
+  }
+
+  if (!ctx->IsStarted()) {
+    LOG(ERROR) << "Attempt to re-stop device " << device->ifname();
+    return;
+  }
+
+  const auto& config = device->config();
 
   LOG(INFO) << "Stopping device " << device->ifname()
             << " bridge: " << config.host_ifname()
@@ -338,6 +354,8 @@ void ArcService::StopDevice(Device* device) {
   if (!device->IsAndroid()) {
     datapath_->RemoveInterface(ArcVethHostName(device->ifname()));
   }
+
+  ctx->Stop();
 }
 
 bool ArcService::ShouldProcessDevice(const Device& device) const {
@@ -349,10 +367,7 @@ bool ArcService::ShouldProcessDevice(const Device& device) const {
   // If ARC isn't running, there is nothing to do. This call must have been
   // triggered by a device hot-plug event or something similar in DeviceManager.
   // It's OK to ignore because if the container is gone there is nothing to do.
-  if (pid_ == kInvalidPID)
-    return false;
-
-  return true;
+  return pid_ != kInvalidPID;
 }
 
 void ArcService::OnDefaultInterfaceChanged(const std::string& ifname) {
@@ -385,7 +400,17 @@ void ArcService::LinkMsgHandler(const shill::RTNLMessage& msg) {
       b.GetSubstring(0, IFNAMSIZ).GetConstData()));
 
   auto* device = dev_mgr_->FindByGuestInterface(ifname);
-  if (!device || !device->LinkUp(ifname, link_up))
+  if (!device)
+    return;
+
+  Context* ctx = dynamic_cast<Context*>(device->context(guest_));
+  if (!ctx) {
+    LOG(DFATAL) << "Context missing";
+    return;
+  }
+
+  // If the link status is unchanged, there is nothing to do.
+  if (!ctx->SetLinkUp(link_up))
     return;
 
   if (!link_up) {
@@ -413,12 +438,20 @@ void ArcService::SetupIPv6(Device* device) {
   if (ipv6_config.ifname.empty())
     return;
 
+  Context* ctx = dynamic_cast<Context*>(device->context(guest_));
+  if (!ctx) {
+    LOG(DFATAL) << "Context missing";
+    return;
+  }
+  if (ctx->HasIPv6())
+    return;
+
   LOG(INFO) << "Setting up IPv6 for " << ipv6_config.ifname;
 
-  ipv6_config.routing_table_id =
+  int table_id =
       GetAndroidRoutingTableId(device->config().guest_ifname(), pid_);
-  if (ipv6_config.routing_table_id == kInvalidTableID) {
-    if (ipv6_config.routing_table_attempts++ < kMaxTableRetries) {
+  if (table_id == kInvalidTableID) {
+    if (ctx->RoutingTableAttempts() < kMaxTableRetries) {
       LOG(INFO) << "Could not look up routing table ID for container interface "
                 << device->config().guest_ifname() << " - trying again...";
       base::MessageLoop::current()->task_runner()->PostDelayedTask(
@@ -460,8 +493,7 @@ void ArcService::SetupIPv6(Device* device) {
       return;
     }
     if (!datapath_->AddIPv6GatewayRoutes(config.guest_ifname(), addr, router,
-                                         ipv6_config.prefix_len,
-                                         ipv6_config.routing_table_id)) {
+                                         ipv6_config.prefix_len, table_id)) {
       LOG(ERROR) << "Failed to setup IPv6 routes in the container";
       return;
     }
@@ -490,16 +522,18 @@ void ArcService::SetupIPv6(Device* device) {
     return;
   }
 
-  ipv6_config.is_setup = true;
+  ctx->SetHasIPv6(table_id);
 }
 
 void ArcService::TeardownIPv6(Device* device) {
-  auto& ipv6_config = device->ipv6_config();
-  if (!ipv6_config.is_setup)
+  Context* ctx = dynamic_cast<Context*>(device->context(guest_));
+  if (!ctx || !ctx->HasIPv6())
     return;
 
+  auto& ipv6_config = device->ipv6_config();
   LOG(INFO) << "Clearing IPv6 for " << ipv6_config.ifname;
-  ipv6_config.is_setup = false;
+  int table_id = ctx->RoutingTableID();
+  ctx->SetHasIPv6(kInvalidTableID);
 
   char buf[INET6_ADDRSTRLEN] = {0};
   if (!inet_ntop(AF_INET6, &ipv6_config.addr, buf, sizeof(buf))) {
@@ -523,18 +557,66 @@ void ArcService::TeardownIPv6(Device* device) {
   ScopedNS ns(pid_);
   if (ns.IsValid()) {
     datapath_->RemoveIPv6GatewayRoutes(config.guest_ifname(), addr, router,
-                                       ipv6_config.prefix_len,
-                                       ipv6_config.routing_table_id);
-  } else {
-    // Doesn't actually matter if the namespace is gone then its configuration
-    // is as well.
-    LOG(WARNING) << "Invalid container namespace (" << pid_
-                 << ") - cannot cleanup IPv6.";
+                                       ipv6_config.prefix_len, table_id);
   }
 }
 
 void ArcService::SetPIDForTestingOnly() {
   pid_ = kTestPID;
+}
+
+// Context
+
+ArcService::Context::Context() : Device::Context() {
+  Stop();
+}
+
+void ArcService::Context::Start() {
+  Stop();
+  started_ = true;
+}
+
+void ArcService::Context::Stop() {
+  started_ = false;
+  link_up_ = false;
+  routing_table_id_ = kInvalidTableID;
+  routing_table_attempts_ = 0;
+}
+
+bool ArcService::Context::IsStarted() const {
+  return started_;
+}
+
+bool ArcService::Context::IsLinkUp() const {
+  return link_up_;
+}
+
+bool ArcService::Context::SetLinkUp(bool link_up) {
+  if (link_up == link_up_)
+    return false;
+
+  link_up_ = link_up;
+  return true;
+}
+
+bool ArcService::Context::HasIPv6() const {
+  return routing_table_id_ != kInvalidTableID;
+}
+
+bool ArcService::Context::SetHasIPv6(int routing_table_id) {
+  if (routing_table_id <= kRouteControllerRouteTableOffsetFromIndex)
+    return false;
+
+  routing_table_id_ = routing_table_id;
+  return true;
+}
+
+int ArcService::Context::RoutingTableID() const {
+  return routing_table_id_;
+}
+
+int ArcService::Context::RoutingTableAttempts() {
+  return routing_table_attempts_++;
 }
 
 }  // namespace arc_networkd

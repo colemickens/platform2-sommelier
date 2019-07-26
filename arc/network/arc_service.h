@@ -6,7 +6,6 @@
 #define ARC_NETWORK_ARC_SERVICE_H_
 
 #include <memory>
-#include <set>
 #include <string>
 
 #include <base/memory/weak_ptr.h>
@@ -20,6 +19,38 @@ namespace arc_networkd {
 
 class ArcService : public GuestService {
  public:
+  class Context : public Device::Context {
+   public:
+    Context();
+    ~Context() = default;
+
+    // Tracks the lifetime of the ARC++ container.
+    void Start();
+    void Stop();
+    bool IsStarted() const;
+
+    bool IsLinkUp() const override;
+    // Returns true if the internal state changed.
+    bool SetLinkUp(bool link_up);
+
+    bool HasIPv6() const;
+    // Returns false if |routing_tid| is invalid.
+    bool SetHasIPv6(int routing_tid);
+    int RoutingTableID() const;
+    // Returns the current value and increments the counter.
+    int RoutingTableAttempts();
+
+   private:
+    // Indicates the device was started.
+    bool started_;
+    // Indicates Android has brought up the interface.
+    bool link_up_;
+    // The routing table ID found for the interface.
+    int routing_table_id_;
+    // The number of times table ID lookup was attempted.
+    int routing_table_attempts_;
+  };
+
   // |dev_mgr| cannot be null.
   ArcService(DeviceManagerBase* dev_mgr,
              bool is_legacy,
@@ -56,7 +87,6 @@ class ArcService : public GuestService {
   pid_t pid_;
   std::unique_ptr<shill::RTNLHandler> rtnl_handler_;
   std::unique_ptr<shill::RTNLListener> link_listener_;
-  std::set<std::string> devices_;
 
   base::WeakPtrFactory<ArcService> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(ArcService);

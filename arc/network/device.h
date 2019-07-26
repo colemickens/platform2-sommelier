@@ -40,6 +40,18 @@ class Device {
  public:
   using DeviceHandler = base::Callback<void(Device*)>;
 
+  class Context {
+   public:
+    virtual ~Context() = default;
+    virtual bool IsLinkUp() const = 0;
+
+   protected:
+    Context() = default;
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(Context);
+  };
+
   class Config {
    public:
     Config(const std::string& host_ifname,
@@ -75,12 +87,7 @@ class Device {
   };
 
   struct IPv6Config {
-    IPv6Config()
-        : prefix_len(0),
-          routing_table_id(-1),
-          routing_table_attempts(0),
-          addr_attempts(0),
-          is_setup(0) {}
+    IPv6Config() : prefix_len(0), addr_attempts(0) {}
 
     void clear();
 
@@ -88,10 +95,7 @@ class Device {
     struct in6_addr router;
     int prefix_len;
     std::string ifname;
-    int routing_table_id;
-    int routing_table_attempts;
     int addr_attempts;
-    bool is_setup;
   };
 
   Device(const std::string& ifname,
@@ -104,21 +108,23 @@ class Device {
   IPv6Config& ipv6_config();
   const Options& options() const;
 
+  void set_context(GuestMessage::GuestType guest, std::unique_ptr<Context> ctx);
+  Context* context(GuestMessage::GuestType guest);
+
   bool IsAndroid() const;
   bool IsLegacyAndroid() const;
 
   void RegisterIPv6SetupHandler(const DeviceHandler& handler);
   void RegisterIPv6TeardownHandler(const DeviceHandler& handler);
 
+  // Returns true if the link status changed.
+  bool HostLinkUp(bool link_up);
+
   void Enable(const std::string& ifname);
   void Disable();
 
   void OnGuestStart(GuestMessage::GuestType guest);
   void OnGuestStop(GuestMessage::GuestType guest);
-
-  // Updates the link status and returns whether the status was changed.
-  // ifname must match either host_ifname or guest_ifname in the config.
-  bool LinkUp(const std::string& ifname, bool up);
 
   friend std::ostream& operator<<(std::ostream& stream, const Device& device);
 
@@ -137,12 +143,12 @@ class Device {
   std::unique_ptr<Config> config_;
   const Options options_;
 
-  // Link status.
-  // TODO(garrick): Scope by guest.
-  bool host_link_up_;
-  bool guest_link_up_;
+  std::map<GuestMessage::GuestType, std::unique_ptr<Context>> ctx_;
 
-  bool link_up_;
+  // Indicates if the host-side interface is up. Guest-size interfaces
+  // may be tracked in the guest-specific context.
+  bool host_link_up_;
+
   IPv6Config ipv6_config_;
   DeviceHandler ipv6_up_handler_;
   DeviceHandler ipv6_down_handler_;
