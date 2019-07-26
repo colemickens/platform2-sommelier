@@ -57,6 +57,14 @@ filetrans_pattern(cros_crash, cros_home_chronos, cros_home_chronos_crash, dir, "
 allow cros_crash cros_home_chronos_crash:dir create_dir_perms;
 allow cros_crash cros_home_chronos_crash:file create_file_perms;
 
+# filetrans done in cros_init
+allow cros_crash cros_run:dir create_dir_perms;
+allow cros_crash cros_run_metrics:dir create_dir_perms;
+allow cros_crash cros_run_metrics_external:dir create_dir_perms;
+filetrans_pattern(cros_crash, cros_run_metrics_external, cros_run_metrics_external_crash, dir, "crash-reporter");
+allow cros_crash cros_run_metrics_external_crash:dir create_dir_perms;
+allow cros_crash cros_run_metrics_external_crash:file create_file_perms;
+
 allow cros_crash kernel:fifo_file { read ioctl };
 allow cros_crash domain:dir search;
 allow cros_crash domain:file { getattr open read };
@@ -108,8 +116,3 @@ minijail_mounts(
   cros_crash_tmp_file
  }
 )
-
-type cros_crash_reporter_tmp_file, cros_tmpfile_type, cros_run_file_type, cros_file_type, file_type;
-filetrans_pattern(cros_crash, cros_run, cros_crash_reporter_tmp_file, file, "unclean-shutdown-detected");
-filetrans_pattern(cros_crash, cros_run, cros_crash_reporter_tmp_file, file, "kernel-crash-detected");
-neverallow { domain -cros_crash -cros_metrics_daemon } cros_crash_tmp_file:file *;

@@ -48,6 +48,8 @@ allow {cros_init cros_init_scripts} cros_systemd_cat_exec:file rx_file_perms;
 # init/metrics_library.conf
 filetrans_pattern(cros_init_scripts, cros_var_lib, cros_metrics_file, dir, "metrics");
 filetrans_pattern(cros_init_scripts, cros_metrics_file, cros_metrics_uma_events_file, file, "uma-events");
+filetrans_pattern({cros_crash cros_init_scripts}, cros_run, cros_run_metrics, dir, "metrics");
+filetrans_pattern({cros_crash cros_init_scripts}, cros_run_metrics, cros_run_metrics_external, dir, "external");
 
 # init/dbus.conf
 filetrans_pattern(cros_init_scripts, cros_var_lib, cros_var_lib_dbus, dir, "dbus");

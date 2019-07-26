@@ -222,6 +222,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /run/dbus                       u:object_r:cros_run_dbus:s0
 /run/dbus.pid                   u:object_r:cros_dbus_pid_file:s0
 /run/dbus/system_bus_socket     u:object_r:cros_system_bus_socket:s0
+/run/metrics                    u:object_r:cros_run_metrics:s0
+/run/metrics/external           u:object_r:cros_run_metrics_external:s0
 
 
 has_arc(`
