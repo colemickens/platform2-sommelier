@@ -10,6 +10,7 @@
 #include <libhwsec/test_utils/tpm1/test_fixture.h>
 #include <tpm_manager/client/mock_tpm_manager_utility.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
 
 namespace {
 
@@ -254,6 +255,26 @@ TEST_F(TpmNewImplTest, SignalCache) {
               ElementsAreArray(expected_local_data.owner_delegate().secret()));
   EXPECT_EQ(result_has_reset_lock_permissions,
             expected_local_data.owner_delegate().has_reset_lock_permissions());
+}
+
+TEST_F(TpmNewImplTest, RemoveTpmOwnerDependency) {
+  EXPECT_CALL(mock_tpm_manager_utility_,
+              RemoveOwnerDependency(tpm_manager::kTpmOwnerDependency_Nvram))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(GetTpm()->RemoveOwnerDependency(
+      TpmPersistentState::TpmOwnerDependency::kInstallAttributes));
+  EXPECT_CALL(
+      mock_tpm_manager_utility_,
+      RemoveOwnerDependency(tpm_manager::kTpmOwnerDependency_Attestation))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(GetTpm()->RemoveOwnerDependency(
+      TpmPersistentState::TpmOwnerDependency::kAttestation));
+}
+
+TEST_F(TpmNewImplTest, RemoveTpmOwnerDependencyInvalidEnum) {
+  EXPECT_DEBUG_DEATH(GetTpm()->RemoveOwnerDependency(
+                   static_cast<TpmPersistentState::TpmOwnerDependency>(999)),
+               ".*Unexpected enum class value: 999");
 }
 
 TEST_F(TpmNewImplTest, BadTpmManagerUtility) {

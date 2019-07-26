@@ -41,6 +41,8 @@ class TpmNewImpl : public TpmImpl {
   bool ResetDictionaryAttackMitigation(
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret) override;
+  bool RemoveOwnerDependency(
+      TpmPersistentState::TpmOwnerDependency dependency) override;
 
  private:
   // Initializes |tpm_manager_utility_|; returns |true| iff successful.

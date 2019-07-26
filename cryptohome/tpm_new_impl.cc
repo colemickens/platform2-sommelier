@@ -4,7 +4,28 @@
 
 #include "cryptohome/tpm_new_impl.h"
 
+#include <string>
+
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
+
 namespace cryptohome {
+
+namespace {
+std::string OwnerDependencyEnumClassToString(
+    TpmPersistentState::TpmOwnerDependency dependency) {
+  switch (dependency) {
+    case TpmPersistentState::TpmOwnerDependency::kInstallAttributes:
+      return tpm_manager::kTpmOwnerDependency_Nvram;
+    case TpmPersistentState::TpmOwnerDependency::kAttestation:
+      return tpm_manager::kTpmOwnerDependency_Attestation;
+    default:
+      NOTREACHED() << __func__ << ": Unexpected enum class value: "
+                   << static_cast<int>(dependency);
+      return "";
+  }
+}
+
+}  // namespace
 
 TpmNewImpl::TpmNewImpl(tpm_manager::TpmManagerUtility* tpm_manager_utility)
     : tpm_manager_utility_(tpm_manager_utility) {}
@@ -162,4 +183,13 @@ bool TpmNewImpl::ResetDictionaryAttackMitigation(const brillo::Blob&,
   return tpm_manager_utility_->ResetDictionaryAttackLock();
 }
 
+bool TpmNewImpl::RemoveOwnerDependency(
+    TpmPersistentState::TpmOwnerDependency dependency) {
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": failed to initialize |TpmManagerUtility|.";
+    return false;
+  }
+  return tpm_manager_utility_->RemoveOwnerDependency(
+      OwnerDependencyEnumClassToString(dependency));
+}
 }  // namespace cryptohome
