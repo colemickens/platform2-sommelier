@@ -27,11 +27,6 @@ using file_attrs_cleaner::ScanDir;
 
 namespace {
 
-// Helper to convert a string to a base::FilePath.
-inline bool ImmutableAllowed(const std::string& path, bool isdir) {
-  return file_attrs_cleaner::ImmutableAllowed(base::FilePath(path), isdir);
-}
-
 // Helper to create a test file.
 bool CreateFile(const base::FilePath& file_path, base::StringPiece content) {
   if (!base::CreateDirectory(file_path.DirName()))
@@ -41,16 +36,6 @@ bool CreateFile(const base::FilePath& file_path, base::StringPiece content) {
 }
 
 }  // namespace
-
-TEST(ImmutableAllowedTest, Basic) {
-  // The /var dir is not supposed to be immutable.
-  EXPECT_FALSE(ImmutableAllowed("/var", true));
-  EXPECT_FALSE(ImmutableAllowed("/var", false));
-
-  // The /var/empty dir is supposed to be immutable.
-  EXPECT_TRUE(ImmutableAllowed("/var/empty", true));
-  EXPECT_FALSE(ImmutableAllowed("/var/empty", false));
-}
 
 namespace {
 

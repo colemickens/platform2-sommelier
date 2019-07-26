@@ -500,26 +500,32 @@ mount -o bind /run/lock /var/lock
 # See https://chromium.googlesource.com/chromiumos/docs/+/master/sandboxing.md#securely-mounting-cryptohome-daemon-store-folders.
 mkdir -m 0755 /run/daemon-store
 for etc_daemon_store in /etc/daemon-store/*; do
-    # If /etc/daemon-store is empty, $etc_daemon_store is /etc/daemon-store/*.
-    # This if statement filters that out.
-    if [ -d "$etc_daemon_store" ]; then
-        daemon_name="${etc_daemon_store##*/}"
-        run_daemon_store="/run/daemon-store/${daemon_name}"
-        mkdir -m 0755 "${run_daemon_store}"
-        mount -o bind --make-shared "${run_daemon_store}" "${run_daemon_store}"
-    fi
+  # If /etc/daemon-store is empty, $etc_daemon_store is /etc/daemon-store/*.
+  # This if statement filters that out.
+  if [ -d "$etc_daemon_store" ]; then
+    daemon_name="${etc_daemon_store##*/}"
+    run_daemon_store="/run/daemon-store/${daemon_name}"
+    mkdir -m 0755 "${run_daemon_store}"
+    mount -o bind --make-shared "${run_daemon_store}" "${run_daemon_store}"
+  fi
 done
 
 # Make sure required /var subdirectories exist.
-mkdir -p -m 0755 /var/cache /var/db /var/empty /var/log/metrics \
+mkdir -p -m 0755 /var/cache /var/db /var/log/metrics \
                  /var/spool /var/tmp /var/lib/misc
 
 # Before operating on them, verify that all stateful partition paths are
 # directories (as opposed to say, symlinks).
-for d in /var/cache /var/db /var/empty /var/log /var/log/metrics \
+for d in /var/cache /var/db /var/log /var/log/metrics \
          /var/spool /var/tmp /var/lib /var/lib/misc /home/chronos /home/root; do
   check_directory "${d}"
 done
+
+# Remove /var/empty if it exists. Use /mnt/empty instead.
+if [[ -e /var/empty ]]; then
+  chattr -i /var/empty || :
+  rm -rf /var/empty
+fi
 
 # Make sure that what gets written to /var/log stays in /var/log. Some notes on
 # subtleties in the command below:
@@ -555,9 +561,9 @@ chown chronos:chronos /home/chronos /var/log/metrics
 # rsyslog needs to be able to create new logfiles, but not delete other logs
 chgrp syslog /var/log
 chmod 1775 /var/log
-# /var/cache, /var/db, and /var/empty may already exist with wrong permissions.
+# /var/cache, and /var/db may already exist with wrong permissions.
 # Force the correct ones.
-chmod 0755 /var/cache /var/db /var/empty /var/spool /var/lib /var/lib/misc
+chmod 0755 /var/cache /var/db /var/spool /var/lib /var/lib/misc
 
 # "--make-shared" to let ARC container access mount points under /media.
 mount --make-shared -n -t tmpfs -o nodev,noexec,nosuid media /media
@@ -566,7 +572,6 @@ mount --make-shared -n -t tmpfs -o nodev,noexec,nosuid media /media
 # TODO(fqj): use type_transition to correctly label directories at creation so
 # relabel need only be started if SELinux policy updates.
 if [ -f /sys/fs/selinux/enforce ]; then
-  chattr -i /var/empty || :
   restorecon -R -D /var
   restorecon -R /sys
   # We cannot do recursive for .shadow since userdata is encrypted (including
@@ -577,9 +582,6 @@ if [ -f /sys/fs/selinux/enforce ]; then
   # is not bind-mounted here before logging in.
   restorecon -R -D /home/user /home/root /home/chronos
 fi
-
-# Make sure the empty dir stays empty (only works on ext4).
-chattr +i /var/empty || :
 
 # Mount dev packages.
 dev_mount_packages

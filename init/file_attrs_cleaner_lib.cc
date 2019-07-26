@@ -28,13 +28,6 @@ const char xdg_referrer_url[] = "user.xdg.referrer.url";
 
 namespace {
 
-// Paths that we allow to be made immutable.
-const char permitted_immutable_dirs[] = {
-    // We mark this immutable as we use it with a lot of daemons to pivot into
-    // when using minijail and setting up a reduced mount namespace.
-    "/var/empty",
-};
-
 struct ScopedDirDeleter {
   inline void operator()(DIR* dirp) const {
     if (dirp)
@@ -50,19 +43,6 @@ bool CheckSucceeded(AttributeCheckStatus status) {
 
 }  // namespace
 
-bool ImmutableAllowed(const base::FilePath& path, bool isdir) {
-  if (!isdir) {
-    // We don't allow immutable on any non-directories (yet?).
-    return false;
-  }
-
-  for (size_t i = 0; i < arraysize(permitted_immutable_dirs); ++i) {
-    if (path.value() == &permitted_immutable_dirs[i])
-      return true;
-  }
-  return false;
-}
-
 AttributeCheckStatus CheckFileAttributes(const base::FilePath& path,
                                          bool isdir,
                                          int fd) {
@@ -73,14 +53,12 @@ AttributeCheckStatus CheckFileAttributes(const base::FilePath& path,
   }
 
   if (flags & FS_IMMUTABLE_FL) {
-    if (!ImmutableAllowed(path, isdir)) {
-      LOG(WARNING) << "Immutable bit found on " << path.value()
-                   << "; clearing it";
-      flags &= ~FS_IMMUTABLE_FL;
-      if (ioctl(fd, FS_IOC_SETFLAGS, &flags) != 0) {
-        PLOG(ERROR) << "Unable to clear immutable bit on " << path.value();
-        return AttributeCheckStatus::CLEAR_FAILED;
-      }
+    LOG(WARNING) << "Immutable bit found on " << path.value()
+                 << "; clearing it";
+    flags &= ~FS_IMMUTABLE_FL;
+    if (ioctl(fd, FS_IOC_SETFLAGS, &flags) != 0) {
+      PLOG(ERROR) << "Unable to clear immutable bit on " << path.value();
+      return AttributeCheckStatus::CLEAR_FAILED;
     }
     return AttributeCheckStatus::CLEARED;
   }
