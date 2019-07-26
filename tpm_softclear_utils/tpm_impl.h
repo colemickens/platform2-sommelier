@@ -7,7 +7,7 @@
 
 #include "tpm_softclear_utils/tpm.h"
 
-#include <vector>
+#include <string>
 
 #include <base/macros.h>
 #include <base/optional.h>
@@ -20,9 +20,12 @@ class TpmImpl : public Tpm {
   TpmImpl() = default;
   ~TpmImpl() override = default;
 
+  // Not used by TPM 1.2.
+  bool Initialize() override { return true; }
+
   // Gets the owner password from an on-disk file and returns it. In case of an
   // error, returns an empty Optional object.
-  base::Optional<std::vector<uint8_t>> GetAuthForOwnerReset() override;
+  base::Optional<std::string> GetAuthForOwnerReset() override;
 
   // This function does a bunch of things:
   //   1. changing the owner password from |auth_for_owner_reset| to the default
@@ -36,13 +39,12 @@ class TpmImpl : public Tpm {
   // Note that this function neither fully clears the owner hierarchy nor
   // brings the TPM back to the unowned state. It just resets as much as it can
   // in the owner hierarchy.
-  bool SoftClearOwner(
-      const std::vector<uint8_t>& auth_for_owner_reset) override;
+  bool SoftClearOwner(const std::string& auth_for_owner_reset) override;
 
  private:
   // Changes TPM's owner password from |owner_auth| to the default one. Returns
   // if the operation succeeds.
-  bool ResetOwnerPassword(const std::vector<uint8_t>& owner_auth);
+  bool ResetOwnerPassword(const std::string& owner_auth);
 
   // Removes all owner-defined NV spaces, except for those write-locked. This
   // function uses the default owner password for authentication and should only

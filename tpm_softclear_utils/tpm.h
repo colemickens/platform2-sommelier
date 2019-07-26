@@ -5,7 +5,7 @@
 #ifndef TPM_SOFTCLEAR_UTILS_TPM_H_
 #define TPM_SOFTCLEAR_UTILS_TPM_H_
 
-#include <vector>
+#include <string>
 
 #include <base/macros.h>
 #include <base/optional.h>
@@ -17,6 +17,10 @@ class Tpm {
  public:
   Tpm() = default;
   virtual ~Tpm() = default;
+
+  // Performs TPM-version-dependent initialization and returns if the
+  // initialization is successful.
+  virtual bool Initialize() = 0;
 
   // Gets the authentication value for soft-clearing TPM owner from an on-disk
   // file. The auth value in TPM 1.2 and 2.0 are different. Check the child
@@ -30,14 +34,13 @@ class Tpm {
   //
   // This function doesn't check if the password, either default or from a file,
   // works. Callers need to figure it out by themselves.
-  virtual base::Optional<std::vector<uint8_t>> GetAuthForOwnerReset() = 0;
+  virtual base::Optional<std::string> GetAuthForOwnerReset() = 0;
 
   // Resets TPM's owner hierarchy (and endorsement hierarchy for 2.0) using the
   // given auth value |auth_for_owner_reset| and returns if the TPM is
   // soft-cleared successfully. Implementation details for TPM 1.2 and 2.0 may
   // vary. Check the function descriptions in the child classes for details.
-  virtual bool SoftClearOwner(
-      const std::vector<uint8_t>& auth_for_owner_reset) = 0;
+  virtual bool SoftClearOwner(const std::string& auth_for_owner_reset) = 0;
 
   // Creates a new TpmImpl or Tpm2Impl object, according to which
   // version the TPM is, and returns the pointer to the new object.

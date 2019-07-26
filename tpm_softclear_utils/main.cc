@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
-#include <vector>
+#include <string>
 
 #include <brillo/syslog_logging.h>
 
@@ -17,7 +17,12 @@ int main(int argc, char* argv[]) {
   std::unique_ptr<tpm_softclear_utils::Tpm>
       tpm(tpm_softclear_utils::Tpm::Create());
 
-  base::Optional<std::vector<uint8_t>> auth_value = tpm->GetAuthForOwnerReset();
+  if (!tpm->Initialize()) {
+    LOG(ERROR) << "Failed to initialize for soft-clearing TPM.";
+    return -1;
+  }
+
+  base::Optional<std::string> auth_value = tpm->GetAuthForOwnerReset();
   if (!auth_value) {
     LOG(ERROR) << "Unable to soft-clear the TPM: failed to get the auth value.";
     return -1;

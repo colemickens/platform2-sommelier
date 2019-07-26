@@ -4,23 +4,96 @@
 
 #include "tpm_softclear_utils/tpm2_impl.h"
 
-#include <vector>
+#include <memory>
+#include <string>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/optional.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <trunks/authorization_delegate.h>
+#include <trunks/error_codes.h>
+#include <trunks/tpm_generated.h>
+#include <trunks/tpm_state.h>
+#include <trunks/trunks_factory_impl.h>
 
 namespace tpm_softclear_utils {
 
-base::Optional<std::vector<uint8_t>> Tpm2Impl::GetAuthForOwnerReset() {
-  // TODO(b/134989277): add implementation.
-  return std::vector<uint8_t>();
+bool Tpm2Impl::Initialize() {
+  if (!default_trunks_factory_.Initialize()) {
+    LOG(ERROR) << __func__ << ": failed to initialize trunks factory.";
+    return false;
+  }
+
+  trunks_factory_ = &default_trunks_factory_;
+  return true;
 }
 
-bool Tpm2Impl::SoftClearOwner(
-    const std::vector<uint8_t>& auth_for_owner_reset) {
+base::Optional<std::string> Tpm2Impl::GetAuthForOwnerReset() {
+  if (!trunks_factory_) {
+    LOG(ERROR) << __func__ << ": trunks factory is uninitialized.";
+    return {};
+  }
+
+  std::unique_ptr<trunks::TpmState> trunks_tpm_state =
+      trunks_factory_->GetTpmState();
+  trunks::TPM_RC result = trunks_tpm_state->Initialize();
+  if (result) {
+    LOG(ERROR) << __func__ << ": failed to initialize trunks tpm state: "
+               << trunks::GetErrorString(result);
+    return {};
+  }
+
+  if (!trunks_tpm_state->IsLockoutPasswordSet()) {
+    // If the lockout password is not set in the TPM, we should not trust the
+    // local data but use the default password instead.
+    return std::string(kDefaultLockoutPassword);
+  }
+
+  std::string raw_data;
+  if (!ReadFileToString(local_data_path_, &raw_data)) {
+    // This covers both the cases of local data file not existing and failing to
+    // read that file. The local data file should exist if the lockout password
+    // is set.
+    LOG(ERROR) << __func__
+               << " : failed to read file " << local_data_path_.value();
+    return {};
+  }
+
+  tpm_manager::LocalData local_data;
+  if (!local_data.ParseFromString(raw_data)) {
+    LOG(ERROR) << __func__
+               << ": failed to parse local data file into protobuf.";
+    return {};
+  }
+
+  return local_data.lockout_password();
+}
+
+bool Tpm2Impl::SoftClearOwner(const std::string& auth_for_owner_reset) {
+  if (!trunks_factory_) {
+    LOG(ERROR) << __func__ << ": trunks factory is uninitialized.";
+    return {};
+  }
   LOG(INFO) << "Start soft-clearing TPM 2.0";
 
-  // TODO(b/134989277): add implementation.
+  std::unique_ptr<trunks::AuthorizationDelegate> lockout_password_delegate(
+      trunks_factory_->GetPasswordAuthorization(auth_for_owner_reset));
+
+  std::string lockout_handle_name;
+  trunks::Serialize_TPM_HANDLE(trunks::TPM_RH_LOCKOUT, &lockout_handle_name);
+
+  trunks::TPM_RC result = trunks_factory_->GetTpm()->ClearSync(
+      trunks::TPM_RH_LOCKOUT,
+      lockout_handle_name,
+      lockout_password_delegate.get());
+
+  if (result) {
+    LOG(ERROR) << __func__ << ": failed to clear the TPM: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+
   return true;
 }
 

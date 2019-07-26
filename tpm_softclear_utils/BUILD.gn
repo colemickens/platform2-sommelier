@@ -8,6 +8,9 @@ group("all") {
   deps = [
     ":tpm_softclear",
   ]
+  if (use.test) {
+    deps += [ ":tpm_softclear_utils_testrunner" ]
+  }
 }
 
 executable("tpm_softclear") {
@@ -18,16 +21,14 @@ executable("tpm_softclear") {
   deps = [
     ":utility_library",
   ]
+  pkg_deps = [ "libbrillo-${libbase_ver}" ]
 }
 
 pkg_config("target_defaults") {
   if (use.tpm2) {
     defines = [ "USE_TPM2" ]
   }
-  pkg_deps = [
-    "libbrillo-${libbase_ver}",
-    "libchrome-${libbase_ver}",
-  ]
+  pkg_deps = [ "libchrome-${libbase_ver}" ]
 }
 
 static_library("utility_library") {
@@ -37,7 +38,38 @@ static_library("utility_library") {
   ]
   if (use.tpm2) {
     sources += [ "tpm2_impl.cc" ]
+    libs = [ "trunks" ]
+    pkg_deps = [
+      # system_api depends on protobuf. It must appear before protobuf here or the
+      # linker flags won't be in the right order.
+      "system_api",
+      "protobuf-lite",
+    ]
   } else {
     sources += [ "tpm_impl.cc" ]
+  }
+}
+
+if (use.test) {
+  pkg_config("tpm_softclear_utils_testrunner_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+
+  executable("tpm_softclear_utils_testrunner") {
+    configs += [
+      ":target_defaults",
+      ":tpm_softclear_utils_testrunner_config",
+      "//common-mk:test",
+    ]
+    if (use.tpm2) {
+      sources = [
+        "tpm2_test.cc",
+      ]
+      libs = [ "trunks_test" ]
+    }
+    deps = [
+      ":utility_library",
+      "//common-mk/testrunner",
+    ]
   }
 }
