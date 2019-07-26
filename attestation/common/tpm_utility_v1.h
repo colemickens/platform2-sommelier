@@ -84,7 +84,6 @@ class TpmUtilityV1 : public TpmUtilityCommon {
                  std::string* quoted_data,
                  std::string* quote) override;
   bool ReadPCR(uint32_t pcr_index, std::string* pcr_value) const override;
-  bool RemoveOwnerDependency() override;
   bool GetEndorsementPublicKeyModulus(KeyType key_type,
                                       std::string* ekm) override;
 

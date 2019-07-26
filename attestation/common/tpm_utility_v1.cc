@@ -1120,11 +1120,6 @@ bool TpmUtilityV1::GetRSAPublicKeyFromTpmPublicKey(
   return true;
 }
 
-bool TpmUtilityV1::RemoveOwnerDependency() {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
-}
-
 bool TpmUtilityV1::GetEndorsementPublicKeyModulus(KeyType key_type,
                                                   std::string* ekm) {
   if (key_type != KEY_TYPE_RSA) {
