@@ -67,6 +67,7 @@ static string ObjectID(const Service* s) { return s->GetRpcIdentifier(); }
 const char Service::kAutoConnBusy[] = "busy";
 const char Service::kAutoConnConnected[] = "connected";
 const char Service::kAutoConnConnecting[] = "connecting";
+const char Service::kAutoConnDisconnecting[] = "disconnecting";
 const char Service::kAutoConnExplicitDisconnect[] = "explicitly disconnected";
 const char Service::kAutoConnNotConnectable[] = "not connectable";
 const char Service::kAutoConnOffline[] = "offline";
@@ -372,7 +373,8 @@ void Service::CompleteCellularActivation(Error* error) {
 bool Service::IsActive(Error* /*error*/) {
   return state() != kStateUnknown &&
     state() != kStateIdle &&
-    state() != kStateFailure;
+    state() != kStateFailure &&
+    state() != kStateDisconnecting;
 }
 
 // static
@@ -399,6 +401,10 @@ bool Service::IsConnected() const {
 
 bool Service::IsConnecting() const {
   return IsConnectingState(state());
+}
+
+bool Service::IsDisconnecting() const {
+  return state() == kStateDisconnecting;
 }
 
 bool Service::IsPortalled() const {
@@ -985,6 +991,8 @@ const char* Service::ConnectStateToString(const ConnectState& state) {
       return "Failure";
     case kStateOnline:
       return "Online";
+    case kStateDisconnecting:
+      return "Disconnecting";
   }
   return "Invalid";
 }
@@ -1306,6 +1314,8 @@ string Service::GetStateString() const {
       return shill::kStatePortalSuspected;
     case kStateOnline:
       return shill::kStateOnline;
+    case kStateDisconnecting:
+      return shill::kStateDisconnect;
     case kStateUnknown:
     default:
       return "";
@@ -1330,6 +1340,11 @@ bool Service::IsAutoConnectable(const char** reason) const {
 
   if (IsConnecting()) {
     *reason = kAutoConnConnecting;
+    return false;
+  }
+
+  if (IsDisconnecting()) {
+    *reason = kAutoConnDisconnecting;
     return false;
   }
 

@@ -116,26 +116,28 @@ class Service : public base::RefCounted<Service> {
     kFailureMax
   };
   enum ConnectState {
-    // Unknown state
+    // Unknown state.
     kStateUnknown,
-    // Service is not active
+    // Service is not active.
     kStateIdle,
-    // Associating with service
+    // Associating with service.
     kStateAssociating,
-    // IP provisioning
+    // IP provisioning.
     kStateConfiguring,
-    // Successfully associated and IP provisioned
+    // Successfully associated and IP provisioned.
     kStateConnected,
-    // Connected but portal detection probes timed out
+    // Connected but portal detection probes timed out.
     kStateNoConnectivity,
-    // HTTP probe returned a 302 with a redirect URL
+    // HTTP probe returned a 302 with a redirect URL.
     kStateRedirectFound,
-    // HTTP probe returned without a 204 or redirect, or HTTPS probe failed
+    // HTTP probe returned without a 204 or redirect, or HTTPS probe failed.
     kStatePortalSuspected,
-    // Failed to connect
+    // Failed to connect.
     kStateFailure,
-    // Connected to the Internet
-    kStateOnline
+    // Connected to the Internet.
+    kStateOnline,
+    // In the process of disconnecting.
+    kStateDisconnecting
   };
   enum CryptoAlgorithm {
     kCryptoNone,
@@ -214,6 +216,7 @@ class Service : public base::RefCounted<Service> {
 
   virtual bool IsConnected() const;
   virtual bool IsConnecting() const;
+  bool IsDisconnecting() const;
   virtual bool IsPortalled() const;
   virtual bool IsFailed() const;
   virtual bool IsInFailState() const;
@@ -723,6 +726,7 @@ class Service : public base::RefCounted<Service> {
 
   static const char kAutoConnConnected[];
   static const char kAutoConnConnecting[];
+  static const char kAutoConnDisconnecting[];
   static const char kAutoConnExplicitDisconnect[];
   static const char kAutoConnNotConnectable[];
   static const char kAutoConnOffline[];
