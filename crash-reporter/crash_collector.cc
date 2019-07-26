@@ -79,6 +79,10 @@ constexpr mode_t kCrashReporterStateDirectoryMode = 0700;
 constexpr gid_t kRootGroup = 0;
 constexpr char kCrashGroupName[] = "crash-access";
 
+// Directory mode of /run/metrics/external/crash-reporter. Anyone in "metrics"
+// group can read/write, and not readable by any other user.
+constexpr mode_t kSystemRunMetricsFlagMode = 0770;
+
 // Buffer size for reading a log into memory.
 constexpr size_t kMaxLogSize = 1024 * 1024;
 
@@ -1244,6 +1248,32 @@ bool CrashCollector::InitializeSystemCrashDirectories(bool early) {
             kCrashReporterStateDirectoryMode, kRootUid, kRootGroup, nullptr))
       return false;
   }
+
+  return true;
+}
+
+bool CrashCollector::InitializeSystemMetricsDirectories() {
+  FilePath metrics_flag_directory(paths::kSystemRunMetricsFlagDirectory);
+  FilePath metrics_external_dir = metrics_flag_directory.DirName();
+  FilePath metrics_dir = metrics_external_dir.DirName();
+
+  // Ensure /run/metrics directory exists.
+  if (!CreateDirectoryWithSettings(metrics_dir, kSystemRunMetricsFlagMode,
+                                   kRootUid, kRootGroup, nullptr))
+    return false;
+
+  // Ensure metrics/external exists.
+  if (!CreateDirectoryWithSettings(metrics_external_dir,
+                                   kSystemRunMetricsFlagMode, kRootUid,
+                                   kRootGroup, nullptr))
+    return false;
+
+  // Create final crash-reporter flag directory.
+  if (!CreateDirectoryWithSettings(metrics_flag_directory,
+                                   kSystemRunMetricsFlagMode, kRootUid,
+                                   kRootGroup, nullptr))
+    return false;
+
   return true;
 }
 

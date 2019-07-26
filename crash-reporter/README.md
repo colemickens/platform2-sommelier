@@ -344,10 +344,12 @@ runtime details here.
 
 These are used to communicate with [metrics_daemon].
 
-*   `/run/kernel-crash-detected`: Used by [crash_reporter] to signal the
-    [metrics_daemon] that a kernel crash occurred.
-*   `/run/unclean-shutdown-detected`: Used by [crash_reporter] to signal the
-    [metrics_daemon] that an unclean shutdown occurred.
+*   `/run/metrics/external/crash-reporter/kernel-crash-detected`: Used by
+    [crash_reporter] to signal the [metrics_daemon] that a kernel
+    crash occurred.
+*   `/run/metrics/external/crash-reporter/unclean-shutdown-detected`: Used by
+    [crash_reporter] to signal the [metrics_daemon] that an unclean
+    shutdown occurred.
 
 This is used to communicate with [powerd].
 

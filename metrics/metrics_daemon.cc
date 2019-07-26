@@ -73,8 +73,10 @@ const uint32_t kUpdateStatsIntervalMs = 300000;
 // Maximum amount of system memory that will be reported without overflow.
 const int kMaximumMemorySizeInKB = 32 * 1000 * 1000;
 
-const char kKernelCrashDetectedFile[] = "/run/kernel-crash-detected";
-const char kUncleanShutdownDetectedFile[] = "/run/unclean-shutdown-detected";
+const char kKernelCrashDetectedFile[] =
+    "/run/metrics/external/crash-reporter/kernel-crash-detected";
+const char kUncleanShutdownDetectedFile[] =
+    "/run/metrics/external/crash-reporter/unclean-shutdown-detected";
 
 constexpr base::TimeDelta kVmlogInterval = base::TimeDelta::FromSeconds(2);
 

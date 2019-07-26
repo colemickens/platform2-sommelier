@@ -34,8 +34,10 @@ using base::FilePath;
 
 namespace {
 
-const char kKernelCrashDetected[] = "/run/kernel-crash-detected";
-const char kUncleanShutdownDetected[] = "/run/unclean-shutdown-detected";
+const char kKernelCrashDetected[] =
+    "/run/metrics/external/crash-reporter/kernel-crash-detected";
+const char kUncleanShutdownDetected[] =
+    "/run/metrics/external/crash-reporter/unclean-shutdown-detected";
 const char kBootCollectorDone[] = "/run/crash_reporter/boot-collector-done";
 
 MetricsLibrary s_metrics_lib;
@@ -54,6 +56,11 @@ int Initialize(UserCollector* user_collector,
   // Set up all the common crash state directories first.  If we can't guarantee
   // these basic paths, just give up & don't turn on anything else.
   if (!CrashCollector::InitializeSystemCrashDirectories(early))
+    return 1;
+
+  // Set up metrics flag directory. Returns with non-zero if we cannot create
+  // it.
+  if (!CrashCollector::InitializeSystemMetricsDirectories())
     return 1;
 
   int ret = 0;

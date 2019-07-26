@@ -117,6 +117,9 @@ class CrashCollector {
   // Initialize the system crash paths.
   static bool InitializeSystemCrashDirectories(bool early);
 
+  // Initialize metrics path. Returns true if flag directory is created.
+  static bool InitializeSystemMetricsDirectories();
+
  protected:
   friend class CrashCollectorTest;
   FRIEND_TEST(ArcContextTest, GetAndroidVersion);

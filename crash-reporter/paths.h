@@ -17,6 +17,10 @@ constexpr char kSystemRunStateDirectory[] = "/run/crash_reporter";
 // available.
 constexpr char kSystemRunCrashDirectory[] = "/run/crash_reporter/crash";
 
+// Directory where crash_reporter stores flag for metrics_daemon.
+constexpr char kSystemRunMetricsFlagDirectory[] =
+    "/run/metrics/external/crash-reporter";
+
 // Directory where crash_reporter stores files (ex. saved version info).
 constexpr char kCrashReporterStateDirectory[] = "/var/lib/crash_reporter";
 
