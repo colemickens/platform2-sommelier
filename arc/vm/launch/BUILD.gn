@@ -1,0 +1,33 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":arcvm-launch",
+  ]
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    # "dbus-1",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf-lite",
+    "vboot_host",
+  ]
+}
+
+executable("arcvm-launch") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "arcvm_launch.cc",
+  ]
+}
