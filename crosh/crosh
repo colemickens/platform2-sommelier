@@ -410,6 +410,11 @@ cmd_vmc() (
     fi
   fi
 
+  if ! is_chrome_feature_enabled "IsVmManagementCliAllowed"; then
+    echo "This command is disabled by your system administrator."
+    return 1
+  fi
+
   vmc "$@"
 )
 help_vmc() (
@@ -427,6 +432,12 @@ cmd_vsh() (
     echo "This command is not available."
     return 1
   fi
+
+  if ! is_chrome_feature_enabled "IsVmManagementCliAllowed"; then
+    echo "This command is disabled by your system administrator."
+    return 1
+  fi
+
   if [ $# -ne 1 -a $# -ne 2 ]; then
     help "Missing vm_name"
     return 1
