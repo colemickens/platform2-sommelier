@@ -32,7 +32,7 @@ bool TpmNewImpl::InitializeTpmManagerUtility() {
 
 bool TpmNewImpl::CacheTpmManagerStatus() {
   if (!InitializeTpmManagerUtility()) {
-    LOG(ERROR) << __func__ << ": Failed to initialize |TpmMangerUtility|.";
+    LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
     return false;
   }
   return tpm_manager_utility_->GetTpmStatus(&is_enabled_, &is_owned_,
@@ -41,7 +41,7 @@ bool TpmNewImpl::CacheTpmManagerStatus() {
 
 bool TpmNewImpl::UpdateLocalDataFromTpmManager() {
   if (!InitializeTpmManagerUtility()) {
-    LOG(ERROR) << __func__ << ": Failed to initialize |TpmMangerUtility|.";
+    LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
     return false;
   }
 
@@ -95,7 +95,7 @@ bool TpmNewImpl::IsOwned() {
 
 bool TpmNewImpl::TakeOwnership(int, const brillo::SecureBlob&) {
   if (!InitializeTpmManagerUtility()) {
-    LOG(ERROR) << __func__ << ": Failed to initialize |TpmMangerUtility|.";
+    LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
     return false;
   }
   if (IsOwned()) {
@@ -146,7 +146,7 @@ bool TpmNewImpl::GetDictionaryAttackInfo(int* counter,
                                          bool* lockout,
                                          int* seconds_remaining) {
   if (!InitializeTpmManagerUtility()) {
-    LOG(ERROR) << __func__ << ": failed to initialize |TpmMangerUtility|.";
+    LOG(ERROR) << __func__ << ": failed to initialize |TpmManagerUtility|.";
     return false;
   }
   return tpm_manager_utility_->GetDictionaryAttackInfo(
@@ -156,7 +156,7 @@ bool TpmNewImpl::GetDictionaryAttackInfo(int* counter,
 bool TpmNewImpl::ResetDictionaryAttackMitigation(const brillo::Blob&,
                                                  const brillo::Blob&) {
   if (!InitializeTpmManagerUtility()) {
-    LOG(ERROR) << __func__ << ": failed to initialize |TpmMangerUtility|.";
+    LOG(ERROR) << __func__ << ": failed to initialize |TpmManagerUtility|.";
     return false;
   }
   return tpm_manager_utility_->ResetDictionaryAttackLock();
