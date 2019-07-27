@@ -25,6 +25,7 @@ using base::ScopedTempDir;
 using std::string;
 using std::unique_ptr;
 using testing::_;
+using testing::DoAll;
 using testing::Invoke;
 using testing::Return;
 
