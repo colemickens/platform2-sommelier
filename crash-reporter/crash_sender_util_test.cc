@@ -38,6 +38,7 @@
 #include "crash-reporter/test_util.h"
 
 using ::testing::_;
+using ::testing::DoAll;
 using ::testing::ExitedWithCode;
 using ::testing::HasSubstr;
 using ::testing::Invoke;
