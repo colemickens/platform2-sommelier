@@ -278,8 +278,6 @@ class Cellular : public Device,
   const Stringmaps& apn_list() const { return apn_list_; }
   const std::string& sim_identifier() const { return sim_identifier_; }
 
-  uint16_t prl_version() const { return prl_version_; }
-
   // setters
   void set_home_provider(const Stringmap& home_provider);
   void set_carrier(const std::string& carrier);
@@ -306,8 +304,6 @@ class Cellular : public Device,
   void set_sim_present(bool sim_present);
   void set_apn_list(const Stringmaps& apn_list);
   void set_sim_identifier(const std::string& sim_identifier);
-
-  void set_prl_version(uint16_t prl_version);
 
   // Takes ownership.
   void set_home_provider_info(MobileOperatorInfo* home_provider_info);
@@ -521,9 +517,6 @@ class Cellular : public Device,
   bool sim_present_;
   Stringmaps apn_list_;
   std::string sim_identifier_;
-
-  // CDMA only properties.
-  uint16_t prl_version_;
 
   // End of DBus properties.
   // ///////////////////////////////////////////////////////////////////////////

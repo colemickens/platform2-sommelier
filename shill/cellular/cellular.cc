@@ -93,7 +93,6 @@ Cellular::Cellular(ModemInfo* modem_info,
       provider_requires_roaming_(false),
       scan_interval_(0),
       sim_present_(false),
-      prl_version_(0),
       modem_info_(modem_info),
       capability_(CellularCapability::Create(type, this, modem_info)),
       ppp_device_factory_(PPPDeviceFactory::GetInstance()),
@@ -1239,8 +1238,6 @@ void Cellular::RegisterProperties() {
   store->RegisterConstStringmaps(kCellularApnListProperty, &apn_list_);
   store->RegisterConstString(kIccidProperty, &sim_identifier_);
 
-  store->RegisterConstUint16(kPRLVersionProperty, &prl_version_);
-
   // TODO(pprabhu): Decide whether these need their own custom setters.
   HelpRegisterConstDerivedString(kTechnologyFamilyProperty,
                                  &Cellular::GetTechnologyFamily);
@@ -1516,14 +1513,6 @@ void Cellular::set_sim_identifier(const string& sim_identifier) {
 
   sim_identifier_ = sim_identifier;
   adaptor()->EmitStringChanged(kIccidProperty, sim_identifier_);
-}
-
-void Cellular::set_prl_version(uint16_t prl_version) {
-  if (prl_version_ == prl_version)
-    return;
-
-  prl_version_ = prl_version;
-  adaptor()->EmitUint16Changed(kPRLVersionProperty, prl_version_);
 }
 
 void Cellular::set_home_provider_info(MobileOperatorInfo* home_provider_info) {

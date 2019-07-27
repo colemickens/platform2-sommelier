@@ -331,13 +331,6 @@ Properties	string Address [readonly]
 			unspecified, and are useful primarily as a
 			diagnostic aid.
 
-		int16 Cellular.PRLVersion [readonly]
-
-			(Cellular only) The revision of the Preferred
-			Roaming List that is loaded in the modem.
-			Cellular.PRLVersion is primarily useful as a
-			diagnostic aid.
-
 		boolean Cellular.ProviderRequiresRoaming [readonly]
 
 			(Celluar only) Indicates that the cellular

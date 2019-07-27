@@ -176,7 +176,6 @@ Device::Device(Manager* manager,
   // kFirmwareRevisionProperty: Registered in Cellular
   // kHardwareRevisionProperty: Registered in Cellular
   // kDeviceIdProperty: Registered in Cellular
-  // kPRLVersionProperty: Registered in Cellular
   // kSIMLockStatusProperty: Registered in Cellular
   // kFoundNetworksProperty: Registered in Cellular
   // kDBusObjectProperty: Register in Cellular
