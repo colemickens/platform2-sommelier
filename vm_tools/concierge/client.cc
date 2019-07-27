@@ -17,6 +17,7 @@
 #include <utility>
 
 #include <base/at_exit.h>
+#include <base/base64url.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -130,7 +131,7 @@ int LogVmStatus(const string& vm_name,
   string address;
   IPv4AddressToString(vm_info.ipv4_address(), &address);
 
-  LOG(INFO) << "Started Termina VM with";
+  LOG(INFO) << "Started " << vm_name << " VM with";
   LOG(INFO) << "    ip address: " << address;
   LOG(INFO) << "    vsock cid:  " << vm_info.cid();
   LOG(INFO) << "    process id: " << vm_info.pid();
@@ -1003,19 +1004,36 @@ int StartArcVm(dbus::ObjectProxy* proxy,
                string rootfs,
                string extra_disks,
                const std::vector<string>& params) {
-  if (name.empty()) {
-    LOG(ERROR) << "--name is required";
+  constexpr char arcvm_prefix[] = "/opt/google/vms/android";
+
+  if (cryptohome_id.empty()) {
+    LOG(ERROR) << "--cryptohome_id is required";
     return -1;
+  }
+
+  if (name.empty()) {
+    name = "arcvm";
+    LOG(INFO) << "using default name " << name;
   }
 
   if (kernel.empty()) {
-    LOG(ERROR) << "--kernel is required";
-    return -1;
+    kernel = base::StringPrintf("%s/vmlinux", arcvm_prefix);
+    LOG(INFO) << "using default kernel " << kernel;
   }
 
   if (rootfs.empty()) {
-    LOG(ERROR) << "--rootfs is required";
-    return -1;
+    rootfs = base::StringPrintf("%s/system.raw.img", arcvm_prefix);
+    LOG(INFO) << "using default rootfs " << rootfs;
+  }
+
+  if (extra_disks.empty()) {
+    std::string disk_name;
+    base::Base64UrlEncode(name, base::Base64UrlEncodePolicy::INCLUDE_PADDING,
+                          &disk_name);
+    extra_disks = base::StringPrintf(
+        "/home/root/%s/crosvm/%s.img,1:%s/vendor.raw.img,0",
+        cryptohome_id.c_str(), disk_name.c_str(), arcvm_prefix);
+    LOG(INFO) << "using default extra_disks " << extra_disks;
   }
 
   if (!base::PathExists(base::FilePath(kernel))) {
