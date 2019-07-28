@@ -93,9 +93,6 @@ class SystemUtilsImpl : public SystemUtils {
   // Provides the real implementation of PutInsideBaseDirForTesting.
   base::FilePath PutInsideBaseDir(const base::FilePath& path);
 
-  // If this file exists on the next boot, the stateful partition will be wiped.
-  static const char kResetFile[];
-
   DevModeState dev_mode_state_ = DevModeState::DEV_MODE_UNKNOWN;
   VmState vm_state_ = VmState::UNKNOWN;
   base::ScopedTempDir temp_dir_;

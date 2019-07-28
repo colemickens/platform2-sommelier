@@ -67,9 +67,6 @@ class SessionManagerService
   // Path to flag file indicating that a user has logged in since last boot.
   static const char kLoggedInFlag[];
 
-  // Path to magic file that will trigger device wiping on next boot.
-  static const char kResetFile[];
-
   // If you want to call any of these setters, you should do so before calling
   // any other methods on this class.
   class TestApi {
