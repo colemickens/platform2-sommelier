@@ -12,7 +12,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/backlight_controller_stub.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper_stub.h"
-#include "power_manager/powerd/system/ec_helper_stub.h"
+#include "power_manager/powerd/system/cros_ec_helper_stub.h"
 #include "power_manager/powerd/system/udev_stub.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
 
@@ -100,7 +100,7 @@ class InputDeviceControllerTest : public ::testing::Test {
   policy::BacklightControllerStub backlight_controller_;
   system::UdevStub udev_;
   system::AcpiWakeupHelperStub acpi_wakeup_helper_;
-  system::EcHelperStub ec_helper_;
+  system::CrosEcHelperStub ec_helper_;
   FakePrefs prefs_;
 
   LidState initial_lid_state_ = LidState::OPEN;

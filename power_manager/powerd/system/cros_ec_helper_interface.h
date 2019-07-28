@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_SYSTEM_EC_HELPER_INTERFACE_H_
-#define POWER_MANAGER_POWERD_SYSTEM_EC_HELPER_INTERFACE_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_CROS_EC_HELPER_INTERFACE_H_
+#define POWER_MANAGER_POWERD_SYSTEM_CROS_EC_HELPER_INTERFACE_H_
 
 #include <base/macros.h>
 
@@ -11,10 +11,10 @@ namespace power_manager {
 namespace system {
 
 // Helper class to manipulate EC settings.
-class EcHelperInterface {
+class CrosEcHelperInterface {
  public:
-  EcHelperInterface() {}
-  virtual ~EcHelperInterface() {}
+  CrosEcHelperInterface() {}
+  virtual ~CrosEcHelperInterface() {}
 
   // Checks whether EC supports setting wake angle.
   virtual bool IsWakeAngleSupported() = 0;
@@ -24,10 +24,10 @@ class EcHelperInterface {
   virtual bool AllowWakeupAsTablet(bool enabled) = 0;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(EcHelperInterface);
+  DISALLOW_COPY_AND_ASSIGN(CrosEcHelperInterface);
 };
 
 }  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_SYSTEM_EC_HELPER_INTERFACE_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_CROS_EC_HELPER_INTERFACE_H_

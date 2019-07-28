@@ -11,7 +11,7 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper.h"
-#include "power_manager/powerd/system/ec_helper.h"
+#include "power_manager/powerd/system/cros_ec_helper.h"
 #include "power_manager/powerd/system/tagged_device.h"
 #include "power_manager/powerd/system/udev.h"
 
@@ -126,7 +126,7 @@ void InputDeviceController::Init(
     BacklightController* backlight_controller,
     system::UdevInterface* udev,
     system::AcpiWakeupHelperInterface* acpi_wakeup_helper,
-    system::EcHelperInterface* ec_helper,
+    system::CrosEcHelperInterface* ec_helper,
     LidState lid_state,
     TabletMode tablet_mode,
     DisplayMode display_mode,

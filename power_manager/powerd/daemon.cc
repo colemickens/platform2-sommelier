@@ -46,11 +46,11 @@
 #include "power_manager/powerd/system/audio_client_interface.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 #include "power_manager/powerd/system/charge_controller_helper_interface.h"
+#include "power_manager/powerd/system/cros_ec_helper_interface.h"
 #include "power_manager/powerd/system/dark_resume_interface.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
-#include "power_manager/powerd/system/ec_helper_interface.h"
 #include "power_manager/powerd/system/event_device_interface.h"
 #include "power_manager/powerd/system/input_watcher_interface.h"
 #include "power_manager/powerd/system/lockfile_checker.h"
@@ -392,7 +392,7 @@ void Daemon::Init() {
                              dbus_wrapper_.get(), prefs_.get());
 
   acpi_wakeup_helper_ = delegate_->CreateAcpiWakeupHelper();
-  ec_helper_ = delegate_->CreateEcHelper();
+  ec_helper_ = delegate_->CreateCrosEcHelper();
   input_device_controller_->Init(display_backlight_controller_.get(),
                                  udev_.get(), acpi_wakeup_helper_.get(),
                                  ec_helper_.get(), lid_state, tablet_mode,

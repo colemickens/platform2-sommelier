@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/system/ec_helper.h"
+#include "power_manager/powerd/system/cros_ec_helper.h"
 
 #include <string>
 
@@ -17,32 +17,35 @@ namespace system {
 
 namespace {
 
-const base::FilePath k318WakeAngleSysPath(
-    "/sys/class/chromeos/cros_ec/kb_wake_angle");
-const base::FilePath k314IioLinkPath("/dev/cros-ec-accel/0");
-const base::FilePath k314IioSysfsPath("/sys/bus/iio/devices");
-const base::FilePath k314AccelNodeName("in_angl_offset");
+constexpr char k318WakeAngleSysPath[] =
+    "/sys/class/chromeos/cros_ec/kb_wake_angle";
+constexpr char k314IioLinkPath[] = "/dev/cros-ec-accel/0";
+constexpr char k314IioSysfsPath[] = "/sys/bus/iio/devices";
+constexpr char k314AccelNodeName[] = "in_angl_offset";
 
 }  // namespace
 
-EcHelper::EcHelper() : wake_angle_supported_(false), cached_wake_angle_(-1) {
-  if (base::PathExists(k318WakeAngleSysPath)) {  // Kernel 3.18 and later
-    wake_angle_sysfs_node_ = k318WakeAngleSysPath;
+CrosEcHelper::CrosEcHelper() {
+  if (base::PathExists(
+          base::FilePath(k318WakeAngleSysPath))) {  // Kernel 3.18 and later
+    wake_angle_sysfs_node_ = base::FilePath(k318WakeAngleSysPath);
     wake_angle_supported_ = true;
     VLOG(1) << "Accessing EC wake angle through 3.18+ sysfs node: "
             << wake_angle_sysfs_node_.value();
     return;
   }
 
-  if (base::IsLink(k314IioLinkPath)) {  // Kernel 3.14
+  const base::FilePath iio_link_path_314 = base::FilePath(k314IioLinkPath);
+  if (base::IsLink(iio_link_path_314)) {  // Kernel 3.14
     base::FilePath iio_dev_path;
-    if (!base::ReadSymbolicLink(k314IioLinkPath, &iio_dev_path)) {
-      LOG(ERROR) << "Cannot read link target of " << k314IioLinkPath.value();
+    if (!base::ReadSymbolicLink(iio_link_path_314, &iio_dev_path)) {
+      LOG(ERROR) << "Cannot read link target of " << k314IioLinkPath;
       return;
     }
     iio_dev_path = iio_dev_path.BaseName();
-    wake_angle_sysfs_node_ =
-        k314IioSysfsPath.Append(iio_dev_path).Append(k314AccelNodeName);
+    wake_angle_sysfs_node_ = base::FilePath(k314IioSysfsPath)
+                                 .Append(iio_dev_path)
+                                 .Append(k314AccelNodeName);
     if (base::PathExists(wake_angle_sysfs_node_)) {
       wake_angle_supported_ = true;
       VLOG(1) << "Accessing EC wake angle through 3.14 sysfs node: "
@@ -55,13 +58,13 @@ EcHelper::EcHelper() : wake_angle_supported_(false), cached_wake_angle_(-1) {
   LOG(INFO) << "This device does not support EC wake angle control";
 }
 
-EcHelper::~EcHelper() {}
+CrosEcHelper::~CrosEcHelper() {}
 
-bool EcHelper::IsWakeAngleSupported() {
+bool CrosEcHelper::IsWakeAngleSupported() {
   return wake_angle_supported_;
 }
 
-bool EcHelper::AllowWakeupAsTablet(bool enabled) {
+bool CrosEcHelper::AllowWakeupAsTablet(bool enabled) {
   int new_wake_angle = enabled ? 360 : 180;
   std::string str = base::IntToString(new_wake_angle);
   if (new_wake_angle == cached_wake_angle_) {

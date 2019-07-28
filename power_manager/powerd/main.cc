@@ -38,11 +38,11 @@
 #include "power_manager/powerd/system/acpi_wakeup_helper.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/audio_client.h"
+#include "power_manager/powerd/system/cros_ec_helper.h"
 #include "power_manager/powerd/system/dark_resume.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
-#include "power_manager/powerd/system/ec_helper.h"
 #include "power_manager/powerd/system/event_device.h"
 #include "power_manager/powerd/system/input_watcher.h"
 #include "power_manager/powerd/system/internal_backlight.h"
@@ -180,8 +180,8 @@ class DaemonDelegateImpl : public DaemonDelegate {
     return std::make_unique<system::AcpiWakeupHelper>();
   }
 
-  std::unique_ptr<system::EcHelperInterface> CreateEcHelper() override {
-    return std::make_unique<system::EcHelper>();
+  std::unique_ptr<system::CrosEcHelperInterface> CreateCrosEcHelper() override {
+    return std::make_unique<system::CrosEcHelper>();
   }
 
   std::unique_ptr<system::PeripheralBatteryWatcher>

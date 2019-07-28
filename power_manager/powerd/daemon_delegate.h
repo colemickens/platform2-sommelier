@@ -110,7 +110,8 @@ class DaemonDelegate {
   virtual std::unique_ptr<system::AcpiWakeupHelperInterface>
   CreateAcpiWakeupHelper() = 0;
 
-  virtual std::unique_ptr<system::EcHelperInterface> CreateEcHelper() = 0;
+  virtual std::unique_ptr<system::CrosEcHelperInterface>
+  CreateCrosEcHelper() = 0;
 
   // Test implementations may return null.
   virtual std::unique_ptr<system::PeripheralBatteryWatcher>
