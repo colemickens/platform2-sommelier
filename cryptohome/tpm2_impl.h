@@ -228,6 +228,8 @@ class Tpm2Impl : public Tpm {
 
   bool DoesUseTpmManager() override;
 
+  bool CanResetDictionaryAttackWithCurrentPCR0() override;
+
  private:
   // This method given a Tpm generated public area, returns the DER encoded
   // public key.

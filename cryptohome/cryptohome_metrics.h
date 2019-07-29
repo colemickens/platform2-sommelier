@@ -89,6 +89,7 @@ enum DictionaryAttackResetStatus {
   kDelegateNotAllowed,
   kDelegateNotAvailable,
   kCounterQueryFailed,
+  kInvalidPcr0State,
   kDictionaryAttackResetStatusNumBuckets
 };
 

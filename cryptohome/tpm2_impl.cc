@@ -1698,4 +1698,8 @@ bool Tpm2Impl::DoesUseTpmManager() {
   return true;
 }
 
+bool Tpm2Impl::CanResetDictionaryAttackWithCurrentPCR0() {
+  return true;
+}
+
 }  // namespace cryptohome

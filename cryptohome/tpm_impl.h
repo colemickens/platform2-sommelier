@@ -176,6 +176,7 @@ class TpmImpl : public Tpm {
                    bool* has_reset_lock_permissions) override;
   void HandleOwnershipTakenSignal() override;
   bool DoesUseTpmManager() override;
+  bool CanResetDictionaryAttackWithCurrentPCR0() override;
 
   bool CreatePolicyWithRandomPassword(TSS_HCONTEXT context_handle,
                                       TSS_FLAG policy_type,

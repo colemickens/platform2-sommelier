@@ -207,6 +207,7 @@ class StubTpm : public Tpm {
     return nullptr;
   }
   void HandleOwnershipTakenSignal() override {}
+  bool CanResetDictionaryAttackWithCurrentPCR0() override { return true; }
 };
 
 }  // namespace cryptohome

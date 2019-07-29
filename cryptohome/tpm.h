@@ -779,6 +779,10 @@ class Tpm {
   // related functions could also use |tpm_managerd|.
   virtual bool DoesUseTpmManager() = 0;
 
+  // Returns whether the device can attempt to reset the dictionary attack
+  // That happens if PCR0 was not extended multiple times.
+  virtual bool CanResetDictionaryAttackWithCurrentPCR0() = 0;
+
  private:
   static Tpm* singleton_;
   static base::Lock singleton_lock_;
