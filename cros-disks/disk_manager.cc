@@ -30,6 +30,7 @@
 #include "cros-disks/mount_options.h"
 #include "cros-disks/ntfs_mounter.h"
 #include "cros-disks/platform.h"
+#include "cros-disks/quote.h"
 #include "cros-disks/system_mounter.h"
 
 namespace cros_disks {
@@ -188,7 +189,7 @@ std::unique_ptr<MounterCompat> DiskManager::CreateMounter(
                                          filesystem.mount_type, mount_options,
                                          platform(), process_reaper());
 
-  LOG(FATAL) << "Invalid mounter type '" << filesystem.mounter_type << "'";
+  LOG(FATAL) << "Invalid mounter type " << quote(filesystem.mounter_type);
   return nullptr;
 }
 
@@ -213,18 +214,18 @@ MountErrorType DiskManager::DoMount(const std::string& source_path,
 
   Disk disk;
   if (!disk_monitor_->GetDiskByDevicePath(base::FilePath(source_path), &disk)) {
-    LOG(ERROR) << "'" << source_path << "' is not a valid device.";
+    LOG(ERROR) << quote(source_path) << " is not a valid device";
     return MOUNT_ERROR_INVALID_DEVICE_PATH;
   }
 
   if (disk.is_on_boot_device) {
-    LOG(ERROR) << "'" << source_path
-               << "' is on boot device and not allowed to mount.";
+    LOG(ERROR) << quote(source_path)
+               << " is on boot device and not allowed to mount";
     return MOUNT_ERROR_INVALID_DEVICE_PATH;
   }
 
   if (disk.device_file.empty()) {
-    LOG(ERROR) << "'" << source_path << "' does not have a device file";
+    LOG(ERROR) << quote(source_path) << " does not have a device file";
     return MOUNT_ERROR_INVALID_DEVICE_PATH;
   }
 
@@ -233,15 +234,15 @@ MountErrorType DiskManager::DoMount(const std::string& source_path,
   metrics()->RecordDeviceMediaType(disk.media_type);
   metrics()->RecordFilesystemType(device_filesystem_type);
   if (device_filesystem_type.empty()) {
-    LOG(ERROR) << "Failed to determine the file system type of device '"
-               << source_path << "'";
+    LOG(ERROR) << "Cannot determine the file system type of device "
+               << quote(source_path);
     return MOUNT_ERROR_UNKNOWN_FILESYSTEM;
   }
 
   const Filesystem* filesystem = GetFilesystem(device_filesystem_type);
   if (filesystem == nullptr) {
-    LOG(ERROR) << "File system type '" << device_filesystem_type
-               << "' on device '" << source_path << "' is not supported";
+    LOG(ERROR) << "File system type " << quote(device_filesystem_type)
+               << " on device " << quote(source_path) << " is not supported";
     return MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
   }
 
@@ -253,7 +254,7 @@ MountErrorType DiskManager::DoMount(const std::string& source_path,
   if (error_type != MOUNT_ERROR_NONE) {
     // Try to mount the filesystem read-only if mounting it read-write failed.
     if (!mounter->mount_options().IsReadOnlyOptionSet()) {
-      LOG(INFO) << "Trying to mount '" << source_path << "' read-only";
+      LOG(INFO) << "Trying to mount " << quote(source_path) << " read-only";
       std::vector<std::string> ro_options = options;
       ro_options.push_back("ro");
       mounter = CreateMounter(disk, *filesystem, mount_path, ro_options);
@@ -298,13 +299,13 @@ MountErrorType DiskManager::DoUnmount(const std::string& path,
   // unmount before giving up and reporting an error.
   bool unmount_failed = (umount2(path.c_str(), unmount_flags) != 0);
   if (unmount_failed && errno == EBUSY) {
-    LOG(ERROR) << "Failed to unmount '" << path
-               << "' as it is busy; retry with lazy unmount";
+    LOG(ERROR) << "Cannot unmount " << quote(path)
+               << ": It is busy; retry with lazy unmount";
     unmount_flags |= MNT_DETACH;
     unmount_failed = (umount2(path.c_str(), unmount_flags) != 0);
   }
   if (unmount_failed) {
-    PLOG(ERROR) << "Failed to unmount '" << path << "'";
+    PLOG(ERROR) << "Cannot unmount " << quote(path);
     // TODO(benchan): Extract error from low-level unmount operation.
     return MOUNT_ERROR_UNKNOWN;
   }

@@ -6,6 +6,8 @@
 
 #include <chromeos/dbus/service_constants.h>
 
+#include "cros-disks/quote.h"
+
 namespace cros_disks {
 namespace {
 
@@ -42,8 +44,8 @@ Daemon::Daemon(bool has_session_manager)
                     &metrics_,
                     &process_reaper_) {
   CHECK(platform_.SetMountUser(kNonPrivilegedMountUser))
-      << "'" << kNonPrivilegedMountUser
-      << "' is not available for non-privileged mount operations.";
+      << quote(kNonPrivilegedMountUser)
+      << " is not available for non-privileged mount operations";
   CHECK(archive_manager_.Initialize())
       << "Failed to initialize the archive manager";
   CHECK(disk_manager_.Initialize()) << "Failed to initialize the disk manager";

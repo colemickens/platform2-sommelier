@@ -8,6 +8,7 @@
 #include <base/strings/string_split.h>
 
 #include "cros-disks/file_reader.h"
+#include "cros-disks/quote.h"
 
 namespace cros_disks {
 namespace {
@@ -78,7 +79,7 @@ bool MountInfo::RetrieveFromFile(const std::string& path) {
 
   FileReader reader;
   if (!reader.Open(base::FilePath(path))) {
-    LOG(ERROR) << "Failed to retrieve mount info from '" << path << "'";
+    LOG(ERROR) << "Cannot retrieve mount info from " << quote(path);
     return false;
   }
 

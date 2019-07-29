@@ -20,6 +20,8 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
 
+#include "cros-disks/quote.h"
+
 namespace cros_disks {
 
 Platform::Platform()
@@ -32,7 +34,7 @@ bool Platform::GetRealPath(const std::string& path,
   std::unique_ptr<char, base::FreeDeleter> result(
       realpath(path.c_str(), nullptr));
   if (!result) {
-    PLOG(ERROR) << "Failed to get real path of '" << path << "'";
+    PLOG(ERROR) << "Cannot get real path of " << quote(path);
     return false;
   }
 
@@ -54,10 +56,10 @@ bool Platform::IsDirectoryEmpty(const std::string& dir) const {
 
 bool Platform::CreateDirectory(const std::string& path) const {
   if (!base::CreateDirectory(base::FilePath(path))) {
-    LOG(ERROR) << "Failed to create directory '" << path << "'";
+    LOG(ERROR) << "Cannot create directory " << quote(path);
     return false;
   }
-  LOG(INFO) << "Created directory '" << path << "'";
+  LOG(INFO) << "Created directory " << quote(path);
   return true;
 }
 
@@ -69,7 +71,7 @@ bool Platform::CreateOrReuseEmptyDirectory(const std::string& path) const {
   // is not empty, is already mounted or is used by some process.
   rmdir(path.c_str());
   if (mkdir(path.c_str(), S_IRWXU) != 0) {
-    PLOG(ERROR) << "Failed to create directory '" << path << "'";
+    PLOG(ERROR) << "Cannot create directory " << quote(path);
     return false;
   }
   return true;
@@ -141,7 +143,7 @@ bool Platform::GetOwnership(const std::string& path,
                             gid_t* group_id) const {
   struct stat path_status;
   if (stat(path.c_str(), &path_status) != 0) {
-    PLOG(ERROR) << "Failed to get the ownership of '" << path << "'";
+    PLOG(ERROR) << "Cannot get ownership info for " << quote(path);
     return false;
   }
 
@@ -159,7 +161,7 @@ bool Platform::GetPermissions(const std::string& path, mode_t* mode) const {
 
   struct stat path_status;
   if (stat(path.c_str(), &path_status) != 0) {
-    PLOG(ERROR) << "Failed to get the permissions of '" << path << "'";
+    PLOG(ERROR) << "Cannot get the permissions of " << quote(path);
     return false;
   }
   *mode = path_status.st_mode;
@@ -176,7 +178,7 @@ bool Platform::SetMountUser(const std::string& user_name) {
 
 bool Platform::RemoveEmptyDirectory(const std::string& path) const {
   if (rmdir(path.c_str()) != 0) {
-    PLOG(WARNING) << "Failed to remove directory '" << path << "'";
+    PLOG(ERROR) << "Cannot remove directory " << quote(path);
     return false;
   }
   return true;
@@ -186,8 +188,8 @@ bool Platform::SetOwnership(const std::string& path,
                             uid_t user_id,
                             gid_t group_id) const {
   if (chown(path.c_str(), user_id, group_id)) {
-    PLOG(ERROR) << "Failed to set ownership of '" << path
-                << "' to (uid=" << user_id << ", gid=" << group_id << ")";
+    PLOG(ERROR) << "Cannot set ownership of " << quote(path) << " to uid "
+                << user_id << " and gid " << group_id;
     return false;
   }
   return true;
@@ -195,7 +197,7 @@ bool Platform::SetOwnership(const std::string& path,
 
 bool Platform::SetPermissions(const std::string& path, mode_t mode) const {
   if (chmod(path.c_str(), mode)) {
-    PLOG(ERROR) << "Failed to set permissions of '" << path << "' to "
+    PLOG(ERROR) << "Cannot set permissions of " << quote(path) << " to "
                 << base::StringPrintf("%04o", mode);
     return false;
   }
@@ -206,9 +208,9 @@ MountErrorType Platform::Unmount(const std::string& path, int flags) const {
   error_t error = 0;
   if (umount2(path.c_str(), flags) != 0) {
     error = errno;
-    PLOG(ERROR) << "Failed to unmount '" << path << "' with flags " << flags;
+    PLOG(ERROR) << "Cannot unmount " << quote(path) << " with flags " << flags;
   } else {
-    LOG(INFO) << "Unmount '" << path << "' with flags " << flags;
+    LOG(INFO) << "Unmounted " << quote(path) << " with flags " << flags;
   }
   switch (error) {
     case 0:
@@ -233,12 +235,15 @@ MountErrorType Platform::Mount(const std::string& source_path,
   if (mount(source_path.c_str(), target_path.c_str(), filesystem_type.c_str(),
             options, data.c_str()) != 0) {
     error = errno;
-    PLOG(ERROR) << "Failed to mount '" << source_path << "' '" << target_path
-                << "' '" << filesystem_type << "' " << options << " '" << data
-                << "'";
+    PLOG(ERROR) << "Cannot mount " << quote(source_path) << " to "
+                << quote(target_path) << " as filesystem "
+                << quote(filesystem_type) << " with options " << options << " "
+                << quote(data);
   } else {
-    LOG(INFO) << "Mount '" << source_path << "' '" << target_path << "' '"
-              << filesystem_type << "' " << options << " '" << data << "'";
+    LOG(INFO) << "Mounted " << quote(source_path) << " to "
+              << quote(target_path) << " as filesystem "
+              << quote(filesystem_type) << " with options " << options << " "
+              << quote(data);
   }
   switch (error) {
     case 0:

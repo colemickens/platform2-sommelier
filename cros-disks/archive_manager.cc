@@ -20,6 +20,7 @@
 #include "cros-disks/mount_info.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/platform.h"
+#include "cros-disks/quote.h"
 #include "cros-disks/system_mounter.h"
 
 // TODO(benchan): Remove entire archive manager after deprecating the rar
@@ -133,7 +134,8 @@ MountErrorType ArchiveManager::DoMount(const std::string& source_path,
 
   std::string avfs_path = GetAVFSPath(source_path, extension);
   if (avfs_path.empty()) {
-    LOG(ERROR) << "Path '" << source_path << "' is not a supported archive";
+    LOG(ERROR) << "Path " << quote(source_path)
+               << " is not a supported archive";
     return MOUNT_ERROR_UNSUPPORTED_ARCHIVE;
   }
 
@@ -309,8 +311,8 @@ MountErrorType ArchiveManager::StartAVFS() {
     MountErrorType mount_error =
         MountAVFSPath(mapping.base_path, mapping.avfs_path);
     if (mount_error != MOUNT_ERROR_NONE) {
-      LOG(ERROR) << "Failed to mount AVFS path " << mapping.avfs_path << ": "
-                 << mount_error;
+      LOG(ERROR) << "Cannot mount AVFS path " << quote(mapping.avfs_path)
+                 << ": " << mount_error;
       StopAVFS();
       return mount_error;
     }
@@ -373,7 +375,7 @@ MountErrorType ArchiveManager::MountAVFSPath(
     return MOUNT_ERROR_INTERNAL;
 
   if (mount_info.HasMountPath(avfs_path)) {
-    LOG(WARNING) << "Path '" << avfs_path << "' is already mounted.";
+    LOG(WARNING) << "Path " << quote(avfs_path) << " is already mounted";
     // Not using MOUNT_ERROR_PATH_ALREADY_MOUNTED here because that implies an
     // error on the user-requested mount. The error here is for the avfsd
     // daemon.
@@ -382,7 +384,7 @@ MountErrorType ArchiveManager::MountAVFSPath(
 
   // Create avfs_path with the right uid, gid and permissions.
   if (!CreateMountDirectory(avfs_path)) {
-    LOG(ERROR) << "Cannot create mount directory '" << avfs_path << "'";
+    LOG(ERROR) << "Cannot create mount directory " << quote(avfs_path);
     return MOUNT_ERROR_INTERNAL;
   }
 
@@ -415,13 +417,13 @@ MountErrorType ArchiveManager::MountAVFSPath(
 
   if (!mount_info.RetrieveFromCurrentProcess() ||
       !mount_info.HasMountPath(avfs_path)) {
-    LOG(WARNING) << "Failed to mount '" << base_path << "' to '" << avfs_path
-                 << "' via AVFS";
+    LOG(WARNING) << "Cannot mount " << quote(base_path) << " to "
+                 << quote(avfs_path) << " via AVFS";
     return MOUNT_ERROR_INTERNAL;
   }
 
-  LOG(INFO) << "Mounted '" << base_path << "' to '" << avfs_path
-            << "' via AVFS";
+  LOG(INFO) << "Mounted " << quote(base_path) << " to " << quote(avfs_path)
+            << " via AVFS";
   return MOUNT_ERROR_NONE;
 }
 

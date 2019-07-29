@@ -14,6 +14,7 @@
 #include "cros-disks/mount_options.h"
 #include "cros-disks/mount_point.h"
 #include "cros-disks/platform.h"
+#include "cros-disks/quote.h"
 
 namespace cros_disks {
 
@@ -42,14 +43,14 @@ MountErrorType MounterCompat::Mount() {
   MountErrorType error = MOUNT_ERROR_NONE;
   mountpoint_ = Mount({}, {}, {}, &error);
   if (mountpoint_) {
-    LOG(INFO) << "Mounted '" << source_ << "' to '" << target_path_.value()
-              << "' as filesystem '" << filesystem_type() << "' with options '"
-              << mount_options_.ToString() << "'";
+    LOG(INFO) << "Mounted " << quote(source_) << " to " << quote(target_path_)
+              << " as filesystem " << quote(filesystem_type())
+              << " with options " << quote(mount_options_.ToString());
   } else {
-    LOG(ERROR) << "Failed to mount '" << source_ << "' to '"
-               << target_path_.value() << "' as filesystem '"
-               << filesystem_type() << "' with options '"
-               << mount_options_.ToString() << "': " << error;
+    LOG(ERROR) << "Cannot mount " << quote(source_) << " to "
+               << quote(target_path_) << " as filesystem "
+               << quote(filesystem_type()) << " with options "
+               << quote(mount_options_.ToString()) << ": " << error;
   }
   return error;
 }

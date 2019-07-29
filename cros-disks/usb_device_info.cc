@@ -11,6 +11,7 @@
 #include <base/strings/string_util.h>
 
 #include "cros-disks/file_reader.h"
+#include "cros-disks/quote.h"
 
 namespace cros_disks {
 
@@ -41,7 +42,7 @@ bool USBDeviceInfo::RetrieveFromFile(const std::string& path) {
 
   FileReader reader;
   if (!reader.Open(base::FilePath(path))) {
-    LOG(ERROR) << "Failed to retrieve USB device info from '" << path << "'";
+    LOG(ERROR) << "Cannot retrieve USB device info from " << quote(path) << "";
     return false;
   }
 
@@ -70,8 +71,8 @@ bool USBDeviceInfo::GetVendorAndProductName(const std::string& ids_file,
 
   FileReader reader;
   if (!reader.Open(base::FilePath(ids_file))) {
-    LOG(ERROR) << "Failed to retrieve USB identifier database at '" << ids_file
-               << "'";
+    LOG(ERROR) << "Cannot retrieve USB identifier database at "
+               << quote(ids_file);
     return false;
   }
 

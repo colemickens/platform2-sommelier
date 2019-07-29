@@ -15,6 +15,7 @@
 
 #include "cros-disks/filesystem_label.h"
 #include "cros-disks/platform.h"
+#include "cros-disks/quote.h"
 #include "cros-disks/rename_manager_observer_interface.h"
 
 namespace cros_disks {
@@ -77,8 +78,8 @@ RenameErrorType RenameManager::StartRenaming(
   std::string source_path;
   if (!platform_->GetRealPath(device_path, &source_path) ||
       !CanRename(source_path)) {
-    LOG(WARNING) << "Device with path: '" << device_path
-                 << "' is not allowed for renaming.";
+    LOG(WARNING) << "Device with path " << quote(device_path)
+                 << " is not allowed for renaming";
     return RENAME_ERROR_DEVICE_NOT_ALLOWED;
   }
 
@@ -91,13 +92,14 @@ RenameErrorType RenameManager::StartRenaming(
   const RenameParameters* parameters = FindRenameParameters(filesystem_type);
   // Check if tool for renaming exists
   if (!base::PathExists(base::FilePath(parameters->program_path))) {
-    LOG(WARNING) << "Could not find a rename program for filesystem '"
-                 << filesystem_type << "'";
+    LOG(WARNING) << "Cannot find a rename program for filesystem "
+                 << quote(filesystem_type);
     return RENAME_ERROR_RENAME_PROGRAM_NOT_FOUND;
   }
 
   if (base::ContainsKey(rename_process_, device_path)) {
-    LOG(WARNING) << "Device '" << device_path << "' is already being renamed";
+    LOG(WARNING) << "Device " << quote(device_path)
+                 << " is already being renamed";
     return RENAME_ERROR_DEVICE_BEING_RENAMED;
   }
 
@@ -105,9 +107,8 @@ RenameErrorType RenameManager::StartRenaming(
   gid_t rename_group_id;
   if (!platform_->GetUserAndGroupId(kRenameUser, &rename_user_id, nullptr) ||
       !platform_->GetGroupId(parameters->rename_group, &rename_group_id)) {
-    LOG(WARNING) << "Could not find a user with name '" << kRenameUser
-                 << "' or a group with name: '" << parameters->rename_group
-                 << "'";
+    LOG(WARNING) << "Cannot find a user with name " << quote(kRenameUser)
+                 << " or a group with name " << quote(parameters->rename_group);
     return RENAME_ERROR_INTERNAL;
   }
 
@@ -135,9 +136,9 @@ RenameErrorType RenameManager::StartRenaming(
   }
 
   if (!process->Start()) {
-    LOG(WARNING) << "Cannot start a process for renaming '" << device_path
-                 << "' as filesystem '" << filesystem_type << "' "
-                 << " as volume name '" << volume_name << "'";
+    LOG(WARNING) << "Cannot start a process for renaming " << quote(device_path)
+                 << " as filesystem " << quote(filesystem_type)
+                 << " and volume name " << quote(volume_name);
     rename_process_.erase(device_path);
     return RENAME_ERROR_RENAME_PROGRAM_FAILED;
   }
@@ -157,12 +158,12 @@ void RenameManager::OnRenameProcessTerminated(const std::string& device_path,
     case CLD_EXITED:
       if (info.si_status == 0) {
         error_type = RENAME_ERROR_NONE;
-        LOG(INFO) << "Process " << info.si_pid << " for renaming '"
-                  << device_path << "' completed successfully";
+        LOG(INFO) << "Process " << info.si_pid << " for renaming "
+                  << quote(device_path) << " completed successfully";
       } else {
         error_type = RENAME_ERROR_RENAME_PROGRAM_FAILED;
-        LOG(ERROR) << "Process " << info.si_pid << " for renaming '"
-                   << device_path << "' exited with a status "
+        LOG(ERROR) << "Process " << info.si_pid << " for renaming "
+                   << quote(device_path) << " exited with a status "
                    << info.si_status;
       }
       break;
@@ -170,13 +171,15 @@ void RenameManager::OnRenameProcessTerminated(const std::string& device_path,
     case CLD_DUMPED:
     case CLD_KILLED:
       error_type = RENAME_ERROR_RENAME_PROGRAM_FAILED;
-      LOG(ERROR) << "Process " << info.si_pid << " for renaming '"
-                 << device_path << "' killed by a signal " << info.si_status;
+      LOG(ERROR) << "Process " << info.si_pid << " for renaming "
+                 << quote(device_path) << " killed by a signal "
+                 << info.si_status;
       break;
 
     default:
       break;
   }
+
   if (observer_)
     observer_->OnRenameCompleted(device_path, error_type);
 }

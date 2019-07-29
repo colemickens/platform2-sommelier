@@ -10,6 +10,8 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 
+#include "cros-disks/quote.h"
+
 namespace cros_disks {
 
 namespace {
@@ -54,11 +56,10 @@ LabelErrorType ValidateVolumeLabel(const std::string& volume_label,
   // Check if new volume label satisfies file system volume label conditions
   // Volume label length
   if (volume_label.size() > parameters->max_label_length) {
-    LOG(WARNING) << "New volume label '" << volume_label << "' exceeds "
-                 << "the limit of '" << parameters->max_label_length
-                 << "' characters"
-                 << " for the file system '" << parameters->filesystem_type
-                 << "'";
+    LOG(WARNING) << "New volume label " << quote(volume_label)
+                 << " exceeds the limit of " << parameters->max_label_length
+                 << " characters for the filesystem "
+                 << quote(parameters->filesystem_type);
     return LabelErrorType::kLabelErrorLongName;
   }
 
@@ -67,8 +68,8 @@ LabelErrorType ValidateVolumeLabel(const std::string& volume_label,
   for (char value : volume_label) {
     if (!base::IsAsciiAlpha(value) && !base::IsAsciiDigit(value) &&
         !std::memchr(kAllowedCharacters, value, sizeof(kAllowedCharacters))) {
-      LOG(WARNING) << "New volume label '" << volume_label << "' contains "
-                   << "forbidden character: '" << value << "'";
+      LOG(WARNING) << "New volume label " << quote(volume_label)
+                   << " contains forbidden character '" << value << "'";
       return LabelErrorType::kLabelErrorInvalidCharacter;
     }
   }

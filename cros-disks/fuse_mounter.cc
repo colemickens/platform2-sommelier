@@ -45,12 +45,11 @@ void CleanUpCallback(base::OnceClosure cleanup,
                      const siginfo_t& info) {
   CHECK_EQ(SIGCHLD, info.si_signo);
   if (info.si_code != CLD_EXITED || info.si_status != 0) {
-    LOG(WARNING) << "FUSE daemon for '" << mount_path.value()
-                 << "' exited with code " << info.si_code << " and status "
+    LOG(WARNING) << "FUSE daemon for " << quote(mount_path)
+                 << " exited with code " << info.si_code << " and status "
                  << info.si_status;
   } else {
-    LOG(INFO) << "FUSE daemon for '" << mount_path.value()
-              << "' exited normally";
+    LOG(INFO) << "FUSE daemon for " << quote(mount_path) << " exited normally";
   }
   std::move(cleanup).Run();
 }
@@ -84,7 +83,7 @@ MountErrorType ConfigureCommonSandbox(SandboxedProcess* sandbox,
 
   if (!seccomp.empty()) {
     if (!platform->PathExists(seccomp.value())) {
-      LOG(ERROR) << "Seccomp policy '" << seccomp.value() << "' is missing";
+      LOG(ERROR) << "Seccomp policy " << quote(seccomp) << " is missing";
       return MOUNT_ERROR_INTERNAL;
     }
     sandbox->LoadSeccompFilterPolicy(seccomp.value());
@@ -189,8 +188,8 @@ MountErrorType MountFuseDevice(const Platform* platform,
     if (GetPhysicalBlockSize(source, &blksize) && blksize > 0)
       fuse_mount_options.append(base::StringPrintf(",blksize=%d", blksize));
 
-    LOG(INFO) << "Source file " << source << " is a block device, block size "
-              << blksize;
+    LOG(INFO) << "Source file " << quote(source)
+              << " is a block device with block size " << blksize;
 
     fuse_type = "fuseblk";
   }
@@ -246,7 +245,7 @@ MountErrorType FUSEMounter::MountImpl() const {
   gid_t mount_group_id;
   if (!platform_->GetUserAndGroupId(mount_user_, &mount_user_id,
                                     &mount_group_id)) {
-    LOG(ERROR) << "Can't resolve user '" << mount_user_ << "'";
+    LOG(ERROR) << "Cannot resolve user " << quote(mount_user_);
     return MOUNT_ERROR_INTERNAL;
   }
   if (!mount_group_.empty() &&
@@ -258,7 +257,7 @@ MountErrorType FUSEMounter::MountImpl() const {
   mount_process->SetGroupId(mount_group_id);
 
   if (!platform_->PathExists(mount_program_path_)) {
-    LOG(ERROR) << "Mount program '" << mount_program_path_ << "' not found.";
+    LOG(ERROR) << "Cannot find mount program " << quote(mount_program_path_);
     return MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND;
   }
   mount_process->AddArgument(mount_program_path_);
@@ -287,12 +286,13 @@ MountErrorType FUSEMounter::MountImpl() const {
   base::ScopedClosureRunner fuse_cleanup_runner(base::Bind(
       [](const Platform* platform, const std::string& target_path) {
         MountErrorType unmount_error = platform->Unmount(target_path, 0);
-        if (unmount_error != MOUNT_ERROR_NONE) {
-          LOG(ERROR) << "Failed to unmount a FUSE mount '" << target_path
-                     << "': " << unmount_error;
-        }
+        LOG_IF(ERROR, unmount_error != MOUNT_ERROR_NONE)
+            << "Cannot unmount FUSE mount point " << quote(target_path) << ": "
+            << unmount_error;
+
         if (!platform->RemoveEmptyDirectory(target_path)) {
-          PLOG(ERROR) << "Couldn't remove FUSE mountpoint '" << target_path;
+          PLOG(ERROR) << "Cannot remove FUSE mount point "
+                      << quote(target_path);
         }
       },
       platform_, target_path().value()));
@@ -310,7 +310,7 @@ MountErrorType FUSEMounter::MountImpl() const {
   // If a block device is being mounted, bind mount it into the sandbox.
   if (base::StartsWith(source(), "/dev/", base::CompareCase::SENSITIVE)) {
     if (!mount_process->BindMount(source(), source(), true, false)) {
-      LOG(ERROR) << "Unable to bind mount device " << source();
+      LOG(ERROR) << "Cannot bind mount device " << quote(source());
       return MOUNT_ERROR_INVALID_ARGUMENT;
     }
   }

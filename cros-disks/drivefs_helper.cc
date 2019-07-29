@@ -13,6 +13,7 @@
 #include "cros-disks/fuse_mounter.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/platform.h"
+#include "cros-disks/quote.h"
 #include "cros-disks/system_mounter.h"
 #include "cros-disks/uri.h"
 
@@ -55,23 +56,23 @@ bool EnsureOwnership(const Platform& platform,
   uid_t current_uid;
   gid_t current_gid;
   if (!platform.GetOwnership(path.value(), &current_uid, &current_gid)) {
-    LOG(ERROR) << "Unable to access datadir '" << path.value() << "'";
+    LOG(ERROR) << "Cannot access datadir " << quote(path);
     return false;
   }
   if (current_uid == mounter_uid && current_gid == files_gid) {
     return true;
   }
   if (current_uid != old_mounter_uid) {
-    LOG(ERROR) << "Unexpected old uid for '" << path.value() << "'. Expected "
-               << old_mounter_uid << "; found " << current_uid;
+    LOG(ERROR) << "Unexpected old uid for " << quote(path) << ": Expected "
+               << old_mounter_uid << " but found " << current_uid;
     return false;
   }
   // Set group to |files_gid| to ensure the directory is traversable. Keep the
   // |current_uid| so this directory isn't treated as having the correct
   // ownership in case this operation is interrupted.
   if (!platform.SetOwnership(path.value(), current_uid, files_gid)) {
-    LOG(ERROR) << "Unable to chown '" << path.value() << "' to " << current_uid
-               << ":" << files_gid;
+    LOG(ERROR) << "Cannot chown " << quote(path) << " to " << current_uid << ":"
+               << files_gid;
     return false;
   }
   base::FileEnumerator dirs(base::FilePath(path), false,
@@ -87,14 +88,14 @@ bool EnsureOwnership(const Platform& platform,
   for (auto file_path = files.Next(); !file_path.empty();
        file_path = files.Next()) {
     if (!platform.SetOwnership(file_path.value(), mounter_uid, files_gid)) {
-      LOG(ERROR) << "Unable to chown '" << file_path.value() << "' to "
-                 << mounter_uid << ":" << files_gid;
+      LOG(ERROR) << "Cannot chown " << quote(file_path) << " to " << mounter_uid
+                 << ":" << files_gid;
       return false;
     }
   }
   if (!platform.SetOwnership(path.value(), mounter_uid, files_gid)) {
-    LOG(ERROR) << "Unable to chown '" << path.value() << "' to " << mounter_uid
-               << ":" << files_gid;
+    LOG(ERROR) << "Cannot chown " << quote(path) << " to " << mounter_uid << ":"
+               << files_gid;
     return false;
   }
   return true;
@@ -201,7 +202,7 @@ base::FilePath DrivefsHelper::GetValidatedDirectory(
 bool DrivefsHelper::SetupDirectoryForFUSEAccess(
     const base::FilePath& dir) const {
   CHECK(dir.IsAbsolute() && !dir.ReferencesParent())
-      << "unsafe path '" << dir.value() << "'";
+      << "Unsafe path " << quote(dir);
 
   uid_t mounter_uid, old_mounter_uid;
   gid_t files_gid;
@@ -218,15 +219,15 @@ bool DrivefsHelper::SetupDirectoryForFUSEAccess(
                            files_gid, old_mounter_uid);
   }
   if (!platform()->CreateDirectory(path)) {
-    LOG(ERROR) << "Failed to create datadir '" << path << "'";
+    LOG(ERROR) << "Cannot create datadir " << quote(path);
     return false;
   }
   if (!platform()->SetPermissions(path, 0770)) {
-    LOG(ERROR) << "Unable to chmod datadir '" << path << "'";
+    LOG(ERROR) << "Cannot chmod datadir " << quote(path);
     return false;
   }
   if (!platform()->SetOwnership(path, mounter_uid, files_gid)) {
-    LOG(ERROR) << "Unable to chown datadir '" << path << "'";
+    LOG(ERROR) << "Cannot chown datadir " << quote(path);
     return false;
   }
   return true;
@@ -234,7 +235,7 @@ bool DrivefsHelper::SetupDirectoryForFUSEAccess(
 
 bool DrivefsHelper::CheckMyFilesPermissions(const base::FilePath& dir) const {
   CHECK(dir.IsAbsolute() && !dir.ReferencesParent())
-      << "unsafe my files path '" << dir.value() << "'";
+      << "Unsafe 'My Files' path " << quote(dir);
 
   uid_t mounter_uid;
   if (!platform()->GetUserAndGroupId(user(), &mounter_uid, nullptr)) {
@@ -244,16 +245,16 @@ bool DrivefsHelper::CheckMyFilesPermissions(const base::FilePath& dir) const {
   std::string path = dir.value();
 
   if (!platform()->DirectoryExists(path)) {
-    LOG(ERROR) << "My files directory '" << path << "' does not exist";
+    LOG(ERROR) << "My files directory " << quote(path) << " does not exist";
     return false;
   }
   uid_t current_uid;
   if (!platform()->GetOwnership(path, &current_uid, nullptr)) {
-    LOG(WARNING) << "Can't access my files directory '" << path << "'";
+    LOG(WARNING) << "Cannot access my files directory " << quote(path);
     return false;
   }
   if (current_uid != mounter_uid) {
-    LOG(ERROR) << "Incorrect owner for my files directory '" << path << "'";
+    LOG(ERROR) << "Incorrect owner for my files directory " << quote(path);
     return false;
   }
   return true;

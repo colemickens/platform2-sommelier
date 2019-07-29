@@ -21,6 +21,7 @@
 #include "cros-disks/error_logger.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/platform.h"
+#include "cros-disks/quote.h"
 #include "cros-disks/uri.h"
 
 namespace cros_disks {
@@ -116,7 +117,7 @@ MountErrorType MountManager::Remount(const std::string& source_path,
                                      const std::vector<std::string>& options,
                                      std::string* mount_path) {
   if (!GetMountPathFromCache(source_path, mount_path)) {
-    LOG(WARNING) << "Path '" << source_path << "' is not mounted yet";
+    LOG(WARNING) << "Path " << quote(source_path) << " is not mounted yet";
     return MOUNT_ERROR_PATH_NOT_MOUNTED;
   }
 
@@ -130,13 +131,13 @@ MountErrorType MountManager::Remount(const std::string& source_path,
       DoMount(source_path, filesystem_type, updated_options, *mount_path,
               &applied_options);
   if (error_type != MOUNT_ERROR_NONE) {
-    LOG(ERROR) << "Failed to remount path '" << source_path
+    LOG(ERROR) << "Cannot remount path " << quote(source_path)
                << "': " << error_type;
     return error_type;
   }
 
-  LOG(INFO) << "Path '" << source_path << "' on '" << *mount_path
-            << "' is remounted with read_only="
+  LOG(INFO) << "Path " << quote(source_path) << " on " << quote(*mount_path)
+            << " is remounted with read_only="
             << applied_options.IsReadOnlyOptionSet();
   AddOrUpdateMountStateCache(source_path, *mount_path,
                              applied_options.IsReadOnlyOptionSet());
@@ -150,8 +151,8 @@ MountErrorType MountManager::MountNewSource(
     std::string* mount_path) {
   std::string actual_mount_path;
   if (GetMountPathFromCache(source_path, &actual_mount_path)) {
-    LOG(WARNING) << "Path '" << source_path << "' is already mounted to '"
-                 << actual_mount_path << "'";
+    LOG(WARNING) << "Path " << quote(source_path) << " is already mounted to "
+                 << quote(actual_mount_path);
     // TODO(benchan): Should probably compare filesystem type and mount options
     //                with those used in previous mount.
     if (mount_path->empty() || *mount_path == actual_mount_path) {
@@ -184,7 +185,7 @@ MountErrorType MountManager::MountNewSource(
   }
 
   if (!IsValidMountPath(actual_mount_path)) {
-    LOG(ERROR) << "Mount path '" << actual_mount_path << "' is invalid";
+    LOG(ERROR) << "Mount path " << quote(actual_mount_path) << " is invalid";
     return MOUNT_ERROR_INVALID_PATH;
   }
 
@@ -198,8 +199,8 @@ MountErrorType MountManager::MountNewSource(
         platform_->CreateOrReuseEmptyDirectory(actual_mount_path);
   }
   if (!mount_path_created) {
-    LOG(ERROR) << "Failed to create directory '" << actual_mount_path
-               << "' to mount '" << source_path << "'";
+    LOG(ERROR) << "Cannot create directory " << quote(actual_mount_path)
+               << " to mount " << quote(source_path);
     return MOUNT_ERROR_DIRECTORY_CREATION_FAILED;
   }
 
@@ -207,8 +208,9 @@ MountErrorType MountManager::MountNewSource(
                                platform_->mount_group_id()) ||
       !platform_->SetPermissions(actual_mount_path,
                                  kMountDirectoryPermissions)) {
-    LOG(ERROR) << "Failed to set ownership and permissions of directory '"
-               << actual_mount_path << "' to mount '" << source_path << "'";
+    LOG(ERROR) << "Cannot set ownership and permissions of directory "
+               << quote(actual_mount_path) << " to mount "
+               << quote(source_path);
     platform_->RemoveEmptyDirectory(actual_mount_path);
     return MOUNT_ERROR_DIRECTORY_CREATION_FAILED;
   }
@@ -221,15 +223,14 @@ MountErrorType MountManager::MountNewSource(
       DoMount(source_path, filesystem_type, updated_options, actual_mount_path,
               &applied_options);
   if (error_type == MOUNT_ERROR_NONE) {
-    LOG(INFO) << "Path '" << source_path << "' is mounted to '"
-              << actual_mount_path << "'";
+    LOG(INFO) << "Path " << quote(source_path) << " is mounted to "
+              << quote(actual_mount_path);
   } else if (ShouldReserveMountPathOnError(error_type)) {
-    LOG(INFO) << "Reserving mount path '" << actual_mount_path << "' for '"
-              << source_path << "'";
+    LOG(INFO) << "Reserving mount path " << quote(actual_mount_path) << " for "
+              << quote(source_path);
     ReserveMountPath(actual_mount_path, error_type);
   } else {
-    LOG(ERROR) << "Failed to mount path '" << source_path
-               << "': " << error_type;
+    LOG(ERROR) << "Cannot mount " << quote(source_path) << "': " << error_type;
     platform_->RemoveEmptyDirectory(actual_mount_path);
     return error_type;
   }
@@ -251,7 +252,7 @@ MountErrorType MountManager::Unmount(const std::string& path,
   std::string mount_path;
   if (!GetMountPathFromCache(path, &mount_path)) {  // is a source path?
     if (!IsMountPathInCache(path)) {                // is a mount path?
-      LOG(ERROR) << "Path '" << path << "' is not mounted";
+      LOG(ERROR) << "Path " << quote(path) << " is not mounted";
       return MOUNT_ERROR_PATH_NOT_MOUNTED;
     }
     mount_path = path;
@@ -265,11 +266,12 @@ MountErrorType MountManager::Unmount(const std::string& path,
   } else {
     error_type = DoUnmount(mount_path, options);
     if (error_type != MOUNT_ERROR_NONE) {
-      LOG(ERROR) << "Failed to unmount '" << mount_path << "': " << error_type;
+      LOG(ERROR) << "Cannot unmount " << quote(mount_path) << ": "
+                 << error_type;
       return error_type;
     }
 
-    LOG(INFO) << "Unmounted '" << mount_path << "'";
+    LOG(INFO) << "Unmounted " << quote(mount_path);
   }
 
   RemoveMountPathFromCache(mount_path);

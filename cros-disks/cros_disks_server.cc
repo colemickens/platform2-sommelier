@@ -17,6 +17,7 @@
 #include "cros-disks/error_logger.h"
 #include "cros-disks/format_manager.h"
 #include "cros-disks/platform.h"
+#include "cros-disks/quote.h"
 #include "cros-disks/rename_manager.h"
 
 namespace cros_disks {
@@ -67,8 +68,8 @@ void CrosDisksServer::Format(const std::string& path,
   }
 
   if (error_type != FORMAT_ERROR_NONE) {
-    LOG(ERROR) << "Could not format device '" << path << "' as filesystem '"
-               << filesystem_type << "': " << error_type;
+    LOG(ERROR) << "Could not format device " << quote(path) << " as filesystem "
+               << quote(filesystem_type) << ": " << error_type;
     SendFormatCompletedSignal(error_type, path);
   }
 }
@@ -87,8 +88,8 @@ void CrosDisksServer::Rename(const std::string& path,
   }
 
   if (error_type != RENAME_ERROR_NONE) {
-    LOG(ERROR) << "Could not rename device '" << path << "' as '" << volume_name
-               << "': " << error_type;
+    LOG(ERROR) << "Could not rename device " << quote(path) << " as "
+               << quote(volume_name) << ": " << error_type;
     SendRenameCompletedSignal(error_type, path);
   }
 }
@@ -117,7 +118,7 @@ void CrosDisksServer::Mount(const std::string& source,
   }
 
   if (error_type != MOUNT_ERROR_NONE) {
-    LOG(ERROR) << "Failed to mount '" << source << "': " << error_type;
+    LOG(ERROR) << "Failed to mount " << quote(source) << ": " << error_type;
   }
   SendMountCompletedSignal(error_type, source, source_type, mount_path);
 }
@@ -133,7 +134,7 @@ uint32_t CrosDisksServer::Unmount(const std::string& path,
   }
 
   if (error_type != MOUNT_ERROR_NONE) {
-    LOG(ERROR) << "Failed to unmount '" << path << "': " << error_type;
+    LOG(ERROR) << "Failed to unmount " << quote(path) << ": " << error_type;
   }
   return error_type;
 }

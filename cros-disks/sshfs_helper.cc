@@ -15,6 +15,7 @@
 #include "cros-disks/fuse_mounter.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/platform.h"
+#include "cros-disks/quote.h"
 #include "cros-disks/uri.h"
 
 namespace cros_disks {
@@ -129,8 +130,8 @@ bool SshfsHelper::PrepareWorkingDirectory(
 
         std::string decoded;
         if (!base::Base64Decode(opt.substr(pos + 1), &decoded)) {
-          LOG(ERROR) << "Invalid base64 value in '" << written.base64_option
-                     << "'";
+          LOG(ERROR) << "Invalid base64 value in "
+                     << quote(written.base64_option);
           return false;
         }
 
@@ -138,14 +139,13 @@ bool SshfsHelper::PrepareWorkingDirectory(
             base::FilePath(working_dir).Append(written.filename);
         int size = decoded.size();
         if (platform()->WriteFile(dst.value(), decoded.c_str(), size) != size) {
-          PLOG(ERROR) << "Failed to write '" << dst.value() << "'";
+          PLOG(ERROR) << "Cannot write file " << quote(dst);
           return false;
         }
 
         if (!platform()->SetPermissions(dst.value(), 0600) ||
             !platform()->SetOwnership(dst.value(), uid, gid)) {
-          PLOG(ERROR) << "Can't change owner of the file '" << dst.value()
-                      << "'";
+          PLOG(ERROR) << "Cannot change owner of file " << quote(dst);
           return false;
         }
         opt.assign(written.file_option + dst.value());
@@ -158,8 +158,8 @@ bool SshfsHelper::PrepareWorkingDirectory(
   // of its contents.
   if (!platform()->SetPermissions(working_dir.value(), 0770) ||
       !platform()->SetOwnership(working_dir.value(), uid, getgid())) {
-    LOG(ERROR) << "Can't set proper ownership of the working dir '"
-               << working_dir.value() << "'";
+    LOG(ERROR) << "Cannot set proper ownership of working directory "
+               << quote(working_dir);
     return false;
   }
   return true;

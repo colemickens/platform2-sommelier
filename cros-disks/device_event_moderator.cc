@@ -8,6 +8,7 @@
 
 #include "cros-disks/device_event_dispatcher_interface.h"
 #include "cros-disks/device_event_source_interface.h"
+#include "cros-disks/quote.h"
 
 namespace cros_disks {
 
@@ -25,8 +26,8 @@ DeviceEventModerator::DeviceEventModerator(
 void DeviceEventModerator::DispatchQueuedDeviceEvents() {
   const DeviceEvent* event;
   while ((event = event_queue_.Head()) != nullptr) {
-    LOG(INFO) << "Dispatch queued event: type=" << event->event_type
-              << " device='" << event->device_path << "'";
+    LOG(INFO) << "Dispatch queued event type:" << event->event_type
+              << " device:" << quote(event->device_path);
     event_dispatcher_->DispatchDeviceEvent(*event);
     event_queue_.Remove();
   }

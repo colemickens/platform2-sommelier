@@ -14,6 +14,7 @@
 #include "cros-disks/fuse_helper.h"
 #include "cros-disks/fuse_mounter.h"
 #include "cros-disks/platform.h"
+#include "cros-disks/quote.h"
 #include "cros-disks/sshfs_helper.h"
 #include "cros-disks/uri.h"
 
@@ -72,8 +73,8 @@ MountErrorType FUSEMountManager::DoMount(
   }
 
   if (!selected_helper) {
-    LOG(ERROR) << "Can't find sutable FUSE module for type '" << fuse_type
-               << "' and source '" << source << "'";
+    LOG(ERROR) << "Cannot find suitable FUSE module for type "
+               << quote(fuse_type) << " and source " << quote(source);
     return MOUNT_ERROR_UNKNOWN_FILESYSTEM;
   }
 
@@ -82,16 +83,17 @@ MountErrorType FUSEMountManager::DoMount(
   std::string path;
   if (!platform()->CreateTemporaryDirInDir(working_dirs_root_, ".", &path) ||
       !platform()->SetPermissions(path, 0755)) {
-    LOG(ERROR) << "Can't create working directory for FUSE module '"
-               << selected_helper->type() << "'";
+    LOG(ERROR) << "Cannot create working directory for FUSE module "
+               << quote(selected_helper->type());
     return MOUNT_ERROR_DIRECTORY_CREATION_FAILED;
   }
 
   auto mounter = selected_helper->CreateMounter(
       base::FilePath(path), uri, base::FilePath(mount_path), options);
   if (!mounter) {
-    LOG(ERROR) << "Invalid options for FUSE module '" << selected_helper->type()
-               << "' and source '" << source << "'";
+    LOG(ERROR) << "Invalid options for FUSE module "
+               << quote(selected_helper->type()) << " and source "
+               << quote(source);
     return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
   }
 

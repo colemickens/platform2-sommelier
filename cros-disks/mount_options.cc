@@ -11,6 +11,8 @@
 #include <base/strings/string_util.h>
 #include <base/stl_util.h>
 
+#include "cros-disks/quote.h"
+
 namespace cros_disks {
 
 const char MountOptions::kOptionBind[] = "bind";
@@ -55,7 +57,7 @@ void MountOptions::Initialize(const std::vector<std::string>& options,
   for (const auto& option : options) {
     // Skip early if |option| contains a comma.
     if (option.find(",") != std::string::npos) {
-      LOG(WARNING) << "Ignoring invalid mount option '" << option << "'.";
+      LOG(WARNING) << "Ignoring invalid mount option " << quote(option);
       continue;
     }
 
@@ -87,7 +89,7 @@ void MountOptions::Initialize(const std::vector<std::string>& options,
       options_.push_back(option);
     } else {
       // Never add unknown/non-whitelisted options.
-      LOG(WARNING) << "Ignoring unsupported mount option '" << option << "'.";
+      LOG(WARNING) << "Ignoring unsupported mount option " << quote(option);
     }
   }
 

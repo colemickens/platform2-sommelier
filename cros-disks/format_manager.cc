@@ -16,6 +16,7 @@
 
 #include "cros-disks/filesystem_label.h"
 #include "cros-disks/format_manager_observer_interface.h"
+#include "cros-disks/quote.h"
 
 namespace cros_disks {
 
@@ -69,7 +70,7 @@ bool ExtractFormatOptions(const std::vector<std::string>& options,
     if (options[i] == kFormatLabelOption) {
       format_options->label = options[i + 1];
     } else {
-      LOG(WARNING) << "Unknown format option '" << options[i] << "'";
+      LOG(WARNING) << "Unknown format option " << quote(options[i]);
       return false;
     }
   }
@@ -147,8 +148,8 @@ FormatErrorType StartFormatProcess(const std::string& device_file,
   process->AddArgument(
       base::StringPrintf("/dev/fd/%d", dev_file.GetPlatformFile()));
   if (!process->Start()) {
-    LOG(WARNING) << "Cannot start process '" << format_program
-                 << "' to format '" << device_file << "'";
+    LOG(WARNING) << "Cannot start process " << quote(format_program)
+                 << " to format " << quote(device_file);
     return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
   }
 
@@ -176,8 +177,8 @@ FormatErrorType FormatManager::StartFormatting(
   // Localize mkfs on disk
   std::string format_program = GetFormatProgramPath(filesystem);
   if (format_program.empty()) {
-    LOG(WARNING) << "Could not find a format program for filesystem '"
-                 << filesystem << "'";
+    LOG(WARNING) << "Cannot find a format program for filesystem "
+                 << quote(filesystem);
     return FORMAT_ERROR_FORMAT_PROGRAM_NOT_FOUND;
   }
 
@@ -193,7 +194,8 @@ FormatErrorType FormatManager::StartFormatting(
   }
 
   if (base::ContainsKey(format_process_, device_path)) {
-    LOG(WARNING) << "Device '" << device_path << "' is already being formatted";
+    LOG(WARNING) << "Device " << quote(device_path)
+                 << " is already being formatted";
     return FORMAT_ERROR_DEVICE_BEING_FORMATTED;
   }
 
@@ -221,12 +223,12 @@ void FormatManager::OnFormatProcessTerminated(const std::string& device_path,
     case CLD_EXITED:
       if (info.si_status == 0) {
         error_type = FORMAT_ERROR_NONE;
-        LOG(INFO) << "Process " << info.si_pid << " for formatting '"
-                  << device_path << "' completed successfully";
+        LOG(INFO) << "Process " << info.si_pid << " for formatting "
+                  << quote(device_path) << " completed successfully";
       } else {
         error_type = FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
-        LOG(ERROR) << "Process " << info.si_pid << " for formatting '"
-                   << device_path << "' exited with a status "
+        LOG(ERROR) << "Process " << info.si_pid << " for formatting "
+                   << quote(device_path) << " exited with a status "
                    << info.si_status;
       }
       break;
@@ -234,8 +236,9 @@ void FormatManager::OnFormatProcessTerminated(const std::string& device_path,
     case CLD_DUMPED:
     case CLD_KILLED:
       error_type = FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
-      LOG(ERROR) << "Process " << info.si_pid << " for formatting '"
-                 << device_path << "' killed by a signal " << info.si_status;
+      LOG(ERROR) << "Process " << info.si_pid << " for formatting "
+                 << quote(device_path) << " killed by a signal "
+                 << info.si_status;
       break;
 
     default:

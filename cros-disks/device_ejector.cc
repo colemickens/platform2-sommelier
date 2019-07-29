@@ -11,6 +11,8 @@
 #include <base/bind.h>
 #include <base/logging.h>
 
+#include "cros-disks/quote.h"
+
 namespace cros_disks {
 namespace {
 
@@ -27,9 +29,10 @@ DeviceEjector::~DeviceEjector() = default;
 bool DeviceEjector::Eject(const std::string& device_path) {
   CHECK(!device_path.empty()) << "Invalid device path";
 
-  LOG(INFO) << "Eject device '" << device_path << "'";
+  LOG(INFO) << "Eject device " << quote(device_path);
   if (base::ContainsKey(eject_process_, device_path)) {
-    LOG(WARNING) << "Device '" << device_path << "' is already being ejected";
+    LOG(WARNING) << "Device " << quote(device_path)
+                 << " is already being ejected";
     return false;
   }
 
@@ -50,7 +53,7 @@ bool DeviceEjector::Eject(const std::string& device_path) {
                    weak_ptr_factory_.GetWeakPtr(), device_path));
   } else {
     eject_process_.erase(device_path);
-    LOG(WARNING) << "Failed to eject media from device '" << device_path << "'";
+    LOG(WARNING) << "Cannot eject media from device " << quote(device_path);
   }
   return started;
 }
@@ -61,19 +64,20 @@ void DeviceEjector::OnEjectProcessTerminated(const std::string& device_path,
   switch (info.si_code) {
     case CLD_EXITED:
       if (info.si_status == 0) {
-        LOG(INFO) << "Process " << info.si_pid << " for ejecting '"
-                  << device_path << "' completed successfully";
+        LOG(INFO) << "Process " << info.si_pid << " for ejecting "
+                  << quote(device_path) << " completed successfully";
       } else {
-        LOG(ERROR) << "Process " << info.si_pid << " for ejecting '"
-                   << device_path << "' exited with a status "
+        LOG(ERROR) << "Process " << info.si_pid << " for ejecting "
+                   << quote(device_path) << " exited with a status "
                    << info.si_status;
       }
       break;
 
     case CLD_DUMPED:
     case CLD_KILLED:
-      LOG(ERROR) << "Process " << info.si_pid << " for ejecting '"
-                 << device_path << "' killed by a signal " << info.si_status;
+      LOG(ERROR) << "Process " << info.si_pid << " for ejecting "
+                 << quote(device_path) << " killed by a signal "
+                 << info.si_status;
       break;
 
     default:
