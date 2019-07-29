@@ -902,6 +902,14 @@ bool SessionManagerImpl::StartDeviceWipe(brillo::ErrorPtr* error) {
     return false;
   }
 
+  // Powerwash is not allowed for enterprise devices.
+  if (device_policy_->InstallAttributesEnterpriseMode()) {
+    constexpr char kMessage[] = "Powerwash not available on enterprise devices";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kNotAvailable, kMessage);
+    return false;
+  }
+
   InitiateDeviceWipe("session_manager_dbus_request");
   return true;
 }
@@ -931,8 +939,33 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
     return false;
   }
 
-  // Validate that a firmware update is actually available to make sure users
-  // can't abuse TPM firmware update to trigger powerwash.
+  // For remotely managed devices, make sure the requested update mode matches
+  // the admin-configured one in device policy.
+  if (device_policy_->InstallAttributesEnterpriseMode()) {
+    const enterprise_management::TPMFirmwareUpdateSettingsProto& settings =
+        device_policy_->GetSettings().tpm_firmware_update_settings();
+    std::set<std::string> allowed_modes;
+    if (settings.allow_user_initiated_powerwash()) {
+      allowed_modes.insert(kTPMFirmwareUpdateModeFirstBoot);
+    }
+    if (settings.allow_user_initiated_preserve_device_state()) {
+      allowed_modes.insert(kTPMFirmwareUpdateModePreserveStateful);
+    }
+
+    // See whether the requested mode is allowed. Cleanup is permitted when at
+    // least one of the actual modes are allowed.
+    bool allowed = (update_mode == kTPMFirmwareUpdateModeCleanup)
+                       ? !allowed_modes.empty()
+                       : allowed_modes.count(update_mode) > 0;
+    if (!allowed) {
+      *error = CreateError(dbus_error::kNotAvailable,
+                           "Policy doesn't allow TPM firmware update.");
+      return false;
+    }
+  }
+
+  // Validate that a firmware update is actually available to make sure
+  // enterprise users can't abuse TPM firmware update to trigger powerwash.
   bool available = false;
   if (update_mode == kTPMFirmwareUpdateModeFirstBoot ||
       update_mode == kTPMFirmwareUpdateModePreserveStateful) {
