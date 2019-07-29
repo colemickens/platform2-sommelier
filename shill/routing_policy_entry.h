@@ -42,6 +42,7 @@ struct RoutingPolicyEntry {
   RoutingPolicyEntry& SetUid(uint32_t uid);
   RoutingPolicyEntry& SetUidRange(fib_rule_uid_range uid_range_in);
   RoutingPolicyEntry& SetIif(std::string iif_name_in);
+  RoutingPolicyEntry& SetOif(std::string oif_name_in);
 
   // Flip between IPv4 and v6. |dst| and |src| will only be modified if they
   // have already been set, and will be set to IPAddress(new_ip_family). If
@@ -62,6 +63,7 @@ struct RoutingPolicyEntry {
   base::Optional<FwMark> fw_mark;
   base::Optional<fib_rule_uid_range> uid_range;
   base::Optional<std::string> iif_name;
+  base::Optional<std::string> oif_name;
 
   bool invert_rule;
 };

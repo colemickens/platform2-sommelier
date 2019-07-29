@@ -357,6 +357,16 @@ void Connection::UpdateRoutingPolicy() {
                                 .SetTable(table_id_));
   }
 
+  // Add output interface rule for all interfaces, such that SO_BINDTODEVICE can
+  // be used without explicitly binding the socket.
+  auto oif_rule = RoutingPolicyEntry::CreateFromSrc(
+    IPAddress(IPAddress::kFamilyIPv4))
+    .SetTable(table_id_)
+    .SetPriority(metric_ + blackhole_offset)
+    .SetOif(interface_name_);
+  routing_table_->AddRule(interface_index_, oif_rule);
+  routing_table_->AddRule(interface_index_, oif_rule.FlipFamily());
+
   if (use_if_addrs_) {
     if (is_primary_physical_) {
       // Main routing table contains kernel-added routes for source address

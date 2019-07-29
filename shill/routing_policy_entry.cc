@@ -70,7 +70,12 @@ RoutingPolicyEntry& RoutingPolicyEntry::SetUidRange(
 }
 
 RoutingPolicyEntry& RoutingPolicyEntry::SetIif(std::string iif_name_in) {
-  iif_name = iif_name_in;
+  iif_name = std::move(iif_name_in);
+  return *this;
+}
+
+RoutingPolicyEntry& RoutingPolicyEntry::SetOif(std::string oif_name_in) {
+  oif_name = std::move(oif_name_in);
   return *this;
 }
 
@@ -98,6 +103,7 @@ bool RoutingPolicyEntry::operator==(const RoutingPolicyEntry& b) const {
             fw_mark == b.fw_mark &&
             uid_range == b.uid_range &&
             iif_name == b.iif_name &&
+            oif_name == b.oif_name &&
             invert_rule == b.invert_rule);
 }
 // clang-format on

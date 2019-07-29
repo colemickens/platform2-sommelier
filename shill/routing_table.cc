@@ -733,6 +733,10 @@ bool RoutingTable::ApplyRule(uint32_t interface_index,
   if (entry.iif_name.has_value()) {
     message->SetAttribute(FRA_IFNAME, ByteString(entry.iif_name.value(), true));
   }
+  if (entry.oif_name.has_value()) {
+    message->SetAttribute(FRA_OIFNAME,
+                          ByteString(entry.oif_name.value(), true));
+  }
   if (!entry.dst.IsDefault()) {
     message->SetAttribute(FRA_DST, entry.dst.address());
   }
@@ -791,6 +795,10 @@ bool RoutingTable::ParseRoutingPolicyMessage(const RTNLMessage& message,
   if (message.HasAttribute(FRA_IFNAME)) {
     entry->SetIif(reinterpret_cast<const char*>(
         message.GetAttribute(FRA_IFNAME).GetConstData()));
+  }
+  if (message.HasAttribute(FRA_OIFNAME)) {
+    entry->SetOif(reinterpret_cast<const char*>(
+        message.GetAttribute(FRA_OIFNAME).GetConstData()));
   }
 
   IPAddress default_addr(message.family());
