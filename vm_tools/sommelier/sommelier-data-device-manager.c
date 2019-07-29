@@ -49,8 +49,8 @@ struct sl_data_transfer {
 };
 
 static void sl_data_transfer_destroy(struct sl_data_transfer* transfer) {
-  if (transfer->read_event_source)
-    wl_event_source_remove(transfer->read_event_source);
+  assert(transfer->read_event_source);
+  wl_event_source_remove(transfer->read_event_source);
   assert(transfer->write_event_source);
   wl_event_source_remove(transfer->write_event_source);
   close(transfer->read_fd);
@@ -62,30 +62,36 @@ static int sl_handle_data_transfer_read(int fd, uint32_t mask, void* data) {
   struct sl_data_transfer* transfer = (struct sl_data_transfer*)data;
   if ((mask & WL_EVENT_READABLE) == 0) {
     assert(mask & (WL_EVENT_HANGUP | WL_EVENT_ERROR));
-    // If there's a HANGUP, that doesn't mean we are done reading data, so don't
-    // close the event source in that case unless the buffer is empty (it only
-    // means that the peer has closed its end and is finished writing data). If
-    // the buffer is empty that means we requested a read (this happens from the
-    // sl_handle_data_transfer_write call) but there's nothing readable left in
-    // the buffer so the READABLE bit wasn't set.
-    if ((mask & WL_EVENT_ERROR) || !transfer->bytes_left) {
-      wl_event_source_remove(transfer->read_event_source);
-      transfer->read_event_source = NULL;
+
+    // Epoll (and therefore wl_event_loop) will notify listeners of errors and
+    // hangups even if all other events are disabled. Therefore, at this point,
+    // we don't know whether we didn't get a readable event because the fd has
+    // been exhausted, or because we aren't in the reading state and weren't
+    // listening for one. We can make the distinction be checking if there's any
+    // data left in the buffer. If there is, then we are just waiting for the
+    // writing to finish, otherwise end the transfer.
+
+    // In the case of an error, where there is not likely to be any more data to
+    // read, we still want to wait for any data we did get to be written out.
+    if (!transfer->bytes_left) {
+      sl_data_transfer_destroy(transfer);
     }
     return 0;
   }
 
+  // At this point we must be in the reading state.
   assert(!transfer->bytes_left);
 
   transfer->bytes_left =
       read(transfer->read_fd, transfer->data, sizeof(transfer->data));
-  if (transfer->bytes_left) {
+  if (transfer->bytes_left > 0) {
     transfer->offset = 0;
     // There may still be data to read from the event source, but we have no
-    // room in our buffer so don't mark it as readable.
+    // room in our buffer so move to the writing state.
     wl_event_source_fd_update(transfer->read_event_source, 0);
     wl_event_source_fd_update(transfer->write_event_source, WL_EVENT_WRITABLE);
   } else {
+    // On a read error or EOF, end the transfer.
     sl_data_transfer_destroy(transfer);
   }
 
@@ -96,19 +102,24 @@ static int sl_handle_data_transfer_write(int fd, uint32_t mask, void* data) {
   struct sl_data_transfer* transfer = (struct sl_data_transfer*)data;
   int rv;
 
+  // If we receive a HANGUP or ERROR event on the write source then there is no
+  // point in continuing the transfer. We could still read more data, but we
+  // couldn't send it to the recipient, so just destroy the transfer now.
   if ((mask & WL_EVENT_WRITABLE) == 0) {
     assert(mask & (WL_EVENT_HANGUP | WL_EVENT_ERROR));
     sl_data_transfer_destroy(transfer);
     return 0;
   }
 
+  // At this point we must be in the writing state.
   assert(transfer->bytes_left);
 
   rv = write(transfer->write_fd, transfer->data + transfer->offset,
              transfer->bytes_left);
 
   if (rv < 0) {
-    assert(errno == EAGAIN || errno == EWOULDBLOCK || errno == EPIPE);
+    // On a write error, end the transfer.
+    sl_data_transfer_destroy(transfer);
   } else {
     assert(rv <= transfer->bytes_left);
     transfer->bytes_left -= rv;
@@ -116,18 +127,13 @@ static int sl_handle_data_transfer_write(int fd, uint32_t mask, void* data) {
   }
 
   if (!transfer->bytes_left) {
+    // If all data has been written, move back to the reading state.
     wl_event_source_fd_update(transfer->write_event_source, 0);
-    if (transfer->read_event_source) {
-      // There may be more data to read from the source, so mark it as readable
-      // again now that we've consumed the buffer.
-      wl_event_source_fd_update(transfer->read_event_source, WL_EVENT_READABLE);
-    } else {
-      sl_data_transfer_destroy(transfer);
-    }
-    return 0;
+    wl_event_source_fd_update(transfer->read_event_source, WL_EVENT_READABLE);
   }
 
-  return 1;
+  // If there is still data left, continue in the writing state.
+  return 0;
 }
 
 static void sl_data_transfer_create(struct wl_event_loop* event_loop,
@@ -142,6 +148,7 @@ static void sl_data_transfer_create(struct wl_event_loop* event_loop,
   assert(!rv);
   UNUSED(rv);
 
+  // Start out the transfer in the reading state.
   transfer = malloc(sizeof(*transfer));
   assert(transfer);
   transfer->read_fd = read_fd;
