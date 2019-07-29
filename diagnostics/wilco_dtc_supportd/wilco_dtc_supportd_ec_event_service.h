@@ -53,6 +53,7 @@ class WilcoDtcSupportdEcEventService final {
     enum SystemNotifySubType : uint16_t {
       AC_ADAPTER = 0x0000,
       BATTERY = 0x0003,
+      USB_C = 0x0008,
     };
 
     // Flags used within |SystemNotifyPayload|.
@@ -81,6 +82,29 @@ class WilcoDtcSupportdEcEventService final {
       uint16_t reserved4;
     };
 
+    // Flags used within |SystemNotifyPayload|
+    struct alignas(2) UsbCFlags {
+      // "Billboard" is the name taken directly from the EC spec. It's a weird
+      // name, but these can represent a variety of miscellaneous events.
+      enum Billboard : uint16_t {
+        // HDMI and USB Type-C ports on the dock cannot be used for
+        // displays at the same time. Only the first one connected will work.
+        HDMI_USBC_CONFLICT = 1 << 9,
+      };
+      enum Dock : uint16_t {
+        // Thunderbolt is not supported on Chromebooks, so the dock
+        // will fall back on using USB Type-C.
+        THUNDERBOLT_UNSUPPORTED_USING_USBC = 1 << 8,
+        // Attached dock is incompatible.
+        INCOMPATIBLE_DOCK = 1 << 12,
+        // Attached dock has overheated.
+        OVERTEMP_ERROR = 1 << 15,
+      };
+      Billboard billboard;
+      uint16_t reserved1;
+      Dock dock;
+    };
+
     // Interpretation of |payload| applicable when |type|==Type::SYSTEM_NOTIFY.
     struct alignas(2) SystemNotifyPayload {
       SystemNotifySubType sub_type;
@@ -89,6 +113,7 @@ class WilcoDtcSupportdEcEventService final {
       union SystemNotifyFlags {
         AcAdapterFlags ac_adapter;
         BatteryFlags battery;
+        UsbCFlags usb_c;
       } flags;
     };
 

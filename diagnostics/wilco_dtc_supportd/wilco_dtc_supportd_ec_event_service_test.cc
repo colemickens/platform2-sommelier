@@ -172,6 +172,12 @@ constexpr uint16_t kEcEventPayloadNonWilcoCharger[]{0x0000, 0x0000, 0x0001,
                                                     0x0000, 0x0000, 0x0000};
 constexpr uint16_t kEcEventPayloadBatteryAuth[]{0x0003, 0x0000, 0x0001,
                                                 0x0000, 0x0000, 0x0000};
+constexpr uint16_t kEcEventPayloadDockDisplay[]{0x0008, 0x0200, 0x0000, 0x0000};
+constexpr uint16_t kEcEventPayloadDockThunderbolt[]{0x0008, 0x0000, 0x0000,
+                                                    0x0100};
+constexpr uint16_t kEcEventPayloadIncompatibleDock[]{0x0008, 0x0000, 0x0000,
+                                                     0x1000};
+constexpr uint16_t kEcEventPayloadDockError[]{0x0008, 0x0000, 0x0000, 0x8000};
 
 // These contain the right EcEvent::SystemNotifySubType to trigger a Mojo event,
 // but none of the flags are set, so these should not cause a Mojo event.
@@ -192,6 +198,14 @@ const EcEventToMojoEventTestParams kEcEventToMojoEventTestParams[] = {
      MojoEvent::kNonWilcoCharger},
     {EcEvent(6, kSystemNotifyType, kEcEventPayloadBatteryAuth),
      MojoEvent::kBatteryAuth},
+    {EcEvent(4, kSystemNotifyType, kEcEventPayloadDockDisplay),
+     MojoEvent::kDockDisplay},
+    {EcEvent(4, kSystemNotifyType, kEcEventPayloadDockThunderbolt),
+     MojoEvent::kDockThunderbolt},
+    {EcEvent(4, kSystemNotifyType, kEcEventPayloadIncompatibleDock),
+     MojoEvent::kIncompatibleDock},
+    {EcEvent(4, kSystemNotifyType, kEcEventPayloadDockError),
+     MojoEvent::kDockError},
     // These EcEvents should not trigger any mojo events.
     {EcEvent(6, kGarbageType, kEcEventPayloadNonWilcoCharger), base::nullopt},
     {EcEvent(4, kSystemNotifyType, kEcEventPayloadAcAdapterNoFlags),

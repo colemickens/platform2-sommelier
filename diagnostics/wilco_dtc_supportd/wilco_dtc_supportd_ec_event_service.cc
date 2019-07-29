@@ -219,6 +219,23 @@ void WilcoDtcSupportdEcEventService::OnEventAvailable(const EcEvent& ec_event) {
         delegate_->HandleMojoEvent(MojoEvent::kBatteryAuth);
       }
       break;
+    case EcEvent::SystemNotifySubType::USB_C:
+      if (payload.flags.usb_c.billboard &
+          EcEvent::UsbCFlags::Billboard::HDMI_USBC_CONFLICT) {
+        delegate_->HandleMojoEvent(MojoEvent::kDockDisplay);
+      }
+      if (payload.flags.usb_c.dock &
+          EcEvent::UsbCFlags::Dock::THUNDERBOLT_UNSUPPORTED_USING_USBC) {
+        delegate_->HandleMojoEvent(MojoEvent::kDockThunderbolt);
+      }
+      if (payload.flags.usb_c.dock &
+          EcEvent::UsbCFlags::Dock::INCOMPATIBLE_DOCK) {
+        delegate_->HandleMojoEvent(MojoEvent::kIncompatibleDock);
+      }
+      if (payload.flags.usb_c.dock & EcEvent::UsbCFlags::Dock::OVERTEMP_ERROR) {
+        delegate_->HandleMojoEvent(MojoEvent::kDockError);
+      }
+      break;
     default:
       // Ignore EC events that aren't relevant.
       break;
