@@ -108,6 +108,7 @@ copies.
 | [secure_erase_file](./secure_erase_file/) | Helper tools for securely erasing files from storage (e.g. keys and PII data) |
 | [sepolicy](./sepolicy/) | SELinux policy for Chrome OS |
 | [shill](./shill/) | Chrome OS Connection Manager |
+| [smbfs](./smbfs/) | FUSE-based filesystem for accessing Samba / Windows networking shares |
 | [smbprovider](./smbprovider/) | Daemon for connecting Samba / Windows networking shares to the Files.app |
 | [smogcheck](./smogcheck/) | Developer library for working with raw I2C devices |
 | [st_flash](./st_flash/) ||
