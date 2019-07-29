@@ -54,6 +54,7 @@
 #include "bindings/device_management_backend.pb.h"
 #include "libpasswordprovider/fake_password_provider.h"
 #include "login_manager/blob_util.h"
+#include "login_manager/dbus_test_util.h"
 #include "login_manager/dbus_util.h"
 #include "login_manager/device_local_account_manager.h"
 #include "login_manager/fake_container_manager.h"
@@ -61,6 +62,7 @@
 #include "login_manager/fake_secret_util.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/matchers.h"
+#include "login_manager/mock_arc_sideload_status.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_init_daemon_controller.h"
@@ -251,47 +253,6 @@ dbus::Response* CreateEmptyResponse() {
   return dbus::Response::CreateEmpty().release();
 }
 
-// Captures the D-Bus Response object passed via DBusMethodResponse via
-// ResponseSender.
-//
-// Example Usage:
-//   ResponseCapturer capture;
-//   impl_->SomeAsyncDBusMethod(capturer.CreateMethodResponse(), ...);
-//   EXPECT_EQ(SomeErrorName, capture.response()->GetErrorName());
-class ResponseCapturer {
- public:
-  ResponseCapturer()
-      : call_("org.chromium.SessionManagerInterface", "DummyDbusMethod"),
-        weak_ptr_factory_(this) {
-    call_.SetSerial(1);  // Dummy serial is needed.
-  }
-
-  ~ResponseCapturer() = default;
-
-  // Needs to be non-const, because some accessors like GetErrorName() are
-  // non-const.
-  dbus::Response* response() { return response_.get(); }
-
-  template <typename... Types>
-  std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<Types...>>
-  CreateMethodResponse() {
-    return std::make_unique<brillo::dbus_utils::DBusMethodResponse<Types...>>(
-        &call_,
-        base::Bind(&ResponseCapturer::Capture, weak_ptr_factory_.GetWeakPtr()));
-  }
-
- private:
-  void Capture(std::unique_ptr<dbus::Response> response) {
-    DCHECK(!response_);
-    response_ = std::move(response);
-  }
-
-  dbus::MethodCall call_;
-  std::unique_ptr<dbus::Response> response_;
-  base::WeakPtrFactory<ResponseCapturer> weak_ptr_factory_;
-  DISALLOW_COPY_AND_ASSIGN(ResponseCapturer);
-};
-
 constexpr char kEmptyAccountId[] = "";
 
 std::vector<uint8_t> MakePolicyDescriptor(PolicyAccountType account_type,
@@ -379,12 +340,13 @@ class SessionManagerImplTest : public ::testing::Test,
     log_symlink_ = log_dir_.GetPath().Append("ui.LATEST");
 
     init_controller_ = new MockInitDaemonController();
+    arc_sideload_status_ = new MockArcSideloadStatus();
     impl_ = std::make_unique<SessionManagerImpl>(
         this /* delegate */, base::WrapUnique(init_controller_), bus_.get(),
         &key_gen_, &state_key_generator_, &manager_, &metrics_, &nss_, &utils_,
         &crossystem_, &vpd_process_, &owner_key_, &android_container_,
         &install_attributes_reader_, powerd_proxy_.get(),
-        system_clock_proxy_.get());
+        system_clock_proxy_.get(), arc_sideload_status_);
     impl_->SetSystemClockLastSyncInfoRetryDelayForTesting(base::TimeDelta());
     impl_->SetUiLogSymlinkPathForTesting(log_symlink_);
 
@@ -443,6 +405,7 @@ class SessionManagerImplTest : public ::testing::Test,
     EXPECT_CALL(*system_clock_proxy_, WaitForServiceToBeAvailable(_))
         .WillOnce(SaveArg<0>(&available_callback_));
 
+    EXPECT_CALL(*arc_sideload_status_, Initialize());
     impl_->Initialize();
 
     ASSERT_TRUE(Mock::VerifyAndClearExpectations(powerd_proxy_.get()));
@@ -777,6 +740,7 @@ class SessionManagerImplTest : public ::testing::Test,
   MockPolicyStore* device_policy_store_ = nullptr;
   MockDevicePolicyService* device_policy_service_ = nullptr;
   MockUserPolicyServiceFactory* user_policy_service_factory_ = nullptr;
+  MockArcSideloadStatus* arc_sideload_status_ = nullptr;
   base::SimpleTestTickClock* tick_clock_ = nullptr;
   map<string, MockPolicyService*> user_policy_services_;
   // The username which is expected to be passed to
@@ -2771,6 +2735,32 @@ TEST_F(SessionManagerImplTest, EmitArcBooted) {
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
 #endif
+}
+
+TEST_F(SessionManagerImplTest, EnableAdbSideload) {
+  EXPECT_CALL(*arc_sideload_status_, EnableAdbSideload(_));
+  ResponseCapturer capturer;
+  impl_->EnableAdbSideload(capturer.CreateMethodResponse<bool>());
+}
+
+TEST_F(SessionManagerImplTest, EnableAdbSideloadAfterLoggedIn) {
+  base::FilePath logged_in_path(SessionManagerImpl::kLoggedInFlag);
+  ASSERT_FALSE(utils_.Exists(logged_in_path));
+  ASSERT_TRUE(utils_.AtomicFileWrite(logged_in_path, "1"));
+
+  EXPECT_CALL(*arc_sideload_status_, EnableAdbSideload(_)).Times(0);
+
+  ResponseCapturer capturer;
+  impl_->EnableAdbSideload(capturer.CreateMethodResponse<bool>());
+
+  ASSERT_NE(capturer.response(), nullptr);
+  EXPECT_EQ(dbus_error::kSessionExists, capturer.response()->GetErrorName());
+}
+
+TEST_F(SessionManagerImplTest, QueryAdbSideload) {
+  EXPECT_CALL(*arc_sideload_status_, QueryAdbSideload(_));
+  ResponseCapturer capturer;
+  impl_->QueryAdbSideload(capturer.CreateMethodResponse<bool>());
 }
 
 class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {

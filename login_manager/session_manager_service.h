@@ -242,6 +242,9 @@ class SessionManagerService
   dbus::ObjectProxy* screen_lock_dbus_proxy_ = nullptr;
   dbus::ObjectProxy* powerd_dbus_proxy_ = nullptr;
   dbus::ObjectProxy* vm_concierge_dbus_proxy_ = nullptr;
+#if USE_CHEETS
+  dbus::ObjectProxy* boot_lockbox_dbus_proxy_ = nullptr;
+#endif
 
   // True when the vm_concierge service is available.
   bool vm_concierge_available_ = false;

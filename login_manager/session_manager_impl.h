@@ -43,6 +43,7 @@ class Response;
 }  // namespace dbus
 
 namespace login_manager {
+class ArcSideloadStatusInterface;
 class DeviceLocalAccountManager;
 class InitDaemonController;
 class KeyGenerator;
@@ -144,7 +145,8 @@ class SessionManagerImpl
                      ContainerManagerInterface* android_container,
                      InstallAttributesReader* install_attributes_reader,
                      dbus::ObjectProxy* powerd_proxy,
-                     dbus::ObjectProxy* system_clock_proxy);
+                     dbus::ObjectProxy* system_clock_proxy,
+                     ArcSideloadStatusInterface* arc_sideload_status);
   ~SessionManagerImpl() override;
 
   // Tests can call these before Initialize() to inject their own objects.
@@ -273,6 +275,12 @@ class SessionManagerImpl
                      const std::string& in_account_id) override;
   bool GetArcStartTimeTicks(brillo::ErrorPtr* error,
                             int64_t* out_start_time) override;
+  void EnableAdbSideload(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response)
+      override;
+  void QueryAdbSideload(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response)
+      override;
 
   // PolicyService::Delegate implementation:
   void OnPolicyPersisted(bool success) override;
@@ -364,6 +372,13 @@ class SessionManagerImpl
   // as the source of the request.
   void RestartDevice(const std::string& reason);
 
+  void EnableAdbSideloadCallbackAdaptor(
+      brillo::dbus_utils::DBusMethodResponse<bool>* response,
+      bool result,
+      const char* error);
+  void QueryAdbSideloadCallbackAdaptor(
+      brillo::dbus_utils::DBusMethodResponse<bool>* response, bool result);
+
 #if USE_CHEETS
   // Starts the Android container for ARC. If an error occurs, brillo::Error
   // instance is set to |error_out|.  After this succeeds, in case of ARC stop,
@@ -433,6 +448,8 @@ class SessionManagerImpl
   std::unique_ptr<DevicePolicyService> device_policy_;
   std::unique_ptr<UserPolicyServiceFactory> user_policy_factory_;
   std::unique_ptr<DeviceLocalAccountManager> device_local_account_manager_;
+
+  std::unique_ptr<ArcSideloadStatusInterface> arc_sideload_status_;
 
   RegenMitigator mitigator_;
 

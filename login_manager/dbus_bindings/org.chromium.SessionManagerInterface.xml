@@ -631,6 +631,30 @@
     <method name="GetArcStartTimeTicks">
       <arg type="x" name="start_time" direction="out" />
     </method>
+
+    <!--
+        EnableAdbSideload:
+
+        Attempts to enable adb sideloading capability in ARC. This requires the
+        device to have no user logged in since the last reboot. Note that there
+        is no method to disable this capability because it will require a
+        powerwash.
+    -->
+    <method name="EnableAdbSideload">
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg type="b" name="reply" direction="out" />
+    </method>
+
+    <!--
+        QueryAdbSideload:
+
+        Returns true if adb sideloading capability has been enabled in ARC,
+        otherwise returns false.
+    -->
+    <method name="QueryAdbSideload">
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg type="b" name="reply" direction="out" />
+    </method>
   </interface>
   <!-- ********************************************************************* -->
 </node>

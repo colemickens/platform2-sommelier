@@ -45,6 +45,12 @@
 #include "login_manager/systemd_unit_starter.h"
 #include "login_manager/upstart_signal_emitter.h"
 
+#if USE_CHEETS
+#include "login_manager/arc_sideload_status.h"
+#else
+#include "login_manager/arc_sideload_status_stub.h"
+#endif
+
 namespace em = enterprise_management;
 namespace login_manager {
 
@@ -182,6 +188,17 @@ bool SessionManagerService::Initialize() {
                                                   enable_browser_abort_on_hang_,
                                                   liveness_checking_interval_));
 
+#if USE_CHEETS
+  boot_lockbox_dbus_proxy_ = bus_->GetObjectProxy(
+      cryptohome::kBootLockboxServiceName,
+      dbus::ObjectPath(cryptohome::kBootLockboxServicePath));
+
+  ArcSideloadStatusInterface* arc_sideload_status =
+      new ArcSideloadStatus(boot_lockbox_dbus_proxy_);
+#else
+  ArcSideloadStatusInterface* arc_sideload_status = new ArcSideloadStatusStub();
+#endif
+
   // Initially store in derived-type pointer, so that we can initialize
   // appropriately below.
   impl_ = std::make_unique<SessionManagerImpl>(
@@ -191,7 +208,7 @@ bool SessionManagerService::Initialize() {
       this /* manager, i.e. ProcessManagerServiceInterface */, login_metrics_,
       nss_.get(), system_, &crossystem_, &vpd_process_, &owner_key_,
       android_container_.get(), &install_attributes_reader_, powerd_dbus_proxy_,
-      system_clock_proxy);
+      system_clock_proxy, arc_sideload_status);
   if (!InitializeImpl())
     return false;
 

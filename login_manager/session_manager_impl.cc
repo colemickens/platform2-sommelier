@@ -42,6 +42,7 @@
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
+#include "login_manager/arc_sideload_status_interface.h"
 #include "login_manager/blob_util.h"
 #include "login_manager/crossystem.h"
 #include "login_manager/dbus_util.h"
@@ -365,7 +366,8 @@ SessionManagerImpl::SessionManagerImpl(
     ContainerManagerInterface* android_container,
     InstallAttributesReader* install_attributes_reader,
     dbus::ObjectProxy* powerd_proxy,
-    dbus::ObjectProxy* system_clock_proxy)
+    dbus::ObjectProxy* system_clock_proxy,
+    ArcSideloadStatusInterface* arc_sideload_status)
     : init_controller_(std::move(init_controller)),
       system_clock_last_sync_info_retry_delay_(
           kSystemClockLastSyncInfoRetryDelay),
@@ -386,6 +388,7 @@ SessionManagerImpl::SessionManagerImpl(
       install_attributes_reader_(install_attributes_reader),
       powerd_proxy_(powerd_proxy),
       system_clock_proxy_(system_clock_proxy),
+      arc_sideload_status_(arc_sideload_status),
       mitigator_(key_gen),
       ui_log_symlink_path_(kDefaultUiLogSymlinkPath),
       password_provider_(
@@ -519,6 +522,8 @@ bool SessionManagerImpl::Initialize() {
     device_policy_->set_delegate(this);
   }
 
+  arc_sideload_status_->Initialize();
+
   return true;
 }
 
@@ -540,6 +545,8 @@ void SessionManagerImpl::Finalize() {
   android_container_->RequestJobExit(
       ArcContainerStopReason::SESSION_MANAGER_SHUTDOWN);
   android_container_->EnsureJobExit(kContainerTimeout);
+
+  arc_sideload_status_.reset();
 }
 
 bool SessionManagerImpl::StartDBusService() {
@@ -1384,6 +1391,45 @@ bool SessionManagerImpl::GetArcStartTimeTicks(brillo::ErrorPtr* error,
   *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
   return false;
 #endif  // !USE_CHEETS
+}
+
+void SessionManagerImpl::EnableAdbSideloadCallbackAdaptor(
+    brillo::dbus_utils::DBusMethodResponse<bool>* response,
+    bool result,
+    const char* error) {
+  if (error != nullptr) {
+    brillo::ErrorPtr dbus_error = CreateError(DBUS_ERROR_FAILED, error);
+    response->ReplyWithError(dbus_error.get());
+  } else {
+    response->Return(result);
+  }
+}
+
+void SessionManagerImpl::EnableAdbSideload(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
+  if (system_->Exists(base::FilePath(kLoggedInFlag))) {
+    auto error = CREATE_ERROR_AND_LOG(
+        dbus_error::kSessionExists,
+        "EnableAdbSideload is not allowed once a user logged in this boot.");
+    response->ReplyWithError(error.get());
+    return;
+  }
+
+  arc_sideload_status_->EnableAdbSideload(base::Bind(
+      &SessionManagerImpl::EnableAdbSideloadCallbackAdaptor,
+      weak_ptr_factory_.GetWeakPtr(), base::Owned(response.release())));
+}
+
+void SessionManagerImpl::QueryAdbSideloadCallbackAdaptor(
+    brillo::dbus_utils::DBusMethodResponse<bool>* response, bool result) {
+  response->Return(result);
+}
+
+void SessionManagerImpl::QueryAdbSideload(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
+  arc_sideload_status_->QueryAdbSideload(base::Bind(
+      &SessionManagerImpl::QueryAdbSideloadCallbackAdaptor,
+      weak_ptr_factory_.GetWeakPtr(), base::Owned(response.release())));
 }
 
 void SessionManagerImpl::OnPolicyPersisted(bool success) {
