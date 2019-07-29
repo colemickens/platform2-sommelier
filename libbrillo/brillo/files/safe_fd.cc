@@ -277,9 +277,10 @@ SafeFD::SafeFDResult SafeFD::MakeFile(const base::FilePath& path,
   base::FilePath dir_name = path.DirName();
   SafeFD::SafeFDResult parent_dir;
   int parent_dir_fd = get();
-  if (!dir_name.empty()) {
+  if (!dir_name.empty() &&
+      dir_name.value() != base::FilePath::kCurrentDirectory) {
     // Apply execute permission where read permission are present for parent
-    // directories
+    // directories.
     int dir_permissions = permissions | ((permissions & 0444) >> 2);
     parent_dir =
         MakeDir(dir_name, dir_permissions, uid, gid, O_RDONLY | O_CLOEXEC);
@@ -335,54 +336,52 @@ SafeFD::SafeFDResult SafeFD::MakeDir(const base::FilePath& path,
   }
 
   // Walk the path creating directories as necessary.
-  auto itr = components.begin();
-  SafeFD parent_fd;
-  int parent_flags = O_NONBLOCK | O_RDONLY | O_DIRECTORY | O_PATH;
+  SafeFD dir;
+  SafeFDResult child_dir;
+  int parent_dir_fd = get();
+  int dir_flags = O_NONBLOCK | O_DIRECTORY | O_PATH;
   bool made_dir = false;
-  while (itr + 1 != components.end()) {
-    SafeFDResult child = OpenPathComponentInternal(parent_fd.get(), *itr,
-                                                   parent_flags, 0 /*mode*/);
-    if (!child.first.is_valid()) {
-      return child;
-    }
-    parent_fd = std::move(child.first);
-
-    ++itr;
-
-    if (mkdirat(parent_fd.get(), itr->c_str(), permissions) != 0) {
+  for (const auto& component : components) {
+    if (mkdirat(parent_dir_fd, component.c_str(), permissions) != 0) {
       if (errno != EEXIST) {
-        PLOG(ERROR) << "Failed to mkdirat() " << *itr << ": full_path=\""
+        PLOG(ERROR) << "Failed to mkdirat() " << component << ": full_path=\""
                     << path.value() << '"';
         return MakeErrorResult(SafeFD::Error::kIOError);
       }
     } else {
       made_dir = true;
     }
-  }
 
-  // Open the resulting directory.
-  SafeFDResult dir = OpenPathComponentInternal(parent_fd.get(), *itr,
-                                               flags | O_DIRECTORY, 0 /*mode*/);
-  if (!dir.first.is_valid()) {
-    return dir;
+    // For the last component in the path, use the flags provided by the caller.
+    if (&component == &components.back()) {
+      dir_flags = flags | O_DIRECTORY;
+    }
+    child_dir = OpenPathComponentInternal(parent_dir_fd, component, dir_flags,
+                                          0 /*mode*/);
+    if (!child_dir.first.is_valid()) {
+      return child_dir;
+    }
+
+    dir = std::move(child_dir.first);
+    parent_dir_fd = dir.get();
   }
 
   if (made_dir) {
     // If the directory was created, set the ownership.
-    if (HANDLE_EINTR(fchown(dir.first.get(), uid, gid)) != 0) {
+    if (HANDLE_EINTR(fchown(dir.get(), uid, gid)) != 0) {
       PLOG(ERROR) << "Failed to set ownership in MakeDir() for \""
                   << path.value() << '"';
       return MakeErrorResult(SafeFD::Error::kIOError);
     }
-  } else {
-    // If the directory already existed validate the permissions
-    SafeFD::Error err = CheckAttributes(dir.first.get(), permissions, uid, gid);
-    if (err != SafeFD::Error::kNoError) {
-      return MakeErrorResult(err);
-    }
+  }
+  // If the directory already existed, validate the permissions.
+  SafeFD::Error err =
+      CheckAttributes(dir.get(), permissions, uid, gid);
+  if (err != SafeFD::Error::kNoError) {
+    return MakeErrorResult(err);
   }
 
-  return dir;
+  return MakeSuccessResult(std::move(dir));
 }
 
 }  // namespace brillo
