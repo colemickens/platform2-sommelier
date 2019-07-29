@@ -1,4 +1,4 @@
-type minijailed, cros_miscdomain, chromeos_domain, domain;
+type minijailed, chromeos_domain, domain;
 
 permissive minijailed;
 

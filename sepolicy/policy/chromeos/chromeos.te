@@ -1,5 +1,5 @@
 # chromeos domain
-type chromeos, chromeos_domain, cros_miscdomain, domain, mlstrustedsubject;
+type chromeos, chromeos_domain, domain, mlstrustedsubject;
 net_domain(chromeos)
 
 permissive chromeos;
