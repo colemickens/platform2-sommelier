@@ -49,11 +49,14 @@ check_directory()
 
 # Checks if /var is close to being full.
 # Returns exit code of 0 (boolean true) if there is less than 10MB of
-# free space left in /var.
+# free space left in /var or if there are less than 100 inodes available on
+# the underlying filesystem.
 is_var_full() {
-  local var_avail
-  var_avail="$(df -k --output=avail /var | grep -E -o '[0-9]+')"
-  [ "${var_avail}" -lt 10000 ]
+  local avail_space
+  local avail_inodes
+  avail_space="$(df -k --output=avail /var | grep -E -o '[0-9]+')"
+  avail_inodes="$(df -k --output=iavail /var | grep -E -o '[0-9]+')"
+  [ "${avail_space}" -lt 10000 ] || [ "${avail_inodes}" -lt 100 ]
 }
 
 # Returns if the TPM is owned or couldn't determine.
