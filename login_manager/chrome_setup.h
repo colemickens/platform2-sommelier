@@ -95,6 +95,12 @@ void SetUpSideVolumeButtonPositionFlag(
 void SetUpInternalStylusFlag(chromeos::ui::ChromiumCommandBuilder* builder,
                              brillo::CrosConfigInterface* cros_config);
 
+// Add "--fingerprint-sensor-location" flag with value read from |cros_config|.
+// If value is not "none".
+void SetUpFingerprintSensorLocationFlag(
+    chromeos::ui::ChromiumCommandBuilder* builder,
+    brillo::CrosConfigInterface* cros_config);
+
 }  // namespace login_manager
 
 #endif  // LOGIN_MANAGER_CHROME_SETUP_H_

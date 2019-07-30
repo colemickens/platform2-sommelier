@@ -51,6 +51,9 @@ const char kSideVolumeButtonSide[] = "side";
 const char kStylusCategoryPath[] = "/hardware-properties";
 const char kStylusCategoryField[] = "stylus-category";
 
+constexpr char kFingerprintPath[] = "/fingerprint";
+constexpr char kFingerprintSensorLocationField[] = "sensor-location";
+
 // These hashes are only being used temporarily till we can determine if a
 // device is a Chromebox for Meetings or not from the Install Time attributes.
 // TODO(rkc, pbos): Remove these and related code once crbug.com/706523 is
@@ -451,6 +454,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   SetUpSideVolumeButtonPositionFlag(builder, cros_config);
   SetUpRegulatoryLabelFlag(builder, cros_config);
   SetUpInternalStylusFlag(builder, cros_config);
+  SetUpFingerprintSensorLocationFlag(builder, cros_config);
 }
 
 // Adds enterprise-related flags to the command line.
@@ -554,6 +558,26 @@ void SetUpInternalStylusFlag(ChromiumCommandBuilder* builder,
                              &stylus_category) &&
       stylus_category == "internal") {
     builder->AddArg("--has-internal-stylus");
+  }
+}
+
+void SetUpFingerprintSensorLocationFlag(
+    ChromiumCommandBuilder* builder, brillo::CrosConfigInterface* cros_config) {
+  std::string fingerprint_sensor_location;
+  if (!cros_config ||
+      !cros_config->GetString(kFingerprintPath, kFingerprintSensorLocationField,
+                              &fingerprint_sensor_location)) {
+    // TODO(rsorokin): Remove this after nocturne supports unibuild.
+    // crbug.com/893725.
+    if (builder->UseFlagIsSet("nocturne"))
+      fingerprint_sensor_location = "power-button-top-left";
+    else
+      return;
+  }
+
+  if (fingerprint_sensor_location != "none") {
+    builder->AddArg(base::StringPrintf("--fingerprint-sensor-location=%s",
+                                       fingerprint_sensor_location.c_str()));
   }
 }
 
