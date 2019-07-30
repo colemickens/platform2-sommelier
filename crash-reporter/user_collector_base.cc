@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/process.h>
 #include <brillo/syslog_logging.h>
 
 #include "crash-reporter/util.h"
@@ -34,8 +35,12 @@ const char kDircrypt[] = "dircrypt";
 #endif  // USE_DIRENCRYPTION
 
 void AccounceUserCrash() {
-  std::string command = StringPrintf(
-      "/usr/bin/dbus-send --type=signal --system / \"%s\" &", kUserCrashSignal);
+  brillo::ProcessImpl dbus;
+  dbus.AddArg("/usr/bin/dbus-send");
+  dbus.AddArg("--type=signal");
+  dbus.AddArg("--system");
+  dbus.AddArg("/");
+  dbus.AddArg(kUserCrashSignal);
   // Announce through D-Bus whenever a user crash happens. This is
   // used by the metrics daemon to log active use time between
   // crashes.
@@ -44,16 +49,15 @@ void AccounceUserCrash() {
   // using a dbus library directly. However, this should run
   // relatively rarely and longer term we may need to implement a
   // better way to do this that doesn't rely on D-Bus.
-  //
+  LOG_IF(WARNING, !dbus.Start()) << "dbus-send running failed";
+
   // We run in the background in case dbus daemon itself is crashed
   // and not responding.  This allows us to not block and potentially
   // deadlock on a dbus-daemon crash.  If dbus-daemon crashes without
   // restarting, each crash will fork off a lot of dbus-send
   // processes.  Such a system is in a unusable state and will need
   // to be restarted anyway.
-
-  int status = system(command.c_str());
-  LOG_IF(WARNING, status != 0) << "dbus-send running failed";
+  dbus.Release();
 }
 
 }  // namespace
