@@ -70,6 +70,7 @@ static_library("libnewblued") {
     "newblued/adapter_interface_handler.cc",
     "newblued/advertising_manager_interface_handler.cc",
     "newblued/agent_manager_interface_handler.cc",
+    "newblued/debug_manager.cc",
     "newblued/device_interface_handler.cc",
     "newblued/gatt.cc",
     "newblued/gatt_attributes.cc",

@@ -65,6 +65,9 @@ bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus,
   agent_manager_interface_handler_ =
       std::make_unique<AgentManagerInterfaceHandler>(
           bus_, exported_object_manager_wrapper_.get());
+  debug_manager_ = std::make_unique<DebugManager>(bus_);
+
+  debug_manager_->Init();
   agent_manager_interface_handler_->Init();
   newblue_->RegisterPairingAgent(agent_manager_interface_handler_.get());
 
@@ -90,6 +93,7 @@ void NewblueDaemon::Shutdown() {
   agent_manager_interface_handler_.reset();
   device_interface_handler_.reset();
   exported_object_manager_wrapper_.reset();
+  debug_manager_.reset();
 }
 
 void NewblueDaemon::OnHciReadyForUp() {

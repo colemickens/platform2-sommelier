@@ -298,31 +298,55 @@ class NewblueDaemonTest : public ::testing::Test {
   }
 
   void SetupBluezObjectProxy() {
-    dbus::ObjectPath object_path(
+    dbus::ObjectPath bluez_object_path(
         bluez_object_manager::kBluezObjectManagerServicePath);
     bluez_object_proxy_ = new dbus::MockObjectProxy(
         bus_.get(), bluez_object_manager::kBluezObjectManagerServiceName,
-        object_path);
+        bluez_object_path);
     EXPECT_CALL(*bus_, GetObjectProxy(
                            bluez_object_manager::kBluezObjectManagerServiceName,
-                           object_path))
+                           bluez_object_path))
         .WillRepeatedly(Return(bluez_object_proxy_.get()));
     EXPECT_CALL(*bluez_object_proxy_, SetNameOwnerChangedCallback(_))
         .Times(AnyNumber());
     EXPECT_CALL(*bluez_object_proxy_, ConnectToSignal(_, _, _, _))
         .Times(AnyNumber());
+
+    dbus::ObjectPath bluetooth_object_path(
+        bluez_object_manager::kBluezObjectManagerServicePath);
+    bluetooth_object_proxy_ = new dbus::MockObjectProxy(
+        bus_.get(),
+        bluetooth_object_manager::kBluetoothObjectManagerServiceName,
+        bluetooth_object_path);
+    EXPECT_CALL(
+        *bus_, GetObjectProxy(
+                   bluetooth_object_manager::kBluetoothObjectManagerServiceName,
+                   bluetooth_object_path))
+        .WillRepeatedly(Return(bluetooth_object_proxy_.get()));
   }
 
   void SetupBluezObjectManager() {
-    dbus::ObjectPath object_path(
+    dbus::ObjectPath bluez_object_path(
         bluez_object_manager::kBluezObjectManagerServicePath);
     bluez_object_manager_ = new dbus::MockObjectManager(
         bus_.get(), bluez_object_manager::kBluezObjectManagerServiceName,
-        object_path);
+        bluez_object_path);
     EXPECT_CALL(*bus_, GetObjectManager(
                            bluez_object_manager::kBluezObjectManagerServiceName,
-                           object_path))
+                           bluez_object_path))
         .WillRepeatedly(Return(bluez_object_manager_.get()));
+
+    dbus::ObjectPath bluetooth_object_path(
+        bluetooth_object_manager::kBluetoothObjectManagerServicePath);
+    bluetooth_object_manager_ = new dbus::MockObjectManager(
+        bus_.get(),
+        bluetooth_object_manager::kBluetoothObjectManagerServiceName,
+        bluetooth_object_path);
+    EXPECT_CALL(
+        *bus_, GetObjectManager(
+                   bluetooth_object_manager::kBluetoothObjectManagerServiceName,
+                   bluetooth_object_path))
+        .WillRepeatedly(Return(bluetooth_object_manager_.get()));
   }
 
   struct smKnownDevNode* CreateSmKnownDeviceNode(const std::string& address,
@@ -746,7 +770,9 @@ class NewblueDaemonTest : public ::testing::Test {
   base::MessageLoop message_loop_;
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockObjectProxy> bluez_object_proxy_;
+  scoped_refptr<dbus::MockObjectProxy> bluetooth_object_proxy_;
   scoped_refptr<dbus::MockObjectManager> bluez_object_manager_;
+  scoped_refptr<dbus::MockObjectManager> bluetooth_object_manager_;
   void* pair_state_callback_data_;
   smPairStateChangeCbk pair_state_callback_;
   // Declare MockExportedObject's before newblue_daemon_ to make sure the

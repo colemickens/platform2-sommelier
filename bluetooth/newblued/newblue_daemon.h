@@ -18,6 +18,7 @@
 #include "bluetooth/newblued/adapter_interface_handler.h"
 #include "bluetooth/newblued/advertising_manager_interface_handler.h"
 #include "bluetooth/newblued/agent_manager_interface_handler.h"
+#include "bluetooth/newblued/debug_manager.h"
 #include "bluetooth/newblued/device_interface_handler.h"
 #include "bluetooth/newblued/gatt.h"
 #include "bluetooth/newblued/newblue.h"
@@ -65,6 +66,7 @@ class NewblueDaemon : public BluetoothDaemon {
       advertising_manager_interface_handler_;
   std::unique_ptr<AgentManagerInterfaceHandler>
       agent_manager_interface_handler_;
+  std::unique_ptr<DebugManager> debug_manager_;
 
   std::unique_ptr<Gatt> gatt_;
 
