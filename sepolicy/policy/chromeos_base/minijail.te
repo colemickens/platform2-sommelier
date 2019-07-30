@@ -21,17 +21,30 @@ use_init_fd(minijail);
 
 allow minijail cros_init_scripts:fifo_file { write ioctl };
 
-# For monitoring purpose.
-domain_auto_trans({ chromeos_domain -cros_debugd -minijail_executor_domain}, cros_minijail_exec, minijail);
+domain_auto_trans({
+cros_init
+cros_init_scripts
+cros_init_scripts_domain
+frecon
+cros_ssh_session
+-minijail_executor_domain
+}, cros_minijail_exec, minijail);
+
 auditallow {
+frecon
+} cros_minijail_exec:file execute;
+
+neverallow {
 chromeos_domain
 -minijail
 -minijail_executor_domain
 -cros_init
 -cros_init_scripts
--cros_init_shill
+-cros_init_scripts_domain
 -cros_debugd
 -cros_debugd_minijail
+-frecon
+-cros_ssh_session
 } cros_minijail_exec:file execute;
 
 dev_only(`

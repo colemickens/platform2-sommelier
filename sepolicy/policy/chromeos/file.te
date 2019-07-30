@@ -41,6 +41,7 @@ type cros_brcm_patchram_plus_exec, exec_type, file_type, cros_file_type, cros_sy
 type cros_btdispatch_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_camera_algo_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_camera_service_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_capsh_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_cecservice_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_chapsd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_chromeos_cleanup_logs_exec, exec_type, file_type, cros_file_type, cros_system_file_type;

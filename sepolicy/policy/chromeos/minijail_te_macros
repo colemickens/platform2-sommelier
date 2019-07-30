@@ -101,6 +101,7 @@ define(`chain_minijail0_static', `
 typeattribute $1 minijail_executor_domain;
 type $3_minijail0, chromeos_domain, minijail_domain, domain;
 permissive $3_minijail0;
+typeattribute $3_minijail0 minijail_executor_domain;
 domain_auto_trans($1, cros_minijail_exec, $3_minijail0);
 domain_auto_trans($3_minijail0, $2, $3);
 allow $3 $3_minijail0:fd use;

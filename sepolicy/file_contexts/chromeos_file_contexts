@@ -18,6 +18,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /sbin/agetty                    u:object_r:cros_agetty_exec:s0
 /sbin/audispd                   u:object_r:cros_audispd_exec:s0
 /sbin/auditd                    u:object_r:cros_auditd_exec:s0
+/sbin/capsh                     u:object_r:cros_capsh_exec:s0
 /sbin/chromeos_startup          u:object_r:chromeos_startup_script_exec:s0
 /sbin/crash_reporter            u:object_r:cros_crash_reporter_exec:s0
 /sbin/crash_sender              u:object_r:cros_crash_sender_exec:s0
