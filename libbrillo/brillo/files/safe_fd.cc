@@ -162,6 +162,10 @@ SafeFD::Error GetFileSize(int fd, size_t* file_size) {
 
 }  // namespace
 
+bool SafeFD::IsError(SafeFD::Error err) {
+  return err != Error::kNoError;
+}
+
 const char* SafeFD::RootPath = "/";
 
 SafeFD::SafeFDResult SafeFD::Root() {
@@ -219,7 +223,7 @@ std::pair<std::vector<char>, SafeFD::Error> SafeFD::ReadContents(
     size_t max_size) {
   size_t file_size = 0;
   SafeFD::Error err = GetFileSize(fd_.get(), &file_size);
-  if (err != SafeFD::Error::kNoError) {
+  if (IsError(err)) {
     return std::make_pair(std::vector<char>{}, err);
   }
 
@@ -231,7 +235,7 @@ std::pair<std::vector<char>, SafeFD::Error> SafeFD::ReadContents(
   buffer.resize(file_size);
 
   err = Read(buffer.data(), buffer.size());
-  if (err != SafeFD::Error::kNoError) {
+  if (IsError(err)) {
     return std::make_pair(std::vector<char>{}, err);
   }
   return std::make_pair(std::move(buffer), err);
@@ -296,7 +300,7 @@ SafeFD::SafeFDResult SafeFD::MakeFile(const base::FilePath& path,
   if (file.first.is_valid()) {
     SafeFD::Error err =
         CheckAttributes(file.first.get(), permissions, uid, gid);
-    if (err != SafeFD::Error::kNoError) {
+    if (IsError(err)) {
       return MakeErrorResult(err);
     }
     return file;
@@ -375,9 +379,8 @@ SafeFD::SafeFDResult SafeFD::MakeDir(const base::FilePath& path,
     }
   }
   // If the directory already existed, validate the permissions.
-  SafeFD::Error err =
-      CheckAttributes(dir.get(), permissions, uid, gid);
-  if (err != SafeFD::Error::kNoError) {
+  SafeFD::Error err = CheckAttributes(dir.get(), permissions, uid, gid);
+  if (IsError(err)) {
     return MakeErrorResult(err);
   }
 

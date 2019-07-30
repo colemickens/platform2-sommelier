@@ -61,6 +61,9 @@ class SafeFD {
     kExceededMaximum,  // The maximum allowed read size was reached.
   };
 
+  // Returns true if |err| denotes a failed operation.
+  BRILLO_EXPORT static bool IsError(SafeFD::Error err);
+
   typedef std::pair<SafeFD, Error> SafeFDResult;
 
   // 100 MiB
