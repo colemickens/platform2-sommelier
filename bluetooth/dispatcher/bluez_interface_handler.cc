@@ -99,6 +99,7 @@ BluezGattCharacteristicInterfaceHandler::
   AddMethodForwarding(bluetooth_gatt_characteristic::kWriteValue);
   AddMethodForwarding(bluetooth_gatt_characteristic::kStartNotify);
   AddMethodForwarding(bluetooth_gatt_characteristic::kStopNotify);
+  AddMethodForwarding(bluetooth_gatt_characteristic::kPrepareWriteValue);
 }
 
 BluezInputInterfaceHandler::BluezInputInterfaceHandler() {
