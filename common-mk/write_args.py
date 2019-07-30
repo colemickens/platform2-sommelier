@@ -1,8 +1,9 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 """Python script to output the given list as a space-delimited string to a file.
 
 path/to/write_args.py --output filename -- arg1 arg2 ...
@@ -16,14 +17,19 @@ https://bugs.chromium.org/p/gn/issues/detail?id=9
 
 from __future__ import print_function
 
+import argparse
 import sys
 
-from chromite.lib import commandline
 
-parser = commandline.ArgumentParser()
-parser.add_argument('--output', help='the output file name', required=True)
-parser.add_argument('args', nargs='*')
-options = parser.parse_args(sys.argv[1:])
+def main(argv):
+  parser = argparse.ArgumentParser(description=__doc__)
+  parser.add_argument('--output', required=True, help='the output file name')
+  parser.add_argument('args', nargs='*')
+  options = parser.parse_args(argv)
 
-with open(options.output, 'w') as f:
-  f.write(' '.join(options.args) + '\n')
+  with open(options.output, 'w') as f:
+    f.write(' '.join(options.args) + '\n')
+
+
+if __name__ == '__main__':
+  sys.exit(main(sys.argv[1:]))
