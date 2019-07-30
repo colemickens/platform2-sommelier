@@ -142,8 +142,6 @@ class DlcServiceDBusAdaptorTest : public testing::Test {
   org::chromium::UpdateEngineInterfaceProxyMock* mock_update_engine_proxy_ptr_;
   std::unique_ptr<DlcServiceDBusAdaptor> dlc_service_dbus_adaptor_;
 
-  base::MessageLoop message_loop_;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(DlcServiceDBusAdaptorTest);
 };
@@ -208,7 +206,6 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
       .Times(1);
 
   EXPECT_TRUE(dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list));
-  base::RunLoop().RunUntilIdle();
 
   constexpr int expected_permissions = 0755;
   int permissions;
@@ -237,7 +234,6 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallFailureInstalledSticky) {
       .Times(0);
 
   EXPECT_FALSE(dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list));
-  base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
 }
 
@@ -252,7 +248,6 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallFailureInstallingCleanup) {
       .Times(0);
 
   EXPECT_FALSE(dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list));
-  base::RunLoop().RunUntilIdle();
 
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
   EXPECT_FALSE(base::PathExists(content_path_.Append(kSecondDlc)));
@@ -273,7 +268,6 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallUrlTest) {
       .Times(1);
 
   dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list);
-  base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(DlcServiceDBusAdaptorTest, OnStatusUpdateAdvancedSignalTest) {
