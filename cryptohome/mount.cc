@@ -331,24 +331,24 @@ bool Mount::AddEcryptfsAuthToken(const VaultKeyset& vault_keyset,
                                  std::string* key_signature,
                                  std::string* filename_key_signature) const {
   // Add the File Encryption key (FEK) from the vault keyset.  This is the key
-  // that is used to encrypt the file contents when it is persisted to the lower
-  // filesystem by eCryptfs.
+  // that is used to encrypt the file contents when the file is persisted to the
+  // lower filesystem by eCryptfs.
   *key_signature = CryptoLib::SecureBlobToHex(vault_keyset.fek_sig());
   if (!platform_->AddEcryptfsAuthToken(
         vault_keyset.fek(), *key_signature,
         vault_keyset.fek_salt())) {
-    LOG(ERROR) << "Couldn't add ecryptfs key to keyring";
+    LOG(ERROR) << "Couldn't add eCryptfs file encryption key to keyring.";
     return false;
   }
 
   // Add the File Name Encryption Key (FNEK) from the vault keyset.  This is the
-  // key that is used to encrypt the file name when it is persisted to the lower
-  // filesystem by eCryptfs.
+  // key that is used to encrypt the file name when the file is persisted to the
+  // lower filesystem by eCryptfs.
   *filename_key_signature = CryptoLib::SecureBlobToHex(vault_keyset.fnek_sig());
   if (!platform_->AddEcryptfsAuthToken(
         vault_keyset.fnek(), *filename_key_signature,
         vault_keyset.fnek_salt())) {
-    LOG(ERROR) << "Couldn't add ecryptfs filename encryption key to keyring";
+    LOG(ERROR) << "Couldn't add eCryptfs filename encryption key to keyring.";
     return false;
   }
 
@@ -434,8 +434,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
                           &local_mount_error)) {
     *mount_error = local_mount_error;
     if (recreate_on_decrypt_fatal && local_mount_error == MOUNT_ERROR_FATAL) {
-      LOG(ERROR) << "Error, cryptohome must be re-created because of fatal "
-                 << "error.";
+      LOG(ERROR) << "cryptohome must be re-created because of fatal error.";
       if (!homedirs_->Remove(credentials.username())) {
         LOG(ERROR) << "Fatal decryption error, but unable to remove "
                    << "cryptohome.";
@@ -485,7 +484,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     // TODO(wad): Convert to CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED
     // TODO(wad): Expose the safe-printable label rather than the Chrome
     //            supplied one for log output.
-    LOG(INFO) << "Mount attempt with unprivileged key";
+    LOG(ERROR) << "Mount attempt with unprivileged key.";
     *mount_error = MOUNT_ERROR_UNPRIVILEGED_KEY;
     return false;
   }
@@ -498,21 +497,22 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
       !mount_args.to_migrate_from_ecryptfs) {
     // If both types of home directory existed, it implies that the migration
     // attempt was aborted in the middle before doing clean up.
-    LOG(INFO) << "Mount failed because both ecryptfs and dircrypto home "
-        "directory is found. Need to resume and finish migration first.";
+    LOG(ERROR) << "Mount failed because both eCryptfs and dircrypto home"
+               << " directories were found. Need to resume and finish"
+               << " migration first.";
     *mount_error = MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE;
     return false;
   }
 
   if (mount_type_ == MountType::ECRYPTFS && mount_args.force_dircrypto) {
     // If dircrypto is forced, it's an error to mount ecryptfs home.
-    LOG(INFO) << "Mount attempt with force_dircrypto on ecryptfs.";
+    LOG(ERROR) << "Mount attempt with force_dircrypto on eCryptfs.";
     *mount_error = MOUNT_ERROR_OLD_ENCRYPTION;
     return false;
   }
 
   if (!platform_->SetupProcessKeyring()) {
-    LOG(INFO) << "Failed to set up a process keyring.";
+    LOG(ERROR) << "Failed to set up a process keyring.";
     *mount_error = MOUNT_ERROR_SETUP_PROCESS_KEYRING_FAILED;
     return false;
   }
@@ -537,7 +537,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     std::string key_signature, fnek_signature;
     if (!AddEcryptfsAuthToken(vault_keyset, &key_signature,
                               &fnek_signature)) {
-      LOG(INFO) << "Cryptohome mount failed because of keyring failure.";
+      LOG(ERROR) << "Error adding eCryptfs keys.";
       *mount_error = MOUNT_ERROR_KEYRING_FAILED;
       return false;
     }
@@ -557,7 +557,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
         << "Already mounting with key " << dircrypto_key_id_;
     if (!platform_->AddDirCryptoKeyToKeyring(
             vault_keyset.fek(), vault_keyset.fek_sig(), &dircrypto_key_id_)) {
-      LOG(INFO) << "Error adding dircrypto key.";
+      LOG(ERROR) << "Error adding dircrypto key.";
       *mount_error = MOUNT_ERROR_KEYRING_FAILED;
       return false;
     }
