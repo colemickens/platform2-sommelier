@@ -2026,12 +2026,11 @@ TEST_P(AttestationServiceTest,
     EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
     EXPECT_EQ(ENTERPRISE_ENROLLMENT_CERTIFICATE, pca_request.profile());
 #if USE_TPM2
-    EXPECT_EQ(3, pca_request.nvram_quotes().size());
+    EXPECT_EQ(2, pca_request.nvram_quotes().size());
     EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
     EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
-    EXPECT_FALSE(pca_request.nvram_quotes().at(RSU_DEVICE_ID).has_quote());
-    EXPECT_EQ("rsu_device_id",
-              pca_request.nvram_quotes().at(RSU_DEVICE_ID).quoted_pcr_value());
+    EXPECT_EQ(pca_request.nvram_quotes().end(),
+              pca_request.nvram_quotes().find(RSU_DEVICE_ID));
 #else
   EXPECT_TRUE(pca_request.nvram_quotes().empty());
 #endif

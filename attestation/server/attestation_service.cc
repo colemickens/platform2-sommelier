@@ -1791,24 +1791,6 @@ bool AttestationService::QuoteNvramData(
                    << std::hex << std::showbase << nv_index << ".";
     }
   }
-
-  // If certifying was unsuccessful, see if we have alternatives. Note that
-  // nv_size can be 0 at this point.
-  switch (quote_type) {
-    // TODO(crbug.com/982407): Remove once attestation is always available.
-    case RSU_DEVICE_ID: {
-      LOG(WARNING) << "Using unquoted " << quote_name << " value.";
-      std::string rsu_device_id;
-      if (tpm_utility_->GetRsuDeviceId(&rsu_device_id)) {
-        quote->set_quoted_pcr_value(rsu_device_id);
-        return true;
-      }
-      break;
-    }
-
-    default:
-      break;
-  }
 #else
   LOG(ERROR) << __func__ << ": Should not be called for TPM 1.2 devices.";
 #endif
