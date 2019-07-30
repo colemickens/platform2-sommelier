@@ -15,6 +15,9 @@ namespace disk_utils {
 std::vector<chromeos::cros_healthd::mojom::NonRemovableBlockDeviceInfoPtr>
 FetchNonRemovableBlockDevicesInfo(const base::FilePath& root_dir);
 
+chromeos::cros_healthd::mojom::CachedVpdInfoPtr FetchCachedVpdInfo(
+    const base::FilePath& root_dir);
+
 }  // namespace disk_utils
 }  // namespace diagnostics
 

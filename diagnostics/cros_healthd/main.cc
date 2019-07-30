@@ -18,6 +18,8 @@ int main(int argc, char** argv) {
               "Exercise the ProbeNonRemovableBlockDeviceInfo routine");
   DEFINE_bool(probe_battery_metrics, false,
               "Exercise the ProbeBatteryInfo routine");
+  DEFINE_bool(probe_cached_vpd, false,
+              "Exercise the ProbeCachedVPDInfo routine");
 
   brillo::FlagHelper::Init(
       argc, argv, "cros_healthd - Device telemetry and diagnostics daemon.");
@@ -51,6 +53,15 @@ int main(int argc, char** argv) {
            battery->charge_full_design, battery->cycle_count,
            battery->serial_number.c_str(), battery->vendor.c_str(),
            battery->voltage_now, battery->voltage_min_design);
+  } else if (FLAGS_probe_cached_vpd) {
+    auto vpd_info =
+        diagnostics::disk_utils::FetchCachedVpdInfo(base::FilePath("/"));
+    std::string sku_number = vpd_info->sku_number;
+    if (sku_number == "") {
+      LOG(ERROR) << "Unable to read sku_number.";
+      return EXIT_FAILURE;
+    }
+    printf("sku_number: %s\n", sku_number.c_str());
   } else {
     // TODO(pmoy): implement daemon
   }

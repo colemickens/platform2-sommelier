@@ -28,6 +28,8 @@ using NonRemovableBlockDeviceInfo =
     ::chromeos::cros_healthd::mojom::NonRemovableBlockDeviceInfo;
 using NonRemovableBlockDeviceInfoPtr =
     ::chromeos::cros_healthd::mojom::NonRemovableBlockDeviceInfoPtr;
+using CachedVpdInfo = ::chromeos::cros_healthd::mojom::CachedVpdInfo;
+using CachedVpdInfoPtr = ::chromeos::cros_healthd::mojom::CachedVpdInfoPtr;
 
 namespace {
 
@@ -269,6 +271,15 @@ std::vector<NonRemovableBlockDeviceInfoPtr> FetchNonRemovableBlockDevicesInfo(
   }
 
   return devices;
+}
+
+CachedVpdInfoPtr FetchCachedVpdInfo(const base::FilePath& root_dir) {
+  constexpr char kRelativeSkuNumberDir[] = "sys/firmware/vpd/ro/";
+  constexpr char kSkuNumberFileName[] = "sku_number";
+  CachedVpdInfoPtr vpd_info;
+  ReadAndTrimString(root_dir.Append(kRelativeSkuNumberDir), kSkuNumberFileName,
+                    &vpd_info->sku_number);
+  return vpd_info;
 }
 
 }  // namespace disk_utils

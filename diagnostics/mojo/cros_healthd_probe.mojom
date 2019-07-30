@@ -42,3 +42,9 @@ struct NonRemovableBlockDeviceInfo {
   // PSN: Product serial number, 32 bits
   uint32 serial;
 };
+
+// Cached VPD read from sysfs.
+struct CachedVpdInfo {
+  // Contents of /sys/firmware/vpd/ro/sku_number.
+  string sku_number;
+};

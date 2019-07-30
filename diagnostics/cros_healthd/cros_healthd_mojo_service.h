@@ -50,6 +50,7 @@ class CrosHealthdMojoService final
   void ProbeBatteryInfo(const ProbeBatteryInfoCallback& callback) override;
   void ProbeNonRemovableBlockDeviceInfo(
       const ProbeNonRemovableBlockDeviceInfoCallback& callback) override;
+  void ProbeCachedVpdInfo(const ProbeCachedVpdInfoCallback& callback) override;
 
   // Set the function that will be called if the binding encounters a connection
   // error.

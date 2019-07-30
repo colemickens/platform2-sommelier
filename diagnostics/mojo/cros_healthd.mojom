@@ -84,5 +84,8 @@ interface CrosHealthdService {
   ProbeNonRemovableBlockDeviceInfo()
       => (array<NonRemovableBlockDeviceInfo> devices);
 
+  // Returns the VPD cached on the system.
+  ProbeCachedVpdInfo() => (CachedVpdInfo vpd);
+
   // ------------------- End of probe definitions -----------------------
 };

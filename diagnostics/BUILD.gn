@@ -341,11 +341,13 @@ if (use.test) {
       "//common-mk:test",
     ]
     deps = [
+      ":libcommon",
       ":libcros_healthd_utils",
       "../common-mk/testrunner:testrunner",
     ]
     sources = [
       "cros_healthd/utils/battery_utils_test.cc",
+      "cros_healthd/utils/disk_utils_test.cc",
     ]
   }
 

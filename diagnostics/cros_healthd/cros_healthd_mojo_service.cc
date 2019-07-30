@@ -233,4 +233,9 @@ void CrosHealthdMojoService::ProbeNonRemovableBlockDeviceInfo(
       disk_utils::FetchNonRemovableBlockDevicesInfo(base::FilePath("/")));
 }
 
+void CrosHealthdMojoService::ProbeCachedVpdInfo(
+    const ProbeCachedVpdInfoCallback& callback) {
+  callback.Run(disk_utils::FetchCachedVpdInfo(base::FilePath("/")));
+}
+
 }  // namespace diagnostics
