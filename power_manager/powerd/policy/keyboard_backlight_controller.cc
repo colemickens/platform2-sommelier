@@ -302,6 +302,9 @@ void KeyboardBacklightController::SetSuspended(bool suspended) {
   suspended_ = suspended;
   UpdateState(suspended ? Transition::INSTANT : Transition::FAST,
               BacklightBrightnessChange_Cause_OTHER);
+
+  if (!suspended && ambient_light_handler_.get())
+    ambient_light_handler_->HandleResume();
 }
 
 void KeyboardBacklightController::SetShuttingDown(bool shutting_down) {

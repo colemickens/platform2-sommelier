@@ -403,6 +403,9 @@ void InternalBacklightController::SetSuspended(bool suspended) {
   VLOG(1) << (suspended ? "Suspending" : "Unsuspending") << " backlight";
   suspended_ = suspended;
   UpdateState(BacklightBrightnessChange_Cause_OTHER);
+
+  if (!suspended && use_ambient_light_)
+    ambient_light_handler_->HandleResume();
 }
 
 void InternalBacklightController::SetShuttingDown(bool shutting_down) {

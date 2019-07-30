@@ -101,6 +101,9 @@ class AmbientLightHandler : public system::AmbientLightObserver {
   // Should be called when the power source changes.
   void HandlePowerSourceChange(PowerSource source);
 
+  // Should be called when resuming.
+  void HandleResume();
+
   // Returns a string containing recent ALS readings, space-separated and
   // newest-to-oldest. Public so it can be called by tests.
   std::string GetRecentReadingsString() const;
@@ -136,6 +139,8 @@ class AmbientLightHandler : public system::AmbientLightObserver {
     // The brightness should be adjusted immediately after the next sensor
     // reading.
     IMMEDIATE,
+    // Discard next sensor reading and go to |IMMEDIATE| state.
+    RESUMING,
   };
 
   // Returns the current target backlight brightness percent based on

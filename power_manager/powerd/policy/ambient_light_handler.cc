@@ -152,6 +152,10 @@ void AmbientLightHandler::HandlePowerSourceChange(PowerSource source) {
   }
 }
 
+void AmbientLightHandler::HandleResume() {
+  hysteresis_state_ = HysteresisState::RESUMING;
+}
+
 std::string AmbientLightHandler::GetRecentReadingsString() const {
   std::string str;
   for (int i = 0; i < recent_lux_readings_.size(); ++i) {
@@ -166,6 +170,12 @@ std::string AmbientLightHandler::GetRecentReadingsString() const {
 void AmbientLightHandler::OnAmbientLightUpdated(
     system::AmbientLightSensorInterface* sensor) {
   DCHECK_EQ(sensor, sensor_);
+
+  // Discard first reading after resume as it is probably cached value.
+  if (hysteresis_state_ == HysteresisState::RESUMING) {
+    hysteresis_state_ = HysteresisState::IMMEDIATE;
+    return;
+  }
 
   const int raw_lux = sensor_->GetAmbientLightLux();
   if (raw_lux < 0) {

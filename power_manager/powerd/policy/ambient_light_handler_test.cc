@@ -161,6 +161,30 @@ TEST_F(AmbientLightHandlerTest, SmoothedLux) {
             delegate_.cause());
 }
 
+TEST_F(AmbientLightHandlerTest, HandleResume) {
+  steps_pref_ = "20.0 -1 40\n50.0 20 80\n100.0 60 -1";
+  initial_lux_ = 50;
+  initial_brightness_percent_ = 60.0;
+  als_smoothing_constant_ = 0.2;
+  Init();
+  EXPECT_LT(delegate_.percent(), 0.0);
+
+  // The middle step should be used as soon as a light reading is received.
+  UpdateSensor(50);  // smooth_lux_ = 50
+  EXPECT_DOUBLE_EQ(50.0, delegate_.percent());
+  EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT,
+            delegate_.cause());
+
+  // Contrary to SmoothedLux Test, this time 1 readings at 10 lux should make
+  // brightness to go to lower level
+  handler_.HandleResume();
+  UpdateSensor(50);  // First reading is discard as it is probably cached value.
+  UpdateSensor(10);
+  EXPECT_DOUBLE_EQ(20.0, delegate_.percent());
+  EXPECT_EQ(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT,
+            delegate_.cause());
+}
+
 TEST_F(AmbientLightHandlerTest, PowerSources) {
   // Define a single target percent in the bottom step and separate AC and
   // battery targets for the middle and top steps.
