@@ -27,8 +27,8 @@
 //   return false;
 // }
 
-#ifndef LIBBRILLO_BRILLO_SAFE_FD_H_
-#define LIBBRILLO_BRILLO_SAFE_FD_H_
+#ifndef LIBBRILLO_BRILLO_FILES_SAFE_FD_H_
+#define LIBBRILLO_BRILLO_FILES_SAFE_FD_H_
 
 #include <fcntl.h>
 
@@ -183,4 +183,4 @@ class SafeFD {
 
 }  // namespace brillo
 
-#endif  // LIBBRILLO_BRILLO_SAFE_FD_H_
+#endif  // LIBBRILLO_BRILLO_FILES_SAFE_FD_H_
