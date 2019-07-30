@@ -7,6 +7,7 @@
 
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/at_exit.h>
@@ -75,6 +76,14 @@ TEST(VmlogWriterTest, ParseVmStatsOptionalMissing) {
   EXPECT_EQ(stats.file_page_faults_, 0);
 }
 
+// For mocking sysfs info.
+class TestGpuInfo : public GpuInfo {
+ public:
+  TestGpuInfo(std::unique_ptr<std::istream> gpu_info_stream,
+              GpuInfo::GpuType gpu_type)
+      : GpuInfo(std::move(gpu_info_stream), gpu_type) {}
+};
+
 TEST(VmlogWriterTest, ParseAmdgpuFrequency) {
   const char kAmdgpuSclkFrequency[] =
       "0: 200Mhz\n"
@@ -85,9 +94,13 @@ TEST(VmlogWriterTest, ParseAmdgpuFrequency) {
       "5: 626Mhz\n"
       "6: 685Mhz\n"
       "7: 720Mhz\n";
-  std::istringstream input_stream(kAmdgpuSclkFrequency);
+  auto input_stream =
+      std::make_unique<std::istringstream>(kAmdgpuSclkFrequency);
   std::stringstream selected_frequency;
-  EXPECT_TRUE(ParseAmdgpuFrequency(selected_frequency, input_stream));
+
+  TestGpuInfo gpu_info(std::move(input_stream), GpuInfo::GpuType::kAmd);
+
+  EXPECT_TRUE(gpu_info.GetCurrentFrequency(selected_frequency));
   EXPECT_EQ(selected_frequency.str(), " 400");
 }
 
@@ -101,9 +114,44 @@ TEST(VmlogWriterTest, ParseAmdgpuFrequencyMissing) {
       "5: 626Mhz\n"
       "6: 685Mhz\n"
       "7: 720Mhz\n";
-  std::istringstream input_stream(kAmdgpuSclkFrequency);
+  auto input_stream =
+      std::make_unique<std::istringstream>(kAmdgpuSclkFrequency);
   std::stringstream selected_frequency;
-  EXPECT_FALSE(ParseAmdgpuFrequency(selected_frequency, input_stream));
+
+  TestGpuInfo gpu_info(std::move(input_stream), GpuInfo::GpuType::kAmd);
+
+  EXPECT_FALSE(gpu_info.GetCurrentFrequency(selected_frequency));
+  EXPECT_EQ(selected_frequency.str(), "");
+}
+
+TEST(VmlogWriterTest, ParseIntelgpuFrequency) {
+  const char kIntelI915FrequencyInfo[] = R"(
+PM IER=0x00000070 IMR=0xffffff8f ISR=0x00000000 IIR=0x00000000, MASK=0x00003fde
+GT_PERF_STATUS: 0x00000000
+Current freq: 100 MHz
+Actual freq: 100 MHz
+Idle freq: 100 MHz
+Min freq: 100 MHz
+)";
+  auto input_stream =
+      std::make_unique<std::istringstream>(kIntelI915FrequencyInfo);
+  std::stringstream selected_frequency;
+
+  TestGpuInfo gpu_info(std::move(input_stream), GpuInfo::GpuType::kIntel);
+
+  EXPECT_TRUE(gpu_info.GetCurrentFrequency(selected_frequency));
+  EXPECT_EQ(selected_frequency.str(), " 100");
+}
+
+TEST(VmlogWriterTest, ParseIntelgpuFrequencyMissing) {
+  const char kIntelI915FrequencyInfo[] = R"()";
+  auto input_stream =
+      std::make_unique<std::istringstream>(kIntelI915FrequencyInfo);
+  std::stringstream selected_frequency;
+
+  TestGpuInfo gpu_info(std::move(input_stream), GpuInfo::GpuType::kIntel);
+
+  EXPECT_FALSE(gpu_info.GetCurrentFrequency(selected_frequency));
   EXPECT_EQ(selected_frequency.str(), "");
 }
 

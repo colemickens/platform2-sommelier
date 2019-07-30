@@ -19,6 +19,7 @@
 #include <base/bind_helpers.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
@@ -160,6 +161,71 @@ base::Optional<std::vector<int>> GetOnlineCpus(std::istream& proc_cpuinfo) {
   }
 
   return cpus;
+}
+
+GpuInfo::GpuInfo(std::unique_ptr<std::istream> gpu_freq_stream,
+                 GpuInfo::GpuType gpu_type)
+    : gpu_freq_stream_(std::move(gpu_freq_stream)), gpu_type_(gpu_type) {}
+
+std::unique_ptr<GpuInfo> GpuInfo::Get() {
+  std::unique_ptr<std::ifstream> gpu_freq_stream =
+      std::make_unique<std::ifstream>();
+
+  // Intel GPU detection.
+  static const char* intel_gpu_freq_stream =
+      "/sys/kernel/debug/dri/0/i915_frequency_info";
+  gpu_freq_stream->open(intel_gpu_freq_stream);
+  // Derefence |gpu_freq_stream| to check whether the file opens successfully.
+  if (*gpu_freq_stream) {
+    return base::WrapUnique(
+        new GpuInfo(std::move(gpu_freq_stream), GpuInfo::GpuType::kIntel));
+  }
+
+  // AMD GPU detection.
+  static const char* amd_gpu_freq_stream =
+      "/sys/class/drm/card0/device/pp_dpm_sclk";
+  gpu_freq_stream->open(amd_gpu_freq_stream);
+  // Derefence |gpu_freq_stream| to check whether the file opens successfully.
+  if (*gpu_freq_stream) {
+    return base::WrapUnique(
+        new GpuInfo(std::move(gpu_freq_stream), GpuInfo::GpuType::kAmd));
+  }
+
+  // Unknown GPU: return a null object with |gpu_freq_stream| unopened.
+  return base::WrapUnique(
+      new GpuInfo(std::move(gpu_freq_stream), GpuInfo::GpuType::kUnknown));
+}
+
+bool GpuInfo::GetCurrentFrequency(std::ostream& out) {
+  if (is_unknown()) {
+    PLOG(ERROR) << "Unable to parse frequency from unknown GPU type";
+    return false;
+  }
+
+  DCHECK(*gpu_freq_stream_);
+  if (!gpu_freq_stream_->seekg(0, std::ios_base::beg)) {
+    PLOG(ERROR) << "Unable to seek GPU frequency info file";
+    return false;
+  }
+
+  static const char* amdgpu_sclk_expression = R"(^\d: (\d{2,4})Mhz \*$)";
+  static const char* intelgpu_curr_freq_expression =
+      R"(^Actual freq: (\d{2,4}) MHz$)";
+  const pcrecpp::RE gpu_freq_matcher(gpu_type_ == GpuType::kAmd
+                                         ? amdgpu_sclk_expression
+                                         : intelgpu_curr_freq_expression);
+
+  std::string line;
+  while (std::getline(*gpu_freq_stream_, line)) {
+    std::string frequency_mhz;
+    if (gpu_freq_matcher.FullMatch(line, &frequency_mhz)) {
+      out << " " << frequency_mhz;
+      return true;
+    }
+  }
+
+  PLOG(ERROR) << "Unable to recognize GPU frequency";
+  return false;
 }
 
 VmlogFile::VmlogFile(const base::FilePath& live_path,
@@ -309,10 +375,12 @@ void VmlogWriter::Init(const base::FilePath& vmlog_dir,
     }
   }
 
-  amdgpu_sclk_stream_.open("/sys/class/drm/card0/device/pp_dpm_sclk");
+  // Detect and open GPU frequency info stream.
+  gpu_info_ = GpuInfo::Get();
+  DCHECK(gpu_info_.get());
 
   std::ostringstream header(kVmlogHeader, std::ios_base::ate);
-  if (amdgpu_sclk_stream_)
+  if (!gpu_info_->is_unknown())
     header << " gpufreq";
 
   for (int cpu = 0; cpu != cpufreq_streams_.size(); ++cpu) {
@@ -371,35 +439,13 @@ bool VmlogWriter::GetDeltaVmStat(VmstatRecord* delta_out) {
   return true;
 }
 
-bool ParseAmdgpuFrequency(std::ostream& out, std::istream& sclk_stream) {
-  // Note: pcrecpp::RE is thread-safe, and FullMatch() is re-entrant.
-  static const pcrecpp::RE* amdgpu_sclk_expression =
-      new pcrecpp::RE(R"(^\d: (\d{2,4})Mhz \*$)");
-
-  std::string line;
-  while (std::getline(sclk_stream, line)) {
-    std::string frequency_mhz;
-    if (amdgpu_sclk_expression->FullMatch(line, &frequency_mhz)) {
-      out << " " << frequency_mhz;
-      return true;
-    }
-  }
-
-  PLOG(ERROR) << "Unable to recognize GPU frequency";
-  return false;
-}
-
-bool VmlogWriter::GetAmdgpuFrequency(std::ostream& out) {
-  if (!amdgpu_sclk_stream_) {
+bool VmlogWriter::GetGpuFrequency(std::ostream& out) {
+  if (gpu_info_->is_unknown()) {
     // Nothing to do if the sysfs entry is not present.
     return true;
   }
-  if (!amdgpu_sclk_stream_.seekg(0, std::ios_base::beg)) {
-    PLOG(ERROR) << "Unable to seek pp_dpm_sclk";
-    return false;
-  }
 
-  return ParseAmdgpuFrequency(out, amdgpu_sclk_stream_);
+  return gpu_info_->GetCurrentFrequency(out);
 }
 
 bool VmlogWriter::GetCpuFrequencies(std::ostream& out) {
@@ -439,7 +485,7 @@ void VmlogWriter::WriteCallback() {
       delta_vmstat.anon_page_faults_, delta_vmstat.swap_in_,
       delta_vmstat.swap_out_, cpu_usage);
 
-  if (!GetAmdgpuFrequency(out_line) || !GetCpuFrequencies(out_line)) {
+  if (!GetGpuFrequency(out_line) || !GetCpuFrequencies(out_line)) {
     LOG(ERROR) << "Stop timer because of error reading system info";
     timer_.Stop();
   }

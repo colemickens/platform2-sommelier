@@ -46,11 +46,32 @@ bool ParseCpuTime(std::istream* input, CpuTimeRecord* record);
 // success or base::nullopt on failure.
 base::Optional<std::vector<int>> GetOnlineCpus(std::istream& proc_cpuinfo);
 
-// Read the GPU frequency.  Returns true on success or an expected failure.
-// @param out: A stream to output the discovered frequency, in MHz.
-// @param sclk_stream: A stream from which to read the GPU shader clock
-// frequency.
-bool ParseAmdgpuFrequency(std::ostream& out, std::istream& sclk_stream);
+// Encapsulates the access to GPU information.
+class GpuInfo {
+ public:
+  enum class GpuType { kAmd, kIntel, kUnknown };
+
+  virtual ~GpuInfo() = default;
+
+  // Detect and get an instance of GpuInfo to access GPU information from the
+  // system.
+  static std::unique_ptr<GpuInfo> Get();
+
+  // Read the GPU frequency.  Returns true on success or an expected failure.
+  // @param out:  A stream to output the discovered frequency, in MHz.
+  bool GetCurrentFrequency(std::ostream& out);
+
+  bool is_unknown() { return gpu_type_ == GpuType::kUnknown; }
+
+ protected:
+  GpuInfo(std::unique_ptr<std::istream> gpu_freq_stream, GpuType gpu_type);
+
+ private:
+  std::unique_ptr<std::istream> gpu_freq_stream_;
+  GpuType gpu_type_;
+
+  DISALLOW_COPY_AND_ASSIGN(GpuInfo);
+};
 
 // Encapsulates the logic for writing to vmlog and rotating log files when
 // necessary.
@@ -117,7 +138,7 @@ class VmlogWriter {
   bool GetCpuFrequencies(std::ostream& out);
 
   // Read the GPU frequency.  Returns true on success or an expected failure.
-  bool GetAmdgpuFrequency(std::ostream& out);
+  bool GetGpuFrequency(std::ostream& out);
 
   std::unique_ptr<VmlogFile> vmlog_;
   // Stream used to read content in /proc/vmstat.
@@ -133,8 +154,8 @@ class VmlogWriter {
   // contains a single integer, in kHz.
   std::vector<std::ifstream> cpufreq_streams_;
 
-  // A (possibly invalid) stream to the amdgpu shader clock frequency
-  std::ifstream amdgpu_sclk_stream_;
+  // |gpu_info_| is used to read GPU frequency.
+  std::unique_ptr<GpuInfo> gpu_info_;
 
   base::RepeatingTimer timer_;
   base::OneShotTimer valid_time_delay_timer_;
