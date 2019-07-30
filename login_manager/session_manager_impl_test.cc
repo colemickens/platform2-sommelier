@@ -100,6 +100,7 @@ using ::testing::SetArgPointee;
 using ::testing::StartsWith;
 using ::testing::StrEq;
 using ::testing::WithArg;
+using ::testing::WithoutArgs;
 
 using brillo::cryptohome::home::GetRootPath;
 using brillo::cryptohome::home::kGuestUserName;
