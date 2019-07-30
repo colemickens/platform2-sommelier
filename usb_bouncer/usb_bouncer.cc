@@ -81,7 +81,7 @@ void DropPrivileges() {
     PLOG(FATAL) << "minijail_bind(\"" << global_db_path << "\") failed";
   }
 
-  if (!base::DirectoryExists(base::FilePath(usb_bouncer::kDBusPath))) {
+  if (!base::PathExists(base::FilePath(usb_bouncer::kDBusPath))) {
     LOG(WARNING) << "Path \"" << usb_bouncer::kDBusPath << "\" doesn't exist; "
                  << "assuming user is not yet logged in to the system.";
   } else if (minijail_bind(j.get(), usb_bouncer::kDBusPath,

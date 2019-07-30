@@ -163,8 +163,9 @@ bool ValidateRule(const std::string& rule) {
 }
 
 base::FilePath GetUserDBDir() {
-  // If D-Bus is inaccessible, it is early boot and the user hasn't logged in.
-  if (!base::DirectoryExists(base::FilePath(kDBusPath))) {
+  // Usb_bouncer is called by udev even during early boot. If D-Bus is
+  // inaccessible, it is early boot and the user hasn't logged in.
+  if (!base::PathExists(base::FilePath(kDBusPath))) {
     return base::FilePath("");
   }
 
@@ -191,8 +192,9 @@ base::FilePath GetUserDBDir() {
 }
 
 bool IsLockscreenShown() {
-  // If D-Bus is inaccessible, it is early boot and the lock-screen isn't shown.
-  if (!base::DirectoryExists(base::FilePath(kDBusPath))) {
+  // Usb_bouncer is called by udev even during early boot. If D-Bus is
+  // inaccessible, it is early boot and the lock-screen isn't shown.
+  if (!base::PathExists(base::FilePath(kDBusPath))) {
     return false;
   }
 
