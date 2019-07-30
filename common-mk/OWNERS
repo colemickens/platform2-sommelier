@@ -1,4 +1,6 @@
 set noparent
+
 vapier@chromium.org
-wad@chromium.org
 benchan@chromium.org
+
+include chromiumos/chromite:OWNERS.build
