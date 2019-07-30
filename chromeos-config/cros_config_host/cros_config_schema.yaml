@@ -203,6 +203,14 @@ properties:
                 board:
                   type: string
                   description: Specifies the fingerprint board in use.
+                sensor-location:
+                  description: Specifies the location of the fingerprint sensor.
+                  type: string
+                  enum:
+                  - none # Explicitly not supported.
+                  - power-button-top-left
+                  - keyboard-top-right
+                  - keyboard-bottom-right
               additionalProperties: false
             firmware:
               type: object
@@ -483,6 +491,7 @@ properties:
                 has-base-magnetometer:
                   description: Is there a magnetometer in the base of the device.
                   type: boolean
+                # TODO(https://crbug.com/988940): Remove when migrated to fingerprint/sensor-location.
                 has-fingerprint-sensor:
                   description: Is there a fingerprint sensor on the device.
                   type: boolean

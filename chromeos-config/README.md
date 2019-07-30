@@ -364,6 +364,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | board | string |  | False |  | False | Specifies the fingerprint board in use. |
+| sensor-location | string |  | False |  | False | Specifies the location of the fingerprint sensor. |
 
 ### firmware
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
