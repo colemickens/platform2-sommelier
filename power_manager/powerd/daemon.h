@@ -23,8 +23,8 @@
 #include "power_manager/powerd/policy/cellular_controller.h"
 #include "power_manager/powerd/policy/charge_controller.h"
 #include "power_manager/powerd/policy/input_event_handler.h"
-#include "power_manager/powerd/policy/sar_handler.h"
 #include "power_manager/powerd/policy/suspender.h"
+#include "power_manager/powerd/policy/user_proximity_handler.h"
 #include "power_manager/powerd/policy/wifi_controller.h"
 #include "power_manager/powerd/system/audio_observer.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
@@ -52,7 +52,7 @@ namespace policy {
 class BacklightController;
 class CellularController;
 class InputDeviceController;
-class SarHandler;
+class UserProximityHandler;
 class ShutdownFromSuspend;
 class StateController;
 class Suspender;
@@ -289,7 +289,7 @@ class Daemon : public policy::InputEventHandler::Delegate,
   std::unique_ptr<system::PowerSupplyInterface> power_supply_;
   std::unique_ptr<system::UserProximityWatcherInterface>
       user_proximity_watcher_;
-  std::unique_ptr<policy::SarHandler> sar_handler_;
+  std::unique_ptr<policy::UserProximityHandler> user_proximity_handler_;
   std::unique_ptr<system::DarkResumeInterface> dark_resume_;
   std::unique_ptr<policy::ShutdownFromSuspend> shutdown_from_suspend_;
   std::unique_ptr<policy::Suspender> suspender_;

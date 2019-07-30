@@ -10,7 +10,7 @@
 #include <base/macros.h>
 
 #include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/policy/sar_handler.h"
+#include "power_manager/powerd/policy/user_proximity_handler.h"
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 
@@ -21,7 +21,7 @@ class PrefsInterface;
 namespace policy {
 
 // CellularController initiates power-related changes to the cellular chipset.
-class CellularController : public SarHandler::Delegate {
+class CellularController : public UserProximityHandler::Delegate {
  public:
   // Performs work on behalf of CellularController.
   class Delegate {
@@ -43,7 +43,7 @@ class CellularController : public SarHandler::Delegate {
   // Called when the tablet mode changes.
   void HandleTabletModeChange(TabletMode mode);
 
-  // SarHandler::Delegate overrides:
+  // UserProximityHandler::Delegate overrides:
   void ProximitySensorDetected(UserProximity proximity) override;
   void HandleProximityChange(UserProximity proximity) override;
 

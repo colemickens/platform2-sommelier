@@ -10,7 +10,7 @@
 
 #include "power_manager/common/action_recorder.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/policy/sar_handler.h"
+#include "power_manager/powerd/policy/user_proximity_handler.h"
 #include "power_manager/powerd/system/user_proximity_observer.h"
 #include "power_manager/powerd/system/user_proximity_watcher_stub.h"
 
@@ -25,12 +25,13 @@ constexpr char kLteSensorDetected[] = "LteDelegate::ProximitySensorDetected";
 constexpr char kWifiChangeNear[] = "WifiDelegate::HandleProximityChange(near)";
 constexpr char kWifiChangeFar[] = "WifiDelegate::HandleProximityChange(far)";
 
-class WifiDelegate : public SarHandler::Delegate, public ActionRecorder {
+class WifiDelegate : public UserProximityHandler::Delegate,
+                     public ActionRecorder {
  public:
   WifiDelegate() = default;
   ~WifiDelegate() override = default;
 
-  // SarHandler::Delegate overrides:
+  // UserProximityHandler::Delegate overrides:
   void ProximitySensorDetected(UserProximity value) override {
     AppendAction(kWifiSensorDetected);
   }
@@ -41,12 +42,13 @@ class WifiDelegate : public SarHandler::Delegate, public ActionRecorder {
   }
 };
 
-class LteDelegate : public SarHandler::Delegate, public ActionRecorder {
+class LteDelegate : public UserProximityHandler::Delegate,
+                    public ActionRecorder {
  public:
   LteDelegate() = default;
   ~LteDelegate() override = default;
 
-  // SarHandler::Delegate overrides:
+  // UserProximityHandler::Delegate overrides:
   void ProximitySensorDetected(UserProximity value) override {
     AppendAction(kLteSensorDetected);
   }
@@ -57,22 +59,23 @@ class LteDelegate : public SarHandler::Delegate, public ActionRecorder {
   }
 };
 
-class SarHandlerTest : public ::testing::Test {
+class UserProximityHandlerTest : public ::testing::Test {
  public:
-  SarHandlerTest() {
-    sar_handler_.Init(&sar_watcher_, &wifi_delegate_, &lte_delegate_);
+  UserProximityHandlerTest() {
+    user_proximity_handler_.Init(&sar_watcher_, &wifi_delegate_,
+                                 &lte_delegate_);
   }
 
  protected:
   system::UserProximityWatcherStub sar_watcher_;
   WifiDelegate wifi_delegate_;
   LteDelegate lte_delegate_;
-  SarHandler sar_handler_;
+  UserProximityHandler user_proximity_handler_;
 };
 
 }  // namespace
 
-TEST_F(SarHandlerTest, DetectSensor) {
+TEST_F(UserProximityHandlerTest, DetectSensor) {
   sar_watcher_.AddSensor(
       1, system::UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI);
   CHECK_EQ(JoinActions(kWifiSensorDetected, nullptr),
@@ -84,7 +87,7 @@ TEST_F(SarHandlerTest, DetectSensor) {
            lte_delegate_.GetActions());
 }
 
-TEST_F(SarHandlerTest, ProximityChange) {
+TEST_F(UserProximityHandlerTest, ProximityChange) {
   sar_watcher_.AddSensor(
       1, system::UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI);
   sar_watcher_.AddSensor(

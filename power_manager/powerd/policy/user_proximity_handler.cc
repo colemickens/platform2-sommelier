@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/policy/sar_handler.h"
+#include "power_manager/powerd/policy/user_proximity_handler.h"
 
 #include <memory>
 #include <utility>
@@ -15,16 +15,17 @@
 namespace power_manager {
 namespace policy {
 
-SarHandler::SarHandler() = default;
+UserProximityHandler::UserProximityHandler() = default;
 
-SarHandler::~SarHandler() {
+UserProximityHandler::~UserProximityHandler() {
   if (user_proximity_watcher_)
     user_proximity_watcher_->RemoveObserver(this);
 }
 
-bool SarHandler::Init(system::UserProximityWatcherInterface* user_prox_watcher,
-                      Delegate* wifi_delegate,
-                      Delegate* lte_delegate) {
+bool UserProximityHandler::Init(
+    system::UserProximityWatcherInterface* user_prox_watcher,
+    Delegate* wifi_delegate,
+    Delegate* lte_delegate) {
   DCHECK(user_prox_watcher);
 
   wifi_delegate_ = wifi_delegate;
@@ -36,7 +37,7 @@ bool SarHandler::Init(system::UserProximityWatcherInterface* user_prox_watcher,
   return true;
 }
 
-void SarHandler::OnNewSensor(int id, uint32_t roles) {
+void UserProximityHandler::OnNewSensor(int id, uint32_t roles) {
   // It is in general not possible to figure out the initial proximity state
   // in all cases (e.g. the sensor may have never fired an interrupt thus far).
   // We take a cautious stance here and decide that - until a FAR value is
@@ -69,7 +70,7 @@ void SarHandler::OnNewSensor(int id, uint32_t roles) {
   }
 }
 
-void SarHandler::OnProximityEvent(int id, UserProximity value) {
+void UserProximityHandler::OnProximityEvent(int id, UserProximity value) {
   auto iter = sensor_roles_.find(id);
   if (iter == sensor_roles_.end()) {
     // This sensor is not handling any subsystem of interest. Ignore.

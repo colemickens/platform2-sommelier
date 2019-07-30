@@ -10,7 +10,7 @@
 #include <base/macros.h>
 
 #include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/policy/sar_handler.h"
+#include "power_manager/powerd/policy/user_proximity_handler.h"
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 
@@ -22,7 +22,7 @@ namespace policy {
 
 // WifiController initiates power-related changes to the wifi chipset.
 class WifiController : public system::UdevSubsystemObserver,
-                       public SarHandler::Delegate {
+                       public UserProximityHandler::Delegate {
  public:
   // Performs work on behalf of WifiController.
   class Delegate {
@@ -49,7 +49,7 @@ class WifiController : public system::UdevSubsystemObserver,
   // Called when the tablet mode changes.
   void HandleTabletModeChange(TabletMode mode);
 
-  // SarHandler::Delegate overrides:
+  // UserProximityHandler::Delegate overrides:
   void ProximitySensorDetected(UserProximity proximity) override;
   void HandleProximityChange(UserProximity proximity) override;
 

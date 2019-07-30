@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_POLICY_SAR_HANDLER_H_
-#define POWER_MANAGER_POWERD_POLICY_SAR_HANDLER_H_
+#ifndef POWER_MANAGER_POWERD_POLICY_USER_PROXIMITY_HANDLER_H_
+#define POWER_MANAGER_POWERD_POLICY_USER_PROXIMITY_HANDLER_H_
 
 #include <memory>
 #include <unordered_map>
@@ -24,10 +24,11 @@ namespace policy {
 
 class WifiController;
 
-// SarHandler responds to events from SAR (Specific Absorption Rate) sensors,
-// and routes them to controllers responsible for adjusting radio transmit
-// power in response to the physical proximity of the user to their Chromebook.
-class SarHandler : public system::UserProximityObserver {
+// UserProximityHandler responds to events from SAR (Specific Absorption Rate)
+// sensors, and routes them to controllers responsible for adjusting radio
+// transmit power in response to the physical proximity of the user to their
+// Chromebook.
+class UserProximityHandler : public system::UserProximityObserver {
  public:
   class Delegate {
    public:
@@ -35,8 +36,8 @@ class SarHandler : public system::UserProximityObserver {
     virtual void ProximitySensorDetected(UserProximity value) = 0;
     virtual void HandleProximityChange(UserProximity value) = 0;
   };
-  SarHandler();
-  ~SarHandler() override;
+  UserProximityHandler();
+  ~UserProximityHandler() override;
 
   // Delegates may be == nullptr. Ownership remains with the caller.
   bool Init(system::UserProximityWatcherInterface* user_prox_watcher,
@@ -58,10 +59,10 @@ class SarHandler : public system::UserProximityObserver {
   system::UserProximityWatcherInterface* user_proximity_watcher_ =
       nullptr;  //  Not owned.
 
-  DISALLOW_COPY_AND_ASSIGN(SarHandler);
+  DISALLOW_COPY_AND_ASSIGN(UserProximityHandler);
 };
 
 }  // namespace policy
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_POLICY_SAR_HANDLER_H_
+#endif  // POWER_MANAGER_POWERD_POLICY_USER_PROXIMITY_HANDLER_H_
