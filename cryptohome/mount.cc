@@ -525,6 +525,12 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     *mount_error = MOUNT_ERROR_UNEXPECTED_MOUNT_TYPE;
     return false;
   }
+
+  // Ensure we don't leave any mounts hanging on intermediate errors.
+  // The closure won't outlive the function so |this| will always be valid.
+  base::ScopedClosureRunner unmount_all_runner(
+      base::Bind(&Mount::UnmountAll, this));
+
   std::string ecryptfs_options;
   if (should_mount_ecryptfs) {
     // Add the decrypted key to the keyring so that ecryptfs can use it.
@@ -552,7 +558,6 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     if (!platform_->AddDirCryptoKeyToKeyring(
             vault_keyset.fek(), vault_keyset.fek_sig(), &dircrypto_key_id_)) {
       LOG(INFO) << "Error adding dircrypto key.";
-      UnmountAll();
       *mount_error = MOUNT_ERROR_KEYRING_FAILED;
       return false;
     }
@@ -576,7 +581,6 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   mount_point_ = homedirs_->GetUserMountDirectory(obfuscated_username);
   if (!platform_->CreateDirectory(mount_point_)) {
     PLOG(ERROR) << "Directory creation failed for " << mount_point_.value();
-    UnmountAll();
     *mount_error = MOUNT_ERROR_DIR_CREATION_FAILED;
     return false;
   }
@@ -586,7 +590,6 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     if (!platform_->CreateDirectory(temporary_mount_point)) {
       PLOG(ERROR) << "Directory creation failed for "
                   << temporary_mount_point.value();
-      UnmountAll();
       *mount_error = MOUNT_ERROR_DIR_CREATION_FAILED;
       return false;
     }
@@ -597,7 +600,6 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   if (platform_->IsDirectoryMounted(mount_point_)) {
     LOG(ERROR) << "Mount point is busy: " << mount_point_.value()
                << " for " << vault_path.value();
-    UnmountAll();
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
@@ -611,7 +613,6 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     if (!platform_->SetDirCryptoKey(mount_point_, vault_keyset.fek_sig())) {
       LOG(ERROR) << "Failed to set directory encryption policy "
                  << mount_point_.value();
-      UnmountAll();
       *mount_error = MOUNT_ERROR_SET_DIR_CRYPTO_KEY_FAILED;
       return false;
     }
@@ -641,7 +642,6 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
         GetUserTemporaryMountDirectory(obfuscated_username) : mount_point_;
     if (!RememberMount(vault_path, dest, "ecryptfs", ecryptfs_options)) {
       LOG(ERROR) << "Cryptohome mount failed";
-      UnmountAll();
       *mount_error = MOUNT_ERROR_MOUNT_ECRYPTFS_FAILED;
       return false;
     }
@@ -651,7 +651,6 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     CopySkeleton(user_home);
 
   if (!SetupGroupAccess(FilePath(user_home))) {
-    UnmountAll();
     *mount_error = MOUNT_ERROR_SETUP_GROUP_ACCESS_FAILED;
     return false;
   }
@@ -663,17 +662,19 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   if (!mount_args.to_migrate_from_ecryptfs && !mount_args.shadow_only &&
       !MountHomesAndDaemonStores(username, obfuscated_username, user_home,
                                  root_home)) {
-    UnmountAll();
     *mount_error = MOUNT_ERROR_MOUNT_HOMES_AND_DAEMON_STORES_FAILED;
     return false;
   }
 
   if (!UserSignInEffects(true /* is_mount */, is_owner)) {
     LOG(ERROR) << "Failed to set user type, aborting mount";
-    UnmountAll();
     *mount_error = MOUNT_ERROR_TPM_COMM_ERROR;
     return false;
   }
+
+  // At this point we're done mounting so release the closure without running
+  // it.
+  ignore_result(unmount_all_runner.Release());
 
   // TODO(ellyjones): Expose the path to the root directory over dbus for use by
   // daemons. We may also want to bind-mount it somewhere stable.
