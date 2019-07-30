@@ -23,12 +23,18 @@ import sys
 import subprocess
 
 
+def get_shell_output(cmd):
+  """Run |cmd| and return output as a list."""
+  output = subprocess.check_output(cmd)
+  return shlex.split(output.decode('utf-8'))
+
+
 def main(argv):
-  cflags = shlex.split(subprocess.check_output(argv + ['--cflags']))
+  cflags = get_shell_output(argv + ['--cflags'])
   libs = []
   lib_dirs = []
   ldflags = []
-  for ldflag in shlex.split(subprocess.check_output(argv + ['--libs'])):
+  for ldflag in get_shell_output(argv + ['--libs']):
     if ldflag.startswith('-l'):
       # Strip -l.
       libs.append(ldflag[2:])
