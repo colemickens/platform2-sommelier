@@ -52,7 +52,8 @@ class SafeFD {
     kNoError = 0,
     kBadArgument,
     kNotInitialized,  // Invalid operation on a SafeFD that was not initialized.
-    kIOError,         // (e.g. called OpenExistingFile on a non-existent file)
+    kIOError,         // Check errno for specific cause.
+    kDoesNotExist,    // The specified path does not exist.
     kSymlinkDetected,
     kWrongType,  // (e.g. got a directory and expected a file)
     kWrongUID,

@@ -48,6 +48,10 @@ SafeFD::SafeFDResult OpenPathComponentInternal(int parent_fd,
     // symlink. It fails with ENXIO when |path| is a FIFO and |flags| is for
     // writing because of the O_NONBLOCK flag added above.
     switch (errno) {
+      case ENOENT:
+        // Do not write to the log because opening a non-existent file is a
+        // frequent occurrence.
+        return MakeErrorResult(SafeFD::Error::kDoesNotExist);
       case ELOOP:
         // PLOG prints something along the lines of the symlink depth being too
         // great which is is misleading so LOG is used instead.

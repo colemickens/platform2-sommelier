@@ -27,6 +27,7 @@ std::string to_string(brillo::SafeFD::Error err) {
     TO_STRING_HELPER(kBadArgument)
     TO_STRING_HELPER(kNotInitialized)
     TO_STRING_HELPER(kIOError)
+    TO_STRING_HELPER(kDoesNotExist)
     TO_STRING_HELPER(kSymlinkDetected)
     TO_STRING_HELPER(kWrongType)
     TO_STRING_HELPER(kWrongUID)
@@ -331,7 +332,16 @@ TEST_F(SafeFDTest, OpenExistingFile_NotInitialized) {
   ASSERT_FALSE(file.first.is_valid());
 }
 
+TEST_F(SafeFDTest, OpenExistingFile_DoesNotExist) {
+  SafeFD::SafeFDResult file = root_.OpenExistingFile(file_path_);
+  EXPECT_STR_EQ(file.second, SafeFD::Error::kDoesNotExist);
+  ASSERT_FALSE(file.first.is_valid());
+}
+
 TEST_F(SafeFDTest, OpenExistingFile_IOError) {
+  ASSERT_TRUE(WriteFile(""));
+  EXPECT_EQ(chmod(file_path_.value().c_str(), 0000), 0) << strerror(errno);
+
   SafeFD::SafeFDResult file = root_.OpenExistingFile(file_path_);
   EXPECT_STR_EQ(file.second, SafeFD::Error::kIOError);
   ASSERT_FALSE(file.first.is_valid());
@@ -366,8 +376,17 @@ TEST_F(SafeFDTest, OpenExistingDir_NotInitialized) {
   ASSERT_FALSE(dir.first.is_valid());
 }
 
+TEST_F(SafeFDTest, OpenExistingDir_DoesNotExist) {
+  SafeFD::SafeFDResult dir = root_.OpenExistingDir(sub_dir_path_);
+  EXPECT_STR_EQ(dir.second, SafeFD::Error::kDoesNotExist);
+  ASSERT_FALSE(dir.first.is_valid());
+}
+
 TEST_F(SafeFDTest, OpenExistingDir_IOError) {
-  SafeFD::SafeFDResult dir = root_.OpenExistingDir(file_path_);
+  ASSERT_TRUE(WriteFile(""));
+  EXPECT_EQ(chmod(sub_dir_path_.value().c_str(), 0000), 0) << strerror(errno);
+
+  SafeFD::SafeFDResult dir = root_.OpenExistingDir(sub_dir_path_);
   EXPECT_STR_EQ(dir.second, SafeFD::Error::kIOError);
   ASSERT_FALSE(dir.first.is_valid());
 }
