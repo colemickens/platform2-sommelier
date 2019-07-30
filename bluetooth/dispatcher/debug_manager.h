@@ -51,11 +51,16 @@ class DebugManager final {
                        uint8_t bluez_level,
                        uint8_t kernel_level);
 
+  // Sets debug verbosity for btdispatch
+  void SetDispatcherLogLevel(int verbosity);
+
   scoped_refptr<dbus::Bus> bus_;
 
   ExportedInterface* debug_interface_;
 
   ExportedObjectManagerWrapper* exported_object_manager_wrapper_;
+
+  int current_verbosity_ = 0;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.

@@ -25,6 +25,7 @@ namespace {
 constexpr char kBluetoothDebugObjectPath[] = "/org/chromium/Bluetooth";
 constexpr char kDebugConfigFile[] = "/var/lib/bluetooth/debug.conf";
 constexpr uint8_t kDefaultVerbosityLevel = 0;
+constexpr uint8_t kDispatcherMinimumVerbosityLevel = 0;
 
 constexpr const char* kDebugProperties[] = {
     bluetooth_debug::kDispatcherLevelProperty,
@@ -56,6 +57,11 @@ void DebugManager::Init() {
       object_path, bluetooth_debug::kBluetoothDebugInterface);
 
   RegisterProperties();
+  uint8_t initial_log_level = debug_interface_
+                                  ->EnsureExportedPropertyRegistered<uint8_t>(
+                                      bluetooth_debug::kDispatcherLevelProperty)
+                                  ->value();
+  SetDispatcherLogLevel(initial_log_level);
 
   debug_interface_->AddSimpleMethodHandlerWithErrorAndMessage(
       bluetooth_debug::kSetLevels, base::Unretained(this),
@@ -143,7 +149,22 @@ bool DebugManager::HandleSetLevels(brillo::ErrorPtr* error,
         ->SetValue(property_levels[i]);
   }
 
+  SetDispatcherLogLevel(dispatcher_level);
   return true;
+}
+
+void DebugManager::SetDispatcherLogLevel(int verbosity) {
+  if (verbosity < kDispatcherMinimumVerbosityLevel) {
+    LOG(WARNING) << "Invalid verbosity level for dispatcher";
+    return;
+  }
+
+  if (current_verbosity_ == verbosity)
+    return;
+
+  current_verbosity_ = verbosity;
+  LOG(INFO) << "Log level is set to " << verbosity;
+  logging::SetMinLogLevel(-verbosity);
 }
 
 }  // namespace bluetooth
