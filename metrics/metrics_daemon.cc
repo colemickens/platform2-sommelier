@@ -78,6 +78,10 @@ const char kKernelCrashDetectedFile[] =
 const char kUncleanShutdownDetectedFile[] =
     "/run/metrics/external/crash-reporter/unclean-shutdown-detected";
 
+// Path of flag created by crouton when it starts.
+const char kCroutonStartedFile[] =
+    "/run/metrics/external/crouton/crouton-started";
+
 constexpr base::TimeDelta kVmlogInterval = base::TimeDelta::FromSeconds(2);
 
 constexpr char kVmlogDir[] = "/var/log/vmlog";
@@ -1515,9 +1519,9 @@ void MetricsDaemon::SendLinearSample(const string& name,
 }
 
 void MetricsDaemon::SendCroutonStats() {
-  // Report the presence of /run/crouton: we only report each state
-  // exactly once per boot ("0" state reported on init).
-  if (PathExists(FilePath("/run/crouton"))) {
+  // Report the presence of kCroutonStartedFile. We only report each state
+  // exactly once per boot. "0" state reported on init.
+  if (PathExists(FilePath(kCroutonStartedFile))) {
     SendLinearSample(kMetricCroutonStarted, 1, 2, 3);
   } else {
     base::MessageLoop::current()->task_runner()->PostDelayedTask(
