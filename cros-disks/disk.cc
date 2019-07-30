@@ -6,6 +6,7 @@
 
 #include <algorithm>
 
+namespace cros_disks {
 namespace {
 
 const char kUSBDriveName[] = "USB Drive";
@@ -16,8 +17,6 @@ const char kDVDName[] = "DVD";
 const char kFallbackPresentationName[] = "External Drive";
 
 }  // namespace
-
-namespace cros_disks {
 
 Disk::Disk()
     : is_drive(false),

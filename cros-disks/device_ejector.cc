@@ -11,14 +11,13 @@
 #include <base/bind.h>
 #include <base/logging.h>
 
+namespace cros_disks {
 namespace {
 
 // Expected location of the 'eject' program.
 const char kEjectProgram[] = "/usr/bin/eject";
 
 }  // namespace
-
-namespace cros_disks {
 
 DeviceEjector::DeviceEjector(brillo::ProcessReaper* process_reaper)
     : process_reaper_(process_reaper), weak_ptr_factory_(this) {}

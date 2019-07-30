@@ -31,13 +31,12 @@
 using testing::Return;
 using testing::_;
 
+namespace cros_disks {
 namespace {
 
 const char kMountRootDirectory[] = "/media/removable";
 
 }  // namespace
-
-namespace cros_disks {
 
 class MockDeviceEjector : public DeviceEjector {
  public:

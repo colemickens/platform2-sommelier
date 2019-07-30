@@ -28,6 +28,7 @@ using testing::ElementsAre;
 using testing::Invoke;
 using testing::Return;
 
+namespace cros_disks {
 namespace {
 
 const char kMountRootDirectory[] = "/media/removable";
@@ -38,8 +39,6 @@ const char kMountOptionRemount[] = "remount";
 const char kMountOptionReadOnly[] = "ro";
 
 }  // namespace
-
-namespace cros_disks {
 
 // A mock platform class for testing the mount manager base class.
 class MockPlatform : public Platform {

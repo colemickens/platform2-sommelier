@@ -25,6 +25,7 @@
 // TODO(benchan): Remove entire archive manager after deprecating the rar
 // support (see chromium:707327).
 
+namespace cros_disks {
 namespace {
 
 // Mapping from a base path to its corresponding path inside the AVFS mount.
@@ -55,8 +56,6 @@ const char kAVFSModulesOption[] = "modules=subdir";
 const char kAVFSSubdirOptionPrefix[] = "subdir=";
 
 }  // namespace
-
-namespace cros_disks {
 
 ArchiveManager::ArchiveManager(const std::string& mount_root,
                                Platform* platform,

@@ -6,6 +6,7 @@
 
 #include <chromeos/dbus/service_constants.h>
 
+namespace cros_disks {
 namespace {
 
 const char kArchiveMountRootDirectory[] = "/media/archive";
@@ -19,8 +20,6 @@ const char kFUSEWritableRootDirectory[] = "/run/fuse";
 const char kNonPrivilegedMountUser[] = "chronos";
 
 }  // namespace
-
-namespace cros_disks {
 
 Daemon::Daemon(bool has_session_manager)
     : brillo::DBusServiceDaemon(kCrosDisksServiceName),

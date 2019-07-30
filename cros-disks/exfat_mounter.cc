@@ -6,6 +6,7 @@
 
 #include "cros-disks/platform.h"
 
+namespace cros_disks {
 namespace {
 
 // Expected location of the exfat-fuse executable.
@@ -14,8 +15,6 @@ const char kMountProgramPath[] = "/usr/sbin/mount.exfat-fuse";
 const char kMountUser[] = "fuse-exfat";
 
 }  // namespace
-
-namespace cros_disks {
 
 const char ExFATMounter::kMounterType[] = "exfat";
 

@@ -11,6 +11,7 @@
 #include <linux/limits.h>
 #include <rootdev/rootdev.h>
 
+namespace cros_disks {
 namespace {
 
 const char kLoopDevicePrefix[] = "/dev/loop";
@@ -18,8 +19,6 @@ const char kRamDeviceFile[] = "/dev/ram0";
 const char kZRamDeviceFile[] = "/dev/zram0";
 
 }  // namespace
-
-namespace cros_disks {
 
 class UdevDeviceTest : public ::testing::Test {
  protected:

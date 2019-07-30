@@ -6,6 +6,7 @@
 
 #include "cros-disks/platform.h"
 
+namespace cros_disks {
 namespace {
 
 // Expected location of the ntfs-3g executable.
@@ -14,8 +15,6 @@ const char kMountProgramPath[] = "/usr/bin/ntfs-3g";
 const char kMountUser[] = "ntfs-3g";
 
 }  // namespace
-
-namespace cros_disks {
 
 const char NTFSMounter::kMounterType[] = "ntfs";
 

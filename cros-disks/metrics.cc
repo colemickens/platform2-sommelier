@@ -6,6 +6,7 @@
 
 #include <base/logging.h>
 
+namespace cros_disks {
 namespace {
 
 const char kArchiveTypeMetricName[] = "CrosDisks.ArchiveType";
@@ -13,8 +14,6 @@ const char kDeviceMediaTypeMetricName[] = "CrosDisks.DeviceMediaType";
 const char kFilesystemTypeMetricName[] = "CrosDisks.FilesystemType";
 
 }  // namespace
-
-namespace cros_disks {
 
 Metrics::Metrics() {
   InitializeArchiveTypeMap();

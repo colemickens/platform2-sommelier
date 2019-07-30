@@ -20,6 +20,7 @@
 #include "cros-disks/mount_info.h"
 #include "cros-disks/usb_device_info.h"
 
+namespace cros_disks {
 namespace {
 
 const char kNullDeviceFile[] = "/dev/null";
@@ -67,8 +68,6 @@ const char* const kPartitionTypesToHide[] = {
 };
 
 }  // namespace
-
-namespace cros_disks {
 
 UdevDevice::UdevDevice(udev_device* dev) : dev_(dev), blkid_cache_(nullptr) {
   CHECK(dev_) << "Invalid udev device";

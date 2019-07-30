@@ -23,6 +23,7 @@
 #include "cros-disks/platform.h"
 #include "cros-disks/uri.h"
 
+namespace cros_disks {
 namespace {
 
 // Permissions to set on the mount root directory (u+rwx,og+rx).
@@ -43,8 +44,6 @@ const char kUnmountOptionLazy[] = "lazy";
 const unsigned kMaxNumMountTrials = 100;
 
 }  // namespace
-
-namespace cros_disks {
 
 MountManager::MountManager(const std::string& mount_root,
                            Platform* platform,

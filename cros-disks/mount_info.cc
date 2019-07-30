@@ -9,6 +9,7 @@
 
 #include "cros-disks/file_reader.h"
 
+namespace cros_disks {
 namespace {
 
 bool IsOctalDigit(char digit) {
@@ -16,8 +17,6 @@ bool IsOctalDigit(char digit) {
 }
 
 }  // namespace
-
-namespace cros_disks {
 
 // A data structure for holding information of a mount point.
 struct MountInfo::MountPointData {
