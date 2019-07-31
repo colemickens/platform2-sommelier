@@ -61,45 +61,19 @@ using chaps::IsolateCredentialManager;
 
 namespace cryptohome {
 
-const char kDefaultHomeDir[] = "/home/chronos/user";
 const char kDefaultShadowRoot[] = "/home/.shadow";
-const char kEphemeralCryptohomeDir[] = "/run/cryptohome";
-const char kSparseFileDir[] = "ephemeral_data";
-const char kDefaultSharedUser[] = "chronos";
 const char kChapsUserName[] = "chaps";
 const char kDefaultSharedAccessGroup[] = "chronos-access";
-const char kDefaultSkeletonSource[] = "/etc/skel";
-const uid_t kMountOwnerUid = 0;
-const gid_t kMountOwnerGid = 0;
+
 // TODO(fes): Remove once UI for BWSI switches to MountGuest()
 const char kIncognitoUser[] = "incognito";
-// Tracked directories - special sub-directories of the cryptohome
-// vault, that are visible even if not mounted. Contents is still encrypted.
-const char kCacheDir[] = "Cache";
-const char kDownloadsDir[] = "Downloads";
-const char kMyFilesDir[] = "MyFiles";
-const char kGCacheDir[] = "GCache";
-const char kGCacheVersion1Dir[] = "v1";
-const char kGCacheVersion2Dir[] = "v2";
-const char kGCacheBlobsDir[] = "blobs";
-const char kGCacheTmpDir[] = "tmp";
-const char kUserHomeSuffix[] = "user";
-const char kRootHomeSuffix[] = "root";
-const char kEphemeralMountDir[] = "ephemeral_mount";
-const char kTemporaryMountDir[] = "temporary_mount";
+
 const char kKeyFile[] = "master";
 const int kKeyFileMax = 100;  // master.0 ... master.99
 const mode_t kKeyFilePermissions = 0600;
 const char kKeyLegacyPrefix[] = "legacy-";
-const char kEphemeralMountType[] = "ext4";
-const char kEphemeralMountOptions[] = "";
 
 const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
-const gid_t kDaemonStoreGid = 400;
-
-// User daemon store directories.
-const char kRunDaemonStoreBaseDir[] = "/run/daemon-store/";
-const char kEtcDaemonStoreBaseDir[] = "/etc/daemon-store/";
 
 void StartUserFileAttrsCleanerService(const std::string& username) {
   brillo::ProcessImpl file_attrs;
@@ -226,6 +200,12 @@ bool Mount::Init(Platform* platform, Crypto* crypto,
 
   current_user_->Init(system_salt_);
 
+  // All mount(2) operations happen in the MountHelper object now so it's OK for
+  // |mounter_| to have a pointer to |mounts_|.
+  mounter_.reset(new MountHelper(default_user_, default_group_,
+                                 default_access_group_, skel_source_,
+                                 legacy_mount_, platform_, &mounts_));
+
   return result;
 }
 
@@ -238,7 +218,7 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
     platform_->DeleteFile(GetUserDirectory(credentials), true);
   }
   if (!mount_args.shadow_only) {
-    if (!EnsureUserMountPoints(credentials.username())) {
+    if (!mounter_->EnsureUserMountPoints(credentials.username())) {
       return false;
     }
   }
@@ -603,11 +583,12 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
+
   if (should_mount_ecryptfs) {
-    // Create vault_path/user as a passthrough directory, move all the
-    // (encrypted) contents of vault_path into vault_path/user, create
-    // vault_path/root.
-    MigrateToUserHome(vault_path);
+    // Create <vault_path>/user as a passthrough directory, move all the
+    // (encrypted) contents of <vault_path> into <vault_path>/user, create
+    // <vault_path>/root.
+    mounter_->MigrateToUserHome(vault_path);
   }
   if (should_mount_dircrypto) {
     if (!platform_->SetDirCryptoKey(mount_point_, vault_keyset.fek_sig())) {
@@ -617,10 +598,10 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
       return false;
     }
     // Create user & root directories.
-    MigrateToUserHome(mount_point_);
+    mounter_->MigrateToUserHome(mount_point_);
   }
 
-  // Set the current user here so we can rely on it in the helpers..
+  // Set the current user here so we can rely on it in the helpers.
   // On failure, they will linger, but should be reset on a new MountCryptohome
   // request.
   current_user_->SetUser(credentials);
@@ -629,7 +610,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     current_user_->set_key_data(serialized.key_data());
   }
 
-  // Move the tracked subdirectories from mount_point_/user to vault_path
+  // Move the tracked subdirectories from <mount_point_>/user to <vault_path>
   // as passthrough directories.
   CreateTrackedSubdirectories(credentials, created);
 
@@ -638,19 +619,21 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   // b/115997660: Mount eCryptFs after creating the tracked subdirectories.
   if (should_mount_ecryptfs) {
-    FilePath dest = mount_args.to_migrate_from_ecryptfs ?
-        GetUserTemporaryMountDirectory(obfuscated_username) : mount_point_;
-    if (!RememberMount(vault_path, dest, "ecryptfs", ecryptfs_options)) {
-      LOG(ERROR) << "Cryptohome mount failed";
+    FilePath dest = mount_args.to_migrate_from_ecryptfs
+                        ? GetUserTemporaryMountDirectory(obfuscated_username)
+                        : mount_point_;
+    if (!mounter_->MountAndPush(vault_path, dest, "ecryptfs",
+                                ecryptfs_options)) {
+      LOG(ERROR) << "eCryptfs mount failed";
       *mount_error = MOUNT_ERROR_MOUNT_ECRYPTFS_FAILED;
       return false;
     }
   }
 
   if (created)
-    CopySkeleton(user_home);
+    mounter_->CopySkeleton(user_home);
 
-  if (!SetupGroupAccess(FilePath(user_home))) {
+  if (!mounter_->SetUpGroupAccess(FilePath(user_home))) {
     *mount_error = MOUNT_ERROR_SETUP_GROUP_ACCESS_FAILED;
     return false;
   }
@@ -660,8 +643,8 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   // When migrating, it's better to avoid exposing the new ext4 crypto dir.
   // Also don't expose home directory if a shadow-only mount was requested.
   if (!mount_args.to_migrate_from_ecryptfs && !mount_args.shadow_only &&
-      !MountHomesAndDaemonStores(username, obfuscated_username, user_home,
-                                 root_home)) {
+      !mounter_->MountHomesAndDaemonStores(username, obfuscated_username,
+                                           user_home, root_home)) {
     *mount_error = MOUNT_ERROR_MOUNT_HOMES_AND_DAEMON_STORES_FAILED;
     return false;
   }
@@ -675,9 +658,6 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   // At this point we're done mounting so release the closure without running
   // it.
   ignore_result(unmount_all_runner.Release());
-
-  // TODO(ellyjones): Expose the path to the root directory over dbus for use by
-  // daemons. We may also want to bind-mount it somewhere stable.
 
   *mount_error = MOUNT_ERROR_NONE;
 
@@ -704,7 +684,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   // TODO(fqj,b/116072767) Ignore errors since unlabeled files are currently
   // still okay during current development progress.
-  LOG(INFO) << "Restoring selinux context for homedir.";
+  LOG(INFO) << "Restoring SELinux context for homedir.";
   platform_->RestoreSELinuxContexts(
       homedirs_->GetUserMountDirectory(obfuscated_username),
       true);
@@ -716,7 +696,8 @@ void Mount::CleanUpEphemeral() {
   if (!ephemeral_loop_device_.empty()) {
     if (!platform_->DetachLoop(ephemeral_loop_device_)) {
       ReportCryptohomeError(kEphemeralCleanUpFailed);
-      PLOG(ERROR) << "Can't detach loop: " << ephemeral_loop_device_.value();
+      PLOG(ERROR) << "Can't detach loop device '"
+                  << ephemeral_loop_device_.value() << "'";
     }
     ephemeral_loop_device_.clear();
   }
@@ -735,85 +716,15 @@ bool Mount::MountEphemeralCryptohome(const std::string& username) {
   CHECK(ephemeral_file_path_.empty());
   CHECK(ephemeral_loop_device_.empty());
 
-  bool mounted = MountEphemeralCryptohomeInner(username);
-  if (!mounted) {
-    UnmountAll();
-    CleanUpEphemeral();
-  }
-  return mounted;
-}
+  base::ScopedClosureRunner clean_up_ephemeral_runner(
+      base::Bind(&Mount::CleanUpEphemeral, this));
+  base::ScopedClosureRunner unmount_all_runner(
+      base::Bind(&Mount::UnmountAll, this));
 
-bool Mount::MountEphemeralCryptohomeInner(const std::string& username) {
-  // Underlying sparse file will be created in a temporary directory in RAM.
-  const FilePath ephemeral_root(kEphemeralCryptohomeDir);
-
-  // Determine ephemeral cryptohome size.
-  struct statvfs vfs;
-  if (!platform_->StatVFS(ephemeral_root, &vfs)) {
-    PLOG(ERROR) << "Can't determine ephemeral cryptohome size";
-    return false;
-  }
-  const size_t sparse_size = vfs.f_blocks * vfs.f_frsize;
-
-  // Create underlying sparse file
-  const std::string obfuscated_username =
-      BuildObfuscatedUsername(username, system_salt_);
-  const FilePath sparse_file = GetEphemeralSparseFile(obfuscated_username);
-  if (!platform_->CreateDirectory(sparse_file.DirName())) {
-    LOG(ERROR) << "Can't create directory for ephemeral sparse files";
-    return false;
-  }
-
-  // Remember the file to clean up if error will happen during file creation.
-  ephemeral_file_path_ = sparse_file;
-  if (!platform_->CreateSparseFile(sparse_file, sparse_size)) {
-    LOG(ERROR) << "Can't create ephemeral sparse file";
-    return false;
-  }
-
-  // Format the sparse file into ext4.
-  if (!platform_->FormatExt4(sparse_file, kDefaultExt4FormatOpts, 0)) {
-    LOG(ERROR) << "Can't format ephemeral sparse file into ext4";
-    return false;
-  }
-
-  // Create a loop device based on the sparse file.
-  ephemeral_loop_device_ = platform_->AttachLoop(sparse_file);
-  if (ephemeral_loop_device_.empty()) {
-    LOG(ERROR) << "Can't create loop device";
-    return false;
-  }
-
-  const FilePath mount_point =
-      GetUserEphemeralMountDirectory(obfuscated_username);
-  if (!platform_->CreateDirectory(mount_point)) {
-    PLOG(ERROR) << "Directory creation failed for " << mount_point.value();
-    return false;
-  }
-  if (!RememberMount(ephemeral_loop_device_,
-                     mount_point,
-                     kEphemeralMountType,
-                     kEphemeralMountOptions)) {
-    LOG(ERROR) << "Can't mount ephemeral mount point";
-    return false;
-  }
-
-  // Create user & root directories.
-  MigrateToUserHome(mount_point);
-  if (!EnsureUserMountPoints(username)) {
-    return false;
-  }
-
-  const FilePath user_home =
-      GetMountedEphemeralUserHomePath(obfuscated_username);
-  const FilePath root_home =
-      GetMountedEphemeralRootHomePath(obfuscated_username);
-
-  if (!SetUpEphemeralCryptohome(user_home))
-    return false;
-
-  if (!MountHomesAndDaemonStores(username, obfuscated_username, user_home,
-                                 root_home)) {
+  if (!mounter_->MountEphemeral(username, system_salt_, &ephemeral_loop_device_,
+                                &ephemeral_file_path_)) {
+    LOG(ERROR) << "MountHelper::MountEphemeral failed, aborting"
+               << " ephemeral mount";
     return false;
   }
 
@@ -822,72 +733,23 @@ bool Mount::MountEphemeralCryptohomeInner(const std::string& username) {
     return false;
   }
 
+  // Mount succeeded, release closures without running them.
+  ignore_result(clean_up_ephemeral_runner.Release());
+  ignore_result(unmount_all_runner.Release());
+
   mount_type_ = MountType::EPHEMERAL;
   return true;
 }
 
-bool Mount::SetUpEphemeralCryptohome(const FilePath& source_path) {
-  CopySkeleton(source_path);
-
-  // Create the Downloads, MyFiles, MyFiles/Downloads, GCache and GCache/v2
-  // directories if they don't exist so they can be made group accessible when
-  // SetupGroupAccess() is called.
-  const FilePath user_files_paths[] = {
-      FilePath(source_path).Append(kDownloadsDir),
-      FilePath(source_path).Append(kMyFilesDir),
-      FilePath(source_path).Append(kMyFilesDir).Append(kDownloadsDir),
-      FilePath(source_path).Append(kGCacheDir),
-      FilePath(source_path).Append(kGCacheDir).Append(kGCacheVersion2Dir),
-  };
-  for (const auto& path : user_files_paths) {
-    if (platform_->DirectoryExists(path))
-      continue;
-
-    if (!platform_->CreateDirectory(path) ||
-        !platform_->SetOwnership(path, default_user_, default_group_, true)) {
-      LOG(ERROR) << "Couldn't create user path directory: " << path.value();
-      return false;
-    }
-  }
-
-  if (!platform_->SetOwnership(source_path,
-                               default_user_,
-                               default_access_group_,
-                               true)) {
-    LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
-               << default_access_group_ << ") of path: "
-               << source_path.value();
-    return false;
-  }
-
-  if (!SetupGroupAccess(FilePath(source_path)))
-    return false;
-
-  return true;
-}
-
 bool Mount::RememberMount(const FilePath& src,
-                          const FilePath& dest, const std::string& type,
+                          const FilePath& dest,
+                          const std::string& type,
                           const std::string& options) {
-  if (!platform_->Mount(src, dest, type, kDefaultMountFlags, options)) {
-    PLOG(ERROR) << "Mount failed: " << src.value() << " -> " << dest.value();
-    return false;
-  }
-
-  mounts_.Push(src, dest);
-  return true;
+  return mounter_->MountAndPush(src, dest, type, options);
 }
 
-bool Mount::RememberBind(const FilePath& src,
-                         const FilePath& dest) {
-  if (!platform_->Bind(src, dest)) {
-    PLOG(ERROR) << "Bind mount failed: " << src.value() << " -> "
-                << dest.value();
-    return false;
-  }
-
-  mounts_.Push(src, dest);
-  return true;
+bool Mount::RememberBind(const FilePath& src, const FilePath& dest) {
+  return mounter_->BindAndPush(src, dest);
 }
 
 void Mount::UnmountAll() {
@@ -1121,34 +983,6 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   return result;
 }
 
-bool Mount::BindMyFilesDownloads(const base::FilePath& user_home) {
-  if (!platform_->DirectoryExists(user_home)) {
-    LOG(ERROR) << "Failed to bind MyFiles/Downloads, missing directory: "
-               << user_home.value();
-    return false;
-  }
-
-  const FilePath downloads = user_home.Append(kDownloadsDir);
-  if (!platform_->DirectoryExists(downloads)) {
-    LOG(INFO) << "Failed to bind MyFiles/Downloads, missing directory: "
-              << downloads.value();
-    return false;
-  }
-
-  const FilePath downloads_in_myfiles =
-      user_home.Append(kMyFilesDir).Append(kDownloadsDir);
-  if (!platform_->DirectoryExists(downloads_in_myfiles)) {
-    LOG(INFO) << "Failed to bind MyFiles/Downloads, missing directory: "
-              << downloads_in_myfiles.value();
-    return false;
-  }
-
-  if (!RememberBind(downloads, downloads_in_myfiles))
-    return false;
-
-  return true;
-}
-
 bool Mount::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
   std::string obfuscated_username;
   current_user_->GetObfuscatedUsername(&obfuscated_username);
@@ -1172,48 +1006,6 @@ bool Mount::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
     return true;
   }
   return false;
-}
-
-bool Mount::SetupGroupAccess(const FilePath& home_dir) const {
-  // Make the following directories group accessible by other system daemons:
-  //   {home_dir}
-  //   {home_dir}/Downloads
-  //   {home_dir}/MyFiles
-  //   {home_dir}/MyFiles/Downloads
-  //   {home_dir}/GCache
-  //   {home_dir}/GCache/v1 (only if it exists)
-  //
-  // Make the following directories group accessible and writable by other
-  // system daemons:
-  //   {home_dir}/GCache/v2
-  const struct {
-    FilePath path;
-    bool optional = false;
-    bool group_writable = false;
-  } kGroupAccessiblePaths[] = {
-      {home_dir},
-      {home_dir.Append(kDownloadsDir)},
-      {home_dir.Append(kMyFilesDir)},
-      {home_dir.Append(kMyFilesDir).Append(kDownloadsDir)},
-      {home_dir.Append(kGCacheDir)},
-      {home_dir.Append(kGCacheDir).Append(kGCacheVersion1Dir), true},
-      {home_dir.Append(kGCacheDir).Append(kGCacheVersion2Dir), false, true},
-  };
-
-  constexpr mode_t kDefaultMode = S_IXGRP;
-  constexpr mode_t kWritableMode = kDefaultMode | S_IWGRP;
-  for (const auto& accessible : kGroupAccessiblePaths) {
-    if (!platform_->FileExists(accessible.path) &&
-        accessible.optional)
-      continue;
-
-    if (!platform_->SetGroupAccessible(
-            accessible.path, default_access_group_,
-            accessible.group_writable ? kWritableMode : kDefaultMode)) {
-      return false;
-    }
-  }
-  return true;
 }
 
 bool Mount::AreSameUser(const Credentials& credentials) {
@@ -1491,23 +1283,9 @@ FilePath Mount::GetUserKeyFileForUser(
                      .Append(kKeyFile).AddExtension(safe_label);
 }
 
-FilePath Mount::GetUserEphemeralMountDirectory(
-    const std::string& obfuscated_username) const {
-  return FilePath(kEphemeralCryptohomeDir).Append(kEphemeralMountDir)
-      .Append(obfuscated_username);
-}
-
 FilePath Mount::GetUserTemporaryMountDirectory(
     const std::string& obfuscated_username) const {
   return shadow_root_.Append(obfuscated_username).Append(kTemporaryMountDir);
-}
-
-FilePath Mount::VaultPathToUserPath(const FilePath& vault) const {
-  return vault.Append(kUserHomeSuffix);
-}
-
-FilePath Mount::VaultPathToRootPath(const FilePath& vault) const {
-  return vault.Append(kRootHomeSuffix);
 }
 
 FilePath Mount::GetMountedUserHomePath(
@@ -1519,18 +1297,6 @@ FilePath Mount::GetMountedUserHomePath(
 FilePath Mount::GetMountedRootHomePath(
     const std::string& obfuscated_username) const {
   return homedirs_->GetUserMountDirectory(obfuscated_username)
-      .Append(kRootHomeSuffix);
-}
-
-FilePath Mount::GetMountedEphemeralUserHomePath(
-    const std::string& obfuscated_username) const {
-  return GetUserEphemeralMountDirectory(obfuscated_username)
-      .Append(kUserHomeSuffix);
-}
-
-FilePath Mount::GetMountedEphemeralRootHomePath(
-    const std::string& obfuscated_username) const {
-  return GetUserEphemeralMountDirectory(obfuscated_username)
       .Append(kRootHomeSuffix);
 }
 
@@ -1654,88 +1420,6 @@ void Mount::RemovePkcs11Token() {
       token_dir);
 }
 
-void Mount::MigrateToUserHome(const FilePath& vault_path) const {
-  std::vector<FilePath> ent_list;
-  FilePath user_path(VaultPathToUserPath(vault_path));
-  FilePath root_path(VaultPathToRootPath(vault_path));
-  struct stat st;
-
-  // This check makes the migration idempotent; if we completed a migration,
-  // root_path will exist and we're done, and if we didn't complete it, we can
-  // finish it.
-  if (platform_->Stat(root_path, &st) &&
-      S_ISDIR(st.st_mode) &&
-      st.st_mode & S_ISVTX &&
-      st.st_uid == kMountOwnerUid &&
-      st.st_gid == kDaemonStoreGid) {
-      return;
-  }
-
-  // There are three ways to get here:
-  // 1) the Stat() call above succeeded, but what we saw was not a root-owned
-  //    directory.
-  // 2) the Stat() call above failed with -ENOENT
-  // 3) the Stat() call above failed for some other reason
-  // In any of these cases, it is safe for us to rm root_path, since the only
-  // way it could have gotten there is if someone undertook some funny business
-  // as root.
-  platform_->DeleteFile(root_path, true);
-
-  // Get the list of entries before we create user_path, since user_path will be
-  // inside dir.
-  platform_->EnumerateDirectoryEntries(vault_path, false, &ent_list);
-
-  if (!platform_->CreateDirectory(user_path)) {
-    PLOG(ERROR) << "CreateDirectory() failed: " << user_path.value();
-    return;
-  }
-
-  if (!platform_->SetOwnership(
-          user_path, default_user_, default_group_, true)) {
-    PLOG(ERROR) << "SetOwnership() failed: " << user_path.value();
-    return;
-  }
-
-  for (const auto& ent : ent_list) {
-    FilePath basename(ent);
-    FilePath next_path = basename;
-    basename = basename.BaseName();
-    // Don't move the user/ directory itself. We're currently operating on an
-    // _unmounted_ ecryptfs, which means all the filenames are encrypted except
-    // the user and root passthrough directories.
-    if (basename.value() == kUserHomeSuffix) {
-      LOG(WARNING) << "Interrupted migration detected.";
-      continue;
-    }
-    FilePath dest_path(user_path);
-    dest_path = dest_path.Append(basename);
-    if (!platform_->Rename(next_path, dest_path)) {
-      // TODO(ellyjones): UMA event log for this
-      PLOG(WARNING) << "Migration fault: can't move " << next_path.value()
-                    << " to " << dest_path.value();
-    }
-  }
-  // Create root_path at the end as a sentinel for migration.
-  if (!platform_->CreateDirectory(root_path)) {
-    PLOG(ERROR) << "CreateDirectory() failed: " << root_path.value();
-    return;
-  }
-  if (!platform_->SetOwnership(
-          root_path, kMountOwnerUid, kDaemonStoreGid, true)) {
-    PLOG(ERROR) << "SetOwnership() failed: " << root_path.value();
-    return;
-  }
-  if (!platform_->SetPermissions(root_path, S_IRWXU | S_IRWXG | S_ISVTX)) {
-    PLOG(ERROR) << "SetPermissions() failed: " << root_path.value();
-    return;
-  }
-  LOG(INFO) << "Migrated (or created) user directory: " << vault_path.value();
-}
-
-void Mount::CopySkeleton(const FilePath& destination) const {
-  RecursiveCopy(destination, FilePath(skel_source_));
-}
-
 bool Mount::CacheOldFiles(const std::vector<FilePath>& files) const {
   for (const auto& file : files) {
     FilePath file_bak = file.AddExtension("bak");
@@ -1751,41 +1435,6 @@ bool Mount::CacheOldFiles(const std::vector<FilePath>& files) const {
     }
   }
   return true;
-}
-
-void Mount::RecursiveCopy(const FilePath& destination,
-                          const FilePath& source) const {
-  std::unique_ptr<FileEnumerator> file_enumerator(
-      platform_->GetFileEnumerator(source, false,
-                                   base::FileEnumerator::FILES));
-  FilePath next_path;
-  while (!(next_path = file_enumerator->Next()).empty()) {
-    FilePath file_name = next_path.BaseName();
-    FilePath destination_file = destination.Append(file_name);
-    if (!platform_->Copy(next_path, destination_file) ||
-        !platform_->SetOwnership(
-            destination_file, default_user_, default_group_, true)) {
-      LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
-                 << default_group_ << ") of destination path: "
-                 << destination_file.value();
-    }
-  }
-  std::unique_ptr<FileEnumerator> dir_enumerator(
-      platform_->GetFileEnumerator(source, false,
-                                   base::FileEnumerator::DIRECTORIES));
-  while (!(next_path = dir_enumerator->Next()).empty()) {
-    FilePath dir_name = FilePath(next_path).BaseName();
-    FilePath destination_dir = destination.Append(dir_name);
-    LOG(INFO) << "RecursiveCopy: " << destination_dir.value();
-    if (!platform_->CreateDirectory(destination_dir) ||
-        !platform_->SetOwnership(
-            destination_dir, default_user_, default_group_, true)) {
-      LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
-                 << default_group_ << ") of destination path: "
-                 << destination_dir.value();
-    }
-    RecursiveCopy(destination_dir, FilePath(next_path));
-  }
 }
 
 bool Mount::RevertCacheFiles(const std::vector<FilePath>& files) const {
@@ -1818,94 +1467,6 @@ void Mount::GetUserSalt(const Credentials& credentials, bool force,
                   credentials.GetObfuscatedUsername(system_salt_),
                   key_index));
   crypto_->GetOrCreateSalt(path, CRYPTOHOME_DEFAULT_SALT_LENGTH, force, salt);
-}
-
-bool Mount::EnsurePathComponent(const FilePath& fp, size_t num,
-                                uid_t uid, gid_t gid) const {
-  std::vector<std::string> path_parts;
-  fp.GetComponents(&path_parts);
-  FilePath check_path(path_parts[0]);
-  for (size_t i = 1; i < num; i++)
-    check_path = check_path.Append(path_parts[i]);
-
-  struct stat st;
-  if (!platform_->Stat(check_path, &st)) {
-    // Dirent not there, so create and set ownership.
-    if (!platform_->CreateDirectory(check_path)) {
-      PLOG(ERROR) << "Can't create: " << check_path.value();
-      return false;
-    }
-    if (!platform_->SetOwnership(check_path, uid, gid, true)) {
-      PLOG(ERROR) << "Can't chown/chgrp: " << check_path.value()
-                  << " uid " << uid << " gid " << gid;
-      return false;
-    }
-  } else {
-    // Dirent there; make sure it's acceptable.
-    if (!S_ISDIR(st.st_mode)) {
-      LOG(ERROR) << "Non-directory path: " << check_path.value();
-      return false;
-    }
-    if (st.st_uid != uid) {
-      LOG(ERROR) << "Owner mismatch: " << check_path.value()
-                 << " " << st.st_uid << " != " << uid;
-      return false;
-    }
-    if (st.st_gid != gid) {
-      LOG(ERROR) << "Group mismatch: " << check_path.value()
-                 << " " << st.st_gid << " != " << gid;
-      return false;
-    }
-    if (st.st_mode & S_IWOTH) {
-      LOG(ERROR) << "Permissions too lenient: " << check_path.value()
-                 << " has " << std::oct << st.st_mode;
-      return false;
-    }
-  }
-  return true;
-}
-
-bool Mount::EnsureNewUserDirExists(const FilePath& fp, uid_t uid,
-                                   gid_t gid) const {
-  std::vector<std::string> path_parts;
-  if (!EnsureDirHasOwner(fp.DirName(), uid, gid))
-    return false;
-  return platform_->CreateDirectory(fp);
-}
-
-bool Mount::EnsureDirHasOwner(const FilePath& fp, uid_t final_uid,
-                              gid_t final_gid) const {
-  std::vector<std::string> path_parts;
-  fp.GetComponents(&path_parts);
-  // The path given should be absolute to that its first part is /. This is not
-  // actually checked so that relative paths can be used during testing.
-  for (size_t i = 2; i <= path_parts.size(); i++) {
-    bool last = (i == path_parts.size());
-    uid_t uid = last ? final_uid : kMountOwnerUid;
-    gid_t gid = last ? final_gid : kMountOwnerGid;
-    if (!EnsurePathComponent(fp, i, uid, gid))
-      return false;
-  }
-  return true;
-}
-
-bool Mount::EnsureUserMountPoints(const std::string& username) const {
-  FilePath root_path = GetRootPath(username);
-  FilePath user_path = GetUserPath(username);
-  FilePath temp_path(GetNewUserPath(username));
-  if (!EnsureDirHasOwner(root_path, kMountOwnerUid, kMountOwnerGid)) {
-    LOG(ERROR) << "Couldn't ensure root path: " << root_path.value();
-    return false;
-  }
-  if (!EnsureDirHasOwner(user_path, default_user_, default_access_group_)) {
-    LOG(ERROR) << "Couldn't ensure user path: " << user_path.value();
-    return false;
-  }
-  if (!EnsureNewUserDirExists(temp_path, default_user_, default_group_)) {
-    LOG(ERROR) << "Couldn't ensure temp path: " << temp_path.value();
-    return false;
-  }
-  return true;
 }
 
 std::unique_ptr<base::Value> Mount::GetStatus() {
@@ -1976,28 +1537,10 @@ FilePath Mount::GetNewUserPath(const std::string& username) {
   return FilePath("/home").Append(kDefaultSharedUser).Append(user_dir);
 }
 
-FilePath Mount::GetEphemeralSparseFile(const std::string& obfuscated_username) {
-  return FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir)
-      .Append(obfuscated_username);
-}
-
 bool Mount::SetUserCreds(const Credentials& credentials, int key_index) {
   if (!current_user_->SetUser(credentials))
     return false;
   current_user_->set_key_index(key_index);
-  return true;
-}
-
-bool Mount::MountLegacyHome(const FilePath& from) {
-  // Multiple mounts can't live on the legacy mountpoint.
-  if (platform_->IsDirectoryMounted(FilePath(kDefaultHomeDir))) {
-    LOG(INFO) << "Skipping binding to /home/chronos/user.";
-    return true;
-  }
-
-  if (!RememberBind(from, FilePath(kDefaultHomeDir)))
-    return false;
-
   return true;
 }
 
@@ -2084,128 +1627,6 @@ bool Mount::UserSignInEffects(bool is_mount, bool is_owner) {
   Tpm::UserType user_type =
       (is_mount & is_owner) ? Tpm::UserType::Owner : Tpm::UserType::NonOwner;
   return tpm->SetUserType(user_type);
-}
-
-bool Mount::MountHomesAndDaemonStores(const std::string& username,
-                                      const std::string& obfuscated_username,
-                                      const FilePath& user_home,
-                                      const FilePath& root_home) {
-  // Mount /home/chronos/user.
-  if (legacy_mount_ && !MountLegacyHome(user_home))
-    return false;
-
-  // Mount /home/chronos/u-<user_hash>
-  const FilePath new_user_path = GetNewUserPath(username);
-  if (!RememberBind(user_home, new_user_path))
-    return false;
-
-  // Mount /home/user/<user_hash>.
-  const FilePath user_multi_home = GetUserPath(username);
-  if (!RememberBind(user_home, user_multi_home))
-    return false;
-
-  // Mount /home/root/<user_hash>.
-  const FilePath root_multi_home = GetRootPath(username);
-  if (!RememberBind(root_home, root_multi_home))
-    return false;
-
-  // Mount Downloads to MyFiles/Downloads in:
-  //  - /home/chronos/u-<user_hash>
-  //  - /home/user/<user_hash>
-  if (!(BindMyFilesDownloads(new_user_path) &&
-        BindMyFilesDownloads(user_multi_home))) {
-    return false;
-  }
-
-  // Only bind mount /home/chronos/user/Downloads if it isn't mounted yet, in
-  // multi-profile login it skips.
-  if (legacy_mount_) {
-    auto downloads_folder =
-        FilePath(kDefaultHomeDir).Append(kMyFilesDir).Append(kDownloadsDir);
-    if (platform_->IsDirectoryMounted(downloads_folder)) {
-      LOG(INFO) << "Skipping binding to: " << downloads_folder.value();
-    } else if (!BindMyFilesDownloads(FilePath(kDefaultHomeDir))) {
-      return false;
-    }
-  }
-
-  // Mount directories used by daemons to store per-user data.
-  if (!MountDaemonStoreDirectories(root_home, obfuscated_username))
-    return false;
-
-  return true;
-}
-
-bool Mount::MountDaemonStoreDirectories(
-    const FilePath& root_home, const std::string& obfuscated_username) {
-  // Iterate over all directories in /etc/daemon-store. This list is on rootfs,
-  // so it's tamper-proof and nobody can sneak in additional directories that we
-  // blindly mount. The actual mounts happen on /run/daemon-store, though.
-  std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
-      FilePath(kEtcDaemonStoreBaseDir), false /* recursive */,
-      base::FileEnumerator::DIRECTORIES));
-
-  // /etc/daemon-store/<daemon-name>
-  FilePath etc_daemon_store_path;
-  while (!(etc_daemon_store_path = file_enumerator->Next()).empty()) {
-    const FilePath& daemon_name = etc_daemon_store_path.BaseName();
-
-    // /run/daemon-store/<daemon-name>
-    FilePath run_daemon_store_path =
-        FilePath(kRunDaemonStoreBaseDir).Append(daemon_name);
-    if (!platform_->DirectoryExists(run_daemon_store_path)) {
-      // The chromeos_startup script should make sure this exist.
-      PLOG(ERROR) << "Daemon store directory does not exist: "
-                  << run_daemon_store_path.value();
-      return false;
-    }
-
-    // /home/.shadow/<user_hash>/mount/root/<daemon-name>
-    const FilePath mount_source = root_home.Append(daemon_name);
-
-    // /run/daemon-store/<daemon-name>/<user_hash>
-    const FilePath mount_target =
-        run_daemon_store_path.Append(obfuscated_username);
-
-    if (!platform_->CreateDirectory(mount_source)) {
-      PLOG(ERROR) << "Directory creation failed for " << mount_source.value();
-      return false;
-    }
-
-    if (!platform_->CreateDirectory(mount_target)) {
-      PLOG(ERROR) << "Directory creation failed for " << mount_target.value();
-      return false;
-    }
-
-    // Copy ownership from |etc_daemon_store_path| to |mount_source|. After the
-    // bind operation, this guarantees that ownership for |mount_target| is the
-    // same as for |etc_daemon_store_path| (usually
-    // <daemon_user>:<daemon_group>), which is what the daemon intended.
-    // Otherwise, it would end up being root-owned.
-    struct stat etc_daemon_path_stat = file_enumerator->GetInfo().stat();
-    if (!platform_->SetOwnership(mount_source, etc_daemon_path_stat.st_uid,
-                                 etc_daemon_path_stat.st_gid,
-                                 false /* follow_links */)) {
-      PLOG(ERROR) << "Failed to set ownership for " << mount_source.value();
-      return false;
-    }
-
-    // Similarly, transfer directory permissions. Should usually be 0700, so
-    // that only the daemon has full access.
-    if (!platform_->SetPermissions(mount_source,
-                                   etc_daemon_path_stat.st_mode)) {
-      PLOG(ERROR) << "Failed to set permissions for " << mount_source.value();
-      return false;
-    }
-
-    // Assuming that |run_daemon_store_path| is a shared mount and the daemon
-    // runs in a file system namespace with |run_daemon_store_path| mounted as
-    // slave, this mount event propagates into the daemon.
-    if (!RememberBind(mount_source, mount_target))
-      return false;
-  }
-
-  return true;
 }
 
 }  // namespace cryptohome

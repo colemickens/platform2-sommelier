@@ -35,6 +35,8 @@
 #include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 #include "cryptohome/homedirs.h"
 #include "cryptohome/migration_type.h"
+#include "cryptohome/mount_constants.h"
+#include "cryptohome/mount_helper.h"
 #include "cryptohome/mount_stack.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
@@ -45,36 +47,12 @@
 
 namespace cryptohome {
 
-// Paths to sparse file for ephemeral mounts.
-extern const char kEphemeralCryptohomeDir[];
-extern const char kSparseFileDir[];
-// Directories that we intend to track (make pass-through in cryptohome vault)
-extern const char kAndroidDataDir[];
-extern const char kCacheDir[];
-extern const char kDownloadsDir[];
-extern const char kMyFilesDir[];
-extern const char kGCacheDir[];
-// subdir of kGCacheDir
-extern const char kGCacheVersion1Dir[];
-extern const char kGCacheVersion2Dir[];
-// subdir of kGCacheVersion1Dir
-extern const char kGCacheTmpDir[];
-extern const char kUserHomeSuffix[];
-extern const char kRootHomeSuffix[];
-// Name of the temporary mount directory.
-extern const char kTemporaryMountDir[];
 // Name of the key file.
 extern const char kKeyFile[];
 // Automatic label prefix of a legacy key ("%s%d")
 extern const char kKeyLegacyPrefix[];
 // Maximum number of key files.
 extern const int kKeyFileMax;
-// File system type for ephemeral mounts.
-extern const char kEphemeralMountType[];
-extern const char kEphemeralDir[];
-// Daemon store directories.
-extern const char kEtcDaemonStoreBaseDir[];
-extern const char kRunDaemonStoreBaseDir[];
 
 class BootLockbox;
 class ChapsClientFactory;
@@ -312,10 +290,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // http://crbug.com/224291
   static base::FilePath GetNewUserPath(const std::string& username);
 
-  // Returns the path to sparse file used for ephemeral cryptohome for the user.
-  static base::FilePath GetEphemeralSparseFile(
-      const std::string& obfuscated_username);
-
   // Sets |credentials| and |key_index| on |current_user_|.
   bool SetUserCreds(const Credentials& credentials, int key_index);
 
@@ -353,10 +327,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   virtual bool CreateTrackedSubdirectories(const Credentials& credentials,
                                            bool is_new) const;
 
-  // Bind mounts |user_home|/Downloads to |user_home|/MyFiles/Downloads so Files
-  // app can manage MyFiles as user volume instead of just Downloads.
-  bool BindMyFilesDownloads(const base::FilePath& user_home);
-
   // Creates the cryptohome salt, key, (and vault if necessary) for the
   // specified credentials.
   //
@@ -364,19 +334,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   credentials - The Credentials representing the user whose cryptohome
   //     should be created.
   virtual bool CreateCryptohome(const Credentials& credentials) const;
-
-  // Migrates from the home-in-encfs setup to the home-in-subdir setup. Instead
-  // of storing all the user's files in the root of the encfs, we store them in
-  // a subdirectory of it to make room for a root-owned, user-encrypted volume.
-  //
-  // Parameters
-  //   dir - directory to migrate
-  virtual void MigrateToUserHome(const base::FilePath& dir) const;
-
-  // Changes the group ownership and permissions on those directories inside
-  // the cryptohome that need to be accessible by other system daemons
-  virtual bool SetupGroupAccess(const base::FilePath& home_dir) const;
-
 
   virtual bool LoadVaultKeyset(const Credentials& credentials,
                                int index,
@@ -461,7 +418,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   index - key index the salt is associated with
   base::FilePath GetUserSaltFileForUser(const std::string& obfuscated_username,
                                         int index) const;
-
 
   // Gets the user's key file name by index
   //
@@ -588,29 +544,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // user.
   bool MountEphemeralCryptohome(const std::string& username);
 
-  // Implementation of ephemeral cryptohome mount that doesn't clean up after
-  // failure and return false in this case.
-  bool MountEphemeralCryptohomeInner(const std::string& username);
-
-  // Sets up a freshly mounted ephemeral cryptohome by adjusting its permissions
-  // and populating it with a skeleton directory and file structure.
-  //
-  // Parameters
-  //   source_path - A name for the mount point which will appear in /etc/mtab.
-  bool SetUpEphemeralCryptohome(const base::FilePath& source_path);
-
-  // Recursively copies directory contents to the destination if the destination
-  // file does not exist.  Sets ownership to the default_user_
-  //
-  // Parameters
-  //   destination - Where to copy files to
-  //   source - Where to copy files from
-  void RecursiveCopy(const base::FilePath& destination,
-                     const base::FilePath& source) const;
-
-  // Copies the skeleton directory to the user's cryptohome.
-  void CopySkeleton(const base::FilePath& destination) const;
-
   // Returns the user's salt
   //
   // Parameters
@@ -621,38 +554,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   void GetUserSalt(const Credentials& credentials, bool force_new,
                    int key_index, brillo::SecureBlob* salt) const;
 
-  // Ensures that the numth component of path is owned by uid/gid and is a
-  // directory.
-  bool EnsurePathComponent(const base::FilePath& fp, size_t num, uid_t uid,
-                           gid_t gid) const;
-
-
-  // Ensures that the permissions on every parent of NewUserDir are correct and
-  // that they are all directories. Since we're going to bind-mount over
-  // NewUserDir itself, we don't care what the permissions on it are, just that
-  // it exists.
-  // NewUserDir looks like: /home/chronos/u-$hash
-  // /home needs to be root:root, /home/chronos needs to be uid:gid.
-  bool EnsureNewUserDirExists(const base::FilePath& fp, uid_t uid,
-                              gid_t gid) const;
-
-  // Ensures that a specified directory exists, with all path components but the
-  // last one owned by kMountOwnerUid:kMountOwnerGid and the last component
-  // owned by final_uid:final_gid.
-  //
-  // Parameters
-  //   fp - Directory to check
-  //   final_uid - uid that must own the directory
-  //   final_gid - gid that muts own the directory
-  bool EnsureDirHasOwner(const base::FilePath& fp, uid_t final_uid,
-                         gid_t final_gid) const;
-
-  // Ensures that root and user mountpoints for the specified user are present.
-  // Returns false if the mountpoints were not present and could not be created.
-  bool EnsureUserMountPoints(const std::string& username) const;
-
-  // Mount a mount point, remembering it for later unmounting
-  // Returns true if the mount succeeds, false otherwise
+  // The following two functions are only temporarily kept around for testing.
+  // TODO(jorgelo,crbug.com/985492): Remove them.
+  // Mounts a mount point, remembering it for later unmounting.
+  // Returns true if the mount succeeds, false otherwise.
   //
   // Parameters
   //   src - Directory to mount from
@@ -664,8 +569,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
                      const std::string& type,
                      const std::string& options);
 
-  // Bind a mount point, remembering it for later unmounting
-  // Returns true if the bind succeeds, false otherwise
+  // Binds a mount point, remembering it for later unmounting.
+  // Returns true if the bind succeeds, false otherwise.
   //
   // Parameters
   //   src - Directory to bind from
@@ -697,11 +602,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   bool DeriveTokenAuthData(const brillo::SecureBlob& passkey,
                            std::string* auth_data);
 
-  // Mount the legacy home directory.
-  // The legacy home directory is from before multiprofile and is mounted at
-  // /home/chronos/user.
-  bool MountLegacyHome(const base::FilePath& from);
-
   // TODO(chromium:795310): include all side-effects into the following hook
   // and move it out of mount.cc.
   // Sign-in/sign-out effects hook. Performs actions that need to follow a
@@ -713,35 +613,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   |is_owner| - true if mounted for an owner user, false otherwise.
   // Returns true if successful, false otherwise.
   bool UserSignInEffects(bool is_mount, bool is_owner);
-
-  // Sets up bind mounts from |user_home| and |root_home| to
-  //   - /home/chronos/user (see MountLegacyHome()),
-  //   - /home/chronos/u-<user_hash>,
-  //   - /home/user/<user_hash>,
-  //   - /home/root/<user_hash> and
-  //   - /run/daemon-store/$daemon/<user_hash>
-  //     (see MountDaemonStoreDirectories()).
-  // The parameters have the same meaning as in MountCryptohomeInner resp.
-  // MountEphemeralCryptohomeInner. Returns true if successful, false otherwise.
-  bool MountHomesAndDaemonStores(const std::string& username,
-                                 const std::string& obfuscated_username,
-                                 const base::FilePath& user_home,
-                                 const base::FilePath& root_home);
-
-  // Bind-mounts
-  //   /home/.shadow/$hash/mount/root/$daemon (*)
-  // to
-  //   /run/daemon-store/$daemon/$hash
-  // for a hardcoded list of $daemon directories.
-  //
-  // This can be used to make the Cryptohome mount propagate into the daemon's
-  // mount namespace. See
-  // https://chromium.googlesource.com/chromiumos/docs/+/master/sandboxing.md#securely-mounting-cryptohome-daemon-store-folders
-  // for details.
-  //
-  // (*) Path for a regular mount. The path is different for an ephemeral mount.
-  bool MountDaemonStoreDirectories(const base::FilePath& root_home,
-                                   const std::string& obfuscated_username);
 
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.
@@ -774,15 +645,15 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // The platform-specific calls
   std::unique_ptr<Platform> default_platform_;
-  Platform *platform_;
+  Platform* platform_;
 
   // The crypto implementation
-  Crypto *crypto_;
+  Crypto* crypto_;
 
   // TODO(wad,ellyjones) Require HomeDirs at Init().
   // HomeDirs encapsulates operations on Cryptohomes at rest.
   std::unique_ptr<HomeDirs> default_homedirs_;
-  HomeDirs *homedirs_;
+  HomeDirs* homedirs_;
 
   // Whether to use the TPM for added security
   bool use_tpm_;
@@ -854,6 +725,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   bool is_dircrypto_migration_cancelled_ = false;
   base::Lock active_dircrypto_migrator_lock_;
   base::ConditionVariable dircrypto_migration_stopped_condition_;
+
+  std::unique_ptr<MountHelper> mounter_;
 
   FRIEND_TEST(MountTest, RememberMountOrderingTest);
   FRIEND_TEST(MountTest, MountCryptohomeChapsKey);
