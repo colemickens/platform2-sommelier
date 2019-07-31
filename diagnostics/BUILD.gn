@@ -17,6 +17,7 @@ group("all") {
   if (use.test) {
     deps += [
       ":cros_healthd_test",
+      ":libcros_healthd_utils_test",
       ":libdiag_test",
       ":libtelem_test",
       ":routine_test",
@@ -45,6 +46,18 @@ generate_mojom_bindings("diagnostics_mojo_bindings") {
   ]
 }
 
+# Library with utilities common to both cros_healthd and wilco_dtc_supportd.
+pkg_config("libcommon_pkg_deps") {
+  pkg_deps = [ "libchrome-${libbase_ver}" ]
+}
+
+static_library("libcommon") {
+  public_configs = [ ":libcommon_pkg_deps" ]
+  sources = [
+    "common/file_test_utils.cc",
+  ]
+}
+
 # Library that provides the diagnostic routine interface.
 pkg_config("libdiag_routine_pkg_deps") {
   pkg_deps = [ "libchrome-${libbase_ver}" ]
@@ -65,26 +78,45 @@ static_library("libdiag_routine") {
   ]
 }
 
+# Library that provides utilities used by cros_healthd.
+pkg_config("libcros_healthd_utils_pkg_deps") {
+  pkg_deps = [
+    "dbus-1",
+    "libchrome-${libbase_ver}",
+    "libmojo-${libbase_ver}",
+    "libudev",
+    "protobuf",
+    "system_api",
+  ]
+}
+
+static_library("libcros_healthd_utils") {
+  deps = [
+    ":diagnostics_mojo_bindings",
+  ]
+  all_dependent_configs = [ ":libcros_healthd_utils_pkg_deps" ]
+  sources = [
+    "cros_healthd/utils/battery_utils.cc",
+    "cros_healthd/utils/disk_utils.cc",
+  ]
+}
+
 # Library that provides core functionality for the cros_healthd daemon.
 pkg_config("libcros_healthd_pkg_deps") {
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
     "libmojo-${libbase_ver}",
-    "libudev",
-    "system_api",
   ]
 }
 
 static_library("libcros_healthd") {
   deps = [
     ":diagnostics_mojo_bindings",
-    "//diagnostics/grpc:diagnostics_grpc_protos",
+    ":libcros_healthd_utils",
   ]
   all_dependent_configs = [ ":libcros_healthd_pkg_deps" ]
   sources = [
-    "common/battery_utils.cc",
-    "common/disk_utils.cc",
     "cros_healthd/cros_healthd_mojo_service.cc",
     "cros_healthd/cros_healthd_routine_service_impl.cc",
     "cros_healthd/cros_healthd_telemetry_service_impl.cc",
@@ -184,8 +216,6 @@ executable("cros_healthd") {
     ":libcros_healthd",
   ]
   sources = [
-    "common/battery_utils.cc",
-    "common/disk_utils.cc",
     "cros_healthd/main.cc",
   ]
 }
@@ -293,8 +323,29 @@ if (use.test) {
       "../common-mk/testrunner:testrunner",
     ]
     sources = [
-      "common/battery_utils_test.cc",
       "cros_healthd/cros_healthd_mojo_service_test.cc",
+    ]
+  }
+
+  pkg_config("libcros_healthd_utils_test_pkg_deps") {
+    pkg_deps = [
+      "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+      "system_api",
+    ]
+  }
+
+  executable("libcros_healthd_utils_test") {
+    configs += [
+      ":libcros_healthd_utils_test_pkg_deps",
+      "//common-mk:test",
+    ]
+    deps = [
+      ":libcros_healthd_utils",
+      "../common-mk/testrunner:testrunner",
+    ]
+    sources = [
+      "cros_healthd/utils/battery_utils_test.cc",
     ]
   }
 
@@ -311,11 +362,11 @@ if (use.test) {
       "//common-mk:test",
     ]
     deps = [
+      ":libcommon",
       ":libwilco_dtc_supportd",
       "../common-mk/testrunner:testrunner",
     ]
     sources = [
-      "common/file_test_utils.cc",
       "wilco_dtc_supportd/ec_constants_test.cc",
       "wilco_dtc_supportd/fake_browser.cc",
       "wilco_dtc_supportd/fake_wilco_dtc.cc",
@@ -366,11 +417,11 @@ if (use.test) {
       ":libtelem_test_pkg_deps",
     ]
     deps = [
+      ":libcommon",
       ":libtelem",
       "../common-mk/testrunner:testrunner",
     ]
     sources = [
-      "common/file_test_utils.cc",
       "telem/battery_utils_test.cc",
       "telem/cache_writer_impl.cc",
       "telem/telem_cache_test.cc",
@@ -392,11 +443,11 @@ if (use.test) {
       ":routine_test_pkg_deps",
     ]
     deps = [
+      ":libcommon",
       ":libdiag_routine",
       "../common-mk/testrunner:testrunner",
     ]
     sources = [
-      "common/file_test_utils.cc",
       "routines/battery/battery_test.cc",
       "routines/battery_sysfs/battery_sysfs_test.cc",
       "routines/smartctl_check/smartctl_check_utils.cc",

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/common/battery_utils.h"
+#include "diagnostics/cros_healthd/utils/battery_utils.h"
 
 #include <map>
 #include <memory>

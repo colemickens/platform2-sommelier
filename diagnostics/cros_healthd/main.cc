@@ -10,8 +10,8 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
-#include "diagnostics/common/battery_utils.h"
-#include "diagnostics/common/disk_utils.h"
+#include "diagnostics/cros_healthd/utils/battery_utils.h"
+#include "diagnostics/cros_healthd/utils/disk_utils.h"
 
 int main(int argc, char** argv) {
   DEFINE_bool(probe_block_devices, false,

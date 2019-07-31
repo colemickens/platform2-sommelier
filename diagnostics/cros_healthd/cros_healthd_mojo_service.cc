@@ -13,7 +13,7 @@
 #include <dbus/cros_healthd/dbus-constants.h>
 #include <mojo/edk/embedder/embedder.h>
 
-#include "diagnostics/common/disk_utils.h"
+#include "diagnostics/cros_healthd/utils/disk_utils.h"
 #include "mojo/cros_healthd_telemetry.mojom.h"
 
 namespace diagnostics {
