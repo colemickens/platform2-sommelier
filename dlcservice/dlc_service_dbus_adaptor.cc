@@ -256,12 +256,26 @@ bool DlcServiceDBusAdaptor::GetInstalled(brillo::ErrorPtr* err,
   return true;
 }
 
-// TODO(crbug.com/987019): the signal from update engine needs to indicate this.
-// It is very dangerous for |DlcService| to be determining this. Can be
-// restd::moved once update engine provides this. Do not use this function
-// anywhere.
-bool DlcServiceDBusAdaptor::IsInstalling() {
-  return !dlc_modules_being_installed_.dlc_module_infos().empty();
+bool DlcServiceDBusAdaptor::InstallingComplete(
+    const StatusResult& status_result) {
+  if (!status_result.is_install()) {
+    LOG(INFO) << "Signal from update_engine, not for install.";
+    return false;
+  }
+
+  if (status_result.current_operation() != Operation::IDLE) {
+    LOG(INFO) << "Signal from update_engine, but install not complete.";
+    return false;
+  }
+
+  if (dlc_modules_being_installed_.dlc_module_infos().empty()) {
+    LOG(ERROR) << "Signal from update_engine, but nothing to install";
+    return false;
+  }
+
+  LOG(INFO)
+      << "Signal from update_engine, proceeding to complete installation.";
+  return true;
 }
 
 bool DlcServiceDBusAdaptor::CreateDlc(brillo::ErrorPtr* err,
@@ -371,12 +385,7 @@ void DlcServiceDBusAdaptor::SendOnInstalledSignal(
 
 void DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignal(
     const StatusResult& status_result) {
-  const Operation& current_operation = status_result.current_operation();
-
-  if (!IsInstalling())
-    return;
-  // Install is complete when we receive kUpdateStatusIdle signal.
-  if (current_operation != Operation::IDLE)
+  if (!InstallingComplete(status_result))
     return;
 
   // At this point, update_engine finished installation of the requested DLC

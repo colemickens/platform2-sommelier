@@ -55,8 +55,8 @@ class DlcServiceDBusAdaptor
       const update_engine::StatusResult& status_result);
 
  private:
-  // Returns if an install has been sent to update engine.
-  bool IsInstalling();
+  // Returns indication of update_engine's install completion.
+  bool InstallingComplete(const update_engine::StatusResult& status_result);
 
   // Creates the necessary directories and images for DLC installation. Will set
   // |path| to the top DLC directory for cleanup scoping.

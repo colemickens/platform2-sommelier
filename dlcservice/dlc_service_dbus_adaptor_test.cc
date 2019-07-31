@@ -284,6 +284,7 @@ TEST_F(DlcServiceDBusAdaptorTest, OnStatusUpdateAdvancedSignalTest) {
 
   StatusResult status_result;
   status_result.set_current_operation(Operation::IDLE);
+  status_result.set_is_install(true);
   dlc_service_dbus_adaptor_->OnStatusUpdateAdvancedSignal(status_result);
 
   for (const string& dlc_id : dlc_ids)
