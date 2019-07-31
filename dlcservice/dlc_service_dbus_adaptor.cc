@@ -131,20 +131,12 @@ DlcServiceDBusAdaptor::~DlcServiceDBusAdaptor() {}
 void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
   // Load all installed DLC modules.
   for (const auto& dlc_module_id : installed_dlc_modules_) {
-    string package = ScanDlcModulePackage(dlc_module_id);
-    auto dlc_module_content_path =
-        utils::GetDlcModulePackagePath(content_dir_, dlc_module_id, package);
-
-    // Mount the installed DLC image.
-    string path;
-    image_loader_proxy_->LoadDlcImage(dlc_module_id, package,
-                                      current_boot_slot_name_, &path, nullptr);
-    if (path.empty()) {
-      LOG(ERROR) << "DLC image " << dlc_module_id << "/" << package
-                 << " is corrupted.";
-    } else {
-      LOG(INFO) << "DLC image " << dlc_module_id << "/" << package
-                << " is mounted at " << path;
+    string mount_point;
+    if (!MountDlc(nullptr, dlc_module_id, &mount_point)) {
+      // TODO(kimjae): Handle these cases to make loading guaranteee that
+      // installed DLC(s) will be installed, currently the other DBus APIs can
+      // assume that |installed_dlc_modules_| is installed and mounted
+      // successfully.
     }
   }
 }
@@ -166,9 +158,9 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
     const string& id = dlc_module.dlc_id();
     auto scoped_path = std::make_unique<ScopedTempDir>();
 
-    if (!CreateDlc(err, id, &path)) {
+    if (!CreateDlc(err, id, &path))
       return false;
-    }
+
     if (!scoped_path->Set(path)) {
       LOG(ERROR) << "Failed when scoping path during install: " << path.value();
       return false;
@@ -208,22 +200,6 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
     LogAndSetError(err, "The DLC ID provided is not installed");
     return false;
   }
-  string package = ScanDlcModulePackage(id_in);
-
-  const FilePath dlc_module_content_path =
-      utils::GetDlcModulePackagePath(content_dir_, id_in, package);
-  if (!base::PathExists(dlc_module_content_path) ||
-      !base::PathExists(
-          utils::GetDlcModuleImagePath(content_dir_, id_in, package, 0)) ||
-      !base::PathExists(
-          utils::GetDlcModuleImagePath(content_dir_, id_in, package, 1))) {
-    LogAndSetError(err, "The DLC module is not installed properly.");
-    return false;
-  }
-  // Unmounts the DLC module image.
-  if (!UnmountDlcImage(err, id_in, package)) {
-    return false;
-  }
 
   if (!CheckForUpdateEngineStatus(
           {update_engine::IDLE, update_engine::UPDATED_NEED_REBOOT})) {
@@ -231,12 +207,11 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
     return false;
   }
 
-  // Deletes the DLC module images.
-  const FilePath dlc_module_path = utils::GetDlcModulePath(content_dir_, id_in);
-  if (!base::DeleteFile(dlc_module_path, true)) {
-    LogAndSetError(err, "DLC image folder could not be deleted.");
+  if (!UnmountDlc(err, id_in))
     return false;
-  }
+
+  if (!DeleteDlc(err, id_in))
+    return false;
 
   LOG(INFO) << "Uninstalling DLC id:" << id_in;
   installed_dlc_modules_.erase(id_in);
@@ -342,11 +317,37 @@ bool DlcServiceDBusAdaptor::CreateDlc(brillo::ErrorPtr* err,
   return true;
 }
 
-bool DlcServiceDBusAdaptor::UnmountDlcImage(brillo::ErrorPtr* err,
-                                            const string& id,
-                                            const string& package) {
+bool DlcServiceDBusAdaptor::DeleteDlc(brillo::ErrorPtr* err,
+                                      const std::string& id) {
+  FilePath dlc_module_path = utils::GetDlcModulePath(content_dir_, id);
+  if (!DeleteFile(dlc_module_path, true)) {
+    LogAndSetError(err, "DLC image folder could not be deleted.");
+    return false;
+  }
+  return true;
+}
+
+bool DlcServiceDBusAdaptor::MountDlc(brillo::ErrorPtr* err,
+                                     const string& id,
+                                     string* mount_point) {
+  if (!image_loader_proxy_->LoadDlcImage(id, ScanDlcModulePackage(id),
+                                         current_boot_slot_name_, mount_point,
+                                         nullptr)) {
+    LogAndSetError(err, "Imageloader is not available.");
+    return false;
+  }
+  if (mount_point->empty()) {
+    LogAndSetError(err, "Imageloader LoadDlcImage() failed.");
+    return false;
+  }
+  return true;
+}
+
+bool DlcServiceDBusAdaptor::UnmountDlc(brillo::ErrorPtr* err,
+                                       const string& id) {
   bool success = false;
-  if (!image_loader_proxy_->UnloadDlcImage(id, package, &success, nullptr)) {
+  if (!image_loader_proxy_->UnloadDlcImage(id, ScanDlcModulePackage(id),
+                                           &success, nullptr)) {
     LogAndSetError(err, "Imageloader is not available.");
     return false;
   }
@@ -401,35 +402,26 @@ void DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignal(
   utils::ScopedCleanups<Callback<void()>> scoped_cleanups;
   for (const DlcModuleInfo& dlc_module : dlc_module_list.dlc_module_infos()) {
     const string& dlc_id = dlc_module.dlc_id();
-    string package = ScanDlcModulePackage(dlc_id);
-    auto cleanup = base::Bind(
+    auto cleanup = Bind(
         [](Callback<bool()> unmounter, Callback<bool()> deleter) {
           unmounter.Run();
           deleter.Run();
         },
-        base::Bind(&DlcServiceDBusAdaptor::UnmountDlcImage,
-                   base::Unretained(this), nullptr, dlc_id, package),
-        base::Bind(&base::DeleteFile,
-                   utils::GetDlcModulePath(content_dir_, dlc_id), true));
+        base::Bind(&DlcServiceDBusAdaptor::UnmountDlc, base::Unretained(this),
+                   nullptr, dlc_id),
+        base::Bind(&DlcServiceDBusAdaptor::DeleteDlc, base::Unretained(this),
+                   nullptr, dlc_id));
     scoped_cleanups.Insert(cleanup);
   }
 
   // Mount the installed DLC module images.
   for (auto& dlc_module :
        *install_result.mutable_dlc_module_list()->mutable_dlc_module_infos()) {
-    const string& dlc_id = dlc_module.dlc_id();
-    string package = ScanDlcModulePackage(dlc_id);
+    const string& dlc_module_id = dlc_module.dlc_id();
     string mount_point;
-    if (!image_loader_proxy_->LoadDlcImage(
-            dlc_id, package, current_boot_slot_name_, &mount_point, nullptr)) {
-      LOG(ERROR) << "Imageloader is not available.";
-      install_result.set_error_code(static_cast<int>(
-          OnInstalledSignalErrorCode::kImageLoaderReturnsFalse));
-      SendOnInstalledSignal(install_result);
-      return;
-    }
-    if (mount_point.empty()) {
-      LOG(ERROR) << "Imageloader LoadDlcImage failed.";
+    if (!MountDlc(nullptr, dlc_module_id, &mount_point)) {
+      // This is to set |dlc_root|'s all back to empty strings.
+      install_result.mutable_dlc_module_list()->CopyFrom(dlc_module_list);
       install_result.set_error_code(
           static_cast<int>(OnInstalledSignalErrorCode::kMountFailure));
       SendOnInstalledSignal(install_result);

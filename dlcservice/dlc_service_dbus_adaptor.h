@@ -64,10 +64,16 @@ class DlcServiceDBusAdaptor
                  const std::string& id,
                  base::FilePath* path);
 
+  // Deletes the DLC installation.
+  bool DeleteDlc(brillo::ErrorPtr* err, const std::string& id);
+
+  // Tries to mount DLC images.
+  bool MountDlc(brillo::ErrorPtr* err,
+                const std::string& id,
+                std::string* mount_point);
+
   // Tries to unmount DLC images.
-  bool UnmountDlcImage(brillo::ErrorPtr* err,
-                       const std::string& id,
-                       const std::string& package);
+  bool UnmountDlc(brillo::ErrorPtr* err, const std::string& id);
 
   // Scans a specific DLC |id| to discover all its packages. Currently, we only
   // support one package per DLC. If at some point in the future we decided to
