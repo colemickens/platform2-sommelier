@@ -33,6 +33,7 @@ class EthernetEapService : public Service {
  protected:
   // Inherited from Service.
   void OnConnect(Error* /*error*/) override {}
+  void OnDisconnect(Error* /*error*/, const char* /*reason*/) override {}
 };
 
 }  // namespace shill

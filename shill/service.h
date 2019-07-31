@@ -165,15 +165,14 @@ class Service : public base::RefCounted<Service> {
   // purposes. Derived classes MUST NOT override this method. Child-specific
   // behavior is implemented in OnConnect.
   virtual void Connect(Error* error, const char* reason);
-  // Disconnect this service.  Override this method to add your service specific
-  // disconnect logic, but call the super class's Disconnect() first.
+  // Disconnect this service. Do not override this method.
   virtual void Disconnect(Error* error, const char* reason);
-  // Disconnects this service via Disconnect().  Marks the service as having
-  // failed with |failure|.  Do not override this method.
+  // Disconnect this service via Disconnect(). Marks the service as having
+  // failed with |failure|. Do not override this method.
   virtual void DisconnectWithFailure(ConnectFailure failure,
                                      Error* error,
                                      const char* reason);
-  // Disconnects this service via Disconnect(). The service will not be eligible
+  // Disconnect this service via Disconnect(). The service will not be eligible
   // for auto-connect until a subsequent call to Connect, or Load.  Do not
   // override this method.
   virtual void UserInitiatedDisconnect(const char* reason, Error* error);
@@ -564,6 +563,9 @@ class Service : public base::RefCounted<Service> {
   // Overridden by child classes to perform technology-specific connection
   // logic.
   virtual void OnConnect(Error* error) = 0;
+  // Overridden by child classes to perform technology-specific disconnection
+  // logic.
+  virtual void OnDisconnect(Error* error, const char* reason) = 0;
 
   bool GetVisibleProperty(Error* error);
 

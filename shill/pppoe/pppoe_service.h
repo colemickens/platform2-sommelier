@@ -35,8 +35,6 @@ class PPPoEService : public EthernetService, public RpcTaskDelegate {
   PPPoEService(Manager* manager, base::WeakPtr<Ethernet> ethernet);
   ~PPPoEService() override;
 
-  // Inherited from EthernetService.
-  void Disconnect(Error* error, const char* reason) override;
   bool Load(StoreInterface* storage) override;
   bool Save(StoreInterface* storage) override;
   bool Unload() override;
@@ -52,6 +50,7 @@ class PPPoEService : public EthernetService, public RpcTaskDelegate {
  protected:
   // Inherited from EthernetService.
   void OnConnect(Error* error) override;
+  void OnDisconnect(Error* error, const char* reason) override;
 
  private:
   friend class PPPoEServiceTest;

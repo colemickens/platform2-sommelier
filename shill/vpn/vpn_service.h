@@ -25,7 +25,6 @@ class VPNService : public Service {
   ~VPNService() override;
 
   // Inherited from Service.
-  void Disconnect(Error* error, const char* reason) override;
   std::string GetStorageIdentifier() const override;
   bool IsAlwaysOnVpn(const std::string& package) const override;
   bool Load(StoreInterface* storage) override;
@@ -55,6 +54,7 @@ class VPNService : public Service {
  protected:
   // Inherited from Service.
   void OnConnect(Error* error) override;
+  void OnDisconnect(Error* error, const char* reason) override;
   bool IsAutoConnectable(const char** reason) const override;
   std::string GetTethering(Error* error) const override;
 

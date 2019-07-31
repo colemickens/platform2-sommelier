@@ -90,6 +90,7 @@ class MockService : public Service {
 
  protected:
   void OnConnect(Error* error) override {}
+  void OnDisconnect(Error* /*error*/, const char* /*reason*/) override {}
 
  private:
   ConnectionRefPtr mock_connection_;

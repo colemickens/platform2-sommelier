@@ -94,8 +94,8 @@ void PPPoEService::OnConnect(Error* error) {
   SetState(Service::kStateAssociating);
 }
 
-void PPPoEService::Disconnect(Error* error, const char* reason) {
-  EthernetService::Disconnect(error, reason);
+void PPPoEService::OnDisconnect(Error* error, const char* reason) {
+  EthernetService::OnDisconnect(error, reason);
   if (ppp_device_) {
     ppp_device_->DropConnection();
   } else {

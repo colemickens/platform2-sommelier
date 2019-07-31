@@ -326,7 +326,7 @@ void Service::Connect(Error* error, const char* reason) {
   OnConnect(error);
 }
 
-void Service::Disconnect(Error* /*error*/, const char* reason) {
+void Service::Disconnect(Error* error, const char* reason) {
   string log_message = base::StringPrintf(
       "Disconnecting from service %s: %s", unique_name_.c_str(), reason);
   if (IsActive(nullptr)) {
@@ -334,6 +334,9 @@ void Service::Disconnect(Error* /*error*/, const char* reason) {
   } else {
     SLOG(this, 1) << log_message;
   }
+  // Perform connection logic defined by children. This logic will
+  // drive the state to kStateIdle.
+  OnDisconnect(error, reason);
 }
 
 void Service::DisconnectWithFailure(ConnectFailure failure,

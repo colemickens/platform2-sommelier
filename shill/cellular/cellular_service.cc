@@ -368,8 +368,7 @@ void CellularService::OnConnect(Error* error) {
   cellular_->Connect(error);
 }
 
-void CellularService::Disconnect(Error* error, const char* reason) {
-  Service::Disconnect(error, reason);
+void CellularService::OnDisconnect(Error* error, const char* reason) {
   cellular_->Disconnect(error, reason);
 }
 

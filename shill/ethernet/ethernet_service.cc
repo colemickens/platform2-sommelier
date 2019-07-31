@@ -67,8 +67,7 @@ void EthernetService::OnConnect(Error* /*error*/) {
   }
 }
 
-void EthernetService::Disconnect(Error* error, const char* reason) {
-  Service::Disconnect(error, reason);
+void EthernetService::OnDisconnect(Error* /*error*/, const char* /*reason*/) {
   if (props_.ethernet_) {
     props_.ethernet_->DisconnectFrom(this);
   }

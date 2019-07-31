@@ -660,9 +660,7 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
   return params;
 }
 
-
-void WiFiService::Disconnect(Error* error, const char* reason) {
-  Service::Disconnect(error, reason);
+void WiFiService::OnDisconnect(Error* error, const char* /*reason*/) {
   if (!wifi_) {
     // If we are connecting to a hidden service, but have not yet found
     // any endpoints, we could end up with a disconnect request without

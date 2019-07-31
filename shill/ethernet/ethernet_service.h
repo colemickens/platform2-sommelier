@@ -35,9 +35,6 @@ class EthernetService : public Service {
   EthernetService(Manager* manager, const Properties& props);
   ~EthernetService() override;
 
-  // Inherited from Service.
-  void Disconnect(Error* error, const char* reason) override;
-
   // ethernet_<MAC>
   std::string GetStorageIdentifier() const override;
   bool IsAutoConnectByDefault() const override;
@@ -68,6 +65,7 @@ class EthernetService : public Service {
 
   // Inherited from Service.
   void OnConnect(Error* error) override;
+  void OnDisconnect(Error* error, const char* reason) override;
 
   void SetUp();
 
