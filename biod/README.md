@@ -1,46 +1,103 @@
-# Biod: Biometrics Daemon
+# `biod`: Biometrics Daemon
 
-## ABOUT
+`biod` (Biometrics Daemon) is a daemon for enrolling, authenticating and
+managing biometrics data for faster unlocking. It manages all biometric sensors
+for all users of the device.
 
-Biod (Biometrics Daemon) is a daemon for enrolling, authenticating and managing
-biometrics data for faster unlocking. It manages all biometric sensors for all
-users of the device.
+[TOC]
 
-## KEYWORDS
+## Keywords
 
-Record - a specific piece of biometric data that a user registers along with its
-metadata.
+**Record** - specific piece of biometric data that a user registers along with
+its metadata.
 
-Enroll - the act of registering a record.
+**Enroll** - the act of registering a record.
 
-EnrollSession - the session during which enrolling of a record happens.
+**EnrollSession** - the session during which enrolling of a record happens.
 
-Authenticate - the act of checking a new piece of biometric data against stored
-records.
+**Authenticate** - the act of checking a new piece of biometric data against
+stored records.
 
-AuthSession - the session during which authenticating a new piece of biometric
-data against stored records happens.
+**AuthSession** - the session during which authenticating a new piece of
+biometric data against stored records happens.
 
-BiometricsManager - manager for a piece of device/hardware/sensor for collecting
-a specific type of biometric data. Each BiometricsManager is in charge of
-storing the records that it enrolled.
+**BiometricsManager** - manager for a piece of device/hardware/sensor for
+collecting a specific type of biometric data. Each `BiometricsManager` is in
+charge of storing the records that it enrolled.
 
-## STORAGE
+## Building
+
+For more context, see the [Chromium OS Developer Guide].
+
+*   Start working on the `biod` package:
+
+    ```bash
+    (chroot)$ cros_workon-<board> start biod
+    ```
+
+*   Build `biod`:
+
+    ```bash
+    (chroot)$ emerge-<board> biod
+    ```
+
+*   Deploy `biod` to your `DUT`:
+
+    ```bash
+    (chroot)$ cros deploy ${DUT_IP_ADDR} biod
+    ```
+
+    As a shortcut, you can also `scp` the `biod` binary to your DUT.
+
+## Running
+
+`biod` is controlled by `upstart`.
+
+### Start `biod`
+
+```bash
+(dut)$ start biod
+```
+
+### Stop `biod`
+
+```bash
+(dut)$ stop biod
+```
+
+### Check whether `biod` is running
+
+```bash
+(dut)$ status biod
+```
+
+## Logs
+
+`biod`'s logs are written to `/var/log/biod/biod.LATEST`.
+
+## Unit Tests
+
+The unit tests can be run with with the following command:
+
+```bash
+(chroot)$ FEATURES=test emerge-<board> biod
+```
+
+## Storage
 
 The records are stored under the directory:
-/home/root/[hash_of_user_id]/biod/[name_of_biometrics_manager]/
-with the file name:
-Record[UUID].
+`/home/root/[hash_of_user_id]/biod/[name_of_biometrics_manager]/` with the file
+name: `Record[UUID]`.
 
-UUID has the form of XXXXXXXX_XXXX_XXXX_XXXX_XXXXXXXXXXXX where X represents a
-lowercase hex digit. UUID is a 128-bit random number generated with guid, so it
-will highly unlikely repeat. '_' are used instead of '-' because this UUID is
-used in biod D-bus object paths, which do not allow '-'.
+UUID has the form of `XXXXXXXX_XXXX_XXXX_XXXX_XXXXXXXXXXXX` where `X` represents
+a lowercase hex digit. UUID is a 128-bit random number generated with `guid`, so
+it is highly unlikely to repeat. `_` are used instead of `-` because this UUID
+is used in biod D-bus object paths, which do not allow `-`.
 
 Each record file is stored in JSON format, and contains one record and its
 record id and label.
 
-## HARDWARE
+## Hardware
 
 ### CrosFpBiometric
 
@@ -68,35 +125,280 @@ sequence of events on devices with fingerprint overlapped on power button.
 
 #### Enrollment
 
+*** note
 TODO
+***
 
-## CHROME
+## Chrome
 
 Biod communicates with Chrome via D-bus messages. Chrome provides the graphical
-interface for users to enroll new biometric data and manage their own
-records. Chrome is also responsible for the visual display during
-authentication.
+interface for users to enroll new biometric data and manage their own records.
+Chrome is also responsible for the visual display during authentication.
 
-## LOGIN MANAGER
+## Login Manager
 
 When a user logs in or biod starts, biod will ask login manager for a list of
 currently logged-in users, and load from storage the records of the newly
 logged-in users.
 
-When a user logs out, all users log out at the same time, biod receives a
-signal from login manager and remove all records in the memory.
+When a user logs out, all users log out at the same time, biod receives a signal
+from login manager and remove all records in the memory.
 
-## CRYPTOHOME
+## Cryptohome
 
-Because the records are stored in per user stateful under /home/root/
-[hash_of_user_id], they are naturally encrypted by cryptohome. Records are
-encrypted when the users log out and decrypted when the users log in. Cryptohome
-provides a layer of security to biod.
+Because the records are stored in per user stateful under
+`/home/root/[hash_of_user_id]`, they are naturally encrypted by cryptohome.
+Records are encrypted when the users log out and decrypted when the users log
+in. Cryptohome provides a layer of security to biod.
 
-## TESTING TOOLS
+## Testing Tools
 
 ### biod_client_tool
 
-biod_client_tool provides the interface to fake the behavior of a biometrics
+`biod_client_tool` provides the interface to fake the behavior of a biometrics
 client, for example, a lock screen or a biometric enrollment app. It can be used
-to test biod and biometric sensors.
+to test biod and biometric sensors. Use the `--help` flag to see the options.
+
+## D-Bus API
+
+**Service Name**: `org.chromium.BiometricsDaemon`
+
+**Root Object**: `/org/chromium/BiometricsDaemon`
+
+The root object implements the `org.freedesktop.DBus.ObjectManager` interface
+which should be used to enumerate the available biometric devices. Each
+biometric device implements the
+`org.chromium.BiometricsDaemon.BiometricsManager` interface, which is used to
+retrieve previously made records or to start an `Enroll` or `Authenticate`
+session. `Enroll` sessions are for making new records. `Authenticate` sessions
+are for authenticating scanned biometric data against those previously made
+records. Each session object can be used to end the session, but signals still
+go through the BiometricsManager object to avoid a race condition between
+starting a session and connecting to the session's signals. Something to note
+about the session objects is that they will automatically be ended when the
+D-Bus client that created them (whomever called `StartEnrollSession` or
+`StartAuthSession`). This is to prevent the `BiometricsManager` from entering a
+stuck state in case the client crashes and nobody comes around to end the
+session. This shouldn't be an issue unless one expects the session to continue
+after the D-Bus client disconnects, for example while testing out `biod` using
+`dbus-send` or other single shot command line dbus tool. Each
+`BiometricsManager` can have only one session running concurrently.
+
+### `org.chromium.BiometricsDaemon.BiometricsManager`
+
+#### StartEnrollSession (Method)
+
+```
+StartEnrollSession(in STRING user_id, in STRING label, out OBJECTPATH enroll_session)
+```
+
+*   `user_id` refers to the sanitized user name returned by [SanitizeUserName]
+    in libbrillo.
+
+*   `label` is an arbitrary string chosen to be human readable by the user.
+
+*   The returned `enroll_session` object path implements the
+    `org.chromium.BiometricsDaemon.EnrollSession` interface, but
+    `EnrollScanDone` and `SessionFailed` signals still come from this
+    `BiometricsManager`.
+
+#### GetRecords (Method)
+
+```
+GetRecords(out ARRAY<OBJECTPATH> records)
+```
+
+Each returned object path implements the `org.chromium.BiometricsDaemon.Record`
+interface.
+
+#### DestroyAllRecords (Method)
+
+```
+DestroyAllRecords()
+```
+
+#### StartAuthSession (Method)
+
+```
+StartAuthSession(out OBJECTPATH auth_session)
+```
+
+The returned object path implements the
+`org.chromium.BiometricsDaemon.AuthSession` interface, but `AuthScanDone` and
+`SessionFailed` signals still come from this `BiometricsManager`.
+
+#### EnrollScanDone (Signal)
+
+```
+EnrollScanDone(UINT32 scan_result, BOOL complete)
+```
+
+If `complete` is true, the enrollment was successfully finished and saved.
+
+The `UINT32 scan_result` values are meant to be instructions to the user on how
+to get a better scan. They are as follows:
+
+Note: Pretty much ripped off from AOSP's `fingerprint_acquired_info` in
+fingerprint.h.
+
+*   0 = Success (the sensor captured good data)
+*   1 = Partial (sensor needs more data)
+*   2 = Insufficient (too little detail for recognition)
+*   3 = Sensor Dirty
+*   4 = Too Slow (tell user to speed up)
+*   5 = Too Fast (tell user to slow down)
+*   6 = Immobile (tell user to move a little to get more data)
+
+#### AuthScanDone (Signal)
+
+```
+AuthScanDone(UINT32 scan_result, std::unordered_map<std::string, std::vector<std::string>> matches)
+```
+
+The returned `matches` are a map from user id to a list of biometric record ids.
+The user ids are the same ones given to `StartEnrollSession` in previous enroll
+sessions. Each user in the list have one or more records that indicate a match.
+Note that a piece of biometric data could be registered multiple times under the
+same or different users.
+
+#### SessionFailed (Signal)
+
+```
+SessionFailed()
+```
+
+General failure of enroll session and/or authenticate session that can not be
+recovered from
+
+#### Type (Property)
+
+```
+UINT32 Type
+```
+
+`Type` has one of the following values:
+
+*   0 = Unknown
+*   1 = Fingerprint
+
+### `org.chromium.BiometricsDaemon.AuthSession`
+
+#### End (Method)
+
+```
+End()
+```
+
+Ends the authenticatation session and destroys this object path. Generally, the
+client should call this at some point because authentication sessions do not end
+on their own, unless there is some error.
+
+### `org.chromium.BiometricsDaemon.EnrollSession`
+
+#### Cancel (Method)
+
+```
+Cancel()
+```
+
+Ends the enroll session without storing the enrollment and destroys this object
+path. Generally, the client **should not** call this as the Enroll session will
+end automatically once enough data is collected. Exceptions to this rule being
+that there was some error on the client side, the user explicitly canceled the
+session, or the client has determined the user to have given up, perhaps after
+some timeout has elapsed.
+
+### `org.chromium.BiometricsDaemon.Record`
+
+#### Remove (Method)
+
+```
+Remove()
+```
+
+Deletes this record object from memory and persistent storage. It will no longer
+participate in any future Authenticate sessions.
+
+#### SetLabel (Method)
+
+```
+SetLabel(in STRING label)
+```
+
+Sets the human readable label of this `Record` object.
+
+#### Label (Property)
+
+```
+STRING Label
+```
+
+Read-only property that gets the previously set (by either `StartEnrollSession`
+or `SetLabel`) human readable label of this record object.
+
+### Example API Usage
+
+The symbol **`<-`** means Chrome sends the command to
+`org.chromium.BiometricsDaemon`
+
+The symbol **`->`** is either a response or a signal from
+`org.chromium.BiometricsDaemon`
+
+1.  Logged in user clicks enroll in UI:
+
+    ```
+    <- Object:/org/chromium/BiometricsDaemon Method:org.freedesktop.DBus.ObjectManager.GetManagedObjects
+    ->  [
+         "/org/chromium/BiometricsDaemon/BiometricsManager0"
+        ]
+    <- Object:/org/chromium/BiometricsDaemon/BiometricsManager0 Method:org.chromium.BiometricsDaemon.BiometricsManager.StartEnrollSession "<user id hash>" "Data 1"
+    -> "/org/chromium/BiometricsDaemon/BiometricsManager0/EnrollSession"
+    ```
+
+2.  User presses finger onto sensor
+
+    ```
+    -> org.chromium.BiometricsDaemon.BiometricsManager.EnrollScanDone (Success) false
+    ```
+
+3.  Chrome UI shows encouraging message about that scan to user
+
+4.  User presses finger again but too quickly
+
+    ```
+    -> org.chromium.BiometricsDaemon.BiometricsManager.EnrollScanDone (Too Fast) false
+    ```
+
+5.  Chrome UI shows a stern message about how the user's finger is too fast.
+
+6.  [...] Continued until biod determines there is enough data
+
+    ```
+    -> org.chromium.BiometricsDaemon.BiometricsManager.EnrollScanDone (Success) true
+    ```
+
+7.  Chrome displays successful enrollment message
+
+8.  Logged in user locks screen
+
+    ```
+    <- Object:/org/chromium/BiometricsDaemon/BiometricsManager0 Method:org.chromium.BiometricsDaemon.BiometricsManager.StartAuthSession
+    -> /org/chromium/BiometricsDaemon/BiometricsManager0/AuthSession
+    ```
+
+9.  User does a scan with dirty sensor and lock screen informs the user of this
+
+    ```
+    -> org.chromium.BiometricsDaemon.BiometricsManager.AuthScanDone (Sensor Dirty) [empty array]
+    ```
+
+10. User cleans sensor and tries again with success
+
+    ```
+    -> org.chromium.BiometricsDaemon.BiometricsManager.AuthScanDone (Success) ["unordered_map<string user_id, vector<string record_id>>"]
+    ```
+
+11. Lock screen lets user in
+
+[Chromium OS Developer Guide]: https://chromium.googlesource.com/chromiumos/docs/+/master/developer_guide.md#Making-changes-to-packages-whose-source-code-is-checked-into-Chromium-OS-git-repositories
+[SanitizeUserName]: ../libbrillo/brillo/cryptohome.h
