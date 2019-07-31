@@ -18,6 +18,7 @@ namespace biod {
 
 extern const char kCrosConfigFPPath[];
 extern const char kCrosConfigFPBoard[];
+extern const char kCrosConfigFPLocation[];
 extern const char kCrosConfigHWPropertiesPath[];
 extern const char kCrosConfigHWPropertiesHasFP[];
 

@@ -103,6 +103,8 @@ namespace biod {
 
 namespace updater {
 
+// TODO(https://crbug.com/988940): Remove HasFingerprint* tests when migrated to
+// fingerprint/sensor-location.
 TEST(CrosFpUpdaterFingerprintUnsupportedTest, HasFingerprintUnset) {
   // Given a device that does not indicate if it has-fingerprint-sensor,
   brillo::FakeCrosConfig cros_config;
@@ -121,6 +123,26 @@ TEST(CrosFpUpdaterFingerprintUnsupportedTest, HasFingerprintSetFalse) {
   brillo::FakeCrosConfig cros_config;
   cros_config.SetString(kCrosConfigHWPropertiesPath,
                         kCrosConfigHWPropertiesHasFP, "false");
+  EXPECT_TRUE(FingerprintUnsupported(&cros_config));
+}
+
+TEST(CrosFpUpdaterFingerprintUnsupportedTest, FingerprintLocationUnset) {
+  // Given a device that does not indicate fingerprint sensor location
+  brillo::FakeCrosConfig cros_config;
+  // expect FingerprintUnsupported to report false.
+  EXPECT_FALSE(FingerprintUnsupported(&cros_config));
+}
+
+TEST(CrosFpUpdaterFingerprintUnsupportedTest, FingerprintLocationSet) {
+  brillo::FakeCrosConfig cros_config;
+  cros_config.SetString(kCrosConfigFPPath, kCrosConfigFPLocation,
+                        "power-button-top-left");
+  EXPECT_FALSE(FingerprintUnsupported(&cros_config));
+}
+
+TEST(CrosFpUpdaterFingerprintUnsupportedTest, FingerprintLocationSetNone) {
+  brillo::FakeCrosConfig cros_config;
+  cros_config.SetString(kCrosConfigFPPath, kCrosConfigFPLocation, "none");
   EXPECT_TRUE(FingerprintUnsupported(&cros_config));
 }
 

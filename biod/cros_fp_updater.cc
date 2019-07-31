@@ -70,6 +70,10 @@ namespace biod {
 
 constexpr char kCrosConfigFPPath[] = "/fingerprint";
 constexpr char kCrosConfigFPBoard[] = "board";
+constexpr char kCrosConfigFPLocation[] = "sensor-location";
+
+// TODO(https://crbug.com/988940): Remove when migrated to
+// fingerprint/sensor-location.
 constexpr char kCrosConfigHWPropertiesPath[] = "/hardware-properties";
 constexpr char kCrosConfigHWPropertiesHasFP[] = "has-fingerprint-sensor";
 
@@ -284,10 +288,21 @@ bool UpdateDisallowed() {
   return base::PathExists(base::FilePath(kUpdateDisableFile));
 }
 
-// Since /hardware-properties/has-fingerprint-sensor is an optional field,
-// the only information that is relevant to the updater is if fingerprint
-// is explicitly not supported.
+// TODO(https://crbug.com/988940): Remove checking for has-fingerprint-sensor
+// when migrated to fingerprint/sensor-location.
+// Since /fingerprint/sensor-location is an optional field, the only information
+// that is relevant to the updater is if fingerprint is explicitly not
+// supported.
 bool FingerprintUnsupported(brillo::CrosConfigInterface* cros_config) {
+  std::string fingerprint_location;
+  if (cros_config->GetString(kCrosConfigFPPath, kCrosConfigFPLocation,
+                             &fingerprint_location)) {
+    if (fingerprint_location == "none") {
+      return true;
+    }
+  }
+
+  // Legacy check.
   std::string has_fingerprint;
   if (cros_config->GetString(kCrosConfigHWPropertiesPath,
                              kCrosConfigHWPropertiesHasFP, &has_fingerprint)) {
