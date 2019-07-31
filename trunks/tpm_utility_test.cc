@@ -611,7 +611,7 @@ TEST_F(TpmUtilityTest, ReadPCRBadReturn) {
 }
 
 TEST_F(TpmUtilityTest, AsymmetricEncryptSuccess) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = 42;
   std::string plaintext;
   std::string output_ciphertext("ciphertext");
   std::string ciphertext;
@@ -636,7 +636,7 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptSuccess) {
 }
 
 TEST_F(TpmUtilityTest, AsymmetricEncryptFail) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = 42;
   std::string plaintext;
   std::string ciphertext;
   TPM2B_PUBLIC public_area;
@@ -670,7 +670,7 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptBadParams) {
 }
 
 TEST_F(TpmUtilityTest, AsymmetricEncryptNullSchemeForward) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = 42;
   std::string plaintext;
   std::string output_ciphertext("ciphertext");
   std::string ciphertext;
@@ -696,7 +696,7 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptNullSchemeForward) {
 }
 
 TEST_F(TpmUtilityTest, AsymmetricEncryptSchemeForward) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = 42;
   std::string plaintext;
   std::string output_ciphertext("ciphertext");
   std::string ciphertext;
@@ -721,7 +721,7 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptSchemeForward) {
 }
 
 TEST_F(TpmUtilityTest, AsymmetricDecryptSuccess) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = 42;
   std::string plaintext;
   std::string output_plaintext("plaintext");
   std::string ciphertext;
@@ -747,7 +747,7 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptSuccess) {
 }
 
 TEST_F(TpmUtilityTest, AsymmetricDecryptFail) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = 42;
   std::string key_name;
   std::string plaintext;
   std::string ciphertext;
@@ -796,7 +796,7 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptBadSession) {
 }
 
 TEST_F(TpmUtilityTest, AsymmetricDecryptNullHashAlgorithmForward) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = 42;
   std::string plaintext;
   std::string output_plaintext("plaintext");
   std::string ciphertext;
@@ -824,7 +824,7 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptNullHashAlgorithmForward) {
 }
 
 TEST_F(TpmUtilityTest, AsymmetricDecryptSchemeForward) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = 42;
   std::string plaintext;
   std::string output_plaintext("plaintext");
   std::string ciphertext;
@@ -851,7 +851,7 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptSchemeForward) {
 }
 
 TEST_F(TpmUtilityTest, SignRsaSuccess) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = 42;
   std::string password;
   std::string digest(32, 'a');
   constexpr char kSignatureOutput[] = "hi";
@@ -881,7 +881,7 @@ TEST_F(TpmUtilityTest, SignRsaSuccess) {
 }
 
 TEST_F(TpmUtilityTest, SignEcdsaSuccess) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = 42;
   std::string password;
   std::string digest(32, 'a');
 
@@ -915,7 +915,7 @@ TEST_F(TpmUtilityTest, SignEcdsaSuccess) {
 }
 
 TEST_F(TpmUtilityTest, SignFail) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = 42;
   std::string password;
   std::string digest(32, 'a');
   std::string signature;
@@ -936,7 +936,7 @@ TEST_F(TpmUtilityTest, SignFail) {
 }
 
 TEST_F(TpmUtilityTest, SignInputLength) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = 42;
   constexpr int kLimitOfDigestSize = sizeof(TPMU_HA);
   std::string digest(kLimitOfDigestSize, 'a');
   std::string too_long_digest = digest + "a";
@@ -978,7 +978,7 @@ TEST_F(TpmUtilityTest, SignInputLength) {
 }
 
 TEST_F(TpmUtilityTest, SignBadWithRestrictedKey) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = 42;
   std::string password;
   std::string digest(32, 'a');
   std::string signature;
@@ -1005,7 +1005,7 @@ TEST_F(TpmUtilityTest, SignBadAuthorizationSession) {
 }
 
 TEST_F(TpmUtilityTest, SignBadWithNonSigningKey) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = 42;
   std::string password;
   std::string digest(32, 'a');
   std::string signature;
@@ -1022,7 +1022,7 @@ TEST_F(TpmUtilityTest, SignBadWithNonSigningKey) {
 }
 
 TEST_F(TpmUtilityTest, SignBadSchemeTypeNotMatchedWithKeyType) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = 42;
   std::string password;
   std::string digest(32, 'a');
   std::string signature;
@@ -1052,7 +1052,7 @@ TEST_F(TpmUtilityTest, SignBadSchemeTypeNotMatchedWithKeyType) {
 }
 
 TEST_F(TpmUtilityTest, SignBadWithBadKeyHandle) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = 42;
   std::string password;
   std::string digest(32, 'a');
   std::string signature;
@@ -1080,7 +1080,7 @@ TEST_F(TpmUtilityTest, SignBadSigningSchemeType) {
 }
 
 TEST_F(TpmUtilityTest, SignNullSchemeForward) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = 42;
   std::string password;
   std::string digest(32, 'a');
   TPMT_SIGNATURE signature_out;
@@ -1107,7 +1107,7 @@ TEST_F(TpmUtilityTest, SignNullSchemeForward) {
 }
 
 TEST_F(TpmUtilityTest, SignRSASSAWithNullAlgorithm) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = 42;
   std::string password;
   std::string digest(32, 'a');
   TPMT_SIGNATURE signature_out;
@@ -1134,7 +1134,7 @@ TEST_F(TpmUtilityTest, SignRSASSAWithNullAlgorithm) {
 }
 
 TEST_F(TpmUtilityTest, SignSchemeForward) {
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = 42;
   std::string password;
   std::string digest(64, 'a');
   TPMT_SIGNATURE signature_out;
