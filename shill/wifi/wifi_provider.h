@@ -165,29 +165,6 @@ class WiFiProvider : public ProviderInterface {
   void ReportRememberedNetworkCount();
   void ReportServiceSourceMetrics();
 
-  // Retrieve a WiFi service's identifying properties from passed-in |args|.
-  // Returns true if |args| are valid and populates |ssid|, |mode|,
-  // |security| and |hidden_ssid|, if successful.  Otherwise, this function
-  // returns false and populates |error| with the reason for failure.  It
-  // is a fatal error if the "Type" parameter passed in |args| is not kWiFi.
-  static bool GetServiceParametersFromArgs(const KeyValueStore& args,
-                                           std::vector<uint8_t>* ssid_bytes,
-                                           std::string* mode,
-                                           std::string* security_method,
-                                           bool* hidden_ssid,
-                                           Error* error);
-  // Retrieve a WiFi service's identifying properties from passed-in |storage|.
-  // Return true if storage contain valid parameter values and populates |ssid|,
-  // |mode|, |security| and |hidden_ssid|. Otherwise, this function returns
-  // false and populates |error| with the reason for failure.
-  static bool GetServiceParametersFromStorage(const StoreInterface* storage,
-                                              const std::string& entry_name,
-                                              std::vector<uint8_t>* ssid_bytes,
-                                              std::string* mode,
-                                              std::string* security_method,
-                                              bool* hidden_ssid,
-                                              Error* error);
-
   // Converts frequency profile information from a list of strings of the form
   // "frequency:connection_count" to a form consistent with
   // |connect_count_by_frequency_|.  The first string must be of the form
@@ -196,15 +173,6 @@ class WiFiProvider : public ProviderInterface {
   static time_t StringListToFrequencyMap(
       const std::vector<std::string>& strings,
       ConnectFrequencyMap* numbers);
-
-  // Extracts the start week from the first string in the StringList for
-  // |StringListToFrequencyMap|.
-  static time_t GetStringListStartWeek(const std::string& week_string);
-
-  // Extracts frequency and connection count from a string from the StringList
-  // for |StringListToFrequencyMap|.  Places those values in |numbers|.
-  static void ParseStringListFreqCount(const std::string& freq_count_string,
-                                       ConnectFrequencyMap* numbers);
 
   // Converts frequency profile information from a form consistent with
   // |connect_count_by_frequency_| to a list of strings of the form

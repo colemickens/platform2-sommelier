@@ -33,20 +33,17 @@ static auto kModuleLogScope = ScopeLogger::kVPN;
 static string ObjectID(const VPNProvider* v) { return "(vpn_provider)"; }
 }
 
-VPNProvider::VPNProvider(Manager* manager) : manager_(manager) {}
+namespace {
 
-VPNProvider::~VPNProvider() = default;
-
-void VPNProvider::Start() {}
-
-void VPNProvider::Stop() {}
-
-// static
-bool VPNProvider::GetServiceParametersFromArgs(const KeyValueStore& args,
-                                               string* type_ptr,
-                                               string* name_ptr,
-                                               string* host_ptr,
-                                               Error* error) {
+// Populates |type_ptr|, |name_ptr| and |host_ptr| with the appropriate
+// values from |args|.  Returns True on success, otherwise if any of
+// these arguments are not available, |error| is populated and False is
+// returned.
+bool GetServiceParametersFromArgs(const KeyValueStore& args,
+                                  string* type_ptr,
+                                  string* name_ptr,
+                                  string* host_ptr,
+                                  Error* error) {
   SLOG(nullptr, 2) << __func__;
   string type = args.LookupString(kProviderTypeProperty, "");
   if (type.empty()) {
@@ -68,6 +65,57 @@ bool VPNProvider::GetServiceParametersFromArgs(const KeyValueStore& args,
 
   return true;
 }
+
+// Populates |vpn_type_ptr|, |name_ptr| and |host_ptr| with the appropriate
+// values from profile storgae.  Returns True on success, otherwise if any of
+// these arguments are not available, |error| is populated and False is
+// returned.
+bool GetServiceParametersFromStorage(const StoreInterface* storage,
+                                     const string& entry_name,
+                                     string* vpn_type_ptr,
+                                     string* name_ptr,
+                                     string* host_ptr,
+                                     Error* error) {
+  string service_type;
+  if (!storage->GetString(entry_name, kTypeProperty, &service_type) ||
+      service_type != kTypeVPN) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Unspecified or invalid network type");
+    return false;
+  }
+
+  if (!storage->GetString(entry_name, kProviderTypeProperty, vpn_type_ptr) ||
+      vpn_type_ptr->empty()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "VPN type not specified");
+    return false;
+  }
+
+  if (!storage->GetString(entry_name, kNameProperty, name_ptr) ||
+      name_ptr->empty()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Network name not specified");
+    return false;
+  }
+
+  if (!storage->GetString(entry_name, kProviderHostProperty, host_ptr) ||
+      host_ptr->empty()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Host not specified");
+    return false;
+  }
+  return true;
+}
+
+}  // namespace
+
+VPNProvider::VPNProvider(Manager* manager) : manager_(manager) {}
+
+VPNProvider::~VPNProvider() = default;
+
+void VPNProvider::Start() {}
+
+void VPNProvider::Stop() {}
 
 void VPNProvider::AddAllowedInterface(const std::string& interface_name) {
   if (base::ContainsValue(allowed_iifs_, interface_name))
@@ -97,41 +145,6 @@ void VPNProvider::RemoveAllowedInterface(const std::string& interface_name) {
           interface_name);
     }
   }
-}
-
-// static
-bool VPNProvider::GetServiceParametersFromStorage(const StoreInterface* storage,
-                                                  const string& entry_name,
-                                                  string* vpn_type_ptr,
-                                                  string* name_ptr,
-                                                  string* host_ptr,
-                                                  Error* error) {
-  string service_type;
-  if (!storage->GetString(entry_name, kTypeProperty, &service_type) ||
-      service_type != kTypeVPN) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Unspecified or invalid network type");
-    return false;
-  }
-  if (!storage->GetString(entry_name, kProviderTypeProperty, vpn_type_ptr) ||
-      vpn_type_ptr->empty()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "VPN type not specified");
-    return false;
-  }
-  if (!storage->GetString(entry_name, kNameProperty, name_ptr) ||
-      name_ptr->empty()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Network name not specified");
-    return false;
-  }
-  if (!storage->GetString(entry_name, kProviderHostProperty, host_ptr) ||
-      host_ptr->empty()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Host not specified");
-    return false;
-  }
-  return true;
 }
 
 ServiceRefPtr VPNProvider::GetService(const KeyValueStore& args,

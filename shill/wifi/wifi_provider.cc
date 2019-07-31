@@ -70,6 +70,197 @@ const time_t kIllegalStartWeek = std::numeric_limits<time_t>::max();
 const int kMaxStorageFrequencies = 20;
 const time_t kSecondsPerWeek = 60 * 60 * 24 * 7;
 
+// Retrieve a WiFi service's identifying properties from passed-in |args|.
+// Returns true if |args| are valid and populates |ssid|, |mode|,
+// |security| and |hidden_ssid|, if successful.  Otherwise, this function
+// returns false and populates |error| with the reason for failure.  It
+// is a fatal error if the "Type" parameter passed in |args| is not kWiFi.
+bool GetServiceParametersFromArgs(const KeyValueStore& args,
+                                  vector<uint8_t>* ssid_bytes,
+                                  string* mode,
+                                  string* security_method,
+                                  bool* hidden_ssid,
+                                  Error* error) {
+  CHECK_EQ(args.LookupString(kTypeProperty, ""), kTypeWifi);
+
+  string mode_test = args.LookupString(kModeProperty, kModeManaged);
+  if (!WiFiService::IsValidMode(mode_test)) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                          kManagerErrorUnsupportedServiceMode);
+    return false;
+  }
+
+  vector<uint8_t> ssid;
+  if (args.ContainsString(kWifiHexSsid)) {
+    string ssid_hex_string = args.GetString(kWifiHexSsid);
+    if (!base::HexStringToBytes(ssid_hex_string, &ssid)) {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                            "Hex SSID parameter is not valid");
+      return false;
+    }
+  } else if (args.ContainsString(kSSIDProperty)) {
+    string ssid_string = args.GetString(kSSIDProperty);
+    ssid = vector<uint8_t>(ssid_string.begin(), ssid_string.end());
+  } else {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          kManagerErrorSSIDRequired);
+    return false;
+  }
+
+  if (ssid.size() < 1) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidNetworkName,
+                          kManagerErrorSSIDTooShort);
+    return false;
+  }
+
+  if (ssid.size() > IEEE_80211::kMaxSSIDLen) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidNetworkName,
+                          kManagerErrorSSIDTooLong);
+    return false;
+  }
+
+  const string kDefaultSecurity = kSecurityNone;
+  if (args.ContainsString(kSecurityProperty) &&
+      args.ContainsString(kSecurityClassProperty) &&
+      args.LookupString(kSecurityClassProperty, kDefaultSecurity) !=
+          args.LookupString(kSecurityProperty, kDefaultSecurity)) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          kManagerErrorArgumentConflict);
+    return false;
+  }
+
+  if (args.ContainsString(kSecurityClassProperty)) {
+    string security_class_test =
+        args.LookupString(kSecurityClassProperty, kDefaultSecurity);
+    if (!WiFiService::IsValidSecurityClass(security_class_test)) {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                            kManagerErrorUnsupportedSecurityClass);
+      return false;
+    }
+    *security_method = security_class_test;
+  } else if (args.ContainsString(kSecurityProperty)) {
+    string security_method_test =
+        args.LookupString(kSecurityProperty, kDefaultSecurity);
+    if (!WiFiService::IsValidSecurityMethod(security_method_test)) {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                            kManagerErrorUnsupportedSecurityMode);
+      return false;
+    }
+    *security_method = security_method_test;
+  } else {
+    *security_method = kDefaultSecurity;
+  }
+
+  *ssid_bytes = ssid;
+  *mode = mode_test;
+
+  // If the caller hasn't specified otherwise, we assume it is a hidden service.
+  *hidden_ssid = args.LookupBool(kWifiHiddenSsid, true);
+
+  return true;
+}
+
+// Retrieve a WiFi service's identifying properties from passed-in |storage|.
+// Return true if storage contain valid parameter values and populates |ssid|,
+// |mode|, |security| and |hidden_ssid|. Otherwise, this function returns
+// false and populates |error| with the reason for failure.
+bool GetServiceParametersFromStorage(const StoreInterface* storage,
+                                     const std::string& entry_name,
+                                     std::vector<uint8_t>* ssid_bytes,
+                                     std::string* mode,
+                                     std::string* security,
+                                     bool* hidden_ssid,
+                                     Error* error) {
+  // Verify service type.
+  string type;
+  if (!storage->GetString(entry_name, WiFiService::kStorageType, &type) ||
+      type != kTypeWifi) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Unspecified or invalid network type");
+    return false;
+  }
+
+  string ssid_hex;
+  if (!storage->GetString(entry_name, WiFiService::kStorageSSID, &ssid_hex) ||
+      !base::HexStringToBytes(ssid_hex, ssid_bytes)) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Unspecified or invalid SSID");
+    return false;
+  }
+
+  if (!storage->GetString(entry_name, WiFiService::kStorageMode, mode) ||
+      mode->empty()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Network mode not specified");
+    return false;
+  }
+
+  if (!storage->GetString(entry_name, WiFiService::kStorageSecurity,
+                          security) ||
+      !WiFiService::IsValidSecurityMethod(*security)) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Unspecified or invalid security mode");
+    return false;
+  }
+
+  if (!storage->GetBool(entry_name, WiFiService::kStorageHiddenSSID,
+                        hidden_ssid)) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Hidden SSID not specified");
+    return false;
+  }
+  return true;
+}
+
+// Extracts the start week from the first string in the StringList for
+// |StringListToFrequencyMap|.
+time_t GetStringListStartWeek(const string& week_string) {
+  if (!base::StartsWith(week_string, kStartWeekHeader,
+                        base::CompareCase::INSENSITIVE_ASCII)) {
+    LOG(ERROR) << "Found no leading '" << kStartWeekHeader << "' in '"
+               << week_string << "'";
+    return kIllegalStartWeek;
+  }
+
+  uint64_t week;
+  if (!base::StringToUint64(week_string.c_str() + 1, &week)) {
+    LOG(ERROR) << "'" << week_string.c_str() + 1
+               << "' could not be cleanly parsed as a uint64_t";
+    return kIllegalStartWeek;
+  }
+  return week;
+}
+
+// Extracts frequency and connection count from a string from the StringList
+// for |StringListToFrequencyMap|.  Places those values in |numbers|.
+void ParseStringListFreqCount(const string& freq_count_string,
+                              WiFiProvider::ConnectFrequencyMap* numbers) {
+  vector<string> freq_count =
+      base::SplitString(freq_count_string, std::string{kFrequencyDelimiter},
+                        base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  if (freq_count.size() != 2) {
+    LOG(WARNING) << "Found " << freq_count.size() - 1 << " '"
+                 << kFrequencyDelimiter << "' in '" << freq_count_string
+                 << "'.  Expected 1.";
+    return;
+  }
+
+  uint64_t freq;
+  if (!base::StringToUint64(freq_count[0], &freq) || freq > UINT16_MAX) {
+    LOG(WARNING) << "'" << freq_count[0]
+                 << "' could not be cleanly parsed as a uint16_t";
+    return;
+  }
+
+  int64_t connections;
+  if (!base::StringToInt64(freq_count[1], &connections)) {
+    LOG(WARNING) << "'" << freq_count[1]
+                 << "' could not be cleanly parsed as an int64_t";
+    return;
+  }
+  (*numbers)[static_cast<uint16_t>(freq)] = connections;
+}
+
 }  // namespace
 
 const char WiFiProvider::kStorageId[] = "provider_of_wifi";
@@ -375,8 +566,8 @@ void WiFiProvider::LoadAndFixupServiceEntries(Profile* profile) {
         SLOG(this, 7) << "Frequency list " << freq_string << " not found";
         break;
       }
-      time_t start_week = StringListToFrequencyMap(frequencies,
-                                                  &connect_count_by_frequency);
+      time_t start_week =
+          StringListToFrequencyMap(frequencies, &connect_count_by_frequency);
       if (start_week == kIllegalStartWeek) {
         continue;  // |StringListToFrequencyMap| will have output an error msg.
       }
@@ -516,139 +707,8 @@ void WiFiProvider::ReportServiceSourceMetrics() {
 }
 
 // static
-bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore& args,
-                                                vector<uint8_t>* ssid_bytes,
-                                                string* mode,
-                                                string* security_method,
-                                                bool* hidden_ssid,
-                                                Error* error) {
-  CHECK_EQ(args.LookupString(kTypeProperty, ""), kTypeWifi);
-
-  string mode_test =
-      args.LookupString(kModeProperty, kModeManaged);
-  if (!WiFiService::IsValidMode(mode_test)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                          kManagerErrorUnsupportedServiceMode);
-    return false;
-  }
-
-  vector<uint8_t> ssid;
-  if (args.ContainsString(kWifiHexSsid)) {
-    string ssid_hex_string = args.GetString(kWifiHexSsid);
-    if (!base::HexStringToBytes(ssid_hex_string, &ssid)) {
-      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                            "Hex SSID parameter is not valid");
-      return false;
-    }
-  } else if (args.ContainsString(kSSIDProperty)) {
-    string ssid_string = args.GetString(kSSIDProperty);
-    ssid = vector<uint8_t>(ssid_string.begin(), ssid_string.end());
-  } else {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          kManagerErrorSSIDRequired);
-    return false;
-  }
-
-  if (ssid.size() < 1) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidNetworkName,
-                          kManagerErrorSSIDTooShort);
-    return false;
-  }
-
-  if (ssid.size() > IEEE_80211::kMaxSSIDLen) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidNetworkName,
-                          kManagerErrorSSIDTooLong);
-    return false;
-  }
-
-  const string kDefaultSecurity = kSecurityNone;
-  if (args.ContainsString(kSecurityProperty) &&
-      args.ContainsString(kSecurityClassProperty) &&
-      args.LookupString(kSecurityClassProperty, kDefaultSecurity) !=
-      args.LookupString(kSecurityProperty, kDefaultSecurity)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          kManagerErrorArgumentConflict);
-    return false;
-  }
-  if (args.ContainsString(kSecurityClassProperty)) {
-    string security_class_test =
-        args.LookupString(kSecurityClassProperty, kDefaultSecurity);
-    if (!WiFiService::IsValidSecurityClass(security_class_test)) {
-      Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                            kManagerErrorUnsupportedSecurityClass);
-      return false;
-    }
-    *security_method = security_class_test;
-  } else if (args.ContainsString(kSecurityProperty)) {
-    string security_method_test =
-        args.LookupString(kSecurityProperty, kDefaultSecurity);
-    if (!WiFiService::IsValidSecurityMethod(security_method_test)) {
-      Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                            kManagerErrorUnsupportedSecurityMode);
-      return false;
-    }
-    *security_method = security_method_test;
-  } else {
-    *security_method = kDefaultSecurity;
-  }
-
-  *ssid_bytes = ssid;
-  *mode = mode_test;
-
-  // If the caller hasn't specified otherwise, we assume it is a hidden service.
-  *hidden_ssid = args.LookupBool(kWifiHiddenSsid, true);
-
-  return true;
-}
-
-// static
-bool WiFiProvider::GetServiceParametersFromStorage(
-    const StoreInterface* storage,
-    const std::string& entry_name,
-    std::vector<uint8_t>* ssid_bytes,
-    std::string* mode,
-    std::string* security,
-    bool* hidden_ssid,
-    Error* error) {
-  // Verify service type.
-  string type;
-  if (!storage->GetString(entry_name, WiFiService::kStorageType, &type) ||
-      type != kTypeWifi) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Unspecified or invalid network type");
-    return false;
-  }
-  string ssid_hex;
-  if (!storage->GetString(entry_name, WiFiService::kStorageSSID, &ssid_hex) ||
-      !base::HexStringToBytes(ssid_hex, ssid_bytes)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Unspecified or invalid SSID");
-    return false;
-  }
-  if (!storage->GetString(entry_name, WiFiService::kStorageMode, mode) ||
-      mode->empty()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Network mode not specified");
-    return false;
-  }
-  if (!storage->GetString(entry_name, WiFiService::kStorageSecurity, security)
-      || !WiFiService::IsValidSecurityMethod(*security)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Unspecified or invalid security mode");
-    return false;
-  }
-  if (!storage->GetBool(
-      entry_name, WiFiService::kStorageHiddenSSID, hidden_ssid)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Hidden SSID not specified");
-    return false;
-  }
-  return true;
-}
-
-// static
 time_t WiFiProvider::StringListToFrequencyMap(const vector<string>& strings,
-                                            ConnectFrequencyMap* numbers) {
+                                              ConnectFrequencyMap* numbers) {
   if (!numbers) {
     LOG(ERROR) << "Null |numbers| parameter";
     return kIllegalStartWeek;
@@ -670,34 +730,6 @@ time_t WiFiProvider::StringListToFrequencyMap(const vector<string>& strings,
     ParseStringListFreqCount(*strings_it, numbers);
   }
   return start_week;
-}
-
-// static
-time_t WiFiProvider::GetStringListStartWeek(const string& week_string) {
-  if (!base::StartsWith(week_string, kStartWeekHeader,
-                        base::CompareCase::INSENSITIVE_ASCII)) {
-    LOG(ERROR) << "Found no leading '" << kStartWeekHeader << "' in '"
-               << week_string << "'";
-    return kIllegalStartWeek;
-  }
-  return atoll(week_string.c_str() + 1);
-}
-
-// static
-void WiFiProvider::ParseStringListFreqCount(const string& freq_count_string,
-                                            ConnectFrequencyMap* numbers) {
-  vector<string> freq_count = base::SplitString(
-      freq_count_string, std::string{kFrequencyDelimiter},
-      base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-  if (freq_count.size() != 2) {
-    LOG(WARNING) << "Found " << freq_count.size() - 1 << " '"
-                 << kFrequencyDelimiter << "' in '" << freq_count_string
-                 << "'.  Expected 1.";
-    return;
-  }
-  uint16_t freq = atoi(freq_count[0].c_str());
-  uint64_t connections = atoll(freq_count[1].c_str());
-  (*numbers)[freq] = connections;
 }
 
 // static

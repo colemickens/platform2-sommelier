@@ -115,26 +115,6 @@ class VPNProvider : public ProviderInterface {
                                const std::string& name,
                                const std::string& host) const;
 
-  // Populates |type_ptr|, |name_ptr| and |host_ptr| with the appropriate
-  // values from |args|.  Returns True on success, otherwise if any of
-  // these arguments are not available, |error| is populated and False is
-  // returned.
-  static bool GetServiceParametersFromArgs(const KeyValueStore& args,
-                                           std::string* type_ptr,
-                                           std::string* name_ptr,
-                                           std::string* host_ptr,
-                                           Error* error);
-  // Populates |vpn_type_ptr|, |name_ptr| and |host_ptr| with the appropriate
-  // values from profile storgae.  Returns True on success, otherwise if any of
-  // these arguments are not available, |error| is populated and False is
-  // returned.
-  static bool GetServiceParametersFromStorage(const StoreInterface* storage,
-                                              const std::string& entry_name,
-                                              std::string* vpn_type_ptr,
-                                              std::string* name_ptr,
-                                              std::string* host_ptr,
-                                              Error* error);
-
   Manager* manager_;
   std::vector<VPNServiceRefPtr> services_;
   // List of whitelisted networking interfaces that route traffic through VPNs
