@@ -12,6 +12,9 @@
 
 #include "dlcservice/boot_device.h"
 
+using std::string;
+using std::unique_ptr;
+
 namespace dlcservice {
 
 namespace {
@@ -21,18 +24,18 @@ constexpr char kChromeOSPartitionNameRoot[] = "root";
 
 }  // namespace
 
-BootSlot::BootSlot(std::unique_ptr<BootDeviceInterface> boot_device)
+BootSlot::BootSlot(unique_ptr<BootDeviceInterface> boot_device)
     : boot_device_(std::move(boot_device)) {}
 
 BootSlot::~BootSlot() {}
 
-bool BootSlot::GetCurrentSlot(std::string* boot_disk_name_out,
+bool BootSlot::GetCurrentSlot(string* boot_disk_name_out,
                               int* num_slots_out,
                               int* current_slot_out) {
   if (!boot_disk_name_out || !num_slots_out || !current_slot_out)
     return false;
 
-  std::string boot_device = boot_device_->GetBootDevice();
+  string boot_device = boot_device_->GetBootDevice();
   if (boot_device.empty())
     return false;
 
@@ -74,8 +77,8 @@ bool BootSlot::GetCurrentSlot(std::string* boot_disk_name_out,
   return true;
 }
 
-bool BootSlot::SplitPartitionName(const std::string& partition_name,
-                                  std::string* disk_name_out,
+bool BootSlot::SplitPartitionName(const string& partition_name,
+                                  string* disk_name_out,
                                   int* partition_num_out) {
   if (!base::StartsWith(partition_name, "/dev/",
                         base::CompareCase::SENSITIVE)) {
@@ -84,19 +87,19 @@ bool BootSlot::SplitPartitionName(const std::string& partition_name,
   }
 
   size_t last_nondigit_pos = partition_name.find_last_not_of("0123456789");
-  if (last_nondigit_pos == std::string::npos ||
+  if (last_nondigit_pos == string::npos ||
       (last_nondigit_pos + 1) == partition_name.size()) {
     LOG(ERROR) << "Unable to parse partition device name: " << partition_name;
     return false;
   }
 
-  size_t partition_name_len = std::string::npos;
+  size_t partition_name_len = string::npos;
   if (partition_name[last_nondigit_pos] == '_') {
     // NAND block devices have weird naming which could be something
     // like "/dev/ubiblock2_0". We discard "_0" in such a case.
     size_t prev_nondigit_pos =
         partition_name.find_last_not_of("0123456789", last_nondigit_pos - 1);
-    if (prev_nondigit_pos == std::string::npos ||
+    if (prev_nondigit_pos == string::npos ||
         (prev_nondigit_pos + 1) == last_nondigit_pos) {
       LOG(ERROR) << "Unable to parse partition device name: " << partition_name;
       return false;
@@ -118,14 +121,14 @@ bool BootSlot::SplitPartitionName(const std::string& partition_name,
   }
 
   if (partition_num_out) {
-    std::string partition_str =
+    string partition_str =
         partition_name.substr(last_nondigit_pos + 1, partition_name_len);
     *partition_num_out = atoi(partition_str.c_str());
   }
   return true;
 }
 
-int BootSlot::GetPartitionNumber(const std::string& partition_name,
+int BootSlot::GetPartitionNumber(const string& partition_name,
                                  int slot,
                                  int num_slots) {
   if (slot >= num_slots) {
@@ -139,7 +142,7 @@ int BootSlot::GetPartitionNumber(const std::string& partition_name,
   // To help compatibility between different we accept both lowercase and
   // uppercase names in the ChromeOS or Brillo standard names.
   // See http://www.chromium.org/chromium-os/chromiumos-design-docs/disk-format
-  std::string partition_lower = base::ToLowerASCII(partition_name);
+  string partition_lower = base::ToLowerASCII(partition_name);
   int base_part_num = 2 + 2 * slot;
   if (partition_lower == kChromeOSPartitionNameKernel)
     return base_part_num + 0;

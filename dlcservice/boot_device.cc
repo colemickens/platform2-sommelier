@@ -10,13 +10,16 @@
 #include <base/strings/string_util.h>
 #include <rootdev/rootdev.h>
 
+using base::FilePath;
+using std::string;
+
 namespace dlcservice {
 
-bool BootDevice::IsRemovableDevice(const std::string& device) {
-  std::string sysfs_block = SysfsBlockDevice(device);
-  std::string removable;
+bool BootDevice::IsRemovableDevice(const string& device) {
+  string sysfs_block = SysfsBlockDevice(device);
+  string removable;
   if (sysfs_block.empty() ||
-      !base::ReadFileToString(base::FilePath(sysfs_block).Append("removable"),
+      !base::ReadFileToString(FilePath(sysfs_block).Append("removable"),
                               &removable)) {
     return false;
   }
@@ -24,7 +27,7 @@ bool BootDevice::IsRemovableDevice(const std::string& device) {
   return removable == "1";
 }
 
-std::string BootDevice::GetBootDevice() {
+string BootDevice::GetBootDevice() {
   char boot_path[PATH_MAX];
   // Resolve the boot device path fully, including dereferencing through
   // dm-verity.
@@ -41,12 +44,12 @@ std::string BootDevice::GetBootDevice() {
   return boot_path;
 }
 
-std::string BootDevice::SysfsBlockDevice(const std::string& device) {
-  base::FilePath device_path(device);
+string BootDevice::SysfsBlockDevice(const string& device) {
+  FilePath device_path(device);
   if (device_path.DirName().value() != "/dev") {
     return "";
   }
-  return base::FilePath("/sys/block").Append(device_path.BaseName()).value();
+  return FilePath("/sys/block").Append(device_path.BaseName()).value();
 }
 
 }  // namespace dlcservice

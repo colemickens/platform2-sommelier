@@ -22,7 +22,12 @@
 #include "dlcservice/boot_slot.h"
 #include "dlcservice/utils.h"
 
+using base::Callback;
+using base::File;
+using base::FilePath;
+using base::ScopedTempDir;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 using update_engine::Operation;
 using update_engine::StatusResult;
@@ -35,11 +40,11 @@ namespace {
 constexpr mode_t kDlcModuleDirectoryPerms = 0755;
 
 // Creates a directory with permissions required for DLC modules.
-bool CreateDirWithDlcPermissions(const base::FilePath& path) {
-  base::File::Error file_err;
+bool CreateDirWithDlcPermissions(const FilePath& path) {
+  File::Error file_err;
   if (!base::CreateDirectoryAndGetError(path, &file_err)) {
     LOG(ERROR) << "Failed to create directory '" << path.value()
-               << "': " << base::File::ErrorToString(file_err);
+               << "': " << File::ErrorToString(file_err);
     return false;
   }
   if (!base::SetPosixFilePermissions(path, kDlcModuleDirectoryPerms)) {
@@ -52,16 +57,16 @@ bool CreateDirWithDlcPermissions(const base::FilePath& path) {
 
 // Creates a directory with an empty image file and resizes it to the given
 // size.
-bool CreateImageFile(const base::FilePath& path, int64_t image_size) {
+bool CreateImageFile(const FilePath& path, int64_t image_size) {
   if (!CreateDirWithDlcPermissions(path.DirName())) {
     return false;
   }
   constexpr uint32_t file_flags =
-      base::File::FLAG_CREATE | base::File::FLAG_READ | base::File::FLAG_WRITE;
-  base::File file(path, file_flags);
+      File::FLAG_CREATE | File::FLAG_READ | File::FLAG_WRITE;
+  File file(path, file_flags);
   if (!file.IsValid()) {
     LOG(ERROR) << "Failed to create image file '" << path.value()
-               << "': " << base::File::ErrorToString(file.error_details());
+               << "': " << File::ErrorToString(file.error_details());
     return false;
   }
   if (!file.SetLength(image_size)) {
@@ -82,13 +87,13 @@ void LogAndSetError(brillo::ErrorPtr* err, const string& msg) {
 }  // namespace
 
 DlcServiceDBusAdaptor::DlcServiceDBusAdaptor(
-    std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
+    unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
         image_loader_proxy,
-    std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
+    unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
         update_engine_proxy,
-    std::unique_ptr<BootSlot> boot_slot,
-    const base::FilePath& manifest_dir,
-    const base::FilePath& content_dir)
+    unique_ptr<BootSlot> boot_slot,
+    const FilePath& manifest_dir,
+    const FilePath& content_dir)
     : org::chromium::DlcServiceInterfaceAdaptor(this),
       image_loader_proxy_(std::move(image_loader_proxy)),
       update_engine_proxy_(std::move(update_engine_proxy)),
@@ -126,7 +131,7 @@ DlcServiceDBusAdaptor::~DlcServiceDBusAdaptor() {}
 void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
   // Load all installed DLC modules.
   for (const auto& dlc_module_id : installed_dlc_modules_) {
-    std::string package = ScanDlcModulePackage(dlc_module_id);
+    string package = ScanDlcModulePackage(dlc_module_id);
     auto dlc_module_content_path =
         utils::GetDlcModulePackagePath(content_dir_, dlc_module_id, package);
 
@@ -154,12 +159,12 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
 
   // Note: this holds the list of directories that were created and need to be
   // freed in case an error happens.
-  vector<std::unique_ptr<base::ScopedTempDir>> scoped_paths;
+  vector<unique_ptr<ScopedTempDir>> scoped_paths;
 
   for (const DlcModuleInfo& dlc_module : dlc_modules) {
-    base::FilePath path;
+    FilePath path;
     const string& id = dlc_module.dlc_id();
-    auto scoped_path = std::make_unique<base::ScopedTempDir>();
+    auto scoped_path = std::make_unique<ScopedTempDir>();
 
     if (!CreateDlc(err, id, &path)) {
       return false;
@@ -205,7 +210,7 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
   }
   string package = ScanDlcModulePackage(id_in);
 
-  const base::FilePath dlc_module_content_path =
+  const FilePath dlc_module_content_path =
       utils::GetDlcModulePackagePath(content_dir_, id_in, package);
   if (!base::PathExists(dlc_module_content_path) ||
       !base::PathExists(
@@ -228,8 +233,7 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
   }
 
   // Deletes the DLC module images.
-  const base::FilePath dlc_module_path =
-      utils::GetDlcModulePath(content_dir_, id_in);
+  const FilePath dlc_module_path = utils::GetDlcModulePath(content_dir_, id_in);
   if (!base::DeleteFile(dlc_module_path, true)) {
     LogAndSetError(err, "DLC image folder could not be deleted.");
     return false;
@@ -254,15 +258,16 @@ bool DlcServiceDBusAdaptor::GetInstalled(brillo::ErrorPtr* err,
 }
 
 // TODO(crbug.com/987019): the signal from update engine needs to indicate this.
-// It is very dangerous for |DlcService| to be determining this. Can be removed
-// once update engine provides this. Do not use this function anywhere.
+// It is very dangerous for |DlcService| to be determining this. Can be
+// restd::moved once update engine provides this. Do not use this function
+// anywhere.
 bool DlcServiceDBusAdaptor::IsInstalling() {
   return !dlc_modules_being_installed_.dlc_module_infos().empty();
 }
 
 bool DlcServiceDBusAdaptor::CreateDlc(brillo::ErrorPtr* err,
                                       const string& id,
-                                      base::FilePath* path) {
+                                      FilePath* path) {
   path->clear();
   if (supported_dlc_modules_.find(id) == supported_dlc_modules_.end()) {
     LogAndSetError(err, "The DLC ID provided is not supported.");
@@ -270,8 +275,8 @@ bool DlcServiceDBusAdaptor::CreateDlc(brillo::ErrorPtr* err,
   }
 
   const string& package = ScanDlcModulePackage(id);
-  base::FilePath module_path = utils::GetDlcModulePath(content_dir_, id);
-  base::FilePath module_package_path =
+  FilePath module_path = utils::GetDlcModulePath(content_dir_, id);
+  FilePath module_package_path =
       utils::GetDlcModulePackagePath(content_dir_, id, package);
 
   if (base::PathExists(module_path)) {
@@ -305,7 +310,7 @@ bool DlcServiceDBusAdaptor::CreateDlc(brillo::ErrorPtr* err,
   }
 
   // Creates image A.
-  base::FilePath image_a_path =
+  FilePath image_a_path =
       utils::GetDlcModuleImagePath(content_dir_, id, package, 0);
   if (!CreateImageFile(image_a_path, image_size)) {
     LogAndSetError(err, "Failed to create slot A DLC image file");
@@ -313,7 +318,7 @@ bool DlcServiceDBusAdaptor::CreateDlc(brillo::ErrorPtr* err,
   }
 
   // Creates image B.
-  base::FilePath image_b_path =
+  FilePath image_b_path =
       utils::GetDlcModuleImagePath(content_dir_, id, package, 1);
   if (!CreateImageFile(image_b_path, image_size)) {
     LogAndSetError(err, "Failed to create slot B image file");
@@ -325,8 +330,8 @@ bool DlcServiceDBusAdaptor::CreateDlc(brillo::ErrorPtr* err,
 }
 
 bool DlcServiceDBusAdaptor::UnmountDlcImage(brillo::ErrorPtr* err,
-                                            const std::string& id,
-                                            const std::string& package) {
+                                            const string& id,
+                                            const string& package) {
   bool success = false;
   if (!image_loader_proxy_->UnloadDlcImage(id, package, &success, nullptr)) {
     LogAndSetError(err, "Imageloader is not available.");
@@ -391,12 +396,12 @@ void DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignal(
   install_result.mutable_dlc_module_list()->CopyFrom(dlc_module_list);
 
   // Keep track of the cleanups for DLC images.
-  utils::ScopedCleanups<base::Callback<void()>> scoped_cleanups;
+  utils::ScopedCleanups<Callback<void()>> scoped_cleanups;
   for (const DlcModuleInfo& dlc_module : dlc_module_list.dlc_module_infos()) {
     const string& dlc_id = dlc_module.dlc_id();
     string package = ScanDlcModulePackage(dlc_id);
     auto cleanup = base::Bind(
-        [](base::Callback<bool()> unmounter, base::Callback<bool()> deleter) {
+        [](Callback<bool()> unmounter, Callback<bool()> deleter) {
           unmounter.Run();
           deleter.Run();
         },
@@ -429,7 +434,7 @@ void DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignal(
       return;
     }
     dlc_module.set_dlc_root(
-        utils::GetDlcRootInModulePath(base::FilePath(mount_point)).value());
+        utils::GetDlcRootInModulePath(FilePath(mount_point)).value());
   }
 
   // Don't unmount+delete the images+directories as all successfully installed.
