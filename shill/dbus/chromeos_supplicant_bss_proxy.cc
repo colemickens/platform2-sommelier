@@ -18,18 +18,17 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
+static string ObjectID(const dbus::ObjectPath* p) {
+  return p->value();
 }
+}  // namespace Logging
 
 ChromeosSupplicantBSSProxy::ChromeosSupplicantBSSProxy(
     const scoped_refptr<dbus::Bus>& bus,
     const RpcIdentifier& object_path,
     WiFiEndpoint* wifi_endpoint)
-    : bss_proxy_(
-        new fi::w1::wpa_supplicant1::BSSProxy(
-            bus,
-            WPASupplicant::kDBusAddr,
-            dbus::ObjectPath(object_path))),
+    : bss_proxy_(new fi::w1::wpa_supplicant1::BSSProxy(
+          bus, WPASupplicant::kDBusAddr, dbus::ObjectPath(object_path))),
       wifi_endpoint_(wifi_endpoint) {
   // Register signal handler.
   bss_proxy_->RegisterPropertiesChangedSignalHandler(
@@ -46,8 +45,7 @@ ChromeosSupplicantBSSProxy::~ChromeosSupplicantBSSProxy() {
 void ChromeosSupplicantBSSProxy::PropertiesChanged(
     const brillo::VariantDictionary& properties) {
   SLOG(&bss_proxy_->GetObjectPath(), 2) << __func__;
-  KeyValueStore store =
-      KeyValueStore::ConvertFromVariantDictionary(properties);
+  KeyValueStore store = KeyValueStore::ConvertFromVariantDictionary(properties);
   wifi_endpoint_->PropertiesChanged(store);
 }
 
@@ -56,12 +54,12 @@ void ChromeosSupplicantBSSProxy::OnSignalConnected(
     const std::string& interface_name,
     const std::string& signal_name,
     bool success) {
-  SLOG(&bss_proxy_->GetObjectPath(), 2) << __func__
-      << "interface: " << interface_name << " signal: " << signal_name
-      << "success: " << success;
+  SLOG(&bss_proxy_->GetObjectPath(), 2)
+      << __func__ << "interface: " << interface_name
+      << " signal: " << signal_name << "success: " << success;
   if (!success) {
-    LOG(ERROR) << "Failed to connect signal " << signal_name
-        << " to interface " << interface_name;
+    LOG(ERROR) << "Failed to connect signal " << signal_name << " to interface "
+               << interface_name;
   }
 }
 

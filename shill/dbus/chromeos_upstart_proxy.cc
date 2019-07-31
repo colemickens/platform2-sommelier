@@ -13,8 +13,8 @@ namespace shill {
 const char ChromeosUpstartProxy::kUpstartServiceName[] = "com.ubuntu.Upstart";
 
 ChromeosUpstartProxy::ChromeosUpstartProxy(const scoped_refptr<dbus::Bus>& bus)
-    : shill_event_proxy_(new com::ubuntu::Upstart0_6::JobProxy(
-          bus, kUpstartServiceName)) {}
+    : shill_event_proxy_(
+          new com::ubuntu::Upstart0_6::JobProxy(bus, kUpstartServiceName)) {}
 
 void ChromeosUpstartProxy::EmitEvent(const std::string& name,
                                      const std::vector<std::string>& env,

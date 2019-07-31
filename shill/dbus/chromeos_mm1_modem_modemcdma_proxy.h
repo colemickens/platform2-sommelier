@@ -29,11 +29,10 @@ class ChromeosModemModemCdmaProxy : public ModemModemCdmaProxyInterface {
                 Error* error,
                 const ResultCallback& callback,
                 int timeout) override;
-  void ActivateManual(
-      const KeyValueStore& properties,
-      Error* error,
-      const ResultCallback& callback,
-      int timeout) override;
+  void ActivateManual(const KeyValueStore& properties,
+                      Error* error,
+                      const ResultCallback& callback,
+                      int timeout) override;
 
   void set_activation_state_callback(
       const ActivationStateSignalCallback& callback) override {
@@ -42,10 +41,9 @@ class ChromeosModemModemCdmaProxy : public ModemModemCdmaProxyInterface {
 
  private:
   // Signal handler.
-  void ActivationStateChanged(
-        uint32_t activation_state,
-        uint32_t activation_error,
-        const brillo::VariantDictionary& status_changes);
+  void ActivationStateChanged(uint32_t activation_state,
+                              uint32_t activation_error,
+                              const brillo::VariantDictionary& status_changes);
 
   // Callbacks for async calls that uses ResultCallback.
   void OnOperationSuccess(const ResultCallback& callback,

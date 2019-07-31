@@ -11,13 +11,14 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static string ObjectID(ChromeosDHCPCDProxy* d) { return "(dhcpcd_proxy)"; }
+static string ObjectID(ChromeosDHCPCDProxy* d) {
+  return "(dhcpcd_proxy)";
 }
+}  // namespace Logging
 
 ChromeosDHCPCDProxy::ChromeosDHCPCDProxy(const scoped_refptr<dbus::Bus>& bus,
                                          const std::string& service_name)
-    : dhcpcd_proxy_(
-        new org::chromium::dhcpcdProxy(bus, service_name)) {
+    : dhcpcd_proxy_(new org::chromium::dhcpcdProxy(bus, service_name)) {
   SLOG(this, 2) << "DHCPCDProxy(service=" << service_name << ").";
   // Do not register signal handlers, signals are processed by
   // ChromeosDHCPCDListener.

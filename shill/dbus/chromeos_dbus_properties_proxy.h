@@ -42,9 +42,8 @@ class ChromeosDBusPropertiesProxy : public DBusPropertiesProxyInterface {
 
  private:
   // Signal handlers.
-  void MmPropertiesChanged(
-      const std::string& interface,
-      const brillo::VariantDictionary& properties);
+  void MmPropertiesChanged(const std::string& interface,
+                           const brillo::VariantDictionary& properties);
   void PropertiesChanged(
       const std::string& interface,
       const brillo::VariantDictionary& changed_properties,

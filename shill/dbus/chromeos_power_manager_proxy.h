@@ -28,12 +28,11 @@ class ChromeosPowerManagerProxy : public PowerManagerProxyInterface {
  public:
   // Constructs a PowerManager DBus object proxy with signals dispatched to
   // |delegate|.
-  ChromeosPowerManagerProxy(
-      EventDispatcher* dispatcher,
-      const scoped_refptr<dbus::Bus>& bus,
-      PowerManagerProxyDelegate* delegate,
-      const base::Closure& service_appeared_callback,
-      const base::Closure& service_vanished_callback);
+  ChromeosPowerManagerProxy(EventDispatcher* dispatcher,
+                            const scoped_refptr<dbus::Bus>& bus,
+                            PowerManagerProxyDelegate* delegate,
+                            const base::Closure& service_appeared_callback,
+                            const base::Closure& service_vanished_callback);
   ~ChromeosPowerManagerProxy() override;
 
   // Inherited from PowerManagerProxyInterface.
@@ -53,8 +52,7 @@ class ChromeosPowerManagerProxy : public PowerManagerProxyInterface {
   // Signal handlers.
   void SuspendImminent(const std::vector<uint8_t>& serialized_proto);
   void SuspendDone(const std::vector<uint8_t>& serialized_proto);
-  void DarkSuspendImminent(
-      const std::vector<uint8_t>& serialized_proto);
+  void DarkSuspendImminent(const std::vector<uint8_t>& serialized_proto);
 
   bool RegisterSuspendDelayInternal(bool is_dark,
                                     base::TimeDelta timeout,

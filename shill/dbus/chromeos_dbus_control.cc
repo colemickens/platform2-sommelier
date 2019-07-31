@@ -54,8 +54,7 @@ namespace shill {
 const char ChromeosDBusControl::kNullPath[] = "/";
 
 ChromeosDBusControl::ChromeosDBusControl(EventDispatcher* dispatcher)
-    : dispatcher_(dispatcher),
-      null_identifier_(RpcIdentifier(kNullPath)) {
+    : dispatcher_(dispatcher), null_identifier_(RpcIdentifier(kNullPath)) {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
 
@@ -82,15 +81,11 @@ void ChromeosDBusControl::RegisterManagerObject(
     Manager* manager, const base::Closure& registration_done_callback) {
   registration_done_callback_ = registration_done_callback;
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
-  manager->RegisterAsync(
-      base::Bind(
-          &ChromeosDBusControl::OnDBusServiceRegistered,
-          base::Unretained(this),
-          sequencer->GetHandler("Manager.RegisterAsync() failed.", true)));
-  sequencer->OnAllTasksCompletedCall({
-      base::Bind(&ChromeosDBusControl::TakeServiceOwnership,
-                 base::Unretained(this))
-  });
+  manager->RegisterAsync(base::Bind(
+      &ChromeosDBusControl::OnDBusServiceRegistered, base::Unretained(this),
+      sequencer->GetHandler("Manager.RegisterAsync() failed.", true)));
+  sequencer->OnAllTasksCompletedCall({base::Bind(
+      &ChromeosDBusControl::TakeServiceOwnership, base::Unretained(this))});
 }
 
 void ChromeosDBusControl::OnDBusServiceRegistered(
@@ -109,7 +104,7 @@ void ChromeosDBusControl::TakeServiceOwnership(bool success) {
   // Success should always be true since we've said that failures are fatal.
   CHECK(success) << "Init of one or more objects has failed.";
   CHECK(adaptor_bus_->RequestOwnershipAndBlock(kFlimflamServiceName,
-                                       dbus::Bus::REQUIRE_PRIMARY))
+                                               dbus::Bus::REQUIRE_PRIMARY))
       << "Unable to take ownership of " << kFlimflamServiceName;
 }
 
@@ -125,8 +120,8 @@ ChromeosDBusControl::CreateIPConfigAdaptor(IPConfig* config) {
 
 std::unique_ptr<ManagerAdaptorInterface>
 ChromeosDBusControl::CreateManagerAdaptor(Manager* manager) {
-  return std::make_unique<ChromeosManagerDBusAdaptor>(
-      adaptor_bus_, proxy_bus_, manager);
+  return std::make_unique<ChromeosManagerDBusAdaptor>(adaptor_bus_, proxy_bus_,
+                                                      manager);
 }
 
 std::unique_ptr<ProfileAdaptorInterface>
@@ -157,11 +152,9 @@ ChromeosDBusControl::CreatePowerManagerProxy(
     PowerManagerProxyDelegate* delegate,
     const base::Closure& service_appeared_callback,
     const base::Closure& service_vanished_callback) {
-  return std::make_unique<ChromeosPowerManagerProxy>(dispatcher_,
-                                                     proxy_bus_,
-                                                     delegate,
-                                                     service_appeared_callback,
-                                                     service_vanished_callback);
+  return std::make_unique<ChromeosPowerManagerProxy>(
+      dispatcher_, proxy_bus_, delegate, service_appeared_callback,
+      service_vanished_callback);
 }
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
@@ -170,9 +163,7 @@ ChromeosDBusControl::CreateSupplicantProcessProxy(
     const base::Closure& service_appeared_callback,
     const base::Closure& service_vanished_callback) {
   return std::make_unique<ChromeosSupplicantProcessProxy>(
-      dispatcher_,
-      proxy_bus_,
-      service_appeared_callback,
+      dispatcher_, proxy_bus_, service_appeared_callback,
       service_vanished_callback);
 }
 
@@ -195,17 +186,16 @@ ChromeosDBusControl::CreateSupplicantNetworkProxy(
 #if !defined(DISABLE_WIFI)
 std::unique_ptr<SupplicantBSSProxyInterface>
 ChromeosDBusControl::CreateSupplicantBSSProxy(
-    WiFiEndpoint* wifi_endpoint,
-    const RpcIdentifier& object_path) {
-  return std::make_unique<ChromeosSupplicantBSSProxy>(
-      proxy_bus_, object_path, wifi_endpoint);
+    WiFiEndpoint* wifi_endpoint, const RpcIdentifier& object_path) {
+  return std::make_unique<ChromeosSupplicantBSSProxy>(proxy_bus_, object_path,
+                                                      wifi_endpoint);
 }
 #endif  // DISABLE_WIFI
 
 std::unique_ptr<DHCPCDListenerInterface>
 ChromeosDBusControl::CreateDHCPCDListener(DHCPProvider* provider) {
-  return std::make_unique<ChromeosDHCPCDListener>(
-      proxy_bus_, dispatcher_, provider);
+  return std::make_unique<ChromeosDHCPCDListener>(proxy_bus_, dispatcher_,
+                                                  provider);
 }
 
 std::unique_ptr<DHCPProxyInterface> ChromeosDBusControl::CreateDHCPProxy(
@@ -222,8 +212,8 @@ ChromeosDBusControl::CreateUpstartProxy() {
 std::unique_ptr<DBusPropertiesProxyInterface>
 ChromeosDBusControl::CreateDBusPropertiesProxy(const RpcIdentifier& path,
                                                const string& service) {
-  return std::make_unique<ChromeosDBusPropertiesProxy>(
-      proxy_bus_, path, service);
+  return std::make_unique<ChromeosDBusPropertiesProxy>(proxy_bus_, path,
+                                                       service);
 }
 
 std::unique_ptr<DBusObjectManagerProxyInterface>
@@ -233,11 +223,7 @@ ChromeosDBusControl::CreateDBusObjectManagerProxy(
     const base::Closure& service_appeared_callback,
     const base::Closure& service_vanished_callback) {
   return std::make_unique<ChromeosDBusObjectManagerProxy>(
-      dispatcher_,
-      proxy_bus_,
-      path,
-      service,
-      service_appeared_callback,
+      dispatcher_, proxy_bus_, path, service, service_appeared_callback,
       service_vanished_callback);
 }
 
@@ -245,22 +231,22 @@ ChromeosDBusControl::CreateDBusObjectManagerProxy(
 std::unique_ptr<mm1::ModemLocationProxyInterface>
 ChromeosDBusControl::CreateMM1ModemLocationProxy(const RpcIdentifier& path,
                                                  const string& service) {
-  return std::make_unique<mm1::ChromeosModemLocationProxy>(
-      proxy_bus_, path, service);
+  return std::make_unique<mm1::ChromeosModemLocationProxy>(proxy_bus_, path,
+                                                           service);
 }
 
 std::unique_ptr<mm1::ModemModem3gppProxyInterface>
 ChromeosDBusControl::CreateMM1ModemModem3gppProxy(const RpcIdentifier& path,
                                                   const string& service) {
-  return std::make_unique<mm1::ChromeosModemModem3gppProxy>(
-      proxy_bus_, path, service);
+  return std::make_unique<mm1::ChromeosModemModem3gppProxy>(proxy_bus_, path,
+                                                            service);
 }
 
 std::unique_ptr<mm1::ModemModemCdmaProxyInterface>
 ChromeosDBusControl::CreateMM1ModemModemCdmaProxy(const RpcIdentifier& path,
                                                   const string& service) {
-  return std::make_unique<mm1::ChromeosModemModemCdmaProxy>(
-      proxy_bus_, path, service);
+  return std::make_unique<mm1::ChromeosModemModemCdmaProxy>(proxy_bus_, path,
+                                                            service);
 }
 
 std::unique_ptr<mm1::ModemProxyInterface>
@@ -272,8 +258,8 @@ ChromeosDBusControl::CreateMM1ModemProxy(const RpcIdentifier& path,
 std::unique_ptr<mm1::ModemSimpleProxyInterface>
 ChromeosDBusControl::CreateMM1ModemSimpleProxy(const RpcIdentifier& path,
                                                const string& service) {
-  return std::make_unique<mm1::ChromeosModemSimpleProxy>(
-      proxy_bus_, path, service);
+  return std::make_unique<mm1::ChromeosModemSimpleProxy>(proxy_bus_, path,
+                                                         service);
 }
 
 std::unique_ptr<mm1::SimProxyInterface> ChromeosDBusControl::CreateMM1SimProxy(

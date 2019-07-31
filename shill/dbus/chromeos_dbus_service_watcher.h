@@ -16,10 +16,9 @@ namespace shill {
 // DBus service.
 class ChromeosDBusServiceWatcher {
  public:
-  ChromeosDBusServiceWatcher(
-      scoped_refptr<dbus::Bus> bus,
-      const std::string& connection_name,
-      const base::Closure& on_connection_vanished);
+  ChromeosDBusServiceWatcher(scoped_refptr<dbus::Bus> bus,
+                             const std::string& connection_name,
+                             const base::Closure& on_connection_vanished);
   ~ChromeosDBusServiceWatcher();
 
  protected:

@@ -29,7 +29,7 @@ static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(ChromeosManagerDBusAdaptor* m) {
   return m->GetRpcIdentifier();
 }
-}
+}  // namespace Logging
 
 // static
 const char ChromeosManagerDBusAdaptor::kPath[] = "/";
@@ -61,7 +61,7 @@ void ChromeosManagerDBusAdaptor::EmitBoolChanged(const string& name,
 }
 
 void ChromeosManagerDBusAdaptor::EmitUintChanged(const string& name,
-                                         uint32_t value) {
+                                                 uint32_t value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
@@ -72,27 +72,25 @@ void ChromeosManagerDBusAdaptor::EmitIntChanged(const string& name, int value) {
 }
 
 void ChromeosManagerDBusAdaptor::EmitStringChanged(const string& name,
-                                           const string& value) {
+                                                   const string& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
-void ChromeosManagerDBusAdaptor::EmitStringsChanged(const string& name,
-                                            const vector<string>& value) {
+void ChromeosManagerDBusAdaptor::EmitStringsChanged(
+    const string& name, const vector<string>& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
 void ChromeosManagerDBusAdaptor::EmitRpcIdentifierChanged(
-    const string& name,
-    const RpcIdentifier& value) {
+    const string& name, const RpcIdentifier& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   SendPropertyChangedSignal(name, brillo::Any(dbus::ObjectPath(value)));
 }
 
 void ChromeosManagerDBusAdaptor::EmitRpcIdentifierArrayChanged(
-    const string& name,
-    const RpcIdentifiers& value) {
+    const string& name, const RpcIdentifiers& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   vector<dbus::ObjectPath> paths;
   for (const auto& element : value) {
@@ -105,8 +103,7 @@ void ChromeosManagerDBusAdaptor::EmitRpcIdentifierArrayChanged(
 bool ChromeosManagerDBusAdaptor::GetProperties(
     brillo::ErrorPtr* error, brillo::VariantDictionary* properties) {
   SLOG(this, 2) << __func__;
-  return ChromeosDBusAdaptor::GetProperties(manager_->store(),
-                                            properties,
+  return ChromeosDBusAdaptor::GetProperties(manager_->store(), properties,
                                             error);
 }
 
@@ -114,10 +111,8 @@ bool ChromeosManagerDBusAdaptor::SetProperty(brillo::ErrorPtr* error,
                                              const string& name,
                                              const brillo::Any& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  return ChromeosDBusAdaptor::SetProperty(manager_->mutable_store(),
-                                          name,
-                                          value,
-                                          error);
+  return ChromeosDBusAdaptor::SetProperty(manager_->mutable_store(), name,
+                                          value, error);
 }
 
 bool ChromeosManagerDBusAdaptor::GetState(brillo::ErrorPtr* /*error*/,
@@ -208,8 +203,9 @@ bool ChromeosManagerDBusAdaptor::RecheckPortal(brillo::ErrorPtr* error) {
   return !e.ToChromeosError(error);
 }
 
-bool ChromeosManagerDBusAdaptor::RequestScan(brillo::ErrorPtr* error,
-                                             const string& technology) {  // NOLINT
+bool ChromeosManagerDBusAdaptor::RequestScan(
+    brillo::ErrorPtr* error,
+    const string& technology) {  // NOLINT
   SLOG(this, 2) << __func__ << ": " << technology;
   Error e;
   manager_->RequestScan(technology, &e);
@@ -234,8 +230,8 @@ void ChromeosManagerDBusAdaptor::EnableTechnology(
   Error e(Error::kOperationInitiated);
   ResultCallback callback = GetMethodReplyCallback(std::move(response));
   const bool kPersistentSave = true;
-  manager_->SetEnabledStateForTechnology(technology_name, true,
-                                         kPersistentSave, &e, callback);
+  manager_->SetEnabledStateForTechnology(technology_name, true, kPersistentSave,
+                                         &e, callback);
   ReturnResultOrDefer(callback, e);
 }
 
@@ -258,8 +254,7 @@ bool ChromeosManagerDBusAdaptor::GetService(
   SLOG(this, 2) << __func__;
   ServiceRefPtr service;
   Error e;
-  KeyValueStore args_store =
-      KeyValueStore::ConvertFromVariantDictionary(args);
+  KeyValueStore args_store = KeyValueStore::ConvertFromVariantDictionary(args);
   service = manager_->GetService(args_store, &e);
   if (e.ToChromeosError(error)) {
     return false;
@@ -274,8 +269,7 @@ bool ChromeosManagerDBusAdaptor::ConfigureService(
     dbus::ObjectPath* service_path) {
   SLOG(this, 2) << __func__;
   ServiceRefPtr service;
-  KeyValueStore args_store =
-      KeyValueStore::ConvertFromVariantDictionary(args);
+  KeyValueStore args_store = KeyValueStore::ConvertFromVariantDictionary(args);
   Error configure_error;
   service = manager_->ConfigureService(args_store, &configure_error);
   if (configure_error.ToChromeosError(error)) {
@@ -292,11 +286,10 @@ bool ChromeosManagerDBusAdaptor::ConfigureServiceForProfile(
     dbus::ObjectPath* service_path) {
   SLOG(this, 2) << __func__;
   ServiceRefPtr service;
-  KeyValueStore args_store =
-      KeyValueStore::ConvertFromVariantDictionary(args);
+  KeyValueStore args_store = KeyValueStore::ConvertFromVariantDictionary(args);
   Error configure_error;
-  service = manager_->ConfigureServiceForProfile(
-      profile_rpcid.value(), args_store, &configure_error);
+  service = manager_->ConfigureServiceForProfile(profile_rpcid.value(),
+                                                 args_store, &configure_error);
   if (configure_error.ToChromeosError(error)) {
     return false;
   }
@@ -310,8 +303,7 @@ bool ChromeosManagerDBusAdaptor::FindMatchingService(
     const brillo::VariantDictionary& args,
     dbus::ObjectPath* service_path) {  // NOLINT
   SLOG(this, 2) << __func__;
-  KeyValueStore args_store =
-      KeyValueStore::ConvertFromVariantDictionary(args);
+  KeyValueStore args_store = KeyValueStore::ConvertFromVariantDictionary(args);
 
   Error find_error;
   ServiceRefPtr service =
@@ -325,7 +317,7 @@ bool ChromeosManagerDBusAdaptor::FindMatchingService(
 }
 
 bool ChromeosManagerDBusAdaptor::GetDebugLevel(brillo::ErrorPtr* /*error*/,
-                                       int32_t* level) {
+                                               int32_t* level) {
   SLOG(this, 2) << __func__;
   *level = logging::GetMinLogLevel();
   return true;
@@ -381,8 +373,7 @@ bool ChromeosManagerDBusAdaptor::ListDebugTags(brillo::ErrorPtr* /*error*/,
 }
 
 bool ChromeosManagerDBusAdaptor::GetNetworksForGeolocation(
-    brillo::ErrorPtr* /*error*/,
-    brillo::VariantDictionary* networks) {
+    brillo::ErrorPtr* /*error*/, brillo::VariantDictionary* networks) {
   SLOG(this, 2) << __func__;
   for (const auto& network : manager_->GetNetworksForGeolocation()) {
     networks->emplace(network.first, brillo::Any(network.second));
@@ -406,11 +397,10 @@ bool ChromeosManagerDBusAdaptor::CreateConnectivityReport(
   return !e.ToChromeosError(error);
 }
 
-bool ChromeosManagerDBusAdaptor::ClaimInterface(
-    brillo::ErrorPtr* error,
-    dbus::Message* message,
-    const string& claimer_name,
-    const string& interface_name) {
+bool ChromeosManagerDBusAdaptor::ClaimInterface(brillo::ErrorPtr* error,
+                                                dbus::Message* message,
+                                                const string& claimer_name,
+                                                const string& interface_name) {
   SLOG(this, 2) << __func__;
   Error e;
   // Empty claimer name is used to indicate default claimer.
@@ -422,8 +412,7 @@ bool ChromeosManagerDBusAdaptor::ClaimInterface(
     // Only setup watcher for non-default claimer.
     watcher_for_device_claimer_ =
         dbus_service_watcher_factory_->CreateDBusServiceWatcher(
-            proxy_bus_,
-            claimer,
+            proxy_bus_, claimer,
             Bind(&ChromeosManagerDBusAdaptor::OnDeviceClaimerVanished,
                  Unretained(this)));
   }
@@ -441,11 +430,8 @@ bool ChromeosManagerDBusAdaptor::ReleaseInterface(
   // Empty claimer name is used to indicate default claimer.
   // TODO(samueltan): update this API or make a new API to use a flag to
   // indicate default claimer instead (b/27924738).
-  manager_->ReleaseDevice(
-      claimer_name == "" ? "" : message->GetSender(),
-      interface_name,
-      &claimer_removed,
-      &e);
+  manager_->ReleaseDevice(claimer_name == "" ? "" : message->GetSender(),
+                          interface_name, &claimer_removed, &e);
   if (claimer_removed) {
     watcher_for_device_claimer_.reset();
   }
@@ -471,8 +457,7 @@ bool ChromeosManagerDBusAdaptor::SetupApModeInterface(
 }
 
 bool ChromeosManagerDBusAdaptor::SetupStationModeInterface(
-    brillo::ErrorPtr* error,
-    string* out_interface_name) {
+    brillo::ErrorPtr* error, string* out_interface_name) {
   SLOG(this, 2) << __func__;
   Error e;
   e.Populate(Error::kNotSupported);

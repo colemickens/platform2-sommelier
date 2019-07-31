@@ -15,7 +15,9 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
+static string ObjectID(const dbus::ObjectPath* p) {
+  return p->value();
+}
 }  // namespace Logging
 
 namespace mm1 {
@@ -23,13 +25,11 @@ namespace mm1 {
 ChromeosModemProxy::ChromeosModemProxy(const scoped_refptr<dbus::Bus>& bus,
                                        const RpcIdentifier& path,
                                        const string& service)
-    : proxy_(
-        new org::freedesktop::ModemManager1::ModemProxy(
-            bus, service, dbus::ObjectPath(path))) {
+    : proxy_(new org::freedesktop::ModemManager1::ModemProxy(
+          bus, service, dbus::ObjectPath(path))) {
   // Register signal handlers.
   proxy_->RegisterStateChangedSignalHandler(
-      base::Bind(&ChromeosModemProxy::StateChanged,
-                 weak_factory_.GetWeakPtr()),
+      base::Bind(&ChromeosModemProxy::StateChanged, weak_factory_.GetWeakPtr()),
       base::Bind(&ChromeosModemProxy::OnSignalConnected,
                  weak_factory_.GetWeakPtr()));
 }
@@ -41,34 +41,28 @@ void ChromeosModemProxy::Enable(bool enable,
                                 const ResultCallback& callback,
                                 int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << enable;
-  proxy_->EnableAsync(enable,
-                      base::Bind(&ChromeosModemProxy::OnOperationSuccess,
-                                 weak_factory_.GetWeakPtr(),
-                                 callback,
-                                 __func__),
-                      base::Bind(&ChromeosModemProxy::OnOperationFailure,
-                                 weak_factory_.GetWeakPtr(),
-                                 callback,
-                                 __func__),
-                      timeout);
+  proxy_->EnableAsync(
+      enable,
+      base::Bind(&ChromeosModemProxy::OnOperationSuccess,
+                 weak_factory_.GetWeakPtr(), callback, __func__),
+      base::Bind(&ChromeosModemProxy::OnOperationFailure,
+                 weak_factory_.GetWeakPtr(), callback, __func__),
+      timeout);
 }
 
-void ChromeosModemProxy::CreateBearer(
-    const KeyValueStore& properties,
-    Error* error,
-    const RpcIdentifierCallback& callback,
-    int timeout) {
+void ChromeosModemProxy::CreateBearer(const KeyValueStore& properties,
+                                      Error* error,
+                                      const RpcIdentifierCallback& callback,
+                                      int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   brillo::VariantDictionary properties_dict =
       KeyValueStore::ConvertToVariantDictionary(properties);
   proxy_->CreateBearerAsync(
       properties_dict,
       base::Bind(&ChromeosModemProxy::OnCreateBearerSuccess,
-                 weak_factory_.GetWeakPtr(),
-                 callback),
+                 weak_factory_.GetWeakPtr(), callback),
       base::Bind(&ChromeosModemProxy::OnCreateBearerFailure,
-                 weak_factory_.GetWeakPtr(),
-                 callback),
+                 weak_factory_.GetWeakPtr(), callback),
       timeout);
 }
 
@@ -77,16 +71,13 @@ void ChromeosModemProxy::DeleteBearer(const RpcIdentifier& bearer,
                                       const ResultCallback& callback,
                                       int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << bearer;
-  proxy_->DeleteBearerAsync(dbus::ObjectPath(bearer),
-                            base::Bind(&ChromeosModemProxy::OnOperationSuccess,
-                                       weak_factory_.GetWeakPtr(),
-                                       callback,
-                                       __func__),
-                            base::Bind(&ChromeosModemProxy::OnOperationFailure,
-                                       weak_factory_.GetWeakPtr(),
-                                       callback,
-                                       __func__),
-                            timeout);
+  proxy_->DeleteBearerAsync(
+      dbus::ObjectPath(bearer),
+      base::Bind(&ChromeosModemProxy::OnOperationSuccess,
+                 weak_factory_.GetWeakPtr(), callback, __func__),
+      base::Bind(&ChromeosModemProxy::OnOperationFailure,
+                 weak_factory_.GetWeakPtr(), callback, __func__),
+      timeout);
 }
 
 void ChromeosModemProxy::Reset(Error* error,
@@ -94,13 +85,9 @@ void ChromeosModemProxy::Reset(Error* error,
                                int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   proxy_->ResetAsync(base::Bind(&ChromeosModemProxy::OnOperationSuccess,
-                                weak_factory_.GetWeakPtr(),
-                                callback,
-                                __func__),
+                                weak_factory_.GetWeakPtr(), callback, __func__),
                      base::Bind(&ChromeosModemProxy::OnOperationFailure,
-                                weak_factory_.GetWeakPtr(),
-                                callback,
-                                __func__),
+                                weak_factory_.GetWeakPtr(), callback, __func__),
                      timeout);
 }
 
@@ -109,16 +96,13 @@ void ChromeosModemProxy::FactoryReset(const std::string& code,
                                       const ResultCallback& callback,
                                       int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
-  proxy_->FactoryResetAsync(code,
-                            base::Bind(&ChromeosModemProxy::OnOperationSuccess,
-                                       weak_factory_.GetWeakPtr(),
-                                       callback,
-                                       __func__),
-                            base::Bind(&ChromeosModemProxy::OnOperationFailure,
-                                       weak_factory_.GetWeakPtr(),
-                                       callback,
-                                       __func__),
-                            timeout);
+  proxy_->FactoryResetAsync(
+      code,
+      base::Bind(&ChromeosModemProxy::OnOperationSuccess,
+                 weak_factory_.GetWeakPtr(), callback, __func__),
+      base::Bind(&ChromeosModemProxy::OnOperationFailure,
+                 weak_factory_.GetWeakPtr(), callback, __func__),
+      timeout);
 }
 
 void ChromeosModemProxy::SetCurrentCapabilities(uint32_t capabilities,
@@ -129,13 +113,9 @@ void ChromeosModemProxy::SetCurrentCapabilities(uint32_t capabilities,
   proxy_->SetCurrentCapabilitiesAsync(
       capabilities,
       base::Bind(&ChromeosModemProxy::OnOperationSuccess,
-                 weak_factory_.GetWeakPtr(),
-                 callback,
-                 __func__),
+                 weak_factory_.GetWeakPtr(), callback, __func__),
       base::Bind(&ChromeosModemProxy::OnOperationFailure,
-                 weak_factory_.GetWeakPtr(),
-                 callback,
-                 __func__),
+                 weak_factory_.GetWeakPtr(), callback, __func__),
       timeout);
 }
 
@@ -144,19 +124,15 @@ void ChromeosModemProxy::SetCurrentModes(uint32_t allowed_modes,
                                          Error* error,
                                          const ResultCallback& callback,
                                          int timeout) {
-  SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << allowed_modes
-                                    << " " << preferred_mode;
-  std::tuple<uint32_t, uint32_t> modes { allowed_modes, preferred_mode };
+  SLOG(&proxy_->GetObjectPath(), 2)
+      << __func__ << ": " << allowed_modes << " " << preferred_mode;
+  std::tuple<uint32_t, uint32_t> modes{allowed_modes, preferred_mode};
   proxy_->SetCurrentModesAsync(
       modes,
       base::Bind(&ChromeosModemProxy::OnOperationSuccess,
-                 weak_factory_.GetWeakPtr(),
-                 callback,
-                 __func__),
+                 weak_factory_.GetWeakPtr(), callback, __func__),
       base::Bind(&ChromeosModemProxy::OnOperationFailure,
-                 weak_factory_.GetWeakPtr(),
-                 callback,
-                 __func__),
+                 weak_factory_.GetWeakPtr(), callback, __func__),
       timeout);
 }
 
@@ -168,13 +144,9 @@ void ChromeosModemProxy::SetCurrentBands(const std::vector<uint32_t>& bands,
   proxy_->SetCurrentBandsAsync(
       bands,
       base::Bind(&ChromeosModemProxy::OnOperationSuccess,
-                 weak_factory_.GetWeakPtr(),
-                 callback,
-                 __func__),
+                 weak_factory_.GetWeakPtr(), callback, __func__),
       base::Bind(&ChromeosModemProxy::OnOperationFailure,
-                 weak_factory_.GetWeakPtr(),
-                 callback,
-                 __func__),
+                 weak_factory_.GetWeakPtr(), callback, __func__),
       timeout);
 }
 
@@ -184,14 +156,11 @@ void ChromeosModemProxy::Command(const std::string& cmd,
                                  const StringCallback& callback,
                                  int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << cmd;
-  proxy_->CommandAsync(cmd,
-                       user_timeout,
+  proxy_->CommandAsync(cmd, user_timeout,
                        base::Bind(&ChromeosModemProxy::OnCommandSuccess,
-                                  weak_factory_.GetWeakPtr(),
-                                  callback),
+                                  weak_factory_.GetWeakPtr(), callback),
                        base::Bind(&ChromeosModemProxy::OnCommandFailure,
-                                  weak_factory_.GetWeakPtr(),
-                                  callback),
+                                  weak_factory_.GetWeakPtr(), callback),
                        timeout);
 }
 
@@ -203,18 +172,15 @@ void ChromeosModemProxy::SetPowerState(uint32_t power_state,
   proxy_->SetPowerStateAsync(
       power_state,
       base::Bind(&ChromeosModemProxy::OnOperationSuccess,
-                 weak_factory_.GetWeakPtr(),
-                 callback,
-                 __func__),
+                 weak_factory_.GetWeakPtr(), callback, __func__),
       base::Bind(&ChromeosModemProxy::OnOperationFailure,
-                 weak_factory_.GetWeakPtr(),
-                 callback,
-                 __func__),
+                 weak_factory_.GetWeakPtr(), callback, __func__),
       timeout);
 }
 
-void ChromeosModemProxy::StateChanged(
-    int32_t old, int32_t _new, uint32_t reason) {
+void ChromeosModemProxy::StateChanged(int32_t old,
+                                      int32_t _new,
+                                      uint32_t reason) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   if (state_changed_callback_.is_null()) {
     return;
@@ -265,14 +231,15 @@ void ChromeosModemProxy::OnOperationFailure(const ResultCallback& callback,
   callback.Run(error);
 }
 
-void ChromeosModemProxy::OnSignalConnected(
-    const string& interface_name, const string& signal_name, bool success) {
-  SLOG(&proxy_->GetObjectPath(), 2) << __func__
-      << "interface: " << interface_name
-             << " signal: " << signal_name << "success: " << success;
+void ChromeosModemProxy::OnSignalConnected(const string& interface_name,
+                                           const string& signal_name,
+                                           bool success) {
+  SLOG(&proxy_->GetObjectPath(), 2)
+      << __func__ << "interface: " << interface_name
+      << " signal: " << signal_name << "success: " << success;
   if (!success) {
-    LOG(ERROR) << "Failed to connect signal " << signal_name
-        << " to interface " << interface_name;
+    LOG(ERROR) << "Failed to connect signal " << signal_name << " to interface "
+               << interface_name;
   }
 }
 

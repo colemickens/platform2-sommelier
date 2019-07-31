@@ -25,11 +25,10 @@ class ChromeosModemSimpleProxy : public ModemSimpleProxyInterface {
   ~ChromeosModemSimpleProxy() override;
 
   // Inherited methods from SimpleProxyInterface.
-  void Connect(
-      const KeyValueStore& properties,
-      Error* error,
-      const RpcIdentifierCallback& callback,
-      int timeout) override;
+  void Connect(const KeyValueStore& properties,
+               Error* error,
+               const RpcIdentifierCallback& callback,
+               int timeout) override;
   void Disconnect(const RpcIdentifier& bearer,
                   Error* error,
                   const ResultCallback& callback,

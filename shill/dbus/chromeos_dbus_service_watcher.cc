@@ -7,12 +7,11 @@
 namespace shill {
 
 ChromeosDBusServiceWatcher::ChromeosDBusServiceWatcher(
-      scoped_refptr<dbus::Bus> bus,
-      const std::string& connection_name,
-      const base::Closure& on_connection_vanished)
-    : watcher_(
-        new brillo::dbus_utils::DBusServiceWatcher(
-            bus, connection_name, on_connection_vanished)) {}
+    scoped_refptr<dbus::Bus> bus,
+    const std::string& connection_name,
+    const base::Closure& on_connection_vanished)
+    : watcher_(new brillo::dbus_utils::DBusServiceWatcher(
+          bus, connection_name, on_connection_vanished)) {}
 
 ChromeosDBusServiceWatcher::~ChromeosDBusServiceWatcher() = default;
 

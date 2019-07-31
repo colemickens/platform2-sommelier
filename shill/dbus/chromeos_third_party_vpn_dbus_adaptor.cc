@@ -44,11 +44,9 @@ bool ConvertConnectState(
 }  // namespace
 
 ChromeosThirdPartyVpnDBusAdaptor::ChromeosThirdPartyVpnDBusAdaptor(
-    const scoped_refptr<dbus::Bus>& bus,
-    ThirdPartyVpnDriver* client)
+    const scoped_refptr<dbus::Bus>& bus, ThirdPartyVpnDriver* client)
     : org::chromium::flimflam::ThirdPartyVpnAdaptor(this),
-      ChromeosDBusAdaptor(bus,
-                          kObjectPathBase + client->object_path_suffix()),
+      ChromeosDBusAdaptor(bus, kObjectPathBase + client->object_path_suffix()),
       client_(client) {
   // Register DBus object.
   RegisterWithDBusObject(dbus_object());
@@ -105,8 +103,7 @@ bool ChromeosThirdPartyVpnDBusAdaptor::UpdateConnectionState(
 }
 
 bool ChromeosThirdPartyVpnDBusAdaptor::SendPacket(
-    brillo::ErrorPtr* error,
-    const std::vector<uint8_t>& ip_packet) {
+    brillo::ErrorPtr* error, const std::vector<uint8_t>& ip_packet) {
   SLOG(this, 2) << __func__;
   std::string error_message;
   client_->SendPacket(ip_packet, &error_message);

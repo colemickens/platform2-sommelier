@@ -13,7 +13,9 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
+static string ObjectID(const dbus::ObjectPath* p) {
+  return p->value();
+}
 }  // namespace Logging
 
 namespace mm1 {
@@ -22,9 +24,8 @@ ChromeosModemModem3gppProxy::ChromeosModemModem3gppProxy(
     const scoped_refptr<dbus::Bus>& bus,
     const RpcIdentifier& path,
     const string& service)
-    : proxy_(
-        new org::freedesktop::ModemManager1::Modem::Modem3gppProxy(
-            bus, service, dbus::ObjectPath(path))) {}
+    : proxy_(new org::freedesktop::ModemManager1::Modem::Modem3gppProxy(
+          bus, service, dbus::ObjectPath(path))) {}
 
 ChromeosModemModem3gppProxy::~ChromeosModemModem3gppProxy() = default;
 
@@ -36,11 +37,9 @@ void ChromeosModemModem3gppProxy::Register(const std::string& operator_id,
   proxy_->RegisterAsync(
       operator_id,
       base::Bind(&ChromeosModemModem3gppProxy::OnRegisterSuccess,
-                 weak_factory_.GetWeakPtr(),
-                 callback),
+                 weak_factory_.GetWeakPtr(), callback),
       base::Bind(&ChromeosModemModem3gppProxy::OnRegisterFailure,
-                 weak_factory_.GetWeakPtr(),
-                 callback),
+                 weak_factory_.GetWeakPtr(), callback),
       timeout);
 }
 
@@ -49,11 +48,9 @@ void ChromeosModemModem3gppProxy::Scan(Error* error,
                                        int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   proxy_->ScanAsync(base::Bind(&ChromeosModemModem3gppProxy::OnScanSuccess,
-                               weak_factory_.GetWeakPtr(),
-                               callback),
+                               weak_factory_.GetWeakPtr(), callback),
                     base::Bind(&ChromeosModemModem3gppProxy::OnScanFailure,
-                               weak_factory_.GetWeakPtr(),
-                               callback),
+                               weak_factory_.GetWeakPtr(), callback),
                     timeout);
 }
 

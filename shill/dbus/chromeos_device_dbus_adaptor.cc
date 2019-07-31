@@ -20,14 +20,13 @@ static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(ChromeosDeviceDBusAdaptor* d) {
   return d->GetRpcIdentifier() + " (" + d->device()->UniqueName() + ")";
 }
-}
+}  // namespace Logging
 
 // static
 const char ChromeosDeviceDBusAdaptor::kPath[] = "/device/";
 
 ChromeosDeviceDBusAdaptor::ChromeosDeviceDBusAdaptor(
-    const scoped_refptr<dbus::Bus>& bus,
-    Device* device)
+    const scoped_refptr<dbus::Bus>& bus, Device* device)
     : org::chromium::flimflam::DeviceAdaptor(this),
       ChromeosDBusAdaptor(bus,
                           kPath + SanitizePathElement(device->UniqueName())),
@@ -121,8 +120,7 @@ void ChromeosDeviceDBusAdaptor::EmitRpcIdentifierArrayChanged(
 bool ChromeosDeviceDBusAdaptor::GetProperties(
     brillo::ErrorPtr* error, brillo::VariantDictionary* out_properties) {
   SLOG(this, 2) << __func__;
-  return ChromeosDBusAdaptor::GetProperties(device_->store(),
-                                            out_properties,
+  return ChromeosDBusAdaptor::GetProperties(device_->store(), out_properties,
                                             error);
 }
 
@@ -130,17 +128,14 @@ bool ChromeosDeviceDBusAdaptor::SetProperty(brillo::ErrorPtr* error,
                                             const string& name,
                                             const brillo::Any& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  return ChromeosDBusAdaptor::SetProperty(device_->mutable_store(),
-                                          name,
-                                          value,
+  return ChromeosDBusAdaptor::SetProperty(device_->mutable_store(), name, value,
                                           error);
 }
 
 bool ChromeosDeviceDBusAdaptor::ClearProperty(brillo::ErrorPtr* error,
                                               const string& name) {
   SLOG(this, 2) << __func__ << ": " << name;
-  return ChromeosDBusAdaptor::ClearProperty(device_->mutable_store(),
-                                            name,
+  return ChromeosDBusAdaptor::ClearProperty(device_->mutable_store(), name,
                                             error);
 }
 
@@ -169,8 +164,9 @@ void ChromeosDeviceDBusAdaptor::Register(DBusMethodResponsePtr<> response,
   ReturnResultOrDefer(callback, e);
 }
 
-void ChromeosDeviceDBusAdaptor::RequirePin(
-    DBusMethodResponsePtr<> response, const string& pin, bool require) {
+void ChromeosDeviceDBusAdaptor::RequirePin(DBusMethodResponsePtr<> response,
+                                           const string& pin,
+                                           bool require) {
   SLOG(this, 2) << __func__;
 
   Error e(Error::kOperationInitiated);

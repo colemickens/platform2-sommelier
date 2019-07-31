@@ -13,7 +13,9 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
+static string ObjectID(const dbus::ObjectPath* p) {
+  return p->value();
+}
 }  // namespace Logging
 
 namespace mm1 {
@@ -22,9 +24,8 @@ ChromeosModemModemCdmaProxy::ChromeosModemModemCdmaProxy(
     const scoped_refptr<dbus::Bus>& bus,
     const RpcIdentifier& path,
     const string& service)
-    : proxy_(
-        new org::freedesktop::ModemManager1::Modem::ModemCdmaProxy(
-            bus, service, dbus::ObjectPath(path))) {
+    : proxy_(new org::freedesktop::ModemManager1::Modem::ModemCdmaProxy(
+          bus, service, dbus::ObjectPath(path))) {
   // Register signal handlers.
   proxy_->RegisterActivationStateChangedSignalHandler(
       base::Bind(&ChromeosModemModemCdmaProxy::ActivationStateChanged,
@@ -43,13 +44,9 @@ void ChromeosModemModemCdmaProxy::Activate(const std::string& carrier,
   proxy_->ActivateAsync(
       carrier,
       base::Bind(&ChromeosModemModemCdmaProxy::OnOperationSuccess,
-                 weak_factory_.GetWeakPtr(),
-                 callback,
-                 __func__),
+                 weak_factory_.GetWeakPtr(), callback, __func__),
       base::Bind(&ChromeosModemModemCdmaProxy::OnOperationFailure,
-                 weak_factory_.GetWeakPtr(),
-                 callback,
-                 __func__),
+                 weak_factory_.GetWeakPtr(), callback, __func__),
       timeout);
 }
 
@@ -64,13 +61,9 @@ void ChromeosModemModemCdmaProxy::ActivateManual(
   proxy_->ActivateManualAsync(
       properties_dict,
       base::Bind(&ChromeosModemModemCdmaProxy::OnOperationSuccess,
-                 weak_factory_.GetWeakPtr(),
-                 callback,
-                 __func__),
+                 weak_factory_.GetWeakPtr(), callback, __func__),
       base::Bind(&ChromeosModemModemCdmaProxy::OnOperationFailure,
-                 weak_factory_.GetWeakPtr(),
-                 callback,
-                 __func__),
+                 weak_factory_.GetWeakPtr(), callback, __func__),
       timeout);
 }
 
@@ -84,8 +77,7 @@ void ChromeosModemModemCdmaProxy::ActivationStateChanged(
   }
   KeyValueStore status_store =
       KeyValueStore::ConvertFromVariantDictionary(status_changes);
-  activation_state_callback_.Run(activation_state,
-                                 activation_error,
+  activation_state_callback_.Run(activation_state, activation_error,
                                  status_store);
 }
 
@@ -107,12 +99,12 @@ void ChromeosModemModemCdmaProxy::OnOperationFailure(
 
 void ChromeosModemModemCdmaProxy::OnSignalConnected(
     const string& interface_name, const string& signal_name, bool success) {
-  SLOG(&proxy_->GetObjectPath(), 2) << __func__
-      << "interface: " << interface_name
-             << " signal: " << signal_name << "success: " << success;
+  SLOG(&proxy_->GetObjectPath(), 2)
+      << __func__ << "interface: " << interface_name
+      << " signal: " << signal_name << "success: " << success;
   if (!success) {
-    LOG(ERROR) << "Failed to connect signal " << signal_name
-        << " to interface " << interface_name;
+    LOG(ERROR) << "Failed to connect signal " << signal_name << " to interface "
+               << interface_name;
   }
 }
 

@@ -32,9 +32,8 @@ class ChromeosProfileDBusAdaptor
  public:
   static const char kPath[];
 
-  ChromeosProfileDBusAdaptor(
-      const scoped_refptr<dbus::Bus>& bus,
-      Profile* profile);
+  ChromeosProfileDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
+                             Profile* profile);
   ~ChromeosProfileDBusAdaptor() override;
 
   // Implementation of ProfileAdaptorInterface.

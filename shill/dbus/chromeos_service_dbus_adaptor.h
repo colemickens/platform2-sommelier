@@ -49,8 +49,8 @@ class ChromeosServiceDBusAdaptor
   void EmitIntChanged(const std::string& name, int value) override;
   void EmitRpcIdentifierChanged(const std::string& name,
                                 const RpcIdentifier& value) override;
-  void EmitStringChanged(
-      const std::string& name, const std::string& value) override;
+  void EmitStringChanged(const std::string& name,
+                         const std::string& value) override;
   void EmitStringmapChanged(const std::string& name,
                             const Stringmap& value) override;
 
@@ -62,8 +62,7 @@ class ChromeosServiceDBusAdaptor
                    const brillo::Any& value) override;
   bool SetProperties(brillo::ErrorPtr* error,
                      const brillo::VariantDictionary& properties) override;
-  bool ClearProperty(brillo::ErrorPtr* error,
-                     const std::string& name) override;
+  bool ClearProperty(brillo::ErrorPtr* error, const std::string& name) override;
   bool ClearProperties(brillo::ErrorPtr* error,
                        const std::vector<std::string>& names,
                        std::vector<bool>* results) override;

@@ -68,8 +68,7 @@ class ChromeosManagerDBusAdaptor
   bool CreateProfile(brillo::ErrorPtr* error,
                      const std::string& name,
                      dbus::ObjectPath* profile_path) override;
-  bool RemoveProfile(brillo::ErrorPtr* error,
-                     const std::string& name) override;
+  bool RemoveProfile(brillo::ErrorPtr* error, const std::string& name) override;
   bool PushProfile(brillo::ErrorPtr* error,
                    const std::string& name,
                    dbus::ObjectPath* profile_path) override;
@@ -104,19 +103,16 @@ class ChromeosManagerDBusAdaptor
   bool FindMatchingService(brillo::ErrorPtr* error,
                            const brillo::VariantDictionary& args,
                            dbus::ObjectPath* service_path) override;
-  bool GetDebugLevel(brillo::ErrorPtr* error,
-                     int32_t* level) override;
+  bool GetDebugLevel(brillo::ErrorPtr* error, int32_t* level) override;
   bool SetDebugLevel(brillo::ErrorPtr* error, int32_t level) override;
   bool GetServiceOrder(brillo::ErrorPtr* error, std::string* order) override;
   bool SetServiceOrder(brillo::ErrorPtr* error,
                        const std::string& order) override;
   bool GetDebugTags(brillo::ErrorPtr* error, std::string* tags) override;
-  bool SetDebugTags(brillo::ErrorPtr* error,
-                    const std::string& tags) override;
+  bool SetDebugTags(brillo::ErrorPtr* error, const std::string& tags) override;
   bool ListDebugTags(brillo::ErrorPtr* error, std::string* tags) override;
-  bool GetNetworksForGeolocation(
-      brillo::ErrorPtr* error,
-      brillo::VariantDictionary* networks) override;
+  bool GetNetworksForGeolocation(brillo::ErrorPtr* error,
+                                 brillo::VariantDictionary* networks) override;
   bool ConnectToBestServices(brillo::ErrorPtr* error) override;
   bool CreateConnectivityReport(brillo::ErrorPtr* error) override;
   bool ClaimInterface(brillo::ErrorPtr* error,

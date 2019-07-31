@@ -20,15 +20,13 @@ static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(ChromeosProfileDBusAdaptor* p) {
   return p->GetRpcIdentifier();
 }
-}
-
+}  // namespace Logging
 
 // static
 const char ChromeosProfileDBusAdaptor::kPath[] = "/profile/";
 
 ChromeosProfileDBusAdaptor::ChromeosProfileDBusAdaptor(
-    const scoped_refptr<dbus::Bus>& bus,
-    Profile* profile)
+    const scoped_refptr<dbus::Bus>& bus, Profile* profile)
     : org::chromium::flimflam::ProfileAdaptor(this),
       ChromeosDBusAdaptor(bus, kPath + profile->GetFriendlyName()),
       profile_(profile) {
@@ -68,18 +66,16 @@ void ChromeosProfileDBusAdaptor::EmitStringChanged(const string& name,
 bool ChromeosProfileDBusAdaptor::GetProperties(
     brillo::ErrorPtr* error, brillo::VariantDictionary* properties) {
   SLOG(this, 2) << __func__;
-  return ChromeosDBusAdaptor::GetProperties(profile_->store(),
-                                            properties,
+  return ChromeosDBusAdaptor::GetProperties(profile_->store(), properties,
                                             error);
 }
 
-bool ChromeosProfileDBusAdaptor::SetProperty(
-    brillo::ErrorPtr* error, const string& name, const brillo::Any& value) {
+bool ChromeosProfileDBusAdaptor::SetProperty(brillo::ErrorPtr* error,
+                                             const string& name,
+                                             const brillo::Any& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  return ChromeosDBusAdaptor::SetProperty(profile_->mutable_store(),
-                                          name,
-                                          value,
-                                          error);
+  return ChromeosDBusAdaptor::SetProperty(profile_->mutable_store(), name,
+                                          value, error);
 }
 
 bool ChromeosProfileDBusAdaptor::GetEntry(
@@ -92,8 +88,7 @@ bool ChromeosProfileDBusAdaptor::GetEntry(
   if (!e.IsSuccess()) {
     return !e.ToChromeosError(error);
   }
-  return ChromeosDBusAdaptor::GetProperties(service->store(),
-                                            entry_properties,
+  return ChromeosDBusAdaptor::GetProperties(service->store(), entry_properties,
                                             error);
 }
 

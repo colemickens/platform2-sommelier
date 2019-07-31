@@ -13,7 +13,9 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
+static string ObjectID(const dbus::ObjectPath* p) {
+  return p->value();
+}
 }  // namespace Logging
 
 namespace mm1 {
@@ -21,9 +23,8 @@ namespace mm1 {
 ChromeosSimProxy::ChromeosSimProxy(const scoped_refptr<dbus::Bus>& bus,
                                    const RpcIdentifier& path,
                                    const string& service)
-    : proxy_(
-        new org::freedesktop::ModemManager1::SimProxy(
-            bus, service, dbus::ObjectPath(path))) {}
+    : proxy_(new org::freedesktop::ModemManager1::SimProxy(
+          bus, service, dbus::ObjectPath(path))) {}
 
 ChromeosSimProxy::~ChromeosSimProxy() = default;
 
@@ -33,16 +34,13 @@ void ChromeosSimProxy::SendPin(const string& pin,
                                int timeout) {
   // pin is intentionally not logged.
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
-  proxy_->SendPinAsync(pin,
-                       base::Bind(&ChromeosSimProxy::OnOperationSuccess,
-                                  weak_factory_.GetWeakPtr(),
-                                  callback,
-                                  __func__),
-                       base::Bind(&ChromeosSimProxy::OnOperationFailure,
-                                  weak_factory_.GetWeakPtr(),
-                                  callback,
-                                  __func__),
-                       timeout);
+  proxy_->SendPinAsync(
+      pin,
+      base::Bind(&ChromeosSimProxy::OnOperationSuccess,
+                 weak_factory_.GetWeakPtr(), callback, __func__),
+      base::Bind(&ChromeosSimProxy::OnOperationFailure,
+                 weak_factory_.GetWeakPtr(), callback, __func__),
+      timeout);
 }
 
 void ChromeosSimProxy::SendPuk(const string& puk,
@@ -52,17 +50,13 @@ void ChromeosSimProxy::SendPuk(const string& puk,
                                int timeout) {
   // pin and puk are intentionally not logged.
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
-  proxy_->SendPukAsync(puk,
-                       pin,
-                       base::Bind(&ChromeosSimProxy::OnOperationSuccess,
-                                  weak_factory_.GetWeakPtr(),
-                                  callback,
-                                  __func__),
-                       base::Bind(&ChromeosSimProxy::OnOperationFailure,
-                                  weak_factory_.GetWeakPtr(),
-                                  callback,
-                                  __func__),
-                       timeout);
+  proxy_->SendPukAsync(
+      puk, pin,
+      base::Bind(&ChromeosSimProxy::OnOperationSuccess,
+                 weak_factory_.GetWeakPtr(), callback, __func__),
+      base::Bind(&ChromeosSimProxy::OnOperationFailure,
+                 weak_factory_.GetWeakPtr(), callback, __func__),
+      timeout);
 }
 
 void ChromeosSimProxy::EnablePin(const string& pin,
@@ -72,17 +66,13 @@ void ChromeosSimProxy::EnablePin(const string& pin,
                                  int timeout) {
   // pin is intentionally not logged.
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << enabled;
-  proxy_->EnablePinAsync(pin,
-                         enabled,
-                         base::Bind(&ChromeosSimProxy::OnOperationSuccess,
-                                    weak_factory_.GetWeakPtr(),
-                                    callback,
-                                    __func__),
-                         base::Bind(&ChromeosSimProxy::OnOperationFailure,
-                                    weak_factory_.GetWeakPtr(),
-                                    callback,
-                                    __func__),
-                         timeout);
+  proxy_->EnablePinAsync(
+      pin, enabled,
+      base::Bind(&ChromeosSimProxy::OnOperationSuccess,
+                 weak_factory_.GetWeakPtr(), callback, __func__),
+      base::Bind(&ChromeosSimProxy::OnOperationFailure,
+                 weak_factory_.GetWeakPtr(), callback, __func__),
+      timeout);
 }
 
 void ChromeosSimProxy::ChangePin(const string& old_pin,
@@ -92,17 +82,13 @@ void ChromeosSimProxy::ChangePin(const string& old_pin,
                                  int timeout) {
   // old_pin and new_pin are intentionally not logged.
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
-  proxy_->ChangePinAsync(old_pin,
-                      new_pin,
-                      base::Bind(&ChromeosSimProxy::OnOperationSuccess,
-                                 weak_factory_.GetWeakPtr(),
-                                 callback,
-                                 __func__),
-                      base::Bind(&ChromeosSimProxy::OnOperationFailure,
-                                 weak_factory_.GetWeakPtr(),
-                                 callback,
-                                 __func__),
-                      timeout);
+  proxy_->ChangePinAsync(
+      old_pin, new_pin,
+      base::Bind(&ChromeosSimProxy::OnOperationSuccess,
+                 weak_factory_.GetWeakPtr(), callback, __func__),
+      base::Bind(&ChromeosSimProxy::OnOperationFailure,
+                 weak_factory_.GetWeakPtr(), callback, __func__),
+      timeout);
 }
 
 void ChromeosSimProxy::OnOperationSuccess(const ResultCallback& callback,

@@ -19,8 +19,7 @@ namespace shill {
 
 // ChromeosSupplicantNetworkProxy. provides access to wpa_supplicant's
 // network-interface APIs via D-Bus.
-class ChromeosSupplicantNetworkProxy
-    : public SupplicantNetworkProxyInterface {
+class ChromeosSupplicantNetworkProxy : public SupplicantNetworkProxyInterface {
  public:
   ChromeosSupplicantNetworkProxy(const scoped_refptr<dbus::Bus>& bus,
                                  const RpcIdentifier& object_path);

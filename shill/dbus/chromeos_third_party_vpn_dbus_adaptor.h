@@ -40,10 +40,9 @@ class ChromeosThirdPartyVpnDBusAdaptor
   void EmitPlatformMessage(uint32_t message) override;
 
   // Implementation of org::chromium::flimflam::ThirdPartyVpnAdaptor
-  bool SetParameters(
-      brillo::ErrorPtr* error,
-      const std::map<std::string, std::string>& parameters,
-      std::string* warning_message) override;
+  bool SetParameters(brillo::ErrorPtr* error,
+                     const std::map<std::string, std::string>& parameters,
+                     std::string* warning_message) override;
   bool UpdateConnectionState(brillo::ErrorPtr* error,
                              uint32_t connection_state) override;
   bool SendPacket(brillo::ErrorPtr* error,

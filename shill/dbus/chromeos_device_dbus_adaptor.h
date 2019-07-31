@@ -29,9 +29,8 @@ class ChromeosDeviceDBusAdaptor
  public:
   static const char kPath[];
 
-  ChromeosDeviceDBusAdaptor(
-      const scoped_refptr<dbus::Bus>& bus,
-      Device* device);
+  ChromeosDeviceDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
+                            Device* device);
   ~ChromeosDeviceDBusAdaptor() override;
 
   // Implementation of DeviceAdaptorInterface.
@@ -61,8 +60,7 @@ class ChromeosDeviceDBusAdaptor
   bool SetProperty(brillo::ErrorPtr* error,
                    const std::string& name,
                    const brillo::Any& value) override;
-  bool ClearProperty(brillo::ErrorPtr* error,
-                     const std::string& name) override;
+  bool ClearProperty(brillo::ErrorPtr* error, const std::string& name) override;
   void Enable(DBusMethodResponsePtr<> response) override;
   void Disable(DBusMethodResponsePtr<> response) override;
   void Register(DBusMethodResponsePtr<> response,
@@ -84,8 +82,7 @@ class ChromeosDeviceDBusAdaptor
                             std::string* out_state) override;
   void Reset(DBusMethodResponsePtr<> response) override;
   bool ResetByteCounters(brillo::ErrorPtr* error) override;
-  bool RequestRoam(brillo::ErrorPtr* error,
-                   const std::string& addr) override;
+  bool RequestRoam(brillo::ErrorPtr* error, const std::string& addr) override;
   bool AddWakeOnPacketConnection(brillo::ErrorPtr* error,
                                  const std::string& ip_endpoint) override;
   bool AddWakeOnPacketOfTypes(

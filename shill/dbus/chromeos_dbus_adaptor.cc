@@ -27,7 +27,7 @@ static string ObjectID(ChromeosDBusAdaptor* d) {
     return "(dbus_adaptor)";
   return d->dbus_path().value();
 }
-}
+}  // namespace Logging
 
 namespace {
 
@@ -94,10 +94,8 @@ string ChromeosDBusAdaptor::SanitizePathElement(const string& object_path) {
     // The D-Bus specification
     // (http://dbus.freedesktop.org/doc/dbus-specification.html) states:
     // Each element must only contain the ASCII characters "[A-Z][a-z][0-9]_"
-    if (!(c >= 'A' && c <= 'Z') &&
-        !(c >= 'a' && c <= 'z') &&
-        !(c >= '0' && c <= '9') &&
-        c != '_') {
+    if (!(c >= 'A' && c <= 'Z') && !(c >= 'a' && c <= 'z') &&
+        !(c >= '0' && c <= '9') && c != '_') {
       c = '_';
     }
   }
@@ -107,27 +105,24 @@ string ChromeosDBusAdaptor::SanitizePathElement(const string& object_path) {
 
 ResultCallback ChromeosDBusAdaptor::GetMethodReplyCallback(
     DBusMethodResponsePtr<> response) {
-  return Bind(&ChromeosDBusAdaptor::MethodReplyCallback,
-              AsWeakPtr(),
+  return Bind(&ChromeosDBusAdaptor::MethodReplyCallback, AsWeakPtr(),
               Passed(&response));
 }
 
 ResultStringCallback ChromeosDBusAdaptor::GetStringMethodReplyCallback(
     DBusMethodResponsePtr<string> response) {
-  return Bind(&ChromeosDBusAdaptor::StringMethodReplyCallback,
-              AsWeakPtr(),
+  return Bind(&ChromeosDBusAdaptor::StringMethodReplyCallback, AsWeakPtr(),
               Passed(&response));
 }
 
 ResultBoolCallback ChromeosDBusAdaptor::GetBoolMethodReplyCallback(
     DBusMethodResponsePtr<bool> response) {
-  return Bind(&ChromeosDBusAdaptor::BoolMethodReplyCallback,
-              AsWeakPtr(),
+  return Bind(&ChromeosDBusAdaptor::BoolMethodReplyCallback, AsWeakPtr(),
               Passed(&response));
 }
 
-void ChromeosDBusAdaptor::ReturnResultOrDefer(
-    const ResultCallback& callback, const Error& error) {
+void ChromeosDBusAdaptor::ReturnResultOrDefer(const ResultCallback& callback,
+                                              const Error& error) {
   // Invoke response if command is completed synchronously (either
   // success or failure).
   if (!error.IsOngoing()) {
@@ -153,9 +148,7 @@ void ChromeosDBusAdaptor::StringMethodReplyCallback(
 }
 
 void ChromeosDBusAdaptor::BoolMethodReplyCallback(
-    DBusMethodResponsePtr<bool> response,
-    const Error& error,
-    bool returned) {
+    DBusMethodResponsePtr<bool> response, const Error& error, bool returned) {
   TypedMethodReplyCallback(std::move(response), error, returned);
 }
 

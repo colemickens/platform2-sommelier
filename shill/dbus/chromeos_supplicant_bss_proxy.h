@@ -19,8 +19,7 @@ namespace shill {
 
 class WiFiEndpoint;
 
-class ChromeosSupplicantBSSProxy
-    : public SupplicantBSSProxyInterface {
+class ChromeosSupplicantBSSProxy : public SupplicantBSSProxyInterface {
  public:
   ChromeosSupplicantBSSProxy(const scoped_refptr<dbus::Bus>& bus,
                              const RpcIdentifier& object_path,

@@ -28,10 +28,9 @@ class SupplicantEventDelegateInterface;
 class ChromeosSupplicantInterfaceProxy
     : public SupplicantInterfaceProxyInterface {
  public:
-  ChromeosSupplicantInterfaceProxy(
-      const scoped_refptr<dbus::Bus>& bus,
-      const RpcIdentifier& object_path,
-      SupplicantEventDelegateInterface* delegate);
+  ChromeosSupplicantInterfaceProxy(const scoped_refptr<dbus::Bus>& bus,
+                                   const RpcIdentifier& object_path,
+                                   SupplicantEventDelegateInterface* delegate);
   ~ChromeosSupplicantInterfaceProxy() override;
 
   // Implementation of SupplicantInterfaceProxyInterface.
@@ -104,8 +103,7 @@ class ChromeosSupplicantInterfaceProxy
                     const brillo::VariantDictionary& properties);
   void NetworkRemoved(const dbus::ObjectPath& network);
   void NetworkSelected(const dbus::ObjectPath& network);
-  void PropertiesChanged(
-      const brillo::VariantDictionary& properties);
+  void PropertiesChanged(const brillo::VariantDictionary& properties);
   void ScanDone(bool success);
   void TDLSDiscoverResponse(const std::string& peer_address);
 

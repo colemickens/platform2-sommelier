@@ -54,8 +54,7 @@ class ChromeosIPConfigDBusAdaptor
   bool SetProperty(brillo::ErrorPtr* error,
                    const std::string& name,
                    const brillo::Any& value) override;
-  bool ClearProperty(brillo::ErrorPtr* error,
-                     const std::string& name) override;
+  bool ClearProperty(brillo::ErrorPtr* error, const std::string& name) override;
   bool Remove(brillo::ErrorPtr* error) override;
   bool Refresh(brillo::ErrorPtr* error) override;
 

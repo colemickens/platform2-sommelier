@@ -18,14 +18,13 @@ static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(ChromeosRpcTaskDBusAdaptor* r) {
   return r->GetRpcIdentifier();
 }
-}
+}  // namespace Logging
 
 // static
 const char ChromeosRpcTaskDBusAdaptor::kPath[] = "/task/";
 
 ChromeosRpcTaskDBusAdaptor::ChromeosRpcTaskDBusAdaptor(
-    const scoped_refptr<dbus::Bus>& bus,
-    RpcTask* task)
+    const scoped_refptr<dbus::Bus>& bus, RpcTask* task)
     : org::chromium::flimflam::TaskAdaptor(this),
       ChromeosDBusAdaptor(bus, kPath + task->UniqueName()),
       task_(task),
@@ -48,8 +47,9 @@ RpcIdentifier ChromeosRpcTaskDBusAdaptor::GetRpcConnectionIdentifier() const {
   return RpcIdentifier(connection_name_);
 }
 
-bool ChromeosRpcTaskDBusAdaptor::getsec(
-    brillo::ErrorPtr* /*error*/, string* user, string* password) {
+bool ChromeosRpcTaskDBusAdaptor::getsec(brillo::ErrorPtr* /*error*/,
+                                        string* user,
+                                        string* password) {
   SLOG(this, 2) << __func__ << ": " << user;
   task_->GetLogin(user, password);
   return true;

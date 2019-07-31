@@ -16,21 +16,20 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
+static string ObjectID(const dbus::ObjectPath* p) {
+  return p->value();
 }
+}  // namespace Logging
 
 const char ChromeosSupplicantProcessProxy::kInterfaceName[] =
     "fi.w1.wpa_supplicant1";
-const char ChromeosSupplicantProcessProxy::kPropertyDebugLevel[] =
-    "DebugLevel";
+const char ChromeosSupplicantProcessProxy::kPropertyDebugLevel[] = "DebugLevel";
 const char ChromeosSupplicantProcessProxy::kPropertyDebugTimestamp[] =
     "DebugTimestamp";
 const char ChromeosSupplicantProcessProxy::kPropertyDebugShowKeys[] =
     "DebugShowKeys";
-const char ChromeosSupplicantProcessProxy::kPropertyInterfaces[] =
-    "Interfaces";
-const char ChromeosSupplicantProcessProxy::kPropertyEapMethods[] =
-    "EapMethods";
+const char ChromeosSupplicantProcessProxy::kPropertyInterfaces[] = "Interfaces";
+const char ChromeosSupplicantProcessProxy::kPropertyEapMethods[] = "EapMethods";
 
 ChromeosSupplicantProcessProxy::PropertySet::PropertySet(
     dbus::ObjectProxy* object_proxy,
@@ -49,22 +48,19 @@ ChromeosSupplicantProcessProxy::ChromeosSupplicantProcessProxy(
     const scoped_refptr<dbus::Bus>& bus,
     const base::Closure& service_appeared_callback,
     const base::Closure& service_vanished_callback)
-    : supplicant_proxy_(
-        new fi::w1::wpa_supplicant1Proxy(
-            bus,
-            WPASupplicant::kDBusAddr,
-            dbus::ObjectPath(WPASupplicant::kDBusPath))),
+    : supplicant_proxy_(new fi::w1::wpa_supplicant1Proxy(
+          bus,
+          WPASupplicant::kDBusAddr,
+          dbus::ObjectPath(WPASupplicant::kDBusPath))),
       dispatcher_(dispatcher),
       service_appeared_callback_(service_appeared_callback),
       service_vanished_callback_(service_vanished_callback),
       service_available_(false) {
   // Register properties.
-  properties_.reset(
-      new PropertySet(
-          supplicant_proxy_->GetObjectProxy(),
-          kInterfaceName,
-          base::Bind(&ChromeosSupplicantProcessProxy::OnPropertyChanged,
-                     weak_factory_.GetWeakPtr())));
+  properties_.reset(new PropertySet(
+      supplicant_proxy_->GetObjectProxy(), kInterfaceName,
+      base::Bind(&ChromeosSupplicantProcessProxy::OnPropertyChanged,
+                 weak_factory_.GetWeakPtr())));
 
   // Register signal handlers.
   dbus::ObjectProxy::OnConnectedCallback on_connected_callback =
@@ -115,8 +111,8 @@ bool ChromeosSupplicantProcessProxy::CreateInterface(
   brillo::ErrorPtr error;
   if (!supplicant_proxy_->CreateInterface(dict, &path, &error)) {
     // Interface might already been created by wpasupplicant.
-    LOG(ERROR) << "Failed to create interface: "
-               << error->GetCode() << " " << error->GetMessage();
+    LOG(ERROR) << "Failed to create interface: " << error->GetCode() << " "
+               << error->GetMessage();
     return false;
   }
   *rpc_identifier = path.value();
@@ -125,8 +121,8 @@ bool ChromeosSupplicantProcessProxy::CreateInterface(
 
 bool ChromeosSupplicantProcessProxy::RemoveInterface(
     const RpcIdentifier& rpc_identifier) {
-  SLOG(&supplicant_proxy_->GetObjectPath(), 2) << __func__ << ": "
-                                               << rpc_identifier;
+  SLOG(&supplicant_proxy_->GetObjectPath(), 2)
+      << __func__ << ": " << rpc_identifier;
   if (!service_available_) {
     LOG(ERROR) << "Supplicant process not present";
     return false;
@@ -231,8 +227,8 @@ void ChromeosSupplicantProcessProxy::OnServiceAvailable(bool available) {
 
 void ChromeosSupplicantProcessProxy::OnServiceOwnerChanged(
     const string& old_owner, const string& new_owner) {
-  SLOG(&supplicant_proxy_->GetObjectPath(), 2) << __func__
-      << "old: " << old_owner << " new: " << new_owner;
+  SLOG(&supplicant_proxy_->GetObjectPath(), 2)
+      << __func__ << "old: " << old_owner << " new: " << new_owner;
   if (new_owner.empty()) {
     OnServiceAvailable(false);
   } else {
@@ -242,18 +238,18 @@ void ChromeosSupplicantProcessProxy::OnServiceOwnerChanged(
 
 void ChromeosSupplicantProcessProxy::OnPropertyChanged(
     const std::string& property_name) {
-  SLOG(&supplicant_proxy_->GetObjectPath(), 2) << __func__ << ": "
-      << property_name;
+  SLOG(&supplicant_proxy_->GetObjectPath(), 2)
+      << __func__ << ": " << property_name;
 }
 
 void ChromeosSupplicantProcessProxy::OnSignalConnected(
     const string& interface_name, const string& signal_name, bool success) {
-  SLOG(&supplicant_proxy_->GetObjectPath(), 2) << __func__
-      << "interface: " << interface_name << " signal: " << signal_name
-      << "success: " << success;
+  SLOG(&supplicant_proxy_->GetObjectPath(), 2)
+      << __func__ << "interface: " << interface_name
+      << " signal: " << signal_name << "success: " << success;
   if (!success) {
-    LOG(ERROR) << "Failed to connect signal " << signal_name
-        << " to interface " << interface_name;
+    LOG(ERROR) << "Failed to connect signal " << signal_name << " to interface "
+               << interface_name;
   }
 }
 

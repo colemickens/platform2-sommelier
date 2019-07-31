@@ -62,7 +62,9 @@ class ChromeosManagerDBusAdaptorTest : public Test {
   ChromeosManagerDBusAdaptor manager_adaptor_;
 };
 
-void SetErrorTypeSuccess(Error* error) { error->Populate(Error::kSuccess); }
+void SetErrorTypeSuccess(Error* error) {
+  error->Populate(Error::kSuccess);
+}
 
 void SetErrorTypeFailure(Error* error) {
   error->Populate(Error::kOperationFailed);
@@ -123,7 +125,7 @@ TEST_F(ChromeosManagerDBusAdaptorTest, ReleaseInterface) {
   EXPECT_CALL(manager_, ReleaseDevice(_, kInterfaceName, _, _))
       .WillOnce(SetArgPointee<2>(false));
   manager_adaptor_.ReleaseInterface(&error, message.get(), kClaimerName,
-                                  kInterfaceName);
+                                    kInterfaceName);
   EXPECT_NE(nullptr, manager_adaptor_.watcher_for_device_claimer_);
 
   // If the device claimer is removed, reset the watcher for device claimer.

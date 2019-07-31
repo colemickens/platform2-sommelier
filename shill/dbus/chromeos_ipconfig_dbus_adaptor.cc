@@ -24,22 +24,21 @@ static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(ChromeosIPConfigDBusAdaptor* i) {
   return i->GetRpcIdentifier();
 }
-}
+}  // namespace Logging
 
 // static
 const char ChromeosIPConfigDBusAdaptor::kPath[] = "/ipconfig/";
 
 ChromeosIPConfigDBusAdaptor::ChromeosIPConfigDBusAdaptor(
-    const scoped_refptr<dbus::Bus>& bus,
-    IPConfig* config)
+    const scoped_refptr<dbus::Bus>& bus, IPConfig* config)
     : org::chromium::flimflam::IPConfigAdaptor(this),
-      ChromeosDBusAdaptor(bus,
-                          StringPrintf("%s%s_%u_%s",
-                                       kPath,
-                                       SanitizePathElement(
-                                           config->device_name()).c_str(),
-                                       config->serial(),
-                                       config->type().c_str())),
+      ChromeosDBusAdaptor(
+          bus,
+          StringPrintf("%s%s_%u_%s",
+                       kPath,
+                       SanitizePathElement(config->device_name()).c_str(),
+                       config->serial(),
+                       config->type().c_str())),
       ipconfig_(config) {
   // Register DBus object.
   RegisterWithDBusObject(dbus_object());
@@ -84,25 +83,22 @@ void ChromeosIPConfigDBusAdaptor::EmitStringsChanged(
 bool ChromeosIPConfigDBusAdaptor::GetProperties(
     brillo::ErrorPtr* error, brillo::VariantDictionary* properties) {
   SLOG(this, 2) << __func__;
-  return ChromeosDBusAdaptor::GetProperties(ipconfig_->store(),
-                                            properties,
+  return ChromeosDBusAdaptor::GetProperties(ipconfig_->store(), properties,
                                             error);
 }
 
-bool ChromeosIPConfigDBusAdaptor::SetProperty(
-    brillo::ErrorPtr* error, const string& name, const brillo::Any& value) {
+bool ChromeosIPConfigDBusAdaptor::SetProperty(brillo::ErrorPtr* error,
+                                              const string& name,
+                                              const brillo::Any& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  return ChromeosDBusAdaptor::SetProperty(ipconfig_->mutable_store(),
-                                          name,
-                                          value,
-                                          error);
+  return ChromeosDBusAdaptor::SetProperty(ipconfig_->mutable_store(), name,
+                                          value, error);
 }
 
-bool ChromeosIPConfigDBusAdaptor::ClearProperty(
-    brillo::ErrorPtr* error, const string& name) {
+bool ChromeosIPConfigDBusAdaptor::ClearProperty(brillo::ErrorPtr* error,
+                                                const string& name) {
   SLOG(this, 2) << __func__ << ": " << name;
-  return ChromeosDBusAdaptor::ClearProperty(ipconfig_->mutable_store(),
-                                            name,
+  return ChromeosDBusAdaptor::ClearProperty(ipconfig_->mutable_store(), name,
                                             error);
 }
 

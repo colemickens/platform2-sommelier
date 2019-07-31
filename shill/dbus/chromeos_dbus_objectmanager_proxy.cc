@@ -14,8 +14,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
+static string ObjectID(const dbus::ObjectPath* p) {
+  return p->value();
 }
+}  // namespace Logging
 
 ChromeosDBusObjectManagerProxy::ChromeosDBusObjectManagerProxy(
     EventDispatcher* dispatcher,
@@ -24,9 +26,8 @@ ChromeosDBusObjectManagerProxy::ChromeosDBusObjectManagerProxy(
     const std::string& service,
     const base::Closure& service_appeared_callback,
     const base::Closure& service_vanished_callback)
-    : proxy_(
-        new org::freedesktop::DBus::ObjectManagerProxy(
-            bus, service, dbus::ObjectPath(path))),
+    : proxy_(new org::freedesktop::DBus::ObjectManagerProxy(
+          bus, service, dbus::ObjectPath(path))),
       dispatcher_(dispatcher),
       service_appeared_callback_(service_appeared_callback),
       service_vanished_callback_(service_vanished_callback),
@@ -58,9 +59,7 @@ ChromeosDBusObjectManagerProxy::ChromeosDBusObjectManagerProxy(
 ChromeosDBusObjectManagerProxy::~ChromeosDBusObjectManagerProxy() = default;
 
 void ChromeosDBusObjectManagerProxy::GetManagedObjects(
-    Error* error,
-    const ManagedObjectsCallback& callback,
-    int timeout) {
+    Error* error, const ManagedObjectsCallback& callback, int timeout) {
   if (!service_available_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                           "Service not available");
@@ -68,11 +67,9 @@ void ChromeosDBusObjectManagerProxy::GetManagedObjects(
   }
   proxy_->GetManagedObjectsAsync(
       base::Bind(&ChromeosDBusObjectManagerProxy::OnGetManagedObjectsSuccess,
-                 weak_factory_.GetWeakPtr(),
-                 callback),
+                 weak_factory_.GetWeakPtr(), callback),
       base::Bind(&ChromeosDBusObjectManagerProxy::OnGetManagedObjectsFailure,
-                 weak_factory_.GetWeakPtr(),
-                 callback),
+                 weak_factory_.GetWeakPtr(), callback),
       timeout);
 }
 
@@ -101,20 +98,20 @@ void ChromeosDBusObjectManagerProxy::OnServiceOwnerChanged(
 
 void ChromeosDBusObjectManagerProxy::OnSignalConnected(
     const string& interface_name, const string& signal_name, bool success) {
-  SLOG(&proxy_->GetObjectPath(), 2) << __func__
-      << "interface: " << interface_name
-             << " signal: " << signal_name << "success: " << success;
+  SLOG(&proxy_->GetObjectPath(), 2)
+      << __func__ << "interface: " << interface_name
+      << " signal: " << signal_name << "success: " << success;
   if (!success) {
-    LOG(ERROR) << "Failed to connect signal " << signal_name
-        << " to interface " << interface_name;
+    LOG(ERROR) << "Failed to connect signal " << signal_name << " to interface "
+               << interface_name;
   }
 }
 
 void ChromeosDBusObjectManagerProxy::InterfacesAdded(
     const dbus::ObjectPath& object_path,
     const DBusInterfaceToProperties& dbus_interface_to_properties) {
-  SLOG(&proxy_->GetObjectPath(), 2) << __func__ << "("
-      << object_path.value() << ")";
+  SLOG(&proxy_->GetObjectPath(), 2)
+      << __func__ << "(" << object_path.value() << ")";
   InterfaceToProperties interface_to_properties;
   ConvertDBusInterfaceProperties(dbus_interface_to_properties,
                                  &interface_to_properties);
@@ -124,8 +121,8 @@ void ChromeosDBusObjectManagerProxy::InterfacesAdded(
 void ChromeosDBusObjectManagerProxy::InterfacesRemoved(
     const dbus::ObjectPath& object_path,
     const std::vector<std::string>& interfaces) {
-  SLOG(&proxy_->GetObjectPath(), 2) << __func__ << "("
-      << object_path.value() << ")";
+  SLOG(&proxy_->GetObjectPath(), 2)
+      << __func__ << "(" << object_path.value() << ")";
   interfaces_removed_callback_.Run(object_path.value(), interfaces);
 }
 
@@ -144,8 +141,7 @@ void ChromeosDBusObjectManagerProxy::OnGetManagedObjectsSuccess(
 }
 
 void ChromeosDBusObjectManagerProxy::OnGetManagedObjectsFailure(
-    const ManagedObjectsCallback& callback,
-    brillo::Error* dbus_error) {
+    const ManagedObjectsCallback& callback, brillo::Error* dbus_error) {
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);
   callback.Run(ObjectsWithProperties(), error);

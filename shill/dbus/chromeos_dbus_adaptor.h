@@ -21,7 +21,7 @@
 
 namespace shill {
 
-template<typename... Types>
+template <typename... Types>
 using DBusMethodResponsePtr =
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<Types...>>;
 
@@ -30,9 +30,8 @@ class ChromeosDBusAdaptor : public base::SupportsWeakPtr<ChromeosDBusAdaptor> {
  public:
   static const char kNullPath[];
 
-  ChromeosDBusAdaptor(
-      const scoped_refptr<dbus::Bus>& bus,
-      const std::string& object_path);
+  ChromeosDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
+                      const std::string& object_path);
   ~ChromeosDBusAdaptor();
 
   const dbus::ObjectPath& dbus_path() const { return dbus_path_; }

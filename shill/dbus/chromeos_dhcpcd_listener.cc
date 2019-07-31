@@ -28,7 +28,7 @@ static auto kModuleLogScope = ScopeLogger::kDHCP;
 static string ObjectID(ChromeosDHCPCDListener* d) {
   return "(dhcpcd_listener)";
 }
-}
+}  // namespace Logging
 
 const char ChromeosDHCPCDListener::kDBusInterfaceName[] = "org.chromium.dhcpcd";
 const char ChromeosDHCPCDListener::kSignalEvent[] = "Event";
@@ -108,28 +108,23 @@ DBusHandlerResult ChromeosDHCPCDListener::HandleMessage(
     string reason;
     brillo::VariantDictionary configurations;
     // ExtracMessageParameters will log the error if it failed.
-    if (brillo::dbus_utils::ExtractMessageParameters(&reader,
-                                                     nullptr,
-                                                     &pid,
-                                                     &reason,
-                                                     &configurations)) {
-      dispatcher_->PostTask(FROM_HERE,
-          base::Bind(&ChromeosDHCPCDListener::EventSignal,
-                     weak_factory_.GetWeakPtr(),
-                     sender, pid, reason, configurations));
+    if (brillo::dbus_utils::ExtractMessageParameters(
+            &reader, nullptr, &pid, &reason, &configurations)) {
+      dispatcher_->PostTask(
+          FROM_HERE, base::Bind(&ChromeosDHCPCDListener::EventSignal,
+                                weak_factory_.GetWeakPtr(), sender, pid, reason,
+                                configurations));
     }
   } else if (member_name == kSignalStatusChanged) {
     uint32_t pid;
     string status;
     // ExtracMessageParameters will log the error if it failed.
-    if (brillo::dbus_utils::ExtractMessageParameters(&reader,
-                                                     nullptr,
-                                                     &pid,
+    if (brillo::dbus_utils::ExtractMessageParameters(&reader, nullptr, &pid,
                                                      &status)) {
-      dispatcher_->PostTask(FROM_HERE,
+      dispatcher_->PostTask(
+          FROM_HERE,
           base::Bind(&ChromeosDHCPCDListener::StatusChangedSignal,
-                     weak_factory_.GetWeakPtr(),
-                     sender, pid, status));
+                     weak_factory_.GetWeakPtr(), sender, pid, status));
     }
   } else {
     LOG(INFO) << "Ignore signal: " << member_name;
@@ -146,8 +141,9 @@ void ChromeosDHCPCDListener::EventSignal(
   DHCPConfigRefPtr config = provider_->GetConfig(pid);
   if (!config) {
     if (provider_->IsRecentlyUnbound(pid)) {
-      SLOG(nullptr, 3)
-          << __func__ << ": ignoring message from recently unbound PID " << pid;
+      SLOG(nullptr, 3) << __func__
+                       << ": ignoring message from recently unbound PID "
+                       << pid;
     } else {
       LOG(ERROR) << "Unknown DHCP client PID " << pid;
     }
@@ -165,8 +161,9 @@ void ChromeosDHCPCDListener::StatusChangedSignal(const string& sender,
   DHCPConfigRefPtr config = provider_->GetConfig(pid);
   if (!config) {
     if (provider_->IsRecentlyUnbound(pid)) {
-      SLOG(nullptr, 3)
-          << __func__ << ": ignoring message from recently unbound PID " << pid;
+      SLOG(nullptr, 3) << __func__
+                       << ": ignoring message from recently unbound PID "
+                       << pid;
     } else {
       LOG(ERROR) << "Unknown DHCP client PID " << pid;
     }

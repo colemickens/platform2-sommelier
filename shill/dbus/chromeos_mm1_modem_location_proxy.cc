@@ -15,7 +15,9 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
+static string ObjectID(const dbus::ObjectPath* p) {
+  return p->value();
+}
 }  // namespace Logging
 
 namespace mm1 {
@@ -24,19 +26,18 @@ ChromeosModemLocationProxy::ChromeosModemLocationProxy(
     const scoped_refptr<dbus::Bus>& bus,
     const RpcIdentifier& path,
     const string& service)
-    : proxy_(
-        new org::freedesktop::ModemManager1::Modem::LocationProxy(
-            bus, service, dbus::ObjectPath(path))) {
-}
+    : proxy_(new org::freedesktop::ModemManager1::Modem::LocationProxy(
+          bus, service, dbus::ObjectPath(path))) {}
 
 ChromeosModemLocationProxy::~ChromeosModemLocationProxy() = default;
 
-void ChromeosModemLocationProxy::Setup(uint32_t sources, bool signal_location,
+void ChromeosModemLocationProxy::Setup(uint32_t sources,
+                                       bool signal_location,
                                        Error* error,
                                        const ResultCallback& callback,
                                        int timeout) {
-  SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << sources << ", "
-                                    << signal_location;
+  SLOG(&proxy_->GetObjectPath(), 2)
+      << __func__ << ": " << sources << ", " << signal_location;
   proxy_->SetupAsync(sources, signal_location,
                      base::Bind(&ChromeosModemLocationProxy::OnSetupSuccess,
                                 weak_factory_.GetWeakPtr(), callback),
@@ -63,8 +64,8 @@ void ChromeosModemLocationProxy::OnSetupSuccess(
   callback.Run(Error());
 }
 
-void ChromeosModemLocationProxy::OnSetupFailure(
-    const ResultCallback& callback, brillo::Error* dbus_error) {
+void ChromeosModemLocationProxy::OnSetupFailure(const ResultCallback& callback,
+                                                brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);

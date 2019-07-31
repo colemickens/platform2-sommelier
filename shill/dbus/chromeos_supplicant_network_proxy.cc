@@ -17,15 +17,16 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
+static string ObjectID(const dbus::ObjectPath* p) {
+  return p->value();
 }
+}  // namespace Logging
 
 // static.
 const char ChromeosSupplicantNetworkProxy::kInterfaceName[] =
     "fi.w1.wpa_supplicant1.Network";
 const char ChromeosSupplicantNetworkProxy::kPropertyEnabled[] = "Enabled";
-const char ChromeosSupplicantNetworkProxy::kPropertyProperties[] =
-    "Properties";
+const char ChromeosSupplicantNetworkProxy::kPropertyProperties[] = "Properties";
 
 ChromeosSupplicantNetworkProxy::PropertySet::PropertySet(
     dbus::ObjectProxy* object_proxy,
@@ -36,20 +37,14 @@ ChromeosSupplicantNetworkProxy::PropertySet::PropertySet(
 }
 
 ChromeosSupplicantNetworkProxy::ChromeosSupplicantNetworkProxy(
-    const scoped_refptr<dbus::Bus>& bus,
-    const RpcIdentifier& object_path)
-    : network_proxy_(
-        new fi::w1::wpa_supplicant1::NetworkProxy(
-            bus,
-            WPASupplicant::kDBusAddr,
-            dbus::ObjectPath(object_path))) {
+    const scoped_refptr<dbus::Bus>& bus, const RpcIdentifier& object_path)
+    : network_proxy_(new fi::w1::wpa_supplicant1::NetworkProxy(
+          bus, WPASupplicant::kDBusAddr, dbus::ObjectPath(object_path))) {
   // Register properties.
-  properties_.reset(
-      new PropertySet(
-          network_proxy_->GetObjectProxy(),
-          kInterfaceName,
-          base::Bind(&ChromeosSupplicantNetworkProxy::OnPropertyChanged,
-                     weak_factory_.GetWeakPtr())));
+  properties_.reset(new PropertySet(
+      network_proxy_->GetObjectProxy(), kInterfaceName,
+      base::Bind(&ChromeosSupplicantNetworkProxy::OnPropertyChanged,
+                 weak_factory_.GetWeakPtr())));
 
   // Register signal handler.
   network_proxy_->RegisterPropertiesChangedSignalHandler(
@@ -84,8 +79,8 @@ void ChromeosSupplicantNetworkProxy::PropertiesChanged(
 
 void ChromeosSupplicantNetworkProxy::OnPropertyChanged(
     const std::string& property_name) {
-  SLOG(&network_proxy_->GetObjectPath(), 2) << __func__ << ": "
-      << property_name;
+  SLOG(&network_proxy_->GetObjectPath(), 2)
+      << __func__ << ": " << property_name;
 }
 
 // Called when signal is connected to the ObjectProxy.
@@ -93,12 +88,12 @@ void ChromeosSupplicantNetworkProxy::OnSignalConnected(
     const std::string& interface_name,
     const std::string& signal_name,
     bool success) {
-  SLOG(&network_proxy_->GetObjectPath(), 2) << __func__
-      << "interface: " << interface_name << " signal: " << signal_name
-      << "success: " << success;
+  SLOG(&network_proxy_->GetObjectPath(), 2)
+      << __func__ << "interface: " << interface_name
+      << " signal: " << signal_name << "success: " << success;
   if (!success) {
-    LOG(ERROR) << "Failed to connect signal " << signal_name
-        << " to interface " << interface_name;
+    LOG(ERROR) << "Failed to connect signal " << signal_name << " to interface "
+               << interface_name;
   }
 }
 

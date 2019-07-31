@@ -23,8 +23,8 @@ DBusServiceWatcherFactory::CreateDBusServiceWatcher(
     scoped_refptr<dbus::Bus> bus,
     const std::string& connection_name,
     const base::Closure& on_connection_vanish) {
-  return std::make_unique<ChromeosDBusServiceWatcher>(
-      bus, connection_name, on_connection_vanish);
+  return std::make_unique<ChromeosDBusServiceWatcher>(bus, connection_name,
+                                                      on_connection_vanish);
 }
 
 }  // namespace shill

@@ -27,14 +27,13 @@ static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(ChromeosServiceDBusAdaptor* s) {
   return s->GetRpcIdentifier() + " (" + s->service()->unique_name() + ")";
 }
-}
+}  // namespace Logging
 
 // static
 const char ChromeosServiceDBusAdaptor::kPath[] = "/service/";
 
 ChromeosServiceDBusAdaptor::ChromeosServiceDBusAdaptor(
-    const scoped_refptr<dbus::Bus>& bus,
-    Service* service)
+    const scoped_refptr<dbus::Bus>& bus, Service* service)
     : org::chromium::flimflam::ServiceAdaptor(this),
       ChromeosDBusAdaptor(bus, kPath + service->unique_name()),
       service_(service) {
@@ -104,36 +103,32 @@ void ChromeosServiceDBusAdaptor::EmitStringmapChanged(const string& name,
 bool ChromeosServiceDBusAdaptor::GetProperties(
     brillo::ErrorPtr* error, brillo::VariantDictionary* properties) {
   SLOG(this, 2) << __func__;
-  return ChromeosDBusAdaptor::GetProperties(service_->store(),
-                                            properties,
+  return ChromeosDBusAdaptor::GetProperties(service_->store(), properties,
                                             error);
 }
 
-bool ChromeosServiceDBusAdaptor::SetProperty(
-    brillo::ErrorPtr* error, const string& name, const brillo::Any& value) {
+bool ChromeosServiceDBusAdaptor::SetProperty(brillo::ErrorPtr* error,
+                                             const string& name,
+                                             const brillo::Any& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  return ChromeosDBusAdaptor::SetProperty(service_->mutable_store(),
-                                          name,
-                                          value,
-                                          error);
+  return ChromeosDBusAdaptor::SetProperty(service_->mutable_store(), name,
+                                          value, error);
 }
 
 bool ChromeosServiceDBusAdaptor::SetProperties(
     brillo::ErrorPtr* error, const brillo::VariantDictionary& args) {
   SLOG(this, 2) << __func__;
-  KeyValueStore args_store =
-      KeyValueStore::ConvertFromVariantDictionary(args);
+  KeyValueStore args_store = KeyValueStore::ConvertFromVariantDictionary(args);
   Error configure_error;
   service_->Configure(args_store, &configure_error);
   return !configure_error.ToChromeosError(error);
 }
 
 bool ChromeosServiceDBusAdaptor::ClearProperty(brillo::ErrorPtr* error,
-                                              const string& name) {
+                                               const string& name) {
   SLOG(this, 2) << __func__ << ": " << name;
   bool status = ChromeosDBusAdaptor::ClearProperty(service_->mutable_store(),
-                                                   name,
-                                                   error);
+                                                   name, error);
   if (status) {
     service_->OnPropertyChanged(name);
   }
