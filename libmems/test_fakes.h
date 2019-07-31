@@ -72,10 +72,13 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
       const std::string& name) const override;
   base::Optional<int64_t> ReadNumberAttribute(
       const std::string& name) const override;
+  base::Optional<double> ReadDoubleAttribute(
+      const std::string& name) const override;
 
   bool WriteStringAttribute(const std::string& name,
                             const std::string& value) override;
   bool WriteNumberAttribute(const std::string& name, int64_t value) override;
+  bool WriteDoubleAttribute(const std::string& name, double value) override;
 
   bool SetTrigger(IioDevice* trigger) override;
   IioDevice* GetTrigger() override { return trigger_; }
@@ -102,6 +105,7 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
   std::string id_;
   std::map<std::string, int> numeric_attributes_;
   std::map<std::string, std::string> text_attributes_;
+  std::map<std::string, double> double_attributes_;
   IioDevice* trigger_;
   std::map<std::string, IioChannel*> channels_;
   size_t buffer_length_ = 0;

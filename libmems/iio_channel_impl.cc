@@ -78,4 +78,16 @@ base::Optional<int64_t> IioChannelImpl::ReadNumberAttribute(
   return val;
 }
 
+base::Optional<double> IioChannelImpl::ReadDoubleAttribute(
+    const std::string& name) const {
+  double val = 0;
+  int error = iio_channel_attr_read_double(channel_, name.c_str(), &val);
+  if (error) {
+    LOG(WARNING) << "Attempting to read attribute " << name
+                 << " failed: " << error;
+    return base::nullopt;
+  }
+  return val;
+}
+
 }  // namespace libmems

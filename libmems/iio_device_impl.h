@@ -40,10 +40,13 @@ class LIBMEMS_EXPORT IioDeviceImpl : public IioDevice {
       const std::string& name) const override;
   base::Optional<int64_t> ReadNumberAttribute(
       const std::string& name) const override;
+  base::Optional<double> ReadDoubleAttribute(
+      const std::string& name) const override;
 
   bool WriteStringAttribute(const std::string& name,
                             const std::string& value) override;
   bool WriteNumberAttribute(const std::string& name, int64_t value) override;
+  bool WriteDoubleAttribute(const std::string& name, double value) override;
 
   iio_device* GetUnderlyingIioDevice() const override;
 

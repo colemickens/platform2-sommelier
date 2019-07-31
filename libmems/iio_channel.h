@@ -53,6 +53,12 @@ class IioChannel {
   virtual base::Optional<int64_t> ReadNumberAttribute(
       const std::string& name) const = 0;
 
+  // Reads the |name| attribute of this channel and returns the value
+  // as a double precision floating point. It will return base::nullopt
+  // if the attribute cannot be read or is not a valid number.
+  virtual base::Optional<double> ReadDoubleAttribute(
+      const std::string& name) const = 0;
+
  protected:
   IioChannel() = default;
 

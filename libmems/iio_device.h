@@ -55,6 +55,12 @@ class LIBMEMS_EXPORT IioDevice {
   virtual base::Optional<int64_t> ReadNumberAttribute(
       const std::string& name) const = 0;
 
+  // Reads the |name| attribute of this device and returns the value
+  // as a double precision floating point. It will return base::nullopt
+  // if the attribute cannot be read or is not a valid number.
+  virtual base::Optional<double> ReadDoubleAttribute(
+      const std::string& name) const = 0;
+
   // Writes the string |value| to the attribute |name| of this device. Returns
   // false if an error occurs.
   virtual bool WriteStringAttribute(const std::string& name,
@@ -62,8 +68,11 @@ class LIBMEMS_EXPORT IioDevice {
 
   // Writes the number |value| to the attribute |name| of this device. Returns
   // false if an error occurs.
-  virtual bool WriteNumberAttribute(const std::string& name,
-                                    int64_t value) = 0;
+  virtual bool WriteNumberAttribute(const std::string& name, int64_t value) = 0;
+
+  // Writes the floating point |value| to the attribute |name| of this device.
+  // Returns false if an error occurs.
+  virtual bool WriteDoubleAttribute(const std::string& name, double value) = 0;
 
   // Returns true if this device represents a single sensor, vs. a device
   // representing all available cros_ec sensors on the system, as defined

@@ -32,6 +32,8 @@ class LIBMEMS_EXPORT IioChannelImpl : public IioChannel {
       const std::string& name) const override;
   base::Optional<int64_t> ReadNumberAttribute(
       const std::string& name) const override;
+  base::Optional<double> ReadDoubleAttribute(
+      const std::string& name) const override;
 
  private:
   iio_channel* const channel_;  // non-owned

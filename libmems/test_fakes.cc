@@ -60,6 +60,13 @@ base::Optional<int64_t> FakeIioDevice::ReadNumberAttribute(
     return base::nullopt;
   return k->second;
 }
+base::Optional<double> FakeIioDevice::ReadDoubleAttribute(
+    const std::string& name) const {
+  auto k = double_attributes_.find(name);
+  if (k == double_attributes_.end())
+    return base::nullopt;
+  return k->second;
+}
 
 bool FakeIioDevice::WriteStringAttribute(const std::string& name,
                                          const std::string& value) {
@@ -69,6 +76,11 @@ bool FakeIioDevice::WriteStringAttribute(const std::string& name,
 bool FakeIioDevice::WriteNumberAttribute(const std::string& name,
                                          int64_t value) {
   numeric_attributes_[name] = value;
+  return true;
+}
+bool FakeIioDevice::WriteDoubleAttribute(const std::string& name,
+                                         double value) {
+  double_attributes_[name] = value;
   return true;
 }
 

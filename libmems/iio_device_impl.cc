@@ -69,6 +69,18 @@ base::Optional<int64_t> IioDeviceImpl::ReadNumberAttribute(
   return val;
 }
 
+base::Optional<double> IioDeviceImpl::ReadDoubleAttribute(
+    const std::string& name) const {
+  double val = 0;
+  int error = iio_device_attr_read_double(device_, name.c_str(), &val);
+  if (error) {
+    LOG(WARNING) << "Attempting to read attribute " << name
+                 << " failed: " << error;
+    return base::nullopt;
+  }
+  return val;
+}
+
 bool IioDeviceImpl::WriteStringAttribute(const std::string& name,
                                          const std::string& val) {
   int error =
@@ -80,9 +92,20 @@ bool IioDeviceImpl::WriteStringAttribute(const std::string& name,
   }
   return true;
 }
+
 bool IioDeviceImpl::WriteNumberAttribute(const std::string& name,
                                          int64_t val) {
   int error = iio_device_attr_write_longlong(device_, name.c_str(), val);
+  if (error) {
+    LOG(WARNING) << "Attempting to write attribute " << name
+                 << " failed: " << error;
+    return false;
+  }
+  return true;
+}
+
+bool IioDeviceImpl::WriteDoubleAttribute(const std::string& name, double val) {
+  int error = iio_device_attr_write_double(device_, name.c_str(), val);
   if (error) {
     LOG(WARNING) << "Attempting to write attribute " << name
                  << " failed: " << error;
