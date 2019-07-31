@@ -359,6 +359,7 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfig) {
                               ipconfig_->properties().domain_search));
   EXPECT_CALL(*device, RequestPortalDetection()).WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
+  EXPECT_CALL(routing_table_, SetDefaultMetric(_, Connection::kDefaultMetric));
   connection_->SetMetric(Connection::kDefaultMetric, false);
   EXPECT_TRUE(connection_->IsDefault());
   Mock::VerifyAndClearExpectations(&routing_table_);
@@ -367,6 +368,8 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfig) {
   connection_->SetUseDNS(false);
   AddNonPhysicalRoutingPolicyExpectations(device);
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
+  EXPECT_CALL(routing_table_,
+              SetDefaultMetric(_, Connection::kLowestPriorityMetric));
   connection_->SetMetric(Connection::kLowestPriorityMetric, false);
   EXPECT_FALSE(connection_->IsDefault());
 }
@@ -418,6 +421,7 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfig) {
                               ipconfig_->properties().domain_search));
   EXPECT_CALL(*device, RequestPortalDetection()).WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
+  EXPECT_CALL(routing_table_, SetDefaultMetric(_, Connection::kDefaultMetric));
   connection_->SetMetric(Connection::kDefaultMetric, true);
   EXPECT_TRUE(connection_->IsDefault());
   Mock::VerifyAndClearExpectations(&routing_table_);
@@ -427,6 +431,8 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfig) {
   AddPhysicalRoutingPolicyExpectations(
       device, Connection::kLowestPriorityMetric, false);
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
+  EXPECT_CALL(routing_table_,
+              SetDefaultMetric(_, Connection::kLowestPriorityMetric));
   connection_->SetMetric(Connection::kLowestPriorityMetric, false);
   EXPECT_FALSE(connection_->IsDefault());
 }
@@ -516,6 +522,7 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
   EXPECT_CALL(*device, RequestPortalDetection()).WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetUseDNS(true);
+  EXPECT_CALL(routing_table_, SetDefaultMetric(_, Connection::kDefaultMetric));
   connection_->SetMetric(Connection::kDefaultMetric, true);
   Mock::VerifyAndClearExpectations(&routing_table_);
   EXPECT_TRUE(connection_->IsDefault());
@@ -533,6 +540,8 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
       .WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetUseDNS(false);
+  EXPECT_CALL(routing_table_,
+              SetDefaultMetric(_, Connection::kLowestPriorityMetric));
   connection_->SetMetric(Connection::kLowestPriorityMetric, false);
   EXPECT_FALSE(connection_->IsDefault());
 }
@@ -687,6 +696,7 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   EXPECT_CALL(*device, RequestPortalDetection()).WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetUseDNS(true);
+  EXPECT_CALL(routing_table_, SetDefaultMetric(_, Connection::kDefaultMetric));
   connection_->SetMetric(Connection::kDefaultMetric, true);
   Mock::VerifyAndClearExpectations(&routing_table_);
 
@@ -747,6 +757,7 @@ TEST_F(ConnectionTest, AddConfigWithDNSDomain) {
   EXPECT_CALL(*device, RequestPortalDetection()).WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetUseDNS(true);
+  EXPECT_CALL(routing_table_, SetDefaultMetric(_, Connection::kDefaultMetric));
   connection_->SetMetric(Connection::kDefaultMetric, true);
 }
 
@@ -776,6 +787,7 @@ TEST_F(ConnectionTest, AddConfigWithFixedIpParams) {
   EXPECT_CALL(resolver_, SetDNSFromLists(_, _));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetUseDNS(true);
+  EXPECT_CALL(routing_table_, SetDefaultMetric(_, Connection::kDefaultMetric));
   connection_->SetMetric(Connection::kDefaultMetric, false);
 }
 

@@ -433,6 +433,7 @@ void Connection::SetMetric(uint32_t metric, bool is_primary_physical) {
 
   metric_ = metric;
   is_primary_physical_ = is_primary_physical;
+  routing_table_->SetDefaultMetric(interface_index_, metric);
   UpdateRoutingPolicy();
 
   PushDNSConfig();
