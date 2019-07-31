@@ -126,7 +126,13 @@ class DlcServiceDBusAdaptorTest : public testing::Test {
         content_path_);
   }
 
-  void SetMountPath(const string& mount_path_expected);
+  void SetUp() override { dlc_service_dbus_adaptor_->LoadDlcModuleImages(); }
+
+  void SetMountPath(const string& mount_path_expected) {
+    ON_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
+        .WillByDefault(
+            DoAll(SetArgPointee<3>(mount_path_expected), Return(true)));
+  }
 
  protected:
   base::ScopedTempDir scoped_temp_dir_;
@@ -147,11 +153,41 @@ class DlcServiceDBusAdaptorTest : public testing::Test {
   DISALLOW_COPY_AND_ASSIGN(DlcServiceDBusAdaptorTest);
 };
 
-void DlcServiceDBusAdaptorTest::SetMountPath(
-    const string& mount_path_expected) {
-  ON_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
-      .WillByDefault(
-          DoAll(SetArgPointee<3>(mount_path_expected), Return(true)));
+class DlcServiceDBusAdaptorSkipLoadTest : public DlcServiceDBusAdaptorTest {
+ public:
+  void SetUp() override {
+    // Need this to skip calling |LoadDlcModuleImages()|.
+  }
+};
+
+TEST_F(DlcServiceDBusAdaptorSkipLoadTest, StartUpMountSuccessTest) {
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>("/good/mount"), Return(true)));
+
+  dlc_service_dbus_adaptor_->LoadDlcModuleImages();
+
+  // Startup with failure to mount.
+  EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
+}
+
+TEST_F(DlcServiceDBusAdaptorSkipLoadTest, StartUpMountFailureTest) {
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(""), Return(true)));
+
+  dlc_service_dbus_adaptor_->LoadDlcModuleImages();
+
+  // Startup with failure to mount.
+  EXPECT_FALSE(base::PathExists(content_path_.Append(kFirstDlc)));
+}
+
+TEST_F(DlcServiceDBusAdaptorSkipLoadTest, StartUpImageLoaderFailureTest) {
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
+      .WillOnce(Return(false));
+
+  dlc_service_dbus_adaptor_->LoadDlcModuleImages();
+
+  // Startup with image_loader failure.
+  EXPECT_FALSE(base::PathExists(content_path_.Append(kFirstDlc)));
 }
 
 TEST_F(DlcServiceDBusAdaptorTest, GetInstalledTest) {

@@ -130,13 +130,25 @@ DlcServiceDBusAdaptor::~DlcServiceDBusAdaptor() {}
 
 void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
   // Load all installed DLC modules.
-  for (const auto& dlc_module_id : installed_dlc_modules_) {
+  for (auto installed_dlc_module_itr = installed_dlc_modules_.begin();
+       installed_dlc_module_itr != installed_dlc_modules_.end();
+       /* Don't increment here */) {
+    string installed_dlc_module_id = *installed_dlc_module_itr;
+
+    // TODO(crbug.com/990449): Support restart of dlcservice to handle
+    // remounting or getting old mount point back to get into a valid state.
+
     string mount_point;
-    if (!MountDlc(nullptr, dlc_module_id, &mount_point)) {
-      // TODO(kimjae): Handle these cases to make loading guaranteee that
-      // installed DLC(s) will be installed, currently the other DBus APIs can
-      // assume that |installed_dlc_modules_| is installed and mounted
-      // successfully.
+    if (!MountDlc(nullptr, installed_dlc_module_id, &mount_point)) {
+      LOG(ERROR) << "Failed to mount DLC module during load: "
+                 << installed_dlc_module_id;
+      if (!DeleteDlc(nullptr, installed_dlc_module_id)) {
+        LOG(ERROR) << "Failed to delete an unmountable DLC module: "
+                   << installed_dlc_module_id;
+      }
+      installed_dlc_modules_.erase(installed_dlc_module_itr++);
+    } else {
+      ++installed_dlc_module_itr;
     }
   }
 }
