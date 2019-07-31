@@ -26,9 +26,6 @@
 
 namespace {
 
-// Because the logs can be huge, we set the D-Bus timeout to 2 minutes.
-const int kDBusTimeoutMS = 120 * 1000;
-
 const char kUsage[] =
   "Developer helper tool for getting extended debug logs from the system."
   "\n"
@@ -56,6 +53,9 @@ std::string LogName(bool compress) {
 int main(int argc, char* argv[]) {
   DEFINE_bool(compress, true, "Compress the tarball");
   DEFINE_string(output, "", "Where to write the output");
+  // Because the logs can be huge, we default the timeout_ms flag to 2 minutes.
+  DEFINE_int32(timeout_ms, 120 * 1000,
+               "Time (in ms) to gather logs before timeout");
   brillo::FlagHelper::Init(argc, argv, kUsage);
 
   // Excess arguments may be left around.
@@ -97,8 +97,7 @@ int main(int argc, char* argv[]) {
   // Wait for the response and process the result.
   LOG(INFO) << "Gathering logs, please wait";
   std::unique_ptr<dbus::Response> response(
-      debugd_proxy->CallMethodAndBlock(
-          &method_call, kDBusTimeoutMS));
+      debugd_proxy->CallMethodAndBlock(&method_call, FLAGS_timeout_ms));
   CHECK(response) << debugd::kDumpDebugLogs << " failed";
   LOG(INFO) << "Logs saved to " << output.value();
 
