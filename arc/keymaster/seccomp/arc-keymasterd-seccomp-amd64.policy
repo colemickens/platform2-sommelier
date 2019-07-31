@@ -47,6 +47,7 @@ futex: 1
 getrandom: arg2 in 0xfffffffd
 tgkill: 1
 clock_gettime: 1
+gettimeofday: 1
 # Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
 mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 munmap: 1
