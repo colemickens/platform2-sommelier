@@ -6,17 +6,17 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
-    ":libipproto",
+    ":libipp",
   ]
   if (use.test) {
-    deps += [ ":libipproto_test" ]
+    deps += [ ":libipp_test" ]
   }
   if (use.fuzzer) {
-    deps += [ ":libipproto_fuzzer" ]
+    deps += [ ":libipp_fuzzer" ]
   }
 }
 
-shared_library("libipproto") {
+shared_library("libipp") {
   sources = [
     "ipp.h",
     "ipp_attribute.cc",
@@ -42,7 +42,7 @@ shared_library("libipproto") {
 }
 
 if (use.test) {
-  executable("libipproto_test") {
+  executable("libipp_test") {
     configs += [ "//common-mk:test" ]
     sources = [
       "ipp_attribute_test.cc",
@@ -52,7 +52,7 @@ if (use.test) {
       "ipp_test.cc",
     ]
     deps = [
-      ":libipproto",
+      ":libipp",
       "//common-mk/testrunner",
     ]
   }
@@ -65,7 +65,7 @@ if (use.fuzzer) {
       "libchrome-test-${libbase_ver}",
     ]
   }
-  executable("libipproto_fuzzer") {
+  executable("libipp_fuzzer") {
     configs += [
       "//common-mk/common_fuzzer",
       ":libchrome_test_config",
@@ -74,7 +74,7 @@ if (use.fuzzer) {
       "ipp_fuzzer.cc",
     ]
     deps = [
-      ":libipproto",
+      ":libipp",
     ]
   }
 }

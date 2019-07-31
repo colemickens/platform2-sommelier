@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libipproto/ipp_parser.h"
+#include "libipp/ipp_parser.h"
 #include <set>
 
-#include "libipproto/ipp_encoding.h"
+#include "libipp/ipp_encoding.h"
 
 namespace ipp {
 

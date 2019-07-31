@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBIPPROTO_IPP_BASE_H_
-#define LIBIPPROTO_IPP_BASE_H_
+#ifndef LIBIPP_IPP_BASE_H_
+#define LIBIPP_IPP_BASE_H_
 
 #include <cstddef>
 #include <cstdint>
@@ -11,11 +11,11 @@
 #include <string>
 #include <vector>
 
-#include "libipproto/ipp_enums.h"
-#include "libipproto/ipp_export.h"
-#include "libipproto/ipp_package.h"
+#include "libipp/ipp_enums.h"
+#include "libipp/ipp_export.h"
+#include "libipp/ipp_package.h"
 
-// This is part of libipproto. See ipp.h for general information about this
+// This is part of libipp. See ipp.h for general information about this
 // library.
 
 namespace ipp {
@@ -236,4 +236,4 @@ class IPP_EXPORT Server {
 };
 }  // namespace ipp
 
-#endif  //  LIBIPPROTO_IPP_BASE_H_
+#endif  //  LIBIPP_IPP_BASE_H_

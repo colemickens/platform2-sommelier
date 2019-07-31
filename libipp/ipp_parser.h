@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBIPPROTO_IPP_PARSER_H_
-#define LIBIPPROTO_IPP_PARSER_H_
+#ifndef LIBIPP_IPP_PARSER_H_
+#define LIBIPP_IPP_PARSER_H_
 
 #include <cstdint>
 #include <list>
@@ -12,9 +12,9 @@
 #include <utility>
 #include <vector>
 
-#include "libipproto/ipp_attribute.h"
-#include "libipproto/ipp_base.h"
-#include "libipproto/ipp_frame.h"
+#include "libipp/ipp_attribute.h"
+#include "libipp/ipp_base.h"
+#include "libipp/ipp_frame.h"
 
 namespace ipp {
 
@@ -99,4 +99,4 @@ class Parser {
 
 }  // namespace ipp
 
-#endif  //  LIBIPPROTO_IPP_PARSER_H_
+#endif  //  LIBIPP_IPP_PARSER_H_

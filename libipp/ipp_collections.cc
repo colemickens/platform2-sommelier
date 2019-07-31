@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libipproto/ipp_collections.h"
+#include "libipp/ipp_collections.h"
 
 namespace ipp {
 std::vector<Attribute*> C_cover_back::GetKnownAttributes() {

@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBIPPROTO_IPP_PACKAGE_H_
-#define LIBIPPROTO_IPP_PACKAGE_H_
+#ifndef LIBIPP_IPP_PACKAGE_H_
+#define LIBIPP_IPP_PACKAGE_H_
 
-#include "libipproto/ipp_enums.h"
-#include "libipproto/ipp_export.h"
+#include "libipp/ipp_enums.h"
+#include "libipp/ipp_export.h"
 
 #include <cstdint>
 #include <map>
@@ -226,4 +226,4 @@ class IPP_EXPORT Collection {
 
 }  // namespace ipp
 
-#endif  //  LIBIPPROTO_IPP_PACKAGE_H_
+#endif  //  LIBIPP_IPP_PACKAGE_H_

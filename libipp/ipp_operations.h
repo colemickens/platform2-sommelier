@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBIPPROTO_IPP_OPERATIONS_H_
-#define LIBIPPROTO_IPP_OPERATIONS_H_
+#ifndef LIBIPP_IPP_OPERATIONS_H_
+#define LIBIPP_IPP_OPERATIONS_H_
 
 #include <string>
 #include <vector>
 
-#include "libipproto/ipp_attribute.h"
-#include "libipproto/ipp_base.h"
-#include "libipproto/ipp_collections.h"
-#include "libipproto/ipp_enums.h"
-#include "libipproto/ipp_export.h"
-#include "libipproto/ipp_package.h"
+#include "libipp/ipp_attribute.h"
+#include "libipp/ipp_base.h"
+#include "libipp/ipp_collections.h"
+#include "libipp/ipp_enums.h"
+#include "libipp/ipp_export.h"
+#include "libipp/ipp_package.h"
 
 // This file contains definition of classes corresponding to supported IPP
 // operations. See ipp.h for more details.
@@ -2546,4 +2546,4 @@ struct IPP_EXPORT Response_Validate_Job : public Response {
 };
 }  // namespace ipp
 
-#endif  //  LIBIPPROTO_IPP_OPERATIONS_H_
+#endif  //  LIBIPP_IPP_OPERATIONS_H_

@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libipproto/ipp_frame_builder.h"
+#include "libipp/ipp_frame_builder.h"
 
 #include <algorithm>
 
-#include "libipproto/ipp_attribute.h"
-#include "libipproto/ipp_encoding.h"
+#include "libipp/ipp_attribute.h"
+#include "libipp/ipp_encoding.h"
 
 namespace ipp {
 

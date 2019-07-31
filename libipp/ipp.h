@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBIPPROTO_IPP_H_
-#define LIBIPPROTO_IPP_H_
+#ifndef LIBIPP_IPP_H_
+#define LIBIPP_IPP_H_
 
 // What is this?
 // -------------
@@ -178,17 +178,17 @@
 // from IPP specification (may be casted to uint16_t to get assigned IPP value).
 
 // look here for Attribute class
-#include "libipproto/ipp_attribute.h"
+#include "libipp/ipp_attribute.h"
 
 // look here for main classes: Client, Server, Request, Response
-#include "libipproto/ipp_base.h"
+#include "libipp/ipp_base.h"
 
 // these files are generated from IPP schema
-#include "libipproto/ipp_collections.h"
-#include "libipproto/ipp_enums.h"
-#include "libipproto/ipp_operations.h"
+#include "libipp/ipp_collections.h"
+#include "libipp/ipp_enums.h"
+#include "libipp/ipp_operations.h"
 
 // look here for Package, Group and Collection classes
-#include "libipproto/ipp_package.h"
+#include "libipp/ipp_package.h"
 
-#endif  //  LIBIPPROTO_IPP_H_
+#endif  //  LIBIPP_IPP_H_

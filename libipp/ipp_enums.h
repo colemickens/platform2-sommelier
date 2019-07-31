@@ -2,16 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBIPPROTO_IPP_ENUMS_H_
-#define LIBIPPROTO_IPP_ENUMS_H_
+#ifndef LIBIPP_IPP_ENUMS_H_
+#define LIBIPP_IPP_ENUMS_H_
 
-#include "libipproto/ipp_export.h"
+#include "libipp/ipp_export.h"
 
 #include <cstdint>
 #include <string>
 
 namespace ipp {
-// This is part of libipproto library. See ipp.h for information how to use it.
+// This is part of libipp library. See ipp.h for information how to use it.
 // This file and the corresponding .cc file are generated from IPP
 // specification. This file contains the following:
 //  * GroupTag enum - contains names of all known IPP attributes groups.
@@ -4102,4 +4102,4 @@ IPP_EXPORT bool FromString(const std::string& s, E_xri_security* v);
 IPP_EXPORT bool FromString(const std::string& s, E_y_image_position* v);
 }  // namespace ipp
 
-#endif  //  LIBIPPROTO_IPP_ENUMS_H_
+#endif  //  LIBIPP_IPP_ENUMS_H_

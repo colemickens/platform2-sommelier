@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libipproto/ipp_package.h"
+#include "libipp/ipp_package.h"
 
 #include <gtest/gtest.h>
 
-#include "libipproto/ipp_attribute.h"
-#include "libipproto/ipp_enums.h"
+#include "libipp/ipp_attribute.h"
+#include "libipp/ipp_enums.h"
 
 namespace ipp {
 

@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libipproto/ipp_attribute.h"
+#include "libipp/ipp_attribute.h"
 
 #include <algorithm>
 #include <limits>
 #include <string>
 #include <vector>
 
-#include "libipproto/ipp_package.h"
+#include "libipp/ipp_package.h"
 
 namespace {
 
