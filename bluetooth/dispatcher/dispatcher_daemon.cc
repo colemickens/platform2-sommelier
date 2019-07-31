@@ -36,10 +36,13 @@ bool DispatcherDaemon::Init(scoped_refptr<dbus::Bus> bus,
   }
 
   suspend_manager_ = std::make_unique<SuspendManager>(bus);
+  debug_manager_ = std::make_unique<DebugManager>(
+      bus, exported_object_manager_wrapper_.get());
   dispatcher_ =
       std::make_unique<Dispatcher>(bus, exported_object_manager_wrapper_.get());
 
   suspend_manager_->Init();
+  debug_manager_->Init();
 
   return dispatcher_->Init(passthrough_mode_);
 }

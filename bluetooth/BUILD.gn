@@ -51,6 +51,7 @@ static_library("libdispatcher") {
     "dispatcher/client_manager.cc",
     "dispatcher/dbus_connection_factory.cc",
     "dispatcher/dbus_util.cc",
+    "dispatcher/debug_manager.cc",
     "dispatcher/dispatcher.cc",
     "dispatcher/dispatcher_client.cc",
     "dispatcher/dispatcher_daemon.cc",
