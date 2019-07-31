@@ -5,6 +5,7 @@
 #ifndef DLCSERVICE_DLC_SERVICE_DBUS_ADAPTOR_H_
 #define DLCSERVICE_DLC_SERVICE_DBUS_ADAPTOR_H_
 
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -107,9 +108,12 @@ class DlcServiceDBusAdaptor
 
   std::string current_boot_slot_name_;
 
-  // List of currently existing DLC modules. Use a set in order to handle
-  // repeats implicitly.
-  std::set<std::string> installed_dlc_modules_;
+  // Map of currently existing DLC modules with it's corresponding dlc root.
+  // Use a map in order to handle repeats implicitly. An empty value signifies
+  // that the DLC has not been mounted yet, which should only happen within the
+  // time between c'tor and call to |LoadDlcModuleImages()|.
+  // .first = DLC id, .second = DLC root
+  std::map<std::string, std::string> installed_dlc_modules_;
 
   // List of allowed DLC modules based on manifest. Use a set in order to handle
   // repeats implicitly.

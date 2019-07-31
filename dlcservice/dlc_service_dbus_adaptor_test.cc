@@ -195,7 +195,10 @@ TEST_F(DlcServiceDBusAdaptorTest, GetInstalledTest) {
   EXPECT_TRUE(
       dlc_service_dbus_adaptor_->GetInstalled(nullptr, &dlc_module_list));
   EXPECT_EQ(dlc_module_list.dlc_module_infos_size(), 1);
-  EXPECT_EQ(dlc_module_list.dlc_module_infos(0).dlc_id(), kFirstDlc);
+
+  DlcModuleInfo dlc_module = dlc_module_list.dlc_module_infos(0);
+  EXPECT_EQ(dlc_module.dlc_id(), kFirstDlc);
+  EXPECT_FALSE(dlc_module.dlc_root().empty());
 }
 
 TEST_F(DlcServiceDBusAdaptorTest, UninstallTest) {

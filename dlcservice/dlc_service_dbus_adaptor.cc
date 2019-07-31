@@ -26,6 +26,7 @@ using base::Callback;
 using base::File;
 using base::FilePath;
 using base::ScopedTempDir;
+using std::pair;
 using std::string;
 using std::unique_ptr;
 using std::vector;
@@ -120,7 +121,8 @@ DlcServiceDBusAdaptor::DlcServiceDBusAdaptor(
                  weak_ptr_factory_.GetWeakPtr()));
 
   // Initalize installed DLC modules.
-  installed_dlc_modules_ = utils::ScanDirectory(content_dir_);
+  for (auto installed_dlc_id : utils::ScanDirectory(content_dir_))
+    installed_dlc_modules_[installed_dlc_id];
 
   // Initialize supported DLC modules.
   supported_dlc_modules_ = utils::ScanDirectory(manifest_dir_);
@@ -133,7 +135,8 @@ void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
   for (auto installed_dlc_module_itr = installed_dlc_modules_.begin();
        installed_dlc_module_itr != installed_dlc_modules_.end();
        /* Don't increment here */) {
-    string installed_dlc_module_id = *installed_dlc_module_itr;
+    const string& installed_dlc_module_id = installed_dlc_module_itr->first;
+    string& installed_dlc_module_root = installed_dlc_module_itr->second;
 
     // TODO(crbug.com/990449): Support restart of dlcservice to handle
     // remounting or getting old mount point back to get into a valid state.
@@ -148,6 +151,8 @@ void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
       }
       installed_dlc_modules_.erase(installed_dlc_module_itr++);
     } else {
+      installed_dlc_module_root =
+          utils::GetDlcRootInModulePath(FilePath(mount_point)).value();
       ++installed_dlc_module_itr;
     }
   }
@@ -233,10 +238,13 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
 bool DlcServiceDBusAdaptor::GetInstalled(brillo::ErrorPtr* err,
                                          DlcModuleList* dlc_module_list_out) {
   const auto InsertIntoDlcModuleListOut =
-      [dlc_module_list_out](const string& dlc_module_id) {
+      [dlc_module_list_out](const pair<string, string>& dlc_module) {
+        const string &dlc_module_id = dlc_module.first,
+                     &dlc_module_root = dlc_module.second;
         DlcModuleInfo* dlc_module_info =
             dlc_module_list_out->add_dlc_module_infos();
         dlc_module_info->set_dlc_id(dlc_module_id);
+        dlc_module_info->set_dlc_root(dlc_module_root);
       };
   for_each(begin(installed_dlc_modules_), end(installed_dlc_modules_),
            InsertIntoDlcModuleListOut);
@@ -447,8 +455,10 @@ void DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignal(
   scoped_cleanups.Cancel();
 
   // Install was a success so keep track.
-  for (const DlcModuleInfo& dlc_module : dlc_module_list.dlc_module_infos())
-    installed_dlc_modules_.insert(dlc_module.dlc_id());
+  for (const DlcModuleInfo& installed_dlc_module :
+       install_result.dlc_module_list().dlc_module_infos())
+    installed_dlc_modules_.emplace(installed_dlc_module.dlc_id(),
+                                   installed_dlc_module.dlc_root());
 
   install_result.set_success(true);
   install_result.set_error_code(
