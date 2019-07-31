@@ -147,8 +147,6 @@ class WilcoDtcSupportdMojoServiceTest : public testing::Test {
   std::unique_ptr<WilcoDtcSupportdMojoService> service_;
 };
 
-}  // namespace
-
 // TODO(crbug.com/946330): Disabled due to flakiness.
 TEST_F(WilcoDtcSupportdMojoServiceTest, DISABLED_SendUiMessageToWilcoDtc) {
   base::StringPiece json_message("{\"message\": \"Hello world!\"}");
@@ -192,5 +190,7 @@ TEST_F(WilcoDtcSupportdMojoServiceTest, NotifyConfigurationDataChanged) {
   EXPECT_CALL(*delegate(), NotifyConfigurationDataChangedToWilcoDtc());
   ASSERT_NO_FATAL_FAILURE(NotifyConfigurationDataChanged());
 }
+
+}  // namespace
 
 }  // namespace diagnostics

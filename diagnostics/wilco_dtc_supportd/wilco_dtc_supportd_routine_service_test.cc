@@ -61,8 +61,6 @@ void SaveGetRoutineUpdateResponse(
   callback.Run();
 }
 
-}  // namespace
-
 // Tests for the WilcoDtcSupportdRoutineService class.
 class WilcoDtcSupportdRoutineServiceTest : public testing::Test {
  protected:
@@ -160,5 +158,7 @@ TEST_F(WilcoDtcSupportdRoutineServiceTest, AccessStoppedRoutine) {
   EXPECT_EQ(update_response.status(), grpc_api::ROUTINE_STATUS_ERROR);
   EXPECT_EQ(update_response.status_message(), kInvalidRoutineOutput);
 }
+
+}  // namespace
 
 }  // namespace diagnostics

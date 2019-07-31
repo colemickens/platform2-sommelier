@@ -10,10 +10,14 @@
 
 namespace diagnostics {
 
+namespace {
+
 TEST(EcConstantsTest, PropertiesPath) {
   EXPECT_EQ(
       base::FilePath(kEcDriverSysfsPath).Append(kEcDriverSysfsPropertiesPath),
       base::FilePath("sys/bus/platform/devices/GOOG000C:00/properties/"));
 }
+
+}  // namespace
 
 }  // namespace diagnostics

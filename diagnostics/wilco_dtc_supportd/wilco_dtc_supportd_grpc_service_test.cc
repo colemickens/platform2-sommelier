@@ -425,8 +425,6 @@ class WilcoDtcSupportdGrpcServiceTest : public testing::Test {
   WilcoDtcSupportdGrpcService service_{&delegate_};
 };
 
-}  // namespace
-
 TEST_F(WilcoDtcSupportdGrpcServiceTest, GetProcDataUnsetType) {
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetProcData(grpc_api::GetProcDataRequest::TYPE_UNSET, &file_dumps);
@@ -610,8 +608,6 @@ TEST_F(WilcoDtcSupportdGrpcServiceTest, GetVpdFieldUnset) {
   EXPECT_TRUE(vpd_field_value.empty());
 }
 
-namespace {
-
 // Tests for the GetProcData() method of WilcoDtcSupportdGrpcServiceTest when a
 // single file is requested.
 //
@@ -640,8 +636,6 @@ class SingleProcFileWilcoDtcSupportdGrpcServiceTest
     return temp_dir_path().Append(relative_file_path());
   }
 };
-
-}  // namespace
 
 // Test that GetProcData() returns a single item with the requested file data
 // when the file exists.
@@ -684,8 +678,6 @@ INSTANTIATE_TEST_CASE_P(
                  "proc/diskstats"),
         std::tie(grpc_api::GetProcDataRequest::FILE_CPUINFO, "proc/cpuinfo"),
         std::tie(grpc_api::GetProcDataRequest::FILE_VMSTAT, "proc/vmstat")));
-
-namespace {
 
 // Tests for the GetSysfsData() method of WilcoDtcSupportdGrpcServiceTest when a
 // directory is requested.
@@ -748,8 +740,6 @@ class SysfsDirectoryWilcoDtcSupportdGrpcServiceTest
   const std::string kRelativeSymlinkPath = "foo_symlink";
   const std::string kRelativeNestedFilePath = "foo_dir/nested_file";
 };
-
-}  // namespace
 
 // Test that GetSysfsData() returns an empty result when the directory doesn't
 // exist.
@@ -889,8 +879,6 @@ INSTANTIATE_TEST_CASE_P(
                         "sys/devices/system/cpu/",
                         false)));
 
-namespace {
-
 // Tests for the GetEcTelemetry() method of WilcoDtcSupportdGrpcServiceTest.
 //
 // This is a parameterized test with the following parameters:
@@ -919,8 +907,6 @@ class GetEcTelemetryWilcoDtcSupportdGrpcServiceTest
     return temp_dir_path().Append(kEcGetTelemetryFilePath);
   }
 };
-
-}  // namespace
 
 // Test that GetEcTelemetry() response contains expected |status| and |payload|
 // field values.
@@ -957,8 +943,6 @@ INSTANTIATE_TEST_CASE_P(
                             STATUS_ERROR_INPUT_PAYLOAD_MAX_SIZE_EXCEEDED,
                         "")));
 
-namespace {
-
 // Tests for the GetEcProperty() method of WilcoDtcSupportdGrpcServiceTest.
 //
 // This is a parameterized test with the following parameters:
@@ -986,8 +970,6 @@ class GetEcPropertyWilcoDtcSupportdGrpcServiceTest
         .Append(sysfs_file_name());
   }
 };
-
-}  // namespace
 
 // Test that GetEcProperty() returns EC property value when appropriate
 // sysfs file exists.
@@ -1036,8 +1018,6 @@ INSTANTIATE_TEST_CASE_P(
                  kEcPropertyIchAzaliaEn),
         std::tie(grpc_api::GetEcPropertyRequest::PROPERTY_SIGN_OF_LIFE_KBBL,
                  kEcPropertySignOfLifeKbbl)));
-
-namespace {
 
 // Tests for the PerformWebRequest() method of WilcoDtcSupportdGrpcService.
 //
@@ -1090,8 +1070,6 @@ class PerformWebRequestWilcoDtcSupportdGrpcServiceTest
   const int* http_status() const { return std::get<6>(GetParam()); }
   const char* response_body() const { return std::get<7>(GetParam()); }
 };
-
-}  // namespace
 
 // Tests that PerformWebRequest() returns an appropriate status and HTTP status
 // code.
@@ -1210,8 +1188,6 @@ INSTANTIATE_TEST_CASE_P(
             nullptr /* http_status */,
             nullptr /* response_body */)));
 
-namespace {
-
 // Tests for the GetRoutineUpdate() method of WilcoDtcSupportdGrpcService.
 //
 // This is a parameterized test with the following parameters:
@@ -1227,8 +1203,6 @@ class GetRoutineUpdateRequestWilcoDtcSupportdGrpcServiceTest
     return GetParam();
   }
 };
-
-}  // namespace
 
 // Tests that GetRoutineUpdate() returns an appropriate uuid, status, progress
 // percent, user message and output.
@@ -1269,8 +1243,6 @@ INSTANTIATE_TEST_CASE_P(,
                             grpc_api::GetRoutineUpdateRequest::CANCEL,
                             grpc_api::GetRoutineUpdateRequest::GET_STATUS));
 
-namespace {
-
 // Test for the GetVpdField() method of WilcoDtcSupportdGrpcService.
 //
 // This is a parametrized test with the following parameters:
@@ -1300,8 +1272,6 @@ class GetVpdFieldWilcoDtcSupportdGrpcServiceTest
   }
   std::string expected_value() const { return std::get<4>(GetParam()); }
 };
-
-}  // namespace
 
 // Test that GetVpdField() is read properly.
 TEST_P(GetVpdFieldWilcoDtcSupportdGrpcServiceTest, GetVpdField) {
@@ -1344,5 +1314,7 @@ INSTANTIATE_TEST_CASE_P(
                         "" /* file_contents */,
                         grpc_api::GetVpdFieldResponse::STATUS_ERROR_INTERNAL,
                         "" /* expected_value */)));
+
+}  // namespace
 
 }  // namespace diagnostics

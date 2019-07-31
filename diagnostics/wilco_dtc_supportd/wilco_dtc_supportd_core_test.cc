@@ -145,8 +145,6 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
   std::unique_ptr<WilcoDtcSupportdCore> core_;
 };
 
-}  // namespace
-
 // Test successful shutdown after failed start.
 TEST_F(WilcoDtcSupportdCoreTest, FailedStartAndSuccessfulShutdown) {
   // Invalid gRPC service URI.
@@ -157,8 +155,6 @@ TEST_F(WilcoDtcSupportdCoreTest, FailedStartAndSuccessfulShutdown) {
   core()->ShutDown(run_loop.QuitClosure());
   run_loop.Run();
 }
-
-namespace {
 
 // Tests for the WilcoDtcSupportdCore class which started successfully.
 class StartedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
@@ -372,8 +368,6 @@ class StartedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
   std::unique_ptr<FakeBrowser> fake_browser_;
 };
 
-}  // namespace
-
 // Test that the Mojo service gets successfully bootstrapped after the
 // BootstrapMojoConnection D-Bus method is called.
 TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapSuccess) {
@@ -436,8 +430,6 @@ TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapSuccessThenAbort) {
   base::RunLoop().RunUntilIdle();
   Mock::VerifyAndClearExpectations(core_delegate());
 }
-
-namespace {
 
 // Tests for the WilcoDtcSupportdCore class with the already established Mojo
 // connection to the fake browser and gRPC communication with the fake
@@ -513,8 +505,6 @@ class BootstrappedWilcoDtcSupportdCoreTest
   std::unique_ptr<FakeWilcoDtc> fake_ui_message_receiver_wilco_dtc_;
   std::unique_ptr<FakeWilcoDtc> fake_wilco_dtc_;
 };
-
-}  // namespace
 
 // Test that the UI message receiver wilco_dtc will receive message from
 // browser.
@@ -753,8 +743,6 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetConfigurationDataFromBrowser) {
       << "Actual: {" << response->ShortDebugString() << "}";
 }
 
-namespace {
-
 // Fake types to be used to emulate EC events.
 const uint16_t kFakeEcEventType1 = 0xabcd;
 const uint16_t kFakeEcEventType2 = 0x1234;
@@ -821,8 +809,6 @@ class EcEventServiceBootstrappedWilcoDtcSupportdCoreTest
   }
 };
 
-}  // namespace
-
 // Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
 // called by wilco_dtc support daemon.
 TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
@@ -867,5 +853,7 @@ TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
   // Expect only EC event with valid size.
   ExpectAllFakeWilcoDtcReceivedEcEvents({{kFakeEcEventType1, GetPayload(6)}});
 }
+
+}  // namespace
 
 }  // namespace diagnostics

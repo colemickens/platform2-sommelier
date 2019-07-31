@@ -46,8 +46,6 @@ class WilcoDtcSupportdDBusServiceTest : public testing::Test {
   WilcoDtcSupportdDBusService service_{&delegate_};
 };
 
-}  // namespace
-
 // Test that BootstrapMojoConnection() successfully calls into the delegate
 // method when called with a valid file descriptor.
 TEST_F(WilcoDtcSupportdDBusServiceTest, BootstrapMojoConnectionBasic) {
@@ -75,5 +73,7 @@ TEST_F(WilcoDtcSupportdDBusServiceTest, BootstrapMojoConnectionInvalidFd) {
       &error, base::ScopedFD() /* mojo_pipe_fd */));
   EXPECT_TRUE(error);
 }
+
+}  // namespace
 
 }  // namespace diagnostics
