@@ -18,9 +18,9 @@
 
 #include <algorithm>
 #include <climits>
+#include <set>
 #include <string>
 #include <vector>
-#include <set>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <base/bind.h>
