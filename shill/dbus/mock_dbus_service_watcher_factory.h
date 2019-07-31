@@ -20,7 +20,7 @@ class MockDBusServiceWatcherFactory : public DBusServiceWatcherFactory {
   virtual ~MockDBusServiceWatcherFactory() = default;
 
   MOCK_METHOD3(CreateDBusServiceWatcher,
-               std::unique_ptr<ChromeosDBusServiceWatcher>(
+               std::unique_ptr<DBusServiceWatcher>(
                    scoped_refptr<dbus::Bus> bus,
                    const std::string& connection_name,
                    const base::Closure& on_connection_vanish));

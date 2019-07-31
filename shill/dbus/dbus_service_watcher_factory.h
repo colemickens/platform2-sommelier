@@ -15,7 +15,7 @@
 
 namespace shill {
 
-class ChromeosDBusServiceWatcher;
+class DBusServiceWatcher;
 
 class DBusServiceWatcherFactory {
  public:
@@ -24,7 +24,7 @@ class DBusServiceWatcherFactory {
   // This is a singleton. Use DBusServiceWatcherFactory::GetInstance()->Foo().
   static DBusServiceWatcherFactory* GetInstance();
 
-  virtual std::unique_ptr<ChromeosDBusServiceWatcher> CreateDBusServiceWatcher(
+  virtual std::unique_ptr<DBusServiceWatcher> CreateDBusServiceWatcher(
       scoped_refptr<dbus::Bus> bus,
       const std::string& connection_name,
       const base::Closure& on_connection_vanish);

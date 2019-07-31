@@ -6,7 +6,7 @@
 
 #include <memory>
 
-#include "shill/dbus/chromeos_dbus_service_watcher.h"
+#include "shill/dbus/dbus_service_watcher.h"
 
 namespace shill {
 
@@ -18,13 +18,13 @@ DBusServiceWatcherFactory* DBusServiceWatcherFactory::GetInstance() {
   return instance.get();
 }
 
-std::unique_ptr<ChromeosDBusServiceWatcher>
+std::unique_ptr<DBusServiceWatcher>
 DBusServiceWatcherFactory::CreateDBusServiceWatcher(
     scoped_refptr<dbus::Bus> bus,
     const std::string& connection_name,
     const base::Closure& on_connection_vanish) {
-  return std::make_unique<ChromeosDBusServiceWatcher>(bus, connection_name,
-                                                      on_connection_vanish);
+  return std::make_unique<DBusServiceWatcher>(bus, connection_name,
+                                              on_connection_vanish);
 }
 
 }  // namespace shill

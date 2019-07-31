@@ -9,7 +9,7 @@
 #include <base/bind.h>
 
 #include "shill/control_interface.h"
-#include "shill/dbus/chromeos_dbus_control.h"
+#include "shill/dbus/dbus_control.h"
 #include "shill/dhcp/dhcp_provider.h"
 #include "shill/error.h"
 #include "shill/logging.h"
@@ -88,7 +88,7 @@ bool DaemonTask::Quit(const base::Closure& completion_callback) {
 
 void DaemonTask::Init() {
   dispatcher_.reset(new EventDispatcher());
-  control_.reset(new ChromeosDBusControl(dispatcher_.get()));
+  control_.reset(new DBusControl(dispatcher_.get()));
   metrics_.reset(new Metrics());
   rtnl_handler_ = RTNLHandler::GetInstance();
   routing_table_ = RoutingTable::GetInstance();
