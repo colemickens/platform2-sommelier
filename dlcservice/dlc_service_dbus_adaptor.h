@@ -76,7 +76,8 @@ class DlcServiceDBusAdaptor
   std::string ScanDlcModulePackage(const std::string& id);
 
   // Checks if Update Engine is in a state among |status_list|.
-  bool CheckForUpdateEngineStatus(const std::vector<std::string>& status_list);
+  bool CheckForUpdateEngineStatus(
+      const std::vector<update_engine::Operation>& status_list);
 
   // Send |OnInstalled| D-Bus signal.
   void SendOnInstalledSignal(const InstallResult& install_result);

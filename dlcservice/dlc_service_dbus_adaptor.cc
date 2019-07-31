@@ -177,7 +177,7 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
     scoped_paths.emplace_back(std::move(scoped_path));
   }
 
-  if (!CheckForUpdateEngineStatus({update_engine::kUpdateStatusIdle})) {
+  if (!CheckForUpdateEngineStatus({update_engine::IDLE})) {
     LogAndSetError(
         err, "Update Engine is performing operations or a reboot is pending.");
     return false;
@@ -226,8 +226,7 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
   }
 
   if (!CheckForUpdateEngineStatus(
-          {update_engine::kUpdateStatusIdle,
-           update_engine::kUpdateStatusUpdatedNeedReboot})) {
+          {update_engine::IDLE, update_engine::UPDATED_NEED_REBOOT})) {
     LogAndSetError(err, "Update Engine is performing operations.");
     return false;
   }
@@ -349,21 +348,15 @@ string DlcServiceDBusAdaptor::ScanDlcModulePackage(const string& id) {
 }
 
 bool DlcServiceDBusAdaptor::CheckForUpdateEngineStatus(
-    const vector<string>& status_list) {
-  int64_t last_checked_time = 0;
-  double progress = 0;
-  string current_operation;
-  string new_version;
-  int64_t new_size = 0;
-  if (!update_engine_proxy_->GetStatus(&last_checked_time, &progress,
-                                       &current_operation, &new_version,
-                                       &new_size, nullptr)) {
+    const vector<Operation>& status_list) {
+  StatusResult status_result;
+  if (!update_engine_proxy_->GetStatusAdvanced(&status_result, nullptr)) {
     LOG(ERROR) << "Update Engine is not available.";
     return false;
   }
   if (!std::any_of(status_list.begin(), status_list.end(),
-                   [&current_operation](const string& status) {
-                     return current_operation == status;
+                   [&status_result](const Operation& status) {
+                     return status_result.current_operation() == status;
                    })) {
     return false;
   }

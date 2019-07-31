@@ -114,9 +114,10 @@ class DlcServiceDBusAdaptorTest : public testing::Test {
     mock_update_engine_proxy_ptr_ = mock_update_engine_proxy_.get();
     ON_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _))
         .WillByDefault(Return(true));
-    ON_CALL(*mock_update_engine_proxy_ptr_, GetStatus(_, _, _, _, _, _, _))
-        .WillByDefault(DoAll(SetArgPointee<2>(update_engine::kUpdateStatusIdle),
-                             Return(true)));
+    StatusResult status_result;
+    status_result.set_current_operation(Operation::IDLE);
+    ON_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+        .WillByDefault(DoAll(SetArgPointee<0>(status_result), Return(true)));
 
     // Use the mocks to create |DlcServiceDBusAdaptor|.
     dlc_service_dbus_adaptor_ = std::make_unique<DlcServiceDBusAdaptor>(
@@ -164,7 +165,6 @@ TEST_F(DlcServiceDBusAdaptorTest, GetInstalledTest) {
 TEST_F(DlcServiceDBusAdaptorTest, UninstallTest) {
   ON_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
       .WillByDefault(DoAll(SetArgPointee<2>(true), Return(true)));
-  string update_status_idle = update_engine::kUpdateStatusIdle;
 
   EXPECT_TRUE(dlc_service_dbus_adaptor_->Uninstall(nullptr, kFirstDlc));
   EXPECT_FALSE(base::PathExists(content_path_.Append(kFirstDlc)));
@@ -260,9 +260,6 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallUrlTest) {
 
   ON_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _))
       .WillByDefault(Return(true));
-  string update_status_idle = update_engine::kUpdateStatusIdle;
-  ON_CALL(*mock_update_engine_proxy_ptr_, GetStatus(_, _, _, _, _, _, _))
-      .WillByDefault(DoAll(SetArgPointee<2>(update_status_idle), Return(true)));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               AttemptInstall(ProtoHasUrl(omaha_url_override), _, _))
       .Times(1);
