@@ -105,11 +105,22 @@ $ repo upload . --cbr
 ```
 
 The first two git commands create a commit in your local git repository. The
-"repo upload" step uploads the commit to Gerrit for code review. At this point,
-you'd typically add a reviewer, and then submit your change through the commit
-queue. However, to keep the codelab reusable, you can just abandon the commit
-that you've uploaded to gerrit by clicking "Abandon" in the gerrit UI.
+"repo upload" step uploads the commit to Gerrit for code review.
+
+Make sure to run commit hooks when prompted. If you need to update the commit
+with the required fields, run `git commit --amend` command.
+
+## Cleaning up
+
+At this point, you'd typically add a reviewer, and then submit your change
+through the commit queue. However, to keep the codelab reusable, you can just
+abandon the commit that you've uploaded to gerrit by clicking "Abandon" in the
+gerrit UI.
+
+To clean up your local changes, please see [Chromium OS Contributing Guide].
 
 [Building Chromium OS]: https://chromium.googlesource.com/chromiumos/docs/+/master/developer_guide.md#Building-Chromium-OS
 
 [Installing Chromium OS on your Device]: https://chromium.googlesource.com/chromiumos/docs/+/master/developer_guide.md#Installing-Chromium-OS-on-your-Device
+
+[Chromium OS Contributing Guide]: https://chromium.googlesource.com/chromiumos/docs/+/HEAD/contributing.md#clean-up
