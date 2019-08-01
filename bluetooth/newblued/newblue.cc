@@ -23,6 +23,13 @@ namespace bluetooth {
 
 namespace {
 
+// If the BT address is valid?
+bool isValidBtAddress(const struct bt_addr& addr) {
+  uint64_t addr_val = 0;
+  memcpy(&addr_val, addr.addr, sizeof(addr.addr));
+  return addr_val != 0;
+}
+
 // Converts the uint8_t[6] MAC address into std::string form, e.g.
 // {0x05, 0x04, 0x03, 0x02, 0x01, 0x00} will be 00:01:02:03:04:05.
 std::string ConvertBtAddrToString(const struct bt_addr& addr) {
@@ -245,6 +252,9 @@ std::vector<KnownDevice> Newblue::GetKnownDevices() {
     device.is_paired = node->isPaired;
     if (node->name)
       device.name = std::string(node->name);
+    device.identity_address = isValidBtAddress(node->identityAddr)
+                                  ? ConvertBtAddrToString(node->identityAddr)
+                                  : "";
     devices.push_back(device);
     node = node->next;
   }
@@ -401,10 +411,14 @@ void Newblue::PairStateCallback(const smPairStateChange& change,
   std::string address = ConvertBtAddrToString(change.peerAddr);
   PairState state = static_cast<PairState>(change.pairState);
   PairError error = static_cast<PairError>(change.pairErr);
+  std::string identity_address =
+      isValidBtAddress(change.peerIdentityAddr)
+          ? ConvertBtAddrToString(change.peerIdentityAddr)
+          : "";
 
   // Notify |pair_observers|.
   for (const auto& observer : pair_observers_)
-    observer.second.Run(address, state, error);
+    observer.second.Run(address, state, error, identity_address);
 }
 
 void Newblue::GattConnectCallbackThunk(void* data,

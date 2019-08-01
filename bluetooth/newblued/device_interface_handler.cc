@@ -278,7 +278,8 @@ Device::Device(const std::string& address)
       icon(ConvertAppearanceToIcon(kDefaultAppearance)),
       flags({0}),
       manufacturer(
-          MakeManufacturer(kDefaultManufacturerId, std::vector<uint8_t>())) {}
+          MakeManufacturer(kDefaultManufacturerId, std::vector<uint8_t>())),
+      identity_address("") {}
 
 DeviceInterfaceHandler::DeviceInterfaceHandler(
     scoped_refptr<dbus::Bus> bus,
@@ -301,6 +302,9 @@ bool DeviceInterfaceHandler::Init() {
                                               known_device.address_type);
     SetDevicePaired(device, true);
     device->name.SetValue(known_device.name + kNewblueNameSuffix);
+    if (!known_device.identity_address.empty())
+      device->identity_address.SetValue(known_device.identity_address);
+
     UpdateDeviceAlias(device);
     ExportOrUpdateDevice(device);
   }
@@ -906,6 +910,7 @@ void DeviceInterfaceHandler::UpdateDeviceProperties(
   // they are updated.
   if (is_new_device) {
     // Expose immutable and non-optional properties for the new device.
+    // The address property might be overwritten later by identity address.
     interface->EnsureExportedPropertyRegistered<std::string>(
         bluetooth_device::kAddressProperty)->SetValue(device.address);
     interface->EnsureExportedPropertyRegistered<std::string>(
@@ -950,6 +955,9 @@ void DeviceInterfaceHandler::UpdateDeviceProperties(
                      false);
   ExportDBusProperty(interface, bluetooth_device::kManufacturerDataProperty,
                      device.manufacturer, false);
+  // Overwrite the address property with identity address.
+  ExportDBusProperty(interface, bluetooth_device::kAddressProperty,
+                     device.identity_address, false);
 }
 
 void DeviceInterfaceHandler::UpdateEir(Device* device,
@@ -1142,6 +1150,7 @@ void DeviceInterfaceHandler::ClearPropertiesUpdated(Device* device) {
   device->service_uuids.ClearUpdated();
   device->service_data.ClearUpdated();
   device->manufacturer.ClearUpdated();
+  device->identity_address.ClearUpdated();
 }
 
 struct smPairSecurityRequirements
@@ -1224,9 +1233,11 @@ DeviceInterfaceHandler::DetermineSecurityRequirements(const Device& device) {
   return security_requirement;
 }
 
-void DeviceInterfaceHandler::OnPairStateChanged(const std::string& address,
-                                                PairState pair_state,
-                                                PairError pair_error) {
+void DeviceInterfaceHandler::OnPairStateChanged(
+    const std::string& address,
+    PairState pair_state,
+    PairError pair_error,
+    const std::string& identity_address) {
   // The device D-Bus object may have already been unexported, e.g. pairing
   // information is removed during the device removal.
   Device* device = FindDevice(address);
@@ -1253,6 +1264,8 @@ void DeviceInterfaceHandler::OnPairStateChanged(const std::string& address,
       dbus_error = ConvertSmPairErrorToDbusError(pair_error);
       break;
     case PairState::PAIRED:
+      if (!identity_address.empty())
+        device->identity_address.SetValue(identity_address);
       SetDevicePaired(device, true);
       break;
     case PairState::STARTED:

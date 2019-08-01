@@ -28,6 +28,7 @@ struct Device {
   Device();
   explicit Device(const std::string& address);
 
+  // TODO(yudiliu): We need a proper "address" struct to represent the address.
   // MAC address (in format XX:XX:XX:XX:XX:XX).
   std::string address;
   // Whether the MAC address is a random address.
@@ -72,6 +73,9 @@ struct Device {
 
   // [optional] Manufacturer identifier with the extra manufacturer data
   Property<std::map<uint16_t, std::vector<uint8_t>>> manufacturer;
+
+  // Identity address (in format XX:XX:XX:XX:XX:XX).
+  Property<std::string> identity_address;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };
@@ -270,7 +274,8 @@ class DeviceInterfaceHandler {
   // Called when a pairing state changed event is received.
   void OnPairStateChanged(const std::string& address,
                           PairState pair_state,
-                          PairError pair_error);
+                          PairError pair_error,
+                          const std::string& identity_address);
 
   scoped_refptr<dbus::Bus> bus_;
   Newblue* newblue_;

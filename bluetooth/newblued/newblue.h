@@ -119,6 +119,8 @@ struct KnownDevice {
   uint8_t address_type;
   // Whether the device was previously paired.
   bool is_paired;
+  // Identity address (in format XX:XX:XX:XX:XX:XX).
+  std::string identity_address;
 };
 
 // A higher-level API wrapper of the low-level libnewblue C interface.
@@ -133,8 +135,11 @@ class Newblue {
                           uint8_t reply_type,
                           const std::vector<uint8_t>& eir)>;
 
-  using PairStateChangedCallback = base::Callback<void(
-      const std::string& address, PairState pair_state, PairError pair_error)>;
+  using PairStateChangedCallback =
+      base::Callback<void(const std::string& address,
+                          PairState pair_state,
+                          PairError pair_error,
+                          const std::string& identity_address)>;
 
   using GattClientConnectCallback =
       base::Callback<void(gatt_client_conn_t conn_id, uint8_t status)>;

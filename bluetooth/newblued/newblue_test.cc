@@ -53,6 +53,7 @@ class NewblueTest : public ::testing::Test {
     std::vector<uint8_t> eir;
     PairState pair_state;
     PairError pair_error;
+    std::string identity_address;
   };
 
   void SetUp() override {
@@ -81,11 +82,13 @@ class NewblueTest : public ::testing::Test {
 
   void OnPairStateChanged(const std::string& address,
                           PairState pair_state,
-                          PairError pair_error) {
+                          PairError pair_error,
+                          const std::string& identity_address) {
     for (auto& dev : discovered_devices_) {
       if (dev.address == address) {
         dev.pair_state = pair_state;
         dev.pair_error = pair_error;
+        dev.identity_address = identity_address;
       }
     }
   }
@@ -227,6 +230,8 @@ TEST_F(NewblueTest, PairStateChanged) {
   // 1 device discovered.
   struct bt_addr addr1 = {.type = BT_ADDR_TYPE_LE_RANDOM,
                           .addr = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}};
+  struct bt_addr identity_addr = {.type = BT_ADDR_TYPE_LE_RANDOM,
+                                  .addr = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16}};
   uint8_t eir1[] = {
       6, static_cast<uint8_t>(EirType::NAME_SHORT), 'a', 'l', 'i', 'c', 'e'};
   inquiry_response_callback(inquiry_response_callback_data, &addr1, -101,
@@ -270,6 +275,21 @@ TEST_F(NewblueTest, PairStateChanged) {
   EXPECT_EQ(-101, discovered_devices_[0].rssi);
   EXPECT_EQ(PairState::FAILED, discovered_devices_[0].pair_state);
   EXPECT_EQ(PairError::L2C_CONN, discovered_devices_[0].pair_error);
+
+  // Pairing succeeded with identity address set
+  state_change.pairState = SM_PAIR_STATE_PAIRED;
+  state_change.pairErr = SM_PAIR_ERR_NONE;
+  state_change.peerIdentityAddr = identity_addr;
+
+  pair_state_changed_callback_(pair_state_changed_callback_data_, &state_change,
+                               kPairStateChangeHandle);
+  base::RunLoop().RunUntilIdle();
+
+  EXPECT_EQ(1, discovered_devices_.size());
+  EXPECT_EQ("06:05:04:03:02:01", discovered_devices_[0].address);
+  EXPECT_EQ(PairState::PAIRED, discovered_devices_[0].pair_state);
+  EXPECT_EQ(PairError::NONE, discovered_devices_[0].pair_error);
+  EXPECT_EQ("16:15:14:13:12:11", discovered_devices_[0].identity_address);
 }
 
 TEST_F(NewblueTest, Pair) {
