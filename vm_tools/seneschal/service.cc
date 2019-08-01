@@ -1069,7 +1069,7 @@ std::unique_ptr<dbus::Response> Service::UnsharePath(
   for (auto iter = mount_points.rbegin(), end = mount_points.rend();
        iter != end; ++iter) {
     if (umount(iter->value().c_str()) != 0) {
-      LOG(ERROR) << "Failed to unmount";
+      PLOG(ERROR) << "Failed to unmount";
       response.set_failure_reason("Failed to unmount");
       writer.AppendProtoAsArrayOfBytes(response);
       return dbus_response;
