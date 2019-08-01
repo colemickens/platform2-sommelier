@@ -95,7 +95,7 @@ MATCHER_P(IsLinkRouteTo, dst, "") {
          arg.dst.prefix() ==
              IPAddress::GetMaxPrefixLength(IPAddress::kFamilyIPv4) &&
          !arg.src.IsValid() && !arg.gateway.IsValid() &&
-         arg.scope == RT_SCOPE_LINK && !arg.from_rtnl;
+         arg.scope == RT_SCOPE_LINK;
 }
 
 }  // namespace

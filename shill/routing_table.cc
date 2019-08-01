@@ -103,7 +103,6 @@ bool ParseRoutingTableMessage(const RTNLMessage& message,
   entry->gateway = IPAddress(message.family(), gateway_bytes);
   entry->metric = metric;
   entry->scope = route_status.scope;
-  entry->from_rtnl = true;
   entry->table = route_status.table;
   entry->protocol = route_status.protocol;
   entry->type = route_status.type;
@@ -420,7 +419,6 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
     const Query& query = route_queries_.front();
     if (query.sequence == message.seq()) {
       RoutingTableEntry add_entry(entry);
-      add_entry.from_rtnl = false;
       add_entry.tag = query.tag;
       add_entry.table = query.table_id;
       add_entry.protocol = RTPROT_BOOT;
@@ -484,7 +482,6 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
           entry.table == nent->table) {
         table.erase(nent);
       } else if (message.mode() == RTNLMessage::kModeAdd) {
-        nent->from_rtnl = true;
         if (nent->table != entry.table && entry.table == RT_TABLE_MAIN) {
           // Kernel added a routing entry that we have in a per-device table,
           // but placed the entry in the main routing table.

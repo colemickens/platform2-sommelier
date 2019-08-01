@@ -485,7 +485,6 @@ class ConnectionDiagnosticsTest : public Test {
         RoutingTableEntry::Create(address_queried,
                                   IPAddress(address_queried.family()), gateway)
             .SetTable(connection_->table_id());
-    entry.from_rtnl = true;
     connection_diagnostics_.OnRouteQueryResponse(connection_->interface_index(),
                                                  entry);
   }

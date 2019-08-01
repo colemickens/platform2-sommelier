@@ -35,7 +35,6 @@ struct RoutingTableEntry {
   IPAddress gateway;
   uint32_t metric;
   unsigned char scope;
-  bool from_rtnl;
   uint8_t table;
   unsigned char type;
   unsigned char protocol;

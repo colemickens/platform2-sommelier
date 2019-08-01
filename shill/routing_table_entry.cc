@@ -18,7 +18,6 @@ const int RoutingTableEntry::kDefaultTag = -1;
 RoutingTableEntry::RoutingTableEntry()
     : metric(0),
       scope(RT_SCOPE_UNIVERSE),
-      from_rtnl(false),
       table(RT_TABLE_MAIN),
       type(RTN_UNICAST),
       protocol(RTPROT_BOOT),
@@ -72,7 +71,6 @@ bool RoutingTableEntry::operator==(const RoutingTableEntry& b) const {
           gateway == b.gateway &&
           metric == b.metric &&
           scope == b.scope &&
-          from_rtnl == b.from_rtnl &&
           table == b.table &&
           type == b.type &&
           tag == b.tag);
