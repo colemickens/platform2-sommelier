@@ -38,6 +38,11 @@ constexpr char kUriHelperBasename[] = "cups_uri_helper";
 constexpr char kUriHelperSeccompPolicy[] =
     "/usr/share/policy/cups-uri-helper.policy";
 
+// lpadmin returns 1 for all failures and 0 for success as deteremined by
+// surveying systemv/lpadmin.c in the codebase.  So, any other error is
+// an abnormal failure.
+constexpr int kLpadminNormalFailure = 1;
+
 // Returns the exit code for the executed process.
 // By default disallow root mount namespace. Passing true as optional argument
 // enables root mount namespace.
@@ -158,11 +163,17 @@ int32_t CupsTool::AddAutoConfiguredPrinter(const std::string& name,
     result = Lpadmin({"-v", uri, "-p", name, "-m", "everywhere", "-E"});
   }
 
-  if (result != EXIT_SUCCESS) {
+  if (result == EXIT_SUCCESS) {
+    return CupsResult::CUPS_SUCCESS;
+  }
+
+  if (result == kLpadminNormalFailure) {
     return CupsResult::CUPS_AUTOCONF_FAILURE;
   }
 
-  return CupsResult::CUPS_SUCCESS;
+  // Lpadmin may have crashed.  Something is very wrong.
+  LOG(WARNING) << "Lpadmin failed: " << result;
+  return CupsResult::CUPS_FATAL;
 }
 
 int32_t CupsTool::AddManuallyConfiguredPrinter(
