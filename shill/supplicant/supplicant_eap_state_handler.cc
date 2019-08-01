@@ -50,7 +50,7 @@ bool SupplicantEAPStateHandler::ParseStatus(const std::string& status,
       LOG(ERROR) << "EAP: Unexpected " << status << " parameter: " << parameter;
     }
   } else if (status == WPASupplicant::kEAPStatusParameterNeeded) {
-    if (parameter == WPASupplicant::kEAPRequestedParameterPIN) {
+    if (parameter == WPASupplicant::kEAPRequestedParameterPin) {
       // wpa_supplicant could have erased the PIN.  Signal to WiFi that
       // it should supply one if possible.
       *failure = Service::kFailurePinMissing;

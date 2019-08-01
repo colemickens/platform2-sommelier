@@ -82,7 +82,7 @@ class OpenVPNManagementServerTest : public testing::Test {
     ExpectSend("password \"Auth\" \"yoyo\"\n");
   }
 
-  void ExpectPINResponse() {
+  void ExpectPinResponse() {
     driver_.args()->SetString(kOpenVPNPinProperty, "987654");
     SetConnectedSocket();
     ExpectSend("password \"User-Specific TPM Token FOO\" \"987654\"\n");
@@ -270,7 +270,7 @@ TEST_F(OpenVPNManagementServerTest, OnInput) {
         "SUCCESS: Hold released.";
     InputData data = CreateInputDataFromString(s);
     ExpectOTPStaticChallengeResponse();
-    ExpectPINResponse();
+    ExpectPinResponse();
     EXPECT_CALL(driver_, FailService(Service::kFailureConnect,
                                      Service::kErrorDetailsNone));
     EXPECT_CALL(driver_, OnReconnecting(_));
@@ -347,7 +347,7 @@ TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuth) {
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageTPMToken) {
-  ExpectPINResponse();
+  ExpectPinResponse();
   EXPECT_TRUE(
       server_.ProcessNeedPasswordMessage(
           ">PASSWORD:Need 'User-Specific TPM Token FOO' ..."));
@@ -442,14 +442,14 @@ TEST_F(OpenVPNManagementServerTest, ProcessHoldMessage) {
   EXPECT_FALSE(server_.hold_waiting_);
 }
 
-TEST_F(OpenVPNManagementServerTest, SupplyTPMTokenNoPIN) {
+TEST_F(OpenVPNManagementServerTest, SupplyTPMTokenNoPin) {
   EXPECT_CALL(driver_, FailService(Service::kFailureInternal,
                                    Service::kErrorDetailsNone));
   server_.SupplyTPMToken("User-Specific TPM Token FOO");
 }
 
 TEST_F(OpenVPNManagementServerTest, SupplyTPMToken) {
-  ExpectPINResponse();
+  ExpectPinResponse();
   server_.SupplyTPMToken("User-Specific TPM Token FOO");
 }
 

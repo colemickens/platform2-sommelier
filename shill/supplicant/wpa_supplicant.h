@@ -44,7 +44,7 @@ class WPASupplicant {
   static const char kEAPParameterAlertUnknownCA[];
   static const char kEAPParameterFailure[];
   static const char kEAPParameterSuccess[];
-  static const char kEAPRequestedParameterPIN[];
+  static const char kEAPRequestedParameterPin[];
   static const char kEAPStatusAcceptProposedMethod[];
   static const char kEAPStatusCompletion[];
   static const char kEAPStatusLocalTLSAlert[];

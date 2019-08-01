@@ -407,29 +407,35 @@ void Cellular::RegisterOnNetwork(const string& network_id,
   capability_->RegisterOnNetwork(network_id, error, callback);
 }
 
-void Cellular::RequirePIN(const string& pin, bool require,
-                          Error* error, const ResultCallback& callback) {
+void Cellular::RequirePin(const string& pin,
+                          bool require,
+                          Error* error,
+                          const ResultCallback& callback) {
   SLOG(this, 2) << __func__ << "(" << require << ")";
-  capability_->RequirePIN(pin, require, error, callback);
+  capability_->RequirePin(pin, require, error, callback);
 }
 
-void Cellular::EnterPIN(const string& pin,
-                        Error* error, const ResultCallback& callback) {
+void Cellular::EnterPin(const string& pin,
+                        Error* error,
+                        const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
-  capability_->EnterPIN(pin, error, callback);
+  capability_->EnterPin(pin, error, callback);
 }
 
-void Cellular::UnblockPIN(const string& unblock_code,
+void Cellular::UnblockPin(const string& unblock_code,
                           const string& pin,
-                          Error* error, const ResultCallback& callback) {
+                          Error* error,
+                          const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
-  capability_->UnblockPIN(unblock_code, pin, error, callback);
+  capability_->UnblockPin(unblock_code, pin, error, callback);
 }
 
-void Cellular::ChangePIN(const string& old_pin, const string& new_pin,
-                         Error* error, const ResultCallback& callback) {
+void Cellular::ChangePin(const string& old_pin,
+                         const string& new_pin,
+                         Error* error,
+                         const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
-  capability_->ChangePIN(old_pin, new_pin, error, callback);
+  capability_->ChangePin(old_pin, new_pin, error, callback);
 }
 
 void Cellular::Reset(Error* error, const ResultCallback& callback) {

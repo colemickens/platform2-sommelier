@@ -155,10 +155,9 @@ TEST_F(SupplicantEAPStateHandlerTest, ParameterNeeded) {
 
 TEST_F(SupplicantEAPStateHandlerTest, ParameterNeededPin) {
   StartEAP();
-  EXPECT_FALSE(handler_.ParseStatus(
-      WPASupplicant::kEAPStatusParameterNeeded,
-      WPASupplicant::kEAPRequestedParameterPIN,
-      &failure_));
+  EXPECT_FALSE(handler_.ParseStatus(WPASupplicant::kEAPStatusParameterNeeded,
+                                    WPASupplicant::kEAPRequestedParameterPin,
+                                    &failure_));
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ("", GetTLSError());
   EXPECT_EQ(Service::kFailurePinMissing, failure_);

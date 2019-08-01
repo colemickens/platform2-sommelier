@@ -44,18 +44,18 @@ class CellularCapabilityCdma : public CellularCapability3gpp {
   void RegisterOnNetwork(const std::string& network_id,
                          Error* error,
                          const ResultCallback& callback) override;
-  void RequirePIN(const std::string& pin,
+  void RequirePin(const std::string& pin,
                   bool require,
                   Error* error,
                   const ResultCallback& callback) override;
-  void EnterPIN(const std::string& pin,
+  void EnterPin(const std::string& pin,
                 Error* error,
                 const ResultCallback& callback) override;
-  void UnblockPIN(const std::string& unblock_code,
+  void UnblockPin(const std::string& unblock_code,
                   const std::string& pin,
                   Error* error,
                   const ResultCallback& callback) override;
-  void ChangePIN(const std::string& old_pin,
+  void ChangePin(const std::string& old_pin,
                  const std::string& new_pin,
                  Error* error,
                  const ResultCallback& callback) override;

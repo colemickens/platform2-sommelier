@@ -87,7 +87,7 @@ class OpenVPNManagementServer {
   FRIEND_TEST(OpenVPNManagementServerTest, Start);
   FRIEND_TEST(OpenVPNManagementServerTest, Stop);
   FRIEND_TEST(OpenVPNManagementServerTest, SupplyTPMToken);
-  FRIEND_TEST(OpenVPNManagementServerTest, SupplyTPMTokenNoPIN);
+  FRIEND_TEST(OpenVPNManagementServerTest, SupplyTPMTokenNoPin);
 
   // IO handler callbacks.
   void OnReady(int fd);

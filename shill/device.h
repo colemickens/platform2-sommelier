@@ -106,18 +106,18 @@ class Device : public base::RefCounted<Device> {
   virtual void RegisterOnNetwork(const std::string& network_id,
                                  Error* error,
                                  const ResultCallback& callback);
-  virtual void RequirePIN(const std::string& pin,
+  virtual void RequirePin(const std::string& pin,
                           bool require,
                           Error* error,
                           const ResultCallback& callback);
-  virtual void EnterPIN(const std::string& pin,
+  virtual void EnterPin(const std::string& pin,
                         Error* error,
                         const ResultCallback& callback);
-  virtual void UnblockPIN(const std::string& unblock_code,
+  virtual void UnblockPin(const std::string& unblock_code,
                           const std::string& pin,
                           Error* error,
                           const ResultCallback& callback);
-  virtual void ChangePIN(const std::string& old_pin,
+  virtual void ChangePin(const std::string& old_pin,
                          const std::string& new_pin,
                          Error* error,
                          const ResultCallback& callback);

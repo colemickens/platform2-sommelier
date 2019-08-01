@@ -47,7 +47,7 @@ const char EapCredentials::kStorageEapInnerEap[] = "EAP.InnerEAP";
 const char EapCredentials::kStorageEapTLSVersionMax[] = "EAP.TLSVersionMax";
 const char EapCredentials::kStorageEapKeyID[] = "EAP.KeyID";
 const char EapCredentials::kStorageEapKeyManagement[] = "EAP.KeyMgmt";
-const char EapCredentials::kStorageEapPIN[] = "EAP.PIN";
+const char EapCredentials::kStorageEapPin[] = "EAP.PIN";
 const char EapCredentials::kStorageEapPassword[] = "EAP.Password";
 const char EapCredentials::kStorageEapSubjectMatch[] =
     "EAP.SubjectMatch";
@@ -264,7 +264,7 @@ void EapCredentials::Load(StoreInterface* storage, const string& id) {
   storage->GetString(id, kStorageEapKeyManagement, &key_management);
   SetKeyManagement(key_management, nullptr);
   storage->GetCryptedString(id, kStorageEapPassword, &password_);
-  storage->GetString(id, kStorageEapPIN, &pin_);
+  storage->GetString(id, kStorageEapPin, &pin_);
   storage->GetBool(id, kStorageEapUseLoginPassword, &use_login_password_);
 
   // Non-authentication properties.
@@ -337,11 +337,7 @@ void EapCredentials::Save(StoreInterface* storage, const string& id,
                       password_,
                       true,
                       save_credentials);
-  Service::SaveString(storage,
-                      id,
-                      kStorageEapPIN,
-                      pin_,
-                      false,
+  Service::SaveString(storage, id, kStorageEapPin, pin_, false,
                       save_credentials);
   storage->SetBool(id, kStorageEapUseLoginPassword, use_login_password_);
 

@@ -352,27 +352,27 @@ void CellularCapabilityCdma::SetupConnectProperties(KeyValueStore* properties) {
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
 }
 
-void CellularCapabilityCdma::RequirePIN(const string& pin,
+void CellularCapabilityCdma::RequirePin(const string& pin,
                                         bool require,
                                         Error* error,
                                         const ResultCallback& callback) {
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapabilityCdma::EnterPIN(const string& pin,
+void CellularCapabilityCdma::EnterPin(const string& pin,
                                       Error* error,
                                       const ResultCallback& callback) {
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapabilityCdma::UnblockPIN(const string& unblock_code,
+void CellularCapabilityCdma::UnblockPin(const string& unblock_code,
                                         const string& pin,
                                         Error* error,
                                         const ResultCallback& callback) {
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapabilityCdma::ChangePIN(const string& old_pin,
+void CellularCapabilityCdma::ChangePin(const string& old_pin,
                                        const string& new_pin,
                                        Error* error,
                                        const ResultCallback& callback) {

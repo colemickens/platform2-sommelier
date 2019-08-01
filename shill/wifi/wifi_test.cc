@@ -3597,10 +3597,10 @@ TEST_F(WiFiMainTest, EAPEvent) {
   const string kPin("000000");
   EXPECT_CALL(*eap, pin()).WillOnce(ReturnRef(kPin));
   EXPECT_CALL(*service, DisconnectWithFailure(_, _, _)).Times(0);
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
-              NetworkReply(kNetworkRpcId,
-                           StrEq(WPASupplicant::kEAPRequestedParameterPIN),
-                           Ref(kPin)));
+  EXPECT_CALL(
+      *GetSupplicantInterfaceProxy(),
+      NetworkReply(kNetworkRpcId,
+                   StrEq(WPASupplicant::kEAPRequestedParameterPin), Ref(kPin)));
   ReportEAPEvent(kEAPStatus, kEAPParameter);
 }
 

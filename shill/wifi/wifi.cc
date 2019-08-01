@@ -1525,7 +1525,7 @@ void WiFi::EAPEventTask(const string& status, const string& parameter) {
       // We have a PIN configured, so we can provide it back to wpa_supplicant.
       LOG(INFO) << "Re-supplying PIN parameter to wpa_supplicant.";
       supplicant_interface_proxy_->NetworkReply(
-          rpcid, WPASupplicant::kEAPRequestedParameterPIN, pin);
+          rpcid, WPASupplicant::kEAPRequestedParameterPin, pin);
       failure = Service::kFailureNone;
     }
   }

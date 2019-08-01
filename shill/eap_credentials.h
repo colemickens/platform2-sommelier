@@ -97,7 +97,7 @@ class EapCredentials {
   static const char kStorageEapTLSVersionMax[];
   static const char kStorageEapKeyID[];
   static const char kStorageEapKeyManagement[];
-  static const char kStorageEapPIN[];
+  static const char kStorageEapPin[];
   static const char kStorageEapPassword[];
   static const char kStorageEapSubjectMatch[];
   static const char kStorageEapUseProactiveKeyCaching[];

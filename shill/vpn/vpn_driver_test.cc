@@ -37,12 +37,12 @@ namespace {
 
 const char kVPNHostProperty[] = "VPN.Host";
 const char kOTPProperty[] = "VPN.OTP";
-const char kPINProperty[] = "VPN.PIN";
+const char kPinProperty[] = "VPN.PIN";
 const char kPSKProperty[] = "VPN.PSK";
 const char kPasswordProperty[] = "VPN.Password";
 const char kPortProperty[] = "VPN.Port";
 
-const char kPIN[] = "5555";
+const char kPin[] = "5555";
 const char kPassword[] = "random-password";
 const char kPort[] = "1234";
 const char kStorageID[] = "vpn_service_id";
@@ -70,15 +70,15 @@ class VPNDriverUnderTest : public VPNDriver {
 
 // static
 const VPNDriverUnderTest::Property VPNDriverUnderTest::kProperties[] = {
-  { kEapCaCertPemProperty, Property::kArray },
-  { kVPNHostProperty, 0 },
-  { kL2tpIpsecCaCertPemProperty, Property::kArray },
-  { kOTPProperty, Property::kEphemeral },
-  { kPINProperty, Property::kWriteOnly },
-  { kPSKProperty, Property::kCredential },
-  { kPasswordProperty, Property::kCredential },
-  { kPortProperty, 0 },
-  { kProviderTypeProperty, 0 },
+    {kEapCaCertPemProperty, Property::kArray},
+    {kVPNHostProperty, 0},
+    {kL2tpIpsecCaCertPemProperty, Property::kArray},
+    {kOTPProperty, Property::kEphemeral},
+    {kPinProperty, Property::kWriteOnly},
+    {kPSKProperty, Property::kCredential},
+    {kPasswordProperty, Property::kCredential},
+    {kPortProperty, 0},
+    {kProviderTypeProperty, 0},
 };
 
 VPNDriverUnderTest::VPNDriverUnderTest(Manager* manager)
@@ -187,8 +187,8 @@ TEST_F(VPNDriverTest, Load) {
       .WillOnce(DoAll(SetArgPointee<2>(kCaCerts), Return(true)));
   EXPECT_CALL(storage, GetString(kStorageID, kPortProperty, _))
       .WillOnce(DoAll(SetArgPointee<2>(string(kPort)), Return(true)));
-  EXPECT_CALL(storage, GetString(kStorageID, kPINProperty, _))
-      .WillOnce(DoAll(SetArgPointee<2>(string(kPIN)), Return(true)));
+  EXPECT_CALL(storage, GetString(kStorageID, kPinProperty, _))
+      .WillOnce(DoAll(SetArgPointee<2>(string(kPin)), Return(true)));
   EXPECT_CALL(storage, GetCryptedString(kStorageID, kPSKProperty, _))
       .WillOnce(Return(false));
   EXPECT_CALL(storage, GetCryptedString(kStorageID, kPasswordProperty, _))
@@ -199,7 +199,7 @@ TEST_F(VPNDriverTest, Load) {
     EXPECT_EQ(kCaCerts, GetArgs()->GetStrings(kEapCaCertPemProperty));
   }
   EXPECT_EQ(kPort, GetArgs()->LookupString(kPortProperty, ""));
-  EXPECT_EQ(kPIN, GetArgs()->LookupString(kPINProperty, ""));
+  EXPECT_EQ(kPin, GetArgs()->LookupString(kPinProperty, ""));
   EXPECT_EQ(kPassword, GetArgs()->LookupString(kPasswordProperty, ""));
 
   // Properties missing from the persistent store should be deleted.
@@ -210,7 +210,7 @@ TEST_F(VPNDriverTest, Load) {
 
 TEST_F(VPNDriverTest, Save) {
   SetArg(kProviderTypeProperty, "");
-  SetArg(kPINProperty, kPIN);
+  SetArg(kPinProperty, kPin);
   SetArg(kPortProperty, kPort);
   SetArg(kPasswordProperty, kPassword);
   SetArg(kOTPProperty, "987654");
@@ -225,7 +225,7 @@ TEST_F(VPNDriverTest, Save) {
       .WillOnce(Return(true));
   EXPECT_CALL(storage, SetString(kStorageID, kPortProperty, kPort))
       .WillOnce(Return(true));
-  EXPECT_CALL(storage, SetString(kStorageID, kPINProperty, kPIN))
+  EXPECT_CALL(storage, SetString(kStorageID, kPinProperty, kPin))
       .WillOnce(Return(true));
   EXPECT_CALL(storage,
               SetCryptedString(kStorageID, kPasswordProperty, kPassword))
@@ -374,14 +374,14 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   }
 
   // Test write only properties.
-  EXPECT_FALSE(GetProviderPropertyString(store, kPINProperty, nullptr));
+  EXPECT_FALSE(GetProviderPropertyString(store, kPinProperty, nullptr));
 
   // Write properties to the driver args using the PropertyStore interface.
   {
     const string kValue = "some-value";
     Error error;
-    EXPECT_TRUE(store.SetStringProperty(kPINProperty, kValue, &error));
-    EXPECT_EQ(kValue, GetArgs()->GetString(kPINProperty));
+    EXPECT_TRUE(store.SetStringProperty(kPinProperty, kValue, &error));
+    EXPECT_EQ(kValue, GetArgs()->GetString(kPinProperty));
   }
   {
     const vector<string> kValue{ "some-value" };

@@ -837,7 +837,7 @@ void CellularCapability3gpp::SetUnregistered(bool searching) {
   }
 }
 
-void CellularCapability3gpp::RequirePIN(const string& pin,
+void CellularCapability3gpp::RequirePin(const string& pin,
                                         bool require,
                                         Error* error,
                                         const ResultCallback& callback) {
@@ -845,7 +845,7 @@ void CellularCapability3gpp::RequirePIN(const string& pin,
   sim_proxy_->EnablePin(pin, require, error, callback, kTimeoutDefault);
 }
 
-void CellularCapability3gpp::EnterPIN(const string& pin,
+void CellularCapability3gpp::EnterPin(const string& pin,
                                       Error* error,
                                       const ResultCallback& callback) {
   CHECK(error);
@@ -853,7 +853,7 @@ void CellularCapability3gpp::EnterPIN(const string& pin,
   sim_proxy_->SendPin(pin, error, callback, kEnterPinTimeoutMilliseconds);
 }
 
-void CellularCapability3gpp::UnblockPIN(const string& unblock_code,
+void CellularCapability3gpp::UnblockPin(const string& unblock_code,
                                         const string& pin,
                                         Error* error,
                                         const ResultCallback& callback) {
@@ -861,7 +861,7 @@ void CellularCapability3gpp::UnblockPIN(const string& unblock_code,
   sim_proxy_->SendPuk(unblock_code, pin, error, callback, kTimeoutDefault);
 }
 
-void CellularCapability3gpp::ChangePIN(const string& old_pin,
+void CellularCapability3gpp::ChangePin(const string& old_pin,
                                        const string& new_pin,
                                        Error* error,
                                        const ResultCallback& callback) {

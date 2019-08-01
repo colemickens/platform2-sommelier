@@ -44,7 +44,7 @@ const char WPASupplicant::kDriverWired[] = "wired";
 const char WPASupplicant::kEAPParameterAlertUnknownCA[] = "unknown CA";
 const char WPASupplicant::kEAPParameterFailure[] = "failure";
 const char WPASupplicant::kEAPParameterSuccess[] = "success";
-const char WPASupplicant::kEAPRequestedParameterPIN[] = "PIN";
+const char WPASupplicant::kEAPRequestedParameterPin[] = "PIN";
 const char WPASupplicant::kEAPStatusAcceptProposedMethod[] =
     "accept proposed method";
 const char WPASupplicant::kEAPStatusCompletion[] = "completion";

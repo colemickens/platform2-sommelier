@@ -239,39 +239,39 @@ void Device::RegisterOnNetwork(const std::string& /*network_id*/,
                         "Device doesn't support network registration.");
 }
 
-void Device::RequirePIN(const string& /*pin*/,
+void Device::RequirePin(const string& /*pin*/,
                         bool /*require*/,
                         Error* error,
                         const ResultCallback& /*callback*/) {
   SLOG(this, 2) << __func__;
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                        "Device doesn't support RequirePIN.");
+                        "Device doesn't support RequirePin.");
 }
 
-void Device::EnterPIN(const string& /*pin*/,
+void Device::EnterPin(const string& /*pin*/,
                       Error* error,
                       const ResultCallback& /*callback*/) {
   SLOG(this, 2) << __func__;
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                        "Device doesn't support EnterPIN.");
+                        "Device doesn't support EnterPin.");
 }
 
-void Device::UnblockPIN(const string& /*unblock_code*/,
+void Device::UnblockPin(const string& /*unblock_code*/,
                         const string& /*pin*/,
                         Error* error,
                         const ResultCallback& /*callback*/) {
   SLOG(this, 2) << __func__;
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                        "Device doesn't support UnblockPIN.");
+                        "Device doesn't support UnblockPin.");
 }
 
-void Device::ChangePIN(const string& /*old_pin*/,
+void Device::ChangePin(const string& /*old_pin*/,
                        const string& /*new_pin*/,
                        Error* error,
                        const ResultCallback& /*callback*/) {
   SLOG(this, 2) << __func__;
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                        "Device doesn't support ChangePIN.");
+                        "Device doesn't support ChangePin.");
 }
 
 void Device::Reset(Error* error, const ResultCallback& /*callback*/) {
