@@ -13,8 +13,8 @@
 #include <gmock/gmock.h>
 #include <mojo/public/cpp/bindings/binding.h>
 
-#include "diagnostics/common/mojo_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/mock_mojom_wilco_dtc_supportd_client.h"
+#include "diagnostics/wilco_dtc_supportd/mojo_test_utils.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"
 
 namespace diagnostics {

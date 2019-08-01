@@ -10,7 +10,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/common/mojo_test_utils.h"
+#include "diagnostics/wilco_dtc_supportd/mojo_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_dbus_service.h"
 
 using testing::_;
