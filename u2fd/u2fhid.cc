@@ -503,7 +503,8 @@ int U2fHid::ProcessMsg(std::string* resp) {
       return 0;
     }
     default:
-      break;  // Handled below.
+      ReturnFailureResponse(U2F_SW_INS_NOT_SUPPORTED);
+      return -EINVAL;
   }
 
   ReturnError(U2fHidError::kInvalidCmd, transaction_->cid, true);
