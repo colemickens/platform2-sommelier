@@ -173,6 +173,12 @@ class DeviceInterfaceHandler {
   // Returns device address if the given connection ID exists, empty otherwise.
   std::string GetAddressByConnectionId(gatt_client_conn_t conn_id);
 
+  // Once GATT primary services traversal is done, GATT should call this with
+  // |resolved| set to true. If GATT invalidates services, GATT should also call
+  // this with |resolved| set to false.
+  void SetGattServicesResolved(const std::string& device_address,
+                               bool resolved);
+
  private:
   // Returns the in-memory discovered device based on its address, adding it if
   // does not already exist.

@@ -439,6 +439,18 @@ std::string DeviceInterfaceHandler::GetAddressByConnectionId(
   return "";
 }
 
+void DeviceInterfaceHandler::SetGattServicesResolved(
+    const std::string& device_address, bool resolved) {
+  Device* device = FindDevice(device_address);
+  CHECK(device != nullptr);
+
+  if (device->services_resolved.value() == resolved)
+    return;
+
+  device->services_resolved.SetValue(resolved);
+  ExportOrUpdateDevice(device);
+}
+
 Device* DeviceInterfaceHandler::AddOrGetDiscoveredDevice(
     const std::string& address, uint8_t address_type) {
   Device* device = FindDevice(address);
@@ -495,6 +507,8 @@ void DeviceInterfaceHandler::ExportOrUpdateDevice(Device* device) {
   // populated properties.
   if (is_new_device)
     device_interface->ExportAndBlock();
+
+  ClearPropertiesUpdated(device);
 }
 
 void DeviceInterfaceHandler::AddDeviceMethodHandlers(

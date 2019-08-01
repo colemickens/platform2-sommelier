@@ -101,6 +101,9 @@ void Gatt::OnGattDisconnected(const std::string& device_address,
     }
   }
 
+  device_interface_handler_->SetGattServicesResolved(device_address,
+                                                     false /* resolved */);
+
   const auto services = remote_services_.find(device_address);
   if (services != remote_services_.end()) {
     VLOG(1) << "Clear the cached GATT services of device " << device_address;
@@ -292,6 +295,25 @@ void Gatt::OnGattClientTravPrimaryService(
         observer.OnGattDescriptorAdded(*descriptor.second);
     }
   }
+
+  // Notify device interface handler about the completion of traversal.
+  if (IsTravPrimaryServicesCompleted(conn_id)) {
+    VLOG(1) << "GATT primary services traversal finished for device "
+            << device_address;
+    device_interface_handler_->SetGattServicesResolved(device_address,
+                                                       true /* resolved */);
+  }
+}
+
+bool Gatt::IsTravPrimaryServicesCompleted(gatt_client_conn_t conn_id) {
+  for (const auto& transaction : transactions_) {
+    if (transaction.second.conn_id == conn_id &&
+        transaction.second.type ==
+            GattClientOperationType::PRIMARY_SERVICE_TRAV) {
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace bluetooth

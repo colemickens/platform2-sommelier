@@ -62,6 +62,8 @@ class Gatt final : public DeviceInterfaceHandler::DeviceObserver {
   void TravPrimaryServices(const std::string& device_address,
                            gatt_client_conn_t conn_id);
 
+  bool IsTravPrimaryServicesCompleted(gatt_client_conn_t conn_id);
+
   void OnGattClientEnumServices(bool finished,
                                 gatt_client_conn_t conn_id,
                                 UniqueId transaction_id,
