@@ -66,15 +66,19 @@ base::Optional<std::vector<uint8_t>> UserState::GetCounter() {
   std::vector<uint8_t> counter_bytes;
   util::AppendToVector(base::HostToNet32(*counter_), &counter_bytes);
 
+  return counter_bytes;
+}
+
+bool UserState::IncrementCounter() {
   (*counter_)++;
 
   if (!PersistCounter()) {
     LOG(ERROR) << "Failed to persist updated counter. Attempting to re-load.";
     LoadCounter();
-    return base::nullopt;
+    return false;
   }
 
-  return counter_bytes;
+  return true;
 }
 
 void UserState::LoadState() {

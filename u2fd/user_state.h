@@ -31,9 +31,15 @@ class UserState {
   // Get the user secret.
   base::Optional<brillo::SecureBlob> GetUserSecret();
 
-  // Returns the current counter value, which is subsequently immediately
-  // incremented and flushed to disk.
+  // Returns the current counter value. The returned value must not be
+  // returned externally until the counter has succesfully been
+  // incremented (and persisted to disk).
   base::Optional<std::vector<uint8_t>> GetCounter();
+
+  // Increments the counter value, which is subsequently immediately
+  // flushed to disk. Returns true on success, false if the counter
+  // could not be persisted to disk.
+  bool IncrementCounter();
 
  private:
   // Handler for the SessionStateChanged signal.

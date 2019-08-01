@@ -636,9 +636,6 @@ int U2fHid::ProcessU2fAuthenticate(U2fAuthenticateRequestAdpu request,
     return DoU2fSignCheckOnly(request.GetAppId(), request.GetKeyHandle());
   }
 
-  // This will increment the counter even if this request ends up failing due to
-  // lack of presence of an invalid keyhandle.
-  // TODO(louiscollard): Check this is ok.
   base::Optional<std::vector<uint8_t>> counter = user_state_->GetCounter();
   if (!counter.has_value()) {
     return -EINVAL;
@@ -650,6 +647,13 @@ int U2fHid::ProcessU2fAuthenticate(U2fAuthenticateRequestAdpu request,
   std::vector<uint8_t> signature;
   if (DoU2fSign(request.GetAppId(), request.GetKeyHandle(),
                 util::Sha256(to_sign), &signature) != kVendorCmdRcSuccess) {
+    return -EINVAL;
+  }
+
+  if (!user_state_->IncrementCounter()) {
+    // If we can't increment the counter we must not return the signed
+    // response, as the next authenticate response would end up having
+    // the same counter value.
     return -EINVAL;
   }
 
