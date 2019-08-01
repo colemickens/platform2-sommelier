@@ -917,6 +917,7 @@ HELP_ping='
 '
 cmd_ping() (
   local option="dict:string:variant:"
+  local ip_flag="-4"
   local dest
 
   while [ $# -gt 0 ]; do
@@ -924,7 +925,7 @@ cmd_ping() (
     # depend on ping to handle final validation.
     case "$1" in
     -4) option="${option}v6,boolean:false," ;;
-    -6) option="${option}v6,boolean:true," ;;
+    -6) ip_flag="-6"; option="${option}v6,boolean:true," ;;
     -i) shift; option="${option}interval,int32:$1," ;;
     -c) shift; option="${option}count,int32:$1," ;;
     -W) shift; option="${option}waittime,int32:$1," ;;
@@ -952,11 +953,25 @@ cmd_ping() (
     return 1
   fi
 
+  # Convenient shorthand for the next-hop gateway attached to the
+  # default route for the highest priority interface for that IP
+  # version; this means if you have a host named "gw" then you'll need
+  # to specify a FQDN or IP address.
   if [ "${dest}" = "gw" ]; then
-    # Convenient shorthand for the next-hop gateway attached
-    # to the default route; this means if you have a host named
-    # "gw" then you'll need to specify a FQDN or IP address.
-    dest="$(ip route show | awk '$1 == "default" { print $3 }')"
+    # The default route with the lowest metric represents the default
+    # route for the primary device for that IP version.
+    local metric="$(ip "${ip_flag}" route show table 0 | \
+        sed -nE 's/^default .* metric ([0-9]+).*/\1/p' | sort -n | head -n1)"
+    local main_route="$(ip "${ip_flag}" route show table 0 | \
+        grep "^default .* metric ${metric} ")"
+    dest="$(echo "${main_route}" | awk '{print $3}')"
+    # Ping cannot handle link-local v6 addresses like v4 or global v6
+    # addresses. It is necessary to provide ping with the format
+    # ${addr}%${interface} OR -I ${interface} when that is the case.
+    if [ "${ip_flag}" = "-6" ]; then
+      local dev="$(echo "${main_route}" | awk '{print $5}')"
+      option="${option}interface,string:${dev},"
+    fi
     if [ -z "${dest}" ]; then
       echo "Cannot determine primary gateway; routing table is:"
       cmd_route

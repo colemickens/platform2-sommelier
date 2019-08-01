@@ -60,6 +60,11 @@ bool PingTool::Start(const base::ScopedFD& outfd,
   if (!AddIntOption(p, options, "waittime", "-W", error))
     return false;
 
+  auto interface = options.find("interface");
+  if (interface != options.end()) {
+    p->AddStringOption("-I", interface->second.Get<std::string>());
+  }
+
   p->AddArg(destination);
   p->BindFd(outfd.get(), STDOUT_FILENO);
   p->BindFd(outfd.get(), STDERR_FILENO);
