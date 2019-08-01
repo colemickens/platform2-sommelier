@@ -50,7 +50,12 @@ mojo::ScopedHandle CreateReadOnlySharedMemoryMojoHandle(
     return mojo::ScopedHandle();
   }
   memcpy(shared_memory.memory(), content.data(), content.length());
-  return mojo::WrapPlatformFile(shared_memory.TakeHandle().fd);
+  base::SharedMemoryHandle handle;
+  if (!shared_memory.GiveReadOnlyToProcess(base::GetCurrentProcessHandle(),
+                                           &handle)) {
+    return mojo::ScopedHandle();
+  }
+  return mojo::WrapPlatformFile(handle.fd);
 }
 
 }  // namespace diagnostics
