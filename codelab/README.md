@@ -1,19 +1,19 @@
 # Chrome OS Build codelab
 
 This codelab walks through an example for
-  - modifying code in a userspace program,
-  - running unit tests,
-  - deploying it to a device,
-  - and uploading the change for review.
+- modifying code in a userspace program,
+- running unit tests,
+- deploying it to a device,
+- and uploading the change for review.
 
 Make sure that you already have a Chromebook, and know how to build an image
 and flash it to your device. Instructions are at:
-* [Building Chromium OS](https://chromium.googlesource.com/chromiumos/docs/+/master/developer_guide.md#Building-Chromium-OS)
-* [Installing Chromium OS on your Device](https://chromium.googlesource.com/chromiumos/docs/+/master/developer_guide.md#Installing-Chromium-OS-on-your-Device)
+* [Building Chromium OS]
+* [Installing Chromium OS on your Device]
 
 Ensure that you have built a test image on your workstation and flashed it onto
 your DUT before proceeding. If using an official image, you will get confusing
-errors when deploying. See http://crbug.com/693192 for details.
+errors when deploying. See https://crbug.com/693192 for details.
 
 ## Sync and create a new branch
 
@@ -64,6 +64,7 @@ After emerge, you can see that the binary is built on your workstation:
 ```
 
 ## Test your code
+
 Again, two options:
 ```
 # Faster, skips emerge build system
@@ -80,8 +81,8 @@ code in `codelab.cc` so that the test passes.
 
 ## Deploy binary to a Chromebook
 
-To deploy this binary to your DUT (device under test), you can use the `cros deploy`
-command. Once deployed, you can run it on your local system.
+To deploy this binary to your DUT (device under test), you can use the
+`cros deploy` command. Once deployed, you can run it on your local system.
 ```
 # If you've been using cros_workon_make to iterate, now you have to "install".
 # Emerge does this step automatically.
@@ -96,11 +97,11 @@ Hooray! You've built a package and run it locally on your Chromebook.
 ## Creating a commit and uploading to gerrit
 
 Now that you've tested your change, and it looks good, create a git commit with
-containing the edits that you made
+containing the edits that you made.
 ```
 $ git add codelab/codelab.cc codelab/codelab_test.cc
 $ git commit
-$ repo upload .
+$ repo upload . --cbr
 ```
 
 The first two git commands create a commit in your local git repository. The
@@ -108,3 +109,7 @@ The first two git commands create a commit in your local git repository. The
 you'd typically add a reviewer, and then submit your change through the commit
 queue. However, to keep the codelab reusable, you can just abandon the commit
 that you've uploaded to gerrit by clicking "Abandon" in the gerrit UI.
+
+[Building Chromium OS]: https://chromium.googlesource.com/chromiumos/docs/+/master/developer_guide.md#Building-Chromium-OS
+
+[Installing Chromium OS on your Device]: https://chromium.googlesource.com/chromiumos/docs/+/master/developer_guide.md#Installing-Chromium-OS-on-your-Device
