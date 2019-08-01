@@ -37,9 +37,11 @@ class U2fCommandAdpu {
   };
 
   // Attempts to parse the specified string as an ADPU, and returns a valid
-  // U2fCommandAdpu if successful, or base::nullopt otherwise.
+  // U2fCommandAdpu if successful, or base::nullopt otherwise. If unsuccessful,
+  // and u2f_status is not null, populates it with a U2F status code indicating
+  // the type of failure, if an appropriate code is available, or 0 otherwise.
   static base::Optional<U2fCommandAdpu> ParseFromString(
-      const std::string& adpu_raw);
+      const std::string& adpu_raw, uint16_t* u2f_status);
 
   // Creates an 'empty' ADPU for the command with the specified INS command
   // code.
@@ -74,9 +76,11 @@ class U2fRegisterRequestAdpu {
  public:
   // Attempt to parse the body of the specified ADPU as a U2F_REGISTER request.
   // Returns a valid U2fRegisterRequestAdpu if successful, or base::nullopt
-  // otherwise.
+  // otherwise. If unsuccessful, and u2f_status is not null, populates it with
+  // a U2F status code indicating the type of failure, if an appropriate code
+  // is available, or 0 otherwise.
   static base::Optional<U2fRegisterRequestAdpu> FromCommandAdpu(
-      const U2fCommandAdpu& adpu);
+      const U2fCommandAdpu& adpu, uint16_t* u2f_status);
 
   // Whether the request response should use the G2F attestation certificate (if
   // available).
@@ -100,9 +104,11 @@ class U2fAuthenticateRequestAdpu {
  public:
   // Attempt to parse the body of the specified ADPU as a U2F_AUTHENTICATE
   // request. Returns a valid U2fRegisterRequestAdpu if successful, or
-  // base::nullopt otherwise.
+  // base::nullopt otherwise. If unsuccessful, and u2f_status is not null,
+  // populates it with a U2F status code indicating the type of failure,
+  // if an appropriate code is available, or 0 otherwise.
   static base::Optional<U2fAuthenticateRequestAdpu> FromCommandAdpu(
-      const U2fCommandAdpu& adpu);
+      const U2fCommandAdpu& adpu, uint16_t* u2f_status);
 
   // Returns true if the ADPU is for a U2F_AUTHENTICATE check-only
   // request. Check-only requests should verify whether the specified key handle

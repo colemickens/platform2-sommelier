@@ -47,8 +47,8 @@ class U2fCommandAdpu::Parser {
   explicit Parser(const std::string& adpu_raw)
       : adpu_raw_(adpu_raw), pos_(adpu_raw.cbegin()) {}
 
-  base::Optional<U2fCommandAdpu> Parse() {
-    if (ParseHeader() && ParseLc() && ParseBody() && ParseLe()) {
+  base::Optional<U2fCommandAdpu> Parse(uint16_t* u2f_status) {
+    if (ParseHeader(u2f_status) && ParseLc() && ParseBody() && ParseLe()) {
       return adpu_;
     } else {
       VLOG(2) << "Failed to parse ADPU: "
@@ -58,7 +58,7 @@ class U2fCommandAdpu::Parser {
   }
 
  private:
-  bool ParseHeader() {
+  bool ParseHeader(uint16_t* u2f_status) {
     static constexpr uint8_t kAdpuHeaderSize = 4;
 
     if (Remaining() < kAdpuHeaderSize) {
@@ -66,6 +66,9 @@ class U2fCommandAdpu::Parser {
     }
 
     if (Consume() != kAdpuCla) {
+      if (u2f_status) {
+        *u2f_status = U2F_SW_CLA_NOT_SUPPORTED;
+      }
       return false;
     }
 
@@ -142,8 +145,9 @@ class U2fCommandAdpu::Parser {
 };
 
 base::Optional<U2fCommandAdpu> U2fCommandAdpu::ParseFromString(
-    const std::string& adpu_raw) {
-  return U2fCommandAdpu::Parser(adpu_raw).Parse();
+    const std::string& adpu_raw, uint16_t* u2f_status) {
+  *u2f_status = 0;
+  return U2fCommandAdpu::Parser(adpu_raw).Parse(u2f_status);
 }
 
 U2fCommandAdpu U2fCommandAdpu::CreateForU2fIns(U2fIns ins) {
@@ -232,16 +236,7 @@ bool ParseAdpuBody(
 //////////////////////////////////////////////////////////////////////
 
 base::Optional<U2fRegisterRequestAdpu> U2fRegisterRequestAdpu::FromCommandAdpu(
-    const U2fCommandAdpu& adpu) {
-  // We require that P1 be set to 0x03 (though may optionally have the
-  // G2F_ATTEST bit set), implying a test of user presence, and that presence
-  // should be consumed.
-  if ((adpu.P1() & ~G2F_ATTEST) != U2F_AUTH_ENFORCE) {
-    LOG(INFO) << "Received register APDU with invalid P1 value: " << std::hex
-              << adpu.P1();
-    return base::nullopt;
-  }
-
+    const U2fCommandAdpu& adpu, uint16_t* u2f_status) {
   // Request body for U2F_REGISTER ADPUs are in the following format:
   //
   // Byte(s)  | Description
@@ -249,11 +244,25 @@ base::Optional<U2fRegisterRequestAdpu> U2fRegisterRequestAdpu::FromCommandAdpu(
   //  0 - 31  | Challenge
   // 32 - 64  | App ID
 
+  *u2f_status = 0;
+
   U2fRegisterRequestAdpu reg_adpu;
   if (!ParseAdpuBody(adpu.Body(), {{{0, 32}, &reg_adpu.challenge_},
                                    {{32, 32}, &reg_adpu.app_id_}})) {
     LOG(INFO) << "Received invalid U2F_REGISTER ADPU: "
               << base::HexEncode(adpu.Body().data(), adpu.Body().size());
+    if (u2f_status) {
+      *u2f_status = U2F_SW_WRONG_LENGTH;
+    }
+    return base::nullopt;
+  }
+
+  // We require that P1 be set to 0x03 (though may optionally have the
+  // G2F_ATTEST bit set), implying a test of user presence, and that presence
+  // should be consumed.
+  if ((adpu.P1() & ~G2F_ATTEST) != U2F_AUTH_ENFORCE) {
+    LOG(INFO) << "Received register APDU with invalid P1 value: " << std::hex
+              << adpu.P1();
     return base::nullopt;
   }
 
@@ -275,7 +284,10 @@ bool U2fRegisterRequestAdpu::IsChromeDummyWinkRequest() const {
 //////////////////////////////////////////////////////////////////////
 
 base::Optional<U2fAuthenticateRequestAdpu>
-U2fAuthenticateRequestAdpu::FromCommandAdpu(const U2fCommandAdpu& adpu) {
+U2fAuthenticateRequestAdpu::FromCommandAdpu(const U2fCommandAdpu& adpu,
+                                            uint16_t* u2f_status) {
+  *u2f_status = 0;
+
   // The P1 field must be set to a value of 0x03 or 0x07, indicating
   // respectively a request to authenticate with user presence, or a request
   // merely trying to determine whether the key handle is owned by this U2F
@@ -308,6 +320,9 @@ U2fAuthenticateRequestAdpu::FromCommandAdpu(const U2fCommandAdpu& adpu) {
                       {{65, kh_length}, &auth_adpu.key_handle_}})) {
     LOG(INFO) << "Received invalid U2F_AUTHENTICATE ADPU: "
               << base::HexEncode(adpu.Body().data(), adpu.Body().size());
+    if (u2f_status) {
+      *u2f_status = U2F_SW_WRONG_LENGTH;
+    }
     return base::nullopt;
   }
 

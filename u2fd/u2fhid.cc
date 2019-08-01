@@ -337,7 +337,7 @@ void U2fHid::MaybeIgnorePowerButton(
       ignore = true;
     } else if (adpu->Ins() == U2fIns::kU2fAuthenticate) {
       base::Optional<U2fAuthenticateRequestAdpu> auth_adpu =
-          U2fAuthenticateRequestAdpu::FromCommandAdpu(*adpu);
+          U2fAuthenticateRequestAdpu::FromCommandAdpu(*adpu, nullptr);
       ignore = auth_adpu.has_value() && !auth_adpu->IsAuthenticateCheckOnly();
     }
   }
@@ -452,7 +452,7 @@ int U2fHid::ForwardMsg(std::string* resp) {
   U2fIns ins = U2fIns::kInsInvalid;
 
   base::Optional<U2fCommandAdpu> adpu =
-      U2fCommandAdpu::ParseFromString(transaction_->payload);
+      U2fCommandAdpu::ParseFromString(transaction_->payload, nullptr);
   if (adpu.has_value()) {
     ins = adpu->Ins();
   }
@@ -465,57 +465,63 @@ int U2fHid::ForwardMsg(std::string* resp) {
 }
 
 int U2fHid::ProcessMsg(std::string* resp) {
-  U2fIns ins = U2fIns::kInsInvalid;
+  uint16_t u2f_status = 0;
 
   base::Optional<U2fCommandAdpu> adpu =
-      U2fCommandAdpu::ParseFromString(transaction_->payload);
+      U2fCommandAdpu::ParseFromString(transaction_->payload, &u2f_status);
+
   if (adpu.has_value()) {
-    ins = adpu->Ins();
-  }
+    U2fIns ins = adpu->Ins();
 
-  metrics_.SendEnumToUMA(kU2fCommand, static_cast<int>(ins),
-                         static_cast<int>(U2fIns::kU2fVersion));
+    metrics_.SendEnumToUMA(kU2fCommand, static_cast<int>(ins),
+                           static_cast<int>(U2fIns::kU2fVersion));
 
-  // TODO(louiscollard): Check expected response length is large enough.
+    // TODO(louiscollard): Check expected response length is large enough.
 
-  switch (adpu->Ins()) {
-    case U2fIns::kU2fRegister: {
-      base::Optional<U2fRegisterRequestAdpu> reg_adpu =
-          U2fRegisterRequestAdpu::FromCommandAdpu(*adpu);
-      // Chrome may send a dummy register request, which is designed to
-      // cause a USB device to flash it's LED. We should simply ignore
-      // these.
-      if (reg_adpu.has_value()) {
-        if (reg_adpu->IsChromeDummyWinkRequest()) {
-          ReturnFailureResponse(U2F_SW_CONDITIONS_NOT_SATISFIED);
-          return -EINVAL;
-        } else {
-          return ProcessU2fRegister(*reg_adpu, resp);
+    switch (ins) {
+      case U2fIns::kU2fRegister: {
+        base::Optional<U2fRegisterRequestAdpu> reg_adpu =
+            U2fRegisterRequestAdpu::FromCommandAdpu(*adpu, &u2f_status);
+        // Chrome may send a dummy register request, which is designed to
+        // cause a USB device to flash it's LED. We should simply ignore
+        // these.
+        if (reg_adpu.has_value()) {
+          if (reg_adpu->IsChromeDummyWinkRequest()) {
+            ReturnFailureResponse(U2F_SW_CONDITIONS_NOT_SATISFIED);
+            return -EINVAL;
+          } else {
+            return ProcessU2fRegister(*reg_adpu, resp);
+          }
         }
+        break;  // Handle error.
       }
-      break;  // Handle error.
-    }
-    case U2fIns::kU2fAuthenticate: {
-      base::Optional<U2fAuthenticateRequestAdpu> auth_adpu =
-          U2fAuthenticateRequestAdpu::FromCommandAdpu(*adpu);
-      if (auth_adpu.has_value()) {
-        return ProcessU2fAuthenticate(*auth_adpu, resp);
+      case U2fIns::kU2fAuthenticate: {
+        base::Optional<U2fAuthenticateRequestAdpu> auth_adpu =
+            U2fAuthenticateRequestAdpu::FromCommandAdpu(*adpu, &u2f_status);
+        if (auth_adpu.has_value()) {
+          return ProcessU2fAuthenticate(*auth_adpu, resp);
+        }
+        break;  // Handle error.
       }
-      break;  // Handle error.
+      case U2fIns::kU2fVersion: {
+        if (!adpu->Body().empty()) {
+          u2f_status = U2F_SW_WRONG_LENGTH;
+          break;
+        }
+
+        U2fResponseAdpu response;
+        response.AppendString(kSupportedU2fVersion);
+        response.SetStatus(U2F_SW_NO_ERROR);
+        response.ToString(resp);
+        return 0;
+      }
+      default:
+        u2f_status = U2F_SW_INS_NOT_SUPPORTED;
+        break;
     }
-    case U2fIns::kU2fVersion: {
-      U2fResponseAdpu response;
-      response.AppendString(kSupportedU2fVersion);
-      response.SetStatus(U2F_SW_NO_ERROR);
-      response.ToString(resp);
-      return 0;
-    }
-    default:
-      ReturnFailureResponse(U2F_SW_INS_NOT_SUPPORTED);
-      return -EINVAL;
   }
 
-  ReturnError(U2fHidError::kInvalidCmd, transaction_->cid, true);
+  ReturnFailureResponse(u2f_status ?: U2F_SW_WTF);
   return -EINVAL;
 }
 
