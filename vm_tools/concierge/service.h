@@ -37,6 +37,7 @@
 #include "vm_tools/concierge/shill_client.h"
 #include "vm_tools/concierge/startup_listener_impl.h"
 #include "vm_tools/concierge/termina_vm.h"
+#include "vm_tools/concierge/untrusted_vm_utils.h"
 #include "vm_tools/concierge/vm_interface.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
@@ -264,6 +265,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
           last_report_time(base::TimeTicks::Now()) {}
   };
   std::list<DiskOpInfo> disk_image_ops_;
+
+  // Used to check for, and possibly enable, the conditions required for
+  // untrusted VMs.
+  UntrustedVMUtils untrusted_vm_utils_;
 
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 

@@ -44,6 +44,7 @@
 #include <base/single_thread_task_runner.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_split.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/sys_info.h>
 #include <base/threading/thread_task_runner_handle.h>
@@ -144,6 +145,23 @@ constexpr base::TimeDelta kDiskOpReportInterval =
 // Mac address to assign to ARCVM.
 constexpr arc_networkd::MacAddress kArcVmMacAddress{0xd2, 0x47, 0xf7,
                                                     0xc5, 0x9e, 0x53};
+
+// The minimum kernel version of the host which supports untrusted VMs or a
+// trusted VM with nested VM support.
+constexpr UntrustedVMUtils::KernelVersionAndMajorRevision
+    kMinKernelVersionForUntrustedVM = std::make_pair(4, 14);
+
+// File path that reports the L1TF vulnerability status.
+constexpr const char kL1TFFilePath[] =
+    "/sys/devices/system/cpu/vulnerabilities/l1tf";
+
+// File path that reports the MDS vulnerability status.
+constexpr const char kMDSFilePath[] =
+    "/sys/devices/system/cpu/vulnerabilities/mds";
+
+// This change enables strict security checks before starting untrusted VMs.
+// TODO(abhishekbh): Remove when platforms are up to date.
+constexpr bool kEnableStrictUntrustedVMChecks = false;
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
@@ -606,6 +624,9 @@ Service::Service(base::Closure quit_closure)
 #else
       resync_vm_clocks_on_resume_(false),
 #endif
+      untrusted_vm_utils_(kMinKernelVersionForUntrustedVM,
+                          base::FilePath(kL1TFFilePath),
+                          base::FilePath(kMDSFilePath)),
       weak_ptr_factory_(this) {
   plugin_subnet_ = network_address_manager_.AllocateIPv4Subnet(
       arc_networkd::AddressManager::Guest::VM_PLUGIN);
@@ -943,11 +964,12 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
   base::FilePath kernel, rootfs;
 
+  // A VM is trusted when this daemon chooses the kernel and rootfs path.
+  bool is_trusted_vm = false;
   if (request.start_termina()) {
     base::FilePath component_path = GetLatestVMPath();
     if (component_path.empty()) {
       LOG(ERROR) << "Termina component is not loaded";
-
       response.set_failure_reason("Termina component is not loaded");
       writer.AppendProtoAsArrayOfBytes(response);
       return dbus_response;
@@ -955,6 +977,12 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
     kernel = component_path.Append(kVmKernelName);
     rootfs = component_path.Append(kVmRootfsName);
+    is_trusted_vm = true;
+  } else if (!request.allow_untrusted()) {
+    LOG(ERROR) << "Untrusted VMs aren't allowed";
+    response.set_failure_reason("Untrusted VMs aren't allowed");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
   } else {
     kernel = base::FilePath(request.vm().kernel());
     rootfs = base::FilePath(request.vm().rootfs());
@@ -974,6 +1002,34 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     response.set_failure_reason("Rootfs path does not exist");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
+  }
+
+  if (!is_trusted_vm && kEnableStrictUntrustedVMChecks) {
+    UntrustedVMUtils::MitigationStatus status =
+        untrusted_vm_utils_.CheckUntrustedVMMitigationStatus();
+    switch (status) {
+      case UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE:
+        break;
+
+      case UntrustedVMUtils::MitigationStatus::VULNERABLE: {
+        LOG(ERROR) << "Host vulnerable against untrusted VM";
+        response.set_failure_reason("Host vulnerable against untrusted VM");
+        writer.AppendProtoAsArrayOfBytes(response);
+        return dbus_response;
+      }
+
+      case UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED: {
+        // In this case the mitigation is present due to SMT being enabled. Try
+        // to disable it in order to support Untrusted VMs.
+        if (!untrusted_vm_utils_.DisableSMT()) {
+          LOG(ERROR) << "Failed to disable SMT for untrusted VM";
+          response.set_failure_reason("Failed to disable SMT for untrusted VM");
+          writer.AppendProtoAsArrayOfBytes(response);
+          return dbus_response;
+        }
+        break;
+      }
+    }
   }
 
   std::vector<TerminaVm::Disk> disks;

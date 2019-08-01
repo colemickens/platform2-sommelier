@@ -105,6 +105,7 @@ static_library("libconcierge") {
     "../concierge/startup_listener_impl.cc",
     "../concierge/tap_device_builder.cc",
     "../concierge/termina_vm.cc",
+    "../concierge/untrusted_vm_utils.cc",
     "../concierge/vm_util.cc",
     "../concierge/vmplugin_dispatcher_interface.cc",
     "../concierge/vsock_cid_pool.cc",
@@ -272,6 +273,7 @@ if (use.test) {
     sources = [
       "../concierge/power_manager_client_test.cc",
       "../concierge/termina_vm_test.cc",
+      "../concierge/untrusted_vm_utils_test.cc",
     ]
     configs += [
       "//common-mk:test",
