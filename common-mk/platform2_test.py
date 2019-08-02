@@ -18,6 +18,7 @@ import ctypes
 import ctypes.util
 import errno
 import os
+import pwd
 import re
 import signal
 import sys
@@ -112,7 +113,7 @@ class Platform2Test(object):
   _BIND_MOUNT_IF_NOT_SYMLINK_PATHS = ('run/shm',)
 
   def __init__(self, test_bin, board, host, framework,
-               run_as_root, gtest_filter, user_gtest_filter,
+               user, gtest_filter, user_gtest_filter,
                sysroot, test_bin_args):
     if not test_bin_args:
       test_bin_args = [test_bin]
@@ -122,7 +123,7 @@ class Platform2Test(object):
     self.args = test_bin_args
     self.board = board
     self.host = host
-    self.run_as_root = run_as_root
+    self.user = user
     (self.gtest_filter, self.user_gtest_filter) = \
         self.generateGtestFilter(gtest_filter, user_gtest_filter)
 
@@ -188,12 +189,29 @@ class Platform2Test(object):
     return path
 
   @staticmethod
-  def GetNonRootAccount():
+  def GetNonRootAccount(user):
     """Return details about the non-root account we want to use.
+
+    Args:
+      user: User to lookup.  If None, try the active user, then 'nobody'.
 
     Returns:
       A tuple of (username, uid, gid, home).
     """
+    if user is not None:
+      # Assume the account is a UID first.
+      try:
+        acct = pwd.getpwuid(int(user))
+      except (KeyError, ValueError):
+        # Assume it's a name then.
+        try:
+          acct = pwd.getpwnam(user)
+        except ValueError as e:
+          print('error: %s: %s' % (user, e), file=sys.stderr)
+          sys.exit(1)
+
+        return (acct.pw_name, acct.pw_uid, acct.pw_gid, acct.pw_dir)
+
     return (
         os.environ.get('SUDO_USER', 'nobody'),
         int(os.environ.get('SUDO_UID', '65534')),
@@ -219,7 +237,7 @@ class Platform2Test(object):
     try:
       retry_util.GenericRetry(retry, 60, os.link, tmplock, lock, sleep=0.1)
     except Exception:
-      print('error: could not grab lock %s' % lock)
+      print('error: timeout: could not grab lock %s' % lock, file=sys.stderr)
       raise
 
     # Yield while holding the lock, but try to clean it no matter what.
@@ -239,7 +257,7 @@ class Platform2Test(object):
     # This is kept in sync with what sdk_lib/make_chroot.sh generates.
     SDK_GECOS = 'ChromeOS Developer'
 
-    user, uid, gid, home = self.GetNonRootAccount()
+    user, uid, gid, home = self.GetNonRootAccount(self.user)
     if user == 'nobody':
       return
 
@@ -283,7 +301,7 @@ class Platform2Test(object):
     Sets up any required mounts and copying any required files to run tests
     (not those specific to tests) into the sysroot.
     """
-    if not self.run_as_root:
+    if self.user is None:
       self.SetupUser()
 
     if self.framework == 'qemu':
@@ -361,8 +379,8 @@ class Platform2Test(object):
       # Some progs want this like bash else they get super confused.
       os.environ['PWD'] = cwd
       os.environ['GTEST_COLOR'] = 'yes'
-      if not self.run_as_root:
-        user, uid, gid, home = self.GetNonRootAccount()
+      if self.user != 'root':
+        user, uid, gid, home = self.GetNonRootAccount(self.user)
         os.setgid(gid)
         os.setuid(uid)
         os.environ['HOME'] = home
@@ -488,7 +506,10 @@ def GetParser():
                       help='args to pass to gtest/test binary')
   parser.add_argument('--host', action='store_true', default=False,
                       help='specify that we\'re testing for the host')
-  parser.add_argument('--run_as_root', action='store_true',
+  parser.add_argument('-u', '--user',
+                      help='user to run as (default: $USER)')
+  parser.add_argument('--run_as_root', dest='user', action='store_const',
+                      const='root',
                       help='should the test be run as root')
   parser.add_argument('--user_gtest_filter', default='',
                       help=argparse.SUPPRESS)
@@ -522,7 +543,7 @@ def main(argv):
 
   p2test = Platform2Test(options.bin, options.board, options.host,
                          options.framework,
-                         options.run_as_root, options.gtest_filter,
+                         options.user, options.gtest_filter,
                          options.user_gtest_filter,
                          options.sysroot, options.cmdline)
   getattr(p2test, options.action)()
