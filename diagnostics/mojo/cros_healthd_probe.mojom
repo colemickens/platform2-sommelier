@@ -10,6 +10,15 @@
 
 module chromeos.cros_healthd.mojom;
 
+// An enumeration of each category of information that cros_healthd can report.
+[Extensible]
+enum ProbeCategoryEnum {
+  kBattery,
+  kNonRemovableBlockDevices,
+  kCachedVpdData,
+};
+
+// Information related to the main battery.
 struct BatteryInfo {
   // TODO(https://crbug.com/979245): Update "smart" cycle count.
   int64 cycle_count;
@@ -31,6 +40,7 @@ struct BatteryInfo {
   int64 manufacture_date_smart;
 };
 
+// Information related to a specific non-removable block device.
 struct NonRemovableBlockDeviceInfo {
   // The path of this storage in system. It is useful if caller needs to
   // correlate with other information.
@@ -51,4 +61,22 @@ struct NonRemovableBlockDeviceInfo {
 struct CachedVpdInfo {
   // Contents of /sys/firmware/vpd/ro/sku_number.
   string sku_number;
+};
+
+// A collection of all the device's telemetry information that cros_healthd is
+// capable of reporting. Note that every field in TelemetryInfo is nullable, and
+// the response for a particular ProbeTelemetryInfo request will only contain
+// fields corresponding to the categories passed to the ProbeTelemetryInfo
+// request.
+struct TelemetryInfo {
+  // Information about the device's main battery. Only present when kBattery was
+  // included in the categories input to ProbeTelemetryInfo.
+  BatteryInfo? battery_info;
+  // Information about all of the device's non-removable block devices. Only
+  // present when kNonRemovableBlockDevices was included in the categories input
+  // to ProbeTelemetryInfo.
+  array<NonRemovableBlockDeviceInfo>? block_device_info;
+  // Only present when kCachedVpdData was included in the categories input to
+  // ProbeTelemetryInfo.
+  CachedVpdInfo? vpd_info;
 };

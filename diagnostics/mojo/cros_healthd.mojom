@@ -16,17 +16,18 @@ import "cros_healthd_probe.mojom";
 interface CrosHealthdService {
   // ------------------- Start of probe definitions ---------------------
 
-  // Returns an array of all batteries and associated up-to-date info.
-  ProbeBatteryInfo()
-      => (array<BatteryInfo> batteries);
-
-  // Returns an array of all non-removable block devices and associated
-  // up-to-date info.
-  ProbeNonRemovableBlockDeviceInfo()
-      => (array<NonRemovableBlockDeviceInfo> devices);
-
-  // Returns the VPD cached on the system.
-  ProbeCachedVpdInfo() => (CachedVpdInfo vpd);
+  // Returns telemetry information for the desired categories.
+  //
+  // The request:
+  // * |categories| - list of each of the categories that ProbeTelemetryInfo
+  //                  should return information for.
+  //
+  // The response:
+  // * |telemetry_info| - information for each of the requested categories. Only
+  //                      the fields corresponding to the requested categories
+  //                      will be non-null.
+  ProbeTelemetryInfo(array<ProbeCategoryEnum> categories)
+      => (TelemetryInfo telemetry_info);
 
   // ------------------- End of probe definitions -----------------------
 };
