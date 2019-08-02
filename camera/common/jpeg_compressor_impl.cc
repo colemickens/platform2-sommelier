@@ -99,9 +99,9 @@ bool JpegCompressorImpl::CompressImage(const void* image,
     return false;
   }
 
-  LOGF(INFO) << "Compressed JPEG with " << method_used << ": "
-             << (width * height * 12) / 8 << "[" << width << "x" << height
-             << "] -> " << *out_data_size << " bytes";
+  VLOGF(1) << "Compressed JPEG with " << method_used << ": "
+           << (width * height * 12) / 8 << "[" << width << "x" << height
+           << "] -> " << *out_data_size << " bytes";
   return true;
 }
 
