@@ -118,9 +118,6 @@ namespace cryptohome {
 
 using QuoteMap = google::protobuf::Map<int, Quote>;
 
-// Indexes of PCRs which the created TPM delegate should be bound to.
-const uint32_t kDelegateBoundPcrs[] = {0};
-
 const size_t Attestation::kQuoteExternalDataSize = 20;
 const size_t Attestation::kCipherKeySize = 32;
 #if USE_TPM2
@@ -568,11 +565,12 @@ void Attestation::PrepareForEnrollment() {
   }
 
   // Create a delegate so we can activate the AIKs later.
-  const std::set<uint32_t> bound_pcrs(std::begin(kDelegateBoundPcrs),
-                                      std::end(kDelegateBoundPcrs));
+  // Note that the delegate is created with no PCR0 binding, since some Chrome
+  // OS devices have a bug causing the PCR0 to get into an unexpected value (see
+  // https://crbug.com/873099).
   Blob delegate_blob;
   Blob delegate_secret;
-  if (!tpm_->CreateDelegate(bound_pcrs, Tpm::kDefaultDelegateFamilyLabel,
+  if (!tpm_->CreateDelegate(/*bound_pcrs=*/{}, Tpm::kDefaultDelegateFamilyLabel,
                             Tpm::kDefaultDelegateLabel, &delegate_blob,
                             &delegate_secret)) {
     LOG(ERROR) << "Attestation: Failed to create delegate.";
