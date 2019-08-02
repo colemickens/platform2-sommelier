@@ -349,9 +349,18 @@ const std::vector<Log> kFeedbackLogs {
 // must be sent back to the client via the file descriptor using
 // LogTool::GetBigFeedbackLogs().
 const std::vector<Log> kBigFeedbackLogs{
-  // ARC bugreport permissions are weird. Since we're just running cat,
-  // this shouldn't cause any issues.
-  {kCommand, "arc-bugreport", "cat /run/arc/bugreport/pipe 2>/dev/null",
+  // We need to enter init's mount namespace because android-sh accesses
+  // /run/chrome/is_arcvm and /run/state/logged-in
+
+  // TODO(kansho): Remove this version check after disabling N.
+  // This code extracts the version of Android from /etc/lsb-release and checks
+  // whether it's lower than 28 (Pie).
+  {kCommand, "arc-bugreport",
+    "if [ \"$(sed -n '/^CHROMEOS_ARC_ANDROID_SDK_VERSION=/s:.*=::p'"
+      " /etc/lsb-release)\" -lt 28 ];"
+    "then cat /run/arc/bugreport/pipe 2>/dev/null;"  // older than P
+    "else /usr/bin/nsenter -t1 -m /usr/sbin/android-sh -c"
+      " /system/bin/arc-bugreport; fi",
     kRoot, kRoot, 10 * 1024 * 1024, LogTool::Encoding::kUtf8},
 };
 
