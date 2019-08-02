@@ -76,7 +76,7 @@ void BootLockboxDBusAdaptor::ReadBootLockbox(
   cryptohome::BootLockboxBaseReply reply;
   std::string data;
   if (!boot_lockbox_->Read(in_request.key(), &data)) {
-    reply.set_error(cryptohome::BOOTLOCKBOX_ERROR_CANNOT_READ);
+    reply.set_error(cryptohome::BOOTLOCKBOX_ERROR_MISSING_KEY);
   } else {
     reply.MutableExtension(cryptohome::ReadBootLockboxReply::reply)
         ->set_data(data);
