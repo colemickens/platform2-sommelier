@@ -1945,7 +1945,9 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
       //   "1": Child -> regular transition, should disable supervision.
       //   "2": Regular -> child transition, should enable supervision.
       "--supervision-transition",
-      config_.GetStringOrDie("SUPERVISION_TRANSITION")};
+      config_.GetStringOrDie("SUPERVISION_TRANSITION"),
+      "--enable-adb-sideloading",
+      config_.GetStringOrDie("ENABLE_ADB_SIDELOAD")};
 
   base::ElapsedTimer timer;
   if (!LaunchAndWait(command_line)) {

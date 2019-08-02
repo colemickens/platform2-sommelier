@@ -1696,7 +1696,9 @@ std::vector<std::string> SessionManagerImpl::CreateUpgradeArcEnvVars(
       "DEMO_SESSION_APPS_PATH=" + request.demo_session_apps_path(),
       base::StringPrintf("IS_DEMO_SESSION=%d", request.is_demo_session()),
       base::StringPrintf("SUPERVISION_TRANSITION=%d",
-                         request.supervision_transition())};
+                         request.supervision_transition()),
+      base::StringPrintf("ENABLE_ADB_SIDELOAD=%d",
+                         arc_sideload_status_->IsAdbSideloadAllowed())};
 
   switch (request.packages_cache_mode()) {
     case UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT:

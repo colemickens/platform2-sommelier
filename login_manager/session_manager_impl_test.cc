@@ -506,6 +506,7 @@ class SessionManagerImplTest : public ::testing::Test,
           "DEMO_SESSION_APPS_PATH=" + demo_session_apps_path_,
           "IS_DEMO_SESSION=" + std::to_string(is_demo_session_),
           "SUPERVISION_TRANSITION=" + std::to_string(supervision_transition_),
+          "ENABLE_ADB_SIDELOAD=" + std::to_string(enable_adb_sideload_),
           ExpectedSkipPackagesCacheSetupFlagValue(skip_packages_cache_),
           ExpectedCopyPackagesCacheFlagValue(copy_packages_cache_),
           ExpectedSkipGmsCoreCacheSetupFlagValue(skip_gms_core_cache_),
@@ -523,6 +524,7 @@ class SessionManagerImplTest : public ::testing::Test,
     std::string locale_ = kDefaultLocale;
     std::string preferred_languages_;
     int supervision_transition_ = 0;
+    bool enable_adb_sideload_ = false;
 
     DISALLOW_COPY_AND_ASSIGN(UpgradeContainerExpectationsBuilder);
   };
