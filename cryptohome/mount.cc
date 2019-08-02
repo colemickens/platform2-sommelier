@@ -1118,6 +1118,7 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
                      !is_signature_challenge_protected);
   bool is_le_credential =
       (crypt_flags & SerializedVaultKeyset::LE_CREDENTIAL) != 0;
+  bool can_unseal_with_user_auth = crypto_->CanUnsealWithUserAuth();
   do {
     if (is_signature_challenge_protected)
       break;
@@ -1126,16 +1127,19 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
     if (serialized->has_tpm_public_key_hash() || is_le_credential) {
       if (is_le_credential && !crypto_->NeedsPcrBinding(serialized->le_label()))
         break;
-      if (pcr_bound && tpm_wrapped && should_tpm && scrypt_derived &&
-          !scrypt_wrapped) {
-        break;  // 2
+      if (tpm_wrapped && should_tpm && scrypt_derived && !scrypt_wrapped) {
+        if ((pcr_bound && can_unseal_with_user_auth) ||
+            (!pcr_bound && !can_unseal_with_user_auth)) {
+          break;  // 2
+        }
       }
       if (scrypt_wrapped && !should_tpm && !tpm_wrapped)
         break;  // 7
     }
     LOG(INFO) << "Migrating keyset " << *index << ": should_tpm=" << should_tpm
               << ", has_hash=" << serialized->has_tpm_public_key_hash()
-              << ", flags=" << crypt_flags;
+              << ", flags=" << crypt_flags << ", pcr_bound=" << pcr_bound
+              << ", can_unseal_with_user_auth=" << can_unseal_with_user_auth;
     // This is not considered a fatal error.  Re-saving with the desired
     // protection is ideal, but not required.
     SerializedVaultKeyset new_serialized;

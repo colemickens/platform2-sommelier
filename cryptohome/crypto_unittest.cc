@@ -305,6 +305,7 @@ TEST_F(CryptoTest, TpmStepTest) {
   crypto.set_use_tpm(true);
 
   SecureBlob vkk_key;
+  EXPECT_CALL(tpm, GetVersion()).WillRepeatedly(Return(Tpm::TPM_2_0));
   EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _, _))
       .Times(2)  // Once for each valid PCR state.
       .WillRepeatedly(DoAll(SaveArg<1>(&vkk_key), Return(Tpm::kTpmRetryNone)));
@@ -375,6 +376,89 @@ TEST_F(CryptoTest, TpmStepTest) {
             (crypt_flags & SerializedVaultKeyset::SCRYPT_DERIVED));
   EXPECT_EQ(SerializedVaultKeyset::PCR_BOUND,
             (crypt_flags & SerializedVaultKeyset::PCR_BOUND));
+}
+
+TEST_F(CryptoTest, Tpm1_2_StepTest) {
+  // Check that the code path changes to support the TPM work
+  MockPlatform platform;
+  Crypto crypto(&platform);
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockTpmInit> tpm_init;
+
+  crypto.set_tpm(&tpm);
+  crypto.set_use_tpm(true);
+
+  SecureBlob vkk_key;
+  EXPECT_CALL(tpm, GetVersion()).WillRepeatedly(Return(Tpm::TPM_1_2));
+  EXPECT_CALL(tpm, EncryptBlob(_, _, _, _))
+      .Times(1)
+      .WillRepeatedly(DoAll(SaveArg<1>(&vkk_key), Return(Tpm::kTpmRetryNone)));
+  EXPECT_CALL(tpm_init, HasCryptohomeKey())
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_init, SetupTpm(true))
+      .Times(AtLeast(2));  // One by crypto.Init(), one by crypto.EnsureTpm()
+  SecureBlob blob("public key hash");
+  EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
+      .Times(2)  // Once on Encrypt and once on Decrypt of Vault.
+      .WillRepeatedly(DoAll(SetArgPointee<1>(blob),
+                            Return(Tpm::kTpmRetryNone)));
+
+  crypto.Init(&tpm_init);
+
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, &crypto);
+  vault_keyset.CreateRandom();
+
+  SecureBlob key(20);
+  CryptoLib::GetSecureRandom(key.data(), key.size());
+  SecureBlob salt(PKCS5_SALT_LEN);
+  CryptoLib::GetSecureRandom(salt.data(), salt.size());
+
+  SerializedVaultKeyset serialized;
+  ASSERT_TRUE(
+      crypto.EncryptVaultKeyset(vault_keyset, key, salt, "", &serialized));
+  SecureBlob encrypted;
+  GetSerializedBlob(serialized, &encrypted);
+
+  ASSERT_TRUE(CryptoTest::FindBlobInBlob(encrypted, salt));
+
+  ASSERT_TRUE(CryptoTest::FromSerializedBlob(encrypted, &serialized));
+
+  VaultKeyset new_keyset;
+  new_keyset.Initialize(&platform, &crypto);
+  unsigned int crypt_flags = 0;
+  Crypto::CryptoError crypto_error = Crypto::CE_NONE;
+
+  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<4>(vkk_key),
+                      Return(Tpm::kTpmRetryNone)));
+
+  // Successful DecryptVaultKeyset for tpm-backed keyset should
+  // lead to a call to DeclareTpmFirmwareStable().
+  EXPECT_CALL(tpm, DeclareTpmFirmwareStable());
+
+  ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key,
+                                        false /* is_pcr_extended */,
+                                        &crypt_flags, &crypto_error,
+                                        &new_keyset));
+
+  SecureBlob original_data;
+  ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
+  SecureBlob new_data;
+  ASSERT_TRUE(new_keyset.ToKeysBlob(&new_data));
+
+  EXPECT_EQ(new_data.size(), original_data.size());
+  ASSERT_TRUE(CryptoTest::FindBlobInBlob(new_data, original_data));
+
+  // Check that the keyset was indeed wrapped by the TPM, and the
+  // keys were derived using scrypt.
+  EXPECT_EQ(0, (crypt_flags & SerializedVaultKeyset::SCRYPT_WRAPPED));
+  EXPECT_EQ(SerializedVaultKeyset::TPM_WRAPPED,
+            (crypt_flags & SerializedVaultKeyset::TPM_WRAPPED));
+  EXPECT_EQ(SerializedVaultKeyset::SCRYPT_DERIVED,
+            (crypt_flags & SerializedVaultKeyset::SCRYPT_DERIVED));
+  EXPECT_EQ(0, (crypt_flags & SerializedVaultKeyset::PCR_BOUND));
 }
 
 TEST_F(CryptoTest, TpmDecryptFailureTest) {

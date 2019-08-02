@@ -1387,10 +1387,18 @@ bool Crypto::EncryptVaultKeyset(const VaultKeyset& vault_keyset,
       return false;
     }
   } else {
+    bool encrypt_tpm_success = false;
     KeyBlobs blobs;
-    if (!EncryptTPM(vault_keyset, vault_key, vault_key_salt,
-                    obfuscated_username, &blobs, serialized)) {
-      LOG(ERROR) << "EncryptTPM failed";
+    if (CanUnsealWithUserAuth()) {
+      encrypt_tpm_success = EncryptTPM(vault_keyset, vault_key, vault_key_salt,
+                                       obfuscated_username, &blobs, serialized);
+    } else {
+      encrypt_tpm_success = EncryptTPMNotBoundToPcr(vault_keyset, vault_key,
+                                                    vault_key_salt, &blobs,
+                                                    serialized);
+    }
+    if (!encrypt_tpm_success) {
+      LOG(ERROR) << "Encrypt using TPM failed";
       if (use_tpm_ && tpm_ && tpm_->IsOwned()) {
         ReportCryptohomeError(kEncryptWithTpmFailed);
       }
@@ -1648,4 +1656,9 @@ std::map<uint32_t, std::string> Crypto::GetPcrMap(
   }
   return pcr_map;
 }
+
+bool Crypto::CanUnsealWithUserAuth() const {
+  return tpm_ && tpm_->GetVersion() != Tpm::TPM_1_2;
+}
+
 }  // namespace cryptohome

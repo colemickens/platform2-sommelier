@@ -226,6 +226,14 @@ class Crypto {
   std::map<uint32_t, std::string> GetPcrMap(
       const std::string& obfuscated_username, bool use_extended_pcr) const;
 
+  // Returns whether TPM unseal operations with direct authorization are allowed
+  // on this device. Some devices cannot reset the dictionary attack counter.
+  // And if unseal is performed with wrong authorization value, the counter
+  // increases which might eventually temporary block the TPM. To avoid this
+  // we don't allow the unseal with authorization. For details see
+  // https://buganizer.corp.google.com/issues/127321828.
+  bool CanUnsealWithUserAuth() const;
+
   // Sets whether or not to use the TPM (must be called before init, depends
   // on the presence of a functioning, initialized TPM).  The TPM is merely used
   // to add a layer of difficulty in a brute-force attack against the user's
