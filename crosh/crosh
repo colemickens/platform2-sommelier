@@ -1751,7 +1751,7 @@ cmd_verify_ro() (
     "fd:1" "string:${cr50_image}" "string:${ro_db}"
 )
 
-USAGE_evtest='evtest'
+USAGE_evtest=''
 EXEC_evtest='/usr/bin/evtest'
 HELP_evtest='
   Run evtest in safe mode.
