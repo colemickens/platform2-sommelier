@@ -257,12 +257,14 @@ class Platform2Test(object):
     # This is kept in sync with what sdk_lib/make_chroot.sh generates.
     SDK_GECOS = 'ChromeOS Developer'
 
+    # We assume the nobody group always exists.  This is reasonable.
     user, uid, gid, home = self.GetNonRootAccount(self.user)
     if user == 'nobody':
       return
 
     passwd_db = os.path.join(self.sysroot, 'etc', 'passwd')
-    with self.LockDb(passwd_db):
+    def _user_exists():
+      """See if the user has already been registered in the db."""
       data = osutils.ReadFile(passwd_db)
       accts = data.splitlines()
       for acct in accts:
@@ -271,7 +273,7 @@ class Platform2Test(object):
           # Did the sdk make this account?
           if passwd[4] == SDK_GECOS:
             # Don't modify it (see below) since we didn't create it.
-            return
+            return True
 
           # Did we make this account?
           if passwd[4] != MAGIC_GECOS:
@@ -280,7 +282,17 @@ class Platform2Test(object):
 
           # Maybe we should see if it needs to be updated?  Like if they
           # changed UIDs?  But we don't really check that elsewhere ...
-          return
+          return True
+
+    # Fast path: see if the user exists already w/out grabbing a global lock.
+    # This should be the most common flow.
+    if _user_exists():
+      return
+
+    with self.LockDb(passwd_db):
+      # Recheck the db w/the lock in case the user was added in parallel.
+      if _user_exists():
+        return
 
       acct = '%(name)s:x:%(uid)s:%(gid)s:%(gecos)s:%(homedir)s:%(shell)s' % {
           'name': user,
@@ -290,7 +302,8 @@ class Platform2Test(object):
           'homedir': home,
           'shell': '/bin/bash',
       }
-      with open(passwd_db, 'a') as f:
+      with open(passwd_db, 'r+') as f:
+        data = f.read()
         if data[-1] != '\n':
           f.write('\n')
         f.write('%s\n' % acct)
