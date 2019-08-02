@@ -44,7 +44,9 @@ BootLockboxClient::BootLockboxClient(
     scoped_refptr<dbus::Bus> bus)
     : bootlockbox_(std::move(bootlockbox)), bus_(bus) {}
 
-BootLockboxClient::~BootLockboxClient() {}
+BootLockboxClient::~BootLockboxClient() {
+  bus_->ShutdownAndBlock();
+}
 
 bool BootLockboxClient::Store(const std::string& key,
                               const std::string& digest) {
