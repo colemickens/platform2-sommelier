@@ -1010,6 +1010,94 @@ bool Crypto::EncryptTPM(const VaultKeyset& vault_keyset,
   return true;
 }
 
+bool Crypto::EncryptTPMNotBoundToPcr(const VaultKeyset& vault_keyset,
+                                     const SecureBlob& key,
+                                     const SecureBlob& salt,
+                                     KeyBlobs* out_blobs,
+                                     SerializedVaultKeyset* serialized) const {
+  if (!use_tpm_)
+    return false;
+  EnsureTpm(false);
+  if (!is_cryptohome_key_loaded())
+    return false;
+  SecureBlob local_blob(kDefaultAesKeySize);
+  CryptoLib::GetSecureRandom(local_blob.data(), local_blob.size());
+  SecureBlob tpm_key;
+  SecureBlob aes_skey(kDefaultAesKeySize);
+  SecureBlob kdf_skey(kDefaultAesKeySize);
+  SecureBlob vkk_iv(kAesBlockSize);
+
+  if (!DeriveSecretsSCrypt(key, salt, { &aes_skey, &kdf_skey, &vkk_iv })) {
+    return false;
+  }
+  // Encrypt the VKK using the TPM and the user's passkey.  The output is an
+  // encrypted blob in tpm_key, which is stored in the serialized vault
+  // keyset.
+  if (tpm_->EncryptBlob(tpm_init_->GetCryptohomeKey(),
+                        local_blob,
+                        aes_skey,
+                        &tpm_key) != Tpm::kTpmRetryNone) {
+    LOG(ERROR) << "Failed to wrap vkk with creds.";
+    return false;
+  }
+
+  SecureBlob cipher_text;
+  SecureBlob wrapped_chaps_key;
+  SecureBlob vkk_key = CryptoLib::HmacSha256(kdf_skey, local_blob);
+  if (!GenerateEncryptedRawKeyset(vault_keyset, vkk_key, vkk_iv,
+                                  vkk_iv, &cipher_text, &wrapped_chaps_key)) {
+    return false;
+  }
+
+  // If a reset seed is present, encrypt and store it, else clear the field.
+  if (vault_keyset.reset_seed().size() != 0) {
+    SecureBlob reset_iv(kAesBlockSize);
+    CryptoLib::GetSecureRandom(reset_iv.data(), reset_iv.size());
+
+    SecureBlob wrapped_reset_seed;
+    if (!CryptoLib::AesEncrypt(vault_keyset.reset_seed(), vkk_key, reset_iv,
+                               &wrapped_reset_seed)) {
+      LOG(ERROR) << "AES encryption of Reset seed failed.";
+      return false;
+    }
+    serialized->set_wrapped_reset_seed(wrapped_reset_seed.data(),
+                                       wrapped_reset_seed.size());
+    serialized->set_reset_iv(reset_iv.data(), reset_iv.size());
+  } else {
+    serialized->clear_wrapped_reset_seed();
+    serialized->clear_reset_iv();
+  }
+
+  // Allow this to fail.  It is not absolutely necessary; it allows us to
+  // detect a TPM clear.  If this fails due to a transient issue, then on next
+  // successful login, the vault keyset will be re-saved anyway.
+  SecureBlob pub_key_hash;
+  if (tpm_->GetPublicKeyHash(tpm_init_->GetCryptohomeKey(),
+                             &pub_key_hash) == Tpm::kTpmRetryNone)
+    serialized->set_tpm_public_key_hash(pub_key_hash.data(),
+                                        pub_key_hash.size());
+
+  unsigned int flags = serialized->flags();
+  serialized->set_flags((flags & ~SerializedVaultKeyset::SCRYPT_WRAPPED
+                               & ~SerializedVaultKeyset::PCR_BOUND)
+                        | SerializedVaultKeyset::TPM_WRAPPED
+                        | SerializedVaultKeyset::SCRYPT_DERIVED);
+  serialized->set_tpm_key(tpm_key.data(), tpm_key.size());
+  serialized->set_wrapped_keyset(cipher_text.data(), cipher_text.size());
+  if (vault_keyset.chaps_key().size() == CRYPTOHOME_CHAPS_KEY_LENGTH) {
+    serialized->set_wrapped_chaps_key(wrapped_chaps_key.data(),
+                                      wrapped_chaps_key.size());
+  } else {
+    serialized->clear_wrapped_chaps_key();
+  }
+
+  // Pass back the vkk_key and vkk_iv so the generic secret wrapping can use it.
+  out_blobs->vkk_key = vkk_key;
+  out_blobs->vkk_iv = vkk_iv;
+
+  return true;
+}
+
 bool Crypto::EncryptScryptBlob(const SecureBlob& blob,
                                const SecureBlob& key_source,
                                SecureBlob* wrapped_blob) const {

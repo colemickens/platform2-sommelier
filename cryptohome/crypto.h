@@ -293,6 +293,12 @@ class Crypto {
                   KeyBlobs* out_blobs,
                   SerializedVaultKeyset* serialized) const;
 
+  bool EncryptTPMNotBoundToPcr(const VaultKeyset& vault_keyset,
+                               const brillo::SecureBlob& key,
+                               const brillo::SecureBlob& salt,
+                               KeyBlobs* out_blobs,
+                               SerializedVaultKeyset* serialized) const;
+
   // Encrypt a provided blob using Scrypt encryption.
   //
   // This is a helper function used by EncryptScrypt() to encrypt various
