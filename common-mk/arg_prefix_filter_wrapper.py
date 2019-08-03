@@ -21,16 +21,21 @@ import sys
 import subprocess
 
 
-def main(cmd_list, prefix):
-  prefix_len = len(prefix)
+def get_parser():
+  parser = argparse.ArgumentParser(description=__doc__)
+  parser.add_argument('--prefix', type=str, default='-l')
+  return parser
+
+
+def main(argv):
+  parser = get_parser()
+  opts, cmd_list = parser.parse_known_args(argv)
+
+  prefix_len = len(opts.prefix)
   flags = shlex.split(subprocess.check_output(cmd_list))
-  filtered = [flag[prefix_len:] for flag in flags if flag.startswith(prefix)]
+  filtered = [x[prefix_len:] for x in flags if x.startswith(opts.prefix)]
   print('\n'.join(filtered))
-  return
 
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser()
-  parser.add_argument('--prefix', type=str, default="-l")
-  args, cmd_list = parser.parse_known_args()
-  sys.exit(main(cmd_list, args.prefix))
+  sys.exit(main(sys.argv[1:]))
