@@ -310,7 +310,7 @@ class Platform2(object):
         '--generator-output=%s' % self.get_buildroot(),
     ]
     common_args = self.gen_common_args(False)
-    for k, v in common_args.iteritems():
+    for k, v in common_args.items():
       if isinstance(v, bool):
         v = int(v)
       gyp_args.append('-D%s=%s' % (k, v))
@@ -430,7 +430,7 @@ def GetParser():
   parser.add_argument('--enable_tests', action='store_true',
                       help='build and run tests')
   parser.add_argument('--host', action='store_true',
-                      help='specify that we\'re building for the host')
+                      help="specify that we're building for the host")
   parser.add_argument('--libdir',
                       help='the libdir for the specific board, eg /usr/lib64')
   parser.add_argument('--use_flags',

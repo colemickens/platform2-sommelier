@@ -134,29 +134,29 @@ def CheckFormat(gnfile):
   linter = 'CheckFormat'
   try:
     gn_path = os.path.join(chromite_root, 'chroot', 'usr', 'bin', 'gn')
-    result = cros_build_lib.RunCommand([gn_path, "format", "--dry-run", gnfile],
+    result = cros_build_lib.RunCommand([gn_path, 'format', '--dry-run', gnfile],
                                        error_code_ok=True,
                                        debug_level=logging.DEBUG)
   except cros_build_lib.RunCommandError as e:
     issues.append(LintResult(
-        linter, gnfile, "Failed to run gn format: %s" % e, logging.ERROR))
+        linter, gnfile, 'Failed to run gn format: %s' % e, logging.ERROR))
   else:
     if result.returncode == 0:
       # successful format, matches on disk.
       pass
     elif result.returncode == 1:
       issues.append(LintResult(
-          linter, gnfile, "General failure while running gn format " \
-          "(e.g. parse error)", logging.ERROR))
+          linter, gnfile, 'General failure while running gn format '
+          '(e.g. parse error)', logging.ERROR))
     elif result.returncode == 2:
       issues.append(LintResult(
           linter, gnfile,
-          "Needs reformatting. Run following command: %s format %s" %
+          'Needs reformatting. Run following command: %s format %s' %
           (gn_path, gnfile), logging.ERROR))
     else:
       issues.append(LintResult(
-          linter, gnfile, "Unknown error with gn format: " \
-          "returncode=%i error=%s output=%s" %
+          linter, gnfile, 'Unknown error with gn format: '
+          'returncode=%i error=%s output=%s' %
           (result.returncode, result.error, result.output), logging.ERROR))
   return issues
 

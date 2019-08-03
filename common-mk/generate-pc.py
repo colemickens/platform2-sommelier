@@ -83,7 +83,7 @@ def _get_parser():
   parser.add_argument('--libs-private', action='append', default=[],
                       help='Libraries for Libs.private')
   parser.add_argument('--cflags', action='append', default=[],
-                      help="Compiler flags")
+                      help='Compiler flags')
   return parser
 
 

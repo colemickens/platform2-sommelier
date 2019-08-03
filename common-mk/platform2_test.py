@@ -88,7 +88,7 @@ def _ReapUntilProcessExits(monitored_pid):
 # beginning of an environment variable matches one of the regular expression
 # patterns (i.e. matching via re.match), the environment variable is let
 # through.
-ENV_PASSTHRU_REGEX_LIST = map(re.compile, [
+ENV_PASSTHRU_REGEX_LIST = list(re.compile(x) for x in (
     # Used by various sanitizers.
     r'[A-Z]{1,3}SAN_OPTIONS$',
     # Used by QEMU.
@@ -103,7 +103,7 @@ ENV_PASSTHRU_REGEX_LIST = map(re.compile, [
     r'^SRC$',
     # Used by unit tests to access data files outside of the source tree.
     r'^T$',
-])
+))
 
 
 class Platform2Test(object):
@@ -373,7 +373,7 @@ class Platform2Test(object):
     if child == 0:
       print('chroot: %s' % self.sysroot)
       print('cwd: %s' % cwd)
-      print('cmd: {%s} %s' % (cmd, ' '.join(map(repr, argv))))
+      print('cmd: {%s} %s' % (cmd, ' '.join(repr(x) for x in argv)))
       os.chroot(self.sysroot)
       os.chdir(cwd)
 
@@ -458,7 +458,7 @@ class Platform2Test(object):
 def _SudoCommand():
   """Get the 'sudo' command, along with all needed environment variables."""
   cmd = ['sudo']
-  for key, value in os.environ.iteritems():
+  for key, value in os.environ.items():
     for pattern in ENV_PASSTHRU_REGEX_LIST:
       if pattern.match(key):
         cmd += ['%s=%s' % (key, value)]
@@ -518,7 +518,7 @@ def GetParser():
   parser.add_argument('--gtest_filter', default='',
                       help='args to pass to gtest/test binary')
   parser.add_argument('--host', action='store_true', default=False,
-                      help='specify that we\'re testing for the host')
+                      help="specify that we're testing for the host")
   parser.add_argument('-u', '--user',
                       help='user to run as (default: $USER)')
   parser.add_argument('--run_as_root', dest='user', action='store_const',

@@ -367,17 +367,16 @@ class GnLintTests(LintTestCase):
   def testGnLintSourceFileNames(self):
     """Verify GnLintSourceFileNames catches bad inputs."""
     self._CheckLinter(gnlint.GnLintSourceFileNames, [
-        CreateTestData("sources", "=", "foo_unittest.c"),
-        CreateTestData("sources", "=", "foo_unittest.cc"),
-        CreateTestData("sources", "=", "foo_unittest.h"),
+        CreateTestData('sources', '=', 'foo_unittest.c'),
+        CreateTestData('sources', '=', 'foo_unittest.cc'),
+        CreateTestData('sources', '=', 'foo_unittest.h'),
     ])
-
 
   def testGnLintPkgConfigs(self):
     """Verify GnLintPkgConfigs catches bad inputs."""
     self._CheckLinter(gnlint.GnLintPkgConfigs, [
-        CreateTestData("libs", "=", "z"),
-        CreateTestData("libs", "=", "ssl"),
+        CreateTestData('libs', '=', 'z'),
+        CreateTestData('libs', '=', 'ssl'),
     ])
 
 
