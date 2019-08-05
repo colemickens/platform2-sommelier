@@ -74,7 +74,6 @@ static_library("libdebugd") {
   configs += [ ":target_defaults" ]
   all_dependent_configs = [ ":libdebugd_dependent_config" ]
   sources = [
-    "src/anonymizer_tool.cc",
     "src/battery_tool.cc",
     "src/constants.cc",
     "src/container_tool.cc",
@@ -278,7 +277,6 @@ if (use.test) {
       ":target_defaults",
     ]
     sources = [
-      "src/anonymizer_tool_test.cc",
       "src/crash_sender_tool_test.cc",
       "src/dev_mode_no_owner_restriction_test.cc",
       "src/helpers/cups_uri_helper_test.cc",

@@ -355,13 +355,11 @@ const std::vector<Log> kBigFeedbackLogs{
     kRoot, kRoot, 10 * 1024 * 1024, LogTool::Encoding::kUtf8},
 };
 
-// Fills |dictionary| with the anonymized contents of the logs in |logs|.
+// Fills |dictionary| with the contents of the logs in |logs|.
 void GetLogsInDictionary(const std::vector<Log>& logs,
-                         AnonymizerTool* anonymizer,
                          base::DictionaryValue* dictionary) {
   for (const Log& log : logs) {
-    dictionary->SetStringWithoutPathExpansion(
-        log.GetName(), anonymizer->Anonymize(log.GetLogData()));
+    dictionary->SetStringWithoutPathExpansion(log.GetName(), log.GetLogData());
   }
 }
 
@@ -689,20 +687,19 @@ void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd) {
   LogMap map;
   GetPerfData(&map);
   base::DictionaryValue dictionary;
-  GetLogsInDictionary(kCommandLogs, &anonymizer_, &dictionary);
-  GetLogsInDictionary(kFeedbackLogs, &anonymizer_, &dictionary);
-  GetLogsInDictionary(kBigFeedbackLogs, &anonymizer_, &dictionary);
+  GetLogsInDictionary(kCommandLogs, &dictionary);
+  GetLogsInDictionary(kFeedbackLogs, &dictionary);
+  GetLogsInDictionary(kBigFeedbackLogs, &dictionary);
   GetLsbReleaseInfo(&map);
   GetOsReleaseInfo(&map);
   PopulateDictionaryValue(map, &dictionary);
   SerializeLogsAsJSON(dictionary, fd);
 }
 
-void LogTool::GetJournalLog(bool scrub, const base::ScopedFD& fd) {
+void LogTool::GetJournalLog(const base::ScopedFD& fd) {
   Log journal(kCommand, "journal.export", "journalctl -n 10000 -o export",
               "syslog", "syslog", 10 * 1024 * 1024, LogTool::Encoding::kBinary);
-  std::string output = scrub ? anonymizer_.Anonymize(journal.GetLogData())
-                             : journal.GetLogData();
+  std::string output = journal.GetLogData();
   base::WriteFileDescriptor(fd.get(), output.data(), output.size());
 }
 

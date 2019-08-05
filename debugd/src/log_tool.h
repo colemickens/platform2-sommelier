@@ -14,7 +14,6 @@
 #include <base/memory/ref_counted.h>
 #include <dbus/bus.h>
 
-#include "debugd/src/anonymizer_tool.h"
 #include "debugd/src/sandboxed_process.h"
 
 namespace debugd {
@@ -88,7 +87,7 @@ class LogTool {
   LogMap GetAllLogs();
   LogMap GetAllDebugLogs();
   void GetBigFeedbackLogs(const base::ScopedFD& fd);
-  void GetJournalLog(bool scrub, const base::ScopedFD& fd);
+  void GetJournalLog(const base::ScopedFD& fd);
 
   // Returns a representation of |value| with the specified encoding.
   static std::string EncodeString(std::string value,
@@ -100,8 +99,6 @@ class LogTool {
   void CreateConnectivityReport(bool wait_for_results);
 
   scoped_refptr<dbus::Bus> bus_;
-
-  AnonymizerTool anonymizer_;
 
   DISALLOW_COPY_AND_ASSIGN(LogTool);
 };
