@@ -82,6 +82,10 @@ class U2fRegisterRequestAdpu {
   // available).
   bool UseG2fAttestation() const { return g2f_attestation_; }
 
+  // Whether the request is a 'bogus' request sent by Chrome, solely to cause a
+  // USB device to flash its LED.
+  bool IsChromeDummyWinkRequest() const;
+
   // Accessors for the request fields.
   const std::vector<uint8_t>& GetAppId() const { return app_id_; }
   const std::vector<uint8_t>& GetChallenge() const { return challenge_; }

@@ -482,8 +482,16 @@ int U2fHid::ProcessMsg(std::string* resp) {
     case U2fIns::kU2fRegister: {
       base::Optional<U2fRegisterRequestAdpu> reg_adpu =
           U2fRegisterRequestAdpu::FromCommandAdpu(*adpu);
+      // Chrome may send a dummy register request, which is designed to
+      // cause a USB device to flash it's LED. We should simply ignore
+      // these.
       if (reg_adpu.has_value()) {
-        return ProcessU2fRegister(*reg_adpu, resp);
+        if (reg_adpu->IsChromeDummyWinkRequest()) {
+          ReturnFailureResponse(U2F_SW_CONDITIONS_NOT_SATISFIED);
+          return -EINVAL;
+        } else {
+          return ProcessU2fRegister(*reg_adpu, resp);
+        }
       }
       break;  // Handle error.
     }

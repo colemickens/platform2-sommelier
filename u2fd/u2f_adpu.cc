@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <array>
 #include <map>
 #include <utility>
 
@@ -18,6 +19,20 @@ namespace {
 
 // All U2F ADPUs have a CLA value of 0.
 constexpr uint8_t kAdpuCla = 0;
+
+// Chrome sends a REGISTER message with the following bogus app ID
+// and challenge parameters to cause USB devices to flash their
+// LED.
+
+const std::array<uint8_t, 32> kChromeBogusAppId = {
+    0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41,
+    0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41,
+    0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41};
+
+const std::array<uint8_t, 32> kChromeBogusChallenge = {
+    0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42,
+    0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42,
+    0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42};
 
 }  // namespace
 
@@ -245,6 +260,13 @@ base::Optional<U2fRegisterRequestAdpu> U2fRegisterRequestAdpu::FromCommandAdpu(
   reg_adpu.g2f_attestation_ = adpu.P1() & G2F_ATTEST;
 
   return reg_adpu;
+}
+
+bool U2fRegisterRequestAdpu::IsChromeDummyWinkRequest() const {
+  return std::equal(app_id_.begin(), app_id_.end(), kChromeBogusAppId.begin(),
+                    kChromeBogusAppId.end()) &&
+         std::equal(challenge_.begin(), challenge_.end(),
+                    kChromeBogusChallenge.begin(), kChromeBogusChallenge.end());
 }
 
 //
