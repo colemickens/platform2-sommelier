@@ -53,6 +53,9 @@ CameraProfiles::CameraProfiles(CameraHWInfo *cameraHWInfo) :
 {
     CLEAR(mProfileEnd);
     CLEAR(mFaceAeEnabled);
+    for (int i = 0; i < MAX_CAMERAS; i++) {
+        mFaceEngineRunningInterval[i] = FACE_ENGINE_DEFAULT_RUNNING_INTERVAL;
+    }
 }
 
 status_t CameraProfiles::init()
@@ -102,6 +105,12 @@ bool CameraProfiles::isFaceAeEnabled(int cameraId) const
 {
     CheckError(cameraId < 0 || cameraId >= MAX_CAMERAS, false, "cameraId:%d is incorrect", cameraId);
     return mFaceAeEnabled[cameraId];
+}
+
+int CameraProfiles::faceEngineRunningInterval(int cameraId) const
+{
+    CheckError(cameraId < 0 || cameraId >= MAX_CAMERAS, FACE_ENGINE_DEFAULT_RUNNING_INTERVAL, "cameraId:%d is incorrect", cameraId);
+    return mFaceEngineRunningInterval[cameraId];
 }
 
 CameraProfiles::~CameraProfiles()
@@ -1392,6 +1401,9 @@ void CameraProfiles::handleCommon(const char *name, const char **atts)
         } else {
             mFaceAeEnabled[mXmlSensorIndex] = false;
         }
+    } else if (strcmp(name, "faceEngineRunningInterval") == 0) {
+        int val = atoi(atts[1]);
+        mFaceEngineRunningInterval[mXmlSensorIndex] = val > 0 ? val : FACE_ENGINE_DEFAULT_RUNNING_INTERVAL;
     }
 }
 

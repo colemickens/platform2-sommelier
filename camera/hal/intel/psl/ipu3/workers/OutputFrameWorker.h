@@ -67,6 +67,8 @@ private:
 
     int mSensorOrientation;
     FaceEngine* mFaceEngine;
+    unsigned int mFaceEngineRunInterval; // run 1 frame every mFaceEngineRunInterval frames.
+    unsigned int mFrameCnt; // from 0 to (mFaceEngineRunInterval - 1).
     std::unique_ptr<CameraOrientationDetector> mCamOriDetector;
 
     // For listeners

@@ -26,6 +26,7 @@
 
 #define ANDROID_CONTROL_CAPTURE_INTENT_START 0x40000000
 #define CAMERA_TEMPLATE_COUNT (ANDROID_CONTROL_CAPTURE_INTENT_MANUAL + 1)
+#define FACE_ENGINE_DEFAULT_RUNNING_INTERVAL 1
 
 namespace cros {
 namespace intel {
@@ -49,6 +50,7 @@ public:
     static std::string getSensorMediaDevice();
     static std::string getImguMediaDevice();
     bool isFaceAeEnabled(int cameraId) const;
+    int faceEngineRunningInterval(int cameraId) const;
     int readNvmDataFromDevice(int cameraId);
 
 public:
@@ -174,6 +176,7 @@ private:
     std::vector<int> mCharacteristicsKeys[MAX_CAMERAS];
 
     bool mFaceAeEnabled[MAX_CAMERAS];
+    int mFaceEngineRunningInterval[MAX_CAMERAS];
 
     std::vector<SensorDriverDescriptor> mSensorNames;
     std::vector<CameraCapInfo *> mCaps;

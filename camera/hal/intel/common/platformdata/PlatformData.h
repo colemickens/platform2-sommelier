@@ -365,6 +365,7 @@ public:
     static void saveAiqdData(int cameraId, const ia_binary_data& data);
 
     static bool isFaceAeEnabled(int cameraId);
+    static int faceEngineRunningInterval(int cameraId);
 
     static int readNvmDataFromDevice(int cameraId);
 

@@ -33,6 +33,8 @@ OutputFrameWorker::OutputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node, 
                 mProcessor(cameraId),
                 mSensorOrientation(0),
                 mFaceEngine(faceEngine),
+                mFaceEngineRunInterval(PlatformData::faceEngineRunningInterval(cameraId)),
+                mFrameCnt(0),
                 mCamOriDetector(nullptr),
                 mCameraThread("OutputFrameWorker" + std::to_string(nodeName)),
                 mDoAsyncProcess(false)
@@ -50,7 +52,8 @@ OutputFrameWorker::OutputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node, 
     if (!mCameraThread.Start()) {
         LOGE("Camera thread failed to start");
     }
-    LOG2("@%s, mStream:%p, mFaceEngine:%p", __FUNCTION__, mStream, mFaceEngine);
+    LOG2("@%s, mStream:%p, mFaceEngine:%p, mFaceEngineRunInterval:%d",
+         __FUNCTION__, mStream, mFaceEngine, mFaceEngineRunInterval);
 
     if (mFaceEngine) {
         struct camera_info info;
@@ -382,7 +385,9 @@ status_t OutputFrameWorker::processData(ProcessingData processingData)
 
     dump(processingData.mOutputBuffer, stream);
 
-    if (mFaceEngine && (mFaceEngine->getMode() != FD_MODE_OFF)) {
+    if (mFaceEngine &&
+        (mFaceEngine->getMode() != FD_MODE_OFF) &&
+        (mFrameCnt % mFaceEngineRunInterval == 0)) {
         if (!processingData.mOutputBuffer->isLocked()) {
             status_t ret = processingData.mOutputBuffer->lock();
             CheckError(ret != NO_ERROR, NO_MEMORY, "@%s, lock fails", __FUNCTION__);
@@ -398,6 +403,7 @@ status_t OutputFrameWorker::processData(ProcessingData processingData)
         image.rotation = (mSensorOrientation + mCamOriDetector->getOrientation()) % 360;
         mFaceEngine->run(image);
     }
+    mFrameCnt = ++mFrameCnt % mFaceEngineRunInterval;
 
     // call capturedone for the stream of the buffer
     stream->captureDone(processingData.mOutputBuffer, request);

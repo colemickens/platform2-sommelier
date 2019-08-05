@@ -823,6 +823,12 @@ bool PlatformData::isFaceAeEnabled(int cameraId)
     return mInstance->isFaceAeEnabled(cameraId);
 }
 
+int PlatformData::faceEngineRunningInterval(int cameraId)
+{
+    CheckError(mInstance == nullptr, false, "@%s, mInstance is nullptr", __FUNCTION__);
+    return mInstance->faceEngineRunningInterval(cameraId);
+}
+
 int PlatformData::readNvmDataFromDevice(int cameraId)
 {
     CheckError(mInstance == nullptr, false, "@%s, mInstance is nullptr", __FUNCTION__);
