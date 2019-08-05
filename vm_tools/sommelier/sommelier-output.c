@@ -21,7 +21,7 @@
 //
 // TODO(crbug.com/988325) Fix sommelier's scaling logic s.t. this ratio is
 // unnecessary.
-#define LAPTOP_TO_DESKTOP_DISTANCE_RATIO 2.0 / 3.0
+#define LAPTOP_TO_DESKTOP_DISTANCE_RATIO (2.0 / 3.0)
 
 double sl_output_aura_scale_factor_to_double(int scale_factor) {
   // Aura scale factor is an enum that for all currently know values
