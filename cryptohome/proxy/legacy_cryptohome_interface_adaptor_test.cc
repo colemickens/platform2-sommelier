@@ -314,6 +314,75 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest, MountExFail) {
   EXPECT_FALSE(proxied_request.guest_mount());
 }
 
+// ------------- TpmIsAttestationPrepared Related Tests -------------
+TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
+       TpmIsAttestationPreparedSuccessResultTrue) {
+  attestation::GetEnrollmentPreparationsRequest proxied_request;
+  EXPECT_CALL(attestation_, GetEnrollmentPreparationsAsync(_, _, _, _))
+      .WillOnce(DoAll(
+          SaveArg<0>(&proxied_request),
+          Invoke([](const attestation::GetEnrollmentPreparationsRequest&
+                        in_request,
+                    const base::Callback<void(
+                        const attestation::GetEnrollmentPreparationsReply&)>&
+                        success_callback,
+                    const base::Callback<void(brillo::Error*)>& error_callback,
+                    int timeout_ms) {
+            attestation::GetEnrollmentPreparationsReply proxied_reply;
+            proxied_reply.set_status(attestation::STATUS_SUCCESS);
+            (*proxied_reply.mutable_enrollment_preparations())[0] = true;
+            (*proxied_reply.mutable_enrollment_preparations())[1] = false;
+            success_callback.Run(proxied_reply);
+          })));
+
+  base::Optional<bool> result;
+  std::unique_ptr<MockDBusMethodResponse<bool>> response(
+      new MockDBusMethodResponse<bool>(nullptr));
+  response->save_return_args(&result);
+
+  adaptor_->TpmIsAttestationPrepared(std::move(response));
+
+  // Verify that Return() is indeed called at least once.
+  ASSERT_TRUE(result.has_value());
+
+  // Verify response content.
+  EXPECT_TRUE(result.value());
+}
+
+TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
+       TpmIsAttestationPreparedSuccessResultFalse) {
+  attestation::GetEnrollmentPreparationsRequest proxied_request;
+  EXPECT_CALL(attestation_, GetEnrollmentPreparationsAsync(_, _, _, _))
+      .WillOnce(DoAll(
+          SaveArg<0>(&proxied_request),
+          Invoke([](const attestation::GetEnrollmentPreparationsRequest&
+                        in_request,
+                    const base::Callback<void(
+                        const attestation::GetEnrollmentPreparationsReply&)>&
+                        success_callback,
+                    const base::Callback<void(brillo::Error*)>& error_callback,
+                    int timeout_ms) {
+            attestation::GetEnrollmentPreparationsReply proxied_reply;
+            proxied_reply.set_status(attestation::STATUS_SUCCESS);
+            (*proxied_reply.mutable_enrollment_preparations())[0] = false;
+            (*proxied_reply.mutable_enrollment_preparations())[1] = false;
+            success_callback.Run(proxied_reply);
+          })));
+
+  base::Optional<bool> result;
+  std::unique_ptr<MockDBusMethodResponse<bool>> response(
+      new MockDBusMethodResponse<bool>(nullptr));
+  response->save_return_args(&result);
+
+  adaptor_->TpmIsAttestationPrepared(std::move(response));
+
+  // Verify that Return() is indeed called at least once.
+  ASSERT_TRUE(result.has_value());
+
+  // Verify response content.
+  EXPECT_FALSE(result.value());
+}
+
 // ------------- TpmAttestationCreateEnrollRequest Related Tests -------------
 TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
        TpmAttestationCreateEnrollRequestSuccess) {
