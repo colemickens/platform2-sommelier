@@ -105,6 +105,12 @@ class BiodMetrics : public BiodMetricsInterface {
   // Did setting context succeed?
   bool SendSetContextSuccess(bool success) override;
 
+  // Reading positive match secret succeeded or not?
+  bool SendReadPositiveMatchSecretSuccess(bool success);
+
+  // Positive match secret is as expected or not?
+  bool SendPositiveMatchSecretCorrect(bool correct);
+
   void SetMetricsLibraryForTesting(
       std::unique_ptr<MetricsLibraryInterface> metrics_lib);
 

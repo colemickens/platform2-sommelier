@@ -168,6 +168,23 @@ TEST_F(BiodMetricsTest, SendIgnoreMatchEventOnPowerButtonPress) {
   testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
   EXPECT_CALL(*GetMetricsLibraryMock(), SendBoolToUMA(_, false)).Times(1);
   biod_metrics_.SendIgnoreMatchEventOnPowerButtonPress(false);
+}
+
+TEST_F(BiodMetricsTest, SendReadPositiveMatchSecretSuccess) {
+  EXPECT_CALL(*GetMetricsLibraryMock(), SendBoolToUMA(_, true)).Times(1);
+  biod_metrics_.SendReadPositiveMatchSecretSuccess(true);
+  testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
+  EXPECT_CALL(*GetMetricsLibraryMock(), SendBoolToUMA(_, false)).Times(1);
+  biod_metrics_.SendReadPositiveMatchSecretSuccess(false);
+  testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
+}
+
+TEST_F(BiodMetricsTest, SendPositiveMatchSecretCorrect) {
+  EXPECT_CALL(*GetMetricsLibraryMock(), SendBoolToUMA(_, true)).Times(1);
+  biod_metrics_.SendPositiveMatchSecretCorrect(true);
+  testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
+  EXPECT_CALL(*GetMetricsLibraryMock(), SendBoolToUMA(_, false)).Times(1);
+  biod_metrics_.SendPositiveMatchSecretCorrect(false);
   testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
 }
 

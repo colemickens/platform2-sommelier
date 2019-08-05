@@ -39,6 +39,10 @@ constexpr char kUpdaterDurationNoUpdate[] =
     "Fingerprint.Updater.NoUpdate.Duration.Overall";
 constexpr char kUpdaterDurationUpdate[] =
     "Fingerprint.Updater.Update.Duration.Overall";
+constexpr char kFpReadPositiveMatchSecretSuccessOnMatch[] =
+    "Fingerprint.Unlock.ReadPositiveMatchSecret.Success";
+constexpr char kFpPositiveMatchSecretCorrect[] =
+    "Fingerprint.Unlock.Match.PositiveMatchSecretCorrect";
 }  // namespace metrics
 
 BiodMetrics::BiodMetrics() : metrics_lib_(std::make_unique<MetricsLibrary>()) {}
@@ -121,6 +125,16 @@ bool BiodMetrics::SendFwUpdaterStatus(FwUpdaterStatus status,
 bool BiodMetrics::SendIgnoreMatchEventOnPowerButtonPress(bool is_ignored) {
   return metrics_lib_->SendBoolToUMA(
       metrics::kFpMatchIgnoredDueToPowerButtonPress, is_ignored);
+}
+
+bool BiodMetrics::SendReadPositiveMatchSecretSuccess(bool success) {
+  return metrics_lib_->SendBoolToUMA(
+      metrics::kFpReadPositiveMatchSecretSuccessOnMatch, success);
+}
+
+bool BiodMetrics::SendPositiveMatchSecretCorrect(bool correct) {
+  return metrics_lib_->SendBoolToUMA(metrics::kFpPositiveMatchSecretCorrect,
+                                     correct);
 }
 
 void BiodMetrics::SetMetricsLibraryForTesting(

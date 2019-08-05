@@ -564,7 +564,10 @@ void CrosFpBiometricsManager::DoMatchFingerUpEvent(uint32_t event) {
 
 bool CrosFpBiometricsManager::ValidationValueIsCorrect(uint32_t match_idx) {
   brillo::SecureBlob secret(FP_POSITIVE_MATCH_SECRET_BYTES);
-  if (!cros_dev_->GetPositiveMatchSecret(match_idx, &secret)) {
+  bool read_secret_success =
+      cros_dev_->GetPositiveMatchSecret(match_idx, &secret);
+  biod_metrics_->SendReadPositiveMatchSecretSuccess(read_secret_success);
+  if (!read_secret_success) {
     LOG(ERROR) << "Failed to read positive match secret on match for finger "
                << match_idx << ".";
     return false;
@@ -581,11 +584,13 @@ bool CrosFpBiometricsManager::ValidationValueIsCorrect(uint32_t match_idx) {
 
   if (validation_value != records_[match_idx].validation_val) {
     LOG(ERROR) << "Validation value does not match for finger " << match_idx;
+    biod_metrics_->SendPositiveMatchSecretCorrect(false);
     suspicious_templates_.emplace(match_idx);
     return false;
   }
 
   LOG(INFO) << "Verified validation value for finger " << match_idx;
+  biod_metrics_->SendPositiveMatchSecretCorrect(true);
   suspicious_templates_.erase(match_idx);
   return true;
 }
