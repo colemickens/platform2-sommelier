@@ -158,15 +158,15 @@ TEST(UtilTest, TrimCharacteristicFromObjectPath) {
 }
 
 TEST(UtilTest, TrimDescriptorFromObjectPath) {
-  std::string path("descriptor01F");
-  std::string path2("/descriptor01F");
-  std::string path3("/descriptor01ff");
-  std::string path4("/char0123/descriptor01FF");
+  std::string path("desc01F");
+  std::string path2("/desc01F");
+  std::string path3("/desc01ff");
+  std::string path4("/char0123/desc01FF");
 
   EXPECT_EQ(kInvalidDescriptorHandle, TrimDescriptorFromObjectPath(&path));
-  EXPECT_EQ("descriptor01F", path);
+  EXPECT_EQ("desc01F", path);
   EXPECT_EQ(kInvalidDescriptorHandle, TrimDescriptorFromObjectPath(&path2));
-  EXPECT_EQ("/descriptor01F", path2);
+  EXPECT_EQ("/desc01F", path2);
   EXPECT_EQ(0x01FF, TrimDescriptorFromObjectPath(&path3));
   EXPECT_TRUE(path3.empty());
   EXPECT_EQ(0x01FF, TrimDescriptorFromObjectPath(&path4));
@@ -181,7 +181,7 @@ TEST(UtilTest, ConvertToObjectPath) {
   uint16_t ch = 0x01FF;
   std::string cp("/char01FF");
   uint16_t dh = 0x01FF;
-  std::string dp("/descriptor01FF");
+  std::string dp("/desc01FF");
 
   // device
   EXPECT_TRUE(ConvertDeviceAddressToObjectPath("").empty());
@@ -238,7 +238,7 @@ TEST(UtilTest, ConvertCharacteristicObjectPathToHandles) {
   std::string path("/org/bluez");
   std::string path2(
       "/org/bluez/hci0/dev_00_01_02_03_04_05/service001F/char0123/"
-      "descriptor01FF");
+      "desc01FF");
   std::string path3(
       "/org/bluez/hci0/dev_00_01_02_03_04_05/service001F/char0123");
 
@@ -269,7 +269,7 @@ TEST(UtilTest, ConvertDescriptorObjectPathToHandles) {
   std::string path("/org/bluez");
   std::string path2(
       "/org/bluez/hci0/dev_00_01_02_03_04_05/service001F/char0123/"
-      "descriptor001F");
+      "desc001F");
 
   std::string address("");
   uint16_t sh = 0x0000;

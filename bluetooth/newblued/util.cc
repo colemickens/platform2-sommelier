@@ -132,14 +132,14 @@ int32_t TrimCharacteristicFromObjectPath(std::string* characteristic) {
 }
 
 int32_t TrimDescriptorFromObjectPath(std::string* descriptor) {
-  std::regex rgx("/descriptor[0-9a-fA-F]{4}$");
+  std::regex rgx("/desc[0-9a-fA-F]{4}$");
   std::smatch m;
   std::string desc;
 
   if (!std::regex_search(*descriptor, m, rgx) || m.empty())
     return kInvalidDescriptorHandle;
 
-  desc = m.str(0).substr(11);
+  desc = m.str(0).substr(5);
   *descriptor = descriptor->substr(0, descriptor->size() - m.str(0).size());
   return std::stol(desc, nullptr, 16);
 }
@@ -254,7 +254,7 @@ std::string ConvertDescriptorHandleToObjectPath(const std::string& address,
                                                 uint16_t desc_handle) {
   std::string c = ConvertCharacteristicHandleToObjectPath(
       address, service_handle, char_handle);
-  std::string d = base::StringPrintf("/descriptor%04X", desc_handle);
+  std::string d = base::StringPrintf("/desc%04X", desc_handle);
   if (c.empty() || d.empty())
     return "";
   return c + d;
