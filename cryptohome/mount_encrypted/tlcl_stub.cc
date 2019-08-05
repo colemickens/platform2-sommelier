@@ -281,7 +281,7 @@ uint32_t TlclStub::ReadPubek(uint32_t* public_exponent,
   if (*modulus_size < sizeof(kEndorsementKeyModulus)) {
     return TPM_E_BUFFER_SIZE;
   }
-  *public_exponent = 2^16 - 1;
+  *public_exponent = 65535;
   memcpy(modulus, kEndorsementKeyModulus, sizeof(kEndorsementKeyModulus));
   *modulus_size = sizeof(kEndorsementKeyModulus);
   return TPM_SUCCESS;
