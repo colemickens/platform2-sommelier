@@ -4,3 +4,7 @@
 
 buildconfig = "//common-mk/BUILDCONFIG.gn"
 root = "//common-mk/gn_root/:"
+
+# This makes all scripts run by gn respect the shebang setting of the script.
+# Otherwise, the default is to always use `python`.
+script_executable = "/usr/bin/env"
