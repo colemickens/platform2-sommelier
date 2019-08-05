@@ -232,34 +232,6 @@ class DeviceInterfaceHandler {
   // Returns nullptr if no such device is found.
   Device* FindDevice(const std::string& device_address);
 
-  // Exposes or updates the device object's property depends on the whether it
-  // was exposed before or should be forced updated.
-  template <typename T>
-  void UpdateDeviceProperty(ExportedInterface* interface,
-                            const std::string& property_name,
-                            const Property<T>& property,
-                            bool force_export) {
-    if (force_export || property.updated()) {
-      interface->EnsureExportedPropertyRegistered<T>(property_name)
-          ->SetValue(property.value());
-    }
-  }
-
-  // Exposes or updates the device object's property depends on the whether it
-  // was exposed before or should be forced updated. Takes a converter function
-  // which converts the value of a property into the value for exposing.
-  template <typename T, typename U>
-  void UpdateDeviceProperty(ExportedInterface* interface,
-                            const std::string& property_name,
-                            const Property<U>& property,
-                            T (*converter)(const U&),
-                            bool force_export) {
-    if (force_export || property.updated()) {
-      interface->EnsureExportedPropertyRegistered<T>(property_name)
-          ->SetValue(converter(property.value()));
-    }
-  }
-
   // Exposes all mandatory device object's properties and update the properties
   // for the existing devices by either exposing them if not exposed before or
   // emitting the value changes if any.

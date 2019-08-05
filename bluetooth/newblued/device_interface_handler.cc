@@ -913,43 +913,42 @@ void DeviceInterfaceHandler::UpdateDeviceProperties(
         bluetooth_device::kLegacyPairingProperty)->SetValue(false);
   }
 
-  UpdateDeviceProperty(interface, bluetooth_device::kPairedProperty,
-                       device.paired, is_new_device);
-  UpdateDeviceProperty(interface, bluetooth_device::kConnectedProperty,
-                       device.connected, is_new_device);
-  UpdateDeviceProperty(interface, bluetooth_device::kTrustedProperty,
-                       device.trusted, is_new_device);
-  UpdateDeviceProperty(interface, bluetooth_device::kBlockedProperty,
-                       device.blocked, is_new_device);
-  UpdateDeviceProperty(interface, bluetooth_device::kAliasProperty,
-                       device.alias, is_new_device);
-  UpdateDeviceProperty(interface, bluetooth_device::kServicesResolvedProperty,
-                       device.services_resolved, is_new_device);
-  UpdateDeviceProperty(interface,
-                       bluetooth_device::kAdvertisingDataFlagsProperty,
-                       device.flags, is_new_device);
+  ExportDBusProperty(interface, bluetooth_device::kPairedProperty,
+                     device.paired, is_new_device);
+  ExportDBusProperty(interface, bluetooth_device::kConnectedProperty,
+                     device.connected, is_new_device);
+  ExportDBusProperty(interface, bluetooth_device::kTrustedProperty,
+                     device.trusted, is_new_device);
+  ExportDBusProperty(interface, bluetooth_device::kBlockedProperty,
+                     device.blocked, is_new_device);
+  ExportDBusProperty(interface, bluetooth_device::kAliasProperty, device.alias,
+                     is_new_device);
+  ExportDBusProperty(interface, bluetooth_device::kServicesResolvedProperty,
+                     device.services_resolved, is_new_device);
+  ExportDBusProperty(interface, bluetooth_device::kAdvertisingDataFlagsProperty,
+                     device.flags, is_new_device);
   // Although RSSI is an optional device property in BlueZ, it is always
   // provided by libnewblue, thus it is exposed by default.
-  UpdateDeviceProperty(interface, bluetooth_device::kRSSIProperty, device.rssi,
-                       is_new_device);
+  ExportDBusProperty(interface, bluetooth_device::kRSSIProperty, device.rssi,
+                     is_new_device);
 
   // The following properties are exported only when they are updated.
-  UpdateDeviceProperty(interface, bluetooth_device::kUUIDsProperty,
-                       device.service_uuids, &CanonicalizeUuids, false);
-  UpdateDeviceProperty(interface, bluetooth_device::kServiceDataProperty,
-                       device.service_data, &CanonicalizeServiceData, false);
-  UpdateDeviceProperty(interface, bluetooth_device::kNameProperty, device.name,
-                       false);
-  UpdateDeviceProperty(interface, bluetooth_device::kTxPowerProperty,
-                       device.tx_power, false);
-  UpdateDeviceProperty(interface, bluetooth_device::kClassProperty,
-                       device.eir_class, false);
-  UpdateDeviceProperty(interface, bluetooth_device::kAppearanceProperty,
-                       device.appearance, false);
-  UpdateDeviceProperty(interface, bluetooth_device::kIconProperty, device.icon,
-                       false);
-  UpdateDeviceProperty(interface, bluetooth_device::kManufacturerDataProperty,
-                       device.manufacturer, false);
+  ExportDBusProperty(interface, bluetooth_device::kUUIDsProperty,
+                     device.service_uuids, &CanonicalizeUuids, false);
+  ExportDBusProperty(interface, bluetooth_device::kServiceDataProperty,
+                     device.service_data, &CanonicalizeServiceData, false);
+  ExportDBusProperty(interface, bluetooth_device::kNameProperty, device.name,
+                     false);
+  ExportDBusProperty(interface, bluetooth_device::kTxPowerProperty,
+                     device.tx_power, false);
+  ExportDBusProperty(interface, bluetooth_device::kClassProperty,
+                     device.eir_class, false);
+  ExportDBusProperty(interface, bluetooth_device::kAppearanceProperty,
+                     device.appearance, false);
+  ExportDBusProperty(interface, bluetooth_device::kIconProperty, device.icon,
+                     false);
+  ExportDBusProperty(interface, bluetooth_device::kManufacturerDataProperty,
+                     device.manufacturer, false);
 }
 
 void DeviceInterfaceHandler::UpdateEir(Device* device,

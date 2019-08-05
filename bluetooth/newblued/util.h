@@ -14,7 +14,9 @@
 #include <newblue/gatt.h>
 #include <newblue/uuid.h>
 
+#include "bluetooth/common/exported_object_manager_wrapper.h"
 #include "bluetooth/newblued/gatt_attributes.h"
+#include "bluetooth/newblued/property.h"
 #include "bluetooth/newblued/uuid.h"
 
 namespace bluetooth {
@@ -50,7 +52,7 @@ std::vector<uint8_t> GetBytesFromLE(const uint8_t* buf, size_t buf_len);
 UniqueId GetNextId();
 
 ////////////////////////////////////////////////////////////////////////////////
-// Translation between D-Bus object path and newblued types.
+// D-Bus object path helpers and export helpers.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TrimAdapterFromObjectPath(std::string* path);
@@ -116,6 +118,40 @@ std::string ConvertDescriptorHandleToObjectPath(const std::string& address,
                                                 uint16_t service_handle,
                                                 uint16_t char_handle,
                                                 uint16_t desc_handle);
+
+// Exposes or updates the device object's property depends on the whether it
+// was exposed before or should be forced updated.
+template <typename T>
+void ExportDBusProperty(ExportedInterface* interface,
+                        const std::string& property_name,
+                        const Property<T>& property,
+                        bool force_export) {
+  CHECK(interface);
+  CHECK(!property_name.empty());
+
+  if (force_export || property.updated()) {
+    interface->EnsureExportedPropertyRegistered<T>(property_name)
+        ->SetValue(property.value());
+  }
+}
+
+// Exposes or updates the device object's property depends on the whether it
+// was exposed before or should be forced updated. Takes a converter function
+// which converts the value of a property into the value for exposing.
+template <typename T, typename U>
+void ExportDBusProperty(ExportedInterface* interface,
+                        const std::string& property_name,
+                        const Property<U>& property,
+                        T (*converter)(const U&),
+                        bool force_export) {
+  CHECK(interface);
+  CHECK(!property_name.empty());
+
+  if (force_export || property.updated()) {
+    interface->EnsureExportedPropertyRegistered<T>(property_name)
+        ->SetValue(converter(property.value()));
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Translation between libnewblue types and newblued types.
