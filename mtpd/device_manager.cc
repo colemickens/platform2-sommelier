@@ -824,6 +824,8 @@ void DeviceManager::RemoveDevices(bool remove_all) {
       return;
     }
   }
+  std::unique_ptr<LIBMTP_raw_device_t, base::FreeDeleter> scoped_raw_devices(
+      raw_devices);
 
   // Populate |devices_set| with all known attached devices.
   std::set<std::string> devices_set;
