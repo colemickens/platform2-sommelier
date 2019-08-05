@@ -349,6 +349,12 @@ These are used to communicate with [metrics_daemon].
 *   `/run/unclean-shutdown-detected`: Used by [crash_reporter] to signal the
     [metrics_daemon] that an unclean shutdown occurred.
 
+This is used to communicate with [powerd].
+
+*   `/run/crash_reporter/boot-collector-done`: Used by [crash_reporter] to
+    signal the [powerd] that boot collector has successfully completed per-boot
+    crash collection.
+
 *** aside
 This poor man's IPC with `/run` files was done historically because the
 [crash-reporter.conf] init and [crash-boot-collect.conf] were one script that
@@ -435,6 +441,7 @@ Check out the their [docs][1] for more details (especially on minidumps).
 [metrics_client]: ../metrics/
 [metrics_daemon]: ../metrics/
 [PAC]: https://en.wikipedia.org/wiki/Proxy_auto-config
+[powerd]: ../power_manager/
 [SELinux]: https://en.wikipedia.org/wiki/Security-Enhanced_Linux
 
 [Collectors]: ./docs/collectors.md

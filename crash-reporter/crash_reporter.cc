@@ -36,6 +36,7 @@ namespace {
 
 const char kKernelCrashDetected[] = "/run/kernel-crash-detected";
 const char kUncleanShutdownDetected[] = "/run/unclean-shutdown-detected";
+const char kBootCollectorDone[] = "/run/crash_reporter/boot-collector-done";
 
 MetricsLibrary s_metrics_lib;
 
@@ -107,6 +108,10 @@ int BootCollect(KernelCollector* kernel_collector,
 
   // Collect early boot crashes.
   early_crash_meta_collector->Collect();
+
+  // Presence of this files unblocks powerd from performing lid-closed action
+  // (crbug.com/988831).
+  TouchFile(FilePath(kBootCollectorDone));
 
   return 0;
 }
