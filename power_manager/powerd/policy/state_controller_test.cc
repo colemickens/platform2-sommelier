@@ -225,6 +225,8 @@ class StateControllerTest : public testing::Test {
       controller_.HandleDisplayModeChange(initial_display_mode_);
     if (send_initial_policy_)
       controller_.HandlePolicyChange(initial_policy_);
+    if (trigger_wait_for_crash_boot_collect_timeout_)
+      test_api_.TriggerHandleCrashBootCollectTimeout();
   }
 
   // Advances |now_| by |interval_|.
@@ -419,6 +421,9 @@ class StateControllerTest : public testing::Test {
   // Initial display mode to send in Init().
   DisplayMode initial_display_mode_;
   bool send_initial_display_mode_;
+
+  // Trigger wait_for_crash_boot_collect_timeout in Init().
+  bool trigger_wait_for_crash_boot_collect_timeout_ = true;
 
   // Initial policy to send in Init().
   PowerManagementPolicy initial_policy_;

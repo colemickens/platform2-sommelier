@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/compiler_specific.h>
+#include <base/files/file_path_watcher.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
@@ -120,6 +121,10 @@ class StateController : public PrefsObserver {
     // Runs StateController::HandleWaitForExternalDisplayTimeout(). Returns
     // false if the timer wasn't running.
     bool TriggerWaitForExternalDisplayTimeout() WARN_UNUSED_RESULT;
+
+    // Runs StateController::HandleCrashBootCollectTimeout(). Returns
+    // false if the timer wasn't running.
+    bool TriggerHandleCrashBootCollectTimeout();
 
    private:
     StateController* controller_;  // weak
@@ -262,6 +267,10 @@ class StateController : public PrefsObserver {
   // expires.
   bool WaitingForExternalDisplay() const;
 
+  // Is StateController waiting for crash-reporter per boot crash collection.
+  // Used to defer lid closed action until the timer expires.
+  bool WaitingForCrashBootCollect() const;
+
   // Should inactivity-triggered actions be deferred due to StateController
   // waiting for user activity to be seen during the current session?
   bool WaitingForInitialUserActivity() const;
@@ -272,6 +281,11 @@ class StateController : public PrefsObserver {
 
   // Stops |wait_for_external_display_timer_|.
   void StopWaitForExternalDisplayTimer();
+
+  // Stops |wait_for_crash_boot_collect_timer_| if
+  // |kCrashBootCollectorDoneFile| exists.
+  void MaybeStopWaitForCrashBootCollectTimer(const base::FilePath& path,
+                                             bool error);
 
   // Returns true if the idle, screen-dim, screen-lock, or screen-off actions
   // are currently blocked and can't occur until something changes via a call to
@@ -338,6 +352,11 @@ class StateController : public PrefsObserver {
   // weren't received in a reasonable amount of time after Init() was called.
   void HandleInitialStateTimeout();
 
+  // Invoked by |wait_for_crash_boot_collect_timer_| if
+  // |kCrashBootCollectorDoneFile| is not created after
+  // |kCrashBootCollectTimeout| after resuming.
+  void HandleCrashBootCollectTimeout();
+
   // Invoked by |wait_for_external_display_timer_| if display mode change is not
   // received in |KResuspendOnClosedLidTimeout| after resuming with lid still
   // closed.
@@ -403,6 +422,9 @@ class StateController : public PrefsObserver {
 
   // Runs HandleWaitForExternalDisplayTimeout().
   base::OneShotTimer wait_for_external_display_timer_;
+
+  // Runs HandleCrashBootCollectTimeout().
+  base::OneShotTimer wait_for_crash_boot_collect_timer_;
 
   // Time at which |action_timer_| has been scheduled to fire.
   base::TimeTicks action_timer_time_for_testing_;
@@ -539,6 +561,11 @@ class StateController : public PrefsObserver {
   // True if the most recent RequestSmartDimDecision call returned true.
   // Used by unit tests.
   bool screen_dim_deferred_for_testing_ = false;
+
+  // Watcher to monitor the presence of |kCrashBootCollectorDoneFile|.
+  // Presence of this file indicates successfull collection of per-boot crash
+  // collection.
+  base::FilePathWatcher crash_boot_collector_watcher_;
 
   base::WeakPtrFactory<StateController> weak_ptr_factory_;
 

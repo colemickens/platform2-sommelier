@@ -13,6 +13,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
@@ -40,6 +41,10 @@ constexpr base::TimeDelta KWaitForExternalDisplayTimeout =
 constexpr base::TimeDelta kInitialStateTimeout =
     base::TimeDelta::FromSeconds(10);
 
+// Time to wait for the crash-boot-collect to successfully complete.
+constexpr base::TimeDelta kCrashBootCollectTimeout =
+    base::TimeDelta::FromMinutes(1);
+
 // Time to wait for responses to D-Bus method calls to update_engine.
 constexpr base::TimeDelta kUpdateEngineDBusTimeout =
     base::TimeDelta::FromSeconds(3);
@@ -47,6 +52,11 @@ constexpr base::TimeDelta kUpdateEngineDBusTimeout =
 // Interval between logging the list of current wake locks.
 constexpr base::TimeDelta kWakeLocksLoggingInterval =
     base::TimeDelta::FromMinutes(5);
+
+// File used by crash_reporter to signal successful collection of per-boot crash
+// logs.
+constexpr char kCrashBootCollectorDoneFile[] =
+    "/run/crash_reporter/boot-collector-done";
 
 // Returns |time_ms|, a time in milliseconds, as a
 // util::TimeDeltaToString()-style string.
@@ -203,6 +213,15 @@ bool StateController::TestApi::TriggerWaitForExternalDisplayTimeout() {
 
   controller_->wait_for_external_display_timer_.Stop();
   controller_->HandleWaitForExternalDisplayTimeout();
+  return true;
+}
+
+bool StateController::TestApi::TriggerHandleCrashBootCollectTimeout() {
+  if (!controller_->WaitingForCrashBootCollect())
+    return false;
+
+  controller_->wait_for_crash_boot_collect_timer_.Stop();
+  controller_->HandleCrashBootCollectTimeout();
   return true;
 }
 
@@ -377,6 +396,15 @@ void StateController::Init(Delegate* delegate,
 
   initial_state_timer_.Start(FROM_HERE, kInitialStateTimeout, this,
                              &StateController::HandleInitialStateTimeout);
+
+  crash_boot_collector_watcher_.Watch(
+      base::FilePath(kCrashBootCollectorDoneFile), false,
+      base::Bind(&StateController::MaybeStopWaitForCrashBootCollectTimer,
+                 weak_ptr_factory_.GetWeakPtr()));
+
+  wait_for_crash_boot_collect_timer_.Start(
+      FROM_HERE, kCrashBootCollectTimeout, this,
+      &StateController::HandleCrashBootCollectTimeout);
 
   UpdateSettingsAndState();
 
@@ -712,6 +740,10 @@ bool StateController::WaitingForExternalDisplay() const {
   return wait_for_external_display_timer_.IsRunning();
 }
 
+bool StateController::WaitingForCrashBootCollect() const {
+  return wait_for_crash_boot_collect_timer_.IsRunning();
+}
+
 bool StateController::WaitingForInitialUserActivity() const {
   return wait_for_initial_user_activity_ &&
          session_state_ == SessionState::STARTED &&
@@ -725,6 +757,16 @@ void StateController::MaybeStopInitialStateTimer() {
 
 void StateController::StopWaitForExternalDisplayTimer() {
   wait_for_external_display_timer_.Stop();
+}
+
+void StateController::MaybeStopWaitForCrashBootCollectTimer(
+    const base::FilePath& path, bool error) {
+  if (base::PathExists(base::FilePath(kCrashBootCollectorDoneFile)) &&
+      wait_for_crash_boot_collect_timer_.IsRunning()) {
+    wait_for_crash_boot_collect_timer_.Stop();
+    if (lid_state_ == LidState::CLOSED)
+      UpdateState();
+  }
 }
 
 bool StateController::IsIdleBlocked() const {
@@ -1158,9 +1200,11 @@ void StateController::UpdateState() {
   //  2. Just resumed with lid still closed. Chrome takes a little bit of time
   //     to identify and configure external display and we don't want to suspend
   //     immediately if the device resumes with the lid still closed.
+  //  3. Booted with closed lid and crash_reporter has not yet collected
+  //     per-boot crash logs. Look at (crbug.com/988831) for more info.
 
   if (lid_state_ == LidState::CLOSED && !WaitingForInitialState() &&
-      !WaitingForExternalDisplay()) {
+      !WaitingForExternalDisplay() && !WaitingForCrashBootCollect()) {
     if (!lid_closed_action_performed_) {
       lid_closed_action_to_perform = lid_closed_action_;
       LOG(INFO) << "Ready to perform lid-closed action ("
@@ -1236,6 +1280,13 @@ void StateController::HandleInitialStateTimeout() {
             << "policy; using " << DisplayModeToString(display_mode_)
             << " display mode";
   UpdateState();
+}
+
+void StateController::HandleCrashBootCollectTimeout() {
+  LOG(INFO) << "CrashBootCollect did not complete sucessfully in "
+            << util::TimeDeltaToString(kCrashBootCollectTimeout);
+  if (lid_state_ == LidState::CLOSED)
+    UpdateState();
 }
 
 void StateController::HandleWaitForExternalDisplayTimeout() {
