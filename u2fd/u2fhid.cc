@@ -560,9 +560,6 @@ int U2fHid::ProcessU2fRegister(U2fRegisterRequestAdpu request,
   std::vector<uint8_t> pub_key;
   std::vector<uint8_t> key_handle;
 
-  IgnorePowerButton();
-  wink_.Run();
-
   if (DoU2fGenerate(request.GetAppId(), &pub_key, &key_handle) !=
       kVendorCmdRcSuccess) {
     return -EINVAL;
@@ -625,9 +622,6 @@ int U2fHid::ProcessU2fAuthenticate(U2fAuthenticateRequestAdpu request,
     return DoU2fSignCheckOnly(request.GetAppId(), request.GetKeyHandle());
   }
 
-  IgnorePowerButton();
-  wink_.Run();
-
   // This will increment the counter even if this request ends up failing due to
   // lack of presence of an invalid keyhandle.
   // TODO(louiscollard): Check this is ok.
@@ -641,7 +635,7 @@ int U2fHid::ProcessU2fAuthenticate(U2fAuthenticateRequestAdpu request,
 
   std::vector<uint8_t> signature;
   if (DoU2fSign(request.GetAppId(), request.GetKeyHandle(),
-                util::Sha256(to_sign), &signature)) {
+                util::Sha256(to_sign), &signature) != kVendorCmdRcSuccess) {
     return -EINVAL;
   }
 
@@ -678,6 +672,8 @@ int U2fHid::DoU2fGenerate(const std::vector<uint8_t>& app_id,
     VLOG(3) << "U2F_GENERATE failed, status: " << std::hex << generate_status;
     if (generate_status == kVendorCmdRcNotAllowed) {
       // We could not assert physical presence.
+      IgnorePowerButton();
+      wink_.Run();
       ReturnFailureResponse(U2F_SW_CONDITIONS_NOT_SATISFIED);
     } else {
       // We sent an invalid request (u2fd programming error),
@@ -723,6 +719,8 @@ int U2fHid::DoU2fSign(const std::vector<uint8_t>& app_id,
       ReturnFailureResponse(U2F_SW_WRONG_DATA);
     } else if (sign_status == kVendorCmdRcNotAllowed) {
       // Could not assert user presence.
+      IgnorePowerButton();
+      wink_.Run();
       ReturnFailureResponse(U2F_SW_CONDITIONS_NOT_SATISFIED);
     } else {
       // We sent an invalid request (u2fd programming error),
