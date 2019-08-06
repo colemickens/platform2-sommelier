@@ -56,7 +56,7 @@ class SafeFD {
     kDoesNotExist,    // The specified path does not exist.
     kSymlinkDetected,
     kBoundaryDetected,  // Detected a file system boundary during recursion.
-    kWrongType,  // (e.g. got a directory and expected a file)
+    kWrongType,         // (e.g. got a directory and expected a file)
     kWrongUID,
     kWrongGID,
     kWrongPermissions,

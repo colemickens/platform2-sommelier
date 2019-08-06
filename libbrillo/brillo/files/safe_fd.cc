@@ -11,6 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <brillo/files/file_util.h>
 #include <brillo/files/scoped_dir.h>
 #include <brillo/syslog_logging.h>
 
@@ -24,14 +25,6 @@ SafeFD::SafeFDResult MakeErrorResult(SafeFD::Error error) {
 
 SafeFD::SafeFDResult MakeSuccessResult(SafeFD&& fd) {
   return std::make_pair(std::move(fd), SafeFD::Error::kNoError);
-}
-
-SafeFD::Error ValidateFilename(const std::string& filename) {
-  if (filename == "." || filename == ".." ||
-      filename.find("/") != std::string::npos) {
-    return SafeFD::Error::kBadArgument;
-  }
-  return SafeFD::Error::kNoError;
 }
 
 SafeFD::SafeFDResult OpenPathComponentInternal(int parent_fd,
@@ -416,12 +409,12 @@ SafeFD::Error SafeFD::Link(const SafeFD& source_dir,
     return SafeFD::Error::kNotInitialized;
   }
 
-  SafeFD::Error err = ValidateFilename(source_name);
+  SafeFD::Error err = IsValidFilename(source_name);
   if (IsError(err)) {
     return err;
   }
 
-  err = ValidateFilename(destination_name);
+  err = IsValidFilename(destination_name);
   if (IsError(err)) {
     return err;
   }
@@ -439,7 +432,7 @@ SafeFD::Error SafeFD::Unlink(const std::string& name) {
     return SafeFD::Error::kNotInitialized;
   }
 
-  SafeFD::Error err = ValidateFilename(name);
+  SafeFD::Error err = IsValidFilename(name);
   if (IsError(err)) {
     return err;
   }
@@ -462,7 +455,7 @@ SafeFD::Error SafeFD::Rmdir(const std::string& name,
     return SafeFD::Error::kExceededMaximum;
   }
 
-  SafeFD::Error err = ValidateFilename(name);
+  SafeFD::Error err = IsValidFilename(name);
   if (IsError(err)) {
     return err;
   }
