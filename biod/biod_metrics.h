@@ -111,6 +111,12 @@ class BiodMetrics : public BiodMetricsInterface {
   // Positive match secret is as expected or not?
   bool SendPositiveMatchSecretCorrect(bool correct);
 
+  // Template record file format version.
+  bool SendRecordFormatVersion(int version);
+
+  // Migration of templates to have positive match secret succeeded or not?
+  bool SendMigrationForPositiveMatchSecretResult(bool success);
+
   void SetMetricsLibraryForTesting(
       std::unique_ptr<MetricsLibraryInterface> metrics_lib);
 

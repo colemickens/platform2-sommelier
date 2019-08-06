@@ -6,6 +6,7 @@
 
 #include <metrics/metrics_library.h>
 
+#include "biod/biod_storage.h"
 #include "biod/update_reason.h"
 #include "biod/utils.h"
 
@@ -43,6 +44,10 @@ constexpr char kFpReadPositiveMatchSecretSuccessOnMatch[] =
     "Fingerprint.Unlock.ReadPositiveMatchSecret.Success";
 constexpr char kFpPositiveMatchSecretCorrect[] =
     "Fingerprint.Unlock.Match.PositiveMatchSecretCorrect";
+constexpr char kRecordFormatVersionMetric[] =
+    "Fingerprint.Unlock.RecordFormatVersion";
+constexpr char kMigrationForPositiveMatchSecretResult[] =
+    "Fingerprint.Unlock.MigrationForPositiveMatchSecretResult";
 }  // namespace metrics
 
 BiodMetrics::BiodMetrics() : metrics_lib_(std::make_unique<MetricsLibrary>()) {}
@@ -135,6 +140,16 @@ bool BiodMetrics::SendReadPositiveMatchSecretSuccess(bool success) {
 bool BiodMetrics::SendPositiveMatchSecretCorrect(bool correct) {
   return metrics_lib_->SendBoolToUMA(metrics::kFpPositiveMatchSecretCorrect,
                                      correct);
+}
+
+bool BiodMetrics::SendRecordFormatVersion(int version) {
+  return metrics_lib_->SendEnumToUMA(metrics::kRecordFormatVersionMetric,
+                                     version, kRecordFormatVersion);
+}
+
+bool BiodMetrics::SendMigrationForPositiveMatchSecretResult(bool success) {
+  return metrics_lib_->SendBoolToUMA(
+      metrics::kMigrationForPositiveMatchSecretResult, success);
 }
 
 void BiodMetrics::SetMetricsLibraryForTesting(
