@@ -17,6 +17,7 @@
 
 #include "biod/biod_storage.h"
 #include "biod/cros_fp_device.h"
+#include "biod/cros_fp_device_factory.h"
 #include "biod/power_button_filter_interface.h"
 
 namespace biod {
@@ -25,8 +26,9 @@ class BiodMetrics;
 
 class CrosFpBiometricsManager : public BiometricsManager {
  public:
-  static std::unique_ptr<BiometricsManager> Create(
-      const scoped_refptr<dbus::Bus>& bus);
+  static std::unique_ptr<CrosFpBiometricsManager> Create(
+      const scoped_refptr<dbus::Bus>& bus,
+      std::unique_ptr<CrosFpDeviceFactory> cros_fp_device_factory);
 
   // BiometricsManager overrides:
   ~CrosFpBiometricsManager() override;
@@ -61,6 +63,9 @@ class CrosFpBiometricsManager : public BiometricsManager {
   void EndAuthSession() override;
 
  private:
+  // For testing.
+  friend class CrosFpBiometricsManagerPeer;
+
   using SessionAction = base::Callback<void(const uint32_t event)>;
 
   struct InternalRecord {
@@ -94,7 +99,8 @@ class CrosFpBiometricsManager : public BiometricsManager {
   };
 
   explicit CrosFpBiometricsManager(
-      std::unique_ptr<PowerButtonFilterInterface> power_button_filter);
+      std::unique_ptr<PowerButtonFilterInterface> power_button_filter,
+      std::unique_ptr<CrosFpDeviceFactory> cros_fp_device_factory);
   bool Init();
 
   void OnEnrollScanDone(ScanResult result,
@@ -149,6 +155,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
   base::WeakPtrFactory<CrosFpBiometricsManager> weak_factory_;
 
   std::unique_ptr<PowerButtonFilterInterface> power_button_filter_;
+  std::unique_ptr<CrosFpDeviceFactory> cros_fp_device_factory_;
   BiodStorage biod_storage_;
 
   DISALLOW_COPY_AND_ASSIGN(CrosFpBiometricsManager);

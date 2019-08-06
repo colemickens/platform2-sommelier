@@ -30,8 +30,7 @@ class CrosFpDevice : public CrosFpDeviceInterface {
       : mkbp_event_(mkbp_event),
         biod_metrics_(biod_metrics) {}
 
-  static std::unique_ptr<CrosFpDevice> Open(const MkbpCallback& callback,
-                                            BiodMetrics* biod_metrics);
+  bool Init();
 
   // Run a simple command to get the version information from FP MCU and check
   // whether the image type returned is the same as |expected_image|.
@@ -68,8 +67,6 @@ class CrosFpDevice : public CrosFpDeviceInterface {
   static constexpr int kLastTemplate = -1;
 
  private:
-  bool Init();
-
   bool EcDevInit();
   ssize_t ReadVersion(char* buffer, size_t size);
   bool EcProtoInfo(ssize_t* max_read, ssize_t* max_write);

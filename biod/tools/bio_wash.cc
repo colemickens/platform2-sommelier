@@ -18,6 +18,7 @@
 #include <dbus/bus.h>
 
 #include "biod/cros_fp_biometrics_manager.h"
+#include "biod/cros_fp_device_factory_impl.h"
 
 namespace {
 
@@ -36,7 +37,8 @@ int DoBioWash(const bool factory_init = false) {
   scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
   // Add all the possible BiometricsManagers available.
   std::unique_ptr<biod::BiometricsManager> cros_fp_bio =
-      biod::CrosFpBiometricsManager::Create(bus);
+      biod::CrosFpBiometricsManager::Create(
+          bus, std::make_unique<biod::CrosFpDeviceFactoryImpl>());
   if (cros_fp_bio) {
     managers.emplace_back(std::move(cros_fp_bio));
   }
