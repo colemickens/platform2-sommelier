@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sys/statvfs.h>
+
 #include <set>
 #include <string>
 #include <utility>
@@ -39,6 +41,17 @@ constexpr char kRootFsPath[] = "/opt/google/vms/android/system.raw.img";
 constexpr char kVendorImagePath[] = "/opt/google/vms/android/vendor.raw.img";
 
 constexpr auto DEFAULT_TIMEOUT = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
+
+bool IsHostRootfsWritable() {
+  struct statvfs buf;
+  if (statvfs("/", &buf) < 0) {
+    PLOG(ERROR) << "statvfs() failed";
+    return false;
+  }
+  const bool rw = !(buf.f_flag & ST_RDONLY);
+  LOG(INFO) << "Host's rootfs is " << (rw ? "rw" : "ro");
+  return rw;
+}
 
 }  // namespace
 
@@ -238,6 +251,7 @@ std::vector<std::string> GenerateKernelCmdline(
   // TODO(cmtm): include command line parameters from arcbootcontinue
   return result;
 }
+
 vm_tools::concierge::StartArcVmRequest CreateStartArcVmRequest(
     const std::string& user_id_hash,
     const std::string& disk_path,
@@ -248,8 +262,8 @@ vm_tools::concierge::StartArcVmRequest CreateStartArcVmRequest(
   request.set_owner_id(user_id_hash);
 
   request.add_params("root=/dev/vda");
-  // TODO(b/135229848): Use ro unless rw is requested.
-  request.add_params("rw");
+  if (IsHostRootfsWritable())
+    request.add_params("rw");
   request.add_params("init=/init");
   for (auto& entry : kernel_cmdline)
     request.add_params(std::move(entry));
