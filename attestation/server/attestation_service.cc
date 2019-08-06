@@ -362,6 +362,16 @@ std::string GetIdentityFeaturesString(int identity_features) {
       + stream.str();
 }
 
+std::string GetKeyTypeName(attestation::KeyType key_type) {
+  switch (key_type) {
+    case attestation::KEY_TYPE_ECC:
+      return "ECC";
+    case attestation::KEY_TYPE_RSA:
+      return "RSA";
+  }
+  return "unknown";
+}
+
 void LogErrorFromCA(const std::string& func, const std::string& details,
                     const std::string& extra_details) {
   std::ostringstream stream;
@@ -1628,8 +1638,8 @@ void AttestationService::PrepareForEnrollment() {
 
   std::string ek_certificate;
   if (!tpm_utility_->GetEndorsementCertificate(key_type, &ek_certificate)) {
-    LOG(ERROR) << __func__ << ": Failed to get EK cert with key_type "
-               << key_type;
+    LOG(ERROR) << __func__ << ": Failed to get " << GetKeyTypeName(key_type)
+               << " EK certificate.";
     return;
   }
   LOG(INFO) << "GetEndorsementCertificate done. (from start: "
@@ -1664,17 +1674,17 @@ void AttestationService::PrepareForEnrollment() {
 
   base::TimeDelta delta = (base::TimeTicks::Now() - start);
   LOG(INFO) << "Attestation: Prepared successfully (" << delta.InMilliseconds()
-            << "ms) with EK key_type " << key_type;
+            << "ms) with " << GetKeyTypeName(key_type) << " EK.";
 }
 
 int AttestationService::CreateIdentity(int identity_features) {
   // The identity we're creating will have the next index in identities.
   auto* database_pb = database_->GetMutableProtobuf();
   const int identity = database_pb->identities().size();
-  KeyType identity_key_type = GetAttestaionIdentityKeyType();
+  KeyType identity_key_type = GetAttestationIdentityKeyType();
   LOG(INFO) << "Attestation: Creating identity " << identity << " with "
-            << GetIdentityFeaturesString(identity_features) << " in key_type "
-            << identity_key_type;
+            << GetIdentityFeaturesString(identity_features) << " and "
+            << GetKeyTypeName(identity_key_type) << " AIK.";
   AttestationDatabase::Identity new_identity_pb;
 
   new_identity_pb.set_features(identity_features);
@@ -1781,13 +1791,13 @@ bool AttestationService::QuoteNvramData(
     std::string signature;
 
     if (tpm_utility_->CertifyNV(nv_index, nv_size, identity_key_blob,
-                              &certified_value, &signature)) {
+                                &certified_value, &signature)) {
       quote->set_quote(signature);
       quote->set_quoted_data(certified_value);
       return true;
     } else {
       LOG(WARNING) << "Attestation: Failed to certify " << quote_name
-                   << " NV data of size " << nv_size << " at address "
+                   << " NV data of size " << nv_size << " at index "
                    << std::hex << std::showbase << nv_index << ".";
     }
   }
@@ -2955,7 +2965,7 @@ void AttestationService::GetCertifiedNvIndexTask(
                                identity_pb.identity_key().identity_key_blob(),
                                &certified_value, &signature)) {
     LOG(WARNING) << "Attestation: Failed to certify NV data of size "
-                 << request.nv_size() << " at address " << std::hex
+                 << request.nv_size() << " at index " << std::hex
                  << std::showbase << request.nv_index() << ".";
     result->set_status(STATUS_INVALID_PARAMETER);
     return;
@@ -3012,7 +3022,7 @@ KeyType AttestationService::GetEndorsementKeyType() const {
   return tpm_utility_->GetVersion() == TPM_2_0 ? KEY_TYPE_ECC : KEY_TYPE_RSA;
 }
 
-KeyType AttestationService::GetAttestaionIdentityKeyType() const {
+KeyType AttestationService::GetAttestationIdentityKeyType() const {
   return tpm_utility_->GetVersion() == TPM_2_0 ? KEY_TYPE_ECC : KEY_TYPE_RSA;
 }
 

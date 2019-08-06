@@ -154,7 +154,7 @@ class AttestationService : public AttestationInterface {
   KeyType GetEndorsementKeyType() const;
 
   // Return the type of the attestation identity key (AIK).
-  KeyType GetAttestaionIdentityKeyType() const;
+  KeyType GetAttestationIdentityKeyType() const;
 
   // Mutators useful for testing.
   void set_crypto_utility(CryptoUtility* crypto_utility) {
