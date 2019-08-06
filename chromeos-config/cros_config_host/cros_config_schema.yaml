@@ -254,6 +254,11 @@ properties:
                     Mainly, this is only for compatibility testing with device tree (since DT
                     allowed firmwares to be named).
                   type: string
+                build-name:
+                  description: The name of the firmware build. Typically the
+                    device name, but can differ when a device may have two or
+                    more different firmware builds.
+                  type: string
                 no-firmware:
                   description: If present this indicates that this model has no firmware at present.
                     This means that it will be omitted from the firmware updater

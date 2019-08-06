@@ -370,6 +370,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | bcs-overlay | string |  | False |  | True | BCS overlay path used to determine BCS file path for binary firmware downloads. |
+| build-name | string |  | False |  | True | The name of the firmware build. Typically the device name, but can differ when a device may have two or more different firmware builds. |
 | build-targets | [build-targets](#build-targets) |  | False |  | True |  |
 | ec-ro-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |
 | key-id | string |  | False |  | True | Key ID from the signer key set that is used to sign the given firmware image. |
