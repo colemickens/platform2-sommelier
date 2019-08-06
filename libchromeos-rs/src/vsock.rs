@@ -30,6 +30,7 @@ const PADDING: usize = size_of::<sockaddr>()
     - (2 * size_of::<c_uint>());
 
 #[repr(C)]
+#[derive(Default)]
 struct sockaddr_vm {
     svm_family: sa_family_t,
     svm_reserved1: c_ushort,
@@ -139,8 +140,7 @@ impl VsockStream {
             return Err(io::Error::last_os_error());
         }
 
-        // Safe because we are zero-initializing a struct with only integer fields.
-        let mut svm: sockaddr_vm = unsafe { mem::zeroed() };
+        let mut svm: sockaddr_vm = Default::default();
         svm.svm_family = AF_VSOCK;
         svm.svm_cid = sockaddr.cid;
         svm.svm_port = sockaddr.port;
@@ -267,8 +267,7 @@ impl VsockListener {
             return Err(io::Error::last_os_error());
         }
 
-        // Safe because we are zero-initializing a struct with only integer fields.
-        let mut svm: sockaddr_vm = unsafe { mem::zeroed() };
+        let mut svm: sockaddr_vm = Default::default();
         svm.svm_family = AF_VSOCK;
         svm.svm_cid = VMADDR_CID_ANY;
         svm.svm_port = port;
@@ -304,8 +303,7 @@ impl VsockListener {
 
     /// Returns the port that this listener is bound to.
     pub fn local_port(&self) -> io::Result<u32> {
-        // Safe because we are zero-initializing a struct with only integer fields.
-        let mut svm: sockaddr_vm = unsafe { mem::zeroed() };
+        let mut svm: sockaddr_vm = Default::default();
 
         // Safe because we give a valid pointer for addrlen and check the length.
         let mut addrlen = size_of::<sockaddr_vm>() as socklen_t;
@@ -331,8 +329,7 @@ impl VsockListener {
     /// new connection is established.  When established, returns the corresponding `VsockStream`
     /// and the remote peer's address.
     pub fn accept(&self) -> io::Result<(VsockStream, SocketAddr)> {
-        // Safe because we are zero-initializing a struct with only integer fields.
-        let mut svm: sockaddr_vm = unsafe { mem::zeroed() };
+        let mut svm: sockaddr_vm = Default::default();
 
         // Safe because this will only modify |svm| and we check the return value.
         let mut socklen: socklen_t = size_of::<sockaddr_vm>() as socklen_t;
