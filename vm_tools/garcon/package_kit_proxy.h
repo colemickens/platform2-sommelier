@@ -31,9 +31,11 @@ class PackageKitProxy {
   class PackageKitObserver {
    public:
     virtual ~PackageKitObserver() {}
-    virtual void OnInstallCompletion(bool success,
+    virtual void OnInstallCompletion(const std::string& command_uuid,
+                                     bool success,
                                      const std::string& failure_reason) = 0;
     virtual void OnInstallProgress(
+        const std::string& command_uuid,
         vm_tools::container::InstallLinuxPackageProgressInfo::Status status,
         uint32_t percent_progress) = 0;
     virtual void OnUninstallProgress(uint32_t percent_progress) = 0;
@@ -120,12 +122,14 @@ class PackageKitProxy {
   // performed. |out_error| will be set in the case of failure.
   vm_tools::container::InstallLinuxPackageResponse::Status
   InstallLinuxPackageFromFilePath(const base::FilePath& file_path,
+                                  const std::string& command_uuid,
                                   std::string* out_error);
 
   // Requests that installation of the Linux package with the ID of
   // |package_id| be performed. |out_error| will be set in the case of failure.
   vm_tools::container::InstallLinuxPackageResponse::Status
   InstallLinuxPackageFromPackageId(const std::string& package_id,
+                                   const std::string& command_uuid,
                                    std::string* out_error);
 
   // Kicks off a sequence of requests to uninstall the package owning the
@@ -187,9 +191,11 @@ class PackageKitProxy {
       std::shared_ptr<PackageInfoTransactionData> data);
   void InstallLinuxPackageFromFilePathOnDBusThread(
       const base::FilePath& file_path,
+      const std::string& command_uuid,
       std::unique_ptr<BlockingOperationActiveClearer> clearer);
   void InstallLinuxPackageFromPackageIdOnDBusThread(
       const std::string& package_name,
+      const std::string& command_uuid,
       std::unique_ptr<BlockingOperationActiveClearer> clearer);
   void SearchLinuxPackagesForFileOnDBusThread(const base::FilePath& file_path,
                                               PackageSearchCallback callback);

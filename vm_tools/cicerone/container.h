@@ -95,6 +95,7 @@ class Container {
   vm_tools::container::InstallLinuxPackageResponse::Status InstallLinuxPackage(
       const std::string& file_path,
       const std::string& package_id,
+      const std::string& command_uuid,
       std::string* out_error);
 
   vm_tools::container::UninstallPackageOwningFileResponse::Status

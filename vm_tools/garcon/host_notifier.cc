@@ -205,7 +205,8 @@ void HostNotifier::OnFileCanWriteWithoutBlocking(int fd) {
   NOTREACHED();
 }
 
-void HostNotifier::OnInstallCompletion(bool success,
+void HostNotifier::OnInstallCompletion(const std::string& command_uuid,
+                                       bool success,
                                        const std::string& failure_reason) {
   vm_tools::container::InstallLinuxPackageProgressInfo progress_info;
   progress_info.set_token(token_);
@@ -213,18 +214,21 @@ void HostNotifier::OnInstallCompletion(bool success,
       success ? vm_tools::container::InstallLinuxPackageProgressInfo::SUCCEEDED
               : vm_tools::container::InstallLinuxPackageProgressInfo::FAILED);
   progress_info.set_failure_details(failure_reason);
+  progress_info.set_command_uuid(command_uuid);
   task_runner_->PostTask(FROM_HERE, base::Bind(&SendInstallStatusToHost,
                                                base::Unretained(stub_.get()),
                                                std::move(progress_info)));
 }
 
 void HostNotifier::OnInstallProgress(
+    const std::string& command_uuid,
     vm_tools::container::InstallLinuxPackageProgressInfo::Status status,
     uint32_t percent_progress) {
   vm_tools::container::InstallLinuxPackageProgressInfo progress_info;
   progress_info.set_token(token_);
   progress_info.set_status(status);
   progress_info.set_progress_percent(percent_progress);
+  progress_info.set_command_uuid(command_uuid);
   task_runner_->PostTask(FROM_HERE, base::Bind(&SendInstallStatusToHost,
                                                base::Unretained(stub_.get()),
                                                std::move(progress_info)));

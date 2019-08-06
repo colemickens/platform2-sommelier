@@ -1832,7 +1832,7 @@ std::unique_ptr<dbus::Response> Service::InstallLinuxPackage(
   std::string error_msg;
   vm_tools::container::InstallLinuxPackageResponse::Status status =
       container->InstallLinuxPackage(request.file_path(), request.package_id(),
-                                     &error_msg);
+                                     request.command_uuid(), &error_msg);
   response.set_failure_reason(error_msg);
   switch (status) {
     case vm_tools::container::InstallLinuxPackageResponse::STARTED:

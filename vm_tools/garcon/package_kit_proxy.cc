@@ -678,6 +678,7 @@ class InstallTransaction : public PackageKitTransaction {
       dbus::ObjectProxy* packagekit_service_proxy,
       PackageKitProxy::PackageKitObserver* observer,
       base::FilePath file_path,
+      std::string command_uuid,
       std::unique_ptr<PackageKitProxy::BlockingOperationActiveClearer> clearer)
       : PackageKitTransaction(
             bus,
@@ -685,6 +686,7 @@ class InstallTransaction : public PackageKitTransaction {
             packagekit_service_proxy,
             kErrorCodeSignalMask | kFinishedSignalMask | kPropertiesSignalMask),
         file_path_(file_path),
+        command_uuid_(command_uuid),
         clearer_(std::move(clearer)),
         observer_(observer) {}
 
@@ -694,6 +696,7 @@ class InstallTransaction : public PackageKitTransaction {
       dbus::ObjectProxy* packagekit_service_proxy,
       PackageKitProxy::PackageKitObserver* observer,
       std::string package_id,
+      std::string command_uuid,
       std::unique_ptr<PackageKitProxy::BlockingOperationActiveClearer> clearer)
       : PackageKitTransaction(
             bus,
@@ -701,13 +704,14 @@ class InstallTransaction : public PackageKitTransaction {
             packagekit_service_proxy,
             kErrorCodeSignalMask | kFinishedSignalMask | kPropertiesSignalMask),
         package_id_(package_id),
+        command_uuid_(command_uuid),
         clearer_(std::move(clearer)),
         observer_(observer) {}
 
   void GeneralError(const std::string& details) override {
     if (!observer_)
       return;
-    observer_->OnInstallCompletion(false, details);
+    observer_->OnInstallCompletion(command_uuid_, false, details);
     observer_ = nullptr;
   }
 
@@ -717,7 +721,6 @@ class InstallTransaction : public PackageKitTransaction {
     if (package_id_.empty()) {
       method_name = kInstallFilesMethod;
       value = file_path_.value();
-
     } else {
       method_name = kInstallPackagesMethod;
       value = package_id_;
@@ -737,7 +740,7 @@ class InstallTransaction : public PackageKitTransaction {
     LOG(ERROR) << "Failure installing Linux package of: " << details;
     if (!observer_)
       return;
-    observer_->OnInstallCompletion(false, details);
+    observer_->OnInstallCompletion(command_uuid_, false, details);
     observer_ = nullptr;
   }
 
@@ -746,7 +749,7 @@ class InstallTransaction : public PackageKitTransaction {
     if (!observer_)
       return;
     observer_->OnInstallCompletion(
-        kPackageKitExitCodeSuccess == exit_code,
+        command_uuid_, kPackageKitExitCodeSuccess == exit_code,
         "Exit Code: " + base::IntToString(exit_code));
     observer_ = nullptr;
   }
@@ -785,12 +788,13 @@ class InstallTransaction : public PackageKitTransaction {
     // zero because you see this at the beginning of phases.
     if (percentage == 101)
       percentage = 0;
-    observer_->OnInstallProgress(status, percentage);
+    observer_->OnInstallProgress(command_uuid_, status, percentage);
   }
 
  private:
   base::FilePath file_path_;
   std::string package_id_;
+  std::string command_uuid_;
   // Ensure blocking_operation_active is cleared when this object is deleted.
   std::unique_ptr<PackageKitProxy::BlockingOperationActiveClearer> clearer_;
   PackageKitProxy::PackageKitObserver* observer_;  // Not owned.
@@ -1395,7 +1399,9 @@ void PackageKitProxy::
 
 vm_tools::container::InstallLinuxPackageResponse::Status
 PackageKitProxy::InstallLinuxPackageFromFilePath(
-    const base::FilePath& file_path, std::string* out_error) {
+    const base::FilePath& file_path,
+    const std::string& command_uuid,
+    std::string* out_error) {
   // Make sure we don't already have one in progress.
   {  // Scope mutex lock
     base::AutoLock auto_lock(blocking_operation_active_mutex_);
@@ -1413,13 +1419,16 @@ PackageKitProxy::InstallLinuxPackageFromFilePath(
   task_runner_->PostTask(
       FROM_HERE,
       base::Bind(&PackageKitProxy::InstallLinuxPackageFromFilePathOnDBusThread,
-                 base::Unretained(this), file_path, base::Passed(&clearer)));
+                 base::Unretained(this), file_path, command_uuid,
+                 base::Passed(&clearer)));
   return vm_tools::container::InstallLinuxPackageResponse::STARTED;
 }
 
 vm_tools::container::InstallLinuxPackageResponse::Status
-PackageKitProxy::InstallLinuxPackageFromPackageId(const std::string& package_id,
-                                                  std::string* out_error) {
+PackageKitProxy::InstallLinuxPackageFromPackageId(
+    const std::string& package_id,
+    const std::string& command_uuid,
+    std::string* out_error) {
   // Make sure we don't already have one in progress.
   {  // Scope mutex lock
     base::AutoLock auto_lock(blocking_operation_active_mutex_);
@@ -1437,7 +1446,8 @@ PackageKitProxy::InstallLinuxPackageFromPackageId(const std::string& package_id,
   task_runner_->PostTask(
       FROM_HERE,
       base::Bind(&PackageKitProxy::InstallLinuxPackageFromPackageIdOnDBusThread,
-                 base::Unretained(this), package_id, base::Passed(&clearer)));
+                 base::Unretained(this), package_id, command_uuid,
+                 base::Passed(&clearer)));
   return vm_tools::container::InstallLinuxPackageResponse::STARTED;
 }
 
@@ -1538,25 +1548,27 @@ void PackageKitProxy::GetLinuxPackageInfoOnDBusThread(
 
 void PackageKitProxy::InstallLinuxPackageFromFilePathOnDBusThread(
     const base::FilePath& file_path,
+    const std::string& command_uuid,
     std::unique_ptr<BlockingOperationActiveClearer> clearer) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   // This object is intentionally leaked and will clean itself up when done
   // with all the D-Bus communication.
   InstallTransaction* transaction =
       new InstallTransaction(bus_, this, packagekit_service_proxy_, observer_,
-                             file_path, std::move(clearer));
+                             file_path, command_uuid, std::move(clearer));
   transaction->StartTransaction();
 }
 
 void PackageKitProxy::InstallLinuxPackageFromPackageIdOnDBusThread(
     const std::string& package_id,
+    const std::string& command_uuid,
     std::unique_ptr<BlockingOperationActiveClearer> clearer) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   // This object is intentionally leaked and will clean itself up when done
   // with all the D-Bus communication.
   InstallTransaction* transaction =
       new InstallTransaction(bus_, this, packagekit_service_proxy_, observer_,
-                             package_id, std::move(clearer));
+                             package_id, command_uuid, std::move(clearer));
   transaction->StartTransaction();
 }
 

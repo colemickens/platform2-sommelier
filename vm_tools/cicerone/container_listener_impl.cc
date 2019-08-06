@@ -250,6 +250,7 @@ grpc::Status ContainerListenerImpl::InstallLinuxPackageProgress(
           request->status()));
   progress_signal.set_progress_percent(request->progress_percent());
   progress_signal.set_failure_details(request->failure_details());
+  progress_signal.set_command_uuid(request->command_uuid());
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool result = false;

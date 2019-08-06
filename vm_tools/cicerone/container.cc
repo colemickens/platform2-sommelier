@@ -211,11 +211,13 @@ bool Container::GetLinuxPackageInfo(const std::string& file_path,
 vm_tools::container::InstallLinuxPackageResponse::Status
 Container::InstallLinuxPackage(const std::string& file_path,
                                const std::string& package_id,
+                               const std::string& command_uuid,
                                std::string* out_error) {
   vm_tools::container::InstallLinuxPackageRequest container_request;
   vm_tools::container::InstallLinuxPackageResponse container_response;
   container_request.set_file_path(file_path);
   container_request.set_package_id(package_id);
+  container_request.set_command_uuid(command_uuid);
 
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(

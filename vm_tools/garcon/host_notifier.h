@@ -50,9 +50,11 @@ class HostNotifier : public base::MessageLoopForIO::Watcher,
   void OnFileCanWriteWithoutBlocking(int fd) override;
 
   // vm_tools::garcon::PackageKitObserver overrides.
-  void OnInstallCompletion(bool success,
+  void OnInstallCompletion(const std::string& command_uuid,
+                           bool success,
                            const std::string& failure_reason) override;
   void OnInstallProgress(
+      const std::string& command_uuid,
       vm_tools::container::InstallLinuxPackageProgressInfo::Status status,
       uint32_t percent_progress) override;
   void OnUninstallCompletion(bool success,

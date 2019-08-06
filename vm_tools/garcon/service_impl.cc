@@ -600,18 +600,17 @@ grpc::Status ServiceImpl::InstallLinuxPackage(
     return grpc::Status(grpc::INVALID_ARGUMENT,
                         "file_path and package_id cannot both be empty");
   }
-
   std::string error_msg;
   if (request->file_path().empty()) {
     response->set_status(package_kit_proxy_->InstallLinuxPackageFromPackageId(
-        request->package_id(), &error_msg));
+        request->package_id(), request->command_uuid(), &error_msg));
   } else {
     base::FilePath file_path(request->file_path());
     if (!base::PathExists(file_path)) {
       return grpc::Status(grpc::INVALID_ARGUMENT, "file_path does not exist");
     }
     response->set_status(package_kit_proxy_->InstallLinuxPackageFromFilePath(
-        file_path, &error_msg));
+        file_path, request->command_uuid(), &error_msg));
   }
   response->set_failure_reason(error_msg);
   return grpc::Status::OK;
