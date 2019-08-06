@@ -208,7 +208,7 @@ void SafeFD::UnsafeReset(int fd) {
 
 SafeFD::Error SafeFD::Write(const char* data, size_t size) {
   if (!fd_.is_valid()) {
-    LOG(WARNING) << "Called Write() on invalid SafeFD()!";
+    return SafeFD::Error::kNotInitialized;
   }
   errno = 0;
   if (!base::WriteFileDescriptor(fd_.get(), data, size)) {
@@ -225,27 +225,35 @@ SafeFD::Error SafeFD::Write(const char* data, size_t size) {
 
 std::pair<std::vector<char>, SafeFD::Error> SafeFD::ReadContents(
     size_t max_size) {
+  std::vector<char> buffer;
+  if (!fd_.is_valid()) {
+    return std::make_pair(std::move(buffer), SafeFD::Error::kNotInitialized);
+  }
+
   size_t file_size = 0;
   SafeFD::Error err = GetFileSize(fd_.get(), &file_size);
   if (IsError(err)) {
-    return std::make_pair(std::vector<char>{}, err);
+    return std::make_pair(std::move(buffer), err);
   }
 
   if (file_size > max_size) {
-    return std::make_pair(std::vector<char>{}, SafeFD::Error::kExceededMaximum);
+    return std::make_pair(std::move(buffer), SafeFD::Error::kExceededMaximum);
   }
 
-  std::vector<char> buffer;
   buffer.resize(file_size);
 
   err = Read(buffer.data(), buffer.size());
   if (IsError(err)) {
-    return std::make_pair(std::vector<char>{}, err);
+    buffer.clear();
   }
   return std::make_pair(std::move(buffer), err);
 }
 
 SafeFD::Error SafeFD::Read(char* data, size_t size) {
+  if (!fd_.is_valid()) {
+    return SafeFD::Error::kNotInitialized;
+  }
+
   if (!base::ReadFromFD(fd_.get(), data, size)) {
     PLOG(ERROR) << "Failed to read file";
     return SafeFD::Error::kIOError;

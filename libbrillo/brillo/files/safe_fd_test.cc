@@ -224,6 +224,15 @@ TEST_F(SafeFDTest, Write_Success) {
   ExpectPermissions(file_path_, SafeFD::kDefaultFilePermissions);
 }
 
+TEST_F(SafeFDTest, Write_NotInitialized) {
+  SafeFD invalid;
+  ASSERT_FALSE(invalid.is_valid());
+
+  std::string random_data = GetRandomSuffix();
+  EXPECT_STR_EQ(invalid.Write(random_data.data(), random_data.size()),
+                SafeFD::Error::kNotInitialized);
+}
+
 TEST_F(SafeFDTest, Write_VerifyTruncate) {
   std::string random_data = GetRandomSuffix();
   ASSERT_TRUE(WriteFile(random_data));
@@ -253,7 +262,7 @@ TEST_F(SafeFDTest, ReadContents_Success) {
   ASSERT_TRUE(file.first.is_valid());
 
   auto result = file.first.ReadContents();
-  EXPECT_EQ(result.second, SafeFD::Error::kNoError);
+  EXPECT_STR_EQ(result.second, SafeFD::Error::kNoError);
   ASSERT_EQ(random_data.size(), result.first.size());
   EXPECT_EQ(memcmp(random_data.data(), result.first.data(), random_data.size()),
             0);
@@ -269,15 +278,15 @@ TEST_F(SafeFDTest, ReadContents_ExceededMaximum) {
 
   ASSERT_LT(1, random_data.size());
   auto result = file.first.ReadContents(1);
-  EXPECT_EQ(result.second, SafeFD::Error::kExceededMaximum);
+  EXPECT_STR_EQ(result.second, SafeFD::Error::kExceededMaximum);
 }
 
-TEST_F(SafeFDTest, ReadContents_BadFD) {
+TEST_F(SafeFDTest, ReadContents_NotInitialized) {
   SafeFD invalid;
   ASSERT_FALSE(invalid.is_valid());
 
   auto result = invalid.ReadContents();
-  EXPECT_EQ(result.second, SafeFD::Error::kIOError);
+  EXPECT_STR_EQ(result.second, SafeFD::Error::kNotInitialized);
 }
 
 TEST_F(SafeFDTest, Read_Success) {
@@ -294,12 +303,12 @@ TEST_F(SafeFDTest, Read_Success) {
   EXPECT_EQ(memcmp(random_data.data(), buffer.data(), random_data.size()), 0);
 }
 
-TEST_F(SafeFDTest, Read_BadFD) {
+TEST_F(SafeFDTest, Read_NotInitialized) {
   SafeFD invalid;
   ASSERT_FALSE(invalid.is_valid());
 
   char to_read;
-  EXPECT_EQ(invalid.Read(&to_read, 1), SafeFD::Error::kIOError);
+  EXPECT_STR_EQ(invalid.Read(&to_read, 1), SafeFD::Error::kNotInitialized);
 }
 
 TEST_F(SafeFDTest, Read_IOError) {
