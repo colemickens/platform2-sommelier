@@ -24,8 +24,19 @@ pkg_config("target_defaults") {
 
 static_library("libsmbfs") {
   sources = [
+    "filesystem.cc",
+    "filesystem.h",
+    "fuse_session.cc",
+    "fuse_session.h",
     "inode_map.cc",
     "inode_map.h",
+    "request.cc",
+    "request.h",
+    "smbfs.h",
+    "smbfs_daemon.cc",
+    "smbfs_daemon.h",
+    "test_filesystem.cc",
+    "test_filesystem.h",
   ]
   configs += [ ":target_defaults" ]
 }

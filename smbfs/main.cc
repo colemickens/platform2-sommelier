@@ -5,26 +5,14 @@
 #include <fuse_lowlevel.h>
 #include <stddef.h>
 #include <sysexits.h>
-#include <type_traits>
 
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 
+#include "smbfs/smbfs.h"
+#include "smbfs/smbfs_daemon.h"
+
 namespace {
-
-struct Options {
-  Options() = default;
-
-  int show_help = 0;
-  int show_version = 0;
-  uid_t uid = 0;
-  gid_t gid = 0;
-
-  std::string share_path;
-  std::string mountpoint;
-};
-static_assert(std::is_standard_layout<Options>::value,
-              "Options struct not compatible with FUSE options parsing");
 
 void PrintUsage(const char* self) {
   printf(
@@ -37,19 +25,22 @@ void PrintUsage(const char* self) {
       "File-system specific options:\n"
       "    -o uid=<n>          UID of the files owner.\n"
       "    -o gid=<n>          GID of the files owner.\n"
+      "    -t   --test         Use a fake/test backend.\n"
       "\n",
       self);
 }
 
 #define OPT_DEF(t, p, v) \
-  { t, offsetof(Options, p), v }
+  { t, offsetof(smbfs::Options, p), v }
 const struct fuse_opt options_definition[] = {
     OPT_DEF("-h", show_help, 1),
     OPT_DEF("--help", show_help, 1),
     OPT_DEF("-V", show_version, 1),
     OPT_DEF("--version", show_version, 1),
-    OPT_DEF("uid=%u", uid, static_cast<int>(getuid())),
-    OPT_DEF("gid=%u", gid, static_cast<int>(getgid())),
+    OPT_DEF("uid=%u", uid, 0),
+    OPT_DEF("gid=%u", gid, 0),
+    OPT_DEF("-t", use_test, 1),
+    OPT_DEF("--test", use_test, 1),
 
     FUSE_OPT_END,
 };
@@ -59,7 +50,7 @@ int ParseOptionsCallback(void* data,
                          const char* arg,
                          int key,
                          struct fuse_args*) {
-  Options* opts = static_cast<Options*>(data);
+  smbfs::Options* opts = static_cast<smbfs::Options*>(data);
 
   switch (key) {
     case FUSE_OPT_KEY_OPT:
@@ -86,7 +77,7 @@ int ParseOptionsCallback(void* data,
 }  // namespace
 
 int main(int argc, char** argv) {
-  Options options;
+  smbfs::Options options;
   fuse_args args = FUSE_ARGS_INIT(argc, argv);
   if (fuse_opt_parse(&args, &options, options_definition,
                      ParseOptionsCallback) == -1) {
@@ -115,5 +106,18 @@ int main(int argc, char** argv) {
     return EX_USAGE;
   }
 
-  return EX_OK;
+  fuse_chan* chan = fuse_mount(options.mountpoint.c_str(), &args);
+  if (!chan) {
+    LOG(ERROR) << "Unable to mount FUSE mountpoint";
+    return EX_SOFTWARE;
+  }
+
+  int exit_code = EX_OK;
+  {
+    smbfs::SmbFsDaemon daemon(chan, options);
+    exit_code = daemon.Run();
+  }
+
+  fuse_unmount(options.mountpoint.c_str(), nullptr);
+  return exit_code;
 }
