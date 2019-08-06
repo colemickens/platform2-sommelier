@@ -310,8 +310,12 @@ struct uuid ConvertToRawUuid(const Uuid& uuid) {
   if (uuid.format() == UuidFormat::UUID_INVALID)
     return u;
 
-  u.hi = be64toh(*reinterpret_cast<const uint64_t*>(&uuid.value()[0]));
-  u.lo = be64toh(*reinterpret_cast<const uint64_t*>(&uuid.value()[8]));
+  uint64_t tmp;
+  memcpy(&tmp, &uuid.value()[0], sizeof(uint64_t));
+  u.hi = be64toh(tmp);
+  memcpy(&tmp, &uuid.value()[8], sizeof(uint64_t));
+  u.lo = be64toh(tmp);
+
   return u;
 }
 
