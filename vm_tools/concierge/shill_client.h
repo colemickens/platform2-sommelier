@@ -29,14 +29,23 @@ class ShillClient final {
                           std::vector<std::string> search_domains)> callback);
 
  private:
+  void OnShillServiceOwnerChange(const std::string& old_owner,
+                                 const std::string& new_owner);
   void OnManagerPropertyChangeRegistration(const std::string& interface,
                                            const std::string& signal_name,
                                            bool success);
   void OnManagerPropertyChange(const std::string& property_name,
                                const brillo::Any& property_value);
-
-  bool GetResolvConfig(std::vector<std::string>* nameservers,
-                       std::vector<std::string>* search_domains);
+  void OnServicePropertyChangeRegistration(const std::string& interface,
+                                           const std::string& signal_name,
+                                           bool success);
+  void OnServicePropertyChange(const std::string& property_name,
+                               const brillo::Any& property_value);
+  void OnIPConfigPropertyChangeRegistration(const std::string& interface,
+                                            const std::string& signal_name,
+                                            bool success);
+  void OnIPConfigPropertyChange(const std::string& property_name,
+                                const brillo::Any& property_value);
 
   std::vector<std::string> nameservers_;
   std::vector<std::string> search_domains_;
@@ -47,6 +56,9 @@ class ShillClient final {
 
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::chromium::flimflam::ManagerProxy> manager_proxy_;
+  std::unique_ptr<org::chromium::flimflam::ServiceProxy> default_service_proxy_;
+  std::unique_ptr<org::chromium::flimflam::IPConfigProxy>
+      default_ipconfig_proxy_;
 
   base::WeakPtrFactory<ShillClient> weak_factory_{this};
 

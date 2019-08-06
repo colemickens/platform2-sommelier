@@ -12,134 +12,199 @@
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 
+using org::chromium::flimflam::IPConfigProxy;
+using org::chromium::flimflam::ServiceProxy;
+
 namespace vm_tools {
 namespace concierge {
 
 ShillClient::ShillClient(scoped_refptr<dbus::Bus> bus)
     : bus_(bus),
-      manager_proxy_(new org::chromium::flimflam::ManagerProxy(bus_)) {
+      manager_proxy_(new org::chromium::flimflam::ManagerProxy(bus_)),
+      default_service_proxy_(nullptr),
+      default_ipconfig_proxy_(nullptr) {
+  // The Manager must be watched for changes to the default Service. To be
+  // exact, we are interested in watching changes to the following hierarchy:
+  // +----------------+---------------------------+------------------------+
+  // |    Manager     |        /service/42        | /ipconfig/eth0_88_dhcp |
+  // +----------------+---------------------------+------------------------+
+  // | ...            | ...                       | ...                    |
+  // | DefaultService | IPConfig:                 | Nameservers: [...]     |
+  // |    /service/42 |    /ipconfig/eth0_88_dhcp | SearchDomains: [...]   |
+  // | ...            | ...                       | ...                    |
+  // +----------------+---------------------------+------------------------+
+  //
+  // Any change to
+  // 1) The Manager's DefaultService,
+  // 2) The default Service's IPConfig, or
+  // 3) That IPConfig's Nameservers and SearchDomains properties
+  // may require updating the nameservers and search domains in the guest VMs.
   manager_proxy_->RegisterPropertyChangedSignalHandler(
       base::Bind(&ShillClient::OnManagerPropertyChange,
                  weak_factory_.GetWeakPtr()),
       base::Bind(&ShillClient::OnManagerPropertyChangeRegistration,
                  weak_factory_.GetWeakPtr()));
+
+  auto owner_changed_cb = base::Bind(&ShillClient::OnShillServiceOwnerChange,
+                                     weak_factory_.GetWeakPtr());
+  bus_->GetObjectProxy(shill::kFlimflamServiceName, dbus::ObjectPath{"/"})
+      ->SetNameOwnerChangedCallback(owner_changed_cb);
 }
 
-bool ShillClient::GetResolvConfig(std::vector<std::string>* nameservers,
-                                  std::vector<std::string>* search_domains) {
-  DCHECK(nameservers);
-  DCHECK(search_domains);
-
-  brillo::VariantDictionary manager_props;
-
-  if (!manager_proxy_->GetProperties(&manager_props, nullptr)) {
-    LOG(ERROR) << "Unable to get manager properties";
-    return false;
+void ShillClient::OnShillServiceOwnerChange(const std::string& old_owner,
+                                            const std::string& new_owner) {
+  if (new_owner.empty()) {
+    // If shill disappears, clear the cached nameservers and search domains.
+    // We'll expect property change signals to come later.
+    nameservers_.clear();
+    search_domains_.clear();
   }
-
-  auto it = manager_props.find(shill::kDefaultServiceProperty);
-  if (it == manager_props.end()) {
-    LOG(ERROR) << "Manager properties is missing default service";
-    return false;
-  }
-
-  dbus::ObjectPath service_path = it->second.TryGet<dbus::ObjectPath>();
-  // A path of "/" indicates that there is no default service.
-  // Allow returning empty nameservers here since there's no network
-  // connectivity anyway.
-  if (!service_path.IsValid() || service_path.value() == "/") {
-    return true;
-  }
-
-  org::chromium::flimflam::ServiceProxy service_proxy(bus_, service_path);
-  brillo::VariantDictionary service_props;
-  if (!service_proxy.GetProperties(&service_props, nullptr)) {
-    LOG(ERROR) << "Can't retrieve properties for service";
-    return false;
-  }
-
-  it = service_props.find(shill::kStateProperty);
-  if (it == service_props.end()) {
-    LOG(ERROR) << "Service properties are missing state";
-    return false;
-  }
-  std::string state = it->second.TryGet<std::string>();
-  if (state != shill::kStateOnline) {
-    // Found the default service, but it is still connecting.
-    return true;
-  }
-
-  it = service_props.find(shill::kIPConfigProperty);
-  if (it == service_props.end()) {
-    LOG(ERROR) << "Service properties are missing IP config";
-    return false;
-  }
-
-  dbus::ObjectPath ipconfig_path = it->second.TryGet<dbus::ObjectPath>();
-  if (!ipconfig_path.IsValid()) {
-    LOG(ERROR) << "Invalid ipconfig path";
-    return false;
-  }
-
-  org::chromium::flimflam::IPConfigProxy ipconfig_proxy(bus_, ipconfig_path);
-  brillo::VariantDictionary ipconfig_props;
-  if (!ipconfig_proxy.GetProperties(&ipconfig_props, nullptr)) {
-    LOG(ERROR) << "Can't retrieve properties for ipconfig";
-    return false;
-  }
-
-  it = ipconfig_props.find(shill::kNameServersProperty);
-  if (it == ipconfig_props.end()) {
-    LOG(ERROR) << "IPConfig properties are missing nameservers list";
-    return false;
-  }
-
-  // Nameservers are required.
-  std::vector<std::string> new_nameservers =
-      it->second.TryGet<std::vector<std::string>>();
-  if (new_nameservers.empty()) {
-    LOG(ERROR) << "IPConfig nameservers list is empty";
-    return false;
-  }
-
-  // Search domains can be omitted.
-  it = ipconfig_props.find(shill::kSearchDomainsProperty);
-  if (it == ipconfig_props.end()) {
-    LOG(ERROR) << "IPConfig properties are missing search domains list";
-    return false;
-  }
-  std::vector<std::string> new_search_domains =
-      it->second.TryGet<std::vector<std::string>>();
-
-  *nameservers = std::move(new_nameservers);
-  *search_domains = std::move(new_search_domains);
-  return true;
 }
 
 void ShillClient::OnManagerPropertyChangeRegistration(
     const std::string& interface,
     const std::string& signal_name,
     bool success) {
-  CHECK(success) << "Unable to register for interface change events";
+  CHECK(success) << "Unable to register for Manager change events";
+
+  brillo::VariantDictionary properties;
+  if (!manager_proxy_->GetProperties(&properties, nullptr)) {
+    LOG(ERROR) << "Unable to get shill Manager properties";
+    return;
+  }
+
+  auto it = properties.find(shill::kDefaultServiceProperty);
+  CHECK(it != properties.end())
+      << "Shill should always publish a default service.";
+  OnManagerPropertyChange(shill::kDefaultServiceProperty, it->second);
 }
 
 void ShillClient::OnManagerPropertyChange(const std::string& property_name,
                                           const brillo::Any& property_value) {
-  if (property_name != shill::kDefaultServiceProperty &&
-      property_name != shill::kConnectionStateProperty) {
+  // Only handle changes to the default service.
+  if (property_name != shill::kDefaultServiceProperty) {
     return;
   }
 
-  std::vector<std::string> new_nameservers;
-  std::vector<std::string> new_search_domains;
-  if (!GetResolvConfig(&new_nameservers, &new_search_domains) ||
-      (nameservers_ == new_nameservers &&
-       search_domains_ == new_search_domains)) {
+  dbus::ObjectPath service_path = property_value.TryGet<dbus::ObjectPath>();
+  if (!service_path.IsValid() || service_path.value() == "/") {
+    // A path of "/" indicates that there is no default service yet. Wait for a
+    // future update of the default service property.
+    nameservers_.clear();
+    search_domains_.clear();
     return;
   }
 
-  nameservers_ = std::move(new_nameservers);
-  search_domains_ = std::move(new_search_domains);
+  // The default service has changed, so update the proxy object and register
+  // a handler for its properties.
+  default_service_proxy_.reset(new ServiceProxy(bus_, service_path));
+  default_service_proxy_->RegisterPropertyChangedSignalHandler(
+      base::Bind(&ShillClient::OnServicePropertyChange,
+                 weak_factory_.GetWeakPtr()),
+      base::Bind(&ShillClient::OnServicePropertyChangeRegistration,
+                 weak_factory_.GetWeakPtr()));
+}
+
+void ShillClient::OnServicePropertyChangeRegistration(
+    const std::string& interface,
+    const std::string& signal_name,
+    bool success) {
+  CHECK(success) << "Unable to register for Service change events";
+
+  brillo::VariantDictionary properties;
+  if (!default_service_proxy_->GetProperties(&properties, nullptr)) {
+    LOG(ERROR) << "Unable to get shill Service properties";
+    return;
+  }
+
+  auto it = properties.find(shill::kIPConfigProperty);
+  CHECK(it != properties.end()) << "Shill should always publish an IPConfig.";
+  OnServicePropertyChange(shill::kIPConfigProperty, it->second);
+}
+
+void ShillClient::OnServicePropertyChange(const std::string& property_name,
+                                          const brillo::Any& property_value) {
+  if (property_name != shill::kIPConfigProperty) {
+    return;
+  }
+
+  dbus::ObjectPath ipconfig_path = property_value.TryGet<dbus::ObjectPath>();
+  if (!ipconfig_path.IsValid() || ipconfig_path.value() == "/") {
+    // A path of "/" indicates that there is no IPConfig yet. Wait for a future
+    // update of the IPConfig.
+    nameservers_.clear();
+    search_domains_.clear();
+    return;
+  }
+
+  std::unique_ptr<IPConfigProxy> ipconfig_proxy{
+      new IPConfigProxy(bus_, ipconfig_path)};
+  brillo::VariantDictionary properties;
+  if (!ipconfig_proxy->GetProperties(&properties, nullptr)) {
+    LOG(ERROR) << "Unable to get shill IPConfig properties";
+    return;
+  }
+
+  auto it = properties.find(shill::kMethodProperty);
+  CHECK(it != properties.end())
+      << "Shill should always publish a method for IPConfig.";
+
+  const std::string ipconfig_method{it->second.TryGet<std::string>()};
+  if (ipconfig_method == shill::kTypeIPv6 ||
+      ipconfig_method == shill::kTypeDHCP6) {
+    // If the default IPConfig is IPv6, wait for IPv4 to be configured. This
+    // will show up as a new IPConfig.
+    return;
+  }
+
+  // This is an IPv4 config, so use it as the default IPConfig for nameservers.
+  default_ipconfig_proxy_ = std::move(ipconfig_proxy);
+  default_ipconfig_proxy_->RegisterPropertyChangedSignalHandler(
+      base::Bind(&ShillClient::OnIPConfigPropertyChange,
+                 weak_factory_.GetWeakPtr()),
+      base::Bind(&ShillClient::OnIPConfigPropertyChangeRegistration,
+                 weak_factory_.GetWeakPtr()));
+}
+
+void ShillClient::OnIPConfigPropertyChangeRegistration(
+    const std::string& interface,
+    const std::string& signal_name,
+    bool success) {
+  CHECK(success) << "Unable to register for IPConfig change events";
+
+  brillo::VariantDictionary properties;
+  if (!default_ipconfig_proxy_->GetProperties(&properties, nullptr)) {
+    LOG(ERROR) << "Unable to get shill IPConfig properties";
+    return;
+  }
+
+  auto ns_it = properties.find(shill::kNameServersProperty);
+  CHECK(ns_it != properties.end())
+      << "Shill should always publish IPConfig nameservers.";
+  OnIPConfigPropertyChange(shill::kNameServersProperty, ns_it->second);
+
+  auto sd_it = properties.find(shill::kSearchDomainsProperty);
+  CHECK(sd_it != properties.end())
+      << "Shill should always publish IPConfig search domains.";
+  OnIPConfigPropertyChange(shill::kSearchDomainsProperty, sd_it->second);
+}
+
+void ShillClient::OnIPConfigPropertyChange(const std::string& property_name,
+                                           const brillo::Any& property_value) {
+  if (property_name != shill::kNameServersProperty &&
+      property_name != shill::kSearchDomainsProperty) {
+    return;
+  }
+
+  if (property_name == shill::kNameServersProperty) {
+    std::vector<std::string> new_nameservers{
+        property_value.TryGet<std::vector<std::string>>()};
+    nameservers_ = std::move(new_nameservers);
+  } else {
+    std::vector<std::string> new_search_domains{
+        property_value.TryGet<std::vector<std::string>>()};
+    search_domains_ = std::move(new_search_domains);
+  }
 
   if (!config_changed_callback_.is_null()) {
     config_changed_callback_.Run(nameservers_, search_domains_);
@@ -150,9 +215,6 @@ void ShillClient::RegisterResolvConfigChangedHandler(
     base::Callback<void(std::vector<std::string>, std::vector<std::string>)>
         callback) {
   config_changed_callback_ = std::move(callback);
-  if (!GetResolvConfig(&nameservers_, &search_domains_)) {
-    return;
-  }
   CHECK(!config_changed_callback_.is_null());
   config_changed_callback_.Run(nameservers_, search_domains_);
 }
