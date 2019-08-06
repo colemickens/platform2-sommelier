@@ -1766,7 +1766,7 @@ bool AttestationService::QuoteNvramData(
   uint16_t nv_size = kNvramIndexData[id].nv_size;
 
   if (!nv_size) {
-    uint16_t nv_data_size;
+    uint16_t nv_data_size = 0;
     if (tpm_utility_->GetNVDataSize(nv_index, &nv_data_size)) {
       nv_size = nv_data_size;
     } else {

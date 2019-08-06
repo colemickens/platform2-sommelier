@@ -1730,6 +1730,8 @@ TEST_P(AttestationServiceTest, PrepareForEnrollment) {
   // Start with an empty database.
   mock_database_.GetMutableProtobuf()->Clear();
   // Schedule initialization again to make sure it runs after this point.
+  EXPECT_CALL(mock_tpm_utility_, GetNVDataSize(_, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(9487), Return(true)));
   CHECK(service_->Initialize());
   WaitUntilIdleForTesting();
   // One identity has been created.
@@ -1810,6 +1812,8 @@ TEST_P(AttestationServiceTest,
 
   // Assume the NV indexes doesn't exist, except RSA EK cert which is required
   // when ECC EK is enabled.
+  EXPECT_CALL(mock_tpm_utility_, GetNVDataSize(_, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(9487), Return(true)));
   EXPECT_CALL(mock_tpm_utility_, CertifyNV(_, _, _, _, _))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_tpm_utility_,
