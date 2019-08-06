@@ -148,9 +148,9 @@ class LibNewblue {
   LIBNEWBLUE_METHOD2(BtleHidInit,
                      btleHidInit,
                      void(BtleHidConnStateCbk, BtleHidReportRxCbk));
-  LIBNEWBLUE_METHOD1(BtleHidAttach,
+  LIBNEWBLUE_METHOD2(BtleHidAttach,
                      btleHidAttach,
-                     ble_hid_conn_t(gatt_client_conn_t));
+                     ble_hid_conn_t(gatt_client_conn_t, const char*));
   LIBNEWBLUE_METHOD1(BtleHidDetach,
                      btleHidDetach,
                      /* NOLINTNEXTLINE(readability/casting) */

@@ -72,7 +72,7 @@ class MockLibNewblue : public LibNewblue {
 
   // btleHid.h
   MOCK_METHOD2(BtleHidInit, void(BtleHidConnStateCbk, BtleHidReportRxCbk));
-  MOCK_METHOD1(BtleHidAttach, ble_hid_conn_t(gatt_client_conn_t));
+  MOCK_METHOD2(BtleHidAttach, ble_hid_conn_t(gatt_client_conn_t, const char*));
 };
 
 }  // namespace bluetooth

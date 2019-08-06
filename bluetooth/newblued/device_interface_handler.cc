@@ -805,7 +805,8 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
 
       // Obtain a HID ID for a HID generic device.
       if (IsHid(dev_to_be_connected->appearance.value()))
-        connection.hid_id = newblue_->libnewblue()->BtleHidAttach(conn_id);
+        connection.hid_id = newblue_->libnewblue()->BtleHidAttach(
+            conn_id, dev_to_be_connected->name.value().c_str());
 
       // Track the new connection and close the attempt.
       connections_.emplace(dev_to_be_connected->address, connection);
