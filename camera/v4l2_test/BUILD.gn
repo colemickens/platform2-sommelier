@@ -51,5 +51,13 @@ executable("media_v4l2_unittest") {
     # gnlint: disable=GnLintSourceFileNames
     "media_v4l2_unittest.cc",
   ]
-  configs += [ "//camera/build:cros_camera_common" ]
+  configs += [
+    "//common-mk:test",
+    "//camera/build:cros_camera_common",
+  ]
+
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
 }

@@ -2,360 +2,233 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <getopt.h>
-
 #include <string>
+
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/logging.h>
+#include <brillo/flag_helper.h>
+#include <gtest/gtest.h>
 
 #include "v4l2_test/media_v4l2_device.h"
 
-/* Test lists */
-static const char kDefaultTestList[] = "default";
-static const char kHalv3TestList[] = "halv3";
-static const char kCertificationTestList[] = "certification";
+namespace cros {
+namespace tests {
+
+class V4L2TestEnvironment;
+
+namespace {
+
+V4L2TestEnvironment* g_env;
+
+constexpr char kDefaultTestList[] = "default";
+constexpr char kHalv3TestList[] = "halv3";
+constexpr char kCertificationTestList[] = "certification";
 
 bool ExerciseControl(V4L2Device* v4l2_dev, uint32_t id, const char* control) {
   v4l2_queryctrl query_ctrl;
   if (v4l2_dev->QueryControl(id, &query_ctrl)) {
-    if (!v4l2_dev->SetControl(id, query_ctrl.maximum))
-      printf("[Warning] Can not set %s to maximum value\n", control);
-    if (!v4l2_dev->SetControl(id, query_ctrl.minimum))
-      printf("[Warning] Can not set %s to minimum value\n", control);
-    if (!v4l2_dev->SetControl(id, query_ctrl.default_value))
-      printf("[Warning] Can not set %s to default value\n", control);
+    if (!v4l2_dev->SetControl(id, query_ctrl.maximum)) {
+      LOG(WARNING) << "Cannot set " << control << " to maximum value";
+    }
+    if (!v4l2_dev->SetControl(id, query_ctrl.minimum)) {
+      LOG(WARNING) << "Cannot set " << control << " to minimum value";
+    }
+    if (!v4l2_dev->SetControl(id, query_ctrl.default_value)) {
+      LOG(WARNING) << "Cannot set " << control << " to default value";
+    }
   } else {
-    printf("[Warning] Can not query control name :%s\n", control);
+    LOG(WARNING) << "Cannot query control name: " << control;
     return false;
   }
   return true;
 }
 
-void TestMultipleOpen(const char* dev_name) {
-  V4L2Device v4l2_dev1(dev_name, 4);
-  V4L2Device v4l2_dev2(dev_name, 4);
-  if (!v4l2_dev1.OpenDevice()) {
-    printf("[Error] Can not open device '%s' for the first time\n", dev_name);
-    exit(EXIT_FAILURE);
+}  // namespace
+
+class V4L2TestEnvironment : public ::testing::Environment {
+ public:
+  V4L2TestEnvironment(const std::string& test_list,
+                      const std::string& device_path)
+      : test_list_(test_list),
+        device_path_(device_path),
+        test_constant_framerate_(test_list != kDefaultTestList) {}
+
+  void SetUp() {
+    LOG(INFO) << "Test list: " << test_list_;
+    LOG(INFO) << "Device path: " << device_path_;
+    LOG(INFO) << "Test constant framerate: " << std::boolalpha
+              << test_constant_framerate_;
+    ASSERT_TRUE(test_list_ == kDefaultTestList ||
+                test_list_ == kHalv3TestList ||
+                test_list_ == kCertificationTestList);
+    ASSERT_TRUE(base::PathExists(base::FilePath(device_path_)));
   }
-  if (!v4l2_dev2.OpenDevice()) {
-    printf("[Error] Can not open device '%s' for the second time\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
-  v4l2_dev1.CloseDevice();
-  v4l2_dev2.CloseDevice();
-  printf("[OK ] V4L2DeviceTest.MultipleOpen\n");
+
+  std::string test_list_;
+  std::string device_path_;
+  bool test_constant_framerate_;
+};
+
+class V4L2Test : public ::testing::Test {
+ protected:
+  V4L2Test() : dev_(g_env->device_path_.c_str(), 4) {}
+  void SetUp() override { ASSERT_TRUE(dev_.OpenDevice()); }
+  void TearDown() override { dev_.CloseDevice(); }
+  V4L2Device dev_;
+};
+
+class V4L2TestWithIO
+    : public V4L2Test,
+      public ::testing::WithParamInterface<V4L2Device::IOMethod> {};
+
+TEST_F(V4L2Test, MultipleOpen) {
+  V4L2Device dev2(g_env->device_path_.c_str(), 4);
+  ASSERT_TRUE(dev2.OpenDevice()) << "Cannot open device for the second time";
+  dev2.CloseDevice();
 }
 
-void TestMultipleInit(const char* dev_name, V4L2Device::IOMethod io) {
+TEST_P(V4L2TestWithIO, MultipleInit) {
+  V4L2Device::IOMethod io = GetParam();
   V4L2Device::ConstantFramerate constant_framerate =
       V4L2Device::DEFAULT_FRAMERATE_SETTING;
-  V4L2Device v4l2_dev1(dev_name, 4);
-  V4L2Device v4l2_dev2(dev_name, 4);
-  if (!v4l2_dev1.OpenDevice()) {
-    printf("[Error] Can not open device '%s' for the first time\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
-  if (!v4l2_dev2.OpenDevice()) {
-    printf("[Error] Can not open device '%s' for the second time\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
+  V4L2Device& dev1 = dev_;
+  V4L2Device dev2(g_env->device_path_.c_str(), 4);
+  ASSERT_TRUE(dev2.OpenDevice()) << "Cannot open device for the second time";
 
-  if (!v4l2_dev1.InitDevice(io, 640, 480, V4L2_PIX_FMT_YUYV, 30,
-                            constant_framerate, 0)) {
-    printf("[Error] Can not init device '%s' for the first time\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
+  ASSERT_TRUE(dev1.InitDevice(io, 640, 480, V4L2_PIX_FMT_YUYV, 30,
+                              constant_framerate, 0))
+      << "Cannot init device for the first time";
 
-  // multiple streaming request should fail.
-  if (v4l2_dev2.InitDevice(io, 640, 480, V4L2_PIX_FMT_YUYV, 30,
-                           constant_framerate, 0)) {
-    printf("[Error] Multiple init device '%s' should fail\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
+  ASSERT_FALSE(dev2.InitDevice(io, 640, 480, V4L2_PIX_FMT_YUYV, 30,
+                               constant_framerate, 0))
+      << "Multiple init device should fail";
 
-  v4l2_dev1.UninitDevice();
-  v4l2_dev2.UninitDevice();
-  v4l2_dev1.CloseDevice();
-  v4l2_dev2.CloseDevice();
-  printf("[OK ] V4L2DeviceTest.MultipleInit\n");
+  dev1.UninitDevice();
+  dev2.UninitDevice();
+  dev2.CloseDevice();
 }
 
 // EnumInput and EnumStandard are optional.
-void TestEnumInputAndStandard(const char* dev_name) {
-  V4L2Device v4l2_dev1(dev_name, 4);
-  if (!v4l2_dev1.OpenDevice()) {
-    printf("[Error] Can not open device '%s'\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
-  v4l2_dev1.EnumInput();
-  v4l2_dev1.EnumStandard();
-  v4l2_dev1.CloseDevice();
-  printf("[OK ] V4L2DeviceTest.EnumInputAndStandard\n");
+TEST_F(V4L2Test, EnumInputAndStandard) {
+  dev_.EnumInput();
+  dev_.EnumStandard();
 }
 
-void TestEnumControl(const char* dev_name) {
-  V4L2Device v4l2_dev(dev_name, 4);
-  if (!v4l2_dev.OpenDevice()) {
-    printf("[Error] Can not open device '%s'\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
-  v4l2_dev.EnumControl();
-  v4l2_dev.CloseDevice();
-  printf("[OK ] V4L2DeviceTest.EnumControl\n");
+// EnumControl is optional, but the output is useful. For example, we could
+// know whether constant framerate is supported or not.
+TEST_F(V4L2Test, EnumControl) {
+  dev_.EnumControl();
 }
 
-void TestSetControl(const char* dev_name, bool constant_framerate_supported) {
-  V4L2Device v4l2_dev(dev_name, 4);
-  if (!v4l2_dev.OpenDevice()) {
-    printf("[Error] Can not open device '%s'\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
+TEST_F(V4L2Test, SetControl) {
   // Test mandatory controls.
-  if (constant_framerate_supported &&
-      !ExerciseControl(&v4l2_dev, V4L2_CID_EXPOSURE_AUTO_PRIORITY,
-                       "exposure_auto_priority")) {
-    exit(EXIT_FAILURE);
+  if (g_env->test_constant_framerate_) {
+    ASSERT_TRUE(ExerciseControl(&dev_, V4L2_CID_EXPOSURE_AUTO_PRIORITY,
+                                "exposure_auto_priority"));
   }
 
   // Test optional controls.
-  ExerciseControl(&v4l2_dev, V4L2_CID_BRIGHTNESS, "brightness");
-  ExerciseControl(&v4l2_dev, V4L2_CID_CONTRAST, "contrast");
-  ExerciseControl(&v4l2_dev, V4L2_CID_SATURATION, "saturation");
-  ExerciseControl(&v4l2_dev, V4L2_CID_GAMMA, "gamma");
-  ExerciseControl(&v4l2_dev, V4L2_CID_HUE, "hue");
-  ExerciseControl(&v4l2_dev, V4L2_CID_GAIN, "gain");
-  ExerciseControl(&v4l2_dev, V4L2_CID_SHARPNESS, "sharpness");
-  v4l2_dev.CloseDevice();
-  printf("[OK ] V4L2DeviceTest.SetControl\n");
+  ExerciseControl(&dev_, V4L2_CID_BRIGHTNESS, "brightness");
+  ExerciseControl(&dev_, V4L2_CID_CONTRAST, "contrast");
+  ExerciseControl(&dev_, V4L2_CID_SATURATION, "saturation");
+  ExerciseControl(&dev_, V4L2_CID_GAMMA, "gamma");
+  ExerciseControl(&dev_, V4L2_CID_HUE, "hue");
+  ExerciseControl(&dev_, V4L2_CID_GAIN, "gain");
+  ExerciseControl(&dev_, V4L2_CID_SHARPNESS, "sharpness");
 }
 
 // SetCrop is optional.
-void TestSetCrop(const char* dev_name) {
-  V4L2Device v4l2_dev(dev_name, 4);
-  if (!v4l2_dev.OpenDevice()) {
-    printf("[Error] Can not open device '%s'\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
-  v4l2_cropcap cropcap;
-  memset(&cropcap, 0, sizeof(cropcap));
-  if (v4l2_dev.GetCropCap(&cropcap)) {
-    v4l2_crop crop;
-    memset(&crop, 0, sizeof(crop));
+TEST_F(V4L2Test, SetCrop) {
+  v4l2_cropcap cropcap = {};
+  if (dev_.GetCropCap(&cropcap)) {
+    v4l2_crop crop = {};
     crop.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     crop.c = cropcap.defrect;
-    v4l2_dev.SetCrop(&crop);
+    dev_.SetCrop(&crop);
   }
-  v4l2_dev.CloseDevice();
-  printf("[OK ] V4L2DeviceTest.SetCrop\n");
 }
 
 // GetCrop is optional.
-void TestGetCrop(const char* dev_name) {
-  V4L2Device v4l2_dev(dev_name, 4);
-  if (!v4l2_dev.OpenDevice()) {
-    printf("[Error] Can not open device '%s'\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
+TEST_F(V4L2Test, GetCrop) {
   v4l2_crop crop;
   memset(&crop, 0, sizeof(crop));
   crop.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  v4l2_dev.GetCrop(&crop);
-  v4l2_dev.CloseDevice();
-  printf("[OK ] V4L2DeviceTest.GetCrop\n");
+  dev_.GetCrop(&crop);
 }
 
-void TestProbeCaps(const char* dev_name) {
-  V4L2Device v4l2_dev(dev_name, 4);
-  if (!v4l2_dev.OpenDevice()) {
-    printf("[Error] Can not open device '%s'\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
+TEST_F(V4L2Test, ProbeCaps) {
   v4l2_capability caps;
-  if (!v4l2_dev.ProbeCaps(&caps, true)) {
-    printf("[Error] Can not probe caps on device '%s'\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
-  if (!(caps.capabilities & V4L2_CAP_VIDEO_CAPTURE)) {
-    printf("<<< Info: %s does not support video capture interface.>>>\n",
-           dev_name);
-    exit(EXIT_FAILURE);
-  }
-  v4l2_dev.CloseDevice();
-  printf("[OK ] V4L2DeviceTest.ProbeCaps\n");
+  ASSERT_TRUE(dev_.ProbeCaps(&caps, true));
+  uint32_t dev_caps = (caps.capabilities & V4L2_CAP_DEVICE_CAPS)
+                          ? caps.device_caps
+                          : caps.capabilities;
+  ASSERT_TRUE(dev_caps & V4L2_CAP_VIDEO_CAPTURE)
+      << "Should support video capture interface";
 }
 
-void TestEnumFormats(const char* dev_name) {
-  V4L2Device v4l2_dev(dev_name, 4);
-  if (!v4l2_dev.OpenDevice()) {
-    printf("[Error] Can not open device '%s'\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
-  if (!v4l2_dev.EnumFormat(NULL)) {
-    printf("[Error] Can not enumerate format on device '%s'\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
-  v4l2_dev.CloseDevice();
-  printf("[OK ] V4L2DeviceTest.EnumFormats\n");
+TEST_F(V4L2Test, EnumFormats) {
+  ASSERT_TRUE(dev_.EnumFormat(NULL));
 }
 
-void TestEnumFrameSize(const char* dev_name) {
-  V4L2Device v4l2_dev(dev_name, 4);
-  if (!v4l2_dev.OpenDevice()) {
-    printf("[Error] Can not open device '%s'\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
+TEST_F(V4L2Test, EnumFrameSize) {
   uint32_t format_count = 0;
-  if (!v4l2_dev.EnumFormat(&format_count)) {
-    printf("[Error] Can not enumerate format on device '%s'\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
-  for (uint32_t i = 0; i < format_count; ++i) {
+  ASSERT_TRUE(dev_.EnumFormat(&format_count));
+  for (uint32_t i = 0; i < format_count; i++) {
     uint32_t pixfmt;
-    if (!v4l2_dev.GetPixelFormat(i, &pixfmt)) {
-      printf("[Error] Enumerate format error on device '%s'\n", dev_name);
-      exit(EXIT_FAILURE);
-    }
-    if (!v4l2_dev.EnumFrameSize(pixfmt, NULL)) {
-      printf("[Warning] Enumerate frame size error on device '%s'\n", dev_name);
-      exit(EXIT_FAILURE);
-    }
+    ASSERT_TRUE(dev_.GetPixelFormat(i, &pixfmt));
+    ASSERT_TRUE(dev_.EnumFrameSize(pixfmt, NULL));
   }
-  v4l2_dev.CloseDevice();
-  printf("[OK ] V4L2DeviceTest.EnumFrameSize\n");
 }
 
-void TestEnumFrameInterval(const char* dev_name) {
-  V4L2Device v4l2_dev(dev_name, 4);
-  if (!v4l2_dev.OpenDevice()) {
-    printf("[Error] Can not open device '%s'\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
+TEST_F(V4L2Test, EnumFrameInterval) {
   uint32_t format_count = 0;
-  if (!v4l2_dev.EnumFormat(&format_count)) {
-    printf("[Error] Can not enumerate format on device '%s'\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
-  for (uint32_t i = 0; i < format_count; ++i) {
+  ASSERT_TRUE(dev_.EnumFormat(&format_count));
+  for (uint32_t i = 0; i < format_count; i++) {
     uint32_t pixfmt;
-    if (!v4l2_dev.GetPixelFormat(i, &pixfmt)) {
-      printf("[Error] Get format error on device '%s'\n", dev_name);
-      exit(EXIT_FAILURE);
-    }
+    ASSERT_TRUE(dev_.GetPixelFormat(i, &pixfmt));
     uint32_t size_count;
-    if (!v4l2_dev.EnumFrameSize(pixfmt, &size_count)) {
-      printf("[Error] Enumerate frame size error on device '%s'\n", dev_name);
-      exit(EXIT_FAILURE);
-    }
+    ASSERT_TRUE(dev_.EnumFrameSize(pixfmt, &size_count));
 
-    for (uint32_t j = 0; j < size_count; ++j) {
+    for (uint32_t j = 0; j < size_count; j++) {
       uint32_t width, height;
-      if (!v4l2_dev.GetFrameSize(j, pixfmt, &width, &height)) {
-        printf("[Error] Get frame size error on device '%s'\n", dev_name);
-        exit(EXIT_FAILURE);
-      }
-      if (!v4l2_dev.EnumFrameInterval(pixfmt, width, height, NULL)) {
-        printf("[Error] Enumerate frame interval error on device '%s'\n",
-               dev_name);
-        exit(EXIT_FAILURE);
-      }
+      ASSERT_TRUE(dev_.GetFrameSize(j, pixfmt, &width, &height));
+      ASSERT_TRUE(dev_.EnumFrameInterval(pixfmt, width, height, NULL));
     }
   }
-  v4l2_dev.CloseDevice();
-  printf("[OK ] V4L2DeviceTest.EnumFrameInterval\n");
 }
 
-void TestFrameRate(const char* dev_name) {
-  V4L2Device v4l2_dev(dev_name, 4);
-  if (!v4l2_dev.OpenDevice()) {
-    printf("[Error] Can not open device '%s'\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
+TEST_F(V4L2Test, FrameRate) {
   v4l2_streamparm param;
-  if (!v4l2_dev.GetParam(&param)) {
-    printf("[Error] Can not get stream param on device '%s'\n", dev_name);
-    exit(EXIT_FAILURE);
-  }
+  ASSERT_TRUE(dev_.GetParam(&param));
   // we only try to adjust frame rate when it claims can.
   if (param.parm.capture.capability & V4L2_CAP_TIMEPERFRAME) {
-    if (!v4l2_dev.SetParam(&param)) {
-      printf("[Error] Can not set stream param on device '%s'\n", dev_name);
-      exit(EXIT_FAILURE);
-    }
+    ASSERT_TRUE(dev_.SetParam(&param));
   } else {
-    printf("[Info] %s does not support TIMEPERFRAME.\n", dev_name);
+    LOG(INFO) << "Does not support TIMEPERFRAME";
   }
-
-  v4l2_dev.CloseDevice();
-  printf("[OK ] V4L2DeviceTest.FrameRate\n");
 }
 
-static void PrintUsage(int argc, char** argv) {
-  printf(
-      "Usage: %s [options]\n\n"
-      "Options:\n"
-      "--help               Print usage\n"
-      "--device=DEVICE_NAME Video device name [/dev/video]\n"
-      "--usb-info=VID:PID   Device vendor id and product id\n"
-      "--test-list=TEST     Select different test list\n"
-      "                     [%s | %s | %s]\n",
-      argv[0], kDefaultTestList, kHalv3TestList, kCertificationTestList);
-}
-
-static const char short_options[] = "?d:u:t:";
-static const struct option long_options[] = {
-    {"help", no_argument, NULL, '?'},
-    {"device", required_argument, NULL, 'd'},
-    {"usb-info", required_argument, NULL, 'u'},
-    {"test-list", required_argument, NULL, 't'},
-    {0, 0, 0, 0}};
+INSTANTIATE_TEST_CASE_P(V4L2Test,
+                        V4L2TestWithIO,
+                        ::testing::Values(V4L2Device::IO_METHOD_MMAP,
+                                          V4L2Device::IO_METHOD_USERPTR));
+}  // namespace tests
+}  // namespace cros
 
 int main(int argc, char** argv) {
-  std::string dev_name = "/dev/video";
-  std::string usb_info = "";
-  std::string test_list = kDefaultTestList;
+  ::testing::InitGoogleTest(&argc, argv);
 
-  // Parse the command line.
-  for (;;) {
-    int32_t index;
-    int32_t c = getopt_long(argc, argv, short_options, long_options, &index);
-    if (-1 == c)
-      break;
-    switch (c) {
-      case 0:  // getopt_long() flag.
-        break;
-      case '?':
-        PrintUsage(argc, argv);
-        return EXIT_SUCCESS;
-      case 'd':
-        // Initialize default v4l2 device name.
-        dev_name = optarg;
-        break;
-      case 'u':
-        usb_info = optarg;
-        break;
-      case 't':
-        test_list = optarg;
-        break;
-      default:
-        PrintUsage(argc, argv);
-        return EXIT_FAILURE;
-    }
-  }
+  DEFINE_string(test_list, "default", "Select different test list");
+  DEFINE_string(device_path, "/dev/video0", "Path to the video device");
 
-  bool constant_framerate = (test_list != kDefaultTestList);
-  printf("[Info] constant framerate: %d\n", constant_framerate);
+  // Add a newline at the beginning of the usage text to separate the help
+  // message from gtest.
+  brillo::FlagHelper::Init(argc, argv, "\nTest V4L2 camera functionalities.");
 
-  TestMultipleOpen(dev_name.c_str());
-  TestMultipleInit(dev_name.c_str(), V4L2Device::IO_METHOD_MMAP);
-  TestMultipleInit(dev_name.c_str(), V4L2Device::IO_METHOD_USERPTR);
-  TestEnumInputAndStandard(dev_name.c_str());
-  TestEnumControl(dev_name.c_str());
-  TestSetControl(dev_name.c_str(), constant_framerate);
-  TestSetCrop(dev_name.c_str());
-  TestGetCrop(dev_name.c_str());
-  TestProbeCaps(dev_name.c_str());
-  TestEnumFormats(dev_name.c_str());
-  TestEnumFrameSize(dev_name.c_str());
-  TestEnumFrameInterval(dev_name.c_str());
-  TestFrameRate(dev_name.c_str());
-  return EXIT_SUCCESS;
+  cros::tests::g_env = reinterpret_cast<cros::tests::V4L2TestEnvironment*>(
+      testing::AddGlobalTestEnvironment(new cros::tests::V4L2TestEnvironment(
+          FLAGS_test_list, FLAGS_device_path)));
+
+  return RUN_ALL_TESTS();
 }

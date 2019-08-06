@@ -936,17 +936,25 @@ bool V4L2Device::ProbeCaps(v4l2_capability* cap, bool show_caps) {
   }
 
   if (show_caps) {
-    if (cap->capabilities & V4L2_CAP_VIDEO_CAPTURE)
-      printf("<<< Info: %s support video capture interface.>>>\n", dev_name_);
-    if (cap->capabilities & V4L2_CAP_VIDEO_OUTPUT)
-      printf("<<< Info: %s support video output interface.>>>\n", dev_name_);
-    if (cap->capabilities & V4L2_CAP_VIDEO_OVERLAY)
-      printf("<<< Info: %s support video overlay interface.>>>\n", dev_name_);
-    if (cap->capabilities & V4L2_CAP_AUDIO)
-      printf("<<< Info: %s support audio i/o interface.>>>\n", dev_name_);
-
-    if (cap->capabilities & V4L2_CAP_STREAMING)
-      printf("<<< Info: %s support streaming i/o interface.>>>\n", dev_name_);
+    auto ShowCaps = [&](uint32_t caps) {
+      if (caps & V4L2_CAP_VIDEO_CAPTURE)
+        printf("<<< Info: %s support video capture interface.>>>\n", dev_name_);
+      if (caps & V4L2_CAP_VIDEO_OUTPUT)
+        printf("<<< Info: %s support video output interface.>>>\n", dev_name_);
+      if (caps & V4L2_CAP_VIDEO_OVERLAY)
+        printf("<<< Info: %s support video overlay interface.>>>\n", dev_name_);
+      if (caps & V4L2_CAP_AUDIO)
+        printf("<<< Info: %s support audio i/o interface.>>>\n", dev_name_);
+      if (caps & V4L2_CAP_STREAMING)
+        printf("<<< Info: %s support streaming i/o interface.>>>\n", dev_name_);
+    };
+    ShowCaps(cap->capabilities);
+    if (cap->capabilities & V4L2_CAP_DEVICE_CAPS) {
+      printf(
+          "<<< Info: %s support per device capabilities. Dump it as well.>>>\n",
+          dev_name_);
+      ShowCaps(cap->device_caps);
+    }
   }
 
   return true;
