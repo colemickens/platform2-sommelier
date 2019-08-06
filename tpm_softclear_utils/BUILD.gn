@@ -25,9 +25,7 @@ executable("tpm_softclear") {
 }
 
 pkg_config("target_defaults") {
-  if (use.tpm2) {
-    defines = [ "USE_TPM2" ]
-  }
+  defines = [ "USE_TPM2=${use.tpm2}" ]
   pkg_deps = [ "libchrome-${libbase_ver}" ]
 }
 
