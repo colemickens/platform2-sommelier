@@ -69,6 +69,7 @@ shared_library("libarckeymaster_context") {
     "${keymaster_src}/contexts/soft_attestation_cert.cpp",
     "${keymaster_src}/km_openssl/attestation_utils.cpp",
     "${keymaster_src}/km_openssl/soft_keymaster_enforcement.cpp",
+    "context/hook.cc",
     "keymaster_logger.cc",
   ]
 }
