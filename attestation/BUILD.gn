@@ -33,9 +33,7 @@ pkg_config("target_defaults") {
     "libchrome-${libbase_ver}",
     "protobuf-lite",
   ]
-  if (use.tpm2) {
-    defines = [ "USE_TPM2" ]
-  }
+  defines = [ "USE_TPM2=${use.tpm2}" ]
 }
 
 # A library for just the protobufs.

@@ -74,7 +74,7 @@ namespace attestation {
 
 MockTpmUtility::MockTpmUtility() {
   ON_CALL(*this, Initialize()).WillByDefault(Return(true));
-#ifndef USE_TPM2
+#if !USE_TPM2
   ON_CALL(*this, GetVersion()).WillByDefault(Return(TPM_1_2));
 #else
   ON_CALL(*this, GetVersion()).WillByDefault(Return(TPM_2_0));

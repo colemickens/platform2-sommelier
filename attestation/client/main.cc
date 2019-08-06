@@ -626,7 +626,7 @@ class ClientLoop : public ClientLoopBase {
     }
     CryptoUtilityImpl crypto(nullptr);
     EncryptedIdentityCredential encrypted;
-#ifndef USE_TPM2
+#if !USE_TPM2
     TpmVersion tpm_version = TPM_1_2;
 #else
     TpmVersion tpm_version = TPM_2_0;

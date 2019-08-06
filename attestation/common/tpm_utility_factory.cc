@@ -16,7 +16,7 @@
 
 #include "attestation/common/tpm_utility_factory.h"
 
-#ifdef USE_TPM2
+#if USE_TPM2
 #include "attestation/common/tpm_utility_v2.h"
 #else
 #include "attestation/common/tpm_utility_v1.h"
@@ -25,7 +25,7 @@
 namespace attestation {
 
 TpmUtility* TpmUtilityFactory::New() {
-#ifdef USE_TPM2
+#if USE_TPM2
   return new TpmUtilityV2();
 #else
   return new TpmUtilityV1();
