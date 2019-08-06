@@ -2109,7 +2109,7 @@ void ArcSetup::OnSetup() {
   }
 
   // Make sure directories for all ISA are there just to make config.json happy.
-  for (const auto* isa : {"arm", "x86", "x86_64"}) {
+  for (const auto* isa : {"arm", "arm64", "x86", "x86_64"}) {
     EXIT_IF(!brillo::MkdirRecursively(
                  arc_paths_->art_dalvik_cache_directory.Append(isa), 0755)
                  .is_valid());

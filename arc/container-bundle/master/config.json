@@ -214,6 +214,14 @@
 			]
 		},
 		{
+                        "destination": "/data/dalvik-cache/arm64",
+                        "type": "bind",
+                        "source": "/mnt/stateful_partition/unencrypted/art-data/dalvik-cache/arm64",
+                        "options": [
+                                "bind"
+                        ]
+                },
+		{
 			"destination": "/data/dalvik-cache/x86",
 			"type": "bind",
 			"source": "/mnt/stateful_partition/unencrypted/art-data/dalvik-cache/x86",
