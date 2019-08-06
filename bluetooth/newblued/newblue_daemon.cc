@@ -84,6 +84,8 @@ bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus,
 void NewblueDaemon::Shutdown() {
   newblue_->UnregisterPairingAgent();
 
+  gatt_.reset();
+
   newblue_.reset();
   agent_manager_interface_handler_.reset();
   device_interface_handler_.reset();
