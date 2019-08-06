@@ -9,10 +9,13 @@
 
 #include <base/logging.h>
 #include <base/posix/unix_domain_socket_linux.h>
+#include <libprotobuf-mutator/src/libfuzzer/libfuzzer_macro.h>
+
+#include "imageloader/ipc.pb.h"
 
 namespace imageloader {
 
-void helper_process_receiver_fuzzer_run(const uint8_t* data, size_t size) {
+void helper_process_receiver_fuzzer_run(const char* data, size_t size) {
   int socket_pair[2];
   socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, socket_pair);
   base::ScopedFD reader_fd(socket_pair[0]);
@@ -34,7 +37,10 @@ void helper_process_receiver_fuzzer_run(const uint8_t* data, size_t size) {
 
 }  // namespace imageloader
 
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  imageloader::helper_process_receiver_fuzzer_run(data, size);
-  return 0;
+DEFINE_PROTO_FUZZER(const imageloader::ImageCommand& input) {
+  std::vector<char> msg_buf(input.ByteSizeLong());
+  if (!input.SerializeToArray(msg_buf.data(), msg_buf.size()))
+    LOG(FATAL) << "error serializing protobuf";
+  imageloader::helper_process_receiver_fuzzer_run(msg_buf.data(),
+                                                  msg_buf.size());
 }

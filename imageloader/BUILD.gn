@@ -31,8 +31,14 @@ pkg_config("target_defaults") {
     "libchrome-${libbase_ver}",
     "libcrypto",
     "libminijail",
-    "protobuf-lite",
   ]
+
+  if (use.fuzzer) {
+    # Link against protobuf for fuzzers so we can use libprotobuf-mutator.
+    pkg_deps += [ "protobuf" ]
+  } else {
+    pkg_deps += [ "protobuf-lite" ]
+  }
 }
 
 proto_library("protos") {
@@ -41,6 +47,10 @@ proto_library("protos") {
   sources = [
     "${proto_in_dir}/ipc.proto",
   ]
+  if (use.fuzzer) {
+    # Override optimize_for option in proto file.
+    gen_cpp_mode = "speed"
+  }
 }
 
 generate_dbus_adaptors("imageloader-adaptors") {
@@ -139,9 +149,14 @@ if (use.test) {
 }
 
 if (use.fuzzer) {
+  pkg_config("run_fuzzer_config") {
+    pkg_deps = [ "libprotobuf-mutator" ]
+  }
+
   executable("imageloader_helper_process_receiver_fuzzer") {
     configs += [
-      "//common-mk/common_fuzzer",
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":run_fuzzer_config",
       ":target_defaults",
     ]
     deps = [
