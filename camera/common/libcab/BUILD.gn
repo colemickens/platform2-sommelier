@@ -15,6 +15,7 @@ group("all") {
 pkg_config("target_defaults_pkg") {
   pkg_deps = [
     "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
     "libcamera_common",
     "libmojo-${libbase_ver}",
   ]

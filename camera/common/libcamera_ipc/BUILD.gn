@@ -24,6 +24,7 @@ generate_mojom_bindings("libcamera_ipc_mojom") {
   ]
   mojo_root = "//camera"
   use_pic = true
+  standalone = true
 }
 
 static_library("libcamera_ipc") {
@@ -36,8 +37,15 @@ static_library("libcamera_ipc") {
     "//camera",
     "//camera/include",
   ]
-  configs -= [ "//common-mk:pie" ]
-  configs += [ "//common-mk:pic" ]
+  configs -= [
+    "//common-mk:pie",
+    "//common-mk:use_thin_archive",
+  ]
+  configs += [
+    "//camera/build:cros_camera_common",
+    "//common-mk:nouse_thin_archive",
+    "//common-mk:pic",
+  ]
   pkg_deps = [
     "libcamera_common",
     "libcamera_metadata",
