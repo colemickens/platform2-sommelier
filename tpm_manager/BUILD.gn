@@ -34,9 +34,7 @@ pkg_config("target_default_deps") {
 
 config("target_defaults") {
   configs = [ ":target_default_deps" ]
-  if (use.tpm2) {
-    defines = [ "USE_TPM2" ]
-  }
+  defines = [ "USE_TPM2=${use.tpm2}" ]
 }
 
 # A protobuf library of legacy local data.

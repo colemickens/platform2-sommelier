@@ -33,7 +33,7 @@
 #include "tpm_manager/server/tpm_initializer.h"
 #include "tpm_manager/server/tpm_nvram.h"
 #include "tpm_manager/server/tpm_status.h"
-#if defined(USE_TPM2)
+#if USE_TPM2
 #include "tpm_manager/server/tpm2_initializer_impl.h"
 #include "tpm_manager/server/tpm2_nvram_impl.h"
 #include "tpm_manager/server/tpm2_status_impl.h"
@@ -246,7 +246,7 @@ class TpmManagerService : public TpmNvramInterface,
   TpmInitializer* tpm_initializer_ = nullptr;
   TpmNvram* tpm_nvram_ = nullptr;
 
-#if defined(USE_TPM2)
+#if USE_TPM2
   trunks::TrunksFactoryImpl default_trunks_factory_;
   std::unique_ptr<Tpm2StatusImpl> default_tpm_status_;
   std::unique_ptr<Tpm2InitializerImpl> default_tpm_initializer_;

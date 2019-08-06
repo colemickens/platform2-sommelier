@@ -24,7 +24,7 @@
 #include <base/files/file_util.h>
 #include <brillo/syslog_logging.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
-#if defined(USE_TPM2)
+#if USE_TPM2
 #include <trunks/trunks_factory_impl.h>
 #endif
 

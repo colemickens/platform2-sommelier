@@ -26,7 +26,7 @@
 
 namespace {
 
-#if defined(USE_TPM2)
+#if USE_TPM2
 // Timeout waiting for Trunks daemon readiness.
 constexpr base::TimeDelta kTrunksDaemonTimeout =
     base::TimeDelta::FromSeconds(30);
@@ -89,7 +89,7 @@ void TpmManagerService::InitializeTask() {
 
   if (!tpm_status_ || !tpm_initializer_ || !tpm_nvram_) {
     // Setup default objects.
-#if defined(USE_TPM2)
+#if USE_TPM2
     // Tolerate some delay in trunksd being up and ready.
     base::TimeTicks deadline = base::TimeTicks::Now() + kTrunksDaemonTimeout;
     while (!default_trunks_factory_.Initialize() &&
