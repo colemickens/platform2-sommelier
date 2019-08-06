@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <deque>
 #include <memory>
+#include <random>
 #include <string>
 #include <utility>
 
@@ -67,7 +68,8 @@ TEST(SubnetPool, Release) {
   ASSERT_FALSE(pool->Allocate());
 
   // Now shuffle the elements.
-  std::random_shuffle(subnets.begin(), subnets.end(), base::RandGenerator);
+  std::shuffle(subnets.begin(), subnets.end(),
+               std::mt19937(base::RandUint64()));
 
   // Pop off the first element.
   auto subnet = std::move(subnets.front());
