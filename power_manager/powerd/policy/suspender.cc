@@ -72,16 +72,18 @@ void Suspender::Init(
       initial_id, "", SuspendDelayController::kDefaultMaxSuspendDelayTimeout));
   suspend_delay_controller_->AddObserver(this);
 
+  // Default dark suspend delay same as regular suspend timeout if the pref
+  // isn't provided.
   base::TimeDelta max_dark_suspend_delay_timeout;
   int64_t max_dark_suspend_delay_timeout_ms;
-  prefs->GetInt64(kMaxDarkSuspendDelayTimeoutMsPref,
-                  &max_dark_suspend_delay_timeout_ms);
-  // Default value same as regular suspend timeout if the pref isn't
-  // provided or if the provided value is less than the default.
-  if (max_dark_suspend_delay_timeout <
-      SuspendDelayController::kDefaultMaxSuspendDelayTimeout)
+  if (prefs->GetInt64(kMaxDarkSuspendDelayTimeoutMsPref,
+                      &max_dark_suspend_delay_timeout_ms)) {
+    max_dark_suspend_delay_timeout =
+        base::TimeDelta::FromMilliseconds(max_dark_suspend_delay_timeout_ms);
+  } else {
     max_dark_suspend_delay_timeout =
         SuspendDelayController::kDefaultMaxSuspendDelayTimeout;
+  }
   const int initial_dark_id = delegate_->GetInitialDarkSuspendId();
   dark_suspend_id_ = initial_dark_id - 1;
   dark_suspend_delay_controller_.reset(new SuspendDelayController(

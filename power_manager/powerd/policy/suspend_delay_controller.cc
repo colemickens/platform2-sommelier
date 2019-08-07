@@ -21,6 +21,10 @@
 namespace power_manager {
 namespace policy {
 
+// static.
+constexpr base::TimeDelta
+    SuspendDelayController::kDefaultMaxSuspendDelayTimeout;
+
 SuspendDelayController::SuspendDelayController(
     int initial_delay_id,
     const std::string& description,
@@ -58,9 +62,17 @@ void SuspendDelayController::RegisterSuspendDelay(
   int delay_id = next_delay_id_++;
 
   DelayInfo info;
-  info.timeout = base::TimeDelta::FromInternalValue(request.timeout());
+  // Timeout is sent as |ToInternalValue| from clients.
+  base::TimeDelta timeout =
+      base::TimeDelta::FromInternalValue(request.timeout());
+  if ((timeout < base::TimeDelta()) || (timeout > max_delay_timeout_)) {
+    info.timeout = max_delay_timeout_;
+  } else {
+    info.timeout = timeout;
+  }
   info.dbus_client = dbus_client;
   info.description = request.description();
+
   LOG(INFO) << "Registering " << GetLogDescription() << " delay " << delay_id
             << " (" << info.description << ")"
             << " of " << info.timeout.InMilliseconds() << " ms on behalf of "
@@ -68,6 +80,8 @@ void SuspendDelayController::RegisterSuspendDelay(
   registered_delays_.insert(std::make_pair(delay_id, info));
 
   reply->Clear();
+  reply->set_min_delay_timeout_ms(std::min(
+      info.timeout.InMilliseconds(), max_delay_timeout_.InMilliseconds()));
   reply->set_delay_id(delay_id);
 }
 

@@ -134,6 +134,24 @@ TEST_F(SuspendDelayControllerTest, SingleDelay) {
   EXPECT_TRUE(controller_.ReadyForSuspend());
 }
 
+TEST_F(SuspendDelayControllerTest, CheckMinTimeout) {
+  // Request maximum delay.
+  const std::string kClient = "client";
+  RegisterSuspendDelayRequest request;
+  request.set_timeout(-1);
+  request.set_description(kClient + "-desc");
+  RegisterSuspendDelayReply reply;
+  controller_.RegisterSuspendDelay(request, kClient, &reply);
+
+  // A valid delay id should be returned and |min_delay_timeout_ms| should be
+  // the maximum suspend delay timeout as a negative timeout was sent in the
+  // request.
+  EXPECT_GT(reply.delay_id(), 0);
+  EXPECT_EQ(
+      reply.min_delay_timeout_ms(),
+      SuspendDelayController::kDefaultMaxSuspendDelayTimeout.InMilliseconds());
+}
+
 TEST_F(SuspendDelayControllerTest, UnregisterDelayBeforeRequestingSuspend) {
   // Register a delay, but unregister it immediately.
   const std::string kClient = "client";
