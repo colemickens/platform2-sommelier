@@ -18,6 +18,7 @@
 #include <set>
 #include <string>
 
+#include <base/optional.h>
 #include <base/synchronization/lock.h>
 #include <brillo/secure_blob.h>
 #include <openssl/rsa.h>
@@ -690,6 +691,11 @@ class Tpm {
   //   key - The key to check for encryption/decryption
   //   status (OUT) - The TpmStatusInfo structure containing the results
   virtual void GetStatus(TpmKeyHandle key, TpmStatusInfo* status) = 0;
+
+  // Returns whether the TPM SRK is vulnerable to the ROCA vulnerability.
+  // An empty optional is returned when the result is unknown due to an error.
+  // This method always returns |false| when using TPM 2.0.
+  virtual base::Optional<bool> IsSrkRocaVulnerable() = 0;
 
   // Gets the current state of the dictionary attack logic. Returns false on
   // failure.

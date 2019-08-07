@@ -387,6 +387,26 @@ void TpmImpl::GetStatus(TpmKeyHandle key_handle,
   }
 }
 
+base::Optional<bool> TpmImpl::IsSrkRocaVulnerable() {
+  if (!tpm_context_)
+    return base::nullopt;
+  ScopedTssKey srk_handle(tpm_context_);
+  TSS_RESULT tss_result;
+  if (!LoadSrk(tpm_context_, srk_handle.ptr(), &tss_result))
+    return base::nullopt;
+  unsigned public_srk_size;
+  ScopedTssMemory public_srk_bytes(tpm_context_);
+  if (TPM_ERROR(tss_result = Tspi_Key_GetPubKey(srk_handle, &public_srk_size,
+                                                public_srk_bytes.ptr()))) {
+    return base::nullopt;
+  }
+  crypto::ScopedRSA public_srk = ParseRsaFromTpmPubkeyBlob(Blob(
+      public_srk_bytes.value(), public_srk_bytes.value() + public_srk_size));
+  if (!public_srk)
+    return base::nullopt;
+  return CryptoLib::TestRocaVulnerable(public_srk->n);
+}
+
 bool TpmImpl::GetDictionaryAttackInfo(int* counter,
                                       int* threshold,
                                       bool* lockout,

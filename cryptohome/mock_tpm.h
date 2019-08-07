@@ -145,6 +145,7 @@ class MockTpm : public Tpm {
                                              brillo::SecureBlob*));
   MOCK_METHOD1(CloseHandle, void(TpmKeyHandle));
   MOCK_METHOD2(GetStatus, void(TpmKeyHandle, TpmStatusInfo*));
+  MOCK_METHOD0(IsSrkRocaVulnerable, base::Optional<bool>());
   MOCK_METHOD4(GetDictionaryAttackInfo, bool(int*, int*, bool*, int*));
   MOCK_METHOD2(ResetDictionaryAttackMitigation,
                bool(const brillo::Blob&, const brillo::Blob&));

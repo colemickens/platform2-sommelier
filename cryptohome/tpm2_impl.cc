@@ -1282,6 +1282,11 @@ void Tpm2Impl::GetStatus(TpmKeyHandle key, TpmStatusInfo* status) {
   }
 }
 
+base::Optional<bool> Tpm2Impl::IsSrkRocaVulnerable() {
+  // This doesn't apply to devices with TPM 2.0.
+  return false;
+}
+
 bool Tpm2Impl::GetDictionaryAttackInfo(int* counter,
                                        int* threshold,
                                        bool* lockout,
