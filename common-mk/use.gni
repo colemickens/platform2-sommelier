@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 # Edit common-mk/platform2.py to add new use flags. See
-# https://chromium.googlesource.com/chromiumos/docs/+/HEAD/platform2_gn.md#how-to-check-use-flags-in-gn
+# https://chromium.googlesource.com/chromiumos/docs/+/HEAD/chromeos_gn.md#how-to-check-use-flags-in-gn
 declare_args() {
   use = {
   }
