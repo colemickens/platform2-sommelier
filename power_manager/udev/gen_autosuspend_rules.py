@@ -135,6 +135,8 @@ USB_IDS += [
   "05e3:0727",
   # Realtek (SD card reader) (mario, alex)
   "0bda:0138",
+  # Realtek (SD card reader) (helios)
+  "0bda:0136",
   # Realtek (SD card reader) (falco)
   "0bda:0177",
 ]
@@ -221,6 +223,10 @@ PCI_IDS += [
   "8086:02f9",
   # Host bridge
   "8086:9b61",
+  # Host bridge
+  "8086:9b71",
+  # PCI Bridge
+  "8086:02b0",
 ]
 
 # Samsung
@@ -241,6 +247,12 @@ PCI_IDS += [
 PCI_IDS += [
   # ZP256CM30011
   "7089:5012",
+]
+
+# Kingston
+PCI_IDS += [
+  # RBUSNS8154P3128GJ3
+  "2646:5008",
 ]
 
 ################################################################################
