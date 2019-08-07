@@ -266,11 +266,10 @@ list_fixed_mmc_disks() {
   done
 }
 
-# NVMe device
+# NVMe block devices
 # Exclude disks with size 0, it means they did not spin up properly.
-list_fixed_nvme_disks() {
-  local nvme remo size nvme_base
-  local all_nvme=''
+list_fixed_nvme_nss() {
+  local nvme remo size
 
   for nvme in /sys/block/nvme*; do
     if [ ! -r "${nvme}/size" ]; then
@@ -279,14 +278,19 @@ list_fixed_nvme_disks() {
     size="$(cat "${nvme}/size")"
     remo="$(cat "${nvme}/removable")"
     if [ "${remo:-0}" -eq 0 ] && [ "${size:-0}" -gt 0 ]; then
-       nvme_base="${nvme##*/}"
-       # Store in all_nvme names of nvme devices, without namespace.
-       # In case of nvme device with several namespaces, we will have
-       # redundancy.
-       all_nvme="${all_nvme} ${nvme_base%n*}"
+       echo "${nvme##*/}"
     fi
   done
-  echo "${all_nvme}" | tr '[:space:]' '\n' | sort -u
+}
+
+# NVMe character devices
+# Exclude disks with size 0, it means they did not spin up properly.
+list_fixed_nvme_disks() {
+  local nvme_dev
+
+  for nvme_dev in $(list_fixed_nvme_nss); do
+    echo "${nvme_dev%n*}"
+  done | sort -u
 }
 
 # UFS device
