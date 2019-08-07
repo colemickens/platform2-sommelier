@@ -240,18 +240,20 @@ where **MetricModelName** and **RequestEventName** are same as defined above.
 
 There are two tasks to enable the logging:
 
-* Specify |metrics_base_name| for your model in [model_metadata.cc]. Please note
-  that |metrics_base_name| must NOT be empty. And models with the same
-   **MetricModelName** will be logged exactly in the same histogram, even
-   if their model ids are different. (This lets you compare alternative versions
-   of a given model in Finch A/B experiments.)
-* Update histograms.xml. You need to add a new suffix including
-   your **MetricModelName** and a brief label of your model to
-   ```<histogram_suffixes name="MachineLearningServiceModels" separator="."></>```
-   You can see the suffixes of "SmartDimModel" or "TestModel" for examples.
-   Please note that, after modifying histograms.xml, one has to use
-   "pretty_print.py" and "validate_format.py" to validate the format of
-   "histograms.xml" before uploading your CL.
+* (In a ChromeOS CL) Specify |metrics_base_name| for your model in
+  [model_metadata.cc]. Please note that |metrics_base_name| must NOT be empty.
+  And models with the same **MetricModelName** will be logged exactly in the
+  same histogram, even if their model ids are different. (This lets you compare
+  alternative versions of a given model in Finch A/B experiments.)
+* (In a Chromium CL) Update [histograms.xml]. You need to add a new suffix
+  including your **MetricModelName** and a brief label of your model to
+   ```<histogram_suffixes name="MachineLearningServiceModels" separator="."></>```.
+  You can see the suffixes of "SmartDimModel" or "TestModel" for examples.
+  Please note that, after modifying [histograms.xml], one has to use
+  [pretty_print.py] and [validate_format.py] to validate the format of
+  [histograms.xml] before uploading your CL. Both of the scripts locate in the
+  same folder of [histograms.xml] and can be directly run without arguments.
+  [pretty_print.py] can also help you justify the format.
 
 In reviewing the CL of modifying histograms.xml, you need to specify one
 reviewer from the owners of histograms.xml. The owners can be found at
@@ -277,3 +279,5 @@ reviewer from the owners of histograms.xml. The owners can be found at
 [model.mojom]: https://cs.corp.google.com/chromeos_public/src/platform2/ml/mojom/model.mojom
 [model_metadata.cc]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/ml/model_metadata.cc
 [histograms.xml]: https://cs.chromium.org/chromium/src/tools/metrics/histograms/histograms.xml?q=histograms.xml&sq=package:chromium&dr
+[pretty_print.py]: https://cs.chromium.org/chromium/src/tools/metrics/histograms/pretty_print.py?sq=package:chromium&dr&g=0
+[validate_format.py]: https://cs.chromium.org/chromium/src/tools/metrics/histograms/validate_format.py?sq=package:chromium&dr&g=0
