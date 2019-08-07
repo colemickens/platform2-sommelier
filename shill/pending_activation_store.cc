@@ -94,7 +94,7 @@ bool PendingActivationStore::InitStorage(const FilePath& storage_path) {
   std::unique_ptr<StoreInterface> storage = CreateStore(path);
   bool already_exists = !storage->IsEmpty();
   if (!storage->Open()) {
-    LOG(ERROR) << "Failed to open file at '" << path.AsUTF8Unsafe() << "'";
+    LOG(ERROR) << "Failed to open file at '" << path.value() << "'";
     if (already_exists)
       storage->MarkAsCorrupted();
     return false;
