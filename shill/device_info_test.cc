@@ -1083,7 +1083,7 @@ MATCHER_P2(ArpreqEquals, ifname, peer, "") {
 
   const struct sockaddr_in* const protocol_address =
       reinterpret_cast<const struct sockaddr_in*>(&areq->arp_pa);
-  const struct sockaddr_in* const hardware_address =
+  const struct sockaddr_in* const mac_address =
       reinterpret_cast<const struct sockaddr_in*>(&areq->arp_ha);
 
   return
@@ -1092,7 +1092,7 @@ MATCHER_P2(ArpreqEquals, ifname, peer, "") {
       memcmp(&protocol_address->sin_addr.s_addr,
              peer.address().GetConstData(),
              peer.address().GetLength()) == 0 &&
-      hardware_address->sin_family == ARPHRD_ETHER;
+      mac_address->sin_family == ARPHRD_ETHER;
 }
 
 ACTION_P(SetArpreq, areq) {

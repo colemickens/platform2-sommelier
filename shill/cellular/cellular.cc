@@ -163,7 +163,7 @@ string Cellular::GetEquipmentIdentifier() const {
 
   // If none of IMEI, MEID, and equipment ID is available, fall back to MAC
   // address.
-  return address();
+  return mac_address();
 }
 
 string Cellular::GetStorageIdentifier() const {

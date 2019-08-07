@@ -135,7 +135,7 @@ Device::Device(Manager* manager,
     : enabled_(false),
       enabled_persistent_(true),
       enabled_pending_(enabled_),
-      hardware_address_(base::ToLowerASCII(address)),
+      mac_address_(base::ToLowerASCII(address)),
       interface_index_(interface_index),
       running_(false),
       link_name_(link_name),
@@ -155,7 +155,7 @@ Device::Device(Manager* manager,
       is_loose_routing_(false),
       is_multi_homed_(false),
       fixed_ip_params_(false) {
-  store_.RegisterConstString(kAddressProperty, &hardware_address_);
+  store_.RegisterConstString(kAddressProperty, &mac_address_);
 
   // kBgscanMethodProperty: Registered in WiFi
   // kBgscanShortIntervalProperty: Registered in WiFi
@@ -416,7 +416,7 @@ RpcIdentifier Device::GetRpcIdentifier() const {
 }
 
 string Device::GetStorageIdentifier() const {
-  return "device_" + hardware_address_;
+  return "device_" + mac_address_;
 }
 
 vector<GeolocationInfo> Device::GetGeolocationObjects() const {

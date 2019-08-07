@@ -705,19 +705,19 @@ class WakeOnWiFiTest : public ::testing::Test {
   }
 
   void CreatePacketTypePatternAndMaskforIPV6(
-        const std::basic_string<char>& hardware_address,
+        const std::basic_string<char>& mac_address,
         ByteString* pattern, ByteString* mask,
         uint32_t min_pattern_len, uint8_t ip_protocol) {
       WakeOnWiFi::CreatePacketTypePatternAndMaskforIPV6(
-            hardware_address, min_pattern_len, ip_protocol, pattern, mask);
+            mac_address, min_pattern_len, ip_protocol, pattern, mask);
   }
 
   void CreatePacketTypePatternAndMaskforIPV4(
-      const std::basic_string<char>& hardware_address,
+      const std::basic_string<char>& mac_address,
       ByteString* pattern, ByteString* mask,
       uint32_t min_pattern_len, uint8_t ip_protocol) {
     WakeOnWiFi::CreatePacketTypePatternAndMaskforIPV4(
-          hardware_address, min_pattern_len, ip_protocol, pattern, mask);
+          mac_address, min_pattern_len, ip_protocol, pattern, mask);
   }
 
   bool ConvertIPProtoStrtoEnum(const std::vector<std::string>& ip_proto_strs,
@@ -742,11 +742,11 @@ class WakeOnWiFiTest : public ::testing::Test {
                                const IPAddressStore& addrs,
                                uint32_t net_detect_scan_period_seconds,
                                set<uint8_t> wake_on_packet_types,
-                               const std::string& hardware_address,
+                               const std::string& mac_address,
                                const vector<ByteString>& ssid_whitelist) {
     return WakeOnWiFi::WakeOnWiFiSettingsMatch(
         msg, trigs, addrs, net_detect_scan_period_seconds, wake_on_packet_types,
-        hardware_address, kNewWiphyNlMsg_MinPatternLen, ssid_whitelist);
+        mac_address, kNewWiphyNlMsg_MinPatternLen, ssid_whitelist);
   }
 
   bool ConfigureSetWakeOnWiFiSettingsMessage(
@@ -754,12 +754,12 @@ class WakeOnWiFiTest : public ::testing::Test {
       const set<WakeOnWiFi::WakeOnWiFiTrigger>& trigs,
       const IPAddressStore& addrs, uint32_t wiphy_index,
       const set<uint8_t> wake_on_packet_types,
-      const std::string& hardware_address,
+      const std::string& mac_address,
       uint32_t net_detect_scan_period_seconds,
       const vector<ByteString>& ssid_whitelist, Error* error) {
     return WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
         msg, trigs, addrs, wiphy_index, wake_on_packet_types,
-        hardware_address, kNewWiphyNlMsg_MinPatternLen,
+        mac_address, kNewWiphyNlMsg_MinPatternLen,
         net_detect_scan_period_seconds, ssid_whitelist, error);
   }
 

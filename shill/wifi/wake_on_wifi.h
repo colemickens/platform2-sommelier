@@ -161,7 +161,7 @@ class SetWakeOnPacketConnMessage;
 class WakeOnWiFi : public WakeOnWiFiInterface {
  public:
   WakeOnWiFi(NetlinkManager* netlink_manager, EventDispatcher* dispatcher,
-             Metrics* metrics, const std::string& hardware_address,
+             Metrics* metrics, const std::string& mac_address,
              RecordWakeReasonCallback record_wake_reason_callback);
   ~WakeOnWiFi() override;
 
@@ -394,13 +394,13 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
                                        uint32_t min_pattern_len);
   // Creates a pattern and mask for a NL80211 message that programs the NIC to
   // wake on IPv4 packets with higher layer protocol belonging to |packet_type|
-  // and is destined to hardware address |hardware_address|. The pattern and
+  // and is destined to hardware address |mac_address|. The pattern and
   // mask are saved in |pattern| and |mask| respectively. If the length of the
   // generated pattern is less than |min_pattern_len|, zeros are appended to
   // meet the requirement. These zeros are ignored as the mask bits are
   // unset accordingly.
   static void CreatePacketTypePatternAndMaskforIPV4(
-      const std::string& hardware_address,
+      const std::string& mac_address,
       uint32_t min_pattern_len,
       uint8_t packet_type,
       ByteString* pattern,
@@ -408,13 +408,13 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
 
   // Creates a pattern and mask for a NL80211 message that programs the NIC to
   // wake on IPv6 packets with higher layer protocol belonging to |packet_type|
-  // and is destined to hardware address |hardware_address|. The pattern and
+  // and is destined to hardware address |mac_address|. The pattern and
   // mask are saved in |pattern| and |mask| respectively. If the length of the
   // generated pattern is less than |min_pattern_len|, zeros are appended to
   // meet the requirement. These zeros are ignored as the mask bits are
   // unset accordingly.
   static void CreatePacketTypePatternAndMaskforIPV6(
-      const std::string& hardware_address,
+      const std::string& mac_address,
       uint32_t min_pattern_len,
       uint8_t packet_type,
       ByteString* pattern,
@@ -446,7 +446,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
       const IPAddressStore& addrs,
       uint32_t wiphy_index,
       const std::set<uint8_t>& wake_on_packet_types_,
-      const std::string& hardware_address,
+      const std::string& mac_address,
       uint32_t min_pattern_len,
       uint32_t net_detect_scan_period_seconds,
       const std::vector<ByteString>& ssid_whitelist,
@@ -489,7 +489,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
       const IPAddressStore& addrs,
       uint32_t net_detect_scan_period_seconds,
       const std::set<uint8_t>& wake_on_packet_types,
-      const std::string& hardware_address,
+      const std::string& mac_address,
       uint32_t min_pattern_len,
       const std::vector<ByteString>& ssid_whitelist);
   // Handler for NL80211 message error responses from NIC wake on WiFi setting
@@ -650,7 +650,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
 
   // Hardware address of the WiFi device that owns the specific
   // wake_on_wifi object.
-  const std::string hardware_address_;
+  const std::string mac_address_;
 
   // Minimum length of the pattern to be written to NIC. Every pattern is
   // widened (if smaller) to meet this requirement. Zero by default. Set when

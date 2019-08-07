@@ -86,7 +86,7 @@ RpcIdentifier EthernetService::GetDeviceRpcId(Error* error) const {
 string EthernetService::GetStorageIdentifier() const {
   return props_.ethernet_
              ? base::StringPrintf("%s_%s", technology().GetName().c_str(),
-                                  props_.ethernet_->address().c_str())
+                                  props_.ethernet_->mac_address().c_str())
              : props_.storage_id_;
 }
 

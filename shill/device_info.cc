@@ -833,9 +833,9 @@ bool DeviceInfo::GetMacAddressOfPeer(int interface_index,
   memcpy(&protocol_address->sin_addr.s_addr, peer.address().GetConstData(),
          sizeof(protocol_address->sin_addr.s_addr));
 
-  struct sockaddr_in* hardware_address =
+  struct sockaddr_in* effective_mac_address =
       reinterpret_cast<struct sockaddr_in*>(&areq.arp_ha);
-  hardware_address->sin_family = ARPHRD_ETHER;
+  effective_mac_address->sin_family = ARPHRD_ETHER;
 
   int err = sockets_->Ioctl(fd, SIOCGARP, &areq);
   if (err < 0) {

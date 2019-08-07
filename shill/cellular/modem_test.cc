@@ -136,7 +136,7 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   modem_->OnDeviceInfoAvailable(kLinkName);
 
   EXPECT_NE(nullptr, modem_->device_);
-  EXPECT_EQ(base::ToLowerASCII(kAddressAsString), cellular->address());
+  EXPECT_EQ(base::ToLowerASCII(kAddressAsString), cellular->mac_address());
 
   // Add expectations for the eventual |modem_| destruction.
   EXPECT_CALL(*cellular, DestroyService());

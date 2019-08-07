@@ -217,7 +217,7 @@ class Device : public base::RefCounted<Device> {
   // state.  This setting is disabled by default.
   virtual void SetFixedIpParams(bool fixed_ip_params);
 
-  const std::string& address() const { return hardware_address_; }
+  const std::string& mac_address() const { return mac_address_; }
   const std::string& link_name() const { return link_name_; }
   int interface_index() const { return interface_index_; }
   virtual const ConnectionRefPtr& connection() const { return connection_; }
@@ -803,7 +803,7 @@ class Device : public base::RefCounted<Device> {
   bool enabled_pending_;
 
   // Other properties
-  const std::string hardware_address_;
+  const std::string mac_address_;
 
   PropertyStore store_;
 
