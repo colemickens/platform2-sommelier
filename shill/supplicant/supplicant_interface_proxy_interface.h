@@ -45,9 +45,9 @@ class SupplicantInterfaceProxyInterface {
                                       std::string* status) = 0;
   virtual bool TDLSTeardown(const std::string& peer) = 0;
   virtual bool SetHT40Enable(const RpcIdentifier& network, bool enable) = 0;
-  virtual bool EnableMACAddressRandomization(
+  virtual bool EnableMacAddressRandomization(
       const std::vector<unsigned char>& mask) = 0;
-  virtual bool DisableMACAddressRandomization() = 0;
+  virtual bool DisableMacAddressRandomization() = 0;
 };
 
 }  // namespace shill

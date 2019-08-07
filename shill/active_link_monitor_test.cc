@@ -47,9 +47,9 @@ namespace shill {
 namespace {
 const char kInterfaceName[] = "int0";
 const char kLocalIPAddress[] = "10.0.1.1";
-const uint8_t kLocalMACAddress[] = { 0, 1, 2, 3, 4, 5 };
+const uint8_t kLocalMacAddress[] = { 0, 1, 2, 3, 4, 5 };
 const char kRemoteIPAddress[] = "10.0.1.2";
-const uint8_t kRemoteMACAddress[] = { 6, 7, 8, 9, 10, 11 };
+const uint8_t kRemoteMacAddress[] = { 6, 7, 8, 9, 10, 11 };
 const RpcIdentifier kDBusPath("/dbus/path");
 }  // namespace
 
@@ -126,9 +126,9 @@ class ActiveLinkMonitorTest : public Test {
         client_test_helper_(client_),
         gateway_ip_(IPAddress::kFamilyIPv4),
         local_ip_(IPAddress::kFamilyIPv4),
-        gateway_mac_(kRemoteMACAddress, arraysize(kRemoteMACAddress)),
-        local_mac_(kLocalMACAddress, arraysize(kLocalMACAddress)),
-        zero_mac_(arraysize(kLocalMACAddress)),
+        gateway_mac_(kRemoteMacAddress, arraysize(kRemoteMacAddress)),
+        local_mac_(kLocalMacAddress, arraysize(kLocalMacAddress)),
+        zero_mac_(arraysize(kLocalMacAddress)),
         link_scope_logging_was_enabled_(false),
         interface_name_(kInterfaceName),
         monitor_(connection_,
@@ -255,7 +255,7 @@ class ActiveLinkMonitorTest : public Test {
     EXPECT_CALL(*client_, TransmitRequest(_)).Times(0);
   }
   void StartMonitor() {
-    EXPECT_CALL(device_info_, GetMACAddress(0, _))
+    EXPECT_CALL(device_info_, GetMacAddress(0, _))
         .WillOnce(DoAll(SetArgPointee<1>(local_mac_), Return(true)));
     EXPECT_CALL(*client_, StartReplyListener()).WillOnce(Return(true));
     EXPECT_CALL(dispatcher_, PostTask(_, _)).Times(1);
@@ -369,13 +369,13 @@ TEST_F(ActiveLinkMonitorTest, Constructor) {
   ExpectReset();
 }
 
-TEST_F(ActiveLinkMonitorTest, StartFailedGetMACAddress) {
+TEST_F(ActiveLinkMonitorTest, StartFailedGetMacAddress) {
   ScopedMockLog log;
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log,
       Log(logging::LOG_ERROR, _,
           HasSubstr("Could not get local MAC address"))).Times(1);
-  EXPECT_CALL(device_info_, GetMACAddress(0, _)).WillOnce(Return(false));
+  EXPECT_CALL(device_info_, GetMacAddress(0, _)).WillOnce(Return(false));
   EXPECT_CALL(metrics_, SendEnumToUMA(
       HasSubstr("LinkMonitorFailure"), Metrics::kLinkMonitorMacAddressNotFound,
       _));
@@ -394,7 +394,7 @@ TEST_F(ActiveLinkMonitorTest, StartFailedArpClient) {
   EXPECT_CALL(metrics_, SendEnumToUMA(
       HasSubstr("LinkMonitorFailure"), Metrics::kLinkMonitorClientStartFailure,
       _));
-  EXPECT_CALL(device_info_, GetMACAddress(0, _)).WillOnce(Return(true));
+  EXPECT_CALL(device_info_, GetMacAddress(0, _)).WillOnce(Return(true));
   EXPECT_CALL(*client_, StartReplyListener()).WillOnce(Return(false));
   EXPECT_FALSE(monitor_.Start(
       ActiveLinkMonitor::kDefaultTestPeriodMilliseconds));

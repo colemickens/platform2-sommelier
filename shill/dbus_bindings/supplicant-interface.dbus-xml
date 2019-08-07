@@ -66,10 +66,10 @@
       <arg name="network" type="o" direction="in"/>
       <arg name="enable" type="b" direction="in"/>
     </method>
-    <method name="EnableMACAddressRandomization">
+    <method name="EnableMacAddressRandomization">
       <arg name="mask" type="ay" direction="in"/>
     </method>
-    <method name="DisableMACAddressRandomization">
+    <method name="DisableMacAddressRandomization">
     </method>
     <property name="Capabilities" type="a{sv}" access="read"/>
     <property name="State" type="s" access="read"/>
@@ -88,7 +88,7 @@
     <property name="ScanInterval" type="i" access="readwrite"/>
     <property name="SchedScan" type="b" access="readwrite"/>
     <property name="Scan" type="b" access="readwrite"/>
-    <property name="MACAddressRandomizationMask" type="a{say}" access="readwrite"/>
+    <property name="MacAddressRandomizationMask" type="a{say}" access="readwrite"/>
     <signal name="ScanDone">
       <arg name="success" type="b"/>
     </signal>

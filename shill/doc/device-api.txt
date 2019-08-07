@@ -551,24 +551,24 @@ Properties	string Address [readonly]
 				to retry an outgoing packet.
 
 
-		boolean MACAddressRandomization
+		boolean MacAddressRandomization
 
-			Deprecated; see MACAddressRandomizationEnabled.
+			Deprecated; see MacAddressRandomizationEnabled.
 
-		boolean MACAddressRandomizationSupported [readonly]
+		boolean MacAddressRandomizationSupported [readonly]
 
 			True if the device supports randomizing its MAC
 			address during scans when not connected to any APs
 			already.
 
-		boolean MACAddressRandomizationEnabled
+		boolean MacAddressRandomizationEnabled
 
 			Indicates whether the device is currently configured
 			to randomize its MAC address during scans while not
 			already connected to any APs. Setting this value will
 			configure the device to act appropriately.
 
-			This was formerly named MACAddressRandomization; users
+			This was formerly named MacAddressRandomization; users
 			of shill should use this property now.
 
 			Possible errors:

@@ -31,8 +31,8 @@ const char SupplicantInterfaceProxy::kPropertyRoamThreshold[] = "RoamThreshold";
 const char SupplicantInterfaceProxy::kPropertyScan[] = "Scan";
 const char SupplicantInterfaceProxy::kPropertyScanInterval[] = "ScanInterval";
 const char SupplicantInterfaceProxy::kPropertySchedScan[] = "SchedScan";
-const char SupplicantInterfaceProxy::kPropertyMACAddressRandomizationMask[] =
-    "MACAddressRandomizationMask";
+const char SupplicantInterfaceProxy::kPropertyMacAddressRandomizationMask[] =
+    "MacAddressRandomizationMask";
 
 SupplicantInterfaceProxy::PropertySet::PropertySet(
     dbus::ObjectProxy* object_proxy,
@@ -44,7 +44,7 @@ SupplicantInterfaceProxy::PropertySet::PropertySet(
   RegisterProperty(kPropertyScan, &scan);
   RegisterProperty(kPropertyScanInterval, &scan_interval);
   RegisterProperty(kPropertySchedScan, &sched_scan);
-  RegisterProperty(kPropertyMACAddressRandomizationMask,
+  RegisterProperty(kPropertyMacAddressRandomizationMask,
                    &mac_address_randomization_mask);
 }
 
@@ -303,11 +303,11 @@ bool SupplicantInterfaceProxy::SetHT40Enable(const RpcIdentifier& network,
   return true;
 }
 
-bool SupplicantInterfaceProxy::EnableMACAddressRandomization(
+bool SupplicantInterfaceProxy::EnableMacAddressRandomization(
     const std::vector<unsigned char>& mask) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   brillo::ErrorPtr error;
-  // The MACRandomizationMask property is a map(type_string, ipmask_array)
+  // The MacRandomizationMask property is a map(type_string, ipmask_array)
   // where type_string is scan type ("scan" || "sched_scan" || "pno") and
   // ipmask specifies the corresponding mask as an array of bytes.
   std::map<std::string, std::vector<uint8_t>> mac_randomization_args;
@@ -316,15 +316,15 @@ bool SupplicantInterfaceProxy::EnableMACAddressRandomization(
   mac_randomization_args.insert(
       std::pair<std::string, std::vector<uint8_t>>("sched_scan", mask));
 
-  // First try setting the MACRandomizationMask property
+  // First try setting the MacRandomizationMask property
   // (wpa_supplicant-2.8 interface).
-  // If that fails, try the EnableMACAddressRandomization method
+  // If that fails, try the EnableMacAddressRandomization method
   // (wpa_supplicant-2.6 interface).
   // TODO(crbug.com/985122): Remove supplicant-2.6 method call after
   // uprev to supplicant-2.8 is complete.
   if (!(properties_->mac_address_randomization_mask.SetAndBlock(
             mac_randomization_args) ||
-        interface_proxy_->EnableMACAddressRandomization(mask, &error))) {
+        interface_proxy_->EnableMacAddressRandomization(mask, &error))) {
     LOG(ERROR) << "Failed to enable MAC address randomization: "
                << error->GetCode() << " " << error->GetMessage();
     return false;
@@ -332,21 +332,21 @@ bool SupplicantInterfaceProxy::EnableMACAddressRandomization(
   return true;
 }
 
-bool SupplicantInterfaceProxy::DisableMACAddressRandomization() {
+bool SupplicantInterfaceProxy::DisableMacAddressRandomization() {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   brillo::ErrorPtr error;
   // Send an empty map to disable Randomization for all scan types.
   std::map<std::string, std::vector<uint8_t>> mac_randomization_empty;
 
-  // First try setting the MACRandomizationMask property
+  // First try setting the MacRandomizationMask property
   // (wpa_supplicant-2.8 interface).
-  // If that fails, try the DisableMACAddressRandomization method
+  // If that fails, try the DisableMacAddressRandomization method
   // (wpa_supplicant-2.6 interface).
   // TODO(crbug.com/985122): Remove supplicant-2.6 method call after
   // uprev to supplicant-2.8 is complete.
   if (!(properties_->mac_address_randomization_mask.SetAndBlock(
             mac_randomization_empty) ||
-        interface_proxy_->DisableMACAddressRandomization(&error))) {
+        interface_proxy_->DisableMacAddressRandomization(&error))) {
     LOG(ERROR) << "Failed to enable MAC address randomization: "
                << error->GetCode() << " " << error->GetMessage();
     return false;

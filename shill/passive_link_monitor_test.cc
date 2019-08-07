@@ -41,9 +41,9 @@ namespace shill {
 namespace {
 const char kInterfaceName[] = "test-interface";
 const char kLocalIPAddress[] = "10.0.1.1";
-const uint8_t kLocalMACAddress[] = { 0, 1, 2, 3, 4, 5 };
+const uint8_t kLocalMacAddress[] = { 0, 1, 2, 3, 4, 5 };
 const char kRemoteIPAddress[] = "10.0.1.2";
-const uint8_t kRemoteMACAddress[] = { 6, 7, 8, 9, 10, 11 };
+const uint8_t kRemoteMacAddress[] = { 6, 7, 8, 9, 10, 11 };
 }  // namespace
 
 class ResultCallbackObserver {
@@ -99,9 +99,9 @@ class PassiveLinkMonitorTest : public Test {
     client_test_helper_.GeneratePacket(
         operation,
         IPAddress(kLocalIPAddress),
-        ByteString(kLocalMACAddress, arraysize(kLocalMACAddress)),
+        ByteString(kLocalMacAddress, arraysize(kLocalMacAddress)),
         IPAddress(kRemoteIPAddress),
-        ByteString(kRemoteMACAddress, arraysize(kRemoteMACAddress)));
+        ByteString(kRemoteMacAddress, arraysize(kRemoteMacAddress)));
     link_monitor_.ReceiveRequest(0);
   }
 

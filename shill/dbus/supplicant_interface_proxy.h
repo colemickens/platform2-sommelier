@@ -53,9 +53,9 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   bool TDLSStatus(const std::string& peer, std::string* status) override;
   bool TDLSTeardown(const std::string& peer) override;
   bool SetHT40Enable(const RpcIdentifier& network, bool enable) override;
-  bool EnableMACAddressRandomization(
+  bool EnableMacAddressRandomization(
       const std::vector<unsigned char>& mask) override;
-  bool DisableMACAddressRandomization() override;
+  bool DisableMacAddressRandomization() override;
   // The below set functions will always return true, since PropertySet::Set
   // is an async method. Any failures will be logged in the callback.
   bool SetFastReauth(bool enabled) override;
@@ -88,7 +88,7 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   static const char kPropertyScan[];
   static const char kPropertyScanInterval[];
   static const char kPropertySchedScan[];
-  static const char kPropertyMACAddressRandomizationMask[];
+  static const char kPropertyMacAddressRandomizationMask[];
 
   // Signal handlers.
   void BlobAdded(const std::string& blobname);

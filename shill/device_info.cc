@@ -522,7 +522,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string& link_name,
 
       // The MAC address provided by RTNL is not reliable for Gobi 2K modems.
       // Clear it here, and it will be fetched from the kernel in
-      // GetMACAddress().
+      // GetMacAddress().
       infos_[interface_index].mac_address.Clear();
       manager_->modem_info()->OnDeviceInfoAvailable(link_name);
       break;
@@ -757,7 +757,7 @@ int DeviceInfo::GetIndex(const string& interface_name) const {
   return it == indices_.end() ? -1 : it->second;
 }
 
-bool DeviceInfo::GetMACAddress(int interface_index, ByteString* address) const {
+bool DeviceInfo::GetMacAddress(int interface_index, ByteString* address) const {
   const Info* info = GetInfo(interface_index);
   if (!info) {
     return false;
@@ -770,11 +770,11 @@ bool DeviceInfo::GetMACAddress(int interface_index, ByteString* address) const {
   }
 
   // Ask the kernel for the MAC address.
-  *address = GetMACAddressFromKernel(interface_index);
+  *address = GetMacAddressFromKernel(interface_index);
   return !address->IsEmpty();
 }
 
-ByteString DeviceInfo::GetMACAddressFromKernel(int interface_index) const {
+ByteString DeviceInfo::GetMacAddressFromKernel(int interface_index) const {
   const Info* info = GetInfo(interface_index);
   if (!info) {
     return ByteString();
@@ -800,7 +800,7 @@ ByteString DeviceInfo::GetMACAddressFromKernel(int interface_index) const {
   return ByteString(ifr.ifr_hwaddr.sa_data, IFHWADDRLEN);
 }
 
-bool DeviceInfo::GetMACAddressOfPeer(int interface_index,
+bool DeviceInfo::GetMacAddressOfPeer(int interface_index,
                                      const IPAddress& peer,
                                      ByteString* mac_address) const {
   const Info* info = GetInfo(interface_index);

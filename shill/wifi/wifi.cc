@@ -97,7 +97,7 @@ const int WiFi::kPostScanFailedDelayMilliseconds = 10000;
 // the mask stay the same during randomization, and bits which are 0 are
 // randomized. This mask means the OUI will remain unchanged but the last
 // three octets will be different.
-const std::vector<unsigned char> WiFi::kRandomMACMask{255, 255, 255, 0, 0, 0};
+const std::vector<unsigned char> WiFi::kRandomMacMask{255, 255, 255, 0, 0, 0};
 
 namespace {
 const uint16_t kDefaultBgscanShortIntervalSeconds = 64;
@@ -179,12 +179,12 @@ WiFi::WiFi(Manager* manager,
                            kBgscanSignalThresholdProperty,
                            &WiFi::GetBgscanSignalThreshold,
                            &WiFi::SetBgscanSignalThreshold);
-  store->RegisterConstBool(kMACAddressRandomizationSupportedProperty,
+  store->RegisterConstBool(kMacAddressRandomizationSupportedProperty,
                            &random_mac_supported_);
   HelpRegisterDerivedBool(store,
-                          kMACAddressRandomizationEnabledProperty,
-                          &WiFi::GetRandomMACEnabled,
-                          &WiFi::SetRandomMACEnabled);
+                          kMacAddressRandomizationEnabledProperty,
+                          &WiFi::GetRandomMacEnabled,
+                          &WiFi::SetRandomMacEnabled);
 
   store->RegisterDerivedKeyValueStore(
       kLinkStatisticsProperty,
@@ -752,11 +752,11 @@ bool WiFi::SetScanInterval(const uint16_t& seconds, Error* /*error*/) {
   return true;
 }
 
-bool WiFi::GetRandomMACEnabled(Error* /*error*/) {
+bool WiFi::GetRandomMacEnabled(Error* /*error*/) {
   return random_mac_enabled_;
 }
 
-bool WiFi::SetRandomMACEnabled(const bool& enabled, Error* error) {
+bool WiFi::SetRandomMacEnabled(const bool& enabled, Error* error) {
   if (!supplicant_present_ || !supplicant_interface_proxy_.get()) {
     SLOG(this, 2) << "Ignoring random MAC while supplicant is not present.";
     return false;
@@ -771,10 +771,10 @@ bool WiFi::SetRandomMACEnabled(const bool& enabled, Error* error) {
     return false;
   }
   if ((enabled &&
-       supplicant_interface_proxy_->EnableMACAddressRandomization(
-           kRandomMACMask)) ||
+       supplicant_interface_proxy_->EnableMacAddressRandomization(
+           kRandomMacMask)) ||
       (!enabled &&
-       supplicant_interface_proxy_->DisableMACAddressRandomization())) {
+       supplicant_interface_proxy_->DisableMacAddressRandomization())) {
     random_mac_enabled_ = enabled;
     return true;
   }
@@ -2660,8 +2660,8 @@ void WiFi::ConnectToSupplicant() {
   }
 
   if (random_mac_enabled_ &&
-      !supplicant_interface_proxy_->EnableMACAddressRandomization(
-           kRandomMACMask)) {
+      !supplicant_interface_proxy_->EnableMacAddressRandomization(
+           kRandomMacMask)) {
     LOG(ERROR) << "Failed to enable MAC address randomization. "
                << "May be running an older version of wpa_supplicant.";
   }

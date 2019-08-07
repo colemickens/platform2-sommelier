@@ -1953,7 +1953,7 @@ bool Device::ResolvePeerMacAddress(const string& input,
   }
 
   ByteString mac_address;
-  if (device_info->GetMACAddressOfPeer(interface_index_, ip_address,
+  if (device_info->GetMacAddressOfPeer(interface_index_, ip_address,
                                        &mac_address)) {
     *output = MakeStringFromHardwareAddress(
         vector<uint8_t>(mac_address.GetConstData(),

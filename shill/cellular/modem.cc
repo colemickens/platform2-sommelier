@@ -153,7 +153,7 @@ bool Modem::GetDeviceParams(string* mac_address, int* interface_index) {
   }
 
   ByteString address_bytes;
-  if (!modem_info_->manager()->device_info()->GetMACAddress(*interface_index,
+  if (!modem_info_->manager()->device_info()->GetMacAddress(*interface_index,
                                                             &address_bytes)) {
     return false;
   }

@@ -103,17 +103,17 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
       WillRepeatedly(Return(kTestInterfaceIndex));
 
   // The first time we call CreateDeviceFromModemProperties,
-  // GetMACAddress will fail.
-  EXPECT_CALL(device_info_, GetMACAddress(kTestInterfaceIndex, _)).
+  // GetMacAddress will fail.
+  EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex, _)).
       WillOnce(Return(false));
   EXPECT_CALL(*modem_, GetModemInterface()).
       WillRepeatedly(Return(MM_DBUS_INTERFACE_MODEM));
   modem_->CreateDeviceFromModemProperties(properties);
   EXPECT_EQ(nullptr, modem_->device_);
 
-  // On the second time, we allow GetMACAddress to succeed.  Now we
+  // On the second time, we allow GetMacAddress to succeed.  Now we
   // expect a device to be built
-  EXPECT_CALL(device_info_, GetMACAddress(kTestInterfaceIndex, _)).
+  EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex, _)).
       WillOnce(DoAll(SetArgPointee<1>(expected_address_),
                      Return(true)));
 
@@ -178,7 +178,7 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
       Return(true)));
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(StrEq(kLinkName)))
       .WillOnce(Return(kTestInterfaceIndex));
-  EXPECT_CALL(device_info_, GetMACAddress(kTestInterfaceIndex, _))
+  EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex, _))
       .WillOnce(DoAll(SetArgPointee<1>(expected_address_),
                       Return(true)));
   EXPECT_CALL(device_info_, IsDeviceBlackListed(kLinkName))
@@ -224,24 +224,24 @@ TEST_F(ModemTest, GetDeviceParams) {
   string mac_address;
   int interface_index = 2;
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(-1));
-  EXPECT_CALL(device_info_, GetMACAddress(_, _)).Times(AnyNumber())
+  EXPECT_CALL(device_info_, GetMacAddress(_, _)).Times(AnyNumber())
       .WillRepeatedly(Return(false));
   EXPECT_FALSE(modem_->GetDeviceParams(&mac_address, &interface_index));
   EXPECT_EQ(-1, interface_index);
 
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(-2));
-  EXPECT_CALL(device_info_, GetMACAddress(_, _)).Times(AnyNumber())
+  EXPECT_CALL(device_info_, GetMacAddress(_, _)).Times(AnyNumber())
       .WillRepeatedly(Return(false));
   EXPECT_FALSE(modem_->GetDeviceParams(&mac_address, &interface_index));
   EXPECT_EQ(-2, interface_index);
 
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(1));
-  EXPECT_CALL(device_info_, GetMACAddress(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(device_info_, GetMacAddress(_, _)).WillOnce(Return(false));
   EXPECT_FALSE(modem_->GetDeviceParams(&mac_address, &interface_index));
   EXPECT_EQ(1, interface_index);
 
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(2));
-  EXPECT_CALL(device_info_, GetMACAddress(2, _)).
+  EXPECT_CALL(device_info_, GetMacAddress(2, _)).
       WillOnce(DoAll(SetArgPointee<1>(expected_address_),
                      Return(true)));
   EXPECT_TRUE(modem_->GetDeviceParams(&mac_address, &interface_index));

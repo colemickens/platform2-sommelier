@@ -39,7 +39,7 @@ const unsigned int kNewLinkMessageWlan0InterfaceFlags =
     IFF_BROADCAST | IFF_MULTICAST | IFF_UP | IFF_LOWER_UP | IFF_RUNNING;
 const unsigned int kNewLinkMessageWlan0InterfaceFlagsChange = 0;
 const uint32_t kNewLinkMessageWlan0MTU = 1500;
-const char kNewLinkMessageWlan0MACAddress[] = "\xc0\xf8\xda\x05\x03\x0b";
+const char kNewLinkMessageWlan0MacAddress[] = "\xc0\xf8\xda\x05\x03\x0b";
 const char kNewLinkMessageWlan0InterfaceName[] = "wlan0";
 const char kNewLinkMessageWlan0Qdisc[] = "mq";
 const int kNewLinkMessageWlan0OperState = IF_OPER_UP;
@@ -180,7 +180,7 @@ const unsigned int kDelLinkMessageEth0InterfaceFlags =
     IFF_BROADCAST | IFF_MULTICAST;
 const unsigned int kDelLinkMessageEth0InterfaceFlagsChange = 0xffffffff;
 const uint32_t kDelLinkMessageEth0MTU = 1500;
-const char kDelLinkMessageEth0MACAddress[] = "\x68\x7f\x74\xba\xef\xc7";
+const char kDelLinkMessageEth0MacAddress[] = "\x68\x7f\x74\xba\xef\xc7";
 const char kDelLinkMessageEth0InterfacName[] = "eth0";
 const char kDelLinkMessageEth0Qdisc[] = "noop";
 const int kDelLinkMessageEth0OperState = IF_OPER_DOWN;
@@ -650,7 +650,7 @@ TEST_F(RTNLMessageTest, NewLinkWlan0) {
                 kNewLinkMessageWlan0InterfaceIndex,
                 kNewLinkMessageWlan0InterfaceFlags,
                 kNewLinkMessageWlan0InterfaceFlagsChange,
-                ByteString(string(kNewLinkMessageWlan0MACAddress), false),
+                ByteString(string(kNewLinkMessageWlan0MacAddress), false),
                 ByteString(string(kNewLinkMessageWlan0InterfaceName), true),
                 kNewLinkMessageWlan0MTU,
                 ByteString(string(kNewLinkMessageWlan0Qdisc), true),
@@ -663,7 +663,7 @@ TEST_F(RTNLMessageTest, DelLinkEth0) {
                 kDelLinkMessageEth0InterfaceIndex,
                 kDelLinkMessageEth0InterfaceFlags,
                 kDelLinkMessageEth0InterfaceFlagsChange,
-                ByteString(string(kDelLinkMessageEth0MACAddress), false),
+                ByteString(string(kDelLinkMessageEth0MacAddress), false),
                 ByteString(string(kDelLinkMessageEth0InterfacName), true),
                 kDelLinkMessageEth0MTU,
                 ByteString(string(kDelLinkMessageEth0Qdisc), true),

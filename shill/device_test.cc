@@ -1735,7 +1735,7 @@ TEST_F(DeviceTest, ResolvePeerMacAddress) {
               HasDirectConnectivityTo(device_->interface_index(), _))
       .WillOnce(Return(true));
   EXPECT_CALL(device_info_,
-              GetMACAddressOfPeer(device_->interface_index(), _, _))
+              GetMacAddressOfPeer(device_->interface_index(), _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kMacBytes), Return(true)));
   EXPECT_TRUE(device_->ResolvePeerMacAddress(kPeerIp, &result, &error));
   EXPECT_EQ(kResolvedMac, result);

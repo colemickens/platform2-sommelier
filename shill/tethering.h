@@ -28,7 +28,7 @@ class Tethering {
 
   // This bit, if set in the first octet of a MAC address, indicates that
   // this address is not assigned by the IEEE, but was generated locally.
-  static const uint8_t kLocallyAdministratedMACBit;
+  static const uint8_t kLocallyAdministratedMacBit;
 
   // Returns whether an 802.11 BSSID is likely to be owned by an Android device.
   static bool IsAndroidBSSID(const std::vector<uint8_t>& bssid);

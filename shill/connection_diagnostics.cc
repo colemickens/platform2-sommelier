@@ -53,7 +53,7 @@ const char* const kResultNames[] = {"Success", "Failure", "Timeout"};
 // lookup, 3) start IP collision check, 4) end IP collision check.
 const int kNumEventsFromPingGatewayEndToIpCollisionCheckEnd = 4;
 const char kIPv4ZeroAddress[] = "0.0.0.0";
-const uint8_t kMACZeroAddress[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+const uint8_t kMacZeroAddress[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 }  // namespace
 
@@ -469,7 +469,7 @@ void ConnectionDiagnostics::FindArpTableEntry(const IPAddress& address) {
                       StringPrintf("Finding ARP table entry for %s",
                                    address.ToString().c_str()));
   ByteString target_mac_address;
-  if (device_info_->GetMACAddressOfPeer(connection_->interface_index(), address,
+  if (device_info_->GetMacAddressOfPeer(connection_->interface_index(), address,
                                         &target_mac_address)) {
     AddEventWithMessage(kTypeArpTableLookup, kPhaseEnd, kResultSuccess,
                         StringPrintf("Found ARP table entry for %s",
@@ -522,7 +522,7 @@ void ConnectionDiagnostics::FindNeighborTableEntry(const IPAddress& address) {
 void ConnectionDiagnostics::CheckIpCollision() {
   SLOG(this, 3) << __func__;
 
-  if (!device_info_->GetMACAddress(connection_->interface_index(),
+  if (!device_info_->GetMacAddress(connection_->interface_index(),
                                    &local_mac_address_)) {
     LOG(ERROR) << __func__ << ": could not get local MAC address";
     AddEventWithMessage(kTypeIPCollisionCheck, kPhaseStart, kResultFailure,
@@ -547,7 +547,7 @@ void ConnectionDiagnostics::CheckIpCollision() {
   // Create an 'Arp Probe' Packet.
   ArpPacket request(IPAddress(string(kIPv4ZeroAddress)), connection_->local(),
                     local_mac_address_,
-                    ByteString(kMACZeroAddress, sizeof(kMACZeroAddress)));
+                    ByteString(kMacZeroAddress, sizeof(kMacZeroAddress)));
   if (!arp_client_->TransmitRequest(request)) {
     LOG(ERROR) << __func__ << ": failed to send ARP request";
     AddEventWithMessage(kTypeIPCollisionCheck, kPhaseStart, kResultFailure,

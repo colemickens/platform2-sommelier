@@ -111,7 +111,7 @@ bool ActiveLinkMonitor::StartInternal(int probe_period_milliseconds) {
     LOG(WARNING) << "Long test period; UMA stats will be truncated.";
   }
 
-  if (!device_info_->GetMACAddress(
+  if (!device_info_->GetMacAddress(
           connection_->interface_index(), &local_mac_address_)) {
     LOG(ERROR) << "Could not get local MAC address.";
     metrics_->NotifyLinkMonitorFailure(

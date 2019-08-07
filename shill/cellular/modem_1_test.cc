@@ -74,7 +74,7 @@ void Modem1Test::SetUp() {
 
   EXPECT_CALL(*modem_info_.mock_manager(), device_info())
       .WillRepeatedly(Return(&device_info_));
-  EXPECT_CALL(device_info_, GetMACAddress(kTestInterfaceIndex, _)).
+  EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex, _)).
       WillOnce(DoAll(SetArgPointee<1>(expected_address_),
                      Return(true)));
 }

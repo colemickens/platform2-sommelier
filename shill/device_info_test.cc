@@ -138,7 +138,7 @@ class DeviceInfoTest : public Test {
  protected:
   static const int kTestDeviceIndex;
   static const char kTestDeviceName[];
-  static const uint8_t kTestMACAddress[];
+  static const uint8_t kTestMacAddress[];
   static const char kTestIPAddress0[];
   static const int kTestIPAddressPrefix0;
   static const char kTestIPAddress1[];
@@ -183,7 +183,7 @@ class DeviceInfoTest : public Test {
 
 const int DeviceInfoTest::kTestDeviceIndex = 123456;
 const char DeviceInfoTest::kTestDeviceName[] = "test-device";
-const uint8_t DeviceInfoTest::kTestMACAddress[] = {
+const uint8_t DeviceInfoTest::kTestMacAddress[] = {
     0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };
 const char DeviceInfoTest::kTestIPAddress0[] = "192.168.1.1";
 const int DeviceInfoTest::kTestIPAddressPrefix0 = 24;
@@ -205,7 +205,7 @@ unique_ptr<RTNLMessage> DeviceInfoTest::BuildLinkMessageWithInterfaceName(
                                     interface_index, IPAddress::kFamilyIPv4);
   message->SetAttribute(static_cast<uint16_t>(IFLA_IFNAME),
                         ByteString(interface_name, true));
-  ByteString test_address(kTestMACAddress, sizeof(kTestMACAddress));
+  ByteString test_address(kTestMacAddress, sizeof(kTestMacAddress));
   message->SetAttribute(IFLA_ADDRESS, test_address);
   return message;
 }
@@ -306,10 +306,10 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   EXPECT_TRUE(device_info_.GetFlags(kTestDeviceIndex, &flags));
   EXPECT_EQ(IFF_LOWER_UP, flags);
   ByteString address;
-  EXPECT_TRUE(device_info_.GetMACAddress(kTestDeviceIndex, &address));
+  EXPECT_TRUE(device_info_.GetMacAddress(kTestDeviceIndex, &address));
   EXPECT_FALSE(address.IsEmpty());
-  EXPECT_TRUE(address.Equals(ByteString(kTestMACAddress,
-                                        sizeof(kTestMACAddress))));
+  EXPECT_TRUE(address.Equals(ByteString(kTestMacAddress,
+                                        sizeof(kTestMacAddress))));
   EXPECT_EQ(kTestDeviceIndex, device_info_.GetIndex(kTestDeviceName));
 
   message = BuildLinkMessage(RTNLMessage::kModeAdd);
@@ -939,15 +939,15 @@ TEST_F(DeviceInfoTest, HasSubdir) {
       DeviceInfo::HasSubdir(temp_dir.GetPath(), FilePath("nonexistent")));
 }
 
-TEST_F(DeviceInfoTest, GetMACAddressFromKernelUnknownDevice) {
+TEST_F(DeviceInfoTest, GetMacAddressFromKernelUnknownDevice) {
   SetSockets();
   EXPECT_CALL(*mock_sockets_, Socket(_, _, _)).Times(0);
   ByteString mac_address =
-      device_info_.GetMACAddressFromKernel(kTestDeviceIndex);
+      device_info_.GetMacAddressFromKernel(kTestDeviceIndex);
   EXPECT_TRUE(mac_address.IsEmpty());
 }
 
-TEST_F(DeviceInfoTest, GetMACAddressFromKernelUnableToOpenSocket) {
+TEST_F(DeviceInfoTest, GetMacAddressFromKernelUnableToOpenSocket) {
   SetSockets();
   EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(-1));
   unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
@@ -955,11 +955,11 @@ TEST_F(DeviceInfoTest, GetMACAddressFromKernelUnableToOpenSocket) {
   SendMessageToDeviceInfo(*message);
   EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
   ByteString mac_address =
-      device_info_.GetMACAddressFromKernel(kTestDeviceIndex);
+      device_info_.GetMacAddressFromKernel(kTestDeviceIndex);
   EXPECT_TRUE(mac_address.IsEmpty());
 }
 
-TEST_F(DeviceInfoTest, GetMACAddressFromKernelIoctlFails) {
+TEST_F(DeviceInfoTest, GetMacAddressFromKernelIoctlFails) {
   SetSockets();
   const int kFd = 99;
   EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(kFd));
@@ -973,7 +973,7 @@ TEST_F(DeviceInfoTest, GetMACAddressFromKernelIoctlFails) {
   EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
 
   ByteString mac_address =
-      device_info_.GetMACAddressFromKernel(kTestDeviceIndex);
+      device_info_.GetMacAddressFromKernel(kTestDeviceIndex);
   EXPECT_TRUE(mac_address.IsEmpty());
 }
 
@@ -989,7 +989,7 @@ ACTION_P(SetIfreq, ifr) {
   *ifr_arg = ifr;
 }
 
-TEST_F(DeviceInfoTest, GetMACAddressFromKernel) {
+TEST_F(DeviceInfoTest, GetMacAddressFromKernel) {
   SetSockets();
   const int kFd = 99;
   struct ifreq ifr;
@@ -1008,23 +1008,23 @@ TEST_F(DeviceInfoTest, GetMACAddressFromKernel) {
   EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
 
   ByteString mac_address =
-      device_info_.GetMACAddressFromKernel(kTestDeviceIndex);
+      device_info_.GetMacAddressFromKernel(kTestDeviceIndex);
   EXPECT_THAT(kMacAddress,
               ElementsAreArray(mac_address.GetData(), sizeof(kMacAddress)));
 }
 
-TEST_F(DeviceInfoTest, GetMACAddressOfPeerUnknownDevice) {
+TEST_F(DeviceInfoTest, GetMacAddressOfPeerUnknownDevice) {
   SetSockets();
   EXPECT_CALL(*mock_sockets_, Socket(_, _, _)).Times(0);
   IPAddress address(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(address.SetAddressFromString(kTestIPAddress0));
   ByteString mac_address;
   EXPECT_EQ(nullptr, device_info_.GetDevice(kTestDeviceIndex));
-  EXPECT_FALSE(device_info_.GetMACAddressOfPeer(
+  EXPECT_FALSE(device_info_.GetMacAddressOfPeer(
       kTestDeviceIndex, address, &mac_address));
 }
 
-TEST_F(DeviceInfoTest, GetMACAddressOfPeerBadAddress) {
+TEST_F(DeviceInfoTest, GetMacAddressOfPeerBadAddress) {
   SetSockets();
   unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
@@ -1036,17 +1036,17 @@ TEST_F(DeviceInfoTest, GetMACAddressOfPeerBadAddress) {
   // An improperly formatted IPv4 address should fail.
   IPAddress empty_ipv4_address(IPAddress::kFamilyIPv4);
   ByteString mac_address;
-  EXPECT_FALSE(device_info_.GetMACAddressOfPeer(
+  EXPECT_FALSE(device_info_.GetMacAddressOfPeer(
       kTestDeviceIndex, empty_ipv4_address, &mac_address));
 
   // IPv6 addresses are not supported.
   IPAddress valid_ipv6_address(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(valid_ipv6_address.SetAddressFromString(kTestIPAddress1));
-  EXPECT_FALSE(device_info_.GetMACAddressOfPeer(
+  EXPECT_FALSE(device_info_.GetMacAddressOfPeer(
       kTestDeviceIndex, valid_ipv6_address, &mac_address));
 }
 
-TEST_F(DeviceInfoTest, GetMACAddressOfPeerUnableToOpenSocket) {
+TEST_F(DeviceInfoTest, GetMacAddressOfPeerUnableToOpenSocket) {
   SetSockets();
   EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(-1));
   unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
@@ -1055,11 +1055,11 @@ TEST_F(DeviceInfoTest, GetMACAddressOfPeerUnableToOpenSocket) {
   IPAddress ip_address(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(ip_address.SetAddressFromString(kTestIPAddress0));
   ByteString mac_address;
-  EXPECT_FALSE(device_info_.GetMACAddressOfPeer(
+  EXPECT_FALSE(device_info_.GetMacAddressOfPeer(
       kTestDeviceIndex, ip_address, &mac_address));
 }
 
-TEST_F(DeviceInfoTest, GetMACAddressOfPeerIoctlFails) {
+TEST_F(DeviceInfoTest, GetMacAddressOfPeerIoctlFails) {
   SetSockets();
   const int kFd = 99;
   EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(kFd));
@@ -1071,7 +1071,7 @@ TEST_F(DeviceInfoTest, GetMACAddressOfPeerIoctlFails) {
   IPAddress ip_address(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(ip_address.SetAddressFromString(kTestIPAddress0));
   ByteString mac_address;
-  EXPECT_FALSE(device_info_.GetMACAddressOfPeer(
+  EXPECT_FALSE(device_info_.GetMacAddressOfPeer(
       kTestDeviceIndex, ip_address, &mac_address));
 }
 
@@ -1100,7 +1100,7 @@ ACTION_P(SetArpreq, areq) {
   *areq_arg = areq;
 }
 
-TEST_F(DeviceInfoTest, GetMACAddressOfPeer) {
+TEST_F(DeviceInfoTest, GetMacAddressOfPeer) {
   unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
@@ -1129,9 +1129,9 @@ TEST_F(DeviceInfoTest, GetMACAddressOfPeer) {
           .WillOnce(DoAll(SetArpreq(areq_response), Return(0)));
 
   ByteString mac_address;
-  EXPECT_FALSE(device_info_.GetMACAddressOfPeer(
+  EXPECT_FALSE(device_info_.GetMacAddressOfPeer(
       kTestDeviceIndex, ip_address, &mac_address));
-  EXPECT_TRUE(device_info_.GetMACAddressOfPeer(
+  EXPECT_TRUE(device_info_.GetMacAddressOfPeer(
       kTestDeviceIndex, ip_address, &mac_address));
   EXPECT_THAT(kMacAddress,
               ElementsAreArray(mac_address.GetData(), sizeof(kMacAddress)));

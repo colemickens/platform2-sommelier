@@ -27,8 +27,8 @@ const char kIPv4Address0[] = "192.168.0.1";
 const char kIPv4Address1[] = "10.0.12.13";
 const char kIPv6Address0[] = "fe80::1aa9:5ff:7ebf:14c5";
 const char kIPv6Address1[] = "1980:0:0:1000:1b02:1aa9:5ff:7ebf";
-const uint8_t kMACAddress0[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 };
-const uint8_t kMACAddress1[] = { 0x88, 0x87, 0x86, 0x85, 0x84, 0x83 };
+const uint8_t kMacAddress0[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 };
+const uint8_t kMacAddress1[] = { 0x88, 0x87, 0x86, 0x85, 0x84, 0x83 };
 const uint8_t kInsertedByte[] = { 0x00 };
 const size_t kArpPaddingSizeV4 = 18;
 const size_t kArpPaddingSizeV6 = 0;
@@ -41,8 +41,8 @@ class ArpPacketTest : public Test {
         ipv4_address1_(IPAddress::kFamilyIPv4),
         ipv6_address0_(IPAddress::kFamilyIPv6),
         ipv6_address1_(IPAddress::kFamilyIPv6),
-        mac_address0_(kMACAddress0, arraysize(kMACAddress0)),
-        mac_address1_(kMACAddress1, arraysize(kMACAddress1)),
+        mac_address0_(kMacAddress0, arraysize(kMacAddress0)),
+        mac_address1_(kMacAddress1, arraysize(kMacAddress1)),
         inserted_byte_(kInsertedByte, arraysize(kInsertedByte)) {}
   ~ArpPacketTest() override = default;
 
@@ -237,7 +237,7 @@ TEST_F(ArpPacketTest, FormatRequestMismatchedAddresses) {
   EXPECT_FALSE(packet_.FormatRequest(&arp_bytes));
 }
 
-TEST_F(ArpPacketTest, FormatRequestBadMACAddressLength) {
+TEST_F(ArpPacketTest, FormatRequestBadMacAddressLength) {
   ScopedMockLog log;
   EXPECT_CALL(log,
       Log(logging::LOG_ERROR, _,

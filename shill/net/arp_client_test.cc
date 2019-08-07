@@ -53,9 +53,9 @@ class ArpClientTest : public Test {
   static const int kInterfaceIndex;
   static const int kSocketFD;
   static const char kLocalIPAddress[];
-  static const uint8_t kLocalMACAddress[];
+  static const uint8_t kLocalMacAddress[];
   static const char kRemoteIPAddress[];
-  static const uint8_t kRemoteMACAddress[];
+  static const uint8_t kRemoteMacAddress[];
   static const int kArpOpOffset;
 
   bool CreateSocket() { return client_.CreateSocket(ARPOP_REPLY); }
@@ -77,9 +77,9 @@ class ArpClientTest : public Test {
 const int ArpClientTest::kInterfaceIndex = 123;
 const int ArpClientTest::kSocketFD = 456;
 const char ArpClientTest::kLocalIPAddress[] = "10.0.1.1";
-const uint8_t ArpClientTest::kLocalMACAddress[] = { 0, 1, 2, 3, 4, 5 };
+const uint8_t ArpClientTest::kLocalMacAddress[] = { 0, 1, 2, 3, 4, 5 };
 const char ArpClientTest::kRemoteIPAddress[] = "10.0.1.2";
-const uint8_t ArpClientTest::kRemoteMACAddress[] = { 6, 7, 8, 9, 10, 11 };
+const uint8_t ArpClientTest::kRemoteMacAddress[] = { 6, 7, 8, 9, 10, 11 };
 const int ArpClientTest::kArpOpOffset = 7;
 
 
@@ -107,9 +107,9 @@ void ArpClientTest::SetupValidPacket(ArpPacket* packet) {
   IPAddress remote_ip(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(remote_ip.SetAddressFromString(kRemoteIPAddress));
   packet->set_remote_ip_address(remote_ip);
-  ByteString local_mac(kLocalMACAddress, arraysize(kLocalMACAddress));
+  ByteString local_mac(kLocalMacAddress, arraysize(kLocalMacAddress));
   packet->set_local_mac_address(local_mac);
-  ByteString remote_mac(kRemoteMACAddress, arraysize(kRemoteMACAddress));
+  ByteString remote_mac(kRemoteMacAddress, arraysize(kRemoteMacAddress));
   packet->set_remote_mac_address(remote_mac);
 }
 

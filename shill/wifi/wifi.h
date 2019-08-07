@@ -346,7 +346,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static const int kPostScanFailedDelayMilliseconds;
   // Used when enabling MAC randomization to request that the OUI remain
   // constant and the last three octets are randomized.
-  static const std::vector<unsigned char> kRandomMACMask;
+  static const std::vector<unsigned char> kRandomMacMask;
 
   void GetPhyInfo();
   void AppendBgscan(WiFiService* service,
@@ -380,8 +380,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool SetScanInterval(const uint16_t& seconds, Error* error);
   void ClearBgscanMethod(Error* error);
 
-  bool GetRandomMACEnabled(Error* error);
-  bool SetRandomMACEnabled(const bool& enabled, Error* error);
+  bool GetRandomMacEnabled(Error* error);
+  bool SetRandomMacEnabled(const bool& enabled, Error* error);
 
   void AssocStatusChanged(const int32_t new_assoc_status);
   void AuthStatusChanged(const int32_t new_auth_status);

@@ -35,7 +35,7 @@ using testing::Test;
 namespace shill {
 
 namespace {
-const uint8_t kGatewayMACAddress[] = { 0, 1, 2, 3, 4, 5 };
+const uint8_t kGatewayMacAddress[] = { 0, 1, 2, 3, 4, 5 };
 }  // namespace
 
 class LinkMonitorObserver {
@@ -162,7 +162,7 @@ TEST_F(LinkMonitorTest, Start) {
 }
 
 TEST_F(LinkMonitorTest, OnAfterResume) {
-  ByteString gateway_mac(kGatewayMACAddress, arraysize(kGatewayMACAddress));
+  ByteString gateway_mac(kGatewayMacAddress, arraysize(kGatewayMacAddress));
   const bool kGatewayUnicastArpSupport = true;
   SetGatewayMacAddress(gateway_mac);
   // Verify gateway settings persist when link monitor is restarted, and
@@ -216,8 +216,8 @@ TEST_F(LinkMonitorTest, OnActiveLinkMonitorFailure) {
 }
 
 TEST_F(LinkMonitorTest, OnActiveLinkMonitorSuccess) {
-  ByteString gateway_mac(kGatewayMACAddress,
-                               arraysize(kGatewayMACAddress));
+  ByteString gateway_mac(kGatewayMacAddress,
+                               arraysize(kGatewayMacAddress));
   EXPECT_CALL(*active_link_monitor_, gateway_mac_address())
       .WillRepeatedly(ReturnRef(gateway_mac));
 

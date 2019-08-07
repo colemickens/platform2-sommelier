@@ -67,7 +67,7 @@ const shill::IPAddress kIPv4ZeroAddress("0.0.0.0");
 const vector<base::TimeDelta> kEmptyResult;
 const vector<base::TimeDelta> kNonEmptyResult{
     base::TimeDelta::FromMilliseconds(10)};
-const uint8_t kMACZeroAddress[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+const uint8_t kMacZeroAddress[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 }  // namespace
 
 namespace shill {
@@ -556,14 +556,14 @@ class ConnectionDiagnosticsTest : public Test {
     AddExpectedEvent(ConnectionDiagnostics::kTypeIPCollisionCheck,
                      ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultSuccess);
-    EXPECT_CALL(device_info_, GetMACAddress(connection_->interface_index(), _))
+    EXPECT_CALL(device_info_, GetMacAddress(connection_->interface_index(), _))
         .WillOnce(DoAll(SetArgPointee<1>(local_mac_address_), Return(true)));
     EXPECT_CALL(*arp_client_, StartReplyListener()).WillOnce(Return(true));
     // We should send an ARP probe request for our own local IP address.
     EXPECT_CALL(*arp_client_,
                 TransmitRequest(IsArpRequest(
                     kIPv4ZeroAddress, local_ip_address_, local_mac_address_,
-                    ByteString(kMACZeroAddress, sizeof(kMACZeroAddress)))))
+                    ByteString(kMacZeroAddress, sizeof(kMacZeroAddress)))))
         .WillOnce(Return(true));
     EXPECT_CALL(
         dispatcher_,
@@ -759,7 +759,7 @@ class ConnectionDiagnosticsTest : public Test {
                      success ? ConnectionDiagnostics::kResultSuccess
                              : ConnectionDiagnostics::kResultFailure);
     EXPECT_CALL(device_info_,
-                GetMACAddressOfPeer(connection_->interface_index(),
+                GetMacAddressOfPeer(connection_->interface_index(),
                                     IsSameIPAddress(address), _))
         .WillOnce(Return(success));
     if (success) {

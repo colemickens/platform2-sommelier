@@ -76,16 +76,16 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   virtual void DeregisterDevice(const DeviceRefPtr& device);
 
   virtual DeviceRefPtr GetDevice(int interface_index) const;
-  virtual bool GetMACAddress(int interface_index, ByteString* address) const;
+  virtual bool GetMacAddress(int interface_index, ByteString* address) const;
 
   // Queries the kernel for a MAC address for |interface_index|.  Returns an
   // empty ByteString on failure.
-  virtual ByteString GetMACAddressFromKernel(int interface_index) const;
+  virtual ByteString GetMacAddressFromKernel(int interface_index) const;
 
   // Queries the kernel for the MAC address of |peer| on |interface_index|.
   // Returns true and populates |mac_address| on success, otherwise returns
   // false.
-  virtual bool GetMACAddressOfPeer(int interface_index,
+  virtual bool GetMacAddressOfPeer(int interface_index,
                                    const IPAddress& peer,
                                    ByteString* mac_address) const;
 
