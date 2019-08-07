@@ -24,6 +24,16 @@ Gatt::~Gatt() {
     device_interface_handler_->RemoveDeviceObserver(this);
 }
 
+void Gatt::AddGattObserver(GattObserver* observer) {
+  CHECK(observer);
+  observers_.AddObserver(observer);
+}
+
+void Gatt::RemoveGattObserver(GattObserver* observer) {
+  CHECK(observer);
+  observers_.RemoveObserver(observer);
+}
+
 void Gatt::OnGattConnected(const std::string& device_address,
                            gatt_client_conn_t conn_id) {
   CHECK(!device_address.empty());
@@ -73,8 +83,22 @@ void Gatt::OnGattDisconnected(const std::string& device_address,
     }
   }
 
-  VLOG(1) << "Clear the cached GATT services of device " << device_address;
-  remote_services_.erase(device_address);
+  const auto services = remote_services_.find(device_address);
+  if (services != remote_services_.end()) {
+    VLOG(1) << "Clear the cached GATT services of device " << device_address;
+    for (auto& observer : observers_) {
+      for (const auto& service : services->second) {
+        for (const auto& characteristic : service.second->characteristics()) {
+          for (const auto& descriptor : characteristic.second->descriptors())
+            observer.OnGattDescriptorRemoved(*descriptor.second);
+
+          observer.OnGattCharacteristicRemoved(*characteristic.second);
+        }
+        observer.OnGattServiceRemoved(*service.second);
+      }
+    }
+    remote_services_.erase(device_address);
+  }
 }
 
 void Gatt::TravPrimaryServices(const std::string& device_address,
@@ -168,6 +192,10 @@ void Gatt::OnGattClientEnumServices(bool finished,
                            std::make_unique<GattService>(
                                device_address, first_handle,
                                first_handle + num_handles - 1, primary, uuid));
+  for (auto& observer : observers_) {
+    observer.OnGattServiceAdded(
+        *remote_services_.at(device_address).at(first_handle));
+  }
 }
 
 void Gatt::OnGattClientTravPrimaryService(
@@ -216,11 +244,27 @@ void Gatt::OnGattClientTravPrimaryService(
     return;
   }
 
+  CHECK(srv->second->device_address().value() == device_address);
+
   VLOG(2) << "Replacing service " << service->uuid().value().canonical_value()
           << " of device " << device_address
           << " with the traversed one, transaction id " << transaction_id;
+
+  service->SetDeviceAddress(device_address);
   srv->second = std::move(service);
   transactions_.erase(transaction_id);
+
+  // Notify observers on service-changed, characteristic-added and
+  // descriptor-added events.
+  for (auto& observer : observers_) {
+    observer.OnGattServiceChanged(*srv->second);
+    for (const auto& characteristic : srv->second->characteristics()) {
+      observer.OnGattCharacteristicAdded(*characteristic.second);
+
+      for (const auto& descriptor : characteristic.second->descriptors())
+        observer.OnGattDescriptorAdded(*descriptor.second);
+    }
+  }
 }
 
 }  // namespace bluetooth

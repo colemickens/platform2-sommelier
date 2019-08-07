@@ -21,6 +21,7 @@
 #include "bluetooth/newblued/debug_manager.h"
 #include "bluetooth/newblued/device_interface_handler.h"
 #include "bluetooth/newblued/gatt.h"
+#include "bluetooth/newblued/gatt_interface_handler.h"
 #include "bluetooth/newblued/newblue.h"
 #include "bluetooth/newblued/stack_sync_monitor.h"
 
@@ -69,6 +70,7 @@ class NewblueDaemon : public BluetoothDaemon {
   std::unique_ptr<DebugManager> debug_manager_;
 
   std::unique_ptr<Gatt> gatt_;
+  std::unique_ptr<GattInterfaceHandler> gatt_interface_handler_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.

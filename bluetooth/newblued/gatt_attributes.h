@@ -23,6 +23,18 @@ class GattIncludedService;
 class GattCharacteristic;
 class GattDescriptor;
 
+// Property masks are based on Bluetooth spec Vol 3, Part G, 3.3.1.1, Table 3.5.
+enum GattCharacteristicPropertyMask {
+  BROADCAST = 1,
+  READ = 1 << 1,
+  WRITE_WITHOUT_RESPONSE = 1 << 2,
+  WRITE = 1 << 3,
+  NOTIFY = 1 << 4,
+  INDICATE = 1 << 5,
+  AUTHENTICATED_SIGNED_WRITE = 1 << 6,
+  EXTENDED_PROPERTIES = 1 << 7,
+};
+
 // Represents a GATT primary/secondary service.
 class GattService {
  public:

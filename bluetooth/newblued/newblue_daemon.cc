@@ -73,6 +73,10 @@ bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus,
 
   gatt_ =
       std::make_unique<Gatt>(newblue_.get(), device_interface_handler_.get());
+  gatt_interface_handler_ = std::make_unique<GattInterfaceHandler>(
+      bus_, newblue_.get(), exported_object_manager_wrapper_.get(),
+      gatt_.get());
+  gatt_interface_handler_->Init();
 
   if (!newblue_->ListenReadyForUp(base::Bind(&NewblueDaemon::OnHciReadyForUp,
                                              base::Unretained(this)))) {

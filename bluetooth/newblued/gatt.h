@@ -12,6 +12,7 @@
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
+#include <base/observer_list.h>
 
 #include "bluetooth/newblued/device_interface_handler.h"
 #include "bluetooth/newblued/gatt_attributes.h"
@@ -21,10 +22,28 @@
 namespace bluetooth {
 
 // The core implementation of GATT profile.
-class Gatt : DeviceInterfaceHandler::DeviceObserver {
+class Gatt final : public DeviceInterfaceHandler::DeviceObserver {
  public:
+  // Interface for observing GATT events.
+  class GattObserver {
+   public:
+    virtual void OnGattServiceAdded(const GattService& service) {}
+    virtual void OnGattServiceRemoved(const GattService& service) {}
+    virtual void OnGattServiceChanged(const GattService& service) {}
+    virtual void OnGattCharacteristicAdded(
+        const GattCharacteristic& characteristic) {}
+    virtual void OnGattCharacteristicRemoved(
+        const GattCharacteristic& characteristic) {}
+    virtual void OnGattDescriptorAdded(const GattDescriptor& descriptor) {}
+    virtual void OnGattDescriptorRemoved(const GattDescriptor& descriptor) {}
+  };
+
   Gatt(Newblue* newblue, DeviceInterfaceHandler* device_interface_handler);
   ~Gatt();
+
+  // Add/remove observer for GATT events.
+  void AddGattObserver(GattObserver* observer);
+  void RemoveGattObserver(GattObserver* observer);
 
   // Overrides of DeviceInterfaceHandler::DeviceObserver.
   void OnGattConnected(const std::string& device_address,
@@ -69,6 +88,8 @@ class Gatt : DeviceInterfaceHandler::DeviceObserver {
       remote_services_;
 
   std::map<UniqueId, ClientOperation> transactions_;
+
+  base::ObserverList<GattObserver> observers_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.

@@ -74,6 +74,7 @@ static_library("libnewblued") {
     "newblued/device_interface_handler.cc",
     "newblued/gatt.cc",
     "newblued/gatt_attributes.cc",
+    "newblued/gatt_interface_handler.cc",
     "newblued/newblue.cc",
     "newblued/newblue_daemon.cc",
     "newblued/stack_sync_monitor.cc",
