@@ -8,6 +8,7 @@
 
 #include <arc/network/guest_events.h>
 #include <base/files/file.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
@@ -42,6 +43,10 @@ constexpr size_t kHostAddressOffset = 0;
 
 // Offset in a subnet of the client/guest.
 constexpr size_t kGuestAddressOffset = 1;
+
+// The CPU cgroup where all the ARCVM's crosvm processes should belong to.
+constexpr char kArcvmCpuCgroup[] =
+    "/sys/fs/cgroup/cpu/session_manager_containers/tasks";
 
 }  // namespace
 
@@ -149,8 +154,10 @@ bool ArcVm::Start(base::FilePath kernel,
   }
 
   // Change the process group before exec so that crosvm sending SIGKILL to the
-  // whole process group doesn't kill us as well.
-  process_.SetPreExecCallback(base::Bind(&SetPgid));
+  // whole process group doesn't kill us as well. The function also changes the
+  // cpu cgroup for ARCVM's crosvm processes.
+  process_.SetPreExecCallback(
+      base::Bind(&SetUpCrosvmProcess, base::FilePath(kArcvmCpuCgroup)));
 
   if (!process_.Start()) {
     LOG(ERROR) << "Failed to start VM process";

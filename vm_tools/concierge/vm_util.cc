@@ -7,14 +7,18 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
+#include <base/strings/safe_sprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
@@ -139,9 +143,44 @@ std::string GetVmMemoryMiB() {
   return std::to_string(vm_memory_mb);
 }
 
+bool SetUpCrosvmProcess(const base::FilePath& cpu_cgroup) {
+  // Note: This function is meant to be called after forking a process for
+  // crosvm but before execve(). Since Concierge is multi-threaded, this
+  // function should not call any functions that are not async signal safe
+  // (see man signal-safety). Especially, don't call malloc/new or any functions
+  // or constructors that may allocate heap memory. Calling malloc/new may
+  // result in a dead-lock trying to lock a mutex that has already been locked
+  // by one of the parent's threads.
+
+  // Set up CPU cgroup. Note that FilePath::value() returns a const reference
+  // to std::string without allocating a new object. c_str() doesn't do any copy
+  // as long as we use C++11 or later.
+  const int fd =
+      HANDLE_EINTR(open(cpu_cgroup.value().c_str(), O_WRONLY | O_CLOEXEC));
+  if (fd < 0) {
+    // TODO(yusukes): Do logging here in an async safe way.
+    return false;
+  }
+
+  char pid_str[32];
+  const size_t len = base::strings::SafeSPrintf(pid_str, "%d", getpid());
+  const ssize_t written = HANDLE_EINTR(write(fd, pid_str, len));
+  close(fd);
+  if (written != len) {
+    // TODO(yusukes): Do logging here in an async safe way.
+    return false;
+  }
+
+  // Set up process group ID.
+  return SetPgid();
+}
+
 bool SetPgid() {
+  // Note: This should only call async-signal-safe functions. Don't call
+  // malloc/new. See SetUpCrosvmProcess() for more details.
+
   if (setpgid(0, 0) != 0) {
-    PLOG(ERROR) << "Failed to change process group id";
+    // TODO(yusukes): Do logging here in an async safe way.
     return false;
   }
 

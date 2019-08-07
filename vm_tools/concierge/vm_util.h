@@ -13,6 +13,10 @@
 #include <base/time/time.h>
 #include <vm_tools/concierge/usb_control.h>
 
+namespace base {
+class FilePath;
+}  // namespace base
+
 namespace vm_tools {
 namespace concierge {
 
@@ -25,9 +29,15 @@ const char kCrosvmBin[] = "/usr/bin/crosvm";
 // reduce the actual memory footprint.
 std::string GetVmMemoryMiB();
 
+// Puts the current process in a CPU cgroup specificed by |cpu_cgroup|, and
+// then calls SetPgid(). This function can be called as brillo::ProcessImpl's
+// PreExecCallback.
+bool SetUpCrosvmProcess(const base::FilePath& cpu_cgroup);
+
 // Sets the pgid of the current process to its pid.  This is needed because
 // crosvm assumes that only it and its children are in the same process group
-// and indiscriminately sends a SIGKILL if it needs to shut them down.
+// and indiscriminately sends a SIGKILL if it needs to shut them down. This
+// function can be called as brillo::ProcessImpl's PreExecCallback.
 bool SetPgid();
 
 // Waits for the |pid| to exit.  Returns true if |pid| successfully exited and
