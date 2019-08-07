@@ -65,18 +65,18 @@ TEST_F(GattAttributesTest, AttributesInit) {
 
   // GattService inits successfully.
   GattService s(address_, sfh, slh, true, service_uuid_);
-  EXPECT_EQ(address_, s.device_address());
+  EXPECT_EQ(address_, s.device_address().value());
   EXPECT_EQ(sfh, s.first_handle());
   EXPECT_EQ(slh, s.last_handle());
-  EXPECT_TRUE(s.primary());
-  EXPECT_EQ(service_uuid_, s.uuid());
+  EXPECT_TRUE(s.primary().value());
+  EXPECT_EQ(service_uuid_, s.uuid().value());
   EXPECT_TRUE(s.HasOwner());
   GattService s2(sfh, slh, false, service_uuid_);
-  EXPECT_EQ("", s2.device_address());
+  EXPECT_EQ("", s2.device_address().value());
   EXPECT_EQ(sfh, s2.first_handle());
   EXPECT_EQ(slh, s2.last_handle());
-  EXPECT_FALSE(s2.primary());
-  EXPECT_EQ(service_uuid_, s2.uuid());
+  EXPECT_FALSE(s2.primary().value());
+  EXPECT_EQ(service_uuid_, s2.uuid().value());
   EXPECT_FALSE(s2.HasOwner());
 
   // GattIncludedService fails to init.
@@ -102,23 +102,24 @@ TEST_F(GattAttributesTest, AttributesInit) {
 
   // GattCharacteristic inits successfully.
   GattCharacteristic c(&s, cvh, cfh, clh, cp, characteristic_uuid_);
-  EXPECT_EQ(&s, c.service());
+  EXPECT_EQ(&s, c.service().value());
   EXPECT_EQ(cvh, c.value_handle());
   EXPECT_EQ(cfh, c.first_handle());
   EXPECT_EQ(clh, c.last_handle());
-  EXPECT_EQ(cp, c.properties());
-  EXPECT_EQ(characteristic_uuid_, c.uuid());
-  EXPECT_TRUE(c.value().empty());
-  EXPECT_EQ(GattCharacteristic::NotifySetting::NONE, c.notify_setting());
+  EXPECT_EQ(cp, c.properties().value());
+  EXPECT_EQ(characteristic_uuid_, c.uuid().value());
+  EXPECT_TRUE(c.value().value().empty());
+  EXPECT_EQ(GattCharacteristic::NotifySetting::NONE,
+            c.notify_setting().value());
 
   // GattDescriptor fails to init.
   EXPECT_DEATH(GattDescriptor(nullptr, dh, descriptor_uuid_), "");
 
   // GattDescriptor inits successfully.
   GattDescriptor d(&c, dh, descriptor_uuid_);
-  EXPECT_EQ(&c, d.characteristic());
+  EXPECT_EQ(&c, d.characteristic().value());
   EXPECT_EQ(dh, d.handle());
-  EXPECT_EQ(descriptor_uuid_, d.uuid());
+  EXPECT_EQ(descriptor_uuid_, d.uuid().value());
 }
 
 TEST_F(GattAttributesTest, GattServiceSetter) {
@@ -127,11 +128,11 @@ TEST_F(GattAttributesTest, GattServiceSetter) {
   uint16_t slh = 0x0003;
 
   GattService s(sfh, slh, false, service_uuid_);
-  EXPECT_EQ("", s.device_address());
+  EXPECT_EQ("", s.device_address().value());
   EXPECT_FALSE(s.HasOwner());
   EXPECT_DEATH(s.SetDeviceAddress(""), "");
   s.SetDeviceAddress(address_);
-  EXPECT_EQ(address_, s.device_address());
+  EXPECT_EQ(address_, s.device_address().value());
 }
 
 TEST_F(GattAttributesTest, GattServiceAddIncludedServiceCharacteristic) {
@@ -171,15 +172,15 @@ TEST_F(GattAttributesTest, GattServiceAddIncludedServiceCharacteristic) {
   EXPECT_DEATH(s2.AddCharacteristic(std::move(c)), "");
   s.AddCharacteristic(std::move(c));
   EXPECT_EQ(1, s.characteristics_.size());
-  EXPECT_EQ(&s, s.characteristics_[cfh]->service());
+  EXPECT_EQ(&s, s.characteristics_[cfh]->service().value());
   EXPECT_EQ(cfh, s.characteristics_[cfh]->first_handle());
   EXPECT_EQ(clh, s.characteristics_[cfh]->last_handle());
   EXPECT_EQ(cvh, s.characteristics_[cfh]->value_handle());
-  EXPECT_EQ(cp, s.characteristics_[cfh]->properties());
-  EXPECT_EQ(characteristic_uuid_, s.characteristics_[cfh]->uuid());
-  EXPECT_TRUE(s.characteristics_[cfh]->value().empty());
+  EXPECT_EQ(cp, s.characteristics_[cfh]->properties().value());
+  EXPECT_EQ(characteristic_uuid_, s.characteristics_[cfh]->uuid().value());
+  EXPECT_TRUE(s.characteristics_[cfh]->value().value().empty());
   EXPECT_EQ(GattCharacteristic::NotifySetting::NONE,
-            s.characteristics_[cfh]->notify_setting());
+            s.characteristics_[cfh]->notify_setting().value());
 }
 
 TEST_F(GattAttributesTest, GattCharacteristicAddDescriptor) {
@@ -208,9 +209,9 @@ TEST_F(GattAttributesTest, GattCharacteristicAddDescriptor) {
   EXPECT_DEATH(c2.AddDescriptor(std::move(d)), "");
   c.AddDescriptor(std::move(d));
   EXPECT_EQ(1, c.descriptors_.size());
-  EXPECT_EQ(&c, c.descriptors_[dh]->characteristic());
+  EXPECT_EQ(&c, c.descriptors_[dh]->characteristic().value());
   EXPECT_EQ(dh, c.descriptors_[dh]->handle());
-  EXPECT_TRUE(c.descriptors_[dh]->value().empty());
+  EXPECT_TRUE(c.descriptors_[dh]->value().value().empty());
 }
 
 }  // namespace bluetooth

@@ -395,11 +395,11 @@ TEST(UtilTest, ConvertToGattService) {
   // Verify service content.
   EXPECT_NE(nullptr, s);
   EXPECT_FALSE(s->HasOwner());
-  EXPECT_TRUE(s->device_address().empty());
+  EXPECT_TRUE(s->device_address().value().empty());
   EXPECT_EQ(sfh, s->first_handle());
   EXPECT_EQ(slh, s->last_handle());
-  EXPECT_TRUE(s->primary());
-  EXPECT_EQ(service_uuid, s->uuid());
+  EXPECT_TRUE(s->primary().value());
+  EXPECT_EQ(service_uuid, s->uuid().value());
 
   // Verify included service content.
   EXPECT_EQ(1, s->included_services_.size());
@@ -411,28 +411,30 @@ TEST(UtilTest, ConvertToGattService) {
 
   // Verify characteristic content.
   EXPECT_EQ(1, s->characteristics_.size());
-  EXPECT_EQ(s.get(), s->characteristics_[cfh]->service());
+  EXPECT_EQ(s.get(), s->characteristics_[cfh]->service().value());
   EXPECT_EQ(cvh, s->characteristics_[cfh]->value_handle());
   EXPECT_EQ(cfh, s->characteristics_[cfh]->first_handle());
   EXPECT_EQ(clh, s->characteristics_[cfh]->last_handle());
-  EXPECT_EQ(cp, s->characteristics_[cfh]->properties());
-  EXPECT_EQ(characteristic_uuid, s->characteristics_[cfh]->uuid());
-  EXPECT_TRUE(s->characteristics_[cfh]->value().empty());
+  EXPECT_EQ(cp, s->characteristics_[cfh]->properties().value());
+  EXPECT_EQ(characteristic_uuid, s->characteristics_[cfh]->uuid().value());
+  EXPECT_TRUE(s->characteristics_[cfh]->value().value().empty());
   EXPECT_EQ(GattCharacteristic::NotifySetting::NONE,
-            s->characteristics_[cfh]->notify_setting());
+            s->characteristics_[cfh]->notify_setting().value());
 
   // Verify descriptors content.
   EXPECT_EQ(2, s->characteristics_[cfh]->descriptors_.size());
-  EXPECT_EQ(s->characteristics_[cfh].get(),
-            s->characteristics_[cfh]->descriptors_[dh]->characteristic());
+  EXPECT_EQ(
+      s->characteristics_[cfh].get(),
+      s->characteristics_[cfh]->descriptors_[dh]->characteristic().value());
   EXPECT_EQ(dh, s->characteristics_[cfh]->descriptors_[dh]->handle());
   EXPECT_EQ(descriptor_uuid,
-            s->characteristics_[cfh]->descriptors_[dh]->uuid());
-  EXPECT_EQ(s->characteristics_[cfh].get(),
-            s->characteristics_[cfh]->descriptors_[dh2]->characteristic());
+            s->characteristics_[cfh]->descriptors_[dh]->uuid().value());
+  EXPECT_EQ(
+      s->characteristics_[cfh].get(),
+      s->characteristics_[cfh]->descriptors_[dh2]->characteristic().value());
   EXPECT_EQ(dh2, s->characteristics_[cfh]->descriptors_[dh2]->handle());
   EXPECT_EQ(descriptor_uuid2,
-            s->characteristics_[cfh]->descriptors_[dh2]->uuid());
+            s->characteristics_[cfh]->descriptors_[dh2]->uuid().value());
 }
 
 }  // namespace bluetooth

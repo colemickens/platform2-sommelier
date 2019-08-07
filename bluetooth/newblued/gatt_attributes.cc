@@ -38,7 +38,7 @@ GattService::GattService(uint16_t first_handle,
 
 void GattService::SetDeviceAddress(const std::string& device_address) {
   CHECK(!device_address.empty());
-  device_address_ = device_address;
+  device_address_.SetValue(device_address);
 }
 
 void GattService::AddIncludedService(
@@ -53,14 +53,14 @@ void GattService::AddIncludedService(
 void GattService::AddCharacteristic(
     std::unique_ptr<GattCharacteristic> characteristic) {
   CHECK(characteristic != nullptr);
-  CHECK(characteristic->service() == this);
+  CHECK(characteristic->service().value() == this);
 
   characteristics_.emplace(characteristic->first_handle(),
                            std::move(characteristic));
 }
 
 bool GattService::HasOwner() const {
-  return !device_address_.empty();
+  return !device_address_.value().empty();
 }
 
 GattIncludedService::GattIncludedService(GattService* service,
@@ -77,7 +77,7 @@ GattIncludedService::GattIncludedService(GattService* service,
   service_ = service;
 }
 
-GattCharacteristic::GattCharacteristic(GattService* service,
+GattCharacteristic::GattCharacteristic(const GattService* service,
                                        uint16_t value_handle,
                                        uint16_t first_handle,
                                        uint16_t last_handle,
@@ -91,22 +91,22 @@ GattCharacteristic::GattCharacteristic(GattService* service,
       notify_setting_(GattCharacteristic::NotifySetting::NONE) {
   CHECK(service != nullptr);
   CHECK(first_handle <= last_handle);
-  service_ = service;
+  service_.SetValue(service);
 }
 
 void GattCharacteristic::AddDescriptor(
     std::unique_ptr<GattDescriptor> descriptor) {
   CHECK(descriptor != nullptr);
-  CHECK(descriptor->characteristic() == this);
+  CHECK(descriptor->characteristic().value() == this);
   descriptors_.emplace(descriptor->handle(), std::move(descriptor));
 }
 
-GattDescriptor::GattDescriptor(GattCharacteristic* characteristic,
+GattDescriptor::GattDescriptor(const GattCharacteristic* characteristic,
                                uint16_t handle,
                                const Uuid& uuid)
     : handle_(handle), uuid_(uuid) {
   CHECK(characteristic != nullptr);
-  characteristic_ = characteristic;
+  characteristic_.SetValue(characteristic);
 }
 
 }  // namespace bluetooth

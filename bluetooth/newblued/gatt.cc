@@ -90,7 +90,7 @@ void Gatt::TravPrimaryServices(const std::string& device_address,
   for (const auto& service_entry : services->second) {
     GattService* service = service_entry.second.get();
 
-    if (!service->primary())
+    if (!service->primary().value())
       continue;
 
     UniqueId transaction_id = GetNextId();
@@ -100,17 +100,17 @@ void Gatt::TravPrimaryServices(const std::string& device_address,
     transactions_.emplace(transaction_id, std::move(operation));
 
     GattClientOperationStatus status = newblue_->GattClientTravPrimaryService(
-        conn_id, service->uuid(), transaction_id,
+        conn_id, service->uuid().value(), transaction_id,
         base::Bind(&Gatt::OnGattClientTravPrimaryService,
                    weak_ptr_factory_.GetWeakPtr()));
     if (status != GattClientOperationStatus::OK) {
       LOG(ERROR) << "Failed to traverse GATT primary service "
-                 << service->uuid().canonical_value() << " for device "
+                 << service->uuid().value().canonical_value() << " for device "
                  << device_address << " with conn ID " << conn_id;
       transactions_.erase(transaction_id);
     } else {
       VLOG(1) << "Start traversing GATT primary service "
-              << service->uuid().canonical_value() << " for device "
+              << service->uuid().value().canonical_value() << " for device "
               << device_address << ", transaction " << transaction_id;
     }
   }
@@ -210,12 +210,13 @@ void Gatt::OnGattClientTravPrimaryService(
   auto srv = services->second.find(service->first_handle());
   if (srv == services->second.end()) {
     LOG(WARNING) << "Unknown primary service "
-                 << service->uuid().canonical_value() << ", dropping it";
+                 << service->uuid().value().canonical_value()
+                 << ", dropping it";
     transactions_.erase(transaction_id);
     return;
   }
 
-  VLOG(2) << "Replacing service " << service->uuid().canonical_value()
+  VLOG(2) << "Replacing service " << service->uuid().value().canonical_value()
           << " of device " << device_address
           << " with the traversed one, transaction id " << transaction_id;
   srv->second = std::move(service);

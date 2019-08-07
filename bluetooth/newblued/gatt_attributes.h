@@ -14,6 +14,7 @@
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>
 
+#include "bluetooth/newblued/property.h"
 #include "bluetooth/newblued/uuid.h"
 
 namespace bluetooth {
@@ -49,18 +50,24 @@ class GattService {
   // Indicates whether there is a device address associated with it.
   bool HasOwner() const;
 
-  const std::string& device_address() const { return device_address_; }
+  const Property<std::string>& device_address() const {
+    return device_address_;
+  }
   uint16_t first_handle() const { return first_handle_; }
   uint16_t last_handle() const { return last_handle_; }
-  bool primary() const { return primary_; }
-  const Uuid& uuid() const { return uuid_; }
+  const Property<bool>& primary() const { return primary_; }
+  const Property<Uuid>& uuid() const { return uuid_; }
+  const std::map<uint16_t, std::unique_ptr<GattCharacteristic>>&
+  characteristics() const {
+    return characteristics_;
+  }
 
  private:
-  std::string device_address_;
+  Property<std::string> device_address_;
   uint16_t first_handle_;
   uint16_t last_handle_;
-  bool primary_;
-  Uuid uuid_;
+  Property<bool> primary_;
+  Property<Uuid> uuid_;
   std::map<uint16_t, std::unique_ptr<GattCharacteristic>> characteristics_;
   std::map<uint16_t, std::unique_ptr<GattIncludedService>> included_services_;
 
@@ -106,7 +113,7 @@ class GattCharacteristic {
     INDICATION,
   };
 
-  GattCharacteristic(GattService* service,
+  GattCharacteristic(const GattService* service,
                      uint16_t value_handle,
                      uint16_t first_handle,
                      uint16_t last_handle,
@@ -117,27 +124,33 @@ class GattCharacteristic {
   // Adds descriptor to the characteristic.
   void AddDescriptor(std::unique_ptr<GattDescriptor> descriptor);
 
-  const GattService* service() const { return service_; }
+  const Property<const GattService*>& service() const { return service_; }
   uint16_t value_handle() const { return value_handle_; }
   uint16_t first_handle() const { return first_handle_; }
   uint16_t last_handle() const { return last_handle_; }
-  uint8_t properties() const { return properties_; }
-  const Uuid& uuid() const { return uuid_; }
-  const std::vector<uint8_t>& value() const { return value_; }
-  NotifySetting notify_setting() const { return notify_setting_; }
+  const Property<uint8_t>& properties() const { return properties_; }
+  const Property<Uuid>& uuid() const { return uuid_; }
+  const Property<std::vector<uint8_t>>& value() const { return value_; }
+  const Property<NotifySetting>& notify_setting() const {
+    return notify_setting_;
+  }
+  const std::map<uint16_t, std::unique_ptr<GattDescriptor>>& descriptors()
+      const {
+    return descriptors_;
+  }
 
  private:
-  GattService* service_;
+  Property<const GattService*> service_;
 
   uint16_t value_handle_;
   uint16_t first_handle_;
   uint16_t last_handle_;
-  uint8_t properties_;
-  Uuid uuid_;
-  std::vector<uint8_t> value_;
+  Property<uint8_t> properties_;
+  Property<Uuid> uuid_;
+  Property<std::vector<uint8_t>> value_;
   std::map<uint16_t, std::unique_ptr<GattDescriptor>> descriptors_;
 
-  NotifySetting notify_setting_;
+  Property<NotifySetting> notify_setting_;
 
   FRIEND_TEST(GattAttributesTest, GattCharacteristicAddDescriptor);
   FRIEND_TEST(UtilTest, ConvertToGattService);
@@ -148,22 +161,24 @@ class GattCharacteristic {
 // Represents a GATT descriptor.
 class GattDescriptor {
  public:
-  GattDescriptor(GattCharacteristic* characteristic,
+  GattDescriptor(const GattCharacteristic* characteristic,
                  uint16_t handle,
                  const Uuid& uuid);
   virtual ~GattDescriptor() {}
 
-  const GattCharacteristic* characteristic() const { return characteristic_; }
+  const Property<const GattCharacteristic*>& characteristic() const {
+    return characteristic_;
+  }
   uint16_t handle() const { return handle_; }
-  const Uuid& uuid() const { return uuid_; }
-  const std::vector<uint8_t>& value() const { return value_; }
+  const Property<Uuid>& uuid() const { return uuid_; }
+  const Property<std::vector<uint8_t>>& value() const { return value_; }
 
  private:
-  GattCharacteristic* characteristic_;
+  Property<const GattCharacteristic*> characteristic_;
 
   uint16_t handle_;
-  Uuid uuid_;
-  std::vector<uint8_t> value_;
+  Property<Uuid> uuid_;
+  Property<std::vector<uint8_t>> value_;
 
   DISALLOW_COPY_AND_ASSIGN(GattDescriptor);
 };
