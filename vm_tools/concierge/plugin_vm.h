@@ -73,6 +73,7 @@ class PluginVm final : public VmInterface, base::MessageLoopForIO::Watcher {
                        const std::vector<std::string>& search_domains) override;
   bool SetTime(std::string* failure_reason) override { return true; }
   void SetTremplinStarted() override { NOTREACHED(); }
+  void VmToolsStateChanged(bool running) override;
 
   // base::MessageLoopForIO::Watcher overrides
   void OnFileCanReadWithoutBlocking(int fd) override;
@@ -106,12 +107,12 @@ class PluginVm final : public VmInterface, base::MessageLoopForIO::Watcher {
            uint32_t ipv4_gateway,
            std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
            dbus::ObjectProxy* vmplugin_service_proxy,
+           base::FilePath iso_dir,
            base::FilePath root_dir,
            base::FilePath runtime_dir);
   bool Start(uint32_t cpus,
              std::vector<std::string> params,
-             base::FilePath stateful_dir,
-             base::FilePath iso_dir);
+             base::FilePath stateful_dir);
   bool CreateUsbListeningSocket();
   void HandleUsbControlResponse();
 
@@ -121,6 +122,9 @@ class PluginVm final : public VmInterface, base::MessageLoopForIO::Watcher {
   // This VM ID. It is used to communicate with the dispatcher to request
   // VM state changes.
   const VmId id_;
+
+  // Specifies directory holding ISO images that can be attached to the VM.
+  base::FilePath iso_dir_;
 
   // Allows to build skeleton of root file system for the plugin.
   // Individual directories, such as /etc, are mounted plugin jail.

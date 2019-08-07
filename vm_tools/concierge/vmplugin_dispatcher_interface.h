@@ -30,6 +30,15 @@ bool IsVmRegistered(dbus::ObjectProxy* proxy, const VmId& vm_id, bool* result);
 bool ShutdownVm(dbus::ObjectProxy* proxy, const VmId& vm_id);
 bool SuspendVm(dbus::ObjectProxy* proxy, const VmId& vm_id);
 
+void RegisterVmToolsChangedCallbacks(
+    dbus::ObjectProxy* proxy,
+    dbus::ObjectProxy::SignalCallback cb,
+    dbus::ObjectProxy::OnConnectedCallback on_connected_cb);
+bool ParseVmToolsChangedSignal(dbus::Signal* signal,
+                               std::string* owner_id,
+                               std::string* vm_name,
+                               bool* running);
+
 }  // namespace dispatcher
 }  // namespace pvm
 }  // namespace concierge

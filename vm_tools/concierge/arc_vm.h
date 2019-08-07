@@ -107,6 +107,7 @@ class ArcVm final : public VmInterface {
   // TODO(b/136143058): Implement SetTime calls.
   bool SetTime(std::string* failure_reason) override { return true; }
   void SetTremplinStarted() override { NOTREACHED(); }
+  void VmToolsStateChanged(bool running) override { NOTREACHED(); }
 
   // Adjusts the amount of CPU the ARCVM processes are allowed to use.
   static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state);

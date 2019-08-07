@@ -256,6 +256,41 @@ bool SuspendVm(dbus::ObjectProxy* proxy, const VmId& vm_id) {
   return true;
 }
 
+void RegisterVmToolsChangedCallbacks(
+    dbus::ObjectProxy* proxy,
+    dbus::ObjectProxy::SignalCallback cb,
+    dbus::ObjectProxy::OnConnectedCallback on_connected_cb) {
+  proxy->ConnectToSignal(
+      vm_tools::plugin_dispatcher::kVmPluginDispatcherServiceName,
+      vm_tools::plugin_dispatcher::kVmToolsStateChangedSignal, cb,
+      on_connected_cb);
+}
+
+bool ParseVmToolsChangedSignal(dbus::Signal* signal,
+                               std::string* owner_id,
+                               std::string* vm_name,
+                               bool* running) {
+  DCHECK_EQ(signal->GetInterface(),
+            vm_tools::plugin_dispatcher::kVmPluginDispatcherInterface);
+  DCHECK_EQ(signal->GetMember(),
+            vm_tools::plugin_dispatcher::kVmToolsStateChangedSignal);
+
+  vm_tools::plugin_dispatcher::VmToolsStateChangedSignal message;
+  dbus::MessageReader reader(signal);
+  if (!reader.PopArrayOfBytesAsProto(&message)) {
+    LOG(ERROR) << "Failed to parse VmToolsStateChangedSignal from DBus Signal";
+    return false;
+  }
+
+  auto state = message.vm_tools_state();
+  LOG(INFO) << "Tools raw state: " << state;
+
+  *owner_id = message.owner_id();
+  *vm_name = message.vm_name();
+  *running = state == vm_tools::plugin_dispatcher::VM_TOOLS_STATE_INSTALLED;
+  return true;
+}
+
 }  // namespace dispatcher
 }  // namespace pvm
 }  // namespace concierge

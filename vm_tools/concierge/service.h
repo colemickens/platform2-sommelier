@@ -166,6 +166,7 @@ class Service final : public base::MessageLoopForIO::Watcher {
                                 const std::string& container_name);
 
   void OnTremplinStartedSignal(dbus::Signal* signal);
+  void OnVmToolsStateChangedSignal(dbus::Signal* signal);
 
   void OnSignalConnected(const std::string& interface_name,
                          const std::string& signal_name,

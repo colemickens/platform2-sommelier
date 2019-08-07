@@ -94,6 +94,9 @@ class VmInterface {
 
   // Notes that TremplinStartedSignal has been received for the VM.
   virtual void SetTremplinStarted() = 0;
+
+  // Notes that guest agent is running in the VM.
+  virtual void VmToolsStateChanged(bool running) = 0;
 };
 
 }  // namespace concierge

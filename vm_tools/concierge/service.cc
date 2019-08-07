@@ -748,6 +748,11 @@ bool Service::Init() {
     LOG(ERROR) << "Unable to get dbus proxy for Plugin VM dispatcher service";
     return false;
   }
+  pvm::dispatcher::RegisterVmToolsChangedCallbacks(
+      vmplugin_service_proxy_,
+      base::Bind(&Service::OnVmToolsStateChangedSignal,
+                 weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&Service::OnSignalConnected, weak_ptr_factory_.GetWeakPtr()));
 
   // Setup & start the gRPC listener services.
   if (!SetupListenerService(
@@ -2932,6 +2937,23 @@ void Service::OnTremplinStartedSignal(dbus::Signal* signal) {
   }
   LOG(INFO) << "Received TremplinStartedSignal for " << iter->first;
   iter->second->SetTremplinStarted();
+}
+
+void Service::OnVmToolsStateChangedSignal(dbus::Signal* signal) {
+  string owner_id, vm_name;
+  bool running;
+  if (!pvm::dispatcher::ParseVmToolsChangedSignal(signal, &owner_id, &vm_name,
+                                                  &running)) {
+    return;
+  }
+
+  auto iter = FindVm(owner_id, vm_name);
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "Received signal from an unknown vm.";
+    return;
+  }
+  LOG(INFO) << "Received VmToolsStateChangedSignal for " << iter->first;
+  iter->second->VmToolsStateChanged(running);
 }
 
 void Service::OnSignalConnected(const std::string& interface_name,

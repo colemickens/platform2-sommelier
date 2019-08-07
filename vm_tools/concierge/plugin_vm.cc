@@ -20,6 +20,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 
+#include "vm_tools/concierge/plugin_vm_helper.h"
 #include "vm_tools/concierge/tap_device_builder.h"
 #include "vm_tools/concierge/vm_util.h"
 #include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
@@ -83,11 +84,10 @@ std::unique_ptr<PluginVm> PluginVm::Create(
   auto vm = base::WrapUnique(new PluginVm(
       std::move(id), std::move(mac_addr), std::move(ipv4_addr), ipv4_netmask,
       ipv4_gateway, std::move(seneschal_server_proxy), vmplugin_service_proxy,
-      std::move(root_dir), std::move(runtime_dir)));
+      std::move(iso_dir), std::move(root_dir), std::move(runtime_dir)));
 
   if (!vm->CreateUsbListeningSocket() ||
-      !vm->Start(cpus, std::move(params), std::move(stateful_dir),
-                 std::move(iso_dir))) {
+      !vm->Start(cpus, std::move(params), std::move(stateful_dir))) {
     vm.reset();
   }
 
@@ -516,6 +516,14 @@ bool PluginVm::SetResolvConfig(const std::vector<string>& nameservers,
                          search_domains);
 }
 
+void PluginVm::VmToolsStateChanged(bool running) {
+  LOG(INFO) << "Tools are " << (running ? "" : "not ")
+            << "running in plugin VM";
+
+  if (running)
+    pvm::helper::CleanUpAfterInstall(id_, iso_dir_);
+}
+
 PluginVm::PluginVm(VmId id,
                    arc_networkd::MacAddress mac_addr,
                    std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr,
@@ -523,9 +531,11 @@ PluginVm::PluginVm(VmId id,
                    uint32_t ipv4_gateway,
                    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
                    dbus::ObjectProxy* vmplugin_service_proxy,
+                   base::FilePath iso_dir,
                    base::FilePath root_dir,
                    base::FilePath runtime_dir)
     : id_(std::move(id)),
+      iso_dir_(std::move(iso_dir)),
       mac_addr_(std::move(mac_addr)),
       ipv4_addr_(std::move(ipv4_addr)),
       netmask_(ipv4_netmask),
@@ -536,6 +546,7 @@ PluginVm::PluginVm(VmId id,
       usb_fd_watcher_(FROM_HERE) {
   CHECK(ipv4_addr_);
   CHECK(vmplugin_service_proxy_);
+  CHECK(base::DirectoryExists(iso_dir_));
   CHECK(base::DirectoryExists(root_dir));
   CHECK(base::DirectoryExists(runtime_dir));
 
@@ -546,8 +557,7 @@ PluginVm::PluginVm(VmId id,
 
 bool PluginVm::Start(uint32_t cpus,
                      std::vector<string> params,
-                     base::FilePath stateful_dir,
-                     base::FilePath iso_dir) {
+                     base::FilePath stateful_dir) {
   // Set up the tap device.
   base::ScopedFD tap_fd =
       BuildTapDevice(mac_addr_, gateway_, netmask_, false /*vnet_hdr*/);
@@ -581,7 +591,7 @@ bool PluginVm::Start(uint32_t cpus,
       base::StringPrintf("%s:%s:true", stateful_dir.value().c_str(),
                          kStatefulDir),
       // This is directory where ISO images for the VM reside.
-      base::StringPrintf("%s:%s:false", iso_dir.value().c_str(), kIsoDir),
+      base::StringPrintf("%s:%s:false", iso_dir_.value().c_str(), kIsoDir),
       // This is directory where control socket, 9p socket, and other axillary
       // runtime data lives.
       base::StringPrintf("%s:%s:true", runtime_dir_.GetPath().value().c_str(),

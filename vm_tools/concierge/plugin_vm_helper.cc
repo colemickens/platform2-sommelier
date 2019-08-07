@@ -7,14 +7,18 @@
 #include <sys/mount.h>
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/json/json_reader.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
 #include <base/logging.h>
+#include <base/values.h>
 #include <chromeos/scoped_minijail.h>
 
 namespace vm_tools {
@@ -179,6 +183,53 @@ bool ExecutePvmHelper(const std::string& owner_id,
   }
 }
 
+static std::unique_ptr<base::DictionaryValue> GetVmInfo(const VmId& vm_id) {
+  std::string output;
+  if (!ExecutePvmHelper(vm_id.owner_id(),
+                        {"list", "--info", "--json", vm_id.name()}, &output)) {
+    return nullptr;
+  }
+
+  auto result = base::JSONReader::Read(output);
+  if (!result) {
+    LOG(ERROR) << "GetVmInfo(" << vm_id << "): Failed to parse VM info";
+    return nullptr;
+  }
+
+  if (!result->is_list()) {
+    LOG(ERROR) << "GetVmInfo(" << vm_id
+               << "): Expected to find a list at top level";
+    return nullptr;
+  }
+
+  const base::ListValue* list;
+  if (!result->GetAsList(&list)) {
+    LOG(ERROR) << "GetVmInfo(" << vm_id << "): Failed to parse top level list";
+    return nullptr;
+  }
+
+  if (list->GetSize() != 1) {
+    LOG(ERROR) << "GetVmInfo(" << vm_id << "): Unexpected list size of "
+               << list->GetSize();
+    return nullptr;
+  }
+
+  const base::DictionaryValue* vm_info;
+  if (!list->GetDictionary(0, &vm_info)) {
+    LOG(ERROR) << "GetVmInfo(" << vm_id
+               << "): Failed to fetch VM info dictionary";
+    return nullptr;
+  }
+
+  return vm_info->CreateDeepCopy();
+}
+
+bool DisconnectDevice(const VmId& vm_id, const std::string& device_name) {
+  return ExecutePvmHelper(
+      vm_id.owner_id(),
+      {"set", vm_id.name(), "--device-disconnect", device_name});
+}
+
 }  // namespace
 
 bool CreateVm(const VmId& vm_id, std::vector<std::string> params) {
@@ -202,6 +253,56 @@ bool AttachIso(const VmId& vm_id, const std::string& iso_name) {
 
 bool DeleteVm(const VmId& vm_id) {
   return ExecutePvmHelper(vm_id.owner_id(), {"delete", vm_id.name()});
+}
+
+void CleanUpAfterInstall(const VmId& vm_id, const base::FilePath& iso_path) {
+  auto vm_info = GetVmInfo(vm_id);
+  if (!vm_info) {
+    LOG(ERROR) << "Failed to obtain VM info for " << vm_id;
+    return;
+  }
+
+  const base::DictionaryValue* hardware;
+  if (!vm_info->GetDictionary("Hardware", &hardware)) {
+    LOG(ERROR) << "Failed to obtain hardware info for " << vm_id;
+    return;
+  }
+
+  base::DictionaryValue::Iterator it(*hardware);
+  for (; !it.IsAtEnd(); it.Advance()) {
+    if (!base::StringPiece(it.key()).starts_with("cdrom"))
+      continue;
+
+    const base::DictionaryValue* cdrom;
+    if (!it.value().GetAsDictionary(&cdrom)) {
+      LOG(WARNING) << "Hardware node " << it.key() << " in " << vm_id
+                   << "is not a dictionary";
+      continue;
+    }
+
+    std::string image_name;
+    if (!cdrom->GetString("image", &image_name))
+      continue;  // The device is not backed by an image.
+
+    LOG(INFO) << "CDROM image: " << image_name;
+
+    if (image_name != "/iso/install.iso")
+      continue;
+
+    std::string state;
+    if (cdrom->GetString("state", &state) && state == "connected") {
+      if (!DisconnectDevice(vm_id, it.key())) {
+        LOG(ERROR) << "Failed to disconnect " << it.key() << " from " << vm_id;
+        continue;
+      }
+    }
+
+    base::FilePath image_path = iso_path.Append("install.iso");
+    if (base::PathExists(image_path) &&
+        !DeleteFile(image_path, false /* recursive */)) {
+      LOG(WARNING) << "Failed to delete " << image_path.value();
+    }
+  }
 }
 
 }  // namespace helper

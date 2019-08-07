@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
+
 #include "vm_tools/common/vm_id.h"
 
 namespace vm_tools {
@@ -18,6 +20,8 @@ namespace helper {
 bool CreateVm(const VmId& vm_id, std::vector<std::string> params);
 bool DeleteVm(const VmId& vm_id);
 bool AttachIso(const VmId& vm_id, const std::string& iso_name);
+
+void CleanUpAfterInstall(const VmId& vm_id, const base::FilePath& iso_path);
 
 }  // namespace helper
 }  // namespace pvm
