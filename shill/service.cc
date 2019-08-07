@@ -1338,14 +1338,6 @@ void Service::HelpRegisterConstDerivedRpcIdentifier(
           this, get)));
 }
 
-void Service::HelpRegisterConstDerivedUint16(
-    const string& name,
-    uint16_t(Service::*get)(Error*) const) {
-  store_.RegisterDerivedUint16(
-      name,
-      Uint16Accessor(new CustomReadOnlyAccessor<Service, uint16_t>(this, get)));
-}
-
 void Service::HelpRegisterConstDerivedStrings(
     const string& name, Strings(Service::*get)(Error* error) const) {
   store_.RegisterDerivedStrings(

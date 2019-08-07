@@ -592,9 +592,6 @@ class Service : public base::RefCounted<Service> {
       const std::string& name,
       std::string(Service::*get)(Error* error),
       bool(Service::*set)(const std::string& value, Error* error));
-  void HelpRegisterConstDerivedUint16(
-      const std::string& name,
-      uint16_t(Service::*get)(Error* error) const);
   void HelpRegisterConstDerivedRpcIdentifier(
       const std::string& name,
       RpcIdentifier(Service::*get)(Error*) const);
