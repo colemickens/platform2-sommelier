@@ -164,6 +164,10 @@ bool ConvertToBtAddr(bool is_random_address,
                      const std::string& addr,
                      struct bt_addr* result);
 
+// Converts the uint8_t[6] MAC address into std::string form, e.g.
+// {0x05, 0x04, 0x03, 0x02, 0x01, 0x00} will be 00:01:02:03:04:05.
+std::string ConvertBtAddrToString(const struct bt_addr& addr);
+
 // Converts struct uuid to bluetooth::Uuid.
 Uuid ConvertToUuid(const struct uuid& uuid);
 

@@ -298,8 +298,8 @@ bool DeviceInterfaceHandler::Init() {
     if (!known_device.is_paired)
       continue;
 
-    Device* device = AddOrGetDiscoveredDevice(known_device.address,
-                                              known_device.address_type);
+    Device* device = AddOrGetDiscoveredDevice(
+        known_device.address, known_device.address, known_device.address_type);
     SetDevicePaired(device, true);
     device->name.SetValue(known_device.name + kNewblueNameSuffix);
     if (!known_device.identity_address.empty())
@@ -338,20 +338,25 @@ base::WeakPtr<DeviceInterfaceHandler> DeviceInterfaceHandler::GetWeakPtr() {
 
 void DeviceInterfaceHandler::OnDeviceDiscovered(
     bool scanned_by_client,
-    const std::string& address,
+    const std::string& adv_address,
     uint8_t address_type,
+    const std::string& resolved_address,
     int8_t rssi,
     uint8_t reply_type,
     const std::vector<uint8_t>& eir) {
-  Device* device = FindDevice(address);
-  if (device && device->paired.value())
-    ConnectInternal(address, /* connect_response */ nullptr,
+  const std::string& key_address =
+      resolved_address.empty() ? adv_address : resolved_address;
+  Device* device = FindDevice(key_address);
+  if (device && device->paired.value()) {
+    device->advertised_address.SetValue(adv_address);
+    ConnectInternal(key_address, /* connect_response */ nullptr,
                     /* connect_by_us */ true);
+  }
 
   if (!scanned_by_client)
     return;
 
-  device = AddOrGetDiscoveredDevice(address, address_type);
+  device = AddOrGetDiscoveredDevice(key_address, adv_address, address_type);
 
   device->rssi.SetValue(rssi);
 
@@ -459,13 +464,17 @@ void DeviceInterfaceHandler::SetGattServicesResolved(
 }
 
 Device* DeviceInterfaceHandler::AddOrGetDiscoveredDevice(
-    const std::string& address, uint8_t address_type) {
-  Device* device = FindDevice(address);
+    const std::string& key_address,
+    const std::string& adv_address,
+    uint8_t address_type) {
+  Device* device = FindDevice(key_address);
   if (!device) {
-    discovered_devices_[address] = std::make_unique<Device>(address);
-    device = discovered_devices_[address].get();
+    discovered_devices_[key_address] = std::make_unique<Device>(key_address);
+    device = discovered_devices_[key_address].get();
   }
   device->is_random_address = (address_type == BT_ADDR_TYPE_LE_RANDOM);
+  device->advertised_address.SetValue(adv_address);
+
   return device;
 }
 
@@ -683,8 +692,8 @@ void DeviceInterfaceHandler::ConnectInternal(
     return;
   }
 
-  gatt_client_conn_t conn_id =
-      newblue_->GattClientConnect(device->address, device->is_random_address);
+  gatt_client_conn_t conn_id = newblue_->GattClientConnect(
+      device->advertised_address.value(), device->is_random_address);
   if (conn_id == kInvalidGattConnectionId) {
     LOG(WARNING) << "Failed GATT client connect";
     ConnectReply(device_address, false, bluetooth_device::kErrorFailed);

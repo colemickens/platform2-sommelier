@@ -77,6 +77,9 @@ struct Device {
   // Identity address (in format XX:XX:XX:XX:XX:XX).
   Property<std::string> identity_address;
 
+  // Latest advertising address (in format XX:XX:XX:XX:XX:XX).
+  Property<std::string> advertised_address;
+
   DISALLOW_COPY_AND_ASSIGN(Device);
 };
 
@@ -157,8 +160,9 @@ class DeviceInterfaceHandler {
   // |scanned_by_client| being true means that the scan result is due to scan
   // requested by clients rather than a background scan.
   void OnDeviceDiscovered(bool scanned_by_client,
-                          const std::string& address,
+                          const std::string& adv_address,
                           uint8_t address_type,
+                          const std::string& resolved_address,
                           int8_t rssi,
                           uint8_t reply_type,
                           const std::vector<uint8_t>& eir);
@@ -184,9 +188,10 @@ class DeviceInterfaceHandler {
                                bool resolved);
 
  private:
-  // Returns the in-memory discovered device based on its address, adding it if
-  // does not already exist.
-  Device* AddOrGetDiscoveredDevice(const std::string& address,
+  // Returns the in-memory discovered device based on its key address, adding
+  // it if does not already exist.
+  Device* AddOrGetDiscoveredDevice(const std::string& key_address,
+                                   const std::string& adv_address,
                                    uint8_t address_type);
 
   // Exports the device to D-Bus (if not already exported) and updates its

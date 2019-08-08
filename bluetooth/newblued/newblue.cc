@@ -31,14 +31,6 @@ bool isValidBtAddress(const struct bt_addr& addr) {
   return addr_val != 0;
 }
 
-// Converts the uint8_t[6] MAC address into std::string form, e.g.
-// {0x05, 0x04, 0x03, 0x02, 0x01, 0x00} will be 00:01:02:03:04:05.
-std::string ConvertBtAddrToString(const struct bt_addr& addr) {
-  return base::StringPrintf("%02X:%02X:%02X:%02X:%02X:%02X", addr.addr[5],
-                            addr.addr[4], addr.addr[3], addr.addr[2],
-                            addr.addr[1], addr.addr[0]);
-}
-
 }  // namespace
 
 Newblue::Newblue(std::unique_ptr<LibNewblue> libnewblue)
@@ -391,7 +383,8 @@ void Newblue::OnStackReadyForUp() {
 }
 
 void Newblue::DiscoveryCallbackThunk(void* data,
-                                     const struct bt_addr* addr,
+                                     const struct bt_addr* adv_address,
+                                     const struct bt_addr* resolved_address,
                                      int8_t rssi,
                                      uint8_t reply_type,
                                      const void* eir,
@@ -399,14 +392,19 @@ void Newblue::DiscoveryCallbackThunk(void* data,
   Newblue* newblue = static_cast<Newblue*>(data);
   std::vector<uint8_t> eir_vector(static_cast<const uint8_t*>(eir),
                                   static_cast<const uint8_t*>(eir) + eir_len);
-  std::string address = ConvertBtAddrToString(*addr);
+  std::string address = ConvertBtAddrToString(*adv_address);
+  std::string resolved_addr;
+  if (resolved_address != nullptr && isValidBtAddress(*resolved_address))
+    resolved_addr = ConvertBtAddrToString(*resolved_address);
   newblue->PostTask(
       FROM_HERE, base::Bind(&Newblue::DiscoveryCallback, newblue->GetWeakPtr(),
-                            address, addr->type, rssi, reply_type, eir_vector));
+                            address, adv_address->type, resolved_addr, rssi,
+                            reply_type, eir_vector));
 }
 
-void Newblue::DiscoveryCallback(const std::string& address,
+void Newblue::DiscoveryCallback(const std::string& adv_address,
                                 uint8_t address_type,
+                                const std::string& resolved_address,
                                 int8_t rssi,
                                 uint8_t reply_type,
                                 const std::vector<uint8_t>& eir) {
@@ -417,7 +415,8 @@ void Newblue::DiscoveryCallback(const std::string& address,
     return;
   }
 
-  device_discovered_callback_.Run(address, address_type, rssi, reply_type, eir);
+  device_discovered_callback_.Run(adv_address, address_type, resolved_address,
+                                  rssi, reply_type, eir);
 }
 
 void Newblue::PairStateCallbackThunk(void* data,

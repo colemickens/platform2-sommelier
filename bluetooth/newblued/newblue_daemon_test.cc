@@ -29,6 +29,7 @@ using ::testing::AnyNumber;
 using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::SaveArg;
+using ::testing::SaveArgPointee;
 
 namespace bluetooth {
 
@@ -38,6 +39,7 @@ constexpr char kTestSender[] = ":1.1";
 constexpr char kTestSender2[] = ":1.2";
 constexpr int kTestSerial = 10;
 constexpr char kTestDeviceAddress[] = "06:05:04:03:02:01";
+constexpr char kLatestAddress[] = "16:15:14:13:12:11";
 constexpr char kTestDeviceObjectPath[] =
     "/org/bluez/hci0/dev_06_05_04_03_02_01";
 constexpr char kUnknownDeviceObjectPath[] =
@@ -634,7 +636,8 @@ class NewblueDaemonTest : public ::testing::Test {
   void TestConnectDisconnect(
       dbus::ExportedObject::MethodCallCallback connect_handler,
       dbus::ExportedObject::MethodCallCallback disconnect_handler,
-      dbus::ExportedObject::MethodCallCallback get_property_handler) {
+      dbus::ExportedObject::MethodCallCallback get_property_handler,
+      const struct bt_addr* address) {
     dbus::MethodCall connect_method_call(
         bluetooth_device::kBluetoothDeviceInterface,
         bluetooth_device::kConnect);
@@ -662,9 +665,10 @@ class NewblueDaemonTest : public ::testing::Test {
 
     // GattClientConnect() succeeds.
     void* data;
+    struct bt_addr addr;
     gattCliConnectResultCbk gatt_client_connect_callback;
     EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _))
-        .WillOnce(DoAll(SaveArg<0>(&data),
+        .WillOnce(DoAll(SaveArg<0>(&data), SaveArgPointee<1>(&addr),
                         SaveArg<2>(&gatt_client_connect_callback),
                         Return(kTestGattClientConnectionId)));
     std::unique_ptr<dbus::Response> success_connect_response;
@@ -672,6 +676,8 @@ class NewblueDaemonTest : public ::testing::Test {
                         base::Bind(&SaveResponse, &success_connect_response));
     base::RunLoop().RunUntilIdle();
     ASSERT_FALSE(success_connect_response.get());
+    EXPECT_EQ(ConvertBtAddrToString(addr), ConvertBtAddrToString(*address));
+
     // Callback for a different connection id should be ignored.
     gatt_client_connect_callback(data, kTestGattClientConnectionId + 10,
                                  static_cast<uint8_t>(ConnectState::CONNECTED));
@@ -846,6 +852,7 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
   struct bt_addr address;
   ConvertToBtAddr(false, kTestDeviceAddress, &address);
   (*inquiry_response_callback)(inquiry_response_callback_data, &address,
+                               /* resolved_address */ nullptr,
                                /* rssi */ -101, HCI_ADV_TYPE_SCAN_RSP,
                                /* eir */ {},
                                /* eir_len*/ 0);
@@ -927,6 +934,7 @@ TEST_F(NewblueDaemonTest, Pair) {
   struct bt_addr address;
   ConvertToBtAddr(false, kTestDeviceAddress, &address);
   (*inquiry_response_callback)(inquiry_response_callback_data, &address,
+                               /* resolved_address */ nullptr,
                                /* rssi */ -101, HCI_ADV_TYPE_SCAN_RSP,
                                /* eir */ {},
                                /* eir_len*/ 0);
@@ -963,8 +971,11 @@ TEST_F(NewblueDaemonTest, Connection) {
   ExpectDeviceObjectExported(dbus::ObjectPath(kTestDeviceObjectPath),
                              method_handlers);
   struct bt_addr address;
+  struct bt_addr latest_address;
   ConvertToBtAddr(false, kTestDeviceAddress, &address);
-  (*inquiry_response_callback)(inquiry_response_callback_data, &address,
+  ConvertToBtAddr(false, kLatestAddress, &latest_address);
+  (*inquiry_response_callback)(inquiry_response_callback_data, &latest_address,
+                               &address,
                                /* rssi */ -101, HCI_ADV_TYPE_SCAN_RSP,
                                /* eir */ {},
                                /* eir_len*/ 0);
@@ -972,7 +983,7 @@ TEST_F(NewblueDaemonTest, Connection) {
   base::RunLoop().RunUntilIdle();
 
   TestConnectDisconnect(connect_handler, disconnect_handler,
-                        get_property_handler);
+                        get_property_handler, &latest_address);
 
   TestDeinit();
 }
@@ -1006,6 +1017,7 @@ TEST_F(NewblueDaemonTest, BackgroundScan) {
   struct bt_addr address;
   ConvertToBtAddr(false, kTestDeviceAddress, &address);
   (*inquiry_response_callback)(inquiry_response_callback_data, &address,
+                               /* resolved_address */ nullptr,
                                /* rssi */ -101, HCI_ADV_TYPE_SCAN_RSP,
                                /* eir */ {},
                                /* eir_len*/ 0);
@@ -1025,18 +1037,97 @@ TEST_F(NewblueDaemonTest, BackgroundScan) {
   // Upon receiving an advertisement from a paired device, connection should be
   // initiated.
   void* data;
+  struct bt_addr addr;
   gattCliConnectResultCbk gatt_client_connect_callback;
   EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _))
-      .WillOnce(DoAll(SaveArg<0>(&data),
+      .WillOnce(DoAll(SaveArg<0>(&data), SaveArgPointee<1>(&addr),
                       SaveArg<2>(&gatt_client_connect_callback),
                       Return(kTestGattClientConnectionId)));
   ConvertToBtAddr(false, kTestDeviceAddress, &address);
   (*inquiry_response_callback)(inquiry_response_callback_data, &address,
+                               /* resolved_address */ nullptr,
                                /* rssi */ -101, HCI_ADV_TYPE_SCAN_RSP,
                                /* eir */ {},
                                /* eir_len*/ 0);
   base::RunLoop().RunUntilIdle();
 
+  EXPECT_EQ(ConvertBtAddrToString(addr), ConvertBtAddrToString(address));
+  // The connection succeeds, the background scan should stop
+  EXPECT_CALL(*libnewblue_, HciDiscoverLeStop(kTestDiscoveryId))
+      .WillOnce(Return(true));
+  gatt_client_connect_callback(data, kTestGattClientConnectionId,
+                               static_cast<uint8_t>(ConnectState::CONNECTED));
+  base::RunLoop().RunUntilIdle();
+
+  TestDeinit();
+}
+
+TEST_F(NewblueDaemonTest, BackgroundScanWithRandomResolvableDevice) {
+  dbus::ExportedObject::MethodCallCallback start_discovery_handler;
+  dbus::ExportedObject::MethodCallCallback stop_discovery_handler;
+  dbus::ExportedObject::MethodCallCallback connect_handler;
+  dbus::ExportedObject::MethodCallCallback disconnect_handler;
+  dbus::ExportedObject::MethodCallCallback pair_handler;
+  MethodHandlerMap method_handlers = {
+      {bluetooth_adapter::kStartDiscovery, &start_discovery_handler},
+      {bluetooth_adapter::kStopDiscovery, &stop_discovery_handler},
+      {bluetooth_device::kConnect, &connect_handler},
+      {bluetooth_device::kDisconnect, &disconnect_handler},
+      {bluetooth_device::kPair, &pair_handler},
+  };
+
+  TestInit(method_handlers);
+  TestAdapterBringUp(exported_adapter_object_, method_handlers,
+                     /* with_saved_devices */ false);
+
+  hciDeviceDiscoveredLeCbk inquiry_response_callback;
+  void* inquiry_response_callback_data;
+  TestStartDiscovery(start_discovery_handler, &inquiry_response_callback,
+                     &inquiry_response_callback_data);
+
+  // Device discovered.
+  ExpectDeviceObjectExported(dbus::ObjectPath(kTestDeviceObjectPath),
+                             method_handlers);
+  struct bt_addr address;
+  ConvertToBtAddr(false, kTestDeviceAddress, &address);
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address,
+                               /* resolved_address */ nullptr,
+                               /* rssi */ -101, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ {},
+                               /* eir_len*/ 0);
+  // Trigger the queued inquiry_response_callback task.
+  base::RunLoop().RunUntilIdle();
+
+  // Stop all discovery by clients so we can test background scan in isolation.
+  TestStopDiscovery(stop_discovery_handler);
+
+  // After the pairing is done, we should start background scan to look for the
+  // unconnected paired device.
+  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, /* active */ true,
+                                               /* use_random_addr */ false))
+      .WillOnce(Return(kTestDiscoveryId));
+  TestPair(pair_handler);
+
+  // Upon receiving an advertisement from a paired device, connection should be
+  // initiated.
+  void* data;
+  struct bt_addr addr;
+  struct bt_addr latest_address;
+  ConvertToBtAddr(false, kLatestAddress, &latest_address);
+  gattCliConnectResultCbk gatt_client_connect_callback;
+  EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _))
+      .WillOnce(DoAll(SaveArg<0>(&data), SaveArgPointee<1>(&addr),
+                      SaveArg<2>(&gatt_client_connect_callback),
+                      Return(kTestGattClientConnectionId)));
+  ConvertToBtAddr(false, kTestDeviceAddress, &address);
+  (*inquiry_response_callback)(inquiry_response_callback_data, &latest_address,
+                               &address,
+                               /* rssi */ -101, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ {},
+                               /* eir_len*/ 0);
+  base::RunLoop().RunUntilIdle();
+
+  EXPECT_EQ(ConvertBtAddrToString(addr), ConvertBtAddrToString(latest_address));
   // The connection succeeds, the background scan should stop
   EXPECT_CALL(*libnewblue_, HciDiscoverLeStop(kTestDiscoveryId))
       .WillOnce(Return(true));

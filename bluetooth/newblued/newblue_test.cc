@@ -48,6 +48,7 @@ class NewblueTest : public ::testing::Test {
   struct MockDevice {
     std::string address;
     uint8_t address_type;
+    std::string resolved_addr;
     int8_t rssi;
     uint8_t reply_type;
     std::vector<uint8_t> eir;
@@ -73,11 +74,12 @@ class NewblueTest : public ::testing::Test {
 
   void OnDeviceDiscovered(const std::string& address,
                           uint8_t address_type,
+                          const std::string& resolved_addr,
                           int8_t rssi,
                           uint8_t reply_type,
                           const std::vector<uint8_t>& eir) {
     discovered_devices_.push_back(
-        {address, address_type, rssi, reply_type, eir});
+        {address, address_type, resolved_addr, rssi, reply_type, eir});
   }
 
   void OnPairStateChanged(const std::string& address,
@@ -176,20 +178,26 @@ TEST_F(NewblueTest, StartDiscovery) {
   // 2 devices discovered.
   struct bt_addr addr1 = {.addr = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06},
                           .type = BT_ADDR_TYPE_LE_RANDOM};
+  struct bt_addr resolved_addr1 = {
+      .type = BT_ADDR_TYPE_LE_RANDOM,
+      .addr = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16}};
   uint8_t eir1[] = {
       6, static_cast<uint8_t>(EirType::NAME_SHORT), 'a', 'l', 'i', 'c', 'e'};
-  inquiry_response_callback(inquiry_response_callback_data, &addr1, -101,
-                            HCI_ADV_TYPE_SCAN_RSP, &eir1, arraysize(eir1));
+  inquiry_response_callback(inquiry_response_callback_data, &addr1,
+                            &resolved_addr1, -101, HCI_ADV_TYPE_SCAN_RSP, &eir1,
+                            arraysize(eir1));
   struct bt_addr addr2 = {.addr = {0x02, 0x03, 0x04, 0x05, 0x06, 0x07},
                           .type = BT_ADDR_TYPE_LE_PUBLIC};
   uint8_t eir2[] = {
       5, static_cast<uint8_t>(EirType::NAME_SHORT), 'b', 'o', 'b', '\0'};
-  inquiry_response_callback(inquiry_response_callback_data, &addr2, -102,
+  inquiry_response_callback(inquiry_response_callback_data, &addr2,
+                            /* resolved_address */ nullptr, -102,
                             HCI_ADV_TYPE_ADV_IND, &eir2, arraysize(eir2));
   base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ(2, discovered_devices_.size());
   EXPECT_EQ("06:05:04:03:02:01", discovered_devices_[0].address);
+  EXPECT_EQ("16:15:14:13:12:11", discovered_devices_[0].resolved_addr);
   EXPECT_EQ(BT_ADDR_TYPE_LE_RANDOM, discovered_devices_[0].address_type);
   EXPECT_EQ(-101, discovered_devices_[0].rssi);
   EXPECT_EQ(HCI_ADV_TYPE_SCAN_RSP, discovered_devices_[0].reply_type);
@@ -197,6 +205,7 @@ TEST_F(NewblueTest, StartDiscovery) {
             discovered_devices_[0].eir);
 
   EXPECT_EQ("07:06:05:04:03:02", discovered_devices_[1].address);
+  EXPECT_TRUE(discovered_devices_[1].resolved_addr.empty());
   EXPECT_EQ(-102, discovered_devices_[1].rssi);
   EXPECT_EQ(BT_ADDR_TYPE_LE_PUBLIC, discovered_devices_[1].address_type);
   EXPECT_EQ(-102, discovered_devices_[1].rssi);
@@ -208,7 +217,8 @@ TEST_F(NewblueTest, StartDiscovery) {
       .WillOnce(Return(true));
   newblue_->StopDiscovery();
   // Any inquiry response after StopDiscovery should be ignored.
-  inquiry_response_callback(inquiry_response_callback_data, &addr1, -101,
+  inquiry_response_callback(inquiry_response_callback_data, &addr1,
+                            /* resolved_address */ nullptr, -101,
                             HCI_ADV_TYPE_SCAN_RSP, &eir1, arraysize(eir1));
   base::RunLoop().RunUntilIdle();
   // Check that discovered_devices_ is still the same.
@@ -234,7 +244,8 @@ TEST_F(NewblueTest, PairStateChanged) {
                                   .type = BT_ADDR_TYPE_LE_RANDOM};
   uint8_t eir1[] = {
       6, static_cast<uint8_t>(EirType::NAME_SHORT), 'a', 'l', 'i', 'c', 'e'};
-  inquiry_response_callback(inquiry_response_callback_data, &addr1, -101,
+  inquiry_response_callback(inquiry_response_callback_data, &addr1,
+                            /* resolved_address */ nullptr, -101,
                             HCI_ADV_TYPE_SCAN_RSP, &eir1, arraysize(eir1));
   base::RunLoop().RunUntilIdle();
 
@@ -316,7 +327,8 @@ TEST_F(NewblueTest, Pair) {
       // Appearance
       3, static_cast<uint8_t>(EirType::GAP_APPEARANCE), 0xc2, 0x03};
 
-  inquiry_response_callback(inquiry_response_callback_data, &addr, -101,
+  inquiry_response_callback(inquiry_response_callback_data, &addr,
+                            /* resolved_address */ nullptr, -101,
                             HCI_ADV_TYPE_SCAN_RSP, &eir, arraysize(eir));
   base::RunLoop().RunUntilIdle();
 
@@ -356,7 +368,8 @@ TEST_F(NewblueTest, CancelPairing) {
       // Appearance
       3, static_cast<uint8_t>(EirType::GAP_APPEARANCE), 0xc2, 0x03};
 
-  inquiry_response_callback(inquiry_response_callback_data, &addr, -101,
+  inquiry_response_callback(inquiry_response_callback_data, &addr,
+                            /* resolved_address */ nullptr, -101,
                             HCI_ADV_TYPE_SCAN_RSP, &eir, arraysize(eir));
   base::RunLoop().RunUntilIdle();
 

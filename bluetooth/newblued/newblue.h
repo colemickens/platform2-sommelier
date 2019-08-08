@@ -166,8 +166,9 @@ struct KnownDevice {
 class Newblue {
  public:
   using DeviceDiscoveredCallback =
-      base::Callback<void(const std::string& address,
+      base::Callback<void(const std::string& adv_address,
                           uint8_t address_type,
+                          const std::string& resolved_address,
                           int8_t rssi,
                           uint8_t reply_type,
                           const std::vector<uint8_t>& eir)>;
@@ -309,14 +310,16 @@ class Newblue {
   void OnStackReadyForUp();
 
   static void DiscoveryCallbackThunk(void* data,
-                                     const struct bt_addr* addr,
+                                     const struct bt_addr* adv_address,
+                                     const struct bt_addr* resolved_address,
                                      int8_t rssi,
                                      uint8_t reply_type,
                                      const void* eir,
                                      uint8_t eir_len);
   // Called when inquiry response is received as a result of StartDiscovery().
-  void DiscoveryCallback(const std::string& address,
+  void DiscoveryCallback(const std::string& adv_address,
                          uint8_t address_type,
+                         const std::string& resolved_address,
                          int8_t rssi,
                          uint8_t reply_type,
                          const std::vector<uint8_t>& eir);

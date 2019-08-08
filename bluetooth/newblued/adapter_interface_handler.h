@@ -74,9 +74,12 @@ class AdapterInterfaceHandler {
   // active even though there is no client requesting discovery.
   void SetBackgroundScanEnable(bool enabled);
 
-  // Called when an update of a device info is received.
-  void DeviceDiscoveryCallback(const std::string& address,
+  // Called when an update of a device info is received. The callback takes
+  // two address, the first one is the latest advertising address, the second
+  // one is the resolved address using IRK.
+  void DeviceDiscoveryCallback(const std::string& adv_address,
                                uint8_t address_type,
+                               const std::string& resolved_address,
                                int8_t rssi,
                                uint8_t reply_type,
                                const std::vector<uint8_t>& eir);

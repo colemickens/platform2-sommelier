@@ -289,6 +289,12 @@ bool ConvertToBtAddr(bool is_random_address,
   return true;
 }
 
+std::string ConvertBtAddrToString(const struct bt_addr& addr) {
+  return base::StringPrintf("%02X:%02X:%02X:%02X:%02X:%02X", addr.addr[5],
+                            addr.addr[4], addr.addr[3], addr.addr[2],
+                            addr.addr[1], addr.addr[0]);
+}
+
 Uuid ConvertToUuid(const struct uuid& uuid) {
   std::vector<uint8_t> uuid_value;
   uint64_t lo = uuid.lo;

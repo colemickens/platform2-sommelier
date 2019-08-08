@@ -204,15 +204,16 @@ void AdapterInterfaceHandler::SetBackgroundScanEnable(bool enabled) {
 }
 
 void AdapterInterfaceHandler::DeviceDiscoveryCallback(
-    const std::string& address,
+    const std::string& adv_address,
     uint8_t address_type,
+    const std::string& resolved_address,
     int8_t rssi,
     uint8_t reply_type,
     const std::vector<uint8_t>& eir) {
   bool has_active_discovery_client = discovery_clients_.size() > 0;
-  device_interface_handler_->OnDeviceDiscovered(has_active_discovery_client,
-                                                address, address_type, rssi,
-                                                reply_type, eir);
+  device_interface_handler_->OnDeviceDiscovered(
+      has_active_discovery_client, adv_address, address_type, resolved_address,
+      rssi, reply_type, eir);
 }
 
 void AdapterInterfaceHandler::OnClientUnavailable(
