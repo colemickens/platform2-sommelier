@@ -83,7 +83,7 @@ Methods
 			Any profile beneath this profile becomes the
 			``active profile''.  Any services using configuration
 			from the popped profile are disconnected and the
-                        credentials invalidated (the next time
+			credentials invalidated (the next time
 			credentials are needed they are loaded from the
 			(new) active profile).
 
@@ -343,7 +343,7 @@ Methods
 
 		dict GetNetworksForGeolocation()
 
-		        Returns a dictionary (array of dictionary entries)
+			Returns a dictionary (array of dictionary entries)
 			containing information about visible cellular and WiFi
 			networks which may be then used for Geolocation.
 			Each key is a string representing a network type (cellular
@@ -487,9 +487,9 @@ Properties 	string ActiveProfile [readwrite]
 
 			List of device object paths.
 
-                string DHCPProperty.Hostname [readwrite]
+		string DHCPProperty.Hostname [readwrite]
 
-                        Optional setting to configure DHCP requests.  Some DHCP
+			Optional setting to configure DHCP requests.  Some DHCP
 			servers may register a DNS entry on behalf of this
 			hostname; others may just make available a table for
 			administrators to tell what machines are on their
@@ -499,9 +499,9 @@ Properties 	string ActiveProfile [readwrite]
 			system will not report a hostname.  When this property
 			is set it will be persisted in the default profile.
 
-                string DHCPProperty.VendorClass [readwrite]
+		string DHCPProperty.VendorClass [readwrite]
 
-                        Optional setting to configure DHCP requests.  This
+			Optional setting to configure DHCP requests.  This
 			setting can be used to identify the vendor that
 			manufactured the client hardware, the software in use,
 			or an industry consortium to which the vendor belongs.

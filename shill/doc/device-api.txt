@@ -29,13 +29,13 @@ Methods		dict GetProperties()
 
 		void Enable()
 
-		        Enable the device.
+			Enable the device.
 
 			Possible Errors: [service].Error.PermissionDenied
 
 		void Disable()
 
-		        Disable the device.
+			Disable the device.
 
 		void RequirePin(string pin, boolean require)
 
@@ -122,12 +122,12 @@ Methods		dict GetProperties()
 		void Reset()
 
 			Reset the device. The implementation is device-
-                        dependent. In some cases, the device and its associated
-                        service(s) may be destroyed after the physical device
-                        is reset. In such case, a new device is expected to be
-                        created after the physical device reappears on the
-                        system. Currently, device reset is only supported by
-                        cellular devices managed by ModemManager.
+			dependent. In some cases, the device and its associated
+			service(s) may be destroyed after the physical device
+			is reset. In such case, a new device is expected to be
+			created after the physical device reappears on the
+			system. Currently, device reset is only supported by
+			cellular devices managed by ModemManager.
 
 			Possible Errors: [service].Error.Failure
 					 [service].Error.NotSupported
@@ -510,12 +510,12 @@ Properties	string Address [readonly]
 
 				int8 AverageReceiveSignalDbm
 
-                                Reports the running average of signal
+				Reports the running average of signal
 				strength to the connected AP.
 
 				uint32 InactiveTimeMilliseconds
 
-                                Reports the time in milliseconds since
+				Reports the time in milliseconds since
 				the last activity by the station.
 
 				int8 LastReceiveSignalDbm
@@ -618,7 +618,7 @@ Properties	string Address [readonly]
 
 		uint16 ScanInterval [readwrite]
 
-                        (Defined in WiFi and Cellular)
+			(Defined in WiFi and Cellular)
 
 			The scan interval is the time in seconds between
 			automated scan attempts. Setting this value to
