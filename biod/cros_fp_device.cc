@@ -39,12 +39,16 @@ CrosFpDevice::~CrosFpDevice() {
   // Current session is gone, clean-up temporary state in the FP MCU.
   if (cros_fd_.is_valid())
     ResetContext();
+
+  biod_metrics_ = nullptr;
 }
 
-std::unique_ptr<CrosFpDevice> CrosFpDevice::Open(const MkbpCallback& callback) {
-  std::unique_ptr<CrosFpDevice> dev = std::make_unique<CrosFpDevice>(callback);
-  if (!dev->Init())
+std::unique_ptr<CrosFpDevice> CrosFpDevice::Open(const MkbpCallback& callback,
+                                                 BiodMetrics* biod_metrics) {
+  auto dev = std::make_unique<CrosFpDevice>(callback, biod_metrics);
+  if (!dev->Init()) {
     return nullptr;
+  }
   return dev;
 }
 

@@ -130,6 +130,10 @@ class CrosFpBiometricsManager : public BiometricsManager {
                    uint8_t* tmpl_data,
                    size_t tmpl_size);
 
+  // BiodMetrics must come before CrosFpDevice, since CrosFpDevice has a
+  // raw pointer to BiodMetrics. We must ensure CrosFpDevice is destructed
+  // first.
+  std::unique_ptr<BiodMetrics> biod_metrics_;
   std::unique_ptr<CrosFpDevice> cros_dev_;
 
   SessionAction next_session_action_;
@@ -144,7 +148,6 @@ class CrosFpBiometricsManager : public BiometricsManager {
   base::WeakPtrFactory<CrosFpBiometricsManager> session_weak_factory_;
   base::WeakPtrFactory<CrosFpBiometricsManager> weak_factory_;
 
-  std::unique_ptr<BiodMetrics> biod_metrics_;
   std::unique_ptr<PowerButtonFilterInterface> power_button_filter_;
   BiodStorage biod_storage_;
 

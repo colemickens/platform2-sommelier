@@ -16,6 +16,7 @@
 #include <chromeos/ec/cros_ec_dev.h>
 #include <chromeos/ec/ec_commands.h>
 
+#include "biod/biod_metrics.h"
 #include "biod/uinput_device.h"
 
 using MessageLoopForIO = base::MessageLoopForIO;
@@ -27,12 +28,13 @@ namespace biod {
 class CrosFpDevice : public MessageLoopForIO::Watcher {
  public:
   using MkbpCallback = base::Callback<void(const uint32_t event)>;
-
-  explicit CrosFpDevice(const MkbpCallback& mkbp_event)
+  explicit CrosFpDevice(const MkbpCallback& mkbp_event,
+                        BiodMetrics* biod_metrics)
       : mkbp_event_(mkbp_event),
         fd_watcher_(std::make_unique<MessageLoopForIO::FileDescriptorWatcher>(
-            FROM_HERE)) {}
-  ~CrosFpDevice();
+            FROM_HERE)),
+        biod_metrics_(biod_metrics) {}
+  ~CrosFpDevice() override;
 
   struct EcVersion {
     std::string ro_version;
@@ -40,7 +42,8 @@ class CrosFpDevice : public MessageLoopForIO::Watcher {
     ec_current_image current_image = EC_IMAGE_UNKNOWN;
   };
 
-  static std::unique_ptr<CrosFpDevice> Open(const MkbpCallback& callback);
+  static std::unique_ptr<CrosFpDevice> Open(const MkbpCallback& callback,
+                                            BiodMetrics* biod_metrics);
 
   // Run a simple command to get the version information from FP MCU and check
   // whether the image type returned is the same as |expected_image|.
@@ -107,6 +110,8 @@ class CrosFpDevice : public MessageLoopForIO::Watcher {
   UinputDevice input_device_;
 
   std::unique_ptr<MessageLoopForIO::FileDescriptorWatcher> fd_watcher_;
+
+  BiodMetrics* biod_metrics_ = nullptr;  // Not owned.
 
   DISALLOW_COPY_AND_ASSIGN(CrosFpDevice);
 };
