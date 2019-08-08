@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 #include <sysexits.h>
+#include <unistd.h>
+
 #include <iostream>
 #include <set>
 #include <string>
@@ -17,6 +19,8 @@
 #include <dbus/bus.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <libimageloader/manifest.h>
+#include <libminijail.h>
+#include <scoped_minijail.h>
 
 #include "dlcservice/dbus-proxies.h"
 #include "dlcservice/utils.h"
@@ -26,6 +30,24 @@ using dlcservice::DlcModuleList;
 using org::chromium::DlcServiceInterfaceProxy;
 using std::string;
 using std::vector;
+
+namespace {
+
+constexpr uid_t kRootUid = 0;
+constexpr uid_t kChronosUid = 1000;
+constexpr char kChronosUser[] = "chronos";
+constexpr char kChronosGroup[] = "chronos";
+
+void EnterMinijail() {
+  ScopedMinijail jail(minijail_new());
+  CHECK_EQ(0, minijail_change_user(jail.get(), kChronosUser));
+  CHECK_EQ(0, minijail_change_group(jail.get(), kChronosGroup));
+  minijail_inherit_usergroups(jail.get());
+  minijail_no_new_privs(jail.get());
+  minijail_enter(jail.get());
+}
+
+}  // namespace
 
 class DlcServiceUtil : public brillo::Daemon {
  public:
@@ -281,6 +303,17 @@ class DlcServiceUtil : public brillo::Daemon {
 };
 
 int main(int argc, const char** argv) {
+  // Check user that is running dlcservice_util.
+  switch (getuid()) {
+    case kRootUid:
+      EnterMinijail();
+      break;
+    case kChronosUid:
+      break;
+    default:
+      LOG(ERROR) << "dlcservice_util can only be run as root or chronos";
+      return 1;
+  }
   DlcServiceUtil client(argc, argv);
   return client.Run();
 }

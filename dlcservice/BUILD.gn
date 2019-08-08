@@ -77,7 +77,10 @@ executable("dlcservice") {
 }
 
 pkg_config("dlcservice_util_config") {
-  pkg_deps = [ "libdlcservice-client" ]
+  pkg_deps = [
+    "libdlcservice-client",
+    "libminijail",
+  ]
 }
 
 executable("dlcservice_util") {
