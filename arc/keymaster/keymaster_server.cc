@@ -18,11 +18,12 @@ constexpr size_t kOperationTableSize = 16;
 
 }  // namespace
 
-KeymasterServer::KeymasterServer() : keymaster(&context, kOperationTableSize) {}
+KeymasterServer::KeymasterServer()
+    : keymaster_(&context_, kOperationTableSize) {}
 
 void KeymasterServer::SetSystemVersion(uint32_t os_version,
                                        uint32_t os_patchlevel) {
-  context.SetSystemVersion(os_version, os_patchlevel);
+  context_.SetSystemVersion(os_version, os_patchlevel);
 }
 
 void KeymasterServer::AddRngEntropy(const std::vector<uint8_t>& data,
@@ -33,7 +34,7 @@ void KeymasterServer::AddRngEntropy(const std::vector<uint8_t>& data,
 
   // Call keymaster.
   ::keymaster::AddEntropyResponse km_response;
-  keymaster.AddRngEntropy(km_request, &km_response);
+  keymaster_.AddRngEntropy(km_request, &km_response);
 
   // Run callback.
   std::move(callback).Run(km_response.error);
@@ -47,7 +48,7 @@ void KeymasterServer::GetKeyCharacteristics(
 
   // Call keymaster.
   ::keymaster::GetKeyCharacteristicsResponse km_response;
-  keymaster.GetKeyCharacteristics(*km_request, &km_response);
+  keymaster_.GetKeyCharacteristics(*km_request, &km_response);
 
   // Prepare mojo response.
   auto response = MakeGetKeyCharacteristicsResult(km_response);
@@ -64,7 +65,7 @@ void KeymasterServer::GenerateKey(
 
   // Call keymaster.
   ::keymaster::GenerateKeyResponse km_response;
-  keymaster.GenerateKey(*km_request, &km_response);
+  keymaster_.GenerateKey(*km_request, &km_response);
 
   // Prepare mojo response.
   auto response = MakeGenerateKeyResult(km_response);
@@ -80,7 +81,7 @@ void KeymasterServer::ImportKey(arc::mojom::ImportKeyRequestPtr request,
 
   // Call keymaster.
   ::keymaster::ImportKeyResponse km_response;
-  keymaster.ImportKey(*km_request, &km_response);
+  keymaster_.ImportKey(*km_request, &km_response);
 
   // Prepare mojo response.
   auto response = MakeImportKeyResult(km_response);
@@ -96,7 +97,7 @@ void KeymasterServer::ExportKey(arc::mojom::ExportKeyRequestPtr request,
 
   // Call keymaster.
   ::keymaster::ExportKeyResponse km_response;
-  keymaster.ExportKey(*km_request, &km_response);
+  keymaster_.ExportKey(*km_request, &km_response);
 
   // Prepare mojo response.
   auto response = MakeExportKeyResult(km_response);
@@ -112,7 +113,7 @@ void KeymasterServer::AttestKey(arc::mojom::AttestKeyRequestPtr request,
 
   // Call keymaster.
   ::keymaster::AttestKeyResponse km_response;
-  keymaster.AttestKey(*km_request, &km_response);
+  keymaster_.AttestKey(*km_request, &km_response);
 
   // Prepare mojo response.
   auto response = MakeAttestKeyResult(km_response);
@@ -128,7 +129,7 @@ void KeymasterServer::UpgradeKey(arc::mojom::UpgradeKeyRequestPtr request,
 
   // Call keymaster.
   ::keymaster::UpgradeKeyResponse km_response;
-  keymaster.UpgradeKey(*km_request, &km_response);
+  keymaster_.UpgradeKey(*km_request, &km_response);
 
   // Prepare mojo response.
   auto response = MakeUpgradeKeyResult(km_response);
@@ -145,7 +146,7 @@ void KeymasterServer::DeleteKey(const std::vector<uint8_t>& key_blob,
 
   // Call keymaster.
   ::keymaster::DeleteKeyResponse km_response;
-  keymaster.DeleteKey(km_request, &km_response);
+  keymaster_.DeleteKey(km_request, &km_response);
 
   // Run callback.
   std::move(callback).Run(km_response.error);
@@ -155,7 +156,7 @@ void KeymasterServer::DeleteAllKeys(const DeleteAllKeysCallback& callback) {
   // Call keymaster (nothing to prepare on DeleteAllKeys).
   ::keymaster::DeleteAllKeysRequest km_request;
   ::keymaster::DeleteAllKeysResponse km_response;
-  keymaster.DeleteAllKeys(km_request, &km_response);
+  keymaster_.DeleteAllKeys(km_request, &km_response);
 
   // Run callback.
   std::move(callback).Run(km_response.error);
@@ -168,7 +169,7 @@ void KeymasterServer::Begin(arc::mojom::BeginRequestPtr request,
 
   // Call keymaster.
   ::keymaster::BeginOperationResponse km_response;
-  keymaster.BeginOperation(*km_request, &km_response);
+  keymaster_.BeginOperation(*km_request, &km_response);
 
   // Prepare mojo response.
   auto response = MakeBeginResult(km_response);
@@ -184,7 +185,7 @@ void KeymasterServer::Update(arc::mojom::UpdateRequestPtr request,
 
   // Call keymaster.
   ::keymaster::UpdateOperationResponse km_response;
-  keymaster.UpdateOperation(*km_request, &km_response);
+  keymaster_.UpdateOperation(*km_request, &km_response);
 
   // Prepare mojo response.
   auto response = MakeUpdateResult(km_response);
@@ -200,7 +201,7 @@ void KeymasterServer::Finish(arc::mojom::FinishRequestPtr request,
 
   // Call keymaster.
   ::keymaster::FinishOperationResponse km_response;
-  keymaster.FinishOperation(*km_request, &km_response);
+  keymaster_.FinishOperation(*km_request, &km_response);
 
   // Prepare mojo response.
   auto response = MakeFinishResult(km_response);
@@ -216,7 +217,7 @@ void KeymasterServer::Abort(uint64_t op_handle, const AbortCallback& callback) {
 
   // Call keymaster.
   ::keymaster::AbortOperationResponse km_response;
-  keymaster.AbortOperation(km_request, &km_response);
+  keymaster_.AbortOperation(km_request, &km_response);
 
   // Run callback.
   std::move(callback).Run(km_response.error);
