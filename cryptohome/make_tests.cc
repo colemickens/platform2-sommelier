@@ -32,6 +32,7 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mount.h"
+#include "cryptohome/mount_helper.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -259,7 +260,7 @@ void TestUser::GenerateCredentials(bool force_ecryptfs) {
       Stat(
         Property(&FilePath::value,
           AnyOf("/home/chronos",
-                mount->GetNewUserPath(username).value())),
+                MountHelper::GetNewUserPath(username).value())),
           _))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(platform, DirectoryExists(vault_path))
@@ -333,7 +334,7 @@ void TestUser::InjectUserPaths(MockPlatform* platform,
   user_dir.st_gid = chronos_access_gid;
   EXPECT_CALL(*platform,
       Stat(AnyOf(user_mount_path,
-                 temp_mount->GetNewUserPath(username)), _))
+                 MountHelper::GetNewUserPath(username)), _))
     .WillRepeatedly(DoAll(SetArgPointee<1>(user_dir), Return(true)));
   if (!is_ecryptfs) {
     EXPECT_CALL(*platform,
@@ -361,7 +362,7 @@ void TestUser::InjectUserPaths(MockPlatform* platform,
   EXPECT_CALL(*platform, DirectoryExists(
       Property(&FilePath::value, StartsWith(vault_path.value()))))
       .WillRepeatedly(Return(is_ecryptfs));
-  FilePath new_user_path = temp_mount->GetNewUserPath(username);
+  FilePath new_user_path = MountHelper::GetNewUserPath(username);
   EXPECT_CALL(*platform,
       FileExists(
         Property(&FilePath::value,

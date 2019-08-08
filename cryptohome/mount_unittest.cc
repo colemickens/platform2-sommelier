@@ -387,7 +387,7 @@ class MountTest
     EXPECT_CALL(platform_, CreateDirectory(user.vault_mount_path))
         .WillRepeatedly(Return(true));
     EXPECT_CALL(platform_,
-                CreateDirectory(Mount::GetNewUserPath(user.username)))
+                CreateDirectory(MountHelper::GetNewUserPath(user.username)))
         .WillRepeatedly(Return(true));
 
     EXPECT_CALL(platform_, IsDirectoryMounted(user.vault_mount_path))
@@ -402,7 +402,7 @@ class MountTest
                                 user.legacy_user_mount_path))
         .WillOnce(Return(true));
     EXPECT_CALL(platform_, Bind(user.user_vault_mount_path,
-                                Mount::GetNewUserPath(user.username)))
+                                MountHelper::GetNewUserPath(user.username)))
         .WillOnce(Return(true));
     EXPECT_CALL(platform_, Bind(user.root_vault_mount_path,
                                 user.root_mount_path))
@@ -421,7 +421,7 @@ class MountTest
     //   - /home/user/<hash>
     //   - /home/chronos/user
     FilePath user_dirs[] = {
-      Mount::GetNewUserPath(user.username),
+      MountHelper::GetNewUserPath(user.username),
       brillo::cryptohome::home::GetUserPath(user.username),
       FilePath("/home/chronos/user"),
     };
@@ -450,7 +450,7 @@ class MountTest
     //   - /home/user/<hash>
     //   - /home/chronos/user
     FilePath user_dirs[] = {
-      Mount::GetNewUserPath(user.username),
+      MountHelper::GetNewUserPath(user.username),
       brillo::cryptohome::home::GetUserPath(user.username),
       FilePath("/home/chronos/user"),
     };
@@ -715,7 +715,7 @@ TEST_P(MountTest, MountCryptohomeNoPrivileges) {
     .WillRepeatedly(Return(true));
 
   EXPECT_CALL(platform_,
-              CreateDirectory(mount_->GetNewUserPath(user->username)))
+              CreateDirectory(MountHelper::GetNewUserPath(user->username)))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
     .WillRepeatedly(Return(false));
@@ -790,8 +790,9 @@ TEST_P(MountTest, BindMyFilesDownloadsSuccess) {
       .WillOnce(Return(true));
 
   MountStack stack;
-  MountHelper helper(chronos_uid_, chronos_gid_, shared_gid_, kSkelDir,
-                     true /*legacy_mount*/, &platform_, &stack);
+  MountHelper helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
+                     kSkelDir, helper_.system_salt, true /*legacy_mount*/,
+                     &platform_, &homedirs_, &stack);
 
   EXPECT_TRUE(helper.BindMyFilesDownloads(dest_dir));
 }
@@ -803,8 +804,9 @@ TEST_P(MountTest, BindMyFilesDownloadsMissingUserHome) {
   EXPECT_CALL(platform_, DirectoryExists(dest_dir)).WillOnce(Return(false));
 
   MountStack stack;
-  MountHelper helper(chronos_uid_, chronos_gid_, shared_gid_, kSkelDir,
-                     true /*legacy_mount*/, &platform_, &stack);
+  MountHelper helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
+                     kSkelDir, helper_.system_salt, true /*legacy_mount*/,
+                     &platform_, &homedirs_, &stack);
 
   EXPECT_FALSE(helper.BindMyFilesDownloads(dest_dir));
 }
@@ -819,8 +821,9 @@ TEST_P(MountTest, BindMyFilesDownloadsMissingDownloads) {
       .WillOnce(Return(false));
 
   MountStack stack;
-  MountHelper helper(chronos_uid_, chronos_gid_, shared_gid_, kSkelDir,
-                     true /*legacy_mount*/, &platform_, &stack);
+  MountHelper helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
+                     kSkelDir, helper_.system_salt, true /*legacy_mount*/,
+                     &platform_, &homedirs_, &stack);
 
   EXPECT_FALSE(helper.BindMyFilesDownloads(dest_dir));
 }
@@ -838,8 +841,9 @@ TEST_P(MountTest, BindMyFilesDownloadsMissingMyFilesDownloads) {
       .WillOnce(Return(false));
 
   MountStack stack;
-  MountHelper helper(chronos_uid_, chronos_gid_, shared_gid_, kSkelDir,
-                     true /*legacy_mount*/, &platform_, &stack);
+  MountHelper helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
+                     kSkelDir, helper_.system_salt, true /*legacy_mount*/,
+                     &platform_, &homedirs_, &stack);
 
   EXPECT_FALSE(helper.BindMyFilesDownloads(dest_dir));
 }
@@ -1107,7 +1111,7 @@ TEST_P(MountTest, CreateCryptohomeTest) {
   EXPECT_CALL(platform_,
       CreateDirectory(
         AnyOf(FilePath("/home/chronos"),
-              mount_->GetNewUserPath(user->username))))
+              MountHelper::GetNewUserPath(user->username))))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, DirectoryExists(user->vault_path))
     .WillRepeatedly(Return(false));
@@ -1744,7 +1748,7 @@ TEST_P(MountTest, UserActivityTimestampUpdated) {
   EXPECT_CALL(platform_,
       CreateDirectory(
         AnyOf(
-          mount_->GetNewUserPath(user->username),
+          MountHelper::GetNewUserPath(user->username),
           Property(&FilePath::value, StartsWith(kImageDir.value())))))
     .WillRepeatedly(Return(true));
 
@@ -2106,15 +2110,16 @@ TEST_P(MountTest, CreateTrackedSubdirectories) {
   FilePath dest_dir;
   if (ShouldTestEcryptfs()) {
     dest_dir = user->vault_path;
-    mount_->mount_type_ = Mount::MountType::ECRYPTFS;
+    mount_->mount_type_ = ::cryptohome::MountType::ECRYPTFS;
   } else {
     dest_dir = user->vault_mount_path;
-    mount_->mount_type_ = Mount::MountType::DIR_CRYPTO;
+    mount_->mount_type_ = ::cryptohome::MountType::DIR_CRYPTO;
   }
   EXPECT_CALL(platform_, DirectoryExists(dest_dir))
     .WillOnce(Return(true));
+
   // Expectations for each tracked subdirectory.
-  for (const auto& tracked_dir : Mount::GetTrackedSubdirectories()) {
+  for (const auto& tracked_dir : MountHelper::GetTrackedSubdirectories()) {
     const FilePath tracked_dir_path = dest_dir.Append(tracked_dir);
     EXPECT_CALL(platform_, DirectoryExists(tracked_dir_path))
       .WillOnce(Return(false));
@@ -2147,15 +2152,16 @@ TEST_P(MountTest, CreateTrackedSubdirectoriesReplaceExistingDir) {
   FilePath dest_dir;
   if (ShouldTestEcryptfs()) {
     dest_dir = user->vault_path;
-    mount_->mount_type_ = Mount::MountType::ECRYPTFS;
+    mount_->mount_type_ = ::cryptohome::MountType::ECRYPTFS;
   } else {
     dest_dir = user->vault_mount_path;
-    mount_->mount_type_ = Mount::MountType::DIR_CRYPTO;
+    mount_->mount_type_ = ::cryptohome::MountType::DIR_CRYPTO;
   }
   EXPECT_CALL(platform_, DirectoryExists(dest_dir))
     .WillOnce(Return(true));
+
   // Expectations for each tracked subdirectory.
-  for (const auto& tracked_dir : Mount::GetTrackedSubdirectories()) {
+  for (const auto& tracked_dir : MountHelper::GetTrackedSubdirectories()) {
     const FilePath tracked_dir_path = dest_dir.Append(tracked_dir);
     const FilePath userside_dir = user->vault_mount_path.Append(tracked_dir);
     // Simulate the case there already exists a non-passthrough-dir
@@ -2272,7 +2278,7 @@ TEST_P(MountTest, MountCryptohomeToMigrateFromEcryptfs) {
   }
 
   EXPECT_CALL(platform_,
-              CreateDirectory(mount_->GetNewUserPath(user->username)))
+              CreateDirectory(MountHelper::GetNewUserPath(user->username)))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
     .WillRepeatedly(Return(false));
@@ -2561,8 +2567,9 @@ TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloads) {
       .WillRepeatedly(Return(true));
 
   MountStack stack;
-  MountHelper helper(chronos_uid_, chronos_gid_, shared_gid_, kSkelDir,
-                     true /*legacy_mount*/, &platform_, &stack);
+  MountHelper helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
+                     kSkelDir, helper_.system_salt, true /*legacy_mount*/,
+                     &platform_, &homedirs_, &stack);
 
   ASSERT_TRUE(helper.SetUpEphemeralCryptohome(base_path));
 }
@@ -2606,8 +2613,9 @@ TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloadsAlreadyExists) {
       .WillRepeatedly(Return(true));
 
   MountStack stack;
-  MountHelper helper(chronos_uid_, chronos_gid_, shared_gid_, kSkelDir,
-                     true /*legacy_mount*/, &platform_, &stack);
+  MountHelper helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
+                     kSkelDir, helper_.system_salt, true /*legacy_mount*/,
+                     &platform_, &homedirs_, &stack);
 
   ASSERT_TRUE(helper.SetUpEphemeralCryptohome(base_path));
 }
@@ -3317,7 +3325,7 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
     .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
   EXPECT_CALL(platform_,
       Stat(AnyOf(FilePath("/home/chronos"),
-                 mount_->GetNewUserPath(user->username)),
+                 MountHelper::GetNewUserPath(user->username)),
            _))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_,
@@ -3433,7 +3441,7 @@ TEST_P(EphemeralExistingUserSystemTest, MountRemoveTest) {
     .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
   EXPECT_CALL(platform_,
       Stat(AnyOf(FilePath("/home/chronos"),
-                 mount_->GetNewUserPath(user->username)),
+                 MountHelper::GetNewUserPath(user->username)),
            _))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_,
@@ -3620,7 +3628,7 @@ TEST_P(EphemeralExistingUserSystemTest, NonOwnerMountIsEphemeralTest) {
   EXPECT_CALL(platform_,
       Stat(
         AnyOf(FilePath("/home/chronos"),
-              mount_->GetNewUserPath(user->username)),
+              MountHelper::GetNewUserPath(user->username)),
         _))
      .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_,
@@ -3699,7 +3707,7 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountIsEphemeralTest) {
   EXPECT_CALL(platform_,
       Stat(
         AnyOf(FilePath("/home/chronos"),
-              mount_->GetNewUserPath(user->username)),
+              MountHelper::GetNewUserPath(user->username)),
         _))
     .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_,

@@ -7,6 +7,13 @@
 
 namespace cryptohome {
 
+enum class MountType {
+  NONE,        // Not mounted.
+  ECRYPTFS,    // Encrypted with ecryptfs.
+  DIR_CRYPTO,  // Encrypted with dircrypto.
+  EPHEMERAL,   // Ephemeral mount.
+};
+
 // Paths to sparse file for ephemeral mounts.
 extern const char kEphemeralCryptohomeDir[];
 extern const char kSparseFileDir[];

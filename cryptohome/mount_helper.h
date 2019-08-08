@@ -8,11 +8,16 @@
 #include <sys/types.h>
 
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <brillo/secure_blob.h>
+#include <chromeos/dbus/service_constants.h>
 
+#include "cryptohome/credentials.h"
+#include "cryptohome/homedirs.h"
+#include "cryptohome/mount_constants.h"
 #include "cryptohome/mount_stack.h"
 #include "cryptohome/platform.h"
 
@@ -25,18 +30,30 @@ class MountHelper {
   MountHelper(uid_t uid,
               gid_t gid,
               gid_t access_gid,
+              const base::FilePath& shadow_root,
               const base::FilePath& skel_source,
+              const brillo::SecureBlob& system_salt,
               bool legacy_mount,
               Platform* platform,
+              HomeDirs* homedirs,
               MountStack* stack)
       : default_uid_(uid),
         default_gid_(gid),
         default_access_gid_(access_gid),
+        shadow_root_(shadow_root),
         skeleton_source_(skel_source),
+        system_salt_(system_salt),
         legacy_mount_(legacy_mount),
         platform_(platform),
+        homedirs_(homedirs),
         stack_(stack) {}
   ~MountHelper() = default;
+
+  struct Options {
+    MountType type = MountType::NONE;
+    bool to_migrate_from_ecryptfs = false;
+    bool shadow_only = false;
+  };
 
   // Returns the temporary user path while we're migrating for
   // http://crbug.com/224291.
@@ -46,20 +63,16 @@ class MountHelper {
   static FilePath GetEphemeralSparseFile(
       const std::string& obfuscated_username);
 
-  // Copies the skeleton directory to the user's cryptohome.
-  void CopySkeleton(const FilePath& destination) const;
-
   // Ensures that root and user mountpoints for the specified user are present.
   // Returns false if the mountpoints were not present and could not be created.
   bool EnsureUserMountPoints(const std::string& username) const;
 
-  // Migrates from the home-in-encfs setup to the home-in-subdir setup. Instead
-  // of storing all the user's files in the root of the encfs, we store them in
-  // a subdirectory of it to make room for a root-owned, user-encrypted volume.
+  // Gets the directory to temporarily mount the user's cryptohome at.
   //
   // Parameters
-  //   vault_path - directory to migrate
-  void MigrateToUserHome(const FilePath& vault_path) const;
+  //   obfuscated_username - Obfuscated username field of the credentials.
+  FilePath GetUserTemporaryMountDirectory(
+      const std::string& obfuscated_username) const;
 
   // Mounts a mount point and pushes it to the mount stack.
   // Returns true if the mount succeeds, false otherwise.
@@ -82,35 +95,56 @@ class MountHelper {
   //   dest - Directory to bind to
   bool BindAndPush(const FilePath& src, const FilePath& dest);
 
-  // Implementation of ephemeral cryptohome mount that doesn't clean up after
-  // failure and return false in this case.
-  bool MountEphemeral(const std::string& username,
-                      const brillo::SecureBlob& system_salt,
-                      base::FilePath* ephemeral_loop_device,
-                      base::FilePath* ephemeral_file_path);
+  // Creates the tracked subdirectories in a user's cryptohome.
+  // If the cryptohome did not have tracked directories, but had them untracked,
+  // migrate their contents.
+  //
+  // Parameters
+  //   credentials - The credentials representing the user
+  //   type - Mount type: eCryptfs or dircrypto
+  //   is_pristine - True, if the cryptohome is being created
+  bool CreateTrackedSubdirectories(const Credentials& credentials,
+                                   const MountType& type,
+                                   bool is_pristine) const;
 
-  // Sets up bind mounts from |user_home| and |root_home| to
-  //   - /home/chronos/user (see MountLegacyHome()),
-  //   - /home/chronos/u-<user_hash>,
-  //   - /home/user/<user_hash>,
-  //   - /home/root/<user_hash> and
-  //   - /run/daemon-store/$daemon/<user_hash>
-  //     (see MountDaemonStoreDirectories()).
-  // The parameters have the same meaning as in MountCryptohomeInner resp.
-  // MountEphemeralCryptohomeInner. Returns true if successful, false otherwise.
-  bool MountHomesAndDaemonStores(const std::string& username,
-                                 const std::string& obfuscated_username,
-                                 const FilePath& user_home,
-                                 const FilePath& root_home);
+  // Carries out eCryptfs/dircrypto mount(2) operations for a regular
+  // cryptohome.
+  bool PerformMount(const Options& mount_opts,
+                    const Credentials& credentials,
+                    const std::string& fek_signature,
+                    const std::string& fnek_signature,
+                    bool is_pristine,
+                    MountError* error);
 
-  // Changes the group ownership and permissions on those directories inside
-  // the cryptohome that need to be accessible by other system daemons.
-  bool SetUpGroupAccess(const FilePath& home_dir) const;
+  // Carries out dircrypto mount(2) operations for an ephemeral cryptohome.
+  // Does not clean up on failure.
+  bool PerformEphemeralMount(const std::string& username,
+                             base::FilePath* ephemeral_loop_device,
+                             base::FilePath* ephemeral_file_path);
 
  private:
+  // Returns the names of all tracked subdirectories.
+  static std::vector<base::FilePath> GetTrackedSubdirectories();
+
+  // Returns the mounted userhome path (e.g. /home/.shadow/.../mount/user)
+  //
+  // Parameters
+  //   obfuscated_username - Obfuscated username field of the credentials.
+  FilePath GetMountedUserHomePath(const std::string& obfuscated_username) const;
+
+  // Returns the mounted roothome path (e.g. /home/.shadow/.../mount/root)
+  //
+  // Parameters
+  //   obfuscated_username - Obfuscated username field of the credentials.
+  FilePath GetMountedRootHomePath(
+      const std::string& obfuscated_username) const;
+
   // Bind mounts |user_home|/Downloads to |user_home|/MyFiles/Downloads so Files
   // app can manage MyFiles as user volume instead of just Downloads.
   bool BindMyFilesDownloads(const base::FilePath& user_home);
+
+  // Copies the skeleton directory to the user's cryptohome.
+  void CopySkeleton(const FilePath& destination) const;
 
   // Ensures that a specified directory exists, with all path components but the
   // last one owned by kMountOwnerUid:kMountOwnerGid and the last component
@@ -140,6 +174,14 @@ class MountHelper {
                               uid_t uid,
                               gid_t gid) const;
 
+  // Migrates from the home-in-encfs setup to the home-in-subdir setup. Instead
+  // of storing all the user's files in the root of the encfs, we store them in
+  // a subdirectory of it to make room for a root-owned, user-encrypted volume.
+  //
+  // Parameters
+  //   vault_path - directory to migrate
+  void MigrateToUserHome(const FilePath& vault_path) const;
+
   // Bind-mounts
   //   /home/.shadow/$hash/mount/root/$daemon (*)
   // to
@@ -154,6 +196,20 @@ class MountHelper {
   // (*) Path for a regular mount. The path is different for an ephemeral mount.
   bool MountDaemonStoreDirectories(const FilePath& root_home,
                                    const std::string& obfuscated_username);
+
+  // Sets up bind mounts from |user_home| and |root_home| to
+  //   - /home/chronos/user (see MountLegacyHome()),
+  //   - /home/chronos/u-<user_hash>,
+  //   - /home/user/<user_hash>,
+  //   - /home/root/<user_hash> and
+  //   - /run/daemon-store/$daemon/<user_hash>
+  //     (see MountDaemonStoreDirectories()).
+  // The parameters have the same meaning as in MountCryptohomeInner resp.
+  // MountEphemeralCryptohomeInner. Returns true if successful, false otherwise.
+  bool MountHomesAndDaemonStores(const std::string& username,
+                                 const std::string& obfuscated_username,
+                                 const FilePath& user_home,
+                                 const FilePath& root_home);
 
   // Mounts the legacy home directory.
   // The legacy home directory is from before multiprofile and is mounted at
@@ -172,20 +228,37 @@ class MountHelper {
   // and populating it with a skeleton directory and file structure.
   bool SetUpEphemeralCryptohome(const FilePath& source_path);
 
+  // Changes the group ownership and permissions on those directories inside
+  // the cryptohome that need to be accessible by other system daemons.
+  bool SetUpGroupAccess(const FilePath& home_dir) const;
+
   uid_t default_uid_;
   uid_t default_gid_;
   uid_t default_access_gid_;
 
+  // Where to store the system salt and user salt/key/vault. Defaults to
+  // /home/.shadow
+  base::FilePath shadow_root_;
+
+  // Where the skeleton for the user's cryptohome is copied from.
   base::FilePath skeleton_source_;
+
+  // Stores the global system salt.
+  brillo::SecureBlob system_salt_;
+
   bool legacy_mount_ = true;
 
   Platform* platform_;  // Un-owned.
+  HomeDirs* homedirs_;  // Un-owned.
   MountStack* stack_;  // Un-owned.
 
   FRIEND_TEST(MountTest, BindMyFilesDownloadsSuccess);
   FRIEND_TEST(MountTest, BindMyFilesDownloadsMissingUserHome);
   FRIEND_TEST(MountTest, BindMyFilesDownloadsMissingDownloads);
   FRIEND_TEST(MountTest, BindMyFilesDownloadsMissingMyFilesDownloads);
+
+  FRIEND_TEST(MountTest, CreateTrackedSubdirectories);
+  FRIEND_TEST(MountTest, CreateTrackedSubdirectoriesReplaceExistingDir);
 
   FRIEND_TEST(EphemeralNoUserSystemTest, CreateMyFilesDownloads);
   FRIEND_TEST(EphemeralNoUserSystemTest, CreateMyFilesDownloadsAlreadyExists);

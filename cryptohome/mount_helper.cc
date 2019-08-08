@@ -16,7 +16,8 @@
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/mount_constants.h"
+#include "cryptohome/cryptohome_common.h"
+#include "cryptohome/mount_utils.h"
 #include "cryptohome/obfuscated_username.h"
 
 using base::FilePath;
@@ -29,6 +30,8 @@ namespace {
 constexpr uid_t kMountOwnerUid = 0;
 constexpr gid_t kMountOwnerGid = 0;
 constexpr gid_t kDaemonStoreGid = 400;
+
+const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
 
 constexpr char kDefaultHomeDir[] = "/home/chronos/user";
 
@@ -63,6 +66,28 @@ FilePath VaultPathToRootPath(const FilePath& vault) {
 
 namespace cryptohome {
 
+std::vector<FilePath> MountHelper::GetTrackedSubdirectories() {
+  return std::vector<FilePath>{
+      FilePath(kRootHomeSuffix),
+      FilePath(kUserHomeSuffix),
+      FilePath(kUserHomeSuffix).Append(kCacheDir),
+      FilePath(kUserHomeSuffix).Append(kDownloadsDir),
+      FilePath(kUserHomeSuffix).Append(kMyFilesDir),
+      FilePath(kUserHomeSuffix).Append(kMyFilesDir).Append(kDownloadsDir),
+      FilePath(kUserHomeSuffix).Append(kGCacheDir),
+      FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(kGCacheVersion1Dir),
+      FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(kGCacheVersion2Dir),
+      FilePath(kUserHomeSuffix)
+          .Append(kGCacheDir)
+          .Append(kGCacheVersion1Dir)
+          .Append(kGCacheBlobsDir),
+      FilePath(kUserHomeSuffix)
+          .Append(kGCacheDir)
+          .Append(kGCacheVersion1Dir)
+          .Append(kGCacheTmpDir),
+  };
+}
+
 // static
 FilePath MountHelper::GetNewUserPath(const std::string& username) {
   std::string sanitized = SanitizeUserName(username);
@@ -78,6 +103,23 @@ FilePath MountHelper::GetEphemeralSparseFile(
   return FilePath(cryptohome::kEphemeralCryptohomeDir)
       .Append(kSparseFileDir)
       .Append(obfuscated_username);
+}
+
+FilePath MountHelper::GetUserTemporaryMountDirectory(
+    const std::string& obfuscated_username) const {
+  return shadow_root_.Append(obfuscated_username).Append(kTemporaryMountDir);
+}
+
+FilePath MountHelper::GetMountedUserHomePath(
+    const std::string& obfuscated_username) const {
+  return homedirs_->GetUserMountDirectory(obfuscated_username)
+      .Append(kUserHomeSuffix);
+}
+
+FilePath MountHelper::GetMountedRootHomePath(
+    const std::string& obfuscated_username) const {
+  return homedirs_->GetUserMountDirectory(obfuscated_username)
+      .Append(kRootHomeSuffix);
 }
 
 bool MountHelper::EnsurePathComponent(const FilePath& path,
@@ -557,10 +599,153 @@ bool MountHelper::MountHomesAndDaemonStores(
   return true;
 }
 
-bool MountHelper::MountEphemeral(const std::string& username,
-                                 const brillo::SecureBlob& system_salt,
-                                 base::FilePath* ephemeral_loop_device,
-                                 base::FilePath* ephemeral_file_path) {
+bool MountHelper::CreateTrackedSubdirectories(const Credentials& credentials,
+                                              const MountType& mount_type,
+                                              bool is_pristine) const {
+  ScopedUmask scoped_umask(platform_, kDefaultUmask);
+
+  // Add the subdirectories if they do not exist.
+  const std::string obfuscated_username =
+      credentials.GetObfuscatedUsername(system_salt_);
+  const FilePath dest_dir(
+      mount_type == MountType::ECRYPTFS
+          ? homedirs_->GetEcryptfsUserVaultPath(obfuscated_username)
+          : homedirs_->GetUserMountDirectory(obfuscated_username));
+  if (!platform_->DirectoryExists(dest_dir)) {
+     LOG(ERROR) << "Can't create tracked subdirectories for a missing user.";
+     return false;
+  }
+
+  const FilePath mount_dir(
+      homedirs_->GetUserMountDirectory(obfuscated_username));
+
+  // The call is allowed to partially fail if directory creation fails, but we
+  // want to have as many of the specified tracked directories created as
+  // possible.
+  bool result = true;
+  for (const auto& tracked_dir : GetTrackedSubdirectories()) {
+    const FilePath tracked_dir_path = dest_dir.Append(tracked_dir);
+    if (mount_type == MountType::ECRYPTFS) {
+      const FilePath userside_dir = mount_dir.Append(tracked_dir);
+      // If non-pass-through dir with the same name existed - delete it
+      // to prevent duplication.
+      if (!is_pristine && platform_->DirectoryExists(userside_dir) &&
+          !platform_->DirectoryExists(tracked_dir_path)) {
+        platform_->DeleteFile(userside_dir, true);
+      }
+    }
+
+    // Create pass-through directory.
+    if (!platform_->DirectoryExists(tracked_dir_path)) {
+      VLOG(1) << "Creating pass-through directory " << tracked_dir_path.value();
+      platform_->CreateDirectory(tracked_dir_path);
+      if (!platform_->SetOwnership(tracked_dir_path, default_uid_, default_gid_,
+                                   true /*follow_links*/)) {
+        PLOG(ERROR) << "Couldn't change owner (" << default_uid_ << ":"
+                    << default_gid_ << ") of tracked directory path: "
+                    << tracked_dir_path.value();
+        platform_->DeleteFile(tracked_dir_path, true);
+        result = false;
+        continue;
+      }
+    }
+    if (mount_type == MountType::DIR_CRYPTO) {
+      // Set xattr to make this directory trackable.
+      std::string name = tracked_dir_path.BaseName().value();
+      if (!platform_->SetExtendedFileAttribute(
+              tracked_dir_path,
+              kTrackedDirectoryNameAttribute,
+              name.data(),
+              name.length())) {
+        PLOG(ERROR) << "Unable to set xattr on " << tracked_dir_path.value();
+        result = false;
+        continue;
+      }
+    }
+  }
+  return result;
+}
+
+bool MountHelper::PerformMount(const Options& mount_opts,
+                               const Credentials& credentials,
+                               const std::string& fek_signature,
+                               const std::string& fnek_signature,
+                               bool is_pristine,
+                               MountError* error) {
+  const std::string username = credentials.username();
+  const std::string obfuscated_username =
+      credentials.GetObfuscatedUsername(system_salt_);
+  const FilePath vault_path =
+      homedirs_->GetEcryptfsUserVaultPath(obfuscated_username);
+  const FilePath mount_point =
+      homedirs_->GetUserMountDirectory(obfuscated_username);
+
+  std::string ecryptfs_options;
+  bool should_mount_ecryptfs = mount_opts.type == MountType::ECRYPTFS ||
+                               mount_opts.to_migrate_from_ecryptfs;
+  if (should_mount_ecryptfs) {
+    // Specify the ecryptfs options for mounting the user's cryptohome.
+    ecryptfs_options = StringPrintf(
+        "ecryptfs_cipher=aes"
+        ",ecryptfs_key_bytes=%d"
+        ",ecryptfs_fnek_sig=%s"
+        ",ecryptfs_sig=%s"
+        ",ecryptfs_unlink_sigs",
+        kDefaultEcryptfsKeySize, fnek_signature.c_str(), fek_signature.c_str());
+
+    // Create <vault_path>/user as a passthrough directory, move all the
+    // (encrypted) contents of <vault_path> into <vault_path>/user, create
+    // <vault_path>/root.
+    MigrateToUserHome(vault_path);
+  }
+
+  if (mount_opts.type == MountType::DIR_CRYPTO) {
+    // Create user & root directories.
+    MigrateToUserHome(mount_point);
+  }
+
+  // Move the tracked subdirectories from <mount_point_>/user to <vault_path>
+  // as passthrough directories.
+  CreateTrackedSubdirectories(credentials, mount_opts.type, is_pristine);
+
+  const FilePath user_home = GetMountedUserHomePath(obfuscated_username);
+  const FilePath root_home = GetMountedRootHomePath(obfuscated_username);
+
+  // b/115997660: Mount eCryptfs after creating the tracked subdirectories.
+  if (should_mount_ecryptfs) {
+    FilePath dest = mount_opts.to_migrate_from_ecryptfs
+                        ? GetUserTemporaryMountDirectory(obfuscated_username)
+                        : mount_point;
+    if (!MountAndPush(vault_path, dest, "ecryptfs", ecryptfs_options)) {
+      LOG(ERROR) << "eCryptfs mount failed";
+      *error = MOUNT_ERROR_MOUNT_ECRYPTFS_FAILED;
+      return false;
+    }
+  }
+
+  if (is_pristine)
+    CopySkeleton(user_home);
+
+  if (!SetUpGroupAccess(FilePath(user_home))) {
+    *error = MOUNT_ERROR_SETUP_GROUP_ACCESS_FAILED;
+    return false;
+  }
+
+  // When migrating, it's better to avoid exposing the new ext4 crypto dir.
+  // Also don't expose the home directory if a shadow-only mount was requested.
+  if (!mount_opts.to_migrate_from_ecryptfs && !mount_opts.shadow_only &&
+      !MountHomesAndDaemonStores(username, obfuscated_username, user_home,
+                                 root_home)) {
+    *error = MOUNT_ERROR_MOUNT_HOMES_AND_DAEMON_STORES_FAILED;
+    return false;
+  }
+
+  return true;
+}
+
+bool MountHelper::PerformEphemeralMount(const std::string& username,
+                                        base::FilePath* ephemeral_loop_device,
+                                        base::FilePath* ephemeral_file_path) {
   // Underlying sparse file will be created in a temporary directory in RAM.
   const FilePath ephemeral_root(kEphemeralCryptohomeDir);
 
@@ -574,7 +759,7 @@ bool MountHelper::MountEphemeral(const std::string& username,
 
   // Create underlying sparse file.
   const std::string obfuscated_username =
-      BuildObfuscatedUsername(username, system_salt);
+      BuildObfuscatedUsername(username, system_salt_);
   const FilePath sparse_file = GetEphemeralSparseFile(obfuscated_username);
   if (!platform_->CreateDirectory(sparse_file.DirName())) {
     LOG(ERROR) << "Can't create directory for ephemeral sparse files";

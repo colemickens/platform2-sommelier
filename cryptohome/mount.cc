@@ -74,8 +74,6 @@ const int kKeyFileMax = 100;  // master.0 ... master.99
 const mode_t kKeyFilePermissions = 0600;
 const char kKeyLegacyPrefix[] = "legacy-";
 
-const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
-
 void StartUserFileAttrsCleanerService(const std::string& username) {
   brillo::ProcessImpl file_attrs;
   file_attrs.AddArg("/sbin/initctl");
@@ -192,8 +190,9 @@ bool Mount::Init(Platform* platform, Crypto* crypto,
   // All mount(2) operations happen in the MountHelper object now so it's OK for
   // |mounter_| to have a pointer to |mounts_|.
   mounter_.reset(new MountHelper(default_user_, default_group_,
-                                 default_access_group_, skel_source_,
-                                 legacy_mount_, platform_, &mounts_));
+                                 default_access_group_, shadow_root_,
+                                 skel_source_, system_salt_, legacy_mount_,
+                                 platform_, homedirs_, &mounts_));
 
   return result;
 }
@@ -500,26 +499,15 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   base::ScopedClosureRunner unmount_all_runner(
       base::Bind(&Mount::UnmountAll, this));
 
-  std::string ecryptfs_options;
+  std::string key_signature, fnek_signature;
   if (should_mount_ecryptfs) {
     // Add the decrypted key to the keyring so that ecryptfs can use it.
-    std::string key_signature, fnek_signature;
     if (!AddEcryptfsAuthToken(vault_keyset, &key_signature,
                               &fnek_signature)) {
       LOG(ERROR) << "Error adding eCryptfs keys.";
       *mount_error = MOUNT_ERROR_KEYRING_FAILED;
       return false;
     }
-    // Specify the ecryptfs options for mounting the user's cryptohome.
-    ecryptfs_options = StringPrintf(
-        "ecryptfs_cipher=aes"
-        ",ecryptfs_key_bytes=%d"
-        ",ecryptfs_fnek_sig=%s"
-        ",ecryptfs_sig=%s"
-        ",ecryptfs_unlink_sigs",
-        kDefaultEcryptfsKeySize,
-        fnek_signature.c_str(),
-        key_signature.c_str());
   }
   if (should_mount_dircrypto) {
     LOG_IF(WARNING, dircrypto_key_id_ != dircrypto::kInvalidKeySerial)
@@ -573,21 +561,13 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
-  if (should_mount_ecryptfs) {
-    // Create <vault_path>/user as a passthrough directory, move all the
-    // (encrypted) contents of <vault_path> into <vault_path>/user, create
-    // <vault_path>/root.
-    mounter_->MigrateToUserHome(vault_path);
-  }
   if (should_mount_dircrypto) {
     if (!platform_->SetDirCryptoKey(mount_point_, vault_keyset.fek_sig())) {
-      LOG(ERROR) << "Failed to set directory encryption policy "
+      LOG(ERROR) << "Failed to set directory encryption policy for "
                  << mount_point_.value();
       *mount_error = MOUNT_ERROR_SET_DIR_CRYPTO_KEY_FAILED;
       return false;
     }
-    // Create user & root directories.
-    mounter_->MigrateToUserHome(mount_point_);
   }
 
   // Set the current user here so we can rely on it in the helpers.
@@ -599,42 +579,12 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     current_user_->set_key_data(serialized.key_data());
   }
 
-  // Move the tracked subdirectories from <mount_point_>/user to <vault_path>
-  // as passthrough directories.
-  CreateTrackedSubdirectories(credentials, created);
+  MountHelper::Options mount_opts = {
+      mount_type_, mount_args.to_migrate_from_ecryptfs, mount_args.shadow_only};
 
-  const FilePath user_home = GetMountedUserHomePath(obfuscated_username);
-  const FilePath root_home = GetMountedRootHomePath(obfuscated_username);
-
-  // b/115997660: Mount eCryptFs after creating the tracked subdirectories.
-  if (should_mount_ecryptfs) {
-    FilePath dest = mount_args.to_migrate_from_ecryptfs
-                        ? GetUserTemporaryMountDirectory(obfuscated_username)
-                        : mount_point_;
-    if (!mounter_->MountAndPush(vault_path, dest, "ecryptfs",
-                                ecryptfs_options)) {
-      LOG(ERROR) << "eCryptfs mount failed";
-      *mount_error = MOUNT_ERROR_MOUNT_ECRYPTFS_FAILED;
-      return false;
-    }
-  }
-
-  if (created)
-    mounter_->CopySkeleton(user_home);
-
-  if (!mounter_->SetUpGroupAccess(FilePath(user_home))) {
-    *mount_error = MOUNT_ERROR_SETUP_GROUP_ACCESS_FAILED;
-    return false;
-  }
-
-  shadow_only_ = mount_args.shadow_only;
-
-  // When migrating, it's better to avoid exposing the new ext4 crypto dir.
-  // Also don't expose home directory if a shadow-only mount was requested.
-  if (!mount_args.to_migrate_from_ecryptfs && !mount_args.shadow_only &&
-      !mounter_->MountHomesAndDaemonStores(username, obfuscated_username,
-                                           user_home, root_home)) {
-    *mount_error = MOUNT_ERROR_MOUNT_HOMES_AND_DAEMON_STORES_FAILED;
+  if (!mounter_->PerformMount(mount_opts, credentials, key_signature,
+                              fnek_signature, created, mount_error)) {
+    LOG(ERROR) << "MountHelper::PerformMount failed";
     return false;
   }
 
@@ -710,9 +660,9 @@ bool Mount::MountEphemeralCryptohome(const std::string& username) {
   base::ScopedClosureRunner unmount_all_runner(
       base::Bind(&Mount::UnmountAll, this));
 
-  if (!mounter_->MountEphemeral(username, system_salt_, &ephemeral_loop_device_,
-                                &ephemeral_file_path_)) {
-    LOG(ERROR) << "MountHelper::MountEphemeral failed, aborting"
+  if (!mounter_->PerformEphemeralMount(username, &ephemeral_loop_device_,
+                                       &ephemeral_file_path_)) {
+    LOG(ERROR) << "MountHelper::PerformEphemeralMount failed, aborting"
                << " ephemeral mount";
     return false;
   }
@@ -882,94 +832,10 @@ bool Mount::CreateCryptohome(const Credentials& credentials) const {
   return true;
 }
 
-// static
-std::vector<FilePath> Mount::GetTrackedSubdirectories() {
-  return std::vector<FilePath>{
-      FilePath(kRootHomeSuffix),
-      FilePath(kUserHomeSuffix),
-      FilePath(kUserHomeSuffix).Append(kCacheDir),
-      FilePath(kUserHomeSuffix).Append(kDownloadsDir),
-      FilePath(kUserHomeSuffix).Append(kMyFilesDir),
-      FilePath(kUserHomeSuffix).Append(kMyFilesDir).Append(kDownloadsDir),
-      FilePath(kUserHomeSuffix).Append(kGCacheDir),
-      FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(kGCacheVersion1Dir),
-      FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(kGCacheVersion2Dir),
-      FilePath(kUserHomeSuffix)
-          .Append(kGCacheDir)
-          .Append(kGCacheVersion1Dir)
-          .Append(kGCacheBlobsDir),
-      FilePath(kUserHomeSuffix)
-          .Append(kGCacheDir)
-          .Append(kGCacheVersion1Dir)
-          .Append(kGCacheTmpDir),
-  };
-}
-
 bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
                                         bool is_new) const {
-  ScopedUmask scoped_umask(platform_, kDefaultUmask);
-
-  // Add the subdirectories if they do not exist.
-  const std::string obfuscated_username =
-      credentials.GetObfuscatedUsername(system_salt_);
-  const FilePath dest_dir(
-      mount_type_ == MountType::ECRYPTFS
-          ? homedirs_->GetEcryptfsUserVaultPath(obfuscated_username)
-          : homedirs_->GetUserMountDirectory(obfuscated_username));
-  if (!platform_->DirectoryExists(dest_dir)) {
-     LOG(ERROR) << "Can't create tracked subdirectories for a missing user.";
-     return false;
-  }
-
-  const FilePath mount_dir(
-      homedirs_->GetUserMountDirectory(obfuscated_username));
-
-  // The call is allowed to partially fail if directory creation fails, but we
-  // want to have as many of the specified tracked directories created as
-  // possible.
-  bool result = true;
-  for (const auto& tracked_dir : GetTrackedSubdirectories()) {
-    const FilePath tracked_dir_path = dest_dir.Append(tracked_dir);
-    if (mount_type_ == MountType::ECRYPTFS) {
-      const FilePath userside_dir = mount_dir.Append(tracked_dir);
-      // If non-pass-through dir with the same name existed - delete it
-      // to prevent duplication.
-      if (!is_new && platform_->DirectoryExists(userside_dir) &&
-          !platform_->DirectoryExists(tracked_dir_path)) {
-        platform_->DeleteFile(userside_dir, true);
-      }
-    }
-
-    // Create pass-through directory.
-    if (!platform_->DirectoryExists(tracked_dir_path)) {
-      LOG(INFO) << "Creating pass-through directories "
-                << tracked_dir_path.value();
-      platform_->CreateDirectory(tracked_dir_path);
-      if (!platform_->SetOwnership(
-              tracked_dir_path, default_user_, default_group_, true)) {
-        LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
-                   << default_group_ << ") of tracked directory path: "
-                   << tracked_dir_path.value();
-        platform_->DeleteFile(tracked_dir_path, true);
-        result = false;
-        continue;
-      }
-    }
-    if (mount_type_ == MountType::DIR_CRYPTO) {
-      // Set xattr to make this directory trackable.
-      std::string name = tracked_dir_path.BaseName().value();
-      if (!platform_->SetExtendedFileAttribute(
-              tracked_dir_path,
-              kTrackedDirectoryNameAttribute,
-              name.data(),
-              name.length())) {
-        PLOG(ERROR) << "Unable to set xattr " << tracked_dir_path.value();
-        result = false;
-        continue;
-      }
-    }
-  }
-  return result;
+  return mounter_->CreateTrackedSubdirectories(credentials, mount_type_,
+                                               is_new);
 }
 
 bool Mount::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
@@ -1278,19 +1144,7 @@ FilePath Mount::GetUserKeyFileForUser(
 
 FilePath Mount::GetUserTemporaryMountDirectory(
     const std::string& obfuscated_username) const {
-  return shadow_root_.Append(obfuscated_username).Append(kTemporaryMountDir);
-}
-
-FilePath Mount::GetMountedUserHomePath(
-    const std::string& obfuscated_username) const {
-  return homedirs_->GetUserMountDirectory(obfuscated_username)
-      .Append(kUserHomeSuffix);
-}
-
-FilePath Mount::GetMountedRootHomePath(
-    const std::string& obfuscated_username) const {
-  return homedirs_->GetUserMountDirectory(obfuscated_username)
-      .Append(kRootHomeSuffix);
+  return mounter_->GetUserTemporaryMountDirectory(obfuscated_username);
 }
 
 bool Mount::CheckChapsDirectory(const FilePath& dir,
@@ -1521,13 +1375,6 @@ std::unique_ptr<base::Value> Mount::GetStatus() {
   dv->SetString("type", mount_type_string);
 
   return std::move(dv);
-}
-
-// static
-FilePath Mount::GetNewUserPath(const std::string& username) {
-  std::string sanitized = SanitizeUserName(username);
-  std::string user_dir = StringPrintf("u-%s", sanitized.c_str());
-  return FilePath("/home").Append(kDefaultSharedUser).Append(user_dir);
 }
 
 bool Mount::SetUserCreds(const Credentials& credentials, int key_index) {

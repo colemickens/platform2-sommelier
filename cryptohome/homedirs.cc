@@ -27,6 +27,7 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/dircrypto_util.h"
 #include "cryptohome/mount.h"
+#include "cryptohome/mount_helper.h"
 #include "cryptohome/obfuscated_username.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
@@ -1327,7 +1328,7 @@ bool HomeDirs::Rename(const std::string& account_id_from,
   const FilePath root_path_from =
       brillo::cryptohome::home::GetRootPath(account_id_from);
   const FilePath new_user_path_from =
-      FilePath(Mount::GetNewUserPath(account_id_from));
+      FilePath(MountHelper::GetNewUserPath(account_id_from));
 
   const FilePath user_dir_to = shadow_root_.Append(obfuscated_to);
   const FilePath user_path_to =
@@ -1335,7 +1336,7 @@ bool HomeDirs::Rename(const std::string& account_id_from,
   const FilePath root_path_to =
       brillo::cryptohome::home::GetRootPath(account_id_to);
   const FilePath new_user_path_to =
-      FilePath(Mount::GetNewUserPath(account_id_to));
+      FilePath(MountHelper::GetNewUserPath(account_id_to));
 
   LOG(INFO) << "HomeDirs::Rename(from='" << account_id_from << "', to='"
             << account_id_to << "'):"

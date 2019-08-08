@@ -66,13 +66,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Called before mount cryptohome.
   using PreMountCallback = base::RepeatingCallback<void()>;
 
-  enum class MountType {
-    NONE,  // Not mounted.
-    ECRYPTFS,  // Encrypted with ecryptfs.
-    DIR_CRYPTO,  // Encrypted with dircrypto.
-    EPHEMERAL,  // Ephemeral mount.
-  };
-
   struct MountArgs {
     bool create_if_missing = false;
     // Whether the mount has to be ephemeral.
@@ -286,10 +279,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
     homedirs_->set_policy_provider(provider);
   }
 
-  // Returns the temporary user path while we're migrating for
-  // http://crbug.com/224291
-  static base::FilePath GetNewUserPath(const std::string& username);
-
   // Sets |credentials| and |key_index| on |current_user_|.
   bool SetUserCreds(const Credentials& credentials, int key_index);
 
@@ -313,17 +302,14 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   friend class EphemeralNoUserSystemTest;
 
  private:
-  // Returns the names of all tracked subdirectories.
-  static std::vector<base::FilePath> GetTrackedSubdirectories();
-
   // Creates the tracked subdirectories in a user's cryptohome
   // If the cryptohome did not have tracked directories, but had them untracked,
-  // migrate their contents.
+  // migrates their contents.
   //
   // Parameters
   //   credentials - The Credentials representing the user
   //   is_new - True, if the cryptohome is being created and there is
-  //            no need in migration
+  //            no need to migrate contents
   virtual bool CreateTrackedSubdirectories(const Credentials& credentials,
                                            bool is_new) const;
 
@@ -477,20 +463,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Parameters
   //   vault - vault path
   base::FilePath VaultPathToRootPath(const base::FilePath& vault) const;
-
-  // Returns the mounted userhome path (e.g. /home/.shadow/.../mount/user)
-  //
-  // Parameters
-  //   obfuscated_username - Obfuscated username field of the credentials.
-  base::FilePath GetMountedUserHomePath(
-      const std::string& obfuscated_username) const;
-
-  // Returns the mounted roothome path (e.g. /home/.shadow/.../mount/root)
-  //
-  // Parameters
-  //   obfuscated_username - Obfuscated username field of the credentials.
-  base::FilePath GetMountedRootHomePath(
-      const std::string& obfuscated_username) const;
 
   // Returns the mounted userhome path for ephemeral user
   // (e.g. /home/.shadow/.../ephemeral-mount/user)
