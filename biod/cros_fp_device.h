@@ -91,7 +91,6 @@ class CrosFpDevice : public MessageLoopForIO::Watcher {
   bool AddEntropy(bool reset);
   // Get block id from rollback info.
   bool GetRollBackInfoId(int32_t* block_id);
-  bool SetUpFp();
   bool FpFrame(int index, std::vector<uint8_t>* frame);
   bool UpdateFpInfo();
   // Run a sequence of EC commands to update the entropy in the
