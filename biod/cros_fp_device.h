@@ -99,9 +99,9 @@ class CrosFpDevice : public MessageLoopForIO::Watcher {
   bool UpdateEntropy(bool reset);
 
   base::ScopedFD cros_fd_;
-  ssize_t max_read_size_;
-  ssize_t max_write_size_;
-  struct ec_response_fp_info info_;
+  ssize_t max_read_size_ = 0;
+  ssize_t max_write_size_ = 0;
+  struct ec_response_fp_info info_ = {};
 
   MkbpCallback mkbp_event_;
   UinputDevice input_device_;
