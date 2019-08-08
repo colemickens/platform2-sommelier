@@ -59,8 +59,6 @@ base::TimeDelta TransitionToTimeDelta(
     case BacklightController::Transition::SLOW:
       return base::TimeDelta::FromMilliseconds(kSlowBacklightTransitionMs);
   }
-  NOTREACHED();
-  return base::TimeDelta();
 }
 
 // Clamps |percent| to fit between kMinVisiblePercent and 100.
