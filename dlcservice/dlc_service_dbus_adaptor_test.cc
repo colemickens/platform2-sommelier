@@ -262,7 +262,7 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
   EXPECT_EQ(permissions, expected_permissions);
 }
 
-TEST_F(DlcServiceDBusAdaptorTest, InstallFailureInstalledSticky) {
+TEST_F(DlcServiceDBusAdaptorTest, InstallAlreadyInstalledValid) {
   const string omaha_url_default = "";
   DlcModuleList dlc_module_list =
       CreateDlcModuleList({kFirstDlc}, omaha_url_default);
@@ -272,11 +272,11 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallFailureInstalledSticky) {
               AttemptInstall(ProtoHasUrl(omaha_url_default), _, _))
       .Times(0);
 
-  EXPECT_FALSE(dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list));
+  EXPECT_TRUE(dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list));
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
 }
 
-TEST_F(DlcServiceDBusAdaptorTest, InstallFailureInstallingCleanup) {
+TEST_F(DlcServiceDBusAdaptorTest, InstallDuplicatesFail) {
   const string omaha_url_default = "";
   DlcModuleList dlc_module_list =
       CreateDlcModuleList({kSecondDlc, kSecondDlc}, omaha_url_default);
@@ -292,6 +292,38 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallFailureInstallingCleanup) {
   EXPECT_FALSE(base::PathExists(content_path_.Append(kSecondDlc)));
 }
 
+TEST_F(DlcServiceDBusAdaptorTest, InstallAlreadyInstalledAndDuplicatesFail) {
+  const string omaha_url_default = "";
+  DlcModuleList dlc_module_list = CreateDlcModuleList(
+      {kFirstDlc, kSecondDlc, kSecondDlc}, omaha_url_default);
+
+  SetMountPath("/run/imageloader/dlc-id/package");
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
+              AttemptInstall(ProtoHasUrl(omaha_url_default), _, _))
+      .Times(0);
+
+  EXPECT_FALSE(dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list));
+
+  EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
+  EXPECT_FALSE(base::PathExists(content_path_.Append(kSecondDlc)));
+}
+
+TEST_F(DlcServiceDBusAdaptorTest, InstallFailureCleansUp) {
+  const string omaha_url_default = "";
+  DlcModuleList dlc_module_list =
+      CreateDlcModuleList({kSecondDlc, kThirdDlc}, omaha_url_default);
+
+  SetMountPath("/run/imageloader/dlc-id/package");
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
+              AttemptInstall(ProtoHasUrl(omaha_url_default), _, _))
+      .WillOnce(Return(false));
+
+  EXPECT_FALSE(dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list));
+
+  EXPECT_FALSE(base::PathExists(content_path_.Append(kSecondDlc)));
+  EXPECT_FALSE(base::PathExists(content_path_.Append(kThirdDlc)));
+}
+
 TEST_F(DlcServiceDBusAdaptorTest, InstallUrlTest) {
   const string omaha_url_override = "http://random.url";
   DlcModuleList dlc_module_list =
@@ -304,6 +336,62 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallUrlTest) {
       .Times(1);
 
   dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list);
+}
+
+TEST_F(DlcServiceDBusAdaptorTest, OnStatusUpdateAdvancedSignalDlcRootTest) {
+  const vector<string>& dlc_ids = {kSecondDlc, kThirdDlc};
+  DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
+
+  EXPECT_TRUE(dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list));
+
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>("/some/mount"), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<3>("/some/mount"), Return(true)));
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
+      .Times(0);
+
+  for (const string& dlc_id : dlc_ids)
+    EXPECT_TRUE(base::PathExists(content_path_.Append(dlc_id)));
+
+  StatusResult status_result;
+  status_result.set_current_operation(Operation::IDLE);
+  status_result.set_is_install(true);
+  dlc_service_dbus_adaptor_->OnStatusUpdateAdvancedSignal(status_result);
+
+  for (const string& dlc_id : dlc_ids)
+    EXPECT_TRUE(base::PathExists(content_path_.Append(dlc_id)));
+
+  DlcModuleList dlc_module_list_after;
+  EXPECT_TRUE(
+      dlc_service_dbus_adaptor_->GetInstalled(nullptr, &dlc_module_list_after));
+  EXPECT_EQ(dlc_module_list_after.dlc_module_infos_size(), 3);
+
+  for (const DlcModuleInfo& dlc_module :
+       dlc_module_list_after.dlc_module_infos())
+    EXPECT_FALSE(dlc_module.dlc_root().empty());
+}
+
+TEST_F(DlcServiceDBusAdaptorTest, OnStatusUpdateAdvancedSignalNoRemountTest) {
+  const vector<string>& dlc_ids = {kFirstDlc, kSecondDlc};
+  DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
+
+  EXPECT_TRUE(dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list));
+
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>("/some/mount"), Return(true)));
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
+      .Times(0);
+
+  for (const string& dlc_id : dlc_ids)
+    EXPECT_TRUE(base::PathExists(content_path_.Append(dlc_id)));
+
+  StatusResult status_result;
+  status_result.set_current_operation(Operation::IDLE);
+  status_result.set_is_install(true);
+  dlc_service_dbus_adaptor_->OnStatusUpdateAdvancedSignal(status_result);
+
+  for (const string& dlc_id : dlc_ids)
+    EXPECT_TRUE(base::PathExists(content_path_.Append(dlc_id)));
 }
 
 TEST_F(DlcServiceDBusAdaptorTest, OnStatusUpdateAdvancedSignalTest) {

@@ -4,11 +4,14 @@
 
 #include "dlcservice/utils.h"
 
+#include <utility>
+
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
 using base::FilePath;
+using std::pair;
 using std::set;
 using std::string;
 
@@ -89,6 +92,30 @@ set<string> ScanDirectory(const FilePath& dir) {
     result.emplace(dir_path.BaseName().value());
   }
   return result;
+}
+
+DlcModuleList ToDlcModuleList(const DlcRootMap& dlcs,
+                              std::function<bool(DlcId, DlcRoot)> filter) {
+  DlcModuleList dlc_module_list;
+  auto f = [&dlc_module_list, filter](const pair<DlcId, DlcRoot>& pr) {
+    if (filter(pr.first, pr.second)) {
+      DlcModuleInfo* dlc_module_info = dlc_module_list.add_dlc_module_infos();
+      dlc_module_info->set_dlc_id(pr.first);
+      dlc_module_info->set_dlc_root(pr.second);
+    }
+  };
+  for_each(begin(dlcs), end(dlcs), f);
+  return dlc_module_list;
+}
+
+DlcRootMap ToDlcRootMap(const DlcModuleList& dlc_module_list,
+                        std::function<bool(DlcModuleInfo)> filter) {
+  DlcRootMap m;
+  for (const DlcModuleInfo& dlc_module : dlc_module_list.dlc_module_infos()) {
+    if (filter(dlc_module))
+      m.emplace(dlc_module.dlc_id(), dlc_module.dlc_root());
+  }
+  return m;
 }
 
 }  // namespace utils

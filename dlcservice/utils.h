@@ -11,7 +11,10 @@
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
+#include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <libimageloader/manifest.h>
+
+#include "dlcservice/types.h"
 
 namespace dlcservice {
 
@@ -62,6 +65,16 @@ base::FilePath GetDlcRootInModulePath(const base::FilePath& dlc_mount_point);
 
 // Scans a directory and returns all its subdirectory names in a list.
 std::set<std::string> ScanDirectory(const base::FilePath& dir);
+
+// Converts a |DlcRootMap| into a |DlcModuleList| based on filtering logic where
+// a return value of true indicates insertion into |DlcModuleList|.
+dlcservice::DlcModuleList ToDlcModuleList(
+    const DlcRootMap& dlcs, std::function<bool(DlcId, DlcRoot)> filter);
+
+// Converts a |DlcModuleList| into a |DlcRootMap| based on filtering logic where
+// a return value of true indicates insertion into |DlcRootMap|.
+DlcRootMap ToDlcRootMap(const dlcservice::DlcModuleList& dlc_module_list,
+                        std::function<bool(dlcservice::DlcModuleInfo)> filter);
 
 }  // namespace utils
 }  // namespace dlcservice

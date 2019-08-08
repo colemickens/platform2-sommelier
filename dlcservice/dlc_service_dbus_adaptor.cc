@@ -160,17 +160,56 @@ void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
 
 bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
                                     const DlcModuleList& dlc_module_list_in) {
-  const auto& dlc_modules = dlc_module_list_in.dlc_module_infos();
-  if (dlc_modules.empty()) {
+  if (dlc_module_list_in.dlc_module_infos().empty()) {
     LogAndSetError(err, "Must provide at least one DLC to install");
     return false;
+  }
+
+  // Pick up DLC(s) from |DlcModuleList| passed in which have no roots.
+  DlcRootMap unique_dlcs = utils::ToDlcRootMap(
+      dlc_module_list_in,
+      [](DlcModuleInfo dlc) { return dlc.dlc_root().empty(); });
+
+  // Check that no duplicate DLC(s) were passed in.
+  if (unique_dlcs.size() != dlc_module_list_in.dlc_module_infos_size()) {
+    LogAndSetError(err, "Must not pass in duplicate DLC(s) to install");
+    return false;
+  }
+
+  // Go through already installed DLC(s) and set the roots if found.
+  for (const auto& unique_dlc : unique_dlcs) {
+    const string& id = unique_dlc.first;
+    if (installed_dlc_modules_.find(id) != installed_dlc_modules_.end())
+      unique_dlcs[id] = installed_dlc_modules_[id];
+  }
+
+  // This is the entire unique DLC(s) asked to be installed.
+  DlcModuleList unique_dlc_module_list =
+      utils::ToDlcModuleList(unique_dlcs, [](DlcId, DlcRoot) { return true; });
+  // This is the unique DLC(s) that actually need to be installed.
+  DlcModuleList unique_dlc_module_list_to_install = utils::ToDlcModuleList(
+      unique_dlcs, [](DlcId, DlcRoot root) { return root.empty(); });
+  // Copy over the Omaha URL.
+  unique_dlc_module_list_to_install.set_omaha_url(
+      dlc_module_list_in.omaha_url());
+
+  // Check if there is nothing to install.
+  if (unique_dlc_module_list_to_install.dlc_module_infos_size() == 0) {
+    InstallResult install_result;
+    install_result.set_success(true);
+    install_result.mutable_dlc_module_list()->CopyFrom(unique_dlc_module_list);
+    install_result.set_error_code(
+        static_cast<int>(OnInstalledSignalErrorCode::kNone));
+    SendOnInstalledSignal(install_result);
+    return true;
   }
 
   // Note: this holds the list of directories that were created and need to be
   // freed in case an error happens.
   vector<unique_ptr<ScopedTempDir>> scoped_paths;
 
-  for (const DlcModuleInfo& dlc_module : dlc_modules) {
+  for (const DlcModuleInfo& dlc_module :
+       unique_dlc_module_list_to_install.dlc_module_infos()) {
     FilePath path;
     const string& id = dlc_module.dlc_id();
     auto scoped_path = std::make_unique<ScopedTempDir>();
@@ -193,12 +232,13 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
   }
 
   // Invokes update_engine to install the DLC module.
-  if (!update_engine_proxy_->AttemptInstall(dlc_module_list_in, nullptr)) {
+  if (!update_engine_proxy_->AttemptInstall(unique_dlc_module_list_to_install,
+                                            nullptr)) {
     LogAndSetError(err, "Update Engine failed to schedule install operations.");
     return false;
   }
 
-  dlc_modules_being_installed_ = dlc_module_list_in;
+  dlc_modules_being_installed_ = unique_dlc_module_list;
   // Note: Do NOT add to installed indication. Let
   // |OnStatusUpdateAdvancedSignal()| handle since hat's truly when the DLC(s)
   // are installed.
@@ -237,17 +277,8 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
 
 bool DlcServiceDBusAdaptor::GetInstalled(brillo::ErrorPtr* err,
                                          DlcModuleList* dlc_module_list_out) {
-  const auto InsertIntoDlcModuleListOut =
-      [dlc_module_list_out](const pair<string, string>& dlc_module) {
-        const string &dlc_module_id = dlc_module.first,
-                     &dlc_module_root = dlc_module.second;
-        DlcModuleInfo* dlc_module_info =
-            dlc_module_list_out->add_dlc_module_infos();
-        dlc_module_info->set_dlc_id(dlc_module_id);
-        dlc_module_info->set_dlc_root(dlc_module_root);
-      };
-  for_each(begin(installed_dlc_modules_), end(installed_dlc_modules_),
-           InsertIntoDlcModuleListOut);
+  *dlc_module_list_out = utils::ToDlcModuleList(
+      installed_dlc_modules_, [](DlcId, DlcRoot) { return true; });
   return true;
 }
 
@@ -421,8 +452,11 @@ void DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignal(
   // Keep track of the cleanups for DLC images.
   utils::ScopedCleanups<Callback<void()>> scoped_cleanups;
   for (const DlcModuleInfo& dlc_module : dlc_module_list.dlc_module_infos()) {
+    // Don't cleanup for already mounted.
+    if (!dlc_module.dlc_root().empty())
+      continue;
     const string& dlc_id = dlc_module.dlc_id();
-    auto cleanup = Bind(
+    auto cleanup = base::Bind(
         [](Callback<bool()> unmounter, Callback<bool()> deleter) {
           unmounter.Run();
           deleter.Run();
@@ -437,6 +471,9 @@ void DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignal(
   // Mount the installed DLC module images.
   for (auto& dlc_module :
        *install_result.mutable_dlc_module_list()->mutable_dlc_module_infos()) {
+    // Don't remount already mounted.
+    if (!dlc_module.dlc_root().empty())
+      continue;
     const string& dlc_module_id = dlc_module.dlc_id();
     string mount_point;
     if (!MountDlc(nullptr, dlc_module_id, &mount_point)) {
