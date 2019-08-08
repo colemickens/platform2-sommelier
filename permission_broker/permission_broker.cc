@@ -30,6 +30,7 @@
 #include "permission_broker/allow_usb_device_rule.h"
 #include "permission_broker/deny_claimed_hidraw_device_rule.h"
 #include "permission_broker/deny_claimed_usb_device_rule.h"
+#include "permission_broker/deny_fwupdate_hidraw_device_rule.h"
 #include "permission_broker/deny_group_tty_device_rule.h"
 #include "permission_broker/deny_uninitialized_device_rule.h"
 #include "permission_broker/deny_unsafe_hidraw_device_rule.h"
@@ -85,6 +86,7 @@ PermissionBroker::PermissionBroker(scoped_refptr<dbus::Bus> bus,
   rule_engine_.AddRule(new DenyGroupTtyDeviceRule("uucp"));
   rule_engine_.AddRule(new DenyClaimedHidrawDeviceRule());
   rule_engine_.AddRule(new DenyUnsafeHidrawDeviceRule());
+  rule_engine_.AddRule(new DenyFwUpdateHidrawDeviceRule());
 }
 
 PermissionBroker::~PermissionBroker() {}
