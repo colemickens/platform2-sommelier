@@ -25,11 +25,9 @@ class WiFiIEsFuzz {
     bool ieee80211w_required;
     std::string country_code;
     WiFiEndpoint::Ap80211krvSupport krv_support;
-    bool found_ft_cipher;
 
     WiFiEndpoint::ParseIEs(properties, &phy_mode, &vendor_information,
-                           &ieee80211w_required, &country_code, &krv_support,
-                           &found_ft_cipher);
+                           &ieee80211w_required, &country_code, &krv_support);
 
     // D-Bus wants our strings UTF-8, and ISO 3166 says they should be ASCII.
     CHECK(base::IsStringASCII(country_code));

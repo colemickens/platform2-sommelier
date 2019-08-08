@@ -185,8 +185,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
                        VendorInformation* vendor_information,
                        bool* ieee80211w_required,
                        std::string* country_code,
-                       Ap80211krvSupport* krv_support,
-                       bool* found_ft_cipher);
+                       Ap80211krvSupport* krv_support);
   // Parse MDE information element and set *|otds_ft_supported| to true if
   // Over-the-DS Fast BSS Transition is supported by this AP.
   static void ParseMobilityDomainElement(
@@ -245,7 +244,6 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   Metrics* metrics_;
 
   Ap80211krvSupport krv_support_;
-  bool found_ft_cipher_;
 
   ControlInterface* control_interface_;
   WiFiRefPtr device_;

@@ -43,7 +43,6 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
       physical_mode_(Metrics::kWiFiNetworkPhyModeUndef),
       ieee80211w_required_(false),
       metrics_(metrics),
-      found_ft_cipher_(false),
       control_interface_(control_interface),
       device_(device),
       rpc_id_(rpc_id) {
@@ -66,8 +65,7 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
                 &vendor_information_,
                 &ieee80211w_required_,
                 &country_code_,
-                &krv_support_,
-                &found_ft_cipher_)) {
+                &krv_support_)) {
     phy_mode = DeterminePhyModeFromFrequency(properties, frequency_);
   }
   physical_mode_ = phy_mode;
@@ -441,8 +439,7 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
                             VendorInformation* vendor_information,
                             bool* ieee80211w_required,
                             string* country_code,
-                            Ap80211krvSupport* krv_support,
-                            bool* found_ft_cipher) {
+                            Ap80211krvSupport* krv_support) {
   if (!properties.ContainsUint8s(WPASupplicant::kBSSPropertyIEs)) {
     SLOG(nullptr, 2) << __func__ << ": No IE property in BSS.";
     return false;
@@ -462,6 +459,7 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
   bool found_power_constraint = false;
   bool found_rm_enabled_cap = false;
   bool found_mde = false;
+  bool found_ft_cipher = false;
   int ie_len = 0;
   vector<uint8_t>::iterator it;
   for (it = ies.begin();
@@ -517,7 +515,7 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
         break;
       case IEEE_80211::kElemIdRSN:
         ParseWPACapabilities(
-            it + 2, it + ie_len, ieee80211w_required, found_ft_cipher);
+            it + 2, it + ie_len, ieee80211w_required, &found_ft_cipher);
         break;
       case IEEE_80211::kElemIdVendor:
         ParseVendorIE(it + 2, it + ie_len, vendor_information,
@@ -532,11 +530,9 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
   if (krv_support) {
     krv_support->neighbor_list_supported =
         found_country && found_power_constraint && found_rm_enabled_cap;
-    if (found_ft_cipher) {
-      krv_support->ota_ft_supported = found_mde && *found_ft_cipher;
-      krv_support->otds_ft_supported =
-          krv_support->otds_ft_supported && krv_support->ota_ft_supported;
-    }
+    krv_support->ota_ft_supported = found_mde && found_ft_cipher;
+    krv_support->otds_ft_supported =
+        krv_support->otds_ft_supported && krv_support->ota_ft_supported;
   }
   if (found_vht) {
     *phy_mode = Metrics::kWiFiNetworkPhyMode11ac;
