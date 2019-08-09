@@ -44,11 +44,12 @@ class MockMojomWilcoDtcSupportdClient
   MOCK_METHOD2(SendWilcoDtcMessageToUiImpl,
                void(mojo::ScopedHandle* json_message,
                     const SendWilcoDtcMessageToUiCallback& callback));
-  MOCK_METHOD4(PerformWebRequestImpl,
+  MOCK_METHOD5(PerformWebRequestImpl,
                void(MojoWilcoDtcSupportdWebRequestHttpMethod http_method,
                     const std::string& url,
                     const std::vector<std::string>& headers,
-                    const std::string& request_body));
+                    const std::string& request_body,
+                    const MojoPerformWebRequestCallback& callback));
   MOCK_METHOD1(GetConfigurationData,
                void(const MojoGetConfigurationDataCallback& callback));
   MOCK_METHOD1(HandleEvent, void(const MojoWilcoDtcSupportdEvent event));
