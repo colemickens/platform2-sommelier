@@ -41,7 +41,9 @@ allow cros_crash cros_core_collector_exec:file execute;
 
 allow cros_crash { proc_uptime proc_stat }:file r_file_perms;
 
-filetrans_pattern(cros_crash, cros_var_spool, cros_crash_spool, dir, "crash");
+filetrans_pattern(domain, cros_var_spool, cros_crash_spool, dir, "crash");
+auditallow { domain -cros_crash } cros_crash_spool:dir create;
+
 allow cros_crash cros_crash_spool:dir create_dir_perms;
 allow cros_crash cros_crash_spool:file create_file_perms;
 filetrans_pattern(cros_crash, cros_var_lib, cros_var_lib_crash_reporter, dir, "crash_reporter");
