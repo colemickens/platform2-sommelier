@@ -192,7 +192,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/log/vmlog(/.*)?            u:object_r:cros_var_log_vmlog:s0
 /var/spool                      u:object_r:cros_var_spool:s0
 /var/spool/cron-lite(/.*)?      u:object_r:cros_periodic_scheduler_cache_t:s0
-/var/spool/crash_reporter(/.*)? u:object_r:cros_crash_spool:s0
+/var/spool/crash(/.*)?          u:object_r:cros_crash_spool:s0
 /var/spool/power_manager(/.*)?  u:object_r:cros_var_spool_power_manager:s0
 
 # /opt
