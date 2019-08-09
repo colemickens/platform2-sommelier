@@ -8,6 +8,9 @@ group("all") {
   deps = [
     ":smbfs",
   ]
+  if (use.test) {
+    deps += [ ":smbfs_test" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -19,9 +22,36 @@ pkg_config("target_defaults") {
   defines = [ "FUSE_USE_VERSION=26" ]
 }
 
+static_library("libsmbfs") {
+  sources = [
+    "inode_map.cc",
+    "inode_map.h",
+  ]
+  configs += [ ":target_defaults" ]
+}
+
 executable("smbfs") {
   sources = [
     "main.cc",
   ]
   configs += [ ":target_defaults" ]
+  deps = [
+    ":libsmbfs",
+  ]
+}
+
+if (use.test) {
+  executable("smbfs_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libsmbfs",
+      "//common-mk/testrunner:testrunner",
+    ]
+    sources = [
+      "inode_map_test.cc",
+    ]
+  }
 }
