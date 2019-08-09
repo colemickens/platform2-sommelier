@@ -49,21 +49,13 @@ VPNService::VPNService(Manager* manager, std::unique_ptr<VPNDriver> driver)
 
 VPNService::~VPNService() = default;
 
-void VPNService::Connect(Error* error, const char* reason) {
-  if (IsConnected()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kAlreadyConnected,
-                          StringPrintf("VPN service %s already connected.",
-                                       unique_name().c_str()));
-    return;
-  }
-  if (IsConnecting()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInProgress,
-                          StringPrintf("VPN service %s already connecting.",
-                                       unique_name().c_str()));
-    return;
-  }
+void VPNService::OnConnect(Error* error) {
   manager()->vpn_provider()->DisconnectAll();
-  Service::Connect(error, reason);
+  // Note that this must be called after VPNProvider::DisconnectAll. While most
+  // VPNDrivers create their own Devices, ArcVpnDriver shares the same
+  // VirtualDevice (VPNProvider::arc_device), so Disconnect()ing an ARC
+  // VPNService after completing the connection for a new ARC VPNService will
+  // cause the arc_device to be disabled at the end of this call.
   driver_->Connect(this, error);
 }
 

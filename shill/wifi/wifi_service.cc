@@ -555,26 +555,7 @@ void WiFiService::HelpRegisterDerivedUint16(
                 this, get, set, clear)));
 }
 
-void WiFiService::Connect(Error* error, const char* reason) {
-  if (!connectable()) {
-    LOG(ERROR) << "Can't connect. Service " << unique_name()
-               << " is not connectable.";
-    Error::PopulateAndLog(FROM_HERE,
-                          error,
-                          Error::kOperationFailed,
-                          Error::GetDefaultMessage(Error::kOperationFailed));
-    return;
-  }
-  if (IsConnecting() || IsConnected()) {
-    LOG(WARNING) << "Can't connect.  Service " << unique_name()
-                 << " is already connecting or connected.";
-    Error::PopulateAndLog(FROM_HERE,
-                          error,
-                          Error::kAlreadyConnected,
-                          Error::GetDefaultMessage(Error::kAlreadyConnected));
-    return;
-  }
-
+void WiFiService::OnConnect(Error* error) {
   WiFiRefPtr wifi = wifi_;
   if (!wifi) {
     // If this is a hidden service before it has been found in a scan, we
@@ -616,7 +597,6 @@ void WiFiService::Connect(Error* error, const char* reason) {
   }
 
   expecting_disconnect_ = false;
-  Service::Connect(error, reason);
   wifi->ConnectTo(this);
 }
 

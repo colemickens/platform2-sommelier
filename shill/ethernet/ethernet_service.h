@@ -36,7 +36,6 @@ class EthernetService : public Service {
   ~EthernetService() override;
 
   // Inherited from Service.
-  void Connect(Error* error, const char* reason) override;
   void Disconnect(Error* error, const char* reason) override;
 
   // ethernet_<MAC>
@@ -66,6 +65,9 @@ class EthernetService : public Service {
   EthernetService(Manager* manager,
                   Technology technology,
                   const Properties& props);
+
+  // Inherited from Service.
+  void OnConnect(Error* error) override;
 
   void SetUp();
 

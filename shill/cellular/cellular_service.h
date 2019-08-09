@@ -39,7 +39,6 @@ class CellularService : public Service {
 
   // Inherited from Service.
   void AutoConnect() override;
-  void Connect(Error* error, const char* reason) override;
   void Disconnect(Error* error, const char* reason) override;
   void ActivateCellularModem(const std::string& carrier,
                              Error* error,
@@ -97,7 +96,8 @@ class CellularService : public Service {
   void NotifySubscriptionStateChanged(SubscriptionState subscription_state);
 
  protected:
-  // Overrides IsAutoConnectable from parent Service class.
+  // Inherited from Service.
+  void OnConnect(Error* error) override;
   bool IsAutoConnectable(const char** reason) const override;
 
   // Overrides the maximum auto connect cooldown time set in the Service class

@@ -46,7 +46,6 @@ class WiFiService : public Service {
   ~WiFiService();
 
   // Inherited from Service.
-  void Connect(Error* error, const char* reason) override;
   void Disconnect(Error* error, const char* reason) override;
   bool Is8021x() const override;
 
@@ -172,6 +171,9 @@ class WiFiService : public Service {
   bool roam_threshold_db_set() const { return roam_threshold_db_set_; }
 
  protected:
+  // Inherited from Service.
+  void OnConnect(Error* error) override;
+
   void SetEAPKeyManagement(const std::string& key_management) override;
   std::string GetTethering(Error* error) const override;
 

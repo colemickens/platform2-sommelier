@@ -28,6 +28,8 @@ ServiceUnderTest::ServiceUnderTest(Manager* manager)
           new CustomAccessor<ServiceUnderTest, KeyValueStore>(
               this, &ServiceUnderTest::GetKeyValueStore,
               &ServiceUnderTest::SetKeyValueStore)));
+
+  SetConnectable(true);
 }
 
 ServiceUnderTest::~ServiceUnderTest() = default;

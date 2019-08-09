@@ -41,6 +41,10 @@ class ServiceUnderTest : public Service {
   bool SetKeyValueStore(const KeyValueStore& value, Error* error);
   KeyValueStore GetKeyValueStore(Error* error);
 
+ protected:
+  // Inherited from Service.
+  void OnConnect(Error* error) override {}
+
  private:
   // The Service superclass has no string array or KeyValueStore properties
   // but we need them in order to test Service::Configure.

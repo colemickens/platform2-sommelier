@@ -272,7 +272,7 @@ TEST_F(ServiceTest, GetProperties) {
     EXPECT_TRUE(service_->store().GetProperties(&props, &error));
     ASSERT_FALSE(props.find(kConnectableProperty) == props.end());
     EXPECT_TRUE(props[kConnectableProperty].IsTypeCompatible<bool>());
-    EXPECT_EQ(props[kConnectableProperty].Get<bool>(), false);
+    EXPECT_EQ(props[kConnectableProperty].Get<bool>(), true);
   }
   {
     brillo::VariantDictionary props;
@@ -1415,24 +1415,23 @@ TEST_F(ServiceTest, SetFriendlyName) {
 }
 
 TEST_F(ServiceTest, SetConnectableFull) {
-  EXPECT_FALSE(service_->connectable());
+  EXPECT_TRUE(service_->connectable());
 
   ServiceMockAdaptor* adaptor = GetAdaptor();
 
   EXPECT_CALL(*adaptor, EmitBoolChanged(_, _)).Times(0);
   EXPECT_CALL(mock_manager_, HasService(_)).Times(0);
-  service_->SetConnectableFull(false);
-  EXPECT_FALSE(service_->connectable());
-
-  EXPECT_CALL(*adaptor, EmitBoolChanged(kConnectableProperty, true));
-  EXPECT_CALL(mock_manager_, HasService(_)).WillOnce(Return(false));
-  EXPECT_CALL(mock_manager_, UpdateService(_)).Times(0);
   service_->SetConnectableFull(true);
   EXPECT_TRUE(service_->connectable());
 
   EXPECT_CALL(*adaptor, EmitBoolChanged(kConnectableProperty, false));
   EXPECT_CALL(mock_manager_, HasService(_)).WillOnce(Return(true));
   EXPECT_CALL(mock_manager_, UpdateService(_));
+  service_->SetConnectableFull(false);
+  EXPECT_FALSE(service_->connectable());
+
+  EXPECT_CALL(*adaptor, EmitBoolChanged(_, _)).Times(0);
+  EXPECT_CALL(mock_manager_, HasService(_)).Times(0);
   service_->SetConnectableFull(false);
   EXPECT_FALSE(service_->connectable());
 

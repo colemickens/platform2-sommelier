@@ -88,6 +88,9 @@ class MockService : public Service {
   }
   const std::string& friendly_name() const { return Service::friendly_name(); }
 
+ protected:
+  void OnConnect(Error* error) override {}
+
  private:
   ConnectionRefPtr mock_connection_;
   DISALLOW_COPY_AND_ASSIGN(MockService);

@@ -26,6 +26,10 @@ class EthernetTemporaryService : public Service {
   std::string GetStorageIdentifier() const override;
   bool IsVisible() const override;
 
+ protected:
+  // Inherited from Service.
+  void OnConnect(Error* /*error*/) override {}
+
  private:
   std::string storage_identifier_;
   DISALLOW_COPY_AND_ASSIGN(EthernetTemporaryService);

@@ -61,8 +61,7 @@ void EthernetService::SetUp() {
   NotifyIfVisibilityChanged();
 }
 
-void EthernetService::Connect(Error* error, const char* reason) {
-  Service::Connect(error, reason);
+void EthernetService::OnConnect(Error* /*error*/) {
   if (props_.ethernet_) {
     props_.ethernet_->ConnectTo(this);
   }

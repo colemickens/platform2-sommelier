@@ -291,12 +291,39 @@ void Service::AutoConnect() {
   }
 }
 
-void Service::Connect(Error* /*error*/, const char* reason) {
-  LOG(INFO) << "Connect to service " << unique_name() <<": " << reason;
+void Service::Connect(Error* error, const char* reason) {
+  if (!connectable()) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kOperationFailed,
+        base::StringPrintf("%s service %s is not connectable.",
+                           technology().GetName().c_str(),
+                           unique_name().c_str()));
+    return;
+  }
+
+  if (IsConnected()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kAlreadyConnected,
+                          base::StringPrintf("%s service %s already connected.",
+                                             technology().GetName().c_str(),
+                                             unique_name().c_str()));
+    return;
+  } else if (IsConnecting()) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kInProgress,
+        base::StringPrintf("%s service %s already connecting.",
+                           technology().GetName().c_str(),
+                           unique_name().c_str()));
+    return;
+  }
+
   ClearExplicitlyDisconnected();
   // Clear any failure state from a previous connect attempt.
   if (IsInFailState())
     SetState(kStateIdle);
+  LOG(INFO) << "Connect to service " << unique_name() << ": " << reason;
+  // Perform connection logic defined by children. This logic will
+  // drive the state from kStateIdle.
+  OnConnect(error);
 }
 
 void Service::Disconnect(Error* /*error*/, const char* reason) {

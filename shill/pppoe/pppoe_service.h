@@ -36,7 +36,6 @@ class PPPoEService : public EthernetService, public RpcTaskDelegate {
   ~PPPoEService() override;
 
   // Inherited from EthernetService.
-  void Connect(Error* error, const char* reason) override;
   void Disconnect(Error* error, const char* reason) override;
   bool Load(StoreInterface* storage) override;
   bool Save(StoreInterface* storage) override;
@@ -49,6 +48,10 @@ class PPPoEService : public EthernetService, public RpcTaskDelegate {
   void GetLogin(std::string* user, std::string* password) override;
   void Notify(const std::string& reason,
               const std::map<std::string, std::string>& dict) override;
+
+ protected:
+  // Inherited from EthernetService.
+  void OnConnect(Error* error) override;
 
  private:
   friend class PPPoEServiceTest;

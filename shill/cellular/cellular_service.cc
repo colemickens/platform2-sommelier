@@ -364,8 +364,7 @@ void CellularService::AutoConnect() {
   is_auto_connecting_ = false;
 }
 
-void CellularService::Connect(Error* error, const char* reason) {
-  Service::Connect(error, reason);
+void CellularService::OnConnect(Error* error) {
   cellular_->Connect(error);
 }
 

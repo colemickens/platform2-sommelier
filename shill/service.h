@@ -161,10 +161,9 @@ class Service : public base::RefCounted<Service> {
   // AutoConnect MAY issue RPCs immediately. So AutoConnect MUST NOT
   // be called from a D-Bus signal handler context.
   virtual void AutoConnect();
-  // Queue up a connection attempt. Derived classes SHOULD call the
-  // base class implementation before beginning a connect. The base
-  // class will log the connection attempt, and update base-class
-  // state.
+  // Queue up a connection attempt. This is virtual solely for testing
+  // purposes. Derived classes MUST NOT override this method. Child-specific
+  // behavior is implemented in OnConnect.
   virtual void Connect(Error* error, const char* reason);
   // Disconnect this service.  Override this method to add your service specific
   // disconnect logic, but call the super class's Disconnect() first.
@@ -561,6 +560,10 @@ class Service : public base::RefCounted<Service> {
   static const char kAutoConnBusy[];
 
   virtual ~Service();
+
+  // Overridden by child classes to perform technology-specific connection
+  // logic.
+  virtual void OnConnect(Error* error) = 0;
 
   bool GetVisibleProperty(Error* error);
 

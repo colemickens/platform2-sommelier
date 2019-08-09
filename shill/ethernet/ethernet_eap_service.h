@@ -29,6 +29,10 @@ class EthernetEapService : public Service {
   void OnEapCredentialsChanged(
       Service::UpdateCredentialsReason reason) override;
   bool Unload() override;
+
+ protected:
+  // Inherited from Service.
+  void OnConnect(Error* /*error*/) override {}
 };
 
 }  // namespace shill

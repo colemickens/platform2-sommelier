@@ -57,9 +57,7 @@ PPPoEService::PPPoEService(Manager* manager, base::WeakPtr<Ethernet> ethernet)
 
 PPPoEService::~PPPoEService() = default;
 
-void PPPoEService::Connect(Error* error, const char* reason) {
-  Service::Connect(error, reason);
-
+void PPPoEService::OnConnect(Error* error) {
   CHECK(ethernet());
 
   if (!ethernet()->link_up()) {
@@ -67,20 +65,6 @@ void PPPoEService::Connect(Error* error, const char* reason) {
         FROM_HERE, error, Error::kOperationFailed, StringPrintf(
             "PPPoE Service %s does not have Ethernet link.",
             unique_name().c_str()));
-    return;
-  }
-
-  if (IsConnected()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kAlreadyConnected,
-                          StringPrintf("PPPoE service %s already connected.",
-                                       unique_name().c_str()));
-    return;
-  }
-
-  if (IsConnecting()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInProgress,
-                          StringPrintf("PPPoE service %s already connecting.",
-                                       unique_name().c_str()));
     return;
   }
 
