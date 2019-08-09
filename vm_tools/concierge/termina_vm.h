@@ -20,6 +20,7 @@
 #include <base/macros.h>
 #include <base/time/time.h>
 #include <brillo/process.h>
+#include <vm_concierge/proto_bindings/service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
 #include "vm_tools/concierge/seneschal_server_proxy.h"
@@ -172,6 +173,9 @@ class TerminaVm final : public VmInterface {
       GetVmEnterpriseReportingInfoResponse* response) override;
 
   void SetTremplinStarted() override { is_tremplin_started_ = true; }
+
+  // Adjusts the amount of CPU the Termina VM processes are allowed to use.
+  static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state);
 
   static std::unique_ptr<TerminaVm> CreateForTesting(
       arc_networkd::MacAddress mac_addr,

@@ -249,6 +249,14 @@ void ArcVm::HandleSuspendDone() {
   RunCrosvmCommand("resume", GetVmSocketPath());
 }
 
+// static
+bool ArcVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state) {
+  // TODO(yusukes): Implement this. ARCVM processes are currently throttled by
+  // session_manager.
+  NOTIMPLEMENTED();
+  return false;
+}
+
 uint32_t ArcVm::GatewayAddress() const {
   return subnet_->AddressAtOffset(kHostAddressOffset);
 }

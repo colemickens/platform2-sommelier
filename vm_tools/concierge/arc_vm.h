@@ -18,6 +18,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
 #include <brillo/process.h>
+#include <vm_concierge/proto_bindings/service.pb.h>
 
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/vm_interface.h"
@@ -106,6 +107,9 @@ class ArcVm final : public VmInterface {
   // TODO(b/136143058): Implement SetTime calls.
   bool SetTime(std::string* failure_reason) override { return true; }
   void SetTremplinStarted() override { NOTREACHED(); }
+
+  // Adjusts the amount of CPU the ARCVM processes are allowed to use.
+  static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state);
 
  private:
   ArcVm(arc_networkd::MacAddress mac_addr,

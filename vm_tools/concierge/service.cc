@@ -684,6 +684,7 @@ bool Service::Init() {
       {kDetachUsbDeviceMethod, &Service::DetachUsbDevice},
       {kListUsbDeviceMethod, &Service::ListUsbDevices},
       {kGetDnsSettingsMethod, &Service::GetDnsSettings},
+      {kSetVmCpuRestrictionMethod, &Service::SetVmCpuRestriction},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -2777,6 +2778,49 @@ std::unique_ptr<dbus::Response> Service::GetDnsSettings(
 
   dbus::MessageWriter writer(dbus_response.get());
   ComposeDnsResponse(&writer);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::SetVmCpuRestriction(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  VLOG(3) << "Received SetVmCpuRestriction request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  SetVmCpuRestrictionRequest request;
+  SetVmCpuRestrictionResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse SetVmCpuRestrictionRequest from message";
+    response.set_success(false);
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  bool success = false;
+  const CpuRestrictionState state = request.cpu_restriction_state();
+  switch (request.cpu_cgroup()) {
+    case CPU_CGROUP_TERMINA:
+      success = TerminaVm::SetVmCpuRestriction(state);
+      break;
+    case CPU_CGROUP_PLUGINVM:
+      success = PluginVm::SetVmCpuRestriction(state);
+      break;
+    case CPU_CGROUP_ARCVM:
+      success = ArcVm::SetVmCpuRestriction(state);
+      break;
+    default:
+      LOG(ERROR) << "Unknown cpu_group";
+      break;
+  }
+
+  response.set_success(success);
+  writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
 

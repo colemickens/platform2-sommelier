@@ -15,6 +15,7 @@
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
@@ -293,6 +294,13 @@ bool ListUsbDevice(std::string socket_path, std::vector<UsbDevice>* device) {
   *device = std::move(response.devices);
 
   return true;
+}
+
+bool UpdateCpuShares(const base::FilePath& cpu_cgroup, int cpu_shares) {
+  const std::string cpu_shares_str = std::to_string(cpu_shares);
+  return base::WriteFile(cpu_cgroup.Append("cpu.shares"),
+                         cpu_shares_str.c_str(),
+                         cpu_shares_str.size()) == cpu_shares_str.size();
 }
 
 }  // namespace concierge

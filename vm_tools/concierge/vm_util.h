@@ -68,6 +68,9 @@ bool DetachUsbDevice(std::string socket_path,
 // Lists all usb devices attached to guest.
 bool ListUsbDevice(std::string socket_path, std::vector<UsbDevice>* devices);
 
+// Updates |cpu_cgroup|'s cpu.shares to |cpu_shares|.
+bool UpdateCpuShares(const base::FilePath& cpu_cgroup, int cpu_shares);
+
 }  // namespace concierge
 }  // namespace vm_tools
 

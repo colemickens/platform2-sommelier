@@ -59,6 +59,12 @@ constexpr char kRemovableMediaRoot[] = "/media/removable";
 constexpr char kStorageCryptohomeRoot[] = "cryptohome-root";
 constexpr char kStorageCryptohomePluginVm[] = "cryptohome-pluginvm";
 
+constexpr char kCgroupTermina[] = "termina";
+constexpr char kCgroupPluginVm[] = "pluginvm";
+constexpr char kCgroupArcVm[] = "arcvm";
+constexpr char kCpuForeground[] = "foreground";
+constexpr char kCpuBackground[] = "background";
+
 // Cryptohome user base path.
 constexpr char kCryptohomeUser[] = "/home/user";
 
@@ -1335,6 +1341,77 @@ int GetEnterpriseReportingInfo(dbus::ObjectProxy* proxy,
   return 0;
 }
 
+int SetVmCpuRestriction(dbus::ObjectProxy* proxy,
+                        std::string cgroup,
+                        std::string restriction) {
+  if (cgroup.empty()) {
+    LOG(ERROR) << "--cgroup is required";
+    return -1;
+  }
+  if (restriction.empty()) {
+    LOG(ERROR) << "--restriction is required";
+    return -1;
+  }
+
+  LOG(INFO) << "Set VM CPU restriction.";
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kSetVmCpuRestrictionMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::concierge::SetVmCpuRestrictionRequest request;
+
+  if (cgroup == kCgroupTermina) {
+    request.set_cpu_cgroup(vm_tools::concierge::CPU_CGROUP_TERMINA);
+  } else if (cgroup == kCgroupPluginVm) {
+    request.set_cpu_cgroup(vm_tools::concierge::CPU_CGROUP_PLUGINVM);
+  } else if (cgroup == kCgroupArcVm) {
+    request.set_cpu_cgroup(vm_tools::concierge::CPU_CGROUP_ARCVM);
+  } else {
+    LOG(ERROR) << "Unknown cgroup. Specify " << kCgroupTermina << ", "
+               << kCgroupPluginVm << ", or " << kCgroupArcVm;
+    return -1;
+  }
+
+  if (restriction == kCpuForeground) {
+    request.set_cpu_restriction_state(
+        vm_tools::concierge::CPU_RESTRICTION_FOREGROUND);
+  } else if (restriction == kCpuBackground) {
+    request.set_cpu_restriction_state(
+        vm_tools::concierge::CPU_RESTRICTION_BACKGROUND);
+  } else {
+    LOG(ERROR) << "Unknown restriction. Specify " << kCpuForeground << " or "
+               << kCpuBackground;
+    return -1;
+  }
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode SetVmCpuRestrictionRequest protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::SetVmCpuRestrictionResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  if (!response.success()) {
+    LOG(ERROR) << "Could not set VM CPU restriction";
+    return -1;
+  }
+
+  LOG(INFO) << "Successfully set VM CPU restriction";
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -1366,6 +1443,7 @@ int main(int argc, char** argv) {
   DEFINE_bool(list_usb_devices, false, "List all USB devices attached to a VM");
   DEFINE_bool(get_vm_enterprise_reporting_info, false,
               "Enterprise reporting info for the given VM");
+  DEFINE_bool(set_vm_cpu_restriction, false, "Set VM CPU restriction");
 
   // Parameters.
   DEFINE_string(kernel, "", "Path to the VM kernel");
@@ -1395,6 +1473,10 @@ int main(int argc, char** argv) {
   DEFINE_int32(vendor_id, -1, "USB vendor ID");
   DEFINE_int32(product_id, -1, "USB product ID");
   DEFINE_int32(guest_port, -1, "Guest USB port allocated to device");
+
+  // set_vm_cpu_restriction parameters
+  DEFINE_string(cgroup, "", "Cgroup to update");
+  DEFINE_string(restriction, "", "The CPU restriction to apply");
 
   brillo::FlagHelper::Init(argc, argv, "vm_concierge client tool");
   brillo::InitLog(brillo::kLogToStderrIfTty);
@@ -1428,15 +1510,17 @@ int main(int argc, char** argv) {
       FLAGS_import_disk + FLAGS_list_disks + FLAGS_sync_time +
       FLAGS_attach_usb + FLAGS_detach_usb + FLAGS_list_usb_devices +
       FLAGS_start_plugin_vm + FLAGS_start_arc_vm +
-      FLAGS_get_vm_enterprise_reporting_info != 1) {
+      FLAGS_get_vm_enterprise_reporting_info +
+      FLAGS_set_vm_cpu_restriction != 1) {
     // clang-format on
     LOG(ERROR)
         << "Exactly one of --start, --stop, --stop_all, --get_vm_info, "
         << "--get_vm_cid, --create_disk, --create_external_disk, "
         << "--destroy_disk, --export_disk --import_disk --list_disks, "
         << "--start_termina_vm, --sync_time, --attach_usb, --detach_usb, "
-        << "--list_usb_devices, --start_plugin_vm, --start_arc_vm, or "
-        << "--get_vm_enterprise_reporting_info must be provided";
+        << "--list_usb_devices, --start_plugin_vm, --start_arc_vm, "
+        << "--get_vm_enterprise_reporting_info, or --set_vm_cpu_restriction "
+        << "must be provided";
 
     return -1;
   }
@@ -1515,6 +1599,9 @@ int main(int argc, char** argv) {
   } else if (FLAGS_get_vm_enterprise_reporting_info) {
     return GetEnterpriseReportingInfo(proxy, std::move(FLAGS_name),
                                       std::move(FLAGS_cryptohome_id));
+  } else if (FLAGS_set_vm_cpu_restriction) {
+    return SetVmCpuRestriction(proxy, std::move(FLAGS_cgroup),
+                               std::move(FLAGS_restriction));
   }
 
   // Unreachable.

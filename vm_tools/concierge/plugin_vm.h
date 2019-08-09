@@ -25,6 +25,7 @@
 #include <base/message_loop/message_loop.h>
 #include <brillo/process.h>
 #include <dbus/exported_object.h>
+#include <vm_concierge/proto_bindings/service.pb.h>
 
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/plugin_vm_usb.h"
@@ -82,6 +83,9 @@ class PluginVm final : public VmInterface, base::MessageLoopForIO::Watcher {
                               const std::vector<std::string>& search_domains);
 
   static base::ScopedFD CreateUnixSocket(const base::FilePath& path, int type);
+
+  // Adjusts the amount of CPU the Plugin VM processes are allowed to use.
+  static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state);
 
   // The 9p server managed by seneschal that provides access to shared files for
   // this VM.  Returns 0 if there is no seneschal server associated with this

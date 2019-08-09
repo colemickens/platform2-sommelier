@@ -143,6 +143,9 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   std::unique_ptr<dbus::Response> GetDnsSettings(dbus::MethodCall* method_call);
 
+  std::unique_ptr<dbus::Response> SetVmCpuRestriction(
+      dbus::MethodCall* method_call);
+
   // Writes DnsConfigResponse protobuf into DBus message.
   void ComposeDnsResponse(dbus::MessageWriter* writer);
 

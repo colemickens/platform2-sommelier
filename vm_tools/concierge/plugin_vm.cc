@@ -61,7 +61,7 @@ constexpr char kIsoDir[] = "/iso";
 constexpr base::TimeDelta kChildExitTimeout = base::TimeDelta::FromSeconds(10);
 
 // The CPU cgroup where all the PluginVm crosvm processes should belong to.
-constexpr char kPluginVmCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/plugin/tasks";
+constexpr char kPluginVmCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/plugin";
 
 }  // namespace
 
@@ -187,6 +187,22 @@ base::ScopedFD PluginVm::CreateUnixSocket(const base::FilePath& path,
   }
 
   return fd;
+}
+
+// static
+bool PluginVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state) {
+  // TODO(sonnyrao): Adjust |cpu_shares|.
+  int cpu_shares = 1024;
+  switch (cpu_restriction_state) {
+    case CPU_RESTRICTION_FOREGROUND:
+      break;
+    case CPU_RESTRICTION_BACKGROUND:
+      cpu_shares = 64;
+      break;
+    default:
+      NOTREACHED();
+  }
+  return UpdateCpuShares(base::FilePath(kPluginVmCpuCgroup), cpu_shares);
 }
 
 bool PluginVm::CreateUsbListeningSocket() {
@@ -619,8 +635,8 @@ bool PluginVm::Start(uint32_t cpus,
   // Change the process group before exec so that crosvm sending SIGKILL to the
   // whole process group doesn't kill us as well. The function also changes the
   // cpu cgroup for PluginVm crosvm processes.
-  process_.SetPreExecCallback(
-      base::Bind(&SetUpCrosvmProcess, base::FilePath(kPluginVmCpuCgroup)));
+  process_.SetPreExecCallback(base::Bind(
+      &SetUpCrosvmProcess, base::FilePath(kPluginVmCpuCgroup).Append("tasks")));
 
   if (!process_.Start()) {
     LOG(ERROR) << "Failed to start VM process";

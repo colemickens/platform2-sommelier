@@ -64,7 +64,7 @@ constexpr size_t kHostAddressOffset = 0;
 constexpr size_t kGuestAddressOffset = 1;
 
 // The CPU cgroup where all the Termina crosvm processes should belong to.
-constexpr char kTerminaCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/termina/tasks";
+constexpr char kTerminaCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/termina";
 
 }  // namespace
 
@@ -174,8 +174,8 @@ bool TerminaVm::Start(base::FilePath kernel,
   // Change the process group before exec so that crosvm sending SIGKILL to the
   // whole process group doesn't kill us as well. The function also changes the
   // cpu cgroup for Termina crosvm processes.
-  process_.SetPreExecCallback(
-      base::Bind(&SetUpCrosvmProcess, base::FilePath(kTerminaCpuCgroup)));
+  process_.SetPreExecCallback(base::Bind(
+      &SetUpCrosvmProcess, base::FilePath(kTerminaCpuCgroup).Append("tasks")));
 
   // Redirect STDOUT to a pipe.
   process_.RedirectUsingPipe(STDOUT_FILENO, false /* is_input */);
@@ -524,6 +524,22 @@ bool TerminaVm::GetVmEnterpriseReportingInfo(
   response->set_success(true);
   response->set_vm_kernel_version(kernel_version_);
   return true;
+}
+
+// static
+bool TerminaVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state) {
+  // TODO(sonnyrao): Adjust |cpu_shares|.
+  int cpu_shares = 1024;
+  switch (cpu_restriction_state) {
+    case CPU_RESTRICTION_FOREGROUND:
+      break;
+    case CPU_RESTRICTION_BACKGROUND:
+      cpu_shares = 64;
+      break;
+    default:
+      NOTREACHED();
+  }
+  return UpdateCpuShares(base::FilePath(kTerminaCpuCgroup), cpu_shares);
 }
 
 void TerminaVm::SetContainerSubnet(
