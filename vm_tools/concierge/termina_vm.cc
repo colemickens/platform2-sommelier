@@ -64,7 +64,7 @@ constexpr size_t kHostAddressOffset = 0;
 constexpr size_t kGuestAddressOffset = 1;
 
 // The CPU cgroup where all the Termina crosvm processes should belong to.
-constexpr char kTerminaCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/tasks";
+constexpr char kTerminaCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/termina/tasks";
 
 }  // namespace
 

@@ -45,6 +45,7 @@ constexpr size_t kHostAddressOffset = 0;
 constexpr size_t kGuestAddressOffset = 1;
 
 // The CPU cgroup where all the ARCVM's crosvm processes should belong to.
+// TODO(yusukes): Migrate to /sys/fs/cgroup/cpu/vms/arc/tasks.
 constexpr char kArcvmCpuCgroup[] =
     "/sys/fs/cgroup/cpu/session_manager_containers/tasks";
 

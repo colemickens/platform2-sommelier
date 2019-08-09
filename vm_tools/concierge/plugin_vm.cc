@@ -61,7 +61,7 @@ constexpr char kIsoDir[] = "/iso";
 constexpr base::TimeDelta kChildExitTimeout = base::TimeDelta::FromSeconds(10);
 
 // The CPU cgroup where all the PluginVm crosvm processes should belong to.
-constexpr char kPluginVmCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/tasks";
+constexpr char kPluginVmCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/plugin/tasks";
 
 }  // namespace
 
