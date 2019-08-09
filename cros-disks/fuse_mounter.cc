@@ -4,8 +4,10 @@
 
 #include "cros-disks/fuse_mounter.h"
 
+#include <fcntl.h>
 #include <linux/capability.h>
-#include <sys/mount.h>
+#include <linux/fs.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -125,6 +127,23 @@ MountErrorType ConfigureCommonSandbox(SandboxedProcess* sandbox,
   return MOUNT_ERROR_NONE;
 }
 
+bool GetPhysicalBlockSize(const std::string& source, int* size) {
+  base::ScopedFD fd(open(source.c_str(), O_RDONLY | O_CLOEXEC));
+
+  *size = 0;
+  if (!fd.is_valid()) {
+    PLOG(WARNING) << "Couldn't open " << source;
+    return false;
+  }
+
+  if (ioctl(fd.get(), BLKPBSZGET, size) < 0) {
+    PLOG(WARNING) << "Failed to get block size for" << source;
+    return false;
+  }
+
+  return true;
+}
+
 MountErrorType MountFuseDevice(const Platform* platform,
                                const std::string& source,
                                const std::string& filesystem_type,
@@ -159,11 +178,20 @@ MountErrorType MountFuseDevice(const Platform* platform,
   std::string fuse_type = "fuse";
   struct stat statbuf = {0};
   if (stat(source.c_str(), &statbuf) == 0 && S_ISBLK(statbuf.st_mode)) {
-    LOG(INFO) << "Source file " << source << " is a block device.";
-    // TODO(crbug.com/931500): Determine and set blksize mount option. Default
-    // is 512, which works everywhere, but is not necessarily optimal. Any
-    // power-of-2 in the range [512, PAGE_SIZE] will work, but the optimal size
-    // is the block/cluster size of the file system.
+    int blksize = 0;
+
+    // TODO(crbug.com/931500): It's possible that specifying a block size equal
+    // to the file system cluster size (which might be larger than the physical
+    // block size) might be more efficient. Data would be needed to see what
+    // kind of performance benefit, if any, could be gained. At the very least,
+    // specify the block size of the underlying device. Without this, UFS cards
+    // with 4k sector size will fail to mount.
+    if (GetPhysicalBlockSize(source, &blksize) && blksize > 0)
+      fuse_mount_options.append(base::StringPrintf(",blksize=%d", blksize));
+
+    LOG(INFO) << "Source file " << source << " is a block device, block size "
+              << blksize;
+
     fuse_type = "fuseblk";
   }
   if (!filesystem_type.empty()) {
