@@ -60,6 +60,9 @@ constexpr char kIsoDir[] = "/iso";
 // How long to wait before timing out on child process exits.
 constexpr base::TimeDelta kChildExitTimeout = base::TimeDelta::FromSeconds(10);
 
+// The CPU cgroup where all the PluginVm crosvm processes should belong to.
+constexpr char kPluginVmCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/tasks";
+
 }  // namespace
 
 // static
@@ -613,9 +616,11 @@ bool PluginVm::Start(uint32_t cpus,
     process_.AddArg(std::move(param));
   }
 
-  // Change the process group before exec so that crosvm sending SIGKILL to
-  // the whole process group doesn't kill us as well.
-  process_.SetPreExecCallback(base::Bind(&SetPgid));
+  // Change the process group before exec so that crosvm sending SIGKILL to the
+  // whole process group doesn't kill us as well. The function also changes the
+  // cpu cgroup for PluginVm crosvm processes.
+  process_.SetPreExecCallback(
+      base::Bind(&SetUpCrosvmProcess, base::FilePath(kPluginVmCpuCgroup)));
 
   if (!process_.Start()) {
     LOG(ERROR) << "Failed to start VM process";

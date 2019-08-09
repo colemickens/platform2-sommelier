@@ -63,6 +63,9 @@ constexpr size_t kHostAddressOffset = 0;
 // Offset in a subnet of the client/guest.
 constexpr size_t kGuestAddressOffset = 1;
 
+// The CPU cgroup where all the Termina crosvm processes should belong to.
+constexpr char kTerminaCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/tasks";
+
 }  // namespace
 
 TerminaVm::TerminaVm(
@@ -169,8 +172,10 @@ bool TerminaVm::Start(base::FilePath kernel,
   }
 
   // Change the process group before exec so that crosvm sending SIGKILL to the
-  // whole process group doesn't kill us as well.
-  process_.SetPreExecCallback(base::Bind(&SetPgid));
+  // whole process group doesn't kill us as well. The function also changes the
+  // cpu cgroup for Termina crosvm processes.
+  process_.SetPreExecCallback(
+      base::Bind(&SetUpCrosvmProcess, base::FilePath(kTerminaCpuCgroup)));
 
   // Redirect STDOUT to a pipe.
   process_.RedirectUsingPipe(STDOUT_FILENO, false /* is_input */);
