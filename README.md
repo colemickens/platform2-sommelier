@@ -96,6 +96,7 @@ copies.
 | [policy_utils](./policy_utils/) | Tools and related library to set or override device policies |
 | [portier](./portier/) | Multi-Network Neighbor Discovery Proxy service for Chrome OS |
 | [power_manager](./power_manager/) | Userspace power management daemon and associated tools |
+| [print_tools](./print_tools/) | Various tools related to the native printing system |
 | [qmi2cpp](./qmi2cpp/) | Chrome OS QMI IDL Compiler |
 | [regions](./regions/) ||
 | [rendernodehost](./rendernodehost/)| Render node forward library |
