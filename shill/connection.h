@@ -31,38 +31,6 @@ class RoutingTable;
 // the IP address, routing table and DNS table entries.
 class Connection : public base::RefCounted<Connection> {
  public:
-  // Clients can instantiate and use Binder to bind to a Connection and get
-  // notified when the bound Connection disconnects. Note that the client's
-  // disconnect callback will be executed at most once, and only if the bound
-  // Connection is destroyed or signals disconnect. The Binder unbinds itself
-  // from the underlying Connection when the Binder instance is destructed.
-  class Binder {
-   public:
-    Binder(const std::string& name, const base::Closure& disconnect_callback);
-    ~Binder();
-
-    // Binds to |to_connection|. Unbinds the previous bound connection, if
-    // any. Pass nullptr to just unbind this Binder.
-    void Attach(const ConnectionRefPtr& to_connection);
-
-    const std::string& name() const { return name_; }
-    bool IsBound() const { return connection_ != nullptr; }
-    ConnectionRefPtr connection() const { return connection_.get(); }
-
-   private:
-    friend class Connection;
-    FRIEND_TEST(ConnectionTest, Binder);
-
-    // Invoked by |connection_|.
-    void OnDisconnect();
-
-    const std::string name_;
-    base::WeakPtr<Connection> connection_;
-    const base::Closure client_disconnect_callback_;
-
-    DISALLOW_COPY_AND_ASSIGN(Binder);
-  };
-
   // The routing metric used for the default service, whether physical or VPN.
   static const uint32_t kDefaultMetric;
   // The lowest piority metric value that is still valid.
@@ -163,8 +131,6 @@ class Connection : public base::RefCounted<Connection> {
 
  private:
   friend class ConnectionTest;
-  FRIEND_TEST(ConnectionTest, Binder);
-  FRIEND_TEST(ConnectionTest, Binders);
   FRIEND_TEST(ConnectionTest, FixGatewayReachability);
   FRIEND_TEST(ConnectionTest, InitState);
   FRIEND_TEST(VPNServiceTest, OnConnectionDisconnected);
@@ -179,10 +145,6 @@ class Connection : public base::RefCounted<Connection> {
   bool SetupExcludedRoutes(const IPConfig::Properties& properties,
                            const IPAddress& gateway);
   void SetMTU(int32_t mtu);
-
-  void AttachBinder(Binder* binder);
-  void DetachBinder(Binder* binder);
-  void NotifyBindersOnDisconnect();
 
   // Send our DNS configuration to the resolver.
   void PushDNSConfig();
@@ -228,9 +190,6 @@ class Connection : public base::RefCounted<Connection> {
   // This property is set by a service as it takes ownership of a connection,
   // and is read by services that are bound through this connection.
   std::string tethering_;
-
-  // Binders to clients -- usually to related services and devices.
-  std::deque<Binder*> binders_;
 
   // Store cached copies of singletons for speed/ease of testing
   const DeviceInfo* device_info_;

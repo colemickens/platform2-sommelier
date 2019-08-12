@@ -251,11 +251,8 @@ TEST_F(VPNServiceTest, EnableAndRetainAutoConnect) {
 }
 
 TEST_F(VPNServiceTest, SetConnection) {
-  EXPECT_EQ(nullptr, service_->connection_binder_);
   EXPECT_FALSE(service_->connection());
   service_->SetConnection(connection_);
-  ASSERT_NE(nullptr, service_->connection_binder_);
-  EXPECT_EQ(connection_, service_->connection_binder_->connection());
   EXPECT_EQ(connection_, service_->connection());
   EXPECT_CALL(*driver_, OnConnectionDisconnected()).Times(0);
 }
@@ -263,7 +260,7 @@ TEST_F(VPNServiceTest, SetConnection) {
 TEST_F(VPNServiceTest, OnConnectionDisconnected) {
   service_->SetConnection(connection_);
   EXPECT_CALL(*driver_, OnConnectionDisconnected()).Times(1);
-  connection_->NotifyBindersOnDisconnect();
+  service_->SetConnection(nullptr);
 }
 
 TEST_F(VPNServiceTest, IsAutoConnectableOffline) {

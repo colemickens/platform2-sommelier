@@ -48,39 +48,6 @@ const uint32_t Connection::kLowestPriorityMetric =
 // static
 const uint32_t Connection::kMetricIncrement = 10;
 
-Connection::Binder::Binder(const string& name,
-                           const base::Closure& disconnect_callback)
-    : name_(name), client_disconnect_callback_(disconnect_callback) {}
-
-Connection::Binder::~Binder() {
-  Attach(nullptr);
-}
-
-void Connection::Binder::Attach(const ConnectionRefPtr& to_connection) {
-  if (connection_) {
-    connection_->DetachBinder(this);
-    LOG(INFO) << name_
-              << ": unbound from connection: " << connection_->interface_name();
-    connection_.reset();
-  }
-  if (to_connection) {
-    connection_ = to_connection->weak_ptr_factory_.GetWeakPtr();
-    connection_->AttachBinder(this);
-    LOG(INFO) << name_
-              << ": bound to connection: " << connection_->interface_name();
-  }
-}
-
-void Connection::Binder::OnDisconnect() {
-  LOG(INFO) << name_ << ": bound connection disconnected: "
-            << connection_->interface_name();
-  connection_.reset();
-  if (!client_disconnect_callback_.is_null()) {
-    SLOG(connection_.get(), 2) << "Running client disconnect callback.";
-    client_disconnect_callback_.Run();
-  }
-}
-
 Connection::Connection(int interface_index,
                        const std::string& interface_name,
                        bool fixed_ip_params,
@@ -114,8 +81,6 @@ Connection::Connection(int interface_index,
 
 Connection::~Connection() {
   SLOG(this, 2) << __func__ << " " << interface_name_;
-
-  NotifyBindersOnDisconnect();
 
   DCHECK(!routing_request_count_);
   routing_table_->FlushRoutes(interface_index_);
@@ -598,36 +563,6 @@ void Connection::SetMTU(int32_t mtu) {
   }
 
   rtnl_handler_->SetInterfaceMTU(interface_index_, mtu);
-}
-
-void Connection::NotifyBindersOnDisconnect() {
-  // Note that this method may be invoked by the destructor.
-  SLOG(this, 2) << __func__ << " @ " << interface_name_;
-
-  while (!binders_.empty()) {
-    // Pop the binder first and then notify it to ensure that each binder is
-    // notified only once.
-    Binder* binder = binders_.front();
-    binders_.pop_front();
-    binder->OnDisconnect();
-  }
-}
-
-void Connection::AttachBinder(Binder* binder) {
-  SLOG(this, 2) << __func__ << "(" << binder->name() << ")"
-                << " @ " << interface_name_;
-  binders_.push_back(binder);
-}
-
-void Connection::DetachBinder(Binder* binder) {
-  SLOG(this, 2) << __func__ << "(" << binder->name() << ")"
-                << " @ " << interface_name_;
-  for (auto it = binders_.begin(); it != binders_.end(); ++it) {
-    if (binder == *it) {
-      binders_.erase(it);
-      return;
-    }
-  }
 }
 
 bool Connection::IsIPv6() {

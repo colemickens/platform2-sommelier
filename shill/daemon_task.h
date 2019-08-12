@@ -97,10 +97,6 @@ class DaemonTask {
   Settings settings_;
   Config* config_;
   std::unique_ptr<EventDispatcher> dispatcher_;
-  // IMPORTANT: |control_| must declared before |manager_|, since the adaptors
-  // that Manager and some of its members (e.g. Device) own might hold raw
-  // pointers to |control_|. This is currently the case when Binder adaptors are
-  // used.
   std::unique_ptr<ControlInterface> control_;
   std::unique_ptr<Metrics> metrics_;
   RTNLHandler* rtnl_handler_;

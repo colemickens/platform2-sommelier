@@ -11,7 +11,6 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/callbacks.h"
-#include "shill/connection.h"
 #include "shill/service.h"
 
 namespace shill {
@@ -75,7 +74,6 @@ class VPNService : public Service {
 
   std::string storage_id_;
   std::unique_ptr<VPNDriver> driver_;
-  std::unique_ptr<Connection::Binder> connection_binder_;
 
   DISALLOW_COPY_AND_ASSIGN(VPNService);
 };

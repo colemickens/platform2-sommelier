@@ -10,6 +10,7 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/connection.h"
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -148,24 +149,9 @@ void VPNService::EnableAndRetainAutoConnect() {
 }
 
 void VPNService::SetConnection(const ConnectionRefPtr& connection) {
-  // Construct the connection binder here rather than in the constructor because
-  // there's really no reason to construct a binder if we never connect to this
-  // service. It's safe to use an unretained callback to driver's method because
-  // both the binder and the driver will be destroyed when this service is
-  // destructed.
-  if (!connection_binder_) {
-    connection_binder_.reset(
-        new Connection::Binder(unique_name(),
-                               Bind(&VPNDriver::OnConnectionDisconnected,
-                                    Unretained(driver_.get()))));
+  if (!connection) {
+    driver_->OnConnectionDisconnected();
   }
-  // Note that |connection_| is a reference-counted pointer and is always set
-  // through this method. This means that the connection binder will not be
-  // notified when the connection is destructed (because we will unbind it first
-  // here when it's set to NULL, or because the binder will already be destroyed
-  // by ~VPNService) -- it will be notified only if the connection disconnects
-  // (e.g., because an underlying connection is destructed).
-  connection_binder_->Attach(connection);
   Service::SetConnection(connection);
 }
 
