@@ -87,12 +87,6 @@ int main(int argc, char* argv[]) {
   tpm_manager::LocalDataMigrator migrator;
   bool has_migrated;
   std::unique_ptr<tpmcrypto::Tpm> tpm = tpmcrypto::CreateTpmInstance();
-  if (!migrator.MigrateAuthDelegateIfNeeded(database_path, tpm.get(),
-                                            &local_data, &has_migrated)) {
-    LOG(ERROR) << "Failed to migrate owner delegate.";
-    return 1;
-  }
-  bool is_local_data_updated = has_migrated;
   if (!migrator.MigrateOwnerPasswordIfNeeded(tpm_status_path, tpm.get(),
                                              &local_data, &has_migrated)) {
     LOG(ERROR) << "Failed to migrate owner password.";
@@ -102,6 +96,15 @@ int main(int argc, char* argv[]) {
     for (auto value : tpm_manager::kInitialTpmOwnerDependencies) {
       local_data.add_owner_dependency(value);
     }
+  }
+  bool is_local_data_updated = has_migrated;
+  // Migrates the delegate only when the owner password is absent; tpm_managerd
+  // will re-create the delegate in this case.
+  if (local_data.owner_password().empty() &&
+      !migrator.MigrateAuthDelegateIfNeeded(database_path, tpm.get(),
+                                            &local_data, &has_migrated)) {
+    LOG(ERROR) << "Failed to migrate owner delegate.";
+    return 1;
   }
   is_local_data_updated |= has_migrated;
 
