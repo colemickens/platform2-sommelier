@@ -291,5 +291,31 @@ bool Container::AppSearch(const std::string& query,
   return true;
 }
 
+vm_tools::container::ApplyAnsiblePlaybookResponse::Status
+Container::ApplyAnsiblePlaybook(const std::string& playbook,
+                                std::string* out_error) {
+  vm_tools::container::ApplyAnsiblePlaybookRequest container_request;
+  vm_tools::container::ApplyAnsiblePlaybookResponse container_response;
+  container_request.set_playbook(playbook);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status = garcon_stub_->ApplyAnsiblePlaybook(
+      &ctx, container_request, &container_response);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to apply Ansible playbook to container " << name_
+               << ": " << status.error_message()
+               << " code: " << status.error_code();
+    out_error->assign("gRPC failure applying Ansible playbook to container: " +
+                      status.error_message());
+    return vm_tools::container::ApplyAnsiblePlaybookResponse::FAILED;
+  }
+  out_error->assign(container_response.failure_reason());
+  return container_response.status();
+}
+
 }  // namespace cicerone
 }  // namespace vm_tools

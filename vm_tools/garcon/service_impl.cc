@@ -421,6 +421,58 @@ bool Spawn(std::vector<std::string> argv,
   return retval;
 }
 
+bool ExecuteAnsiblePlaybook(const base::FilePath& ansible_playbook_file_path,
+                            std::string* error_msg) {
+  std::vector<std::string> argv{
+      "ansible-playbook", "--become",   "--connection=local",
+      "--inventory",      "127.0.0.1,", ansible_playbook_file_path.value()};
+
+  // TODO(okalitova): Pipe stderr/stdout from child process and report progress.
+  if (!Spawn(std::move(argv), {}, "")) {
+    *error_msg = "Failed to spawn ansible-playbook";
+    return false;
+  }
+  return true;
+}
+
+base::FilePath CreateAnsiblePlaybookFile(const std::string& playbook,
+                                         std::string* error_msg) {
+  const base::FilePath ansible_dir = base::GetHomeDir().Append(".ansible");
+  if (!base::PathExists(ansible_dir)) {
+    LOG(ERROR) << "Directory " << ansible_dir.value() << " does not exist, "
+               << "maybe Ansible should be installed?";
+    *error_msg = "Directory " + ansible_dir.value() + " does not exist";
+    return base::FilePath();
+  }
+
+  const base::FilePath ansible_playbook_file_path =
+      ansible_dir.Append("playbook.yaml");
+  base::File ansible_playbook_file(
+      ansible_playbook_file_path,
+      base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
+
+  LOG(INFO) << "Starting creating file for Ansible playbook";
+
+  if (!ansible_playbook_file.created()) {
+    *error_msg = "Failed to create file for Ansible playbook";
+    return base::FilePath();
+  }
+  if (!ansible_playbook_file.IsValid()) {
+    *error_msg = "Failed to create valid file for Ansible playbook";
+    return base::FilePath();
+  }
+
+  int bytes = ansible_playbook_file.WriteAtCurrentPos(playbook.c_str(),
+                                                      playbook.length());
+
+  if (bytes != playbook.length()) {
+    *error_msg = "Failed to write Ansible playbook content to file";
+    return base::FilePath();
+  }
+
+  return ansible_playbook_file_path;
+}
+
 }  // namespace
 
 ServiceImpl::ServiceImpl(PackageKitProxy* package_kit_proxy)
@@ -771,6 +823,49 @@ grpc::Status ServiceImpl::ConnectChunnel(
     response->set_success(true);
   }
 
+  return grpc::Status::OK;
+}
+
+grpc::Status ServiceImpl::ApplyAnsiblePlaybook(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::ApplyAnsiblePlaybookRequest* request,
+    vm_tools::container::ApplyAnsiblePlaybookResponse* response) {
+  LOG(INFO) << "Received request to apply Ansible playbook";
+  if (request->playbook().empty()) {
+    return grpc::Status(grpc::INVALID_ARGUMENT, "playbook cannot be empty");
+  }
+
+  std::string error_msg;
+  base::FilePath ansible_playbook_file_path =
+      CreateAnsiblePlaybookFile(request->playbook(), &error_msg);
+
+  if (ansible_playbook_file_path.empty()) {
+    LOG(ERROR) << "Failed to create valid file with Ansible playbook, "
+               << "error: " << error_msg;
+    response->set_status(
+        vm_tools::container::ApplyAnsiblePlaybookResponse::FAILED);
+    response->set_failure_reason(error_msg);
+    return grpc::Status::OK;
+  }
+
+  LOG(INFO) << "Ansible playbook file created at "
+            << ansible_playbook_file_path.value();
+
+  LOG(INFO) << "Starting applying Ansible playbook...";
+  bool success = ExecuteAnsiblePlaybook(ansible_playbook_file_path, &error_msg);
+
+  if (!success) {
+    LOG(ERROR) << "Failed to create valid file with Ansible playbook, "
+               << "error: " << error_msg;
+    response->set_status(
+        vm_tools::container::ApplyAnsiblePlaybookResponse::FAILED);
+    response->set_failure_reason(error_msg);
+    return grpc::Status::OK;
+  }
+
+  LOG(INFO) << "Started Ansible playbook application";
+  response->set_status(
+      vm_tools::container::ApplyAnsiblePlaybookResponse::STARTED);
   return grpc::Status::OK;
 }
 

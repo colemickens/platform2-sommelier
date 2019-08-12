@@ -65,6 +65,7 @@ class ServiceTestingHelper {
     kCancelExportLxdContainer,
     kCancelImportLxdContainer,
     kGetDebugInformation,
+    kApplyAnsiblePlaybook,
 
     kNumDbusCalls
   };

@@ -239,6 +239,31 @@ message ConnectChunnelResponse {
   string failure_reason = 2;
 }
 
+// Request protobuf for applying Ansible playbook.
+message ApplyAnsiblePlaybookRequest {
+  // Ansible playbook to be applied.
+  string playbook = 1;
+}
+
+// Response sent back from a request to apply Ansible playbook.
+message ApplyAnsiblePlaybookResponse {
+  enum Status {
+    UNKNOWN = 0;
+
+    // Application process was successfully started, all further updates will be
+    // sent via the ApplyAnsiblePlaybookProgress signal.
+    STARTED = 1;
+
+    // Failed to start up for a general reason, specific details are given in
+    // failure_reason.
+    FAILED = 2;
+  }
+  Status status = 1;
+
+  // Contains a textual reason for the failure in case of a FAILED status.
+  string failure_reason = 2;
+}
+
 // Implemented by garcon inside of the container.
 service Garcon {
   // Called to launch an application in a container.
@@ -273,4 +298,8 @@ service Garcon {
 
   // Connects to chunnel to forward traffic to localhost.
   rpc ConnectChunnel(ConnectChunnelRequest) returns (ConnectChunnelResponse);
+
+  // Apply Ansible playbook to the container.
+  rpc ApplyAnsiblePlaybook(ApplyAnsiblePlaybookRequest)
+      returns (ApplyAnsiblePlaybookResponse);
 }

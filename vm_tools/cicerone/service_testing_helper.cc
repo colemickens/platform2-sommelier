@@ -501,6 +501,8 @@ void ServiceTestingHelper::SetDbusCallbackNames() {
       kCancelImportLxdContainerMethod;
   dbus_callbacks_[kGetDebugInformation].method_name =
       kGetDebugInformationMethod;
+  dbus_callbacks_[kApplyAnsiblePlaybook].method_name =
+      kApplyAnsiblePlaybookMethod;
 
   // Check we didn't forget any.
   for (const auto& callback_info : dbus_callbacks_) {

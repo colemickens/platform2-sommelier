@@ -70,6 +70,11 @@ class ServiceImpl final : public vm_tools::container::Garcon::Service {
       const vm_tools::container::ConnectChunnelRequest* request,
       vm_tools::container::ConnectChunnelResponse* response) override;
 
+  grpc::Status ApplyAnsiblePlaybook(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::ApplyAnsiblePlaybookRequest* request,
+      vm_tools::container::ApplyAnsiblePlaybookResponse* response) override;
+
  private:
   PackageKitProxy* package_kit_proxy_;  // Not owned.
   // Stores the names of packages that match search constraints

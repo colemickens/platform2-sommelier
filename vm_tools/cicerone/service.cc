@@ -1219,6 +1219,7 @@ bool Service::Init(
       {kCancelImportLxdContainerMethod, &Service::CancelImportLxdContainer},
       {kGetDebugInformationMethod, &Service::GetDebugInformation},
       {kAppSearchMethod, &Service::AppSearch},
+      {kApplyAnsiblePlaybookMethod, &Service::ApplyAnsiblePlaybook},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -2603,6 +2604,73 @@ std::unique_ptr<dbus::Response> Service::AppSearch(
     package->set_package_name(package_name);
   }
 
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::ApplyAnsiblePlaybook(
+    dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received ApplyAnsiblePlaybook request";
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  ApplyAnsiblePlaybookRequest request;
+  ApplyAnsiblePlaybookResponse response;
+  response.set_status(ApplyAnsiblePlaybookResponse::FAILED);
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse ApplyAnsiblePlaybookRequest from message";
+    response.set_failure_reason("Unable to parse request protobuf");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  if (request.playbook().empty()) {
+    LOG(ERROR) << "Playbook is not set in request";
+    response.set_failure_reason("Playbook is not set in request");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_failure_reason("Requested VM does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  std::string container_name = request.container_name().empty()
+                                   ? kDefaultContainerName
+                                   : request.container_name();
+  Container* container = vm->GetContainerForName(container_name);
+  if (!container) {
+    LOG(ERROR) << "Requested container does not exist: " << container_name;
+    response.set_failure_reason(base::StringPrintf(
+        "requested container does not exist: %s", container_name.c_str()));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string error_msg;
+  vm_tools::container::ApplyAnsiblePlaybookResponse::Status status =
+      container->ApplyAnsiblePlaybook(request.playbook(), &error_msg);
+  response.set_failure_reason(error_msg);
+  switch (status) {
+    case vm_tools::container::ApplyAnsiblePlaybookResponse::STARTED:
+      response.set_status(ApplyAnsiblePlaybookResponse::STARTED);
+      break;
+    case vm_tools::container::ApplyAnsiblePlaybookResponse::FAILED:
+      response.set_status(ApplyAnsiblePlaybookResponse::FAILED);
+      break;
+    default:
+      LOG(ERROR) << "Unknown ApplyAnsiblePlaybookResponse Status " << status;
+      response.set_failure_reason(
+          "Unknown ApplyAnsiblePlaybookResponse Status from container");
+      response.set_status(ApplyAnsiblePlaybookResponse::FAILED);
+      break;
+  }
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }

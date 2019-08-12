@@ -106,6 +106,9 @@ class Container {
                  std::vector<std::string>* out_package_names,
                  std::string* out_error);
 
+  vm_tools::container::ApplyAnsiblePlaybookResponse::Status
+  ApplyAnsiblePlaybook(const std::string& playbook, std::string* out_error);
+
  private:
   std::string name_;
   std::string token_;
