@@ -81,14 +81,19 @@ bool Tpm2Impl::SoftClearOwner(const std::string& auth_for_owner_reset) {
       trunks_factory_->GetPasswordAuthorization(auth_for_owner_reset));
 
   std::string lockout_handle_name;
-  trunks::Serialize_TPM_HANDLE(trunks::TPM_RH_LOCKOUT, &lockout_handle_name);
+  trunks::TPM_RC result = trunks::Serialize_TPM_HANDLE(
+      trunks::TPM_RH_LOCKOUT, &lockout_handle_name);
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": failed to serialize TPM lockout handle: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
 
-  trunks::TPM_RC result = trunks_factory_->GetTpm()->ClearSync(
+  result = trunks_factory_->GetTpm()->ClearSync(
       trunks::TPM_RH_LOCKOUT,
       lockout_handle_name,
       lockout_password_delegate.get());
-
-  if (result) {
+  if (result != trunks::TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": failed to clear the TPM: "
                << trunks::GetErrorString(result);
     return false;

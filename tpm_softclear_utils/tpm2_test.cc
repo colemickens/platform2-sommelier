@@ -4,11 +4,11 @@
 
 #include "tpm_softclear_utils/tpm2_impl.h"
 
-#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/optional.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
@@ -81,12 +81,8 @@ class Tpm2ImplTest : public testing::Test {
 
     ON_CALL(mock_tpm_state_, Initialize())
         .WillByDefault(Return(trunks::TPM_RC_SUCCESS));
-    ON_CALL(mock_tpm_, ClearSync(_, _, _))
-        .WillByDefault(Return(trunks::TPM_RC_SUCCESS));
 
-    tpm2_impl_.reset(new Tpm2ImplFakeFileUtils());
-    tpm2_impl_->set_trunks_factory(&trunks_factory_);
-    used_lockout_passwords_.clear();
+    tpm2_impl_.set_trunks_factory(&trunks_factory_);
   }
 
  protected:
@@ -94,7 +90,7 @@ class Tpm2ImplTest : public testing::Test {
   NiceMock<trunks::MockTpmState> mock_tpm_state_;
   trunks::TrunksFactoryForTest trunks_factory_;
 
-  std::unique_ptr<Tpm2ImplFakeFileUtils> tpm2_impl_;
+  Tpm2ImplFakeFileUtils tpm2_impl_;
   std::vector<std::string> used_lockout_passwords_;
 };
 
@@ -104,28 +100,32 @@ TEST_F(Tpm2ImplTest, GetLockoutPasswordFromFile) {
   std::string expected_lockout_password = "12345";
   tpm_manager::LocalData local_data;
   local_data.set_lockout_password(expected_lockout_password);
-  tpm2_impl_->set_local_data_content(local_data.SerializeAsString());
+  tpm2_impl_.set_local_data_content(local_data.SerializeAsString());
 
-  std::string actual_lockout_password = *tpm2_impl_->GetAuthForOwnerReset();
-  EXPECT_EQ(actual_lockout_password, expected_lockout_password);
-  EXPECT_TRUE(tpm2_impl_->is_local_data_file_read());
+  base::Optional<std::string> actual_lockout_password =
+      tpm2_impl_.GetAuthForOwnerReset();
+  EXPECT_TRUE(actual_lockout_password);
+  EXPECT_EQ(*actual_lockout_password, expected_lockout_password);
+  EXPECT_TRUE(tpm2_impl_.is_local_data_file_read());
 }
 
 TEST_F(Tpm2ImplTest, GetDefaultLockoutPassword) {
   EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet()).WillOnce(Return(false));
 
-  std::string actual_lockout_password = *tpm2_impl_->GetAuthForOwnerReset();
-  EXPECT_EQ(actual_lockout_password, kDefaultLockoutPassword);
-  EXPECT_FALSE(tpm2_impl_->is_local_data_file_read());
+  base::Optional<std::string> actual_lockout_password =
+      tpm2_impl_.GetAuthForOwnerReset();
+  EXPECT_TRUE(actual_lockout_password);
+  EXPECT_EQ(*actual_lockout_password, kDefaultLockoutPassword);
+  EXPECT_FALSE(tpm2_impl_.is_local_data_file_read());
 }
 
 TEST_F(Tpm2ImplTest, GetLockoutPasswordUninitializedTrunksFactory) {
-  tpm2_impl_->set_trunks_factory(nullptr);
+  tpm2_impl_.set_trunks_factory(nullptr);
 
   EXPECT_CALL(mock_tpm_state_, Initialize()).Times(0);
 
-  EXPECT_TRUE(!tpm2_impl_->GetAuthForOwnerReset());
-  EXPECT_FALSE(tpm2_impl_->is_local_data_file_read());
+  EXPECT_FALSE(tpm2_impl_.GetAuthForOwnerReset());
+  EXPECT_FALSE(tpm2_impl_.is_local_data_file_read());
 }
 
 TEST_F(Tpm2ImplTest, GetLockoutPasswordTpmStateError) {
@@ -133,8 +133,8 @@ TEST_F(Tpm2ImplTest, GetLockoutPasswordTpmStateError) {
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
   EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet()).Times(0);
 
-  EXPECT_TRUE(!tpm2_impl_->GetAuthForOwnerReset());
-  EXPECT_FALSE(tpm2_impl_->is_local_data_file_read());
+  EXPECT_FALSE(tpm2_impl_.GetAuthForOwnerReset());
+  EXPECT_FALSE(tpm2_impl_.is_local_data_file_read());
 }
 
 TEST_F(Tpm2ImplTest, GetLockoutPasswordReadFileError) {
@@ -142,20 +142,20 @@ TEST_F(Tpm2ImplTest, GetLockoutPasswordReadFileError) {
 
   tpm_manager::LocalData local_data;
   local_data.set_lockout_password("12345");
-  tpm2_impl_->set_local_data_content(local_data.SerializeAsString());
-  tpm2_impl_->set_is_reading_file_successful(false);
+  tpm2_impl_.set_local_data_content(local_data.SerializeAsString());
+  tpm2_impl_.set_is_reading_file_successful(false);
 
-  EXPECT_TRUE(!tpm2_impl_->GetAuthForOwnerReset());
-  EXPECT_TRUE(tpm2_impl_->is_local_data_file_read());
+  EXPECT_FALSE(tpm2_impl_.GetAuthForOwnerReset());
+  EXPECT_TRUE(tpm2_impl_.is_local_data_file_read());
 }
 
 TEST_F(Tpm2ImplTest, GetLockoutPasswordParseFileError) {
   EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet()).WillOnce(Return(true));
 
-  tpm2_impl_->set_local_data_content("nonsense");
+  tpm2_impl_.set_local_data_content("nonsense");
 
-  EXPECT_TRUE(!tpm2_impl_->GetAuthForOwnerReset());
-  EXPECT_TRUE(tpm2_impl_->is_local_data_file_read());
+  EXPECT_FALSE(tpm2_impl_.GetAuthForOwnerReset());
+  EXPECT_TRUE(tpm2_impl_.is_local_data_file_read());
 }
 
 TEST_F(Tpm2ImplTest, ClearTpmSuccess) {
@@ -167,24 +167,24 @@ TEST_F(Tpm2ImplTest, ClearTpmSuccess) {
                                    _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  std::string expected_password = "12345";
-  EXPECT_TRUE(tpm2_impl_->SoftClearOwner(expected_password));
+  const std::string expected_password = "12345";
+  EXPECT_TRUE(tpm2_impl_.SoftClearOwner(expected_password));
   EXPECT_THAT(used_lockout_passwords_, ElementsAreArray({expected_password}));
 }
 
 TEST_F(Tpm2ImplTest, ClearTpmUninitializedTrunksFactory) {
-  tpm2_impl_->set_trunks_factory(nullptr);
+  tpm2_impl_.set_trunks_factory(nullptr);
 
   EXPECT_CALL(mock_tpm_, ClearSync(_, _, _)).Times(0);
 
-  EXPECT_FALSE(tpm2_impl_->SoftClearOwner("12345"));
+  EXPECT_FALSE(tpm2_impl_.SoftClearOwner("12345"));
 }
 
 TEST_F(Tpm2ImplTest, ClearTpmFailure) {
   EXPECT_CALL(mock_tpm_, ClearSync(_, _, _))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
 
-  EXPECT_FALSE(tpm2_impl_->SoftClearOwner("12345"));
+  EXPECT_FALSE(tpm2_impl_.SoftClearOwner("12345"));
 }
 
 }  // namespace tpm_softclear_utils
