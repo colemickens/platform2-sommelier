@@ -383,6 +383,122 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
   EXPECT_FALSE(result.value());
 }
 
+// --------- TpmAttestationGetEnrollmentPreparationsEx Related Tests ---------
+TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
+       TpmAttestationGetEnrollmentPreparationsExSuccess) {
+  attestation::GetEnrollmentPreparationsRequest proxied_request;
+  EXPECT_CALL(attestation_, GetEnrollmentPreparationsAsync(_, _, _, _))
+      .WillOnce(DoAll(
+          SaveArg<0>(&proxied_request),
+          Invoke([](const attestation::GetEnrollmentPreparationsRequest&
+                        in_request,
+                    const base::Callback<void(
+                        const attestation::GetEnrollmentPreparationsReply&)>&
+                        success_callback,
+                    const base::Callback<void(brillo::Error*)>& error_callback,
+                    int timeout_ms) {
+            attestation::GetEnrollmentPreparationsReply proxied_reply;
+            proxied_reply.set_status(attestation::STATUS_SUCCESS);
+            (*proxied_reply.mutable_enrollment_preparations())[0] = true;
+            (*proxied_reply.mutable_enrollment_preparations())[1] = false;
+            success_callback.Run(proxied_reply);
+          })));
+
+  base::Optional<cryptohome::BaseReply> result;
+  std::unique_ptr<MockDBusMethodResponse<cryptohome::BaseReply>> response(
+      new MockDBusMethodResponse<cryptohome::BaseReply>(nullptr));
+  response->save_return_args(&result);
+
+  cryptohome::AttestationGetEnrollmentPreparationsRequest in_request;
+  in_request.set_pca_type(1);
+  adaptor_->TpmAttestationGetEnrollmentPreparationsEx(std::move(response),
+                                                      in_request);
+
+  // Verify that Return() is indeed called at least once.
+  ASSERT_TRUE(result.has_value());
+
+  // Verify response content.
+  EXPECT_EQ(result->error(), cryptohome::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_TRUE(
+      result->HasExtension(AttestationGetEnrollmentPreparationsReply::reply));
+  auto& ext =
+      result->GetExtension(AttestationGetEnrollmentPreparationsReply::reply);
+  EXPECT_EQ(ext.enrollment_preparations().size(), 2);
+  ASSERT_TRUE(ext.enrollment_preparations().contains(0));
+  EXPECT_TRUE(ext.enrollment_preparations().at(0));
+  ASSERT_TRUE(ext.enrollment_preparations().contains(1));
+  EXPECT_FALSE(ext.enrollment_preparations().at(1));
+
+  // Check that the proxied request have the right ACA
+  EXPECT_EQ(proxied_request.aca_type(), attestation::ACAType::TEST_ACA);
+}
+
+TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
+       TpmAttestationGetEnrollmentPreparationsExInvalidACA) {
+  // GetEnrollmentPreparationsAsync() shouldn't get called because the ACA
+  // specified is invalid.
+  EXPECT_CALL(attestation_, GetEnrollmentPreparationsAsync(_, _, _, _))
+      .Times(0);
+
+  base::Optional<cryptohome::BaseReply> result;
+  std::unique_ptr<MockDBusMethodResponse<cryptohome::BaseReply>> response(
+      new MockDBusMethodResponse<cryptohome::BaseReply>(nullptr));
+  response->save_return_args(&result);
+  EXPECT_CALL(
+      *response,
+      ReplyWithError(_, brillo::errors::dbus::kDomain, DBUS_ERROR_NOT_SUPPORTED,
+                     "Requested ACA type 99999 is not supported in "
+                     "TpmAttestationGetEnrollmentPreparationsEx()"))
+      .WillOnce(Return());
+  cryptohome::AttestationGetEnrollmentPreparationsRequest in_request;
+  in_request.set_pca_type(99999);
+  adaptor_->TpmAttestationGetEnrollmentPreparationsEx(std::move(response),
+                                                      in_request);
+
+  // Verify that Return() is not called
+  ASSERT_FALSE(result.has_value());
+}
+
+TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
+       TpmAttestationGetEnrollmentPreparationsExFailure) {
+  attestation::GetEnrollmentPreparationsRequest proxied_request;
+  EXPECT_CALL(attestation_, GetEnrollmentPreparationsAsync(_, _, _, _))
+      .WillOnce(DoAll(
+          SaveArg<0>(&proxied_request),
+          Invoke([](const attestation::GetEnrollmentPreparationsRequest&
+                        in_request,
+                    const base::Callback<void(
+                        const attestation::GetEnrollmentPreparationsReply&)>&
+                        success_callback,
+                    const base::Callback<void(brillo::Error*)>& error_callback,
+                    int timeout_ms) {
+            attestation::GetEnrollmentPreparationsReply proxied_reply;
+            proxied_reply.set_status(
+                attestation::STATUS_UNEXPECTED_DEVICE_ERROR);
+            success_callback.Run(proxied_reply);
+          })));
+
+  base::Optional<cryptohome::BaseReply> result;
+  std::unique_ptr<MockDBusMethodResponse<cryptohome::BaseReply>> response(
+      new MockDBusMethodResponse<cryptohome::BaseReply>(nullptr));
+  response->save_return_args(&result);
+
+  cryptohome::AttestationGetEnrollmentPreparationsRequest in_request;
+  in_request.set_pca_type(1);
+  adaptor_->TpmAttestationGetEnrollmentPreparationsEx(std::move(response),
+                                                      in_request);
+
+  // Verify that Return() is indeed called at least once.
+  ASSERT_TRUE(result.has_value());
+
+  // Verify response content.
+  EXPECT_EQ(result->error(),
+            cryptohome::CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
+
+  // Check that the proxied request have the right ACA
+  EXPECT_EQ(proxied_request.aca_type(), attestation::ACAType::TEST_ACA);
+}
+
 // ------------- TpmAttestationCreateEnrollRequest Related Tests -------------
 TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
        TpmAttestationCreateEnrollRequestSuccess) {
