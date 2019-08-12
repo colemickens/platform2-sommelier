@@ -211,24 +211,19 @@ class U2fDaemon : public brillo::Daemon {
 
     RegisterU2fDBusInterface();
 
-    std::string version;
     if (!tpm_proxy_.Init()) {
       LOG(ERROR) << "Failed to initialize D-Bus proxy with trunksd.";
       return EX_IOERR;
     }
     int rc = tpm_proxy_.SetU2fVendorMode(static_cast<uint8_t>(u2f_mode_));
-    if (!rc)
-      rc = tpm_proxy_.GetU2fVersion(&version);
     if (rc == u2f::kVendorRcNoSuchCommand) {
       LOG(WARNING) << "U2F Feature not available in firmware.";
       // Will exit gracefully as we don't want to re-spawn.
       return EX_UNAVAILABLE;
-    }
-    if (rc != 0) {
-      LOG(ERROR) << "Cannot get U2F version from TPM.";
+    } else if (rc) {
+      LOG(WARNING) << "Error setting U2F Vendor Mode: " << rc;
       return EX_PROTOCOL;
     }
-    LOG(INFO) << "version " << version;
 
     std::string vendor_sysinfo;
     if (u2f_mode_ == U2fMode::kU2fExtended)
