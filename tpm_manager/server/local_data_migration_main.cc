@@ -103,8 +103,7 @@ int main(int argc, char* argv[]) {
   if (local_data.owner_password().empty() &&
       !migrator.MigrateAuthDelegateIfNeeded(database_path, tpm.get(),
                                             &local_data, &has_migrated)) {
-    LOG(ERROR) << "Failed to migrate owner delegate.";
-    return 1;
+    LOG(WARNING) << "Failed to migrate owner delegate.";
   }
   is_local_data_updated |= has_migrated;
 
