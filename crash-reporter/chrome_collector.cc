@@ -304,8 +304,11 @@ std::map<std::string, base::FilePath> ChromeCollector::GetAdditionalLogs(
 bool ChromeCollector::GetDriErrorState(const FilePath& error_state_path) {
   brillo::ErrorPtr error;
   std::string error_state_str;
-
-  debugd_proxy_->GetLog("i915_error_state", &error_state_str, &error);
+  // Chrome has a 12 second timeout for crash_reporter to execute when it
+  // invokes it, so use a 5 second timeout here on our D-Bus call.
+  constexpr int kDebugdGetLogTimeoutMsec = 5000;
+  debugd_proxy_->GetLog("i915_error_state", &error_state_str, &error,
+                        kDebugdGetLogTimeoutMsec);
 
   if (error) {
     LOG(ERROR) << "Error calling D-Bus proxy call to interface "
