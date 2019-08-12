@@ -598,6 +598,16 @@ bool SessionManagerImpl::EnableChromeTesting(
   return true;
 }
 
+bool SessionManagerImpl::LoginScreenStorageListKeys(
+    brillo::ErrorPtr* error, std::vector<std::string>* out_keys) {
+  *out_keys = login_screen_storage_->ListKeys();
+  return true;
+}
+
+void SessionManagerImpl::LoginScreenStorageDelete(const std::string& in_key) {
+  login_screen_storage_->Delete(in_key);
+}
+
 bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
                                       const std::string& in_account_id,
                                       const std::string& in_unique_identifier) {

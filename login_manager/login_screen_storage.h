@@ -18,6 +18,12 @@
 
 namespace login_manager {
 
+class LoginScreenStorageIndex;
+
+// Name of the file that keeps an index of the currently stored keys, relative
+// to the |persistent_storage_path| passed to the |LoginScreenStorage|.
+extern const char kLoginScreenStorageIndexFilename[];
+
 // Provides an interface to store data from the login screen. It serves the two
 // following use-cases:
 // 1. Injecting user credentials from the login screen into the session. In this
@@ -40,8 +46,7 @@ class LoginScreenStorage {
   // is already present in the storage (either on disk or in memory), its
   // previous value is deleted. If |metadata.clear_on_session_exit| flag is set
   // to 'true', data is saved to the in-memory storage. Otherwise, data is
-  // stored on disk. Right now, no manual mechanism is provided for deleting
-  // values stored on disk. TODO(voit): We need to add a method for that.
+  // stored on disk.
   //
   // |value_fd| should contain a value to associate with |key|, preceeded by its
   // size as a |size_t| value in host byte-order. Values stored in memory will
@@ -62,6 +67,12 @@ class LoginScreenStorage {
                 const std::string& key,
                 brillo::dbus_utils::FileDescriptor* out_value_fd);
 
+  // Lists all keys currently stored in login screen storage.
+  std::vector<std::string> ListKeys();
+
+  // Deletes a previously stored key from the storage.
+  void Delete(const std::string& key);
+
   // Manually override a directory used for a persistent storage.
   void SetPersistentStoragePath(base::FilePath persistent_storage_path);
 
@@ -72,7 +83,14 @@ class LoginScreenStorage {
 
   // Removes a given key from both persistent and in-memory login screen
   // storages.
-  void RemoveKeyFromLoginScreenStorage(const std::string& key);
+  void RemoveKeyFromLoginScreenStorage(LoginScreenStorageIndex* index,
+                                       const std::string& key);
+
+  // Reads the index file with all stored keys from disk.
+  LoginScreenStorageIndex ReadIndexFromFile();
+
+  // Saves the index of currently stored keys on disk.
+  bool WriteIndexToFile(const LoginScreenStorageIndex& index);
 
   base::FilePath persistent_storage_path_;
   std::map<std::string, std::vector<uint8_t>> in_memory_storage_;

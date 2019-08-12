@@ -4,7 +4,9 @@
 
 #include "login_manager/login_screen_storage.h"
 
+#include <algorithm>
 #include <memory>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -12,7 +14,7 @@
 #include <brillo/errors/error.h>
 #include <gtest/gtest.h>
 
-#include "login_manager/proto_bindings/login_screen_storage.pb.h"
+#include "login_manager/login_screen_storage/login_screen_storage_index.pb.h"
 #include "login_manager/secret_util.h"
 
 namespace login_manager {
@@ -35,6 +37,23 @@ base::ScopedFD MakeValueFD(const std::string& value) {
   return secret_util::WriteSizeAndDataToPipe(kValueVector);
 }
 
+// Checks that two given lists of login screen storage keys are equal.
+bool KeyListsAreEqual(std::vector<std::string> lhs,
+                      std::vector<std::string> rhs) {
+  sort(lhs.begin(), lhs.end());
+  sort(rhs.begin(), rhs.end());
+  return lhs == rhs;
+}
+
+// Checks that a given instace of |LoginScreenStorageIndex| has a set of keys
+// equal to |expected_keys|.
+bool IndexKeysEqualTo(const LoginScreenStorageIndex& index,
+                      std::vector<std::string> expected_keys) {
+  auto keys = index.keys();
+  std::vector<std::string> keys_vec(keys.begin(), keys.end());
+  return KeyListsAreEqual(std::move(keys_vec), std::move(expected_keys));
+}
+
 }  // namespace
 
 class LoginScreenStorageTestBase : public ::testing::Test {
@@ -46,9 +65,25 @@ class LoginScreenStorageTestBase : public ::testing::Test {
   }
 
  protected:
-  base::FilePath GetKeyPath(const std::string& key) {
+  base::FilePath GetKeyPath(const std::string& key) const {
     return base::FilePath(storage_path_)
         .Append(secret_util::StringToSafeFilename(key));
+  }
+
+  base::FilePath GetIndexPath() const {
+    return base::FilePath(storage_path_)
+        .Append(kLoginScreenStorageIndexFilename);
+  }
+
+  LoginScreenStorageIndex LoadIndex() const {
+    const base::FilePath index_path = GetIndexPath();
+    EXPECT_TRUE(base::PathExists(index_path));
+
+    std::string index_blob;
+    LoginScreenStorageIndex index;
+    if (base::ReadFileToString(index_path, &index_blob))
+      index.ParseFromString(index_blob);
+    return index;
   }
 
   base::ScopedTempDir tmpdir_;
@@ -87,6 +122,20 @@ TEST_P(LoginScreenStorageTest, StoreRetrieve) {
 
   EXPECT_TRUE(secret_util::ReadSecretFromPipe(out_value_fd.get(), &value));
   EXPECT_EQ(kDifferentValue, std::string(value.begin(), value.end()));
+}
+
+TEST_P(LoginScreenStorageTest, CannotRetrieveDeletedKey) {
+  base::ScopedFD value_fd = MakeValueFD(kTestValue);
+
+  brillo::ErrorPtr error;
+  storage_->Store(&error, kTestKey, GetParam(), value_fd);
+  EXPECT_FALSE(error.get());
+
+  storage_->Delete(kTestKey);
+
+  brillo::dbus_utils::FileDescriptor out_value_fd;
+  storage_->Retrieve(&error, kTestKey, &out_value_fd);
+  EXPECT_TRUE(error.get());
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -131,6 +180,53 @@ TEST_F(LoginScreenStorageTestPeristent, StoreCreatesDirectoryIfNotExistant) {
 
   EXPECT_TRUE(base::DirectoryExists(storage_path_));
   EXPECT_TRUE(base::PathExists(GetKeyPath(kTestKey)));
+}
+
+TEST_F(LoginScreenStorageTestPeristent, OnlyStoredKeysAreListedInIndex) {
+  const std::string kDifferentTestKey = "different_test_key";
+  base::DeleteFile(storage_path_, /*recursive=*/true);
+  brillo::ErrorPtr error;
+
+  {
+    base::ScopedFD value_fd = MakeValueFD(kTestValue);
+    storage_->Store(&error, kTestKey,
+                    MakeMetadata(/*clear_on_session_exit=*/false), value_fd);
+    EXPECT_FALSE(error.get());
+    EXPECT_TRUE(KeyListsAreEqual(storage_->ListKeys(), {kTestKey}));
+    EXPECT_TRUE(IndexKeysEqualTo(LoadIndex(), {kTestKey}));
+  }
+
+  // Index contains both keys after adding a diffrent key/value pair.
+  {
+    base::ScopedFD value_fd = MakeValueFD(kTestValue);
+    storage_->Store(&error, kDifferentTestKey,
+                    MakeMetadata(/*clear_on_session_exit=*/false), value_fd);
+    EXPECT_FALSE(error.get());
+    EXPECT_TRUE(
+        KeyListsAreEqual(storage_->ListKeys(), {kTestKey, kDifferentTestKey}));
+    EXPECT_TRUE(IndexKeysEqualTo(LoadIndex(), {kTestKey, kDifferentTestKey}));
+  }
+
+  // Index doesn't contain a key after overwriting it with an in-memory value,
+  // but index still contains other keys.
+  {
+    base::ScopedFD value_fd = MakeValueFD(kTestValue);
+    storage_->Store(&error, kTestKey,
+                    MakeMetadata(/*clear_on_session_exit=*/true), value_fd);
+    EXPECT_FALSE(error.get());
+    // |kTestKey| should still be listed as a key, but shouldn't be present in
+    // index.
+    EXPECT_TRUE(
+        KeyListsAreEqual(storage_->ListKeys(), {kTestKey, kDifferentTestKey}));
+    EXPECT_TRUE(IndexKeysEqualTo(LoadIndex(), {kDifferentTestKey}));
+  }
+
+  // Index doesn't contain a key after deleting it.
+  {
+    storage_->Delete(kDifferentTestKey);
+    EXPECT_TRUE(KeyListsAreEqual(storage_->ListKeys(), {kTestKey}));
+    EXPECT_TRUE(IndexKeysEqualTo(LoadIndex(), {}));
+  }
 }
 
 }  // namespace login_manager

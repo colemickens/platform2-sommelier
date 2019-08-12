@@ -16,6 +16,10 @@
 namespace login_manager {
 namespace secret_util {
 
+// Maximum amount of data in bytes that can be sent through pipe using
+// |secret_util| methods.
+extern const size_t kSecretSizeLimit;
+
 // Creates a file descriptor pointing to a pipe that contains the given data.
 // The data size (of type |size_t|) will be inserted into the pipe first,
 // followed by the actual data. |size_t| value representation follows the host

@@ -17,11 +17,6 @@ namespace secret_util {
 
 namespace {
 
-// 64k of data, minus 64 bits for a preceding size. This number was chosen to
-// fit all the data in a single pipe buffer and avoid blocking on write.
-// (http://man7.org/linux/man-pages/man7/pipe.7.html)
-const size_t kDataSizeLimit = 1024 * 64 - sizeof(size_t);
-
 // Reads |data_size| from the file descriptor. Returns 'false' if it couldn't
 // read |data_size| or if |data_size| was incorrect.
 bool GetSecretDataSize(int in_secret_fd, size_t* data_size_out) {
@@ -31,7 +26,7 @@ bool GetSecretDataSize(int in_secret_fd, size_t* data_size_out) {
     return false;
   }
 
-  if (*data_size_out == 0 || *data_size_out > kDataSizeLimit) {
+  if (*data_size_out == 0 || *data_size_out > kSecretSizeLimit) {
     LOG(ERROR) << "Invalid data size read from file descriptor. Size read: "
                << *data_size_out;
     return false;
@@ -42,9 +37,14 @@ bool GetSecretDataSize(int in_secret_fd, size_t* data_size_out) {
 
 }  // namespace
 
+// 64k of data, minus 64 bits for a preceding size. This number was chosen to
+// fit all the data in a single pipe buffer and avoid blocking on write.
+// (http://man7.org/linux/man-pages/man7/pipe.7.html)
+const size_t kSecretSizeLimit = 1024 * 64 - sizeof(size_t);
+
 base::ScopedFD WriteSizeAndDataToPipe(const std::vector<uint8_t>& data) {
   size_t data_size = data.size();
-  CHECK_LE(data_size, kDataSizeLimit);
+  CHECK_LE(data_size, kSecretSizeLimit);
 
   int fds[2];
   base::CreateLocalNonBlockingPipe(fds);

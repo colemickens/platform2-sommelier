@@ -93,7 +93,7 @@
     </method>
 
     <!--
-        LoginScreenStore:
+        LoginScreenStorageStore:
         @key: Key to store a given value for.
         @metadata: Metadata specifying settings for a given key/value pair.
         @value_fd: File descriptor pointing at a pipe containing value to
@@ -114,7 +114,7 @@
     </method>
 
     <!--
-        LoginScreenRetrieve:
+        LoginScreenStorageRetrieve:
         @key: Key the requested value was stored for.
         @value_fd: File decriptor pointing at a pipe containing the requested
             value.
@@ -124,6 +124,25 @@
     <method name="LoginScreenStorageRetrieve">
       <arg type="s" name="key" direction="in" />
       <arg type="h" name="value_fd" direction="out" />
+    </method>
+
+    <!--
+        LoginScreenStorageListKeys:
+        @keys: All keys that are currently stored in the login screen storage.
+    -->
+    <method name="LoginScreenStorageListKeys">
+      <arg type="as" name="keys" direction="out" />
+    </method>
+
+    <!--
+        LoginScreenStorageDelete:
+        @key: Key to delete.
+
+        Deletes a key from the login screen storage.
+    -->
+    <method name="LoginScreenStorageDelete">
+      <arg type="s" name="key" direction="in" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
     </method>
 
     <!--

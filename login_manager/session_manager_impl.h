@@ -198,6 +198,9 @@ class SessionManagerImpl
       brillo::ErrorPtr* error,
       const std::string& in_key,
       brillo::dbus_utils::FileDescriptor* out_value_fd) override;
+  bool LoginScreenStorageListKeys(brillo::ErrorPtr* error,
+                                  std::vector<std::string>* out_keys) override;
+  void LoginScreenStorageDelete(const std::string& in_key) override;
   bool StartSession(brillo::ErrorPtr* error,
                     const std::string& in_account_id,
                     const std::string& in_unique_identifier) override;

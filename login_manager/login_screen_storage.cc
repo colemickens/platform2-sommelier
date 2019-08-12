@@ -12,9 +12,12 @@
 #include <dbus/bus.h>
 
 #include "login_manager/dbus_util.h"
+#include "login_manager/login_screen_storage/login_screen_storage_index.pb.h"
 #include "login_manager/secret_util.h"
 
 namespace login_manager {
+
+const char kLoginScreenStorageIndexFilename[] = "index";
 
 namespace {
 
@@ -41,6 +44,7 @@ bool LoginScreenStorage::Store(brillo::ErrorPtr* error,
                                const std::string& key,
                                const LoginScreenStorageMetadata& metadata,
                                const base::ScopedFD& value_fd) {
+  LoginScreenStorageIndex index = ReadIndexFromFile();
   std::vector<uint8_t> value;
   if (!secret_util::ReadSecretFromPipe(value_fd.get(), &value)) {
     *error = CreateError(DBUS_ERROR_IO_ERROR, "couldn't read value from pipe.");
@@ -48,7 +52,7 @@ bool LoginScreenStorage::Store(brillo::ErrorPtr* error,
   }
 
   // Removing the old value from both storages to make sure it's not duplicated.
-  RemoveKeyFromLoginScreenStorage(key);
+  RemoveKeyFromLoginScreenStorage(&index, key);
 
   if (metadata.clear_on_session_exit()) {
     in_memory_storage_[key] = std::move(value);
@@ -60,6 +64,15 @@ bool LoginScreenStorage::Store(brillo::ErrorPtr* error,
       !base::CreateDirectory(storage_dir_path)) {
     *error = CreateError(DBUS_ERROR_IO_ERROR,
                          "couldn't create login screen storage directory.");
+    return false;
+  }
+
+  index.add_keys(key);
+  if (!WriteIndexToFile(index)) {
+    *error =
+        CreateError(DBUS_ERROR_IO_ERROR, "Couldn't write index file to disk.");
+    // Removing a key that has already been saved.
+    RemoveKeyFromLoginScreenStorage(&index, key);
     return false;
   }
 
@@ -86,13 +99,30 @@ bool LoginScreenStorage::Retrieve(
   base::FilePath value_path = GetPersistentStoragePathForKey(key);
   std::string value;
   if (!base::PathExists(value_path) ||
-      !base::ReadFileToString(value_path, &value)) {
+      !base::ReadFileToStringWithMaxSize(value_path, &value,
+                                         secret_util::kSecretSizeLimit)) {
     *error = CreateError(DBUS_ERROR_INVALID_ARGS,
                          "no value was found for the given key.");
     return false;
   }
   return CreatePipeWithData(
       error, std::vector<uint8_t>(value.begin(), value.end()), out_value_fd);
+}
+
+std::vector<std::string> LoginScreenStorage::ListKeys() {
+  std::vector<std::string> keys;
+  for (const auto& kv : in_memory_storage_) {
+    keys.push_back(kv.first);
+  }
+  LoginScreenStorageIndex index = ReadIndexFromFile();
+  auto persistent_keys = index.keys();
+  keys.insert(keys.end(), persistent_keys.begin(), persistent_keys.end());
+  return keys;
+}
+
+void LoginScreenStorage::Delete(const std::string& key) {
+  LoginScreenStorageIndex index = ReadIndexFromFile();
+  RemoveKeyFromLoginScreenStorage(&index, key);
 }
 
 base::FilePath LoginScreenStorage::GetPersistentStoragePathForKey(
@@ -102,9 +132,38 @@ base::FilePath LoginScreenStorage::GetPersistentStoragePathForKey(
 }
 
 void LoginScreenStorage::RemoveKeyFromLoginScreenStorage(
-    const std::string& key) {
+    LoginScreenStorageIndex* index, const std::string& key) {
   in_memory_storage_.erase(key);
-  base::DeleteFile(GetPersistentStoragePathForKey(key), /*recursive=*/false);
+
+  // Removing key from the persistent storage.
+  auto* keys = index->mutable_keys();
+  auto removed_key_it = std::find(keys->begin(), keys->end(), key);
+  if (removed_key_it != keys->end()) {
+    keys->erase(removed_key_it);
+    // Deleting the file first and then updating the index. So if a crash
+    // happens in between, we don't have an incorrect state (a key is present,
+    // but not listed by |ListKeys()|).
+    base::DeleteFile(GetPersistentStoragePathForKey(key), /*recursive=*/false);
+    WriteIndexToFile(*index);
+  }
+}
+
+LoginScreenStorageIndex LoginScreenStorage::ReadIndexFromFile() {
+  std::string index_blob;
+  LoginScreenStorageIndex index;
+  if (base::ReadFileToString(
+          persistent_storage_path_.Append(kLoginScreenStorageIndexFilename),
+          &index_blob))
+    index.ParseFromString(index_blob);
+  return index;
+}
+
+bool LoginScreenStorage::WriteIndexToFile(
+    const LoginScreenStorageIndex& index) {
+  const std::string index_blob = index.SerializeAsString();
+  return base::WriteFile(
+      persistent_storage_path_.Append(kLoginScreenStorageIndexFilename),
+      index_blob.data(), index_blob.size());
 }
 
 }  //  namespace login_manager
