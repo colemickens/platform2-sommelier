@@ -61,7 +61,6 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   bool SetFastReauth(bool enabled) override;
   bool SetRoamThreshold(uint16_t threshold) override;
   bool SetScanInterval(int seconds) override;
-  bool SetSchedScan(bool enable) override;
   bool SetScan(bool enable) override;
 
  private:

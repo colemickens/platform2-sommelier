@@ -232,12 +232,6 @@ void Device::Scan(Error* error, const string& reason) {
                         "Device doesn't support scan.");
 }
 
-void Device::SetSchedScan(bool enable, Error* error) {
-  SLOG(this, 2) << __func__ << " [Device] on " << link_name();
-  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                        "Device doesn't support scheduled scan.");
-}
-
 void Device::RegisterOnNetwork(const std::string& /*network_id*/,
                                Error* error,
                                const ResultCallback& /*callback*/) {

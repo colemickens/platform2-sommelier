@@ -122,7 +122,6 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
                         dbus::Message* message,
                         const std::string& claimer_name,
                         const std::string& interface_name) override;
-  bool SetSchedScan(brillo::ErrorPtr* error, bool enable) override;
 
  private:
   friend class ManagerDBusAdaptorTest;

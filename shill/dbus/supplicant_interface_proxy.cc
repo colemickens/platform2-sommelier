@@ -426,15 +426,6 @@ bool SupplicantInterfaceProxy::SetScanInterval(int32_t scan_interval) {
   return true;
 }
 
-bool SupplicantInterfaceProxy::SetSchedScan(bool enable) {
-  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << enable;
-  if (!properties_->sched_scan.SetAndBlock(enable)) {
-    LOG(ERROR) << __func__ << " failed: " << enable;
-    return false;
-  }
-  return true;
-}
-
 bool SupplicantInterfaceProxy::SetScan(bool enable) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << enable;
   if (!properties_->scan.SetAndBlock(enable)) {

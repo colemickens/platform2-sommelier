@@ -427,13 +427,6 @@ bool ManagerDBusAdaptor::ReleaseInterface(brillo::ErrorPtr* error,
   return !e.ToChromeosError(error);
 }
 
-bool ManagerDBusAdaptor::SetSchedScan(brillo::ErrorPtr* error, bool enable) {
-  SLOG(this, 2) << __func__ << ": " << enable;
-  Error e;
-  manager_->SetSchedScan(enable, &e);
-  return !e.ToChromeosError(error);
-}
-
 void ManagerDBusAdaptor::OnDeviceClaimerVanished() {
   SLOG(this, 3) << __func__;
   manager_->OnDeviceClaimerVanished();

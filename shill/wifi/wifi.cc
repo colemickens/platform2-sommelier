@@ -315,16 +315,6 @@ void WiFi::Scan(Error* /*error*/, const string& reason) {
       Bind(&WiFi::ScanTask, weak_ptr_factory_while_started_.GetWeakPtr()));
 }
 
-void WiFi::SetSchedScan(bool enable, Error* /*error*/) {
-  // Needs to send a D-Bus message, but may be called from D-Bus
-  // signal handler context (via Manager::SetSchedScan). So defer work
-  // to event loop.
-  dispatcher()->PostTask(
-      FROM_HERE,
-      Bind(&WiFi::SetSchedScanTask,
-          weak_ptr_factory_while_started_.GetWeakPtr(), enable));
-}
-
 void WiFi::AddPendingScanResult(const RpcIdentifier& path,
                                 const KeyValueStore& properties,
                                 bool is_removal) {
@@ -1763,17 +1753,6 @@ void WiFi::ScanTask() {
   if (scan_state_ != kScanScanning) {
     SetScanState(IsIdle() ? kScanScanning : kScanBackgroundScanning,
                  kScanMethodFull, __func__);
-  }
-}
-
-void WiFi::SetSchedScanTask(bool enable) {
-  if (!supplicant_present_ || !supplicant_interface_proxy_.get()) {
-    SLOG(this, 2) << "Ignoring sched scan configure request "
-                  << "while supplicant is not present.";
-    return;
-  }
-  if (!supplicant_interface_proxy_->SetSchedScan(enable)) {
-    LOG(WARNING) << "Failed to set SchedScan";
   }
 }
 

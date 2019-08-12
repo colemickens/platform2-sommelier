@@ -205,8 +205,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual void RecheckPortalOnService(const ServiceRefPtr& service);
 
   virtual void RequestScan(const std::string& technology, Error* error);
-  // Configure scheduled scan for wifi devices.
-  virtual void SetSchedScan(bool enable, Error* error);
   std::string GetTechnologyOrder();
   virtual void SetTechnologyOrder(const std::string& order, Error* error);
   // Set up the profile list starting with a default profile along with

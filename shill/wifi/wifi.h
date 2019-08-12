@@ -128,7 +128,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
              const EnabledStateChangedCallback& callback) override;
   void Stop(Error* error, const EnabledStateChangedCallback& callback) override;
   void Scan(Error* error, const std::string& reason) override;
-  void SetSchedScan(bool enable, Error* error) override;
   // Callback for system suspend.
   void OnBeforeSuspend(const ResultCallback& callback) override;
   // Callback for dark resume.
@@ -485,8 +484,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void SetHT40EnableForService(const WiFiService* service, bool enable);
   // Perform the next in a series of progressive scans.
   void ProgressiveScanTask();
-  // Task to configure scheduled scan in wpa_supplicant.
-  void SetSchedScanTask(bool enable);
   // Recovers from failed progressive scan.
   void OnFailedProgressiveScan();
   // Restart fast scanning after disconnection.

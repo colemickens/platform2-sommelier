@@ -37,7 +37,6 @@ class SupplicantInterfaceProxyInterface {
   virtual bool SetFastReauth(bool enabled) = 0;
   virtual bool SetRoamThreshold(uint16_t seconds) = 0;
   virtual bool SetScanInterval(int seconds) = 0;
-  virtual bool SetSchedScan(bool enable) = 0;
   virtual bool SetScan(bool enable) = 0;
   virtual bool TDLSDiscover(const std::string& peer) = 0;
   virtual bool TDLSSetup(const std::string& peer) = 0;

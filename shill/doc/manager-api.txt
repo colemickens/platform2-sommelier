@@ -397,12 +397,6 @@ Methods
 			claimer |claimer_name| back to shill. The specified device
 			will be removed from the blacklist and managed by shill.
 
-		void SetSchedScan(boolean enable)
-
-			Enable/disable scheduled scan for wifi devices.
-			This will also stop any ongoing scheduled scan
-			in wpa_supplicant.
-
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
