@@ -192,4 +192,13 @@ bool TpmNewImpl::RemoveOwnerDependency(
   return tpm_manager_utility_->RemoveOwnerDependency(
       OwnerDependencyEnumClassToString(dependency));
 }
+
+bool TpmNewImpl::ClearStoredPassword() {
+  if (!InitializeTpmManagerUtility()) {
+    LOG(ERROR) << __func__ << ": failed to initialize |TpmManagerUtility|.";
+    return false;
+  }
+  return tpm_manager_utility_->ClearStoredOwnerPassword();
+}
+
 }  // namespace cryptohome

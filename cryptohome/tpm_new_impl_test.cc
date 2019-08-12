@@ -277,6 +277,18 @@ TEST_F(TpmNewImplTest, RemoveTpmOwnerDependencyInvalidEnum) {
                ".*Unexpected enum class value: 999");
 }
 
+TEST_F(TpmNewImplTest, ClearStoredPassword) {
+  EXPECT_CALL(mock_tpm_manager_utility_,
+              ClearStoredOwnerPassword())
+      .WillOnce(Return(true));
+  EXPECT_TRUE(GetTpm()->ClearStoredPassword());
+  EXPECT_CALL(
+      mock_tpm_manager_utility_,
+      ClearStoredOwnerPassword())
+      .WillOnce(Return(false));
+  EXPECT_FALSE(GetTpm()->ClearStoredPassword());
+}
+
 TEST_F(TpmNewImplTest, BadTpmManagerUtility) {
   EXPECT_CALL(mock_tpm_manager_utility_, Initialize())
       .WillRepeatedly(Return(false));

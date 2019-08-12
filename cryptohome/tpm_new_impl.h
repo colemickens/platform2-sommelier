@@ -43,6 +43,7 @@ class TpmNewImpl : public TpmImpl {
       const brillo::Blob& delegate_secret) override;
   bool RemoveOwnerDependency(
       TpmPersistentState::TpmOwnerDependency dependency) override;
+  bool ClearStoredPassword() override;
 
  private:
   // Initializes |tpm_manager_utility_|; returns |true| iff successful.
