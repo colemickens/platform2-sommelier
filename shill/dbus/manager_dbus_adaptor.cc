@@ -434,28 +434,6 @@ bool ManagerDBusAdaptor::SetSchedScan(brillo::ErrorPtr* error, bool enable) {
   return !e.ToChromeosError(error);
 }
 
-bool ManagerDBusAdaptor::SetupApModeInterface(brillo::ErrorPtr* error,
-                                              dbus::Message* message,
-                                              string* out_interface_name) {
-  SLOG(this, 2) << __func__;
-  Error e;
-  e.Populate(Error::kNotSupported);
-  return !e.ToChromeosError(error);
-}
-
-bool ManagerDBusAdaptor::SetupStationModeInterface(brillo::ErrorPtr* error,
-                                                   string* out_interface_name) {
-  SLOG(this, 2) << __func__;
-  Error e;
-  e.Populate(Error::kNotSupported);
-  return !e.ToChromeosError(error);
-}
-
-void ManagerDBusAdaptor::OnApModeSetterVanished() {
-  SLOG(this, 3) << __func__;
-  watcher_for_ap_mode_setter_.reset();
-}
-
 void ManagerDBusAdaptor::OnDeviceClaimerVanished() {
   SLOG(this, 3) << __func__;
   manager_->OnDeviceClaimerVanished();

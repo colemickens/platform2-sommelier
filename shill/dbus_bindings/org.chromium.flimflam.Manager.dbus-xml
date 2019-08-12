@@ -118,14 +118,6 @@
 		<method name="SetSchedScan">
 			<arg type="b" direction="in"/>
 		</method>
-		<method name="SetupApModeInterface">
-			<arg name="interface_name" type="s" direction="out"/>
-			<annotation name="org.chromium.DBus.Method.IncludeDBusMessage"
-		                value="true"/>
-		</method>
-		<method name="SetupStationModeInterface">
-			<arg name="interface_name" type="s" direction="out"/>
-		</method>
 	</interface>
 	<node name="device"/>
 	<node name="profile"/>

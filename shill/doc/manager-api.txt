@@ -397,21 +397,6 @@ Methods
 			claimer |claimer_name| back to shill. The specified device
 			will be removed from the blacklist and managed by shill.
 
-		string SetupApModeInterface()
-
-			(Brillo only) Ask WiFi driver to setup an AP mode interface.
-			The driver might teardown the station mode interface as a result
-			of this call. Shill will revert to station mode if the remote
-			service that called this method vanishes. Return an interface name
-			on success, or an empty string on error.
-
-		string SetupStationModeInterface()
-
-			(Brillo only) Ask WiFi driver to setup a station mode interface.
-			The driver might teardown the AP mode interface as a result
-			of this call. Return an interface name on success, or an empty
-			string on error.
-
 		void SetSchedScan(boolean enable)
 
 			Enable/disable scheduled scan for wifi devices.

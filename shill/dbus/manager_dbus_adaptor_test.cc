@@ -136,35 +136,6 @@ TEST_F(ManagerDBusAdaptorTest, ReleaseInterface) {
   EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_);
 }
 
-TEST_F(ManagerDBusAdaptorTest, SetupApModeInterface) {
-  brillo::ErrorPtr error;
-  string out_interface_name;
-  std::unique_ptr<Response> message(Response::CreateEmpty());
-
-  EXPECT_CALL(dbus_service_watcher_factory_, CreateDBusServiceWatcher(_, _, _))
-      .Times(0);
-  EXPECT_FALSE(manager_adaptor_.SetupApModeInterface(&error, message.get(),
-                                                     &out_interface_name));
-}
-
-TEST_F(ManagerDBusAdaptorTest, SetupStationModeInterface) {
-  brillo::ErrorPtr error;
-  string out_interface_name;
-
-  EXPECT_FALSE(
-      manager_adaptor_.SetupStationModeInterface(&error, &out_interface_name));
-}
-
-TEST_F(ManagerDBusAdaptorTest, OnApModeSetterVanished) {
-  // Setup watcher for AP mode setter.
-  manager_adaptor_.watcher_for_ap_mode_setter_.reset(
-      new MockDBusServiceWatcher());
-
-  // Reset watcher for AP mode setter after AP mode setter vanishes.
-  manager_adaptor_.OnApModeSetterVanished();
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_ap_mode_setter_);
-}
-
 TEST_F(ManagerDBusAdaptorTest, OnDeviceClaimerVanished) {
   // Setup watcher for device claimer.
   manager_adaptor_.watcher_for_device_claimer_.reset(

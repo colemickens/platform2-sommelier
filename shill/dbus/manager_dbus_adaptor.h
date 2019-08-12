@@ -123,11 +123,6 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
                         const std::string& claimer_name,
                         const std::string& interface_name) override;
   bool SetSchedScan(brillo::ErrorPtr* error, bool enable) override;
-  bool SetupApModeInterface(brillo::ErrorPtr* error,
-                            dbus::Message* message,
-                            std::string* out_interface_name) override;
-  bool SetupStationModeInterface(brillo::ErrorPtr* error,
-                                 std::string* out_interface_name) override;
 
  private:
   friend class ManagerDBusAdaptorTest;
@@ -135,12 +130,7 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
   FRIEND_TEST(ManagerDBusAdaptorTest, ClaimInterface);
   FRIEND_TEST(ManagerDBusAdaptorTest, OnDeviceClaimerVanished);
   FRIEND_TEST(ManagerDBusAdaptorTest, ReleaseInterface);
-  // Tests that require access to |watcher_for_ap_mode_setter_|.
-  FRIEND_TEST(ManagerDBusAdaptorTest, OnApModeSetterVanished);
-  FRIEND_TEST(ManagerDBusAdaptorTest, SetupApModeInterface);
-  FRIEND_TEST(ManagerDBusAdaptorTest, SetupStationModeInterface);
 
-  void OnApModeSetterVanished();
   void OnDeviceClaimerVanished();
 
   Manager* manager_;
@@ -149,7 +139,6 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
   scoped_refptr<dbus::Bus> proxy_bus_;
   DBusServiceWatcherFactory* dbus_service_watcher_factory_;
   std::unique_ptr<DBusServiceWatcher> watcher_for_device_claimer_;
-  std::unique_ptr<DBusServiceWatcher> watcher_for_ap_mode_setter_;
 
   DISALLOW_COPY_AND_ASSIGN(ManagerDBusAdaptor);
 };
