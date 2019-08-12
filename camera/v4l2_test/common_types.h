@@ -70,7 +70,7 @@ struct DeviceInfo {
 typedef std::vector<DeviceInfo> DeviceInfos;
 
 struct SupportedFormat {
-  SupportedFormat() {}
+  SupportedFormat() : width(0), height(0), fourcc(0) {}
   SupportedFormat(uint32_t w, uint32_t h, uint32_t fmt, uint32_t fps)
       : width(w), height(h), fourcc(fmt) {
     frame_rates.push_back(fps);

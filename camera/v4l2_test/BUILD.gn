@@ -27,15 +27,14 @@ executable("media_v4l2_test") {
     "media_v4l2_test.cc",
   ]
 
-  # For base::ShadowingAtExitManager.
-  defines = [ "UNIT_TEST" ]
-
   configs += [
     "//common-mk:test",
     "//camera/build:cros_camera_common",
   ]
 
   pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
     "libyuv",
     "re2",
   ]
