@@ -47,6 +47,9 @@ class TpmManagerUtilityTest : public Test {
     ON_CALL(mock_tpm_owner_, RemoveOwnerDependency(_, _))
         .WillByDefault(
             InvokeCallbackArgument<1>(ByRef(remove_owner_dependency_reply_)));
+    ON_CALL(mock_tpm_owner_, ClearStoredOwnerPassword(_, _))
+        .WillByDefault(InvokeCallbackArgument<1>(
+            ByRef(clear_stored_owner_password_reply_)));
     ON_CALL(mock_tpm_owner_, GetDictionaryAttackInfo(_, _))
         .WillByDefault(InvokeCallbackArgument<1>(
             ByRef(get_dictionary_attack_info_reply_)));
@@ -64,6 +67,7 @@ class TpmManagerUtilityTest : public Test {
   tpm_manager::TakeOwnershipReply take_ownership_reply_;
   tpm_manager::GetTpmStatusReply get_tpm_status_reply_;
   tpm_manager::RemoveOwnerDependencyReply remove_owner_dependency_reply_;
+  tpm_manager::ClearStoredOwnerPasswordReply clear_stored_owner_password_reply_;
   tpm_manager::GetDictionaryAttackInfoReply get_dictionary_attack_info_reply_;
   tpm_manager::ResetDictionaryAttackLockReply
       reset_dictionary_attack_lock_reply_;
@@ -194,6 +198,21 @@ TEST_F(TpmManagerUtilityTest, ResetDictionaryAttackLockFail) {
   reset_dictionary_attack_lock_reply_.set_status(
       tpm_manager::STATUS_NOT_AVAILABLE);
   EXPECT_FALSE(tpm_manager_utility_.ResetDictionaryAttackLock());
+}
+
+TEST_F(TpmManagerUtilityTest, ClearStoredOwnerPassword) {
+  clear_stored_owner_password_reply_.set_status(tpm_manager::STATUS_SUCCESS);
+  EXPECT_TRUE(tpm_manager_utility_.ClearStoredOwnerPassword());
+}
+
+TEST_F(TpmManagerUtilityTest, ClearStoredOwnerPasswordFail) {
+  clear_stored_owner_password_reply_.set_status(
+      tpm_manager::STATUS_DEVICE_ERROR);
+  EXPECT_FALSE(tpm_manager_utility_.ClearStoredOwnerPassword());
+
+  clear_stored_owner_password_reply_.set_status(
+      tpm_manager::STATUS_NOT_AVAILABLE);
+  EXPECT_FALSE(tpm_manager_utility_.ClearStoredOwnerPassword());
 }
 
 TEST_F(TpmManagerUtilityTest, ExtraInitializationCall) {

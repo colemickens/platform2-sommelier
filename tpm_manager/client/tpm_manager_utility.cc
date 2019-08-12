@@ -86,6 +86,20 @@ bool TpmManagerUtility::RemoveOwnerDependency(const std::string& dependency) {
   return true;
 }
 
+bool TpmManagerUtility::ClearStoredOwnerPassword() {
+  tpm_manager::ClearStoredOwnerPasswordReply reply;
+  tpm_manager::ClearStoredOwnerPasswordRequest request;
+  SendTpmManagerRequestAndWait(
+      base::Bind(&tpm_manager::TpmOwnershipInterface::ClearStoredOwnerPassword,
+                 base::Unretained(tpm_owner_), request),
+      &reply);
+  if (reply.status() != tpm_manager::STATUS_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to clear owner password. ";
+    return false;
+  }
+  return true;
+}
+
 void TpmManagerUtility::InitializationTask(base::WaitableEvent* completion) {
   CHECK(completion);
   CHECK(tpm_manager_thread_.task_runner()->BelongsToCurrentThread());

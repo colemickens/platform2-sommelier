@@ -56,6 +56,11 @@ class TPM_MANAGER_EXPORT TpmManagerUtility
   // operation succeeds. |dependency| is the idenitier of the dependency.
   virtual bool RemoveOwnerDependency(const std::string& dependency);
 
+  // Blocking call of
+  // |TpmOwnershipDBusProxy::ClearStoredOwnerPassword|. Returns |true| iff the
+  // operation succeeds.
+  virtual bool ClearStoredOwnerPassword();
+
   // Blocking call of |TpmOwnershipDBusProxy::GetDictionaryAttackInfo|. Returns
   // |true| iff the operation succeeds. Once returning |true|, |counter|,
   // |threshold|, |lockout| and |seconds_remaining| will set to the respective
