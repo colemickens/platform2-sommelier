@@ -51,7 +51,6 @@ def CheckSubdirs():
       'fitpicker',
       'init',
       'libcontainer',
-      'libipproto',
       'libmems',
       'policy_proto',
       'policy_utils',
