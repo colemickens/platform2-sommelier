@@ -6,6 +6,8 @@
 
 #include <base/logging.h>
 
+#include "libmems/common_types.h"
+
 namespace libmems {
 namespace fakes {
 
@@ -46,8 +48,14 @@ void FakeIioChannel::WriteNumberAttribute(const std::string& name,
 
 FakeIioDevice::FakeIioDevice(FakeIioContext* ctx,
                              const std::string& name,
-                             const std::string& id)
+                             int id)
     : IioDevice(), context_(ctx), name_(name), id_(id) {}
+
+base::FilePath FakeIioDevice::GetPath() const {
+  std::string id_str(kDeviceIdPrefix);
+  id_str.append(std::to_string(GetId()));
+  return base::FilePath("/sys/bus/iio/devices").Append(id_str);
+}
 
 base::Optional<std::string> FakeIioDevice::ReadStringAttribute(
     const std::string& name) const {
@@ -107,13 +115,64 @@ bool FakeIioDevice::IsBufferEnabled(size_t* n) const {
 
 void FakeIioContext::AddDevice(FakeIioDevice* device) {
   CHECK(device);
-  devices_.emplace(device->GetName(), device);
   devices_.emplace(device->GetId(), device);
 }
 
-IioDevice* FakeIioContext::GetDevice(const std::string& name) {
-  auto k = devices_.find(name);
-  return (k == devices_.end()) ? nullptr : k->second;
+void FakeIioContext::AddTrigger(FakeIioDevice* trigger) {
+  CHECK(trigger);
+  triggers_.emplace(trigger->GetId(), trigger);
+}
+
+std::vector<IioDevice*> FakeIioContext::GetDevicesByName(
+    const std::string& name) {
+  return GetFakeByName(name, devices_);
+}
+
+IioDevice* FakeIioContext::GetDeviceById(int id) {
+  return GetFakeById(id, devices_);
+}
+
+std::vector<IioDevice*> FakeIioContext::GetAllDevices() {
+  return GetFakeAll(devices_);
+}
+
+std::vector<IioDevice*> FakeIioContext::GetTriggersByName(
+    const std::string& name) {
+  return GetFakeByName(name, triggers_);
+}
+
+IioDevice* FakeIioContext::GetTriggerById(int id) {
+  return GetFakeById(id, triggers_);
+}
+
+std::vector<IioDevice*> FakeIioContext::GetAllTriggers() {
+  return GetFakeAll(triggers_);
+}
+
+IioDevice* FakeIioContext::GetFakeById(
+    int id, const std::map<int, FakeIioDevice*>& devices_map) {
+  auto k = devices_map.find(id);
+  return (k == devices_map.end()) ? nullptr : k->second;
+}
+
+std::vector<IioDevice*> FakeIioContext::GetFakeByName(
+    const std::string& name, const std::map<int, FakeIioDevice*>& devices_map) {
+  std::vector<IioDevice*> devices;
+  for (auto const& it : devices_map) {
+    if (name.compare(it.second->GetName()) == 0)
+      devices.push_back(it.second);
+  }
+
+  return devices;
+}
+
+std::vector<IioDevice*> FakeIioContext::GetFakeAll(
+    const std::map<int, FakeIioDevice*>& devices_map) {
+  std::vector<IioDevice*> devices;
+  for (auto const& it : devices_map)
+    devices.push_back(it.second);
+
+  return devices;
 }
 
 }  // namespace fakes

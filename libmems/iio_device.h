@@ -35,8 +35,11 @@ class LIBMEMS_EXPORT IioDevice {
   // It is allowed to return an empty string.
   virtual const char* GetName() const = 0;
 
-  // Returns the unique IIO identifier of this device.
-  virtual const char* GetId() const = 0;
+  // Returns the unique IIO identifier of this device/trigger.
+  // Return id greater or equal to 0 if it's a device.
+  // Return id be -1 if it's iio_sysfs_trigger, greater or equal to 0 if it's a
+  // trigger.
+  virtual int GetId() const = 0;
 
   // This call is used to enable setting UNIX permissions and ownership on the
   // attributes of a sensor. It should not be used as a replacement for the
@@ -117,6 +120,9 @@ class LIBMEMS_EXPORT IioDevice {
 
  protected:
   IioDevice() = default;
+
+  static base::Optional<int> GetIdAfterPrefix(const char* id_str,
+                                              const char* prefix);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(IioDevice);

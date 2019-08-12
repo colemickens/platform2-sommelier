@@ -8,11 +8,13 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
 
 #include "libmems/common_types.h"
 #include "libmems/iio_channel_impl.h"
 #include "libmems/iio_context_impl.h"
 #include "libmems/iio_device_impl.h"
+#include "libmems/iio_device_trigger_impl.h"
 
 #define ERROR_BUFFER_SIZE 256
 
@@ -23,6 +25,14 @@ namespace {
 constexpr int kNumSamples = 1;
 
 };  // namespace
+
+base::Optional<int> IioDeviceImpl::GetIdFromString(const char* id_str) {
+  return IioDevice::GetIdAfterPrefix(id_str, kDeviceIdPrefix);
+}
+
+std::string IioDeviceImpl::GetStringFromId(int id) {
+  return base::StringPrintf("%s%d", kDeviceIdPrefix, id);
+}
 
 IioDeviceImpl::IioDeviceImpl(IioContextImpl* ctx, iio_device* dev)
     : IioDevice(),
@@ -41,19 +51,24 @@ const char* IioDeviceImpl::GetName() const {
   return iio_device_get_name(device_);
 }
 
-const char* IioDeviceImpl::GetId() const {
-  return iio_device_get_id(device_);
+int IioDeviceImpl::GetId() const {
+  const char* id_str = iio_device_get_id(device_);
+
+  auto id = GetIdFromString(id_str);
+  DCHECK(id.has_value());
+  return id.value();
 }
 
 base::FilePath IioDeviceImpl::GetPath() const {
-  auto path = base::FilePath("/sys/bus/iio/devices").Append(GetId());
+  std::string id_str = GetStringFromId(GetId());
+  auto path = base::FilePath("/sys/bus/iio/devices").Append(id_str);
   CHECK(base::DirectoryExists(path));
   return path;
 }
 
 base::Optional<std::string> IioDeviceImpl::ReadStringAttribute(
     const std::string& name) const {
-  char data[1024] = {0};
+  char data[kReadAttrBufferSize] = {0};
   ssize_t len = iio_device_attr_read(device_, name.c_str(), data, sizeof(data));
   if (len < 0) {
     LOG(WARNING) << "Attempting to read attribute " << name
@@ -88,10 +103,10 @@ base::Optional<double> IioDeviceImpl::ReadDoubleAttribute(
 }
 
 bool IioDeviceImpl::WriteStringAttribute(const std::string& name,
-                                         const std::string& val) {
-  int error =
-      iio_device_attr_write_raw(device_, name.c_str(), val.data(), val.size());
-  if (error) {
+                                         const std::string& value) {
+  int error = iio_device_attr_write_raw(device_, name.c_str(), value.data(),
+                                        value.size());
+  if (error < 0) {
     LOG(WARNING) << "Attempting to write attribute " << name
                  << " failed: " << error;
     return false;
@@ -100,8 +115,8 @@ bool IioDeviceImpl::WriteStringAttribute(const std::string& name,
 }
 
 bool IioDeviceImpl::WriteNumberAttribute(const std::string& name,
-                                         int64_t val) {
-  int error = iio_device_attr_write_longlong(device_, name.c_str(), val);
+                                         int64_t value) {
+  int error = iio_device_attr_write_longlong(device_, name.c_str(), value);
   if (error) {
     LOG(WARNING) << "Attempting to write attribute " << name
                  << " failed: " << error;
@@ -110,8 +125,9 @@ bool IioDeviceImpl::WriteNumberAttribute(const std::string& name,
   return true;
 }
 
-bool IioDeviceImpl::WriteDoubleAttribute(const std::string& name, double val) {
-  int error = iio_device_attr_write_double(device_, name.c_str(), val);
+bool IioDeviceImpl::WriteDoubleAttribute(const std::string& name,
+                                         double value) {
+  int error = iio_device_attr_write_double(device_, name.c_str(), value);
   if (error) {
     LOG(WARNING) << "Attempting to write attribute " << name
                  << " failed: " << error;
@@ -128,17 +144,25 @@ bool IioDeviceImpl::SetTrigger(IioDevice* trigger_device) {
   // Reset the old - if any - and then add the new trigger.
   int error = iio_device_set_trigger(device_, NULL);
   if (error) {
-    LOG(WARNING) << "Unable to clean triiger of device " << GetId()
+    LOG(WARNING) << "Unable to clean trigger of device " << GetId()
                  << ", error: " << error;
     return false;
   }
   if (trigger_device == nullptr)
     return true;
 
-  auto impl_device = trigger_device->GetUnderlyingIioDevice();
+  const iio_device* impl_device = nullptr;
+  int id = trigger_device->GetId();
+  if (id == -2) {
+    impl_device = iio_context_find_device(GetContext()->GetCurrentContext(),
+                                          kIioSysfsTrigger);
+  } else {
+    std::string id_str = IioDeviceTriggerImpl::GetStringFromId(id);
+    impl_device = iio_context_find_device(GetContext()->GetCurrentContext(),
+                                          id_str.c_str());
+  }
   if (!impl_device) {
-    LOG(WARNING) << "cannot find device " << trigger_device->GetId()
-                 << " in the current context";
+    LOG(WARNING) << "cannot find device " << id << " in the current context";
     return false;
   }
 
@@ -163,12 +187,18 @@ IioDevice* IioDeviceImpl::GetTrigger() {
   if (trigger == nullptr)
     return nullptr;
 
-  const char* trigger_id = iio_device_get_id(trigger);
-  auto trigger_device = GetContext()->GetDevice(trigger_id);
+  const char* id_str = iio_device_get_id(trigger);
+  auto id = IioDeviceTriggerImpl::GetIdFromString(id_str);
+
+  IioDevice* trigger_device = nullptr;
+  if (id.has_value())
+    trigger_device = GetContext()->GetTriggerById(id.value());
+
   if (trigger_device == nullptr) {
-    LOG(WARNING) << GetId() << " has trigger device " << trigger_id
+    LOG(WARNING) << GetId() << " has trigger device " << id_str
                  << "which cannot be found in this context";
   }
+
   return trigger_device;
 }
 

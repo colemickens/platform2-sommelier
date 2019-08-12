@@ -8,6 +8,7 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
+#include "libmems/common_types.h"
 #include "libmems/iio_channel_impl.h"
 #include "libmems/iio_device.h"
 
@@ -43,10 +44,10 @@ bool IioChannelImpl::SetEnabled(bool en) {
   std::string en_attrib_name = base::StringPrintf(
       "scan_elements/%s_%s_en",
       iio_channel_is_output(channel_) ? "out" : "in", GetId());
-  int ok = iio_channel_attr_write_bool(channel_, en_attrib_name.c_str(), en);
-  if (!ok) {
+  int error = iio_channel_attr_write_bool(channel_, en_attrib_name.c_str(), en);
+  if (error) {
     LOG(WARNING) << "could not write to " << en_attrib_name
-                  << ", error: " << ok;
+                 << ", error: " << error;
     return false;
   }
 
@@ -55,7 +56,7 @@ bool IioChannelImpl::SetEnabled(bool en) {
 
 base::Optional<std::string> IioChannelImpl::ReadStringAttribute(
     const std::string& name) const {
-  char data[1024] = {0};
+  char data[kReadAttrBufferSize] = {0};
   ssize_t len =
       iio_channel_attr_read(channel_, name.c_str(), data, sizeof(data));
   if (len < 0) {

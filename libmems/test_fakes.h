@@ -51,22 +51,17 @@ class FakeIioContext;
 
 class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
  public:
-  FakeIioDevice(FakeIioContext* ctx,
-                const std::string& name,
-                const std::string& id);
+  FakeIioDevice(FakeIioContext* ctx, const std::string& name, int id);
 
   IioContext* GetContext() const override {
     return reinterpret_cast<IioContext*>(context_);
   }
 
-  base::FilePath GetPath() const override {
-    return base::FilePath("/sys/bus/iio/devices").Append(GetId());
-  }
-
+  base::FilePath GetPath() const override;
   iio_device* GetUnderlyingIioDevice() const override { return nullptr; }
 
   const char* GetName() const override { return name_.c_str(); }
-  const char* GetId() const override { return id_.c_str(); }
+  int GetId() const override { return id_; }
 
   base::Optional<std::string> ReadStringAttribute(
       const std::string& name) const override;
@@ -100,7 +95,7 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
  private:
   FakeIioContext* context_;
   std::string name_;
-  std::string id_;
+  int id_;
   std::map<std::string, int64_t> numeric_attributes_;
   std::map<std::string, std::string> text_attributes_;
   std::map<std::string, double> double_attributes_;
@@ -115,17 +110,35 @@ class LIBMEMS_EXPORT FakeIioContext : public IioContext {
   FakeIioContext() = default;
 
   void AddDevice(FakeIioDevice* device);
+  void AddTrigger(FakeIioDevice* trigger);
 
+  iio_context* GetCurrentContext() const override { return nullptr; };
   void Reload() override {}
   bool SetTimeout(uint32_t timeout) override {
     timeout_ = timeout;
     return true;
   }
 
-  IioDevice* GetDevice(const std::string& name) override;
+  std::vector<IioDevice*> GetDevicesByName(const std::string& name) override;
+  IioDevice* GetDeviceById(int id) override;
+  std::vector<IioDevice*> GetAllDevices() override;
+
+  std::vector<IioDevice*> GetTriggersByName(const std::string& name) override;
+  IioDevice* GetTriggerById(int id) override;
+  std::vector<IioDevice*> GetAllTriggers() override;
 
  private:
-  std::map<std::string, FakeIioDevice*> devices_;
+  IioDevice* GetFakeById(int id,
+                         const std::map<int, FakeIioDevice*>& devices_map);
+  std::vector<IioDevice*> GetFakeByName(
+      const std::string& name,
+      const std::map<int, FakeIioDevice*>& devices_map);
+  std::vector<IioDevice*> GetFakeAll(
+      const std::map<int, FakeIioDevice*>& devices_map);
+
+  std::map<int, FakeIioDevice*> devices_;
+  std::map<int, FakeIioDevice*> triggers_;
+
   uint32_t timeout_;
 };
 

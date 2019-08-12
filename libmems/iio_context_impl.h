@@ -14,6 +14,9 @@
 
 #include "libmems/export.h"
 #include "libmems/iio_context.h"
+#include "libmems/iio_device.h"
+#include "libmems/iio_device_impl.h"
+#include "libmems/iio_device_trigger_impl.h"
 
 namespace libmems {
 
@@ -22,18 +25,38 @@ class LIBMEMS_EXPORT IioContextImpl : public IioContext {
   IioContextImpl();
   ~IioContextImpl() override = default;
 
+  iio_context* GetCurrentContext() const override;
+
   void Reload() override;
   bool SetTimeout(uint32_t timeout) override;
-  IioDevice* GetDevice(const std::string& name) override;
+
+  std::vector<IioDevice*> GetDevicesByName(const std::string& name) override;
+  IioDevice* GetDeviceById(int id) override;
+  std::vector<IioDevice*> GetAllDevices() override;
+
+  std::vector<IioDevice*> GetTriggersByName(const std::string& name) override;
+  IioDevice* GetTriggerById(int id) override;
+  std::vector<IioDevice*> GetAllTriggers() override;
 
  private:
   using ContextUniquePtr =
       std::unique_ptr<iio_context, decltype(&iio_context_destroy)>;
 
-  iio_context* GetCurrentContext() const;
+  template <typename T>
+  IioDevice* GetById(int id, std::map<int, std::unique_ptr<T>>* devices_map);
+  template <typename T>
+  std::vector<IioDevice*> GetByName(
+      const std::string& name, std::map<int, std::unique_ptr<T>>* devices_map);
+  template <typename T>
+  std::vector<IioDevice*> GetAll(
+      std::map<int, std::unique_ptr<T>>* devices_map);
 
   std::vector<ContextUniquePtr> context_;
-  std::map<std::string, std::unique_ptr<IioDevice>> devices_;
+
+  // device id to IioDevice
+  std::map<int, std::unique_ptr<IioDeviceImpl>> devices_;
+  // trigger id to IioDevice
+  std::map<int, std::unique_ptr<IioDeviceTriggerImpl>> triggers_;
 
   DISALLOW_COPY_AND_ASSIGN(IioContextImpl);
 };

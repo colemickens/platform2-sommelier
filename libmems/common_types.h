@@ -8,6 +8,15 @@
 namespace libmems {
 
 constexpr int kErrorBufferSize = 256;
+constexpr int kReadAttrBufferSize = 256;
+
+constexpr char kDeviceIdPrefix[] = "iio:device";
+constexpr char kIioSysfsTrigger[] = "iio_sysfs_trigger";
+constexpr char kTriggerIdPrefix[] = "trigger";
+
+constexpr char kFrequencyAttr[] = "frequency";
+constexpr char kSamplingFrequencyAttr[] = "sampling_frequency";
+constexpr char kHWFifoTimeoutAttr[] = "buffer/hwfifo_timeout";
 
 }  // namespace libmems
 

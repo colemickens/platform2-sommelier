@@ -9,6 +9,10 @@ group("all") {
     ":libmems",
     ":libmems_test_support",
   ]
+
+  if (use.test) {
+    deps += [ ":libmems_testrunner" ]
+  }
 }
 
 pkg_config("target_defaults_pkg_deps") {
@@ -26,6 +30,7 @@ shared_library("libmems") {
     "iio_context_impl.cc",
     "iio_device.cc",
     "iio_device_impl.cc",
+    "iio_device_trigger_impl.cc",
   ]
 }
 
@@ -37,4 +42,34 @@ shared_library("libmems_test_support") {
   sources = [
     "test_fakes.cc",
   ]
+}
+
+if (use.test) {
+  pkg_config("libmems_testrunner_pkg_deps") {
+    pkg_deps = [
+      "libbrillo-test-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+      "libiio",
+    ]
+  }
+
+  executable("libmems_testrunner") {
+    configs += [
+      "//common-mk:test",
+      ":libmems_testrunner_pkg_deps",
+      ":target_defaults_pkg_deps",
+    ]
+
+    deps = [
+      ":libmems",
+      ":libmems_test_support",
+      "//common-mk/testrunner",
+    ]
+
+    pkg_deps = [ "libmems_test_support" ]
+
+    sources = [
+      "iio_device_test.cc",
+    ]
+  }
 }
