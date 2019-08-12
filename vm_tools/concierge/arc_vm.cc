@@ -45,9 +45,7 @@ constexpr size_t kHostAddressOffset = 0;
 constexpr size_t kGuestAddressOffset = 1;
 
 // The CPU cgroup where all the ARCVM's crosvm processes should belong to.
-// TODO(yusukes): Migrate to /sys/fs/cgroup/cpu/vms/arc/tasks.
-constexpr char kArcvmCpuCgroup[] =
-    "/sys/fs/cgroup/cpu/session_manager_containers/tasks";
+constexpr char kArcvmCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/arc";
 
 }  // namespace
 
@@ -157,8 +155,8 @@ bool ArcVm::Start(base::FilePath kernel,
   // Change the process group before exec so that crosvm sending SIGKILL to the
   // whole process group doesn't kill us as well. The function also changes the
   // cpu cgroup for ARCVM's crosvm processes.
-  process_.SetPreExecCallback(
-      base::Bind(&SetUpCrosvmProcess, base::FilePath(kArcvmCpuCgroup)));
+  process_.SetPreExecCallback(base::Bind(
+      &SetUpCrosvmProcess, base::FilePath(kArcvmCpuCgroup).Append("tasks")));
 
   if (!process_.Start()) {
     LOG(ERROR) << "Failed to start VM process";
@@ -251,10 +249,17 @@ void ArcVm::HandleSuspendDone() {
 
 // static
 bool ArcVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state) {
-  // TODO(yusukes): Implement this. ARCVM processes are currently throttled by
-  // session_manager.
-  NOTIMPLEMENTED();
-  return false;
+  int cpu_shares = 1024;
+  switch (cpu_restriction_state) {
+    case CPU_RESTRICTION_FOREGROUND:
+      break;
+    case CPU_RESTRICTION_BACKGROUND:
+      cpu_shares = 64;
+      break;
+    default:
+      NOTREACHED();
+  }
+  return UpdateCpuShares(base::FilePath(kArcvmCpuCgroup), cpu_shares);
 }
 
 uint32_t ArcVm::GatewayAddress() const {
