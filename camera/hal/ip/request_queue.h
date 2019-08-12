@@ -49,12 +49,9 @@ class RequestQueue {
   void Push(camera3_capture_request_t* request);
 
   // If no request is available this will block until one does become available.
-  // This can return null if CancelPop is used. This shouldn't be called a
-  // second time if the first call has not yet returned.
+  // This shouldn't be called a second time if the first call has not yet
+  // returned.
   std::unique_ptr<CaptureRequest> Pop();
-
-  // Causes any pending call to Pop to return null.
-  void CancelPop();
 
   // Checks if a request is currently available.
   bool IsEmpty();
@@ -80,7 +77,6 @@ class RequestQueue {
   base::ConditionVariable request_filled_;
   int requests_being_filled_;
   bool flushing_;
-  bool cancel_next_pop_;
 
   const camera3_callback_ops_t* callback_ops_;
 

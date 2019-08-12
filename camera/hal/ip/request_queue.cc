@@ -47,7 +47,6 @@ RequestQueue::RequestQueue()
       request_filled_(&lock_),
       requests_being_filled_(0),
       flushing_(false),
-      cancel_next_pop_(false),
       callback_ops_(nullptr) {}
 
 RequestQueue::~RequestQueue() {
@@ -74,10 +73,6 @@ std::unique_ptr<CaptureRequest> RequestQueue::Pop() {
     }
     while (queue_.empty()) {
       new_request_available_.Wait();
-      if (cancel_next_pop_) {
-        cancel_next_pop_ = false;
-        return nullptr;
-      }
     }
     request = std::move(queue_.front());
     requests_being_filled_++;
@@ -97,12 +92,6 @@ std::unique_ptr<CaptureRequest> RequestQueue::Pop() {
   NotifyShutter(request->GetFrameNumber(), timestamp);
 
   return request;
-}
-
-void RequestQueue::CancelPop() {
-  base::AutoLock l(lock_);
-  cancel_next_pop_ = true;
-  new_request_available_.Signal();
 }
 
 bool RequestQueue::IsEmpty() {
@@ -128,6 +117,11 @@ void RequestQueue::SetCallbacks(const camera3_callback_ops_t* callback_ops) {
 }
 
 void RequestQueue::NotifyShutter(uint32_t frame_number, uint64_t timestamp) {
+  if (!callback_ops_) {
+    LOGF(ERROR) << "Callbacks weren't set on the request queue.";
+    return;
+  }
+
   camera3_notify_msg_t msg = {};
   msg.type = CAMERA3_MSG_SHUTTER;
   msg.message.shutter.frame_number = frame_number;
@@ -137,6 +131,11 @@ void RequestQueue::NotifyShutter(uint32_t frame_number, uint64_t timestamp) {
 
 void RequestQueue::NotifyCaptureInternal(
     std::unique_ptr<CaptureRequest> request) {
+  if (!callback_ops_) {
+    LOGF(ERROR) << "Callbacks weren't set on the request queue.";
+    return;
+  }
+
   camera3_capture_result_t result = {};
   result.frame_number = request->GetFrameNumber();
   result.result = nullptr;
@@ -156,6 +155,10 @@ void RequestQueue::NotifyCapture(std::unique_ptr<CaptureRequest> request) {
 
 void RequestQueue::CancelRequestLocked(
     std::unique_ptr<CaptureRequest> request) {
+  if (!callback_ops_) {
+    LOGF(ERROR) << "Callbacks weren't set on the request queue.";
+    return;
+  }
   camera3_notify_msg_t msg = {};
   msg.type = CAMERA3_MSG_ERROR;
   msg.message.error.frame_number = request->GetFrameNumber();

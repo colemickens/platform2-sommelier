@@ -9,6 +9,9 @@ group("all") {
   deps = [
     ":libcamera_hal",
   ]
+  if (use.test) {
+    deps += [ ":request_queue_test" ]
+  }
 }
 
 generate_dbus_proxies("libcamera_hal_dbus") {
@@ -38,10 +41,32 @@ shared_library("libcamera_hal") {
     "libbrillo-${libbase_ver}",
     "libcamera_common",
     "libcamera_metadata",
+    "libsync",
   ]
   deps = [
     ":libcamera_hal_dbus",
     ":libcamera_hal_mojom",
     "//camera/common/libcamera_ipc:libcamera_ipc",
   ]
+}
+
+if (use.test) {
+  executable("request_queue_test") {
+    sources = [
+      "request_queue.cc",
+      "request_queue_test.cc",
+    ]
+    configs += [
+      "//camera/build:cros_camera_common",
+      "//common-mk:test",
+    ]
+    pkg_deps = [
+      "cros-camera-android-headers",
+      "libcamera_metadata",
+      "libsync",
+    ]
+    deps = [
+      "//common-mk/testrunner",
+    ]
+  }
 }
