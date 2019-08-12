@@ -439,13 +439,6 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
     }
   }
 
-  // TODO(henryhsu): Query device to know exposure time.
-  // Currently set frame duration as default.
-  if (!utils->SetExposureTime(1, 30)) {
-    LOGF(ERROR) << "Setting exposure time failed.";
-    return false;
-  }
-
   if (metadata.exists(ANDROID_LENS_APERTURE)) {
     const int kAperturePrecision = 10000;
     camera_metadata_ro_entry entry = metadata.find(ANDROID_LENS_APERTURE);
@@ -481,6 +474,25 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
       }
     } else {
       LOGF(ERROR) << "Unsupported awb mode: " << entry.data.u8[0];
+      return false;
+    }
+  }
+
+  if (metadata.exists(ANDROID_CONTROL_AE_MODE)) {
+    camera_metadata_ro_entry entry = metadata.find(ANDROID_CONTROL_AE_MODE);
+    const uint16_t kExposureMode =
+        (entry.data.u8[0] == ANDROID_CONTROL_AE_MODE_OFF) ? 1 : 0;
+    if (!utils->SetExposureMode(kExposureMode)) {
+      LOGF(ERROR) << "Setting exposure mode failed.";
+      return false;
+    }
+  }
+
+  if (metadata.exists(ANDROID_SENSOR_EXPOSURE_TIME)) {
+    camera_metadata_ro_entry entry =
+        metadata.find(ANDROID_SENSOR_EXPOSURE_TIME);
+    if (!utils->SetExposureTime(entry.data.i64[0], 1'000'000'000)) {
+      LOGF(ERROR) << "Setting exposure time failed.";
       return false;
     }
   }
