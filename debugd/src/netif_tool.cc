@@ -4,13 +4,14 @@
 
 #include "debugd/src/netif_tool.h"
 
+#include "debugd/src/helper_utils.h"
 #include "debugd/src/process_with_output.h"
 
 namespace debugd {
 
 std::string NetifTool::GetInterfaces() {
   std::string path;
-  if (!SandboxedProcess::GetHelperPath("netif", &path))
+  if (!GetHelperPath("netif", &path))
     return "<path too long>";
 
   ProcessWithOutput p;

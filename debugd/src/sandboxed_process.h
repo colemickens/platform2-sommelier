@@ -17,12 +17,6 @@ class SandboxedProcess : public brillo::ProcessImpl {
   SandboxedProcess();
   ~SandboxedProcess() override = default;
 
-  // Get the full path of a helper executable located at the |relative_path|
-  // relative to the debugd helpers directory. Return false if the full path
-  // is too long.
-  static bool GetHelperPath(const std::string& relative_path,
-                            std::string* full_path);
-
   virtual bool Init();
   virtual bool Init(const std::vector<std::string>& minijail_extra_args);
 

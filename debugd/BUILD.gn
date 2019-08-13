@@ -85,6 +85,7 @@ static_library("libdebugd") {
     "src/dev_features_tool.cc",
     "src/dev_mode_no_owner_restriction.cc",
     "src/example_tool.cc",
+    "src/helper_utils.cc",
     "src/icmp_tool.cc",
     "src/log_tool.cc",
     "src/memory_tool.cc",
@@ -279,6 +280,7 @@ if (use.test) {
     sources = [
       "src/crash_sender_tool_test.cc",
       "src/dev_mode_no_owner_restriction_test.cc",
+      "src/helper_utils_test.cc",
       "src/helpers/cups_uri_helper_test.cc",
       "src/helpers/cups_uri_helper_utils.cc",
       "src/helpers/dev_features_password_utils.cc",
@@ -287,7 +289,6 @@ if (use.test) {
       "src/helpers/scheduler_configuration_utils_test.cc",
       "src/log_tool_test.cc",
       "src/process_with_id_test.cc",
-      "src/sandboxed_process_test.cc",
       "src/storage_tool_test.cc",
       "src/subprocess_tool_test.cc",
     ]

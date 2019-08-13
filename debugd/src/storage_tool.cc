@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <vector>
 
+#include "debugd/src/helper_utils.h"
 #include "debugd/src/process_with_id.h"
 #include "debugd/src/process_with_output.h"
 
@@ -152,7 +153,7 @@ std::string StorageTool::Smartctl(const std::string& option) {
   base::FilePath bname = device.BaseName();
 
   std::string path;
-  if (!SandboxedProcess::GetHelperPath("storage", &path))
+  if (!GetHelperPath("storage", &path))
     return "<path too long>";
 
   ProcessWithOutput process;

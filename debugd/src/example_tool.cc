@@ -8,6 +8,7 @@
 
 #include "debugd/src/example_tool.h"
 
+#include "debugd/src/helper_utils.h"
 #include "debugd/src/process_with_output.h"
 
 namespace debugd {
@@ -19,7 +20,7 @@ namespace debugd {
 // wrong.
 std::string ExampleTool::GetExample() {
   std::string path;
-  if (!SandboxedProcess::GetHelperPath("example", &path))
+  if (!GetHelperPath("example", &path))
     return "<path too long>";
   // This whole method is synchronous, so we create a subprocess, let it run to
   // completion, then gather up its output to return it.

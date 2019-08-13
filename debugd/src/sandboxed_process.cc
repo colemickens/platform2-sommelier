@@ -55,24 +55,6 @@ SandboxedProcess::SandboxedProcess()
       group_(kDefaultGroup) {
 }
 
-// static
-bool SandboxedProcess::GetHelperPath(const std::string& relative_path,
-                                     std::string* full_path) {
-  // This environment variable controls the root directory for debugd helpers,
-  // which lets people develop helpers even when verified boot is on.
-  const char* helpers_dir = getenv("DEBUGD_HELPERS");
-  std::string path = base::StringPrintf(
-      "%s/%s",
-      helpers_dir ? helpers_dir : "/usr/libexec/debugd/helpers",
-      relative_path.c_str());
-
-  if (path.length() > PATH_MAX)
-    return false;
-
-  *full_path = path;
-  return true;
-}
-
 bool SandboxedProcess::Init(
     const std::vector<std::string>& minijail_extra_args) {
   if (sandboxing_ && (user_.empty() || group_.empty())) {

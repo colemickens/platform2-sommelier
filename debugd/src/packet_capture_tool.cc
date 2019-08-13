@@ -7,6 +7,7 @@
 #include <base/strings/string_util.h>
 
 #include "debugd/src/error_utils.h"
+#include "debugd/src/helper_utils.h"
 #include "debugd/src/process_with_id.h"
 #include "debugd/src/variant_utils.h"
 
@@ -63,7 +64,7 @@ bool PacketCaptureTool::Start(
     std::string* out_id,
     brillo::ErrorPtr* error) {
   std::string exec_path;
-  if (!SandboxedProcess::GetHelperPath("capture_utility.sh", &exec_path)) {
+  if (!GetHelperPath("capture_utility.sh", &exec_path)) {
     DEBUGD_ADD_ERROR(
         error, kPacketCaptureToolErrorString, "Helper path is too long");
     return false;

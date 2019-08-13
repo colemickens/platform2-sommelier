@@ -11,6 +11,7 @@
 #include <base/strings/string_util.h>
 
 #include "debugd/src/error_utils.h"
+#include "debugd/src/helper_utils.h"
 
 namespace debugd {
 
@@ -118,7 +119,7 @@ int ProcessWithOutput::RunHelper(const std::string& helper,
                                  std::string* stderr,
                                  brillo::ErrorPtr* error) {
   std::string helper_path;
-  if (!SandboxedProcess::GetHelperPath(helper, &helper_path)) {
+  if (!GetHelperPath(helper, &helper_path)) {
     DEBUGD_ADD_ERROR(error, kDBusErrorString, kPathLengthErrorString);
     return kRunError;
   }

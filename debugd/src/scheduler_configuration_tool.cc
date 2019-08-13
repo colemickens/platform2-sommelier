@@ -5,6 +5,7 @@
 #include "debugd/src/scheduler_configuration_tool.h"
 
 #include "debugd/src/error_utils.h"
+#include "debugd/src/helper_utils.h"
 #include "debugd/src/process_with_output.h"
 #include "debugd/src/sandboxed_process.h"
 
@@ -44,7 +45,7 @@ bool RunHelper(const std::string& command,
                int* exit_status,
                brillo::ErrorPtr* error) {
   std::string helper_path;
-  if (!SandboxedProcess::GetHelperPath(command, &helper_path)) {
+  if (!GetHelperPath(command, &helper_path)) {
     DEBUGD_ADD_ERROR(error, kErrorPath, "Path too long");
     return false;
   }

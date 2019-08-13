@@ -11,6 +11,7 @@
 #include <brillo/process.h>
 
 #include "debugd/src/constants.h"
+#include "debugd/src/helper_utils.h"
 #include "debugd/src/process_with_output.h"
 #include "debugd/src/sandboxed_process.h"
 
@@ -32,7 +33,7 @@ void AddCategoryArgs(ProcessWithOutput* p, const std::string& categories) {
 
 std::string SystraceTool::Start(const std::string& categories) {
   std::string path;
-  if (!SandboxedProcess::GetHelperPath(kSystraceHelper, &path))
+  if (!GetHelperPath(kSystraceHelper, &path))
     return "";
 
   ProcessWithOutput p;
@@ -50,7 +51,7 @@ std::string SystraceTool::Start(const std::string& categories) {
 
 void SystraceTool::Stop(const base::ScopedFD& outfd) {
   std::string path;
-  if (!SandboxedProcess::GetHelperPath(kSystraceHelper, &path))
+  if (!GetHelperPath(kSystraceHelper, &path))
     return;
 
   SandboxedProcess p;
@@ -65,7 +66,7 @@ void SystraceTool::Stop(const base::ScopedFD& outfd) {
 
 std::string SystraceTool::Status() {
   std::string path;
-  if (!SandboxedProcess::GetHelperPath(kSystraceHelper, &path))
+  if (!GetHelperPath(kSystraceHelper, &path))
     return "";
 
   ProcessWithOutput p;

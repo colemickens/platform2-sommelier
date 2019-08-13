@@ -16,6 +16,7 @@
 #include <chromeos/dbus/debugd/dbus-constants.h>
 
 #include "debugd/src/constants.h"
+#include "debugd/src/helper_utils.h"
 #include "debugd/src/process_with_output.h"
 #include "debugd/src/sandboxed_process.h"
 
@@ -214,7 +215,7 @@ bool CupsTool::UriSeemsReasonable(const std::string& uri) {
   ProcessWithOutput::ArgList args = {uri};
   std::string helper_path;
 
-  if (!SandboxedProcess::GetHelperPath(kUriHelperBasename, &helper_path)) {
+  if (!GetHelperPath(kUriHelperBasename, &helper_path)) {
     DCHECK(false) << "GetHelperPath() failed to return the CUPS URI helper!";
     return false;
   }

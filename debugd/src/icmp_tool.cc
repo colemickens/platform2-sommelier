@@ -8,6 +8,7 @@
 
 #include <base/strings/stringprintf.h>
 
+#include "debugd/src/helper_utils.h"
 #include "debugd/src/process_with_output.h"
 
 using std::map;
@@ -23,7 +24,7 @@ string ICMPTool::TestICMP(const string& host) {
 string ICMPTool::TestICMPWithOptions(const string& host,
                                      const map<string, string>& options) {
   string path;
-  if (!SandboxedProcess::GetHelperPath("icmp", &path))
+  if (!GetHelperPath("icmp", &path))
     return "<path too long>";
 
   ProcessWithOutput p;

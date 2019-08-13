@@ -4,13 +4,14 @@
 
 #include "debugd/src/network_status_tool.h"
 
+#include "debugd/src/helper_utils.h"
 #include "debugd/src/process_with_output.h"
 
 namespace debugd {
 
 std::string NetworkStatusTool::GetNetworkStatus() {
   std::string path;
-  if (!SandboxedProcess::GetHelperPath("network_status", &path))
+  if (!GetHelperPath("network_status", &path))
     return "";
 
   ProcessWithOutput p;
