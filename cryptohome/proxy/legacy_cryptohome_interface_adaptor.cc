@@ -110,6 +110,7 @@ void LegacyCryptohomeInterfaceAdaptor::ListKeysExOnSuccess(
   cryptohome::ListKeysReply* result_extension =
       result.MutableExtension(cryptohome::ListKeysReply::reply);
   result_extension->mutable_labels()->CopyFrom(reply.labels());
+  ClearErrorIfNotSet(&result);
   response->Return(result);
 }
 
@@ -204,6 +205,7 @@ void LegacyCryptohomeInterfaceAdaptor::GetKeyDataOnSuccess(
   cryptohome::GetKeyDataReply* result_extension =
       result.MutableExtension(cryptohome::GetKeyDataReply::reply);
   result_extension->mutable_key_data()->CopyFrom(reply.key_data());
+  ClearErrorIfNotSet(&result);
   response->Return(result);
 }
 
@@ -421,6 +423,7 @@ void LegacyCryptohomeInterfaceAdaptor::MountExOnSuccess(
       result.MutableExtension(cryptohome::MountReply::reply);
   result_extension->set_recreated(reply.recreated());
   result_extension->set_sanitized_username(reply.sanitized_username());
+  ClearErrorIfNotSet(&result);
   response->Return(result);
 }
 
@@ -496,6 +499,7 @@ void LegacyCryptohomeInterfaceAdaptor::GetAccountDiskUsageOnSuccess(
   cryptohome::GetAccountDiskUsageReply* result_extension =
       result.MutableExtension(cryptohome::GetAccountDiskUsageReply::reply);
   result_extension->set_size(reply.size());
+  ClearErrorIfNotSet(&result);
   response->Return(result);
 }
 
@@ -778,6 +782,7 @@ void LegacyCryptohomeInterfaceAdaptor::
     }
   }
 
+  ClearErrorIfNotSet(&result);
   response->Return(result);
 }
 
@@ -2062,6 +2067,7 @@ void LegacyCryptohomeInterfaceAdaptor::GetLoginStatusOnSuccess(
 
   // See definition of user_data_auth::GetLoginStatusReply for more information
   // on why |boot_lockbox_finalized| is not included here.
+  ClearErrorIfNotSet(&result);
   response->Return(result);
 }
 
@@ -2245,6 +2251,7 @@ void LegacyCryptohomeInterfaceAdaptor::GetTpmStatusOnStageAttestationDone(
     extension->set_verified_boot_measured(false);
   }
 
+  ClearErrorIfNotSet(&reply);
   response->Return(reply);
 }
 
@@ -2283,6 +2290,7 @@ void LegacyCryptohomeInterfaceAdaptor::GetEndorsementInfoOnSuccess(
       extension->set_ek_certificate(reply.ek_certificate());
     }
   }
+  ClearErrorIfNotSet(&result);
   response->Return(result);
 }
 
@@ -2327,6 +2335,7 @@ void LegacyCryptohomeInterfaceAdaptor::GetFirmwareManagementParametersOnSuccess(
   result_extension->set_flags(reply.fwmp().flags());
   *result_extension->mutable_developer_key_hash() =
       reply.fwmp().developer_key_hash();
+  ClearErrorIfNotSet(&result);
   response->Return(result);
 }
 
@@ -2461,6 +2470,7 @@ void LegacyCryptohomeInterfaceAdaptor::GetSupportedKeyPoliciesOnSuccess(
 
   extension->set_low_entropy_credentials(
       reply.low_entropy_credentials_supported());
+  ClearErrorIfNotSet(&base_reply);
   response->Return(base_reply);
 }
 
@@ -2579,6 +2589,7 @@ void LegacyCryptohomeInterfaceAdaptor::
     result.ClearExtension(
         cryptohome::LockToSingleUserMountUntilRebootReply::reply);
   }
+  ClearErrorIfNotSet(&result);
   response->Return(result);
 }
 
@@ -2610,6 +2621,7 @@ void LegacyCryptohomeInterfaceAdaptor::GetRsuDeviceIdOnSuccess(
         result.MutableExtension(cryptohome::GetRsuDeviceIdReply::reply);
     *result_extension->mutable_rsu_device_id() = reply.rsu_device_id();
   }
+  ClearErrorIfNotSet(&result);
   response->Return(result);
 }
 
@@ -2657,6 +2669,14 @@ LegacyCryptohomeInterfaceAdaptor::IntegerToVAType(int type) {
     return base::nullopt;
   }
   return static_cast<attestation::VAType>(type);
+}
+
+void LegacyCryptohomeInterfaceAdaptor::ClearErrorIfNotSet(
+    cryptohome::BaseReply* reply) {
+  if (reply->has_error() &&
+      reply->error() == cryptohome::CRYPTOHOME_ERROR_NOT_SET) {
+    reply->clear_error();
+  }
 }
 
 }  // namespace cryptohome

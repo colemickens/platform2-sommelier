@@ -921,6 +921,7 @@ class LegacyCryptohomeInterfaceAdaptor
     cryptohome::BaseReply base_reply;
     base_reply.set_error(
         static_cast<cryptohome::CryptohomeErrorCode>(reply.error()));
+    ClearErrorIfNotSet(&base_reply);
     response->Return(base_reply);
   }
 
@@ -933,6 +934,11 @@ class LegacyCryptohomeInterfaceAdaptor
 
   // A helper function which maps an integer to a valid VAType.
   static base::Optional<attestation::VAType> IntegerToVAType(int type);
+
+  // A helper function that clear |error| in a BaseReply if it's not set. This
+  // is the default behaviour is the legacy interface and therefore should be
+  // followed.
+  static void ClearErrorIfNotSet(cryptohome::BaseReply* reply);
 
   brillo::dbus_utils::DBusObject dbus_object_;
 
