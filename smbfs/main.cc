@@ -8,6 +8,7 @@
 
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <brillo/syslog_logging.h>
 
 #include "smbfs/smbfs.h"
 #include "smbfs/smbfs_daemon.h"
@@ -26,6 +27,8 @@ void PrintUsage(const char* self) {
       "    -o uid=<n>          UID of the files owner.\n"
       "    -o gid=<n>          GID of the files owner.\n"
       "    -t   --test         Use a fake/test backend.\n"
+      "    --log-level=<l>     Log level - 0: LOG(INFO), 1: LOG(WARNING),\n"
+      "                        2: LOG(ERROR), -1: VLOG(1), -2: VLOG(2), ...\n"
       "\n",
       self);
 }
@@ -41,6 +44,7 @@ const struct fuse_opt options_definition[] = {
     OPT_DEF("gid=%u", gid, 0),
     OPT_DEF("-t", use_test, 1),
     OPT_DEF("--test", use_test, 1),
+    OPT_DEF("--log-level=%d", log_level, 0),
 
     FUSE_OPT_END,
 };
@@ -83,6 +87,9 @@ int main(int argc, char** argv) {
                      ParseOptionsCallback) == -1) {
     return EX_USAGE;
   }
+
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
+  logging::SetMinLogLevel(options.log_level);
 
   if (options.show_version) {
     printf("FUSE version %d\n", fuse_version());

@@ -19,6 +19,7 @@ struct Options {
   uid_t uid = 0;
   gid_t gid = 0;
   int use_test = 0;
+  int log_level = 1;
 
   std::string share_path;
   std::string mountpoint;
