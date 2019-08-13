@@ -215,6 +215,7 @@ grpc::Status TremplinListenerImpl::UpdateExportStatus(
   progress_signal.set_total_input_bytes(request->total_input_bytes());
   progress_signal.set_input_files_streamed(request->input_files_streamed());
   progress_signal.set_input_bytes_streamed(request->input_bytes_streamed());
+  progress_signal.set_bytes_exported(request->bytes_exported());
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool result = false;
