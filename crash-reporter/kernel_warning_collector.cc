@@ -105,7 +105,7 @@ bool KernelWarningCollector::Collect(WarningType type) {
   // Get the log contents, compress, and attach to crash report.
   bool result = GetLogContents(log_config_path_, exec_name, log_path);
   if (result) {
-    AddCrashMetaUploadFile("log", log_path.value());
+    AddCrashMetaUploadFile("log", log_path.BaseName().value());
   }
 
   FinishCrash(meta_path, exec_name, kernel_crash_path.BaseName().value());
