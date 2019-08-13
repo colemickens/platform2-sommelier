@@ -140,8 +140,8 @@ class U2fDaemon : public brillo::Daemon {
             uint32_t product_id)
       : force_u2f_(force_u2f),
         force_g2f_(force_g2f),
-        user_keys_(user_keys),
-        legacy_kh_fallback_(legacy_kh_fallback),
+        user_keys_(true),
+        legacy_kh_fallback_(legacy_kh_fallback || !user_keys),
         vendor_id_(vendor_id),
         product_id_(product_id) {}
 
