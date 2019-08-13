@@ -495,6 +495,9 @@ message ContainerExportProgress {
 
   // Size of the files in the input container that have been downloaded.
   uint64 input_bytes_streamed = 9;
+
+  // Number of compressed bytes that have been exported.
+  uint64 bytes_exported = 10;
 }
 
 message ImportContainerRequest {
