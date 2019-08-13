@@ -6,6 +6,8 @@
 #include <time.h>
 
 #include <base/bind.h>
+#include <base/command_line.h>
+#include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
@@ -106,6 +108,7 @@ bool GetDirectoryEntry(const base::StringPiece16& path, DirectoryEntry* out) {
 }
 
 int fat_getattr(const char* path, struct stat* stat) {
+  VLOG(1) << "fat_getattr: " << path;
   if (strcmp(path, "/") == 0) {
     stat->st_mode = kDirMode;
     stat->st_nlink = 2;
@@ -120,6 +123,7 @@ int fat_getattr(const char* path, struct stat* stat) {
 }
 
 int fat_open(const char* path, struct fuse_file_info* fi) {
+  VLOG(1) << "fat_open: " << path;
   if ((fi->flags & O_ACCMODE) != O_RDONLY) {
     return -EACCES;
   }
@@ -159,6 +163,7 @@ int fat_readdir(const char* path,
                 fuse_fill_dir_t filler,
                 off_t offset,
                 struct fuse_file_info* fi) {
+  VLOG(1) << "fat_readdir: " << path;
   filler(buf, ".", nullptr, 0);
   filler(buf, "..", nullptr, 0);
   int64_t start_sector = 0;
@@ -190,17 +195,21 @@ int fat_readdir(const char* path,
 }  // namespace
 
 int main(int argc, char** argv) {
+  base::CommandLine::Init(argc, argv);
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
-  if (argc != 5) {
-    LOG(ERROR) << "Usage: " << argv[0]
+
+  auto program = base::CommandLine::ForCurrentProcess()->GetProgram();
+  auto args = base::CommandLine::ForCurrentProcess()->GetArgs();
+  if (args.size() != 4) {
+    LOG(ERROR) << "Usage: " << program.value()
                << " obb_filename mount_path owner_uid owner_gid";
     return 1;
   }
-  const char* file_system_name = argv[0];
-  const char* obb_filename = argv[1];
-  const char* mount_path = argv[2];
-  const char* owner_uid = argv[3];
-  const char* owner_gid = argv[4];
+  const char* file_system_name = program.value().c_str();
+  const char* obb_filename = args[0].c_str();
+  const char* mount_path = args[1].c_str();
+  const std::string& owner_uid = args[2];
+  const std::string& owner_gid = args[3];
 
   base::File file(base::FilePath(obb_filename),
                   base::File::FLAG_OPEN | base::File::FLAG_READ);
@@ -208,6 +217,7 @@ int main(int argc, char** argv) {
     LOG(ERROR) << "Failed to open: " << obb_filename;
     return 1;
   }
+
   fat::Volume volume;
   if (!volume.Initialize(std::move(file))) {
     LOG(ERROR) << "Failed to initialize volume: " << obb_filename;
