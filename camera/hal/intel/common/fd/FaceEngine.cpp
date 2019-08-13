@@ -115,17 +115,35 @@ int FaceEngine::getResult(ia_face_state* faceState)
 {
     CheckError(mInitialized == false, UNKNOWN_ERROR, "@%s, mInitialized is false", __FUNCTION__);
 
+    /*
+        face rectangle from face lib: (Ln, Tn, Rn, Bn)
+        3A statistics Surface: ((IA_COORDINATE_RIGHT - IA_COORDINATE_LEFT) * (IA_COORDINATE_BOTTOM - IA_COORDINATE_TOP))
+        target coordinate of face rectangle to the 3A lib: (LL, TT, RR, BB)
+        FOV ratio (which is <= 1): (fovRatioW * fovRatioH)
+
+        formular:
+        LL = Ln * fovRatioW + (1 - fovRatioW) / 2 * (IA_COORDINATE_RIGHT - IA_COORDINATE_LEFT)
+        TT = Tn * fovRatioH + (1 - fovRatioH) / 2 * (IA_COORDINATE_BOTTOM - IA_COORDINATE_TOP)
+        RR and BB are the similar.
+    */
+
+    CameraWindow activePixelArray = PlatformData::getActivePixelArray(mCameraId);
+    float fovRatioW = 1.0 * mWidth / activePixelArray.width();
+    float fovRatioH = 1.0 * mHeight / activePixelArray.height();
+    float offsetW = (1.0 - fovRatioW) / 2.0 * (IA_COORDINATE_RIGHT - IA_COORDINATE_LEFT);
+    float offsetH = (1.0 - fovRatioH) / 2.0 * (IA_COORDINATE_BOTTOM - IA_COORDINATE_TOP);
+
     std::lock_guard<std::mutex> l(mLock);
-    LOG1("@%s, faceNum:%d", __FUNCTION__, mResult.faceNum);
+    LOG1("@%s, faceNum:%d, mHeight:%d, mWidth:%d", __FUNCTION__, mResult.faceNum, mHeight, mWidth);
     CheckError(!faceState, UNKNOWN_ERROR, "@%s, faceState is nullptr", __FUNCTION__);
 
     faceState->num_faces = mResult.faceNum;
 
     for (int i = 0; i < mResult.faceNum; i++) {
-        faceState->faces[i].face_area.top = mResult.faceResults[i].rect.top;
-        faceState->faces[i].face_area.bottom = mResult.faceResults[i].rect.bottom;
-        faceState->faces[i].face_area.left = mResult.faceResults[i].rect.left;
-        faceState->faces[i].face_area.right = mResult.faceResults[i].rect.right;
+        faceState->faces[i].face_area.left = static_cast<int>(mResult.faceResults[i].rect.left * fovRatioW + offsetW);
+        faceState->faces[i].face_area.top = static_cast<int>(mResult.faceResults[i].rect.top * fovRatioH + offsetH);
+        faceState->faces[i].face_area.bottom = static_cast<int>(mResult.faceResults[i].rect.bottom * fovRatioH + offsetH);
+        faceState->faces[i].face_area.right = static_cast<int>(mResult.faceResults[i].rect.right * fovRatioW + offsetW);
         faceState->faces[i].rip_angle = mResult.faceResults[i].rip_angle;
         faceState->faces[i].rop_angle = mResult.faceResults[i].rop_angle;
         faceState->faces[i].tracking_id = mResult.faceResults[i].tracking_id;
@@ -137,8 +155,8 @@ int FaceEngine::getResult(ia_face_state* faceState)
 
         faceState->faces[i].smile_state = 0;
         faceState->faces[i].smile_score = 0;
-        faceState->faces[i].mouth.x = mResult.mouthResults[i].mouth.x;
-        faceState->faces[i].mouth.y = mResult.mouthResults[i].mouth.y;
+        faceState->faces[i].mouth.x = static_cast<int>(mResult.mouthResults[i].mouth.x * fovRatioW + offsetW);
+        faceState->faces[i].mouth.y = static_cast<int>(mResult.mouthResults[i].mouth.y * fovRatioH + offsetH);
 
         faceState->faces[i].eye_validity = 0;
     }
