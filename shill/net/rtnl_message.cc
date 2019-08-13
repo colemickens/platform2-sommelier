@@ -37,21 +37,6 @@ const char* TypeToString(RTNLMessage::Type type) {
       return "UnknownType";
   }
 }
-
-const char* ModeToString(RTNLMessage::Mode mode) {
-  switch (mode) {
-    case RTNLMessage::kModeGet:
-      return "Get";
-    case RTNLMessage::kModeAdd:
-      return "Add";
-    case RTNLMessage::kModeDelete:
-      return "Delete";
-    case RTNLMessage::kModeQuery:
-      return "Query";
-    default:
-      return "UnknownMode";
-  }
-}
 }  // namespace
 
 struct RTNLHeader {
@@ -620,9 +605,25 @@ void RTNLMessage::Reset() {
   attributes_.clear();
 }
 
+// static
+std::string RTNLMessage::ModeToString(RTNLMessage::Mode mode) {
+  switch (mode) {
+    case RTNLMessage::kModeGet:
+      return "Get";
+    case RTNLMessage::kModeAdd:
+      return "Add";
+    case RTNLMessage::kModeDelete:
+      return "Delete";
+    case RTNLMessage::kModeQuery:
+      return "Query";
+    default:
+      return "UnknownMode";
+  }
+}
+
 std::string RTNLMessage::ToString() const {
   std::string str = base::StringPrintf("%s %s: ",
-                                       ModeToString(mode()),
+                                       ModeToString(mode()).c_str(),
                                        TypeToString(type()));
   switch (type()) {
     case RTNLMessage::kTypeLink:

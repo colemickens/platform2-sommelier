@@ -457,6 +457,10 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
     return;
   }
 
+  SLOG(this, 2) << __func__ << " " << RTNLMessage::ModeToString(message.mode())
+                << " index: " << interface_index
+                << " entry: " << entry;
+
   bool entry_exists = false;
   uint8_t target_table = RT_TABLE_MAIN;
   auto per_device_iter = per_device_tables_.find(interface_index);
@@ -506,11 +510,6 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
     return;
   }
 
-  SLOG(this, 2) << __func__ << " adding"
-                << " destination " << entry.dst.ToString()
-                << " index " << interface_index
-                << " gateway " << entry.gateway.ToString()
-                << " metric " << entry.metric;
   // When using a per-device routing table, we do not want entries for that
   // interface to be added to the default routing table. Thus we remove the
   // added route here and re-add it to the per-device routing table.
