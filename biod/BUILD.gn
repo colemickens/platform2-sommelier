@@ -22,6 +22,8 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
+  # TODO(crbug.com/993557): Remove |fp_on_power_button| USE flag when nocturne
+  # is EOL.
   if (use.fp_on_power_button) {
     defines = [ "FP_ON_POWER_BUTTON" ]
   }
