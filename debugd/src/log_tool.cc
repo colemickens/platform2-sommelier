@@ -329,7 +329,8 @@ const std::vector<Log> kExtraLogs {
   // --processes requires root.
   {kCommand, "netstat",
     "/sbin/ss --all --query inet --numeric --processes", kRoot, kRoot},
-  {kCommand, "logcat", "/usr/sbin/android-sh -c '/system/bin/logcat -d'",
+  {kCommand, "logcat",
+    "/usr/bin/nsenter -t1 -m /usr/sbin/android-sh -c '/system/bin/logcat -d'",
     kRoot, kRoot, Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
 };
 
