@@ -118,6 +118,19 @@ DlcRootMap ToDlcRootMap(const DlcModuleList& dlc_module_list,
   return m;
 }
 
+dlcservice::InstallStatus CreateInstallStatus(
+    const dlcservice::Status& status,
+    const std::string& error_code,
+    const dlcservice::DlcModuleList& dlc_module_list,
+    double progress) {
+  InstallStatus install_status;
+  install_status.set_status(status);
+  install_status.set_error_code(error_code);
+  install_status.mutable_dlc_module_list()->CopyFrom(dlc_module_list);
+  install_status.set_progress(progress);
+  return install_status;
+}
+
 }  // namespace utils
 
 }  // namespace dlcservice

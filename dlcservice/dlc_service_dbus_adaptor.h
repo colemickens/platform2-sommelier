@@ -56,8 +56,9 @@ class DlcServiceDBusAdaptor
       const update_engine::StatusResult& status_result);
 
  private:
-  // Returns indication of update_engine's install completion.
-  bool InstallingComplete(const update_engine::StatusResult& status_result);
+  // Handles necessary actions prior to update_engine's install completion, but
+  // when update_engine's install is complete it will return true.
+  bool HandleStatusResult(const update_engine::StatusResult& status_result);
 
   // Creates the necessary directories and images for DLC installation. Will set
   // |path| to the top DLC directory for cleanup scoping.
@@ -86,8 +87,8 @@ class DlcServiceDBusAdaptor
   bool CheckForUpdateEngineStatus(
       const std::vector<update_engine::Operation>& status_list);
 
-  // Send |OnInstalled| D-Bus signal.
-  void SendOnInstalledSignal(const InstallResult& install_result);
+  // Send |OnInstallStatus| D-Bus signal.
+  void SendOnInstallStatusSignal(const InstallStatus& install_status);
 
   // Called on being connected to update_engine's |StatusUpdate| signal.
   void OnStatusUpdateAdvancedSignalConnected(const std::string& interface_name,

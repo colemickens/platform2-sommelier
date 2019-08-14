@@ -47,6 +47,15 @@ void EnterMinijail() {
   minijail_enter(jail.get());
 }
 
+string ErrorPtrStr(const brillo::ErrorPtr& err) {
+  std::ostringstream err_stream;
+  err_stream << "Domain:" << err->GetDomain() << " "
+             << "Error Code:" << err->GetCode() << " "
+             << "Error Message: " << err->GetMessage();
+  // TODO(crbug.com/999284): No inner error support, err->GetInnerError().
+  return err_stream.str();
+}
+
 }  // namespace
 
 class DlcServiceUtil : public brillo::Daemon {
@@ -97,36 +106,25 @@ class DlcServiceUtil : public brillo::Daemon {
 
     // Called with "--list".
     if (FLAGS_list) {
-      if (!GetInstalled(&dlc_module_list_, &error)) {
-        LOG(ERROR) << "Failed to get DLC module list.";
-        return error;
-      }
-      std::cout << "Installed DLC modules:\n";
-      for (const auto& dlc_module_info : dlc_module_list_.dlc_module_infos()) {
-        std::cout << dlc_module_info.dlc_id() << std::endl;
-        if (!FLAGS_oneline) {
-          if (!DlcServiceUtil::PrintDlcDetails(dlc_module_info.dlc_id()))
-            LOG(ERROR) << "Failed to print details of DLC '"
-                       << dlc_module_info.dlc_id() << "'.";
-        }
-      }
+      if (!GetInstalled(&dlc_module_list_))
+        return EX_SOFTWARE;
+      PrintDlcModuleList(FLAGS_oneline);
       Quit();
       return EX_OK;
     }
 
-    if (!InitDlcModuleList(FLAGS_omaha_url, FLAGS_dlc_ids)) {
+    if (!InitDlcModuleList(FLAGS_omaha_url, FLAGS_dlc_ids))
       return EX_SOFTWARE;
-    }
 
     // Called with "--install".
     if (FLAGS_install) {
       // Set up callbacks
-      dlc_service_proxy_->RegisterOnInstalledSignalHandler(
-          base::Bind(&DlcServiceUtil::OnInstalled,
+      dlc_service_proxy_->RegisterOnInstallStatusSignalHandler(
+          base::Bind(&DlcServiceUtil::OnInstallStatus,
                      weak_ptr_factory_.GetWeakPtr()),
-          base::Bind(&DlcServiceUtil::OnInstalledConnect,
+          base::Bind(&DlcServiceUtil::OnInstallStatusConnect,
                      weak_ptr_factory_.GetWeakPtr()));
-      if (Install(&error)) {
+      if (Install()) {
         // Don't |Quit()| as we will need to wait for signal of install.
         return EX_OK;
       }
@@ -134,14 +132,14 @@ class DlcServiceUtil : public brillo::Daemon {
 
     // Called with "--uninstall".
     if (FLAGS_uninstall) {
-      if (Uninstall(&error)) {
+      if (Uninstall()) {
         Quit();
         return EX_OK;
       }
     }
 
     Quit();
-    return error;
+    return EX_SOFTWARE;
   }
 
   // Initialize the dlcservice proxy. Returns true on success, false otherwise.
@@ -160,22 +158,30 @@ class DlcServiceUtil : public brillo::Daemon {
     return true;
   }
 
-  // Callback invoked on receiving |OnInstalled| signal.
-  void OnInstalled(const dlcservice::InstallResult& install_result) {
-    if (!install_result.success()) {
-      LOG(ERROR) << "Failed to install: '" << dlc_module_list_str_
-                 << "' with error code:" << install_result.error_code();
-      QuitWithExitCode(EX_SOFTWARE);
-      return;
+  // Callback invoked on receiving |OnInstallStatus| signal.
+  void OnInstallStatus(const dlcservice::InstallStatus& install_status) {
+    switch (install_status.status()) {
+      case dlcservice::Status::COMPLETED:
+        LOG(INFO) << "Install successful!: '" << dlc_module_list_str_ << "'.";
+        Quit();
+        break;
+      case dlcservice::Status::RUNNING:
+        LOG(INFO) << "Install in progress: " << install_status.progress();
+        break;
+      case dlcservice::Status::FAILED:
+        LOG(ERROR) << "Failed to install: '" << dlc_module_list_str_
+                   << "' with error code: " << install_status.error_code();
+        QuitWithExitCode(EX_SOFTWARE);
+        break;
+      default:
+        NOTREACHED();
     }
-    LOG(INFO) << "Install successful!: '" << dlc_module_list_str_ << "'.";
-    Quit();
   }
 
-  // Callback invoked on connecting |OnInstalled| signal.
-  void OnInstalledConnect(const string& interface_name,
-                          const string& signal_name,
-                          bool success) {
+  // Callback invoked on connecting |OnInstallStatus| signal.
+  void OnInstallStatusConnect(const string& interface_name,
+                              const string& signal_name,
+                              bool success) {
     if (!success) {
       LOG(ERROR) << "Error connecting " << interface_name << "." << signal_name;
       QuitWithExitCode(EX_SOFTWARE);
@@ -184,13 +190,12 @@ class DlcServiceUtil : public brillo::Daemon {
 
   // Install current DLC module. Returns true if current module can be
   // installed. False otherwise.
-  bool Install(int* error_ptr) {
-    brillo::ErrorPtr error;
+  bool Install() {
+    brillo::ErrorPtr err;
     LOG(INFO) << "Attempting to install DLC modules: " << dlc_module_list_str_;
-    if (!dlc_service_proxy_->Install(dlc_module_list_, &error)) {
-      LOG(ERROR) << "Failed to install " << dlc_module_list_str_ << ", "
-                 << error->GetMessage();
-      *error_ptr = EX_SOFTWARE;
+    if (!dlc_service_proxy_->Install(dlc_module_list_, &err)) {
+      LOG(ERROR) << "Failed to install: " << dlc_module_list_str_ << ", "
+                 << ErrorPtrStr(err);
       return false;
     }
     return true;
@@ -199,40 +204,44 @@ class DlcServiceUtil : public brillo::Daemon {
   // Uninstall a list of DLC modules. Returns true of all uninstall operations
   // complete successfully, false otherwise. Sets the given error pointer on
   // failure.
-  bool Uninstall(int* error_ptr) {
-    brillo::ErrorPtr error;
-
-    for (auto& dlc_module : dlc_module_list_.dlc_module_infos()) {
+  bool Uninstall() {
+    brillo::ErrorPtr err;
+    for (const auto& dlc_module : dlc_module_list_.dlc_module_infos()) {
       const string& dlc_id = dlc_module.dlc_id();
       LOG(INFO) << "Attempting to uninstall DLC module '" << dlc_id << "'.";
-
-      // TODO(crbug/986391): Need to take a protobuf as argument and not a
-      // single DLC.
-      if (!dlc_service_proxy_->Uninstall(dlc_id, &error)) {
-        LOG(ERROR) << "Failed to uninstall '" << dlc_id << "', "
-                   << error->GetMessage();
-        *error_ptr = EX_SOFTWARE;
+      if (!dlc_service_proxy_->Uninstall(dlc_id, &err)) {
+        LOG(ERROR) << "Failed to uninstall '" << dlc_id << ", "
+                   << ErrorPtrStr(err);
         return false;
       }
       LOG(INFO) << "'" << dlc_id << "' successfully uninstalled.";
     }
-
     return true;
   }
 
   // Retrieves a list of all installed DLC modules. Returns true if the list is
   // retrieved successfully, false otherwise. Sets the given error pointer on
   // failure.
-  bool GetInstalled(DlcModuleList* dlc_module_list, int* error_ptr) {
-    brillo::ErrorPtr error;
-    if (!dlc_service_proxy_->GetInstalled(dlc_module_list, &error)) {
+  bool GetInstalled(DlcModuleList* dlc_module_list) {
+    brillo::ErrorPtr err;
+    if (!dlc_service_proxy_->GetInstalled(dlc_module_list, &err)) {
       LOG(ERROR) << "Failed to get the list of installed DLC modules, "
-                 << error->GetMessage();
-      *error_ptr = EX_SOFTWARE;
+                 << ErrorPtrStr(err);
       return false;
     }
-
     return true;
+  }
+
+  void PrintDlcModuleList(bool quiet) {
+    std::cout << "Installed DLC modules:\n";
+    for (const auto& dlc_module_info : dlc_module_list_.dlc_module_infos()) {
+      std::cout << dlc_module_info.dlc_id() << std::endl;
+      if (!quiet) {
+        if (!DlcServiceUtil::PrintDlcDetails(dlc_module_info.dlc_id()))
+          LOG(ERROR) << "Failed to print details of DLC '"
+                     << dlc_module_info.dlc_id() << "'.";
+      }
+    }
   }
 
   // Prints the information contained in the manifest of a DLC.

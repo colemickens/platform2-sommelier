@@ -39,9 +39,10 @@ class ExampleDaemon : public brillo::Daemon {
         dlc_module_list.add_dlc_module_infos();
     dlc_module_info->set_dlc_id(dlc_id_to_install_);
 
-    dlc_service_proxy_->RegisterOnInstalledSignalHandler(
-        base::Bind(&ExampleDaemon::OnInstalled, base::Unretained(this)),
-        base::Bind(&ExampleDaemon::OnInstalledConnect, base::Unretained(this)));
+    dlc_service_proxy_->RegisterOnInstallStatusSignalHandler(
+        base::Bind(&ExampleDaemon::OnInstallStatus, base::Unretained(this)),
+        base::Bind(&ExampleDaemon::OnInstallStatusConnect,
+                   base::Unretained(this)));
 
     // Call dlcservice Install API to install a DLC module.
     if (!dlc_service_proxy_->Install(dlc_module_list, &error)) {
@@ -52,18 +53,26 @@ class ExampleDaemon : public brillo::Daemon {
     return EX_OK;
   }
 
-  void OnInstalled(const dlcservice::InstallResult& install_result) {
-    if (!install_result.success()) {
-      LOG(ERROR) << "Failed to install with error code:"
-                 << install_result.error_code();
-    } else {
-      LOG(INFO) << "Install successful!";
+  void OnInstallStatus(const dlcservice::InstallStatus& install_status) {
+    switch (install_status.status()) {
+      case dlcservice::Status::COMPLETED:
+        LOG(INFO) << "Install successful!";
+        break;
+      case dlcservice::Status::RUNNING:
+        LOG(INFO) << "Install progress: " << install_status.progress();
+        break;
+      case dlcservice::Status::FAILED:
+        LOG(ERROR) << "Failed to install with error code: "
+                   << install_status.error_code();
+        break;
+      default:
+        NOTREACHED();
     }
   }
 
-  void OnInstalledConnect(const std::string& interface_name,
-                          const std::string& signal_name,
-                          bool success) {
+  void OnInstallStatusConnect(const std::string& interface_name,
+                              const std::string& signal_name,
+                              bool success) {
     if (!success)
       QuitWithExitCode(EX_SOFTWARE);
   }

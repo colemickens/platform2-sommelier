@@ -76,6 +76,12 @@ dlcservice::DlcModuleList ToDlcModuleList(
 DlcRootMap ToDlcRootMap(const dlcservice::DlcModuleList& dlc_module_list,
                         std::function<bool(dlcservice::DlcModuleInfo)> filter);
 
+dlcservice::InstallStatus CreateInstallStatus(
+    const dlcservice::Status& status,
+    const std::string& error_code,
+    const dlcservice::DlcModuleList& dlc_module_list,
+    double progress);
+
 }  // namespace utils
 }  // namespace dlcservice
 

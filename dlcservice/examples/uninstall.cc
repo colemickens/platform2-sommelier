@@ -38,7 +38,7 @@ class ExampleDaemon : public brillo::Daemon {
     // Call dlcservice Uninstall API to uninstall a DLC module.
     if (!dlc_service_proxy_->Uninstall(dlc_id_to_uninstall_, &error)) {
       // Uninstall failed due to errors.
-      LOG(ERROR) << error->GetMessage();
+      LOG(ERROR) << error->GetCode() << ":" << error->GetMessage();
       return EX_SOFTWARE;
     }
     // Uninstall completed successfully.

@@ -45,15 +45,15 @@
                   value="dlcservice::DlcModuleList"/>
     </arg>
   </method>
-  <signal name="OnInstalled">
-    <arg name="install_result" type="ay" >
+  <signal name="OnInstallStatus">
+    <arg name="install_status" type="ay" >
       <tp:docstring>
-        A serialized protobuf (InstallResult,
+        A serialized protobuf (InstallStatus,
         src/platform2/system_api/dbus/dlcservice/dlcservice.proto) of install
-        operation result.
+        operation status.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="dlcservice::InstallResult"/>
+                  value="dlcservice::InstallStatus"/>
     </arg>
   </signal>
 </interface>

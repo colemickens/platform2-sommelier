@@ -78,10 +78,13 @@ bool CreateImageFile(const FilePath& path, int64_t image_size) {
   return true;
 }
 
-// Sets the D-Bus error object and logs the error message.
-void LogAndSetError(brillo::ErrorPtr* err, const string& msg) {
+// Sets the D-Bus error object with error code and error message after which
+// logs the error message will also be logged.
+void LogAndSetError(brillo::ErrorPtr* err,
+                    const string& code,
+                    const string& msg) {
   if (err)
-    *err = brillo::Error::Create(FROM_HERE, "dlcservice", "INTERNAL", msg);
+    *err = brillo::Error::Create(FROM_HERE, "dlcservice", code, msg);
   LOG(ERROR) << msg;
 }
 
@@ -161,7 +164,8 @@ void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
 bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
                                     const DlcModuleList& dlc_module_list_in) {
   if (dlc_module_list_in.dlc_module_infos().empty()) {
-    LogAndSetError(err, "Must provide at least one DLC to install");
+    LogAndSetError(err, kErrorInvalidDlc,
+                   "Must provide at least one DLC to install");
     return false;
   }
 
@@ -172,7 +176,9 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
 
   // Check that no duplicate DLC(s) were passed in.
   if (unique_dlcs.size() != dlc_module_list_in.dlc_module_infos_size()) {
-    LogAndSetError(err, "Must not pass in duplicate DLC(s) to install");
+    // Note: nice to have for log which was duplicate, but not necessary ATM.
+    LogAndSetError(err, kErrorInvalidDlc,
+                   "Must not pass in duplicate DLC(s) to install");
     return false;
   }
 
@@ -195,12 +201,9 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
 
   // Check if there is nothing to install.
   if (unique_dlc_module_list_to_install.dlc_module_infos_size() == 0) {
-    InstallResult install_result;
-    install_result.set_success(true);
-    install_result.mutable_dlc_module_list()->CopyFrom(unique_dlc_module_list);
-    install_result.set_error_code(
-        static_cast<int>(OnInstalledSignalErrorCode::kNone));
-    SendOnInstalledSignal(install_result);
+    InstallStatus install_status = utils::CreateInstallStatus(
+        Status::COMPLETED, kErrorNone, unique_dlc_module_list, 1.);
+    SendOnInstallStatusSignal(install_status);
     return true;
   }
 
@@ -225,16 +228,33 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
     scoped_paths.emplace_back(std::move(scoped_path));
   }
 
+  // TODO(kimjae): No need to request twice, should cache on call and provide a
+  // way to propagate correct errors depending on update_engine status. Checking
+  // for update_engine status can be completely removed if reason for error is
+  // propagated up from update_engine on |AttemptInstall| call.
+  if (CheckForUpdateEngineStatus({update_engine::UPDATED_NEED_REBOOT})) {
+    LogAndSetError(err, kErrorNeedReboot,
+                   "Update Engine applied update, device needs a reboot.");
+    return false;
+  }
   if (!CheckForUpdateEngineStatus({update_engine::IDLE})) {
-    LogAndSetError(
-        err, "Update Engine is performing operations or a reboot is pending.");
+    LogAndSetError(err, kErrorBusy, "Update Engine is performing operations.");
     return false;
   }
 
   // Invokes update_engine to install the DLC module.
   if (!update_engine_proxy_->AttemptInstall(unique_dlc_module_list_to_install,
                                             nullptr)) {
-    LogAndSetError(err, "Update Engine failed to schedule install operations.");
+    // TODO(kimjae): need update engine to propagate correct error message by
+    // passing in |ErrorPtr| and being set within update engine, current default
+    // is to indicate that update engine is updating because there is no way an
+    // install should have taken place if not through dlcservice. (could also be
+    // the case that an update applied between the time of the last status check
+    // above, but just return |kErrorBusy| because the next time around if an
+    // update has been applied and is in a reboot needed state, it will indicate
+    // correctly then).
+    LogAndSetError(err, kErrorBusy,
+                   "Update Engine failed to schedule install operations.");
     return false;
   }
 
@@ -250,17 +270,17 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
   return true;
 }
 
-// TODO(crbug/986391): Need to take a protobuf as argument and not a single DLC.
 bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
                                       const string& id_in) {
   if (installed_dlc_modules_.find(id_in) == installed_dlc_modules_.end()) {
-    LogAndSetError(err, "The DLC ID provided is not installed");
+    LogAndSetError(err, kErrorInvalidDlc,
+                   "The DLC ID provided is not installed");
     return false;
   }
 
   if (!CheckForUpdateEngineStatus(
           {update_engine::IDLE, update_engine::UPDATED_NEED_REBOOT})) {
-    LogAndSetError(err, "Update Engine is performing operations.");
+    LogAndSetError(err, kErrorBusy, "Install or update is in progress.");
     return false;
   }
 
@@ -282,20 +302,26 @@ bool DlcServiceDBusAdaptor::GetInstalled(brillo::ErrorPtr* err,
   return true;
 }
 
-bool DlcServiceDBusAdaptor::InstallingComplete(
+bool DlcServiceDBusAdaptor::HandleStatusResult(
     const StatusResult& status_result) {
   if (!status_result.is_install()) {
     LOG(INFO) << "Signal from update_engine, not for install.";
     return false;
   }
 
-  if (status_result.current_operation() != Operation::IDLE) {
-    LOG(INFO) << "Signal from update_engine, but install not complete.";
+  if (status_result.current_operation() == Operation::REPORTING_ERROR_EVENT) {
+    InstallStatus install_status =
+        utils::CreateInstallStatus(Status::FAILED, kErrorInternal, {}, 0.);
+    SendOnInstallStatusSignal(install_status);
+    dlc_modules_being_installed_.clear_dlc_module_infos();
     return false;
   }
 
-  if (dlc_modules_being_installed_.dlc_module_infos().empty()) {
-    LOG(ERROR) << "Signal from update_engine, but nothing to install";
+  if (status_result.current_operation() != Operation::IDLE) {
+    LOG(INFO) << "Signal from update_engine, but install not complete.";
+    InstallStatus install_status = utils::CreateInstallStatus(
+        Status::RUNNING, kErrorNone, {}, status_result.progress());
+    SendOnInstallStatusSignal(install_status);
     return false;
   }
 
@@ -309,7 +335,8 @@ bool DlcServiceDBusAdaptor::CreateDlc(brillo::ErrorPtr* err,
                                       FilePath* path) {
   path->clear();
   if (supported_dlc_modules_.find(id) == supported_dlc_modules_.end()) {
-    LogAndSetError(err, "The DLC ID provided is not supported.");
+    LogAndSetError(err, kErrorInvalidDlc,
+                   "The DLC ID provided is not supported.");
     return false;
   }
 
@@ -319,17 +346,19 @@ bool DlcServiceDBusAdaptor::CreateDlc(brillo::ErrorPtr* err,
       utils::GetDlcModulePackagePath(content_dir_, id, package);
 
   if (base::PathExists(module_path)) {
-    LogAndSetError(err, "The DLC module is installed or duplicate.");
+    LogAndSetError(err, kErrorInternal,
+                   "The DLC module is installed or duplicate.");
     return false;
   }
   // Create the DLC ID directory with correct permissions.
   if (!CreateDirWithDlcPermissions(module_path)) {
-    LogAndSetError(err, "Failed to create DLC ID directory");
+    LogAndSetError(err, kErrorInternal, "Failed to create DLC ID directory");
     return false;
   }
   // Create the DLC package directory with correct permissions.
   if (!CreateDirWithDlcPermissions(module_package_path)) {
-    LogAndSetError(err, "Failed to create DLC ID package directory");
+    LogAndSetError(err, kErrorInternal,
+                   "Failed to create DLC ID package directory");
     return false;
   }
 
@@ -339,12 +368,13 @@ bool DlcServiceDBusAdaptor::CreateDlc(brillo::ErrorPtr* err,
   imageloader::Manifest manifest;
   if (!dlcservice::utils::GetDlcManifest(manifest_dir_, id, package,
                                          &manifest)) {
-    LogAndSetError(err, "Failed to get DLC module manifest.");
+    LogAndSetError(err, kErrorInternal, "Failed to get DLC module manifest.");
     return false;
   }
   int64_t image_size = manifest.preallocated_size();
   if (image_size <= 0) {
-    LogAndSetError(err, "Preallocated size in manifest is illegal.");
+    LogAndSetError(err, kErrorInternal,
+                   "Preallocated size in manifest is illegal.");
     return false;
   }
 
@@ -352,7 +382,8 @@ bool DlcServiceDBusAdaptor::CreateDlc(brillo::ErrorPtr* err,
   FilePath image_a_path =
       utils::GetDlcModuleImagePath(content_dir_, id, package, 0);
   if (!CreateImageFile(image_a_path, image_size)) {
-    LogAndSetError(err, "Failed to create slot A DLC image file");
+    LogAndSetError(err, kErrorInternal,
+                   "Failed to create slot A DLC image file");
     return false;
   }
 
@@ -360,7 +391,7 @@ bool DlcServiceDBusAdaptor::CreateDlc(brillo::ErrorPtr* err,
   FilePath image_b_path =
       utils::GetDlcModuleImagePath(content_dir_, id, package, 1);
   if (!CreateImageFile(image_b_path, image_size)) {
-    LogAndSetError(err, "Failed to create slot B image file");
+    LogAndSetError(err, kErrorInternal, "Failed to create slot B image file");
     return false;
   }
 
@@ -372,7 +403,8 @@ bool DlcServiceDBusAdaptor::DeleteDlc(brillo::ErrorPtr* err,
                                       const std::string& id) {
   FilePath dlc_module_path = utils::GetDlcModulePath(content_dir_, id);
   if (!DeleteFile(dlc_module_path, true)) {
-    LogAndSetError(err, "DLC image folder could not be deleted.");
+    LogAndSetError(err, kErrorInternal,
+                   "DLC image folder could not be deleted.");
     return false;
   }
   return true;
@@ -384,11 +416,11 @@ bool DlcServiceDBusAdaptor::MountDlc(brillo::ErrorPtr* err,
   if (!image_loader_proxy_->LoadDlcImage(id, ScanDlcModulePackage(id),
                                          current_boot_slot_name_, mount_point,
                                          nullptr)) {
-    LogAndSetError(err, "Imageloader is not available.");
+    LogAndSetError(err, kErrorInternal, "Imageloader is not available.");
     return false;
   }
   if (mount_point->empty()) {
-    LogAndSetError(err, "Imageloader LoadDlcImage() failed.");
+    LogAndSetError(err, kErrorInternal, "Imageloader LoadDlcImage() failed.");
     return false;
   }
   return true;
@@ -399,11 +431,11 @@ bool DlcServiceDBusAdaptor::UnmountDlc(brillo::ErrorPtr* err,
   bool success = false;
   if (!image_loader_proxy_->UnloadDlcImage(id, ScanDlcModulePackage(id),
                                            &success, nullptr)) {
-    LogAndSetError(err, "Imageloader is not available.");
+    LogAndSetError(err, kErrorInternal, "Imageloader is not available.");
     return false;
   }
   if (!success) {
-    LogAndSetError(err, "Imageloader UnloadDlcImage failed.");
+    LogAndSetError(err, kErrorInternal, "Imageloader UnloadDlcImage failed.");
     return false;
   }
   return true;
@@ -429,25 +461,22 @@ bool DlcServiceDBusAdaptor::CheckForUpdateEngineStatus(
   return true;
 }
 
-void DlcServiceDBusAdaptor::SendOnInstalledSignal(
-    const InstallResult& install_result) {
-  org::chromium::DlcServiceInterfaceAdaptor::SendOnInstalledSignal(
-      install_result);
+void DlcServiceDBusAdaptor::SendOnInstallStatusSignal(
+    const InstallStatus& install_status) {
+  org::chromium::DlcServiceInterfaceAdaptor::SendOnInstallStatusSignal(
+      install_status);
 }
 
 void DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignal(
     const StatusResult& status_result) {
-  if (!InstallingComplete(status_result))
+  if (!HandleStatusResult(status_result))
     return;
 
-  // At this point, update_engine finished installation of the requested DLC
-  // modules (failure or success).
-  DlcModuleList dlc_module_list = dlc_modules_being_installed_;
+  // At this point, update_engine finished installation of the requested DLC(s).
+  DlcModuleList dlc_module_list, dlc_module_list_post_mount;
+  dlc_module_list.CopyFrom(dlc_modules_being_installed_);
+  dlc_module_list_post_mount.CopyFrom(dlc_modules_being_installed_);
   dlc_modules_being_installed_.clear_dlc_module_infos();
-
-  InstallResult install_result;
-  install_result.set_success(false);
-  install_result.mutable_dlc_module_list()->CopyFrom(dlc_module_list);
 
   // Keep track of the cleanups for DLC images.
   utils::ScopedCleanups<Callback<void()>> scoped_cleanups;
@@ -468,20 +497,18 @@ void DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignal(
     scoped_cleanups.Insert(cleanup);
   }
 
-  // Mount the installed DLC module images.
+  // Mount the installed DLC module images not already mounted.
   for (auto& dlc_module :
-       *install_result.mutable_dlc_module_list()->mutable_dlc_module_infos()) {
+       *dlc_module_list_post_mount.mutable_dlc_module_infos()) {
     // Don't remount already mounted.
     if (!dlc_module.dlc_root().empty())
       continue;
     const string& dlc_module_id = dlc_module.dlc_id();
     string mount_point;
     if (!MountDlc(nullptr, dlc_module_id, &mount_point)) {
-      // This is to set |dlc_root|'s all back to empty strings.
-      install_result.mutable_dlc_module_list()->CopyFrom(dlc_module_list);
-      install_result.set_error_code(
-          static_cast<int>(OnInstalledSignalErrorCode::kMountFailure));
-      SendOnInstalledSignal(install_result);
+      InstallStatus install_status = utils::CreateInstallStatus(
+          Status::FAILED, kErrorInternal, dlc_module_list, 0.);
+      SendOnInstallStatusSignal(install_status);
       return;
     }
     dlc_module.set_dlc_root(
@@ -493,14 +520,13 @@ void DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignal(
 
   // Install was a success so keep track.
   for (const DlcModuleInfo& installed_dlc_module :
-       install_result.dlc_module_list().dlc_module_infos())
+       dlc_module_list_post_mount.dlc_module_infos())
     installed_dlc_modules_.emplace(installed_dlc_module.dlc_id(),
                                    installed_dlc_module.dlc_root());
 
-  install_result.set_success(true);
-  install_result.set_error_code(
-      static_cast<int>(OnInstalledSignalErrorCode::kNone));
-  SendOnInstalledSignal(install_result);
+  InstallStatus install_status = utils::CreateInstallStatus(
+      Status::COMPLETED, kErrorNone, dlc_module_list_post_mount, 1.);
+  SendOnInstallStatusSignal(install_status);
 }
 
 void DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignalConnected(
