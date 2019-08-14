@@ -36,7 +36,7 @@ std::unique_ptr<base::Value> GetValueOfType(base::DictionaryValue* dict,
   std::unique_ptr<base::Value> value;
   if (!dict->Remove(name, &value))
     return nullptr;
-  if (!value->IsType(type)) {
+  if (value->type() != type) {
     LOG(ERROR) << name << " must be a "
                << base::Value::GetTypeName(value->type());
     return nullptr;
