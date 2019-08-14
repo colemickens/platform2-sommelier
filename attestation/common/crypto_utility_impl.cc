@@ -55,7 +55,7 @@ std::string GetOpenSSLError() {
 }
 
 unsigned char* StringAsOpenSSLBuffer(std::string* s) {
-  return reinterpret_cast<unsigned char*>(base::string_as_array(s));
+  return reinterpret_cast<unsigned char*>(base::data(*s));
 }
 
 const unsigned char* StringAsConstOpenSSLBuffer(const std::string& s) {
@@ -471,7 +471,7 @@ bool CryptoUtilityImpl::AesEncrypt(const EVP_CIPHER* cipher,
   // Allocate enough space for the output (including padding).
   encrypted_data->resize(data.size() + kAesBlockSize);
   auto output_buffer =
-      reinterpret_cast<unsigned char*>(base::string_as_array(encrypted_data));
+      reinterpret_cast<unsigned char*>(base::data(*encrypted_data));
   int output_size = 0;
   EVP_CIPHER_CTX encryption_context;
   EVP_CIPHER_CTX_init(&encryption_context);
@@ -727,7 +727,7 @@ bool CryptoUtilityImpl::OAEPEncryptWithLabel(const std::string& label,
   std::string padded_input;
   padded_input.resize(RSA_size(key));
   auto padded_buffer =
-      reinterpret_cast<unsigned char*>(base::string_as_array(&padded_input));
+      reinterpret_cast<unsigned char*>(base::data(padded_input));
   auto input_buffer = reinterpret_cast<const unsigned char*>(input.data());
   auto label_buffer = reinterpret_cast<const unsigned char*>(label.data());
   int result = RSA_padding_add_PKCS1_OAEP_mgf1(
@@ -740,7 +740,7 @@ bool CryptoUtilityImpl::OAEPEncryptWithLabel(const std::string& label,
   }
   output->resize(padded_input.size());
   auto output_buffer =
-      reinterpret_cast<unsigned char*>(base::string_as_array(output));
+      reinterpret_cast<unsigned char*>(base::data(*output));
   result = RSA_public_encrypt(padded_input.size(), padded_buffer, output_buffer,
                               key, RSA_NO_PADDING);
   if (result == -1) {

@@ -59,7 +59,7 @@ constexpr unsigned char kSha256DigestInfo[] = {
     0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20};
 
 BYTE* StringAsTSSBuffer(std::string* s) {
-  return reinterpret_cast<BYTE*>(base::string_as_array(s));
+  return reinterpret_cast<BYTE*>(base::data(*s));
 }
 
 BYTE* StringAsTSSBuffer(const std::string* s) {
@@ -1110,7 +1110,7 @@ bool TpmUtilityV1::GetRSAPublicKeyFromTpmPublicKey(
   }
   public_key_der->resize(der_length);
   unsigned char* der_buffer =
-      reinterpret_cast<unsigned char*>(base::string_as_array(public_key_der));
+      reinterpret_cast<unsigned char*>(base::data(*public_key_der));
   der_length = i2d_RSAPublicKey(rsa.get(), &der_buffer);
   if (der_length < 0) {
     LOG(ERROR) << "Failed to DER-encode public key.";
