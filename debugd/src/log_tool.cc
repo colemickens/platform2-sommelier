@@ -369,7 +369,7 @@ const std::vector<Log> kBigFeedbackLogs{
 void GetLogsInDictionary(const std::vector<Log>& logs,
                          base::DictionaryValue* dictionary) {
   for (const Log& log : logs) {
-    dictionary->SetStringWithoutPathExpansion(log.GetName(), log.GetLogData());
+    dictionary->SetKey(log.GetName(), base::Value(log.GetLogData()));
   }
 }
 
