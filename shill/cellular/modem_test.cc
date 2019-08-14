@@ -249,8 +249,4 @@ TEST_F(ModemTest, GetDeviceParams) {
   EXPECT_EQ(kAddressAsString, mac_address);
 }
 
-TEST_F(ModemTest, RejectPPPModem) {
-  // TODO(rochberg):  Port this to ModemClassic
-}
-
 }  // namespace shill
