@@ -276,10 +276,10 @@ std::vector<NonRemovableBlockDeviceInfoPtr> FetchNonRemovableBlockDevicesInfo(
 CachedVpdInfoPtr FetchCachedVpdInfo(const base::FilePath& root_dir) {
   constexpr char kRelativeSkuNumberDir[] = "sys/firmware/vpd/ro/";
   constexpr char kSkuNumberFileName[] = "sku_number";
-  CachedVpdInfoPtr vpd_info;
+  CachedVpdInfo vpd_info;
   ReadAndTrimString(root_dir.Append(kRelativeSkuNumberDir), kSkuNumberFileName,
-                    &vpd_info->sku_number);
-  return vpd_info;
+                    &vpd_info.sku_number);
+  return vpd_info.Clone();
 }
 
 }  // namespace disk_utils
