@@ -6,6 +6,8 @@
 
 #include <limits>
 
+#include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
@@ -14,7 +16,6 @@
 #include <brillo/udev/udev_enumerate.h>
 #include <brillo/udev/udev_monitor.h>
 
-#include "mist/event_dispatcher.h"
 #include "mist/usb_device_event_observer.h"
 
 namespace mist {
@@ -28,23 +29,12 @@ const char kAttributeIdVendor[] = "idVendor";
 
 }  // namespace
 
-UsbDeviceEventNotifier::UsbDeviceEventNotifier(EventDispatcher* dispatcher,
-                                               brillo::Udev* udev)
-    : dispatcher_(dispatcher),
-      udev_(udev),
-      udev_monitor_file_descriptor_(
-          brillo::UdevMonitor::kInvalidFileDescriptor) {
-  CHECK(dispatcher_);
+UsbDeviceEventNotifier::UsbDeviceEventNotifier(brillo::Udev* udev)
+    : udev_(udev) {
   CHECK(udev_);
 }
 
-UsbDeviceEventNotifier::~UsbDeviceEventNotifier() {
-  if (udev_monitor_file_descriptor_ !=
-      brillo::UdevMonitor::kInvalidFileDescriptor) {
-    dispatcher_->StopWatchingFileDescriptor(udev_monitor_file_descriptor_);
-    udev_monitor_file_descriptor_ = brillo::UdevMonitor::kInvalidFileDescriptor;
-  }
-}
+UsbDeviceEventNotifier::~UsbDeviceEventNotifier() = default;
 
 bool UsbDeviceEventNotifier::Initialize() {
   udev_monitor_ = udev_->CreateMonitorFromNetlink("udev");
@@ -63,16 +53,18 @@ bool UsbDeviceEventNotifier::Initialize() {
     return false;
   }
 
-  udev_monitor_file_descriptor_ = udev_monitor_->GetFileDescriptor();
-  if (udev_monitor_file_descriptor_ ==
-      brillo::UdevMonitor::kInvalidFileDescriptor) {
+  int udev_monitor_fd = udev_monitor_->GetFileDescriptor();
+  if (udev_monitor_fd == brillo::UdevMonitor::kInvalidFileDescriptor) {
     LOG(ERROR) << "Could not get udev monitor file descriptor.";
     return false;
   }
 
-  if (!dispatcher_->StartWatchingFileDescriptor(
-          udev_monitor_file_descriptor_, base::MessageLoopForIO::WATCH_READ,
-          this)) {
+  udev_monitor_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      udev_monitor_fd,
+      base::BindRepeating(
+          &UsbDeviceEventNotifier::OnUdevMonitorFileDescriptorReadable,
+          base::Unretained(this)));
+  if (!udev_monitor_watcher_) {
     LOG(ERROR) << "Could not watch udev monitor file descriptor.";
     return false;
   }
@@ -127,9 +119,8 @@ void UsbDeviceEventNotifier::RemoveObserver(UsbDeviceEventObserver* observer) {
   observer_list_.RemoveObserver(observer);
 }
 
-void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
-  VLOG(3) << base::StringPrintf("File descriptor %d available for read.",
-                                file_descriptor);
+void UsbDeviceEventNotifier::OnUdevMonitorFileDescriptorReadable() {
+  VLOG(3) << "Udev file descriptor available for read.";
 
   std::unique_ptr<brillo::UdevDevice> device = udev_monitor_->ReceiveDevice();
   if (!device) {
@@ -183,11 +174,6 @@ void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
     for (UsbDeviceEventObserver& observer : observer_list_)
       observer.OnUsbDeviceRemoved(sys_path);
   }
-}
-
-void UsbDeviceEventNotifier::OnFileCanWriteWithoutBlocking(
-    int file_descriptor) {
-  NOTREACHED();
 }
 
 // static

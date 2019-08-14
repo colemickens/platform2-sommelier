@@ -10,8 +10,8 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/macros.h>
-#include <base/message_loop/message_loop.h>
 #include <base/observer_list.h>
 #include <gtest/gtest_prod.h>
 
@@ -25,19 +25,17 @@ class UdevMonitor;
 
 namespace mist {
 
-class EventDispatcher;
 class UsbDeviceEventObserver;
 
 // A USB device event notifier, which monitors udev events for USB devices and
 // notifies registered observers that implement UsbDeviceEventObserver
 // interface.
-class UsbDeviceEventNotifier : public base::MessageLoopForIO::Watcher {
+class UsbDeviceEventNotifier {
  public:
-  // Constructs a UsbDeviceEventNotifier object by taking a raw pointer to an
-  // EventDispatcher as |dispatcher| and a raw pointer to a brillo::Udev as
-  // |udev|. The ownership of |dispatcher| and |udev| is not transferred, and
+  // Constructs a UsbDeviceEventNotifier object by taking a raw pointer to a
+  // brillo::Udev as |udev|. The ownership of |udev| is not transferred, and
   // thus they should outlive this object.
-  UsbDeviceEventNotifier(EventDispatcher* dispatcher, brillo::Udev* udev);
+  explicit UsbDeviceEventNotifier(brillo::Udev* udev);
 
   virtual ~UsbDeviceEventNotifier();
 
@@ -56,10 +54,6 @@ class UsbDeviceEventNotifier : public base::MessageLoopForIO::Watcher {
   // Removes |observer| from the observer list such that |observer| will no
   // longer be notified on USB device events.
   void RemoveObserver(UsbDeviceEventObserver* observer);
-
-  // Implements base::MessageLoopForIO::Watcher.
-  void OnFileCanReadWithoutBlocking(int file_descriptor) override;
-  void OnFileCanWriteWithoutBlocking(int file_descriptor) override;
 
   // Gets the bus number, device address, vendor ID, and product ID of |device|.
   // Return true on success.
@@ -81,6 +75,9 @@ class UsbDeviceEventNotifier : public base::MessageLoopForIO::Watcher {
   FRIEND_TEST(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidVendorId);
   FRIEND_TEST(UsbDeviceEventNotifierTest, OnUsbDeviceEvents);
 
+  // Called when udev_monitor_'s file descriptor gets readable.
+  void OnUdevMonitorFileDescriptorReadable();
+
   // Returns a string with value of |str| if |str| is not NULL, or an empty
   // string otherwise.
   static std::string ConvertNullToEmptyString(const char* str);
@@ -93,11 +90,11 @@ class UsbDeviceEventNotifier : public base::MessageLoopForIO::Watcher {
   // an unsigned 8-bit integer. Return true on success.
   static bool ConvertStringToUint8(const std::string& str, uint8_t* value);
 
-  EventDispatcher* const dispatcher_;
   base::ObserverList<UsbDeviceEventObserver> observer_list_;
   brillo::Udev* const udev_;
   std::unique_ptr<brillo::UdevMonitor> udev_monitor_;
-  int udev_monitor_file_descriptor_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller>
+      udev_monitor_watcher_;
 
   DISALLOW_COPY_AND_ASSIGN(UsbDeviceEventNotifier);
 };

@@ -13,7 +13,6 @@
 #include <brillo/udev/mock_udev_monitor.h>
 #include <gtest/gtest.h>
 
-#include "mist/event_dispatcher.h"
 #include "mist/mock_usb_device_event_observer.h"
 
 using testing::_;
@@ -25,8 +24,6 @@ using testing::StrEq;
 namespace mist {
 
 namespace {
-
-const int kFakeUdevMonitorFileDescriptor = 999;
 
 const char kUdevActionAdd[] = "add";
 const char kUdevActionChange[] = "change";
@@ -56,9 +53,8 @@ const char kFakeUsbDevice2ProductIdString[] = "cdef";
 
 class UsbDeviceEventNotifierTest : public testing::Test {
  protected:
-  UsbDeviceEventNotifierTest() : notifier_(&dispatcher_, &udev_) {}
+  UsbDeviceEventNotifierTest() : notifier_(&udev_) {}
 
-  EventDispatcher dispatcher_;
   brillo::MockUdev udev_;
   MockUsbDeviceEventObserver observer_;
   UsbDeviceEventNotifier notifier_;
@@ -203,12 +199,12 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEvents) {
                        kFakeUsbDevice2ProductId));
   EXPECT_CALL(observer_, OnUsbDeviceRemoved(kFakeUsbDevice1SysPath));
 
-  notifier_.OnFileCanReadWithoutBlocking(kFakeUdevMonitorFileDescriptor);
+  notifier_.OnUdevMonitorFileDescriptorReadable();
   notifier_.AddObserver(&observer_);
-  notifier_.OnFileCanReadWithoutBlocking(kFakeUdevMonitorFileDescriptor);
-  notifier_.OnFileCanReadWithoutBlocking(kFakeUdevMonitorFileDescriptor);
+  notifier_.OnUdevMonitorFileDescriptorReadable();
+  notifier_.OnUdevMonitorFileDescriptorReadable();
   notifier_.RemoveObserver(&observer_);
-  notifier_.OnFileCanReadWithoutBlocking(kFakeUdevMonitorFileDescriptor);
+  notifier_.OnUdevMonitorFileDescriptorReadable();
 }
 
 TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventNotAddOrRemove) {
@@ -224,7 +220,7 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventNotAddOrRemove) {
   EXPECT_CALL(observer_, OnUsbDeviceAdded(_, _, _, _, _)).Times(0);
   EXPECT_CALL(observer_, OnUsbDeviceRemoved(_)).Times(0);
   notifier_.AddObserver(&observer_);
-  notifier_.OnFileCanReadWithoutBlocking(kFakeUdevMonitorFileDescriptor);
+  notifier_.OnUdevMonitorFileDescriptorReadable();
 }
 
 TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidBusNumber) {
@@ -241,7 +237,7 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidBusNumber) {
   EXPECT_CALL(observer_, OnUsbDeviceAdded(_, _, _, _, _)).Times(0);
   EXPECT_CALL(observer_, OnUsbDeviceRemoved(_)).Times(0);
   notifier_.AddObserver(&observer_);
-  notifier_.OnFileCanReadWithoutBlocking(kFakeUdevMonitorFileDescriptor);
+  notifier_.OnUdevMonitorFileDescriptorReadable();
 }
 
 TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidDeviceAddress) {
@@ -260,7 +256,7 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidDeviceAddress) {
   EXPECT_CALL(observer_, OnUsbDeviceAdded(_, _, _, _, _)).Times(0);
   EXPECT_CALL(observer_, OnUsbDeviceRemoved(_)).Times(0);
   notifier_.AddObserver(&observer_);
-  notifier_.OnFileCanReadWithoutBlocking(kFakeUdevMonitorFileDescriptor);
+  notifier_.OnUdevMonitorFileDescriptorReadable();
 }
 
 TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidVendorId) {
@@ -280,7 +276,7 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidVendorId) {
   EXPECT_CALL(observer_, OnUsbDeviceAdded(_, _, _, _, _)).Times(0);
   EXPECT_CALL(observer_, OnUsbDeviceRemoved(_)).Times(0);
   notifier_.AddObserver(&observer_);
-  notifier_.OnFileCanReadWithoutBlocking(kFakeUdevMonitorFileDescriptor);
+  notifier_.OnUdevMonitorFileDescriptorReadable();
 }
 
 TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidProductId) {
@@ -301,7 +297,7 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidProductId) {
   EXPECT_CALL(observer_, OnUsbDeviceAdded(_, _, _, _, _)).Times(0);
   EXPECT_CALL(observer_, OnUsbDeviceRemoved(_)).Times(0);
   notifier_.AddObserver(&observer_);
-  notifier_.OnFileCanReadWithoutBlocking(kFakeUdevMonitorFileDescriptor);
+  notifier_.OnUdevMonitorFileDescriptorReadable();
 }
 
 TEST_F(UsbDeviceEventNotifierTest, ScanExistingDevices) {

@@ -38,9 +38,8 @@ bool Context::Initialize() {
     return false;
   }
 
-  usb_device_event_notifier_.reset(
-      new UsbDeviceEventNotifier(event_dispatcher_.get(), udev_.get()));
-  CHECK(usb_device_event_notifier_);
+  usb_device_event_notifier_ =
+      std::make_unique<UsbDeviceEventNotifier>(udev_.get());
   if (!usb_device_event_notifier_->Initialize()) {
     LOG(ERROR) << "Could not initialize USB device event notification.";
     return false;

@@ -9,6 +9,7 @@
 #include <memory>
 
 #include <base/callback.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
@@ -57,8 +58,9 @@ class EventDispatcher {
   using FileDescriptorWatcherMap =
       std::map<int, base::MessageLoopForIO::FileDescriptorWatcher*>;
 
-  std::unique_ptr<base::MessageLoop> dont_use_directly_;
+  base::MessageLoopForIO message_loop_;  // Do not use this directly.
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
+  base::FileDescriptorWatcher watcher_{&message_loop_};
   FileDescriptorWatcherMap file_descriptor_watchers_;
 
   DISALLOW_COPY_AND_ASSIGN(EventDispatcher);

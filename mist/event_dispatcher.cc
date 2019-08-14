@@ -12,10 +12,7 @@
 namespace mist {
 
 EventDispatcher::EventDispatcher()
-    : dont_use_directly_(new base::MessageLoopForIO()),
-      task_runner_(base::ThreadTaskRunnerHandle::Get()) {
-  CHECK(dont_use_directly_);
-}
+    : task_runner_(base::ThreadTaskRunnerHandle::Get()) {}
 
 EventDispatcher::~EventDispatcher() {
   StopWatchingAllFileDescriptors();
