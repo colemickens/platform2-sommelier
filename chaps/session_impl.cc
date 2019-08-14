@@ -1049,8 +1049,6 @@ CK_RV SessionImpl::CipherInit(bool is_encrypt,
                               CK_MECHANISM_TYPE mechanism,
                               const string& mechanism_parameter,
                               const Object* key) {
-  OperationType operation = is_encrypt ? kEncrypt : kDecrypt;
-  EVP_CIPHER_CTX* context = &operation_context_[operation].cipher_context_;
   string key_material = key->GetAttributeString(CKA_VALUE);
   const EVP_CIPHER* cipher_type =
       GetOpenSSLCipher(mechanism, key_material.size());
@@ -1070,15 +1068,20 @@ CK_RV SessionImpl::CipherInit(bool is_encrypt,
     LOG(ERROR) << "Key size not supported: " << key_material.size();
     return CKR_KEY_SIZE_RANGE;
   }
-  if (!EVP_CipherInit(
-          context, cipher_type, ConvertStringToByteBuffer(key_material.c_str()),
-          ConvertStringToByteBuffer(mechanism_parameter.c_str()), is_encrypt)) {
+
+  OperationType operation = is_encrypt ? kEncrypt : kDecrypt;
+  OperationContext* context = &operation_context_[operation];
+  if (!EVP_CipherInit(&context->cipher_context_, cipher_type,
+                      ConvertStringToByteBuffer(key_material.c_str()),
+                      ConvertStringToByteBuffer(mechanism_parameter.c_str()),
+                      is_encrypt)) {
     LOG(ERROR) << "EVP_CipherInit failed: " << GetOpenSSLError();
     return CKR_FUNCTION_FAILED;
   }
-  EVP_CIPHER_CTX_set_padding(context, IsPaddingEnabled(mechanism));
-  operation_context_[operation].is_valid_ = true;
-  operation_context_[operation].is_cipher_ = true;
+  EVP_CIPHER_CTX_set_padding(&context->cipher_context_,
+                             IsPaddingEnabled(mechanism));
+  context->is_valid_ = true;
+  context->is_cipher_ = true;
   return CKR_OK;
 }
 
