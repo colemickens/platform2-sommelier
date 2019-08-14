@@ -28,7 +28,10 @@ const char* kColorReset = authpolicy::kColorReset;
 
 namespace policy {
 
-const std::pair<const char*, int> kConnectionTypes[] = {
+// Types must be defined in order of definition in
+// AutoUpdateSettingsProto_ConnectionType for the static_assert to work as
+// expected.
+constexpr std::pair<const char*, int> kConnectionTypes[] = {
     std::make_pair(
         shill::kTypeEthernet,
         em::AutoUpdateSettingsProto_ConnectionType_CONNECTION_TYPE_ETHERNET),
@@ -36,21 +39,14 @@ const std::pair<const char*, int> kConnectionTypes[] = {
         shill::kTypeWifi,
         em::AutoUpdateSettingsProto_ConnectionType_CONNECTION_TYPE_WIFI),
     std::make_pair(
-        shill::kTypeWimax,
-        em::AutoUpdateSettingsProto_ConnectionType_CONNECTION_TYPE_WIMAX),
-    std::make_pair(
-        shill::kTypeBluetooth,
-        em::AutoUpdateSettingsProto_ConnectionType_CONNECTION_TYPE_BLUETOOTH),
-    std::make_pair(
         shill::kTypeCellular,
         em::AutoUpdateSettingsProto_ConnectionType_CONNECTION_TYPE_CELLULAR)};
 
 constexpr size_t kConnectionTypesSize = arraysize(kConnectionTypes);
 
-static_assert(
-    em::AutoUpdateSettingsProto_ConnectionType_ConnectionType_ARRAYSIZE ==
-        static_cast<int>(kConnectionTypesSize),
-    "Add all values here");
+static_assert(em::AutoUpdateSettingsProto_ConnectionType_ConnectionType_MAX ==
+                  kConnectionTypes[kConnectionTypesSize - 1].second,
+              "Add all supported values here");
 
 namespace {
 
