@@ -702,8 +702,8 @@ bool TPM2UtilityImpl::Bind(int key_handle,
   output->resize(modulus.size());
   int rsa_result = RSA_public_encrypt(
       input.size(), reinterpret_cast<const unsigned char*>(input.data()),
-      reinterpret_cast<unsigned char*>(base::string_as_array(output)),
-      rsa.get(), RSA_PKCS1_PADDING);
+      reinterpret_cast<unsigned char*>(base::data(*output)), rsa.get(),
+      RSA_PKCS1_PADDING);
   if (rsa_result == -1) {
     LOG(ERROR) << "Error performing RSA_public_encrypt.";
     return false;
