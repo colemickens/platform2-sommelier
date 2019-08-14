@@ -40,8 +40,7 @@ Daemon::Daemon(bool has_session_manager)
                     kFUSEWritableRootDirectory,
                     &platform_,
                     &metrics_,
-                    &process_reaper_),
-      device_event_task_id_(brillo::MessageLoop::kTaskIdNull) {
+                    &process_reaper_) {
   CHECK(platform_.SetMountUser(kNonPrivilegedMountUser))
       << "'" << kNonPrivilegedMountUser
       << "' is not available for non-privileged mount operations.";
@@ -52,9 +51,7 @@ Daemon::Daemon(bool has_session_manager)
   process_reaper_.Register(this);
 }
 
-Daemon::~Daemon() {
-  brillo::MessageLoop::current()->CancelTask(device_event_task_id_);
-}
+Daemon::~Daemon() = default;
 
 void Daemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
@@ -75,10 +72,9 @@ void Daemon::RegisterDBusObjectsAsync(
     session_manager_proxy_->AddObserver(event_moderator_.get());
   }
 
-  device_event_task_id_ = brillo::MessageLoop::current()->WatchFileDescriptor(
-      FROM_HERE, disk_monitor_.udev_monitor_fd(),
-      brillo::MessageLoop::kWatchRead, true,
-      base::Bind(&Daemon::OnDeviceEvents, base::Unretained(this)));
+  device_event_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      disk_monitor_.udev_monitor_fd(),
+      base::BindRepeating(&Daemon::OnDeviceEvents, base::Unretained(this)));
 
   server_->RegisterAsync(
       sequencer->GetHandler("Failed to export cros-disks service.", false));

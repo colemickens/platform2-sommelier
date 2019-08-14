@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/macros.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/process_reaper.h>
@@ -55,7 +56,8 @@ class Daemon : public brillo::DBusServiceDaemon {
   std::unique_ptr<DeviceEventModerator> event_moderator_;
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
   std::unique_ptr<CrosDisksServer> server_;
-  brillo::MessageLoop::TaskId device_event_task_id_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller>
+      device_event_watcher_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
