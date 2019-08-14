@@ -166,7 +166,7 @@ bool BrowserJob::RunInBackground() {
     time_t crash_loop_before = start_times_.front() + kRestartWindowSeconds;
     std::string crash_loop_before_arg =
         kCrashLoopBeforeFlag +
-        base::Uint64ToString(static_cast<uint64_t>(crash_loop_before));
+        base::NumberToString(static_cast<uint64_t>(crash_loop_before));
     extra_one_time_arguments_.push_back(crash_loop_before_arg);
   }
 
