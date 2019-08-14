@@ -37,7 +37,6 @@ namespace {
 constexpr int kMaxOwnershipTimeoutRetries = 5;
 constexpr char kWellKnownSrkSecret[] = "well_known_srk_secret";
 constexpr int kDelegateSecretSize = 20;
-constexpr uint32_t kDefaultDelegateBoundPcrs[] = {0};
 constexpr uint8_t kDefaultDelegateLabel = 2;
 constexpr uint8_t kDefaultDelegateFamilyLabel = 1;
 
@@ -357,13 +356,10 @@ bool TpmInitializerImpl::ReadOwnerAuthFromLocalData(
 
 bool TpmInitializerImpl::CreateDelegateWithDefaultLabel(
     AuthDelegate* delegate) {
-  const std::vector<uint32_t> bound_pcrs(std::begin(kDefaultDelegateBoundPcrs),
-                                         std::end(kDefaultDelegateBoundPcrs));
-
   std::string delegate_blob;
   std::string delegate_secret;
-
-  if (!CreateAuthDelegate(bound_pcrs, kDefaultDelegateFamilyLabel,
+  // No PCR value bound to the delegate by default (crbug/990322, b/139099154).
+  if (!CreateAuthDelegate(/*bound_pcrs=*/{}, kDefaultDelegateFamilyLabel,
                           kDefaultDelegateLabel, &delegate_blob,
                           &delegate_secret)) {
     LOG(ERROR) << __func__ << ": Failed to create delegate.";
