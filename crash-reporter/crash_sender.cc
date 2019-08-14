@@ -85,6 +85,7 @@ int RunChildMain(int argc, char* argv[]) {
   options.max_spread_time = flags.max_spread_time;
   if (flags.ignore_rate_limits) {
     options.max_crash_rate = std::numeric_limits<int>::max();
+    options.max_crash_bytes = std::numeric_limits<int>::max();
   }
   if (flags.ignore_hold_off_time) {
     options.hold_off_time = base::TimeDelta::FromSeconds(0);

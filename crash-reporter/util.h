@@ -16,6 +16,9 @@
 
 namespace util {
 
+// From //net/crash/collector/collector.h
+extern const int kDefaultMaxUploadBytes;
+
 // Returns true if integration tests are currently running.
 bool IsCrashTestInProgress();
 

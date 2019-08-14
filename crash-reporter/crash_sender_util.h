@@ -28,6 +28,12 @@ namespace util {
 // Maximum crashes to send per 24 hours.
 constexpr int kMaxCrashRate = 32;
 
+// Maximum bytes of crash reports to send per 24 hours. Note that "whichever
+// comes last" maximum with kMaxCrashRate; that is, we'll always send 32 crashes
+// per 24 hours, even if that exceeds 24MB, and we'll always send 24MB per 24
+// hours, even if that exceeds 32 crashes.
+constexpr int kMaxCrashBytes = 24 * 1024 * 1024;
+
 // Maximum time to wait for ensuring a meta file is complete.
 constexpr base::TimeDelta kMaxHoldOffTime = base::TimeDelta::FromSeconds(30);
 
@@ -157,12 +163,18 @@ bool IsCompleteMetadata(const brillo::KeyValueStore& metadata);
 bool IsTimestampNewEnough(const base::FilePath& timestamp_file);
 
 // Returns true if sending a crash report now does not exceed |max_crash_rate|
-// per 24 hours.
+// crashes and |max_crash_bytes| bytes per 24 hours.
 //
-// This function checks/creates/removes timestamp files in |timestamps_dir| to
-// track how many attempts were made to send crash reports in that past 24
-// hours.
-bool IsBelowRate(const base::FilePath& timestamps_dir, int max_crash_rate);
+// |timestamps_dir| contains the state files indicating how many sends have
+// happened and how big they were.
+bool IsBelowRate(const base::FilePath& timestamps_dir,
+                 int max_crash_rate,
+                 int max_crash_bytes);
+
+// Records a crash send attempt so that IsBelowRate knows about it.
+// |timestamps_dir| should be the same directory passed to IsBelowRate().
+// |bytes| is the number of bytes sent over the network.
+void RecordSendAttempt(const base::FilePath& timestamps_dir, int bytes);
 
 // Computes a sleep time needed before attempting to send a new crash report.
 // On success, returns true and stores the result in |sleep_time|. On error,
@@ -192,8 +204,13 @@ class Sender {
     // Shill FlimFlam Manager proxy interface for determining network state.
     org::chromium::flimflam::ManagerProxyInterface* shill_proxy = nullptr;
 
-    // Maximum crashes to send per 24 hours.
+    // Maximum crashes to send per 24 hours. (We'll send more if still below
+    // max_crash_bytes.)
     int max_crash_rate = kMaxCrashRate;
+
+    // Maximum bytes we will upload per 24 hours. (We'll send more if still
+    // below max_crash_rate.)
+    int max_crash_bytes = kMaxCrashBytes;
 
     // Maximum time to sleep before attempting to send.
     base::TimeDelta max_spread_time;
@@ -295,6 +312,7 @@ class Sender {
   bool always_write_uploads_log_;
   base::ScopedTempDir scoped_temp_dir_;
   const int max_crash_rate_;
+  const int max_crash_bytes_;
   const base::TimeDelta max_spread_time_;
   const base::TimeDelta hold_off_time_;
   base::Callback<void(base::TimeDelta)> sleep_function_;

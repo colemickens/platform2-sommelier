@@ -38,6 +38,8 @@ constexpr base::TimeDelta kAgeForNoUploads = base::TimeDelta::FromDays(180);
 
 }  // namespace
 
+const int kDefaultMaxUploadBytes = 1024 * 1024;
+
 bool IsCrashTestInProgress() {
   return base::PathExists(paths::GetAt(paths::kSystemRunStateDirectory,
                                        paths::kCrashTestInProgress));

@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
@@ -107,7 +108,16 @@ pkg_config("libcrash_sender_config") {
     "libminijail",
     "libsession_manager-client",
     "libshill-client",
+    "protobuf-lite",
     "zlib",
+  ]
+}
+
+proto_library("crash_sender_proto") {
+  proto_in_dir = "./proto"
+  proto_out_dir = "include/crash-reporter"
+  sources = [
+    "${proto_in_dir}/crash_sender.proto",
   ]
 }
 
@@ -117,6 +127,9 @@ static_library("libcrash_sender") {
     "crash_sender_util.cc",
   ]
   defines = [ "USE_CHROMELESS_TTY=${use.chromeless_tty}" ]
+  deps = [
+    ":crash_sender_proto",
+  ]
 }
 
 executable("crash_sender") {

@@ -998,18 +998,26 @@ TEST_F(CrashSenderUtilTest, IsTimestampNewEnough) {
   ASSERT_FALSE(IsTimestampNewEnough(file));
 }
 
-TEST_F(CrashSenderUtilTest, IsBelowRate) {
+TEST_F(CrashSenderUtilTest, IsBelowRateReachesMaxRate) {
   const int kMaxRate = 3;
+  const int kMaxBytes = 50;
+  const base::FilePath timestamp_dir =
+      test_dir_.Append("IsBelowRateReachesMaxRate");
 
-  EXPECT_TRUE(IsBelowRate(test_dir_, kMaxRate));
-  EXPECT_TRUE(IsBelowRate(test_dir_, kMaxRate));
-  EXPECT_TRUE(IsBelowRate(test_dir_, kMaxRate));
+  EXPECT_TRUE(IsBelowRate(timestamp_dir, kMaxRate, kMaxBytes));
+  RecordSendAttempt(timestamp_dir, kMaxBytes - 5);
+  EXPECT_TRUE(IsBelowRate(timestamp_dir, kMaxRate, kMaxBytes));
+  RecordSendAttempt(timestamp_dir, kMaxBytes - 5);
+  // Exceeds max bytes; should be allowed to upload since we have not hit max
+  // rate.
+  EXPECT_TRUE(IsBelowRate(timestamp_dir, kMaxRate, kMaxBytes));
+  RecordSendAttempt(timestamp_dir, kMaxBytes - 5);
 
-  // Should not pass the rate limit.
-  EXPECT_FALSE(IsBelowRate(test_dir_, kMaxRate));
+  // Should not pass the rate + byte limit.
+  EXPECT_FALSE(IsBelowRate(timestamp_dir, kMaxRate, kMaxBytes));
 
   // Three files should be created for tracking timestamps.
-  std::vector<base::FilePath> files = GetFileNamesIn(test_dir_);
+  std::vector<base::FilePath> files = GetFileNamesIn(timestamp_dir);
   ASSERT_EQ(3, files.size());
 
   const base::Time now = base::Time::Now();
@@ -1018,16 +1026,39 @@ TEST_F(CrashSenderUtilTest, IsBelowRate) {
   ASSERT_TRUE(TouchFileHelper(files[0], now - base::TimeDelta::FromHours(25)));
 
   // It should now pass the rate limit.
-  EXPECT_TRUE(IsBelowRate(test_dir_, kMaxRate));
-  // The old file should now be gone. However, it's possible that the file
-  // that's just deleted with its random name is randomly picked again to create
-  // the new timestamp file.
-  EXPECT_TRUE(!base::PathExists(files[0]) ||
-              (base::PathExists(files[0]) && IsTimestampNewEnough(files[0])));
+  EXPECT_TRUE(IsBelowRate(timestamp_dir, kMaxRate, kMaxBytes));
+  // The old file should now be gone.
+  EXPECT_TRUE(!base::PathExists(files[0]));
+}
 
-  // There should be three files now since the last call to IsBelowRate() should
-  // create a new timestamp file.
-  ASSERT_EQ(3, GetFileNamesIn(test_dir_).size());
+TEST_F(CrashSenderUtilTest, IsBelowRateReachesMaxBytes) {
+  const int kMaxRate = 3;
+  const int kMaxBytes = 100;
+  const base::FilePath timestamp_dir =
+      test_dir_.Append("IsBelowRateReachesMaxBytes");
+
+  EXPECT_TRUE(IsBelowRate(timestamp_dir, kMaxRate, kMaxBytes));
+  RecordSendAttempt(timestamp_dir, 50);
+  EXPECT_TRUE(IsBelowRate(timestamp_dir, kMaxRate, kMaxBytes));
+  RecordSendAttempt(timestamp_dir, 20);
+  EXPECT_TRUE(IsBelowRate(timestamp_dir, kMaxRate, kMaxBytes));
+  RecordSendAttempt(timestamp_dir, 5);
+  // Exceeds max rate, but passes because it's below max bytes.
+  EXPECT_TRUE(IsBelowRate(timestamp_dir, kMaxRate, kMaxBytes));
+  RecordSendAttempt(timestamp_dir, 5);
+  EXPECT_TRUE(IsBelowRate(timestamp_dir, kMaxRate, kMaxBytes));
+  RecordSendAttempt(timestamp_dir, 20);
+
+  // Exceeds max bytes.
+  EXPECT_FALSE(IsBelowRate(timestamp_dir, kMaxRate, kMaxBytes));
+
+  // Make one file older than 24 hours, and we should get some bandwidth
+  // marked available again.
+  std::vector<base::FilePath> files = GetFileNamesIn(timestamp_dir);
+  ASSERT_EQ(5, files.size());
+  const base::Time now = base::Time::Now();
+  ASSERT_TRUE(TouchFileHelper(files[0], now - base::TimeDelta::FromHours(25)));
+  EXPECT_TRUE(IsBelowRate(timestamp_dir, kMaxRate, kMaxBytes));
 }
 
 TEST_F(CrashSenderUtilTest, GetSleepTime) {
@@ -1389,6 +1420,8 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   Sender::Options options;
   options.session_manager_proxy = mock.release();
   options.max_crash_rate = 2;
+  // Setting max_crash_bytes to 0 will limit to the uploader to max_crash_rate.
+  options.max_crash_bytes = 0;
   options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
   options.always_write_uploads_log = true;
   Sender sender(std::move(metrics_lib_), std::make_unique<AdvancingClock>(),

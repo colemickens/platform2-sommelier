@@ -32,6 +32,7 @@
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "crash-reporter/crash_sender.pb.h"
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
@@ -431,40 +432,87 @@ bool IsTimestampNewEnough(const base::FilePath& timestamp_file) {
   return threshold < info.last_modified;
 }
 
-bool IsBelowRate(const base::FilePath& timestamps_dir, int max_crash_rate) {
-  if (!base::CreateDirectory(timestamps_dir)) {
-    PLOG(ERROR) << "Failed to create a timestamps directory: "
-                << timestamps_dir.value();
-    return false;
-  }
+bool IsBelowRate(const base::FilePath& timestamps_dir,
+                 int max_crash_rate,
+                 int max_crash_bytes) {
+  // If we can't get a size for one of our uploads, use this as a size. It's
+  // an overestimate, but it ensures that when a user upgrades from a previous
+  // version of the code to this version, we don't send a huge batch of reports
+  // because the previous version didn't write out sizes.
+  const int kGuesstimateBytes = util::kDefaultMaxUploadBytes;
 
   // Count the number of timestamp files, that were written in the past 24
-  // hours. Remove files that are older.
+  // hours. Remove files that are older. Each file that exists should contain
+  // a SendRecord protobuf giving the number of bytes used for that send; add
+  // them up.
   int current_rate = 0;
+  int current_bytes = 0;
   base::FileEnumerator iter(timestamps_dir, false /* recursive */,
                             base::FileEnumerator::FILES, "*");
   for (base::FilePath file = iter.Next(); !file.empty(); file = iter.Next()) {
     if (IsTimestampNewEnough(file)) {
       ++current_rate;
+      std::string serialized;
+      if (!base::ReadFileToString(file, &serialized)) {
+        PLOG(WARNING) << "Unable to read timestamp file at " << file.value();
+        // Keep going without reading the file; what else can we do? If we
+        // really get a file with bad permissions, we don't want to stop ever
+        // sending crashes from this computer, so we shouldn't return false.
+        // But do add something to current_bytes to avoid uploading an unlimited
+        // number of reports if this happens to all our files.
+        current_bytes += kGuesstimateBytes;
+        continue;
+      }
+
+      crash::SendRecord previous_send;
+      if (!previous_send.ParseFromString(serialized)) {
+        LOG(WARNING) << "Could not parse " << file.value();
+        current_bytes += kGuesstimateBytes;
+        continue;
+      }
+
+      if (previous_send.size() <= 0) {
+        // Zero is not a realistic size for the upload, so don't believe it.
+        // Probably from a previous version of the code that didn't write out
+        // the sizes. proto3 will read an empty file as "all fields are zero".
+        LOG(WARNING) << "Previous upload size was " << previous_send.size()
+                     << "; ignoring and guessing " << kGuesstimateBytes;
+        current_bytes += kGuesstimateBytes;
+        continue;
+      }
+      current_bytes += previous_send.size();
     } else {
       if (!base::DeleteFile(file, false /* recursive */))
         PLOG(WARNING) << "Failed to remove " << file.value();
     }
   }
-  LOG(INFO) << "Current send rate: " << current_rate << "sends/24hrs";
+  LOG(INFO) << "Current send rate: " << current_rate << " sends and "
+            << current_bytes << " bytes/24hrs";
 
-  if (current_rate < max_crash_rate) {
-    // It's OK to send a new crash report now. Create a new timestamp to record
-    // that a new attempt is made to send a crash report.
-    base::FilePath temp_file;
-    if (!base::CreateTemporaryFileInDir(timestamps_dir, &temp_file)) {
-      PLOG(ERROR) << "Failed to create a file in " << timestamps_dir.value();
-      return false;
-    }
-    return true;
+  // We allow either condition independently; see comments around
+  // kMaxCrashBytes. Therefore, we use || instead of the more common &&.
+  return current_rate < max_crash_rate || current_bytes < max_crash_bytes;
+}
+
+void RecordSendAttempt(const base::FilePath& timestamps_dir, int bytes) {
+  if (!base::CreateDirectory(timestamps_dir)) {
+    PLOG(ERROR) << "Failed to create a timestamps directory: "
+                << timestamps_dir.value();
+    return;
   }
 
-  return false;
+  base::FilePath temp_file_path;
+  base::ScopedFILE temp_file(
+      base::CreateAndOpenTemporaryFileInDir(timestamps_dir, &temp_file_path));
+  if (temp_file == nullptr) {
+    PLOG(ERROR) << "Failed to create a file in " << timestamps_dir.value();
+  } else {
+    crash::SendRecord record;
+    record.set_size(bytes);
+    std::string serialized;
+    record.SerializeToString(&serialized);
+    fwrite(serialized.c_str(), 1, serialized.size(), temp_file.get());
+  }
 }
 
 bool GetSleepTime(const base::FilePath& meta_file,
@@ -537,6 +585,7 @@ Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
       form_data_boundary_(options.form_data_boundary),
       always_write_uploads_log_(options.always_write_uploads_log),
       max_crash_rate_(options.max_crash_rate),
+      max_crash_bytes_(options.max_crash_bytes),
       max_spread_time_(options.max_spread_time),
       hold_off_time_(options.hold_off_time),
       sleep_function_(options.sleep_function),
@@ -666,14 +715,12 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
       continue;
     }
 
-    // Do the rate check only after we have done all of our local file
-    // processing so that the rate check only applies when we are using
-    // network resources.
     const base::FilePath timestamps_dir =
         paths::Get(paths::kTimestampsDirectory);
-    if (!IsBelowRate(timestamps_dir, max_crash_rate_)) {
-      LOG(INFO) << "Cannot send more crashes. Sending " << meta_file.value()
-                << " would exceed the max rate: " << max_crash_rate_;
+    if (!IsBelowRate(timestamps_dir, max_crash_rate_, max_crash_bytes_)) {
+      LOG(WARNING) << "Cannot send more crashes. Sending " << meta_file.value()
+                   << " would exceed the max daily rate of " << max_crash_rate_
+                   << " crashes and " << max_crash_bytes_ << " bytes";
       return;
     }
 
@@ -871,6 +918,24 @@ bool Sender::RequestToSendCrash(const CrashDetails& details) {
   }
 
   std::string report_id;
+
+  auto stream_data = form_data->ExtractDataStream();
+  uint64_t uncompressed_size = stream_data->GetSize();
+  // Compress the data before sending it to the server. We compress the entire
+  // request body and then specify the Content-Encoding as gzip to achieve this.
+  std::vector<unsigned char> compressed_form_data =
+      util::GzipStream(std::move(stream_data));
+
+  // Record the send attempt even if it fails. We may still have used up network
+  // bandwidth even if we lose the connection at the end.
+  const base::FilePath timestamps_dir = paths::Get(paths::kTimestampsDirectory);
+  int size = static_cast<int>(compressed_form_data.size());
+  if (size == 0) {
+    // Compression failed; we'll end up using the uncompressed stream below.
+    size = static_cast<int>(uncompressed_size);
+  }
+  RecordSendAttempt(timestamps_dir, size);
+
   if (!IsMock()) {
     // Determine the proxy server if it's not given from the options.
     if (proxy_servers_.empty()) {
@@ -886,12 +951,6 @@ bool Sender::RequestToSendCrash(const CrashDetails& details) {
       transport =
           brillo::http::Transport::CreateDefaultWithProxy(proxy_servers_[0]);
     }
-
-    // Compress the data before sending it to the server. We compress the entire
-    // request body and then specify the Content-Encoding as gzip to achieve
-    // this.
-    std::vector<unsigned char> compressed_form_data =
-        util::GzipStream(form_data->ExtractDataStream());
 
     brillo::ErrorPtr upload_error;
     std::unique_ptr<brillo::http::Response> response;

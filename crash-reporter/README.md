@@ -217,9 +217,10 @@ If we delete the code entirely, then we'll delete this section too.
 
 The [crash_sender] program is responsible for uploading reports to the server.
 It tries to be unobtrusive in a number of ways:
-* Runs at most once an hour.
-* Upload at most 32 crashes per 24 hour window.
-* Add a random delay between [0..600] seconds before each report upload.
+*   Runs at most once an hour.
+*   Limits the crashes uploaded in any 24 hour window to no more than 24 MB
+    (compressed) or 32 reports, whichever comes *last*.
+*   Adds a random delay between [0..600] seconds before each report upload.
 
 While there are multiple local crash queues, these are global limits.
 

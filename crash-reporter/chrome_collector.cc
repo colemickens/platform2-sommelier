@@ -34,9 +34,6 @@ const char kGpuStateFilename[] = "i915_error_state.log.xz";
 // browser hang. Written by session_manager.
 constexpr char kAbortedBrowserPidPath[] = "/run/chrome/aborted_browser_pid";
 
-// From //net/crash/collector/collector.h
-const int kDefaultMaxUploadBytes = 1024 * 1024;
-
 // Extract a string delimited by the given character, from the given offset
 // into a source string. Returns false if the string is zero-sized or no
 // delimiter was found.
@@ -58,7 +55,7 @@ ChromeCollector::ChromeCollector(CrashSendingMode crash_sending_mode)
                      kUseNormalCrashDirectorySelectionMethod,
                      crash_sending_mode),
       output_file_ptr_(stdout),
-      max_upload_bytes_(kDefaultMaxUploadBytes) {}
+      max_upload_bytes_(util::kDefaultMaxUploadBytes) {}
 
 ChromeCollector::~ChromeCollector() {}
 
