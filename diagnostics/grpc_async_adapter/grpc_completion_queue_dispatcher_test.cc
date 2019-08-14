@@ -90,7 +90,7 @@ class ObjectDestroyedTester {
 
   ~ObjectDestroyedTester() {
     EXPECT_TRUE(
-        expected_message_loop_->task_runner()->RunsTasksOnCurrentThread());
+        expected_message_loop_->task_runner()->BelongsToCurrentThread());
     *has_been_destroyed_ = true;
   }
 
