@@ -5,14 +5,14 @@
 #ifndef IMAGELOADER_HELPER_PROCESS_RECEIVER_H_
 #define IMAGELOADER_HELPER_PROCESS_RECEIVER_H_
 
+#include <memory>
+
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
-#include <base/message_loop/message_loop.h>
 #include <brillo/daemons/daemon.h>
 
 #include "imageloader/ipc.pb.h"
 #include "imageloader/verity_mounter.h"
-
-using MessageLoopForIO = base::MessageLoopForIO;
 
 struct cmsghdr;
 
@@ -20,8 +20,7 @@ namespace imageloader {
 
 // Main loop for the Mount helper process.
 // This object is used in the subprocess.
-class HelperProcessReceiver : public brillo::Daemon,
-                              public base::MessageLoopForIO::Watcher {
+class HelperProcessReceiver : public brillo::Daemon {
  public:
   explicit HelperProcessReceiver(base::ScopedFD control_fd);
 
@@ -32,17 +31,14 @@ class HelperProcessReceiver : public brillo::Daemon,
   // Overrides Daemon init callback.
   int OnInit() override;
 
-  // Overrides MessageLoopForIO callbacks for new data on |control_fd_|.
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override {}
-
  private:
+  void OnCommandReady();
   CommandResponse HandleCommand(const ImageCommand& image_command,
                                 struct cmsghdr* cmsg);
   void SendResponse(const CommandResponse& response);
 
   base::ScopedFD control_fd_;
-  MessageLoopForIO::FileDescriptorWatcher control_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> controller_;
   int pending_fd_;
   VerityMounter mounter_;
 

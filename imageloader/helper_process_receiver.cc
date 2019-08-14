@@ -33,7 +33,6 @@ constexpr char kSeccompFilterPath[] =
 
 HelperProcessReceiver::HelperProcessReceiver(base::ScopedFD control_fd)
     : control_fd_(std::move(control_fd)),
-      control_watcher_(FROM_HERE),
       pending_fd_(-1),
       mounter_() {}
 
@@ -53,14 +52,14 @@ int HelperProcessReceiver::OnInit() {
   minijail_skip_remount_private(jail.get());
   minijail_enter(jail.get());
 
-  MessageLoopForIO::current()->WatchFileDescriptor(control_fd_.get(), true,
-                                                   MessageLoopForIO::WATCH_READ,
-                                                   &control_watcher_, this);
+  controller_ = base::FileDescriptorWatcher::WatchReadable(
+      control_fd_.get(),
+      base::BindRepeating(&HelperProcessReceiver::OnCommandReady,
+                          base::Unretained(this)));
   return Daemon::OnInit();
 }
 
-void HelperProcessReceiver::OnFileCanReadWithoutBlocking(int fd) {
-  CHECK_EQ(fd, control_fd_.get());
+void HelperProcessReceiver::OnCommandReady() {
   std::vector<char> buffer(4096 * 4);
 
   struct msghdr msg = {0};
@@ -76,7 +75,7 @@ void HelperProcessReceiver::OnFileCanReadWithoutBlocking(int fd) {
   msg.msg_control = c_buffer;
   msg.msg_controllen = sizeof(c_buffer);
 
-  ssize_t bytes = recvmsg(fd, &msg, 0);
+  ssize_t bytes = recvmsg(control_fd_.get(), &msg, 0);
   if (bytes < 0)
     PLOG(FATAL) << "recvmsg failed";
   // Per recvmsg(2), the return value will be 0 when the peer has performed an

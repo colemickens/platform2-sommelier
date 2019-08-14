@@ -80,7 +80,8 @@ base::FilePath GetSignaturePathForKey(const base::FilePath& component_dir,
   std::string signature_name(kManifestSignatureNamePattern);
   signature_name =
       signature_name.substr(0, signature_name.find_last_of('.') + 1);
-  return component_dir.Append(signature_name + base::SizeTToString(key_number));
+  return component_dir.Append(signature_name +
+                              base::NumberToString(key_number));
 }
 
 base::FilePath GetFingerprintPath(const base::FilePath& component_dir) {
