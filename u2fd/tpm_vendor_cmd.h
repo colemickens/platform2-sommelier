@@ -42,11 +42,6 @@ class TpmVendorCommandProxy : public trunks::TrunksDBusProxy {
   // Returns the TPM response code.
   uint32_t SetU2fVendorMode(uint8_t mode);
 
-  // Reads the TPM firmware U2F protocol implementation in |version|
-  // by sending a U2F_VERSION APDU encapsulated in a TPM vendor commands.
-  // Returns the TPM response code.
-  uint32_t GetU2fVersion(std::string* version_out);
-
   // Queries the TPM firmware if it has vendor system information available
   // for the U2F feature and returns it in |sysinfo_out| if it does.
   void GetVendorSysInfo(std::string* sysinfo_out);

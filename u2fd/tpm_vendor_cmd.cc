@@ -150,25 +150,6 @@ uint32_t TpmVendorCommandProxy::SetU2fVendorMode(uint8_t mode) {
   return rc;
 }
 
-uint32_t TpmVendorCommandProxy::GetU2fVersion(std::string* version_out) {
-  std::string ping(8, 0);
-  std::string ver;
-
-  // build the command U2F_VERSION:
-  // CLA INS P1  P2  Le
-  // 00  03  00  00  00
-  ping[1] = 0x03;
-  int rc = SendU2fApdu(ping, &ver);
-
-  if (!rc) {
-    // remove the 16-bit status code at the end
-    *version_out = ver.substr(0, ver.length() - sizeof(uint16_t));
-    VLOG(1) << "version " << *version_out;
-  }
-
-  return rc;
-}
-
 void TpmVendorCommandProxy::GetVendorSysInfo(std::string* sysinfo_out) {
   std::string sysinfo_apdu(2, 0);
   std::string info_blob;
