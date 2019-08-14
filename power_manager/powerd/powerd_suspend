@@ -391,8 +391,13 @@ else
     send_metrics_on_resume &
   else
     # The write will fail with EBUSY if additional wakeup events have
-    # occurred since the earlier write to /sys/power/wakeup_count.
-    if echo "${error}" | grep -q 'Device or resource busy'; then
+    # occurred since the earlier write to /sys/power/wakeup_count. Since this
+    # can happen if e.g. a device fails to suspend, we check the wakeup count
+    # again to make sure it has actually gone up.
+    current_wakeup_count="$(cat /sys/power/wakeup_count)"
+    if echo "${error}" | grep -q 'Device or resource busy' && \
+      [ "${FLAGS_wakeup_count}" -ne -1 ] && \
+      [ "${FLAGS_wakeup_count}" -ne "${current_wakeup_count}" ]; then
       log_msg "Warning: Device or resource busy on write to /sys/power/state"
       log_suspend_stats
       log_wakeup_count
