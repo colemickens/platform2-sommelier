@@ -335,7 +335,7 @@ TpmUtilityV2::~TpmUtilityV2() {
 
 void TpmUtilityV2::InitializationTask(base::WaitableEvent* completion) {
   CHECK(completion);
-  CHECK(tpm_manager_thread_.task_runner()->RunsTasksOnCurrentThread());
+  CHECK(tpm_manager_thread_.task_runner()->BelongsToCurrentThread());
 
   default_tpm_owner_ = std::make_unique<tpm_manager::TpmOwnershipDBusProxy>();
   default_tpm_nvram_ = std::make_unique<tpm_manager::TpmNvramDBusProxy>();
