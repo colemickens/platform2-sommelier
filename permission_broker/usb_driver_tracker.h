@@ -6,11 +6,12 @@
 #define PERMISSION_BROKER_USB_DRIVER_TRACKER_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <tuple>
-#include <utility>
 #include <vector>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
 #include <base/sequenced_task_runner.h>
@@ -32,14 +33,14 @@ class UsbDriverTracker {
                             const std::vector<uint8_t>& ifaces);
 
  private:
-  typedef std::tuple<std::string, uint64_t, std::vector<uint8_t>> UsbInterfaces;
+  struct UsbInterfaces;
 
   void ScanClosedFd(int fd);
 
   // File descriptors watcher callback.
   static void OnFdEvent(UsbDriverTracker *obj, int fd);
 
-  std::map<const int, UsbInterfaces> dev_fds_;
+  std::map<int, UsbInterfaces> dev_fds_;
 
   DISALLOW_COPY_AND_ASSIGN(UsbDriverTracker);
 };

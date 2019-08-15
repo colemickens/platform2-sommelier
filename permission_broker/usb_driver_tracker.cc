@@ -12,47 +12,43 @@
 #include <unistd.h>
 
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
-#include <brillo/message_loops/message_loop.h>
 
 #include "permission_broker/udev_scopers.h"
 
-using brillo::MessageLoop;
-
 namespace permission_broker {
+
+struct UsbDriverTracker::UsbInterfaces{
+  std::string path;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> controller;
+  std::vector<uint8_t> ifaces;
+};
 
 UsbDriverTracker::UsbDriverTracker() {}
 UsbDriverTracker::~UsbDriverTracker() {
   // Re-attach all delegated USB interfaces
-  for (const std::pair<int, UsbInterfaces>  &entry : dev_fds_) {
-    std::string path;
-    MessageLoop::TaskId tsk_id;
-    std::vector<uint8_t> ifaces;
-    std::tie(path, tsk_id, ifaces) = entry.second;
-    MessageLoop::current()->CancelTask(tsk_id);
-    ReAttachPathToKernel(path, ifaces);
+  for (auto& elem : dev_fds_) {
+    auto entry = std::move(elem.second);
+    ReAttachPathToKernel(entry.path, entry.ifaces);
   }
 }
 
 void UsbDriverTracker::ScanClosedFd(int fd) {
-  auto entry = dev_fds_.find(fd);
-  if (entry != dev_fds_.end()) {
-    int fd = entry->first;
+  auto iter = dev_fds_.find(fd);
+  if (iter != dev_fds_.end()) {
     int res = fcntl(fd, F_GETFL);
     if (res < 0) {  // the browser has close the file descriptor
-      std::string path;
-      MessageLoop::TaskId tsk_id;
-      std::vector<uint8_t> ifaces;
-      std::tie(path, tsk_id, ifaces) = entry->second;
-      MessageLoop::current()->CancelTask(tsk_id);
+      auto entry = std::move(iter->second);
       // re-attaching the kernel driver to the USB interface.
-      ReAttachPathToKernel(path, ifaces);
+      ReAttachPathToKernel(entry.path, entry.ifaces);
+
       // we are done with the USB interface.
-      dev_fds_.erase(entry);
+      dev_fds_.erase(iter);
     }
   } else {
     LOG(WARNING) << "Untracked USB file descriptor " << fd;
@@ -152,16 +148,18 @@ bool UsbDriverTracker::DetachPathFromKernel(int fd, const std::string& path) {
   }
 
   if (detached) {
-    MessageLoop::TaskId tsk_id = MessageLoop::current()->WatchFileDescriptor(
-        FROM_HERE, fd, MessageLoop::WatchMode::kWatchWrite, true,
-        base::Bind(&UsbDriverTracker::ScanClosedFd,
-                   base::Unretained(this), fd));
-    if (!tsk_id) {
-      LOG(ERROR) << "Unable to watch FD " << fd;
+    auto controller = base::FileDescriptorWatcher::WatchWritable(
+        fd,
+        base::BindRepeating(&UsbDriverTracker::ScanClosedFd,
+                            base::Unretained(this), fd));
+    if (!controller) {
+      LOG(ERROR) << "Unable to watch FD: " << fd;
       return true;
     }
-    UsbInterfaces fd_ifaces = std::make_tuple(path, tsk_id, ifaces);
-    dev_fds_[fd] = fd_ifaces;
+    dev_fds_.emplace(
+        fd,
+        UsbInterfaces{
+          std::move(path), std::move(controller), std::move(ifaces)});
   }
 
   return detached;
