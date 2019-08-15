@@ -98,7 +98,6 @@ class U2fHid {
   // TODO(louiscollard): Pass TpmVendorCommandProxy rather than individual
   // callbacks.
   U2fHid(std::unique_ptr<HidInterface> hid,
-         const std::string& vendor_sysinfo,
          const bool g2f_mode,
          const bool legacy_kh_fallback,
          const TpmGenerateCallback& generate_fn,
@@ -204,8 +203,6 @@ class U2fHid {
   base::OneShotTimer lock_timeout_;
   std::unique_ptr<UserState> user_state_;
   MetricsLibrary metrics_;
-
-  std::string vendor_sysinfo_;
 
   class HidPacket;
   class HidMessage;

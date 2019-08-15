@@ -216,14 +216,10 @@ class U2fDaemon : public brillo::Daemon {
       return EX_PROTOCOL;
     }
 
-    std::string vendor_sysinfo;
-    if (u2f_mode_ == U2fMode::kU2fExtended)
-      tpm_proxy_.GetVendorSysInfo(&vendor_sysinfo);
-
     u2fhid_ = std::make_unique<u2f::U2fHid>(
         std::make_unique<u2f::UHidDevice>(vendor_id_, product_id_, kDeviceName,
                                           "u2fd-tpm-cr50"),
-        vendor_sysinfo, u2f_mode_ == U2fMode::kU2fExtended, legacy_kh_fallback_,
+        u2f_mode_ == U2fMode::kU2fExtended, legacy_kh_fallback_,
         base::Bind(&u2f::TpmVendorCommandProxy::SendU2fGenerate,
                    base::Unretained(&tpm_proxy_)),
         base::Bind(&u2f::TpmVendorCommandProxy::SendU2fSign,

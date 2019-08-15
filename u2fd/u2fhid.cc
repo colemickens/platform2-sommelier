@@ -208,7 +208,6 @@ struct U2fHid::Transaction {
 };
 
 U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
-               const std::string& vendor_sysinfo,
                const bool g2f_mode,
                const bool legacy_kh_fallback,
                const TpmGenerateCallback& generate_fn,
@@ -229,8 +228,7 @@ U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
       wink_(wink_fn),
       free_cid_(1),
       locked_cid_(0),
-      user_state_(std::move(user_state)),
-      vendor_sysinfo_(vendor_sysinfo) {
+      user_state_(std::move(user_state)) {
   transaction_ = std::make_unique<Transaction>();
   hid_->SetOutputReportHandler(
       base::Bind(&U2fHid::ProcessReport, base::Unretained(this)));
@@ -381,15 +379,9 @@ int U2fHid::CmdWink(std::string* resp) {
 }
 
 int U2fHid::CmdSysInfo(std::string* resp) {
-  if (vendor_sysinfo_.empty()) {
-    LOG(WARNING) << "No vendor system info available";
-    ReturnError(U2fHidError::kInvalidCmd, transaction_->cid, true);
-    return -EINVAL;
-  }
-
-  VLOG(1) << "SYSINFO len=" << vendor_sysinfo_.length();
-  *resp = vendor_sysinfo_;
-  return vendor_sysinfo_.length();
+  LOG(WARNING) << "Received unsupported SysInfo command";
+  ReturnError(U2fHidError::kInvalidCmd, transaction_->cid, true);
+  return -EINVAL;
 }
 
 int U2fHid::CmdMsg(std::string* resp) {

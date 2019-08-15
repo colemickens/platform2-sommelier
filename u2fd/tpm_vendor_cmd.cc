@@ -151,47 +151,6 @@ uint32_t TpmVendorCommandProxy::SetU2fVendorMode(uint8_t mode) {
   return rc;
 }
 
-void TpmVendorCommandProxy::GetVendorSysInfo(std::string* sysinfo_out) {
-  std::string sysinfo_apdu(2, 0);
-  std::string info_blob;
-  constexpr uint8_t kCmdG2fSysInfo = 0x11;
-  constexpr int kG2fSysInfoVersionOffset = 0;
-  constexpr int kG2fSysInfoVersionLen = 3;
-
-  sysinfo_apdu[1] = kCmdG2fSysInfo;
-  int rc = SendU2fApdu(sysinfo_apdu, &info_blob);
-  if (rc ||
-      info_blob.length() < kG2fSysInfoVersionOffset + kG2fSysInfoVersionLen) {
-    VLOG(1) << "No system info available from the firmware";
-    return;
-  }
-
-  LOG(INFO) << "System info: FW version "
-            << static_cast<int>(info_blob[kG2fSysInfoVersionOffset]) << "."
-            << static_cast<int>(info_blob[kG2fSysInfoVersionOffset + 1]) << "."
-            << static_cast<int>(info_blob[kG2fSysInfoVersionOffset + 2]);
-
-  // Vendor system information blob definition.
-  constexpr int kVendorSysInfoLen = 43;
-  constexpr int kVendorSysInfoIdOffset = 0;
-  constexpr char kVendorPlatformId[] = "hg_int00";
-  constexpr int kVendorSysInfoFwEpochOffset = 8;
-  constexpr uint8_t kVendorFwEpoch = 0x03;
-  constexpr int kVendorSysInfoAppletVersionOffset = 11;
-
-  std::string sysinfo(kVendorSysInfoLen, 0);
-  sysinfo.replace(kVendorSysInfoIdOffset, sizeof(kVendorPlatformId) - 1,
-                  kVendorPlatformId);
-  sysinfo.replace(
-      kVendorSysInfoFwEpochOffset, kG2fSysInfoVersionLen,
-      info_blob.substr(kG2fSysInfoVersionOffset, kG2fSysInfoVersionLen));
-  sysinfo.replace(
-      kVendorSysInfoAppletVersionOffset, kG2fSysInfoVersionLen,
-      info_blob.substr(kG2fSysInfoVersionOffset, kG2fSysInfoVersionLen));
-  sysinfo[kVendorSysInfoFwEpochOffset] = kVendorFwEpoch;
-  *sysinfo_out = sysinfo;
-}
-
 uint32_t TpmVendorCommandProxy::SendU2fApdu(const std::string& req,
                                             std::string* resp_out) {
   return VendorCommand(kVendorCcU2fApdu, req, resp_out);
