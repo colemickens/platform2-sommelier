@@ -110,6 +110,7 @@ static_library("libsystem") {
     "powerd/system/suspend_configurator.cc",
     "powerd/system/tagged_device.cc",
     "powerd/system/udev.cc",
+    "powerd/system/wake_on_dp_configurator.cc",
     "powerd/system/wakeup_device.cc",
     "powerd/system/wilco_charge_controller_helper.cc",
   ]

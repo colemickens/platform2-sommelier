@@ -59,6 +59,7 @@
 #include "power_manager/powerd/system/suspend_configurator.h"
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/powerd/system/user_proximity_watcher_interface.h"
+#include "power_manager/powerd/system/wake_on_dp_configurator.h"
 #include "power_manager/powerd/system/wilco_charge_controller_helper.h"
 #include "power_manager/proto_bindings/idle.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
@@ -440,6 +441,11 @@ void Daemon::Init() {
   // This needs to happen *after* all D-Bus methods are exported:
   // https://crbug.com/331431
   CHECK(dbus_wrapper_->PublishService()) << "Failed to publish D-Bus service";
+
+  // configure wake on dp only if the preference is set.
+  bool wake_on_dp = false;
+  if (prefs_->GetBool(kWakeOnDpPref, &wake_on_dp))
+    system::ConfigureWakeOnDp(wake_on_dp);
 
   // Call this last to ensure that all of our members are already initialized.
   OnPowerStatusUpdate();

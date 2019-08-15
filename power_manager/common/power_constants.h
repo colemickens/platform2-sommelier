@@ -247,6 +247,10 @@ extern const char kMaxDarkSuspendDelayTimeoutMsPref[];
 // more information.
 extern const char kSuspendModePref[];
 
+// If true, enables wake from suspend (S3/S0ix) on DP hot plug detect on type-c
+// ports.
+extern const char kWakeOnDpPref[];
+
 // Miscellaneous constants.
 
 // Name of the cros_fp fingerprint sensor input device.

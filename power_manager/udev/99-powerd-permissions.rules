@@ -3,3 +3,5 @@ ACTION!="remove", ATTR{inhibited}=="*",    RUN+="/bin/chown power:power $sys/$de
 
 # Make pluggable keyboard backlights writable by powerd.
 ACTION!="remove", SUBSYSTEM=="leds", DEVPATH=="*:kbd_backlight", RUN+="/lib/udev/chown-sysfs-backlight-dir.sh $sys/$devpath"
+
+SUBSYSTEM=="chromeos", KERNEL=="cros_ec" OWNER="root", GROUP="power" MODE="0660"
