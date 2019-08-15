@@ -293,6 +293,11 @@ def GnLintVisibilityFlags(gndata):
         issues.append('do not use -fvisibility; to export symbols, use '
                       'brillo/brillo_export.h instead')
 
+    configs = ExtractLiteralAssignment(node, ANY_CONFIGS)
+    if '//common-mk:visibility_default' in configs:
+      issues.append('do not use //common-mk:visibility_default; to export '
+                    'symbols, use brillo/brillo_export.h instead')
+
   issues = []
   WalkGn(CheckNode, gndata)
   return issues
