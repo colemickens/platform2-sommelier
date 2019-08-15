@@ -1,9 +1,10 @@
 set noparent
-# In no particular order.
-jkardatzke@chromium.org
-timzheng@chromium.org
-iby@chromium.org
-vapier@chromium.org
+# Alphabetical
 benchan@chromium.org
+iby@chromium.org
+jkardatzke@chromium.org
+mutexlox@chromium.org
+timzheng@chromium.org
+vapier@chromium.org
 
 # COMPONENT: OS>Systems>CrashReporting
