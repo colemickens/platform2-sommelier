@@ -18,6 +18,7 @@
 namespace {
 
 const int kElanVendorId = 0x04f3;
+const int kMelfasVendorId = 0x1fd2;
 
 // Structure that holds a map of vendor IDs and a list of the blocked product ID
 // ranges. These ranges are inclusive.
@@ -25,6 +26,8 @@ const permission_broker::RangeListMap kFwUpdateDevices = {
     // Block ELAN touchscreens PID 0x2000 - 0x2FFF and 0x4000 - 0x4FFF. 0x0732
     // is the PID for a device in recovery mode.
     {kElanVendorId, {{0x2000, 0x2fff}, {0x4000, 0x4fff}, {0x0732, 0x0732}}},
+    // Melfas USB touchscreen PID 0x8103.
+    {kMelfasVendorId, {{0x8103, 0x8103}}},
 };
 
 }  // namespace
