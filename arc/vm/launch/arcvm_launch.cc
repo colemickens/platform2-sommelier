@@ -221,14 +221,15 @@ std::vector<std::string> GenerateKernelCmdline(
   std::vector<std::string> result = {
       "androidboot.hardware=bertha",
       "androidboot.container=1",
+      // TODO(b/139480143): when ArcNativeBridgeExperiment is enabled, switch
+      // to ndk_translation.
+      "androidboot.native_bridge=libhoudini.so",
       StringPrintf("androidboot.dev_mode=%d", is_dev_mode),
       StringPrintf("androidboot.disable_runas=%d", !is_dev_mode),
       StringPrintf("androidboot.vm=%d", is_inside_vm),
       // TODO(cmtm): get this from arc-setup config or equivalent
       "androidboot.debuggable=1",
       "androidboot.lcd_density=" + lcd_density,
-      StringPrintf("androidboot.native_bridge=%d",
-                   features.IsEnabled("ArcNativeBridgeExperiment")),
       StringPrintf("androidboot.arc_file_picker=%d",
                    features.IsEnabled("ArcFilePickerExperiment")),
       StringPrintf(
