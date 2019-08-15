@@ -246,28 +246,6 @@ bool U2fHid::Init() {
                                 sizeof(kU2fReportDesc)));
 }
 
-bool U2fHid::GetU2fVersion(std::string* version_out) {
-  U2fCommandAdpu version_msg =
-      U2fCommandAdpu::CreateForU2fIns(U2fIns::kU2fVersion);
-  std::string version_resp_raw;
-
-  int rc = transmit_apdu_.Run(version_msg.ToString(), &version_resp_raw);
-
-  if (!rc) {
-    // remove the 16-bit status code at the end
-    *version_out = version_resp_raw.substr(
-        0, version_resp_raw.length() - sizeof(uint16_t));
-    VLOG(1) << "version " << *version_out;
-
-    if (*version_out != kSupportedU2fVersion) {
-      LOG(WARNING) << "Unsupported U2F version " << *version_out;
-      return false;
-    }
-  }
-
-  return !rc;
-}
-
 void U2fHid::ReturnError(U2fHidError errcode, uint32_t cid, bool clear) {
   HidMessage msg(U2fHidCommand::kError, cid);
 
@@ -366,9 +344,9 @@ void U2fHid::CmdInit(uint32_t cid, const std::string& payload) {
 int U2fHid::CmdPing(std::string* resp) {
   VLOG(1) << "PING len " << transaction_->total_size;
 
-  // poke U2F version to simulate latency.
-  std::string version;
-  GetU2fVersion(&version);
+  // Read the G2F cert, to add approximate cr50 latency.
+  std::string cert_unused;
+  tpm_g2f_cert_.Run(&cert_unused);
 
   // send back the same content
   *resp = transaction_->payload.substr(0, transaction_->total_size);

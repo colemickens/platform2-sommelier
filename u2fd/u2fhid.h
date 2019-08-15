@@ -112,11 +112,6 @@ class U2fHid {
   ~U2fHid();
   bool Init();
 
-  // Retrieves the U2f implementation version available through the
-  // |transmit_func| provided to the constructor.
-  // Returns true on success.
-  bool GetU2fVersion(std::string* version_out);
-
  private:
   // U2FHID protocol commands implementation.
   void CmdInit(uint32_t cid, const std::string& payload);
