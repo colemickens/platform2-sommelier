@@ -8,7 +8,7 @@
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
 #include <base/time/time.h>
@@ -141,7 +141,7 @@ int main(int argc, char* argv[]) {
   powerd_proxy->ConnectToSignal(
       power_manager::kPowerManagerInterface,
       power_manager::kSuspendImminentSignal,
-      base::Bind(&HandleSuspendImminent, make_scoped_refptr(powerd_proxy),
+      base::Bind(&HandleSuspendImminent, base::WrapRefCounted(powerd_proxy),
                  delay_id, FLAGS_delay_ms),
       base::Bind(&DBusSignalConnected));
   powerd_proxy->ConnectToSignal(

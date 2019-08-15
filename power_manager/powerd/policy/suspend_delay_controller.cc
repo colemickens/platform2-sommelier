@@ -227,8 +227,8 @@ void SuspendDelayController::OnMaxDelayExpiration() {
     const DelayInfo& delay = registered_delays_[*it];
     if (!tardy_delays.empty())
       tardy_delays += ", ";
-    tardy_delays += base::IntToString(*it) + " (" + delay.dbus_client + ": " +
-                    delay.description + ")";
+    tardy_delays += base::NumberToString(*it) + " (" + delay.dbus_client +
+                    ": " + delay.description + ")";
   }
   LOG(WARNING) << "Timed out while waiting for " << GetLogDescription()
                << " request " << current_suspend_id_

@@ -34,8 +34,8 @@ namespace {
 const char kRtcWakeAlarmPath[] = "/sys/class/rtc/rtc0/wakealarm";
 
 // Exits when powerd announces that the suspend attempt has completed.
-void OnSuspendDone(dbus::Signal* signal) {
-  base::MessageLoop::current()->QuitNow();
+void OnSuspendDone(base::RunLoop* run_loop, dbus::Signal* signal) {
+  run_loop->Quit();
 }
 
 // Handles the result of an attempt to connect to a D-Bus signal.
@@ -90,14 +90,16 @@ int main(int argc, char* argv[]) {
 
   // Set an RTC alarm to wake up the system.
   if (FLAGS_wakeup_timeout > 0) {
-    std::string alarm_string = "+" + base::IntToString(FLAGS_wakeup_timeout);
+    std::string alarm_string = "+" + base::NumberToString(FLAGS_wakeup_timeout);
     CHECK(base::WriteFile(base::FilePath(kRtcWakeAlarmPath),
                           alarm_string.c_str(), alarm_string.length()));
   }
 
-  powerd_proxy->ConnectToSignal(
-      power_manager::kPowerManagerInterface, power_manager::kSuspendDoneSignal,
-      base::Bind(&OnSuspendDone), base::Bind(&OnDBusSignalConnected));
+  base::RunLoop run_loop;
+  powerd_proxy->ConnectToSignal(power_manager::kPowerManagerInterface,
+                                power_manager::kSuspendDoneSignal,
+                                base::Bind(&OnSuspendDone, &run_loop),
+                                base::Bind(&OnDBusSignalConnected));
 
   // Send a suspend request.
   dbus::MethodCall method_call(power_manager::kPowerManagerInterface,
@@ -122,6 +124,6 @@ int main(int argc, char* argv[]) {
         base::TimeDelta::FromSeconds(FLAGS_timeout));
   }
 
-  base::RunLoop().Run();
+  run_loop.Run();
   return 0;
 }

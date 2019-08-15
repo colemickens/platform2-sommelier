@@ -111,7 +111,7 @@ int main(int argc, char* argv[]) {
   } else if (FLAGS_action == "set_cellular_transmit_power") {
     std::string mode = FLAGS_cellular_transmit_power_low ? "--low" : "";
     std::string target =
-        "--gpio=" + base::IntToString(FLAGS_cellular_transmit_power_gpio);
+        "--gpio=" + base::NumberToString(FLAGS_cellular_transmit_power_gpio);
     RunCommand("set_cellular_transmit_power", mode.c_str(), target.c_str(),
                nullptr);
   } else if (FLAGS_action == "set_wifi_transmit_power") {
@@ -125,7 +125,7 @@ int main(int argc, char* argv[]) {
     std::string wakeup_flag;
     if (FLAGS_suspend_wakeup_count_valid) {
       wakeup_flag =
-          "--wakeup_count=" + base::Uint64ToString(FLAGS_suspend_wakeup_count);
+          "--wakeup_count=" + base::NumberToString(FLAGS_suspend_wakeup_count);
     }
     RunCommand("powerd_suspend", idle_flag.c_str(),
                wakeup_flag.empty() ? nullptr : wakeup_flag.c_str(), nullptr);

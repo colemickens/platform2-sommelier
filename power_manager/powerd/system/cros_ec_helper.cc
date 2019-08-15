@@ -66,7 +66,7 @@ bool CrosEcHelper::IsWakeAngleSupported() {
 
 bool CrosEcHelper::AllowWakeupAsTablet(bool enabled) {
   int new_wake_angle = enabled ? 360 : 180;
-  std::string str = base::IntToString(new_wake_angle);
+  std::string str = base::NumberToString(new_wake_angle);
   if (new_wake_angle == cached_wake_angle_) {
     VLOG(1) << "EC wake angle is already set to " << str;
     return true;

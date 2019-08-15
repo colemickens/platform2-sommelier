@@ -216,13 +216,13 @@ TEST_F(PrefsTest, TestThreeDirectoriesStacked) {
 
       // For path[i], write the default test values + i.
       // This way, each path's pref file will have a unique value.
-      std::string int_string = base::Int64ToString(kIntTestValue + i);
+      std::string int_string = base::NumberToString(kIntTestValue + i);
       EXPECT_EQ(int_string.size(),
                 base::WriteFile(path.Append(kIntTestFileName),
                                 int_string.data(), int_string.size()));
       EXPECT_TRUE(base::PathExists(path.Append(kIntTestFileName)));
 
-      std::string double_string = base::DoubleToString(kDoubleTestValue + i);
+      std::string double_string = base::NumberToString(kDoubleTestValue + i);
       EXPECT_EQ(double_string.size(),
                 base::WriteFile(path.Append(kDoubleTestFileName),
                                 double_string.data(), double_string.size()));
@@ -276,8 +276,8 @@ TEST_F(PrefsTest, TestThreeDirectoriesGarbage) {
       int_string = kGarbageString;
       double_string = kGarbageString;
     } else {
-      int_string = base::Int64ToString(kIntTestValue);
-      double_string = base::DoubleToString(kDoubleTestValue);
+      int_string = base::NumberToString(kIntTestValue);
+      double_string = base::NumberToString(kDoubleTestValue);
     }
     EXPECT_EQ(int_string.size(),
               base::WriteFile(path.Append(kIntTestFileName), int_string.data(),

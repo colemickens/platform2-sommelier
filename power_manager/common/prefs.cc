@@ -224,12 +224,12 @@ void Prefs::SetString(const std::string& name, const std::string& value) {
 }
 
 void Prefs::SetInt64(const std::string& name, int64_t value) {
-  prefs_to_write_[name] = base::Int64ToString(value);
+  prefs_to_write_[name] = base::NumberToString(value);
   ScheduleWrite();
 }
 
 void Prefs::SetDouble(const std::string& name, double value) {
-  prefs_to_write_[name] = base::DoubleToString(value);
+  prefs_to_write_[name] = base::NumberToString(value);
   ScheduleWrite();
 }
 

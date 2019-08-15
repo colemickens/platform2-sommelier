@@ -57,7 +57,7 @@ TEST_F(WakeupDeviceTest, TestWakeupCountIncrement) {
 // wakeup device.
 TEST_F(WakeupDeviceTest, TestWakeupCountOverflow) {
   const std::string kWakeupCountBeforeSuspendStr =
-      base::Uint64ToString(std::numeric_limits<uint64_t>::max());
+      base::NumberToString(std::numeric_limits<uint64_t>::max());
   const uint64_t kWakeupCountBeforeSuspendInt =
       std::numeric_limits<uint64_t>::max();
   udev_.SetSysattr(kTestSysfsPath, WakeupDevice::kPowerWakeupCount,
@@ -68,7 +68,7 @@ TEST_F(WakeupDeviceTest, TestWakeupCountOverflow) {
             kWakeupCountBeforeSuspendInt);
 
   const std::string kWakeupCountAfterResumeStr =
-      base::Uint64ToString(std::numeric_limits<uint64_t>::max() + 1);
+      base::NumberToString(std::numeric_limits<uint64_t>::max() + 1);
   udev_.SetSysattr(kTestSysfsPath, WakeupDevice::kPowerWakeupCount,
                    kWakeupCountAfterResumeStr);
   wakeup_device_->HandleResume();
@@ -100,7 +100,7 @@ TEST_F(WakeupDeviceTest, TestWakeupCountReadFailBeforeSuspend) {
   wakeup_device_->PrepareForSuspend();
   EXPECT_EQ(wakeup_device_->wakeup_count_before_suspend(), 0);
   EXPECT_FALSE(wakeup_device_->was_pre_suspend_read_successful());
-  const std::string kWakeupCountAfterResumeStr = base::Uint64ToString(1);
+  const std::string kWakeupCountAfterResumeStr = base::NumberToString(1);
   udev_.SetSysattr(kTestSysfsPath, WakeupDevice::kPowerWakeupCount,
                    kWakeupCountAfterResumeStr);
   wakeup_device_->HandleResume();

@@ -152,7 +152,7 @@ class PowerSupplyTest : public ::testing::Test {
                         double value) {
     // sysfs stores doubles by multiplying them by 1000000.
     const int int_value = round(value * 1000000);
-    WriteValue(dir, filename, base::IntToString(int_value));
+    WriteValue(dir, filename, base::NumberToString(int_value));
   }
 
   // Writes reasonable default values to |temp_dir_|.
@@ -173,7 +173,7 @@ class PowerSupplyTest : public ::testing::Test {
                      kDefaultChargeFullDesign);
     WriteDoubleValue(battery_dir_, "voltage_now", kVoltage);
     WriteDoubleValue(battery_dir_, "voltage_min_design", kVoltage);
-    WriteValue(battery_dir_, "cycle_count", base::IntToString(kCycleCount));
+    WriteValue(battery_dir_, "cycle_count", base::NumberToString(kCycleCount));
     WriteValue(battery_dir_, "serial_number", kSerialNumber);
   }
 

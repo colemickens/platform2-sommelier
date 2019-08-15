@@ -83,7 +83,7 @@ std::string GetPowerPolicyDebugString(const PowerManagementPolicy& policy) {
   std::string str;
   if (policy.has_peak_shift_battery_percent_threshold()) {
     str += "peak_shift_battery_percent_threshold=" +
-           base::IntToString(policy.peak_shift_battery_percent_threshold()) +
+           base::NumberToString(policy.peak_shift_battery_percent_threshold()) +
            " ";
   }
   if (policy.peak_shift_day_configs_size()) {

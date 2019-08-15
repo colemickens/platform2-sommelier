@@ -298,39 +298,44 @@ std::string StateController::GetPolicyDebugString(
            " ";
   }
   if (policy.has_screen_wake_lock()) {
-    str += "screen_wake_lock=" + base::IntToString(policy.screen_wake_lock()) +
-           " ";
+    str +=
+        "screen_wake_lock=" + base::NumberToString(policy.screen_wake_lock()) +
+        " ";
   }
   if (policy.has_dim_wake_lock())
-    str += "dim_wake_lock=" + base::IntToString(policy.dim_wake_lock()) + " ";
+    str +=
+        "dim_wake_lock=" + base::NumberToString(policy.dim_wake_lock()) + " ";
   if (policy.has_system_wake_lock()) {
-    str += "system_wake_lock=" + base::IntToString(policy.system_wake_lock()) +
-           " ";
+    str +=
+        "system_wake_lock=" + base::NumberToString(policy.system_wake_lock()) +
+        " ";
   }
   if (policy.has_use_audio_activity())
-    str += "use_audio=" + base::IntToString(policy.use_audio_activity()) + " ";
+    str +=
+        "use_audio=" + base::NumberToString(policy.use_audio_activity()) + " ";
   if (policy.has_use_video_activity())
-    str += "use_video=" + base::IntToString(policy.use_video_activity()) + " ";
+    str +=
+        "use_video=" + base::NumberToString(policy.use_video_activity()) + " ";
   if (policy.has_presentation_screen_dim_delay_factor()) {
     str += "presentation_factor=" +
-           base::DoubleToString(policy.presentation_screen_dim_delay_factor()) +
+           base::NumberToString(policy.presentation_screen_dim_delay_factor()) +
            " ";
   }
   if (policy.has_user_activity_screen_dim_delay_factor()) {
     str +=
         "user_activity_factor=" +
-        base::DoubleToString(policy.user_activity_screen_dim_delay_factor()) +
+        base::NumberToString(policy.user_activity_screen_dim_delay_factor()) +
         " ";
   }
   if (policy.has_wait_for_initial_user_activity()) {
     str += "wait_for_initial_user_activity=" +
-           base::IntToString(policy.wait_for_initial_user_activity()) + " ";
+           base::NumberToString(policy.wait_for_initial_user_activity()) + " ";
   }
   if (policy.has_force_nonzero_brightness_for_user_activity()) {
-    str +=
-        "force_nonzero_brightness_for_user_activity=" +
-        base::IntToString(policy.force_nonzero_brightness_for_user_activity()) +
-        " ";
+    str += "force_nonzero_brightness_for_user_activity=" +
+           base::NumberToString(
+               policy.force_nonzero_brightness_for_user_activity()) +
+           " ";
   }
 
   if (policy.has_reason())

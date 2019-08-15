@@ -106,7 +106,7 @@ class PeripheralBatteryWatcherTest : public ::testing::Test {
 };
 
 TEST_F(PeripheralBatteryWatcherTest, Basic) {
-  std::string level = base::IntToString(80);
+  std::string level = base::NumberToString(80);
   WriteFile(capacity_file_, level);
   battery_.Init(&test_wrapper_);
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
@@ -128,7 +128,7 @@ TEST_F(PeripheralBatteryWatcherTest, NoLevelReading) {
 
 TEST_F(PeripheralBatteryWatcherTest, SkipUnknownStatus) {
   // Batteries with unknown statuses should be skipped: http://b/64397082
-  WriteFile(capacity_file_, base::IntToString(0));
+  WriteFile(capacity_file_, base::NumberToString(0));
   WriteFile(status_file_, PeripheralBatteryWatcher::kStatusValueUnknown);
   battery_.Init(&test_wrapper_);
   ASSERT_FALSE(test_wrapper_.RunUntilSignalSent(kShortUpdateTimeout));
@@ -136,7 +136,7 @@ TEST_F(PeripheralBatteryWatcherTest, SkipUnknownStatus) {
 
 TEST_F(PeripheralBatteryWatcherTest, AllowOtherStatus) {
   // Batteries with other statuses should be reported.
-  WriteFile(capacity_file_, base::IntToString(20));
+  WriteFile(capacity_file_, base::NumberToString(20));
   WriteFile(status_file_, "Discharging");
   battery_.Init(&test_wrapper_);
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));

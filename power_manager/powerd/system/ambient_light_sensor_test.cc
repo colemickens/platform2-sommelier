@@ -77,7 +77,7 @@ class AmbientLightSensorTest : public ::testing::Test {
   // Writes |lux| to |data_file_| to simulate the ambient light sensor reporting
   // a new light level.
   void WriteLux(int lux) {
-    std::string lux_string = base::IntToString(lux);
+    std::string lux_string = base::NumberToString(lux);
     int bytes_written =
         base::WriteFile(data_file_, lux_string.data(), lux_string.size());
     CHECK(bytes_written == static_cast<int>(lux_string.size()))

@@ -30,7 +30,7 @@ bool IsValid(const base::FilePath& lockfile, const base::FilePath& proc_dir) {
   if (!util::ReadInt64File(lockfile, &pid))
     return false;
 
-  if (!base::DirectoryExists(proc_dir.Append(base::Int64ToString(pid)))) {
+  if (!base::DirectoryExists(proc_dir.Append(base::NumberToString(pid)))) {
     LOG(WARNING) << lockfile.value() << " contains stale/invalid PID \"" << pid
                  << "\"";
     return false;

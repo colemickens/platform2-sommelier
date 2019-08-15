@@ -57,7 +57,7 @@ class Gpio {
       return false;
     }
 
-    std::string export_value = base::UintToString(gpio_number_);
+    std::string export_value = base::NumberToString(gpio_number_);
     if (!base::WriteFile(export_file, export_value.data(),
                          export_value.size())) {
       PLOG(ERROR) << "Could not write to " << export_file.value();

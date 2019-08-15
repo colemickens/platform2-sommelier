@@ -824,7 +824,8 @@ class S0ixResidencyMetricsTest : public MetricsCollectorTest {
 
   // Writes |residency| to |residency_path_|.
   void WriteResidency(const base::TimeDelta& residency) {
-    std::string buf = base::Uint64ToString(llabs(residency.InMicroseconds()));
+    std::string buf = base::NumberToString(
+        static_cast<uint64_t>(llabs(residency.InMicroseconds())));
     ASSERT_EQ(base::WriteFile(residency_path_, buf.data(), buf.size()),
               buf.size());
   }
