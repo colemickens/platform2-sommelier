@@ -321,7 +321,7 @@ bool TpmInitializerImpl::ChangeOwnerPassword(
   if (TPM_ERROR(result = Tspi_Policy_SetSecret(
                     policy_handle, TSS_SECRET_MODE_PLAIN, owner_password.size(),
                     reinterpret_cast<BYTE*>(
-                        base::string_as_array(&mutable_owner_password))))) {
+                        base::data(mutable_owner_password))))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Policy_SetSecret";
     return false;
   }
