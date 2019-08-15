@@ -370,18 +370,18 @@ std::string ContainerState(pid_t child_pid,
                            const base::FilePath& bundle_dir,
                            const base::FilePath& container_dir,
                            const std::string& status) {
-  base::DictionaryValue state;
-  state.SetString("ociVersion", "1.0");
-  state.SetString("id", container_id);
-  state.SetString("status", status);
-  state.SetString("bundle", base::MakeAbsoluteFilePath(bundle_dir).value());
-  state.SetInteger("pid", child_pid);
-  std::unique_ptr<base::DictionaryValue> annotations =
-      std::make_unique<base::DictionaryValue>();
-  annotations->SetStringWithoutPathExpansion(
+  base::Value state(base::Value::Type::DICTIONARY);
+  state.SetKey("ociVersion", base::Value("1.0"));
+  state.SetKey("id", base::Value(container_id));
+  state.SetKey("status", base::Value(status));
+  state.SetKey("bundle",
+               base::Value(base::MakeAbsoluteFilePath(bundle_dir).value()));
+  state.SetKey("pid", base::Value(child_pid));
+  base::Value annotations(base::Value::Type::DICTIONARY);
+  annotations.SetKey(
       "org.chromium.run_oci.container_root",
-      base::MakeAbsoluteFilePath(container_dir).value());
-  state.Set("annotations", std::move(annotations));
+      base::Value(base::MakeAbsoluteFilePath(container_dir).value()));
+  state.SetKey("annotations", std::move(annotations));
   std::string state_json;
   if (!base::JSONWriter::WriteWithOptions(
           state, base::JSONWriter::OPTIONS_PRETTY_PRINT, &state_json)) {
