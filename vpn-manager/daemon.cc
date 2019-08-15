@@ -9,14 +9,41 @@
 #include <string>
 #include <utility>
 
+#include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <brillo/process.h>
 
 using ::brillo::Process;
 using ::brillo::ProcessImpl;
 
 namespace vpn_manager {
+
+namespace {
+
+bool SetResourceLimits(const Daemon::ResourceLimits& rlimits) {
+  rlimit as_rlimit;
+  if (getrlimit(RLIMIT_AS, &as_rlimit) != 0) {
+    PLOG(ERROR) << "Failed to get RLIMIT_AS";
+    return false;
+  }
+
+  if (as_rlimit.rlim_max < rlimits.as) {
+    LOG(ERROR) << "Cannot set AS limit to " << rlimits.as
+               << " when the hard limit is " << as_rlimit.rlim_max;
+    return false;
+  }
+
+  as_rlimit.rlim_cur = rlimits.as;
+  if (setrlimit(RLIMIT_AS, &as_rlimit) != 0) {
+    PLOG(ERROR) << "Failed to set RLIMIT_AS";
+    return false;
+  }
+  return true;
+}
+
+}  // namespace
 
 // static
 const int Daemon::kTerminationTimeoutSeconds = 2;
@@ -33,6 +60,13 @@ void Daemon::ClearProcess() {
 
 Process* Daemon::CreateProcess() {
   return SetProcess(std::make_unique<ProcessImpl>());
+}
+
+Process* Daemon::CreateProcessWithResourceLimits(
+    const ResourceLimits& rlimits) {
+  Process* process = SetProcess(std::make_unique<ProcessImpl>());
+  process->SetPreExecCallback(base::Bind(&SetResourceLimits, rlimits));
+  return process;
 }
 
 bool Daemon::FindProcess() {

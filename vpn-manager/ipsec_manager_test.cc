@@ -163,7 +163,8 @@ ProcessMock* IpsecManagerTest::SetStartStarterExpectations() {
   EXPECT_CALL(*charon_daemon_, ClearProcess());
   ProcessMock* process = new ProcessMock;
   // Does not pass ownership.
-  EXPECT_CALL(*starter_daemon_, CreateProcess()).WillOnce(Return(process));
+  EXPECT_CALL(*starter_daemon_, CreateProcessWithResourceLimits(_))
+      .WillOnce(Return(process));
   EXPECT_CALL(*process, AddArg(IPSEC_STARTER));
   EXPECT_CALL(*process, AddArg("--nofork"));
   EXPECT_CALL(*process, RedirectUsingPipe(STDERR_FILENO, false));

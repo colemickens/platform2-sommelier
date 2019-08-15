@@ -5,6 +5,8 @@
 #ifndef VPN_MANAGER_DAEMON_H_
 #define VPN_MANAGER_DAEMON_H_
 
+#include <sys/resource.h>
+
 #include <memory>
 #include <string>
 
@@ -24,6 +26,10 @@ namespace vpn_manager {
 // object destructor.
 class Daemon {
  public:
+  struct ResourceLimits {
+    rlim_t as;
+  };
+
   explicit Daemon(const std::string& pid_file);
   virtual ~Daemon();
 
@@ -35,6 +41,13 @@ class Daemon {
   // the new process.  The process pointer returned is still owned by
   // this object.
   virtual brillo::Process* CreateProcess();
+
+  // Replace the current process with a new process instance.  Returns the new
+  // process.  The process pointer returned is still owned by this object.  Note
+  // that if setting the resource limits fails, it will fail when the Process is
+  // Start()ed, *not* when this method returns.
+  virtual brillo::Process* CreateProcessWithResourceLimits(
+      const ResourceLimits& limits);
 
   // Find a process associated with the process-id file.  If one is found,
   // replace the current |process_| instance with this result.  Returns

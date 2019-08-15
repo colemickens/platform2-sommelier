@@ -18,6 +18,8 @@ class DaemonMock : public Daemon {
 
   MOCK_METHOD0(ClearProcess, void());
   MOCK_METHOD0(CreateProcess, brillo::Process*());
+  MOCK_METHOD1(CreateProcessWithResourceLimits,
+               brillo::Process*(const ResourceLimits& rlimits));
   MOCK_METHOD0(FindProcess, bool());
   MOCK_METHOD0(IsRunning, bool());
   MOCK_METHOD0(Terminate, bool());

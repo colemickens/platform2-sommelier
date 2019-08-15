@@ -42,12 +42,16 @@ const char kIpsecSecretsName[] = "ipsec.secrets";
 const char kIpsecGroupName[] = "ipsec";
 const char kIpsecUpFile[] = "/run/ipsec/up";
 const char kIpsecServiceName[] = "ipsec";
-const char kStarterPidFile[] = "/run/ipsec/starter.pid";
 const char kStrongswanConfName[] = "strongswan.conf";
-const char kCharonPidFile[] = "/run/ipsec/charon.pid";
 const char kIpsecAuthenticationFailurePattern[] =
     "*discarding duplicate packet*STATE_MAIN_I3*";
 const char kSmartcardModuleName[] = "crypto_module";
+const char kCharonPidFile[] = "/run/ipsec/charon.pid";
+const char kStarterPidFile[] = "/run/ipsec/starter.pid";
+// Charon can have a quite large VmSize/VmPeak despite not using much resident
+// memory. This can be partially reduced by lowering charon.threads, but in any
+// case, Charon cannot rely on inheriting shill's RLIMIT_AS.
+const rlim_t kCharonRlimitAs = 750'000'000 /* 750MB */;
 
 std::string EscapeString(const std::string& input) {
   std::string output;
@@ -332,7 +336,8 @@ void IpsecManager::KillCurrentlyRunning() {
 bool IpsecManager::StartStarter() {
   KillCurrentlyRunning();
   LOG(INFO) << "Starting starter";
-  Process* starter = starter_daemon_->CreateProcess();
+  Process* starter =
+      starter_daemon_->CreateProcessWithResourceLimits({kCharonRlimitAs});
   starter->AddArg(IPSEC_STARTER);
   starter->AddArg("--nofork");
   starter->RedirectUsingPipe(STDERR_FILENO, false);
