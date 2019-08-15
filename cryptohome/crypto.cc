@@ -903,11 +903,12 @@ bool Crypto::GenerateAndWrapKeys(const VaultKeyset& vault_keyset,
                                  const SecureBlob& key,
                                  const SecureBlob& salt,
                                  const KeyBlobs& blobs,
+                                 bool store_reset_seed,
                                  SerializedVaultKeyset* serialized) const {
   SecureBlob cipher_text;
   SecureBlob wrapped_chaps_key;
   if (!GenerateEncryptedRawKeyset(vault_keyset, blobs.vkk_key, blobs.vkk_iv,
-                                  blobs.vkk_iv, &cipher_text,
+                                  blobs.chaps_iv, &cipher_text,
                                   &wrapped_chaps_key)) {
     return false;
   }
@@ -921,7 +922,7 @@ bool Crypto::GenerateAndWrapKeys(const VaultKeyset& vault_keyset,
   serialized->set_wrapped_keyset(cipher_text.data(), cipher_text.size());
 
   // If a reset seed is present, encrypt and store it, else clear the field.
-  if (vault_keyset.reset_seed().size() != 0) {
+  if (store_reset_seed && vault_keyset.reset_seed().size() != 0) {
     SecureBlob reset_iv(kAesBlockSize);
     CryptoLib::GetSecureRandom(reset_iv.data(), reset_iv.size());
 
@@ -1006,6 +1007,8 @@ bool Crypto::EncryptTPM(const VaultKeyset& vault_keyset,
   // Pass back the vkk_key and vkk_iv so the generic secret wrapping can use it.
   out_blobs->vkk_key = vkk_key;
   out_blobs->vkk_iv = vkk_iv;
+  out_blobs->chaps_iv = vkk_iv;
+  out_blobs->auth_iv = vkk_iv;
 
   return true;
 }
@@ -1094,6 +1097,8 @@ bool Crypto::EncryptTPMNotBoundToPcr(const VaultKeyset& vault_keyset,
   // Pass back the vkk_key and vkk_iv so the generic secret wrapping can use it.
   out_blobs->vkk_key = vkk_key;
   out_blobs->vkk_iv = vkk_iv;
+  out_blobs->chaps_iv = vkk_iv;
+  out_blobs->auth_iv = vkk_iv;
 
   return true;
 }
@@ -1175,6 +1180,7 @@ bool Crypto::EncryptLECredential(const VaultKeyset& vault_keyset,
                                  const SecureBlob& key,
                                  const SecureBlob& salt,
                                  const std::string& obfuscated_username,
+                                 KeyBlobs* out_blobs,
                                  SerializedVaultKeyset* serialized) const {
   if (!use_tpm_ || !tpm_)
     return false;
@@ -1186,7 +1192,7 @@ bool Crypto::EncryptLECredential(const VaultKeyset& vault_keyset,
   SecureBlob le_secret(kDefaultAesKeySize);
   SecureBlob kdf_skey(kDefaultAesKeySize);
   SecureBlob le_iv(kAesBlockSize);
-  if (!DeriveSecretsSCrypt(key, salt, { &le_secret, &kdf_skey, &le_iv })) {
+  if (!DeriveSecretsSCrypt(key, salt, {&le_secret, &kdf_skey, &le_iv})) {
     return false;
   }
 
@@ -1212,25 +1218,12 @@ bool Crypto::EncryptLECredential(const VaultKeyset& vault_keyset,
   serialized->set_le_fek_iv(fek_iv.data(), fek_iv.size());
   serialized->set_le_chaps_iv(chaps_iv.data(), chaps_iv.size());
 
-  SecureBlob cipher_text;
-  SecureBlob wrapped_chaps_key;
   SecureBlob vkk_key = CryptoLib::HmacSha256(kdf_skey, vkk_seed);
-  if (!GenerateEncryptedRawKeyset(vault_keyset, vkk_key, fek_iv, chaps_iv,
-                                  &cipher_text, &wrapped_chaps_key)) {
-    return false;
-  }
 
-  serialized->set_wrapped_keyset(cipher_text.data(), cipher_text.size());
-  if (vault_keyset.chaps_key().size() == CRYPTOHOME_CHAPS_KEY_LENGTH) {
-    serialized->set_wrapped_chaps_key(wrapped_chaps_key.data(),
-                                      wrapped_chaps_key.size());
-  } else {
-    serialized->clear_wrapped_chaps_key();
-  }
-
-  if (!EncryptAuthorizationData(serialized, vkk_key, le_iv)) {
-    return false;
-  }
+  out_blobs->vkk_key = vkk_key;
+  out_blobs->vkk_iv = fek_iv;
+  out_blobs->chaps_iv = chaps_iv;
+  out_blobs->auth_iv = le_iv;
 
   // Once we are able to correctly set up the VaultKeyset encryption,
   // store the LE and HE credential in the LECredentialManager.
@@ -1375,9 +1368,20 @@ bool Crypto::EncryptVaultKeyset(const VaultKeyset& vault_keyset,
                                 const std::string& obfuscated_username,
                                 SerializedVaultKeyset* serialized) const {
   if (vault_keyset.IsLECredential()) {
+    KeyBlobs blobs;
     if (!EncryptLECredential(vault_keyset, vault_key, vault_key_salt,
-                             obfuscated_username, serialized)) {
+                             obfuscated_username, &blobs, serialized)) {
       // TODO(crbug.com/794010): add ReportCryptohomeError
+      return false;
+    }
+
+    if (!GenerateAndWrapKeys(vault_keyset, vault_key, vault_key_salt, blobs,
+                             /*store_reset_seed=*/false, serialized)) {
+      LOG(ERROR) << "Failed to generate unwrapped keys";
+      return false;
+    }
+
+    if (!EncryptAuthorizationData(serialized, blobs.vkk_key, blobs.auth_iv)) {
       return false;
     }
   } else if (vault_keyset.IsSignatureChallengeProtected()) {
@@ -1407,12 +1411,12 @@ bool Crypto::EncryptVaultKeyset(const VaultKeyset& vault_keyset,
       }
     } else {
       if (!GenerateAndWrapKeys(vault_keyset, vault_key, vault_key_salt, blobs,
-                               serialized)) {
+                               /*store_reset_seed=*/true, serialized)) {
         LOG(ERROR) << "Failed to generate unwrapped keys";
         return false;
       }
 
-      if (!EncryptAuthorizationData(serialized, blobs.vkk_key, blobs.vkk_iv)) {
+      if (!EncryptAuthorizationData(serialized, blobs.vkk_key, blobs.auth_iv)) {
         return false;
       }
     }

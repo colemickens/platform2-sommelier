@@ -49,6 +49,8 @@ struct KeyBlobs {
   brillo::SecureBlob vkk_iv;
   // The IV to use with the chaps key.
   brillo::SecureBlob chaps_iv;
+  // The IV to use with the authorization data.
+  brillo::SecureBlob auth_iv;
   // The wrapped reset seet, if it should be unwrapped.
   brillo::SecureBlob wrapped_reset_seed;
   // The IV used to decrypt the authorization data.
@@ -292,6 +294,7 @@ class Crypto {
                            const brillo::SecureBlob& key,
                            const brillo::SecureBlob& salt,
                            const KeyBlobs& key_blobs,
+                           bool store_reset_seed,
                            SerializedVaultKeyset* serialized) const;
 
   bool EncryptTPM(const VaultKeyset& vault_keyset,
@@ -328,6 +331,7 @@ class Crypto {
                            const brillo::SecureBlob& key,
                            const brillo::SecureBlob& salt,
                            const std::string& obfuscated_username,
+                           KeyBlobs* out_blobs,
                            SerializedVaultKeyset* serialized) const;
 
   bool EncryptChallengeCredential(const VaultKeyset& vault_keyset,
