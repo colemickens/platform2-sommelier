@@ -118,9 +118,9 @@ class SessionImpl : public Session {
     bool is_hmac_;         // Set to true when hmac_context_ is valid.
     bool is_incremental_;  // Set when an incremental operation is performed.
     bool is_finished_;     // Set to true when the operation completes.
+    crypto::ScopedEVP_MD_CTX digest_context_;
     union {
       EVP_CIPHER_CTX cipher_context_;
-      EVP_MD_CTX digest_context_;
       HMAC_CTX hmac_context_;
     };
     std::string data_;  // This can be used to queue input or output.

@@ -645,7 +645,12 @@ CK_RV SessionImpl::OperationInit(OperationType operation,
                    key_material.length(), digest, nullptr);
       context->is_hmac_ = true;
     } else if (digest) {
-      EVP_DigestInit(&context->digest_context_, digest);
+      context->digest_context_.reset(EVP_MD_CTX_create());
+      if (!context->digest_context_) {
+        LOG(ERROR) << "Failed to allocate EVP_MD context";
+        return CKR_FUNCTION_FAILED;
+      }
+      EVP_DigestInit_ex(context->digest_context_.get(), digest, nullptr);
       context->is_digest_ = true;
     }
     if (IsRSA(mechanism) || IsECC(mechanism))
@@ -690,7 +695,7 @@ CK_RV SessionImpl::OperationUpdateInternal(OperationType operation,
       OperationCancel(operation);
     return rv;
   } else if (context->is_digest_) {
-    EVP_DigestUpdate(&context->digest_context_, data_in.data(),
+    EVP_DigestUpdate(context->digest_context_.get(), data_in.data(),
                      data_in.length());
   } else if (context->is_hmac_) {
     HMAC_Update(&context->hmac_context_,
@@ -752,7 +757,7 @@ CK_RV SessionImpl::OperationFinalInternal(OperationType operation,
     } else if (context->is_digest_) {
       unsigned char buffer[kMaxDigestOutputBytes];
       unsigned int out_length = 0;
-      EVP_DigestFinal(&context->digest_context_, buffer, &out_length);
+      EVP_DigestFinal_ex(context->digest_context_.get(), buffer, &out_length);
       context->data_ = string(reinterpret_cast<char*>(buffer), out_length);
     } else if (context->is_hmac_) {
       unsigned char buffer[kMaxDigestOutputBytes];
@@ -1798,12 +1803,11 @@ void SessionImpl::OperationContext::Clear() {
   if (is_valid_ && !is_finished_) {
     if (is_cipher_) {
       EVP_CIPHER_CTX_cleanup(&cipher_context_);
-    } else if (is_digest_) {
-      EVP_MD_CTX_cleanup(&digest_context_);
     } else if (is_hmac_) {
       HMAC_CTX_cleanup(&hmac_context_);
     }
   }
+  digest_context_.reset();
   is_valid_ = false;
   is_cipher_ = false;
   is_digest_ = false;
