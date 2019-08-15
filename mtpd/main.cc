@@ -4,13 +4,15 @@
 
 // A simple daemon to detect and access PTP/MTP devices.
 
+#include <memory>
+
 #include <sysexits.h>
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/logging.h>
 #include <base/macros.h>
-#include <base/message_loop/message_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
@@ -19,7 +21,6 @@
 #include "mtpd/mtpd_server_impl.h"
 
 using base::CommandLine;
-using base::MessageLoopForIO;
 
 namespace {
 
@@ -40,10 +41,9 @@ void SetupLogging() {
 
 namespace mtpd {
 
-class Daemon : public brillo::DBusServiceDaemon,
-               public MessageLoopForIO::Watcher {
+class Daemon : public brillo::DBusServiceDaemon {
  public:
-  Daemon() : DBusServiceDaemon(kMtpdServiceName), watcher_(FROM_HERE) {}
+  Daemon() : DBusServiceDaemon(kMtpdServiceName) {}
 
  protected:
   // brillo::DBusServiceDaemon overrides.
@@ -59,27 +59,23 @@ class Daemon : public brillo::DBusServiceDaemon,
     if (exit_code != EX_OK)
       return exit_code;
 
-    MessageLoopForIO::current()->WatchFileDescriptor(
+    // The lifetime of |adaptor_| is tied to this instance,
+    // so base::Unretained here is safe.
+    controller_ = base::FileDescriptorWatcher::WatchReadable(
         adaptor_->GetDeviceEventDescriptor(),
-        true, MessageLoopForIO::WATCH_READ, &watcher_, this);
+        base::BindRepeating(&MtpdServer::ProcessDeviceEvents,
+                            base::Unretained(adaptor_.get())));
     return EX_OK;
   }
 
   void OnShutdown(int* exit_code) override {
-    watcher_.StopWatchingFileDescriptor();
+    controller_.reset();
     DBusServiceDaemon::OnShutdown(exit_code);
   }
 
-  // MessageLoopForIO::Watcher overrides.
-  void OnFileCanReadWithoutBlocking(int fd) override {
-    adaptor_->ProcessDeviceEvents();
-  }
-
-  void OnFileCanWriteWithoutBlocking(int fd) override {}
-
  private:
   std::unique_ptr<MtpdServer> adaptor_;
-  MessageLoopForIO::FileDescriptorWatcher watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> controller_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
