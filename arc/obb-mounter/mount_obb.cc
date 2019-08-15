@@ -6,10 +6,12 @@
 #include <time.h>
 
 #include <base/bind.h>
+#include <base/callback.h>
 #include <base/command_line.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/optional.h>
 #include <base/strings/string_util.h>
 #include <base/strings/utf_string_conversions.h>
 #include <base/synchronization/lock.h>
@@ -74,36 +76,38 @@ bool GetDirectoryEntry(const base::StringPiece16& path, DirectoryEntry* out) {
       next_slash = path.size();
     }
     base::StringPiece16 name(path.data() + pos, next_slash - pos);
-    DirectoryEntry entry;
-    bool found = false;
-    auto entry_finder = [&name, &entry, &found](
-                            const base::StringPiece16& name_in,
-                            const DirectoryEntry& entry_in) {
-      // TODO(hashimoto): Consider using base::i18n::ToLower to be
-      // case-insensitive for non-ASCII characters.
-      if (base::EqualsCaseInsensitiveASCII(name, name_in)) {
-        entry = entry_in;
-        found = true;
-        return false;
-      }
-      return true;
-    };
+    base::Optional<DirectoryEntry> entry;
     if (!g_volume->ReadDirectory(current_directory_start_sector,
-                                 base::Bind(&decltype(entry_finder)::operator(),
-                                            base::Unretained(&entry_finder))) ||
-        !found) {
+                                 base::BindRepeating(
+                                     [](const base::StringPiece16& name,
+                                        base::Optional<DirectoryEntry>* entry,
+                                        const base::StringPiece16& name_in,
+                                        const DirectoryEntry& entry_in) {
+                                       // TODO(hashimoto): Consider using
+                                       // base::i18n::ToLower to be
+                                       // case-insensitive for non-ASCII
+                                       // characters.
+                                       if (base::EqualsCaseInsensitiveASCII(
+                                               name, name_in)) {
+                                         *entry = entry_in;
+                                         return false;
+                                       }
+                                       return true;
+                                     },
+                                     name, &entry)) ||
+        !entry.has_value()) {
       return false;
     }
     pos = next_slash + 1;
     if (pos >= path.size()) {
-      *out = entry;
+      *out = entry.value();
       return true;
     }
-    if (!entry.is_directory) {
+    if (!entry->is_directory) {
       return false;
     }
     current_directory_start_sector =
-        g_volume->GetClusterStartSector(entry.start_cluster);
+        g_volume->GetClusterStartSector(entry->start_cluster);
   }
 }
 
@@ -179,14 +183,15 @@ int fat_readdir(const char* path,
     }
     start_sector = g_volume->GetClusterStartSector(entry.start_cluster);
   }
-  auto filler_adaptor = [&buf, &filler](const base::StringPiece16& name,
-                                        const DirectoryEntry& entry) {
-    filler(buf, base::UTF16ToUTF8(name).c_str(), nullptr, 0);
-    return true;
-  };
-  if (!g_volume->ReadDirectory(start_sector,
-                               base::Bind(&decltype(filler_adaptor)::operator(),
-                                          base::Unretained(&filler_adaptor)))) {
+  if (!g_volume->ReadDirectory(
+          start_sector,
+          base::BindRepeating(
+              [](fuse_fill_dir_t filler, void* buf,
+                 const base::StringPiece16& name, const DirectoryEntry& entry) {
+                filler(buf, base::UTF16ToUTF8(name).c_str(), nullptr, 0);
+                return true;
+              },
+              filler, buf))) {
     return -EIO;
   }
   return 0;
