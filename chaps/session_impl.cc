@@ -1076,10 +1076,11 @@ CK_RV SessionImpl::CipherInit(bool is_encrypt,
 
   OperationType operation = is_encrypt ? kEncrypt : kDecrypt;
   OperationContext* context = &operation_context_[operation];
-  if (!EVP_CipherInit(&context->cipher_context_, cipher_type,
-                      ConvertStringToByteBuffer(key_material.c_str()),
-                      ConvertStringToByteBuffer(mechanism_parameter.c_str()),
-                      is_encrypt)) {
+  EVP_CIPHER_CTX_init(&context->cipher_context_);
+  if (!EVP_CipherInit_ex(&context->cipher_context_, cipher_type, nullptr,
+                         ConvertStringToByteBuffer(key_material.c_str()),
+                         ConvertStringToByteBuffer(mechanism_parameter.c_str()),
+                         is_encrypt)) {
     LOG(ERROR) << "EVP_CipherInit failed: " << GetOpenSSLError();
     return CKR_FUNCTION_FAILED;
   }
@@ -1119,9 +1120,9 @@ CK_RV SessionImpl::CipherFinal(OperationContext* context) {
   if (context->data_.empty()) {
     int out_length = kMaxCipherBlockBytes * 2;
     context->data_.resize(out_length);
-    if (!EVP_CipherFinal(&context->cipher_context_,
-                         ConvertStringToByteBuffer(context->data_.c_str()),
-                         &out_length)) {
+    if (!EVP_CipherFinal_ex(&context->cipher_context_,
+                            ConvertStringToByteBuffer(context->data_.c_str()),
+                            &out_length)) {
       LOG(ERROR) << "EVP_CipherFinal failed: " << GetOpenSSLError();
       EVP_CIPHER_CTX_cleanup(&context->cipher_context_);
       return CKR_FUNCTION_FAILED;
