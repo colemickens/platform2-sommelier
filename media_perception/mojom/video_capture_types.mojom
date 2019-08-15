@@ -9,6 +9,7 @@ import "mojom/shared_memory.mojom";
 import "mojom/time.mojom";
 import "mojom/values.mojom";
 import "mojom/geometry.mojom";
+import "mojom/buffer_types.mojom";
 import "mojom/color_space.mojom";
 
 enum VideoCapturePixelFormat {
@@ -25,7 +26,6 @@ enum VideoCapturePixelFormat {
   ARGB,
   XRGB,
   RGB24,
-  RGB32,
   MJPEG,
   MT21,
   YUV420P9,
@@ -91,7 +91,9 @@ enum VideoCaptureBufferType {
   // TODO(chfremer): Remove this when https://crbug.com/857537 is resolved.
   kSharedMemoryViaRawFileDescriptor,
 
-  kMailboxHolder
+  kMailboxHolder,
+
+  kGpuMemoryBuffer
 };
 
 enum VideoCaptureError {
@@ -310,4 +312,5 @@ union VideoBufferHandle {
   mojo_base.mojom.ReadOnlySharedMemoryRegion read_only_shmem_region;
   SharedMemoryViaRawFileDescriptor shared_memory_via_raw_file_descriptor;
   MailboxBufferHandleSet mailbox_handles;
+  gfx.mojom.GpuMemoryBufferHandle gpu_memory_buffer_handle;
 };
