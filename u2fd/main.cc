@@ -140,7 +140,6 @@ class U2fDaemon : public brillo::Daemon {
             uint32_t product_id)
       : force_u2f_(force_u2f),
         force_g2f_(force_g2f),
-        user_keys_(true),
         legacy_kh_fallback_(legacy_kh_fallback || !user_keys),
         vendor_id_(vendor_id),
         product_id_(product_id) {}
@@ -201,14 +200,6 @@ class U2fDaemon : public brillo::Daemon {
       return EX_CONFIG;
     }
 
-    // User keys should always be enabled when a U2F policy is set or G2F mode
-    // is enabled, and may additionally be enabled on the command line.
-    // User keys may not be disabled if a policy is defined, as non-user keys
-    // are legacy and should not be used beyond the initial beta launch.
-    if (ReadU2fPolicy() != U2fMode::kUnset || force_g2f_) {
-      user_keys_ = true;
-    }
-
     RegisterU2fDBusInterface();
 
     if (!tpm_proxy_.Init()) {
@@ -232,8 +223,7 @@ class U2fDaemon : public brillo::Daemon {
     u2fhid_ = std::make_unique<u2f::U2fHid>(
         std::make_unique<u2f::UHidDevice>(vendor_id_, product_id_, kDeviceName,
                                           "u2fd-tpm-cr50"),
-        vendor_sysinfo, u2f_mode_ == U2fMode::kU2fExtended, user_keys_,
-        legacy_kh_fallback_,
+        vendor_sysinfo, u2f_mode_ == U2fMode::kU2fExtended, legacy_kh_fallback_,
         base::Bind(&u2f::TpmVendorCommandProxy::SendU2fApdu,
                    base::Unretained(&tpm_proxy_)),
         base::Bind(&u2f::TpmVendorCommandProxy::SendU2fGenerate,
@@ -305,7 +295,6 @@ class U2fDaemon : public brillo::Daemon {
 
   bool force_u2f_;
   bool force_g2f_;
-  bool user_keys_;
   bool legacy_kh_fallback_;
   uint32_t vendor_id_;
   uint32_t product_id_;

@@ -211,7 +211,6 @@ struct U2fHid::Transaction {
 U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
                const std::string& vendor_sysinfo,
                const bool g2f_mode,
-               const bool user_secrets,
                const bool legacy_kh_fallback,
                const TpmAdpuCallback& adpu_fn,
                const TpmGenerateCallback& generate_fn,
@@ -223,7 +222,6 @@ U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
                std::unique_ptr<UserState> user_state)
     : hid_(std::move(hid)),
       g2f_mode_(g2f_mode),
-      user_secrets_(user_secrets),
       legacy_kh_fallback_(legacy_kh_fallback),
       transmit_apdu_(adpu_fn),
       tpm_generate_(generate_fn),
@@ -441,11 +439,7 @@ int U2fHid::CmdSysInfo(std::string* resp) {
 }
 
 int U2fHid::CmdMsg(std::string* resp) {
-  if (user_secrets_) {
-    return ProcessMsg(resp);
-  } else {
-    return ForwardMsg(resp);
-  }
+  return ProcessMsg(resp);
 }
 
 int U2fHid::ForwardMsg(std::string* resp) {
