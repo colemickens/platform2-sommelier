@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <brillo/asynchronous_signal_handler.h>
@@ -48,7 +49,8 @@ class VshClient {
   void CancelStdinTask();
 
   base::ScopedFD sock_fd_;
-  brillo::MessageLoop::TaskId stdin_task_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> sock_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> stdin_watcher_;
 
   brillo::AsynchronousSignalHandler signal_handler_;
 

@@ -8,10 +8,10 @@
 #include <memory>
 
 #include <base/callback.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <google/protobuf/arena.h>
@@ -23,15 +23,11 @@ namespace syslog {
 // Responsible for listening on /dev/log for any userspace applications that
 // wish to log messages with the system syslog.  TODO(chirantan):  This
 // currently doesn't handle kernel oops or flushing during shutdown.
-class Collector : public base::MessageLoopForIO::Watcher {
+class Collector {
  public:
   // Create a new, initialized Collector.
   static std::unique_ptr<Collector> Create(base::Closure shutdown_closure);
   ~Collector() = default;
-
-  // base::MessageLoopForIO::Watcher overrides.
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override;
 
   static std::unique_ptr<Collector> CreateForTesting(
       base::ScopedFD syslog_fd,
@@ -61,13 +57,19 @@ class Collector : public base::MessageLoopForIO::Watcher {
                       base::Time boot_time,
                       std::unique_ptr<vm_tools::LogCollector::Stub> stub);
 
+  // Called when |syslog_fd_| becomes readable.
+  void OnSyslogReadable();
+
+  // Called when |signal_fd_| becomes readable.
+  void OnSignalReadable();
+
   // File descriptor bound to /dev/log.
   base::ScopedFD syslog_fd_;
-  base::MessageLoopForIO::FileDescriptorWatcher syslog_controller_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> syslog_controller_;
 
   // File descriptor for receiving signals.
   base::ScopedFD signal_fd_;
-  base::MessageLoopForIO::FileDescriptorWatcher signal_controller_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> signal_controller_;
 
   // Closure for stopping the MessageLoop.  Posted to the thread's TaskRunner
   // when this program receives a SIGTERM.

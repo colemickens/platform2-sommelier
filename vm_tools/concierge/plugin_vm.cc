@@ -218,9 +218,11 @@ bool PluginVm::CreateUsbListeningSocket() {
     return false;
   }
 
-  if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
-          usb_listen_fd_.get(), true /*persistent*/,
-          base::MessageLoopForIO::WATCH_READ, &usb_fd_watcher_, this)) {
+  usb_listen_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      usb_listen_fd_.get(),
+      base::BindRepeating(&PluginVm::OnListenFileCanReadWithoutBlocking,
+                          base::Unretained(this)));
+  if (!usb_listen_watcher_) {
     LOG(ERROR) << "Failed to watch USB listening socket";
     return false;
   }
@@ -241,11 +243,19 @@ bool PluginVm::AttachUsbDevice(uint8_t bus,
   }
 
   if (usb_vm_fd_.is_valid() && usb_req_waiting_xmit_.empty()) {
-    usb_fd_watcher_.StopWatchingFileDescriptor();
-    if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
-            usb_vm_fd_.get(), true /*persistent*/,
-            base::MessageLoopForIO::WATCH_READ_WRITE, &usb_fd_watcher_, this)) {
+    usb_listen_watcher_.reset();
+    usb_vm_read_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+        usb_vm_fd_.get(),
+        base::BindRepeating(&PluginVm::OnVmFileCanReadWithoutBlocking,
+                            base::Unretained(this)));
+    usb_vm_write_watcher_ = base::FileDescriptorWatcher::WatchWritable(
+        usb_vm_fd_.get(),
+        base::BindRepeating(&PluginVm::OnVmFileCanWriteWithoutBlocking,
+                            base::Unretained(this)));
+    if (!usb_vm_read_watcher_ || !usb_vm_write_watcher_) {
       LOG(ERROR) << "Failed to start watching USB VM socket";
+      usb_vm_read_watcher_.reset();
+      usb_vm_write_watcher_.reset();
       return false;
     }
   }
@@ -276,11 +286,19 @@ bool PluginVm::DetachUsbDevice(uint8_t port, UsbControlResponse* response) {
   }
 
   if (usb_vm_fd_.is_valid() && usb_req_waiting_xmit_.empty()) {
-    usb_fd_watcher_.StopWatchingFileDescriptor();
-    if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
-            usb_vm_fd_.get(), true /*persistent*/,
-            base::MessageLoopForIO::WATCH_READ_WRITE, &usb_fd_watcher_, this)) {
+    usb_listen_watcher_.reset();
+    usb_vm_read_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+        usb_vm_fd_.get(),
+        base::BindRepeating(&PluginVm::OnVmFileCanReadWithoutBlocking,
+                            base::Unretained(this)));
+    usb_vm_write_watcher_ = base::FileDescriptorWatcher::WatchWritable(
+        usb_vm_fd_.get(),
+        base::BindRepeating(&PluginVm::OnVmFileCanWriteWithoutBlocking,
+                            base::Unretained(this)));
+    if (!usb_vm_read_watcher_ || !usb_vm_write_watcher_) {
       LOG(ERROR) << "Failed to start watching USB VM socket";
+      usb_vm_read_watcher_.reset();
+      usb_vm_write_watcher_.reset();
       return false;
     }
   }
@@ -316,12 +334,15 @@ void PluginVm::HandleUsbControlResponse() {
     // the connection. Disconnect the socket and wait for new connection.
     // Do the same if we get any error besides EAGAIN.
     if (ret == 0 || errno != EAGAIN) {
-      usb_fd_watcher_.StopWatchingFileDescriptor();
+      usb_vm_read_watcher_.reset();
+      usb_vm_write_watcher_.reset();
       usb_vm_fd_.reset();
 
-      if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
-              usb_listen_fd_.get(), true /*persistent*/,
-              base::MessageLoopForIO::WATCH_READ, &usb_fd_watcher_, this)) {
+      usb_listen_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+          usb_listen_fd_.get(),
+          base::BindRepeating(&PluginVm::OnListenFileCanReadWithoutBlocking,
+                              base::Unretained(this)));
+      if (!usb_listen_watcher_) {
         LOG(ERROR) << "Failed to restart watching USB listening socket";
       }
     }
@@ -372,40 +393,46 @@ void PluginVm::HandleUsbControlResponse() {
   }
 }
 
-void PluginVm::OnFileCanReadWithoutBlocking(int fd) {
-  if (fd == usb_listen_fd_.get()) {
-    int ret = HANDLE_EINTR(
-        accept4(fd, nullptr, nullptr, SOCK_CLOEXEC | SOCK_NONBLOCK));
-    if (ret < 0) {
-      PLOG(ERROR) << "Unable to accept connection on USB listening socket";
-      return;
-    }
+void PluginVm::OnListenFileCanReadWithoutBlocking() {
+  int ret = HANDLE_EINTR(accept4(usb_listen_fd_.get(), nullptr, nullptr,
+                                 SOCK_CLOEXEC | SOCK_NONBLOCK));
+  if (ret < 0) {
+    PLOG(ERROR) << "Unable to accept connection on USB listening socket";
+    return;
+  }
 
-    // Start managing socket connected to the VM.
-    usb_vm_fd_.reset(ret);
+  // Start managing socket connected to the VM.
+  usb_vm_fd_.reset(ret);
 
-    // Switch watcher from listener FD to connected socket FD.
-    // We monitor both writes and reads to detect disconnects.
-    usb_fd_watcher_.StopWatchingFileDescriptor();
-    if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
-            usb_vm_fd_.get(), true /*persistent*/,
-            usb_req_waiting_xmit_.empty()
-                ? base::MessageLoopForIO::WATCH_READ
-                : base::MessageLoopForIO::WATCH_READ_WRITE,
-            &usb_fd_watcher_, this)) {
-      LOG(ERROR) << "Failed to start watching USB VM socket";
-      usb_vm_fd_.reset();
-    }
-  } else if (usb_vm_fd_.is_valid() && fd == usb_vm_fd_.get()) {
-    PluginVm::HandleUsbControlResponse();
-  } else {
-    NOTREACHED();
+  // Switch watcher from listener FD to connected socket FD.
+  // We monitor both writes and reads to detect disconnects.
+  usb_listen_watcher_.reset();
+  usb_vm_read_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      usb_vm_fd_.get(),
+      base::BindRepeating(&PluginVm::OnVmFileCanReadWithoutBlocking,
+                          base::Unretained(this)));
+  if (!usb_req_waiting_xmit_.empty()) {
+    usb_vm_write_watcher_ = base::FileDescriptorWatcher::WatchWritable(
+        usb_vm_fd_.get(),
+        base::BindRepeating(&PluginVm::OnVmFileCanWriteWithoutBlocking,
+                            base::Unretained(this)));
+  }
+  if (!usb_vm_read_watcher_ ||
+      (!usb_req_waiting_xmit_.empty() && !usb_vm_write_watcher_)) {
+    LOG(ERROR) << "Failed to start watching USB VM socket";
+    usb_vm_write_watcher_.reset();
+    usb_vm_read_watcher_.reset();
+    usb_vm_fd_.reset();
+    return;
   }
 }
 
-void PluginVm::OnFileCanWriteWithoutBlocking(int fd) {
+void PluginVm::OnVmFileCanReadWithoutBlocking() {
+  PluginVm::HandleUsbControlResponse();
+}
+
+void PluginVm::OnVmFileCanWriteWithoutBlocking() {
   DCHECK(usb_vm_fd_.is_valid());
-  DCHECK_EQ(usb_vm_fd_.get(), fd);
 
   if (!usb_req_waiting_xmit_.empty()) {
     UsbCtrlRequest req = usb_req_waiting_xmit_.front().first;
@@ -442,10 +469,14 @@ void PluginVm::OnFileCanWriteWithoutBlocking(int fd) {
       PLOG(ERROR) << "Failed to send USB request";
     }
   } else {
-    usb_fd_watcher_.StopWatchingFileDescriptor();
-    if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
-            usb_vm_fd_.get(), true /*persistent*/,
-            base::MessageLoopForIO::WATCH_READ, &usb_fd_watcher_, this)) {
+    usb_listen_watcher_.reset();
+    usb_vm_write_watcher_.reset();
+
+    usb_vm_read_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+        usb_vm_fd_.get(),
+        base::BindRepeating(&PluginVm::OnVmFileCanReadWithoutBlocking,
+                            base::Unretained(this)));
+    if (!usb_vm_read_watcher_) {
       LOG(ERROR) << "Failed to switch to watching USB VM socket for reads";
     }
   }
@@ -542,8 +573,7 @@ PluginVm::PluginVm(VmId id,
       gateway_(ipv4_gateway),
       seneschal_server_proxy_(std::move(seneschal_server_proxy)),
       vmplugin_service_proxy_(vmplugin_service_proxy),
-      usb_last_handle_(0),
-      usb_fd_watcher_(FROM_HERE) {
+      usb_last_handle_(0) {
   CHECK(ipv4_addr_);
   CHECK(vmplugin_service_proxy_);
   CHECK(base::DirectoryExists(iso_dir_));

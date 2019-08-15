@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include <base/at_exit.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
@@ -22,6 +23,7 @@ int main(int argc, char** argv) {
   }
 
   base::MessageLoopForIO message_loop;
+  base::FileDescriptorWatcher watcher(&message_loop);
   base::RunLoop run_loop;
 
   auto service = vm_tools::seneschal::Service::Create(run_loop.QuitClosure());

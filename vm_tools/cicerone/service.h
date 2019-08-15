@@ -11,12 +11,12 @@
 #include <utility>
 
 #include <base/callback.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
 #include <base/files/file_path_watcher.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
-#include <base/message_loop/message_loop.h>
 #include <base/optional.h>
 #include <base/sequence_checker.h>
 #include <base/threading/thread.h>
@@ -39,7 +39,7 @@ namespace cicerone {
 
 // VM Container Service responsible for responding to DBus method calls for
 // interacting with VM containers.
-class Service final : public base::MessageLoopForIO::Watcher {
+class Service final {
  public:
   // Creates a new Service instance.  |quit_closure| is posted to the TaskRunner
   // for the current thread when this process receives a SIGTERM. |bus| is a
@@ -52,11 +52,7 @@ class Service final : public base::MessageLoopForIO::Watcher {
       const base::Optional<base::FilePath>& unix_socket_path_for_testing,
       scoped_refptr<dbus::Bus> bus);
 
-  ~Service() override;
-
-  // base::MessageLoopForIO::Watcher overrides.
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override;
+  ~Service();
 
   ContainerListenerImpl* GetContainerListenerImpl() const {
     return container_listener_.get();
@@ -428,6 +424,8 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // the timezone for containers.
   void OnLocaltimeFileChanged(const base::FilePath& path, bool error);
 
+  void OnSignalReadable();
+
   // Gets a VirtualMachine pointer to the registered VM with corresponding
   // |owner_id| and |vm_name|. Returns a nullptr if not found.
   VirtualMachine* FindVm(const std::string& owner_id,
@@ -435,7 +433,7 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // File descriptor for SIGTERM/SIGCHLD event.
   base::ScopedFD signal_fd_;
-  base::MessageLoopForIO::FileDescriptorWatcher watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
 
   // Key for VMs in the map, which is the owner ID and VM name as a pair.
   using VmKey = std::pair<std::string, std::string>;

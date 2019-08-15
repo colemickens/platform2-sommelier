@@ -10,6 +10,7 @@
 #include <string>
 
 #include <base/at_exit.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/macros.h>
@@ -109,6 +110,7 @@ int main(int argc, char** argv) {
   }
 
   base::MessageLoopForIO message_loop;
+  base::FileDescriptorWatcher watcher(&message_loop);
   base::RunLoop run_loop;
 
   std::unique_ptr<vm_tools::syslog::Collector> collector =

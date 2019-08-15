@@ -10,9 +10,9 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <base/message_loop/message_loop.h>
 #include <wayland-server.h>
 
 #include "notification-shell-unstable-v1-client-protocol.h"  // NOLINT(build/include)
@@ -22,7 +22,7 @@ namespace vm_tools {
 namespace notificationd {
 
 // Handles notification shell protocol as Wayland client.
-class NotificationShellClient : public base::MessageLoopForIO::Watcher {
+class NotificationShellClient {
  public:
   // Creates and returns a NotificationShellClient. The |interface| is required
   // to outlive this NotificationShellClient. Returns nullptr if the the client
@@ -140,9 +140,8 @@ class NotificationShellClient : public base::MessageLoopForIO::Watcher {
   // while handling event loop.
   void WaitForSync();
 
-  // base::MessageLoopForIO::Watcher overrides.
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override;
+  // Called when |event_loop_fd_| becomes readable.
+  void OnEventReadable();
 
   // Handles notification closed event.
   void HandleNotificationClosedEvent(const std::string& notification_key,
@@ -193,7 +192,7 @@ class NotificationShellClient : public base::MessageLoopForIO::Watcher {
 
   // File discriptor of the wayland event loop.
   base::ScopedFD event_loop_fd_;
-  base::MessageLoopForIO::FileDescriptorWatcher watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
 
   // File discriptor of the socket connected to the Wayland display. Handles
   // socket events from Wayland display by observing this.

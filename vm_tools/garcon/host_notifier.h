@@ -9,10 +9,10 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path_watcher.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <base/message_loop/message_loop.h>
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/container_host.grpc.pb.h>
 
@@ -22,8 +22,7 @@ namespace vm_tools {
 namespace garcon {
 
 // Handles making calls to cicerone running in the host.
-class HostNotifier : public base::MessageLoopForIO::Watcher,
-                     public PackageKitProxy::PackageKitObserver {
+class HostNotifier : public PackageKitProxy::PackageKitObserver {
  public:
   // Creates and inits the HostNotifier for running on the current sequence.
   // Returns null if there was any failure.
@@ -44,10 +43,6 @@ class HostNotifier : public base::MessageLoopForIO::Watcher,
   // for the application list and also establish a watcher for any updates to
   // the list of installed applications. Returns false if there was any failure.
   bool Init(uint32_t vsock_port, PackageKitProxy* package_kit_proxy);
-
-  // base::MessageLoopForIO::Watcher overrides.
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override;
 
   // vm_tools::garcon::PackageKitObserver overrides.
   void OnInstallCompletion(const std::string& command_uuid,
@@ -122,6 +117,9 @@ class HostNotifier : public base::MessageLoopForIO::Watcher,
   void RequestNextPackageIdOrCompleteUpdateApplicationList(
       std::unique_ptr<AppListBuilderState> state);
 
+  // Called when signal_fd_ becomes readable.
+  void OnSignalReadable();
+
   // gRPC stub for communicating with cicerone on the host.
   std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub_;
 
@@ -150,7 +148,7 @@ class HostNotifier : public base::MessageLoopForIO::Watcher,
 
   // File descriptor for receiving signals.
   base::ScopedFD signal_fd_;
-  base::MessageLoopForIO::FileDescriptorWatcher signal_controller_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> signal_controller_;
 
   // Pointer to the PackageKit needed for querying package_id data.
   PackageKitProxy* package_kit_proxy_;  // Not owned.

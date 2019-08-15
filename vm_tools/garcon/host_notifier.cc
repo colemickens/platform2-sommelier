@@ -182,13 +182,11 @@ HostNotifier::HostNotifier(base::Closure shutdown_closure)
     : update_app_list_posted_(false),
       send_app_list_to_host_in_progress_(false),
       update_mime_types_posted_(false),
-      shutdown_closure_(std::move(shutdown_closure)),
-      signal_controller_(FROM_HERE) {}
+      shutdown_closure_(std::move(shutdown_closure)) {}
 
 HostNotifier::~HostNotifier() = default;
 
-void HostNotifier::OnFileCanReadWithoutBlocking(int fd) {
-  DCHECK_EQ(fd, signal_fd_.get());
+void HostNotifier::OnSignalReadable() {
   signalfd_siginfo info;
   if (read(signal_fd_.get(), &info, sizeof(info)) != sizeof(info)) {
     PLOG(ERROR) << "Failed to read from signalfd";
@@ -199,10 +197,6 @@ void HostNotifier::OnFileCanReadWithoutBlocking(int fd) {
   // gRPC thread.
   NotifyHostOfContainerShutdown();
   task_runner_->PostTask(FROM_HERE, shutdown_closure_);
-}
-
-void HostNotifier::OnFileCanWriteWithoutBlocking(int fd) {
-  NOTREACHED();
 }
 
 void HostNotifier::OnInstallCompletion(const std::string& command_uuid,
@@ -290,9 +284,11 @@ bool HostNotifier::Init(uint32_t vsock_port,
     PLOG(ERROR) << "Unable to create signalfd";
     return false;
   }
-  if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
-          signal_fd_.get(), true /*persistent*/,
-          base::MessageLoopForIO::WATCH_READ, &signal_controller_, this)) {
+
+  signal_controller_ = base::FileDescriptorWatcher::WatchReadable(
+      signal_fd_.get(), base::BindRepeating(&HostNotifier::OnSignalReadable,
+                                            base::Unretained(this)));
+  if (!signal_controller_) {
     LOG(ERROR) << "Failed to watch signal file descriptor";
     return false;
   }

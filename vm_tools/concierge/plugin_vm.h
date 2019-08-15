@@ -17,12 +17,12 @@
 
 #include <arc/network/mac_address_generator.h>
 #include <arc/network/subnet.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/macros.h>
-#include <base/message_loop/message_loop.h>
 #include <brillo/process.h>
 #include <dbus/exported_object.h>
 #include <vm_concierge/proto_bindings/service.pb.h>
@@ -35,7 +35,7 @@
 namespace vm_tools {
 namespace concierge {
 
-class PluginVm final : public VmInterface, base::MessageLoopForIO::Watcher {
+class PluginVm final : public VmInterface {
  public:
   static std::unique_ptr<PluginVm> Create(
       const VmId id,
@@ -74,10 +74,6 @@ class PluginVm final : public VmInterface, base::MessageLoopForIO::Watcher {
   bool SetTime(std::string* failure_reason) override { return true; }
   void SetTremplinStarted() override { NOTREACHED(); }
   void VmToolsStateChanged(bool running) override;
-
-  // base::MessageLoopForIO::Watcher overrides
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override;
 
   static bool WriteResolvConf(const base::FilePath& parent_dir,
                               const std::vector<std::string>& nameservers,
@@ -118,6 +114,10 @@ class PluginVm final : public VmInterface, base::MessageLoopForIO::Watcher {
 
   // Attempt to stop VM.
   bool StopVm();
+
+  void OnListenFileCanReadWithoutBlocking();
+  void OnVmFileCanReadWithoutBlocking();
+  void OnVmFileCanWriteWithoutBlocking();
 
   // This VM ID. It is used to communicate with the dispatcher to request
   // VM state changes.
@@ -166,7 +166,10 @@ class PluginVm final : public VmInterface, base::MessageLoopForIO::Watcher {
   // File descriptors to pass USB devices over to plugin.
   base::ScopedFD usb_listen_fd_;
   base::ScopedFD usb_vm_fd_;
-  base::MessageLoopForIO::FileDescriptorWatcher usb_fd_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> usb_listen_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> usb_vm_read_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller>
+      usb_vm_write_watcher_;
 
   DISALLOW_COPY_AND_ASSIGN(PluginVm);
 };

@@ -28,7 +28,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/location.h>
-#include <base/message_loop/message_loop.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_split.h>
 #include <brillo/asynchronous_signal_handler.h>
@@ -65,7 +64,6 @@ std::unique_ptr<VshClient> VshClient::Create(base::ScopedFD sock_fd,
 
 VshClient::VshClient(base::ScopedFD sock_fd)
     : sock_fd_(std::move(sock_fd)),
-      stdin_task_(brillo::MessageLoop::kTaskIdNull),
       exit_code_(kDefaultExitCode) {}
 
 bool VshClient::Init(const std::string& user,
@@ -146,13 +144,11 @@ bool VshClient::Init(const std::string& user,
     return false;
   }
 
-  brillo::MessageLoop* message_loop = brillo::MessageLoop::current();
-  message_loop->WatchFileDescriptor(
-      FROM_HERE, sock_fd_.get(), brillo::MessageLoop::WatchMode::kWatchRead,
-      true,
+  sock_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      sock_fd_.get(),
       base::Bind(&VshClient::HandleVsockReadable, base::Unretained(this)));
-  stdin_task_ = message_loop->WatchFileDescriptor(
-      FROM_HERE, STDIN_FILENO, brillo::MessageLoop::WatchMode::kWatchRead, true,
+  stdin_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      STDIN_FILENO,
       base::Bind(&VshClient::HandleStdinReadable, base::Unretained(this)));
 
   // Handle termination signals and SIGWINCH.
@@ -317,9 +313,7 @@ bool VshClient::GetCurrentWindowSize(struct winsize* ws) {
 }
 
 void VshClient::CancelStdinTask() {
-  brillo::MessageLoop* message_loop = brillo::MessageLoop::current();
-  message_loop->CancelTask(stdin_task_);
-  stdin_task_ = brillo::MessageLoop::kTaskIdNull;
+  stdin_watcher_.reset();
 }
 
 int VshClient::exit_code() {

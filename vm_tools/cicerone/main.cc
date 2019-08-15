@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <base/at_exit.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <base/optional.h>
@@ -14,6 +15,7 @@
 int main(int argc, char** argv) {
   base::AtExitManager at_exit;
   base::MessageLoopForIO message_loop;
+  base::FileDescriptorWatcher watcher(&message_loop);
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 

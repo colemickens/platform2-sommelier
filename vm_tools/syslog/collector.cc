@@ -84,21 +84,18 @@ std::unique_ptr<Collector> Collector::Create(base::Closure shutdown_closure) {
   return collector;
 }
 
-void Collector::OnFileCanReadWithoutBlocking(int fd) {
-  if (fd == signal_fd_.get()) {
-    signalfd_siginfo info;
-    if (read(signal_fd_.get(), &info, sizeof(info)) != sizeof(info)) {
-      PLOG(ERROR) << "Failed to read from signalfd";
-    }
-    DCHECK_EQ(info.ssi_signo, SIGTERM);
-
-    FlushLogs();
-    base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, shutdown_closure_);
-    return;
+void Collector::OnSignalReadable() {
+  signalfd_siginfo info;
+  if (read(signal_fd_.get(), &info, sizeof(info)) != sizeof(info)) {
+    PLOG(ERROR) << "Failed to read from signalfd";
   }
+  DCHECK_EQ(info.ssi_signo, SIGTERM);
 
-  DCHECK(fd == syslog_fd_.get());
+  FlushLogs();
+  base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, shutdown_closure_);
+}
 
+void Collector::OnSyslogReadable() {
   bool more = true;
   for (int i = 0; i < kMaxRecordCount && more; ++i) {
     more = ReadOneSyslogRecord();
@@ -111,15 +108,8 @@ void Collector::OnFileCanReadWithoutBlocking(int fd) {
   }
 }
 
-void Collector::OnFileCanWriteWithoutBlocking(int fd) {
-  NOTREACHED();
-}
-
 Collector::Collector(base::Closure shutdown_closure)
-    : syslog_controller_(FROM_HERE),
-      signal_controller_(FROM_HERE),
-      shutdown_closure_(std::move(shutdown_closure)),
-      weak_factory_(this) {}
+    : shutdown_closure_(std::move(shutdown_closure)), weak_factory_(this) {}
 
 bool Collector::Init() {
   // Start listening on the syslog socket.
@@ -151,10 +141,10 @@ bool Collector::Init() {
     return false;
   }
 
-  bool ret = base::MessageLoopForIO::current()->WatchFileDescriptor(
-      syslog_fd_.get(), true /* persistent */,
-      base::MessageLoopForIO::WATCH_READ, &syslog_controller_, this);
-  if (!ret) {
+  syslog_controller_ = base::FileDescriptorWatcher::WatchReadable(
+      syslog_fd_.get(), base::BindRepeating(&Collector::OnSyslogReadable,
+                                            base::Unretained(this)));
+  if (!syslog_controller_) {
     LOG(ERROR) << "Failed to watch syslog file descriptor";
     return false;
   }
@@ -169,10 +159,10 @@ bool Collector::Init() {
     PLOG(ERROR) << "Unable to create signalfd";
     return false;
   }
-  ret = base::MessageLoopForIO::current()->WatchFileDescriptor(
-      signal_fd_.get(), true /*persistent*/, base::MessageLoopForIO::WATCH_READ,
-      &signal_controller_, this);
-  if (!ret) {
+  signal_controller_ = base::FileDescriptorWatcher::WatchReadable(
+      signal_fd_.get(), base::BindRepeating(&Collector::OnSignalReadable,
+                                            base::Unretained(this)));
+  if (!signal_controller_) {
     LOG(ERROR) << "Failed to watch signal file descriptor";
     return false;
   }
@@ -319,10 +309,10 @@ bool Collector::InitForTesting(
   // Start listening on the syslog socket.
   syslog_fd_.swap(syslog_fd);
 
-  bool ret = base::MessageLoopForIO::current()->WatchFileDescriptor(
-      syslog_fd_.get(), true /* persistent */,
-      base::MessageLoopForIO::WATCH_READ, &syslog_controller_, this);
-  if (!ret) {
+  syslog_controller_ = base::FileDescriptorWatcher::WatchReadable(
+      syslog_fd_.get(), base::BindRepeating(&Collector::OnSyslogReadable,
+                                            base::Unretained(this)));
+  if (!syslog_controller_) {
     LOG(ERROR) << "Failed to watch syslog file descriptor";
     return false;
   }

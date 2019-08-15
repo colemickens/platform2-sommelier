@@ -101,21 +101,13 @@ void NotificationShellClient::NotificationClient::
 
 NotificationShellClient::NotificationShellClient(
     NotificationShellInterface* interface, base::Closure quit_closure)
-    : watcher_(FROM_HERE),
-      interface_(interface),
-      quit_closure_(std::move(quit_closure)) {}
+    : interface_(interface), quit_closure_(std::move(quit_closure)) {}
 
-void NotificationShellClient::OnFileCanReadWithoutBlocking(int fd) {
-  DCHECK_EQ(event_loop_fd_.get(), fd);
-
+void NotificationShellClient::OnEventReadable() {
   if (wl_event_loop_dispatch(event_loop_.get(), 0) < 0) {
     PLOG(ERROR) << "Failed to dispatch event loop for wayland";
     base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, quit_closure_);
   }
-}
-
-void NotificationShellClient::OnFileCanWriteWithoutBlocking(int fd) {
-  NOTREACHED();
 }
 
 // static
@@ -143,10 +135,11 @@ bool NotificationShellClient::Init(const char* display_name,
     return false;
   }
 
-  const bool ret = base::MessageLoopForIO::current()->WatchFileDescriptor(
-      event_loop_fd_.get(), true /*persistent*/,
-      base::MessageLoopForIO::WATCH_READ, &watcher_, this);
-  if (!ret) {
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      event_loop_fd_.get(),
+      base::BindRepeating(&NotificationShellClient::OnEventReadable,
+                          base::Unretained(this)));
+  if (!watcher_) {
     LOG(ERROR) << "Failed to watch event loop fd";
     return false;
   }

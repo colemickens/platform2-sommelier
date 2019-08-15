@@ -20,6 +20,7 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/callback.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/guid.h>
 #include <base/location.h>
@@ -110,6 +111,7 @@ class TerminaVmTest : public ::testing::Test {
   // The message loop for the current thread.  Declared here because it must be
   // the last thing to be cleaned up.
   base::MessageLoopForIO message_loop_;
+  base::FileDescriptorWatcher watcher_{&message_loop_};
 
  protected:
   // Actual virtual machine being tested.

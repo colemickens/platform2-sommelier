@@ -13,6 +13,7 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/callback.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
@@ -137,6 +138,7 @@ class CollectorTest : public ::testing::Test {
   // The message loop for the current thread.  Declared here because it must be
   // the last thing to be cleaned up.
   base::MessageLoopForIO message_loop_;
+  base::FileDescriptorWatcher watcher_{&message_loop_};
 
  protected:
   // Actual Collector being tested.

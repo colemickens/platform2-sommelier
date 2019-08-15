@@ -616,7 +616,6 @@ Service::Service(base::Closure quit_closure)
           arc_networkd::AddressManager::Guest::VM_ARC,
           arc_networkd::AddressManager::Guest::CONTAINER,
       }),
-      watcher_(FROM_HERE),
       next_seneschal_server_port_(kFirstSeneschalServerPort),
       quit_closure_(std::move(quit_closure)),
 #ifdef __arm__
@@ -641,9 +640,7 @@ Service::~Service() {
   }
 }
 
-void Service::OnFileCanReadWithoutBlocking(int fd) {
-  DCHECK_EQ(signal_fd_.get(), fd);
-
+void Service::OnSignalReadable() {
   struct signalfd_siginfo siginfo;
   if (read(signal_fd_.get(), &siginfo, sizeof(siginfo)) != sizeof(siginfo)) {
     PLOG(ERROR) << "Failed to read from signalfd";
@@ -658,10 +655,6 @@ void Service::OnFileCanReadWithoutBlocking(int fd) {
     LOG(ERROR) << "Received unknown signal from signal fd: "
                << strsignal(siginfo.ssi_signo);
   }
-}
-
-void Service::OnFileCanWriteWithoutBlocking(int fd) {
-  NOTREACHED();
 }
 
 bool Service::Init() {
@@ -815,10 +808,10 @@ bool Service::Init() {
     return false;
   }
 
-  bool ret = base::MessageLoopForIO::current()->WatchFileDescriptor(
-      signal_fd_.get(), true /*persistent*/, base::MessageLoopForIO::WATCH_READ,
-      &watcher_, this);
-  if (!ret) {
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      signal_fd_.get(),
+      base::BindRepeating(&Service::OnSignalReadable, base::Unretained(this)));
+  if (!watcher_) {
     LOG(ERROR) << "Failed to watch signalfd";
     return false;
   }

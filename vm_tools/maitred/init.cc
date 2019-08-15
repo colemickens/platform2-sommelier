@@ -34,6 +34,7 @@
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -970,7 +971,7 @@ void UnmountFilesystems() {
 
 }  // namespace
 
-class Init::Worker : public base::MessageLoopForIO::Watcher {
+class Init::Worker {
  public:
   // Relevant information about processes launched by this process.
   struct ChildInfo {
@@ -983,7 +984,7 @@ class Init::Worker : public base::MessageLoopForIO::Watcher {
     std::list<base::Time> spawn_times;
   };
 
-  Worker() : watcher_(FROM_HERE) {}
+  Worker() = default;
   ~Worker() = default;
 
   // Start the worker.  This will set up a signalfd for receiving SIGHCHLD
@@ -1003,18 +1004,17 @@ class Init::Worker : public base::MessageLoopForIO::Watcher {
   // is notified after all processes are killed.
   void Shutdown(int notify_fd);
 
-  // base::MessageLoopForIO::Watcher overrides.
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override;
-
   // Finds the pid of a process with |name|. Returns 0 if such a process doesn't
   // exist.
   pid_t FindProcessByName(const string& name);
 
  private:
+  // Called when |signal_fd_| becomes readable.
+  void OnSignalReadable();
+
   // File descriptor on which we will receive SIGCHLD events.
   base::ScopedFD signal_fd_;
-  base::MessageLoopForIO::FileDescriptorWatcher watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
 
   // Information about processes launched by this process.
   std::map<pid_t, ChildInfo> children_;
@@ -1035,11 +1035,10 @@ void Init::Worker::Start() {
   signal_fd_.reset(signalfd(-1, &mask, SFD_CLOEXEC | SFD_NONBLOCK));
   PCHECK(signal_fd_.is_valid()) << "Unable to create signal fd";
 
-  bool ret = base::MessageLoopForIO::current()->WatchFileDescriptor(
-      signal_fd_.get(), true /*persistent*/, base::MessageLoopForIO::WATCH_READ,
-      &watcher_, this);
-
-  CHECK(ret) << "Failed to watch SIGHCHLD file descriptor";
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      signal_fd_.get(), base::BindRepeating(&Init::Worker::OnSignalReadable,
+                                            base::Unretained(this)));
+  CHECK(!watcher_) << "Failed to watch SIGHCHLD file descriptor";
 }
 
 void Init::Worker::Spawn(struct ChildInfo info,
@@ -1169,7 +1168,7 @@ void Init::Worker::Shutdown(int notify_fd) {
   DCHECK_NE(notify_fd, -1);
 
   // Stop watching for SIGCHLD.  We will do it manually here.
-  watcher_.StopWatchingFileDescriptor();
+  watcher_.reset();
   signal_fd_.reset();
 
   // First send SIGPWR to tremplin, if it is running. This runs "poweroff"
@@ -1217,9 +1216,7 @@ void Init::Worker::Shutdown(int notify_fd) {
   }
 }
 
-void Init::Worker::OnFileCanReadWithoutBlocking(int fd) {
-  DCHECK_EQ(fd, signal_fd_.get());
-
+void Init::Worker::OnSignalReadable() {
   // Pull information about the signal sender out of the fd to ack the signal.
   struct signalfd_siginfo siginfo;
   if (HANDLE_EINTR(read(signal_fd_.get(), &siginfo, sizeof(siginfo))) !=
@@ -1309,10 +1306,6 @@ void Init::Worker::OnFileCanReadWithoutBlocking(int fd) {
         break;
     }
   }
-}
-
-void Init::Worker::OnFileCanWriteWithoutBlocking(int fd) {
-  NOTREACHED();
 }
 
 pid_t Init::Worker::FindProcessByName(const string& name) {

@@ -18,11 +18,11 @@
 #include <arc/network/mac_address_generator.h>
 #include <arc/network/subnet.h>
 #include <base/callback.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
-#include <base/message_loop/message_loop.h>
 #include <base/sequence_checker.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
@@ -47,16 +47,12 @@ namespace concierge {
 
 // VM Launcher Service responsible for responding to DBus method calls for
 // starting, stopping, and otherwise managing VMs.
-class Service final : public base::MessageLoopForIO::Watcher {
+class Service final {
  public:
   // Creates a new Service instance.  |quit_closure| is posted to the TaskRunner
   // for the current thread when this process receives a SIGTERM.
   static std::unique_ptr<Service> Create(base::Closure quit_closure);
-  ~Service() override;
-
-  // base::MessageLoopForIO::Watcher overrides.
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override;
+  ~Service();
 
  private:
   explicit Service(base::Closure quit_closure);
@@ -175,6 +171,7 @@ class Service final : public base::MessageLoopForIO::Watcher {
   void OnSignalConnected(const std::string& interface_name,
                          const std::string& signal_name,
                          bool is_connected);
+  void OnSignalReadable();
 
   // Called by |power_manager_client_| when the device is about to suspend or
   // resumed from suspend.
@@ -199,7 +196,7 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // File descriptor for the SIGCHLD events.
   base::ScopedFD signal_fd_;
-  base::MessageLoopForIO::FileDescriptorWatcher watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
 
   // Connection to the system bus.
   scoped_refptr<dbus::Bus> bus_;

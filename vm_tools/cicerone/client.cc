@@ -14,6 +14,7 @@
 
 #include <base/at_exit.h>
 #include <base/bind.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -935,6 +936,7 @@ int main(int argc, char** argv) {
   brillo::InitLog(brillo::kLogToStderrIfTty);
 
   base::MessageLoopForIO message_loop;
+  base::FileDescriptorWatcher watcher(&message_loop);
 
   dbus::Bus::Options opts;
   opts.bus_type = dbus::Bus::SYSTEM;

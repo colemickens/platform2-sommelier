@@ -383,8 +383,7 @@ std::unique_ptr<Service> Service::Create(
 }
 
 Service::Service(base::Closure quit_closure, scoped_refptr<dbus::Bus> bus)
-    : watcher_(FROM_HERE),
-      bus_(std::move(bus)),
+    : bus_(std::move(bus)),
       quit_closure_(std::move(quit_closure)),
       weak_ptr_factory_(this) {
   container_listener_ =
@@ -403,9 +402,7 @@ Service::~Service() {
   }
 }
 
-void Service::OnFileCanReadWithoutBlocking(int fd) {
-  DCHECK_EQ(signal_fd_.get(), fd);
-
+void Service::OnSignalReadable() {
   struct signalfd_siginfo siginfo;
   if (read(signal_fd_.get(), &siginfo, sizeof(siginfo)) != sizeof(siginfo)) {
     PLOG(ERROR) << "Failed to read from signalfd";
@@ -420,10 +417,6 @@ void Service::OnFileCanReadWithoutBlocking(int fd) {
     LOG(ERROR) << "Received unknown signal from signal fd: "
                << strsignal(siginfo.ssi_signo);
   }
-}
-
-void Service::OnFileCanWriteWithoutBlocking(int fd) {
-  NOTREACHED();
 }
 
 void Service::ConnectTremplin(uint32_t cid,
@@ -1330,10 +1323,10 @@ bool Service::Init(
     return false;
   }
 
-  bool ret = base::MessageLoopForIO::current()->WatchFileDescriptor(
-      signal_fd_.get(), true /*persistent*/, base::MessageLoopForIO::WATCH_READ,
-      &watcher_, this);
-  if (!ret) {
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      signal_fd_.get(),
+      base::BindRepeating(&Service::OnSignalReadable, base::Unretained(this)));
+  if (!watcher_) {
     LOG(ERROR) << "Failed to watch signalfd";
     return false;
   }
