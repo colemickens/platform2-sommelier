@@ -15,15 +15,14 @@
 
 namespace arc_networkd {
 
-MulticastSocket::~MulticastSocket() {
-  if (fd_.is_valid())
-    watcher_.StopWatchingFileDescriptor();
-}
+MulticastSocket::MulticastSocket() = default;
+
+MulticastSocket::~MulticastSocket() = default;
 
 bool MulticastSocket::Bind(const std::string& ifname,
                            const struct in_addr& mcast_addr,
                            unsigned short port,
-                           MessageLoopForIO::Watcher* parent) {
+                           base::Callback<void(int)> callback) {
   CHECK(!fd_.is_valid());
 
   base::ScopedFD fd(socket(AF_INET, SOCK_DGRAM, 0));
@@ -106,9 +105,8 @@ bool MulticastSocket::Bind(const std::string& ifname,
     return false;
   }
 
-  MessageLoopForIO::current()->WatchFileDescriptor(
-      fd.get(), true, MessageLoopForIO::WATCH_READ, &watcher_, parent);
-
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      fd.get(), base::BindRepeating(callback, fd.get()));
   fd_ = std::move(fd);
   return true;
 }

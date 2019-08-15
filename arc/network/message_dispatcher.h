@@ -8,17 +8,17 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <base/message_loop/message_loop.h>
 
 #include "arc/network/ipc.pb.h"
 
 namespace arc_networkd {
 
 // Helper message processor
-class MessageDispatcher : public base::MessageLoopForIO::Watcher {
+class MessageDispatcher {
  public:
   explicit MessageDispatcher(base::ScopedFD fd);
 
@@ -32,15 +32,14 @@ class MessageDispatcher : public base::MessageLoopForIO::Watcher {
 
  private:
   // Overrides MessageLoopForIO callbacks for new data on |control_fd_|.
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override {}
+  void OnFileCanReadWithoutBlocking();
 
- private:
   base::ScopedFD fd_;
-  base::MessageLoopForIO::FileDescriptorWatcher watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
   base::Callback<void()> failure_handler_;
   base::Callback<void(const GuestMessage&)> guest_handler_;
   base::Callback<void(const DeviceMessage&)> device_handler_;
+
   IpHelperMessage msg_;
 
   base::WeakPtrFactory<MessageDispatcher> weak_factory_{this};

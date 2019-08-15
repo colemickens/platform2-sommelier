@@ -8,10 +8,10 @@
 #include <deque>
 #include <memory>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/daemon.h>
-#include <base/message_loop/message_loop.h>
 
 #include "arc/network/message_dispatcher.h"
 #include "arc/network/socket.h"
@@ -20,7 +20,7 @@
 namespace arc_networkd {
 
 // Subprocess for proxying ADB traffic.
-class AdbProxy : public brillo::Daemon, public base::MessageLoopForIO::Watcher {
+class AdbProxy : public brillo::Daemon {
  public:
   explicit AdbProxy(base::ScopedFD control_fd);
   virtual ~AdbProxy();
@@ -28,15 +28,12 @@ class AdbProxy : public brillo::Daemon, public base::MessageLoopForIO::Watcher {
  protected:
   int OnInit() override;
 
-  // Watcher callback for accepting new connections.
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override {}
-
   void OnParentProcessExit();
   void OnGuestMessage(const GuestMessage& msg);
 
  private:
   void Reset();
+  void OnFileCanReadWithoutBlocking();
 
   // Attempts to establish a connection to ADB at well-known destinations.
   std::unique_ptr<Socket> Connect() const;
@@ -44,7 +41,7 @@ class AdbProxy : public brillo::Daemon, public base::MessageLoopForIO::Watcher {
   MessageDispatcher msg_dispatcher_;
   std::unique_ptr<Socket> src_;
   std::deque<std::unique_ptr<SocketForwarder>> fwd_;
-  base::MessageLoopForIO::FileDescriptorWatcher src_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> src_watcher_;
 
   GuestMessage::GuestType arc_type_;
   uint32_t arcvm_vsock_cid_;

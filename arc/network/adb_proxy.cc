@@ -35,7 +35,6 @@ constexpr int kMaxConn = 16;
 
 AdbProxy::AdbProxy(base::ScopedFD control_fd)
     : msg_dispatcher_(std::move(control_fd)),
-      src_watcher_(FROM_HERE),
       arc_type_(GuestMessage::UNKNOWN_GUEST),
       arcvm_vsock_cid_(-1) {
   msg_dispatcher_.RegisterFailureHandler(
@@ -45,9 +44,7 @@ AdbProxy::AdbProxy(base::ScopedFD control_fd)
       base::Bind(&AdbProxy::OnGuestMessage, weak_factory_.GetWeakPtr()));
 }
 
-AdbProxy::~AdbProxy() {
-  src_watcher_.StopWatchingFileDescriptor();
-}
+AdbProxy::~AdbProxy() = default;
 
 int AdbProxy::OnInit() {
   // Prevent the main process from sending us any signals.
@@ -72,7 +69,7 @@ int AdbProxy::OnInit() {
 }
 
 void AdbProxy::Reset() {
-  src_watcher_.StopWatchingFileDescriptor();
+  src_watcher_.reset();
   src_.reset();
   fwd_.clear();
   arcvm_vsock_cid_ = -1;
@@ -85,7 +82,7 @@ void AdbProxy::OnParentProcessExit() {
   Quit();
 }
 
-void AdbProxy::OnFileCanReadWithoutBlocking(int fd) {
+void AdbProxy::OnFileCanReadWithoutBlocking() {
   if (auto conn = src_->Accept()) {
     if (auto dst = Connect()) {
       LOG(INFO) << "Connection established: " << *conn << " <-> " << *dst;
@@ -170,9 +167,9 @@ void AdbProxy::OnGuestMessage(const GuestMessage& msg) {
 
     // Run the accept loop.
     LOG(INFO) << "Accepting connections...";
-    base::MessageLoopForIO::current()->WatchFileDescriptor(
-        src_->fd(), true, base::MessageLoopForIO::WATCH_READ, &src_watcher_,
-        this);
+    src_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+        src_->fd(), base::BindRepeating(&AdbProxy::OnFileCanReadWithoutBlocking,
+                                        base::Unretained(this)));
     return;
   }
 

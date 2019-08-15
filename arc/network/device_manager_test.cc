@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/message_loop/message_loop.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -102,6 +103,7 @@ class DeviceManagerTest : public testing::Test {
 
   // This is required because of the RT netlink handler.
   base::MessageLoopForIO msg_loop_;
+  base::FileDescriptorWatcher watcher_{&msg_loop_};
 };
 
 }  // namespace

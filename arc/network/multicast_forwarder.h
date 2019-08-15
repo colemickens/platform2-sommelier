@@ -15,11 +15,8 @@
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <base/message_loop/message_loop.h>
 
 #include "arc/network/multicast_socket.h"
-
-using MessageLoopForIO = base::MessageLoopForIO;
 
 namespace arc_networkd {
 
@@ -27,7 +24,7 @@ namespace arc_networkd {
 // network interfaces.  Handles stateless mDNS messages (src port and
 // dst port are both 5353) and stateful mDNS/SSDP messages (src port
 // is random, so the forwarder needs to keep a table of open sessions).
-class MulticastForwarder : public MessageLoopForIO::Watcher {
+class MulticastForwarder {
  public:
   MulticastForwarder() {}
   virtual ~MulticastForwarder() {}
@@ -50,10 +47,6 @@ class MulticastForwarder : public MessageLoopForIO::Watcher {
              uint32_t mcast_addr,
              unsigned short port,
              bool allow_stateless);
-
-  // MessageLoopForIO::Watcher overrides.
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override {}
 
  protected:
   // Rewrite mDNS A records pointing to |arc_ip_| so that they point to
@@ -80,6 +73,8 @@ class MulticastForwarder : public MessageLoopForIO::Watcher {
   base::WeakPtrFactory<MulticastForwarder> weak_factory_{this};
 
  private:
+  void OnFileCanReadWithoutBlocking(int fd);
+
   DISALLOW_COPY_AND_ASSIGN(MulticastForwarder);
 };
 

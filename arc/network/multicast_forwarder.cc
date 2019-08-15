@@ -71,7 +71,10 @@ bool MulticastForwarder::Start(const std::string& int_ifname,
   allow_stateless_ = allow_stateless;
 
   int_socket_.reset(new MulticastSocket());
-  if (!int_socket_->Bind(int_ifname, mcast_addr_, port, this)) {
+  if (!int_socket_->Bind(
+          int_ifname, mcast_addr_, port,
+          base::BindRepeating(&MulticastForwarder::OnFileCanReadWithoutBlocking,
+                              base::Unretained(this)))) {
     LOG(WARNING) << "Could not bind socket on " << int_ifname << " for "
                  << mcast_addr_ << ":" << port;
     return false;
@@ -79,7 +82,11 @@ bool MulticastForwarder::Start(const std::string& int_ifname,
 
   if (allow_stateless_) {
     lan_socket_.reset(new MulticastSocket());
-    if (!lan_socket_->Bind(lan_ifname, mcast_addr_, port, this)) {
+    if (!lan_socket_->Bind(
+            lan_ifname, mcast_addr_, port,
+            base::BindRepeating(
+                &MulticastForwarder::OnFileCanReadWithoutBlocking,
+                base::Unretained(this)))) {
       LOG(WARNING) << "could not bind socket on  " << lan_ifname << " for "
                    << mcast_addr_ << ":" << port;
       return false;
@@ -163,9 +170,16 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd) {
     return;
 
   std::unique_ptr<MulticastSocket> new_sock(new MulticastSocket());
-  if (!new_sock->Bind(lan_ifname_, mcast_addr_, port, this) &&
-      !new_sock->Bind(lan_ifname_, mcast_addr_, 0, this))
+  if (!new_sock->Bind(
+          lan_ifname_, mcast_addr_, port,
+          base::BindRepeating(&MulticastForwarder::OnFileCanReadWithoutBlocking,
+                              base::Unretained(this))) &&
+      !new_sock->Bind(
+          lan_ifname_, mcast_addr_, 0,
+          base::BindRepeating(&MulticastForwarder::OnFileCanReadWithoutBlocking,
+                              base::Unretained(this)))) {
     return;
+  }
   memcpy(&new_sock->int_addr, &fromaddr, sizeof(new_sock->int_addr));
 
   new_sock->SendTo(data, bytes, dst);

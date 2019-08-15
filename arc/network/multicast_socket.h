@@ -13,24 +13,22 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <base/message_loop/message_loop.h>
-
-using MessageLoopForIO = base::MessageLoopForIO;
 
 namespace arc_networkd {
 
 // Wrapper around various syscalls used for multicast socket communications.
 class MulticastSocket {
  public:
-  MulticastSocket() : watcher_(FROM_HERE) {}
+  MulticastSocket();
   virtual ~MulticastSocket();
 
   bool Bind(const std::string& ifname,
             const struct in_addr& mcast_addr,
             unsigned short port,
-            MessageLoopForIO::Watcher* parent);
+            base::Callback<void(int)> callback);
   bool SendTo(const void* data, size_t len, const struct sockaddr_in& addr);
 
   int fd() const { return fd_.get(); }
@@ -41,7 +39,7 @@ class MulticastSocket {
  protected:
   base::ScopedFD fd_;
   time_t last_used_;
-  MessageLoopForIO::FileDescriptorWatcher watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
 };
 
 }  // namespace arc_networkd

@@ -10,8 +10,8 @@
 #include <set>
 #include <string>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/memory/weak_ptr.h>
-#include <base/message_loop/message_loop.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/process_reaper.h>
 
@@ -26,8 +26,7 @@
 namespace arc_networkd {
 
 // Main class that runs the mainloop and responds to LAN interface changes.
-class Manager final : public brillo::DBusDaemon,
-                      public base::MessageLoopForIO::Watcher {
+class Manager final : public brillo::DBusDaemon {
  public:
   Manager(std::unique_ptr<HelperProcess> ip_helper,
           std::unique_ptr<HelperProcess> adb_proxy,
@@ -36,9 +35,6 @@ class Manager final : public brillo::DBusDaemon,
 
  protected:
   int OnInit() override;
-
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override {}
 
  private:
   void InitialSetup();
@@ -62,6 +58,7 @@ class Manager final : public brillo::DBusDaemon,
   void SendDeviceMessage(const DeviceMessage& msg);
 
   bool OnSignal(const struct signalfd_siginfo& info);
+  void OnFileCanReadWithoutBlocking();
 
   friend std::ostream& operator<<(std::ostream& stream, const Manager& manager);
 
@@ -76,7 +73,7 @@ class Manager final : public brillo::DBusDaemon,
   int arc_pid_;
 
   Socket gsock_;
-  base::MessageLoopForIO::FileDescriptorWatcher gsock_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> gsock_watcher_;
 
   base::WeakPtrFactory<Manager> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Manager);

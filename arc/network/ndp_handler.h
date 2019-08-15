@@ -11,27 +11,22 @@
 #include <string>
 
 #include <base/bind.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <base/message_loop/message_loop.h>
-
-using MessageLoopForIO = base::MessageLoopForIO;
 
 namespace arc_networkd {
 
 // Uses libndp to listen for multicast messages of type |msg_type| on
 // network interface |ifname|, then calls OnNdpMsg() when one is received.
-class NdpHandler : public MessageLoopForIO::Watcher {
+class NdpHandler {
  public:
   NdpHandler();
-  ~NdpHandler() override;
+  virtual ~NdpHandler();
 
  protected:
   bool StartNdp(const std::string& ifname, enum ndp_msg_type msg_type);
   void StopNdp();
-
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override {}
 
   virtual int OnNdpMsg(struct ndp* ndp, struct ndp_msg* msg) = 0;
 
@@ -44,9 +39,11 @@ class NdpHandler : public MessageLoopForIO::Watcher {
   base::WeakPtrFactory<NdpHandler> weak_factory_{this};
 
  private:
+  void OnFileCanReadWithoutBlocking();
+
   static int LibNdpCallback(struct ndp* ndp, struct ndp_msg* msg, void* priv);
-  int fd_;
-  MessageLoopForIO::FileDescriptorWatcher watcher_;
+
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
 };
 
 }  // namespace arc_networkd

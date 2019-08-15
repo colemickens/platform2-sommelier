@@ -10,15 +10,16 @@
 #include <base/bind.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
-#include <base/posix/unix_domain_socket_linux.h>
+#include <base/posix/unix_domain_socket.h>
 
 namespace arc_networkd {
 
 MessageDispatcher::MessageDispatcher(base::ScopedFD fd)
-    : fd_(std::move(fd)), watcher_(FROM_HERE) {
-  base::MessageLoopForIO::current()->WatchFileDescriptor(
-      fd_.get(), true, base::MessageLoopForIO::WATCH_READ, &watcher_, this);
-}
+    : fd_(std::move(fd)),
+      watcher_(base::FileDescriptorWatcher::WatchReadable(
+          fd_.get(),
+          base::BindRepeating(&MessageDispatcher::OnFileCanReadWithoutBlocking,
+                              base::Unretained(this)))) {}
 
 void MessageDispatcher::RegisterFailureHandler(
     const base::Callback<void()>& handler) {
@@ -35,17 +36,15 @@ void MessageDispatcher::RegisterDeviceMessageHandler(
   device_handler_ = handler;
 }
 
-void MessageDispatcher::OnFileCanReadWithoutBlocking(int fd) {
-  CHECK_EQ(fd, fd_.get());
-
+void MessageDispatcher::OnFileCanReadWithoutBlocking() {
   char buffer[1024];
   std::vector<base::ScopedFD> fds{};
   ssize_t len =
-      base::UnixDomainSocket::RecvMsg(fd, buffer, sizeof(buffer), &fds);
+      base::UnixDomainSocket::RecvMsg(fd_.get(), buffer, sizeof(buffer), &fds);
 
   if (len <= 0) {
     PLOG(ERROR) << "Read failed: exiting";
-    watcher_.StopWatchingFileDescriptor();
+    watcher_.reset();
     if (!failure_handler_.is_null())
       failure_handler_.Run();
     return;

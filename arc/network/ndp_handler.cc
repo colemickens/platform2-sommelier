@@ -18,7 +18,7 @@ constexpr const char kNdRedirect[] = "ND_REDIRECT";
 
 namespace arc_networkd {
 
-NdpHandler::NdpHandler() : watcher_(FROM_HERE) {}
+NdpHandler::NdpHandler() = default;
 
 NdpHandler::~NdpHandler() {
   StopNdp();
@@ -46,9 +46,10 @@ bool NdpHandler::StartNdp(const std::string& ifname,
     return false;
   }
 
-  fd_ = ndp_get_eventfd(ndp_);
-  MessageLoopForIO::current()->WatchFileDescriptor(
-      fd_, true, MessageLoopForIO::WATCH_READ, &watcher_, this);
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      ndp_get_eventfd(ndp_),
+      base::BindRepeating(&NdpHandler::OnFileCanReadWithoutBlocking,
+                          base::Unretained(this)));
 
   VLOG(1) << "NDP receiver " << MsgTypeName(msg_type_) << " started for "
           << ifname;
@@ -58,7 +59,7 @@ bool NdpHandler::StartNdp(const std::string& ifname,
 
 void NdpHandler::StopNdp() {
   if (ndp_) {
-    watcher_.StopWatchingFileDescriptor();
+    watcher_.reset();
     ndp_msgrcv_handler_unregister(ndp_, &NdpHandler::LibNdpCallback, msg_type_,
                                   ifindex_, this);
     ndp_close(ndp_);
@@ -71,8 +72,7 @@ void NdpHandler::StopNdp() {
   }
 }
 
-void NdpHandler::OnFileCanReadWithoutBlocking(int fd) {
-  CHECK_EQ(fd_, fd);
+void NdpHandler::OnFileCanReadWithoutBlocking() {
   if (ndp_call_eventfd_handler(ndp_))
     LOG(WARNING) << "NDP event handler failed"
                  << " for " << MsgTypeName(msg_type_);

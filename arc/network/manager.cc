@@ -18,7 +18,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
-#include <base/posix/unix_domain_socket_linux.h>
+#include <base/posix/unix_domain_socket.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -66,12 +66,9 @@ Manager::Manager(std::unique_ptr<HelperProcess> ip_helper,
       }),
       enable_multinet_(enable_multinet),
       arc_pid_(-1),
-      gsock_(AF_UNIX, SOCK_DGRAM),
-      gsock_watcher_(FROM_HERE) {}
+      gsock_(AF_UNIX, SOCK_DGRAM) {}
 
-Manager::~Manager() {
-  gsock_watcher_.StopWatchingFileDescriptor();
-}
+Manager::~Manager() = default;
 
 int Manager::OnInit() {
   // Run with minimal privileges.
@@ -117,9 +114,9 @@ int Manager::OnInit() {
                   base::Bind(&Manager::OnSignal, base::Unretained(this)));
   RegisterHandler(SIGUSR2,
                   base::Bind(&Manager::OnSignal, base::Unretained(this)));
-  base::MessageLoopForIO::current()->WatchFileDescriptor(
-      gsock_.fd(), true, base::MessageLoopForIO::WATCH_READ, &gsock_watcher_,
-      this);
+  gsock_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      gsock_.fd(), base::BindRepeating(&Manager::OnFileCanReadWithoutBlocking,
+                                       base::Unretained(this)));
 
   // Run after Daemon::OnInit().
   base::MessageLoopForIO::current()->task_runner()->PostTask(
@@ -136,10 +133,11 @@ void Manager::InitialSetup() {
       !enable_multinet_);
 }
 
-void Manager::OnFileCanReadWithoutBlocking(int fd) {
+void Manager::OnFileCanReadWithoutBlocking() {
   char buf[128] = {0};
   std::vector<base::ScopedFD> fds{};
-  ssize_t len = base::UnixDomainSocket::RecvMsg(fd, buf, sizeof(buf), &fds);
+  ssize_t len =
+      base::UnixDomainSocket::RecvMsg(gsock_.fd(), buf, sizeof(buf), &fds);
 
   if (len <= 0) {
     PLOG(WARNING) << "Read failed";
