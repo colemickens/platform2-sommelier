@@ -248,7 +248,7 @@ generate_pkg_config("libbrillo_pc") {
       requires_private += sublib.all_dependent_pkg_deps
     }
   }
-  cflags = [ "-DUSE_RTTI_FOR_TYPE_TAGS" ]
+  defines = [ "USE_RTTI_FOR_TYPE_TAGS" ]
   libs = [ "-lbrillo-${libbase_ver}" ]
 }
 

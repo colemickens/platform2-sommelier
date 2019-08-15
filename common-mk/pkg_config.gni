@@ -73,6 +73,7 @@ template("generate_pkg_config") {
                              "libs",
                              "libs_private",
                              "cflags",
+                             "defines",
                            ])
     if (!defined(name)) {
       name = target_name
@@ -115,6 +116,11 @@ template("generate_pkg_config") {
     if (defined(cflags)) {
       foreach(cflag, cflags) {
         args += [ "--cflags=" + cflag ]
+      }
+    }
+    if (defined(defines)) {
+      foreach(define, defines) {
+        args += [ "--cflags=-D" + define ]
       }
     }
   }
