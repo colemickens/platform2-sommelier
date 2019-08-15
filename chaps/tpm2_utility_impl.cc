@@ -169,8 +169,17 @@ crypto::ScopedEC_KEY GetECCPublicKeyFromTpmPublicArea(
   std::string xs = StringFrom_TPM2B_ECC_PARAMETER(public_area.unique.ecc.x);
   std::string ys = StringFrom_TPM2B_ECC_PARAMETER(public_area.unique.ecc.y);
 
-  crypto::ScopedBIGNUM x(chaps::ConvertToBIGNUM(xs));
-  crypto::ScopedBIGNUM y(chaps::ConvertToBIGNUM(ys));
+  crypto::ScopedBIGNUM x(BN_new()), y(BN_new());
+  if (!x || !y) {
+    LOG(ERROR) << "Failed to allocate BIGNUM.";
+    return nullptr;
+  }
+
+  if (!chaps::ConvertToBIGNUM(xs, x.get()) ||
+      !chaps::ConvertToBIGNUM(ys, y.get())) {
+    LOG(ERROR) << "Failed to convert to BIGNUM.";
+    return nullptr;
+  }
 
   // EC_KEY_set_public_key_affine_coordinates will check the pointer is valid
   if (!EC_KEY_set_public_key_affine_coordinates(ecc.get(), x.get(), y.get()))

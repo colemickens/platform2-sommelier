@@ -353,10 +353,17 @@ crypto::ScopedEC_KEY CreateECCPrivateKeyFromObject(const Object* key_object) {
   if (key == nullptr)
     return nullptr;
 
-  crypto::ScopedBIGNUM d(
-      chaps::ConvertToBIGNUM(key_object->GetAttributeString(CKA_VALUE)));
-  if (d == nullptr)
+  crypto::ScopedBIGNUM d(BN_new());
+  if (!d) {
+    LOG(ERROR) << "Failed to allocate BIGNUM.";
     return nullptr;
+  }
+
+  if (!chaps::ConvertToBIGNUM(key_object->GetAttributeString(CKA_VALUE),
+                              d.get())) {
+    LOG(ERROR) << "Failed to convert CKA_VALUE to BIGNUM.";
+    return nullptr;
+  }
 
   if (!EC_KEY_set_private_key(key.get(), d.get()))
     return nullptr;
@@ -380,30 +387,60 @@ crypto::ScopedEC_KEY CreateECCPrivateKeyFromObject(const Object* key_object) {
   return key;
 }
 
-// Always returns a non-NULL value.
 crypto::ScopedRSA CreateRSAKeyFromObject(const chaps::Object* key_object) {
   crypto::ScopedRSA rsa(RSA_new());
-  CHECK_NE(rsa, nullptr);
+  if (!rsa) {
+    LOG(ERROR) << "Failed to allocate RSA or BIGNUM for key.";
+    return nullptr;
+  }
   if (key_object->GetObjectClass() == CKO_PUBLIC_KEY) {
+    crypto::ScopedBIGNUM rsa_n(BN_new()), rsa_e(BN_new());
+    if (!rsa_n || !rsa_e) {
+      LOG(ERROR) << "Failed to allocate RSA or BIGNUM for key.";
+      return nullptr;
+    }
+    string n = key_object->GetAttributeString(CKA_MODULUS);
     string e = key_object->GetAttributeString(CKA_PUBLIC_EXPONENT);
-    rsa->e = chaps::ConvertToBIGNUM(e);
-    string n = key_object->GetAttributeString(CKA_MODULUS);
-    rsa->n = chaps::ConvertToBIGNUM(n);
+    if (!chaps::ConvertToBIGNUM(n, rsa_n.get()) ||
+        !chaps::ConvertToBIGNUM(e, rsa_e.get())) {
+      LOG(ERROR) << "Failed to convert modulus or exponent for key.";
+      return nullptr;
+    }
+    rsa->n = rsa_n.release();
+    rsa->e = rsa_e.release();
   } else {  // key_object->GetObjectClass() == CKO_PRIVATE_KEY
+    crypto::ScopedBIGNUM rsa_n(BN_new()), rsa_d(BN_new()), rsa_p(BN_new()),
+        rsa_q(BN_new()), rsa_dmp1(BN_new()), rsa_dmq1(BN_new()),
+        rsa_iqmp(BN_new());
+    if (!rsa_n || !rsa_d || !rsa_p || !rsa_q || !rsa_dmp1 || !rsa_dmq1 ||
+        !rsa_iqmp) {
+      LOG(ERROR) << "Failed to allocate BIGNUM for private key.";
+      return nullptr;
+    }
     string n = key_object->GetAttributeString(CKA_MODULUS);
-    rsa->n = chaps::ConvertToBIGNUM(n);
     string d = key_object->GetAttributeString(CKA_PRIVATE_EXPONENT);
-    rsa->d = chaps::ConvertToBIGNUM(d);
     string p = key_object->GetAttributeString(CKA_PRIME_1);
-    rsa->p = chaps::ConvertToBIGNUM(p);
     string q = key_object->GetAttributeString(CKA_PRIME_2);
-    rsa->q = chaps::ConvertToBIGNUM(q);
     string dmp1 = key_object->GetAttributeString(CKA_EXPONENT_1);
-    rsa->dmp1 = chaps::ConvertToBIGNUM(dmp1);
     string dmq1 = key_object->GetAttributeString(CKA_EXPONENT_2);
-    rsa->dmq1 = chaps::ConvertToBIGNUM(dmq1);
     string iqmp = key_object->GetAttributeString(CKA_COEFFICIENT);
-    rsa->iqmp = chaps::ConvertToBIGNUM(iqmp);
+    if (!chaps::ConvertToBIGNUM(n, rsa_n.get()) ||
+        !chaps::ConvertToBIGNUM(d, rsa_d.get()) ||
+        !chaps::ConvertToBIGNUM(p, rsa_p.get()) ||
+        !chaps::ConvertToBIGNUM(q, rsa_q.get()) ||
+        !chaps::ConvertToBIGNUM(dmp1, rsa_dmp1.get()) ||
+        !chaps::ConvertToBIGNUM(dmq1, rsa_dmq1.get()) ||
+        !chaps::ConvertToBIGNUM(iqmp, rsa_iqmp.get())) {
+      LOG(ERROR) << "Failed to convert parameters for private key.";
+      return nullptr;
+    }
+    rsa->n = rsa_n.release();
+    rsa->d = rsa_d.release();
+    rsa->p = rsa_p.release();
+    rsa->q = rsa_q.release();
+    rsa->dmp1 = rsa_dmp1.release();
+    rsa->dmq1 = rsa_dmq1.release();
+    rsa->iqmp = rsa_iqmp.release();
   }
   return rsa;
 }
@@ -1231,14 +1268,14 @@ bool SessionImpl::GenerateRSAKeyPairSoftware(int modulus_bits,
                                              Object* private_object) {
   if (public_exponent.length() > sizeof(uint32_t) || public_exponent.empty())
     return false;
-  crypto::ScopedBIGNUM e(ConvertToBIGNUM(public_exponent));
-  if (!e) {
-    LOG(ERROR) << "Failed to allocate public exponent.";
+  crypto::ScopedRSA key(RSA_new());
+  crypto::ScopedBIGNUM e(BN_new());
+  if (!key || !e) {
+    LOG(ERROR) << "Failed to allocate RSA or BIGNUM for exponent.";
     return false;
   }
-  crypto::ScopedRSA key(RSA_new());
-  if (!key) {
-    LOG(ERROR) << "Failed to allocate public exponent.";
+  if (!ConvertToBIGNUM(public_exponent, e.get())) {
+    LOG(ERROR) << "Failed to convert exponent to BIGNUM.";
     return false;
   }
 
@@ -1506,6 +1543,10 @@ bool SessionImpl::RSADecrypt(OperationContext* context) {
       return false;
   } else {
     crypto::ScopedRSA rsa = CreateRSAKeyFromObject(context->key_);
+    if (!rsa) {
+      LOG(ERROR) << "Failed to create RSA key for decryption.";
+      return false;
+    }
     uint8_t buffer[kMaxRSAOutputBytes];
     CHECK(RSA_size(rsa.get()) <= kMaxRSAOutputBytes);
     int length = RSA_private_decrypt(
@@ -1523,6 +1564,10 @@ bool SessionImpl::RSADecrypt(OperationContext* context) {
 
 bool SessionImpl::RSAEncrypt(OperationContext* context) {
   crypto::ScopedRSA rsa = CreateRSAKeyFromObject(context->key_);
+  if (!rsa) {
+    LOG(ERROR) << "Failed to create RSA key for encryption.";
+    return false;
+  }
   uint8_t buffer[kMaxRSAOutputBytes];
   CHECK(RSA_size(rsa.get()) <= kMaxRSAOutputBytes);
   int length = RSA_public_encrypt(
@@ -1550,6 +1595,10 @@ bool SessionImpl::RSASign(OperationContext* context) {
       return false;
   } else {
     crypto::ScopedRSA rsa = CreateRSAKeyFromObject(context->key_);
+    if (!rsa) {
+      LOG(ERROR) << "Failed to create RSA key for signing.";
+      return false;
+    }
     CHECK(RSA_size(rsa.get()) <= kMaxRSAOutputBytes);
     uint8_t buffer[kMaxRSAOutputBytes];
     // Emulate RSASSA by performing raw RSA (decrypting) with RSA_PKCS1_PADDING
@@ -1575,6 +1624,10 @@ CK_RV SessionImpl::RSAVerify(OperationContext* context,
       signature.length())
     return CKR_SIGNATURE_LEN_RANGE;
   crypto::ScopedRSA rsa = CreateRSAKeyFromObject(context->key_);
+  if (!rsa) {
+    LOG(ERROR) << "Failed to create RSA key for verification.";
+    return false;
+  }
   CHECK(RSA_size(rsa.get()) <= kMaxRSAOutputBytes);
   uint8_t buffer[kMaxRSAOutputBytes];
   int length = RSA_public_decrypt(
@@ -1667,6 +1720,16 @@ CK_RV SessionImpl::ECCVerify(OperationContext* context,
     return CKR_SIGNATURE_LEN_RANGE;
   }
   crypto::ScopedECDSA_SIG sig(ECDSA_SIG_new());
+  crypto::ScopedBIGNUM r(BN_new()), s(BN_new());
+  if (!sig || !r || !s) {
+    LOG(ERROR) << "Failed to allocate ECDSA_SIG or BIGNUM.";
+    return CKR_FUNCTION_FAILED;
+  }
+  if (!ConvertToBIGNUM(signature.substr(0, sign_size / 2), r.get()) ||
+      !ConvertToBIGNUM(signature.substr(sign_size / 2), s.get())) {
+    LOG(ERROR) << "Failed to convert BIGNUM for ECDSA_SIG.";
+    return CKR_FUNCTION_FAILED;
+  }
 
   // ECDSA_SIG_new populates ECDSA_SIG with two newly allocated BIGNUMs. We need
   // to free them before replacing them with new ones created by
@@ -1674,8 +1737,8 @@ CK_RV SessionImpl::ECCVerify(OperationContext* context,
   // TODO(menghuan): use ECDSA_SIG_set0() after upgrading to OpenSSL 1.1.0
   BN_free(sig->r);
   BN_free(sig->s);
-  sig->r = ConvertToBIGNUM(signature.substr(0, sign_size / 2));
-  sig->s = ConvertToBIGNUM(signature.substr(sign_size / 2));
+  sig->r = r.release();
+  sig->s = s.release();
 
   // 1 for a valid signature, 0 for an invalid signature and -1 on error.
   int result = ECDSA_do_verify(ConvertStringToByteBuffer(signed_data.data()),

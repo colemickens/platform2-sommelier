@@ -736,13 +736,11 @@ string ConvertFromBIGNUM(const BIGNUM* bignum, int pad_to_length) {
   return big_integer;
 }
 
-BIGNUM* ConvertToBIGNUM(const string& big_integer) {
-  if (big_integer.empty())
-    return nullptr;
-  BIGNUM* b = BN_bin2bn(chaps::ConvertStringToByteBuffer(big_integer.data()),
-                        big_integer.length(), nullptr);
-  CHECK(b);
-  return b;
+bool ConvertToBIGNUM(const string& big_integer, BIGNUM* b) {
+  if (big_integer.empty() || !b)
+    return false;
+  return BN_bin2bn(chaps::ConvertStringToByteBuffer(big_integer.data()),
+                   big_integer.length(), b);
 }
 
 string GetECParametersAsString(const crypto::ScopedEC_KEY& key) {

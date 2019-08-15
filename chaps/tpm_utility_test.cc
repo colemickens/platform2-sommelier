@@ -70,8 +70,9 @@ class TestTPMUtility : public ::testing::Test {
   }
 
   bool InjectKey() {
-    crypto::ScopedBIGNUM e(ConvertToBIGNUM(e_));
+    crypto::ScopedBIGNUM e(BN_new());
     CHECK(e);
+    EXPECT_TRUE(ConvertToBIGNUM(e_, e.get()));
     crypto::ScopedRSA key(RSA_new());
     CHECK(key);
     EXPECT_TRUE(RSA_generate_key_ex(key.get(), size_, e.get(), nullptr));
