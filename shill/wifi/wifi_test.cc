@@ -1173,8 +1173,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return &wifi_->all_scan_frequencies_;
   }
 
-  void OnScanStarted(const NetlinkMessage& netlink_message) {
-    wifi_->OnScanStarted(netlink_message);
+  void HandleNetlinkBroadcast(const NetlinkMessage& netlink_message) {
+    wifi_->HandleNetlinkBroadcast(netlink_message);
   }
 
   bool ScanFailedCallbackIsCancelled() {
@@ -1182,6 +1182,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   }
 
   void SetWiFiEnabled(bool enabled) { wifi_->enabled_ = enabled; }
+
+  void OnRegChange(const WiphyRegChangeMessage& msg) {
+    wifi_->OnRegChange(msg);
+  }
 
   MOCK_METHOD(void, SuspendCallback, (const Error&));
 
@@ -4251,7 +4255,7 @@ TEST_F(WiFiMainTest, OnScanStarted_ActiveScan) {
                        sizeof(kActiveScanTriggerNlMsg));
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   EXPECT_CALL(*wake_on_wifi_, OnScanStarted(true));
-  OnScanStarted(msg);
+  HandleNetlinkBroadcast(msg);
 }
 
 TEST_F(WiFiMainTest, OnScanStarted_PassiveScan) {
@@ -4261,7 +4265,7 @@ TEST_F(WiFiMainTest, OnScanStarted_PassiveScan) {
                        sizeof(kPassiveScanTriggerNlMsg));
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   EXPECT_CALL(*wake_on_wifi_, OnScanStarted(false));
-  OnScanStarted(msg);
+  HandleNetlinkBroadcast(msg);
 }
 
 TEST_F(WiFiMainTest, RemoveNetlinkHandler) {
@@ -4269,6 +4273,48 @@ TEST_F(WiFiMainTest, RemoveNetlinkHandler) {
   StopWiFi();
   // WiFi is deleted when we go out of scope.
   EXPECT_CALL(netlink_manager_, RemoveBroadcastHandler(_)).Times(1);
+}
+
+TEST_F(WiFiMainTest, OnRegChange) {
+  WiphyRegChangeMessage msg;
+  msg.attributes()->CreateStringAttribute(NL80211_ATTR_REG_ALPHA2, "alpha2");
+  msg.attributes()->CreateU32Attribute(NL80211_ATTR_REG_INITIATOR, "initiator");
+  msg.attributes()->SetU32AttributeValue(NL80211_ATTR_REG_INITIATOR,
+                                         NL80211_REGDOM_SET_BY_DRIVER);
+
+  // First Regulatory Domain enum enrty.
+  msg.attributes()->SetStringAttributeValue(NL80211_ATTR_REG_ALPHA2, "00");
+  EXPECT_CALL(*metrics(),
+              SendEnumToUMA(Metrics::kMetricRegulatoryDomain,
+                            Metrics::RegulatoryDomain::kRegDom00, _))
+      .Times(1);
+  OnRegChange(msg);
+  // Last Regulatory Domain enum entry. Zimbabwe = 674.
+  msg.attributes()->SetStringAttributeValue(NL80211_ATTR_REG_ALPHA2, "ZW");
+  EXPECT_CALL(*metrics(),
+              SendEnumToUMA(Metrics::kMetricRegulatoryDomain, 674, _))
+      .Times(1);
+  OnRegChange(msg);
+  // Second call with same country code should not trigger SendEnumToUMA() call.
+  OnRegChange(msg);
+  // Lower case valid country code. United States = 540.
+  msg.attributes()->SetStringAttributeValue(NL80211_ATTR_REG_ALPHA2, "us");
+  EXPECT_CALL(*metrics(),
+              SendEnumToUMA(Metrics::kMetricRegulatoryDomain, 540, _))
+      .Times(1);
+  OnRegChange(msg);
+  // Invalid country code.
+  msg.attributes()->SetStringAttributeValue(NL80211_ATTR_REG_ALPHA2, "err");
+  EXPECT_CALL(*metrics(),
+              SendEnumToUMA(Metrics::kMetricRegulatoryDomain,
+                            Metrics::RegulatoryDomain::kCountryCodeInvalid, _))
+      .Times(1);
+  OnRegChange(msg);
+  // Message with no alpha2 attribute.
+  WiphyRegChangeMessage no_alpha2;
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricRegulatoryDomain, _, _))
+      .Times(0);
+  OnRegChange(no_alpha2);
 }
 
 }  // namespace shill

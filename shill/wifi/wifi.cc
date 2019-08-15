@@ -205,7 +205,8 @@ WiFi::WiFi(Manager* manager,
       ScopeLogger::kWiFi,
       Bind(&WiFi::OnWiFiDebugScopeChanged, weak_ptr_factory_.GetWeakPtr()));
   CHECK(netlink_manager_);
-  netlink_handler_ = Bind(&WiFi::OnScanStarted, weak_ptr_factory_.GetWeakPtr());
+  netlink_handler_ =
+      Bind(&WiFi::HandleNetlinkBroadcast, weak_ptr_factory_.GetWeakPtr());
   netlink_manager_->AddBroadcastHandler(netlink_handler_);
   SLOG(this, 2) << "WiFi device " << link_name() << " initialized.";
 }
@@ -1351,16 +1352,26 @@ void WiFi::ParseFeatureFlags(const Nl80211Message& nl80211_message) {
                 << "Supports random MAC: " << random_mac_supported_;
 }
 
-void WiFi::OnScanStarted(const NetlinkMessage& netlink_message) {
-  // We only handle scan triggers in this handler, which is are nl80211 messages
-  // with the NL80211_CMD_TRIGGER_SCAN command.
+void WiFi::HandleNetlinkBroadcast(const NetlinkMessage& netlink_message) {
+  // We only handle nl80211 commands.
   if (netlink_message.message_type() != Nl80211Message::GetMessageType()) {
     SLOG(this, 7) << __func__ << ": "
                   << "Not a NL80211 Message";
     return;
   }
-  const Nl80211Message& scan_trigger_msg =
+  const Nl80211Message& nl80211_msg =
       *reinterpret_cast<const Nl80211Message*>(&netlink_message);
+
+  // Pass nl80211 message to appropriate handler function.
+  if (nl80211_msg.command() == TriggerScanMessage::kCommand) {
+    OnScanStarted(nl80211_msg);
+  } else if (nl80211_msg.command() == WiphyRegChangeMessage::kCommand ||
+             nl80211_msg.command() == RegChangeMessage::kCommand) {
+    OnRegChange(nl80211_msg);
+  }
+}
+
+void WiFi::OnScanStarted(const Nl80211Message& scan_trigger_msg) {
   if (scan_trigger_msg.command() != TriggerScanMessage::kCommand) {
     SLOG(this, 7) << __func__ << ": "
                   << "Not a NL80211_CMD_TRIGGER_SCAN message";
@@ -1387,6 +1398,57 @@ void WiFi::OnScanStarted(const NetlinkMessage& netlink_message) {
     is_active_scan = !ssid_iter.AtEnd();
   }
   wake_on_wifi_->OnScanStarted(is_active_scan);
+}
+
+void WiFi::OnRegChange(const Nl80211Message& nl80211_message) {
+  // Variable to keep track of current regulatory domain to reduce noise in
+  // reported metrics. Only report metric when regulatory domain changes.
+  static int current_reg_dom_val = -1;
+  if (nl80211_message.command() != WiphyRegChangeMessage::kCommand &&
+      nl80211_message.command() != RegChangeMessage::kCommand) {
+    SLOG(this, 3) << __func__ << ": "
+                  << "Not a NL80211_CMD_WIPHY_REG_CHANGE message";
+    return;
+  }
+
+  // Ignore regulatory domain changes initiated by user.
+  uint32_t initiator;
+  if (!nl80211_message.const_attributes()->GetU32AttributeValue(
+          NL80211_ATTR_REG_INITIATOR, &initiator)) {
+    SLOG(this, 3) << "NL80211_CMD_WIPHY_REG_CHANGE had no "
+                  << "NL80211_ATTR_REG_INITIATOR";
+    return;
+  }
+  if (initiator == NL80211_REGDOM_SET_BY_USER) {
+    SLOG(this, 7) << "Ignoring regulatory domain change initiated by user.";
+    return;
+  }
+
+  // Parse NL80211_CMD_WIPHY_REG_CHANGE frame and extract reg. domain value.
+  std::string country_code;
+  if (!nl80211_message.const_attributes()->GetStringAttributeValue(
+          NL80211_ATTR_REG_ALPHA2, &country_code)) {
+    SLOG(this, 3) << "NL80211_CMD_WIPHY_REG_CHANGE had no "
+                  << "NL80211_ATTR_REG_ALPHA2";
+    return;  // If no alpha2 value present, don't log metric.
+  }
+
+  // Get Regulatory Domain value from received country code.
+  int reg_dom_val = Metrics::GetRegulatoryDomainValue(country_code);
+  if (reg_dom_val == Metrics::RegulatoryDomain::kCountryCodeInvalid) {
+    SLOG(this, 3) << "NL80211_CMD_WIPHY_REG_CHANGE had unsupported "
+                  << "NL80211_ATTR_REG_ALPHA2 attribute: " << country_code;
+  } else {
+    SLOG(this, 7) << "Regulatory domain change message received with alpha2 val"
+                  << ": " << std::to_string(reg_dom_val);
+  }
+
+  // Only send to UMA when regulatory domain changes to reduce noise in metrics.
+  if (reg_dom_val != current_reg_dom_val) {
+    current_reg_dom_val = reg_dom_val;
+    metrics()->SendEnumToUMA(Metrics::kMetricRegulatoryDomain, reg_dom_val,
+                             Metrics::RegulatoryDomain::kRegDomMaxValue);
+  }
 }
 
 void WiFi::BSSAddedTask(const RpcIdentifier& path,

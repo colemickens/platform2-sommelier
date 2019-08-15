@@ -566,6 +566,14 @@ class Metrics {
     CHOSEN_FRACTION_WIFI = 4,
   };
 
+  // Corresponds to RegulatoryDomain enum values in
+  // /chromium/src/tools/metrics/histograms/enums.xml.
+  enum RegulatoryDomain {
+    kRegDom00 = 1,
+    kCountryCodeInvalid = 678,
+    kRegDomMaxValue
+  };
+
   static const char kMetricDisconnectSuffix[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -904,6 +912,9 @@ class Metrics {
 
   // Portal detection results.
   static const char kMetricPortalDetectionMultiProbeResult[];
+
+  // Wireless regulatory domain metric.
+  static const char kMetricRegulatoryDomain[];
 
   Metrics();
   virtual ~Metrics();
@@ -1271,6 +1282,12 @@ class Metrics {
   virtual void NotifyPortalDetectionMultiProbeResult(
       const PortalDetector::Result& http_result,
       const PortalDetector::Result& https_result);
+
+  // Calculate Regulatory domain value given two letter country code.
+  // Return value corresponds to Network.Shill.WiFi.RegulatoryDomain histogram
+  // buckets. The full enum can be found in
+  // /chromium/src/tools/metrics/histograms/enums.xml.
+  static int GetRegulatoryDomainValue(std::string country_code);
 
  private:
   friend class MetricsTest;

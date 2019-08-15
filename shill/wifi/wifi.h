@@ -590,9 +590,18 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // feature flags and sets members of this WiFi class appropriately.
   void ParseFeatureFlags(const Nl80211Message& nl80211_message);
 
-  // Callback invoked when the kernel broadcasts a notification that a scan has
+  // Callback invoked when broadcasted netlink messages are received.
+  // Forwards (Wiphy)RegChangeMessages and TriggerScanMessages to their
+  // appropriate handler functions.
+  void HandleNetlinkBroadcast(const NetlinkMessage& netlink_message);
+
+  // Called when the kernel broadcasts a notification that a scan has
   // started.
-  virtual void OnScanStarted(const NetlinkMessage& netlink_message);
+  void OnScanStarted(const Nl80211Message& scan_trigger_msg);
+
+  // Logs Wifi regulatory domain metrics when regulatory domain change nl80211
+  // messages are received.
+  void OnRegChange(const Nl80211Message& nl80211_message);
 
   // Helper function for setting supplicant_interface_proxy_ pointer.
   void SetSupplicantInterfaceProxy(

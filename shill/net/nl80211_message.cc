@@ -299,6 +299,13 @@ const char RegBeaconHintMessage::kCommandString[] =
 const uint8_t RegChangeMessage::kCommand = NL80211_CMD_REG_CHANGE;
 const char RegChangeMessage::kCommandString[] = "NL80211_CMD_REG_CHANGE";
 
+RegChangeMessage::RegChangeMessage()
+    : Nl80211Message(kCommand, kCommandString) {
+  attributes()->CreateAttribute(
+      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                                 NetlinkMessage::MessageContext()));
+}
+
 const uint8_t RemainOnChannelMessage::kCommand = NL80211_CMD_REMAIN_ON_CHANNEL;
 const char RemainOnChannelMessage::kCommandString[] =
     "NL80211_CMD_REMAIN_ON_CHANNEL";
@@ -341,6 +348,13 @@ const char UnprotDisassociateMessage::kCommandString[] =
 const uint8_t WiphyRegChangeMessage::kCommand = NL80211_CMD_WIPHY_REG_CHANGE;
 const char WiphyRegChangeMessage::kCommandString[] =
     "NL80211_CMD_WIPHY_REG_CHANGE";
+
+WiphyRegChangeMessage::WiphyRegChangeMessage()
+    : Nl80211Message(kCommand, kCommandString) {
+  attributes()->CreateAttribute(
+      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                                 NetlinkMessage::MessageContext()));
+}
 
 GetInterfaceMessage::GetInterfaceMessage()
     : Nl80211Message(kCommand, kCommandString) {

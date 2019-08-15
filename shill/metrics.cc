@@ -522,6 +522,10 @@ const char Metrics::kMetricPortalDetectionMultiProbeResult[] =
     "Network.Shill.PortalDetectionMultiProbeResult";
 
 // static
+const char Metrics::kMetricRegulatoryDomain[] =
+    "Network.Shill.WiFi.RegulatoryDomain";
+
+// static
 const char Metrics::kMetricUnreliableLinkSignalStrengthSuffix[] =
     "UnreliableLinkSignalStrength";
 const int Metrics::kMetricServiceSignalStrengthMin = 1;
@@ -1919,6 +1923,25 @@ void Metrics::NotifyPortalDetectionMultiProbeResult(
 
   SendEnumToUMA(kMetricPortalDetectionMultiProbeResult, result_enum,
                 kPortalDetectionMultiProbeResultMax);
+}
+
+// static
+int Metrics::GetRegulatoryDomainValue(std::string country_code) {
+  // Convert country code to upper case before checking validity.
+  country_code = base::ToUpperASCII(country_code);
+
+  // Check if alpha2 attribute is a valid counrty code.
+  // All combinations of 2 uppercase letters + "00" are considered valid.
+  if (country_code == "00") {
+    return kRegDom00;
+  } else if (country_code.length() != 2 || !std::isupper(country_code[0]) ||
+             !std::isupper(country_code[1])) {
+    return kCountryCodeInvalid;
+  } else {
+    // Calculate corresponding country code value for UMA histogram.
+    return ((static_cast<int>(country_code[0]) - static_cast<int>('A')) * 26) +
+           (static_cast<int>(country_code[1]) - static_cast<int>('A') + 2);
+  }
 }
 
 void Metrics::InitializeCommonServiceMetrics(const Service& service) {

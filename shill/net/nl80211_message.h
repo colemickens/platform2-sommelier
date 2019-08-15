@@ -349,7 +349,7 @@ class SHILL_EXPORT RegChangeMessage : public Nl80211Message {
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  RegChangeMessage() : Nl80211Message(kCommand, kCommandString) {}
+  RegChangeMessage();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(RegChangeMessage);
@@ -446,7 +446,7 @@ class SHILL_EXPORT WiphyRegChangeMessage : public Nl80211Message {
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  WiphyRegChangeMessage() : Nl80211Message(kCommand, kCommandString) {}
+  WiphyRegChangeMessage();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(WiphyRegChangeMessage);
