@@ -151,11 +151,6 @@ class U2fHid {
   // Ignores power button presses for 10 seconds.
   void IgnorePowerButton();
 
-  // Checks if |adpu| contains a user physical presence request and if so,
-  // temporarily disable the power button's normal behavior (eg. turning the
-  // screen off).
-  void MaybeIgnorePowerButton(const base::Optional<U2fCommandAdpu>& adpu);
-
   // Executes the action requested by the command contained in the current
   // transaction.
   void ExecuteCmd();
@@ -166,10 +161,6 @@ class U2fHid {
 
   // U2F message handler implementations.
   //////
-
-  // Forwards the U2F ADPU to cr50 as-is. This makes use of deprecated cr50
-  // functionality.
-  int ForwardMsg(std::string* resp);
 
   // Processes the ADPU and builds a response locally, making using of cr50
   // vendor commands where necessary.

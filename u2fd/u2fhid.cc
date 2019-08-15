@@ -65,7 +65,6 @@ constexpr uint32_t kVendorCmdRcNotAllowed = 0x507;
 constexpr uint32_t kVendorCmdRcPasswordRequired = 0x50a;
 
 // UMA Metric names.
-constexpr char kLegacyU2fCommand[] = "Platform.U2F.LegacyCommand";
 constexpr char kU2fCommand[] = "Platform.U2F.Command";
 
 }  // namespace
@@ -324,27 +323,6 @@ void U2fHid::IgnorePowerButton() {
   ignore_button_.Run(kPresenceTimeout.ToInternalValue(), &err, -1);
 }
 
-void U2fHid::MaybeIgnorePowerButton(
-    const base::Optional<U2fCommandAdpu>& adpu) {
-  bool ignore = false;
-
-  // All U2F_REGISTER requests require physical presence.
-  // U2F_AUTHENTICATE requests may require physical presence.
-  if (adpu.has_value()) {
-    if (adpu->Ins() == U2fIns::kU2fRegister) {
-      ignore = true;
-    } else if (adpu->Ins() == U2fIns::kU2fAuthenticate) {
-      base::Optional<U2fAuthenticateRequestAdpu> auth_adpu =
-          U2fAuthenticateRequestAdpu::FromCommandAdpu(*adpu, nullptr);
-      ignore = auth_adpu.has_value() && !auth_adpu->IsAuthenticateCheckOnly();
-    }
-  }
-
-  if (ignore) {
-    IgnorePowerButton();
-  }
-}
-
 void U2fHid::CmdInit(uint32_t cid, const std::string& payload) {
   HidMessage msg(U2fHidCommand::kInit, cid);
 
@@ -440,22 +418,6 @@ int U2fHid::CmdSysInfo(std::string* resp) {
 
 int U2fHid::CmdMsg(std::string* resp) {
   return ProcessMsg(resp);
-}
-
-int U2fHid::ForwardMsg(std::string* resp) {
-  U2fIns ins = U2fIns::kInsInvalid;
-
-  base::Optional<U2fCommandAdpu> adpu =
-      U2fCommandAdpu::ParseFromString(transaction_->payload, nullptr);
-  if (adpu.has_value()) {
-    ins = adpu->Ins();
-  }
-
-  metrics_.SendEnumToUMA(kLegacyU2fCommand, static_cast<int>(ins),
-                         static_cast<int>(U2fIns::kU2fVersion));
-
-  MaybeIgnorePowerButton(adpu);
-  return transmit_apdu_.Run(transaction_->payload, resp);
 }
 
 int U2fHid::ProcessMsg(std::string* resp) {
