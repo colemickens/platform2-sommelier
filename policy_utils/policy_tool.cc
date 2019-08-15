@@ -103,7 +103,7 @@ bool HandleCommandForPolicy(Command cmd,
   Value set_value;
   if (cmd == Command::CMD_SET) {
     set_value = GetValueForSetCommand(policy, args);
-    if (set_value.IsType(Value::Type::NONE)) {
+    if (set_value.type() == Value::Type::NONE) {
       LOG(ERROR) << "No value or invalid value specified";
       return false;
     }
