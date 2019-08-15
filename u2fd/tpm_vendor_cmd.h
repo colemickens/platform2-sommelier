@@ -46,11 +46,6 @@ class TpmVendorCommandProxy : public trunks::TrunksDBusProxy {
   // for the U2F feature and returns it in |sysinfo_out| if it does.
   void GetVendorSysInfo(std::string* sysinfo_out);
 
-  // Sends the VENDOR_CC_U2F_APDU command to the TPM with |req| as the
-  // ISO7816-4:2005 APDU data and writes in |resp| sent back by the TPM.
-  // Returns the TPM response code.
-  uint32_t SendU2fApdu(const std::string& req, std::string* resp_out);
-
   // Sends the VENDOR_CC_U2F_GENERATE command to cr50, and populates
   // resp_out with the reply.
   // Returns the TPM response code, or kVendorRcInvalidResponse if the
@@ -98,6 +93,11 @@ class TpmVendorCommandProxy : public trunks::TrunksDBusProxy {
   uint32_t VendorCommandStruct(uint16_t cc,
                                const Request& input,
                                Response* output);
+
+  // Sends the VENDOR_CC_U2F_APDU command to the TPM with |req| as the
+  // ISO7816-4:2005 APDU data and writes in |resp| sent back by the TPM.
+  // Returns the TPM response code.
+  uint32_t SendU2fApdu(const std::string& req, std::string* resp_out);
 
   // Retrieve and record in the log the individual attestation certificate.
   void LogIndividualCertificate();

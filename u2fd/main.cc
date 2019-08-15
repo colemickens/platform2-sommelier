@@ -224,8 +224,6 @@ class U2fDaemon : public brillo::Daemon {
         std::make_unique<u2f::UHidDevice>(vendor_id_, product_id_, kDeviceName,
                                           "u2fd-tpm-cr50"),
         vendor_sysinfo, u2f_mode_ == U2fMode::kU2fExtended, legacy_kh_fallback_,
-        base::Bind(&u2f::TpmVendorCommandProxy::SendU2fApdu,
-                   base::Unretained(&tpm_proxy_)),
         base::Bind(&u2f::TpmVendorCommandProxy::SendU2fGenerate,
                    base::Unretained(&tpm_proxy_)),
         base::Bind(&u2f::TpmVendorCommandProxy::SendU2fSign,
