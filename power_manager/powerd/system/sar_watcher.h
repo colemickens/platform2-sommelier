@@ -5,14 +5,13 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_SAR_WATCHER_H_
 #define POWER_MANAGER_POWERD_SYSTEM_SAR_WATCHER_H_
 
-#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
 
 #include <base/callback.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
-#include <base/message_loop/message_loop.h>
 #include <base/observer_list.h>
 
 #include "power_manager/common/power_constants.h"
@@ -32,8 +31,7 @@ class UdevInterface;
 // Concrete implementation of UserProximityWatcherInterface: detects proximity
 // sensors and reports proximity events.
 class SarWatcher : public UserProximityWatcherInterface,
-                   public UdevSubsystemObserver,
-                   public base::MessageLoopForIO::Watcher {
+                   public UdevSubsystemObserver {
  public:
   // udev subsystem to watch.
   static const char kIioUdevSubsystem[];
@@ -60,8 +58,7 @@ class SarWatcher : public UserProximityWatcherInterface,
   void OnUdevEvent(const UdevEvent& event) override;
 
   // Watcher implementation:
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override {}
+  void OnFileCanReadWithoutBlocking(int fd);
 
  private:
   struct SensorInfo {
@@ -70,7 +67,7 @@ class SarWatcher : public UserProximityWatcherInterface,
     int event_fd;
     // Bitwise combination of UserProximityObserver::SensorRole values
     uint32_t role;
-    std::unique_ptr<base::MessageLoopForIO::FileDescriptorWatcher> watcher;
+    std::unique_ptr<base::FileDescriptorWatcher::Controller> controller;
   };
 
   // Returns which subsystems the sensor at |path| should provide proximity

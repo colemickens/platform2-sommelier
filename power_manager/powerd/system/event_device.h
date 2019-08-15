@@ -11,16 +11,17 @@
 #include <string>
 #include <vector>
 
+#include <base/callback.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
+#include <base/macros.h>
 #include <base/memory/linked_ptr.h>
-#include <base/message_loop/message_loop.h>
 
 namespace power_manager {
 namespace system {
 
 // Real implementation of EventDeviceInterface.
-class EventDevice : public EventDeviceInterface,
-                    public base::MessageLoopForIO::Watcher {
+class EventDevice : public EventDeviceInterface {
  public:
   EventDevice(int fd, const base::FilePath& path);
   ~EventDevice() override;
@@ -40,10 +41,6 @@ class EventDevice : public EventDeviceInterface,
   bool ReadEvents(std::vector<input_event>* events_out) override;
   void WatchForEvents(base::Closure new_events_cb) override;
 
-  // Implementation of base::MessageLoopForIO::Watcher.
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override;
-
  private:
   // Checks whether bit index |bit| is set in the bitmask returned by
   // EVIOCGBIT(|event_type|).
@@ -55,8 +52,7 @@ class EventDevice : public EventDeviceInterface,
 
   int fd_;
   base::FilePath path_;
-  base::Closure new_events_cb_;
-  std::unique_ptr<base::MessageLoopForIO::FileDescriptorWatcher> fd_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> fd_watcher_;
 
   DISALLOW_COPY_AND_ASSIGN(EventDevice);
 };

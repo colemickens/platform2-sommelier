@@ -10,9 +10,9 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/message_loop/message_loop.h>
 #include <base/observer_list.h>
 
 struct udev;
@@ -96,7 +96,7 @@ class UdevInterface {
 };
 
 // Actual implementation of UdevInterface.
-class Udev : public UdevInterface, public base::MessageLoopForIO::Watcher {
+class Udev : public UdevInterface {
  public:
   Udev();
   ~Udev() override;
@@ -123,9 +123,7 @@ class Udev : public UdevInterface, public base::MessageLoopForIO::Watcher {
   bool GetDevlinks(const std::string& syspath,
                    std::vector<std::string>* out) override;
 
-  // base::MessageLoopForIO::Watcher implementation:
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override;
+  void OnFileCanReadWithoutBlocking();
 
  private:
   void HandleSubsystemEvent(UdevEvent::Action action, struct udev_device* dev);
@@ -179,7 +177,7 @@ class Udev : public UdevInterface, public base::MessageLoopForIO::Watcher {
   std::map<std::string, TaggedDevice> tagged_devices_;
 
   // Controller for watching |udev_monitor_|'s FD for readability.
-  base::MessageLoopForIO::FileDescriptorWatcher watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> controller_;
 
   DISALLOW_COPY_AND_ASSIGN(Udev);
 };

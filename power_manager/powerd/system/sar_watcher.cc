@@ -16,13 +16,10 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/callback.h>
-#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/message_loop/message_loop.h>
-#include <base/posix/eintr_wrapper.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -197,8 +194,6 @@ uint32_t SarWatcher::GetUsableSensorRoles(const std::string& path) {
 
 bool SarWatcher::OnSensorDetected(const std::string& syspath,
                                   const std::string& devlink) {
-  using MLIO = base::MessageLoopForIO;
-
   uint32_t role = GetUsableSensorRoles(devlink);
 
   if (role == UserProximityObserver::SensorRole::SENSOR_ROLE_NONE) {
@@ -217,16 +212,9 @@ bool SarWatcher::OnSensorDetected(const std::string& syspath,
   info.devlink = devlink;
   info.event_fd = event_fd;
   info.role = role;
-  info.watcher = std::make_unique<MLIO::FileDescriptorWatcher>(FROM_HERE);
-
-  const bool is_watching = MLIO::current()->WatchFileDescriptor(
-      event_fd, true, MLIO::WATCH_READ, info.watcher.get(), this);
-  if (!is_watching) {
-    LOG(WARNING) << "Unable to watch event descriptor for file " << devlink;
-    close(event_fd);
-    return false;
-  }
-
+  info.controller = base::FileDescriptorWatcher::WatchReadable(
+      event_fd, base::BindRepeating(&SarWatcher::OnFileCanReadWithoutBlocking,
+                                    base::Unretained(this), event_fd));
   sensors_.emplace(event_fd, std::move(info));
 
   for (auto& observer : observers_) {

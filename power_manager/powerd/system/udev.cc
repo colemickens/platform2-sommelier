@@ -8,7 +8,8 @@
 
 #include <utility>
 
-#include <base/files/file_enumerator.h>
+#include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -66,7 +67,7 @@ struct UdevDeviceDeleter {
 
 };  // namespace
 
-Udev::Udev() : udev_(nullptr), udev_monitor_(nullptr), watcher_(FROM_HERE) {}
+Udev::Udev() : udev_(nullptr), udev_monitor_(nullptr) {}
 
 Udev::~Udev() {
   if (udev_monitor_)
@@ -96,12 +97,9 @@ bool Udev::Init() {
   udev_monitor_enable_receiving(udev_monitor_);
 
   int fd = udev_monitor_get_fd(udev_monitor_);
-  if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
-          fd, true, base::MessageLoopForIO::WATCH_READ, &watcher_, this)) {
-    LOG(ERROR) << "Unable to watch FD " << fd;
-    return false;
-  }
-
+  controller_ = base::FileDescriptorWatcher::WatchReadable(
+      fd, base::BindRepeating(&Udev::OnFileCanReadWithoutBlocking,
+                              base::Unretained(this)));
   LOG(INFO) << "Watching FD " << fd << " for udev events";
 
   EnumerateTaggedDevices();
@@ -369,7 +367,7 @@ bool Udev::GetDevlinks(const std::string& syspath,
   return true;
 }
 
-void Udev::OnFileCanReadWithoutBlocking(int fd) {
+void Udev::OnFileCanReadWithoutBlocking() {
   struct udev_device* dev = udev_monitor_receive_device(udev_monitor_);
   if (!dev)
     return;
@@ -386,10 +384,6 @@ void Udev::OnFileCanReadWithoutBlocking(int fd) {
   HandleTaggedDevice(action, dev);
 
   udev_device_unref(dev);
-}
-
-void Udev::OnFileCanWriteWithoutBlocking(int fd) {
-  NOTREACHED() << "Unexpected non-blocking write notification for FD " << fd;
 }
 
 void Udev::HandleSubsystemEvent(UdevEvent::Action action,

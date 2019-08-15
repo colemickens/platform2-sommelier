@@ -164,23 +164,7 @@ bool EventDevice::ReadEvents(std::vector<input_event>* events_out) {
 }
 
 void EventDevice::WatchForEvents(base::Closure new_events_cb) {
-  fd_watcher_ = std::make_unique<base::MessageLoopForIO::FileDescriptorWatcher>(
-      FROM_HERE);
-  new_events_cb_ = new_events_cb;
-  if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
-          fd_, true, base::MessageLoopForIO::WATCH_READ, fd_watcher_.get(),
-          this)) {
-    LOG(ERROR) << "Unable to watch FD " << fd_;
-  }
-}
-
-void EventDevice::OnFileCanReadWithoutBlocking(int fd) {
-  CHECK(fd == fd_);
-  new_events_cb_.Run();
-}
-
-void EventDevice::OnFileCanWriteWithoutBlocking(int fd) {
-  NOTREACHED() << "Unexpected non-blocking write notification for FD " << fd;
+  fd_watcher_ = base::FileDescriptorWatcher::WatchReadable(fd_, new_events_cb);
 }
 
 EventDeviceFactory::EventDeviceFactory() {}
