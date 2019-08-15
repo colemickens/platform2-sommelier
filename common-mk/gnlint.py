@@ -135,7 +135,8 @@ def CheckFormat(gnfile):
   try:
     gn_path = os.path.join(chromite_root, 'chroot', 'usr', 'bin', 'gn')
     result = cros_build_lib.RunCommand([gn_path, "format", "--dry-run", gnfile],
-                                       error_code_ok=True)
+                                       error_code_ok=True,
+                                       debug_level=logging.DEBUG)
   except cros_build_lib.RunCommandError as e:
     issues.append(LintResult(
         linter, gnfile, "Failed to run gn format: %s" % e, logging.ERROR))
@@ -661,7 +662,7 @@ def CheckGnFile(gnfile):
     command_result = cros_build_lib.RunCommand(
         [gn_path, 'format', '--dump-tree=json', gnfile],
         combine_stdout_stderr=True,
-        redirect_stdout=True)
+        redirect_stdout=True, debug_level=logging.DEBUG)
   except cros_build_lib.RunCommandError as e:
     issues.append(LintResult('gn.input.CheckedEval', gnfile,
                              'Failed to run gn format: %s' % e, logging.ERROR))
