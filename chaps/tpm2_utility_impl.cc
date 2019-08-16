@@ -18,6 +18,7 @@
 #include <base/optional.h>
 #include <base/sha1.h>
 #include <base/stl_util.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
 #include <trunks/background_command_transceiver.h>
@@ -705,12 +706,22 @@ bool TPM2UtilityImpl::Bind(int key_handle,
     return false;
   }
   crypto::ScopedRSA rsa(RSA_new());
-  rsa.get()->n =
-      BN_bin2bn(reinterpret_cast<const unsigned char*>(modulus.data()),
-                modulus.size(), nullptr);
-  rsa.get()->e =
-      BN_bin2bn(reinterpret_cast<const unsigned char*>(exponent.data()),
-                exponent.size(), nullptr);
+  crypto::ScopedBIGNUM n(BN_new()), e(BN_new());
+  if (!rsa || !n || !e) {
+    LOG(ERROR) << "Failed to allocate RSA or BIGNUM.";
+    return false;
+  }
+  if (!BN_bin2bn(reinterpret_cast<const unsigned char*>(modulus.data()),
+                 modulus.size(), n.get()) ||
+      !BN_bin2bn(reinterpret_cast<const unsigned char*>(exponent.data()),
+                 exponent.size(), e.get())) {
+    LOG(ERROR) << "Failed to convert modulus or exponent for RSA.";
+    return false;
+  }
+  if (!RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr)) {
+    LOG(ERROR) << "Failed to set modulus or exponent for RSA.";
+    return false;
+  }
   // RSA encrypt output should be size of the modulus.
   output->resize(modulus.size());
   int rsa_result = RSA_public_encrypt(

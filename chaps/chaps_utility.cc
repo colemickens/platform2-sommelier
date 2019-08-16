@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <brillo/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -622,15 +623,18 @@ bool RunCipherInternal(bool is_encrypt,
   const size_t kAESBlockSizeBytes = 16;
   CHECK(key.size() == kAESKeySizeBytes);
   CHECK(iv.size() == kAESBlockSizeBytes);
-  EVP_CIPHER_CTX cipher_context;
-  EVP_CIPHER_CTX_init(&cipher_context);
-  if (!EVP_CipherInit_ex(&cipher_context, EVP_aes_256_cbc(), NULL, key.data(),
-                         ConvertStringToByteBuffer(iv.data()), is_encrypt)) {
+  crypto::ScopedEVP_CIPHER_CTX cipher_context(EVP_CIPHER_CTX_new());
+  if (!cipher_context) {
+    LOG(ERROR) << "Failed to allocate EVP_CIPHER_CTX: " << GetOpenSSLError();
+    return false;
+  }
+  if (!EVP_CipherInit_ex(cipher_context.get(), EVP_aes_256_cbc(), NULL,
+                         key.data(), ConvertStringToByteBuffer(iv.data()),
+                         is_encrypt)) {
     LOG(ERROR) << "EVP_CipherInit_ex failed: " << GetOpenSSLError();
     return false;
   }
-  EVP_CIPHER_CTX_set_padding(&cipher_context,
-                             1);  // Enables PKCS padding.
+  EVP_CIPHER_CTX_set_padding(cipher_context.get(), 1);  // Enables PKCS padding.
   // Set the buffer size to be large enough to hold all output. For encryption,
   // this will allow space for padding and, for decryption, this will comply
   // with openssl documentation (even though the final output will be no larger
@@ -639,7 +643,7 @@ bool RunCipherInternal(bool is_encrypt,
   int output_length = 0;
   unsigned char* output_bytes = ConvertStringToByteBuffer(output->data());
   unsigned char* input_bytes = ConvertStringToByteBuffer(input.data());
-  if (!EVP_CipherUpdate(&cipher_context, output_bytes,
+  if (!EVP_CipherUpdate(cipher_context.get(), output_bytes,
                         &output_length,  // Will be set to actual output length.
                         input_bytes, input.length())) {
     LOG(ERROR) << "EVP_CipherUpdate failed: " << GetOpenSSLError();
@@ -649,14 +653,13 @@ bool RunCipherInternal(bool is_encrypt,
   // kAESBlockSizeBytes bytes left in the output buffer.
   CHECK(output_length <= static_cast<int>(input.length()));
   int output_length2 = 0;
-  if (!EVP_CipherFinal_ex(&cipher_context, output_bytes + output_length,
+  if (!EVP_CipherFinal_ex(cipher_context.get(), output_bytes + output_length,
                           &output_length2)) {
     LOG(ERROR) << "EVP_CipherFinal_ex failed: " << GetOpenSSLError();
     return false;
   }
   // Adjust the output size to the number of bytes actually written.
   output->resize(output_length + output_length2);
-  EVP_CIPHER_CTX_cleanup(&cipher_context);
   return true;
 }
 
@@ -757,7 +760,7 @@ string GetECParametersAsString(const EC_KEY* key) {
 string GetECPointAsString(const EC_KEY* key) {
   // Convert EC_KEY* to OCT_STRING
   const string oct_string =
-      ConvertOpenSSLObjectToString<EC_KEY, i2o_ECPublicKey>(
+      ConvertOpenSSLObjectToString<EC_KEY, chaps::i2o_ECPublicKey_nc>(
           const_cast<EC_KEY*>(key));
   if (oct_string.empty())
     return string();

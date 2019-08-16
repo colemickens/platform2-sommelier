@@ -23,6 +23,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <brillo/syslog_logging.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
@@ -278,7 +279,7 @@ string ecparameters2bin(EC_KEY* key) {
 string ecpoint2bin(EC_KEY* key) {
   // Convert EC_KEY* to OCT_STRING
   const string oct_string =
-      ConvertOpenSSLObjectToString<EC_KEY, i2o_ECPublicKey>(key);
+      ConvertOpenSSLObjectToString<EC_KEY, chaps::i2o_ECPublicKey_nc>(key);
 
   // Put OCT_STRING to ASN1_OCTET_STRING
   ScopedASN1_OCTET_STRING os(ASN1_OCTET_STRING_new());
@@ -301,14 +302,25 @@ void CreateRSAPrivateKey(CK_SESSION_HANDLE session,
   CK_KEY_TYPE key_type = CKK_RSA;
   CK_BBOOL false_value = CK_FALSE;
   CK_BBOOL true_value = CK_TRUE;
-  string n = bn2bin(rsa->n);
-  string e = bn2bin(rsa->e);
-  string d = bn2bin(rsa->d);
-  string p = bn2bin(rsa->p);
-  string q = bn2bin(rsa->q);
-  string dmp1 = bn2bin(rsa->dmp1);
-  string dmq1 = bn2bin(rsa->dmq1);
-  string iqmp = bn2bin(rsa->iqmp);
+  const BIGNUM* rsa_n;
+  const BIGNUM* rsa_e;
+  const BIGNUM* rsa_d;
+  const BIGNUM* rsa_p;
+  const BIGNUM* rsa_q;
+  const BIGNUM* rsa_dmp1;
+  const BIGNUM* rsa_dmq1;
+  const BIGNUM* rsa_iqmp;
+  RSA_get0_key(rsa, &rsa_n, &rsa_e, &rsa_d);
+  RSA_get0_factors(rsa, &rsa_p, &rsa_q);
+  RSA_get0_crt_params(rsa, &rsa_dmp1, &rsa_dmq1, &rsa_iqmp);
+  string n = bn2bin(rsa_n);
+  string e = bn2bin(rsa_e);
+  string d = bn2bin(rsa_d);
+  string p = bn2bin(rsa_p);
+  string q = bn2bin(rsa_q);
+  string dmp1 = bn2bin(rsa_dmp1);
+  string dmq1 = bn2bin(rsa_dmq1);
+  string iqmp = bn2bin(rsa_iqmp);
 
   CK_ATTRIBUTE private_attributes[] = {
       {CKA_CLASS, &priv_class, sizeof(priv_class)},
@@ -350,8 +362,11 @@ void CreateRSAPublicKey(CK_SESSION_HANDLE session,
   CK_OBJECT_CLASS pub_class = CKO_PUBLIC_KEY;
   CK_KEY_TYPE key_type = CKK_RSA;
   CK_ULONG bits = key_size_bits;
-  string n = bn2bin(rsa->n);
-  string e = bn2bin(rsa->e);
+  const BIGNUM* rsa_n;
+  const BIGNUM* rsa_e;
+  RSA_get0_key(rsa, &rsa_n, &rsa_e, nullptr);
+  string n = bn2bin(rsa_n);
+  string e = bn2bin(rsa_e);
   CK_ATTRIBUTE public_attributes[] = {
       {CKA_CLASS, &pub_class, sizeof(pub_class)},
       {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
@@ -451,9 +466,9 @@ void CreateCertificate(CK_SESSION_HANDLE session,
                        const string& value,
                        const vector<uint8_t>& object_id,
                        X509* cert) {
-  string subject = name2bin(cert->cert_info->subject);
-  string issuer = name2bin(cert->cert_info->issuer);
-  string serial = asn1integer2bin(cert->cert_info->serialNumber);
+  string subject = name2bin(X509_get_subject_name(cert));
+  string issuer = name2bin(X509_get_issuer_name(cert));
+  string serial = asn1integer2bin(X509_get_serialNumber(cert));
   string label = "testing_cert";
   CK_OBJECT_CLASS clazz = CKO_CERTIFICATE;
   CK_CERTIFICATE_TYPE cert_type = CKC_X_509;
@@ -512,20 +527,20 @@ crypto::ScopedRSA ParseRSAPrivateKey(const std::string& object_data) {
   buf = ConvertStringToByteBuffer(object_data.data());
   ScopedPKCS8_PRIV_KEY_INFO p8(
       d2i_PKCS8_PRIV_KEY_INFO(nullptr, &buf, object_data.length()));
+  if (p8 == nullptr)
+    return nullptr;
 
-  if (p8 != nullptr && ASN1_TYPE_get(p8->pkey) == V_ASN1_OCTET_STRING) {
-    // See if we have a RSAPrivateKey in the PKCS#8 structure.
-    buf = p8->pkey->value.octet_string->data;
-    rsa.reset(
-        d2i_RSAPrivateKey(nullptr, &buf, p8->pkey->value.octet_string->length));
-  }
+  crypto::ScopedEVP_PKEY pkey(EVP_PKCS82PKEY(p8.get()));
+  // See if we have a RSAPrivateKey in the PKCS#8 structure.
+  if (pkey == nullptr || EVP_PKEY_base_id(pkey.get()) != EVP_PKEY_RSA)
+    return nullptr;
 
-  if (rsa != nullptr) {
-    LOG(INFO) << "Recognized as PKCS#8 RSA private key";
-    return rsa;
-  }
+  rsa.reset(EVP_PKEY_get0_RSA(pkey.get()));
+  if (rsa == nullptr)
+    return nullptr;
 
-  return nullptr;
+  LOG(INFO) << "Recognized as PKCS#8 RSA private key";
+  return rsa;
 }
 
 crypto::ScopedEC_KEY ParseECCPublicKey(const std::string& object_data) {

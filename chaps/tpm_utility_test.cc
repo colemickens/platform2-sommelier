@@ -12,6 +12,7 @@
 #include <memory>
 
 #include <brillo/secure_blob.h>
+#include <crypto/libcrypto-compat.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <openssl/rand.h>
@@ -76,8 +77,12 @@ class TestTPMUtility : public ::testing::Test {
     crypto::ScopedRSA key(RSA_new());
     CHECK(key);
     EXPECT_TRUE(RSA_generate_key_ex(key.get(), size_, e.get(), nullptr));
-    string n = ConvertFromBIGNUM(key.get()->n);
-    string p = ConvertFromBIGNUM(key.get()->p);
+    const BIGNUM* key_n;
+    const BIGNUM* key_p;
+    RSA_get0_key(key.get(), &key_n, nullptr, nullptr);
+    RSA_get0_factors(key.get(), &key_p, nullptr);
+    string n = ConvertFromBIGNUM(key_n);
+    string p = ConvertFromBIGNUM(key_p);
     bool result = tpm_->WrapRSAKey(0, e_, n, p, auth_, &blob_, &key_);
     return result;
   }

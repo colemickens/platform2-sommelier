@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -979,14 +980,25 @@ TEST_F(TestSession, ImportRSAWithTPM) {
   CK_BBOOL true_value = CK_TRUE;
   string id = "test_id";
   string label = "test_label";
-  string n = bn2bin(rsa.get()->n);
-  string e = bn2bin(rsa.get()->e);
-  string d = bn2bin(rsa.get()->d);
-  string p = bn2bin(rsa.get()->p);
-  string q = bn2bin(rsa.get()->q);
-  string dmp1 = bn2bin(rsa.get()->dmp1);
-  string dmq1 = bn2bin(rsa.get()->dmq1);
-  string iqmp = bn2bin(rsa.get()->iqmp);
+  const BIGNUM* rsa_n;
+  const BIGNUM* rsa_e;
+  const BIGNUM* rsa_d;
+  const BIGNUM* rsa_p;
+  const BIGNUM* rsa_q;
+  const BIGNUM* rsa_dmp1;
+  const BIGNUM* rsa_dmq1;
+  const BIGNUM* rsa_iqmp;
+  RSA_get0_key(rsa.get(), &rsa_n, &rsa_e, &rsa_d);
+  RSA_get0_factors(rsa.get(), &rsa_p, &rsa_q);
+  RSA_get0_crt_params(rsa.get(), &rsa_dmp1, &rsa_dmq1, &rsa_iqmp);
+  string n = bn2bin(rsa_n);
+  string e = bn2bin(rsa_e);
+  string d = bn2bin(rsa_d);
+  string p = bn2bin(rsa_p);
+  string q = bn2bin(rsa_q);
+  string dmp1 = bn2bin(rsa_dmp1);
+  string dmq1 = bn2bin(rsa_dmq1);
+  string iqmp = bn2bin(rsa_iqmp);
 
   CK_ATTRIBUTE private_attributes[] = {
       {CKA_CLASS, &priv_class, sizeof(priv_class)},
@@ -1039,14 +1051,25 @@ TEST_F(TestSession, ImportRSAWithNoTPM) {
   CK_BBOOL true_value = CK_TRUE;
   string id = "test_id";
   string label = "test_label";
-  string n = bn2bin(rsa.get()->n);
-  string e = bn2bin(rsa.get()->e);
-  string d = bn2bin(rsa.get()->d);
-  string p = bn2bin(rsa.get()->p);
-  string q = bn2bin(rsa.get()->q);
-  string dmp1 = bn2bin(rsa.get()->dmp1);
-  string dmq1 = bn2bin(rsa.get()->dmq1);
-  string iqmp = bn2bin(rsa.get()->iqmp);
+  const BIGNUM* rsa_n;
+  const BIGNUM* rsa_e;
+  const BIGNUM* rsa_d;
+  const BIGNUM* rsa_p;
+  const BIGNUM* rsa_q;
+  const BIGNUM* rsa_dmp1;
+  const BIGNUM* rsa_dmq1;
+  const BIGNUM* rsa_iqmp;
+  RSA_get0_key(rsa.get(), &rsa_n, &rsa_e, &rsa_d);
+  RSA_get0_factors(rsa.get(), &rsa_p, &rsa_q);
+  RSA_get0_crt_params(rsa.get(), &rsa_dmp1, &rsa_dmq1, &rsa_iqmp);
+  string n = bn2bin(rsa_n);
+  string e = bn2bin(rsa_e);
+  string d = bn2bin(rsa_d);
+  string p = bn2bin(rsa_p);
+  string q = bn2bin(rsa_q);
+  string dmp1 = bn2bin(rsa_dmp1);
+  string dmq1 = bn2bin(rsa_dmq1);
+  string iqmp = bn2bin(rsa_iqmp);
 
   CK_ATTRIBUTE private_attributes[] = {
       {CKA_CLASS, &priv_class, sizeof(priv_class)},

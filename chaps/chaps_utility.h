@@ -328,6 +328,13 @@ std::string GetECPointAsString(const EC_KEY* key);
 // with DER-encoded OpenSSL ECParameters)
 crypto::ScopedEC_KEY CreateECCKeyFromEC_PARAMS(const std::string& ec_params);
 
+// In OpenSSL 1.1, i2o_ECPublicKey now takes a const EC_KEY *, which breaks
+// the function signature expectation of ConvertOpenSSLObjectToString, so
+// wrap it with a helper that still takes a non-const pointer.
+static inline int i2o_ECPublicKey_nc(EC_KEY* key, unsigned char** buf) {
+  return i2o_ECPublicKey(key, buf);
+}
+
 }  // namespace chaps
 
 #endif  // CHAPS_CHAPS_UTILITY_H_

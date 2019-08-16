@@ -13,6 +13,7 @@
 
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/bio.h>
 #include <openssl/des.h>
@@ -406,18 +407,21 @@ crypto::ScopedRSA CreateRSAKeyFromObject(const chaps::Object* key_object) {
       LOG(ERROR) << "Failed to convert modulus or exponent for key.";
       return nullptr;
     }
-    rsa->n = rsa_n.release();
-    rsa->e = rsa_e.release();
+    if (!RSA_set0_key(rsa.get(), rsa_n.release(), rsa_e.release(), nullptr)) {
+      LOG(ERROR) << "Failed to set modulus or exponent for RSA.";
+      return nullptr;
+    }
   } else {  // key_object->GetObjectClass() == CKO_PRIVATE_KEY
-    crypto::ScopedBIGNUM rsa_n(BN_new()), rsa_d(BN_new()), rsa_p(BN_new()),
-        rsa_q(BN_new()), rsa_dmp1(BN_new()), rsa_dmq1(BN_new()),
-        rsa_iqmp(BN_new());
-    if (!rsa_n || !rsa_d || !rsa_p || !rsa_q || !rsa_dmp1 || !rsa_dmq1 ||
-        !rsa_iqmp) {
+    crypto::ScopedBIGNUM rsa_n(BN_new()), rsa_e(BN_new()), rsa_d(BN_new()),
+        rsa_p(BN_new()), rsa_q(BN_new()), rsa_dmp1(BN_new()),
+        rsa_dmq1(BN_new()), rsa_iqmp(BN_new());
+    if (!rsa_n || !rsa_e || !rsa_d || !rsa_p || !rsa_q || !rsa_dmp1 ||
+        !rsa_dmq1 || !rsa_iqmp) {
       LOG(ERROR) << "Failed to allocate BIGNUM for private key.";
       return nullptr;
     }
     string n = key_object->GetAttributeString(CKA_MODULUS);
+    string e = key_object->GetAttributeString(CKA_PUBLIC_EXPONENT);
     string d = key_object->GetAttributeString(CKA_PRIVATE_EXPONENT);
     string p = key_object->GetAttributeString(CKA_PRIME_1);
     string q = key_object->GetAttributeString(CKA_PRIME_2);
@@ -425,6 +429,7 @@ crypto::ScopedRSA CreateRSAKeyFromObject(const chaps::Object* key_object) {
     string dmq1 = key_object->GetAttributeString(CKA_EXPONENT_2);
     string iqmp = key_object->GetAttributeString(CKA_COEFFICIENT);
     if (!chaps::ConvertToBIGNUM(n, rsa_n.get()) ||
+        !chaps::ConvertToBIGNUM(e, rsa_e.get()) ||
         !chaps::ConvertToBIGNUM(d, rsa_d.get()) ||
         !chaps::ConvertToBIGNUM(p, rsa_p.get()) ||
         !chaps::ConvertToBIGNUM(q, rsa_q.get()) ||
@@ -434,13 +439,14 @@ crypto::ScopedRSA CreateRSAKeyFromObject(const chaps::Object* key_object) {
       LOG(ERROR) << "Failed to convert parameters for private key.";
       return nullptr;
     }
-    rsa->n = rsa_n.release();
-    rsa->d = rsa_d.release();
-    rsa->p = rsa_p.release();
-    rsa->q = rsa_q.release();
-    rsa->dmp1 = rsa_dmp1.release();
-    rsa->dmq1 = rsa_dmq1.release();
-    rsa->iqmp = rsa_iqmp.release();
+    if (!RSA_set0_key(rsa.get(), rsa_n.release(), rsa_e.release(),
+                      rsa_d.release()) ||
+        !RSA_set0_factors(rsa.get(), rsa_p.release(), rsa_q.release()) ||
+        !RSA_set0_crt_params(rsa.get(), rsa_dmp1.release(), rsa_dmq1.release(),
+                             rsa_iqmp.release())) {
+      LOG(ERROR) << "Failed to set parameters for private key RSA.";
+      return nullptr;
+    }
   }
   return rsa;
 }
@@ -679,12 +685,16 @@ CK_RV SessionImpl::OperationInit(OperationType operation,
     const EVP_MD* digest = GetOpenSSLDigest(mechanism);
     if (IsHMAC(mechanism)) {
       string key_material = key->GetAttributeString(CKA_VALUE);
-      HMAC_CTX_init(&context->hmac_context_);
-      HMAC_Init_ex(&context->hmac_context_, key_material.data(),
+      context->hmac_context_.reset(HMAC_CTX_new());
+      if (!context->hmac_context_) {
+        LOG(ERROR) << "Failed to allocate HMAC context";
+        return CKR_FUNCTION_FAILED;
+      }
+      HMAC_Init_ex(context->hmac_context_.get(), key_material.data(),
                    key_material.length(), digest, nullptr);
       context->is_hmac_ = true;
     } else if (digest) {
-      context->digest_context_.reset(EVP_MD_CTX_create());
+      context->digest_context_.reset(EVP_MD_CTX_new());
       if (!context->digest_context_) {
         LOG(ERROR) << "Failed to allocate EVP_MD context";
         return CKR_FUNCTION_FAILED;
@@ -737,7 +747,7 @@ CK_RV SessionImpl::OperationUpdateInternal(OperationType operation,
     EVP_DigestUpdate(context->digest_context_.get(), data_in.data(),
                      data_in.length());
   } else if (context->is_hmac_) {
-    HMAC_Update(&context->hmac_context_,
+    HMAC_Update(context->hmac_context_.get(),
                 ConvertStringToByteBuffer(data_in.c_str()), data_in.length());
   } else {
     // We don't need to process now; just queue the data.
@@ -801,8 +811,7 @@ CK_RV SessionImpl::OperationFinalInternal(OperationType operation,
     } else if (context->is_hmac_) {
       unsigned char buffer[kMaxDigestOutputBytes];
       unsigned int out_length = 0;
-      HMAC_Final(&context->hmac_context_, buffer, &out_length);
-      HMAC_CTX_cleanup(&context->hmac_context_);
+      HMAC_Final(context->hmac_context_.get(), buffer, &out_length);
       context->data_ = string(reinterpret_cast<char*>(buffer), out_length);
     }
 
@@ -1115,15 +1124,20 @@ CK_RV SessionImpl::CipherInit(bool is_encrypt,
 
   OperationType operation = is_encrypt ? kEncrypt : kDecrypt;
   OperationContext* context = &operation_context_[operation];
-  EVP_CIPHER_CTX_init(&context->cipher_context_);
-  if (!EVP_CipherInit_ex(&context->cipher_context_, cipher_type, nullptr,
+  context->cipher_context_.reset(EVP_CIPHER_CTX_new());
+  if (!context->cipher_context_) {
+    LOG(ERROR) << "Failed to allocate EVP_CIPHER context";
+    return CKR_FUNCTION_FAILED;
+  }
+
+  if (!EVP_CipherInit_ex(context->cipher_context_.get(), cipher_type, nullptr,
                          ConvertStringToByteBuffer(key_material.c_str()),
                          ConvertStringToByteBuffer(mechanism_parameter.c_str()),
                          is_encrypt)) {
     LOG(ERROR) << "EVP_CipherInit failed: " << GetOpenSSLError();
     return CKR_FUNCTION_FAILED;
   }
-  EVP_CIPHER_CTX_set_padding(&context->cipher_context_,
+  EVP_CIPHER_CTX_set_padding(context->cipher_context_.get(),
                              IsPaddingEnabled(mechanism));
   context->is_valid_ = true;
   context->is_cipher_ = true;
@@ -1142,10 +1156,9 @@ CK_RV SessionImpl::CipherUpdate(OperationContext* context,
     int out_length = in_length + kMaxCipherBlockBytes;
     context->data_.resize(out_length);
     if (!EVP_CipherUpdate(
-            &context->cipher_context_,
+            context->cipher_context_.get(),
             ConvertStringToByteBuffer(context->data_.c_str()), &out_length,
             ConvertStringToByteBuffer(data_in.c_str()), in_length)) {
-      EVP_CIPHER_CTX_cleanup(&context->cipher_context_);
       context->is_valid_ = false;
       LOG(ERROR) << "EVP_CipherUpdate failed: " << GetOpenSSLError();
       return CKR_FUNCTION_FAILED;
@@ -1159,14 +1172,12 @@ CK_RV SessionImpl::CipherFinal(OperationContext* context) {
   if (context->data_.empty()) {
     int out_length = kMaxCipherBlockBytes * 2;
     context->data_.resize(out_length);
-    if (!EVP_CipherFinal_ex(&context->cipher_context_,
+    if (!EVP_CipherFinal_ex(context->cipher_context_.get(),
                             ConvertStringToByteBuffer(context->data_.c_str()),
                             &out_length)) {
       LOG(ERROR) << "EVP_CipherFinal failed: " << GetOpenSSLError();
-      EVP_CIPHER_CTX_cleanup(&context->cipher_context_);
       return CKR_FUNCTION_FAILED;
     }
-    EVP_CIPHER_CTX_cleanup(&context->cipher_context_);
     context->data_.resize(out_length);
   }
   return CKR_OK;
@@ -1280,19 +1291,28 @@ bool SessionImpl::GenerateRSAKeyPairSoftware(int modulus_bits,
     LOG(ERROR) << "Failed to convert exponent to BIGNUM.";
     return false;
   }
-
   if (!RSA_generate_key_ex(key.get(), modulus_bits, e.get(), nullptr)) {
     LOG(ERROR) << "Failed to generate key pair.";
     return false;
   }
 
-  string n = ConvertFromBIGNUM(key->n);
-  string d = ConvertFromBIGNUM(key->d);
-  string p = ConvertFromBIGNUM(key->p);
-  string q = ConvertFromBIGNUM(key->q);
-  string dmp1 = ConvertFromBIGNUM(key->dmp1);
-  string dmq1 = ConvertFromBIGNUM(key->dmq1);
-  string iqmp = ConvertFromBIGNUM(key->iqmp);
+  const BIGNUM* key_n;
+  const BIGNUM* key_d;
+  const BIGNUM* key_p;
+  const BIGNUM* key_q;
+  const BIGNUM* key_dmp1;
+  const BIGNUM* key_dmq1;
+  const BIGNUM* key_iqmp;
+  RSA_get0_key(key.get(), &key_n, nullptr, &key_d);
+  RSA_get0_factors(key.get(), &key_p, &key_q);
+  RSA_get0_crt_params(key.get(), &key_dmp1, &key_dmq1, &key_iqmp);
+  string n = ConvertFromBIGNUM(key_n);
+  string d = ConvertFromBIGNUM(key_d);
+  string p = ConvertFromBIGNUM(key_p);
+  string q = ConvertFromBIGNUM(key_q);
+  string dmp1 = ConvertFromBIGNUM(key_dmp1);
+  string dmq1 = ConvertFromBIGNUM(key_dmq1);
+  string iqmp = ConvertFromBIGNUM(key_iqmp);
   public_object->SetAttributeString(CKA_MODULUS, n);
   private_object->SetAttributeString(CKA_MODULUS, n);
   private_object->SetAttributeString(CKA_PRIVATE_EXPONENT, d);
@@ -1700,8 +1720,11 @@ bool SessionImpl::ECCSignSoftware(const std::string& input,
     LOG(ERROR) << __func__ << ": Get the group order fail.";
     return false;
   }
-  *signature = ConvertFromBIGNUM(sig->r, max_length) +
-               ConvertFromBIGNUM(sig->s, max_length);
+  const BIGNUM* r;
+  const BIGNUM* s;
+  ECDSA_SIG_get0(sig.get(), &r, &s);
+  *signature =
+      ConvertFromBIGNUM(r, max_length) + ConvertFromBIGNUM(s, max_length);
 
   return true;
 }
@@ -1732,15 +1755,10 @@ CK_RV SessionImpl::ECCVerify(OperationContext* context,
     LOG(ERROR) << "Failed to convert BIGNUM for ECDSA_SIG.";
     return CKR_FUNCTION_FAILED;
   }
-
-  // ECDSA_SIG_new populates ECDSA_SIG with two newly allocated BIGNUMs. We need
-  // to free them before replacing them with new ones created by
-  // ConvertToBIGNUM.
-  // TODO(menghuan): use ECDSA_SIG_set0() after upgrading to OpenSSL 1.1.0
-  BN_free(sig->r);
-  BN_free(sig->s);
-  sig->r = r.release();
-  sig->s = s.release();
+  if (!ECDSA_SIG_set0(sig.get(), r.release(), s.release())) {
+    LOG(ERROR) << "Failed to set ECDSA_SIG parameters.";
+    return CKR_FUNCTION_FAILED;
+  }
 
   // 1 for a valid signature, 0 for an invalid signature and -1 on error.
   int result = ECDSA_do_verify(ConvertStringToByteBuffer(signed_data.data()),
@@ -1879,14 +1897,9 @@ SessionImpl::OperationContext::~OperationContext() {
 }
 
 void SessionImpl::OperationContext::Clear() {
-  if (is_valid_ && !is_finished_) {
-    if (is_cipher_) {
-      EVP_CIPHER_CTX_cleanup(&cipher_context_);
-    } else if (is_hmac_) {
-      HMAC_CTX_cleanup(&hmac_context_);
-    }
-  }
+  cipher_context_.reset();
   digest_context_.reset();
+  hmac_context_.reset();
   is_valid_ = false;
   is_cipher_ = false;
   is_digest_ = false;
