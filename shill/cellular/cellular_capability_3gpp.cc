@@ -63,10 +63,12 @@ const char CellularCapability3gpp::kOperatorShortProperty[] = "operator-short";
 const char CellularCapability3gpp::kOperatorCodeProperty[] = "operator-code";
 const char CellularCapability3gpp::kOperatorAccessTechnologyProperty[] =
     "access-technology";
-const char CellularCapability3gpp::kTelitMMPlugin[] = "Telit";
 const int CellularCapability3gpp::kSetPowerStateTimeoutMilliseconds = 20000;
 
 namespace {
+
+// Plugin strings via ModemManager.
+const char kTelitMMPlugin[] = "Telit";
 
 // This identifier is specified in the serviceproviders.prototxt file.
 const char kVzwIdentifier[] = "c83d6597-dc91-4d48-a3a7-d86b80123751";

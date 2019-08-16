@@ -148,9 +148,6 @@ class CellularCapability3gpp : public CellularCapability {
   static const char kOperatorCodeProperty[];
   static const char kOperatorAccessTechnologyProperty[];
 
-  // Plugin strings via ModemManager.
-  static const char kTelitMMPlugin[];
-
   static const int64_t kEnterPinTimeoutMilliseconds;
   static const int64_t kRegistrationDroppedUpdateTimeoutMilliseconds;
   static const int kSetPowerStateTimeoutMilliseconds;
