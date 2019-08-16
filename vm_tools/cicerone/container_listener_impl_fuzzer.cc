@@ -142,6 +142,15 @@ DEFINE_PROTO_FUZZER(
 
   for (const vm_tools::container::ContainerListenerFuzzerSingleAction& action :
        input.action()) {
+    // Setting up the mocks for an action is relatively expensive, and the proto
+    // fuzzer tends to create a great many empty actions, so we can save a lot
+    // of time by skipping over those actions here.
+    if (action.input_case() ==
+        vm_tools::container::ContainerListenerFuzzerSingleAction::
+            INPUT_NOT_SET) {
+      continue;
+    }
+
     ContainerListenerImpl* container_listener =
         test_framework.get_service().GetContainerListenerImpl();
     container_listener->OverridePeerAddressForTesting(action.peer_address());
@@ -264,10 +273,6 @@ DEFINE_PROTO_FUZZER(
         tremplin_listener->ContainerShutdown(
             &context, &action.tremplin_container_shutdown_info(),
             &tremplin_response);
-        break;
-
-      case vm_tools::container::ContainerListenerFuzzerSingleAction::
-          INPUT_NOT_SET:
         break;
 
       default:
