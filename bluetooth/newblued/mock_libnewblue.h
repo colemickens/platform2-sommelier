@@ -36,6 +36,14 @@ class MockLibNewblue : public LibNewblue {
                        const struct uuid*,
                        uniq_t,
                        gattCliUtilSvcTraversedCbk));
+  MOCK_METHOD7(GattClientRead,
+               uint8_t(void*,
+                       gatt_client_conn_t,
+                       uint16_t,
+                       uint8_t,
+                       uint16_t,
+                       uniq_t,
+                       gattCliReadCbk));
 
   // gatt-builtin.h
   MOCK_METHOD0(GattBuiltinInit, bool());
