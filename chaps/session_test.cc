@@ -967,7 +967,12 @@ TEST_F(TestSession, ImportRSAWithTPM) {
   EXPECT_CALL(tpm_, MaxRSAKeyBits()).WillRepeatedly(Return(2048));
   EXPECT_CALL(tpm_, WrapRSAKey(_, _, _, _, _, _, _)).WillOnce(Return(true));
 
-  crypto::ScopedRSA rsa(RSA_generate_key(2048, 0x10001, NULL, NULL));
+  crypto::ScopedBIGNUM exponent(BN_new());
+  CHECK(exponent);
+  EXPECT_TRUE(BN_set_word(exponent.get(), 0x10001));
+  crypto::ScopedRSA rsa(RSA_new());
+  CHECK(rsa);
+  EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, exponent.get(), nullptr));
   CK_OBJECT_CLASS priv_class = CKO_PRIVATE_KEY;
   CK_KEY_TYPE key_type = CKK_RSA;
   CK_BBOOL false_value = CK_FALSE;
@@ -1022,7 +1027,12 @@ TEST_F(TestSession, ImportRSAWithTPM) {
 TEST_F(TestSession, ImportRSAWithNoTPM) {
   EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
 
-  crypto::ScopedRSA rsa(RSA_generate_key(2048, 0x10001, NULL, NULL));
+  crypto::ScopedBIGNUM exponent(BN_new());
+  CHECK(exponent);
+  EXPECT_TRUE(BN_set_word(exponent.get(), 0x10001));
+  crypto::ScopedRSA rsa(RSA_new());
+  CHECK(rsa);
+  EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, exponent.get(), nullptr));
   CK_OBJECT_CLASS priv_class = CKO_PRIVATE_KEY;
   CK_KEY_TYPE key_type = CKK_RSA;
   CK_BBOOL false_value = CK_FALSE;

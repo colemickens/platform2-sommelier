@@ -1232,12 +1232,21 @@ bool SessionImpl::GenerateRSAKeyPairSoftware(int modulus_bits,
   if (public_exponent.length() > sizeof(uint32_t) || public_exponent.empty())
     return false;
   crypto::ScopedBIGNUM e(ConvertToBIGNUM(public_exponent));
-  if (e == nullptr)
+  if (!e) {
+    LOG(ERROR) << "Failed to allocate public exponent.";
     return false;
-  crypto::ScopedRSA key(
-      RSA_generate_key(modulus_bits, BN_get_word(e.get()), nullptr, nullptr));
-  if (key == nullptr)
+  }
+  crypto::ScopedRSA key(RSA_new());
+  if (!key) {
+    LOG(ERROR) << "Failed to allocate public exponent.";
     return false;
+  }
+
+  if (!RSA_generate_key_ex(key.get(), modulus_bits, e.get(), nullptr)) {
+    LOG(ERROR) << "Failed to generate key pair.";
+    return false;
+  }
+
   string n = ConvertFromBIGNUM(key->n);
   string d = ConvertFromBIGNUM(key->d);
   string p = ConvertFromBIGNUM(key->p);

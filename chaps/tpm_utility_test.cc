@@ -71,8 +71,10 @@ class TestTPMUtility : public ::testing::Test {
 
   bool InjectKey() {
     crypto::ScopedBIGNUM e(ConvertToBIGNUM(e_));
-    crypto::ScopedRSA key(
-        RSA_generate_key(size_, BN_get_word(e.get()), NULL, NULL));
+    CHECK(e);
+    crypto::ScopedRSA key(RSA_new());
+    CHECK(key);
+    EXPECT_TRUE(RSA_generate_key_ex(key.get(), size_, e.get(), nullptr));
     string n = ConvertFromBIGNUM(key.get()->n);
     string p = ConvertFromBIGNUM(key.get()->p);
     bool result = tpm_->WrapRSAKey(0, e_, n, p, auth_, &blob_, &key_);

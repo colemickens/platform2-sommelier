@@ -652,8 +652,14 @@ void ReadInObject(CK_SESSION_HANDLE session,
 void InjectRSAKeyPair(CK_SESSION_HANDLE session,
                       int key_size_bits,
                       const string& label) {
-  crypto::ScopedRSA rsa(RSA_generate_key(key_size_bits, 0x10001, NULL, NULL));
-  if (!rsa) {
+  crypto::ScopedRSA rsa(RSA_new());
+  crypto::ScopedBIGNUM e(BN_new());
+  if (!rsa || !e) {
+    LOG(ERROR) << "Failed to allocate RSA or exponent for key pair.";
+    exit(-1);
+  }
+  if (!BN_set_word(e.get(), 0x10001) ||
+      !RSA_generate_key_ex(rsa.get(), key_size_bits, e.get(), nullptr)) {
     LOG(ERROR) << "Failed to locally generate key pair.";
     exit(-1);
   }
