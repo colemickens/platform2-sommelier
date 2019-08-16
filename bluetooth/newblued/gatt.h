@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
@@ -21,9 +22,40 @@
 
 namespace bluetooth {
 
+// Error codes for GATT client operations based on AttError code.
+enum class GattClientOperationError : uint8_t {
+  NONE,
+  READ_NOT_ALLOWED,
+  WRITE_NOT_ALLOWED,
+  INSUFF_AUTHN,
+  NOT_SUPPORTED,
+  INSUFF_AUTHZ,
+  INVALID_OFFSET,
+  INSUFF_ENCR_KEY_SIZE,
+  INVALUD_ATTR_VALUE_LENGTH,
+  INSUFF_ENC,
+  OTHER,
+};
+
+enum class GattClientRequestType : uint8_t {
+  NONE,
+  READ_CHARACTERISTIC_VALUE,
+};
+
 // The core implementation of GATT profile.
 class Gatt final : public DeviceInterfaceHandler::DeviceObserver {
  public:
+  // Called when GATT client read characteristic value is done. Empty |value|
+  // and |error| other than GattClientOperationError::NONE both indicate
+  // failure.
+  using ReadCharacteristicValueCallback =
+      base::Callback<void(UniqueId transaction_id,
+                          const std::string& device_address,
+                          uint16_t service_handle,
+                          uint16_t char_handle,
+                          GattClientOperationError error,
+                          const std::vector<uint8_t>& value)>;
+
   // Interface for observing GATT events.
   class GattObserver {
    public:
@@ -45,6 +77,16 @@ class Gatt final : public DeviceInterfaceHandler::DeviceObserver {
   void AddGattObserver(GattObserver* observer);
   void RemoveGattObserver(GattObserver* observer);
 
+  // Reads the value associated with a GATT client characteristic. |offset|
+  // indicates the starting point of reading, e.g. given |offset| 2, the return
+  // of reading from value {0x00, 0x01, 0x02, 0x03} will be {0x02, 0x03}. This
+  // returns a valid UniqueId to indicate that the read is ongoing.
+  UniqueId ReadCharacteristicValue(const std::string& device_address,
+                                   uint16_t service_handle,
+                                   uint16_t char_handle,
+                                   uint16_t offset,
+                                   ReadCharacteristicValueCallback callback);
+
   // Overrides of DeviceInterfaceHandler::DeviceObserver.
   void OnGattConnected(const std::string& device_address,
                        gatt_client_conn_t conn_id) override;
@@ -52,9 +94,13 @@ class Gatt final : public DeviceInterfaceHandler::DeviceObserver {
                           gatt_client_conn_t conn_id) override;
 
  private:
+  // Represents the mapping between a request and an GATT operation. Extra
+  // information are kept here to perform async callback.
   struct ClientOperation {
-    GattClientOperationType type;
+    GattClientOperationType operation_type;
+    GattClientRequestType request_type;
     gatt_client_conn_t conn_id;
+    ReadCharacteristicValueCallback read_char_value_callback;
   };
 
   // Traverses all primary services to retrieve complete structure of remote
@@ -77,6 +123,30 @@ class Gatt final : public DeviceInterfaceHandler::DeviceObserver {
                                       UniqueId transaction_id,
                                       std::unique_ptr<GattService> service);
 
+  // Called when GATT client read value operation is done. Note that
+  // |service_handle|, |char_handle| and |desc_handle| are attached to the
+  // callback in advance as extra inforamtion when the callback is invoked.
+  void OnGattClientReadValue(uint16_t service_handle,
+                             uint16_t char_handle,
+                             uint16_t desc_handle,
+                             gatt_client_conn_t conn_id,
+                             UniqueId transaction_id,
+                             uint16_t value_handle,
+                             GattClientOperationStatus status,
+                             AttError error,
+                             const std::vector<uint8_t>& value);
+
+  // Called by OnGattClientReadValue() to report the result of reading
+  // characteristic value.
+  void OnGattClientReadCharacteristicValue(UniqueId transaction_id,
+                                           const std::string& device_address,
+                                           uint16_t service_handle,
+                                           uint16_t char_handle,
+                                           uint16_t char_value_handle,
+                                           GattClientOperationStatus status,
+                                           AttError error,
+                                           const std::vector<uint8_t>& value);
+
   Newblue* newblue_;
 
   // TODO(mcchou): Once the refactoring of internal API layer is done, the
@@ -89,6 +159,8 @@ class Gatt final : public DeviceInterfaceHandler::DeviceObserver {
   std::map<std::string, std::map<uint16_t, std::unique_ptr<GattService>>>
       remote_services_;
 
+  // Contains pairs of <unique ID, GATT operation> to store the ongoing GATT
+  // request and its corresponding GATT client operation.
   std::map<UniqueId, ClientOperation> transactions_;
 
   base::ObserverList<GattObserver> observers_;

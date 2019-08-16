@@ -25,6 +25,34 @@ bool IsHiddenGattService(const GattService& service) {
   return false;
 }
 
+// Converts AttError to CattClientOperationError based on BlueZ.
+GattClientOperationError ConvertToClientOperationError(AttError error) {
+  switch (error) {
+    case AttError::NONE:
+      return GattClientOperationError::NONE;
+    case AttError::READ_NOT_ALLOWED:
+      return GattClientOperationError::READ_NOT_ALLOWED;
+    case AttError::WRITE_NOT_ALLOWED:
+      return GattClientOperationError::WRITE_NOT_ALLOWED;
+    case AttError::INSUFF_AUTHN:
+      return GattClientOperationError::INSUFF_AUTHN;
+    case AttError::REQ_NOT_SUPPORTED:
+      return GattClientOperationError::NOT_SUPPORTED;
+    case AttError::INSUFF_AUTHZ:
+      return GattClientOperationError::INSUFF_AUTHZ;
+    case AttError::INVALID_OFFSET:
+      return GattClientOperationError::INVALID_OFFSET;
+    case AttError::INSUFF_ENCR_KEY_SIZE:
+      return GattClientOperationError::INSUFF_ENCR_KEY_SIZE;
+    case AttError::INVALID_ATTR_VALUE_LENGTH:
+      return GattClientOperationError::INVALUD_ATTR_VALUE_LENGTH;
+    case AttError::INSUFF_ENCR:
+      return GattClientOperationError::INSUFF_ENC;
+    default:  // This covers unknown AttError and the rest of AttError.
+      return GattClientOperationError::OTHER;
+  }
+}
+
 }  // namespace
 
 Gatt::Gatt(Newblue* newblue, DeviceInterfaceHandler* device_interface_handler)
@@ -52,6 +80,77 @@ void Gatt::RemoveGattObserver(GattObserver* observer) {
   observers_.RemoveObserver(observer);
 }
 
+UniqueId Gatt::ReadCharacteristicValue(
+    const std::string& device_address,
+    uint16_t service_handle,
+    uint16_t char_handle,
+    uint16_t offset,
+    ReadCharacteristicValueCallback callback) {
+  CHECK(!device_address.empty());
+  CHECK(!callback.is_null());
+
+  gatt_client_conn_t conn_id =
+      device_interface_handler_->GetConnectionIdByAddress(device_address);
+  if (conn_id == kInvalidGattConnectionId) {
+    VLOG(1) << "Failed to read characteristic due to no connection with device "
+            << device_address;
+    return kInvalidUniqueId;
+  }
+
+  const auto services = remote_services_.find(device_address);
+  if (services == remote_services_.end()) {
+    VLOG(1) << "Failed to locate characteristic with given device "
+            << device_address;
+    return kInvalidUniqueId;
+  }
+
+  const auto service = services->second.find(service_handle);
+  if (service == services->second.end()) {
+    VLOG(1) << "Failed to locate characteristic with service handle "
+            << service_handle << " for device " << device_address;
+    return kInvalidUniqueId;
+  }
+
+  const auto characteristic =
+      service->second->characteristics().find(char_handle);
+  if (characteristic == service->second->characteristics().end()) {
+    VLOG(1) << "Failed to locate characteristic with service handle "
+            << service_handle << " characteristic handle " << char_handle
+            << " for device " << device_address;
+    return kInvalidUniqueId;
+  }
+
+  ClientOperation operation = {
+      .operation_type = GattClientOperationType::READ_VALUE,
+      .request_type = GattClientRequestType::READ_CHARACTERISTIC_VALUE,
+      .conn_id = conn_id,
+      .read_char_value_callback = std::move(callback)};
+  auto transaction_id = GetNextId();
+  transactions_.emplace(transaction_id, std::move(operation));
+
+  uint16_t char_value_handle = characteristic->second->value_handle();
+  auto status = newblue_->GattClientReadValue(
+      conn_id, char_value_handle, GattClientOperationAuthentication::NONE,
+      offset, transaction_id,
+      base::Bind(&Gatt::OnGattClientReadValue, weak_ptr_factory_.GetWeakPtr(),
+                 service_handle, char_handle, kInvalidGattAttributeHandle));
+
+  if (status != GattClientOperationStatus::OK) {
+    LOG(WARNING) << "Failed to read characteristic value with value handle "
+                 << char_value_handle << " from device " << device_address
+                 << " with conn ID " << conn_id << ", transaction "
+                 << transaction_id;
+
+    transactions_.erase(transaction_id);
+    return kInvalidUniqueId;
+  }
+
+  VLOG(1) << "Read characteristic value with value handle " << char_value_handle
+          << " from device " << device_address << " with conn ID " << conn_id;
+
+  return transaction_id;
+}
+
 void Gatt::OnGattConnected(const std::string& device_address,
                            gatt_client_conn_t conn_id) {
   CHECK(!device_address.empty());
@@ -65,8 +164,10 @@ void Gatt::OnGattConnected(const std::string& device_address,
 
   // Start GATT browsing.
   UniqueId transaction_id = GetNextId();
-  ClientOperation operation = {.type = GattClientOperationType::SERVICES_ENUM,
-                               .conn_id = conn_id};
+  ClientOperation operation = {
+      .operation_type = GattClientOperationType::SERVICES_ENUM,
+      .request_type = GattClientRequestType::NONE,
+      .conn_id = conn_id};
   transactions_.emplace(transaction_id, std::move(operation));
 
   GattClientOperationStatus status = newblue_->GattClientEnumServices(
@@ -143,7 +244,8 @@ void Gatt::TravPrimaryServices(const std::string& device_address,
 
     UniqueId transaction_id = GetNextId();
     ClientOperation operation = {
-        .type = GattClientOperationType::PRIMARY_SERVICE_TRAV,
+        .operation_type = GattClientOperationType::PRIMARY_SERVICE_TRAV,
+        .request_type = GattClientRequestType::NONE,
         .conn_id = conn_id};
     transactions_.emplace(transaction_id, std::move(operation));
 
@@ -174,7 +276,8 @@ void Gatt::OnGattClientEnumServices(bool finished,
                                     GattClientOperationStatus status) {
   auto transaction = transactions_.find(transaction_id);
   CHECK(transaction != transactions_.end());
-  CHECK(transaction->second.type == GattClientOperationType::SERVICES_ENUM);
+  CHECK(transaction->second.operation_type ==
+        GattClientOperationType::SERVICES_ENUM);
 
   if (status != GattClientOperationStatus::OK) {
     LOG(ERROR) << "Error GATT client operation, dropping it";
@@ -231,7 +334,7 @@ void Gatt::OnGattClientTravPrimaryService(
     std::unique_ptr<GattService> service) {
   auto transaction = transactions_.find(transaction_id);
   CHECK(transaction != transactions_.end());
-  CHECK(transaction->second.type ==
+  CHECK(transaction->second.operation_type ==
         GattClientOperationType::PRIMARY_SERVICE_TRAV);
 
   // This may be invoked after device is removed, so we check whether the device
@@ -308,12 +411,113 @@ void Gatt::OnGattClientTravPrimaryService(
 bool Gatt::IsTravPrimaryServicesCompleted(gatt_client_conn_t conn_id) {
   for (const auto& transaction : transactions_) {
     if (transaction.second.conn_id == conn_id &&
-        transaction.second.type ==
+        transaction.second.operation_type ==
             GattClientOperationType::PRIMARY_SERVICE_TRAV) {
       return false;
     }
   }
   return true;
+}
+
+void Gatt::OnGattClientReadValue(uint16_t service_handle,
+                                 uint16_t char_handle,
+                                 uint16_t desc_handle,
+                                 gatt_client_conn_t conn_id,
+                                 UniqueId transaction_id,
+                                 uint16_t value_handle,
+                                 GattClientOperationStatus status,
+                                 AttError error,
+                                 const std::vector<uint8_t>& value) {
+  auto transaction = transactions_.find(transaction_id);
+  CHECK(transaction != transactions_.end());
+  CHECK(transaction->second.operation_type ==
+        GattClientOperationType::READ_VALUE);
+
+  std::string device_address =
+      device_interface_handler_->GetAddressByConnectionId(conn_id);
+  if (device_address.empty()) {
+    LOG(WARNING) << "Unknown GATT conn ID " << conn_id
+                 << " for read value result, dropping transaction "
+                 << transaction_id;
+    transactions_.erase(transaction_id);
+    return;
+  }
+
+  // TODO(mcchou): Add GattClientRequestType for reading GATT descriptor.
+  switch (transaction->second.request_type) {
+    case GattClientRequestType::READ_CHARACTERISTIC_VALUE:
+      OnGattClientReadCharacteristicValue(transaction_id, device_address,
+                                          service_handle, char_handle,
+                                          value_handle, status, error, value);
+      return;
+    default:
+      LOG(WARNING) << "Unexpected GATT client request "
+                   << static_cast<uint8_t>(transaction->second.request_type)
+                   << ", transaction" << transaction_id;
+      transactions_.erase(transaction_id);
+      return;
+  }
+}
+
+void Gatt::OnGattClientReadCharacteristicValue(
+    UniqueId transaction_id,
+    const std::string& device_address,
+    uint16_t service_handle,
+    uint16_t char_handle,
+    uint16_t char_value_handle,
+    GattClientOperationStatus status,
+    AttError error,
+    const std::vector<uint8_t>& value) {
+  // Search for characteristic based on handle.
+  auto services = remote_services_.find(device_address);
+  if (services == remote_services_.end()) {
+    LOG(WARNING) << "Failed to locate characteristic with given device "
+                 << device_address << ", dropping it";
+    transactions_.erase(transaction_id);
+    return;
+  }
+
+  auto service = services->second.find(service_handle);
+  if (service == services->second.end()) {
+    LOG(WARNING) << "Failed to locate characteristic with service handle "
+                 << service_handle << " for device " << device_address
+                 << "dropping it";
+    transactions_.erase(transaction_id);
+    return;
+  }
+
+  auto characteristic = service->second->characteristics().find(char_handle);
+  if (characteristic == service->second->characteristics().end()) {
+    LOG(WARNING) << "Failed to locate characteristic with service handle "
+                 << service_handle << " characteristic handle " << char_handle
+                 << " for device " << device_address << ", dropping it";
+    transactions_.erase(transaction_id);
+    return;
+  }
+
+  CHECK(characteristic->second->value_handle() == char_value_handle);
+
+  if (status != GattClientOperationStatus::OK || value.empty()) {
+    LOG(WARNING)
+        << "Error GATT client read characteristic value with value handle "
+        << char_value_handle << " from given device " << device_address
+        << ", error code " << static_cast<uint8_t>(error);
+  } else {
+    VLOG(1) << "GATT client read characteristic value with value handle "
+            << char_value_handle << " finished for device " << device_address
+            << ", transaction " << transaction_id;
+
+    characteristic->second->SetValue(value);
+
+    // TODO(mcchou): Notify Observer about GATT characteristic updated event
+    // and clear the updated flags of properties afterward.
+  }
+
+  auto callback =
+      std::move(transactions_.at(transaction_id).read_char_value_callback);
+  transactions_.erase(transaction_id);
+  callback.Run(transaction_id, device_address, service_handle, char_handle,
+               ConvertToClientOperationError(error), value);
 }
 
 }  // namespace bluetooth

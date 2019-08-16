@@ -17,6 +17,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/single_thread_task_runner.h>
+#include <newblue/att.h>
 
 #include "bluetooth/newblued/libnewblue.h"
 #include "bluetooth/newblued/property.h"
@@ -92,11 +93,47 @@ enum class GattClientOperationStatus : uint8_t {
   WE_DISC
 };
 
+// These are based on ATT_ERROR_* in newblue/att.h.
+enum class AttError : uint8_t {
+  NONE = ATT_ERROR_NONE,
+  INVALID_HANDLE = ATT_ERROR_INVALID_HANDLE,
+  READ_NOT_ALLOWED = ATT_ERROR_READ_NOT_ALLOWED,
+  WRITE_NOT_ALLOWED = ATT_ERROR_WRITE_NOT_ALLOWED,
+  INVALID_PDU = ATT_ERROR_INVALID_PDU,
+  INSUFF_AUTHN = ATT_ERROR_INSUFFICIENT_AUTH,
+  REQ_NOT_SUPPORTED = ATT_ERROR_REQ_NOT_SUPPORTED,
+  INVALID_OFFSET = ATT_ERROR_INVALID_OFFSET,
+  INSUFF_AUTHZ = ATT_ERROR_INSUFFICIENT_ATHOR,
+  PREPARE_QUEUE_FULL = ATT_ERROR_PREPARE_QUEUE_FULL,
+  ATTR_NOT_FOUND = ATT_ERROR_ATTRIBUTE_NOT_FOUND,
+  ATTR_NOT_LONG = ATT_ERROR_ATTRIBUTE_NOT_LONG,
+  INSUFF_ENCR_KEY_SIZE = ATT_ERROR_INSUFF_ENCR_KEY_SZ,
+  INVALID_ATTR_VALUE_LENGTH = ATT_ERROR_INVAL_ATTR_VAL_LEN,
+  UNLIKELY_ERROR = ATT_ERROR_UNLIKELY_ERROR,
+  INSUFF_ENCR = ATT_ERROR_INSUFFICIENT_ENCR,
+  UNSUPPORTED_GROUP_TYPE = ATT_ERROR_UNSUPP_GROUP_TYPE,
+  INSUFF_RESOURCES = ATT_ERROR_INSUFFICIENT_RSRCS,
+  APP_ERROR_FIRST = ATT_ERROR_APP_ERR_FIRST,
+  APP_ERROR_LAST = ATT_ERROR_APP_ERR_LAST,
+  COMMON_FIRST = ATT_ERROR_COMMON_FIRST,
+  COMMON_LAST = ATT_ERROR_COMMON_LAST,
+};
+
 // TODO(mcchou): Add more entries for GATT client operations.
 // The is based on gattCli*Cbk defined in newblue/gatt.h.
 enum class GattClientOperationType {
   SERVICES_ENUM,
   PRIMARY_SERVICE_TRAV,
+  READ_VALUE,
+};
+
+// These are based on GATT_CLI_AUTH_REQ_* defined in newblue/gatt.h.
+enum class GattClientOperationAuthentication : uint8_t {
+  NONE,
+  AUTHN_NO_MITM,
+  AUTHN_MITM,
+  AUTHN_SIGNED_NO_MITM,
+  AUTHN_SIGNED_MITM,
 };
 
 // Agent to receive pairing user interaction events.
@@ -159,11 +196,22 @@ class Newblue {
                           UniqueId transaction_id,
                           std::unique_ptr<GattService> service)>;
 
+  // If |status| is GattClientOperationStatus::OK, |error| should be
+  // AttError::NONE. Otherwise the rest of the AttError are given in |error|.
+  using GattClientReadValueCallback =
+      base::Callback<void(gatt_client_conn_t conn,
+                          UniqueId transaction_id,
+                          uint16_t handle,
+                          GattClientOperationStatus status,
+                          AttError error,
+                          const std::vector<uint8_t>& value)>;
+
   // Represents a GATT client operation.
   struct GattClientOperation {
     GattClientOperationType type;
     GattClientServicesEnumCallback services_enum_callback;
     GattClientPrimaryServiceTravCallback service_trav_callback;
+    GattClientReadValueCallback read_value_callback;
   };
 
   explicit Newblue(std::unique_ptr<LibNewblue> libnewblue);
@@ -240,6 +288,15 @@ class Newblue {
       UniqueId transaction_id,
       GattClientPrimaryServiceTravCallback callback);
 
+  // Reads the value of a GATT characteristic or a GATT descriptor.
+  GattClientOperationStatus GattClientReadValue(
+      gatt_client_conn_t conn_id,
+      uint16_t value_handle,
+      GattClientOperationAuthentication authentication,
+      uint16_t offset,
+      UniqueId transaction_id,
+      GattClientReadValueCallback callback);
+
  private:
   // Posts task to the thread which created this Newblue object.
   // libnewblue callbacks should always post task using this method rather
@@ -303,6 +360,21 @@ class Newblue {
       gatt_client_conn_t conn_id,
       uniq_t transaction_id,
       std::unique_ptr<GattService> service);
+
+  static void GattClientReadCallbackThunk(void* userData,
+                                          gatt_client_conn_t conn,
+                                          uniq_t transaction_id,
+                                          uint16_t value_handle,
+                                          uint8_t status,
+                                          uint8_t error,
+                                          sg data);
+  // Called when the read result is received.
+  void GattClientReadCallback(gatt_client_conn_t conn,
+                              uniq_t transaction_id,
+                              uint16_t value_handle,
+                              uint8_t status,
+                              uint8_t error,
+                              std::vector<uint8_t> value);
 
   static void PasskeyDisplayObserverCallbackThunk(
       void* data,

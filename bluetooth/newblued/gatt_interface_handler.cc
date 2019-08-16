@@ -7,6 +7,7 @@
 #include <bits/stdint-uintn.h>
 #include <cstdint>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include <chromeos/dbus/service_constants.h>
@@ -77,6 +78,54 @@ bool ConvertNotifySettingToBool(
   return setting != GattCharacteristic::NotifySetting::NONE;
 }
 
+void ConvertGattClientOperationErrorToDBusError(
+    std::string* dbus_error,
+    std::string* error_message,
+    GattClientOperationError error) {
+  CHECK(dbus_error != nullptr);
+  CHECK(error_message != nullptr);
+
+  *dbus_error = "";
+  *error_message = "";
+  switch (error) {
+    case GattClientOperationError::NONE:
+      return;
+    case GattClientOperationError::READ_NOT_ALLOWED:
+      *dbus_error = bluetooth_gatt_characteristic::kErrorNotPermitted;
+      *error_message = "Read not permitted";
+      return;
+    case GattClientOperationError::WRITE_NOT_ALLOWED:
+      *dbus_error = bluetooth_gatt_characteristic::kErrorNotPermitted;
+      *error_message = "Write not permitted";
+      return;
+    case GattClientOperationError::INSUFF_AUTHN:          // Fall through.
+    case GattClientOperationError::INSUFF_ENCR_KEY_SIZE:  // Fall through.
+    case GattClientOperationError::INSUFF_ENC:
+      *dbus_error = bluetooth_gatt_characteristic::kErrorNotPermitted;
+      *error_message = "Not paired";
+      return;
+    case GattClientOperationError::NOT_SUPPORTED:
+      *dbus_error = bluetooth_gatt_characteristic::kErrorNotSupported;
+      return;
+    case GattClientOperationError::INSUFF_AUTHZ:
+      *dbus_error = bluetooth_gatt_characteristic::kErrorNotAuthorized;
+      return;
+    case GattClientOperationError::INVALID_OFFSET:
+      *dbus_error = bluetooth_gatt_characteristic::kErrorInvalidArguments;
+      *error_message = "Invalid offset";
+      return;
+    case GattClientOperationError::INVALUD_ATTR_VALUE_LENGTH:
+      *dbus_error = bluetooth_gatt_characteristic::kErrorInvalidArguments;
+      *error_message = "Invalid length";
+      return;
+    case GattClientOperationError::OTHER:  // Fall through.
+    default:
+      *dbus_error = bluetooth_gatt_characteristic::kErrorFailed;
+      *error_message = "Operation failed with other error";
+      return;
+  }
+}
+
 }  // namespace
 
 GattInterfaceHandler::GattInterfaceHandler(
@@ -87,7 +136,8 @@ GattInterfaceHandler::GattInterfaceHandler(
     : bus_(bus),
       newblue_(newblue),
       exported_object_manager_wrapper_(exported_object_manager_wrapper),
-      gatt_(gatt) {
+      gatt_(gatt),
+      weak_ptr_factory_(this) {
   CHECK(bus_);
   CHECK(newblue_);
   CHECK(exported_object_manager_wrapper_);
@@ -140,6 +190,15 @@ void GattInterfaceHandler::OnGattCharacteristicRemoved(
   exported_object_manager_wrapper_->RemoveExportedInterface(
       char_path,
       bluetooth_gatt_characteristic::kBluetoothGattCharacteristicInterface);
+
+  // Remove ongoing transaction(s) associated with the object.
+  for (auto it = gatt_client_requests_.begin();
+       it != gatt_client_requests_.end();) {
+    if (it->second.object_path == path)
+      it = gatt_client_requests_.erase(it);
+    else
+      ++it;
+  }
 }
 
 void GattInterfaceHandler::OnGattDescriptorAdded(
@@ -399,11 +458,56 @@ void GattInterfaceHandler::ExportGattDescriptorInterface(
 }
 
 void GattInterfaceHandler::HandleCharacteristicReadValue(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-    dbus::Message* message) {
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           bluetooth_gatt_characteristic::kErrorFailed,
-                           "Not implemented");
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
+    dbus::Message* message,
+    const brillo::VariantDictionary& options) {
+  CHECK(message);
+
+  std::string device_address;
+  uint16_t service_handle = 0, char_handle = 0;
+
+  uint16_t offset =
+      brillo::GetVariantValueOrDefault<uint16_t>(options, "offset");
+  if (!ConvertCharacteristicObjectPathToHandles(&device_address,
+                                                &service_handle, &char_handle,
+                                                message->GetPath().value())) {
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             bluetooth_gatt_characteristic::kErrorFailed,
+                             "Invalid GATT characteristic object path");
+    return;
+  }
+
+  if (device_address.empty() || service_handle == kInvalidGattAttributeHandle ||
+      char_handle == kInvalidGattAttributeHandle) {
+    response->ReplyWithError(
+        FROM_HERE, brillo::errors::dbus::kDomain,
+        bluetooth_gatt_characteristic::kErrorFailed,
+        "Invalid device address or invalid GATT characteristic handles");
+    return;
+  }
+
+  GattClientRequest session = {
+      .object_path = message->GetPath().value(),
+      .type = GattClientRequestType::READ_CHARACTERISTIC_VALUE,
+      .read_char_value_response = std::move(response),
+  };
+
+  auto transaction_id = gatt_->ReadCharacteristicValue(
+      device_address, service_handle, char_handle, offset,
+      base::Bind(&GattInterfaceHandler::OnReadCharacteristicValue,
+                 weak_ptr_factory_.GetWeakPtr()));
+  if (transaction_id == kInvalidUniqueId) {
+    session.read_char_value_response->ReplyWithError(
+        FROM_HERE, brillo::errors::dbus::kDomain,
+        bluetooth_gatt_characteristic::kErrorFailed, "");
+    return;
+  }
+
+  VLOG(1) << "Reading a GATT characteristic value at "
+          << message->GetPath().value();
+
+  gatt_client_requests_.emplace(transaction_id, std::move(session));
 }
 
 void GattInterfaceHandler::HandleCharacteristicWriteValue(
@@ -452,6 +556,50 @@ void GattInterfaceHandler::HandleDescriptorWriteValue(
   response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
                            bluetooth_gatt_descriptor::kErrorFailed,
                            "Not implemented");
+}
+
+void GattInterfaceHandler::OnReadCharacteristicValue(
+    UniqueId transaction_id,
+    const std::string& device_address,
+    uint16_t service_handle,
+    uint16_t char_handle,
+    GattClientOperationError error,
+    const std::vector<uint8_t>& value) {
+  auto session = gatt_client_requests_.find(transaction_id);
+
+  CHECK(session->second.type ==
+        GattClientRequestType::READ_CHARACTERISTIC_VALUE);
+  CHECK(session->second.read_char_value_response != nullptr);
+  CHECK(session->second.object_path ==
+        ConvertCharacteristicHandleToObjectPath(device_address, service_handle,
+                                                char_handle));
+
+  if (value.empty()) {
+    session->second.read_char_value_response->ReplyWithError(
+        FROM_HERE, brillo::errors::dbus::kDomain,
+        bluetooth_gatt_characteristic::kErrorFailed,
+        "Invalid device address or invalid GATT characteristic handles");
+    gatt_client_requests_.erase(transaction_id);
+    return;
+  }
+
+  std::string dbus_error;
+  std::string error_message;
+  ConvertGattClientOperationErrorToDBusError(&dbus_error, &error_message,
+                                             error);
+  if (error != GattClientOperationError::NONE) {
+    session->second.read_char_value_response->ReplyWithError(
+        FROM_HERE, brillo::errors::dbus::kDomain, dbus_error, error_message);
+    gatt_client_requests_.erase(transaction_id);
+    return;
+  }
+
+  VLOG(1) << "Finished reading a GATT characteristic value at "
+          << session->second.object_path;
+
+  auto response = std::move(session->second.read_char_value_response);
+  gatt_client_requests_.erase(transaction_id);
+  response->Return(value);
 }
 
 }  // namespace bluetooth
