@@ -110,7 +110,6 @@ def CheckSubdirs():
       'avtest_label_detect',
       'buffet',
       'cros-disks',
-      'cryptohome',
       'fitpicker',
       'image-burner',
       'init',

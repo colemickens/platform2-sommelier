@@ -3,15 +3,16 @@
 This feature enables us to protect low-entropy credentials, which allows the UI
 to offer PIN codes as an authentication mechanism for sign-in.
 
+[TOC]
+
 ## Overview
 
-LE secrets that need brute force protection are mapped to high-entropy
-secrets that can be obtained via a rate-limited lookup enforced by the security
-module. The high-entropy secret is then plugged into the actual authentication
-mechanism used to implement sign-in. In other words, the released high-entropy
-secret is used as the key to protect a VaultKeyset, which contains further
-secrets such as the actual file system encryption key protecting encrypted user
-data.
+LE secrets that need brute force protection are mapped to high-entropy secrets
+that can be obtained via a rate-limited lookup enforced by the security module.
+The high-entropy secret is then plugged into the actual authentication mechanism
+used to implement sign-in. In other words, the released high-entropy secret is
+used as the key to protect a VaultKeyset, which contains further secrets such as
+the actual file system encryption key protecting encrypted user data.
 
 The low-entropy credentials and related metadata (including the number of
 unsuccessful authentication attempts to this point) are stored in an encrypted
@@ -21,16 +22,14 @@ footprint in security module flash. The security module manages a number of
 credential slots which are referred to by labels.
 
 Cryptohome communicates with the security module to verify that the credential
-presented by a user in an authentication attempt is correct.
-On success, the security module releases the corresponding high-entropy secret
-to cryptohome.
+presented by a user in an authentication attempt is correct. On success, the
+security module releases the corresponding high-entropy secret to cryptohome.
 
 Brute forcing is prevented by enforcing a cryptohome-defined delay schedule in
 the security module firmware. This only allows a limited number of
-authentication attempts for a specified timeframe (the delay schedule can
-also set a hard limit on the number of unsuccessful attempts). Each time a
-correct LE credential is provided, the number of unsuccessful attempts is reset
-to 0.
+authentication attempts for a specified timeframe (the delay schedule can also
+set a hard limit on the number of unsuccessful attempts). Each time a correct LE
+credential is provided, the number of unsuccessful attempts is reset to 0.
 
 An LE secret which has been locked out (i.e all attempts exhausted) may be reset
 by providing a separate high entropy reset credential to the LECredentialManager
@@ -64,6 +63,8 @@ https://en.wikipedia.org/wiki/Merkle_tree .
 
 A diagram can be used to illustrate the various classes and their relation.
 
+```
+
 
                              LECredentialManager
                                   /     \
@@ -76,6 +77,7 @@ A diagram can be used to illustrate the various classes and their relation.
                               |
                               |
                      PersistentLookupTable
+```
 
 ### PersistentLookupTable
 
@@ -103,14 +105,16 @@ Logically, the PersistentLookupTable can be thought of as storing all the leaf
 nodes of the hash tree.
 
 The hash tree is defined by two parameters:
-- The fan-out, i.e the number of children of a node.
-- The length (in terms of bits) of a leaf node label.
 
-These two parameters can be used to determine the layout of the hash tree.
-This helps to understand:
-- How a root hash is calculated.
-- What are the hash values that are required, given a particular leaf node,
-  to recalculate a root hash.
+-   The fan-out, i.e the number of children of a node.
+-   The length (in terms of bits) of a leaf node label.
+
+These two parameters can be used to determine the layout of the hash tree. This
+helps to understand:
+
+-   How a root hash is calculated.
+-   What are the hash values that are required, given a particular leaf node, to
+    recalculate a root hash.
 
 The SignInHashTree also contains a HashCache file. This file stores the inner
 node hash values, and helps avoid recalculation of these values with each
@@ -120,14 +124,15 @@ and/or the state on security module.
 
 ### LECredentialBackend
 
-This is an interface used to communicate with the security module to perform
-the LE Credential operations. The LECredentialBackend will expose the following
+This is an interface used to communicate with the security module to perform the
+LE Credential operations. The LECredentialBackend will expose the following
 functionality provided by the security module:
-- Validate a credential.
-- Enforce the delay schedule provided during credential creation.
-- Encrypt and return the credential metadata.
-- Store, update and provide an operation log, to be used in case of state
-  mis-match with on-disk state.
+
+-   Validate a credential.
+-   Enforce the delay schedule provided during credential creation.
+-   Encrypt and return the credential metadata.
+-   Store, update and provide an operation log, to be used in case of state
+    mis-match with on-disk state.
 
 ### LECredentialManager
 
@@ -136,19 +141,20 @@ interface that cryptohome can use to Add, Check, Reset and Remove an LE
 Credential.
 
 It provides support for the following operations:
-- InsertCredential: Provided an LE Secret, the high-entropy secret it is
-  guarding, a reset credential which is used to unlock a locked-out LE secret
-  and a delay schedule, it stores the resulting credential and returns a
-  uint64_t label which can be used by cryptohome to reference the credential.
 
-- CheckCredential: Attempts authentication of a user.
-  It is provided the label of the credential to verify, and the user-supplied
-  secret, and on success returns the corresponding high entropy secret.
+-   InsertCredential: Provided an LE Secret, the high-entropy secret it is
+    guarding, a reset credential which is used to unlock a locked-out LE secret
+    and a delay schedule, it stores the resulting credential and returns a
+    uint64_t label which can be used by cryptohome to reference the credential.
 
-- RemoveCredential: Given a label, removes that credential from the hash tree,
-  and updates the security module's state to reflect that.
+-   CheckCredential: Attempts authentication of a user. It is provided the label
+    of the credential to verify, and the user-supplied secret, and on success
+    returns the corresponding high entropy secret.
 
-- ResetCredential: TODO(crbug.com/809723)
+-   RemoveCredential: Given a label, removes that credential from the hash tree,
+    and updates the security module's state to reflect that.
+
+-   ResetCredential: TODO(https://crbug.com/809723)
 
 ## Key derivation
 
@@ -158,10 +164,12 @@ The generation of the LE secret which is stored by the LE Credential manager can
 be best illustrated by the following diagram:
 
 Definitions:
-- VKK = VaultKeyset Key
-- VKK IV = VKK Initialization Vector
-- VK = VaultKeyset
 
+-   `VKK`: VaultKeyset Key
+-   `VKK IV`: VKK Initialization Vector
+-   `VK`: VaultKeyset
+
+```
          LE Salt (randomly generated)  +  User PIN
                           |
                           |
@@ -201,15 +209,15 @@ Definitions:
                           |
                          \|/
                     Encrypted VK
+```
 
-Per the above scheme, the SerializedVaultKeyset will store the LE Salt,
-so that it can be used to regenerate the LE secret used during
-CheckCredential().
+Per the above scheme, the SerializedVaultKeyset will store the LE Salt, so that
+it can be used to regenerate the LE secret used during CheckCredential().
 
 ### Reset secret
 
-TODO(crbug.com/809723)
+TODO(https://crbug.com/809723)
 
 ## Resynchronization
 
-TODO(crbug.com/809710)
+TODO(https://crbug.com/809710)
