@@ -94,14 +94,6 @@ log_suspend_stats() {
   rm "${tempfile}"
 }
 
-# Blaze modems need to be powered off (MODEM_EN low) when suspending and
-# powered back on (MODEM_EN high) when resuming.
-
-# Return true on Blaze systems.
-is_blaze() {
-  crossystem hwid | grep -q 'BLAZE'
-}
-
 is_kip() {
   crossystem hwid | grep -q '^KIP '
 }
@@ -109,41 +101,6 @@ is_kip() {
 # Checks if the system has a Huawei Technologies Mobile Broadband Module.
 has_huawei_modem() {
   lsusb -d 12d1:15bb
-}
-
-# Powers "on" or "off" the built-in modem on Blaze by driving the MODEM_EN
-# GPIO.
-power_blaze_modem() {
-  local op="$1"
-  local gpioval
-
-  case "${op}" in
-    on)
-      gpioval=1
-      ;;
-    off)
-      gpioval=0
-      ;;
-    *)
-      log_msg "Invalid operation 'power_blaze_modem ${op}'"
-      return 1
-      ;;
-  esac
-
-  cd /sys/class/gpio
-  if [ ! -d gpio148 ]; then
-    echo 148 > export
-  fi
-  echo out > gpio148/direction
-  echo "${gpioval}" > gpio148/value
-
-  if [ $? -eq 0 ]; then
-    log_msg "Power ${op} built-in modem"
-    return 0
-  else
-    log_msg "Failed to power ${op} built-in modem"
-    return 1
-  fi
 }
 
 # Powers "on" or "off" the built-in modem via EC.
@@ -300,13 +257,6 @@ else
   echo OnAC > "${POWER_STATUS_ON_SUSPEND_FILE}"
 fi
 
-# Is this a Blaze system with Huawei modem?
-blaze_with_huawei_modem=0
-if is_blaze && has_huawei_modem; then
-  log_msg "Blaze with Huawei modem"
-  blaze_with_huawei_modem=1
-fi
-
 # Is this a Kip system with Huawei modem?
 kip_with_huawei_modem=0
 if is_kip && has_huawei_modem; then
@@ -328,9 +278,6 @@ if saw_wakeup_event; then
   result="${RESULT_CANCELED_EARLY}"
 else
   # Before suspending, power down this problematic modem.
-  if [ "${blaze_with_huawei_modem}" -eq 1 ]; then
-    power_blaze_modem off
-  fi
   if [ "${kip_with_huawei_modem}" -eq 1 ]; then
     ec_power_modem off
   fi
@@ -412,9 +359,6 @@ else
   fi
 
   # Power back on the Huawei modem if it was powered off before suspend.
-  if [ "${blaze_with_huawei_modem}" -eq 1 ]; then
-    power_blaze_modem on
-  fi
   if [ "${kip_with_huawei_modem}" -eq 1 ]; then
     ec_power_modem on
   fi
