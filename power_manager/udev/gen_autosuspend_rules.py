@@ -121,11 +121,11 @@ USB_IDS += [
   "8087:0026",
 ]
 
-# WWAN (3G/LTE)
+# WWAN (LTE)
 USB_IDS += [
-  # Huawei (ME936) (kip, nyan_blaze)
+  # Huawei (ME936) (kip)
   "12d1:15bb",
-  # Fibocom (L850-GL) (coral, nautilus)
+  # Fibocom (L850-GL) (coral, nautilus, sarien)
   "2cb7:0007",
 ]
 
