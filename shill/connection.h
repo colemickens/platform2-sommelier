@@ -91,7 +91,7 @@ class Connection : public base::RefCounted<Connection> {
   virtual const std::vector<std::string>& dns_servers() const {
     return dns_servers_;
   }
-  virtual uint8_t table_id() const { return table_id_; }
+  virtual uint32_t table_id() const { return table_id_; }
 
   virtual const RpcIdentifier& ipconfig_rpc_identifier() const {
     return ipconfig_rpc_identifier_;
@@ -181,8 +181,8 @@ class Connection : public base::RefCounted<Connection> {
 
   // Do not reconfigure the IP addresses, subnet mask, broadcast, etc.
   bool fixed_ip_params_;
-  uint8_t table_id_;
-  uint8_t blackhole_table_id_;
+  uint32_t table_id_;
+  uint32_t blackhole_table_id_;
   IPAddress local_;
   IPAddress gateway_;
 

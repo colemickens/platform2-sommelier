@@ -36,7 +36,7 @@ struct RoutingPolicyEntry {
   static RoutingPolicyEntry CreateFromDst(IPAddress dst_in);
 
   RoutingPolicyEntry& SetPriority(uint32_t priority_in);
-  RoutingPolicyEntry& SetTable(uint8_t table_in);
+  RoutingPolicyEntry& SetTable(uint32_t table_in);
   RoutingPolicyEntry& SetFwMark(FwMark fw_mark_in);
   // Sets the UID range to contain just a single UID.
   RoutingPolicyEntry& SetUid(uint32_t uid);
@@ -55,7 +55,7 @@ struct RoutingPolicyEntry {
 
   IPAddress::Family family;
   uint32_t priority;
-  uint8_t table;
+  uint32_t table;
 
   IPAddress dst;
   IPAddress src;

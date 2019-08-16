@@ -41,7 +41,7 @@ namespace shill {
 
 class RoutingTableTest : public Test {
  public:
-  static const uint8_t kTestTableId;
+  static const uint32_t kTestTableId;
 
   RoutingTableTest() : routing_table_(new RoutingTable()) {}
 
@@ -153,7 +153,7 @@ const char RoutingTableTest::kTestRemoteNetwork4[] = "192.168.100.0";
 const int RoutingTableTest::kTestRemotePrefix4 = 24;
 const uint32_t RoutingTableTest::kTestRequestSeq = 456;
 const int RoutingTableTest::kTestRouteTag = 789;
-const uint8_t RoutingTableTest::kTestTableId = 0xa5;
+const uint32_t RoutingTableTest::kTestTableId = 0xa5;
 
 namespace {
 
@@ -439,9 +439,9 @@ TEST_F(RoutingTableTest, PolicyRuleAddFlush) {
   // Expect the tables to be empty by default.
   EXPECT_EQ(CountRoutingPolicyEntries(), 0);
 
-  uint8_t table0 = routing_table_->AllocTableId();
-  uint8_t table1 = routing_table_->AllocTableId();
-  uint8_t table2 = routing_table_->AllocTableId();
+  uint32_t table0 = routing_table_->AllocTableId();
+  uint32_t table1 = routing_table_->AllocTableId();
+  uint32_t table2 = routing_table_->AllocTableId();
   EXPECT_GT(table0, 0);
   EXPECT_NE(table0, table1);
   EXPECT_NE(table0, table2);

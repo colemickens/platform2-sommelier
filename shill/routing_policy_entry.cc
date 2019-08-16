@@ -48,7 +48,7 @@ RoutingPolicyEntry& RoutingPolicyEntry::SetPriority(uint32_t priority_in) {
   return *this;
 }
 
-RoutingPolicyEntry& RoutingPolicyEntry::SetTable(uint8_t table_in) {
+RoutingPolicyEntry& RoutingPolicyEntry::SetTable(uint32_t table_in) {
   table = table_in;
   return *this;
 }

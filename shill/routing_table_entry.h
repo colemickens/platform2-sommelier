@@ -24,7 +24,7 @@ struct RoutingTableEntry {
 
   RoutingTableEntry& SetMetric(uint32_t metric_in);
   RoutingTableEntry& SetScope(unsigned char scope_in);
-  RoutingTableEntry& SetTable(uint8_t table_in);
+  RoutingTableEntry& SetTable(uint32_t table_in);
   RoutingTableEntry& SetType(unsigned char type_in);
   RoutingTableEntry& SetTag(uint8_t tag_in);
 
@@ -35,7 +35,7 @@ struct RoutingTableEntry {
   IPAddress gateway;
   uint32_t metric;
   unsigned char scope;
-  uint8_t table;
+  uint32_t table;
   unsigned char type;
   unsigned char protocol;
   int tag;

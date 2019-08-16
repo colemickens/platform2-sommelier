@@ -49,7 +49,7 @@ RoutingTableEntry& RoutingTableEntry::SetScope(unsigned char scope_in) {
   return *this;
 }
 
-RoutingTableEntry& RoutingTableEntry::SetTable(uint8_t table_in) {
+RoutingTableEntry& RoutingTableEntry::SetTable(uint32_t table_in) {
   table = table_in;
   return *this;
 }

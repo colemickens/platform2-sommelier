@@ -348,7 +348,7 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfig) {
   connection_ = CreateConnection(device);
 
   // UpdateFromIPConfig creates a per-device table for all devices.
-  const unsigned char table_id = 8;
+  const uint32_t table_id = 8;
   EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
   EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
   EXPECT_CALL(routing_table_, FlushCache()).Times(1);
@@ -410,7 +410,7 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfig) {
   connection_ = CreateConnection(device);
 
   // UpdateFromIPConfig creates a per-device table for all devices.
-  const unsigned char table_id = 8;
+  const uint32_t table_id = 8;
   EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
   EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
   EXPECT_CALL(routing_table_, FlushCache()).Times(1);
@@ -486,7 +486,7 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
   UpdateProperties();
 
   // UpdateFromIPConfig creates a per-device table for all devices.
-  const unsigned char table_id = 8;
+  const uint32_t table_id = 8;
   EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
   EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
   EXPECT_CALL(routing_table_, FlushCache()).Times(1);
@@ -584,7 +584,7 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigIPv6) {
   connection_ = CreateConnection(device);
 
   // UpdateFromIPConfig creates a per-device table for all devices.
-  const unsigned char table_id = 8;
+  const uint32_t table_id = 8;
   EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
   EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
   EXPECT_CALL(routing_table_, FlushCache()).Times(1);
@@ -616,7 +616,7 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfigIPv6) {
   connection_ = CreateConnection(device);
 
   // UpdateFromIPConfig creates a per-device table for all devices.
-  const unsigned char table_id = 8;
+  const uint32_t table_id = 8;
   EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
   EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
   EXPECT_CALL(routing_table_, FlushCache()).Times(1);
@@ -648,7 +648,7 @@ TEST_F(ConnectionTest, AddConfigWithPeer) {
   connection_ = CreateConnection(device);
 
   const std::string kPeerAddress("192.168.1.222");
-  const unsigned char table_id = 8;
+  const uint32_t table_id = 8;
   EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
   EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
   EXPECT_CALL(routing_table_, FlushCache()).Times(1);
@@ -686,7 +686,7 @@ TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
   UpdateProperties();
 
   // UpdateFromIPConfig creates a per-device table for all devices.
-  const unsigned char table_id = 8;
+  const uint32_t table_id = 8;
   EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
   EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
   EXPECT_CALL(routing_table_, FlushCache()).Times(1);
@@ -736,7 +736,7 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   connection_->SetMetric(Connection::kDefaultMetric, true);
   Mock::VerifyAndClearExpectations(&routing_table_);
 
-  const unsigned char table_id = 8;
+  const uint32_t table_id = 8;
   EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
   EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
   EXPECT_CALL(routing_table_, FlushCache()).Times(1);
@@ -770,7 +770,7 @@ TEST_F(ConnectionTest, AddConfigWithDNSDomain) {
   auto device = CreateDevice(Technology::kUnknown);
   connection_ = CreateConnection(device);
 
-  const unsigned char table_id = 8;
+  const uint32_t table_id = 8;
   EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
   EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
   EXPECT_CALL(routing_table_, FlushCache()).Times(1);
@@ -802,7 +802,7 @@ TEST_F(ConnectionTest, AddConfigWithFixedIpParams) {
   auto device = CreateDevice(Technology::kUnknown);
   connection_ = CreateConnection(device, true);
 
-  const unsigned char table_id = 8;
+  const uint32_t table_id = 8;
   EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
   EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
@@ -833,7 +833,7 @@ TEST_F(ConnectionTest, HasOtherAddress) {
   auto device = CreateDevice(Technology::kUnknown);
   connection_ = CreateConnection(device);
 
-  const unsigned char table_id = 8;
+  const uint32_t table_id = 8;
   EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
   EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
@@ -905,7 +905,7 @@ TEST_F(ConnectionTest, BlackholeIPv6) {
   auto device = CreateDevice(Technology::kUnknown);
   connection_ = CreateConnection(device);
 
-  const uint8_t table_id = 9;
+  const uint32_t table_id = 9;
   properties_.blackhole_ipv6 = true;
   UpdateProperties();
   EXPECT_CALL(*device_info_, HasOtherAddress(_, _)).WillOnce(Return(false));

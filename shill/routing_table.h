@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -68,21 +68,21 @@ class RoutingTable {
   virtual bool SetDefaultRoute(int interface_index,
                                const IPAddress& gateway_address,
                                uint32_t metric,
-                               uint8_t table_id);
+                               uint32_t table_id);
 
   // Configure routing table entries from the "routes" portion of |ipconfig|.
   // Returns true if all routes were installed successfully, false otherwise.
   virtual bool ConfigureRoutes(int interface_index,
                                const IPConfigRefPtr& ipconfig,
                                uint32_t metric,
-                               uint8_t table_id);
+                               uint32_t table_id);
 
   // Create a blackhole route for a given IP family.  Returns true
   // on successfully sending the route request, false otherwise.
   virtual bool CreateBlackholeRoute(int interface_index,
                                     IPAddress::Family family,
                                     uint32_t metric,
-                                    uint8_t table_id);
+                                    uint32_t table_id);
 
   // Create a route to a link-attached remote host.  |remote_address|
   // must be directly reachable from |local_address|.  Returns true
@@ -90,7 +90,7 @@ class RoutingTable {
   virtual bool CreateLinkRoute(int interface_index,
                                const IPAddress& local_address,
                                const IPAddress& remote_address,
-                               uint8_t table_id);
+                               uint32_t table_id);
 
   // Remove routes associated with interface.
   // Route entries are immediately purged from our copy of the routing table.
@@ -123,17 +123,17 @@ class RoutingTable {
                                   int interface_index,
                                   int tag,
                                   const QueryCallback& callback,
-                                  uint8_t table_id);
+                                  uint32_t table_id);
 
   // Allocates a routing table, and returns the ID.  If no IDs are available,
   // returns RT_TABLE_UNSPEC.
-  virtual uint8_t AllocTableId();
+  virtual uint32_t AllocTableId();
   // Sets a table as the per-device table for the specified index. |table_id|
   // must not already be used as the per device table of a different interface,
   // and the interface may not already have a different per device table.
-  virtual void SetPerDeviceTable(int interface_index, uint8_t table_id);
+  virtual void SetPerDeviceTable(int interface_index, uint32_t table_id);
   // Frees routing table |id| that was obtained from AllocTableId().
-  virtual void FreeTableId(uint8_t id);
+  virtual void FreeTableId(uint32_t id);
 
  protected:
   RoutingTable();
@@ -152,7 +152,7 @@ class RoutingTable {
     Query(uint32_t sequence_in,
           int tag_in,
           QueryCallback callback_in,
-          uint8_t table_id_in)
+          uint32_t table_id_in)
         : sequence(sequence_in),
           tag(tag_in),
           callback(callback_in),
@@ -161,7 +161,7 @@ class RoutingTable {
     uint32_t sequence;
     int tag;
     QueryCallback callback;
-    uint8_t table_id;
+    uint32_t table_id;
   };
 
   // Add an entry to the kernel routing table without modifying the internal
@@ -199,13 +199,13 @@ class RoutingTable {
   RouteTables tables_;
   PolicyTables policy_tables_;
   // Map of interface index -> id of per-device routing table.
-  std::map<int, uint8_t> per_device_tables_;
+  std::map<int, uint32_t> per_device_tables_;
 
   std::unique_ptr<RTNLListener> route_listener_;
   std::deque<Query> route_queries_;
 
   // A list of unused routing table IDs.
-  std::vector<uint8_t> available_table_ids_;
+  std::vector<uint32_t> available_table_ids_;
 
   // Cache singleton pointer for performance and test purposes.
   RTNLHandler* rtnl_handler_;

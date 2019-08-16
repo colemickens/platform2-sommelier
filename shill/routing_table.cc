@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -100,16 +100,44 @@ bool ParseRoutingTableMessage(const RTNLMessage& message,
     gateway_bytes = message.GetAttribute(RTA_GATEWAY);
   }
 
+  // The rtmsg structure [0] has a table id field that is only a single
+  // byte. Prior to Linux v2.6, routing table IDs were of type u8. v2.6 changed
+  // this so that table IDs were u32s, but the uapi here couldn't
+  // change. Instead, a separate RTA_TABLE attribute is used to be able to send
+  // a full 32-bit table ID. When the table ID is greater than 255, the
+  // rtm_table field is set to RT_TABLE_COMPAT.
+  //
+  // 0) elixir.bootlin.com/linux/v5.0/source/include/uapi/linux/rtnetlink.h#L206
+  uint32_t table;
+  if (message.HasAttribute(RTA_TABLE)) {
+    message.GetAttribute(RTA_TABLE).ConvertToCPUUInt32(&table);
+  } else {
+    table = route_status.table;
+    LOG_IF(WARNING, table == RT_TABLE_COMPAT)
+        << "Received RT_TABLE_COMPAT, but message has no RTA_TABLE attribute";
+  }
+
   entry->dst = IPAddress(message.family(), dst_bytes, route_status.dst_prefix);
   entry->src = IPAddress(message.family(), src_bytes, route_status.src_prefix);
   entry->gateway = IPAddress(message.family(), gateway_bytes);
+  entry->table = table;
   entry->metric = metric;
   entry->scope = route_status.scope;
-  entry->table = route_status.table;
   entry->protocol = route_status.protocol;
   entry->type = route_status.type;
 
   return true;
+}
+
+// Most tables are managed by Shill. Certain tables are either invalid
+// (i.e. RT_TABLE_UNSPEC) or are managed by the kernel. Shill should not do
+// things like "free" these tables or set them as a per-Device table. Note that
+// RT_TABLE_COMPAT could be used as a normal table, but we don't do this to
+// avoid confusion (also we have enough tables as it is).
+bool IsUnmanagedTable(uint32_t id) {
+  return (id == RT_TABLE_UNSPEC || id == RT_TABLE_COMPAT ||
+          id == RT_TABLE_DEFAULT || id == RT_TABLE_LOCAL ||
+          id == RT_TABLE_MAIN);
 }
 
 }  // namespace
@@ -141,7 +169,7 @@ void RoutingTable::Start() {
   rtnl_handler_->RequestDump(RTNLHandler::kRequestRoute);
   rtnl_handler_->RequestDump(RTNLHandler::kRequestRule);
 
-  for (uint8_t i = RT_TABLE_DEFAULT - 1; i > RT_TABLE_UNSPEC; i--) {
+  for (uint32_t i = RT_TABLE_COMPAT - 1; i > RT_TABLE_UNSPEC; i--) {
     available_table_ids_.push_back(i);
   }
 }
@@ -240,9 +268,9 @@ bool RoutingTable::GetDefaultRouteInternal(int interface_index,
 bool RoutingTable::SetDefaultRoute(int interface_index,
                                    const IPAddress& gateway_address,
                                    uint32_t metric,
-                                   uint8_t table_id) {
-  SLOG(this, 2) << __func__ << " index " << interface_index << " metric "
-                << metric;
+                                   uint32_t table_id) {
+  SLOG(this, 2) << __func__ << " index " << interface_index
+                << " metric " << metric;
 
   RoutingTableEntry* old_entry;
 
@@ -279,7 +307,7 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
 bool RoutingTable::ConfigureRoutes(int interface_index,
                                    const IPConfigRefPtr& ipconfig,
                                    uint32_t metric,
-                                   uint8_t table_id) {
+                                   uint32_t table_id) {
   bool ret = true;
 
   IPAddress::Family address_family = ipconfig->properties().address_family;
@@ -452,7 +480,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
                 << " index: " << interface_index << " entry: " << entry;
 
   bool entry_exists = false;
-  uint8_t target_table = RT_TABLE_MAIN;
+  uint32_t target_table = RT_TABLE_MAIN;
   auto per_device_iter = per_device_tables_.find(interface_index);
   if (per_device_iter != per_device_tables_.end()) {
     target_table = per_device_iter->second;
@@ -517,6 +545,9 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
                               const RoutingTableEntry& entry,
                               RTNLMessage::Mode mode,
                               unsigned int flags) {
+  DCHECK(entry.table != RT_TABLE_UNSPEC && entry.table != RT_TABLE_COMPAT)
+      << "Attempted to apply route: " << entry;
+
   SLOG(this, 2) << base::StringPrintf(
       "%s: dst %s/%d src %s/%d index %d mode %d flags 0x%x", __func__,
       entry.dst.ToString().c_str(), entry.dst.prefix(),
@@ -527,9 +558,14 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
                                                NLM_F_REQUEST | flags, 0, 0, 0,
                                                entry.dst.family());
   message->set_route_status(RTNLMessage::RouteStatus(
-      entry.dst.prefix(), entry.src.prefix(), entry.table, entry.protocol,
+      entry.dst.prefix(), entry.src.prefix(),
+      entry.table < 256 ? entry.table : RT_TABLE_COMPAT, entry.protocol,
       entry.scope, entry.type, 0));
 
+  message->SetAttribute(RTA_TABLE,
+                        ByteString::CreateFromCPUUInt32(entry.table));
+  message->SetAttribute(RTA_PRIORITY,
+                        ByteString::CreateFromCPUUInt32(entry.metric));
   if (entry.type != RTN_BLACKHOLE) {
     message->SetAttribute(RTA_DST, entry.dst.address());
   }
@@ -539,9 +575,6 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
   if (!entry.gateway.IsDefault()) {
     message->SetAttribute(RTA_GATEWAY, entry.gateway.address());
   }
-  message->SetAttribute(RTA_PRIORITY,
-                        ByteString::CreateFromCPUUInt32(entry.metric));
-
   if (entry.type == RTN_UNICAST) {
     // Note that RouteMsgHandler will ignore anything without RTA_OIF,
     // because that is how it looks up the |tables_| vector.  But
@@ -596,7 +629,7 @@ bool RoutingTable::RequestRouteToHost(const IPAddress& address,
                                       int interface_index,
                                       int tag,
                                       const QueryCallback& callback,
-                                      uint8_t table_id) {
+                                      uint32_t table_id) {
   // Make sure we don't get a cached response that is no longer valid.
   FlushCache();
 
@@ -628,7 +661,7 @@ bool RoutingTable::RequestRouteToHost(const IPAddress& address,
 bool RoutingTable::CreateBlackholeRoute(int interface_index,
                                         IPAddress::Family family,
                                         uint32_t metric,
-                                        uint8_t table_id) {
+                                        uint32_t table_id) {
   SLOG(this, 2) << base::StringPrintf(
       "%s: family %s metric %d", __func__,
       IPAddress::GetAddressFamilyName(family).c_str(), metric);
@@ -644,7 +677,7 @@ bool RoutingTable::CreateBlackholeRoute(int interface_index,
 bool RoutingTable::CreateLinkRoute(int interface_index,
                                    const IPAddress& local_address,
                                    const IPAddress& remote_address,
-                                   uint8_t table_id) {
+                                   uint32_t table_id) {
   if (!local_address.CanReachAddress(remote_address)) {
     LOG(ERROR) << __func__ << " failed: " << remote_address.ToString()
                << " is not reachable from " << local_address.ToString();
@@ -678,9 +711,12 @@ bool RoutingTable::ApplyRule(uint32_t interface_index,
                                                NLM_F_REQUEST | flags, 0, 0, 0,
                                                entry.family);
   message->set_route_status(RTNLMessage::RouteStatus(
-      entry.dst.prefix(), entry.src.prefix(), entry.table, RTPROT_BOOT,
+      entry.dst.prefix(), entry.src.prefix(),
+      entry.table < 256 ? entry.table : RT_TABLE_COMPAT, RTPROT_BOOT,
       RT_SCOPE_UNIVERSE, RTN_UNICAST, entry.invert_rule ? FIB_RULE_INVERT : 0));
 
+  message->SetAttribute(FRA_TABLE,
+                        ByteString::CreateFromCPUUInt32(entry.table));
   message->SetAttribute(FRA_PRIORITY,
                         ByteString::CreateFromCPUUInt32(entry.priority));
   if (entry.fw_mark.has_value()) {
@@ -836,11 +872,11 @@ void RoutingTable::FlushRules(int interface_index) {
   table->second.clear();
 }
 
-uint8_t RoutingTable::AllocTableId() {
+uint32_t RoutingTable::AllocTableId() {
   if (available_table_ids_.empty()) {
     return RT_TABLE_UNSPEC;
   } else {
-    uint8_t table_id = available_table_ids_.back();
+    uint32_t table_id = available_table_ids_.back();
     available_table_ids_.pop_back();
 
     // Flush any entries currently in this table before letting the caller
@@ -859,9 +895,8 @@ uint8_t RoutingTable::AllocTableId() {
   }
 }
 
-void RoutingTable::SetPerDeviceTable(int interface_index, uint8_t table_id) {
-  DCHECK(table_id != RT_TABLE_MAIN && table_id != RT_TABLE_LOCAL &&
-         table_id != RT_TABLE_DEFAULT);
+void RoutingTable::SetPerDeviceTable(int interface_index, uint32_t table_id) {
+  DCHECK(!IsUnmanagedTable(table_id));
 
   for (const auto& pair : per_device_tables_) {
     if (pair.second != table_id) {
@@ -888,15 +923,14 @@ void RoutingTable::SetPerDeviceTable(int interface_index, uint8_t table_id) {
   FlushCache();
 }
 
-void RoutingTable::FreeTableId(uint8_t id) {
-  if (id == RT_TABLE_MAIN) {
+void RoutingTable::FreeTableId(uint32_t id) {
+  if (IsUnmanagedTable(id)) {
     return;
   }
-  CHECK(id > RT_TABLE_UNSPEC && id < RT_TABLE_DEFAULT);
   available_table_ids_.push_back(id);
   // Remove per-device table entry if any.
   base::EraseIf(per_device_tables_,
-                [id](std::pair<int, uint8_t> interface_table) {
+                [id](std::pair<int, uint32_t> interface_table) {
                   return interface_table.second == id;
                 });
 }
