@@ -439,6 +439,13 @@ std::string DeviceInterfaceHandler::GetAddressByConnectionId(
   return "";
 }
 
+gatt_client_conn_t DeviceInterfaceHandler::GetConnectionIdByAddress(
+    const std::string& address) {
+  const auto connection = connections_.find(address);
+  return (connection != connections_.end() ? connection->second.conn_id
+                                           : kInvalidGattConnectionId);
+}
+
 void DeviceInterfaceHandler::SetGattServicesResolved(
     const std::string& device_address, bool resolved) {
   Device* device = FindDevice(device_address);
