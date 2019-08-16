@@ -19,6 +19,8 @@
 
 namespace bluetooth {
 
+const uint16_t kInvalidGattAttributeHandle = 0;
+
 class GattIncludedService;
 class GattCharacteristic;
 class GattDescriptor;
@@ -135,6 +137,8 @@ class GattCharacteristic {
 
   // Adds descriptor to the characteristic.
   void AddDescriptor(std::unique_ptr<GattDescriptor> descriptor);
+
+  void SetValue(const std::vector<uint8_t>& value) { value_.SetValue(value); }
 
   const Property<const GattService*>& service() const { return service_; }
   uint16_t value_handle() const { return value_handle_; }

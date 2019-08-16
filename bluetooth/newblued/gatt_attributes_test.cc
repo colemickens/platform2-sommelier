@@ -214,4 +214,24 @@ TEST_F(GattAttributesTest, GattCharacteristicAddDescriptor) {
   EXPECT_TRUE(c.descriptors_[dh]->value().value().empty());
 }
 
+TEST_F(GattAttributesTest, GattCharacteristicSetValue) {
+  // Service handles.
+  uint16_t sfh = 0x0001;
+  uint16_t slh = 0x0003;
+
+  // Characteristic handles and properties.
+  uint16_t cfh = 0x0004;
+  uint16_t clh = 0x0006;
+  uint16_t cvh = 0x0005;
+  uint8_t cp = 0xAB;
+
+  GattService s(sfh, slh, false, service_uuid_);
+  GattCharacteristic c(&s, cvh, cfh, clh, cp, characteristic_uuid_);
+
+  EXPECT_TRUE(c.value().value().empty());
+
+  c.SetValue({0x11, 0x22});
+  EXPECT_EQ(std::vector<uint8_t>({0x11, 0x22}), c.value().value());
+}
+
 }  // namespace bluetooth
