@@ -67,7 +67,9 @@ void CrosHealthd::OnShutdown(int* error_code) {
   mojo::edk::ShutdownIPCSupport(run_loop.QuitClosure());
   run_loop.Run();
 
-  VLOG(1) << "Finished shutting down with code " << *error_code;
+  VLOG(1) << "Finished shutting down Mojo support with code " << *error_code;
+
+  DBusServiceDaemon::OnShutdown(error_code);
 }
 
 bool CrosHealthd::BootstrapMojoConnection(brillo::ErrorPtr* error,
