@@ -65,7 +65,7 @@ Connection::Connection(int interface_index,
       use_if_addrs_(false),
       blackholed_addrs_(nullptr),
       fixed_ip_params_(fixed_ip_params),
-      table_id_(RT_TABLE_MAIN),
+      table_id_(RoutingTable::GetInterfaceTableId(interface_index)),
       blackhole_table_id_(RT_TABLE_UNSPEC),
       local_(IPAddress::kFamilyUnknown),
       gateway_(IPAddress::kFamilyUnknown),
@@ -87,9 +87,8 @@ Connection::~Connection() {
     device_info_->FlushAddresses(interface_index_);
   }
   routing_table_->FlushRules(interface_index_);
-  routing_table_->FreeTableId(table_id_);
   if (blackhole_table_id_ != RT_TABLE_UNSPEC) {
-    routing_table_->FreeTableId(blackhole_table_id_);
+    routing_table_->FreeAdditionalTableId(blackhole_table_id_);
   }
 }
 
@@ -125,12 +124,6 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   allowed_iifs_ = properties.allowed_iifs;
   use_if_addrs_ =
       properties.use_if_addrs || technology_.IsPrimaryConnectivityTechnology();
-
-  if (table_id_ == RT_TABLE_MAIN) {
-    table_id_ = routing_table_->AllocTableId();
-    CHECK_NE(table_id_, RT_TABLE_UNSPEC);
-    routing_table_->SetPerDeviceTable(interface_index_, table_id_);
-  }
 
   IPAddress gateway(properties.address_family);
   if (!properties.gateway.empty() &&
@@ -200,7 +193,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   }
 
   if (blackhole_table_id_ != RT_TABLE_UNSPEC) {
-    routing_table_->FreeTableId(blackhole_table_id_);
+    routing_table_->FreeAdditionalTableId(blackhole_table_id_);
     blackhole_table_id_ = RT_TABLE_UNSPEC;
   }
 
@@ -210,7 +203,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
       blackholed_addrs_ && !blackholed_addrs_->IsEmpty();
 
   if (!blackholed_uids_.empty() || has_blackholed_addrs) {
-    blackhole_table_id_ = routing_table_->AllocTableId();
+    blackhole_table_id_ = routing_table_->RequestAdditionalTableId();
     CHECK(blackhole_table_id_);
     routing_table_->CreateBlackholeRoute(
         interface_index_, IPAddress::kFamilyIPv4, 0, blackhole_table_id_);

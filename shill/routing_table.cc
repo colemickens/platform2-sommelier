@@ -57,6 +57,13 @@ base::LazyInstance<RoutingTable>::DestructorAtExit g_routing_table =
 
 const char kRouteFlushPath4[] = "/proc/sys/net/ipv4/route/flush";
 const char kRouteFlushPath6[] = "/proc/sys/net/ipv6/route/flush";
+// Amount added to an interface index to come up with the routing table ID for
+// that interface.
+constexpr int kInterfaceTableIdIncrement = 1000;
+static_assert(
+    kInterfaceTableIdIncrement > RT_TABLE_LOCAL,
+    "kInterfaceTableIdIncrement must be greater than RT_TABLE_LOCAL, "
+    "as otherwise some interface's table IDs may collide with system tables.");
 
 bool ParseRoutingTableMessage(const RTNLMessage& message,
                               int* interface_index,
@@ -129,17 +136,6 @@ bool ParseRoutingTableMessage(const RTNLMessage& message,
   return true;
 }
 
-// Most tables are managed by Shill. Certain tables are either invalid
-// (i.e. RT_TABLE_UNSPEC) or are managed by the kernel. Shill should not do
-// things like "free" these tables or set them as a per-Device table. Note that
-// RT_TABLE_COMPAT could be used as a normal table, but we don't do this to
-// avoid confusion (also we have enough tables as it is).
-bool IsUnmanagedTable(uint32_t id) {
-  return (id == RT_TABLE_UNSPEC || id == RT_TABLE_COMPAT ||
-          id == RT_TABLE_DEFAULT || id == RT_TABLE_LOCAL ||
-          id == RT_TABLE_MAIN);
-}
-
 }  // namespace
 
 // These don't have named constants in the system header files, but they
@@ -177,19 +173,45 @@ void RoutingTable::Start() {
 void RoutingTable::Stop() {
   SLOG(this, 2) << __func__;
 
+  managed_interfaces_.clear();
   available_table_ids_.clear();
   route_listener_.reset();
+}
+
+void RoutingTable::RegisterDevice(int interface_index) {
+  if (managed_interfaces_.find(interface_index) != managed_interfaces_.end()) {
+    return;
+  }
+  managed_interfaces_.insert(interface_index);
+
+  uint32_t table_id = GetInterfaceTableId(interface_index);
+  // Move existing entries for this interface to the per-Device table.
+  for (auto& nent : tables_[interface_index]) {
+    if (nent.table == RT_TABLE_LOCAL || nent.table == table_id) {
+      continue;
+    }
+    RoutingTableEntry new_entry = nent;
+    new_entry.table = table_id;
+    AddRouteToKernelTable(interface_index, new_entry);
+    RemoveRouteFromKernelTable(interface_index, nent);
+    nent.table = table_id;
+  }
+  FlushCache();
+}
+
+void RoutingTable::DeregisterDevice(int interface_index) {
+  managed_interfaces_.erase(interface_index);
 }
 
 bool RoutingTable::AddRoute(int interface_index,
                             const RoutingTableEntry& entry) {
   // Normal routes (i.e. not blackhole or unreachable) should be sent to a
-  // the interface's per-device table, if there is one.
-  auto iter = per_device_tables_.find(interface_index);
-  if (iter != per_device_tables_.end() && entry.table != iter->second &&
+  // the interface's per-device table.
+  if (entry.table != GetInterfaceTableId(interface_index) &&
       entry.type != RTN_BLACKHOLE && entry.type != RTN_UNREACHABLE) {
     LOG(ERROR) << "Can't add route to table " << entry.table
-               << " when the interface's per-device table is " << iter->second;
+               << " when the interface's per-device table is "
+               << GetInterfaceTableId(interface_index);
     return false;
   }
 
@@ -480,11 +502,8 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
                 << " index: " << interface_index << " entry: " << entry;
 
   bool entry_exists = false;
-  uint32_t target_table = RT_TABLE_MAIN;
-  auto per_device_iter = per_device_tables_.find(interface_index);
-  if (per_device_iter != per_device_tables_.end()) {
-    target_table = per_device_iter->second;
-  }
+  bool is_managed = (managed_interfaces_.count(interface_index) != 0);
+  uint32_t target_table = GetInterfaceTableId(interface_index);
   // Routes that make it here are either:
   //   * Default routes of protocol RTPROT_RA (most notably, kernel-created IPv6
   //      default routes in response to receiving IPv6 RAs).
@@ -499,25 +518,35 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
   // protocol value, such that Shill would be able to determine which service
   // created a particular route.
   RouteTableEntryVector& table = tables_[interface_index];
-  for (auto nent = table.begin(); nent != table.end(); ++nent) {
-    if (nent->dst.Equals(entry.dst) && nent->src.Equals(entry.src) &&
-        nent->gateway.Equals(entry.gateway) && nent->scope == entry.scope &&
-        nent->metric == entry.metric && nent->type == entry.type) {
-      if (message.mode() == RTNLMessage::kModeDelete &&
-          entry.table == nent->table) {
-        table.erase(nent);
-      } else if (message.mode() == RTNLMessage::kModeAdd) {
-        if (nent->table != entry.table && entry.table == RT_TABLE_MAIN) {
-          // Kernel added a routing entry that we have in a per-device table,
-          // but placed the entry in the main routing table.
-          //
-          // This will cause the per-device table route to be replaced with
-          // the kernel-added route.
-          entry_exists = true;
-          break;
-        }
-      }
-      return;
+  for (auto nent = table.begin(); nent != table.end();) {
+    // clang-format off
+    if (nent->dst != entry.dst ||
+        nent->src != entry.src ||
+        nent->gateway != entry.gateway ||
+        nent->scope != entry.scope ||
+        nent->metric != entry.metric ||
+        nent->type != entry.type) {
+      ++nent;
+      continue;
+    }
+    // clang-format on
+
+    if (message.mode() == RTNLMessage::kModeAdd &&
+        (is_managed || entry.table == nent->table)) {
+      // Set this to true to avoid adding the same route twice to
+      // tables_[interface_index].
+      entry_exists = true;
+      break;
+    }
+
+    if (message.mode() == RTNLMessage::kModeDelete &&
+        entry.table == nent->table) {
+      // Keep track of route deletions that come from outside of shill. Continue
+      // the loop for resilience to any failure scenario in which
+      // tables_[interface_index] has duplicate entries.
+      nent = table.erase(nent);
+    } else {
+      ++nent;
     }
   }
 
@@ -525,10 +554,10 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
     return;
   }
 
-  // When using a per-device routing table, we do not want entries for that
-  // interface to be added to the default routing table. Thus we remove the
-  // added route here and re-add it to the per-device routing table.
-  if (target_table != RT_TABLE_MAIN && entry.table != target_table) {
+  // We do not want normal entries for a managed interface to be added to any
+  // table but the per-Device routing table. Thus we remove the added route here
+  // and re-add it to the per-Device routing table.
+  if (is_managed && entry.table != target_table && entry.type == RTN_UNICAST) {
     RoutingTableEntry oldEntry(entry);
     entry.table = target_table;
     ApplyRoute(interface_index, entry, RTNLMessage::kModeAdd,
@@ -872,68 +901,48 @@ void RoutingTable::FlushRules(int interface_index) {
   table->second.clear();
 }
 
-uint32_t RoutingTable::AllocTableId() {
+// static
+uint32_t RoutingTable::GetInterfaceTableId(int interface_index) {
+  return static_cast<uint32_t>(interface_index + kInterfaceTableIdIncrement);
+}
+
+uint32_t RoutingTable::RequestAdditionalTableId() {
   if (available_table_ids_.empty()) {
     return RT_TABLE_UNSPEC;
-  } else {
-    uint32_t table_id = available_table_ids_.back();
-    available_table_ids_.pop_back();
+  }
 
-    // Flush any entries currently in this table before letting the caller
-    // use it.
-    for (auto& table : tables_) {
-      for (auto nent = table.second.begin(); nent != table.second.end();) {
-        if (nent->table == table_id) {
-          RemoveRouteFromKernelTable(table.first, *nent);
-          nent = table.second.erase(nent);
-        } else {
-          ++nent;
-        }
+  uint32_t table_id = available_table_ids_.back();
+  CHECK(RT_TABLE_UNSPEC < table_id && table_id < RT_TABLE_COMPAT);
+  available_table_ids_.pop_back();
+
+  // Flush any entries currently in this table before letting the caller
+  // use it.
+  for (auto& table : tables_) {
+    for (auto nent = table.second.begin(); nent != table.second.end();) {
+      if (nent->table == table_id) {
+        RemoveRouteFromKernelTable(table.first, *nent);
+        nent = table.second.erase(nent);
+      } else {
+        ++nent;
       }
     }
-    return table_id;
   }
+  return table_id;
 }
 
-void RoutingTable::SetPerDeviceTable(int interface_index, uint32_t table_id) {
-  DCHECK(!IsUnmanagedTable(table_id));
-
-  for (const auto& pair : per_device_tables_) {
-    if (pair.second != table_id) {
-      continue;
-    }
-
-    CHECK(pair.first == interface_index);
-    CHECK(pair.second == table_id);
+void RoutingTable::FreeAdditionalTableId(uint32_t id) {
+  if (id >= RT_TABLE_COMPAT) {
+    LOG(WARNING) << "Attempted to free table id " << id
+                 << " that was not received from RequestAdditionalTableId";
     return;
   }
 
-  per_device_tables_[interface_index] = table_id;
-  // Move existing entries for this interface to the per-device table.
-  for (auto& nent : tables_[interface_index]) {
-    if (nent.table == RT_TABLE_LOCAL || nent.table == table_id) {
-      continue;
-    }
-
-    RoutingTableEntry new_entry = nent;
-    new_entry.table = table_id;
-    AddRouteToKernelTable(interface_index, new_entry);
-    RemoveRouteFromKernelTable(interface_index, nent);
-    nent.table = table_id;
-  }
-  FlushCache();
-}
-
-void RoutingTable::FreeTableId(uint32_t id) {
-  if (IsUnmanagedTable(id)) {
+  if (id == RT_TABLE_UNSPEC) {
+    LOG(WARNING) << "Attempted to free RT_TABLE_UNSPEC";
     return;
   }
+
   available_table_ids_.push_back(id);
-  // Remove per-device table entry if any.
-  base::EraseIf(per_device_tables_,
-                [id](std::pair<int, uint32_t> interface_table) {
-                  return interface_table.second == id;
-                });
 }
 
 }  // namespace shill

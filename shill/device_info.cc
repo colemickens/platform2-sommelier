@@ -247,6 +247,10 @@ void DeviceInfo::RegisterDevice(const DeviceRefPtr& device) {
   } else {
     metrics()->RegisterDevice(device->interface_index(), device->technology());
   }
+  if (device->technology() != Technology::kBlacklisted &&
+      device->technology() != Technology::kUnknown) {
+    routing_table_->RegisterDevice(device->interface_index());
+  }
   if (device->technology().IsPrimaryConnectivityTechnology()) {
     manager_->RegisterDevice(device);
   }

@@ -211,7 +211,6 @@ class ConnectionTest : public Test {
     EXPECT_CALL(routing_table_,
                 FlushRoutesWithTag(connection_->interface_index_));
     EXPECT_CALL(routing_table_, FlushRules(connection_->interface_index_));
-    EXPECT_CALL(routing_table_, FreeTableId(connection_->table_id_));
     if (connection_->fixed_ip_params_) {
       EXPECT_CALL(*device_info_, FlushAddresses(connection_->interface_index_))
           .Times(0);
@@ -346,11 +345,8 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfig) {
   auto device = CreateDevice(Technology::kUnknown);
   connection_ = CreateConnection(device);
 
-  // UpdateFromIPConfig creates a per-device table for all devices.
-  const uint32_t table_id = 8;
-  EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
-  EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
-  EXPECT_CALL(routing_table_, FlushCache()).Times(1);
+  const auto table_id =
+      RoutingTable::GetInterfaceTableId(device->interface_index());
 
   EXPECT_CALL(*device_info_,
               HasOtherAddress(device->interface_index(),
@@ -408,11 +404,8 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfig) {
   auto device = CreateDevice(Technology::kEthernet);
   connection_ = CreateConnection(device);
 
-  // UpdateFromIPConfig creates a per-device table for all devices.
-  const uint32_t table_id = 8;
-  EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
-  EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
-  EXPECT_CALL(routing_table_, FlushCache()).Times(1);
+  const auto table_id =
+      RoutingTable::GetInterfaceTableId(device->interface_index());
 
   EXPECT_CALL(*device_info_,
               HasOtherAddress(device->interface_index(),
@@ -484,11 +477,8 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
   properties_.exclusion_list = {kExcludeAddress1, kExcludeAddress2};
   UpdateProperties();
 
-  // UpdateFromIPConfig creates a per-device table for all devices.
-  const uint32_t table_id = 8;
-  EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
-  EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
-  EXPECT_CALL(routing_table_, FlushCache()).Times(1);
+  const auto table_id =
+      RoutingTable::GetInterfaceTableId(device->interface_index());
 
   EXPECT_CALL(*device_info_,
               HasOtherAddress(device->interface_index(),
@@ -582,11 +572,8 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigIPv6) {
   auto device = CreateDevice(Technology::kUnknown);
   connection_ = CreateConnection(device);
 
-  // UpdateFromIPConfig creates a per-device table for all devices.
-  const uint32_t table_id = 8;
-  EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
-  EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
-  EXPECT_CALL(routing_table_, FlushCache()).Times(1);
+  const auto table_id =
+      RoutingTable::GetInterfaceTableId(device->interface_index());
 
   EXPECT_CALL(*device_info_,
               HasOtherAddress(device->interface_index(),
@@ -614,11 +601,8 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfigIPv6) {
   auto device = CreateDevice(Technology::kEthernet);
   connection_ = CreateConnection(device);
 
-  // UpdateFromIPConfig creates a per-device table for all devices.
-  const uint32_t table_id = 8;
-  EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
-  EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
-  EXPECT_CALL(routing_table_, FlushCache()).Times(1);
+  const auto table_id =
+      RoutingTable::GetInterfaceTableId(device->interface_index());
 
   EXPECT_CALL(*device_info_,
               HasOtherAddress(device->interface_index(),
@@ -647,10 +631,8 @@ TEST_F(ConnectionTest, AddConfigWithPeer) {
   connection_ = CreateConnection(device);
 
   const std::string kPeerAddress("192.168.1.222");
-  const uint32_t table_id = 8;
-  EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
-  EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
-  EXPECT_CALL(routing_table_, FlushCache()).Times(1);
+  const auto table_id =
+      RoutingTable::GetInterfaceTableId(device->interface_index());
   IPAddress peer_address(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(peer_address.SetAddressFromString(kPeerAddress));
   properties_.peer_address = kPeerAddress;
@@ -684,11 +666,8 @@ TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
   properties_.subnet_prefix = kPrefix1;
   UpdateProperties();
 
-  // UpdateFromIPConfig creates a per-device table for all devices.
-  const uint32_t table_id = 8;
-  EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
-  EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
-  EXPECT_CALL(routing_table_, FlushCache()).Times(1);
+  const auto table_id =
+      RoutingTable::GetInterfaceTableId(device->interface_index());
 
   // Connection should add a link route which will allow the
   // gateway to be reachable.
@@ -735,10 +714,8 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   connection_->SetMetric(Connection::kDefaultMetric, true);
   Mock::VerifyAndClearExpectations(&routing_table_);
 
-  const uint32_t table_id = 8;
-  EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
-  EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
-  EXPECT_CALL(routing_table_, FlushCache()).Times(1);
+  const auto table_id =
+      RoutingTable::GetInterfaceTableId(device->interface_index());
 
   EXPECT_CALL(*device_info_,
               HasOtherAddress(device->interface_index(),
@@ -769,11 +746,6 @@ TEST_F(ConnectionTest, AddConfigWithDNSDomain) {
   auto device = CreateDevice(Technology::kUnknown);
   connection_ = CreateConnection(device);
 
-  const uint32_t table_id = 8;
-  EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
-  EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
-  EXPECT_CALL(routing_table_, FlushCache()).Times(1);
-
   const std::string kDomainName("chromium.org");
   properties_.domain_search.clear();
   properties_.domain_name = kDomainName;
@@ -801,11 +773,6 @@ TEST_F(ConnectionTest, AddConfigWithFixedIpParams) {
   auto device = CreateDevice(Technology::kUnknown);
   connection_ = CreateConnection(device, true);
 
-  const uint32_t table_id = 8;
-  EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
-  EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
-  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-
   // Initial setup: routes but no IP configuration.
   EXPECT_CALL(*device_info_, HasOtherAddress(_, _)).Times(0);
   EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _, _)).Times(0);
@@ -832,10 +799,8 @@ TEST_F(ConnectionTest, HasOtherAddress) {
   auto device = CreateDevice(Technology::kUnknown);
   connection_ = CreateConnection(device);
 
-  const uint32_t table_id = 8;
-  EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
-  EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
-  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
+  const auto table_id =
+      RoutingTable::GetInterfaceTableId(device->interface_index());
   EXPECT_CALL(*device_info_,
               HasOtherAddress(device->interface_index(),
                               IsIPAddress(local_address_, kPrefix0)))
@@ -887,18 +852,16 @@ TEST_F(ConnectionTest, BlackholeIPv6) {
   auto device = CreateDevice(Technology::kUnknown);
   connection_ = CreateConnection(device);
 
-  const uint32_t table_id = 9;
+  const auto table_id =
+      RoutingTable::GetInterfaceTableId(device->interface_index());
   properties_.blackhole_ipv6 = true;
   UpdateProperties();
   EXPECT_CALL(*device_info_, HasOtherAddress(_, _)).WillOnce(Return(false));
   EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _, _));
   EXPECT_CALL(routing_table_, SetDefaultRoute(_, _, _, _));
-  EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN)).Times(AnyNumber());
-  EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
   EXPECT_CALL(routing_table_, FlushRules(_));
   EXPECT_CALL(routing_table_, AddRule(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(routing_table_, ConfigureRoutes(_, _, _, _));
-  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   EXPECT_CALL(routing_table_,
               CreateBlackholeRoute(device->interface_index(),
                                    IPAddress::kFamilyIPv6, 0, table_id))

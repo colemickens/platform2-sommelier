@@ -49,8 +49,8 @@ class MockRoutingTable : public RoutingTable {
               RequestRouteToHost,
               (const IPAddress&, int, int, const QueryCallback&, uint32_t),
               (override));
-  MOCK_METHOD(uint32_t, AllocTableId, (), (override));
-  MOCK_METHOD(void, FreeTableId, (uint32_t), (override));
+  MOCK_METHOD(uint32_t, RequestAdditionalTableId, (), (override));
+  MOCK_METHOD(void, FreeAdditionalTableId, (uint32_t), (override));
   MOCK_METHOD(bool, AddRule, (int, const RoutingPolicyEntry&), (override));
   MOCK_METHOD(void, FlushRules, (int), (override));
 

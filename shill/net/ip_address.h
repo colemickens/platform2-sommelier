@@ -136,7 +136,9 @@ class SHILL_EXPORT IPAddress {
 
   // Returns whether |b| has the same family, address and prefix as |this|.
   bool Equals(const IPAddress& b) const;
+
   bool operator==(const IPAddress& b) const { return Equals(b); }
+  bool operator!=(const IPAddress& b) const { return !Equals(b); }
 
   // Returns whether |b| has the same family and address as |this|.
   bool HasSameAddressAs(const IPAddress& b) const;

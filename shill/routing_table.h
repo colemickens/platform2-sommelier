@@ -6,8 +6,8 @@
 #define SHILL_ROUTING_TABLE_H_
 
 #include <deque>
-#include <map>
 #include <memory>
+#include <set>
 #include <unordered_map>
 #include <vector>
 
@@ -47,6 +47,19 @@ class RoutingTable {
 
   virtual void Start();
   virtual void Stop();
+
+  // Informs RoutingTable that a new Device has come up. While RoutingTable
+  // could find out about a new Device by seeing a new interface index in a
+  // kernel-added route, having this allows for any required setup to occur
+  // prior to routes being created for the Device in question.
+  void RegisterDevice(int interface_index);
+
+  // Causes RoutingTable to stop managing a particular interface index. This
+  // method does not perform clean up that would allow corresponding interface
+  // to be used as an unmanaged Device. Instead, the assumption is that an
+  // unmanaged Device will never be registered with RoutingTable, and so
+  // deregister calls are exclusively for "normal" interface down events.
+  void DeregisterDevice(int interface_index);
 
   // Add an entry to the routing table.
   virtual bool AddRoute(int interface_index, const RoutingTableEntry& entry);
@@ -125,15 +138,15 @@ class RoutingTable {
                                   const QueryCallback& callback,
                                   uint32_t table_id);
 
+  static uint32_t GetInterfaceTableId(int interface_index);
+
   // Allocates a routing table, and returns the ID.  If no IDs are available,
-  // returns RT_TABLE_UNSPEC.
-  virtual uint32_t AllocTableId();
-  // Sets a table as the per-device table for the specified index. |table_id|
-  // must not already be used as the per device table of a different interface,
-  // and the interface may not already have a different per device table.
-  virtual void SetPerDeviceTable(int interface_index, uint32_t table_id);
-  // Frees routing table |id| that was obtained from AllocTableId().
-  virtual void FreeTableId(uint32_t id);
+  // returns RT_TABLE_UNSPEC. This should *not* be used to allocate a per-Device
+  // table, which is not explicitly allocated and freed, but is instead
+  // retrieved using GetInterfaceTableId.
+  virtual uint32_t RequestAdditionalTableId();
+  // Frees routing table |id| that was obtained from RequestAdditionalTableId().
+  virtual void FreeAdditionalTableId(uint32_t id);
 
  protected:
   RoutingTable();
@@ -198,8 +211,7 @@ class RoutingTable {
 
   RouteTables tables_;
   PolicyTables policy_tables_;
-  // Map of interface index -> id of per-device routing table.
-  std::map<int, uint32_t> per_device_tables_;
+  std::set<int> managed_interfaces_;
 
   std::unique_ptr<RTNLListener> route_listener_;
   std::deque<Query> route_queries_;
