@@ -437,4 +437,24 @@ TEST(UtilTest, ConvertToGattService) {
             s->characteristics_[cfh]->descriptors_[dh2]->uuid().value());
 }
 
+TEST(UtilTest, GetBytesFromSg) {
+  std::vector<uint8_t> value({0x11, 0x22, 0x33, 0x44});
+  std::vector<uint8_t> extracted_value;
+  sg data_null = nullptr;
+  sg data_empty = sgNew();
+  sg data = sgNewWithCopyData(static_cast<void*>(value.data()), value.size());
+
+  extracted_value = GetBytesFromSg(data_null);
+  EXPECT_TRUE(extracted_value.empty());
+
+  extracted_value = GetBytesFromSg(data_empty);
+  EXPECT_TRUE(extracted_value.empty());
+
+  extracted_value = GetBytesFromSg(data);
+  EXPECT_EQ(value, extracted_value);
+
+  sgFree(data_empty);
+  sgFree(data);
+}
+
 }  // namespace bluetooth

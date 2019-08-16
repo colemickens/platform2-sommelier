@@ -355,4 +355,21 @@ std::unique_ptr<GattService> ConvertToGattService(
   return s;
 }
 
+std::vector<uint8_t> GetBytesFromSg(const sg data) {
+  if (data == nullptr)
+    return {};
+
+  uint32_t data_length = sgLength(data);
+  if (data_length == 0)
+    return {};
+
+  std::vector<uint8_t> d(data_length);
+  if (!sgSerializeCutFront(data, d.data(), d.size())) {
+    LOG(WARNING) << "Failed to extract bytes from sg";
+    return {};
+  }
+
+  return d;
+}
+
 }  // namespace bluetooth

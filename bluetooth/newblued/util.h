@@ -12,6 +12,7 @@
 
 #include <newblue/bt.h>
 #include <newblue/gatt.h>
+#include <newblue/sg.h>
 #include <newblue/uuid.h>
 
 #include "bluetooth/common/exported_object_manager_wrapper.h"
@@ -173,6 +174,10 @@ struct uuid ConvertToRawUuid(const Uuid& uuid);
 // Converts struct GattTraversedService to bluetooth::GattService.
 std::unique_ptr<GattService> ConvertToGattService(
     const struct GattTraversedService& service);
+
+// Extracts bytes from |data| without changing the endianess. This does not take
+// the ownership of |data|.
+std::vector<uint8_t> GetBytesFromSg(const sg data);
 
 }  // namespace bluetooth
 
