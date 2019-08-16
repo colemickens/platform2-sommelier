@@ -96,7 +96,9 @@ void ParserTest(const std::string& input_file_name,
 }  // namespace
 
 TEST(AnomalyDetectorTest, KernelWarning) {
-  ParserRun second{.find_this = "ttm_bo_vm.c"s, .replace_with = "file_one.c"s};
+  ParserRun second{.find_this = "ttm_bo_vm.c"s,
+                   .replace_with = "file_one.c"s,
+                   .expected_text = "0x19e/0x1ab [ttm]()\nModules linked in"s};
   ParserTest<KernelParser>("TEST_WARNING", {simple_run, second});
 }
 

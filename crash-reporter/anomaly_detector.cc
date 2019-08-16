@@ -157,7 +157,7 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
       auto function = found ? info.substr(spacep + 1) : "unknown-function";
 
       text_ += base::StringPrintf("%08x-%s\n", hash, function.c_str());
-      text_ += info;
+      text_ += base::StringPrintf("%s\n", info.c_str());
       last_line_ = LineType::Body;
     } else {
       last_line_ = LineType::None;
