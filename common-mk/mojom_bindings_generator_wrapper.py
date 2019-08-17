@@ -26,9 +26,8 @@ import sys
 
 
 def main(argv):
-  subprocess.check_call([sys.executable] + argv[1:])
-  subprocess.check_call(
-      [sys.executable] + argv[1:] + ['--generate_non_variant_code'])
+  subprocess.check_call(argv[1:])
+  subprocess.check_call(argv[1:] + ['--generate_non_variant_code'])
 
 
 if __name__ == '__main__':
