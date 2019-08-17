@@ -57,11 +57,28 @@ are changed or when Chrome is restarted, for instance.
 
 ### powerd preferences
 
-powerd's default preferences are stored on the read-only partition in
-`/usr/share/power_manager` and `/usr/share/power_manager/board_specific`. These
-preferences can be overridden by identically-named files on the stateful
-partition in `/var/lib/power_manager`. In most cases, preference changes won't
-take effect until the powerd process is restarted. The
+powerd's default preferences are stored either in [chromeos-config] or on the
+read-only partition in `/usr/share/power_manager` and
+`/usr/share/power_manager/board_specific`. These preferences can be overridden
+by identically-named files on the stateful partition in
+`/var/lib/power_manager`. In most cases, preference changes won't
+take effect until the powerd process is restarted.
+
+To revert to the normal behavior, remove the files that you just created from
+`/var/lib/power_manager` and restart the powerd job again.
+
+For preferences configured in multiple sources, the order of preference is as
+follows:
+
+*   `/var/lib/power_manager`
+*   [chromeos-config]
+*   `/usr/share/power_manager/board_specific`
+*   `/usr/share/power_manager`
+
+To temporarily change prefs in an autotest, use [PowerPrefChanger].
+
+### Changing powerd timeouts
+
 `set_short_powerd_timeouts` script can be used to quickly set inactivity
 timeouts to low values and restart powerd. To disable the power manager's
 timeouts more permanently, run the following as root:
@@ -73,11 +90,6 @@ for i in {,un}plugged_{dim,off,suspend}_ms; do
 done
 restart powerd
 ```
-
-To revert to the normal behavior, remove the files that you just created from
-`/var/lib/power_manager` and restart the powerd job again.
-
-To temporarily change prefs in an autotest, use [PowerPrefChanger].
 
 ## How do I make my code run before the system suspends or after it resumes?
 
@@ -92,6 +104,7 @@ usage.
 [PowerPrefChanger]: https://chromium.googlesource.com/chromiumos/third_party/autotest/+/master/client/cros/power_utils.py
 [suspend.proto]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/power_manager/suspend.proto
 [suspend_delay_sample]: https://chromium.googlesource.com/chromiumos/platform2/+/master/power_manager/tools/suspend_delay_sample.cc
+[chromeos-config]: https://chromium.googlesource.com/chromiumos/platform2/+/master/chromeos-config/
 
 ## How do I prevent the system from suspending or shutting down while my code is running?
 
