@@ -9,9 +9,9 @@
 #include <vector>
 
 #include "ipp_attribute.h"  // NOLINT(build/include)
-#include "ipp_enums.h"  // NOLINT(build/include)
-#include "ipp_export.h"  // NOLINT(build/include)
-#include "ipp_package.h"  // NOLINT(build/include)
+#include "ipp_enums.h"      // NOLINT(build/include)
+#include "ipp_export.h"     // NOLINT(build/include)
+#include "ipp_package.h"    // NOLINT(build/include)
 
 // This file contains definition of classes corresponding to supported IPP
 // collection attributes. See ipp.h for more details.

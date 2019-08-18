@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include "ipp_enums.h"  // NOLINT(build/include)
+#include "ipp_enums.h"   // NOLINT(build/include)
 #include "ipp_export.h"  // NOLINT(build/include)
 
 namespace ipp {

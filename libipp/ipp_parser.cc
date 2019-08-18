@@ -11,6 +11,11 @@ namespace ipp {
 
 namespace {
 
+// This parameter defines how deep can be a package with recursive collections.
+// A collection placed directly in attributes group has level 1, each
+// sub-collection belonging directly to it has level 2 etc..
+constexpr int kMaxCollectionLevel = 16;
+
 // Converts the least significant 4 bits to hexadecimal digit (ASCII char).
 char ToHexDigit(uint8_t v) {
   v &= 0x0f;
@@ -517,9 +522,12 @@ void Parser::ResetContent() {
 
 // Parses single attribute's value and add it to |attr|. |tnv| is the first TNV
 // with the value, |tnvs| contains all following TNVs. Both |tnvs| and |attr|
-// cannot be nullptr. Returns false <=> critical parsing error was spotted.
+// cannot be nullptr. |coll_level| denotes how "deep" is the collection that
+// contains the attribute; attributes defined directly in the attributes group
+// have level 0. Returns false <=> critical parsing error was spotted.
 // See section 3.5.2 from rfc8010 for details.
-bool Parser::ParseRawValue(const TagNameValue& tnv,
+bool Parser::ParseRawValue(int coll_level,
+                           const TagNameValue& tnv,
                            std::list<TagNameValue>* tnvs,
                            RawAttribute* attr) {
   // Is it Ouf-Of-Band value ?
@@ -548,7 +556,7 @@ bool Parser::ParseRawValue(const TagNameValue& tnv,
       LogParserError("Tag-name-value opening a collection has non-empty value",
                      "The field is ignored");
     std::unique_ptr<RawCollection> coll(new RawCollection);
-    if (!ParseRawCollection(tnvs, coll.get()))
+    if (!ParseRawCollection(coll_level + 1, tnvs, coll.get()))
       return false;
     attr->values.emplace_back(coll.release());
     return true;
@@ -574,10 +582,20 @@ bool Parser::ParseRawValue(const TagNameValue& tnv,
   return true;
 }
 
-// Parses single collections from given TNVs. Both |tnvs| and |coll| cannot be
-// nullptr. Returns false <=> critical parsing error was spotted.
-bool Parser::ParseRawCollection(std::list<TagNameValue>* tnvs,
+// Parses single collections from given TNVs. |coll_level| denotes how "deep"
+// the collection is; collections defined directly in the attributes group
+// have level 1. Both |tnvs| and |coll| cannot be nullptr.
+// Returns false <=> critical parsing error was spotted.
+bool Parser::ParseRawCollection(int coll_level,
+                                std::list<TagNameValue>* tnvs,
                                 RawCollection* coll) {
+  if (coll_level > kMaxCollectionLevel) {
+    LogParserError(
+        "The package has too many recursive collection; the maximum allowed "
+        "number of levels is " +
+        ToString(kMaxCollectionLevel));
+    return false;
+  }
   while (true) {
     if (tnvs->empty()) {
       LogParserError(
@@ -638,7 +656,7 @@ bool Parser::ParseRawCollection(std::list<TagNameValue>* tnvs,
         LogParserError(
             "Tag-name-value opening member attribute has non-empty name",
             "The field is ignored");
-      if (!ParseRawValue(tnv, tnvs, attr))
+      if (!ParseRawValue(coll_level, tnv, tnvs, attr))
         return false;
     }
   }
@@ -668,7 +686,7 @@ bool Parser::ParseRawGroup(std::list<TagNameValue>* tnvs, RawCollection* coll) {
     // parse all values
     while (true) {
       // parse value
-      if (!ParseRawValue(tnv, tnvs, attr))
+      if (!ParseRawValue(0 /*collection level*/, tnv, tnvs, attr))
         return false;
       // go to the next value or attribute
       if (tnvs->empty() || !tnvs->front().name.empty())

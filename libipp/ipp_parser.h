@@ -13,8 +13,8 @@
 #include <vector>
 
 #include "ipp_attribute.h"  // NOLINT(build/include)
-#include "ipp_base.h"  // NOLINT(build/include)
-#include "ipp_frame.h"  // NOLINT(build/include)
+#include "ipp_base.h"       // NOLINT(build/include)
+#include "ipp_frame.h"      // NOLINT(build/include)
 
 namespace ipp {
 
@@ -65,10 +65,12 @@ class Parser {
                           std::list<TagNameValue>*);
 
   // Parser helpers.
-  bool ParseRawValue(const TagNameValue& tnv,
+  bool ParseRawValue(int coll_level,
+                     const TagNameValue& tnv,
                      std::list<TagNameValue>* data_chunks,
                      RawAttribute* attr);
-  bool ParseRawCollection(std::list<TagNameValue>* data_chunks,
+  bool ParseRawCollection(int coll_level,
+                          std::list<TagNameValue>* data_chunks,
                           RawCollection* coll);
   bool ParseRawGroup(std::list<TagNameValue>* data_chunks, RawCollection* coll);
   bool DecodeCollection(RawCollection* raw, Collection* coll);

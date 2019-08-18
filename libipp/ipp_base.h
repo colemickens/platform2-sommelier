@@ -11,8 +11,8 @@
 #include <string>
 #include <vector>
 
-#include "ipp_enums.h"  // NOLINT(build/include)
-#include "ipp_export.h"  // NOLINT(build/include)
+#include "ipp_enums.h"    // NOLINT(build/include)
+#include "ipp_export.h"   // NOLINT(build/include)
 #include "ipp_package.h"  // NOLINT(build/include)
 
 // This is part of libipp. See ipp.h for general information about this

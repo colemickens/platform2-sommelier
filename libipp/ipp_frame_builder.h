@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include "ipp_base.h"  // NOLINT(build/include)
+#include "ipp_base.h"   // NOLINT(build/include)
 #include "ipp_frame.h"  // NOLINT(build/include)
 
 namespace ipp {

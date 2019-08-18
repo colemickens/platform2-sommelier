@@ -822,6 +822,54 @@ TEST(rfc8010, example9) {
   CheckResponse(c, &r, 123);
 }
 
+TEST(limits, nestedCollections) {
+  // No more than 16 recursively nested collections are allowed.
+  BinaryContent c;
+  // Octets                                Symbolic Value       Protocol field
+  c.u2(0x0101u);      // 1.1                  version-number
+  c.u2(0x0005u);      // Create-Job           operation-id
+  c.u4(0x00000001u);  // 1                    request-id
+
+  c.u1(static_cast<int>(ipp::GroupTag::job_attributes));  // start group
+  c.u1(0x34u);       // begCollection        value-tag
+  c.u2(0x0009u);     // 9                    name-length
+  c.s("media-col");  // media-col            name
+  c.u2(0x0000u);     // 0                    value-length
+  for (int i = 0; i < 16; ++i) {
+    c.u1(0x4au);        // memberAttrName       value-tag
+    c.u2(0x0000u);      // 0                    name-length
+    c.u2(0x000au);      // 10                   value-length
+    c.s("media-size");  // media-size           value (member-name)
+    c.u1(0x34u);        // begCollection        member-value-tag
+    c.u2(0x0000u);      // 0                    name-length
+    c.u2(0x0000u);      // 0                    member-value-length
+  }
+  c.u1(0x4au);         // memberAttrName       value-tag
+  c.u2(0x0000u);       // 0                    name-length
+  c.u2(0x000bu);       // 11                   value-length
+  c.s("x-dimension");  // x-dimension          value (member-name)
+  c.u1(0x21u);         // integer              member-value-tag
+  c.u2(0x0000u);       // 0                    name-length
+  c.u2(0x0004u);       // 4                    member-value-length
+  c.u4(0x00005208u);   // 21000                member-value
+  for (int i = 0; i < 16; ++i) {
+    c.u1(0x37u);    // endCollection        end-value-tag
+    c.u2(0x0000u);  // 0                    end-name-length
+    c.u2(0x0000u);  // 0                    end-value-length
+  }
+  c.u1(0x37u);    // endCollection        end-value-tag
+  c.u2(0x0000u);  // 0                    end-name-length
+  c.u2(0x0000u);  // 0                    end-value-length
+  c.u1(0x03u);    // end-of-attributes    end-of-attributes-tag
+
+  ipp::Response_Get_Jobs response;
+  ipp::Client client;
+  const bool result = client.ReadResponseFrameFrom(c.data) &&
+                      client.ParseResponseAndSaveTo(&response);
+  // It was supposed to fail, since there are 17 nested collections.
+  EXPECT_FALSE(result);
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {

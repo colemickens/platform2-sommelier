@@ -185,8 +185,8 @@
 
 // these files are generated from IPP schema
 #include "ipp_collections.h"  // NOLINT(build/include)
-#include "ipp_enums.h"  // NOLINT(build/include)
-#include "ipp_operations.h"  // NOLINT(build/include)
+#include "ipp_enums.h"        // NOLINT(build/include)
+#include "ipp_operations.h"   // NOLINT(build/include)
 
 // look here for Package, Group and Collection classes
 #include "ipp_package.h"  // NOLINT(build/include)
