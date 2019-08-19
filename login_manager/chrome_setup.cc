@@ -351,9 +351,12 @@ void AddSystemFlags(ChromiumCommandBuilder* builder) {
   if (builder->is_developer_end_user())
     builder->AddArg("--system-developer-mode");
 
-  // If wilco DTC is available on a device, set a flag to let the browser know.
-  if (builder->UseFlagIsSet("wilco"))
+  // Enable Wilco only features.
+  if (builder->UseFlagIsSet("wilco")) {
     builder->AddFeatureEnableOverride("WilcoDtc");
+    // Needed for scheduled update checks on Wilco.
+    builder->AddArg("--register-max-dark-suspend-delay");
+  }
 }
 
 // Adds UI-related flags to the command line.
