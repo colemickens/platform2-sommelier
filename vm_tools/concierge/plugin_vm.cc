@@ -44,9 +44,9 @@ constexpr char kPluginBinDir[] = "/opt/pita/";
 constexpr char kPluginBinName[] = "pvm";
 
 constexpr gid_t kPluginGidMap[] = {
-    7,    // lp
-    600,  // cras
-    603,  // arc-camera
+    600,    // cras
+    603,    // arc-camera
+    20136,  // cups-proxy
 };
 
 // Name of the runtime directory inside the jail.
