@@ -206,7 +206,7 @@ if [ "$ROOTDEV_RET_CODE" = "0" ] && [ "$ROOTDEV_TYPE" != "/dev/ram" ]; then
   # partition is not found on ubi${PARTITION_NUM_STATE}_0, check
   # ubi0_${PARTITION_NUM_STATE}.
   STATE_FLAGS="nodev,noexec,nosuid,noatime"
-  if [ "${FS_FORMAT_STATE}" = "ubi" ]; then
+  if [ "${FORMAT_STATE}" = "ubi" ]; then
     STATE_DEV="/dev/ubi${PARTITION_NUM_STATE}_0"
     if [ ! -e "${STATE_DEV}" ]; then
       STATE_DEV="/dev/ubi0_${PARTITION_NUM_STATE}"
