@@ -234,4 +234,90 @@ TEST_F(GattAttributesTest, GattCharacteristicSetValue) {
   EXPECT_EQ(std::vector<uint8_t>({0x11, 0x22}), c.value().value());
 }
 
+TEST_F(GattAttributesTest, GattDescriptorSetValue) {
+  // Service handles.
+  uint16_t sfh = 0x0001;
+  uint16_t slh = 0x0003;
+
+  // Characteristic handles and properties.
+  uint16_t cfh = 0x0004;
+  uint16_t clh = 0x0006;
+  uint16_t cvh = 0x0005;
+  uint8_t cp = 0xAB;
+
+  // Descriptor handle.
+  uint16_t dh = 0x0006;
+
+  std::vector<uint8_t> value({0x33, 0x44, 0x55});
+
+  GattService s(sfh, slh, false, service_uuid_);
+  GattCharacteristic c(&s, cvh, cfh, clh, cp, characteristic_uuid_);
+  GattDescriptor d(&c, dh, descriptor_uuid_);
+
+  EXPECT_TRUE(d.value().value().empty());
+
+  d.SetValue(value);
+  EXPECT_EQ(value, d.value().value());
+}
+
+TEST_F(GattAttributesTest, GattCharacteristicResetPropertiesUpdated) {
+  // Service handles.
+  uint16_t sfh = 0x0001;
+  uint16_t slh = 0x0003;
+
+  // Characteristic handles and properties.
+  uint16_t cfh = 0x0004;
+  uint16_t clh = 0x0006;
+  uint16_t cvh = 0x0005;
+  uint8_t cp = 0xAB;
+
+  std::vector<uint8_t> value({0x11, 0x22});
+
+  GattService s(sfh, slh, false, service_uuid_);
+  GattCharacteristic c(&s, cvh, cfh, clh, cp, characteristic_uuid_);
+
+  EXPECT_FALSE(c.value().updated());
+  EXPECT_TRUE(c.value().value().empty());
+
+  c.SetValue(value);
+  EXPECT_TRUE(c.value().updated());
+  EXPECT_EQ(value, c.value().value());
+
+  c.ResetPropertiesUpdated();
+  EXPECT_FALSE(c.value().updated());
+  EXPECT_EQ(value, c.value().value());
+}
+
+TEST_F(GattAttributesTest, GattDescriptorResetPropertiesUpdated) {
+  // Service handles.
+  uint16_t sfh = 0x0001;
+  uint16_t slh = 0x0003;
+
+  // Characteristic handles and properties.
+  uint16_t cfh = 0x0004;
+  uint16_t clh = 0x0006;
+  uint16_t cvh = 0x0005;
+  uint8_t cp = 0xAB;
+
+  // Descriptor handle.
+  uint16_t dh = 0x0006;
+
+  std::vector<uint8_t> value({0x33, 0x44, 0x55});
+
+  GattService s(sfh, slh, false, service_uuid_);
+  GattCharacteristic c(&s, cvh, cfh, clh, cp, characteristic_uuid_);
+  GattDescriptor d(&c, dh, descriptor_uuid_);
+
+  EXPECT_FALSE(d.value().updated());
+  EXPECT_TRUE(d.value().value().empty());
+
+  d.SetValue(value);
+  EXPECT_TRUE(d.value().updated());
+  EXPECT_EQ(value, d.value().value());
+
+  d.ResetPropertiesUpdated();
+  EXPECT_FALSE(d.value().updated());
+  EXPECT_EQ(value, d.value().value());
+}
+
 }  // namespace bluetooth

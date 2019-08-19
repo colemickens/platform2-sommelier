@@ -201,6 +201,11 @@ void GattInterfaceHandler::OnGattCharacteristicRemoved(
   }
 }
 
+void GattInterfaceHandler::OnGattCharacteristicChanged(
+    const GattCharacteristic& characteristic) {
+  ExportGattCharacteristicInterface(characteristic);
+}
+
 void GattInterfaceHandler::OnGattDescriptorAdded(
     const GattDescriptor& descriptor) {
   ExportGattDescriptorInterface(descriptor);

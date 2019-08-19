@@ -140,6 +140,9 @@ class GattCharacteristic {
 
   void SetValue(const std::vector<uint8_t>& value) { value_.SetValue(value); }
 
+  // Resets the updated flags of class members with Property<T> type.
+  void ResetPropertiesUpdated();
+
   const Property<const GattService*>& service() const { return service_; }
   uint16_t value_handle() const { return value_handle_; }
   uint16_t first_handle() const { return first_handle_; }
@@ -181,6 +184,11 @@ class GattDescriptor {
                  uint16_t handle,
                  const Uuid& uuid);
   virtual ~GattDescriptor() {}
+
+  void SetValue(const std::vector<uint8_t>& value) { value_.SetValue(value); }
+
+  // Resets the updated flags of class members with Property<T> type.
+  void ResetPropertiesUpdated();
 
   const Property<const GattCharacteristic*>& characteristic() const {
     return characteristic_;

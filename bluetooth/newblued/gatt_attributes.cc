@@ -101,12 +101,26 @@ void GattCharacteristic::AddDescriptor(
   descriptors_.emplace(descriptor->handle(), std::move(descriptor));
 }
 
+void GattCharacteristic::ResetPropertiesUpdated() {
+  service_.ClearUpdated();
+  properties_.ClearUpdated();
+  uuid_.ClearUpdated();
+  value_.ClearUpdated();
+  notify_setting_.ClearUpdated();
+}
+
 GattDescriptor::GattDescriptor(const GattCharacteristic* characteristic,
                                uint16_t handle,
                                const Uuid& uuid)
     : handle_(handle), uuid_(uuid) {
   CHECK(characteristic != nullptr);
   characteristic_.SetValue(characteristic);
+}
+
+void GattDescriptor::ResetPropertiesUpdated() {
+  characteristic_.ClearUpdated();
+  uuid_.ClearUpdated();
+  value_.ClearUpdated();
 }
 
 }  // namespace bluetooth

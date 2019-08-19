@@ -509,8 +509,10 @@ void Gatt::OnGattClientReadCharacteristicValue(
 
     characteristic->second->SetValue(value);
 
-    // TODO(mcchou): Notify Observer about GATT characteristic updated event
-    // and clear the updated flags of properties afterward.
+    for (auto& observer : observers_)
+      observer.OnGattCharacteristicChanged(*characteristic->second);
+
+    characteristic->second->ResetPropertiesUpdated();
   }
 
   auto callback =

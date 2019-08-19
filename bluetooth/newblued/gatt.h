@@ -66,6 +66,8 @@ class Gatt final : public DeviceInterfaceHandler::DeviceObserver {
         const GattCharacteristic& characteristic) {}
     virtual void OnGattCharacteristicRemoved(
         const GattCharacteristic& characteristic) {}
+    virtual void OnGattCharacteristicChanged(
+        const GattCharacteristic& characteristic) {}
     virtual void OnGattDescriptorAdded(const GattDescriptor& descriptor) {}
     virtual void OnGattDescriptorRemoved(const GattDescriptor& descriptor) {}
   };

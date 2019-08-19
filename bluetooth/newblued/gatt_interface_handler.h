@@ -37,6 +37,8 @@ class GattInterfaceHandler final : public Gatt::GattObserver {
       const GattCharacteristic& characteristic) override;
   void OnGattCharacteristicRemoved(
       const GattCharacteristic& characteristic) override;
+  void OnGattCharacteristicChanged(
+      const GattCharacteristic& characteristic) override;
   void OnGattDescriptorAdded(const GattDescriptor& descriptor) override;
   void OnGattDescriptorRemoved(const GattDescriptor& descriptor) override;
 
