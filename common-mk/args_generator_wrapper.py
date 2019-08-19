@@ -24,7 +24,9 @@ import sys
 
 import common_utils
 
-output = subprocess.check_output(sys.argv[1:]).strip()
+# TODO(vapier): Move decode('utf-8') to encoding='utf-8' in check_output once
+# .gn uses shebangs.
+output = subprocess.check_output(sys.argv[1:]).decode('utf-8').strip()
 unescaped = common_utils.parse_shell_args(output)
 
 print('\n'.join(unescaped))

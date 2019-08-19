@@ -27,4 +27,6 @@ def parse_shell_args(s):
   # for echo. IFS is set to separate $* with newlines.
   output = subprocess.check_output(
       ['eval "set -- dummy $0"; IFS=$\'\\n\'; printf "%s" "$*"', s], shell=True)
-  return output.splitlines()[1:]
+  # TODO(vapier): Move decode('utf-8') to encoding='utf-8' in check_output once
+  # platform2.py is converted to `python3`.
+  return output.decode('utf-8').splitlines()[1:]
