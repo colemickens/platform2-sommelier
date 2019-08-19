@@ -65,6 +65,10 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
                  const std::string& property,
                  std::string* val_out) override;
 
+  // @return true if the config file was not found during Init and
+  //     mosys platform will be used, false otherwise
+  bool FallbackModeEnabled() const { return fallback_mode_; }
+
  private:
   // Internal init function used by Init and InitForTest.
   // @sku_id: SKU ID, normally returned by 'mosys platform sku'.
@@ -86,8 +90,12 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // @return true if OK, false on error.
   bool InitCheck() const;
 
-  // The underlying CrosConfigJson used for GetString
+  // The underlying CrosConfigJson or CrosConfigFallback used for
+  // GetString
   std::unique_ptr<CrosConfigInterface> cros_config_;
+
+  // Set to true if we are using a CrosConfigFallback
+  bool fallback_mode_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(CrosConfig);
 };
