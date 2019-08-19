@@ -22,7 +22,6 @@ namespace shill {
 class Error;
 class KeyValueStore;
 class Manager;
-class StoreInterface;
 
 class VPNProvider : public ProviderInterface {
  public:
