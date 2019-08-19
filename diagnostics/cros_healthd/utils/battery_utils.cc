@@ -122,6 +122,7 @@ namespace {
 // battery metrics.
 bool FetchBatteryMetrics(BatteryInfoPtr* output_info) {
   dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
   scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
   if (!bus->Connect()) {
     LOG(ERROR) << "Failed to connect to the system bus";
