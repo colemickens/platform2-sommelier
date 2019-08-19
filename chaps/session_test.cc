@@ -1101,7 +1101,7 @@ TEST_F(TestSession, ImportECCWithTPM) {
   CK_BBOOL true_value = CK_TRUE;
   string id = "test_id";
   string label = "test_label";
-  string ec_params = GetECParametersAsString(key);
+  string ec_params = GetECParametersAsString(key.get());
   string private_value = bn2bin(EC_KEY_get0_private_key(key.get()));
 
   CK_ATTRIBUTE private_attributes[] = {
@@ -1143,7 +1143,7 @@ TEST_F(TestSession, ImportECCWithNoTPM) {
   CK_BBOOL true_value = CK_TRUE;
   string id = "test_id";
   string label = "test_label";
-  string ec_params = GetECParametersAsString(key);
+  string ec_params = GetECParametersAsString(key.get());
   string private_value = bn2bin(EC_KEY_get0_private_key(key.get()));
 
   CK_ATTRIBUTE private_attributes[] = {

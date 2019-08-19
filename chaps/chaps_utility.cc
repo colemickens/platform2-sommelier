@@ -743,8 +743,9 @@ bool ConvertToBIGNUM(const string& big_integer, BIGNUM* b) {
                    big_integer.length(), b);
 }
 
-string GetECParametersAsString(const crypto::ScopedEC_KEY& key) {
-  return ConvertOpenSSLObjectToString<EC_KEY, i2d_ECParameters>(key.get());
+string GetECParametersAsString(const EC_KEY* key) {
+  return ConvertOpenSSLObjectToString<EC_KEY, i2d_ECParameters>(
+      const_cast<EC_KEY*>(key));
 }
 
 // CKA_EC_POINT is DER-encoding of ANSI X9.62 ECPoint value
@@ -753,10 +754,11 @@ string GetECParametersAsString(const crypto::ScopedEC_KEY& key) {
 // form, and X and Y are the point coordinates.
 //
 // i2o_ECPublicKey() returns only the content (04 X Y).
-string GetECPointAsString(const crypto::ScopedEC_KEY& key) {
+string GetECPointAsString(const EC_KEY* key) {
   // Convert EC_KEY* to OCT_STRING
   const string oct_string =
-      ConvertOpenSSLObjectToString<EC_KEY, i2o_ECPublicKey>(key.get());
+      ConvertOpenSSLObjectToString<EC_KEY, i2o_ECPublicKey>(
+          const_cast<EC_KEY*>(key));
   if (oct_string.empty())
     return string();
 

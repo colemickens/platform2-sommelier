@@ -1348,7 +1348,7 @@ CK_RV SessionImpl::GenerateECCKeyPair(Object* public_object,
   private_object->SetAttributeInt(CKA_KEY_TYPE, CKK_EC);
 
   // reset CKA_EC_PARAMS for both key
-  const string ec_params = GetECParametersAsString(key);
+  const string ec_params = GetECParametersAsString(key.get());
   if (ec_params.empty()) {
     LOG(ERROR) << __func__ << ": Fail to dump CKA_EC_PARAMS";
     return CKR_FUNCTION_FAILED;
@@ -1417,7 +1417,7 @@ bool SessionImpl::GenerateECCKeyPairSoftware(const crypto::ScopedEC_KEY& key,
   }
 
   // Set CKA_EC_POINT for public key
-  const string ec_point = GetECPointAsString(key);
+  const string ec_point = GetECPointAsString(key.get());
   if (ec_point.empty()) {
     LOG(ERROR) << __func__ << ": Fail to dump EC_POINT.";
     return false;

@@ -582,7 +582,7 @@ bool TPM2UtilityImpl::GetECCPublicKey(int key_handle, std::string* ec_point) {
     return false;
   }
 
-  *ec_point = GetECPointAsString(key);
+  *ec_point = GetECPointAsString(key.get());
 
   return true;
 }

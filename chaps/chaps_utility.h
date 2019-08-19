@@ -316,9 +316,9 @@ bool ConvertToBIGNUM(const std::string& big_integer, BIGNUM* b);
 //
 
 // Get the ECParamters from |key| and DER-encode to a string.
-std::string GetECParametersAsString(const crypto::ScopedEC_KEY& key);
+std::string GetECParametersAsString(const EC_KEY* key);
 // Get the EC_Point from |key| and DER-encode to a string.
-std::string GetECPointAsString(const crypto::ScopedEC_KEY& key);
+std::string GetECPointAsString(const EC_KEY* key);
 
 //
 // OpenSSL type <--> PKCS #11 Attributes
