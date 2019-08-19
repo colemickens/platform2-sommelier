@@ -104,6 +104,14 @@ void RTNLHandler::Start(uint32_t netlink_groups_mask) {
   SLOG(this, 2) << "RTNLHandler started";
 }
 
+void RTNLHandler::SetReceiverBufferSize(int bytes) {
+  CHECK(rtnl_socket_ != Sockets::kInvalidFileDescriptor)
+      << "Invalid socket descriptor: " << rtnl_socket_;
+
+  if (sockets_->SetReceiveBuffer(rtnl_socket_, bytes) < 0)
+    PLOG(ERROR) << "Failed to increase receive buffer size";
+}
+
 void RTNLHandler::Stop() {
   rtnl_handler_.reset();
   // Close the socket if it is currently open.

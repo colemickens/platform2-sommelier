@@ -55,6 +55,9 @@ class SHILL_EXPORT RTNLHandler {
   // loop.
   virtual void Start(uint32_t netlink_groups_mask);
 
+  // Set the receiver queue buffer size of RTNL socket to |bytes|.
+  void SetReceiverBufferSize(int bytes);
+
   // Add an RTNL event listener to the list of entities that will
   // be notified of RTNL events.
   virtual void AddListener(RTNLListener* to_add);
