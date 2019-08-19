@@ -762,6 +762,10 @@ string GetECPointAsString(const crypto::ScopedEC_KEY& key) {
 
   // Put OCT_STRING to ASN1_OCTET_STRING
   ScopedASN1_OCTET_STRING os(ASN1_OCTET_STRING_new());
+  if (!os) {
+    LOG(ERROR) << "Failed to allocate ASN1_OCTET_STRING.";
+    return string();
+  }
   ASN1_OCTET_STRING_set(os.get(),
                         chaps::ConvertStringToByteBuffer(oct_string.data()),
                         oct_string.size());

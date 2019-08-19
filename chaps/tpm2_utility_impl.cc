@@ -165,6 +165,10 @@ crypto::ScopedEC_KEY GetECCPublicKeyFromTpmPublicArea(
   }
 
   crypto::ScopedEC_Key ecc(EC_KEY_new_by_curve_name(nid));
+  if (!ecc) {
+    LOG(ERROR) << "Failed to create EC_KEY from curve name " << nid << ".";
+    return nullptr;
+  }
 
   std::string xs = StringFrom_TPM2B_ECC_PARAMETER(public_area.unique.ecc.x);
   std::string ys = StringFrom_TPM2B_ECC_PARAMETER(public_area.unique.ecc.y);

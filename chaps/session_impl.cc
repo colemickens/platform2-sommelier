@@ -450,8 +450,10 @@ crypto::ScopedRSA CreateRSAKeyFromObject(const chaps::Object* key_object) {
 // which is aligned with OpenSSL design.
 size_t GetGroupOrderLengthFromEcKey(const crypto::ScopedEC_KEY& key) {
   crypto::ScopedBIGNUM order(BN_new());
-  if (order == nullptr)
+  if (!order) {
+    LOG(ERROR) << "Failed to allocate BIGNUM for EC key order.";
     return 0;
+  }
 
   const EC_GROUP* group = EC_KEY_get0_group(key.get());
   if (group == nullptr)
@@ -1814,6 +1816,10 @@ CK_RV SessionImpl::WrapECCPrivateKey(Object* object) {
 
   // Get public key value
   crypto::ScopedBIGNUM x(BN_new()), y(BN_new());
+  if (!x || !y) {
+    LOG(ERROR) << "Failed to allocate BIGNUM.";
+    return CKR_FUNCTION_FAILED;
+  }
   const EC_POINT* ec_point = EC_KEY_get0_public_key(key.get());
   if (ec_point == nullptr) {
     return CKR_FUNCTION_FAILED;
