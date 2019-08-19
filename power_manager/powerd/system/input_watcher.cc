@@ -26,7 +26,7 @@
 #include "power_manager/powerd/system/event_device_interface.h"
 #include "power_manager/powerd/system/input_observer.h"
 #include "power_manager/powerd/system/udev.h"
-#include "power_manager/powerd/system/wakeup_device_interface.h"
+#include "power_manager/powerd/system/wakeup_device.h"
 
 namespace power_manager {
 namespace system {
@@ -117,11 +117,9 @@ InputWatcher::~InputWatcher() {
 
 bool InputWatcher::Init(
     std::unique_ptr<EventDeviceFactoryInterface> event_device_factory,
-    std::unique_ptr<WakeupDeviceFactoryInterface> wakeup_device_factory,
     PrefsInterface* prefs,
     UdevInterface* udev) {
   event_device_factory_ = std::move(event_device_factory);
-  wakeup_device_factory_ = std::move(wakeup_device_factory);
   udev_ = udev;
 
   prefs->GetBool(kUseLidPref, &use_lid_);
@@ -528,7 +526,7 @@ bool InputWatcher::MonitorWakeupDevice(
 
   VLOG(1) << "Creating wakeup device for " << wakeup_device_path.value();
   std::unique_ptr<WakeupDeviceInterface> wakeup_device =
-      wakeup_device_factory_->CreateWakeupDevice(wakeup_device_path);
+      WakeupDevice::CreateWakeupDevice(wakeup_device_path);
   if (!wakeup_device) {
     LOG(ERROR) << "Creating wakeup device for " << wakeup_device_path.value()
                << " failed";

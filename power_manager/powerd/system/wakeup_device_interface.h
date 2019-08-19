@@ -34,23 +34,6 @@ class WakeupDeviceInterface {
   DISALLOW_COPY_AND_ASSIGN(WakeupDeviceInterface);
 };
 
-class WakeupDeviceFactoryInterface {
- public:
-  WakeupDeviceFactoryInterface() {}
-  virtual ~WakeupDeviceFactoryInterface() {}
-
-  // Creates a wakeup device with sysfs directory pointed by |path|.
-  // Note that the directory pointed by |path| should contain power/wakeup
-  // file (present only if the device is wake capable).
-  // Example: /sys/devices/pci0000:00/0000:00:14.0/usb1/1-2/
-  // Returns nullptr if the device isn't wake-capable.
-  virtual std::unique_ptr<WakeupDeviceInterface> CreateWakeupDevice(
-      const base::FilePath& path) = 0;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(WakeupDeviceFactoryInterface);
-};
-
 }  // namespace system
 }  // namespace power_manager
 

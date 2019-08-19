@@ -9,18 +9,29 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <base/strings/string_number_conversions.h>
 
 #include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/system/udev.h"
 
 namespace power_manager {
 namespace system {
 
+// static
+std::unique_ptr<WakeupDeviceInterface> WakeupDevice::CreateWakeupDevice(
+    const base::FilePath& path) {
+  const base::FilePath wakeup_path = path.Append(kPowerWakeup);
+  if (!base::PathExists(wakeup_path)) {
+    // This can happen when the device is not wake capable.
+    return nullptr;
+  }
+  return std::unique_ptr<WakeupDevice>(new WakeupDevice(path));
+}
+
+// static
 const char WakeupDevice::kPowerWakeupCount[] = "power/wakeup_count";
 
-WakeupDevice::WakeupDevice(const base::FilePath& path, UdevInterface* udev)
-    : path_(path), udev_(udev) {}
+WakeupDevice::WakeupDevice(const base::FilePath& path) : sys_path_(path) {}
 
 WakeupDevice::~WakeupDevice() {}
 
@@ -45,7 +56,7 @@ void WakeupDevice::HandleResume() {
     return;
 
   if (wakeup_count_after_resume != wakeup_count_before_suspend_) {
-    LOG(INFO) << "Device " << path_.value() << " had wakeup count "
+    LOG(INFO) << "Device " << sys_path_.value() << " had wakeup count "
               << wakeup_count_before_suspend_ << " before suspend and "
               << wakeup_count_after_resume << " after resume";
     caused_last_wake_ = true;
@@ -59,9 +70,14 @@ bool WakeupDevice::CausedLastWake() const {
 bool WakeupDevice::ReadWakeupCount(uint64_t* wakeup_count_out) {
   DCHECK(wakeup_count_out);
   std::string wakeup_count_str;
-  if (!udev_->GetSysattr(path_.value(), kPowerWakeupCount, &wakeup_count_str)) {
-    VLOG(1) << "Failed to read " << kPowerWakeupCount
-            << " sysattr available for " << path_.value();
+
+  const base::FilePath wakeup_count_path = sys_path_.Append(kPowerWakeupCount);
+  // This can happen if the device is not wake capable anymore.
+  if (!base::PathExists(wakeup_count_path))
+    return false;
+
+  if (!base::ReadFileToString(wakeup_count_path, &wakeup_count_str)) {
+    PLOG(ERROR) << "Unable to read wakeup count for " << sys_path_.value();
     return false;
   }
   // Some drivers leave the wakeup_count empty initially.
@@ -69,25 +85,14 @@ bool WakeupDevice::ReadWakeupCount(uint64_t* wakeup_count_out) {
     *wakeup_count_out = 0;
     return true;
   }
+  base::TrimWhitespaceASCII(wakeup_count_str, base::TRIM_TRAILING,
+                            &wakeup_count_str);
   if (base::StringToUint64(wakeup_count_str, wakeup_count_out)) {
     return true;
   }
-  LOG(ERROR) << "Could not parse wakeup_count sysattr for " << path_.value();
+  LOG(ERROR) << "Could not parse wakeup_count sysattr for "
+             << sys_path_.value();
   return false;
-}
-
-WakeupDeviceFactory::WakeupDeviceFactory(UdevInterface* udev) : udev_(udev) {}
-
-WakeupDeviceFactory::~WakeupDeviceFactory() {}
-
-std::unique_ptr<WakeupDeviceInterface> WakeupDeviceFactory::CreateWakeupDevice(
-    const base::FilePath& path) {
-  const base::FilePath wakeup_path = path.Append(kPowerWakeup);
-  if (!base::PathExists(wakeup_path)) {
-    // This can happen when the device is not wake capable.
-    return nullptr;
-  }
-  return std::make_unique<WakeupDevice>(path, udev_);
 }
 
 }  // namespace system

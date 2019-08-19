@@ -53,7 +53,6 @@
 #include "power_manager/powerd/system/sar_watcher.h"
 #include "power_manager/powerd/system/suspend_configurator.h"
 #include "power_manager/powerd/system/udev.h"
-#include "power_manager/powerd/system/wakeup_device.h"
 #include "power_manager/powerd/system/wilco_charge_controller_helper.h"
 
 #ifndef VCSID
@@ -170,7 +169,6 @@ class DaemonDelegateImpl : public DaemonDelegate {
     auto watcher = std::make_unique<system::InputWatcher>();
     CHECK(watcher->Init(std::unique_ptr<system::EventDeviceFactoryInterface>(
                             new system::EventDeviceFactory),
-                        std::make_unique<system::WakeupDeviceFactory>(udev),
                         prefs, udev));
     return watcher;
   }

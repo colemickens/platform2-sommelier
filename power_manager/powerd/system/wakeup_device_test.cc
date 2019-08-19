@@ -8,27 +8,49 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/system/udev_stub.h"
 
 namespace power_manager {
 namespace system {
 namespace {
-const char kTestSysfsPath[] = "/sys/devices/pci0000:00/0000:00:14.0/usb1/1-2/";
+
+// Creates and writes |val| to |sys_path|. Also creates all necessary parent
+// directories.
+void WriteFile(const base::FilePath& sys_path, const std::string& val) {
+  ASSERT_TRUE(base::CreateDirectory(sys_path.DirName()));
+  CHECK_EQ(base::WriteFile(sys_path, val.c_str(), val.length()), val.length());
 }
+
+}  // namespace
 class WakeupDeviceTest : public testing::Test {
  public:
-  WakeupDeviceTest()
-      : wakeup_device_(std::make_unique<WakeupDevice>(
-            base::FilePath(kTestSysfsPath), &udev_)) {}
+  WakeupDeviceTest() {
+    CHECK(temp_dir_.CreateUniqueTempDir());
+    std::string kTestSysPath = "sys/devices/pci0000:00/0000:00:14.0/usb1/1-2/";
+    wakeup_device_path_ = temp_dir_.GetPath().Append(kTestSysPath);
+
+    wakeup_attr_path_ = wakeup_device_path_.Append(kPowerWakeup);
+    WriteFile(wakeup_attr_path_, "enabled");
+    wakeup_count_attr_path_ =
+        wakeup_device_path_.Append(WakeupDevice::kPowerWakeupCount);
+
+    wakeup_device_ = WakeupDevice::CreateWakeupDevice(wakeup_device_path_);
+    CHECK(wakeup_device_);
+  }
   ~WakeupDeviceTest() override {}
 
  protected:
-  UdevStub udev_;
-  std::unique_ptr<WakeupDevice> wakeup_device_;
+  std::unique_ptr<WakeupDeviceInterface> wakeup_device_;
+  base::ScopedTempDir temp_dir_;
+
+  base::FilePath wakeup_device_path_;
+  base::FilePath wakeup_attr_path_;
+  base::FilePath wakeup_count_attr_path_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(WakeupDeviceTest);
@@ -38,17 +60,10 @@ class WakeupDeviceTest : public testing::Test {
 // wakeup device.
 TEST_F(WakeupDeviceTest, TestWakeupCountIncrement) {
   const std::string kWakeupCountBeforeSuspendStr = "1";
-  const uint64_t kWakeupCountBeforeSuspendInt = 1;
-  udev_.SetSysattr(kTestSysfsPath, WakeupDevice::kPowerWakeupCount,
-                   kWakeupCountBeforeSuspendStr);
+  WriteFile(wakeup_count_attr_path_, kWakeupCountBeforeSuspendStr);
   wakeup_device_->PrepareForSuspend();
-  EXPECT_TRUE(wakeup_device_->was_pre_suspend_read_successful());
-  EXPECT_EQ(wakeup_device_->wakeup_count_before_suspend(),
-            kWakeupCountBeforeSuspendInt);
-
   const std::string kWakeupCountAfterResumeStr = "2";
-  udev_.SetSysattr(kTestSysfsPath, WakeupDevice::kPowerWakeupCount,
-                   kWakeupCountAfterResumeStr);
+  WriteFile(wakeup_count_attr_path_, kWakeupCountAfterResumeStr);
   wakeup_device_->HandleResume();
   EXPECT_TRUE(wakeup_device_->CausedLastWake());
 }
@@ -58,19 +73,11 @@ TEST_F(WakeupDeviceTest, TestWakeupCountIncrement) {
 TEST_F(WakeupDeviceTest, TestWakeupCountOverflow) {
   const std::string kWakeupCountBeforeSuspendStr =
       base::NumberToString(std::numeric_limits<uint64_t>::max());
-  const uint64_t kWakeupCountBeforeSuspendInt =
-      std::numeric_limits<uint64_t>::max();
-  udev_.SetSysattr(kTestSysfsPath, WakeupDevice::kPowerWakeupCount,
-                   kWakeupCountBeforeSuspendStr);
+  WriteFile(wakeup_count_attr_path_, kWakeupCountBeforeSuspendStr);
   wakeup_device_->PrepareForSuspend();
-  EXPECT_TRUE(wakeup_device_->was_pre_suspend_read_successful());
-  EXPECT_EQ(wakeup_device_->wakeup_count_before_suspend(),
-            kWakeupCountBeforeSuspendInt);
-
   const std::string kWakeupCountAfterResumeStr =
       base::NumberToString(std::numeric_limits<uint64_t>::max() + 1);
-  udev_.SetSysattr(kTestSysfsPath, WakeupDevice::kPowerWakeupCount,
-                   kWakeupCountAfterResumeStr);
+  WriteFile(wakeup_count_attr_path_, kWakeupCountAfterResumeStr);
   wakeup_device_->HandleResume();
   EXPECT_TRUE(wakeup_device_->CausedLastWake());
 }
@@ -79,17 +86,10 @@ TEST_F(WakeupDeviceTest, TestWakeupCountOverflow) {
 // wakeup device.
 TEST_F(WakeupDeviceTest, TestEmptyWakeupCountFile) {
   const std::string kWakeupCountBeforeSuspendStr = "";
-  const uint64_t kWakeupCountBeforeSuspendInt = 0;
-  udev_.SetSysattr(kTestSysfsPath, WakeupDevice::kPowerWakeupCount,
-                   kWakeupCountBeforeSuspendStr);
+  WriteFile(wakeup_count_attr_path_, kWakeupCountBeforeSuspendStr);
   wakeup_device_->PrepareForSuspend();
-  EXPECT_TRUE(wakeup_device_->was_pre_suspend_read_successful());
-  EXPECT_EQ(wakeup_device_->wakeup_count_before_suspend(),
-            kWakeupCountBeforeSuspendInt);
-
   const std::string kWakeupCountAfterResumeStr = "2";
-  udev_.SetSysattr(kTestSysfsPath, WakeupDevice::kPowerWakeupCount,
-                   kWakeupCountAfterResumeStr);
+  WriteFile(wakeup_count_attr_path_, kWakeupCountAfterResumeStr);
   wakeup_device_->HandleResume();
   EXPECT_TRUE(wakeup_device_->CausedLastWake());
 }
@@ -98,11 +98,8 @@ TEST_F(WakeupDeviceTest, TestEmptyWakeupCountFile) {
 // wake source.
 TEST_F(WakeupDeviceTest, TestWakeupCountReadFailBeforeSuspend) {
   wakeup_device_->PrepareForSuspend();
-  EXPECT_EQ(wakeup_device_->wakeup_count_before_suspend(), 0);
-  EXPECT_FALSE(wakeup_device_->was_pre_suspend_read_successful());
   const std::string kWakeupCountAfterResumeStr = base::NumberToString(1);
-  udev_.SetSysattr(kTestSysfsPath, WakeupDevice::kPowerWakeupCount,
-                   kWakeupCountAfterResumeStr);
+  WriteFile(wakeup_count_attr_path_, kWakeupCountAfterResumeStr);
   wakeup_device_->HandleResume();
   EXPECT_FALSE(wakeup_device_->CausedLastWake());
 }
@@ -111,12 +108,9 @@ TEST_F(WakeupDeviceTest, TestWakeupCountReadFailBeforeSuspend) {
 // wake source.
 TEST_F(WakeupDeviceTest, TestWakeupCountReadFailAfterResume) {
   const std::string kWakeupCountBeforeSuspendStr = "1";
-  udev_.SetSysattr(kTestSysfsPath, WakeupDevice::kPowerWakeupCount,
-                   kWakeupCountBeforeSuspendStr);
+  WriteFile(wakeup_count_attr_path_, kWakeupCountBeforeSuspendStr);
   wakeup_device_->PrepareForSuspend();
-  EXPECT_EQ(wakeup_device_->wakeup_count_before_suspend(), 1);
-  EXPECT_TRUE(wakeup_device_->was_pre_suspend_read_successful());
-  udev_.RemoveSysattr(kTestSysfsPath, WakeupDevice::kPowerWakeupCount);
+  ASSERT_TRUE(base::DeleteFile(wakeup_count_attr_path_, false));
   wakeup_device_->HandleResume();
   EXPECT_FALSE(wakeup_device_->CausedLastWake());
 }

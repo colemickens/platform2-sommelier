@@ -36,7 +36,6 @@ class EventDeviceFactoryInterface;
 class InputObserver;
 struct UdevEvent;
 class UdevInterface;
-class WakeupDeviceFactoryInterface;
 class WakeupDeviceInterface;
 
 class InputWatcher : public InputWatcherInterface,
@@ -70,20 +69,16 @@ class InputWatcher : public InputWatcherInterface,
   void set_sys_class_input_path_for_testing(const base::FilePath& path) {
     sys_class_input_path_ = path;
   }
+  bool is_wakeup_device_tracked_for_testing(int input_num) const {
+    return wakeup_devices_.find(input_num) != wakeup_devices_.end();
+  }
   // Leaves the InputWatcher in an unusable state, but useful for tests that
   // want to use the same event_device_factory_ across multiple InputWatchers.
   EventDeviceFactoryInterface* release_event_device_factory_for_testing() {
     return event_device_factory_.release();
   }
-  // Leaves the InputWatcher in an unusable state, but useful for tests that
-  // want to use the same wakeup_device_factory_ across multiple InputWatchers.
-  WakeupDeviceFactoryInterface* release_wakeup_device_factory_for_testing() {
-    return wakeup_device_factory_.release();
-  }
-
   // Returns true on success.
   bool Init(std::unique_ptr<EventDeviceFactoryInterface> event_device_factory,
-            std::unique_ptr<WakeupDeviceFactoryInterface> wakeup_device_factory,
             PrefsInterface* prefs,
             UdevInterface* udev);
 
@@ -159,7 +154,6 @@ class InputWatcher : public InputWatcherInterface,
 
   // Factories for creating EventDevice and WakeupDevice objects.
   std::unique_ptr<EventDeviceFactoryInterface> event_device_factory_;
-  std::unique_ptr<WakeupDeviceFactoryInterface> wakeup_device_factory_;
 
   // Event devices reporting power button events. Weak pointers to elements in
   // |event_devices_|.

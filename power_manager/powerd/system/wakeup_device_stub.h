@@ -36,25 +36,6 @@ class WakeupDeviceStub : public WakeupDeviceInterface {
   DISALLOW_COPY_AND_ASSIGN(WakeupDeviceStub);
 };
 
-class WakeupDeviceFactoryStub : public WakeupDeviceFactoryInterface {
- public:
-  WakeupDeviceFactoryStub();
-  ~WakeupDeviceFactoryStub() override;
-
-  // Checks whether |CreateWakeupDevice| was called for a given sysfs_path.
-  bool WasDeviceCreated(const base::FilePath& sysfs_path) const;
-
-  // Implementation of WakeupDeviceFactoryInterface.
-  std::unique_ptr<WakeupDeviceInterface> CreateWakeupDevice(
-      const base::FilePath& sysfs_path) override;
-
- private:
-  // Set of sysfs paths for which |CreateWakeupDevice| was called.
-  std::set<base::FilePath> registered_wakeup_device_paths_;
-
-  DISALLOW_COPY_AND_ASSIGN(WakeupDeviceFactoryStub);
-};
-
 }  // namespace system
 }  // namespace power_manager
 
