@@ -36,6 +36,7 @@ constexpr char kDesktopEntryCommentWithLocale[] = "Comment[";
 constexpr char kDesktopEntryIcon[] = "Icon";
 constexpr char kDesktopEntryHidden[] = "Hidden";
 constexpr char kDesktopEntryOnlyShowIn[] = "OnlyShowIn";
+constexpr char kDesktopEntryNotShowIn[] = "NotShowIn";
 constexpr char kDesktopEntryTryExec[] = "TryExec";
 constexpr char kDesktopEntryExec[] = "Exec";
 constexpr char kDesktopEntryPath[] = "Path";
@@ -55,6 +56,9 @@ constexpr char kXdgDataDirsEnvVar[] = "XDG_DATA_DIRS";
 constexpr char kDefaultDesktopFilesPath[] = "/usr/share";
 constexpr char kSettingsCategory[] = "Settings";
 constexpr char kPathEnvVar[] = "PATH";
+// For the purpose of determining apps relevant to our desktop env, pretend we
+// are a gnome desktop. See crbug.com/839132 for details.
+constexpr char kDesktopType[] = "GNOME";
 
 }  // namespace
 
@@ -180,6 +184,8 @@ bool DesktopFile::LoadFromFile(const base::FilePath& file_path) {
         hidden_ = ParseBool(key_value.second);
       } else if (key == kDesktopEntryOnlyShowIn) {
         ParseMultiString(key_value.second, &only_show_in_);
+      } else if (key == kDesktopEntryNotShowIn) {
+        ParseMultiString(key_value.second, &not_show_in_);
       } else if (key == kDesktopEntryTryExec) {
         try_exec_ = UnescapeString(key_value.second);
       } else if (key == kDesktopEntryExec) {
@@ -395,20 +401,31 @@ bool DesktopFile::ShouldPassToHost() const {
   // -Don't pass hidden.
   // -Don't pass without an exec entry.
   // -Don't pass no_display that also have no mime types.
-  // -Don't pass where OnlyShowIn has entries.
   // -Don't pass terminal apps (e.g. apps that run in a terminal like vim).
   // -Don't pass if in the Settings category.
+  // -Don't pass if OnlyShowIn exists and doesn't contain kDesktopType.
+  // -Don't pass if NotShowIn exists and contains kDesktopType.
   // -Don't pass if TryExec doesn't resolve to a valid executable file.
   if (!IsApplication() || hidden_ || exec_.empty() ||
-      (no_display_ && mime_types_.empty()) || !only_show_in_.empty() ||
-      terminal_) {
+      (no_display_ && mime_types_.empty()) || terminal_) {
     return false;
   }
 
-  for (const auto& category : categories_) {
-    if (category == kSettingsCategory) {
-      return false;
-    }
+  if (std::find(categories_.begin(), categories_.end(), kSettingsCategory) !=
+      categories_.end()) {
+    return false;
+  }
+
+  if (!only_show_in_.empty() &&
+      std::find(only_show_in_.begin(), only_show_in_.end(), kDesktopType) ==
+          only_show_in_.end()) {
+    return false;
+  }
+
+  if (!not_show_in_.empty() &&
+      std::find(not_show_in_.begin(), not_show_in_.end(), kDesktopType) !=
+          not_show_in_.end()) {
+    return false;
   }
 
   if (!try_exec_.empty()) {

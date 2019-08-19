@@ -70,6 +70,7 @@ class DesktopFile {
   const std::string& icon() { return icon_; }
   bool hidden() const { return hidden_; }
   const std::vector<std::string>& only_show_in() const { return only_show_in_; }
+  const std::vector<std::string>& not_show_in() const { return not_show_in_; }
   const std::string& try_exec() const { return try_exec_; }
   const std::string& exec() const { return exec_; }
   const std::string& path() const { return path_; }
@@ -98,6 +99,7 @@ class DesktopFile {
   std::string icon_;
   bool hidden_ = false;
   std::vector<std::string> only_show_in_;
+  std::vector<std::string> not_show_in_;
   std::string try_exec_;
   std::string exec_;
   std::string path_;
