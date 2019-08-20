@@ -205,6 +205,12 @@ bool MobileOperatorInfo::requires_roaming() const {
   return result;
 }
 
+int32_t MobileOperatorInfo::mtu() const {
+  auto result = impl_->mtu();
+  SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  return result;
+}
+
 void MobileOperatorInfo::UpdateIMSI(const string& imsi) {
   SLOG(this, 3) << GetLogPrefix(__func__) << "(" << imsi << ")";
   impl_->UpdateIMSI(imsi);

@@ -72,6 +72,7 @@ message Data {
   // charged additional for roaming. This is particularly useful for some MVNOs.
   optional bool requires_roaming = 5 [default = false];
   repeated OnlinePortal olp = 6;
+  optional int32 mtu = 7;
 
   // ///////////////////////////////////////////////////////////////////////////
   // GSM specific properties [21 - 40]

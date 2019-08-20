@@ -86,6 +86,7 @@ MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
       current_mno_(nullptr),
       current_mvno_(nullptr),
       requires_roaming_(false),
+      mtu_(0),
       user_olp_empty_(true),
       weak_ptr_factory_(this) {
   // Overrides need to be installed before defaults
@@ -233,6 +234,10 @@ const string& MobileOperatorInfoImpl::activation_code() const {
 
 bool MobileOperatorInfoImpl::requires_roaming() const {
   return requires_roaming_;
+}
+
+int32_t MobileOperatorInfoImpl::mtu() const {
+  return mtu_;
 }
 
 // ///////////////////////////////////////////////////////////////////////////
@@ -773,6 +778,7 @@ void MobileOperatorInfoImpl::ClearDBInformation() {
   HandleOnlinePortalUpdate();
   activation_code_.clear();
   requires_roaming_ = false;
+  mtu_ = 0;
 }
 
 void MobileOperatorInfoImpl::ReloadData(const Data& data) {
@@ -797,6 +803,10 @@ void MobileOperatorInfoImpl::ReloadData(const Data& data) {
 
   if (data.has_requires_roaming()) {
     requires_roaming_ = data.requires_roaming();
+  }
+
+  if (data.mtu()) {
+    mtu_ = data.mtu();
   }
 
   if (data.olp_size() > 0) {

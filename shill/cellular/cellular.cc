@@ -892,7 +892,13 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
       SLOG(this, 2) << "Assign static IP configuration from bearer.";
       SelectService(service_);
       SetServiceState(Service::kStateConfiguring);
-      AssignIPConfig(*bearer->ipv4_config_properties());
+      // Override the MTU with a given limit for a specific serving operator.
+      // TODO(b:138390944): Revisit this override once b:138390944 is resolved.
+      IPConfig::Properties properties = *bearer->ipv4_config_properties();
+      if (serving_operator_info_ && serving_operator_info_->mtu() != 0) {
+        properties.mtu = serving_operator_info_->mtu();
+      }
+      AssignIPConfig(properties);
       return;
     }
 

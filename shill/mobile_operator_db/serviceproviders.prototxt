@@ -13164,6 +13164,7 @@ mno {
         name : "LTE"
       }
     }
+    mtu : 1430
   }
   mvno {
     mvno_filter {
@@ -13179,6 +13180,7 @@ mno {
       mobile_apn {
         apn : "sentinel01.com.attz"
       }
+      mtu : 1430
     }
   }
   mvno {
@@ -13199,6 +13201,7 @@ mno {
       mobile_apn {
         apn : "tfdata"
       }
+      mtu : 1430
     }
   }
 }

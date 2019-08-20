@@ -190,6 +190,8 @@ class MobileOperatorInfo {
   // Some carriers are only available while roaming. This is mainly used by
   // Chrome.
   bool requires_roaming() const;
+  // If specified, the MTU value to be used on the network interface.
+  int32_t mtu() const;
 
   // ///////////////////////////////////////////////////////////////////////////
   // Functions used to notify this object of operator data changes.

@@ -57,6 +57,7 @@ class MobileOperatorInfoImpl {
   const std::vector<MobileOperatorInfo::OnlinePortal>& olp_list() const;
   const std::string& activation_code() const;
   bool requires_roaming() const;
+  int32_t mtu() const;
   void Reset();
   void UpdateIMSI(const std::string& imsi);
   void UpdateICCID(const std::string& iccid);
@@ -201,6 +202,7 @@ class MobileOperatorInfoImpl {
   std::vector<mobile_operator_db::OnlinePortal> raw_olp_list_;
   std::string activation_code_;
   bool requires_roaming_;
+  int32_t mtu_;
   // These fields store the data obtained from the Update* methods.
   // The database information is kept separate from the information gathered
   // through the Update* methods, because one or the other may be given
