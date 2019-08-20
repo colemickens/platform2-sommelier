@@ -8,7 +8,6 @@ group("all") {
   deps = [
     ":media_v4l2_is_capture_device",
     ":media_v4l2_test",
-    ":media_v4l2_unittest",
   ]
 }
 
@@ -37,26 +36,5 @@ executable("media_v4l2_test") {
     "libchrome-${libbase_ver}",
     "libyuv",
     "re2",
-  ]
-}
-
-executable("media_v4l2_unittest") {
-  sources = [
-    "media_v4l2_device.cc",
-
-    # TODO(shik): We cannot rename it to media_v4l2_test.cc because the file
-    # already exists. These two files and the corresponding binaries should be
-    # merged in the future.
-    # gnlint: disable=GnLintSourceFileNames
-    "media_v4l2_unittest.cc",
-  ]
-  configs += [
-    "//common-mk:test",
-    "//camera/build:cros_camera_common",
-  ]
-
-  pkg_deps = [
-    "libbrillo-${libbase_ver}",
-    "libchrome-${libbase_ver}",
   ]
 }

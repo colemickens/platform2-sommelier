@@ -34,12 +34,12 @@ using ::testing::MatchesRegex;
 
 V4L2TestEnvironment* g_env;
 
-/* Test lists:
- * default: for devices without ARC++, and devices with ARC++ which use
- *          camera HAL v1.
- * halv3: for devices with ARC++ which use camera HAL v3.
- * certification: for third-party labs to verify new camera modules.
- */
+// Test lists:
+// default: for devices without ARC++, and devices with ARC++ which use
+//          camera HAL v1.
+// halv3: for devices with ARC++ which use camera HAL v3.
+// certification: for third-party labs to verify new camera modules.
+
 constexpr char kDefaultTestList[] = "default";
 constexpr char kHalv3TestList[] = "halv3";
 constexpr char kCertificationTestList[] = "certification";
@@ -217,10 +217,7 @@ class V4L2Test : public ::testing::Test {
  protected:
   V4L2Test() : dev_(g_env->device_path_.c_str(), 4) {}
 
-  void SetUp() override {
-    ASSERT_TRUE(dev_.OpenDevice());
-    ProbeSupportedFormats();
-  }
+  void SetUp() override { ASSERT_TRUE(dev_.OpenDevice()); }
 
   void TearDown() override { dev_.CloseDevice(); }
 
@@ -259,11 +256,18 @@ class V4L2Test : public ::testing::Test {
               CompareFormat);
   }
 
+  const SupportedFormats& GetSupportedFormats() {
+    if (supported_formats_.empty()) {
+      ProbeSupportedFormats();
+    }
+    return supported_formats_;
+  }
+
   // Find format according to width and height. If multiple formats support the
   // same resolution, choose the first one.
   const SupportedFormat* FindFormatByResolution(uint32_t width,
                                                 uint32_t height) {
-    for (const auto& format : supported_formats_) {
+    for (const auto& format : GetSupportedFormats()) {
       if (format.width == width && format.height == height) {
         return &format;
       }
@@ -284,7 +288,7 @@ class V4L2Test : public ::testing::Test {
 
   SupportedFormat GetMaximumResolution() {
     SupportedFormat max_format;
-    for (const auto& format : supported_formats_) {
+    for (const auto& format : GetSupportedFormats()) {
       if (format.width >= max_format.width) {
         max_format.width = format.width;
       }
@@ -309,7 +313,7 @@ class V4L2Test : public ::testing::Test {
     // specific aspect ratio. 16:9=1.778, 16:10=1.6, 3:2=1.5, 4:3=1.333
     const float kAspectRatioMargin = 0.04;
 
-    for (const auto& format : supported_formats_) {
+    for (const auto& format : GetSupportedFormats()) {
       if (format.width >= 1920 && format.height >= 1200) {
         float aspect_ratio = static_cast<float>(format.width) / format.height;
         if (abs(sensor_aspect_ratio - aspect_ratio) < kAspectRatioMargin &&
@@ -319,6 +323,24 @@ class V4L2Test : public ::testing::Test {
       }
     }
     return nullptr;
+  }
+
+  bool ExerciseControl(uint32_t id, const char* control) {
+    v4l2_queryctrl query_ctrl;
+    if (!dev_.QueryControl(id, &query_ctrl)) {
+      LOG(WARNING) << "Cannot query control name: " << control;
+      return false;
+    }
+    if (!dev_.SetControl(id, query_ctrl.maximum)) {
+      LOG(WARNING) << "Cannot set " << control << " to maximum value";
+    }
+    if (!dev_.SetControl(id, query_ctrl.minimum)) {
+      LOG(WARNING) << "Cannot set " << control << " to minimum value";
+    }
+    if (!dev_.SetControl(id, query_ctrl.default_value)) {
+      LOG(WARNING) << "Cannot set " << control << " to default value";
+    }
+    return true;
   }
 
   void RunCapture(V4L2Device::IOMethod io,
@@ -426,9 +448,144 @@ class V4L2Test : public ::testing::Test {
   SupportedFormats supported_formats_;
 };
 
+class V4L2TestWithIO
+    : public V4L2Test,
+      public ::testing::WithParamInterface<V4L2Device::IOMethod> {};
+
 class V4L2TestWithResolution
     : public V4L2Test,
       public ::testing::WithParamInterface<std::pair<uint32_t, uint32_t>> {};
+
+TEST_F(V4L2Test, MultipleOpen) {
+  V4L2Device dev2(g_env->device_path_.c_str(), 4);
+  ASSERT_TRUE(dev2.OpenDevice()) << "Cannot open device for the second time";
+  dev2.CloseDevice();
+}
+
+TEST_P(V4L2TestWithIO, MultipleInit) {
+  V4L2Device::IOMethod io = GetParam();
+  V4L2Device::ConstantFramerate constant_framerate =
+      V4L2Device::DEFAULT_FRAMERATE_SETTING;
+  V4L2Device& dev1 = dev_;
+  V4L2Device dev2(g_env->device_path_.c_str(), 4);
+  ASSERT_TRUE(dev2.OpenDevice()) << "Cannot open device for the second time";
+
+  ASSERT_TRUE(dev1.InitDevice(io, 640, 480, V4L2_PIX_FMT_YUYV, 30,
+                              constant_framerate, 0))
+      << "Cannot init device for the first time";
+
+  ASSERT_FALSE(dev2.InitDevice(io, 640, 480, V4L2_PIX_FMT_YUYV, 30,
+                               constant_framerate, 0))
+      << "Multiple init device should fail";
+
+  dev1.UninitDevice();
+  dev2.UninitDevice();
+  dev2.CloseDevice();
+}
+
+INSTANTIATE_TEST_CASE_P(V4L2Test,
+                        V4L2TestWithIO,
+                        ::testing::Values(V4L2Device::IO_METHOD_MMAP,
+                                          V4L2Device::IO_METHOD_USERPTR));
+
+// EnumInput and EnumStandard are optional.
+TEST_F(V4L2Test, EnumInputAndStandard) {
+  dev_.EnumInput();
+  dev_.EnumStandard();
+}
+
+// EnumControl is optional, but the output is useful. For example, we could
+// know whether constant framerate is supported or not.
+TEST_F(V4L2Test, EnumControl) {
+  dev_.EnumControl();
+}
+
+TEST_F(V4L2Test, SetControl) {
+  // Test mandatory controls.
+  if (g_env->check_constant_framerate_) {
+    ASSERT_TRUE(ExerciseControl(V4L2_CID_EXPOSURE_AUTO_PRIORITY,
+                                "exposure_auto_priority"));
+  }
+
+  // Test optional controls.
+  ExerciseControl(V4L2_CID_BRIGHTNESS, "brightness");
+  ExerciseControl(V4L2_CID_CONTRAST, "contrast");
+  ExerciseControl(V4L2_CID_SATURATION, "saturation");
+  ExerciseControl(V4L2_CID_GAMMA, "gamma");
+  ExerciseControl(V4L2_CID_HUE, "hue");
+  ExerciseControl(V4L2_CID_GAIN, "gain");
+  ExerciseControl(V4L2_CID_SHARPNESS, "sharpness");
+}
+
+// SetCrop is optional.
+TEST_F(V4L2Test, SetCrop) {
+  v4l2_cropcap cropcap = {};
+  if (dev_.GetCropCap(&cropcap)) {
+    v4l2_crop crop = {};
+    crop.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    crop.c = cropcap.defrect;
+    dev_.SetCrop(&crop);
+  }
+}
+
+// GetCrop is optional.
+TEST_F(V4L2Test, GetCrop) {
+  v4l2_crop crop = {};
+  crop.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+  dev_.GetCrop(&crop);
+}
+
+TEST_F(V4L2Test, ProbeCaps) {
+  v4l2_capability caps;
+  ASSERT_TRUE(dev_.ProbeCaps(&caps, true));
+  uint32_t dev_caps = (caps.capabilities & V4L2_CAP_DEVICE_CAPS)
+                          ? caps.device_caps
+                          : caps.capabilities;
+  ASSERT_TRUE(dev_caps & V4L2_CAP_VIDEO_CAPTURE)
+      << "Should support video capture interface";
+}
+
+TEST_F(V4L2Test, EnumFormats) {
+  ASSERT_TRUE(dev_.EnumFormat(NULL));
+}
+
+TEST_F(V4L2Test, EnumFrameSize) {
+  uint32_t format_count = 0;
+  ASSERT_TRUE(dev_.EnumFormat(&format_count));
+  for (uint32_t i = 0; i < format_count; i++) {
+    uint32_t pixfmt;
+    ASSERT_TRUE(dev_.GetPixelFormat(i, &pixfmt));
+    ASSERT_TRUE(dev_.EnumFrameSize(pixfmt, NULL));
+  }
+}
+
+TEST_F(V4L2Test, EnumFrameInterval) {
+  uint32_t format_count = 0;
+  ASSERT_TRUE(dev_.EnumFormat(&format_count));
+  for (uint32_t i = 0; i < format_count; i++) {
+    uint32_t pixfmt;
+    ASSERT_TRUE(dev_.GetPixelFormat(i, &pixfmt));
+    uint32_t size_count;
+    ASSERT_TRUE(dev_.EnumFrameSize(pixfmt, &size_count));
+
+    for (uint32_t j = 0; j < size_count; j++) {
+      uint32_t width, height;
+      ASSERT_TRUE(dev_.GetFrameSize(j, pixfmt, &width, &height));
+      ASSERT_TRUE(dev_.EnumFrameInterval(pixfmt, width, height, NULL));
+    }
+  }
+}
+
+TEST_F(V4L2Test, FrameRate) {
+  v4l2_streamparm param;
+  ASSERT_TRUE(dev_.GetParam(&param));
+  // we only try to adjust frame rate when it claims can.
+  if (param.parm.capture.capability & V4L2_CAP_TIMEPERFRAME) {
+    ASSERT_TRUE(dev_.SetParam(&param));
+  } else {
+    LOG(INFO) << "Does not support TIMEPERFRAME";
+  }
+}
 
 TEST_F(V4L2Test, CroppingResolution) {
   const SupportedFormat* cropping_resolution = GetResolutionForCropping();
