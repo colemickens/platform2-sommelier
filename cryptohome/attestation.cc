@@ -1138,8 +1138,8 @@ bool Attestation::GetPublicKey(bool is_user_specific,
 
   // Convert from PKCS #1 RSAPublicKey to X.509 SubjectPublicKeyInfo.
   const unsigned char* asn1_ptr = public_key_der.data();
-  std::unique_ptr<RSA, RSADeleter> rsa(
-      d2i_RSAPublicKey(NULL, &asn1_ptr, public_key_der.size()));
+  crypto::ScopedRSA rsa(
+      d2i_RSAPublicKey(nullptr, &asn1_ptr, public_key_der.size()));
   if (!rsa.get()) {
     LOG(ERROR) << __func__ << ": Failed to decode public key.";
     return false;
@@ -1612,7 +1612,7 @@ bool Attestation::VerifyEndorsementCredential(const SecureBlob& credential,
                             NID_commonName,
                             issuer,
                             arraysize(issuer));
-  std::unique_ptr<EVP_PKEY, EVP_PKEYDeleter> issuer_key =
+  crypto::ScopedEVP_PKEY issuer_key =
       GetAuthorityPublicKey(issuer, is_cros_core);
   if (!issuer_key.get()) {
     LOG(ERROR) << "Unknown endorsement credential issuer.";
@@ -1775,7 +1775,7 @@ bool Attestation::VerifyCertifiedKey(
     return false;
   }
   const unsigned char* asn1_ptr = certified_public_key.data();
-  std::unique_ptr<RSA, RSADeleter> rsa(
+  crypto::ScopedRSA rsa(
       d2i_RSAPublicKey(NULL, &asn1_ptr, certified_public_key.size()));
   if (!rsa.get()) {
     LOG(ERROR) << "Failed to decode certified public key.";
@@ -1794,7 +1794,7 @@ bool Attestation::VerifyCertifiedKey(
   return true;
 }
 
-std::unique_ptr<EVP_PKEY, Attestation::EVP_PKEYDeleter>
+crypto::ScopedEVP_PKEY
     Attestation::GetAuthorityPublicKey(const char* issuer_name,
                                        bool is_cros_core) {
   const CertificateAuthority* const kKnownCA =
@@ -1804,25 +1804,25 @@ std::unique_ptr<EVP_PKEY, Attestation::EVP_PKEYDeleter>
                      arraysize(kKnownEndorsementCA);
   for (int i = 0; i < kNumIssuers; ++i) {
     if (0 == strcmp(issuer_name, kKnownCA[i].issuer)) {
-      std::unique_ptr<RSA, RSADeleter> rsa = CreateRSAFromHexModulus(
-          kKnownCA[i].modulus);
-      std::unique_ptr<EVP_PKEY, EVP_PKEYDeleter> pkey(EVP_PKEY_new());
-      if (!pkey.get()) {
-        return std::unique_ptr<EVP_PKEY, EVP_PKEYDeleter>();
-      }
+      crypto::ScopedRSA rsa = CreateRSAFromHexModulus(kKnownCA[i].modulus);
+      if (!rsa.get())
+        return nullptr;
+      crypto::ScopedEVP_PKEY pkey(EVP_PKEY_new());
+      if (!pkey.get())
+        return nullptr;
       EVP_PKEY_assign_RSA(pkey.get(), rsa.release());
       return pkey;
     }
   }
-  return std::unique_ptr<EVP_PKEY, EVP_PKEYDeleter>();
+  return nullptr;
 }
 
 bool Attestation::VerifySignature(const SecureBlob& public_key,
                                   const SecureBlob& signed_data,
                                   const SecureBlob& signature) {
   const unsigned char* asn1_ptr = public_key.data();
-  std::unique_ptr<RSA, RSADeleter> rsa(
-      d2i_RSAPublicKey(NULL, &asn1_ptr, public_key.size()));
+  crypto::ScopedRSA rsa(
+      d2i_RSAPublicKey(nullptr, &asn1_ptr, public_key.size()));
   if (!rsa.get()) {
     LOG(ERROR) << "Failed to decode public key.";
     return false;
@@ -2021,7 +2021,7 @@ bool Attestation::VerifyActivateIdentity(const brillo::Blob& delegate_blob,
 
   // Encrypt the TPM_ASYM_CA_CONTENTS with the EK public key.
   const unsigned char* asn1_ptr = ek_public_key.data();
-  std::unique_ptr<RSA, RSADeleter> rsa(
+  crypto::ScopedRSA rsa(
       d2i_RSAPublicKey(NULL, &asn1_ptr, ek_public_key.size()));
   if (!rsa.get()) {
     LOG(ERROR) << "Failed to decode EK public key.";
@@ -2064,7 +2064,7 @@ bool Attestation::EncryptEndorsementCredential(
     PCAType pca_type,
     const SecureBlob& credential,
     EncryptedData* encrypted_credential) {
-  std::unique_ptr<RSA, RSADeleter> rsa;
+  crypto::ScopedRSA rsa;
   std::string key_id;
   switch (pca_type) {
     case kDefaultPCA:
@@ -2287,7 +2287,7 @@ RSA* Attestation::GetEnterpriseSigningKey(Attestation::VAType va_type) {
   if (search != enterprise_signing_keys_.end())
     return search->second.get();
   // Create the key and remember it in the keys map.
-  std::unique_ptr<RSA, RSADeleter> rsa = CreateRSAFromHexModulus(
+  crypto::ScopedRSA rsa = CreateRSAFromHexModulus(
       va_type == kDefaultVA ? kDefaultEnterpriseSigningPublicKey
           : kTestEnterpriseSigningPublicKey);
   if (!rsa.get()) {
@@ -2308,7 +2308,7 @@ RSA* Attestation::GetEnterpriseEncryptionKey(Attestation::VAType va_type) {
   if (search != enterprise_encryption_keys_.end())
     return search->second.get();
   // Create the key and remember it in the keys map.
-  std::unique_ptr<RSA, RSADeleter> rsa = CreateRSAFromHexModulus(
+  crypto::ScopedRSA rsa = CreateRSAFromHexModulus(
       va_type == kDefaultVA ? kDefaultEnterpriseEncryptionPublicKey
           : kTestEnterpriseEncryptionPublicKey);
   if (!rsa.get()) {
@@ -2336,10 +2336,8 @@ std::string Attestation::GetEnterpriseEncryptionPublicKeyID(
 void Attestation::set_enterprise_test_keys(VAType va_type,
                                            RSA* signing_key,
                                            RSA* encryption_key) {
-  enterprise_signing_keys_[va_type] =
-      std::unique_ptr<RSA, RSADeleter>(signing_key);
-  enterprise_encryption_keys_[va_type] =
-      std::unique_ptr<RSA, RSADeleter>(encryption_key);
+  enterprise_signing_keys_[va_type] = crypto::ScopedRSA(signing_key);
+  enterprise_encryption_keys_[va_type] = crypto::ScopedRSA(encryption_key);
 }
 
 bool Attestation::EncryptData(const SecureBlob& input,
@@ -2382,21 +2380,21 @@ bool Attestation::EncryptData(const SecureBlob& input,
   return true;
 }
 
-std::unique_ptr<RSA, Attestation::RSADeleter>
+crypto::ScopedRSA
 Attestation::CreateRSAFromHexModulus(
     const std::string& hex_modulus) {
-  std::unique_ptr<RSA, RSADeleter> rsa(RSA_new());
+  crypto::ScopedRSA rsa(RSA_new());
   if (!rsa.get())
-    return std::unique_ptr<RSA, RSADeleter>();
+    return nullptr;
   rsa->e = BN_new();
   if (!rsa->e)
-    return std::unique_ptr<RSA, RSADeleter>();
+    return nullptr;
   BN_set_word(rsa->e, kWellKnownExponent);
   rsa->n = BN_new();
   if (!rsa->n)
-    return std::unique_ptr<RSA, RSADeleter>();
+    return nullptr;
   if (0 == BN_hex2bn(&rsa->n, hex_modulus.c_str()))
-    return std::unique_ptr<RSA, RSADeleter>();
+    return nullptr;
   return rsa;
 }
 
@@ -2406,11 +2404,11 @@ bool Attestation::CreateSignedPublicKey(
   // Get the certified public key as an EVP_PKEY.
   const unsigned char* asn1_ptr =
     reinterpret_cast<const unsigned char*>(key.public_key().data());
-  std::unique_ptr<RSA, RSADeleter> rsa(
+  crypto::ScopedRSA rsa(
       d2i_RSAPublicKey(NULL, &asn1_ptr, key.public_key().size()));
   if (!rsa.get())
     return false;
-  std::unique_ptr<EVP_PKEY, EVP_PKEYDeleter> public_key(EVP_PKEY_new());
+  crypto::ScopedEVP_PKEY public_key(EVP_PKEY_new());
   if (!public_key.get())
     return false;
   EVP_PKEY_assign_RSA(public_key.get(), rsa.release());
@@ -2906,19 +2904,9 @@ Tpm::TpmRetryAction Attestation::ComputeEnterpriseEnrollmentIdInternal(
   return Tpm::kTpmRetryNone;
 }
 
-void Attestation::RSADeleter::operator()(void* ptr) const {
-  if (ptr)
-    RSA_free(reinterpret_cast<RSA*>(ptr));
-}
-
 void Attestation::X509Deleter::operator()(void* ptr) const {
   if (ptr)
     X509_free(reinterpret_cast<X509*>(ptr));
-}
-
-void Attestation::EVP_PKEYDeleter::operator()(void* ptr) const {
-  if (ptr)
-    EVP_PKEY_free(reinterpret_cast<EVP_PKEY*>(ptr));
 }
 
 void Attestation::NETSCAPE_SPKIDeleter::operator()(void* ptr) const {

@@ -18,6 +18,7 @@
 #include <base/threading/platform_thread.h>
 #include <brillo/http/http_transport.h>
 #include <brillo/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
 #include <google/protobuf/map.h>
 #include <openssl/evp.h>
 
@@ -518,13 +519,7 @@ class Attestation : public base::PlatformThread::Delegate,
     kDeveloper
   };
   // So we can use std::unique_ptr with openssl types.
-  struct RSADeleter {
-    inline void operator()(void* ptr) const;
-  };
   struct X509Deleter {
-    inline void operator()(void* ptr) const;
-  };
-  struct EVP_PKEYDeleter {
     inline void operator()(void* ptr) const;
   };
   struct NETSCAPE_SPKIDeleter {
@@ -536,7 +531,7 @@ class Attestation : public base::PlatformThread::Delegate,
     const char* modulus;  // In hex format.
   };
   // A map of enterprise keys by Verified Access server type.
-  using KeysMap = std::map<VAType, std::unique_ptr<RSA, RSADeleter>>;
+  using KeysMap = std::map<VAType, crypto::ScopedRSA>;
   static const size_t kQuoteExternalDataSize;
   static const size_t kCipherKeySize;
   static const size_t kNonceSize;
@@ -680,7 +675,7 @@ class Attestation : public base::PlatformThread::Delegate,
                           const brillo::SecureBlob& proof);
 
   // Creates a public key based on a known credential issuer.
-  std::unique_ptr<EVP_PKEY, EVP_PKEYDeleter> GetAuthorityPublicKey(
+  crypto::ScopedEVP_PKEY GetAuthorityPublicKey(
       const char* issuer_name,
       bool is_cros_core);
 
@@ -780,8 +775,7 @@ class Attestation : public base::PlatformThread::Delegate,
 
   // Creates an RSA* given a modulus in hex format.  The exponent is always set
   // to 65537.  If an error occurs, NULL is returned.
-  std::unique_ptr<RSA, RSADeleter> CreateRSAFromHexModulus(
-      const std::string& hex_modulus);
+  crypto::ScopedRSA CreateRSAFromHexModulus(const std::string& hex_modulus);
 
   // Creates a SignedPublicKeyAndChallenge with a random challenge.
   bool CreateSignedPublicKey(const CertifiedKey& key,

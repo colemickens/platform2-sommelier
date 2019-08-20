@@ -12,6 +12,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <crypto/scoped_openssl_types.h>
 #include <openssl/objects.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
@@ -37,14 +38,6 @@ const char kPCRExtension[] = "CROS_PCR15_845A4A757B94";
 const char kKeyFilePath[] = "/var/lib/boot-lockbox/key";
 
 const mode_t kKeyFilePermissions = 0600;
-
-// So we can use std::unique_ptr with openssl types.
-struct RSADeleter {
-  void operator()(void* ptr) const {
-    if (ptr)
-      RSA_free(reinterpret_cast<RSA*>(ptr));
-  }
-};
 
 }  // namespace
 
@@ -224,8 +217,8 @@ bool BootLockbox::VerifySignature(const brillo::Blob& public_key,
                                   const brillo::Blob& signed_data,
                                   const brillo::SecureBlob& signature) {
   const unsigned char* asn1_ptr = public_key.data();
-  std::unique_ptr<RSA, RSADeleter> rsa(
-      d2i_RSAPublicKey(NULL, &asn1_ptr, public_key.size()));
+  crypto::ScopedRSA rsa(
+      d2i_RSAPublicKey(nullptr, &asn1_ptr, public_key.size()));
   if (!rsa.get()) {
     LOG(ERROR) << "Failed to decode public key.";
     return false;

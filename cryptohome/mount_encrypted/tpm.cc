@@ -14,6 +14,7 @@
 
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <crypto/scoped_openssl_types.h>
 
 #include <vboot/tlcl.h>
 
@@ -35,10 +36,6 @@ uint8_t kSystemKeyInitializedDummyDelegationFamilyLabel = 0xff;
 
 // Maximum TPM delegation table size.
 const uint32_t kDelegationTableSize = 8;
-
-struct RSADeleter {
-  void operator()(RSA* rsa) const { RSA_free(rsa); }
-};
 
 #endif  // !USE_TPM2
 
@@ -494,7 +491,7 @@ result_code Tpm::TakeOwnership() {
     return RESULT_FAIL_FATAL;
   }
 
-  std::unique_ptr<RSA, RSADeleter> rsa(RSA_new());
+  crypto::ScopedRSA rsa(RSA_new());
   CHECK(rsa.get());
   rsa.get()->e = BN_new();
   CHECK(rsa.get()->e);
