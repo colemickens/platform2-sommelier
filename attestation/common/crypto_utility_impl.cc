@@ -972,7 +972,7 @@ bool CryptoUtilityImpl::GetKeyDigest(
     LOG(ERROR) << __func__ << ": Failed to decode certified public key.";
     return false;
   }
-  std::vector<unsigned char> modulus(BN_num_bytes(rsa.get()->n));
+  std::vector<unsigned char> modulus(RSA_size(rsa.get()));
   BN_bn2bin(rsa.get()->n, modulus.data());
   char digest_buf[base::kSHA1Length];
   base::SHA1HashBytes(modulus.data(), modulus.size(),

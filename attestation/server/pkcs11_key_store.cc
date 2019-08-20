@@ -248,7 +248,7 @@ bool Pkcs11KeyStore::Register(const std::string& username,
     LOG(ERROR) << "Pkcs11KeyStore: Failed to decode public key.";
     return false;
   }
-  std::string modulus(BN_num_bytes(public_key.get()->n), 0);
+  std::string modulus(RSA_size(public_key.get()), 0);
   int length = BN_bn2bin(
       public_key.get()->n,
       reinterpret_cast<unsigned char*>(base::data(modulus)));

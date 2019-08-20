@@ -1187,7 +1187,7 @@ bool TpmUtilityV1::GetEndorsementPublicKeyModulus(KeyType key_type,
     LOG(ERROR) << __func__ << ": Failed to decode public endorsement key.";
     return false;
   }
-  int modulus_bytes_length = BN_num_bytes(public_key.get()->n);
+  int modulus_bytes_length = RSA_size(public_key.get());
   if (modulus_bytes_length <= 0) {
     LOG(ERROR) << __func__
                << ": Failed to get public endorsement key modulus length.";
