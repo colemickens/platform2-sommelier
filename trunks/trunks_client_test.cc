@@ -1197,7 +1197,7 @@ void TrunksClientTest::GenerateRSAKeyPair(std::string* modulus,
   CHECK(BN_set_word(exponent.get(), RSA_F4));
   CHECK(RSA_generate_key_ex(rsa.get(), 2048, exponent.get(), nullptr))
       << "Failed to generate RSA key: " << GetOpenSSLError();
-  modulus->resize(BN_num_bytes(rsa.get()->n), 0);
+  modulus->resize(RSA_size(rsa.get()), 0);
   BN_bn2bin(rsa.get()->n,
             reinterpret_cast<unsigned char*>(base::string_as_array(modulus)));
   prime_factor->resize(BN_num_bytes(rsa.get()->p), 0);

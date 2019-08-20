@@ -1964,14 +1964,14 @@ TPM_RC TpmUtilityImpl::GetPublicRSAEndorsementKeyModulus(
     return SAPI_RC_CORRUPTED_DATA;
   }
 
-  BIGNUM* bn = rsa->n;
-  size_t buf_len = (size_t) BN_num_bytes(bn);
+  size_t buf_len = RSA_size(rsa);
   if (buf_len == 0) {
     LOG(ERROR) << "Invalid buffer size";
     return SAPI_RC_CORRUPTED_DATA;
   }
 
   std::vector<unsigned char> key(buf_len);
+  BIGNUM* bn = rsa->n;
   BN_bn2bin(bn, key.data());
   ekm->assign(reinterpret_cast<const char*>(key.data()), buf_len);
 
