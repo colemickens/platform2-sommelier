@@ -41,6 +41,7 @@ class GattInterfaceHandler final : public Gatt::GattObserver {
       const GattCharacteristic& characteristic) override;
   void OnGattDescriptorAdded(const GattDescriptor& descriptor) override;
   void OnGattDescriptorRemoved(const GattDescriptor& descriptor) override;
+  void OnGattDescriptorChanged(const GattDescriptor& descriptor) override;
 
  private:
   // Represents a GATT client request from D-Bus client and respond to the
@@ -50,7 +51,7 @@ class GattInterfaceHandler final : public Gatt::GattObserver {
     GattClientRequestType type;
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>>
-        read_char_value_response;
+        read_value_response;
   };
 
   // Helpers to export GATT service characteristic and descriptor interfaces.
@@ -92,8 +93,10 @@ class GattInterfaceHandler final : public Gatt::GattObserver {
 
   // D-Bus method handlers for GATT descriptor interface.
   void HandleDescriptorReadValue(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-      dbus::Message* message);
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          std::vector<uint8_t>>> response,
+      dbus::Message* message,
+      const brillo::VariantDictionary& options);
   void HandleDescriptorWriteValue(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
       dbus::Message* message);
@@ -105,6 +108,15 @@ class GattInterfaceHandler final : public Gatt::GattObserver {
                                  uint16_t char_handle,
                                  GattClientOperationError error,
                                  const std::vector<uint8_t>& value);
+
+  // Called when GATT client read descriptor value request is done.
+  void OnReadDescriptorValue(UniqueId transaction_id,
+                             const std::string& device_address,
+                             uint16_t service_handle,
+                             uint16_t char_handle,
+                             uint16_t desc_handle,
+                             GattClientOperationError error,
+                             const std::vector<uint8_t>& value);
 
   scoped_refptr<dbus::Bus> bus_;
   Newblue* newblue_;

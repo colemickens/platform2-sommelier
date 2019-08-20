@@ -230,6 +230,11 @@ void GattInterfaceHandler::OnGattDescriptorRemoved(
       desc_path, bluetooth_gatt_descriptor::kBluetoothGattDescriptorInterface);
 }
 
+void GattInterfaceHandler::OnGattDescriptorChanged(
+    const GattDescriptor& descriptor) {
+  ExportGattDescriptorInterface(descriptor);
+}
+
 void GattInterfaceHandler::AddGattCharacteristicMethodHandlers(
     ExportedInterface* char_interface) {
   CHECK(char_interface);
@@ -492,10 +497,10 @@ void GattInterfaceHandler::HandleCharacteristicReadValue(
     return;
   }
 
-  GattClientRequest session = {
+  GattClientRequest request = {
       .object_path = message->GetPath().value(),
       .type = GattClientRequestType::READ_CHARACTERISTIC_VALUE,
-      .read_char_value_response = std::move(response),
+      .read_value_response = std::move(response),
   };
 
   auto transaction_id = gatt_->ReadCharacteristicValue(
@@ -503,7 +508,7 @@ void GattInterfaceHandler::HandleCharacteristicReadValue(
       base::Bind(&GattInterfaceHandler::OnReadCharacteristicValue,
                  weak_ptr_factory_.GetWeakPtr()));
   if (transaction_id == kInvalidUniqueId) {
-    session.read_char_value_response->ReplyWithError(
+    request.read_value_response->ReplyWithError(
         FROM_HERE, brillo::errors::dbus::kDomain,
         bluetooth_gatt_characteristic::kErrorFailed, "");
     return;
@@ -512,7 +517,7 @@ void GattInterfaceHandler::HandleCharacteristicReadValue(
   VLOG(1) << "Reading a GATT characteristic value at "
           << message->GetPath().value();
 
-  gatt_client_requests_.emplace(transaction_id, std::move(session));
+  gatt_client_requests_.emplace(transaction_id, std::move(request));
 }
 
 void GattInterfaceHandler::HandleCharacteristicWriteValue(
@@ -548,11 +553,57 @@ void GattInterfaceHandler::HandleCharacteristicPrepareWriteValue(
 }
 
 void GattInterfaceHandler::HandleDescriptorReadValue(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-    dbus::Message* message) {
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           bluetooth_gatt_descriptor::kErrorFailed,
-                           "Not implemented");
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
+    dbus::Message* message,
+    const brillo::VariantDictionary& options) {
+  CHECK(message);
+
+  std::string device_address;
+  uint16_t service_handle = 0, char_handle = 0, desc_handle = 0;
+
+  uint16_t offset =
+      brillo::GetVariantValueOrDefault<uint16_t>(options, "offset");
+  if (!ConvertDescriptorObjectPathToHandles(&device_address, &service_handle,
+                                            &char_handle, &desc_handle,
+                                            message->GetPath().value())) {
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             bluetooth_gatt_descriptor::kErrorFailed,
+                             "Invalid GATT descriptor object path");
+    return;
+  }
+
+  if (device_address.empty() || service_handle == kInvalidGattAttributeHandle ||
+      char_handle == kInvalidGattAttributeHandle ||
+      desc_handle == kInvalidGattAttributeHandle) {
+    response->ReplyWithError(
+        FROM_HERE, brillo::errors::dbus::kDomain,
+        bluetooth_gatt_descriptor::kErrorFailed,
+        "Invalid device address or invalid GATT descriptor handles");
+    return;
+  }
+
+  GattClientRequest request = {
+      .object_path = message->GetPath().value(),
+      .type = GattClientRequestType::READ_DESCRIPTOR_VALUE,
+      .read_value_response = std::move(response),
+  };
+
+  auto transaction_id = gatt_->ReadDescriptorValue(
+      device_address, service_handle, char_handle, desc_handle, offset,
+      base::Bind(&GattInterfaceHandler::OnReadDescriptorValue,
+                 weak_ptr_factory_.GetWeakPtr()));
+  if (transaction_id == kInvalidUniqueId) {
+    request.read_value_response->ReplyWithError(
+        FROM_HERE, brillo::errors::dbus::kDomain,
+        bluetooth_gatt_descriptor::kErrorFailed, "");
+    return;
+  }
+
+  VLOG(1) << "Reading a GATT descriptor value at "
+          << message->GetPath().value();
+
+  gatt_client_requests_.emplace(transaction_id, std::move(request));
 }
 
 void GattInterfaceHandler::HandleDescriptorWriteValue(
@@ -570,20 +621,22 @@ void GattInterfaceHandler::OnReadCharacteristicValue(
     uint16_t char_handle,
     GattClientOperationError error,
     const std::vector<uint8_t>& value) {
-  auto session = gatt_client_requests_.find(transaction_id);
+  auto request = gatt_client_requests_.find(transaction_id);
 
-  CHECK(session->second.type ==
+  CHECK(request != gatt_client_requests_.end());
+  CHECK(request->second.type ==
         GattClientRequestType::READ_CHARACTERISTIC_VALUE);
-  CHECK(session->second.read_char_value_response != nullptr);
-  CHECK(session->second.object_path ==
+  CHECK(request->second.read_value_response != nullptr);
+  CHECK(request->second.object_path ==
         ConvertCharacteristicHandleToObjectPath(device_address, service_handle,
                                                 char_handle));
 
+  auto response = std::move(request->second.read_value_response);
+
   if (value.empty()) {
-    session->second.read_char_value_response->ReplyWithError(
-        FROM_HERE, brillo::errors::dbus::kDomain,
-        bluetooth_gatt_characteristic::kErrorFailed,
-        "Invalid device address or invalid GATT characteristic handles");
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             bluetooth_gatt_characteristic::kErrorFailed,
+                             "Empty value");
     gatt_client_requests_.erase(transaction_id);
     return;
   }
@@ -593,16 +646,60 @@ void GattInterfaceHandler::OnReadCharacteristicValue(
   ConvertGattClientOperationErrorToDBusError(&dbus_error, &error_message,
                                              error);
   if (error != GattClientOperationError::NONE) {
-    session->second.read_char_value_response->ReplyWithError(
-        FROM_HERE, brillo::errors::dbus::kDomain, dbus_error, error_message);
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             dbus_error, error_message);
     gatt_client_requests_.erase(transaction_id);
     return;
   }
 
   VLOG(1) << "Finished reading a GATT characteristic value at "
-          << session->second.object_path;
+          << request->second.object_path;
 
-  auto response = std::move(session->second.read_char_value_response);
+  gatt_client_requests_.erase(transaction_id);
+  response->Return(value);
+}
+
+void GattInterfaceHandler::OnReadDescriptorValue(
+    UniqueId transaction_id,
+    const std::string& device_address,
+    uint16_t service_handle,
+    uint16_t char_handle,
+    uint16_t desc_handle,
+    GattClientOperationError error,
+    const std::vector<uint8_t>& value) {
+  auto request = gatt_client_requests_.find(transaction_id);
+
+  CHECK(request != gatt_client_requests_.end());
+  CHECK(request->second.type == GattClientRequestType::READ_DESCRIPTOR_VALUE);
+  CHECK(request->second.read_value_response != nullptr);
+  CHECK(request->second.object_path ==
+        ConvertDescriptorHandleToObjectPath(device_address, service_handle,
+                                            char_handle, desc_handle));
+
+  auto response = std::move(request->second.read_value_response);
+
+  if (value.empty()) {
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             bluetooth_gatt_descriptor::kErrorFailed,
+                             "Empty value");
+    gatt_client_requests_.erase(transaction_id);
+    return;
+  }
+
+  std::string dbus_error;
+  std::string error_message;
+  ConvertGattClientOperationErrorToDBusError(&dbus_error, &error_message,
+                                             error);
+  if (error != GattClientOperationError::NONE) {
+    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                             dbus_error, error_message);
+    gatt_client_requests_.erase(transaction_id);
+    return;
+  }
+
+  VLOG(1) << "Finished reading a GATT descriptor value at "
+          << request->second.object_path;
+
   gatt_client_requests_.erase(transaction_id);
   response->Return(value);
 }
