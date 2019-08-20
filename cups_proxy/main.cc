@@ -11,7 +11,7 @@
 int main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
-  printing::Daemon daemon;
+  cups_proxy::Daemon daemon;
 
   return daemon.Run();
 }

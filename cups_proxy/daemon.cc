@@ -18,7 +18,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-namespace printing {
+namespace cups_proxy {
 
 namespace {
 
@@ -105,17 +105,18 @@ void Daemon::InitDBus() {
 
   // Get or create the ExportedObject for the CupsProxyDaemon
   dbus::ExportedObject* const cups_proxy_exported_object =
-      bus_->GetExportedObject(dbus::ObjectPath(kCupsProxyDaemonPath));
+      bus_->GetExportedObject(dbus::ObjectPath(printing::kCupsProxyDaemonPath));
   CHECK(cups_proxy_exported_object);
 
   // Register a handler of the BootstrapMojoConnection method.
   CHECK(cups_proxy_exported_object->ExportMethodAndBlock(
-      kCupsProxyDaemonInterface, kBootstrapMojoConnectionMethod,
+      printing::kCupsProxyDaemonInterface,
+      printing::kBootstrapMojoConnectionMethod,
       base::Bind(&Daemon::BootstrapMojoConnection,
                  weak_ptr_factory_.GetWeakPtr())));
 
   // Take ownership of the CupsProxy service.
-  CHECK(bus_->RequestOwnershipAndBlock(kCupsProxyDaemonName,
+  CHECK(bus_->RequestOwnershipAndBlock(printing::kCupsProxyDaemonName,
                                        dbus::Bus::REQUIRE_PRIMARY));
 }
 
@@ -171,4 +172,4 @@ void Daemon::OnConnectionError() {
   Quit();
 }
 
-}  // namespace printing
+}  // namespace cups_proxy

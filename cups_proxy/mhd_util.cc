@@ -8,7 +8,7 @@
 
 #include "cups_proxy/mhd_http_request.h"
 
-namespace printing {
+namespace cups_proxy {
 
 namespace {
 
@@ -108,4 +108,4 @@ ScopedMHDDaemon StartMHDDaemon(base::ScopedFD fd, MojoHandler* mojo_handler) {
                        mojo_handler, MHD_OPTION_ARRAY, kOps, MHD_OPTION_END));
 }
 
-}  // namespace printing
+}  // namespace cups_proxy

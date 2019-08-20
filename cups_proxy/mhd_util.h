@@ -12,7 +12,7 @@
 
 #include "cups_proxy/mojo_handler.h"
 
-namespace printing {
+namespace cups_proxy {
 
 struct MHDResponseDeleter {
   void operator()(MHD_Response* response) { MHD_destroy_response(response); }
@@ -30,6 +30,6 @@ using ScopedMHDDaemon = std::unique_ptr<MHD_Daemon, MHDDaemonDeleter>;
 
 ScopedMHDDaemon StartMHDDaemon(base::ScopedFD fd, MojoHandler* mojo_handler);
 
-}  // namespace printing
+}  // namespace cups_proxy
 
 #endif  // CUPS_PROXY_MHD_UTIL_H_

@@ -12,7 +12,7 @@
 #include <base/strings/string_piece.h>
 #include <microhttpd.h>
 
-namespace printing {
+namespace cups_proxy {
 
 class MHDHttpRequest {
  public:
@@ -41,6 +41,6 @@ class MHDHttpRequest {
   bool chunked_;
 };
 
-}  // namespace printing
+}  // namespace cups_proxy
 
 #endif  // CUPS_PROXY_MHD_HTTP_REQUEST_H_

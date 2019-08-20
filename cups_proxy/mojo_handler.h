@@ -15,9 +15,9 @@
 #include "cups_proxy/mhd_http_request.h"
 #include "cups_proxy/mojom/proxy.mojom.h"
 
-namespace printing {
+namespace cups_proxy {
 
-using IppHeaders = std::vector<chromeos::printing::mojom::HttpHeaderPtr>;
+using IppHeaders = std::vector<mojom::HttpHeaderPtr>;
 using IppBody = std::vector<uint8_t>;
 
 struct IppResponse {
@@ -60,8 +60,7 @@ class MojoHandler {
       const std::string& version,
       IppHeaders headers,
       const IppBody& body,
-      const chromeos::printing::mojom::CupsProxier::ProxyRequestCallback&
-          callback);
+      const mojom::CupsProxier::ProxyRequestCallback& callback);
 
   base::Thread mojo_thread_;
 
@@ -69,11 +68,11 @@ class MojoHandler {
 
   // The top-level interface. Empty until it is created & bound to a pipe by
   // BootstrapMojoConnection.
-  chromeos::printing::mojom::CupsProxierPtr chrome_proxy_;
+  mojom::CupsProxierPtr chrome_proxy_;
 
   // Queued requests that come before |chrome_proxy_| is ready.
   std::vector<base::OnceClosure> queued_requests_;
 };
-}  // namespace printing
+}  // namespace cups_proxy
 
 #endif  // CUPS_PROXY_MOJO_HANDLER_H_

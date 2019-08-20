@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <utility>
 
-namespace printing {
+namespace cups_proxy {
 
 MHDHttpRequest::MHDHttpRequest() : chunked_(false) {}
 
@@ -44,4 +44,4 @@ void MHDHttpRequest::PushToBody(base::StringPiece data) {
   body_.insert(body_.end(), data.begin(), data.end());
 }
 
-}  // namespace printing
+}  // namespace cups_proxy

@@ -11,7 +11,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <mojo/edk/embedder/embedder.h>
 
-namespace printing {
+namespace cups_proxy {
 
 namespace {
 
@@ -35,7 +35,7 @@ IppHeaders ConvertHeadersToMojom(
   IppHeaders ret;
 
   for (const auto& header : headers) {
-    auto mojom_header = chromeos::printing::mojom::HttpHeader::New();
+    auto mojom_header = mojom::HttpHeader::New();
     mojom_header->key = header.first;
     mojom_header->value = header.second;
     ret.push_back(std::move(mojom_header));
@@ -52,9 +52,9 @@ MojoHandler::~MojoHandler() {
   // The message pipe is bound on the mojo thread, and it has to be closed on
   // the same thread which it is bound, so we close the message pipe by calling
   // .reset() on the mojo thread.
-  mojo_task_runner_->PostTask(
-      FROM_HERE, base::Bind(&chromeos::printing::mojom::CupsProxierPtr::reset,
-                            base::Unretained(&chrome_proxy_)));
+  mojo_task_runner_->PostTask(FROM_HERE,
+                              base::Bind(&mojom::CupsProxierPtr::reset,
+                                         base::Unretained(&chrome_proxy_)));
   mojo_thread_.Stop();
 }
 
@@ -81,8 +81,9 @@ void MojoHandler::SetupMojoPipeOnThread(base::Closure error_handler) {
   DCHECK(!chrome_proxy_);
 
   // Bind primordial message pipe to a CupsProxyService implementation.
-  chrome_proxy_.Bind(chromeos::printing::mojom::CupsProxierPtrInfo(
-      mojo::edk::CreateChildMessagePipe(kBootstrapMojoConnectionChannelToken),
+  chrome_proxy_.Bind(mojom::CupsProxierPtrInfo(
+      mojo::edk::CreateChildMessagePipe(
+          printing::kBootstrapMojoConnectionChannelToken),
       0u /* version */));
   chrome_proxy_.set_connection_error_handler(std::move(error_handler));
 
@@ -103,8 +104,7 @@ void MojoHandler::ProxyRequestOnThread(
     const std::string& version,
     IppHeaders headers,
     const IppBody& body,
-    const chromeos::printing::mojom::CupsProxier::ProxyRequestCallback&
-        callback) {
+    const mojom::CupsProxier::ProxyRequestCallback& callback) {
   DCHECK(mojo_task_runner_->BelongsToCurrentThread());
 
   if (chrome_proxy_) {
@@ -158,4 +158,4 @@ IppResponse MojoHandler::ProxyRequestSync(const MHDHttpRequest& request) {
   return response;
 }
 
-}  // namespace printing
+}  // namespace cups_proxy

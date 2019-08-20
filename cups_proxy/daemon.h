@@ -17,7 +17,7 @@ namespace dbus {
 class MethodCall;
 }  // namespace dbus
 
-namespace printing {
+namespace cups_proxy {
 
 class Daemon : public brillo::DBusDaemon {
  public:
@@ -50,6 +50,6 @@ class Daemon : public brillo::DBusDaemon {
   base::WeakPtrFactory<Daemon> weak_ptr_factory_;
 };
 
-}  // namespace printing
+}  // namespace cups_proxy
 
 #endif  // CUPS_PROXY_DAEMON_H_
