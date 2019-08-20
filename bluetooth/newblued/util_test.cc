@@ -402,39 +402,46 @@ TEST(UtilTest, ConvertToGattService) {
   EXPECT_EQ(service_uuid, s->uuid().value());
 
   // Verify included service content.
-  EXPECT_EQ(1, s->included_services_.size());
-  EXPECT_EQ(s.get(), s->included_services_[isfh]->service());
-  EXPECT_EQ(isih, s->included_services_[isfh]->included_handle());
-  EXPECT_EQ(isfh, s->included_services_[isfh]->first_handle());
-  EXPECT_EQ(islh, s->included_services_[isfh]->last_handle());
-  EXPECT_EQ(included_service_uuid, s->included_services_[isfh]->uuid());
+  EXPECT_EQ(1, s->included_services().size());
+  EXPECT_EQ(s.get(), s->included_services().at(isfh)->service());
+  EXPECT_EQ(isih, s->included_services().at(isfh)->included_handle());
+  EXPECT_EQ(isfh, s->included_services().at(isfh)->first_handle());
+  EXPECT_EQ(islh, s->included_services().at(isfh)->last_handle());
+  EXPECT_EQ(included_service_uuid, s->included_services().at(isfh)->uuid());
 
   // Verify characteristic content.
-  EXPECT_EQ(1, s->characteristics_.size());
-  EXPECT_EQ(s.get(), s->characteristics_[cfh]->service().value());
-  EXPECT_EQ(cvh, s->characteristics_[cfh]->value_handle());
-  EXPECT_EQ(cfh, s->characteristics_[cfh]->first_handle());
-  EXPECT_EQ(clh, s->characteristics_[cfh]->last_handle());
-  EXPECT_EQ(cp, s->characteristics_[cfh]->properties().value());
-  EXPECT_EQ(characteristic_uuid, s->characteristics_[cfh]->uuid().value());
-  EXPECT_TRUE(s->characteristics_[cfh]->value().value().empty());
+  EXPECT_EQ(1, s->characteristics().size());
+  EXPECT_EQ(s.get(), s->characteristics().at(cfh)->service().value());
+  EXPECT_EQ(cvh, s->characteristics().at(cfh)->value_handle());
+  EXPECT_EQ(cfh, s->characteristics().at(cfh)->first_handle());
+  EXPECT_EQ(clh, s->characteristics().at(cfh)->last_handle());
+  EXPECT_EQ(cp, s->characteristics().at(cfh)->properties().value());
+  EXPECT_EQ(characteristic_uuid, s->characteristics().at(cfh)->uuid().value());
+  EXPECT_TRUE(s->characteristics().at(cfh)->value().value().empty());
   EXPECT_EQ(GattCharacteristic::NotifySetting::NONE,
-            s->characteristics_[cfh]->notify_setting().value());
+            s->characteristics().at(cfh)->notify_setting().value());
 
   // Verify descriptors content.
-  EXPECT_EQ(2, s->characteristics_[cfh]->descriptors_.size());
-  EXPECT_EQ(
-      s->characteristics_[cfh].get(),
-      s->characteristics_[cfh]->descriptors_[dh]->characteristic().value());
-  EXPECT_EQ(dh, s->characteristics_[cfh]->descriptors_[dh]->handle());
+  EXPECT_EQ(2, s->characteristics().at(cfh)->descriptors().size());
+  EXPECT_EQ(s->characteristics().at(cfh).get(), s->characteristics()
+                                                    .at(cfh)
+                                                    ->descriptors()
+                                                    .at(dh)
+                                                    ->characteristic()
+                                                    .value());
+  EXPECT_EQ(dh, s->characteristics().at(cfh)->descriptors().at(dh)->handle());
   EXPECT_EQ(descriptor_uuid,
-            s->characteristics_[cfh]->descriptors_[dh]->uuid().value());
+            s->characteristics().at(cfh)->descriptors().at(dh)->uuid().value());
+  EXPECT_EQ(s->characteristics().at(cfh).get(), s->characteristics()
+                                                    .at(cfh)
+                                                    ->descriptors()
+                                                    .at(dh2)
+                                                    ->characteristic()
+                                                    .value());
+  EXPECT_EQ(dh2, s->characteristics().at(cfh)->descriptors().at(dh2)->handle());
   EXPECT_EQ(
-      s->characteristics_[cfh].get(),
-      s->characteristics_[cfh]->descriptors_[dh2]->characteristic().value());
-  EXPECT_EQ(dh2, s->characteristics_[cfh]->descriptors_[dh2]->handle());
-  EXPECT_EQ(descriptor_uuid2,
-            s->characteristics_[cfh]->descriptors_[dh2]->uuid().value());
+      descriptor_uuid2,
+      s->characteristics().at(cfh)->descriptors().at(dh2)->uuid().value());
 }
 
 TEST(UtilTest, GetBytesFromSg) {

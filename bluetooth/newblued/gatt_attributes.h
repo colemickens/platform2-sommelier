@@ -75,6 +75,10 @@ class GattService {
   characteristics() const {
     return characteristics_;
   }
+  const std::map<uint16_t, std::unique_ptr<GattIncludedService>>&
+  included_services() const {
+    return included_services_;
+  }
 
  private:
   Property<std::string> device_address_;
@@ -84,9 +88,6 @@ class GattService {
   Property<Uuid> uuid_;
   std::map<uint16_t, std::unique_ptr<GattCharacteristic>> characteristics_;
   std::map<uint16_t, std::unique_ptr<GattIncludedService>> included_services_;
-
-  FRIEND_TEST(GattAttributesTest, GattServiceAddIncludedServiceCharacteristic);
-  FRIEND_TEST(UtilTest, ConvertToGattService);
 
   DISALLOW_COPY_AND_ASSIGN(GattService);
 };
@@ -170,9 +171,6 @@ class GattCharacteristic {
   std::map<uint16_t, std::unique_ptr<GattDescriptor>> descriptors_;
 
   Property<NotifySetting> notify_setting_;
-
-  FRIEND_TEST(GattAttributesTest, GattCharacteristicAddDescriptor);
-  FRIEND_TEST(UtilTest, ConvertToGattService);
 
   DISALLOW_COPY_AND_ASSIGN(GattCharacteristic);
 };

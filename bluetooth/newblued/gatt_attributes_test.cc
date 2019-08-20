@@ -160,27 +160,27 @@ TEST_F(GattAttributesTest, GattServiceAddIncludedServiceCharacteristic) {
                                                    included_service_uuid_);
   EXPECT_DEATH(s2.AddIncludedService(std::move(ins)), "");
   s.AddIncludedService(std::move(ins));
-  EXPECT_EQ(1, s.included_services_.size());
-  EXPECT_EQ(&s, s.included_services_[isfh]->service());
-  EXPECT_EQ(isfh, s.included_services_[isfh]->first_handle());
-  EXPECT_EQ(islh, s.included_services_[isfh]->last_handle());
-  EXPECT_EQ(isih, s.included_services_[isfh]->included_handle());
-  EXPECT_EQ(included_service_uuid_, s.included_services_[isfh]->uuid());
+  EXPECT_EQ(1, s.included_services().size());
+  EXPECT_EQ(&s, s.included_services().at(isfh)->service());
+  EXPECT_EQ(isfh, s.included_services().at(isfh)->first_handle());
+  EXPECT_EQ(islh, s.included_services().at(isfh)->last_handle());
+  EXPECT_EQ(isih, s.included_services().at(isfh)->included_handle());
+  EXPECT_EQ(included_service_uuid_, s.included_services().at(isfh)->uuid());
 
   auto c = std::make_unique<GattCharacteristic>(&s, cvh, cfh, clh, cp,
                                                 characteristic_uuid_);
   EXPECT_DEATH(s2.AddCharacteristic(std::move(c)), "");
   s.AddCharacteristic(std::move(c));
-  EXPECT_EQ(1, s.characteristics_.size());
-  EXPECT_EQ(&s, s.characteristics_[cfh]->service().value());
-  EXPECT_EQ(cfh, s.characteristics_[cfh]->first_handle());
-  EXPECT_EQ(clh, s.characteristics_[cfh]->last_handle());
-  EXPECT_EQ(cvh, s.characteristics_[cfh]->value_handle());
-  EXPECT_EQ(cp, s.characteristics_[cfh]->properties().value());
-  EXPECT_EQ(characteristic_uuid_, s.characteristics_[cfh]->uuid().value());
-  EXPECT_TRUE(s.characteristics_[cfh]->value().value().empty());
+  EXPECT_EQ(1, s.characteristics().size());
+  EXPECT_EQ(&s, s.characteristics().at(cfh)->service().value());
+  EXPECT_EQ(cfh, s.characteristics().at(cfh)->first_handle());
+  EXPECT_EQ(clh, s.characteristics().at(cfh)->last_handle());
+  EXPECT_EQ(cvh, s.characteristics().at(cfh)->value_handle());
+  EXPECT_EQ(cp, s.characteristics().at(cfh)->properties().value());
+  EXPECT_EQ(characteristic_uuid_, s.characteristics().at(cfh)->uuid().value());
+  EXPECT_TRUE(s.characteristics().at(cfh)->value().value().empty());
   EXPECT_EQ(GattCharacteristic::NotifySetting::NONE,
-            s.characteristics_[cfh]->notify_setting().value());
+            s.characteristics().at(cfh)->notify_setting().value());
 }
 
 TEST_F(GattAttributesTest, GattCharacteristicAddDescriptor) {
@@ -208,10 +208,10 @@ TEST_F(GattAttributesTest, GattCharacteristicAddDescriptor) {
   auto d = std::make_unique<GattDescriptor>(&c, dh, descriptor_uuid_);
   EXPECT_DEATH(c2.AddDescriptor(std::move(d)), "");
   c.AddDescriptor(std::move(d));
-  EXPECT_EQ(1, c.descriptors_.size());
-  EXPECT_EQ(&c, c.descriptors_[dh]->characteristic().value());
-  EXPECT_EQ(dh, c.descriptors_[dh]->handle());
-  EXPECT_TRUE(c.descriptors_[dh]->value().value().empty());
+  EXPECT_EQ(1, c.descriptors().size());
+  EXPECT_EQ(&c, c.descriptors().at(dh)->characteristic().value());
+  EXPECT_EQ(dh, c.descriptors().at(dh)->handle());
+  EXPECT_TRUE(c.descriptors().at(dh)->value().value().empty());
 }
 
 TEST_F(GattAttributesTest, GattCharacteristicSetValue) {
