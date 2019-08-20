@@ -40,6 +40,7 @@
 #include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 #include "cryptohome/dircrypto_util.h"
 #include "cryptohome/homedirs.h"
+#include "cryptohome/mount_utils.h"
 #include "cryptohome/obfuscated_username.h"
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/platform.h"
@@ -87,18 +88,6 @@ void StartUserFileAttrsCleanerService(const std::string& username) {
   if (file_attrs.Run() != 0)
     PLOG(WARNING) << "Error while running file_attrs_cleaner_tool";
 }
-
-// A helper class for scoping umask changes.
-class ScopedUmask {
- public:
-  ScopedUmask(Platform* platform, int mask)
-      : platform_(platform),
-        old_mask_(platform_->SetMask(mask)) {}
-  ~ScopedUmask() {platform_->SetMask(old_mask_);}
- private:
-  Platform* platform_;
-  int old_mask_;
-};
 
 Mount::Mount()
     : default_user_(-1),
