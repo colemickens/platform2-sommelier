@@ -8,8 +8,8 @@
 #define CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_IMPL_H_
 
 #include "chromeos-config/libcros_config/cros_config_interface.h"
-#include "chromeos-config/libcros_config/identity_x86.h"
 #include "chromeos-config/libcros_config/identity_arm.h"
+#include "chromeos-config/libcros_config/identity_x86.h"
 
 #include <map>
 #include <memory>
@@ -25,17 +25,6 @@ class CrosConfigImpl : public CrosConfigInterface {
  public:
   CrosConfigImpl();
   ~CrosConfigImpl() override;
-
-  // CrosConfig:
-  virtual bool GetString(const std::string& path,
-                         const std::string& prop,
-                         std::string* val_out,
-                         std::vector<std::string>* log_msgs_out) = 0;
-
-  // CrosConfigInterface:
-  bool GetString(const std::string& path,
-                 const std::string& prop,
-                 std::string* val_out) override;
 
   // Read the config into our internal structures
   // @filepath: path to configuration file (e.g. .dtb).

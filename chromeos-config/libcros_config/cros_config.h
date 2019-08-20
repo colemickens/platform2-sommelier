@@ -77,18 +77,6 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
                       int sku_id,
                       const std::string& customization_id);
 
-  // Internal function to obtain a property value and return a list of log
-  // messages on failure. Public for tests.
-  // @path: Path to locate. Must start with "/".
-  // @prop: Property name to look up
-  // @val_out: returns the string value found, if any
-  // @log_msgs_out: returns a list of error messages if this function fails
-  // @return true if found, false if not found
-  bool GetString(const std::string& path,
-                 const std::string& prop,
-                 std::string* val_out,
-                 std::vector<std::string>* log_msgs_out);
-
   // CrosConfigInterface:
   bool GetString(const std::string& path,
                  const std::string& prop,

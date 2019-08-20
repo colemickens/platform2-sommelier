@@ -41,17 +41,4 @@ bool CrosConfigImpl::InitCheck() const {
   return true;
 }
 
-bool CrosConfigImpl::GetString(const std::string& path,
-                               const std::string& prop,
-                               std::string* val_out) {
-  std::vector<std::string> log_msgs;
-  if (!GetString(path, prop, val_out, &log_msgs)) {
-    for (std::string msg : log_msgs) {
-      CROS_CONFIG_LOG(ERROR) << msg;
-    }
-    return false;
-  }
-  return true;
-}
-
 }  // namespace brillo

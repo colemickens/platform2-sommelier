@@ -19,16 +19,17 @@ class CrosConfigJson : public CrosConfigImpl {
   CrosConfigJson();
   ~CrosConfigJson() override;
 
+  // CrosConfigInterface:
+  bool GetString(const std::string& path,
+                 const std::string& prop,
+                 std::string* val_out) override;
+
   // CrosConfigImpl:
   bool SelectConfigByIdentityArm(
       const CrosConfigIdentityArm& identity) override;
   bool SelectConfigByIdentityX86(
       const CrosConfigIdentityX86& identity) override;
   bool ReadConfigFile(const base::FilePath& filepath) override;
-  bool GetString(const std::string& path,
-                 const std::string& prop,
-                 std::string* val_out,
-                 std::vector<std::string>* log_msgs_out) override;
 
  private:
   // Common impl for both the X86 and ARM based identity schemes.

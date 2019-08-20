@@ -127,8 +127,7 @@ bool CrosConfigJson::SelectConfigByIdentityX86(
 
 bool CrosConfigJson::GetString(const std::string& path,
                                const std::string& prop,
-                               std::string* val_out,
-                               std::vector<std::string>* log_msgs_out) {
+                               std::string* val_out) {
   if (!InitCheck()) {
     return false;
   }

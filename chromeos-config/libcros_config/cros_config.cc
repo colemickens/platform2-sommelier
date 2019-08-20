@@ -124,16 +124,6 @@ bool CrosConfig::InitModel(const int sku_id) {
 
 bool CrosConfig::GetString(const std::string& path,
                            const std::string& prop,
-                           std::string* val_out,
-                           std::vector<std::string>* log_msgs_out) {
-  if (!InitCheck()) {
-    return false;
-  }
-  return cros_config_->GetString(path, prop, val_out, log_msgs_out);
-}
-
-bool CrosConfig::GetString(const std::string& path,
-                           const std::string& prop,
                            std::string* val_out) {
   if (!InitCheck()) {
     return false;
