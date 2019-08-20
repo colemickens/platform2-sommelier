@@ -32,7 +32,7 @@ void helper_process_receiver_fuzzer_run(const char* data, size_t size) {
   }
   base::UnixDomainSocket::SendMsg(writer_fd.get(), data, size,
                                   std::vector<int>());
-  helper_process_receiver.OnFileCanReadWithoutBlocking(socket_pair[0]);
+  helper_process_receiver.OnCommandReady();
 }
 
 }  // namespace imageloader
