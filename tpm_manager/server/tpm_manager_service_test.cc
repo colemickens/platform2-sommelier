@@ -212,6 +212,25 @@ TEST_F(TpmManagerServiceTest_Preinit, TpmAlreadyOwned) {
   RunServiceWorkerAndQuit();
 }
 
+TEST_F(TpmManagerServiceTest_Preinit, GetTpmStatusOwnershipStatusFailure) {
+  // Called in InitializeTask() and GetTpmStatus()
+  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned(_))
+      .WillOnce(DoAll(SetArgPointee<0>(TpmStatus::kTpmOwned), Return(true)))
+      .WillOnce(Return(false));
+  SetupService();
+
+  EXPECT_CALL(mock_local_data_store_, Read(_)).Times(0);
+  EXPECT_CALL(mock_tpm_status_, GetVersionInfo(_, _, _, _, _, _)).Times(0);
+  auto callback = [](TpmManagerServiceTest* self,
+                     const GetTpmStatusReply& reply) {
+    EXPECT_EQ(STATUS_DEVICE_ERROR, reply.status());
+    self->Quit();
+  };
+  GetTpmStatusRequest request;
+  service_->GetTpmStatus(request, base::Bind(callback, this));
+  Run();
+}
+
 TEST_F(TpmManagerServiceTest_NoPreinit, NoPreInitialize) {
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
@@ -303,25 +322,6 @@ TEST_F(TpmManagerServiceTest, GetTpmStatusNoTpm) {
     EXPECT_FALSE(reply.enabled());
     EXPECT_TRUE(reply.owned());
     EXPECT_TRUE(reply.has_local_data());
-    self->Quit();
-  };
-  GetTpmStatusRequest request;
-  service_->GetTpmStatus(request, base::Bind(callback, this));
-  Run();
-}
-
-TEST_F(TpmManagerServiceTest, GetTpmStatusOwnershipStatusFailure) {
-  // Simulating failure in the 2nd call, which is in GetTpmStatusTask(). The 1st
-  // call is in InitializeTask().
-  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned(_))
-      .WillOnce(Return(true))
-      .WillOnce(Return(false));
-  EXPECT_CALL(mock_local_data_store_, Read(_)).Times(0);
-  EXPECT_CALL(mock_tpm_status_, GetVersionInfo(_, _, _, _, _, _)).Times(0);
-
-  auto callback = [](TpmManagerServiceTest* self,
-                     const GetTpmStatusReply& reply) {
-    EXPECT_EQ(STATUS_DEVICE_ERROR, reply.status());
     self->Quit();
   };
   GetTpmStatusRequest request;
