@@ -1192,16 +1192,11 @@ bool TrunksClientTest::PerformRSAEncryptAndDecrypt(
 void TrunksClientTest::GenerateRSAKeyPair(std::string* modulus,
                                           std::string* prime_factor,
                                           std::string* public_key) {
-#if defined(OPENSSL_IS_BORINGSSL)
   crypto::ScopedRSA rsa(RSA_new());
   crypto::ScopedBIGNUM exponent(BN_new());
   CHECK(BN_set_word(exponent.get(), RSA_F4));
   CHECK(RSA_generate_key_ex(rsa.get(), 2048, exponent.get(), nullptr))
       << "Failed to generate RSA key: " << GetOpenSSLError();
-#else
-  crypto::ScopedRSA rsa(RSA_generate_key(2048, 0x10001, nullptr, nullptr));
-  CHECK(rsa.get());
-#endif
   modulus->resize(BN_num_bytes(rsa.get()->n), 0);
   BN_bn2bin(rsa.get()->n,
             reinterpret_cast<unsigned char*>(base::string_as_array(modulus)));
