@@ -119,6 +119,8 @@ USB_IDS += [
   "8087:0aaa",
   # Intel (hatch)
   "8087:0026",
+  # Intel (atlas)
+  "8087:0025",
 ]
 
 # WWAN (LTE)
@@ -227,6 +229,10 @@ PCI_IDS += [
   "8086:9b71",
   # PCI Bridge
   "8086:02b0",
+  # i915 (atlas)
+  "8086:591c",
+  # iwlwifi (atlas)
+  "8086:2526",
 ]
 
 # Samsung
