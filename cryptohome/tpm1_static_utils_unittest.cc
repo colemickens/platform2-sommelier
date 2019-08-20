@@ -68,9 +68,13 @@ class Tpm1StaticUtilsRsaKeyTest
     : public testing::TestWithParam<int /* rsa_key_size_bits */> {
  protected:
   void SetUp() {
-    rsa_.reset(RSA_generate_key(rsa_key_size_bits(), kWellKnownExponent,
-                                nullptr, nullptr));
-    ASSERT_TRUE(rsa_);
+    crypto::ScopedBIGNUM e(BN_new());
+    CHECK(e);
+    ASSERT_TRUE(BN_set_word(e.get(), kWellKnownExponent));
+    rsa_.reset(RSA_new());
+    CHECK(rsa_);
+    ASSERT_TRUE(RSA_generate_key_ex(rsa_.get(), rsa_key_size_bits(), e.get(),
+                                    nullptr));
   }
 
   int rsa_key_size_bits() const { return GetParam(); }

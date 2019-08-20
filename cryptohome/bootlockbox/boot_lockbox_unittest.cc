@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <crypto/scoped_openssl_types.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -34,11 +35,8 @@ const unsigned char kSha256DigestInfo[] = {
 
 class BootLockboxTest : public testing::Test {
  public:
-  BootLockboxTest() : is_fake_extended_(false), rsa_(NULL) {}
-  virtual ~BootLockboxTest() {
-    if (rsa_)
-      RSA_free(rsa_);
-  }
+  BootLockboxTest() : is_fake_extended_(false) {}
+  virtual ~BootLockboxTest() {}
 
   void SetUp() {
     // Configure a fake TPM.
@@ -88,10 +86,7 @@ class BootLockboxTest : public testing::Test {
   }
 
   bool FakeCreate(brillo::SecureBlob* public_key) {
-    if (rsa_) {
-      RSA_free(rsa_);
-      rsa_ = NULL;
-    }
+    rsa_.reset();
     unsigned char* buffer = NULL;
     int length = i2d_RSAPublicKey(rsa(), &buffer);
     if (length <= 0)
@@ -142,14 +137,18 @@ class BootLockboxTest : public testing::Test {
   std::unique_ptr<BootLockbox> lockbox2_;
   bool is_fake_extended_;
   std::map<std::string, std::string> fake_files_;
-  RSA* rsa_;  // Access with rsa().
+  crypto::ScopedRSA rsa_;  // Access with rsa().
 
   RSA* rsa() {
     if (!rsa_) {
-      rsa_ = RSA_generate_key(2048, 65537, NULL, NULL);
+      crypto::ScopedBIGNUM e(BN_new());
+      CHECK(e);
+      EXPECT_TRUE(BN_set_word(e.get(), 65537));
+      rsa_.reset(RSA_new());
       CHECK(rsa_);
+      EXPECT_TRUE(RSA_generate_key_ex(rsa_.get(), 2048, e.get(), nullptr));
     }
-    return rsa_;
+    return rsa_.get();
   }
 };
 

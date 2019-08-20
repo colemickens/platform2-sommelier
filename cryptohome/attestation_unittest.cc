@@ -14,6 +14,7 @@
 #include <brillo/http/http_transport_fake.h>
 #include <brillo/mime_utils.h>
 #include <brillo/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
 #include <gmock/gmock.h>
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
@@ -61,10 +62,7 @@ class AttestationBaseTest : public testing::Test {
     crypto_.set_tpm(&tpm_);
     crypto_.set_use_tpm(true);
   }
-  virtual ~AttestationBaseTest() {
-    if (rsa_)
-      RSA_free(rsa_);
-  }
+  virtual ~AttestationBaseTest() {}
 
   void SetUpAttestation(Attestation* attestation) {
     attestation->set_database_path(kTestPath);
@@ -143,25 +141,46 @@ class AttestationBaseTest : public testing::Test {
   NiceMock<MockInstallAttributes> install_attributes_;
   std::shared_ptr<brillo::http::fake::Transport> http_transport_;
   Attestation attestation_;
-  RSA* rsa_ = nullptr;  // Access with rsa().
+  crypto::ScopedRSA rsa_;  // Access with rsa().
   bool is_enterprise_setup_ = false;
 
   RSA* rsa() {
     if (!rsa_) {
-      rsa_ = RSA_generate_key(2048, 65537, nullptr, nullptr);
+      crypto::ScopedBIGNUM e(BN_new());
+      CHECK(e);
+      EXPECT_TRUE(BN_set_word(e.get(), 65537));
+      rsa_.reset(RSA_new());
       CHECK(rsa_);
+      EXPECT_TRUE(RSA_generate_key_ex(rsa_.get(), 2048, e.get(), nullptr));
     }
-    return rsa_;
+    return rsa_.get();
   }
 
   virtual void SetUpEnterprise() {
     if (!is_enterprise_setup_) {
+      crypto::ScopedBIGNUM e(BN_new());
+      CHECK(e);
+      EXPECT_TRUE(BN_set_word(e.get(), 65537));
+      crypto::ScopedRSA rsa_def_sign(RSA_new());
+      crypto::ScopedRSA rsa_def_enc(RSA_new());
+      crypto::ScopedRSA rsa_test_sign(RSA_new());
+      crypto::ScopedRSA rsa_test_enc(RSA_new());
+      CHECK(rsa_def_sign);
+      CHECK(rsa_def_enc);
+      CHECK(rsa_test_sign);
+      CHECK(rsa_test_enc);
+      EXPECT_TRUE(
+          RSA_generate_key_ex(rsa_def_sign.get(), 2048, e.get(), nullptr));
+      EXPECT_TRUE(
+          RSA_generate_key_ex(rsa_def_enc.get(), 2048, e.get(), nullptr));
+      EXPECT_TRUE(
+          RSA_generate_key_ex(rsa_test_sign.get(), 2048, e.get(), nullptr));
+      EXPECT_TRUE(
+          RSA_generate_key_ex(rsa_test_enc.get(), 2048, e.get(), nullptr));
       attestation_.set_enterprise_test_keys(Attestation::kDefaultVA,
-          RSA_generate_key(2048, 65537, nullptr, nullptr),
-          RSA_generate_key(2048, 65537, nullptr, nullptr));
+          rsa_def_sign.release(), rsa_def_enc.release());
       attestation_.set_enterprise_test_keys(Attestation::kTestVA,
-          RSA_generate_key(2048, 65537, nullptr, nullptr),
-          RSA_generate_key(2048, 65537, nullptr, nullptr));
+          rsa_test_sign.release(), rsa_test_enc.release());
       is_enterprise_setup_ = true;
     }
   }

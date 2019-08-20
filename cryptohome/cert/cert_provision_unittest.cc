@@ -9,6 +9,7 @@
 #include <base/bind.h>
 #include <chaps/attributes.h>
 #include <chaps/chaps_proxy_mock.h>
+#include <crypto/scoped_openssl_types.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <openssl/rsa.h>
@@ -77,9 +78,6 @@ class CertProvisionTest : public testing::Test {
     CryptohomeProxy::subst_obj = nullptr;
     PCAProxy::subst_obj = nullptr;
     KeyStore::subst_obj = nullptr;
-    if (rsa_) {
-      RSA_free(rsa_);
-    }
   }
 
   void SetUp() {
@@ -173,18 +171,19 @@ class CertProvisionTest : public testing::Test {
   // Returns the current test RSA key. Generates a new random one, if empty.
   RSA* rsa() {
     if (!rsa_) {
-      rsa_ = RSA_generate_key(2048, 65537, nullptr, nullptr);
+      crypto::ScopedBIGNUM e(BN_new());
+      CHECK(e);
+      EXPECT_TRUE(BN_set_word(e.get(), 65537));
+      rsa_.reset(RSA_new());
       CHECK(rsa_);
+      EXPECT_TRUE(RSA_generate_key_ex(rsa_.get(), 2048, e.get(), nullptr));
     }
-    return rsa_;
+    return rsa_.get();
   }
   // Resets the current test RSA key. Next time it is requested through
   // GetTestPublicKey(), a new random key will be returned.
   void ResetObtainedTestKey() {
-    if (rsa_) {
-      RSA_free(rsa_);
-      rsa_ = nullptr;
-    }
+    rsa_.reset();
   }
   // Returns the current test public key in X.509 format.
   SecureBlob GetTestPublicKey() {
@@ -222,7 +221,7 @@ class CertProvisionTest : public testing::Test {
     progress_.push_back({status, progress, message});
   }
 
-  RSA* rsa_ = nullptr;
+  crypto::ScopedRSA rsa_;
 
   DISALLOW_COPY_AND_ASSIGN(CertProvisionTest);
 };

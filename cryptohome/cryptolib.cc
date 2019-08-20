@@ -123,16 +123,19 @@ void CryptoLib::GetSecureRandom(unsigned char* buf, size_t length) {
 }
 
 bool CryptoLib::CreateRsaKey(size_t key_bits, SecureBlob* n, SecureBlob* p) {
-  crypto::ScopedRSA rsa(RSA_generate_key(key_bits,
-                                         kWellKnownExponent,
-                                         NULL,
-                                         NULL));
-  if (rsa.get() == NULL) {
+  crypto::ScopedRSA rsa(RSA_new());
+  crypto::ScopedBIGNUM e(BN_new());
+  if (!rsa || !e) {
+    LOG(ERROR) << "Failed to allocate RSA or BIGNUM.";
+    return false;
+  }
+  if (!BN_set_word(e.get(), kWellKnownExponent) ||
+      !RSA_generate_key_ex(rsa.get(), key_bits, e.get(), nullptr)) {
     LOG(ERROR) << "RSA key generation failed.";
     return false;
   }
 
-  SecureBlob local_n(BN_num_bytes(rsa.get()->n));
+  SecureBlob local_n(RSA_size(rsa.get()));
   if (BN_bn2bin(rsa.get()->n, local_n.data()) <= 0) {
     LOG(ERROR) << "Unable to get modulus from RSA key.";
     return false;
@@ -157,20 +160,18 @@ bool CryptoLib::FillRsaPrivateKeyFromSecretPrime(
     return false;
   }
   // Load the first prime from the parameter.
-  rsa->p =
-      BN_bin2bn(secret_prime.data(), secret_prime.size(), nullptr /* ret */);
-  if (!rsa->p) {
+  crypto::ScopedBIGNUM p(BN_new()), q(BN_new()), remainder(BN_new());
+  if (!p || !q || !remainder) {
+    LOG(ERROR) << "Failed to allocate BIGNUM structure";
+    return false;
+  }
+
+  if (!BN_bin2bn(secret_prime.data(), secret_prime.size(), p.get())) {
     LOG(ERROR) << "Failed to construct secret prime from binary blob";
     return false;
   }
   // Calculate the second prime by dividing the public modulus.
-  rsa->q = BN_new();
-  crypto::ScopedBIGNUM remainder(BN_new());
-  if (!rsa->q || !remainder) {
-    LOG(ERROR) << "Failed to allocate BIGNUM structure";
-    return false;
-  }
-  if (!BN_div(rsa->q, remainder.get(), rsa->n, rsa->p, bn_context.get())) {
+  if (!BN_div(q.get(), remainder.get(), rsa->n, p.get(), bn_context.get())) {
     LOG(ERROR) << "Failed to divide public modulus";
     return false;
   }
@@ -178,12 +179,13 @@ bool CryptoLib::FillRsaPrivateKeyFromSecretPrime(
     LOG(ERROR) << "Bad secret prime: does not divide the modulus evenly";
     return false;
   }
+
   // Calculate the private exponent.
-  rsa->d = BN_new();
+  crypto::ScopedBIGNUM d(BN_new());
   crypto::ScopedBIGNUM decremented_p(BN_new());
   crypto::ScopedBIGNUM decremented_q(BN_new());
   crypto::ScopedBIGNUM totient(BN_new());
-  if (!rsa->d || !decremented_p || !decremented_q || !totient) {
+  if (!d || !decremented_p || !decremented_q || !totient) {
     LOG(ERROR) << "Failed to allocate BIGNUM structure";
     return false;
   }
@@ -194,34 +196,37 @@ bool CryptoLib::FillRsaPrivateKeyFromSecretPrime(
     LOG(ERROR) << "Failed to calculate totient function";
     return false;
   }
-  if (!BN_mod_inverse(rsa->d, rsa->e, totient.get(), bn_context.get())) {
+  if (!BN_mod_inverse(d.get(), rsa->e, totient.get(), bn_context.get())) {
     LOG(ERROR) << "Failed to calculate modular inverse";
     return false;
   }
+
   // Calculate the private exponent modulo the decremented first and second
   // primes.
-  rsa->dmp1 = BN_new();
-  rsa->dmq1 = BN_new();
-  if (!rsa->dmp1 || !rsa->dmq1) {
+  crypto::ScopedBIGNUM dmp1(BN_new()), dmq1(BN_new()), iqmp(BN_new());
+  if (!dmp1 || !dmq1 || !iqmp) {
     LOG(ERROR) << "Failed to allocate BIGNUM structure";
     return false;
   }
-  if (!BN_mod(rsa->dmp1, rsa->d, decremented_p.get(), bn_context.get()) ||
-      !BN_mod(rsa->dmq1, rsa->d, decremented_q.get(), bn_context.get())) {
+  if (!BN_mod(dmp1.get(), rsa->d, decremented_p.get(), bn_context.get()) ||
+      !BN_mod(dmq1.get(), rsa->d, decremented_q.get(), bn_context.get())) {
     LOG(ERROR) << "Failed to calculate the private exponent over the modulo";
     return false;
   }
   // Calculate the inverse of the second prime modulo the first prime.
-  rsa->iqmp = BN_new();
-  if (!rsa->iqmp) {
-    LOG(ERROR) << "Failed to allocate BIGNUM structure";
-    return false;
-  }
-  if (!BN_mod_inverse(rsa->iqmp, rsa->q, rsa->p, bn_context.get())) {
+  if (!BN_mod_inverse(iqmp.get(), rsa->q, rsa->p, bn_context.get())) {
     LOG(ERROR) << "Failed to calculate the inverse of the prime module the "
                   "other prime";
     return false;
   }
+
+  // All checks pass, now assign fields
+  rsa->p = p.release();
+  rsa->q = q.release();
+  rsa->d = d.release();
+  rsa->dmp1 = dmp1.release();
+  rsa->dmq1 = dmq1.release();
+  rsa->iqmp = iqmp.release();
   return true;
 }
 

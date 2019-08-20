@@ -2014,11 +2014,16 @@ bool TpmImpl::MakeIdentity(SecureBlob* identity_public_key_der,
     return false;
   }
 
-  crypto::ScopedRSA fake_pca_key(RSA_generate_key(kDefaultTpmRsaKeyBits,
-                                                  kWellKnownExponent,
-                                                  NULL,
-                                                  NULL));
-  if (!fake_pca_key.get()) {
+  crypto::ScopedRSA fake_pca_key(RSA_new());
+  crypto::ScopedBIGNUM e(BN_new());
+  if (!fake_pca_key || !e) {
+    LOG(ERROR) << "MakeIdentity: Failed to allocate RSA or BIGNUM.";
+    return false;
+  }
+
+  if (!BN_set_word(e.get(), kWellKnownExponent) ||
+      !RSA_generate_key_ex(fake_pca_key.get(), kDefaultTpmRsaKeyBits, e.get(),
+                           nullptr)) {
     LOG(ERROR) << "MakeIdentity: Failed to generate local key pair.";
     return false;
   }

@@ -1466,10 +1466,15 @@ class Tpm2RsaSignatureSecretSealingTest
   const std::string kSealedSecretValue = std::string("sealed secret");
 
   Tpm2RsaSignatureSecretSealingTest() {
-    const RSA* const rsa =
-        RSA_generate_key(kKeySizeBits, kKeyPublicExponent, nullptr, nullptr);
+    crypto::ScopedBIGNUM e(BN_new());
+    CHECK(e);
+    EXPECT_TRUE(BN_set_word(e.get(), kKeyPublicExponent));
+    crypto::ScopedRSA rsa(RSA_new());
+    CHECK(rsa);
+    EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), kKeySizeBits, e.get(), nullptr));
     const crypto::ScopedEVP_PKEY pkey(EVP_PKEY_new());
-    CHECK(EVP_PKEY_assign_RSA(pkey.get(), rsa));
+    CHECK(pkey);
+    EXPECT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa.get()));
     // Obtain the DER-encoded SubjectPublicKeyInfo.
     const int key_spki_der_length = i2d_PUBKEY(pkey.get(), nullptr);
     CHECK_GE(key_spki_der_length, 0);
@@ -1479,10 +1484,11 @@ class Tpm2RsaSignatureSecretSealingTest
     CHECK_EQ(key_spki_der_.size(),
              i2d_PUBKEY(pkey.get(), &key_spki_der_buffer));
     // Obtain the key modulus.
-    key_modulus_.resize(BN_num_bytes(rsa->n));
+    key_modulus_.resize(RSA_size(rsa.get()));
     CHECK_EQ(
         key_modulus_.length(),
-        BN_bn2bin(rsa->n, reinterpret_cast<unsigned char*>(&key_modulus_[0])));
+        BN_bn2bin(rsa.get()->n,
+                  reinterpret_cast<unsigned char*>(&key_modulus_[0])));
   }
 
   const std::vector<ChallengeSignatureAlgorithm>& supported_algorithms() const {

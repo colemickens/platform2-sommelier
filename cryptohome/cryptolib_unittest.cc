@@ -19,9 +19,12 @@ TEST(CryptoLibTest, RsaOaepDecrypt) {
   constexpr int kKeySizeBits = 1024;
   constexpr int kKeySizeBytes = kKeySizeBits / 8;
   constexpr int kPlaintextSize = 32;
-  crypto::ScopedRSA rsa(
-      RSA_generate_key(kKeySizeBits, kWellKnownExponent, nullptr, nullptr));
-  ASSERT_TRUE(rsa);
+  crypto::ScopedRSA rsa(RSA_new());
+  CHECK(rsa);
+  crypto::ScopedBIGNUM e(BN_new());
+  CHECK(e);
+  EXPECT_TRUE(BN_set_word(e.get(), kWellKnownExponent));
+  EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), kKeySizeBits, e.get(), nullptr));
   SecureBlob plaintext(kPlaintextSize);
   CryptoLib::GetSecureRandom(plaintext.data(), plaintext.size());
   // Test decryption when a non-empty label is used.

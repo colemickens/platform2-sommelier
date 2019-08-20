@@ -1411,9 +1411,17 @@ SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
   // reasonable amount of entropy, therefore generating using OpenSSL is fine.
   //
   // TODO(crbug.com/909700): Do the RSA key generation in background in advance.
-  crypto::ScopedRSA migration_destination_rsa(RSA_generate_key(
-      kMigrationDestinationKeySizeBits, kWellKnownExponent, nullptr, nullptr));
-  if (!migration_destination_rsa) {
+  crypto::ScopedRSA migration_destination_rsa(RSA_new());
+  crypto::ScopedBIGNUM e(BN_new());
+  if (!migration_destination_rsa || !e) {
+    LOG(ERROR) << "Failed to allocate the migration destination key";
+    return nullptr;
+  }
+  if (!BN_set_word(e.get(), kWellKnownExponent) ||
+      !RSA_generate_key_ex(migration_destination_rsa.get(),
+                           kMigrationDestinationKeySizeBits,
+                           e.get(),
+                           nullptr)) {
     LOG(ERROR) << "Failed to generate the migration destination key";
     return nullptr;
   }
