@@ -23,6 +23,12 @@
 
 #include "metrics_event/proto_bindings/metrics_event.pb.h"
 
+// work around https://crbug.com/849450: the LOG_WARNING macro from
+// usr/include/sys/syslog.h overrides the LOG_WARNING constant in
+// base/logging.h, causing LOG(WARNING) to not compile.
+// TODO(https://crbug.com/849450): Remove this once bug is fixed.
+#undef LOG_WARNING
+
 struct JournalEntry {
   std::string tag;
   std::string message;
@@ -81,6 +87,10 @@ class Journal {
     size_t length = 0;
     int ret =
         sd_journal_get_data(j_, field.c_str(), (const void**)&data, &length);
+    if (ret == -EBADMSG) {
+      LOG(WARNING) << "Ignoring corrupt journal entry: " << field;
+      return base::nullopt;
+    }
     if (ret == -ENOENT)
       return base::nullopt;
     CHECK_GE(ret, 0) << "Failed to read field '" << field
