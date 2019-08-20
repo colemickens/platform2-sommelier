@@ -33,6 +33,7 @@ class MockTpmInitializer : public TpmInitializer {
   MOCK_METHOD(bool, EnsurePersistentOwnerDelegate, (), (override));
   MOCK_METHOD(void, VerifiedBootHelper, (), (override));
   MOCK_METHOD(bool, ResetDictionaryAttackLock, (), (override));
+  MOCK_METHOD(void, PruneStoredPasswords, (), (override));
 };
 
 }  // namespace tpm_manager

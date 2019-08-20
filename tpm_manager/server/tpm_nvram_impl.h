@@ -65,6 +65,8 @@ class TpmNvramImpl : public TpmNvram {
       std::vector<NvramSpaceAttribute>* attributes,
       NvramSpacePolicy* policy) override;
 
+  void PrunePolicies() override;
+
  private:
   // If |data| is a nullptr, read-locks the NV index; otherwise, reads content
   // from the |index| with |authorization_value| and stores the content into

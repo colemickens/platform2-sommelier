@@ -183,6 +183,34 @@ bool TpmInitializerImpl::ResetDictionaryAttackLock() {
   return true;
 }
 
+void TpmInitializerImpl::PruneStoredPasswords() {
+  TpmStatus::TpmOwnershipStatus ownership_status;
+  if (!tpm_status_->CheckAndNotifyIfTpmOwned(&ownership_status)) {
+    LOG(ERROR) << __func__ << ": failed to get tpm ownership status";
+    return;
+  }
+
+  if (ownership_status == TpmStatus::kTpmOwned) {
+    LOG(WARNING) << __func__
+                 << ": TPM is already owned. Local data won't be touched.";
+    return;
+  }
+
+  LocalData local_data;
+  if (!local_data_store_->Read(&local_data)) {
+    LOG(ERROR) << __func__ << ": failed to read local data.";
+    return;
+  }
+
+  local_data.clear_owner_password();
+  local_data.clear_owner_delegate();
+  local_data.clear_owner_dependency();
+
+  if (!local_data_store_->Write(local_data)) {
+    LOG(ERROR) << __func__  << ": failed to write local data.";
+  }
+}
+
 bool TpmInitializerImpl::InitializeEndorsementKey(TpmConnection* connection) {
   trousers::ScopedTssKey local_key_handle(connection->GetContext());
   TSS_RESULT result = Tspi_TPM_GetPubEndorsementKey(

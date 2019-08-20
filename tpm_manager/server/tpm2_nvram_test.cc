@@ -16,6 +16,8 @@
 
 #include "tpm_manager/server/tpm2_nvram_impl.h"
 
+#include <string>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include "trunks/authorization_delegate.h"
@@ -822,6 +824,90 @@ TEST_F(Tpm2NvramTest, GetSpaceInfoFailure) {
   EXPECT_NE(NVRAM_RESULT_SUCCESS,
             tpm_nvram_->GetSpaceInfo(kSomeNvramIndex, &size, &is_write_locked,
                                      &is_read_locked, &attributes, &policy));
+}
+
+TEST_F(Tpm2NvramTest, PrunePoliciesSuccess) {
+  NvramPolicyRecord fresh_record;
+  uint32_t fresh_index = 1234;
+  fresh_record.set_index(fresh_index);
+
+  NvramPolicyRecord stale_record;
+  stale_record.set_index(5678);
+
+  std::vector<uint32_t> spaces(1, fresh_index);
+  EXPECT_CALL(mock_tpm_utility_, ListNVSpaces(_))
+      .WillOnce(DoAll(SetArgPointee<0>(spaces), Return(TPM_RC_SUCCESS)));
+
+  std::string owner_password = "owner";
+  mock_data_store_.GetMutableFakeData().set_owner_password(owner_password);
+  *mock_data_store_.GetMutableFakeData().add_nvram_policy() = fresh_record;
+  *mock_data_store_.GetMutableFakeData().add_nvram_policy() = stale_record;
+
+  LocalData expected_local_data;
+  expected_local_data.set_owner_password(owner_password);
+  *expected_local_data.add_nvram_policy() = fresh_record;
+
+  tpm_nvram_->PrunePolicies();
+
+  LocalData actual_local_data = mock_data_store_.GetFakeData();
+  EXPECT_EQ(expected_local_data.SerializeAsString(),
+            actual_local_data.SerializeAsString());
+}
+
+TEST_F(Tpm2NvramTest, PrunePoliciesReadDataError) {
+  EXPECT_CALL(mock_data_store_, Read(_)).WillOnce(Return(false));
+
+  NvramPolicyRecord stale_record;
+  stale_record.set_index(5678);
+  *mock_data_store_.GetMutableFakeData().add_nvram_policy() = stale_record;
+
+  // Local data isn't touched.
+  LocalData expected_local_data = mock_data_store_.GetFakeData();
+
+  tpm_nvram_->PrunePolicies();
+
+  LocalData actual_local_data = mock_data_store_.GetFakeData();
+  EXPECT_EQ(expected_local_data.SerializeAsString(),
+            actual_local_data.SerializeAsString());
+}
+
+TEST_F(Tpm2NvramTest, PrunePoliciesListSpacesError) {
+  EXPECT_CALL(mock_tpm_utility_, ListNVSpaces(_))
+      .WillOnce(Return(TPM_RC_FAILURE));
+
+  NvramPolicyRecord stale_record;
+  stale_record.set_index(5678);
+  *mock_data_store_.GetMutableFakeData().add_nvram_policy() = stale_record;
+
+  // Local data isn't touched.
+  LocalData expected_local_data = mock_data_store_.GetFakeData();
+
+  tpm_nvram_->PrunePolicies();
+
+  LocalData actual_local_data = mock_data_store_.GetFakeData();
+  EXPECT_EQ(expected_local_data.SerializeAsString(),
+            actual_local_data.SerializeAsString());
+}
+
+TEST_F(Tpm2NvramTest, PrunePoliciesWriteDataError) {
+  std::vector<uint32_t> spaces(1, 1234);
+  EXPECT_CALL(mock_tpm_utility_, ListNVSpaces(_))
+      .WillOnce(DoAll(SetArgPointee<0>(spaces), Return(TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(mock_data_store_, Write(_)).WillOnce(Return(false));
+
+  NvramPolicyRecord stale_record;
+  stale_record.set_index(5678);
+  *mock_data_store_.GetMutableFakeData().add_nvram_policy() = stale_record;
+
+  // Local data isn't touched.
+  LocalData expected_local_data = mock_data_store_.GetFakeData();
+
+  tpm_nvram_->PrunePolicies();
+
+  LocalData actual_local_data = mock_data_store_.GetFakeData();
+  EXPECT_EQ(expected_local_data.SerializeAsString(),
+            actual_local_data.SerializeAsString());
 }
 
 }  // namespace tpm_manager

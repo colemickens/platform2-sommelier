@@ -147,6 +147,11 @@ void TpmManagerService::InitializeTask() {
     return;
   }
 
+  // TPM is not fully owned yet. There might be stale data in the local data
+  // store. Checks and removes them if needed.
+  tpm_initializer_->PruneStoredPasswords();
+  tpm_nvram_->PrunePolicies();
+
   if (!wait_for_ownership_) {
     VLOG(1) << "Initializing TPM.";
     if (!tpm_initializer_->InitializeTpm()) {

@@ -67,6 +67,7 @@ class Tpm2InitializerImpl : public TpmInitializer {
   bool EnsurePersistentOwnerDelegate() override;
   void VerifiedBootHelper() override;
   bool ResetDictionaryAttackLock() override;
+  void PruneStoredPasswords() override;
 
  private:
   // Seeds the onboard Tpm random number generator with random bytes from

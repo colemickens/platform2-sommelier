@@ -23,6 +23,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
+#include <trunks/mock_tpm_state.h>
 #include <trunks/mock_tpm_utility.h>
 #include <trunks/trunks_factory_for_test.h>
 
@@ -59,6 +60,7 @@ class Tpm2InitializerTest : public testing::Test {
           fake_local_data_ = arg;
           return true;
         }));
+    factory_.set_tpm_state(&mock_trunks_tpm_state_);
     factory_.set_tpm_utility(&mock_tpm_utility_);
 
     ownership_callback_ = base::Bind(
@@ -76,6 +78,7 @@ class Tpm2InitializerTest : public testing::Test {
   NiceMock<MockOpensslCryptoUtil> mock_openssl_util_;
   NiceMock<MockLocalDataStore> mock_data_store_;
   NiceMock<MockTpmStatus> mock_tpm_status_;
+  NiceMock<trunks::MockTpmState> mock_trunks_tpm_state_;
   NiceMock<trunks::MockTpmUtility> mock_tpm_utility_;
   trunks::TrunksFactoryForTest factory_;
   std::unique_ptr<TpmInitializer> tpm_initializer_;
@@ -179,6 +182,95 @@ TEST_F(Tpm2InitializerTest, InitializeTpmSuccessAfterError) {
   EXPECT_EQ(endorsement_password, fake_local_data_.endorsement_password());
   EXPECT_EQ(lockout_password, fake_local_data_.lockout_password());
   EXPECT_EQ(ownership_call_count_, 1);
+}
+
+TEST_F(Tpm2InitializerTest, PruneStoredPasswordsSuccess) {
+  EXPECT_CALL(mock_trunks_tpm_state_, Initialize())
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_trunks_tpm_state_, IsEndorsementPasswordSet())
+      .WillOnce(Return(false));
+
+  fake_local_data_.add_owner_dependency("test");
+  fake_local_data_.set_owner_password("owner");
+  fake_local_data_.set_endorsement_password("endorsement");
+  fake_local_data_.set_lockout_password("lockout");
+
+  NvramPolicyRecord record;
+  record.set_index(1234);
+  *fake_local_data_.add_nvram_policy() = record;
+
+  tpm_initializer_->PruneStoredPasswords();
+
+  // Passwords and owner dependencies are removed.
+  LocalData expected_local_data;
+  *expected_local_data.add_nvram_policy() = record;
+
+  EXPECT_EQ(fake_local_data_.SerializeAsString(),
+            expected_local_data.SerializeAsString());
+}
+
+TEST_F(Tpm2InitializerTest, PruneStoredPasswordsRefreshTpmStateError) {
+  EXPECT_CALL(mock_trunks_tpm_state_, Initialize())
+      .WillOnce(Return(trunks::TPM_RC_FAILURE));
+
+  fake_local_data_.set_owner_password("owner");
+  // Local data isn't touched.
+  LocalData expected_local_data = fake_local_data_;
+
+  tpm_initializer_->PruneStoredPasswords();
+
+  EXPECT_EQ(fake_local_data_.SerializeAsString(),
+            expected_local_data.SerializeAsString());
+}
+
+TEST_F(Tpm2InitializerTest, PruneStoredPasswordsDataInUse) {
+  EXPECT_CALL(mock_trunks_tpm_state_, Initialize())
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_trunks_tpm_state_, IsEndorsementPasswordSet())
+      .WillOnce(Return(true));
+
+  fake_local_data_.set_owner_password("owner");
+  // Local data isn't touched.
+  LocalData expected_local_data = fake_local_data_;
+
+  tpm_initializer_->PruneStoredPasswords();
+
+  EXPECT_EQ(fake_local_data_.SerializeAsString(),
+            expected_local_data.SerializeAsString());
+}
+
+TEST_F(Tpm2InitializerTest, PruneStoredPasswordsReadDataError) {
+  EXPECT_CALL(mock_trunks_tpm_state_, Initialize())
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_trunks_tpm_state_, IsEndorsementPasswordSet())
+      .WillOnce(Return(false));
+  EXPECT_CALL(mock_data_store_, Read(_)).WillOnce(Return(false));
+
+  fake_local_data_.set_owner_password("owner");
+  // Local data isn't touched.
+  LocalData expected_local_data = fake_local_data_;
+
+  tpm_initializer_->PruneStoredPasswords();
+
+  EXPECT_EQ(fake_local_data_.SerializeAsString(),
+            expected_local_data.SerializeAsString());
+}
+
+TEST_F(Tpm2InitializerTest, PruneStoredPasswordsWriteDataError) {
+  EXPECT_CALL(mock_trunks_tpm_state_, Initialize())
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_trunks_tpm_state_, IsEndorsementPasswordSet())
+      .WillOnce(Return(false));
+  EXPECT_CALL(mock_data_store_, Write(_)).WillOnce(Return(false));
+
+  fake_local_data_.set_owner_password("owner");
+  // Local data isn't touched.
+  LocalData expected_local_data = fake_local_data_;
+
+  tpm_initializer_->PruneStoredPasswords();
+
+  EXPECT_EQ(fake_local_data_.SerializeAsString(),
+            expected_local_data.SerializeAsString());
 }
 
 // TODO(http://crosbug.com/p/59837): restore when TPM_RC_PCR_CHANGED is

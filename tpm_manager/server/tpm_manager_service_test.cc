@@ -231,6 +231,18 @@ TEST_F(TpmManagerServiceTest_Preinit, GetTpmStatusOwnershipStatusFailure) {
   Run();
 }
 
+TEST_F(TpmManagerServiceTest_Preinit, PruneLocalData) {
+  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned(_))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
+
+  EXPECT_CALL(mock_tpm_initializer_, PruneStoredPasswords()).Times(1);
+  EXPECT_CALL(mock_tpm_nvram_, PrunePolicies()).Times(1);
+
+  SetupService();
+  RunServiceWorkerAndQuit();
+}
+
 TEST_F(TpmManagerServiceTest_NoPreinit, NoPreInitialize) {
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);

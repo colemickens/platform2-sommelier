@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/stl_util.h>
 #include <trunks/authorization_delegate.h>
 #include <trunks/error_codes.h>
 #include <trunks/policy_session.h>
@@ -502,6 +503,35 @@ NvramResult Tpm2NvramImpl::GetSpaceInfo(
     }
   }
   return NVRAM_RESULT_SUCCESS;
+}
+
+void Tpm2NvramImpl::PrunePolicies() {
+  LocalData local_data;
+  if (!local_data_store_->Read(&local_data)) {
+    LOG(ERROR) << __func__ << ": failed to read local data.";
+    return;
+  }
+
+  std::vector<uint32_t> nv_indices;
+  if (ListSpaces(&nv_indices) != NVRAM_RESULT_SUCCESS) {
+    LOG(ERROR) << __func__ << ": failed to list NV indices.";
+    return;
+  }
+
+  // Keeps fresh NV policy records only. Local data may contain both stale and
+  // fresh records because TPM 2.0 allows defining NV space before TPM is
+  // owned.
+  LocalData new_local_data;
+  for (const auto& policy : local_data.nvram_policy()) {
+    if (base::ContainsValue(nv_indices, policy.index())) {
+      *new_local_data.add_nvram_policy() = policy;
+    }
+  }
+  *local_data.mutable_nvram_policy() = new_local_data.nvram_policy();
+
+  if (!local_data_store_->Write(local_data)) {
+    LOG(ERROR) << __func__ << ": failed to write local data.";
+  }
 }
 
 bool Tpm2NvramImpl::Initialize() {

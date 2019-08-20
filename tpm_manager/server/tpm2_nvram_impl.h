@@ -69,6 +69,8 @@ class Tpm2NvramImpl : public TpmNvram {
       std::vector<NvramSpaceAttribute>* attributes,
       NvramSpacePolicy* policy) override;
 
+  void PrunePolicies() override;
+
  private:
   // Must be called before using any data members. This may be called multiple
   // times and will be very fast if already initialized.

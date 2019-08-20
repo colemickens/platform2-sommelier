@@ -392,6 +392,10 @@ NvramResult TpmNvramImpl::GetSpaceInfo(
   return NVRAM_RESULT_SUCCESS;
 }
 
+void TpmNvramImpl::PrunePolicies() {
+  // TPM 1.2 doesn't use NVRAM policy.
+}
+
 NvramResult TpmNvramImpl::ReadSpaceInternal(
     uint32_t index, const std::string& authorization_value, std::string* data) {
   uint32_t nvram_size;

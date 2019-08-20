@@ -23,6 +23,7 @@
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
 #include <trunks/error_codes.h>
+#include <trunks/tpm_state.h>
 #include <trunks/tpm_utility.h>
 #include <trunks/trunks_factory_impl.h>
 
@@ -212,6 +213,37 @@ bool Tpm2InitializerImpl::ResetDictionaryAttackLock() {
     return false;
   }
   return true;
+}
+
+void Tpm2InitializerImpl::PruneStoredPasswords() {
+  std::unique_ptr<trunks::TpmState> trunks_tpm_state =
+      trunks_factory_.GetTpmState();
+  if (trunks_tpm_state->Initialize() != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": failed to refresh trunks tpm state";
+    return;
+  }
+
+  if (trunks_tpm_state->IsEndorsementPasswordSet()) {
+    LOG(WARNING) << __func__
+                 << ": take ownership already started. "
+                 << "Local data won't be touched.";
+    return;
+  }
+
+  LocalData local_data;
+  if (!local_data_store_->Read(&local_data)) {
+    LOG(ERROR) << __func__ << ": failed to read local data.";
+    return;
+  }
+
+  local_data.clear_owner_password();
+  local_data.clear_lockout_password();
+  local_data.clear_endorsement_password();
+  local_data.clear_owner_dependency();
+
+  if (!local_data_store_->Write(local_data)) {
+    LOG(ERROR) << __func__  << ": failed to write local data.";
+  }
 }
 
 bool Tpm2InitializerImpl::SeedTpmRng() {

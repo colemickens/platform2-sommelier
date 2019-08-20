@@ -71,6 +71,15 @@ class TpmNvram {
       bool* is_write_locked,
       std::vector<NvramSpaceAttribute>* attributes,
       NvramSpacePolicy* policy) = 0;
+
+  // Removes stale NVRAM policies from the on-disk local data, if any. If the
+  // data is fresh, or if we cannot determine that, the data won't be touched.
+  //
+  // Note that this function doesn't guarantee to remove all stale data if there
+  // is a TPM and/or disk IO error. It does the work in its best effort.
+  //
+  // Currently this is supported by TPM 2.0 only.
+  virtual void PrunePolicies() = 0;
 };
 
 }  // namespace tpm_manager

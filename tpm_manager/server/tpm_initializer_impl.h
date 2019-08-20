@@ -63,6 +63,7 @@ class TpmInitializerImpl : public TpmInitializer {
   bool EnsurePersistentOwnerDelegate() override;
   void VerifiedBootHelper() override;
   bool ResetDictionaryAttackLock() override;
+  void PruneStoredPasswords() override;
 
  private:
   // This method checks if an EndorsementKey exists on the Tpm and creates it

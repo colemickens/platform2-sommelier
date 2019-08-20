@@ -72,6 +72,7 @@ class MockTpmNvram : public TpmNvram {
                std::vector<NvramSpaceAttribute>*,
                NvramSpacePolicy*),
               (override));
+  MOCK_METHOD(void, PrunePolicies, (), (override));
 
  private:
   NvramResult FakeDefineSpace(

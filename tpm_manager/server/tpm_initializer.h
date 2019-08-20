@@ -53,6 +53,14 @@ class TpmInitializer {
   // Reset the state of TPM dictionary attack protection. Returns true on
   // success.
   virtual bool ResetDictionaryAttackLock() = 0;
+
+  // Removes stale auths and owner dependencies from the on-disk local data, if
+  // any. If the local data is already in use, or if we cannot determine that,
+  // the data won't be touched.
+  //
+  // Note that this function doesn't guarantee to remove all stale data if there
+  // is a TPM and/or disk IO error. It does the work in its best effort.
+  virtual void PruneStoredPasswords() = 0;
 };
 
 }  // namespace tpm_manager
