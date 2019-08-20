@@ -170,12 +170,12 @@ class Service : public base::RefCounted<Service> {
   mockable void DisconnectWithFailure(ConnectFailure failure,
                                      Error* error,
                                      const char* reason);
-  // Disconnect this service via Disconnect(). The service will not be eligible
-  // for auto-connect until a subsequent call to Connect, or Load.
-  mockable void UserInitiatedDisconnect(const char* reason, Error* error);
   // Connect to this service via Connect(). This function indicates that the
   // connection attempt is user-initiated.
   mockable void UserInitiatedConnect(const char* reason, Error* error);
+  // Disconnect this service via Disconnect(). The service will not be eligible
+  // for auto-connect until a subsequent call to Connect, or Load.
+  mockable void UserInitiatedDisconnect(const char* reason, Error* error);
 
   // The default implementation returns the error kInvalidArguments.
   virtual void ActivateCellularModem(const std::string& carrier,
@@ -781,11 +781,10 @@ class Service : public base::RefCounted<Service> {
   // into a profile.
   void SaveToProfile();
 
-  // Qualify the conditions under which the most recent disconnect occurred.
-  // Make note ot the fact that there was a problem connecting / staying
+  // Make note of the fact that there was a problem connecting / staying
   // connected if the disconnection did not occur as a clear result of user
   // action.
-  void NoteDisconnectEvent();
+  void NoteFailureEvent();
 
   // Utility function that returns true if a is different from b.  When they
   // are, "decision" is populated with the boolean value of "a > b".

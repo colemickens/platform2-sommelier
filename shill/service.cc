@@ -303,6 +303,8 @@ void Service::Connect(Error* error, const char* reason) {
     return;
   }
 
+  // This cannot be called until here because |explicitly_disconnected_| is
+  // used in determining whether or not this Service can be AutoConnected.
   ClearExplicitlyDisconnected();
   // Clear any failure state from a previous connect attempt.
   if (IsInFailState())
@@ -333,14 +335,37 @@ void Service::DisconnectWithFailure(ConnectFailure failure,
   SetFailure(failure);
 }
 
-void Service::UserInitiatedDisconnect(const char* reason, Error* error) {
-  Disconnect(error, reason);
-  explicitly_disconnected_ = true;
-}
-
 void Service::UserInitiatedConnect(const char* reason, Error* error) {
   Connect(error, reason);
+
+  // Since Service::Connect will clear a failure state when it gets far enough,
+  // we know that |error| not indicating an failure but this instance being in a
+  // failure state means that a Device drove the state to failure. We do this
+  // because Ethernet and WiFi currently don't have |error| passed down to
+  // ConnectTo.
+  //
+  // TODO(crbug.com/206812) Pipe |error| through to WiFi and Ethernet ConnectTo.
+  if (error->IsFailure() || IsInFailState()) {
+    if (connectable() && error->type() != Error::kAlreadyConnected &&
+        error->type() != Error::kInProgress) {
+      ReportUserInitiatedConnectionResult(state());
+    }
+    // If we've already failed, SetState will not be able to catch this failure
+    // before |is_in_user_connect_| is set (in fact the state may not even
+    // change by the time the failure occurs). Setting |is_in_user_connect_| in
+    // this case will act as setting either the next or already-ongoing Connect
+    // as being user-initiated, even if it isn't.
+    return;
+  }
   is_in_user_connect_ = true;
+}
+
+void Service::UserInitiatedDisconnect(const char* reason, Error* error) {
+  // |explicitly_disconnected_| should be set prior to calling Disconnect, as
+  // Disconnect flows could otherwise potentially hit NoteFailureEvent prior to
+  // this being set.
+  explicitly_disconnected_ = true;
+  Disconnect(error, reason);
 }
 
 void Service::ActivateCellularModem(const string& /*carrier*/,
@@ -427,7 +452,7 @@ void Service::SetState(ConnectState state) {
   }
 
   if (state == kStateFailure) {
-    NoteDisconnectEvent();
+    NoteFailureEvent();
   }
 
   previous_state_ = state_;
@@ -507,7 +532,7 @@ void Service::SetFailure(ConnectFailure failure) {
 }
 
 void Service::SetFailureSilent(ConnectFailure failure) {
-  NoteDisconnectEvent();
+  NoteFailureEvent();
   // Note that order matters here, since SetState modifies |failure_| and
   // |failed_time_|.
   SetState(kStateIdle);
@@ -974,7 +999,7 @@ string Service::GetTechnologyString() const {
   return technology().GetName();
 }
 
-void Service::NoteDisconnectEvent() {
+void Service::NoteFailureEvent() {
   SLOG(this, 2) << __func__;
   // Ignore the event if it's user-initiated explicit disconnect.
   if (explicitly_disconnected_) {

@@ -122,7 +122,7 @@ class ServiceTest : public PropertyStoreTest {
     return service_->previous_state_;
   }
 
-  void NoteDisconnectEvent() { service_->NoteDisconnectEvent(); }
+  void NoteFailureEvent() { service_->NoteFailureEvent(); }
 
   EventHistory* GetDisconnects() { return &service_->disconnects_; }
   EventHistory* GetMisconnects() { return &service_->misconnects_; }
@@ -1541,7 +1541,7 @@ TEST_F(ServiceTest, Certification) {
 }
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
-TEST_F(ServiceTest, NoteDisconnectEventIdle) {
+TEST_F(ServiceTest, NoteFailureEventIdle) {
   Timestamp timestamp;
   EXPECT_CALL(time_, GetNow()).Times(7).WillRepeatedly((Return(timestamp)));
   SetStateField(Service::kStateOnline);
@@ -1554,7 +1554,7 @@ TEST_F(ServiceTest, NoteDisconnectEventIdle) {
   EXPECT_TRUE(service_->HasRecentConnectionIssues());
 }
 
-TEST_F(ServiceTest, NoteDisconnectEventOnSetStateFailure) {
+TEST_F(ServiceTest, NoteFailureEventOnSetStateFailure) {
   Timestamp timestamp;
   EXPECT_CALL(time_, GetNow()).Times(5).WillRepeatedly((Return(timestamp)));
   SetStateField(Service::kStateOnline);
@@ -1563,7 +1563,7 @@ TEST_F(ServiceTest, NoteDisconnectEventOnSetStateFailure) {
   EXPECT_TRUE(service_->HasRecentConnectionIssues());
 }
 
-TEST_F(ServiceTest, NoteDisconnectEventOnSetFailureSilent) {
+TEST_F(ServiceTest, NoteFailureEventOnSetFailureSilent) {
   Timestamp timestamp;
   EXPECT_CALL(time_, GetNow()).Times(5).WillRepeatedly((Return(timestamp)));
   SetStateField(Service::kStateConfiguring);
@@ -1572,44 +1572,44 @@ TEST_F(ServiceTest, NoteDisconnectEventOnSetFailureSilent) {
   EXPECT_TRUE(service_->HasRecentConnectionIssues());
 }
 
-TEST_F(ServiceTest, NoteDisconnectEventNonEvent) {
+TEST_F(ServiceTest, NoteFailureEventNonEvent) {
   EXPECT_CALL(time_, GetNow()).Times(0);
 
   // Explicit disconnect is a non-event.
   SetStateField(Service::kStateOnline);
   SetExplicitlyDisconnected(true);
-  NoteDisconnectEvent();
+  NoteFailureEvent();
   EXPECT_TRUE(GetDisconnects()->Empty());
   EXPECT_TRUE(GetMisconnects()->Empty());
 
   // Failure to idle transition is a non-event.
   SetStateField(Service::kStateFailure);
   SetExplicitlyDisconnected(false);
-  NoteDisconnectEvent();
+  NoteFailureEvent();
   EXPECT_TRUE(GetDisconnects()->Empty());
   EXPECT_TRUE(GetMisconnects()->Empty());
 
   // Disconnect while manager is stopped is a non-event.
   SetStateField(Service::kStateOnline);
   SetManagerRunning(false);
-  NoteDisconnectEvent();
+  NoteFailureEvent();
   EXPECT_TRUE(GetDisconnects()->Empty());
   EXPECT_TRUE(GetMisconnects()->Empty());
 
   // Disconnect while suspending is a non-event.
   SetManagerRunning(true);
   SetSuspending(true);
-  NoteDisconnectEvent();
+  NoteFailureEvent();
   EXPECT_TRUE(GetDisconnects()->Empty());
   EXPECT_TRUE(GetMisconnects()->Empty());
 }
 
-TEST_F(ServiceTest, NoteDisconnectEventDisconnectOnce) {
+TEST_F(ServiceTest, NoteFailureEventDisconnectOnce) {
   const int kNow = 5;
   EXPECT_FALSE(service_->explicitly_disconnected());
   SetStateField(Service::kStateOnline);
   EXPECT_CALL(time_, GetNow()).WillOnce(Return(GetTimestamp(kNow, kNow, "")));
-  NoteDisconnectEvent();
+  NoteFailureEvent();
   ASSERT_EQ(1, GetDisconnects()->Size());
   EXPECT_EQ(kNow, GetDisconnects()->Front().monotonic.tv_sec);
   EXPECT_TRUE(GetMisconnects()->Empty());
@@ -1633,12 +1633,12 @@ TEST_F(ServiceTest, NoteDisconnectEventDisconnectOnce) {
   ASSERT_TRUE(GetDisconnects()->Empty());
 }
 
-TEST_F(ServiceTest, NoteDisconnectEventMisconnectOnce) {
+TEST_F(ServiceTest, NoteFailureEventMisconnectOnce) {
   const int kNow = 7;
   EXPECT_FALSE(service_->explicitly_disconnected());
   SetStateField(Service::kStateConfiguring);
   EXPECT_CALL(time_, GetNow()).WillOnce(Return(GetTimestamp(kNow, kNow, "")));
-  NoteDisconnectEvent();
+  NoteFailureEvent();
   EXPECT_TRUE(GetDisconnects()->Empty());
   ASSERT_EQ(1, GetMisconnects()->Size());
   EXPECT_EQ(kNow, GetMisconnects()->Front().monotonic.tv_sec);
@@ -1662,7 +1662,7 @@ TEST_F(ServiceTest, NoteDisconnectEventMisconnectOnce) {
   ASSERT_TRUE(GetMisconnects()->Empty());
 }
 
-TEST_F(ServiceTest, NoteDisconnectEventDiscardOld) {
+TEST_F(ServiceTest, NoteFailureEventDiscardOld) {
   EXPECT_FALSE(service_->explicitly_disconnected());
   for (int i = 0; i < 2; i++) {
     int now = 0;
@@ -1679,20 +1679,20 @@ TEST_F(ServiceTest, NoteDisconnectEventDiscardOld) {
     PushTimestamp(events, 0, 0, "");
     PushTimestamp(events, 0, 0, "");
     EXPECT_CALL(time_, GetNow()).WillOnce(Return(GetTimestamp(now, now, "")));
-    NoteDisconnectEvent();
+    NoteFailureEvent();
     ASSERT_EQ(1, events->Size());
     EXPECT_EQ(now, events->Front().monotonic.tv_sec);
   }
 }
 
-TEST_F(ServiceTest, NoteDisconnectEventDiscardExcessive) {
+TEST_F(ServiceTest, NoteFailureEventDiscardExcessive) {
   EXPECT_FALSE(service_->explicitly_disconnected());
   SetStateField(Service::kStateOnline);
   for (int i = 0; i < 2 * GetMaxDisconnectEventHistory(); i++) {
     PushTimestamp(GetDisconnects(), 0, 0, "");
   }
   EXPECT_CALL(time_, GetNow()).WillOnce(Return(Timestamp()));
-  NoteDisconnectEvent();
+  NoteFailureEvent();
   EXPECT_EQ(GetMaxDisconnectEventHistory(), GetDisconnects()->Size());
 }
 
@@ -1703,7 +1703,7 @@ TEST_F(ServiceTest, NoteMisconnectEventDiscardExcessive) {
     PushTimestamp(GetMisconnects(), 0, 0, "");
   }
   EXPECT_CALL(time_, GetNow()).WillOnce(Return(Timestamp()));
-  NoteDisconnectEvent();
+  NoteFailureEvent();
   EXPECT_EQ(GetMaxMisconnectEventHistory(), GetMisconnects()->Size());
 }
 
