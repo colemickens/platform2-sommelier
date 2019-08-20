@@ -24,7 +24,7 @@ namespace {
 // Creates the blob of the TPM_PUBKEY structure that holds information about the
 // given RSA public key.
 Blob BuildRsaTpmPubkeyBlob(const RSA& rsa) {
-  Blob modulus(BN_num_bytes(rsa.n));
+  Blob modulus(RSA_size(&rsa));
   EXPECT_EQ(BN_bn2bin(rsa.n, modulus.data()), modulus.size());
 
   // Build the TPM_RSA_KEY_PARMS structure.

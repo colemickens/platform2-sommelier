@@ -1394,7 +1394,7 @@ bool Tpm2Impl::LoadPublicKeyFromSpki(
     LOG(ERROR) << "Error: non-RSA key was supplied";
     return false;
   }
-  SecureBlob key_modulus(BN_num_bytes(rsa->n));
+  SecureBlob key_modulus(RSA_size(rsa.get()));
   if (BN_bn2bin(rsa->n, key_modulus.data()) != key_modulus.size()) {
     LOG(ERROR) << "Error extracting public key modulus";
     return false;

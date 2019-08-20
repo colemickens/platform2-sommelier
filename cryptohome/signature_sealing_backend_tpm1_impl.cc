@@ -182,7 +182,7 @@ class UnsealingSessionTpm1Impl final
 
 // Extracts the public modulus from the OpenSSL RSA struct.
 bool GetRsaModulus(const RSA& rsa, Blob* modulus) {
-  modulus->resize(BN_num_bytes(rsa.n));
+  modulus->resize(RSA_size(&rsa));
   if (BN_bn2bin(rsa.n, modulus->data()) != modulus->size()) {
     LOG(ERROR) << "Failed to extract RSA modulus: size mismatch";
     return false;

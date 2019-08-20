@@ -223,7 +223,7 @@ bool Pkcs11KeyStore::Register(bool is_user_specific,
     LOG(ERROR) << "Pkcs11KeyStore: Failed to decode public key.";
     return false;
   }
-  SecureBlob modulus(BN_num_bytes(public_key.get()->n));
+  SecureBlob modulus(RSA_size(public_key.get()));
   int length = BN_bn2bin(public_key.get()->n, modulus.data());
   if (length <= 0) {
     LOG(ERROR) << "Pkcs11KeyStore: Failed to extract public key modulus.";

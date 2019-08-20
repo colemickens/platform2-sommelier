@@ -1781,7 +1781,7 @@ bool Attestation::VerifyCertifiedKey(
     LOG(ERROR) << "Failed to decode certified public key.";
     return false;
   }
-  SecureBlob modulus(BN_num_bytes(rsa.get()->n));
+  SecureBlob modulus(RSA_size(rsa.get()));
   BN_bn2bin(rsa.get()->n, modulus.data());
   SecureBlob key_digest = CryptoLib::Sha1(modulus);
   if (std::search(certified_key_info.begin(),
@@ -2890,7 +2890,7 @@ Tpm::TpmRetryAction Attestation::ComputeEnterpriseEnrollmentIdInternal(
     LOG(ERROR) << "Attestation: Failed to decode public endorsement key.";
     return Tpm::kTpmRetryFailNoRetry;
   }
-  brillo::Blob modulus(BN_num_bytes(public_key.get()->n), 0);
+  brillo::Blob modulus(RSA_size(public_key.get()), 0);
   int length = BN_bn2bin(public_key.get()->n, modulus.data());
   if (length <= 0) {
     LOG(ERROR)
