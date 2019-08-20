@@ -85,7 +85,7 @@ class MockService : public Service {
   MOCK_METHOD(bool, is_dns_auto_fallback_allowed, (), (const, override));
   MOCK_METHOD(void, NotifyIPConfigChanges, (), (override));
   MOCK_METHOD(bool, link_monitor_disabled, (), (const, override));
-  MOCK_METHOD(void, EnableAndRetainAutoConnect, (), (override));
+  MOCK_METHOD(bool, EnableAndRetainAutoConnect, (), (override));
   MOCK_METHOD(void, OnBeforeSuspend, (const ResultCallback&), (override));
   MOCK_METHOD(void, OnAfterResume, (), (override));
   MOCK_METHOD(void,

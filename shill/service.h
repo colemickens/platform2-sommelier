@@ -310,7 +310,8 @@ class Service : public base::RefCounted<Service> {
 
   // If the AutoConnect property has not already been marked as saved, set
   // its value to true and mark it saved.
-  virtual void EnableAndRetainAutoConnect();
+  // Returns whether the value was changed.
+  virtual bool EnableAndRetainAutoConnect();
 
   // Set the connection for this service.  If the connection is non-NULL, create
   // an HTTP Proxy that will utilize this service's connection to serve
@@ -351,7 +352,9 @@ class Service : public base::RefCounted<Service> {
       int64_t /*time_resume_to_ready_milliseconds*/) const {}
 
   bool auto_connect() const { return auto_connect_; }
-  void SetAutoConnect(bool connect);
+
+  // Returns true if the value was changed.
+  bool SetAutoConnect(bool connect);
 
   bool connectable() const { return connectable_; }
   // Sets the connectable property of the service, and broadcast the

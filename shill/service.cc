@@ -822,15 +822,16 @@ bool Service::IsRemembered() const {
   return profile_ && !manager_->IsServiceEphemeral(this);
 }
 
-void Service::EnableAndRetainAutoConnect() {
+bool Service::EnableAndRetainAutoConnect() {
   if (retain_auto_connect_) {
     // We do not want to clobber the value of auto_connect_ (it may
     // be user-set). So return early.
-    return;
+    return false;
   }
 
-  SetAutoConnect(true);
+  bool changed = SetAutoConnect(true);
   RetainAutoConnect();
+  return changed;
 }
 
 void Service::SetConnection(const ConnectionRefPtr& connection) {
@@ -897,12 +898,13 @@ bool Service::HasStaticNameServers() const {
   return static_ip_parameters().ContainsNameServers();
 }
 
-void Service::SetAutoConnect(bool connect) {
+bool Service::SetAutoConnect(bool connect) {
   if (auto_connect() == connect) {
-    return;
+    return false;
   }
   auto_connect_ = connect;
   adaptor_->EmitBoolChanged(kAutoConnectProperty, auto_connect());
+  return true;
 }
 
 // static

@@ -862,7 +862,7 @@ TEST_F(ServiceTest, ReRetainAutoConnect) {
   EXPECT_TRUE(service_->retain_auto_connect());
   EXPECT_TRUE(service_->auto_connect());
 
-  service_->SetAutoConnect(false);
+  ASSERT_TRUE(service_->SetAutoConnect(false));
   service_->EnableAndRetainAutoConnect();
   EXPECT_TRUE(service_->retain_auto_connect());
   EXPECT_FALSE(service_->auto_connect());
@@ -1048,7 +1048,7 @@ TEST_F(ServiceTest, ConfigureBadProperty) {
 
 TEST_F(ServiceTest, ConfigureBoolProperty) {
   service_->EnableAndRetainAutoConnect();
-  service_->SetAutoConnect(false);
+  ASSERT_TRUE(service_->SetAutoConnect(false));
   ASSERT_FALSE(service_->auto_connect());
   KeyValueStore args;
   args.SetBool(kAutoConnectProperty, true);
