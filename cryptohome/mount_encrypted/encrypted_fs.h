@@ -49,12 +49,6 @@ struct BindMount {
 // sets up an encrypted mount at <root_dir>/ENCRYPTED_MOUNT.
 class EncryptedFs {
  public:
-  // EncryptedFs Type
-  enum class EncryptedFsType{
-    kDmCrypt,
-    kCount,
-  };
-
   // Setup EncryptedFs with the root dir, platform and loopdev manager.
   EncryptedFs(const base::FilePath& rootdir,
               cryptohome::Platform* platform,
@@ -90,9 +84,6 @@ class EncryptedFs {
   // for finalization in devices that do not have the TPM available
   // initially while setting up the encrypted mount.
   brillo::SecureBlob GetKey() const;
-  // Get type for encrypted filesystem. Currently, EncryptedFs only supports
-  // dmcrypt-based encrypted mounts.
-  EncryptedFsType GetType() const { return EncryptedFsType::kDmCrypt; }
 
  private:
   // Use a raw Platform pointer to avoid convoluted EXPECT_CALL semantics
