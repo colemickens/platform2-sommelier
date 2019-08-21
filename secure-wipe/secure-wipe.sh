@@ -199,7 +199,7 @@ perform_fio_op() {
   export FIO_DEV_MAIN_AREA_SIZE=$(( ${disk_size} - 2097152 ))
 
   if [ -z "${fio_output}" ]; then
-    fio_output="$(mktemp fio_output_XXXXXX)"
+    fio_output="$(mktemp -t fio_output_XXXXXX)"
   fi
   case "$disk_op" in
     write)
@@ -221,7 +221,7 @@ perform_fio_op() {
       return 1
   esac
 
-  local fio_script="$(mktemp fio_config_XXXXXX)"
+  local fio_script="$(mktemp -t fio_config_XXXXXX)"
   cat >"${fio_script}" <<HERE
 ; Copyright 2014 The Chromium Authors. All rights reserved.
 ; Use of this source code is governed by a BSD-style license that can be
