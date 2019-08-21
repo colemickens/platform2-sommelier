@@ -3,10 +3,16 @@
 By default, the power manager performs various actions when the system is
 inactive for a given period of time:
 
-| Power source | Dim screen | Turn screen off | Suspend / sleep |
-|--------------|------------|-----------------|-----------------|
-| Battery      | 5 minutes  | 5.5 minutes     | 6.5 minutes     |
-| AC           | 7 minutes  | 7.5 minutes     | 8.5 minutes     |
+| Power source | Smart Dim | Dim screen | Turn screen off | Suspend / sleep |
+|--------------|-----------|------------|-----------------|-----------------|
+| Battery      | early     |  5 minutes |  5.5 minutes    |  6.5 minutes    |
+| AC           | early     |  7 minutes |  7.5 minutes    |  8.5 minutes    |
+| Battery      | defer     | 10 minutes | 10.5 minutes    | 11.5 minutes    |
+| AC           | defer     | 14 minutes | 14.5 minutes    | 15.5 minutes    |
+
+At the half point of inactivity delay, the [Smart Dim] ML model will predict
+whether the user is likely to remain inactive and tell powerd to dim screen
+early or defer dim accordingly.
 
 There are different ways to define "activity":
 
@@ -72,3 +78,4 @@ accessible via `chrome://system` or by browsing to `file://var/log`.
 [issue 190499]: https://crbug.com/190499
 [enterprise policies]: https://www.chromium.org/administrators/policy-list-3#PowerManagement
 [chrome.power extension API]: https://developer.chrome.com/extensions/power.html
+[Smart Dim]: https://chromium.googlesource.com/chromium/src/+/master/chrome/browser/chromeos/power/ml/smart_dim
