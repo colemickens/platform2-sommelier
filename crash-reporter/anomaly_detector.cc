@@ -8,14 +8,13 @@
 
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <metrics/metrics_library.h>
 #include <re2/re2.h>
 
 namespace {
 
 // This hashing algorithm dates back to before this was migrated from C to C++.
-// We're stuck with it now because we store the hash values in UMA, and we would
-// like the hashes to remain the same over time for a given crash.
+// We're stuck with it now because we would like the hashes to remain the same
+// over time for a given crash as the hashes are used in the crash signatures.
 uint32_t StringHash(const std::string& input) {
   uint32_t hash = 0;
   for (auto& c : input) {
@@ -59,8 +58,6 @@ MaybeCrashReport ServiceParser::ParseLogEntry(const std::string& line) {
 
   uint32_t hash = StringHash(service_name.c_str());
 
-  MetricsLibrary().SendSparseToUMA("Platform.ServiceFailureHashes", hash);
-
   if (WasAlreadySeen(hash))
     return base::nullopt;
 
@@ -86,7 +83,6 @@ constexpr LazyRE2 granted = {"avc:[ ]*granted"};
 MaybeCrashReport SELinuxParser::ParseLogEntry(const std::string& line) {
   std::string only_alpha = OnlyAsciiAlpha(line);
   uint32_t hash = StringHash(only_alpha.c_str());
-  MetricsLibrary().SendSparseToUMA("Platform.SELinuxViolationHashes", hash);
   if (WasAlreadySeen(hash))
     return base::nullopt;
   std::string signature;
@@ -150,7 +146,6 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
       // The [mod] suffix is only present if the address is located within a
       // kernel module.
       uint32_t hash = StringHash(info.c_str());
-      MetricsLibrary().SendSparseToUMA("Platform.KernelWarningHashes", hash);
       if (WasAlreadySeen(hash)) {
         last_line_ = LineType::None;
         return base::nullopt;

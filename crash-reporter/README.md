@@ -62,7 +62,7 @@ and collected into `/var/spool/crash` once boot completes.
 We background the [anomaly_detector] to monitor for system "anomalies" for
 which a notification mechanism is not available.
 This daemon operates by monitoring syslog messages via [inotify].
-Depending on the anomaly, it generates crashes, UMA stats, and D-Bus signals.
+Depending on the anomaly, it generates crashes and D-Bus signals.
 
 We also background the [crash_sender] service to periodically upload crashes.
 See [Uploading Crashes] for more details.
