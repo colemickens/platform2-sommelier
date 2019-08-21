@@ -2403,8 +2403,15 @@ TEST_F(AuthPolicyTest, AnonymizerCalledWithLogging) {
 // https://crbug.com/908140
 #ifndef BRILLO_ASAN_BUILD
 
+// TODO(https://crbug.com/994814): This is currently broken under llvm-next
+// since unexpected parts of the code trigger seccomp failures. The fix could be
+// to refactor the code so that seccomp filtering is only enabled for the one
+// process that is expected to trigger a seccomp failure. For example, if
+// ERROR_NET_FAILED is expected, JailHelper::SetupJailAndRun should only enable
+// seccomp filtering if |seccomp_path_key| is NET_ADS_SECCOMP etc.
+
 // Re-enable seccomp filters and check that they are actually in effect.
-TEST_F(AuthPolicyTest, SeccompFiltersEnabled) {
+TEST_F(AuthPolicyTest, DISABLED_SeccompFiltersEnabled) {
   // Re-enable seccomp filtering and trigger it in net ads join.
   samba().DisableSeccompForTesting(false);
   EXPECT_EQ(ERROR_NET_FAILED,
