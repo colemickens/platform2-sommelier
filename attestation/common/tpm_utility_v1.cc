@@ -1134,19 +1134,30 @@ bool TpmUtilityV1::GetRSAPublicKeyFromTpmPublicKey(
   TPM_RSA_KEY_PARMS* parms =
       reinterpret_cast<TPM_RSA_KEY_PARMS*>(parsed.algorithmParms.parms);
   crypto::ScopedRSA rsa(RSA_new());
-  CHECK(rsa.get());
+  crypto::ScopedBIGNUM e(BN_new()), n(BN_new());
+  if (!rsa || !e || !n) {
+    LOG(ERROR) << "Failed to allocate RSA or BIGNUM.";
+    return false;
+  }
   // Get the public exponent.
   if (parms->exponentSize == 0) {
-    rsa.get()->e = BN_new();
-    CHECK(rsa.get()->e);
-    BN_set_word(rsa.get()->e, kWellKnownExponent);
+    if (!BN_set_word(e.get(), kWellKnownExponent)) {
+      LOG(ERROR) << "Failed to set exponent to WellKnownExponent.";
+      return false;
+    }
   } else {
-    rsa.get()->e = BN_bin2bn(parms->exponent, parms->exponentSize, nullptr);
-    CHECK(rsa.get()->e);
+    if (!BN_bin2bn(parms->exponent, parms->exponentSize, e.get())) {
+      LOG(ERROR) << "Failed to convert exponent to BIGNUM.";
+      return false;
+    }
   }
   // Get the modulus.
-  rsa.get()->n = BN_bin2bn(parsed.pubKey.key, parsed.pubKey.keyLength, nullptr);
-  CHECK(rsa.get()->n);
+  if (!BN_bin2bn(parsed.pubKey.key, parsed.pubKey.keyLength, n.get())) {
+    LOG(ERROR) << "Failed to convert public key to BIGNUM.";
+    return false;
+  }
+  rsa->n = n.release();
+  rsa->e = e.release();
 
   // DER encode.
   int der_length = i2d_RSAPublicKey(rsa.get(), nullptr);
@@ -1194,7 +1205,8 @@ bool TpmUtilityV1::GetEndorsementPublicKeyModulus(KeyType key_type,
     return false;
   }
   std::vector<uint8_t> modulus_bytes(modulus_bytes_length);
-  int output_length = BN_bn2bin(public_key.get()->n, modulus_bytes.data());
+  const BIGNUM* n = public_key->n;
+  int output_length = BN_bn2bin(n, modulus_bytes.data());
   if (output_length != modulus_bytes_length) {
     LOG(ERROR) << __func__ << ": Bad length returned by BN_bn2bin: got "
                << output_length << " while it should be "
@@ -1266,7 +1278,11 @@ bool TpmUtilityV1::MakeIdentity(std::string* identity_public_key_der,
     return false;
   }
   unsigned char modulus_buffer[kDefaultTpmRsaKeyBits / 8];
-  BN_bn2bin(fake_pca_key.get()->n, modulus_buffer);
+  const BIGNUM* n = fake_pca_key->n;
+  if (BN_bn2bin(n, modulus_buffer) != RSA_size(fake_pca_key.get())) {
+    LOG(ERROR) << "MakeIdentity: Failed to convert modulus from BIGNUM.";
+    return false;
+  }
 
   // Create a TSS object for the fake PCA public key.
   ScopedTssKey pca_public_key_object(context_handle);

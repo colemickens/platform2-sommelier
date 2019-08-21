@@ -64,17 +64,19 @@ const unsigned char* StringAsConstOpenSSLBuffer(const std::string& s) {
 
 crypto::ScopedRSA CreateRSAFromHexModulus(const std::string& hex_modulus) {
   crypto::ScopedRSA rsa(RSA_new());
-  if (!rsa.get())
-    return crypto::ScopedRSA();
-  rsa->e = BN_new();
-  if (!rsa->e)
-    return crypto::ScopedRSA();
-  BN_set_word(rsa->e, kWellKnownExponent);
-  rsa->n = BN_new();
-  if (!rsa->n)
-    return crypto::ScopedRSA();
-  if (0 == BN_hex2bn(&rsa->n, hex_modulus.c_str()))
-    return crypto::ScopedRSA();
+  crypto::ScopedBIGNUM e(BN_new()), n(BN_new());
+  if (!rsa || !e || !n) {
+    LOG(ERROR) << __func__ << ": Failed to allocate RSA or BIGNUMs.";
+    return nullptr;
+  }
+  BIGNUM* pn = n.get();
+  if (!BN_set_word(e.get(), kWellKnownExponent) ||
+      !BN_hex2bn(&pn, hex_modulus.c_str())) {
+    LOG(ERROR) << __func__ << ": Failed to generate exponent or modulus.";
+    return nullptr;
+  }
+  rsa->n = n.release();
+  rsa->e = e.release();
   return rsa;
 }
 
@@ -836,7 +838,8 @@ bool CryptoUtilityImpl::CreateSPKAC(const std::string& key_blob,
   // Be explicit that there are zero unused bits; otherwise i2d below will
   // automatically detect unused bits but signatures require zero unused bits.
   spki.get()->signature->flags = ASN1_STRING_FLAG_BITS_LEFT;
-  X509_ALGOR_set0(spki.get()->sig_algor,
+  X509_ALGOR* sig_algor = spki.get()->sig_algor;
+  X509_ALGOR_set0(sig_algor,
                   OBJ_nid2obj(NID_sha256WithRSAEncryption),
                   V_ASN1_NULL,
                   NULL);
@@ -973,7 +976,11 @@ bool CryptoUtilityImpl::GetKeyDigest(
     return false;
   }
   std::vector<unsigned char> modulus(RSA_size(rsa.get()));
-  BN_bn2bin(rsa.get()->n, modulus.data());
+  const BIGNUM* n = rsa->n;
+  if (BN_bn2bin(n, modulus.data()) != modulus.size()) {
+    LOG(ERROR) << __func__ << ": Failed to extract modulus.";
+    return false;
+  }
   char digest_buf[base::kSHA1Length];
   base::SHA1HashBytes(modulus.data(), modulus.size(),
                       reinterpret_cast<unsigned char *>(digest_buf));

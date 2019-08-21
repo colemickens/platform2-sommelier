@@ -249,9 +249,9 @@ bool Pkcs11KeyStore::Register(const std::string& username,
     return false;
   }
   std::string modulus(RSA_size(public_key.get()), 0);
+  const BIGNUM* n = public_key->n;
   int length = BN_bn2bin(
-      public_key.get()->n,
-      reinterpret_cast<unsigned char*>(base::data(modulus)));
+      n, reinterpret_cast<unsigned char*>(base::data(modulus)));
   if (length <= 0) {
     LOG(ERROR) << "Pkcs11KeyStore: Failed to extract public key modulus.";
     return false;

@@ -68,17 +68,20 @@ bool StringToBignum(const std::string& big_integer, BIGNUM* b) {
 crypto::ScopedRSA CreateRSAFromRawModulus(const uint8_t* modulus_buffer,
                                           size_t modulus_size) {
   crypto::ScopedRSA rsa(RSA_new());
-  if (rsa == nullptr)
+  crypto::ScopedBIGNUM e(BN_new()), n(BN_new());
+  if (!rsa || !e || !n) {
+    LOG(ERROR) << __func__ << ": Failed to allocate RSA or BIGNUMs.";
     return nullptr;
+  }
 
-  rsa->e = BN_new();
-  if (rsa->e == nullptr)
+  if (!BN_set_word(e.get(), kWellKnownExponent) ||
+      !BN_bin2bn(modulus_buffer, modulus_size, n.get())) {
+    LOG(ERROR) << __func__ << ": Failed to generate exponent or modulus.";
     return nullptr;
-  BN_set_word(rsa->e, kWellKnownExponent);
+  }
 
-  rsa->n = BN_bin2bn(modulus_buffer, modulus_size, nullptr);
-  if (rsa->n == nullptr)
-    return nullptr;
+  rsa->n = n.release();
+  rsa->e = e.release();
 
   return rsa;
 }
