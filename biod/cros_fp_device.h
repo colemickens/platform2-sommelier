@@ -17,6 +17,7 @@
 #include <chromeos/ec/ec_commands.h>
 
 #include "biod/biod_metrics.h"
+#include "biod/fp_mode.h"
 #include "biod/uinput_device.h"
 
 using MessageLoopForIO = base::MessageLoopForIO;
@@ -55,8 +56,8 @@ class CrosFpDevice : public MessageLoopForIO::Watcher {
   // Returns true if successfully retrieved the version.
   static bool GetVersion(const base::ScopedFD& cros_fp_fd, EcVersion* ver);
 
-  bool FpMode(uint32_t mode);
-  bool GetFpMode(uint32_t* mode);
+  bool SetFpMode(const FpMode& mode);
+  bool GetFpMode(FpMode* mode);
   bool GetFpStats(int* capture_ms, int* matcher_ms, int* overall_ms);
   bool GetDirtyMap(std::bitset<32>* bitmap);
   bool GetTemplate(int index, VendorTemplate* out);

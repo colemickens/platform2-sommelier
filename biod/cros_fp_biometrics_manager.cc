@@ -69,6 +69,8 @@ std::string EnrollResultToString(int result) {
 
 namespace biod {
 
+using Mode = FpMode::Mode;
+
 const std::string& CrosFpBiometricsManager::Record::GetId() const {
   CHECK(biometrics_manager_);
   CHECK(index_ < biometrics_manager_->records_.size());
@@ -246,7 +248,7 @@ void CrosFpBiometricsManager::SetDiskAccesses(bool allow) {
 }
 
 bool CrosFpBiometricsManager::ResetSensor() {
-  if (!cros_dev_->FpMode(FP_MODE_RESET_SENSOR)) {
+  if (!cros_dev_->SetFpMode(FpMode(Mode::kResetSensor))) {
     LOG(ERROR) << "Failed to send reset_sensor command to FPMCU.";
     return false;
   }
@@ -254,13 +256,13 @@ bool CrosFpBiometricsManager::ResetSensor() {
   int retries = 50;
   bool reset_complete = false;
   while (retries--) {
-    uint32_t cur_mode;
+    FpMode cur_mode;
     if (!cros_dev_->GetFpMode(&cur_mode)) {
       LOG(ERROR) << "Failed to query sensor state during reset.";
       return false;
     }
 
-    if (!(cur_mode & FP_MODE_RESET_SENSOR)) {
+    if (cur_mode != FpMode(Mode::kResetSensor)) {
       reset_complete = true;
       break;
     }
@@ -302,7 +304,7 @@ void CrosFpBiometricsManager::EndAuthSession() {
 
 void CrosFpBiometricsManager::KillMcuSession() {
   // TODO(vpalatin): test cros_dev_->FpMode(FP_MODE_DEEPSLEEP);
-  cros_dev_->FpMode(0);
+  cros_dev_->SetFpMode(FpMode(Mode::kNone));
   session_weak_factory_.InvalidateWeakPtrs();
   OnTaskComplete();
 }
@@ -354,7 +356,7 @@ bool CrosFpBiometricsManager::RequestEnrollImage(InternalRecord record) {
   next_session_action_ =
       base::Bind(&CrosFpBiometricsManager::DoEnrollImageEvent,
                  base::Unretained(this), std::move(record));
-  if (!cros_dev_->FpMode(FP_MODE_ENROLL_SESSION | FP_MODE_ENROLL_IMAGE)) {
+  if (!cros_dev_->SetFpMode(FpMode(Mode::kEnrollSessionEnrollImage))) {
     next_session_action_ = SessionAction();
     LOG(ERROR) << "Failed to start enrolling mode";
     return false;
@@ -366,7 +368,7 @@ bool CrosFpBiometricsManager::RequestEnrollFingerUp(InternalRecord record) {
   next_session_action_ =
       base::Bind(&CrosFpBiometricsManager::DoEnrollFingerUpEvent,
                  base::Unretained(this), std::move(record));
-  if (!cros_dev_->FpMode(FP_MODE_ENROLL_SESSION | FP_MODE_FINGER_UP)) {
+  if (!cros_dev_->SetFpMode(FpMode(Mode::kEnrollSessionFingerUp))) {
     next_session_action_ = SessionAction();
     LOG(ERROR) << "Failed to wait for finger up";
     return false;
@@ -377,7 +379,7 @@ bool CrosFpBiometricsManager::RequestEnrollFingerUp(InternalRecord record) {
 bool CrosFpBiometricsManager::RequestMatch(int attempt) {
   next_session_action_ = base::Bind(&CrosFpBiometricsManager::DoMatchEvent,
                                     base::Unretained(this), attempt);
-  if (!cros_dev_->FpMode(FP_MODE_MATCH)) {
+  if (!cros_dev_->SetFpMode(FpMode(Mode::kMatch))) {
     next_session_action_ = SessionAction();
     LOG(ERROR) << "Failed to start matching mode";
     return false;
@@ -388,7 +390,7 @@ bool CrosFpBiometricsManager::RequestMatch(int attempt) {
 bool CrosFpBiometricsManager::RequestMatchFingerUp() {
   next_session_action_ = base::Bind(
       &CrosFpBiometricsManager::DoMatchFingerUpEvent, base::Unretained(this));
-  if (!cros_dev_->FpMode(FP_MODE_FINGER_UP)) {
+  if (!cros_dev_->SetFpMode(FpMode(Mode::kFingerUp))) {
     next_session_action_ = SessionAction();
     LOG(ERROR) << "Failed to request finger up event";
     return false;

@@ -143,9 +143,9 @@ void CrosFpDevice::OnFileCanReadWithoutBlocking(int fd) {
   mkbp_event_.Run(events);
 }
 
-bool CrosFpDevice::FpMode(uint32_t mode) {
+bool CrosFpDevice::SetFpMode(const FpMode& mode) {
   EcCommand<struct ec_params_fp_mode, struct ec_response_fp_mode> cmd(
-      EC_CMD_FP_MODE, 0, {.mode = mode});
+      EC_CMD_FP_MODE, 0, {.mode = mode.RawVal()});
   bool ret = cmd.Run(cros_fd_.get());
   if (ret) {
     return true;
@@ -155,7 +155,7 @@ bool CrosFpDevice::FpMode(uint32_t mode) {
   // before the EC can ACK it. When the AP wakes up, it considers the
   // EC command to have timed out. Since this seems to happen during mode
   // setting, check the mode in case of a failure.
-  uint32_t cur_mode;
+  FpMode cur_mode;
   if (!GetFpMode(&cur_mode)) {
     LOG(ERROR) << "Failed to get FP mode to verify mode was set in the MCU.";
     return false;
@@ -171,7 +171,7 @@ bool CrosFpDevice::FpMode(uint32_t mode) {
   return false;
 }
 
-bool CrosFpDevice::GetFpMode(uint32_t* mode) {
+bool CrosFpDevice::GetFpMode(FpMode* mode) {
   EcCommand<struct ec_params_fp_mode, struct ec_response_fp_mode> cmd(
       EC_CMD_FP_MODE, 0, {.mode = static_cast<uint32_t>(FP_MODE_DONT_CHANGE)});
   if (!cmd.Run(cros_fd_.get())) {
@@ -179,7 +179,7 @@ bool CrosFpDevice::GetFpMode(uint32_t* mode) {
     return false;
   }
 
-  *mode = cmd.Resp()->mode;
+  *mode = FpMode(cmd.Resp()->mode);
   return true;
 }
 
