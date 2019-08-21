@@ -447,8 +447,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("biod"))
     builder->AddFeatureEnableOverride("QuickUnlockFingerprint");
 
-  builder->AddFeatureEnableOverride("MyFilesVolume");
-
   SetUpPowerButtonPositionFlag(builder, cros_config);
   SetUpSideVolumeButtonPositionFlag(builder, cros_config);
   SetUpRegulatoryLabelFlag(builder, cros_config);
