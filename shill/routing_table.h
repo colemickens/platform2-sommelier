@@ -8,6 +8,7 @@
 #include <deque>
 #include <memory>
 #include <set>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -52,7 +53,7 @@ class RoutingTable {
   // could find out about a new Device by seeing a new interface index in a
   // kernel-added route, having this allows for any required setup to occur
   // prior to routes being created for the Device in question.
-  void RegisterDevice(int interface_index);
+  void RegisterDevice(int interface_index, const std::string& link_name);
 
   // Causes RoutingTable to stop managing a particular interface index. This
   // method does not perform clean up that would allow corresponding interface

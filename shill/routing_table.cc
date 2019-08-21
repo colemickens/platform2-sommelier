@@ -55,8 +55,9 @@ namespace {
 base::LazyInstance<RoutingTable>::DestructorAtExit g_routing_table =
     LAZY_INSTANCE_INITIALIZER;
 
-const char kRouteFlushPath4[] = "/proc/sys/net/ipv4/route/flush";
-const char kRouteFlushPath6[] = "/proc/sys/net/ipv6/route/flush";
+const char kIpv6ProcPath[] = "/proc/sys/net/ipv6/conf";
+const char kIpv4RouteFlushPath[] = "/proc/sys/net/ipv4/route/flush";
+const char kIpv6RouteFlushPath[] = "/proc/sys/net/ipv6/route/flush";
 // Amount added to an interface index to come up with the routing table ID for
 // that interface.
 constexpr int kInterfaceTableIdIncrement = 1000;
@@ -178,10 +179,13 @@ void RoutingTable::Stop() {
   route_listener_.reset();
 }
 
-void RoutingTable::RegisterDevice(int interface_index) {
+void RoutingTable::RegisterDevice(int interface_index,
+                                  const std::string& link_name) {
   if (managed_interfaces_.find(interface_index) != managed_interfaces_.end()) {
     return;
   }
+
+  LOG(INFO) << "Device " << link_name << " registered.";
   managed_interfaces_.insert(interface_index);
 
   uint32_t table_id = GetInterfaceTableId(interface_index);
@@ -195,6 +199,17 @@ void RoutingTable::RegisterDevice(int interface_index) {
     AddRouteToKernelTable(interface_index, new_entry);
     RemoveRouteFromKernelTable(interface_index, nent);
     nent.table = table_id;
+  }
+
+  // Set accept_ra_rt_table to -N to cause routes created by the reception of
+  // RAs to be sent to the table id (interface_index + N).
+  std::string ra_rt_table = std::to_string(-kInterfaceTableIdIncrement);
+  auto path =
+      FilePath(kIpv6ProcPath).Append(link_name).Append("accept_ra_rt_table");
+  int str_size = static_cast<int>(ra_rt_table.size());
+  if (base::WriteFile(path, ra_rt_table.c_str(), str_size) != str_size) {
+    LOG(ERROR) << base::StringPrintf("Cannot write to %s",
+                                     path.MaybeAsASCII().c_str());
   }
   FlushCache();
 }
@@ -638,7 +653,8 @@ void RoutingTable::ReplaceMetric(uint32_t interface_index,
 }
 
 bool RoutingTable::FlushCache() {
-  static const char* const kPaths[] = {kRouteFlushPath4, kRouteFlushPath6};
+  static const char* const kPaths[] = {kIpv4RouteFlushPath,
+                                       kIpv6RouteFlushPath};
   bool ret = true;
 
   SLOG(this, 2) << __func__;
