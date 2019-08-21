@@ -58,6 +58,7 @@
 #include "login_manager/device_local_account_manager.h"
 #include "login_manager/fake_container_manager.h"
 #include "login_manager/fake_crossystem.h"
+#include "login_manager/fake_secret_util.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_device_policy_service.h"
@@ -424,8 +425,11 @@ class SessionManagerImplTest : public ::testing::Test,
 
     login_screen_storage_path_ =
         tmpdir_.GetPath().Append(kLoginScreenStoragePath);
-    impl_->SetLoginScreenStorageForTesting(
-        std::make_unique<LoginScreenStorage>(login_screen_storage_path_));
+    auto shared_memory_util =
+        std::make_unique<secret_util::FakeSharedMemoryUtil>();
+    shared_memory_util_ = shared_memory_util.get();
+    impl_->SetLoginScreenStorageForTesting(std::make_unique<LoginScreenStorage>(
+        login_screen_storage_path_, std::move(shared_memory_util)));
 
     EXPECT_CALL(*powerd_proxy_,
                 ConnectToSignal(power_manager::kPowerManagerInterface,
@@ -812,6 +816,7 @@ class SessionManagerImplTest : public ::testing::Test,
   std::unique_ptr<SessionManagerImpl> impl_;
   base::ScopedTempDir tmpdir_;
   base::FilePath device_local_accounts_dir_;
+  secret_util::SharedMemoryUtil* shared_memory_util_;
   base::FilePath login_screen_storage_path_;
 
   static const pid_t kDummyPid;
@@ -1158,8 +1163,8 @@ TEST_F(SessionManagerImplTest, LoginScreenStorage_StoreFailsInSession) {
   const string kTestValue("testvalue");
   const vector<uint8_t> kTestValueVector =
       std::vector<uint8_t>(kTestValue.begin(), kTestValue.end());
-  base::ScopedFD value_fd =
-      secret_util::WriteSizeAndDataToPipe(kTestValueVector);
+  auto value_fd =
+      shared_memory_util_->WriteDataToSharedMemory(kTestValueVector);
 
   ExpectAndRunStartSession(kSaneEmail);
 
@@ -1167,11 +1172,13 @@ TEST_F(SessionManagerImplTest, LoginScreenStorage_StoreFailsInSession) {
   impl_->LoginScreenStorageStore(
       &error, kTestKey,
       MakeLoginScreenStorageMetadata(/*clear_on_session_exit=*/false),
-      value_fd);
+      kTestValue.size(), value_fd);
   EXPECT_TRUE(error.get());
   EXPECT_FALSE(base::PathExists(GetTestLoginScreenStoragePath(kTestKey)));
   brillo::dbus_utils::FileDescriptor out_value_fd;
-  impl_->LoginScreenStorageRetrieve(&error, kTestKey, &out_value_fd);
+  uint64_t out_value_size;
+  impl_->LoginScreenStorageRetrieve(&error, kTestKey, &out_value_size,
+                                    &out_value_fd);
   EXPECT_TRUE(error.get());
 }
 

@@ -193,10 +193,12 @@ class SessionManagerImpl
   bool LoginScreenStorageStore(brillo::ErrorPtr* error,
                                const std::string& in_key,
                                const std::vector<uint8_t>& in_metadata,
+                               uint64_t in_value_size,
                                const base::ScopedFD& in_value_fd) override;
   bool LoginScreenStorageRetrieve(
       brillo::ErrorPtr* error,
       const std::string& in_key,
+      uint64_t* out_value_size,
       brillo::dbus_utils::FileDescriptor* out_value_fd) override;
   bool LoginScreenStorageListKeys(brillo::ErrorPtr* error,
                                   std::vector<std::string>* out_keys) override;

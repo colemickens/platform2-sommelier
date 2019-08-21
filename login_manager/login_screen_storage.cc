@@ -19,35 +19,23 @@ namespace login_manager {
 
 const char kLoginScreenStorageIndexFilename[] = "index";
 
-namespace {
-
-// Create a pipe that contains a given data preceded by its size. In case of
-// failure fills |error| accordingly.
-bool CreatePipeWithData(brillo::ErrorPtr* error,
-                        const std::vector<uint8_t>& data,
-                        brillo::dbus_utils::FileDescriptor* out_pipe_fd) {
-  *out_pipe_fd = secret_util::WriteSizeAndDataToPipe(data);
-  if (!out_pipe_fd->get()) {
-    *error = CreateError(DBUS_ERROR_IO_ERROR, "couldn't create a pipe.");
-    return false;
-  }
-  return true;
-}
-
-}  // namespace
-
 LoginScreenStorage::LoginScreenStorage(
-    const base::FilePath& persistent_storage_path)
-    : persistent_storage_path_(persistent_storage_path) {}
+    const base::FilePath& persistent_storage_path,
+    std::unique_ptr<secret_util::SharedMemoryUtil> shared_memory_util)
+    : persistent_storage_path_(persistent_storage_path),
+      shared_memory_util_(std::move(shared_memory_util)) {}
 
 bool LoginScreenStorage::Store(brillo::ErrorPtr* error,
                                const std::string& key,
                                const LoginScreenStorageMetadata& metadata,
+                               uint64_t value_size,
                                const base::ScopedFD& value_fd) {
   LoginScreenStorageIndex index = ReadIndexFromFile();
   std::vector<uint8_t> value;
-  if (!secret_util::ReadSecretFromPipe(value_fd.get(), &value)) {
-    *error = CreateError(DBUS_ERROR_IO_ERROR, "couldn't read value from pipe.");
+  if (!shared_memory_util_->ReadDataFromSharedMemory(value_fd, value_size,
+                                                     &value)) {
+    *error = CreateError(DBUS_ERROR_IO_ERROR,
+                         "couldn't read value from shared memory.");
     return false;
   }
 
@@ -87,25 +75,27 @@ bool LoginScreenStorage::Store(brillo::ErrorPtr* error,
   return true;
 }
 
-bool LoginScreenStorage::Retrieve(
-    brillo::ErrorPtr* error,
-    const std::string& key,
-    brillo::dbus_utils::FileDescriptor* out_value_fd) {
+bool LoginScreenStorage::Retrieve(brillo::ErrorPtr* error,
+                                  const std::string& key,
+                                  uint64_t* out_value_size,
+                                  base::ScopedFD* out_value_fd) {
   auto value_iter = in_memory_storage_.find(key);
   if (value_iter != in_memory_storage_.end()) {
-    return CreatePipeWithData(error, value_iter->second, out_value_fd);
+    *out_value_size = value_iter->second.size();
+    return CreateSharedMemoryWithData(error, value_iter->second, out_value_fd);
   }
 
   base::FilePath value_path = GetPersistentStoragePathForKey(key);
   std::string value;
   if (!base::PathExists(value_path) ||
-      !base::ReadFileToStringWithMaxSize(value_path, &value,
-                                         secret_util::kSecretSizeLimit)) {
+      !base::ReadFileToStringWithMaxSize(
+          value_path, &value, secret_util::kSharedMemorySecretSizeLimit)) {
     *error = CreateError(DBUS_ERROR_INVALID_ARGS,
                          "no value was found for the given key.");
     return false;
   }
-  return CreatePipeWithData(
+  *out_value_size = value.size();
+  return CreateSharedMemoryWithData(
       error, std::vector<uint8_t>(value.begin(), value.end()), out_value_fd);
 }
 
@@ -164,6 +154,18 @@ bool LoginScreenStorage::WriteIndexToFile(
   return base::WriteFile(
       persistent_storage_path_.Append(kLoginScreenStorageIndexFilename),
       index_blob.data(), index_blob.size());
+}
+
+bool LoginScreenStorage::CreateSharedMemoryWithData(
+    brillo::ErrorPtr* error,
+    const std::vector<uint8_t>& data,
+    base::ScopedFD* out_shared_memory_fd) {
+  *out_shared_memory_fd = shared_memory_util_->WriteDataToSharedMemory(data);
+  if (!out_shared_memory_fd->get()) {
+    *error = CreateError(DBUS_ERROR_IO_ERROR, "couldn't create shared memory.");
+    return false;
+  }
+  return true;
 }
 
 }  //  namespace login_manager

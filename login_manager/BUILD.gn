@@ -165,6 +165,7 @@ if (use.test) {
       "fake_crossystem.cc",
       "fake_generated_key_handler.cc",
       "fake_generator_job.cc",
+      "fake_secret_util.cc",
       "key_generator_test.cc",
       "keygen_worker.cc",
       "liveness_checker_impl_test.cc",

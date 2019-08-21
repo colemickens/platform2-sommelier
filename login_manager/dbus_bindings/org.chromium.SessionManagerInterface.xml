@@ -96,8 +96,9 @@
         LoginScreenStorageStore:
         @key: Key to store a given value for.
         @metadata: Metadata specifying settings for a given key/value pair.
-        @value_fd: File descriptor pointing at a pipe containing value to
-            store with a given key.
+        @value_size: Size of the value in bytes.
+        @value_fd: File descriptor pointing at a shared memory region containing
+            value to store with a given key.
 
         Saves a given key/value pair to the session manager for later access
         either from the login screen or the user session using
@@ -110,19 +111,22 @@
     <method name="LoginScreenStorageStore">
       <arg type="s" name="key" direction="in" />
       <arg type="ay" name="metadata" direction="in" />
+      <arg type="t" name="value_size" direction="in" />
       <arg type="h" name="value_fd" direction="in" />
     </method>
 
     <!--
         LoginScreenStorageRetrieve:
         @key: Key the requested value was stored for.
-        @value_fd: File decriptor pointing at a pipe containing the requested
-            value.
+        @value_size: Size of the value in bytes.
+        @value_fd: File decriptor pointing at a shared memory region containing
+            the requested value.
 
         Retrieves a value previously stored with |LoginScreenStore()|.
     -->
     <method name="LoginScreenStorageRetrieve">
       <arg type="s" name="key" direction="in" />
+      <arg type="t" name="value_size" direction="out" />
       <arg type="h" name="value_fd" direction="out" />
     </method>
 

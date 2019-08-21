@@ -391,7 +391,8 @@ SessionManagerImpl::SessionManagerImpl(
       password_provider_(
           std::make_unique<password_provider::PasswordProvider>()),
       login_screen_storage_(std::make_unique<LoginScreenStorage>(
-          base::FilePath(kLoginScreenStoragePath))),
+          base::FilePath(kLoginScreenStoragePath),
+          std::make_unique<secret_util::SharedMemoryUtil>())),
       weak_ptr_factory_(this) {
   DCHECK(delegate_);
 }
@@ -694,8 +695,8 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
 
 bool SessionManagerImpl::SaveLoginPassword(
     brillo::ErrorPtr* error, const base::ScopedFD& in_password_fd) {
-  if (!secret_util::SaveSecretFromFileDescriptor(password_provider_.get(),
-                                                 in_password_fd)) {
+  if (!secret_util::SaveSecretFromPipe(password_provider_.get(),
+                                       in_password_fd)) {
     LOG(ERROR) << "Could not save password.";
     return false;
   }
@@ -706,6 +707,7 @@ bool SessionManagerImpl::LoginScreenStorageStore(
     brillo::ErrorPtr* error,
     const std::string& in_key,
     const std::vector<uint8_t>& in_metadata,
+    uint64_t in_value_size,
     const base::ScopedFD& in_value_fd) {
   if (!user_sessions_.empty()) {
     *error = CreateError(
@@ -720,14 +722,20 @@ bool SessionManagerImpl::LoginScreenStorageStore(
     return false;
   }
 
-  return login_screen_storage_->Store(error, in_key, metadata, in_value_fd);
+  return login_screen_storage_->Store(error, in_key, metadata, in_value_size,
+                                      in_value_fd);
 }
 
 bool SessionManagerImpl::LoginScreenStorageRetrieve(
     brillo::ErrorPtr* error,
     const std::string& in_key,
+    uint64_t* out_value_size,
     brillo::dbus_utils::FileDescriptor* out_value_fd) {
-  return login_screen_storage_->Retrieve(error, in_key, out_value_fd);
+  base::ScopedFD value_fd;
+  bool success =
+      login_screen_storage_->Retrieve(error, in_key, out_value_size, &value_fd);
+  *out_value_fd = std::move(value_fd);
+  return success;
 }
 
 void SessionManagerImpl::StopSession(const std::string& in_unique_identifier) {

@@ -16,9 +16,29 @@
 namespace login_manager {
 namespace secret_util {
 
-// Maximum amount of data in bytes that can be sent through pipe using
-// |secret_util| methods.
-extern const size_t kSecretSizeLimit;
+// Maximum amount of data in bytes that can be sent through shared
+// memory using |secret_util| methods.
+extern const size_t kSharedMemorySecretSizeLimit;
+
+// Provides methods for reading and writing shared memory. These functions are
+// extracted into a class to be mockable from the tests.
+class SharedMemoryUtil {
+ public:
+  virtual ~SharedMemoryUtil();
+
+  // Creates a shared memory region that contains the given data. Returns a file
+  // descriptor of that region that can be passed to another process. Returns
+  // '-1'in case of failure.
+  virtual base::ScopedFD WriteDataToSharedMemory(
+      const std::vector<uint8_t>& data);
+
+  // Reads data from the |in_data_fd| shared memory region. Writes the result
+  // to |out_data|. Returns 'true' if the data was successfully read, 'false'
+  // otherwise.
+  virtual bool ReadDataFromSharedMemory(const base::ScopedFD& in_data_fd,
+                                        size_t data_size,
+                                        std::vector<uint8_t>* out_data);
+};
 
 // Creates a file descriptor pointing to a pipe that contains the given data.
 // The data size (of type |size_t|) will be inserted into the pipe first,
@@ -26,17 +46,11 @@ extern const size_t kSecretSizeLimit;
 // byte order.
 base::ScopedFD WriteSizeAndDataToPipe(const std::vector<uint8_t>& data);
 
-// Reads secret written in |in_secret_fd| and writes it to |out_secret|.
-// Secret must be preceded by |size_t| value representing its length. Returns
-// 'true' if the data was successfully read, 'false' otherwise.
-bool ReadSecretFromPipe(int in_secret_fd, std::vector<uint8_t>* out_secret);
-
 // Saves secret written in |in_secret_fd| to |provider|. Secret must be
 // preceded by |size_t| value representing its length. Returns 'true' if the
 // data was successfully read, 'false' otherwise.
-bool SaveSecretFromFileDescriptor(
-    password_provider::PasswordProviderInterface* provider,
-    const base::ScopedFD& in_secret_fd);
+bool SaveSecretFromPipe(password_provider::PasswordProviderInterface* provider,
+                        const base::ScopedFD& in_secret_fd);
 
 // Gets a SHA256 hash of the given data and returns its hexadicimal
 // representation. This is used to generate a unique string that is safe to use
