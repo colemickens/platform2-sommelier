@@ -42,8 +42,9 @@ class PowerButtonFilterTest : public testing::Test {
       std::string fp_type = is_fp_overlapped
                                 ? biod::kFingerprintSensorTypeOverlapped
                                 : biod::kFingerprintSensorTypeStandAlone;
-      cros_config_prefs_->SetString(
-          biod::kBiodConfigPath, biod::kFingerprintSensorTypePrefName, fp_type);
+      cros_config_prefs_->SetString(biod::kCrosConfigFPPath,
+                                    biod::kFingerprintSensorTypePrefName,
+                                    fp_type);
     }
     return PowerButtonFilter::create_power_button_filter_for_test(
         base::WrapUnique(power_manager_client_),

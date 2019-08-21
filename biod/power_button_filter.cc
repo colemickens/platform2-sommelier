@@ -86,8 +86,9 @@ void PowerButtonFilter::Init(
 
   // If unibuild is supported, check if |kFingerprintSensorTypePrefName| is set.
   if (cros_config_prefs_ &&
-      cros_config_prefs_->GetString(
-          kBiodConfigPath, kFingerprintSensorTypePrefName, &sensor_type_out)) {
+      cros_config_prefs_->GetString(kCrosConfigFPPath,
+                                    kFingerprintSensorTypePrefName,
+                                    &sensor_type_out)) {
     fp_on_power_button_ = (sensor_type_out == kFingerprintSensorTypeOverlapped);
   } else {
     // If unibuild is not supported or if |kFingerprintSensorTypePrefName| is
