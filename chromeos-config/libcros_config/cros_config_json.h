@@ -5,11 +5,19 @@
 #ifndef CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_JSON_H_
 #define CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_JSON_H_
 
-#include "chromeos-config/libcros_config/cros_config_impl.h"
-
 #include <memory>
 #include <string>
-#include <vector>
+
+#include <base/macros.h>
+#include "chromeos-config/libcros_config/cros_config_impl.h"
+#include "chromeos-config/libcros_config/identity_arm.h"
+#include "chromeos-config/libcros_config/identity_x86.h"
+
+namespace base {
+class FilePath;
+class Value;
+class DictionaryValue;
+}  // namespace base
 
 namespace brillo {
 

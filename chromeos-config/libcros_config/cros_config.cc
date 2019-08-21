@@ -5,19 +5,17 @@
 // Library to provide access to the Chrome OS master configuration
 
 #include "chromeos-config/libcros_config/cros_config.h"
-#include "chromeos-config/libcros_config/cros_config_json.h"
-#include "chromeos-config/libcros_config/identity_x86.h"
 
-#include <stdlib.h>
-
-#include <iostream>
-#include <sstream>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/sys_info.h>
+#include "chromeos-config/libcros_config/cros_config_interface.h"
+#include "chromeos-config/libcros_config/cros_config_json.h"
+#include "chromeos-config/libcros_config/identity_arm.h"
+#include "chromeos-config/libcros_config/identity_x86.h"
 
 namespace {
 const char kCustomizationId[] = "/sys/firmware/vpd/ro/customization_id";

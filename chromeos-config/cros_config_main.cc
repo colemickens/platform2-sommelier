@@ -46,8 +46,8 @@ int main(int argc, char* argv[]) {
     }
   } else {
     if (!cros_config.InitForTestX86(base::FilePath(FLAGS_test_file),
-                                 FLAGS_test_name, FLAGS_test_sku_id,
-                                 FLAGS_whitelabel_tag)) {
+                                    FLAGS_test_name, FLAGS_test_sku_id,
+                                    FLAGS_whitelabel_tag)) {
       return 1;
     }
   }

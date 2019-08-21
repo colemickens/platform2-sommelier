@@ -7,11 +7,13 @@
 #ifndef CHROMEOS_CONFIG_LIBCROS_CONFIG_IDENTITY_ARM_H_
 #define CHROMEOS_CONFIG_LIBCROS_CONFIG_IDENTITY_ARM_H_
 
-#include "chromeos-config/libcros_config/identity.h"
-
 #include <string>
 
-#include <base/files/file_path.h>
+#include "chromeos-config/libcros_config/identity.h"
+
+namespace base {
+class FilePath;
+}  // namespace base
 
 namespace brillo {
 

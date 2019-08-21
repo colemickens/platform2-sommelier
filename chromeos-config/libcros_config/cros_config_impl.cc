@@ -4,21 +4,11 @@
 
 // Library to provide access to the Chrome OS master configuration
 
-#include "chromeos-config/libcros_config/cros_config.h"
 #include "chromeos-config/libcros_config/cros_config_impl.h"
-#include "chromeos-config/libcros_config/identity.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 
-#include <iostream>
-#include <sstream>
-#include <string>
-
-#include <base/files/file_path.h>
-#include <base/files/file_util.h>
-#include <base/logging.h>
-#include <base/strings/string_split.h>
-#include <base/strings/string_util.h>
+#include "chromeos-config/libcros_config/cros_config_interface.h"
 
 namespace brillo {
 
@@ -28,8 +18,7 @@ bool CrosConfigInterface::IsLoggingEnabled() {
   return enabled;
 }
 
-CrosConfigImpl::CrosConfigImpl() : inited_(false) {}
-
+CrosConfigImpl::CrosConfigImpl() {}
 CrosConfigImpl::~CrosConfigImpl() {}
 
 bool CrosConfigImpl::InitCheck() const {

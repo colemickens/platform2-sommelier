@@ -7,15 +7,16 @@
 #ifndef CHROMEOS_CONFIG_LIBCROS_CONFIG_IDENTITY_X86_H_
 #define CHROMEOS_CONFIG_LIBCROS_CONFIG_IDENTITY_X86_H_
 
-#include "chromeos-config/libcros_config/identity.h"
-
 #include <string>
 
-#include <base/files/file_path.h>
-#include <base/files/file.h>
+#include <base/macros.h>
+#include "chromeos-config/libcros_config/identity.h"
+
+namespace base {
+class FilePath;
+}  // namespace base
 
 namespace brillo {
-struct SmbiosTable;
 
 class CrosConfigIdentityX86 : public CrosConfigIdentity {
  public:

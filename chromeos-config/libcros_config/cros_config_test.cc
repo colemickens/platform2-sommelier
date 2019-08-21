@@ -2,27 +2,29 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-/*
- * Tests for the CrosConfig library, which provides access to the Chrome OS
- * master configuration.
- */
+// Tests for the CrosConfig library, which provides access to the
+// Chrome OS master configuration.
 
-#include <stdlib.h>
+#include <cstdlib>
+#include <string>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <chromeos-config/libcros_config/cros_config.h>
 #include <gtest/gtest.h>
+#include "chromeos-config/libcros_config/cros_config.h"
 
-#define TEST_FILE "test.json"
-#define TEST_FILE_ARM "test_arm.json"
+namespace {
+constexpr char kTestFile[] = "test.json";
+constexpr char kTestFileArm[] = "test_arm.json";
+constexpr char kTestFileInvalid[] = "invalid_file.json";
+}  // namespace
 
 class CrosConfigTest : public testing::Test {
  protected:
   void InitConfig(const std::string name = "Another",
                   int sku_id = -1,
                   std::string whitelabel_name = "") {
-    base::FilePath filepath(TEST_FILE);
+    base::FilePath filepath(kTestFile);
     ASSERT_TRUE(
         cros_config_.InitForTestX86(filepath, name, sku_id, whitelabel_name));
   }
@@ -30,7 +32,7 @@ class CrosConfigTest : public testing::Test {
   void InitConfigArm(const std::string device_name = "google,some",
                      int sku_id = -1,
                      std::string whitelabel_name = "") {
-    base::FilePath filepath(TEST_FILE_ARM);
+    base::FilePath filepath(kTestFileArm);
     ASSERT_TRUE(
         cros_config_.InitForTestArm(filepath, device_name,
                                     sku_id, whitelabel_name));
@@ -40,12 +42,12 @@ class CrosConfigTest : public testing::Test {
 };
 
 TEST_F(CrosConfigTest, CheckMissingFile) {
-  base::FilePath filepath("invalid-file");
+  base::FilePath filepath(kTestFileInvalid);
   ASSERT_FALSE(cros_config_.InitForTestX86(filepath, "Another", -1, ""));
 }
 
 TEST_F(CrosConfigTest, CheckUnknownModel) {
-  base::FilePath filepath(TEST_FILE);
+  base::FilePath filepath(kTestFile);
   ASSERT_FALSE(cros_config_.InitForTestX86(filepath, "no-model", -1, ""));
 }
 

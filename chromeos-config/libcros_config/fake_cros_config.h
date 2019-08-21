@@ -5,15 +5,13 @@
 #ifndef CHROMEOS_CONFIG_LIBCROS_CONFIG_FAKE_CROS_CONFIG_H_
 #define CHROMEOS_CONFIG_LIBCROS_CONFIG_FAKE_CROS_CONFIG_H_
 
-#include "chromeos-config/libcros_config/cros_config_interface.h"
-
 #include <map>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/macros.h>
 #include <brillo/brillo_export.h>
+#include "chromeos-config/libcros_config/cros_config_interface.h"
 
 namespace brillo {
 

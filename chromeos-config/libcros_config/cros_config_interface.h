@@ -6,8 +6,8 @@
 #define CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_INTERFACE_H_
 
 #include <string>
-#include <vector>
 
+#include <base/logging.h>
 #include <base/macros.h>
 
 namespace brillo {

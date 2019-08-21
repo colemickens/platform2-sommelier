@@ -5,22 +5,16 @@
 // Look up identity information for the current device
 // Also provide a way to fake identity for testing.
 
-#include "chromeos-config/libcros_config/cros_config.h"
 #include "chromeos-config/libcros_config/identity_x86.h"
 
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
+#include <cstdio>
 #include <string>
-#include <vector>
 
-#include <base/logging.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
+#include "chromeos-config/libcros_config/cros_config_interface.h"
 
 namespace brillo {
 

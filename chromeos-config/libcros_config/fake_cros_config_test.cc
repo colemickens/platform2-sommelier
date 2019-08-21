@@ -2,11 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-/* Test for the CrosConfig Fake */
-
 #include <base/logging.h>
-#include <chromeos-config/libcros_config/fake_cros_config.h>
 #include <gtest/gtest.h>
+#include "chromeos-config/libcros_config/fake_cros_config.h"
 
 class FakeCrosConfigTest : public testing::Test {
  protected:

@@ -7,21 +7,15 @@
 #ifndef CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_H_
 #define CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_H_
 
-#include "chromeos-config/libcros_config/cros_config_impl.h"
-
-#include <map>
 #include <memory>
 #include <string>
-#include <vector>
 
-#include <base/files/file.h>
-#include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/values.h>
 #include <brillo/brillo_export.h>
+#include "chromeos-config/libcros_config/cros_config_impl.h"
+#include "chromeos-config/libcros_config/cros_config_interface.h"
 
 namespace base {
-class CommandLine;
 class FilePath;
 }  // namespace base
 
@@ -119,7 +113,6 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
 
   std::unique_ptr<CrosConfigImpl> cros_config_;
 
- private:
   // Runs a quick init check and prints an error to stderr if it fails.
   // @return true if OK, false on error.
   bool InitCheck() const;

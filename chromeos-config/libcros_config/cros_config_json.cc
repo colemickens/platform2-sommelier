@@ -7,21 +7,17 @@
 
 #include "chromeos-config/libcros_config/cros_config_json.h"
 
-#include <iostream>
-#include <sstream>
 #include <string>
 #include <vector>
 
-#include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
-#include <base/process/launch.h>
-#include <base/strings/stringprintf.h>
-#include <base/strings/string_util.h>
 #include <base/strings/string_split.h>
 #include <base/values.h>
+#include "chromeos-config/libcros_config/identity_arm.h"
+#include "chromeos-config/libcros_config/identity_x86.h"
 
 namespace brillo {
 

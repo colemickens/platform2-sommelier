@@ -9,6 +9,8 @@
 
 #include <string>
 
+#include <base/macros.h>
+
 namespace base {
 class FilePath;
 }  // namespace base

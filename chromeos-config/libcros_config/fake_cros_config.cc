@@ -5,6 +5,7 @@
 #include "chromeos-config/libcros_config/fake_cros_config.h"
 
 #include <base/logging.h>
+#include "chromeos-config/libcros_config/cros_config_interface.h"
 
 namespace brillo {
 
