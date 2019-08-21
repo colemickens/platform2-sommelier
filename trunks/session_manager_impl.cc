@@ -172,20 +172,26 @@ TPM_RC SessionManagerImpl::EncryptSalt(const std::string& salt,
     return TRUNKS_RC_SESSION_SETUP_ERROR;
   }
   crypto::ScopedRSA salting_key_rsa(RSA_new());
-  salting_key_rsa->e = BN_new();
-  if (!salting_key_rsa->e) {
-    LOG(ERROR) << "Error creating exponent for RSA: " << GetOpenSSLError();
+  crypto::ScopedBIGNUM n(BN_new()), e(BN_new());
+  if (!salting_key_rsa || !n || !e) {
+    LOG(ERROR) << "Failed to allocate RSA or BIGNUM: " << GetOpenSSLError();
     return TRUNKS_RC_SESSION_SETUP_ERROR;
   }
-  BN_set_word(salting_key_rsa->e, kWellKnownExponent);
-  salting_key_rsa->n =
-      BN_bin2bn(public_data.public_area.unique.rsa.buffer,
-                public_data.public_area.unique.rsa.size, nullptr);
-  if (!salting_key_rsa->n) {
+
+  if (!BN_set_word(e.get(), kWellKnownExponent) ||
+      !BN_bin2bn(public_data.public_area.unique.rsa.buffer,
+                 public_data.public_area.unique.rsa.size, n.get())) {
     LOG(ERROR) << "Error setting public area of rsa key: " << GetOpenSSLError();
     return TRUNKS_RC_SESSION_SETUP_ERROR;
   }
+  salting_key_rsa.get()->n = n.release();
+  salting_key_rsa.get()->e = e.release();
+
   crypto::ScopedEVP_PKEY salting_key(EVP_PKEY_new());
+  if (!salting_key) {
+    LOG(ERROR) << "Failed to allocate EVP_PKEY: " << GetOpenSSLError();
+    return TRUNKS_RC_SESSION_SETUP_ERROR;
+  }
   if (!EVP_PKEY_set1_RSA(salting_key.get(), salting_key_rsa.get())) {
     LOG(ERROR) << "Error setting up EVP_PKEY: " << GetOpenSSLError();
     return TRUNKS_RC_SESSION_SETUP_ERROR;
@@ -199,7 +205,8 @@ TPM_RC SessionManagerImpl::EncryptSalt(const std::string& salt,
   memcpy(oaep_label, kOaepLabelValue, kOaepLabelSize);
   crypto::ScopedEVP_PKEY_CTX salt_encrypt_context(
       EVP_PKEY_CTX_new(salting_key.get(), nullptr));
-  if (!EVP_PKEY_encrypt_init(salt_encrypt_context.get()) ||
+  if (!salt_encrypt_context ||
+      !EVP_PKEY_encrypt_init(salt_encrypt_context.get()) ||
       !EVP_PKEY_CTX_set_rsa_padding(salt_encrypt_context.get(),
                                     RSA_PKCS1_OAEP_PADDING) ||
       !EVP_PKEY_CTX_set_rsa_oaep_md(salt_encrypt_context.get(), EVP_sha256()) ||

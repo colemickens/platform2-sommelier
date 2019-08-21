@@ -1958,20 +1958,20 @@ TPM_RC TpmUtilityImpl::GetPublicRSAEndorsementKeyModulus(
     return SAPI_RC_CORRUPTED_DATA;
   }
 
-  RSA* rsa = pubkey->pkey.rsa;
+  crypto::ScopedRSA rsa(EVP_PKEY_get1_RSA(pubkey.get()));
   if (!rsa) {
     LOG(ERROR) << "Failed to get RSA from NVRAM";
     return SAPI_RC_CORRUPTED_DATA;
   }
 
-  size_t buf_len = RSA_size(rsa);
+  size_t buf_len = RSA_size(rsa.get());
   if (buf_len == 0) {
     LOG(ERROR) << "Invalid buffer size";
     return SAPI_RC_CORRUPTED_DATA;
   }
 
   std::vector<unsigned char> key(buf_len);
-  BIGNUM* bn = rsa->n;
+  const BIGNUM* bn = rsa->n;
   BN_bn2bin(bn, key.data());
   ekm->assign(reinterpret_cast<const char*>(key.data()), buf_len);
 

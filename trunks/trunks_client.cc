@@ -580,18 +580,26 @@ int main(int argc, char** argv) {
       trunks::TPM_RC result =
           trunks::Parse_TPMT_SIGNATURE(&signature, &tpm_signature, nullptr);
       if (result != trunks::TPM_RC_SUCCESS) {
-        LOG(ERROR) << "Error when parse TPM signing result.";
+        LOG(ERROR) << "Error when parsing TPM signing result.";
         return -1;
       }
 
       // Pack TPM structure to OpenSSL ECDSA_SIG structure.
       crypto::ScopedECDSA_SIG openssl_ecdsa(ECDSA_SIG_new());
-      openssl_ecdsa.get()->r =
-          BN_bin2bn(tpm_signature.signature.ecdsa.signature_r.buffer,
-                    tpm_signature.signature.ecdsa.signature_r.size, nullptr);
-      openssl_ecdsa.get()->s =
-          BN_bin2bn(tpm_signature.signature.ecdsa.signature_s.buffer,
-                    tpm_signature.signature.ecdsa.signature_s.size, nullptr);
+      crypto::ScopedBIGNUM r(BN_new()), s(BN_new());
+      if (!openssl_ecdsa || !r || !s) {
+        LOG(ERROR) << "Failed to allocate ECDSA_SIG or its BIGNUMs.";
+        return -1;
+      }
+      if (!BN_bin2bn(tpm_signature.signature.ecdsa.signature_r.buffer,
+                     tpm_signature.signature.ecdsa.signature_r.size, r.get()) ||
+          !BN_bin2bn(tpm_signature.signature.ecdsa.signature_s.buffer,
+                     tpm_signature.signature.ecdsa.signature_s.size, s.get())) {
+        LOG(ERROR) << "Error when parse TPM signing result.";
+        return -1;
+      }
+      openssl_ecdsa->r = r.release();
+      openssl_ecdsa->s = s.release();
 
       // Dump ECDSA_SIG to DER format
       unsigned char* openssl_buffer = nullptr;

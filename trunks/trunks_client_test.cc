@@ -1193,16 +1193,20 @@ void TrunksClientTest::GenerateRSAKeyPair(std::string* modulus,
                                           std::string* prime_factor,
                                           std::string* public_key) {
   crypto::ScopedRSA rsa(RSA_new());
+  CHECK(rsa);
   crypto::ScopedBIGNUM exponent(BN_new());
+  CHECK(exponent);
   CHECK(BN_set_word(exponent.get(), RSA_F4));
   CHECK(RSA_generate_key_ex(rsa.get(), 2048, exponent.get(), nullptr))
       << "Failed to generate RSA key: " << GetOpenSSLError();
   modulus->resize(RSA_size(rsa.get()), 0);
-  BN_bn2bin(rsa.get()->n,
-            reinterpret_cast<unsigned char*>(base::string_as_array(modulus)));
-  prime_factor->resize(BN_num_bytes(rsa.get()->p), 0);
-  BN_bn2bin(rsa.get()->p, reinterpret_cast<unsigned char*>(
-                              base::string_as_array(prime_factor)));
+  const BIGNUM* n = rsa.get()->n;
+  CHECK(BN_bn2bin(n,
+      reinterpret_cast<unsigned char*>(base::string_as_array(modulus))));
+  const BIGNUM* p = rsa.get()->p;
+  prime_factor->resize(BN_num_bytes(p), 0);
+  CHECK(BN_bn2bin(p,
+      reinterpret_cast<unsigned char*>(base::string_as_array(prime_factor))));
   if (public_key) {
     unsigned char* buffer = NULL;
     int length = i2d_RSAPublicKey(rsa.get(), &buffer);
@@ -1288,12 +1292,17 @@ bool TrunksClientTest::GetRSAPublicKeyFromHandle(
   }
   // Copied from cryptohome::PublicAreaToPublicKeyDER
   crypto::ScopedRSA rsa(RSA_new());
-  rsa.get()->e = BN_new();
-  CHECK(rsa.get()->e) << "Error setting exponent for RSA.";
-  BN_set_word(rsa.get()->e, 0x10001);
-  rsa.get()->n = BN_bin2bn(public_area.unique.rsa.buffer,
-                           public_area.unique.rsa.size, nullptr);
-  CHECK(rsa.get()->n) << "Error setting modulus for RSA.";
+  CHECK(rsa);
+  crypto::ScopedBIGNUM e(BN_new()), n(BN_new());
+  CHECK(e);
+  CHECK(n);
+  CHECK(BN_set_word(e.get(), 0x10001)) << "Error setting exponent for RSA.";
+  CHECK(BN_bin2bn(public_area.unique.rsa.buffer,
+                  public_area.unique.rsa.size,
+                  n.get())) << "Error setting modulus for RSA.";
+  rsa->n = n.release();
+  rsa->e = e.release();
+
   int der_length = i2d_RSAPublicKey(rsa.get(), nullptr);
   if (der_length < 0) {
     LOG(ERROR) << "Failed to get DER-encoded public key length.";
