@@ -18,6 +18,7 @@
 #include <base/strings/stringprintf.h>
 #include <google/protobuf/repeated_field.h>
 #include <grpcpp/grpcpp.h>
+#include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 
 #include "vm_tools/common/constants.h"
@@ -223,6 +224,16 @@ Container* VirtualMachine::GetContainerForName(
   return nullptr;
 }
 
+const OsRelease* VirtualMachine::GetOsReleaseForContainer(
+    const std::string& container_name) const {
+  auto iter = container_os_releases_.find(container_name);
+  if (iter == container_os_releases_.end()) {
+    return nullptr;
+  }
+
+  return &iter->second;
+}
+
 std::vector<std::string> VirtualMachine::GetContainerNames() {
   std::vector<std::string> retval;
   for (auto& container_entry : containers_) {
@@ -361,6 +372,21 @@ VirtualMachine::StartLxdContainerStatus VirtualMachine::StartLxdContainer(
     LOG(ERROR) << "StartContainer RPC failed: " << status.error_message();
     out_error->assign(status.error_message());
     return VirtualMachine::StartLxdContainerStatus::FAILED;
+  }
+
+  if (response.status() != tremplin::StartContainerResponse::RUNNING &&
+      response.status() != tremplin::StartContainerResponse::FAILED) {
+    // Set the os_release on the container. This information is known by
+    // tremplin even if the container hasn't started fully. Note also that
+    // Tremplin's version of OsRelease is not the same type as cicerone's, even
+    // though they currently have the same fields.
+    OsRelease os_release;
+    os_release.set_pretty_name(response.os_release().pretty_name());
+    os_release.set_name(response.os_release().name());
+    os_release.set_version(response.os_release().version());
+    os_release.set_version_id(response.os_release().version_id());
+    os_release.set_id(response.os_release().id());
+    container_os_releases_.emplace(container_name, os_release);
   }
 
   switch (response.status()) {

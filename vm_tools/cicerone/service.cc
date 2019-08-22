@@ -620,6 +620,10 @@ void Service::LxdContainerStarting(const uint32_t cid,
 
   dbus::Signal signal(kVmCiceroneInterface, kLxdContainerStartingSignal);
   vm_tools::cicerone::LxdContainerStartingSignal proto;
+  const OsRelease* os_release = vm->GetOsReleaseForContainer(container_name);
+  if (os_release) {
+    proto.mutable_os_release()->MergeFrom(*os_release);
+  }
   proto.mutable_vm_name()->swap(vm_name);
   proto.set_container_name(container_name);
   proto.mutable_owner_id()->swap(owner_id);
@@ -638,6 +642,7 @@ void Service::LxdContainerStarting(const uint32_t cid,
       proto.set_status(LxdContainerStartingSignal::UNKNOWN);
       break;
   }
+
   dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
   exported_object_->SendSignal(&signal);
   *result = true;
@@ -2116,6 +2121,11 @@ std::unique_ptr<dbus::Response> Service::StartLxdContainer(
       break;
   }
 
+  const OsRelease* os_release = vm->GetOsReleaseForContainer(container_name);
+  if (os_release) {
+    response.mutable_os_release()->MergeFrom(*os_release);
+  }
+
   response.set_failure_reason(error_msg);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
@@ -2357,7 +2367,8 @@ std::unique_ptr<dbus::Response> Service::CancelExportLxdContainer(
   CancelExportLxdContainerRequest request;
   CancelExportLxdContainerResponse response;
   if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse CancelExportLxdContainerRequest from message";
+    LOG(ERROR)
+        << "Unable to parse CancelExportLxdContainerRequest from message";
     response.set_status(CancelExportLxdContainerResponse::FAILED);
     response.set_failure_reason(
         "unable to parse CancelExportLxdContainerRequest from message");
@@ -2381,7 +2392,8 @@ std::unique_ptr<dbus::Response> Service::CancelExportLxdContainer(
                                    &error_msg);
 
   response.set_status(CancelExportLxdContainerResponse::UNKNOWN);
-  if (CancelExportLxdContainerResponse::Status_IsValid(static_cast<int>(status))) {
+  if (CancelExportLxdContainerResponse::Status_IsValid(
+          static_cast<int>(status))) {
     response.set_status(
         static_cast<CancelExportLxdContainerResponse::Status>(status));
   }
@@ -2461,7 +2473,8 @@ std::unique_ptr<dbus::Response> Service::CancelImportLxdContainer(
   CancelImportLxdContainerRequest request;
   CancelImportLxdContainerResponse response;
   if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse CancelImportLxdContainerRequest from message";
+    LOG(ERROR)
+        << "Unable to parse CancelImportLxdContainerRequest from message";
     response.set_status(CancelImportLxdContainerResponse::FAILED);
     response.set_failure_reason(
         "unable to parse CancelImportLxdContainerRequest from message");
@@ -2485,7 +2498,8 @@ std::unique_ptr<dbus::Response> Service::CancelImportLxdContainer(
                                    &error_msg);
 
   response.set_status(CancelImportLxdContainerResponse::UNKNOWN);
-  if (CancelImportLxdContainerResponse::Status_IsValid(static_cast<int>(status))) {
+  if (CancelImportLxdContainerResponse::Status_IsValid(
+          static_cast<int>(status))) {
     response.set_status(
         static_cast<CancelImportLxdContainerResponse::Status>(status));
   }

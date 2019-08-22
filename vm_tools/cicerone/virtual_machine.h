@@ -21,6 +21,8 @@
 namespace vm_tools {
 namespace cicerone {
 
+class OsRelease;
+
 // Represents a single instance of a virtual machine.
 class VirtualMachine {
  public:
@@ -200,6 +202,13 @@ class VirtualMachine {
   // The pointer returned is owned by VirtualMachine and may not be stored.
   Container* GetContainerForName(const std::string& container_name);
 
+  // Returns a pointer to the OsRelease proto associated with the passed in
+  // |container_name|. Returns nullptr if the container does not exist..
+  //
+  // The pointer returned is owned by VirtualMachine and may not be stored.
+  const OsRelease* GetOsReleaseForContainer(
+      const std::string& container_name) const;
+
   // Creates an LXD container.
   CreateLxdContainerStatus CreateLxdContainer(const std::string& container_name,
                                               const std::string& image_server,
@@ -280,6 +289,10 @@ class VirtualMachine {
   // may get redundant requests to start a container that is already running
   // and we don't want to invalidate an in-use token.
   std::map<std::string, std::unique_ptr<Container>> pending_containers_;
+
+  // Mapping of container name to OsRelease proto as reported by tremplin.
+  // This data can change during a session if a user upgrades their container.
+  std::map<std::string, OsRelease> container_os_releases_;
 
   // The stub for the tremplin instance in this VM.
   std::unique_ptr<vm_tools::tremplin::Tremplin::StubInterface> tremplin_stub_;
