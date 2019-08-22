@@ -27,6 +27,7 @@
 // usr/include/sys/syslog.h overrides the LOG_WARNING constant in
 // base/logging.h, causing LOG(WARNING) to not compile.
 // TODO(https://crbug.com/849450): Remove this once bug is fixed.
+#undef LOG_INFO
 #undef LOG_WARNING
 
 struct JournalEntry {
@@ -45,6 +46,9 @@ class Journal {
     // anomalies, but so be it---it's too hard to keep track reliably of the
     // last parsed position in the syslog.
     SeekToEnd();
+    // NOTE: This message is consumed by tast tests to determine when the
+    // anomaly detector has started. Don't change it without changing them.
+    LOG(INFO) << "Opened journal and sought to end";
   }
 
   JournalEntry GetNextEntry() {
