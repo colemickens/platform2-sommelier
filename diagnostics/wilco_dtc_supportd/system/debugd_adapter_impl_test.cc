@@ -1,0 +1,85 @@
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include <memory>
+#include <string>
+
+#include <base/bind.h>
+#include <base/bind_helpers.h>
+#include <base/callback.h>
+#include <base/macros.h>
+#include <brillo/errors/error.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
+#include "debugd/dbus-proxy-mocks.h"
+#include "diagnostics/wilco_dtc_supportd/system/debugd_adapter.h"
+#include "diagnostics/wilco_dtc_supportd/system/debugd_adapter_impl.h"
+
+using ::testing::_;
+using ::testing::Invoke;
+using ::testing::StrictMock;
+using ::testing::WithArg;
+
+namespace diagnostics {
+
+namespace {
+
+constexpr char kAttributes[] = "attributes";
+
+class MockCallback {
+ public:
+  MOCK_METHOD2(OnSmartDataCallback,
+               void(const std::string& result, brillo::Error* error));
+};
+
+}  // namespace
+
+class DebugdAdapterImplTest : public ::testing::Test {
+ public:
+  DebugdAdapterImplTest()
+      : debugd_proxy_mock_(new StrictMock<org::chromium::debugdProxyMock>()),
+        debugd_adapter_(std::make_unique<DebugdAdapterImpl>(
+            std::unique_ptr<org::chromium::debugdProxyMock>(
+                debugd_proxy_mock_))) {}
+
+ protected:
+  StrictMock<MockCallback> callback_;
+
+  // Owned by |debugd_adapter_|.
+  StrictMock<org::chromium::debugdProxyMock>* debugd_proxy_mock_;
+
+  std::unique_ptr<DebugdAdapter> debugd_adapter_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(DebugdAdapterImplTest);
+};
+
+// Tests that GetSmartAttributes calls callback with output on success.
+TEST_F(DebugdAdapterImplTest, GetSmartAttributes) {
+  constexpr char kResult[] = "S.M.A.R.T. status";
+  EXPECT_CALL(*debugd_proxy_mock_, SmartctlAsync(kAttributes, _, _, _))
+      .WillOnce(WithArg<1>(Invoke(
+          [kResult](const base::Callback<void(const std::string& /* result */)>&
+                        success_callback) { success_callback.Run(kResult); })));
+  EXPECT_CALL(callback_, OnSmartDataCallback(kResult, nullptr));
+  debugd_adapter_->GetSmartAttributes(base::Bind(
+      &MockCallback::OnSmartDataCallback, base::Unretained(&callback_)));
+}
+
+// Tests that GetSmartAttributes calls callback with error on failure.
+TEST_F(DebugdAdapterImplTest, GetSmartAttributesError) {
+  const brillo::ErrorPtr kError = brillo::Error::Create(FROM_HERE, "", "", "");
+  EXPECT_CALL(*debugd_proxy_mock_, SmartctlAsync(kAttributes, _, _, _))
+      .WillOnce(WithArg<2>(Invoke(
+          [error = kError.get()](
+              const base::Callback<void(brillo::Error*)>& error_callback) {
+            error_callback.Run(error);
+          })));
+  EXPECT_CALL(callback_, OnSmartDataCallback("", kError.get()));
+  debugd_adapter_->GetSmartAttributes(base::Bind(
+      &MockCallback::OnSmartDataCallback, base::Unretained(&callback_)));
+}
+
+}  // namespace diagnostics

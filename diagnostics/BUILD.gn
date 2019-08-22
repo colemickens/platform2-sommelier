@@ -152,6 +152,7 @@ pkg_config("libwilco_dtc_supportd_pkg_deps") {
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
     "libmojo-${libbase_ver}",
+    "libdebugd-client",
     "system_api",
   ]
 }
@@ -169,6 +170,7 @@ static_library("libwilco_dtc_supportd") {
     "wilco_dtc_supportd/ec_constants.cc",
     "wilco_dtc_supportd/json_utils.cc",
     "wilco_dtc_supportd/mojo_utils.cc",
+    "wilco_dtc_supportd/system/debugd_adapter_impl.cc",
     "wilco_dtc_supportd/vpd_constants.cc",
     "wilco_dtc_supportd/wilco_dtc_supportd_core.cc",
     "wilco_dtc_supportd/wilco_dtc_supportd_core_delegate_impl.cc",
@@ -356,6 +358,7 @@ if (use.test) {
     pkg_deps = [
       "libchrome-${libbase_ver}",
       "libchrome-test-${libbase_ver}",
+      "libdebugd-client-test",
     ]
   }
 
@@ -377,6 +380,8 @@ if (use.test) {
       "wilco_dtc_supportd/mock_mojom_wilco_dtc_supportd_client.cc",
       "wilco_dtc_supportd/mojo_test_utils.cc",
       "wilco_dtc_supportd/mojo_utils_test.cc",
+      "wilco_dtc_supportd/system/debugd_adapter_impl_test.cc",
+      "wilco_dtc_supportd/system/mock_debugd_adapter.cc",
       "wilco_dtc_supportd/wilco_dtc_supportd_core_test.cc",
       "wilco_dtc_supportd/wilco_dtc_supportd_dbus_service_test.cc",
       "wilco_dtc_supportd/wilco_dtc_supportd_ec_event_service_test.cc",
