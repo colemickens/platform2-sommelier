@@ -25,15 +25,15 @@ class CrosConfigInterface {
   // @path: Path to property ("/" for a property at the top of the model
   // hierarchy). The path specifies the node that contains the property to be
   // accessed.
-  // @prop: Name of property to look up. This is separate from the path since
-  // nodes and properties are separate concepts in device tree, and mixing
+  // @property: Name of property to look up. This is separate from the path
+  // since nodes and properties are separate concepts in device tree, and mixing
   // nodes and properties in paths is frowned upon. Also it is typical when
   // reading properties to access them all from a single node, so having the
   // path the same in each case allows a constant to be used for @path.
   // @val_out: returns the string value found, if any
   // @return true on success, false on failure (e.g. no such property)
   virtual bool GetString(const std::string& path,
-                         const std::string& prop,
+                         const std::string& property,
                          std::string* val_out) = 0;
 
   // Return true iff library debug logging is enabled.

@@ -25,15 +25,15 @@ class BRILLO_EXPORT FakeCrosConfig : public CrosConfigInterface {
 
   // Sets up string to return for a future call to GetString().
   // @path: Path to property (e.g. "/")
-  // @prop: Name of property to set up
+  // @property: Name of property to set up
   // @val: The string to return when this property is looked up.
   void SetString(const std::string& path,
-                 const std::string& prop,
+                 const std::string& property,
                  const std::string& val);
 
   // CrosConfigInterface:
   bool GetString(const std::string& path,
-                 const std::string& prop,
+                 const std::string& property,
                  std::string* val_out) override;
 
  private:

@@ -121,12 +121,12 @@ bool CrosConfig::InitModel(const int sku_id) {
 }
 
 bool CrosConfig::GetString(const std::string& path,
-                           const std::string& prop,
+                           const std::string& property,
                            std::string* val_out) {
   if (!InitCheck()) {
     return false;
   }
-  return cros_config_->GetString(path, prop, val_out);
+  return cros_config_->GetString(path, property, val_out);
 }
 
 bool CrosConfig::SelectConfigByIdentityX86(

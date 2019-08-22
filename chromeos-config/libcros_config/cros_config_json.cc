@@ -122,7 +122,7 @@ bool CrosConfigJson::SelectConfigByIdentityX86(
 }
 
 bool CrosConfigJson::GetString(const std::string& path,
-                               const std::string& prop,
+                               const std::string& property,
                                std::string* val_out) {
   if (!InitCheck()) {
     return false;
@@ -155,19 +155,19 @@ bool CrosConfigJson::GetString(const std::string& path,
 
   if (valid_path) {
     std::string value;
-    if (attr_dict->GetString(prop, &value)) {
+    if (attr_dict->GetString(property, &value)) {
       val_out->assign(value);
       return true;
     }
 
     int int_value;
-    if (attr_dict->GetInteger(prop, &int_value)) {
+    if (attr_dict->GetInteger(property, &int_value)) {
       val_out->assign(std::to_string(int_value));
       return true;
     }
 
     bool bool_value;
-    if (attr_dict->GetBoolean(prop, &bool_value)) {
+    if (attr_dict->GetBoolean(property, &bool_value)) {
       if (bool_value) {
         val_out->assign("true");
       } else {

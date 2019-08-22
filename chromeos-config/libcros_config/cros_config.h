@@ -73,7 +73,7 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
 
   // CrosConfigInterface:
   bool GetString(const std::string& path,
-                 const std::string& prop,
+                 const std::string& property,
                  std::string* val_out) override;
 
  private:
