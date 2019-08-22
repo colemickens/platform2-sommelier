@@ -13,6 +13,7 @@
 #include <dbus/cros_healthd/dbus-constants.h>
 #include <mojo/edk/embedder/embedder.h>
 
+#include "diagnostics/cros_healthd/utils/battery_utils.h"
 #include "diagnostics/cros_healthd/utils/disk_utils.h"
 #include "mojo/cros_healthd_telemetry.mojom.h"
 
@@ -223,7 +224,7 @@ void CrosHealthdMojoService::set_connection_error_handler(
 
 void CrosHealthdMojoService::ProbeBatteryInfo(
     const ProbeBatteryInfoCallback& callback) {
-  NOTIMPLEMENTED();
+  callback.Run(FetchBatteryInfo());
 }
 
 void CrosHealthdMojoService::ProbeNonRemovableBlockDeviceInfo(
