@@ -1571,9 +1571,8 @@ ErrorType SambaInterface::WriteConfiguration() const {
   }
 
   const base::FilePath config_path(paths_->Get(Path::CONFIG_DAT));
-  const int config_size = static_cast<int>(config_blob.size());
-  if (base::WriteFile(config_path, config_blob.data(), config_size) !=
-      config_size) {
+  if (!base::ImportantFileWriter::WriteFileAtomically(config_path,
+                                                      config_blob)) {
     LOG(ERROR) << "Failed to write configuration file '" << config_path.value()
                << "'";
     return ERROR_LOCAL_IO;
