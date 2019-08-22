@@ -487,69 +487,22 @@ TEST_F(ServiceTest, LoadAutoConnect) {
   EXPECT_CALL(*dhcp_props, Load(&storage, storage_id_)).Times(AnyNumber());
   service_->dhcp_properties_ = std::move(dhcp_props);
 
-  // Three of each expectation so we can test Favorite == unset, false, true.
   EXPECT_CALL(storage, GetBool(storage_id_, Service::kStorageAutoConnect, _))
       .WillOnce(Return(false))
-      .WillOnce(Return(false))
-      .WillOnce(Return(false))
-      .WillOnce(DoAll(SetArgPointee<2>(false), Return(true)))
-      .WillOnce(DoAll(SetArgPointee<2>(false), Return(true)))
-      .WillOnce(DoAll(SetArgPointee<2>(false), Return(true)))
-      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)))
-      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)))
-      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
-  EXPECT_CALL(storage, GetBool(storage_id_, Service::kStorageFavorite, _))
-      .WillOnce(Return(false))
-      .WillOnce(DoAll(SetArgPointee<2>(false), Return(true)))
-      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)))
-      .WillOnce(Return(false))
-      .WillOnce(DoAll(SetArgPointee<2>(false), Return(true)))
-      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)))
-      .WillOnce(Return(false))
       .WillOnce(DoAll(SetArgPointee<2>(false), Return(true)))
       .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
 
-  // AutoConnect is unset, Favorite is unset.
+  // AutoConnect is unset.
   EXPECT_TRUE(service_->Load(&storage));
   EXPECT_FALSE(service_->auto_connect());
   EXPECT_FALSE(service_->retain_auto_connect());
 
-  // AutoConnect is unset, Favorite is false.
-  EXPECT_TRUE(service_->Load(&storage));
-  EXPECT_FALSE(service_->auto_connect());
-  EXPECT_FALSE(service_->retain_auto_connect());
-
-  // AutoConnect is unset, Favorite is true.
+  // AutoConnect is false.
   EXPECT_TRUE(service_->Load(&storage));
   EXPECT_FALSE(service_->auto_connect());
   EXPECT_TRUE(service_->retain_auto_connect());
 
-  // AutoConnect is false, Favorite is unset.
-  EXPECT_TRUE(service_->Load(&storage));
-  EXPECT_FALSE(service_->auto_connect());
-  EXPECT_TRUE(service_->retain_auto_connect());
-
-  // AutoConnect is false, Favorite is false.
-  EXPECT_TRUE(service_->Load(&storage));
-  EXPECT_FALSE(service_->auto_connect());
-  EXPECT_FALSE(service_->retain_auto_connect());
-
-  // AutoConnect is false, Favorite is true.
-  EXPECT_TRUE(service_->Load(&storage));
-  EXPECT_FALSE(service_->auto_connect());
-  EXPECT_TRUE(service_->retain_auto_connect());
-
-  // AutoConnect is true, Favorite is unset.
-  EXPECT_TRUE(service_->Load(&storage));
-  EXPECT_TRUE(service_->auto_connect());
-  EXPECT_TRUE(service_->retain_auto_connect());
-
-  // AutoConnect is true, Favorite is false (invalid case).
-  EXPECT_TRUE(service_->Load(&storage));
-  EXPECT_TRUE(service_->auto_connect());
-  EXPECT_FALSE(service_->retain_auto_connect());
-
-  // AutoConnect is true, Favorite is true.
+  // AutoConnect is true.
   EXPECT_TRUE(service_->Load(&storage));
   EXPECT_TRUE(service_->auto_connect());
   EXPECT_TRUE(service_->retain_auto_connect());
@@ -595,8 +548,6 @@ TEST_F(ServiceTest, Save) {
   EXPECT_CALL(storage, DeleteKey(storage_id_, _))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(storage, DeleteKey(storage_id_, Service::kStorageFavorite))
-      .WillOnce(Return(true));
   EXPECT_CALL(storage, DeleteKey(storage_id_, Service::kStorageAutoConnect))
       .WillOnce(Return(true));
   EXPECT_CALL(storage, SetBool(storage_id_, _, _)).Times(AnyNumber());
@@ -619,8 +570,6 @@ TEST_F(ServiceTest, RetainAutoConnect) {
   EXPECT_CALL(storage, DeleteKey(storage_id_, _))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(storage, DeleteKey(storage_id_, Service::kStorageFavorite))
-      .Times(2);
   EXPECT_CALL(storage, DeleteKey(storage_id_, Service::kStorageAutoConnect))
       .Times(0);
   EXPECT_CALL(storage, SetBool(storage_id_, _, _)).Times(AnyNumber());

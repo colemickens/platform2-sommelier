@@ -571,10 +571,35 @@ Properties 	string ActiveProfile [readwrite]
 
 		array{object} Services [readonly]
 
-			List of service object paths that are visible. The
-			list is sorted internally to have the service with
-			the default route always first and then the favorite
-			services followed by scan results.
+			List of Service object paths that are visible. The first
+			Service is always the primary connected Service on the
+			system (if there is one). Services in a more connected
+			state always come before Services in a less connected
+			state. In order:
+			  * "online"
+			  * "ready"
+			  * "no-connectivity", "redirect-found", or "portal-suspected"
+			  * "association" or "configuration"
+			  * "idle" or "disconnecting"
+			  * "failure"
+
+			Between unconnected Services, connectable Services come
+			before unconnectable Services. Within the same state
+			"bucket", Services are ordered based on Technology type
+			(see SetServiceOrder). Services in the same state bucket
+			and with the same Technology type are then compared with
+			the following (in order):
+			  * "Priority"
+			  * "ManagedCredentials"
+			  * "AutoConnect"
+			  * "Security" (currently only for WiFi)
+			  * "Profile" ordering
+			  * If the Service has ever connected
+			  * "Strength"
+
+			Finally, if two Services have all of those in common, the
+			Service that was created first will be placed before the
+			other Service.
 
 			This list represents the available services for the
 			current selected profile. If the profile gets changed

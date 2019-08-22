@@ -69,7 +69,6 @@ class Service : public base::RefCounted<Service> {
   static const char kStorageCheckPortal[];
   static const char kStorageDNSAutoFallback[];
   static const char kStorageError[];
-  static const char kStorageFavorite[];
   static const char kStorageGUID[];
   static const char kStorageHasEverConnected[];
   static const char kStorageName[];

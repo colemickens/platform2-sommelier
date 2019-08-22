@@ -94,7 +94,6 @@ const char Service::kStorageAutoConnect[] = "AutoConnect";
 const char Service::kStorageCheckPortal[] = "CheckPortal";
 const char Service::kStorageDNSAutoFallback[] = "DNSAutoFallback";
 const char Service::kStorageError[] = "Error";
-const char Service::kStorageFavorite[] = "Favorite";
 const char Service::kStorageGUID[] = "GUID";
 const char Service::kStorageHasEverConnected[] = "HasEverConnected";
 const char Service::kStorageName[] = "Name";
@@ -541,8 +540,6 @@ bool Service::Load(StoreInterface* storage) {
   auto_connect_ = IsAutoConnectByDefault();
   retain_auto_connect_ =
       storage->GetBool(id, kStorageAutoConnect, &auto_connect_);
-  // The legacy "Favorite" flag will override retain_auto_connect_ if present.
-  storage->GetBool(id, kStorageFavorite, &retain_auto_connect_);
 
   LoadString(storage, id, kStorageCheckPortal, kCheckPortalAuto,
              &check_portal_);
@@ -629,9 +626,6 @@ bool Service::Save(StoreInterface* storage) {
   } else {
     storage->DeleteKey(id, kStorageAutoConnect);
   }
-
-  // Remove this legacy flag.
-  storage->DeleteKey(id, kStorageFavorite);
 
   if (check_portal_ == kCheckPortalAuto) {
     storage->DeleteKey(id, kStorageCheckPortal);
