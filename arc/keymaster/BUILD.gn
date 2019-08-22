@@ -59,6 +59,7 @@ shared_library("libarckeymaster_context") {
   pkg_deps = [ "libchrome-${libbase_ver}" ]
   configs += [
     # Needed since the keymaster context doesn't follow CrOS's guidelines.
+    # gnlint: disable=GnLintVisibilityFlags
     "//common-mk:visibility_default",
     ":boringssl_config",
   ]
