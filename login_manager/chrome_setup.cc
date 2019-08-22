@@ -350,6 +350,9 @@ void AddSystemFlags(ChromiumCommandBuilder* builder) {
   if (builder->UseFlagIsSet("ml_service"))
     builder->AddFeatureEnableOverride("MachineLearningService");
 
+  if (builder->UseFlagIsSet("smartdim"))
+    builder->AddFeatureEnableOverride("SmartDim");
+
   // On developer systems, set a flag to let the browser know.
   if (builder->is_developer_end_user())
     builder->AddArg("--system-developer-mode");
