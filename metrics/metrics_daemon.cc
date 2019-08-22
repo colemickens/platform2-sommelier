@@ -517,7 +517,6 @@ DBusHandlerResult MetricsDaemon::MessageFilter(DBusConnection* connection,
   // Signal messages always have interfaces.
   const std::string interface(dbus_message_get_interface(message));
   const std::string member(dbus_message_get_member(message));
-  DLOG(INFO) << "Got " << interface << "." << member << " D-Bus signal";
 
   MetricsDaemon* daemon = static_cast<MetricsDaemon*>(user_data);
 
