@@ -24,6 +24,7 @@
 #include "shill/callbacks.h"
 #include "shill/data_types.h"
 #include "shill/dhcp/dhcp_properties.h"
+#include "shill/mockable.h"
 #include "shill/net/event_history.h"
 #include "shill/net/shill_time.h"
 #include "shill/property_store.h"
@@ -159,24 +160,22 @@ class Service : public base::RefCounted<Service> {
   // AutoConnect MAY issue RPCs immediately. So AutoConnect MUST NOT
   // be called from a D-Bus signal handler context.
   virtual void AutoConnect();
-  // Queue up a connection attempt. This is virtual solely for testing
-  // purposes. Derived classes MUST NOT override this method. Child-specific
-  // behavior is implemented in OnConnect.
-  virtual void Connect(Error* error, const char* reason);
-  // Disconnect this service. Do not override this method.
-  virtual void Disconnect(Error* error, const char* reason);
+  // Queue up a connection attempt. Child-specific behavior is implemented in
+  // OnConnect.
+  mockable void Connect(Error* error, const char* reason);
+  // Disconnect this service.
+  mockable void Disconnect(Error* error, const char* reason);
   // Disconnect this service via Disconnect(). Marks the service as having
-  // failed with |failure|. Do not override this method.
-  virtual void DisconnectWithFailure(ConnectFailure failure,
+  // failed with |failure|.
+  mockable void DisconnectWithFailure(ConnectFailure failure,
                                      Error* error,
                                      const char* reason);
   // Disconnect this service via Disconnect(). The service will not be eligible
-  // for auto-connect until a subsequent call to Connect, or Load.  Do not
-  // override this method.
-  virtual void UserInitiatedDisconnect(const char* reason, Error* error);
+  // for auto-connect until a subsequent call to Connect, or Load.
+  mockable void UserInitiatedDisconnect(const char* reason, Error* error);
   // Connect to this service via Connect(). This function indicates that the
   // connection attempt is user-initiated.
-  virtual void UserInitiatedConnect(const char* reason, Error* error);
+  mockable void UserInitiatedConnect(const char* reason, Error* error);
 
   // The default implementation returns the error kInvalidArguments.
   virtual void ActivateCellularModem(const std::string& carrier,
@@ -185,12 +184,12 @@ class Service : public base::RefCounted<Service> {
   // The default implementation returns the error kNotSupported.
   virtual void CompleteCellularActivation(Error* error);
 
-  virtual bool IsActive(Error* error);
+  mockable bool IsActive(Error* error);
 
   // Returns whether services of this type should be auto-connect by default.
   virtual bool IsAutoConnectByDefault() const { return false; }
 
-  virtual ConnectState state() const { return state_; }
+  mockable ConnectState state() const { return state_; }
   // Updates the state of the Service and alerts the manager.  Also
   // clears |failure_| if the new state isn't a failure.
   virtual void SetState(ConnectState state);
@@ -198,11 +197,11 @@ class Service : public base::RefCounted<Service> {
 
   // Set probe URL hint. This function is called when a redirect URL is found
   // during portal detection.
-  virtual void SetProbeUrl(const std::string& probe_url_string);
+  mockable void SetProbeUrl(const std::string& probe_url_string);
 
   // Set portal detection failure phase and status (reason). This function
   // is called when portal detection failed for the Service.
-  virtual void SetPortalDetectionFailure(const std::string& phase,
+  mockable void SetPortalDetectionFailure(const std::string& phase,
                                          const std::string& status);
 
   // State utility functions
@@ -210,37 +209,37 @@ class Service : public base::RefCounted<Service> {
   static bool IsConnectingState(ConnectState state);
   static bool IsPortalledState(ConnectState state);
 
-  virtual bool IsConnected() const;
-  virtual bool IsConnecting() const;
+  mockable bool IsConnected() const;
+  mockable bool IsConnecting() const;
   bool IsDisconnecting() const;
-  virtual bool IsPortalled() const;
-  virtual bool IsFailed() const;
-  virtual bool IsInFailState() const;
-  virtual bool IsOnline() const;
+  mockable bool IsPortalled() const;
+  mockable bool IsFailed() const;
+  mockable bool IsInFailState() const;
+  mockable bool IsOnline() const;
 
   // Return true if service is allowed to automatically switch to fallback
   // DNS server.
-  virtual bool is_dns_auto_fallback_allowed() const {
+  mockable bool is_dns_auto_fallback_allowed() const {
     return is_dns_auto_fallback_allowed_;
   }
 
-  virtual bool link_monitor_disabled() const { return link_monitor_disabled_; }
+  mockable bool link_monitor_disabled() const { return link_monitor_disabled_; }
 
-  virtual ConnectFailure failure() const { return failure_; }
+  mockable ConnectFailure failure() const { return failure_; }
   // Sets the |previous_error_| property based on the current |failure_|, and
   // sets a serial number for this failure.
-  virtual void SaveFailure();
+  mockable void SaveFailure();
   // Records the failure mode and time. Sets the Service state to "Failure".
-  virtual void SetFailure(ConnectFailure failure);
+  mockable void SetFailure(ConnectFailure failure);
   // Records the failure mode and time. Sets the Service state to "Idle".
   // Avoids showing a failure mole in the UI.
-  virtual void SetFailureSilent(ConnectFailure failure);
+  mockable void SetFailureSilent(ConnectFailure failure);
 
   // Returns a string that is guaranteed to uniquely identify this Service
   // instance.
   const std::string& unique_name() const { return unique_name_; }
 
-  virtual RpcIdentifier GetRpcIdentifier() const;
+  mockable RpcIdentifier GetRpcIdentifier() const;
 
   // Returns the unique persistent storage identifier for the service.
   virtual std::string GetStorageIdentifier() const = 0;
@@ -281,33 +280,33 @@ class Service : public base::RefCounted<Service> {
   // store, except for those in parameters_ignored_for_configure_.
   // Returns an error in |error| if one or more parameter set attempts
   // fails, but will only return the first error.
-  virtual void Configure(const KeyValueStore& args, Error* error);
+  mockable void Configure(const KeyValueStore& args, Error* error);
 
   // Iterate over all the properties in |args| and test for an identical
   // value in this service object's store.  Returns false if one or more
   // keys in |args| do not exist or have different values, true otherwise.
-  virtual bool DoPropertiesMatch(const KeyValueStore& args) const;
+  mockable bool DoPropertiesMatch(const KeyValueStore& args) const;
 
   // Returns whether portal detection is explicitly disabled on this service
   // via a property set on it.
-  virtual bool IsPortalDetectionDisabled() const;
+  mockable bool IsPortalDetectionDisabled() const;
 
   // Returns whether portal detection is set to follow the default setting
   // of this service's technology via a property set on it.
-  virtual bool IsPortalDetectionAuto() const;
+  mockable bool IsPortalDetectionAuto() const;
 
   // Returns true if the service is persisted to a non-ephemeral profile.
-  virtual bool IsRemembered() const;
+  mockable bool IsRemembered() const;
 
   // Returns true if the service RPC identifier should be part of the
   // manager's advertised services list, false otherwise.
   virtual bool IsVisible() const { return true; }
 
   // Returns true if there is a proxy configuration set on this service.
-  virtual bool HasProxyConfig() const { return !proxy_config_.empty(); }
+  mockable bool HasProxyConfig() const { return !proxy_config_.empty(); }
 
   // Returns whether this service has had recent connection issues.
-  virtual bool HasRecentConnectionIssues();
+  mockable bool HasRecentConnectionIssues();
 
   // If the AutoConnect property has not already been marked as saved, set
   // its value to true and mark it saved.
@@ -317,30 +316,30 @@ class Service : public base::RefCounted<Service> {
   // an HTTP Proxy that will utilize this service's connection to serve
   // requests.
   virtual void SetConnection(const ConnectionRefPtr& connection);
-  virtual const ConnectionRefPtr& connection() const { return connection_; }
+  mockable const ConnectionRefPtr& connection() const { return connection_; }
 
   // Emit service's IP config change event to chrome.
-  virtual void NotifyIPConfigChanges();
+  mockable void NotifyIPConfigChanges();
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   // Examines the EAP credentials for the service and returns true if a
   // connection attempt can be made.
-  virtual bool Is8021xConnectable() const;
+  mockable bool Is8021xConnectable() const;
 
   // Add an EAP certification id |name| at position |depth| in the stack.
   // Returns true if entry was added, false otherwise.
-  virtual bool AddEAPCertification(const std::string& name, size_t depth);
+  mockable bool AddEAPCertification(const std::string& name, size_t depth);
   // Clear all EAP certification elements.
-  virtual void ClearEAPCertification();
+  mockable void ClearEAPCertification();
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   // Returns true if this service contains a IP address in its static IP
   // parameters, false otherwise.
-  virtual bool HasStaticIPAddress() const;
+  mockable bool HasStaticIPAddress() const;
 
   // Returns true if this service contains nameservers in its static IP
   // parameters, false otherwise.
-  virtual bool HasStaticNameServers() const;
+  mockable bool HasStaticNameServers() const;
 
   // The inherited class that needs to send metrics after the service has
   // transitioned to the ready state should override this method.
@@ -363,7 +362,7 @@ class Service : public base::RefCounted<Service> {
   // value, and alerts the manager if necessary.
   void SetConnectableFull(bool connectable);
 
-  virtual bool explicitly_disconnected() const {
+  mockable bool explicitly_disconnected() const {
     return explicitly_disconnected_;
   }
 
@@ -402,11 +401,11 @@ class Service : public base::RefCounted<Service> {
   // it prints as a number.
   uint16_t strength() const { return strength_; }
 
-  virtual Technology technology() const { return technology_; }
+  mockable Technology technology() const { return technology_; }
   std::string GetTechnologyString() const;
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-  virtual const EapCredentials* eap() const { return eap_.get(); }
+  mockable const EapCredentials* eap() const { return eap_.get(); }
   void SetEapCredentials(EapCredentials* eap);
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
@@ -464,7 +463,7 @@ class Service : public base::RefCounted<Service> {
 
   // Notification that occurs when a single property has been changed via
   // the RPC adaptor.
-  virtual void OnPropertyChanged(const std::string& property);
+  mockable void OnPropertyChanged(const std::string& property);
 
   // Notification that occurs when an EAP credential property has been
   // changed.  Some service subclasses can choose to respond to this
@@ -487,7 +486,7 @@ class Service : public base::RefCounted<Service> {
   virtual void OnAfterResume();
 
   // Called by the manager once when entering dark resume.
-  virtual void OnDarkResume();
+  mockable void OnDarkResume();
 
   // Called by the manager when the default physical service's state has
   // changed.
@@ -495,7 +494,7 @@ class Service : public base::RefCounted<Service> {
 
   // Called by the manager to clear remembered state of being explicitly
   // disconnected.
-  virtual void ClearExplicitlyDisconnected();
+  mockable void ClearExplicitlyDisconnected();
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EapCredentials* mutable_eap() { return eap_.get(); }
@@ -535,7 +534,7 @@ class Service : public base::RefCounted<Service> {
   // this service.
   std::map<RpcIdentifier, std::string> GetLoadableProfileEntries();
 
-  virtual std::string CalculateState(Error* error);
+  mockable std::string CalculateState(Error* error);
 
   std::string CalculateTechnology(Error* error);
 
