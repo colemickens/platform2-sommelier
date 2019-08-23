@@ -596,6 +596,13 @@ void Manager::PopProfileInternal() {
 void Manager::OnProfilesChanged() {
   Error unused_error;
 
+  if (ethernet_provider_) {
+    // Reconnect to the generic ethernet_any service in case the static IP
+    // parameters have changed after profile push or pop.
+    // TODO(matthewmwang): remove this when we teach Service/Device to refresh
+    // IP config when static IP changes.
+    ethernet_provider_->ReconnectToGenericEthernetService();
+  }
   adaptor_->EmitStringsChanged(kProfilesProperty,
                                EnumerateProfiles(&unused_error));
   Profile::SaveUserProfileList(user_profile_list_path_, profiles_);

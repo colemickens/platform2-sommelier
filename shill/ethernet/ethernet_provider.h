@@ -43,6 +43,7 @@ class EthernetProvider : public ProviderInterface {
   virtual EthernetServiceRefPtr CreateService(base::WeakPtr<Ethernet> ethernet);
   bool LoadGenericEthernetService();
   virtual void RefreshGenericEthernetService();
+  void ReconnectToGenericEthernetService() const;
   virtual void RegisterService(EthernetServiceRefPtr service);
   virtual void DeregisterService(EthernetServiceRefPtr service);
 
@@ -56,7 +57,6 @@ class EthernetProvider : public ProviderInterface {
 
   EthernetServiceRefPtr FindEthernetServiceForService(
       ServiceRefPtr service) const;
-  void ReconnectToGenericEthernetService() const;
 
   // Representative service
   EthernetServiceRefPtr service_;

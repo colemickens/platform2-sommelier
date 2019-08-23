@@ -146,6 +146,10 @@ void EthernetProvider::RefreshGenericEthernetService() {
 }
 
 void EthernetProvider::ReconnectToGenericEthernetService() const {
+  if (!service_) {
+    return;
+  }
+
   Error error;
   service_->Disconnect(&error, __func__);
   if (error.IsFailure()) {
