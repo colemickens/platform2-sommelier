@@ -67,6 +67,8 @@ class WilcoDtcSupportdGrpcService final {
                             const std::string& status_message)>;
     using GetConfigurationDataFromBrowserCallback =
         base::Callback<void(const std::string& json_configuration_data)>;
+    using GetDriveSystemDataCallback =
+        base::Callback<void(const std::string& payload, bool success)>;
 
     virtual ~Delegate() = default;
 
@@ -113,10 +115,18 @@ class WilcoDtcSupportdGrpcService final {
     // Called when gRPC |GetConfigurationData| was called.
     //
     // Calls wilco_dtc_supportd daemon mojo function
-    // |GetConfigurationDaraFromBrowser| method.
+    // |GetConfigurationDataFromBrowser| method.
     // The result of the call is returned via |callback|.
     virtual void GetConfigurationDataFromBrowser(
         const GetConfigurationDataFromBrowserCallback& callback) = 0;
+
+    // Called when gRPC |GetDriveSystemData| was called.
+    //
+    // Calls wilco_dtc_supportd daemon D-Bus function
+    // |GetDriveSystemData| method. The result of the call is returned
+    // via |callback|.
+    virtual void GetDriveSystemData(
+        const GetDriveSystemDataCallback& callback) = 0;
   };
 
   using SendMessageToUiCallback =
@@ -145,6 +155,8 @@ class WilcoDtcSupportdGrpcService final {
       base::Callback<void(std::unique_ptr<grpc_api::GetVpdFieldResponse>)>;
   using GetBluetoothDataCallback =
       base::Callback<void(std::unique_ptr<grpc_api::GetBluetoothDataResponse>)>;
+  using GetDriveSystemDataCallback = base::Callback<void(
+      std::unique_ptr<grpc_api::GetDriveSystemDataResponse>)>;
 
   explicit WilcoDtcSupportdGrpcService(Delegate* delegate);
   ~WilcoDtcSupportdGrpcService();
@@ -187,6 +199,9 @@ class WilcoDtcSupportdGrpcService final {
   void GetBluetoothData(
       std::unique_ptr<grpc_api::GetBluetoothDataRequest> request,
       const GetBluetoothDataCallback& callback);
+  void GetDriveSystemData(
+      std::unique_ptr<grpc_api::GetDriveSystemDataRequest> request,
+      const GetDriveSystemDataCallback& callback);
 
  private:
   // Constructs and, if successful, appends the dump of the specified file (with

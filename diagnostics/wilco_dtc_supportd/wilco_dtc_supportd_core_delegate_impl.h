@@ -10,6 +10,7 @@
 #include <base/macros.h>
 #include <brillo/daemons/daemon.h>
 
+#include "diagnostics/wilco_dtc_supportd/system/debugd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core.h"
 
 namespace diagnostics {
@@ -27,6 +28,8 @@ class WilcoDtcSupportdCoreDelegateImpl final
       MojomWilcoDtcSupportdServiceFactory* mojo_service_factory,
       base::ScopedFD mojo_pipe_fd) override;
   void BeginDaemonShutdown() override;
+  std::unique_ptr<DebugdAdapter> CreateDebugdAdapter(
+      const scoped_refptr<dbus::Bus>& bus) override;
 
  private:
   // Unowned. The daemon must outlive this instance.

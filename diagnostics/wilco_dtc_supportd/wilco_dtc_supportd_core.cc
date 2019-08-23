@@ -145,6 +145,10 @@ bool WilcoDtcSupportdCore::Start() {
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetBluetoothData,
       base::Bind(&WilcoDtcSupportdGrpcService::GetBluetoothData,
                  base::Unretained(&grpc_service_)));
+  grpc_server_.RegisterHandler(
+      &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetDriveSystemData,
+      base::Bind(&WilcoDtcSupportdGrpcService::GetDriveSystemData,
+                 base::Unretained(&grpc_service_)));
 
   // Start the gRPC server that listens for incoming gRPC requests.
   VLOG(1) << "Starting gRPC server";
@@ -218,6 +222,8 @@ void WilcoDtcSupportdCore::RegisterDBusObjectsAsync(
   dbus_object_->RegisterAsync(sequencer->GetHandler(
       "Failed to register D-Bus object" /* descriptive_message */,
       true /* failure_is_fatal */));
+
+  debugd_adapter_ = delegate_->CreateDebugdAdapter(bus);
 }
 
 bool WilcoDtcSupportdCore::StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
@@ -413,6 +419,28 @@ void WilcoDtcSupportdCore::GetConfigurationDataFromBrowser(
   }
 
   mojo_service_->GetConfigurationData(callback);
+}
+
+void WilcoDtcSupportdCore::GetDriveSystemData(
+    const GetDriveSystemDataCallback& callback) {
+  if (!debugd_adapter_) {
+    LOG(WARNING) << "DebugdAdapter is not yet ready for incoming requests";
+    callback.Run("", false /* success */);
+    return;
+  }
+
+  debugd_adapter_->GetSmartAttributes(base::Bind(
+      [](const GetDriveSystemDataCallback& callback, const std::string& result,
+         brillo::Error* error) {
+        if (error) {
+          LOG(WARNING) << "Debugd smartctl failed with error: "
+                       << error->GetMessage();
+          callback.Run("", false /* success */);
+          return;
+        }
+        callback.Run(result, true /* success */);
+      },
+      callback));
 }
 
 void WilcoDtcSupportdCore::SendGrpcUiMessageToWilcoDtc(

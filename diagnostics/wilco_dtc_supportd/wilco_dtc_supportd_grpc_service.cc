@@ -46,6 +46,8 @@ using GetRoutineUpdateCallback =
     WilcoDtcSupportdGrpcService::GetRoutineUpdateCallback;
 using GetConfigurationDataCallback =
     WilcoDtcSupportdGrpcService::GetConfigurationDataCallback;
+using GetDriveSystemDataCallback =
+    WilcoDtcSupportdGrpcService::GetDriveSystemDataCallback;
 
 // Https prefix expected to be a prefix of URL in PerformWebRequestParameter.
 constexpr char kHttpsPrefix[] = "https://";
@@ -185,6 +187,23 @@ void ForwardGetConfigurationDataResponse(
     const std::string& json_configuration_data) {
   auto reply = std::make_unique<grpc_api::GetConfigurationDataResponse>();
   reply->set_json_configuration_data(json_configuration_data);
+  callback.Run(std::move(reply));
+}
+
+// Forwards and wraps the result of a GetDriveSystemData into gRPC
+// response.
+void ForwardGetDriveSystemDataResponse(
+    const GetDriveSystemDataCallback& callback,
+    const std::string& payload,
+    bool success) {
+  auto reply = std::make_unique<grpc_api::GetDriveSystemDataResponse>();
+  if (success) {
+    reply->set_status(grpc_api::GetDriveSystemDataResponse::STATUS_OK);
+    reply->set_payload(payload);
+  } else {
+    reply->set_status(
+        grpc_api::GetDriveSystemDataResponse::STATUS_ERROR_REQUEST_PROCESSING);
+  }
   callback.Run(std::move(reply));
 }
 
@@ -636,6 +655,26 @@ void WilcoDtcSupportdGrpcService::GetBluetoothData(
     std::unique_ptr<grpc_api::GetBluetoothDataRequest> request,
     const GetBluetoothDataCallback& callback) {
   NOTIMPLEMENTED();
+}
+
+void WilcoDtcSupportdGrpcService::GetDriveSystemData(
+    std::unique_ptr<grpc_api::GetDriveSystemDataRequest> request,
+    const GetDriveSystemDataCallback& callback) {
+  DCHECK(request);
+
+  if (request->type() !=
+      grpc_api::GetDriveSystemDataRequest::SMART_ATTRIBUTES) {
+    LOG(ERROR) << "The GetDriveSystemDataRequest::Type is unset or invalid: "
+               << static_cast<int>(request->type());
+    auto reply = std::make_unique<grpc_api::GetDriveSystemDataResponse>();
+    reply->set_status(grpc_api::GetDriveSystemDataResponse::
+                          STATUS_ERROR_REQUEST_TYPE_UNKNOWN);
+    callback.Run(std::move(reply));
+    return;
+  }
+
+  delegate_->GetDriveSystemData(
+      base::Bind(&ForwardGetDriveSystemDataResponse, callback));
 }
 
 void WilcoDtcSupportdGrpcService::AddFileDump(

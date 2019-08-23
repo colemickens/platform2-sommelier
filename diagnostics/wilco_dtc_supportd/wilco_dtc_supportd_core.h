@@ -22,6 +22,7 @@
 
 #include "diagnostics/grpc_async_adapter/async_grpc_client.h"
 #include "diagnostics/grpc_async_adapter/async_grpc_server.h"
+#include "diagnostics/wilco_dtc_supportd/system/debugd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_dbus_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_ec_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_grpc_service.h"
@@ -65,6 +66,10 @@ class WilcoDtcSupportdCore final
 
     // Begins the graceful shutdown of the wilco_dtc_supportd daemon.
     virtual void BeginDaemonShutdown() = 0;
+
+    // Creates DebugdAdapter.
+    virtual std::unique_ptr<DebugdAdapter> CreateDebugdAdapter(
+        const scoped_refptr<dbus::Bus>& bus) = 0;
   };
 
   // |grpc_service_uris| are the URIs on which the gRPC interface exposed by the
@@ -151,6 +156,7 @@ class WilcoDtcSupportdCore final
       const GetRoutineUpdateRequestToServiceCallback& callback) override;
   void GetConfigurationDataFromBrowser(
       const GetConfigurationDataFromBrowserCallback& callback) override;
+  void GetDriveSystemData(const GetDriveSystemDataCallback& callback) override;
 
   // WilcoDtcSupportdMojoService::Delegate overrides:
   void SendGrpcUiMessageToWilcoDtc(
@@ -225,6 +231,9 @@ class WilcoDtcSupportdCore final
 
   // EcEvent-related members:
   WilcoDtcSupportdEcEventService ec_event_service_{this /* delegate */};
+
+  // D-Bus adapters for system daemons.
+  std::unique_ptr<DebugdAdapter> debugd_adapter_;
 
   // Diagnostic routine-related members:
 

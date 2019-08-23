@@ -210,6 +210,8 @@ class MockWilcoDtcSupportdGrpcServiceDelegate
                     const GetRoutineUpdateRequestToServiceCallback& callback));
   MOCK_METHOD1(GetConfigurationDataFromBrowser,
                void(const GetConfigurationDataFromBrowserCallback& callback));
+  MOCK_METHOD1(GetDriveSystemData,
+               void(const GetDriveSystemDataCallback& callback));
 };
 
 // Tests for the WilcoDtcSupportdGrpcService class.
@@ -223,6 +225,10 @@ class WilcoDtcSupportdGrpcServiceTest : public testing::Test {
   }
 
   WilcoDtcSupportdGrpcService* service() { return &service_; }
+
+  StrictMock<MockWilcoDtcSupportdGrpcServiceDelegate>* delegate() {
+    return &delegate_;
+  }
 
   void ExecuteGetProcData(grpc_api::GetProcDataRequest::Type request_type,
                           std::vector<grpc_api::FileDump>* file_dumps) {
@@ -606,6 +612,70 @@ TEST_F(WilcoDtcSupportdGrpcServiceTest, GetVpdFieldUnset) {
   EXPECT_EQ(status,
             grpc_api::GetVpdFieldResponse::STATUS_ERROR_VPD_FIELD_UNKNOWN);
   EXPECT_TRUE(vpd_field_value.empty());
+}
+
+TEST_F(WilcoDtcSupportdGrpcServiceTest, GetDriveSystemDataTypeUnknown) {
+  auto request = std::make_unique<grpc_api::GetDriveSystemDataRequest>();
+  std::unique_ptr<grpc_api::GetDriveSystemDataResponse> response;
+  service()->GetDriveSystemData(std::move(request),
+                                GrpcCallbackResponseSaver(&response));
+
+  auto expected_response =
+      std::make_unique<grpc_api::GetDriveSystemDataResponse>();
+  expected_response->set_status(
+      grpc_api::GetDriveSystemDataResponse::STATUS_ERROR_REQUEST_TYPE_UNKNOWN);
+  EXPECT_THAT(*response, ProtobufEquals(*expected_response))
+      << "Actual response: {" << response->ShortDebugString() << "}";
+}
+
+TEST_F(WilcoDtcSupportdGrpcServiceTest, GetDriveSystemDataInternalError) {
+  auto request = std::make_unique<grpc_api::GetDriveSystemDataRequest>();
+  request->set_type(grpc_api::GetDriveSystemDataRequest::SMART_ATTRIBUTES);
+  EXPECT_CALL(*delegate(), GetDriveSystemData(_))
+      .WillOnce(WithArgs<0>(
+          Invoke([](const base::Callback<void(const std::string& payload,
+                                              bool success)>& callback) {
+            callback.Run("", false /* success */);
+          })));
+
+  std::unique_ptr<grpc_api::GetDriveSystemDataResponse> response;
+  service()->GetDriveSystemData(std::move(request),
+                                GrpcCallbackResponseSaver(&response));
+
+  auto expected_response =
+      std::make_unique<grpc_api::GetDriveSystemDataResponse>();
+  expected_response->set_status(
+      grpc_api::GetDriveSystemDataResponse::STATUS_ERROR_REQUEST_PROCESSING);
+  EXPECT_THAT(*response, ProtobufEquals(*expected_response))
+      << "Actual response: {" << response->ShortDebugString() << "}";
+}
+
+// Test that GetDriveSystemData() parses gRPC message and calls delegate
+// function.
+TEST_F(WilcoDtcSupportdGrpcServiceTest, GetSmartctl) {
+  constexpr char kFakeSmartctlData[] = "Fake smartctl data";
+
+  auto request = std::make_unique<grpc_api::GetDriveSystemDataRequest>();
+  request->set_type(grpc_api::GetDriveSystemDataRequest::SMART_ATTRIBUTES);
+  EXPECT_CALL(*delegate(), GetDriveSystemData(_))
+      .WillOnce(WithArgs<0>(
+          Invoke([kFakeSmartctlData](
+                     const base::Callback<void(const std::string& payload,
+                                               bool success)>& callback) {
+            callback.Run(kFakeSmartctlData, true /* success */);
+          })));
+
+  std::unique_ptr<grpc_api::GetDriveSystemDataResponse> response;
+  service()->GetDriveSystemData(std::move(request),
+                                GrpcCallbackResponseSaver(&response));
+
+  auto expected_response =
+      std::make_unique<grpc_api::GetDriveSystemDataResponse>();
+  expected_response->set_status(
+      grpc_api::GetDriveSystemDataResponse::STATUS_OK);
+  expected_response->set_payload(kFakeSmartctlData);
+  EXPECT_THAT(*response, ProtobufEquals(*expected_response))
+      << "Actual response: {" << response->ShortDebugString() << "}";
 }
 
 // Tests for the GetProcData() method of WilcoDtcSupportdGrpcServiceTest when a

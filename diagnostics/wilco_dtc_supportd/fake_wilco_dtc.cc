@@ -77,6 +77,14 @@ void FakeWilcoDtc::GetConfigurationData(
       callback);
 }
 
+void FakeWilcoDtc::GetDriveSystemData(
+    const grpc_api::GetDriveSystemDataRequest& request,
+    const GetDriveSystemDataCallback& callback) {
+  wilco_dtc_supportd_grp_client_.CallRpc(
+      &grpc_api::WilcoDtcSupportd::Stub::AsyncGetDriveSystemData, request,
+      callback);
+}
+
 void FakeWilcoDtc::set_handle_message_from_ui_callback(
     base::Closure handle_message_from_ui_callback) {
   handle_message_from_ui_callback_.emplace(

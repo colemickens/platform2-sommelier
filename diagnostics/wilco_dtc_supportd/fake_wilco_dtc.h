@@ -42,6 +42,8 @@ class FakeWilcoDtc final {
       std::unique_ptr<grpc_api::PerformWebRequestResponse>)>;
   using GetConfigurationDataCallback = base::Callback<void(
       std::unique_ptr<grpc_api::GetConfigurationDataResponse>)>;
+  using GetDriveSystemDataCallback = base::Callback<void(
+      std::unique_ptr<grpc_api::GetDriveSystemDataResponse>)>;
   using HandleConfigurationDataChangedCallback = base::Callback<void(
       std::unique_ptr<grpc_api::HandleConfigurationDataChangedResponse>)>;
 
@@ -65,6 +67,8 @@ class FakeWilcoDtc final {
   void GetConfigurationData(
       const grpc_api::GetConfigurationDataRequest& request,
       const GetConfigurationDataCallback& callback);
+  void GetDriveSystemData(const grpc_api::GetDriveSystemDataRequest& request,
+                          const GetDriveSystemDataCallback& callback);
 
   // Setups callback for the next |HandleMessageFromUi| gRPC call.
   void set_handle_message_from_ui_callback(

@@ -12,6 +12,9 @@
 #include <mojo/edk/embedder/platform_handle.h>
 #include <mojo/edk/embedder/scoped_platform_handle.h>
 
+#include "debugd/dbus-proxies.h"
+#include "diagnostics/wilco_dtc_supportd/system/debugd_adapter.h"
+#include "diagnostics/wilco_dtc_supportd/system/debugd_adapter_impl.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"
 
 namespace diagnostics {
@@ -50,6 +53,14 @@ WilcoDtcSupportdCoreDelegateImpl::BindWilcoDtcSupportdMojoServiceFactory(
 
 void WilcoDtcSupportdCoreDelegateImpl::BeginDaemonShutdown() {
   daemon_->Quit();
+}
+
+std::unique_ptr<DebugdAdapter>
+WilcoDtcSupportdCoreDelegateImpl::CreateDebugdAdapter(
+    const scoped_refptr<dbus::Bus>& bus) {
+  DCHECK(bus);
+  return std::make_unique<DebugdAdapterImpl>(
+      std::make_unique<org::chromium::debugdProxy>(bus));
 }
 
 }  // namespace diagnostics

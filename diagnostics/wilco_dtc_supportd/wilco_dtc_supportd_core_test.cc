@@ -49,6 +49,7 @@
 #include "diagnostics/wilco_dtc_supportd/mojo_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_utils.h"
 #include "diagnostics/wilco_dtc_supportd/protobuf_test_utils.h"
+#include "diagnostics/wilco_dtc_supportd/system/mock_debugd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"
 #include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
@@ -59,6 +60,7 @@ using testing::Mock;
 using testing::Return;
 using testing::SaveArg;
 using testing::StrictMock;
+using testing::WithArg;
 
 namespace diagnostics {
 
@@ -96,6 +98,10 @@ base::Callback<void(std::unique_ptr<ValueType>)> MakeAsyncResponseWriter(
 
 class MockWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
  public:
+  MockWilcoDtcSupportdCoreDelegate()
+      : passed_debugd_adapter_(new StrictMock<MockDebugdAdapter>()),
+        debugd_adapter_(passed_debugd_adapter_.get()) {}
+
   std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>
   BindWilcoDtcSupportdMojoServiceFactory(
       MojomWilcoDtcSupportdServiceFactory* mojo_service_factory,
@@ -107,11 +113,31 @@ class MockWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
                                                    mojo_pipe_fd.get()));
   }
 
+  // Must be called no more than once.
+  std::unique_ptr<DebugdAdapter> CreateDebugdAdapter(
+      const scoped_refptr<dbus::Bus>& bus) override {
+    DCHECK(passed_debugd_adapter_);
+    return std::move(passed_debugd_adapter_);
+  }
+
+  StrictMock<MockDebugdAdapter>* debugd_adapter() const {
+    return debugd_adapter_;
+  }
+
   MOCK_METHOD2(BindWilcoDtcSupportdMojoServiceFactoryImpl,
                mojo::Binding<MojomWilcoDtcSupportdServiceFactory>*(
                    MojomWilcoDtcSupportdServiceFactory* mojo_service_factory,
                    int mojo_pipe_fd));
   MOCK_METHOD0(BeginDaemonShutdown, void());
+
+ private:
+  // Mock objects to be transferred by Create* methods.
+  std::unique_ptr<StrictMock<MockDebugdAdapter>> passed_debugd_adapter_;
+
+  // Pointers to objects originally stored in |passed_*| members. These allow
+  // continued access by tests even after the corresponding Create* method has
+  // been called and ownership has been transferred to |core_|.
+  StrictMock<MockDebugdAdapter>* debugd_adapter_;
 };
 
 // Tests for the WilcoDtcSupportdCore class.
@@ -739,6 +765,33 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetConfigurationDataFromBrowser) {
   ASSERT_TRUE(response);
   grpc_api::GetConfigurationDataResponse expected_response;
   expected_response.set_json_configuration_data(kFakeJsonConfigurationData);
+  EXPECT_THAT(*response, ProtobufEquals(expected_response))
+      << "Actual: {" << response->ShortDebugString() << "}";
+}
+
+// Test that GetDriveSystemData() method exposed by the daemon's gRPC returns
+// a response from the debugd.
+TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetDriveSystemData) {
+  constexpr char kFakeSmartctlData[] = "Fake smartctl data";
+  EXPECT_CALL(*core_delegate()->debugd_adapter(), GetSmartAttributes(_))
+      .WillOnce(WithArg<0>(
+          [kFakeSmartctlData](
+              const base::Callback<void(const std::string&, brillo::Error*)>&
+                  callback) { callback.Run(kFakeSmartctlData, nullptr); }));
+  std::unique_ptr<grpc_api::GetDriveSystemDataResponse> response;
+  {
+    base::RunLoop run_loop;
+    grpc_api::GetDriveSystemDataRequest request;
+    request.set_type(grpc_api::GetDriveSystemDataRequest::SMART_ATTRIBUTES);
+    fake_wilco_dtc()->GetDriveSystemData(
+        request, MakeAsyncResponseWriter(&response, &run_loop));
+    run_loop.Run();
+  }
+
+  ASSERT_TRUE(response);
+  grpc_api::GetDriveSystemDataResponse expected_response;
+  expected_response.set_status(grpc_api::GetDriveSystemDataResponse::STATUS_OK);
+  expected_response.set_payload(kFakeSmartctlData);
   EXPECT_THAT(*response, ProtobufEquals(expected_response))
       << "Actual: {" << response->ShortDebugString() << "}";
 }
