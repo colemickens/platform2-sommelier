@@ -28,7 +28,7 @@
 namespace {
 
 const char kDefaultDeviceLogFile[] = "/sys/kernel/debug/cros_ec/console_log";
-const char kDeviceUptimeFile[] = "/sys/kernel/debug/cros_ec/uptime";
+const char kDefaultDeviceUptimeFile[] = "/sys/kernel/debug/cros_ec/uptime";
 const char kDefaultLogDirectory[] = "/var/log/";
 const char kCurrentLogExt[] = ".log";
 const char kPreviousLogExt[] = ".previous";
@@ -249,6 +249,8 @@ int main(int argc, char* argv[]) {
                 "File where the recent EC logs are posted to.");
   DEFINE_string(log_directory, kDefaultLogDirectory,
                 "Directory where the output logs should be.");
+  DEFINE_string(uptime_file, kDefaultDeviceUptimeFile,
+                "Device uptime file.");
   brillo::FlagHelper::Init(
       argc, argv, "timberslide concatenates EC logs for use in debugging.");
 
@@ -260,7 +262,7 @@ int main(int argc, char* argv[]) {
     return EX_UNAVAILABLE;
   }
 
-  const base::FilePath uptime_path(kDeviceUptimeFile);
+  const base::FilePath uptime_path(FLAGS_uptime_file);
   base::File uptime_file(uptime_path,
                          base::File::FLAG_OPEN | base::File::FLAG_READ);
 
