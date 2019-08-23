@@ -60,6 +60,10 @@ service WilcoDtcSupportd {
   // Retrieves the bluetooth data.
   rpc GetBluetoothData(GetBluetoothDataRequest)
       returns (GetBluetoothDataResponse) {}
+
+  // Retrieves the disk system data from smartctl/nvme command run output.
+  rpc GetDriveSystemData(GetDriveSystemDataRequest)
+      returns (GetDriveSystemDataResponse) {}
 }
 
 // Parameters for the SendMessageToUi RPC.
@@ -146,7 +150,7 @@ message GetSysfsDataRequest {
     FIRMWARE_DMI_TABLES = 3;  // request SMBIOS information as raw DMI tables
                               // (contents of files under
                               // /sys/firmware/dmi/tables/)
-    CLASS_POWER_SUPPLY =  4;  // request information about power supplies
+    CLASS_POWER_SUPPLY = 4;   // request information about power supplies
                               // (contents of files under
                               // /sys/class/power_supply/)
     CLASS_BACKLIGHT = 5;      // request information about brightness
@@ -557,4 +561,40 @@ message GetBluetoothDataResponse {
 
   // The data for all bluetooth devices installed in the system.
   repeated BluetoothData devices = 1;
+}
+
+// Parameters for the GetDriveSystemData RPC.
+message GetDriveSystemDataRequest {
+  enum Type {
+    TYPE_UNSET = 0;
+    // Self-Monitoring, Analysis and Reporting Technology drive attributes.
+    // Retrieved by running `smartctl -A`.
+    SMART_ATTRIBUTES = 1;
+    // Drive identity attributes.
+    // Retrieved by running `nvme id-ctrl --vendor-specific`.
+    IDENTITY_ATTRIBUTES = 2;
+  }
+
+  // Must not be |TYPE_UNSET|.
+  Type type = 1;
+}
+
+// Return value for the GetDriveSystemData RPC.
+message GetDriveSystemDataResponse {
+  // Status of the finished request.
+  enum Status {
+    STATUS_UNSET = 0;
+    // The request was successfully completed and |payload| is set.
+    STATUS_OK = 1;
+    // Failed to identify the requested drive system data type.
+    STATUS_ERROR_REQUEST_TYPE_UNKNOWN = 2;
+    // Failed to get the requested drive system data.
+    STATUS_ERROR_REQUEST_PROCESSING = 3;
+  }
+
+  // Is guaranteed to be distinct from |STATUS_UNSET|.
+  Status status = 1;
+
+  // smartctl/nvme command run output.
+  bytes payload = 2;
 }
