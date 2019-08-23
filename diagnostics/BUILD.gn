@@ -64,7 +64,7 @@ pkg_config("libdiag_routine_pkg_deps") {
 
 static_library("libdiag_routine") {
   deps = [
-    "//diagnostics/grpc:diagnostics_grpc_protos",
+    "//diagnostics/grpc:wilco_dtc_grpc_protos",
   ]
   all_dependent_configs = [ ":libdiag_routine_pkg_deps" ]
   sources = [
@@ -135,7 +135,7 @@ pkg_config("libdiag_pkg_deps") {
 static_library("libdiag") {
   deps = [
     "//diagnostics/constants:libconstants",
-    "//diagnostics/grpc:diagnostics_grpc_protos",
+    "//diagnostics/grpc:wilco_dtc_grpc_protos",
     "//diagnostics/grpc_async_adapter:libgrpc_async_adapter",
   ]
   all_dependent_configs = [ ":libdiag_pkg_deps" ]
@@ -162,7 +162,7 @@ static_library("libwilco_dtc_supportd") {
     ":diagnostics_mojo_bindings",
     ":libdiag_routine",
     "//diagnostics/constants:libconstants",
-    "//diagnostics/grpc:diagnostics_grpc_protos",
+    "//diagnostics/grpc:wilco_dtc_grpc_protos",
     "//diagnostics/grpc_async_adapter:libgrpc_async_adapter",
   ]
   all_dependent_configs = [ ":libwilco_dtc_supportd_pkg_deps" ]
@@ -197,7 +197,7 @@ pkg_config("libtelem_pkg_deps") {
 static_library("libtelem") {
   deps = [
     "//diagnostics/constants:libconstants",
-    "//diagnostics/grpc:diagnostics_grpc_protos",
+    "//diagnostics/grpc:wilco_dtc_grpc_protos",
     "//diagnostics/grpc_async_adapter:libgrpc_async_adapter",
   ]
   all_dependent_configs = [ ":libtelem_pkg_deps" ]
