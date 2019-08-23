@@ -76,6 +76,11 @@ pkg_config("target_defaults") {
     defines += [ "DISABLE_PPPOE" ]
   }
 
+  if (use.test) {
+    # For the "mockable" keyword.
+    defines += [ "TEST_BUILD" ]
+  }
+
   if (!use.vpn) {
     defines += [ "DISABLE_VPN" ]
   }
