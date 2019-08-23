@@ -245,19 +245,6 @@ TEST_F(VPNServiceTest, EnableAndRetainAutoConnect) {
   EXPECT_FALSE(service_->auto_connect());
 }
 
-TEST_F(VPNServiceTest, SetConnection) {
-  EXPECT_FALSE(service_->connection());
-  service_->SetConnection(connection_);
-  EXPECT_EQ(connection_, service_->connection());
-  EXPECT_CALL(*driver_, OnConnectionDisconnected()).Times(0);
-}
-
-TEST_F(VPNServiceTest, OnConnectionDisconnected) {
-  service_->SetConnection(connection_);
-  EXPECT_CALL(*driver_, OnConnectionDisconnected()).Times(1);
-  service_->SetConnection(nullptr);
-}
-
 TEST_F(VPNServiceTest, IsAutoConnectableOffline) {
   EXPECT_TRUE(service_->connectable());
   const char* reason = nullptr;

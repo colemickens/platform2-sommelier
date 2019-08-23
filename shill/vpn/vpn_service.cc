@@ -20,9 +20,7 @@
 #include "shill/vpn/vpn_driver.h"
 #include "shill/vpn/vpn_provider.h"
 
-using base::Bind;
 using base::StringPrintf;
-using base::Unretained;
 using std::string;
 
 namespace shill {
@@ -143,13 +141,6 @@ void VPNService::EnableAndRetainAutoConnect() {
   // The base EnableAndRetainAutoConnect method also sets auto_connect_ to true
   // which is not desirable for VPN services.
   RetainAutoConnect();
-}
-
-void VPNService::SetConnection(const ConnectionRefPtr& connection) {
-  if (!connection) {
-    driver_->OnConnectionDisconnected();
-  }
-  Service::SetConnection(connection);
 }
 
 bool VPNService::IsAutoConnectable(const char** reason) const {

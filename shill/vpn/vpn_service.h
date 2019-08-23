@@ -30,7 +30,6 @@ class VPNService : public Service {
   bool Save(StoreInterface* storage) override;
   bool Unload() override;
   void EnableAndRetainAutoConnect() override;
-  void SetConnection(const ConnectionRefPtr& connection) override;
   bool SetNameProperty(const std::string& name, Error* error) override;
 
   // Power management events.
@@ -60,7 +59,6 @@ class VPNService : public Service {
  private:
   friend class VPNServiceTest;
   FRIEND_TEST(VPNServiceTest, GetDeviceRpcId);
-  FRIEND_TEST(VPNServiceTest, SetConnection);
   FRIEND_TEST(VPNServiceTest, GetPhysicalTechnologyPropertyFailsIfNoCarrier);
   FRIEND_TEST(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi);
   FRIEND_TEST(VPNServiceTest, GetTethering);
