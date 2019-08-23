@@ -33,8 +33,8 @@ AttributeList::AttributeList() = default;
 
 AttributeList::~AttributeList() = default;
 
-bool AttributeList::CreateAttribute(
-    int id, AttributeList::NewFromIdMethod factory) {
+bool AttributeList::CreateAttribute(int id,
+                                    AttributeList::NewFromIdMethod factory) {
   if (base::ContainsKey(attributes_, id)) {
     SLOG(this, 7) << "Trying to re-add attribute " << id << ", not overwriting";
     return true;
@@ -56,7 +56,8 @@ bool AttributeList::CreateNl80211Attribute(
 
 bool AttributeList::CreateAndInitAttribute(
     const AttributeList::NewFromIdMethod& factory,
-    int id, const ByteString& value) {
+    int id,
+    const ByteString& value) {
   if (!CreateAttribute(id, factory)) {
     return false;
   }
@@ -78,7 +79,8 @@ void AttributeList::Print(int log_level, int indent) const {
 
 // static
 bool AttributeList::IterateAttributes(
-    const ByteString& payload, size_t offset,
+    const ByteString& payload,
+    size_t offset,
     const AttributeList::AttributeMethod& method) {
   const unsigned char* ptr = payload.GetConstData() + NLA_ALIGN(offset);
   const unsigned char* end = payload.GetConstData() + payload.GetLength();
@@ -87,8 +89,8 @@ bool AttributeList::IterateAttributes(
     if (attribute->nla_len < sizeof(*attribute) ||
         ptr + attribute->nla_len > end) {
       LOG(ERROR) << "Malformed nla attribute indicates length "
-                 << attribute->nla_len << ".  "
-                 << (end - ptr - NLA_HDRLEN) << " bytes remain in buffer.  "
+                 << attribute->nla_len << ".  " << (end - ptr - NLA_HDRLEN)
+                 << " bytes remain in buffer.  "
                  << "Error occurred at offset "
                  << (ptr - payload.GetConstData()) << ".";
       return false;
@@ -111,9 +113,9 @@ bool AttributeList::IterateAttributes(
 bool AttributeList::Decode(const ByteString& payload,
                            size_t offset,
                            const AttributeList::NewFromIdMethod& factory) {
-  return IterateAttributes(
-      payload, offset, base::Bind(&AttributeList::CreateAndInitAttribute,
-                                  base::Unretained(this), factory));
+  return IterateAttributes(payload, offset,
+                           base::Bind(&AttributeList::CreateAndInitAttribute,
+                                      base::Unretained(this), factory));
 }
 
 ByteString AttributeList::Encode() const {
@@ -148,7 +150,6 @@ bool AttributeList::SetU8AttributeValue(int id, uint8_t value) {
     return false;
   return attribute->SetU8Value(value);
 }
-
 
 // U16 Attribute.
 
@@ -294,8 +295,7 @@ bool AttributeList::SetStringAttributeValue(int id, const string& value) {
 
 // Nested Attribute.
 
-bool AttributeList::GetNestedAttributeList(int id,
-                                           AttributeListRefPtr* value) {
+bool AttributeList::GetNestedAttributeList(int id, AttributeListRefPtr* value) {
   NetlinkAttribute* attribute = GetAttribute(id);
   if (!attribute)
     return false;
@@ -328,8 +328,7 @@ bool AttributeList::CreateNestedAttribute(int id, const char* id_string) {
 
 // Raw Attribute.
 
-bool AttributeList::GetRawAttributeValue(int id,
-                                         ByteString* output) const {
+bool AttributeList::GetRawAttributeValue(int id, ByteString* output) const {
   NetlinkAttribute* attribute = GetAttribute(id);
   if (!attribute)
     return false;

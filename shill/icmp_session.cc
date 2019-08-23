@@ -25,8 +25,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static std::string ObjectID(IcmpSession* i) { return "(icmp_session)"; }
+static std::string ObjectID(IcmpSession* i) {
+  return "(icmp_session)";
 }
+}  // namespace Logging
 
 uint16_t IcmpSession::kNextUniqueEchoId = 0;
 const int IcmpSession::kTotalNumEchoRequests = 3;
@@ -78,9 +80,8 @@ bool IcmpSession::Start(const IPAddress& destination,
                                kTimeoutSeconds * 1000);
   seq_num_to_sent_recv_time_.clear();
   received_echo_reply_seq_numbers_.clear();
-  dispatcher_->PostTask(FROM_HERE,
-                        Bind(&IcmpSession::TransmitEchoRequestTask,
-                             weak_ptr_factory_.GetWeakPtr()));
+  dispatcher_->PostTask(FROM_HERE, Bind(&IcmpSession::TransmitEchoRequestTask,
+                                        weak_ptr_factory_.GetWeakPtr()));
 
   return true;
 }

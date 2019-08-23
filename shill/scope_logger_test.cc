@@ -31,43 +31,44 @@ class ScopeLoggerTest : public testing::Test {
 TEST_F(ScopeLoggerTest, DefaultConstruction) {
   for (int scope = 0; scope < ScopeLogger::kNumScopes; ++scope) {
     for (int verbose_level = 0; verbose_level < 5; ++verbose_level) {
-      EXPECT_FALSE(logger_.IsLogEnabled(
-          static_cast<ScopeLogger::Scope>(scope), verbose_level));
+      EXPECT_FALSE(logger_.IsLogEnabled(static_cast<ScopeLogger::Scope>(scope),
+                                        verbose_level));
     }
   }
 }
 
 TEST_F(ScopeLoggerTest, GetAllScopeNames) {
-  EXPECT_EQ("cellular+"
-            "connection+"
-            "crypto+"
-            "daemon+"
-            "dbus+"
-            "device+"
-            "dhcp+"
-            "dns+"
-            "ethernet+"
-            "http+"
-            "inet+"
-            "link+"
-            "manager+"
-            "metrics+"
-            "modem+"
-            "portal+"
-            "power+"
-            "ppp+"
-            "pppoe+"
-            "profile+"
-            "property+"
-            "resolver+"
-            "route+"
-            "rtnl+"
-            "service+"
-            "storage+"
-            "task+"
-            "tc+"
-            "vpn+"
-            "wifi",
+  EXPECT_EQ(
+      "cellular+"
+      "connection+"
+      "crypto+"
+      "daemon+"
+      "dbus+"
+      "device+"
+      "dhcp+"
+      "dns+"
+      "ethernet+"
+      "http+"
+      "inet+"
+      "link+"
+      "manager+"
+      "metrics+"
+      "modem+"
+      "portal+"
+      "power+"
+      "ppp+"
+      "pppoe+"
+      "profile+"
+      "property+"
+      "resolver+"
+      "route+"
+      "rtnl+"
+      "service+"
+      "storage+"
+      "task+"
+      "tc+"
+      "vpn+"
+      "wifi",
       logger_.GetAllScopeNames());
 }
 
@@ -173,8 +174,8 @@ class ScopeChangeTarget {
   virtual ~ScopeChangeTarget() = default;
   MOCK_METHOD1(Callback, void(bool enabled));
   ScopeLogger::ScopeEnableChangedCallback GetCallback() {
-    return base::Bind(
-        &ScopeChangeTarget::Callback, weak_ptr_factory_.GetWeakPtr());
+    return base::Bind(&ScopeChangeTarget::Callback,
+                      weak_ptr_factory_.GetWeakPtr());
   }
 
  private:
@@ -183,8 +184,8 @@ class ScopeChangeTarget {
 
 TEST_F(ScopeLoggerTest, LogScopeCallback) {
   ScopeChangeTarget target0;
-  logger_.RegisterScopeEnableChangedCallback(
-      ScopeLogger::kWiFi, target0.GetCallback());
+  logger_.RegisterScopeEnableChangedCallback(ScopeLogger::kWiFi,
+                                             target0.GetCallback());
   EXPECT_CALL(target0, Callback(_)).Times(0);
   // Call for a scope other than registered-for.
   logger_.EnableScopesByName("+vpn");
@@ -206,8 +207,8 @@ TEST_F(ScopeLoggerTest, LogScopeCallback) {
   testing::Mock::VerifyAndClearExpectations(&target0);
 
   ScopeChangeTarget target1;
-  logger_.RegisterScopeEnableChangedCallback(
-      ScopeLogger::kWiFi, target1.GetCallback());
+  logger_.RegisterScopeEnableChangedCallback(ScopeLogger::kWiFi,
+                                             target1.GetCallback());
   EXPECT_CALL(target0, Callback(true)).Times(1);
   EXPECT_CALL(target1, Callback(true)).Times(1);
   logger_.EnableScopesByName("+wifi");

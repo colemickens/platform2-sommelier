@@ -68,7 +68,6 @@ class ModemProxyInterface {
                              const ResultCallback& callback,
                              int timeout) = 0;
 
-
   virtual void set_state_changed_callback(
       const ModemStateChangedSignalCallback& callback) = 0;
 };

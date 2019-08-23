@@ -38,9 +38,8 @@ class ModemInfoTest : public Test {
 };
 
 TEST_F(ModemInfoTest, StartStop) {
-  EXPECT_CALL(
-      control_interface_,
-      CreateDBusObjectManagerProxy(_, "org.freedesktop.ModemManager1", _, _))
+  EXPECT_CALL(control_interface_, CreateDBusObjectManagerProxy(
+                                      _, "org.freedesktop.ModemManager1", _, _))
       .WillOnce(Return(ByMove(std::make_unique<MockDBusObjectManagerProxy>())));
   modem_info_.Start();
   modem_info_.Stop();

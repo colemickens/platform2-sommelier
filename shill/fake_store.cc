@@ -90,8 +90,8 @@ set<string> FakeStore::GetGroupsWithKey(const string& key) const {
   return matching_groups;
 }
 
-set<string> FakeStore::GetGroupsWithProperties(const KeyValueStore& properties)
-    const {
+set<string> FakeStore::GetGroupsWithProperties(
+    const KeyValueStore& properties) const {
   set<string> matching_groups;
   const brillo::VariantDictionary& properties_dict(properties.properties());
   for (const auto& group_name_and_settings : group_name_to_settings_) {
@@ -143,13 +143,15 @@ bool FakeStore::GetString(const string& group,
   return ReadSetting(group, key, value);
 }
 
-bool FakeStore::SetString(
-    const string& group, const string& key, const string& value) {
+bool FakeStore::SetString(const string& group,
+                          const string& key,
+                          const string& value) {
   return WriteSetting(group, key, value);
 }
 
-bool FakeStore::GetBool(const string& group, const string& key, bool* value)
-    const {
+bool FakeStore::GetBool(const string& group,
+                        const string& key,
+                        bool* value) const {
   return ReadSetting(group, key, value);
 }
 
@@ -157,8 +159,9 @@ bool FakeStore::SetBool(const string& group, const string& key, bool value) {
   return WriteSetting(group, key, value);
 }
 
-bool FakeStore::GetInt(
-    const string& group, const string& key, int* value) const {
+bool FakeStore::GetInt(const string& group,
+                       const string& key,
+                       int* value) const {
   return ReadSetting(group, key, value);
 }
 
@@ -166,40 +169,47 @@ bool FakeStore::SetInt(const string& group, const string& key, int value) {
   return WriteSetting(group, key, value);
 }
 
-bool FakeStore::GetUint64(
-    const string& group, const string& key, uint64_t* value) const {
+bool FakeStore::GetUint64(const string& group,
+                          const string& key,
+                          uint64_t* value) const {
   return ReadSetting(group, key, value);
 }
 
-bool FakeStore::SetUint64(
-    const string& group, const string& key, uint64_t value) {
+bool FakeStore::SetUint64(const string& group,
+                          const string& key,
+                          uint64_t value) {
   return WriteSetting(group, key, value);
 }
 
-bool FakeStore::GetStringList(
-    const string& group, const string& key, vector<string>* value) const {
+bool FakeStore::GetStringList(const string& group,
+                              const string& key,
+                              vector<string>* value) const {
   return ReadSetting(group, key, value);
 }
 
-bool FakeStore::SetStringList(
-    const string& group, const string& key, const vector<string>& value) {
+bool FakeStore::SetStringList(const string& group,
+                              const string& key,
+                              const vector<string>& value) {
   return WriteSetting(group, key, value);
 }
 
-bool FakeStore::GetCryptedString(
-    const string& group, const string& key, string* value) {
+bool FakeStore::GetCryptedString(const string& group,
+                                 const string& key,
+                                 string* value) {
   return GetString(group, key, value);
 }
 
-bool FakeStore::SetCryptedString(
-    const string& group, const string& key, const string& value) {
+bool FakeStore::SetCryptedString(const string& group,
+                                 const string& key,
+                                 const string& value) {
   return SetString(group, key, value);
 }
 
 // Private methods.
-template<typename T>
-bool FakeStore::ReadSetting(
-    const string& group, const string& key, T* out) const {
+template <typename T>
+bool FakeStore::ReadSetting(const string& group,
+                            const string& key,
+                            T* out) const {
   const auto& group_name_and_settings = group_name_to_settings_.find(group);
   if (group_name_and_settings == group_name_to_settings_.end()) {
     SLOG(this, 10) << "Could not find group |" << group << "|.";
@@ -230,9 +240,10 @@ bool FakeStore::ReadSetting(
   }
 }
 
-template<typename T>
-bool FakeStore::WriteSetting(
-    const string& group, const string& key, const T& new_value) {
+template <typename T>
+bool FakeStore::WriteSetting(const string& group,
+                             const string& key,
+                             const T& new_value) {
   auto group_name_and_settings = group_name_to_settings_.find(group);
   if (group_name_and_settings == group_name_to_settings_.end()) {
     group_name_to_settings_[group][key] = new_value;

@@ -14,29 +14,29 @@
 
 using std::string;
 using std::vector;
+using testing::_;
 using testing::ByMove;
 using testing::Return;
 using testing::ReturnNull;
-using testing::_;
 
 namespace shill {
 
 namespace {
 
 const RpcIdentifier kBearerDBusPath =
-  RpcIdentifier("/org/freedesktop/ModemManager/Bearer/0");
+    RpcIdentifier("/org/freedesktop/ModemManager/Bearer/0");
 const char kBearerDBusService[] = "org.freedesktop.ModemManager";
 const char kDataInterface[] = "/dev/ppp0";
 const char kIPv4Address[] = "10.0.0.1";
 const char kIPv4Gateway[] = "10.0.0.254";
 const int kIPv4SubnetPrefix = 8;
-const char* const kIPv4DNS[] = { "10.0.0.2", "8.8.4.4", "8.8.8.8" };
+const char* const kIPv4DNS[] = {"10.0.0.2", "8.8.4.4", "8.8.8.8"};
 const char kIPv6Address[] = "0:0:0:0:0:ffff:a00:1";
 const char kIPv6Gateway[] = "0:0:0:0:0:ffff:a00:fe";
 const int kIPv6SubnetPrefix = 16;
-const char* const kIPv6DNS[] = {
-  "0:0:0:0:0:ffff:a00:fe", "0:0:0:0:0:ffff:808:404", "0:0:0:0:0:ffff:808:808"
-};
+const char* const kIPv6DNS[] = {"0:0:0:0:0:ffff:a00:fe",
+                                "0:0:0:0:0:ffff:808:404",
+                                "0:0:0:0:0:ffff:808:808"};
 
 }  // namespace
 
@@ -89,7 +89,8 @@ class CellularBearerTest : public testing::Test {
   }
 
   static KeyValueStore ConstructBearerProperties(
-      bool connected, const string& data_interface,
+      bool connected,
+      const string& data_interface,
       MMBearerIpMethod ipv4_config_method,
       MMBearerIpMethod ipv6_config_method) {
     KeyValueStore properties;

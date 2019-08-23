@@ -32,15 +32,14 @@ class VPNProvider : public ProviderInterface {
   // used for matching services for the VPN provider are the ProviderType,
   // ProviderHost mode and Name parameters.
   void CreateServicesFromProfile(const ProfileRefPtr& profile) override;
-  ServiceRefPtr FindSimilarService(
-      const KeyValueStore& args, Error* error) const override;
+  ServiceRefPtr FindSimilarService(const KeyValueStore& args,
+                                   Error* error) const override;
   ServiceRefPtr GetService(const KeyValueStore& args, Error* error) override;
-  ServiceRefPtr CreateTemporaryService(
-      const KeyValueStore& args, Error* error) override;
-  ServiceRefPtr CreateTemporaryServiceFromProfile(
-      const ProfileRefPtr& profile,
-      const std::string& entry_name,
-      Error* error) override;
+  ServiceRefPtr CreateTemporaryService(const KeyValueStore& args,
+                                       Error* error) override;
+  ServiceRefPtr CreateTemporaryServiceFromProfile(const ProfileRefPtr& profile,
+                                                  const std::string& entry_name,
+                                                  Error* error) override;
   void Start() override;
   void Stop() override;
 

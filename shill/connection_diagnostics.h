@@ -140,14 +140,12 @@ class ConnectionDiagnostics {
 
   // The ConnectionDiagnostics::kResultNames string array depends on this enum.
   // Any changes to this enum should be synced with that array.
-  enum Result {
-    kResultSuccess = 0,
-    kResultFailure = 1,
-    kResultTimeout = 2
-  };
+  enum Result { kResultSuccess = 0, kResultFailure = 1, kResultTimeout = 2 };
 
   struct Event {
-    Event(Type type_in, Phase phase_in, Result result_in,
+    Event(Type type_in,
+          Phase phase_in,
+          Result result_in,
           const std::string& message_in)
         : type(type_in),
           phase(phase_in),
@@ -226,13 +224,15 @@ class ConnectionDiagnostics {
 
   // Same as ConnectionDiagnostics::AddEvent, except that the added event
   // contains the string |message|.
-  void AddEventWithMessage(Type type, Phase phase, Result result,
+  void AddEventWithMessage(Type type,
+                           Phase phase,
+                           Result result,
                            const std::string& message);
 
   // Calls |result_callback_|, then stops connection diagnostics.
   // |diagnostic_events_| and |issue| are passed as arguments to
   // |result_callback_| to report the results of the diagnostics.
-  void ReportResultAndStop(const std::string &issue);
+  void ReportResultAndStop(const std::string& issue);
 
   void StartAfterPortalDetectionInternal(
       const PortalDetector::Result& http_result,
@@ -282,7 +282,8 @@ class ConnectionDiagnostics {
   // |address_pinged| finishes or times out. |ping_event_type| indicates the
   // type of ping that was started (gateway or target web server), and |result|
   // is the result of the IcmpSession.
-  void OnPingHostComplete(Type ping_event_type, const IPAddress& address_pinged,
+  void OnPingHostComplete(Type ping_event_type,
+                          const IPAddress& address_pinged,
                           const std::vector<base::TimeDelta>& result);
 
   // This I/O callback is triggered whenever the ARP reception socket has data
@@ -317,7 +318,9 @@ class ConnectionDiagnostics {
   // Utility function that returns true iff the event in |diagnostic_events_|
   // that is |num_events_ago| before the last event has a matching |type|,
   // |phase|, and |result|.
-  bool DoesPreviousEventMatch(Type type, Phase phase, Result result,
+  bool DoesPreviousEventMatch(Type type,
+                              Phase phase,
+                              Result result,
                               size_t num_events_ago);
 
   base::WeakPtrFactory<ConnectionDiagnostics> weak_ptr_factory_;

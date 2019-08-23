@@ -18,8 +18,8 @@
 
 using base::Bind;
 using base::Callback;
-using std::vector;
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -61,8 +61,8 @@ void DnsServerTester::Start() {
 }
 
 void DnsServerTester::StartAttempt(int delay_ms) {
-  start_attempt_.Reset(Bind(&DnsServerTester::StartAttemptTask,
-                            weak_ptr_factory_.GetWeakPtr()));
+  start_attempt_.Reset(
+      Bind(&DnsServerTester::StartAttemptTask, weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, start_attempt_.callback(), delay_ms);
 }
 
@@ -70,7 +70,7 @@ void DnsServerTester::StartAttemptTask() {
   Error error;
   if (!dns_test_client_->Start(kDnsTestHostname, &error)) {
     LOG(ERROR) << __func__ << ": Failed to start DNS client "
-                                << error.message();
+               << error.message();
     CompleteAttempt(kStatusFailure);
   }
 }

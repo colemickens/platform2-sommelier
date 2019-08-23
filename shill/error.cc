@@ -97,11 +97,8 @@ void Error::CopyFrom(const Error& error) {
 
 bool Error::ToChromeosError(brillo::ErrorPtr* error) const {
   if (IsFailure()) {
-    brillo::Error::AddTo(error,
-                         location_,
-                         brillo::errors::dbus::kDomain,
-                         kInfos[type_].dbus_result,
-                         message_);
+    brillo::Error::AddTo(error, location_, brillo::errors::dbus::kDomain,
+                         kInfos[type_].dbus_result, message_);
     return true;
   }
   return false;
@@ -121,10 +118,12 @@ string Error::GetDefaultMessage(Type type) {
 
 // static
 void Error::PopulateAndLog(const base::Location& from_here,
-                           Error* error, Type type, const string& message) {
+                           Error* error,
+                           Type type,
+                           const string& message) {
   string file_name = base::FilePath(from_here.file_name()).BaseName().value();
-  LOG(ERROR) << "[" << file_name << "("
-             << from_here.line_number() << ")]: "<< message;
+  LOG(ERROR) << "[" << file_name << "(" << from_here.line_number()
+             << ")]: " << message;
   if (error) {
     error->Populate(type, message, from_here);
   }

@@ -71,7 +71,7 @@ class SHILL_EXPORT NetlinkPacket {
   nlmsghdr* mutable_header() { return &header_; }
   ByteString* mutable_payload() { return payload_.get(); }
   void set_consumed_bytes(size_t consumed_bytes) {
-      consumed_bytes_ = consumed_bytes;
+    consumed_bytes_ = consumed_bytes;
   }
 
  private:

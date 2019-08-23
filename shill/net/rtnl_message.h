@@ -35,25 +35,14 @@ class SHILL_EXPORT RTNLMessage {
     kTypeNeighbor,
   };
 
-  enum Mode {
-    kModeUnknown,
-    kModeGet,
-    kModeAdd,
-    kModeDelete,
-    kModeQuery
-  };
+  enum Mode { kModeUnknown, kModeGet, kModeAdd, kModeDelete, kModeQuery };
 
   struct LinkStatus {
-    LinkStatus()
-        : type(0),
-          flags(0),
-          change(0) {}
+    LinkStatus() : type(0), flags(0), change(0) {}
     LinkStatus(unsigned int in_type,
                unsigned int in_flags,
                unsigned int in_change)
-        : type(in_type),
-          flags(in_flags),
-          change(in_change) {}
+        : type(in_type), flags(in_flags), change(in_change) {}
     std::string ToString() const;
     unsigned int type;
     unsigned int flags;
@@ -61,16 +50,11 @@ class SHILL_EXPORT RTNLMessage {
   };
 
   struct AddressStatus {
-    AddressStatus()
-        : prefix_len(0),
-          flags(0),
-          scope(0) {}
+    AddressStatus() : prefix_len(0), flags(0), scope(0) {}
     AddressStatus(unsigned char prefix_len_in,
                   unsigned char flags_in,
                   unsigned char scope_in)
-        : prefix_len(prefix_len_in),
-          flags(flags_in),
-          scope(scope_in) {}
+        : prefix_len(prefix_len_in), flags(flags_in), scope(scope_in) {}
     std::string ToString() const;
     unsigned char prefix_len;
     unsigned char flags;
@@ -111,16 +95,9 @@ class SHILL_EXPORT RTNLMessage {
   };
 
   struct NeighborStatus {
-    NeighborStatus()
-        : state(0),
-          flags(0),
-          type(0) {}
-    NeighborStatus(uint16_t state_in,
-                   uint8_t flags_in,
-                   uint8_t type_in)
-        : state(state_in),
-          flags(flags_in),
-          type(type_in) {}
+    NeighborStatus() : state(0), flags(0), type(0) {}
+    NeighborStatus(uint16_t state_in, uint8_t flags_in, uint8_t type_in)
+        : state(state_in), flags(flags_in), type(type_in) {}
     std::string ToString() const;
     uint16_t state;
     uint8_t flags;
@@ -128,12 +105,9 @@ class SHILL_EXPORT RTNLMessage {
   };
 
   struct RdnssOption {
-    RdnssOption()
-        : lifetime(0) {}
-    RdnssOption(uint32_t lifetime_in,
-                std::vector<IPAddress> addresses_in)
-        : lifetime(lifetime_in),
-          addresses(addresses_in) {}
+    RdnssOption() : lifetime(0) {}
+    RdnssOption(uint32_t lifetime_in, std::vector<IPAddress> addresses_in)
+        : lifetime(lifetime_in), addresses(addresses_in) {}
     std::string ToString() const;
     uint32_t lifetime;
     std::vector<IPAddress> addresses;
@@ -197,8 +171,7 @@ class SHILL_EXPORT RTNLMessage {
     return base::ContainsKey(attributes_, attr);
   }
   const ByteString GetAttribute(uint16_t attr) const {
-    return HasAttribute(attr) ?
-        attributes_.find(attr)->second : ByteString(0);
+    return HasAttribute(attr) ? attributes_.find(attr)->second : ByteString(0);
   }
   void SetAttribute(uint16_t attr, const ByteString& val) {
     attributes_[attr] = val;
@@ -219,9 +192,9 @@ class SHILL_EXPORT RTNLMessage {
                                  rtattr** attr_data,
                                  int* attr_length);
   SHILL_PRIVATE bool DecodeRule(const RTNLHeader* hdr,
-                                 Mode mode,
-                                 rtattr** attr_data,
-                                 int* attr_length);
+                                Mode mode,
+                                rtattr** attr_data,
+                                int* attr_length);
   SHILL_PRIVATE bool DecodeNdUserOption(const RTNLHeader* hdr,
                                         Mode mode,
                                         rtattr** attr_data,

@@ -46,8 +46,8 @@ const char kResult[] = "224.0.0.1";
 const char kGoodServer[] = "8.8.8.8";
 const char kBadServer[] = "10.9xx8.7";
 const char kNetworkInterface[] = "eth0";
-char kReturnAddressList0[] = { static_cast<char>(224), 0, 0, 1 };
-char* kReturnAddressList[] = { kReturnAddressList0, nullptr };
+char kReturnAddressList0[] = {static_cast<char>(224), 0, 0, 1};
+char* kReturnAddressList[] = {kReturnAddressList0, nullptr};
 char kFakeAresChannelData = 0;
 const ares_channel kAresChannel =
     reinterpret_cast<ares_channel>(&kFakeAresChannelData);
@@ -84,7 +84,7 @@ class DnsClientTest : public Test {
   }
 
   void AdvanceTime(int time_ms) {
-    struct timeval adv_time = { time_ms/1000, (time_ms % 1000) * 1000 };
+    struct timeval adv_time = {time_ms / 1000, (time_ms % 1000) * 1000};
     timeradd(&time_val_, &adv_time, &time_val_);
     EXPECT_CALL(time_, GetTimeMonotonic(_))
         .WillRepeatedly(DoAll(SetArgPointee<0>(time_val_), Return(0)));
@@ -95,28 +95,17 @@ class DnsClientTest : public Test {
                                    &hostent_);
   }
 
-  void CallDnsRead() {
-    dns_client_->HandleDnsRead(kAresFd);
-  }
+  void CallDnsRead() { dns_client_->HandleDnsRead(kAresFd); }
 
-  void CallDnsWrite() {
-    dns_client_->HandleDnsWrite(kAresFd);
-  }
+  void CallDnsWrite() { dns_client_->HandleDnsWrite(kAresFd); }
 
-  void CallTimeout() {
-    dns_client_->HandleTimeout();
-  }
+  void CallTimeout() { dns_client_->HandleTimeout(); }
 
-  void CallCompletion() {
-    dns_client_->HandleCompletion();
-  }
+  void CallCompletion() { dns_client_->HandleCompletion(); }
 
   void CreateClient(const vector<string>& dns_servers, int timeout_ms) {
-    dns_client_.reset(new DnsClient(IPAddress::kFamilyIPv4,
-                                    kNetworkInterface,
-                                    dns_servers,
-                                    timeout_ms,
-                                    &dispatcher_,
+    dns_client_.reset(new DnsClient(IPAddress::kFamilyIPv4, kNetworkInterface,
+                                    dns_servers, timeout_ms, &dispatcher_,
                                     callback_target_.callback()));
     dns_client_->ares_ = &ares_;
     dns_client_->time_ = &time_;
@@ -128,15 +117,12 @@ class DnsClientTest : public Test {
     EXPECT_CALL(ares_, GetSock(_, _, _))
         .WillRepeatedly(DoAll(SetArgPointee<1>(kAresFd), Return(1)));
     EXPECT_CALL(ares_, Timeout(_, _, _))
-        .WillRepeatedly(
-            DoAll(SetArgPointee<2>(ares_timeout_), ReturnArg<2>()));
+        .WillRepeatedly(DoAll(SetArgPointee<2>(ares_timeout_), ReturnArg<2>()));
   }
 
   void SetInActive() {
-    EXPECT_CALL(ares_, GetSock(_, _, _))
-        .WillRepeatedly(Return(0));
-    EXPECT_CALL(ares_, Timeout(_, _, _))
-        .WillRepeatedly(ReturnArg<1>());
+    EXPECT_CALL(ares_, GetSock(_, _, _)).WillRepeatedly(Return(0));
+    EXPECT_CALL(ares_, Timeout(_, _, _)).WillRepeatedly(ReturnArg<1>());
   }
 
   void SetupRequest(const string& name, const string& server) {
@@ -144,8 +130,7 @@ class DnsClientTest : public Test {
     CreateClient(dns_servers, kAresTimeoutMS);
     // These expectations are fulfilled when dns_client_->Start() is called.
     EXPECT_CALL(ares_, InitOptions(_, _, _))
-        .WillOnce(DoAll(SetArgPointee<0>(kAresChannel),
-                        Return(ARES_SUCCESS)));
+        .WillOnce(DoAll(SetArgPointee<0>(kAresChannel), Return(ARES_SUCCESS)));
     EXPECT_CALL(ares_, SetServersCsv(_, StrEq(server)))
         .WillOnce(Return(ARES_SUCCESS));
     EXPECT_CALL(ares_, SetLocalDev(kAresChannel, StrEq(kNetworkInterface)))
@@ -189,14 +174,12 @@ class DnsClientTest : public Test {
     EXPECT_TRUE(dns_client_->address_.IsDefault());
   }
 
-  void SaveCallbackArgs(const Error& error, const IPAddress& address)  {
+  void SaveCallbackArgs(const Error& error, const IPAddress& address) {
     error_result_.CopyFrom(error);
     address_result_ = address;
   }
 
-  void ExpectPostCompletionTask() {
-    EXPECT_CALL(dispatcher_, PostTask(_, _));
-  }
+  void ExpectPostCompletionTask() { EXPECT_CALL(dispatcher_, PostTask(_, _)); }
 
   void ExpectReset() {
     EXPECT_TRUE(dns_client_->address_.family() == IPAddress::kFamilyIPv4);
@@ -210,8 +193,8 @@ class DnsClientTest : public Test {
     DnsCallbackTarget()
         : callback_(Bind(&DnsCallbackTarget::CallTarget, Unretained(this))) {}
 
-    MOCK_METHOD2(CallTarget, void(const Error& error,
-                                  const IPAddress& address));
+    MOCK_METHOD2(CallTarget,
+                 void(const Error& error, const IPAddress& address));
     const DnsClient::ClientCallback& callback() const { return callback_; }
 
    private:
@@ -280,8 +263,7 @@ TEST_F(DnsClientTest, NoServers) {
 TEST_F(DnsClientTest, SetServersCsvInvalidServer) {
   vector<string> dns_servers = {kBadServer};
   CreateClient(dns_servers, kAresTimeoutMS);
-  EXPECT_CALL(ares_, InitOptions(_, _, _))
-      .WillOnce(Return(ARES_SUCCESS));
+  EXPECT_CALL(ares_, InitOptions(_, _, _)).WillOnce(Return(ARES_SUCCESS));
   EXPECT_CALL(ares_, SetServersCsv(_, StrEq(kBadServer)))
       .WillOnce(Return(ARES_EBADSTR));
   Error error;
@@ -293,8 +275,7 @@ TEST_F(DnsClientTest, SetServersCsvInvalidServer) {
 TEST_F(DnsClientTest, InitOptionsFailure) {
   vector<string> dns_servers = {kGoodServer};
   CreateClient(dns_servers, kAresTimeoutMS);
-  EXPECT_CALL(ares_, InitOptions(_, _, _))
-      .WillOnce(Return(ARES_EBADFLAGS));
+  EXPECT_CALL(ares_, InitOptions(_, _, _)).WillOnce(Return(ARES_EBADFLAGS));
   Error error;
   EXPECT_FALSE(dns_client_->Start(kGoodName, &error));
   EXPECT_EQ(Error::kOperationFailed, error.type());
@@ -354,8 +335,7 @@ TEST_F(DnsClientTest, TimeoutFirstRefresh) {
   EXPECT_CALL(time_, GetTimeMonotonic(_))
       .WillOnce(DoAll(SetArgPointee<0>(init_time_val), Return(0)))
       .WillRepeatedly(DoAll(SetArgPointee<0>(time_val_), Return(0)));
-  EXPECT_CALL(callback_target_, CallTarget(Not(IsSuccess()), _))
-      .Times(0);
+  EXPECT_CALL(callback_target_, CallTarget(Not(IsSuccess()), _)).Times(0);
   EXPECT_CALL(ares_, Destroy(kAresChannel));
   Error error;
   // Expect the DnsClient to post a completion task.  However this task will
@@ -371,13 +351,13 @@ TEST_F(DnsClientTest, TimeoutFirstRefresh) {
 // Failed request due to timeout within the dns_client.
 TEST_F(DnsClientTest, TimeoutDispatcherEvent) {
   StartValidRequest();
-  EXPECT_CALL(ares_, ProcessFd(kAresChannel,
-                               ARES_SOCKET_BAD, ARES_SOCKET_BAD));
+  EXPECT_CALL(ares_, ProcessFd(kAresChannel, ARES_SOCKET_BAD, ARES_SOCKET_BAD));
   AdvanceTime(kAresTimeoutMS);
   ExpectPostCompletionTask();
   CallTimeout();
-  EXPECT_CALL(callback_target_, CallTarget(
-      ErrorIs(Error::kOperationTimeout, DnsClient::kErrorTimedOut), _));
+  EXPECT_CALL(callback_target_, CallTarget(ErrorIs(Error::kOperationTimeout,
+                                                   DnsClient::kErrorTimedOut),
+                                           _));
   CallCompletion();
 }
 
@@ -387,11 +367,12 @@ TEST_F(DnsClientTest, TimeoutFromARES) {
   AdvanceTime(kAresWaitMS);
   ares_result_ = ARES_ETIMEOUT;
   EXPECT_CALL(ares_, ProcessFd(kAresChannel, ARES_SOCKET_BAD, ARES_SOCKET_BAD))
-        .WillOnce(InvokeWithoutArgs(this, &DnsClientTest::CallReplyCB));
+      .WillOnce(InvokeWithoutArgs(this, &DnsClientTest::CallReplyCB));
   ExpectPostCompletionTask();
   CallTimeout();
-  EXPECT_CALL(callback_target_, CallTarget(
-      ErrorIs(Error::kOperationTimeout, DnsClient::kErrorTimedOut), _));
+  EXPECT_CALL(callback_target_, CallTarget(ErrorIs(Error::kOperationTimeout,
+                                                   DnsClient::kErrorTimedOut),
+                                           _));
   CallCompletion();
 }
 
@@ -404,8 +385,9 @@ TEST_F(DnsClientTest, HostNotFound) {
       .WillOnce(InvokeWithoutArgs(this, &DnsClientTest::CallReplyCB));
   ExpectPostCompletionTask();
   CallDnsRead();
-  EXPECT_CALL(callback_target_, CallTarget(
-      ErrorIs(Error::kOperationFailed, DnsClient::kErrorNotFound), _));
+  EXPECT_CALL(callback_target_, CallTarget(ErrorIs(Error::kOperationFailed,
+                                                   DnsClient::kErrorNotFound),
+                                           _));
   CallCompletion();
 }
 

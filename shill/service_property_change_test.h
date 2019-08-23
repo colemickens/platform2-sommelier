@@ -22,8 +22,7 @@ void TestAutoConnectPropertyChange(ServiceRefPtr service,
                                    ServiceMockAdaptor* adaptor);
 // Test Name property change notification. Only VPNService allows
 // changing the name property.
-void TestNamePropertyChange(ServiceRefPtr service,
-                           ServiceMockAdaptor* adaptor);
+void TestNamePropertyChange(ServiceRefPtr service, ServiceMockAdaptor* adaptor);
 // Test that the common customer setters (for all Services) return
 // false if setting to the same as the current value.
 void TestCommonCustomSetterNoopChange(ServiceRefPtr service,

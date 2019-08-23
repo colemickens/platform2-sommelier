@@ -141,13 +141,15 @@ class NetfilterQueueProcessor {
 
   // Find a listener entry with port |port|, device index |device_index|
   // and local address |address|.
-  std::deque<ListenerEntryPtr>::iterator FindListener(
-      uint16_t port, int device_index, uint32_t address);
+  std::deque<ListenerEntryPtr>::iterator FindListener(uint16_t port,
+                                                      int device_index,
+                                                      uint32_t address);
 
   // Find a listener entry with port |port| and device index |device_index|
   // which transmitted to multicast destination |destination|.
-  std::deque<ListenerEntryPtr>::iterator FindDestination(
-      uint16_t port, int device_index, uint32_t destination);
+  std::deque<ListenerEntryPtr>::iterator FindDestination(uint16_t port,
+                                                         int device_index,
+                                                         uint32_t destination);
 
   // Returns true if incoming packet |packet| should be allowed to pass.
   bool IsIncomingPacketAllowed(const Packet& packet, time_t now);
@@ -195,4 +197,3 @@ class NetfilterQueueProcessor {
 }  // namespace shill
 
 #endif  // SHILL_SHIMS_NETFILTER_QUEUE_PROCESSOR_H_
-

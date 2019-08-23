@@ -18,9 +18,10 @@ class MockSupplicantEAPStateHandler : public SupplicantEAPStateHandler {
   MockSupplicantEAPStateHandler();
   ~MockSupplicantEAPStateHandler() override;
 
-  MOCK_METHOD3(ParseStatus, bool(const std::string& status,
-                                 const std::string& parameter,
-                                 Service::ConnectFailure* failure));
+  MOCK_METHOD3(ParseStatus,
+               bool(const std::string& status,
+                    const std::string& parameter,
+                    Service::ConnectFailure* failure));
   MOCK_METHOD0(Reset, void());
   MOCK_CONST_METHOD0(is_eap_in_progress, bool());
 

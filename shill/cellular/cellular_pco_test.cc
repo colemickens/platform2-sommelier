@@ -8,8 +8,8 @@
 
 #include <gtest/gtest.h>
 
-using std::vector;
 using std::tuple;
+using std::vector;
 
 namespace shill {
 

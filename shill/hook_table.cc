@@ -25,8 +25,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kManager;
-static string ObjectID(const HookTable* h) { return "(hook_table)"; }
+static string ObjectID(const HookTable* h) {
+  return "(hook_table)";
 }
+}  // namespace Logging
 
 HookTable::HookTable(EventDispatcher* event_dispatcher)
     : event_dispatcher_(event_dispatcher) {}
@@ -75,8 +77,8 @@ void HookTable::Run(int timeout_ms, const ResultCallback& done) {
   }
   done_callback_ = done;
   timeout_callback_.Reset(Bind(&HookTable::ActionsTimedOut, Unretained(this)));
-  event_dispatcher_->PostDelayedTask(
-      FROM_HERE, timeout_callback_.callback(), timeout_ms);
+  event_dispatcher_->PostDelayedTask(FROM_HERE, timeout_callback_.callback(),
+                                     timeout_ms);
 
   // Mark all actions as having started before we execute any actions.
   // Otherwise, if the first action completes inline, its call to
@@ -105,7 +107,7 @@ bool HookTable::AllActionsComplete() const {
   for (const auto& hook_entry : hook_table_) {
     const HookAction& action = hook_entry.second;
     if (action.started && !action.completed) {
-        return false;
+      return false;
     }
   }
   return true;

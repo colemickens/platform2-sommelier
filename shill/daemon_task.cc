@@ -32,8 +32,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDaemon;
-static std::string ObjectID(DaemonTask* d) { return "(chromeos_daemon)"; }
+static std::string ObjectID(DaemonTask* d) {
+  return "(chromeos_daemon)";
 }
+}  // namespace Logging
 
 DaemonTask::DaemonTask(const Settings& settings, Config* config)
     : settings_(settings),
@@ -131,8 +133,8 @@ void DaemonTask::TerminationActionsCompleted(const Error& error) {
   //                     -> DeviceInfo::Stop
   //                       -> Cellular::~Cellular
   //           -> Manager::RemoveTerminationAction
-  dispatcher_->PostTask(FROM_HERE,
-      Bind(&DaemonTask::StopAndReturnToMain, Unretained(this)));
+  dispatcher_->PostTask(
+      FROM_HERE, Bind(&DaemonTask::StopAndReturnToMain, Unretained(this)));
 }
 
 void DaemonTask::StopAndReturnToMain() {

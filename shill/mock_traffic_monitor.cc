@@ -12,7 +12,7 @@ namespace {
 
 void NoOpNetworkProblemDetectedCallback(int) {}
 
-}  // namespacee
+}  // namespace
 
 MockTrafficMonitor::MockTrafficMonitor()
     : TrafficMonitor(

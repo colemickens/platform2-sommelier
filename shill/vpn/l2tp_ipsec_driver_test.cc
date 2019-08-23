@@ -41,8 +41,7 @@ using testing::ReturnRef;
 
 namespace shill {
 
-class L2TPIPSecDriverTest : public testing::Test,
-                            public RpcTaskDelegate {
+class L2TPIPSecDriverTest : public testing::Test, public RpcTaskDelegate {
  public:
   L2TPIPSecDriverTest()
       : manager_(&control_, &dispatcher_, &metrics_),
@@ -96,29 +95,19 @@ class L2TPIPSecDriverTest : public testing::Test,
     driver_->args()->SetStrings(arg, value);
   }
 
-  KeyValueStore* GetArgs() {
-    return driver_->args();
-  }
+  KeyValueStore* GetArgs() { return driver_->args(); }
 
-  string GetProviderType() {
-    return driver_->GetProviderType();
-  }
+  string GetProviderType() { return driver_->GetProviderType(); }
 
-  void SetDevice(const PPPDeviceRefPtr& device) {
-    driver_->device_ = device;
-  }
+  void SetDevice(const PPPDeviceRefPtr& device) { driver_->device_ = device; }
 
   void SetService(const VPNServiceRefPtr& service) {
     driver_->service_ = service;
   }
 
-  VPNServiceRefPtr GetService() {
-    return driver_->service_;
-  }
+  VPNServiceRefPtr GetService() { return driver_->service_; }
 
-  void OnConnectTimeout() {
-    driver_->OnConnectTimeout();
-  }
+  void OnConnectTimeout() { driver_->OnConnectTimeout(); }
 
   void StartConnectTimeout(int timeout_seconds) {
     driver_->StartConnectTimeout(timeout_seconds);
@@ -135,11 +124,12 @@ class L2TPIPSecDriverTest : public testing::Test,
   bool IsXauthCredentialsFileCleared(
       const FilePath& xauth_credentials_file_path) const {
     return !base::PathExists(xauth_credentials_file_path) &&
-        GetXauthCredentialsFile().empty();
+           GetXauthCredentialsFile().empty();
   }
 
   // Used to assert that a flag appears in the options.
-  void ExpectInFlags(const vector<string>& options, const string& flag,
+  void ExpectInFlags(const vector<string>& options,
+                     const string& flag,
                      const string& value);
 
   FilePath SetupPSKFile();
@@ -147,7 +137,7 @@ class L2TPIPSecDriverTest : public testing::Test,
 
   FilePath GetPSKFile() const { return driver_->psk_file_; }
   FilePath GetXauthCredentialsFile() const {
-      return driver_->xauth_credentials_file_;
+    return driver_->xauth_credentials_file_;
   }
 
   void InvokeNotify(const string& reason, const map<string, string>& dict) {
@@ -173,18 +163,19 @@ class L2TPIPSecDriverTest : public testing::Test,
     driver_->InitPropertyStore(&store);
     store.SetStringProperty(kL2tpIpsecPskProperty, "x", &unused_error);
     store.SetStringProperty(kL2tpIpsecPasswordProperty, "y", &unused_error);
-    EXPECT_CALL(metrics_, SendEnumToUMA(
-        Metrics::kMetricVpnDriver,
-        Metrics::kVpnDriverL2tpIpsec,
-        Metrics::kMetricVpnDriverMax));
-    EXPECT_CALL(metrics_, SendEnumToUMA(
-        Metrics::kMetricVpnRemoteAuthenticationType,
-        Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk,
-        Metrics::kVpnRemoteAuthenticationTypeMax));
-    EXPECT_CALL(metrics_, SendEnumToUMA(
-        Metrics::kMetricVpnUserAuthenticationType,
-        Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword,
-        Metrics::kVpnUserAuthenticationTypeMax));
+    EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnDriver,
+                                        Metrics::kVpnDriverL2tpIpsec,
+                                        Metrics::kMetricVpnDriverMax));
+    EXPECT_CALL(metrics_,
+                SendEnumToUMA(Metrics::kMetricVpnRemoteAuthenticationType,
+                              Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk,
+                              Metrics::kVpnRemoteAuthenticationTypeMax));
+    EXPECT_CALL(
+        metrics_,
+        SendEnumToUMA(
+            Metrics::kMetricVpnUserAuthenticationType,
+            Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword,
+            Metrics::kVpnUserAuthenticationTypeMax));
   }
 
   // Inherited from RpcTaskDelegate.
@@ -210,11 +201,12 @@ const int L2TPIPSecDriverTest::kInterfaceIndex = 123;
 
 void L2TPIPSecDriverTest::GetLogin(string* /*user*/, string* /*password*/) {}
 
-void L2TPIPSecDriverTest::Notify(
-    const string& /*reason*/, const map<string, string>& /*dict*/) {}
+void L2TPIPSecDriverTest::Notify(const string& /*reason*/,
+                                 const map<string, string>& /*dict*/) {}
 
-void L2TPIPSecDriverTest::ExpectInFlags(
-    const vector<string>& options, const string& flag, const string& value) {
+void L2TPIPSecDriverTest::ExpectInFlags(const vector<string>& options,
+                                        const string& flag,
+                                        const string& value) {
   string flag_value = base::StringPrintf("%s=%s", flag.c_str(), value.c_str());
   EXPECT_TRUE(base::ContainsValue(options, flag_value));
 }
@@ -249,11 +241,9 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
   FilePath xauth_credentials_file;
   FakeUpConnect(&psk_file, &xauth_credentials_file);
   driver_->device_ = device_;
-  driver_->external_task_.reset(
-      new MockExternalTask(&control_,
-                           &process_manager_,
-                           weak_ptr_factory_.GetWeakPtr(),
-                           base::Callback<void(pid_t, int)>()));
+  driver_->external_task_.reset(new MockExternalTask(
+      &control_, &process_manager_, weak_ptr_factory_.GetWeakPtr(),
+      base::Callback<void(pid_t, int)>()));
   EXPECT_CALL(*device_, DropConnection());
   EXPECT_CALL(*device_, SetEnabled(false));
   EXPECT_CALL(*service_, SetFailure(Service::kFailureBadPassphrase));
@@ -292,7 +282,7 @@ TEST_F(L2TPIPSecDriverTest, InitOptions) {
   static const char kPSK[] = "foobar";
   static const char kXauthUser[] = "silly";
   static const char kXauthPassword[] = "rabbit";
-  const vector<string> kCaCertPEM{ "Insert PEM encoded data here" };
+  const vector<string> kCaCertPEM{"Insert PEM encoded data here"};
   static const char kPEMCertfile[] = "/tmp/der-file-from-pem-cert";
   FilePath pem_cert(kPEMCertfile);
 
@@ -358,7 +348,7 @@ TEST_F(L2TPIPSecDriverTest, InitPSKOptions) {
 }
 
 TEST_F(L2TPIPSecDriverTest, InitPEMOptions) {
-  const vector<string> kCaCertPEM{ "Insert PEM encoded data here" };
+  const vector<string> kCaCertPEM{"Insert PEM encoded data here"};
   static const char kPEMCertfile[] = "/tmp/der-file-from-pem-cert";
   FilePath empty_cert;
   FilePath pem_cert(kPEMCertfile);
@@ -445,9 +435,8 @@ TEST_F(L2TPIPSecDriverTest, AppendValueOption) {
   static const char kValue2[] = "some-property-value2";
 
   vector<string> options;
-  EXPECT_FALSE(
-      driver_->AppendValueOption(
-          "L2TPIPSec.UnknownProperty", kOption, &options));
+  EXPECT_FALSE(driver_->AppendValueOption("L2TPIPSec.UnknownProperty", kOption,
+                                          &options));
   EXPECT_TRUE(options.empty());
 
   SetArg(kProperty, "");
@@ -472,8 +461,8 @@ TEST_F(L2TPIPSecDriverTest, AppendFlag) {
   static const char kProperty2[] = "L2TPIPSec.SomeProperty2";
 
   vector<string> options;
-  EXPECT_FALSE(driver_->AppendFlag("L2TPIPSec.UnknownProperty",
-                                   kTrueOption, kFalseOption, &options));
+  EXPECT_FALSE(driver_->AppendFlag("L2TPIPSec.UnknownProperty", kTrueOption,
+                                   kFalseOption, &options));
   EXPECT_TRUE(options.empty());
 
   SetArg(kProperty, "");
@@ -665,8 +654,7 @@ TEST_F(L2TPIPSecDriverTest, GetProvider) {
     EXPECT_TRUE(
         store.GetKeyValueStoreProperty(kProviderProperty, &props, &error));
     EXPECT_FALSE(props.LookupBool(kPassphraseRequiredProperty, true));
-    EXPECT_FALSE(
-        props.LookupBool(kL2tpIpsecPskRequiredProperty, true));
+    EXPECT_FALSE(props.LookupBool(kL2tpIpsecPskRequiredProperty, true));
     EXPECT_FALSE(props.ContainsString(kL2tpIpsecPasswordProperty));
   }
 }
@@ -702,7 +690,6 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
   EXPECT_FALSE(IsConnectTimeoutStarted());
 }
 
-
 TEST_F(L2TPIPSecDriverTest, NotifyWithExistingDevice) {
   map<string, string> config{{kPPPInterfaceName, kInterfaceName}};
   MockPPPDeviceFactory* mock_ppp_device_factory =
@@ -728,8 +715,7 @@ TEST_F(L2TPIPSecDriverTest, NotifyDisconnected) {
   base::Callback<void(pid_t, int)> death_callback;
   MockExternalTask* local_external_task =
       new MockExternalTask(&control_, &process_manager_,
-                           weak_ptr_factory_.GetWeakPtr(),
-                           death_callback);
+                           weak_ptr_factory_.GetWeakPtr(), death_callback);
   driver_->device_ = device_;
   driver_->external_task_.reset(local_external_task);  // passes ownership
   EXPECT_CALL(*device_, DropConnection());

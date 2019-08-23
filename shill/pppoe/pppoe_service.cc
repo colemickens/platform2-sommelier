@@ -62,14 +62,14 @@ void PPPoEService::OnConnect(Error* error) {
 
   if (!ethernet()->link_up()) {
     Error::PopulateAndLog(
-        FROM_HERE, error, Error::kOperationFailed, StringPrintf(
-            "PPPoE Service %s does not have Ethernet link.",
-            unique_name().c_str()));
+        FROM_HERE, error, Error::kOperationFailed,
+        StringPrintf("PPPoE Service %s does not have Ethernet link.",
+                     unique_name().c_str()));
     return;
   }
 
-  PPPDaemon::DeathCallback callback(base::Bind(&PPPoEService::OnPPPDied,
-                                               weak_ptr_factory_.GetWeakPtr()));
+  PPPDaemon::DeathCallback callback(
+      base::Bind(&PPPoEService::OnPPPDied, weak_ptr_factory_.GetWeakPtr()));
 
   PPPDaemon::Options options;
   options.no_detach = true;
@@ -81,9 +81,9 @@ void PPPoEService::OnConnect(Error* error) {
   options.max_fail = max_auth_failure_;
   options.use_ipv6 = true;
 
-  pppd_ = PPPDaemon::Start(
-      control_interface(), process_manager_, weak_ptr_factory_.GetWeakPtr(),
-      options, ethernet()->link_name(), callback, error);
+  pppd_ = PPPDaemon::Start(control_interface(), process_manager_,
+                           weak_ptr_factory_.GetWeakPtr(), options,
+                           ethernet()->link_name(), callback, error);
   if (pppd_ == nullptr) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                           StringPrintf("PPPoE service %s can't start pppd.",
@@ -210,8 +210,7 @@ void PPPoEService::OnPPPConnected(const map<string, string>& params) {
   }
 
   ppp_device_->SelectService(this);
-  ppp_device_->UpdateIPConfigFromPPP(params,
-                                     false /* blackhole_ipv6 */);
+  ppp_device_->UpdateIPConfigFromPPP(params, false /* blackhole_ipv6 */);
 #ifndef DISABLE_DHCPV6
   // Acquire DHCPv6 configurations through the PPPoE (virtual) interface
   // if it is enabled for DHCPv6.

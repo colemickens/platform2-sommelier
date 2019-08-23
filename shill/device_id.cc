@@ -55,7 +55,8 @@ bool HexToUInt16(const std::string& input, uint16_t* output) {
 }
 
 std::unique_ptr<DeviceId> ReadDeviceId(DeviceId::BusType bus_type,
-    const base::FilePath& vendor_path, const base::FilePath& product_path) {
+                                       const base::FilePath& vendor_path,
+                                       const base::FilePath& product_path) {
   std::string vendor_id, product_id;
   uint16_t parsed_vendor_id, parsed_product_id;
 
@@ -66,12 +67,11 @@ std::unique_ptr<DeviceId> ReadDeviceId(DeviceId::BusType bus_type,
 
   if (!ReadDeviceIdFile(product_path, &product_id) ||
       !HexToUInt16(product_id, &parsed_product_id)) {
-    return std::make_unique<DeviceId>(
-        bus_type, parsed_vendor_id);
+    return std::make_unique<DeviceId>(bus_type, parsed_vendor_id);
   }
 
-  return std::make_unique<DeviceId>(
-      bus_type, parsed_vendor_id, parsed_product_id);
+  return std::make_unique<DeviceId>(bus_type, parsed_vendor_id,
+                                    parsed_product_id);
 }
 
 }  // namespace
@@ -115,15 +115,12 @@ std::string DeviceId::AsString() const {
   }
 
   if (!product_id_.has_value()) {
-    return base::StringPrintf("%s:%04" PRIx16 ":*",
-                              bus_name,
+    return base::StringPrintf("%s:%04" PRIx16 ":*", bus_name,
                               vendor_id_.value());
   }
 
-  return base::StringPrintf("%s:%04" PRIx16 ":%04" PRIx16,
-                            bus_name,
-                            vendor_id_.value(),
-                            product_id_.value());
+  return base::StringPrintf("%s:%04" PRIx16 ":%04" PRIx16, bus_name,
+                            vendor_id_.value(), product_id_.value());
 }
 
 bool DeviceId::Match(const DeviceId& pattern) const {

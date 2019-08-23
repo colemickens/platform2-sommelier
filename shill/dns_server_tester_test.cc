@@ -55,20 +55,16 @@ class DnsServerTesterTest : public Test {
     EXPECT_CALL(*connection_, interface_name())
         .WillRepeatedly(ReturnRef(interface_name_));
     dns_server_tester_.reset(
-        new DnsServerTester(connection_.get(),
-                            &dispatcher_,
-                            dns_servers_,
-                            false,
-                            callback_target_.result_callback()));
+        new DnsServerTester(connection_.get(), &dispatcher_, dns_servers_,
+                            false, callback_target_.result_callback()));
   }
 
  protected:
   class CallbackTarget {
    public:
     CallbackTarget()
-        : result_callback_(Bind(&CallbackTarget::ResultCallback,
-                                Unretained(this))) {
-    }
+        : result_callback_(
+              Bind(&CallbackTarget::ResultCallback, Unretained(this))) {}
 
     MOCK_METHOD1(ResultCallback, void(const DnsServerTester::Status status));
     Callback<void(const DnsServerTester::Status)>& result_callback() {
@@ -128,7 +124,8 @@ TEST_F(DnsServerTesterTest, StartAttemptTask) {
   // DNS test task failed to start.
   EXPECT_CALL(*dns_test_client, Start(_, _)).WillOnce(Return(false));
   EXPECT_CALL(callback_target(),
-              ResultCallback(DnsServerTester::kStatusFailure)).Times(1);
+              ResultCallback(DnsServerTester::kStatusFailure))
+      .Times(1);
   dns_server_tester()->StartAttemptTask();
   Mock::VerifyAndClearExpectations(dns_test_client);
 }
@@ -137,19 +134,22 @@ TEST_F(DnsServerTesterTest, AttemptCompleted) {
   // DNS test attempt succeed with retry_until_success_ not set.
   dns_server_tester()->retry_until_success_ = false;
   EXPECT_CALL(callback_target(),
-              ResultCallback(DnsServerTester::kStatusSuccess)).Times(1);
+              ResultCallback(DnsServerTester::kStatusSuccess))
+      .Times(1);
   dns_server_tester()->CompleteAttempt(DnsServerTester::kStatusSuccess);
 
   // DNS test attempt succeed with retry_until_success_ being set.
   dns_server_tester()->retry_until_success_ = true;
   EXPECT_CALL(callback_target(),
-              ResultCallback(DnsServerTester::kStatusSuccess)).Times(1);
+              ResultCallback(DnsServerTester::kStatusSuccess))
+      .Times(1);
   dns_server_tester()->CompleteAttempt(DnsServerTester::kStatusSuccess);
 
   // DNS test attempt failed with retry_until_success_ not set.
   dns_server_tester()->retry_until_success_ = false;
   EXPECT_CALL(callback_target(),
-              ResultCallback(DnsServerTester::kStatusFailure)).Times(1);
+              ResultCallback(DnsServerTester::kStatusFailure))
+      .Times(1);
   dns_server_tester()->CompleteAttempt(DnsServerTester::kStatusFailure);
 
   // DNS test attempt failed with retry_until_success_ being set.

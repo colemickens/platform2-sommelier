@@ -33,8 +33,7 @@ MATCHER_P(VoidStringEq, value, "") {
 
 class OpenVPNManagementServerTest : public testing::Test {
  public:
-  OpenVPNManagementServerTest()
-      : server_(&driver_) {
+  OpenVPNManagementServerTest() : server_(&driver_) {
     server_.io_handler_factory_ = &io_handler_factory_;
   }
 
@@ -105,13 +104,9 @@ class OpenVPNManagementServerTest : public testing::Test {
     return data;
   }
 
-  void SendSignal(const string& signal) {
-    server_.SendSignal(signal);
-  }
+  void SendSignal(const string& signal) { server_.SendSignal(signal); }
 
-  void OnInput(InputData* data) {
-    server_.OnInput(data);
-  }
+  void OnInput(InputData* data) { server_.OnInput(data); }
 
   void ProcessMessage(const string& message) {
     server_.ProcessMessage(message);
@@ -131,8 +126,9 @@ class OpenVPNManagementServerTest : public testing::Test {
 
   bool GetHoldWaiting() { return server_.hold_waiting_; }
 
-  static string ParseSubstring(
-      const string& message, const string& start, const string& end) {
+  static string ParseSubstring(const string& message,
+                               const string& start,
+                               const string& end) {
     return OpenVPNManagementServer::ParseSubstring(message, start, end);
   }
 
@@ -144,9 +140,7 @@ class OpenVPNManagementServerTest : public testing::Test {
     return OpenVPNManagementServer::ParsePasswordFailedReason(message);
   }
 
-  void SetClientState(const string& state) {
-    server_.state_ = state;
-  }
+  void SetClientState(const string& state) { server_.state_ = state; }
 
   MockOpenVPNDriver driver_;
   MockSockets sockets_;
@@ -163,8 +157,9 @@ TEST_F(OpenVPNManagementServerTest, StartStarted) {
 }
 
 TEST_F(OpenVPNManagementServerTest, StartSocketFail) {
-  EXPECT_CALL(sockets_, Socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC,
-        IPPROTO_TCP)).WillOnce(Return(-1));
+  EXPECT_CALL(sockets_,
+              Socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP))
+      .WillOnce(Return(-1));
   EXPECT_FALSE(server_.Start(&sockets_, nullptr));
   ExpectNotStarted();
 }
@@ -198,13 +193,12 @@ TEST_F(OpenVPNManagementServerTest, Start) {
   EXPECT_EQ(&sockets_, server_.sockets_);
   EXPECT_EQ(kSocket, server_.socket_);
   EXPECT_NE(nullptr, server_.ready_handler_);
-  vector<vector<string>> expected_options {
-      { "management", "127.0.0.1", "0" },
-      { "management-client" },
-      { "management-hold" },
-      { "management-query-passwords" },
-      { "static-challenge", kStaticChallenge, "1" }
-  };
+  vector<vector<string>> expected_options{
+      {"management", "127.0.0.1", "0"},
+      {"management-client"},
+      {"management-hold"},
+      {"management-query-passwords"},
+      {"static-challenge", kStaticChallenge, "1"}};
   EXPECT_EQ(expected_options, options);
 }
 
@@ -259,7 +253,8 @@ TEST_F(OpenVPNManagementServerTest, OnInput) {
     OnInput(&data);
   }
   {
-    string s = "foo\n"
+    string s =
+        "foo\n"
         ">INFO:...\n"
         ">PASSWORD:Need 'Auth' SC:user/password/otp\n"
         ">PASSWORD:Need 'User-Specific TPM Token FOO' ...\n"
@@ -287,8 +282,8 @@ TEST_F(OpenVPNManagementServerTest, OnInputStop) {
   InputData data = CreateInputDataFromString(s);
   SetSockets();
   // Stops the server after the first message is processed.
-  EXPECT_CALL(driver_, FailService(Service::kFailureConnect,
-                                   Service::kErrorDetailsNone))
+  EXPECT_CALL(driver_,
+              FailService(Service::kFailureConnect, Service::kErrorDetailsNone))
       .WillOnce(Assign(&server_.sockets_, nullptr));
   // The second message should not be processed.
   EXPECT_CALL(driver_, OnReconnecting(_)).Times(0);
@@ -333,24 +328,21 @@ TEST_F(OpenVPNManagementServerTest, ProcessStateMessage) {
 
 TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuthSC) {
   ExpectOTPStaticChallengeResponse();
-  EXPECT_TRUE(
-      server_.ProcessNeedPasswordMessage(
-          ">PASSWORD:Need 'Auth' SC:user/password/otp"));
+  EXPECT_TRUE(server_.ProcessNeedPasswordMessage(
+      ">PASSWORD:Need 'Auth' SC:user/password/otp"));
   EXPECT_FALSE(driver_.args()->ContainsString(kOpenVPNOTPProperty));
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuth) {
   ExpectAuthenticationResponse();
-  EXPECT_TRUE(
-      server_.ProcessNeedPasswordMessage(
-          ">PASSWORD:Need 'Auth' username/password"));
+  EXPECT_TRUE(server_.ProcessNeedPasswordMessage(
+      ">PASSWORD:Need 'Auth' username/password"));
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageTPMToken) {
   ExpectPinResponse();
-  EXPECT_TRUE(
-      server_.ProcessNeedPasswordMessage(
-          ">PASSWORD:Need 'User-Specific TPM Token FOO' ..."));
+  EXPECT_TRUE(server_.ProcessNeedPasswordMessage(
+      ">PASSWORD:Need 'User-Specific TPM Token FOO' ..."));
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageUnknown) {
@@ -372,10 +364,9 @@ TEST_F(OpenVPNManagementServerTest, ParseSubstring) {
 
 TEST_F(OpenVPNManagementServerTest, ParsePasswordTag) {
   EXPECT_EQ("", ParsePasswordTag(""));
-  EXPECT_EQ("Auth",
-            ParsePasswordTag(
-                ">PASSWORD:Verification Failed: 'Auth' "
-                "['REVOKED: client certificate has been revoked']"));
+  EXPECT_EQ("Auth", ParsePasswordTag(
+                        ">PASSWORD:Verification Failed: 'Auth' "
+                        "['REVOKED: client certificate has been revoked']"));
 }
 
 TEST_F(OpenVPNManagementServerTest, ParsePasswordFailedReason) {
@@ -388,7 +379,8 @@ TEST_F(OpenVPNManagementServerTest, ParsePasswordFailedReason) {
 
 TEST_F(OpenVPNManagementServerTest, PerformStaticChallengeNoCreds) {
   EXPECT_CALL(driver_, FailService(Service::kFailureInternal,
-                                   Service::kErrorDetailsNone)).Times(4);
+                                   Service::kErrorDetailsNone))
+      .Times(4);
   server_.PerformStaticChallenge("Auth");
   driver_.args()->SetString(kOpenVPNUserProperty, "jojo");
   server_.PerformStaticChallenge("Auth");
@@ -413,7 +405,8 @@ TEST_F(OpenVPNManagementServerTest, PerformStaticChallengeToken) {
 
 TEST_F(OpenVPNManagementServerTest, PerformAuthenticationNoCreds) {
   EXPECT_CALL(driver_, FailService(Service::kFailureInternal,
-                                   Service::kErrorDetailsNone)).Times(2);
+                                   Service::kErrorDetailsNone))
+      .Times(2);
   server_.PerformAuthentication("Auth");
   driver_.args()->SetString(kOpenVPNUserProperty, "jojo");
   server_.PerformAuthentication("Auth");
@@ -494,20 +487,18 @@ TEST_F(OpenVPNManagementServerTest, SendPasswordWithSpecialCharacters) {
 
 TEST_F(OpenVPNManagementServerTest, ProcessFailedPasswordMessage) {
   EXPECT_FALSE(server_.ProcessFailedPasswordMessage("foo"));
-  EXPECT_CALL(driver_, FailService(Service::kFailureConnect,
-                                   Service::kErrorDetailsNone)).Times(3);
+  EXPECT_CALL(driver_,
+              FailService(Service::kFailureConnect, Service::kErrorDetailsNone))
+      .Times(3);
   EXPECT_CALL(driver_, FailService(Service::kFailureConnect, "Revoked."));
   EXPECT_TRUE(
       server_.ProcessFailedPasswordMessage(">PASSWORD:Verification Failed: ."));
-  EXPECT_TRUE(
-      server_.ProcessFailedPasswordMessage(
-          ">PASSWORD:Verification Failed: 'Private Key' ['Reason']"));
-  EXPECT_TRUE(
-      server_.ProcessFailedPasswordMessage(
-          ">PASSWORD:Verification Failed: 'Auth'"));
-  EXPECT_TRUE(
-      server_.ProcessFailedPasswordMessage(
-          ">PASSWORD:Verification Failed: 'Auth' ['Revoked.']"));
+  EXPECT_TRUE(server_.ProcessFailedPasswordMessage(
+      ">PASSWORD:Verification Failed: 'Private Key' ['Reason']"));
+  EXPECT_TRUE(server_.ProcessFailedPasswordMessage(
+      ">PASSWORD:Verification Failed: 'Auth'"));
+  EXPECT_TRUE(server_.ProcessFailedPasswordMessage(
+      ">PASSWORD:Verification Failed: 'Auth' ['Revoked.']"));
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessAuthTokenMessage) {

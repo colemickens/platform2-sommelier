@@ -78,9 +78,10 @@ class SHILL_EXPORT NetlinkMessage {
   static const uint32_t kBroadcastSequenceNumber;
   static const uint16_t kIllegalMessageType;
 
-  explicit NetlinkMessage(uint16_t message_type) :
-      flags_(0), message_type_(message_type),
-      sequence_number_(kBroadcastSequenceNumber) {}
+  explicit NetlinkMessage(uint16_t message_type)
+      : flags_(0),
+        message_type_(message_type),
+        sequence_number_(kBroadcastSequenceNumber) {}
   virtual ~NetlinkMessage() = default;
 
   // Returns a string of bytes representing the message (with it headers) and
@@ -102,7 +103,8 @@ class SHILL_EXPORT NetlinkMessage {
   virtual void Print(int header_log_level, int detail_log_level) const = 0;
 
   // Logs the message's raw bytes (with minimal interpretation).
-  static void PrintBytes(int log_level, const unsigned char* buf,
+  static void PrintBytes(int log_level,
+                         const unsigned char* buf,
                          size_t num_bytes);
 
   // Logs a netlink message (with minimal interpretation).
@@ -124,12 +126,12 @@ class SHILL_EXPORT NetlinkMessage {
 
  private:
   static void PrintHeader(int log_level, const nlmsghdr* header);
-  static void PrintPayload(int log_level, const unsigned char* buf,
+  static void PrintPayload(int log_level,
+                           const unsigned char* buf,
                            size_t num_bytes);
 
   DISALLOW_COPY_AND_ASSIGN(NetlinkMessage);
 };
-
 
 // The Error and Ack messages are received from the kernel and are combined,
 // here, because they look so much alike (the only difference is that the
@@ -158,7 +160,6 @@ class SHILL_EXPORT ErrorAckMessage : public NetlinkMessage {
   DISALLOW_COPY_AND_ASSIGN(ErrorAckMessage);
 };
 
-
 class SHILL_EXPORT NoopMessage : public NetlinkMessage {
  public:
   static const uint16_t kMessageType;
@@ -172,7 +173,6 @@ class SHILL_EXPORT NoopMessage : public NetlinkMessage {
  private:
   DISALLOW_COPY_AND_ASSIGN(NoopMessage);
 };
-
 
 class SHILL_EXPORT DoneMessage : public NetlinkMessage {
  public:
@@ -188,7 +188,6 @@ class SHILL_EXPORT DoneMessage : public NetlinkMessage {
   DISALLOW_COPY_AND_ASSIGN(DoneMessage);
 };
 
-
 class SHILL_EXPORT OverrunMessage : public NetlinkMessage {
  public:
   static const uint16_t kMessageType;
@@ -203,11 +202,10 @@ class SHILL_EXPORT OverrunMessage : public NetlinkMessage {
   DISALLOW_COPY_AND_ASSIGN(OverrunMessage);
 };
 
-
 class SHILL_EXPORT UnknownMessage : public NetlinkMessage {
  public:
-  UnknownMessage(uint16_t message_type, ByteString message_body) :
-      NetlinkMessage(message_type), message_body_(message_body) {}
+  UnknownMessage(uint16_t message_type, ByteString message_body)
+      : NetlinkMessage(message_type), message_body_(message_body) {}
   ByteString Encode(uint32_t sequence_number) override;
   void Print(int header_log_level, int detail_log_level) const override;
 
@@ -216,7 +214,6 @@ class SHILL_EXPORT UnknownMessage : public NetlinkMessage {
 
   DISALLOW_COPY_AND_ASSIGN(UnknownMessage);
 };
-
 
 //
 // Factory class.

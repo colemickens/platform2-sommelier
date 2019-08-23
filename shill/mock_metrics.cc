@@ -10,4 +10,4 @@ MockMetrics::MockMetrics() = default;
 
 MockMetrics::~MockMetrics() = default;
 
-}
+}  // namespace shill

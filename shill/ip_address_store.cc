@@ -9,8 +9,8 @@ namespace shill {
 // This is a less than comparison so that IPAddress can be stored in a set.
 // We do not care about a semantically meaningful comparison. This is
 // deterministic, and that's all that matters.
-bool IPAddressLTIgnorePrefix::operator () (const IPAddress& lhs,
-                                           const IPAddress& rhs) const {
+bool IPAddressLTIgnorePrefix::operator()(const IPAddress& lhs,
+                                         const IPAddress& rhs) const {
   return lhs.ToString() < rhs.ToString();
 }
 

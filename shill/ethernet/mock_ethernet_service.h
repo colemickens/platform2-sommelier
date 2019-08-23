@@ -18,8 +18,8 @@ class MockEthernetService : public EthernetService {
   MockEthernetService(Manager* manager, base::WeakPtr<Ethernet> ethernet);
   ~MockEthernetService() override;
 
-  MOCK_METHOD2(AddEAPCertification, bool(const std::string& name,
-                                         size_t depth));
+  MOCK_METHOD2(AddEAPCertification,
+               bool(const std::string& name, size_t depth));
   MOCK_METHOD0(ClearEAPCertification, void());
   MOCK_METHOD2(Configure, void(const KeyValueStore& args, Error* error));
   MOCK_METHOD2(Disconnect, void(Error* error, const char* reason));

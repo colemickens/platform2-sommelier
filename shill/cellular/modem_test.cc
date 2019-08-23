@@ -55,9 +55,7 @@ class ModemTest : public Test {
   void SetUp() override;
   void TearDown() override;
 
-  void ReplaceSingletons() {
-    modem_->rtnl_handler_ = &rtnl_handler_;
-  }
+  void ReplaceSingletons() { modem_->rtnl_handler_ = &rtnl_handler_; }
 
  protected:
   EventDispatcherForTest dispatcher_;
@@ -74,8 +72,8 @@ void ModemTest::SetUp() {
   ReplaceSingletons();
   expected_address_ = ByteString(kAddress, arraysize(kAddress));
 
-  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(kLinkName)).
-      WillRepeatedly(Return(kTestInterfaceIndex));
+  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(kLinkName))
+      .WillRepeatedly(Return(kTestInterfaceIndex));
 
   EXPECT_CALL(*modem_info_.mock_manager(), device_info())
       .WillRepeatedly(Return(&device_info_));
@@ -96,26 +94,24 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   InterfaceToProperties properties;
   properties[MM_DBUS_INTERFACE_MODEM].SetUint(kSentinel, kSentinelValue);
 
-  EXPECT_CALL(*modem_, GetLinkName(_, _)).WillRepeatedly(DoAll(
-      SetArgPointee<1>(string(kLinkName)),
-      Return(true)));
-  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(StrEq(kLinkName))).
-      WillRepeatedly(Return(kTestInterfaceIndex));
+  EXPECT_CALL(*modem_, GetLinkName(_, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(string(kLinkName)), Return(true)));
+  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(StrEq(kLinkName)))
+      .WillRepeatedly(Return(kTestInterfaceIndex));
 
   // The first time we call CreateDeviceFromModemProperties,
   // GetMacAddress will fail.
-  EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex, _)).
-      WillOnce(Return(false));
-  EXPECT_CALL(*modem_, GetModemInterface()).
-      WillRepeatedly(Return(MM_DBUS_INTERFACE_MODEM));
+  EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*modem_, GetModemInterface())
+      .WillRepeatedly(Return(MM_DBUS_INTERFACE_MODEM));
   modem_->CreateDeviceFromModemProperties(properties);
   EXPECT_EQ(nullptr, modem_->device_);
 
   // On the second time, we allow GetMacAddress to succeed.  Now we
   // expect a device to be built
-  EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex, _)).
-      WillOnce(DoAll(SetArgPointee<1>(expected_address_),
-                     Return(true)));
+  EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex, _))
+      .WillOnce(DoAll(SetArgPointee<1>(expected_address_), Return(true)));
 
   // modem will take ownership
   MockCellular* cellular = new MockCellular(
@@ -123,15 +119,13 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
       Cellular::kType3gpp, kService, kPath);
 
   EXPECT_CALL(*modem_,
-              ConstructCellular(StrEq(kLinkName),
-                                StrEq(kAddressAsString),
-                                kTestInterfaceIndex)).
-      WillOnce(Return(cellular));
+              ConstructCellular(StrEq(kLinkName), StrEq(kAddressAsString),
+                                kTestInterfaceIndex))
+      .WillOnce(Return(cellular));
 
-  EXPECT_CALL(*cellular, OnPropertiesChanged(
-      _,
-      HasPropertyWithValueU32(kSentinel, kSentinelValue),
-      _));
+  EXPECT_CALL(*cellular,
+              OnPropertiesChanged(
+                  _, HasPropertyWithValueU32(kSentinel, kSentinelValue), _));
   EXPECT_CALL(device_info_, RegisterDevice(_));
   modem_->OnDeviceInfoAvailable(kLinkName);
 
@@ -154,8 +148,8 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
   InterfaceToProperties properties;
 
   EXPECT_CALL(*modem_, ConstructCellular(_, _, _)).Times(0);
-  EXPECT_CALL(*modem_, GetModemInterface()).
-      WillRepeatedly(Return(MM_DBUS_INTERFACE_MODEM));
+  EXPECT_CALL(*modem_, GetModemInterface())
+      .WillRepeatedly(Return(MM_DBUS_INTERFACE_MODEM));
 
   // No modem interface properties:  no device created
   modem_->CreateDeviceFromModemProperties(properties);
@@ -164,23 +158,20 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
   properties[MM_DBUS_INTERFACE_MODEM] = KeyValueStore();
 
   // Link name, but no ifindex: no device created
-  EXPECT_CALL(*modem_, GetLinkName(_, _)).WillOnce(DoAll(
-      SetArgPointee<1>(string(kLinkName)),
-      Return(true)));
-  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(StrEq(kLinkName))).WillOnce(
-      Return(-1));
+  EXPECT_CALL(*modem_, GetLinkName(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(string(kLinkName)), Return(true)));
+  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(StrEq(kLinkName)))
+      .WillOnce(Return(-1));
   modem_->CreateDeviceFromModemProperties(properties);
   EXPECT_EQ(nullptr, modem_->device_);
 
   // The params are good, but the device is blacklisted.
-  EXPECT_CALL(*modem_, GetLinkName(_, _)).WillOnce(DoAll(
-      SetArgPointee<1>(string(kLinkName)),
-      Return(true)));
+  EXPECT_CALL(*modem_, GetLinkName(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(string(kLinkName)), Return(true)));
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(StrEq(kLinkName)))
       .WillOnce(Return(kTestInterfaceIndex));
   EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex, _))
-      .WillOnce(DoAll(SetArgPointee<1>(expected_address_),
-                      Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(expected_address_), Return(true)));
   EXPECT_CALL(device_info_, IsDeviceBlackListed(kLinkName))
       .WillRepeatedly(Return(true));
   modem_->CreateDeviceFromModemProperties(properties);
@@ -201,15 +192,14 @@ TEST_F(ModemTest, CreateDevicePPP) {
       &modem_info_, dev_name, Modem::kFakeDevAddress,
       Modem::kFakeDevInterfaceIndex, Cellular::kType3gpp, kService, kPath);
 
-  EXPECT_CALL(*modem_, GetModemInterface()).
-      WillRepeatedly(Return(MM_DBUS_INTERFACE_MODEM));
+  EXPECT_CALL(*modem_, GetModemInterface())
+      .WillRepeatedly(Return(MM_DBUS_INTERFACE_MODEM));
   // No link name: assumed to be a PPP dongle.
   EXPECT_CALL(*modem_, GetLinkName(_, _)).WillOnce(Return(false));
   EXPECT_CALL(*modem_,
-              ConstructCellular(dev_name,
-                                StrEq(Modem::kFakeDevAddress),
-                                Modem::kFakeDevInterfaceIndex)).
-      WillOnce(Return(cellular));
+              ConstructCellular(dev_name, StrEq(Modem::kFakeDevAddress),
+                                Modem::kFakeDevInterfaceIndex))
+      .WillOnce(Return(cellular));
   EXPECT_CALL(device_info_, RegisterDevice(_));
 
   modem_->CreateDeviceFromModemProperties(properties);
@@ -224,13 +214,15 @@ TEST_F(ModemTest, GetDeviceParams) {
   string mac_address;
   int interface_index = 2;
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(-1));
-  EXPECT_CALL(device_info_, GetMacAddress(_, _)).Times(AnyNumber())
+  EXPECT_CALL(device_info_, GetMacAddress(_, _))
+      .Times(AnyNumber())
       .WillRepeatedly(Return(false));
   EXPECT_FALSE(modem_->GetDeviceParams(&mac_address, &interface_index));
   EXPECT_EQ(-1, interface_index);
 
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(-2));
-  EXPECT_CALL(device_info_, GetMacAddress(_, _)).Times(AnyNumber())
+  EXPECT_CALL(device_info_, GetMacAddress(_, _))
+      .Times(AnyNumber())
       .WillRepeatedly(Return(false));
   EXPECT_FALSE(modem_->GetDeviceParams(&mac_address, &interface_index));
   EXPECT_EQ(-2, interface_index);
@@ -241,9 +233,8 @@ TEST_F(ModemTest, GetDeviceParams) {
   EXPECT_EQ(1, interface_index);
 
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(2));
-  EXPECT_CALL(device_info_, GetMacAddress(2, _)).
-      WillOnce(DoAll(SetArgPointee<1>(expected_address_),
-                     Return(true)));
+  EXPECT_CALL(device_info_, GetMacAddress(2, _))
+      .WillOnce(DoAll(SetArgPointee<1>(expected_address_), Return(true)));
   EXPECT_TRUE(modem_->GetDeviceParams(&mac_address, &interface_index));
   EXPECT_EQ(2, interface_index);
   EXPECT_EQ(kAddressAsString, mac_address);

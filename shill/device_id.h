@@ -32,18 +32,14 @@ class DeviceId {
       const base::FilePath& syspath);
 
   // DeviceId matching all devices by a particular bus type.
-  explicit constexpr DeviceId(BusType bus_type)
-      : bus_type_(bus_type) {}
+  explicit constexpr DeviceId(BusType bus_type) : bus_type_(bus_type) {}
   // DeviceId matching all devices by a particular bus type and vendor id.
   constexpr DeviceId(BusType bus_type, uint16_t vendor_id)
-      : bus_type_(bus_type),
-        vendor_id_(vendor_id) {}
+      : bus_type_(bus_type), vendor_id_(vendor_id) {}
   // DeviceId matching device by a particular bus type, vendor id and
   // product id.
   constexpr DeviceId(BusType bus_type, uint16_t vendor_id, uint16_t product_id)
-      : bus_type_(bus_type),
-        vendor_id_(vendor_id),
-        product_id_(product_id) {}
+      : bus_type_(bus_type), vendor_id_(vendor_id), product_id_(product_id) {}
 
   // Returns true if |this| matches |pattern|.
   //

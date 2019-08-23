@@ -109,17 +109,15 @@ class ModemManager1 : public ModemManager {
   void Disconnect() override;
 
   // DBusObjectManagerProxyDelegate signal methods
-  virtual void OnInterfacesAddedSignal(
-      const RpcIdentifier& object_path,
-      const InterfaceToProperties& properties);
+  virtual void OnInterfacesAddedSignal(const RpcIdentifier& object_path,
+                                       const InterfaceToProperties& properties);
   virtual void OnInterfacesRemovedSignal(
       const RpcIdentifier& object_path,
       const std::vector<std::string>& interfaces);
 
   // DBusObjectManagerProxyDelegate method callbacks
   virtual void OnGetManagedObjectsReply(
-      const ObjectsWithProperties& objects_with_properties,
-      const Error& error);
+      const ObjectsWithProperties& objects_with_properties, const Error& error);
 
  private:
   friend class ModemManager1Test;

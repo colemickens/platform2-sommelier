@@ -27,10 +27,10 @@
 
 using std::map;
 using std::string;
+using testing::_;
 using testing::Mock;
 using testing::Return;
 using testing::StrEq;
-using testing::_;
 
 namespace shill {
 
@@ -54,8 +54,7 @@ class PPPoEServiceTest : public testing::Test {
 
  protected:
   void FakeConnectionSuccess() {
-    EXPECT_CALL(*ethernet_, link_up())
-        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*ethernet_, link_up()).WillRepeatedly(Return(true));
     EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _))
         .WillOnce(Return(0));
     Error error;
@@ -116,7 +115,7 @@ TEST_F(PPPoEServiceTest, OnPPPConnected) {
   service_->ppp_device_factory_ = factory;
 
   static const char kLinkName[] = "ppp0";
-  map<string, string> params = { {kPPPInterfaceName, kLinkName} };
+  map<string, string> params = {{kPPPInterfaceName, kLinkName}};
   MockPPPDevice* device = new MockPPPDevice(&manager_, kLinkName, 0);
 
   EXPECT_CALL(device_info_, GetIndex(StrEq(kLinkName))).WillOnce(Return(0));
@@ -124,8 +123,8 @@ TEST_F(PPPoEServiceTest, OnPPPConnected) {
   EXPECT_CALL(device_info_, RegisterDevice(IsRefPtrTo(device)));
   EXPECT_CALL(*device, SetEnabled(true));
   EXPECT_CALL(*device, SelectService(_));
-  EXPECT_CALL(*device, UpdateIPConfigFromPPP(params,
-                                             false /* blackhole_ipv6 */));
+  EXPECT_CALL(*device,
+              UpdateIPConfigFromPPP(params, false /* blackhole_ipv6 */));
 #ifndef DISABLE_DHCPV6
   EXPECT_CALL(manager_, IsDHCPv6EnabledForDevice(StrEq(kLinkName)))
       .WillOnce(Return(true));
@@ -149,7 +148,7 @@ TEST_F(PPPoEServiceTest, Connect) {
   service_->Notify(kPPPReasonAuthenticated, empty_dict);
 
   map<string, string> connect_dict = {
-    {kPPPInterfaceName, kLinkName},
+      {kPPPInterfaceName, kLinkName},
   };
   service_->Notify(kPPPReasonConnect, connect_dict);
   EXPECT_EQ(service_->state(), Service::kStateOnline);
@@ -159,9 +158,9 @@ TEST_F(PPPoEServiceTest, Disconnect) {
   FakeConnectionSuccess();
 
   auto weak_ptr = service_->weak_ptr_factory_.GetWeakPtr();
-  MockExternalTask* pppd = new MockExternalTask(
-      &control_interface_, &process_manager_, weak_ptr,
-      base::Bind(&PPPoEService::OnPPPDied, weak_ptr));
+  MockExternalTask* pppd =
+      new MockExternalTask(&control_interface_, &process_manager_, weak_ptr,
+                           base::Bind(&PPPoEService::OnPPPDied, weak_ptr));
   service_->pppd_.reset(pppd);
 
   MockPPPDevice* ppp_device = new MockPPPDevice(&manager_, "ppp0", 0);

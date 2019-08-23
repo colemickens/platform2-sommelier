@@ -30,13 +30,11 @@ namespace {
 // |kIcmpEchoRequestOddLen| so the checksum can be calculated on the header in
 // IcmpTest.ComputeIcmpChecksum.
 alignas(struct icmphdr) const uint8_t kIcmpEchoRequestEvenLen[] = {
-                                          0x08, 0x00, 0x00, 0x00,
-                                          0x71, 0x50, 0x00, 0x00};
+    0x08, 0x00, 0x00, 0x00, 0x71, 0x50, 0x00, 0x00};
 alignas(struct icmphdr) const uint8_t kIcmpEchoRequestEvenLenChecksum[] = {
-                                          0x86, 0xaf};
+    0x86, 0xaf};
 alignas(struct icmphdr) const uint8_t kIcmpEchoRequestOddLen[] = {
-                                          0x08, 0x00, 0x00, 0x00, 0xac, 0x51,
-                                          0x00, 0x00, 0x00, 0x00, 0x01};
+    0x08, 0x00, 0x00, 0x00, 0xac, 0x51, 0x00, 0x00, 0x00, 0x00, 0x01};
 const uint8_t kIcmpEchoRequestOddLenChecksum[] = {0x4a, 0xae};
 
 }  // namespace
@@ -68,8 +66,9 @@ class IcmpTest : public Test {
   int GetSocket() { return icmp_.socket_; }
   bool StartIcmp() { return StartIcmpWithFD(kSocketFD); }
   bool StartIcmpWithFD(int fd) {
-    EXPECT_CALL(*sockets_, Socket(AF_INET, SOCK_RAW | SOCK_CLOEXEC,
-          IPPROTO_ICMP)) .WillOnce(Return(fd));
+    EXPECT_CALL(*sockets_,
+                Socket(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP))
+        .WillOnce(Return(fd));
     EXPECT_CALL(*sockets_, SetNonBlocking(fd)).WillOnce(Return(0));
 
     IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
@@ -81,7 +80,7 @@ class IcmpTest : public Test {
     EXPECT_TRUE(icmp_.IsStarted());
     return start_status;
   }
-  uint16_t ComputeIcmpChecksum(const struct icmphdr &hdr, size_t len) {
+  uint16_t ComputeIcmpChecksum(const struct icmphdr& hdr, size_t len) {
     return Icmp::ComputeIcmpChecksum(hdr, len);
   }
 
@@ -90,7 +89,6 @@ class IcmpTest : public Test {
 
   Icmp icmp_;
 };
-
 
 const int IcmpTest::kSocketFD = 456;
 const char IcmpTest::kIPAddress[] = "10.0.1.1";
@@ -103,9 +101,9 @@ TEST_F(IcmpTest, Constructor) {
 
 TEST_F(IcmpTest, SocketOpenFail) {
   ScopedMockLog log;
-  EXPECT_CALL(log,
-      Log(logging::LOG_ERROR, _,
-          HasSubstr("Could not create ICMP socket"))).Times(1);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("Could not create ICMP socket")))
+      .Times(1);
 
   EXPECT_CALL(*sockets_, Socket(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP))
       .WillOnce(Return(-1));
@@ -119,9 +117,9 @@ TEST_F(IcmpTest, SocketOpenFail) {
 
 TEST_F(IcmpTest, SocketNonBlockingFail) {
   ScopedMockLog log;
-  EXPECT_CALL(log,
-      Log(logging::LOG_ERROR, _,
-          HasSubstr("Could not set socket to be non-blocking"))).Times(1);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("Could not set socket to be non-blocking")))
+      .Times(1);
 
   EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(kSocketFD));
   EXPECT_CALL(*sockets_, SetNonBlocking(kSocketFD)).WillOnce(Return(-1));
@@ -144,13 +142,12 @@ MATCHER_P(IsIcmpHeader, header, "") {
   return memcmp(arg, &header, sizeof(header)) == 0;
 }
 
-
 MATCHER_P(IsSocketAddress, address, "") {
   const struct sockaddr_in* sock_addr =
       reinterpret_cast<const struct sockaddr_in*>(arg);
   return sock_addr->sin_family == address.family() &&
-      memcmp(&sock_addr->sin_addr.s_addr, address.GetConstData(),
-             address.GetLength()) == 0;
+         memcmp(&sock_addr->sin_addr.s_addr, address.GetConstData(),
+                address.GetLength()) == 0;
 }
 
 TEST_F(IcmpTest, TransmitEchoRequest) {
@@ -169,12 +166,9 @@ TEST_F(IcmpTest, TransmitEchoRequest) {
   icmp_header.un.echo.sequence = 1;
   icmp_header.checksum = ComputeIcmpChecksum(icmp_header, sizeof(icmp_header));
 
-  EXPECT_CALL(*sockets_, SendTo(kSocketFD,
-                                IsIcmpHeader(icmp_header),
-                                sizeof(icmp_header),
-                                0,
-                                IsSocketAddress(ipv4_destination),
-                                sizeof(sockaddr_in)))
+  EXPECT_CALL(*sockets_,
+              SendTo(kSocketFD, IsIcmpHeader(icmp_header), sizeof(icmp_header),
+                     0, IsSocketAddress(ipv4_destination), sizeof(sockaddr_in)))
       .WillOnce(Return(-1))
       .WillOnce(Return(0))
       .WillOnce(Return(sizeof(icmp_header) - 1))
@@ -183,11 +177,11 @@ TEST_F(IcmpTest, TransmitEchoRequest) {
     InSequence seq;
     ScopedMockLog log;
     EXPECT_CALL(log,
-        Log(logging::LOG_ERROR, _,
-            HasSubstr("Socket sendto failed"))).Times(1);
-    EXPECT_CALL(log,
-        Log(logging::LOG_ERROR, _,
-            HasSubstr("less than the expected result"))).Times(2);
+                Log(logging::LOG_ERROR, _, HasSubstr("Socket sendto failed")))
+        .Times(1);
+    EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                         HasSubstr("less than the expected result")))
+        .Times(2);
 
     EXPECT_FALSE(icmp_.TransmitEchoRequest(1, 1));
     EXPECT_FALSE(icmp_.TransmitEchoRequest(1, 1));

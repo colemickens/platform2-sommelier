@@ -108,7 +108,8 @@ class CellularCapability {
   //
   // The default implementation fails by returning kNotSupported via |error|.
   virtual void Activate(const std::string& carrier,
-                        Error* error, const ResultCallback& callback);
+                        Error* error,
+                        const ResultCallback& callback);
 
   // Initiates the necessary to steps to verify that the cellular service has
   // been activated. Once these steps have been completed, the service should
@@ -226,8 +227,7 @@ class CellularCapability {
 
  protected:
   // |cellular| is the parent Cellular device.
-  CellularCapability(Cellular* cellular,
-                     ModemInfo* modem_info);
+  CellularCapability(Cellular* cellular, ModemInfo* modem_info);
 
   // Releases all proxies held by the object. This is most useful during unit
   // tests.

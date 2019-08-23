@@ -50,10 +50,8 @@ const vector<double> kDoublesValue{2.2, 3.3};
 const size_t kDoublesValueSize = kDoublesValue.size();
 const RpcIdentifier kRpcIdentifierValue("/org/chromium/test");
 const vector<RpcIdentifier> kRpcIdentifiersValue{
-    RpcIdentifier("/org/chromium/test0"),
-    RpcIdentifier("/org/chromium/test1"),
-    RpcIdentifier("/org/chromium/test2")
-};
+    RpcIdentifier("/org/chromium/test0"), RpcIdentifier("/org/chromium/test1"),
+    RpcIdentifier("/org/chromium/test2")};
 const char kStringValue[] = "StringValue";
 const map<string, string> kStringmapValue = {{"key", "value"}};
 const vector<string> kStringsValue = {"StringsValue1", "StringsValue2"};
@@ -397,8 +395,8 @@ TEST_F(KeyValueStoreTest, Equals) {
   second.SetBools("boolsKey", kBools2);
   EXPECT_NE(first, second);
 
-  const vector<vector<uint8_t>> kByteArrays1{ {1, 2} };
-  const vector<vector<uint8_t>> kByteArrays2{ {3, 4} };
+  const vector<vector<uint8_t>> kByteArrays1{{1, 2}};
+  const vector<vector<uint8_t>> kByteArrays2{{3, 4}};
 
   first.Clear();
   second.Clear();
@@ -748,8 +746,7 @@ TEST_F(KeyValueStoreTest, ConvertFromVariantDictionary) {
   dict[kInt64sKey] = brillo::Any(kInt64sValue);
   dict[kDoubleKey] = brillo::Any(kDoubleValue);
   dict[kDoublesKey] = brillo::Any(kDoublesValue);
-  dict[kRpcIdentifierKey] =
-      brillo::Any(dbus::ObjectPath(kRpcIdentifierValue));
+  dict[kRpcIdentifierKey] = brillo::Any(dbus::ObjectPath(kRpcIdentifierValue));
   dict[kUint16Key] = brillo::Any(kUint16Value);
   dict[kUint8sKey] = brillo::Any(kUint8sValue);
   dict[kUint32sKey] = brillo::Any(kUint32sValue);
@@ -757,8 +754,7 @@ TEST_F(KeyValueStoreTest, ConvertFromVariantDictionary) {
   nested_dict[kNestedInt32Key] = brillo::Any(kNestedInt32Value);
   dict[kKeyValueStoreKey] = brillo::Any(nested_dict);
 
-  KeyValueStore store =
-      KeyValueStore::ConvertFromVariantDictionary(dict);
+  KeyValueStore store = KeyValueStore::ConvertFromVariantDictionary(dict);
   EXPECT_TRUE(store.ContainsString(kStringKey));
   EXPECT_EQ(kStringValue, store.GetString(kStringKey));
   EXPECT_TRUE(store.ContainsStringmap(kStringmapKey));

@@ -35,13 +35,11 @@ void ModemManager1::Start() {
   LOG(INFO) << "Start watching modem manager service: " << service();
   CHECK(!proxy_);
   proxy_ = control_interface()->CreateDBusObjectManagerProxy(
-      path(),
-      service(),
+      path(), service(),
       base::Bind(&ModemManager1::OnAppeared, base::Unretained(this)),
       base::Bind(&ModemManager1::OnVanished, base::Unretained(this)));
-  proxy_->set_interfaces_added_callback(
-      Bind(&ModemManager1::OnInterfacesAddedSignal,
-           weak_ptr_factory_.GetWeakPtr()));
+  proxy_->set_interfaces_added_callback(Bind(
+      &ModemManager1::OnInterfacesAddedSignal, weak_ptr_factory_.GetWeakPtr()));
   proxy_->set_interfaces_removed_callback(
       Bind(&ModemManager1::OnInterfacesRemovedSignal,
            weak_ptr_factory_.GetWeakPtr()));
@@ -87,8 +85,7 @@ void ModemManager1::InitModem1(Modem1* modem,
 // signal methods
 // Also called by OnGetManagedObjectsReply
 void ModemManager1::OnInterfacesAddedSignal(
-    const RpcIdentifier& object_path,
-    const InterfaceToProperties& properties) {
+    const RpcIdentifier& object_path, const InterfaceToProperties& properties) {
   if (base::ContainsKey(properties, MM_DBUS_INTERFACE_MODEM)) {
     AddModem1(object_path, properties);
   } else {
@@ -97,8 +94,7 @@ void ModemManager1::OnInterfacesAddedSignal(
 }
 
 void ModemManager1::OnInterfacesRemovedSignal(
-    const RpcIdentifier& object_path,
-    const vector<string>& interfaces) {
+    const RpcIdentifier& object_path, const vector<string>& interfaces) {
   LOG(INFO) << "MM1:  Removing interfaces from " << object_path;
   if (base::ContainsValue(interfaces, MM_DBUS_INTERFACE_MODEM)) {
     RemoveModem(object_path);
@@ -111,8 +107,7 @@ void ModemManager1::OnInterfacesRemovedSignal(
 
 // DBusObjectManagerProxy async method call
 void ModemManager1::OnGetManagedObjectsReply(
-    const ObjectsWithProperties& objects,
-    const Error& error) {
+    const ObjectsWithProperties& objects, const Error& error) {
   if (error.IsSuccess()) {
     for (const auto& object_properties_pair : objects) {
       OnInterfacesAddedSignal(object_properties_pair.first,

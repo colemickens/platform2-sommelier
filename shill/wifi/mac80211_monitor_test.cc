@@ -41,13 +41,12 @@ using QState = Mac80211Monitor::QueueState;
 class Mac80211MonitorTest : public testing::Test {
  public:
   Mac80211MonitorTest()
-      : mac80211_monitor_(
-            &event_dispatcher_,
-            kTestDeviceName,
-            kQueueLengthLimit,
-            base::Bind(&Mac80211MonitorTest::OnRepairHandler,
-                       base::Unretained(this)),
-            &metrics_) {
+      : mac80211_monitor_(&event_dispatcher_,
+                          kTestDeviceName,
+                          kQueueLengthLimit,
+                          base::Bind(&Mac80211MonitorTest::OnRepairHandler,
+                                     base::Unretained(this)),
+                          &metrics_) {
     mac80211_monitor_.time_ = &time_;
   }
   ~Mac80211MonitorTest() override = default;
@@ -68,17 +67,11 @@ class Mac80211MonitorTest : public testing::Test {
     // WakeQueuesIfNeeded interaction are tested elsewhere.
     EXPECT_CALL(event_dispatcher(), PostDelayedTask(_, _, _))
         .Times(AnyNumber());
-    EXPECT_CALL(metrics(), SendEnumToUMA(_, _, _))
-        .Times(AnyNumber());
-    EXPECT_CALL(metrics(), SendToUMA(_, _, _, _, _))
-        .Times(AnyNumber());
+    EXPECT_CALL(metrics(), SendEnumToUMA(_, _, _)).Times(AnyNumber());
+    EXPECT_CALL(metrics(), SendToUMA(_, _, _, _, _)).Times(AnyNumber());
   }
-  void FakeUpNotStuckState() {
-    FakeUpQueueFiles("00: 0x00000000/10\n");
-  }
-  void FakeUpStuckByDriverState() {
-    FakeUpQueueFiles("00: 0x00000001/10\n");
-  }
+  void FakeUpNotStuckState() { FakeUpQueueFiles("00: 0x00000000/10\n"); }
+  void FakeUpStuckByDriverState() { FakeUpQueueFiles("00: 0x00000001/10\n"); }
   void FakeUpStuckByPowerSaveState() {
     FakeUpQueueFiles("00: 0x00000002/10\n");
   }
@@ -96,11 +89,11 @@ class Mac80211MonitorTest : public testing::Test {
   }
   bool IsRunning() const {
     return mac80211_monitor_.is_running_ &&
-        !mac80211_monitor_.check_queues_callback_.IsCancelled();
+           !mac80211_monitor_.check_queues_callback_.IsCancelled();
   }
   bool IsStopped() const {
     return !mac80211_monitor_.is_running_ &&
-        mac80211_monitor_.check_queues_callback_.IsCancelled();
+           mac80211_monitor_.check_queues_callback_.IsCancelled();
   }
   bool IsWakeQueuesFileModified() const {
     CHECK(fake_sysfs_tree_.IsValid());  // Keep tests hermetic.
@@ -117,15 +110,11 @@ class Mac80211MonitorTest : public testing::Test {
   time_t GetLastWokeQueuesMonotonicSeconds() const {
     return mac80211_monitor_.last_woke_queues_monotonic_seconds_;
   }
-  const string& GetLinkName() const {
-    return mac80211_monitor_.link_name_;
-  }
+  const string& GetLinkName() const { return mac80211_monitor_.link_name_; }
   time_t GetMinimumTimeBetweenWakesSeconds() const {
     return Mac80211Monitor::kMinimumTimeBetweenWakesSeconds;
   }
-  const string& GetPhyName() const {
-    return mac80211_monitor_.phy_name_;
-  }
+  const string& GetPhyName() const { return mac80211_monitor_.phy_name_; }
   const base::FilePath& GetQueueStateFilePath() const {
     return mac80211_monitor_.queue_state_file_path_;
   }
@@ -144,9 +133,7 @@ class Mac80211MonitorTest : public testing::Test {
       PlumbFakeSysfs();  // Re-plumb, since un-plumbed by Start().
     }
   }
-  void StopMonitor() {
-    mac80211_monitor_.Stop();
-  }
+  void StopMonitor() { mac80211_monitor_.Stop(); }
   uint32_t CheckAreQueuesStuck(const vector<QState>& queue_states) {
     return mac80211_monitor_.CheckAreQueuesStuck(queue_states);
   }
@@ -167,11 +154,10 @@ class Mac80211MonitorTest : public testing::Test {
 
   void FakeUpQueueFiles(const string& queue_state_string) {
     CHECK(fake_sysfs_tree_.IsValid());  // Keep tests hermetic.
-    base::WriteFile(fake_queue_state_file_path_,
-                    queue_state_string.c_str(),
+    base::WriteFile(fake_queue_state_file_path_, queue_state_string.c_str(),
                     queue_state_string.length());
-    ASSERT_TRUE(base::WriteFile(fake_wake_queues_file_path_,
-                                kJunkData, strlen(kJunkData)));
+    ASSERT_TRUE(base::WriteFile(fake_wake_queues_file_path_, kJunkData,
+                                strlen(kJunkData)));
   }
   void PlumbFakeSysfs() {
     mac80211_monitor_.queue_state_file_path_ = fake_queue_state_file_path_;
@@ -182,9 +168,8 @@ class Mac80211MonitorTest : public testing::Test {
 // Can't be in an anonymous namespace, due to ADL.
 // Instead, we use static to constain visibility to this unit.
 static bool operator==(const QState& a, const QState& b) {
-  return a.queue_number == b.queue_number &&
-      a.stop_flags == b.stop_flags &&
-      a.queue_length == b.queue_length;
+  return a.queue_number == b.queue_number && a.stop_flags == b.stop_flags &&
+         a.queue_length == b.queue_length;
 }
 
 TEST_F(Mac80211MonitorTest, Ctor) {
@@ -274,8 +259,7 @@ TEST_F(Mac80211MonitorTest, WakeQueuesIfNeededWakeNeeded) {
 
   const time_t kNowMonotonicSeconds = GetMinimumTimeBetweenWakesSeconds();
   EXPECT_CALL(time(), GetSecondsMonotonic(_))
-      .WillOnce(DoAll(SetArgPointee<0>(kNowMonotonicSeconds),
-                      Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(kNowMonotonicSeconds), Return(true)));
   EXPECT_CALL(*this, OnRepairHandler());
   AllowWakeQueuesIfNeededCommonCalls();
   WakeQueuesIfNeeded();
@@ -291,9 +275,8 @@ TEST_F(Mac80211MonitorTest, WakeQueuesIfNeededRateLimiting) {
   EXPECT_EQ(0, GetLastWokeQueuesMonotonicSeconds());
 
   EXPECT_CALL(time(), GetSecondsMonotonic(_))
-      .WillOnce(DoAll(
-          SetArgPointee<0>(GetMinimumTimeBetweenWakesSeconds() - 1),
-          Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(GetMinimumTimeBetweenWakesSeconds() - 1),
+                      Return(true)));
   EXPECT_CALL(*this, OnRepairHandler()).Times(0);
   AllowWakeQueuesIfNeededCommonCalls();
   WakeQueuesIfNeeded();
@@ -336,68 +319,60 @@ TEST_F(Mac80211MonitorTest, ParseQueueStateSimple) {
               ElementsAre(QState(0, 0, 0)));
 
   // Multiple queues, non-empty.
-  EXPECT_THAT(
-      Mac80211Monitor::ParseQueueState(
-          "00: 0x00000000/10\n"
-          "01: 0x00000000/20\n"),
-      ElementsAre(QState(0, 0, 10), QState(1, 0, 20)));
+  EXPECT_THAT(Mac80211Monitor::ParseQueueState("00: 0x00000000/10\n"
+                                               "01: 0x00000000/20\n"),
+              ElementsAre(QState(0, 0, 10), QState(1, 0, 20)));
 }
 
 TEST_F(Mac80211MonitorTest, ParseQueueStateStopped) {
   // Single queue, stopped for various reasons.
-  EXPECT_THAT(
-      Mac80211Monitor::ParseQueueState("00: 0x00000001/10\n"),
-      ElementsAre(QState(0, Mac80211Monitor::kStopFlagDriver, 10)));
-  EXPECT_THAT(
-      Mac80211Monitor::ParseQueueState("00: 0x00000003/10\n"),
-      ElementsAre(QState(0,
-                         Mac80211Monitor::kStopFlagDriver |
-                         Mac80211Monitor::kStopFlagPowerSave,
-                         10)));
-  EXPECT_THAT(
-      Mac80211Monitor::ParseQueueState("00: 0x00000007/10\n"),
-      ElementsAre(QState(0,
-                         Mac80211Monitor::kStopFlagDriver |
-                         Mac80211Monitor::kStopFlagPowerSave |
-                         Mac80211Monitor::kStopFlagChannelSwitch,
-                         10)));
-  EXPECT_THAT(
-      Mac80211Monitor::ParseQueueState("00: 0x0000000f/10\n"),
-      ElementsAre(QState(0,
-                         Mac80211Monitor::kStopFlagDriver |
-                         Mac80211Monitor::kStopFlagPowerSave |
-                         Mac80211Monitor::kStopFlagChannelSwitch |
-                         Mac80211Monitor::kStopFlagAggregation,
-                         10)));
-  EXPECT_THAT(
-      Mac80211Monitor::ParseQueueState("00: 0x0000001f/10\n"),
-      ElementsAre(QState(0,
-                         Mac80211Monitor::kStopFlagDriver |
-                         Mac80211Monitor::kStopFlagPowerSave |
-                         Mac80211Monitor::kStopFlagChannelSwitch |
-                         Mac80211Monitor::kStopFlagAggregation |
-                         Mac80211Monitor::kStopFlagSuspend,
-                         10)));
-  EXPECT_THAT(
-      Mac80211Monitor::ParseQueueState("00: 0x0000003f/10\n"),
-      ElementsAre(QState(0,
-                         Mac80211Monitor::kStopFlagDriver |
-                         Mac80211Monitor::kStopFlagPowerSave |
-                         Mac80211Monitor::kStopFlagChannelSwitch |
-                         Mac80211Monitor::kStopFlagAggregation |
-                         Mac80211Monitor::kStopFlagSuspend |
-                         Mac80211Monitor::kStopFlagBufferAdd,
-                         10)));
+  EXPECT_THAT(Mac80211Monitor::ParseQueueState("00: 0x00000001/10\n"),
+              ElementsAre(QState(0, Mac80211Monitor::kStopFlagDriver, 10)));
+  EXPECT_THAT(Mac80211Monitor::ParseQueueState("00: 0x00000003/10\n"),
+              ElementsAre(QState(0,
+                                 Mac80211Monitor::kStopFlagDriver |
+                                     Mac80211Monitor::kStopFlagPowerSave,
+                                 10)));
+  EXPECT_THAT(Mac80211Monitor::ParseQueueState("00: 0x00000007/10\n"),
+              ElementsAre(QState(0,
+                                 Mac80211Monitor::kStopFlagDriver |
+                                     Mac80211Monitor::kStopFlagPowerSave |
+                                     Mac80211Monitor::kStopFlagChannelSwitch,
+                                 10)));
+  EXPECT_THAT(Mac80211Monitor::ParseQueueState("00: 0x0000000f/10\n"),
+              ElementsAre(QState(0,
+                                 Mac80211Monitor::kStopFlagDriver |
+                                     Mac80211Monitor::kStopFlagPowerSave |
+                                     Mac80211Monitor::kStopFlagChannelSwitch |
+                                     Mac80211Monitor::kStopFlagAggregation,
+                                 10)));
+  EXPECT_THAT(Mac80211Monitor::ParseQueueState("00: 0x0000001f/10\n"),
+              ElementsAre(QState(0,
+                                 Mac80211Monitor::kStopFlagDriver |
+                                     Mac80211Monitor::kStopFlagPowerSave |
+                                     Mac80211Monitor::kStopFlagChannelSwitch |
+                                     Mac80211Monitor::kStopFlagAggregation |
+                                     Mac80211Monitor::kStopFlagSuspend,
+                                 10)));
+  EXPECT_THAT(Mac80211Monitor::ParseQueueState("00: 0x0000003f/10\n"),
+              ElementsAre(QState(0,
+                                 Mac80211Monitor::kStopFlagDriver |
+                                     Mac80211Monitor::kStopFlagPowerSave |
+                                     Mac80211Monitor::kStopFlagChannelSwitch |
+                                     Mac80211Monitor::kStopFlagAggregation |
+                                     Mac80211Monitor::kStopFlagSuspend |
+                                     Mac80211Monitor::kStopFlagBufferAdd,
+                                 10)));
   EXPECT_THAT(
       Mac80211Monitor::ParseQueueState("00: 0x0000007f/10\n"),
       ElementsAre(QState(0,
                          Mac80211Monitor::kStopFlagDriver |
-                         Mac80211Monitor::kStopFlagPowerSave |
-                         Mac80211Monitor::kStopFlagChannelSwitch |
-                         Mac80211Monitor::kStopFlagAggregation |
-                         Mac80211Monitor::kStopFlagSuspend |
-                         Mac80211Monitor::kStopFlagBufferAdd |
-                         Mac80211Monitor::kStopFlagChannelTypeChange,
+                             Mac80211Monitor::kStopFlagPowerSave |
+                             Mac80211Monitor::kStopFlagChannelSwitch |
+                             Mac80211Monitor::kStopFlagAggregation |
+                             Mac80211Monitor::kStopFlagSuspend |
+                             Mac80211Monitor::kStopFlagBufferAdd |
+                             Mac80211Monitor::kStopFlagChannelTypeChange,
                          10)));
 }
 
@@ -406,212 +381,186 @@ TEST_F(Mac80211MonitorTest, ParseQueueStateBadInput) {
   EXPECT_TRUE(Mac80211Monitor::ParseQueueState("").empty());
 
   // Missing queue length for queue 0.
-  EXPECT_THAT(
-      Mac80211Monitor::ParseQueueState(
-          "00: 0x00000000\n"
-          "01: 0xffffffff/10\n"),
-      ElementsAre(QState(1, 0xffffffff, 10)));
+  EXPECT_THAT(Mac80211Monitor::ParseQueueState("00: 0x00000000\n"
+                                               "01: 0xffffffff/10\n"),
+              ElementsAre(QState(1, 0xffffffff, 10)));
 
   // Missing flags for queue 0.
-  EXPECT_THAT(
-      Mac80211Monitor::ParseQueueState(
-          "00: 0\n"
-          "01: 0xffffffff/10\n"),
-      ElementsAre(QState(1, 0xffffffff, 10)));
+  EXPECT_THAT(Mac80211Monitor::ParseQueueState("00: 0\n"
+                                               "01: 0xffffffff/10\n"),
+              ElementsAre(QState(1, 0xffffffff, 10)));
 
   // Bad number for queue 0.
-  EXPECT_THAT(
-      Mac80211Monitor::ParseQueueState(
-          "aa: 0xabcdefgh/0\n"
-          "01: 0xffffffff/10\n"),
-      ElementsAre(QState(1, 0xffffffff, 10)));
+  EXPECT_THAT(Mac80211Monitor::ParseQueueState("aa: 0xabcdefgh/0\n"
+                                               "01: 0xffffffff/10\n"),
+              ElementsAre(QState(1, 0xffffffff, 10)));
 
   // Bad flags for queue 0.
-  EXPECT_THAT(
-      Mac80211Monitor::ParseQueueState(
-          "00: 0xabcdefgh/0\n"
-          "01: 0xffffffff/10\n"),
-      ElementsAre(QState(1, 0xffffffff, 10)));
+  EXPECT_THAT(Mac80211Monitor::ParseQueueState("00: 0xabcdefgh/0\n"
+                                               "01: 0xffffffff/10\n"),
+              ElementsAre(QState(1, 0xffffffff, 10)));
 
   // Bad length for queue 0.
-  EXPECT_THAT(
-      Mac80211Monitor::ParseQueueState(
-          "00: 0x00000000/-1\n"
-          "01: 0xffffffff/10\n"),
-      ElementsAre(QState(1, 0xffffffff, 10)));
+  EXPECT_THAT(Mac80211Monitor::ParseQueueState("00: 0x00000000/-1\n"
+                                               "01: 0xffffffff/10\n"),
+              ElementsAre(QState(1, 0xffffffff, 10)));
 }
 
 TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckNotStuck) {
   EXPECT_FALSE(CheckAreQueuesStuck({}));
   EXPECT_FALSE(CheckAreQueuesStuck({QState(0, 0, 0)}));
   // Not stuck when queue length is below limit.
-  EXPECT_FALSE(CheckAreQueuesStuck({
-        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit-1)}));
+  EXPECT_FALSE(CheckAreQueuesStuck(
+      {QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit - 1)}));
 }
 
 TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckSingleReason) {
-  EXPECT_CALL(metrics(), SendEnumToUMA(
-      Metrics::kMetricWifiStoppedTxQueueReason,
-      Mac80211Monitor::kStopReasonDriver,
-      Mac80211Monitor::kStopReasonMax));
-  EXPECT_CALL(metrics(), SendEnumToUMA(
-      Metrics::kMetricWifiStoppedTxQueueReason,
-      Mac80211Monitor::kStopReasonPowerSave,
-      Mac80211Monitor::kStopReasonMax));
-  EXPECT_CALL(metrics(), SendToUMA(
-      Metrics::kMetricWifiStoppedTxQueueLength,
-      kQueueLengthLimit,
-      Metrics::kMetricWifiStoppedTxQueueLengthMin,
-      Metrics::kMetricWifiStoppedTxQueueLengthMax,
-      Metrics::kMetricWifiStoppedTxQueueLengthNumBuckets)).Times(2);
+  EXPECT_CALL(metrics(), SendEnumToUMA(Metrics::kMetricWifiStoppedTxQueueReason,
+                                       Mac80211Monitor::kStopReasonDriver,
+                                       Mac80211Monitor::kStopReasonMax));
+  EXPECT_CALL(metrics(), SendEnumToUMA(Metrics::kMetricWifiStoppedTxQueueReason,
+                                       Mac80211Monitor::kStopReasonPowerSave,
+                                       Mac80211Monitor::kStopReasonMax));
+  EXPECT_CALL(
+      metrics(),
+      SendToUMA(Metrics::kMetricWifiStoppedTxQueueLength, kQueueLengthLimit,
+                Metrics::kMetricWifiStoppedTxQueueLengthMin,
+                Metrics::kMetricWifiStoppedTxQueueLengthMax,
+                Metrics::kMetricWifiStoppedTxQueueLengthNumBuckets))
+      .Times(2);
   EXPECT_EQ(Mac80211Monitor::kStopFlagDriver,
-            CheckAreQueuesStuck({
-                QState(0,
-                       Mac80211Monitor::kStopFlagDriver,
-                       kQueueLengthLimit)}));
+            CheckAreQueuesStuck({QState(0, Mac80211Monitor::kStopFlagDriver,
+                                        kQueueLengthLimit)}));
   EXPECT_EQ(Mac80211Monitor::kStopFlagPowerSave,
-            CheckAreQueuesStuck({
-                QState(0,
-                       Mac80211Monitor::kStopFlagPowerSave,
-                       kQueueLengthLimit)}));
+            CheckAreQueuesStuck({QState(0, Mac80211Monitor::kStopFlagPowerSave,
+                                        kQueueLengthLimit)}));
 }
 
 TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckMultipleReasons) {
-  EXPECT_CALL(metrics(), SendEnumToUMA(
-      Metrics::kMetricWifiStoppedTxQueueReason,
-      Mac80211Monitor::kStopReasonPowerSave,
-      Mac80211Monitor::kStopReasonMax)).Times(2);
-  EXPECT_CALL(metrics(), SendEnumToUMA(
-      Metrics::kMetricWifiStoppedTxQueueReason,
-      Mac80211Monitor::kStopReasonDriver,
-      Mac80211Monitor::kStopReasonMax)).Times(2);
-  EXPECT_CALL(metrics(), SendEnumToUMA(
-      Metrics::kMetricWifiStoppedTxQueueReason,
-      Mac80211Monitor::kStopReasonChannelSwitch,
-      Mac80211Monitor::kStopReasonMax)).Times(2);
-  EXPECT_CALL(metrics(), SendToUMA(
-      Metrics::kMetricWifiStoppedTxQueueLength,
-      kQueueLengthLimit,
-      Metrics::kMetricWifiStoppedTxQueueLengthMin,
-      Metrics::kMetricWifiStoppedTxQueueLengthMax,
-      Metrics::kMetricWifiStoppedTxQueueLengthNumBuckets)).Times(3);
-  EXPECT_EQ(Mac80211Monitor::kStopFlagDriver |
-            Mac80211Monitor::kStopFlagPowerSave,
-            CheckAreQueuesStuck({
-                QState(0,
-                       Mac80211Monitor::kStopFlagDriver |
-                       Mac80211Monitor::kStopFlagPowerSave,
-                       kQueueLengthLimit)}));
-  EXPECT_EQ(Mac80211Monitor::kStopFlagPowerSave |
-            Mac80211Monitor::kStopFlagChannelSwitch,
-            CheckAreQueuesStuck({
-                QState(0,
-                       Mac80211Monitor::kStopFlagPowerSave |
-                       Mac80211Monitor::kStopFlagChannelSwitch,
-                       kQueueLengthLimit)}));
-  EXPECT_EQ(Mac80211Monitor::kStopFlagDriver |
-            Mac80211Monitor::kStopFlagChannelSwitch,
-            CheckAreQueuesStuck({
-                QState(0,
-                       Mac80211Monitor::kStopFlagDriver |
-                       Mac80211Monitor::kStopFlagChannelSwitch,
-                       kQueueLengthLimit)}));
+  EXPECT_CALL(metrics(), SendEnumToUMA(Metrics::kMetricWifiStoppedTxQueueReason,
+                                       Mac80211Monitor::kStopReasonPowerSave,
+                                       Mac80211Monitor::kStopReasonMax))
+      .Times(2);
+  EXPECT_CALL(metrics(), SendEnumToUMA(Metrics::kMetricWifiStoppedTxQueueReason,
+                                       Mac80211Monitor::kStopReasonDriver,
+                                       Mac80211Monitor::kStopReasonMax))
+      .Times(2);
+  EXPECT_CALL(metrics(),
+              SendEnumToUMA(Metrics::kMetricWifiStoppedTxQueueReason,
+                            Mac80211Monitor::kStopReasonChannelSwitch,
+                            Mac80211Monitor::kStopReasonMax))
+      .Times(2);
+  EXPECT_CALL(
+      metrics(),
+      SendToUMA(Metrics::kMetricWifiStoppedTxQueueLength, kQueueLengthLimit,
+                Metrics::kMetricWifiStoppedTxQueueLengthMin,
+                Metrics::kMetricWifiStoppedTxQueueLengthMax,
+                Metrics::kMetricWifiStoppedTxQueueLengthNumBuckets))
+      .Times(3);
+  EXPECT_EQ(
+      Mac80211Monitor::kStopFlagDriver | Mac80211Monitor::kStopFlagPowerSave,
+      CheckAreQueuesStuck({QState(0,
+                                  Mac80211Monitor::kStopFlagDriver |
+                                      Mac80211Monitor::kStopFlagPowerSave,
+                                  kQueueLengthLimit)}));
+  EXPECT_EQ(
+      Mac80211Monitor::kStopFlagPowerSave |
+          Mac80211Monitor::kStopFlagChannelSwitch,
+      CheckAreQueuesStuck({QState(0,
+                                  Mac80211Monitor::kStopFlagPowerSave |
+                                      Mac80211Monitor::kStopFlagChannelSwitch,
+                                  kQueueLengthLimit)}));
+  EXPECT_EQ(
+      Mac80211Monitor::kStopFlagDriver |
+          Mac80211Monitor::kStopFlagChannelSwitch,
+      CheckAreQueuesStuck({QState(0,
+                                  Mac80211Monitor::kStopFlagDriver |
+                                      Mac80211Monitor::kStopFlagChannelSwitch,
+                                  kQueueLengthLimit)}));
 }
 
 TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckMultipleQueues) {
-  EXPECT_CALL(metrics(), SendEnumToUMA(
-      Metrics::kMetricWifiStoppedTxQueueReason,
-      Mac80211Monitor::kStopReasonPowerSave,
-      Mac80211Monitor::kStopReasonMax)).Times(5);
-  EXPECT_CALL(metrics(), SendEnumToUMA(
-      Metrics::kMetricWifiStoppedTxQueueReason,
-      Mac80211Monitor::kStopReasonDriver,
-      Mac80211Monitor::kStopReasonMax)).Times(2);
-  EXPECT_CALL(metrics(), SendToUMA(
-      Metrics::kMetricWifiStoppedTxQueueLength,
-      kQueueLengthLimit,
-      Metrics::kMetricWifiStoppedTxQueueLengthMin,
-      Metrics::kMetricWifiStoppedTxQueueLengthMax,
-      Metrics::kMetricWifiStoppedTxQueueLengthNumBuckets)).Times(5);
+  EXPECT_CALL(metrics(), SendEnumToUMA(Metrics::kMetricWifiStoppedTxQueueReason,
+                                       Mac80211Monitor::kStopReasonPowerSave,
+                                       Mac80211Monitor::kStopReasonMax))
+      .Times(5);
+  EXPECT_CALL(metrics(), SendEnumToUMA(Metrics::kMetricWifiStoppedTxQueueReason,
+                                       Mac80211Monitor::kStopReasonDriver,
+                                       Mac80211Monitor::kStopReasonMax))
+      .Times(2);
+  EXPECT_CALL(
+      metrics(),
+      SendToUMA(Metrics::kMetricWifiStoppedTxQueueLength, kQueueLengthLimit,
+                Metrics::kMetricWifiStoppedTxQueueLengthMin,
+                Metrics::kMetricWifiStoppedTxQueueLengthMax,
+                Metrics::kMetricWifiStoppedTxQueueLengthNumBuckets))
+      .Times(5);
   EXPECT_EQ(Mac80211Monitor::kStopFlagPowerSave,
-            CheckAreQueuesStuck({
-                QState(0, 0, 0),
-                QState(0,
-                       Mac80211Monitor::kStopFlagPowerSave,
-                       kQueueLengthLimit)}));
+            CheckAreQueuesStuck(
+                {QState(0, 0, 0), QState(0, Mac80211Monitor::kStopFlagPowerSave,
+                                         kQueueLengthLimit)}));
   EXPECT_EQ(Mac80211Monitor::kStopFlagPowerSave,
-            CheckAreQueuesStuck({
-                QState(0,
-                       Mac80211Monitor::kStopFlagPowerSave,
-                       kQueueLengthLimit),
-                QState(0, 0, 0)}));
-  EXPECT_EQ(Mac80211Monitor::kStopFlagPowerSave,
-            CheckAreQueuesStuck({
-                QState(0,
-                       Mac80211Monitor::kStopFlagPowerSave,
-                       kQueueLengthLimit),
-                QState(0,
-                       Mac80211Monitor::kStopFlagPowerSave,
-                       kQueueLengthLimit)}));
-  EXPECT_EQ(Mac80211Monitor::kStopFlagDriver |
-            Mac80211Monitor::kStopFlagPowerSave,
-            CheckAreQueuesStuck({
-                QState(0,
-                       Mac80211Monitor::kStopFlagPowerSave,
-                       kQueueLengthLimit),
-                QState(0,
-                       Mac80211Monitor::kStopFlagDriver,
-                       kQueueLengthLimit)}));
-  EXPECT_EQ(Mac80211Monitor::kStopFlagDriver |
-            Mac80211Monitor::kStopFlagPowerSave,
-            CheckAreQueuesStuck({
-                QState(0, Mac80211Monitor::kStopFlagDriver, kQueueLengthLimit),
-                QState(0,
-                       Mac80211Monitor::kStopFlagPowerSave,
-                       kQueueLengthLimit)}));
+            CheckAreQueuesStuck({QState(0, Mac80211Monitor::kStopFlagPowerSave,
+                                        kQueueLengthLimit),
+                                 QState(0, 0, 0)}));
+  EXPECT_EQ(
+      Mac80211Monitor::kStopFlagPowerSave,
+      CheckAreQueuesStuck(
+          {QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit),
+           QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit)}));
+  EXPECT_EQ(
+      Mac80211Monitor::kStopFlagDriver | Mac80211Monitor::kStopFlagPowerSave,
+      CheckAreQueuesStuck(
+          {QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit),
+           QState(0, Mac80211Monitor::kStopFlagDriver, kQueueLengthLimit)}));
+  EXPECT_EQ(
+      Mac80211Monitor::kStopFlagDriver | Mac80211Monitor::kStopFlagPowerSave,
+      CheckAreQueuesStuck(
+          {QState(0, Mac80211Monitor::kStopFlagDriver, kQueueLengthLimit),
+           QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit)}));
 }
 
 TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckQueueLength) {
-  EXPECT_CALL(metrics(), SendEnumToUMA(
-      Metrics::kMetricWifiStoppedTxQueueReason,
-      Mac80211Monitor::kStopReasonPowerSave,
-      Mac80211Monitor::kStopReasonMax)).Times(4);
-  EXPECT_CALL(metrics(), SendToUMA(
-      Metrics::kMetricWifiStoppedTxQueueLength,
-      kQueueLengthLimit,
-      Metrics::kMetricWifiStoppedTxQueueLengthMin,
-      Metrics::kMetricWifiStoppedTxQueueLengthMax,
-      Metrics::kMetricWifiStoppedTxQueueLengthNumBuckets)).Times(4);
-  EXPECT_TRUE(CheckAreQueuesStuck({
-        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit)}));
-  EXPECT_TRUE(CheckAreQueuesStuck({
-        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit-2),
-        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit-1),
-        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit)}));
-  EXPECT_TRUE(CheckAreQueuesStuck({
-        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit),
-        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit-1),
-        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit-2)}));
-  EXPECT_TRUE(CheckAreQueuesStuck({
-        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit-1),
-        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit),
-        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit-2)}));
+  EXPECT_CALL(metrics(), SendEnumToUMA(Metrics::kMetricWifiStoppedTxQueueReason,
+                                       Mac80211Monitor::kStopReasonPowerSave,
+                                       Mac80211Monitor::kStopReasonMax))
+      .Times(4);
+  EXPECT_CALL(
+      metrics(),
+      SendToUMA(Metrics::kMetricWifiStoppedTxQueueLength, kQueueLengthLimit,
+                Metrics::kMetricWifiStoppedTxQueueLengthMin,
+                Metrics::kMetricWifiStoppedTxQueueLengthMax,
+                Metrics::kMetricWifiStoppedTxQueueLengthNumBuckets))
+      .Times(4);
+  EXPECT_TRUE(CheckAreQueuesStuck(
+      {QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit)}));
+  EXPECT_TRUE(CheckAreQueuesStuck(
+      {QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit - 2),
+       QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit - 1),
+       QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit)}));
+  EXPECT_TRUE(CheckAreQueuesStuck(
+      {QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit),
+       QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit - 1),
+       QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit - 2)}));
+  EXPECT_TRUE(CheckAreQueuesStuck(
+      {QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit - 1),
+       QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit),
+       QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit - 2)}));
 }
 
 TEST_F(Mac80211MonitorTest, CheckAreQueuesStuckQueueLengthIgnoresUnstopped) {
-  EXPECT_CALL(metrics(), SendEnumToUMA(
-      Metrics::kMetricWifiStoppedTxQueueReason,
-      Mac80211Monitor::kStopReasonPowerSave,
-      Mac80211Monitor::kStopReasonMax));
-  EXPECT_CALL(metrics(), SendToUMA(
-      Metrics::kMetricWifiStoppedTxQueueLength,
-      kQueueLengthLimit,
-      Metrics::kMetricWifiStoppedTxQueueLengthMin,
-      Metrics::kMetricWifiStoppedTxQueueLengthMax,
-      Metrics::kMetricWifiStoppedTxQueueLengthNumBuckets));
-  EXPECT_TRUE(CheckAreQueuesStuck({
-        QState(0, 0, kQueueLengthLimit * 10),
-        QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit)}));
+  EXPECT_CALL(metrics(), SendEnumToUMA(Metrics::kMetricWifiStoppedTxQueueReason,
+                                       Mac80211Monitor::kStopReasonPowerSave,
+                                       Mac80211Monitor::kStopReasonMax));
+  EXPECT_CALL(
+      metrics(),
+      SendToUMA(Metrics::kMetricWifiStoppedTxQueueLength, kQueueLengthLimit,
+                Metrics::kMetricWifiStoppedTxQueueLengthMin,
+                Metrics::kMetricWifiStoppedTxQueueLengthMax,
+                Metrics::kMetricWifiStoppedTxQueueLengthNumBuckets));
+  EXPECT_TRUE(CheckAreQueuesStuck(
+      {QState(0, 0, kQueueLengthLimit * 10),
+       QState(0, Mac80211Monitor::kStopFlagPowerSave, kQueueLengthLimit)}));
 }
 
 }  // namespace shill

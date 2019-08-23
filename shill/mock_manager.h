@@ -36,9 +36,10 @@ class MockManager : public Manager {
   MOCK_CONST_METHOD0(run_path, const base::FilePath&());
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
-  MOCK_METHOD3(SetProfileForService, void(const ServiceRefPtr& to_set,
-                                          const std::string& profile,
-                                          Error* error));
+  MOCK_METHOD3(SetProfileForService,
+               void(const ServiceRefPtr& to_set,
+                    const std::string& profile,
+                    Error* error));
   MOCK_METHOD1(MatchProfileWithService, bool(const ServiceRefPtr& service));
   MOCK_METHOD1(RegisterDevice, void(const DeviceRefPtr& to_manage));
   MOCK_METHOD1(DeregisterDevice, void(const DeviceRefPtr& to_forget));
@@ -73,8 +74,7 @@ class MockManager : public Manager {
   MOCK_CONST_METHOD1(IsServiceEphemeral,
                      bool(const ServiceConstRefPtr& service));
   MOCK_CONST_METHOD2(IsProfileBefore,
-                     bool(const ProfileRefPtr& a,
-                          const ProfileRefPtr& b));
+                     bool(const ProfileRefPtr& a, const ProfileRefPtr& b));
   MOCK_CONST_METHOD1(IsTechnologyConnected, bool(Technology tech));
   MOCK_CONST_METHOD1(IsTechnologyLinkMonitorEnabled, bool(Technology tech));
   MOCK_CONST_METHOD1(IsTechnologyAutoConnectDisabled, bool(Technology tech));
@@ -114,10 +114,13 @@ class MockManager : public Manager {
   MOCK_METHOD0(OnInnerDevicesChanged, void());
   MOCK_METHOD3(ClaimDevice,
                void(const std::string& claimer_name,
-                    const std::string& interface_name, Error* error));
-  MOCK_METHOD4(ReleaseDevice, void(const std::string& claimer_name,
-                                   const std::string& interface_name,
-                                   bool* claimer_removed, Error* error));
+                    const std::string& interface_name,
+                    Error* error));
+  MOCK_METHOD4(ReleaseDevice,
+               void(const std::string& claimer_name,
+                    const std::string& interface_name,
+                    bool* claimer_removed,
+                    Error* error));
   MOCK_METHOD0(OnDeviceClaimerVanished, void());
   MOCK_METHOD0(GetDeviceInterfaceNames, std::vector<std::string>());
   MOCK_CONST_METHOD0(GetFTEnabled, bool());
@@ -127,7 +130,7 @@ class MockManager : public Manager {
   // Getter and setter for a mocked device info instance.
   DeviceInfo* mock_device_info() { return mock_device_info_; }
   void set_mock_device_info(DeviceInfo* mock_device_info) {
-      mock_device_info_ = mock_device_info;
+    mock_device_info_ = mock_device_info;
   }
 
  private:

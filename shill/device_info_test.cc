@@ -70,9 +70,10 @@ namespace shill {
 
 class TestEventDispatcherForDeviceInfo : public EventDispatcherForTest {
  public:
-  MOCK_METHOD3(PostDelayedTask, void(const base::Location& location,
-                                     const base::Closure& task,
-                                     int64_t delay_ms));
+  MOCK_METHOD3(PostDelayedTask,
+               void(const base::Location& location,
+                    const base::Closure& task,
+                    int64_t delay_ms));
 };
 
 class DeviceInfoTest : public Test {
@@ -91,7 +92,7 @@ class DeviceInfoTest : public Test {
     device_info_.time_ = &time_;
     manager_.set_mock_device_info(&device_info_);
     EXPECT_CALL(manager_, FilterPrependDNSServersByFamily(_))
-      .WillRepeatedly(Return(vector<string>()));
+        .WillRepeatedly(Return(vector<string>()));
   }
 
   IPAddress CreateInterfaceAddress() {
@@ -131,9 +132,7 @@ class DeviceInfoTest : public Test {
     manager_.UpdateProviderMapping();
   }
 
-  void SetManagerRunning(bool running) {
-    manager_.running_ = running;
-  }
+  void SetManagerRunning(bool running) { manager_.running_ = running; }
 
  protected:
   static const int kTestDeviceIndex;
@@ -183,8 +182,8 @@ class DeviceInfoTest : public Test {
 
 const int DeviceInfoTest::kTestDeviceIndex = 123456;
 const char DeviceInfoTest::kTestDeviceName[] = "test-device";
-const uint8_t DeviceInfoTest::kTestMacAddress[] = {
-    0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };
+const uint8_t DeviceInfoTest::kTestMacAddress[] = {0xaa, 0xbb, 0xcc,
+                                                   0xdd, 0xee, 0xff};
 const char DeviceInfoTest::kTestIPAddress0[] = "192.168.1.1";
 const int DeviceInfoTest::kTestIPAddressPrefix0 = 24;
 const char DeviceInfoTest::kTestIPAddress1[] = "fe80::1aa9:5ff:abcd:1234";
@@ -308,8 +307,8 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   ByteString address;
   EXPECT_TRUE(device_info_.GetMacAddress(kTestDeviceIndex, &address));
   EXPECT_FALSE(address.IsEmpty());
-  EXPECT_TRUE(address.Equals(ByteString(kTestMacAddress,
-                                        sizeof(kTestMacAddress))));
+  EXPECT_TRUE(
+      address.Equals(ByteString(kTestMacAddress, sizeof(kTestMacAddress))));
   EXPECT_EQ(kTestDeviceIndex, device_info_.GetIndex(kTestDeviceName));
 
   message = BuildLinkMessage(RTNLMessage::kModeAdd);
@@ -342,8 +341,8 @@ TEST_F(DeviceInfoTest, DeviceRemovedEvent) {
   scoped_refptr<MockDevice> device1(
       new MockDevice(&manager_, "null0", "addr0", kTestDeviceIndex));
   device_info_.infos_[kTestDeviceIndex].device = device1;
-  EXPECT_CALL(*device1, technology()).
-      WillRepeatedly(Return(Technology::kCellular));
+  EXPECT_CALL(*device1, technology())
+      .WillRepeatedly(Return(Technology::kCellular));
   EXPECT_CALL(manager_, DeregisterDevice(_)).Times(1);
   EXPECT_CALL(metrics_, DeregisterDevice(kTestDeviceIndex)).Times(1);
   device_info_.DeregisterDevice(device1);
@@ -394,14 +393,14 @@ TEST_F(DeviceInfoTest, GetUninitializedTechnologies) {
 
 TEST_F(DeviceInfoTest, GetByteCounts) {
   uint64_t rx_bytes, tx_bytes;
-  EXPECT_FALSE(device_info_.GetByteCounts(
-      kTestDeviceIndex, &rx_bytes, &tx_bytes));
+  EXPECT_FALSE(
+      device_info_.GetByteCounts(kTestDeviceIndex, &rx_bytes, &tx_bytes));
 
   // No link statistics in the message.
   unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
-  EXPECT_TRUE(device_info_.GetByteCounts(
-      kTestDeviceIndex, &rx_bytes, &tx_bytes));
+  EXPECT_TRUE(
+      device_info_.GetByteCounts(kTestDeviceIndex, &rx_bytes, &tx_bytes));
   EXPECT_EQ(0, rx_bytes);
   EXPECT_EQ(0, tx_bytes);
 
@@ -415,8 +414,8 @@ TEST_F(DeviceInfoTest, GetByteCounts) {
                           sizeof(stats) - 1);
   message->SetAttribute(IFLA_STATS64, stats_bytes0);
   SendMessageToDeviceInfo(*message);
-  EXPECT_TRUE(device_info_.GetByteCounts(
-      kTestDeviceIndex, &rx_bytes, &tx_bytes));
+  EXPECT_TRUE(
+      device_info_.GetByteCounts(kTestDeviceIndex, &rx_bytes, &tx_bytes));
   EXPECT_EQ(0, rx_bytes);
   EXPECT_EQ(0, tx_bytes);
 
@@ -426,8 +425,8 @@ TEST_F(DeviceInfoTest, GetByteCounts) {
                           sizeof(stats));
   message->SetAttribute(IFLA_STATS64, stats_bytes1);
   SendMessageToDeviceInfo(*message);
-  EXPECT_TRUE(device_info_.GetByteCounts(
-      kTestDeviceIndex, &rx_bytes, &tx_bytes));
+  EXPECT_TRUE(
+      device_info_.GetByteCounts(kTestDeviceIndex, &rx_bytes, &tx_bytes));
   EXPECT_EQ(kReceiveByteCount, rx_bytes);
   EXPECT_EQ(kTransmitByteCount, tx_bytes);
 }
@@ -442,10 +441,10 @@ TEST_F(DeviceInfoTest, CreateDeviceCellular) {
   EXPECT_CALL(manager_, modem_info()).WillOnce(Return(&modem_info));
   EXPECT_CALL(modem_info, OnDeviceInfoAvailable(kTestDeviceName)).Times(1);
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
-  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
-                                                    IsIPAddress(address)));
-  EXPECT_FALSE(CreateDevice(
-      kTestDeviceName, "address", kTestDeviceIndex, Technology::kCellular));
+  EXPECT_CALL(rtnl_handler_,
+              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address)));
+  EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
+                            Technology::kCellular));
 }
 
 #endif  // DISABLE_CELLULAR
@@ -459,10 +458,10 @@ TEST_F(DeviceInfoTest, CreateDeviceEthernet) {
       .WillOnce(Return(&ethernet_provider));
   EXPECT_CALL(ethernet_provider, CreateService(_));
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
-  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
-                                                    IsIPAddress(address)));
-  DeviceRefPtr device = CreateDevice(
-      kTestDeviceName, "address", kTestDeviceIndex, Technology::kEthernet);
+  EXPECT_CALL(rtnl_handler_,
+              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address)));
+  DeviceRefPtr device = CreateDevice(kTestDeviceName, "address",
+                                     kTestDeviceIndex, Technology::kEthernet);
   EXPECT_NE(nullptr, device);
   Mock::VerifyAndClearExpectations(&routing_table_);
   Mock::VerifyAndClearExpectations(&rtnl_handler_);
@@ -483,11 +482,11 @@ TEST_F(DeviceInfoTest, CreateDeviceVirtioEthernet) {
       .WillOnce(Return(&ethernet_provider));
   EXPECT_CALL(ethernet_provider, CreateService(_));
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
-  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
-                                                    IsIPAddress(address)));
-  DeviceRefPtr device = CreateDevice(
-      kTestDeviceName, "address", kTestDeviceIndex,
-      Technology::kVirtioEthernet);
+  EXPECT_CALL(rtnl_handler_,
+              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address)));
+  DeviceRefPtr device =
+      CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
+                   Technology::kVirtioEthernet);
   EXPECT_NE(nullptr, device);
   Mock::VerifyAndClearExpectations(&routing_table_);
   Mock::VerifyAndClearExpectations(&rtnl_handler_);
@@ -518,8 +517,8 @@ TEST_F(DeviceInfoTest, CreateDeviceWiFi) {
 
   // WiFi looks a lot like Ethernet too.
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex));
-  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
-                                                    IsIPAddress(address)));
+  EXPECT_CALL(rtnl_handler_,
+              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address)));
 
   // Set the nl80211 message type to some non-default value.
   Nl80211Message::SetMessageType(1234);
@@ -527,8 +526,8 @@ TEST_F(DeviceInfoTest, CreateDeviceWiFi) {
   EXPECT_CALL(
       netlink_manager_,
       SendNl80211Message(IsGetInterfaceMessage(kTestDeviceIndex), _, _, _));
-  EXPECT_FALSE(CreateDevice(
-      kTestDeviceName, "address", kTestDeviceIndex, Technology::kWifi));
+  EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
+                            Technology::kWifi));
 }
 #endif  // DISABLE_WIFI
 
@@ -543,11 +542,11 @@ TEST_F(DeviceInfoTest, CreateDeviceTunnelAccepted) {
                                     Technology(Technology::kTunnel)))
       .WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
-  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
-                                                    IsIPAddress(address)));
+  EXPECT_CALL(rtnl_handler_,
+              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address)));
   EXPECT_CALL(rtnl_handler_, RemoveInterface(_)).Times(0);
-  EXPECT_FALSE(CreateDevice(
-      kTestDeviceName, "address", kTestDeviceIndex, Technology::kTunnel));
+  EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
+                            Technology::kTunnel));
 }
 
 TEST_F(DeviceInfoTest, CreateDeviceTunnelRejected) {
@@ -561,13 +560,13 @@ TEST_F(DeviceInfoTest, CreateDeviceTunnelRejected) {
                                     Technology(Technology::kTunnel)))
       .WillOnce(Return(false));
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
-  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
-                                                    IsIPAddress(address)));
+  EXPECT_CALL(rtnl_handler_,
+              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address)));
   // Since the device was rejected by the VPNProvider, DeviceInfo will
   // remove the interface.
   EXPECT_CALL(rtnl_handler_, RemoveInterface(kTestDeviceIndex)).Times(1);
-  EXPECT_FALSE(CreateDevice(
-      kTestDeviceName, "address", kTestDeviceIndex, Technology::kTunnel));
+  EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
+                            Technology::kTunnel));
 }
 
 TEST_F(DeviceInfoTest, CreateDevicePPP) {
@@ -581,12 +580,12 @@ TEST_F(DeviceInfoTest, CreateDevicePPP) {
                                     Technology(Technology::kPPP)))
       .WillOnce(Return(false));
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
-  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
-                                                    IsIPAddress(address)));
+  EXPECT_CALL(rtnl_handler_,
+              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address)));
   // We do not remove PPP interfaces even if the provider does not accept it.
   EXPECT_CALL(rtnl_handler_, RemoveInterface(_)).Times(0);
-  EXPECT_FALSE(CreateDevice(
-      kTestDeviceName, "address", kTestDeviceIndex, Technology::kPPP));
+  EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
+                            Technology::kPPP));
 }
 
 TEST_F(DeviceInfoTest, CreateDeviceLoopback) {
@@ -594,9 +593,10 @@ TEST_F(DeviceInfoTest, CreateDeviceLoopback) {
   EXPECT_CALL(routing_table_, FlushRoutes(_)).Times(0);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _)).Times(0);
   EXPECT_CALL(rtnl_handler_,
-              SetInterfaceFlags(kTestDeviceIndex, IFF_UP, IFF_UP)).Times(1);
-  EXPECT_FALSE(CreateDevice(
-      kTestDeviceName, "address", kTestDeviceIndex, Technology::kLoopback));
+              SetInterfaceFlags(kTestDeviceIndex, IFF_UP, IFF_UP))
+      .Times(1);
+  EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
+                            Technology::kLoopback));
 }
 
 TEST_F(DeviceInfoTest, CreateDeviceCDCEthernet) {
@@ -606,8 +606,8 @@ TEST_F(DeviceInfoTest, CreateDeviceCDCEthernet) {
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _)).Times(0);
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _));
   EXPECT_TRUE(GetDelayedDevices().empty());
-  EXPECT_FALSE(CreateDevice(
-      kTestDeviceName, "address", kTestDeviceIndex, Technology::kCDCEthernet));
+  EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
+                            Technology::kCDCEthernet));
   EXPECT_FALSE(GetDelayedDevices().empty());
   EXPECT_EQ(1, GetDelayedDevices().size());
   EXPECT_EQ(kTestDeviceIndex, *GetDelayedDevices().begin());
@@ -620,9 +620,9 @@ TEST_F(DeviceInfoTest, CreateDeviceUnknown) {
   // registered.
   EXPECT_CALL(routing_table_, FlushRoutes(_)).Times(0);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _)).Times(0);
-  EXPECT_TRUE(CreateDevice(
-      kTestDeviceName, "address", kTestDeviceIndex,
-      Technology::kUnknown).get());
+  EXPECT_TRUE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
+                           Technology::kUnknown)
+                  .get());
 }
 
 TEST_F(DeviceInfoTest, DeviceBlackList) {
@@ -796,10 +796,10 @@ TEST_F(DeviceInfoTest, FlushAddressList) {
 
   // DeviceInfo now has 4 addresses associated with it, but only two of
   // them are valid for flush.
-  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
-                                                    IsIPAddress(address1)));
-  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
-                                                    IsIPAddress(address2)));
+  EXPECT_CALL(rtnl_handler_,
+              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address1)));
+  EXPECT_CALL(rtnl_handler_,
+              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address2)));
   device_info_.FlushAddresses(kTestDeviceIndex);
 }
 
@@ -885,8 +885,8 @@ TEST_F(DeviceInfoTest, HasDirectConnectivityTo) {
   EXPECT_TRUE(address0.SetAddressFromString(kTestIPAddress0));
 
   // There are no addresses on this interface.
-  EXPECT_FALSE(device_info_.HasDirectConnectivityTo(
-      kTestDeviceIndex, address0));
+  EXPECT_FALSE(
+      device_info_.HasDirectConnectivityTo(kTestDeviceIndex, address0));
 
   IPAddress address1(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(address1.SetAddressFromString(kTestIPAddress1));
@@ -895,8 +895,8 @@ TEST_F(DeviceInfoTest, HasDirectConnectivityTo) {
   SendMessageToDeviceInfo(*message);
 
   // No current addresses are of the same family as |address0|.
-  EXPECT_FALSE(device_info_.HasDirectConnectivityTo(
-      kTestDeviceIndex, address0));
+  EXPECT_FALSE(
+      device_info_.HasDirectConnectivityTo(kTestDeviceIndex, address0));
 
   IPAddress address6(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(address6.SetAddressFromString(kTestIPAddress6));
@@ -906,8 +906,8 @@ TEST_F(DeviceInfoTest, HasDirectConnectivityTo) {
   SendMessageToDeviceInfo(*message);
 
   // |address0| is not reachable from |address6|.
-  EXPECT_FALSE(device_info_.HasDirectConnectivityTo(
-      kTestDeviceIndex, address0));
+  EXPECT_FALSE(
+      device_info_.HasDirectConnectivityTo(kTestDeviceIndex, address0));
 
   IPAddress address5(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(address5.SetAddressFromString(kTestIPAddress5));
@@ -918,8 +918,7 @@ TEST_F(DeviceInfoTest, HasDirectConnectivityTo) {
 
   // |address0| is reachable from |address5| which is associated with the
   // interface.
-  EXPECT_TRUE(device_info_.HasDirectConnectivityTo(
-      kTestDeviceIndex, address0));
+  EXPECT_TRUE(device_info_.HasDirectConnectivityTo(kTestDeviceIndex, address0));
 }
 
 TEST_F(DeviceInfoTest, HasSubdir) {
@@ -979,9 +978,8 @@ TEST_F(DeviceInfoTest, GetMacAddressFromKernelIoctlFails) {
 
 MATCHER_P2(IfreqEquals, ifindex, ifname, "") {
   const struct ifreq* const ifr = static_cast<struct ifreq*>(arg);
-  return (ifr != nullptr) &&
-      (ifr->ifr_ifindex == ifindex) &&
-      (strcmp(ifname, ifr->ifr_name) == 0);
+  return (ifr != nullptr) && (ifr->ifr_ifindex == ifindex) &&
+         (strcmp(ifname, ifr->ifr_name) == 0);
 }
 
 ACTION_P(SetIfreq, ifr) {
@@ -996,9 +994,9 @@ TEST_F(DeviceInfoTest, GetMacAddressFromKernel) {
   static uint8_t kMacAddress[] = {0x00, 0x01, 0x02, 0xaa, 0xbb, 0xcc};
   memcpy(ifr.ifr_hwaddr.sa_data, kMacAddress, sizeof(kMacAddress));
   EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(kFd));
-  EXPECT_CALL(*mock_sockets_,
-              Ioctl(kFd, SIOCGIFHWADDR,
-                    IfreqEquals(kTestDeviceIndex, kTestDeviceName)))
+  EXPECT_CALL(
+      *mock_sockets_,
+      Ioctl(kFd, SIOCGIFHWADDR, IfreqEquals(kTestDeviceIndex, kTestDeviceName)))
       .WillOnce(DoAll(SetIfreq(ifr), Return(0)));
   EXPECT_CALL(*mock_sockets_, Close(kFd));
 
@@ -1020,8 +1018,8 @@ TEST_F(DeviceInfoTest, GetMacAddressOfPeerUnknownDevice) {
   EXPECT_TRUE(address.SetAddressFromString(kTestIPAddress0));
   ByteString mac_address;
   EXPECT_EQ(nullptr, device_info_.GetDevice(kTestDeviceIndex));
-  EXPECT_FALSE(device_info_.GetMacAddressOfPeer(
-      kTestDeviceIndex, address, &mac_address));
+  EXPECT_FALSE(device_info_.GetMacAddressOfPeer(kTestDeviceIndex, address,
+                                                &mac_address));
 }
 
 TEST_F(DeviceInfoTest, GetMacAddressOfPeerBadAddress) {
@@ -1055,8 +1053,8 @@ TEST_F(DeviceInfoTest, GetMacAddressOfPeerUnableToOpenSocket) {
   IPAddress ip_address(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(ip_address.SetAddressFromString(kTestIPAddress0));
   ByteString mac_address;
-  EXPECT_FALSE(device_info_.GetMacAddressOfPeer(
-      kTestDeviceIndex, ip_address, &mac_address));
+  EXPECT_FALSE(device_info_.GetMacAddressOfPeer(kTestDeviceIndex, ip_address,
+                                                &mac_address));
 }
 
 TEST_F(DeviceInfoTest, GetMacAddressOfPeerIoctlFails) {
@@ -1071,8 +1069,8 @@ TEST_F(DeviceInfoTest, GetMacAddressOfPeerIoctlFails) {
   IPAddress ip_address(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(ip_address.SetAddressFromString(kTestIPAddress0));
   ByteString mac_address;
-  EXPECT_FALSE(device_info_.GetMacAddressOfPeer(
-      kTestDeviceIndex, ip_address, &mac_address));
+  EXPECT_FALSE(device_info_.GetMacAddressOfPeer(kTestDeviceIndex, ip_address,
+                                                &mac_address));
 }
 
 MATCHER_P2(ArpreqEquals, ifname, peer, "") {
@@ -1086,13 +1084,12 @@ MATCHER_P2(ArpreqEquals, ifname, peer, "") {
   const struct sockaddr_in* const mac_address =
       reinterpret_cast<const struct sockaddr_in*>(&areq->arp_ha);
 
-  return
-      strcmp(ifname, areq->arp_dev) == 0 &&
-      protocol_address->sin_family == AF_INET &&
-      memcmp(&protocol_address->sin_addr.s_addr,
-             peer.address().GetConstData(),
-             peer.address().GetLength()) == 0 &&
-      mac_address->sin_family == ARPHRD_ETHER;
+  return strcmp(ifname, areq->arp_dev) == 0 &&
+         protocol_address->sin_family == AF_INET &&
+         memcmp(&protocol_address->sin_addr.s_addr,
+                peer.address().GetConstData(),
+                peer.address().GetLength()) == 0 &&
+         mac_address->sin_family == ARPHRD_ETHER;
 }
 
 ACTION_P(SetArpreq, areq) {
@@ -1123,16 +1120,16 @@ TEST_F(DeviceInfoTest, GetMacAddressOfPeer) {
   struct arpreq areq_response;
   memcpy(areq_response.arp_ha.sa_data, kMacAddress, sizeof(kMacAddress));
 
-  EXPECT_CALL(*mock_sockets_, Ioctl(
-      kFd, SIOCGARP, ArpreqEquals(kTestDeviceName, ip_address)))
-          .WillOnce(DoAll(SetArpreq(zero_areq_response), Return(0)))
-          .WillOnce(DoAll(SetArpreq(areq_response), Return(0)));
+  EXPECT_CALL(*mock_sockets_,
+              Ioctl(kFd, SIOCGARP, ArpreqEquals(kTestDeviceName, ip_address)))
+      .WillOnce(DoAll(SetArpreq(zero_areq_response), Return(0)))
+      .WillOnce(DoAll(SetArpreq(areq_response), Return(0)));
 
   ByteString mac_address;
-  EXPECT_FALSE(device_info_.GetMacAddressOfPeer(
-      kTestDeviceIndex, ip_address, &mac_address));
-  EXPECT_TRUE(device_info_.GetMacAddressOfPeer(
-      kTestDeviceIndex, ip_address, &mac_address));
+  EXPECT_FALSE(device_info_.GetMacAddressOfPeer(kTestDeviceIndex, ip_address,
+                                                &mac_address));
+  EXPECT_TRUE(device_info_.GetMacAddressOfPeer(kTestDeviceIndex, ip_address,
+                                               &mac_address));
   EXPECT_THAT(kMacAddress,
               ElementsAreArray(mac_address.GetData(), sizeof(kMacAddress)));
 }
@@ -1226,7 +1223,6 @@ TEST_F(DeviceInfoTest, IPv6AddressChanged) {
   EXPECT_TRUE(address3.Equals(ipv6_address7));
 }
 
-
 TEST_F(DeviceInfoTest, IPv6DnsServerAddressesChanged) {
   scoped_refptr<MockDevice> device(
       new MockDevice(&manager_, "null0", "addr0", kTestDeviceIndex));
@@ -1255,8 +1251,8 @@ TEST_F(DeviceInfoTest, IPv6DnsServerAddressesChanged) {
   const uint32_t kInfiniteLifetime = 0xffffffff;
   unique_ptr<RTNLMessage> message = BuildRdnssMessage(
       RTNLMessage::kModeAdd, kInfiniteLifetime, dns_server_addresses_in);
-  EXPECT_CALL(time_, GetSecondsBoottime(_)).
-      WillOnce(DoAll(SetArgPointee<0>(0), Return(true)));
+  EXPECT_CALL(time_, GetSecondsBoottime(_))
+      .WillOnce(DoAll(SetArgPointee<0>(0), Return(true)));
   EXPECT_CALL(*device, OnIPv6DnsServerAddressesChanged()).Times(1);
   SendMessageToDeviceInfo(*message);
   EXPECT_CALL(time_, GetSecondsBoottime(_)).Times(0);
@@ -1273,13 +1269,13 @@ TEST_F(DeviceInfoTest, IPv6DnsServerAddressesChanged) {
   const uint32_t kElapseTime10 = 10;
   unique_ptr<RTNLMessage> message1(BuildRdnssMessage(
       RTNLMessage::kModeAdd, kLifetime120, dns_server_addresses_in));
-  EXPECT_CALL(time_, GetSecondsBoottime(_)).
-      WillOnce(DoAll(SetArgPointee<0>(0), Return(true)));
+  EXPECT_CALL(time_, GetSecondsBoottime(_))
+      .WillOnce(DoAll(SetArgPointee<0>(0), Return(true)));
   EXPECT_CALL(*device, OnIPv6DnsServerAddressesChanged()).Times(1);
   SendMessageToDeviceInfo(*message1);
   // 10 seconds passed when GetIPv6DnsServerAddreses is called.
-  EXPECT_CALL(time_, GetSecondsBoottime(_)).
-      WillOnce(DoAll(SetArgPointee<0>(kElapseTime10), Return(true)));
+  EXPECT_CALL(time_, GetSecondsBoottime(_))
+      .WillOnce(DoAll(SetArgPointee<0>(kElapseTime10), Return(true)));
   EXPECT_TRUE(device_info_.GetIPv6DnsServerAddresses(
       kTestDeviceIndex, &dns_server_addresses_out, &lifetime_out));
   // Verify addresses and lifetime.
@@ -1289,13 +1285,13 @@ TEST_F(DeviceInfoTest, IPv6DnsServerAddressesChanged) {
   EXPECT_EQ(kTestIPAddress2, dns_server_addresses_out.at(1).ToString());
 
   // Lifetime of 120, retrieve DNS server addresses after lifetime expired.
-  EXPECT_CALL(time_, GetSecondsBoottime(_)).
-      WillOnce(DoAll(SetArgPointee<0>(0), Return(true)));
+  EXPECT_CALL(time_, GetSecondsBoottime(_))
+      .WillOnce(DoAll(SetArgPointee<0>(0), Return(true)));
   EXPECT_CALL(*device, OnIPv6DnsServerAddressesChanged()).Times(1);
   SendMessageToDeviceInfo(*message1);
   // 120 seconds passed when GetIPv6DnsServerAddreses is called.
-  EXPECT_CALL(time_, GetSecondsBoottime(_)).
-      WillOnce(DoAll(SetArgPointee<0>(kLifetime120), Return(true)));
+  EXPECT_CALL(time_, GetSecondsBoottime(_))
+      .WillOnce(DoAll(SetArgPointee<0>(kLifetime120), Return(true)));
   EXPECT_TRUE(device_info_.GetIPv6DnsServerAddresses(
       kTestDeviceIndex, &dns_server_addresses_out, &lifetime_out));
   // Verify addresses and lifetime.
@@ -1439,14 +1435,14 @@ TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem1) {
   FilePath driver_symlink(device_path.Append("driver"));
   EXPECT_TRUE(base::CreateDirectory(device_path));
   CreateInfoSymLink("device", device_path.value());
-  EXPECT_TRUE(base::CreateSymbolicLink(FilePath("/drivers/cdc_ether"),
-                                       driver_symlink));
+  EXPECT_TRUE(
+      base::CreateSymbolicLink(FilePath("/drivers/cdc_ether"), driver_symlink));
   EXPECT_TRUE(base::CreateDirectory(device_root.Append("01/tty")));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 
   EXPECT_TRUE(base::DeleteFile(driver_symlink, false));
-  EXPECT_TRUE(base::CreateSymbolicLink(FilePath("/drivers/cdc_ncm"),
-                                       driver_symlink));
+  EXPECT_TRUE(
+      base::CreateSymbolicLink(FilePath("/drivers/cdc_ncm"), driver_symlink));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 }
 
@@ -1460,14 +1456,14 @@ TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem2) {
   FilePath device_path(device_root.Append("00"));
   FilePath driver_symlink(device_path.Append("driver"));
   EXPECT_TRUE(base::CreateDirectory(device_path));
-  EXPECT_TRUE(base::CreateSymbolicLink(FilePath("/drivers/cdc_ether"),
-                                       driver_symlink));
+  EXPECT_TRUE(
+      base::CreateSymbolicLink(FilePath("/drivers/cdc_ether"), driver_symlink));
   EXPECT_TRUE(base::CreateDirectory(device_root.Append("01/tty")));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 
   EXPECT_TRUE(base::DeleteFile(driver_symlink, false));
-  EXPECT_TRUE(base::CreateSymbolicLink(FilePath("/drivers/cdc_ncm"),
-                                       driver_symlink));
+  EXPECT_TRUE(
+      base::CreateSymbolicLink(FilePath("/drivers/cdc_ncm"), driver_symlink));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 }
 
@@ -1481,14 +1477,14 @@ TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem3) {
   FilePath device_path(device_root.Append("00"));
   FilePath driver_symlink(device_path.Append("driver"));
   EXPECT_TRUE(base::CreateDirectory(device_path));
-  EXPECT_TRUE(base::CreateSymbolicLink(FilePath("/drivers/cdc_ether"),
-                                       driver_symlink));
+  EXPECT_TRUE(
+      base::CreateSymbolicLink(FilePath("/drivers/cdc_ether"), driver_symlink));
   EXPECT_TRUE(base::CreateDirectory(device_root.Append("01/yyy/tty")));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 
   EXPECT_TRUE(base::DeleteFile(driver_symlink, false));
-  EXPECT_TRUE(base::CreateSymbolicLink(FilePath("/drivers/cdc_ncm"),
-                                       driver_symlink));
+  EXPECT_TRUE(
+      base::CreateSymbolicLink(FilePath("/drivers/cdc_ncm"), driver_symlink));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 }
 
@@ -1545,8 +1541,9 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
     unique_ptr<RTNLMessage> message = BuildLinkMessage(RTNLMessage::kModeAdd);
     EXPECT_CALL(test_device_info_, GetDeviceTechnology(kTestDeviceName))
         .WillOnce(Return(delayed_technology));
-    EXPECT_CALL(test_device_info_, CreateDevice(
-        kTestDeviceName, _, kTestDeviceIndex, delayed_technology))
+    EXPECT_CALL(
+        test_device_info_,
+        CreateDevice(kTestDeviceName, _, kTestDeviceIndex, delayed_technology))
         .WillOnce(Return(DeviceRefPtr()));
     test_device_info_.AddLinkMsgHandler(*message);
     Mock::VerifyAndClearExpectations(&test_device_info_);
@@ -1560,8 +1557,9 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
                            Technology created_device_technology) {
     EXPECT_CALL(test_device_info_, GetDeviceTechnology(_))
         .WillOnce(Return(reported_device_technology));
-    EXPECT_CALL(test_device_info_, CreateDevice(
-        kTestDeviceName, _, kTestDeviceIndex, created_device_technology))
+    EXPECT_CALL(test_device_info_,
+                CreateDevice(kTestDeviceName, _, kTestDeviceIndex,
+                             created_device_technology))
         .WillOnce(Return(DeviceRefPtr()));
     DelayedDeviceCreationTask();
     EXPECT_TRUE(GetDelayedDevices().empty());
@@ -1600,15 +1598,13 @@ TEST_F(DeviceInfoDelayedCreationTest, TunnelDevice) {
 
 TEST_F(DeviceInfoDelayedCreationTest, NoDeviceSymlinkEthernet) {
   AddDelayedDevice(Technology::kNoDeviceSymlink);
-  EXPECT_CALL(manager_, ignore_unknown_ethernet())
-      .WillOnce(Return(false));
+  EXPECT_CALL(manager_, ignore_unknown_ethernet()).WillOnce(Return(false));
   EnsureDelayedDevice(Technology::kNoDeviceSymlink, Technology::kEthernet);
 }
 
 TEST_F(DeviceInfoDelayedCreationTest, NoDeviceSymlinkIgnored) {
   AddDelayedDevice(Technology::kNoDeviceSymlink);
-  EXPECT_CALL(manager_, ignore_unknown_ethernet())
-      .WillOnce(Return(true));
+  EXPECT_CALL(manager_, ignore_unknown_ethernet()).WillOnce(Return(true));
   EnsureDelayedDevice(Technology::kNoDeviceSymlink, Technology::kUnknown);
 }
 
@@ -1654,8 +1650,8 @@ TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
   // associated device.
   AddDelayedDevice(Technology::kNoDeviceSymlink);
 
-  EXPECT_CALL(log, Log(logging::LOG_INFO, _,
-                       HasSubstr("it is not in station mode")));
+  EXPECT_CALL(
+      log, Log(logging::LOG_INFO, _, HasSubstr("it is not in station mode")));
   TriggerOnWiFiInterfaceInfoReceived(message);
   Mock::VerifyAndClearExpectations(&log);
   Mock::VerifyAndClearExpectations(&manager_);
@@ -1666,8 +1662,8 @@ TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
   EXPECT_CALL(manager_, device_info())
       .WillRepeatedly(Return(&test_device_info_));
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log, Log(logging::LOG_INFO, _,
-                       HasSubstr("Creating WiFi device")));
+  EXPECT_CALL(log,
+              Log(logging::LOG_INFO, _, HasSubstr("Creating WiFi device")));
   TriggerOnWiFiInterfaceInfoReceived(message);
   Mock::VerifyAndClearExpectations(&log);
   Mock::VerifyAndClearExpectations(&manager_);

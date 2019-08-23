@@ -20,11 +20,12 @@ class MockEventDispatcher : public EventDispatcher {
 
   MOCK_METHOD0(DispatchForever, void());
   MOCK_METHOD0(DispatchPendingEvents, void());
-  MOCK_METHOD2(PostTask, void(const base::Location& location,
-                              const base::Closure& task));
-  MOCK_METHOD3(PostDelayedTask, void(const base::Location& location,
-                                     const base::Closure& task,
-                                     int64_t delay_ms));
+  MOCK_METHOD2(PostTask,
+               void(const base::Location& location, const base::Closure& task));
+  MOCK_METHOD3(PostDelayedTask,
+               void(const base::Location& location,
+                    const base::Closure& task,
+                    int64_t delay_ms));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockEventDispatcher);

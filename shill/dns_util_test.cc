@@ -98,14 +98,9 @@ TEST(DNSUtilTest, DNSDomainFromDot) {
 
 TEST(DNSUtilTest, IsValidDNSDomain) {
   const char* const bad_hostnames[] = {
-      "%20%20noodles.blorg",
-      "noo dles.blorg ",
-      "noo dles.blorg. ",
-      "^noodles.blorg",
-      "noodles^.blorg",
-      "noo&dles.blorg",
-      "noodles.blorg`",
-      "www.-noodles.blorg",
+      "%20%20noodles.blorg", "noo dles.blorg ",    "noo dles.blorg. ",
+      "^noodles.blorg",      "noodles^.blorg",     "noo&dles.blorg",
+      "noodles.blorg`",      "www.-noodles.blorg",
   };
 
   // TODO(palmer): In the future, when we can remove support for invalid names,
@@ -117,15 +112,9 @@ TEST(DNSUtilTest, IsValidDNSDomain) {
   }
 
   const char* const good_hostnames[] = {
-      "www.noodles.blorg",
-      "1www.noodles.blorg",
-      "www.2noodles.blorg",
-      "www.n--oodles.blorg",
-      "www.noodl_es.blorg",
-      "www.no-_odles.blorg",
-      "www_.noodles.blorg",
-      "www.noodles.blorg.",
-      "_privet._tcp.local",
+      "www.noodles.blorg",   "1www.noodles.blorg", "www.2noodles.blorg",
+      "www.n--oodles.blorg", "www.noodl_es.blorg", "www.no-_odles.blorg",
+      "www_.noodles.blorg",  "www.noodles.blorg.", "_privet._tcp.local",
   };
 
   for (size_t i = 0; i < arraysize(good_hostnames); ++i) {

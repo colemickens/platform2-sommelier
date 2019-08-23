@@ -57,7 +57,7 @@ const uint16_t kNl80211FamilyId = 0x13;
 
 // Family and group Ids.
 const char kFamilyStoogesString[] = "stooges";  // Not saved as a legal family.
-const char kGroupMoeString[] = "moe";  // Not saved as a legal group.
+const char kGroupMoeString[] = "moe";           // Not saved as a legal group.
 const char kFamilyMarxString[] = "marx";
 const uint16_t kFamilyMarxNumber = 20;
 const char kGroupGrouchoString[] = "groucho";
@@ -80,16 +80,14 @@ const unsigned char kNL80211_CMD_DISCONNECT[] = {
     0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x03, 0x00, 0x04, 0x00, 0x00, 0x00,
     0x06, 0x00, 0x36, 0x00, 0x02, 0x00, 0x00, 0x00, 0x04, 0x00, 0x47, 0x00};
 
-const unsigned char kNLMSG_ACK[] = {
-    0x14, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01,
-    0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+const unsigned char kNLMSG_ACK[] = {0x14, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01,
+                                    0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 // Error code 1.
-const unsigned char kNLMSG_Error[] = {
-    0x14, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01,
-    0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
+const unsigned char kNLMSG_Error[] = {0x14, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01,
+                                      0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                      0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
 
 const char kGetFamilyCommandString[] = "CTRL_CMD_GETFAMILY";
 
@@ -103,20 +101,20 @@ class NetlinkManagerTest : public Test {
         sockets_(new MockSockets),
         saved_sequence_number_(0) {
     EXPECT_NE(nullptr, netlink_manager_);
-    netlink_manager_->message_types_[Nl80211Message::kMessageTypeString].
-       family_id = kNl80211FamilyId;
+    netlink_manager_->message_types_[Nl80211Message::kMessageTypeString]
+        .family_id = kNl80211FamilyId;
     netlink_manager_->message_types_[kFamilyMarxString].family_id =
         kFamilyMarxNumber;
     netlink_manager_->message_types_[kFamilyMarxString].groups =
-      map<string, uint32_t> {{kGroupGrouchoString, kGroupGrouchoNumber},
-                             {kGroupHarpoString, kGroupHarpoNumber},
-                             {kGroupChicoString, kGroupChicoNumber},
-                             {kGroupZeppoString, kGroupZeppoNumber},
-                             {kGroupGummoString, kGroupGummoNumber}};
+        map<string, uint32_t>{{kGroupGrouchoString, kGroupGrouchoNumber},
+                              {kGroupHarpoString, kGroupHarpoNumber},
+                              {kGroupChicoString, kGroupChicoNumber},
+                              {kGroupZeppoString, kGroupZeppoNumber},
+                              {kGroupGummoString, kGroupGummoNumber}};
     netlink_manager_->message_factory_.AddFactoryMethod(
         kNl80211FamilyId, Bind(&Nl80211Message::CreateMessage));
     Nl80211Message::SetMessageType(kNl80211FamilyId);
-    netlink_socket_->sockets_.reset(sockets_);  // Passes ownership.
+    netlink_socket_->sockets_.reset(sockets_);       // Passes ownership.
     netlink_manager_->sock_.reset(netlink_socket_);  // Passes ownership.
     netlink_manager_->io_handler_factory_ = &io_handler_factory_;
     EXPECT_TRUE(netlink_manager_->Init());
@@ -131,9 +129,7 @@ class NetlinkManagerTest : public Test {
   // enable a test to get a response to a sent message.  They must be called
   // in the order, above, so that a) a reply message is available to b) have
   // its sequence number replaced, and then c) sent back to the code.
-  void SaveReply(const ByteString& message) {
-    saved_message_ = message;
-  }
+  void SaveReply(const ByteString& message) { saved_message_ = message; }
 
   // Replaces the |saved_message_|'s sequence number with the sent value.
   bool SendMessage(const ByteString& outgoing_message) {
@@ -175,21 +171,22 @@ class NetlinkManagerTest : public Test {
     if (!message) {
       return false;
     }
-    *message = get_family_message.Encode(saved_sequence_number_ +
-                                         kRandomOffset);
+    *message =
+        get_family_message.Encode(saved_sequence_number_ + kRandomOffset);
     return true;
   }
 
  protected:
   class MockHandlerNetlink {
    public:
-    MockHandlerNetlink() :
-      on_netlink_message_(base::Bind(&MockHandlerNetlink::OnNetlinkMessage,
-                                     base::Unretained(this))) {}
+    MockHandlerNetlink()
+        : on_netlink_message_(base::Bind(&MockHandlerNetlink::OnNetlinkMessage,
+                                         base::Unretained(this))) {}
     MOCK_METHOD1(OnNetlinkMessage, void(const NetlinkMessage& msg));
     const NetlinkManager::NetlinkMessageHandler& on_netlink_message() const {
       return on_netlink_message_;
     }
+
    private:
     NetlinkManager::NetlinkMessageHandler on_netlink_message_;
     DISALLOW_COPY_AND_ASSIGN(MockHandlerNetlink);
@@ -197,10 +194,10 @@ class NetlinkManagerTest : public Test {
 
   class MockHandlerNetlinkAuxilliary {
    public:
-    MockHandlerNetlinkAuxilliary() :
-      on_netlink_message_(
-          base::Bind(&MockHandlerNetlinkAuxilliary::OnErrorHandler,
-                     base::Unretained(this))) {}
+    MockHandlerNetlinkAuxilliary()
+        : on_netlink_message_(
+              base::Bind(&MockHandlerNetlinkAuxilliary::OnErrorHandler,
+                         base::Unretained(this))) {}
     MOCK_METHOD2(OnErrorHandler,
                  void(NetlinkManager::AuxilliaryMessageType type,
                       const NetlinkMessage* msg));
@@ -208,6 +205,7 @@ class NetlinkManagerTest : public Test {
         const {
       return on_netlink_message_;
     }
+
    private:
     NetlinkManager::NetlinkAuxilliaryMessageHandler on_netlink_message_;
     DISALLOW_COPY_AND_ASSIGN(MockHandlerNetlinkAuxilliary);
@@ -215,13 +213,14 @@ class NetlinkManagerTest : public Test {
 
   class MockHandler80211 {
    public:
-    MockHandler80211() :
-      on_netlink_message_(base::Bind(&MockHandler80211::OnNetlinkMessage,
-                                     base::Unretained(this))) {}
+    MockHandler80211()
+        : on_netlink_message_(base::Bind(&MockHandler80211::OnNetlinkMessage,
+                                         base::Unretained(this))) {}
     MOCK_METHOD1(OnNetlinkMessage, void(const Nl80211Message& msg));
     const NetlinkManager::Nl80211MessageHandler& on_netlink_message() const {
       return on_netlink_message_;
     }
+
    private:
     NetlinkManager::Nl80211MessageHandler on_netlink_message_;
     DISALLOW_COPY_AND_ASSIGN(MockHandler80211);
@@ -236,18 +235,17 @@ class NetlinkManagerTest : public Test {
     const NetlinkManager::NetlinkAckHandler& on_netlink_message() const {
       return on_netlink_message_;
     }
+
    private:
     NetlinkManager::NetlinkAckHandler on_netlink_message_;
     DISALLOW_COPY_AND_ASSIGN(MockHandlerNetlinkAck);
   };
 
-  void Reset() {
-    netlink_manager_->Reset(false);
-  }
+  void Reset() { netlink_manager_->Reset(false); }
 
   NetlinkManager* netlink_manager_;
   MockNetlinkSocket* netlink_socket_;  // Owned by |netlink_manager_|.
-  MockSockets* sockets_;  // Owned by |netlink_socket_|.
+  MockSockets* sockets_;               // Owned by |netlink_socket_|.
   StrictMock<MockIOHandlerFactory> io_handler_factory_;
   ByteString saved_message_;
   uint32_t saved_sequence_number_;
@@ -308,12 +306,12 @@ TEST_F(NetlinkManagerTest, SubscribeToEvents) {
 
   // Group not part of family
   EXPECT_CALL(*netlink_socket_, SubscribeToEvents(_)).Times(0);
-  EXPECT_FALSE(netlink_manager_->SubscribeToEvents(kFamilyMarxString,
-                                                   kGroupMoeString));
+  EXPECT_FALSE(
+      netlink_manager_->SubscribeToEvents(kFamilyMarxString, kGroupMoeString));
 
   // Family registered and group part of family.
-  EXPECT_CALL(*netlink_socket_, SubscribeToEvents(kGroupHarpoNumber)).
-      WillOnce(Return(true));
+  EXPECT_CALL(*netlink_socket_, SubscribeToEvents(kGroupHarpoNumber))
+      .WillOnce(Return(true));
   EXPECT_TRUE(netlink_manager_->SubscribeToEvents(kFamilyMarxString,
                                                   kGroupHarpoString));
 }
@@ -324,10 +322,9 @@ TEST_F(NetlinkManagerTest, GetFamily) {
   const uint32_t kRandomSequenceNumber = 3;
 
   NewFamilyMessage new_family_message;
-  new_family_message.attributes()->CreateControlAttribute(
-      CTRL_ATTR_FAMILY_ID);
-  new_family_message.attributes()->SetU16AttributeValue(
-      CTRL_ATTR_FAMILY_ID, kSampleMessageType);
+  new_family_message.attributes()->CreateControlAttribute(CTRL_ATTR_FAMILY_ID);
+  new_family_message.attributes()->SetU16AttributeValue(CTRL_ATTR_FAMILY_ID,
+                                                        kSampleMessageType);
   new_family_message.attributes()->CreateControlAttribute(
       CTRL_ATTR_FAMILY_NAME);
   new_family_message.attributes()->SetStringAttributeValue(
@@ -335,15 +332,15 @@ TEST_F(NetlinkManagerTest, GetFamily) {
 
   // The sequence number is immaterial since it'll be overwritten.
   SaveReply(new_family_message.Encode(kRandomSequenceNumber));
-  EXPECT_CALL(*netlink_socket_, SendMessage(_)).
-      WillOnce(Invoke(this, &NetlinkManagerTest::SendMessage));
+  EXPECT_CALL(*netlink_socket_, SendMessage(_))
+      .WillOnce(Invoke(this, &NetlinkManagerTest::SendMessage));
   EXPECT_CALL(*netlink_socket_, file_descriptor()).WillRepeatedly(Return(0));
   EXPECT_CALL(*sockets_, Select(_, _, _, _, _)).WillOnce(Return(1));
-  EXPECT_CALL(*netlink_socket_, RecvMessage(_)).
-      WillOnce(Invoke(this, &NetlinkManagerTest::ReplyToSentMessage));
+  EXPECT_CALL(*netlink_socket_, RecvMessage(_))
+      .WillOnce(Invoke(this, &NetlinkManagerTest::ReplyToSentMessage));
   NetlinkMessageFactory::FactoryMethod null_factory;
-  EXPECT_EQ(kSampleMessageType, netlink_manager_->GetFamily(kSampleMessageName,
-                                                            null_factory));
+  EXPECT_EQ(kSampleMessageType,
+            netlink_manager_->GetFamily(kSampleMessageName, null_factory));
 }
 
 TEST_F(NetlinkManagerTest, GetFamilyOneInterstitialMessage) {
@@ -354,10 +351,9 @@ TEST_F(NetlinkManagerTest, GetFamilyOneInterstitialMessage) {
   const uint32_t kRandomSequenceNumber = 3;
 
   NewFamilyMessage new_family_message;
-  new_family_message.attributes()->CreateControlAttribute(
-      CTRL_ATTR_FAMILY_ID);
-  new_family_message.attributes()->SetU16AttributeValue(
-      CTRL_ATTR_FAMILY_ID, kSampleMessageType);
+  new_family_message.attributes()->CreateControlAttribute(CTRL_ATTR_FAMILY_ID);
+  new_family_message.attributes()->SetU16AttributeValue(CTRL_ATTR_FAMILY_ID,
+                                                        kSampleMessageType);
   new_family_message.attributes()->CreateControlAttribute(
       CTRL_ATTR_FAMILY_NAME);
   new_family_message.attributes()->SetStringAttributeValue(
@@ -365,16 +361,16 @@ TEST_F(NetlinkManagerTest, GetFamilyOneInterstitialMessage) {
 
   // The sequence number is immaterial since it'll be overwritten.
   SaveReply(new_family_message.Encode(kRandomSequenceNumber));
-  EXPECT_CALL(*netlink_socket_, SendMessage(_)).
-      WillOnce(Invoke(this, &NetlinkManagerTest::SendMessage));
+  EXPECT_CALL(*netlink_socket_, SendMessage(_))
+      .WillOnce(Invoke(this, &NetlinkManagerTest::SendMessage));
   EXPECT_CALL(*netlink_socket_, file_descriptor()).WillRepeatedly(Return(0));
   EXPECT_CALL(*sockets_, Select(_, _, _, _, _)).WillRepeatedly(Return(1));
-  EXPECT_CALL(*netlink_socket_, RecvMessage(_)).
-      WillOnce(Invoke(this, &NetlinkManagerTest::ReplyWithRandomMessage)).
-      WillOnce(Invoke(this, &NetlinkManagerTest::ReplyToSentMessage));
+  EXPECT_CALL(*netlink_socket_, RecvMessage(_))
+      .WillOnce(Invoke(this, &NetlinkManagerTest::ReplyWithRandomMessage))
+      .WillOnce(Invoke(this, &NetlinkManagerTest::ReplyToSentMessage));
   NetlinkMessageFactory::FactoryMethod null_factory;
-  EXPECT_EQ(kSampleMessageType, netlink_manager_->GetFamily(kSampleMessageName,
-                                                            null_factory));
+  EXPECT_EQ(kSampleMessageType,
+            netlink_manager_->GetFamily(kSampleMessageName, null_factory));
 }
 
 TEST_F(NetlinkManagerTest, GetFamilyTimeout) {
@@ -386,17 +382,19 @@ TEST_F(NetlinkManagerTest, GetFamilyTimeout) {
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
   time_t kStartSeconds = 1234;  // Arbitrary.
   suseconds_t kSmallUsec = 100;
-  EXPECT_CALL(time, GetTimeMonotonic(_)).
-      WillOnce(Invoke(TimeFunctor(kStartSeconds, 0))).  // Initial time.
-      WillOnce(Invoke(TimeFunctor(kStartSeconds, kSmallUsec))).
-      WillOnce(Invoke(TimeFunctor(kStartSeconds, 2 * kSmallUsec))).
-      WillOnce(Invoke(TimeFunctor(
+  EXPECT_CALL(time, GetTimeMonotonic(_))
+      .WillOnce(Invoke(TimeFunctor(kStartSeconds, 0)))
+      .  // Initial time.
+      WillOnce(Invoke(TimeFunctor(kStartSeconds, kSmallUsec)))
+      .WillOnce(Invoke(TimeFunctor(kStartSeconds, 2 * kSmallUsec)))
+      .WillOnce(Invoke(TimeFunctor(
           kStartSeconds + NetlinkManager::kMaximumNewFamilyWaitSeconds + 1,
           NetlinkManager::kMaximumNewFamilyWaitMicroSeconds)));
   EXPECT_CALL(*netlink_socket_, file_descriptor()).WillRepeatedly(Return(0));
   EXPECT_CALL(*sockets_, Select(_, _, _, _, _)).WillRepeatedly(Return(1));
-  EXPECT_CALL(*netlink_socket_, RecvMessage(_)).
-      WillRepeatedly(Invoke(this, &NetlinkManagerTest::ReplyWithRandomMessage));
+  EXPECT_CALL(*netlink_socket_, RecvMessage(_))
+      .WillRepeatedly(
+          Invoke(this, &NetlinkManagerTest::ReplyWithRandomMessage));
   NetlinkMessageFactory::FactoryMethod null_factory;
 
   const string kSampleMessageName("SampleMessageName");
@@ -407,8 +405,8 @@ TEST_F(NetlinkManagerTest, GetFamilyTimeout) {
 
 TEST_F(NetlinkManagerTest, BroadcastHandler) {
   Reset();
-  MutableNetlinkPacket packet(
-      kNL80211_CMD_DISCONNECT, sizeof(kNL80211_CMD_DISCONNECT));
+  MutableNetlinkPacket packet(kNL80211_CMD_DISCONNECT,
+                              sizeof(kNL80211_CMD_DISCONNECT));
 
   MockHandlerNetlink handler1;
   MockHandlerNetlink handler2;
@@ -440,8 +438,8 @@ TEST_F(NetlinkManagerTest, BroadcastHandler) {
   // Check that we can remove a handler.
   EXPECT_CALL(handler1, OnNetlinkMessage(_)).Times(0);
   EXPECT_CALL(handler2, OnNetlinkMessage(_)).Times(1);
-  EXPECT_TRUE(netlink_manager_->RemoveBroadcastHandler(
-      handler1.on_netlink_message()));
+  EXPECT_TRUE(
+      netlink_manager_->RemoveBroadcastHandler(handler1.on_netlink_message()));
   netlink_manager_->OnNlMessageReceived(&packet);
   packet.ResetConsumedBytes();
 
@@ -472,8 +470,8 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
   MockHandler80211 handler_sent_2;
 
   // Set up the received message as a response to sent_message_1.
-  MutableNetlinkPacket received_message(
-      kNL80211_CMD_DISCONNECT, sizeof(kNL80211_CMD_DISCONNECT));
+  MutableNetlinkPacket received_message(kNL80211_CMD_DISCONNECT,
+                                        sizeof(kNL80211_CMD_DISCONNECT));
 
   // Verify that generic handler gets called for a message when no
   // message-specific handler has been installed.
@@ -486,8 +484,8 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
   NetlinkManager::NetlinkAckHandler null_ack_handler;
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillRepeatedly(Return(true));
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
-      &sent_message_1, handler_sent_1.on_netlink_message(),
-      null_ack_handler, null_error_handler));
+      &sent_message_1, handler_sent_1.on_netlink_message(), null_ack_handler,
+      null_error_handler));
   // Make it appear that this message is in response to our sent message.
   received_message.SetMessageSequence(netlink_socket_->GetLastSequenceNumber());
   EXPECT_CALL(handler_sent_1, OnNetlinkMessage(_)).Times(1);
@@ -503,8 +501,8 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
   // Install and then uninstall message-specific handler; verify broadcast
   // handler is called on message receipt.
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
-      &sent_message_1, handler_sent_1.on_netlink_message(),
-      null_ack_handler, null_error_handler));
+      &sent_message_1, handler_sent_1.on_netlink_message(), null_ack_handler,
+      null_error_handler));
   received_message.SetMessageSequence(netlink_socket_->GetLastSequenceNumber());
   EXPECT_TRUE(netlink_manager_->RemoveMessageHandler(sent_message_1));
   EXPECT_CALL(handler_broadcast, OnNetlinkMessage(_)).Times(1);
@@ -514,8 +512,8 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
   // Install handler for different message; verify that broadcast handler is
   // called for _this_ message.
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
-      &sent_message_2, handler_sent_2.on_netlink_message(),
-      null_ack_handler, null_error_handler));
+      &sent_message_2, handler_sent_2.on_netlink_message(), null_ack_handler,
+      null_error_handler));
   EXPECT_CALL(handler_broadcast, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->OnNlMessageReceived(&received_message);
   received_message.ResetConsumedBytes();
@@ -550,7 +548,7 @@ TEST_F(NetlinkManagerTest, AckHandler) {
       netlink_socket_->GetLastSequenceNumber());
   EXPECT_CALL(handler_sent_2, OnAckHandler(_))
       .Times(1)
-          .WillOnce(SetArgPointee<0>(false));  // Do not remove callbacks
+      .WillOnce(SetArgPointee<0>(false));  // Do not remove callbacks
   netlink_manager_->OnNlMessageReceived(&received_ack_message);
 
   // Receive an Nl80211 response message after handling the Ack and verify
@@ -577,7 +575,7 @@ TEST_F(NetlinkManagerTest, AckHandler) {
       netlink_socket_->GetLastSequenceNumber());
   EXPECT_CALL(handler_sent_2, OnAckHandler(_))
       .Times(1)
-          .WillOnce(SetArgPointee<0>(true));  // Remove callbacks
+      .WillOnce(SetArgPointee<0>(true));  // Remove callbacks
   netlink_manager_->OnNlMessageReceived(&received_ack_message);
 
   // Receive an Nl80211 response message after handling the Ack and verify
@@ -613,8 +611,8 @@ TEST_F(NetlinkManagerTest, ErrorHandler) {
       &sent_message, handler_sent_1.on_netlink_message(),
       handler_sent_2.on_netlink_message(),
       handler_sent_3.on_netlink_message()));
-  MutableNetlinkPacket received_error_message(
-      kNLMSG_Error, sizeof(kNLMSG_Error));
+  MutableNetlinkPacket received_error_message(kNLMSG_Error,
+                                              sizeof(kNLMSG_Error));
   received_error_message.SetMessageSequence(
       netlink_socket_->GetLastSequenceNumber());
   EXPECT_CALL(handler_sent_3,
@@ -652,8 +650,8 @@ TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
   NewScanResultsMessage new_scan_results;
   new_scan_results.AddFlag(NLM_F_MULTI);
   ByteString new_scan_results_bytes(new_scan_results.Encode(kSequenceNumber));
-  MutableNetlinkPacket received_message(
-      new_scan_results_bytes.GetData(), new_scan_results_bytes.GetLength());
+  MutableNetlinkPacket received_message(new_scan_results_bytes.GetData(),
+                                        new_scan_results_bytes.GetLength());
   received_message.SetMessageSequence(netlink_socket_->GetLastSequenceNumber());
 
   // Verify that the message-specific handler is called.
@@ -670,8 +668,8 @@ TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
   done_message.AddFlag(NLM_F_MULTI);
   ByteString done_message_bytes(
       done_message.Encode(netlink_socket_->GetLastSequenceNumber()));
-  NetlinkPacket done_packet(
-      done_message_bytes.GetData(), done_message_bytes.GetLength());
+  NetlinkPacket done_packet(done_message_bytes.GetData(),
+                            done_message_bytes.GetLength());
 
   // Verify that the message-specific auxilliary handler is called for the done
   // message, with the correct message type.
@@ -701,8 +699,8 @@ TEST_F(NetlinkManagerTest, TimeoutResponseHandlers) {
   const uint32_t kRandomSequenceNumber = 3;
   ByteString new_wiphy_message_bytes =
       new_wiphy_message.Encode(kRandomSequenceNumber);
-  MutableNetlinkPacket received_message(
-      new_wiphy_message_bytes.GetData(), new_wiphy_message_bytes.GetLength());
+  MutableNetlinkPacket received_message(new_wiphy_message_bytes.GetData(),
+                                        new_wiphy_message_bytes.GetLength());
 
   // Setup a random received message to trigger wiping out old messages.
   NewScanResultsMessage new_scan_results;
@@ -716,11 +714,14 @@ TEST_F(NetlinkManagerTest, TimeoutResponseHandlers) {
 
   time_t kStartSeconds = 1234;  // Arbitrary.
   suseconds_t kSmallUsec = 100;
-  EXPECT_CALL(time, GetTimeMonotonic(_)).
-      WillOnce(Invoke(TimeFunctor(kStartSeconds, 0))).  // Initial time.
-      WillOnce(Invoke(TimeFunctor(kStartSeconds, kSmallUsec))).
+  EXPECT_CALL(time, GetTimeMonotonic(_))
+      .WillOnce(Invoke(TimeFunctor(kStartSeconds, 0)))
+      .  // Initial time.
+      WillOnce(Invoke(TimeFunctor(kStartSeconds, kSmallUsec)))
+      .
 
-      WillOnce(Invoke(TimeFunctor(kStartSeconds, 0))).  // Initial time.
+      WillOnce(Invoke(TimeFunctor(kStartSeconds, 0)))
+      .  // Initial time.
       WillOnce(Invoke(TimeFunctor(
           kStartSeconds + NetlinkManager::kResponseTimeoutSeconds + 1,
           NetlinkManager::kResponseTimeoutMicroSeconds)));
@@ -762,10 +763,9 @@ TEST_F(NetlinkManagerTest, TimeoutResponseHandlers) {
   EXPECT_CALL(
       auxilliary_handler,
       OnErrorHandler(NetlinkManager::kTimeoutWaitingForResponse, nullptr));
-  EXPECT_TRUE(netlink_manager_->SendNl80211Message(&get_reg_message,
-                                                   null_message_handler,
-                                                   null_ack_handler,
-                                                   null_error_handler));
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(
+      &get_reg_message, null_message_handler, null_ack_handler,
+      null_error_handler));
   EXPECT_CALL(response_handler, OnNetlinkMessage(_)).Times(0);
   EXPECT_CALL(broadcast_handler, OnNetlinkMessage(_));
   netlink_manager_->OnNlMessageReceived(&received_message);
@@ -1061,15 +1061,15 @@ TEST_F(NetlinkManagerTest, OnInvalidRawNlMessageReceived) {
   MockHandlerNetlink message_handler;
   netlink_manager_->AddBroadcastHandler(message_handler.on_netlink_message());
 
-  vector<unsigned char> bad_len_message{ 0x01 };  // len should be 32-bits
-  vector<unsigned char> bad_hdr_message{ 0x04, 0x00, 0x00, 0x00 };  // only len
+  vector<unsigned char> bad_len_message{0x01};  // len should be 32-bits
+  vector<unsigned char> bad_hdr_message{0x04, 0x00, 0x00, 0x00};  // only len
   vector<unsigned char> bad_body_message{
-    0x30, 0x00, 0x00, 0x00,  // length
-    0x00, 0x00,  // type
-    0x00, 0x00,  // flags
-    0x00, 0x00, 0x00, 0x00,  // sequence number
-    0x00, 0x00, 0x00, 0x00,  // sender port
-    // Body is empty, but should be 32 bytes.
+      0x30, 0x00, 0x00, 0x00,  // length
+      0x00, 0x00,              // type
+      0x00, 0x00,              // flags
+      0x00, 0x00, 0x00, 0x00,  // sequence number
+      0x00, 0x00, 0x00, 0x00,  // sender port
+                               // Body is empty, but should be 32 bytes.
   };
 
   for (auto message : {bad_len_message, bad_hdr_message, bad_body_message}) {
@@ -1080,19 +1080,19 @@ TEST_F(NetlinkManagerTest, OnInvalidRawNlMessageReceived) {
   }
 
   vector<unsigned char> good_message{
-    0x14, 0x00, 0x00, 0x00,  // length
-    0x00, 0x00,  // type
-    0x00, 0x00,  // flags
-    0x00, 0x00, 0x00, 0x00,  // sequence number
-    0x00, 0x00, 0x00, 0x00,  // sender port
-    0x00, 0x00, 0x00, 0x00,  // body
+      0x14, 0x00, 0x00, 0x00,  // length
+      0x00, 0x00,              // type
+      0x00, 0x00,              // flags
+      0x00, 0x00, 0x00, 0x00,  // sequence number
+      0x00, 0x00, 0x00, 0x00,  // sender port
+      0x00, 0x00, 0x00, 0x00,  // body
   };
 
   for (auto bad_msg : {bad_len_message, bad_hdr_message, bad_body_message}) {
     // A good message followed by a bad message. This should yield one call
     // to |message_handler|, and one error message.
-    vector<unsigned char> two_messages(
-        good_message.begin(), good_message.end());
+    vector<unsigned char> two_messages(good_message.begin(),
+                                       good_message.end());
     two_messages.insert(two_messages.end(), bad_msg.begin(), bad_msg.end());
     EXPECT_CALL(message_handler, OnNetlinkMessage(_)).Times(1);
     InputData data(two_messages.data(), two_messages.size());

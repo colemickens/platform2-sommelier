@@ -26,8 +26,7 @@ IOInputHandler::~IOInputHandler() {
 
 void IOInputHandler::Start() {
   if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
-          fd_, true, base::MessageLoopForIO::WATCH_READ,
-          &fd_watcher_, this)) {
+          fd_, true, base::MessageLoopForIO::WATCH_READ, &fd_watcher_, this)) {
     LOG(ERROR) << "WatchFileDescriptor failed on read";
   }
 }
@@ -42,8 +41,7 @@ void IOInputHandler::OnFileCanReadWithoutBlocking(int fd) {
   unsigned char buf[IOHandler::kDataBufferSize];
   ssize_t len = read(fd, buf, sizeof(buf));
   if (len < 0) {
-    std::string condition = base::StringPrintf(
-        "File read error: %d", errno);
+    std::string condition = base::StringPrintf("File read error: %d", errno);
     LOG(ERROR) << condition;
     error_callback_.Run(condition);
   } else {

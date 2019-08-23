@@ -30,14 +30,13 @@ class EthernetEapProvider : public ProviderInterface {
   // Called by Manager as a part of the Provider interface.
   void CreateServicesFromProfile(const ProfileRefPtr& profile) override;
   ServiceRefPtr GetService(const KeyValueStore& args, Error* error) override;
-  ServiceRefPtr FindSimilarService(
-      const KeyValueStore& args, Error* error) const override;
-  ServiceRefPtr CreateTemporaryService(
-      const KeyValueStore& args, Error* error) override;
-  ServiceRefPtr CreateTemporaryServiceFromProfile(
-      const ProfileRefPtr& profile,
-      const std::string& entry_name,
-      Error* error) override;
+  ServiceRefPtr FindSimilarService(const KeyValueStore& args,
+                                   Error* error) const override;
+  ServiceRefPtr CreateTemporaryService(const KeyValueStore& args,
+                                       Error* error) override;
+  ServiceRefPtr CreateTemporaryServiceFromProfile(const ProfileRefPtr& profile,
+                                                  const std::string& entry_name,
+                                                  Error* error) override;
   void Start() override;
   void Stop() override;
 

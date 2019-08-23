@@ -23,8 +23,7 @@ class MockVirtualDevice : public VirtualDevice {
 
   MOCK_METHOD2(Stop,
                void(Error* error, const EnabledStateChangedCallback& callback));
-  MOCK_METHOD1(UpdateIPConfig,
-               void(const IPConfig::Properties& properties));
+  MOCK_METHOD1(UpdateIPConfig, void(const IPConfig::Properties& properties));
   MOCK_METHOD0(DropConnection, void());
   MOCK_METHOD0(ResetConnection, void());
   MOCK_METHOD1(SetServiceState, void(Service::ConnectState state));

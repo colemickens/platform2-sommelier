@@ -160,8 +160,10 @@ class SetWakeOnPacketConnMessage;
 
 class WakeOnWiFi : public WakeOnWiFiInterface {
  public:
-  WakeOnWiFi(NetlinkManager* netlink_manager, EventDispatcher* dispatcher,
-             Metrics* metrics, const std::string& mac_address,
+  WakeOnWiFi(NetlinkManager* netlink_manager,
+             EventDispatcher* dispatcher,
+             Metrics* metrics,
+             const std::string& mac_address,
              RecordWakeReasonCallback record_wake_reason_callback);
   ~WakeOnWiFi() override;
 
@@ -369,10 +371,9 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   // |pattern_len| to match against. Bits |offset| to |pattern_len| - 1 for
   // each pair in |patternlen_offset_pair| are set. This mask is
   // saved in |mask|.
-  static void SetMask(
-      ByteString* mask,
-      const std::vector<LengthOffset>& patternlen_offset_pair,
-      uint32_t expected_pattern_len);
+  static void SetMask(ByteString* mask,
+                      const std::vector<LengthOffset>& patternlen_offset_pair,
+                      uint32_t expected_pattern_len);
   // Creates a pattern and mask for a NL80211 message that programs the NIC to
   // wake on packets originating from IP address |ip_addr|. The pattern and mask
   // are saved in |pattern| and |mask| respectively. Returns true iff the

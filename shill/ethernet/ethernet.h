@@ -39,7 +39,8 @@ class SupplicantProcessProxyInterface;
 
 class Ethernet
 #if !defined(DISABLE_WIRED_8021X)
-    : public Device, public SupplicantEventDelegateInterface {
+    : public Device,
+      public SupplicantEventDelegateInterface {
 #else
     : public Device {
 #endif  // DISABLE_WIRED_8021X
@@ -69,9 +70,8 @@ class Ethernet
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
-  void BSSAdded(
-      const RpcIdentifier& BSS,
-      const KeyValueStore& properties) override;
+  void BSSAdded(const RpcIdentifier& BSS,
+                const KeyValueStore& properties) override;
   void BSSRemoved(const RpcIdentifier& BSS) override;
   void Certification(const KeyValueStore& properties) override;
   void EAPEvent(const std::string& status,

@@ -98,8 +98,8 @@ std::unique_ptr<ExternalTask> PPPDaemon::Start(
 
   arguments.push_back(device);
 
-  auto task = std::make_unique<ExternalTask>(
-      control_interface, process_manager, task_delegate, death_callback);
+  auto task = std::make_unique<ExternalTask>(control_interface, process_manager,
+                                             task_delegate, death_callback);
 
   std::map<std::string, std::string> environment;
   if (task->Start(base::FilePath(kDaemonPath), arguments, environment, true,

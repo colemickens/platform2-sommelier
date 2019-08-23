@@ -27,9 +27,10 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   MOCK_METHOD0(EAPLogon, bool());
   MOCK_METHOD0(Disconnect, bool());
   MOCK_METHOD1(FlushBSS, bool(const uint32_t& age));
-  MOCK_METHOD3(NetworkReply, bool(const RpcIdentifier& network,
-                                  const std::string& field,
-                                  const std::string& value));
+  MOCK_METHOD3(NetworkReply,
+               bool(const RpcIdentifier& network,
+                    const std::string& field,
+                    const std::string& value));
   MOCK_METHOD0(Reassociate, bool());
   MOCK_METHOD0(Reattach, bool());
   MOCK_METHOD0(RemoveAllNetworks, bool());

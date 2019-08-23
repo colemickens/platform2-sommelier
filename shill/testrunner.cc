@@ -13,7 +13,8 @@ namespace switches {
 
 static const char kHelp[] = "help";
 
-static const char kHelpMessage[] = "\n"
+static const char kHelpMessage[] =
+    "\n"
     "Additional (non-gtest) switches:\n"
     "  --log-level=N\n"
     "    Logging level:\n"

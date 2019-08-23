@@ -28,8 +28,7 @@ class Error;
 class OpenVPNManagementServer;
 class ProcessManager;
 
-class OpenVPNDriver : public VPNDriver,
-                      public RpcTaskDelegate {
+class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
  public:
   enum ReconnectReason {
     kReconnectReasonUnknown,
@@ -58,18 +57,15 @@ class OpenVPNDriver : public VPNDriver,
 
   // Append zero-valued, single-valued and double-valued options to the
   // |options| array.
-  static void AppendOption(
-      const std::string& option,
-      std::vector<std::vector<std::string>>* options);
-  static void AppendOption(
-      const std::string& option,
-      const std::string& value,
-      std::vector<std::vector<std::string>>* options);
-  static void AppendOption(
-      const std::string& option,
-      const std::string& value0,
-      const std::string& value1,
-      std::vector<std::vector<std::string>>* options);
+  static void AppendOption(const std::string& option,
+                           std::vector<std::vector<std::string>>* options);
+  static void AppendOption(const std::string& option,
+                           const std::string& value,
+                           std::vector<std::vector<std::string>>* options);
+  static void AppendOption(const std::string& option,
+                           const std::string& value0,
+                           const std::string& value1,
+                           std::vector<std::vector<std::string>>* options);
 
   // Appends remote option to the |options| array.
   void AppendRemoteOption(const std::string& host,
@@ -184,15 +180,15 @@ class OpenVPNDriver : public VPNDriver,
                                 std::string* name,
                                 std::string* port);
 
-  void InitOptions(
-      std::vector<std::vector<std::string>>* options, Error* error);
-  bool InitCAOptions(
-      std::vector<std::vector<std::string>>* options, Error* error);
+  void InitOptions(std::vector<std::vector<std::string>>* options,
+                   Error* error);
+  bool InitCAOptions(std::vector<std::vector<std::string>>* options,
+                     Error* error);
   void InitCertificateVerifyOptions(
       std::vector<std::vector<std::string>>* options);
   void InitClientAuthOptions(std::vector<std::vector<std::string>>* options);
-  bool InitExtraCertOptions(
-      std::vector<std::vector<std::string>>* options, Error* error);
+  bool InitExtraCertOptions(std::vector<std::vector<std::string>>* options,
+                            Error* error);
   void InitPKCS11Options(std::vector<std::vector<std::string>>* options);
   bool InitManagementChannelOptions(
       std::vector<std::vector<std::string>>* options, Error* error);

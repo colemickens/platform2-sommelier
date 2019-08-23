@@ -58,13 +58,9 @@ class VPNProviderTest : public testing::Test {
     provider_.services_.push_back(service);
   }
 
-  VPNServiceRefPtr GetServiceAt(int idx) {
-    return provider_.services_[idx];
-  }
+  VPNServiceRefPtr GetServiceAt(int idx) { return provider_.services_[idx]; }
 
-  size_t GetServiceCount() const {
-    return provider_.services_.size();
-  }
+  size_t GetServiceCount() const { return provider_.services_.size(); }
 
   MockControl control_;
   MockMetrics metrics_;
@@ -183,8 +179,8 @@ TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {
   provider_.services_.push_back(
       new VPNService(&manager_, std::move(bad_driver)));
 
-  EXPECT_FALSE(provider_.OnDeviceInfoAvailable(
-      kInterfaceName, kInterfaceIndex, Technology::kTunnel));
+  EXPECT_FALSE(provider_.OnDeviceInfoAvailable(kInterfaceName, kInterfaceIndex,
+                                               Technology::kTunnel));
 
   auto good_driver = std::make_unique<MockVPNDriver>();
   EXPECT_CALL(*good_driver, ClaimInterface(_, _)).WillOnce(Return(true));
@@ -196,8 +192,8 @@ TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {
   provider_.services_.push_back(
       new VPNService(&manager_, std::move(dup_driver)));
 
-  EXPECT_TRUE(provider_.OnDeviceInfoAvailable(
-      kInterfaceName, kInterfaceIndex, Technology::kTunnel));
+  EXPECT_TRUE(provider_.OnDeviceInfoAvailable(kInterfaceName, kInterfaceIndex,
+                                              Technology::kTunnel));
   provider_.services_.clear();
 }
 
@@ -206,8 +202,8 @@ TEST_F(VPNProviderTest, ArcDeviceFound) {
   const int kInterfaceIndex = 1;
 
   EXPECT_EQ(provider_.allowed_iifs_.size(), 0);
-  EXPECT_TRUE(provider_.OnDeviceInfoAvailable(
-      kInterfaceName, kInterfaceIndex, Technology::kArc));
+  EXPECT_TRUE(provider_.OnDeviceInfoAvailable(kInterfaceName, kInterfaceIndex,
+                                              Technology::kArc));
   EXPECT_EQ(provider_.allowed_iifs_.size(), 1);
   EXPECT_EQ(provider_.allowed_iifs_[0], kInterfaceName);
 }
@@ -264,10 +260,8 @@ TEST_F(VPNProviderTest, CreateServicesFromProfile) {
   EXPECT_CALL(*profile, GetConstStorage()).WillRepeatedly(Return(&storage));
 
   EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(nullptr));
-  EXPECT_CALL(manager_,
-              RegisterService(ServiceWithStorageId("vpn_complete")));
-  EXPECT_CALL(*profile,
-              ConfigureService(ServiceWithStorageId("vpn_complete")))
+  EXPECT_CALL(manager_, RegisterService(ServiceWithStorageId("vpn_complete")));
+  EXPECT_CALL(*profile, ConfigureService(ServiceWithStorageId("vpn_complete")))
       .WillOnce(Return(true));
   provider_.CreateServicesFromProfile(profile);
 
@@ -282,11 +276,8 @@ TEST_F(VPNProviderTest, CreateService) {
   static const char kName[] = "test-vpn-service";
   static const char kStorageID[] = "test_vpn_storage_id";
   static const char kHost[] = "test-vpn-host";
-  static const char* const kTypes[] = {
-    kProviderOpenVpn,
-    kProviderL2tpIpsec,
-    kProviderThirdPartyVpn
-  };
+  static const char* const kTypes[] = {kProviderOpenVpn, kProviderL2tpIpsec,
+                                       kProviderThirdPartyVpn};
   const size_t kTypesCount = arraysize(kTypes);
   EXPECT_CALL(manager_, device_info())
       .Times(kTypesCount)
@@ -318,8 +309,8 @@ TEST_F(VPNProviderTest, CreateArcService) {
   EXPECT_CALL(manager_, device_info()).WillOnce(Return(&device_info_));
   EXPECT_CALL(manager_, RegisterService(_));
   Error error;
-  VPNServiceRefPtr service = provider_.CreateService(
-      kProviderArcVpn, kName, kStorageID, &error);
+  VPNServiceRefPtr service =
+      provider_.CreateService(kProviderArcVpn, kName, kStorageID, &error);
   ASSERT_NE(nullptr, service);
   ASSERT_TRUE(service->driver());
   service->driver()->args()->SetString(kProviderHostProperty, kHost);
@@ -350,47 +341,37 @@ TEST_F(VPNProviderTest, CreateTemporaryServiceFromProfile) {
   Error error;
 
   // Non VPN entry.
-  EXPECT_EQ(nullptr,
-            provider_.CreateTemporaryServiceFromProfile(profile,
-                                                        "no_vpn",
-                                                        &error));
+  EXPECT_EQ(nullptr, provider_.CreateTemporaryServiceFromProfile(
+                         profile, "no_vpn", &error));
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_THAT(error.message(),
               StartsWith("Unspecified or invalid network type"));
 
   // VPN type not specified.
   error.Reset();
-  EXPECT_EQ(nullptr,
-            provider_.CreateTemporaryServiceFromProfile(profile,
-                                                        "vpn_no_provider_type",
-                                                        &error));
+  EXPECT_EQ(nullptr, provider_.CreateTemporaryServiceFromProfile(
+                         profile, "vpn_no_provider_type", &error));
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_THAT(error.message(), StartsWith("VPN type not specified"));
 
   // Name not specified.
   error.Reset();
-  EXPECT_EQ(nullptr,
-            provider_.CreateTemporaryServiceFromProfile(profile,
-                                                        "vpn_no_name",
-                                                        &error));
+  EXPECT_EQ(nullptr, provider_.CreateTemporaryServiceFromProfile(
+                         profile, "vpn_no_name", &error));
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_THAT(error.message(), StartsWith("Network name not specified"));
 
   // Host not specified.
   error.Reset();
-  EXPECT_EQ(nullptr,
-            provider_.CreateTemporaryServiceFromProfile(profile,
-                                                        "vpn_no_host",
-                                                        &error));
+  EXPECT_EQ(nullptr, provider_.CreateTemporaryServiceFromProfile(
+                         profile, "vpn_no_host", &error));
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_THAT(error.message(), StartsWith("Host not specified"));
 
   // Valid VPN service entry.
   error.Reset();
-  EXPECT_NE(nullptr,
-            provider_.CreateTemporaryServiceFromProfile(profile,
-                                                        "vpn_complete",
-                                                        &error));
+  EXPECT_NE(nullptr, provider_.CreateTemporaryServiceFromProfile(
+                         profile, "vpn_complete", &error));
   EXPECT_TRUE(error.IsSuccess());
 }
 

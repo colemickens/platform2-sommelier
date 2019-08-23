@@ -115,7 +115,8 @@ class Cellular : public Device,
   virtual void Disconnect(Error* error, const char* reason);
 
   // Asynchronously activates the modem. Returns an error on failure.
-  void Activate(const std::string& carrier, Error* error,
+  void Activate(const std::string& carrier,
+                Error* error,
                 const ResultCallback& callback);
 
   // Performs the necessary steps to bring the service to the activated state,
@@ -416,13 +417,12 @@ class Cellular : public Device,
   // Reads of the property will be handled by invoking |get|.
   // Writes to the property will be handled by invoking |set|.
   // Clearing the property will be handled by PropertyStore.
-  void HelpRegisterDerivedBool(
-      const std::string& name,
-      bool(Cellular::*get)(Error* error),
-      bool(Cellular::*set)(const bool& value, Error* error));
+  void HelpRegisterDerivedBool(const std::string& name,
+                               bool (Cellular::*get)(Error* error),
+                               bool (Cellular::*set)(const bool& value,
+                                                     Error* error));
   void HelpRegisterConstDerivedString(
-      const std::string& name,
-      std::string(Cellular::*get)(Error* error));
+      const std::string& name, std::string (Cellular::*get)(Error* error));
 
   void OnConnectReply(const Error& error);
   void OnDisconnectReply(const Error& error);
@@ -491,7 +491,7 @@ class Cellular : public Device,
   // All DBus Properties exposed by the Cellular device.
   // Properties common to GSM and CDMA modems.
   const std::string dbus_service_;  // org.*.ModemManager*
-  const std::string dbus_path_;  // ModemManager.Modem
+  const std::string dbus_path_;     // ModemManager.Modem
   Stringmap home_provider_;
 
   bool scanning_supported_;

@@ -46,8 +46,12 @@ class ArpClientTest : public Test {
     }
   }
 
-  ssize_t SimulateRecvFrom(int sockfd, void* buf, size_t len, int flags,
-                           struct sockaddr* src_addr, socklen_t* addrlen);
+  ssize_t SimulateRecvFrom(int sockfd,
+                           void* buf,
+                           size_t len,
+                           int flags,
+                           struct sockaddr* src_addr,
+                           socklen_t* addrlen);
 
  protected:
   static const int kInterfaceIndex;
@@ -73,15 +77,13 @@ class ArpClientTest : public Test {
   sockaddr_ll recvfrom_sender_;
 };
 
-
 const int ArpClientTest::kInterfaceIndex = 123;
 const int ArpClientTest::kSocketFD = 456;
 const char ArpClientTest::kLocalIPAddress[] = "10.0.1.1";
-const uint8_t ArpClientTest::kLocalMacAddress[] = { 0, 1, 2, 3, 4, 5 };
+const uint8_t ArpClientTest::kLocalMacAddress[] = {0, 1, 2, 3, 4, 5};
 const char ArpClientTest::kRemoteIPAddress[] = "10.0.1.2";
-const uint8_t ArpClientTest::kRemoteMacAddress[] = { 6, 7, 8, 9, 10, 11 };
+const uint8_t ArpClientTest::kRemoteMacAddress[] = {6, 7, 8, 9, 10, 11};
 const int ArpClientTest::kArpOpOffset = 7;
-
 
 MATCHER_P2(IsLinkAddress, interface_index, destination_mac, "") {
   const struct sockaddr_ll* socket_address =
@@ -90,14 +92,15 @@ MATCHER_P2(IsLinkAddress, interface_index, destination_mac, "") {
       reinterpret_cast<const unsigned char*>(&socket_address->sll_addr),
       destination_mac.GetLength());
   return socket_address->sll_family == AF_PACKET &&
-      socket_address->sll_protocol == htons(ETHERTYPE_ARP) &&
-      socket_address->sll_ifindex == interface_index &&
-      destination_mac.Equals(socket_mac);
+         socket_address->sll_protocol == htons(ETHERTYPE_ARP) &&
+         socket_address->sll_ifindex == interface_index &&
+         destination_mac.Equals(socket_mac);
 }
 
 MATCHER_P(IsByteData, byte_data, "") {
   return ByteString(reinterpret_cast<const unsigned char*>(arg),
-                    byte_data.GetLength()).Equals(byte_data);
+                    byte_data.GetLength())
+      .Equals(byte_data);
 }
 
 void ArpClientTest::SetupValidPacket(ArpPacket* packet) {
@@ -113,8 +116,11 @@ void ArpClientTest::SetupValidPacket(ArpPacket* packet) {
   packet->set_remote_mac_address(remote_mac);
 }
 
-ssize_t ArpClientTest::SimulateRecvFrom(int sockfd, void* buf, size_t len,
-                                        int flags, struct sockaddr* src_addr,
+ssize_t ArpClientTest::SimulateRecvFrom(int sockfd,
+                                        void* buf,
+                                        size_t len,
+                                        int flags,
+                                        struct sockaddr* src_addr,
                                         socklen_t* addrlen) {
   memcpy(buf, recvfrom_reply_data_.GetConstData(),
          recvfrom_reply_data_.GetLength());
@@ -124,12 +130,13 @@ ssize_t ArpClientTest::SimulateRecvFrom(int sockfd, void* buf, size_t len,
 
 void ArpClientTest::StartClientWithFD(int fd) {
   EXPECT_CALL(*sockets_, Socket(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC,
-        htons(ETHERTYPE_ARP))).WillOnce(Return(fd));
+                                htons(ETHERTYPE_ARP)))
+      .WillOnce(Return(fd));
   EXPECT_CALL(*sockets_, AttachFilter(fd, _)).WillOnce(Return(0));
   EXPECT_CALL(*sockets_, SetNonBlocking(fd)).WillOnce(Return(0));
-  EXPECT_CALL(*sockets_, Bind(fd,
-                              IsLinkAddress(kInterfaceIndex, ByteString()),
-                              sizeof(sockaddr_ll))).WillOnce(Return(0));
+  EXPECT_CALL(*sockets_, Bind(fd, IsLinkAddress(kInterfaceIndex, ByteString()),
+                              sizeof(sockaddr_ll)))
+      .WillOnce(Return(0));
   EXPECT_TRUE(CreateSocket());
   EXPECT_EQ(fd, client_.socket_);
 }
@@ -141,9 +148,9 @@ TEST_F(ArpClientTest, Constructor) {
 
 TEST_F(ArpClientTest, SocketOpenFail) {
   ScopedMockLog log;
-  EXPECT_CALL(log,
-      Log(logging::LOG_ERROR, _,
-          HasSubstr("Could not create ARP socket"))).Times(1);
+  EXPECT_CALL(
+      log, Log(logging::LOG_ERROR, _, HasSubstr("Could not create ARP socket")))
+      .Times(1);
 
   EXPECT_CALL(*sockets_, Socket(PF_PACKET, _, htons(ETHERTYPE_ARP)))
       .WillOnce(Return(-1));
@@ -152,9 +159,9 @@ TEST_F(ArpClientTest, SocketOpenFail) {
 
 TEST_F(ArpClientTest, SocketFilterFail) {
   ScopedMockLog log;
-  EXPECT_CALL(log,
-      Log(logging::LOG_ERROR, _,
-          HasSubstr("Could not attach packet filter"))).Times(1);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("Could not attach packet filter")))
+      .Times(1);
 
   EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(kSocketFD));
   EXPECT_CALL(*sockets_, AttachFilter(kSocketFD, _)).WillOnce(Return(-1));
@@ -163,9 +170,9 @@ TEST_F(ArpClientTest, SocketFilterFail) {
 
 TEST_F(ArpClientTest, SocketNonBlockingFail) {
   ScopedMockLog log;
-  EXPECT_CALL(log,
-      Log(logging::LOG_ERROR, _,
-          HasSubstr("Could not set socket to be non-blocking"))).Times(1);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("Could not set socket to be non-blocking")))
+      .Times(1);
 
   EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(kSocketFD));
   EXPECT_CALL(*sockets_, AttachFilter(kSocketFD, _)).WillOnce(Return(0));
@@ -175,9 +182,9 @@ TEST_F(ArpClientTest, SocketNonBlockingFail) {
 
 TEST_F(ArpClientTest, SocketBindFail) {
   ScopedMockLog log;
-  EXPECT_CALL(log,
-      Log(logging::LOG_ERROR, _,
-          HasSubstr("Could not bind socket to interface"))).Times(1);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("Could not bind socket to interface")))
+      .Times(1);
 
   EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(kSocketFD));
   EXPECT_CALL(*sockets_, AttachFilter(kSocketFD, _)).WillOnce(Return(0));
@@ -213,14 +220,14 @@ TEST_F(ArpClientTest, Receive) {
 
     // RecvFrom returns an error.
     EXPECT_CALL(log,
-        Log(logging::LOG_ERROR, _,
-            HasSubstr("Socket recvfrom failed"))).Times(1);
+                Log(logging::LOG_ERROR, _, HasSubstr("Socket recvfrom failed")))
+        .Times(1);
     EXPECT_FALSE(client_.ReceivePacket(&reply, &sender));
 
     // RecvFrom returns an empty response which fails to parse.
-    EXPECT_CALL(log,
-        Log(logging::LOG_ERROR, _,
-            HasSubstr("Failed to parse ARP packet"))).Times(1);
+    EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                         HasSubstr("Failed to parse ARP packet")))
+        .Times(1);
     EXPECT_FALSE(client_.ReceivePacket(&reply, &sender));
 
     ArpPacket packet;
@@ -230,7 +237,7 @@ TEST_F(ArpClientTest, Receive) {
     // Hack: Force this packet to be an ARP repsonse instead of an ARP request.
     recvfrom_reply_data_.GetData()[kArpOpOffset] = ARPOP_REPLY;
 
-    static const uint8_t kSenderBytes[] = { 0xa, 0xb, 0xc, 0xd, 0xe, 0xf };
+    static const uint8_t kSenderBytes[] = {0xa, 0xb, 0xc, 0xd, 0xe, 0xf};
     memcpy(&recvfrom_sender_.sll_addr, kSenderBytes, sizeof(kSenderBytes));
     recvfrom_sender_.sll_halen = sizeof(kSenderBytes);
     EXPECT_TRUE(client_.ReceivePacket(&reply, &sender));
@@ -253,12 +260,10 @@ TEST_F(ArpClientTest, Transmit) {
   const ByteString& remote_mac = packet.remote_mac_address();
   ByteString packet_bytes;
   ASSERT_TRUE(packet.FormatRequest(&packet_bytes));
-  EXPECT_CALL(*sockets_, SendTo(kSocketFD,
-                                IsByteData(packet_bytes),
-                                packet_bytes.GetLength(),
-                                0,
-                                IsLinkAddress(kInterfaceIndex, remote_mac),
-                                sizeof(sockaddr_ll)))
+  EXPECT_CALL(
+      *sockets_,
+      SendTo(kSocketFD, IsByteData(packet_bytes), packet_bytes.GetLength(), 0,
+             IsLinkAddress(kInterfaceIndex, remote_mac), sizeof(sockaddr_ll)))
       .WillOnce(Return(-1))
       .WillOnce(Return(0))
       .WillOnce(Return(packet_bytes.GetLength() - 1))
@@ -267,11 +272,11 @@ TEST_F(ArpClientTest, Transmit) {
     InSequence seq;
     ScopedMockLog log;
     EXPECT_CALL(log,
-        Log(logging::LOG_ERROR, _,
-            HasSubstr("Socket sendto failed"))).Times(1);
-    EXPECT_CALL(log,
-        Log(logging::LOG_ERROR, _,
-            HasSubstr("different from expected result"))).Times(2);
+                Log(logging::LOG_ERROR, _, HasSubstr("Socket sendto failed")))
+        .Times(1);
+    EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                         HasSubstr("different from expected result")))
+        .Times(2);
 
     EXPECT_FALSE(client_.TransmitRequest(packet));
     EXPECT_FALSE(client_.TransmitRequest(packet));
@@ -281,16 +286,13 @@ TEST_F(ArpClientTest, Transmit) {
 
   // If the destination MAC address is unset, it should be sent to the
   // broadcast MAC address.
-  static const uint8_t kZeroBytes[] = { 0, 0, 0, 0, 0, 0 };
+  static const uint8_t kZeroBytes[] = {0, 0, 0, 0, 0, 0};
   packet.set_remote_mac_address(ByteString(kZeroBytes, arraysize(kZeroBytes)));
   ASSERT_TRUE(packet.FormatRequest(&packet_bytes));
-  static const uint8_t kBroadcastBytes[] =
-      { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+  static const uint8_t kBroadcastBytes[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
   ByteString broadcast_mac(kBroadcastBytes, arraysize(kBroadcastBytes));
-  EXPECT_CALL(*sockets_, SendTo(kSocketFD,
-                                IsByteData(packet_bytes),
-                                packet_bytes.GetLength(),
-                                0,
+  EXPECT_CALL(*sockets_, SendTo(kSocketFD, IsByteData(packet_bytes),
+                                packet_bytes.GetLength(), 0,
                                 IsLinkAddress(kInterfaceIndex, broadcast_mac),
                                 sizeof(sockaddr_ll)))
       .WillOnce(Return(packet_bytes.GetLength()));

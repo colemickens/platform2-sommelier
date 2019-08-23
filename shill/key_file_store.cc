@@ -27,8 +27,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kStorage;
-static string ObjectID(const KeyFileStore* k) { return "(key_file_store)"; }
+static string ObjectID(const KeyFileStore* k) {
+  return "(key_file_store)";
 }
+}  // namespace Logging
 
 namespace {
 string ConvertErrorToMessage(GError* error) {
@@ -36,7 +38,7 @@ string ConvertErrorToMessage(GError* error) {
     return "Unknown GLib error.";
   }
   string message =
-    base::StringPrintf("GError(%d): %s", error->code, error->message);
+      base::StringPrintf("GError(%d): %s", error->code, error->message);
   g_error_free(error);
   return message;
 }
@@ -45,9 +47,7 @@ string ConvertErrorToMessage(GError* error) {
 const char KeyFileStore::kCorruptSuffix[] = ".corrupted";
 
 KeyFileStore::KeyFileStore(const base::FilePath& path)
-    : crypto_(),
-      key_file_(nullptr),
-      path_(path) {
+    : crypto_(), key_file_(nullptr), path_(path) {
   CHECK(!path_.empty());
 }
 
@@ -77,8 +77,7 @@ bool KeyFileStore::Open() {
   }
   GError* error = nullptr;
   if (g_key_file_load_from_file(
-          key_file_,
-          path_.value().c_str(),
+          key_file_, path_.value().c_str(),
           static_cast<GKeyFileFlags>(G_KEY_FILE_KEEP_COMMENTS |
                                      G_KEY_FILE_KEEP_TRANSLATIONS),
           &error)) {
@@ -122,7 +121,7 @@ bool KeyFileStore::Flush() {
 bool KeyFileStore::MarkAsCorrupted() {
   LOG(INFO) << "In " << __func__ << " for " << path_.value();
   string corrupted_path = path_.value() + kCorruptSuffix;
-  int ret =  rename(path_.value().c_str(), corrupted_path.c_str());
+  int ret = rename(path_.value().c_str(), corrupted_path.c_str());
   if (ret != 0) {
     PLOG(ERROR) << "File rename failed";
     return false;
@@ -157,7 +156,7 @@ set<string> KeyFileStore::GetGroupsWithKey(const string& key) const {
 }
 
 set<string> KeyFileStore::GetGroupsWithProperties(
-     const KeyValueStore& properties) const {
+    const KeyValueStore& properties) const {
   set<string> groups = GetGroups();
   set<string> groups_with_properties;
   for (const auto& group : groups) {
@@ -184,8 +183,8 @@ bool KeyFileStore::DeleteKey(const string& group, const string& key) {
     g_error_free(error);
     return true;
   }
-  LOG(ERROR) << "Failed to delete (" << group << ":" << key << "): "
-             << ConvertErrorToMessage(error);
+  LOG(ERROR) << "Failed to delete (" << group << ":" << key
+             << "): " << ConvertErrorToMessage(error);
   return false;
 }
 
@@ -209,8 +208,7 @@ bool KeyFileStore::SetHeader(const string& header) {
   GError* error = nullptr;
   g_key_file_set_comment(key_file_, nullptr, nullptr, header.c_str(), &error);
   if (error) {
-    LOG(ERROR) << "Failed to to set header: "
-               << ConvertErrorToMessage(error);
+    LOG(ERROR) << "Failed to to set header: " << ConvertErrorToMessage(error);
     return false;
   }
   return true;
@@ -263,15 +261,14 @@ bool KeyFileStore::GetBool(const string& group,
 
 bool KeyFileStore::SetBool(const string& group, const string& key, bool value) {
   CHECK(key_file_);
-  g_key_file_set_boolean(key_file_,
-                         group.c_str(),
-                         key.c_str(),
+  g_key_file_set_boolean(key_file_, group.c_str(), key.c_str(),
                          value ? TRUE : FALSE);
   return true;
 }
 
-bool KeyFileStore::GetInt(
-    const string& group, const string& key, int* value) const {
+bool KeyFileStore::GetInt(const string& group,
+                          const string& key,
+                          int* value) const {
   CHECK(key_file_);
   GError* error = nullptr;
   gint data =
@@ -293,8 +290,9 @@ bool KeyFileStore::SetInt(const string& group, const string& key, int value) {
   return true;
 }
 
-bool KeyFileStore::GetUint64(
-    const string& group, const string& key, uint64_t* value) const {
+bool KeyFileStore::GetUint64(const string& group,
+                             const string& key,
+                             uint64_t* value) const {
   // Read the value in as a string and then convert to uint64_t because glib's
   // g_key_file_set_uint64 appears not to work correctly on 32-bit platforms
   // in unit tests.
@@ -317,8 +315,9 @@ bool KeyFileStore::GetUint64(
   return true;
 }
 
-bool KeyFileStore::SetUint64(
-    const string& group, const string& key, uint64_t value) {
+bool KeyFileStore::SetUint64(const string& group,
+                             const string& key,
+                             uint64_t value) {
   // Convert the value to a string first, then save the value because glib's
   // g_key_file_get_uint64 appears not to work on 32-bit platforms in our
   // unit tests.
@@ -331,11 +330,8 @@ bool KeyFileStore::GetStringList(const string& group,
   CHECK(key_file_);
   gsize length = 0;
   GError* error = nullptr;
-  gchar** data = g_key_file_get_string_list(key_file_,
-                                            group.c_str(),
-                                            key.c_str(),
-                                            &length,
-                                            &error);
+  gchar** data = g_key_file_get_string_list(key_file_, group.c_str(),
+                                            key.c_str(), &length, &error);
   if (!data) {
     string s = ConvertErrorToMessage(error);
     SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << "): " << s;
@@ -356,10 +352,7 @@ bool KeyFileStore::SetStringList(const string& group,
   for (const auto& string_entry : value) {
     list.push_back(string_entry.c_str());
   }
-  g_key_file_set_string_list(key_file_,
-                             group.c_str(),
-                             key.c_str(),
-                             list.data(),
+  g_key_file_set_string_list(key_file_, group.c_str(), key.c_str(), list.data(),
                              list.size());
   return true;
 }

@@ -66,7 +66,8 @@ const char kDhcpv6EnabledDevices[] = "dhcpv6-enabled-devices";
 const char kHelp[] = "help";
 
 // The help message shown if help flag is passed to the program.
-const char kHelpMessage[] = "\n"
+const char kHelpMessage[] =
+    "\n"
     "Available Switches: \n"
     "  --foreground\n"
     "    Don\'t daemon()ize; run in foreground.\n"
@@ -147,7 +148,7 @@ void SetupLogging(bool foreground, const char* daemon_name) {
   }
 }
 
-void OnStartup(const char *daemon_name, base::CommandLine* cl) {
+void OnStartup(const char* daemon_name, base::CommandLine* cl) {
   SetupLogging(cl->HasSwitch(switches::kForeground), daemon_name);
   shill::SetLogLevelFromCommandLine(cl);
 }
@@ -166,8 +167,7 @@ int main(int argc, char** argv) {
   shill::DaemonTask::Settings settings;
   if (cl->HasSwitch(switches::kTechnologyOrder)) {
     shill::Error error;
-    string order_flag = cl->GetSwitchValueASCII(
-        switches::kTechnologyOrder);
+    string order_flag = cl->GetSwitchValueASCII(switches::kTechnologyOrder);
     vector<shill::Technology> test_order_vector;
     if (shill::GetTechnologyVectorFromString(order_flag, &test_order_vector,
                                              &error)) {
@@ -182,15 +182,15 @@ int main(int argc, char** argv) {
   }
 
   if (cl->HasSwitch(switches::kDeviceBlackList)) {
-    settings.device_blacklist = base::SplitString(
-        cl->GetSwitchValueASCII(switches::kDeviceBlackList), ",",
-        base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+    settings.device_blacklist =
+        base::SplitString(cl->GetSwitchValueASCII(switches::kDeviceBlackList),
+                          ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   }
 
   if (cl->HasSwitch(switches::kDeviceWhiteList)) {
-    settings.device_whitelist = base::SplitString(
-        cl->GetSwitchValueASCII(switches::kDeviceWhiteList), ",",
-        base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+    settings.device_whitelist =
+        base::SplitString(cl->GetSwitchValueASCII(switches::kDeviceWhiteList),
+                          ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   }
 
   if (cl->HasSwitch(switches::kArcDevice)) {

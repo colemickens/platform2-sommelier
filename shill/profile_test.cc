@@ -82,8 +82,7 @@ TEST_F(ProfileTest, DeleteEntry) {
   const string kEntryName("entry_name");
 
   // If entry does not appear in storage, DeleteEntry() should return an error.
-  EXPECT_CALL(*storage, ContainsGroup(kEntryName))
-      .WillOnce(Return(false));
+  EXPECT_CALL(*storage, ContainsGroup(kEntryName)).WillOnce(Return(false));
   {
     Error error;
     profile_->DeleteEntry(kEntryName, &error);
@@ -94,14 +93,11 @@ TEST_F(ProfileTest, DeleteEntry) {
 
   // If HandleProfileEntryDeletion() returns false, Profile should call
   // DeleteGroup() itself.
-  EXPECT_CALL(*storage, ContainsGroup(kEntryName))
-      .WillOnce(Return(true));
+  EXPECT_CALL(*storage, ContainsGroup(kEntryName)).WillOnce(Return(true));
   EXPECT_CALL(*manager, HandleProfileEntryDeletion(_, kEntryName))
       .WillOnce(Return(false));
-  EXPECT_CALL(*storage, DeleteGroup(kEntryName))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*storage, Flush())
-      .WillOnce(Return(true));
+  EXPECT_CALL(*storage, DeleteGroup(kEntryName)).WillOnce(Return(true));
+  EXPECT_CALL(*storage, Flush()).WillOnce(Return(true));
   {
     Error error;
     profile_->DeleteEntry(kEntryName, &error);
@@ -112,14 +108,11 @@ TEST_F(ProfileTest, DeleteEntry) {
 
   // If HandleProfileEntryDeletion() returns true, Profile should not call
   // DeleteGroup() itself.
-  EXPECT_CALL(*storage, ContainsGroup(kEntryName))
-      .WillOnce(Return(true));
+  EXPECT_CALL(*storage, ContainsGroup(kEntryName)).WillOnce(Return(true));
   EXPECT_CALL(*manager, HandleProfileEntryDeletion(_, kEntryName))
       .WillOnce(Return(true));
-  EXPECT_CALL(*storage, DeleteGroup(kEntryName))
-      .Times(0);
-  EXPECT_CALL(*storage, Flush())
-      .WillOnce(Return(true));
+  EXPECT_CALL(*storage, DeleteGroup(kEntryName)).Times(0);
+  EXPECT_CALL(*storage, Flush()).WillOnce(Return(true));
   {
     Error error;
     profile_->DeleteEntry(kEntryName, &error);
@@ -155,8 +148,7 @@ TEST_F(ProfileTest, ParseIdentifier) {
   static const char kUser[] = "user";
   static const char kIdentifier[] = "identifier";
   EXPECT_TRUE(Profile::ParseIdentifier(
-      base::StringPrintf("~%s/%s", kUser, kIdentifier),
-      &identifier));
+      base::StringPrintf("~%s/%s", kUser, kIdentifier), &identifier));
   EXPECT_EQ(kUser, identifier.user);
   EXPECT_EQ(kIdentifier, identifier.identifier);
 
@@ -311,16 +303,16 @@ TEST_F(ProfileTest, LoadUserProfileList) {
   const char kIdentifier0[] = "rattlesnake";
   const char kIdentifier1[] = "ceiling";
   const char kHash0[] = "neighbors";
-  string data(base::StringPrintf("\n"
-                                 "~userbut/nospacehere\n"
-                                 "defaultprofile notaccepted\n"
-                                 "~%s/%s %s\n"
-                                 "~userbutno/hash\n"
-                                 " ~dontaccept/leadingspaces hash\n"
-                                 "~this_username_fails_to_parse/id hash\n"
-                                 "~%s/%s \n\n",
-                                 kUser0, kIdentifier0, kHash0,
-                                 kUser1, kIdentifier1));
+  string data(
+      base::StringPrintf("\n"
+                         "~userbut/nospacehere\n"
+                         "defaultprofile notaccepted\n"
+                         "~%s/%s %s\n"
+                         "~userbutno/hash\n"
+                         " ~dontaccept/leadingspaces hash\n"
+                         "~this_username_fails_to_parse/id hash\n"
+                         "~%s/%s \n\n",
+                         kUser0, kIdentifier0, kHash0, kUser1, kIdentifier1));
   EXPECT_EQ(data.size(), base::WriteFile(list_path, data.data(), data.size()));
   identifiers = Profile::LoadUserProfileList(list_path);
   EXPECT_EQ(2, identifiers.size());
@@ -359,9 +351,8 @@ TEST_F(ProfileTest, SaveUserProfileList) {
 
   string profile_data;
   EXPECT_TRUE(base::ReadFileToString(list_path, &profile_data));
-  EXPECT_EQ(base::StringPrintf("~%s/%s %s\n~%s/%s %s\n",
-                               kUser0, kIdentifier0, kHash0,
-                               kUser1, kIdentifier1, kHash1),
+  EXPECT_EQ(base::StringPrintf("~%s/%s %s\n~%s/%s %s\n", kUser0, kIdentifier0,
+                               kHash0, kUser1, kIdentifier1, kHash1),
             profile_data);
 }
 
@@ -380,22 +371,22 @@ TEST_F(ProfileTest, MatchesIdentifier) {
 
 TEST_F(ProfileTest, InitStorage) {
   Profile::Identifier id("theUser", "theIdentifier");
-  ASSERT_TRUE(base::CreateDirectory(
-      base::FilePath(storage_path()).Append("theUser")));
+  ASSERT_TRUE(
+      base::CreateDirectory(base::FilePath(storage_path()).Append("theUser")));
 
   // Profile doesn't exist but we wanted it to.
-  EXPECT_FALSE(ProfileInitStorage(id, Profile::kOpenExisting, false,
-                                  Error::kNotFound));
+  EXPECT_FALSE(
+      ProfileInitStorage(id, Profile::kOpenExisting, false, Error::kNotFound));
 
   // Success case, with a side effect of creating the profile.
-  EXPECT_TRUE(ProfileInitStorage(id, Profile::kCreateNew, true,
-                                 Error::kSuccess));
+  EXPECT_TRUE(
+      ProfileInitStorage(id, Profile::kCreateNew, true, Error::kSuccess));
 
   // The results from our two test cases above will now invert since
   // the profile now exists.  First, we now succeed if we require that
   // the profile already exist...
-  EXPECT_TRUE(ProfileInitStorage(id, Profile::kOpenExisting, false,
-                                 Error::kSuccess));
+  EXPECT_TRUE(
+      ProfileInitStorage(id, Profile::kOpenExisting, false, Error::kSuccess));
 
   // And we fail if we require that it doesn't.
   EXPECT_FALSE(ProfileInitStorage(id, Profile::kCreateNew, false,
@@ -408,8 +399,8 @@ TEST_F(ProfileTest, InitStorage) {
   // ...and for a new profile that doesn't exist.
   Profile::Identifier id2("theUser", "theIdentifier2");
   // Let's just make double-check that this profile really doesn't exist.
-  ASSERT_FALSE(ProfileInitStorage(id2, Profile::kOpenExisting, false,
-                                  Error::kNotFound));
+  ASSERT_FALSE(
+      ProfileInitStorage(id2, Profile::kOpenExisting, false, Error::kNotFound));
 
   // Then test that with "create or open" we succeed.
   EXPECT_TRUE(ProfileInitStorage(id2, Profile::kCreateOrOpenExisting, false,
@@ -430,8 +421,8 @@ TEST_F(ProfileTest, InitStorage) {
 
   // But then on a second try the file no longer exists.
   EXPECT_CALL(*metrics(), NotifyCorruptedProfile()).Times(0);
-  ASSERT_FALSE(ProfileInitStorage(id, Profile::kOpenExisting, false,
-                                  Error::kNotFound));
+  ASSERT_FALSE(
+      ProfileInitStorage(id, Profile::kOpenExisting, false, Error::kNotFound));
 }
 
 TEST_F(ProfileTest, UpdateDevice) {
@@ -449,8 +440,7 @@ TEST_F(ProfileTest, GetServiceFromEntry) {
 
   // If entry does not appear in storage, GetServiceFromEntry() should return
   // an error.
-  EXPECT_CALL(*storage, ContainsGroup(kEntryName))
-      .WillOnce(Return(false));
+  EXPECT_CALL(*storage, ContainsGroup(kEntryName)).WillOnce(Return(false));
   {
     Error error;
     profile_->GetServiceFromEntry(kEntryName, &error);
@@ -458,8 +448,7 @@ TEST_F(ProfileTest, GetServiceFromEntry) {
   }
   Mock::VerifyAndClearExpectations(storage);
 
-  EXPECT_CALL(*storage, ContainsGroup(kEntryName))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*storage, ContainsGroup(kEntryName)).WillRepeatedly(Return(true));
 
   // Service entry already registered with the manager, the registered service
   // is returned.

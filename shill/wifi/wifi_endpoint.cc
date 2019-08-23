@@ -31,8 +31,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static string ObjectID(WiFiEndpoint* w) { return "(wifi_endpoint)"; }
+static string ObjectID(WiFiEndpoint* w) {
+  return "(wifi_endpoint)";
 }
+}  // namespace Logging
 
 WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
                            const WiFiRefPtr& device,
@@ -50,8 +52,9 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
   bssid_ = properties.GetUint8s(WPASupplicant::kBSSPropertyBSSID);
   signal_strength_ = properties.GetInt16(WPASupplicant::kBSSPropertySignal);
   if (properties.ContainsUint(WPASupplicant::kBSSPropertyAge)) {
-    last_seen_ = base::TimeTicks::Now() - base::TimeDelta::FromSeconds(
-        properties.GetUint(WPASupplicant::kBSSPropertyAge));
+    last_seen_ = base::TimeTicks::Now() -
+                 base::TimeDelta::FromSeconds(
+                     properties.GetUint(WPASupplicant::kBSSPropertyAge));
   } else {
     last_seen_ = base::TimeTicks();
   }
@@ -60,18 +63,14 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
   }
 
   Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
-  if (!ParseIEs(properties,
-                &phy_mode,
-                &vendor_information_,
-                &ieee80211w_required_,
-                &country_code_,
-                &krv_support_)) {
+  if (!ParseIEs(properties, &phy_mode, &vendor_information_,
+                &ieee80211w_required_, &country_code_, &krv_support_)) {
     phy_mode = DeterminePhyModeFromFrequency(properties, frequency_);
   }
   physical_mode_ = phy_mode;
 
-  network_mode_ = ParseMode(
-      properties.GetString(WPASupplicant::kBSSPropertyMode));
+  network_mode_ =
+      ParseMode(properties.GetString(WPASupplicant::kBSSPropertyMode));
   set_security_mode(ParseSecurity(properties, &security_flags_));
   has_rsn_property_ =
       properties.ContainsKeyValueStore(WPASupplicant::kPropertyRSN);
@@ -103,8 +102,9 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
   }
 
   if (properties.ContainsUint(WPASupplicant::kBSSPropertyAge)) {
-    last_seen_ = base::TimeTicks::Now() - base::TimeDelta::FromSeconds(
-        properties.GetUint(WPASupplicant::kBSSPropertyAge));
+    last_seen_ = base::TimeTicks::Now() -
+                 base::TimeDelta::FromSeconds(
+                     properties.GetUint(WPASupplicant::kBSSPropertyAge));
     should_notify = true;
   }
 
@@ -153,8 +153,8 @@ void WiFiEndpoint::UpdateSignalStrength(int16_t strength) {
     return;
   }
 
-  SLOG(this, 2) << __func__ << ": signal strength "
-                << signal_strength_ << " -> " << strength;
+  SLOG(this, 2) << __func__ << ": signal strength " << signal_strength_
+                << " -> " << strength;
   signal_strength_ = strength;
   device_->NotifyEndpointChanged(this);
 }
@@ -180,9 +180,8 @@ map<string, string> WiFiEndpoint::GetVendorInformation() const {
   if (!vendor_information_.oui_set.empty()) {
     vector<string> oui_vector;
     for (auto oui : vendor_information_.oui_set) {
-      oui_vector.push_back(
-          StringPrintf("%02x-%02x-%02x",
-              oui >> 16, (oui >> 8) & 0xff, oui & 0xff));
+      oui_vector.push_back(StringPrintf("%02x-%02x-%02x", oui >> 16,
+                                        (oui >> 8) & 0xff, oui & 0xff));
     }
     vendor_information[kVendorOUIListProperty] =
         base::JoinString(oui_vector, " ");
@@ -285,7 +284,6 @@ WiFiEndpointRefPtr WiFiEndpoint::MakeOpenEndpoint(
                       frequency, signal_dbm, false, false);
 }
 
-
 // static
 WiFiEndpointRefPtr WiFiEndpoint::MakeEndpoint(
     ControlInterface* control_interface,
@@ -302,8 +300,7 @@ WiFiEndpointRefPtr WiFiEndpoint::MakeEndpoint(
   args.SetUint8s(WPASupplicant::kBSSPropertySSID,
                  vector<uint8_t>(ssid.begin(), ssid.end()));
 
-  vector<uint8_t> bssid_bytes =
-      Device::MakeHardwareAddressFromString(bssid);
+  vector<uint8_t> bssid_bytes = Device::MakeHardwareAddressFromString(bssid);
   args.SetUint8s(WPASupplicant::kBSSPropertyBSSID, bssid_bytes);
 
   args.SetInt16(WPASupplicant::kBSSPropertySignal, signal_dbm);
@@ -319,8 +316,7 @@ WiFiEndpointRefPtr WiFiEndpoint::MakeEndpoint(
     args.SetKeyValueStore(WPASupplicant::kPropertyRSN, empty_args);
   }
 
-  return new WiFiEndpoint(control_interface,
-                          wifi,
+  return new WiFiEndpoint(control_interface, wifi,
                           RpcIdentifier(bssid),  // |bssid| fakes an RPC ID
                           args,
                           nullptr);  // MakeEndpoint is only used for unit
@@ -344,8 +340,8 @@ string WiFiEndpoint::ParseMode(const string& mode_string) {
 }
 
 // static
-const char* WiFiEndpoint::ParseSecurity(
-    const KeyValueStore& properties, SecurityFlags* flags) {
+const char* WiFiEndpoint::ParseSecurity(const KeyValueStore& properties,
+                                        SecurityFlags* flags) {
   if (properties.ContainsKeyValueStore(WPASupplicant::kPropertyRSN)) {
     KeyValueStore rsn_properties =
         properties.GetKeyValueStore(WPASupplicant::kPropertyRSN);
@@ -386,7 +382,7 @@ void WiFiEndpoint::ParseKeyManagementMethods(
     const KeyValueStore& security_method_properties,
     set<KeyManagement>* key_management_methods) {
   if (!security_method_properties.ContainsStrings(
-      WPASupplicant::kSecurityMethodPropertyKeyManagement)) {
+          WPASupplicant::kSecurityMethodPropertyKeyManagement)) {
     return;
   }
 
@@ -514,8 +510,8 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
         found_rm_enabled_cap = true;
         break;
       case IEEE_80211::kElemIdRSN:
-        ParseWPACapabilities(
-            it + 2, it + ie_len, ieee80211w_required, &found_ft_cipher);
+        ParseWPACapabilities(it + 2, it + ie_len, ieee80211w_required,
+                             &found_ft_cipher);
         break;
       case IEEE_80211::kElemIdVendor:
         ParseVendorIE(it + 2, it + ie_len, vendor_information,
@@ -635,7 +631,7 @@ void WiFiEndpoint::ParseWPACapabilities(vector<uint8_t>::const_iterator ie,
     uint16_t cipher_count = *ie | (*(ie + 1) << 8);
 
     int skip_length = IEEE_80211::kRSNIECipherCountLen +
-      cipher_count * IEEE_80211::kRSNIESelectorLen;
+                      cipher_count * IEEE_80211::kRSNIESelectorLen;
     if (std::distance(ie, end) < skip_length) {
       return;
     }
@@ -645,8 +641,7 @@ void WiFiEndpoint::ParseWPACapabilities(vector<uint8_t>::const_iterator ie,
       // Find the AuthKey Suite List and check for matches to Fast Transition
       // ciphers.
       vector<uint32_t> akm_suite_list(cipher_count, 0);
-      std::memcpy(&akm_suite_list[0],
-                  &*(ie + IEEE_80211::kRSNIECipherCountLen),
+      std::memcpy(&akm_suite_list[0], &*(ie + IEEE_80211::kRSNIECipherCountLen),
                   cipher_count * IEEE_80211::kRSNIESelectorLen);
       for (uint16_t i = 0; i < cipher_count; i++) {
         uint32_t suite = akm_suite_list[i];
@@ -677,7 +672,6 @@ void WiFiEndpoint::ParseWPACapabilities(vector<uint8_t>::const_iterator ie,
     *ieee80211w_required = true;
   }
 }
-
 
 // static
 void WiFiEndpoint::ParseVendorIE(vector<uint8_t>::const_iterator ie,

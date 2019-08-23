@@ -24,7 +24,8 @@ static const char kPassphrase[] = "passphrase";
 static const char kHexSsid[] = "hex-ssid";
 static const char kSSID[] = "ssid";
 static const char kTimeOut[] = "wait-for-online-seconds";
-static const char kHelpMessage[] = "\n"
+static const char kHelpMessage[] =
+    "\n"
     "Available Switches: \n"
     "  --ssid=<ssid>\n"
     "    Set the SSID to configure (mandatory).\n"
@@ -165,10 +166,10 @@ int main(int argc, char** argv) {
   int timeout = 0;
   if (cl->HasSwitch(switches::kTimeOut)) {
     auto value = cl->GetSwitchValueASCII(switches::kTimeOut);
-     if (!base::StringToInt(value, &timeout)) {
-       LOG(ERROR) << "Timeout value invalid";
-       return EXIT_FAILURE;
-     }
+    if (!base::StringToInt(value, &timeout)) {
+      LOG(ERROR) << "Timeout value invalid";
+      return EXIT_FAILURE;
+    }
   }
 
   MyClient client(ssid, hex_ssid, psk, timeout);
@@ -177,4 +178,3 @@ int main(int argc, char** argv) {
 
   return EXIT_SUCCESS;
 }
-

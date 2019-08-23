@@ -23,7 +23,6 @@
 // rules that would have accepted the input packet for other reasons
 // will be evaluated first so we don't have to involve userspace for them.
 
-
 #include <string>
 
 #include <base/command_line.h>
@@ -43,7 +42,8 @@ static const char kOutputQueue[] = "output-queue";
 static const char kVerbose[] = "verbose";
 
 // The help message shown if help flag is passed to the program.
-static const char kHelpMessage[] = "\n"
+static const char kHelpMessage[] =
+    "\n"
     "Available Switches:\n"
     "  --help\n"
     "    Show this help message.\n"
@@ -66,11 +66,8 @@ bool GetIntegerOption(base::CommandLine* cl, const string& option, int* value) {
   int option_integer_value = -1;
 
   if (!base::StringToInt(option_string_value, &option_integer_value)) {
-    LOG(ERROR) << "Unable to convert parameter \""
-               << option_string_value
-               << "\" passed as option "
-               << option
-               << " into an integer.";
+    LOG(ERROR) << "Unable to convert parameter \"" << option_string_value
+               << "\" passed as option " << option << " into an integer.";
     return false;
   }
   *value = option_integer_value;

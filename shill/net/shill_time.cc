@@ -14,9 +14,9 @@ using std::string;
 
 namespace shill {
 
-Time::Time() { }
+Time::Time() {}
 
-Time::~Time() { }
+Time::~Time() {}
 
 Time* Time::GetInstance() {
   // As Time may be instantiated by MemoryLogMessage during a callback of

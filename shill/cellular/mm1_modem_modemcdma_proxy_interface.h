@@ -28,11 +28,10 @@ class ModemModemCdmaProxyInterface {
                         Error* error,
                         const ResultCallback& callback,
                         int timeout) = 0;
-  virtual void ActivateManual(
-      const KeyValueStore& properties,
-      Error* error,
-      const ResultCallback& callback,
-      int timeout) = 0;
+  virtual void ActivateManual(const KeyValueStore& properties,
+                              Error* error,
+                              const ResultCallback& callback,
+                              int timeout) = 0;
 
   virtual void set_activation_state_callback(
       const ActivationStateSignalCallback& callback) = 0;

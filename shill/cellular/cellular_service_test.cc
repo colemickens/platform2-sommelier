@@ -50,9 +50,7 @@ class CellularServiceTest : public testing::Test {
         service_(new CellularService(modem_info_.manager(), device_)),
         adaptor_(nullptr) {}
 
-  ~CellularServiceTest() override {
-    adaptor_ = nullptr;
-  }
+  ~CellularServiceTest() override { adaptor_ = nullptr; }
 
   void SetUp() override {
     adaptor_ = static_cast<ServiceMockAdaptor*>(service_->adaptor());
@@ -79,27 +77,20 @@ TEST_F(CellularServiceTest, Constructor) {
 TEST_F(CellularServiceTest, SetActivationState) {
   {
     InSequence call_sequence;
-    EXPECT_CALL(*adaptor_, EmitStringChanged(
-        kActivationStateProperty,
-        kActivationStateNotActivated));
-    EXPECT_CALL(*adaptor_, EmitBoolChanged(
-        kConnectableProperty, false));
-    EXPECT_CALL(*adaptor_, EmitStringChanged(
-        kActivationStateProperty,
-        kActivationStateActivating));
-    EXPECT_CALL(*adaptor_, EmitBoolChanged(
-        kConnectableProperty, true));
-    EXPECT_CALL(*adaptor_, EmitStringChanged(
-        kActivationStateProperty,
-        kActivationStatePartiallyActivated));
-    EXPECT_CALL(*adaptor_, EmitStringChanged(
-        kActivationStateProperty,
-        kActivationStateActivated));
-    EXPECT_CALL(*adaptor_, EmitStringChanged(
-        kActivationStateProperty,
-        kActivationStateNotActivated));
-    EXPECT_CALL(*adaptor_, EmitBoolChanged(
-        kConnectableProperty, false));
+    EXPECT_CALL(*adaptor_, EmitStringChanged(kActivationStateProperty,
+                                             kActivationStateNotActivated));
+    EXPECT_CALL(*adaptor_, EmitBoolChanged(kConnectableProperty, false));
+    EXPECT_CALL(*adaptor_, EmitStringChanged(kActivationStateProperty,
+                                             kActivationStateActivating));
+    EXPECT_CALL(*adaptor_, EmitBoolChanged(kConnectableProperty, true));
+    EXPECT_CALL(*adaptor_,
+                EmitStringChanged(kActivationStateProperty,
+                                  kActivationStatePartiallyActivated));
+    EXPECT_CALL(*adaptor_, EmitStringChanged(kActivationStateProperty,
+                                             kActivationStateActivated));
+    EXPECT_CALL(*adaptor_, EmitStringChanged(kActivationStateProperty,
+                                             kActivationStateNotActivated));
+    EXPECT_CALL(*adaptor_, EmitBoolChanged(kConnectableProperty, false));
   }
   EXPECT_CALL(*modem_info_.mock_manager(), HasService(_))
       .WillRepeatedly(Return(false));
@@ -138,8 +129,8 @@ TEST_F(CellularServiceTest, SetNetworkTechnology) {
 }
 
 TEST_F(CellularServiceTest, SetRoamingState) {
-  EXPECT_CALL(*adaptor_, EmitStringChanged(kRoamingStateProperty,
-                                           kRoamingStateHome));
+  EXPECT_CALL(*adaptor_,
+              EmitStringChanged(kRoamingStateProperty, kRoamingStateHome));
   EXPECT_TRUE(service_->roaming_state().empty());
   service_->SetRoamingState(kRoamingStateHome);
   EXPECT_EQ(kRoamingStateHome, service_->roaming_state());
@@ -153,8 +144,7 @@ TEST_F(CellularServiceTest, SetServingOperator) {
   service_->set_serving_operator(test_operator);
   test_operator[kOperatorCodeKey] = kCode;
   test_operator[kOperatorNameKey] = kName;
-  EXPECT_CALL(*adaptor_,
-              EmitStringmapChanged(kServingOperatorProperty, _));
+  EXPECT_CALL(*adaptor_, EmitStringmapChanged(kServingOperatorProperty, _));
   service_->set_serving_operator(test_operator);
   const Stringmap& serving_operator = service_->serving_operator();
   ASSERT_NE(serving_operator.end(), serving_operator.find(kOperatorCodeKey));
@@ -162,8 +152,8 @@ TEST_F(CellularServiceTest, SetServingOperator) {
   EXPECT_EQ(kCode, serving_operator.find(kOperatorCodeKey)->second);
   EXPECT_EQ(kName, serving_operator.find(kOperatorNameKey)->second);
   Mock::VerifyAndClearExpectations(adaptor_);
-  EXPECT_CALL(*adaptor_,
-              EmitStringmapChanged(kServingOperatorProperty, _)).Times(0);
+  EXPECT_CALL(*adaptor_, EmitStringmapChanged(kServingOperatorProperty, _))
+      .Times(0);
   service_->set_serving_operator(serving_operator);
 }
 
@@ -179,8 +169,7 @@ TEST_F(CellularServiceTest, SetOLP) {
   EXPECT_EQ("", olp[kPaymentPortalMethod]);
   EXPECT_EQ("", olp[kPaymentPortalPostData]);
 
-  EXPECT_CALL(*adaptor_,
-              EmitStringmapChanged(kPaymentPortalProperty, _));
+  EXPECT_CALL(*adaptor_, EmitStringmapChanged(kPaymentPortalProperty, _));
   service_->SetOLP(kURL, kMethod, kPostData);
   olp = service_->olp();  // Copy to simplify assertions below.
   EXPECT_EQ(kURL, olp[kPaymentPortalURL]);
@@ -190,8 +179,7 @@ TEST_F(CellularServiceTest, SetOLP) {
 
 TEST_F(CellularServiceTest, SetUsageURL) {
   static const char kUsageURL[] = "usage.url";
-  EXPECT_CALL(*adaptor_, EmitStringChanged(kUsageURLProperty,
-                                           kUsageURL));
+  EXPECT_CALL(*adaptor_, EmitStringChanged(kUsageURLProperty, kUsageURL));
   EXPECT_TRUE(service_->usage_url().empty());
   service_->SetUsageURL(kUsageURL);
   EXPECT_EQ(kUsageURL, service_->usage_url());
@@ -207,8 +195,7 @@ TEST_F(CellularServiceTest, SetApn) {
   Stringmap testapn;
   testapn[kApnProperty] = kApn;
   testapn[kApnUsernameProperty] = kUsername;
-  EXPECT_CALL(*adaptor_,
-              EmitStringmapChanged(kCellularApnProperty, _));
+  EXPECT_CALL(*adaptor_, EmitStringmapChanged(kCellularApnProperty, _));
   service_->SetApn(testapn, &error);
   EXPECT_TRUE(error.IsSuccess());
   Stringmap resultapn = service_->GetApn(&error);
@@ -231,19 +218,17 @@ TEST_F(CellularServiceTest, ClearApn) {
   Stringmap testapn;
   testapn[kApnProperty] = kApn;
   testapn[kApnUsernameProperty] = kUsername;
-  EXPECT_CALL(*adaptor_,
-              EmitStringmapChanged(kCellularApnProperty, _));
+  EXPECT_CALL(*adaptor_, EmitStringmapChanged(kCellularApnProperty, _));
   service_->SetApn(testapn, &error);
   Stringmap resultapn = service_->GetApn(&error);
   ASSERT_TRUE(error.IsSuccess());
   ASSERT_EQ(2, service_->GetApn(&error).size());
 
   Stringmap emptyapn;
-  EXPECT_CALL(*adaptor_,
-              EmitStringmapChanged(kCellularLastGoodApnProperty,
-                                   _)).Times(0);
-  EXPECT_CALL(*adaptor_,
-              EmitStringmapChanged(kCellularApnProperty, _)).Times(1);
+  EXPECT_CALL(*adaptor_, EmitStringmapChanged(kCellularLastGoodApnProperty, _))
+      .Times(0);
+  EXPECT_CALL(*adaptor_, EmitStringmapChanged(kCellularApnProperty, _))
+      .Times(1);
   service_->SetApn(emptyapn, &error);
   EXPECT_TRUE(error.IsSuccess());
   resultapn = service_->GetApn(&error);
@@ -259,8 +244,7 @@ TEST_F(CellularServiceTest, LastGoodApn) {
   Stringmap testapn;
   testapn[kApnProperty] = kApn;
   testapn[kApnUsernameProperty] = kUsername;
-  EXPECT_CALL(*adaptor_,
-              EmitStringmapChanged(kCellularLastGoodApnProperty, _));
+  EXPECT_CALL(*adaptor_, EmitStringmapChanged(kCellularLastGoodApnProperty, _));
   service_->SetLastGoodApn(testapn);
   Stringmap* resultapn = service_->GetLastGoodApn();
   ASSERT_NE(nullptr, resultapn);
@@ -365,8 +349,8 @@ TEST_F(CellularServiceTest, LoadResetsPPPAuthFailure) {
   const string kDefaultPass;
   const string kNewUser("new-username");
   const string kNewPass("new-password");
-  for (const auto change_username : { false, true }) {
-    for (const auto change_password : { false, true }) {
+  for (const auto change_username : {false, true}) {
+    for (const auto change_password : {false, true}) {
       service_->ppp_username_ = kDefaultUser;
       service_->ppp_password_ = kDefaultPass;
       service_->SetFailure(Service::kFailurePPPAuth);
@@ -414,9 +398,8 @@ TEST_F(CellularServiceTest, LoadFromProfileMatchingImsi) {
   EXPECT_CALL(storage, ContainsGroup(initial_storage_id)).Times(0);
   EXPECT_CALL(storage, ContainsGroup(matching_storage_id))
       .WillOnce(Return(true));
-  EXPECT_CALL(storage,
-              GetGroupsWithProperties(ContainsCellularProperties(
-                  CellularService::kStorageImsi, device_->imsi())))
+  EXPECT_CALL(storage, GetGroupsWithProperties(ContainsCellularProperties(
+                           CellularService::kStorageImsi, device_->imsi())))
       .WillRepeatedly(Return(groups));
   EXPECT_CALL(storage, GetString(_, _, _)).WillRepeatedly(Return(true));
   EXPECT_TRUE(service_->IsLoadableFrom(storage));
@@ -434,9 +417,8 @@ TEST_F(CellularServiceTest, LoadFromProfileMatchingMeid) {
   EXPECT_CALL(storage, ContainsGroup(initial_storage_id)).Times(0);
   EXPECT_CALL(storage, ContainsGroup(matching_storage_id))
       .WillOnce(Return(true));
-  EXPECT_CALL(storage,
-              GetGroupsWithProperties(ContainsCellularProperties(
-                  CellularService::kStorageMeid, device_->meid())))
+  EXPECT_CALL(storage, GetGroupsWithProperties(ContainsCellularProperties(
+                           CellularService::kStorageMeid, device_->meid())))
       .WillRepeatedly(Return(groups));
   EXPECT_CALL(storage, GetString(_, _, _)).WillRepeatedly(Return(true));
   EXPECT_TRUE(service_->IsLoadableFrom(storage));
@@ -453,14 +435,15 @@ TEST_F(CellularServiceTest, LoadFromFirstOfMultipleMatchingProfiles) {
   string matching_storage_id2 = "another-storage-id2";
   string matching_storage_id3 = "another-storage-id3";
   std::set<string> groups = {
-      matching_storage_id1, matching_storage_id2, matching_storage_id3,
+      matching_storage_id1,
+      matching_storage_id2,
+      matching_storage_id3,
   };
   EXPECT_CALL(storage, ContainsGroup(initial_storage_id)).Times(0);
   EXPECT_CALL(storage, ContainsGroup(matching_storage_id1))
       .WillOnce(Return(true));
-  EXPECT_CALL(storage,
-              GetGroupsWithProperties(ContainsCellularProperties(
-                  CellularService::kStorageImsi, device_->imsi())))
+  EXPECT_CALL(storage, GetGroupsWithProperties(ContainsCellularProperties(
+                           CellularService::kStorageImsi, device_->imsi())))
       .WillRepeatedly(Return(groups));
   EXPECT_CALL(storage, GetString(_, _, _)).WillRepeatedly(Return(true));
   EXPECT_TRUE(service_->IsLoadableFrom(storage));
@@ -475,30 +458,24 @@ TEST_F(CellularServiceTest, Save) {
   device_->set_imsi("111222123456789");
   device_->set_meid("ABCDEF01234567");
   EXPECT_CALL(storage, SetString(_, _, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(storage,
-              SetString(service_->GetStorageIdentifier(),
-                        StrEq(Service::kStorageType),
-                        kTypeCellular))
+  EXPECT_CALL(storage, SetString(service_->GetStorageIdentifier(),
+                                 StrEq(Service::kStorageType), kTypeCellular))
+      .Times(1);
+  EXPECT_CALL(storage, SetString(service_->GetStorageIdentifier(),
+                                 StrEq(CellularService::kStorageIccid),
+                                 device_->sim_identifier()))
       .Times(1);
   EXPECT_CALL(storage,
               SetString(service_->GetStorageIdentifier(),
-                        StrEq(CellularService::kStorageIccid),
-                        device_->sim_identifier()))
+                        StrEq(CellularService::kStorageImei), device_->imei()))
       .Times(1);
   EXPECT_CALL(storage,
               SetString(service_->GetStorageIdentifier(),
-                        StrEq(CellularService::kStorageImei),
-                        device_->imei()))
+                        StrEq(CellularService::kStorageImsi), device_->imsi()))
       .Times(1);
   EXPECT_CALL(storage,
               SetString(service_->GetStorageIdentifier(),
-                        StrEq(CellularService::kStorageImsi),
-                        device_->imsi()))
-      .Times(1);
-  EXPECT_CALL(storage,
-              SetString(service_->GetStorageIdentifier(),
-                        StrEq(CellularService::kStorageMeid),
-                        device_->meid()))
+                        StrEq(CellularService::kStorageMeid), device_->meid()))
       .Times(1);
   EXPECT_TRUE(service_->Save(&storage));
 }
@@ -510,8 +487,7 @@ TEST_F(CellularServiceTest, PropertyChanges) {
   TestCommonPropertyChanges(service_, adaptor_);
   TestAutoConnectPropertyChange(service_, adaptor_);
 
-  EXPECT_CALL(*adaptor_,
-              EmitStringChanged(kActivationTypeProperty, _));
+  EXPECT_CALL(*adaptor_, EmitStringChanged(kActivationTypeProperty, _));
   service_->SetActivationType(CellularService::kActivationTypeOTA);
   Mock::VerifyAndClearExpectations(adaptor_);
 

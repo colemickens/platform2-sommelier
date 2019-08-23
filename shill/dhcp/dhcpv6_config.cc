@@ -26,7 +26,7 @@ static string ObjectID(DHCPv6Config* d) {
   else
     return d->device_name();
 }
-}
+}  // namespace Logging
 
 // static
 const char DHCPv6Config::kDHCPCDPathFormatPID[] =
@@ -86,10 +86,8 @@ void DHCPv6Config::ProcessEventSignal(const string& reason,
     LOG(ERROR) << "Received failure event from DHCPv6 client.";
     NotifyFailure();
     return;
-  } else if (reason != kReasonBound &&
-             reason != kReasonRebind &&
-             reason != kReasonReboot &&
-             reason != kReasonRenew) {
+  } else if (reason != kReasonBound && reason != kReasonRebind &&
+             reason != kReasonReboot && reason != kReasonRenew) {
     LOG(WARNING) << "Event ignored.";
     return;
   }
@@ -114,12 +112,14 @@ void DHCPv6Config::CleanupClientState() {
 
   // Delete lease file if it is ephemeral.
   if (IsEphemeralLease()) {
-    base::DeleteFile(root().Append(
-        base::StringPrintf(DHCPProvider::kDHCPCDPathFormatLease6,
-                           device_name().c_str())), false);
+    base::DeleteFile(
+        root().Append(base::StringPrintf(DHCPProvider::kDHCPCDPathFormatLease6,
+                                         device_name().c_str())),
+        false);
   }
-  base::DeleteFile(root().Append(
-      base::StringPrintf(kDHCPCDPathFormatPID, device_name().c_str())), false);
+  base::DeleteFile(root().Append(base::StringPrintf(kDHCPCDPathFormatPID,
+                                                    device_name().c_str())),
+                   false);
 
   // Reset configuration data.
   properties_ = IPConfig::Properties();
@@ -153,12 +153,10 @@ bool DHCPv6Config::ParseConfiguration(const KeyValueStore& configuration) {
         base::StringPrintf("%s%d", kConfigurationKeyDelegatedPrefix, i);
     const std::string prefix_length_key =
         base::StringPrintf("%s%d", kConfigurationKeyDelegatedPrefixLength, i);
-    const std::string prefix_lease_time_key =
-        base::StringPrintf(
-            "%s%d", kConfigurationKeyDelegatedPrefixLeaseTime, i);
-    const std::string prefix_preferred_lease_time_key =
-        base::StringPrintf(
-            "%s%d", kConfigurationKeyDelegatedPrefixPreferredLeaseTime, i);
+    const std::string prefix_lease_time_key = base::StringPrintf(
+        "%s%d", kConfigurationKeyDelegatedPrefixLeaseTime, i);
+    const std::string prefix_preferred_lease_time_key = base::StringPrintf(
+        "%s%d", kConfigurationKeyDelegatedPrefixPreferredLeaseTime, i);
 
     if (configuration.ContainsString(prefix_key) &&
         configuration.ContainsUint(prefix_length_key) &&
@@ -170,10 +168,10 @@ bool DHCPv6Config::ParseConfiguration(const KeyValueStore& configuration) {
       properties_.dhcpv6_delegated_prefixes.push_back({
           {kDhcpv6AddressProperty, configuration.GetString(prefix_key)},
           {kDhcpv6LengthProperty,
-              base::UintToString(configuration.GetUint(prefix_length_key))},
+           base::UintToString(configuration.GetUint(prefix_length_key))},
           {kDhcpv6LeaseDurationSecondsProperty, base::UintToString(lease_time)},
           {kDhcpv6PreferredLeaseDurationSecondsProperty,
-              base::UintToString(preferred_lease_time)},
+           base::UintToString(preferred_lease_time)},
       });
       UpdateLeaseTime(lease_time);
     }
@@ -182,9 +180,8 @@ bool DHCPv6Config::ParseConfiguration(const KeyValueStore& configuration) {
         base::StringPrintf("%s%d", kConfigurationKeyIPAddress, i);
     const std::string address_lease_time_key =
         base::StringPrintf("%s%d", kConfigurationKeyIPAddressLeaseTime, i);
-    const std::string address_preferred_lease_time_key =
-        base::StringPrintf(
-            "%s%d", kConfigurationKeyIPAddressPreferredLeaseTime, i);
+    const std::string address_preferred_lease_time_key = base::StringPrintf(
+        "%s%d", kConfigurationKeyIPAddressPreferredLeaseTime, i);
 
     if (configuration.ContainsString(address_key) &&
         configuration.ContainsUint(address_lease_time_key) &&
@@ -197,15 +194,14 @@ bool DHCPv6Config::ParseConfiguration(const KeyValueStore& configuration) {
           {kDhcpv6LengthProperty, "128"},  // IPv6 addresses are 128 bits long.
           {kDhcpv6LeaseDurationSecondsProperty, base::UintToString(lease_time)},
           {kDhcpv6PreferredLeaseDurationSecondsProperty,
-              base::UintToString(preferred_lease_time)},
+           base::UintToString(preferred_lease_time)},
       });
       UpdateLeaseTime(lease_time);
     }
   }
 
   if (configuration.Contains(kConfigurationKeyDNS)) {
-    properties_.dns_servers =
-        configuration.GetStrings(kConfigurationKeyDNS);
+    properties_.dns_servers = configuration.GetStrings(kConfigurationKeyDNS);
   }
   if (configuration.Contains(kConfigurationKeyDomainSearch)) {
     properties_.domain_search =

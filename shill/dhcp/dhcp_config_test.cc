@@ -49,12 +49,12 @@ class TestDHCPConfig : public DHCPConfig {
                  const std::string& device_name,
                  const std::string& type,
                  const std::string& lease_file_suffix)
-     : DHCPConfig(control_interface,
-                  dispatcher,
-                  provider,
-                  device_name,
-                  type,
-                  lease_file_suffix) {}
+      : DHCPConfig(control_interface,
+                   dispatcher,
+                   provider,
+                   device_name,
+                   type,
+                   lease_file_suffix) {}
 
   ~TestDHCPConfig() override = default;
 
@@ -79,13 +79,9 @@ class DHCPConfigTest : public PropertyStoreTest {
                                    kDhcpMethod,
                                    kLeaseFileSuffix)) {}
 
-  void SetUp() override {
-    config_->process_manager_ = &process_manager_;
-  }
+  void SetUp() override { config_->process_manager_ = &process_manager_; }
 
-  void StopInstance() {
-    config_->Stop("In test");
-  }
+  void StopInstance() { config_->Stop("In test"); }
 
   TestDHCPConfigRefPtr CreateMockMinijailConfig(const string& lease_suffix);
 
@@ -102,12 +98,9 @@ const int DHCPConfigTest::kPID = 123456;
 
 TestDHCPConfigRefPtr DHCPConfigTest::CreateMockMinijailConfig(
     const string& lease_suffix) {
-  TestDHCPConfigRefPtr config(new TestDHCPConfig(control_interface(),
-                                                 dispatcher(),
-                                                 &provider_,
-                                                 kDeviceName,
-                                                 kDhcpMethod,
-                                                 lease_suffix));
+  TestDHCPConfigRefPtr config(
+      new TestDHCPConfig(control_interface(), dispatcher(), &provider_,
+                         kDeviceName, kDhcpMethod, lease_suffix));
   config->process_manager_ = &process_manager_;
 
   return config;
@@ -135,15 +128,15 @@ TEST_F(DHCPConfigTest, StartFail) {
 }
 
 MATCHER_P(IsDHCPCDArgs, has_lease_suffix, "") {
-  if (arg[0] != "-B" ||
-      arg[1] != "-q") {
+  if (arg[0] != "-B" || arg[1] != "-q") {
     return false;
   }
 
   int end_offset = 2;
 
-  string device_arg = has_lease_suffix ?
-      string(kDeviceName) + "=" + string(kLeaseFileSuffix) : kDeviceName;
+  string device_arg = has_lease_suffix
+                          ? string(kDeviceName) + "=" + string(kLeaseFileSuffix)
+                          : kDeviceName;
   return arg[end_offset] == device_arg;
 }
 
@@ -393,8 +386,9 @@ TEST_F(DHCPConfigTest, Stop) {
   const int kPID = 1 << 17;  // Ensure unknown positive PID.
   ScopedMockLog log;
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log, Log(_, _, ContainsRegex(
-      base::StringPrintf("Stopping.+%s", __func__))));
+  EXPECT_CALL(
+      log,
+      Log(_, _, ContainsRegex(base::StringPrintf("Stopping.+%s", __func__))));
   config_->pid_ = kPID;
   config_->lease_acquisition_timeout_callback_.Reset(base::Bind(&DoNothing));
   config_->lease_expiration_callback_.Reset(base::Bind(&DoNothing));

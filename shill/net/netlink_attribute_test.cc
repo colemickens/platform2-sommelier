@@ -21,7 +21,7 @@ using testing::Test;
 
 namespace shill {
 
-class NetlinkAttributeTest : public Test { };
+class NetlinkAttributeTest : public Test {};
 
 TEST_F(NetlinkAttributeTest, StringAttribute) {
   NetlinkStringAttribute attr(0, "string id");

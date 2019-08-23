@@ -149,9 +149,7 @@ class ManagerTest : public PropertyStoreTest {
         new NiceMock<MockDevice>(manager(), "null3", "addr3", 3));
   }
 
-  void TearDown() override {
-    mock_devices_.clear();
-  }
+  void TearDown() override { mock_devices_.clear(); }
 
   bool IsDeviceRegistered(const DeviceRefPtr& device, Technology tech) {
     auto devices = manager()->FilterByTechnology(tech);
@@ -163,9 +161,7 @@ class ManagerTest : public PropertyStoreTest {
     manager->profiles_.push_back(profile);
   }
 
-  void SetRunning(bool running) {
-    manager()->running_ = running;
-  }
+  void SetRunning(bool running) { manager()->running_ = running; }
 
   ProfileRefPtr GetEphemeralProfile(Manager* manager) {
     return manager->ephemeral_profile_;
@@ -194,8 +190,8 @@ class ManagerTest : public PropertyStoreTest {
             temp_dir->GetPath(),
             Profile::Identifier(user_identifier, profile_identifier)));
     return store->Open() &&
-        store->SetString(service_name, "rather", "irrelevant") &&
-        store->Close();
+           store->SetString(service_name, "rather", "irrelevant") &&
+           store->Close();
   }
 
   Error::Type TestCreateProfile(Manager* manager, const string& name) {
@@ -262,17 +258,13 @@ class ManagerTest : public PropertyStoreTest {
     return !manager()->sort_services_task_.IsCancelled();
   }
 
-  void RefreshConnectionState() {
-    manager()->RefreshConnectionState();
-  }
+  void RefreshConnectionState() { manager()->RefreshConnectionState(); }
 
   RpcIdentifier GetDefaultServiceRpcIdentifier() {
     return manager()->GetDefaultServiceRpcIdentifier(nullptr);
   }
 
-  void SetResolver(Resolver* resolver) {
-    manager()->resolver_ = resolver;
-  }
+  void SetResolver(Resolver* resolver) { manager()->resolver_ = resolver; }
 
   bool SetIgnoredDNSSearchPaths(const string& search_paths, Error* error) {
     return manager()->SetIgnoredDNSSearchPaths(search_paths, error);
@@ -322,8 +314,8 @@ class ManagerTest : public PropertyStoreTest {
     DISALLOW_COPY_AND_ASSIGN(ServiceWatcher);
   };
 
-  class TerminationActionTest :
-      public base::SupportsWeakPtr<TerminationActionTest> {
+  class TerminationActionTest
+      : public base::SupportsWeakPtr<TerminationActionTest> {
    public:
     static const char kActionName[];
 
@@ -332,9 +324,7 @@ class ManagerTest : public PropertyStoreTest {
 
     MOCK_METHOD1(Done, void(const Error& error));
 
-    void Action() {
-      manager_->TerminationActionComplete("action");
-    }
+    void Action() { manager_->TerminationActionComplete("action"); }
 
     void set_manager(Manager* manager) { manager_ = manager; }
 
@@ -343,21 +333,22 @@ class ManagerTest : public PropertyStoreTest {
     DISALLOW_COPY_AND_ASSIGN(TerminationActionTest);
   };
 
-  class DestinationVerificationTest :
-      public base::SupportsWeakPtr<DestinationVerificationTest> {
+  class DestinationVerificationTest
+      : public base::SupportsWeakPtr<DestinationVerificationTest> {
    public:
     DestinationVerificationTest() = default;
     virtual ~DestinationVerificationTest() = default;
 
     MOCK_METHOD2(ResultBoolCallbackStub, void(const Error& result, bool flag));
-    MOCK_METHOD2(ResultStringCallbackStub, void(const Error& result,
-                                                const string& value));
+    MOCK_METHOD2(ResultStringCallbackStub,
+                 void(const Error& result, const string& value));
+
    private:
     DISALLOW_COPY_AND_ASSIGN(DestinationVerificationTest);
   };
 
-  class DisableTechnologyReplyHandler :
-      public base::SupportsWeakPtr<DisableTechnologyReplyHandler> {
+  class DisableTechnologyReplyHandler
+      : public base::SupportsWeakPtr<DisableTechnologyReplyHandler> {
    public:
     DisableTechnologyReplyHandler() = default;
     virtual ~DisableTechnologyReplyHandler() = default;
@@ -371,16 +362,13 @@ class ManagerTest : public PropertyStoreTest {
   class ResultCallbackObserver {
    public:
     ResultCallbackObserver()
-        : result_callback_(
-              Bind(&ResultCallbackObserver::OnResultCallback,
-                   Unretained(this))) {}
+        : result_callback_(Bind(&ResultCallbackObserver::OnResultCallback,
+                                Unretained(this))) {}
     virtual ~ResultCallbackObserver() = default;
 
     MOCK_METHOD1(OnResultCallback, void(const Error& error));
 
-    const ResultCallback& result_callback() const {
-      return result_callback_;
-    }
+    const ResultCallback& result_callback() const { return result_callback_; }
 
    private:
     ResultCallback result_callback_;
@@ -400,17 +388,11 @@ class ManagerTest : public PropertyStoreTest {
     return &manager()->termination_actions_;
   }
 
-  void OnSuspendImminent() {
-    manager()->OnSuspendImminent();
-  }
+  void OnSuspendImminent() { manager()->OnSuspendImminent(); }
 
-  void OnDarkSuspendImminent() {
-    manager()->OnDarkSuspendImminent();
-  }
+  void OnDarkSuspendImminent() { manager()->OnDarkSuspendImminent(); }
 
-  void OnSuspendDone() {
-    manager()->OnSuspendDone();
-  }
+  void OnSuspendDone() { manager()->OnSuspendDone(); }
 
   void OnSuspendActionsComplete(const Error& error) {
     manager()->OnSuspendActionsComplete(error);
@@ -613,12 +595,8 @@ TEST_F(ManagerTest, DeviceDeregistration) {
 }
 
 TEST_F(ManagerTest, ServiceRegistration) {
-  Manager manager(control_interface(),
-                  dispatcher(),
-                  metrics(),
-                  run_path(),
-                  storage_path(),
-                  string());
+  Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
+                  storage_path(), string());
   ProfileRefPtr profile(CreateProfileForManager(&manager));
   ASSERT_NE(nullptr, profile);
   AdoptProfile(&manager, profile);
@@ -655,12 +633,8 @@ TEST_F(ManagerTest, ServiceRegistration) {
 }
 
 TEST_F(ManagerTest, RegisterKnownService) {
-  Manager manager(control_interface(),
-                  dispatcher(),
-                  metrics(),
-                  run_path(),
-                  storage_path(),
-                  string());
+  Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
+                  storage_path(), string());
   ProfileRefPtr profile(CreateProfileForManager(&manager));
   ASSERT_NE(nullptr, profile);
   AdoptProfile(&manager, profile);
@@ -679,12 +653,8 @@ TEST_F(ManagerTest, RegisterKnownService) {
 }
 
 TEST_F(ManagerTest, RegisterUnknownService) {
-  Manager manager(control_interface(),
-                  dispatcher(),
-                  metrics(),
-                  run_path(),
-                  storage_path(),
-                  string());
+  Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
+                  storage_path(), string());
   ProfileRefPtr profile(CreateProfileForManager(&manager));
   ASSERT_NE(nullptr, profile);
   AdoptProfile(&manager, profile);
@@ -719,10 +689,8 @@ TEST_F(ManagerTest, GetProperties) {
     brillo::VariantDictionary props;
     Error error;
     string expected("portal_list");
-    manager()->mutable_store()->SetStringProperty(
-        kCheckPortalListProperty,
-        expected,
-        &error);
+    manager()->mutable_store()->SetStringProperty(kCheckPortalListProperty,
+                                                  expected, &error);
     manager()->store().GetProperties(&props, &error);
     ASSERT_FALSE(props.find(kCheckPortalListProperty) == props.end());
     EXPECT_TRUE(props[kCheckPortalListProperty].IsTypeCompatible<string>());
@@ -732,8 +700,7 @@ TEST_F(ManagerTest, GetProperties) {
     brillo::VariantDictionary props;
     Error error;
     bool expected = true;
-    manager()->mutable_store()->SetBoolProperty(kOfflineModeProperty,
-                                                expected,
+    manager()->mutable_store()->SetBoolProperty(kOfflineModeProperty, expected,
                                                 &error);
     manager()->store().GetProperties(&props, &error);
     ASSERT_FALSE(props.find(kOfflineModeProperty) == props.end());
@@ -753,7 +720,7 @@ TEST_F(ManagerTest, GetDevicesProperty) {
     ASSERT_FALSE(props.find(kDevicesProperty) == props.end());
     EXPECT_TRUE(
         props[kDevicesProperty].IsTypeCompatible<vector<dbus::ObjectPath>>());
-    vector <dbus::ObjectPath> devices =
+    vector<dbus::ObjectPath> devices =
         props[kDevicesProperty].Get<vector<dbus::ObjectPath>>();
     EXPECT_EQ(2, devices.size());
   }
@@ -770,12 +737,8 @@ TEST_F(ManagerTest, GetServicesProperty) {
 }
 
 TEST_F(ManagerTest, MoveService) {
-  Manager manager(control_interface(),
-                  dispatcher(),
-                  metrics(),
-                  run_path(),
-                  storage_path(),
-                  string());
+  Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
+                  storage_path(), string());
   MockServiceRefPtr s2(new MockService(&manager));
   // Inject an actual profile, backed by a fake StoreInterface
   {
@@ -828,8 +791,7 @@ TEST_F(ManagerTest, SetProfileForService) {
   EXPECT_FALSE(manager()->HasService(service));
   {
     Error error;
-    EXPECT_CALL(*profile0, AdoptService(_))
-        .WillOnce(Return(true));
+    EXPECT_CALL(*profile0, AdoptService(_)).WillOnce(Return(true));
     // Expect that setting the profile of a service that does not already
     // have one assigned does not cause a crash.
     manager()->SetProfileForService(service, RpcIdentifier("profile0"), &error);
@@ -866,10 +828,8 @@ TEST_F(ManagerTest, SetProfileForService) {
 
   {
     Error error;
-    EXPECT_CALL(*profile1, AdoptService(_))
-        .WillOnce(Return(true));
-    EXPECT_CALL(*profile0, AbandonService(_))
-        .WillOnce(Return(true));
+    EXPECT_CALL(*profile1, AdoptService(_)).WillOnce(Return(true));
+    EXPECT_CALL(*profile0, AbandonService(_)).WillOnce(Return(true));
     manager()->SetProfileForService(service, profile_name1, &error);
     EXPECT_TRUE(error.IsSuccess());
   }
@@ -879,12 +839,8 @@ TEST_F(ManagerTest, CreateProfile) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  Manager manager(control_interface(),
-                  dispatcher(),
-                  metrics(),
-                  run_path(),
-                  storage_path(),
-                  temp_dir.GetPath().value());
+  Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
+                  storage_path(), temp_dir.GetPath().value());
 
   // Invalid name should be rejected.
   EXPECT_EQ(Error::kInvalidArguments, TestCreateProfile(&manager, ""));
@@ -915,12 +871,8 @@ TEST_F(ManagerTest, CreateProfile) {
 TEST_F(ManagerTest, PushPopProfile) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  Manager manager(control_interface(),
-                  dispatcher(),
-                  metrics(),
-                  run_path(),
-                  storage_path(),
-                  temp_dir.GetPath().value());
+  Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
+                  storage_path(), temp_dir.GetPath().value());
   vector<ProfileRefPtr>& profiles = GetProfiles(&manager);
 
   // Pushing an invalid profile should fail.
@@ -935,11 +887,9 @@ TEST_F(ManagerTest, PushPopProfile) {
   // Pushing a default profile that does not exist on disk will _not_
   // fail, because we'll use temporary storage for it.
   const char kMissingDefaultProfile[] = "missingdefault";
-  EXPECT_EQ(Error::kSuccess,
-            TestPushProfile(&manager, kMissingDefaultProfile));
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kMissingDefaultProfile));
   EXPECT_EQ(1, profiles.size());
-  EXPECT_EQ(Error::kSuccess,
-            TestPopProfile(&manager, kMissingDefaultProfile));
+  EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager, kMissingDefaultProfile));
   EXPECT_EQ(0, profiles.size());
 
   const char kProfile0[] = "~user/profile0";
@@ -1096,17 +1046,12 @@ TEST_F(ManagerTest, PushPopProfile) {
 TEST_F(ManagerTest, RemoveProfile) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  Manager manager(control_interface(),
-                  dispatcher(),
-                  metrics(),
-                  run_path(),
-                  storage_path(),
-                  temp_dir.GetPath().value());
+  Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
+                  storage_path(), temp_dir.GetPath().value());
 
   const char kProfile0[] = "profile0";
-  FilePath profile_path(
-      Profile::GetFinalStoragePath(
-          FilePath(storage_path()), Profile::Identifier(kProfile0)));
+  FilePath profile_path(Profile::GetFinalStoragePath(
+      FilePath(storage_path()), Profile::Identifier(kProfile0)));
 
   ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kProfile0));
   ASSERT_TRUE(base::PathExists(profile_path));
@@ -1202,17 +1147,12 @@ TEST_F(ManagerTest, RemoveService) {
 TEST_F(ManagerTest, CreateDuplicateProfileWithMissingKeyfile) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  Manager manager(control_interface(),
-                  dispatcher(),
-                  metrics(),
-                  run_path(),
-                  storage_path(),
-                  temp_dir.GetPath().value());
+  Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
+                  storage_path(), temp_dir.GetPath().value());
 
   const char kProfile0[] = "profile0";
-  FilePath profile_path(
-      Profile::GetFinalStoragePath(
-          FilePath(storage_path()), Profile::Identifier(kProfile0)));
+  FilePath profile_path(Profile::GetFinalStoragePath(
+      FilePath(storage_path()), Profile::Identifier(kProfile0)));
   ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kProfile0));
   ASSERT_TRUE(base::PathExists(profile_path));
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile0));
@@ -1351,8 +1291,7 @@ TEST_F(ManagerTest, HandleProfileEntryDeletionWithUnload) {
   AdoptProfile(manager(), profile);
 
   // Deny any of the services re-entry to the profile.
-  EXPECT_CALL(*profile, ConfigureService(_))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*profile, ConfigureService(_)).WillRepeatedly(Return(false));
 
   EXPECT_CALL(*profile, AbandonService(ServiceRefPtr(s_will_remove0)))
       .WillOnce(Return(true));
@@ -1363,15 +1302,10 @@ TEST_F(ManagerTest, HandleProfileEntryDeletionWithUnload) {
   EXPECT_CALL(*profile, AbandonService(ServiceRefPtr(s_will_not_remove1)))
       .WillOnce(Return(true));
 
-  EXPECT_CALL(*s_will_remove0, Unload())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*s_will_remove1, Unload())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*s_will_not_remove0, Unload())
-      .WillOnce(Return(false));
-  EXPECT_CALL(*s_will_not_remove1, Unload())
-      .WillOnce(Return(false));
-
+  EXPECT_CALL(*s_will_remove0, Unload()).WillOnce(Return(true));
+  EXPECT_CALL(*s_will_remove1, Unload()).WillOnce(Return(true));
+  EXPECT_CALL(*s_will_not_remove0, Unload()).WillOnce(Return(false));
+  EXPECT_CALL(*s_will_not_remove1, Unload()).WillOnce(Return(false));
 
   // This will cause all the profiles to be unloaded.
   EXPECT_FALSE(IsSortServicesTaskPending());
@@ -1420,17 +1354,12 @@ TEST_F(ManagerTest, PopProfileWithUnload) {
   AdoptProfile(manager(), profile1);
 
   // Deny any of the services entry to profile0, so they will all be unloaded.
-  EXPECT_CALL(*profile0, ConfigureService(_))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*profile0, ConfigureService(_)).WillRepeatedly(Return(false));
 
-  EXPECT_CALL(*s_will_remove0, Unload())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*s_will_remove1, Unload())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*s_will_not_remove0, Unload())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*s_will_not_remove1, Unload())
-      .WillOnce(Return(false));
+  EXPECT_CALL(*s_will_remove0, Unload()).WillOnce(Return(true));
+  EXPECT_CALL(*s_will_remove1, Unload()).WillOnce(Return(true));
+  EXPECT_CALL(*s_will_not_remove0, Unload()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*s_will_not_remove1, Unload()).WillOnce(Return(false));
 
   // Ignore calls to Profile::GetRpcIdentifier because of emitted changes of the
   // profile list.
@@ -1504,8 +1433,9 @@ TEST_F(ManagerTest, RequestScan) {
     EXPECT_CALL(*mock_devices_[1], technology())
         .WillRepeatedly(Return(Technology::kUnknown));
     EXPECT_CALL(*mock_devices_[1], Scan(_, _)).Times(0);
-    EXPECT_CALL(*metrics(), NotifyUserInitiatedEvent(
-        Metrics::kUserInitiatedEventWifiScan)).Times(1);
+    EXPECT_CALL(*metrics(),
+                NotifyUserInitiatedEvent(Metrics::kUserInitiatedEventWifiScan))
+        .Times(1);
     manager()->RequestScan(kTypeWifi, &error);
     manager()->DeregisterDevice(mock_devices_[0].get());
     manager()->DeregisterDevice(mock_devices_[1].get());
@@ -1515,8 +1445,9 @@ TEST_F(ManagerTest, RequestScan) {
     manager()->RegisterDevice(mock_devices_[0].get());
     EXPECT_CALL(*mock_devices_[0], technology())
         .WillRepeatedly(Return(Technology::kWifi));
-    EXPECT_CALL(*metrics(), NotifyUserInitiatedEvent(
-        Metrics::kUserInitiatedEventWifiScan)).Times(1);
+    EXPECT_CALL(*metrics(),
+                NotifyUserInitiatedEvent(Metrics::kUserInitiatedEventWifiScan))
+        .Times(1);
     EXPECT_CALL(*mock_devices_[0], Scan(_, _));
     manager()->RequestScan(kTypeWifi, &error);
     manager()->DeregisterDevice(mock_devices_[0].get());
@@ -1525,8 +1456,9 @@ TEST_F(ManagerTest, RequestScan) {
     manager()->RegisterDevice(mock_devices_[0].get());
     EXPECT_CALL(*mock_devices_[0], technology())
         .WillRepeatedly(Return(Technology::kUnknown));
-    EXPECT_CALL(*metrics(), NotifyUserInitiatedEvent(
-        Metrics::kUserInitiatedEventWifiScan)).Times(0);
+    EXPECT_CALL(*metrics(),
+                NotifyUserInitiatedEvent(Metrics::kUserInitiatedEventWifiScan))
+        .Times(0);
     EXPECT_CALL(*mock_devices_[0], Scan(_, _)).Times(0);
     manager()->RequestScan(kTypeWifi, &error);
     manager()->DeregisterDevice(mock_devices_[0].get());
@@ -1628,8 +1560,7 @@ TEST_F(ManagerTest, GetServiceVPN) {
   EXPECT_CALL(*profile, UpdateService(_))
       .WillOnce(DoAll(SaveArg<0>(&updated_service), Return(true)));
   ServiceRefPtr configured_service;
-  EXPECT_CALL(*profile, LoadService(_))
-      .WillOnce(Return(false));
+  EXPECT_CALL(*profile, LoadService(_)).WillOnce(Return(false));
   EXPECT_CALL(*profile, ConfigureService(_))
       .WillOnce(DoAll(SaveArg<0>(&configured_service), Return(true)));
   ServiceRefPtr service = manager()->GetService(args, &e);
@@ -1680,19 +1611,13 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithoutProfile) {
   AdoptProfile(manager(), profile);  // This is now the active profile.
 
   const vector<uint8_t> ssid;
-  scoped_refptr<MockWiFiService> service(
-      new NiceMock<MockWiFiService>(manager(),
-                                    wifi_provider_,
-                                    ssid,
-                                    "",
-                                    "",
-                                    false));
+  scoped_refptr<MockWiFiService> service(new NiceMock<MockWiFiService>(
+      manager(), wifi_provider_, ssid, "", "", false));
 
   manager()->RegisterService(service);
   service->set_profile(GetEphemeralProfile(manager()));
 
-  EXPECT_CALL(*wifi_provider_, GetService(_, _))
-      .WillOnce(Return(service));
+  EXPECT_CALL(*wifi_provider_, GetService(_, _)).WillOnce(Return(service));
   EXPECT_CALL(*profile, UpdateService(ServiceRefPtr(service.get())))
       .WillOnce(Return(true));
   EXPECT_CALL(*profile, AdoptService(ServiceRefPtr(service.get())))
@@ -1724,19 +1649,13 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
   AdoptProfile(manager(), profile1);  // profile1 is now the ActiveProfile.
 
   const vector<uint8_t> ssid;
-  scoped_refptr<MockWiFiService> service(
-      new NiceMock<MockWiFiService>(manager(),
-                                    wifi_provider_,
-                                    ssid,
-                                    "",
-                                    "",
-                                    false));
+  scoped_refptr<MockWiFiService> service(new NiceMock<MockWiFiService>(
+      manager(), wifi_provider_, ssid, "", "", false));
 
   manager()->RegisterService(service);
   service->set_profile(profile1);
 
-  EXPECT_CALL(*wifi_provider_, GetService(_, _))
-      .WillOnce(Return(service));
+  EXPECT_CALL(*wifi_provider_, GetService(_, _)).WillOnce(Return(service));
   EXPECT_CALL(*profile0, LoadService(ServiceRefPtr(service.get())))
       .WillOnce(Return(true));
   EXPECT_CALL(*profile0, UpdateService(ServiceRefPtr(service.get())))
@@ -1769,25 +1688,17 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithSameProfile) {
   AdoptProfile(manager(), profile0);  // profile0 is now the ActiveProfile.
 
   const vector<uint8_t> ssid;
-  scoped_refptr<MockWiFiService> service(
-      new NiceMock<MockWiFiService>(manager(),
-                                    wifi_provider_,
-                                    ssid,
-                                    "",
-                                    "",
-                                    false));
+  scoped_refptr<MockWiFiService> service(new NiceMock<MockWiFiService>(
+      manager(), wifi_provider_, ssid, "", "", false));
 
   manager()->RegisterService(service);
   service->set_profile(profile0);
 
-  EXPECT_CALL(*wifi_provider_, GetService(_, _))
-      .WillOnce(Return(service));
-  EXPECT_CALL(*profile0, LoadService(ServiceRefPtr(service.get())))
-      .Times(0);
+  EXPECT_CALL(*wifi_provider_, GetService(_, _)).WillOnce(Return(service));
+  EXPECT_CALL(*profile0, LoadService(ServiceRefPtr(service.get()))).Times(0);
   EXPECT_CALL(*profile0, UpdateService(ServiceRefPtr(service.get())))
       .WillOnce(Return(true));
-  EXPECT_CALL(*profile0, AdoptService(ServiceRefPtr(service.get())))
-      .Times(0);
+  EXPECT_CALL(*profile0, AdoptService(ServiceRefPtr(service.get()))).Times(0);
 
   KeyValueStore args;
   args.SetString(kTypeProperty, kTypeWifi);
@@ -1816,24 +1727,16 @@ TEST_F(ManagerTest, ConfigureUnregisteredServiceWithProfile) {
   AdoptProfile(manager(), profile1);  // profile1 is now the ActiveProfile.
 
   const vector<uint8_t> ssid;
-  scoped_refptr<MockWiFiService> service(
-      new NiceMock<MockWiFiService>(manager(),
-                                    wifi_provider_,
-                                    ssid,
-                                    "",
-                                    "",
-                                    false));
+  scoped_refptr<MockWiFiService> service(new NiceMock<MockWiFiService>(
+      manager(), wifi_provider_, ssid, "", "", false));
 
   service->set_profile(profile1);
 
-  EXPECT_CALL(*wifi_provider_, GetService(_, _))
-      .WillOnce(Return(service));
+  EXPECT_CALL(*wifi_provider_, GetService(_, _)).WillOnce(Return(service));
   EXPECT_CALL(*profile0, UpdateService(ServiceRefPtr(service.get())))
       .WillOnce(Return(true));
-  EXPECT_CALL(*profile0, AdoptService(_))
-      .Times(0);
-  EXPECT_CALL(*profile1, AdoptService(_))
-      .Times(0);
+  EXPECT_CALL(*profile0, AdoptService(_)).Times(0);
+  EXPECT_CALL(*profile1, AdoptService(_)).Times(0);
 
   KeyValueStore args;
   args.SetString(kTypeProperty, kTypeWifi);
@@ -1868,9 +1771,8 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithMissingProfile) {
   KeyValueStore args;
   args.SetString(kTypeProperty, kTypeWifi);
   Error error;
-  ServiceRefPtr service =
-      manager()->ConfigureServiceForProfile(RpcIdentifier("/profile/foo"),
-                                            args, &error);
+  ServiceRefPtr service = manager()->ConfigureServiceForProfile(
+      RpcIdentifier("/profile/foo"), args, &error);
   EXPECT_EQ(Error::kNotFound, error.type());
   EXPECT_EQ("Profile specified was not found", error.message());
   EXPECT_EQ(nullptr, service);
@@ -1889,8 +1791,10 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithProfileMismatch) {
   ServiceRefPtr service =
       manager()->ConfigureServiceForProfile(kProfileName0, args, &error);
   EXPECT_EQ(Error::kInvalidArguments, error.type());
-  EXPECT_EQ("Profile argument does not match that in "
-            "the configuration arguments", error.message());
+  EXPECT_EQ(
+      "Profile argument does not match that in "
+      "the configuration arguments",
+      error.message());
   EXPECT_EQ(nullptr, service);
 }
 
@@ -1923,13 +1827,9 @@ TEST_F(ManagerTest, ConfigureServiceForProfileCreateNewService) {
   KeyValueStore args;
   args.SetString(kTypeProperty, kTypeWifi);
 
-  scoped_refptr<MockWiFiService> mock_service(
-      new NiceMock<MockWiFiService>(manager(),
-                                    wifi_provider_,
-                                    vector<uint8_t>(),
-                                    kModeManaged,
-                                    kSecurityNone,
-                                    false));
+  scoped_refptr<MockWiFiService> mock_service(new NiceMock<MockWiFiService>(
+      manager(), wifi_provider_, vector<uint8_t>(), kModeManaged, kSecurityNone,
+      false));
   ServiceRefPtr mock_service_generic(mock_service.get());
   mock_service->set_profile(profile0);
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
@@ -1958,8 +1858,8 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceByGUID) {
   mock_service->set_profile(profile);
 
   EXPECT_CALL(*mock_service, technology())
-     .WillOnce(Return(Technology::kCellular))
-     .WillOnce(Return(Technology::kWifi));
+      .WillOnce(Return(Technology::kCellular))
+      .WillOnce(Return(Technology::kWifi));
 
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _)).Times(0);
   EXPECT_CALL(*wifi_provider_, GetService(_, _)).Times(0);
@@ -1999,13 +1899,9 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceAndProfile) {
   scoped_refptr<MockProfile> profile(
       AddNamedMockProfileToManager(manager(), kProfileName));
 
-  scoped_refptr<MockWiFiService> mock_service(
-      new NiceMock<MockWiFiService>(manager(),
-                                    wifi_provider_,
-                                    vector<uint8_t>(),
-                                    kModeManaged,
-                                    kSecurityNone,
-                                    false));
+  scoped_refptr<MockWiFiService> mock_service(new NiceMock<MockWiFiService>(
+      manager(), wifi_provider_, vector<uint8_t>(), kModeManaged, kSecurityNone,
+      false));
   mock_service->set_profile(profile);
   ServiceRefPtr mock_service_generic(mock_service.get());
 
@@ -2032,13 +1928,9 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceEphemeralProfile) {
   scoped_refptr<MockProfile> profile(
       AddNamedMockProfileToManager(manager(), kProfileName));
 
-  scoped_refptr<MockWiFiService> mock_service(
-      new NiceMock<MockWiFiService>(manager(),
-                                    wifi_provider_,
-                                    vector<uint8_t>(),
-                                    kModeManaged,
-                                    kSecurityNone,
-                                    false));
+  scoped_refptr<MockWiFiService> mock_service(new NiceMock<MockWiFiService>(
+      manager(), wifi_provider_, vector<uint8_t>(), kModeManaged, kSecurityNone,
+      false));
   mock_service->set_profile(GetEphemeralProfile(manager()));
   ServiceRefPtr mock_service_generic(mock_service.get());
 
@@ -2067,13 +1959,9 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServicePrecedingProfile) {
   scoped_refptr<MockProfile> profile1(
       AddNamedMockProfileToManager(manager(), kProfileName1));
 
-  scoped_refptr<MockWiFiService> mock_service(
-      new NiceMock<MockWiFiService>(manager(),
-                                    wifi_provider_,
-                                    vector<uint8_t>(),
-                                    kModeManaged,
-                                    kSecurityNone,
-                                    false));
+  scoped_refptr<MockWiFiService> mock_service(new NiceMock<MockWiFiService>(
+      manager(), wifi_provider_, vector<uint8_t>(), kModeManaged, kSecurityNone,
+      false));
   manager()->RegisterService(mock_service);
   mock_service->set_profile(profile0);
   ServiceRefPtr mock_service_generic(mock_service.get());
@@ -2110,12 +1998,9 @@ TEST_F(ManagerTest,
       AddNamedMockProfileToManager(manager(), kProfileName1));
 
   scoped_refptr<MockWiFiService> matching_service(
-      new StrictMock<MockWiFiService>(manager(),
-                                      wifi_provider_,
-                                      vector<uint8_t>(),
-                                      kModeManaged,
-                                      kSecurityNone,
-                                      false));
+      new StrictMock<MockWiFiService>(manager(), wifi_provider_,
+                                      vector<uint8_t>(), kModeManaged,
+                                      kSecurityNone, false));
   matching_service->set_profile(profile1);
 
   // We need to get rid of our reference to this mock service as soon
@@ -2123,13 +2008,9 @@ TEST_F(ManagerTest,
   // call to WiFiProvider::CreateTemporaryService().  This way the
   // latter function can keep a DCHECK(service->HasOneRef() even in
   // unit tests.
-  temp_mock_service_ =
-      new NiceMock<MockWiFiService>(manager(),
-                                    wifi_provider_,
-                                    vector<uint8_t>(),
-                                    kModeManaged,
-                                    kSecurityNone,
-                                    false);
+  temp_mock_service_ = new NiceMock<MockWiFiService>(
+      manager(), wifi_provider_, vector<uint8_t>(), kModeManaged, kSecurityNone,
+      false);
 
   // Only hold a pointer here so we don't affect the refcount.
   MockWiFiService* mock_service_ptr = temp_mock_service_.get();
@@ -2202,10 +2083,9 @@ TEST_F(ManagerTest, TechnologyOrder) {
   manager()->SetTechnologyOrder("vpn,ethernet,wifi,cellular", &error);
   ASSERT_TRUE(error.IsSuccess());
   EXPECT_FALSE(IsSortServicesTaskPending());
-  EXPECT_THAT(GetTechnologyOrder(), ElementsAre(Technology::kVPN,
-                                                Technology::kEthernet,
-                                                Technology::kWifi,
-                                                Technology::kCellular));
+  EXPECT_THAT(GetTechnologyOrder(),
+              ElementsAre(Technology::kVPN, Technology::kEthernet,
+                          Technology::kWifi, Technology::kCellular));
 
   SetRunning(true);
   manager()->SetTechnologyOrder(string(kTypeEthernet) + "," + string(kTypeWifi),
@@ -2215,8 +2095,8 @@ TEST_F(ManagerTest, TechnologyOrder) {
   EXPECT_EQ(manager()->GetTechnologyOrder(),
             string(kTypeEthernet) + "," + string(kTypeWifi));
 
-  manager()->SetTechnologyOrder(string(kTypeEthernet) + "x," +
-                                string(kTypeWifi), &error);
+  manager()->SetTechnologyOrder(
+      string(kTypeEthernet) + "x," + string(kTypeWifi), &error);
   ASSERT_FALSE(error.IsSuccess());
   EXPECT_EQ(Error::kInvalidArguments, error.type());
   EXPECT_EQ(string(kTypeEthernet) + "," + string(kTypeWifi),
@@ -2231,25 +2111,26 @@ TEST_F(ManagerTest, ConnectionStatusCheck) {
   // Device not connected.
   EXPECT_CALL(*mock_service, IsConnected()).WillOnce(Return(false));
   EXPECT_CALL(*metrics(),
-      NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOffline));
+              NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOffline));
   manager()->ConnectionStatusCheck();
 
   // Device connected, but not online.
   EXPECT_CALL(*mock_service, IsConnected()).WillOnce(Return(true));
   EXPECT_CALL(*mock_service, IsOnline()).WillOnce(Return(false));
   EXPECT_CALL(*metrics(),
-      NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOnline)).Times(0);
-  EXPECT_CALL(*metrics(),
-      NotifyDeviceConnectionStatus(Metrics::kConnectionStatusConnected));
+              NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOnline))
+      .Times(0);
+  EXPECT_CALL(*metrics(), NotifyDeviceConnectionStatus(
+                              Metrics::kConnectionStatusConnected));
   manager()->ConnectionStatusCheck();
 
   // Device connected and online.
   EXPECT_CALL(*mock_service, IsConnected()).WillOnce(Return(true));
   EXPECT_CALL(*mock_service, IsOnline()).WillOnce(Return(true));
   EXPECT_CALL(*metrics(),
-      NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOnline));
-  EXPECT_CALL(*metrics(),
-      NotifyDeviceConnectionStatus(Metrics::kConnectionStatusConnected));
+              NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOnline));
+  EXPECT_CALL(*metrics(), NotifyDeviceConnectionStatus(
+                              Metrics::kConnectionStatusConnected));
   manager()->ConnectionStatusCheck();
 }
 
@@ -2287,10 +2168,9 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // DefaultService should be nullptr.  If a change notification is
   // generated, it should reference kNullPath.
   EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr));
-  EXPECT_CALL(*manager_adaptor_,
-              EmitRpcIdentifierChanged(
-                  kDefaultServiceProperty,
-                  control_interface()->NullRpcIdentifier()))
+  EXPECT_CALL(*manager_adaptor_, EmitRpcIdentifierChanged(
+                                     kDefaultServiceProperty,
+                                     control_interface()->NullRpcIdentifier()))
       .Times(AnyNumber());
   manager()->RegisterService(mock_service0);
   CompleteServiceSort();
@@ -2353,14 +2233,14 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // from ServiceOrderIs.  We notify others of the change in
   // DefaultService.
   EXPECT_CALL(*mock_connection0, SetUseDNS(true));
-  EXPECT_CALL(*mock_connection0, SetMetric(
-                Connection::kDefaultMetric + Connection::kMetricIncrement,
-                true));
+  EXPECT_CALL(*mock_connection0, SetMetric(Connection::kDefaultMetric +
+                                               Connection::kMetricIncrement,
+                                           true));
   EXPECT_CALL(*mock_connection0, SetMetric(Connection::kDefaultMetric, true));
   EXPECT_CALL(*mock_connection1, SetUseDNS(false));
-  EXPECT_CALL(*mock_connection1, SetMetric(
-                Connection::kDefaultMetric + 2 * Connection::kMetricIncrement,
-                false));
+  EXPECT_CALL(*mock_connection1, SetMetric(Connection::kDefaultMetric +
+                                               2 * Connection::kMetricIncrement,
+                                           false));
   EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(mock_service0.get()));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
@@ -2368,23 +2248,21 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
   ServiceWatcher service_watcher;
-  int tag =
-      manager()->RegisterDefaultServiceCallback(
-          Bind(&ServiceWatcher::OnDefaultServiceChanged,
-               service_watcher.AsWeakPtr()));
+  int tag = manager()->RegisterDefaultServiceCallback(Bind(
+      &ServiceWatcher::OnDefaultServiceChanged, service_watcher.AsWeakPtr()));
   EXPECT_EQ(1, tag);
 
   // Changing the ordering causes the DefaultService to change, and
   // appropriate notifications are sent.
   mock_service1->SetPriority(1, nullptr);
   EXPECT_CALL(*mock_connection0, SetUseDNS(false));
-  EXPECT_CALL(*mock_connection0, SetMetric(
-                Connection::kDefaultMetric + 2 * Connection::kMetricIncrement,
-                false));
+  EXPECT_CALL(*mock_connection0, SetMetric(Connection::kDefaultMetric +
+                                               2 * Connection::kMetricIncrement,
+                                           false));
   EXPECT_CALL(*mock_connection1, SetUseDNS(true));
-  EXPECT_CALL(*mock_connection1, SetMetric(
-                Connection::kDefaultMetric + Connection::kMetricIncrement,
-                true));
+  EXPECT_CALL(*mock_connection1, SetMetric(Connection::kDefaultMetric +
+                                               Connection::kMetricIncrement,
+                                           true));
   EXPECT_CALL(*mock_connection1, SetMetric(Connection::kDefaultMetric, true));
   EXPECT_CALL(service_watcher, OnDefaultServiceChanged(_));
   EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(mock_service1.get()));
@@ -2402,9 +2280,9 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // Deregistering the current DefaultService causes the other Service
   // to become default.  Appropriate notifications are sent.
   EXPECT_CALL(*mock_connection0, SetUseDNS(true));
-  EXPECT_CALL(*mock_connection0, SetMetric(
-                Connection::kDefaultMetric + Connection::kMetricIncrement,
-                true));
+  EXPECT_CALL(*mock_connection0, SetMetric(Connection::kDefaultMetric +
+                                               Connection::kMetricIncrement,
+                                           true));
   EXPECT_CALL(*mock_connection0, SetMetric(Connection::kDefaultMetric, true));
   EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(mock_service0.get()));
   EXPECT_CALL(*manager_adaptor_,
@@ -2426,7 +2304,8 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // an external notification.
   EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr));
   EXPECT_CALL(*manager_adaptor_,
-              EmitRpcIdentifierChanged(kDefaultServiceProperty, _)).Times(0);
+              EmitRpcIdentifierChanged(kDefaultServiceProperty, _))
+      .Times(0);
   manager()->SortServicesTask();
 }
 
@@ -2443,15 +2322,11 @@ TEST_F(ManagerTest, UpdateDefaultServices) {
 
   ServiceWatcher service_watcher1;
   ServiceWatcher service_watcher2;
-  int tag1 =
-      manager()->RegisterDefaultServiceCallback(
-          Bind(&ServiceWatcher::OnDefaultServiceChanged,
-               service_watcher1.AsWeakPtr()));
+  int tag1 = manager()->RegisterDefaultServiceCallback(Bind(
+      &ServiceWatcher::OnDefaultServiceChanged, service_watcher1.AsWeakPtr()));
   EXPECT_EQ(1, tag1);
-  int tag2 =
-      manager()->RegisterDefaultServiceCallback(
-          Bind(&ServiceWatcher::OnDefaultServiceChanged,
-               service_watcher2.AsWeakPtr()));
+  int tag2 = manager()->RegisterDefaultServiceCallback(Bind(
+      &ServiceWatcher::OnDefaultServiceChanged, service_watcher2.AsWeakPtr()));
   EXPECT_EQ(2, tag2);
 
   EXPECT_CALL(service_watcher1, OnDefaultServiceChanged(service));
@@ -2658,7 +2533,6 @@ TEST_F(ManagerTest, DefaultTechnology) {
   Error error;
   EXPECT_THAT(manager()->DefaultTechnology(&error), StrEq(""));
 
-
   manager()->RegisterService(connected_service);
   CompleteServiceSort();
   // Connected service should be brought to the front now.
@@ -2709,8 +2583,7 @@ TEST_F(ManagerTest, UpdateServiceConnectedPersistAutoConnect) {
   scoped_refptr<MockProfile> profile(new MockProfile(manager(), ""));
 
   mock_service->set_profile(profile);
-  EXPECT_CALL(*mock_service, IsConnected())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_service, IsConnected()).WillRepeatedly(Return(true));
   EXPECT_CALL(*profile,
               UpdateService(static_cast<ServiceRefPtr>(mock_service)));
   EXPECT_CALL(*mock_service, EnableAndRetainAutoConnect());
@@ -2815,7 +2688,7 @@ TEST_F(ManagerTest, EnumerateProfiles) {
     scoped_refptr<MockProfile> profile(
         new StrictMock<MockProfile>(manager(), ""));
     profile_paths.push_back(
-      RpcIdentifier(base::StringPrintf("/profile/%zd", i)));
+        RpcIdentifier(base::StringPrintf("/profile/%zd", i)));
     EXPECT_CALL(*profile, GetRpcIdentifier())
         .WillOnce(Return(profile_paths.back()));
     AdoptProfile(manager(), profile);
@@ -2968,16 +2841,16 @@ TEST_F(ManagerTest, RunTerminationActions) {
   const string kActionName = "action";
 
   EXPECT_CALL(test_action, Done(_));
-  manager()->RunTerminationActions(Bind(&TerminationActionTest::Done,
-                                        test_action.AsWeakPtr()));
+  manager()->RunTerminationActions(
+      Bind(&TerminationActionTest::Done, test_action.AsWeakPtr()));
 
-  manager()->AddTerminationAction(TerminationActionTest::kActionName,
-                                  Bind(&TerminationActionTest::Action,
-                                       test_action.AsWeakPtr()));
+  manager()->AddTerminationAction(
+      TerminationActionTest::kActionName,
+      Bind(&TerminationActionTest::Action, test_action.AsWeakPtr()));
   test_action.set_manager(manager());
   EXPECT_CALL(test_action, Done(_));
-  manager()->RunTerminationActions(Bind(&TerminationActionTest::Done,
-                                        test_action.AsWeakPtr()));
+  manager()->RunTerminationActions(
+      Bind(&TerminationActionTest::Done, test_action.AsWeakPtr()));
 }
 
 TEST_F(ManagerTest, OnSuspendImminentDevicesPresent) {
@@ -3125,13 +2998,11 @@ TEST_F(ManagerTest, GetServiceWithGUID) {
   manager()->DeregisterService(mock_service1);
 }
 
-
 TEST_F(ManagerTest, CalculateStateOffline) {
   EXPECT_FALSE(manager()->IsConnected());
   EXPECT_EQ("offline", manager()->CalculateState(nullptr));
 
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(_))
-      .Times(AnyNumber());
+  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(_)).Times(AnyNumber());
 
   MockServiceRefPtr mock_service0(new NiceMock<MockService>(manager()));
   MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
@@ -3150,8 +3021,7 @@ TEST_F(ManagerTest, CalculateStateOffline) {
 }
 
 TEST_F(ManagerTest, CalculateStateOnline) {
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(_))
-      .Times(AnyNumber());
+  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(_)).Times(AnyNumber());
 
   MockServiceRefPtr mock_service0(new NiceMock<MockService>(manager()));
   MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
@@ -3184,8 +3054,8 @@ TEST_F(ManagerTest, RefreshConnectionState) {
   Mock::VerifyAndClearExpectations(upstart_);
 
   MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
-  EXPECT_CALL(*manager_adaptor_,
-              EmitStringChanged(kConnectionStateProperty, _)).Times(0);
+  EXPECT_CALL(*manager_adaptor_, EmitStringChanged(kConnectionStateProperty, _))
+      .Times(0);
   EXPECT_CALL(*upstart_, NotifyDisconnected()).Times(0);
   EXPECT_CALL(*upstart_, NotifyConnected());
   manager()->RegisterService(mock_service);
@@ -3194,15 +3064,13 @@ TEST_F(ManagerTest, RefreshConnectionState) {
   scoped_refptr<MockConnection> mock_connection(
       new NiceMock<MockConnection>(device_info_.get()));
   mock_service->set_mock_connection(mock_connection);
-  EXPECT_CALL(*mock_service, state())
-      .WillOnce(Return(Service::kStateIdle));
+  EXPECT_CALL(*mock_service, state()).WillOnce(Return(Service::kStateIdle));
   RefreshConnectionState();
 
   Mock::VerifyAndClearExpectations(manager_adaptor_);
   EXPECT_CALL(*mock_service, state())
       .WillOnce(Return(Service::kStateNoConnectivity));
-  EXPECT_CALL(*mock_service, IsConnected())
-      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_service, IsConnected()).WillOnce(Return(true));
   EXPECT_CALL(*manager_adaptor_, EmitStringChanged(kConnectionStateProperty,
                                                    kStateNoConnectivity));
   RefreshConnectionState();
@@ -3243,10 +3111,8 @@ TEST_F(ManagerTest, StartupPortalList) {
   // Setting a runtime value over the control API should overwrite both
   // the profile value and what we read back.
   Error error;
-  manager()->mutable_store()->SetStringProperty(
-      kCheckPortalListProperty,
-      kRuntimeValue,
-      &error);
+  manager()->mutable_store()->SetStringProperty(kCheckPortalListProperty,
+                                                kRuntimeValue, &error);
   ASSERT_TRUE(error.IsSuccess());
   EXPECT_EQ(kRuntimeValue, manager()->GetCheckPortalList(nullptr));
   EXPECT_EQ(kRuntimeValue, manager()->props_.check_portal_list);
@@ -3284,12 +3150,12 @@ TEST_F(ManagerTest, SetEnabledStateForTechnologyPersistentCheck) {
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
   manager()->RegisterDevice(mock_devices_[0]);
-  manager()->SetEnabledStateForTechnology(kTypeEthernet, false, true,
-                                          &error, disable_technology_callback);
+  manager()->SetEnabledStateForTechnology(kTypeEthernet, false, true, &error,
+                                          disable_technology_callback);
 
   EXPECT_CALL(*mock_devices_[0], SetEnabledNonPersistent(false, _, _));
-  manager()->SetEnabledStateForTechnology(kTypeEthernet, false, false,
-                                          &error, disable_technology_callback);
+  manager()->SetEnabledStateForTechnology(kTypeEthernet, false, false, &error,
+                                          disable_technology_callback);
 }
 
 TEST_F(ManagerTest, SetEnabledStateForTechnology) {
@@ -3300,8 +3166,8 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
            disable_technology_reply_handler.AsWeakPtr()));
   EXPECT_CALL(disable_technology_reply_handler, ReportResult(_)).Times(0);
 
-  manager()->SetEnabledStateForTechnology(kTypeEthernet, false, true,
-                                          &error, disable_technology_callback);
+  manager()->SetEnabledStateForTechnology(kTypeEthernet, false, true, &error,
+                                          disable_technology_callback);
   EXPECT_TRUE(error.IsSuccess());
 
   ON_CALL(*mock_devices_[0], technology())
@@ -3318,8 +3184,8 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(false, _, _))
       .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
   error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(kTypeEthernet, false, true,
-                                          &error, disable_technology_callback);
+  manager()->SetEnabledStateForTechnology(kTypeEthernet, false, true, &error,
+                                          disable_technology_callback);
   EXPECT_TRUE(error.IsSuccess());
 
   // Ethernet Device is enabled, and mock doesn't change error from
@@ -3327,8 +3193,8 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(false, _, _));
   mock_devices_[0]->enabled_ = true;
   error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(kTypeEthernet, false, true,
-                                          &error, disable_technology_callback);
+  manager()->SetEnabledStateForTechnology(kTypeEthernet, false, true, &error,
+                                          disable_technology_callback);
   EXPECT_TRUE(error.IsOngoing());
 
   // Ethernet Device is disabled, and mock doesn't change error from
@@ -3336,8 +3202,8 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(true, _, _));
   mock_devices_[0]->enabled_ = false;
   error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(kTypeEthernet, true, true,
-                                          &error, disable_technology_callback);
+  manager()->SetEnabledStateForTechnology(kTypeEthernet, true, true, &error,
+                                          disable_technology_callback);
   EXPECT_TRUE(error.IsOngoing());
 
   // Cellular Device is enabled, but disable failed.
@@ -3345,8 +3211,8 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
       .WillOnce(WithArg<1>(Invoke(SetErrorPermissionDenied)));
   mock_devices_[1]->enabled_ = true;
   error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(kTypeCellular, false, true,
-                                          &error, disable_technology_callback);
+  manager()->SetEnabledStateForTechnology(kTypeCellular, false, true, &error,
+                                          disable_technology_callback);
   EXPECT_EQ(Error::kPermissionDenied, error.type());
 
   // Multiple Cellular Devices in enabled state. Should indicate IsOngoing
@@ -3358,8 +3224,8 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   mock_devices_[1]->enabled_ = true;
   mock_devices_[2]->enabled_ = true;
   error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(kTypeCellular, false, true,
-                                          &error, disable_technology_callback);
+  manager()->SetEnabledStateForTechnology(kTypeCellular, false, true, &error,
+                                          disable_technology_callback);
   EXPECT_TRUE(error.IsOngoing());
 
   // ...and order doesn't matter.
@@ -3369,8 +3235,8 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   mock_devices_[1]->enabled_ = true;
   mock_devices_[2]->enabled_ = true;
   error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(kTypeCellular, false, true,
-                                          &error, disable_technology_callback);
+  manager()->SetEnabledStateForTechnology(kTypeCellular, false, true, &error,
+                                          disable_technology_callback);
   EXPECT_TRUE(error.IsOngoing());
   Mock::VerifyAndClearExpectations(&disable_technology_reply_handler);
 
@@ -3388,8 +3254,8 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   mock_devices_[1]->enabled_ = true;
   mock_devices_[2]->enabled_ = true;
   error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(kTypeCellular, false, true,
-                                          &error, disable_technology_callback);
+  manager()->SetEnabledStateForTechnology(kTypeCellular, false, true, &error,
+                                          disable_technology_callback);
   EXPECT_TRUE(error.IsOngoing());
   device1_result_callback.Run(Error(Error::kSuccess));
   device2_result_callback.Run(Error(Error::kSuccess));
@@ -3445,27 +3311,27 @@ TEST_F(ManagerTest, ServiceStateChangeEmitsServices) {
       .WillRepeatedly(Return(Service::kStateIdle));
 
   manager()->RegisterService(mock_service);
-  EXPECT_CALL(
-      *manager_adaptor_, EmitRpcIdentifierArrayChanged(
-          kServiceCompleteListProperty, _)).Times(1);
-  EXPECT_CALL(
-      *manager_adaptor_, EmitRpcIdentifierArrayChanged(
-          kServicesProperty, _)).Times(1);
-  EXPECT_CALL(
-      *manager_adaptor_, EmitRpcIdentifierArrayChanged(
-          kServiceWatchListProperty, _)).Times(1);
+  EXPECT_CALL(*manager_adaptor_,
+              EmitRpcIdentifierArrayChanged(kServiceCompleteListProperty, _))
+      .Times(1);
+  EXPECT_CALL(*manager_adaptor_,
+              EmitRpcIdentifierArrayChanged(kServicesProperty, _))
+      .Times(1);
+  EXPECT_CALL(*manager_adaptor_,
+              EmitRpcIdentifierArrayChanged(kServiceWatchListProperty, _))
+      .Times(1);
   CompleteServiceSort();
 
   Mock::VerifyAndClearExpectations(manager_adaptor_);
-  EXPECT_CALL(
-      *manager_adaptor_, EmitRpcIdentifierArrayChanged(
-          kServiceCompleteListProperty, _)).Times(1);
-  EXPECT_CALL(
-      *manager_adaptor_, EmitRpcIdentifierArrayChanged(
-          kServicesProperty, _)).Times(1);
-  EXPECT_CALL(
-      *manager_adaptor_, EmitRpcIdentifierArrayChanged(
-          kServiceWatchListProperty, _)).Times(1);
+  EXPECT_CALL(*manager_adaptor_,
+              EmitRpcIdentifierArrayChanged(kServiceCompleteListProperty, _))
+      .Times(1);
+  EXPECT_CALL(*manager_adaptor_,
+              EmitRpcIdentifierArrayChanged(kServicesProperty, _))
+      .Times(1);
+  EXPECT_CALL(*manager_adaptor_,
+              EmitRpcIdentifierArrayChanged(kServiceWatchListProperty, _))
+      .Times(1);
   manager()->UpdateService(mock_service.get());
   CompleteServiceSort();
 
@@ -3478,8 +3344,7 @@ TEST_F(ManagerTest, EnumerateServices) {
 
   EXPECT_CALL(*mock_service, state())
       .WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*mock_service, IsVisible())
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*mock_service, IsVisible()).WillRepeatedly(Return(false));
   EXPECT_TRUE(EnumerateAvailableServices().empty());
   EXPECT_TRUE(EnumerateWatchedServices().empty());
 
@@ -3488,13 +3353,9 @@ TEST_F(ManagerTest, EnumerateServices) {
   EXPECT_TRUE(EnumerateAvailableServices().empty());
   EXPECT_TRUE(EnumerateWatchedServices().empty());
 
-  EXPECT_CALL(*mock_service, IsVisible())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_service, IsVisible()).WillRepeatedly(Return(true));
   static const Service::ConnectState kUnwatchedStates[] = {
-      Service::kStateUnknown,
-      Service::kStateIdle,
-      Service::kStateFailure
-  };
+      Service::kStateUnknown, Service::kStateIdle, Service::kStateFailure};
   for (auto unwatched_state : kUnwatchedStates) {
     EXPECT_CALL(*mock_service, state()).WillRepeatedly(Return(unwatched_state));
     EXPECT_FALSE(EnumerateAvailableServices().empty());
@@ -3607,7 +3468,7 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   EXPECT_CALL(*cellular_service0, Connect(_, _))
       .Times(0);  // Explicitly disconnected.
   EXPECT_CALL(*cellular_service1, Connect(_, _)).Times(0);  // Is connected.
-  EXPECT_CALL(*vpn_service, Connect(_, _)).Times(0);    // Not autoconnect.
+  EXPECT_CALL(*vpn_service, Connect(_, _)).Times(0);        // Not autoconnect.
 
   manager()->ConnectToBestServices(nullptr);
   dispatcher()->DispatchPendingEvents();
@@ -3753,12 +3614,8 @@ TEST_F(ManagerTest, GetLoadableProfileEntriesForService) {
 TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  Manager manager(control_interface(),
-                  dispatcher(),
-                  metrics(),
-                  run_path(),
-                  storage_path(),
-                  temp_dir.GetPath().value());
+  Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
+                  storage_path(), temp_dir.GetPath().value());
   // Can't use |wifi_provider_|, because it's owned by the Manager
   // object in the fixture.
   MockWiFiProvider* wifi_provider = new NiceMock<MockWiFiProvider>();
@@ -3808,11 +3665,8 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   // Note that we use the same directory for default and user profiles.
   // This doesn't affect the test results, because we don't push a
   // user profile.
-  manager.reset(new Manager(control_interface(),
-                            dispatcher(),
-                            metrics(),
-                            run_path(),
-                            temp_dir.GetPath().value(),
+  manager.reset(new Manager(control_interface(), dispatcher(), metrics(),
+                            run_path(), temp_dir.GetPath().value(),
                             temp_dir.GetPath().value()));
   manager->InitializeProfiles();
   EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
@@ -3834,11 +3688,8 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
 
   // Instantiate a new manager. It should have our settings for
   // check_portal_list, rather than the default.
-  manager.reset(new Manager(control_interface(),
-                            dispatcher(),
-                            metrics(),
-                            run_path(),
-                            temp_dir.GetPath().value(),
+  manager.reset(new Manager(control_interface(), dispatcher(), metrics(),
+                            run_path(), temp_dir.GetPath().value(),
                             temp_dir.GetPath().value()));
   manager->InitializeProfiles();
   EXPECT_EQ(kCustomCheckPortalList, manager->props_.check_portal_list);
@@ -3846,11 +3697,8 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   // If we clear the persistent storage, we again get the default value.
   ASSERT_TRUE(temp_dir.Delete());
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  manager.reset(new Manager(control_interface(),
-                            dispatcher(),
-                            metrics(),
-                            run_path(),
-                            temp_dir.GetPath().value(),
+  manager.reset(new Manager(control_interface(), dispatcher(), metrics(),
+                            run_path(), temp_dir.GetPath().value(),
                             temp_dir.GetPath().value()));
   manager->InitializeProfiles();
   EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
@@ -3861,11 +3709,8 @@ TEST_F(ManagerTest, ProfileStackChangeLogging) {
   ScopedTempDir temp_dir;
   std::unique_ptr<Manager> manager;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  manager.reset(new Manager(control_interface(),
-                            dispatcher(),
-                            metrics(),
-                            run_path(),
-                            temp_dir.GetPath().value(),
+  manager.reset(new Manager(control_interface(), dispatcher(), metrics(),
+                            run_path(), temp_dir.GetPath().value(),
                             temp_dir.GetPath().value()));
 
   ScopedMockLog log;
@@ -4122,8 +3967,8 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   EXPECT_FALSE(manager()->IsTechnologyProhibited(Technology::kVPN));
 
   Error smoke_error;
-  EXPECT_FALSE(manager()->SetProhibitedTechnologies("smoke_signal",
-                                                    &smoke_error));
+  EXPECT_FALSE(
+      manager()->SetProhibitedTechnologies("smoke_signal", &smoke_error));
   EXPECT_EQ(Error::kInvalidArguments, smoke_error.type());
 
   ON_CALL(*mock_devices_[0], technology())
@@ -4181,8 +4026,8 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
            technology_reply_handler.AsWeakPtr()));
   EXPECT_CALL(*mock_devices_[2], SetEnabledPersistent(true, _, _));
   EXPECT_CALL(*mock_devices_[5], SetEnabledPersistent(true, _, _));
-  manager()->SetEnabledStateForTechnology(
-      "wifi", true, true, &enable_error, enable_technology_callback);
+  manager()->SetEnabledStateForTechnology("wifi", true, true, &enable_error,
+                                          enable_technology_callback);
   EXPECT_EQ(Error::kOperationInitiated, enable_error.type());
 
   // Calls to enable a prohibited technology should fail.
@@ -4199,7 +4044,7 @@ TEST_F(ManagerTest, ClaimBlacklistedDevice) {
   const string kDeviceName = "test_device";
 
   // Set blacklisted devices.
-  vector<string> blacklisted_devices = { kDeviceName };
+  vector<string> blacklisted_devices = {kDeviceName};
   manager()->SetBlacklistedDevices(blacklisted_devices);
 
   Error error;
@@ -4215,7 +4060,7 @@ TEST_F(ManagerTest, ReleaseBlacklistedDevice) {
   const string kDeviceName = "test_device";
 
   // Set blacklisted devices.
-  vector<string> blacklisted_devices = { kDeviceName };
+  vector<string> blacklisted_devices = {kDeviceName};
   manager()->SetBlacklistedDevices(blacklisted_devices);
 
   Error error;
@@ -4229,7 +4074,7 @@ TEST_F(ManagerTest, ReleaseBlacklistedDevice) {
 TEST_F(ManagerTest, BlacklistedDeviceIsNotManaged) {
   const string kDeviceName = "test_device";
 
-  vector<string> blacklisted_devices = { kDeviceName };
+  vector<string> blacklisted_devices = {kDeviceName};
   manager()->SetBlacklistedDevices(blacklisted_devices);
   EXPECT_FALSE(manager()->DeviceManagementAllowed(kDeviceName));
 }
@@ -4237,7 +4082,7 @@ TEST_F(ManagerTest, BlacklistedDeviceIsNotManaged) {
 TEST_F(ManagerTest, NonBlacklistedDeviceIsManaged) {
   const string kDeviceName = "test_device";
 
-  vector<string> blacklisted_devices = { "other_device" };
+  vector<string> blacklisted_devices = {"other_device"};
   manager()->SetBlacklistedDevices(blacklisted_devices);
   EXPECT_TRUE(manager()->DeviceManagementAllowed(kDeviceName));
 }
@@ -4245,7 +4090,7 @@ TEST_F(ManagerTest, NonBlacklistedDeviceIsManaged) {
 TEST_F(ManagerTest, WhitelistedDeviceIsManaged) {
   const string kDeviceName = "test_device";
 
-  vector<string> whitelisted_devices = { kDeviceName };
+  vector<string> whitelisted_devices = {kDeviceName};
   manager()->SetWhitelistedDevices(whitelisted_devices);
   EXPECT_TRUE(manager()->DeviceManagementAllowed(kDeviceName));
 }
@@ -4253,7 +4098,7 @@ TEST_F(ManagerTest, WhitelistedDeviceIsManaged) {
 TEST_F(ManagerTest, NonWhitelistedDeviceIsNotManaged) {
   const string kDeviceName = "test_device";
 
-  vector<string> whitelisted_devices = { "other_device" };
+  vector<string> whitelisted_devices = {"other_device"};
   manager()->SetWhitelistedDevices(whitelisted_devices);
   EXPECT_FALSE(manager()->DeviceManagementAllowed(kDeviceName));
 }
@@ -4424,14 +4269,12 @@ TEST_F(ManagerTest, GetEnabledDeviceByLinkName) {
   manager()->RegisterDevice(ethernet_device);
   manager()->RegisterDevice(wifi_device);
 
-  EXPECT_EQ(ethernet_device,
-            manager()->GetEnabledDeviceByLinkName(
-                ethernet_device->link_name()));
+  EXPECT_EQ(ethernet_device, manager()->GetEnabledDeviceByLinkName(
+                                 ethernet_device->link_name()));
   EXPECT_EQ(wifi_device,
             manager()->GetEnabledDeviceByLinkName(wifi_device->link_name()));
-  EXPECT_EQ(nullptr,
-            manager()->GetEnabledDeviceByLinkName(
-                disabled_wifi_device->link_name()));
+  EXPECT_EQ(nullptr, manager()->GetEnabledDeviceByLinkName(
+                         disabled_wifi_device->link_name()));
 }
 
 TEST_F(ManagerTest, AcceptHostnameFrom) {
@@ -4496,17 +4339,18 @@ TEST_F(ManagerTest, FilterPrependDNSServersByFamily) {
     string prepend_value;
     vector<string> output_list;
   } expectations[] = {
-    {IPAddress::kFamilyIPv4, "", {}},
-    {IPAddress::kFamilyIPv4, "8.8.8.8", {"8.8.8.8"}},
-    {IPAddress::kFamilyIPv4, "8.8.8.8,2001:4860:4860::8888", {"8.8.8.8"}},
-    {IPAddress::kFamilyIPv4, "2001:4860:4860::8844", {}},
-    {IPAddress::kFamilyIPv6, "", {}},
-    {IPAddress::kFamilyIPv6, "8.8.8.8", {}},
-    {IPAddress::kFamilyIPv6, "2001:4860:4860::8844",
-        {"2001:4860:4860::8844"}},
-    {IPAddress::kFamilyIPv6, "8.8.8.8,2001:4860:4860::8888",
-        {"2001:4860:4860::8888"}}
-  };
+      {IPAddress::kFamilyIPv4, "", {}},
+      {IPAddress::kFamilyIPv4, "8.8.8.8", {"8.8.8.8"}},
+      {IPAddress::kFamilyIPv4, "8.8.8.8,2001:4860:4860::8888", {"8.8.8.8"}},
+      {IPAddress::kFamilyIPv4, "2001:4860:4860::8844", {}},
+      {IPAddress::kFamilyIPv6, "", {}},
+      {IPAddress::kFamilyIPv6, "8.8.8.8", {}},
+      {IPAddress::kFamilyIPv6,
+       "2001:4860:4860::8844",
+       {"2001:4860:4860::8844"}},
+      {IPAddress::kFamilyIPv6,
+       "8.8.8.8,2001:4860:4860::8888",
+       {"2001:4860:4860::8888"}}};
 
   for (const auto& expectation : expectations) {
     manager()->SetPrependDNSServers(expectation.prepend_value);

@@ -17,8 +17,10 @@ namespace shill {
 class SHILL_EXPORT ArpPacket {
  public:
   ArpPacket();
-  ArpPacket(const IPAddress& local_ip, const IPAddress& remote_ip,
-            const ByteString& local_mac, const ByteString& remote_mac);
+  ArpPacket(const IPAddress& local_ip,
+            const IPAddress& remote_ip,
+            const ByteString& local_mac,
+            const ByteString& remote_mac);
   virtual ~ArpPacket();
 
   // Parse a payload and save to local parameters.
@@ -52,9 +54,7 @@ class SHILL_EXPORT ArpPacket {
   }
 
   uint16_t operation() const { return operation_; }
-  void set_operation(uint16_t operation) {
-    operation_ = operation;
-  }
+  void set_operation(uint16_t operation) { operation_ = operation; }
 
  private:
   friend class ArpPacketTest;

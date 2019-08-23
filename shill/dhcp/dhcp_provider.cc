@@ -29,8 +29,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static string ObjectID(DHCPProvider* d) { return "(dhcp_provider)"; }
+static string ObjectID(DHCPProvider* d) {
+  return "(dhcp_provider)";
 }
+}  // namespace Logging
 
 namespace {
 base::LazyInstance<DHCPProvider>::DestructorAtExit g_dhcp_provider =
@@ -47,9 +49,7 @@ constexpr char DHCPProvider::kDHCPCDPathFormatLease6[];
 #endif  // DISABLE_DHCPV6
 
 DHCPProvider::DHCPProvider()
-    : root_("/"),
-      control_interface_(nullptr),
-      dispatcher_(nullptr) {
+    : root_("/"), control_interface_(nullptr), dispatcher_(nullptr) {
   SLOG(this, 2) << __func__;
 }
 
@@ -87,24 +87,15 @@ DHCPConfigRefPtr DHCPProvider::CreateIPv4Config(
     bool arp_gateway,
     const DhcpProperties& dhcp_props) {
   SLOG(this, 2) << __func__ << " device: " << device_name;
-  return new DHCPv4Config(control_interface_,
-                          dispatcher_,
-                          this,
-                          device_name,
-                          lease_file_suffix,
-                          arp_gateway,
-                          dhcp_props,
-                          metrics_);
+  return new DHCPv4Config(control_interface_, dispatcher_, this, device_name,
+                          lease_file_suffix, arp_gateway, dhcp_props, metrics_);
 }
 
 #ifndef DISABLE_DHCPV6
 DHCPConfigRefPtr DHCPProvider::CreateIPv6Config(
     const string& device_name, const string& lease_file_suffix) {
   SLOG(this, 2) << __func__ << " device: " << device_name;
-  return new DHCPv6Config(control_interface_,
-                          dispatcher_,
-                          this,
-                          device_name,
+  return new DHCPv6Config(control_interface_, dispatcher_, this, device_name,
                           lease_file_suffix);
 }
 #endif
@@ -127,11 +118,10 @@ void DHCPProvider::UnbindPID(int pid) {
   SLOG(this, 2) << __func__ << " pid: " << pid;
   configs_.erase(pid);
   recently_unbound_pids_.insert(pid);
-  dispatcher_->PostDelayedTask(FROM_HERE,
-                               base::Bind(&DHCPProvider::RetireUnboundPID,
-                                          base::Unretained(this),
-                                          pid),
-                               kUnbindDelayMilliseconds);
+  dispatcher_->PostDelayedTask(
+      FROM_HERE,
+      base::Bind(&DHCPProvider::RetireUnboundPID, base::Unretained(this), pid),
+      kUnbindDelayMilliseconds);
 }
 
 void DHCPProvider::RetireUnboundPID(int pid) {
@@ -144,13 +134,13 @@ bool DHCPProvider::IsRecentlyUnbound(int pid) {
 
 void DHCPProvider::DestroyLease(const string& name) {
   SLOG(this, 2) << __func__ << " name: " << name;
-  base::DeleteFile(root_.Append(
-      base::StringPrintf(kDHCPCDPathFormatLease,
-                         name.c_str())), false);
+  base::DeleteFile(
+      root_.Append(base::StringPrintf(kDHCPCDPathFormatLease, name.c_str())),
+      false);
 #ifndef DISABLE_DHCPV6
-  base::DeleteFile(root_.Append(
-      base::StringPrintf(kDHCPCDPathFormatLease6,
-                         name.c_str())), false);
+  base::DeleteFile(
+      root_.Append(base::StringPrintf(kDHCPCDPathFormatLease6, name.c_str())),
+      false);
 #endif  // DISABLE_DHCPV6
 }
 

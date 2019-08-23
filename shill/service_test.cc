@@ -54,13 +54,13 @@ using testing::NiceMock;
 using testing::Return;
 using testing::ReturnNull;
 using testing::ReturnRef;
-using testing::StrictMock;
 using testing::SetArgPointee;
+using testing::StrictMock;
 using testing::Test;
 using testing::Values;
 
 namespace {
-  const char kConnectDisconnectReason[] = "RPC";
+const char kConnectDisconnectReason[] = "RPC";
 }
 
 namespace shill {
@@ -84,7 +84,7 @@ class ServiceTest : public PropertyStoreTest {
     DefaultValue<Timestamp>::Set(Timestamp());
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
     service_->eap_.reset(eap_);  // Passes ownership.
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+#endif                           // DISABLE_WIFI || DISABLE_WIRED_8021X
     mock_manager_.running_ = true;
     mock_manager_.set_power_manager(power_manager_);  // Passes ownership.
   }
@@ -122,21 +122,16 @@ class ServiceTest : public PropertyStoreTest {
     return service_->previous_state_;
   }
 
-  void NoteDisconnectEvent() {
-    service_->NoteDisconnectEvent();
-  }
+  void NoteDisconnectEvent() { service_->NoteDisconnectEvent(); }
 
-  EventHistory* GetDisconnects() {
-    return &service_->disconnects_;
-  }
-  EventHistory* GetMisconnects() {
-    return &service_->misconnects_;
-  }
+  EventHistory* GetDisconnects() { return &service_->disconnects_; }
+  EventHistory* GetMisconnects() { return &service_->misconnects_; }
 
-  Timestamp GetTimestamp(int monotonic_seconds, int boottime_seconds,
+  Timestamp GetTimestamp(int monotonic_seconds,
+                         int boottime_seconds,
                          const string& wall_clock) {
-    struct timeval monotonic = { .tv_sec = monotonic_seconds, .tv_usec = 0 };
-    struct timeval boottime = { .tv_sec = boottime_seconds, .tv_usec = 0 };
+    struct timeval monotonic = {.tv_sec = monotonic_seconds, .tv_usec = 0};
+    struct timeval boottime = {.tv_sec = boottime_seconds, .tv_usec = 0};
     return Timestamp(monotonic, boottime, wall_clock);
   }
 
@@ -164,13 +159,9 @@ class ServiceTest : public PropertyStoreTest {
     return Service::kMaxMisconnectEventHistory;
   }
 
-  bool GetAutoConnect(Error* error) {
-    return service_->GetAutoConnect(error);
-  }
+  bool GetAutoConnect(Error* error) { return service_->GetAutoConnect(error); }
 
-  void ClearAutoConnect(Error* error) {
-    service_->ClearAutoConnect(error);
-  }
+  void ClearAutoConnect(Error* error) { service_->ClearAutoConnect(error); }
 
   bool SetAutoConnectFull(bool connect, Error* error) {
     return service_->SetAutoConnectFull(connect, error);
@@ -181,14 +172,14 @@ class ServiceTest : public PropertyStoreTest {
                       bool should_compare_connectivity_state) {
     return Service::Compare(service0, service1,
                             should_compare_connectivity_state,
-                            technology_order_for_sorting_).first;
+                            technology_order_for_sorting_)
+        .first;
   }
 
   bool DefaultSortingOrderIs(const ServiceRefPtr& service0,
                              const ServiceRefPtr& service1) {
     const bool kShouldCompareConnectivityState = true;
-    return SortingOrderIs(
-        service0, service1, kShouldCompareConnectivityState);
+    return SortingOrderIs(service0, service1, kShouldCompareConnectivityState);
   }
 
   MockManager mock_manager_;
@@ -197,8 +188,8 @@ class ServiceTest : public PropertyStoreTest {
   scoped_refptr<ServiceUnderTest> service2_;
   string storage_id_;
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-  MockEapCredentials* eap_;  // Owned by |service_|.
-#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+  MockEapCredentials* eap_;          // Owned by |service_|.
+#endif                               // DISABLE_WIFI || DISABLE_WIRED_8021X
   MockPowerManager* power_manager_;  // Owned by |mock_manager_|.
   vector<Technology> technology_order_for_sorting_;
 };
@@ -207,7 +198,7 @@ class AllMockServiceTest : public testing::Test {
  public:
   AllMockServiceTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
-        service_(new ServiceUnderTest(&manager_)) { }
+        service_(new ServiceUnderTest(&manager_)) {}
   ~AllMockServiceTest() override = default;
 
  protected:
@@ -246,8 +237,7 @@ TEST_F(ServiceTest, GetProperties) {
     brillo::VariantDictionary props;
     Error error;
     string expected("true");
-    service_->mutable_store()->SetStringProperty(kCheckPortalProperty,
-                                                 expected,
+    service_->mutable_store()->SetStringProperty(kCheckPortalProperty, expected,
                                                  &error);
     EXPECT_TRUE(service_->store().GetProperties(&props, &error));
     ASSERT_FALSE(props.find(kCheckPortalProperty) == props.end());
@@ -258,8 +248,7 @@ TEST_F(ServiceTest, GetProperties) {
     brillo::VariantDictionary props;
     Error error;
     bool expected = true;
-    service_->mutable_store()->SetBoolProperty(kAutoConnectProperty,
-                                               expected,
+    service_->mutable_store()->SetBoolProperty(kAutoConnectProperty, expected,
                                                &error);
     EXPECT_TRUE(service_->store().GetProperties(&props, &error));
     ASSERT_FALSE(props.find(kAutoConnectProperty) == props.end());
@@ -278,8 +267,7 @@ TEST_F(ServiceTest, GetProperties) {
     brillo::VariantDictionary props;
     Error error;
     int32_t expected = 127;
-    service_->mutable_store()->SetInt32Property(kPriorityProperty,
-                                                expected,
+    service_->mutable_store()->SetInt32Property(kPriorityProperty, expected,
                                                 &error);
     EXPECT_TRUE(service_->store().GetProperties(&props, &error));
     ASSERT_FALSE(props.find(kPriorityProperty) == props.end());
@@ -336,7 +324,7 @@ TEST_F(ServiceTest, SetProperty) {
   {
     Error error;
     EXPECT_FALSE(service_->mutable_store()->SetAnyProperty(
-        kConnectableProperty, PropertyStoreTest::kBoolV,  &error));
+        kConnectableProperty, PropertyStoreTest::kBoolV, &error));
     ASSERT_TRUE(error.IsFailure());
     EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
@@ -430,8 +418,7 @@ TEST_F(ServiceTest, Load) {
               GetBool(storage_id_, Service::kStorageSaveCredentials, _));
   EXPECT_CALL(storage,
               GetBool(storage_id_, Service::kStorageHasEverConnected, _))
-      .WillRepeatedly(DoAll(SetArgPointee<2>(kHasEverConnected),
-                            Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<2>(kHasEverConnected), Return(true)));
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap, Load(&storage, storage_id_));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
@@ -458,8 +445,7 @@ TEST_F(ServiceTest, Load) {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(storage, GetString(storage_id_, _, _))
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(storage, GetInt(storage_id_, _, _))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(storage, GetInt(storage_id_, _, _)).WillRepeatedly(Return(false));
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap, Load(&storage, storage_id_));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
@@ -487,14 +473,12 @@ TEST_F(ServiceTest, LoadFail) {
 
 TEST_F(ServiceTest, LoadAutoConnect) {
   NiceMock<MockStore> storage;
-  EXPECT_CALL(storage, ContainsGroup(storage_id_))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(storage, ContainsGroup(storage_id_)).WillRepeatedly(Return(true));
   EXPECT_CALL(storage, GetBool(storage_id_, _, _))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(storage, GetString(storage_id_, _, _))
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(storage, GetInt(storage_id_, _, _))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(storage, GetInt(storage_id_, _, _)).WillRepeatedly(Return(false));
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap_, Load(&storage, storage_id_)).Times(AnyNumber());
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
@@ -592,16 +576,14 @@ TEST_F(ServiceTest, SaveStringCrypted) {
 TEST_F(ServiceTest, SaveStringDontSave) {
   MockStore storage;
   static const char kKey[] = "test-key";
-  EXPECT_CALL(storage, DeleteKey(storage_id_, kKey))
-      .WillOnce(Return(true));
+  EXPECT_CALL(storage, DeleteKey(storage_id_, kKey)).WillOnce(Return(true));
   service_->SaveString(&storage, storage_id_, kKey, "data", false, false);
 }
 
 TEST_F(ServiceTest, SaveStringEmpty) {
   MockStore storage;
   static const char kKey[] = "test-key";
-  EXPECT_CALL(storage, DeleteKey(storage_id_, kKey))
-      .WillOnce(Return(true));
+  EXPECT_CALL(storage, DeleteKey(storage_id_, kKey)).WillOnce(Return(true));
   service_->SaveString(&storage, storage_id_, kKey, "", true, true);
 }
 
@@ -618,10 +600,8 @@ TEST_F(ServiceTest, Save) {
   EXPECT_CALL(storage, DeleteKey(storage_id_, Service::kStorageAutoConnect))
       .WillOnce(Return(true));
   EXPECT_CALL(storage, SetBool(storage_id_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(storage,
-              SetBool(storage_id_,
-                      Service::kStorageSaveCredentials,
-                      service_->save_credentials()));
+  EXPECT_CALL(storage, SetBool(storage_id_, Service::kStorageSaveCredentials,
+                               service_->save_credentials()));
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap_, Save(&storage, storage_id_, true));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
@@ -732,14 +712,11 @@ TEST_F(ServiceTest, State) {
   EXPECT_EQ(Service::kStateIdle, service_->state());
   EXPECT_EQ(Service::kStateIdle, GetPreviousState());
   EXPECT_EQ(Service::kFailureNone, service_->failure());
-  const string no_error(
-      Service::ConnectFailureToString(Service::kFailureNone));
+  const string no_error(Service::ConnectFailureToString(Service::kFailureNone));
   EXPECT_EQ(no_error, service_->error());
 
-  EXPECT_CALL(*GetAdaptor(),
-              EmitStringChanged(kStateProperty, _)).Times(6);
-  EXPECT_CALL(*GetAdaptor(),
-              EmitStringChanged(kErrorProperty, _)).Times(4);
+  EXPECT_CALL(*GetAdaptor(), EmitStringChanged(kStateProperty, _)).Times(6);
+  EXPECT_CALL(*GetAdaptor(), EmitStringChanged(kErrorProperty, _)).Times(4);
   EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
   service_->SetState(Service::kStateConnected);
   EXPECT_EQ(Service::kStateIdle, GetPreviousState());
@@ -790,8 +767,7 @@ TEST_F(ServiceTest, State) {
   service_->set_profile(mock_profile);
   service_->has_ever_connected_ = false;
   EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
-  EXPECT_CALL(*mock_profile, GetConstStorage())
-      .WillOnce(Return(&storage));
+  EXPECT_CALL(*mock_profile, GetConstStorage()).WillOnce(Return(&storage));
   EXPECT_CALL(*mock_profile, UpdateService(IsRefPtrTo(service_)));
   service_->SetState(Service::kStateConnected);
   EXPECT_TRUE(service_->has_ever_connected_);
@@ -813,10 +789,12 @@ TEST_F(ServiceTest, State) {
 TEST_F(ServiceTest, PortalDetectionFailure) {
   EXPECT_CALL(*GetAdaptor(),
               EmitStringChanged(kPortalDetectionFailedPhaseProperty,
-                                kPortalDetectionPhaseDns)).Times(1);
+                                kPortalDetectionPhaseDns))
+      .Times(1);
   EXPECT_CALL(*GetAdaptor(),
               EmitStringChanged(kPortalDetectionFailedStatusProperty,
-                                kPortalDetectionStatusTimeout)).Times(1);
+                                kPortalDetectionStatusTimeout))
+      .Times(1);
   service_->SetPortalDetectionFailure(kPortalDetectionPhaseDns,
                                       kPortalDetectionStatusTimeout);
   EXPECT_EQ(kPortalDetectionPhaseDns,
@@ -845,8 +823,8 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   service_->SetState(Service::kStateIdle);
   service_->UserInitiatedConnect(kConnectDisconnectReason, &error);
   EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(
-      Metrics::kMetricWifiUserInitiatedConnectionResult,
-      Metrics::kUserInitiatedConnectionResultSuccess));
+                              Metrics::kMetricWifiUserInitiatedConnectionResult,
+                              Metrics::kUserInitiatedConnectionResultSuccess));
   EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(_, _))
       .Times(0);
   service_->SetState(Service::kStateConnected);
@@ -856,11 +834,12 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   service_->SetState(Service::kStateIdle);
   service_->UserInitiatedConnect(kConnectDisconnectReason, &error);
   EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(
-      Metrics::kMetricWifiUserInitiatedConnectionResult,
-      Metrics::kUserInitiatedConnectionResultFailure));
-  EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(
-      Metrics::kMetricWifiUserInitiatedConnectionFailureReason,
-      Service::kFailureDHCP));
+                              Metrics::kMetricWifiUserInitiatedConnectionResult,
+                              Metrics::kUserInitiatedConnectionResultFailure));
+  EXPECT_CALL(*metrics(),
+              NotifyUserInitiatedConnectionFailureReason(
+                  Metrics::kMetricWifiUserInitiatedConnectionFailureReason,
+                  Service::kFailureDHCP));
   service_->SetFailure(Service::kFailureDHCP);
   Mock::VerifyAndClearExpectations(metrics());
 
@@ -869,8 +848,8 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   service_->UserInitiatedConnect(kConnectDisconnectReason, &error);
   service_->SetState(Service::kStateAssociating);
   EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionResult(
-      Metrics::kMetricWifiUserInitiatedConnectionResult,
-      Metrics::kUserInitiatedConnectionResultAborted));
+                              Metrics::kMetricWifiUserInitiatedConnectionResult,
+                              Metrics::kUserInitiatedConnectionResultAborted));
   EXPECT_CALL(*metrics(), NotifyUserInitiatedConnectionFailureReason(_, _))
       .Times(0);
   service_->SetState(Service::kStateIdle);
@@ -907,8 +886,7 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
 }
 
 TEST_F(ServiceTest, ActivateCellularModem) {
-  ResultCallback callback =
-      Bind(&ServiceTest::TestCallback, Unretained(this));
+  ResultCallback callback = Bind(&ServiceTest::TestCallback, Unretained(this));
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
   Error error;
   service_->ActivateCellularModem("Carrier", &error, callback);
@@ -997,8 +975,9 @@ TEST_F(ServiceTest, IsAutoConnectable) {
   EXPECT_STREQ(Service::kAutoConnConnecting, reason);
 
   service_->SetState(Service::kStateIdle);
-  EXPECT_CALL(mock_manager_, IsTechnologyAutoConnectDisabled(
-                                 service_->technology_)).WillOnce(Return(true));
+  EXPECT_CALL(mock_manager_,
+              IsTechnologyAutoConnectDisabled(service_->technology_))
+      .WillOnce(Return(true));
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
   EXPECT_STREQ(Service::kAutoConnTechnologyNotConnectable, reason);
 }
@@ -1022,7 +1001,6 @@ TEST_F(ServiceTest, AutoConnectLogging) {
   service_->AutoConnect();
 }
 
-
 TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
   const char* reason;
   service_->SetConnectable(true);
@@ -1036,8 +1014,9 @@ TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   // The second call does trigger some throttling.
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _,
-      Service::kMinAutoConnectCooldownTimeMilliseconds));
+  EXPECT_CALL(
+      dispatcher_,
+      PostDelayedTask(_, _, Service::kMinAutoConnectCooldownTimeMilliseconds));
   service_->AutoConnect();
   Mock::VerifyAndClearExpectations(&dispatcher_);
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
@@ -1059,7 +1038,7 @@ TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
   uint64_t next_cooldown_time = service_->auto_connect_cooldown_milliseconds_;
   EXPECT_EQ(next_cooldown_time,
             Service::kAutoConnectCooldownBackoffFactor *
-            Service::kMinAutoConnectCooldownTimeMilliseconds);
+                Service::kMinAutoConnectCooldownTimeMilliseconds);
   while (next_cooldown_time <=
          service_->GetMaxAutoConnectCooldownTimeMilliseconds()) {
     EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, next_cooldown_time));
@@ -1073,8 +1052,10 @@ TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
 
   // Once we hit our cap, future timeouts are the same.
   for (int32_t i = 0; i < 2; i++) {
-    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _,
-        service_->GetMaxAutoConnectCooldownTimeMilliseconds()));
+    EXPECT_CALL(
+        dispatcher_,
+        PostDelayedTask(_, _,
+                        service_->GetMaxAutoConnectCooldownTimeMilliseconds()));
     service_->AutoConnect();
     Mock::VerifyAndClearExpectations(&dispatcher_);
     EXPECT_FALSE(service_->IsAutoConnectable(&reason));
@@ -1091,8 +1072,10 @@ TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
   EXPECT_EQ(service_->auto_connect_cooldown_milliseconds_, 0);
 
   // But future AutoConnects behave as before
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _,
-      Service::kMinAutoConnectCooldownTimeMilliseconds)).Times(1);
+  EXPECT_CALL(
+      dispatcher_,
+      PostDelayedTask(_, _, Service::kMinAutoConnectCooldownTimeMilliseconds))
+      .Times(1);
   service_->AutoConnect();
   service_->AutoConnect();
   Mock::VerifyAndClearExpectations(&dispatcher_);
@@ -1140,8 +1123,8 @@ TEST_F(ServiceTest, ConfigureStringProperty) {
 }
 
 TEST_F(ServiceTest, ConfigureStringsProperty) {
-  const vector<string> kStrings0{ "string0", "string1" };
-  const vector<string> kStrings1{ "string2", "string3" };
+  const vector<string> kStrings0{"string0", "string1"};
+  const vector<string> kStrings1{"string2", "string3"};
   service_->set_strings(kStrings0);
   ASSERT_EQ(kStrings0, service_->strings());
   KeyValueStore args;
@@ -1161,8 +1144,7 @@ TEST_F(ServiceTest, ConfigureEapStringProperty) {
   const string kEAPManagement1 = "management_one";
   service2_->SetEAPKeyManagement(kEAPManagement0);
 
-  EXPECT_CALL(*eap, key_management())
-      .WillOnce(ReturnRef(kEAPManagement0));
+  EXPECT_CALL(*eap, key_management()).WillOnce(ReturnRef(kEAPManagement0));
   ASSERT_EQ(kEAPManagement0, service2_->GetEAPKeyManagement());
   KeyValueStore args;
   EXPECT_CALL(*eap, SetKeyManagement(kEAPManagement1, _));
@@ -1217,8 +1199,8 @@ TEST_F(ServiceTest, ConfigureKeyValueStoreProperty) {
   service_->SetKeyValueStore(key_value_store0, nullptr);
   ASSERT_EQ(key_value_store0, service_->GetKeyValueStore(nullptr));
   KeyValueStore args;
-  args.SetKeyValueStore(
-      ServiceUnderTest::kKeyValueStoreProperty, key_value_store1);
+  args.SetKeyValueStore(ServiceUnderTest::kKeyValueStoreProperty,
+                        key_value_store1);
   Error error;
   service_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -1233,8 +1215,8 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
   const uint32_t kPriority0 = 100;
   const uint32_t kPriority1 = 200;
   service_->SetPriority(kPriority0, nullptr);
-  const vector<string> kStrings0{ "string0", "string1" };
-  const vector<string> kStrings1{ "string2", "string3" };
+  const vector<string> kStrings0{"string0", "string1"};
+  const vector<string> kStrings1{"string2", "string3"};
   service_->set_strings(kStrings0);
   KeyValueStore key_value_store0;
   key_value_store0.SetBool("key0", true);
@@ -1312,8 +1294,8 @@ TEST_F(ServiceTest, IsRemembered) {
   scoped_refptr<MockProfile> profile(new StrictMock<MockProfile>(manager()));
   service_->set_profile(profile);
   EXPECT_CALL(mock_manager_, IsServiceEphemeral(IsRefPtrTo(service_)))
-     .WillOnce(Return(true))
-     .WillOnce(Return(false));
+      .WillOnce(Return(true))
+      .WillOnce(Return(false));
   EXPECT_FALSE(service_->IsRemembered());
   EXPECT_TRUE(service_->IsRemembered());
 }
@@ -1336,7 +1318,6 @@ TEST_F(ServiceTest, OnPropertyChanged) {
   EXPECT_CALL(*profile, GetConstStorage()).WillOnce(Return(&storage));
   service_->OnPropertyChanged("");
 }
-
 
 TEST_F(ServiceTest, RecheckPortal) {
   service_->state_ = Service::kStateIdle;
@@ -1399,8 +1380,7 @@ TEST_F(ServiceTest, SetFriendlyName) {
   service_->SetFriendlyName(service_->unique_name_);
   EXPECT_EQ(service_->unique_name_, service_->friendly_name_);
 
-  EXPECT_CALL(*adaptor, EmitStringChanged(kNameProperty,
-                                          "Test Name 1"));
+  EXPECT_CALL(*adaptor, EmitStringChanged(kNameProperty, "Test Name 1"));
   service_->SetFriendlyName("Test Name 1");
   EXPECT_EQ("Test Name 1", service_->friendly_name_);
 
@@ -1408,8 +1388,7 @@ TEST_F(ServiceTest, SetFriendlyName) {
   service_->SetFriendlyName("Test Name 1");
   EXPECT_EQ("Test Name 1", service_->friendly_name_);
 
-  EXPECT_CALL(*adaptor, EmitStringChanged(kNameProperty,
-                                          "Test Name 2"));
+  EXPECT_CALL(*adaptor, EmitStringChanged(kNameProperty, "Test Name 2"));
   service_->SetFriendlyName("Test Name 2");
   EXPECT_EQ("Test Name 2", service_->friendly_name_);
 }
@@ -1437,7 +1416,7 @@ TEST_F(ServiceTest, SetConnectableFull) {
 
   EXPECT_CALL(*adaptor, EmitBoolChanged(kConnectableProperty, true));
   EXPECT_CALL(mock_manager_, HasService(_)).WillOnce(Return(true));
-              EXPECT_CALL(mock_manager_, UpdateService(_));
+  EXPECT_CALL(mock_manager_, UpdateService(_));
   service_->SetConnectableFull(true);
   EXPECT_TRUE(service_->connectable());
 }
@@ -1456,11 +1435,9 @@ TEST_P(WriteOnlyServicePropertyTest, PropertyWriteOnly) {
   EXPECT_EQ(Error::kPermissionDenied, error.type());
 }
 
-INSTANTIATE_TEST_CASE_P(
-    WriteOnlyServicePropertyTestInstance,
-    WriteOnlyServicePropertyTest,
-    Values(
-        brillo::Any(string(kEapPasswordProperty))));
+INSTANTIATE_TEST_CASE_P(WriteOnlyServicePropertyTestInstance,
+                        WriteOnlyServicePropertyTest,
+                        Values(brillo::Any(string(kEapPasswordProperty))));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
@@ -1520,19 +1497,13 @@ TEST_F(ServiceTest, SetEAPCredentialsOverRpc) {
   scoped_refptr<ServiceWithMockOnEapCredentialsChanged> service(
       new ServiceWithMockOnEapCredentialsChanged(&mock_manager_));
   static const char* const kEapCredentialProperties[] = {
-      kEapAnonymousIdentityProperty,
-      kEapCertIdProperty,
-      kEapIdentityProperty,
-      kEapKeyIdProperty,
-      kEapPasswordProperty,
-      kEapPinProperty,
+      kEapAnonymousIdentityProperty, kEapCertIdProperty,
+      kEapIdentityProperty,          kEapKeyIdProperty,
+      kEapPasswordProperty,          kEapPinProperty,
   };
   static const char* const kEapNonCredentialProperties[] = {
-      kEapCaCertIdProperty,
-      kEapMethodProperty,
-      kEapPhase2AuthProperty,
-      kEapUseSystemCasProperty
-  };
+      kEapCaCertIdProperty, kEapMethodProperty, kEapPhase2AuthProperty,
+      kEapUseSystemCasProperty};
   // While this is not an 802.1x-based service, none of these property
   // changes should cause a call to set_eap().
   EXPECT_CALL(*service, OnEapCredentialsChanged(_)).Times(0);
@@ -1550,8 +1521,8 @@ TEST_F(ServiceTest, SetEAPCredentialsOverRpc) {
   // all credential-carrying properties.
   for (auto eap_credential_property : kEapCredentialProperties) {
     EXPECT_CALL(*service,
-                OnEapCredentialsChanged(
-                    Service::kReasonPropertyUpdate)).Times(1);
+                OnEapCredentialsChanged(Service::kReasonPropertyUpdate))
+        .Times(1);
     service->OnPropertyChanged(eap_credential_property);
     Mock::VerifyAndClearExpectations(service.get());
   }
@@ -1559,8 +1530,8 @@ TEST_F(ServiceTest, SetEAPCredentialsOverRpc) {
   // The key management property is a special case.  While not strictly
   // a credential, it can change which credentials are used.  Therefore it
   // should also trigger a call to set_eap();
-  EXPECT_CALL(*service,
-              OnEapCredentialsChanged(Service::kReasonPropertyUpdate)).Times(1);
+  EXPECT_CALL(*service, OnEapCredentialsChanged(Service::kReasonPropertyUpdate))
+      .Times(1);
   service->OnPropertyChanged(kEapKeyMgmtProperty);
   Mock::VerifyAndClearExpectations(service.get());
 
@@ -1574,8 +1545,9 @@ TEST_F(ServiceTest, Certification) {
   EXPECT_TRUE(service_->remote_certification_.empty());
 
   ScopedMockLog log;
-  EXPECT_CALL(log, Log(logging::LOG_WARNING, _,
-                       HasSubstr("exceeds our maximum"))).Times(2);
+  EXPECT_CALL(log,
+              Log(logging::LOG_WARNING, _, HasSubstr("exceeds our maximum")))
+      .Times(2);
   string kSubject("foo");
   EXPECT_FALSE(service_->AddEAPCertification(
       kSubject, Service::kEAPMaxCertificationElements));
@@ -1591,12 +1563,14 @@ TEST_F(ServiceTest, Certification) {
       kSubject, Service::kEAPMaxCertificationElements - 1));
   Mock::VerifyAndClearExpectations(&log);
   EXPECT_EQ(Service::kEAPMaxCertificationElements,
-      service_->remote_certification_.size());
+            service_->remote_certification_.size());
   for (size_t i = 0; i < Service::kEAPMaxCertificationElements - 1; ++i) {
-      EXPECT_TRUE(service_->remote_certification_[i].empty());
+    EXPECT_TRUE(service_->remote_certification_[i].empty());
   }
-  EXPECT_EQ(kSubject, service_->remote_certification_[
-      Service::kEAPMaxCertificationElements - 1]);
+  EXPECT_EQ(
+      kSubject,
+      service_
+          ->remote_certification_[Service::kEAPMaxCertificationElements - 1]);
 
   // Re-adding the same name in the same position should not generate a log.
   EXPECT_CALL(log, Log(_, _, _)).Times(0);
@@ -1689,18 +1663,20 @@ TEST_F(ServiceTest, NoteDisconnectEventDisconnectOnce) {
   EXPECT_TRUE(GetMisconnects()->Empty());
 
   Mock::VerifyAndClearExpectations(&time_);
-  EXPECT_CALL(time_, GetNow()).Times(2).WillRepeatedly(Return(GetTimestamp(
-      kNow + GetDisconnectsMonitorSeconds() - 1,
-      kNow + GetDisconnectsMonitorSeconds() - 1,
-      "")));
+  EXPECT_CALL(time_, GetNow())
+      .Times(2)
+      .WillRepeatedly(
+          Return(GetTimestamp(kNow + GetDisconnectsMonitorSeconds() - 1,
+                              kNow + GetDisconnectsMonitorSeconds() - 1, "")));
   EXPECT_TRUE(service_->HasRecentConnectionIssues());
   ASSERT_EQ(1, GetDisconnects()->Size());
 
   Mock::VerifyAndClearExpectations(&time_);
-  EXPECT_CALL(time_, GetNow()).Times(2).WillRepeatedly(Return(GetTimestamp(
-      kNow + GetDisconnectsMonitorSeconds(),
-      kNow + GetDisconnectsMonitorSeconds(),
-      "")));
+  EXPECT_CALL(time_, GetNow())
+      .Times(2)
+      .WillRepeatedly(
+          Return(GetTimestamp(kNow + GetDisconnectsMonitorSeconds(),
+                              kNow + GetDisconnectsMonitorSeconds(), "")));
   EXPECT_FALSE(service_->HasRecentConnectionIssues());
   ASSERT_TRUE(GetDisconnects()->Empty());
 }
@@ -1716,18 +1692,20 @@ TEST_F(ServiceTest, NoteDisconnectEventMisconnectOnce) {
   EXPECT_EQ(kNow, GetMisconnects()->Front().monotonic.tv_sec);
 
   Mock::VerifyAndClearExpectations(&time_);
-  EXPECT_CALL(time_, GetNow()).Times(2).WillRepeatedly(Return(GetTimestamp(
-      kNow + GetMisconnectsMonitorSeconds() - 1,
-      kNow + GetMisconnectsMonitorSeconds() - 1,
-      "")));
+  EXPECT_CALL(time_, GetNow())
+      .Times(2)
+      .WillRepeatedly(
+          Return(GetTimestamp(kNow + GetMisconnectsMonitorSeconds() - 1,
+                              kNow + GetMisconnectsMonitorSeconds() - 1, "")));
   EXPECT_TRUE(service_->HasRecentConnectionIssues());
   ASSERT_EQ(1, GetMisconnects()->Size());
 
   Mock::VerifyAndClearExpectations(&time_);
-  EXPECT_CALL(time_, GetNow()).Times(2).WillRepeatedly(Return(GetTimestamp(
-      kNow + GetMisconnectsMonitorSeconds(),
-      kNow + GetMisconnectsMonitorSeconds(),
-      "")));
+  EXPECT_CALL(time_, GetNow())
+      .Times(2)
+      .WillRepeatedly(
+          Return(GetTimestamp(kNow + GetMisconnectsMonitorSeconds(),
+                              kNow + GetMisconnectsMonitorSeconds(), "")));
   EXPECT_FALSE(service_->HasRecentConnectionIssues());
   ASSERT_TRUE(GetMisconnects()->Empty());
 }
@@ -1785,7 +1763,7 @@ TEST_F(ServiceTest, DiagnosticsProperties) {
   PushTimestamp(GetDisconnects(), 0, 0, kWallClock0);
   Error unused_error;
   ASSERT_TRUE(service_->store().GetStringsProperty(
-     kDiagnosticsDisconnectsProperty, &values, &unused_error));
+      kDiagnosticsDisconnectsProperty, &values, &unused_error));
   ASSERT_EQ(1, values.size());
   EXPECT_EQ(kWallClock0, values[0]);
 
@@ -1908,8 +1886,7 @@ TEST_F(ServiceTest, SetAutoConnectFullUserUpdatePersists) {
   service_->SetAutoConnect(true);
 
   EXPECT_CALL(*mock_profile, UpdateService(_));
-  EXPECT_CALL(*mock_profile, GetConstStorage())
-      .WillOnce(Return(&storage));
+  EXPECT_CALL(*mock_profile, GetConstStorage()).WillOnce(Return(&storage));
   EXPECT_CALL(mock_manager_, IsServiceEphemeral(IsRefPtrTo(service_)))
       .WillOnce(Return(false));
   EXPECT_FALSE(service_->retain_auto_connect());
@@ -2177,8 +2154,8 @@ TEST_F(ServiceTest, Compare) {
 
   // Connectivity state ignored if this is specified.
   const bool kDoNotCompareConnectivityState = false;
-  EXPECT_TRUE(SortingOrderIs(service2, service10,
-                             kDoNotCompareConnectivityState));
+  EXPECT_TRUE(
+      SortingOrderIs(service2, service10, kDoNotCompareConnectivityState));
 }
 
 TEST_F(ServiceTest, ComparePreferEthernetOverWifi) {

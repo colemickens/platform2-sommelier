@@ -50,12 +50,8 @@ class ModemInfo {
   void set_event_dispatcher(EventDispatcher* dispatcher) {
     dispatcher_ = dispatcher;
   }
-  void set_metrics(Metrics* metrics) {
-    metrics_ = metrics;
-  }
-  void set_manager(Manager* manager) {
-    manager_ = manager;
-  }
+  void set_metrics(Metrics* metrics) { metrics_ = metrics; }
+  void set_manager(Manager* manager) { manager_ = manager; }
   void set_pending_activation_store(
       PendingActivationStore* pending_activation_store);
 

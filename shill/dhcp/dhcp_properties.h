@@ -50,8 +50,7 @@ class DhcpProperties {
   //      returned DhcpProperties will store:
   //          {"Hostname": "differentname", "VendorClass": "vc"}
   static std::unique_ptr<DhcpProperties> Combine(
-      const DhcpProperties& base,
-      const DhcpProperties& to_merge);
+      const DhcpProperties& base, const DhcpProperties& to_merge);
 
   // Retrieves the value for a property with |name| in |value| if it is set.
   // Returns true if the property was found.
@@ -80,8 +79,9 @@ class DhcpProperties {
 
   void ClearMappedStringProperty(const size_t& index, Error* error);
   std::string GetMappedStringProperty(const size_t& index, Error* error);
-  bool SetMappedStringProperty(
-      const size_t& index, const std::string& value, Error* error);
+  bool SetMappedStringProperty(const size_t& index,
+                               const std::string& value,
+                               Error* error);
 
   // KeyValueStore tracking values for DhcpProperties settings.
   KeyValueStore properties_;

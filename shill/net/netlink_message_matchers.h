@@ -26,8 +26,8 @@ MATCHER_P2(IsNl80211Command, nl80211_message_type, command, "") {
   }
   const Nl80211Message* msg = static_cast<const Nl80211Message*>(arg);
   if (msg->command() != command) {
-    LOG(INFO) << "Not a message of type " << command
-               << " (it's a " << +msg->command() << ")";
+    LOG(INFO) << "Not a message of type " << command << " (it's a "
+              << +msg->command() << ")";
     return false;
   }
   return true;
@@ -78,7 +78,7 @@ MATCHER_P(HasHiddenSSID, nl80211_message_type, "") {
   }
   AttributeListConstRefPtr ssids;
   if (!msg->const_attributes()->ConstGetNestedAttributeList(
-      NL80211_ATTR_SCAN_SSIDS, &ssids)) {
+          NL80211_ATTR_SCAN_SSIDS, &ssids)) {
     LOG(INFO) << "No SSID list in message";
     return false;
   }
@@ -126,7 +126,7 @@ MATCHER_P(HasNoHiddenSSID, nl80211_message_type, "") {
   }
   AttributeListConstRefPtr ssids;
   if (!msg->const_attributes()->ConstGetNestedAttributeList(
-      NL80211_ATTR_SCAN_SSIDS, &ssids)) {
+          NL80211_ATTR_SCAN_SSIDS, &ssids)) {
     return true;
   }
   AttributeIdIterator ssid_iter(*ssids);

@@ -43,7 +43,7 @@ static std::string ObjectID(const ThirdPartyVpnDriver* v) {
 namespace {
 
 const int32_t kConstantMaxMtu = (1 << 16) - 1;
-const int32_t kConnectTimeoutSeconds = 60*5;
+const int32_t kConnectTimeoutSeconds = 60 * 5;
 
 std::string IPAddressFingerprint(const IPAddress& address) {
   static const char* const hex_to_bin[] = {
@@ -62,11 +62,10 @@ std::string IPAddressFingerprint(const IPAddress& address) {
 }  // namespace
 
 const VPNDriver::Property ThirdPartyVpnDriver::kProperties[] = {
-  { kProviderHostProperty, 0 },
-  { kProviderTypeProperty, 0 },
-  { kExtensionNameProperty, 0 },
-  { kConfigurationNameProperty, 0 }
-};
+    {kProviderHostProperty, 0},
+    {kProviderTypeProperty, 0},
+    {kExtensionNameProperty, 0},
+    {kConfigurationNameProperty, 0}};
 
 ThirdPartyVpnDriver* ThirdPartyVpnDriver::active_client_ = nullptr;
 
@@ -170,8 +169,11 @@ void ThirdPartyVpnDriver::SendPacket(const std::vector<uint8_t>& ip_packet,
 }
 
 void ThirdPartyVpnDriver::ProcessIp(
-    const std::map<std::string, std::string>& parameters, const char* key,
-    std::string* target, bool mandatory, std::string* error_message) {
+    const std::map<std::string, std::string>& parameters,
+    const char* key,
+    std::string* target,
+    bool mandatory,
+    std::string* error_message) {
   // TODO(kaliamoorthi): Add IPV6 support.
   auto it = parameters.find(key);
   if (it != parameters.end()) {
@@ -186,15 +188,19 @@ void ThirdPartyVpnDriver::ProcessIp(
 }
 
 void ThirdPartyVpnDriver::ProcessIPArray(
-    const std::map<std::string, std::string>& parameters, const char* key,
-    char delimiter, std::vector<std::string>* target, bool mandatory,
-    std::string* error_message, std::string* warning_message) {
+    const std::map<std::string, std::string>& parameters,
+    const char* key,
+    char delimiter,
+    std::vector<std::string>* target,
+    bool mandatory,
+    std::string* error_message,
+    std::string* warning_message) {
   std::vector<std::string> string_array;
   auto it = parameters.find(key);
   if (it != parameters.end()) {
-    string_array = base::SplitString(
-        parameters.at(key), std::string{delimiter}, base::TRIM_WHITESPACE,
-        base::SPLIT_WANT_ALL);
+    string_array =
+        base::SplitString(parameters.at(key), std::string{delimiter},
+                          base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
     // Eliminate invalid IPs
     for (auto value = string_array.begin(); value != string_array.end();) {
@@ -217,16 +223,20 @@ void ThirdPartyVpnDriver::ProcessIPArray(
 }
 
 void ThirdPartyVpnDriver::ProcessIPArrayCIDR(
-    const std::map<std::string, std::string>& parameters, const char* key,
-    char delimiter, std::vector<std::string>* target, bool mandatory,
-    std::string* error_message, std::string* warning_message) {
+    const std::map<std::string, std::string>& parameters,
+    const char* key,
+    char delimiter,
+    std::vector<std::string>* target,
+    bool mandatory,
+    std::string* error_message,
+    std::string* warning_message) {
   std::vector<std::string> string_array;
   IPAddress address(IPAddress::kFamilyIPv4);
   auto it = parameters.find(key);
   if (it != parameters.end()) {
-    string_array = base::SplitString(
-        parameters.at(key), std::string{delimiter}, base::TRIM_WHITESPACE,
-        base::SPLIT_WANT_ALL);
+    string_array =
+        base::SplitString(parameters.at(key), std::string{delimiter},
+                          base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
     // Eliminate invalid IPs
     for (auto value = string_array.begin(); value != string_array.end();) {
@@ -257,15 +267,18 @@ void ThirdPartyVpnDriver::ProcessIPArrayCIDR(
 }
 
 void ThirdPartyVpnDriver::ProcessSearchDomainArray(
-    const std::map<std::string, std::string>& parameters, const char* key,
-    char delimiter, std::vector<std::string>* target, bool mandatory,
+    const std::map<std::string, std::string>& parameters,
+    const char* key,
+    char delimiter,
+    std::vector<std::string>* target,
+    bool mandatory,
     std::string* error_message) {
   std::vector<std::string> string_array;
   auto it = parameters.find(key);
   if (it != parameters.end()) {
-    string_array = base::SplitString(
-        parameters.at(key), std::string{delimiter}, base::TRIM_WHITESPACE,
-        base::SPLIT_WANT_ALL);
+    string_array =
+        base::SplitString(parameters.at(key), std::string{delimiter},
+                          base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
     if (!string_array.empty()) {
       target->swap(string_array);
@@ -278,8 +291,12 @@ void ThirdPartyVpnDriver::ProcessSearchDomainArray(
 }
 
 void ThirdPartyVpnDriver::ProcessInt32(
-    const std::map<std::string, std::string>& parameters, const char* key,
-    int32_t* target, int32_t min_value, int32_t max_value, bool mandatory,
+    const std::map<std::string, std::string>& parameters,
+    const char* key,
+    int32_t* target,
+    int32_t min_value,
+    int32_t max_value,
+    bool mandatory,
     std::string* error_message) {
   int32_t value = 0;
   auto it = parameters.find(key);
@@ -296,8 +313,11 @@ void ThirdPartyVpnDriver::ProcessInt32(
 }
 
 void ThirdPartyVpnDriver::ProcessBoolean(
-    const std::map<std::string, std::string>& parameters, const char* key,
-    bool* target, bool mandatory, std::string* error_message) {
+    const std::map<std::string, std::string>& parameters,
+    const char* key,
+    bool* target,
+    bool mandatory,
+    std::string* error_message) {
   auto it = parameters.find(key);
   if (it != parameters.end()) {
     std::string str_value = parameters.at(key);
@@ -315,7 +335,8 @@ void ThirdPartyVpnDriver::ProcessBoolean(
 
 void ThirdPartyVpnDriver::SetParameters(
     const std::map<std::string, std::string>& parameters,
-    std::string* error_message, std::string* warning_message) {
+    std::string* error_message,
+    std::string* warning_message) {
   // TODO(kaliamoorthi): Add IPV6 support.
   if (!parameters_expected_ || active_client_ != this) {
     error_message->append("Unexpected call");
@@ -512,10 +533,9 @@ bool ThirdPartyVpnDriver::ClaimInterface(const std::string& link_name,
     parameters_expected_ = true;
     adaptor_interface_->EmitPlatformMessage(
         static_cast<uint32_t>(PlatformMessage::kConnected));
-    default_service_callback_tag_ =
-        manager()->RegisterDefaultServiceCallback(
-            Bind(&ThirdPartyVpnDriver::OnDefaultServiceChanged,
-                 base::Unretained(this)));
+    default_service_callback_tag_ = manager()->RegisterDefaultServiceCallback(
+        Bind(&ThirdPartyVpnDriver::OnDefaultServiceChanged,
+             base::Unretained(this)));
   }
   return true;
 }
@@ -539,8 +559,7 @@ void ThirdPartyVpnDriver::OnConnectionDisconnected() {
 
 void ThirdPartyVpnDriver::TriggerReconnect(const ServiceRefPtr& new_service) {
   StartConnectTimeout(kConnectTimeoutSeconds);
-  SLOG(this, 2) << __func__
-                << " - requesting reconnection via "
+  SLOG(this, 2) << __func__ << " - requesting reconnection via "
                 << new_service->unique_name();
   if (link_down_) {
     adaptor_interface_->EmitPlatformMessage(
@@ -577,8 +596,7 @@ void ThirdPartyVpnDriver::OnDefaultServiceChanged(
     if (link_down_)
       return;
     StopConnectTimeout();
-    SLOG(this, 2) << __func__
-                  << " - physical connection lost";
+    SLOG(this, 2) << __func__ << " - physical connection lost";
     link_down_ = true;
     adaptor_interface_->EmitPlatformMessage(
         static_cast<uint32_t>(PlatformMessage::kLinkDown));

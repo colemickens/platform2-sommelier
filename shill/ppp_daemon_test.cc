@@ -38,11 +38,11 @@ class PPPDaemonTest : public Test, public RpcTaskDelegate {
   std::unique_ptr<ExternalTask> Start(const PPPDaemon::Options& options,
                                       const std::string& device,
                                       Error* error) {
-    PPPDaemon::DeathCallback callback(base::Bind(&PPPDaemonTest::DeathCallback,
-                                                 base::Unretained(this)));
+    PPPDaemon::DeathCallback callback(
+        base::Bind(&PPPDaemonTest::DeathCallback, base::Unretained(this)));
     return PPPDaemon::Start(&control_, &process_manager_,
-                            weak_ptr_factory_.GetWeakPtr(),
-                            options, device, callback, error);
+                            weak_ptr_factory_.GetWeakPtr(), options, device,
+                            callback, error);
   }
 
   bool CaptureArgv(const vector<string>& argv) {
@@ -51,8 +51,9 @@ class PPPDaemonTest : public Test, public RpcTaskDelegate {
   }
 
   MOCK_METHOD2(GetLogin, void(std::string* user, std::string* password));
-  MOCK_METHOD2(Notify, void(const std::string& reason,
-                            const std::map<std::string, std::string>& dict));
+  MOCK_METHOD2(Notify,
+               void(const std::string& reason,
+                    const std::map<std::string, std::string>& dict));
 
  protected:
   MockControl control_;
@@ -99,8 +100,8 @@ TEST_F(PPPDaemonTest, OptionsConverted) {
   std::unique_ptr<ExternalTask> task(Start(options, "eth0", &error));
 
   std::set<std::string> expected_arguments = {
-    "nodetach", "nodefaultroute", "usepeerdns", "lcp-echo-interval",
-    "lcp-echo-failure", "maxfail", "+ipv6", "ipv6cp-use-ipaddr",
+      "nodetach",         "nodefaultroute", "usepeerdns", "lcp-echo-interval",
+      "lcp-echo-failure", "maxfail",        "+ipv6",      "ipv6cp-use-ipaddr",
   };
   for (const auto& argument : argv_) {
     expected_arguments.erase(argument);

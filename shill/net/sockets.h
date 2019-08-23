@@ -78,8 +78,12 @@ class SHILL_EXPORT Sockets {
   virtual int Listen(int sockfd, int backlog) const;
 
   // recvfrom
-  virtual ssize_t RecvFrom(int sockfd, void* buf, size_t len, int flags,
-                           struct sockaddr* src_addr, socklen_t* addrlen) const;
+  virtual ssize_t RecvFrom(int sockfd,
+                           void* buf,
+                           size_t len,
+                           int flags,
+                           struct sockaddr* src_addr,
+                           socklen_t* addrlen) const;
 
   // select
   virtual int Select(int nfds,

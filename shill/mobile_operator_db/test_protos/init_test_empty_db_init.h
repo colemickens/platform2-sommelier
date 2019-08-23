@@ -6,7 +6,7 @@
 #define SHILL_MOBILE_OPERATOR_DB_TEST_PROTOS_INIT_TEST_EMPTY_DB_INIT_H_
 
 #ifndef IN_MOBILE_OPERATOR_INFO_UNITTEST_CC
-  #error "Must be included only from mobile_operator_info_test.cc."
+#error "Must be included only from mobile_operator_info_test.cc."
 #endif
 
 // Following is the binary protobuf for the following (text representation)
@@ -21,8 +21,7 @@
 
 namespace shill {
 namespace mobile_operator_db {
-static const unsigned char init_test_empty_db_init[] {
-};
+static const unsigned char init_test_empty_db_init[]{};
 }  // namespace mobile_operator_db
 }  // namespace shill
 

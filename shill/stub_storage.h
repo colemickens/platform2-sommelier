@@ -32,11 +32,10 @@ class StubStorage : public StoreInterface {
       const KeyValueStore& properties) const override {
     return {};
   }
-  bool ContainsGroup(const std::string& group) const override {
+  bool ContainsGroup(const std::string& group) const override { return false; }
+  bool DeleteKey(const std::string& group, const std::string& key) override {
     return false;
   }
-  bool DeleteKey(const std::string& group, const std::string& key)
-      override { return false; }
   bool DeleteGroup(const std::string& group) override { return false; }
   bool SetHeader(const std::string& header) override { return false; }
   bool GetString(const std::string& group,

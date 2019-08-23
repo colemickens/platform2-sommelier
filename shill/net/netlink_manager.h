@@ -127,8 +127,8 @@ class SHILL_EXPORT NetlinkManager {
   // ResponseHandlers provide a polymorphic context for the base::Callback
   // message handlers so that handlers for different types of messages can be
   // kept in the same container (namely, |message_handlers_|).
-  class NetlinkResponseHandler :
-    public base::RefCounted<NetlinkResponseHandler> {
+  class NetlinkResponseHandler
+      : public base::RefCounted<NetlinkResponseHandler> {
    public:
     NetlinkResponseHandler(
         const NetlinkAckHandler& ack_handler,
@@ -198,7 +198,8 @@ class SHILL_EXPORT NetlinkManager {
   // |NetlinkMessage::kIllegalMessageType| if the message type could not be
   // determined.  May block so |GetFamily| should be called before entering the
   // event loop.
-  virtual uint16_t GetFamily(const std::string& family_name,
+  virtual uint16_t GetFamily(
+      const std::string& family_name,
       const NetlinkMessageFactory::FactoryMethod& message_factory);
 
   // Install a NetlinkManager NetlinkMessageHandler.  The handler is a
@@ -311,13 +312,13 @@ class SHILL_EXPORT NetlinkManager {
 
   // These need to be member variables, even though they're only used once in
   // the code, since they're needed for unittests.
-  static const long kMaximumNewFamilyWaitSeconds;  // NOLINT
+  static const long kMaximumNewFamilyWaitSeconds;       // NOLINT
   static const long kMaximumNewFamilyWaitMicroSeconds;  // NOLINT
-  static const long kResponseTimeoutSeconds;  // NOLINT
-  static const long kResponseTimeoutMicroSeconds;  // NOLINT
-  static const long kPendingDumpTimeoutMilliseconds;  // NOLINT
-  static const long kNlMessageRetryDelayMilliseconds;  // NOLINT
-  static const int kMaxNlMessageRetries;  // NOLINT
+  static const long kResponseTimeoutSeconds;            // NOLINT
+  static const long kResponseTimeoutMicroSeconds;       // NOLINT
+  static const long kPendingDumpTimeoutMilliseconds;    // NOLINT
+  static const long kNlMessageRetryDelayMilliseconds;   // NOLINT
+  static const int kMaxNlMessageRetries;                // NOLINT
 
   // Returns the file descriptor of socket used to read wifi data.
   int file_descriptor() const;
@@ -342,7 +343,8 @@ class SHILL_EXPORT NetlinkManager {
   // |sequence_number| exists, calls the error handler with the arguments |type|
   // and |netlink_message|, then erases the NetlinkResponseHandler from
   // |message_handlers_|.
-  void CallErrorHandler(uint32_t sequence_number, AuxilliaryMessageType type,
+  void CallErrorHandler(uint32_t sequence_number,
+                        AuxilliaryMessageType type,
                         const NetlinkMessage* netlink_message);
 
   // Called by InputHandler on exceptional events.

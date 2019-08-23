@@ -62,8 +62,8 @@ struct AuthenticationExpectations {
       const string& otp_in,
       const string& token_in,
       Metrics::VpnRemoteAuthenticationType remote_authentication_type_in,
-      const vector<Metrics::VpnUserAuthenticationType>
-          &user_authentication_types_in)
+      const vector<Metrics::VpnUserAuthenticationType>&
+          user_authentication_types_in)
       : ca_cert(ca_cert_in),
         client_cert(client_cert_in),
         user(user_in),
@@ -150,9 +150,7 @@ class OpenVPNDriverTest
     driver_->args()->SetStrings(arg, value);
   }
 
-  KeyValueStore* GetArgs() {
-    return driver_->args();
-  }
+  KeyValueStore* GetArgs() { return driver_->args(); }
 
   KeyValueStore GetProviderProperties(const PropertyStore& store) {
     KeyValueStore props;
@@ -162,22 +160,18 @@ class OpenVPNDriverTest
     return props;
   }
 
-  void RemoveStringArg(const string& arg) {
-    driver_->args()->Remove(arg);
-  }
+  void RemoveStringArg(const string& arg) { driver_->args()->Remove(arg); }
 
   const ServiceRefPtr& GetSelectedService() {
     return device_->selected_service();
   }
 
-  bool InitManagementChannelOptions(
-      vector<vector<string>>* options, Error* error) {
+  bool InitManagementChannelOptions(vector<vector<string>>* options,
+                                    Error* error) {
     return driver_->InitManagementChannelOptions(options, error);
   }
 
-  Sockets* GetSockets() {
-    return &driver_->sockets_;
-  }
+  Sockets* GetSockets() { return &driver_->sockets_; }
 
   void SetDevice(const VirtualDeviceRefPtr& device) {
     driver_->device_ = device;
@@ -187,25 +181,17 @@ class OpenVPNDriverTest
     driver_->service_ = service;
   }
 
-  VPNServiceRefPtr GetService() {
-    return driver_->service_;
-  }
+  VPNServiceRefPtr GetService() { return driver_->service_; }
 
-  void OnConnectionDisconnected() {
-    driver_->OnConnectionDisconnected();
-  }
+  void OnConnectionDisconnected() { driver_->OnConnectionDisconnected(); }
 
-  void OnConnectTimeout() {
-    driver_->OnConnectTimeout();
-  }
+  void OnConnectTimeout() { driver_->OnConnectTimeout(); }
 
   void StartConnectTimeout(int timeout_seconds) {
     driver_->StartConnectTimeout(timeout_seconds);
   }
 
-  bool IsConnectTimeoutStarted() {
-    return driver_->IsConnectTimeoutStarted();
-  }
+  bool IsConnectTimeoutStarted() { return driver_->IsConnectTimeoutStarted(); }
 
   static int GetDefaultConnectTimeoutSeconds() {
     return OpenVPNDriver::kDefaultConnectTimeoutSeconds;
@@ -229,7 +215,8 @@ class OpenVPNDriverTest
 
   // Used to assert that a flag appears in the options.
   void ExpectInFlags(const vector<vector<string>>& options, const string& flag);
-  void ExpectInFlags(const vector<vector<string>>& options, const string& flag,
+  void ExpectInFlags(const vector<vector<string>>& options,
+                     const string& flag,
                      const string& value);
   void ExpectInFlags(const vector<vector<string>>& options,
                      const vector<string>& arguments);
@@ -251,7 +238,7 @@ class OpenVPNDriverTest
   OpenVPNDriver* driver_;  // Owned by |service_|.
   scoped_refptr<MockVPNService> service_;
   scoped_refptr<MockVirtualDevice> device_;
-  MockCertificateFile* certificate_file_;  // Owned by |driver_|.
+  MockCertificateFile* certificate_file_;         // Owned by |driver_|.
   MockCertificateFile* extra_certificates_file_;  // Owned by |driver_|.
   base::ScopedTempDir temporary_directory_;
 
@@ -286,13 +273,13 @@ void OpenVPNDriverTest::Notify(const string& /*reason*/,
 
 void OpenVPNDriverTest::ExpectInFlags(const vector<vector<string>>& options,
                                       const string& flag) {
-  ExpectInFlags(options, vector<string> { flag });
+  ExpectInFlags(options, vector<string>{flag});
 }
 
 void OpenVPNDriverTest::ExpectInFlags(const vector<vector<string>>& options,
                                       const string& flag,
                                       const string& value) {
-  ExpectInFlags(options, vector<string> { flag, value });
+  ExpectInFlags(options, vector<string>{flag, value});
 }
 
 void OpenVPNDriverTest::ExpectInFlags(const vector<vector<string>>& options,
@@ -319,8 +306,7 @@ void OpenVPNDriverTest::SetupLSBRelease() {
       "CHROMEOS_RELEASE_VERSION=2202.0\n";
   EXPECT_TRUE(base::CreateTemporaryFile(&lsb_release_file_));
   EXPECT_EQ(arraysize(kLSBReleaseContents),
-            base::WriteFile(lsb_release_file_,
-                            kLSBReleaseContents,
+            base::WriteFile(lsb_release_file_, kLSBReleaseContents,
                             arraysize(kLSBReleaseContents)));
   EXPECT_EQ(OpenVPNDriver::kLSBReleaseFile, driver_->lsb_release_file_.value());
   driver_->lsb_release_file_ = lsb_release_file_;
@@ -374,19 +360,18 @@ TEST_P(OpenVPNDriverTest, NotifyUMA) {
 
   // Check that UMA metrics are emitted on Notify.
   EXPECT_CALL(*device_, UpdateIPConfig(_));
-  EXPECT_CALL(metrics_, SendEnumToUMA(
-      Metrics::kMetricVpnDriver,
-      Metrics::kVpnDriverOpenVpn,
-      Metrics::kMetricVpnDriverMax));
-  EXPECT_CALL(metrics_, SendEnumToUMA(
-      Metrics::kMetricVpnRemoteAuthenticationType,
-      GetParam().remote_authentication_type,
-      Metrics::kVpnRemoteAuthenticationTypeMax));
+  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnDriver,
+                                      Metrics::kVpnDriverOpenVpn,
+                                      Metrics::kMetricVpnDriverMax));
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(Metrics::kMetricVpnRemoteAuthenticationType,
+                            GetParam().remote_authentication_type,
+                            Metrics::kVpnRemoteAuthenticationTypeMax));
   for (const auto& authentication_type : GetParam().user_authentication_types) {
-    EXPECT_CALL(metrics_, SendEnumToUMA(
-        Metrics::kMetricVpnUserAuthenticationType,
-        authentication_type,
-        Metrics::kVpnUserAuthenticationTypeMax));
+    EXPECT_CALL(metrics_,
+                SendEnumToUMA(Metrics::kMetricVpnUserAuthenticationType,
+                              authentication_type,
+                              Metrics::kVpnUserAuthenticationTypeMax));
   }
 
   Error unused_error;
@@ -394,13 +379,11 @@ TEST_P(OpenVPNDriverTest, NotifyUMA) {
   driver_->InitPropertyStore(&store);
   if (!GetParam().ca_cert.empty()) {
     store.SetStringsProperty(kOpenVPNCaCertPemProperty,
-                             vector<string>{ GetParam().ca_cert },
-                             &unused_error);
+                             vector<string>{GetParam().ca_cert}, &unused_error);
   }
   if (!GetParam().client_cert.empty()) {
     store.SetStringProperty(kOpenVPNClientCertIdProperty,
-                            GetParam().client_cert,
-                            &unused_error);
+                            GetParam().client_cert, &unused_error);
   }
   if (!GetParam().user.empty()) {
     store.SetStringProperty(kOpenVPNUserProperty, GetParam().user,
@@ -421,50 +404,78 @@ INSTANTIATE_TEST_CASE_P(
     OpenVPNDriverAuthenticationTypes,
     OpenVPNDriverTest,
     ::testing::Values(
-      AuthenticationExpectations(
-          "", "", "", "", "",
-          Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
-          vector<Metrics::VpnUserAuthenticationType> {
-              Metrics::kVpnUserAuthenticationTypeOpenVpnNone }),
-      AuthenticationExpectations(
-          "", "client_cert", "", "", "",
-          Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
-          vector<Metrics::VpnUserAuthenticationType> {
-              Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate }),
-      AuthenticationExpectations(
-          "", "client_cert", "user", "", "",
-          Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
-          vector<Metrics::VpnUserAuthenticationType> {
-              Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate,
-              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword }),
-      AuthenticationExpectations(
-          "", "", "user", "", "",
-          Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
-          vector<Metrics::VpnUserAuthenticationType> {
-              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword }),
-      AuthenticationExpectations(
-          "", "client_cert", "user", "otp", "",
-          Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
-          vector<Metrics::VpnUserAuthenticationType> {
-              Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate,
-              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword,
-              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePasswordOtp }),
-      AuthenticationExpectations(
-          "", "client_cert", "user", "otp", "token",
-          Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
-          vector<Metrics::VpnUserAuthenticationType> {
-              Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate,
-              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword,
-              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePasswordOtp,
-              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernameToken }),
-      AuthenticationExpectations(
-          "ca_cert", "client_cert", "user", "otp", "token",
-          Metrics::kVpnRemoteAuthenticationTypeOpenVpnCertificate,
-          vector<Metrics::VpnUserAuthenticationType> {
-              Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate,
-              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword,
-              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePasswordOtp,
-              Metrics::kVpnUserAuthenticationTypeOpenVpnUsernameToken })));
+        AuthenticationExpectations(
+            "",
+            "",
+            "",
+            "",
+            "",
+            Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
+            vector<Metrics::VpnUserAuthenticationType>{
+                Metrics::kVpnUserAuthenticationTypeOpenVpnNone}),
+        AuthenticationExpectations(
+            "",
+            "client_cert",
+            "",
+            "",
+            "",
+            Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
+            vector<Metrics::VpnUserAuthenticationType>{
+                Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate}),
+        AuthenticationExpectations(
+            "",
+            "client_cert",
+            "user",
+            "",
+            "",
+            Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
+            vector<Metrics::VpnUserAuthenticationType>{
+                Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate,
+                Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword}),
+        AuthenticationExpectations(
+            "",
+            "",
+            "user",
+            "",
+            "",
+            Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
+            vector<Metrics::VpnUserAuthenticationType>{
+                Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword}),
+        AuthenticationExpectations(
+            "",
+            "client_cert",
+            "user",
+            "otp",
+            "",
+            Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
+            vector<Metrics::VpnUserAuthenticationType>{
+                Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate,
+                Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword,
+                Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePasswordOtp}),
+        AuthenticationExpectations(
+            "",
+            "client_cert",
+            "user",
+            "otp",
+            "token",
+            Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
+            vector<Metrics::VpnUserAuthenticationType>{
+                Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate,
+                Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword,
+                Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePasswordOtp,
+                Metrics::kVpnUserAuthenticationTypeOpenVpnUsernameToken}),
+        AuthenticationExpectations(
+            "ca_cert",
+            "client_cert",
+            "user",
+            "otp",
+            "token",
+            Metrics::kVpnRemoteAuthenticationTypeOpenVpnCertificate,
+            vector<Metrics::VpnUserAuthenticationType>{
+                Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate,
+                Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword,
+                Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePasswordOtp,
+                Metrics::kVpnUserAuthenticationTypeOpenVpnUsernameToken})));
 
 TEST_F(OpenVPNDriverTest, NotifyFail) {
   map<string, string> dict;
@@ -574,16 +585,16 @@ TEST_F(OpenVPNDriverTest, ParseForeignOption) {
   vector<string> dns_servers;
   IPConfig::Properties props;
   OpenVPNDriver::ParseForeignOption("", &domain_search, &dns_servers);
-  OpenVPNDriver::ParseForeignOption(
-      "dhcp-option DOMAIN", &domain_search, &dns_servers);
-  OpenVPNDriver::ParseForeignOption(
-      "dhcp-option DOMAIN zzz.com foo", &domain_search, &dns_servers);
-  OpenVPNDriver::ParseForeignOption(
-      "dhcp-Option DOmAIN xyz.com", &domain_search, &dns_servers);
+  OpenVPNDriver::ParseForeignOption("dhcp-option DOMAIN", &domain_search,
+                                    &dns_servers);
+  OpenVPNDriver::ParseForeignOption("dhcp-option DOMAIN zzz.com foo",
+                                    &domain_search, &dns_servers);
+  OpenVPNDriver::ParseForeignOption("dhcp-Option DOmAIN xyz.com",
+                                    &domain_search, &dns_servers);
   ASSERT_EQ(1, domain_search.size());
   EXPECT_EQ("xyz.com", domain_search[0]);
-  OpenVPNDriver::ParseForeignOption(
-      "dhcp-option DnS 1.2.3.4", &domain_search, &dns_servers);
+  OpenVPNDriver::ParseForeignOption("dhcp-option DnS 1.2.3.4", &domain_search,
+                                    &dns_servers);
   ASSERT_EQ(1, dns_servers.size());
   EXPECT_EQ("1.2.3.4", dns_servers[0]);
 }
@@ -730,10 +741,10 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   vector<vector<string>> options;
   driver_->InitOptions(&options, &error);
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ(vector<string> { "client" }, options[0]);
+  EXPECT_EQ(vector<string>{"client"}, options[0]);
   ExpectInFlags(options, "remote", kHost);
-  ExpectInFlags(options, vector<string> { "setenv", kRpcTaskPathVariable,
-                                          RpcTaskMockAdaptor::kRpcId });
+  ExpectInFlags(options, vector<string>{"setenv", kRpcTaskPathVariable,
+                                        RpcTaskMockAdaptor::kRpcId});
   ExpectInFlags(options, "dev", kInterfaceName);
   ExpectInFlags(options, "group", "openvpn");
   EXPECT_EQ(kInterfaceName, driver_->tunnel_interface_);
@@ -746,7 +757,7 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   ExpectInFlags(options, "ca", OpenVPNDriver::kDefaultCACertificates);
   ExpectInFlags(options, "syslog");
   ExpectNotInFlags(options, "auth-user-pass");
-  ExpectInFlags(options, vector<string> { "remote-cert-ku", kKU0, kKU1 });
+  ExpectInFlags(options, vector<string>{"remote-cert-ku", kKU0, kKU1});
   ExpectInFlags(options, "tls-version-min", kTLSVersionMin);
 }
 
@@ -761,7 +772,7 @@ TEST_F(OpenVPNDriverTest, InitOptionsHostWithPort) {
   vector<vector<string>> options;
   driver_->InitOptions(&options, &error);
   EXPECT_TRUE(error.IsSuccess());
-  ExpectInFlags(options, vector<string> { "remote", "v.com", "1234" });
+  ExpectInFlags(options, vector<string>{"remote", "v.com", "1234"});
 }
 
 TEST_F(OpenVPNDriverTest, InitOptionsHostWithExtraHosts) {
@@ -777,10 +788,10 @@ TEST_F(OpenVPNDriverTest, InitOptionsHostWithExtraHosts) {
   vector<vector<string>> options;
   driver_->InitOptions(&options, &error);
   EXPECT_TRUE(error.IsSuccess());
-  ExpectInFlags(options,
-                vector<string>{
-                    "remote", "1.2.3.4",
-                });
+  ExpectInFlags(options, vector<string>{
+                             "remote",
+                             "1.2.3.4",
+                         });
   ExpectInFlags(options, vector<string>{"remote", "abc.com", "123"});
   ExpectInFlags(options, vector<string>{"remote", "127.0.0.1"});
   ExpectInFlags(options, vector<string>{"remote", "v.com", "8000"});
@@ -845,7 +856,7 @@ TEST_F(OpenVPNDriverTest, InitCertificateVerifyOptions) {
     // 2-parameter version of the "x509-verify-name" parameter provided.
     SetArg(kOpenVPNVerifyX509TypeProperty, kType);
     driver_->InitCertificateVerifyOptions(&options);
-    ExpectInFlags(options, vector<string> { "verify-x509-name", kName, kType });
+    ExpectInFlags(options, vector<string>{"verify-x509-name", kName, kType});
   }
   {
     Error error;
@@ -913,7 +924,7 @@ TEST_F(OpenVPNDriverTest, InitExtraCertOptions) {
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_TRUE(options.empty());
   }
-  const vector<string> kExtraCerts{ "---PEM CONTENTS---" };
+  const vector<string> kExtraCerts{"---PEM CONTENTS---"};
   SetArgArray(kOpenVPNExtraCertPemProperty, kExtraCerts);
   static const char kPEMCertfile[] = "/tmp/pem-cert";
   FilePath pem_cert(kPEMCertfile);
@@ -988,7 +999,7 @@ TEST_F(OpenVPNDriverTest, InitLoggingOptions) {
   ScopeLogger::GetInstance()->EnableScopesByName("-vpn");
   driver_->InitLoggingOptions(&options);
   ASSERT_EQ(1, options.size());
-  EXPECT_EQ(vector<string> { "syslog" }, options[0]);
+  EXPECT_EQ(vector<string>{"syslog"}, options[0]);
   ScopeLogger::GetInstance()->EnableScopesByName("+vpn");
   options.clear();
   driver_->InitLoggingOptions(&options);
@@ -1037,17 +1048,16 @@ TEST_F(OpenVPNDriverTest, AppendValueOption) {
   EXPECT_TRUE(driver_->AppendValueOption(kProperty, kOption, &options));
   EXPECT_TRUE(driver_->AppendValueOption(kProperty2, kOption2, &options));
   EXPECT_EQ(2, options.size());
-  vector<string> expected_value { kOption, kValue };
+  vector<string> expected_value{kOption, kValue};
   EXPECT_EQ(expected_value, options[0]);
-  vector<string> expected_value2 { kOption2, kValue2 };
+  vector<string> expected_value2{kOption2, kValue2};
   EXPECT_EQ(expected_value2, options[1]);
 }
 
 TEST_F(OpenVPNDriverTest, AppendDelimitedValueOption) {
   vector<vector<string>> options;
-  EXPECT_FALSE(
-      driver_->AppendDelimitedValueOption(
-          "OpenVPN.UnknownProperty", kOption, ' ', &options));
+  EXPECT_FALSE(driver_->AppendDelimitedValueOption("OpenVPN.UnknownProperty",
+                                                   kOption, ' ', &options));
   EXPECT_TRUE(options.empty());
 
   SetArg(kProperty, "");
@@ -1058,14 +1068,14 @@ TEST_F(OpenVPNDriverTest, AppendDelimitedValueOption) {
   string kConcatenatedValues(string(kValue) + " " + string(kValue2));
   SetArg(kProperty, kConcatenatedValues);
   SetArg(kProperty2, kConcatenatedValues);
-  EXPECT_TRUE(driver_->AppendDelimitedValueOption(
-      kProperty, kOption, ':', &options));
-  EXPECT_TRUE(driver_->AppendDelimitedValueOption(
-      kProperty2, kOption2, ' ', &options));
+  EXPECT_TRUE(
+      driver_->AppendDelimitedValueOption(kProperty, kOption, ':', &options));
+  EXPECT_TRUE(
+      driver_->AppendDelimitedValueOption(kProperty2, kOption2, ' ', &options));
   EXPECT_EQ(2, options.size());
-  vector<string> expected_value { kOption, kConcatenatedValues };
+  vector<string> expected_value{kOption, kConcatenatedValues};
   EXPECT_EQ(expected_value, options[0]);
-  vector<string> expected_value2 { kOption2, kValue, kValue2 };
+  vector<string> expected_value2{kOption2, kValue, kValue2};
   EXPECT_EQ(expected_value2, options[1]);
 }
 
@@ -1080,14 +1090,14 @@ TEST_F(OpenVPNDriverTest, AppendFlag) {
   EXPECT_TRUE(driver_->AppendFlag(kProperty, kOption, &options));
   EXPECT_TRUE(driver_->AppendFlag(kProperty2, kOption2, &options));
   EXPECT_EQ(2, options.size());
-  EXPECT_EQ(vector<string> { kOption }, options[0]);
-  EXPECT_EQ(vector<string> { kOption2 }, options[1]);
+  EXPECT_EQ(vector<string>{kOption}, options[0]);
+  EXPECT_EQ(vector<string>{kOption2}, options[1]);
 }
 
 TEST_F(OpenVPNDriverTest, ClaimInterface) {
   driver_->tunnel_interface_ = kInterfaceName;
-  EXPECT_FALSE(driver_->ClaimInterface(string(kInterfaceName) + "XXX",
-                                       kInterfaceIndex));
+  EXPECT_FALSE(
+      driver_->ClaimInterface(string(kInterfaceName) + "XXX", kInterfaceIndex));
   EXPECT_FALSE(driver_->device_);
 
   static const char kHost[] = "192.168.2.254";
@@ -1095,9 +1105,8 @@ TEST_F(OpenVPNDriverTest, ClaimInterface) {
   EXPECT_CALL(*management_server_, Start(_, _)).WillOnce(Return(true));
   EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(false));
   EXPECT_CALL(manager_, GetJailVpnClients()).WillOnce(Return(false));
-  EXPECT_CALL(
-      process_manager_,
-      StartProcess(_, _, _, _, false /* Don't exit with parent */, _))
+  EXPECT_CALL(process_manager_,
+              StartProcess(_, _, _, _, false /* Don't exit with parent */, _))
       .WillOnce(Return(true));
   const int kServiceCallbackTag = 1;
   EXPECT_EQ(0, driver_->default_service_callback_tag_);
@@ -1125,8 +1134,7 @@ TEST_F(OpenVPNDriverTest, FailService) {
 
 TEST_F(OpenVPNDriverTest, Cleanup) {
   // Ensure no crash.
-  driver_->Cleanup(Service::kStateIdle,
-                   Service::kFailureNone,
+  driver_->Cleanup(Service::kStateIdle, Service::kFailureNone,
                    Service::kErrorDetailsNone);
 
   const int kPID = 123456;
@@ -1154,8 +1162,8 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   EXPECT_CALL(*device_, DropConnection());
   EXPECT_CALL(*device_, SetEnabled(false));
   EXPECT_CALL(*service_, SetFailure(Service::kFailureInternal));
-  driver_->Cleanup(
-      Service::kStateFailure, Service::kFailureInternal,  kErrorDetails);
+  driver_->Cleanup(Service::kStateFailure, Service::kFailureInternal,
+                   kErrorDetails);
   EXPECT_EQ(0, driver_->default_service_callback_tag_);
   EXPECT_EQ(0, driver_->pid_);
   EXPECT_EQ(nullptr, driver_->rpc_task_);
@@ -1281,12 +1289,12 @@ TEST_F(OpenVPNDriverTest, OnReconnectingUnknown) {
 }
 
 TEST_F(OpenVPNDriverTest, OnReconnectingTLSError) {
-  EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, _,
-                              GetReconnectOfflineTimeoutSeconds() * 1000));
-  EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, _,
-                              GetReconnectTLSErrorTimeoutSeconds() * 1000));
+  EXPECT_CALL(
+      dispatcher_,
+      PostDelayedTask(_, _, GetReconnectOfflineTimeoutSeconds() * 1000));
+  EXPECT_CALL(
+      dispatcher_,
+      PostDelayedTask(_, _, GetReconnectTLSErrorTimeoutSeconds() * 1000));
 
   driver_->OnReconnecting(OpenVPNDriver::kReconnectReasonOffline);
   EXPECT_TRUE(IsConnectTimeoutStarted());
@@ -1397,9 +1405,9 @@ TEST_F(OpenVPNDriverTest, GetReconnectTimeoutSeconds) {
             GetReconnectTimeoutSeconds(OpenVPNDriver::kReconnectReasonUnknown));
   EXPECT_EQ(GetReconnectOfflineTimeoutSeconds(),
             GetReconnectTimeoutSeconds(OpenVPNDriver::kReconnectReasonOffline));
-  EXPECT_EQ(GetReconnectTLSErrorTimeoutSeconds(),
-            GetReconnectTimeoutSeconds(
-                OpenVPNDriver::kReconnectReasonTLSError));
+  EXPECT_EQ(
+      GetReconnectTLSErrorTimeoutSeconds(),
+      GetReconnectTimeoutSeconds(OpenVPNDriver::kReconnectReasonTLSError));
 }
 
 TEST_F(OpenVPNDriverTest, WriteConfigFile) {
@@ -1410,11 +1418,10 @@ TEST_F(OpenVPNDriverTest, WriteConfigFile) {
   const char kOption2Argument0[] = "option2-argument0\n\t\"'\\";
   const char kOption2Argument0Transformed[] = "option2-argument0 \t\\\"'\\\\";
   const char kOption2Argument1[] = "option2-argument1 space";
-  vector<vector<string>> options {
-      { kOption0 },
-      { kOption1, kOption1Argument0 },
-      { kOption2, kOption2Argument0, kOption2Argument1 }
-  };
+  vector<vector<string>> options{
+      {kOption0},
+      {kOption1, kOption1Argument0},
+      {kOption2, kOption2Argument0, kOption2Argument1}};
   FilePath config_directory(
       temporary_directory_.GetPath().Append(kOpenVPNConfigDirectory));
   FilePath config_file;
@@ -1427,9 +1434,7 @@ TEST_F(OpenVPNDriverTest, WriteConfigFile) {
   string config_contents;
   EXPECT_TRUE(base::ReadFileToString(config_file, &config_contents));
   string expected_config_contents = base::StringPrintf(
-      "%s\n%s %s\n%s \"%s\" \"%s\"\n",
-      kOption0,
-      kOption1, kOption1Argument0,
+      "%s\n%s %s\n%s \"%s\" \"%s\"\n", kOption0, kOption1, kOption1Argument0,
       kOption2, kOption2Argument0Transformed, kOption2Argument1);
   EXPECT_EQ(expected_config_contents, config_contents);
 }

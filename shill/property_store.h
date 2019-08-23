@@ -46,35 +46,50 @@ class PropertyStore {
   // |store_| by name. Upon success, these methods return true and return the
   // property value in |value|. Upon failure, they return false and
   // leave |value| untouched.
-  bool GetBoolProperty(const std::string& name, bool* value,
+  bool GetBoolProperty(const std::string& name,
+                       bool* value,
                        Error* error) const;
-  bool GetInt16Property(const std::string& name, int16_t* value,
+  bool GetInt16Property(const std::string& name,
+                        int16_t* value,
                         Error* error) const;
-  bool GetInt32Property(const std::string& name, int32_t* value,
+  bool GetInt32Property(const std::string& name,
+                        int32_t* value,
                         Error* error) const;
-  bool GetKeyValueStoreProperty(const std::string& name, KeyValueStore* value,
+  bool GetKeyValueStoreProperty(const std::string& name,
+                                KeyValueStore* value,
                                 Error* error) const;
-  bool GetStringProperty(const std::string& name, std::string* value,
+  bool GetStringProperty(const std::string& name,
+                         std::string* value,
                          Error* error) const;
-  bool GetStringmapProperty(const std::string& name, Stringmap* values,
+  bool GetStringmapProperty(const std::string& name,
+                            Stringmap* values,
                             Error* error) const;
-  bool GetStringmapsProperty(const std::string& name, Stringmaps* values,
+  bool GetStringmapsProperty(const std::string& name,
+                             Stringmaps* values,
                              Error* error) const;
-  bool GetStringsProperty(const std::string& name, Strings* values,
+  bool GetStringsProperty(const std::string& name,
+                          Strings* values,
                           Error* error) const;
-  bool GetUint8Property(const std::string& name, uint8_t* value,
+  bool GetUint8Property(const std::string& name,
+                        uint8_t* value,
                         Error* error) const;
-  bool GetByteArrayProperty(const std::string& name, ByteArray* value,
-                            Error *error) const;
-  bool GetUint16Property(const std::string& name, uint16_t* value,
+  bool GetByteArrayProperty(const std::string& name,
+                            ByteArray* value,
+                            Error* error) const;
+  bool GetUint16Property(const std::string& name,
+                         uint16_t* value,
                          Error* error) const;
-  bool GetUint16sProperty(const std::string& name, Uint16s* value,
+  bool GetUint16sProperty(const std::string& name,
+                          Uint16s* value,
                           Error* error) const;
-  bool GetUint32Property(const std::string& name, uint32_t* value,
+  bool GetUint32Property(const std::string& name,
+                         uint32_t* value,
                          Error* error) const;
-  bool GetUint64Property(const std::string& name, uint64_t* value,
+  bool GetUint64Property(const std::string& name,
+                         uint64_t* value,
                          Error* error) const;
-  bool GetRpcIdentifierProperty(const std::string& name, RpcIdentifier* value,
+  bool GetRpcIdentifierProperty(const std::string& name,
+                                RpcIdentifier* value,
                                 Error* error) const;
 
   // Methods to allow the setting, by name, of properties stored in this object.
@@ -124,9 +139,9 @@ class PropertyStore {
                                 uint8_t value,
                                 Error* error);
 
-  virtual bool SetByteArrayProperty(const std::string &name,
+  virtual bool SetByteArrayProperty(const std::string& name,
                                     const ByteArray& value,
-                                    Error *error);
+                                    Error* error);
 
   virtual bool SetUint16Property(const std::string& name,
                                  uint16_t value,
@@ -167,12 +182,12 @@ class PropertyStore {
   ReadablePropertyConstIterator<bool> GetBoolPropertiesIter() const;
   ReadablePropertyConstIterator<int16_t> GetInt16PropertiesIter() const;
   ReadablePropertyConstIterator<int32_t> GetInt32PropertiesIter() const;
-  ReadablePropertyConstIterator<KeyValueStore>
-      GetKeyValueStorePropertiesIter() const;
-  ReadablePropertyConstIterator<RpcIdentifier>
-    GetRpcIdentifierPropertiesIter() const;
+  ReadablePropertyConstIterator<KeyValueStore> GetKeyValueStorePropertiesIter()
+      const;
+  ReadablePropertyConstIterator<RpcIdentifier> GetRpcIdentifierPropertiesIter()
+      const;
   ReadablePropertyConstIterator<RpcIdentifiers>
-    GetRpcIdentifiersPropertiesIter() const;
+  GetRpcIdentifiersPropertiesIter() const;
   ReadablePropertyConstIterator<std::string> GetStringPropertiesIter() const;
   ReadablePropertyConstIterator<Stringmap> GetStringmapPropertiesIter() const;
   ReadablePropertyConstIterator<Stringmaps> GetStringmapsPropertiesIter() const;

@@ -22,13 +22,14 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kLink;
-static std::string ObjectID(Connection* c) { return c->interface_name(); }
+static std::string ObjectID(Connection* c) {
+  return c->interface_name();
 }
+}  // namespace Logging
 
 const int LinkMonitor::kDefaultTestPeriodMilliseconds =
     ActiveLinkMonitor::kDefaultTestPeriodMilliseconds;
-const int LinkMonitor::kFailureThreshold =
-    ActiveLinkMonitor::kFailureThreshold;
+const int LinkMonitor::kFailureThreshold = ActiveLinkMonitor::kFailureThreshold;
 const char LinkMonitor::kDefaultLinkMonitorTechnologies[] = "wifi";
 
 LinkMonitor::LinkMonitor(const ConnectionRefPtr& connection,
@@ -42,24 +43,19 @@ LinkMonitor::LinkMonitor(const ConnectionRefPtr& connection,
       metrics_(metrics),
       failure_callback_(failure_callback),
       gateway_change_callback_(gateway_change_callback),
-      active_link_monitor_(
-          new ActiveLinkMonitor(
-              connection,
-              dispatcher,
-              metrics,
-              device_info,
-              Bind(&LinkMonitor::OnActiveLinkMonitorFailure,
-                   Unretained(this)),
-              Bind(&LinkMonitor::OnActiveLinkMonitorSuccess,
-                   Unretained(this)))),
-      passive_link_monitor_(
-          new PassiveLinkMonitor(
-              connection,
-              dispatcher,
-              Bind(&LinkMonitor::OnPassiveLinkMonitorResultCallback,
-                   Unretained(this)))),
-      time_(Time::GetInstance()) {
-}
+      active_link_monitor_(new ActiveLinkMonitor(
+          connection,
+          dispatcher,
+          metrics,
+          device_info,
+          Bind(&LinkMonitor::OnActiveLinkMonitorFailure, Unretained(this)),
+          Bind(&LinkMonitor::OnActiveLinkMonitorSuccess, Unretained(this)))),
+      passive_link_monitor_(new PassiveLinkMonitor(
+          connection,
+          dispatcher,
+          Bind(&LinkMonitor::OnPassiveLinkMonitorResultCallback,
+               Unretained(this)))),
+      time_(Time::GetInstance()) {}
 
 LinkMonitor::~LinkMonitor() {
   Stop();
@@ -114,18 +110,15 @@ void LinkMonitor::OnActiveLinkMonitorFailure(
   timersub(&now, &started_monitoring_at_, &elapsed_time);
 
   metrics_->NotifyLinkMonitorFailure(
-      connection_->technology(),
-      failure,
-      elapsed_time.tv_sec,
-      broadcast_failure_count,
-      unicast_failure_count);
+      connection_->technology(), failure, elapsed_time.tv_sec,
+      broadcast_failure_count, unicast_failure_count);
 
   Stop();
 }
 
 void LinkMonitor::OnActiveLinkMonitorSuccess() {
   if (!gateway_mac_address_.Equals(
-      active_link_monitor_->gateway_mac_address())) {
+          active_link_monitor_->gateway_mac_address())) {
     gateway_mac_address_ = active_link_monitor_->gateway_mac_address();
     // Notify device of the new gateway mac address.
     gateway_change_callback_.Run();

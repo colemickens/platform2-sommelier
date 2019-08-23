@@ -5,7 +5,6 @@
 #ifndef SHILL_DHCP_DHCPCD_LISTENER_INTERFACE_H_
 #define SHILL_DHCP_DHCPCD_LISTENER_INTERFACE_H_
 
-
 namespace shill {
 
 class DHCPCDListenerInterface {

@@ -61,12 +61,9 @@ class EthernetTest : public testing::Test {
   EthernetTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
         device_info_(&manager_),
-        ethernet_(new Ethernet(&manager_,
-                               kDeviceName,
-                               kDeviceAddress,
-                               kInterfaceIndex)),
-        dhcp_config_(new MockDHCPConfig(&control_interface_,
-                                        kDeviceName)),
+        ethernet_(new Ethernet(
+            &manager_, kDeviceName, kDeviceAddress, kInterfaceIndex)),
+        dhcp_config_(new MockDHCPConfig(&control_interface_, kDeviceName)),
 #if !defined(DISABLE_WIRED_8021X)
         eap_listener_(new MockEapListener()),
         mock_eap_service_(new MockService(&manager_)),
@@ -76,7 +73,8 @@ class EthernetTest : public testing::Test {
 #endif  // DISABLE_WIRED_8021X
         mock_sockets_(new StrictMock<MockSockets>()),
         mock_service_(new MockEthernetService(
-            &manager_, ethernet_->weak_ptr_factory_.GetWeakPtr())) {}
+            &manager_, ethernet_->weak_ptr_factory_.GetWeakPtr())) {
+  }
   ~EthernetTest() override {}
 
   void SetUp() override {
@@ -158,12 +156,8 @@ class EthernetTest : public testing::Test {
   void SetSupplicantNetworkPath(const RpcIdentifier& network_path) {
     ethernet_->supplicant_network_path_ = network_path;
   }
-  bool InvokeStartSupplicant() {
-    return ethernet_->StartSupplicant();
-  }
-  void InvokeStopSupplicant() {
-    return ethernet_->StopSupplicant();
-  }
+  bool InvokeStartSupplicant() { return ethernet_->StartSupplicant(); }
+  void InvokeStopSupplicant() { return ethernet_->StopSupplicant(); }
   bool InvokeStartEapAuthentication() {
     return ethernet_->StartEapAuthentication();
   }
@@ -171,8 +165,7 @@ class EthernetTest : public testing::Test {
     MockSupplicantInterfaceProxy* interface_proxy =
         ExpectCreateSupplicantInterfaceProxy();
     EXPECT_CALL(*supplicant_process_proxy_, CreateInterface(_, _))
-        .WillOnce(DoAll(SetArgPointee<1>(kInterfacePath),
-                        Return(true)));
+        .WillOnce(DoAll(SetArgPointee<1>(kInterfacePath), Return(true)));
     EXPECT_TRUE(InvokeStartSupplicant());
     EXPECT_EQ(interface_proxy, GetSupplicantInterfaceProxy());
     EXPECT_EQ(kInterfacePath, GetSupplicantInterfacePath());
@@ -181,9 +174,7 @@ class EthernetTest : public testing::Test {
   void TriggerCertification(const string& subject, uint32_t depth) {
     ethernet_->CertificationTask(subject, depth);
   }
-  void TriggerTryEapAuthentication() {
-    ethernet_->TryEapAuthenticationTask();
-  }
+  void TriggerTryEapAuthentication() { ethernet_->TryEapAuthenticationTask(); }
 
   MockSupplicantInterfaceProxy* ExpectCreateSupplicantInterfaceProxy() {
     MockSupplicantInterfaceProxy* proxy = supplicant_interface_proxy_.get();
@@ -342,8 +333,8 @@ TEST_F(EthernetTest, ConnectToFailure) {
   SetService(mock_service_);
   SetLinkUp(true);
   EXPECT_EQ(nullptr, GetSelectedService());
-  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _)).
-      WillOnce(Return(dhcp_config_));
+  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _))
+      .WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(false));
   EXPECT_CALL(dispatcher_, PostTask(_, _));  // Posts ConfigureStaticIPTask.
   EXPECT_CALL(*mock_service_, SetState(Service::kStateFailure));
@@ -356,8 +347,8 @@ TEST_F(EthernetTest, ConnectToSuccess) {
   SetService(mock_service_);
   SetLinkUp(true);
   EXPECT_EQ(nullptr, GetSelectedService());
-  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _)).
-      WillOnce(Return(dhcp_config_));
+  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _))
+      .WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
   EXPECT_CALL(dispatcher_, PostTask(_, _));  // Posts ConfigureStaticIPTask.
   EXPECT_CALL(*mock_service_, SetState(Service::kStateConfiguring));
@@ -440,8 +431,7 @@ TEST_F(EthernetTest, StartSupplicantWithInterfaceExistsException) {
       ExpectCreateSupplicantInterfaceProxy();
   EXPECT_CALL(*process_proxy, CreateInterface(_, _)).WillOnce(Return(false));
   EXPECT_CALL(*process_proxy, GetInterface(kDeviceName, _))
-      .WillOnce(
-          DoAll(SetArgPointee<1>(kInterfacePath), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(kInterfacePath), Return(true)));
   EXPECT_TRUE(InvokeStartSupplicant());
   EXPECT_EQ(interface_proxy, GetSupplicantInterfaceProxy());
   EXPECT_EQ(kInterfacePath, GetSupplicantInterfacePath());
@@ -470,8 +460,7 @@ TEST_F(EthernetTest, StartEapAuthentication) {
       .WillOnce(Return(&mock_eap_credentials));
   EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _));
   EXPECT_CALL(*interface_proxy, RemoveNetwork(_)).Times(0);
-  EXPECT_CALL(*interface_proxy, AddNetwork(_, _))
-      .WillOnce(Return(false));
+  EXPECT_CALL(*interface_proxy, AddNetwork(_, _)).WillOnce(Return(false));
   EXPECT_CALL(*interface_proxy, SelectNetwork(_)).Times(0);
   EXPECT_CALL(*interface_proxy, EAPLogon()).Times(0);
   EXPECT_FALSE(InvokeStartEapAuthentication());
@@ -487,9 +476,7 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _));
   const RpcIdentifier kFirstNetworkPath("/network/first-path");
   EXPECT_CALL(*interface_proxy, AddNetwork(_, _))
-      .WillOnce(
-          DoAll(SetArgPointee<1>(kFirstNetworkPath),
-                Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(kFirstNetworkPath), Return(true)));
   EXPECT_CALL(*interface_proxy, SelectNetwork(StrEq(kFirstNetworkPath)));
   EXPECT_CALL(*interface_proxy, EAPLogon());
   EXPECT_TRUE(InvokeStartEapAuthentication());
@@ -507,9 +494,7 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _));
   const RpcIdentifier kSecondNetworkPath("/network/second-path");
   EXPECT_CALL(*interface_proxy, AddNetwork(_, _))
-      .WillOnce(
-          DoAll(SetArgPointee<1>(kSecondNetworkPath),
-                Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(kSecondNetworkPath), Return(true)));
   EXPECT_CALL(*interface_proxy, SelectNetwork(StrEq(kSecondNetworkPath)));
   EXPECT_CALL(*interface_proxy, EAPLogon());
   EXPECT_TRUE(InvokeStartEapAuthentication());
@@ -572,8 +557,8 @@ TEST_F(EthernetTest, TogglePPPoE) {
   };
   for (const auto& transition : transitions) {
     Error error;
-    ethernet_->mutable_store()->SetBoolProperty(
-        kPPPoEProperty, transition.first, &error);
+    ethernet_->mutable_store()->SetBoolProperty(kPPPoEProperty,
+                                                transition.first, &error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(GetService()->technology(), transition.second);
   }

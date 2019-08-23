@@ -150,7 +150,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void RemoveWakeOnPacketConnection(const std::string& ip_endpoint,
                                     Error* error) override;
   void RemoveWakeOnPacketOfTypes(const std::vector<std::string>& packet_types,
-                                   Error* error) override;
+                                 Error* error) override;
   void RemoveAllWakeOnPacketConnections(Error* error) override;
 
   // Implementation of SupplicantEventDelegateInterface.  These methods
@@ -160,8 +160,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
                 const KeyValueStore& properties) override;
   void BSSRemoved(const RpcIdentifier& BSS) override;
   void Certification(const KeyValueStore& properties) override;
-  void EAPEvent(
-      const std::string& status, const std::string& parameter) override;
+  void EAPEvent(const std::string& status,
+                const std::string& parameter) override;
   void PropertiesChanged(const KeyValueStore& properties) override;
   void ScanDone(const bool& success) override;
   void TDLSDiscoverResponse(const std::string& peer_address) override;
@@ -234,10 +234,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool RequestRoam(const std::string& addr, Error* error) override;
 
  private:
-  enum ScanMethod {
-    kScanMethodNone,
-    kScanMethodFull
-  };
+  enum ScanMethod { kScanMethodNone, kScanMethodFull };
   enum ScanState {
     kScanIdle,
     kScanScanning,
@@ -277,13 +274,13 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_
   friend class WiFiTimerTest;  // kNumFastScanAttempts, kFastScanIntervalSeconds
-  friend class WiFiMainTest;  // ScanState, ScanMethod
+  friend class WiFiMainTest;   // ScanState, ScanMethod
   FRIEND_TEST(WiFiMainTest, AppendBgscan);
   FRIEND_TEST(WiFiMainTest, BackgroundScan);  // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, ConnectToServiceNotPending);  // ScanState
   FRIEND_TEST(WiFiMainTest, ConnectToServiceWithoutRecentIssues);
   // is_debugging_connection_
-  FRIEND_TEST(WiFiMainTest, ConnectToWithError);  // ScanState
+  FRIEND_TEST(WiFiMainTest, ConnectToWithError);       // ScanState
   FRIEND_TEST(WiFiMainTest, ConnectWhileNotScanning);  // ScanState
   FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);
   FRIEND_TEST(WiFiMainTest, DisconnectReasonUpdated);
@@ -292,20 +289,20 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, GetSuffixFromAuthMode);
   FRIEND_TEST(WiFiMainTest, FlushBSSOnResume);  // kMaxBSSResumeAgeSeconds
   FRIEND_TEST(WiFiMainTest, FullScanConnectingToConnected);
-  FRIEND_TEST(WiFiMainTest, FullScanFindsNothing);  // ScanMethod, ScanState
+  FRIEND_TEST(WiFiMainTest, FullScanFindsNothing);    // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
-  FRIEND_TEST(WiFiMainTest, LinkMonitorFailure);  // set_link_monitor()
+  FRIEND_TEST(WiFiMainTest, LinkMonitorFailure);      // set_link_monitor()
   FRIEND_TEST(WiFiMainTest, NoScansWhileConnecting);  // ScanState
-  FRIEND_TEST(WiFiMainTest, PendingScanEvents);  // EndpointMap
-  FRIEND_TEST(WiFiMainTest, ScanRejected);  // ScanState
+  FRIEND_TEST(WiFiMainTest, PendingScanEvents);       // EndpointMap
+  FRIEND_TEST(WiFiMainTest, ScanRejected);            // ScanState
   FRIEND_TEST(WiFiMainTest, ScanResults);             // EndpointMap
   FRIEND_TEST(WiFiMainTest, ScanStateHandleDisconnect);  // ScanState
   FRIEND_TEST(WiFiMainTest, ScanStateNotScanningNoUma);  // ScanState
   FRIEND_TEST(WiFiMainTest, ScanStateUma);  // ScanState, ScanMethod
-  FRIEND_TEST(WiFiMainTest, Stop);  // weak_ptr_factory_while_started_
+  FRIEND_TEST(WiFiMainTest, Stop);          // weak_ptr_factory_while_started_
   FRIEND_TEST(WiFiMainTest, TimeoutPendingServiceWithEndpoints);
   FRIEND_TEST(WiFiPropertyTest, BgscanMethodProperty);  // bgscan_method_
-  FRIEND_TEST(WiFiTimerTest, FastRescan);  // kFastScanIntervalSeconds
+  FRIEND_TEST(WiFiTimerTest, FastRescan);          // kFastScanIntervalSeconds
   FRIEND_TEST(WiFiTimerTest, RequestStationInfo);  // kRequestStationInfoPeriod
   // kPostWakeConnectivityReportDelayMilliseconds
   FRIEND_TEST(WiFiTimerTest, ResumeDispatchesConnectivityReportTask);
@@ -348,8 +345,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static const std::vector<unsigned char> kRandomMacMask;
 
   void GetPhyInfo();
-  void AppendBgscan(WiFiService* service,
-                    KeyValueStore* service_params) const;
+  void AppendBgscan(WiFiService* service, KeyValueStore* service_params) const;
   std::string GetBgscanMethod(Error* error);
   uint16_t GetBgscanShortInterval(Error* /* error */) {
     return bgscan_short_interval_seconds_;
@@ -406,8 +402,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // have a disconnect reason from supplicant.
   Service::ConnectFailure ExamineStatusCodes() const;
   void HandleRoam(const RpcIdentifier& new_bssid);
-  void BSSAddedTask(const RpcIdentifier& BSS,
-                    const KeyValueStore& properties);
+  void BSSAddedTask(const RpcIdentifier& BSS, const KeyValueStore& properties);
   void BSSRemovedTask(const RpcIdentifier& BSS);
   void CertificationTask(const KeyValueStore& properties);
   void EAPEventTask(const std::string& status, const std::string& parameter);
@@ -435,25 +430,24 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool SuspectCredentials(WiFiServiceRefPtr service,
                           Service::ConnectFailure* failure) const;
 
-  void HelpRegisterDerivedInt32(
-      PropertyStore* store,
-      const std::string& name,
-      int32_t(WiFi::*get)(Error* error),
-      bool(WiFi::*set)(const int32_t& value, Error* error));
-  void HelpRegisterDerivedUint16(
-      PropertyStore* store,
-      const std::string& name,
-      uint16_t(WiFi::*get)(Error* error),
-      bool(WiFi::*set)(const uint16_t& value, Error* error));
-  void HelpRegisterDerivedBool(
-      PropertyStore* store,
-      const std::string& name,
-      bool(WiFi::*get)(Error* error),
-      bool(WiFi::*set)(const bool& value, Error* error));
-  void HelpRegisterConstDerivedBool(
-      PropertyStore* store,
-      const std::string& name,
-      bool(WiFi::*get)(Error* error));
+  void HelpRegisterDerivedInt32(PropertyStore* store,
+                                const std::string& name,
+                                int32_t (WiFi::*get)(Error* error),
+                                bool (WiFi::*set)(const int32_t& value,
+                                                  Error* error));
+  void HelpRegisterDerivedUint16(PropertyStore* store,
+                                 const std::string& name,
+                                 uint16_t (WiFi::*get)(Error* error),
+                                 bool (WiFi::*set)(const uint16_t& value,
+                                                   Error* error));
+  void HelpRegisterDerivedBool(PropertyStore* store,
+                               const std::string& name,
+                               bool (WiFi::*get)(Error* error),
+                               bool (WiFi::*set)(const bool& value,
+                                                 Error* error));
+  void HelpRegisterConstDerivedBool(PropertyStore* store,
+                                    const std::string& name,
+                                    bool (WiFi::*get)(Error* error));
   void HelpRegisterConstDerivedUint16s(PropertyStore* store,
                                        const std::string& name,
                                        Uint16s (WiFi::*get)(Error* error));
@@ -467,8 +461,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // disconnecting this service if it is currently connected.  Returns
   // true if successful, otherwise returns false and populates |error|
   // with the reason for failure.
-  virtual bool DisableNetworkForService(
-      const WiFiService* service, Error* error);
+  virtual bool DisableNetworkForService(const WiFiService* service,
+                                        Error* error);
   // Remove a network entry from wpa_supplicant, and catch any exception
   // that occurs.  Returns false if an exception occurred, true otherwise.
   bool RemoveNetwork(const RpcIdentifier& network);
@@ -478,8 +472,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // disconnecting this service if it is currently connected.  Returns
   // true if successful, otherwise returns false and populates |error|
   // with the reason for failure.
-  virtual bool RemoveNetworkForService(
-      const WiFiService* service, Error* error);
+  virtual bool RemoveNetworkForService(const WiFiService* service,
+                                       Error* error);
   // Update disable_ht40 setting in wpa_supplicant for the given service.
   void SetHT40EnableForService(const WiFiService* service, bool enable);
   // Perform the next in a series of progressive scans.

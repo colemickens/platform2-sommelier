@@ -37,13 +37,14 @@ using std::set;
 using std::string;
 using std::vector;
 
-
 namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static std::string ObjectID(WakeOnWiFi* w) { return "(wake_on_wifi)"; }
+static std::string ObjectID(WakeOnWiFi* w) {
+  return "(wake_on_wifi)";
 }
+}  // namespace Logging
 
 const char WakeOnWiFi::kWakeOnIPAddressPatternsNotSupported[] =
     "Wake on IP address patterns not supported by this WiFi device";
@@ -78,10 +79,11 @@ const char WakeOnWiFi::kWakeReasonStringPattern[] = "WiFi.Pattern";
 const char WakeOnWiFi::kWakeReasonStringDisconnect[] = "WiFi.Disconnect";
 const char WakeOnWiFi::kWakeReasonStringSSID[] = "WiFi.SSID";
 
-WakeOnWiFi::WakeOnWiFi(
-    NetlinkManager* netlink_manager, EventDispatcher* dispatcher,
-    Metrics* metrics, const std::string& mac_address,
-    RecordWakeReasonCallback record_wake_reason_callback)
+WakeOnWiFi::WakeOnWiFi(NetlinkManager* netlink_manager,
+                       EventDispatcher* dispatcher,
+                       Metrics* metrics,
+                       const std::string& mac_address,
+                       RecordWakeReasonCallback record_wake_reason_callback)
     : dispatcher_(dispatcher),
       netlink_manager_(netlink_manager),
       metrics_(metrics),
@@ -111,8 +113,8 @@ WakeOnWiFi::WakeOnWiFi(
       min_pattern_len_(0),
       record_wake_reason_callback_(record_wake_reason_callback),
       weak_ptr_factory_(this) {
-  netlink_handler_ = Bind(&WakeOnWiFi::OnWakeupReasonReceived,
-      weak_ptr_factory_.GetWeakPtr());
+  netlink_handler_ =
+      Bind(&WakeOnWiFi::OnWakeupReasonReceived, weak_ptr_factory_.GetWeakPtr());
   netlink_manager_->AddBroadcastHandler(netlink_handler_);
 }
 
@@ -184,10 +186,9 @@ bool WakeOnWiFi::ByteStringPairIsLessThan(
 }
 
 // static
-void WakeOnWiFi::SetMask(
-    ByteString* mask,
-    const vector<LengthOffset>& patternlen_offset_pair,
-    uint32_t expected_pat_len_bits) {
+void WakeOnWiFi::SetMask(ByteString* mask,
+                         const vector<LengthOffset>& patternlen_offset_pair,
+                         uint32_t expected_pat_len_bits) {
   // Round up number of bytes required for the mask.
   int result_mask_len = (expected_pat_len_bits + 8 - 1) / 8;
   vector<unsigned char> result_mask(result_mask_len, 0);
@@ -195,8 +196,7 @@ void WakeOnWiFi::SetMask(
   int mask_index;
   for (const auto& current_pair : patternlen_offset_pair) {
     for (uint32_t curr_mask_bit = current_pair.offset;
-         curr_mask_bit < current_pair.length;
-         ++curr_mask_bit) {
+         curr_mask_bit < current_pair.length; ++curr_mask_bit) {
       mask_index = curr_mask_bit / 8;
       CHECK_LT(mask_index, result_mask_len);
       result_mask[mask_index] |= 1 << (curr_mask_bit % 8);
@@ -212,12 +212,12 @@ bool WakeOnWiFi::CreateIPAddressPatternAndMask(const IPAddress& ip_addr,
                                                ByteString* pattern,
                                                ByteString* mask) {
   if (ip_addr.family() == IPAddress::kFamilyIPv4) {
-    WakeOnWiFi::CreateIPV4PatternAndMask(
-        ip_addr, min_pattern_len, pattern, mask);
+    WakeOnWiFi::CreateIPV4PatternAndMask(ip_addr, min_pattern_len, pattern,
+                                         mask);
     return true;
   } else if (ip_addr.family() == IPAddress::kFamilyIPv6) {
-    WakeOnWiFi::CreateIPV6PatternAndMask(
-        ip_addr, pattern, mask, min_pattern_len);
+    WakeOnWiFi::CreateIPV6PatternAndMask(ip_addr, pattern, mask,
+                                         min_pattern_len);
     return true;
   } else {
     LOG(ERROR) << "Unrecognized IP Address type.";
@@ -247,9 +247,7 @@ bool WakeOnWiFi::ConvertIPProtoStrtoEnum(
       ip_proto_enums->insert(IPPROTO_IDP);
     } else {
       Error::PopulateAndLog(
-          FROM_HERE,
-          error,
-          Error::kInvalidArguments,
+          FROM_HERE, error, Error::kInvalidArguments,
           "Wake on Packet of type " + ip_proto + " not supported");
       return false;
     }
@@ -290,8 +288,7 @@ void WakeOnWiFi::CreateIPV4PatternAndMask(const IPAddress& ip_addr,
   } __attribute__((__packed__)) pattern_bytes;
   memset(&pattern_bytes, 0, sizeof(pattern_bytes));
   CHECK_EQ(sizeof(pattern_bytes.ipv4_hdr.saddr), ip_addr.GetLength());
-  memcpy(&pattern_bytes.ipv4_hdr.saddr,
-         ip_addr.GetConstData(),
+  memcpy(&pattern_bytes.ipv4_hdr.saddr, ip_addr.GetConstData(),
          ip_addr.GetLength());
   int src_ip_offset =
       reinterpret_cast<unsigned char*>(&pattern_bytes.ipv4_hdr.saddr) -
@@ -320,8 +317,7 @@ void WakeOnWiFi::CreateIPV6PatternAndMask(const IPAddress& ip_addr,
   } __attribute__((__packed__)) pattern_bytes;
   memset(&pattern_bytes, 0, sizeof(pattern_bytes));
   CHECK_EQ(sizeof(pattern_bytes.ipv6_hdr.ip6_src), ip_addr.GetLength());
-  memcpy(&pattern_bytes.ipv6_hdr.ip6_src,
-         ip_addr.GetConstData(),
+  memcpy(&pattern_bytes.ipv6_hdr.ip6_src, ip_addr.GetConstData(),
          ip_addr.GetLength());
   int src_ip_offset =
       reinterpret_cast<unsigned char*>(&pattern_bytes.ipv6_hdr.ip6_src) -
@@ -352,11 +348,11 @@ void WakeOnWiFi::CreatePacketTypePatternAndMaskforIPV4(
   memset(&pattern_bytes, 0, sizeof(pattern_bytes));
   vector<uint8_t> address_bytes;
   static_assert(std::is_standard_layout<Pattern>::value,
-                  "Pattern must be a standard layout type");
+                "Pattern must be a standard layout type");
   CHECK(base::HexStringToBytes(mac_address, &address_bytes));
   CHECK_EQ(sizeof(pattern_bytes.eth_hdr.h_dest), address_bytes.size());
-  std::copy(
-      address_bytes.begin(), address_bytes.end(), pattern_bytes.eth_hdr.h_dest);
+  std::copy(address_bytes.begin(), address_bytes.end(),
+            pattern_bytes.eth_hdr.h_dest);
   uint32_t dst_hardware_offset = offsetof(Pattern, eth_hdr.h_dest);
   uint32_t pattern_len = dst_hardware_offset + address_bytes.size();
   patternlen_offset_pair.emplace_back(pattern_len, dst_hardware_offset);
@@ -399,8 +395,8 @@ void WakeOnWiFi::CreatePacketTypePatternAndMaskforIPV6(
   vector<uint8_t> address_bytes;
   CHECK(base::HexStringToBytes(mac_address, &address_bytes));
   CHECK_EQ(sizeof(pattern_bytes.eth_hdr.h_dest), address_bytes.size());
-  std::copy(
-      address_bytes.begin(), address_bytes.end(), pattern_bytes.eth_hdr.h_dest);
+  std::copy(address_bytes.begin(), address_bytes.end(),
+            pattern_bytes.eth_hdr.h_dest);
   uint32_t dst_hardware_offset = offsetof(Pattern, eth_hdr.h_dest);
   uint32_t pattern_len = dst_hardware_offset + address_bytes.size();
   patternlen_offset_pair.emplace_back(pattern_len, dst_hardware_offset);
@@ -416,8 +412,8 @@ void WakeOnWiFi::CreatePacketTypePatternAndMaskforIPV6(
   uint32_t ip_protocol_pattern_len =
       ip_protocol_offset +
       sizeof(pattern_bytes.ipv6_hdr.ip6_ctlun.ip6_un1.ip6_un1_nxt);
-  patternlen_offset_pair.emplace_back(
-      ip_protocol_pattern_len, ip_protocol_offset);
+  patternlen_offset_pair.emplace_back(ip_protocol_pattern_len,
+                                      ip_protocol_offset);
   pattern_len = std::max(pattern_len, ip_protocol_pattern_len);
   uint32_t expected_pattern_len = std::max(min_pattern_len, pattern_len);
   pattern->Clear();
@@ -452,12 +448,16 @@ bool WakeOnWiFi::ConfigureDisableWakeOnWiFiMessage(
 
 // static
 bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
-    SetWakeOnPacketConnMessage* msg, const set<WakeOnWiFiTrigger>& trigs,
-    const IPAddressStore& addrs, uint32_t wiphy_index,
+    SetWakeOnPacketConnMessage* msg,
+    const set<WakeOnWiFiTrigger>& trigs,
+    const IPAddressStore& addrs,
+    uint32_t wiphy_index,
     const set<uint8_t>& wake_on_packet_types,
     const std::string& mac_address,
-    uint32_t pattern_min_len, uint32_t net_detect_scan_period_seconds,
-    const vector<ByteString>& ssid_whitelist, Error* error) {
+    uint32_t pattern_min_len,
+    uint32_t net_detect_scan_period_seconds,
+    const vector<ByteString>& ssid_whitelist,
+    Error* error) {
 #if defined(DISABLE_WAKE_ON_WIFI)
   return false;
 #else
@@ -506,14 +506,16 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
       case kWakeTriggerDisconnect: {
         if (!triggers->CreateFlagAttribute(NL80211_WOWLAN_TRIG_DISCONNECT,
                                            "Wake on Disconnect")) {
-          LOG(ERROR) << __func__ << "Could not create flag attribute "
-                                    "NL80211_WOWLAN_TRIG_DISCONNECT";
+          LOG(ERROR) << __func__
+                     << "Could not create flag attribute "
+                        "NL80211_WOWLAN_TRIG_DISCONNECT";
           return false;
         }
         if (!triggers->SetFlagAttributeValue(NL80211_WOWLAN_TRIG_DISCONNECT,
                                              true)) {
-          LOG(ERROR) << __func__ << "Could not set flag attribute "
-                                    "NL80211_WOWLAN_TRIG_DISCONNECT";
+          LOG(ERROR) << __func__
+                     << "Could not set flag attribute "
+                        "NL80211_WOWLAN_TRIG_DISCONNECT";
           return false;
         }
         break;
@@ -546,8 +548,8 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
         ByteString mask;
         for (const IPAddress& addr : addrs.GetIPAddresses()) {
           CreateIPAddressPatternAndMask(addr, pattern_min_len, &pattern, &mask);
-          if (!CreateSingleAttribute(
-                  pattern, mask, patterns, patnum++, error)) {
+          if (!CreateSingleAttribute(pattern, mask, patterns, patnum++,
+                                     error)) {
             return false;
           }
         }
@@ -555,14 +557,14 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
           for (auto packet_type : wake_on_packet_types) {
             CreatePacketTypePatternAndMaskforIPV4(mac_address, pattern_min_len,
                                                   packet_type, &pattern, &mask);
-            if (!CreateSingleAttribute(
-                    pattern, mask, patterns, patnum++, error)) {
+            if (!CreateSingleAttribute(pattern, mask, patterns, patnum++,
+                                       error)) {
               return false;
             }
             CreatePacketTypePatternAndMaskforIPV6(mac_address, pattern_min_len,
                                                   packet_type, &pattern, &mask);
-            if (!CreateSingleAttribute(
-                    pattern, mask, patterns, patnum++, error)) {
+            if (!CreateSingleAttribute(pattern, mask, patterns, patnum++,
+                                       error)) {
               return false;
             }
           }
@@ -632,8 +634,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
           return false;
         }
         int ssid_num = 0;
-        for (const ByteString& ssid_bytes :
-             ssid_whitelist) {
+        for (const ByteString& ssid_bytes : ssid_whitelist) {
           if (!ssids->CreateNestedAttribute(
                   ssid_num, "NL80211_ATTR_SCHED_SCAN_MATCH_SINGLE")) {
             Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
@@ -764,10 +765,13 @@ bool WakeOnWiFi::ConfigureGetWakeOnWiFiSettingsMessage(
 
 // static
 bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
-    const Nl80211Message& msg, const set<WakeOnWiFiTrigger>& trigs,
-    const IPAddressStore& addrs, uint32_t net_detect_scan_period_seconds,
+    const Nl80211Message& msg,
+    const set<WakeOnWiFiTrigger>& trigs,
+    const IPAddressStore& addrs,
+    uint32_t net_detect_scan_period_seconds,
     const set<uint8_t>& wake_on_packet_types,
-    const std::string& mac_address, uint32_t min_pattern_len,
+    const std::string& mac_address,
+    uint32_t min_pattern_len,
     const vector<ByteString>& ssid_whitelist) {
 #if defined(DISABLE_WAKE_ON_WIFI)
   return false;
@@ -823,8 +827,8 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
           return false;
         }
         if (!wake_on_disconnect) {
-          SLOG(WiFi, nullptr, 3) << __func__
-                                 << "Wake on disconnect flag not set.";
+          SLOG(WiFi, nullptr, 3)
+              << __func__ << "Wake on disconnect flag not set.";
           return false;
         }
         break;
@@ -903,8 +907,8 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
           pattern_iter.Advance();
         }
         if (pattern_mismatch_found || pattern_num_mismatch) {
-          SLOG(WiFi, nullptr, 3) << __func__
-                                 << "Wake on pattern pattern/mask mismatch";
+          SLOG(WiFi, nullptr, 3)
+              << __func__ << "Wake on pattern pattern/mask mismatch";
           return false;
         }
         break;
@@ -930,8 +934,8 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
           return false;
         }
         if (interval != net_detect_scan_period_seconds * 1000) {
-          SLOG(WiFi, nullptr, 3) << __func__
-                                 << "Net Detect scan period mismatch";
+          SLOG(WiFi, nullptr, 3)
+              << __func__ << "Net Detect scan period mismatch";
           return false;
         }
         AttributeListConstRefPtr ssids;
@@ -1004,8 +1008,8 @@ void WakeOnWiFi::AddWakeOnPacketConnection(const string& ip_endpoint,
     return;
   }
 
-  if (wake_on_packet_connections_.Count() +
-      wake_on_packet_types_.size() >= wake_on_wifi_max_patterns_) {
+  if (wake_on_packet_connections_.Count() + wake_on_packet_types_.size() >=
+      wake_on_wifi_max_patterns_) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed,
         "Max number of IP address patterns already registered");
@@ -1024,16 +1028,16 @@ void WakeOnWiFi::AddWakeOnPacketOfTypes(
   set<uint8_t> ip_proto_enums;
   if (!base::ContainsKey(wake_on_wifi_triggers_supported_,
                          kWakeTriggerPattern)) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kNotSupported, kWakeOnPatternsNotSupported);
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                          kWakeOnPatternsNotSupported);
     return;
   }
   // We should add 1 pattern for IPv4 and one for IPv6 for each packet type.
   int num_patterns_for_packet_types = packet_types.size() * 2;
   if (wake_on_packet_connections_.Count() + num_patterns_for_packet_types >=
       wake_on_wifi_max_patterns_) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kOperationFailed, kMaxWakeOnPatternsReached);
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                          kMaxWakeOnPatternsReached);
     return;
   }
   if (!ConvertIPProtoStrtoEnum(packet_types, &ip_proto_enums, error))
@@ -1077,8 +1081,8 @@ void WakeOnWiFi::RemoveWakeOnPacketOfTypes(
 #if !defined(DISABLE_WAKE_ON_WIFI)
   if (!base::ContainsKey(wake_on_wifi_triggers_supported_,
                          kWakeTriggerPattern)) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kNotSupported, kWakeOnPatternsNotSupported);
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                          kWakeOnPatternsNotSupported);
     return;
   }
 
@@ -1090,7 +1094,6 @@ void WakeOnWiFi::RemoveWakeOnPacketOfTypes(
     if (base::ContainsKey(wake_on_packet_types_, ip_proto_enum))
       wake_on_packet_types_.erase(ip_proto_enum);
   }
-
 
 #else
   error->Populate(Error::kNotSupported, kWakeOnWiFiNotSupported);
@@ -1174,8 +1177,9 @@ void WakeOnWiFi::RequestWakeOnPacketSettings() {
     return;
   }
   netlink_manager_->SendNl80211Message(
-      &get_wowlan_msg, Bind(&WakeOnWiFi::VerifyWakeOnWiFiSettings,
-                            weak_ptr_factory_.GetWeakPtr()),
+      &get_wowlan_msg,
+      Bind(&WakeOnWiFi::VerifyWakeOnWiFiSettings,
+           weak_ptr_factory_.GetWeakPtr()),
       Bind(&NetlinkManager::OnAckDoNothing),
       Bind(&NetlinkManager::OnNetlinkMessageError));
 }
@@ -1183,20 +1187,20 @@ void WakeOnWiFi::RequestWakeOnPacketSettings() {
 void WakeOnWiFi::VerifyWakeOnWiFiSettings(
     const Nl80211Message& nl80211_message) {
   SLOG(this, 3) << __func__;
-  if (WakeOnWiFiSettingsMatch(nl80211_message, wake_on_wifi_triggers_,
-                              wake_on_packet_connections_,
-                              net_detect_scan_period_seconds_,
-                              wake_on_packet_types_, mac_address_,
-                              min_pattern_len_, wake_on_ssid_whitelist_)) {
+  if (WakeOnWiFiSettingsMatch(
+          nl80211_message, wake_on_wifi_triggers_, wake_on_packet_connections_,
+          net_detect_scan_period_seconds_, wake_on_packet_types_, mac_address_,
+          min_pattern_len_, wake_on_ssid_whitelist_)) {
     SLOG(this, 2) << __func__ << ": "
                   << "Wake on WiFi settings successfully verified";
     metrics_->NotifyVerifyWakeOnWiFiSettingsResult(
         Metrics::kVerifyWakeOnWiFiSettingsResultSuccess);
     RunAndResetSuspendActionsDoneCallback(Error(Error::kSuccess));
   } else {
-    LOG(ERROR) << __func__ << " failed: discrepancy between wake-on-packet "
-                              "settings on NIC and those in local data "
-                              "structure detected";
+    LOG(ERROR) << __func__
+               << " failed: discrepancy between wake-on-packet "
+                  "settings on NIC and those in local data "
+                  "structure detected";
     metrics_->NotifyVerifyWakeOnWiFiSettingsResult(
         Metrics::kVerifyWakeOnWiFiSettingsResultFailure);
     RetrySetWakeOnPacketConnections();
@@ -1218,9 +1222,8 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
   SetWakeOnPacketConnMessage set_wowlan_msg;
   if (!ConfigureSetWakeOnWiFiSettingsMessage(
           &set_wowlan_msg, wake_on_wifi_triggers_, wake_on_packet_connections_,
-          wiphy_index_, wake_on_packet_types_, mac_address_,
-          min_pattern_len_, net_detect_scan_period_seconds_,
-          wake_on_ssid_whitelist_, &error)) {
+          wiphy_index_, wake_on_packet_types_, mac_address_, min_pattern_len_,
+          net_detect_scan_period_seconds_, wake_on_ssid_whitelist_, &error)) {
     LOG(ERROR) << error.message();
     RunAndResetSuspendActionsDoneCallback(
         Error(Error::kOperationFailed, error.message()));
@@ -1240,8 +1243,8 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
   verify_wake_on_packet_settings_callback_.Reset(
       Bind(&WakeOnWiFi::RequestWakeOnPacketSettings,
            weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(FROM_HERE,
-      verify_wake_on_packet_settings_callback_.callback(),
+  dispatcher_->PostDelayedTask(
+      FROM_HERE, verify_wake_on_packet_settings_callback_.callback(),
       kVerifyWakeOnWiFiSettingsDelayMilliseconds);
 }
 
@@ -1272,8 +1275,8 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
   verify_wake_on_packet_settings_callback_.Reset(
       Bind(&WakeOnWiFi::RequestWakeOnPacketSettings,
            weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(FROM_HERE,
-      verify_wake_on_packet_settings_callback_.callback(),
+  dispatcher_->PostDelayedTask(
+      FROM_HERE, verify_wake_on_packet_settings_callback_.callback(),
       kVerifyWakeOnWiFiSettingsDelayMilliseconds);
 }
 
@@ -1350,10 +1353,10 @@ void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
   }
   AttributeListConstRefPtr triggers_supported;
   if (nl80211_message.const_attributes()->ConstGetNestedAttributeList(
-      NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED, &triggers_supported)) {
+          NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED, &triggers_supported)) {
     bool disconnect_supported = false;
     if (triggers_supported->GetFlagAttributeValue(
-        NL80211_WOWLAN_TRIG_DISCONNECT, &disconnect_supported)) {
+            NL80211_WOWLAN_TRIG_DISCONNECT, &disconnect_supported)) {
       if (disconnect_supported) {
         wake_on_wifi_triggers_supported_.insert(
             WakeOnWiFi::kWakeTriggerDisconnect);
@@ -1362,7 +1365,7 @@ void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
     }
     ByteString pattern_data;
     if (triggers_supported->GetRawAttributeValue(
-        NL80211_WOWLAN_TRIG_PKT_PATTERN, &pattern_data)) {
+            NL80211_WOWLAN_TRIG_PKT_PATTERN, &pattern_data)) {
       struct nl80211_pattern_support* patt_support =
           reinterpret_cast<struct nl80211_pattern_support*>(
               pattern_data.GetData());
@@ -1375,15 +1378,12 @@ void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
       // TODO(ravisadineni): Remove this check after b/62726471 is fixed.
       min_pattern_len_ = patt_support->min_pattern_len + 1;
       WakeOnWiFi::CreateIPV4PatternAndMask(IPAddress("192.168.0.20"),
-                                           min_pattern_len_,
-                                           &dummy_pattern,
+                                           min_pattern_len_, &dummy_pattern,
                                            &dummy_mask);
       size_t ipv4_pattern_len = dummy_pattern.GetLength();
       WakeOnWiFi::CreateIPV6PatternAndMask(
-          IPAddress("FEDC:BA98:7654:3210:FEDC:BA98:7654:3210"),
-          &dummy_pattern,
-          &dummy_mask,
-          min_pattern_len_);
+          IPAddress("FEDC:BA98:7654:3210:FEDC:BA98:7654:3210"), &dummy_pattern,
+          &dummy_mask, min_pattern_len_);
       size_t ipv6_pattern_len = dummy_pattern.GetLength();
       WakeOnWiFi::CreatePacketTypePatternAndMaskforIPV4(
           mac_address_, min_pattern_len_, IPPROTO_TCP, &dummy_pattern,
@@ -1512,7 +1512,8 @@ void WakeOnWiFi::OnBeforeSuspend(
     const vector<ByteString>& ssid_whitelist,
     const ResultCallback& done_callback,
     const Closure& renew_dhcp_lease_callback,
-    const Closure& remove_supplicant_networks_callback, bool have_dhcp_lease,
+    const Closure& remove_supplicant_networks_callback,
+    bool have_dhcp_lease,
     uint32_t time_to_next_lease_renewal) {
   connected_before_suspend_ = is_connected;
 #if defined(DISABLE_WAKE_ON_WIFI)
@@ -1528,15 +1529,17 @@ void WakeOnWiFi::OnBeforeSuspend(
       time_to_next_lease_renewal < kImmediateDHCPLeaseRenewalThresholdSeconds) {
     // Renew DHCP lease immediately if we have one that is expiring soon.
     renew_dhcp_lease_callback.Run();
-    dispatcher_->PostTask(FROM_HERE, Bind(&WakeOnWiFi::BeforeSuspendActions,
-                               weak_ptr_factory_.GetWeakPtr(), is_connected,
-                               false, time_to_next_lease_renewal,
-                               remove_supplicant_networks_callback));
+    dispatcher_->PostTask(
+        FROM_HERE,
+        Bind(&WakeOnWiFi::BeforeSuspendActions, weak_ptr_factory_.GetWeakPtr(),
+             is_connected, false, time_to_next_lease_renewal,
+             remove_supplicant_networks_callback));
   } else {
-    dispatcher_->PostTask(FROM_HERE, Bind(&WakeOnWiFi::BeforeSuspendActions,
-                               weak_ptr_factory_.GetWeakPtr(), is_connected,
-                               have_dhcp_lease, time_to_next_lease_renewal,
-                               remove_supplicant_networks_callback));
+    dispatcher_->PostTask(
+        FROM_HERE,
+        Bind(&WakeOnWiFi::BeforeSuspendActions, weak_ptr_factory_.GetWeakPtr(),
+             is_connected, have_dhcp_lease, time_to_next_lease_renewal,
+             remove_supplicant_networks_callback));
   }
 #endif  // DISABLE_WAKE_ON_WIFI
 }
@@ -1620,9 +1623,10 @@ void WakeOnWiFi::OnDarkResume(
       // Go back to suspend immediately since packet would have been delivered
       // to userspace upon waking in dark resume. Do not reset the lease renewal
       // timer since we are not getting a new lease.
-      dispatcher_->PostTask(FROM_HERE, Bind(
-          &WakeOnWiFi::BeforeSuspendActions, weak_ptr_factory_.GetWeakPtr(),
-          is_connected, false, 0, remove_supplicant_networks_callback));
+      dispatcher_->PostTask(
+          FROM_HERE, Bind(&WakeOnWiFi::BeforeSuspendActions,
+                          weak_ptr_factory_.GetWeakPtr(), is_connected, false,
+                          0, remove_supplicant_networks_callback));
       break;
     }
     case kWakeTriggerSSID:
@@ -1795,9 +1799,9 @@ WiFi::FreqSet WakeOnWiFi::ParseWakeOnSSIDResults(
         }
       }
     } else {
-      SLOG(WiFi, nullptr, 3) << __func__ << ": "
-                             << "No frequencies available for result #"
-                             << results_iter.GetId();
+      SLOG(WiFi, nullptr, 3)
+          << __func__ << ": "
+          << "No frequencies available for result #" << results_iter.GetId();
     }
     ++ssid_num;
   }
@@ -1837,37 +1841,35 @@ void WakeOnWiFi::OnConnectedAndReachable(bool start_lease_renewal_timer,
 }
 
 void WakeOnWiFi::ReportConnectedToServiceAfterWake(bool is_connected,
-        int seconds_in_suspend) {
-    Metrics::WiFiConnectionStatusAfterWake status;
+                                                   int seconds_in_suspend) {
+  Metrics::WiFiConnectionStatusAfterWake status;
 #if defined(DISABLE_WAKE_ON_WIFI)
-      status = is_connected
-          ? Metrics::kWiFiConnectionStatusAfterWakeWoWOffConnected
-          : Metrics::kWiFiConnectionStatusAfterWakeWoWOffDisconnected;
+  status = is_connected
+               ? Metrics::kWiFiConnectionStatusAfterWakeWoWOffConnected
+               : Metrics::kWiFiConnectionStatusAfterWakeWoWOffDisconnected;
 #else
   if (WakeOnWiFiDarkConnectEnabledAndSupported()) {
     // Only logged if wake on WiFi is supported and wake on SSID was enabled to
     // maintain connectivity while suspended.
-    status =
-        is_connected
-            ? Metrics::kWiFiConnectionStatusAfterWakeWoWOnConnected
-            : Metrics::kWiFiConnectionStatusAfterWakeWoWOnDisconnected;
+    status = is_connected
+                 ? Metrics::kWiFiConnectionStatusAfterWakeWoWOnConnected
+                 : Metrics::kWiFiConnectionStatusAfterWakeWoWOnDisconnected;
   } else {
-    status =
-        is_connected
-            ? Metrics::kWiFiConnectionStatusAfterWakeWoWOffConnected
-            : Metrics::kWiFiConnectionStatusAfterWakeWoWOffDisconnected;
+    status = is_connected
+                 ? Metrics::kWiFiConnectionStatusAfterWakeWoWOffConnected
+                 : Metrics::kWiFiConnectionStatusAfterWakeWoWOffDisconnected;
   }
 #endif  // DISABLE_WAKE_ON_WIFI
-    metrics_->NotifyConnectedToServiceAfterWake(status);
+  metrics_->NotifyConnectedToServiceAfterWake(status);
 
-    // Only log time spent in suspended state for each
-    // connection status if wifi was connected before suspending
-    if (connected_before_suspend_) {
-      LOG(INFO) << "NotifySuspendDurationAfterWake: "
-                << "status: " << status
-                << "seconds_in_suspend: " << seconds_in_suspend;
-      metrics_->NotifySuspendDurationAfterWake(status, seconds_in_suspend);
-    }
+  // Only log time spent in suspended state for each
+  // connection status if wifi was connected before suspending
+  if (connected_before_suspend_) {
+    LOG(INFO) << "NotifySuspendDurationAfterWake: "
+              << "status: " << status
+              << "seconds_in_suspend: " << seconds_in_suspend;
+    metrics_->NotifySuspendDurationAfterWake(status, seconds_in_suspend);
+  }
 }
 
 void WakeOnWiFi::OnNoAutoConnectableServicesAfterScan(

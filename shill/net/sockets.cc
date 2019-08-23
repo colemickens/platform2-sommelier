@@ -88,7 +88,6 @@ int Sockets::GetSockName(int sockfd,
   return getsockname(sockfd, addr, addrlen);
 }
 
-
 int Sockets::GetSocketError(int sockfd) const {
   int error;
   socklen_t optlen = sizeof(error);
@@ -97,7 +96,6 @@ int Sockets::GetSocketError(int sockfd) const {
   }
   return -1;
 }
-
 
 int Sockets::Ioctl(int d, int request, void* argp) const {
   return HANDLE_EINTR(ioctl(d, request, argp));
@@ -159,8 +157,7 @@ int Sockets::Socket(int domain, int type, int protocol) const {
 }
 
 ScopedSocketCloser::ScopedSocketCloser(Sockets* sockets, int fd)
-    : sockets_(sockets),
-      fd_(fd) {}
+    : sockets_(sockets), fd_(fd) {}
 
 ScopedSocketCloser::~ScopedSocketCloser() {
   sockets_->Close(fd_);

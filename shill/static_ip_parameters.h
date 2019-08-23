@@ -106,18 +106,24 @@ class StaticIPParameters {
   std::string GetMappedSavedStringProperty(const size_t& index, Error* error);
   std::string GetMappedStringsProperty(const size_t& index, Error* error);
   std::string GetMappedSavedStringsProperty(const size_t& index, Error* error);
-  bool SetMappedInt32Property(
-      const size_t& index, const int32_t& value, Error* error);
-  bool SetMappedSavedInt32Property(
-      const size_t& index, const int32_t& value, Error* error);
-  bool SetMappedStringProperty(
-      const size_t& index, const std::string& value, Error* error);
-  bool SetMappedSavedStringProperty(
-      const size_t& index, const std::string& value, Error* error);
-  bool SetMappedStringsProperty(
-      const size_t& index, const std::string& value, Error* error);
-  bool SetMappedSavedStringsProperty(
-      const size_t& index, const std::string& value, Error* error);
+  bool SetMappedInt32Property(const size_t& index,
+                              const int32_t& value,
+                              Error* error);
+  bool SetMappedSavedInt32Property(const size_t& index,
+                                   const int32_t& value,
+                                   Error* error);
+  bool SetMappedStringProperty(const size_t& index,
+                               const std::string& value,
+                               Error* error);
+  bool SetMappedSavedStringProperty(const size_t& index,
+                                    const std::string& value,
+                                    Error* error);
+  bool SetMappedStringsProperty(const size_t& index,
+                                const std::string& value,
+                                Error* error);
+  bool SetMappedSavedStringsProperty(const size_t& index,
+                                     const std::string& value,
+                                     Error* error);
 
   KeyValueStore GetSavedIPConfig(Error* error);
   KeyValueStore GetStaticIPConfig(Error* error);

@@ -30,8 +30,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kLink;
-static string ObjectID(Connection* c) { return c->interface_name(); }
+static string ObjectID(Connection* c) {
+  return c->interface_name();
 }
+}  // namespace Logging
 
 const int ActiveLinkMonitor::kDefaultTestPeriodMilliseconds = 5000;
 const int ActiveLinkMonitor::kFailureThreshold = 5;
@@ -65,8 +67,7 @@ ActiveLinkMonitor::ActiveLinkMonitor(const ConnectionRefPtr& connection,
       response_sample_count_(0),
       response_sample_bucket_(0),
       io_handler_factory_(IOHandlerFactory::GetInstance()),
-      time_(Time::GetInstance()) {
-}
+      time_(Time::GetInstance()) {}
 
 ActiveLinkMonitor::~ActiveLinkMonitor() {
   Stop();
@@ -97,8 +98,9 @@ void ActiveLinkMonitor::Stop() {
 }
 
 int ActiveLinkMonitor::GetResponseTimeMilliseconds() const {
-  return response_sample_count_ ?
-      response_sample_bucket_ / response_sample_count_ : 0;
+  return response_sample_count_
+             ? response_sample_bucket_ / response_sample_count_
+             : 0;
 }
 
 bool ActiveLinkMonitor::IsGatewayFound() const {
@@ -111,23 +113,21 @@ bool ActiveLinkMonitor::StartInternal(int probe_period_milliseconds) {
     LOG(WARNING) << "Long test period; UMA stats will be truncated.";
   }
 
-  if (!device_info_->GetMacAddress(
-          connection_->interface_index(), &local_mac_address_)) {
+  if (!device_info_->GetMacAddress(connection_->interface_index(),
+                                   &local_mac_address_)) {
     LOG(ERROR) << "Could not get local MAC address.";
-    metrics_->NotifyLinkMonitorFailure(
-        connection_->technology(),
-        Metrics::kLinkMonitorMacAddressNotFound,
-        0, 0, 0);
+    metrics_->NotifyLinkMonitorFailure(connection_->technology(),
+                                       Metrics::kLinkMonitorMacAddressNotFound,
+                                       0, 0, 0);
     Stop();
     return false;
   }
 
   if (!StartArpClient()) {
     LOG(ERROR) << "Failed to start ARP client.";
-    metrics_->NotifyLinkMonitorFailure(
-        connection_->technology(),
-        Metrics::kLinkMonitorClientStartFailure,
-        0, 0, 0);
+    metrics_->NotifyLinkMonitorFailure(connection_->technology(),
+                                       Metrics::kLinkMonitorClientStartFailure,
+                                       0, 0, 0);
     Stop();
     return false;
   }
@@ -159,9 +159,9 @@ void ActiveLinkMonitor::AddResponseTimeSample(int response_time_milliseconds) {
   if (response_sample_count_ < kMaxResponseSampleFilterDepth) {
     ++response_sample_count_;
   } else {
-    response_sample_bucket_ =
-        response_sample_bucket_ * kMaxResponseSampleFilterDepth /
-            (kMaxResponseSampleFilterDepth + 1);
+    response_sample_bucket_ = response_sample_bucket_ *
+                              kMaxResponseSampleFilterDepth /
+                              (kMaxResponseSampleFilterDepth + 1);
   }
 }
 
@@ -208,13 +208,10 @@ bool ActiveLinkMonitor::AddMissedResponse() {
 
   if (unicast_failure_count_ + broadcast_failure_count_ >= kFailureThreshold) {
     LOG(ERROR) << "Link monitor has reached the failure threshold with "
-               << broadcast_failure_count_
-               << " broadcast failures and "
-               << unicast_failure_count_
-               << " unicast failures.";
+               << broadcast_failure_count_ << " broadcast failures and "
+               << unicast_failure_count_ << " unicast failures.";
     failure_callback_.Run(Metrics::kLinkMonitorFailureThresholdReached,
-                          broadcast_failure_count_,
-                          unicast_failure_count_);
+                          broadcast_failure_count_, unicast_failure_count_);
     Stop();
     return true;
   }
@@ -236,7 +233,7 @@ void ActiveLinkMonitor::ReceiveResponse(int fd) {
   }
 
   if (!connection_->local().address().Equals(
-           packet.remote_ip_address().address())) {
+          packet.remote_ip_address().address())) {
     SLOG(connection_.get(), 4) << "Response is not for our IP address.";
     return;
   }
@@ -247,7 +244,7 @@ void ActiveLinkMonitor::ReceiveResponse(int fd) {
   }
 
   if (!connection_->gateway().address().Equals(
-           packet.local_ip_address().address())) {
+          packet.local_ip_address().address())) {
     SLOG(connection_.get(), 4)
         << "Response is not from the gateway IP address.";
     return;
@@ -277,8 +274,8 @@ void ActiveLinkMonitor::ReceiveResponse(int fd) {
   if (!gateway_mac_address_.Equals(packet.local_mac_address())) {
     const ByteString& new_mac_address = packet.local_mac_address();
     if (!IsGatewayFound()) {
-      SLOG(connection_.get(), 2) << "Found gateway at "
-                                 << HardwareAddressToString(new_mac_address);
+      SLOG(connection_.get(), 2)
+          << "Found gateway at " << HardwareAddressToString(new_mac_address);
     } else {
       SLOG(connection_.get(), 2) << "Gateway MAC address changed.";
     }
@@ -319,8 +316,7 @@ void ActiveLinkMonitor::SendRequest() {
   if (!arp_client_->TransmitRequest(request)) {
     LOG(ERROR) << "Failed to send ARP request.  Stopping.";
     failure_callback_.Run(Metrics::kLinkMonitorTransmitFailure,
-                          broadcast_failure_count_,
-                          unicast_failure_count_);
+                          broadcast_failure_count_, unicast_failure_count_);
     Stop();
     return;
   }

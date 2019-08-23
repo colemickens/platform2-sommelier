@@ -57,15 +57,14 @@ class WiFiProvider : public ProviderInterface {
   // used for matching services for the WiFi provider are the SSID, mode and
   // security parameters.
   void CreateServicesFromProfile(const ProfileRefPtr& profile) override;
-  ServiceRefPtr FindSimilarService(
-      const KeyValueStore& args, Error* error) const override;
+  ServiceRefPtr FindSimilarService(const KeyValueStore& args,
+                                   Error* error) const override;
   ServiceRefPtr GetService(const KeyValueStore& args, Error* error) override;
-  ServiceRefPtr CreateTemporaryService(
-      const KeyValueStore& args, Error* error) override;
-  ServiceRefPtr CreateTemporaryServiceFromProfile(
-      const ProfileRefPtr& profile,
-      const std::string& entry_name,
-      Error* error) override;
+  ServiceRefPtr CreateTemporaryService(const KeyValueStore& args,
+                                       Error* error) override;
+  ServiceRefPtr CreateTemporaryServiceFromProfile(const ProfileRefPtr& profile,
+                                                  const std::string& entry_name,
+                                                  Error* error) override;
   void Start() override;
   void Stop() override;
 
@@ -171,8 +170,7 @@ class WiFiProvider : public ProviderInterface {
   // [nnn] where |nnn| is a positive integer that represents the creation time
   // (number of days since the Epoch) of the data.
   static time_t StringListToFrequencyMap(
-      const std::vector<std::string>& strings,
-      ConnectFrequencyMap* numbers);
+      const std::vector<std::string>& strings, ConnectFrequencyMap* numbers);
 
   // Converts frequency profile information from a form consistent with
   // |connect_count_by_frequency_| to a list of strings of the form

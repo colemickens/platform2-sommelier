@@ -42,8 +42,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static string ObjectID(WiFiProvider* w) { return "(wifi_provider)"; }
+static string ObjectID(WiFiProvider* w) {
+  return "(wifi_provider)";
 }
+}  // namespace Logging
 
 namespace {
 
@@ -303,12 +305,8 @@ void WiFiProvider::CreateServicesFromProfile(const ProfileRefPtr& profile) {
     string network_mode;
     string security;
     bool is_hidden = false;
-    if (!GetServiceParametersFromStorage(storage,
-                                         group,
-                                         &ssid_bytes,
-                                         &network_mode,
-                                         &security,
-                                         &is_hidden,
+    if (!GetServiceParametersFromStorage(storage, group, &ssid_bytes,
+                                         &network_mode, &security, &is_hidden,
                                          nullptr)) {
       continue;
     }
@@ -351,15 +349,15 @@ void WiFiProvider::CreateServicesFromProfile(const ProfileRefPtr& profile) {
   }
 }
 
-ServiceRefPtr WiFiProvider::FindSimilarService(
-    const KeyValueStore& args, Error* error) const {
+ServiceRefPtr WiFiProvider::FindSimilarService(const KeyValueStore& args,
+                                               Error* error) const {
   vector<uint8_t> ssid;
   string mode;
   string security;
   bool hidden_ssid;
 
-  if (!GetServiceParametersFromArgs(
-          args, &ssid, &mode, &security, &hidden_ssid, error)) {
+  if (!GetServiceParametersFromArgs(args, &ssid, &mode, &security, &hidden_ssid,
+                                    error)) {
     return nullptr;
   }
 
@@ -371,15 +369,15 @@ ServiceRefPtr WiFiProvider::FindSimilarService(
   return service;
 }
 
-ServiceRefPtr WiFiProvider::CreateTemporaryService(
-    const KeyValueStore& args, Error* error) {
+ServiceRefPtr WiFiProvider::CreateTemporaryService(const KeyValueStore& args,
+                                                   Error* error) {
   vector<uint8_t> ssid;
   string mode;
   string security;
   bool hidden_ssid;
 
-  if (!GetServiceParametersFromArgs(
-          args, &ssid, &mode, &security, &hidden_ssid, error)) {
+  if (!GetServiceParametersFromArgs(args, &ssid, &mode, &security, &hidden_ssid,
+                                    error)) {
     return nullptr;
   }
 
@@ -392,41 +390,34 @@ ServiceRefPtr WiFiProvider::CreateTemporaryServiceFromProfile(
   string mode;
   string security;
   bool hidden_ssid;
-  if (!GetServiceParametersFromStorage(profile->GetConstStorage(),
-                                       entry_name,
-                                       &ssid,
-                                       &mode,
-                                       &security,
-                                       &hidden_ssid,
+  if (!GetServiceParametersFromStorage(profile->GetConstStorage(), entry_name,
+                                       &ssid, &mode, &security, &hidden_ssid,
                                        error)) {
     return nullptr;
   }
   return new WiFiService(manager_, this, ssid, mode, security, hidden_ssid);
 }
 
-ServiceRefPtr WiFiProvider::GetService(
-    const KeyValueStore& args, Error* error) {
+ServiceRefPtr WiFiProvider::GetService(const KeyValueStore& args,
+                                       Error* error) {
   return GetWiFiService(args, error);
 }
 
-WiFiServiceRefPtr WiFiProvider::GetWiFiService(
-    const KeyValueStore& args, Error* error) {
+WiFiServiceRefPtr WiFiProvider::GetWiFiService(const KeyValueStore& args,
+                                               Error* error) {
   vector<uint8_t> ssid_bytes;
   string mode;
   string security_method;
   bool hidden_ssid;
 
-  if (!GetServiceParametersFromArgs(
-          args, &ssid_bytes, &mode, &security_method, &hidden_ssid, error)) {
+  if (!GetServiceParametersFromArgs(args, &ssid_bytes, &mode, &security_method,
+                                    &hidden_ssid, error)) {
     return nullptr;
   }
 
   WiFiServiceRefPtr service(FindService(ssid_bytes, mode, security_method));
   if (!service) {
-    service = AddService(ssid_bytes,
-                         mode,
-                         security_method,
-                         hidden_ssid);
+    service = AddService(ssid_bytes, mode, security_method, hidden_ssid);
   }
 
   return service;
@@ -446,16 +437,14 @@ void WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr& endpoint) {
     return;
   }
 
-  WiFiServiceRefPtr service = FindService(endpoint->ssid(),
-                                          endpoint->network_mode(),
-                                          endpoint->security_mode());
+  WiFiServiceRefPtr service = FindService(
+      endpoint->ssid(), endpoint->network_mode(), endpoint->security_mode());
   if (!service) {
     const bool hidden_ssid = false;
-    service = AddService(
-        endpoint->ssid(),
-        endpoint->network_mode(),
-        WiFiService::ComputeSecurityClass(endpoint->security_mode()),
-        hidden_ssid);
+    service =
+        AddService(endpoint->ssid(), endpoint->network_mode(),
+                   WiFiService::ComputeSecurityClass(endpoint->security_mode()),
+                   hidden_ssid);
   }
 
   service->AddEndpoint(endpoint);
@@ -539,14 +528,12 @@ void WiFiProvider::LoadAndFixupServiceEntries(Profile* profile) {
   if (WiFiService::FixupServiceEntries(storage)) {
     storage->Flush();
     Metrics::ServiceFixupProfileType profile_type =
-        is_default_profile ?
-            Metrics::kMetricServiceFixupDefaultProfile :
-            Metrics::kMetricServiceFixupUserProfile;
+        is_default_profile ? Metrics::kMetricServiceFixupDefaultProfile
+                           : Metrics::kMetricServiceFixupUserProfile;
     metrics()->SendEnumToUMA(
         metrics()->GetFullMetricName(Metrics::kMetricServiceFixupEntriesSuffix,
                                      Technology::kWifi),
-        profile_type,
-        Metrics::kMetricServiceFixupMax);
+        profile_type, Metrics::kMetricServiceFixupMax);
   }
   // TODO(wdg): Determine how this should be structured for, currently
   // non-existant, autotests.  |kStorageFrequencies| should only exist in the
@@ -585,8 +572,8 @@ void WiFiProvider::LoadAndFixupServiceEntries(Profile* profile) {
         total_frequency_connections_ += freq_count.second;
       }
     }
-    SLOG(this, 7) << __func__ << " - total count="
-                  << total_frequency_connections_;
+    SLOG(this, 7) << __func__
+                  << " - total count=" << total_frequency_connections_;
   }
 }
 
@@ -595,8 +582,7 @@ bool WiFiProvider::Save(StoreInterface* storage) const {
   // Iterating backwards since I want to make sure that I get the newest data.
   ConnectFrequencyMapDated::const_reverse_iterator freq_count;
   for (freq_count = connect_count_by_frequency_dated_.crbegin();
-       freq_count != connect_count_by_frequency_dated_.crend();
-       ++freq_count) {
+       freq_count != connect_count_by_frequency_dated_.crend(); ++freq_count) {
     vector<string> frequencies;
     FrequencyMapToStringList(freq_count->first, freq_count->second,
                              &frequencies);
@@ -615,12 +601,8 @@ WiFiServiceRefPtr WiFiProvider::AddService(const vector<uint8_t>& ssid,
                                            const string& mode,
                                            const string& security,
                                            bool is_hidden) {
-  WiFiServiceRefPtr service = new WiFiService(manager_,
-                                              this,
-                                              ssid,
-                                              mode,
-                                              security,
-                                              is_hidden);
+  WiFiServiceRefPtr service =
+      new WiFiService(manager_, this, ssid, mode, security, is_hidden);
 
   services_.push_back(service);
   manager_->RegisterService(service);
@@ -664,9 +646,8 @@ void WiFiProvider::ForgetService(const WiFiServiceRefPtr& service) {
 void WiFiProvider::ReportRememberedNetworkCount() {
   metrics()->SendToUMA(
       Metrics::kMetricRememberedWiFiNetworkCount,
-      std::count_if(
-          services_.begin(), services_.end(),
-          [](ServiceRefPtr s) { return s->IsRemembered(); }),
+      std::count_if(services_.begin(), services_.end(),
+                    [](ServiceRefPtr s) { return s->IsRemembered(); }),
       Metrics::kMetricRememberedWiFiNetworkCountMin,
       Metrics::kMetricRememberedWiFiNetworkCountMax,
       Metrics::kMetricRememberedWiFiNetworkCountNumBuckets);
@@ -674,32 +655,31 @@ void WiFiProvider::ReportRememberedNetworkCount() {
 
 void WiFiProvider::ReportServiceSourceMetrics() {
   for (const auto& security_mode :
-    {kSecurityNone, kSecurityWep, kSecurityPsk, kSecurity8021x}) {
+       {kSecurityNone, kSecurityWep, kSecurityPsk, kSecurity8021x}) {
     metrics()->SendToUMA(
         base::StringPrintf(
             Metrics::
-            kMetricRememberedSystemWiFiNetworkCountBySecurityModeFormat,
+                kMetricRememberedSystemWiFiNetworkCountBySecurityModeFormat,
             security_mode),
-        std::count_if(
-            services_.begin(), services_.end(),
-            [security_mode](WiFiServiceRefPtr s) {
-              return s->IsRemembered() && s->IsSecurityMatch(security_mode) &&
-                  s->profile()->IsDefault();
-            }),
+        std::count_if(services_.begin(), services_.end(),
+                      [security_mode](WiFiServiceRefPtr s) {
+                        return s->IsRemembered() &&
+                               s->IsSecurityMatch(security_mode) &&
+                               s->profile()->IsDefault();
+                      }),
         Metrics::kMetricRememberedWiFiNetworkCountMin,
         Metrics::kMetricRememberedWiFiNetworkCountMax,
         Metrics::kMetricRememberedWiFiNetworkCountNumBuckets);
     metrics()->SendToUMA(
         base::StringPrintf(
-            Metrics::
-            kMetricRememberedUserWiFiNetworkCountBySecurityModeFormat,
+            Metrics::kMetricRememberedUserWiFiNetworkCountBySecurityModeFormat,
             security_mode),
-        std::count_if(
-            services_.begin(), services_.end(),
-            [security_mode](WiFiServiceRefPtr s) {
-              return s->IsRemembered() && s->IsSecurityMatch(security_mode) &&
-                  !s->profile()->IsDefault();
-            }),
+        std::count_if(services_.begin(), services_.end(),
+                      [security_mode](WiFiServiceRefPtr s) {
+                        return s->IsRemembered() &&
+                               s->IsSecurityMatch(security_mode) &&
+                               !s->profile()->IsDefault();
+                      }),
         Metrics::kMetricRememberedWiFiNetworkCountMin,
         Metrics::kMetricRememberedWiFiNetworkCountMax,
         Metrics::kMetricRememberedWiFiNetworkCountNumBuckets);
@@ -748,9 +728,9 @@ void WiFiProvider::FrequencyMapToStringList(time_t start_week,
     // Use base::Int64ToString() instead of using something like "%llu"
     // (not correct for native 64 bit architectures) or PRId64 (does not
     // work correctly using cros_workon_make due to include intricacies).
-    strings->push_back(StringPrintf("%u%c%s",
-        freq_conn.first, kFrequencyDelimiter,
-        base::Int64ToString(freq_conn.second).c_str()));
+    strings->push_back(
+        StringPrintf("%u%c%s", freq_conn.first, kFrequencyDelimiter,
+                     base::Int64ToString(freq_conn.second).c_str()));
   }
 }
 
@@ -781,19 +761,18 @@ void WiFiProvider::IncrementConnectCount(uint16_t frequency_mhz) {
   }
 
   manager_->UpdateWiFiProvider();
-  metrics()->SendToUMA(
-      Metrics::kMetricFrequenciesConnectedEver,
-      connect_count_by_frequency_.size(),
-      Metrics::kMetricFrequenciesConnectedMin,
-      Metrics::kMetricFrequenciesConnectedMax,
-      Metrics::kMetricFrequenciesConnectedNumBuckets);
+  metrics()->SendToUMA(Metrics::kMetricFrequenciesConnectedEver,
+                       connect_count_by_frequency_.size(),
+                       Metrics::kMetricFrequenciesConnectedMin,
+                       Metrics::kMetricFrequenciesConnectedMax,
+                       Metrics::kMetricFrequenciesConnectedNumBuckets);
 }
 
 WiFiProvider::FrequencyCountList WiFiProvider::GetScanFrequencies() const {
   FrequencyCountList freq_connects_list;
   for (const auto freq_count : connect_count_by_frequency_) {
-    freq_connects_list.push_back(FrequencyCount(freq_count.first,
-                                                freq_count.second));
+    freq_connects_list.push_back(
+        FrequencyCount(freq_count.first, freq_count.second));
   }
   return freq_connects_list;
 }

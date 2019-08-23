@@ -29,18 +29,12 @@ class WiFiProvider;
 
 class Profile : public base::RefCounted<Profile> {
  public:
-  enum InitStorageOption {
-    kOpenExisting,
-    kCreateNew,
-    kCreateOrOpenExisting
-  };
+  enum InitStorageOption { kOpenExisting, kCreateNew, kCreateOrOpenExisting };
   struct Identifier {
     Identifier() = default;
     explicit Identifier(const std::string& i) : identifier(i) {}
     Identifier(const std::string& u, const std::string& i)
-        : user(u),
-          identifier(i) {
-    }
+        : user(u), identifier(i) {}
     std::string user;  // Empty for global.
     std::string identifier;
     std::string user_hash;
@@ -58,8 +52,7 @@ class Profile : public base::RefCounted<Profile> {
   virtual ~Profile();
 
   // Set up persistent storage for this Profile.
-  bool InitStorage(InitStorageOption storage_option,
-                   Error* error);
+  bool InitStorage(InitStorageOption storage_option, Error* error);
 
   // Set up stub storage for this Profile. The data will NOT be
   // persisted. In most cases, you should prefer InitStorage.
@@ -174,9 +167,7 @@ class Profile : public base::RefCounted<Profile> {
   // Returns the user_hash component of the profile identifier.
   const std::string& GetUserHash() const { return name_.user_hash; }
 
-  virtual StoreInterface* GetStorage() {
-    return storage_.get();
-  }
+  virtual StoreInterface* GetStorage() { return storage_.get(); }
 
   // Returns a read-only copy of the backing storage of the profile.
   virtual const StoreInterface* GetConstStorage() const {
@@ -190,9 +181,8 @@ class Profile : public base::RefCounted<Profile> {
   // given |storage_dir| and |profile_name|. Provided as a static
   // method, so that tests can use this logic without having to
   // instantiate a Profile.
-  static base::FilePath GetFinalStoragePath(
-      const base::FilePath& storage_dir,
-      const Identifier& profile_name);
+  static base::FilePath GetFinalStoragePath(const base::FilePath& storage_dir,
+                                            const Identifier& profile_name);
 
   Metrics* metrics() const;
   Manager* manager() const { return manager_; }
@@ -217,9 +207,8 @@ class Profile : public base::RefCounted<Profile> {
 
   static bool IsValidIdentifierToken(const std::string& token);
 
-  void HelpRegisterConstDerivedStrings(
-      const std::string& name,
-      Strings(Profile::*get)(Error* error));
+  void HelpRegisterConstDerivedStrings(const std::string& name,
+                                       Strings (Profile::*get)(Error* error));
 
   // Data members shared with subclasses via getter/setters above in the
   // protected: section

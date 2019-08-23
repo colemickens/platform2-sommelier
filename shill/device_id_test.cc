@@ -13,80 +13,78 @@ namespace shill {
 TEST(DeviceIdTest, MatchByBusType) {
   constexpr DeviceId kDeviceId{DeviceId::BusType::kUsb};
   constexpr DeviceId kPattern{DeviceId::BusType::kUsb};
-  EXPECT_TRUE(kDeviceId.Match(kPattern)) << kDeviceId << " does not match "
-                                         << kPattern;
+  EXPECT_TRUE(kDeviceId.Match(kPattern))
+      << kDeviceId << " does not match " << kPattern;
 }
 
 TEST(DeviceIdTest, NotMatchByBusType) {
   constexpr DeviceId kDeviceId{DeviceId::BusType::kUsb};
   constexpr DeviceId kPattern{DeviceId::BusType::kPci};
-  EXPECT_FALSE(kDeviceId.Match(kPattern)) << kDeviceId << " matches "
-                                          << kPattern;
+  EXPECT_FALSE(kDeviceId.Match(kPattern))
+      << kDeviceId << " matches " << kPattern;
 }
 
 TEST(DeviceIdTest, MatchByVendor) {
   constexpr DeviceId kDeviceId{DeviceId::BusType::kUsb, 1234};
   constexpr DeviceId kPattern{DeviceId::BusType::kUsb, 1234};
-  EXPECT_TRUE(kDeviceId.Match(kPattern)) << kDeviceId << " does not match "
-                                         << kPattern;
+  EXPECT_TRUE(kDeviceId.Match(kPattern))
+      << kDeviceId << " does not match " << kPattern;
 }
 
 TEST(DeviceIdTest, MatchByAnyVendor) {
   constexpr DeviceId kDeviceId{DeviceId::BusType::kPci, 4567};
   constexpr DeviceId kPattern{DeviceId::BusType::kPci};
-  EXPECT_TRUE(kDeviceId.Match(kPattern)) << kDeviceId << " does not match "
-                                         << kPattern;
+  EXPECT_TRUE(kDeviceId.Match(kPattern))
+      << kDeviceId << " does not match " << kPattern;
 }
 
 TEST(DeviceIdTest, SpecificVendorNotMatchByVendor) {
   constexpr DeviceId kDeviceId{DeviceId::BusType::kPci, 9988};
   constexpr DeviceId kPattern{DeviceId::BusType::kPci, 456};
-  EXPECT_FALSE(kDeviceId.Match(kPattern)) << kDeviceId << " matches "
-                                          << kPattern;
+  EXPECT_FALSE(kDeviceId.Match(kPattern))
+      << kDeviceId << " matches " << kPattern;
 }
 
 TEST(DeviceIdTest, AnyVendorNotMatchByVendor) {
   constexpr DeviceId kDeviceId{DeviceId::BusType::kUsb};
   constexpr DeviceId kPattern{DeviceId::BusType::kUsb, 3123};
-  EXPECT_FALSE(kDeviceId.Match(kPattern)) << kDeviceId << " matches "
-                                          << kPattern;
+  EXPECT_FALSE(kDeviceId.Match(kPattern))
+      << kDeviceId << " matches " << kPattern;
 }
 
 TEST(DeviceIdTest, MatchByProduct) {
   constexpr DeviceId kDeviceId{DeviceId::BusType::kUsb, 453, 15};
   constexpr DeviceId kPattern{DeviceId::BusType::kUsb, 453, 15};
-  EXPECT_TRUE(kDeviceId.Match(kPattern)) << kDeviceId << " does not match "
-                                         << kPattern;
+  EXPECT_TRUE(kDeviceId.Match(kPattern))
+      << kDeviceId << " does not match " << kPattern;
 }
 
 TEST(DeviceIdTest, MatchByAnyProduct) {
   constexpr DeviceId kDeviceId{DeviceId::BusType::kPci, 782, 578};
   constexpr DeviceId kPattern{DeviceId::BusType::kPci, 782};
-  EXPECT_TRUE(kDeviceId.Match(kPattern)) << kDeviceId << " does not match "
-                                         << kPattern;
+  EXPECT_TRUE(kDeviceId.Match(kPattern))
+      << kDeviceId << " does not match " << kPattern;
 }
 
 TEST(DeviceIdTest, SpecificProductNotMatchByProduct) {
   constexpr DeviceId kDeviceId{DeviceId::BusType::kUsb, 4633, 213};
   constexpr DeviceId kPattern{DeviceId::BusType::kUsb, 4633, 3999};
-  EXPECT_FALSE(kDeviceId.Match(kPattern)) << kDeviceId << " matches "
-                                          << kPattern;
+  EXPECT_FALSE(kDeviceId.Match(kPattern))
+      << kDeviceId << " matches " << kPattern;
 }
 
 TEST(DeviceIdTest, AnyProductNotMatchByProduct) {
   constexpr DeviceId kDeviceId{DeviceId::BusType::kUsb, 9721};
   constexpr DeviceId kPattern{DeviceId::BusType::kUsb, 9721, 4647};
-  EXPECT_FALSE(kDeviceId.Match(kPattern)) << kDeviceId << " matches "
-                                          << kPattern;
+  EXPECT_FALSE(kDeviceId.Match(kPattern))
+      << kDeviceId << " matches " << kPattern;
 }
 
 namespace {
 
 class DeviceIdFromSysfsTest : public testing::Test {
  public:
-  void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-  }
+  void SetUp() override { ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()); }
 
   void CreateDeviceSysfs(const std::string& device_name,
                          const std::string& subsystem_name) const {

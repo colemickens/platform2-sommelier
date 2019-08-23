@@ -12,9 +12,11 @@ MockMac80211Monitor::MockMac80211Monitor(
     size_t queue_length_limit,
     const base::Closure& on_repair_callback,
     Metrics* metrics)
-    : Mac80211Monitor(
-        dispatcher, link_name, queue_length_limit, on_repair_callback, metrics)
-{}
+    : Mac80211Monitor(dispatcher,
+                      link_name,
+                      queue_length_limit,
+                      on_repair_callback,
+                      metrics) {}
 
 MockMac80211Monitor::~MockMac80211Monitor() = default;
 

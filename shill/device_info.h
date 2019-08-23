@@ -43,8 +43,7 @@ class Nl80211Message;
 class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
  public:
   struct AddressData {
-    AddressData()
-        : address(IPAddress::kFamilyUnknown), flags(0), scope(0) {}
+    AddressData() : address(IPAddress::kFamilyUnknown), flags(0), scope(0) {}
     AddressData(const IPAddress& address_in,
                 unsigned char flags_in,
                 unsigned char scope_in)
@@ -91,7 +90,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
 
   virtual bool GetFlags(int interface_index, unsigned int* flags) const;
   virtual bool GetByteCounts(int interface_index,
-                             uint64_t* rx_bytes, uint64_t* tx_bytes) const;
+                             uint64_t* rx_bytes,
+                             uint64_t* tx_bytes) const;
   virtual bool GetAddresses(int interface_index,
                             std::vector<AddressData>* addresses) const;
 
@@ -99,8 +99,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   virtual void FlushAddresses(int interface_index) const;
   // Returns whether this interface does not have |this_address|
   // but has another non-temporary address of the same family.
-  virtual bool HasOtherAddress(
-      int interface_index, const IPAddress& this_address) const;
+  virtual bool HasOtherAddress(int interface_index,
+                               const IPAddress& this_address) const;
 
   // Get the preferred globally scoped IPv6 address for |interface_index|.
   // This method returns true and sets |address| if a primary IPv6 address
@@ -121,8 +121,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
 
   // Returns true if any of the addresses on |interface_index| are on the
   // same network prefix as |address|.
-  virtual bool HasDirectConnectivityTo(
-      int interface_index, const IPAddress& address) const;
+  virtual bool HasDirectConnectivityTo(int interface_index,
+                                       const IPAddress& address) const;
 
   virtual bool CreateTunnelInterface(std::string* interface_name) const;
   virtual int OpenTunnelInterface(const std::string& interface_name) const;
@@ -146,7 +146,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(DeviceInfoTest, DeviceRemovedEvent);
   FRIEND_TEST(DeviceInfoTest, GetUninitializedTechnologies);
-  FRIEND_TEST(DeviceInfoTest, HasSubdir);  // For HasSubdir.
+  FRIEND_TEST(DeviceInfoTest, HasSubdir);           // For HasSubdir.
   FRIEND_TEST(DeviceInfoTest, IPv6AddressChanged);  // For infos_.
   FRIEND_TEST(DeviceInfoTest, RequestLinkStatistics);
   FRIEND_TEST(DeviceInfoTest, StartStop);
@@ -160,8 +160,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
           rx_bytes(0),
           tx_bytes(0),
           has_addresses_only(false),
-          technology(Technology::kUnknown)
-    {}
+          technology(Technology::kUnknown) {}
 
     DeviceRefPtr device;
     std::string name;
@@ -195,7 +194,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // Return the FilePath for a given |path_name| in the device sysinfo for
   // a specific interface |iface_name|.
   base::FilePath GetDeviceInfoPath(const std::string& iface_name,
-                             const std::string& path_name);
+                                   const std::string& path_name);
   // Return the contents of the device info file |path_name| for interface
   // |iface_name| in output parameter |contents_out|.  Returns true if file
   // read succeeded, false otherwise.
@@ -258,7 +257,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
 
   Manager* manager_;
 
-  std::map<int, Info> infos_;  // Maps interface index to Info.
+  std::map<int, Info> infos_;           // Maps interface index to Info.
   std::map<std::string, int> indices_;  // Maps interface name to index.
 
   std::unique_ptr<RTNLListener> link_listener_;

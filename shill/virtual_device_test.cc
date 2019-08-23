@@ -38,9 +38,7 @@ class VirtualDeviceTest : public testing::Test {
 
   ~VirtualDeviceTest() override = default;
 
-  void SetUp() override {
-    device_->rtnl_handler_ = &rtnl_handler_;
-  }
+  void SetUp() override { device_->rtnl_handler_ = &rtnl_handler_; }
 
  protected:
   MockControl control_;

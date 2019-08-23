@@ -69,15 +69,15 @@ TEST(TechnologyTest, GetTechnologyVectorFromStringWithValidTechnologyNames) {
 
   EXPECT_TRUE(
       GetTechnologyVectorFromString("ethernet,vpn", &technologies, &error));
-  EXPECT_THAT(technologies, ElementsAre(Technology::kEthernet,
-                                        Technology::kVPN));
+  EXPECT_THAT(technologies,
+              ElementsAre(Technology::kEthernet, Technology::kVPN));
   EXPECT_TRUE(error.IsSuccess());
 
   EXPECT_TRUE(GetTechnologyVectorFromString("wifi,ethernet,vpn", &technologies,
                                             &error));
-  EXPECT_THAT(technologies, ElementsAre(Technology::kWifi,
-                                        Technology::kEthernet,
-                                        Technology::kVPN));
+  EXPECT_THAT(
+      technologies,
+      ElementsAre(Technology::kWifi, Technology::kEthernet, Technology::kVPN));
   EXPECT_TRUE(error.IsSuccess());
 }
 

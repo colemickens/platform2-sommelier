@@ -40,8 +40,7 @@ class SupplicantInterfaceProxyInterface {
   virtual bool SetScan(bool enable) = 0;
   virtual bool TDLSDiscover(const std::string& peer) = 0;
   virtual bool TDLSSetup(const std::string& peer) = 0;
-  virtual bool TDLSStatus(const std::string& peer,
-                                      std::string* status) = 0;
+  virtual bool TDLSStatus(const std::string& peer, std::string* status) = 0;
   virtual bool TDLSTeardown(const std::string& peer) = 0;
   virtual bool SetHT40Enable(const RpcIdentifier& network, bool enable) = 0;
   virtual bool EnableMacAddressRandomization(

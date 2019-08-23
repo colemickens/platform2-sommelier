@@ -79,10 +79,14 @@ class FakeStore : public StoreInterface {
                         const std::string& value) override;
 
  private:
-  template<typename T> bool ReadSetting(
-      const std::string& group, const std::string& key, T* out) const;
-  template<typename T> bool WriteSetting(
-      const std::string& group, const std::string& key, const T& new_value);
+  template <typename T>
+  bool ReadSetting(const std::string& group,
+                   const std::string& key,
+                   T* out) const;
+  template <typename T>
+  bool WriteSetting(const std::string& group,
+                    const std::string& key,
+                    const T& new_value);
 
   std::map<std::string, brillo::VariantDictionary> group_name_to_settings_;
 

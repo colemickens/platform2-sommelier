@@ -26,8 +26,8 @@ namespace shill {
 class RTNLListenerTest : public Test {
  public:
   RTNLListenerTest()
-      : callback_(Bind(&RTNLListenerTest::ListenerCallback,
-                       Unretained(this))) {}
+      : callback_(Bind(&RTNLListenerTest::ListenerCallback, Unretained(this))) {
+  }
 
   MOCK_METHOD1(ListenerCallback, void(const RTNLMessage&));
 
@@ -55,9 +55,8 @@ TEST_F(RTNLListenerTest, NoRun) {
 
 TEST_F(RTNLListenerTest, Run) {
   {
-    RTNLListener listener(
-        RTNLHandler::kRequestLink | RTNLHandler::kRequestAddr,
-        callback_);
+    RTNLListener listener(RTNLHandler::kRequestLink | RTNLHandler::kRequestAddr,
+                          callback_);
     EXPECT_EQ(1, RTNLHandler::GetInstance()->listeners_.size());
     RTNLMessage message;
     EXPECT_CALL(*this, ListenerCallback(A<const RTNLMessage&>())).Times(1);

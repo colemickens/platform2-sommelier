@@ -324,11 +324,11 @@ void Connection::UpdateRoutingPolicy() {
 
   // Add output interface rule for all interfaces, such that SO_BINDTODEVICE can
   // be used without explicitly binding the socket.
-  auto oif_rule = RoutingPolicyEntry::CreateFromSrc(
-    IPAddress(IPAddress::kFamilyIPv4))
-    .SetTable(table_id_)
-    .SetPriority(metric_ + blackhole_offset)
-    .SetOif(interface_name_);
+  auto oif_rule =
+      RoutingPolicyEntry::CreateFromSrc(IPAddress(IPAddress::kFamilyIPv4))
+          .SetTable(table_id_)
+          .SetPriority(metric_ + blackhole_offset)
+          .SetOif(interface_name_);
   routing_table_->AddRule(interface_index_, oif_rule);
   routing_table_->AddRule(interface_index_, oif_rule.FlipFamily());
 

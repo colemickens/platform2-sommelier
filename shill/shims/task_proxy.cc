@@ -16,13 +16,13 @@ namespace shims {
 TaskProxy::TaskProxy(scoped_refptr<dbus::Bus> bus,
                      const string& path,
                      const string& service)
-      : proxy_(bus, dbus::ObjectPath(path)) {}
+    : proxy_(bus, dbus::ObjectPath(path)) {}
 
 TaskProxy::~TaskProxy() = default;
 
 void TaskProxy::Notify(const string& reason, const map<string, string>& dict) {
-  LOG(INFO) << __func__ << "(" << reason
-            << ", argcount: " << dict.size() << ")";
+  LOG(INFO) << __func__ << "(" << reason << ", argcount: " << dict.size()
+            << ")";
   brillo::ErrorPtr error;
   if (!proxy_.notify(reason, dict, &error)) {
     LOG(ERROR) << "DBus error: " << error->GetCode() << ": "

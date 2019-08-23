@@ -11,10 +11,9 @@ using std::string;
 
 namespace shill {
 
-DeviceClaimer::DeviceClaimer(
-    const std::string& service_name,
-    DeviceInfo* device_info,
-    bool default_claimer)
+DeviceClaimer::DeviceClaimer(const std::string& service_name,
+                             DeviceInfo* device_info,
+                             bool default_claimer)
     : service_name_(service_name),
       device_info_(device_info),
       default_claimer_(default_claimer) {}
@@ -33,9 +32,9 @@ DeviceClaimer::~DeviceClaimer() {
 bool DeviceClaimer::Claim(const string& device_name, Error* error) {
   // Check if device is claimed already.
   if (claimed_device_names_.find(device_name) != claimed_device_names_.end()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Device " + device_name +
-                          " had already been claimed");
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kInvalidArguments,
+        "Device " + device_name + " had already been claimed");
     return false;
   }
 
@@ -47,13 +46,11 @@ bool DeviceClaimer::Claim(const string& device_name, Error* error) {
   return true;
 }
 
-bool DeviceClaimer::Release(const std::string& device_name,
-                            Error* error) {
+bool DeviceClaimer::Release(const std::string& device_name, Error* error) {
   // Make sure this is a device that have been claimed.
   if (claimed_device_names_.find(device_name) == claimed_device_names_.end()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Device " + device_name +
-                          " have not been claimed");
+                          "Device " + device_name + " have not been claimed");
     return false;
   }
 
@@ -71,7 +68,7 @@ bool DeviceClaimer::DevicesClaimed() {
 
 bool DeviceClaimer::IsDeviceReleased(const string& device_name) {
   return released_device_names_.find(device_name) !=
-      released_device_names_.end();
+         released_device_names_.end();
 }
 
 }  // namespace shill

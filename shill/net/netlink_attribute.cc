@@ -39,7 +39,10 @@ NetlinkAttribute::NetlinkAttribute(int id,
                                    const char* id_string,
                                    Type datatype,
                                    const char* datatype_string)
-    : has_a_value_(false), id_(id), id_string_(id_string), datatype_(datatype),
+    : has_a_value_(false),
+      id_(id),
+      id_string_(id_string),
+      datatype_(datatype),
       datatype_string_(datatype_string) {}
 
 // static
@@ -324,8 +327,8 @@ string NetlinkAttribute::RawToString() const {
 
   StringAppendF(&output, "len=%u", length);
   output.append(" DATA: ");
-  for (int i =0 ; i < length; ++i) {
-    StringAppendF(&output, "[%d]=%02x ", i, *(const_data)+i);
+  for (int i = 0; i < length; ++i) {
+    StringAppendF(&output, "[%d]=%02x ", i, *(const_data) + i);
   }
   output.append(" ==== ");
   return output;
@@ -333,12 +336,9 @@ string NetlinkAttribute::RawToString() const {
 
 string NetlinkAttribute::HeaderToPrint(int indent) const {
   static const int kSpacesPerIndent = 2;
-  return StringPrintf("%*s%s(%d) %s %s=",
-            indent * kSpacesPerIndent, "",
-            id_string(),
-            id(),
-            datatype_string(),
-            ((has_a_value()) ?  "": "UNINITIALIZED "));
+  return StringPrintf("%*s%s(%d) %s %s=", indent * kSpacesPerIndent, "",
+                      id_string(), id(), datatype_string(),
+                      ((has_a_value()) ? "" : "UNINITIALIZED "));
 }
 
 ByteString NetlinkAttribute::EncodeGeneric(const unsigned char* data,
@@ -348,8 +348,8 @@ ByteString NetlinkAttribute::EncodeGeneric(const unsigned char* data,
     nlattr header;
     header.nla_type = id();
     header.nla_len = NLA_HDRLEN + num_bytes;
-    result = ByteString(reinterpret_cast<unsigned char*>(&header),
-                        sizeof(header));
+    result =
+        ByteString(reinterpret_cast<unsigned char*>(&header), sizeof(header));
     result.Resize(NLA_HDRLEN);  // Add padding after the header.
     if (data && (num_bytes != 0)) {
       result.Append(ByteString(data, num_bytes));
@@ -585,7 +585,6 @@ bool NetlinkFlagAttribute::InitFromValue(const ByteString& input) {
   return NetlinkAttribute::InitFromValue(input);
 }
 
-
 bool NetlinkFlagAttribute::GetFlagValue(bool* output) const {
   if (output) {
     // The lack of the existence of the attribute implies 'false'.
@@ -720,10 +719,9 @@ const NetlinkAttribute::Type NetlinkNestedAttribute::kType =
     NetlinkAttribute::kTypeNested;
 const size_t NetlinkNestedAttribute::kArrayAttrEnumVal = 0;
 
-NetlinkNestedAttribute::NetlinkNestedAttribute(int id,
-                                               const char* id_string) :
-    NetlinkAttribute(id, id_string, kType, kMyTypeString),
-    value_(new AttributeList) {}
+NetlinkNestedAttribute::NetlinkNestedAttribute(int id, const char* id_string)
+    : NetlinkAttribute(id, id_string, kType, kMyTypeString),
+      value_(new AttributeList) {}
 
 ByteString NetlinkNestedAttribute::Encode() const {
   // Encode attribute header.
@@ -814,31 +812,35 @@ bool NetlinkNestedAttribute::InitNestedFromValue(
   }
   if (templates.size() == 1 && templates.cbegin()->second.is_array) {
     return AttributeList::IterateAttributes(
-        value, 0, base::Bind(
-            &NetlinkNestedAttribute::AddAttributeToNestedArray,
-            templates.cbegin()->second, list));
+        value, 0,
+        base::Bind(&NetlinkNestedAttribute::AddAttributeToNestedArray,
+                   templates.cbegin()->second, list));
   } else {
     return AttributeList::IterateAttributes(
-      value, 0, base::Bind(
-          &NetlinkNestedAttribute::AddAttributeToNestedMap,
-          templates, list));
+        value, 0,
+        base::Bind(&NetlinkNestedAttribute::AddAttributeToNestedMap, templates,
+                   list));
   }
 }
 
 // static
 bool NetlinkNestedAttribute::AddAttributeToNestedArray(
     const NetlinkNestedAttribute::NestedData& array_template,
-    const AttributeListRefPtr& list, int id, const ByteString& value) {
-  string attribute_name = StringPrintf(
-      "%s_%d", array_template.attribute_name.c_str(), id);
-  return AddAttributeToNestedInner(
-      array_template, attribute_name, list, id, value);
+    const AttributeListRefPtr& list,
+    int id,
+    const ByteString& value) {
+  string attribute_name =
+      StringPrintf("%s_%d", array_template.attribute_name.c_str(), id);
+  return AddAttributeToNestedInner(array_template, attribute_name, list, id,
+                                   value);
 }
 
 // static
 bool NetlinkNestedAttribute::AddAttributeToNestedMap(
     const NetlinkNestedAttribute::NestedData::NestedDataMap& templates,
-    const AttributeListRefPtr& list, int id, const ByteString& value) {
+    const AttributeListRefPtr& list,
+    int id,
+    const ByteString& value) {
   auto template_it = templates.find(id);
   if (template_it == templates.end()) {
     // No interest in this value.
@@ -852,12 +854,14 @@ bool NetlinkNestedAttribute::AddAttributeToNestedMap(
 // static
 bool NetlinkNestedAttribute::AddAttributeToNestedInner(
     const NetlinkNestedAttribute::NestedData& nested_template,
-    const string& attribute_name, const AttributeListRefPtr& list,
-    int id, const ByteString& value) {
+    const string& attribute_name,
+    const AttributeListRefPtr& list,
+    int id,
+    const ByteString& value) {
   CHECK(list);
   if (!nested_template.parse_attribute.is_null()) {
-    if (!nested_template.parse_attribute.Run(
-        list.get(), id, attribute_name, value)) {
+    if (!nested_template.parse_attribute.Run(list.get(), id, attribute_name,
+                                             value)) {
       LOG(WARNING) << "Custom attribute parser returned |false| for "
                    << attribute_name << "(" << id << ").";
       return false;
@@ -887,37 +891,34 @@ bool NetlinkNestedAttribute::AddAttributeToNestedInner(
     case kTypeString:
       list->CreateStringAttribute(id, attribute_name.c_str());
       return list->InitAttributeFromValue(id, value);
-    case kTypeNested:
-      {
-        if (nested_template.deeper_nesting.empty()) {
-          LOG(ERROR) << "No rules for nesting " << attribute_name
-                     << ". Ignoring.";
-          break;
-        }
-        list->CreateNestedAttribute(id, attribute_name.c_str());
-
-        // Now, handle the nested data.
-        AttributeListRefPtr nested_attribute;
-        if (!list->GetNestedAttributeList(id, &nested_attribute) ||
-            !nested_attribute) {
-          LOG(FATAL) << "Couldn't get attribute " << attribute_name
-                     << " which we just created.";
-          return false;
-        }
-
-        if (!InitNestedFromValue(nested_attribute,
-                                 nested_template.deeper_nesting,
-                                 value)) {
-          LOG(ERROR) << "Couldn't parse attribute " << attribute_name;
-          return false;
-        }
-        list->SetNestedAttributeHasAValue(id);
+    case kTypeNested: {
+      if (nested_template.deeper_nesting.empty()) {
+        LOG(ERROR) << "No rules for nesting " << attribute_name
+                   << ". Ignoring.";
+        break;
       }
-      break;
+      list->CreateNestedAttribute(id, attribute_name.c_str());
+
+      // Now, handle the nested data.
+      AttributeListRefPtr nested_attribute;
+      if (!list->GetNestedAttributeList(id, &nested_attribute) ||
+          !nested_attribute) {
+        LOG(FATAL) << "Couldn't get attribute " << attribute_name
+                   << " which we just created.";
+        return false;
+      }
+
+      if (!InitNestedFromValue(nested_attribute, nested_template.deeper_nesting,
+                               value)) {
+        LOG(ERROR) << "Couldn't parse attribute " << attribute_name;
+        return false;
+      }
+      list->SetNestedAttributeHasAValue(id);
+    } break;
     default:
       LOG(ERROR) << "Discarding " << attribute_name
-                 << ".  Attribute has unhandled type "
-                 << nested_template.type << ".";
+                 << ".  Attribute has unhandled type " << nested_template.type
+                 << ".";
       break;
   }
   return true;
@@ -925,17 +926,22 @@ bool NetlinkNestedAttribute::AddAttributeToNestedInner(
 
 NetlinkNestedAttribute::NestedData::NestedData()
     : type(kTypeRaw), attribute_name("<UNKNOWN>"), is_array(false) {}
-NetlinkNestedAttribute::NestedData::NestedData(
-    NetlinkAttribute::Type type_arg, string attribute_name_arg,
-    bool is_array_arg)
-    : type(type_arg), attribute_name(attribute_name_arg),
+NetlinkNestedAttribute::NestedData::NestedData(NetlinkAttribute::Type type_arg,
+                                               string attribute_name_arg,
+                                               bool is_array_arg)
+    : type(type_arg),
+      attribute_name(attribute_name_arg),
       is_array(is_array_arg) {}
 
 NetlinkNestedAttribute::NestedData::NestedData(
-    NetlinkAttribute::Type type_arg, string attribute_name_arg,
-    bool is_array_arg, const AttributeParser& parse_attribute_arg)
-    : type(type_arg), attribute_name(attribute_name_arg),
-      is_array(is_array_arg), parse_attribute(parse_attribute_arg) {}
+    NetlinkAttribute::Type type_arg,
+    string attribute_name_arg,
+    bool is_array_arg,
+    const AttributeParser& parse_attribute_arg)
+    : type(type_arg),
+      attribute_name(attribute_name_arg),
+      is_array(is_array_arg),
+      parse_attribute(parse_attribute_arg) {}
 
 // NetlinkRawAttribute
 

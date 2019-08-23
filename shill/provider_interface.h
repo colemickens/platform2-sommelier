@@ -26,8 +26,8 @@ class ProviderInterface {
   // used are specific to the provider subclass.  Returns a reference
   // to a matching service if one exists.  Otherwise it returns a NULL
   // reference and populates |error|.
-  virtual ServiceRefPtr FindSimilarService(
-      const KeyValueStore& args, Error* error) const = 0;
+  virtual ServiceRefPtr FindSimilarService(const KeyValueStore& args,
+                                           Error* error) const = 0;
 
   // Retrieves (see FindSimilarService) or creates a service with the
   // unique attributes in |args|.  The remaining attributes will be
@@ -39,8 +39,8 @@ class ProviderInterface {
   // from |args|.  Callers outside of the Provider must never register
   // this service with the Manager or connect it since it was never added
   // to the provider's service list.
-  virtual ServiceRefPtr CreateTemporaryService(
-      const KeyValueStore& args, Error* error) = 0;
+  virtual ServiceRefPtr CreateTemporaryService(const KeyValueStore& args,
+                                               Error* error) = 0;
 
   // Create a temporary service for an entry |entry_name| within |profile|.
   // Callers outside of the Provider must never register this service with the

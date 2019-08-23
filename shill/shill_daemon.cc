@@ -9,7 +9,6 @@
 
 #include <base/bind.h>
 
-
 namespace shill {
 
 ShillDaemon::ShillDaemon(const base::Closure& startup_callback,

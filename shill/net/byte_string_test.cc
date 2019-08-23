@@ -12,23 +12,23 @@
 
 #include <gtest/gtest.h>
 
-using testing::Test;
 using std::string;
+using testing::Test;
 
 namespace shill {
 
 namespace {
-const unsigned char kTest1[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+const unsigned char kTest1[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 const char kTest1HexString[] = "00010203040506070809";
 const char kTest1HexSubstring[] = "0001020304050607";
 const char kTest1HexSubstringReordered[] = "0302010007060504";
-const unsigned char kTest2[] = { 1, 2, 3, 0xa };
+const unsigned char kTest2[] = {1, 2, 3, 0xa};
 const char kTest2HexString[] = "0102030A";
 const unsigned int kTest2Uint32 = 0x0102030a;
-const unsigned char kTest3[] = { 0, 0, 0, 0 };
+const unsigned char kTest3[] = {0, 0, 0, 0};
 const char kTest4[] = "Hello world";
-const unsigned char kTest5[] = { 1, 2, 3 };
-const unsigned char kTest6[] = { 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
+const unsigned char kTest5[] = {1, 2, 3};
+const unsigned char kTest6[] = {9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
 }  // namespace
 
 class ByteStringTest : public Test {
@@ -178,7 +178,7 @@ TEST_F(ByteStringTest, BitwiseAnd) {
   const ByteString bs6(kTest6, sizeof(kTest6));
   EXPECT_TRUE(bs1.BitwiseAnd(bs6));
 
-  const unsigned char kAndResult[] = { 0, 0, 2, 2, 4, 4, 2, 2, 0, 0 };
+  const unsigned char kAndResult[] = {0, 0, 2, 2, 4, 4, 2, 2, 0, 0};
   const ByteString expected_result(kAndResult, sizeof(kAndResult));
   EXPECT_TRUE(bs1.Equals(expected_result));
 }
@@ -193,7 +193,7 @@ TEST_F(ByteStringTest, BitwiseOr) {
   const ByteString bs6(kTest6, sizeof(kTest6));
   EXPECT_TRUE(bs1.BitwiseOr(bs6));
 
-  const unsigned char kOrResult[] = { 9, 9, 7, 7, 5, 5, 7, 7, 9, 9 };
+  const unsigned char kOrResult[] = {9, 9, 7, 7, 5, 5, 7, 7, 9, 9};
   const ByteString expected_result(kOrResult, sizeof(kOrResult));
   EXPECT_TRUE(bs1.Equals(expected_result));
 }

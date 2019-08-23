@@ -21,8 +21,8 @@
 using base::Bind;
 using base::FilePath;
 using base::PathExists;
-using google::protobuf::io::CopyingInputStreamAdaptor;
 using google::protobuf::RepeatedPtrField;
+using google::protobuf::io::CopyingInputStreamAdaptor;
 using shill::mobile_operator_db::Data;
 using shill::mobile_operator_db::Filter;
 using shill::mobile_operator_db::LocalizedName;
@@ -40,7 +40,7 @@ static auto kModuleLogScope = ScopeLogger::kCellular;
 static string ObjectID(const MobileOperatorInfoImpl* m) {
   return "(mobile_operator_info_impl)";
 }
-}
+}  // namespace Logging
 
 // static
 const char MobileOperatorInfoImpl::kDefaultDatabasePath[] =
@@ -212,7 +212,7 @@ const vector<string>& MobileOperatorInfoImpl::sid_list() const {
   return sid_list_;
 }
 
-const vector<MobileOperatorInfo::LocalizedName> &
+const vector<MobileOperatorInfo::LocalizedName>&
 MobileOperatorInfoImpl::operator_name_list() const {
   return operator_name_list_;
 }
@@ -222,7 +222,7 @@ MobileOperatorInfoImpl::apn_list() const {
   return apn_list_;
 }
 
-const vector<MobileOperatorInfo::OnlinePortal> &
+const vector<MobileOperatorInfo::OnlinePortal>&
 MobileOperatorInfoImpl::olp_list() const {
   return olp_list_;
 }
@@ -343,8 +343,8 @@ void MobileOperatorInfoImpl::UpdateOperatorName(const string& operator_name) {
   HandleOperatorNameUpdate();
 
   // We must update the candidates by name anyway.
-  StringToMNOListMap::const_iterator cit = name_to_mnos_.find(
-      NormalizeOperatorName(operator_name));
+  StringToMNOListMap::const_iterator cit =
+      name_to_mnos_.find(NormalizeOperatorName(operator_name));
   candidates_by_name_.clear();
   if (cit != name_to_mnos_.end()) {
     candidates_by_name_ = cit->second;
@@ -366,9 +366,7 @@ void MobileOperatorInfoImpl::UpdateOperatorName(const string& operator_name) {
 void MobileOperatorInfoImpl::UpdateOnlinePortal(const string& url,
                                                 const string& method,
                                                 const string& post_data) {
-  if (!user_olp_empty_ &&
-      user_olp_.url == url &&
-      user_olp_.method == method &&
+  if (!user_olp_empty_ && user_olp_.url == url && user_olp_.method == method &&
       user_olp_.post_data == post_data) {
     return;
   }
@@ -440,9 +438,8 @@ void MobileOperatorInfoImpl::PreprocessDatabase() {
     for (const auto& localized_name : localized_names) {
       // LocalizedName::name is a required field.
       DCHECK(localized_name.has_name());
-      InsertIntoStringToMNOListMap(&name_to_mnos_,
-                                   NormalizeOperatorName(localized_name.name()),
-                                   &mno);
+      InsertIntoStringToMNOListMap(
+          &name_to_mnos_, NormalizeOperatorName(localized_name.name()), &mno);
     }
   }
 }
@@ -552,14 +549,13 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
       }
       if (!found_match) {
         const string& operator_code =
-            (operator_code_type_ == OperatorCodeType::kMCCMNC) ? user_mccmnc_ :
-                                                               user_sid_;
-        SLOG(this, 1) << "MNO determined by "
-                      << OperatorCodeString() << " [" << operator_code
+            (operator_code_type_ == OperatorCodeType::kMCCMNC) ? user_mccmnc_
+                                                               : user_sid_;
+        SLOG(this, 1) << "MNO determined by " << OperatorCodeString() << " ["
+                      << operator_code
                       << "] does not match any suggested by name["
-                      << user_operator_name_
-                      << "]. "
-                      << OperatorCodeString() << " overrides name!";
+                      << user_operator_name_ << "]. " << OperatorCodeString()
+                      << " overrides name!";
       }
     }
   } else if (candidates_by_operator_code_.size() > 1) {
@@ -578,14 +574,12 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
     }
     if (candidate == nullptr) {
       const string& operator_code =
-          (operator_code_type_ == OperatorCodeType::kMCCMNC) ? user_mccmnc_ :
-                                                             user_sid_;
-      SLOG(this, 1) << "MNOs suggested by "
-                    << OperatorCodeString() << " [" << operator_code
+          (operator_code_type_ == OperatorCodeType::kMCCMNC) ? user_mccmnc_
+                                                             : user_sid_;
+      SLOG(this, 1) << "MNOs suggested by " << OperatorCodeString() << " ["
+                    << operator_code
                     << "] are multiple and disjoint from those suggested "
-                    << "by name["
-                    << user_operator_name_
-                    << "].";
+                    << "by name[" << user_operator_name_ << "].";
       candidate = PickOneFromDuplicates(candidates_by_operator_code_);
     }
   } else {  // candidates_by_operator_code_.size() == 0
@@ -595,15 +589,13 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
     if ((operator_code_type_ == OperatorCodeType::kMCCMNC &&
          !user_mccmnc_.empty()) ||
         (operator_code_type_ == OperatorCodeType::kSID && !user_sid_.empty())) {
-      SLOG(this, 1) << "A non-matching "
-                    << OperatorCodeString() << " "
+      SLOG(this, 1) << "A non-matching " << OperatorCodeString() << " "
                     << "was reported by the user."
                     << "We fail the MNO match in this case.";
     } else if (candidates_by_name_.size() == 1) {
       candidate = candidates_by_name_[0];
     } else if (candidates_by_name_.size() > 1) {
-      SLOG(this, 1) << "Multiple MNOs suggested by name["
-                    << user_operator_name_
+      SLOG(this, 1) << "Multiple MNOs suggested by name[" << user_operator_name_
                     << "], and none by MCCMNC.";
       candidate = PickOneFromDuplicates(candidates_by_name_);
     } else {  // candidates_by_name_.size() == 0
@@ -701,8 +693,8 @@ bool MobileOperatorInfoImpl::FilterMatches(const Filter& filter) {
   // |to_match| can be empty if we have no *user provided* information of the
   // correct type.
   if (to_match.empty()) {
-    SLOG(this, 2) << "Nothing to match against (filter: "
-                  << filter.regex() << ").";
+    SLOG(this, 2) << "Nothing to match against (filter: " << filter.regex()
+                  << ").";
     return false;
   }
 
@@ -721,8 +713,7 @@ bool MobileOperatorInfoImpl::FilterMatches(const Filter& filter) {
     filter_regex_str = filter_regex_str + "$";
   }
 
-  int regcomp_error = regcomp(&filter_regex,
-                              filter_regex_str.c_str(),
+  int regcomp_error = regcomp(&filter_regex, filter_regex_str.c_str(),
                               REG_EXTENDED | REG_NOSUB);
   if (regcomp_error) {
     LOG(WARNING) << "Could not compile regex '" << filter.regex() << "'. "
@@ -732,11 +723,7 @@ bool MobileOperatorInfoImpl::FilterMatches(const Filter& filter) {
     return false;
   }
 
-  int regexec_error = regexec(&filter_regex,
-                              to_match.c_str(),
-                              0,
-                              nullptr,
-                              0);
+  int regexec_error = regexec(&filter_regex, to_match.c_str(), 0, nullptr, 0);
   if (regexec_error) {
     string error_string;
     error_string = GetRegError(regcomp_error, &filter_regex);
@@ -802,8 +789,8 @@ void MobileOperatorInfoImpl::ReloadData(const Data& data) {
   if (data.localized_name_size() > 0) {
     operator_name_list_.clear();
     for (const auto& localized_name : data.localized_name()) {
-      operator_name_list_.push_back({localized_name.name(),
-                                     localized_name.language()});
+      operator_name_list_.push_back(
+          {localized_name.name(), localized_name.language()});
     }
     HandleOperatorNameUpdate();
   }
@@ -837,8 +824,8 @@ void MobileOperatorInfoImpl::ReloadData(const Data& data) {
       apn->username = apn_data.username();
       apn->password = apn_data.password();
       for (const auto& localized_name : apn_data.localized_name()) {
-        apn->operator_name_list.push_back({localized_name.name(),
-                                           localized_name.language()});
+        apn->operator_name_list.push_back(
+            {localized_name.name(), localized_name.language()});
       }
       apn->authentication = GetApnAuthentication(apn_data);
       apn_list_.push_back(std::move(apn));
@@ -885,9 +872,7 @@ void MobileOperatorInfoImpl::HandleOperatorNameUpdate() {
       append_user_operator_name &= (user_operator_name_ != localized_name.name);
     }
     if (append_user_operator_name) {
-      MobileOperatorInfo::LocalizedName localized_name {
-          user_operator_name_,
-          ""};
+      MobileOperatorInfo::LocalizedName localized_name{user_operator_name_, ""};
       operator_name_list_.push_back(localized_name);
     }
   }
@@ -933,18 +918,17 @@ void MobileOperatorInfoImpl::HandleOnlinePortalUpdate() {
   olp_list_.clear();
   for (const auto& raw_olp : raw_olp_list_) {
     if (!raw_olp.has_olp_filter() || FilterMatches(raw_olp.olp_filter())) {
-      olp_list_.push_back(MobileOperatorInfo::OnlinePortal {
-            raw_olp.url(),
-            (raw_olp.method() == raw_olp.GET) ? "GET" : "POST",
-            raw_olp.post_data()});
+      olp_list_.push_back(MobileOperatorInfo::OnlinePortal{
+          raw_olp.url(), (raw_olp.method() == raw_olp.GET) ? "GET" : "POST",
+          raw_olp.post_data()});
     }
   }
   if (!user_olp_empty_) {
     bool append_user_olp = true;
     for (const auto& olp : olp_list_) {
-      append_user_olp &= (olp.url != user_olp_.url ||
-                          olp.method != user_olp_.method ||
-                          olp.post_data != user_olp_.post_data);
+      append_user_olp &=
+          (olp.url != user_olp_.url || olp.method != user_olp_.method ||
+           olp.post_data != user_olp_.post_data);
     }
     if (append_user_olp) {
       olp_list_.push_back(user_olp_);

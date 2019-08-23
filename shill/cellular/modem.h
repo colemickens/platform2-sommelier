@@ -87,9 +87,8 @@ class Modem {
       const std::string& interface,
       const KeyValueStore& changed_properties,
       const std::vector<std::string>& invalidated_properties);
-  virtual void OnModemManagerPropertiesChanged(
-      const std::string& interface,
-      const KeyValueStore& properties);
+  virtual void OnModemManagerPropertiesChanged(const std::string& interface,
+                                               const KeyValueStore& properties);
 
   // A proxy to the org.freedesktop.DBusProperties interface used to obtain
   // ModemManager.Modem properties and watch for property changes

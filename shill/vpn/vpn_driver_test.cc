@@ -55,8 +55,8 @@ class VPNDriverUnderTest : public VPNDriver {
   ~VPNDriverUnderTest() override = default;
 
   // Inherited from VPNDriver.
-  MOCK_METHOD2(ClaimInterface, bool(const string& link_name,
-                                    int interface_index));
+  MOCK_METHOD2(ClaimInterface,
+               bool(const string& link_name, int interface_index));
   MOCK_METHOD2(Connect, void(const VPNServiceRefPtr& service, Error* error));
   MOCK_METHOD0(Disconnect, void());
   MOCK_METHOD0(OnConnectionDisconnected, void());
@@ -141,8 +141,8 @@ bool VPNDriverTest::GetProviderPropertyString(const PropertyStore& store,
                                               string* value) {
   KeyValueStore provider_properties;
   Error error;
-  EXPECT_TRUE(store.GetKeyValueStoreProperty(
-      kProviderProperty, &provider_properties, &error));
+  EXPECT_TRUE(store.GetKeyValueStoreProperty(kProviderProperty,
+                                             &provider_properties, &error));
   if (!provider_properties.ContainsString(key)) {
     return false;
   }
@@ -157,8 +157,8 @@ bool VPNDriverTest::GetProviderPropertyStrings(const PropertyStore& store,
                                                vector<string>* value) {
   KeyValueStore provider_properties;
   Error error;
-  EXPECT_TRUE(store.GetKeyValueStoreProperty(
-      kProviderProperty, &provider_properties, &error));
+  EXPECT_TRUE(store.GetKeyValueStoreProperty(kProviderProperty,
+                                             &provider_properties, &error));
   if (!provider_properties.ContainsStrings(key)) {
     return false;
   }
@@ -173,7 +173,7 @@ TEST_F(VPNDriverTest, Load) {
   GetArgs()->SetString(kVPNHostProperty, "1.2.3.4");
   GetArgs()->SetString(kPSKProperty, "1234");
   GetArgs()->SetStrings(kL2tpIpsecCaCertPemProperty,
-                        vector<string>{ "cleared-cert0", "cleared-cert1" });
+                        vector<string>{"cleared-cert0", "cleared-cert1"});
   EXPECT_CALL(storage, GetString(kStorageID, _, _))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(storage, GetStringList(kStorageID, _, _))
@@ -182,7 +182,7 @@ TEST_F(VPNDriverTest, Load) {
   EXPECT_CALL(storage, GetString(_, kOTPProperty, _)).Times(0);
   EXPECT_CALL(storage, GetCryptedString(_, kOTPProperty, _)).Times(0);
   EXPECT_CALL(storage, GetStringList(_, kOTPProperty, _)).Times(0);
-  vector<string> kCaCerts{ "cert0", "cert1" };
+  vector<string> kCaCerts{"cert0", "cert1"};
   EXPECT_CALL(storage, GetStringList(kStorageID, kEapCaCertPemProperty, _))
       .WillOnce(DoAll(SetArgPointee<2>(kCaCerts), Return(true)));
   EXPECT_CALL(storage, GetString(kStorageID, kPortProperty, _))
@@ -214,14 +214,13 @@ TEST_F(VPNDriverTest, Save) {
   SetArg(kPortProperty, kPort);
   SetArg(kPasswordProperty, kPassword);
   SetArg(kOTPProperty, "987654");
-  const vector<string> kCaCerts{ "cert0", "cert1" };
+  const vector<string> kCaCerts{"cert0", "cert1"};
   SetArgArray(kEapCaCertPemProperty, kCaCerts);
   MockStore storage;
   EXPECT_CALL(storage,
               SetStringList(kStorageID, kEapCaCertPemProperty, kCaCerts))
       .WillOnce(Return(true));
-  EXPECT_CALL(storage,
-              SetString(kStorageID, kProviderTypeProperty, ""))
+  EXPECT_CALL(storage, SetString(kStorageID, kProviderTypeProperty, ""))
       .WillOnce(Return(true));
   EXPECT_CALL(storage, SetString(kStorageID, kPortProperty, kPort))
       .WillOnce(Return(true));
@@ -234,8 +233,7 @@ TEST_F(VPNDriverTest, Save) {
   EXPECT_CALL(storage, SetString(_, kOTPProperty, _)).Times(0);
   EXPECT_CALL(storage, SetString(_, kEapCaCertPemProperty, _)).Times(0);
   EXPECT_CALL(storage, DeleteKey(kStorageID, kEapCaCertPemProperty)).Times(0);
-  EXPECT_CALL(storage, DeleteKey(kStorageID, kProviderTypeProperty))
-      .Times(0);
+  EXPECT_CALL(storage, DeleteKey(kStorageID, kProviderTypeProperty)).Times(0);
   EXPECT_CALL(storage, DeleteKey(kStorageID, kL2tpIpsecCaCertPemProperty));
   EXPECT_CALL(storage, DeleteKey(kStorageID, kPSKProperty));
   EXPECT_CALL(storage, DeleteKey(kStorageID, kVPNHostProperty));
@@ -293,7 +291,7 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   SetArg(kPasswordProperty, kPassword);
   SetArg(kProviderTypeProperty, kProviderType);
   SetArg(kVPNHostProperty, "");
-  const vector<string> kCaCerts{ "cert1" };
+  const vector<string> kCaCerts{"cert1"};
   SetArgArray(kEapCaCertPemProperty, kCaCerts);
   SetArgArray(kL2tpIpsecCaCertPemProperty, vector<string>());
 
@@ -319,8 +317,8 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   }
   {
     vector<string> value;
-    EXPECT_TRUE(GetProviderPropertyStrings(store, kEapCaCertPemProperty,
-                                           &value));
+    EXPECT_TRUE(
+        GetProviderPropertyStrings(store, kEapCaCertPemProperty, &value));
     EXPECT_EQ(kCaCerts, value);
   }
 
@@ -332,8 +330,8 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   }
   {
     vector<string> value;
-    EXPECT_TRUE(GetProviderPropertyStrings(store, kL2tpIpsecCaCertPemProperty,
-                                           &value));
+    EXPECT_TRUE(
+        GetProviderPropertyStrings(store, kL2tpIpsecCaCertPemProperty, &value));
     EXPECT_TRUE(value.empty());
   }
 
@@ -341,8 +339,7 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   // name in the Properties dict with the prefix removed.
   {
     string value;
-    EXPECT_TRUE(GetProviderPropertyString(store, kTypeProperty,
-                                          &value));
+    EXPECT_TRUE(GetProviderPropertyString(store, kTypeProperty, &value));
     EXPECT_EQ(kProviderType, value);
   }
 
@@ -357,8 +354,8 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
     Error error;
     EXPECT_TRUE(store.ClearProperty(kEapCaCertPemProperty, &error));
     EXPECT_TRUE(error.IsSuccess());
-    EXPECT_FALSE(GetProviderPropertyStrings(store, kEapCaCertPemProperty,
-                                            nullptr));
+    EXPECT_FALSE(
+        GetProviderPropertyStrings(store, kEapCaCertPemProperty, nullptr));
   }
 
   // A second attempt to clear this property should return an error.
@@ -384,10 +381,10 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
     EXPECT_EQ(kValue, GetArgs()->GetString(kPinProperty));
   }
   {
-    const vector<string> kValue{ "some-value" };
+    const vector<string> kValue{"some-value"};
     Error error;
-    EXPECT_TRUE(store.SetStringsProperty(kEapCaCertPemProperty, kValue,
-                                         &error));
+    EXPECT_TRUE(
+        store.SetStringsProperty(kEapCaCertPemProperty, kValue, &error));
     EXPECT_EQ(kValue, GetArgs()->GetStrings(kEapCaCertPemProperty));
   }
 }

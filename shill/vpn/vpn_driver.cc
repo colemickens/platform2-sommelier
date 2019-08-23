@@ -26,8 +26,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static string ObjectID(VPNDriver* v) { return "(vpn_driver)"; }
+static string ObjectID(VPNDriver* v) {
+  return "(vpn_driver)";
 }
+}  // namespace Logging
 
 // static
 const int VPNDriver::kDefaultConnectTimeoutSeconds = 60;
@@ -61,9 +63,10 @@ bool VPNDriver::Load(StoreInterface* storage, const string& storage_id) {
       }
     } else {
       string value;
-      bool loaded = (properties_[i].flags & Property::kCredential) ?
-          storage->GetCryptedString(storage_id, property, &value) :
-          storage->GetString(storage_id, property, &value);
+      bool loaded =
+          (properties_[i].flags & Property::kCredential)
+              ? storage->GetCryptedString(storage_id, property, &value)
+              : storage->GetString(storage_id, property, &value);
       if (loaded) {
         args_.SetString(property, value);
       } else {
@@ -85,8 +88,7 @@ bool VPNDriver::Save(StoreInterface* storage,
     bool credential = (properties_[i].flags & Property::kCredential);
     const string property = properties_[i].property;
     if (properties_[i].flags & Property::kArray) {
-      CHECK(!credential)
-          << "Property cannot be both an array and a credential";
+      CHECK(!credential) << "Property cannot be both an array and a credential";
       if (!args_.ContainsStrings(property)) {
         storage->DeleteKey(storage_id, property);
         continue;
@@ -126,31 +128,24 @@ void VPNDriver::InitPropertyStore(PropertyStore* store) {
     if (properties_[i].flags & Property::kArray) {
       store->RegisterDerivedStrings(
           properties_[i].property,
-          StringsAccessor(
-              new CustomMappedAccessor<VPNDriver, Strings, size_t>(
-                  this,
-                  &VPNDriver::ClearMappedStringsProperty,
-                  &VPNDriver::GetMappedStringsProperty,
-                  &VPNDriver::SetMappedStringsProperty,
-                  i)));
+          StringsAccessor(new CustomMappedAccessor<VPNDriver, Strings, size_t>(
+              this, &VPNDriver::ClearMappedStringsProperty,
+              &VPNDriver::GetMappedStringsProperty,
+              &VPNDriver::SetMappedStringsProperty, i)));
     } else {
       store->RegisterDerivedString(
           properties_[i].property,
-          StringAccessor(
-              new CustomMappedAccessor<VPNDriver, string, size_t>(
-                  this,
-                  &VPNDriver::ClearMappedStringProperty,
-                  &VPNDriver::GetMappedStringProperty,
-                  &VPNDriver::SetMappedStringProperty,
-                  i)));
+          StringAccessor(new CustomMappedAccessor<VPNDriver, string, size_t>(
+              this, &VPNDriver::ClearMappedStringProperty,
+              &VPNDriver::GetMappedStringProperty,
+              &VPNDriver::SetMappedStringProperty, i)));
     }
   }
 
   store->RegisterDerivedKeyValueStore(
       kProviderProperty,
-      KeyValueStoreAccessor(
-          new CustomAccessor<VPNDriver, KeyValueStore>(
-              this, &VPNDriver::GetProvider, nullptr)));
+      KeyValueStoreAccessor(new CustomAccessor<VPNDriver, KeyValueStore>(
+          this, &VPNDriver::GetProvider, nullptr)));
 }
 
 void VPNDriver::ClearMappedStringProperty(const size_t& index, Error* error) {
@@ -193,8 +188,9 @@ Strings VPNDriver::GetMappedStringsProperty(const size_t& index, Error* error) {
   return Strings();
 }
 
-bool VPNDriver::SetMappedStringProperty(
-    const size_t& index, const string& value, Error* error) {
+bool VPNDriver::SetMappedStringProperty(const size_t& index,
+                                        const string& value,
+                                        Error* error) {
   CHECK(index < property_count_);
   if (args_.ContainsString(properties_[index].property) &&
       args_.GetString(properties_[index].property) == value) {
@@ -204,8 +200,9 @@ bool VPNDriver::SetMappedStringProperty(
   return true;
 }
 
-bool VPNDriver::SetMappedStringsProperty(
-    const size_t& index, const Strings& value, Error* error) {
+bool VPNDriver::SetMappedStringsProperty(const size_t& index,
+                                         const Strings& value,
+                                         Error* error) {
   CHECK(index < property_count_);
   if (args_.ContainsStrings(properties_[index].property) &&
       args_.GetStrings(properties_[index].property) == value) {
@@ -257,8 +254,8 @@ void VPNDriver::StartConnectTimeout(int timeout_seconds) {
   if (IsConnectTimeoutStarted()) {
     return;
   }
-  LOG(INFO) << "Schedule VPN connect timeout: "
-            << timeout_seconds << " seconds.";
+  LOG(INFO) << "Schedule VPN connect timeout: " << timeout_seconds
+            << " seconds.";
   connect_timeout_seconds_ = timeout_seconds;
   connect_timeout_callback_.Reset(
       Bind(&VPNDriver::OnConnectTimeout, weak_ptr_factory_.GetWeakPtr()));
@@ -286,11 +283,9 @@ void VPNDriver::OnBeforeSuspend(const ResultCallback& callback) {
   callback.Run(Error(Error::kSuccess));
 }
 
-void VPNDriver::OnAfterResume() {
-}
+void VPNDriver::OnAfterResume() {}
 
-void VPNDriver::OnDefaultServiceStateChanged(const ServiceRefPtr& service) {
-}
+void VPNDriver::OnDefaultServiceStateChanged(const ServiceRefPtr& service) {}
 
 string VPNDriver::GetHost() const {
   return args_.LookupString(kProviderHostProperty, "");

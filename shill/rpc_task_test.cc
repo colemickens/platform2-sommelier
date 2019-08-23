@@ -14,13 +14,10 @@ using std::string;
 
 namespace shill {
 
-class RpcTaskTest : public testing::Test,
-                    public RpcTaskDelegate {
+class RpcTaskTest : public testing::Test, public RpcTaskDelegate {
  public:
   RpcTaskTest()
-      : get_login_calls_(0),
-        notify_calls_(0),
-        task_(&control_, this) {}
+      : get_login_calls_(0), notify_calls_(0), task_(&control_, this) {}
 
   // Inherited from RpcTaskDelegate.
   virtual void GetLogin(string* user, string* password);

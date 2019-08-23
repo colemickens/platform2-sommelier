@@ -33,10 +33,10 @@ class MockWiFi : public WiFi {
            WakeOnWiFiInterface* wake_on_wifi);
   ~MockWiFi() override;
 
-  MOCK_METHOD2(Start, void(Error* error,
-                           const EnabledStateChangedCallback& callback));
-  MOCK_METHOD2(Stop, void(Error* error,
-                          const EnabledStateChangedCallback& callback));
+  MOCK_METHOD2(Start,
+               void(Error* error, const EnabledStateChangedCallback& callback));
+  MOCK_METHOD2(Stop,
+               void(Error* error, const EnabledStateChangedCallback& callback));
   MOCK_METHOD2(Scan, void(Error* error, const std::string& reason));
   MOCK_METHOD1(DisconnectFromIfActive, void(WiFiService* service));
   MOCK_METHOD1(DisconnectFrom, void(WiFiService* service));

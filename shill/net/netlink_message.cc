@@ -58,8 +58,8 @@ ByteString NetlinkMessage::EncodeHeader(uint32_t sequence_number) {
   header.nlmsg_pid = getpid();
 
   // Netlink header + pad.
-  result.Append(ByteString(reinterpret_cast<unsigned char*>(&header),
-                           sizeof(header)));
+  result.Append(
+      ByteString(reinterpret_cast<unsigned char*>(&header), sizeof(header)));
   result.Resize(nlmsghdr_with_pad);  // Zero-fill pad space (if any).
   return result;
 }
@@ -86,7 +86,8 @@ bool NetlinkMessage::InitFromPacket(NetlinkPacket* packet,
 }
 
 // static
-void NetlinkMessage::PrintBytes(int log_level, const unsigned char* buf,
+void NetlinkMessage::PrintBytes(int log_level,
+                                const unsigned char* buf,
                                 size_t num_bytes) {
   SLOG(nullptr, log_level) << "Netlink Message -- Examining Bytes";
   if (!buf) {
@@ -95,9 +96,9 @@ void NetlinkMessage::PrintBytes(int log_level, const unsigned char* buf,
   }
 
   if (num_bytes >= sizeof(nlmsghdr)) {
-      PrintHeader(log_level, reinterpret_cast<const nlmsghdr*>(buf));
-      buf += sizeof(nlmsghdr);
-      num_bytes -= sizeof(nlmsghdr);
+    PrintHeader(log_level, reinterpret_cast<const nlmsghdr*>(buf));
+    buf += sizeof(nlmsghdr);
+    num_bytes -= sizeof(nlmsghdr);
   } else {
     SLOG(nullptr, log_level)
         << "Not enough bytes (" << num_bytes
@@ -124,20 +125,12 @@ void NetlinkMessage::PrintPacket(int log_level, const NetlinkPacket& packet) {
 void NetlinkMessage::PrintHeader(int log_level, const nlmsghdr* header) {
   const unsigned char* buf = reinterpret_cast<const unsigned char*>(header);
   SLOG(nullptr, log_level) << StringPrintf(
-      "len:          %02x %02x %02x %02x = %u bytes",
-      buf[0],
-      buf[1],
-      buf[2],
-      buf[3],
-      header->nlmsg_len);
+      "len:          %02x %02x %02x %02x = %u bytes", buf[0], buf[1], buf[2],
+      buf[3], header->nlmsg_len);
 
   SLOG(nullptr, log_level) << StringPrintf(
-      "type | flags: %02x %02x %02x %02x - type:%u flags:%s%s%s%s%s",
-      buf[4],
-      buf[5],
-      buf[6],
-      buf[7],
-      header->nlmsg_type,
+      "type | flags: %02x %02x %02x %02x - type:%u flags:%s%s%s%s%s", buf[4],
+      buf[5], buf[6], buf[7], header->nlmsg_type,
       ((header->nlmsg_flags & NLM_F_REQUEST) ? " REQUEST" : ""),
       ((header->nlmsg_flags & NLM_F_MULTI) ? " MULTI" : ""),
       ((header->nlmsg_flags & NLM_F_ACK) ? " ACK" : ""),
@@ -145,23 +138,16 @@ void NetlinkMessage::PrintHeader(int log_level, const nlmsghdr* header) {
       ((header->nlmsg_flags & NLM_F_DUMP_INTR) ? " BAD-SEQ" : ""));
 
   SLOG(nullptr, log_level) << StringPrintf(
-      "sequence:     %02x %02x %02x %02x = %u",
-      buf[8],
-      buf[9],
-      buf[10],
-      buf[11],
-      header->nlmsg_seq);
+      "sequence:     %02x %02x %02x %02x = %u", buf[8], buf[9], buf[10],
+      buf[11], header->nlmsg_seq);
   SLOG(nullptr, log_level) << StringPrintf(
-      "pid:          %02x %02x %02x %02x = %u",
-      buf[12],
-      buf[13],
-      buf[14],
-      buf[15],
-      header->nlmsg_pid);
+      "pid:          %02x %02x %02x %02x = %u", buf[12], buf[13], buf[14],
+      buf[15], header->nlmsg_pid);
 }
 
 // static
-void NetlinkMessage::PrintPayload(int log_level, const unsigned char* buf,
+void NetlinkMessage::PrintPayload(int log_level,
+                                  const unsigned char* buf,
                                   size_t num_bytes) {
   while (num_bytes) {
     std::string output;
@@ -200,8 +186,8 @@ ByteString ErrorAckMessage::Encode(uint32_t sequence_number) {
 std::string ErrorAckMessage::ToString() const {
   std::string output;
   if (error()) {
-    StringAppendF(&output, "NETLINK_ERROR 0x%" PRIx32 ": %s",
-                  -error_, strerror(-error_));
+    StringAppendF(&output, "NETLINK_ERROR 0x%" PRIx32 ": %s", -error_,
+                  strerror(-error_));
   } else {
     StringAppendF(&output, "ACK");
   }

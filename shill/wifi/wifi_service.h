@@ -179,7 +179,7 @@ class WiFiService : public Service {
 
  private:
   friend class WiFiServiceSecurityTest;
-  friend class WiFiServiceTest;  // SetPassphrase
+  friend class WiFiServiceTest;                     // SetPassphrase
   friend class WiFiServiceUpdateFromEndpointsTest;  // SignalToStrength
   FRIEND_TEST(MetricsTest, WiFiServicePostReady);
   FRIEND_TEST(MetricsTest, WiFiServicePostReadyEAP);
@@ -224,22 +224,21 @@ class WiFiService : public Service {
   // Override the base clase implementation, because we need to allow
   // arguments that aren't base class methods.
   void HelpRegisterConstDerivedString(
-      const std::string& name,
-      std::string(WiFiService::*get)(Error* error));
+      const std::string& name, std::string (WiFiService::*get)(Error* error));
   void HelpRegisterDerivedString(
       const std::string& name,
-      std::string(WiFiService::*get)(Error* error),
-      bool(WiFiService::*set)(const std::string& value, Error* error));
+      std::string (WiFiService::*get)(Error* error),
+      bool (WiFiService::*set)(const std::string& value, Error* error));
   void HelpRegisterWriteOnlyDerivedString(
       const std::string& name,
-      bool(WiFiService::*set)(const std::string& value, Error* error),
-      void(WiFiService::*clear)(Error* error),
+      bool (WiFiService::*set)(const std::string& value, Error* error),
+      void (WiFiService::*clear)(Error* error),
       const std::string* default_value);
-  void HelpRegisterDerivedUint16(
-      const std::string& name,
-      uint16_t(WiFiService::*get)(Error* error),
-      bool(WiFiService::*set)(const uint16_t& value, Error* error),
-      void(WiFiService::*clear)(Error* error));
+  void HelpRegisterDerivedUint16(const std::string& name,
+                                 uint16_t (WiFiService::*get)(Error* error),
+                                 bool (WiFiService::*set)(const uint16_t& value,
+                                                          Error* error),
+                                 void (WiFiService::*clear)(Error* error));
 
   RpcIdentifier GetDeviceRpcId(Error* error) const override;
 

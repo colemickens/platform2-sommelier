@@ -43,7 +43,8 @@ class MockWakeOnWiFi : public WakeOnWiFiInterface {
                     const ResultCallback& done_callback,
                     const base::Closure& renew_dhcp_lease_callback,
                     const base::Closure& remove_supplicant_networks_callback,
-                    bool have_dhcp_lease, uint32_t time_to_next_lease_renewal));
+                    bool have_dhcp_lease,
+                    uint32_t time_to_next_lease_renewal));
   MOCK_METHOD0(OnAfterResume, void());
   MOCK_METHOD6(OnDarkResume,
                void(bool is_connected,
@@ -55,8 +56,8 @@ class MockWakeOnWiFi : public WakeOnWiFiInterface {
   MOCK_METHOD2(OnConnectedAndReachable,
                void(bool start_lease_renewal_timer,
                     uint32_t time_to_next_lease_renewal));
-  MOCK_METHOD2(ReportConnectedToServiceAfterWake, void(bool is_connected,
-                    int seconds_in_suspend));
+  MOCK_METHOD2(ReportConnectedToServiceAfterWake,
+               void(bool is_connected, int seconds_in_suspend));
   MOCK_METHOD3(OnNoAutoConnectableServicesAfterScan,
                void(const std::vector<ByteString>& ssid_whitelist,
                     const base::Closure& remove_supplicant_networks_callback,

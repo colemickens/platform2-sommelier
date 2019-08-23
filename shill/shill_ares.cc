@@ -6,9 +6,9 @@
 
 namespace shill {
 
-Ares::Ares() { }
+Ares::Ares() {}
 
-Ares::~Ares() { }
+Ares::~Ares() {}
 
 Ares* Ares::GetInstance() {
   static base::NoDestructor<Ares> instance;
@@ -27,9 +27,7 @@ void Ares::GetHostByName(ares_channel channel,
   ares_gethostbyname(channel, hostname, family, callback, arg);
 }
 
-int Ares::GetSock(ares_channel channel,
-                  ares_socket_t* socks,
-                  int numsocks) {
+int Ares::GetSock(ares_channel channel, ares_socket_t* socks, int numsocks) {
   return ares_getsock(channel, socks, numsocks);
 }
 
@@ -38,7 +36,6 @@ int Ares::InitOptions(ares_channel* channelptr,
                       int optmask) {
   return ares_init_options(channelptr, options, optmask);
 }
-
 
 void Ares::ProcessFd(ares_channel channel,
                      ares_socket_t read_fd,

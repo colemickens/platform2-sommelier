@@ -25,11 +25,8 @@ namespace shill {
 namespace {
 
 const char* const kDnsAndRoutingProperties[] = {
-    kDomainNameProperty,
-    kNameServersProperty,
-    kSearchDomainsProperty,
-    kIncludedRoutesProperty,
-    kExcludedRoutesProperty,
+    kDomainNameProperty,     kNameServersProperty,    kSearchDomainsProperty,
+    kIncludedRoutesProperty, kExcludedRoutesProperty,
 };
 
 }  // namespace
@@ -72,8 +69,8 @@ void ArcVpnDriver::Connect(const VPNServiceRefPtr& service, Error* error) {
 
   device_ = manager()->vpn_provider()->arc_device();
   if (!device_) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kNotFound, "arc_device is not found");
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound,
+                          "arc_device is not found");
     return;
   }
 

@@ -16,9 +16,7 @@ namespace shill {
 // Event dispatcher with message loop for testing.
 class EventDispatcherForTest : public EventDispatcher {
  public:
-  EventDispatcherForTest() {
-    chromeos_message_loop_.SetAsCurrent();
-  }
+  EventDispatcherForTest() { chromeos_message_loop_.SetAsCurrent(); }
   ~EventDispatcherForTest() override = default;
 
  private:

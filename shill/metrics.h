@@ -231,10 +231,7 @@ class Metrics {
     kReasonCodeTypeMax
   };
 
-  enum WiFiDisconnectByWhom {
-    kDisconnectedByAp,
-    kDisconnectedNotByAp
-  };
+  enum WiFiDisconnectByWhom { kDisconnectedByAp, kDisconnectedNotByAp };
 
   enum WiFiScanResult {
     kScanResultProgressiveConnected,
@@ -319,10 +316,7 @@ class Metrics {
     kCellularOutOfCreditsReasonMax
   };
 
-  enum CorruptedProfile {
-    kCorruptedProfile = 1,
-    kCorruptedProfileMax
-  };
+  enum CorruptedProfile { kCorruptedProfile = 1, kCorruptedProfileMax };
 
   enum ConnectionDiagnosticsIssue {
     kConnectionDiagnosticsIssueIPCollision = 0,
@@ -600,10 +594,10 @@ class Metrics {
   // checking of format string. Must be defined inline, for constexpr.
   static constexpr char
       kMetricRememberedSystemWiFiNetworkCountBySecurityModeFormat[] =
-      "Network.Shill.WiFi.RememberedSystemNetworkCount.%s";
+          "Network.Shill.WiFi.RememberedSystemNetworkCount.%s";
   static constexpr char
       kMetricRememberedUserWiFiNetworkCountBySecurityModeFormat[] =
-      "Network.Shill.WiFi.RememberedUserNetworkCount.%s";
+          "Network.Shill.WiFi.RememberedUserNetworkCount.%s";
   static const char kMetricRememberedWiFiNetworkCount[];
   static const int kMetricRememberedWiFiNetworkCountMin;
   static const int kMetricRememberedWiFiNetworkCountMax;
@@ -671,9 +665,9 @@ class Metrics {
   static const char kMetricSuspendDurationWoWOnDisconnected[];
   static const char kMetricSuspendDurationWoWOffConnected[];
   static const char kMetricSuspendDurationWoWOffDisconnected[];
-  static const int  kSuspendDurationMin;
-  static const int  kSuspendDurationMax;
-  static const int  kSuspendDurationNumBuckets;
+  static const int kSuspendDurationMin;
+  static const int kSuspendDurationMax;
+  static const int kSuspendDurationNumBuckets;
 
   // The total number of portal detections attempted between the Connected
   // state and the Online state.  This includes both failure/timeout attempts
@@ -981,16 +975,17 @@ class Metrics {
 
   // Tracks the time it takes |service| to go from |start_state| to
   // |stop_state|.  When |stop_state| is reached, the time is sent to UMA.
-  virtual void AddServiceStateTransitionTimer(
-      const Service& service, const std::string& histogram_name,
-      Service::ConnectState start_state, Service::ConnectState stop_state);
+  virtual void AddServiceStateTransitionTimer(const Service& service,
+                                              const std::string& histogram_name,
+                                              Service::ConnectState start_state,
+                                              Service::ConnectState stop_state);
 
   // Specializes |metric_suffix| for the specified |technology_id|.
   std::string GetFullMetricName(const char* metric_suffix,
                                 Technology technology_id);
 
   std::string GetSuspendDurationMetricNameFromStatus(
-        WiFiConnectionStatusAfterWake status);
+      WiFiConnectionStatusAfterWake status);
 
   // Notifies this object that the default service has changed.
   // |service| is the new default service.
@@ -1033,7 +1028,7 @@ class Metrics {
   void NotifyTerminationActionsCompleted(bool success);
 
   virtual void NotifySuspendDurationAfterWake(
-    WiFiConnectionStatusAfterWake status, int seconds_in_suspend);
+      WiFiConnectionStatusAfterWake status, int seconds_in_suspend);
 
   // Notifies this object that suspend actions started executing.
   void NotifySuspendActionsStarted();
@@ -1237,8 +1232,8 @@ class Metrics {
   virtual bool SendEnumToUMA(const std::string& name, int sample, int max);
 
   // Send histogram data to UMA.
-  virtual bool SendToUMA(const std::string& name, int sample, int min,
-                         int max, int num_buckets);
+  virtual bool SendToUMA(
+      const std::string& name, int sample, int min, int max, int num_buckets);
 
   // Sends sparse histogram data to UMA.
   virtual bool SendSparseToUMA(const std::string& name, int sample);
@@ -1283,8 +1278,7 @@ class Metrics {
 
   // Notifies this object that connection diagnostics have been performed, and
   // the connection issue that was diagnosed is |issue|.
-  virtual void NotifyConnectionDiagnosticsIssue(
-      const std::string& issue);
+  virtual void NotifyConnectionDiagnosticsIssue(const std::string& issue);
 
   // Notifies this object that a portal detection trial has finished with probe
   // results from both the HTTP probe and the HTTPS probe.
@@ -1391,16 +1385,13 @@ class Metrics {
   void set_time_resume_to_ready_timer(chromeos_metrics::Timer* timer) {
     time_resume_to_ready_timer_.reset(timer);  // Passes ownership
   }
-  void set_time_termination_actions_timer(
-    chromeos_metrics::Timer* timer) {
+  void set_time_termination_actions_timer(chromeos_metrics::Timer* timer) {
     time_termination_actions_timer.reset(timer);  // Passes ownership
   }
-  void set_time_suspend_actions_timer(
-    chromeos_metrics::Timer* timer) {
+  void set_time_suspend_actions_timer(chromeos_metrics::Timer* timer) {
     time_suspend_actions_timer.reset(timer);  // Passes ownership
   }
-  void set_time_dark_resume_actions_timer(
-    chromeos_metrics::Timer* timer) {
+  void set_time_dark_resume_actions_timer(chromeos_metrics::Timer* timer) {
     time_dark_resume_actions_timer.reset(timer);  // Passes ownership
   }
   void set_time_to_scan_timer(int interface_index,

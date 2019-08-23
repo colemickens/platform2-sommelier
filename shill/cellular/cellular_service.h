@@ -28,7 +28,7 @@ class CellularService : public Service {
  public:
   enum ActivationType {
     kActivationTypeNonCellular,  // For future use
-    kActivationTypeOMADM,  // For future use
+    kActivationTypeOMADM,        // For future use
     kActivationTypeOTA,
     kActivationTypeOTASP,
     kActivationTypeUnknown
@@ -53,7 +53,7 @@ class CellularService : public Service {
 
   virtual void SetActivationState(const std::string& state);
   virtual const std::string& activation_state() const {
-      return activation_state_;
+    return activation_state_;
   }
 
   void SetOLP(const std::string& url,
@@ -75,9 +75,7 @@ class CellularService : public Service {
   void SetRoamingState(const std::string& state);
   const std::string& roaming_state() const { return roaming_state_; }
 
-  bool is_auto_connecting() const {
-    return is_auto_connecting_;
-  }
+  bool is_auto_connecting() const { return is_auto_connecting_; }
 
   const std::string& ppp_username() const { return ppp_username_; }
   const std::string& ppp_password() const { return ppp_password_; }
@@ -143,16 +141,16 @@ class CellularService : public Service {
 
   void HelpRegisterDerivedString(
       const std::string& name,
-      std::string(CellularService::*get)(Error* error),
-      bool(CellularService::*set)(const std::string& value, Error* error));
+      std::string (CellularService::*get)(Error* error),
+      bool (CellularService::*set)(const std::string& value, Error* error));
   void HelpRegisterDerivedStringmap(
       const std::string& name,
-      Stringmap(CellularService::*get)(Error* error),
-      bool(CellularService::*set)(const Stringmap& value, Error* error));
-  void HelpRegisterDerivedBool(
-      const std::string& name,
-      bool(CellularService::*get)(Error* error),
-      bool(CellularService::*set)(const bool&, Error*));
+      Stringmap (CellularService::*get)(Error* error),
+      bool (CellularService::*set)(const Stringmap& value, Error* error));
+  void HelpRegisterDerivedBool(const std::string& name,
+                               bool (CellularService::*get)(Error* error),
+                               bool (CellularService::*set)(const bool&,
+                                                            Error*));
 
   RpcIdentifier GetDeviceRpcId(Error* error) const override;
 

@@ -15,21 +15,19 @@ using testing::Test;
 namespace shill {
 
 namespace {
-const uint8_t kArpRequestV4[] =
-    { 0x00, 0x01, 0x08, 0x00, 0x06, 0x04, 0x00, 0x01 };
-const uint8_t kArpRequestV6[] =
-    { 0x00, 0x01, 0x86, 0xdd, 0x06, 0x10, 0x00, 0x01 };
-const uint8_t kArpReplyV4[] =
-    { 0x00, 0x01, 0x08, 0x00, 0x06, 0x04, 0x00, 0x02 };
-const uint8_t kArpReplyV6[] =
-    { 0x00, 0x01, 0x86, 0xdd, 0x06, 0x10, 0x00, 0x02 };
+const uint8_t kArpRequestV4[] = {0x00, 0x01, 0x08, 0x00,
+                                 0x06, 0x04, 0x00, 0x01};
+const uint8_t kArpRequestV6[] = {0x00, 0x01, 0x86, 0xdd,
+                                 0x06, 0x10, 0x00, 0x01};
+const uint8_t kArpReplyV4[] = {0x00, 0x01, 0x08, 0x00, 0x06, 0x04, 0x00, 0x02};
+const uint8_t kArpReplyV6[] = {0x00, 0x01, 0x86, 0xdd, 0x06, 0x10, 0x00, 0x02};
 const char kIPv4Address0[] = "192.168.0.1";
 const char kIPv4Address1[] = "10.0.12.13";
 const char kIPv6Address0[] = "fe80::1aa9:5ff:7ebf:14c5";
 const char kIPv6Address1[] = "1980:0:0:1000:1b02:1aa9:5ff:7ebf";
-const uint8_t kMacAddress0[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 };
-const uint8_t kMacAddress1[] = { 0x88, 0x87, 0x86, 0x85, 0x84, 0x83 };
-const uint8_t kInsertedByte[] = { 0x00 };
+const uint8_t kMacAddress0[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
+const uint8_t kMacAddress1[] = {0x88, 0x87, 0x86, 0x85, 0x84, 0x83};
+const uint8_t kInsertedByte[] = {0x00};
 const size_t kArpPaddingSizeV4 = 18;
 const size_t kArpPaddingSizeV6 = 0;
 }  // namespace
@@ -84,9 +82,9 @@ TEST_F(ArpPacketTest, GettersAndSetters) {
 
 TEST_F(ArpPacketTest, ParseTinyPacket) {
   ScopedMockLog log;
-  EXPECT_CALL(log,
-      Log(logging::LOG_ERROR, _,
-          HasSubstr("too short to contain ARP header."))).Times(1);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("too short to contain ARP header.")))
+      .Times(1);
 
   ByteString arp_bytes(kArpReplyV4, arraysize(kArpReplyV4));
   arp_bytes.Resize(arp_bytes.GetLength() - 1);
@@ -95,9 +93,9 @@ TEST_F(ArpPacketTest, ParseTinyPacket) {
 
 TEST_F(ArpPacketTest, ParseBadHRDType) {
   ScopedMockLog log;
-  EXPECT_CALL(log,
-      Log(logging::LOG_ERROR, _,
-          HasSubstr("Packet is of unknown ARPHRD type 257"))).Times(1);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("Packet is of unknown ARPHRD type 257")))
+      .Times(1);
 
   ByteString arp_bytes(kArpReplyV4, arraysize(kArpReplyV4));
   arp_bytes.GetData()[0] = 0x1;
@@ -106,9 +104,9 @@ TEST_F(ArpPacketTest, ParseBadHRDType) {
 
 TEST_F(ArpPacketTest, ParseBadProtocol) {
   ScopedMockLog log;
-  EXPECT_CALL(log,
-      Log(logging::LOG_ERROR, _,
-          HasSubstr("Packet has unknown protocol 2049"))).Times(1);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("Packet has unknown protocol 2049")))
+      .Times(1);
 
   ByteString arp_bytes(kArpReplyV4, arraysize(kArpReplyV4));
   arp_bytes.GetData()[3] = 0x1;
@@ -118,8 +116,9 @@ TEST_F(ArpPacketTest, ParseBadProtocol) {
 TEST_F(ArpPacketTest, ParseBadHardwareLength) {
   ScopedMockLog log;
   EXPECT_CALL(log,
-      Log(logging::LOG_ERROR, _,
-          HasSubstr("Packet has unexpected hardware address length"))).Times(1);
+              Log(logging::LOG_ERROR, _,
+                  HasSubstr("Packet has unexpected hardware address length")))
+      .Times(1);
 
   ByteString arp_bytes(kArpReplyV4, arraysize(kArpReplyV4));
   arp_bytes.GetData()[4] = 0x1;
@@ -129,8 +128,9 @@ TEST_F(ArpPacketTest, ParseBadHardwareLength) {
 TEST_F(ArpPacketTest, ParseBadProtocolLength) {
   ScopedMockLog log;
   EXPECT_CALL(log,
-      Log(logging::LOG_ERROR, _,
-          HasSubstr("Packet has unexpected protocol address length"))).Times(1);
+              Log(logging::LOG_ERROR, _,
+                  HasSubstr("Packet has unexpected protocol address length")))
+      .Times(1);
 
   ByteString arp_bytes(kArpReplyV4, arraysize(kArpReplyV4));
   arp_bytes.GetData()[5] = 0x1;
@@ -139,10 +139,11 @@ TEST_F(ArpPacketTest, ParseBadProtocolLength) {
 
 TEST_F(ArpPacketTest, ParseBadOpCode) {
   ScopedMockLog log;
-  EXPECT_CALL(log,
+  EXPECT_CALL(
+      log,
       Log(logging::LOG_ERROR, _,
           HasSubstr("Packet is not an ARP reply or request but of type 258")))
-              .Times(1);
+      .Times(1);
 
   ByteString arp_bytes(kArpReplyV4, arraysize(kArpReplyV4));
   arp_bytes.GetData()[6] = 0x1;
@@ -151,9 +152,9 @@ TEST_F(ArpPacketTest, ParseBadOpCode) {
 
 TEST_F(ArpPacketTest, ParseShortPacket) {
   ScopedMockLog log;
-  EXPECT_CALL(log,
-      Log(logging::LOG_ERROR, _,
-          HasSubstr("is too small to contain entire ARP payload"))).Times(1);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("is too small to contain entire ARP payload")))
+      .Times(1);
 
   ByteString arp_bytes(kArpReplyV6, arraysize(kArpReplyV6));
   arp_bytes.Append(mac_address1_);
@@ -212,9 +213,9 @@ TEST_F(ArpPacketTest, ParseRequest) {
 
 TEST_F(ArpPacketTest, FormatRequestInvalidAddress) {
   ScopedMockLog log;
-  EXPECT_CALL(log,
-      Log(logging::LOG_ERROR, _,
-          HasSubstr("Local or remote IP address is not valid"))).Times(3);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("Local or remote IP address is not valid")))
+      .Times(3);
 
   ByteString arp_bytes;
   EXPECT_FALSE(packet_.FormatRequest(&arp_bytes));
@@ -227,9 +228,9 @@ TEST_F(ArpPacketTest, FormatRequestInvalidAddress) {
 
 TEST_F(ArpPacketTest, FormatRequestMismatchedAddresses) {
   ScopedMockLog log;
-  EXPECT_CALL(log,
-      Log(logging::LOG_ERROR, _,
-          HasSubstr("IP address families do not match"))).Times(1);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("IP address families do not match")))
+      .Times(1);
 
   ByteString arp_bytes;
   packet_.set_local_ip_address(ipv4_address0_);
@@ -239,9 +240,9 @@ TEST_F(ArpPacketTest, FormatRequestMismatchedAddresses) {
 
 TEST_F(ArpPacketTest, FormatRequestBadMacAddressLength) {
   ScopedMockLog log;
-  EXPECT_CALL(log,
-      Log(logging::LOG_ERROR, _,
-          HasSubstr("MAC address length is incorrect"))).Times(3);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("MAC address length is incorrect")))
+      .Times(3);
 
   ByteString arp_bytes;
   packet_.set_local_ip_address(ipv4_address0_);

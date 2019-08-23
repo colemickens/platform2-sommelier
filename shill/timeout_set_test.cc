@@ -25,14 +25,13 @@ namespace shill {
 // Expect that the provided elements are the exact elements that timeout.
 // This macro will generally be called after calling IncrementTime, and must be
 // called within a TYPED_TEST.
-#define EXPECT_TIMEOUT(...)                                         \
-  do {                                                              \
-    std::vector<TypeParam> expected_elements{__VA_ARGS__};          \
-    std::sort(expected_elements.begin(), expected_elements.end());  \
-    this->SimulateTimeout();                                        \
-    std::sort(this->timeout_elements_.begin(),                      \
-              this->timeout_elements_.end());                       \
-    EXPECT_EQ(expected_elements, this->timeout_elements_);          \
+#define EXPECT_TIMEOUT(...)                                                    \
+  do {                                                                         \
+    std::vector<TypeParam> expected_elements{__VA_ARGS__};                     \
+    std::sort(expected_elements.begin(), expected_elements.end());             \
+    this->SimulateTimeout();                                                   \
+    std::sort(this->timeout_elements_.begin(), this->timeout_elements_.end()); \
+    EXPECT_EQ(expected_elements, this->timeout_elements_);                     \
   } while (0)
 
 template <typename T>
@@ -60,19 +59,16 @@ struct TestData<IPAddress> {
 template <typename T>
 class TimeoutSetTest : public Test {
  public:
-  TimeoutSetTest()
-      : current_time_(0),
-        elements_(&current_time_, &dispatcher_) {
-    elements_.SetInformCallback(base::Bind(&TimeoutSetTest::OnTimeout,
-                                           base::Unretained(this)));
+  TimeoutSetTest() : current_time_(0), elements_(&current_time_, &dispatcher_) {
+    elements_.SetInformCallback(
+        base::Bind(&TimeoutSetTest::OnTimeout, base::Unretained(this)));
   }
 
  protected:
   class TestTimeoutSet : public TimeoutSet<T> {
    public:
     TestTimeoutSet(const int64_t* current_time, EventDispatcher* dispatcher)
-        : TimeoutSet<T>(dispatcher),
-          current_time_(current_time) {}
+        : TimeoutSet<T>(dispatcher), current_time_(current_time) {}
 
    private:
     base::TimeTicks TimeNow() const override {
@@ -82,7 +78,7 @@ class TimeoutSetTest : public Test {
     const int64_t* current_time_;
   };
 
-  void IncrementTime(int64_t amount_ms) { current_time_ += amount_ms*1000; }
+  void IncrementTime(int64_t amount_ms) { current_time_ += amount_ms * 1000; }
   // Acts as though a timeout event occurred. EXPECT_TIMEOUT should generally be
   // used instead of this.
   void SimulateTimeout() { elements_.OnTimeout(); }
@@ -110,8 +106,7 @@ TYPED_TEST(TimeoutSetTest, EmptyInsertion) {
 }
 
 TYPED_TEST(TimeoutSetTest, SingleTimeout) {
-  EXPECT_CALL(this->dispatcher_, PostDelayedTask(_, _, _))
-      .Times(AtLeast(1));
+  EXPECT_CALL(this->dispatcher_, PostDelayedTask(_, _, _)).Times(AtLeast(1));
   this->elements_.Insert(this->data_.data[0],
                          base::TimeDelta::FromMilliseconds(10));
 
@@ -122,8 +117,7 @@ TYPED_TEST(TimeoutSetTest, SingleTimeout) {
 }
 
 TYPED_TEST(TimeoutSetTest, MultipleSequentialTimeouts) {
-  EXPECT_CALL(this->dispatcher_, PostDelayedTask(_, _, _))
-      .Times(AtLeast(1));
+  EXPECT_CALL(this->dispatcher_, PostDelayedTask(_, _, _)).Times(AtLeast(1));
   this->elements_.Insert(this->data_.data[0],
                          base::TimeDelta::FromMilliseconds(10));
   this->elements_.Insert(this->data_.data[1],
@@ -140,8 +134,7 @@ TYPED_TEST(TimeoutSetTest, MultipleSequentialTimeouts) {
 
 // Single timeout has multiple elements expiring.
 TYPED_TEST(TimeoutSetTest, MultiTimeout) {
-  EXPECT_CALL(this->dispatcher_, PostDelayedTask(_, _, _))
-      .Times(AtLeast(1));
+  EXPECT_CALL(this->dispatcher_, PostDelayedTask(_, _, _)).Times(AtLeast(1));
   this->elements_.Insert(this->data_.data[0],
                          base::TimeDelta::FromMilliseconds(10));
   this->elements_.Insert(this->data_.data[1],
@@ -154,8 +147,7 @@ TYPED_TEST(TimeoutSetTest, MultiTimeout) {
 }
 
 TYPED_TEST(TimeoutSetTest, InsertResetTimeout) {
-  EXPECT_CALL(this->dispatcher_, PostDelayedTask(_, _, _))
-      .Times(AtLeast(1));
+  EXPECT_CALL(this->dispatcher_, PostDelayedTask(_, _, _)).Times(AtLeast(1));
   this->elements_.Insert(this->data_.data[0],
                          base::TimeDelta::FromMilliseconds(20));
   this->elements_.Insert(this->data_.data[1],

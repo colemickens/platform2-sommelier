@@ -5,7 +5,6 @@
 #ifndef SHILL_SHIMS_TASK_PROXY_H_
 #define SHILL_SHIMS_TASK_PROXY_H_
 
-
 #include <base/macros.h>
 #include <shill/dbus-proxies.h>
 

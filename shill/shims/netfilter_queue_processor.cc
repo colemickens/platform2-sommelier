@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <libnetfilter_queue/libnetfilter_queue.h>
 #include <linux/ip.h>
-#include <linux/netfilter.h>    /* for NF_ACCEPT */
+#include <linux/netfilter.h> /* for NF_ACCEPT */
 #include <linux/types.h>
 #include <linux/udp.h>
 #include <net/if.h>
@@ -88,8 +88,7 @@ bool NetfilterQueueProcessor::Packet::ParsePayloadUDPData(
   memcpy(&ip, payload, sizeof(ip));
 
   size_t iphdr_len = ip.ihl * kIPHeaderLengthUnitBytes;
-  if (iphdr_len < sizeof(ip) ||
-      ip.version != IPVERSION ||
+  if (iphdr_len < sizeof(ip) || ip.version != IPVERSION ||
       ip.protocol != IPPROTO_UDP) {
     return false;
   }
@@ -127,13 +126,13 @@ void NetfilterQueueProcessor::Packet::SetValues(int in_device,
   destination_port_ = destination_port;
 }
 
-NetfilterQueueProcessor::NetfilterQueueProcessor(
-    int input_queue, int output_queue)
+NetfilterQueueProcessor::NetfilterQueueProcessor(int input_queue,
+                                                 int output_queue)
     : input_queue_(input_queue),
       output_queue_(output_queue),
       nfq_handle_(nullptr),
       input_queue_handle_(nullptr),
-      output_queue_handle_(nullptr)  {
+      output_queue_handle_(nullptr) {
   VLOG(2) << "Created netfilter queue processor.";
 }
 
@@ -183,31 +182,31 @@ bool NetfilterQueueProcessor::Start() {
     return false;
   }
 
-  input_queue_handle_ = nfq_create_queue(
-      nfq_handle_, input_queue_,
-      &NetfilterQueueProcessor::InputQueueCallback, this);
+  input_queue_handle_ =
+      nfq_create_queue(nfq_handle_, input_queue_,
+                       &NetfilterQueueProcessor::InputQueueCallback, this);
   if (!input_queue_handle_) {
     LOG(ERROR) << "nfq_create_queue() failed for input queue " << input_queue_;
     return false;
   }
 
-  if (nfq_set_mode(input_queue_handle_, NFQNL_COPY_PACKET,
-                   kPayloadCopySize) < 0) {
+  if (nfq_set_mode(input_queue_handle_, NFQNL_COPY_PACKET, kPayloadCopySize) <
+      0) {
     LOG(ERROR) << "nfq_set_mode() failed: can't set input queue packet_copy.";
     return false;
   }
 
-  output_queue_handle_ = nfq_create_queue(
-      nfq_handle_, output_queue_,
-      &NetfilterQueueProcessor::OutputQueueCallback, this);
+  output_queue_handle_ =
+      nfq_create_queue(nfq_handle_, output_queue_,
+                       &NetfilterQueueProcessor::OutputQueueCallback, this);
   if (!output_queue_handle_) {
     LOG(ERROR) << "nfq_create_queue() failed for output queue "
                << output_queue_;
     return false;
   }
 
-  if (nfq_set_mode(output_queue_handle_, NFQNL_COPY_PACKET,
-                   kPayloadCopySize) < 0) {
+  if (nfq_set_mode(output_queue_handle_, NFQNL_COPY_PACKET, kPayloadCopySize) <
+      0) {
     LOG(ERROR) << "nfq_set_mode() failed: can't set output queue packet_copy.";
     return false;
   }
@@ -270,8 +269,8 @@ int NetfilterQueueProcessor::OutputQueueCallback(
       reinterpret_cast<NetfilterQueueProcessor*>(private_data);
   time_t now = time(nullptr);
   processor->LogOutgoingPacket(packet, now);
-  return nfq_set_verdict(
-      queue_handle, packet.packet_id(), NF_ACCEPT, 0, nullptr);
+  return nfq_set_verdict(queue_handle, packet.packet_id(), NF_ACCEPT, 0,
+                         nullptr);
 }
 
 // static
@@ -315,13 +314,12 @@ void NetfilterQueueProcessor::ExpireListeners(time_t now) {
 }
 
 deque<NetfilterQueueProcessor::ListenerEntryPtr>::iterator
-    NetfilterQueueProcessor::FindListener(uint16_t port,
-                                          int device_index,
-                                          uint32_t address) {
+NetfilterQueueProcessor::FindListener(uint16_t port,
+                                      int device_index,
+                                      uint32_t address) {
   deque<ListenerEntryPtr>::iterator it;
   for (it = listeners_.begin(); it != listeners_.end(); ++it) {
-    if ((*it)->port == port &&
-        (*it)->device_index == device_index &&
+    if ((*it)->port == port && (*it)->device_index == device_index &&
         (*it)->address == address) {
       break;
     }
@@ -330,13 +328,12 @@ deque<NetfilterQueueProcessor::ListenerEntryPtr>::iterator
 }
 
 deque<NetfilterQueueProcessor::ListenerEntryPtr>::iterator
-    NetfilterQueueProcessor::FindDestination(uint16_t port,
-                                             int device_index,
-                                             uint32_t destination) {
+NetfilterQueueProcessor::FindDestination(uint16_t port,
+                                         int device_index,
+                                         uint32_t destination) {
   deque<ListenerEntryPtr>::iterator it;
   for (it = listeners_.begin(); it != listeners_.end(); ++it) {
-    if ((*it)->port == port &&
-        (*it)->device_index == device_index &&
+    if ((*it)->port == port && (*it)->device_index == device_index &&
         (*it)->destination == destination) {
       break;
     }
@@ -344,12 +341,11 @@ deque<NetfilterQueueProcessor::ListenerEntryPtr>::iterator
   return it;
 }
 
-bool NetfilterQueueProcessor::IsIncomingPacketAllowed(
-    const Packet& packet, time_t now) {
+bool NetfilterQueueProcessor::IsIncomingPacketAllowed(const Packet& packet,
+                                                      time_t now) {
   VLOG(2) << __func__ << " entered.";
   VLOG(3) << "Incoming packet is from "
-          << AddressAndPortToString(packet.source_ip(),
-                                    packet.source_port())
+          << AddressAndPortToString(packet.source_ip(), packet.source_port())
           << " and to "
           << AddressAndPortToString(packet.destination_ip(),
                                     packet.destination_port());
@@ -387,8 +383,8 @@ bool NetfilterQueueProcessor::IsIncomingPacketAllowed(
   return true;
 }
 
-void NetfilterQueueProcessor::LogOutgoingPacket(
-    const Packet& packet, time_t now) {
+void NetfilterQueueProcessor::LogOutgoingPacket(const Packet& packet,
+                                                time_t now) {
   VLOG(2) << __func__ << " entered.";
   if (!packet.is_udp()) {
     VLOG(2) << "Outgoing packet is not udp.";
@@ -424,9 +420,8 @@ void NetfilterQueueProcessor::LogOutgoingPacket(
     (*entry_it)->last_transmission = now;
   } else {
     uint32_t netmask = GetNetmaskForDevice(device_index);
-    ListenerEntryPtr entry_ptr(
-        new ListenerEntry(now, port, device_index,
-                          address, netmask, destination));
+    ListenerEntryPtr entry_ptr(new ListenerEntry(
+        now, port, device_index, address, netmask, destination));
     listeners_.push_front(entry_ptr);
     VLOG(2) << "Added listener for " << AddressAndPortToString(address, port)
             << " with destination "
@@ -441,4 +436,3 @@ void NetfilterQueueProcessor::LogOutgoingPacket(
 }  // namespace shims
 
 }  // namespace shill
-

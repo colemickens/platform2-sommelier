@@ -52,8 +52,7 @@ IPAddress::IPAddress(Family family,
                      unsigned int prefix)
     : family_(family), address_(address), prefix_(prefix) {}
 
-IPAddress::IPAddress(const std::string& ip_string)
-    : prefix_(0) {
+IPAddress::IPAddress(const std::string& ip_string) : prefix_(0) {
   family_ = IPAddress::kFamilyIPv4;
   if (!SetAddressFromString(ip_string)) {
     family_ = IPAddress::kFamilyIPv6;
@@ -64,8 +63,7 @@ IPAddress::IPAddress(const std::string& ip_string)
 }
 
 IPAddress::IPAddress(const sockaddr* address_struct, size_t size)
-    : family_(kFamilyUnknown),
-      prefix_(0) {
+    : family_(kFamilyUnknown), prefix_(0) {
   if (address_struct->sa_family == kFamilyIPv4 && size >= sizeof(sockaddr_in)) {
     family_ = address_struct->sa_family;
     auto sin = reinterpret_cast<const sockaddr_in*>(address_struct);
@@ -76,8 +74,8 @@ IPAddress::IPAddress(const sockaddr* address_struct, size_t size)
              size >= sizeof(sockaddr_in6)) {
     family_ = address_struct->sa_family;
     auto sin6 = reinterpret_cast<const sockaddr_in6*>(address_struct);
-    address_ = ByteString(sin6->sin6_addr.s6_addr,
-                          sizeof(sin6->sin6_addr.s6_addr));
+    address_ =
+        ByteString(sin6->sin6_addr.s6_addr, sizeof(sin6->sin6_addr.s6_addr));
   }
 }
 
@@ -86,12 +84,12 @@ IPAddress::~IPAddress() = default;
 // static
 size_t IPAddress::GetAddressLength(Family family) {
   switch (family) {
-  case kFamilyIPv4:
-    return sizeof(in_addr);
-  case kFamilyIPv6:
-    return sizeof(in6_addr);
-  default:
-    return 0;
+    case kFamilyIPv4:
+      return sizeof(in_addr);
+    case kFamilyIPv6:
+      return sizeof(in6_addr);
+    default:
+      return 0;
   }
 }
 
@@ -171,12 +169,12 @@ IPAddress IPAddress::GetAddressMaskFromPrefix(Family family, size_t prefix) {
 // static
 string IPAddress::GetAddressFamilyName(Family family) {
   switch (family) {
-  case kFamilyIPv4:
-    return kFamilyNameIPv4;
-  case kFamilyIPv6:
-    return kFamilyNameIPv6;
-  default:
-    return kFamilyNameUnknown;
+    case kFamilyIPv4:
+      return kFamilyNameIPv4;
+    case kFamilyIPv6:
+      return kFamilyNameIPv6;
+    default:
+      return kFamilyNameUnknown;
   }
 }
 
@@ -256,7 +254,7 @@ bool IPAddress::IntoSockAddr(sockaddr* address_struct, size_t size) const {
 
 bool IPAddress::Equals(const IPAddress& b) const {
   return family_ == b.family_ && address_.Equals(b.address_) &&
-      prefix_ == b.prefix_;
+         prefix_ == b.prefix_;
 }
 
 bool IPAddress::HasSameAddressAs(const IPAddress& b) const {
@@ -293,7 +291,7 @@ IPAddress IPAddress::GetNetworkPart() const {
 
 IPAddress IPAddress::GetDefaultBroadcast() {
   ByteString broadcast_bytes(
-    GetAddressMaskFromPrefix(family(), prefix()).address());
+      GetAddressMaskFromPrefix(family(), prefix()).address());
   broadcast_bytes.BitwiseInvert();
   return MergeWith(IPAddress(family(), broadcast_bytes));
 }

@@ -54,11 +54,7 @@ MATCHER_P(MessageType, message_type, "") {
 
 std::unique_ptr<RTNLMessage> CreateDummyMessage() {
   return std::make_unique<RTNLMessage>(RTNLMessage::kTypeLink,
-                                       RTNLMessage::kModeGet,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
+                                       RTNLMessage::kModeGet, 0, 0, 0, 0,
                                        IPAddress::kFamilyUnknown);
 }
 
@@ -75,9 +71,7 @@ class RTNLHandlerTest : public Test {
     RTNLHandler::GetInstance()->sockets_.reset(sockets_);
   }
 
-  void TearDown() override {
-    RTNLHandler::GetInstance()->Stop();
-  }
+  void TearDown() override { RTNLHandler::GetInstance()->Stop(); }
 
   uint32_t GetRequestSequence() {
     return RTNLHandler::GetInstance()->request_sequence_;
@@ -91,7 +85,7 @@ class RTNLHandlerTest : public Test {
                                 const RTNLHandler::ErrorMask& error_mask,
                                 uint32_t* msg_seq) {
     return RTNLHandler::GetInstance()->SendMessageWithErrorMask(
-      std::move(message), error_mask, msg_seq);
+        std::move(message), error_mask, msg_seq);
   }
 
   bool IsSequenceInErrorMaskWindow(uint32_t sequence) {
@@ -107,9 +101,7 @@ class RTNLHandlerTest : public Test {
     return RTNLHandler::GetInstance()->GetAndClearErrorMask(sequence);
   }
 
-  int GetErrorWindowSize() {
-    return RTNLHandler::kErrorWindowSize;
-  }
+  int GetErrorWindowSize() { return RTNLHandler::kErrorWindowSize; }
 
   void StoreRequest(std::unique_ptr<RTNLMessage> request) {
     RTNLHandler::GetInstance()->StoreRequest(std::move(request));
@@ -154,8 +146,9 @@ const int RTNLHandlerTest::kTestDeviceIndex = 123456;
 const char RTNLHandlerTest::kTestDeviceName[] = "test-device";
 
 void RTNLHandlerTest::StartRTNLHandler() {
-  EXPECT_CALL(*sockets_, Socket(PF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC,
-        NETLINK_ROUTE)).WillOnce(Return(kTestSocket));
+  EXPECT_CALL(*sockets_,
+              Socket(PF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC, NETLINK_ROUTE))
+      .WillOnce(Return(kTestSocket));
   EXPECT_CALL(*sockets_, Bind(kTestSocket, _, sizeof(sockaddr_nl)))
       .WillOnce(Return(0));
   EXPECT_CALL(*sockets_, SetReceiveBuffer(kTestSocket, _)).WillOnce(Return(0));
@@ -169,13 +162,8 @@ void RTNLHandlerTest::StopRTNLHandler() {
 }
 
 void RTNLHandlerTest::AddLink() {
-  RTNLMessage message(RTNLMessage::kTypeLink,
-                      RTNLMessage::kModeAdd,
-                      0,
-                      0,
-                      0,
-                      kTestDeviceIndex,
-                      IPAddress::kFamilyIPv4);
+  RTNLMessage message(RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, 0, 0, 0,
+                      kTestDeviceIndex, IPAddress::kFamilyIPv4);
   message.SetAttribute(static_cast<uint16_t>(IFLA_IFNAME),
                        ByteString(string(kTestDeviceName), true));
   ByteString b(message.Encode());
@@ -184,13 +172,8 @@ void RTNLHandlerTest::AddLink() {
 }
 
 void RTNLHandlerTest::AddNeighbor() {
-  RTNLMessage message(RTNLMessage::kTypeNeighbor,
-                      RTNLMessage::kModeAdd,
-                      0,
-                      0,
-                      0,
-                      kTestDeviceIndex,
-                      IPAddress::kFamilyIPv4);
+  RTNLMessage message(RTNLMessage::kTypeNeighbor, RTNLMessage::kModeAdd, 0, 0,
+                      0, kTestDeviceIndex, IPAddress::kFamilyIPv4);
   ByteString encoded(message.Encode());
   InputData data(encoded.GetData(), encoded.GetLength());
   RTNLHandler::GetInstance()->ParseRTNL(&data);
@@ -247,9 +230,7 @@ TEST_F(RTNLHandlerTest, GetInterfaceName) {
   EXPECT_CALL(*sockets_, Ioctl(kTestSocket, SIOCGIFINDEX, _))
       .WillOnce(Return(-1))
       .WillOnce(DoAll(SetInterfaceIndex(), Return(0)));
-  EXPECT_CALL(*sockets_, Close(kTestSocket))
-      .Times(2)
-      .WillRepeatedly(Return(0));
+  EXPECT_CALL(*sockets_, Close(kTestSocket)).Times(2).WillRepeatedly(Return(0));
   EXPECT_EQ(-1, RTNLHandler::GetInstance()->GetInterfaceIndex("eth0"));
   EXPECT_EQ(-1, RTNLHandler::GetInstance()->GetInterfaceIndex("wlan0"));
   EXPECT_EQ(kTestInterfaceIndex,
@@ -262,12 +243,12 @@ TEST_F(RTNLHandlerTest, IsSequenceInErrorMaskWindow) {
   EXPECT_FALSE(IsSequenceInErrorMaskWindow(kRequestSequence + 1));
   EXPECT_TRUE(IsSequenceInErrorMaskWindow(kRequestSequence));
   EXPECT_TRUE(IsSequenceInErrorMaskWindow(kRequestSequence - 1));
-  EXPECT_TRUE(IsSequenceInErrorMaskWindow(kRequestSequence -
-                                          GetErrorWindowSize() + 1));
-  EXPECT_FALSE(IsSequenceInErrorMaskWindow(kRequestSequence -
-                                           GetErrorWindowSize()));
-  EXPECT_FALSE(IsSequenceInErrorMaskWindow(kRequestSequence -
-                                           GetErrorWindowSize() - 1));
+  EXPECT_TRUE(
+      IsSequenceInErrorMaskWindow(kRequestSequence - GetErrorWindowSize() + 1));
+  EXPECT_FALSE(
+      IsSequenceInErrorMaskWindow(kRequestSequence - GetErrorWindowSize()));
+  EXPECT_FALSE(
+      IsSequenceInErrorMaskWindow(kRequestSequence - GetErrorWindowSize() - 1));
 }
 
 TEST_F(RTNLHandlerTest, SendMessageReturnsErrorAndAdvancesSequenceNumber) {
@@ -276,8 +257,8 @@ TEST_F(RTNLHandlerTest, SendMessageReturnsErrorAndAdvancesSequenceNumber) {
   SetRequestSequence(kSequenceNumber);
   EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0)).WillOnce(Return(-1));
   uint32_t seq = 0;
-  EXPECT_FALSE(RTNLHandler::GetInstance()->SendMessage(CreateDummyMessage(),
-                                                       &seq));
+  EXPECT_FALSE(
+      RTNLHandler::GetInstance()->SendMessage(CreateDummyMessage(), &seq));
 
   // |seq| should not be set if there was a failure.
   EXPECT_EQ(seq, 0);
@@ -323,25 +304,21 @@ TEST_F(RTNLHandlerTest, SendMessageInferredErrorMasks) {
     RTNLMessage::Mode mode;
     RTNLHandler::ErrorMask mask;
   } expectations[] = {
-    { RTNLMessage::kTypeLink, RTNLMessage::kModeGet, {} },
-    { RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, {EEXIST} },
-    { RTNLMessage::kTypeLink, RTNLMessage::kModeDelete, {ESRCH, ENODEV} },
-    { RTNLMessage::kTypeAddress, RTNLMessage::kModeDelete,
-         {ESRCH, ENODEV, EADDRNOTAVAIL} }
-  };
+      {RTNLMessage::kTypeLink, RTNLMessage::kModeGet, {}},
+      {RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, {EEXIST}},
+      {RTNLMessage::kTypeLink, RTNLMessage::kModeDelete, {ESRCH, ENODEV}},
+      {RTNLMessage::kTypeAddress,
+       RTNLMessage::kModeDelete,
+       {ESRCH, ENODEV, EADDRNOTAVAIL}}};
   const uint32_t kSequenceNumber = 123;
   EXPECT_CALL(*sockets_, Send(_, _, _, 0)).WillRepeatedly(ReturnArg<2>());
   for (const auto& expectation : expectations) {
     SetRequestSequence(kSequenceNumber);
-    auto message = std::make_unique<RTNLMessage>(expectation.type,
-                                                 expectation.mode,
-                                                 0,
-                                                 0,
-                                                 0,
-                                                 0,
-                                                 IPAddress::kFamilyUnknown);
-    EXPECT_TRUE(RTNLHandler::GetInstance()->SendMessage(std::move(message),
-                                                        nullptr));
+    auto message =
+        std::make_unique<RTNLMessage>(expectation.type, expectation.mode, 0, 0,
+                                      0, 0, IPAddress::kFamilyUnknown);
+    EXPECT_TRUE(
+        RTNLHandler::GetInstance()->SendMessage(std::move(message), nullptr));
     EXPECT_EQ(expectation.mask, GetAndClearErrorMask(kSequenceNumber));
   }
 }
@@ -389,7 +366,7 @@ TEST_F(RTNLHandlerTest, BasicStoreRequest) {
   EXPECT_EQ(oldest_request_sequence(), kSequenceNumber1);
 
   const uint32_t kSequenceNumber3 =
-    kSequenceNumber1 + stored_request_window_size() - 1;
+      kSequenceNumber1 + stored_request_window_size() - 1;
   request = std::make_unique<RTNLMessage>();
   request->set_seq(kSequenceNumber3);
   StoreRequest(std::move(request));
@@ -430,7 +407,7 @@ TEST_F(RTNLHandlerTest, StoreRequestLargerThanWindow) {
   EXPECT_EQ(oldest_request_sequence(), kSequenceNumber1);
 
   const uint32_t kSequenceNumber3 =
-    kSequenceNumber1 + stored_request_window_size();
+      kSequenceNumber1 + stored_request_window_size();
   request = std::make_unique<RTNLMessage>();
   request->set_seq(kSequenceNumber3);
   StoreRequest(std::move(request));
@@ -438,7 +415,7 @@ TEST_F(RTNLHandlerTest, StoreRequestLargerThanWindow) {
   EXPECT_EQ(oldest_request_sequence(), kSequenceNumber2);
 
   const uint32_t kSequenceNumber4 =
-    kSequenceNumber2 + stored_request_window_size();
+      kSequenceNumber2 + stored_request_window_size();
   request = std::make_unique<RTNLMessage>();
   request->set_seq(kSequenceNumber4);
   StoreRequest(std::move(request));
@@ -475,7 +452,7 @@ TEST_F(RTNLHandlerTest, OverflowStoreRequest) {
   EXPECT_EQ(oldest_request_sequence(), kSequenceNumber1);
 
   const uint32_t kSequenceNumber3 =
-    kSequenceNumber1 + stored_request_window_size() - 1;
+      kSequenceNumber1 + stored_request_window_size() - 1;
   request = std::make_unique<RTNLMessage>();
   request->set_seq(kSequenceNumber3);
   StoreRequest(std::move(request));
@@ -516,7 +493,7 @@ TEST_F(RTNLHandlerTest, OverflowStoreRequestLargerThanWindow) {
   EXPECT_EQ(oldest_request_sequence(), kSequenceNumber1);
 
   const uint32_t kSequenceNumber3 =
-    kSequenceNumber1 + stored_request_window_size();
+      kSequenceNumber1 + stored_request_window_size();
   request = std::make_unique<RTNLMessage>();
   request->set_seq(kSequenceNumber3);
   StoreRequest(std::move(request));
@@ -524,7 +501,7 @@ TEST_F(RTNLHandlerTest, OverflowStoreRequestLargerThanWindow) {
   EXPECT_EQ(oldest_request_sequence(), kSequenceNumber2);
 
   const uint32_t kSequenceNumber4 =
-    kSequenceNumber2 + stored_request_window_size();
+      kSequenceNumber2 + stored_request_window_size();
   request = std::make_unique<RTNLMessage>();
   request->set_seq(kSequenceNumber4);
   StoreRequest(std::move(request));

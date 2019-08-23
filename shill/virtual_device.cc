@@ -14,8 +14,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDevice;
-static std::string ObjectID(VirtualDevice* v) { return "(virtual_device)"; }
+static std::string ObjectID(VirtualDevice* v) {
+  return "(virtual_device)";
 }
+}  // namespace Logging
 
 namespace {
 const char kHardwareAddressEmpty[] = "";

@@ -46,9 +46,7 @@ class KeyFileStoreTest : public Test {
     store_.reset(new KeyFileStore(test_file_));
   }
 
-  void TearDown() override {
-    ASSERT_TRUE(temp_dir_.Delete());
-  }
+  void TearDown() override { ASSERT_TRUE(temp_dir_.Delete()); }
 
  protected:
   string ReadKeyFile();
@@ -66,8 +64,7 @@ string KeyFileStoreTest::ReadKeyFile() {
 }
 
 void KeyFileStoreTest::WriteKeyFile(string data) {
-  EXPECT_EQ(data.size(),
-            base::WriteFile(test_file_, data.data(), data.size()));
+  EXPECT_EQ(data.size(), base::WriteFile(test_file_, data.data(), data.size()));
 }
 
 TEST_F(KeyFileStoreTest, OpenClose) {
@@ -79,8 +76,8 @@ TEST_F(KeyFileStoreTest, OpenClose) {
   EXPECT_EQ(1, store_->crypto_.cryptos_.size());
   ASSERT_TRUE(store_->Close());
   EXPECT_FALSE(store_->key_file_);
-  FileEnumerator file_enumerator(
-      temp_dir_.GetPath(), false /* not recursive */, FileEnumerator::FILES);
+  FileEnumerator file_enumerator(temp_dir_.GetPath(), false /* not recursive */,
+                                 FileEnumerator::FILES);
 
   // Verify that the file actually got written with the right name.
   EXPECT_EQ(test_file_.value(), file_enumerator.Next().value());
@@ -125,10 +122,11 @@ TEST_F(KeyFileStoreTest, GetGroups) {
   static const char kGroupA[] = "g-a";
   static const char kGroupB[] = "g-b";
   static const char kGroupC[] = "g-c";
-  WriteKeyFile(base::StringPrintf("[%s]\n"
-                                  "[%s]\n"
-                                  "[%s]\n",
-                                  kGroupA, kGroupB, kGroupC));
+  WriteKeyFile(
+      base::StringPrintf("[%s]\n"
+                         "[%s]\n"
+                         "[%s]\n",
+                         kGroupA, kGroupB, kGroupC));
   EXPECT_FALSE(store_->IsEmpty());
   ASSERT_TRUE(store_->Open());
   set<string> groups = store_->GetGroups();
@@ -147,16 +145,16 @@ TEST_F(KeyFileStoreTest, GetGroupsWithKey) {
   static const char kKeyA[] = "k-a";
   static const char kKeyB[] = "k-b";
   static const char kValue[] = "true";
-  WriteKeyFile(base::StringPrintf("[%s]\n"
-                                  "%s=%s\n"
-                                  "[%s]\n"
-                                  "%s=%s\n"
-                                  "%s=%s\n"
-                                  "[%s]\n"
-                                  "%s=%s\n",
-                                  kGroupA, kKeyA, kValue,
-                                  kGroupB, kKeyA, kValue, kKeyB, kValue,
-                                  kGroupC, kKeyB, kValue));
+  WriteKeyFile(
+      base::StringPrintf("[%s]\n"
+                         "%s=%s\n"
+                         "[%s]\n"
+                         "%s=%s\n"
+                         "%s=%s\n"
+                         "[%s]\n"
+                         "%s=%s\n",
+                         kGroupA, kKeyA, kValue, kGroupB, kKeyA, kValue, kKeyB,
+                         kValue, kGroupC, kKeyB, kValue));
   EXPECT_FALSE(store_->IsEmpty());
   ASSERT_TRUE(store_->Open());
   set<string> groups_a = store_->GetGroupsWithKey(kKeyA);
@@ -174,10 +172,11 @@ TEST_F(KeyFileStoreTest, ContainsGroup) {
   static const char kGroupA[] = "group-a";
   static const char kGroupB[] = "group-b";
   static const char kGroupC[] = "group-c";
-  WriteKeyFile(base::StringPrintf("[%s]\n"
-                                  "[%s]\n"
-                                  "[%s]\n",
-                                  kGroupA, kGroupB, kGroupC));
+  WriteKeyFile(
+      base::StringPrintf("[%s]\n"
+                         "[%s]\n"
+                         "[%s]\n",
+                         kGroupA, kGroupB, kGroupC));
   ASSERT_TRUE(store_->Open());
   EXPECT_TRUE(store_->ContainsGroup(kGroupA));
   EXPECT_TRUE(store_->ContainsGroup(kGroupB));
@@ -201,30 +200,23 @@ TEST_F(KeyFileStoreTest, GetGroupsWithProperties) {
   static const char kValueC_0_string[] = "true";
   static const bool kValueC_1 = false;
   static const char kValueC_1_string[] = "false";
-  WriteKeyFile(base::StringPrintf("[%s]\n"
-                                  "%s=%s\n"
-                                  "%s=%d\n"
-                                  "%s=%s\n"
-                                  "[%s]\n"
-                                  "%s=%s\n"
-                                  "%s=%d\n"
-                                  "%s=%s\n"
-                                  "[%s]\n"
-                                  "%s=%s\n"
-                                  "%s=%d\n"
-                                  "%s=%s\n",
-                                  kGroupA,
-                                  kAttributeA, kValueA_0,
-                                  kAttributeB, kValueB_0,
-                                  kAttributeC, kValueC_0_string,
-                                  kGroupB,
-                                  kAttributeA, kValueA_0,
-                                  kAttributeB, kValueB_1,
-                                  kAttributeC, kValueC_0_string,
-                                  kGroupC,
-                                  kAttributeA, kValueA_0,
-                                  kAttributeB, kValueB_0,
-                                  kAttributeC, kValueC_1_string));
+  WriteKeyFile(base::StringPrintf(
+      "[%s]\n"
+      "%s=%s\n"
+      "%s=%d\n"
+      "%s=%s\n"
+      "[%s]\n"
+      "%s=%s\n"
+      "%s=%d\n"
+      "%s=%s\n"
+      "[%s]\n"
+      "%s=%s\n"
+      "%s=%d\n"
+      "%s=%s\n",
+      kGroupA, kAttributeA, kValueA_0, kAttributeB, kValueB_0, kAttributeC,
+      kValueC_0_string, kGroupB, kAttributeA, kValueA_0, kAttributeB, kValueB_1,
+      kAttributeC, kValueC_0_string, kGroupC, kAttributeA, kValueA_0,
+      kAttributeB, kValueB_0, kAttributeC, kValueC_1_string));
   ASSERT_TRUE(store_->Open());
   {
     KeyValueStore args;
@@ -274,10 +266,11 @@ TEST_F(KeyFileStoreTest, DeleteKey) {
   static const char kKeyDead[] = "dead";
   static const char kKeyAlive[] = "alive";
   const int kValueAlive = 3;
-  WriteKeyFile(base::StringPrintf("[%s]\n"
-                                  "%s=5\n"
-                                  "%s=%d\n",
-                                  kGroup, kKeyDead, kKeyAlive, kValueAlive));
+  WriteKeyFile(
+      base::StringPrintf("[%s]\n"
+                         "%s=5\n"
+                         "%s=%d\n",
+                         kGroup, kKeyDead, kKeyAlive, kValueAlive));
   ASSERT_TRUE(store_->Open());
   EXPECT_TRUE(store_->DeleteKey(kGroup, kKeyDead));
   EXPECT_TRUE(store_->DeleteKey(kGroup, "random-key"));
@@ -293,11 +286,12 @@ TEST_F(KeyFileStoreTest, DeleteGroup) {
   static const char kGroupA[] = "group-a";
   static const char kGroupB[] = "group-b";
   static const char kGroupC[] = "group-c";
-  WriteKeyFile(base::StringPrintf("[%s]\n"
-                                  "[%s]\n"
-                                  "key-to-be-deleted=true\n"
-                                  "[%s]\n",
-                                  kGroupA, kGroupB, kGroupC));
+  WriteKeyFile(
+      base::StringPrintf("[%s]\n"
+                         "[%s]\n"
+                         "key-to-be-deleted=true\n"
+                         "[%s]\n",
+                         kGroupA, kGroupB, kGroupC));
   ASSERT_TRUE(store_->Open());
   EXPECT_TRUE(store_->DeleteGroup(kGroupB));
   EXPECT_TRUE(store_->DeleteGroup("group-d"));
@@ -313,9 +307,10 @@ TEST_F(KeyFileStoreTest, GetString) {
   static const char kGroup[] = "something";
   static const char kKey[] = "foo";
   static const char kValue[] = "bar";
-  WriteKeyFile(base::StringPrintf("[%s]\n"
-                                  "%s=%s\n",
-                                  kGroup, kKey, kValue));
+  WriteKeyFile(
+      base::StringPrintf("[%s]\n"
+                         "%s=%s\n",
+                         kGroup, kKey, kValue));
   ASSERT_TRUE(store_->Open());
   string value;
   EXPECT_TRUE(store_->GetString(kGroup, kKey, &value));
@@ -348,11 +343,12 @@ TEST_F(KeyFileStoreTest, GetBool) {
   static const char kKeyTrue[] = "foo";
   static const char kKeyFalse[] = "bar";
   static const char kKeyBad[] = "zoo";
-  WriteKeyFile(base::StringPrintf("[%s]\n"
-                                  "%s=true\n"
-                                  "%s=false\n"
-                                  "%s=moo\n",
-                                  kGroup, kKeyTrue, kKeyFalse, kKeyBad));
+  WriteKeyFile(
+      base::StringPrintf("[%s]\n"
+                         "%s=true\n"
+                         "%s=false\n"
+                         "%s=moo\n",
+                         kGroup, kKeyTrue, kKeyFalse, kKeyBad));
   ASSERT_TRUE(store_->Open());
   {
     bool value = true;
@@ -397,14 +393,12 @@ TEST_F(KeyFileStoreTest, GetInt) {
   const int kValuePos = 50;
   const int kValueNeg = -20;
   static const char kValueBad[] = "nan";
-  WriteKeyFile(base::StringPrintf("[%s]\n"
-                                  "%s=%d\n"
-                                  "%s=%d\n"
-                                  "%s=%s\n",
-                                  kGroup,
-                                  kKeyPos, kValuePos,
-                                  kKeyNeg, kValueNeg,
-                                  kKeyBad, kValueBad));
+  WriteKeyFile(base::StringPrintf(
+      "[%s]\n"
+      "%s=%d\n"
+      "%s=%d\n"
+      "%s=%s\n",
+      kGroup, kKeyPos, kValuePos, kKeyNeg, kValueNeg, kKeyBad, kValueBad));
   ASSERT_TRUE(store_->Open());
   {
     int value = 0;
@@ -452,13 +446,12 @@ TEST_F(KeyFileStoreTest, GetUint64) {
   // Use base::Uint64ToString() instead of using something like "%llu"
   // (not correct for native 64 bit architectures) or PRIu64 (does not
   // work correctly using cros_workon_make due to include intricacies).
-  WriteKeyFile(base::StringPrintf("[%s]\n"
-                                  "%s=%s\n"
-                                  "%s=%s\n",
-                                  kGroup,
-                                  kKeyGood,
-                                  base::Uint64ToString(kValueGood).c_str(),
-                                  kKeyBad, kValueBad));
+  WriteKeyFile(base::StringPrintf(
+      "[%s]\n"
+      "%s=%s\n"
+      "%s=%s\n",
+      kGroup, kKeyGood, base::Uint64ToString(kValueGood).c_str(), kKeyBad,
+      kValueBad));
   ASSERT_TRUE(store_->Open());
   {
     uint64_t value = 0;
@@ -482,11 +475,11 @@ TEST_F(KeyFileStoreTest, SetUint64) {
   ASSERT_TRUE(store_->Open());
   ASSERT_TRUE(store_->SetUint64(kGroup, kKey, kValue));
   ASSERT_TRUE(store_->Close());
-  EXPECT_EQ(base::StringPrintf("[%s]\n"
-                               "%s=%s\n",
-                               kGroup, kKey,
-                               base::Uint64ToString(kValue).c_str()),
-            ReadKeyFile());
+  EXPECT_EQ(
+      base::StringPrintf("[%s]\n"
+                         "%s=%s\n",
+                         kGroup, kKey, base::Uint64ToString(kValue).c_str()),
+      ReadKeyFile());
 }
 
 TEST_F(KeyFileStoreTest, GetStringList) {
@@ -499,18 +492,16 @@ TEST_F(KeyFileStoreTest, GetStringList) {
   static const char kValue[] = "value";
   static const char kValue2[] = "value2";
   static const char kValue3[] = "value3";
-  WriteKeyFile(base::StringPrintf("[%s]\n"
-                                  "%s=\n"
-                                  "%s=;%s\n"
-                                  "%s=%s;;\n"
-                                  "%s=%s;;%s\n"
-                                  "%s=%s;%s;%s\n",
-                                  kGroup,
-                                  kKeyEmpty,
-                                  kKeyEmptyValue, kValue,
-                                  kKeyValueEmpty, kValue,
-                                  kKeyValueEmptyValue, kValue, kValue2,
-                                  kKeyValues, kValue, kValue2, kValue3));
+  WriteKeyFile(
+      base::StringPrintf("[%s]\n"
+                         "%s=\n"
+                         "%s=;%s\n"
+                         "%s=%s;;\n"
+                         "%s=%s;;%s\n"
+                         "%s=%s;%s;%s\n",
+                         kGroup, kKeyEmpty, kKeyEmptyValue, kValue,
+                         kKeyValueEmpty, kValue, kKeyValueEmptyValue, kValue,
+                         kValue2, kKeyValues, kValue, kValue2, kValue3));
   ASSERT_TRUE(store_->Open());
 
   vector<string> value;
@@ -540,9 +531,8 @@ TEST_F(KeyFileStoreTest, GetStringList) {
   EXPECT_EQ("", value[1]);
   EXPECT_EQ(kValue2, value[2]);
 
-  EXPECT_FALSE(store_->GetStringList("unknown-string-lists",
-                                     kKeyEmpty,
-                                     &value));
+  EXPECT_FALSE(
+      store_->GetStringList("unknown-string-lists", kKeyEmpty, &value));
   EXPECT_FALSE(store_->GetStringList(kGroup, "some-key", &value));
   EXPECT_TRUE(store_->GetStringList(kGroup, kKeyValues, nullptr));
   ASSERT_TRUE(store_->Close());
@@ -567,27 +557,26 @@ TEST_F(KeyFileStoreTest, SetStringList) {
   ASSERT_TRUE(
       store_->SetStringList(kGroup, kKeyValues, {kValue, kValue2, kValue3}));
   ASSERT_TRUE(store_->Close());
-  EXPECT_EQ(base::StringPrintf("[%s]\n"
-                               "%s=\n"
-                               "%s=;%s;\n"
-                               "%s=%s;;\n"
-                               "%s=%s;;%s;\n"
-                               "%s=%s;%s;%s;\n",
-                               kGroup,
-                               kKeyEmpty,
-                               kKeyEmptyValue, kValue,
-                               kKeyValueEmpty, kValue,
-                               kKeyValueEmptyValue, kValue, kValue2,
-                               kKeyValues, kValue, kValue2, kValue3),
-            ReadKeyFile());
+  EXPECT_EQ(
+      base::StringPrintf("[%s]\n"
+                         "%s=\n"
+                         "%s=;%s;\n"
+                         "%s=%s;;\n"
+                         "%s=%s;;%s;\n"
+                         "%s=%s;%s;%s;\n",
+                         kGroup, kKeyEmpty, kKeyEmptyValue, kValue,
+                         kKeyValueEmpty, kValue, kKeyValueEmptyValue, kValue,
+                         kValue2, kKeyValues, kValue, kValue2, kValue3),
+      ReadKeyFile());
 }
 
 TEST_F(KeyFileStoreTest, GetCryptedString) {
   static const char kGroup[] = "crypto-group";
   static const char kKey[] = "secret";
-  WriteKeyFile(base::StringPrintf("[%s]\n"
-                                  "%s=%s\n",
-                                  kGroup, kKey, kROT47Text));
+  WriteKeyFile(
+      base::StringPrintf("[%s]\n"
+                         "%s=%s\n",
+                         kGroup, kKey, kROT47Text));
   ASSERT_TRUE(store_->Open());
   string value;
   EXPECT_TRUE(store_->GetCryptedString(kGroup, kKey, &value));
@@ -700,30 +689,23 @@ TEST_F(KeyFileStoreTest, Combo) {
   const int kValueIntA = 5;
   const int kValueIntB = 10;
   const int kValueIntBNew = 333;
-  WriteKeyFile(base::StringPrintf("[%s]\n"
-                                  "%s=%s\n"
-                                  "%s=%s;%s\n"
-                                  "%s=%d\n"
-                                  "[%s]\n"
-                                  "%s=%s\n"
-                                  "%s=%s;%s\n"
-                                  "%s=%d\n"
-                                  "%s=true\n"
-                                  "[%s]\n"
-                                  "%s=%s\n"
-                                  "%s=false\n",
-                                  kGroupA,
-                                  kKeyString, kValueStringA,
-                                  kKeyStringList, kValueStringB, kValueStringC,
-                                  kKeyInt, kValueIntA,
-                                  kGroupB,
-                                  kKeyString, kValueStringB,
-                                  kKeyStringList, kValueStringA, kValueStringC,
-                                  kKeyInt, kValueIntB,
-                                  kKeyBool,
-                                  kGroupC,
-                                  kKeyString, kValueStringC,
-                                  kKeyBool));
+  WriteKeyFile(base::StringPrintf(
+      "[%s]\n"
+      "%s=%s\n"
+      "%s=%s;%s\n"
+      "%s=%d\n"
+      "[%s]\n"
+      "%s=%s\n"
+      "%s=%s;%s\n"
+      "%s=%d\n"
+      "%s=true\n"
+      "[%s]\n"
+      "%s=%s\n"
+      "%s=false\n",
+      kGroupA, kKeyString, kValueStringA, kKeyStringList, kValueStringB,
+      kValueStringC, kKeyInt, kValueIntA, kGroupB, kKeyString, kValueStringB,
+      kKeyStringList, kValueStringA, kValueStringC, kKeyInt, kValueIntB,
+      kKeyBool, kGroupC, kKeyString, kValueStringC, kKeyBool));
   ASSERT_TRUE(store_->Open());
 
   EXPECT_TRUE(store_->ContainsGroup(kGroupA));
@@ -792,9 +774,8 @@ TEST_F(KeyFileStoreTest, Combo) {
   EXPECT_TRUE(store_->SetBool(kGroupB, kKeyBool, false));
   EXPECT_TRUE(store_->SetInt(kGroupB, kKeyInt, kValueIntBNew));
   EXPECT_TRUE(store_->SetString(kGroupC, kKeyString, kValueStringCNew));
-  store_->SetStringList(kGroupB,
-                       kKeyStringList,
-                       vector<string>(1, kValueStringB));
+  store_->SetStringList(kGroupB, kKeyStringList,
+                        vector<string>(1, kValueStringB));
 
   EXPECT_TRUE(store_->DeleteKey(kGroupB, kKeyString));
   EXPECT_TRUE(store_->DeleteKey(kGroupB, kKeyString));
@@ -839,13 +820,9 @@ TEST_F(KeyFileStoreTest, Combo) {
                                "[%s]\n"
                                "%s=%s\n"
                                "%s=false\n",
-                               kGroupB,
-                               kKeyStringList, kValueStringB,
-                               kKeyInt, kValueIntBNew,
-                               kKeyBool,
-                               kGroupC,
-                               kKeyString, kValueStringCNew,
-                               kKeyBool),
+                               kGroupB, kKeyStringList, kValueStringB, kKeyInt,
+                               kValueIntBNew, kKeyBool, kGroupC, kKeyString,
+                               kValueStringCNew, kKeyBool),
             ReadKeyFile());
 }
 

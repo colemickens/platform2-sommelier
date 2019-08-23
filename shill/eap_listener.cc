@@ -37,11 +37,9 @@ bool EapListener::Start() {
     return false;
   }
 
-  receive_request_handler_.reset(
-    io_handler_factory_->CreateIOReadyHandler(
-        socket_,
-        IOHandler::kModeInput,
-        base::Bind(&EapListener::ReceiveRequest, base::Unretained(this))));
+  receive_request_handler_.reset(io_handler_factory_->CreateIOReadyHandler(
+      socket_, IOHandler::kModeInput,
+      base::Bind(&EapListener::ReceiveRequest, base::Unretained(this))));
 
   return true;
 }
@@ -52,10 +50,9 @@ void EapListener::Stop() {
   socket_ = -1;
 }
 
-
 bool EapListener::CreateSocket() {
-  int socket = sockets_->Socket(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC,
-      htons(ETH_P_PAE));
+  int socket =
+      sockets_->Socket(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_PAE));
   if (socket == -1) {
     PLOG(ERROR) << "Could not create EAP listener socket";
     return false;
@@ -94,8 +91,7 @@ void EapListener::ReceiveRequest(int fd) {
   socklen_t socklen = sizeof(remote_address);
   int result = sockets_->RecvFrom(
       socket_, &payload, sizeof(payload), 0,
-      reinterpret_cast<struct sockaddr*>(&remote_address),
-      &socklen);
+      reinterpret_cast<struct sockaddr*>(&remote_address), &socklen);
   if (result < 0) {
     PLOG(ERROR) << "Socket recvfrom failed";
     Stop();

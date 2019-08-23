@@ -90,11 +90,8 @@ TEST_F(DefaultProfileTest, GetProperties) {
   }
   {
     Error error(Error::kInvalidProperty, "");
-    EXPECT_FALSE(
-        profile_->mutable_store()->SetBoolProperty(
-            kOfflineModeProperty,
-            true,
-            &error));
+    EXPECT_FALSE(profile_->mutable_store()->SetBoolProperty(
+        kOfflineModeProperty, true, &error));
   }
 }
 
@@ -255,8 +252,7 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   EXPECT_TRUE(manager_props.offline_mode);
   EXPECT_EQ(portal_list, manager_props.check_portal_list);
   EXPECT_EQ(ignored_paths, manager_props.ignored_dns_search_paths);
-  EXPECT_EQ(link_monitor_technologies,
-            manager_props.link_monitor_technologies);
+  EXPECT_EQ(link_monitor_technologies, manager_props.link_monitor_technologies);
   EXPECT_EQ(no_auto_connect_technologies,
             manager_props.no_auto_connect_technologies);
   EXPECT_EQ(prohibited_technologies, manager_props.prohibited_technologies);
@@ -269,21 +265,18 @@ TEST_F(DefaultProfileTest, GetStoragePath) {
 
 TEST_F(DefaultProfileTest, ConfigureService) {
   auto storage = std::make_unique<MockStore>();
-  EXPECT_CALL(*storage, ContainsGroup(_))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*storage, Flush())
-      .WillOnce(Return(true));
+  EXPECT_CALL(*storage, ContainsGroup(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*storage, Flush()).WillOnce(Return(true));
 
   scoped_refptr<MockService> unknown_service(new MockService(manager()));
   EXPECT_CALL(*unknown_service, technology())
       .WillOnce(Return(Technology::kUnknown));
-  EXPECT_CALL(*unknown_service, Save(_)) .Times(0);
+  EXPECT_CALL(*unknown_service, Save(_)).Times(0);
 
   scoped_refptr<MockService> ethernet_service(new MockService(manager()));
   EXPECT_CALL(*ethernet_service, technology())
       .WillOnce(Return(Technology::kEthernet));
-  EXPECT_CALL(*ethernet_service, Save(storage.get()))
-      .WillOnce(Return(true));
+  EXPECT_CALL(*ethernet_service, Save(storage.get())).WillOnce(Return(true));
 
   profile_->SetStorageForTest(std::move(storage));
   EXPECT_FALSE(profile_->ConfigureService(unknown_service));

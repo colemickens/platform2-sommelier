@@ -32,9 +32,7 @@ class FakeControl : public MockControl {
   }
 
   // Can not guarantee that the returned object is alive.
-  MockUpstartProxy* upstart_proxy() const {
-    return upstart_proxy_raw_;
-  }
+  MockUpstartProxy* upstart_proxy() const { return upstart_proxy_raw_; }
 
  private:
   MockUpstartProxy* const upstart_proxy_raw_;
@@ -46,8 +44,7 @@ class FakeControl : public MockControl {
 class UpstartTest : public Test {
  public:
   UpstartTest()
-      : upstart_(&control_),
-        upstart_proxy_(control_.upstart_proxy()) {}
+      : upstart_(&control_), upstart_proxy_(control_.upstart_proxy()) {}
 
  protected:
   FakeControl control_;

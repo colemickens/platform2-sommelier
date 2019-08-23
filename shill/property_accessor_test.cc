@@ -271,7 +271,7 @@ TEST(PropertyAccessorTest, ByteArrayCorrectness) {
     ByteArrayAccessor accessor(new PropertyAccessor<ByteArray>(&byte_array));
     EXPECT_EQ(byte_array, accessor->Get(&error));
 
-    ByteArray expected_byte_array({ 0x01, 0x7F, 0x80, 0xFF });
+    ByteArray expected_byte_array({0x01, 0x7F, 0x80, 0xFF});
     EXPECT_TRUE(accessor->Set(expected_byte_array, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_byte_array, accessor->Get(&error));
@@ -285,7 +285,7 @@ TEST(PropertyAccessorTest, ByteArrayCorrectness) {
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(orig_byte_array, accessor->Get(&error));
 
-    byte_array = ByteArray({ 0xFF, 0x7F, 0x80, 0x00 });
+    byte_array = ByteArray({0xFF, 0x7F, 0x80, 0x00});
     EXPECT_EQ(byte_array, accessor->Get(&error));
   }
   {
@@ -294,13 +294,13 @@ TEST(PropertyAccessorTest, ByteArrayCorrectness) {
         new ConstPropertyAccessor<ByteArray>(&byte_array));
     EXPECT_EQ(byte_array, accessor->Get(&error));
 
-    ByteArray expected_byte_array({ 0x01, 0x7F, 0x80, 0xFF });
+    ByteArray expected_byte_array({0x01, 0x7F, 0x80, 0xFF});
     EXPECT_FALSE(accessor->Set(expected_byte_array, &error));
     ASSERT_FALSE(error.IsSuccess());
     EXPECT_EQ(Error::kInvalidArguments, error.type());
     EXPECT_EQ(byte_array, accessor->Get(&error));
 
-    byte_array = ByteArray({ 0xFF, 0x7F, 0x80, 0x00 });
+    byte_array = ByteArray({0xFF, 0x7F, 0x80, 0x00});
     EXPECT_EQ(byte_array, accessor->Get(&error));
   }
   {
@@ -320,7 +320,7 @@ TEST(PropertyAccessorTest, ByteArrayCorrectness) {
   }
   {
     Error error;
-    ByteArray expected_byte_array({ 0x01, 0x7F, 0x80, 0xFF });
+    ByteArray expected_byte_array({0x01, 0x7F, 0x80, 0xFF});
     WriteOnlyPropertyAccessor<ByteArray> accessor(&byte_array);
 
     EXPECT_TRUE(accessor.Set(expected_byte_array, &error));
@@ -336,8 +336,8 @@ TEST(PropertyAccessorTest, ByteArrayCorrectness) {
     EXPECT_EQ(ByteArray(), accessor.Get(&error));
     EXPECT_FALSE(error.IsSuccess());
 
-    byte_array = ByteArray({ 0xFF, 0x7F, 0x80, 0x00 });
-    EXPECT_EQ(ByteArray({ 0xFF, 0x7F, 0x80, 0x00 }), *accessor.property_);
+    byte_array = ByteArray({0xFF, 0x7F, 0x80, 0x00});
+    EXPECT_EQ(ByteArray({0xFF, 0x7F, 0x80, 0x00}), *accessor.property_);
   }
   {
     Error error;
@@ -345,7 +345,7 @@ TEST(PropertyAccessorTest, ByteArrayCorrectness) {
         ByteArray({0x00, 0x7F, 0x80, 0xFF});
     WriteOnlyPropertyAccessor<ByteArray> accessor(&byte_array);
 
-    EXPECT_TRUE(accessor.Set(ByteArray({ 0xFF, 0x7F, 0x80, 0x00 }), &error));
+    EXPECT_TRUE(accessor.Set(ByteArray({0xFF, 0x7F, 0x80, 0x00}), &error));
     accessor.Clear(&error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(orig_byte_array, *accessor.property_);
@@ -354,12 +354,8 @@ TEST(PropertyAccessorTest, ByteArrayCorrectness) {
 
 class StringWrapper {
  public:
-  string Get(Error* /*error*/) {
-    return value_;
-  }
-  string ConstGet(Error* /*error*/) const {
-    return value_;
-  }
+  string Get(Error* /*error*/) { return value_; }
+  string ConstGet(Error* /*error*/) const { return value_; }
   bool Set(const string& value, Error* /*error*/) {
     if (value_ == value) {
       return false;
@@ -367,9 +363,7 @@ class StringWrapper {
     value_ = value;
     return true;
   }
-  void Clear(Error* /*error*/) {
-    value_.clear();
-  }
+  void Clear(Error* /*error*/) { value_.clear(); }
 
   string value_;
 };
@@ -382,9 +376,8 @@ TEST(PropertyAccessorTest, CustomAccessorCorrectness) {
     // template passes through the value from the called function.
     Error error;
     const string orig_value = wrapper.value_ = "original value";
-    CustomAccessor<StringWrapper, string> accessor(&wrapper,
-                                                   &StringWrapper::Get,
-                                                   &StringWrapper::Set);
+    CustomAccessor<StringWrapper, string> accessor(
+        &wrapper, &StringWrapper::Get, &StringWrapper::Set);
     EXPECT_EQ(orig_value, accessor.Get(&error));
     EXPECT_TRUE(error.IsSuccess());
 
@@ -406,9 +399,8 @@ TEST(PropertyAccessorTest, CustomAccessorCorrectness) {
   {
     // Custom read-only accessor: read, write, read-updated.
     Error error;
-    CustomAccessor<StringWrapper, string> accessor(&wrapper,
-                                                   &StringWrapper::Get,
-                                                   nullptr);
+    CustomAccessor<StringWrapper, string> accessor(
+        &wrapper, &StringWrapper::Get, nullptr);
     EXPECT_EQ(wrapper.value_, accessor.Get(&error));
 
     const string expected_string = "what";
@@ -423,19 +415,16 @@ TEST(PropertyAccessorTest, CustomAccessorCorrectness) {
   {
     // Custom read-only accessor: clear.
     Error error;
-    CustomAccessor<StringWrapper, string> accessor(&wrapper,
-                                                   &StringWrapper::Get,
-                                                   nullptr);
+    CustomAccessor<StringWrapper, string> accessor(
+        &wrapper, &StringWrapper::Get, nullptr);
     accessor.Clear(&error);
     ASSERT_FALSE(error.IsSuccess());
   }
   {
     // Custom read-only accessor with custom clear method.
     Error error;
-    CustomAccessor<StringWrapper, string> accessor(&wrapper,
-                                                   &StringWrapper::Get,
-                                                   nullptr,
-                                                   &StringWrapper::Clear);
+    CustomAccessor<StringWrapper, string> accessor(
+        &wrapper, &StringWrapper::Get, nullptr, &StringWrapper::Clear);
     wrapper.value_ = "empty this";
     accessor.Clear(&error);
     ASSERT_TRUE(error.IsSuccess());
@@ -562,9 +551,7 @@ TEST(PropertyAccessorTest, CustomReadOnlyAccessor) {
 
 class StringMapWrapper {
  public:
-  void Clear(const string& key, Error* /*error*/) {
-    value_.erase(key);
-  }
+  void Clear(const string& key, Error* /*error*/) { value_.erase(key); }
   string Get(const string& key, Error* /*error*/) {
     EXPECT_TRUE(base::ContainsKey(value_, key));
     return value_[key];

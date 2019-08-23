@@ -111,9 +111,9 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
  private:
   friend class WiFiEndpointTest;
   friend class WiFiIEsFuzz;
-  friend class WiFiObjectTest;  // for MakeOpenEndpoint
+  friend class WiFiObjectTest;    // for MakeOpenEndpoint
   friend class WiFiProviderTest;  // for MakeOpenEndpoint
-  friend class WiFiServiceTest;  // for MakeOpenEndpoint
+  friend class WiFiServiceTest;   // for MakeOpenEndpoint
   // these test cases need access to the KeyManagement enum
   FRIEND_TEST(WiFiEndpointTest, DeterminePhyModeFromFrequency);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAP);
@@ -131,10 +131,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   // for 802.11k/r/v features
   FRIEND_TEST(WiFiEndpointTest, Ap80211krvSupported);
 
-  enum KeyManagement {
-    kKeyManagement802_1x,
-    kKeyManagementPSK
-  };
+  enum KeyManagement { kKeyManagement802_1x, kKeyManagementPSK };
 
   // Build a simple WiFiEndpoint, for testing purposes.
   static WiFiEndpointRefPtr MakeEndpoint(ControlInterface* control_interface,
@@ -174,8 +171,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   // the information elements, frequency and data rates.  The information
   // elements and data rates live in |properties|.
   static Metrics::WiFiNetworkPhyMode DeterminePhyModeFromFrequency(
-      const KeyValueStore& properties,
-      uint16_t frequency);
+      const KeyValueStore& properties, uint16_t frequency);
   // Parse information elements to determine the physical mode, vendor
   // information and IEEE 802.11w requirement information associated
   // with the AP.  Returns true if a physical mode was determined from

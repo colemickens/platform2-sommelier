@@ -20,17 +20,17 @@ class MockModemModemCdmaProxy : public ModemModemCdmaProxyInterface {
   MockModemModemCdmaProxy();
   ~MockModemModemCdmaProxy() override;
 
-  MOCK_METHOD4(Activate, void(
-      const std::string& carrier,
-      Error* error,
-      const ResultCallback& callback,
-      int timeout));
+  MOCK_METHOD4(Activate,
+               void(const std::string& carrier,
+                    Error* error,
+                    const ResultCallback& callback,
+                    int timeout));
 
-  MOCK_METHOD4(ActivateManual, void(
-      const KeyValueStore& properties,
-      Error* error,
-      const ResultCallback& callback,
-      int timeout));
+  MOCK_METHOD4(ActivateManual,
+               void(const KeyValueStore& properties,
+                    Error* error,
+                    const ResultCallback& callback,
+                    int timeout));
 
   MOCK_METHOD1(set_activation_state_callback,
                void(const ActivationStateSignalCallback& callback));

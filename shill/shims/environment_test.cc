@@ -21,8 +21,8 @@ class EnvironmentTest : public testing::Test {
 
 TEST_F(EnvironmentTest, GetVariable) {
   static const char* const kVarValues[] = {
-    "VALUE",
-    "",
+      "VALUE",
+      "",
   };
   static const char kVarName[] = "SHILL_SHIMS_GET_VARIABLE_TEST";
   for (size_t i = 0; i < arraysize(kVarValues); i++) {
@@ -37,14 +37,14 @@ TEST_F(EnvironmentTest, GetVariable) {
 
 TEST_F(EnvironmentTest, AsMap) {
   static const char* const kVarNames[] = {
-    "SHILL_SHIMS_AS_MAP_TEST_1",
-    "SHILL_SHIMS_AS_MAP_TEST_EMPTY",
-    "SHILL_SHIMS_AS_MAP_TEST_2",
+      "SHILL_SHIMS_AS_MAP_TEST_1",
+      "SHILL_SHIMS_AS_MAP_TEST_EMPTY",
+      "SHILL_SHIMS_AS_MAP_TEST_2",
   };
   static const char* const kVarValues[] = {
-    "VALUE 1",
-    "",
-    "VALUE 2",
+      "VALUE 1",
+      "",
+      "VALUE 2",
   };
   ASSERT_EQ(arraysize(kVarNames), arraysize(kVarValues));
   for (size_t i = 0; i < arraysize(kVarNames); i++) {

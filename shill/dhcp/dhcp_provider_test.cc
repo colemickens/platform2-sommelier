@@ -53,10 +53,8 @@ class DHCPProviderTest : public Test {
 TEST_F(DHCPProviderTest, CreateIPv4Config) {
   DhcpProperties dhcp_props;
 
-  DHCPConfigRefPtr config = provider_->CreateIPv4Config(kDeviceName,
-                                                        kStorageIdentifier,
-                                                        kArpGateway,
-                                                        dhcp_props);
+  DHCPConfigRefPtr config = provider_->CreateIPv4Config(
+      kDeviceName, kStorageIdentifier, kArpGateway, dhcp_props);
   EXPECT_NE(nullptr, config);
   EXPECT_EQ(kDeviceName, config->device_name());
   EXPECT_TRUE(provider_->configs_.empty());
@@ -67,9 +65,8 @@ TEST_F(DHCPProviderTest, DestroyLease) {
   FilePath lease_file;
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
   provider_->root_ = temp_dir.GetPath();
-  lease_file = provider_->root_.Append(base::StringPrintf(
-      DHCPProvider::kDHCPCDPathFormatLease,
-      kDeviceName));
+  lease_file = provider_->root_.Append(
+      base::StringPrintf(DHCPProvider::kDHCPCDPathFormatLease, kDeviceName));
   EXPECT_TRUE(base::CreateDirectory(lease_file.DirName()));
   EXPECT_EQ(0, base::WriteFile(lease_file, "", 0));
   EXPECT_TRUE(base::PathExists(lease_file));
@@ -83,10 +80,8 @@ TEST_F(DHCPProviderTest, BindAndUnbind) {
   EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));
   DhcpProperties dhcp_props;
 
-  DHCPConfigRefPtr config = provider_->CreateIPv4Config(kDeviceName,
-                                                        kStorageIdentifier,
-                                                        kArpGateway,
-                                                        dhcp_props);
+  DHCPConfigRefPtr config = provider_->CreateIPv4Config(
+      kDeviceName, kStorageIdentifier, kArpGateway, dhcp_props);
   provider_->BindPID(kPid, config);
   EXPECT_NE(nullptr, provider_->GetConfig(kPid));
   EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));

@@ -228,12 +228,12 @@ class ConnectionTest : public Test {
                 AddRule(device->interface_index(),
                         IsValidOifRule(IPAddress::kFamilyIPv4, priority,
                                        device->link_name())))
-          .WillOnce(Return(true));
+        .WillOnce(Return(true));
     EXPECT_CALL(routing_table_,
                 AddRule(device->interface_index(),
                         IsValidOifRule(IPAddress::kFamilyIPv6, priority,
                                        device->link_name())))
-          .WillOnce(Return(true));
+        .WillOnce(Return(true));
   }
 
   void AddPhysicalRoutingPolicyExpectations(DeviceRefPtr device,
@@ -298,12 +298,12 @@ class ConnectionTest : public Test {
                 AddRule(device->interface_index(),
                         IsValidOifRule(IPAddress::kFamilyIPv4, priority,
                                        device->link_name())))
-          .WillOnce(Return(true));
+        .WillOnce(Return(true));
     EXPECT_CALL(routing_table_,
                 AddRule(device->interface_index(),
                         IsValidOifRule(IPAddress::kFamilyIPv6, priority,
                                        device->link_name())))
-          .WillOnce(Return(true));
+        .WillOnce(Return(true));
   }
 
   ConnectionRefPtr CreateConnection(DeviceRefPtr device,
@@ -383,8 +383,7 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfig) {
 
   // Set default metric and use DNS.
   connection_->SetUseDNS(true);
-  AddNonPhysicalRoutingPolicyExpectations(device,
-                                          Connection::kDefaultMetric);
+  AddNonPhysicalRoutingPolicyExpectations(device, Connection::kDefaultMetric);
   EXPECT_CALL(resolver_,
               SetDNSFromLists(ipconfig_->properties().dns_servers,
                               ipconfig_->properties().domain_search));
@@ -538,8 +537,7 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
   EXPECT_TRUE(GetHasBroadcastDomain(connection_));
   EXPECT_FALSE(connection_->IsIPv6());
 
-  AddNonPhysicalRoutingPolicyExpectations(device,
-                                          Connection::kDefaultMetric);
+  AddNonPhysicalRoutingPolicyExpectations(device, Connection::kDefaultMetric);
   EXPECT_CALL(routing_table_,
               AddRule(device->interface_index(),
                       IsValidUidRule(IPAddress::kFamilyIPv4,
@@ -727,8 +725,7 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   auto device = CreateDevice(Technology::kUnknown);
   connection_ = CreateConnection(device);
 
-  AddNonPhysicalRoutingPolicyExpectations(device,
-                                          Connection::kDefaultMetric);
+  AddNonPhysicalRoutingPolicyExpectations(device, Connection::kDefaultMetric);
 
   std::vector<std::string> empty_list;
   EXPECT_CALL(resolver_, SetDNSFromLists(empty_list, empty_list));
@@ -757,8 +754,7 @@ TEST_F(ConnectionTest, AddConfigReverse) {
               SetDefaultRoute(device->interface_index(),
                               IsIPAddress(gateway_address_, 0),
                               Connection::kDefaultMetric, table_id));
-  AddNonPhysicalRoutingPolicyExpectations(device,
-                                          Connection::kDefaultMetric);
+  AddNonPhysicalRoutingPolicyExpectations(device, Connection::kDefaultMetric);
   EXPECT_CALL(routing_table_,
               ConfigureRoutes(device->interface_index(), ipconfig_,
                               Connection::kDefaultMetric, table_id));
@@ -792,8 +788,7 @@ TEST_F(ConnectionTest, AddConfigWithDNSDomain) {
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(_, _));
   connection_->UpdateFromIPConfig(ipconfig_);
 
-  AddNonPhysicalRoutingPolicyExpectations(device,
-                                          Connection::kDefaultMetric);
+  AddNonPhysicalRoutingPolicyExpectations(device, Connection::kDefaultMetric);
   std::vector<std::string> domain_search_list = {kDomainName + "."};
   EXPECT_CALL(resolver_, SetDNSFromLists(_, domain_search_list));
   EXPECT_CALL(*device, RequestPortalDetection()).WillOnce(Return(true));
@@ -826,8 +821,7 @@ TEST_F(ConnectionTest, AddConfigWithFixedIpParams) {
   Mock::VerifyAndClearExpectations(&rtnl_handler_);
 
   // Change metric to make this the default service.
-  AddNonPhysicalRoutingPolicyExpectations(device,
-                                          Connection::kDefaultMetric);
+  AddNonPhysicalRoutingPolicyExpectations(device, Connection::kDefaultMetric);
   EXPECT_CALL(resolver_, SetDNSFromLists(_, _));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection_->SetUseDNS(true);

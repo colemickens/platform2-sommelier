@@ -28,8 +28,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kPPP;
-static string ObjectID(PPPDevice* p) { return p->link_name(); }
+static string ObjectID(PPPDevice* p) {
+  return p->link_name();
 }
+}  // namespace Logging
 
 PPPDevice::PPPDevice(Manager* manager,
                      const string& link_name,
@@ -65,9 +67,9 @@ IPConfig::Properties PPPDevice::ParseIPConfiguration(
     const map<string, string>& configuration) {
   IPConfig::Properties properties;
   properties.address_family = IPAddress::kFamilyIPv4;
-  properties.subnet_prefix = IPAddress::GetMaxPrefixLength(
-      properties.address_family);
-  for (const auto& it : configuration)  {
+  properties.subnet_prefix =
+      IPAddress::GetMaxPrefixLength(properties.address_family);
+  for (const auto& it : configuration) {
     const string& key = it.first;
     const string& value = it.second;
     SLOG(PPP, nullptr, 2) << "Processing: " << key << " -> " << value;

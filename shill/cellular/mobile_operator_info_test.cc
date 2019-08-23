@@ -75,8 +75,8 @@ FilePath CreateTempDatabase(const unsigned char database_data[],
   FilePath tmp_db_path;
 
   CHECK(base::CreateTemporaryFile(&tmp_db_path));
-  base::WriteFile(
-      tmp_db_path, reinterpret_cast<const char*>(database_data), num_elems);
+  base::WriteFile(tmp_db_path, reinterpret_cast<const char*>(database_data),
+                  num_elems);
 
   return tmp_db_path;
 }
@@ -1036,7 +1036,7 @@ TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCAndSID) {
 
   ExpectEventCount(0);
   UpdateMCCMNC("123999");  // NO match.
-  UpdateSID("1239");  // No match.
+  UpdateSID("1239");       // No match.
   VerifyEventCount();
   VerifyNoMatch();
 
@@ -1154,9 +1154,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
 
   // This function does some extra checks for the user data that can not be done
   // when data is obtained from the database.
-  void VerifyUserData() {
-    EXPECT_EQ(sid_, operator_info_->sid());
-  }
+  void VerifyUserData() { EXPECT_EQ(sid_, operator_info_->sid()); }
 
   void VerifyNameListsMatch(
       const vector<MobileOperatorInfo::LocalizedName>& operator_name_list_lhs,
@@ -1232,7 +1230,6 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
   DISALLOW_COPY_AND_ASSIGN(MobileOperatorInfoDataTest);
 };
 
-
 TEST_P(MobileOperatorInfoDataTest, MNODetailedInformation) {
   // message: MNO with all the information filled in.
   // match by: MNO matches by MCCMNC
@@ -1278,10 +1275,10 @@ TEST_P(MobileOperatorInfoDataTest, NoUpdatesBeforeMNOMatch) {
   // - do not match MNO with mccmnc/name
   // - on different updates, verify no events.
   ExpectEventCount(0);
-  UpdateMCCMNC("200999");  // No match.
+  UpdateMCCMNC("200999");            // No match.
   UpdateOperatorName("name200001");  // matches MNO
   UpdateOperatorName("name200101");  // matches MVNO filter.
-  UpdateSID("200999");  // No match.
+  UpdateSID("200999");               // No match.
   VerifyEventCount();
   VerifyNoMatch();
 }
@@ -1290,11 +1287,11 @@ TEST_P(MobileOperatorInfoDataTest, UserUpdatesOverrideMVNO) {
   // - match MVNO.
   // - send updates to properties and verify events are raised and values of
   //   updated properties override the ones provided by the database.
-  string imsi {"2009991234512345"};
-  string iccid {"200999123456789"};
-  string olp_url {"url@url.com"};
-  string olp_method {"POST"};
-  string olp_post_data {"data"};
+  string imsi{"2009991234512345"};
+  string iccid{"200999123456789"};
+  string olp_url{"url@url.com"};
+  string olp_method{"POST"};
+  string olp_post_data{"data"};
 
   // Determine MVNO.
   ExpectEventCount(2);
@@ -1326,12 +1323,12 @@ TEST_P(MobileOperatorInfoDataTest, CachedUserUpdatesOverrideMVNO) {
   // - Then identify an MNO and MVNO.
   // - verify that all the earlier updates are cached, and override the MVNO
   //   information.
-  string imsi {"2009991234512345"};
-  string iccid {"200999123456789"};
-  string sid {"200999"};
-  string olp_url {"url@url.com"};
-  string olp_method {"POST"};
-  string olp_post_data {"data"};
+  string imsi{"2009991234512345"};
+  string iccid{"200999123456789"};
+  string sid{"200999"};
+  string olp_url{"url@url.com"};
+  string olp_method{"POST"};
+  string olp_post_data{"data"};
 
   // Send updates.
   ExpectEventCount(0);
@@ -1606,22 +1603,17 @@ class MobileOperatorInfoOverrideTest
     : public ::testing::TestWithParam<vector<std::pair<string, string>>> {
  public:
   MobileOperatorInfoOverrideTest() {
-      PopulateDatabases(
-          mobile_operator_db::init_test_override_db_init_2,
-          arraysize(mobile_operator_db::init_test_override_db_init_2),
-          mobile_operator_db::init_test_override_db_init_1,
-          arraysize(mobile_operator_db::init_test_override_db_init_1));
+    PopulateDatabases(
+        mobile_operator_db::init_test_override_db_init_2,
+        arraysize(mobile_operator_db::init_test_override_db_init_2),
+        mobile_operator_db::init_test_override_db_init_1,
+        arraysize(mobile_operator_db::init_test_override_db_init_1));
 
-      this->operator_info_impl_.reset(
-          new MobileOperatorInfoImpl(&dispatcher_,
-                                     "Operator",
-                                     db_path_,
-                                     override_db_path_));
+    this->operator_info_impl_.reset(new MobileOperatorInfoImpl(
+        &dispatcher_, "Operator", db_path_, override_db_path_));
   }
 
-  void SetUp() override {
-    operator_info_impl_->Init();
-  }
+  void SetUp() override { operator_info_impl_->Init(); }
   void TearDown() override {
     for (const auto& tmp_db_path : tmp_db_paths_) {
       base::DeleteFile(tmp_db_path, false);
@@ -1693,12 +1685,9 @@ INSTANTIATE_TEST_CASE_P(MobileOperatorInfoObserverTestInstance,
                         Values(kEventCheckingPolicyStrict));
 
 vector<std::pair<string, string>> kMccmncApnPairs = {
-  {"00", "zeroes_override"},
-  {"00", "twosies_override"},
-  {"01", "zeros_default"},
-  {"01", "onesies_default"},
-  {"02", "zeroes_override"},
-  {"02", "twosies_override"}};
+    {"00", "zeroes_override"}, {"00", "twosies_override"},
+    {"01", "zeros_default"},   {"01", "onesies_default"},
+    {"02", "zeroes_override"}, {"02", "twosies_override"}};
 
 INSTANTIATE_TEST_CASE_P(MobileOperatorInfoOverrideTestInstance,
                         MobileOperatorInfoOverrideTest,

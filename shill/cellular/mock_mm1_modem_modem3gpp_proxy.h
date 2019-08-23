@@ -20,13 +20,15 @@ class MockModemModem3gppProxy : public ModemModem3gppProxyInterface {
   MockModemModem3gppProxy();
   ~MockModemModem3gppProxy() override;
 
-  MOCK_METHOD4(Register, void(const std::string& operator_id,
-                              Error* error,
-                              const ResultCallback& callback,
-                              int timeout));
-  MOCK_METHOD3(Scan, void(Error* error,
-                          const KeyValueStoresCallback& callback,
-                          int timeout));
+  MOCK_METHOD4(Register,
+               void(const std::string& operator_id,
+                    Error* error,
+                    const ResultCallback& callback,
+                    int timeout));
+  MOCK_METHOD3(Scan,
+               void(Error* error,
+                    const KeyValueStoresCallback& callback,
+                    int timeout));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemModem3gppProxy);

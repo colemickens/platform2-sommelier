@@ -9,7 +9,11 @@
 namespace shill {
 
 MockActiveLinkMonitor::MockActiveLinkMonitor()
-    : ActiveLinkMonitor(nullptr, nullptr, nullptr, nullptr, FailureCallback(),
+    : ActiveLinkMonitor(nullptr,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        FailureCallback(),
                         SuccessCallback()) {}
 
 MockActiveLinkMonitor::~MockActiveLinkMonitor() = default;

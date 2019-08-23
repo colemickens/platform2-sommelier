@@ -36,11 +36,11 @@ using base::Unretained;
 using std::string;
 using std::vector;
 
+using ::testing::_;
 using ::testing::Expectation;
 using ::testing::Mock;
 using ::testing::Return;
 using ::testing::Test;
-using ::testing::_;
 
 namespace shill {
 
@@ -72,8 +72,7 @@ class DaemonTaskTest : public Test {
         control_(new MockControl()),
         metrics_(new MockMetrics()),
         manager_(new MockManager(control_, dispatcher_, metrics_)),
-        device_info_(manager_) {
-  }
+        device_info_(manager_) {}
   ~DaemonTaskTest() override = default;
   void SetUp() override {
     // Tests initialization done by the daemon's constructor

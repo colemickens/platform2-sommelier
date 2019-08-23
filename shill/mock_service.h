@@ -26,15 +26,16 @@ class MockService : public Service {
   MOCK_METHOD0(AutoConnect, void());
   MOCK_METHOD2(Connect, void(Error* error, const char* reason));
   MOCK_METHOD2(Disconnect, void(Error* error, const char* reason));
-  MOCK_METHOD3(DisconnectWithFailure, void(Service::ConnectFailure failure,
-                                           Error* error,
-                                           const char* reason));
+  MOCK_METHOD3(DisconnectWithFailure,
+               void(Service::ConnectFailure failure,
+                    Error* error,
+                    const char* reason));
   MOCK_METHOD2(UserInitiatedDisconnect, void(const char* reason, Error* error));
   MOCK_METHOD1(CalculateState, std::string(Error* error));
   MOCK_CONST_METHOD0(state, ConnectState());
   MOCK_METHOD1(SetState, void(ConnectState state));
-  MOCK_METHOD2(SetPortalDetectionFailure, void(const std::string& phase,
-                                               const std::string& status));
+  MOCK_METHOD2(SetPortalDetectionFailure,
+               void(const std::string& phase, const std::string& status));
   MOCK_CONST_METHOD0(IsConnected, bool());
   MOCK_CONST_METHOD0(IsConnecting, bool());
   MOCK_CONST_METHOD0(IsFailed, bool());
@@ -76,7 +77,7 @@ class MockService : public Service {
   MOCK_METHOD1(OnBeforeSuspend, void(const ResultCallback& callback));
   MOCK_METHOD0(OnAfterResume, void());
   MOCK_METHOD1(OnDefaultServiceStateChanged,
-      void(const ServiceRefPtr& service));
+               void(const ServiceRefPtr& service));
 
   // Set a string for this Service via |store|.  Can be wired to Save() for
   // test purposes.

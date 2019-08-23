@@ -42,10 +42,8 @@ TEST_P(CellularErrorMM1Test, FromDBusError) {
   TestParam param = GetParam();
 
   brillo::ErrorPtr dbus_error =
-      brillo::Error::Create(FROM_HERE,
-                            brillo::errors::dbus::kDomain,
-                            param.dbus_error,
-                            kErrorMessage);
+      brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
+                            param.dbus_error, kErrorMessage);
   Error shill_error;
   CellularError::FromMM1ChromeosDBusError(dbus_error.get(), &shill_error);
   EXPECT_EQ(param.error_type, shill_error.type());
@@ -54,13 +52,13 @@ TEST_P(CellularErrorMM1Test, FromDBusError) {
 INSTANTIATE_TEST_CASE_P(
     CellularErrorMM1Test,
     CellularErrorMM1Test,
-    testing::Values(
-        TestParam(kErrorIncorrectPasswordMM1, Error::kIncorrectPin),
-        TestParam(kErrorSimPinMM1, Error::kPinRequired),
-        TestParam(kErrorSimPukMM1, Error::kPinBlocked),
-        TestParam(kErrorGprsNotSubscribedMM1, Error::kInvalidApn),
-        TestParam(kErrorWrongStateMM1, Error::kWrongState),
-        TestParam("Some random error name.", Error::kOperationFailed)));
+    testing::Values(TestParam(kErrorIncorrectPasswordMM1, Error::kIncorrectPin),
+                    TestParam(kErrorSimPinMM1, Error::kPinRequired),
+                    TestParam(kErrorSimPukMM1, Error::kPinBlocked),
+                    TestParam(kErrorGprsNotSubscribedMM1, Error::kInvalidApn),
+                    TestParam(kErrorWrongStateMM1, Error::kWrongState),
+                    TestParam("Some random error name.",
+                              Error::kOperationFailed)));
 
 }  // namespace
 }  // namespace shill

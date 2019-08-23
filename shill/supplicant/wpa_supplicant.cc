@@ -55,18 +55,18 @@ const char WPASupplicant::kEAPStatusRemoteCertificateVerification[] =
 const char WPASupplicant::kEAPStatusRemoteTLSAlert[] = "remote TLS alert";
 const char WPASupplicant::kEAPStatusStarted[] = "started";
 const char WPASupplicant::kEnginePKCS11[] = "pkcs11";
-const char WPASupplicant::kErrorNetworkUnknown[]
-    = "fi.w1.wpa_supplicant1.NetworkUnknown";
-const char WPASupplicant::kErrorInterfaceExists[]
-    = "fi.w1.wpa_supplicant1.InterfaceExists";
-const char WPASupplicant::kInterfacePropertyAssocStatusCode[]
-    = "AssocStatusCode";
+const char WPASupplicant::kErrorNetworkUnknown[] =
+    "fi.w1.wpa_supplicant1.NetworkUnknown";
+const char WPASupplicant::kErrorInterfaceExists[] =
+    "fi.w1.wpa_supplicant1.InterfaceExists";
+const char WPASupplicant::kInterfacePropertyAssocStatusCode[] =
+    "AssocStatusCode";
 const char WPASupplicant::kInterfacePropertyAuthStatusCode[] = "AuthStatusCode";
 const char WPASupplicant::kInterfacePropertyConfigFile[] = "ConfigFile";
 const char WPASupplicant::kInterfacePropertyCurrentBSS[] = "CurrentBSS";
 const char WPASupplicant::kInterfacePropertyDepth[] = "depth";
-const char WPASupplicant::kInterfacePropertyDisconnectReason[]
-    = "DisconnectReason";
+const char WPASupplicant::kInterfacePropertyDisconnectReason[] =
+    "DisconnectReason";
 const char WPASupplicant::kInterfacePropertyRoamTime[] = "RoamTime";
 const char WPASupplicant::kInterfacePropertyRoamComplete[] = "RoamComplete";
 const char WPASupplicant::kInterfacePropertySessionLength[] = "SessionLength";
@@ -109,10 +109,10 @@ const char WPASupplicant::kNetworkPropertyEapKeyManagement[] = "key_mgmt";
 const char WPASupplicant::kNetworkPropertyEapEap[] = "eap";
 const char WPASupplicant::kNetworkPropertyEapOuterEap[] = "phase1";
 const char WPASupplicant::kNetworkPropertyEapInnerEap[] = "phase2";
-const char WPASupplicant::kNetworkPropertyEapAnonymousIdentity[]
-    = "anonymous_identity";
-const char WPASupplicant::kNetworkPropertyEapProactiveKeyCaching[]
-    = "proactive_key_caching";
+const char WPASupplicant::kNetworkPropertyEapAnonymousIdentity[] =
+    "anonymous_identity";
+const char WPASupplicant::kNetworkPropertyEapProactiveKeyCaching[] =
+    "proactive_key_caching";
 const char WPASupplicant::kNetworkPropertyEapCaCert[] = "ca_cert";
 const char WPASupplicant::kNetworkPropertyEapCaPassword[] = "password";
 const char WPASupplicant::kNetworkPropertyEapCertId[] = "cert_id";

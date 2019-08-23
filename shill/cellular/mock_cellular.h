@@ -27,10 +27,10 @@ class MockCellular : public Cellular {
 
   MOCK_METHOD1(Connect, void(Error* error));
   MOCK_METHOD2(Disconnect, void(Error* error, const char* reason));
-  MOCK_METHOD3(OnPropertiesChanged, void(
-      const std::string& interface,
-      const KeyValueStore& changed_properties,
-      const std::vector<std::string>& invalidated_properties));
+  MOCK_METHOD3(OnPropertiesChanged,
+               void(const std::string& interface,
+                    const KeyValueStore& changed_properties,
+                    const std::vector<std::string>& invalidated_properties));
   MOCK_METHOD1(set_modem_state, void(ModemState state));
   MOCK_METHOD0(DestroyService, void());
   MOCK_METHOD1(StartPPP, void(const std::string& serial_device));

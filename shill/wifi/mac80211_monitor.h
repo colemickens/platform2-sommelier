@@ -29,8 +29,9 @@ class Mac80211Monitor {
     QueueState(size_t queue_number_in,
                uint32_t stop_flags_in,
                size_t queue_length_in)
-    : queue_number(queue_number_in), stop_flags(stop_flags_in),
-      queue_length(queue_length_in) {}
+        : queue_number(queue_number_in),
+          stop_flags(stop_flags_in),
+          queue_length(queue_length_in) {}
 
     size_t queue_number;
     uint32_t stop_flags;

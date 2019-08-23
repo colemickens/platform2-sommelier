@@ -30,9 +30,9 @@ class MockPPPDevice : public PPPDevice {
   MOCK_METHOD1(SetServiceFailure, void(Service::ConnectFailure));
   MOCK_METHOD1(SetServiceFailureSilent, void(Service::ConnectFailure));
   MOCK_METHOD1(SetEnabled, void(bool));
-  MOCK_METHOD2(UpdateIPConfigFromPPP, void(
-      const std::map<std::string, std::string>& config,
-      bool blackhole_ipv6));
+  MOCK_METHOD2(UpdateIPConfigFromPPP,
+               void(const std::map<std::string, std::string>& config,
+                    bool blackhole_ipv6));
   MOCK_METHOD0(AcquireIPv6Config, bool());
 
  private:

@@ -36,8 +36,7 @@ using ActivationStateSignalCallback =
 using ResultStringmapsCallback =
     base::Callback<void(const Stringmaps&, const Error&)>;
 using BrilloAnyCallback =
-    base::Callback<void(const std::map<uint32_t, brillo::Any>&,
-                        const Error&)>;
+    base::Callback<void(const std::map<uint32_t, brillo::Any>&, const Error&)>;
 
 }  // namespace shill
 

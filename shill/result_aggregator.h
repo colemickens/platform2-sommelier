@@ -80,7 +80,8 @@ class EventDispatcher;
 class ResultAggregator : public base::RefCounted<ResultAggregator> {
  public:
   explicit ResultAggregator(const ResultCallback& callback);
-  ResultAggregator(const ResultCallback& callback, EventDispatcher* dispatcher,
+  ResultAggregator(const ResultCallback& callback,
+                   EventDispatcher* dispatcher,
                    int timeout_milliseconds);
   virtual ~ResultAggregator();
 

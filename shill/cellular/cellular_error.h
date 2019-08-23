@@ -13,8 +13,7 @@ namespace shill {
 
 class CellularError {
  public:
-  static void FromMM1ChromeosDBusError(brillo::Error* dbus_error,
-                                       Error* error);
+  static void FromMM1ChromeosDBusError(brillo::Error* dbus_error, Error* error);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CellularError);

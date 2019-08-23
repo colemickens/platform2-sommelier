@@ -13,8 +13,7 @@ using testing::Test;
 
 namespace shill {
 
-class NetlinkPacketTest : public Test {
-};
+class NetlinkPacketTest : public Test {};
 
 TEST_F(NetlinkPacketTest, Constructor) {
   // A null pointer should not crash the constructor, but should yield

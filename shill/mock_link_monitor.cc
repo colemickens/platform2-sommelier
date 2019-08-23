@@ -9,7 +9,11 @@
 namespace shill {
 
 MockLinkMonitor::MockLinkMonitor()
-    : LinkMonitor(nullptr, nullptr, nullptr, nullptr, FailureCallback(),
+    : LinkMonitor(nullptr,
+                  nullptr,
+                  nullptr,
+                  nullptr,
+                  FailureCallback(),
                   GatewayChangeCallback()) {}
 
 MockLinkMonitor::~MockLinkMonitor() = default;

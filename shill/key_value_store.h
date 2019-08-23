@@ -105,8 +105,7 @@ class KeyValueStore {
   void SetDoubles(const std::string& name, const std::vector<double>& value);
   void SetKeyValueStore(const std::string& name, const KeyValueStore& value);
   void SetRpcIdentifier(const std::string& name, const RpcIdentifier& value);
-  void SetRpcIdentifiers(const std::string& name,
-                         const RpcIdentifiers& value);
+  void SetRpcIdentifiers(const std::string& name, const RpcIdentifiers& value);
   void SetString(const std::string& name, const std::string& value);
   void SetStringmap(const std::string& name,
                     const std::map<std::string, std::string>& value);
@@ -128,9 +127,7 @@ class KeyValueStore {
   std::string LookupString(const std::string& name,
                            const std::string& default_value) const;
 
-  const brillo::VariantDictionary& properties() const {
-    return properties_;
-  }
+  const brillo::VariantDictionary& properties() const { return properties_; }
 
   // Conversion function between KeyValueStore and brillo::VariantDictionary.
   // Since we already use brillo::VariantDictionary for storing key value

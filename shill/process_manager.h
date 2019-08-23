@@ -119,8 +119,7 @@ class ProcessManager {
 
   // Replace the current exit callback for |pid| with |new_callback|.
   virtual bool UpdateExitCallback(
-      pid_t pid,
-      const base::Callback<void(int)>& new_callback);
+      pid_t pid, const base::Callback<void(int)>& new_callback);
 
  protected:
   ProcessManager();

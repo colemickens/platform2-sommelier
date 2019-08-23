@@ -85,8 +85,7 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props,
   storage()->GetString(kStorageId, kStorageHostName, &manager_props->host_name);
   storage()->GetBool(kStorageId, kStorageOfflineMode,
                      &manager_props->offline_mode);
-  if (!storage()->GetString(kStorageId,
-                            kStorageCheckPortalList,
+  if (!storage()->GetString(kStorageId, kStorageCheckPortalList,
                             &manager_props->check_portal_list)) {
     manager_props->check_portal_list = PortalDetector::kDefaultCheckPortalList;
   }
@@ -95,20 +94,17 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props,
     manager_props->connection_id_salt =
         std::uniform_int_distribution<int>()(random_engine_);
   }
-  if (!storage()->GetString(kStorageId,
-                            kStorageIgnoredDNSSearchPaths,
+  if (!storage()->GetString(kStorageId, kStorageIgnoredDNSSearchPaths,
                             &manager_props->ignored_dns_search_paths)) {
     manager_props->ignored_dns_search_paths =
         Resolver::kDefaultIgnoredSearchList;
   }
-  if (!storage()->GetString(kStorageId,
-                            kStorageLinkMonitorTechnologies,
+  if (!storage()->GetString(kStorageId, kStorageLinkMonitorTechnologies,
                             &manager_props->link_monitor_technologies)) {
     manager_props->link_monitor_technologies =
         LinkMonitor::kDefaultLinkMonitorTechnologies;
   }
-  if (!storage()->GetString(kStorageId,
-                            kStorageNoAutoConnectTechnologies,
+  if (!storage()->GetString(kStorageId, kStorageNoAutoConnectTechnologies,
                             &manager_props->no_auto_connect_technologies)) {
     manager_props->no_auto_connect_technologies = "";
   }
@@ -119,8 +115,7 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props,
   manager_props->portal_fallback_http_urls =
       PortalDetector::kDefaultFallbackHttpUrls;
 
-  if (!storage()->GetString(kStorageId,
-                            kStorageProhibitedTechnologies,
+  if (!storage()->GetString(kStorageId, kStorageProhibitedTechnologies,
                             &manager_props->prohibited_technologies)) {
     manager_props->prohibited_technologies = "";
   }
@@ -147,22 +142,17 @@ bool DefaultProfile::Save() {
   storage()->SetString(kStorageId, kStorageHostName, props_.host_name);
   storage()->SetString(kStorageId, kStorageName, GetFriendlyName());
   storage()->SetBool(kStorageId, kStorageOfflineMode, props_.offline_mode);
-  storage()->SetString(kStorageId,
-                       kStorageCheckPortalList,
+  storage()->SetString(kStorageId, kStorageCheckPortalList,
                        props_.check_portal_list);
   storage()->SetInt(kStorageId, kStorageConnectionIdSalt,
                     props_.connection_id_salt);
-  storage()->SetString(kStorageId,
-                       kStorageIgnoredDNSSearchPaths,
+  storage()->SetString(kStorageId, kStorageIgnoredDNSSearchPaths,
                        props_.ignored_dns_search_paths);
-  storage()->SetString(kStorageId,
-                       kStorageLinkMonitorTechnologies,
+  storage()->SetString(kStorageId, kStorageLinkMonitorTechnologies,
                        props_.link_monitor_technologies);
-  storage()->SetString(kStorageId,
-                       kStorageNoAutoConnectTechnologies,
+  storage()->SetString(kStorageId, kStorageNoAutoConnectTechnologies,
                        props_.no_auto_connect_technologies);
-  storage()->SetString(kStorageId,
-                       kStorageProhibitedTechnologies,
+  storage()->SetString(kStorageId, kStorageProhibitedTechnologies,
                        props_.prohibited_technologies);
   manager()->dhcp_properties().Save(storage(), kStorageId);
   return Profile::Save();

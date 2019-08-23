@@ -37,11 +37,7 @@ class TDLSManager {
  private:
   friend class TDLSManagerTest;
 
-  enum class PeerDiscoveryState {
-    kNone,
-    kRequestSent,
-    kResponseReceived
-  };
+  enum class PeerDiscoveryState { kNone, kRequestSent, kResponseReceived };
 
   static const int kPeerDiscoveryCleanupTimeoutSeconds;
 

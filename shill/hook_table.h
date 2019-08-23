@@ -75,9 +75,7 @@ class HookTable {
   // structure.
   struct HookAction {
     explicit HookAction(const base::Closure& start_callback)
-        : start_callback(start_callback),
-          started(false),
-          completed(false) {}
+        : start_callback(start_callback), started(false), completed(false) {}
     base::Closure start_callback;
     bool started;
     bool completed;

@@ -26,8 +26,8 @@ void AddLastSeenTime(GeolocationInfo* info, const base::TimeTicks& time) {
     return;
 
   DCHECK(info);
-  (*info)[kLastSeenKey] = base::StringPrintf(
-      "%" PRId64, (time - base::TimeTicks()).InSeconds());
+  (*info)[kLastSeenKey] =
+      base::StringPrintf("%" PRId64, (time - base::TimeTicks()).InSeconds());
 }
 
 GeolocationInfo PrepareGeolocationInfoForExport(const GeolocationInfo& info) {
@@ -43,7 +43,8 @@ GeolocationInfo PrepareGeolocationInfoForExport(const GeolocationInfo& info) {
 
   // Calculate the age based on the current time. We have to
   // reconstitute last_seen into a TimeTicks so we can get a TimeDelta.
-  base::TimeDelta age = base::TimeTicks::Now() -
+  base::TimeDelta age =
+      base::TimeTicks::Now() -
       (base::TimeTicks() + base::TimeDelta::FromSeconds(last_seen));
 
   GeolocationInfo new_info(info);

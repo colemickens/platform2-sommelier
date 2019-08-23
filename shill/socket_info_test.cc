@@ -10,8 +10,8 @@ namespace shill {
 
 namespace {
 
-const unsigned char kIPAddress1[] = { 192, 168, 1, 1 };
-const unsigned char kIPAddress2[] = { 192, 168, 1, 2 };
+const unsigned char kIPAddress1[] = {192, 168, 1, 1};
+const unsigned char kIPAddress2[] = {192, 168, 1, 2};
 const uint16_t kPort1 = 1000;
 const uint16_t kPort2 = 2000;
 
@@ -38,9 +38,7 @@ TEST_F(SocketInfoTest, CopyConstructor) {
                   kPort1,
                   IPAddress(IPAddress::kFamilyIPv4,
                             ByteString(kIPAddress2, sizeof(kIPAddress2))),
-                  kPort2,
-                  10,
-                  20,
+                  kPort2, 10, 20,
                   SocketInfo::kTimerStateRetransmitTimerPending);
 
   SocketInfo info_copy(info);
@@ -54,9 +52,7 @@ TEST_F(SocketInfoTest, AssignmentOperator) {
                   kPort1,
                   IPAddress(IPAddress::kFamilyIPv4,
                             ByteString(kIPAddress2, sizeof(kIPAddress2))),
-                  kPort2,
-                  10,
-                  20,
+                  kPort2, 10, 20,
                   SocketInfo::kTimerStateRetransmitTimerPending);
 
   SocketInfo info_copy = info;

@@ -28,8 +28,7 @@ bool SupplicantEAPStateHandler::ParseStatus(const std::string& status,
       // If there was a TLS error, use this instead of the generic failure.
       if (tls_error_ == WPASupplicant::kEAPStatusLocalTLSAlert) {
         *failure = Service::kFailureEAPLocalTLS;
-      } else if (tls_error_ ==
-                 WPASupplicant::kEAPStatusRemoteTLSAlert) {
+      } else if (tls_error_ == WPASupplicant::kEAPStatusRemoteTLSAlert) {
         *failure = Service::kFailureEAPRemoteTLS;
       } else {
         *failure = Service::kFailureEAPAuthentication;
@@ -40,8 +39,7 @@ bool SupplicantEAPStateHandler::ParseStatus(const std::string& status,
   } else if (status == WPASupplicant::kEAPStatusLocalTLSAlert ||
              status == WPASupplicant::kEAPStatusRemoteTLSAlert) {
     tls_error_ = status;
-  } else if (status ==
-             WPASupplicant::kEAPStatusRemoteCertificateVerification) {
+  } else if (status == WPASupplicant::kEAPStatusRemoteCertificateVerification) {
     if (parameter == WPASupplicant::kEAPParameterSuccess) {
       LOG(INFO) << "EAP: Completed remote certificate verification.";
     } else {

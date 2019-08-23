@@ -22,8 +22,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(CellularService* c) { return c->GetRpcIdentifier(); }
+static string ObjectID(CellularService* c) {
+  return c->GetRpcIdentifier();
 }
+}  // namespace Logging
 
 // statics
 const char CellularService::kAutoConnActivating[] = "activating";
@@ -71,18 +73,15 @@ CellularService::CellularService(Manager* manager, const CellularRefPtr& device)
   SetConnectable(true);
   PropertyStore* store = this->mutable_store();
   HelpRegisterDerivedString(kActivationTypeProperty,
-                            &CellularService::CalculateActivationType,
-                            nullptr);
+                            &CellularService::CalculateActivationType, nullptr);
   store->RegisterConstString(kActivationStateProperty, &activation_state_);
-  HelpRegisterDerivedStringmap(kCellularApnProperty,
-                               &CellularService::GetApn,
+  HelpRegisterDerivedStringmap(kCellularApnProperty, &CellularService::GetApn,
                                &CellularService::SetApn);
   store->RegisterConstStringmap(kCellularLastGoodApnProperty,
                                 &last_good_apn_info_);
   store->RegisterConstString(kNetworkTechnologyProperty, &network_technology_);
   HelpRegisterDerivedBool(kOutOfCreditsProperty,
-                          &CellularService::IsOutOfCredits,
-                          nullptr);
+                          &CellularService::IsOutOfCredits, nullptr);
   store->RegisterConstStringmap(kPaymentPortalProperty, &olp_);
   store->RegisterConstString(kRoamingStateProperty, &roaming_state_);
   store->RegisterConstStringmap(kServingOperatorProperty, &serving_operator_);
@@ -104,14 +103,12 @@ CellularService::CellularService(Manager* manager, const CellularRefPtr& device)
   } else {
     service_id = friendly_name();
   }
-  storage_identifier_ = SanitizeStorageIdentifier(
-      base::StringPrintf("%s_%s_%s",
-                         kTypeCellular,
-                         device->GetEquipmentIdentifier().c_str(),
-                         service_id.c_str()));
+  storage_identifier_ = SanitizeStorageIdentifier(base::StringPrintf(
+      "%s_%s_%s", kTypeCellular, device->GetEquipmentIdentifier().c_str(),
+      service_id.c_str()));
 }
 
-CellularService::~CellularService() { }
+CellularService::~CellularService() {}
 
 bool CellularService::IsAutoConnectable(const char** reason) const {
   if (!cellular_->running()) {
@@ -145,32 +142,29 @@ bool CellularService::IsMeteredByServiceProperties() const {
 
 void CellularService::HelpRegisterDerivedString(
     const string& name,
-    string(CellularService::*get)(Error* error),
-    bool(CellularService::*set)(const string& value, Error* error)) {
+    string (CellularService::*get)(Error* error),
+    bool (CellularService::*set)(const string& value, Error* error)) {
   mutable_store()->RegisterDerivedString(
-      name,
-      StringAccessor(
-          new CustomAccessor<CellularService, string>(this, get, set)));
+      name, StringAccessor(
+                new CustomAccessor<CellularService, string>(this, get, set)));
 }
 
 void CellularService::HelpRegisterDerivedStringmap(
     const string& name,
-    Stringmap(CellularService::*get)(Error* error),
-    bool(CellularService::*set)(
-        const Stringmap& value, Error* error)) {
+    Stringmap (CellularService::*get)(Error* error),
+    bool (CellularService::*set)(const Stringmap& value, Error* error)) {
   mutable_store()->RegisterDerivedStringmap(
-      name,
-      StringmapAccessor(
-          new CustomAccessor<CellularService, Stringmap>(this, get, set)));
+      name, StringmapAccessor(new CustomAccessor<CellularService, Stringmap>(
+                this, get, set)));
 }
 
 void CellularService::HelpRegisterDerivedBool(
     const string& name,
-    bool(CellularService::*get)(Error* error),
-    bool(CellularService::*set)(const bool&, Error*)) {
+    bool (CellularService::*get)(Error* error),
+    bool (CellularService::*set)(const bool&, Error*)) {
   mutable_store()->RegisterDerivedBool(
-    name,
-    BoolAccessor(new CustomAccessor<CellularService, bool>(this, get, set)));
+      name,
+      BoolAccessor(new CustomAccessor<CellularService, bool>(this, get, set)));
 }
 
 Stringmap* CellularService::GetUserSpecifiedApn() {
@@ -245,8 +239,9 @@ bool CellularService::Load(StoreInterface* storage) {
     // TODO(benchan): We can probably later switch to match profiles solely
     // based on service properties, instead of storage identifier.
     id = GetStorageIdentifier();
-    SLOG(this, 2) << __func__ << ": No service with matching properties found; "
-                                 "try storage identifier instead";
+    SLOG(this, 2) << __func__
+                  << ": No service with matching properties found; "
+                     "try storage identifier instead";
     if (!storage->ContainsGroup(id)) {
       LOG(WARNING) << "Service is not available in the persistent store: "
                    << id;
@@ -309,8 +304,8 @@ bool CellularService::Save(StoreInterface* storage) {
   const string id = GetStorageIdentifier();
   SaveApn(storage, id, GetUserSpecifiedApn(), kStorageAPN);
   SaveApn(storage, id, GetLastGoodApn(), kStorageLastGoodAPN);
-  SaveString(
-      storage, id, kStorageIccid, cellular_->sim_identifier(), false, true);
+  SaveString(storage, id, kStorageIccid, cellular_->sim_identifier(), false,
+             true);
   SaveString(storage, id, kStorageImei, cellular_->imei(), false, true);
   SaveString(storage, id, kStorageImsi, cellular_->imsi(), false, true);
   SaveString(storage, id, kStorageMeid, cellular_->meid(), false, true);
@@ -504,8 +499,7 @@ void CellularService::SetNetworkTechnology(const string& technology) {
     return;
   }
   network_technology_ = technology;
-  adaptor()->EmitStringChanged(kNetworkTechnologyProperty,
-                               technology);
+  adaptor()->EmitStringChanged(kNetworkTechnologyProperty, technology);
 }
 
 void CellularService::SetRoamingState(const string& state) {

@@ -35,8 +35,7 @@ ServiceRefPtr EthernetEapProvider::GetService(const KeyValueStore& args,
 }
 
 ServiceRefPtr EthernetEapProvider::CreateTemporaryService(
-    const KeyValueStore& args,
-    Error* error) {
+    const KeyValueStore& args, Error* error) {
   return new EthernetEapService(manager_);
 }
 

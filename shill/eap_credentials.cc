@@ -33,8 +33,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kService;
-static string ObjectID(const EapCredentials* e) { return "(eap_credentials)"; }
+static string ObjectID(const EapCredentials* e) {
+  return "(eap_credentials)";
 }
+}  // namespace Logging
 
 const char EapCredentials::kStorageEapAnonymousIdentity[] =
     "EAP.AnonymousIdentity";
@@ -49,8 +51,7 @@ const char EapCredentials::kStorageEapKeyID[] = "EAP.KeyID";
 const char EapCredentials::kStorageEapKeyManagement[] = "EAP.KeyMgmt";
 const char EapCredentials::kStorageEapPin[] = "EAP.PIN";
 const char EapCredentials::kStorageEapPassword[] = "EAP.Password";
-const char EapCredentials::kStorageEapSubjectMatch[] =
-    "EAP.SubjectMatch";
+const char EapCredentials::kStorageEapSubjectMatch[] = "EAP.SubjectMatch";
 const char EapCredentials::kStorageEapUseProactiveKeyCaching[] =
     "EAP.UseProactiveKeyCaching";
 const char EapCredentials::kStorageEapUseSystemCAs[] = "EAP.UseSystemCAs";
@@ -71,8 +72,7 @@ void EapCredentials::PopulateSupplicantProperties(
     CertificateFile* certificate_file, KeyValueStore* params) const {
   string ca_cert;
   if (!ca_cert_pem_.empty()) {
-    FilePath certfile =
-        certificate_file->CreatePEMFromStrings(ca_cert_pem_);
+    FilePath certfile = certificate_file->CreatePEMFromStrings(ca_cert_pem_);
     if (certfile.empty()) {
       LOG(ERROR) << "Unable to extract PEM certificate.";
     } else {
@@ -96,40 +96,38 @@ void EapCredentials::PopulateSupplicantProperties(
              subject_match_.c_str()),
   };
   if (use_system_cas_) {
-    propertyvals.push_back(KeyVal(
-        WPASupplicant::kNetworkPropertyCaPath, WPASupplicant::kCaPath));
+    propertyvals.push_back(
+        KeyVal(WPASupplicant::kNetworkPropertyCaPath, WPASupplicant::kCaPath));
   } else if (ca_cert.empty()) {
-    LOG(WARNING) << __func__
-                 << ": No certificate authorities are configured."
+    LOG(WARNING) << __func__ << ": No certificate authorities are configured."
                  << " Server certificates will be accepted"
                  << " unconditionally.";
   }
 
   if (ClientAuthenticationUsesCryptoToken()) {
-    propertyvals.push_back(KeyVal(
-        WPASupplicant::kNetworkPropertyEapCertId, cert_id_.c_str()));
-    propertyvals.push_back(KeyVal(
-        WPASupplicant::kNetworkPropertyEapKeyId, key_id_.c_str()));
+    propertyvals.push_back(
+        KeyVal(WPASupplicant::kNetworkPropertyEapCertId, cert_id_.c_str()));
+    propertyvals.push_back(
+        KeyVal(WPASupplicant::kNetworkPropertyEapKeyId, key_id_.c_str()));
   }
 
   if (ClientAuthenticationUsesCryptoToken() || !ca_cert_id_.empty()) {
-    propertyvals.push_back(KeyVal(
-        WPASupplicant::kNetworkPropertyEapPin, pin_.c_str()));
-    propertyvals.push_back(KeyVal(
-        WPASupplicant::kNetworkPropertyEngineId,
-        WPASupplicant::kEnginePKCS11));
+    propertyvals.push_back(
+        KeyVal(WPASupplicant::kNetworkPropertyEapPin, pin_.c_str()));
+    propertyvals.push_back(KeyVal(WPASupplicant::kNetworkPropertyEngineId,
+                                  WPASupplicant::kEnginePKCS11));
     // We can't use the propertyvals vector for this since this argument
     // is a uint32_t, not a string.
     params->SetUint(WPASupplicant::kNetworkPropertyEngine,
-                   WPASupplicant::kDefaultEngine);
+                    WPASupplicant::kDefaultEngine);
   }
 
   if (use_proactive_key_caching_) {
     params->SetUint(WPASupplicant::kNetworkPropertyEapProactiveKeyCaching,
-                   WPASupplicant::kProactiveKeyCachingEnabled);
+                    WPASupplicant::kProactiveKeyCachingEnabled);
   } else {
     params->SetUint(WPASupplicant::kNetworkPropertyEapProactiveKeyCaching,
-                   WPASupplicant::kProactiveKeyCachingDisabled);
+                    WPASupplicant::kProactiveKeyCachingDisabled);
   }
 
   if (tls_version_max_ == kEapTLSVersion1p0) {
@@ -170,14 +168,11 @@ void EapCredentials::InitPropertyStore(PropertyStore* store) {
   store->RegisterString(kEapCertIdProperty, &cert_id_);
   store->RegisterString(kEapIdentityProperty, &identity_);
   store->RegisterString(kEapKeyIdProperty, &key_id_);
-  HelpRegisterDerivedString(store,
-                            kEapKeyMgmtProperty,
+  HelpRegisterDerivedString(store, kEapKeyMgmtProperty,
                             &EapCredentials::GetKeyManagement,
                             &EapCredentials::SetKeyManagement);
-  HelpRegisterWriteOnlyDerivedString(store,
-                                     kEapPasswordProperty,
-                                     &EapCredentials::SetEapPassword,
-                                     nullptr,
+  HelpRegisterWriteOnlyDerivedString(store, kEapPasswordProperty,
+                                     &EapCredentials::SetEapPassword, nullptr,
                                      &password_);
   store->RegisterString(kEapPinProperty, &pin_);
   store->RegisterBool(kEapUseLoginPasswordProperty, &use_login_password_);
@@ -218,8 +213,7 @@ bool EapCredentials::IsConnectable() const {
       return false;
     }
   }
-  if (!cert_id_.empty() || !key_id_.empty() ||
-      !ca_cert_id_.empty()) {
+  if (!cert_id_.empty() || !key_id_.empty() || !ca_cert_id_.empty()) {
     // If PKCS#11 data is needed, a PIN is required.
     if (pin_.empty()) {
       SLOG(this, 2) << "Not connectable: PKCS#11 data but no PIN.";
@@ -254,8 +248,7 @@ bool EapCredentials::IsConnectableUsingPassphrase() const {
 
 void EapCredentials::Load(StoreInterface* storage, const string& id) {
   // Authentication properties.
-  storage->GetCryptedString(id,
-                            kStorageEapAnonymousIdentity,
+  storage->GetCryptedString(id, kStorageEapAnonymousIdentity,
                             &anonymous_identity_);
   storage->GetString(id, kStorageEapCertID, &cert_id_);
   storage->GetCryptedString(id, kStorageEapIdentity, &identity_);
@@ -286,94 +279,53 @@ void EapCredentials::OutputConnectionMetrics(Metrics* metrics,
   metrics->SendEnumToUMA(
       metrics->GetFullMetricName(Metrics::kMetricNetworkEapOuterProtocolSuffix,
                                  technology),
-      outer_protocol,
-      Metrics::kMetricNetworkEapOuterProtocolMax);
+      outer_protocol, Metrics::kMetricNetworkEapOuterProtocolMax);
 
   Metrics::EapInnerProtocol inner_protocol =
       Metrics::EapInnerProtocolStringToEnum(inner_eap_);
   metrics->SendEnumToUMA(
       metrics->GetFullMetricName(Metrics::kMetricNetworkEapInnerProtocolSuffix,
                                  technology),
-      inner_protocol,
-      Metrics::kMetricNetworkEapInnerProtocolMax);
+      inner_protocol, Metrics::kMetricNetworkEapInnerProtocolMax);
 }
 
-void EapCredentials::Save(StoreInterface* storage, const string& id,
+void EapCredentials::Save(StoreInterface* storage,
+                          const string& id,
                           bool save_credentials) const {
   // Authentication properties.
-  Service::SaveString(storage,
-                      id,
-                      kStorageEapAnonymousIdentity,
-                      anonymous_identity_,
-                      true,
+  Service::SaveString(storage, id, kStorageEapAnonymousIdentity,
+                      anonymous_identity_, true, save_credentials);
+  Service::SaveString(storage, id, kStorageEapCertID, cert_id_, false,
                       save_credentials);
-  Service::SaveString(storage,
-                      id,
-                      kStorageEapCertID,
-                      cert_id_,
-                      false,
+  Service::SaveString(storage, id, kStorageEapIdentity, identity_, true,
                       save_credentials);
-  Service::SaveString(storage,
-                      id,
-                      kStorageEapIdentity,
-                      identity_,
-                      true,
+  Service::SaveString(storage, id, kStorageEapKeyID, key_id_, false,
                       save_credentials);
-  Service::SaveString(storage,
-                      id,
-                      kStorageEapKeyID,
-                      key_id_,
-                      false,
-                      save_credentials);
-  Service::SaveString(storage,
-                      id,
-                      kStorageEapKeyManagement,
-                      key_management_,
-                      false,
-                      true);
-  Service::SaveString(storage,
-                      id,
-                      kStorageEapPassword,
-                      password_,
-                      true,
+  Service::SaveString(storage, id, kStorageEapKeyManagement, key_management_,
+                      false, true);
+  Service::SaveString(storage, id, kStorageEapPassword, password_, true,
                       save_credentials);
   Service::SaveString(storage, id, kStorageEapPin, pin_, false,
                       save_credentials);
   storage->SetBool(id, kStorageEapUseLoginPassword, use_login_password_);
 
   // Non-authentication properties.
-  Service::SaveString(storage,
-                      id,
-                      kStorageEapCACertID,
-                      ca_cert_id_,
-                      false,
+  Service::SaveString(storage, id, kStorageEapCACertID, ca_cert_id_, false,
                       true);
   if (ca_cert_pem_.empty()) {
-      storage->DeleteKey(id, kStorageEapCACertPEM);
+    storage->DeleteKey(id, kStorageEapCACertPEM);
   } else {
-      storage->SetStringList(id, kStorageEapCACertPEM, ca_cert_pem_);
+    storage->SetStringList(id, kStorageEapCACertPEM, ca_cert_pem_);
   }
   Service::SaveString(storage, id, kStorageEapEap, eap_, false, true);
-  Service::SaveString(storage,
-                      id,
-                      kStorageEapInnerEap,
-                      inner_eap_,
-                      false,
+  Service::SaveString(storage, id, kStorageEapInnerEap, inner_eap_, false,
                       true);
-  Service::SaveString(storage,
-                      id,
-                      kStorageEapTLSVersionMax,
-                      tls_version_max_,
-                      false,
-                      true);
-  Service::SaveString(storage,
-                      id,
-                      kStorageEapSubjectMatch,
-                      subject_match_,
-                      false,
-                      true);
-  storage->SetBool(
-      id, kStorageEapUseProactiveKeyCaching, use_proactive_key_caching_);
+  Service::SaveString(storage, id, kStorageEapTLSVersionMax, tls_version_max_,
+                      false, true);
+  Service::SaveString(storage, id, kStorageEapSubjectMatch, subject_match_,
+                      false, true);
+  storage->SetBool(id, kStorageEapUseProactiveKeyCaching,
+                   use_proactive_key_caching_);
   storage->SetBool(id, kStorageEapUseSystemCAs, use_system_cas_);
 }
 
@@ -437,25 +389,22 @@ bool EapCredentials::ClientAuthenticationUsesCryptoToken() const {
 void EapCredentials::HelpRegisterDerivedString(
     PropertyStore* store,
     const string& name,
-    string(EapCredentials::*get)(Error* error),
-    bool(EapCredentials::*set)(const string&, Error*)) {
+    string (EapCredentials::*get)(Error* error),
+    bool (EapCredentials::*set)(const string&, Error*)) {
   store->RegisterDerivedString(
-      name,
-      StringAccessor(new CustomAccessor<EapCredentials, string>(
-          this, get, set)));
+      name, StringAccessor(
+                new CustomAccessor<EapCredentials, string>(this, get, set)));
 }
 
 void EapCredentials::HelpRegisterWriteOnlyDerivedString(
     PropertyStore* store,
     const string& name,
-    bool(EapCredentials::*set)(const string&, Error*),
-    void(EapCredentials::*clear)(Error* error),
+    bool (EapCredentials::*set)(const string&, Error*),
+    void (EapCredentials::*clear)(Error* error),
     const string* default_value) {
   store->RegisterDerivedString(
-      name,
-      StringAccessor(
-          new CustomWriteOnlyAccessor<EapCredentials, string>(
-              this, set, clear, default_value)));
+      name, StringAccessor(new CustomWriteOnlyAccessor<EapCredentials, string>(
+                this, set, clear, default_value)));
 }
 
 }  // namespace shill

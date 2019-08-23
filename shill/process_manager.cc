@@ -22,8 +22,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kManager;
-static string ObjectID(const ProcessManager* pm) { return "process_manager"; }
+static string ObjectID(const ProcessManager* pm) {
+  return "process_manager";
 }
+}  // namespace Logging
 
 namespace {
 
@@ -103,10 +105,8 @@ pid_t ProcessManager::StartProcess(
   // Setup watcher for the child process.
   pid_t pid = process->pid();
   CHECK(process_reaper_.WatchForChild(
-      spawn_source,
-      pid,
-      base::Bind(&ProcessManager::OnProcessExited,
-                 weak_factory_.GetWeakPtr(),
+      spawn_source, pid,
+      base::Bind(&ProcessManager::OnProcessExited, weak_factory_.GetWeakPtr(),
                  pid)));
 
   // Release ownership of the child process from the |process| object, so that
@@ -160,18 +160,15 @@ pid_t ProcessManager::StartProcessInMinijailWithPipes(
   }
 
   pid_t pid;
-  if (!minijail_->RunPipesAndDestroy(
-          jail, args, &pid, std_fds.stdin_fd,
-          std_fds.stdout_fd, std_fds.stderr_fd)) {
+  if (!minijail_->RunPipesAndDestroy(jail, args, &pid, std_fds.stdin_fd,
+                                     std_fds.stdout_fd, std_fds.stderr_fd)) {
     LOG(ERROR) << "Unable to spawn " << program.value() << " in a jail.";
     return -1;
   }
 
   CHECK(process_reaper_.WatchForChild(
-      spawn_source,
-      pid,
-      base::Bind(&ProcessManager::OnProcessExited,
-                 weak_factory_.GetWeakPtr(),
+      spawn_source, pid,
+      base::Bind(&ProcessManager::OnProcessExited, weak_factory_.GetWeakPtr(),
                  pid)));
 
   watched_processes_[pid] = std::move(exit_callback);
@@ -225,8 +222,7 @@ bool ProcessManager::StopProcessAndBlock(pid_t pid) {
 
   // Try SIGTERM firstly.
   // Send SIGKILL signal if SIGTERM was not handled in a timely manner.
-  if (KillProcessWithTimeout(pid, false) ||
-      KillProcessWithTimeout(pid, true)) {
+  if (KillProcessWithTimeout(pid, false) || KillProcessWithTimeout(pid, true)) {
     return true;
   }
 
@@ -245,8 +241,8 @@ bool ProcessManager::KillProcessWithTimeout(pid_t pid, bool kill_signal) {
       return true;
     }
 
-    int poll_times = kill_signal ? kWaitpidPollTimesForSIGKILL :
-        kWaitpidPollTimesForSIGTERM;
+    int poll_times =
+        kill_signal ? kWaitpidPollTimesForSIGKILL : kWaitpidPollTimesForSIGTERM;
 
     if (WaitpidWithTimeout(pid, kWaitpidPollInitialIntervalMilliseconds,
                            kWaitpidPollIntervalUpperBoundMilliseconds,
@@ -266,7 +262,7 @@ bool ProcessManager::KillProcess(pid_t pid, int signal, bool* killed) {
       *killed = true;
       return true;
     }
-    PLOG(ERROR) << "Failed to send " << signal <<"signal to process " << pid;
+    PLOG(ERROR) << "Failed to send " << signal << "signal to process " << pid;
     return false;
   }
   return true;
@@ -291,8 +287,7 @@ bool ProcessManager::WaitpidWithTimeout(pid_t pid,
 }
 
 bool ProcessManager::UpdateExitCallback(
-    pid_t pid,
-    const base::Callback<void(int)>& new_callback) {
+    pid_t pid, const base::Callback<void(int)>& new_callback) {
   SLOG(this, 2) << __func__ << "(pid: " << pid << ")";
 
   const auto process_entry = watched_processes_.find(pid);
@@ -346,8 +341,7 @@ void ProcessManager::ProcessTerminationTimeoutHandler(pid_t pid,
 }
 
 bool ProcessManager::TerminateProcess(pid_t pid, bool kill_signal) {
-  SLOG(this, 2) << __func__
-                << "(pid: " << pid << ", "
+  SLOG(this, 2) << __func__ << "(pid: " << pid << ", "
                 << "use_sigkill: " << kill_signal << ")";
 
   int signal = (kill_signal) ? SIGKILL : SIGTERM;
@@ -360,9 +354,7 @@ bool ProcessManager::TerminateProcess(pid_t pid, bool kill_signal) {
   }
   auto termination_callback = std::make_unique<TerminationTimeoutCallback>(
       base::Bind(&ProcessManager::ProcessTerminationTimeoutHandler,
-                 weak_factory_.GetWeakPtr(),
-                 pid,
-                 kill_signal));
+                 weak_factory_.GetWeakPtr(), pid, kill_signal));
   dispatcher_->PostDelayedTask(FROM_HERE, termination_callback->callback(),
                                kTerminationTimeoutSeconds * 1000);
   pending_termination_processes_[pid] = std::move(termination_callback);

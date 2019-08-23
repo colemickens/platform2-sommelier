@@ -100,9 +100,7 @@ class PowerManagerTest : public Test {
                          dark_suspend_imminent_callback_);
   }
 
-  void TearDown() override {
-    power_manager_.Stop();
-  }
+  void TearDown() override { power_manager_.Stop(); }
 
   void AddProxyExpectationForRegisterSuspendDelay(int delay_id,
                                                   bool return_value) {
@@ -172,13 +170,9 @@ class PowerManagerTest : public Test {
     control_.delegate()->OnDarkSuspendImminent(suspend_id);
   }
 
-  void OnPowerManagerAppeared() {
-    power_manager_.OnPowerManagerAppeared();
-  }
+  void OnPowerManagerAppeared() { power_manager_.OnPowerManagerAppeared(); }
 
-  void OnPowerManagerVanished() {
-    power_manager_.OnPowerManagerVanished();
-  }
+  void OnPowerManagerVanished() { power_manager_.OnPowerManagerVanished(); }
 
   // This is non-static since it's a non-POD type.
   const base::TimeDelta kTimeout;

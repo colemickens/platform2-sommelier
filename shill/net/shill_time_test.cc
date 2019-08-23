@@ -12,8 +12,7 @@ using testing::Test;
 
 namespace shill {
 
-class TimeTest : public Test {
-};
+class TimeTest : public Test {};
 
 TEST_F(TimeTest, FormatTime) {
   const time_t kEpochStart = 0;

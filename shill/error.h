@@ -21,7 +21,7 @@ namespace shill {
 class Error {
  public:
   enum Type {
-    kSuccess = 0,  // No error.
+    kSuccess = 0,      // No error.
     kOperationFailed,  // failure, otherwise unspecified
     kAlreadyConnected,
     kAlreadyExists,
@@ -51,7 +51,7 @@ class Error {
     kNumErrors
   };
 
-  Error();  // Success by default.
+  Error();                    // Success by default.
   explicit Error(Type type);  // Uses the default message for |type|.
   Error(Type type, const std::string& message);
   ~Error();
@@ -83,7 +83,8 @@ class Error {
   // Log an error message from |from_here|.  If |error| is non-NULL, also
   // populate it.
   static void PopulateAndLog(const base::Location& from_here,
-                             Error* error, Type type,
+                             Error* error,
+                             Type type,
                              const std::string& message);
 
  private:

@@ -29,34 +29,34 @@ class MockDeviceInfo : public DeviceInfo {
   MOCK_METHOD1(RemoveDeviceFromBlackList, void(const std::string& device_name));
   MOCK_CONST_METHOD1(GetDevice, DeviceRefPtr(int interface_index));
   MOCK_CONST_METHOD1(GetIndex, int(const std::string& interface_name));
-  MOCK_CONST_METHOD2(GetMacAddress, bool(int interface_index,
-                                         ByteString* address));
+  MOCK_CONST_METHOD2(GetMacAddress,
+                     bool(int interface_index, ByteString* address));
   MOCK_CONST_METHOD1(GetMacAddressFromKernel, ByteString(int interface_index));
   MOCK_CONST_METHOD3(GetMacAddressOfPeer,
                      bool(int interface_index,
                           const IPAddress& peer,
                           ByteString* address));
-  MOCK_CONST_METHOD3(GetByteCounts, bool(int interface_index,
-                                         uint64_t* rx_bytes,
-                                         uint64_t* tx_bytes));
-  MOCK_CONST_METHOD2(GetFlags, bool(int interface_index,
-                                    unsigned int* flags));
-  MOCK_CONST_METHOD2(GetAddresses, bool(int interface_index,
-                                        std::vector<AddressData>* addresses));
+  MOCK_CONST_METHOD3(GetByteCounts,
+                     bool(int interface_index,
+                          uint64_t* rx_bytes,
+                          uint64_t* tx_bytes));
+  MOCK_CONST_METHOD2(GetFlags, bool(int interface_index, unsigned int* flags));
+  MOCK_CONST_METHOD2(GetAddresses,
+                     bool(int interface_index,
+                          std::vector<AddressData>* addresses));
   MOCK_CONST_METHOD1(FlushAddresses, void(int interface_index));
   MOCK_CONST_METHOD2(HasOtherAddress,
                      bool(int interface_index,
                           const IPAddress& excluded_address));
   MOCK_CONST_METHOD2(HasDirectConnectivityTo,
-                     bool(int interface_index,
-                          const IPAddress& address));
+                     bool(int interface_index, const IPAddress& address));
   MOCK_METHOD2(GetPrimaryIPv6Address,
                bool(int interface_index, IPAddress* address));
   MOCK_METHOD3(GetIPv6DnsServerAddresses,
                bool(int interface_index,
                     std::vector<IPAddress>* address_list,
                     uint32_t* life_time));
-  MOCK_CONST_METHOD1(CreateTunnelInterface,  bool(std::string* interface_name));
+  MOCK_CONST_METHOD1(CreateTunnelInterface, bool(std::string* interface_name));
   MOCK_CONST_METHOD1(OpenTunnelInterface,
                      int(const std::string& interface_name));
   MOCK_CONST_METHOD1(DeleteInterface, bool(int interface_index));

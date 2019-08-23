@@ -53,13 +53,15 @@ class EventHistoryTest : public ::testing::Test {
     event_history_->RecordEvent();
   }
 
-  void ExpireEventsBefore(int seconds_ago, Timestamp now,
+  void ExpireEventsBefore(int seconds_ago,
+                          Timestamp now,
                           EventHistory::ClockType clock_type) {
     EXPECT_CALL(time_, GetNow()).WillOnce(Return(now));
     event_history_->ExpireEventsBefore(seconds_ago, clock_type);
   }
 
-  void RecordEventAndExpireEventsBefore(int seconds_ago, Timestamp now,
+  void RecordEventAndExpireEventsBefore(int seconds_ago,
+                                        Timestamp now,
                                         EventHistory::ClockType clock_type) {
     EXPECT_CALL(time_, GetNow()).WillOnce(Return(now));
     event_history_->RecordEventAndExpireEventsBefore(seconds_ago, clock_type);
@@ -69,7 +71,8 @@ class EventHistoryTest : public ::testing::Test {
     return event_history_->ExtractWallClockToStrings();
   }
 
-  Timestamp GetTimestamp(int monotonic_seconds, int boottime_seconds,
+  Timestamp GetTimestamp(int monotonic_seconds,
+                         int boottime_seconds,
                          const string& wall_clock) {
     struct timeval monotonic = {.tv_sec = monotonic_seconds, .tv_usec = 0};
     struct timeval boottime = {.tv_sec = boottime_seconds, .tv_usec = 0};

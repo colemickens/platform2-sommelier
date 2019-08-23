@@ -32,8 +32,8 @@ bool Icmp::Start(const IPAddress& destination, int interface_index) {
   if (destination.family() == IPAddress::kFamilyIPv4) {
     socket = sockets_->Socket(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP);
   } else if (destination.family() == IPAddress::kFamilyIPv6) {
-    socket = sockets_->Socket(AF_INET6, SOCK_RAW | SOCK_CLOEXEC,
-        IPPROTO_ICMPV6);
+    socket =
+        sockets_->Socket(AF_INET6, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMPV6);
   } else {
     NOTREACHED();
   }
@@ -83,20 +83,16 @@ bool Icmp::TransmitV4EchoRequest(uint16_t id, uint16_t seq_num) {
          destination_.address().GetConstData(),
          sizeof(destination_address.sin_addr.s_addr));
 
-  int result = sockets_->SendTo(
-      socket_,
-      &icmp_header,
-      sizeof(icmp_header),
-      0,
-      reinterpret_cast<struct sockaddr*>(&destination_address),
-      sizeof(destination_address));
+  int result =
+      sockets_->SendTo(socket_, &icmp_header, sizeof(icmp_header), 0,
+                       reinterpret_cast<struct sockaddr*>(&destination_address),
+                       sizeof(destination_address));
   int expected_result = sizeof(icmp_header);
   if (result != expected_result) {
     if (result < 0) {
       PLOG(ERROR) << "Socket sendto failed";
     } else if (result < expected_result) {
-      LOG(ERROR) << "Socket sendto returned "
-                 << result
+      LOG(ERROR) << "Socket sendto returned " << result
                  << " which is less than the expected result "
                  << expected_result;
     }
@@ -127,10 +123,7 @@ bool Icmp::TransmitV6EchoRequest(uint16_t id, uint16_t seq_num) {
          sizeof(destination_address.sin6_addr.s6_addr));
 
   int result =
-      sockets_->SendTo(socket_,
-                       &icmp_header,
-                       sizeof(icmp_header),
-                       0,
+      sockets_->SendTo(socket_, &icmp_header, sizeof(icmp_header), 0,
                        reinterpret_cast<struct sockaddr*>(&destination_address),
                        sizeof(destination_address));
   int expected_result = sizeof(icmp_header);

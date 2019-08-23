@@ -57,7 +57,8 @@ class NetlinkPacket;
 
 class SHILL_EXPORT GenericNetlinkMessage : public NetlinkMessage {
  public:
-  GenericNetlinkMessage(uint16_t my_message_type, uint8_t command,
+  GenericNetlinkMessage(uint16_t my_message_type,
+                        uint8_t command,
                         const char* command_string)
       : NetlinkMessage(my_message_type),
         attributes_(new AttributeList),

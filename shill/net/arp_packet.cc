@@ -22,9 +22,10 @@ ArpPacket::ArpPacket()
       local_ip_address_(IPAddress::kFamilyUnknown),
       remote_ip_address_(IPAddress::kFamilyUnknown) {}
 
-ArpPacket::ArpPacket(
-    const IPAddress& local_ip, const IPAddress& remote_ip,
-    const ByteString& local_mac, const ByteString& remote_mac)
+ArpPacket::ArpPacket(const IPAddress& local_ip,
+                     const IPAddress& remote_ip,
+                     const ByteString& local_mac,
+                     const ByteString& remote_mac)
     : operation_(0),
       local_ip_address_(local_ip),
       remote_ip_address_(remote_ip),
@@ -65,8 +66,7 @@ bool ArpPacket::Parse(const ByteString& packet) {
 
   const uint16_t hardware_type = ntohs(header.ar_hrd);
   if (hardware_type != ARPHRD_ETHER) {
-    NOTIMPLEMENTED() << "Packet is of unknown ARPHRD type "
-                     << hardware_type;
+    NOTIMPLEMENTED() << "Packet is of unknown ARPHRD type " << hardware_type;
     return false;
   }
   const uint16_t protocol = ntohs(header.ar_pro);
@@ -76,8 +76,7 @@ bool ArpPacket::Parse(const ByteString& packet) {
   } else if (protocol == ETHERTYPE_IPV6) {
     family = IPAddress::kFamilyIPv6;
   } else {
-    NOTIMPLEMENTED() << "Packet has unknown protocol "
-                     << protocol;
+    NOTIMPLEMENTED() << "Packet has unknown protocol " << protocol;
     return false;
   }
   if (header.ar_hln != ETH_ALEN) {
@@ -101,21 +100,22 @@ bool ArpPacket::Parse(const ByteString& packet) {
   size_t min_packet_size =
       sizeof(header) + 2 * ip_address_length + 2 * ETH_ALEN;
   if (packet.GetLength() < min_packet_size) {
-    NOTIMPLEMENTED() << "Packet of size "
-                     << packet.GetLength()
+    NOTIMPLEMENTED() << "Packet of size " << packet.GetLength()
                      << " is too small to contain entire ARP payload; "
-                     << "expected at least "
-                     << min_packet_size;
+                     << "expected at least " << min_packet_size;
     return false;
   }
   operation_ = operation;
   local_mac_address_ = packet.GetSubstring(sizeof(header), ETH_ALEN);
-  local_ip_address_ = IPAddress(family, packet.GetSubstring(
-      sizeof(header) + ETH_ALEN, ip_address_length));
+  local_ip_address_ = IPAddress(
+      family,
+      packet.GetSubstring(sizeof(header) + ETH_ALEN, ip_address_length));
   remote_mac_address_ = packet.GetSubstring(
       sizeof(header) + ETH_ALEN + ip_address_length, ETH_ALEN);
-  remote_ip_address_ = IPAddress(family, packet.GetSubstring(
-      sizeof(header) + ETH_ALEN * 2 + ip_address_length, ip_address_length));
+  remote_ip_address_ = IPAddress(
+      family,
+      packet.GetSubstring(sizeof(header) + ETH_ALEN * 2 + ip_address_length,
+                          ip_address_length));
   return true;
 }
 

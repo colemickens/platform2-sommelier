@@ -18,36 +18,11 @@ const int kDefaultVerboseLevel = 0;
 
 // Scope names corresponding to the scope defined by ScopeLogger::Scope.
 const char* const kScopeNames[] = {
-  "cellular",
-  "connection",
-  "crypto",
-  "daemon",
-  "dbus",
-  "device",
-  "dhcp",
-  "dns",
-  "ethernet",
-  "http",
-  "inet",
-  "link",
-  "manager",
-  "metrics",
-  "modem",
-  "portal",
-  "power",
-  "ppp",
-  "pppoe",
-  "profile",
-  "property",
-  "resolver",
-  "route",
-  "rtnl",
-  "service",
-  "storage",
-  "task",
-  "tc",
-  "vpn",
-  "wifi",
+    "cellular", "connection", "crypto",   "daemon",   "dbus",  "device",
+    "dhcp",     "dns",        "ethernet", "http",     "inet",  "link",
+    "manager",  "metrics",    "modem",    "portal",   "power", "ppp",
+    "pppoe",    "profile",    "property", "resolver", "route", "rtnl",
+    "service",  "storage",    "task",     "tc",       "vpn",   "wifi",
 };
 
 static_assert(arraysize(kScopeNames) == ScopeLogger::kNumScopes,
@@ -65,12 +40,9 @@ ScopeLogger* ScopeLogger::GetInstance() {
   return instance.get();
 }
 
-ScopeLogger::ScopeLogger()
-    : verbose_level_(kDefaultVerboseLevel) {
-}
+ScopeLogger::ScopeLogger() : verbose_level_(kDefaultVerboseLevel) {}
 
-ScopeLogger::~ScopeLogger() {
-}
+ScopeLogger::~ScopeLogger() {}
 
 bool ScopeLogger::IsLogEnabled(Scope scope, int verbose_level) const {
   return IsScopeEnabled(scope) && verbose_level <= verbose_level_;

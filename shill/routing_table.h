@@ -33,8 +33,8 @@ class RTNLListener;
 class RoutingTable {
  public:
   // Callback for RequestRouteToHost completion.
-  using QueryCallback = base::Callback<void(int interface_index,
-                                            const RoutingTableEntry& entry)>;
+  using QueryCallback =
+      base::Callback<void(int interface_index, const RoutingTableEntry& entry)>;
 
   // Priority of the rule sending all traffic to the local routing table.
   static const uint32_t kRulePriorityLocal;
@@ -181,8 +181,8 @@ class RoutingTable {
   // Get the default route associated with an interface of a given addr family.
   // A pointer to the route is placed in |*entry|.
   virtual bool GetDefaultRouteInternal(int interface_index,
-                               IPAddress::Family family,
-                               RoutingTableEntry** entry);
+                                       IPAddress::Family family,
+                                       RoutingTableEntry** entry);
 
   void ReplaceMetric(uint32_t interface_index,
                      RoutingTableEntry* entry,

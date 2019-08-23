@@ -68,9 +68,8 @@ void TestCommonPropertyChanges(ServiceRefPtr service,
   Mock::VerifyAndClearExpectations(adaptor);
 
   uint8_t strength = service->strength();
-  EXPECT_CALL(*adaptor,
-              EmitUint8Changed(kSignalStrengthProperty, _));
-  service->SetStrength(strength+1);
+  EXPECT_CALL(*adaptor, EmitUint8Changed(kSignalStrengthProperty, _));
+  service->SetStrength(strength + 1);
   Mock::VerifyAndClearExpectations(adaptor);
 
   EXPECT_EQ(string(), service->error_details());
@@ -149,8 +148,7 @@ void TestCustomSetterNoopChange(ServiceRefPtr service,
     Error error;
     scoped_refptr<MockProfile> profile(new NiceMock<MockProfile>(nullptr));
     service->set_profile(profile);
-    EXPECT_FALSE(service->SetProfileRpcId(profile->GetRpcIdentifier(),
-                                           &error));
+    EXPECT_FALSE(service->SetProfileRpcId(profile->GetRpcIdentifier(), &error));
     EXPECT_TRUE(error.IsSuccess());
   }
 

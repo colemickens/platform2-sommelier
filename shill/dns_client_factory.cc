@@ -23,12 +23,8 @@ std::unique_ptr<DnsClient> DnsClientFactory::CreateDnsClient(
     int timeout_ms,
     EventDispatcher* dispatcher,
     const DnsClient::ClientCallback& callback) {
-  return std::make_unique<DnsClient>(family,
-                                     interface_name,
-                                     dns_servers,
-                                     timeout_ms,
-                                     dispatcher,
-                                     callback);
+  return std::make_unique<DnsClient>(family, interface_name, dns_servers,
+                                     timeout_ms, dispatcher, callback);
 }
 
 }  // namespace shill

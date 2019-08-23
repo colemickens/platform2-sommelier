@@ -50,8 +50,8 @@ class MobileOperatorInfoImpl {
   const std::string& nid() const;
   const std::vector<std::string>& mccmnc_list() const;
   const std::vector<std::string>& sid_list() const;
-  const std::vector<MobileOperatorInfo::LocalizedName>
-      &operator_name_list() const;
+  const std::vector<MobileOperatorInfo::LocalizedName>& operator_name_list()
+      const;
   const std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>>& apn_list()
       const;
   const std::vector<MobileOperatorInfo::OnlinePortal>& olp_list() const;
@@ -71,7 +71,6 @@ class MobileOperatorInfoImpl {
  private:
   friend class MobileOperatorInfoInitTest;
   friend class MobileOperatorInfoOverrideTest;
-
 
   // ///////////////////////////////////////////////////////////////////////////
   // Constructor
@@ -104,8 +103,8 @@ class MobileOperatorInfoImpl {
   bool UpdateMVNO();
   bool FilterMatches(const shill::mobile_operator_db::Filter& filter);
   const mobile_operator_db::MobileNetworkOperator* PickOneFromDuplicates(
-      const std::vector<const mobile_operator_db::MobileNetworkOperator*>
-          &duplicates) const;
+      const std::vector<const mobile_operator_db::MobileNetworkOperator*>&
+          duplicates) const;
   // Reloads the information about M[V]NO from the database.
   void RefreshDBInformation();
   void ClearDBInformation();
@@ -144,9 +143,7 @@ class MobileOperatorInfoImpl {
   void HandleOnlinePortalUpdate();
 
   // Accessor functions for testing purpose only.
-  mobile_operator_db::MobileOperatorDB* database() {
-    return database_.get();
-  }
+  mobile_operator_db::MobileOperatorDB* database() { return database_.get(); }
 
   // ///////////////////////////////////////////////////////////////////////////
   // Data.

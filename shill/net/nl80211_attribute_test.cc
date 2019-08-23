@@ -13,8 +13,7 @@ using testing::Test;
 
 namespace shill {
 
-class Nl80211AttributeTest : public Test {
-};
+class Nl80211AttributeTest : public Test {};
 
 TEST_F(Nl80211AttributeTest, RegInitiatorDecode) {
   Nl80211AttributeRegInitiator empty_attribute;

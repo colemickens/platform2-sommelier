@@ -24,10 +24,10 @@ class MockEthernet : public Ethernet {
                int interface_index);
   ~MockEthernet() override;
 
-  MOCK_METHOD2(Start, void(Error* error,
-                           const EnabledStateChangedCallback& callback));
-  MOCK_METHOD2(Stop, void(Error* error,
-                          const EnabledStateChangedCallback& callback));
+  MOCK_METHOD2(Start,
+               void(Error* error, const EnabledStateChangedCallback& callback));
+  MOCK_METHOD2(Stop,
+               void(Error* error, const EnabledStateChangedCallback& callback));
   MOCK_METHOD1(ConnectTo, void(EthernetService* service));
   MOCK_METHOD1(DisconnectFrom, void(EthernetService* service));
   MOCK_CONST_METHOD0(IsConnectedViaTether, bool());

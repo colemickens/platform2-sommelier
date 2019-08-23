@@ -77,7 +77,9 @@ class DnsClient {
   void HandleDnsWrite(int fd);
   void HandleTimeout();
   void ReceiveDnsReply(int status, struct hostent* hostent);
-  static void ReceiveDnsReplyCB(void* arg, int status, int timeouts,
+  static void ReceiveDnsReplyCB(void* arg,
+                                int status,
+                                int timeouts,
                                 struct hostent* hostent);
   bool RefreshHandles();
 

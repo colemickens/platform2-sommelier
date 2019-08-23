@@ -22,8 +22,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static string ObjectID(const DhcpProperties* d) { return "(dhcp_properties)"; }
+static string ObjectID(const DhcpProperties* d) {
+  return "(dhcp_properties)";
 }
+}  // namespace Logging
 
 namespace {
 
@@ -52,13 +54,10 @@ void DhcpProperties::InitPropertyStore(PropertyStore* store) {
   for (const auto& name : kPropertyNames) {
     store->RegisterDerivedString(
         GetFullPropertyName(name),
-        StringAccessor(
-            new CustomMappedAccessor<DhcpProperties, string, size_t>(
-                this,
-                &DhcpProperties::ClearMappedStringProperty,
-                &DhcpProperties::GetMappedStringProperty,
-                &DhcpProperties::SetMappedStringProperty,
-                i)));
+        StringAccessor(new CustomMappedAccessor<DhcpProperties, string, size_t>(
+            this, &DhcpProperties::ClearMappedStringProperty,
+            &DhcpProperties::GetMappedStringProperty,
+            &DhcpProperties::SetMappedStringProperty, i)));
     ++i;
   }
 }
@@ -135,12 +134,13 @@ string DhcpProperties::GetMappedStringProperty(const size_t& index,
   return string();
 }
 
-bool DhcpProperties::SetMappedStringProperty(
-    const size_t& index, const string& value, Error* error) {
+bool DhcpProperties::SetMappedStringProperty(const size_t& index,
+                                             const string& value,
+                                             Error* error) {
   CHECK(index < arraysize(kPropertyNames));
   if (properties_.ContainsString(kPropertyNames[index]) &&
       properties_.GetString(kPropertyNames[index]) == value) {
-        return false;
+    return false;
   }
   properties_.SetString(kPropertyNames[index], value);
   return true;

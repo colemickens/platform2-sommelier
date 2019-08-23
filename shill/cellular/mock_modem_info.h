@@ -42,18 +42,12 @@ class MockModemInfo : public ModemInfo {
   MockPendingActivationStore* mock_pending_activation_store() const {
     return mock_pending_activation_store_;
   }
-  MockControl* mock_control_interface() const {
-    return mock_control_.get();
-  }
+  MockControl* mock_control_interface() const { return mock_control_.get(); }
   MockEventDispatcher* mock_dispatcher() const {
     return mock_dispatcher_.get();
   }
-  MockMetrics* mock_metrics() const {
-    return mock_metrics_.get();
-  }
-  MockManager* mock_manager() const {
-    return mock_manager_.get();
-  }
+  MockMetrics* mock_metrics() const { return mock_metrics_.get(); }
+  MockManager* mock_manager() const { return mock_manager_.get(); }
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());

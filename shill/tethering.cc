@@ -21,9 +21,9 @@ const uint8_t Tethering::kLocallyAdministratedMacBit = 0x02;
 bool Tethering::IsAndroidBSSID(const vector<uint8_t>& bssid) {
   vector<uint8_t> truncated_bssid = bssid;
   truncated_bssid.resize(arraysize(kAndroidBSSIDPrefix));
-  return truncated_bssid == vector<uint8_t>(
-      kAndroidBSSIDPrefix,
-      kAndroidBSSIDPrefix + arraysize(kAndroidBSSIDPrefix));
+  return truncated_bssid ==
+         vector<uint8_t>(kAndroidBSSIDPrefix,
+                         kAndroidBSSIDPrefix + arraysize(kAndroidBSSIDPrefix));
 }
 
 // static

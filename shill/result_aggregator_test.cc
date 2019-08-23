@@ -15,10 +15,10 @@
 
 namespace shill {
 
-using testing::StrictMock;
-using testing::_;
 using base::Bind;
 using base::Unretained;
+using testing::_;
+using testing::StrictMock;
 
 namespace {
 

@@ -41,8 +41,8 @@ ByteString GenericNetlinkMessage::EncodeHeader(uint32_t sequence_number) {
   genl_header.version = 1;
   genl_header.reserved = 0;
 
-  ByteString genl_header_string(
-      reinterpret_cast<unsigned char*>(&genl_header), sizeof(genl_header));
+  ByteString genl_header_string(reinterpret_cast<unsigned char*>(&genl_header),
+                                sizeof(genl_header));
   size_t genlmsghdr_with_pad = NLMSG_ALIGN(sizeof(genl_header));
   genl_header_string.Resize(genlmsghdr_with_pad);  // Zero-fill.
 

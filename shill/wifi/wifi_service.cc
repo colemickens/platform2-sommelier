@@ -40,8 +40,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kService;
-static string ObjectID(const WiFiService* w) { return w->GetRpcIdentifier(); }
+static string ObjectID(const WiFiService* w) {
+  return w->GetRpcIdentifier();
 }
+}  // namespace Logging
 
 const char WiFiService::kAutoConnNoEndpoint[] = "no endpoints";
 const char WiFiService::kAnyDeviceAddress[] = "any";
@@ -90,11 +92,9 @@ WiFiService::WiFiService(Manager* manager,
   store->RegisterConstString(kModeProperty, &mode_);
   HelpRegisterWriteOnlyDerivedString(kPassphraseProperty,
                                      &WiFiService::SetPassphrase,
-                                     &WiFiService::ClearPassphrase,
-                                     nullptr);
+                                     &WiFiService::ClearPassphrase, nullptr);
   store->RegisterBool(kPassphraseRequiredProperty, &need_passphrase_);
-  HelpRegisterConstDerivedString(kSecurityProperty,
-                                 &WiFiService::GetSecurity);
+  HelpRegisterConstDerivedString(kSecurityProperty, &WiFiService::GetSecurity);
   HelpRegisterConstDerivedString(kSecurityClassProperty,
                                  &WiFiService::GetSecurityClass);
 
@@ -115,13 +115,11 @@ WiFiService::WiFiService(Manager* manager,
   HelpRegisterDerivedString(kWifiPreferredDeviceProperty,
                             &WiFiService::GetPreferredDevice,
                             &WiFiService::SetPreferredDevice);
-  HelpRegisterDerivedUint16(kWifiRoamThresholdProperty,
-                            &WiFiService::GetRoamThreshold,
-                            &WiFiService::SetRoamThreshold,
-                            &WiFiService::ClearRoamThreshold);
+  HelpRegisterDerivedUint16(
+      kWifiRoamThresholdProperty, &WiFiService::GetRoamThreshold,
+      &WiFiService::SetRoamThreshold, &WiFiService::ClearRoamThreshold);
 
-  string ssid_string(
-      reinterpret_cast<const char*>(ssid_.data()), ssid_.size());
+  string ssid_string(reinterpret_cast<const char*>(ssid_.data()), ssid_.size());
   WiFi::SanitizeSSID(&ssid_string);
   set_friendly_name(ssid_string);
 
@@ -244,8 +242,7 @@ string WiFiService::GetStorageIdentifier() const {
 bool WiFiService::SetPassphrase(const string& passphrase, Error* error) {
   if (security_ == kSecurityWep) {
     ValidateWEPPassphrase(passphrase, error);
-  } else if (security_ == kSecurityPsk ||
-             security_ == kSecurityWpa ||
+  } else if (security_ == kSecurityPsk || security_ == kSecurityWpa ||
              security_ == kSecurityRsn) {
     ValidateWPAPassphrase(passphrase, error);
   } else {
@@ -261,8 +258,7 @@ bool WiFiService::SetPassphrase(const string& passphrase, Error* error) {
 }
 
 bool WiFiService::SetPassphraseInternal(
-    const string& passphrase,
-    Service::UpdateCredentialsReason reason) {
+    const string& passphrase, Service::UpdateCredentialsReason reason) {
   if (passphrase_ == passphrase) {
     // After a user logs in, Chrome may reconfigure a Service with the
     // same credentials as before login. When that occurs, we don't
@@ -316,14 +312,12 @@ string WiFiService::GetLoadableStorageIdentifier(
     const StoreInterface& storage) const {
   set<string> groups = storage.GetGroupsWithProperties(GetStorageProperties());
   if (groups.empty()) {
-    LOG(WARNING) << "Configuration for service "
-                 << unique_name()
+    LOG(WARNING) << "Configuration for service " << unique_name()
                  << " is not available in the persistent store";
     return "";
   }
   if (groups.size() > 1) {
-    LOG(WARNING) << "More than one configuration for service "
-                 << unique_name()
+    LOG(WARNING) << "More than one configuration for service " << unique_name()
                  << " is available; choosing the first.";
   }
   return *groups.begin();
@@ -452,12 +446,9 @@ void WiFiService::ResetSuspectedCredentialFailures() {
 void WiFiService::InitializeCustomMetrics() const {
   SLOG(Metrics, this, 2) << __func__ << " for " << unique_name();
   string histogram = metrics()->GetFullMetricName(
-      Metrics::kMetricTimeToJoinMillisecondsSuffix,
-      technology());
-  metrics()->AddServiceStateTransitionTimer(*this,
-                                            histogram,
-                                            Service::kStateAssociating,
-                                            Service::kStateConfiguring);
+      Metrics::kMetricTimeToJoinMillisecondsSuffix, technology());
+  metrics()->AddServiceStateTransitionTimer(
+      *this, histogram, Service::kStateAssociating, Service::kStateConfiguring);
 }
 
 void WiFiService::SendPostReadyStateMetrics(
@@ -485,8 +476,7 @@ void WiFiService::SendPostReadyStateMetrics(
   metrics()->SendEnumToUMA(
       metrics()->GetFullMetricName(Metrics::kMetricNetworkSecuritySuffix,
                                    technology()),
-      security_uma,
-      Metrics::kMetricNetworkSecurityMax);
+      security_uma, Metrics::kMetricNetworkSecurityMax);
 
   if (Is8021x()) {
     eap()->OutputConnectionMetrics(metrics(), technology());
@@ -498,8 +488,7 @@ void WiFiService::SendPostReadyStateMetrics(
   metrics()->SendToUMA(
       metrics()->GetFullMetricName(Metrics::kMetricNetworkSignalStrengthSuffix,
                                    technology()),
-      -raw_signal_strength_,
-      Metrics::kMetricNetworkSignalStrengthMin,
+      -raw_signal_strength_, Metrics::kMetricNetworkSignalStrengthMin,
       Metrics::kMetricNetworkSignalStrengthMax,
       Metrics::kMetricNetworkSignalStrengthNumBuckets);
 
@@ -516,18 +505,16 @@ void WiFiService::SendPostReadyStateMetrics(
 
 // private methods
 void WiFiService::HelpRegisterConstDerivedString(
-    const string& name,
-    string(WiFiService::*get)(Error*)) {
+    const string& name, string (WiFiService::*get)(Error*)) {
   mutable_store()->RegisterDerivedString(
-      name,
-      StringAccessor(
-          new CustomAccessor<WiFiService, string>(this, get, nullptr)));
+      name, StringAccessor(
+                new CustomAccessor<WiFiService, string>(this, get, nullptr)));
 }
 
 void WiFiService::HelpRegisterDerivedString(
     const string& name,
-    string(WiFiService::*get)(Error* error),
-    bool(WiFiService::*set)(const string&, Error*)) {
+    string (WiFiService::*get)(Error* error),
+    bool (WiFiService::*set)(const string&, Error*)) {
   mutable_store()->RegisterDerivedString(
       name,
       StringAccessor(new CustomAccessor<WiFiService, string>(this, get, set)));
@@ -535,21 +522,19 @@ void WiFiService::HelpRegisterDerivedString(
 
 void WiFiService::HelpRegisterWriteOnlyDerivedString(
     const string& name,
-    bool(WiFiService::*set)(const string&, Error*),
-    void(WiFiService::*clear)(Error* error),
+    bool (WiFiService::*set)(const string&, Error*),
+    void (WiFiService::*clear)(Error* error),
     const string* default_value) {
   mutable_store()->RegisterDerivedString(
-      name,
-      StringAccessor(
-          new CustomWriteOnlyAccessor<WiFiService, string>(
-              this, set, clear, default_value)));
+      name, StringAccessor(new CustomWriteOnlyAccessor<WiFiService, string>(
+                this, set, clear, default_value)));
 }
 
 void WiFiService::HelpRegisterDerivedUint16(
     const string& name,
-    uint16_t(WiFiService::*get)(Error* error),
-    bool(WiFiService::*set)(const uint16_t& value, Error* error),
-    void(WiFiService::*clear)(Error* error)) {
+    uint16_t (WiFiService::*get)(Error* error),
+    bool (WiFiService::*set)(const uint16_t& value, Error* error),
+    void (WiFiService::*clear)(Error* error)) {
   mutable_store()->RegisterDerivedUint16(
       name, Uint16Accessor(new CustomAccessor<WiFiService, uint16_t>(
                 this, get, set, clear)));
@@ -567,9 +552,7 @@ void WiFiService::OnConnect(Error* error) {
     if (!wifi) {
       LOG(ERROR) << "Can't connect. Service " << unique_name()
                  << " cannot find a WiFi device.";
-      Error::PopulateAndLog(FROM_HERE,
-                            error,
-                            Error::kOperationFailed,
+      Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                             Error::GetDefaultMessage(Error::kOperationFailed));
       return;
     }
@@ -579,9 +562,7 @@ void WiFiService::OnConnect(Error* error) {
     LOG(WARNING) << "Can't connect.  Service " << unique_name()
                  << " is the current service (but, in " << GetStateString()
                  << " state, not connected).";
-    Error::PopulateAndLog(FROM_HERE,
-                          error,
-                          Error::kInProgress,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInProgress,
                           Error::GetDefaultMessage(Error::kInProgress));
     return;
   }
@@ -608,12 +589,10 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
 
   if (Is8021x()) {
     eap()->PopulateSupplicantProperties(certificate_file_.get(), &params);
-  } else if (security_ == kSecurityPsk ||
-             security_ == kSecurityRsn ||
+  } else if (security_ == kSecurityPsk || security_ == kSecurityRsn ||
              security_ == kSecurityWpa) {
     const string psk_proto =
-        base::StringPrintf("%s %s",
-                           WPASupplicant::kSecurityModeWPA,
+        base::StringPrintf("%s %s", WPASupplicant::kSecurityModeWPA,
                            WPASupplicant::kSecurityModeRSN);
     params.SetString(WPASupplicant::kPropertySecurityProtocol, psk_proto);
     params.SetString(WPASupplicant::kPropertyPreSharedKey, passphrase_);
@@ -624,9 +603,9 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
     int key_index;
     std::vector<uint8_t> password_bytes;
     ParseWEPPassphrase(passphrase_, &key_index, &password_bytes, &unused_error);
-    params.SetUint8s(WPASupplicant::kPropertyWEPKey +
-                         base::IntToString(key_index),
-                     password_bytes);
+    params.SetUint8s(
+        WPASupplicant::kPropertyWEPKey + base::IntToString(key_index),
+        password_bytes);
     params.SetUint(WPASupplicant::kPropertyWEPTxKeyIndex, key_index);
   } else if (security_ == kSecurityNone) {
     // Nothing special to do here.
@@ -637,13 +616,13 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
   string key_mgmt = key_management();
   if (manager()->GetFTEnabled() && ft_enabled_) {
     if (key_mgmt == WPASupplicant::kKeyManagementWPAPSK)
-      key_mgmt = base::StringPrintf("%s %s",
-                                    WPASupplicant::kKeyManagementWPAPSK,
-                                    WPASupplicant::kKeyManagementFTPSK);
+      key_mgmt =
+          base::StringPrintf("%s %s", WPASupplicant::kKeyManagementWPAPSK,
+                             WPASupplicant::kKeyManagementFTPSK);
     else if (key_mgmt == WPASupplicant::kKeyManagementWPAEAP)
-      key_mgmt = base::StringPrintf("%s %s",
-                                    WPASupplicant::kKeyManagementWPAEAP,
-                                    WPASupplicant::kKeyManagementFTEAP);
+      key_mgmt =
+          base::StringPrintf("%s %s", WPASupplicant::kKeyManagementWPAEAP,
+                             WPASupplicant::kKeyManagementFTEAP);
   }
   params.SetString(WPASupplicant::kNetworkPropertyEapKeyManagement, key_mgmt);
 
@@ -666,11 +645,11 @@ void WiFiService::OnDisconnect(Error* error, const char* /*reason*/) {
     // any endpoints, we could end up with a disconnect request without
     // a wifi_ reference.  This is not a fatal error.
     LOG_IF(ERROR, IsConnecting())
-         << "WiFi endpoints do not (yet) exist.  Cannot disconnect service "
-         << unique_name();
+        << "WiFi endpoints do not (yet) exist.  Cannot disconnect service "
+        << unique_name();
     LOG_IF(FATAL, IsConnected())
-         << "WiFi device does not exist.  Cannot disconnect service "
-         << unique_name();
+        << "WiFi device does not exist.  Cannot disconnect service "
+        << unique_name();
     error->Populate(Error::kOperationFailed);
     return;
   }
@@ -693,10 +672,8 @@ void WiFiService::UpdateConnectable() {
     is_connectable = true;
   } else if (Is8021x()) {
     is_connectable = Is8021xConnectable();
-  } else if (security_ == kSecurityWep ||
-             security_ == kSecurityWpa ||
-             security_ == kSecurityPsk ||
-             security_ == kSecurityRsn) {
+  } else if (security_ == kSecurityWep || security_ == kSecurityWpa ||
+             security_ == kSecurityPsk || security_ == kSecurityRsn) {
     need_passphrase_ = passphrase_.empty();
     is_connectable = !need_passphrase_;
   }
@@ -721,7 +698,7 @@ void WiFiService::UpdateFromEndpoints() {
           continue;
         }
       } else if (endpoint->device() &&
-          endpoint->device()->link_name() == preferred_device_) {
+                 endpoint->device()->link_name() == preferred_device_) {
         // Found first endpoint associated with preferred device.
         preferred_device_found = true;
         best_signal = std::numeric_limits<int16_t>::min();
@@ -740,16 +717,14 @@ void WiFiService::UpdateFromEndpoints() {
     if (((current_endpoint_ == representative_endpoint) &&
          (bssid_ != representative_endpoint->bssid_string() ||
           frequency_ != representative_endpoint->frequency())) ||
-        abs(representative_endpoint->signal_strength() -
-            raw_signal_strength_) > 10) {
-        LOG(INFO)
-            << "Rep ep updated for " << unique_name()
-            << ". "
-            << WiFi::LogSSID(representative_endpoint->ssid_string()) << ", "
-            << "bssid: " << representative_endpoint->bssid_string() << ", "
-            << "sig: " << representative_endpoint->signal_strength() << ", "
-            << "sec: " << representative_endpoint->security_mode() << ", "
-            << "freq: " << representative_endpoint->frequency();
+        abs(representative_endpoint->signal_strength() - raw_signal_strength_) >
+            10) {
+      LOG(INFO) << "Rep ep updated for " << unique_name() << ". "
+                << WiFi::LogSSID(representative_endpoint->ssid_string()) << ", "
+                << "bssid: " << representative_endpoint->bssid_string() << ", "
+                << "sig: " << representative_endpoint->signal_strength() << ", "
+                << "sec: " << representative_endpoint->security_mode() << ", "
+                << "freq: " << representative_endpoint->frequency();
     }
   } else if (IsConnected() || IsConnecting()) {
     LOG(WARNING) << "Service " << unique_name()
@@ -831,8 +806,7 @@ void WiFiService::UpdateSecurity() {
     algorithm = kCryptoRc4;
     key_rotation = Is8021x();
     endpoint_auth = Is8021x();
-  } else if (security_ == kSecurityPsk ||
-             security_ == kSecurityWpa) {
+  } else if (security_ == kSecurityPsk || security_ == kSecurityWpa) {
     algorithm = kCryptoRc4;
     key_rotation = true;
     endpoint_auth = false;
@@ -851,7 +825,6 @@ void WiFiService::UpdateSecurity() {
 // static
 Service::CryptoAlgorithm WiFiService::ComputeCipher8021x(
     const set<WiFiEndpointConstRefPtr>& endpoints) {
-
   if (endpoints.empty())
     return kCryptoNone;  // Will update after scan results.
 
@@ -934,7 +907,7 @@ void WiFiService::ParseWEPPassphrase(const string& passphrase,
     case IEEE_80211::kWEP40HexLen + 2:
     case IEEE_80211::kWEP104HexLen + 2:
       if (CheckWEPKeyIndex(passphrase, error) &&
-         CheckWEPIsHex(passphrase.substr(2), error)) {
+          CheckWEPIsHex(passphrase.substr(2), error)) {
         base::StringToInt(passphrase.substr(0, 1), &key_index_local);
         password_text = passphrase.substr(2);
         is_hex = true;
@@ -967,8 +940,7 @@ void WiFiService::ParseWEPPassphrase(const string& passphrase,
       if (is_hex)
         base::HexStringToBytes(password_text, password_bytes);
       else
-        password_bytes->insert(password_bytes->end(),
-                               password_text.begin(),
+        password_bytes->insert(password_bytes->end(), password_text.begin(),
                                password_text.end());
     }
   }
@@ -1012,18 +984,16 @@ bool WiFiService::CheckWEPPrefix(const string& passphrase, Error* error) {
 
 // static
 string WiFiService::ComputeSecurityClass(const string& security) {
-  if (security == kSecurityRsn ||
-      security == kSecurityWpa) {
+  if (security == kSecurityRsn || security == kSecurityWpa) {
     return kSecurityPsk;
   } else {
     return security;
   }
 }
 
-
 int16_t WiFiService::SignalLevel() const {
-  return current_endpoint_ ? current_endpoint_->signal_strength() :
-      std::numeric_limits<int16_t>::min();
+  return current_endpoint_ ? current_endpoint_->signal_strength()
+                           : std::numeric_limits<int16_t>::min();
 }
 
 // static
@@ -1054,8 +1024,8 @@ bool WiFiService::FixupServiceEntries(StoreInterface* storage) {
   set<string> groups = storage->GetGroups();
   for (const auto& id : groups) {
     string device_address, network_mode, security;
-    if (!ParseStorageIdentifier(id, &device_address,
-                                &network_mode, &security)) {
+    if (!ParseStorageIdentifier(id, &device_address, &network_mode,
+                                &security)) {
       continue;
     }
     if (!storage->GetString(id, kStorageType, nullptr)) {
@@ -1086,18 +1056,15 @@ bool WiFiService::IsValidMode(const string& mode) {
 
 // static
 bool WiFiService::IsValidSecurityMethod(const string& method) {
-  return method == kSecurityNone ||
-      method == kSecurityWep ||
-      method == kSecurityPsk ||
-      method == kSecurityWpa ||
-      method == kSecurityRsn ||
-      method == kSecurity8021x;
+  return method == kSecurityNone || method == kSecurityWep ||
+         method == kSecurityPsk || method == kSecurityWpa ||
+         method == kSecurityRsn || method == kSecurity8021x;
 }
 
 // static
 bool WiFiService::IsValidSecurityClass(const string& security_class) {
   return IsValidSecurityMethod(security_class) &&
-      ComputeSecurityClass(security_class) == security_class;
+         ComputeSecurityClass(security_class) == security_class;
 }
 
 // static
@@ -1133,12 +1100,9 @@ KeyValueStore WiFiService::GetStorageProperties() const {
 
 string WiFiService::GetDefaultStorageIdentifier() const {
   string security = ComputeSecurityClass(security_);
-  return base::ToLowerASCII(base::StringPrintf("%s_%s_%s_%s_%s",
-                                               kTypeWifi,
-                                               kAnyDeviceAddress,
-                                               hex_ssid_.c_str(),
-                                               mode_.c_str(),
-                                               security.c_str()));
+  return base::ToLowerASCII(
+      base::StringPrintf("%s_%s_%s_%s_%s", kTypeWifi, kAnyDeviceAddress,
+                         hex_ssid_.c_str(), mode_.c_str(), security.c_str()));
 }
 
 string WiFiService::GetSecurity(Error* /*error*/) {

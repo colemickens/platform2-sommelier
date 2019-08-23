@@ -35,7 +35,7 @@ static string ObjectID(DHCPConfig* d) {
   else
     return d->device_name();
 }
-}
+}  // namespace Logging
 
 namespace {
 
@@ -118,9 +118,8 @@ bool DHCPConfig::ReleaseIP(ReleaseReason reason) {
 
   // If we are using gateway unicast ARP to speed up re-connect, don't
   // give up our leases when we disconnect.
-  bool should_keep_lease =
-      reason == IPConfig::kReleaseReasonDisconnect &&
-                ShouldKeepLeaseOnDisconnect();
+  bool should_keep_lease = reason == IPConfig::kReleaseReasonDisconnect &&
+                           ShouldKeepLeaseOnDisconnect();
 
   if (!should_keep_lease && proxy_.get()) {
     proxy_->Release(device_name());
@@ -174,8 +173,7 @@ bool DHCPConfig::Start() {
 
   uint64_t capmask = CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
                      CAP_TO_MASK(CAP_NET_BROADCAST) |
-                     CAP_TO_MASK(CAP_NET_ADMIN) |
-                     CAP_TO_MASK(CAP_NET_RAW);
+                     CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
   pid_t pid = process_manager_->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kDHCPCDPath), args, kDHCPCDUser, kDHCPCDGroup,
       capmask, false, false,
@@ -252,13 +250,11 @@ vector<string> DHCPConfig::GetFlags() {
 
 void DHCPConfig::StartAcquisitionTimeout() {
   CHECK(lease_expiration_callback_.IsCancelled());
-  lease_acquisition_timeout_callback_.Reset(
-      Bind(&DHCPConfig::ProcessAcquisitionTimeout,
-           weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(
-      FROM_HERE,
-      lease_acquisition_timeout_callback_.callback(),
-      lease_acquisition_timeout_seconds_ * 1000);
+  lease_acquisition_timeout_callback_.Reset(Bind(
+      &DHCPConfig::ProcessAcquisitionTimeout, weak_ptr_factory_.GetWeakPtr()));
+  dispatcher_->PostDelayedTask(FROM_HERE,
+                               lease_acquisition_timeout_callback_.callback(),
+                               lease_acquisition_timeout_seconds_ * 1000);
 }
 
 void DHCPConfig::StopAcquisitionTimeout() {
@@ -277,16 +273,12 @@ void DHCPConfig::ProcessAcquisitionTimeout() {
 
 void DHCPConfig::StartExpirationTimeout(uint32_t lease_duration_seconds) {
   CHECK(lease_acquisition_timeout_callback_.IsCancelled());
-  SLOG(this, 2) << __func__ << ": " << device_name()
-                << ": " << "Lease timeout is " << lease_duration_seconds
-                << " seconds.";
-  lease_expiration_callback_.Reset(
-      Bind(&DHCPConfig::ProcessExpirationTimeout,
-           weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(
-      FROM_HERE,
-      lease_expiration_callback_.callback(),
-      lease_duration_seconds * 1000);
+  SLOG(this, 2) << __func__ << ": " << device_name() << ": "
+                << "Lease timeout is " << lease_duration_seconds << " seconds.";
+  lease_expiration_callback_.Reset(Bind(&DHCPConfig::ProcessExpirationTimeout,
+                                        weak_ptr_factory_.GetWeakPtr()));
+  dispatcher_->PostDelayedTask(FROM_HERE, lease_expiration_callback_.callback(),
+                               lease_duration_seconds * 1000);
 }
 
 void DHCPConfig::StopExpirationTimeout() {

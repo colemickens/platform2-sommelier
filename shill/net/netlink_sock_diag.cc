@@ -33,7 +33,7 @@ SockDiagRequest CreateDumpRequest(uint8_t family,
                                   uint8_t protocol,
                                   int sequence_number) {
   CHECK(family == AF_INET || family == AF_INET6)
-    << "Unsupported SOCK_DIAG family " << family;
+      << "Unsupported SOCK_DIAG family " << family;
 
   SockDiagRequest request;
   request.header.nlmsg_len = sizeof(SockDiagRequest);
@@ -46,8 +46,7 @@ SockDiagRequest CreateDumpRequest(uint8_t family,
   return request;
 }
 
-SockDiagRequest CreateDestroyRequest(uint8_t family,
-                                     uint8_t protocol) {
+SockDiagRequest CreateDestroyRequest(uint8_t family, uint8_t protocol) {
   SockDiagRequest request;
   request.header.nlmsg_len = sizeof(SockDiagRequest);
   request.header.nlmsg_type = SOCK_DESTROY;
@@ -93,8 +92,8 @@ std::unique_ptr<NetlinkSockDiag> NetlinkSockDiag::Create(
     return nullptr;
   }
 
-  int file_descriptor = OpenNetlinkSocketFD(
-      sockets.get(), NETLINK_SOCK_DIAG, 0);
+  int file_descriptor =
+      OpenNetlinkSocketFD(sockets.get(), NETLINK_SOCK_DIAG, 0);
   if (file_descriptor == Sockets::kInvalidFileDescriptor)
     return nullptr;
 
@@ -107,8 +106,7 @@ NetlinkSockDiag::~NetlinkSockDiag() {
   sockets_->Close(file_descriptor_);
 }
 
-bool NetlinkSockDiag::DestroySockets(uint8_t protocol,
-                                     const IPAddress& saddr) {
+bool NetlinkSockDiag::DestroySockets(uint8_t protocol, const IPAddress& saddr) {
   uint8_t family;
   if (saddr.family() == IPAddress::kFamilyIPv4) {
     family = AF_INET;
@@ -143,15 +141,12 @@ bool NetlinkSockDiag::GetSockets(
     uint8_t protocol,
     std::vector<struct inet_diag_sockid>* out_socks) {
   CHECK(out_socks);
-  SockDiagRequest request = CreateDumpRequest(family, protocol,
-                                              ++sequence_number_);
-  if (sockets_->Send(file_descriptor_,
-                     static_cast<void*>(&request),
-                     sizeof(request),
-                     0) < 0) {
+  SockDiagRequest request =
+      CreateDumpRequest(family, protocol, ++sequence_number_);
+  if (sockets_->Send(file_descriptor_, static_cast<void*>(&request),
+                     sizeof(request), 0) < 0) {
     PLOG(ERROR) << "Failed to write sock_diag request to netlink socket "
-                << "(family: " << family << ", protocol: " << protocol
-                << ")";
+                << "(family: " << family << ", protocol: " << protocol << ")";
     return false;
   }
 
@@ -165,12 +160,8 @@ bool NetlinkSockDiag::ReadDumpContents(
   out_socks->clear();
 
   for (;;) {
-    ssize_t bytes_read = sockets_->RecvFrom(file_descriptor_,
-                                            buf,
-                                            sizeof(buf),
-                                            0,
-                                            nullptr,
-                                            nullptr);
+    ssize_t bytes_read = sockets_->RecvFrom(file_descriptor_, buf, sizeof(buf),
+                                            0, nullptr, nullptr);
     if (bytes_read < 0) {
       PLOG(ERROR) << "Failed to read from netlink socket";
       return false;
@@ -179,32 +170,31 @@ bool NetlinkSockDiag::ReadDumpContents(
     size_t unsigned_bytes = base::checked_cast<size_t>(bytes_read);
 
     for (nlmsghdr* nlh = reinterpret_cast<nlmsghdr*>(buf);
-         NLMSG_OK(nlh, unsigned_bytes);
-         nlh = NLMSG_NEXT(nlh, unsigned_bytes)) {
+         NLMSG_OK(nlh, unsigned_bytes); nlh = NLMSG_NEXT(nlh, unsigned_bytes)) {
       switch (nlh->nlmsg_type) {
-      case NLMSG_DONE:
-        return true;
-      case NLMSG_ERROR:
-      {
-        const nlmsgerr* err = reinterpret_cast<const nlmsgerr*>NLMSG_DATA(nlh);
-        const char* err_msg = "Error parsing sock_diag netlink socket dump";
-        if (nlh->nlmsg_len < NLMSG_LENGTH(sizeof(*err))) {
-          LOG(ERROR) << err_msg;
-        } else {
-          errno = -err->error;
-          PLOG(ERROR) << err_msg;
+        case NLMSG_DONE:
+          return true;
+        case NLMSG_ERROR: {
+          const nlmsgerr* err =
+              reinterpret_cast<const nlmsgerr*> NLMSG_DATA(nlh);
+          const char* err_msg = "Error parsing sock_diag netlink socket dump";
+          if (nlh->nlmsg_len < NLMSG_LENGTH(sizeof(*err))) {
+            LOG(ERROR) << err_msg;
+          } else {
+            errno = -err->error;
+            PLOG(ERROR) << err_msg;
+          }
+          return false;
         }
-        return false;
-      }
-      case SOCK_DIAG_BY_FAMILY:
-        struct inet_diag_msg current_msg;
-        memcpy(&current_msg, NLMSG_DATA(nlh), sizeof(current_msg));
-        out_socks->push_back(current_msg.id);
-        break;
-      default:
-        LOG(WARNING) << "Ignoring unexpected netlink message type "
-                     << nlh->nlmsg_type;
-        break;
+        case SOCK_DIAG_BY_FAMILY:
+          struct inet_diag_msg current_msg;
+          memcpy(&current_msg, NLMSG_DATA(nlh), sizeof(current_msg));
+          out_socks->push_back(current_msg.id);
+          break;
+        default:
+          LOG(WARNING) << "Ignoring unexpected netlink message type "
+                       << nlh->nlmsg_type;
+          break;
       }
     }
   }

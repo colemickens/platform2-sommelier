@@ -24,10 +24,9 @@ ServiceUnderTest::ServiceUnderTest(Manager* manager)
   mutable_store()->RegisterStrings(kStringsProperty, &strings_);
   mutable_store()->RegisterDerivedKeyValueStore(
       kKeyValueStoreProperty,
-      KeyValueStoreAccessor(
-          new CustomAccessor<ServiceUnderTest, KeyValueStore>(
-              this, &ServiceUnderTest::GetKeyValueStore,
-              &ServiceUnderTest::SetKeyValueStore)));
+      KeyValueStoreAccessor(new CustomAccessor<ServiceUnderTest, KeyValueStore>(
+          this, &ServiceUnderTest::GetKeyValueStore,
+          &ServiceUnderTest::SetKeyValueStore)));
 
   SetConnectable(true);
 }
@@ -42,10 +41,12 @@ RpcIdentifier ServiceUnderTest::GetDeviceRpcId(Error* /*error*/) const {
   return RpcIdentifier(kRpcId);
 }
 
-string ServiceUnderTest::GetStorageIdentifier() const { return kStorageId; }
+string ServiceUnderTest::GetStorageIdentifier() const {
+  return kStorageId;
+}
 
-bool ServiceUnderTest::SetKeyValueStore(
-    const KeyValueStore& value, Error* error) {
+bool ServiceUnderTest::SetKeyValueStore(const KeyValueStore& value,
+                                        Error* error) {
   key_value_store_.Clear();
   key_value_store_.CopyFrom(value);
   return true;

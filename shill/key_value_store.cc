@@ -484,7 +484,7 @@ KeyValueStore KeyValueStore::ConvertFromVariantDictionary(
 
 // static.
 RpcIdentifiers KeyValueStore::ConvertPathsToRpcIdentifiers(
-  const vector<dbus::ObjectPath>& paths) {
+    const vector<dbus::ObjectPath>& paths) {
   RpcIdentifiers rpc_identifiers;
   for (const auto& path : paths) {
     rpc_identifiers.push_back(path.value());

@@ -50,9 +50,7 @@ class Modem1Test : public Test {
   void SetUp() override;
   void TearDown() override;
 
-  void ReplaceSingletons() {
-    modem_->rtnl_handler_ = &rtnl_handler_;
-  }
+  void ReplaceSingletons() { modem_->rtnl_handler_ = &rtnl_handler_; }
 
  protected:
   EventDispatcherForTest dispatcher_;
@@ -69,14 +67,13 @@ void Modem1Test::SetUp() {
   ReplaceSingletons();
   expected_address_ = ByteString(kAddress, arraysize(kAddress));
 
-  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(kLinkName)).
-      WillRepeatedly(Return(kTestInterfaceIndex));
+  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(kLinkName))
+      .WillRepeatedly(Return(kTestInterfaceIndex));
 
   EXPECT_CALL(*modem_info_.mock_manager(), device_info())
       .WillRepeatedly(Return(&device_info_));
-  EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex, _)).
-      WillOnce(DoAll(SetArgPointee<1>(expected_address_),
-                     Return(true)));
+  EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex, _))
+      .WillOnce(DoAll(SetArgPointee<1>(expected_address_), Return(true)));
 }
 
 void Modem1Test::TearDown() {
@@ -90,14 +87,13 @@ TEST_F(Modem1Test, CreateDeviceMM1) {
   modem_properties.SetUint(MM_MODEM_PROPERTY_UNLOCKREQUIRED,
                            MM_MODEM_LOCK_NONE);
   std::vector<std::tuple<std::string, uint32_t>> ports = {
-      std::make_tuple(kLinkName, MM_MODEM_PORT_TYPE_NET) };
+      std::make_tuple(kLinkName, MM_MODEM_PORT_TYPE_NET)};
   modem_properties.Set(MM_MODEM_PROPERTY_PORTS, brillo::Any(ports));
   properties[MM_DBUS_INTERFACE_MODEM] = modem_properties;
 
   KeyValueStore modem3gpp_properties;
-  modem3gpp_properties.SetUint(
-      MM_MODEM_MODEM3GPP_PROPERTY_REGISTRATIONSTATE,
-      MM_MODEM_3GPP_REGISTRATION_STATE_HOME);
+  modem3gpp_properties.SetUint(MM_MODEM_MODEM3GPP_PROPERTY_REGISTRATIONSTATE,
+                               MM_MODEM_3GPP_REGISTRATION_STATE_HOME);
   properties[MM_DBUS_INTERFACE_MODEM_MODEM3GPP] = modem3gpp_properties;
 
   EXPECT_CALL(*(modem_info_.mock_control_interface()),

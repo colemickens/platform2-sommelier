@@ -39,5 +39,3 @@ void SetLogLevelFromCommandLine(base::CommandLine* cl) {
 }
 
 }  // namespace shill
-
-

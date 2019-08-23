@@ -20,8 +20,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(const CellularBearer* c) { return "(cellular_bearer)"; }
+static string ObjectID(const CellularBearer* c) {
+  return "(cellular_bearer)";
 }
+}  // namespace Logging
 
 namespace {
 
@@ -63,8 +65,8 @@ CellularBearer::CellularBearer(ControlInterface* control_interface,
 CellularBearer::~CellularBearer() = default;
 
 bool CellularBearer::Init() {
-  SLOG(this, 3) << __func__ << ": path='" << dbus_path_
-                << "', service='" << dbus_service_ << "'";
+  SLOG(this, 3) << __func__ << ": path='" << dbus_path_ << "', service='"
+                << dbus_service_ << "'";
 
   dbus_properties_proxy_ =
       control_interface_->CreateDBusPropertiesProxy(dbus_path_, dbus_service_);
@@ -76,8 +78,8 @@ bool CellularBearer::Init() {
     return false;
   }
 
-  dbus_properties_proxy_->set_properties_changed_callback(base::Bind(
-      &CellularBearer::OnPropertiesChanged, base::Unretained(this)));
+  dbus_properties_proxy_->set_properties_changed_callback(
+      base::Bind(&CellularBearer::OnPropertiesChanged, base::Unretained(this)));
   UpdateProperties();
   return true;
 }
@@ -108,7 +110,7 @@ void CellularBearer::GetIPConfigMethodAndProperties(
       !properties.ContainsString(kPropertyGateway)) {
     SLOG(this, 2) << "Bearer '" << dbus_path_
                   << "' static IP configuration does not specify valid "
-                         "address/gateway information.";
+                     "address/gateway information.";
     *ipconfig_method = IPConfig::kMethodUnknown;
     return;
   }
@@ -134,16 +136,16 @@ void CellularBearer::GetIPConfigMethodAndProperties(
   (*ipconfig_properties)->subnet_prefix = prefix;
 
   if (properties.ContainsString(kPropertyDNS1)) {
-    (*ipconfig_properties)->dns_servers.push_back(
-        properties.GetString(kPropertyDNS1));
+    (*ipconfig_properties)
+        ->dns_servers.push_back(properties.GetString(kPropertyDNS1));
   }
   if (properties.ContainsString(kPropertyDNS2)) {
-    (*ipconfig_properties)->dns_servers.push_back(
-        properties.GetString(kPropertyDNS2));
+    (*ipconfig_properties)
+        ->dns_servers.push_back(properties.GetString(kPropertyDNS2));
   }
   if (properties.ContainsString(kPropertyDNS3)) {
-    (*ipconfig_properties)->dns_servers.push_back(
-        properties.GetString(kPropertyDNS3));
+    (*ipconfig_properties)
+        ->dns_servers.push_back(properties.GetString(kPropertyDNS3));
   }
 }
 
@@ -170,9 +172,7 @@ void CellularBearer::UpdateProperties() {
     return;
   }
 
-  OnPropertiesChanged(MM_DBUS_INTERFACE_BEARER,
-                      properties,
-                      vector<string>());
+  OnPropertiesChanged(MM_DBUS_INTERFACE_BEARER, properties, vector<string>());
 }
 
 void CellularBearer::OnPropertiesChanged(
@@ -198,16 +198,14 @@ void CellularBearer::OnPropertiesChanged(
   if (changed_properties.ContainsKeyValueStore(MM_BEARER_PROPERTY_IP4CONFIG)) {
     KeyValueStore ipconfig =
         changed_properties.GetKeyValueStore(MM_BEARER_PROPERTY_IP4CONFIG);
-    GetIPConfigMethodAndProperties(ipconfig,
-                                   IPAddress::kFamilyIPv4,
+    GetIPConfigMethodAndProperties(ipconfig, IPAddress::kFamilyIPv4,
                                    &ipv4_config_method_,
                                    &ipv4_config_properties_);
   }
   if (changed_properties.ContainsKeyValueStore(MM_BEARER_PROPERTY_IP6CONFIG)) {
     KeyValueStore ipconfig =
         changed_properties.GetKeyValueStore(MM_BEARER_PROPERTY_IP6CONFIG);
-    GetIPConfigMethodAndProperties(ipconfig,
-                                   IPAddress::kFamilyIPv6,
+    GetIPConfigMethodAndProperties(ipconfig, IPAddress::kFamilyIPv6,
                                    &ipv6_config_method_,
                                    &ipv6_config_properties_);
   }

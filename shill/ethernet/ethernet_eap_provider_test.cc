@@ -24,8 +24,7 @@ namespace shill {
 class EthernetEapProviderTest : public testing::Test {
  public:
   EthernetEapProviderTest()
-      : manager_(&control_, &dispatcher_, &metrics_),
-        provider_(&manager_) {}
+      : manager_(&control_, &dispatcher_, &metrics_), provider_(&manager_) {}
   ~EthernetEapProviderTest() override = default;
 
   MOCK_METHOD0(Callback0, void());
@@ -73,8 +72,7 @@ TEST_F(EthernetEapProviderTest, CredentialChangeCallback) {
   scoped_refptr<MockEthernet> device0 =
       new MockEthernet(&manager_, "eth0", "addr0", 0);
   EthernetEapProvider::CredentialChangeCallback callback0 =
-      base::Bind(&EthernetEapProviderTest::Callback0,
-                 base::Unretained(this));
+      base::Bind(&EthernetEapProviderTest::Callback0, base::Unretained(this));
 
   provider_.SetCredentialChangeCallback(device0.get(), callback0);
   EXPECT_CALL(*this, Callback0());
@@ -84,8 +82,7 @@ TEST_F(EthernetEapProviderTest, CredentialChangeCallback) {
   scoped_refptr<MockEthernet> device1 =
       new MockEthernet(&manager_, "eth1", "addr1", 1);
   EthernetEapProvider::CredentialChangeCallback callback1 =
-      base::Bind(&EthernetEapProviderTest::Callback1,
-                 base::Unretained(this));
+      base::Bind(&EthernetEapProviderTest::Callback1, base::Unretained(this));
 
   provider_.SetCredentialChangeCallback(device1.get(), callback1);
   EXPECT_CALL(*this, Callback0());

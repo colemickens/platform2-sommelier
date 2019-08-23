@@ -18,9 +18,7 @@ namespace shill {
 class IOReadyHandler : public IOHandler,
                        public base::MessageLoopForIO::Watcher {
  public:
-  IOReadyHandler(int fd,
-                 ReadyMode mode,
-                 const ReadyCallback& ready_callback);
+  IOReadyHandler(int fd, ReadyMode mode, const ReadyCallback& ready_callback);
   ~IOReadyHandler();
 
   void Start() override;

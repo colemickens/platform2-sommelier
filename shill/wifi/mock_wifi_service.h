@@ -28,15 +28,13 @@ class MockWiFiService : public WiFiService {
   MOCK_METHOD1(SetFailure, void(ConnectFailure failure));
   MOCK_METHOD1(SetFailureSilent, void(ConnectFailure failure));
   MOCK_METHOD1(SetState, void(ConnectState state));
-  MOCK_METHOD2(AddEAPCertification, bool(const std::string& name,
-                                         size_t depth));
+  MOCK_METHOD2(AddEAPCertification,
+               bool(const std::string& name, size_t depth));
   MOCK_METHOD0(HasRecentConnectionIssues, bool());
   MOCK_METHOD0(AddSuspectedCredentialFailure, bool());
   MOCK_METHOD0(ResetSuspectedCredentialFailures, void());
-  MOCK_METHOD1(AddEndpoint,
-               void(const WiFiEndpointConstRefPtr& endpoint));
-  MOCK_METHOD1(RemoveEndpoint,
-               void(const WiFiEndpointConstRefPtr& endpoint));
+  MOCK_METHOD1(AddEndpoint, void(const WiFiEndpointConstRefPtr& endpoint));
+  MOCK_METHOD1(RemoveEndpoint, void(const WiFiEndpointConstRefPtr& endpoint));
   MOCK_METHOD1(NotifyCurrentEndpoint,
                void(const WiFiEndpointConstRefPtr& endpoint));
   MOCK_METHOD1(NotifyEndpointUpdated,

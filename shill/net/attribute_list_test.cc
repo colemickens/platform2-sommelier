@@ -36,7 +36,7 @@ class AttributeListTest : public Test {
   static ByteString MakeNetlinkAttribute(uint16_t len,
                                          uint16_t type,
                                          const std::string& payload) {
-    nlattr attribute{ len, type };
+    nlattr attribute{len, type};
     ByteString data(reinterpret_cast<const char*>(&attribute),
                     sizeof(attribute));
     data.Append(ByteString(payload, false));
@@ -67,8 +67,8 @@ TEST_F(AttributeListTest, IterateEmptyPayload) {
 
 TEST_F(AttributeListTest, IteratePayload) {
   ByteString payload;
-  payload.Append(MakePaddedNetlinkAttribute(
-      kHeaderLength + 10, kType1, "0123456789"));
+  payload.Append(
+      MakePaddedNetlinkAttribute(kHeaderLength + 10, kType1, "0123456789"));
   const uint16_t kLength1 = kHeaderLength + 10 + 2;  // 2 bytes padding.
   ASSERT_EQ(kLength1, payload.GetLength());
   payload.Append(MakePaddedNetlinkAttribute(kHeaderLength + 3, kType2, "123"));
@@ -126,8 +126,8 @@ TEST_F(AttributeListTest, SmallPayloads) {
   Mock::VerifyAndClearExpectations(this);
 
   // This is a minimal valid payload.
-  EXPECT_CALL(*this, AttributeMethod(
-      kType2, PayloadIs(""))).WillOnce(Return(true));
+  EXPECT_CALL(*this, AttributeMethod(kType2, PayloadIs("")))
+      .WillOnce(Return(true));
   EXPECT_TRUE(list->IterateAttributes(
       MakeNetlinkAttribute(kHeaderLength, kType2, ""), 0,
       base::Bind(&AttributeListTest::AttributeMethod, base::Unretained(this))));

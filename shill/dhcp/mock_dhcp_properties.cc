@@ -13,4 +13,3 @@ MockDhcpProperties::MockDhcpProperties() = default;
 MockDhcpProperties::~MockDhcpProperties() = default;
 
 }  // namespace shill
-

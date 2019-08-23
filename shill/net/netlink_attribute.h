@@ -41,8 +41,10 @@ class SHILL_EXPORT NetlinkAttribute {
     kTypeError
   };
 
-  NetlinkAttribute(int id, const char* id_string,
-                   Type datatype, const char* datatype_string);
+  NetlinkAttribute(int id,
+                   const char* id_string,
+                   Type datatype,
+                   const char* datatype_string);
   virtual ~NetlinkAttribute() = default;
 
   // Static factories generate the appropriate attribute object from the
@@ -285,7 +287,9 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
 
     NestedData();
     NestedData(Type type, std::string attribute_name, bool is_array);
-    NestedData(Type type, std::string attribute_name, bool is_array,
+    NestedData(Type type,
+               std::string attribute_name,
+               bool is_array,
                const AttributeParser& parse_attribute);
     Type type;
     std::string attribute_name;
@@ -322,10 +326,9 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
   // The data is parsed using the expected configuration in |nested_template|.
   // If the code expects an array, it will pass a single template element and
   // mark that as an array.
-  static bool InitNestedFromValue(
-      const AttributeListRefPtr& list,
-      const NestedData::NestedDataMap& templates,
-      const ByteString& value);
+  static bool InitNestedFromValue(const AttributeListRefPtr& list,
+                                  const NestedData::NestedDataMap& templates,
+                                  const ByteString& value);
 
   AttributeListRefPtr value_;
   NestedData::NestedDataMap nested_template_;
@@ -334,15 +337,21 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
   // Helper functions used by InitNestedFromValue to add a single child
   // attribute to a nested attribute.
   static bool AddAttributeToNestedMap(
-    const NetlinkNestedAttribute::NestedData::NestedDataMap& templates,
-    const AttributeListRefPtr& list, int id, const ByteString& value);
+      const NetlinkNestedAttribute::NestedData::NestedDataMap& templates,
+      const AttributeListRefPtr& list,
+      int id,
+      const ByteString& value);
   static bool AddAttributeToNestedArray(
-    const NetlinkNestedAttribute::NestedData& array_template,
-    const AttributeListRefPtr& list, int id, const ByteString& value);
+      const NetlinkNestedAttribute::NestedData& array_template,
+      const AttributeListRefPtr& list,
+      int id,
+      const ByteString& value);
   static bool AddAttributeToNestedInner(
-    const NetlinkNestedAttribute::NestedData& nested_template,
-    const std::string& attribute_name, const AttributeListRefPtr& list,
-    int id, const ByteString& value);
+      const NetlinkNestedAttribute::NestedData& nested_template,
+      const std::string& attribute_name,
+      const AttributeListRefPtr& list,
+      int id,
+      const ByteString& value);
 
   DISALLOW_COPY_AND_ASSIGN(NetlinkNestedAttribute);
 };

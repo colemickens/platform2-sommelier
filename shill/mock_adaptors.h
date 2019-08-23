@@ -31,19 +31,18 @@ class DeviceMockAdaptor : public DeviceAdaptorInterface {
   MOCK_METHOD2(EmitUint16Changed,
                void(const std::string& name, uint16_t value));
   MOCK_METHOD2(EmitIntChanged, void(const std::string& name, int value));
-  MOCK_METHOD2(EmitStringChanged, void(const std::string& name,
-                                       const std::string& value));
-  MOCK_METHOD2(EmitStringmapChanged, void(const std::string& name,
-                                          const Stringmap& value));
-  MOCK_METHOD2(EmitStringmapsChanged, void(const std::string& name,
-                                           const Stringmaps& value));
-  MOCK_METHOD2(EmitStringsChanged, void(const std::string& name,
-                                        const Strings& value));
-  MOCK_METHOD2(EmitKeyValueStoreChanged, void(const std::string& name,
-                                              const KeyValueStore& value));
+  MOCK_METHOD2(EmitStringChanged,
+               void(const std::string& name, const std::string& value));
+  MOCK_METHOD2(EmitStringmapChanged,
+               void(const std::string& name, const Stringmap& value));
+  MOCK_METHOD2(EmitStringmapsChanged,
+               void(const std::string& name, const Stringmaps& value));
+  MOCK_METHOD2(EmitStringsChanged,
+               void(const std::string& name, const Strings& value));
+  MOCK_METHOD2(EmitKeyValueStoreChanged,
+               void(const std::string& name, const KeyValueStore& value));
   MOCK_METHOD2(EmitRpcIdentifierChanged,
-               void(const std::string& name,
-                    const RpcIdentifier& value));
+               void(const std::string& name, const RpcIdentifier& value));
   MOCK_METHOD2(EmitRpcIdentifierArrayChanged,
                void(const std::string& name,
                     const std::vector<RpcIdentifier>& value));
@@ -147,8 +146,8 @@ class ServiceMockAdaptor : public ServiceAdaptorInterface {
   MOCK_METHOD2(EmitUint8Changed, void(const std::string& name, uint8_t value));
   MOCK_METHOD2(EmitUint16Changed,
                void(const std::string& name, uint16_t value));
-  MOCK_METHOD2(EmitUint16sChanged, void(const std::string& name,
-                                        const Uint16s& value));
+  MOCK_METHOD2(EmitUint16sChanged,
+               void(const std::string& name, const Uint16s& value));
   MOCK_METHOD2(EmitUintChanged, void(const std::string& name, uint32_t value));
   MOCK_METHOD2(EmitIntChanged, void(const std::string& name, int value));
   MOCK_METHOD2(EmitRpcIdentifierChanged,

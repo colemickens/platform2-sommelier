@@ -76,8 +76,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kManager;
-static string ObjectID(const Manager* m) { return "manager"; }
+static string ObjectID(const Manager* m) {
+  return "manager";
 }
+}  // namespace Logging
 
 namespace {
 
@@ -185,8 +187,7 @@ Manager::Manager(ControlInterface* control_interface,
       ft_enabled_(false),
       should_blackhole_user_traffic_(false) {
   HelpRegisterDerivedString(kActiveProfileProperty,
-                            &Manager::GetActiveProfileRpcIdentifier,
-                            nullptr);
+                            &Manager::GetActiveProfileRpcIdentifier, nullptr);
   HelpRegisterDerivedString(kAlwaysOnVpnPackageProperty,
                             &Manager::GetAlwaysOnVpnPackage,
                             &Manager::SetAlwaysOnVpnPackage);
@@ -200,15 +201,13 @@ Manager::Manager(ControlInterface* control_interface,
                                   &Manager::ConnectedTechnologies);
   store_.RegisterConstString(kConnectionStateProperty, &connection_state_);
   HelpRegisterDerivedString(kDefaultTechnologyProperty,
-                            &Manager::DefaultTechnology,
-                            nullptr);
+                            &Manager::DefaultTechnology, nullptr);
   HelpRegisterConstDerivedRpcIdentifier(
       kDefaultServiceProperty, &Manager::GetDefaultServiceRpcIdentifier);
   HelpRegisterConstDerivedRpcIdentifiers(kDevicesProperty,
                                          &Manager::EnumerateDevices);
 #if !defined(DISABLE_WIFI)
-  HelpRegisterDerivedBool(kDisableWiFiVHTProperty,
-                          &Manager::GetDisableWiFiVHT,
+  HelpRegisterDerivedBool(kDisableWiFiVHTProperty, &Manager::GetDisableWiFiVHT,
                           &Manager::SetDisableWiFiVHT);
   store_.RegisterBool(kWifiGlobalFTEnabledProperty, &ft_enabled_);
 #endif  // DISABLE_WIFI
@@ -233,9 +232,7 @@ Manager::Manager(ControlInterface* control_interface,
   HelpRegisterDerivedString(kProhibitedTechnologiesProperty,
                             &Manager::GetProhibitedTechnologies,
                             &Manager::SetProhibitedTechnologies);
-  HelpRegisterDerivedString(kStateProperty,
-                            &Manager::CalculateState,
-                            nullptr);
+  HelpRegisterDerivedString(kStateProperty, &Manager::CalculateState, nullptr);
   HelpRegisterConstDerivedRpcIdentifiers(kServicesProperty,
                                          &Manager::EnumerateAvailableServices);
   HelpRegisterConstDerivedRpcIdentifiers(kServiceCompleteListProperty,
@@ -296,11 +293,11 @@ void Manager::Start() {
   ApplyPolicies();
 
   power_manager_.reset(new PowerManager(control_interface_));
-  power_manager_->Start(base::TimeDelta::FromMilliseconds(
-                            kTerminationActionsTimeoutMilliseconds),
-                        Bind(&Manager::OnSuspendImminent, AsWeakPtr()),
-                        Bind(&Manager::OnSuspendDone, AsWeakPtr()),
-                        Bind(&Manager::OnDarkSuspendImminent, AsWeakPtr()));
+  power_manager_->Start(
+      base::TimeDelta::FromMilliseconds(kTerminationActionsTimeoutMilliseconds),
+      Bind(&Manager::OnSuspendImminent, AsWeakPtr()),
+      Bind(&Manager::OnSuspendDone, AsWeakPtr()),
+      Bind(&Manager::OnDarkSuspendImminent, AsWeakPtr()));
   upstart_.reset(new Upstart(control_interface_));
 
   CHECK(base::CreateDirectory(run_path_)) << run_path_.value();
@@ -391,13 +388,13 @@ void Manager::InitializeProfiles() {
   Error error;
   string path;
   Profile::Identifier default_profile_id;
-  CHECK(Profile::ParseIdentifier(
-      DefaultProfile::kDefaultId, &default_profile_id));
+  CHECK(Profile::ParseIdentifier(DefaultProfile::kDefaultId,
+                                 &default_profile_id));
   PushProfileInternal(default_profile_id, &path, &error);
   CHECK(!profiles_.empty());  // Must have a default profile.
 
   // Push user profiles onto the stack.
-  for (const auto& profile_id : identifiers)  {
+  for (const auto& profile_id : identifiers) {
     PushProfileInternal(profile_id, &path, &error);
   }
 }
@@ -450,12 +447,13 @@ bool Manager::HasProfile(const Profile::Identifier& ident) {
   return false;
 }
 
-void Manager::PushProfileInternal(
-    const Profile::Identifier& ident, RpcIdentifier* path, Error* error) {
+void Manager::PushProfileInternal(const Profile::Identifier& ident,
+                                  RpcIdentifier* path,
+                                  Error* error) {
   if (HasProfile(ident)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kAlreadyExists,
                           "Profile name " + Profile::IdentifierToString(ident) +
-                          " is already on stack");
+                              " is already on stack");
     return;
   }
 
@@ -467,8 +465,8 @@ void Manager::PushProfileInternal(
     if (!profiles_.empty() && !profiles_.back()->GetUser().empty()) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                             "Cannot load non-default global profile " +
-                            Profile::IdentifierToString(ident) +
-                            " on top of a user profile");
+                                Profile::IdentifierToString(ident) +
+                                " on top of a user profile");
       return;
     }
 
@@ -542,8 +540,7 @@ void Manager::InsertUserProfile(const string& name,
                                 Error* error) {
   SLOG(this, 2) << __func__ << " " << name;
   Profile::Identifier ident;
-  if (!Profile::ParseIdentifier(name, &ident) ||
-      ident.user.empty()) {
+  if (!Profile::ParseIdentifier(name, &ident) || ident.user.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Invalid user profile name " + name);
     return;
@@ -608,8 +605,8 @@ void Manager::PopProfile(const string& name, Error* error) {
   SLOG(this, 2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (profiles_.empty()) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kNotFound, "Profile stack is empty");
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound,
+                          "Profile stack is empty");
     return;
   }
   ProfileRefPtr active_profile = profiles_.back();
@@ -630,8 +627,8 @@ void Manager::PopAnyProfile(Error* error) {
   SLOG(this, 2) << __func__;
   Profile::Identifier ident;
   if (profiles_.empty()) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kNotFound, "Profile stack is empty");
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound,
+                          "Profile stack is empty");
     return;
   }
   PopProfileInternal();
@@ -654,9 +651,9 @@ void Manager::RemoveProfile(const string& name, Error* error) {
   }
 
   if (HasProfile(ident)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Cannot remove profile name " + name +
-                          " since it is on stack");
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kInvalidArguments,
+        "Cannot remove profile name " + name + " since it is on stack");
     return;
   }
 
@@ -725,8 +722,8 @@ void Manager::ClaimDevice(const string& claimer_name,
   if (device_claimer_->name() != claimer_name) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Invalid claimer name " + claimer_name +
-                          ". Claimer " + device_claimer_->name() +
-                          " already exist");
+                              ". Claimer " + device_claimer_->name() +
+                              " already exist");
     return;
   }
 
@@ -763,8 +760,8 @@ void Manager::ReleaseDevice(const string& claimer_name,
   if (device_claimer_->name() != claimer_name) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Invalid claimer name " + claimer_name +
-                          ". Claimer " + device_claimer_->name() +
-                          " already exist");
+                              ". Claimer " + device_claimer_->name() +
+                              " already exist");
     return;
   }
 
@@ -806,8 +803,7 @@ bool Manager::HandleProfileEntryDeletion(const ProfileRefPtr& profile,
     if ((*it)->profile().get() == profile.get() &&
         (*it)->GetStorageIdentifier() == entry_name) {
       profile->AbandonService(*it);
-      if (MatchProfileWithService(*it) ||
-          !UnloadService(&it)) {
+      if (MatchProfileWithService(*it) || !UnloadService(&it)) {
         ++it;
       }
       moved_services = true;
@@ -825,8 +821,8 @@ map<RpcIdentifier, string> Manager::GetLoadableProfileEntriesForService(
     const ServiceConstRefPtr& service) {
   map<RpcIdentifier, string> profile_entries;
   for (const auto& profile : profiles_) {
-    string entry_name = service->GetLoadableStorageIdentifier(
-        *profile->GetConstStorage());
+    string entry_name =
+        service->GetLoadableStorageIdentifier(*profile->GetConstStorage());
     if (!entry_name.empty()) {
       profile_entries[profile->GetRpcIdentifier()] = entry_name;
     }
@@ -865,9 +861,8 @@ ServiceRefPtr Manager::CreateTemporaryServiceFromProfile(
   if (technology == Technology::kEthernet) {
     service = new EthernetTemporaryService(this, entry_name);
   } else if (base::ContainsKey(providers_, technology)) {
-    service =
-        providers_[technology]->CreateTemporaryServiceFromProfile(
-            profile, entry_name, error);
+    service = providers_[technology]->CreateTemporaryServiceFromProfile(
+        profile, entry_name, error);
   }
 
   if (!service) {
@@ -880,17 +875,16 @@ ServiceRefPtr Manager::CreateTemporaryServiceFromProfile(
   return service;
 }
 
-ServiceRefPtr Manager::GetServiceWithGUID(
-    const std::string& guid, Error* error) {
+ServiceRefPtr Manager::GetServiceWithGUID(const std::string& guid,
+                                          Error* error) {
   for (const auto& service : services_) {
     if (service->guid() == guid) {
       return service;
     }
   }
 
-  string error_string(
-      StringPrintf("Service wth GUID %s is not registered in the manager",
-                   guid.c_str()));
+  string error_string(StringPrintf(
+      "Service wth GUID %s is not registered in the manager", guid.c_str()));
   if (error) {
     error->Populate(Error::kNotFound, error_string);
   }
@@ -909,8 +903,8 @@ ServiceRefPtr Manager::GetDefaultService() const {
 
 RpcIdentifier Manager::GetDefaultServiceRpcIdentifier(Error* /*error*/) {
   ServiceRefPtr default_service = GetDefaultService();
-  return default_service ? default_service->GetRpcIdentifier() :
-      control_interface_->NullRpcIdentifier();
+  return default_service ? default_service->GetRpcIdentifier()
+                         : control_interface_->NullRpcIdentifier();
 }
 
 bool Manager::IsTechnologyInList(const string& technology_list,
@@ -1012,11 +1006,8 @@ bool Manager::IsActiveProfile(const ProfileRefPtr& profile) const {
 bool Manager::MoveServiceToProfile(const ServiceRefPtr& to_move,
                                    const ProfileRefPtr& destination) {
   const ProfileRefPtr from = to_move->profile();
-  SLOG(this, 2) << "Moving service "
-                << to_move->unique_name()
-                << " to profile "
-                << destination->GetFriendlyName()
-                << " from "
+  SLOG(this, 2) << "Moving service " << to_move->unique_name() << " to profile "
+                << destination->GetFriendlyName() << " from "
                 << from->GetFriendlyName();
   return destination->AdoptService(to_move) && from->AbandonService(to_move);
 }
@@ -1038,7 +1029,8 @@ void Manager::SetProfileForService(const ServiceRefPtr& to_set,
   if (!profile) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           StringPrintf("Unknown Profile %s requested for "
-                                       "Service", profile_rpcid.c_str()));
+                                       "Service",
+                                       profile_rpcid.c_str()));
     return;
   }
 
@@ -1084,11 +1076,11 @@ void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
     ResultCallback aggregator_callback(
         Bind(&ResultAggregator::ReportResult, result_aggregator));
     if (persist) {
-      device->SetEnabledPersistent(
-          enabled_state, &device_error, aggregator_callback);
+      device->SetEnabledPersistent(enabled_state, &device_error,
+                                   aggregator_callback);
     } else {
-      device->SetEnabledNonPersistent(
-          enabled_state, &device_error, aggregator_callback);
+      device->SetEnabledNonPersistent(enabled_state, &device_error,
+                                      aggregator_callback);
     }
     if (device_error.IsOngoing()) {
       deferred = true;
@@ -1157,9 +1149,9 @@ bool Manager::IsDHCPv6EnabledForDevice(const string& device_name) const {
 vector<string> Manager::FilterPrependDNSServersByFamily(
     IPAddress::Family family) const {
   vector<string> dns_servers;
-  vector<string> split_servers = base::SplitString(
-      props_.prepend_dns_servers, ",", base::TRIM_WHITESPACE,
-      base::SPLIT_WANT_ALL);
+  vector<string> split_servers =
+      base::SplitString(props_.prepend_dns_servers, ",", base::TRIM_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
   for (const auto& server : split_servers) {
     const IPAddress address(server);
     if (address.family() == family) {
@@ -1280,8 +1272,7 @@ void Manager::LoadDeviceFromProfiles(const DeviceRefPtr& device) {
 void Manager::EmitDeviceProperties() {
   Error error;
   vector<RpcIdentifier> device_paths = EnumerateDevices(&error);
-  adaptor_->EmitRpcIdentifierArrayChanged(kDevicesProperty,
-                                          device_paths);
+  adaptor_->EmitRpcIdentifierArrayChanged(kDevicesProperty, device_paths);
   adaptor_->EmitStringsChanged(kAvailableTechnologiesProperty,
                                AvailableTechnologies(&error));
   adaptor_->EmitStringsChanged(kEnabledTechnologiesProperty,
@@ -1336,8 +1327,8 @@ bool Manager::SetProhibitedTechnologies(const string& prohibited_technologies,
   }
   for (const auto& technology : technology_vector) {
     Error unused_error(Error::kOperationInitiated);
-    ResultCallback result_callback(Bind(
-        &Manager::OnTechnologyProhibited, Unretained(this), technology));
+    ResultCallback result_callback(
+        Bind(&Manager::OnTechnologyProhibited, Unretained(this), technology));
     const bool kPersistentSave = false;
     SetEnabledStateForTechnology(technology.GetName(), false, kPersistentSave,
                                  &unused_error, result_callback);
@@ -1423,12 +1414,10 @@ void Manager::UpdateService(const ServiceRefPtr& to_update) {
   string failure_message = "";
   if (to_update->failure() != Service::kFailureNone) {
     failure_message = StringPrintf(
-      " failure: %s",
-      Service::ConnectFailureToString(to_update->failure()));
+        " failure: %s", Service::ConnectFailureToString(to_update->failure()));
   }
   string log_message = StringPrintf(
-      "Service %s updated; state: %s%s",
-      to_update->unique_name().c_str(),
+      "Service %s updated; state: %s%s", to_update->unique_name().c_str(),
       Service::ConnectStateToString(to_update->state()),
       failure_message.c_str());
   if (is_interesting_state_change) {
@@ -1559,9 +1548,8 @@ void Manager::ReportServicesOnSameNetwork(int connection_id) {
   metrics_->NotifyServicesOnSameNetwork(num_services);
 }
 
-void Manager::UpdateDefaultServices(
-    const ServiceRefPtr& logical_service,
-    const ServiceRefPtr& physical_service) {
+void Manager::UpdateDefaultServices(const ServiceRefPtr& logical_service,
+                                    const ServiceRefPtr& physical_service) {
   metrics_->NotifyDefaultServiceChanged(logical_service.get());
   EmitDefaultService();
 
@@ -1578,12 +1566,10 @@ void Manager::UpdateDefaultServices(
   if (physical_service) {
     if (!physical_service->connection()) {
       LOG(INFO) << "Default physical service: "
-                << physical_service->unique_name()
-                << " (not connected)";
+                << physical_service->unique_name() << " (not connected)";
     } else {
       LOG(INFO) << "Default physical service: "
-                << physical_service->unique_name()
-                << " (connected)";
+                << physical_service->unique_name() << " (connected)";
     }
   } else {
     LOG(INFO) << "Default physical service: NONE";
@@ -1692,44 +1678,39 @@ ServiceRefPtr Manager::FindService(const string& name) {
 }
 
 void Manager::HelpRegisterConstDerivedRpcIdentifier(
-    const string& name,
-    RpcIdentifier(Manager::*get)(Error* error)) {
+    const string& name, RpcIdentifier (Manager::*get)(Error* error)) {
   store_.RegisterDerivedRpcIdentifier(
-      name,
-      RpcIdentifierAccessor(
-          new CustomAccessor<Manager, RpcIdentifier>(this, get, nullptr)));
+      name, RpcIdentifierAccessor(new CustomAccessor<Manager, RpcIdentifier>(
+                this, get, nullptr)));
 }
 
 void Manager::HelpRegisterConstDerivedRpcIdentifiers(
-    const string& name,
-    RpcIdentifiers(Manager::*get)(Error* error)) {
+    const string& name, RpcIdentifiers (Manager::*get)(Error* error)) {
   store_.RegisterDerivedRpcIdentifiers(
-      name,
-      RpcIdentifiersAccessor(
-          new CustomAccessor<Manager, RpcIdentifiers>(this, get, nullptr)));
+      name, RpcIdentifiersAccessor(new CustomAccessor<Manager, RpcIdentifiers>(
+                this, get, nullptr)));
 }
 
-void Manager::HelpRegisterDerivedString(
-    const string& name,
-    string(Manager::*get)(Error* error),
-    bool(Manager::*set)(const string&, Error*)) {
+void Manager::HelpRegisterDerivedString(const string& name,
+                                        string (Manager::*get)(Error* error),
+                                        bool (Manager::*set)(const string&,
+                                                             Error*)) {
   store_.RegisterDerivedString(
       name,
       StringAccessor(new CustomAccessor<Manager, string>(this, get, set)));
 }
 
-void Manager::HelpRegisterConstDerivedStrings(
-    const string& name,
-    Strings(Manager::*get)(Error*)) {
+void Manager::HelpRegisterConstDerivedStrings(const string& name,
+                                              Strings (Manager::*get)(Error*)) {
   store_.RegisterDerivedStrings(
       name, StringsAccessor(
                 new CustomAccessor<Manager, Strings>(this, get, nullptr)));
 }
 
-void Manager::HelpRegisterDerivedBool(
-    const string& name,
-    bool(Manager::*get)(Error* error),
-    bool(Manager::*set)(const bool&, Error*)) {
+void Manager::HelpRegisterDerivedBool(const string& name,
+                                      bool (Manager::*get)(Error* error),
+                                      bool (Manager::*set)(const bool&,
+                                                           Error*)) {
   store_.RegisterDerivedBool(
       name,
       BoolAccessor(new CustomAccessor<Manager, bool>(this, get, set, nullptr)));
@@ -1751,15 +1732,14 @@ void Manager::SortServicesTask() {
   sort_services_task_.Cancel();
 
   sort(services_.begin(), services_.end(),
-       [&order = technology_order_](ServiceRefPtr a, ServiceRefPtr b) {
-         return Service::Compare(a, b, true /* compare connectivity */,
-                                 order).first;
+       [& order = technology_order_](ServiceRefPtr a, ServiceRefPtr b) {
+         return Service::Compare(a, b, true /* compare connectivity */, order)
+             .first;
        });
 
   std::vector<IPAddress> vpn_addresses;
   for (const auto& service : services_) {
-    if (service->technology() == Technology::kVPN &&
-        service->connection()) {
+    if (service->technology() == Technology::kVPN && service->connection()) {
       vpn_addresses.push_back(service->connection()->local());
     }
   }
@@ -1899,9 +1879,10 @@ void Manager::AutoConnect() {
       const char* compare_reason = nullptr;
       if (i + 1 < services_.size()) {
         const bool kCompareConnectivityState = true;
-        compare_reason = Service::Compare(service, services_[i + 1],
-                                          kCompareConnectivityState,
-                                          technology_order_).second;
+        compare_reason =
+            Service::Compare(service, services_[i + 1],
+                             kCompareConnectivityState, technology_order_)
+                .second;
       } else {
         compare_reason = "last";
       }
@@ -1950,7 +1931,7 @@ void Manager::ConnectToBestServicesTask() {
   vector<ServiceRefPtr> services_copy = services_;
   constexpr bool kCompareConnectivityState = false;
   sort(services_copy.begin(), services_copy.end(),
-       [&order = technology_order_](ServiceRefPtr a, ServiceRefPtr b) {
+       [& order = technology_order_](ServiceRefPtr a, ServiceRefPtr b) {
          return Service::Compare(a, b, kCompareConnectivityState, order).first;
        });
   set<Technology> connecting_technologies;
@@ -2000,9 +1981,10 @@ void Manager::ConnectToBestServicesTask() {
           // this one are connectable either.
           break;
         }
-        compare_reason = Service::Compare(service, services_copy[i + 1],
-                                          kCompareConnectivityState,
-                                          technology_order_).second;
+        compare_reason =
+            Service::Compare(service, services_copy[i + 1],
+                             kCompareConnectivityState, technology_order_)
+                .second;
       } else {
         compare_reason = "last";
       }
@@ -2046,7 +2028,7 @@ void Manager::CreateConnectivityReport(Error* /*error*/) {
         } else {
           SLOG(this, 3) << "Failed to start connectivity test for service "
                         << service->unique_name()
-                           << " device not reporting IsConnected.";
+                        << " device not reporting IsConnected.";
         }
         break;
       }
@@ -2079,13 +2061,13 @@ void Manager::RefreshConnectionState() {
   // Send upstart notifications for the initial idle state
   // and when we transition in/out of connected states.
   if ((!is_connected_state_) && (IsConnected())) {
-      is_connected_state_ = true;
-      upstart_->NotifyConnected();
+    is_connected_state_ = true;
+    upstart_->NotifyConnected();
   } else if ((is_connected_state_) && (!IsConnected())) {
-      is_connected_state_ = false;
-      upstart_->NotifyDisconnected();
+    is_connected_state_ = false;
+    upstart_->NotifyDisconnected();
   } else if (connection_state_ == kStateIdle) {
-      upstart_->NotifyDisconnected();
+    upstart_->NotifyDisconnected();
   }
 }
 
@@ -2115,8 +2097,9 @@ bool Manager::IsTechnologyConnected(Technology technology) const {
 }
 
 string Manager::DefaultTechnology(Error* /*error*/) {
-  return (!services_.empty() && services_[0]->IsConnected()) ?
-      services_[0]->GetTechnologyString() : "";
+  return (!services_.empty() && services_[0]->IsConnected())
+             ? services_[0]->GetTechnologyString()
+             : "";
 }
 
 vector<string> Manager::EnabledTechnologies(Error* /*error*/) {
@@ -2175,8 +2158,8 @@ string Manager::GetActiveProfileRpcIdentifier(Error* /*error*/) {
 }
 
 string Manager::GetCheckPortalList(Error* /*error*/) {
-  return use_startup_portal_list_ ? startup_portal_list_ :
-      props_.check_portal_list;
+  return use_startup_portal_list_ ? startup_portal_list_
+                                  : props_.check_portal_list;
 }
 
 bool Manager::SetCheckPortalList(const string& portal_list, Error* error) {
@@ -2232,10 +2215,10 @@ PortalDetector::Properties Manager::GetPortalCheckProperties() const {
 ServiceRefPtr Manager::GetService(const KeyValueStore& args, Error* error) {
   if (args.ContainsString(kTypeProperty) &&
       args.GetString(kTypeProperty) == kTypeVPN) {
-     // GetService on a VPN service should actually perform ConfigureService.
-     // TODO(pstew): Remove this hack and change Chrome to use ConfigureService
-     // instead, when we no longer need to support flimflam.  crbug.com/213802
-     return ConfigureService(args, error);
+    // GetService on a VPN service should actually perform ConfigureService.
+    // TODO(pstew): Remove this hack and change Chrome to use ConfigureService
+    // instead, when we no longer need to support flimflam.  crbug.com/213802
+    return ConfigureService(args, error);
   }
 
   ServiceRefPtr service = GetServiceInner(args, error);
@@ -2259,8 +2242,8 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore& args,
   }
 
   if (!args.ContainsString(kTypeProperty)) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kInvalidArguments, kErrorTypeRequired);
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          kErrorTypeRequired);
     return nullptr;
   }
 
@@ -2301,17 +2284,15 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore& args,
   if (service->profile() == profile) {
     SLOG(this, 2) << __func__ << ": service " << service->unique_name()
                   << " is already a member of profile "
-                     << profile->GetFriendlyName()
-                     << " so a load is not necessary.";
+                  << profile->GetFriendlyName()
+                  << " so a load is not necessary.";
   } else if (profile->LoadService(service)) {
     SLOG(this, 2) << __func__ << ": applied stored information from profile "
-                  << profile->GetFriendlyName()
-                  << " into service "
+                  << profile->GetFriendlyName() << " into service "
                   << service->unique_name();
   } else {
     SLOG(this, 2) << __func__ << ": no previous information in profile "
-                  << profile->GetFriendlyName()
-                  << " exists for service "
+                  << profile->GetFriendlyName() << " exists for service "
                   << service->unique_name();
   }
 
@@ -2352,8 +2333,8 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
     const KeyValueStore& args,
     Error* error) {
   if (!args.ContainsString(kTypeProperty)) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kInvalidArguments, kErrorTypeRequired);
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          kErrorTypeRequired);
     return nullptr;
   }
 
@@ -2386,9 +2367,9 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
     SLOG(this, 2) << __func__ << ": searching by GUID";
     service = GetServiceWithGUID(args.GetString(kGuidProperty), nullptr);
     if (service && service->technology() != technology) {
-      Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                            StringPrintf("This GUID matches a non-%s service",
-                                         type.c_str()));
+      Error::PopulateAndLog(
+          FROM_HERE, error, Error::kNotSupported,
+          StringPrintf("This GUID matches a non-%s service", type.c_str()));
       return nullptr;
     }
   }
@@ -2414,8 +2395,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
   // the old profile intact (i.e, not calling Profile::AbandonService()).
   // Then, configure the properties on the service as well as its newly
   // associated profile.
-  if (service->profile() == profile ||
-      IsServiceEphemeral(service) ||
+  if (service->profile() == profile || IsServiceEphemeral(service) ||
       IsProfileBefore(service->profile(), profile)) {
     SetupServiceInProfile(service, profile, args, error);
     return service;
@@ -2443,9 +2423,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
   // the temporary service won't be usable by the caller.
   DCHECK(service->HasOneRef());
   if (error->IsSuccess()) {
-    Error::PopulateAndLog(FROM_HERE,
-                          error,
-                          Error::kNotFound,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound,
                           "Temporary service configured but not usable");
   }
   return nullptr;
@@ -2502,8 +2480,7 @@ map<string, vector<GeolocationInfo>> Manager::GetNetworksForGeolocation()
       network_geolocation_info =
           &geolocation_infos[kGeoWifiAccessPointsProperty];
     } else if (device->technology() == Technology::kCellular) {
-      network_geolocation_info =
-          &geolocation_infos[kGeoCellTowersProperty];
+      network_geolocation_info = &geolocation_infos[kGeoCellTowersProperty];
     } else {
       // Ignore other technologies.
       continue;
@@ -2578,16 +2555,12 @@ void Manager::RequestScan(const string& technology, Error* error) {
       break;
 
     case Technology::kUnknown:
-      Error::PopulateAndLog(FROM_HERE,
-                            error,
-                            Error::kInvalidArguments,
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                             "Unrecognized technology " + technology);
       break;
 
     default:
-      Error::PopulateAndLog(FROM_HERE,
-                            error,
-                            Error::kInvalidArguments,
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                             "Scan unsupported for technology " + technology);
       break;
   }
@@ -2702,8 +2675,7 @@ string Manager::GetAlwaysOnVpnPackage(Error* /*error*/) {
   return props_.always_on_vpn_package;
 }
 
-bool Manager::SetAlwaysOnVpnPackage(const string& package_name,
-                                    Error* error) {
+bool Manager::SetAlwaysOnVpnPackage(const string& package_name, Error* error) {
   if (props_.always_on_vpn_package == package_name)
     return false;
   props_.always_on_vpn_package = package_name;

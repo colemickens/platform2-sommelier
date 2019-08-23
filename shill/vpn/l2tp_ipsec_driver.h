@@ -28,8 +28,7 @@ class ExternalTask;
 class PPPDeviceFactory;
 class ProcessManager;
 
-class L2TPIPSecDriver : public VPNDriver,
-                        public RpcTaskDelegate {
+class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
  public:
   L2TPIPSecDriver(Manager* manager,
                   DeviceInfo* device_info,

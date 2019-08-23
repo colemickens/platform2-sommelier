@@ -21,7 +21,7 @@ static auto kModuleLogScope = ScopeLogger::kCellular;
 static string ObjectID(const MobileOperatorInfo* m) {
   return "(mobile_operator_info)";
 }
-}
+}  // namespace Logging
 
 // /////////////////////////////////////////////////////////////////////////////
 // MobileOperatorInfo implementation note:
@@ -122,8 +122,8 @@ const vector<string>& MobileOperatorInfo::mccmnc_list() const {
     for (const auto& mccmnc : result) {
       pp_result << mccmnc << " ";
     }
-    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result["
-                  << pp_result.str() << "]";
+    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str()
+                  << "]";
   }
   return result;
 }
@@ -135,13 +135,13 @@ const vector<string>& MobileOperatorInfo::sid_list() const {
     for (const auto& sid : result) {
       pp_result << sid << " ";
     }
-    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result["
-                  << pp_result.str() << "]";
+    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str()
+                  << "]";
   }
   return result;
 }
 
-const vector<MobileOperatorInfo::LocalizedName> &
+const vector<MobileOperatorInfo::LocalizedName>&
 MobileOperatorInfo::operator_name_list() const {
   const auto& result = impl_->operator_name_list();
   if (SLOG_IS_ON(Cellular, 3)) {
@@ -150,8 +150,8 @@ MobileOperatorInfo::operator_name_list() const {
       pp_result << "(" << operator_name.name << ", " << operator_name.language
                 << ") ";
     }
-    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result["
-                  << pp_result.str() << "]";
+    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str()
+                  << "]";
   }
   return result;
 }
@@ -172,8 +172,8 @@ MobileOperatorInfo::apn_list() const {
       }
       pp_result << "') ";
     }
-    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result["
-                  << pp_result.str() << "]";
+    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str()
+                  << "]";
   }
   return result;
 }
@@ -187,8 +187,8 @@ const vector<MobileOperatorInfo::OnlinePortal>& MobileOperatorInfo::olp_list()
       pp_result << "(url: " << olp.url << ", method: " << olp.method
                 << ", post_data: " << olp.post_data << ") ";
     }
-    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result["
-                  << pp_result.str() << "]";
+    SLOG(this, 3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str()
+                  << "]";
   }
   return result;
 }
@@ -238,10 +238,8 @@ void MobileOperatorInfo::UpdateOperatorName(const string& operator_name) {
 void MobileOperatorInfo::UpdateOnlinePortal(const string& url,
                                             const string& method,
                                             const string& post_data) {
-  SLOG(this, 3) << GetLogPrefix(__func__)
-                << "(" << url
-                    << ", " << method
-                    << ", " << post_data << ")";
+  SLOG(this, 3) << GetLogPrefix(__func__) << "(" << url << ", " << method
+                << ", " << post_data << ")";
   impl_->UpdateOnlinePortal(url, method, post_data);
 }
 

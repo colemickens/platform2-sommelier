@@ -64,13 +64,9 @@ bool NetlinkSocket::RecvMessage(ByteString* message) {
   const size_t kDummyReadByteCount = 1;
   ByteString dummy_read(kDummyReadByteCount);
   ssize_t result;
-  result = sockets_->RecvFrom(
-      file_descriptor_,
-      dummy_read.GetData(),
-      dummy_read.GetLength(),
-      MSG_TRUNC | MSG_PEEK,
-      nullptr,
-      nullptr);
+  result = sockets_->RecvFrom(file_descriptor_, dummy_read.GetData(),
+                              dummy_read.GetLength(), MSG_TRUNC | MSG_PEEK,
+                              nullptr, nullptr);
   if (result < 0) {
     PLOG(ERROR) << "Socket recvfrom failed.";
     return false;
@@ -78,13 +74,8 @@ bool NetlinkSocket::RecvMessage(ByteString* message) {
 
   // Read the data that was waiting when we did our previous read.
   message->Resize(result);
-  result = sockets_->RecvFrom(
-      file_descriptor_,
-      message->GetData(),
-      message->GetLength(),
-      0,
-      nullptr,
-      nullptr);
+  result = sockets_->RecvFrom(file_descriptor_, message->GetData(),
+                              message->GetLength(), 0, nullptr, nullptr);
   if (result < 0) {
     PLOG(ERROR) << "Second socket recvfrom failed.";
     return false;

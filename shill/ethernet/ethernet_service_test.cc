@@ -39,9 +39,7 @@ class EthernetServiceTest : public PropertyStoreTest {
  protected:
   static const char fake_mac[];
 
-  bool GetAutoConnect() {
-    return service_->GetAutoConnect(nullptr);
-  }
+  bool GetAutoConnect() { return service_->GetAutoConnect(nullptr); }
 
   bool SetAutoConnect(const bool connect, Error* error) {
     return service_->SetAutoConnectFull(connect, error);

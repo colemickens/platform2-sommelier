@@ -41,17 +41,16 @@ namespace shill {
 namespace {
 const char kInterfaceName[] = "test-interface";
 const char kLocalIPAddress[] = "10.0.1.1";
-const uint8_t kLocalMacAddress[] = { 0, 1, 2, 3, 4, 5 };
+const uint8_t kLocalMacAddress[] = {0, 1, 2, 3, 4, 5};
 const char kRemoteIPAddress[] = "10.0.1.2";
-const uint8_t kRemoteMacAddress[] = { 6, 7, 8, 9, 10, 11 };
+const uint8_t kRemoteMacAddress[] = {6, 7, 8, 9, 10, 11};
 }  // namespace
 
 class ResultCallbackObserver {
  public:
   ResultCallbackObserver()
-      : result_callback_(
-          Bind(&ResultCallbackObserver::OnResultCallback,
-               Unretained(this))) {}
+      : result_callback_(Bind(&ResultCallbackObserver::OnResultCallback,
+                              Unretained(this))) {}
   virtual ~ResultCallbackObserver() = default;
 
   MOCK_METHOD1(OnResultCallback, void(bool status));
@@ -97,21 +96,16 @@ class PassiveLinkMonitorTest : public Test {
 
   void ReceiveArpPacket(uint16_t operation) {
     client_test_helper_.GeneratePacket(
-        operation,
-        IPAddress(kLocalIPAddress),
+        operation, IPAddress(kLocalIPAddress),
         ByteString(kLocalMacAddress, arraysize(kLocalMacAddress)),
         IPAddress(kRemoteIPAddress),
         ByteString(kRemoteMacAddress, arraysize(kRemoteMacAddress)));
     link_monitor_.ReceiveRequest(0);
   }
 
-  void MonitorCompleted(bool status) {
-    link_monitor_.MonitorCompleted(status);
-  }
+  void MonitorCompleted(bool status) { link_monitor_.MonitorCompleted(status); }
 
-  void InvokeCycleTimeoutHandler() {
-    link_monitor_.CycleTimeoutHandler();
-  }
+  void InvokeCycleTimeoutHandler() { link_monitor_.CycleTimeoutHandler(); }
 
   void SetCurrentCycleStats(int num_requests_received, int num_cycles_passed) {
     link_monitor_.num_requests_received_ = num_requests_received;

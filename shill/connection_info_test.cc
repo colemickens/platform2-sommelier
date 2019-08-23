@@ -12,10 +12,10 @@ namespace shill {
 
 namespace {
 
-const unsigned char kIPAddress1[] = { 192, 168, 1, 1 };
-const unsigned char kIPAddress2[] = { 192, 168, 1, 2 };
-const unsigned char kIPAddress3[] = { 192, 168, 1, 3 };
-const unsigned char kIPAddress4[] = { 192, 168, 1, 4 };
+const unsigned char kIPAddress1[] = {192, 168, 1, 1};
+const unsigned char kIPAddress2[] = {192, 168, 1, 2};
+const unsigned char kIPAddress3[] = {192, 168, 1, 3};
+const unsigned char kIPAddress4[] = {192, 168, 1, 4};
 const uint16_t kPort1 = 1000;
 const uint16_t kPort2 = 2000;
 const uint16_t kPort3 = 3000;
@@ -30,26 +30,23 @@ class ConnectionInfoTest : public testing::Test {
     EXPECT_EQ(info1.protocol, info2.protocol);
     EXPECT_EQ(info1.time_to_expire_seconds, info2.time_to_expire_seconds);
     EXPECT_EQ(info1.is_unreplied, info2.is_unreplied);
-    EXPECT_TRUE(info1.original_source_ip_address
-                    .Equals(info2.original_source_ip_address));
+    EXPECT_TRUE(info1.original_source_ip_address.Equals(
+        info2.original_source_ip_address));
     EXPECT_EQ(info1.original_source_port, info2.original_source_port);
-    EXPECT_TRUE(info1.original_destination_ip_address
-                    .Equals(info2.original_destination_ip_address));
-    EXPECT_EQ(info1.original_destination_port,
-              info2.original_destination_port);
-    EXPECT_TRUE(info1.reply_source_ip_address
-                    .Equals(info2.reply_source_ip_address));
+    EXPECT_TRUE(info1.original_destination_ip_address.Equals(
+        info2.original_destination_ip_address));
+    EXPECT_EQ(info1.original_destination_port, info2.original_destination_port);
+    EXPECT_TRUE(
+        info1.reply_source_ip_address.Equals(info2.reply_source_ip_address));
     EXPECT_EQ(info1.reply_source_port, info2.reply_source_port);
-    EXPECT_TRUE(info1.reply_destination_ip_address
-                    .Equals(info2.reply_destination_ip_address));
+    EXPECT_TRUE(info1.reply_destination_ip_address.Equals(
+        info2.reply_destination_ip_address));
     EXPECT_EQ(info1.reply_destination_port, info2.reply_destination_port);
   }
 };
 
 TEST_F(ConnectionInfoTest, CopyConstructor) {
-  ConnectionInfo info(IPPROTO_UDP,
-                      10,
-                      true,
+  ConnectionInfo info(IPPROTO_UDP, 10, true,
                       IPAddress(IPAddress::kFamilyIPv4,
                                 ByteString(kIPAddress1, sizeof(kIPAddress1))),
                       kPort1,
@@ -68,9 +65,7 @@ TEST_F(ConnectionInfoTest, CopyConstructor) {
 }
 
 TEST_F(ConnectionInfoTest, AssignmentOperator) {
-  ConnectionInfo info(IPPROTO_UDP,
-                      10,
-                      true,
+  ConnectionInfo info(IPPROTO_UDP, 10, true,
                       IPAddress(IPAddress::kFamilyIPv4,
                                 ByteString(kIPAddress1, sizeof(kIPAddress1))),
                       kPort1,

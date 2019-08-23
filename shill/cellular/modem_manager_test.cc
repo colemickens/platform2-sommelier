@@ -189,8 +189,7 @@ TEST_F(ModemManager1Test, AddRemoveInterfaces) {
 
   // Add an object that doesn't have a modem interface.  Nothing should be added
   EXPECT_CALL(modem_manager_, InitModem1(_, _)).Times(0);
-  modem_manager_.OnInterfacesAddedSignal(kModemPath,
-                                         InterfaceToProperties());
+  modem_manager_.OnInterfacesAddedSignal(kModemPath, InterfaceToProperties());
   EXPECT_EQ(0, modem_manager_.modems_.size());
 
   // Actually add a modem

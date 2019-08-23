@@ -82,11 +82,9 @@ class ArcVpnDriverTest : public testing::Test {
     const std::string kProviderTypeValue = "arcvpn";
 
     EXPECT_CALL(store_, GetString(kStorageId, kProviderHostProperty, _))
-        .WillOnce(
-            DoAll(SetArgPointee<2>(kProviderHostValue), Return(true)));
+        .WillOnce(DoAll(SetArgPointee<2>(kProviderHostValue), Return(true)));
     EXPECT_CALL(store_, GetString(kStorageId, kProviderTypeProperty, _))
-        .WillOnce(
-            DoAll(SetArgPointee<2>(kProviderTypeValue), Return(true)));
+        .WillOnce(DoAll(SetArgPointee<2>(kProviderTypeValue), Return(true)));
     EXPECT_CALL(store_, GetString(kStorageId, kArcVpnTunnelChromeProperty, _))
         .WillOnce(DoAll(SetArgPointee<2>(tunnel_chrome ? "true" : "false"),
                         Return(true)));

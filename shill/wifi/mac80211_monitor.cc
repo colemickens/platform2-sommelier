@@ -26,16 +26,17 @@ using std::vector;
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static string ObjectID(Mac80211Monitor* m) { return m->link_name(); }
+static string ObjectID(Mac80211Monitor* m) {
+  return m->link_name();
 }
+}  // namespace Logging
 
 namespace {
 
 // At 17-25 bytes per queue, this accommodates 80 queues.
 // ath9k has 4 queues, and WP2 has 16 queues.
 const size_t kMaxQueueStateSizeBytes = 2048;
-const char kQueueStatusPathFormat[] =
-    "/sys/kernel/debug/ieee80211/%s/queues";
+const char kQueueStatusPathFormat[] = "/sys/kernel/debug/ieee80211/%s/queues";
 const char kWakeQueuesPathFormat[] =
     "/sys/kernel/debug/ieee80211/%s/wake_queues";
 
@@ -45,12 +46,11 @@ const char kWakeQueuesPathFormat[] =
 const time_t Mac80211Monitor::kQueueStatePollIntervalSeconds = 30;
 const time_t Mac80211Monitor::kMinimumTimeBetweenWakesSeconds = 60;
 
-Mac80211Monitor::Mac80211Monitor(
-    EventDispatcher* dispatcher,
-    const string& link_name,
-    size_t queue_length_limit,
-    const base::Closure& on_repair_callback,
-    Metrics* metrics)
+Mac80211Monitor::Mac80211Monitor(EventDispatcher* dispatcher,
+                                 const string& link_name,
+                                 size_t queue_length_limit,
+                                 const base::Closure& on_repair_callback,
+                                 Metrics* metrics)
     : time_(Time::GetInstance()),
       dispatcher_(dispatcher),
       link_name_(link_name),
@@ -99,12 +99,11 @@ void Mac80211Monitor::UpdateConnectedState(bool new_state) {
 void Mac80211Monitor::StartTimer() {
   SLOG(this, 2) << __func__;
   if (check_queues_callback_.IsCancelled()) {
-    check_queues_callback_.Reset(
-        Bind(&Mac80211Monitor::WakeQueuesIfNeeded,
-             weak_ptr_factory_.GetWeakPtr()));
+    check_queues_callback_.Reset(Bind(&Mac80211Monitor::WakeQueuesIfNeeded,
+                                      weak_ptr_factory_.GetWeakPtr()));
   }
   dispatcher_->PostDelayedTask(FROM_HERE, check_queues_callback_.callback(),
-                                kQueueStatePollIntervalSeconds * 1000);
+                               kQueueStatePollIntervalSeconds * 1000);
 }
 
 void Mac80211Monitor::StopTimer() {
@@ -179,15 +178,14 @@ uint32_t Mac80211Monitor::CheckAreQueuesStuck(
   uint32_t stuck_flags = 0;
   for (const auto& queue_state : queue_states) {
     if (queue_state.queue_length < queue_length_limit_) {
-      SLOG(this, 5) << __func__
-                    << " skipping queue of length " << queue_state.queue_length
-                    << " (threshold is " << queue_length_limit_ << ")";
+      SLOG(this, 5) << __func__ << " skipping queue of length "
+                    << queue_state.queue_length << " (threshold is "
+                    << queue_length_limit_ << ")";
       continue;
     }
     if (!queue_state.stop_flags) {
-      SLOG(this, 5) << __func__
-                    << " skipping queue of length " << queue_state.queue_length
-                    << " (not stopped)";
+      SLOG(this, 5) << __func__ << " skipping queue of length "
+                    << queue_state.queue_length << " (not stopped)";
       continue;
     }
     stuck_flags = stuck_flags | queue_state.stop_flags;
@@ -204,8 +202,7 @@ uint32_t Mac80211Monitor::CheckAreQueuesStuck(
       auto stop_reason = static_cast<QueueStopReason>(i);
       if (stuck_flags & GetFlagForReason(stop_reason)) {
         metrics_->SendEnumToUMA(Metrics::kMetricWifiStoppedTxQueueReason,
-                                stop_reason,
-                                kStopReasonMax);
+                                stop_reason, kStopReasonMax);
       }
     }
 
@@ -225,8 +222,8 @@ uint32_t Mac80211Monitor::CheckAreQueuesStuck(
 // 04: 0x00000000/0
 //
 // static
-vector<Mac80211Monitor::QueueState>
-Mac80211Monitor::ParseQueueState(const string& state_string) {
+vector<Mac80211Monitor::QueueState> Mac80211Monitor::ParseQueueState(
+    const string& state_string) {
   vector<QueueState> queue_states;
   vector<string> queue_state_strings = base::SplitString(
       state_string, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
@@ -251,9 +248,9 @@ Mac80211Monitor::ParseQueueState(const string& state_string) {
     }
 
     // Example |queuenum_and_state|: {"00", "0x00000000/10"}.
-    vector<string> stopflags_and_length = base::SplitString(
-        queuenum_and_state[1], "/", base::TRIM_WHITESPACE,
-        base::SPLIT_WANT_ALL);
+    vector<string> stopflags_and_length =
+        base::SplitString(queuenum_and_state[1], "/", base::TRIM_WHITESPACE,
+                          base::SPLIT_WANT_ALL);
     if (stopflags_and_length.size() != 2) {
       LOG(WARNING) << __func__ << ": parse error on " << queue_state;
       continue;

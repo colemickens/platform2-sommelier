@@ -31,8 +31,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static string ObjectID(const VPNProvider* v) { return "(vpn_provider)"; }
+static string ObjectID(const VPNProvider* v) {
+  return "(vpn_provider)";
 }
+}  // namespace Logging
 
 namespace {
 
@@ -48,20 +50,19 @@ bool GetServiceParametersFromArgs(const KeyValueStore& args,
   SLOG(nullptr, 2) << __func__;
   string type = args.LookupString(kProviderTypeProperty, "");
   if (type.empty()) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kNotSupported, "Missing VPN type property.");
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                          "Missing VPN type property.");
     return false;
   }
 
   string host = args.LookupString(kProviderHostProperty, "");
   if (host.empty()) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kNotSupported, "Missing VPN host property.");
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                          "Missing VPN host property.");
     return false;
   }
 
-  *type_ptr = type,
-  *host_ptr = host,
+  *type_ptr = type, *host_ptr = host,
   *name_ptr = args.LookupString(kNameProperty, "");
 
   return true;
@@ -148,8 +149,7 @@ void VPNProvider::RemoveAllowedInterface(const std::string& interface_name) {
   }
 }
 
-ServiceRefPtr VPNProvider::GetService(const KeyValueStore& args,
-                                      Error* error) {
+ServiceRefPtr VPNProvider::GetService(const KeyValueStore& args, Error* error) {
   SLOG(this, 2) << __func__;
   string type;
   string name;
@@ -229,11 +229,7 @@ void VPNProvider::CreateServicesFromProfile(const ProfileRefPtr& profile) {
     string type;
     string name;
     string host;
-    if (!GetServiceParametersFromStorage(storage,
-                                         group,
-                                         &type,
-                                         &name,
-                                         &host,
+    if (!GetServiceParametersFromStorage(storage, group, &type, &name, &host,
                                          nullptr)) {
       continue;
     }
@@ -269,8 +265,8 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const string& type,
                 << " storage id " << storage_id;
 #if defined(DISABLE_VPN)
 
-  Error::PopulateAndLog(
-      FROM_HERE, error, Error::kNotSupported, "VPN is not supported.");
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                        "VPN is not supported.");
   return nullptr;
 
 #else
@@ -288,9 +284,8 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const string& type,
   } else if (type == kProviderArcVpn) {
     driver.reset(new ArcVpnDriver(manager_, manager_->device_info()));
   } else {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kNotSupported,
-        "Unsupported VPN type: " + type);
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                          "Unsupported VPN type: " + type);
     return nullptr;
   }
 
@@ -331,8 +326,8 @@ VPNServiceRefPtr VPNProvider::FindService(const string& type,
   return nullptr;
 }
 
-ServiceRefPtr VPNProvider::CreateTemporaryService(
-      const KeyValueStore& args, Error* error) {
+ServiceRefPtr VPNProvider::CreateTemporaryService(const KeyValueStore& args,
+                                                  Error* error) {
   string type;
   string name;
   string host;
@@ -354,12 +349,8 @@ ServiceRefPtr VPNProvider::CreateTemporaryServiceFromProfile(
   string type;
   string name;
   string host;
-  if (!GetServiceParametersFromStorage(profile->GetConstStorage(),
-                                       entry_name,
-                                       &type,
-                                       &name,
-                                       &host,
-                                       error)) {
+  if (!GetServiceParametersFromStorage(profile->GetConstStorage(), entry_name,
+                                       &type, &name, &host, error)) {
     return nullptr;
   }
 

@@ -51,8 +51,8 @@ bool ScopedMockLog::HandleLogMessages(int severity,
 
   // Invoke the previously installed message handler if there was one.
   if (instance_->previous_handler_) {
-    return (*instance_->previous_handler_)(severity, file, line,
-                                           message_start, full_message);
+    return (*instance_->previous_handler_)(severity, file, line, message_start,
+                                           full_message);
   }
 
   // Return false so that messages show up on stderr.

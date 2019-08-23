@@ -56,7 +56,8 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // SetParameters is called by the DBus adaptor when "SetParameter" method is
   // called on the DBus interface.
   void SetParameters(const std::map<std::string, std::string>& parameters,
-                     std::string* error_message, std::string* warning_message);
+                     std::string* error_message,
+                     std::string* warning_message);
 
   void ClearExtensionId(Error* error);
   bool SetExtensionId(const std::string& value, Error* error);
@@ -72,7 +73,8 @@ class ThirdPartyVpnDriver : public VPNDriver {
   void OnDefaultServiceChanged(const ServiceRefPtr& service);
   void OnDefaultServiceStateChanged(const ServiceRefPtr& service) override;
   bool Load(StoreInterface* storage, const std::string& storage_id) override;
-  bool Save(StoreInterface* storage, const std::string& storage_id,
+  bool Save(StoreInterface* storage,
+            const std::string& storage_id,
             bool save_credentials) override;
 
   void OnBeforeSuspend(const ResultCallback& callback) override;
@@ -99,7 +101,8 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // ErrorDetails property to |error_details|; disassociates from the service.
   // Closes the handle to tun device, IO handler if open and deactivates itself
   // with the |thirdpartyvpn_adaptor_| if active.
-  void Cleanup(Service::ConnectState state, Service::ConnectFailure failure,
+  void Cleanup(Service::ConnectState state,
+               Service::ConnectFailure failure,
                const std::string& error_details);
 
   // This function first checks if a value is present for a particular |key| in
@@ -111,7 +114,9 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // failure.
   // This function supports only IPV4 addresses now.
   void ProcessIp(const std::map<std::string, std::string>& parameters,
-                 const char* key, std::string* target, bool mandatory,
+                 const char* key,
+                 std::string* target,
+                 bool mandatory,
                  std::string* error_message);
 
   // This function first checks if a value is present for a particular |key| in
@@ -122,10 +127,13 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // The flag |mandatory| when set to true, makes the function treat a missing
   // key as an error. The function adds to |error_message|, when there is a
   // failure and |warn_message| when there is a warning.
-  void ProcessIPArray(
-      const std::map<std::string, std::string>& parameters, const char* key,
-      char delimiter, std::vector<std::string>* target, bool mandatory,
-      std::string* error_message, std::string* warn_message);
+  void ProcessIPArray(const std::map<std::string, std::string>& parameters,
+                      const char* key,
+                      char delimiter,
+                      std::vector<std::string>* target,
+                      bool mandatory,
+                      std::string* error_message,
+                      std::string* warn_message);
 
   // This function first checks if a value is present for a particular |key| in
   // the dictionary |parameters|.
@@ -135,10 +143,13 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // |target|. The flag |mandatory| when set to true, makes the function treat a
   // missing key as an error. The function adds to |error_message|, when there
   // is a failure and |warn_message| when there is a warning.
-  void ProcessIPArrayCIDR(
-      const std::map<std::string, std::string>& parameters, const char* key,
-      char delimiter, std::vector<std::string>* target, bool mandatory,
-      std::string* error_message, std::string* warn_message);
+  void ProcessIPArrayCIDR(const std::map<std::string, std::string>& parameters,
+                          const char* key,
+                          char delimiter,
+                          std::vector<std::string>* target,
+                          bool mandatory,
+                          std::string* error_message,
+                          std::string* warn_message);
 
   // This function first checks if a value is present for a particular |key| in
   // the dictionary |parameters|.
@@ -148,8 +159,11 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // key as an error. The function adds to |error_messages|, when there is a
   // failure.
   void ProcessSearchDomainArray(
-      const std::map<std::string, std::string>& parameters, const char* key,
-      char delimiter, std::vector<std::string>* target, bool mandatory,
+      const std::map<std::string, std::string>& parameters,
+      const char* key,
+      char delimiter,
+      std::vector<std::string>* target,
+      bool mandatory,
       std::string* error_message);
 
   // This function first checks if a value is present for a particular |key| in
@@ -161,8 +175,11 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // key as an error. The function adds to |error_messages|, when there is a
   // failure.
   void ProcessInt32(const std::map<std::string, std::string>& parameters,
-                    const char* key, int32_t* target, int32_t min_value,
-                    int32_t max_value, bool mandatory,
+                    const char* key,
+                    int32_t* target,
+                    int32_t min_value,
+                    int32_t max_value,
+                    bool mandatory,
                     std::string* error_message);
 
   // This function first checks if a value is present for a particular |key| in
@@ -173,7 +190,9 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // key as an error. The function adds to |error_messages|, when there is a
   // failure.
   void ProcessBoolean(const std::map<std::string, std::string>& parameters,
-                      const char* key, bool* target, bool mandatory,
+                      const char* key,
+                      bool* target,
+                      bool mandatory,
                       std::string* error_message);
 
   // These functions are called whe there is input and error in the tun

@@ -24,8 +24,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kResolver;
-static string ObjectID(Resolver* r) { return "(resolver)"; }
+static string ObjectID(Resolver* r) {
+  return "(resolver)";
 }
+}  // namespace Logging
 
 const char Resolver::kDefaultIgnoredSearchList[] = "gateway.2wire.net";
 

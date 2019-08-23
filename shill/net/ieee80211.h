@@ -123,7 +123,6 @@ const uint16_t kWlanCapMaskDsssOfdm = 0x2000;
 const uint16_t kWlanCapMaskDelayedBlockAck = 0x4000;
 const uint16_t kWlanCapMaskImmediateBlockAck = 0x8000;
 
-
 // This structure is incomplete.  Fields will be added as necessary.
 //
 // NOTE: the uint16_t stuff is in little-endian format so conversions are
@@ -189,7 +188,7 @@ enum WiFiReasonCode : uint16_t {
   kReasonCodeInvalidRsnIeCaps = 22,
   kReasonCode8021XAuth = 23,
   kReasonCodeCipherSuiteRejected = 24,
-  kReasonCodeReservedBegin25 = 25,   // 25-31 are reserved.
+  kReasonCodeReservedBegin25 = 25,  // 25-31 are reserved.
   kReasonCodeReservedEnd31 = 31,
   kReasonCodeUnspecifiedQoS = 32,
   kReasonCodeQoSBandwidth = 33,

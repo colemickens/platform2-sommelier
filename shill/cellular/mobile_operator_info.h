@@ -154,7 +154,6 @@ class MobileOperatorInfo {
   // determined.
   bool IsMobileVirtualNetworkOperatorKnown() const;
 
-
   // The unique identifier of this carrier. This is primarily used to
   // identify the user profile in store for each carrier. This identifier is
   // access technology agnostic and should be the same across 3GPP and CDMA.

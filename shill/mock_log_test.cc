@@ -9,7 +9,6 @@
 
 #include "shill/logging.h"
 
-
 using ::std::string;
 using ::testing::_;
 
@@ -17,16 +16,16 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kManager;
-static string ObjectID(testing::Test* m) { return "(mock_log_test)"; }
+static string ObjectID(testing::Test* m) {
+  return "(mock_log_test)";
 }
+}  // namespace Logging
 
 class MockLogTest : public testing::Test {
  protected:
   MockLogTest() = default;
 
-  void LogSomething(const string& message) const {
-    LOG(INFO) << message;
-  }
+  void LogSomething(const string& message) const { LOG(INFO) << message; }
   void SlogSomething(testing::Test* t, const string& message) const {
     ScopeLogger::GetInstance()->EnableScopesByName("manager");
     ScopeLogger::GetInstance()->set_verbose_level(2);
@@ -54,7 +53,7 @@ TEST_F(MockLogTest, MatchSeverityAndFileAndMessage) {
   ScopedMockLog log;
   const string kMessage("Something");
   EXPECT_CALL(log, Log(logging::LOG_INFO,
-              ::testing::EndsWith("mock_log_test.cc"), kMessage));
+                       ::testing::EndsWith("mock_log_test.cc"), kMessage));
   LogSomething(kMessage);
 }
 
@@ -91,9 +90,9 @@ TEST_F(MockLogTest, MatchSlogWithObject) {
 TEST_F(MockLogTest, MatchWithGmockMatchers) {
   ScopedMockLog log;
   const string kMessage("Something");
-  EXPECT_CALL(log, Log(::testing::Lt(::logging::LOG_ERROR),
-                       ::testing::EndsWith(".cc"),
-                       ::testing::StartsWith("Some")));
+  EXPECT_CALL(
+      log, Log(::testing::Lt(::logging::LOG_ERROR), ::testing::EndsWith(".cc"),
+               ::testing::StartsWith("Some")));
   LogSomething(kMessage);
 }
 

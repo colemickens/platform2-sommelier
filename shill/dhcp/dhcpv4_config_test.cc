@@ -64,17 +64,11 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
                                  dhcp_props_,
                                  metrics())) {}
 
-  void SetUp() override {
-    config_->process_manager_ = &process_manager_;
-  }
+  void SetUp() override { config_->process_manager_ = &process_manager_; }
 
-  bool StartInstance(DHCPv4ConfigRefPtr config) {
-    return config->Start();
-  }
+  bool StartInstance(DHCPv4ConfigRefPtr config) { return config->Start(); }
 
-  void StopInstance() {
-    config_->Stop("In test");
-  }
+  void StopInstance() { config_->Stop("In test"); }
 
   DHCPv4ConfigRefPtr CreateMockMinijailConfig(const string& hostname,
                                               const string& vendorclass,
@@ -111,64 +105,52 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateMockMinijailConfig(
   DhcpProperties dhcp_props;
   if (!hostname.empty()) {
     EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.Hostname", _))
-        .WillOnce(DoAll(SetArgPointee<2>(string(kHostName)),
-                        Return(true)));
+        .WillOnce(DoAll(SetArgPointee<2>(string(kHostName)), Return(true)));
   } else {
     EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.Hostname", _))
         .WillOnce(Return(false));
   }
   if (!vendorclass.empty()) {
     EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.VendorClass", _))
-        .WillOnce(DoAll(SetArgPointee<2>(string(kVendorClass)),
-                        Return(true)));
+        .WillOnce(DoAll(SetArgPointee<2>(string(kVendorClass)), Return(true)));
   } else {
     EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.VendorClass", _))
         .WillOnce(Return(false));
   }
   dhcp_props.Load(&storage, kStorageID);
-  DHCPv4ConfigRefPtr config(new DHCPv4Config(control_interface(),
-                                             dispatcher(),
-                                             &provider_,
-                                             kDeviceName,
-                                             lease_suffix,
-                                             arp_gateway,
-                                             dhcp_props,
-                                             metrics()));
+  DHCPv4ConfigRefPtr config(new DHCPv4Config(
+      control_interface(), dispatcher(), &provider_, kDeviceName, lease_suffix,
+      arp_gateway, dhcp_props, metrics()));
   config->process_manager_ = &process_manager_;
 
   return config;
 }
 
 DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateRunningConfig(
-    const string& hostname, const string& vendorclass,
-    const string& lease_suffix, bool arp_gateway) {
+    const string& hostname,
+    const string& vendorclass,
+    const string& lease_suffix,
+    bool arp_gateway) {
   MockStore storage;
   DhcpProperties dhcp_props;
   if (!hostname.empty()) {
     EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.Hostname", _))
-        .WillOnce(DoAll(SetArgPointee<2>(string(kHostName)),
-                        Return(true)));
+        .WillOnce(DoAll(SetArgPointee<2>(string(kHostName)), Return(true)));
   } else {
     EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.Hostname", _))
         .WillOnce(Return(false));
   }
   if (!vendorclass.empty()) {
     EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.VendorClass", _))
-        .WillOnce(DoAll(SetArgPointee<2>(string(kVendorClass)),
-                        Return(true)));
+        .WillOnce(DoAll(SetArgPointee<2>(string(kVendorClass)), Return(true)));
   } else {
     EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.VendorClass", _))
         .WillOnce(Return(false));
   }
   dhcp_props.Load(&storage, kStorageID);
-  DHCPv4ConfigRefPtr config(new DHCPv4Config(control_interface(),
-                                             dispatcher(),
-                                             &provider_,
-                                             kDeviceName,
-                                             lease_suffix,
-                                             arp_gateway,
-                                             dhcp_props,
-                                             metrics()));
+  DHCPv4ConfigRefPtr config(new DHCPv4Config(
+      control_interface(), dispatcher(), &provider_, kDeviceName, lease_suffix,
+      arp_gateway, dhcp_props, metrics()));
   config->process_manager_ = &process_manager_;
   EXPECT_CALL(process_manager_,
               StartProcessInMinijail(_, _, _, _, _, _, _, _, _))
@@ -221,8 +203,8 @@ TEST_F(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   const string kAddress1 = "192.168.1.0";
   const string kDestination1 = kAddress1 + "/24";
   // Last gateway missing, leaving an odd number of parameters.
-  const string kBrokenClasslessRoutes0 = kDefaultDestination + " " + kRouter0 +
-      " " + kDestination1;
+  const string kBrokenClasslessRoutes0 =
+      kDefaultDestination + " " + kRouter0 + " " + kDestination1;
   IPConfig::Properties properties;
   EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(kBrokenClasslessRoutes0,
                                                         &properties));
@@ -232,8 +214,8 @@ TEST_F(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   // Gateway argument for the second route is malformed, but we were able
   // to salvage a default gateway.
   const string kBrokenRouter1 = "10.0.0";
-  const string kBrokenClasslessRoutes1 = kBrokenClasslessRoutes0 + " " +
-      kBrokenRouter1;
+  const string kBrokenClasslessRoutes1 =
+      kBrokenClasslessRoutes0 + " " + kBrokenRouter1;
   EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(kBrokenClasslessRoutes1,
                                                         &properties));
   EXPECT_TRUE(properties.routes.empty());
@@ -242,9 +224,9 @@ TEST_F(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   const string kRouter1 = "10.0.0.253";
   const string kRouter2 = "10.0.0.252";
   const string kClasslessRoutes0 = kDefaultDestination + " " + kRouter2 + " " +
-      kDestination1 + " " + kRouter1;
-  EXPECT_TRUE(DHCPv4Config::ParseClasslessStaticRoutes(kClasslessRoutes0,
-                                                       &properties));
+                                   kDestination1 + " " + kRouter1;
+  EXPECT_TRUE(
+      DHCPv4Config::ParseClasslessStaticRoutes(kClasslessRoutes0, &properties));
   // The old default route is preserved.
   EXPECT_EQ(kRouter0, properties.gateway);
 
@@ -344,40 +326,37 @@ MATCHER_P4(IsDHCPCDArgs,
            has_hostname,
            has_vendorclass,
            has_arp_gateway,
-           has_lease_suffix, "") {
-  if (arg[0] != "-B" ||
-      arg[1] != "-q" ||
-      arg[2] != "-4") {
+           has_lease_suffix,
+           "") {
+  if (arg[0] != "-B" || arg[1] != "-q" || arg[2] != "-4") {
     return false;
   }
 
   int end_offset = 3;
   if (has_hostname) {
-    if (arg[end_offset] != "-h" ||
-        arg[end_offset + 1] != kHostName) {
+    if (arg[end_offset] != "-h" || arg[end_offset + 1] != kHostName) {
       return false;
     }
     end_offset += 2;
   }
 
   if (has_vendorclass) {
-    if (arg[end_offset] != "-i" ||
-        arg[end_offset + 1] != kVendorClass) {
+    if (arg[end_offset] != "-i" || arg[end_offset + 1] != kVendorClass) {
       return false;
     }
     end_offset += 2;
   }
 
   if (has_arp_gateway) {
-    if (arg[end_offset] != "-R" ||
-        arg[end_offset + 1] != "-P") {
+    if (arg[end_offset] != "-R" || arg[end_offset + 1] != "-P") {
       return false;
     }
     end_offset += 2;
   }
 
-  string device_arg = has_lease_suffix ?
-      string(kDeviceName) + "=" + string(kLeaseFileSuffix) : kDeviceName;
+  string device_arg = has_lease_suffix
+                          ? string(kDeviceName) + "=" + string(kLeaseFileSuffix)
+                          : kDeviceName;
   return arg[end_offset] == device_arg;
 }
 
@@ -393,10 +372,8 @@ TEST_F(DHCPv4ConfigTest, StartWithHostname) {
 }
 
 TEST_F(DHCPv4ConfigTest, StartWithoutHostname) {
-  DHCPv4ConfigRefPtr config = CreateMockMinijailConfig("",
-                                                       "",
-                                                       kLeaseFileSuffix,
-                                                       kArpGateway);
+  DHCPv4ConfigRefPtr config =
+      CreateMockMinijailConfig("", "", kLeaseFileSuffix, kArpGateway);
   EXPECT_CALL(
       process_manager_,
       StartProcessInMinijail(_, _,
@@ -408,10 +385,8 @@ TEST_F(DHCPv4ConfigTest, StartWithoutHostname) {
 }
 
 TEST_F(DHCPv4ConfigTest, StartWithEmptyHostname) {
-  DHCPv4ConfigRefPtr config = CreateMockMinijailConfig("",
-                                                       "",
-                                                       kLeaseFileSuffix,
-                                                       kArpGateway);
+  DHCPv4ConfigRefPtr config =
+      CreateMockMinijailConfig("", "", kLeaseFileSuffix, kArpGateway);
   EXPECT_CALL(
       process_manager_,
       StartProcessInMinijail(_, _,
@@ -435,10 +410,8 @@ TEST_F(DHCPv4ConfigTest, StartWithVendorClass) {
 }
 
 TEST_F(DHCPv4ConfigTest, StartWithoutVendorClass) {
-  DHCPv4ConfigRefPtr config = CreateMockMinijailConfig(kHostName,
-                                                       "",
-                                                       kLeaseFileSuffix,
-                                                       kArpGateway);
+  DHCPv4ConfigRefPtr config =
+      CreateMockMinijailConfig(kHostName, "", kLeaseFileSuffix, kArpGateway);
   EXPECT_CALL(process_manager_, StartProcessInMinijail(
                                     _, _,
                                     IsDHCPCDArgs(kHasHostname, !kHasVendorClass,
@@ -448,12 +421,9 @@ TEST_F(DHCPv4ConfigTest, StartWithoutVendorClass) {
   EXPECT_FALSE(StartInstance(config));
 }
 
-
 TEST_F(DHCPv4ConfigTest, StartWithoutArpGateway) {
-  DHCPv4ConfigRefPtr config = CreateMockMinijailConfig(kHostName,
-                                                       "",
-                                                       kLeaseFileSuffix,
-                                                       !kArpGateway);
+  DHCPv4ConfigRefPtr config =
+      CreateMockMinijailConfig(kHostName, "", kLeaseFileSuffix, !kArpGateway);
   EXPECT_CALL(process_manager_, StartProcessInMinijail(
                                     _, _,
                                     IsDHCPCDArgs(kHasHostname, !kHasVendorClass,
@@ -502,12 +472,11 @@ TEST_F(DHCPv4ConfigCallbackTest, ProcessEventSignalFail) {
 }
 
 TEST_F(DHCPv4ConfigCallbackTest, ProcessEventSignalSuccess) {
-  for (const auto& reason : { DHCPv4Config::kReasonBound,
-                              DHCPv4Config::kReasonRebind,
-                              DHCPv4Config::kReasonReboot,
-                              DHCPv4Config::kReasonRenew }) {
+  for (const auto& reason :
+       {DHCPv4Config::kReasonBound, DHCPv4Config::kReasonRebind,
+        DHCPv4Config::kReasonReboot, DHCPv4Config::kReasonRenew}) {
     int address_octet = 0;
-    for (const auto lease_time_given : { false, true }) {
+    for (const auto lease_time_given : {false, true}) {
       KeyValueStore conf;
       conf.SetUint(DHCPv4Config::kConfigurationKeyIPAddress, ++address_octet);
       if (lease_time_given) {
@@ -518,10 +487,11 @@ TEST_F(DHCPv4ConfigCallbackTest, ProcessEventSignalSuccess) {
       EXPECT_CALL(*this, FailureCallback(_)).Times(0);
       config_->ProcessEventSignal(reason, conf);
       string failure_message = string(reason) + " failed with lease time " +
-          (lease_time_given ? "given" : "not given");
+                               (lease_time_given ? "given" : "not given");
       EXPECT_TRUE(Mock::VerifyAndClearExpectations(this)) << failure_message;
       EXPECT_EQ(base::StringPrintf("%d.0.0.0", address_octet),
-                config_->properties().address) << failure_message;
+                config_->properties().address)
+          << failure_message;
     }
   }
 }
@@ -610,8 +580,8 @@ TEST_F(DHCPv4ConfigCallbackTest, ProcessEventSignalGatewayArpNak) {
 }
 
 TEST_F(DHCPv4ConfigTest, ProcessStatusChangeSingal) {
-  EXPECT_CALL(*metrics(), NotifyDhcpClientStatus(
-      Metrics::kDhcpClientStatusBound));
+  EXPECT_CALL(*metrics(),
+              NotifyDhcpClientStatus(Metrics::kDhcpClientStatusBound));
   config_->ProcessStatusChangeSignal(DHCPv4Config::kStatusBound);
 }
 
@@ -622,9 +592,8 @@ TEST_F(DHCPv4ConfigTest, StartSuccessEphemeral) {
 }
 
 TEST_F(DHCPv4ConfigTest, StartSuccessPersistent) {
-  DHCPv4ConfigRefPtr config =
-      CreateRunningConfig(kHostName, kVendorClass,
-                          kLeaseFileSuffix, kArpGateway);
+  DHCPv4ConfigRefPtr config = CreateRunningConfig(
+      kHostName, kVendorClass, kLeaseFileSuffix, kArpGateway);
   StopRunningConfigAndExpect(config, true);
 }
 

@@ -48,19 +48,18 @@ const char NetlinkManager::kEventTypeConfig[] = "config";
 const char NetlinkManager::kEventTypeScan[] = "scan";
 const char NetlinkManager::kEventTypeRegulatory[] = "regulatory";
 const char NetlinkManager::kEventTypeMlme[] = "mlme";
-const long NetlinkManager::kMaximumNewFamilyWaitSeconds = 1;  // NOLINT
-const long NetlinkManager::kMaximumNewFamilyWaitMicroSeconds = 0;  // NOLINT
-const long NetlinkManager::kResponseTimeoutSeconds = 5;  // NOLINT
-const long NetlinkManager::kResponseTimeoutMicroSeconds = 0;  // NOLINT
-const long NetlinkManager::kPendingDumpTimeoutMilliseconds = 500;  // NOLINT
+const long NetlinkManager::kMaximumNewFamilyWaitSeconds = 1;        // NOLINT
+const long NetlinkManager::kMaximumNewFamilyWaitMicroSeconds = 0;   // NOLINT
+const long NetlinkManager::kResponseTimeoutSeconds = 5;             // NOLINT
+const long NetlinkManager::kResponseTimeoutMicroSeconds = 0;        // NOLINT
+const long NetlinkManager::kPendingDumpTimeoutMilliseconds = 500;   // NOLINT
 const long NetlinkManager::kNlMessageRetryDelayMilliseconds = 300;  // NOLINT
-const int NetlinkManager::kMaxNlMessageRetries = 1;  // NOLINT
+const int NetlinkManager::kMaxNlMessageRetries = 1;                 // NOLINT
 
 NetlinkManager::NetlinkResponseHandler::NetlinkResponseHandler(
     const NetlinkManager::NetlinkAckHandler& ack_handler,
     const NetlinkManager::NetlinkAuxilliaryMessageHandler& error_handler)
-    : ack_handler_(ack_handler),
-      error_handler_(error_handler) {}
+    : ack_handler_(ack_handler), error_handler_(error_handler) {}
 
 NetlinkManager::NetlinkResponseHandler::~NetlinkResponseHandler() = default;
 
@@ -93,8 +92,8 @@ class ControlResponseHandler : public NetlinkManager::NetlinkResponseHandler {
       const NetlinkManager::NetlinkAckHandler& ack_handler,
       const NetlinkManager::NetlinkAuxilliaryMessageHandler& error_handler,
       const NetlinkManager::ControlNetlinkMessageHandler& handler)
-    : NetlinkManager::NetlinkResponseHandler(ack_handler, error_handler),
-      handler_(handler) {}
+      : NetlinkManager::NetlinkResponseHandler(ack_handler, error_handler),
+        handler_(handler) {}
 
   bool HandleMessage(const NetlinkMessage& netlink_message) const override {
     if (netlink_message.message_type() !=
@@ -135,8 +134,8 @@ class Nl80211ResponseHandler : public NetlinkManager::NetlinkResponseHandler {
       const NetlinkManager::NetlinkAckHandler& ack_handler,
       const NetlinkManager::NetlinkAuxilliaryMessageHandler& error_handler,
       const NetlinkManager::Nl80211MessageHandler& handler)
-    : NetlinkManager::NetlinkResponseHandler(ack_handler, error_handler),
-      handler_(handler) {}
+      : NetlinkManager::NetlinkResponseHandler(ack_handler, error_handler),
+        handler_(handler) {}
 
   bool HandleMessage(const NetlinkMessage& netlink_message) const override {
     if (netlink_message.message_type() != Nl80211Message::GetMessageType()) {
@@ -170,16 +169,15 @@ class Nl80211ResponseHandler : public NetlinkManager::NetlinkResponseHandler {
   DISALLOW_COPY_AND_ASSIGN(Nl80211ResponseHandler);
 };
 
-
-NetlinkManager::MessageType::MessageType() :
-  family_id(NetlinkMessage::kIllegalMessageType) {}
+NetlinkManager::MessageType::MessageType()
+    : family_id(NetlinkMessage::kIllegalMessageType) {}
 
 NetlinkManager::NetlinkManager()
     : weak_ptr_factory_(this),
       time_(Time::GetInstance()),
       io_handler_factory_(
           IOHandlerFactoryContainer::GetInstance()->GetIOHandlerFactory()),
-          dump_pending_(false) {}
+      dump_pending_(false) {}
 
 NetlinkManager::~NetlinkManager() = default;
 
@@ -207,13 +205,13 @@ void NetlinkManager::OnNewFamilyMessage(const ControlNetlinkMessage& message) {
   string family_name;
 
   if (!message.const_attributes()->GetU16AttributeValue(CTRL_ATTR_FAMILY_ID,
-                                                         &family_id)) {
+                                                        &family_id)) {
     LOG(ERROR) << __func__ << ": Couldn't get family_id attribute";
     return;
   }
 
   if (!message.const_attributes()->GetStringAttributeValue(
-      CTRL_ATTR_FAMILY_NAME, &family_name)) {
+          CTRL_ATTR_FAMILY_NAME, &family_name)) {
     LOG(ERROR) << __func__ << ": Couldn't get family_name attribute";
     return;
   }
@@ -223,7 +221,7 @@ void NetlinkManager::OnNewFamilyMessage(const ControlNetlinkMessage& message) {
   // Extract the available multicast groups from the message.
   AttributeListConstRefPtr multicast_groups;
   if (message.const_attributes()->ConstGetNestedAttributeList(
-      CTRL_ATTR_MCAST_GROUPS, &multicast_groups)) {
+          CTRL_ATTR_MCAST_GROUPS, &multicast_groups)) {
     AttributeListConstRefPtr current_group;
 
     for (int i = 1;
@@ -321,7 +319,8 @@ int NetlinkManager::file_descriptor() const {
   return (sock_ ? sock_->file_descriptor() : Sockets::kInvalidFileDescriptor);
 }
 
-uint16_t NetlinkManager::GetFamily(const string& name,
+uint16_t NetlinkManager::GetFamily(
+    const string& name,
     const NetlinkMessageFactory::FactoryMethod& message_factory) {
   MessageType& message_type = message_types_[name];
   if (message_type.family_id != NetlinkMessage::kIllegalMessageType) {
@@ -337,11 +336,11 @@ uint16_t NetlinkManager::GetFamily(const string& name,
     LOG(ERROR) << "Couldn't set string attribute";
     return false;
   }
-  SendControlMessage(&msg,
-                     Bind(&NetlinkManager::OnNewFamilyMessage,
-                          weak_ptr_factory_.GetWeakPtr()),
-                     Bind(&NetlinkManager::OnAckDoNothing),
-                     Bind(&NetlinkManager::OnNetlinkMessageError));
+  SendControlMessage(
+      &msg,
+      Bind(&NetlinkManager::OnNewFamilyMessage, weak_ptr_factory_.GetWeakPtr()),
+      Bind(&NetlinkManager::OnAckDoNothing),
+      Bind(&NetlinkManager::OnNetlinkMessageError));
 
   // Wait for a response.  The code absolutely needs family_ids for its
   // message types so we do a synchronous wait.  It's OK to do this because
@@ -365,23 +364,20 @@ uint16_t NetlinkManager::GetFamily(const string& name,
 
     int socket = file_descriptor();
     if (socket >= FD_SETSIZE)
-       LOG(FATAL) << "Invalid file_descriptor.";
+      LOG(FATAL) << "Invalid file_descriptor.";
     FD_SET(socket, &read_fds);
 
     struct timeval wait_duration;
     timersub(&end_time, &now, &wait_duration);
-    int result = sock_->sockets()->Select(file_descriptor() + 1,
-                                          &read_fds,
-                                          nullptr,
-                                          nullptr,
-                                          &wait_duration);
+    int result = sock_->sockets()->Select(file_descriptor() + 1, &read_fds,
+                                          nullptr, nullptr, &wait_duration);
     if (result < 0) {
       PLOG(ERROR) << "Select failed";
       return NetlinkMessage::kIllegalMessageType;
     }
     if (result == 0) {
-      LOG(WARNING) << "Timed out waiting for family_id for family '"
-                   << name << "'.";
+      LOG(WARNING) << "Timed out waiting for family_id for family '" << name
+                   << "'.";
       return NetlinkMessage::kIllegalMessageType;
     }
 
@@ -434,8 +430,8 @@ bool NetlinkManager::RemoveBroadcastHandler(
   return false;
 }
 
-bool NetlinkManager::FindBroadcastHandler(const NetlinkMessageHandler& handler)
-    const {
+bool NetlinkManager::FindBroadcastHandler(
+    const NetlinkMessageHandler& handler) const {
   for (const auto& broadcast_handler : broadcast_handlers_) {
     if (broadcast_handler.Equals(handler)) {
       return true;
@@ -453,10 +449,9 @@ bool NetlinkManager::SendControlMessage(
     const ControlNetlinkMessageHandler& message_handler,
     const NetlinkAckHandler& ack_handler,
     const NetlinkAuxilliaryMessageHandler& error_handler) {
-  return SendOrPostMessage(message,
-                           new ControlResponseHandler(ack_handler,
-                                                      error_handler,
-                                                      message_handler));
+  return SendOrPostMessage(
+      message,
+      new ControlResponseHandler(ack_handler, error_handler, message_handler));
 }
 
 bool NetlinkManager::SendNl80211Message(
@@ -464,10 +459,9 @@ bool NetlinkManager::SendNl80211Message(
     const Nl80211MessageHandler& message_handler,
     const NetlinkAckHandler& ack_handler,
     const NetlinkAuxilliaryMessageHandler& error_handler) {
-  return SendOrPostMessage(message,
-                           new Nl80211ResponseHandler(ack_handler,
-                                                      error_handler,
-                                                      message_handler));
+  return SendOrPostMessage(
+      message,
+      new Nl80211ResponseHandler(ack_handler, error_handler, message_handler));
 }
 
 bool NetlinkManager::SendOrPostMessage(
@@ -628,8 +622,8 @@ bool NetlinkManager::RemoveMessageHandler(const NetlinkMessage& message) {
 }
 
 uint32_t NetlinkManager::GetSequenceNumber() {
-  return sock_ ?
-      sock_->GetSequenceNumber() : NetlinkMessage::kBroadcastSequenceNumber;
+  return sock_ ? sock_->GetSequenceNumber()
+               : NetlinkMessage::kBroadcastSequenceNumber;
 }
 
 bool NetlinkManager::SubscribeToEvents(const string& family_id,

@@ -21,32 +21,38 @@ class MockMetrics : public Metrics {
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD4(AddServiceStateTransitionTimer,
-               void(const Service& service, const std::string& histogram_name,
+               void(const Service& service,
+                    const std::string& histogram_name,
                     Service::ConnectState start_state,
                     Service::ConnectState stop_state));
   MOCK_METHOD1(DeregisterDevice, void(int interface_index));
   MOCK_METHOD1(NotifyDeviceScanStarted, void(int interface_index));
   MOCK_METHOD1(NotifyDeviceScanFinished, void(int interface_index));
   MOCK_METHOD1(ResetScanTimer, void(int interface_index));
-  MOCK_METHOD2(NotifyDeviceConnectStarted, void(int interface_index,
-                                                bool is_auto_connecting));
+  MOCK_METHOD2(NotifyDeviceConnectStarted,
+               void(int interface_index, bool is_auto_connecting));
   MOCK_METHOD1(NotifyDeviceConnectFinished, void(int interface_index));
   MOCK_METHOD1(ResetConnectTimer, void(int interface_index));
   MOCK_METHOD1(NotifyDefaultServiceChanged, void(const Service* service));
   MOCK_METHOD2(NotifyServiceStateChanged,
                void(const Service& service, Service::ConnectState new_state));
 #if !defined(DISABLE_WIFI)
-  MOCK_METHOD2(Notify80211Disconnect, void(WiFiDisconnectByWhom by_whom,
-                                           IEEE_80211::WiFiReasonCode reason));
+  MOCK_METHOD2(Notify80211Disconnect,
+               void(WiFiDisconnectByWhom by_whom,
+                    IEEE_80211::WiFiReasonCode reason));
 #endif  // DISABLE_WIFI
   MOCK_METHOD1(NotifyWiFiSupplicantSuccess, void(int attempts));
   MOCK_METHOD0(Notify3GPPRegistrationDelayedDropPosted, void());
   MOCK_METHOD0(Notify3GPPRegistrationDelayedDropCanceled, void());
   MOCK_METHOD0(NotifyCorruptedProfile, void());
-  MOCK_METHOD3(SendEnumToUMA, bool(const std::string& name, int sample,
-                                   int max));
-  MOCK_METHOD5(SendToUMA, bool(const std::string& name, int sample, int min,
-                               int max, int num_buckets));
+  MOCK_METHOD3(SendEnumToUMA,
+               bool(const std::string& name, int sample, int max));
+  MOCK_METHOD5(SendToUMA,
+               bool(const std::string& name,
+                    int sample,
+                    int min,
+                    int max,
+                    int num_buckets));
   MOCK_METHOD2(SendSparseToUMA, bool(const std::string& name, int sample));
   MOCK_METHOD1(NotifyWifiAutoConnectableServices, void(int num_service));
   MOCK_METHOD1(NotifyWifiAvailableBSSes, void(int num_bss));

@@ -87,8 +87,8 @@ class WPASupplicant {
   static const char kKeyManagementMethodSuffixPSK[];
   static const char kKeyModeNone[];
   static const char kNetworkBgscanMethodLearn[];
-// None is not a real method name, but we interpret 'none' as a request that
-// no background scan parameter should be supplied to wpa_supplicant.
+  // None is not a real method name, but we interpret 'none' as a request that
+  // no background scan parameter should be supplied to wpa_supplicant.
   static const char kNetworkBgscanMethodNone[];
   static const char kNetworkBgscanMethodSimple[];
   static const char kNetworkModeInfrastructure[];
@@ -119,8 +119,8 @@ class WPASupplicant {
   static const char kNetworkPropertyMode[];
   static const char kNetworkPropertySSID[];
   static const char kNetworkPropertyScanSSID[];
-// TODO(quiche): Make the naming scheme more consistent, by adding the
-// object type to the property names below. (crbug.com/206642)
+  // TODO(quiche): Make the naming scheme more consistent, by adding the
+  // object type to the property names below. (crbug.com/206642)
   static const char kPropertyAuthAlg[];
   static const char kPropertyBSSID[];
   static const char kPropertyMode[];

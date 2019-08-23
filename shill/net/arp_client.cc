@@ -25,9 +25,7 @@ const size_t ArpClient::kMaxArpPacketLength =
     sizeof(arphdr) + sizeof(in6_addr) * 2 + ETH_ALEN * 2;
 
 ArpClient::ArpClient(int interface_index)
-    : interface_index_(interface_index),
-      sockets_(new Sockets()),
-      socket_(-1) {}
+    : interface_index_(interface_index), sockets_(new Sockets()), socket_(-1) {}
 
 ArpClient::~ArpClient() = default;
 
@@ -52,10 +50,9 @@ void ArpClient::Stop() {
   socket_closer_.reset();
 }
 
-
 bool ArpClient::CreateSocket(uint16_t arp_opcode) {
   int socket = sockets_->Socket(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC,
-      htons(ETHERTYPE_ARP));
+                                htons(ETHERTYPE_ARP));
   if (socket == -1) {
     PLOG(ERROR) << "Could not create ARP socket";
     return false;
@@ -65,13 +62,13 @@ bool ArpClient::CreateSocket(uint16_t arp_opcode) {
 
   // Create a packet filter incoming ARP packets.
   const sock_filter arp_filter[] = {
-    // If a packet contains the ARP opcode we are looking for...
-    BPF_STMT(BPF_LD | BPF_H | BPF_ABS, kArpOpOffset),
-    BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, arp_opcode, 0, 1),
-    // Return the the packet (up to largest expected packet size).
-    BPF_STMT(BPF_RET | BPF_K, kMaxArpPacketLength),
-    // Otherwise, drop it.
-    BPF_STMT(BPF_RET | BPF_K, 0),
+      // If a packet contains the ARP opcode we are looking for...
+      BPF_STMT(BPF_LD | BPF_H | BPF_ABS, kArpOpOffset),
+      BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, arp_opcode, 0, 1),
+      // Return the the packet (up to largest expected packet size).
+      BPF_STMT(BPF_RET | BPF_K, kMaxArpPacketLength),
+      // Otherwise, drop it.
+      BPF_STMT(BPF_RET | BPF_K, 0),
   };
 
   sock_fprog pf;
@@ -109,12 +106,8 @@ bool ArpClient::ReceivePacket(ArpPacket* packet, ByteString* sender) const {
   memset(&socket_address, 0, sizeof(socket_address));
   socklen_t socklen = sizeof(socket_address);
   int result = sockets_->RecvFrom(
-      socket_,
-      payload.GetData(),
-      payload.GetLength(),
-      0,
-      reinterpret_cast<struct sockaddr*>(&socket_address),
-      &socklen);
+      socket_, payload.GetData(), payload.GetLength(), 0,
+      reinterpret_cast<struct sockaddr*>(&socket_address), &socklen);
   if (result < 0) {
     PLOG(ERROR) << "Socket recvfrom failed";
     return false;
@@ -129,7 +122,8 @@ bool ArpClient::ReceivePacket(ArpPacket* packet, ByteString* sender) const {
   // The socket address returned may only be big enough to contain
   // the hardware address of the sender.
   CHECK(socklen >= static_cast<socklen_t>(sizeof(socket_address) -
-       sizeof(socket_address.sll_addr)) + ETH_ALEN);
+                                          sizeof(socket_address.sll_addr)) +
+                       ETH_ALEN);
   CHECK(socket_address.sll_halen == ETH_ALEN);
   *sender = ByteString(
       reinterpret_cast<const unsigned char*>(&socket_address.sll_addr),
@@ -161,20 +155,16 @@ bool ArpClient::TransmitRequest(const ArpPacket& packet) const {
   memcpy(&socket_address.sll_addr, remote_address.GetConstData(),
          remote_address.GetLength());
 
-  int result = sockets_->SendTo(
-      socket_,
-      payload.GetConstData(),
-      payload.GetLength(),
-      0,
-      reinterpret_cast<struct sockaddr*>(&socket_address),
-      sizeof(socket_address));
-  const int expected_result  = static_cast<int>(payload.GetLength());
+  int result =
+      sockets_->SendTo(socket_, payload.GetConstData(), payload.GetLength(), 0,
+                       reinterpret_cast<struct sockaddr*>(&socket_address),
+                       sizeof(socket_address));
+  const int expected_result = static_cast<int>(payload.GetLength());
   if (result != expected_result) {
     if (result < 0) {
       PLOG(ERROR) << "Socket sendto failed";
     } else if (result < static_cast<int>(payload.GetLength())) {
-      LOG(ERROR) << "Socket sendto returned "
-                 << result
+      LOG(ERROR) << "Socket sendto returned " << result
                  << " which is different from expected result "
                  << expected_result;
     }

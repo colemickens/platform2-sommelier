@@ -29,15 +29,15 @@ const char StaticIPParameters::kConfigKeyPrefix[] = "StaticIP.";
 const char StaticIPParameters::kSavedConfigKeyPrefix[] = "SavedIP.";
 // static
 const StaticIPParameters::Property StaticIPParameters::kProperties[] = {
-  { kAddressProperty, Property::kTypeString },
-  { kGatewayProperty, Property::kTypeString },
-  { kMtuProperty, Property::kTypeInt32 },
-  { kNameServersProperty, Property::kTypeStrings },
-  { kSearchDomainsProperty, Property::kTypeStrings },
-  { kPeerAddressProperty, Property::kTypeString },
-  { kPrefixlenProperty, Property::kTypeInt32 },
-  { kIncludedRoutesProperty, Property::kTypeStrings },
-  { kExcludedRoutesProperty, Property::kTypeStrings },
+    {kAddressProperty, Property::kTypeString},
+    {kGatewayProperty, Property::kTypeString},
+    {kMtuProperty, Property::kTypeInt32},
+    {kNameServersProperty, Property::kTypeStrings},
+    {kSearchDomainsProperty, Property::kTypeStrings},
+    {kPeerAddressProperty, Property::kTypeString},
+    {kPrefixlenProperty, Property::kTypeInt32},
+    {kIncludedRoutesProperty, Property::kTypeStrings},
+    {kExcludedRoutesProperty, Property::kTypeStrings},
 };
 
 StaticIPParameters::StaticIPParameters() = default;
@@ -57,40 +57,32 @@ void StaticIPParameters::PlumbPropertyStore(PropertyStore* store) {
             name,
             Int32Accessor(
                 new CustomMappedAccessor<StaticIPParameters, int32_t, size_t>(
-                    this,
-                    &StaticIPParameters::ClearMappedProperty,
+                    this, &StaticIPParameters::ClearMappedProperty,
                     &StaticIPParameters::GetMappedInt32Property,
-                    &StaticIPParameters::SetMappedInt32Property,
-                    i)));
+                    &StaticIPParameters::SetMappedInt32Property, i)));
         store->RegisterDerivedInt32(
             saved_name,
             Int32Accessor(
                 new CustomMappedAccessor<StaticIPParameters, int32_t, size_t>(
-                    this,
-                    &StaticIPParameters::ClearMappedSavedProperty,
+                    this, &StaticIPParameters::ClearMappedSavedProperty,
                     &StaticIPParameters::GetMappedSavedInt32Property,
-                    &StaticIPParameters::SetMappedSavedInt32Property,
-                    i)));
-         break;
+                    &StaticIPParameters::SetMappedSavedInt32Property, i)));
+        break;
       case Property::kTypeString:
         store->RegisterDerivedString(
             name,
             StringAccessor(
                 new CustomMappedAccessor<StaticIPParameters, string, size_t>(
-                    this,
-                    &StaticIPParameters::ClearMappedProperty,
+                    this, &StaticIPParameters::ClearMappedProperty,
                     &StaticIPParameters::GetMappedStringProperty,
-                    &StaticIPParameters::SetMappedStringProperty,
-                    i)));
+                    &StaticIPParameters::SetMappedStringProperty, i)));
         store->RegisterDerivedString(
             saved_name,
             StringAccessor(
                 new CustomMappedAccessor<StaticIPParameters, string, size_t>(
-                    this,
-                    &StaticIPParameters::ClearMappedSavedProperty,
+                    this, &StaticIPParameters::ClearMappedSavedProperty,
                     &StaticIPParameters::GetMappedSavedStringProperty,
-                    &StaticIPParameters::SetMappedSavedStringProperty,
-                    i)));
+                    &StaticIPParameters::SetMappedSavedStringProperty, i)));
         break;
       case Property::kTypeStrings:
         // Since Chrome is still using string for the nameservers, the
@@ -100,20 +92,16 @@ void StaticIPParameters::PlumbPropertyStore(PropertyStore* store) {
             name,
             StringAccessor(
                 new CustomMappedAccessor<StaticIPParameters, string, size_t>(
-                    this,
-                    &StaticIPParameters::ClearMappedProperty,
+                    this, &StaticIPParameters::ClearMappedProperty,
                     &StaticIPParameters::GetMappedStringsProperty,
-                    &StaticIPParameters::SetMappedStringsProperty,
-                    i)));
+                    &StaticIPParameters::SetMappedStringsProperty, i)));
         store->RegisterDerivedString(
             saved_name,
             StringAccessor(
                 new CustomMappedAccessor<StaticIPParameters, string, size_t>(
-                    this,
-                    &StaticIPParameters::ClearMappedSavedProperty,
+                    this, &StaticIPParameters::ClearMappedSavedProperty,
                     &StaticIPParameters::GetMappedSavedStringsProperty,
-                    &StaticIPParameters::SetMappedSavedStringsProperty,
-                    i)));
+                    &StaticIPParameters::SetMappedSavedStringsProperty, i)));
         break;
       default:
         NOTIMPLEMENTED();
@@ -135,45 +123,39 @@ void StaticIPParameters::PlumbPropertyStore(PropertyStore* store) {
               &StaticIPParameters::SetStaticIPConfig)));
 }
 
-void StaticIPParameters::Load(
-    StoreInterface* storage, const string& storage_id) {
+void StaticIPParameters::Load(StoreInterface* storage,
+                              const string& storage_id) {
   for (const auto& property : kProperties) {
     const string name(string(kConfigKeyPrefix) + property.name);
     switch (property.type) {
-      case Property::kTypeInt32:
-        {
-          int32_t value;
-          if (storage->GetInt(storage_id, name, &value)) {
-            args_.SetInt(property.name, value);
-          } else {
-            args_.Remove(property.name);
-          }
+      case Property::kTypeInt32: {
+        int32_t value;
+        if (storage->GetInt(storage_id, name, &value)) {
+          args_.SetInt(property.name, value);
+        } else {
+          args_.Remove(property.name);
         }
-        break;
-      case Property::kTypeString:
-        {
-          string value;
-          if (storage->GetString(storage_id, name, &value)) {
-            args_.SetString(property.name, value);
-          } else {
-            args_.Remove(property.name);
-          }
+      } break;
+      case Property::kTypeString: {
+        string value;
+        if (storage->GetString(storage_id, name, &value)) {
+          args_.SetString(property.name, value);
+        } else {
+          args_.Remove(property.name);
         }
-        break;
-      case Property::kTypeStrings:
-        {
-          // Name servers field is stored in storage as comma separated string.
-          // Keep it as is to be backward compatible.
-          string value;
-          if (storage->GetString(storage_id, name, &value)) {
-            vector<string> string_list = base::SplitString(
-                value, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-            args_.SetStrings(property.name, string_list);
-          } else {
-            args_.Remove(property.name);
-          }
+      } break;
+      case Property::kTypeStrings: {
+        // Name servers field is stored in storage as comma separated string.
+        // Keep it as is to be backward compatible.
+        string value;
+        if (storage->GetString(storage_id, name, &value)) {
+          vector<string> string_list = base::SplitString(
+              value, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+          args_.SetStrings(property.name, string_list);
+        } else {
+          args_.Remove(property.name);
         }
-        break;
+      } break;
       default:
         NOTIMPLEMENTED();
         break;
@@ -181,8 +163,8 @@ void StaticIPParameters::Load(
   }
 }
 
-void StaticIPParameters::Save(
-    StoreInterface* storage, const string& storage_id) {
+void StaticIPParameters::Save(StoreInterface* storage,
+                              const string& storage_id) {
   for (const auto& property : kProperties) {
     const string name(string(kConfigKeyPrefix) + property.name);
     bool property_exists = false;
@@ -219,32 +201,31 @@ void StaticIPParameters::Save(
   }
 }
 
-void StaticIPParameters::ApplyInt(
-    const string& property, int32_t* value_out) {
+void StaticIPParameters::ApplyInt(const string& property, int32_t* value_out) {
   saved_args_.SetInt(property, *value_out);
   if (args_.ContainsInt(property)) {
     *value_out = args_.GetInt(property);
   }
 }
 
-void StaticIPParameters::ApplyString(
-    const string& property, string* value_out) {
+void StaticIPParameters::ApplyString(const string& property,
+                                     string* value_out) {
   saved_args_.SetString(property, *value_out);
   if (args_.ContainsString(property)) {
     *value_out = args_.GetString(property);
   }
 }
 
-void StaticIPParameters::ApplyStrings(
-    const string& property, vector<string>* value_out) {
+void StaticIPParameters::ApplyStrings(const string& property,
+                                      vector<string>* value_out) {
   saved_args_.SetStrings(property, *value_out);
   if (args_.ContainsStrings(property)) {
     *value_out = args_.GetStrings(property);
   }
 }
 
-void StaticIPParameters::RestoreStrings(
-    const string& property, vector<string>* value_out) {
+void StaticIPParameters::RestoreStrings(const string& property,
+                                        vector<string>* value_out) {
   if (saved_args_.ContainsStrings(property)) {
     *value_out = saved_args_.GetStrings(property);
   } else {
@@ -337,15 +318,15 @@ void StaticIPParameters::ClearSavedParameters() {
 
 bool StaticIPParameters::ContainsAddress() const {
   return args_.ContainsString(kAddressProperty) &&
-      args_.ContainsInt(kPrefixlenProperty);
+         args_.ContainsInt(kPrefixlenProperty);
 }
 
 bool StaticIPParameters::ContainsNameServers() const {
   return args_.ContainsStrings(kNameServersProperty);
 }
 
-void StaticIPParameters::ClearMappedProperty(
-    const size_t& index, Error* error) {
+void StaticIPParameters::ClearMappedProperty(const size_t& index,
+                                             Error* error) {
   CHECK(index < arraysize(kProperties));
 
   const Property& property = kProperties[index];
@@ -377,13 +358,13 @@ void StaticIPParameters::ClearMappedProperty(
   }
 }
 
-void StaticIPParameters::ClearMappedSavedProperty(
-    const size_t& index, Error* error) {
+void StaticIPParameters::ClearMappedSavedProperty(const size_t& index,
+                                                  Error* error) {
   error->Populate(Error::kInvalidArguments, "Property is read-only");
 }
 
-int32_t StaticIPParameters::GetMappedInt32Property(
-    const size_t& index, Error* error) {
+int32_t StaticIPParameters::GetMappedInt32Property(const size_t& index,
+                                                   Error* error) {
   CHECK(index < arraysize(kProperties));
 
   const string& key = kProperties[index].name;
@@ -394,8 +375,8 @@ int32_t StaticIPParameters::GetMappedInt32Property(
   return args_.GetInt(key);
 }
 
-int32_t StaticIPParameters::GetMappedSavedInt32Property(
-    const size_t& index, Error* error) {
+int32_t StaticIPParameters::GetMappedSavedInt32Property(const size_t& index,
+                                                        Error* error) {
   CHECK(index < arraysize(kProperties));
 
   const string& key = kProperties[index].name;
@@ -406,8 +387,8 @@ int32_t StaticIPParameters::GetMappedSavedInt32Property(
   return saved_args_.GetInt(key);
 }
 
-string StaticIPParameters::GetMappedStringProperty(
-    const size_t& index, Error* error) {
+string StaticIPParameters::GetMappedStringProperty(const size_t& index,
+                                                   Error* error) {
   CHECK(index < arraysize(kProperties));
 
   const string& key = kProperties[index].name;
@@ -418,8 +399,8 @@ string StaticIPParameters::GetMappedStringProperty(
   return args_.GetString(key);
 }
 
-string StaticIPParameters::GetMappedSavedStringProperty(
-    const size_t& index, Error* error) {
+string StaticIPParameters::GetMappedSavedStringProperty(const size_t& index,
+                                                        Error* error) {
   CHECK(index < arraysize(kProperties));
 
   const string& key = kProperties[index].name;
@@ -430,8 +411,8 @@ string StaticIPParameters::GetMappedSavedStringProperty(
   return saved_args_.GetString(key);
 }
 
-string StaticIPParameters::GetMappedStringsProperty(
-    const size_t& index, Error* error) {
+string StaticIPParameters::GetMappedStringsProperty(const size_t& index,
+                                                    Error* error) {
   CHECK(index < arraysize(kProperties));
 
   const string& key = kProperties[index].name;
@@ -442,8 +423,8 @@ string StaticIPParameters::GetMappedStringsProperty(
   return base::JoinString(args_.GetStrings(key), ",");
 }
 
-string StaticIPParameters::GetMappedSavedStringsProperty(
-    const size_t& index, Error* error) {
+string StaticIPParameters::GetMappedSavedStringsProperty(const size_t& index,
+                                                         Error* error) {
   CHECK(index < arraysize(kProperties));
 
   const string& key = kProperties[index].name;
@@ -454,8 +435,9 @@ string StaticIPParameters::GetMappedSavedStringsProperty(
   return base::JoinString(saved_args_.GetStrings(key), ",");
 }
 
-bool StaticIPParameters::SetMappedInt32Property(
-    const size_t& index, const int32_t& value, Error* error) {
+bool StaticIPParameters::SetMappedInt32Property(const size_t& index,
+                                                const int32_t& value,
+                                                Error* error) {
   CHECK(index < arraysize(kProperties));
   if (args_.ContainsInt(kProperties[index].name) &&
       args_.GetInt(kProperties[index].name) == value) {
@@ -465,14 +447,16 @@ bool StaticIPParameters::SetMappedInt32Property(
   return true;
 }
 
-bool StaticIPParameters::SetMappedSavedInt32Property(
-    const size_t& index, const int32_t& value, Error* error) {
+bool StaticIPParameters::SetMappedSavedInt32Property(const size_t& index,
+                                                     const int32_t& value,
+                                                     Error* error) {
   error->Populate(Error::kInvalidArguments, "Property is read-only");
   return false;
 }
 
-bool StaticIPParameters::SetMappedStringProperty(
-    const size_t& index, const string& value, Error* error) {
+bool StaticIPParameters::SetMappedStringProperty(const size_t& index,
+                                                 const string& value,
+                                                 Error* error) {
   CHECK(index < arraysize(kProperties));
   if (args_.ContainsString(kProperties[index].name) &&
       args_.GetString(kProperties[index].name) == value) {
@@ -482,14 +466,16 @@ bool StaticIPParameters::SetMappedStringProperty(
   return true;
 }
 
-bool StaticIPParameters::SetMappedSavedStringProperty(
-    const size_t& index, const string& value, Error* error) {
+bool StaticIPParameters::SetMappedSavedStringProperty(const size_t& index,
+                                                      const string& value,
+                                                      Error* error) {
   error->Populate(Error::kInvalidArguments, "Property is read-only");
   return false;
 }
 
-bool StaticIPParameters::SetMappedStringsProperty(
-    const size_t& index, const string& value, Error* error) {
+bool StaticIPParameters::SetMappedStringsProperty(const size_t& index,
+                                                  const string& value,
+                                                  Error* error) {
   CHECK(index < arraysize(kProperties));
 
   vector<string> string_list = base::SplitString(
@@ -503,8 +489,9 @@ bool StaticIPParameters::SetMappedStringsProperty(
   return true;
 }
 
-bool StaticIPParameters::SetMappedSavedStringsProperty(
-    const size_t& index, const string& value, Error* error) {
+bool StaticIPParameters::SetMappedSavedStringsProperty(const size_t& index,
+                                                       const string& value,
+                                                       Error* error) {
   error->Populate(Error::kInvalidArguments, "Property is read-only");
   return false;
 }

@@ -24,13 +24,15 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kProperty;
-static string ObjectID(const PropertyStore* p) { return "(property_store)"; }
+static string ObjectID(const PropertyStore* p) {
+  return "(property_store)";
 }
+}  // namespace Logging
 
 PropertyStore::PropertyStore() = default;
 
-PropertyStore::PropertyStore(PropertyChangeCallback on_property_changed) :
-    property_changed_callback_(on_property_changed) {}
+PropertyStore::PropertyStore(PropertyChangeCallback on_property_changed)
+    : property_changed_callback_(on_property_changed) {}
 
 PropertyStore::~PropertyStore() = default;
 
@@ -112,33 +114,33 @@ bool PropertyStore::GetProperties(brillo::VariantDictionary* out,
                                   Error* error) const {
   {
     ReadablePropertyConstIterator<bool> it = GetBoolPropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance()) {
+    for (; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<int16_t> it = GetInt16PropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance()) {
+    for (; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<int32_t> it = GetInt32PropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance()) {
+    for (; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<RpcIdentifier> it =
         GetRpcIdentifierPropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance()) {
+    for (; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = brillo::Any(dbus::ObjectPath(it.value()));
     }
   }
   {
     ReadablePropertyConstIterator<RpcIdentifiers> it =
         GetRpcIdentifiersPropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance()) {
+    for (; !it.AtEnd(); it.Advance()) {
       vector<dbus::ObjectPath> rpc_identifiers_as_paths;
       for (const auto& path : it.value()) {
         rpc_identifiers_as_paths.push_back(dbus::ObjectPath(path));
@@ -148,69 +150,69 @@ bool PropertyStore::GetProperties(brillo::VariantDictionary* out,
   }
   {
     ReadablePropertyConstIterator<string> it = GetStringPropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance()) {
+    for (; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<Stringmap> it = GetStringmapPropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance()) {
+    for (; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<Stringmaps> it =
         GetStringmapsPropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance()) {
+    for (; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<Strings> it = GetStringsPropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance()) {
+    for (; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<uint8_t> it = GetUint8PropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance()) {
+    for (; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<ByteArray> it = GetByteArrayPropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance()) {
+    for (; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<uint16_t> it = GetUint16PropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance()) {
+    for (; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<Uint16s> it = GetUint16sPropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance()) {
+    for (; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<uint32_t> it = GetUint32PropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance()) {
+    for (; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<uint64_t> it = GetUint64PropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance()) {
+    for (; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<KeyValueStore> it =
         GetKeyValueStorePropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance()) {
+    for (; !it.AtEnd(); it.Advance()) {
       brillo::VariantDictionary dict =
           KeyValueStore::ConvertToVariantDictionary(it.value());
       (*out)[it.Key()] = dict;
@@ -286,7 +288,7 @@ bool PropertyStore::GetUint8Property(const string& name,
 
 bool PropertyStore::GetByteArrayProperty(const string& name,
                                          ByteArray* value,
-                                         Error *error) const {
+                                         Error* error) const {
   return GetProperty(name, value, error, bytearray_properties_, "a byte array");
 }
 
@@ -376,9 +378,9 @@ bool PropertyStore::SetUint8Property(const string& name,
 
 bool PropertyStore::SetByteArrayProperty(const string& name,
                                          const ByteArray& value,
-                                         Error *error) {
-  return SetProperty(
-      name, value, error, &bytearray_properties_, "a byte array");
+                                         Error* error) {
+  return SetProperty(name, value, error, &bytearray_properties_,
+                     "a byte array");
 }
 
 bool PropertyStore::SetUint16Property(const string& name,
@@ -447,8 +449,8 @@ bool PropertyStore::ClearProperty(const string& name, Error* error) {
   } else if (base::ContainsKey(rpc_identifiers_properties_, name)) {
     rpc_identifiers_properties_[name]->Clear(error);
   } else {
-    error->Populate(
-        Error::kInvalidProperty, "Property " + name + " does not exist.");
+    error->Populate(Error::kInvalidProperty,
+                    "Property " + name + " does not exist.");
   }
   if (error->IsSuccess()) {
     if (!property_changed_callback_.is_null()) {
@@ -475,8 +477,8 @@ ReadablePropertyConstIterator<int32_t> PropertyStore::GetInt32PropertiesIter()
 
 ReadablePropertyConstIterator<KeyValueStore>
 PropertyStore::GetKeyValueStorePropertiesIter() const {
-  return
-      ReadablePropertyConstIterator<KeyValueStore>(key_value_store_properties_);
+  return ReadablePropertyConstIterator<KeyValueStore>(
+      key_value_store_properties_);
 }
 
 ReadablePropertyConstIterator<RpcIdentifier>
@@ -491,8 +493,8 @@ PropertyStore::GetRpcIdentifiersPropertiesIter() const {
       rpc_identifiers_properties_);
 }
 
-ReadablePropertyConstIterator<string>
-PropertyStore::GetStringPropertiesIter() const {
+ReadablePropertyConstIterator<string> PropertyStore::GetStringPropertiesIter()
+    const {
   return ReadablePropertyConstIterator<string>(string_properties_);
 }
 
@@ -502,8 +504,7 @@ PropertyStore::GetStringmapPropertiesIter() const {
 }
 
 ReadablePropertyConstIterator<Stringmaps>
-PropertyStore::GetStringmapsPropertiesIter()
-    const {
+PropertyStore::GetStringmapsPropertiesIter() const {
   return ReadablePropertyConstIterator<Stringmaps>(stringmaps_properties_);
 }
 
@@ -866,8 +867,7 @@ bool PropertyStore::GetProperty(const string& name,
                                 Error* error,
                                 const AccessorMap<V>& collection,
                                 const string& value_type_english) const {
-  SLOG(this, 2) << "Getting " << name << " as " << value_type_english
-                << ".";
+  SLOG(this, 2) << "Getting " << name << " as " << value_type_english << ".";
   auto it = collection.find(name);
   if (it != collection.end()) {
     V val = it->second->Get(error);
@@ -880,8 +880,8 @@ bool PropertyStore::GetProperty(const string& name,
           Error::kInvalidArguments,
           "Property " + name + " is not " + value_type_english + ".");
     } else {
-      error->Populate(
-          Error::kInvalidProperty, "Property " + name + " does not exist.");
+      error->Populate(Error::kInvalidProperty,
+                      "Property " + name + " does not exist.");
     }
   }
   return error->IsSuccess();
@@ -894,8 +894,7 @@ bool PropertyStore::SetProperty(const string& name,
                                 AccessorMap<V>* collection,
                                 const string& value_type_english) {
   bool ret = false;
-  SLOG(this, 2) << "Setting " << name << " as " << value_type_english
-                << ".";
+  SLOG(this, 2) << "Setting " << name << " as " << value_type_english << ".";
   if (base::ContainsKey(*collection, name)) {
     ret = (*collection)[name]->Set(value, error);
     if (ret) {
@@ -909,8 +908,8 @@ bool PropertyStore::SetProperty(const string& name,
           Error::kInvalidArguments,
           "Property " + name + " is not " + value_type_english + ".");
     } else {
-      error->Populate(
-          Error::kInvalidProperty, "Property " + name + " does not exist.");
+      error->Populate(Error::kInvalidProperty,
+                      "Property " + name + " does not exist.");
     }
   }
   return ret;

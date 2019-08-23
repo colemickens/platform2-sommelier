@@ -44,7 +44,8 @@ class ConnectionInfoReader {
                                 int64_t* time_to_expire_seconds);
   bool ParseIsUnreplied(const std::string& input, bool* is_unreplied);
   bool ParseIPAddress(const std::string& input,
-                      IPAddress* ip_address, bool* is_source);
+                      IPAddress* ip_address,
+                      bool* is_source);
   bool ParsePort(const std::string& input, uint16_t* port, bool* is_source);
 
   DISALLOW_COPY_AND_ASSIGN(ConnectionInfoReader);

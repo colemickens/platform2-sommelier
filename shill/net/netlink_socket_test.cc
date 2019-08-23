@@ -39,10 +39,11 @@ class NetlinkSocketTest : public Test {
   }
 
   virtual void InitializeSocket(int fd) {
-    EXPECT_CALL(*mock_sockets_, Socket(PF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC,
-          NETLINK_GENERIC)).WillOnce(Return(fd));
-    EXPECT_CALL(*mock_sockets_, SetReceiveBuffer(
-        fd, kNetlinkReceiveBufferSize)).WillOnce(Return(0));
+    EXPECT_CALL(*mock_sockets_,
+                Socket(PF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC, NETLINK_GENERIC))
+        .WillOnce(Return(fd));
+    EXPECT_CALL(*mock_sockets_, SetReceiveBuffer(fd, kNetlinkReceiveBufferSize))
+        .WillOnce(Return(0));
     EXPECT_CALL(*mock_sockets_, Bind(fd, _, sizeof(struct sockaddr_nl)))
         .WillOnce(Return(0));
     EXPECT_TRUE(netlink_socket_.Init());
@@ -60,8 +61,12 @@ class FakeSocketRead {
   }
   // Copies |len| bytes of |next_read_string_| into |buf| and clears
   // |next_read_string_|.
-  ssize_t FakeSuccessfulRead(int sockfd, void* buf, size_t len, int flags,
-                             struct sockaddr* src_addr, socklen_t* addrlen) {
+  ssize_t FakeSuccessfulRead(int sockfd,
+                             void* buf,
+                             size_t len,
+                             int flags,
+                             struct sockaddr* src_addr,
+                             socklen_t* addrlen) {
     if (!buf) {
       return -1;
     }
@@ -97,8 +102,9 @@ TEST_F(NetlinkSocketTest, InitBrokenBufferTest) {
 
   EXPECT_CALL(*mock_sockets_, Socket(PF_NETLINK, _, NETLINK_GENERIC))
       .WillOnce(Return(kFakeFd));
-  EXPECT_CALL(*mock_sockets_, SetReceiveBuffer(
-      kFakeFd, kNetlinkReceiveBufferSize)).WillOnce(Return(-1));
+  EXPECT_CALL(*mock_sockets_,
+              SetReceiveBuffer(kFakeFd, kNetlinkReceiveBufferSize))
+      .WillOnce(Return(-1));
   EXPECT_CALL(*mock_sockets_, Bind(kFakeFd, _, sizeof(struct sockaddr_nl)))
       .WillOnce(Return(0));
   EXPECT_TRUE(netlink_socket_.Init());
@@ -112,8 +118,9 @@ TEST_F(NetlinkSocketTest, InitBrokenBindTest) {
 
   EXPECT_CALL(*mock_sockets_, Socket(PF_NETLINK, _, NETLINK_GENERIC))
       .WillOnce(Return(kFakeFd));
-  EXPECT_CALL(*mock_sockets_, SetReceiveBuffer(
-      kFakeFd, kNetlinkReceiveBufferSize)).WillOnce(Return(0));
+  EXPECT_CALL(*mock_sockets_,
+              SetReceiveBuffer(kFakeFd, kNetlinkReceiveBufferSize))
+      .WillOnce(Return(0));
   EXPECT_CALL(*mock_sockets_, Bind(kFakeFd, _, sizeof(struct sockaddr_nl)))
       .WillOnce(Return(-1));
   EXPECT_CALL(*mock_sockets_, Close(kFakeFd)).WillOnce(Return(0));
@@ -155,7 +162,7 @@ TEST_F(NetlinkSocketTest, SequenceNumberTest) {
   // Just a sequence number.
   const uint32_t arbitrary_number = 42;
   netlink_socket_.sequence_number_ = arbitrary_number;
-  EXPECT_EQ(arbitrary_number+1, netlink_socket_.GetSequenceNumber());
+  EXPECT_EQ(arbitrary_number + 1, netlink_socket_.GetSequenceNumber());
 
   // Make sure we don't go to |NetlinkMessage::kBroadcastSequenceNumber|.
   netlink_socket_.sequence_number_ = NetlinkMessage::kBroadcastSequenceNumber;
@@ -180,8 +187,7 @@ TEST_F(NetlinkSocketTest, GoodRecvMessageTest) {
       .WillOnce(Return(read_size));
 
   // ...and expect a second call to get the data.
-  EXPECT_CALL(*mock_sockets_,
-              RecvFrom(kFakeFd, _, read_size, 0, _, _))
+  EXPECT_CALL(*mock_sockets_, RecvFrom(kFakeFd, _, read_size, 0, _, _))
       .WillOnce(Invoke(&fake_socket_read, &FakeSocketRead::FakeSuccessfulRead));
 
   EXPECT_TRUE(netlink_socket_.RecvMessage(&message));

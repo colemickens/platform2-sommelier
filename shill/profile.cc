@@ -33,8 +33,7 @@ using std::vector;
 namespace shill {
 
 // static
-const char Profile::kUserProfileListPathname[] =
-    RUNDIR "/loaded_profile_list";
+const char Profile::kUserProfileListPathname[] = RUNDIR "/loaded_profile_list";
 
 Profile::Profile(Manager* manager,
                  const Identifier& name,
@@ -116,9 +115,8 @@ bool Profile::InitStorage(InitStorageOption storage_option, Error* error) {
     // Add a descriptive header to the profile so even if nothing is stored
     // to it, it still has some content.  Completely empty keyfiles are not
     // valid for reading.
-    storage->SetHeader(
-        base::StringPrintf("Profile %s:%s", name_.user.c_str(),
-                           name_.identifier.c_str()));
+    storage->SetHeader(base::StringPrintf("Profile %s:%s", name_.user.c_str(),
+                                          name_.identifier.c_str()));
   }
   storage_ = std::move(storage);
   manager_->OnProfileStorageInitialized(this);
@@ -171,7 +169,7 @@ bool Profile::AbandonService(const ServiceRefPtr& service) {
   if (service->profile() == this)
     service->SetProfile(nullptr);
   return storage_->DeleteGroup(service->GetStorageIdentifier()) &&
-      storage_->Flush();
+         storage_->Flush();
 }
 
 bool Profile::UpdateService(const ServiceRefPtr& service) {
@@ -287,8 +285,8 @@ string Profile::IdentifierToString(const Identifier& name) {
   }
 
   // Format: "~user/identifier".
-  return base::StringPrintf(
-      "~%s/%s", name.user.c_str(), name.identifier.c_str());
+  return base::StringPrintf("~%s/%s", name.user.c_str(),
+                            name.identifier.c_str());
 }
 
 // static
@@ -299,9 +297,8 @@ vector<Profile::Identifier> Profile::LoadUserProfileList(const FilePath& path) {
     return profile_identifiers;
   }
 
-  vector<string> profile_lines =
-      base::SplitString(profile_data, "\n", base::KEEP_WHITESPACE,
-                        base::SPLIT_WANT_ALL);
+  vector<string> profile_lines = base::SplitString(
+      profile_data, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   for (const auto& line : profile_lines) {
     if (line.empty()) {
       // This will be the case on the last line, so let's not complain about it.
@@ -309,15 +306,14 @@ vector<Profile::Identifier> Profile::LoadUserProfileList(const FilePath& path) {
     }
     size_t space = line.find(' ');
     if (space == string::npos || space == 0) {
-      LOG(ERROR) << "Invalid line found in " << path.value()
-                 << ": " << line;
+      LOG(ERROR) << "Invalid line found in " << path.value() << ": " << line;
       continue;
     }
     string name(line.begin(), line.begin() + space);
     Identifier identifier;
     if (!ParseIdentifier(name, &identifier) || identifier.user.empty()) {
-      LOG(ERROR) << "Invalid profile name found in " << path.value()
-                 << ": " << name;
+      LOG(ERROR) << "Invalid profile name found in " << path.value() << ": "
+                 << name;
       continue;
     }
     identifier.user_hash = string(line.begin() + space + 1, line.end());
@@ -336,9 +332,8 @@ bool Profile::SaveUserProfileList(const FilePath& path,
     if (id.user.empty()) {
       continue;
     }
-    lines.push_back(base::StringPrintf("%s %s\n",
-                                       IdentifierToString(id).c_str(),
-                                       id.user_hash.c_str()));
+    lines.push_back(base::StringPrintf(
+        "%s %s\n", IdentifierToString(id).c_str(), id.user_hash.c_str()));
   }
   string content = base::JoinString(lines, "");
   size_t ret = base::WriteFile(path, content.c_str(), content.length());
@@ -385,26 +380,23 @@ bool Profile::UpdateWiFiProvider(const WiFiProvider& wifi_provider) {
 }
 #endif  // DISABLE_WIFI
 
-void Profile::HelpRegisterConstDerivedStrings(
-    const string& name,
-    Strings(Profile::*get)(Error*)) {
+void Profile::HelpRegisterConstDerivedStrings(const string& name,
+                                              Strings (Profile::*get)(Error*)) {
   store_.RegisterDerivedStrings(
       name, StringsAccessor(
                 new CustomAccessor<Profile, Strings>(this, get, nullptr)));
 }
 
 // static
-FilePath Profile::GetFinalStoragePath(
-    const FilePath& storage_dir,
-    const Identifier& profile_name) {
+FilePath Profile::GetFinalStoragePath(const FilePath& storage_dir,
+                                      const Identifier& profile_name) {
   FilePath base_path;
   if (profile_name.user.empty()) {  // True for DefaultProfiles.
     base_path = storage_dir.Append(
         base::StringPrintf("%s.profile", profile_name.identifier.c_str()));
   } else {
     base_path = storage_dir.Append(
-        base::StringPrintf("%s/%s.profile",
-                           profile_name.user.c_str(),
+        base::StringPrintf("%s/%s.profile", profile_name.user.c_str(),
                            profile_name.identifier.c_str()));
   }
 

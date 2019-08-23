@@ -35,7 +35,7 @@ using testing::Test;
 namespace shill {
 
 namespace {
-const uint8_t kGatewayMacAddress[] = { 0, 1, 2, 3, 4, 5 };
+const uint8_t kGatewayMacAddress[] = {0, 1, 2, 3, 4, 5};
 }  // namespace
 
 class LinkMonitorObserver {
@@ -43,9 +43,8 @@ class LinkMonitorObserver {
   LinkMonitorObserver()
       : failure_callback_(
             Bind(&LinkMonitorObserver::OnFailureCallback, Unretained(this))),
-        gateway_change_callback_(
-            Bind(&LinkMonitorObserver::OnGatewayChangeCallback,
-                 Unretained(this))) {}
+        gateway_change_callback_(Bind(
+            &LinkMonitorObserver::OnGatewayChangeCallback, Unretained(this))) {}
   virtual ~LinkMonitorObserver() = default;
 
   MOCK_METHOD0(OnFailureCallback, void());
@@ -96,9 +95,8 @@ class LinkMonitorTest : public Test {
   }
 
   void AdvanceTime(int time_ms) {
-    struct timeval adv_time = {
-      static_cast<time_t>(time_ms/1000),
-      static_cast<time_t>((time_ms % 1000) * 1000) };
+    struct timeval adv_time = {static_cast<time_t>(time_ms / 1000),
+                               static_cast<time_t>((time_ms % 1000) * 1000)};
     timeradd(&time_val_, &adv_time, &time_val_);
     EXPECT_CALL(time_, GetTimeMonotonic(_))
         .WillRepeatedly(DoAll(SetArgPointee<0>(time_val_), Return(0)));
@@ -115,9 +113,8 @@ class LinkMonitorTest : public Test {
   void TriggerActiveLinkMonitorFailure(Metrics::LinkMonitorFailure failure,
                                        int broadcast_failure_count,
                                        int unicast_failure_count) {
-    monitor_.OnActiveLinkMonitorFailure(failure,
-                                    broadcast_failure_count,
-                                    unicast_failure_count);
+    monitor_.OnActiveLinkMonitorFailure(failure, broadcast_failure_count,
+                                        unicast_failure_count);
   }
 
   void TriggerActiveLinkMonitorSuccess() {
@@ -197,35 +194,31 @@ TEST_F(LinkMonitorTest, OnActiveLinkMonitorFailure) {
 
   // Active monitor failed after 5 seconds.
   EXPECT_CALL(observer_, OnFailureCallback()).Times(1);
-  EXPECT_CALL(metrics_, SendEnumToUMA(
-      HasSubstr("LinkMonitorFailure"),
-      Metrics::kLinkMonitorFailureThresholdReached, _));
-  EXPECT_CALL(metrics_, SendToUMA(
-      HasSubstr("LinkMonitorSecondsToFailure"), kElapsedTimeMilliseconds / 1000,
-      _, _, _));
-  EXPECT_CALL(metrics_, SendToUMA(
-      HasSubstr("BroadcastErrorsAtFailure"), kBroadcastFailureCount,
-      _, _, _));
-  EXPECT_CALL(metrics_, SendToUMA(
-      HasSubstr("UnicastErrorsAtFailure"), kUnicastFailureCount,
-      _, _, _));
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(HasSubstr("LinkMonitorFailure"),
+                            Metrics::kLinkMonitorFailureThresholdReached, _));
+  EXPECT_CALL(metrics_, SendToUMA(HasSubstr("LinkMonitorSecondsToFailure"),
+                                  kElapsedTimeMilliseconds / 1000, _, _, _));
+  EXPECT_CALL(metrics_, SendToUMA(HasSubstr("BroadcastErrorsAtFailure"),
+                                  kBroadcastFailureCount, _, _, _));
+  EXPECT_CALL(metrics_, SendToUMA(HasSubstr("UnicastErrorsAtFailure"),
+                                  kUnicastFailureCount, _, _, _));
   AdvanceTime(kElapsedTimeMilliseconds);
   TriggerActiveLinkMonitorFailure(Metrics::kLinkMonitorFailureThresholdReached,
-                                  kBroadcastFailureCount,
-                                  kUnicastFailureCount);
+                                  kBroadcastFailureCount, kUnicastFailureCount);
 }
 
 TEST_F(LinkMonitorTest, OnActiveLinkMonitorSuccess) {
-  ByteString gateway_mac(kGatewayMacAddress,
-                               arraysize(kGatewayMacAddress));
+  ByteString gateway_mac(kGatewayMacAddress, arraysize(kGatewayMacAddress));
   EXPECT_CALL(*active_link_monitor_, gateway_mac_address())
       .WillRepeatedly(ReturnRef(gateway_mac));
 
   // Active link monitor succeed for the first time, gateway MAC address will be
   // updated.
   EXPECT_CALL(observer_, OnGatewayChangeCallback()).Times(1);
-  EXPECT_CALL(*passive_link_monitor_, Start(
-      PassiveLinkMonitor::kDefaultMonitorCycles)).Times(1);
+  EXPECT_CALL(*passive_link_monitor_,
+              Start(PassiveLinkMonitor::kDefaultMonitorCycles))
+      .Times(1);
   TriggerActiveLinkMonitorSuccess();
   VerifyGatewayMacAddress(gateway_mac);
   Mock::VerifyAndClearExpectations(&observer_);
@@ -233,8 +226,9 @@ TEST_F(LinkMonitorTest, OnActiveLinkMonitorSuccess) {
 
   // Active link monitor succeed again, gateway MAC address not changed.
   EXPECT_CALL(observer_, OnGatewayChangeCallback()).Times(0);
-  EXPECT_CALL(*passive_link_monitor_, Start(
-      PassiveLinkMonitor::kDefaultMonitorCycles)).Times(1);
+  EXPECT_CALL(*passive_link_monitor_,
+              Start(PassiveLinkMonitor::kDefaultMonitorCycles))
+      .Times(1);
   TriggerActiveLinkMonitorSuccess();
   VerifyGatewayMacAddress(gateway_mac);
   Mock::VerifyAndClearExpectations(&observer_);

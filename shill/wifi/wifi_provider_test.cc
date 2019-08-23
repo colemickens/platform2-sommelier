@@ -111,26 +111,27 @@ class WiFiProviderTest : public testing::Test {
 
     // Default expectations for UMA metrics. Individual test cases
     // will override these, by adding later expectations.
-    EXPECT_CALL(metrics_, SendToUMA(
-        Metrics::kMetricRememberedWiFiNetworkCount,
-        _,
-        Metrics::kMetricRememberedWiFiNetworkCountMin,
-        Metrics::kMetricRememberedWiFiNetworkCountMax,
-        Metrics::kMetricRememberedWiFiNetworkCountNumBuckets))
+    EXPECT_CALL(metrics_,
+                SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, _,
+                          Metrics::kMetricRememberedWiFiNetworkCountMin,
+                          Metrics::kMetricRememberedWiFiNetworkCountMax,
+                          Metrics::kMetricRememberedWiFiNetworkCountNumBuckets))
         .Times(AnyNumber());
-    EXPECT_CALL(metrics_, SendToUMA(
-        StartsWith("Network.Shill.WiFi.RememberedPrivateNetworkCount."),
-        _,
-        Metrics::kMetricRememberedWiFiNetworkCountMin,
-        Metrics::kMetricRememberedWiFiNetworkCountMax,
-        Metrics::kMetricRememberedWiFiNetworkCountNumBuckets))
+    EXPECT_CALL(
+        metrics_,
+        SendToUMA(
+            StartsWith("Network.Shill.WiFi.RememberedPrivateNetworkCount."), _,
+            Metrics::kMetricRememberedWiFiNetworkCountMin,
+            Metrics::kMetricRememberedWiFiNetworkCountMax,
+            Metrics::kMetricRememberedWiFiNetworkCountNumBuckets))
         .Times(AnyNumber());
-    EXPECT_CALL(metrics_, SendToUMA(
-        StartsWith("Network.Shill.WiFi.RememberedSharedNetworkCount."),
-        _,
-        Metrics::kMetricRememberedWiFiNetworkCountMin,
-        Metrics::kMetricRememberedWiFiNetworkCountMax,
-        Metrics::kMetricRememberedWiFiNetworkCountNumBuckets))
+    EXPECT_CALL(
+        metrics_,
+        SendToUMA(
+            StartsWith("Network.Shill.WiFi.RememberedSharedNetworkCount."), _,
+            Metrics::kMetricRememberedWiFiNetworkCountMin,
+            Metrics::kMetricRememberedWiFiNetworkCountMax,
+            Metrics::kMetricRememberedWiFiNetworkCountNumBuckets))
         .Times(AnyNumber());
   }
 
@@ -180,29 +181,22 @@ class WiFiProviderTest : public testing::Test {
     provider_.LoadAndFixupServiceEntries(profile);
   }
 
-  void Save() {
-    provider_.Save(&default_profile_storage_);
-  }
+  void Save() { provider_.Save(&default_profile_storage_); }
 
-  const vector<WiFiServiceRefPtr> GetServices() {
-    return provider_.services_;
-  }
+  const vector<WiFiServiceRefPtr> GetServices() { return provider_.services_; }
 
   const WiFiProvider::EndpointServiceMap& GetServiceByEndpoint() {
     return provider_.service_by_endpoint_;
   }
 
-  bool GetRunning() {
-    return provider_.running_;
-  }
+  bool GetRunning() { return provider_.running_; }
 
   void AddStringParameterToStorage(MockStore* storage,
                                    const string& id,
                                    const string& key,
                                    const string& value) {
     EXPECT_CALL(*storage, GetString(id, key, _))
-        .WillRepeatedly(DoAll(SetArgPointee<2>(value),
-                              Return(true)));
+        .WillRepeatedly(DoAll(SetArgPointee<2>(value), Return(true)));
   }
 
   // Adds service to profile's storage. But does not set profile on the Service.
@@ -216,27 +210,26 @@ class WiFiProviderTest : public testing::Test {
     auto profile_storage = static_cast<MockStore*>(profile->GetStorage());
     EXPECT_CALL(*profile_storage, GetString(id, _, _))
         .WillRepeatedly(Return(false));
-    AddStringParameterToStorage(
-        profile_storage, id, WiFiService::kStorageType, kTypeWifi);
+    AddStringParameterToStorage(profile_storage, id, WiFiService::kStorageType,
+                                kTypeWifi);
     if (ssid) {
       const string ssid_string(ssid);
       const string hex_ssid(
           base::HexEncode(ssid_string.data(), ssid_string.size()));
-      AddStringParameterToStorage(
-          profile_storage, id, WiFiService::kStorageSSID, hex_ssid);
+      AddStringParameterToStorage(profile_storage, id,
+                                  WiFiService::kStorageSSID, hex_ssid);
     }
     if (mode) {
-      AddStringParameterToStorage(
-          profile_storage, id, WiFiService::kStorageMode, mode);
+      AddStringParameterToStorage(profile_storage, id,
+                                  WiFiService::kStorageMode, mode);
     }
     if (security) {
-      AddStringParameterToStorage(
-          profile_storage, id, WiFiService::kStorageSecurity, security);
+      AddStringParameterToStorage(profile_storage, id,
+                                  WiFiService::kStorageSecurity, security);
     }
     if (provide_hidden) {
       EXPECT_CALL(*profile_storage, GetBool(id, kWifiHiddenSsid, _))
-          .WillRepeatedly(
-              DoAll(SetArgPointee<2>(is_hidden), Return(true)));
+          .WillRepeatedly(DoAll(SetArgPointee<2>(is_hidden), Return(true)));
     } else {
       EXPECT_CALL(*profile_storage, GetBool(id, kWifiHiddenSsid, _))
           .WillRepeatedly(Return(false));
@@ -275,8 +268,8 @@ class WiFiProviderTest : public testing::Test {
                                        bool provide_hidden,
                                        Error* error) {
     KeyValueStore args;
-    SetServiceParameters(
-        ssid, mode, security, is_hidden, provide_hidden, &args);
+    SetServiceParameters(ssid, mode, security, is_hidden, provide_hidden,
+                         &args);
     return provider_.CreateTemporaryService(args, error);
   }
 
@@ -287,8 +280,8 @@ class WiFiProviderTest : public testing::Test {
                                bool provide_hidden,
                                Error* error) {
     KeyValueStore args;
-    SetServiceParameters(
-        ssid, mode, security_class, is_hidden, provide_hidden, &args);
+    SetServiceParameters(ssid, mode, security_class, is_hidden, provide_hidden,
+                         &args);
     return provider_.GetWiFiService(args, error);
   }
 
@@ -301,8 +294,10 @@ class WiFiProviderTest : public testing::Test {
                                 const string& security) {
     return provider_.FindService(ssid, mode, security);
   }
-  WiFiEndpointRefPtr MakeEndpoint(const string& ssid, const string& bssid,
-                                  uint16_t frequency, int16_t signal_dbm) {
+  WiFiEndpointRefPtr MakeEndpoint(const string& ssid,
+                                  const string& bssid,
+                                  uint16_t frequency,
+                                  int16_t signal_dbm) {
     return WiFiEndpoint::MakeOpenEndpoint(
         nullptr, nullptr, ssid, bssid,
         WPASupplicant::kNetworkModeInfrastructure, frequency, signal_dbm);
@@ -326,8 +321,7 @@ class WiFiProviderTest : public testing::Test {
     // are also provided, here, in sorted order to match the frequency map
     // (iterators for which will provide them in frequency-sorted order).
     static const char* const kStrings[] = {
-      "@20", "5180:14", "5240:16", "5745:7", "5765:4", "5785:14", "5805:5"
-    };
+        "@20", "5180:14", "5240:16", "5745:7", "5765:4", "5785:14", "5805:5"};
     if (!strings) {
       LOG(ERROR) << "NULL |strings|.";
       return;
@@ -342,14 +336,8 @@ class WiFiProviderTest : public testing::Test {
     static const struct FreqCount {
       uint16_t freq;
       int64_t count;
-    } kConnectFreq[] = {
-      {5180, 14},
-      {5240, 16},
-      {5745, 7},
-      {5765, 4},
-      {5785, 14},
-      {5805, 5}
-    };
+    } kConnectFreq[] = {{5180, 14}, {5240, 16}, {5745, 7},
+                        {5765, 4},  {5785, 14}, {5805, 5}};
     if (!frequencies) {
       LOG(ERROR) << "NULL |frequencies|.";
       return;
@@ -364,8 +352,8 @@ class WiFiProviderTest : public testing::Test {
     EXPECT_CALL(time_, GetSecondsSinceEpoch()).WillOnce(Return(today_seconds));
     const string kGroupId =
         StringPrintf("%s_0_0_%s_%s", kTypeWifi, kModeManaged, kSecurityNone);
-    EXPECT_CALL(default_profile_storage_,
-                GetString(kGroupId, _, _)).WillRepeatedly(Return(true));
+    EXPECT_CALL(default_profile_storage_, GetString(kGroupId, _, _))
+        .WillRepeatedly(Return(true));
     set<string> groups;
     groups.insert(kGroupId);
     EXPECT_CALL(default_profile_storage_, GetGroups()).WillOnce(Return(groups));
@@ -374,26 +362,26 @@ class WiFiProviderTest : public testing::Test {
         default_profile_storage_,
         GetStringList(
             WiFiProvider::kStorageId,
-            StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 0), _)).
-        WillOnce(Invoke(this, &WiFiProviderTest::GetStringList));
+            StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 0), _))
+        .WillOnce(Invoke(this, &WiFiProviderTest::GetStringList));
     EXPECT_CALL(
         default_profile_storage_,
         GetStringList(
             WiFiProvider::kStorageId,
-            StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 1), _)).
-        WillOnce(Invoke(this, &WiFiProviderTest::GetStringList));
+            StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 1), _))
+        .WillOnce(Invoke(this, &WiFiProviderTest::GetStringList));
     EXPECT_CALL(
         default_profile_storage_,
         GetStringList(
             WiFiProvider::kStorageId,
-            StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 2), _)).
-        WillOnce(Invoke(this, &WiFiProviderTest::GetStringList));
+            StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 2), _))
+        .WillOnce(Invoke(this, &WiFiProviderTest::GetStringList));
     EXPECT_CALL(
         default_profile_storage_,
         GetStringList(
             WiFiProvider::kStorageId,
-            StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 3), _)).
-        WillOnce(Invoke(this, &WiFiProviderTest::GetStringList));
+            StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 3), _))
+        .WillOnce(Invoke(this, &WiFiProviderTest::GetStringList));
 
     LoadAndFixupServiceEntries(default_profile_.get());
   }
@@ -414,7 +402,7 @@ class WiFiProviderTest : public testing::Test {
 
 MATCHER(TypeWiFiPropertyMatch, "") {
   return arg.properties().size() == 1 &&
-      arg.LookupString(kTypeProperty, "") == kTypeWifi;
+         arg.LookupString(kTypeProperty, "") == kTypeWifi;
 }
 
 MATCHER_P(RefPtrMatch, ref, "") {
@@ -433,14 +421,10 @@ TEST_F(WiFiProviderTest, Start) {
 }
 
 TEST_F(WiFiProviderTest, Stop) {
-  MockWiFiServiceRefPtr service0 = AddMockService(vector<uint8_t>(1, '0'),
-                                                  kModeManaged,
-                                                  kSecurityNone,
-                                                  false);
-  MockWiFiServiceRefPtr service1 = AddMockService(vector<uint8_t>(1, '1'),
-                                                  kModeManaged,
-                                                  kSecurityNone,
-                                                  false);
+  MockWiFiServiceRefPtr service0 = AddMockService(
+      vector<uint8_t>(1, '0'), kModeManaged, kSecurityNone, false);
+  MockWiFiServiceRefPtr service1 = AddMockService(
+      vector<uint8_t>(1, '1'), kModeManaged, kSecurityNone, false);
   WiFiEndpointRefPtr endpoint = MakeEndpoint("", "00:00:00:00:00:00", 0, 0);
   AddEndpointToService(service0, endpoint);
 
@@ -464,141 +448,125 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileWithNoGroups) {
   EXPECT_CALL(default_profile_storage_,
               GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillOnce(Return(set<string>()));
-  EXPECT_CALL(metrics_, SendToUMA(
-      Metrics::kMetricRememberedWiFiNetworkCount,
-      0,
-      Metrics::kMetricRememberedWiFiNetworkCountMin,
-      Metrics::kMetricRememberedWiFiNetworkCountMax,
-      Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 0,
+                        Metrics::kMetricRememberedWiFiNetworkCountMin,
+                        Metrics::kMetricRememberedWiFiNetworkCountMax,
+                        Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
   CreateServicesFromProfile(default_profile_.get());
   EXPECT_TRUE(GetServices().empty());
 }
 
 TEST_F(WiFiProviderTest, CreateServicesFromProfileMissingSSID) {
   set<string> groups;
-  groups.insert(
-      AddServiceToProfileStorage(
-          default_profile_.get(), nullptr, kModeManaged, kSecurityNone, false,
-          true));
+  groups.insert(AddServiceToProfileStorage(default_profile_.get(), nullptr,
+                                           kModeManaged, kSecurityNone, false,
+                                           true));
   EXPECT_CALL(default_profile_storage_,
               GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
-  EXPECT_CALL(metrics_, SendToUMA(
-      Metrics::kMetricRememberedWiFiNetworkCount,
-      0,
-      Metrics::kMetricRememberedWiFiNetworkCountMin,
-      Metrics::kMetricRememberedWiFiNetworkCountMax,
-      Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 0,
+                        Metrics::kMetricRememberedWiFiNetworkCountMin,
+                        Metrics::kMetricRememberedWiFiNetworkCountMax,
+                        Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
   CreateServicesFromProfile(default_profile_.get());
   EXPECT_TRUE(GetServices().empty());
 }
 
 TEST_F(WiFiProviderTest, CreateServicesFromProfileEmptySSID) {
   set<string> groups;
-  groups.insert(
-      AddServiceToProfileStorage(
-          default_profile_.get(), "", kModeManaged, kSecurityNone, false,
-          true));
+  groups.insert(AddServiceToProfileStorage(
+      default_profile_.get(), "", kModeManaged, kSecurityNone, false, true));
   EXPECT_CALL(default_profile_storage_,
               GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
-  EXPECT_CALL(metrics_, SendToUMA(
-      Metrics::kMetricRememberedWiFiNetworkCount,
-      0,
-      Metrics::kMetricRememberedWiFiNetworkCountMin,
-      Metrics::kMetricRememberedWiFiNetworkCountMax,
-      Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 0,
+                        Metrics::kMetricRememberedWiFiNetworkCountMin,
+                        Metrics::kMetricRememberedWiFiNetworkCountMax,
+                        Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
   CreateServicesFromProfile(default_profile_.get());
   EXPECT_TRUE(GetServices().empty());
 }
 
 TEST_F(WiFiProviderTest, CreateServicesFromProfileMissingMode) {
   set<string> groups;
-  groups.insert(
-      AddServiceToProfileStorage(
-          default_profile_.get(), "foo", nullptr, kSecurityNone, false, true));
+  groups.insert(AddServiceToProfileStorage(
+      default_profile_.get(), "foo", nullptr, kSecurityNone, false, true));
   EXPECT_CALL(default_profile_storage_,
               GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
-  EXPECT_CALL(metrics_, SendToUMA(
-      Metrics::kMetricRememberedWiFiNetworkCount,
-      0,
-      Metrics::kMetricRememberedWiFiNetworkCountMin,
-      Metrics::kMetricRememberedWiFiNetworkCountMax,
-      Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 0,
+                        Metrics::kMetricRememberedWiFiNetworkCountMin,
+                        Metrics::kMetricRememberedWiFiNetworkCountMax,
+                        Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
   CreateServicesFromProfile(default_profile_.get());
   EXPECT_TRUE(GetServices().empty());
 }
 
 TEST_F(WiFiProviderTest, CreateServicesFromProfileEmptyMode) {
   set<string> groups;
-  groups.insert(
-      AddServiceToProfileStorage(
-          default_profile_.get(), "foo", "", kSecurityNone, false, true));
+  groups.insert(AddServiceToProfileStorage(default_profile_.get(), "foo", "",
+                                           kSecurityNone, false, true));
   EXPECT_CALL(default_profile_storage_,
               GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
-  EXPECT_CALL(metrics_, SendToUMA(
-      Metrics::kMetricRememberedWiFiNetworkCount,
-      0,
-      Metrics::kMetricRememberedWiFiNetworkCountMin,
-      Metrics::kMetricRememberedWiFiNetworkCountMax,
-      Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 0,
+                        Metrics::kMetricRememberedWiFiNetworkCountMin,
+                        Metrics::kMetricRememberedWiFiNetworkCountMax,
+                        Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
   CreateServicesFromProfile(default_profile_.get());
   EXPECT_TRUE(GetServices().empty());
 }
 
 TEST_F(WiFiProviderTest, CreateServicesFromProfileMissingSecurity) {
   set<string> groups;
-  groups.insert(
-      AddServiceToProfileStorage(
-          default_profile_.get(), "foo", kModeManaged, nullptr, false, true));
+  groups.insert(AddServiceToProfileStorage(default_profile_.get(), "foo",
+                                           kModeManaged, nullptr, false, true));
   EXPECT_CALL(default_profile_storage_,
               GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
-  EXPECT_CALL(metrics_, SendToUMA(
-      Metrics::kMetricRememberedWiFiNetworkCount,
-      0,
-      Metrics::kMetricRememberedWiFiNetworkCountMin,
-      Metrics::kMetricRememberedWiFiNetworkCountMax,
-      Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 0,
+                        Metrics::kMetricRememberedWiFiNetworkCountMin,
+                        Metrics::kMetricRememberedWiFiNetworkCountMax,
+                        Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
   CreateServicesFromProfile(default_profile_.get());
   EXPECT_TRUE(GetServices().empty());
 }
 
 TEST_F(WiFiProviderTest, CreateServicesFromProfileEmptySecurity) {
   set<string> groups;
-  groups.insert(
-      AddServiceToProfileStorage(
-          default_profile_.get(), "foo", kModeManaged, "", false, true));
+  groups.insert(AddServiceToProfileStorage(default_profile_.get(), "foo",
+                                           kModeManaged, "", false, true));
   EXPECT_CALL(default_profile_storage_,
               GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
-  EXPECT_CALL(metrics_, SendToUMA(
-      Metrics::kMetricRememberedWiFiNetworkCount,
-      0,
-      Metrics::kMetricRememberedWiFiNetworkCountMin,
-      Metrics::kMetricRememberedWiFiNetworkCountMax,
-      Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 0,
+                        Metrics::kMetricRememberedWiFiNetworkCountMin,
+                        Metrics::kMetricRememberedWiFiNetworkCountMax,
+                        Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
   CreateServicesFromProfile(default_profile_.get());
   EXPECT_TRUE(GetServices().empty());
 }
 
 TEST_F(WiFiProviderTest, CreateServicesFromProfileMissingHidden) {
   set<string> groups;
-  groups.insert(
-      AddServiceToProfileStorage(
-          default_profile_.get(), "foo", kModeManaged, kSecurityNone, false,
-          false));
+  groups.insert(AddServiceToProfileStorage(default_profile_.get(), "foo",
+                                           kModeManaged, kSecurityNone, false,
+                                           false));
   EXPECT_CALL(default_profile_storage_,
               GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
-  EXPECT_CALL(metrics_, SendToUMA(
-      Metrics::kMetricRememberedWiFiNetworkCount,
-      0,
-      Metrics::kMetricRememberedWiFiNetworkCountMin,
-      Metrics::kMetricRememberedWiFiNetworkCountMax,
-      Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 0,
+                        Metrics::kMetricRememberedWiFiNetworkCountMin,
+                        Metrics::kMetricRememberedWiFiNetworkCountMax,
+                        Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
   CreateServicesFromProfile(default_profile_.get());
   EXPECT_TRUE(GetServices().empty());
 }
@@ -606,22 +574,21 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileMissingHidden) {
 TEST_F(WiFiProviderTest, CreateServicesFromProfileSingle) {
   set<string> groups;
   string kSSID("foo");
-  groups.insert(
-      AddServiceToProfileStorage(
-          default_profile_.get(),
-          kSSID.c_str(), kModeManaged, kSecurityNone, false, true));
+  groups.insert(AddServiceToProfileStorage(default_profile_.get(),
+                                           kSSID.c_str(), kModeManaged,
+                                           kSecurityNone, false, true));
   EXPECT_CALL(default_profile_storage_,
               GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
   EXPECT_CALL(manager_, RegisterService(_))
       .WillOnce(Invoke(this, &WiFiProviderTest::BindServiceToDefaultProfile));
   EXPECT_CALL(manager_, IsServiceEphemeral(_)).WillRepeatedly(Return(false));
-  EXPECT_CALL(metrics_, SendToUMA(
-      Metrics::kMetricRememberedWiFiNetworkCount,
-      1,
-      Metrics::kMetricRememberedWiFiNetworkCountMin,
-      Metrics::kMetricRememberedWiFiNetworkCountMax,
-      Metrics::kMetricRememberedWiFiNetworkCountNumBuckets)).Times(2);
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 1,
+                        Metrics::kMetricRememberedWiFiNetworkCountMin,
+                        Metrics::kMetricRememberedWiFiNetworkCountMax,
+                        Metrics::kMetricRememberedWiFiNetworkCountNumBuckets))
+      .Times(2);
   CreateServicesFromProfile(default_profile_.get());
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_EQ(1, GetServices().size());
@@ -641,10 +608,9 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileSingle) {
 TEST_F(WiFiProviderTest, CreateServicesFromProfileHiddenButConnected) {
   set<string> groups;
   string kSSID("foo");
-  groups.insert(
-      AddServiceToProfileStorage(
-          default_profile_.get(),
-          kSSID.c_str(), kModeManaged, kSecurityNone, true, true));
+  groups.insert(AddServiceToProfileStorage(default_profile_.get(),
+                                           kSSID.c_str(), kModeManaged,
+                                           kSecurityNone, true, true));
   EXPECT_CALL(default_profile_storage_,
               GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
@@ -654,12 +620,12 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileHiddenButConnected) {
   EXPECT_CALL(manager_, IsTechnologyConnected(Technology(Technology::kWifi)))
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, RequestScan(_, _)).Times(0);
-  EXPECT_CALL(metrics_, SendToUMA(
-      Metrics::kMetricRememberedWiFiNetworkCount,
-      1,
-      Metrics::kMetricRememberedWiFiNetworkCountMin,
-      Metrics::kMetricRememberedWiFiNetworkCountMax,
-      Metrics::kMetricRememberedWiFiNetworkCountNumBuckets)).Times(2);
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 1,
+                        Metrics::kMetricRememberedWiFiNetworkCountMin,
+                        Metrics::kMetricRememberedWiFiNetworkCountMax,
+                        Metrics::kMetricRememberedWiFiNetworkCountNumBuckets))
+      .Times(2);
   CreateServicesFromProfile(default_profile_.get());
   Mock::VerifyAndClearExpectations(&manager_);
 
@@ -673,7 +639,8 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileHiddenNotConnected) {
   set<string> groups;
   string kSSID("foo");
   groups.insert(AddServiceToProfileStorage(default_profile_.get(),
-      kSSID.c_str(), kModeManaged, kSecurityNone, true, true));
+                                           kSSID.c_str(), kModeManaged,
+                                           kSecurityNone, true, true));
   EXPECT_CALL(default_profile_storage_,
               GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
@@ -683,12 +650,12 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileHiddenNotConnected) {
   EXPECT_CALL(manager_, IsTechnologyConnected(Technology(Technology::kWifi)))
       .WillOnce(Return(false));
   EXPECT_CALL(manager_, RequestScan(kTypeWifi, _)).Times(1);
-  EXPECT_CALL(metrics_, SendToUMA(
-      Metrics::kMetricRememberedWiFiNetworkCount,
-      1,
-      Metrics::kMetricRememberedWiFiNetworkCountMin,
-      Metrics::kMetricRememberedWiFiNetworkCountMax,
-      Metrics::kMetricRememberedWiFiNetworkCountNumBuckets)).Times(2);
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 1,
+                        Metrics::kMetricRememberedWiFiNetworkCountMin,
+                        Metrics::kMetricRememberedWiFiNetworkCountMax,
+                        Metrics::kMetricRememberedWiFiNetworkCountNumBuckets))
+      .Times(2);
   CreateServicesFromProfile(default_profile_.get());
   Mock::VerifyAndClearExpectations(&manager_);
 
@@ -707,22 +674,20 @@ TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfileNonWiFi) {
               GetString(kEntryName, WiFiService::kStorageType, _))
       .WillOnce(Return(false));
   Error error;
-  EXPECT_EQ(nullptr,
-            provider_.CreateTemporaryServiceFromProfile(
-                default_profile_, kEntryName, &error));
+  EXPECT_EQ(nullptr, provider_.CreateTemporaryServiceFromProfile(
+                         default_profile_, kEntryName, &error));
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_THAT(error.message(),
               StartsWith("Unspecified or invalid network type"));
 }
 
 TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfileMissingSSID) {
-  string entry_name = AddServiceToProfileStorage(
-          default_profile_.get(), nullptr, kModeManaged, kSecurityNone, false,
-          true);
+  string entry_name =
+      AddServiceToProfileStorage(default_profile_.get(), nullptr, kModeManaged,
+                                 kSecurityNone, false, true);
   Error error;
-  EXPECT_EQ(nullptr,
-            provider_.CreateTemporaryServiceFromProfile(
-                default_profile_, entry_name, &error));
+  EXPECT_EQ(nullptr, provider_.CreateTemporaryServiceFromProfile(
+                         default_profile_, entry_name, &error));
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_THAT(error.message(), StartsWith("Unspecified or invalid SSID"));
 }
@@ -732,21 +697,19 @@ TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfileMissingMode) {
       default_profile_.get(), "foo", "", kSecurityNone, false, true);
 
   Error error;
-  EXPECT_EQ(nullptr,
-            provider_.CreateTemporaryServiceFromProfile(
-                default_profile_, entry_name, &error));
+  EXPECT_EQ(nullptr, provider_.CreateTemporaryServiceFromProfile(
+                         default_profile_, entry_name, &error));
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_THAT(error.message(), StartsWith("Network mode not specified"));
 }
 
 TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfileMissingSecurity) {
-  string entry_name = AddServiceToProfileStorage(
-      default_profile_.get(), "foo", kModeManaged, "", false, true);
+  string entry_name = AddServiceToProfileStorage(default_profile_.get(), "foo",
+                                                 kModeManaged, "", false, true);
 
   Error error;
-  EXPECT_EQ(nullptr,
-            provider_.CreateTemporaryServiceFromProfile(
-                default_profile_, entry_name, &error));
+  EXPECT_EQ(nullptr, provider_.CreateTemporaryServiceFromProfile(
+                         default_profile_, entry_name, &error));
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_THAT(error.message(),
               StartsWith("Unspecified or invalid security mode"));
@@ -757,12 +720,10 @@ TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfileMissingHidden) {
       default_profile_.get(), "foo", kModeManaged, kSecurityNone, false, false);
 
   Error error;
-  EXPECT_EQ(nullptr,
-            provider_.CreateTemporaryServiceFromProfile(
-                default_profile_, entry_name, &error));
+  EXPECT_EQ(nullptr, provider_.CreateTemporaryServiceFromProfile(
+                         default_profile_, entry_name, &error));
   EXPECT_FALSE(error.IsSuccess());
-  EXPECT_THAT(error.message(),
-              StartsWith("Hidden SSID not specified"));
+  EXPECT_THAT(error.message(), StartsWith("Hidden SSID not specified"));
 }
 
 TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfile) {
@@ -770,22 +731,17 @@ TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfile) {
       default_profile_.get(), "foo", kModeManaged, kSecurityNone, false, true);
 
   Error error;
-  EXPECT_NE(nullptr,
-            provider_.CreateTemporaryServiceFromProfile(
-                default_profile_, entry_name, &error));
+  EXPECT_NE(nullptr, provider_.CreateTemporaryServiceFromProfile(
+                         default_profile_, entry_name, &error));
   EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(WiFiProviderTest, CreateTwoServices) {
   set<string> groups;
-  groups.insert(
-      AddServiceToProfileStorage(
-          default_profile_.get(), "foo", kModeManaged, kSecurityNone, false,
-          true));
-  groups.insert(
-      AddServiceToProfileStorage(
-          default_profile_.get(), "bar", kModeManaged, kSecurityNone, true,
-          true));
+  groups.insert(AddServiceToProfileStorage(
+      default_profile_.get(), "foo", kModeManaged, kSecurityNone, false, true));
+  groups.insert(AddServiceToProfileStorage(
+      default_profile_.get(), "bar", kModeManaged, kSecurityNone, true, true));
   EXPECT_CALL(default_profile_storage_,
               GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(groups));
@@ -797,12 +753,11 @@ TEST_F(WiFiProviderTest, CreateTwoServices) {
   EXPECT_CALL(manager_, IsTechnologyConnected(Technology(Technology::kWifi)))
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, RequestScan(kTypeWifi, _)).Times(0);
-  EXPECT_CALL(metrics_, SendToUMA(
-      Metrics::kMetricRememberedWiFiNetworkCount,
-      2,
-      Metrics::kMetricRememberedWiFiNetworkCountMin,
-      Metrics::kMetricRememberedWiFiNetworkCountMax,
-      Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 2,
+                        Metrics::kMetricRememberedWiFiNetworkCountMin,
+                        Metrics::kMetricRememberedWiFiNetworkCountMax,
+                        Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
   CreateServicesFromProfile(default_profile_.get());
   Mock::VerifyAndClearExpectations(&manager_);
 
@@ -811,10 +766,8 @@ TEST_F(WiFiProviderTest, CreateTwoServices) {
 
 TEST_F(WiFiProviderTest, ServiceSourceStats) {
   set<string> default_profile_groups;
-  default_profile_groups.insert(
-      AddServiceToProfileStorage(
-          default_profile_.get(), "foo", kModeManaged, kSecurityWpa, false,
-          true));
+  default_profile_groups.insert(AddServiceToProfileStorage(
+      default_profile_.get(), "foo", kModeManaged, kSecurityWpa, false, true));
   EXPECT_CALL(default_profile_storage_,
               GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(default_profile_groups));
@@ -822,21 +775,22 @@ TEST_F(WiFiProviderTest, ServiceSourceStats) {
       .WillOnce(Invoke(this, &WiFiProviderTest::BindServiceToDefaultProfile));
   EXPECT_CALL(manager_, IsServiceEphemeral(_)).WillRepeatedly(Return(false));
   // Processing default profile does not generate UMA metrics.
-  EXPECT_CALL(metrics_, SendToUMA(
-      StartsWith("Network.Shill.WiFi.RememberedSystemNetworkCount."),
-      _, _, _, _))
+  EXPECT_CALL(
+      metrics_,
+      SendToUMA(StartsWith("Network.Shill.WiFi.RememberedSystemNetworkCount."),
+                _, _, _, _))
       .Times(0);
-  EXPECT_CALL(metrics_, SendToUMA(
-      StartsWith("Network.Shill.WiFi.RememberedUserNetworkCount."),
-      _, _, _, _))
+  EXPECT_CALL(
+      metrics_,
+      SendToUMA(StartsWith("Network.Shill.WiFi.RememberedUserNetworkCount."), _,
+                _, _, _))
       .Times(0);
   CreateServicesFromProfile(default_profile_.get());
   Mock::VerifyAndClearExpectations(&manager_);
 
   set<string> user_profile_groups;
-  user_profile_groups.insert(
-      AddServiceToProfileStorage(
-          user_profile_.get(), "bar", kModeManaged, kSecurityRsn, false, true));
+  user_profile_groups.insert(AddServiceToProfileStorage(
+      user_profile_.get(), "bar", kModeManaged, kSecurityRsn, false, true));
   EXPECT_CALL(user_profile_storage_,
               GetGroupsWithProperties(TypeWiFiPropertyMatch()))
       .WillRepeatedly(Return(user_profile_groups));
@@ -845,82 +799,80 @@ TEST_F(WiFiProviderTest, ServiceSourceStats) {
   EXPECT_CALL(manager_, IsServiceEphemeral(_)).WillRepeatedly(Return(false));
   // Processing user profile generates metrics for both, default profile,
   // and user profile.
-  EXPECT_CALL(metrics_, SendToUMA(
-      StartsWith("Network.Shill.WiFi.RememberedSystemNetworkCount."),
-      0,
-      Metrics::kMetricRememberedWiFiNetworkCountMin,
-      Metrics::kMetricRememberedWiFiNetworkCountMax,
-      Metrics::kMetricRememberedWiFiNetworkCountNumBuckets))
+  EXPECT_CALL(
+      metrics_,
+      SendToUMA(StartsWith("Network.Shill.WiFi.RememberedSystemNetworkCount."),
+                0, Metrics::kMetricRememberedWiFiNetworkCountMin,
+                Metrics::kMetricRememberedWiFiNetworkCountMax,
+                Metrics::kMetricRememberedWiFiNetworkCountNumBuckets))
       .Times(3);  // none, wep, 802.1x
-  EXPECT_CALL(metrics_, SendToUMA(
-      StartsWith("Network.Shill.WiFi.RememberedUserNetworkCount."),
-      0,
-      Metrics::kMetricRememberedWiFiNetworkCountMin,
-      Metrics::kMetricRememberedWiFiNetworkCountMax,
-      Metrics::kMetricRememberedWiFiNetworkCountNumBuckets))
+  EXPECT_CALL(
+      metrics_,
+      SendToUMA(StartsWith("Network.Shill.WiFi.RememberedUserNetworkCount."), 0,
+                Metrics::kMetricRememberedWiFiNetworkCountMin,
+                Metrics::kMetricRememberedWiFiNetworkCountMax,
+                Metrics::kMetricRememberedWiFiNetworkCountNumBuckets))
       .Times(3);  // none, wep, 802.1x
-  EXPECT_CALL(metrics_, SendToUMA(
-      StartsWith("Network.Shill.WiFi.RememberedSystemNetworkCount.psk"),
-      1,
-      Metrics::kMetricRememberedWiFiNetworkCountMin,
-      Metrics::kMetricRememberedWiFiNetworkCountMax,
-      Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
-  EXPECT_CALL(metrics_, SendToUMA(
-      StartsWith("Network.Shill.WiFi.RememberedUserNetworkCount.psk"),
-      1,
-      Metrics::kMetricRememberedWiFiNetworkCountMin,
-      Metrics::kMetricRememberedWiFiNetworkCountMax,
-      Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
+  EXPECT_CALL(
+      metrics_,
+      SendToUMA(
+          StartsWith("Network.Shill.WiFi.RememberedSystemNetworkCount.psk"), 1,
+          Metrics::kMetricRememberedWiFiNetworkCountMin,
+          Metrics::kMetricRememberedWiFiNetworkCountMax,
+          Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
+  EXPECT_CALL(
+      metrics_,
+      SendToUMA(StartsWith("Network.Shill.WiFi.RememberedUserNetworkCount.psk"),
+                1, Metrics::kMetricRememberedWiFiNetworkCountMin,
+                Metrics::kMetricRememberedWiFiNetworkCountMax,
+                Metrics::kMetricRememberedWiFiNetworkCountNumBuckets));
   CreateServicesFromProfile(user_profile_.get());
 }
 
 TEST_F(WiFiProviderTest, GetServiceEmptyMode) {
   Error error;
-  EXPECT_FALSE(GetService("foo", "", kSecurityNone,
-                          false, false, &error).get());
+  EXPECT_FALSE(
+      GetService("foo", "", kSecurityNone, false, false, &error).get());
   EXPECT_EQ(Error::kNotSupported, error.type());
 }
 
 TEST_F(WiFiProviderTest, GetServiceNoMode) {
   Error error;
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
-  EXPECT_TRUE(GetService("foo", nullptr, kSecurityNone,
-                          false, false, &error).get());
+  EXPECT_TRUE(
+      GetService("foo", nullptr, kSecurityNone, false, false, &error).get());
   EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(WiFiProviderTest, GetServiceBadMode) {
   Error error;
-  EXPECT_FALSE(GetService("foo", "BogoMesh",
-                          kSecurityNone,
-                          false, false, &error).get());
+  EXPECT_FALSE(
+      GetService("foo", "BogoMesh", kSecurityNone, false, false, &error).get());
   EXPECT_EQ(Error::kNotSupported, error.type());
   EXPECT_EQ("service mode is unsupported", error.message());
 }
 
 TEST_F(WiFiProviderTest, GetServiceAdhocNotSupported) {
   Error error;
-  EXPECT_FALSE(GetService("foo", "adhoc",
-                          kSecurityNone,
-                          false, false, &error).get());
+  EXPECT_FALSE(
+      GetService("foo", "adhoc", kSecurityNone, false, false, &error).get());
   EXPECT_EQ(Error::kNotSupported, error.type());
   EXPECT_EQ("service mode is unsupported", error.message());
 }
 
 TEST_F(WiFiProviderTest, GetServiceNoSSID) {
   Error error;
-  EXPECT_FALSE(GetService(nullptr, kModeManaged,
-                          kSecurityNone, false, false,
-                          &error).get());
+  EXPECT_FALSE(
+      GetService(nullptr, kModeManaged, kSecurityNone, false, false, &error)
+          .get());
   EXPECT_EQ(Error::kInvalidArguments, error.type());
   EXPECT_EQ("must specify SSID", error.message());
 }
 
 TEST_F(WiFiProviderTest, GetServiceEmptySSID) {
   Error error;
-  EXPECT_FALSE(GetService("", kModeManaged,
-                          kSecurityNone, false, false,
-                          &error).get());
+  EXPECT_FALSE(
+      GetService("", kModeManaged, kSecurityNone, false, false, &error).get());
   EXPECT_EQ(Error::kInvalidNetworkName, error.type());
   EXPECT_EQ("SSID is too short", error.message());
 }
@@ -928,9 +880,9 @@ TEST_F(WiFiProviderTest, GetServiceEmptySSID) {
 TEST_F(WiFiProviderTest, GetServiceLongSSID) {
   Error error;
   string ssid(IEEE_80211::kMaxSSIDLen + 1, '0');
-  EXPECT_FALSE(GetService(ssid.c_str(), kModeManaged,
-                          kSecurityNone, false, false,
-                          &error).get());
+  EXPECT_FALSE(GetService(ssid.c_str(), kModeManaged, kSecurityNone, false,
+                          false, &error)
+                   .get());
   EXPECT_EQ(Error::kInvalidNetworkName, error.type());
   EXPECT_EQ("SSID is too long", error.message());
 }
@@ -939,17 +891,17 @@ TEST_F(WiFiProviderTest, GetServiceJustLongEnoughSSID) {
   Error error;
   string ssid(IEEE_80211::kMaxSSIDLen, '0');
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
-  EXPECT_TRUE(GetService(ssid.c_str(), kModeManaged,
-                         kSecurityNone, false, false,
-                         &error).get());
+  EXPECT_TRUE(GetService(ssid.c_str(), kModeManaged, kSecurityNone, false,
+                         false, &error)
+                  .get());
   EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(WiFiProviderTest, GetServiceBadSecurityClass) {
   Error error;
-  EXPECT_FALSE(GetService("foo", kModeManaged,
-                          kSecurityRsn, false, false,
-                          &error).get());
+  EXPECT_FALSE(
+      GetService("foo", kModeManaged, kSecurityRsn, false, false, &error)
+          .get());
   EXPECT_EQ(Error::kNotSupported, error.type());
   EXPECT_EQ("security class is unsupported", error.message());
 }
@@ -958,8 +910,8 @@ TEST_F(WiFiProviderTest, GetServiceMinimal) {
   Error error;
   const string kSSID("foo");
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
-  WiFiServiceRefPtr service = GetService(kSSID.c_str(), kModeManaged,
-                                         nullptr, false, false, &error);
+  WiFiServiceRefPtr service =
+      GetService(kSSID.c_str(), kModeManaged, nullptr, false, false, &error);
   EXPECT_NE(nullptr, service);
   EXPECT_TRUE(error.IsSuccess());
   const string service_ssid(service->ssid().begin(), service->ssid().end());
@@ -975,8 +927,8 @@ TEST_F(WiFiProviderTest, GetServiceFullySpecified) {
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   const string kSSID("bar");
   Error error;
-  WiFiServiceRefPtr service0 = GetService(
-      kSSID.c_str(), kModeManaged, kSecurityPsk, false, true, &error);
+  WiFiServiceRefPtr service0 = GetService(kSSID.c_str(), kModeManaged,
+                                          kSecurityPsk, false, true, &error);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_TRUE(error.IsSuccess());
   const string service_ssid(service0->ssid().begin(), service0->ssid().end());
@@ -997,8 +949,8 @@ TEST_F(WiFiProviderTest, GetServiceFullySpecified) {
   // Getting the same ssid with different other parameters should return
   // a different service.
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
-  WiFiServiceRefPtr service2 = GetService(
-      kSSID.c_str(), kModeManaged, kSecurityNone, true, true, &error);
+  WiFiServiceRefPtr service2 = GetService(kSSID.c_str(), kModeManaged,
+                                          kSecurityNone, true, true, &error);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_NE(service0, service2);
   EXPECT_EQ(2, GetServices().size());
@@ -1024,7 +976,6 @@ TEST_F(WiFiProviderTest, GetServiceByHexSsid) {
   EXPECT_EQ(kModeManaged, service->mode());
   EXPECT_TRUE(service->IsSecurityMatch(kSecurityPsk));
   EXPECT_FALSE(service->hidden_ssid());
-
 
   // While here, make sure FindSimilarService also supports kWifiHexSsid.
   Error find_error;
@@ -1104,9 +1055,8 @@ TEST_F(WiFiProviderTest, FindSimilarService) {
   // GetService, don't bother with testing invalid parameters.
   const string kSSID("foo");
   KeyValueStore args;
-  SetServiceParameters(
-      kSSID.c_str(), kModeManaged, kSecurityNone,
-      true, true, &args);
+  SetServiceParameters(kSSID.c_str(), kModeManaged, kSecurityNone, true, true,
+                       &args);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   Error get_service_error;
   WiFiServiceRefPtr service = GetWiFiService(args, &get_service_error);
@@ -1144,15 +1094,14 @@ TEST_F(WiFiProviderTest, CreateTemporaryService) {
   const string kSSID("foo");
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   Error error;
-  WiFiServiceRefPtr service0 = GetService(
-      kSSID.c_str(), kModeManaged, kSecurityNone, true, true, &error);
+  WiFiServiceRefPtr service0 = GetService(kSSID.c_str(), kModeManaged,
+                                          kSecurityNone, true, true, &error);
   EXPECT_EQ(1, GetServices().size());
   Mock::VerifyAndClearExpectations(&manager_);
 
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
-  ServiceRefPtr service1 =
-      CreateTemporaryService(kSSID.c_str(), kModeManaged,
-                             kSecurityNone, true, true, &error);
+  ServiceRefPtr service1 = CreateTemporaryService(
+      kSSID.c_str(), kModeManaged, kSecurityNone, true, true, &error);
 
   // Test that a new service was created, but not registered with the
   // manager or added to the provider's service list.
@@ -1166,23 +1115,23 @@ TEST_F(WiFiProviderTest, FindServiceWPA) {
   Error error;
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   KeyValueStore args;
-  SetServiceParameters(
-      kSSID.c_str(), kModeManaged, nullptr, false, false, &args);
+  SetServiceParameters(kSSID.c_str(), kModeManaged, nullptr, false, false,
+                       &args);
   args.SetString(kSecurityProperty, kSecurityRsn);
   WiFiServiceRefPtr service = GetWiFiService(args, &error);
   ASSERT_NE(nullptr, service);
   const vector<uint8_t> ssid_bytes(kSSID.begin(), kSSID.end());
-  WiFiServiceRefPtr wpa_service(FindService(ssid_bytes, kModeManaged,
-                                            kSecurityWpa));
+  WiFiServiceRefPtr wpa_service(
+      FindService(ssid_bytes, kModeManaged, kSecurityWpa));
   EXPECT_EQ(service, wpa_service);
-  WiFiServiceRefPtr rsn_service(FindService(ssid_bytes, kModeManaged,
-                                            kSecurityRsn));
+  WiFiServiceRefPtr rsn_service(
+      FindService(ssid_bytes, kModeManaged, kSecurityRsn));
   EXPECT_EQ(service, rsn_service);
-  WiFiServiceRefPtr psk_service(FindService(ssid_bytes, kModeManaged,
-                                            kSecurityPsk));
+  WiFiServiceRefPtr psk_service(
+      FindService(ssid_bytes, kModeManaged, kSecurityPsk));
   EXPECT_EQ(service, psk_service);
-  WiFiServiceRefPtr wep_service(FindService(ssid_bytes, kModeManaged,
-                                            kSecurityWep));
+  WiFiServiceRefPtr wep_service(
+      FindService(ssid_bytes, kModeManaged, kSecurityWep));
   EXPECT_EQ(nullptr, wep_service);
 }
 
@@ -1190,8 +1139,8 @@ TEST_F(WiFiProviderTest, FindServiceForEndpoint) {
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   Error error;
   const string kSSID("an_ssid");
-  WiFiServiceRefPtr service = GetService(
-      kSSID.c_str(), kModeManaged, kSecurityNone, false, true, &error);
+  WiFiServiceRefPtr service = GetService(kSSID.c_str(), kModeManaged,
+                                         kSecurityNone, false, true, &error);
   ASSERT_NE(nullptr, service);
   WiFiEndpointRefPtr endpoint = MakeEndpoint(kSSID, "00:00:00:00:00:00", 0, 0);
   WiFiServiceRefPtr endpoint_service =
@@ -1206,16 +1155,15 @@ TEST_F(WiFiProviderTest, OnEndpointAdded) {
   provider_.Start();
   const string ssid0("an_ssid");
   const vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
-  EXPECT_FALSE(FindService(ssid0_bytes, kModeManaged,
-                           kSecurityNone));
+  EXPECT_FALSE(FindService(ssid0_bytes, kModeManaged, kSecurityNone));
   WiFiEndpointRefPtr endpoint0 = MakeEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
   provider_.OnEndpointAdded(endpoint0);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_EQ(1, GetServices().size());
-  WiFiServiceRefPtr service0(FindService(ssid0_bytes, kModeManaged,
-                                         kSecurityNone));
+  WiFiServiceRefPtr service0(
+      FindService(ssid0_bytes, kModeManaged, kSecurityNone));
   EXPECT_NE(nullptr, service0);
   EXPECT_TRUE(service0->HasEndpoints());
   EXPECT_EQ(1, GetServiceByEndpoint().size());
@@ -1232,18 +1180,16 @@ TEST_F(WiFiProviderTest, OnEndpointAdded) {
 
   const string ssid1("another_ssid");
   const vector<uint8_t> ssid1_bytes(ssid1.begin(), ssid1.end());
-  EXPECT_FALSE(FindService(ssid1_bytes, kModeManaged,
-                           kSecurityNone));
-  WiFiEndpointRefPtr endpoint2 = MakeEndpoint(ssid1, "00:00:00:00:00:02",
-                                              0, 0);
+  EXPECT_FALSE(FindService(ssid1_bytes, kModeManaged, kSecurityNone));
+  WiFiEndpointRefPtr endpoint2 = MakeEndpoint(ssid1, "00:00:00:00:00:02", 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
   provider_.OnEndpointAdded(endpoint2);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_EQ(2, GetServices().size());
 
-  WiFiServiceRefPtr service1(FindService(ssid1_bytes, kModeManaged,
-                                         kSecurityNone));
+  WiFiServiceRefPtr service1(
+      FindService(ssid1_bytes, kModeManaged, kSecurityNone));
   EXPECT_NE(nullptr, service1);
   EXPECT_TRUE(service1->HasEndpoints());
   EXPECT_TRUE(service1 != service0);
@@ -1253,8 +1199,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
   provider_.Start();
   const string ssid0("an_ssid");
   const vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
-  EXPECT_FALSE(FindService(ssid0_bytes, kModeManaged,
-                           kSecurityNone));
+  EXPECT_FALSE(FindService(ssid0_bytes, kModeManaged, kSecurityNone));
   WiFiEndpointRefPtr endpoint0 = MakeEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
   endpoint0->set_security_mode(kSecurityRsn);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
@@ -1262,8 +1207,8 @@ TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
   provider_.OnEndpointAdded(endpoint0);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_EQ(1, GetServices().size());
-  WiFiServiceRefPtr service0(FindService(ssid0_bytes, kModeManaged,
-                                         kSecurityWpa));
+  WiFiServiceRefPtr service0(
+      FindService(ssid0_bytes, kModeManaged, kSecurityWpa));
   EXPECT_NE(nullptr, service0);
   EXPECT_TRUE(service0->HasEndpoints());
   EXPECT_EQ(kSecurityPsk, service0->security_);
@@ -1278,8 +1223,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
 
   const string ssid1("another_ssid");
   const vector<uint8_t> ssid1_bytes(ssid1.begin(), ssid1.end());
-  EXPECT_FALSE(FindService(ssid1_bytes, kModeManaged,
-                           kSecurityNone));
+  EXPECT_FALSE(FindService(ssid1_bytes, kModeManaged, kSecurityNone));
   WiFiEndpointRefPtr endpoint2 = MakeEndpoint(ssid1, "00:00:00:00:00:02", 0, 0);
   endpoint2->set_security_mode(kSecurityWpa);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
@@ -1288,8 +1232,8 @@ TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_EQ(2, GetServices().size());
 
-  WiFiServiceRefPtr service1(FindService(ssid1_bytes, kModeManaged,
-                                         kSecurityRsn));
+  WiFiServiceRefPtr service1(
+      FindService(ssid1_bytes, kModeManaged, kSecurityRsn));
   EXPECT_NE(nullptr, service1);
   EXPECT_TRUE(service1->HasEndpoints());
   EXPECT_EQ(kSecurityPsk, service1->security_);
@@ -1314,16 +1258,12 @@ TEST_F(WiFiProviderTest, OnEndpointAddedToMockService) {
   provider_.Start();
   const string ssid0("an_ssid");
   const vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
-  MockWiFiServiceRefPtr service0 = AddMockService(ssid0_bytes,
-                                                  kModeManaged,
-                                                  kSecurityNone,
-                                                  false);
+  MockWiFiServiceRefPtr service0 =
+      AddMockService(ssid0_bytes, kModeManaged, kSecurityNone, false);
   const string ssid1("another_ssid");
   const vector<uint8_t> ssid1_bytes(ssid1.begin(), ssid1.end());
-  MockWiFiServiceRefPtr service1 = AddMockService(ssid1_bytes,
-                                                  kModeManaged,
-                                                  kSecurityNone,
-                                                  false);
+  MockWiFiServiceRefPtr service1 =
+      AddMockService(ssid1_bytes, kModeManaged, kSecurityNone, false);
   EXPECT_EQ(service0, FindService(ssid0_bytes, kModeManaged, kSecurityNone));
   WiFiEndpointRefPtr endpoint0 = MakeEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
@@ -1357,16 +1297,12 @@ TEST_F(WiFiProviderTest, OnEndpointRemoved) {
   provider_.Start();
   const string ssid0("an_ssid");
   const vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
-  MockWiFiServiceRefPtr service0 = AddMockService(ssid0_bytes,
-                                                  kModeManaged,
-                                                  kSecurityNone,
-                                                  false);
+  MockWiFiServiceRefPtr service0 =
+      AddMockService(ssid0_bytes, kModeManaged, kSecurityNone, false);
   const string ssid1("another_ssid");
   const vector<uint8_t> ssid1_bytes(ssid1.begin(), ssid1.end());
-  MockWiFiServiceRefPtr service1 = AddMockService(ssid1_bytes,
-                                                  kModeManaged,
-                                                  kSecurityNone,
-                                                  false);
+  MockWiFiServiceRefPtr service1 =
+      AddMockService(ssid1_bytes, kModeManaged, kSecurityNone, false);
   EXPECT_EQ(2, GetServices().size());
 
   // Remove the last endpoint of a non-remembered service.
@@ -1396,10 +1332,8 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedButHasEndpoints) {
   provider_.Start();
   const string ssid0("an_ssid");
   const vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
-  MockWiFiServiceRefPtr service0 = AddMockService(ssid0_bytes,
-                                                  kModeManaged,
-                                                  kSecurityNone,
-                                                  false);
+  MockWiFiServiceRefPtr service0 =
+      AddMockService(ssid0_bytes, kModeManaged, kSecurityNone, false);
   EXPECT_EQ(1, GetServices().size());
 
   // Remove an endpoint of a non-remembered service.
@@ -1426,10 +1360,8 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedButIsRemembered) {
   provider_.Start();
   const string ssid0("an_ssid");
   const vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
-  MockWiFiServiceRefPtr service0 = AddMockService(ssid0_bytes,
-                                                  kModeManaged,
-                                                  kSecurityNone,
-                                                  false);
+  MockWiFiServiceRefPtr service0 =
+      AddMockService(ssid0_bytes, kModeManaged, kSecurityNone, false);
   EXPECT_EQ(1, GetServices().size());
 
   // Remove the last endpoint of a remembered service.
@@ -1468,10 +1400,8 @@ TEST_F(WiFiProviderTest, OnEndpointUpdated) {
   WiFiEndpointRefPtr endpoint = MakeEndpoint(ssid, "00:00:00:00:00:00", 0, 0);
 
   const vector<uint8_t> ssid_bytes(ssid.begin(), ssid.end());
-  MockWiFiServiceRefPtr open_service = AddMockService(ssid_bytes,
-                                                      kModeManaged,
-                                                      kSecurityNone,
-                                                      false);
+  MockWiFiServiceRefPtr open_service =
+      AddMockService(ssid_bytes, kModeManaged, kSecurityNone, false);
   EXPECT_CALL(*open_service, AddEndpoint(RefPtrMatch(endpoint)));
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(open_service)));
   provider_.OnEndpointAdded(endpoint);
@@ -1486,10 +1416,8 @@ TEST_F(WiFiProviderTest, OnEndpointUpdated) {
   // If the endpoint is changed in a way that causes it to match a different
   // service, the provider should transfer the endpoint from one service to
   // the other.
-  MockWiFiServiceRefPtr rsn_service = AddMockService(ssid_bytes,
-                                                     kModeManaged,
-                                                     kSecurityRsn,
-                                                     false);
+  MockWiFiServiceRefPtr rsn_service =
+      AddMockService(ssid_bytes, kModeManaged, kSecurityRsn, false);
   EXPECT_CALL(*open_service, RemoveEndpoint(RefPtrMatch(endpoint)));
   // We are playing out a scenario where the open service is not removed
   // since it still claims to have more endpoints remaining.
@@ -1515,10 +1443,8 @@ TEST_F(WiFiProviderTest, OnServiceUnloaded) {
   // returns true (via WiFiService::Unload()).
   EXPECT_CALL(manager_, DeregisterService(_)).Times(0);
 
-  MockWiFiServiceRefPtr service = AddMockService(vector<uint8_t>(1, '0'),
-                                                 kModeManaged,
-                                                 kSecurityNone,
-                                                 false);
+  MockWiFiServiceRefPtr service = AddMockService(
+      vector<uint8_t>(1, '0'), kModeManaged, kSecurityNone, false);
   EXPECT_EQ(1, GetServices().size());
   EXPECT_CALL(*service, HasEndpoints()).WillOnce(Return(true));
   EXPECT_CALL(*service, ResetWiFi()).Times(0);
@@ -1540,48 +1466,61 @@ TEST_F(WiFiProviderTest, OnServiceUnloaded) {
 TEST_F(WiFiProviderTest, LoadAndFixupServiceEntriesDefaultProfile) {
   // We test LoadAndFixupServiceEntries indirectly since it calls a static
   // method in WiFiService.
-  EXPECT_CALL(metrics_, SendEnumToUMA(
-      "Network.Shill.Wifi.ServiceFixupEntries",
-      Metrics::kMetricServiceFixupDefaultProfile,
-      Metrics::kMetricServiceFixupMax)).Times(1);
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA("Network.Shill.Wifi.ServiceFixupEntries",
+                            Metrics::kMetricServiceFixupDefaultProfile,
+                            Metrics::kMetricServiceFixupMax))
+      .Times(1);
   EXPECT_CALL(default_profile_storage_, Flush()).Times(1);
   const string kGroupId =
       StringPrintf("%s_0_0_%s_%s", kTypeWifi, kModeManaged, kSecurityNone);
-  EXPECT_CALL(default_profile_storage_,
-              GetString(kGroupId, _, _)).WillRepeatedly(Return(false));
-  EXPECT_CALL(default_profile_storage_,
-              SetString(kGroupId, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(default_profile_storage_, GetString(kGroupId, _, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(default_profile_storage_, SetString(kGroupId, _, _))
+      .WillRepeatedly(Return(true));
   set<string> groups;
   groups.insert(kGroupId);
   EXPECT_CALL(default_profile_storage_, GetGroups())
       .WillRepeatedly(Return(groups));
-  EXPECT_CALL(default_profile_storage_, GetStringList(WiFiProvider::kStorageId,
-      StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 0), _)).
-      WillOnce(Return(true));
-  EXPECT_CALL(default_profile_storage_, GetStringList(WiFiProvider::kStorageId,
-      StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 1), _)).
-      WillOnce(Return(true));
-  EXPECT_CALL(default_profile_storage_, GetStringList(WiFiProvider::kStorageId,
-      StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 2), _)).
-      WillOnce(Return(true));
-  EXPECT_CALL(default_profile_storage_, GetStringList(WiFiProvider::kStorageId,
-      StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 3), _)).
-      WillOnce(Return(false));
+  EXPECT_CALL(
+      default_profile_storage_,
+      GetStringList(WiFiProvider::kStorageId,
+                    StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 0),
+                    _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      default_profile_storage_,
+      GetStringList(WiFiProvider::kStorageId,
+                    StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 1),
+                    _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      default_profile_storage_,
+      GetStringList(WiFiProvider::kStorageId,
+                    StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 2),
+                    _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      default_profile_storage_,
+      GetStringList(WiFiProvider::kStorageId,
+                    StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 3),
+                    _))
+      .WillOnce(Return(false));
   LoadAndFixupServiceEntries(default_profile_.get());
 }
 
 TEST_F(WiFiProviderTest, LoadAndFixupServiceEntriesUserProfile) {
-  EXPECT_CALL(metrics_, SendEnumToUMA(
-      "Network.Shill.Wifi.ServiceFixupEntries",
-      Metrics::kMetricServiceFixupUserProfile,
-      Metrics::kMetricServiceFixupMax)).Times(1);
+  EXPECT_CALL(metrics_, SendEnumToUMA("Network.Shill.Wifi.ServiceFixupEntries",
+                                      Metrics::kMetricServiceFixupUserProfile,
+                                      Metrics::kMetricServiceFixupMax))
+      .Times(1);
   EXPECT_CALL(user_profile_storage_, Flush()).Times(1);
   const string kGroupId =
       StringPrintf("%s_0_0_%s_%s", kTypeWifi, kModeManaged, kSecurityNone);
-  EXPECT_CALL(user_profile_storage_,
-              GetString(kGroupId, _, _)).WillRepeatedly(Return(false));
-  EXPECT_CALL(user_profile_storage_,
-              SetString(kGroupId, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(user_profile_storage_, GetString(kGroupId, _, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(user_profile_storage_, SetString(kGroupId, _, _))
+      .WillRepeatedly(Return(true));
   set<string> groups;
   groups.insert(kGroupId);
   EXPECT_CALL(user_profile_storage_, GetGroups())
@@ -1595,23 +1534,35 @@ TEST_F(WiFiProviderTest, LoadAndFixupServiceEntriesNothingToDo) {
   EXPECT_CALL(default_profile_storage_, Flush()).Times(0);
   const string kGroupId =
       StringPrintf("%s_0_0_%s_%s", kTypeWifi, kModeManaged, kSecurityNone);
-  EXPECT_CALL(default_profile_storage_,
-              GetString(kGroupId, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(default_profile_storage_, GetString(kGroupId, _, _))
+      .WillRepeatedly(Return(true));
   set<string> groups;
   groups.insert(kGroupId);
   EXPECT_CALL(default_profile_storage_, GetGroups()).WillOnce(Return(groups));
-  EXPECT_CALL(default_profile_storage_, GetStringList(WiFiProvider::kStorageId,
-      StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 0), _)).
-      WillOnce(Return(true));
-  EXPECT_CALL(default_profile_storage_, GetStringList(WiFiProvider::kStorageId,
-      StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 1), _)).
-      WillOnce(Return(true));
-  EXPECT_CALL(default_profile_storage_, GetStringList(WiFiProvider::kStorageId,
-      StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 2), _)).
-      WillOnce(Return(true));
-  EXPECT_CALL(default_profile_storage_, GetStringList(WiFiProvider::kStorageId,
-      StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 3), _)).
-      WillOnce(Return(false));
+  EXPECT_CALL(
+      default_profile_storage_,
+      GetStringList(WiFiProvider::kStorageId,
+                    StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 0),
+                    _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      default_profile_storage_,
+      GetStringList(WiFiProvider::kStorageId,
+                    StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 1),
+                    _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      default_profile_storage_,
+      GetStringList(WiFiProvider::kStorageId,
+                    StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 2),
+                    _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      default_profile_storage_,
+      GetStringList(WiFiProvider::kStorageId,
+                    StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 3),
+                    _))
+      .WillOnce(Return(false));
   LoadAndFixupServiceEntries(default_profile_.get());
 }
 
@@ -1622,18 +1573,14 @@ TEST_F(WiFiProviderTest, GetHiddenSSIDList) {
   EXPECT_TRUE(provider_.GetHiddenSSIDList().empty());
 
   const vector<uint8_t> ssid1(1, '1');
-  MockWiFiServiceRefPtr service1 = AddMockService(ssid1,
-                                                  kModeManaged,
-                                                  kSecurityNone,
-                                                  true);
+  MockWiFiServiceRefPtr service1 =
+      AddMockService(ssid1, kModeManaged, kSecurityNone, true);
   EXPECT_CALL(*service1, IsRemembered()).WillRepeatedly(Return(false));
   EXPECT_TRUE(provider_.GetHiddenSSIDList().empty());
 
   const vector<uint8_t> ssid2(1, '2');
-  MockWiFiServiceRefPtr service2 = AddMockService(ssid2,
-                                                  kModeManaged,
-                                                  kSecurityNone,
-                                                  true);
+  MockWiFiServiceRefPtr service2 =
+      AddMockService(ssid2, kModeManaged, kSecurityNone, true);
   EXPECT_CALL(*service2, IsRemembered()).WillRepeatedly(Return(true));
   ByteArrays ssid_list = provider_.GetHiddenSSIDList();
 
@@ -1641,10 +1588,8 @@ TEST_F(WiFiProviderTest, GetHiddenSSIDList) {
   EXPECT_TRUE(ssid_list[0] == ssid2);
 
   const vector<uint8_t> ssid3(1, '3');
-  MockWiFiServiceRefPtr service3 = AddMockService(ssid3,
-                                                  kModeManaged,
-                                                  kSecurityNone,
-                                                  false);
+  MockWiFiServiceRefPtr service3 =
+      AddMockService(ssid3, kModeManaged, kSecurityNone, false);
   EXPECT_CALL(*service2, IsRemembered()).WillRepeatedly(Return(true));
 
   ssid_list = provider_.GetHiddenSSIDList();
@@ -1652,10 +1597,8 @@ TEST_F(WiFiProviderTest, GetHiddenSSIDList) {
   EXPECT_TRUE(ssid_list[0] == ssid2);
 
   const vector<uint8_t> ssid4(1, '4');
-  MockWiFiServiceRefPtr service4 = AddMockService(ssid4,
-                                                  kModeManaged,
-                                                  kSecurityNone,
-                                                  true);
+  MockWiFiServiceRefPtr service4 =
+      AddMockService(ssid4, kModeManaged, kSecurityNone, true);
   EXPECT_CALL(*service4, IsRemembered()).WillRepeatedly(Return(true));
 
   ssid_list = provider_.GetHiddenSSIDList();
@@ -1668,8 +1611,8 @@ TEST_F(WiFiProviderTest, StringListToFrequencyMap) {
   vector<string> strings;
   BuildFreqCountStrings(&strings);
   WiFiProvider::ConnectFrequencyMap frequencies_result;
-  time_t days = WiFiProvider::StringListToFrequencyMap(strings,
-                                                       &frequencies_result);
+  time_t days =
+      WiFiProvider::StringListToFrequencyMap(strings, &frequencies_result);
 
   WiFiProvider::ConnectFrequencyMap frequencies_expect;
   BuildFreqCountMap(&frequencies_expect);
@@ -1680,8 +1623,8 @@ TEST_F(WiFiProviderTest, StringListToFrequencyMap) {
 TEST_F(WiFiProviderTest, StringListToFrequencyMapEmpty) {
   vector<string> strings = {"@50"};
   WiFiProvider::ConnectFrequencyMap frequencies_result;
-  time_t days = WiFiProvider::StringListToFrequencyMap(strings,
-                                                       &frequencies_result);
+  time_t days =
+      WiFiProvider::StringListToFrequencyMap(strings, &frequencies_result);
   EXPECT_TRUE(frequencies_result.empty());
   EXPECT_EQ(days, 50);
 }
@@ -1708,8 +1651,8 @@ TEST_F(WiFiProviderTest, FrequencyMapToStringListEmpty) {
 }
 
 TEST_F(WiFiProviderTest, FrequencyMapBasicAging) {
-  const time_t kThisWeek = kFirstWeek +
-      WiFiProvider::kWeeksToKeepFrequencyCounts - 1;
+  const time_t kThisWeek =
+      kFirstWeek + WiFiProvider::kWeeksToKeepFrequencyCounts - 1;
   LoadConnectCountByFrequency(kThisWeek * kSecondsPerWeek);
 
   // Make sure we have data for all 3 blocks.
@@ -1726,56 +1669,65 @@ TEST_F(WiFiProviderTest, FrequencyMapBasicAging) {
   EXPECT_CALL(
       default_profile_storage_,
       SetStringList(WiFiProvider::kStorageId, _,
-                    Eq(profile_frequency_data_[
-                        StringPrintf(
-                            "%s%d", WiFiProvider::kStorageFrequencies, 0)])));
+                    Eq(profile_frequency_data_[StringPrintf(
+                        "%s%d", WiFiProvider::kStorageFrequencies, 0)])));
   EXPECT_CALL(
       default_profile_storage_,
       SetStringList(WiFiProvider::kStorageId, _,
-                    Eq(profile_frequency_data_[
-                        StringPrintf(
-                            "%s%d", WiFiProvider::kStorageFrequencies, 1)])));
+                    Eq(profile_frequency_data_[StringPrintf(
+                        "%s%d", WiFiProvider::kStorageFrequencies, 1)])));
   EXPECT_CALL(
       default_profile_storage_,
       SetStringList(WiFiProvider::kStorageId, _,
-                    Eq(profile_frequency_data_[
-                        StringPrintf(
-                            "%s%d", WiFiProvider::kStorageFrequencies, 2)])));
+                    Eq(profile_frequency_data_[StringPrintf(
+                        "%s%d", WiFiProvider::kStorageFrequencies, 2)])));
   vector<string> frequencies = {
       base::StringPrintf("@%" PRIu64, static_cast<uint64_t>(kThisWeek)),
   };
-  EXPECT_CALL(
-      default_profile_storage_,
-      SetStringList(WiFiProvider::kStorageId, _, Eq(frequencies))).Times(0);
+  EXPECT_CALL(default_profile_storage_,
+              SetStringList(WiFiProvider::kStorageId, _, Eq(frequencies)))
+      .Times(0);
   Save();
 }
 
 TEST_F(WiFiProviderTest, FrequencyMapAgingIllegalDay) {
   provider_.time_ = &time_;
-  const time_t kThisWeek = kFirstWeek +
-      WiFiProvider::kWeeksToKeepFrequencyCounts - 1;
+  const time_t kThisWeek =
+      kFirstWeek + WiFiProvider::kWeeksToKeepFrequencyCounts - 1;
   const time_t kThisWeekSeconds = kThisWeek * kSecondsPerWeek;
   EXPECT_CALL(time_, GetSecondsSinceEpoch()).WillOnce(Return(kThisWeekSeconds));
   const string kGroupId =
       StringPrintf("%s_0_0_%s_%s", kTypeWifi, kModeManaged, kSecurityNone);
-  EXPECT_CALL(default_profile_storage_,
-              GetString(kGroupId, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(default_profile_storage_, GetString(kGroupId, _, _))
+      .WillRepeatedly(Return(true));
   set<string> groups;
   groups.insert(kGroupId);
   // Instead of block[1], return a block without the date.
   EXPECT_CALL(default_profile_storage_, GetGroups()).WillOnce(Return(groups));
-  EXPECT_CALL(default_profile_storage_, GetStringList(WiFiProvider::kStorageId,
-      StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 0), _)).
-      WillOnce(Invoke(this, &WiFiProviderTest::GetStringList));
-  EXPECT_CALL(default_profile_storage_, GetStringList(WiFiProvider::kStorageId,
-      StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 1), _)).
-      WillOnce(Invoke(this, &WiFiProviderTest::GetIllegalDayStringList));
-  EXPECT_CALL(default_profile_storage_, GetStringList(WiFiProvider::kStorageId,
-      StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 2), _)).
-      WillOnce(Invoke(this, &WiFiProviderTest::GetStringList));
-  EXPECT_CALL(default_profile_storage_, GetStringList(WiFiProvider::kStorageId,
-      StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 3), _)).
-      WillOnce(Invoke(this, &WiFiProviderTest::GetStringList));
+  EXPECT_CALL(
+      default_profile_storage_,
+      GetStringList(WiFiProvider::kStorageId,
+                    StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 0),
+                    _))
+      .WillOnce(Invoke(this, &WiFiProviderTest::GetStringList));
+  EXPECT_CALL(
+      default_profile_storage_,
+      GetStringList(WiFiProvider::kStorageId,
+                    StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 1),
+                    _))
+      .WillOnce(Invoke(this, &WiFiProviderTest::GetIllegalDayStringList));
+  EXPECT_CALL(
+      default_profile_storage_,
+      GetStringList(WiFiProvider::kStorageId,
+                    StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 2),
+                    _))
+      .WillOnce(Invoke(this, &WiFiProviderTest::GetStringList));
+  EXPECT_CALL(
+      default_profile_storage_,
+      GetStringList(WiFiProvider::kStorageId,
+                    StringPrintf("%s%d", WiFiProvider::kStorageFrequencies, 3),
+                    _))
+      .WillOnce(Invoke(this, &WiFiProviderTest::GetStringList));
 
   LoadAndFixupServiceEntries(default_profile_.get());
 
@@ -1791,22 +1743,19 @@ TEST_F(WiFiProviderTest, FrequencyMapAgingIllegalDay) {
   EXPECT_CALL(
       default_profile_storage_,
       SetStringList(WiFiProvider::kStorageId, _,
-                    Eq(profile_frequency_data_[
-                        StringPrintf(
-                            "%s%d", WiFiProvider::kStorageFrequencies, 0)])));
+                    Eq(profile_frequency_data_[StringPrintf(
+                        "%s%d", WiFiProvider::kStorageFrequencies, 0)])));
   EXPECT_CALL(
       default_profile_storage_,
       SetStringList(WiFiProvider::kStorageId, _,
-                    Eq(profile_frequency_data_[
-                        StringPrintf(
-                            "%s%d", WiFiProvider::kStorageFrequencies, 1)]))).
-      Times(0);
+                    Eq(profile_frequency_data_[StringPrintf(
+                        "%s%d", WiFiProvider::kStorageFrequencies, 1)])))
+      .Times(0);
   EXPECT_CALL(
       default_profile_storage_,
       SetStringList(WiFiProvider::kStorageId, _,
-                    Eq(profile_frequency_data_[
-                        StringPrintf(
-                            "%s%d", WiFiProvider::kStorageFrequencies, 2)])));
+                    Eq(profile_frequency_data_[StringPrintf(
+                        "%s%d", WiFiProvider::kStorageFrequencies, 2)])));
   vector<string> frequencies = {
       base::StringPrintf("@%" PRIu64, static_cast<uint64_t>(kThisWeek)),
   };
@@ -1817,15 +1766,15 @@ TEST_F(WiFiProviderTest, FrequencyMapAgingIllegalDay) {
 }
 
 TEST_F(WiFiProviderTest, IncrementConnectCount) {
-  const time_t kThisWeek = kFirstWeek +
-      WiFiProvider::kWeeksToKeepFrequencyCounts - 1;
+  const time_t kThisWeek =
+      kFirstWeek + WiFiProvider::kWeeksToKeepFrequencyCounts - 1;
   const time_t kThisWeekSeconds = kThisWeek * kSecondsPerWeek;
   LoadConnectCountByFrequency(kThisWeekSeconds);
 
   EXPECT_CALL(time_, GetSecondsSinceEpoch()).WillOnce(Return(kThisWeekSeconds));
   EXPECT_CALL(manager_, UpdateWiFiProvider());
-  EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricFrequenciesConnectedEver,
-                                  _, _, _, _));
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kMetricFrequenciesConnectedEver, _, _, _, _));
   time_t newest_week_at_start =
       provider_.connect_count_by_frequency_dated_.crbegin()->first;
   provider_.IncrementConnectCount(6002);
@@ -1853,11 +1802,11 @@ TEST_F(WiFiProviderTest, IncrementConnectCountCreateNew) {
   LoadConnectCountByFrequency(this_week * kSecondsPerWeek);
 
   this_week += 2;
-  EXPECT_CALL(time_, GetSecondsSinceEpoch()).
-      WillOnce(Return(this_week * kSecondsPerWeek));
+  EXPECT_CALL(time_, GetSecondsSinceEpoch())
+      .WillOnce(Return(this_week * kSecondsPerWeek));
   EXPECT_CALL(manager_, UpdateWiFiProvider());
-  EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricFrequenciesConnectedEver,
-                                  _, _, _, _));
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kMetricFrequenciesConnectedEver, _, _, _, _));
   time_t newest_week_at_start =
       provider_.connect_count_by_frequency_dated_.crbegin()->first;
   provider_.IncrementConnectCount(6001);
@@ -1882,14 +1831,10 @@ TEST_F(WiFiProviderTest, IncrementConnectCountCreateNew) {
 }
 
 TEST_F(WiFiProviderTest, ReportAutoConnectableServices) {
-  MockWiFiServiceRefPtr service0 = AddMockService(vector<uint8_t>(1, '0'),
-                                                  kModeManaged,
-                                                  kSecurityNone,
-                                                  false);
-  MockWiFiServiceRefPtr service1 = AddMockService(vector<uint8_t>(1, '1'),
-                                                  kModeManaged,
-                                                  kSecurityNone,
-                                                  false);
+  MockWiFiServiceRefPtr service0 = AddMockService(
+      vector<uint8_t>(1, '0'), kModeManaged, kSecurityNone, false);
+  MockWiFiServiceRefPtr service1 = AddMockService(
+      vector<uint8_t>(1, '1'), kModeManaged, kSecurityNone, false);
   service0->EnableAndRetainAutoConnect();
   service0->SetConnectable(true);
   service1->EnableAndRetainAutoConnect();
@@ -1898,8 +1843,7 @@ TEST_F(WiFiProviderTest, ReportAutoConnectableServices) {
   EXPECT_CALL(*service0, IsAutoConnectable(_))
       .WillOnce(Return(true))
       .WillOnce(Return(false));
-  EXPECT_CALL(*service1, IsAutoConnectable(_))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*service1, IsAutoConnectable(_)).WillRepeatedly(Return(false));
 
   // With 1 auto connectable service.
   EXPECT_CALL(metrics_, NotifyWifiAutoConnectableServices(1));

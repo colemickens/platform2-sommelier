@@ -24,8 +24,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kLink;
-static string ObjectID(Device* d) { return d->link_name(); }
+static string ObjectID(Device* d) {
+  return d->link_name();
 }
+}  // namespace Logging
 
 // static
 const uint16_t TrafficMonitor::kDnsPort = 53;
@@ -54,8 +56,8 @@ void TrafficMonitor::Start() {
   SLOG(device_.get(), 2) << __func__;
   Stop();
 
-  sample_traffic_callback_.Reset(base::Bind(&TrafficMonitor::SampleTraffic,
-                                            base::Unretained(this)));
+  sample_traffic_callback_.Reset(
+      base::Bind(&TrafficMonitor::SampleTraffic, base::Unretained(this)));
   dispatcher_->PostDelayedTask(FROM_HERE, sample_traffic_callback_.callback(),
                                kSamplingIntervalMilliseconds);
 }
@@ -140,10 +142,9 @@ bool TrafficMonitor::IsCongestedTxQueues() {
     }
     if (congested_tx_queues) {
       ++accummulated_congested_tx_queues_samples_;
-      SLOG(device_.get(), 2) << __func__
-                             << ": Congested tx-queues detected ("
-                             << accummulated_congested_tx_queues_samples_
-                             << ")";
+      SLOG(device_.get(), 2)
+          << __func__ << ": Congested tx-queues detected ("
+          << accummulated_congested_tx_queues_samples_ << ")";
     }
   }
   old_tx_queue_lengths_ = curr_tx_queue_lengths;
@@ -191,8 +192,7 @@ bool TrafficMonitor::IsDnsFailing() {
         continue;
 
       ++accummulated_dns_failures_samples_;
-      SLOG(device_.get(), 2) << __func__
-                             << ": DNS failures detected ("
+      SLOG(device_.get(), 2) << __func__ << ": DNS failures detected ("
                              << accummulated_dns_failures_samples_ << ")";
       return true;
     }
@@ -209,14 +209,12 @@ void TrafficMonitor::SampleTraffic() {
   dispatcher_->PostDelayedTask(FROM_HERE, sample_traffic_callback_.callback(),
                                kSamplingIntervalMilliseconds);
 
-  if (IsCongestedTxQueues() &&
-      accummulated_congested_tx_queues_samples_ ==
-          kMinimumFailedSamplesToTrigger) {
+  if (IsCongestedTxQueues() && accummulated_congested_tx_queues_samples_ ==
+                                   kMinimumFailedSamplesToTrigger) {
     LOG(WARNING) << "Congested tx queues detected, out-of-credits?";
     network_problem_detected_callback_.Run(kNetworkProblemCongestedTxQueue);
-  } else if (IsDnsFailing() &&
-             accummulated_dns_failures_samples_ ==
-                 kMinimumFailedSamplesToTrigger) {
+  } else if (IsDnsFailing() && accummulated_dns_failures_samples_ ==
+                                   kMinimumFailedSamplesToTrigger) {
     LOG(WARNING) << "DNS queries failing, out-of-credits?";
     network_problem_detected_callback_.Run(kNetworkProblemDNSFailure);
   }

@@ -35,7 +35,7 @@ int FileIO::Close(int fd) {
 
 int FileIO::SetFdNonBlocking(int fd) {
   const int flags = HANDLE_EINTR(fcntl(fd, F_GETFL)) | O_NONBLOCK;
-  return HANDLE_EINTR(fcntl(fd, F_SETFL,  flags));
+  return HANDLE_EINTR(fcntl(fd, F_SETFL, flags));
 }
 
 }  // namespace shill

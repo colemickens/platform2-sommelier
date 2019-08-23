@@ -21,7 +21,8 @@ class Config;
 class ShillDaemon : public brillo::Daemon {
  public:
   ShillDaemon(const base::Closure& startup_callback,
-              const shill::DaemonTask::Settings& settings, Config* config);
+              const shill::DaemonTask::Settings& settings,
+              Config* config);
   virtual ~ShillDaemon();
 
  private:

@@ -47,8 +47,7 @@ void PowerManager::Start(
     const SuspendDoneCallback& suspend_done_callback,
     const DarkSuspendImminentCallback& dark_suspend_imminent_callback) {
   power_manager_proxy_ = control_interface_->CreatePowerManagerProxy(
-      this,
-      Bind(&PowerManager::OnPowerManagerAppeared, Unretained(this)),
+      this, Bind(&PowerManager::OnPowerManagerAppeared, Unretained(this)),
       Bind(&PowerManager::OnPowerManagerVanished, Unretained(this)));
   suspend_delay_ = suspend_delay;
   suspend_imminent_callback_ = suspend_imminent_callback;
@@ -84,8 +83,8 @@ bool PowerManager::ReportSuspendReadiness() {
 
   suspend_ready_ = true;
   if (!suspending_) {
-    LOG(INFO) << __func__ << ": Suspend attempt ("
-              << current_suspend_id_ << ") not active. Ignoring signal.";
+    LOG(INFO) << __func__ << ": Suspend attempt (" << current_suspend_id_
+              << ") not active. Ignoring signal.";
     return false;
   }
   return power_manager_proxy_->ReportSuspendReadiness(suspend_delay_id_,
@@ -94,8 +93,7 @@ bool PowerManager::ReportSuspendReadiness() {
 
 bool PowerManager::ReportDarkSuspendReadiness() {
   return power_manager_proxy_->ReportDarkSuspendReadiness(
-      dark_suspend_delay_id_,
-      current_dark_suspend_id_);
+      dark_suspend_delay_id_, current_dark_suspend_id_);
 }
 
 bool PowerManager::RecordDarkResumeWakeReason(const std::string& wake_reason) {
@@ -127,8 +125,8 @@ void PowerManager::OnSuspendDone(int suspend_id, int64_t suspend_duration_us) {
   // NB: |suspend_id| could be -1. See OnPowerManagerVanished.
   LOG(INFO) << __func__ << "(" << suspend_id << ")";
   if (!suspending_) {
-    LOG(WARNING) << "Received unexpected SuspendDone ("
-                 << suspend_id << "). Ignoring.";
+    LOG(WARNING) << "Received unexpected SuspendDone (" << suspend_id
+                 << "). Ignoring.";
     return;
   }
 
@@ -176,15 +174,13 @@ void PowerManager::OnPowerManagerAppeared() {
     return;
   }
 
-  if (power_manager_proxy_->RegisterSuspendDelay(suspend_delay_,
-                                                 kSuspendDelayDescription,
-                                                 &suspend_delay_id_))
+  if (power_manager_proxy_->RegisterSuspendDelay(
+          suspend_delay_, kSuspendDelayDescription, &suspend_delay_id_))
     suspend_delay_registered_ = true;
 
   if (power_manager_proxy_->RegisterDarkSuspendDelay(
-      suspend_delay_,
-      kDarkSuspendDelayDescription,
-      &dark_suspend_delay_id_))
+          suspend_delay_, kDarkSuspendDelayDescription,
+          &dark_suspend_delay_id_))
     dark_suspend_delay_registered_ = true;
 }
 

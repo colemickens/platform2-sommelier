@@ -26,17 +26,14 @@ CopyingInputStreamAdaptor* protobuf_lite_file_input_stream(
 
   auto* file_stream(new ProtobufLiteCopyingFileInputStream(fd));
   auto* adaptor(new CopyingInputStreamAdaptor(
-        static_cast<CopyingInputStream*>(file_stream)));
+      static_cast<CopyingInputStream*>(file_stream)));
   // Pass ownership of |file_stream|.
   adaptor->SetOwnsCopyingStream(true);
   return adaptor;
 }
 
-
 ProtobufLiteCopyingFileInputStream::ProtobufLiteCopyingFileInputStream(int fd)
-  : fd_(fd),
-    scoped_fd_closer_(fd_),
-    previous_seek_failed_(false) {}
+    : fd_(fd), scoped_fd_closer_(fd_), previous_seek_failed_(false) {}
 
 ProtobufLiteCopyingFileInputStream::~ProtobufLiteCopyingFileInputStream() =
     default;

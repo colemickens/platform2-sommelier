@@ -23,16 +23,18 @@ class MockRTNLHandler : public RTNLHandler {
   MOCK_METHOD1(Start, void(uint32_t netlink_groups_mask));
   MOCK_METHOD1(AddListener, void(RTNLListener* to_add));
   MOCK_METHOD1(RemoveListener, void(RTNLListener* to_remove));
-  MOCK_METHOD3(SetInterfaceFlags, void(int interface_index,
-                                       unsigned int flags,
-                                       unsigned int change));
+  MOCK_METHOD3(SetInterfaceFlags,
+               void(int interface_index,
+                    unsigned int flags,
+                    unsigned int change));
   MOCK_METHOD2(SetInterfaceMTU, void(int interface_index, unsigned int mtu));
-  MOCK_METHOD4(AddInterfaceAddress, bool(int interface_index,
-                                         const IPAddress& local,
-                                         const IPAddress& broadcast,
-                                         const IPAddress& peer));
-  MOCK_METHOD2(RemoveInterfaceAddress, bool(int interface_index,
-                                            const IPAddress& local));
+  MOCK_METHOD4(AddInterfaceAddress,
+               bool(int interface_index,
+                    const IPAddress& local,
+                    const IPAddress& broadcast,
+                    const IPAddress& peer));
+  MOCK_METHOD2(RemoveInterfaceAddress,
+               bool(int interface_index, const IPAddress& local));
   MOCK_METHOD1(RemoveInterface, bool(int interface_index));
   MOCK_METHOD1(RequestDump, void(uint32_t request_flags));
   MOCK_METHOD1(GetInterfaceIndex, int(const std::string& interface_name));

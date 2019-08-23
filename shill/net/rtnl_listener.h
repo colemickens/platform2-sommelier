@@ -20,7 +20,7 @@ class SHILL_EXPORT RTNLListener {
                const base::Callback<void(const RTNLMessage&)>& callback);
   RTNLListener(int listen_flags,
                const base::Callback<void(const RTNLMessage&)>& callback,
-               RTNLHandler *rtnl_handler);
+               RTNLHandler* rtnl_handler);
   ~RTNLListener();
 
   void NotifyEvent(int type, const RTNLMessage& msg);
@@ -28,7 +28,7 @@ class SHILL_EXPORT RTNLListener {
  private:
   int listen_flags_;
   base::Callback<void(const RTNLMessage&)> callback_;
-  RTNLHandler *rtnl_handler_;
+  RTNLHandler* rtnl_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(RTNLListener);
 };

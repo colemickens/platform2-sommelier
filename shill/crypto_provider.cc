@@ -19,8 +19,7 @@ namespace shill {
 
 const char CryptoProvider::kKeyMatterFile[] = "/var/lib/whitelist/owner.key";
 
-CryptoProvider::CryptoProvider()
-    : key_matter_file_(kKeyMatterFile) {}
+CryptoProvider::CryptoProvider() : key_matter_file_(kKeyMatterFile) {}
 
 void CryptoProvider::Init() {
   cryptos_.clear();

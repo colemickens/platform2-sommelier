@@ -15,10 +15,10 @@ bool operator==(const fib_rule_uid_range& a, const fib_rule_uid_range& b) {
 namespace shill {
 
 RoutingPolicyEntry::RoutingPolicyEntry()
-  : family(IPAddress::kFamilyUnknown),
-    priority(1),
-    table(RT_TABLE_MAIN),
-    invert_rule(false) {}
+    : family(IPAddress::kFamilyUnknown),
+      priority(1),
+      table(RT_TABLE_MAIN),
+      invert_rule(false) {}
 
 // static
 RoutingPolicyEntry RoutingPolicyEntry::Create(IPAddress::Family family_in) {

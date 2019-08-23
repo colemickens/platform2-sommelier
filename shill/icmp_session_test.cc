@@ -43,8 +43,8 @@ const uint8_t kIcmpEchoReply3[] = {0x00, 0x00, 0xf5, 0xff,
 const uint16_t kIcmpEchoReply3_SeqNum = 0x0a;
 
 // ICMPv6 echo reply with 0 bytes of data, echo ID 0, and sequence number 0x8.
-const uint8_t kIcmpV6EchoReply1[] = {
-    0x81, 0x00, 0x76, 0xff, 0x00, 0x00, 0x08, 0x00};
+const uint8_t kIcmpV6EchoReply1[] = {0x81, 0x00, 0x76, 0xff,
+                                     0x00, 0x00, 0x08, 0x00};
 
 // This ICMPv4 echo reply has an echo ID of 0xe, which is different from the
 // echo ID used in the unit tests (0).
@@ -102,14 +102,11 @@ class IcmpSessionTest : public Test {
 
   bool Start(const IPAddress& destination, int interface_index) {
     return icmp_session_.Start(
-        destination,
-        interface_index,
+        destination, interface_index,
         Bind(&IcmpSessionTest::ResultCallback, Unretained(this)));
   }
 
-  void Stop() {
-    icmp_session_.Stop();
-  }
+  void Stop() { icmp_session_.Stop(); }
 
   bool SeqNumToSentRecvTimeContains(uint16_t seq_num) {
     return icmp_session_.seq_num_to_sent_recv_time_.find(seq_num) !=
@@ -122,9 +119,8 @@ class IcmpSessionTest : public Test {
   }
 
   void TransmitEchoRequestTask(bool transmit_request_success) {
-    EXPECT_CALL(
-        *icmp_,
-        TransmitEchoRequest(icmp_session_.echo_id_, GetCurrentSequenceNumber()))
+    EXPECT_CALL(*icmp_, TransmitEchoRequest(icmp_session_.echo_id_,
+                                            GetCurrentSequenceNumber()))
         .WillOnce(Return(transmit_request_success));
     icmp_session_.TransmitEchoRequestTask();
   }

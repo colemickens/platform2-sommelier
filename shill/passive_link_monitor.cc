@@ -23,8 +23,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kLink;
-static std::string ObjectID(Connection* c) { return c->interface_name(); }
+static std::string ObjectID(Connection* c) {
+  return c->interface_name();
 }
+}  // namespace Logging
 
 namespace {
 
@@ -88,11 +90,9 @@ bool PassiveLinkMonitor::StartArpClient() {
   if (!arp_client_->StartRequestListener()) {
     return false;
   }
-  receive_request_handler_.reset(
-      io_handler_factory_->CreateIOReadyHandler(
-          arp_client_->socket(),
-          IOHandler::kModeInput,
-          Bind(&PassiveLinkMonitor::ReceiveRequest, Unretained(this))));
+  receive_request_handler_.reset(io_handler_factory_->CreateIOReadyHandler(
+      arp_client_->socket(), IOHandler::kModeInput,
+      Bind(&PassiveLinkMonitor::ReceiveRequest, Unretained(this))));
   return true;
 }
 

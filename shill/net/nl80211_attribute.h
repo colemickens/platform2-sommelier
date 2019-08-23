@@ -420,8 +420,8 @@ class Nl80211AttributeDisconnectedByAp : public NetlinkFlagAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeDisconnectedByAp() :
-    NetlinkFlagAttribute(kName, kNameString) {}
+  Nl80211AttributeDisconnectedByAp()
+      : NetlinkFlagAttribute(kName, kNameString) {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeDisconnectedByAp);
@@ -431,8 +431,7 @@ class Nl80211AttributeOffchannelTxOk : public NetlinkFlagAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeOffchannelTxOk()
-      : NetlinkFlagAttribute(kName, kNameString) {}
+  Nl80211AttributeOffchannelTxOk() : NetlinkFlagAttribute(kName, kNameString) {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeOffchannelTxOk);
@@ -452,8 +451,7 @@ class Nl80211AttributeSupportApUapsd : public NetlinkFlagAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeSupportApUapsd()
-      : NetlinkFlagAttribute(kName, kNameString) {}
+  Nl80211AttributeSupportApUapsd() : NetlinkFlagAttribute(kName, kNameString) {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeSupportApUapsd);
@@ -463,8 +461,7 @@ class Nl80211AttributeSupportIbssRsn : public NetlinkFlagAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeSupportIbssRsn()
-      : NetlinkFlagAttribute(kName, kNameString) {}
+  Nl80211AttributeSupportIbssRsn() : NetlinkFlagAttribute(kName, kNameString) {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeSupportIbssRsn);
@@ -474,8 +471,8 @@ class Nl80211AttributeSupportMeshAuth : public NetlinkFlagAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  Nl80211AttributeSupportMeshAuth() :
-    NetlinkFlagAttribute(kName, kNameString) {}
+  Nl80211AttributeSupportMeshAuth()
+      : NetlinkFlagAttribute(kName, kNameString) {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeSupportMeshAuth);

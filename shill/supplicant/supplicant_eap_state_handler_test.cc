@@ -24,10 +24,10 @@ class SupplicantEAPStateHandlerTest : public testing::Test {
 
  protected:
   void StartEAP() {
-    EXPECT_CALL(log_, Log(logging::LOG_INFO, _,
-                          EndsWith("Authentication starting.")));
-    EXPECT_FALSE(handler_.ParseStatus(WPASupplicant::kEAPStatusStarted, "",
-                                      &failure_));
+    EXPECT_CALL(
+        log_, Log(logging::LOG_INFO, _, EndsWith("Authentication starting.")));
+    EXPECT_FALSE(
+        handler_.ParseStatus(WPASupplicant::kEAPStatusStarted, "", &failure_));
     Mock::VerifyAndClearExpectations(&log_);
   }
 
@@ -64,8 +64,8 @@ TEST_F(SupplicantEAPStateHandlerTest, AcceptedMethod) {
 
 TEST_F(SupplicantEAPStateHandlerTest, SuccessfulCompletion) {
   StartEAP();
-  EXPECT_CALL(log_, Log(_, _,
-                        EndsWith("Completed authentication successfully.")));
+  EXPECT_CALL(log_,
+              Log(_, _, EndsWith("Completed authentication successfully.")));
   EXPECT_TRUE(handler_.ParseStatus(WPASupplicant::kEAPStatusCompletion,
                                    WPASupplicant::kEAPParameterSuccess,
                                    &failure_));
@@ -122,14 +122,15 @@ TEST_F(SupplicantEAPStateHandlerTest, EAPFailureRemoteTLSIndication) {
   EXPECT_EQ(Service::kFailureEAPRemoteTLS, failure_);
 }
 
-
 TEST_F(SupplicantEAPStateHandlerTest, BadRemoteCertificateVerification) {
   StartEAP();
   const string kStrangeParameter("ennui");
-  EXPECT_CALL(log_, Log(logging::LOG_ERROR, _, EndsWith(
-      string("Unexpected ") +
-      WPASupplicant::kEAPStatusRemoteCertificateVerification +
-      " parameter: " + kStrangeParameter)));
+  EXPECT_CALL(
+      log_,
+      Log(logging::LOG_ERROR, _,
+          EndsWith(string("Unexpected ") +
+                   WPASupplicant::kEAPStatusRemoteCertificateVerification +
+                   " parameter: " + kStrangeParameter)));
   EXPECT_FALSE(handler_.ParseStatus(
       WPASupplicant::kEAPStatusRemoteCertificateVerification, kStrangeParameter,
       &failure_));
@@ -142,12 +143,13 @@ TEST_F(SupplicantEAPStateHandlerTest, BadRemoteCertificateVerification) {
 TEST_F(SupplicantEAPStateHandlerTest, ParameterNeeded) {
   StartEAP();
   const string kAuthenticationParameter("nudge nudge say no more");
-  EXPECT_CALL(log_, Log(logging::LOG_ERROR, _, EndsWith(
-      string("aborted due to missing authentication parameter: ") +
-      kAuthenticationParameter)));
-  EXPECT_FALSE(handler_.ParseStatus(
-      WPASupplicant::kEAPStatusParameterNeeded, kAuthenticationParameter,
-      &failure_));
+  EXPECT_CALL(
+      log_,
+      Log(logging::LOG_ERROR, _,
+          EndsWith(string("aborted due to missing authentication parameter: ") +
+                   kAuthenticationParameter)));
+  EXPECT_FALSE(handler_.ParseStatus(WPASupplicant::kEAPStatusParameterNeeded,
+                                    kAuthenticationParameter, &failure_));
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ("", GetTLSError());
   EXPECT_EQ(Service::kFailureEAPAuthentication, failure_);

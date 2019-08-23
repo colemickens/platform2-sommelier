@@ -13,9 +13,7 @@
 
 // Neighbor Discovery user option header definition.
 struct NDUserOptionHeader {
-  NDUserOptionHeader() {
-    memset(this, 0, sizeof(*this));
-  }
+  NDUserOptionHeader() { memset(this, 0, sizeof(*this)); }
   uint8_t type;
   uint8_t length;
   uint16_t reserved;
@@ -23,8 +21,8 @@ struct NDUserOptionHeader {
 } __attribute__((__packed__));
 
 // Neighbor Discovery user option type definition.
-#define ND_OPT_RDNSS 25       /* RFC 5006 */
-#define ND_OPT_DNSSL 31       /* RFC 6106 */
+#define ND_OPT_RDNSS 25 /* RFC 5006 */
+#define ND_OPT_DNSSL 31 /* RFC 6106 */
 
 // Infinity lifetime.
 #define ND_OPT_LIFETIME_INFINITY 0xFFFFFFFF

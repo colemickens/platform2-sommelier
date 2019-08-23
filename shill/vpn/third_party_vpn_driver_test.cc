@@ -140,8 +140,7 @@ TEST_F(ThirdPartyVpnDriverTest, ReconnectionEvents) {
   scoped_refptr<MockService> mock_service(new NiceMock<MockService>(&manager_));
   EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
                                        ThirdPartyVpnDriver::kLinkChanged)));
-  EXPECT_CALL(*mock_service, state())
-      .WillOnce(Return(Service::kStateOnline));
+  EXPECT_CALL(*mock_service, state()).WillOnce(Return(Service::kStateOnline));
   driver_->OnDefaultServiceChanged(mock_service);
 
   // Default physical service has no connection -> kLinkDown.
@@ -150,23 +149,21 @@ TEST_F(ThirdPartyVpnDriverTest, ReconnectionEvents) {
   driver_->OnDefaultServiceChanged(nullptr);
 
   // New default physical service not online yet -> no change.
-  EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(_))
-      .Times(0);
+  EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(_)).Times(0);
   EXPECT_CALL(*mock_service, state())
       .WillOnce(Return(Service::kStateConnected));
   driver_->OnDefaultServiceChanged(mock_service);
 
-  EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(_))
-      .Times(0);
+  EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(_)).Times(0);
   EXPECT_CALL(*mock_service, state())
       .WillOnce(Return(Service::kStateNoConnectivity));
   driver_->OnDefaultServiceStateChanged(mock_service);
 
   // Default physical service comes Online -> kLinkUp.
-  EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
-                                       ThirdPartyVpnDriver::kLinkUp)));
-  EXPECT_CALL(*mock_service, state())
-      .WillOnce(Return(Service::kStateOnline));
+  EXPECT_CALL(
+      *adaptor_interface_,
+      EmitPlatformMessage(static_cast<uint32_t>(ThirdPartyVpnDriver::kLinkUp)));
+  EXPECT_CALL(*mock_service, state()).WillOnce(Return(Service::kStateOnline));
   driver_->OnDefaultServiceStateChanged(mock_service);
 
   // Default physical service vanishes, but the app doesn't support
@@ -198,16 +195,16 @@ TEST_F(ThirdPartyVpnDriverTest, PowerEvents) {
 
   driver_->reconnect_supported_ = true;
 
-  ResultCallback callback =
-      base::Bind(&ThirdPartyVpnDriverTest::TestCallback,
-                 base::Unretained(this));
+  ResultCallback callback = base::Bind(&ThirdPartyVpnDriverTest::TestCallback,
+                                       base::Unretained(this));
   EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
                                        ThirdPartyVpnDriver::kSuspend)));
   EXPECT_CALL(*this, TestCallback(_));
   driver_->OnBeforeSuspend(callback);
 
-  EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
-                                       ThirdPartyVpnDriver::kResume)));
+  EXPECT_CALL(
+      *adaptor_interface_,
+      EmitPlatformMessage(static_cast<uint32_t>(ThirdPartyVpnDriver::kResume)));
   driver_->OnAfterResume();
 
   EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
@@ -331,9 +328,10 @@ TEST_F(ThirdPartyVpnDriverTest, SetParameters) {
   parameters["dns_servers"] = "12 123123 43902374";
   driver_->SetParameters(parameters, &error, &warning);
   EXPECT_EQ(error, "exclusion_list is missing;inclusion_list is missing;");
-  EXPECT_EQ(warning, "12 for dns_servers is invalid;"
-                     "123123 for dns_servers is invalid;"
-                     "43902374 for dns_servers is invalid;");
+  EXPECT_EQ(warning,
+            "12 for dns_servers is invalid;"
+            "123123 for dns_servers is invalid;"
+            "43902374 for dns_servers is invalid;");
 
   driver_->device_ = new MockVirtualDevice(&manager_, kInterfaceName,
                                            kInterfaceIndex, Technology::kVPN);

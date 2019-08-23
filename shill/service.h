@@ -139,13 +139,9 @@ class Service : public base::RefCounted<Service> {
     // In the process of disconnecting.
     kStateDisconnecting
   };
-  enum CryptoAlgorithm {
-    kCryptoNone,
-    kCryptoRc4,
-    kCryptoAes
-  };
+  enum CryptoAlgorithm { kCryptoNone, kCryptoRc4, kCryptoAes };
 
-  enum UpdateCredentialsReason{
+  enum UpdateCredentialsReason {
     kReasonCredentialsLoaded,
     kReasonPropertyUpdate
   };
@@ -505,9 +501,7 @@ class Service : public base::RefCounted<Service> {
   EapCredentials* mutable_eap() { return eap_.get(); }
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
-  const DhcpProperties& dhcp_properties() const {
-    return *dhcp_properties_;
-  }
+  const DhcpProperties& dhcp_properties() const { return *dhcp_properties_; }
 
   PropertyStore* mutable_store() { return &store_; }
   const PropertyStore& store() const { return store_; }
@@ -589,26 +583,27 @@ class Service : public base::RefCounted<Service> {
   // Reads of the property will be handled by invoking |get|.
   // Writes to the property will be handled by invoking |set|.
   // Clearing the property will be handled by PropertyStore.
-  void HelpRegisterDerivedBool(
-      const std::string& name,
-      bool(Service::*get)(Error* error),
-      bool(Service::*set)(const bool& value, Error* error),
-      void(Service::*clear)(Error* error));
-  void HelpRegisterDerivedInt32(
-      const std::string& name,
-      int32_t(Service::*get)(Error* error),
-      bool(Service::*set)(const int32_t& value, Error* error));
-  void HelpRegisterDerivedString(
-      const std::string& name,
-      std::string(Service::*get)(Error* error),
-      bool(Service::*set)(const std::string& value, Error* error));
+  void HelpRegisterDerivedBool(const std::string& name,
+                               bool (Service::*get)(Error* error),
+                               bool (Service::*set)(const bool& value,
+                                                    Error* error),
+                               void (Service::*clear)(Error* error));
+  void HelpRegisterDerivedInt32(const std::string& name,
+                                int32_t (Service::*get)(Error* error),
+                                bool (Service::*set)(const int32_t& value,
+                                                     Error* error));
+  void HelpRegisterDerivedString(const std::string& name,
+                                 std::string (Service::*get)(Error* error),
+                                 bool (Service::*set)(const std::string& value,
+                                                      Error* error));
   void HelpRegisterConstDerivedRpcIdentifier(
-      const std::string& name,
-      RpcIdentifier(Service::*get)(Error*) const);
-  void HelpRegisterConstDerivedStrings(
-      const std::string& name, Strings(Service::*get)(Error* error) const);
-  void HelpRegisterConstDerivedString(
-      const std::string& name, std::string(Service::*get)(Error* error) const);
+      const std::string& name, RpcIdentifier (Service::*get)(Error*) const);
+  void HelpRegisterConstDerivedStrings(const std::string& name,
+                                       Strings (Service::*get)(Error* error)
+                                           const);
+  void HelpRegisterConstDerivedString(const std::string& name,
+                                      std::string (Service::*get)(Error* error)
+                                          const);
 
   ServiceAdaptorInterface* adaptor() const { return adaptor_.get(); }
 

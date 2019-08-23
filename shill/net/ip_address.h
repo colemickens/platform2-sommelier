@@ -104,7 +104,7 @@ class SHILL_EXPORT IPAddress {
   bool IsDefault() const { return address_.IsZero() && !prefix_; }
   bool IsValid() const {
     return family_ != kFamilyUnknown &&
-        GetLength() == GetAddressLength(family_);
+           GetLength() == GetAddressLength(family_);
   }
 
   // Parse an IP address string.
@@ -126,7 +126,6 @@ class SHILL_EXPORT IPAddress {
     os << address.ToString();
     return os;
   }
-
 
   // Populates the address and family portion of a sockaddr_in or
   // sockaddr_in6 structure, depending on the IPAddress family.  Returns true

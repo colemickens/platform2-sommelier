@@ -37,7 +37,7 @@ class TDLSManagerTest : public testing::Test {
   }
   bool IsPeerDiscovering(const string& peer_mac_address) {
     return tdls_manager_.CheckDiscoveryState(peer_mac_address) ==
-        TDLSManager::PeerDiscoveryState::kRequestSent;
+           TDLSManager::PeerDiscoveryState::kRequestSent;
   }
 
   void SetPeerDiscovered(const string& peer_mac_address) {
@@ -46,16 +46,14 @@ class TDLSManagerTest : public testing::Test {
   }
   bool IsPeerDiscovered(const string& peer_mac_address) {
     return tdls_manager_.CheckDiscoveryState(peer_mac_address) ==
-        TDLSManager::PeerDiscoveryState::kResponseReceived;
+           TDLSManager::PeerDiscoveryState::kResponseReceived;
   }
 
   bool IsPeerDiscoveryCleanupTimerSetup() {
     return !tdls_manager_.peer_discovery_cleanup_callback_.IsCancelled();
   }
 
-  void OnPeerDiscoveryCleanup() {
-    return tdls_manager_.PeerDiscoveryCleanup();
-  }
+  void OnPeerDiscoveryCleanup() { return tdls_manager_.PeerDiscoveryCleanup(); }
 
  protected:
   StrictMock<MockEventDispatcher> event_dispatcher_;
@@ -75,9 +73,8 @@ TEST_F(TDLSManagerTest, DiscoverPeer) {
       .WillOnce(Return(true));
   // Post delayed task for discover peer cleanup timer.
   EXPECT_CALL(event_dispatcher_, PostDelayedTask(_, _, _)).Times(1);
-  EXPECT_EQ("",
-            tdls_manager_.PerformOperation(
-                kPeer, kTDLSDiscoverOperation, &error));
+  EXPECT_EQ("", tdls_manager_.PerformOperation(kPeer, kTDLSDiscoverOperation,
+                                               &error));
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(IsPeerDiscovering(kPeer));
   EXPECT_TRUE(IsPeerDiscoveryCleanupTimerSetup());
@@ -89,9 +86,8 @@ TEST_F(TDLSManagerTest, DiscoverPeer) {
   EXPECT_CALL(supplicant_interface_proxy_, TDLSDiscover(StrEq(kPeer)))
       .WillOnce(Return(false));
   EXPECT_CALL(event_dispatcher_, PostDelayedTask(_, _, _)).Times(0);
-  EXPECT_EQ("",
-            tdls_manager_.PerformOperation(
-                kPeer, kTDLSDiscoverOperation, &error));
+  EXPECT_EQ("", tdls_manager_.PerformOperation(kPeer, kTDLSDiscoverOperation,
+                                               &error));
   EXPECT_EQ(Error::kOperationFailed, error.type());
   Mock::VerifyAndClearExpectations(&supplicant_interface_proxy_);
   Mock::VerifyAndClearExpectations(&event_dispatcher_);
@@ -105,8 +101,7 @@ TEST_F(TDLSManagerTest, SetupPeer) {
   EXPECT_CALL(supplicant_interface_proxy_, TDLSSetup(StrEq(kPeer)))
       .WillOnce(Return(true));
   EXPECT_EQ("",
-            tdls_manager_.PerformOperation(
-                kPeer, kTDLSSetupOperation, &error));
+            tdls_manager_.PerformOperation(kPeer, kTDLSSetupOperation, &error));
   EXPECT_TRUE(error.IsSuccess());
   Mock::VerifyAndClearExpectations(&supplicant_interface_proxy_);
 
@@ -115,8 +110,7 @@ TEST_F(TDLSManagerTest, SetupPeer) {
   EXPECT_CALL(supplicant_interface_proxy_, TDLSSetup(StrEq(kPeer)))
       .WillOnce(Return(false));
   EXPECT_EQ("",
-            tdls_manager_.PerformOperation(
-                kPeer, kTDLSSetupOperation, &error));
+            tdls_manager_.PerformOperation(kPeer, kTDLSSetupOperation, &error));
   EXPECT_EQ(Error::kOperationFailed, error.type());
   Mock::VerifyAndClearExpectations(&supplicant_interface_proxy_);
 }
@@ -128,9 +122,8 @@ TEST_F(TDLSManagerTest, TeardownPeer) {
   // TDLS teardown operation succeed.
   EXPECT_CALL(supplicant_interface_proxy_, TDLSTeardown(StrEq(kPeer)))
       .WillOnce(Return(true));
-  EXPECT_EQ("",
-            tdls_manager_.PerformOperation(
-                kPeer, kTDLSTeardownOperation, &error));
+  EXPECT_EQ("", tdls_manager_.PerformOperation(kPeer, kTDLSTeardownOperation,
+                                               &error));
   EXPECT_TRUE(error.IsSuccess());
   Mock::VerifyAndClearExpectations(&supplicant_interface_proxy_);
 
@@ -138,9 +131,8 @@ TEST_F(TDLSManagerTest, TeardownPeer) {
   error.Reset();
   EXPECT_CALL(supplicant_interface_proxy_, TDLSTeardown(StrEq(kPeer)))
       .WillOnce(Return(false));
-  EXPECT_EQ("",
-            tdls_manager_.PerformOperation(
-                kPeer, kTDLSTeardownOperation, &error));
+  EXPECT_EQ("", tdls_manager_.PerformOperation(kPeer, kTDLSTeardownOperation,
+                                               &error));
   EXPECT_EQ(Error::kOperationFailed, error.type());
   Mock::VerifyAndClearExpectations(&supplicant_interface_proxy_);
 }
@@ -150,20 +142,19 @@ TEST_F(TDLSManagerTest, PeerStatus) {
   Error error;
 
   // TDLS status operation succeed.
-  const std::map<string, string> kTDLSStatusMap {
-    { "Baby, I don't care", kTDLSUnknownState },
-    { WPASupplicant::kTDLSStateConnected, kTDLSConnectedState },
-    { WPASupplicant::kTDLSStateDisabled, kTDLSDisabledState },
-    { WPASupplicant::kTDLSStatePeerDoesNotExist, kTDLSNonexistentState },
-    { WPASupplicant::kTDLSStatePeerNotConnected, kTDLSDisconnectedState },
+  const std::map<string, string> kTDLSStatusMap{
+      {"Baby, I don't care", kTDLSUnknownState},
+      {WPASupplicant::kTDLSStateConnected, kTDLSConnectedState},
+      {WPASupplicant::kTDLSStateDisabled, kTDLSDisabledState},
+      {WPASupplicant::kTDLSStatePeerDoesNotExist, kTDLSNonexistentState},
+      {WPASupplicant::kTDLSStatePeerNotConnected, kTDLSDisconnectedState},
   };
   for (const auto& it : kTDLSStatusMap) {
     error.Reset();
     EXPECT_CALL(supplicant_interface_proxy_, TDLSStatus(StrEq(kPeer), _))
         .WillOnce(DoAll(SetArgPointee<1>(it.first), Return(true)));
-    EXPECT_EQ(it.second,
-              tdls_manager_.PerformOperation(
-                  kPeer, kTDLSStatusOperation, &error));
+    EXPECT_EQ(it.second, tdls_manager_.PerformOperation(
+                             kPeer, kTDLSStatusOperation, &error));
     EXPECT_TRUE(error.IsSuccess());
     Mock::VerifyAndClearExpectations(&supplicant_interface_proxy_);
   }
@@ -172,13 +163,11 @@ TEST_F(TDLSManagerTest, PeerStatus) {
   error.Reset();
   SetPeerDiscovered(kPeer);
   EXPECT_CALL(supplicant_interface_proxy_, TDLSStatus(StrEq(kPeer), _))
-      .WillOnce(
-          DoAll(SetArgPointee<1>(
-                    string(WPASupplicant::kTDLSStatePeerDoesNotExist)),
-                Return(true)));
-  EXPECT_EQ(kTDLSDisconnectedState,
-            tdls_manager_.PerformOperation(
-                kPeer, kTDLSStatusOperation, &error));
+      .WillOnce(DoAll(
+          SetArgPointee<1>(string(WPASupplicant::kTDLSStatePeerDoesNotExist)),
+          Return(true)));
+  EXPECT_EQ(kTDLSDisconnectedState, tdls_manager_.PerformOperation(
+                                        kPeer, kTDLSStatusOperation, &error));
   EXPECT_TRUE(error.IsSuccess());
   Mock::VerifyAndClearExpectations(&supplicant_interface_proxy_);
 
@@ -186,9 +175,8 @@ TEST_F(TDLSManagerTest, PeerStatus) {
   error.Reset();
   EXPECT_CALL(supplicant_interface_proxy_, TDLSStatus(StrEq(kPeer), _))
       .WillOnce(Return(false));
-  EXPECT_EQ("",
-            tdls_manager_.PerformOperation(
-                kPeer, kTDLSStatusOperation, &error));
+  EXPECT_EQ(
+      "", tdls_manager_.PerformOperation(kPeer, kTDLSStatusOperation, &error));
   EXPECT_EQ(Error::kOperationFailed, error.type());
   Mock::VerifyAndClearExpectations(&supplicant_interface_proxy_);
 }
@@ -219,9 +207,8 @@ TEST_F(TDLSManagerTest, PeerDiscoveryCleanup) {
       .WillOnce(Return(true));
   // Post delayed task for discover peer cleanup timer.
   EXPECT_CALL(event_dispatcher_, PostDelayedTask(_, _, _)).Times(1);
-  EXPECT_EQ("",
-            tdls_manager_.PerformOperation(
-                kPeer, kTDLSDiscoverOperation, &error));
+  EXPECT_EQ("", tdls_manager_.PerformOperation(kPeer, kTDLSDiscoverOperation,
+                                               &error));
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(IsPeerDiscovering(kPeer));
   EXPECT_TRUE(IsPeerDiscoveryCleanupTimerSetup());

@@ -131,7 +131,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
                             const ProfileRefPtr& destination);
   virtual bool MatchProfileWithService(const ServiceRefPtr& service);
   ProfileRefPtr LookupProfileByRpcIdentifier(
-    const RpcIdentifier& profile_rpcid);
+      const RpcIdentifier& profile_rpcid);
 
   // Called via RPC call on Service (|to_set|) to set the "Profile" property.
   virtual void SetProfileForService(const ServiceRefPtr& to_set,
@@ -173,10 +173,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
       const ServiceConstRefPtr& service);
   ServiceRefPtr GetService(const KeyValueStore& args, Error* error);
   ServiceRefPtr ConfigureService(const KeyValueStore& args, Error* error);
-  ServiceRefPtr ConfigureServiceForProfile(
-      const RpcIdentifier& profile_rpcid,
-      const KeyValueStore& args,
-      Error* error);
+  ServiceRefPtr ConfigureServiceForProfile(const RpcIdentifier& profile_rpcid,
+                                           const KeyValueStore& args,
+                                           Error* error);
   ServiceRefPtr FindMatchingService(const KeyValueStore& args, Error* error);
 
   // Return the highest priority service of a physical technology type (i.e. not
@@ -382,7 +381,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   const base::FilePath& storage_path() const { return storage_path_; }
 
   virtual int64_t GetSuspendDurationUsecs() const {
-      return power_manager_->suspend_duration_us(); }
+    return power_manager_->suspend_duration_us();
+  }
 
   bool GetArpGateway() const { return props_.arp_gateway; }
 
@@ -390,15 +390,14 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual void SetMinimumMTU(const int mtu) { props_.minimum_mtu = mtu; }
 
   virtual bool GetJailVpnClients() const { return props_.jail_vpn_clients; }
-  virtual void SetJailVpnClients(bool jail_vpn_clients)
-                                { props_.jail_vpn_clients = jail_vpn_clients; }
+  virtual void SetJailVpnClients(bool jail_vpn_clients) {
+    props_.jail_vpn_clients = jail_vpn_clients;
+  }
 
   virtual void UpdateEnabledTechnologies();
   virtual void UpdateUninitializedTechnologies();
 
-  const DhcpProperties& dhcp_properties() const {
-    return *dhcp_properties_;
-  }
+  const DhcpProperties& dhcp_properties() const { return *dhcp_properties_; }
 
   // Writes the service |to_update| to persistant storage.  If the service's is
   // ephemeral, it is moved to the current profile.
@@ -631,22 +630,19 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void LoadDeviceFromProfiles(const DeviceRefPtr& device);
 
   void HelpRegisterConstDerivedRpcIdentifier(
-      const std::string& name,
-      RpcIdentifier(Manager::*get)(Error*));
+      const std::string& name, RpcIdentifier (Manager::*get)(Error*));
   void HelpRegisterConstDerivedRpcIdentifiers(
-      const std::string& name,
-      RpcIdentifiers(Manager::*get)(Error*));
-  void HelpRegisterDerivedString(
-      const std::string& name,
-      std::string(Manager::*get)(Error* error),
-      bool(Manager::*set)(const std::string&, Error*));
-  void HelpRegisterConstDerivedStrings(
-      const std::string& name,
-      Strings(Manager::*get)(Error*));
-  void HelpRegisterDerivedBool(
-      const std::string& name,
-      bool(Manager::*get)(Error* error),
-      bool(Manager::*set)(const bool& value, Error* error));
+      const std::string& name, RpcIdentifiers (Manager::*get)(Error*));
+  void HelpRegisterDerivedString(const std::string& name,
+                                 std::string (Manager::*get)(Error* error),
+                                 bool (Manager::*set)(const std::string&,
+                                                      Error*));
+  void HelpRegisterConstDerivedStrings(const std::string& name,
+                                       Strings (Manager::*get)(Error*));
+  void HelpRegisterDerivedBool(const std::string& name,
+                               bool (Manager::*get)(Error* error),
+                               bool (Manager::*set)(const bool& value,
+                                                    Error* error));
 
   bool HasProfile(const Profile::Identifier& ident);
   void PushProfileInternal(const Profile::Identifier& ident,

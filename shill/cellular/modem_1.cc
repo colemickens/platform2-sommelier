@@ -20,8 +20,7 @@ Modem1::Modem1(const string& service,
 
 Modem1::~Modem1() = default;
 
-bool Modem1::GetLinkName(const KeyValueStore& modem_props,
-                         string* name) const {
+bool Modem1::GetLinkName(const KeyValueStore& modem_props, string* name) const {
   if (!modem_props.Contains(MM_MODEM_PROPERTY_PORTS)) {
     LOG(ERROR) << "Device missing property: " << MM_MODEM_PROPERTY_PORTS;
     return false;
@@ -57,8 +56,7 @@ void Modem1::CreateDeviceMM1(const InterfaceToProperties& properties) {
   }
   const KeyValueStore& modem_props = it->second;
   if (modem_props.ContainsUint(MM_MODEM_PROPERTY_CURRENTCAPABILITIES)) {
-    capabilities =
-      modem_props.GetUint(MM_MODEM_PROPERTY_CURRENTCAPABILITIES);
+    capabilities = modem_props.GetUint(MM_MODEM_PROPERTY_CURRENTCAPABILITIES);
   }
 
   if (capabilities & (MM_MODEM_CAPABILITY_GSM_UMTS | MM_MODEM_CAPABILITY_LTE |

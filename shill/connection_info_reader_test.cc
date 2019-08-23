@@ -26,11 +26,12 @@ namespace {
 // TODO(benchan): Test IPv6 addresses.
 
 const char* const kConnectionInfoLines[] = {
-  "udp      17 30 src=192.168.1.1 dst=192.168.1.2 sport=9000 dport=53 "
-  "[UNREPLIED] src=192.168.1.2 dst=192.168.1.1 sport=53 dport=9000 use=2",
-  "tcp      6 299 ESTABLISHED src=192.168.2.1 dst=192.168.2.3 sport=8000 "
-  "dport=7000 src=192.168.2.3 dst=192.168.2.1 sport=7000 dport=8000 [ASSURED] "
-  "use=2",
+    "udp      17 30 src=192.168.1.1 dst=192.168.1.2 sport=9000 dport=53 "
+    "[UNREPLIED] src=192.168.1.2 dst=192.168.1.1 sport=53 dport=9000 use=2",
+    "tcp      6 299 ESTABLISHED src=192.168.2.1 dst=192.168.2.3 sport=8000 "
+    "dport=7000 src=192.168.2.3 dst=192.168.2.1 sport=7000 dport=8000 "
+    "[ASSURED] "
+    "use=2",
 };
 
 }  // namespace
@@ -57,8 +58,10 @@ class ConnectionInfoReaderTest : public testing::Test {
     return ip_address;
   }
 
-  void CreateConnectionInfoFile(const char* const* lines, size_t num_lines,
-                                const FilePath& dir_path, FilePath* file_path) {
+  void CreateConnectionInfoFile(const char* const* lines,
+                                size_t num_lines,
+                                const FilePath& dir_path,
+                                FilePath* file_path) {
     ASSERT_TRUE(base::CreateTemporaryFileInDir(dir_path, file_path));
     for (size_t i = 0; i < num_lines; ++i) {
       string line = lines[i];
@@ -100,45 +103,33 @@ TEST_F(ConnectionInfoReaderTest, LoadConnectionInfo) {
   EXPECT_FALSE(reader_.LoadConnectionInfo(&info_list));
 
   // Loading an empty file should succeed.
-  CreateConnectionInfoFile(
-      kConnectionInfoLines, 0, temp_dir.GetPath(), &info_file);
+  CreateConnectionInfoFile(kConnectionInfoLines, 0, temp_dir.GetPath(),
+                           &info_file);
   EXPECT_CALL(reader_, GetConnectionInfoFilePath()).WillOnce(Return(info_file));
   EXPECT_TRUE(reader_.LoadConnectionInfo(&info_list));
   EXPECT_TRUE(info_list.empty());
 
   // Loading a non-empty file should succeed.
   CreateConnectionInfoFile(kConnectionInfoLines,
-                           arraysize(kConnectionInfoLines),
-                           temp_dir.GetPath(),
+                           arraysize(kConnectionInfoLines), temp_dir.GetPath(),
                            &info_file);
   EXPECT_CALL(reader_, GetConnectionInfoFilePath()).WillOnce(Return(info_file));
   EXPECT_TRUE(reader_.LoadConnectionInfo(&info_list));
   EXPECT_EQ(arraysize(kConnectionInfoLines), info_list.size());
 
-  ExpectConnectionInfoEqual(ConnectionInfo(IPPROTO_UDP,
-                                           30,
-                                           true,
-                                           StringToIPv4Address("192.168.1.1"),
-                                           9000,
-                                           StringToIPv4Address("192.168.1.2"),
-                                           53,
-                                           StringToIPv4Address("192.168.1.2"),
-                                           53,
-                                           StringToIPv4Address("192.168.1.1"),
-                                           9000),
-                            info_list[0]);
-  ExpectConnectionInfoEqual(ConnectionInfo(IPPROTO_TCP,
-                                           299,
-                                           false,
-                                           StringToIPv4Address("192.168.2.1"),
-                                           8000,
-                                           StringToIPv4Address("192.168.2.3"),
-                                           7000,
-                                           StringToIPv4Address("192.168.2.3"),
-                                           7000,
-                                           StringToIPv4Address("192.168.2.1"),
-                                           8000),
-                            info_list[1]);
+  ExpectConnectionInfoEqual(
+      ConnectionInfo(IPPROTO_UDP, 30, true, StringToIPv4Address("192.168.1.1"),
+                     9000, StringToIPv4Address("192.168.1.2"), 53,
+                     StringToIPv4Address("192.168.1.2"), 53,
+                     StringToIPv4Address("192.168.1.1"), 9000),
+      info_list[0]);
+  ExpectConnectionInfoEqual(
+      ConnectionInfo(IPPROTO_TCP, 299, false,
+                     StringToIPv4Address("192.168.2.1"), 8000,
+                     StringToIPv4Address("192.168.2.3"), 7000,
+                     StringToIPv4Address("192.168.2.3"), 7000,
+                     StringToIPv4Address("192.168.2.1"), 8000),
+      info_list[1]);
 }
 
 TEST_F(ConnectionInfoReaderTest, ParseConnectionInfo) {
@@ -147,18 +138,12 @@ TEST_F(ConnectionInfoReaderTest, ParseConnectionInfo) {
   EXPECT_FALSE(reader_.ParseConnectionInfo("", &info));
 
   EXPECT_TRUE(reader_.ParseConnectionInfo(kConnectionInfoLines[0], &info));
-  ExpectConnectionInfoEqual(ConnectionInfo(IPPROTO_UDP,
-                                           30,
-                                           true,
-                                           StringToIPv4Address("192.168.1.1"),
-                                           9000,
-                                           StringToIPv4Address("192.168.1.2"),
-                                           53,
-                                           StringToIPv4Address("192.168.1.2"),
-                                           53,
-                                           StringToIPv4Address("192.168.1.1"),
-                                           9000),
-                            info);
+  ExpectConnectionInfoEqual(
+      ConnectionInfo(IPPROTO_UDP, 30, true, StringToIPv4Address("192.168.1.1"),
+                     9000, StringToIPv4Address("192.168.1.2"), 53,
+                     StringToIPv4Address("192.168.1.2"), 53,
+                     StringToIPv4Address("192.168.1.1"), 9000),
+      info);
 }
 
 TEST_F(ConnectionInfoReaderTest, ParseProtocol) {
@@ -167,8 +152,8 @@ TEST_F(ConnectionInfoReaderTest, ParseProtocol) {
   EXPECT_FALSE(reader_.ParseProtocol("", &protocol));
   EXPECT_FALSE(reader_.ParseProtocol("a", &protocol));
   EXPECT_FALSE(reader_.ParseProtocol("-1", &protocol));
-  EXPECT_FALSE(reader_.ParseProtocol(StringPrintf("%d", IPPROTO_MAX),
-                                     &protocol));
+  EXPECT_FALSE(
+      reader_.ParseProtocol(StringPrintf("%d", IPPROTO_MAX), &protocol));
 
   for (int i = 0; i < IPPROTO_MAX; ++i) {
     EXPECT_TRUE(reader_.ParseProtocol(StringPrintf("%d", i), &protocol));
@@ -198,12 +183,12 @@ TEST_F(ConnectionInfoReaderTest, ParseIPAddress) {
   EXPECT_FALSE(reader_.ParseIPAddress("dst=", &ip_address, &is_source));
   EXPECT_FALSE(reader_.ParseIPAddress("dst=abc", &ip_address, &is_source));
 
-  EXPECT_TRUE(reader_.ParseIPAddress("src=192.168.1.1",
-                                     &ip_address, &is_source));
+  EXPECT_TRUE(
+      reader_.ParseIPAddress("src=192.168.1.1", &ip_address, &is_source));
   EXPECT_TRUE(ip_address.Equals(StringToIPv4Address("192.168.1.1")));
   EXPECT_TRUE(is_source);
-  EXPECT_TRUE(reader_.ParseIPAddress("dst=192.168.1.2",
-                                     &ip_address, &is_source));
+  EXPECT_TRUE(
+      reader_.ParseIPAddress("dst=192.168.1.2", &ip_address, &is_source));
   EXPECT_TRUE(ip_address.Equals(StringToIPv4Address("192.168.1.2")));
   EXPECT_FALSE(is_source);
 }

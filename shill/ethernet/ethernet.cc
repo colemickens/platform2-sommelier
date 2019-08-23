@@ -48,8 +48,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kEthernet;
-static string ObjectID(Ethernet* e) { return e->GetRpcIdentifier(); }
+static string ObjectID(Ethernet* e) {
+  return e->GetRpcIdentifier();
 }
+}  // namespace Logging
 
 Ethernet::Ethernet(Manager* manager,
                    const string& link_name,
@@ -76,11 +78,11 @@ Ethernet::Ethernet(Manager* manager,
                            &is_eap_detected_);
 #endif  // DISABLE_WIRED_8021X
   store->RegisterConstBool(kLinkUpProperty, &link_up_);
-  store->RegisterDerivedBool(kPPPoEProperty, BoolAccessor(
-      new CustomAccessor<Ethernet, bool>(this,
-                                         &Ethernet::GetPPPoEMode,
-                                         &Ethernet::ConfigurePPPoEMode,
-                                         &Ethernet::ClearPPPoEMode)));
+  store->RegisterDerivedBool(
+      kPPPoEProperty,
+      BoolAccessor(new CustomAccessor<Ethernet, bool>(
+          this, &Ethernet::GetPPPoEMode, &Ethernet::ConfigurePPPoEMode,
+          &Ethernet::ClearPPPoEMode)));
 
 #if !defined(DISABLE_WIRED_8021X)
   eap_listener_->set_request_received_callback(
@@ -90,8 +92,7 @@ Ethernet::Ethernet(Manager* manager,
   SLOG(this, 2) << "Ethernet device " << link_name << " initialized.";
 }
 
-Ethernet::~Ethernet() {
-}
+Ethernet::~Ethernet() {}
 
 void Ethernet::Start(Error* error,
                      const EnabledStateChangedCallback& /*callback*/) {
@@ -102,7 +103,7 @@ void Ethernet::Start(Error* error,
     RegisterService(service_);
   }
   if (error)
-    error->Reset();       // indicate immediate completion
+    error->Reset();  // indicate immediate completion
 }
 
 void Ethernet::Stop(Error* error,
@@ -113,7 +114,7 @@ void Ethernet::Stop(Error* error,
 #endif  // DISABLE_WIRED_8021X
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   if (error)
-    error->Reset();       // indicate immediate completion
+    error->Reset();  // indicate immediate completion
 }
 
 void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
@@ -203,9 +204,8 @@ EthernetProvider* Ethernet::GetProvider() {
 
 #if !defined(DISABLE_WIRED_8021X)
 void Ethernet::TryEapAuthentication() {
-  try_eap_authentication_callback_.Reset(
-      Bind(&Ethernet::TryEapAuthenticationTask,
-           weak_ptr_factory_.GetWeakPtr()));
+  try_eap_authentication_callback_.Reset(Bind(
+      &Ethernet::TryEapAuthenticationTask, weak_ptr_factory_.GetWeakPtr()));
   dispatcher()->PostTask(FROM_HERE,
                          try_eap_authentication_callback_.callback());
 }
@@ -223,19 +223,16 @@ void Ethernet::Certification(const KeyValueStore& properties) {
   string subject;
   uint32_t depth;
   if (WPASupplicant::ExtractRemoteCertification(properties, &subject, &depth)) {
-    dispatcher()->PostTask(FROM_HERE,
-                           Bind(&Ethernet::CertificationTask,
-                                weak_ptr_factory_.GetWeakPtr(),
-                                subject, depth));
+    dispatcher()->PostTask(
+        FROM_HERE, Bind(&Ethernet::CertificationTask,
+                        weak_ptr_factory_.GetWeakPtr(), subject, depth));
   }
 }
 
 void Ethernet::EAPEvent(const string& status, const string& parameter) {
-  dispatcher()->PostTask(FROM_HERE,
-                         Bind(&Ethernet::EAPEventTask,
-                              weak_ptr_factory_.GetWeakPtr(),
-                              status,
-                              parameter));
+  dispatcher()->PostTask(
+      FROM_HERE, Bind(&Ethernet::EAPEventTask, weak_ptr_factory_.GetWeakPtr(),
+                      status, parameter));
 }
 
 void Ethernet::PropertiesChanged(const KeyValueStore& properties) {
@@ -273,9 +270,8 @@ void Ethernet::OnEapDetected() {
   is_eap_detected_ = true;
   eap_listener_->Stop();
   GetEapProvider()->SetCredentialChangeCallback(
-      this,
-      base::Bind(&Ethernet::TryEapAuthentication,
-                 weak_ptr_factory_.GetWeakPtr()));
+      this, base::Bind(&Ethernet::TryEapAuthentication,
+                       weak_ptr_factory_.GetWeakPtr()));
   TryEapAuthentication();
 }
 
@@ -311,8 +307,8 @@ bool Ethernet::StartSupplicant() {
 
 bool Ethernet::StartEapAuthentication() {
   KeyValueStore params;
-  GetEapService()->eap()->PopulateSupplicantProperties(
-      &certificate_file_, &params);
+  GetEapService()->eap()->PopulateSupplicantProperties(&certificate_file_,
+                                                       &params);
   params.SetString(WPASupplicant::kNetworkPropertyEapKeyManagement,
                    WPASupplicant::kKeyManagementIeee8021X);
   params.SetUint(WPASupplicant::kNetworkPropertyEapolFlags, 0);
@@ -346,7 +342,7 @@ void Ethernet::StopSupplicant() {
   supplicant_interface_proxy_.reset();
   if (!supplicant_interface_path_.empty()) {
     if (!supplicant_process_proxy_->RemoveInterface(
-        supplicant_interface_path_)) {
+            supplicant_interface_path_)) {
       LOG(ERROR) << __func__ << ": Failed to remove interface from supplicant.";
     }
   }
@@ -376,8 +372,8 @@ void Ethernet::CertificationTask(const string& subject, uint32_t depth) {
 }
 
 void Ethernet::EAPEventTask(const string& status, const string& parameter) {
-  LOG(INFO) << "In " << __func__ << " with status " << status
-            << ", parameter " << parameter;
+  LOG(INFO) << "In " << __func__ << " with status " << status << ", parameter "
+            << parameter;
   Service::ConnectFailure failure = Service::kFailureNone;
   if (eap_state_handler_.ParseStatus(status, parameter, &failure)) {
     LOG(INFO) << "EAP authentication succeeded!";
@@ -424,16 +420,16 @@ void Ethernet::SetupWakeOnLan() {
   struct ethtool_wolinfo wake_on_lan_command;
 
   if (link_name().length() >= sizeof(interface_command.ifr_name)) {
-    LOG(WARNING) << "Interface name " << link_name() << " too long: "
-                 << link_name().size() << " >= "
-                 << sizeof(interface_command.ifr_name);
+    LOG(WARNING) << "Interface name " << link_name()
+                 << " too long: " << link_name().size()
+                 << " >= " << sizeof(interface_command.ifr_name);
     return;
   }
 
   sock = sockets_->Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_IP);
   if (sock < 0) {
-    LOG(WARNING) << "Failed to allocate socket: "
-                 << sockets_->ErrorString() << ".";
+    LOG(WARNING) << "Failed to allocate socket: " << sockets_->ErrorString()
+                 << ".";
     return;
   }
   ScopedSocketCloser socket_closer(sockets_.get(), sock);
@@ -445,13 +441,12 @@ void Ethernet::SetupWakeOnLan() {
     wake_on_lan_command.wolopts = WAKE_MAGIC;
   }
   interface_command.ifr_data = &wake_on_lan_command;
-  memcpy(interface_command.ifr_name,
-         link_name().data(), link_name().length());
+  memcpy(interface_command.ifr_name, link_name().data(), link_name().length());
 
   int res = sockets_->Ioctl(sock, SIOCETHTOOL, &interface_command);
   if (res < 0) {
-    LOG(WARNING) << "Failed to enable wake-on-lan: "
-                 << sockets_->ErrorString() << ".";
+    LOG(WARNING) << "Failed to enable wake-on-lan: " << sockets_->ErrorString()
+                 << ".";
     return;
   }
 }

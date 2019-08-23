@@ -23,13 +23,10 @@ namespace shill {
 
 class PendingActivationStoreTest : public ::testing::Test {
  public:
-  PendingActivationStoreTest() : mock_store_(new MockStore()) {
-  }
+  PendingActivationStoreTest() : mock_store_(new MockStore()) {}
 
  protected:
-  void SetMockStore() {
-    store_.storage_ = std::move(mock_store_);
-  }
+  void SetMockStore() { store_.storage_ = std::move(mock_store_); }
 
   std::unique_ptr<MockStore> mock_store_;
   PendingActivationStore store_;
@@ -45,62 +42,57 @@ TEST_F(PendingActivationStoreTest, FileInteractions) {
   EXPECT_TRUE(store_.InitStorage(temp_dir.GetPath()));
 
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierICCID, kEntry1));
+            store_.GetActivationState(PendingActivationStore::kIdentifierICCID,
+                                      kEntry1));
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierICCID, kEntry2));
+            store_.GetActivationState(PendingActivationStore::kIdentifierICCID,
+                                      kEntry2));
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierMEID, kEntry1));
+            store_.GetActivationState(PendingActivationStore::kIdentifierMEID,
+                                      kEntry1));
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierMEID, kEntry2));
+            store_.GetActivationState(PendingActivationStore::kIdentifierMEID,
+                                      kEntry2));
 
   EXPECT_TRUE(store_.SetActivationState(
-      PendingActivationStore::kIdentifierICCID,
-      kEntry1,
+      PendingActivationStore::kIdentifierICCID, kEntry1,
       PendingActivationStore::kStatePending));
   EXPECT_TRUE(store_.SetActivationState(
-      PendingActivationStore::kIdentifierICCID,
-      kEntry2,
+      PendingActivationStore::kIdentifierICCID, kEntry2,
       PendingActivationStore::kStateActivated));
 
   EXPECT_EQ(PendingActivationStore::kStatePending,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierICCID, kEntry1));
+            store_.GetActivationState(PendingActivationStore::kIdentifierICCID,
+                                      kEntry1));
   EXPECT_EQ(PendingActivationStore::kStateActivated,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierICCID, kEntry2));
+            store_.GetActivationState(PendingActivationStore::kIdentifierICCID,
+                                      kEntry2));
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierMEID, kEntry1));
+            store_.GetActivationState(PendingActivationStore::kIdentifierMEID,
+                                      kEntry1));
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierMEID, kEntry2));
+            store_.GetActivationState(PendingActivationStore::kIdentifierMEID,
+                                      kEntry2));
 
   EXPECT_TRUE(store_.SetActivationState(
-      PendingActivationStore::kIdentifierMEID,
-      kEntry1,
+      PendingActivationStore::kIdentifierMEID, kEntry1,
       PendingActivationStore::kStateActivated));
 
   EXPECT_EQ(PendingActivationStore::kStatePending,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierICCID, kEntry1));
+            store_.GetActivationState(PendingActivationStore::kIdentifierICCID,
+                                      kEntry1));
   EXPECT_EQ(PendingActivationStore::kStateActivated,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierICCID, kEntry2));
+            store_.GetActivationState(PendingActivationStore::kIdentifierICCID,
+                                      kEntry2));
   EXPECT_EQ(PendingActivationStore::kStateActivated,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierMEID, kEntry1));
+            store_.GetActivationState(PendingActivationStore::kIdentifierMEID,
+                                      kEntry1));
 
   EXPECT_TRUE(store_.SetActivationState(
-      PendingActivationStore::kIdentifierICCID,
-      kEntry1,
+      PendingActivationStore::kIdentifierICCID, kEntry1,
       PendingActivationStore::kStateActivated));
   EXPECT_TRUE(store_.SetActivationState(
-      PendingActivationStore::kIdentifierICCID,
-      kEntry2,
+      PendingActivationStore::kIdentifierICCID, kEntry2,
       PendingActivationStore::kStatePending));
 
   EXPECT_EQ(PendingActivationStore::kStateActivated,
@@ -120,49 +112,49 @@ TEST_F(PendingActivationStoreTest, FileInteractions) {
             store_.GetActivationState(PendingActivationStore::kIdentifierICCID,
                                       kEntry2));
   EXPECT_EQ(PendingActivationStore::kStateActivated,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierMEID, kEntry1));
+            store_.GetActivationState(PendingActivationStore::kIdentifierMEID,
+                                      kEntry1));
 
-  EXPECT_TRUE(store_.RemoveEntry(
-      PendingActivationStore::kIdentifierMEID, kEntry1));
-  EXPECT_TRUE(store_.RemoveEntry(
-      PendingActivationStore::kIdentifierICCID, kEntry2));
+  EXPECT_TRUE(
+      store_.RemoveEntry(PendingActivationStore::kIdentifierMEID, kEntry1));
+  EXPECT_TRUE(
+      store_.RemoveEntry(PendingActivationStore::kIdentifierICCID, kEntry2));
 
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierMEID, kEntry1));
+            store_.GetActivationState(PendingActivationStore::kIdentifierMEID,
+                                      kEntry1));
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierICCID, kEntry2));
+            store_.GetActivationState(PendingActivationStore::kIdentifierICCID,
+                                      kEntry2));
   EXPECT_EQ(PendingActivationStore::kStateActivated,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierICCID, kEntry1));
+            store_.GetActivationState(PendingActivationStore::kIdentifierICCID,
+                                      kEntry1));
 
-  EXPECT_TRUE(store_.RemoveEntry(
-      PendingActivationStore::kIdentifierICCID, kEntry1));
-  EXPECT_TRUE(store_.RemoveEntry(
-      PendingActivationStore::kIdentifierMEID, kEntry2));
+  EXPECT_TRUE(
+      store_.RemoveEntry(PendingActivationStore::kIdentifierICCID, kEntry1));
+  EXPECT_TRUE(
+      store_.RemoveEntry(PendingActivationStore::kIdentifierMEID, kEntry2));
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierICCID, kEntry1));
+            store_.GetActivationState(PendingActivationStore::kIdentifierICCID,
+                                      kEntry1));
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierMEID, kEntry2));
+            store_.GetActivationState(PendingActivationStore::kIdentifierMEID,
+                                      kEntry2));
 
   EXPECT_TRUE(store_.InitStorage(temp_dir.GetPath()));
 
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierMEID, kEntry1));
+            store_.GetActivationState(PendingActivationStore::kIdentifierMEID,
+                                      kEntry1));
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierICCID, kEntry2));
+            store_.GetActivationState(PendingActivationStore::kIdentifierICCID,
+                                      kEntry2));
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierICCID, kEntry1));
+            store_.GetActivationState(PendingActivationStore::kIdentifierICCID,
+                                      kEntry1));
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
-            store_.GetActivationState(
-                PendingActivationStore::kIdentifierMEID, kEntry2));
+            store_.GetActivationState(PendingActivationStore::kIdentifierMEID,
+                                      kEntry2));
 }
 
 TEST_F(PendingActivationStoreTest, GetActivationState) {
@@ -172,9 +164,8 @@ TEST_F(PendingActivationStoreTest, GetActivationState) {
   const char kEntry[] = "12345689";
 
   // Value not found
-  EXPECT_CALL(*mock_store, GetInt(PendingActivationStore::kIccidGroupId,
-                                  kEntry,
-                                  _))
+  EXPECT_CALL(*mock_store,
+              GetInt(PendingActivationStore::kIccidGroupId, kEntry, _))
       .WillOnce(Return(false));
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
             store_.GetActivationState(PendingActivationStore::kIdentifierICCID,
@@ -184,8 +175,7 @@ TEST_F(PendingActivationStoreTest, GetActivationState) {
   EXPECT_CALL(*mock_store,
               GetInt(PendingActivationStore::kMeidGroupId, kEntry, _))
       .WillOnce(DoAll(
-          SetArgPointee<2>(
-              static_cast<int>(PendingActivationStore::kStateMax)),
+          SetArgPointee<2>(static_cast<int>(PendingActivationStore::kStateMax)),
           Return(true)));
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
             store_.GetActivationState(PendingActivationStore::kIdentifierMEID,
@@ -224,38 +214,33 @@ TEST_F(PendingActivationStoreTest, SetActivationState) {
   EXPECT_CALL(*mock_store,
               SetInt(PendingActivationStore::kIccidGroupId, kEntry, _))
       .WillOnce(Return(false));
-  EXPECT_FALSE(store_.SetActivationState(
-      PendingActivationStore::kIdentifierICCID,
-      kEntry,
-      PendingActivationStore::kStateUnknown));
-  EXPECT_FALSE(store_.SetActivationState(
-      PendingActivationStore::kIdentifierICCID,
-      kEntry,
-      PendingActivationStore::kStateUnknown));
-  EXPECT_FALSE(store_.SetActivationState(
-      PendingActivationStore::kIdentifierICCID,
-      kEntry,
-      PendingActivationStore::kStatePending));
+  EXPECT_FALSE(
+      store_.SetActivationState(PendingActivationStore::kIdentifierICCID,
+                                kEntry, PendingActivationStore::kStateUnknown));
+  EXPECT_FALSE(
+      store_.SetActivationState(PendingActivationStore::kIdentifierICCID,
+                                kEntry, PendingActivationStore::kStateUnknown));
+  EXPECT_FALSE(
+      store_.SetActivationState(PendingActivationStore::kIdentifierICCID,
+                                kEntry, PendingActivationStore::kStatePending));
 
   EXPECT_CALL(*mock_store,
               SetInt(PendingActivationStore::kIccidGroupId, kEntry, _))
       .WillRepeatedly(Return(true));
   EXPECT_FALSE(store_.SetActivationState(
-      PendingActivationStore::kIdentifierICCID,
-      kEntry, static_cast<PendingActivationStore::State>(-1)));
-  EXPECT_FALSE(store_.SetActivationState(
-      PendingActivationStore::kIdentifierICCID,
-      kEntry, PendingActivationStore::kStateMax));
-  EXPECT_FALSE(store_.SetActivationState(
-      PendingActivationStore::kIdentifierICCID,
-      kEntry, PendingActivationStore::kStateUnknown));
+      PendingActivationStore::kIdentifierICCID, kEntry,
+      static_cast<PendingActivationStore::State>(-1)));
+  EXPECT_FALSE(
+      store_.SetActivationState(PendingActivationStore::kIdentifierICCID,
+                                kEntry, PendingActivationStore::kStateMax));
+  EXPECT_FALSE(
+      store_.SetActivationState(PendingActivationStore::kIdentifierICCID,
+                                kEntry, PendingActivationStore::kStateUnknown));
+  EXPECT_TRUE(
+      store_.SetActivationState(PendingActivationStore::kIdentifierICCID,
+                                kEntry, PendingActivationStore::kStatePending));
   EXPECT_TRUE(store_.SetActivationState(
-      PendingActivationStore::kIdentifierICCID,
-      kEntry,
-      PendingActivationStore::kStatePending));
-  EXPECT_TRUE(store_.SetActivationState(
-      PendingActivationStore::kIdentifierICCID,
-      kEntry,
+      PendingActivationStore::kIdentifierICCID, kEntry,
       PendingActivationStore::kStateActivated));
 }
 
@@ -266,16 +251,16 @@ TEST_F(PendingActivationStoreTest, RemoveEntry) {
   const char kEntry[] = "12345689";
 
   EXPECT_CALL(*mock_store, Flush()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*mock_store, DeleteKey(PendingActivationStore::kIccidGroupId,
-                                     kEntry))
+  EXPECT_CALL(*mock_store,
+              DeleteKey(PendingActivationStore::kIccidGroupId, kEntry))
       .WillOnce(Return(false));
-  EXPECT_FALSE(store_.RemoveEntry(PendingActivationStore::kIdentifierICCID,
-                                  kEntry));
-  EXPECT_CALL(*mock_store, DeleteKey(PendingActivationStore::kIccidGroupId,
-                                     kEntry))
+  EXPECT_FALSE(
+      store_.RemoveEntry(PendingActivationStore::kIdentifierICCID, kEntry));
+  EXPECT_CALL(*mock_store,
+              DeleteKey(PendingActivationStore::kIccidGroupId, kEntry))
       .WillOnce(Return(true));
-  EXPECT_TRUE(store_.RemoveEntry(PendingActivationStore::kIdentifierICCID,
-                                 kEntry));
+  EXPECT_TRUE(
+      store_.RemoveEntry(PendingActivationStore::kIdentifierICCID, kEntry));
 }
 
 }  // namespace shill

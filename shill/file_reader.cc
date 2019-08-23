@@ -8,11 +8,9 @@
 
 namespace shill {
 
-FileReader::FileReader() {
-}
+FileReader::FileReader() {}
 
-FileReader::~FileReader() {
-}
+FileReader::~FileReader() {}
 
 void FileReader::Close() {
   file_.reset();

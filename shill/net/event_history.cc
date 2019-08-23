@@ -48,7 +48,8 @@ void EventHistory::RecordEventInternal(Timestamp now) {
   }
 }
 
-void EventHistory::ExpireEventsBeforeInternal(int seconds_ago, Timestamp now,
+void EventHistory::ExpireEventsBeforeInternal(int seconds_ago,
+                                              Timestamp now,
                                               ClockType clock_type) {
   struct timeval interval = (const struct timeval){seconds_ago};
   while (!events_.empty()) {
@@ -67,7 +68,7 @@ void EventHistory::ExpireEventsBeforeInternal(int seconds_ago, Timestamp now,
         timersub(&now.boottime, &events_.front().boottime, &elapsed);
       }
     }
-    if (timercmp(&elapsed, &interval, < )) {
+    if (timercmp(&elapsed, &interval, <)) {
       break;
     }
     events_.pop_front();
@@ -96,7 +97,7 @@ int EventHistory::CountEventsWithinInterval(int seconds_ago,
         timersub(&now.boottime, &event.boottime, &elapsed);
       }
     }
-    if (timercmp(&elapsed, &interval, <= )) {
+    if (timercmp(&elapsed, &interval, <=)) {
       num_events_in_interval = events_.size() - i;
       break;
     }

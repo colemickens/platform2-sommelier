@@ -31,7 +31,8 @@ void EventDispatcher::PostTask(const Location& location, const Closure& task) {
 }
 
 void EventDispatcher::PostDelayedTask(const Location& location,
-                                      const Closure& task, int64_t delay_ms) {
+                                      const Closure& task,
+                                      int64_t delay_ms) {
   base::MessageLoop::current()->task_runner()->PostDelayedTask(
       location, task, base::TimeDelta::FromMilliseconds(delay_ms));
 }

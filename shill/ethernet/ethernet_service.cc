@@ -46,7 +46,7 @@ EthernetService::EthernetService(Manager* manager,
                                  const Properties& props)
     : Service(manager, technology), props_(props) {}
 
-EthernetService::~EthernetService() { }
+EthernetService::~EthernetService() {}
 
 void EthernetService::SetUp() {
   SetConnectable(true);
@@ -93,8 +93,7 @@ bool EthernetService::IsAutoConnectByDefault() const {
   return true;
 }
 
-bool EthernetService::SetAutoConnectFull(const bool& connect,
-                                         Error* error) {
+bool EthernetService::SetAutoConnectFull(const bool& connect, Error* error) {
   if (!connect) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kInvalidArguments,

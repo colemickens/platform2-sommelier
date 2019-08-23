@@ -40,9 +40,7 @@ const char* TypeToString(RTNLMessage::Type type) {
 }  // namespace
 
 struct RTNLHeader {
-  RTNLHeader() {
-    memset(this, 0, sizeof(*this));
-  }
+  RTNLHeader() { memset(this, 0, sizeof(*this)); }
   struct nlmsghdr hdr;
   union {
     struct ifinfomsg ifi;
@@ -54,8 +52,8 @@ struct RTNLHeader {
 };
 
 std::string RTNLMessage::LinkStatus::ToString() const {
-  return base::StringPrintf("LinkStatus type %d flags %X change %X",
-                            type, flags, change);
+  return base::StringPrintf("LinkStatus type %d flags %X change %X", type,
+                            flags, change);
 }
 
 std::string RTNLMessage::AddressStatus::ToString() const {
@@ -64,16 +62,15 @@ std::string RTNLMessage::AddressStatus::ToString() const {
 }
 
 std::string RTNLMessage::RouteStatus::ToString() const {
-  return base::StringPrintf("RouteStatus dst_prefix %d src_prefix %d table %d"
-                            " protocol %d scope %d type %d flags %X",
-                            dst_prefix, src_prefix, table,
-                            protocol, scope, type,
-                            flags);
+  return base::StringPrintf(
+      "RouteStatus dst_prefix %d src_prefix %d table %d"
+      " protocol %d scope %d type %d flags %X",
+      dst_prefix, src_prefix, table, protocol, scope, type, flags);
 }
 
 std::string RTNLMessage::NeighborStatus::ToString() const {
-  return base::StringPrintf("NeighborStatus state %d flags %X type %d",
-                            state, flags, type);
+  return base::StringPrintf("NeighborStatus state %d flags %X type %d", state,
+                            flags, type);
 }
 
 std::string RTNLMessage::RdnssOption::ToString() const {
@@ -122,68 +119,68 @@ bool RTNLMessage::DecodeInternal(const ByteString& msg) {
 
   Mode mode = kModeUnknown;
   switch (hdr->hdr.nlmsg_type) {
-  case RTM_NEWLINK:
-  case RTM_NEWADDR:
-  case RTM_NEWROUTE:
-  case RTM_NEWRULE:
-  case RTM_NEWNDUSEROPT:
-  case RTM_NEWNEIGH:
-    mode = kModeAdd;
-    break;
+    case RTM_NEWLINK:
+    case RTM_NEWADDR:
+    case RTM_NEWROUTE:
+    case RTM_NEWRULE:
+    case RTM_NEWNDUSEROPT:
+    case RTM_NEWNEIGH:
+      mode = kModeAdd;
+      break;
 
-  case RTM_DELLINK:
-  case RTM_DELADDR:
-  case RTM_DELROUTE:
-  case RTM_DELRULE:
-  case RTM_DELNEIGH:
-    mode = kModeDelete;
-    break;
+    case RTM_DELLINK:
+    case RTM_DELADDR:
+    case RTM_DELROUTE:
+    case RTM_DELRULE:
+    case RTM_DELNEIGH:
+      mode = kModeDelete;
+      break;
 
-  default:
-    return false;
+    default:
+      return false;
   }
 
   rtattr* attr_data = nullptr;
   int attr_length = 0;
 
   switch (hdr->hdr.nlmsg_type) {
-  case RTM_NEWLINK:
-  case RTM_DELLINK:
-    if (!DecodeLink(hdr, mode, &attr_data, &attr_length))
-      return false;
-    break;
+    case RTM_NEWLINK:
+    case RTM_DELLINK:
+      if (!DecodeLink(hdr, mode, &attr_data, &attr_length))
+        return false;
+      break;
 
-  case RTM_NEWADDR:
-  case RTM_DELADDR:
-    if (!DecodeAddress(hdr, mode, &attr_data, &attr_length))
-      return false;
-    break;
+    case RTM_NEWADDR:
+    case RTM_DELADDR:
+      if (!DecodeAddress(hdr, mode, &attr_data, &attr_length))
+        return false;
+      break;
 
-  case RTM_NEWROUTE:
-  case RTM_DELROUTE:
-    if (!DecodeRoute(hdr, mode, &attr_data, &attr_length))
-      return false;
-    break;
+    case RTM_NEWROUTE:
+    case RTM_DELROUTE:
+      if (!DecodeRoute(hdr, mode, &attr_data, &attr_length))
+        return false;
+      break;
 
-  case RTM_NEWRULE:
-  case RTM_DELRULE:
-    if (!DecodeRule(hdr, mode, &attr_data, &attr_length))
-      return false;
-    break;
+    case RTM_NEWRULE:
+    case RTM_DELRULE:
+      if (!DecodeRule(hdr, mode, &attr_data, &attr_length))
+        return false;
+      break;
 
-  case RTM_NEWNDUSEROPT:
-    if (!DecodeNdUserOption(hdr, mode, &attr_data, &attr_length))
-      return false;
-    break;
+    case RTM_NEWNDUSEROPT:
+      if (!DecodeNdUserOption(hdr, mode, &attr_data, &attr_length))
+        return false;
+      break;
 
-  case RTM_NEWNEIGH:
-  case RTM_DELNEIGH:
-    if (!DecodeNeighbor(hdr, mode, &attr_data, &attr_length))
-      return false;
-    break;
+    case RTM_NEWNEIGH:
+    case RTM_DELNEIGH:
+      if (!DecodeNeighbor(hdr, mode, &attr_data, &attr_length))
+        return false;
+      break;
 
-  default:
-    NOTREACHED();
+    default:
+      NOTREACHED();
   }
 
   flags_ = hdr->hdr.nlmsg_flags;
@@ -222,9 +219,8 @@ bool RTNLMessage::DecodeLink(const RTNLHeader* hdr,
   type_ = kTypeLink;
   family_ = hdr->ifi.ifi_family;
   interface_index_ = hdr->ifi.ifi_index;
-  set_link_status(LinkStatus(hdr->ifi.ifi_type,
-                             hdr->ifi.ifi_flags,
-                             hdr->ifi.ifi_change));
+  set_link_status(
+      LinkStatus(hdr->ifi.ifi_type, hdr->ifi.ifi_flags, hdr->ifi.ifi_change));
   return true;
 }
 
@@ -242,8 +238,7 @@ bool RTNLMessage::DecodeAddress(const RTNLHeader* hdr,
   type_ = kTypeAddress;
   family_ = hdr->ifa.ifa_family;
   interface_index_ = hdr->ifa.ifa_index;
-  set_address_status(AddressStatus(hdr->ifa.ifa_prefixlen,
-                                   hdr->ifa.ifa_flags,
+  set_address_status(AddressStatus(hdr->ifa.ifa_prefixlen, hdr->ifa.ifa_flags,
                                    hdr->ifa.ifa_scope));
   return true;
 }
@@ -261,12 +256,9 @@ bool RTNLMessage::DecodeRoute(const RTNLHeader* hdr,
 
   type_ = kTypeRoute;
   family_ = hdr->rtm.rtm_family;
-  set_route_status(RouteStatus(hdr->rtm.rtm_dst_len,
-                               hdr->rtm.rtm_src_len,
-                               hdr->rtm.rtm_table,
-                               hdr->rtm.rtm_protocol,
-                               hdr->rtm.rtm_scope,
-                               hdr->rtm.rtm_type,
+  set_route_status(RouteStatus(hdr->rtm.rtm_dst_len, hdr->rtm.rtm_src_len,
+                               hdr->rtm.rtm_table, hdr->rtm.rtm_protocol,
+                               hdr->rtm.rtm_scope, hdr->rtm.rtm_type,
                                hdr->rtm.rtm_flags));
   return true;
 }
@@ -284,12 +276,9 @@ bool RTNLMessage::DecodeRule(const RTNLHeader* hdr,
 
   type_ = kTypeRule;
   family_ = hdr->rtm.rtm_family;
-  set_route_status(RouteStatus(hdr->rtm.rtm_dst_len,
-                               hdr->rtm.rtm_src_len,
-                               hdr->rtm.rtm_table,
-                               hdr->rtm.rtm_protocol,
-                               hdr->rtm.rtm_scope,
-                               hdr->rtm.rtm_type,
+  set_route_status(RouteStatus(hdr->rtm.rtm_dst_len, hdr->rtm.rtm_src_len,
+                               hdr->rtm.rtm_table, hdr->rtm.rtm_protocol,
+                               hdr->rtm.rtm_scope, hdr->rtm.rtm_type,
                                hdr->rtm.rtm_flags));
   return true;
 }
@@ -367,8 +356,7 @@ bool RTNLMessage::ParseRdnssOption(const uint8_t* data,
   std::vector<IPAddress> dns_server_addresses;
   while (length > 0) {
     dns_server_addresses.push_back(
-        IPAddress(IPAddress::kFamilyIPv6,
-                  ByteString(data, addr_length)));
+        IPAddress(IPAddress::kFamilyIPv6, ByteString(data, addr_length)));
     length -= addr_length;
     data += addr_length;
   }
@@ -392,18 +380,14 @@ bool RTNLMessage::DecodeNeighbor(const RTNLHeader* hdr,
   *attr_data = RTM_RTA(NLMSG_DATA(&hdr->hdr));
   *attr_length = RTM_PAYLOAD(&hdr->hdr);
 
-  set_neighbor_status(NeighborStatus(hdr->ndm.ndm_state,
-                                     hdr->ndm.ndm_flags,
+  set_neighbor_status(NeighborStatus(hdr->ndm.ndm_state, hdr->ndm.ndm_flags,
                                      hdr->ndm.ndm_type));
   return true;
 }
 
 ByteString RTNLMessage::Encode() const {
-  if (type_ != kTypeLink &&
-      type_ != kTypeAddress &&
-      type_ != kTypeRoute &&
-      type_ != kTypeRule &&
-      type_ != kTypeNeighbor) {
+  if (type_ != kTypeLink && type_ != kTypeAddress && type_ != kTypeRoute &&
+      type_ != kTypeRule && type_ != kTypeNeighbor) {
     return ByteString();
   }
 
@@ -432,33 +416,33 @@ ByteString RTNLMessage::Encode() const {
     hdr.ifi.ifi_family = family_;
   } else {
     switch (type_) {
-    case kTypeLink:
-      if (!EncodeLink(&hdr)) {
-        return ByteString();
-      }
-      break;
+      case kTypeLink:
+        if (!EncodeLink(&hdr)) {
+          return ByteString();
+        }
+        break;
 
-    case kTypeAddress:
-      if (!EncodeAddress(&hdr)) {
-        return ByteString();
-      }
-      break;
+      case kTypeAddress:
+        if (!EncodeAddress(&hdr)) {
+          return ByteString();
+        }
+        break;
 
-    case kTypeRoute:
-    case kTypeRule:
-      if (!EncodeRoute(&hdr)) {
-        return ByteString();
-      }
-      break;
+      case kTypeRoute:
+      case kTypeRule:
+        if (!EncodeRoute(&hdr)) {
+          return ByteString();
+        }
+        break;
 
-    case kTypeNeighbor:
-      if (!EncodeNeighbor(&hdr)) {
-        return ByteString();
-      }
-      break;
+      case kTypeNeighbor:
+        if (!EncodeNeighbor(&hdr)) {
+          return ByteString();
+        }
+        break;
 
-    default:
-      NOTREACHED();
+      default:
+        NOTREACHED();
     }
   }
 
@@ -470,8 +454,8 @@ ByteString RTNLMessage::Encode() const {
     hdr.hdr.nlmsg_len = NLMSG_ALIGN(hdr.hdr.nlmsg_len) + RTA_ALIGN(len);
 
     struct rtattr rt_attr = {
-      static_cast<unsigned short>(len),  // NOLINT(runtime/int)
-      id_attribute_pair.first,
+        static_cast<unsigned short>(len),  // NOLINT(runtime/int)
+        id_attribute_pair.first,
     };
     ByteString attr_header(reinterpret_cast<unsigned char*>(&rt_attr),
                            sizeof(rt_attr));
@@ -622,8 +606,7 @@ std::string RTNLMessage::ModeToString(RTNLMessage::Mode mode) {
 }
 
 std::string RTNLMessage::ToString() const {
-  std::string str = base::StringPrintf("%s %s: ",
-                                       ModeToString(mode()).c_str(),
+  std::string str = base::StringPrintf("%s %s: ", ModeToString(mode()).c_str(),
                                        TypeToString(type()));
   switch (type()) {
     case RTNLMessage::kTypeLink:

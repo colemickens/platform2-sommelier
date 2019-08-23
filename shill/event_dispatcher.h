@@ -31,7 +31,8 @@ class EventDispatcher {
   virtual void PostTask(const base::Location& location,
                         const base::Closure& task);
   virtual void PostDelayedTask(const base::Location& location,
-                               const base::Closure& task, int64_t delay_ms);
+                               const base::Closure& task,
+                               int64_t delay_ms);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(EventDispatcher);

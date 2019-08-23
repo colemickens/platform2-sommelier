@@ -25,8 +25,8 @@ const char kTestDevice2Name[] = "test_device2";
 class DeviceClaimerTest : public testing::Test {
  public:
   DeviceClaimerTest()
-     : device_info_(nullptr),
-       device_claimer_(kServiceName, &device_info_, false) {}
+      : device_info_(nullptr),
+        device_claimer_(kServiceName, &device_info_, false) {}
 
  protected:
   MockDeviceInfo device_info_;
@@ -64,8 +64,8 @@ TEST_F(DeviceClaimerTest, ClaimAndReleaseDevices) {
 
   // Release device 1.
   error.Reset();
-  EXPECT_CALL(device_info_,
-              RemoveDeviceFromBlackList(kTestDevice1Name)).Times(1);
+  EXPECT_CALL(device_info_, RemoveDeviceFromBlackList(kTestDevice1Name))
+      .Times(1);
   EXPECT_TRUE(device_claimer_.Release(kTestDevice1Name, &error));
   EXPECT_EQ(Error::kSuccess, error.type());
   // Should still have one device claimed.
@@ -86,8 +86,8 @@ TEST_F(DeviceClaimerTest, ClaimAndReleaseDevices) {
 
   // Release device 2
   error.Reset();
-  EXPECT_CALL(device_info_,
-              RemoveDeviceFromBlackList(kTestDevice2Name)).Times(1);
+  EXPECT_CALL(device_info_, RemoveDeviceFromBlackList(kTestDevice2Name))
+      .Times(1);
   EXPECT_TRUE(device_claimer_.Release(kTestDevice2Name, &error));
   EXPECT_EQ(Error::kSuccess, error.type());
   Mock::VerifyAndClearExpectations(&device_info_);

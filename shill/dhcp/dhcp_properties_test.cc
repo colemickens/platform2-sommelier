@@ -25,13 +25,13 @@ const char kVendorClass[] = "Chromebook";
 const char kHostname[] = "TestHost";
 const char kStorageID[] = "dhcp_service_id";
 const char kOverrideValue[] = "override";
-}
+}  // namespace
 
 class DhcpPropertiesTest : public Test {
  public:
-  DhcpPropertiesTest() { }
+  DhcpPropertiesTest() {}
 
-  virtual ~DhcpPropertiesTest() { }
+  virtual ~DhcpPropertiesTest() {}
 
  protected:
   DhcpProperties dhcp_properties_;
@@ -49,20 +49,17 @@ TEST_F(DhcpPropertiesTest, InitPropertyStore) {
   string value_in_prop_store;
   // DHCPProperty.Hostname is a valid option.
   EXPECT_FALSE(store.GetStringProperty("DHCPProperty.Hostname",
-                                       &value_in_prop_store,
-                                       &error));
+                                       &value_in_prop_store, &error));
   EXPECT_EQ(Error::kNotFound, error.type());
 
   // DHCPProperty.VendorClass is a valid option.
   EXPECT_FALSE(store.GetStringProperty("DHCPProperty.VendorClass",
-                                       &value_in_prop_store,
-                                       &error));
+                                       &value_in_prop_store, &error));
   EXPECT_EQ(Error::kNotFound, error.type());
 
   // DhcpProperty.NotAProp is not a valid option.
   EXPECT_FALSE(store.GetStringProperty("DHCPProperty.NotAProp",
-                                       &value_in_prop_store,
-                                       &error));
+                                       &value_in_prop_store, &error));
   EXPECT_EQ(Error::kInvalidProperty, error.type());
 }
 
@@ -105,8 +102,8 @@ TEST_F(DhcpPropertiesTest, GetMappedStringPropertyWithSetValue) {
 
   Error error;
   string value_in_prop_store;
-  store.GetStringProperty(
-      "DHCPProperty.Hostname", &value_in_prop_store, &error);
+  store.GetStringProperty("DHCPProperty.Hostname", &value_in_prop_store,
+                          &error);
   EXPECT_EQ(kHostname, value_in_prop_store);
 }
 
@@ -116,8 +113,8 @@ TEST_F(DhcpPropertiesTest, GetMappedStringPropertyNoExistingValue) {
 
   Error error;
   string value_in_prop_store;
-  store.GetStringProperty(
-      "DHCPProperty.Hostname", &value_in_prop_store, &error);
+  store.GetStringProperty("DHCPProperty.Hostname", &value_in_prop_store,
+                          &error);
   EXPECT_EQ(Error::kNotFound, error.type());
 }
 
@@ -155,11 +152,9 @@ TEST_F(DhcpPropertiesTest, LoadEmpty) {
 TEST_F(DhcpPropertiesTest, Load) {
   MockStore storage;
   EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.VendorClass", _))
-      .WillOnce(DoAll(SetArgPointee<2>(string(kVendorClass)),
-                      Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(string(kVendorClass)), Return(true)));
   EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.Hostname", _))
-      .WillOnce(DoAll(SetArgPointee<2>(string(kHostname)),
-                      Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(string(kHostname)), Return(true)));
   dhcp_properties_.Load(&storage, kStorageID);
   EXPECT_EQ(kVendorClass,
             dhcp_properties_.properties_.GetString("VendorClass"));
@@ -171,8 +166,7 @@ TEST_F(DhcpPropertiesTest, LoadWithValuesSetAndClearRequired) {
   dhcp_properties_.properties_.SetString("Hostname", kHostname);
 
   EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.VendorClass", _))
-      .WillOnce(DoAll(SetArgPointee<2>(string(kVendorClass)),
-                      Return(true)));
+      .WillOnce(DoAll(SetArgPointee<2>(string(kVendorClass)), Return(true)));
   EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.Hostname", _))
       .WillOnce(Return(false));
   dhcp_properties_.Load(&storage, kStorageID);
@@ -189,8 +183,7 @@ TEST_F(DhcpPropertiesTest, SaveWithValuesSet) {
   EXPECT_CALL(storage,
               SetString(kStorageID, "DHCPProperty.VendorClass", kVendorClass))
       .WillOnce(Return(true));
-  EXPECT_CALL(storage,
-              SetString(kStorageID, "DHCPProperty.Hostname", ""))
+  EXPECT_CALL(storage, SetString(kStorageID, "DHCPProperty.Hostname", ""))
       .WillOnce(Return(true));
   dhcp_properties_.Save(&storage, kStorageID);
 }
@@ -203,8 +196,7 @@ TEST_F(DhcpPropertiesTest, SavePropertyNotSetShouldBeDeleted) {
   EXPECT_CALL(storage,
               SetString(kStorageID, "DHCPProperty.VendorClass", kVendorClass))
       .WillOnce(Return(true));
-  EXPECT_CALL(storage,
-              DeleteKey(kStorageID, "DHCPProperty.Hostname"))
+  EXPECT_CALL(storage, DeleteKey(kStorageID, "DHCPProperty.Hostname"))
       .WillOnce(Return(true));
   dhcp_properties_.Save(&storage, kStorageID);
 }

@@ -100,8 +100,8 @@ class ScopeLogger {
   void EnableScopesByName(const std::string& expression);
 
   // Register for log scope enable/disable state changes for |scope|.
-  void RegisterScopeEnableChangedCallback(
-      Scope scope, ScopeEnableChangedCallback callback);
+  void RegisterScopeEnableChangedCallback(Scope scope,
+                                          ScopeEnableChangedCallback callback);
 
   // Sets the verbose level for all scopes to |verbose_level|.
   void set_verbose_level(int verbose_level) { verbose_level_ = verbose_level; }

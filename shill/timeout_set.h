@@ -38,12 +38,9 @@ class TimeoutSetTest;
 template <typename T>
 class TimeoutSet {
  public:
-  explicit TimeoutSet(EventDispatcher* dispatcher)
-      : dispatcher_(dispatcher) {}
+  explicit TimeoutSet(EventDispatcher* dispatcher) : dispatcher_(dispatcher) {}
 
-  virtual ~TimeoutSet() {
-    Clear();
-  }
+  virtual ~TimeoutSet() { Clear(); }
 
   // Set the callback used to inform clients that some elements have timed out.
   void SetInformCallback(base::Callback<void(std::vector<T>)> inform_callback) {
@@ -72,11 +69,10 @@ class TimeoutSet {
 
     int64_t shortest_lifetime = (elements_[0].deathtime - now).InMilliseconds();
     timeout_callback_.Reset(
-      base::Bind(&TimeoutSet::OnTimeout, base::Unretained(this)));
-    dispatcher_->PostDelayedTask(FROM_HERE,
-                                 timeout_callback_.callback(),
-                                 std::max(shortest_lifetime,
-                                          static_cast<int64_t>(0)));
+        base::Bind(&TimeoutSet::OnTimeout, base::Unretained(this)));
+    dispatcher_->PostDelayedTask(
+        FROM_HERE, timeout_callback_.callback(),
+        std::max(shortest_lifetime, static_cast<int64_t>(0)));
   }
 
   // Remove all elements and cancel any pending timeout.
@@ -106,9 +102,7 @@ class TimeoutSet {
     }
   };
 
-  virtual base::TimeTicks TimeNow() const {
-    return base::TimeTicks::Now();
-  }
+  virtual base::TimeTicks TimeNow() const { return base::TimeTicks::Now(); }
 
   void OnTimeout() {
     std::vector<T> removed_elements;
@@ -122,13 +116,12 @@ class TimeoutSet {
     // Post task for earliest subsequent timeout.
     if (!elements_.empty()) {
       int64_t shortest_lifetime =
-        (elements_[0].deathtime - now).InMilliseconds();
+          (elements_[0].deathtime - now).InMilliseconds();
       timeout_callback_.Reset(
-        base::Bind(&TimeoutSet::OnTimeout, base::Unretained(this)));
-      dispatcher_->PostDelayedTask(FROM_HERE,
-                                   timeout_callback_.callback(),
-                                   std::max(shortest_lifetime,
-                                            static_cast<int64_t>(0)));
+          base::Bind(&TimeoutSet::OnTimeout, base::Unretained(this)));
+      dispatcher_->PostDelayedTask(
+          FROM_HERE, timeout_callback_.callback(),
+          std::max(shortest_lifetime, static_cast<int64_t>(0)));
     }
 
     if (!inform_callback_.is_null()) {

@@ -24,10 +24,7 @@ struct SHILL_EXPORT InputData {
 
 class SHILL_EXPORT IOHandler {
  public:
-  enum ReadyMode {
-    kModeInput,
-    kModeOutput
-  };
+  enum ReadyMode { kModeInput, kModeOutput };
 
   using ErrorCallback = base::Callback<void(const std::string&)>;
   using InputCallback = base::Callback<void(InputData*)>;

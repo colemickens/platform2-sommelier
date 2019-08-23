@@ -491,8 +491,7 @@ const char kIPV6Address0[] = "FEDC:BA98:7654:3210:FEDC:BA98:7654:3210";
 const char kIPV6Address1[] = "1080:0:0:0:8:800:200C:417A";
 const char kHardwareAddress[] = "00A0C914C829";
 
-
-const int64_t kSuspendDurationSecs  = 15;
+const int64_t kSuspendDurationSecs = 15;
 const uint32_t kNewWiphyNlMsg_MinPatternLen = 16;
 
 #if !defined(DISABLE_WAKE_ON_WIFI)
@@ -603,17 +602,17 @@ const uint32_t kWakeReasonPatternNlMsg_PattIndex = 0;
 const uint8_t kDstHWAddressPatternBytes[] = {0x00, 0xA0, 0xC9,
                                              0x14, 0xc8, 0x29};
 const uint8_t KIPV4ProtocolTypeSuffixBytesForTCP[] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06};
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06};
 const uint8_t KIPV4ProtocolTypeSuffixBytesForUDP[] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11};
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11};
 const uint8_t KIPV6ProtocolTypeSuffixBytesForTCP[] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x86, 0xDD, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x06};
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x86, 0xDD,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06};
 const uint8_t KIPV6ProtocolTypeSuffixBytesForUDP[] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x86, 0xDD, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x11};
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x86, 0xDD,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11};
 
 #endif  // DISABLE_WAKE_ON_WIFI
 
@@ -685,46 +684,49 @@ class WakeOnWiFiTest : public ::testing::Test {
     wake_on_wifi_->RemoveAllWakeOnPacketConnections(error);
   }
 
-
   void AddWakeOnPacketOfTypes(const std::vector<std::string>& packet_types,
-                             Error* error) {
-      wake_on_wifi_->AddWakeOnPacketOfTypes(packet_types, error);
+                              Error* error) {
+    wake_on_wifi_->AddWakeOnPacketOfTypes(packet_types, error);
   }
 
-
-  void RemoveWakeOnPacketOfTypes(
-      const std::vector<std::string>& packet_types, Error* error) {
+  void RemoveWakeOnPacketOfTypes(const std::vector<std::string>& packet_types,
+                                 Error* error) {
     wake_on_wifi_->RemoveWakeOnPacketOfTypes(packet_types, error);
   }
 
   bool CreateIPAddressPatternAndMask(const IPAddress& ip_addr,
-                                     ByteString* pattern, ByteString* mask,
+                                     ByteString* pattern,
+                                     ByteString* mask,
                                      uint32_t min_pattern_len) {
-    return WakeOnWiFi::CreateIPAddressPatternAndMask(
-        ip_addr, min_pattern_len, pattern, mask);
+    return WakeOnWiFi::CreateIPAddressPatternAndMask(ip_addr, min_pattern_len,
+                                                     pattern, mask);
   }
 
   void CreatePacketTypePatternAndMaskforIPV6(
-        const std::basic_string<char>& mac_address,
-        ByteString* pattern, ByteString* mask,
-        uint32_t min_pattern_len, uint8_t ip_protocol) {
-      WakeOnWiFi::CreatePacketTypePatternAndMaskforIPV6(
-            mac_address, min_pattern_len, ip_protocol, pattern, mask);
+      const std::basic_string<char>& mac_address,
+      ByteString* pattern,
+      ByteString* mask,
+      uint32_t min_pattern_len,
+      uint8_t ip_protocol) {
+    WakeOnWiFi::CreatePacketTypePatternAndMaskforIPV6(
+        mac_address, min_pattern_len, ip_protocol, pattern, mask);
   }
 
   void CreatePacketTypePatternAndMaskforIPV4(
       const std::basic_string<char>& mac_address,
-      ByteString* pattern, ByteString* mask,
-      uint32_t min_pattern_len, uint8_t ip_protocol) {
+      ByteString* pattern,
+      ByteString* mask,
+      uint32_t min_pattern_len,
+      uint8_t ip_protocol) {
     WakeOnWiFi::CreatePacketTypePatternAndMaskforIPV4(
-          mac_address, min_pattern_len, ip_protocol, pattern, mask);
+        mac_address, min_pattern_len, ip_protocol, pattern, mask);
   }
 
   bool ConvertIPProtoStrtoEnum(const std::vector<std::string>& ip_proto_strs,
                                set<uint8_t>* ip_proto_enums,
                                Error* error) {
-    return WakeOnWiFi::ConvertIPProtoStrtoEnum(
-        ip_proto_strs, ip_proto_enums, error);
+    return WakeOnWiFi::ConvertIPProtoStrtoEnum(ip_proto_strs, ip_proto_enums,
+                                               error);
   }
 
   bool ConfigureWiphyIndex(Nl80211Message* msg, int32_t index) {
@@ -732,7 +734,8 @@ class WakeOnWiFiTest : public ::testing::Test {
   }
 
   bool ConfigureDisableWakeOnWiFiMessage(SetWakeOnPacketConnMessage* msg,
-                                         uint32_t wiphy_index, Error* error) {
+                                         uint32_t wiphy_index,
+                                         Error* error) {
     return WakeOnWiFi::ConfigureDisableWakeOnWiFiMessage(msg, wiphy_index,
                                                          error);
   }
@@ -752,15 +755,17 @@ class WakeOnWiFiTest : public ::testing::Test {
   bool ConfigureSetWakeOnWiFiSettingsMessage(
       SetWakeOnPacketConnMessage* msg,
       const set<WakeOnWiFi::WakeOnWiFiTrigger>& trigs,
-      const IPAddressStore& addrs, uint32_t wiphy_index,
+      const IPAddressStore& addrs,
+      uint32_t wiphy_index,
       const set<uint8_t> wake_on_packet_types,
       const std::string& mac_address,
       uint32_t net_detect_scan_period_seconds,
-      const vector<ByteString>& ssid_whitelist, Error* error) {
+      const vector<ByteString>& ssid_whitelist,
+      Error* error) {
     return WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
-        msg, trigs, addrs, wiphy_index, wake_on_packet_types,
-        mac_address, kNewWiphyNlMsg_MinPatternLen,
-        net_detect_scan_period_seconds, ssid_whitelist, error);
+        msg, trigs, addrs, wiphy_index, wake_on_packet_types, mac_address,
+        kNewWiphyNlMsg_MinPatternLen, net_detect_scan_period_seconds,
+        ssid_whitelist, error);
   }
 
   void RequestWakeOnPacketSettings() {
@@ -774,7 +779,6 @@ class WakeOnWiFiTest : public ::testing::Test {
   size_t GetWakeOnWiFiMaxPatterns() {
     return wake_on_wifi_->wake_on_wifi_max_patterns_;
   }
-
 
   uint32_t GetWakeOnWiFiMaxSSIDs() {
     return wake_on_wifi_->wake_on_wifi_max_ssids_;
@@ -874,7 +878,8 @@ class WakeOnWiFiTest : public ::testing::Test {
 
   void OnAfterResume() { wake_on_wifi_->OnAfterResume(); }
 
-  void BeforeSuspendActions(bool is_connected, bool start_lease_renewal_timer,
+  void BeforeSuspendActions(bool is_connected,
+                            bool start_lease_renewal_timer,
                             uint32_t time_to_next_lease_renewal) {
     SetDarkResumeActionsTimeOutCallback();
     EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
@@ -1009,9 +1014,9 @@ class WakeOnWiFiTest : public ::testing::Test {
   }
 
   void ReportConnectedToServiceAfterWake(bool is_connected,
-          int seconds_in_suspend) {
+                                         int seconds_in_suspend) {
     wake_on_wifi_->ReportConnectedToServiceAfterWake(is_connected,
-            seconds_in_suspend);
+                                                     seconds_in_suspend);
   }
 
   void OnNoAutoConnectableServicesAfterScan(
@@ -1033,7 +1038,8 @@ class WakeOnWiFiTest : public ::testing::Test {
     wake_on_wifi_->net_detect_scan_period_seconds_ = period;
   }
 
-  void AddSSIDToWhitelist(const uint8_t* ssid, int num_bytes,
+  void AddSSIDToWhitelist(const uint8_t* ssid,
+                          int num_bytes,
                           vector<ByteString>* whitelist) {
     vector<uint8_t> ssid_vector(ssid, ssid + num_bytes);
     whitelist->push_back(ByteString(ssid_vector));
@@ -1097,7 +1103,7 @@ class WakeOnWiFiTest : public ::testing::Test {
     return Timestamp(monotonic, boottime, "");
   }
 
-  MOCK_METHOD1(DoneCallback, void(const Error &));
+  MOCK_METHOD1(DoneCallback, void(const Error&));
   MOCK_METHOD0(RenewDHCPLeaseCallback, void());
   MOCK_METHOD1(InitiateScanCallback, void(const WiFi::FreqSet&));
   MOCK_METHOD0(RemoveSupplicantNetworksCallback, void());
@@ -1117,11 +1123,10 @@ class WakeOnWiFiTest : public ::testing::Test {
 class WakeOnWiFiTestWithDispatcher : public WakeOnWiFiTest {
  public:
   WakeOnWiFiTestWithDispatcher() : WakeOnWiFiTest() {
-    wake_on_wifi_.reset(
-        new WakeOnWiFi(&netlink_manager_, &dispatcher_,
-                       &metrics_, kHardwareAddress,
-                       Bind(&WakeOnWiFiTest::RecordDarkResumeWakeReasonCallback,
-                            Unretained(this))));
+    wake_on_wifi_.reset(new WakeOnWiFi(
+        &netlink_manager_, &dispatcher_, &metrics_, kHardwareAddress,
+        Bind(&WakeOnWiFiTest::RecordDarkResumeWakeReasonCallback,
+             Unretained(this))));
   }
   virtual ~WakeOnWiFiTestWithDispatcher() = default;
 
@@ -1132,11 +1137,10 @@ class WakeOnWiFiTestWithDispatcher : public WakeOnWiFiTest {
 class WakeOnWiFiTestWithMockDispatcher : public WakeOnWiFiTest {
  public:
   WakeOnWiFiTestWithMockDispatcher() : WakeOnWiFiTest() {
-    wake_on_wifi_.reset(
-        new WakeOnWiFi(&netlink_manager_, &mock_dispatcher_,
-                       &metrics_, kHardwareAddress,
-                       Bind(&WakeOnWiFiTest::RecordDarkResumeWakeReasonCallback,
-                            Unretained(this))));
+    wake_on_wifi_.reset(new WakeOnWiFi(
+        &netlink_manager_, &mock_dispatcher_, &metrics_, kHardwareAddress,
+        Bind(&WakeOnWiFiTest::RecordDarkResumeWakeReasonCallback,
+             Unretained(this))));
   }
   virtual ~WakeOnWiFiTestWithMockDispatcher() = default;
 
@@ -1148,14 +1152,17 @@ class WakeOnWiFiTestWithMockDispatcher : public WakeOnWiFiTest {
   MockEventDispatcher mock_dispatcher_;
 };
 
-ByteString CreatePattern(const unsigned char* prefix, size_t prefix_len,
-                         const unsigned char* addr, size_t addr_len) {
+ByteString CreatePattern(const unsigned char* prefix,
+                         size_t prefix_len,
+                         const unsigned char* addr,
+                         size_t addr_len) {
   ByteString result(prefix, prefix_len);
   result.Append(ByteString(addr, addr_len));
   return result;
 }
 
-ByteString CreateDstHWPattern(const unsigned char* addr, size_t addr_len,
+ByteString CreateDstHWPattern(const unsigned char* addr,
+                              size_t addr_len,
                               const unsigned char* addr_suffix,
                               size_t suffix_len) {
   ByteString result(addr, addr_len);
@@ -1278,21 +1285,18 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, CreateIPAddressPatternAndMask) {
   EXPECT_TRUE(mask.Equals(ByteString(kIPV6MaskBytes, sizeof(kIPV6MaskBytes))));
 }
 
-
-TEST_F(WakeOnWiFiTestWithMockDispatcher,
-       CreatePatternAndMaskForProtocolType) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher, CreatePatternAndMaskForProtocolType) {
   ByteString pattern;
   ByteString mask;
   ByteString expected_pattern;
 
-  CreatePacketTypePatternAndMaskforIPV4(
-      kHardwareAddress, &pattern, &mask,
-      kNewWiphyNlMsg_MinPatternLen, IPPROTO_TCP);
-  expected_pattern =
-      CreatePattern(kDstHWAddressPatternBytes,
-                    sizeof(kDstHWAddressPatternBytes),
-                    KIPV4ProtocolTypeSuffixBytesForTCP,
-                    sizeof(KIPV4ProtocolTypeSuffixBytesForTCP));
+  CreatePacketTypePatternAndMaskforIPV4(kHardwareAddress, &pattern, &mask,
+                                        kNewWiphyNlMsg_MinPatternLen,
+                                        IPPROTO_TCP);
+  expected_pattern = CreatePattern(kDstHWAddressPatternBytes,
+                                   sizeof(kDstHWAddressPatternBytes),
+                                   KIPV4ProtocolTypeSuffixBytesForTCP,
+                                   sizeof(KIPV4ProtocolTypeSuffixBytesForTCP));
   EXPECT_TRUE(pattern.Equals(expected_pattern));
   EXPECT_TRUE(mask.Equals(ByteString(KIPV4ProtocolTypeMaskBytes,
                                      sizeof(KIPV4ProtocolTypeMaskBytes))));
@@ -1300,50 +1304,47 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   pattern.Clear();
   expected_pattern.Clear();
   mask.Clear();
-  CreatePacketTypePatternAndMaskforIPV4(
-        kHardwareAddress, &pattern, &mask,
-        kNewWiphyNlMsg_MinPatternLen, IPPROTO_UDP);
-  expected_pattern =
-      CreatePattern(kDstHWAddressPatternBytes,
-                          sizeof(kDstHWAddressPatternBytes),
-                          KIPV4ProtocolTypeSuffixBytesForUDP,
-                          sizeof(KIPV4ProtocolTypeSuffixBytesForUDP));
+  CreatePacketTypePatternAndMaskforIPV4(kHardwareAddress, &pattern, &mask,
+                                        kNewWiphyNlMsg_MinPatternLen,
+                                        IPPROTO_UDP);
+  expected_pattern = CreatePattern(kDstHWAddressPatternBytes,
+                                   sizeof(kDstHWAddressPatternBytes),
+                                   KIPV4ProtocolTypeSuffixBytesForUDP,
+                                   sizeof(KIPV4ProtocolTypeSuffixBytesForUDP));
   EXPECT_TRUE(pattern.Equals(expected_pattern));
   EXPECT_TRUE(mask.Equals(ByteString(KIPV4ProtocolTypeMaskBytes,
                                      sizeof(KIPV4ProtocolTypeMaskBytes))));
   pattern.Clear();
-    expected_pattern.Clear();
-    mask.Clear();
-    CreatePacketTypePatternAndMaskforIPV6(
-          kHardwareAddress, &pattern, &mask,
-          kNewWiphyNlMsg_MinPatternLen, IPPROTO_TCP);
-    expected_pattern =
-        CreatePattern(kDstHWAddressPatternBytes,
-                            sizeof(kDstHWAddressPatternBytes),
-                            KIPV6ProtocolTypeSuffixBytesForTCP,
-                            sizeof(KIPV6ProtocolTypeSuffixBytesForTCP));
-    EXPECT_TRUE(pattern.Equals(expected_pattern));
-    EXPECT_TRUE(mask.Equals(ByteString(KIPV6ProtocolTypeMaskBytes,
-                                       sizeof(KIPV6ProtocolTypeMaskBytes))));
-    pattern.Clear();
-      expected_pattern.Clear();
-      mask.Clear();
-      CreatePacketTypePatternAndMaskforIPV6(
-            kHardwareAddress, &pattern, &mask,
-            kNewWiphyNlMsg_MinPatternLen, IPPROTO_UDP);
-      expected_pattern =
-          CreatePattern(kDstHWAddressPatternBytes,
-                              sizeof(kDstHWAddressPatternBytes),
-                              KIPV6ProtocolTypeSuffixBytesForUDP,
-                              sizeof(KIPV6ProtocolTypeSuffixBytesForUDP));
-      EXPECT_TRUE(pattern.Equals(expected_pattern));
-      EXPECT_TRUE(mask.Equals(ByteString(KIPV6ProtocolTypeMaskBytes,
-                                         sizeof(KIPV6ProtocolTypeMaskBytes))));
+  expected_pattern.Clear();
+  mask.Clear();
+  CreatePacketTypePatternAndMaskforIPV6(kHardwareAddress, &pattern, &mask,
+                                        kNewWiphyNlMsg_MinPatternLen,
+                                        IPPROTO_TCP);
+  expected_pattern = CreatePattern(kDstHWAddressPatternBytes,
+                                   sizeof(kDstHWAddressPatternBytes),
+                                   KIPV6ProtocolTypeSuffixBytesForTCP,
+                                   sizeof(KIPV6ProtocolTypeSuffixBytesForTCP));
+  EXPECT_TRUE(pattern.Equals(expected_pattern));
+  EXPECT_TRUE(mask.Equals(ByteString(KIPV6ProtocolTypeMaskBytes,
+                                     sizeof(KIPV6ProtocolTypeMaskBytes))));
+  pattern.Clear();
+  expected_pattern.Clear();
+  mask.Clear();
+  CreatePacketTypePatternAndMaskforIPV6(kHardwareAddress, &pattern, &mask,
+                                        kNewWiphyNlMsg_MinPatternLen,
+                                        IPPROTO_UDP);
+  expected_pattern = CreatePattern(kDstHWAddressPatternBytes,
+                                   sizeof(kDstHWAddressPatternBytes),
+                                   KIPV6ProtocolTypeSuffixBytesForUDP,
+                                   sizeof(KIPV6ProtocolTypeSuffixBytesForUDP));
+  EXPECT_TRUE(pattern.Equals(expected_pattern));
+  EXPECT_TRUE(mask.Equals(ByteString(KIPV6ProtocolTypeMaskBytes,
+                                     sizeof(KIPV6ProtocolTypeMaskBytes))));
 }
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher, ConvertIPProtoStrtoEnum) {
-  std::vector<std::string> ip_proto_strs = {
-      "IP", "ICMP", "IGMP", "IPIP", "TCP", "UDP", "IDP"};
+  std::vector<std::string> ip_proto_strs = {"IP",  "ICMP", "IGMP", "IPIP",
+                                            "TCP", "UDP",  "IDP"};
   set<uint8_t> ip_proto_enums;
   Error e;
   bool return_val = ConvertIPProtoStrtoEnum(ip_proto_strs, &ip_proto_enums, &e);
@@ -1414,9 +1415,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiSettingsMatch) {
   GetWakeOnPacketConnMessage msg0;
   NetlinkPacket packet0(kResponseNoIPAddresses, sizeof(kResponseNoIPAddresses));
   msg0.InitFromPacket(&packet0, NetlinkMessage::MessageContext());
-  EXPECT_TRUE(
-      WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
+                                      kHardwareAddress, whitelist));
 
   trigs.insert(WakeOnWiFi::kWakeTriggerPattern);
   all_addresses.AddUnique(
@@ -1424,28 +1424,23 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiSettingsMatch) {
   GetWakeOnPacketConnMessage msg1;
   NetlinkPacket packet1(kResponseIPV40, sizeof(kResponseIPV40));
   msg1.InitFromPacket(&packet1, NetlinkMessage::MessageContext());
-  EXPECT_TRUE(
-      WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
+                                      kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
 
   // Test matching of wake on disconnect trigger.
   trigs.insert(WakeOnWiFi::kWakeTriggerDisconnect);
   GetWakeOnPacketConnMessage msg2;
-  NetlinkPacket packet2(
-      kResponseIPV40WakeOnDisconnect, sizeof(kResponseIPV40WakeOnDisconnect));
+  NetlinkPacket packet2(kResponseIPV40WakeOnDisconnect,
+                        sizeof(kResponseIPV40WakeOnDisconnect));
   msg2.InitFromPacket(&packet2, NetlinkMessage::MessageContext());
-  EXPECT_TRUE(
-      WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, {},
+                                      kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
 
   trigs.erase(WakeOnWiFi::kWakeTriggerDisconnect);
   all_addresses.AddUnique(
@@ -1453,63 +1448,48 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiSettingsMatch) {
   GetWakeOnPacketConnMessage msg3;
   NetlinkPacket packet3(kResponseIPV401, sizeof(kResponseIPV401));
   msg3.InitFromPacket(&packet3, NetlinkMessage::MessageContext());
-  EXPECT_TRUE(
-      WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses, interval, {},
+                                      kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
 
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address0, sizeof(kIPV6Address0))));
   GetWakeOnPacketConnMessage msg4;
   NetlinkPacket packet4(kResponseIPV401IPV60, sizeof(kResponseIPV401IPV60));
   msg4.InitFromPacket(&packet4, NetlinkMessage::MessageContext());
-  EXPECT_TRUE(
-      WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses, interval, {},
+                                      kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
 
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address1, sizeof(kIPV6Address1))));
   GetWakeOnPacketConnMessage msg5;
   NetlinkPacket packet5(kResponseIPV401IPV601, sizeof(kResponseIPV401IPV601));
   msg5.InitFromPacket(&packet5, NetlinkMessage::MessageContext());
-  EXPECT_TRUE(
-      WakeOnWiFiSettingsMatch(msg5, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg5, trigs, all_addresses, interval, {},
+                                      kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
 
   // Test matching of wake on SSID trigger.
   all_addresses.Clear();
@@ -1520,49 +1500,36 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiSettingsMatch) {
   GetWakeOnPacketConnMessage msg6;
   NetlinkPacket packet6(kResponseWakeOnSSID, sizeof(kResponseWakeOnSSID));
   msg6.InitFromPacket(&packet6, NetlinkMessage::MessageContext());
-  EXPECT_TRUE(
-      WakeOnWiFiSettingsMatch(msg6, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg5, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg6, trigs, all_addresses, interval, {},
+                                      kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg5, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
 
   // Test that we get a mismatch if triggers are present in the message that we
   // don't expect.
   trigs.clear();
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg6, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg5, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
-  EXPECT_FALSE(
-      WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg6, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg5, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
 }
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
@@ -1577,120 +1544,110 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   trigs.insert(WakeOnWiFi::kWakeTriggerPattern);
   all_addresses.AddUnique(
       IPAddress(string(kIPV4Address0, sizeof(kIPV4Address0))));
-  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
-      &msg0, trigs, all_addresses, index, {}, kHardwareAddress, interval,
-      whitelist, &e));
-  EXPECT_TRUE(
-      WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(&msg0, trigs, all_addresses,
+                                                    index, {}, kHardwareAddress,
+                                                    interval, whitelist, &e));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
+                                      kHardwareAddress, whitelist));
 
   SetWakeOnPacketConnMessage msg1;
   all_addresses.AddUnique(
       IPAddress(string(kIPV4Address1, sizeof(kIPV4Address1))));
-  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
-      &msg1, trigs, all_addresses, index, {}, kHardwareAddress, interval,
-      whitelist, &e));
-  EXPECT_TRUE(
-      WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(&msg1, trigs, all_addresses,
+                                                    index, {}, kHardwareAddress,
+                                                    interval, whitelist, &e));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
+                                      kHardwareAddress, whitelist));
 
   SetWakeOnPacketConnMessage msg2;
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address0, sizeof(kIPV6Address0))));
-  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
-      &msg2, trigs, all_addresses, index, {}, kHardwareAddress, interval,
-      whitelist, &e));
-  EXPECT_TRUE(
-      WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(&msg2, trigs, all_addresses,
+                                                    index, {}, kHardwareAddress,
+                                                    interval, whitelist, &e));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, {},
+                                      kHardwareAddress, whitelist));
 
   SetWakeOnPacketConnMessage msg3;
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address1, sizeof(kIPV6Address1))));
-  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
-      &msg3, trigs, all_addresses, index, {}, kHardwareAddress, interval,
-      whitelist, &e));
-  EXPECT_TRUE(
-      WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(&msg3, trigs, all_addresses,
+                                                    index, {}, kHardwareAddress,
+                                                    interval, whitelist, &e));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses, interval, {},
+                                      kHardwareAddress, whitelist));
 
   SetWakeOnPacketConnMessage msg4;
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address2, sizeof(kIPV6Address2))));
-  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
-      &msg4, trigs, all_addresses, index, {}, kHardwareAddress, interval,
-      whitelist, &e));
-  EXPECT_TRUE(
-      WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(&msg4, trigs, all_addresses,
+                                                    index, {}, kHardwareAddress,
+                                                    interval, whitelist, &e));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses, interval, {},
+                                      kHardwareAddress, whitelist));
 
   SetWakeOnPacketConnMessage msg5;
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address3, sizeof(kIPV6Address3))));
-  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
-      &msg5, trigs, all_addresses, index, {}, kHardwareAddress, interval,
-      whitelist, &e));
-  EXPECT_TRUE(
-      WakeOnWiFiSettingsMatch(msg5, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(&msg5, trigs, all_addresses,
+                                                    index, {}, kHardwareAddress,
+                                                    interval, whitelist, &e));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg5, trigs, all_addresses, interval, {},
+                                      kHardwareAddress, whitelist));
 
   SetWakeOnPacketConnMessage msg6;
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address4, sizeof(kIPV6Address4))));
-  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
-      &msg6, trigs, all_addresses, index, {}, kHardwareAddress, interval,
-      whitelist, &e));
-  EXPECT_TRUE(
-      WakeOnWiFiSettingsMatch(msg6, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(&msg6, trigs, all_addresses,
+                                                    index, {}, kHardwareAddress,
+                                                    interval, whitelist, &e));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg6, trigs, all_addresses, interval, {},
+                                      kHardwareAddress, whitelist));
 
   SetWakeOnPacketConnMessage msg7;
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address5, sizeof(kIPV6Address5))));
-  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
-      &msg7, trigs, all_addresses, index, {}, kHardwareAddress, interval,
-      whitelist, &e));
-  EXPECT_TRUE(
-      WakeOnWiFiSettingsMatch(msg7, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(&msg7, trigs, all_addresses,
+                                                    index, {}, kHardwareAddress,
+                                                    interval, whitelist, &e));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg7, trigs, all_addresses, interval, {},
+                                      kHardwareAddress, whitelist));
 
   SetWakeOnPacketConnMessage msg8;
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address6, sizeof(kIPV6Address6))));
-  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
-      &msg8, trigs, all_addresses, index, {}, kHardwareAddress, interval,
-      whitelist, &e));
-  EXPECT_TRUE(
-      WakeOnWiFiSettingsMatch(msg8, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(&msg8, trigs, all_addresses,
+                                                    index, {}, kHardwareAddress,
+                                                    interval, whitelist, &e));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg8, trigs, all_addresses, interval, {},
+                                      kHardwareAddress, whitelist));
 
   SetWakeOnPacketConnMessage msg9;
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address7, sizeof(kIPV6Address7))));
-  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
-      &msg9, trigs, all_addresses, index, {}, kHardwareAddress, interval,
-      whitelist, &e));
-  EXPECT_TRUE(
-      WakeOnWiFiSettingsMatch(msg9, trigs, all_addresses, interval, {},
-                              kHardwareAddress, whitelist));
+  EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(&msg9, trigs, all_addresses,
+                                                    index, {}, kHardwareAddress,
+                                                    interval, whitelist, &e));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg9, trigs, all_addresses, interval, {},
+                                      kHardwareAddress, whitelist));
 
   SetWakeOnPacketConnMessage msg10;
   uint8_t proto_tcp = static_cast<uint8_t>(IPPROTO_TCP);
   EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
-      &msg10, trigs, all_addresses, index, {proto_tcp }, kHardwareAddress,
+      &msg10, trigs, all_addresses, index, {proto_tcp}, kHardwareAddress,
       interval, whitelist, &e));
-  EXPECT_TRUE(
-      WakeOnWiFiSettingsMatch(msg10, trigs, all_addresses, interval,
-                                  {proto_tcp}, kHardwareAddress, whitelist));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg10, trigs, all_addresses, interval,
+                                      {proto_tcp}, kHardwareAddress,
+                                      whitelist));
   SetWakeOnPacketConnMessage msg11;
   all_addresses.Clear();
   uint8_t proto_udp = static_cast<uint8_t>(IPPROTO_UDP);
   EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
       &msg11, trigs, all_addresses, index, {proto_udp}, kHardwareAddress,
       interval, whitelist, &e));
-  EXPECT_TRUE(
-      WakeOnWiFiSettingsMatch(msg11, trigs, all_addresses, interval,
-                              {proto_udp}, kHardwareAddress, whitelist));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg11, trigs, all_addresses, interval,
+                                      {proto_udp}, kHardwareAddress,
+                                      whitelist));
 
   SetWakeOnPacketConnMessage msg12;
   all_addresses.Clear();
@@ -1701,8 +1658,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
       &msg12, trigs, all_addresses, index, {}, kHardwareAddress, interval,
       whitelist, &e));
-  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg12, trigs, all_addresses, interval,
-                                      {}, kHardwareAddress, whitelist));
+  EXPECT_TRUE(WakeOnWiFiSettingsMatch(msg12, trigs, all_addresses, interval, {},
+                                      kHardwareAddress, whitelist));
 }
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher, RequestWakeOnPacketSettings) {
@@ -1710,7 +1667,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, RequestWakeOnPacketSettings) {
       netlink_manager_,
       SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
                                           GetWakeOnPacketConnMessage::kCommand),
-                         _, _, _)).Times(1);
+                         _, _, _))
+      .Times(1);
   RequestWakeOnPacketSettings();
 }
 
@@ -1743,11 +1701,11 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   // Unsuccessful verification if locally stored settings do not match.
   GetWakeOnPacketConnections()->AddUnique(IPAddress("1.1.1.1"));
   GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kWakeTriggerPattern);
-  EXPECT_CALL(log,
-              Log(logging::LOG_ERROR, _,
-                  HasSubstr(
-                      " failed: discrepancy between wake-on-packet settings on "
-                      "NIC and those in local data structure detected")));
+  EXPECT_CALL(
+      log,
+      Log(logging::LOG_ERROR, _,
+          HasSubstr(" failed: discrepancy between wake-on-packet settings on "
+                    "NIC and those in local data structure detected")));
   EXPECT_CALL(metrics_, NotifyVerifyWakeOnWiFiSettingsResult(
                             Metrics::kVerifyWakeOnWiFiSettingsResultFailure));
   VerifyWakeOnWiFiSettings(msg);
@@ -1760,8 +1718,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   // indicating that that the NIC wakes on packets from 192.168.10.20 and on
   // disconnects.
   GetWakeOnPacketConnMessage msg;
-  NetlinkPacket packet(
-      kResponseIPV40WakeOnDisconnect, sizeof(kResponseIPV40WakeOnDisconnect));
+  NetlinkPacket packet(kResponseIPV40WakeOnDisconnect,
+                       sizeof(kResponseIPV40WakeOnDisconnect));
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   // Successful verification and consequent invocation of callback.
   SetSuspendActionsDoneCallback();
@@ -1786,11 +1744,11 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   // Unsuccessful verification if locally stored settings do not match.
   GetWakeOnWiFiTriggers()->erase(WakeOnWiFi::kWakeTriggerDisconnect);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log,
-              Log(logging::LOG_ERROR, _,
-                  HasSubstr(
-                      " failed: discrepancy between wake-on-packet settings on "
-                      "NIC and those in local data structure detected")));
+  EXPECT_CALL(
+      log,
+      Log(logging::LOG_ERROR, _,
+          HasSubstr(" failed: discrepancy between wake-on-packet settings on "
+                    "NIC and those in local data structure detected")));
   EXPECT_CALL(metrics_, NotifyVerifyWakeOnWiFiSettingsResult(
                             Metrics::kVerifyWakeOnWiFiSettingsResultFailure));
   VerifyWakeOnWiFiSettings(msg);
@@ -1865,7 +1823,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
       netlink_manager_,
       SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
                                           SetWakeOnPacketConnMessage::kCommand),
-                         _, _, _)).Times(1);
+                         _, _, _))
+      .Times(1);
   RetrySetWakeOnPacketConnections();
   EXPECT_EQ(GetNumSetWakeOnPacketRetries(),
             WakeOnWiFi::kMaxSetWakeOnPacketRetries);
@@ -1939,8 +1898,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   MutableNetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
   struct nl80211_pattern_support* patt_support =
       reinterpret_cast<struct nl80211_pattern_support*>(
-          &packet.GetMutablePayload()->GetData()[
-              kNewWiphyNlMsg_PattSupportOffset]);
+          &packet.GetMutablePayload()
+               ->GetData()[kNewWiphyNlMsg_PattSupportOffset]);
   patt_support->min_pattern_len = 0;
   patt_support->max_pattern_len = 1;
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
@@ -1966,10 +1925,9 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   // NL80211_WOWLAN_TRIG_MAGIC_PKT flag attribute, so that this message
   // no longer reports wake on disconnect as a supported capability.
   MutableNetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
-  struct nlattr* wowlan_trig_disconnect_attr =
-      reinterpret_cast<struct nlattr*>(
-          &packet.GetMutablePayload()->GetData()[
-              kNewWiphyNlMsg_WowlanTrigDisconnectAttributeOffset]);
+  struct nlattr* wowlan_trig_disconnect_attr = reinterpret_cast<struct nlattr*>(
+      &packet.GetMutablePayload()
+           ->GetData()[kNewWiphyNlMsg_WowlanTrigDisconnectAttributeOffset]);
   wowlan_trig_disconnect_attr->nla_type = NL80211_WOWLAN_TRIG_MAGIC_PKT;
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   ParseWakeOnWiFiCapabilities(msg);
@@ -1994,10 +1952,9 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   // attribute type (0), so that this message no longer reports wake on SSID
   // as a supported capability.
   MutableNetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
-  struct nlattr* wowlan_trig_net_detect_attr =
-      reinterpret_cast<struct nlattr*>(
-          &packet.GetMutablePayload()->GetData()[
-              kNewWiphyNlMsg_WowlanTrigNetDetectAttributeOffset]);
+  struct nlattr* wowlan_trig_net_detect_attr = reinterpret_cast<struct nlattr*>(
+      &packet.GetMutablePayload()
+           ->GetData()[kNewWiphyNlMsg_WowlanTrigNetDetectAttributeOffset]);
   wowlan_trig_net_detect_attr->nla_type = 0;
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   ParseWakeOnWiFiCapabilities(msg);
@@ -2021,7 +1978,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   // index has not been received when the function is called.
   SetWiphyIndexReceivedToFalse();
   EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(0);
+              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _))
+      .Times(0);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
                        HasSubstr("Interface index not yet received")));
@@ -2035,9 +1993,11 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
       netlink_manager_,
       SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
                                           SetWakeOnPacketConnMessage::kCommand),
-                         _, _, _)).Times(0);
+                         _, _, _))
+      .Times(0);
   EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(1);
+              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _))
+      .Times(1);
   ApplyWakeOnWiFiSettings();
 
   // Otherwise, program the NIC.
@@ -2049,9 +2009,11 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
       netlink_manager_,
       SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
                                           SetWakeOnPacketConnMessage::kCommand),
-                         _, _, _)).Times(1);
+                         _, _, _))
+      .Times(1);
   EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(0);
+              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _))
+      .Times(0);
   ApplyWakeOnWiFiSettings();
 }
 
@@ -2517,7 +2479,6 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, AddRemoveWakeOnPacketOfType) {
   EXPECT_EQ(e.type(), Error::kNotSupported);
   EXPECT_STREQ(e.message().c_str(),
                "Wake on patterns not supported by this WiFi device");
-
 
   // Add operation will fail if pattern matching is supported but the max number
   // of IP address patterns have already been registered.
@@ -3152,14 +3113,16 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiDisabledAfterResume) {
   EnableWakeOnWiFiFeaturesPacketDarkConnect();
   GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kWakeTriggerPattern);
   EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(1);
+              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _))
+      .Times(1);
   EXPECT_CALL(metrics_, NotifySuspendWithWakeOnWiFiEnabledDone()).Times(1);
   OnAfterResume();
 
   // No wake no WiFi triggers supported, so do nothing.
   ClearWakeOnWiFiTriggersSupported();
   EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(0);
+              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _))
+      .Times(0);
   EXPECT_CALL(metrics_, NotifySuspendWithWakeOnWiFiEnabledDone()).Times(0);
   OnAfterResume();
 
@@ -3167,7 +3130,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiDisabledAfterResume) {
   GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kWakeTriggerPattern);
   DisableWakeOnWiFiFeatures();
   EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(0);
+              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _))
+      .Times(0);
   EXPECT_CALL(metrics_, NotifySuspendWithWakeOnWiFiEnabledDone()).Times(0);
   OnAfterResume();
 
@@ -3176,7 +3140,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiDisabledAfterResume) {
   ClearWakeOnWiFiTriggersSupported();
   DisableWakeOnWiFiFeatures();
   EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _)).Times(0);
+              SendNl80211Message(IsDisableWakeOnWiFiMsg(), _, _, _))
+      .Times(0);
   EXPECT_CALL(metrics_, NotifySuspendWithWakeOnWiFiEnabledDone()).Times(0);
   OnAfterResume();
 }
@@ -3208,17 +3173,15 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
        ReportConnectedToServiceAfterWake_WakeOnDarkConnectEnabledAndConnected) {
   const bool is_connected = true;
   EnableWakeOnWiFiFeaturesPacketDarkConnect();
-  EXPECT_CALL(
-      metrics_,
-      NotifyConnectedToServiceAfterWake(
-          Metrics::kWiFiConnectionStatusAfterWakeWoWOnConnected));
+  EXPECT_CALL(metrics_,
+              NotifyConnectedToServiceAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOnConnected));
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 
   EnableWakeOnWiFiFeaturesDarkConnect();
-  EXPECT_CALL(
-      metrics_,
-      NotifyConnectedToServiceAfterWake(
-          Metrics::kWiFiConnectionStatusAfterWakeWoWOnConnected));
+  EXPECT_CALL(metrics_,
+              NotifyConnectedToServiceAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOnConnected));
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 }
 
@@ -3227,17 +3190,15 @@ TEST_F(
     ReportConnectedToServiceAfterWake_WakeOnDarkConnectEnabledAndNotConnected) {
   const bool is_connected = false;
   EnableWakeOnWiFiFeaturesPacketDarkConnect();
-  EXPECT_CALL(
-      metrics_,
-      NotifyConnectedToServiceAfterWake(
-          Metrics::kWiFiConnectionStatusAfterWakeWoWOnDisconnected));
+  EXPECT_CALL(metrics_,
+              NotifyConnectedToServiceAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOnDisconnected));
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 
   EnableWakeOnWiFiFeaturesDarkConnect();
-  EXPECT_CALL(
-      metrics_,
-      NotifyConnectedToServiceAfterWake(
-          Metrics::kWiFiConnectionStatusAfterWakeWoWOnDisconnected));
+  EXPECT_CALL(metrics_,
+              NotifyConnectedToServiceAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOnDisconnected));
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 }
 
@@ -3246,17 +3207,15 @@ TEST_F(
     ReportConnectedToServiceAfterWake_WakeOnDarkConnectDisabledAndConnected) {
   const bool is_connected = true;
   EnableWakeOnWiFiFeaturesPacket();
-  EXPECT_CALL(
-      metrics_,
-      NotifyConnectedToServiceAfterWake(
-          Metrics::kWiFiConnectionStatusAfterWakeWoWOffConnected));
+  EXPECT_CALL(metrics_,
+              NotifyConnectedToServiceAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOffConnected));
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 
   DisableWakeOnWiFiFeatures();
-  EXPECT_CALL(
-      metrics_,
-      NotifyConnectedToServiceAfterWake(
-          Metrics::kWiFiConnectionStatusAfterWakeWoWOffConnected));
+  EXPECT_CALL(metrics_,
+              NotifyConnectedToServiceAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOffConnected));
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 }
 
@@ -3265,17 +3224,15 @@ TEST_F(
     ReportConnectedToServiceAfterWake_WakeOnDarkConnectDisabledAndDisonnected) {
   const bool is_connected = false;
   EnableWakeOnWiFiFeaturesPacket();
-  EXPECT_CALL(
-      metrics_,
-      NotifyConnectedToServiceAfterWake(
-          Metrics::kWiFiConnectionStatusAfterWakeWoWOffDisconnected));
+  EXPECT_CALL(metrics_,
+              NotifyConnectedToServiceAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOffDisconnected));
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 
   DisableWakeOnWiFiFeatures();
-  EXPECT_CALL(
-      metrics_,
-      NotifyConnectedToServiceAfterWake(
-          Metrics::kWiFiConnectionStatusAfterWakeWoWOffDisconnected));
+  EXPECT_CALL(metrics_,
+              NotifyConnectedToServiceAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOffDisconnected));
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 }
 
@@ -3350,8 +3307,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Unsupported) {
   SetWiphyIndex(kWakeReasonNlMsg_WiphyIndex);
 
   SetWakeOnPacketConnMessage msg;
-  NetlinkPacket packet(
-      kWakeReasonUnsupportedNlMsg, sizeof(kWakeReasonUnsupportedNlMsg));
+  NetlinkPacket packet(kWakeReasonUnsupportedNlMsg,
+                       sizeof(kWakeReasonUnsupportedNlMsg));
   msg.InitFromPacket(&packet, GetWakeupReportMsgContext());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log,
@@ -3372,8 +3329,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Disconnect) {
   SetWiphyIndex(kWakeReasonNlMsg_WiphyIndex);
 
   SetWakeOnPacketConnMessage msg;
-  NetlinkPacket packet(
-      kWakeReasonDisconnectNlMsg, sizeof(kWakeReasonDisconnectNlMsg));
+  NetlinkPacket packet(kWakeReasonDisconnectNlMsg,
+                       sizeof(kWakeReasonDisconnectNlMsg));
   msg.InitFromPacket(&packet, GetWakeupReportMsgContext());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("Wakeup reason: Disconnect")));
@@ -3420,8 +3377,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Pattern) {
   SetWiphyIndex(kWakeReasonNlMsg_WiphyIndex);
 
   SetWakeOnPacketConnMessage msg;
-  NetlinkPacket packet(
-      kWakeReasonPatternNlMsg, sizeof(kWakeReasonPatternNlMsg));
+  NetlinkPacket packet(kWakeReasonPatternNlMsg,
+                       sizeof(kWakeReasonPatternNlMsg));
   msg.InitFromPacket(&packet, GetWakeupReportMsgContext());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(
@@ -3473,8 +3430,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Error) {
   // Valid message, but wrong wiphy index.
   SetWiphyIndex(kWakeReasonNlMsg_WiphyIndex + 1);
   SetWakeOnPacketConnMessage msg2;
-  NetlinkPacket packet(
-      kWakeReasonDisconnectNlMsg, sizeof(kWakeReasonDisconnectNlMsg));
+  NetlinkPacket packet(kWakeReasonDisconnectNlMsg,
+                       sizeof(kWakeReasonDisconnectNlMsg));
   msg2.InitFromPacket(&packet, GetWakeupReportMsgContext());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(
@@ -3511,10 +3468,9 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
    * SuspendDuration should not be logged */
   SetConnectedBeforeSuspend(false);
 
-  EXPECT_CALL(
-      metrics_,
-      NotifyConnectedToServiceAfterWake(
-          Metrics::kWiFiConnectionStatusAfterWakeWoWOnConnected));
+  EXPECT_CALL(metrics_,
+              NotifyConnectedToServiceAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOnConnected));
   EXPECT_CALL(metrics_, NotifySuspendDurationAfterWake(_, _)).Times(0);
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 }
@@ -3542,10 +3498,9 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
    * SuspendDuration should not be logged */
   SetConnectedBeforeSuspend(false);
 
-  EXPECT_CALL(
-      metrics_,
-      NotifyConnectedToServiceAfterWake(
-          Metrics::kWiFiConnectionStatusAfterWakeWoWOnDisconnected));
+  EXPECT_CALL(metrics_,
+              NotifyConnectedToServiceAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOnDisconnected));
   EXPECT_CALL(metrics_, NotifySuspendDurationAfterWake(_, _)).Times(0);
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 }
@@ -3684,10 +3639,9 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
    * SuspendDuration should not be logged */
   SetConnectedBeforeSuspend(false);
 
-  EXPECT_CALL(
-      metrics_,
-      NotifyConnectedToServiceAfterWake(
-          Metrics::kWiFiConnectionStatusAfterWakeWoWOffConnected));
+  EXPECT_CALL(metrics_,
+              NotifyConnectedToServiceAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOffConnected));
   EXPECT_CALL(metrics_, NotifySuspendDurationAfterWake(_, _)).Times(0);
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 }
@@ -3783,24 +3737,12 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   const uint32_t interval = kNetDetectScanIntervalSeconds;
   SetWakeOnPacketConnMessage msg;
   Error e;
-  EXPECT_FALSE(ConfigureSetWakeOnWiFiSettingsMessage(&msg,
-                                                     no_trigs,
-                                                     no_addresses,
-                                                     index,
-                                                     {},
-                                                     kHardwareAddress,
-                                                     interval,
-                                                     whitelist,
-                                                     &e));
-  EXPECT_FALSE(ConfigureSetWakeOnWiFiSettingsMessage(&msg,
-                                                     one_trig,
-                                                     one_address,
-                                                     index,
-                                                     {},
-                                                     kHardwareAddress,
-                                                     interval,
-                                                     whitelist,
-                                                     &e));
+  EXPECT_FALSE(ConfigureSetWakeOnWiFiSettingsMessage(
+      &msg, no_trigs, no_addresses, index, {}, kHardwareAddress, interval,
+      whitelist, &e));
+  EXPECT_FALSE(ConfigureSetWakeOnWiFiSettingsMessage(
+      &msg, one_trig, one_address, index, {}, kHardwareAddress, interval,
+      whitelist, &e));
 }
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
@@ -3816,8 +3758,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   GetWakeOnPacketConnMessage msg0;
   NetlinkPacket packet0(kResponseNoIPAddresses, sizeof(kResponseNoIPAddresses));
   msg0.InitFromPacket(&packet0, NetlinkMessage::MessageContext());
-  EXPECT_FALSE(WakeOnWiFiSettingsMatch(
-      msg0, trigs, all_addresses, interval, {}, kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg0, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
 
   trigs.insert(WakeOnWiFi::kWakeTriggerPattern);
   all_addresses.AddUnique(
@@ -3825,16 +3767,16 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   GetWakeOnPacketConnMessage msg1;
   NetlinkPacket packet1(kResponseIPV40, sizeof(kResponseIPV40));
   msg1.InitFromPacket(&packet1, NetlinkMessage::MessageContext());
-  EXPECT_FALSE(WakeOnWiFiSettingsMatch(
-      msg1, trigs, all_addresses, interval, {}, kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg1, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
 
   trigs.insert(WakeOnWiFi::kWakeTriggerDisconnect);
   GetWakeOnPacketConnMessage msg2;
   NetlinkPacket packet2(kResponseIPV40WakeOnDisconnect,
                         sizeof(kResponseIPV40WakeOnDisconnect));
   msg2.InitFromPacket(&packet2, NetlinkMessage::MessageContext());
-  EXPECT_FALSE(WakeOnWiFiSettingsMatch(
-      msg2, trigs, all_addresses, interval, {}, kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg2, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
 
   trigs.erase(WakeOnWiFi::kWakeTriggerDisconnect);
   all_addresses.AddUnique(
@@ -3842,24 +3784,24 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   GetWakeOnPacketConnMessage msg3;
   NetlinkPacket packet3(kResponseIPV401, sizeof(kResponseIPV401));
   msg3.InitFromPacket(&packet3, NetlinkMessage::MessageContext());
-  EXPECT_FALSE(WakeOnWiFiSettingsMatch(
-      msg3, trigs, all_addresses, interval, {}, kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg3, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
 
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address0, sizeof(kIPV6Address0))));
   GetWakeOnPacketConnMessage msg4;
   NetlinkPacket packet4(kResponseIPV401IPV60, sizeof(kResponseIPV401IPV60));
   msg4.InitFromPacket(&packet4, NetlinkMessage::MessageContext());
-  EXPECT_FALSE(WakeOnWiFiSettingsMatch(
-      msg4, trigs, all_addresses, interval, {}, kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg4, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
 
   all_addresses.AddUnique(
       IPAddress(string(kIPV6Address1, sizeof(kIPV6Address1))));
   GetWakeOnPacketConnMessage msg5;
   NetlinkPacket packet5(kResponseIPV401IPV601, sizeof(kResponseIPV401IPV601));
   msg5.InitFromPacket(&packet5, NetlinkMessage::MessageContext());
-  EXPECT_FALSE(WakeOnWiFiSettingsMatch(
-      msg5, trigs, all_addresses, interval, {}, kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg5, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
 
   all_addresses.Clear();
   trigs.clear();
@@ -3869,8 +3811,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   GetWakeOnPacketConnMessage msg6;
   NetlinkPacket packet6(kResponseWakeOnSSID, sizeof(kResponseWakeOnSSID));
   msg6.InitFromPacket(&packet6, NetlinkMessage::MessageContext());
-  EXPECT_FALSE(WakeOnWiFiSettingsMatch(
-      msg6, trigs, all_addresses, interval, {}, kHardwareAddress, whitelist));
+  EXPECT_FALSE(WakeOnWiFiSettingsMatch(msg6, trigs, all_addresses, interval, {},
+                                       kHardwareAddress, whitelist));
 }
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
@@ -3892,8 +3834,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   EXPECT_EQ(0, GetWakeOnWiFiMaxSSIDs());
 }
 
-TEST_F(WakeOnWiFiTestWithMockDispatcher,
-       WakeOnWiFi_RemoveNetlinkHandler) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFi_RemoveNetlinkHandler) {
   // WakeOnWifi is deleted when we go out of scope.
   EXPECT_CALL(netlink_manager_, RemoveBroadcastHandler(_)).Times(1);
 }

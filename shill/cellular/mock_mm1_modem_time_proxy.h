@@ -19,9 +19,8 @@ class MockModemTimeProxy : public ModemTimeProxyInterface {
   ~MockModemTimeProxy() override;
 
   // Inherited methods from ModemTimeProxyInterface.
-  MOCK_METHOD3(GetNetworkTime, void(Error* error,
-                                    const StringCallback& callback,
-                                    int timeout));
+  MOCK_METHOD3(GetNetworkTime,
+               void(Error* error, const StringCallback& callback, int timeout));
 
   MOCK_METHOD1(set_network_time_changed_callback,
                void(const NetworkTimeChangedSignalCallback& callback));

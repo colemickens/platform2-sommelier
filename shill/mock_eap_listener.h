@@ -18,8 +18,8 @@ class MockEapListener : public EapListener {
 
   MOCK_METHOD0(Start, bool());
   MOCK_METHOD0(Stop, void());
-  MOCK_METHOD1(set_request_received_callback, void(
-      const EapListener::EapRequestReceivedCallback& callback));
+  MOCK_METHOD1(set_request_received_callback,
+               void(const EapListener::EapRequestReceivedCallback& callback));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockEapListener);

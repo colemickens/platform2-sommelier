@@ -17,7 +17,7 @@ static auto kModuleLogScope = ScopeLogger::kProfile;
 static std::string ObjectID(EphemeralProfile* e) {
   return e->GetRpcIdentifier();
 }
-}
+}  // namespace Logging
 
 namespace {
 

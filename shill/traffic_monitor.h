@@ -52,7 +52,7 @@ class TrafficMonitor {
  private:
   friend class TrafficMonitorTest;
   FRIEND_TEST(TrafficMonitorTest,
-      BuildIPPortToTxQueueLengthInvalidConnectionState);
+              BuildIPPortToTxQueueLengthInvalidConnectionState);
   FRIEND_TEST(TrafficMonitorTest, BuildIPPortToTxQueueLengthInvalidDevice);
   FRIEND_TEST(TrafficMonitorTest, BuildIPPortToTxQueueLengthInvalidTimerState);
   FRIEND_TEST(TrafficMonitorTest, BuildIPPortToTxQueueLengthMultipleEntries);
@@ -68,10 +68,9 @@ class TrafficMonitor {
   FRIEND_TEST(TrafficMonitorTest, SampleTrafficDnsTimedOutOutsideTimeWindow);
   FRIEND_TEST(TrafficMonitorTest, SampleTrafficNonDnsTimedOut);
   FRIEND_TEST(TrafficMonitorTest,
-      SampleTrafficStuckTxQueueIncreasingQueueLength);
+              SampleTrafficStuckTxQueueIncreasingQueueLength);
   FRIEND_TEST(TrafficMonitorTest, SampleTrafficStuckTxQueueSameQueueLength);
-  FRIEND_TEST(TrafficMonitorTest,
-      SampleTrafficStuckTxQueueVariousQueueLengths);
+  FRIEND_TEST(TrafficMonitorTest, SampleTrafficStuckTxQueueVariousQueueLengths);
   FRIEND_TEST(TrafficMonitorTest, SampleTrafficUnstuckTxQueueNoConnection);
   FRIEND_TEST(TrafficMonitorTest, SampleTrafficUnstuckTxQueueStateChanged);
   FRIEND_TEST(TrafficMonitorTest, SampleTrafficUnstuckTxQueueZeroQueueLength);

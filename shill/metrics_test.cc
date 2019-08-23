@@ -43,10 +43,15 @@ class CumulativeMetricsMock : public chromeos_metrics::CumulativeMetrics {
                         Callback update_callback,
                         base::TimeDelta accumulation_period,
                         Callback cycle_end_callback)
-    : CumulativeMetrics(backing_dir, names, update_period, update_callback,
-                        accumulation_period, cycle_end_callback) {}
+      : CumulativeMetrics(backing_dir,
+                          names,
+                          update_period,
+                          update_callback,
+                          accumulation_period,
+                          cycle_end_callback) {}
   void SetActiveTimes(std::vector<int> times);
   virtual base::TimeDelta ActiveTimeSinceLastUpdate() const;
+
  private:
   std::vector<int> active_times_;
   mutable int active_times_index_;
@@ -66,9 +71,7 @@ base::TimeDelta CumulativeMetricsMock::ActiveTimeSinceLastUpdate() const {
 class MetricsTest : public Test {
  public:
   MetricsTest()
-      : manager_(&control_interface_,
-                 &dispatcher_,
-                 &metrics_),
+      : manager_(&control_interface_, &dispatcher_, &metrics_),
 #if !defined(DISABLE_WIFI)
         open_wifi_service_(new MockWiFiService(&manager_,
                                                manager_.wifi_provider(),
@@ -90,7 +93,8 @@ class MetricsTest : public Test {
                                               false)),
         eap_(new MockEapCredentials()),
 #endif  // DISABLE_WIFI
-        service_(new MockService(&manager_)) {}
+        service_(new MockService(&manager_)) {
+  }
 
   ~MetricsTest() override = default;
 
@@ -98,7 +102,7 @@ class MetricsTest : public Test {
     metrics_.set_library(&library_);
 #if !defined(DISABLE_WIFI)
     eap_wifi_service_->eap_.reset(eap_);  // Passes ownership.
-#endif  // DISABLE_WIFI
+#endif                                    // DISABLE_WIFI
     metrics_.collect_bootstats_ = false;
   }
 
@@ -107,18 +111,14 @@ class MetricsTest : public Test {
                              Metrics::WiFiNetworkPhyMode mode,
                              Metrics::WiFiSecurity security,
                              int signal_strength) {
-    EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.Channel",
-                                        channel,
+    EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.Channel", channel,
                                         Metrics::kMetricNetworkChannelMax));
-    EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.PhyMode",
-                                        mode,
+    EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.PhyMode", mode,
                                         Metrics::kWiFiNetworkPhyModeMax));
-    EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.Security",
-                                        security,
+    EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.Security", security,
                                         Metrics::kWiFiSecurityMax));
     EXPECT_CALL(library_,
-                SendToUMA("Network.Shill.Wifi.SignalStrength",
-                          signal_strength,
+                SendToUMA("Network.Shill.Wifi.SignalStrength", signal_strength,
                           Metrics::kMetricNetworkSignalStrengthMin,
                           Metrics::kMetricNetworkSignalStrengthMax,
                           Metrics::kMetricNetworkSignalStrengthNumBuckets));
@@ -135,13 +135,12 @@ class MetricsTest : public Test {
   scoped_refptr<MockWiFiService> wep_wifi_service_;
   scoped_refptr<MockWiFiService> eap_wifi_service_;
   MockEapCredentials* eap_;  // Owned by |eap_wifi_service_|.
-#endif  // DISABLE_WIFI
+#endif                       // DISABLE_WIFI
   scoped_refptr<MockService> service_;
 };
 
 TEST_F(MetricsTest, TimeToConfig) {
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Unknown.TimeToConfig",
-                                  Ge(0),
+  EXPECT_CALL(library_, SendToUMA("Network.Shill.Unknown.TimeToConfig", Ge(0),
                                   Metrics::kTimerHistogramMillisecondsMin,
                                   Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
@@ -150,8 +149,7 @@ TEST_F(MetricsTest, TimeToConfig) {
 }
 
 TEST_F(MetricsTest, TimeToPortal) {
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Unknown.TimeToPortal",
-                                  Ge(0),
+  EXPECT_CALL(library_, SendToUMA("Network.Shill.Unknown.TimeToPortal", Ge(0),
                                   Metrics::kTimerHistogramMillisecondsMin,
                                   Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
@@ -160,8 +158,7 @@ TEST_F(MetricsTest, TimeToPortal) {
 }
 
 TEST_F(MetricsTest, TimeToOnline) {
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Unknown.TimeToOnline",
-                                  Ge(0),
+  EXPECT_CALL(library_, SendToUMA("Network.Shill.Unknown.TimeToOnline", Ge(0),
                                   Metrics::kTimerHistogramMillisecondsMin,
                                   Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
@@ -173,16 +170,15 @@ TEST_F(MetricsTest, ServiceFailure) {
   EXPECT_CALL(*service_, failure())
       .WillRepeatedly(Return(Service::kFailureBadPassphrase));
   EXPECT_CALL(library_,
-      SendEnumToUMA(Metrics::kMetricNetworkServiceErrors,
-                    Metrics::kNetworkServiceErrorBadPassphrase,
-                    Metrics::kNetworkServiceErrorMax));
+              SendEnumToUMA(Metrics::kMetricNetworkServiceErrors,
+                            Metrics::kNetworkServiceErrorBadPassphrase,
+                            Metrics::kNetworkServiceErrorMax));
   metrics_.NotifyServiceStateChanged(*service_, Service::kStateFailure);
 }
 
 #if !defined(DISABLE_WIFI)
 TEST_F(MetricsTest, WiFiServiceTimeToJoin) {
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeToJoin",
-                                  Ge(0),
+  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeToJoin", Ge(0),
                                   Metrics::kTimerHistogramMillisecondsMin,
                                   Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
@@ -201,14 +197,16 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
   const int kStrength = -42;
   ExpectCommonPostReady(Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
-                        Metrics::kWiFiSecurityWep,
-                        -kStrength);
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeResumeToReady",
-                                  _, _, _, _)).Times(0);
-  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.EapOuterProtocol",
-                                       _, _)).Times(0);
-  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.EapInnerProtocol",
-                                      _, _)).Times(0);
+                        Metrics::kWiFiSecurityWep, -kStrength);
+  EXPECT_CALL(library_,
+              SendToUMA("Network.Shill.Wifi.TimeResumeToReady", _, _, _, _))
+      .Times(0);
+  EXPECT_CALL(library_,
+              SendEnumToUMA("Network.Shill.Wifi.EapOuterProtocol", _, _))
+      .Times(0);
+  EXPECT_CALL(library_,
+              SendEnumToUMA("Network.Shill.Wifi.EapInnerProtocol", _, _))
+      .Times(0);
   wep_wifi_service_->frequency_ = 2412;
   wep_wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   wep_wifi_service_->raw_signal_strength_ = kStrength;
@@ -219,15 +217,13 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
   // Simulate a system suspend, resume and an AP reconnect.
   ExpectCommonPostReady(Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
-                        Metrics::kWiFiSecurityWep,
-                        -kStrength);
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeResumeToReady",
-                                  Ge(0),
+                        Metrics::kWiFiSecurityWep, -kStrength);
+  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeResumeToReady", Ge(0),
                                   Metrics::kTimerHistogramMillisecondsMin,
                                   Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
-  EXPECT_CALL(*mock_time_resume_to_ready_timer, GetElapsedTime(_)).
-      WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
+  EXPECT_CALL(*mock_time_resume_to_ready_timer, GetElapsedTime(_))
+      .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   metrics_.NotifySuspendDone();
   metrics_.NotifyServiceStateChanged(*wep_wifi_service_,
                                      Service::kStateConnected);
@@ -237,10 +233,10 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
   // Make sure subsequent connects do not count towards TimeResumeToReady.
   ExpectCommonPostReady(Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
-                        Metrics::kWiFiSecurityWep,
-                        -kStrength);
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeResumeToReady",
-                                  _, _, _, _)).Times(0);
+                        Metrics::kWiFiSecurityWep, -kStrength);
+  EXPECT_CALL(library_,
+              SendToUMA("Network.Shill.Wifi.TimeResumeToReady", _, _, _, _))
+      .Times(0);
   metrics_.NotifyServiceStateChanged(*wep_wifi_service_,
                                      Service::kStateConnected);
 }
@@ -249,8 +245,7 @@ TEST_F(MetricsTest, WiFiServicePostReadyEAP) {
   const int kStrength = -42;
   ExpectCommonPostReady(Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
-                        Metrics::kWiFiSecurity8021x,
-                        -kStrength);
+                        Metrics::kWiFiSecurity8021x, -kStrength);
   eap_wifi_service_->frequency_ = 2412;
   eap_wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   eap_wifi_service_->raw_signal_strength_ = kStrength;
@@ -308,20 +303,17 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
       new chromeos_metrics::TimerMock;
   metrics_.set_time_to_drop_timer(mock_time_to_drop_timer);
   scoped_refptr<MockService> wifi_service = new MockService(&manager_);
-  EXPECT_CALL(*service_, technology()).
-      WillOnce(Return(Technology::kEthernet));
-  EXPECT_CALL(*wifi_service, technology()).
-      WillOnce(Return(Technology::kWifi));
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Ethernet.TimeOnline",
-                                  Ge(0),
+  EXPECT_CALL(*service_, technology()).WillOnce(Return(Technology::kEthernet));
+  EXPECT_CALL(*wifi_service, technology()).WillOnce(Return(Technology::kWifi));
+  EXPECT_CALL(library_, SendToUMA("Network.Shill.Ethernet.TimeOnline", Ge(0),
                                   Metrics::kMetricTimeOnlineSecondsMin,
                                   Metrics::kMetricTimeOnlineSecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
-  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricTimeToDropSeconds,
-                                  Ge(0),
+  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricTimeToDropSeconds, Ge(0),
                                   Metrics::kMetricTimeToDropSecondsMin,
                                   Metrics::kMetricTimeToDropSecondsMax,
-                                  Metrics::kTimerHistogramNumBuckets)).Times(0);
+                                  Metrics::kTimerHistogramNumBuckets))
+      .Times(0);
   EXPECT_CALL(*mock_time_online_timer, Start()).Times(2);
   EXPECT_CALL(*mock_time_to_drop_timer, Start());
   metrics_.NotifyDefaultServiceChanged(service_.get());
@@ -329,13 +321,11 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
 
   EXPECT_CALL(*mock_time_online_timer, Start());
   EXPECT_CALL(*mock_time_to_drop_timer, Start()).Times(0);
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeOnline",
-                                  Ge(0),
+  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeOnline", Ge(0),
                                   Metrics::kMetricTimeOnlineSecondsMin,
                                   Metrics::kMetricTimeOnlineSecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
-  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricTimeToDropSeconds,
-                                  Ge(0),
+  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricTimeToDropSeconds, Ge(0),
                                   Metrics::kMetricTimeToDropSecondsMin,
                                   Metrics::kMetricTimeToDropSecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
@@ -343,21 +333,17 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
 }
 
 TEST_F(MetricsTest, Disconnect) {
-  EXPECT_CALL(*service_, technology()).
-      WillRepeatedly(Return(Technology::kWifi));
-  EXPECT_CALL(*service_, explicitly_disconnected()).
-      WillOnce(Return(false));
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.Disconnect",
-                                  false,
+  EXPECT_CALL(*service_, technology())
+      .WillRepeatedly(Return(Technology::kWifi));
+  EXPECT_CALL(*service_, explicitly_disconnected()).WillOnce(Return(false));
+  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.Disconnect", false,
                                   Metrics::kMetricDisconnectMin,
                                   Metrics::kMetricDisconnectMax,
                                   Metrics::kMetricDisconnectNumBuckets));
   metrics_.NotifyServiceDisconnect(*service_);
 
-  EXPECT_CALL(*service_, explicitly_disconnected()).
-      WillOnce(Return(true));
-  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.Disconnect",
-                                  true,
+  EXPECT_CALL(*service_, explicitly_disconnected()).WillOnce(Return(true));
+  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.Disconnect", true,
                                   Metrics::kMetricDisconnectMin,
                                   Metrics::kMetricDisconnectMax,
                                   Metrics::kMetricDisconnectNumBuckets));
@@ -419,11 +405,10 @@ TEST_F(MetricsTest, PortalDetectionResultToEnum) {
 
 TEST_F(MetricsTest, TimeToConnect) {
   EXPECT_CALL(library_,
-      SendToUMA("Network.Shill.Cellular.TimeToConnect",
-                Ge(0),
-                Metrics::kMetricTimeToConnectMillisecondsMin,
-                Metrics::kMetricTimeToConnectMillisecondsMax,
-                Metrics::kMetricTimeToConnectMillisecondsNumBuckets));
+              SendToUMA("Network.Shill.Cellular.TimeToConnect", Ge(0),
+                        Metrics::kMetricTimeToConnectMillisecondsMin,
+                        Metrics::kMetricTimeToConnectMillisecondsMax,
+                        Metrics::kMetricTimeToConnectMillisecondsNumBuckets));
   const int kInterfaceIndex = 1;
   metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
   metrics_.NotifyDeviceConnectStarted(kInterfaceIndex, false);
@@ -432,11 +417,10 @@ TEST_F(MetricsTest, TimeToConnect) {
 
 TEST_F(MetricsTest, TimeToDisable) {
   EXPECT_CALL(library_,
-      SendToUMA("Network.Shill.Cellular.TimeToDisable",
-                Ge(0),
-                Metrics::kMetricTimeToDisableMillisecondsMin,
-                Metrics::kMetricTimeToDisableMillisecondsMax,
-                Metrics::kMetricTimeToDisableMillisecondsNumBuckets));
+              SendToUMA("Network.Shill.Cellular.TimeToDisable", Ge(0),
+                        Metrics::kMetricTimeToDisableMillisecondsMin,
+                        Metrics::kMetricTimeToDisableMillisecondsMax,
+                        Metrics::kMetricTimeToDisableMillisecondsNumBuckets));
   const int kInterfaceIndex = 1;
   metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
   metrics_.NotifyDeviceDisableStarted(kInterfaceIndex);
@@ -445,11 +429,10 @@ TEST_F(MetricsTest, TimeToDisable) {
 
 TEST_F(MetricsTest, TimeToEnable) {
   EXPECT_CALL(library_,
-      SendToUMA("Network.Shill.Cellular.TimeToEnable",
-                Ge(0),
-                Metrics::kMetricTimeToEnableMillisecondsMin,
-                Metrics::kMetricTimeToEnableMillisecondsMax,
-                Metrics::kMetricTimeToEnableMillisecondsNumBuckets));
+              SendToUMA("Network.Shill.Cellular.TimeToEnable", Ge(0),
+                        Metrics::kMetricTimeToEnableMillisecondsMin,
+                        Metrics::kMetricTimeToEnableMillisecondsMax,
+                        Metrics::kMetricTimeToEnableMillisecondsNumBuckets));
   const int kInterfaceIndex = 1;
   metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
   metrics_.NotifyDeviceEnableStarted(kInterfaceIndex);
@@ -457,9 +440,9 @@ TEST_F(MetricsTest, TimeToEnable) {
 }
 
 TEST_F(MetricsTest, TimeToInitialize) {
-  EXPECT_CALL(library_,
-      SendToUMA("Network.Shill.Cellular.TimeToInitialize",
-                Ge(0),
+  EXPECT_CALL(
+      library_,
+      SendToUMA("Network.Shill.Cellular.TimeToInitialize", Ge(0),
                 Metrics::kMetricTimeToInitializeMillisecondsMin,
                 Metrics::kMetricTimeToInitializeMillisecondsMax,
                 Metrics::kMetricTimeToInitializeMillisecondsNumBuckets));
@@ -470,11 +453,10 @@ TEST_F(MetricsTest, TimeToInitialize) {
 
 TEST_F(MetricsTest, TimeToScan) {
   EXPECT_CALL(library_,
-      SendToUMA("Network.Shill.Cellular.TimeToScan",
-                Ge(0),
-                Metrics::kMetricTimeToScanMillisecondsMin,
-                Metrics::kMetricTimeToScanMillisecondsMax,
-                Metrics::kMetricTimeToScanMillisecondsNumBuckets));
+              SendToUMA("Network.Shill.Cellular.TimeToScan", Ge(0),
+                        Metrics::kMetricTimeToScanMillisecondsMin,
+                        Metrics::kMetricTimeToScanMillisecondsMax,
+                        Metrics::kMetricTimeToScanMillisecondsNumBuckets));
   const int kInterfaceIndex = 1;
   metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
   metrics_.NotifyDeviceScanStarted(kInterfaceIndex);
@@ -483,25 +465,23 @@ TEST_F(MetricsTest, TimeToScan) {
 
 TEST_F(MetricsTest, TimeToScanAndConnect) {
   EXPECT_CALL(library_,
-      SendToUMA("Network.Shill.Wifi.TimeToScan",
-                Ge(0),
-                Metrics::kMetricTimeToScanMillisecondsMin,
-                Metrics::kMetricTimeToScanMillisecondsMax,
-                Metrics::kMetricTimeToScanMillisecondsNumBuckets));
+              SendToUMA("Network.Shill.Wifi.TimeToScan", Ge(0),
+                        Metrics::kMetricTimeToScanMillisecondsMin,
+                        Metrics::kMetricTimeToScanMillisecondsMax,
+                        Metrics::kMetricTimeToScanMillisecondsNumBuckets));
   const int kInterfaceIndex = 1;
   metrics_.RegisterDevice(kInterfaceIndex, Technology::kWifi);
   metrics_.NotifyDeviceScanStarted(kInterfaceIndex);
   metrics_.NotifyDeviceScanFinished(kInterfaceIndex);
 
   EXPECT_CALL(library_,
-      SendToUMA("Network.Shill.Wifi.TimeToConnect",
-                Ge(0),
-                Metrics::kMetricTimeToConnectMillisecondsMin,
-                Metrics::kMetricTimeToConnectMillisecondsMax,
-                Metrics::kMetricTimeToConnectMillisecondsNumBuckets));
-  EXPECT_CALL(library_,
-      SendToUMA("Network.Shill.Wifi.TimeToScanAndConnect",
-                Ge(0),
+              SendToUMA("Network.Shill.Wifi.TimeToConnect", Ge(0),
+                        Metrics::kMetricTimeToConnectMillisecondsMin,
+                        Metrics::kMetricTimeToConnectMillisecondsMax,
+                        Metrics::kMetricTimeToConnectMillisecondsNumBuckets));
+  EXPECT_CALL(
+      library_,
+      SendToUMA("Network.Shill.Wifi.TimeToScanAndConnect", Ge(0),
                 Metrics::kMetricTimeToScanMillisecondsMin,
                 Metrics::kMetricTimeToScanMillisecondsMax +
                     Metrics::kMetricTimeToConnectMillisecondsMax,
@@ -515,20 +495,20 @@ TEST_F(MetricsTest, SpontaneousConnect) {
   const int kInterfaceIndex = 1;
   metrics_.RegisterDevice(kInterfaceIndex, Technology::kWifi);
   EXPECT_CALL(library_,
-      SendToUMA("Network.Shill.Wifi.TimeToConnect",
-                Ge(0),
-                Metrics::kMetricTimeToConnectMillisecondsMin,
-                Metrics::kMetricTimeToConnectMillisecondsMax,
-                Metrics::kMetricTimeToConnectMillisecondsNumBuckets)).Times(0);
-  EXPECT_CALL(library_,
-      SendToUMA("Network.Shill.Wifi.TimeToScanAndConnect",
-                Ge(0),
+              SendToUMA("Network.Shill.Wifi.TimeToConnect", Ge(0),
+                        Metrics::kMetricTimeToConnectMillisecondsMin,
+                        Metrics::kMetricTimeToConnectMillisecondsMax,
+                        Metrics::kMetricTimeToConnectMillisecondsNumBuckets))
+      .Times(0);
+  EXPECT_CALL(
+      library_,
+      SendToUMA("Network.Shill.Wifi.TimeToScanAndConnect", Ge(0),
                 Metrics::kMetricTimeToScanMillisecondsMin,
                 Metrics::kMetricTimeToScanMillisecondsMax +
                     Metrics::kMetricTimeToConnectMillisecondsMax,
                 Metrics::kMetricTimeToScanMillisecondsNumBuckets +
-                    Metrics::kMetricTimeToConnectMillisecondsNumBuckets)).
-      Times(0);
+                    Metrics::kMetricTimeToConnectMillisecondsNumBuckets))
+      .Times(0);
   // This simulates a connection that is not scan-based.
   metrics_.NotifyDeviceConnectFinished(kInterfaceIndex);
 }
@@ -554,7 +534,8 @@ TEST_F(MetricsTest, ResetConnectTimer) {
 
 TEST_F(MetricsTest, TimeToScanNoStart) {
   EXPECT_CALL(library_,
-      SendToUMA("Network.Shill.Cellular.TimeToScan", _, _, _, _)).Times(0);
+              SendToUMA("Network.Shill.Cellular.TimeToScan", _, _, _, _))
+      .Times(0);
   const int kInterfaceIndex = 1;
   metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
   metrics_.NotifyDeviceScanFinished(kInterfaceIndex);
@@ -566,15 +547,14 @@ TEST_F(MetricsTest, TimeToScanIgnore) {
   // service.
   const int kInterfaceIndex = 1;
   metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
-  base::TimeDelta large_time_delta =
-      base::TimeDelta::FromMilliseconds(
-          Metrics::kMetricTimeToScanMillisecondsMax + 1);
+  base::TimeDelta large_time_delta = base::TimeDelta::FromMilliseconds(
+      Metrics::kMetricTimeToScanMillisecondsMax + 1);
   chromeos_metrics::TimerReporterMock* mock_time_to_scan_timer =
       new chromeos_metrics::TimerReporterMock;
   metrics_.set_time_to_scan_timer(kInterfaceIndex, mock_time_to_scan_timer);
   EXPECT_CALL(*mock_time_to_scan_timer, Stop()).WillOnce(Return(true));
-  EXPECT_CALL(*mock_time_to_scan_timer, GetElapsedTime(_)).
-      WillOnce(DoAll(SetArgPointee<0>(large_time_delta), Return(true)));
+  EXPECT_CALL(*mock_time_to_scan_timer, GetElapsedTime(_))
+      .WillOnce(DoAll(SetArgPointee<0>(large_time_delta), Return(true)));
   EXPECT_CALL(library_, SendToUMA(_, _, _, _, _)).Times(0);
   metrics_.NotifyDeviceScanStarted(kInterfaceIndex);
   metrics_.NotifyDeviceScanFinished(kInterfaceIndex);
@@ -582,13 +562,14 @@ TEST_F(MetricsTest, TimeToScanIgnore) {
 
 TEST_F(MetricsTest, Cellular3GPPRegistrationDelayedDropPosted) {
   EXPECT_CALL(library_,
-      SendEnumToUMA(Metrics::kMetricCellular3GPPRegistrationDelayedDrop,
-                    Metrics::kCellular3GPPRegistrationDelayedDropPosted,
-                    Metrics::kCellular3GPPRegistrationDelayedDropMax));
+              SendEnumToUMA(Metrics::kMetricCellular3GPPRegistrationDelayedDrop,
+                            Metrics::kCellular3GPPRegistrationDelayedDropPosted,
+                            Metrics::kCellular3GPPRegistrationDelayedDropMax));
   metrics_.Notify3GPPRegistrationDelayedDropPosted();
   Mock::VerifyAndClearExpectations(&library_);
 
-  EXPECT_CALL(library_,
+  EXPECT_CALL(
+      library_,
       SendEnumToUMA(Metrics::kMetricCellular3GPPRegistrationDelayedDrop,
                     Metrics::kCellular3GPPRegistrationDelayedDropCanceled,
                     Metrics::kCellular3GPPRegistrationDelayedDropMax));
@@ -597,23 +578,21 @@ TEST_F(MetricsTest, Cellular3GPPRegistrationDelayedDropPosted) {
 
 TEST_F(MetricsTest, CellularAutoConnect) {
   EXPECT_CALL(library_,
-      SendToUMA("Network.Shill.Cellular.TimeToConnect",
-                Ge(0),
-                Metrics::kMetricTimeToConnectMillisecondsMin,
-                Metrics::kMetricTimeToConnectMillisecondsMax,
-                Metrics::kMetricTimeToConnectMillisecondsNumBuckets));
-  EXPECT_CALL(library_,
-      SendToUMA(Metrics::kMetricCellularAutoConnectTotalTime,
-                Ge(0),
+              SendToUMA("Network.Shill.Cellular.TimeToConnect", Ge(0),
+                        Metrics::kMetricTimeToConnectMillisecondsMin,
+                        Metrics::kMetricTimeToConnectMillisecondsMax,
+                        Metrics::kMetricTimeToConnectMillisecondsNumBuckets));
+  EXPECT_CALL(
+      library_,
+      SendToUMA(Metrics::kMetricCellularAutoConnectTotalTime, Ge(0),
                 Metrics::kMetricCellularAutoConnectTotalTimeMin,
                 Metrics::kMetricCellularAutoConnectTotalTimeMax,
                 Metrics::kMetricCellularAutoConnectTotalTimeNumBuckets));
   EXPECT_CALL(library_,
-      SendToUMA(Metrics::kMetricCellularAutoConnectTries,
-                2,
-                Metrics::kMetricCellularAutoConnectTriesMin,
-                Metrics::kMetricCellularAutoConnectTriesMax,
-                Metrics::kMetricCellularAutoConnectTriesNumBuckets));
+              SendToUMA(Metrics::kMetricCellularAutoConnectTries, 2,
+                        Metrics::kMetricCellularAutoConnectTriesMin,
+                        Metrics::kMetricCellularAutoConnectTriesMax,
+                        Metrics::kMetricCellularAutoConnectTriesNumBuckets));
   const int kInterfaceIndex = 1;
   metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
   metrics_.NotifyDeviceConnectStarted(kInterfaceIndex, true);
@@ -623,26 +602,20 @@ TEST_F(MetricsTest, CellularAutoConnect) {
 
 TEST_F(MetricsTest, CellularDrop) {
   static const char* const kUMATechnologyStrings[] = {
-      kNetworkTechnology1Xrtt,
-      kNetworkTechnologyEdge,
-      kNetworkTechnologyEvdo,
-      kNetworkTechnologyGprs,
-      kNetworkTechnologyGsm,
-      kNetworkTechnologyHspa,
-      kNetworkTechnologyHspaPlus,
-      kNetworkTechnologyLte,
-      kNetworkTechnologyUmts,
-      "Unknown" };
+      kNetworkTechnology1Xrtt,    kNetworkTechnologyEdge,
+      kNetworkTechnologyEvdo,     kNetworkTechnologyGprs,
+      kNetworkTechnologyGsm,      kNetworkTechnologyHspa,
+      kNetworkTechnologyHspaPlus, kNetworkTechnologyLte,
+      kNetworkTechnologyUmts,     "Unknown"};
 
   const uint16_t signal_strength = 100;
   const int kInterfaceIndex = 1;
   metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
   for (size_t index = 0; index < arraysize(kUMATechnologyStrings); ++index) {
-    EXPECT_CALL(library_,
-        SendEnumToUMA(Metrics::kMetricCellularDrop,
-                      index,
-                      Metrics::kCellularDropTechnologyMax));
-    EXPECT_CALL(library_,
+    EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricCellularDrop, index,
+                                        Metrics::kCellularDropTechnologyMax));
+    EXPECT_CALL(
+        library_,
         SendToUMA(Metrics::kMetricCellularSignalStrengthBeforeDrop,
                   signal_strength,
                   Metrics::kMetricCellularSignalStrengthBeforeDropMin,
@@ -662,7 +635,8 @@ TEST_F(MetricsTest, CellularDeviceFailure) {
 }
 
 TEST_F(MetricsTest, CellularOutOfCreditsReason) {
-  EXPECT_CALL(library_,
+  EXPECT_CALL(
+      library_,
       SendEnumToUMA(Metrics::kMetricCellularOutOfCreditsReason,
                     Metrics::kCellularOutOfCreditsReasonConnectDisconnectLoop,
                     Metrics::kCellularOutOfCreditsReasonMax));
@@ -671,14 +645,15 @@ TEST_F(MetricsTest, CellularOutOfCreditsReason) {
   Mock::VerifyAndClearExpectations(&library_);
 
   EXPECT_CALL(library_,
-      SendEnumToUMA(Metrics::kMetricCellularOutOfCreditsReason,
-                    Metrics::kCellularOutOfCreditsReasonTxCongested,
-                    Metrics::kCellularOutOfCreditsReasonMax));
+              SendEnumToUMA(Metrics::kMetricCellularOutOfCreditsReason,
+                            Metrics::kCellularOutOfCreditsReasonTxCongested,
+                            Metrics::kCellularOutOfCreditsReasonMax));
   metrics_.NotifyCellularOutOfCredits(
       Metrics::kCellularOutOfCreditsReasonTxCongested);
   Mock::VerifyAndClearExpectations(&library_);
 
-  EXPECT_CALL(library_,
+  EXPECT_CALL(
+      library_,
       SendEnumToUMA(Metrics::kMetricCellularOutOfCreditsReason,
                     Metrics::kCellularOutOfCreditsReasonElongatedTimeWait,
                     Metrics::kCellularOutOfCreditsReasonMax));
@@ -716,8 +691,8 @@ TEST_F(MetricsTest, Logging) {
                        "(metrics) Sending metric fake-metric with value 2."));
   EXPECT_CALL(library_, SendToUMA(kMetricName, kMetricValue, kHistogramMin,
                                   kHistogramMax, kHistogramBuckets));
-  metrics_.SendToUMA(kMetricName, kMetricValue,
-                     kHistogramMin, kHistogramMax, kHistogramBuckets);
+  metrics_.SendToUMA(kMetricName, kMetricValue, kHistogramMin, kHistogramMax,
+                     kHistogramBuckets);
 
   ScopeLogger::GetInstance()->EnableScopesByName("-metrics");
   ScopeLogger::GetInstance()->set_verbose_level(0);
@@ -725,37 +700,33 @@ TEST_F(MetricsTest, Logging) {
 
 TEST_F(MetricsTest, NotifyServicesOnSameNetwork) {
   EXPECT_CALL(library_,
-      SendToUMA(Metrics::kMetricServicesOnSameNetwork,
-                1,
-                Metrics::kMetricServicesOnSameNetworkMin,
-                Metrics::kMetricServicesOnSameNetworkMax,
-                Metrics::kMetricServicesOnSameNetworkNumBuckets));
+              SendToUMA(Metrics::kMetricServicesOnSameNetwork, 1,
+                        Metrics::kMetricServicesOnSameNetworkMin,
+                        Metrics::kMetricServicesOnSameNetworkMax,
+                        Metrics::kMetricServicesOnSameNetworkNumBuckets));
   metrics_.NotifyServicesOnSameNetwork(1);
 }
 
 TEST_F(MetricsTest, NotifyUserInitiatedEvent) {
-  EXPECT_CALL(library_,
-      SendEnumToUMA(Metrics::kMetricUserInitiatedEvents,
-                    Metrics::kUserInitiatedEventWifiScan,
-                    Metrics::kUserInitiatedEventMax));
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricUserInitiatedEvents,
+                                      Metrics::kUserInitiatedEventWifiScan,
+                                      Metrics::kUserInitiatedEventMax));
   metrics_.NotifyUserInitiatedEvent(Metrics::kUserInitiatedEventWifiScan);
 }
 
 TEST_F(MetricsTest, NotifyWifiTxBitrate) {
-  EXPECT_CALL(library_,
-      SendToUMA(Metrics::kMetricWifiTxBitrate,
-                1,
-                Metrics::kMetricWifiTxBitrateMin,
-                Metrics::kMetricWifiTxBitrateMax,
-                Metrics::kMetricWifiTxBitrateNumBuckets));
+  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricWifiTxBitrate, 1,
+                                  Metrics::kMetricWifiTxBitrateMin,
+                                  Metrics::kMetricWifiTxBitrateMax,
+                                  Metrics::kMetricWifiTxBitrateNumBuckets));
   metrics_.NotifyWifiTxBitrate(1);
 }
 
 TEST_F(MetricsTest, NotifyUserInitiatedConnectionResult) {
   EXPECT_CALL(library_,
-      SendEnumToUMA(Metrics::kMetricWifiUserInitiatedConnectionResult,
-                    Metrics::kUserInitiatedConnectionResultSuccess,
-                    Metrics::kUserInitiatedConnectionResultMax));
+              SendEnumToUMA(Metrics::kMetricWifiUserInitiatedConnectionResult,
+                            Metrics::kUserInitiatedConnectionResultSuccess,
+                            Metrics::kUserInitiatedConnectionResultMax));
   metrics_.NotifyUserInitiatedConnectionResult(
       Metrics::kMetricWifiUserInitiatedConnectionResult,
       Metrics::kUserInitiatedConnectionResultSuccess);
@@ -763,27 +734,26 @@ TEST_F(MetricsTest, NotifyUserInitiatedConnectionResult) {
 
 TEST_F(MetricsTest, NotifyFallbackDNSTestResult) {
   EXPECT_CALL(library_,
-      SendEnumToUMA("Network.Shill.Wifi.FallbackDNSTestResult",
-                    Metrics::kFallbackDNSTestResultSuccess,
-                    Metrics::kFallbackDNSTestResultMax));
+              SendEnumToUMA("Network.Shill.Wifi.FallbackDNSTestResult",
+                            Metrics::kFallbackDNSTestResultSuccess,
+                            Metrics::kFallbackDNSTestResultMax));
   metrics_.NotifyFallbackDNSTestResult(Technology::kWifi,
                                        Metrics::kFallbackDNSTestResultSuccess);
 }
 
 TEST_F(MetricsTest, NotifyNetworkProblemDetected) {
   EXPECT_CALL(library_,
-      SendEnumToUMA("Network.Shill.Wifi.NetworkProblemDetected",
-                    Metrics::kNetworkProblemDNSFailure,
-                    Metrics::kNetworkProblemMax));
+              SendEnumToUMA("Network.Shill.Wifi.NetworkProblemDetected",
+                            Metrics::kNetworkProblemDNSFailure,
+                            Metrics::kNetworkProblemMax));
   metrics_.NotifyNetworkProblemDetected(Technology::kWifi,
                                         Metrics::kNetworkProblemDNSFailure);
 }
 
 TEST_F(MetricsTest, NotifyDhcpClientStatus) {
-  EXPECT_CALL(library_,
-      SendEnumToUMA("Network.Shill.DHCPClientStatus",
-                    Metrics::kDhcpClientStatusReboot,
-                    Metrics::kDhcpClientStatusMax));
+  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.DHCPClientStatus",
+                                      Metrics::kDhcpClientStatusReboot,
+                                      Metrics::kDhcpClientStatusMax));
   metrics_.NotifyDhcpClientStatus(Metrics::kDhcpClientStatusReboot);
 }
 
@@ -791,10 +761,9 @@ TEST_F(MetricsTest, DeregisterDevice) {
   const int kInterfaceIndex = 1;
   metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
 
-  EXPECT_CALL(library_,
-      SendEnumToUMA("Network.Shill.DeviceRemovedEvent",
-                    Metrics::kDeviceTechnologyTypeCellular,
-                    Metrics::kDeviceTechnologyTypeMax));
+  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.DeviceRemovedEvent",
+                                      Metrics::kDeviceTechnologyTypeCellular,
+                                      Metrics::kDeviceTechnologyTypeMax));
   metrics_.DeregisterDevice(kInterfaceIndex);
 }
 
@@ -821,10 +790,10 @@ TEST_F(MetricsTest, NotifyVerifyWakeOnWiFiSettingsResult) {
 TEST_F(MetricsTest, NotifyConnectedToServiceAfterWake) {
   const Metrics::WiFiConnectionStatusAfterWake status =
       Metrics::kWiFiConnectionStatusAfterWakeWoWOnConnected;
-  EXPECT_CALL(library_,
-              SendEnumToUMA("Network.Shill.WiFi.WiFiConnectionStatusAfterWake",
-                            status,
-                            Metrics::kWiFiConnectionStatusAfterWakeMax));
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA("Network.Shill.WiFi.WiFiConnectionStatusAfterWake", status,
+                    Metrics::kWiFiConnectionStatusAfterWakeMax));
   metrics_.NotifyConnectedToServiceAfterWake(status);
 }
 
@@ -834,8 +803,7 @@ TEST_F(MetricsTest, NotifySuspendDurationAfterWake) {
   int seconds_in_suspend = 1;
   EXPECT_CALL(library_,
               SendToUMA("Network.Shill.WiFi.SuspendDurationWoWOnConnected",
-                        seconds_in_suspend,
-                        Metrics::kSuspendDurationMin,
+                        seconds_in_suspend, Metrics::kSuspendDurationMin,
                         Metrics::kSuspendDurationMax,
                         Metrics::kSuspendDurationNumBuckets));
   metrics_.NotifySuspendDurationAfterWake(status, seconds_in_suspend);
@@ -872,8 +840,7 @@ TEST_F(MetricsTest, NotifySuspendActionsCompleted_Success) {
   metrics_.set_time_suspend_actions_timer(mock_time_suspend_actions_timer);
   metrics_.wake_reason_received_ = true;
   EXPECT_CALL(*mock_time_suspend_actions_timer, GetElapsedTime(_))
-      .WillOnce(
-          DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   EXPECT_CALL(*mock_time_suspend_actions_timer, HasStarted())
       .WillOnce(Return(true));
   EXPECT_CALL(library_,
@@ -896,8 +863,7 @@ TEST_F(MetricsTest, NotifySuspendActionsCompleted_Failure) {
   metrics_.set_time_suspend_actions_timer(mock_time_suspend_actions_timer);
   metrics_.wake_reason_received_ = true;
   EXPECT_CALL(*mock_time_suspend_actions_timer, GetElapsedTime(_))
-      .WillOnce(
-          DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   EXPECT_CALL(*mock_time_suspend_actions_timer, HasStarted())
       .WillOnce(Return(true));
   EXPECT_CALL(library_,
@@ -924,8 +890,7 @@ TEST_F(MetricsTest, NotifyDarkResumeActionsCompleted_Success) {
   const int non_zero_num_retries = 3;
   metrics_.dark_resume_scan_retries_ = non_zero_num_retries;
   EXPECT_CALL(*mock_time_dark_resume_actions_timer, GetElapsedTime(_))
-      .WillOnce(
-          DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   EXPECT_CALL(*mock_time_dark_resume_actions_timer, HasStarted())
       .WillOnce(Return(true));
   EXPECT_CALL(
@@ -963,8 +928,7 @@ TEST_F(MetricsTest, NotifyDarkResumeActionsCompleted_Failure) {
   const int non_zero_num_retries = 3;
   metrics_.dark_resume_scan_retries_ = non_zero_num_retries;
   EXPECT_CALL(*mock_time_dark_resume_actions_timer, GetElapsedTime(_))
-      .WillOnce(
-          DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   EXPECT_CALL(*mock_time_dark_resume_actions_timer, HasStarted())
       .WillOnce(Return(true));
   EXPECT_CALL(
@@ -1151,57 +1115,50 @@ TEST_F(MetricsTest, NotifyPortalDetectionMultiProbeResult) {
 
 TEST_F(MetricsTest, NotifyAp80211kSupport) {
   bool neighbor_list_supported = false;
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricAp80211kSupport,
-                            Metrics::kWiFiAp80211kNone,
-                            Metrics::kWiFiAp80211kMax));
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricAp80211kSupport,
+                                      Metrics::kWiFiAp80211kNone,
+                                      Metrics::kWiFiAp80211kMax));
   metrics_.NotifyAp80211kSupport(neighbor_list_supported);
 
   neighbor_list_supported = true;
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricAp80211kSupport,
-                            Metrics::kWiFiAp80211kNeighborList,
-                            Metrics::kWiFiAp80211kMax));
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricAp80211kSupport,
+                                      Metrics::kWiFiAp80211kNeighborList,
+                                      Metrics::kWiFiAp80211kMax));
   metrics_.NotifyAp80211kSupport(neighbor_list_supported);
 }
 
 TEST_F(MetricsTest, NotifyAp80211rSupport) {
   bool ota_ft_supported = false;
   bool otds_ft_supported = false;
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricAp80211rSupport,
-                            Metrics::kWiFiAp80211rNone,
-                            Metrics::kWiFiAp80211rMax));
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricAp80211rSupport,
+                                      Metrics::kWiFiAp80211rNone,
+                                      Metrics::kWiFiAp80211rMax));
   metrics_.NotifyAp80211rSupport(ota_ft_supported, otds_ft_supported);
 
   ota_ft_supported = true;
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricAp80211rSupport,
-                            Metrics::kWiFiAp80211rOTA,
-                            Metrics::kWiFiAp80211rMax));
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricAp80211rSupport,
+                                      Metrics::kWiFiAp80211rOTA,
+                                      Metrics::kWiFiAp80211rMax));
   metrics_.NotifyAp80211rSupport(ota_ft_supported, otds_ft_supported);
 
   otds_ft_supported = true;
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricAp80211rSupport,
-                            Metrics::kWiFiAp80211rOTDS,
-                            Metrics::kWiFiAp80211rMax));
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricAp80211rSupport,
+                                      Metrics::kWiFiAp80211rOTDS,
+                                      Metrics::kWiFiAp80211rMax));
   metrics_.NotifyAp80211rSupport(ota_ft_supported, otds_ft_supported);
 }
 
 TEST_F(MetricsTest, NotifyAp80211vDMSSupport) {
   bool dms_supported = false;
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricAp80211vDMSSupport,
-                            Metrics::kWiFiAp80211vNoDMS,
-                            Metrics::kWiFiAp80211vDMSMax));
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricAp80211vDMSSupport,
+                                      Metrics::kWiFiAp80211vNoDMS,
+                                      Metrics::kWiFiAp80211vDMSMax));
   metrics_.NotifyAp80211vDMSSupport(dms_supported);
 
   dms_supported = true;
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricAp80211vDMSSupport,
-                            Metrics::kWiFiAp80211vDMS,
-                            Metrics::kWiFiAp80211vDMSMax));
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricAp80211vDMSSupport,
+                                      Metrics::kWiFiAp80211vDMS,
+                                      Metrics::kWiFiAp80211vDMSMax));
   metrics_.NotifyAp80211vDMSSupport(dms_supported);
 }
 
@@ -1238,34 +1195,29 @@ TEST_F(MetricsTest, NotifyAp80211vBSSTransitionSupport) {
 }
 
 TEST_F(MetricsTest, NotifyApChannelSwitch) {
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricApChannelSwitch,
-                            Metrics::kWiFiApChannelSwitch24To24,
-                            Metrics::kWiFiApChannelSwitchMax));
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch,
+                                      Metrics::kWiFiApChannelSwitch24To24,
+                                      Metrics::kWiFiApChannelSwitchMax));
   metrics_.NotifyApChannelSwitch(2417, 2472);
 
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricApChannelSwitch,
-                            Metrics::kWiFiApChannelSwitch24To5,
-                            Metrics::kWiFiApChannelSwitchMax));
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch,
+                                      Metrics::kWiFiApChannelSwitch24To5,
+                                      Metrics::kWiFiApChannelSwitchMax));
   metrics_.NotifyApChannelSwitch(2462, 5805);
 
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricApChannelSwitch,
-                            Metrics::kWiFiApChannelSwitch5To24,
-                            Metrics::kWiFiApChannelSwitchMax));
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch,
+                                      Metrics::kWiFiApChannelSwitch5To24,
+                                      Metrics::kWiFiApChannelSwitchMax));
   metrics_.NotifyApChannelSwitch(5210, 2422);
 
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricApChannelSwitch,
-                            Metrics::kWiFiApChannelSwitch5To5,
-                            Metrics::kWiFiApChannelSwitchMax));
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch,
+                                      Metrics::kWiFiApChannelSwitch5To5,
+                                      Metrics::kWiFiApChannelSwitchMax));
   metrics_.NotifyApChannelSwitch(5500, 5320);
 
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricApChannelSwitch,
-                            Metrics::kWiFiApChannelSwitchUndef,
-                            Metrics::kWiFiApChannelSwitchMax));
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch,
+                                      Metrics::kWiFiApChannelSwitchUndef,
+                                      Metrics::kWiFiApChannelSwitchMax));
   metrics_.NotifyApChannelSwitch(3000, 3000);
 }
 
@@ -1283,10 +1235,8 @@ TEST_F(MetricsTest, CumulativeCellWifiTest) {
       "TimeOnlineWifi",
   };
   const std::vector<std::string> histogram_names = {
-      "Histogram.TimeOnlineAny",
-      "Histogram.TimeOnlineCell",
-      "Histogram.TimeOnlineWifi",
-      "Histogram.FractionOnlineCell",
+      "Histogram.TimeOnlineAny",      "Histogram.TimeOnlineCell",
+      "Histogram.TimeOnlineWifi",     "Histogram.FractionOnlineCell",
       "Histogram.FractionOnlineWifi",
   };
 
@@ -1294,19 +1244,13 @@ TEST_F(MetricsTest, CumulativeCellWifiTest) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath backing_path(temp_dir.GetPath());
   auto cumulative_metrics = std::make_unique<CumulativeMetricsMock>(
-      backing_path,
-      cumulative_names,
-      base::TimeDelta::FromSeconds(9999),
-      base::Bind(&Metrics::AccumulateTimeOnTechnology,
-                 &metrics_,
+      backing_path, cumulative_names, base::TimeDelta::FromSeconds(9999),
+      base::Bind(&Metrics::AccumulateTimeOnTechnology, &metrics_,
                  cumulative_names),
       base::TimeDelta::FromSeconds(999999),
-      base::Bind(&Metrics::ReportTimeOnTechnology,
-                 base::Unretained(&library_),
-                 histogram_names,
-                 10 /* histogram min (seconds) */,
-                 1000 /* max */,
-                 cumulative_names));
+      base::Bind(&Metrics::ReportTimeOnTechnology, base::Unretained(&library_),
+                 histogram_names, 10 /* histogram min (seconds) */,
+                 1000 /* max */, cumulative_names));
 
   // Create two services, to be passed to NotifyDefaultServiceChange.
   scoped_refptr<MockService> cell_service(new MockService(&manager_));
@@ -1317,35 +1261,30 @@ TEST_F(MetricsTest, CumulativeCellWifiTest) {
   metrics_.RegisterDevice(kWifiIndex, Technology::kWifi);
 
   // Set up mock elapsed times.
-  std::vector<int> times = { 1, 1, 1 };
+  std::vector<int> times = {1, 1, 1};
   cumulative_metrics->SetActiveTimes(times);
 
   // Accumulate samples.  The number of calls to AccumulateTimeOnTechnology
   // must not exceed the length of the |times| vector above.
 
-  EXPECT_CALL(*wifi_service, technology()).
-      WillOnce(Return(Technology::kWifi));
+  EXPECT_CALL(*wifi_service, technology()).WillOnce(Return(Technology::kWifi));
   metrics_.NotifyDefaultServiceChanged(wifi_service.get());
   Metrics::AccumulateTimeOnTechnology(&metrics_, cumulative_names,
                                       cumulative_metrics.get());
 
-  EXPECT_CALL(*cell_service, technology()).
-      WillOnce(Return(Technology::kCellular));
+  EXPECT_CALL(*cell_service, technology())
+      .WillOnce(Return(Technology::kCellular));
   metrics_.NotifyDefaultServiceChanged(cell_service.get());
   Metrics::AccumulateTimeOnTechnology(&metrics_, cumulative_names,
                                       cumulative_metrics.get());
 
-  EXPECT_CALL(*wifi_service, technology()).
-      WillOnce(Return(Technology::kWifi));
+  EXPECT_CALL(*wifi_service, technology()).WillOnce(Return(Technology::kWifi));
   metrics_.NotifyDefaultServiceChanged(wifi_service.get());
   Metrics::AccumulateTimeOnTechnology(&metrics_, cumulative_names,
                                       cumulative_metrics.get());
-  EXPECT_CALL(library_,
-              SendToUMA("Histogram.TimeOnlineAny", 3, _, _, _));
-  EXPECT_CALL(library_,
-              SendToUMA("Histogram.TimeOnlineCell", 1, _, _, _));
-  EXPECT_CALL(library_,
-              SendToUMA("Histogram.TimeOnlineWifi", 2, _, _, _));
+  EXPECT_CALL(library_, SendToUMA("Histogram.TimeOnlineAny", 3, _, _, _));
+  EXPECT_CALL(library_, SendToUMA("Histogram.TimeOnlineCell", 1, _, _, _));
+  EXPECT_CALL(library_, SendToUMA("Histogram.TimeOnlineWifi", 2, _, _, _));
   EXPECT_CALL(library_,
               SendEnumToUMA("Histogram.FractionOnlineCell", 1 * 100 / 3, _));
   EXPECT_CALL(library_,

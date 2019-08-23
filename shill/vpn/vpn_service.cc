@@ -35,12 +35,9 @@ VPNService::VPNService(Manager* manager, std::unique_ptr<VPNDriver> driver)
   SetConnectable(true);
   set_save_credentials(false);
   mutable_store()->RegisterDerivedString(
-          kPhysicalTechnologyProperty,
-          StringAccessor(
-              new CustomAccessor<VPNService, string>(
-                  this,
-                  &VPNService::GetPhysicalTechnologyProperty,
-                  nullptr)));
+      kPhysicalTechnologyProperty,
+      StringAccessor(new CustomAccessor<VPNService, string>(
+          this, &VPNService::GetPhysicalTechnologyProperty, nullptr)));
 }
 
 VPNService::~VPNService() = default;
@@ -67,7 +64,7 @@ bool VPNService::IsAlwaysOnVpn(const string& package) const {
   // For ArcVPN connections, the driver host is set to the package name of the
   // Android app that is creating the VPN connection.
   return driver_->GetProviderType() == string(kProviderArcVpn) &&
-      driver_->GetHost() == package;
+         driver_->GetHost() == package;
 }
 
 // static
@@ -75,14 +72,14 @@ string VPNService::CreateStorageIdentifier(const KeyValueStore& args,
                                            Error* error) {
   string host = args.LookupString(kProviderHostProperty, "");
   if (host.empty()) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kInvalidProperty, "Missing VPN host.");
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidProperty,
+                          "Missing VPN host.");
     return "";
   }
   string name = args.LookupString(kNameProperty, "");
   if (name.empty()) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kNotSupported, "Missing VPN name.");
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                          "Missing VPN name.");
     return "";
   }
   return SanitizeStorageIdentifier(
@@ -117,12 +114,12 @@ ConnectionConstRefPtr VPNService::GetUnderlyingConnection() const {
 
 bool VPNService::Load(StoreInterface* storage) {
   return Service::Load(storage) &&
-      driver_->Load(storage, GetStorageIdentifier());
+         driver_->Load(storage, GetStorageIdentifier());
 }
 
 bool VPNService::Save(StoreInterface* storage) {
   return Service::Save(storage) &&
-      driver_->Save(storage, GetStorageIdentifier(), save_credentials());
+         driver_->Save(storage, GetStorageIdentifier(), save_credentials());
 }
 
 bool VPNService::Unload() {
@@ -196,8 +193,8 @@ bool VPNService::SetNameProperty(const string& name, Error* error) {
   if (name == friendly_name()) {
     return false;
   }
-  LOG(INFO) << "Renaming service " << unique_name() << ": "
-            << friendly_name() << " -> " << name;
+  LOG(INFO) << "Renaming service " << unique_name() << ": " << friendly_name()
+            << " -> " << name;
 
   KeyValueStore* args = driver_->args();
   args->SetString(kNameProperty, name);

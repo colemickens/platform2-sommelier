@@ -33,8 +33,7 @@ class VirtualDevice : public Device {
 
   void Start(Error* error,
              const EnabledStateChangedCallback& callback) override;
-  void Stop(Error* error,
-            const EnabledStateChangedCallback& callback) override;
+  void Stop(Error* error, const EnabledStateChangedCallback& callback) override;
 
   virtual void UpdateIPConfig(const IPConfig::Properties& properties);
 

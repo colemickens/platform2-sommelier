@@ -12,7 +12,7 @@
 namespace shill {
 
 struct IPAddressLTIgnorePrefix {
-  bool operator () (const IPAddress& lhs, const IPAddress& rhs) const;
+  bool operator()(const IPAddress& lhs, const IPAddress& rhs) const;
 };
 
 // Stores a set of IP addresses used by ConnectionHealthChecker to check

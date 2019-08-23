@@ -18,18 +18,18 @@ namespace shill {
 // a |shill::ProtobufLiteCopyingFileInputStream|. Returns a new instance on
 // success. The caller owns the new instance, and must free it when done.
 // Returns nullptr on failure.
-google::protobuf::io::CopyingInputStreamAdaptor *
+google::protobuf::io::CopyingInputStreamAdaptor*
 protobuf_lite_file_input_stream(const std::string& file_path);
 
-
-class ProtobufLiteCopyingFileInputStream :
-    public google::protobuf::io::CopyingInputStream {
+class ProtobufLiteCopyingFileInputStream
+    : public google::protobuf::io::CopyingInputStream {
  public:
   // Takes ownership of |fd| and closes it when the object is deleted.
   explicit ProtobufLiteCopyingFileInputStream(int fd);
   ~ProtobufLiteCopyingFileInputStream() override;
   int Read(void* buffer, int size) override;
   int Skip(int count) override;
+
  private:
   int fd_;
   base::ScopedFD scoped_fd_closer_;

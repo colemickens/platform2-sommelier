@@ -14,8 +14,8 @@ namespace shill {
 class ControlInterface;
 class EventDispatcher;
 
-using ::testing::DefaultValue;
 using std::string;
+using ::testing::DefaultValue;
 
 MockDevice::MockDevice(Manager* manager,
                        const string& link_name,

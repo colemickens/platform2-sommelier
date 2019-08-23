@@ -106,12 +106,14 @@ class VPNDriver {
   void ClearMappedStringProperty(const size_t& index, Error* error);
   void ClearMappedStringsProperty(const size_t& index, Error* error);
   std::string GetMappedStringProperty(const size_t& index, Error* error);
-  std::vector<std::string> GetMappedStringsProperty(
-      const size_t& index, Error* error);
-  bool SetMappedStringProperty(
-      const size_t& index, const std::string& value, Error* error);
-  bool SetMappedStringsProperty(
-      const size_t& index, const std::vector<std::string>& value, Error* error);
+  std::vector<std::string> GetMappedStringsProperty(const size_t& index,
+                                                    Error* error);
+  bool SetMappedStringProperty(const size_t& index,
+                               const std::string& value,
+                               Error* error);
+  bool SetMappedStringsProperty(const size_t& index,
+                                const std::vector<std::string>& value,
+                                Error* error);
 
   base::WeakPtrFactory<VPNDriver> weak_ptr_factory_;
   Manager* manager_;

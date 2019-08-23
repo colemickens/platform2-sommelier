@@ -108,9 +108,8 @@ class ExternalTask : public RpcTaskDelegate {
 
   // Implements RpcTaskDelegate.
   void GetLogin(std::string* user, std::string* password) override;
-  void Notify(
-      const std::string& event,
-      const std::map<std::string, std::string>& details) override;
+  void Notify(const std::string& event,
+              const std::map<std::string, std::string>& details) override;
 
   // Called when the external process exits.
   void OnTaskDied(int exit_status);

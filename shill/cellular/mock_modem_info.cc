@@ -6,9 +6,9 @@
 
 namespace shill {
 
-MockModemInfo::MockModemInfo() :
-    ModemInfo(nullptr, nullptr, nullptr, nullptr),
-    mock_pending_activation_store_(nullptr) {}
+MockModemInfo::MockModemInfo()
+    : ModemInfo(nullptr, nullptr, nullptr, nullptr),
+      mock_pending_activation_store_(nullptr) {}
 
 MockModemInfo::MockModemInfo(ControlInterface* control,
                              EventDispatcher* dispatcher,
@@ -41,8 +41,8 @@ void MockModemInfo::SetMockMembers() {
     set_metrics(mock_metrics_.get());
   }
   if (manager() == nullptr) {
-    mock_manager_.reset(new MockManager(control_interface(), dispatcher(),
-                                        metrics()));
+    mock_manager_.reset(
+        new MockManager(control_interface(), dispatcher(), metrics()));
     set_manager(mock_manager_.get());
   }
 }

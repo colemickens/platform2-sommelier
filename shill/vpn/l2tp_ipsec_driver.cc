@@ -61,7 +61,7 @@ static auto kModuleLogScope = ScopeLogger::kVPN;
 static string ObjectID(L2TPIPSecDriver* l) {
   return l->GetServiceRpcIdentifier();
 }
-}
+}  // namespace Logging
 
 namespace {
 const char kL2TPIPSecIPSecTimeoutProperty[] = "L2TPIPsec.IPsecTimeout";
@@ -79,31 +79,31 @@ const char kL2TPIPSecRightProtoPortProperty[] = "L2TPIPsec.RightProtoPort";
 const char L2TPIPSecDriver::kL2TPIPSecVPNPath[] = "/usr/sbin/l2tpipsec_vpn";
 // static
 const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
-  { kL2tpIpsecAuthenticationType, 0 },
-  { kL2tpIpsecClientCertIdProperty, 0 },
-  { kL2tpIpsecClientCertSlotProperty, 0 },
-  { kL2tpIpsecIkeVersion, 0 },
-  { kL2tpIpsecPasswordProperty, Property::kCredential | Property::kWriteOnly },
-  { kL2tpIpsecPinProperty, Property::kCredential },
-  { kL2tpIpsecPskProperty, Property::kCredential | Property::kWriteOnly },
-  { kL2tpIpsecUserProperty, 0 },
-  { kProviderHostProperty, 0 },
-  { kProviderTypeProperty, 0 },
-  { kL2tpIpsecCaCertPemProperty, Property::kArray },
-  { kL2tpIpsecTunnelGroupProperty, 0 },
-  { kL2TPIPSecIPSecTimeoutProperty, 0 },
-  { kL2TPIPSecLeftProtoPortProperty, 0 },
-  { kL2TPIPSecLengthBitProperty, 0 },
-  { kL2TPIPSecPFSProperty, 0 },
-  { kL2TPIPSecRefusePapProperty, 0 },
-  { kL2TPIPSecRekeyProperty, 0 },
-  { kL2TPIPSecRequireAuthProperty, 0 },
-  { kL2TPIPSecRequireChapProperty, 0 },
-  { kL2TPIPSecRightProtoPortProperty, 0 },
-  { kL2tpIpsecXauthUserProperty, Property::kCredential | Property::kWriteOnly },
-  { kL2tpIpsecXauthPasswordProperty,
-    Property::kCredential | Property::kWriteOnly },
-  { kL2tpIpsecLcpEchoDisabledProperty, 0 },
+    {kL2tpIpsecAuthenticationType, 0},
+    {kL2tpIpsecClientCertIdProperty, 0},
+    {kL2tpIpsecClientCertSlotProperty, 0},
+    {kL2tpIpsecIkeVersion, 0},
+    {kL2tpIpsecPasswordProperty, Property::kCredential | Property::kWriteOnly},
+    {kL2tpIpsecPinProperty, Property::kCredential},
+    {kL2tpIpsecPskProperty, Property::kCredential | Property::kWriteOnly},
+    {kL2tpIpsecUserProperty, 0},
+    {kProviderHostProperty, 0},
+    {kProviderTypeProperty, 0},
+    {kL2tpIpsecCaCertPemProperty, Property::kArray},
+    {kL2tpIpsecTunnelGroupProperty, 0},
+    {kL2TPIPSecIPSecTimeoutProperty, 0},
+    {kL2TPIPSecLeftProtoPortProperty, 0},
+    {kL2TPIPSecLengthBitProperty, 0},
+    {kL2TPIPSecPFSProperty, 0},
+    {kL2TPIPSecRefusePapProperty, 0},
+    {kL2TPIPSecRekeyProperty, 0},
+    {kL2TPIPSecRequireAuthProperty, 0},
+    {kL2TPIPSecRequireChapProperty, 0},
+    {kL2TPIPSecRightProtoPortProperty, 0},
+    {kL2tpIpsecXauthUserProperty, Property::kCredential | Property::kWriteOnly},
+    {kL2tpIpsecXauthPasswordProperty,
+     Property::kCredential | Property::kWriteOnly},
+    {kL2tpIpsecLcpEchoDisabledProperty, 0},
 };
 
 L2TPIPSecDriver::L2TPIPSecDriver(Manager* manager,
@@ -171,9 +171,8 @@ void L2TPIPSecDriver::FailService(Service::ConnectFailure failure) {
 
 void L2TPIPSecDriver::Cleanup(Service::ConnectState state,
                               Service::ConnectFailure failure) {
-  SLOG(this, 2) << __func__ << "("
-                << Service::ConnectStateToString(state) << ", "
-                << Service::ConnectFailureToString(failure) << ")";
+  SLOG(this, 2) << __func__ << "(" << Service::ConnectStateToString(state)
+                << ", " << Service::ConnectFailureToString(failure) << ")";
   StopConnectTimeout();
   DeleteTemporaryFiles();
   if (external_task_) {
@@ -208,12 +207,10 @@ void L2TPIPSecDriver::DeleteTemporaryFiles() {
 
 bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error* error) {
   SLOG(this, 2) << __func__;
-  auto external_task_local =
-      std::make_unique<ExternalTask>(control_interface(),
-                                     process_manager_,
-                                     weak_ptr_factory_.GetWeakPtr(),
-                                     Bind(&L2TPIPSecDriver::OnL2TPIPSecVPNDied,
-                                          weak_ptr_factory_.GetWeakPtr()));
+  auto external_task_local = std::make_unique<ExternalTask>(
+      control_interface(), process_manager_, weak_ptr_factory_.GetWeakPtr(),
+      Bind(&L2TPIPSecDriver::OnL2TPIPSecVPNDied,
+           weak_ptr_factory_.GetWeakPtr()));
 
   vector<string> options;
   map<string, string> environment;  // No env vars passed.
@@ -247,8 +244,8 @@ bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error* error) {
 bool L2TPIPSecDriver::InitOptions(vector<string>* options, Error* error) {
   string vpnhost = args()->LookupString(kProviderHostProperty, "");
   if (vpnhost.empty()) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kInvalidArguments, "VPN host not specified.");
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "VPN host not specified.");
     return false;
   }
 
@@ -261,37 +258,37 @@ bool L2TPIPSecDriver::InitOptions(vector<string>* options, Error* error) {
   }
 
   options->push_back(base::StringPrintf("--remote_host=%s", vpnhost.c_str()));
-  options->push_back(base::StringPrintf("--pppd_plugin=%s",
-                                        PPPDaemon::kShimPluginPath));
+  options->push_back(
+      base::StringPrintf("--pppd_plugin=%s", PPPDaemon::kShimPluginPath));
   // Disable pppd from configuring IP addresses, routes, DNS.
   options->push_back("--nosystemconfig");
 
   // Accept a PEM CA certificate.
   InitPEMOptions(options);
 
-  AppendValueOption(kL2tpIpsecClientCertIdProperty,
-                    "--client_cert_id", options);
-  AppendValueOption(kL2tpIpsecClientCertSlotProperty,
-                    "--client_cert_slot", options);
+  AppendValueOption(kL2tpIpsecClientCertIdProperty, "--client_cert_id",
+                    options);
+  AppendValueOption(kL2tpIpsecClientCertSlotProperty, "--client_cert_slot",
+                    options);
   AppendValueOption(kL2tpIpsecPinProperty, "--user_pin", options);
   AppendValueOption(kL2tpIpsecUserProperty, "--user", options);
   AppendValueOption(kL2TPIPSecIPSecTimeoutProperty, "--ipsec_timeout", options);
-  AppendValueOption(kL2TPIPSecLeftProtoPortProperty,
-                    "--leftprotoport", options);
+  AppendValueOption(kL2TPIPSecLeftProtoPortProperty, "--leftprotoport",
+                    options);
   AppendFlag(kL2TPIPSecPFSProperty, "--pfs", "--nopfs", options);
   AppendFlag(kL2TPIPSecRekeyProperty, "--rekey", "--norekey", options);
-  AppendValueOption(kL2TPIPSecRightProtoPortProperty,
-                    "--rightprotoport", options);
-  AppendFlag(kL2TPIPSecRequireChapProperty,
-             "--require_chap", "--norequire_chap", options);
-  AppendFlag(kL2TPIPSecRefusePapProperty,
-             "--refuse_pap", "--norefuse_pap", options);
-  AppendFlag(kL2TPIPSecRequireAuthProperty,
-             "--require_authentication", "--norequire_authentication", options);
-  AppendFlag(kL2TPIPSecLengthBitProperty,
-             "--length_bit", "--nolength_bit", options);
-  AppendFlag(kL2tpIpsecLcpEchoDisabledProperty,
-             "--noppp_lcp_echo", "--ppp_lcp_echo", options);
+  AppendValueOption(kL2TPIPSecRightProtoPortProperty, "--rightprotoport",
+                    options);
+  AppendFlag(kL2TPIPSecRequireChapProperty, "--require_chap",
+             "--norequire_chap", options);
+  AppendFlag(kL2TPIPSecRefusePapProperty, "--refuse_pap", "--norefuse_pap",
+             options);
+  AppendFlag(kL2TPIPSecRequireAuthProperty, "--require_authentication",
+             "--norequire_authentication", options);
+  AppendFlag(kL2TPIPSecLengthBitProperty, "--length_bit", "--nolength_bit",
+             options);
+  AppendFlag(kL2tpIpsecLcpEchoDisabledProperty, "--noppp_lcp_echo",
+             "--ppp_lcp_echo", options);
   AppendValueOption(kL2tpIpsecTunnelGroupProperty, "--tunnel_group", options);
   if (SLOG_IS_ON(VPN, 0)) {
     options->push_back(base::StringPrintf(
@@ -307,12 +304,12 @@ bool L2TPIPSecDriver::InitPSKOptions(vector<string>* options, Error* error) {
         chmod(psk_file_.value().c_str(), S_IRUSR | S_IWUSR) ||
         base::WriteFile(psk_file_, psk.data(), psk.size()) !=
             static_cast<int>(psk.size())) {
-      Error::PopulateAndLog(
-          FROM_HERE, error, Error::kInternalError, "Unable to setup psk file.");
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
+                            "Unable to setup psk file.");
       return false;
     }
-    options->push_back(base::StringPrintf("--psk_file=%s",
-                                          psk_file_.value().c_str()));
+    options->push_back(
+        base::StringPrintf("--psk_file=%s", psk_file_.value().c_str()));
   }
   return true;
 }
@@ -330,8 +327,8 @@ bool L2TPIPSecDriver::InitPEMOptions(vector<string>* options) {
     LOG(ERROR) << "Unable to extract certificates from PEM string.";
     return false;
   }
-  options->push_back(base::StringPrintf("--server_ca_file=%s",
-                                        certfile.value().c_str()));
+  options->push_back(
+      base::StringPrintf("--server_ca_file=%s", certfile.value().c_str()));
   return true;
 }
 
@@ -343,9 +340,8 @@ bool L2TPIPSecDriver::InitXauthOptions(vector<string>* options, Error* error) {
     return true;
   }
   if (user.empty() || password.empty()) {
-      Error::PopulateAndLog(
-          FROM_HERE, error, Error::kInvalidArguments,
-          "XAUTH credentials are partially configured.");
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "XAUTH credentials are partially configured.");
     return false;
   }
   string xauth_credentials = user + "\n" + password + "\n";
@@ -355,22 +351,22 @@ bool L2TPIPSecDriver::InitXauthOptions(vector<string>* options, Error* error) {
       base::WriteFile(xauth_credentials_file_, xauth_credentials.data(),
                       xauth_credentials.size()) !=
           static_cast<int>(xauth_credentials.size())) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kInternalError,
-        "Unable to setup XAUTH credentials file.");
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
+                          "Unable to setup XAUTH credentials file.");
     return false;
   }
-  options->push_back(base::StringPrintf("--xauth_credentials_file=%s",
-                         xauth_credentials_file_.value().c_str()));
+  options->push_back(base::StringPrintf(
+      "--xauth_credentials_file=%s", xauth_credentials_file_.value().c_str()));
   return true;
 }
 
-bool L2TPIPSecDriver::AppendValueOption(
-    const string& property, const string& option, vector<string>* options) {
+bool L2TPIPSecDriver::AppendValueOption(const string& property,
+                                        const string& option,
+                                        vector<string>* options) {
   string value = args()->LookupString(property, "");
   if (!value.empty()) {
-    options->push_back(base::StringPrintf("%s=%s", option.c_str(),
-                                          value.c_str()));
+    options->push_back(
+        base::StringPrintf("%s=%s", option.c_str(), value.c_str()));
     return true;
   }
   return false;
@@ -420,8 +416,7 @@ Service::ConnectFailure L2TPIPSecDriver::TranslateExitStatusToFailure(
 
 void L2TPIPSecDriver::GetLogin(string* user, string* password) {
   LOG(INFO) << "Login requested.";
-  string user_property =
-      args()->LookupString(kL2tpIpsecUserProperty, "");
+  string user_property = args()->LookupString(kL2tpIpsecUserProperty, "");
   if (user_property.empty()) {
     LOG(ERROR) << "User not set.";
     return;
@@ -436,12 +431,11 @@ void L2TPIPSecDriver::GetLogin(string* user, string* password) {
   *password = password_property;
 }
 
-void L2TPIPSecDriver::Notify(
-    const string& reason, const map<string, string>& dict) {
+void L2TPIPSecDriver::Notify(const string& reason,
+                             const map<string, string>& dict) {
   LOG(INFO) << "IP configuration received: " << reason;
 
-  if (reason == kPPPReasonAuthenticating ||
-      reason == kPPPReasonAuthenticated) {
+  if (reason == kPPPReasonAuthenticating || reason == kPPPReasonAuthenticated) {
     // These are uninteresting intermediate states that do not indicate failure.
     return;
   }
@@ -496,9 +490,8 @@ void L2TPIPSecDriver::Notify(
 }
 
 bool L2TPIPSecDriver::IsPskRequired() const {
-  return
-    const_args()->LookupString(kL2tpIpsecPskProperty, "").empty() &&
-    const_args()->LookupString(kL2tpIpsecClientCertIdProperty, "").empty();
+  return const_args()->LookupString(kL2tpIpsecPskProperty, "").empty() &&
+         const_args()->LookupString(kL2tpIpsecClientCertIdProperty, "").empty();
 }
 
 KeyValueStore L2TPIPSecDriver::GetProvider(Error* error) {
@@ -511,10 +504,9 @@ KeyValueStore L2TPIPSecDriver::GetProvider(Error* error) {
 }
 
 void L2TPIPSecDriver::ReportConnectionMetrics() {
-  metrics()->SendEnumToUMA(
-      Metrics::kMetricVpnDriver,
-      Metrics::kVpnDriverL2tpIpsec,
-      Metrics::kMetricVpnDriverMax);
+  metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver,
+                           Metrics::kVpnDriverL2tpIpsec,
+                           Metrics::kMetricVpnDriverMax);
 
   // We output an enum for each of the authentication types specified,
   // even if more than one is set at the same time.
@@ -528,10 +520,9 @@ void L2TPIPSecDriver::ReportConnectionMetrics() {
     has_remote_authentication = true;
   }
   if (args()->LookupString(kL2tpIpsecPskProperty, "") != "") {
-    metrics()->SendEnumToUMA(
-        Metrics::kMetricVpnRemoteAuthenticationType,
-        Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk,
-        Metrics::kMetricVpnRemoteAuthenticationTypeMax);
+    metrics()->SendEnumToUMA(Metrics::kMetricVpnRemoteAuthenticationType,
+                             Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk,
+                             Metrics::kMetricVpnRemoteAuthenticationTypeMax);
     has_remote_authentication = true;
   }
   if (!has_remote_authentication) {
@@ -542,8 +533,7 @@ void L2TPIPSecDriver::ReportConnectionMetrics() {
   }
 
   bool has_user_authentication = false;
-  if (args()->LookupString(kL2tpIpsecClientCertIdProperty,
-                           "") != "") {
+  if (args()->LookupString(kL2tpIpsecClientCertIdProperty, "") != "") {
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeL2tpIpsecCertificate,
@@ -558,10 +548,9 @@ void L2TPIPSecDriver::ReportConnectionMetrics() {
     has_user_authentication = true;
   }
   if (!has_user_authentication) {
-    metrics()->SendEnumToUMA(
-        Metrics::kMetricVpnUserAuthenticationType,
-        Metrics::kVpnUserAuthenticationTypeL2tpIpsecNone,
-        Metrics::kMetricVpnUserAuthenticationTypeMax);
+    metrics()->SendEnumToUMA(Metrics::kMetricVpnUserAuthenticationType,
+                             Metrics::kVpnUserAuthenticationTypeL2tpIpsecNone,
+                             Metrics::kMetricVpnUserAuthenticationTypeMax);
   }
 }
 

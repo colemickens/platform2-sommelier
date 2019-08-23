@@ -31,18 +31,16 @@ using testing::Return;
 
 namespace shill {
 
-class ExternalTaskTest : public testing::Test,
-                         public RpcTaskDelegate {
+class ExternalTaskTest : public testing::Test, public RpcTaskDelegate {
  public:
   ExternalTaskTest()
       : weak_ptr_factory_(this),
-        death_callback_(
-          base::Bind(&ExternalTaskTest::TaskDiedCallback,
-                     weak_ptr_factory_.GetWeakPtr())),
-        external_task_(
-            new ExternalTask(&control_, &process_manager_,
-                             weak_ptr_factory_.GetWeakPtr(),
-                             death_callback_)),
+        death_callback_(base::Bind(&ExternalTaskTest::TaskDiedCallback,
+                                   weak_ptr_factory_.GetWeakPtr())),
+        external_task_(new ExternalTask(&control_,
+                                        &process_manager_,
+                                        weak_ptr_factory_.GetWeakPtr(),
+                                        death_callback_)),
         test_rpc_task_destroyed_(false) {}
 
   ~ExternalTaskTest() override = default;
@@ -81,8 +79,8 @@ class ExternalTaskTest : public testing::Test,
  protected:
   // Implements RpcTaskDelegate interface.
   MOCK_METHOD2(GetLogin, void(string* user, string* password));
-  MOCK_METHOD2(Notify, void(const string& reason,
-                            const map<string, string>& dict));
+  MOCK_METHOD2(Notify,
+               void(const string& reason, const map<string, string>& dict));
 
   MOCK_METHOD2(TaskDiedCallback, void(pid_t pid, int exit_status));
 
@@ -107,8 +105,7 @@ class TestRpcTask : public RpcTask {
 };
 
 TestRpcTask::TestRpcTask(ControlInterface* control, ExternalTaskTest* test)
-    : RpcTask(control, test),
-      test_(test) {
+    : RpcTask(control, test), test_(test) {
   test_->set_test_rpc_task_destroyed(false);
 }
 
@@ -158,14 +155,14 @@ TEST_F(ExternalTaskTest, Start) {
       .WillOnce(Return(-1))
       .WillOnce(Return(kPID));
   Error error;
-  EXPECT_FALSE(external_task_->Start(
-      base::FilePath(kCommand), kCommandOptions, kCommandEnv, false, &error));
+  EXPECT_FALSE(external_task_->Start(base::FilePath(kCommand), kCommandOptions,
+                                     kCommandEnv, false, &error));
   EXPECT_EQ(Error::kInternalError, error.type());
   EXPECT_FALSE(external_task_->rpc_task_);
 
   error.Reset();
-  EXPECT_TRUE(external_task_->Start(
-      base::FilePath(kCommand), kCommandOptions, kCommandEnv, false, &error));
+  EXPECT_TRUE(external_task_->Start(base::FilePath(kCommand), kCommandOptions,
+                                    kCommandEnv, false, &error));
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kPID, external_task_->pid_);
   EXPECT_NE(nullptr, external_task_->rpc_task_);
@@ -197,9 +194,7 @@ TEST_F(ExternalTaskTest, GetLogin) {
 
 TEST_F(ExternalTaskTest, Notify) {
   const string kReason("you may already have won!");
-  const map<string, string>& kArgs{
-    {"arg1", "val1"},
-    {"arg2", "val2"}};
+  const map<string, string>& kArgs{{"arg1", "val1"}, {"arg2", "val2"}};
   EXPECT_CALL(*this, GetLogin(_, _)).Times(0);
   EXPECT_CALL(*this, Notify(kReason, kArgs));
   external_task_->Notify(kReason, kArgs);

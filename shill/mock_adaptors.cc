@@ -10,12 +10,10 @@ namespace shill {
 const RpcIdentifier DeviceMockAdaptor::kRpcId("/device_rpc");
 // static
 const RpcIdentifier DeviceMockAdaptor::kRpcConnId =
-  RpcIdentifier("/device_rpc_conn");
+    RpcIdentifier("/device_rpc_conn");
 
 DeviceMockAdaptor::DeviceMockAdaptor()
-    : rpc_id_(kRpcId),
-      rpc_conn_id_(kRpcConnId) {
-}
+    : rpc_id_(kRpcId), rpc_conn_id_(kRpcConnId) {}
 
 DeviceMockAdaptor::~DeviceMockAdaptor() = default;
 
@@ -61,8 +59,7 @@ const RpcIdentifier RpcTaskMockAdaptor::kRpcId = "/rpc_task_rpc";
 const RpcIdentifier RpcTaskMockAdaptor::kRpcConnId = "/rpc_task_rpc_conn";
 
 RpcTaskMockAdaptor::RpcTaskMockAdaptor()
-    : rpc_id_(kRpcId),
-      rpc_conn_id_(kRpcConnId) {}
+    : rpc_id_(kRpcId), rpc_conn_id_(kRpcConnId) {}
 
 RpcTaskMockAdaptor::~RpcTaskMockAdaptor() = default;
 

@@ -26,11 +26,13 @@ class MockEapCredentials : public EapCredentials {
   MOCK_CONST_METHOD2(PopulateSupplicantProperties,
                      void(CertificateFile* certificate_file,
                           KeyValueStore* params));
-  MOCK_CONST_METHOD3(Save, void(
-      StoreInterface* store, const std::string& id, bool save_credentials));
+  MOCK_CONST_METHOD3(Save,
+                     void(StoreInterface* store,
+                          const std::string& id,
+                          bool save_credentials));
   MOCK_METHOD0(Reset, void());
-  MOCK_METHOD2(SetKeyManagement, bool(const std::string& key_management,
-                                      Error* error));
+  MOCK_METHOD2(SetKeyManagement,
+               bool(const std::string& key_management, Error* error));
   MOCK_CONST_METHOD0(identity, const std::string&());
   MOCK_CONST_METHOD0(key_management, const std::string&());
   MOCK_METHOD1(set_password, void(const std::string& password));

@@ -23,7 +23,7 @@ static auto kModuleLogScope = ScopeLogger::kWiFi;
 static string ObjectID(const TDLSManager* c) {
   return "(" + c->interface_name() + "-tdlsmanager)";
 }
-}
+}  // namespace Logging
 
 const int TDLSManager::kPeerDiscoveryCleanupTimeoutSeconds = 30;
 
@@ -42,8 +42,8 @@ string TDLSManager::PerformOperation(const string& peer_mac_address,
                                      Error* error) {
   CHECK(supplicant_interface_proxy_);
 
-  SLOG(this, 2) << "Processing TDLS command: " << operation
-                << " for peer " << peer_mac_address;
+  SLOG(this, 2) << "Processing TDLS command: " << operation << " for peer "
+                << peer_mac_address;
 
   bool success = false;
   if (operation == kTDLSDiscoverOperation) {
@@ -158,6 +158,5 @@ TDLSManager::PeerDiscoveryState TDLSManager::CheckDiscoveryState(
 
   return iter->second;
 }
-
 
 }  // namespace shill.

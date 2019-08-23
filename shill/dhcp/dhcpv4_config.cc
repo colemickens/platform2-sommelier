@@ -29,7 +29,7 @@ static string ObjectID(DHCPv4Config* d) {
   else
     return d->device_name();
 }
-}
+}  // namespace Logging
 
 // static
 const char DHCPv4Config::kDHCPCDPathFormatPID[] =
@@ -78,7 +78,6 @@ const char DHCPv4Config::kStatusRenew[] = "Renew";
 const char DHCPv4Config::kStatusRequest[] = "Request";
 const char DHCPv4Config::kType[] = "dhcp";
 
-
 DHCPv4Config::DHCPv4Config(ControlInterface* control_interface,
                            EventDispatcher* dispatcher,
                            DHCPProvider* provider,
@@ -120,11 +119,9 @@ void DHCPv4Config::ProcessEventSignal(const string& reason,
         << "Received NAK event for our gateway-ARP lease.";
     is_gateway_arp_active_ = false;
     return;
-  } else if (reason != kReasonBound &&
-      reason != kReasonRebind &&
-      reason != kReasonReboot &&
-      reason != kReasonRenew &&
-      reason != kReasonGatewayArp) {
+  } else if (reason != kReasonBound && reason != kReasonRebind &&
+             reason != kReasonReboot && reason != kReasonRenew &&
+             reason != kReasonGatewayArp) {
     LOG(WARNING) << "Event ignored.";
     return;
   }
@@ -198,12 +195,14 @@ void DHCPv4Config::CleanupClientState() {
 
   // Delete lease file if it is ephemeral.
   if (IsEphemeralLease()) {
-    base::DeleteFile(root().Append(
-        base::StringPrintf(DHCPProvider::kDHCPCDPathFormatLease,
-                           device_name().c_str())), false);
+    base::DeleteFile(
+        root().Append(base::StringPrintf(DHCPProvider::kDHCPCDPathFormatLease,
+                                         device_name().c_str())),
+        false);
   }
-  base::DeleteFile(root().Append(
-      base::StringPrintf(kDHCPCDPathFormatPID, device_name().c_str())), false);
+  base::DeleteFile(root().Append(base::StringPrintf(kDHCPCDPathFormatPID,
+                                                    device_name().c_str())),
+                   false);
   is_gateway_arp_active_ = false;
 }
 
@@ -276,8 +275,7 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
     const string& destination_as_string(*route_iterator);
     route_iterator++;
     IPAddress destination(IPAddress::kFamilyIPv4);
-    if (!destination.SetAddressAndPrefixFromString(
-             destination_as_string)) {
+    if (!destination.SetAddressAndPrefixFromString(destination_as_string)) {
       LOG(ERROR) << "In " << __func__ << ": Expected an IP address/prefix "
                  << "but got an unparsable: " << destination_as_string;
       return false;
@@ -297,7 +295,7 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
       // If a default route is provided in the classless parameters and
       // we don't already have one, apply this as the default route.
       SLOG(nullptr, 2) << "In " << __func__ << ": Setting default gateway to "
-                    << gateway_as_string;
+                       << gateway_as_string;
       CHECK(gateway.IntoString(&properties->gateway));
     } else {
       IPConfig::Route route;
@@ -306,7 +304,7 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
       CHECK(gateway.IntoString(&route.gateway));
       routes.push_back(route);
       SLOG(nullptr, 2) << "In " << __func__ << ": Adding route to to "
-                    << destination_as_string << " via " << gateway_as_string;
+                       << destination_as_string << " via " << gateway_as_string;
     }
   }
 
@@ -325,7 +323,7 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
   properties->address_family = IPAddress::kFamilyIPv4;
   string classless_static_routes;
   bool default_gateway_parse_error = false;
-  for (const auto it :  configuration.properties()) {
+  for (const auto it : configuration.properties()) {
     const string& key = it.first;
     const brillo::Any& value = it.second;
     SLOG(nullptr, 2) << "Processing key: " << key;

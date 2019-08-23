@@ -54,17 +54,11 @@ class DHCPv6ConfigTest : public PropertyStoreTest {
                                  kDeviceName,
                                  kLeaseFileSuffix)) {}
 
-  void SetUp() override {
-    config_->process_manager_ = &process_manager_;
-  }
+  void SetUp() override { config_->process_manager_ = &process_manager_; }
 
-  bool StartInstance(DHCPv6ConfigRefPtr config) {
-    return config->Start();
-  }
+  bool StartInstance(DHCPv6ConfigRefPtr config) { return config->Start(); }
 
-  void StopInstance() {
-    config_->Stop("In test");
-  }
+  void StopInstance() { config_->Stop("In test"); }
 
   DHCPv6ConfigRefPtr CreateMockMinijailConfig(const string& lease_suffix);
   DHCPv6ConfigRefPtr CreateRunningConfig(const string& lease_suffix);
@@ -89,10 +83,8 @@ const unsigned int DHCPv6ConfigTest::kTag = 77;
 
 DHCPv6ConfigRefPtr DHCPv6ConfigTest::CreateMockMinijailConfig(
     const string& lease_suffix) {
-  DHCPv6ConfigRefPtr config(new DHCPv6Config(control_interface(),
-                                             dispatcher(),
-                                             &provider_,
-                                             kDeviceName,
+  DHCPv6ConfigRefPtr config(new DHCPv6Config(control_interface(), dispatcher(),
+                                             &provider_, kDeviceName,
                                              lease_suffix));
   config->process_manager_ = &process_manager_;
 
@@ -101,10 +93,8 @@ DHCPv6ConfigRefPtr DHCPv6ConfigTest::CreateMockMinijailConfig(
 
 DHCPv6ConfigRefPtr DHCPv6ConfigTest::CreateRunningConfig(
     const string& lease_suffix) {
-  DHCPv6ConfigRefPtr config(new DHCPv6Config(control_interface(),
-                                             dispatcher(),
-                                             &provider_,
-                                             kDeviceName,
+  DHCPv6ConfigRefPtr config(new DHCPv6Config(control_interface(), dispatcher(),
+                                             &provider_, kDeviceName,
                                              lease_suffix));
   config->process_manager_ = &process_manager_;
   EXPECT_CALL(process_manager_,
@@ -180,21 +170,22 @@ TEST_F(DHCPv6ConfigTest, ParseConfiguration) {
   conf.SetString("UnknownKey", "UnknownValue");
 
   ASSERT_TRUE(config_->ParseConfiguration(conf));
-  const Stringmaps kAddresses = {{{kDhcpv6AddressProperty, kConfigIPAddress},
+  const Stringmaps kAddresses = {{
+      {kDhcpv6AddressProperty, kConfigIPAddress},
       {kDhcpv6LengthProperty, "128"},
       {kDhcpv6LeaseDurationSecondsProperty,
-          base::UintToString(kConfigIPAddressLeaseTime)},
+       base::UintToString(kConfigIPAddressLeaseTime)},
       {kDhcpv6PreferredLeaseDurationSecondsProperty,
-          base::UintToString(kConfigIPAddressPreferredLeaseTime)},
+       base::UintToString(kConfigIPAddressPreferredLeaseTime)},
   }};
   EXPECT_EQ(kAddresses, config_->properties_.dhcpv6_addresses);
-  const Stringmaps kDelegatedPrefixes =
-      {{{kDhcpv6AddressProperty, kConfigDelegatedPrefix},
+  const Stringmaps kDelegatedPrefixes = {{
+      {kDhcpv6AddressProperty, kConfigDelegatedPrefix},
       {kDhcpv6LengthProperty, base::UintToString(kConfigDelegatedPrefixLength)},
       {kDhcpv6LeaseDurationSecondsProperty,
-          base::UintToString(kConfigDelegatedPrefixLeaseTime)},
+       base::UintToString(kConfigDelegatedPrefixLeaseTime)},
       {kDhcpv6PreferredLeaseDurationSecondsProperty,
-          base::UintToString(kConfigDelegatedPrefixPreferredLeaseTime)},
+       base::UintToString(kConfigDelegatedPrefixPreferredLeaseTime)},
   }};
   EXPECT_EQ(kDelegatedPrefixes, config_->properties_.dhcpv6_delegated_prefixes);
   ASSERT_EQ(1, config_->properties_.dns_servers.size());
@@ -207,17 +198,15 @@ TEST_F(DHCPv6ConfigTest, ParseConfiguration) {
 }
 
 MATCHER_P(IsDHCPCDv6Args, has_lease_suffix, "") {
-  if (arg[0] != "-B" ||
-      arg[1] != "-q" ||
-      arg[2] != "-6" ||
-      arg[3] != "-a") {
+  if (arg[0] != "-B" || arg[1] != "-q" || arg[2] != "-6" || arg[3] != "-a") {
     return false;
   }
 
   int end_offset = 4;
 
-  string device_arg = has_lease_suffix ?
-      string(kDeviceName) + "=" + string(kLeaseFileSuffix) : kDeviceName;
+  string device_arg = has_lease_suffix
+                          ? string(kDeviceName) + "=" + string(kLeaseFileSuffix)
+                          : kDeviceName;
   return arg[end_offset] == device_arg;
 }
 
@@ -228,7 +217,6 @@ TEST_F(DHCPv6ConfigTest, StartDhcpcd) {
       .WillOnce(Return(-1));
   EXPECT_FALSE(StartInstance(config_));
 }
-
 
 namespace {
 
@@ -272,13 +260,11 @@ TEST_F(DHCPv6ConfigCallbackTest, ProcessEventSignalFail) {
 
 TEST_F(DHCPv6ConfigCallbackTest, ProcessEventSignalSuccess) {
   const std::string kOne = "1";
-  for (const auto& reason : { DHCPv6Config::kReasonBound,
-                              DHCPv6Config::kReasonRebind,
-                              DHCPv6Config::kReasonReboot,
-                              DHCPv6Config::kReasonRenew }) {
+  for (const auto& reason :
+       {DHCPv6Config::kReasonBound, DHCPv6Config::kReasonRebind,
+        DHCPv6Config::kReasonReboot, DHCPv6Config::kReasonRenew}) {
     KeyValueStore conf;
-    conf.SetString(DHCPv6Config::kConfigurationKeyIPAddress + kOne,
-                   kIPAddress);
+    conf.SetString(DHCPv6Config::kConfigurationKeyIPAddress + kOne, kIPAddress);
     const uint32_t kLeaseTime = 1;
     conf.SetUint(DHCPv6Config::kConfigurationKeyIPAddressLeaseTime + kOne,
                  kLeaseTime);
@@ -297,7 +283,7 @@ TEST_F(DHCPv6ConfigCallbackTest, ProcessEventSignalSuccess) {
         config_->properties().dhcpv6_addresses[0].find(kDhcpv6AddressProperty);
     ASSERT_TRUE(it != config_->properties().dhcpv6_addresses[0].end())
         << failure_message;
-    EXPECT_EQ("2001:db8:0:1::1", it->second)<< failure_message;
+    EXPECT_EQ("2001:db8:0:1::1", it->second) << failure_message;
   }
 }
 
@@ -350,14 +336,12 @@ TEST_F(DHCPv6ConfigCallbackTest, ProcessEventSignalUnknown) {
 }
 
 TEST_F(DHCPv6ConfigTest, StartSuccessEphemeral) {
-  DHCPv6ConfigRefPtr config =
-      CreateRunningConfig(kDeviceName);
+  DHCPv6ConfigRefPtr config = CreateRunningConfig(kDeviceName);
   StopRunningConfigAndExpect(config, false);
 }
 
 TEST_F(DHCPv6ConfigTest, StartSuccessPersistent) {
-  DHCPv6ConfigRefPtr config =
-      CreateRunningConfig(kLeaseFileSuffix);
+  DHCPv6ConfigRefPtr config = CreateRunningConfig(kLeaseFileSuffix);
   StopRunningConfigAndExpect(config, true);
 }
 

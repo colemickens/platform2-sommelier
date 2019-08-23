@@ -78,12 +78,11 @@ MATCHER_P(KeyValueStoreEq, value, "") {
   return match;
 }
 
-template<int error_argument_index>
+template <int error_argument_index>
 class SetErrorTypeInArgumentAction {
  public:
   SetErrorTypeInArgumentAction(Error::Type error_type, bool warn_default)
-      : error_type_(error_type),
-        warn_default_(warn_default) {}
+      : error_type_(error_type), warn_default_(warn_default) {}
 
   template <typename Result, typename ArgumentTuple>
   Result Perform(const ArgumentTuple& args) const {
@@ -95,8 +94,7 @@ class SetErrorTypeInArgumentAction {
     // likely that you want to instead set a non-default expectation on this
     // mock, to test the success code-paths.
     if (warn_default_)
-      LOG(WARNING) << "Default action taken: set error to "
-                   << error_type_
+      LOG(WARNING) << "Default action taken: set error to " << error_type_
                    << "(" << (error_arg ? error_arg->message() : "") << ")";
   }
 
@@ -113,18 +111,17 @@ class SetErrorTypeInArgumentAction {
 // argument to the function) must eventually be called with the result/error.
 // Mock classes for these proxies should by default return failure synchronously
 // so that callers do not expect the callback to be called.
-template<int error_argument_index>
+template <int error_argument_index>
 ::testing::PolymorphicAction<SetErrorTypeInArgumentAction<error_argument_index>>
 SetOperationFailedInArgumentAndWarn() {
   return ::testing::MakePolymorphicAction(
       SetErrorTypeInArgumentAction<error_argument_index>(
-          Error::kOperationFailed,
-          true));
+          Error::kOperationFailed, true));
 }
 
 // Use this action to set the (shill::Error*) output argument to any
 // shill::Error value on mock DBus proxy method calls.
-template<int error_argument_index>
+template <int error_argument_index>
 ::testing::PolymorphicAction<SetErrorTypeInArgumentAction<error_argument_index>>
 SetErrorTypeInArgument(Error::Type error_type) {
   return ::testing::MakePolymorphicAction(

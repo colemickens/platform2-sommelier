@@ -25,12 +25,10 @@ NetlinkPacket::NetlinkPacket(const unsigned char* buf, size_t len)
     return;
   }
 
-  payload_.reset(
-      new ByteString(buf + sizeof(header_), len - sizeof(header_)));
+  payload_.reset(new ByteString(buf + sizeof(header_), len - sizeof(header_)));
 }
 
-NetlinkPacket::~NetlinkPacket() {
-}
+NetlinkPacket::~NetlinkPacket() {}
 
 bool NetlinkPacket::IsValid() const {
   return payload_ != nullptr;
@@ -72,11 +70,10 @@ bool NetlinkPacket::ConsumeData(size_t len, void* data) {
   }
 
   memcpy(data, payload_->GetData() + consumed_bytes_, len);
-  consumed_bytes_ = std::min(payload_->GetLength(),
-                             consumed_bytes_ + NLMSG_ALIGN(len));
+  consumed_bytes_ =
+      std::min(payload_->GetLength(), consumed_bytes_ + NLMSG_ALIGN(len));
   return true;
 }
-
 
 const nlmsghdr& NetlinkPacket::GetNlMsgHeader() const {
   CHECK(IsValid());
@@ -92,11 +89,9 @@ bool NetlinkPacket::GetGenlMsgHdr(genlmsghdr* header) const {
 }
 
 MutableNetlinkPacket::MutableNetlinkPacket(const unsigned char* buf, size_t len)
-    : NetlinkPacket(buf, len) {
-}
+    : NetlinkPacket(buf, len) {}
 
-MutableNetlinkPacket::~MutableNetlinkPacket() {
-}
+MutableNetlinkPacket::~MutableNetlinkPacket() {}
 
 void MutableNetlinkPacket::ResetConsumedBytes() {
   set_consumed_bytes(0);

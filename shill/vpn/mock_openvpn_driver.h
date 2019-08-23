@@ -20,8 +20,9 @@ class MockOpenVPNDriver : public OpenVPNDriver {
 
   MOCK_METHOD1(OnReconnecting, void(ReconnectReason reason));
   MOCK_METHOD0(IdleService, void());
-  MOCK_METHOD2(FailService, void(Service::ConnectFailure failure,
-                                 const std::string& error_details));
+  MOCK_METHOD2(FailService,
+               void(Service::ConnectFailure failure,
+                    const std::string& error_details));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockOpenVPNDriver);

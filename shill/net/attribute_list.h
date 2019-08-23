@@ -46,7 +46,8 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
   // Instantiates an NetlinkAttribute of the appropriate type from |id|
   // using |factory|, initializes it from |value|, and adds it to |attributes_|.
   bool CreateAndInitAttribute(const NewFromIdMethod& factory,
-                              int id, const ByteString& value);
+                              int id,
+                              const ByteString& value);
 
   // Initializes the attribute |id| from the data in |value|.
   bool InitAttributeFromValue(int id, const ByteString& value);
@@ -60,13 +61,15 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
   // for each attribute.  If |method| returns false, the travesal is terminated
   // and false is returned.  If a malformed attribute entry is encountered,
   // this method also returns false.
-  static bool IterateAttributes(const ByteString& payload, size_t offset,
+  static bool IterateAttributes(const ByteString& payload,
+                                size_t offset,
                                 const AttributeMethod& method);
 
   // Decode an attribute list starting from |offset| within |payload|.  Use
   // |factory| to create each attribute object.
   bool Decode(const ByteString& payload,
-              size_t offset, const NewFromIdMethod& factory);
+              size_t offset,
+              const NewFromIdMethod& factory);
 
   // Returns the attributes as the payload portion of a netlink message
   // suitable for Sockets::Send.  Return value is empty on failure (or if no
@@ -146,9 +149,7 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
 class AttributeIdIterator {
  public:
   explicit AttributeIdIterator(const AttributeList& list)
-      : iter_(list.attributes_.begin()),
-        end_(list.attributes_.end()) {
-  }
+      : iter_(list.attributes_.begin()), end_(list.attributes_.end()) {}
   void Advance() { ++iter_; }
   bool AtEnd() const { return iter_ == end_; }
   int GetId() const { return iter_->first; }

@@ -83,9 +83,8 @@ class ProcessManagerTest : public testing::Test {
     CallbackObserver()
         : exited_callback_(
               Bind(&CallbackObserver::OnProcessExited, Unretained(this))),
-          termination_timeout_callback_(
-              Bind(&CallbackObserver::OnTerminationTimeout,
-                   Unretained(this))) {}
+          termination_timeout_callback_(Bind(
+              &CallbackObserver::OnTerminationTimeout, Unretained(this))) {}
     virtual ~CallbackObserver() = default;
 
     MOCK_METHOD1(OnProcessExited, void(int exit_status));
@@ -139,7 +138,7 @@ TEST_F(ProcessManagerTest, TerminateProcessExited) {
 TEST_F(ProcessManagerTest,
        StartProcessInMinijailWithPipesReturnsPidAndWatchesChild) {
   const string kProgram = "/usr/bin/dump";
-  const vector<string> kArgs = { "-b", "-g" };
+  const vector<string> kArgs = {"-b", "-g"};
   const string kUser = "user";
   const string kGroup = "group";
   const uint64_t kCapMask = 1;
@@ -158,11 +157,11 @@ TEST_F(ProcessManagerTest,
               RunPipesAndDestroy(_,  // minijail*
                                  IsProcessArgs(kProgram, kArgs),
                                  _,  // pid_t*
-                                 &stdin_fd,
-                                 &stdout_fd,
-                                 &stderr_fd))
+                                 &stdin_fd, &stdout_fd, &stderr_fd))
       .WillOnce(DoAll(SetArgPointee<2>(kPid), Return(true)));
-  struct std_file_descriptors std_fds { &stdin_fd, &stdout_fd, &stderr_fd };
+  struct std_file_descriptors std_fds {
+    &stdin_fd, &stdout_fd, &stderr_fd
+  };
   pid_t actual_pid = process_manager_->StartProcessInMinijailWithPipes(
       FROM_HERE, base::FilePath(kProgram), kArgs, kUser, kGroup, kCapMask,
       false, true, Callback<void(int)>(), std_fds);
@@ -173,7 +172,7 @@ TEST_F(ProcessManagerTest,
 TEST_F(ProcessManagerTest,
        StartProcessInMinijailWithPipesHandlesFailureOfDropRoot) {
   const string kProgram = "/usr/bin/dump";
-  const vector<string> kArgs = { "-b", "-g" };
+  const vector<string> kArgs = {"-b", "-g"};
   const string kUser = "user";
   const string kGroup = "group";
   const uint64_t kCapMask = 1;
@@ -183,7 +182,7 @@ TEST_F(ProcessManagerTest,
   EXPECT_CALL(minijail_,
               RunPipesAndDestroy(_, IsProcessArgs(kProgram, kArgs), _, _, _, _))
       .Times(0);
-  struct std_file_descriptors std_fds = { nullptr, nullptr, nullptr };
+  struct std_file_descriptors std_fds = {nullptr, nullptr, nullptr};
   pid_t actual_pid = process_manager_->StartProcessInMinijailWithPipes(
       FROM_HERE, base::FilePath(kProgram), kArgs, kUser, kGroup, kCapMask,
       false, false, Callback<void(int)>(), std_fds);
@@ -194,7 +193,7 @@ TEST_F(ProcessManagerTest,
 TEST_F(ProcessManagerTest,
        StartProcessInMinijailWithPipesHandlesFailureOfRunAndDestroy) {
   const string kProgram = "/usr/bin/dump";
-  const vector<string> kArgs = { "-b", "-g" };
+  const vector<string> kArgs = {"-b", "-g"};
   const string kUser = "user";
   const string kGroup = "group";
   const uint64_t kCapMask = 1;
@@ -205,7 +204,7 @@ TEST_F(ProcessManagerTest,
   EXPECT_CALL(minijail_,
               RunPipesAndDestroy(_, IsProcessArgs(kProgram, kArgs), _, _, _, _))
       .WillOnce(Return(false));
-  struct std_file_descriptors std_fds = { nullptr, nullptr, nullptr };
+  struct std_file_descriptors std_fds = {nullptr, nullptr, nullptr};
   pid_t actual_pid = process_manager_->StartProcessInMinijailWithPipes(
       FROM_HERE, base::FilePath(kProgram), kArgs, kUser, kGroup, kCapMask,
       false, false, Callback<void(int)>(), std_fds);
@@ -222,8 +221,7 @@ TEST_F(ProcessManagerTest, UpdateExitCallbackUpdatesCallback) {
   CallbackObserver new_observer;
   EXPECT_CALL(original_observer, OnProcessExited(_)).Times(0);
   EXPECT_TRUE(process_manager_->UpdateExitCallback(
-      kPid,
-      new_observer.exited_callback_));
+      kPid, new_observer.exited_callback_));
   EXPECT_CALL(new_observer, OnProcessExited(_)).Times(1);
   OnProcessExited(kPid, kExitStatus);
 }

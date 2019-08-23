@@ -19,7 +19,7 @@ static auto kModuleLogScope = ScopeLogger::kCellular;
 static string ObjectID(const PendingActivationStore* p) {
   return "(pending_activation_store)";
 }
-}
+}  // namespace Logging
 
 const char PendingActivationStore::kIccidGroupId[] = "iccid_list";
 const char PendingActivationStore::kMeidGroupId[] = "meid_list";
@@ -94,7 +94,7 @@ bool PendingActivationStore::InitStorage(const FilePath& storage_path) {
   std::unique_ptr<StoreInterface> storage = CreateStore(path);
   bool already_exists = !storage->IsEmpty();
   if (!storage->Open()) {
-    LOG(ERROR) << "Failed to open file at '" << path.AsUTF8Unsafe()  << "'";
+    LOG(ERROR) << "Failed to open file at '" << path.AsUTF8Unsafe() << "'";
     if (already_exists)
       storage->MarkAsCorrupted();
     return false;
@@ -106,8 +106,7 @@ bool PendingActivationStore::InitStorage(const FilePath& storage_path) {
 }
 
 PendingActivationStore::State PendingActivationStore::GetActivationState(
-    IdentifierType type,
-    const string& identifier) const {
+    IdentifierType type, const string& identifier) const {
   string formatted_identifier = FormattedIdentifier(type, identifier);
   SLOG(this, 2) << __func__ << ": " << formatted_identifier;
   if (!storage_) {
@@ -127,10 +126,9 @@ PendingActivationStore::State PendingActivationStore::GetActivationState(
   return static_cast<State>(state);
 }
 
-bool PendingActivationStore::SetActivationState(
-    IdentifierType type,
-    const string& identifier,
-    State state) {
+bool PendingActivationStore::SetActivationState(IdentifierType type,
+                                                const string& identifier,
+                                                State state) {
   SLOG(this, 2) << __func__ << ": State=" << StateToString(state) << ", "
                 << FormattedIdentifier(type, identifier);
   if (!storage_) {
@@ -142,12 +140,11 @@ bool PendingActivationStore::SetActivationState(
     return false;
   }
   if (state < 0 || state >= kStateMax) {
-    SLOG(this, 2) << "Cannot set state to \"" << StateToString(state)
-                  << "\"";
+    SLOG(this, 2) << "Cannot set state to \"" << StateToString(state) << "\"";
     return false;
   }
-  if (!storage_->SetInt(
-      IdentifierTypeToGroupId(type), identifier, static_cast<int>(state))) {
+  if (!storage_->SetInt(IdentifierTypeToGroupId(type), identifier,
+                        static_cast<int>(state))) {
     SLOG(this, 2) << "Failed to store the given identifier and state "
                   << "values.";
     return false;
@@ -157,8 +154,7 @@ bool PendingActivationStore::SetActivationState(
 
 bool PendingActivationStore::RemoveEntry(IdentifierType type,
                                          const std::string& identifier) {
-  SLOG(this, 2) << __func__ << ": "
-                << FormattedIdentifier(type, identifier);
+  SLOG(this, 2) << __func__ << ": " << FormattedIdentifier(type, identifier);
   if (!storage_) {
     LOG(ERROR) << "Underlying storage not initialized.";
     return false;

@@ -28,18 +28,15 @@ class SHILL_EXPORT ByteString {
   ByteString(const unsigned char* data, size_t length)
       : data_(data, data + length) {}
 
-  ByteString(const char* data, size_t length)
-      : data_(data, data + length) {}
+  ByteString(const char* data, size_t length) : data_(data, data + length) {}
 
   ByteString(const signed char* data, size_t length)
       : data_(data, data + length) {}
 
   ByteString(const std::string& data, bool copy_terminator)
-    : data_(reinterpret_cast<const unsigned char*>(data.c_str()),
-            reinterpret_cast<const unsigned char*>(data.c_str() +
-                                                    data.length() +
-                                                    (copy_terminator ?
-                                                     1 : 0))) {}
+      : data_(reinterpret_cast<const unsigned char*>(data.c_str()),
+              reinterpret_cast<const unsigned char*>(
+                  data.c_str() + data.length() + (copy_terminator ? 1 : 0))) {}
 
   unsigned char* GetData();
   const unsigned char* GetConstData() const;
@@ -122,7 +119,8 @@ class SHILL_EXPORT ByteString {
   // an array of unsigned integer of type T and applying |converter| on each
   // unsigned value of type T. Return true on success or false if the length
   // ByteString is not a multiple of sizeof(T).
-  template <typename T> bool ConvertByteOrderAsUIntArray(T (*converter)(T));
+  template <typename T>
+  bool ConvertByteOrderAsUIntArray(T (*converter)(T));
 
   std::vector<unsigned char> data_;
 };

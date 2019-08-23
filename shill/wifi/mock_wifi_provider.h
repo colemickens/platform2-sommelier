@@ -21,12 +21,11 @@ class MockWiFiProvider : public WiFiProvider {
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD1(CreateServicesFromProfile, void(const ProfileRefPtr& profile));
   MOCK_CONST_METHOD2(FindSimilarService,
-                     ServiceRefPtr(const KeyValueStore& args,
-                                   Error* error));
+                     ServiceRefPtr(const KeyValueStore& args, Error* error));
   MOCK_METHOD2(CreateTemporaryService,
                ServiceRefPtr(const KeyValueStore& args, Error* error));
-  MOCK_METHOD2(GetService, ServiceRefPtr(const KeyValueStore& args,
-                                         Error* error));
+  MOCK_METHOD2(GetService,
+               ServiceRefPtr(const KeyValueStore& args, Error* error));
   MOCK_METHOD1(FindServiceForEndpoint,
                WiFiServiceRefPtr(const WiFiEndpointConstRefPtr& endpoint));
   MOCK_METHOD1(OnEndpointAdded, void(const WiFiEndpointConstRefPtr& endpoint));

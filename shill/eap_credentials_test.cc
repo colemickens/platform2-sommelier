@@ -50,36 +50,18 @@ class EapCredentialsTest : public testing::Test {
   void SetCACertPEM(const vector<string>& ca_cert_pem) {
     eap_.ca_cert_pem_ = ca_cert_pem;
   }
-  void SetCertId(const string& cert_id) {
-    eap_.cert_id_ = cert_id;
-  }
-  void SetCACertId(const string& ca_cert_id) {
-    eap_.ca_cert_id_ = ca_cert_id;
-  }
-  void SetEap(const string& eap) {
-    eap_.eap_ = eap;
-  }
-  void SetIdentity(const string& identity) {
-    eap_.identity_ = identity;
-  }
-  void SetInnerEap(const string& inner_eap) {
-    eap_.inner_eap_ = inner_eap;
-  }
+  void SetCertId(const string& cert_id) { eap_.cert_id_ = cert_id; }
+  void SetCACertId(const string& ca_cert_id) { eap_.ca_cert_id_ = ca_cert_id; }
+  void SetEap(const string& eap) { eap_.eap_ = eap; }
+  void SetIdentity(const string& identity) { eap_.identity_ = identity; }
+  void SetInnerEap(const string& inner_eap) { eap_.inner_eap_ = inner_eap; }
   void SetTLSVersionMax(const string& tls_version_max) {
     eap_.tls_version_max_ = tls_version_max;
   }
-  void SetKeyId(const string& key_id) {
-    eap_.key_id_ = key_id;
-  }
-  const string& GetPassword() {
-    return eap_.password_;
-  }
-  void SetPassword(const string& password) {
-    eap_.password_ = password;
-  }
-  void SetPin(const string& pin) {
-    eap_.pin_ = pin;
-  }
+  void SetKeyId(const string& key_id) { eap_.key_id_ = key_id; }
+  const string& GetPassword() { return eap_.password_; }
+  void SetPassword(const string& password) { eap_.password_ = password; }
+  void SetPin(const string& pin) { eap_.pin_ = pin; }
   void SetUseProactiveKeyCaching(bool use_proactive_key_caching) {
     eap_.use_proactive_key_caching_ = use_proactive_key_caching;
   }
@@ -101,9 +83,7 @@ class EapCredentialsTest : public testing::Test {
            eap_.use_login_password_ == false;
   }
 
-  const string& GetKeyManagement() {
-    return eap_.key_management_;
-  }
+  const string& GetKeyManagement() { return eap_.key_management_; }
   bool SetEapPassword(const string& password, Error* error) {
     return eap_.SetEapPassword(password, error);
   }
@@ -197,12 +177,12 @@ TEST_F(EapCredentialsTest, IsEapAuthenticationProperty) {
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
       kEapAnonymousIdentityProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEapCertIdProperty));
-  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
-      kEapIdentityProperty));
+  EXPECT_TRUE(
+      EapCredentials::IsEapAuthenticationProperty(kEapIdentityProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEapKeyIdProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEapKeyMgmtProperty));
-  EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
-      kEapPasswordProperty));
+  EXPECT_TRUE(
+      EapCredentials::IsEapAuthenticationProperty(kEapPasswordProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(kEapPinProperty));
   EXPECT_TRUE(EapCredentials::IsEapAuthenticationProperty(
       kEapUseLoginPasswordProperty));
@@ -210,21 +190,21 @@ TEST_F(EapCredentialsTest, IsEapAuthenticationProperty) {
   // It's easier to test that this function returns TRUE in every situation
   // that it should, than to test all the cases it should return FALSE in.
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(kEapCaCertProperty));
-  EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
-      kEapCaCertIdProperty));
-  EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
-      kEapCaCertPemProperty));
+  EXPECT_FALSE(
+      EapCredentials::IsEapAuthenticationProperty(kEapCaCertIdProperty));
+  EXPECT_FALSE(
+      EapCredentials::IsEapAuthenticationProperty(kEapCaCertPemProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(kEapMethodProperty));
-  EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
-      kEapPhase2AuthProperty));
+  EXPECT_FALSE(
+      EapCredentials::IsEapAuthenticationProperty(kEapPhase2AuthProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
       kEapRemoteCertificationProperty));
-  EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
-      kEapSubjectMatchProperty));
+  EXPECT_FALSE(
+      EapCredentials::IsEapAuthenticationProperty(kEapSubjectMatchProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
       kEapUseProactiveKeyCachingProperty));
-  EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
-      kEapUseSystemCasProperty));
+  EXPECT_FALSE(
+      EapCredentials::IsEapAuthenticationProperty(kEapUseSystemCasProperty));
 }
 
 TEST_F(EapCredentialsTest, LoadAndSave) {
@@ -235,16 +215,16 @@ TEST_F(EapCredentialsTest, LoadAndSave) {
 
   const string kId("storage-id");
   const string kIdentity("Purple Onion");
-  EXPECT_CALL(store, GetCryptedString(
-      kId, EapCredentials::kStorageEapIdentity, _))
+  EXPECT_CALL(store,
+              GetCryptedString(kId, EapCredentials::kStorageEapIdentity, _))
       .WillOnce(DoAll(SetArgPointee<2>(kIdentity), Return(true)));
   const string kManagement("Shave and a Haircut");
-  EXPECT_CALL(store, GetString(
-      kId, EapCredentials::kStorageEapKeyManagement, _))
+  EXPECT_CALL(store,
+              GetString(kId, EapCredentials::kStorageEapKeyManagement, _))
       .WillOnce(DoAll(SetArgPointee<2>(kManagement), Return(true)));
   const string kPassword("Two Bits");
-  EXPECT_CALL(store, GetCryptedString(
-      kId, EapCredentials::kStorageEapPassword, _))
+  EXPECT_CALL(store,
+              GetCryptedString(kId, EapCredentials::kStorageEapPassword, _))
       .WillOnce(DoAll(SetArgPointee<2>(kPassword), Return(true)));
 
   eap_.Load(&store, kId);
@@ -259,8 +239,8 @@ TEST_F(EapCredentialsTest, LoadAndSave) {
   EXPECT_CALL(store, DeleteKey(_, _)).Times(AnyNumber());
   EXPECT_CALL(store, SetCryptedString(_, _, _)).Times(0);
   EXPECT_CALL(store, DeleteKey(kId, EapCredentials::kStorageEapIdentity));
-  EXPECT_CALL(store, SetString(
-      kId, EapCredentials::kStorageEapKeyManagement, kManagement));
+  EXPECT_CALL(store, SetString(kId, EapCredentials::kStorageEapKeyManagement,
+                               kManagement));
   EXPECT_CALL(store, DeleteKey(kId, EapCredentials::kStorageEapPassword));
   eap_.Save(&store, kId, false);
   Mock::VerifyAndClearExpectations(&store);
@@ -268,12 +248,12 @@ TEST_F(EapCredentialsTest, LoadAndSave) {
   // Authentication properties are deleted from the store if they are empty,
   // so we expect the fields that we haven't set to be deleted.
   EXPECT_CALL(store, DeleteKey(_, _)).Times(AnyNumber());
-  EXPECT_CALL(store, SetCryptedString(
-      kId, EapCredentials::kStorageEapIdentity, kIdentity));
-  EXPECT_CALL(store, SetString(
-      kId, EapCredentials::kStorageEapKeyManagement, kManagement));
-  EXPECT_CALL(store, SetCryptedString(
-      kId, EapCredentials::kStorageEapPassword, kPassword));
+  EXPECT_CALL(store, SetCryptedString(kId, EapCredentials::kStorageEapIdentity,
+                                      kIdentity));
+  EXPECT_CALL(store, SetString(kId, EapCredentials::kStorageEapKeyManagement,
+                               kManagement));
+  EXPECT_CALL(store, SetCryptedString(kId, EapCredentials::kStorageEapPassword,
+                                      kPassword));
   eap_.Save(&store, kId, true);
 }
 
@@ -351,9 +331,9 @@ TEST_F(EapCredentialsTest,
 
   const uint32_t kProactiveKeyCachingDisabled(0);
 
-  EXPECT_EQ(kProactiveKeyCachingDisabled,
-            params_.GetUint(
-                WPASupplicant::kNetworkPropertyEapProactiveKeyCaching));
+  EXPECT_EQ(
+      kProactiveKeyCachingDisabled,
+      params_.GetUint(WPASupplicant::kNetworkPropertyEapProactiveKeyCaching));
 }
 
 TEST_F(EapCredentialsTest,
@@ -367,9 +347,9 @@ TEST_F(EapCredentialsTest,
 
   const uint32_t kProactiveKeyCachingEnabled(1);
 
-  EXPECT_EQ(kProactiveKeyCachingEnabled,
-            params_.GetUint(
-                WPASupplicant::kNetworkPropertyEapProactiveKeyCaching));
+  EXPECT_EQ(
+      kProactiveKeyCachingEnabled,
+      params_.GetUint(WPASupplicant::kNetworkPropertyEapProactiveKeyCaching));
 }
 
 TEST_F(EapCredentialsTest,
@@ -383,9 +363,9 @@ TEST_F(EapCredentialsTest,
 
   const uint32_t kProactiveKeyCachingDisabled(0);
 
-  EXPECT_EQ(kProactiveKeyCachingDisabled,
-            params_.GetUint(
-                WPASupplicant::kNetworkPropertyEapProactiveKeyCaching));
+  EXPECT_EQ(
+      kProactiveKeyCachingDisabled,
+      params_.GetUint(WPASupplicant::kNetworkPropertyEapProactiveKeyCaching));
 }
 
 TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesUsingHardwareAuth) {
@@ -436,7 +416,7 @@ TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesUsingHardwareAuth) {
 }
 
 TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesPEM) {
-  const vector<string> kPemCert{ "-pem-certificate-here-" };
+  const vector<string> kPemCert{"-pem-certificate-here-"};
   SetCACertPEM(kPemCert);
   const string kPEMCertfile("/tmp/pem-cert");
   FilePath pem_cert(kPEMCertfile);
@@ -456,7 +436,7 @@ TEST_F(EapCredentialsTest, Reset) {
   EXPECT_TRUE(GetKeyManagement().empty());
   SetAnonymousIdentity("foo");
   SetCACertId("foo");
-  SetCACertPEM(vector<string>{ "foo" });
+  SetCACertPEM(vector<string>{"foo"});
   SetCertId("foo");
   SetEap("foo");
   SetIdentity("foo");

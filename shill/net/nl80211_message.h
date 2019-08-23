@@ -102,7 +102,6 @@ class SHILL_EXPORT AssociateMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(AssociateMessage);
 };
 
-
 class SHILL_EXPORT AuthenticateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
@@ -114,19 +113,16 @@ class SHILL_EXPORT AuthenticateMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(AuthenticateMessage);
 };
 
-
 class SHILL_EXPORT CancelRemainOnChannelMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  CancelRemainOnChannelMessage()
-      : Nl80211Message(kCommand, kCommandString) {}
+  CancelRemainOnChannelMessage() : Nl80211Message(kCommand, kCommandString) {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CancelRemainOnChannelMessage);
 };
-
 
 class SHILL_EXPORT ConnectMessage : public Nl80211Message {
  public:
@@ -139,7 +135,6 @@ class SHILL_EXPORT ConnectMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(ConnectMessage);
 };
 
-
 class SHILL_EXPORT DeauthenticateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
@@ -150,7 +145,6 @@ class SHILL_EXPORT DeauthenticateMessage : public Nl80211Message {
  private:
   DISALLOW_COPY_AND_ASSIGN(DeauthenticateMessage);
 };
-
 
 class SHILL_EXPORT DelInterfaceMessage : public Nl80211Message {
  public:
@@ -163,7 +157,6 @@ class SHILL_EXPORT DelInterfaceMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(DelInterfaceMessage);
 };
 
-
 class SHILL_EXPORT DeleteStationMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
@@ -174,7 +167,6 @@ class SHILL_EXPORT DeleteStationMessage : public Nl80211Message {
  private:
   DISALLOW_COPY_AND_ASSIGN(DeleteStationMessage);
 };
-
 
 class SHILL_EXPORT DisassociateMessage : public Nl80211Message {
  public:
@@ -187,7 +179,6 @@ class SHILL_EXPORT DisassociateMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(DisassociateMessage);
 };
 
-
 class SHILL_EXPORT DisconnectMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
@@ -198,7 +189,6 @@ class SHILL_EXPORT DisconnectMessage : public Nl80211Message {
  private:
   DISALLOW_COPY_AND_ASSIGN(DisconnectMessage);
 };
-
 
 class SHILL_EXPORT FrameTxStatusMessage : public Nl80211Message {
  public:
@@ -266,7 +256,6 @@ class SHILL_EXPORT GetWiphyMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(GetWiphyMessage);
 };
 
-
 class SHILL_EXPORT JoinIbssMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
@@ -277,7 +266,6 @@ class SHILL_EXPORT JoinIbssMessage : public Nl80211Message {
  private:
   DISALLOW_COPY_AND_ASSIGN(JoinIbssMessage);
 };
-
 
 class SHILL_EXPORT MichaelMicFailureMessage : public Nl80211Message {
  public:
@@ -290,7 +278,6 @@ class SHILL_EXPORT MichaelMicFailureMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(MichaelMicFailureMessage);
 };
 
-
 class SHILL_EXPORT NewScanResultsMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
@@ -301,7 +288,6 @@ class SHILL_EXPORT NewScanResultsMessage : public Nl80211Message {
  private:
   DISALLOW_COPY_AND_ASSIGN(NewScanResultsMessage);
 };
-
 
 class SHILL_EXPORT NewStationMessage : public Nl80211Message {
  public:
@@ -314,7 +300,6 @@ class SHILL_EXPORT NewStationMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(NewStationMessage);
 };
 
-
 class SHILL_EXPORT NewWiphyMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
@@ -325,7 +310,6 @@ class SHILL_EXPORT NewWiphyMessage : public Nl80211Message {
  private:
   DISALLOW_COPY_AND_ASSIGN(NewWiphyMessage);
 };
-
 
 class SHILL_EXPORT NotifyCqmMessage : public Nl80211Message {
  public:
@@ -338,7 +322,6 @@ class SHILL_EXPORT NotifyCqmMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(NotifyCqmMessage);
 };
 
-
 class SHILL_EXPORT PmksaCandidateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
@@ -349,7 +332,6 @@ class SHILL_EXPORT PmksaCandidateMessage : public Nl80211Message {
  private:
   DISALLOW_COPY_AND_ASSIGN(PmksaCandidateMessage);
 };
-
 
 class SHILL_EXPORT RegBeaconHintMessage : public Nl80211Message {
  public:
@@ -362,7 +344,6 @@ class SHILL_EXPORT RegBeaconHintMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(RegBeaconHintMessage);
 };
 
-
 class SHILL_EXPORT RegChangeMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
@@ -373,7 +354,6 @@ class SHILL_EXPORT RegChangeMessage : public Nl80211Message {
  private:
   DISALLOW_COPY_AND_ASSIGN(RegChangeMessage);
 };
-
 
 class SHILL_EXPORT RemainOnChannelMessage : public Nl80211Message {
  public:
@@ -386,7 +366,6 @@ class SHILL_EXPORT RemainOnChannelMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(RemainOnChannelMessage);
 };
 
-
 class SHILL_EXPORT RoamMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
@@ -397,7 +376,6 @@ class SHILL_EXPORT RoamMessage : public Nl80211Message {
  private:
   DISALLOW_COPY_AND_ASSIGN(RoamMessage);
 };
-
 
 class SHILL_EXPORT ScanAbortedMessage : public Nl80211Message {
  public:
@@ -410,7 +388,6 @@ class SHILL_EXPORT ScanAbortedMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(ScanAbortedMessage);
 };
 
-
 class SHILL_EXPORT GetScanMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
@@ -421,7 +398,6 @@ class SHILL_EXPORT GetScanMessage : public Nl80211Message {
  private:
   DISALLOW_COPY_AND_ASSIGN(GetScanMessage);
 };
-
 
 class SHILL_EXPORT TriggerScanMessage : public Nl80211Message {
  public:
@@ -434,7 +410,6 @@ class SHILL_EXPORT TriggerScanMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(TriggerScanMessage);
 };
 
-
 class SHILL_EXPORT UnknownNl80211Message : public Nl80211Message {
  public:
   explicit UnknownNl80211Message(uint8_t command)
@@ -444,19 +419,16 @@ class SHILL_EXPORT UnknownNl80211Message : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(UnknownNl80211Message);
 };
 
-
 class SHILL_EXPORT UnprotDeauthenticateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  UnprotDeauthenticateMessage()
-      : Nl80211Message(kCommand, kCommandString) {}
+  UnprotDeauthenticateMessage() : Nl80211Message(kCommand, kCommandString) {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UnprotDeauthenticateMessage);
 };
-
 
 class SHILL_EXPORT UnprotDisassociateMessage : public Nl80211Message {
  public:
@@ -518,7 +490,7 @@ class SHILL_EXPORT SurveyResultsMessage : public Nl80211Message {
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  SurveyResultsMessage(): Nl80211Message(kCommand, kCommandString) {}
+  SurveyResultsMessage() : Nl80211Message(kCommand, kCommandString) {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SurveyResultsMessage);

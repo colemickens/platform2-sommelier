@@ -55,9 +55,7 @@ class VPNServiceTest : public testing::Test {
         .WillByDefault(ReturnRef(ipconfig_rpc_identifier_));
   }
 
-  void TearDown() override {
-    EXPECT_CALL(device_info_, FlushAddresses(0));
-  }
+  void TearDown() override { EXPECT_CALL(device_info_, FlushAddresses(0)); }
 
   void SetServiceState(Service::ConnectState state) {
     service_->state_ = state;
@@ -71,9 +69,7 @@ class VPNServiceTest : public testing::Test {
     service_->connectable_ = connectable;
   }
 
-  const char* GetAutoConnOffline() {
-    return Service::kAutoConnOffline;
-  }
+  const char* GetAutoConnOffline() { return Service::kAutoConnOffline; }
 
   const char* GetAutoConnNeverConnected() {
     return VPNService::kAutoConnNeverConnected;
@@ -199,8 +195,7 @@ TEST_F(VPNServiceTest, Load) {
   static const char kStorageID[] = "storage-id";
   service_->set_storage_id(kStorageID);
   EXPECT_CALL(storage, ContainsGroup(kStorageID)).WillOnce(Return(true));
-  EXPECT_CALL(*driver_, Load(&storage, kStorageID))
-      .WillOnce(Return(true));
+  EXPECT_CALL(*driver_, Load(&storage, kStorageID)).WillOnce(Return(true));
   EXPECT_TRUE(service_->Load(&storage));
 }
 
@@ -356,8 +351,7 @@ TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyFailsIfNoCarrier) {
   EXPECT_EQ(connection_, service_->connection());
 
   // Simulate an error by causing GetPrimaryPhysicalService() to return nullptr.
-  EXPECT_CALL(manager_, GetPrimaryPhysicalService())
-      .WillOnce(Return(nullptr));
+  EXPECT_CALL(manager_, GetPrimaryPhysicalService()).WillOnce(Return(nullptr));
 
   Error error;
   EXPECT_EQ("", service_->GetPhysicalTechnologyProperty(&error));
@@ -365,13 +359,12 @@ TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyFailsIfNoCarrier) {
 }
 
 TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi) {
-  EXPECT_CALL(*connection_, technology())
-      .Times(0);
+  EXPECT_CALL(*connection_, technology()).Times(0);
   service_->SetConnection(connection_);
   EXPECT_EQ(connection_, service_->connection());
 
   scoped_refptr<NiceMock<MockConnection>> lower_connection =
-    new NiceMock<MockConnection>(&device_info_);
+      new NiceMock<MockConnection>(&device_info_);
   EXPECT_CALL(manager_, GetPrimaryPhysicalService())
       .WillOnce(Return(ByMove(CreateUnderlyingService(lower_connection))));
 
@@ -397,8 +390,7 @@ TEST_F(VPNServiceTest, GetTethering) {
   EXPECT_EQ(connection_, service_->connection());
 
   // Simulate an error by causing GetPrimaryPhysicalService() to return nullptr.
-  EXPECT_CALL(manager_, GetPrimaryPhysicalService())
-      .WillOnce(Return(nullptr));
+  EXPECT_CALL(manager_, GetPrimaryPhysicalService()).WillOnce(Return(nullptr));
 
   {
     Error error;
@@ -407,7 +399,7 @@ TEST_F(VPNServiceTest, GetTethering) {
   }
 
   scoped_refptr<NiceMock<MockConnection>> lower_connection =
-    new NiceMock<MockConnection>(&device_info_);
+      new NiceMock<MockConnection>(&device_info_);
 
   EXPECT_CALL(*connection_, tethering()).Times(0);
 

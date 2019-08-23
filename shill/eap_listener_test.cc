@@ -51,8 +51,12 @@ class EapListenerTest : public testing::Test {
     }
   }
 
-  ssize_t SimulateRecvFrom(int sockfd, void* buf, size_t len, int flags,
-                           struct sockaddr* src_addr, socklen_t* addrlen);
+  ssize_t SimulateRecvFrom(int sockfd,
+                           void* buf,
+                           size_t len,
+                           int flags,
+                           struct sockaddr* src_addr,
+                           socklen_t* addrlen);
 
   MOCK_METHOD0(ReceiveCallback, void());
 
@@ -84,17 +88,22 @@ class EapListenerTest : public testing::Test {
 const int EapListenerTest::kInterfaceIndex = 123;
 const int EapListenerTest::kSocketFD = 456;
 const uint8_t EapListenerTest::kEapPacketPayload[] = {
-  eap_protocol::kIeee8021xEapolVersion2,
-  eap_protocol::kIIeee8021xTypeEapPacket,
-  0x00, 0x00,  // Payload length (should be 5, but unparsed by EapListener).
-  eap_protocol::kEapCodeRequest,
-  0x00,        // Identifier (unparsed).
-  0x00, 0x00,  // Packet length (should be 5, but unparsed by EapListener).
-  0x01         // Request type: Identity (not parsed by EapListener).
+    eap_protocol::kIeee8021xEapolVersion2,
+    eap_protocol::kIIeee8021xTypeEapPacket,
+    0x00,
+    0x00,  // Payload length (should be 5, but unparsed by EapListener).
+    eap_protocol::kEapCodeRequest,
+    0x00,  // Identifier (unparsed).
+    0x00,
+    0x00,  // Packet length (should be 5, but unparsed by EapListener).
+    0x01   // Request type: Identity (not parsed by EapListener).
 };
 
-ssize_t EapListenerTest::SimulateRecvFrom(int sockfd, void* buf, size_t len,
-                                          int flags, struct sockaddr* src_addr,
+ssize_t EapListenerTest::SimulateRecvFrom(int sockfd,
+                                          void* buf,
+                                          size_t len,
+                                          int flags,
+                                          struct sockaddr* src_addr,
                                           socklen_t* addrlen) {
   // Mimic behavior of the real recvfrom -- copy no more than requested.
   int copy_length = std::min(recvfrom_reply_data_.GetLength(), len);
@@ -106,13 +115,14 @@ MATCHER_P(IsEapLinkAddress, interface_index, "") {
   const struct sockaddr_ll* socket_address =
       reinterpret_cast<const struct sockaddr_ll*>(arg);
   return socket_address->sll_family == AF_PACKET &&
-      socket_address->sll_protocol == htons(ETH_P_PAE) &&
-      socket_address->sll_ifindex == interface_index;
+         socket_address->sll_protocol == htons(ETH_P_PAE) &&
+         socket_address->sll_ifindex == interface_index;
 }
 
 void EapListenerTest::StartListenerWithFD(int fd) {
-  EXPECT_CALL(*sockets_, Socket(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC,
-      htons(ETH_P_PAE))).WillOnce(Return(fd));
+  EXPECT_CALL(*sockets_,
+              Socket(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_PAE)))
+      .WillOnce(Return(fd));
   EXPECT_CALL(*sockets_, SetNonBlocking(fd)).WillOnce(Return(0));
   EXPECT_CALL(*sockets_,
               Bind(fd, IsEapLinkAddress(kInterfaceIndex), sizeof(sockaddr_ll)))
@@ -131,9 +141,9 @@ TEST_F(EapListenerTest, Constructor) {
 
 TEST_F(EapListenerTest, SocketOpenFail) {
   ScopedMockLog log;
-  EXPECT_CALL(log,
-      Log(logging::LOG_ERROR, _,
-          HasSubstr("Could not create EAP listener socket"))).Times(1);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("Could not create EAP listener socket")))
+      .Times(1);
 
   EXPECT_CALL(*sockets_, Socket(PF_PACKET, _, htons(ETH_P_PAE)))
       .WillOnce(Return(-1));
@@ -142,9 +152,9 @@ TEST_F(EapListenerTest, SocketOpenFail) {
 
 TEST_F(EapListenerTest, SocketNonBlockingFail) {
   ScopedMockLog log;
-  EXPECT_CALL(log,
-      Log(logging::LOG_ERROR, _,
-          HasSubstr("Could not set socket to be non-blocking"))).Times(1);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("Could not set socket to be non-blocking")))
+      .Times(1);
 
   EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(kSocketFD));
   EXPECT_CALL(*sockets_, SetNonBlocking(kSocketFD)).WillOnce(Return(-1));
@@ -153,9 +163,9 @@ TEST_F(EapListenerTest, SocketNonBlockingFail) {
 
 TEST_F(EapListenerTest, SocketBindFail) {
   ScopedMockLog log;
-  EXPECT_CALL(log,
-      Log(logging::LOG_ERROR, _,
-          HasSubstr("Could not bind socket to interface"))).Times(1);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("Could not bind socket to interface")))
+      .Times(1);
 
   EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(kSocketFD));
   EXPECT_CALL(*sockets_, SetNonBlocking(kSocketFD)).WillOnce(Return(0));
@@ -182,7 +192,6 @@ TEST_F(EapListenerTest, Stop) {
   EXPECT_EQ(-1, GetSocket());
 }
 
-
 TEST_F(EapListenerTest, ReceiveFail) {
   StartListener();
   EXPECT_CALL(*sockets_,
@@ -194,8 +203,8 @@ TEST_F(EapListenerTest, ReceiveFail) {
   ScopedMockLog log;
   // RecvFrom returns an error.
   EXPECT_CALL(log,
-      Log(logging::LOG_ERROR, _,
-          HasSubstr("Socket recvfrom failed"))).Times(1);
+              Log(logging::LOG_ERROR, _, HasSubstr("Socket recvfrom failed")))
+      .Times(1);
   ReceiveRequest();
 }
 
@@ -210,16 +219,16 @@ TEST_F(EapListenerTest, ReceiveEmpty) {
 
 TEST_F(EapListenerTest, ReceiveShort) {
   StartListener();
-  recvfrom_reply_data_ = ByteString(kEapPacketPayload,
-                                    GetMaxEapPacketLength() - 1);
+  recvfrom_reply_data_ =
+      ByteString(kEapPacketPayload, GetMaxEapPacketLength() - 1);
   EXPECT_CALL(*sockets_,
               RecvFrom(kSocketFD, _, GetMaxEapPacketLength(), 0, _, _))
       .WillOnce(Invoke(this, &EapListenerTest::SimulateRecvFrom));
   EXPECT_CALL(*this, ReceiveCallback()).Times(0);
   ScopedMockLog log;
   EXPECT_CALL(log,
-      Log(logging::LOG_INFO, _,
-          HasSubstr("Short EAP packet received"))).Times(1);
+              Log(logging::LOG_INFO, _, HasSubstr("Short EAP packet received")))
+      .Times(1);
   ReceiveRequest();
 }
 
@@ -228,17 +237,16 @@ TEST_F(EapListenerTest, ReceiveInvalid) {
   // We're partially initializing this field, just making sure at least one
   // part of it is incorrect.
   uint8_t bad_payload[sizeof(kEapPacketPayload)] = {
-    eap_protocol::kIeee8021xEapolVersion1 - 1
-  };
+      eap_protocol::kIeee8021xEapolVersion1 - 1};
   recvfrom_reply_data_ = ByteString(bad_payload, sizeof(bad_payload));
   EXPECT_CALL(*sockets_,
               RecvFrom(kSocketFD, _, GetMaxEapPacketLength(), 0, _, _))
       .WillOnce(Invoke(this, &EapListenerTest::SimulateRecvFrom));
   EXPECT_CALL(*this, ReceiveCallback()).Times(0);
   ScopedMockLog log;
-  EXPECT_CALL(log,
-      Log(logging::LOG_INFO, _,
-          HasSubstr("Packet is not a valid EAP request"))).Times(1);
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _,
+                       HasSubstr("Packet is not a valid EAP request")))
+      .Times(1);
   ReceiveRequest();
 }
 

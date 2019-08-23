@@ -70,9 +70,7 @@ class LinkMonitor {
   // gateway via broadcast ARP.
   virtual bool IsGatewayFound() const;
 
-  const ByteString& gateway_mac_address() const {
-    return gateway_mac_address_;
-  }
+  const ByteString& gateway_mac_address() const { return gateway_mac_address_; }
 
  private:
   friend class LinkMonitorTest;

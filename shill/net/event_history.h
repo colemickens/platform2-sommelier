@@ -67,12 +67,13 @@ class SHILL_EXPORT EventHistory {
 
  private:
   friend class EventHistoryTest;
-  friend class ServiceTest;  // RecordEventInternal, time_
+  friend class ServiceTest;     // RecordEventInternal, time_
   friend class WakeOnWiFiTest;  // time_
 
   void RecordEventInternal(Timestamp now);
 
-  void ExpireEventsBeforeInternal(int seconds_ago, Timestamp now,
+  void ExpireEventsBeforeInternal(int seconds_ago,
+                                  Timestamp now,
                                   ClockType clock_type);
 
   bool max_events_specified_;

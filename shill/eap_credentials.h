@@ -55,14 +55,14 @@ class EapCredentials {
   // Populate the wpa_supplicant DBus parameter map |params| with the
   // credentials in |this|.  To do so, this function may use |certificate_file|
   // to export CA certificates to be passed to wpa_supplicant.
-  virtual void PopulateSupplicantProperties(
-      CertificateFile* certificate_file,
-      KeyValueStore* params) const;
+  virtual void PopulateSupplicantProperties(CertificateFile* certificate_file,
+                                            KeyValueStore* params) const;
 
   // Save EAP properties to |storage| in group |id|.  If |save_credentials|
   // is true, passwords and identities that are a part of the credentials are
   // also saved.
-  virtual void Save(StoreInterface* store, const std::string& id,
+  virtual void Save(StoreInterface* store,
+                    const std::string& id,
                     bool save_credentials) const;
 
   // Restore EAP properties to their initial state.
@@ -74,9 +74,7 @@ class EapCredentials {
 
   // Getters and setters.
   virtual const std::string& identity() const { return identity_; }
-  void set_identity(const std::string& identity) {
-    identity_ = identity;
-  }
+  void set_identity(const std::string& identity) { identity_ = identity; }
   virtual const std::string& key_management() const { return key_management_; }
   virtual void set_password(const std::string& password) {
     password_ = password;
@@ -116,8 +114,8 @@ class EapCredentials {
   void HelpRegisterDerivedString(
       PropertyStore* store,
       const std::string& name,
-      std::string(EapCredentials::*get)(Error* error),
-      bool(EapCredentials::*set)(const std::string& value, Error* error));
+      std::string (EapCredentials::*get)(Error* error),
+      bool (EapCredentials::*set)(const std::string& value, Error* error));
 
   // Expose a property in |store|, with the name |name|.
   //
@@ -130,8 +128,8 @@ class EapCredentials {
   void HelpRegisterWriteOnlyDerivedString(
       PropertyStore* store,
       const std::string& name,
-      bool(EapCredentials::*set)(const std::string& value, Error* error),
-      void(EapCredentials::*clear)(Error* error),
+      bool (EapCredentials::*set)(const std::string& value, Error* error),
+      void (EapCredentials::*clear)(Error* error),
       const std::string* default_value);
 
   // Assigns |value| to |key| in |storage| if |value| is non-empty and |save| is

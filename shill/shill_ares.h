@@ -30,9 +30,7 @@ class Ares {
                              void* arg);
 
   // ares_getsock
-  virtual int GetSock(ares_channel channel,
-                      ares_socket_t* socks,
-                      int numsocks);
+  virtual int GetSock(ares_channel channel, ares_socket_t* socks, int numsocks);
 
   // ares_init_options
   virtual int InitOptions(ares_channel* channelptr,
