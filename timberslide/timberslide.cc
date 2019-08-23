@@ -84,16 +84,21 @@ class StringTransformer {
     const base::TimeDelta logline_tm(base::TimeDelta::FromSecondsD(ec_ts));
     const base::TimeDelta logline_delta(ec_sync - logline_tm);
     const base::Time logline_host_tm = timestamp_ - logline_delta;
-    base::Time::Exploded e;
 
-    // Get datetime parts (exploded) from now and format it.
-    logline_host_tm.LocalExplode(&e);
-    return base::StringPrintf("%04d-%02d-%02d %02d:%02d:%02d %s", e.year,
-                              e.month, e.day_of_month, e.hour, e.minute,
-                              e.second, s.c_str());
+    return FormatTime(logline_host_tm).append(" ").append(s);
   }
 
  private:
+  std::string FormatTime(const base::Time& time) {
+    base::Time::Exploded e;
+
+    // This format matches the format in libchrome/base/logging.cc
+    time.UTCExplode(&e);
+    return base::StringPrintf("%02d%02d/%02d%02d%02d.%06d", e.month,
+                              e.day_of_month, e.hour, e.minute, e.second,
+                              e.millisecond * 1000);
+  }
+
   int64_t ec_current_uptime_ms_;
   base::Time timestamp_;
 };
