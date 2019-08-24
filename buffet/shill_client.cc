@@ -70,18 +70,18 @@ Network::State ShillServiceStateToNetworkState(const string& state) {
     return Network::State::kOnline;
   }
   if ((state.compare(shill::kStateReady) == 0) ||
-      (state.compare(shill::kStatePortal) == 0) ||
       (state.compare(shill::kStateAssociation) == 0) ||
-      (state.compare(shill::kStateConfiguration) == 0)) {
+      (state.compare(shill::kStateConfiguration) == 0) ||
+      (state.compare(shill::kStateRedirectFound) == 0) ||
+      (state.compare(shill::kStatePortalSuspected) == 0)) {
     return Network::State::kConnecting;
   }
-  if ((state.compare(shill::kStateFailure) == 0) ||
-      (state.compare(shill::kStateActivationFailure) == 0)) {
+  if (state.compare(shill::kStateFailure) == 0) {
     // TODO(wiley) Get error information off the service object.
     return Network::State::kError;
   }
   if ((state.compare(shill::kStateIdle) == 0) ||
-      (state.compare(shill::kStateOffline) == 0) ||
+      (state.compare(shill::kStateNoConnectivity) == 0) ||
       (state.compare(shill::kStateDisconnect) == 0)) {
     return Network::State::kOffline;
   }
