@@ -123,7 +123,7 @@ int CameraDevice::Init(mojom::IpCameraDevicePtr ip_device,
                        int32_t height,
                        double fps) {
   ipc_task_runner_ = mojo::edk::GetIOTaskRunner();
-  DCHECK(ipc_task_runner_->RunsTasksOnCurrentThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
   ip_device_ = std::move(ip_device);
   width_ = width;
@@ -155,7 +155,7 @@ void CameraDevice::Open(const hw_module_t* module, hw_device_t** hw_device) {
 }
 
 CameraDevice::~CameraDevice() {
-  DCHECK(ipc_task_runner_->RunsTasksOnCurrentThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
   ip_device_.reset();
   binding_.Close();
@@ -177,7 +177,7 @@ int CameraDevice::Initialize(const camera3_callback_ops_t* callback_ops) {
 }
 
 void CameraDevice::Close() {
-  DCHECK(!ipc_task_runner_->RunsTasksOnCurrentThread());
+  DCHECK(!ipc_task_runner_->BelongsToCurrentThread());
   open_ = false;
   request_queue_.Flush();
 
@@ -190,7 +190,7 @@ void CameraDevice::Close() {
 
 void CameraDevice::StopStreamingOnIpcThread(
     scoped_refptr<Future<void>> return_val) {
-  DCHECK(ipc_task_runner_->RunsTasksOnCurrentThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   ip_device_->StopStreaming();
   return_val->Set();
 }
@@ -231,7 +231,7 @@ bool CameraDevice::ValidateStream(camera3_stream_t* stream) {
 
 int CameraDevice::ConfigureStreams(
     camera3_stream_configuration_t* stream_list) {
-  DCHECK(!ipc_task_runner_->RunsTasksOnCurrentThread());
+  DCHECK(!ipc_task_runner_->BelongsToCurrentThread());
 
   if (callback_ops_ == nullptr) {
     LOGFID(ERROR, id_) << "Device is not initialized";
@@ -275,7 +275,7 @@ int CameraDevice::ConfigureStreams(
 
 void CameraDevice::StartStreamingOnIpcThread(
     scoped_refptr<Future<void>> return_val) {
-  DCHECK(ipc_task_runner_->RunsTasksOnCurrentThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   ip_device_->StartStreaming();
   return_val->Set();
 }

@@ -17,7 +17,7 @@ IpCameraDetectorImpl::IpCameraDetectorImpl()
 
 int IpCameraDetectorImpl::Init(mojom::IpCameraDetectorRequest request) {
   ipc_task_runner_ = mojo::edk::GetIOTaskRunner();
-  DCHECK(ipc_task_runner_->RunsTasksOnCurrentThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
   binding_.Bind(std::move(request));
 
@@ -34,7 +34,7 @@ int IpCameraDetectorImpl::Init(mojom::IpCameraDetectorRequest request) {
 IpCameraDetectorImpl::~IpCameraDetectorImpl() {
   // This destructor will dead-lock if called on the IPC thread, or if the IPC
   // thread is no longer running when it's called.
-  DCHECK(!ipc_task_runner_->RunsTasksOnCurrentThread());
+  DCHECK(!ipc_task_runner_->BelongsToCurrentThread());
   auto return_val = Future<void>::Create(nullptr);
   ipc_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&IpCameraDetectorImpl::DestroyOnIpcThread,
@@ -44,7 +44,7 @@ IpCameraDetectorImpl::~IpCameraDetectorImpl() {
 
 void IpCameraDetectorImpl::DestroyOnIpcThread(
     scoped_refptr<Future<void>> return_val) {
-  DCHECK(ipc_task_runner_->RunsTasksOnCurrentThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   listener_.reset();
   binding_.Close();
   return_val->Set();
@@ -52,7 +52,7 @@ void IpCameraDetectorImpl::DestroyOnIpcThread(
 
 void IpCameraDetectorImpl::RegisterConnectionListener(
     mojom::IpCameraConnectionListenerPtr listener) {
-  DCHECK(ipc_task_runner_->RunsTasksOnCurrentThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   listener_ = std::move(listener);
 
   // TODO(pceballos): detect and handle a listener disconnecting and a new one
@@ -79,7 +79,7 @@ void IpCameraDetectorImpl::RegisterConnectionListener(
 }
 
 void IpCameraDetectorImpl::MockFrameGeneratorConnect() {
-  DCHECK(ipc_task_runner_->RunsTasksOnCurrentThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   std::unique_ptr<IpCamera> device = std::make_unique<MockFrameGenerator>();
 
   if (listener_) {
@@ -100,7 +100,7 @@ void IpCameraDetectorImpl::MockFrameGeneratorConnect() {
 }
 
 void IpCameraDetectorImpl::DeviceDisconnect(int32_t id) {
-  DCHECK(ipc_task_runner_->RunsTasksOnCurrentThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   if (devices_.find(id) == devices_.end()) {
     LOGF(ERROR) << "Invalid camera id " << id;
     return;

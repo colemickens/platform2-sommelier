@@ -16,7 +16,7 @@ IpCamera::IpCamera()
 
 int IpCamera::Init(mojom::IpCameraDeviceRequest request) {
   ipc_task_runner_ = mojo::edk::GetIOTaskRunner();
-  DCHECK(ipc_task_runner_->RunsTasksOnCurrentThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
   if (!init_called_) {
     int ret = Init();
@@ -33,13 +33,13 @@ int IpCamera::Init(mojom::IpCameraDeviceRequest request) {
 }
 
 IpCamera::~IpCamera() {
-  DCHECK(ipc_task_runner_->RunsTasksOnCurrentThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   binding_.Close();
   listener_.reset();
 }
 
 void IpCamera::RegisterFrameListener(mojom::IpCameraFrameListenerPtr listener) {
-  DCHECK(ipc_task_runner_->RunsTasksOnCurrentThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   listener_ = std::move(listener);
   listener_.set_connection_error_handler(
       base::Bind(&IpCamera::OnConnectionError, base::Unretained(this)));
