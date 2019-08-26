@@ -356,7 +356,6 @@ chromeos:
               has-base-accelerometer: true
               has-base-gyroscope: 7
               has-lid-accelerometer: false
-              has-fingerprint-sensor: false
               is-lid-convertible: false
               has-base-magnetometer: false
               has-touchscreen: true
@@ -383,7 +382,6 @@ chromeos:
               has-base-accelerometer: true
               has-base-gyroscope: true
               has-lid-accelerometer: true
-              has-fingerprint-sensor: true
               is-lid-convertible: false
               has-base-magnetometer: true
               has-touchscreen: false

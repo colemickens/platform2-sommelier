@@ -407,7 +407,6 @@ In the tables below,
 | has-base-accelerometer | boolean |  | False |  | False | Is there an accelerometer in the base of the device. |
 | has-base-gyroscope | boolean |  | False |  | False | Is there a gyroscope in the base of the device. |
 | has-base-magnetometer | boolean |  | False |  | False | Is there a magnetometer in the base of the device. |
-| has-fingerprint-sensor | boolean |  | False |  | False | Is there a fingerprint sensor on the device. |
 | has-lid-accelerometer | boolean |  | False |  | False | Is there an accelerometer in the lid of the device. |
 | has-lid-gyroscope | boolean |  | False |  | False | Is there a gyroscope in the lid of the device. |
 | has-lid-magnetometer | boolean |  | False |  | False | Is there a magnetometer in the lid of the device. |

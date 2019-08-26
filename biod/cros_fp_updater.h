@@ -22,8 +22,6 @@ namespace biod {
 extern const char kCrosConfigFPPath[];
 extern const char kCrosConfigFPBoard[];
 extern const char kCrosConfigFPLocation[];
-extern const char kCrosConfigHWPropertiesPath[];
-extern const char kCrosConfigHWPropertiesHasFP[];
 
 // These utilities should be absorbed by CrosFpDevice.
 // This is a temporary holding place until they can be absorbed.

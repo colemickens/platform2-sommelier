@@ -510,10 +510,6 @@ properties:
                 has-base-magnetometer:
                   description: Is there a magnetometer in the base of the device.
                   type: boolean
-                # TODO(https://crbug.com/988940): Remove when migrated to fingerprint/sensor-location.
-                has-fingerprint-sensor:
-                  description: Is there a fingerprint sensor on the device.
-                  type: boolean
                 has-touchscreen:
                   description: Does the device have a touchscreen.
                   type: boolean
