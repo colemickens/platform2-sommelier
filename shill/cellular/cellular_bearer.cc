@@ -149,7 +149,14 @@ void CellularBearer::GetIPConfigMethodAndProperties(
         ->dns_servers.push_back(properties.GetString(kPropertyDNS3));
   }
   if (properties.ContainsUint(kPropertyMtu)) {
-    (*ipconfig_properties)->mtu = properties.GetUint(kPropertyMtu);
+    uint32_t mtu = properties.GetUint(kPropertyMtu);
+    // TODO(b/139816862): A larger-than-expected MTU value has been observed
+    // on some modem. Here we temporarily ignore any MTU value larger than
+    // |IPConfig::kDefaultMTU| until the issue has been addressed on the modem
+    // side. Remove this workaround later.
+    if (mtu <= static_cast<uint32_t>(IPConfig::kDefaultMTU)) {
+      (*ipconfig_properties)->mtu = mtu;
+    }
   }
 }
 
