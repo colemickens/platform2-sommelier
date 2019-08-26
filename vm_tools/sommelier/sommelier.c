@@ -4058,10 +4058,6 @@ int main(int argc, char** argv) {
     ctx.data_driver = DATA_DRIVER_VIRTWL;
   }
 
-  // Use well known values for DPI by default with Xwayland.
-  if (!dpi && ctx.xwayland)
-    dpi = "72,96,160,240,320,480";
-
   wl_array_init(&ctx.dpi);
   if (dpi) {
     char* str = strdup(dpi);

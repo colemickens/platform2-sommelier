@@ -178,10 +178,11 @@ scaling used by sommelier and the host compositor.
 An exact value for DPI is calculated by sommelier. However, many Linux
 programs expect DPI to be one out of a well known set of values. Sommelier
 solves this by adjusting DPI using a set of buckets. For example, given the
-default set of buckets (72, 96, 160, 240), Sommelier will use 96 as DPI when
-the exact value is 112, or 160 when exact value is 188. The DPI buckets that
+set of buckets (72, 96, 160, 240), Sommelier will use 96 as DPI when the
+exact value is 112, or 160 when exact value is 188. The DPI buckets that
 sommelier should use can be specified with `--dpi=[DPI[,DPI...]]`. Where,
-`--dpi=””` will result in sommelier exposing the exact DPI value to clients.
+`--dpi=””` will result in sommelier exposing the exact DPI value to clients
+(this is the default behaviour).
 
 ### XCursor
 
