@@ -56,6 +56,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/cros-disks             u:object_r:cros_disks_exec:s0
 /usr/bin/cros_camera_algo       u:object_r:cros_camera_algo_exec:s0
 /usr/bin/cros_camera_service    u:object_r:cros_camera_service_exec:s0
+/usr/bin/cros_healthd           u:object_r:cros_healthd_exec:s0
 /usr/bin/dbus-daemon            u:object_r:cros_dbus_daemon_exec:s0
 /usr/bin/dbus-send              u:object_r:cros_dbus_send_exec:s0
 /usr/bin/dbus-uuidgen           u:object_r:cros_dbus_uuidgen_exec:s0

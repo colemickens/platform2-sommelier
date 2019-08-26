@@ -1,0 +1,5 @@
+type cros_healthd, domain, chromeos_domain;
+
+permissive cros_healthd;
+
+from_minijail_preload(cros_healthd, cros_healthd_exec);
