@@ -554,7 +554,7 @@
 					"--log_tag=arc-setup-precreate",
 					"--mode=setup"
 				],
-				"timeout": 20
+				"timeout": 90
 			}
 		],
 		"prechroot": [
