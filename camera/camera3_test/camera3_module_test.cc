@@ -233,8 +233,7 @@ static void InitCameraModuleOnThread(camera_module_t* cam_module) {
 }
 
 // On successfully Initialized, |cam_module_| will pointed to valid
-// camera_module_t. We cannot dlclose |cam_hal_handle| until the lifetime
-// conflict in b/119926433 is resolved.
+// camera_module_t.
 static void InitCameraModule(const base::FilePath& camera_hal_path,
                              void** cam_hal_handle,
                              camera_module_t** cam_module) {
@@ -1382,6 +1381,12 @@ int main(int argc, char** argv) {
     result = RUN_ALL_TESTS();
   }
   camera3_test::g_module_thread.Stop();
+
+  // Close Camera HAL
+  if (cam_hal_handle && dlclose(cam_hal_handle) != 0) {
+    PLOGF(ERROR) << "Failed to dlclose(cam_hal_handle)";
+    result = EXIT_FAILURE;
+  }
 
   return result;
 }
