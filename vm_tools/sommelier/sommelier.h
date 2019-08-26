@@ -412,7 +412,7 @@ struct sl_mmap {
   struct wl_resource* buffer_resource;
 };
 
-typedef void (*sl_sync_func_t)(struct sl_context *ctx,
+typedef void (*sl_sync_func_t)(struct sl_context* ctx,
                                struct sl_sync_point* sync_point);
 
 struct sl_sync_point {
