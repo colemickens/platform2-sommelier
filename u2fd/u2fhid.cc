@@ -36,9 +36,6 @@ constexpr int kU2fHidTimeoutMs = 500;
 // specification
 constexpr int kMaxLockDurationSeconds = 10;
 
-// Response to the APDU requesting the U2F protocol version
-constexpr char kSupportedU2fVersion[] = "U2F_V2";
-
 // HID report descriptor for U2F interface.
 constexpr uint8_t kU2fReportDesc[] = {
     0x06, 0xD0, 0xF1, /* Usage Page (FIDO Alliance), FIDO_USAGE_PAGE */
@@ -58,14 +55,6 @@ constexpr uint8_t kU2fReportDesc[] = {
     0x91, 0x02,       /*  Output (Data, Var, Abs), Usage */
     0xC0              /* End Collection */
 };
-
-// Vendor Command Return Codes.
-constexpr uint32_t kVendorCmdRcSuccess = 0x000;
-constexpr uint32_t kVendorCmdRcNotAllowed = 0x507;
-constexpr uint32_t kVendorCmdRcPasswordRequired = 0x50a;
-
-// UMA Metric names.
-constexpr char kU2fCommand[] = "Platform.U2F.Command";
 
 }  // namespace
 
@@ -208,27 +197,13 @@ struct U2fHid::Transaction {
 };
 
 U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
-               const bool g2f_mode,
-               const bool legacy_kh_fallback,
-               const TpmGenerateCallback& generate_fn,
-               const TpmSignCallback& sign_fn,
-               const TpmAttestCallback& attest_fn,
-               const TpmG2fCertCallback& g2f_cert_fn,
-               const IgnoreButtonCallback& ignore_fn,
-               const WinkCallback& wink_fn,
-               std::unique_ptr<UserState> user_state)
+               std::function<void()> wink_fn,
+               U2fMessageHandler* msg_handler)
     : hid_(std::move(hid)),
-      g2f_mode_(g2f_mode),
-      legacy_kh_fallback_(legacy_kh_fallback),
-      tpm_generate_(generate_fn),
-      tpm_sign_(sign_fn),
-      tpm_attest_(attest_fn),
-      tpm_g2f_cert_(g2f_cert_fn),
-      ignore_button_(ignore_fn),
-      wink_(wink_fn),
+      wink_fn_(wink_fn),
       free_cid_(1),
       locked_cid_(0),
-      user_state_(std::move(user_state)) {
+      msg_handler_(msg_handler) {
   transaction_ = std::make_unique<Transaction>();
   hid_->SetOutputReportHandler(
       base::Bind(&U2fHid::ProcessReport, base::Unretained(this)));
@@ -279,24 +254,6 @@ void U2fHid::ReturnResponse(const std::string& resp) {
   } while (offset);
 }
 
-void U2fHid::ReturnFailureResponse(uint16_t sw) {
-  std::string resp;
-  U2fResponseAdpu resp_adpu;
-  resp_adpu.SetStatus(sw);
-  resp_adpu.ToString(&resp);
-
-  ReturnResponse(resp);
-}
-
-void U2fHid::IgnorePowerButton() {
-  // Duration of the user presence persistence on the firmware side
-  const base::TimeDelta kPresenceTimeout = base::TimeDelta::FromSeconds(10);
-
-  brillo::ErrorPtr err;
-  // Mask the next power button press for the UI
-  ignore_button_.Run(kPresenceTimeout.ToInternalValue(), &err, -1);
-}
-
 void U2fHid::CmdInit(uint32_t cid, const std::string& payload) {
   HidMessage msg(U2fHidCommand::kInit, cid);
 
@@ -340,10 +297,6 @@ void U2fHid::CmdInit(uint32_t cid, const std::string& payload) {
 int U2fHid::CmdPing(std::string* resp) {
   VLOG(1) << "PING len " << transaction_->total_size;
 
-  // Read the G2F cert, to add approximate cr50 latency.
-  std::string cert_unused;
-  tpm_g2f_cert_.Run(&cert_unused);
-
   // send back the same content
   *resp = transaction_->payload.substr(0, transaction_->total_size);
   return transaction_->total_size;
@@ -374,7 +327,7 @@ int U2fHid::CmdLock(std::string* resp) {
 
 int U2fHid::CmdWink(std::string* resp) {
   LOG(INFO) << "WINK!";
-  wink_.Run();
+  wink_fn_();
   return 0;
 }
 
@@ -385,402 +338,11 @@ int U2fHid::CmdSysInfo(std::string* resp) {
 }
 
 int U2fHid::CmdMsg(std::string* resp) {
-  return ProcessMsg(resp);
-}
+  U2fResponseAdpu r = msg_handler_->ProcessMsg(transaction_->payload);
 
-int U2fHid::ProcessMsg(std::string* resp) {
-  uint16_t u2f_status = 0;
-
-  base::Optional<U2fCommandAdpu> adpu =
-      U2fCommandAdpu::ParseFromString(transaction_->payload, &u2f_status);
-
-  if (adpu.has_value()) {
-    U2fIns ins = adpu->Ins();
-
-    metrics_.SendEnumToUMA(kU2fCommand, static_cast<int>(ins),
-                           static_cast<int>(U2fIns::kU2fVersion));
-
-    // TODO(louiscollard): Check expected response length is large enough.
-
-    switch (ins) {
-      case U2fIns::kU2fRegister: {
-        base::Optional<U2fRegisterRequestAdpu> reg_adpu =
-            U2fRegisterRequestAdpu::FromCommandAdpu(*adpu, &u2f_status);
-        // Chrome may send a dummy register request, which is designed to
-        // cause a USB device to flash it's LED. We should simply ignore
-        // these.
-        if (reg_adpu.has_value()) {
-          if (reg_adpu->IsChromeDummyWinkRequest()) {
-            ReturnFailureResponse(U2F_SW_CONDITIONS_NOT_SATISFIED);
-            return -EINVAL;
-          } else {
-            return ProcessU2fRegister(*reg_adpu, resp);
-          }
-        }
-        break;  // Handle error.
-      }
-      case U2fIns::kU2fAuthenticate: {
-        base::Optional<U2fAuthenticateRequestAdpu> auth_adpu =
-            U2fAuthenticateRequestAdpu::FromCommandAdpu(*adpu, &u2f_status);
-        if (auth_adpu.has_value()) {
-          return ProcessU2fAuthenticate(*auth_adpu, resp);
-        }
-        break;  // Handle error.
-      }
-      case U2fIns::kU2fVersion: {
-        if (!adpu->Body().empty()) {
-          u2f_status = U2F_SW_WRONG_LENGTH;
-          break;
-        }
-
-        U2fResponseAdpu response;
-        response.AppendString(kSupportedU2fVersion);
-        response.SetStatus(U2F_SW_NO_ERROR);
-        response.ToString(resp);
-        return 0;
-      }
-      default:
-        u2f_status = U2F_SW_INS_NOT_SUPPORTED;
-        break;
-    }
-  }
-
-  ReturnFailureResponse(u2f_status ?: U2F_SW_WTF);
-  return -EINVAL;
-}
-
-namespace {
-
-// Builds data to be signed as part of a U2F_REGISTER response, as defined by
-// the "U2F Raw Message Formats" specification.
-std::vector<uint8_t> BuildU2fRegisterResponseSignedData(
-    const std::vector<uint8_t>& app_id,
-    const std::vector<uint8_t>& challenge,
-    const std::vector<uint8_t>& pub_key,
-    const std::vector<uint8_t>& key_handle) {
-  std::vector<uint8_t> signed_data;
-  signed_data.push_back('\0');  // reserved byte
-  util::AppendToVector(app_id, &signed_data);
-  util::AppendToVector(challenge, &signed_data);
-  util::AppendToVector(key_handle, &signed_data);
-  util::AppendToVector(pub_key, &signed_data);
-  return signed_data;
-}
-
-bool DoSoftwareAttest(const std::vector<uint8_t>& data_to_sign,
-                      std::vector<uint8_t>* attestation_cert,
-                      std::vector<uint8_t>* signature) {
-  crypto::ScopedEC_KEY attestation_key = util::CreateAttestationKey();
-  if (!attestation_key) {
-    return false;
-  }
-
-  base::Optional<std::vector<uint8_t>> cert_result =
-      util::CreateAttestationCertificate(attestation_key.get());
-  base::Optional<std::vector<uint8_t>> attest_result =
-      util::AttestToData(data_to_sign, attestation_key.get());
-
-  if (!cert_result.has_value() || !attest_result.has_value()) {
-    // These functions are never expected to fail.
-    LOG(ERROR) << "U2F software attestation failed.";
-    return false;
-  }
-
-  *attestation_cert = std::move(*cert_result);
-  *signature = std::move(*attest_result);
-  return true;
-}
-
-}  // namespace
-
-int U2fHid::ProcessU2fRegister(U2fRegisterRequestAdpu request,
-                               std::string* resp) {
-  std::vector<uint8_t> pub_key;
-  std::vector<uint8_t> key_handle;
-
-  if (DoU2fGenerate(request.GetAppId(), &pub_key, &key_handle) !=
-      kVendorCmdRcSuccess) {
-    return -EINVAL;
-  }
-
-  std::vector<uint8_t> data_to_sign = BuildU2fRegisterResponseSignedData(
-      request.GetAppId(), request.GetChallenge(), pub_key, key_handle);
-
-  std::vector<uint8_t> attestation_cert;
-  std::vector<uint8_t> signature;
-
-  if (g2f_mode_ && request.UseG2fAttestation()) {
-    attestation_cert = GetG2fCert();
-    if (DoG2fAttest(data_to_sign, U2F_ATTEST_FORMAT_REG_RESP, &signature) !=
-        kVendorCmdRcSuccess) {
-      return -EINVAL;
-    }
-  } else {
-    if (!DoSoftwareAttest(data_to_sign, &attestation_cert, &signature)) {
-      ReturnError(U2fHidError::kOther, transaction_->cid, true);
-      return -EINVAL;
-    }
-  }
-
-  // Prepare response, as specified by "U2F Raw Message Formats".
-  U2fResponseAdpu register_resp;
-  register_resp.AppendByte(5 /* U2F_VER_2 */);
-  register_resp.AppendBytes(pub_key);
-  register_resp.AppendByte(key_handle.size());
-  register_resp.AppendBytes(key_handle);
-  register_resp.AppendBytes(attestation_cert);
-  register_resp.AppendBytes(signature);
-  register_resp.SetStatus(U2F_SW_NO_ERROR);
-  register_resp.ToString(resp);
+  r.ToString(resp);
 
   return 0;
-}
-
-namespace {
-
-// A success response to a U2F_AUTHENTICATE request includes a signature over
-// the following data, in this format.
-std::vector<uint8_t> BuildU2fAuthenticateResponseSignedData(
-    const std::vector<uint8_t>& app_id,
-    const std::vector<uint8_t>& challenge,
-    const std::vector<uint8_t>& counter) {
-  std::vector<uint8_t> to_sign;
-  util::AppendToVector(app_id, &to_sign);
-  to_sign.push_back(0x01 /* User Presence Verified */);
-  util::AppendToVector(counter, &to_sign);
-  util::AppendToVector(challenge, &to_sign);
-  return to_sign;
-}
-
-}  // namespace
-
-int U2fHid::ProcessU2fAuthenticate(U2fAuthenticateRequestAdpu request,
-                                   std::string* resp) {
-  if (request.IsAuthenticateCheckOnly()) {
-    return DoU2fSignCheckOnly(request.GetAppId(), request.GetKeyHandle());
-  }
-
-  base::Optional<std::vector<uint8_t>> counter = user_state_->GetCounter();
-  if (!counter.has_value()) {
-    return -EINVAL;
-  }
-
-  std::vector<uint8_t> to_sign = BuildU2fAuthenticateResponseSignedData(
-      request.GetAppId(), request.GetChallenge(), *counter);
-
-  std::vector<uint8_t> signature;
-  if (DoU2fSign(request.GetAppId(), request.GetKeyHandle(),
-                util::Sha256(to_sign), &signature) != kVendorCmdRcSuccess) {
-    return -EINVAL;
-  }
-
-  if (!user_state_->IncrementCounter()) {
-    // If we can't increment the counter we must not return the signed
-    // response, as the next authenticate response would end up having
-    // the same counter value.
-    return -EINVAL;
-  }
-
-  // Prepare response, as specified by "U2F Raw Message Formats".
-  U2fResponseAdpu auth_resp;
-  auth_resp.AppendByte(1 /* U2F_VER_2 */);
-  auth_resp.AppendBytes(*counter);
-  auth_resp.AppendBytes(signature);
-  auth_resp.SetStatus(U2F_SW_NO_ERROR);
-  auth_resp.ToString(resp);
-
-  return 0;
-}
-
-int U2fHid::DoU2fGenerate(const std::vector<uint8_t>& app_id,
-                          std::vector<uint8_t>* pub_key,
-                          std::vector<uint8_t>* key_handle) {
-  base::Optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
-  if (!user_secret.has_value()) {
-    ReturnError(U2fHidError::kOther, transaction_->cid, true);
-    return -EINVAL;
-  }
-
-  U2F_GENERATE_REQ generate_req = {
-      .flags = U2F_AUTH_ENFORCE  // Require user presence, consume.
-  };
-  util::VectorToObject(app_id, &generate_req.appId);
-  util::VectorToObject(*user_secret, &generate_req.userSecret);
-
-  U2F_GENERATE_RESP generate_resp = {};
-  uint32_t generate_status = tpm_generate_.Run(generate_req, &generate_resp);
-
-  if (generate_status != kVendorCmdRcSuccess) {
-    VLOG(3) << "U2F_GENERATE failed, status: " << std::hex << generate_status;
-    if (generate_status == kVendorCmdRcNotAllowed) {
-      // We could not assert physical presence.
-      IgnorePowerButton();
-      wink_.Run();
-      ReturnFailureResponse(U2F_SW_CONDITIONS_NOT_SATISFIED);
-    } else {
-      // We sent an invalid request (u2fd programming error),
-      // or internal cr50 error.
-      ReturnError(U2fHidError::kOther, transaction_->cid, true);
-    }
-    return -EINVAL;
-  }
-
-  util::AppendToVector(generate_resp.pubKey, pub_key);
-  util::AppendToVector(generate_resp.keyHandle, key_handle);
-
-  return 0;
-}
-
-int U2fHid::DoU2fSign(const std::vector<uint8_t>& app_id,
-                      const std::vector<uint8_t>& key_handle,
-                      const std::vector<uint8_t>& hash,
-                      std::vector<uint8_t>* signature_out) {
-  base::Optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
-  if (!user_secret.has_value()) {
-    ReturnError(U2fHidError::kOther, transaction_->cid, true);
-    return -EINVAL;
-  }
-
-  U2F_SIGN_REQ sign_req = {
-      .flags = U2F_AUTH_ENFORCE  // Require user presence, consume.
-  };
-  if (legacy_kh_fallback_)
-    sign_req.flags |= SIGN_LEGACY_KH;
-  util::VectorToObject(app_id, sign_req.appId);
-  util::VectorToObject(*user_secret, sign_req.userSecret);
-  util::VectorToObject(key_handle, sign_req.keyHandle);
-  util::VectorToObject(hash, sign_req.hash);
-
-  U2F_SIGN_RESP sign_resp = {};
-  uint32_t sign_status = tpm_sign_.Run(sign_req, &sign_resp);
-
-  if (sign_status != kVendorCmdRcSuccess) {
-    VLOG(3) << "U2F_SIGN failed, status: " << std::hex << sign_status;
-    if (sign_status == kVendorCmdRcPasswordRequired) {
-      // We have specified an invalid key handle.
-      ReturnFailureResponse(U2F_SW_WRONG_DATA);
-    } else if (sign_status == kVendorCmdRcNotAllowed) {
-      // Could not assert user presence.
-      IgnorePowerButton();
-      wink_.Run();
-      ReturnFailureResponse(U2F_SW_CONDITIONS_NOT_SATISFIED);
-    } else {
-      // We sent an invalid request (u2fd programming error),
-      // or internal cr50 error.
-      ReturnError(U2fHidError::kOther, transaction_->cid, true);
-    }
-    return -EINVAL;
-  }
-
-  base::Optional<std::vector<uint8_t>> signature =
-      util::SignatureToDerBytes(sign_resp.sig_r, sign_resp.sig_s);
-
-  if (!signature.has_value()) {
-    ReturnError(U2fHidError::kOther, transaction_->cid, true);
-    return -EINVAL;
-  }
-
-  *signature_out = *signature;
-
-  return 0;
-}
-
-int U2fHid::DoU2fSignCheckOnly(const std::vector<uint8_t>& app_id,
-                               const std::vector<uint8_t>& key_handle) {
-  base::Optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
-  if (!user_secret.has_value()) {
-    ReturnError(U2fHidError::kOther, transaction_->cid, true);
-    return -EINVAL;
-  }
-
-  U2F_SIGN_REQ sign_req = {
-      .flags = U2F_AUTH_CHECK_ONLY  // No user presence required, no consume.
-  };
-  util::VectorToObject(app_id, sign_req.appId);
-  util::VectorToObject(*user_secret, sign_req.userSecret);
-  util::VectorToObject(key_handle, sign_req.keyHandle);
-
-  uint32_t sign_status = tpm_sign_.Run(sign_req, nullptr);
-
-  if (sign_status == kVendorCmdRcSuccess) {
-    // Success indicates the key handle is owned.
-    // FIDO spec requires us to indicate this with the following error
-    // (which requests user presence).
-    ReturnFailureResponse(U2F_SW_CONDITIONS_NOT_SATISFIED);
-  } else if (sign_status == kVendorCmdRcPasswordRequired) {
-    // We have specified an invalid key handle.
-    ReturnFailureResponse(U2F_SW_WRONG_DATA);
-  } else {
-    // We sent an invalid request (u2fd programming error),
-    // or internal cr50 error.
-    ReturnError(U2fHidError::kOther, transaction_->cid, true);
-  }
-
-  // We always return a response from this function; never allow a response
-  // to be returned later.
-  return -EINVAL;
-}
-
-int U2fHid::DoG2fAttest(const std::vector<uint8_t>& data,
-                        uint8_t format,
-                        std::vector<uint8_t>* signature_out) {
-  base::Optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
-  if (!user_secret.has_value()) {
-    ReturnError(U2fHidError::kOther, transaction_->cid, true);
-    return -EINVAL;
-  }
-
-  U2F_ATTEST_REQ attest_req = {.format = format,
-                               .dataLen = static_cast<uint8_t>(data.size())};
-  util::VectorToObject(*user_secret, attest_req.userSecret);
-  // Only a programming error can cause this CHECK to fail.
-  CHECK_LE(data.size(), sizeof(attest_req.data));
-  util::VectorToObject(data, attest_req.data);
-
-  U2F_ATTEST_RESP attest_resp = {};
-  uint32_t attest_status = tpm_attest_.Run(attest_req, &attest_resp);
-
-  if (attest_status != kVendorCmdRcSuccess) {
-    LOG(ERROR) << "U2F_ATTEST failed, status: " << std::hex << attest_status;
-    // We are attesting to a key handle that we just created, so if
-    // attestation fails we have hit some internal error.
-    ReturnError(U2fHidError::kOther, transaction_->cid, true);
-    return -EINVAL;
-  }
-
-  base::Optional<std::vector<uint8_t>> signature =
-      util::SignatureToDerBytes(attest_resp.sig_r, attest_resp.sig_s);
-
-  if (!signature.has_value()) {
-    LOG(ERROR) << "DER encoding of U2F_ATTEST signature failed.";
-    ReturnError(U2fHidError::kOther, transaction_->cid, true);
-    return -EINVAL;
-  }
-
-  *signature_out = *signature;
-
-  return 0;
-}
-
-const std::vector<uint8_t>& U2fHid::GetG2fCert() {
-  static std::vector<uint8_t> cert = [this]() {
-    std::string cert_str;
-    std::vector<uint8_t> cert_tmp;
-
-    uint32_t get_cert_status = tpm_g2f_cert_.Run(&cert_str);
-    util::AppendToVector(cert_str, &cert_tmp);
-
-    if (get_cert_status != kVendorCmdRcSuccess ||
-        !util::RemoveCertificatePadding(&cert_tmp)) {
-      // TODO(louiscollard): Retry?
-      LOG(ERROR) << "Failed to retrieve G2F certificate, status: " << std::hex
-                 << get_cert_status;
-      cert_tmp.clear();
-    }
-
-    return cert_tmp;
-  }();
-  return cert;
 }
 
 void U2fHid::ExecuteCmd() {

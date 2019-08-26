@@ -17,6 +17,7 @@
 #include <brillo/syslog_logging.h>
 #include <dbus/bus.h>
 #include <dbus/u2f/dbus-constants.h>
+#include <metrics/metrics_library.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 #include <session_manager/dbus-proxies.h>
@@ -26,6 +27,7 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "power_manager-client/power_manager/dbus-proxies.h"
 #include "u2fd/tpm_vendor_cmd.h"
+#include "u2fd/u2f_msg_handler.h"
 #include "u2fd/u2fhid.h"
 #include "u2fd/uhid_device.h"
 #include "u2fd/user_state.h"
@@ -150,7 +152,6 @@ class U2fDaemon : public brillo::Daemon {
 
     if (!bus_ && !InitializeDBus())
       return EX_IOERR;
-
     sm_proxy_->RegisterPropertyChangeCompleteSignalHandler(
         base::Bind(&U2fDaemon::TryStartService, base::Unretained(this)),
         base::Bind(&OnPolicySignalConnected));
@@ -215,24 +216,20 @@ class U2fDaemon : public brillo::Daemon {
       return EX_PROTOCOL;
     }
 
+    u2f_msg_handler_ = std::make_unique<u2f::U2fMessageHandler>(
+        std::make_unique<u2f::UserState>(
+            sm_proxy_.get(), legacy_kh_fallback_ ? kLegacyKhCounterMin : 0),
+        [this]() {
+          IgnorePowerButtonPress();
+          SendWinkSignal();
+        },
+        &tpm_proxy_, &metrics_library_, u2f_mode_ == U2fMode::kU2fExtended,
+        legacy_kh_fallback_);
+
     u2fhid_ = std::make_unique<u2f::U2fHid>(
         std::make_unique<u2f::UHidDevice>(vendor_id_, product_id_, kDeviceName,
                                           "u2fd-tpm-cr50"),
-        u2f_mode_ == U2fMode::kU2fExtended, legacy_kh_fallback_,
-        base::Bind(&u2f::TpmVendorCommandProxy::SendU2fGenerate,
-                   base::Unretained(&tpm_proxy_)),
-        base::Bind(&u2f::TpmVendorCommandProxy::SendU2fSign,
-                   base::Unretained(&tpm_proxy_)),
-        base::Bind(&u2f::TpmVendorCommandProxy::SendU2fAttest,
-                   base::Unretained(&tpm_proxy_)),
-        base::Bind(&u2f::TpmVendorCommandProxy::GetG2fCertificate,
-                   base::Unretained(&tpm_proxy_)),
-        base::Bind(
-            &org::chromium::PowerManagerProxy::IgnoreNextPowerButtonPress,
-            base::Unretained(pm_proxy_.get())),
-        base::Bind(&U2fDaemon::SendWinkSignal, base::Unretained(this)),
-        std::make_unique<u2f::UserState>(
-            sm_proxy_.get(), legacy_kh_fallback_ ? kLegacyKhCounterMin : 0));
+        [this]() { SendWinkSignal(); }, u2f_msg_handler_.get());
 
     return u2fhid_->Init() ? EX_OK : EX_PROTOCOL;
   }
@@ -286,6 +283,16 @@ class U2fDaemon : public brillo::Daemon {
     }
   }
 
+  void IgnorePowerButtonPress() {
+    // Duration of the user presence persistence on the firmware side.
+    const base::TimeDelta kPresenceTimeout = base::TimeDelta::FromSeconds(10);
+
+    brillo::ErrorPtr err;
+    // Mask the next power button press for the UI
+    pm_proxy_->IgnoreNextPowerButtonPress(kPresenceTimeout.ToInternalValue(),
+                                          &err, -1);
+  }
+
   bool force_u2f_;
   bool force_g2f_;
   bool legacy_kh_fallback_;
@@ -300,6 +307,8 @@ class U2fDaemon : public brillo::Daemon {
   std::weak_ptr<brillo::dbus_utils::DBusSignal<u2f::UserNotification>>
       wink_signal_;
   std::unique_ptr<u2f::U2fHid> u2fhid_;
+  MetricsLibrary metrics_library_;
+  std::unique_ptr<u2f::U2fMessageHandler> u2f_msg_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(U2fDaemon);
 };

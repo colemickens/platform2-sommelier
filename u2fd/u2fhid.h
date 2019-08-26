@@ -5,6 +5,7 @@
 #ifndef U2FD_U2FHID_H_
 #define U2FD_U2FHID_H_
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -16,6 +17,7 @@
 
 #include "u2fd/hid_interface.h"
 #include "u2fd/u2f_adpu.h"
+#include "u2fd/u2f_msg_handler.h"
 #include "u2fd/user_state.h"
 
 namespace u2f {
@@ -73,40 +75,11 @@ class U2fHid {
     kOther = 127,
   };
 
-  // Callback to send the raw U2F APDU in |req| and get the corresponding
-  // response APDU in |resp|.
-  using TpmAdpuCallback =
-      base::Callback<uint32_t(const std::string& req, std::string* resp)>;
-  // Callback to run the VENDOR_CC_U2F_GENERATE command.
-  using TpmGenerateCallback = base::Callback<uint32_t(
-      const U2F_GENERATE_REQ& req, U2F_GENERATE_RESP* resp)>;
-  // Callback to run the VENDOR_CC_U2F_SIGN command.
-  using TpmSignCallback =
-      base::Callback<uint32_t(const U2F_SIGN_REQ& req, U2F_SIGN_RESP* resp)>;
-  // Callback to run the VENDOR_CC_U2F_ATTEST command.
-  using TpmAttestCallback = base::Callback<uint32_t(const U2F_ATTEST_REQ& req,
-                                                    U2F_ATTEST_RESP* resp)>;
-  // Callback to retrieve the G2F certificate.
-  using TpmG2fCertCallback = base::Callback<uint32_t(std::string* cert_out)>;
-  // Callback to disable the power button for |in_timeout_internal| when using
-  // it as physical presence for U2F.
-  using IgnoreButtonCallback = base::Callback<bool(
-      int64_t in_timeout_internal, brillo::ErrorPtr* error, int timeout)>;
-  // Callback to notify the UI that the wink command has been sent.
-  using WinkCallback = base::Callback<void()>;
-
-  // TODO(louiscollard): Pass TpmVendorCommandProxy rather than individual
-  // callbacks.
+  // Create a new virtual U2F HID Device. Does not take ownership of
+  // msg_handler, which must outlive this instance.
   U2fHid(std::unique_ptr<HidInterface> hid,
-         const bool g2f_mode,
-         const bool legacy_kh_fallback,
-         const TpmGenerateCallback& generate_fn,
-         const TpmSignCallback& sign_fn,
-         const TpmAttestCallback& attest_fn,
-         const TpmG2fCertCallback& g2f_cert_fn,
-         const IgnoreButtonCallback& ignore_button_func,
-         const WinkCallback& wink_fn,
-         std::unique_ptr<UserState> user_state);
+         std::function<void()> wink_fn,
+         U2fMessageHandler* msg_handler);
   ~U2fHid();
   bool Init();
 
@@ -137,13 +110,6 @@ class U2fHid {
   // payload |resp|.
   void ReturnResponse(const std::string& resp);
 
-  // Sends back a U2FHID report indicating failure and carrying a response
-  // code.
-  void ReturnFailureResponse(uint16_t sw);
-
-  // Ignores power button presses for 10 seconds.
-  void IgnorePowerButton();
-
   // Executes the action requested by the command contained in the current
   // transaction.
   void ExecuteCmd();
@@ -152,57 +118,13 @@ class U2fHid {
   // current U2FHID transaction or create a new one.
   void ProcessReport(const std::string& report);
 
-  // U2F message handler implementations.
-  //////
-
-  // Processes the ADPU and builds a response locally, making using of cr50
-  // vendor commands where necessary.
-  int ProcessMsg(std::string* resp);
-
-  // Process a U2F_REGISTER ADPU.
-  int ProcessU2fRegister(U2fRegisterRequestAdpu request, std::string* resp);
-  // Process a U2F_AUTHENTICATE ADPU.
-  int ProcessU2fAuthenticate(U2fAuthenticateRequestAdpu request,
-                             std::string* resp);
-
-  // Wrapper functions for cr50 U2F vendor commands.
-  //////
-
-  // Run a U2F_GENERATE command to create a new key handle.
-  int DoU2fGenerate(const std::vector<uint8_t>& app_id,
-                    std::vector<uint8_t>* pub_key,
-                    std::vector<uint8_t>* key_handle);
-  // Run a U2F_SIGN command to sign a hash using an existing key handle.
-  int DoU2fSign(const std::vector<uint8_t>& app_id,
-                const std::vector<uint8_t>& key_handle,
-                const std::vector<uint8_t>& hash,
-                std::vector<uint8_t>* signature);
-  // Run a U2F_SIGN command to check if a key handle is valid.
-  int DoU2fSignCheckOnly(const std::vector<uint8_t>& app_id,
-                         const std::vector<uint8_t>& key_handle);
-  // Run a U2F_ATTEST command to sign data using the cr50 individual attestation
-  // certificate.
-  int DoG2fAttest(const std::vector<uint8_t>& data,
-                  uint8_t format,
-                  std::vector<uint8_t>* sig_out);
-  // Returns the cr50 individual attestation certificate.
-  const std::vector<uint8_t>& GetG2fCert();
-
 
   std::unique_ptr<HidInterface> hid_;
-  const bool g2f_mode_;
-  const bool legacy_kh_fallback_;
-  TpmGenerateCallback tpm_generate_;
-  TpmSignCallback tpm_sign_;
-  TpmAttestCallback tpm_attest_;
-  TpmG2fCertCallback tpm_g2f_cert_;
-  IgnoreButtonCallback ignore_button_;
-  WinkCallback wink_;
+  std::function<void()> wink_fn_;
   uint32_t free_cid_;
   uint32_t locked_cid_;
   base::OneShotTimer lock_timeout_;
-  std::unique_ptr<UserState> user_state_;
-  MetricsLibrary metrics_;
+  U2fMessageHandler* msg_handler_;
 
   class HidPacket;
   class HidMessage;
