@@ -107,6 +107,11 @@ TEST(AnomalyDetectorTest, KernelWarningNoDuplicate) {
   ParserTest<KernelParser>("TEST_WARNING", {simple_run, identical_warning});
 }
 
+TEST(AnomalyDetectorTest, KernelWarningHeader) {
+  ParserRun warning_message{.expected_text = "Test Warning message asdfghjkl"s};
+  ParserTest<KernelParser>("TEST_WARNING_HEADER", {warning_message});
+}
+
 TEST(AnomalyDetectorTest, KernelWarningOld) {
   ParserTest<KernelParser>("TEST_WARNING_OLD", {simple_run});
 }

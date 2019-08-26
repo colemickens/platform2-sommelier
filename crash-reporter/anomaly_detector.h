@@ -51,6 +51,7 @@ class KernelParser : public Parser {
  private:
   enum class LineType {
     None,
+    Header,
     Start,
     Body,
   };

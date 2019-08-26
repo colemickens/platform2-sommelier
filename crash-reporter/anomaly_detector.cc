@@ -139,7 +139,7 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
   if (last_line_ == LineType::None) {
     if (line.find(cut_here) == 0)
       last_line_ = LineType::Start;
-  } else if (last_line_ == LineType::Start) {
+  } else if (last_line_ == LineType::Start || last_line_ == LineType::Header) {
     std::string info;
     if (RE2::FullMatch(line, *header, &info)) {
       // The info string looks like: "file:line func+offset/offset() [mod]".
@@ -159,6 +159,10 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
       text_ += base::StringPrintf("%08x-%s\n", hash, function.c_str());
       text_ += base::StringPrintf("%s\n", info.c_str());
       last_line_ = LineType::Body;
+    } else if (last_line_ == LineType::Start) {
+      // Allow for a single header line between the "cut here" and the "WARNING"
+      last_line_ = LineType::Header;
+      text_ += line + "\n";
     } else {
       last_line_ = LineType::None;
     }
