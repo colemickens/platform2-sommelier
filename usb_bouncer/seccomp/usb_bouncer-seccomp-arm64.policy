@@ -39,19 +39,16 @@ restart_syscall: 1
 rt_sigreturn: 1
 
 # These were not included by security.USBBouncer.
-access: 1
 clock_getres: 1
 clock_gettime: 1
 getpid: 1
 gettimeofday: 1
 ioctl: arg1 == TCGETS
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
-mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
 set_robust_list: 1
 set_tid_address: 1
-set_tls: 1
 tgkill: 1
