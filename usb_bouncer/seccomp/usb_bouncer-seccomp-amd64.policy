@@ -41,6 +41,7 @@ rt_sigreturn: 1
 clock_gettime: 1
 creat: 1
 fchown: 1
+fstatat: 1
 futex: 1
 getpid: 1
 gettimeofday: 1
