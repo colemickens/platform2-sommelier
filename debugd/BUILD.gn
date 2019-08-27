@@ -114,6 +114,7 @@ static_library("libdebugd") {
     "src/u2f_tool.cc",
     "src/variant_utils.cc",
     "src/verify_ro_tool.cc",
+    "src/wifi_fw_dump_tool.cc",
     "src/wifi_power_tool.cc",
   ]
   deps = [

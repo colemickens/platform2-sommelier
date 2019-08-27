@@ -1092,5 +1092,16 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
+    <method name="WifiFWDump">
+      <tp:docstring>
+        Trigger wifi firmware dump.
+      </tp:docstring>
+      <arg name="output" type="s" direction="out">
+        <tp:docstring>
+          Output message. Indicates success/failure of the command to the user.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>

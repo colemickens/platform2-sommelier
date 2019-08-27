@@ -71,6 +71,7 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
       "vmplugin_dispatcher", bus,
       vm_tools::plugin_dispatcher::kVmPluginDispatcherServiceName,
       vm_tools::plugin_dispatcher::kVmPluginDispatcherServicePath);
+  wifi_fw_dump_tool_ = std::make_unique<WifiFWDumpTool>();
   wifi_power_tool_ = std::make_unique<WifiPowerTool>();
   session_manager_proxy_ = std::make_unique<SessionManagerProxy>(bus);
   scheduler_configuration_tool_ =
@@ -416,6 +417,10 @@ void DebugdDBusAdaptor::ContainerStarted() {
 
 void DebugdDBusAdaptor::ContainerStopped() {
   container_tool_->ContainerStopped();
+}
+
+std::string DebugdDBusAdaptor::WifiFWDump() {
+  return wifi_fw_dump_tool_->WifiFWDump();
 }
 
 std::string DebugdDBusAdaptor::SetWifiPowerSave(bool enable) {

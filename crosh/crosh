@@ -1890,6 +1890,20 @@ cmd_gesture_prop() (
   esac
 )
 
+USAGE_wifi_fw_dump=''
+HELP_wifi_fw_dump='
+  Manually trigger a WiFi firmware dump. This command will currently only
+  complete successfully if the intel-wifi-fw-dumper package is present on the
+  device with USE=iwlwifi_dump enabled.
+'
+cmd_wifi_fw_dump() (
+  if [ $# -ne 0 ]; then
+    help "too many arguments"
+    return 1
+  fi
+  debugd WifiFWDump
+)
+
 substr() {
   local str="$1"
   local start="$2"

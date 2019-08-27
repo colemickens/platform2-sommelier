@@ -64,6 +64,7 @@ const BASE_COMMANDS: &[&str] = &[
     "verify_ro",
     "vmstat",
     "vsh",
+    "wifi_fw_dump",
     "wifi_power_save",
     "wpa_debug",
 ];
