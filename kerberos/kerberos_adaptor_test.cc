@@ -10,6 +10,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
 #include <base/run_loop.h>
+#include <brillo/asan.h>
 #include <dbus/login_manager/dbus-constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
@@ -280,8 +281,15 @@ TEST_F(KerberosAdaptorTest, AddRemoveAccountSucceess) {
   EXPECT_EQ(ERROR_NONE, RemoveAccount());
 }
 
+#if defined(BRILLO_ASAN_BUILD)
+// This test is failing on ASan bots: https://crbug.com/991316.
+#define MAYBE_Metrics_ReportDBusCallResult DISABLED_Metrics_ReportDBusCallResult
+#else
+#define MAYBE_Metrics_ReportDBusCallResult Metrics_ReportDBusCallResult
+#endif
+
 // Checks that metrics are reported for all D-Bus calls.
-TEST_F(KerberosAdaptorTest, Metrics_ReportDBusCallResult) {
+TEST_F(KerberosAdaptorTest, MAYBE_Metrics_ReportDBusCallResult) {
   EXPECT_CALL(*metrics_, ReportDBusCallResult("AddAccount", ERROR_NONE));
   EXPECT_CALL(*metrics_, ReportDBusCallResult("ListAccounts", ERROR_NONE));
   EXPECT_CALL(*metrics_, ReportDBusCallResult("SetConfig", ERROR_NONE));
