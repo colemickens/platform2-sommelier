@@ -23,6 +23,7 @@ android::CameraMetadata MetadataHandler::CreateStaticMetadata(int format,
       ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS,
       ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
       ANDROID_SENSOR_ORIENTATION,
+      ANDROID_REQUEST_PIPELINE_MAX_DEPTH,
   };
 
   metadata.update(ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS,
@@ -54,6 +55,10 @@ android::CameraMetadata MetadataHandler::CreateStaticMetadata(int format,
 
   int32_t sensor_orientation = 0;
   metadata.update(ANDROID_SENSOR_ORIENTATION, &sensor_orientation, 1);
+
+  const uint8_t request_pipeline_max_depth = 4;
+  metadata.update(ANDROID_REQUEST_PIPELINE_MAX_DEPTH,
+                  &request_pipeline_max_depth, 1);
 
   return metadata;
 }
