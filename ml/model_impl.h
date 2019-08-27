@@ -32,8 +32,20 @@ class ModelImpl : public chromeos::machine_learning::mojom::Model {
   // The |required_inputs| and |required_outputs| arguments specify a mapping
   // from required input / output tensor names to their indices in the TF lite
   // graph, and must outlive this object.
-  ModelImpl(const std::map<std::string, int>& required_inputs,
-            const std::map<std::string, int>& required_outputs,
+  // |model_string| is optional string data that this class can take ownership
+  // of (presumably the backing data for |model|) and that is guaranteed to be
+  // destroyed *after* |model|. This is required by function
+  // |tflite::FlatBufferModel::BuildFromBuffer|.
+  ModelImpl(std::map<std::string, int> required_inputs,
+            std::map<std::string, int> required_outputs,
+            std::unique_ptr<tflite::FlatBufferModel> model,
+            std::unique_ptr<std::string> model_string,
+            chromeos::machine_learning::mojom::ModelRequest request,
+            const std::string& metrics_model_name);
+
+  // Use when constructed from file where no need to pass the |model_string|.
+  ModelImpl(std::map<std::string, int> required_inputs,
+            std::map<std::string, int> required_outputs,
             std::unique_ptr<tflite::FlatBufferModel> model,
             chromeos::machine_learning::mojom::ModelRequest request,
             const std::string& metrics_model_name);
@@ -51,8 +63,11 @@ class ModelImpl : public chromeos::machine_learning::mojom::Model {
   // Remove a graph executor from our hosted set.
   void EraseGraphExecutor(std::list<GraphExecutorImpl>::const_iterator it);
 
-  const std::map<std::string, int>& required_inputs_;
-  const std::map<std::string, int>& required_outputs_;
+  const std::map<std::string, int> required_inputs_;
+  const std::map<std::string, int> required_outputs_;
+
+  // Must be above |model_|.
+  const std::unique_ptr<std::string> model_string_;
 
   const std::unique_ptr<tflite::FlatBufferModel> model_;
 

@@ -23,16 +23,30 @@ using ::chromeos::machine_learning::mojom::ModelRequest;
 // Base name for UMA metrics related to CreateGraphExecutor calls
 constexpr char kMetricsRequestName[] = "CreateGraphExecutorResult";
 
-ModelImpl::ModelImpl(const std::map<std::string, int>& required_inputs,
-                     const std::map<std::string, int>& required_outputs,
+ModelImpl::ModelImpl(std::map<std::string, int> required_inputs,
+                     std::map<std::string, int> required_outputs,
                      std::unique_ptr<tflite::FlatBufferModel> model,
+                     std::unique_ptr<std::string> model_string,
                      ModelRequest request,
                      const std::string& metrics_model_name)
-    : required_inputs_(required_inputs),
-      required_outputs_(required_outputs),
+    : required_inputs_(std::move(required_inputs)),
+      required_outputs_(std::move(required_outputs)),
+      model_string_(std::move(model_string)),
       model_(std::move(model)),
       binding_(this, std::move(request)),
       metrics_model_name_(metrics_model_name) {}
+
+ModelImpl::ModelImpl(std::map<std::string, int> required_inputs,
+                     std::map<std::string, int> required_outputs,
+                     std::unique_ptr<tflite::FlatBufferModel> model,
+                     ModelRequest request,
+                     const std::string& metrics_model_name)
+    : ModelImpl(std::move(required_inputs),
+                std::move(required_outputs),
+                std::move(model),
+                nullptr,
+                std::move(request),
+                metrics_model_name) {}
 
 void ModelImpl::set_connection_error_handler(
     base::Closure connection_error_handler) {
