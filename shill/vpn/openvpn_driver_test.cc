@@ -113,7 +113,6 @@ class OpenVPNDriverTest
   }
 
   void TearDown() override {
-    driver_->default_service_callback_tag_ = 0;
     driver_->pid_ = 0;
     driver_->device_ = nullptr;
     driver_->service_ = nullptr;
@@ -224,6 +223,10 @@ class OpenVPNDriverTest
                         const string& flag);
 
   void SetupLSBRelease();
+
+  bool IsObservingDefaultServiceChanges() const {
+    return manager_.default_service_observers().HasObserver(driver_);
+  }
 
   // Inherited from RpcTaskDelegate.
   void GetLogin(string* user, string* password) override;
@@ -1108,14 +1111,10 @@ TEST_F(OpenVPNDriverTest, ClaimInterface) {
   EXPECT_CALL(process_manager_,
               StartProcess(_, _, _, _, false /* Don't exit with parent */, _))
       .WillOnce(Return(true));
-  const int kServiceCallbackTag = 1;
-  EXPECT_EQ(0, driver_->default_service_callback_tag_);
-  EXPECT_CALL(manager_, RegisterDefaultServiceCallback(_))
-      .WillOnce(Return(kServiceCallbackTag));
   EXPECT_TRUE(driver_->ClaimInterface(kInterfaceName, kInterfaceIndex));
   ASSERT_NE(nullptr, driver_->device_);
+  EXPECT_TRUE(IsObservingDefaultServiceChanges());
   EXPECT_EQ(kInterfaceIndex, driver_->device_->interface_index());
-  EXPECT_EQ(kServiceCallbackTag, driver_->default_service_callback_tag_);
 }
 
 TEST_F(OpenVPNDriverTest, IdleService) {
@@ -1138,9 +1137,7 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
                    Service::kErrorDetailsNone);
 
   const int kPID = 123456;
-  const int kServiceCallbackTag = 5;
   static const char kErrorDetails[] = "Certificate revoked.";
-  driver_->default_service_callback_tag_ = kServiceCallbackTag;
   driver_->pid_ = kPID;
   driver_->rpc_task_.reset(new RpcTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
@@ -1156,7 +1153,6 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   // Stop will be called twice -- once by Cleanup and once by the destructor.
   EXPECT_CALL(*management_server_, Stop()).Times(2);
   EXPECT_CALL(process_manager_, UpdateExitCallback(kPID, _));
-  EXPECT_CALL(manager_, DeregisterDefaultServiceCallback(kServiceCallbackTag));
   EXPECT_CALL(process_manager_, StopProcessAndBlock(kPID));
   EXPECT_CALL(device_info_, DeleteInterface(_));
   EXPECT_CALL(*device_, DropConnection());
@@ -1164,9 +1160,9 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   EXPECT_CALL(*service_, SetFailure(Service::kFailureInternal));
   driver_->Cleanup(Service::kStateFailure, Service::kFailureInternal,
                    kErrorDetails);
-  EXPECT_EQ(0, driver_->default_service_callback_tag_);
   EXPECT_EQ(0, driver_->pid_);
   EXPECT_EQ(nullptr, driver_->rpc_task_);
+  EXPECT_FALSE(IsObservingDefaultServiceChanges());
   EXPECT_TRUE(driver_->tunnel_interface_.empty());
   EXPECT_FALSE(driver_->device_);
   EXPECT_FALSE(driver_->service_);
@@ -1370,7 +1366,7 @@ TEST_F(OpenVPNDriverTest, OnDefaultServiceChanged) {
   // Switch from Online service -> no service.  VPN should be put on hold.
   ServiceRefPtr null_service;
   EXPECT_CALL(*management_server_, Hold());
-  driver_->OnDefaultServiceChanged(null_service);
+  driver_->OnDefaultServiceChanged(null_service, true, null_service, true);
   Mock::VerifyAndClearExpectations(management_server_);
 
   // Switch from no service -> Portal service.  VPN should stay on
@@ -1381,7 +1377,7 @@ TEST_F(OpenVPNDriverTest, OnDefaultServiceChanged) {
       .WillOnce(Return(Service::kStateNoConnectivity));
   EXPECT_CALL(*management_server_, Hold()).Times(0);
   EXPECT_CALL(*management_server_, ReleaseHold()).Times(0);
-  driver_->OnDefaultServiceChanged(mock_service);
+  driver_->OnDefaultServiceChanged(mock_service, true, mock_service, true);
   Mock::VerifyAndClearExpectations(management_server_);
 
   // Current service transitions from Portal -> Online.  VPN should release
@@ -1397,7 +1393,7 @@ TEST_F(OpenVPNDriverTest, OnDefaultServiceChanged) {
 
   EXPECT_CALL(*mock_service2, state()).WillOnce(Return(Service::kStateOnline));
   EXPECT_CALL(*management_server_, Restart());
-  driver_->OnDefaultServiceChanged(mock_service2);
+  driver_->OnDefaultServiceChanged(mock_service2, true, mock_service2, true);
 }
 
 TEST_F(OpenVPNDriverTest, GetReconnectTimeoutSeconds) {

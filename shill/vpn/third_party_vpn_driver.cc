@@ -77,7 +77,6 @@ ThirdPartyVpnDriver::ThirdPartyVpnDriver(Manager* manager,
       ip_properties_set_(false),
       io_handler_factory_(IOHandlerFactory::GetInstance()),
       parameters_expected_(false),
-      default_service_callback_tag_(0),
       reconnect_supported_(false),
       link_down_(false) {
   file_io_ = FileIO::GetInstance();
@@ -448,10 +447,7 @@ void ThirdPartyVpnDriver::Cleanup(Service::ConnectState state,
                 << ", " << error_details << ")";
   StopConnectTimeout();
   int interface_index = -1;
-  if (default_service_callback_tag_) {
-    manager()->DeregisterDefaultServiceCallback(default_service_callback_tag_);
-    default_service_callback_tag_ = 0;
-  }
+  manager()->RemoveDefaultServiceObserver(this);
   if (device_) {
     interface_index = device_->interface_index();
     device_->DropConnection();
@@ -533,9 +529,7 @@ bool ThirdPartyVpnDriver::ClaimInterface(const std::string& link_name,
     parameters_expected_ = true;
     adaptor_interface_->EmitPlatformMessage(
         static_cast<uint32_t>(PlatformMessage::kConnected));
-    default_service_callback_tag_ = manager()->RegisterDefaultServiceCallback(
-        Bind(&ThirdPartyVpnDriver::OnDefaultServiceChanged,
-             base::Unretained(this)));
+    manager()->AddDefaultServiceObserver(this);
   }
   return true;
 }
@@ -572,8 +566,11 @@ void ThirdPartyVpnDriver::TriggerReconnect(const ServiceRefPtr& new_service) {
 }
 
 void ThirdPartyVpnDriver::OnDefaultServiceChanged(
-    const ServiceRefPtr& service) {
-  if (!service_ || !device_)
+    const ServiceRefPtr& /*logical_service*/,
+    bool /*logical_service_changed*/,
+    const ServiceRefPtr& physical_service,
+    bool physical_service_changed) {
+  if (!service_ || !device_ || !physical_service_changed)
     return;
 
   if (!reconnect_supported_) {
@@ -585,11 +582,11 @@ void ThirdPartyVpnDriver::OnDefaultServiceChanged(
   device_->SetServiceState(Service::kStateConfiguring);
   device_->ResetConnection();
 
-  if (service && service->state() == Service::kStateOnline) {
+  if (physical_service && physical_service->state() == Service::kStateOnline) {
     // The original service is no longer the default, but manager was able
     // to find another physical service that is already Online.
     // Ask the vpnProvider to reconnect.
-    TriggerReconnect(service);
+    TriggerReconnect(physical_service);
   } else {
     // The default physical service went away, and nothing else is available
     // right now.  All we can do is wait.

@@ -10,6 +10,11 @@
 #include <gtest/gtest.h>
 
 #include "shill/key_value_store.h"
+#include "shill/manager.h"
+#include "shill/mock_control.h"
+#include "shill/mock_event_dispatcher.h"
+#include "shill/mock_metrics.h"
+#include "shill/mock_process_manager.h"
 #include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_sockets.h"
 #include "shill/vpn/mock_openvpn_driver.h"
@@ -33,7 +38,10 @@ MATCHER_P(VoidStringEq, value, "") {
 
 class OpenVPNManagementServerTest : public testing::Test {
  public:
-  OpenVPNManagementServerTest() : server_(&driver_) {
+  OpenVPNManagementServerTest()
+      : manager_(&control_, &dispatcher_, &metrics_, "", "", ""),
+        driver_(&manager_, manager_.device_info(), &process_manager_),
+        server_(&driver_) {
     server_.io_handler_factory_ = &io_handler_factory_;
   }
 
@@ -142,6 +150,11 @@ class OpenVPNManagementServerTest : public testing::Test {
 
   void SetClientState(const string& state) { server_.state_ = state; }
 
+  MockControl control_;
+  MockEventDispatcher dispatcher_;
+  MockMetrics metrics_;
+  MockProcessManager process_manager_;
+  Manager manager_;
   MockOpenVPNDriver driver_;
   MockSockets sockets_;
   MockIOHandlerFactory io_handler_factory_;

@@ -175,7 +175,6 @@ Manager::Manager(ControlInterface* control_interface,
       termination_actions_(dispatcher),
       is_wake_on_lan_enabled_(true),
       ignore_unknown_ethernet_(false),
-      default_service_callback_tag_(0),
       suppress_autoconnect_(false),
       is_connected_state_(false),
       has_user_session_(false),
@@ -1516,13 +1515,12 @@ bool Manager::RunTerminationActionsAndNotifyMetrics(
   return true;
 }
 
-int Manager::RegisterDefaultServiceCallback(const ServiceCallback& callback) {
-  default_service_callbacks_[++default_service_callback_tag_] = callback;
-  return default_service_callback_tag_;
+void Manager::AddDefaultServiceObserver(DefaultServiceObserver* observer) {
+  default_service_observers_.AddObserver(observer);
 }
 
-void Manager::DeregisterDefaultServiceCallback(int tag) {
-  default_service_callbacks_.erase(tag);
+void Manager::RemoveDefaultServiceObserver(DefaultServiceObserver* observer) {
+  default_service_observers_.RemoveObserver(observer);
 }
 
 int Manager::CalcConnectionId(const string& gateway_ip,
@@ -1544,45 +1542,52 @@ void Manager::ReportServicesOnSameNetwork(int connection_id) {
 void Manager::UpdateDefaultServices(const ServiceRefPtr& logical_service,
                                     const ServiceRefPtr& physical_service) {
   metrics_->NotifyDefaultServiceChanged(logical_service.get());
-  EmitDefaultService();
+  // Since GetDefaultService returns nullptr when the Service doesn't
+  // have a corresponding Connection, this takes into account both a
+  // change in default Service and a change in loss/gain of Connection
+  // for an unchanged default Service.
+  bool logical_service_changed = EmitDefaultService();
 
   bool physical_service_connected =
       physical_service && physical_service->connection();
+  bool physical_service_changed =
+      (physical_service != last_default_physical_service_ ||
+       physical_service_connected != last_default_physical_service_connected_);
 
-  if (physical_service == last_default_physical_service_ &&
-      physical_service_connected == last_default_physical_service_connected_) {
+  if (physical_service_changed) {
+    last_default_physical_service_ = physical_service;
+    last_default_physical_service_connected_ = physical_service_connected;
+
+    if (physical_service) {
+      LOG(INFO) << "Default physical service: "
+                << physical_service->unique_name() << " ("
+                << (physical_service->connection() ? "" : "not ")
+                << "connected)";
+    } else {
+      LOG(INFO) << "Default physical service: NONE";
+    }
+  }
+
+  if (!physical_service_changed && !logical_service_changed) {
     return;
   }
-  last_default_physical_service_ = physical_service;
-  last_default_physical_service_connected_ = physical_service_connected;
 
-  if (physical_service) {
-    if (!physical_service->connection()) {
-      LOG(INFO) << "Default physical service: "
-                << physical_service->unique_name() << " (not connected)";
-    } else {
-      LOG(INFO) << "Default physical service: "
-                << physical_service->unique_name() << " (connected)";
-    }
-  } else {
-    LOG(INFO) << "Default physical service: NONE";
-  }
-
-  for (auto it = default_service_callbacks_.cbegin();
-       it != default_service_callbacks_.cend();
-       /* no increment */) {
-    // Increment early, because |callback| might delete the current element.
-    const ServiceCallback& callback = (*it++).second;
-    callback.Run(physical_service);
+  for (auto& observer : default_service_observers_) {
+    observer.OnDefaultServiceChanged(logical_service, logical_service_changed,
+                                     physical_service,
+                                     physical_service_changed);
   }
 }
 
-void Manager::EmitDefaultService() {
+bool Manager::EmitDefaultService() {
   RpcIdentifier rpc_identifier = GetDefaultServiceRpcIdentifier(nullptr);
-  if (rpc_identifier != default_service_rpc_identifier_) {
-    adaptor_->EmitRpcIdentifierChanged(kDefaultServiceProperty, rpc_identifier);
-    default_service_rpc_identifier_ = rpc_identifier;
+  if (rpc_identifier == default_service_rpc_identifier_) {
+    return false;
   }
+
+  adaptor_->EmitRpcIdentifierChanged(kDefaultServiceProperty, rpc_identifier);
+  default_service_rpc_identifier_ = rpc_identifier;
+  return true;
 }
 
 void Manager::OnSuspendImminent() {

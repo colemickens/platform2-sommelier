@@ -163,7 +163,6 @@ OpenVPNDriver::OpenVPNDriver(Manager* manager,
       lsb_release_file_(kLSBReleaseFile),
       openvpn_config_directory_(kDefaultOpenVPNConfigurationDirectory),
       pid_(0),
-      default_service_callback_tag_(0),
       link_down_(false) {}
 
 OpenVPNDriver::~OpenVPNDriver() {
@@ -203,10 +202,7 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state,
     base::DeleteFile(openvpn_config_file_, false);
     openvpn_config_file_.clear();
   }
-  if (default_service_callback_tag_) {
-    manager()->DeregisterDefaultServiceCallback(default_service_callback_tag_);
-    default_service_callback_tag_ = 0;
-  }
+  manager()->RemoveDefaultServiceObserver(this);
   rpc_task_.reset();
   int interface_index = -1;
   if (device_) {
@@ -368,8 +364,7 @@ bool OpenVPNDriver::ClaimInterface(const string& link_name,
 
   rpc_task_.reset(new RpcTask(control_interface(), this));
   if (SpawnOpenVPN()) {
-    default_service_callback_tag_ = manager()->RegisterDefaultServiceCallback(
-        Bind(&OpenVPNDriver::OnDefaultServiceChanged, Unretained(this)));
+    manager()->AddDefaultServiceObserver(this);
   } else {
     FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
   }
@@ -1080,9 +1075,18 @@ vector<string> OpenVPNDriver::GetCommandLineArgs() {
   return args;
 }
 
-void OpenVPNDriver::OnDefaultServiceChanged(const ServiceRefPtr& service) {
-  SLOG(this, 2) << __func__ << "(" << (service ? service->unique_name() : "-")
+void OpenVPNDriver::OnDefaultServiceChanged(
+    const ServiceRefPtr& /*logical_service*/,
+    bool /*logical_service_changed*/,
+    const ServiceRefPtr& physical_service,
+    bool physical_service_changed) {
+  if (!physical_service_changed)
+    return;
+
+  SLOG(this, 2) << __func__ << "("
+                << (physical_service ? physical_service->unique_name() : "-")
                 << ")";
+
   if (!device_)
     return;
 
@@ -1091,7 +1095,7 @@ void OpenVPNDriver::OnDefaultServiceChanged(const ServiceRefPtr& service) {
   device_->ResetConnection();
   StopConnectTimeout();
 
-  if (service && service->state() == Service::kStateOnline) {
+  if (physical_service && physical_service->state() == Service::kStateOnline) {
     // The original service is no longer the default, but manager was able
     // to find another physical service that is already Online.
     // Ask the management server to reconnect immediately.

@@ -875,7 +875,6 @@ if (use.test) {
         "shims/environment_test.cc",
         "vpn/arc_vpn_driver_test.cc",
         "vpn/l2tp_ipsec_driver_test.cc",
-        "vpn/mock_openvpn_driver.cc",
         "vpn/mock_openvpn_management_server.cc",
         "vpn/mock_vpn_driver.cc",
         "vpn/mock_vpn_service.cc",

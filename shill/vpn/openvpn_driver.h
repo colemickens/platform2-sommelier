@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/default_service_observer.h"
 #include "shill/ipconfig.h"
 #include "shill/net/sockets.h"
 #include "shill/refptr_types.h"
@@ -25,10 +26,13 @@ namespace shill {
 class CertificateFile;
 class DeviceInfo;
 class Error;
+class Manager;
 class OpenVPNManagementServer;
 class ProcessManager;
 
-class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
+class OpenVPNDriver : public VPNDriver,
+                      public RpcTaskDelegate,
+                      public DefaultServiceObserver {
  public:
   enum ReconnectReason {
     kReconnectReasonUnknown,
@@ -231,7 +235,12 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   void Notify(const std::string& reason,
               const std::map<std::string, std::string>& dict) override;
 
-  void OnDefaultServiceChanged(const ServiceRefPtr& service);
+  // Implements DefaultServiceObserver.
+  void OnDefaultServiceChanged(const ServiceRefPtr& logical_service,
+                               bool logical_service_changed,
+                               const ServiceRefPtr& physical_service,
+                               bool physical_service_changed) override;
+
   void OnDefaultServiceStateChanged(const ServiceRefPtr& service) override;
 
   void ReportConnectionMetrics();
@@ -256,9 +265,6 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   // The PID of the spawned openvpn process. May be 0 if no process has been
   // spawned yet or the process has died.
   int pid_;
-
-  // Default service watch callback tag.
-  int default_service_callback_tag_;
 
   // Helps distinguish between a network->network transition (where the
   // client simply reconnects), and a network->link_down->network transition

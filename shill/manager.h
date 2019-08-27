@@ -15,12 +15,14 @@
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <base/observer_list.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
 #include "shill/cellular/modem_info.h"
+#include "shill/default_service_observer.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/dhcp/dhcp_properties.h"
@@ -59,8 +61,6 @@ class EthernetEapProvider;
 
 class Manager : public base::SupportsWeakPtr<Manager> {
  public:
-  using ServiceCallback = base::Callback<void(const ServiceRefPtr& service)>;
-
   struct Properties {
    public:
     Properties()
@@ -380,6 +380,11 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual const base::FilePath& run_path() const { return run_path_; }
   const base::FilePath& storage_path() const { return storage_path_; }
 
+  const base::ObserverList<DefaultServiceObserver>& default_service_observers()
+      const {
+    return default_service_observers_;
+  }
+
   virtual int64_t GetSuspendDurationUsecs() const {
     return power_manager_->suspend_duration_us();
   }
@@ -429,11 +434,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   bool RunTerminationActionsAndNotifyMetrics(
       const ResultCallback& done_callback);
 
-  // Registers a |callback| that's invoked whenever the default service
-  // changes. Returns a unique tag that can be used to deregister the
-  // callback. A tag equal to 0 is invalid.
-  virtual int RegisterDefaultServiceCallback(const ServiceCallback& callback);
-  virtual void DeregisterDefaultServiceCallback(int tag);
+  // Add/remove observers to subscribe to default Service notifications.
+  void AddDefaultServiceObserver(DefaultServiceObserver* observer);
+  void RemoveDefaultServiceObserver(DefaultServiceObserver* observer);
 
   // Calculate connection identifier, which is hash of salt value, gateway IP
   // address, and gateway MAC address.
@@ -600,7 +603,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   bool SetCheckPortalList(const std::string& portal_list, Error* error);
   bool SetIgnoredDNSSearchPaths(const std::string& ignored_paths, Error* error);
   bool SetPortalFallbackUrlsString(const std::string& urls, Error* error);
-  void EmitDefaultService();
+  // Emit a kDefaultServiceProperty property-changed D-Bus signal if the default
+  // Service has changed. Returns true only if the default Service did actually
+  // change.
+  bool EmitDefaultService();
   bool IsTechnologyInList(const std::string& technology_list,
                           Technology tech) const;
   void EmitDeviceProperties();
@@ -808,9 +814,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Whether to ignore Ethernet-like devices that don't have an assigned driver.
   bool ignore_unknown_ethernet_;
 
-  // Maps tags to callbacks for monitoring default service changes.
-  std::map<int, ServiceCallback> default_service_callbacks_;
-  int default_service_callback_tag_;
+  // List of DefaultServiceObservers registered with AddDefaultServiceObserver.
+  base::ObserverList<DefaultServiceObserver> default_service_observers_;
 
   // Stores the most recent copy of geolocation information for each
   // device the manager is keeping track of.

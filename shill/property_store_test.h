@@ -214,6 +214,7 @@ class PropertyStoreTest : public testing::TestWithParam<brillo::Any> {
 
  protected:
   Manager* manager() { return &manager_; }
+  const Manager* manager() const { return &manager_; }
   MockControl* control_interface() { return &control_interface_; }
   EventDispatcher* dispatcher() { return &dispatcher_; }
   MockMetrics* metrics() { return &metrics_; }

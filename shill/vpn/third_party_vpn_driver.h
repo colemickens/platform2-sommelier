@@ -14,6 +14,7 @@
 #include <base/callback.h>
 #include <gtest/gtest_prod.h>
 
+#include "shill/default_service_observer.h"
 #include "shill/ipconfig.h"
 #include "shill/net/io_handler.h"
 #include "shill/refptr_types.h"
@@ -26,9 +27,10 @@ class DeviceInfo;
 class Error;
 class FileIO;
 class IOHandlerFactory;
+class Manager;
 class ThirdPartyVpnAdaptorInterface;
 
-class ThirdPartyVpnDriver : public VPNDriver {
+class ThirdPartyVpnDriver : public VPNDriver, public DefaultServiceObserver {
  public:
   enum PlatformMessage {
     kConnected = 1,
@@ -70,7 +72,13 @@ class ThirdPartyVpnDriver : public VPNDriver {
   std::string GetProviderType() const override;
   void Disconnect() override;
   void OnConnectionDisconnected() override;
-  void OnDefaultServiceChanged(const ServiceRefPtr& service);
+
+  // Implements DefaultServiceObserver.
+  void OnDefaultServiceChanged(const ServiceRefPtr& logical_service,
+                               bool logical_service_changed,
+                               const ServiceRefPtr& physical_service,
+                               bool physical_service_changed) override;
+
   void OnDefaultServiceStateChanged(const ServiceRefPtr& service) override;
   bool Load(StoreInterface* storage, const std::string& storage_id) override;
   bool Save(StoreInterface* storage,
@@ -251,9 +259,6 @@ class ThirdPartyVpnDriver : public VPNDriver {
 
   // The boolean indicates if parameters are expected from the VPN client.
   bool parameters_expected_;
-
-  // Default service watch callback tag.
-  int default_service_callback_tag_;
 
   // Flag indicating whether the extension supports reconnections - a feature
   // that wasn't in the original API.  If not, we won't send link_* or
