@@ -124,10 +124,6 @@ std::string Hash(const google::protobuf::RepeatedPtrField<std::string>& rules) {
   return EncodeDigest(digest);
 }
 
-base::FilePath GetDBPath(const base::FilePath& parent_dir) {
-  return parent_dir.Append(kDefaultDbName);
-}
-
 std::string GetRuleFromDevPath(const std::string& devpath) {
   UsbguardDeviceManagerHooksImpl hooks;
   auto device_manager = usbguard::DeviceManager::create(hooks, "uevent");
