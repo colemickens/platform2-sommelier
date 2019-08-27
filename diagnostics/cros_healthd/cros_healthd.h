@@ -16,7 +16,6 @@
 
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
 #include "diagnostics/cros_healthd/cros_healthd_routine_service.h"
-#include "diagnostics/cros_healthd/cros_healthd_telemetry_service.h"
 #include "mojo/cros_healthd.mojom.h"
 
 namespace diagnostics {
@@ -43,7 +42,6 @@ class CrosHealthd final : public brillo::DBusServiceDaemon {
   void ShutDownDueToMojoError(const std::string& debug_reason);
 
   std::unique_ptr<CrosHealthdRoutineService> routine_service_;
-  std::unique_ptr<CrosHealthdTelemetryService> telemetry_service_;
 
   bool mojo_service_bind_attempted_ = false;
   std::unique_ptr<CrosHealthdMojoService> mojo_service_;

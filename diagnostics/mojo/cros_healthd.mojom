@@ -12,24 +12,9 @@ module chromeos.cros_healthd.mojom;
 
 import "cros_healthd_diagnostics.mojom";
 import "cros_healthd_probe.mojom";
-import "cros_healthd_telemetry.mojom";
 
 // Interface exposed by the cros_healthd daemon.
 interface CrosHealthdService {
-  // ------------------- Start of telemetry definitions -----------------------
-
-  // Retrieves telemetry data corresponding to |item|. The returned data will be
-  // null if |item| was invalid, or if there was an error retrieving the data.
-  GetTelemetryItem(TelemetryItemEnum item) => (TelemetryItemData? item_data);
-
-  // Retrieves telemetry data for every telemetry item in |group|. Any
-  // individual piece of data will be omitted from the response if there was an
-  // error retrieving data for that item.
-  GetTelemetryGroup(TelemetryGroupEnum group)
-      => (array<TelemetryItemWithValue> group_data);
-
-  // ------------------- End of telemetry definitions -------------------------
-
   // ------------------- Start of diagnostics definitions ---------------------
 
   // Returns an array of all diagnostic routines that the platform supports.
