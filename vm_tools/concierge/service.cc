@@ -632,9 +632,6 @@ Service::Service(base::Closure quit_closure)
 #else
       resync_vm_clocks_on_resume_(false),
 #endif
-      untrusted_vm_utils_(kMinKernelVersionForUntrustedVM,
-                          base::FilePath(kL1TFFilePath),
-                          base::FilePath(kMDSFilePath)),
       weak_ptr_factory_(this) {
   plugin_subnet_ = network_address_manager_.AllocateIPv4Subnet(
       arc_networkd::AddressManager::Guest::VM_PLUGIN);
@@ -682,6 +679,16 @@ bool Service::Init() {
     LOG(ERROR) << "Failed to export " << kVmConciergeServicePath << " object";
     return false;
   }
+
+  dbus::ObjectProxy* debugd_proxy = bus_->GetObjectProxy(
+      debugd::kDebugdServiceName, dbus::ObjectPath(debugd::kDebugdServiceName));
+  if (!debugd_proxy) {
+    LOG(ERROR) << "Unable to get dbus proxy for " << debugd::kDebugdServiceName;
+    return false;
+  }
+  untrusted_vm_utils_ = std::make_unique<UntrustedVMUtils>(
+      debugd_proxy, kMinKernelVersionForUntrustedVM,
+      base::FilePath(kL1TFFilePath), base::FilePath(kMDSFilePath));
 
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
@@ -1009,7 +1016,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
   if (!is_trusted_vm && kEnableStrictUntrustedVMChecks) {
     UntrustedVMUtils::MitigationStatus status =
-        untrusted_vm_utils_.CheckUntrustedVMMitigationStatus();
+        untrusted_vm_utils_->CheckUntrustedVMMitigationStatus();
     switch (status) {
       case UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE:
         break;
@@ -1024,7 +1031,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       case UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED: {
         // In this case the mitigation is present due to SMT being enabled. Try
         // to disable it in order to support Untrusted VMs.
-        if (!untrusted_vm_utils_.DisableSMT()) {
+        if (!untrusted_vm_utils_->DisableSMT()) {
           LOG(ERROR) << "Failed to disable SMT for untrusted VM";
           response.set_failure_reason("Failed to disable SMT for untrusted VM");
           writer.AppendProtoAsArrayOfBytes(response);

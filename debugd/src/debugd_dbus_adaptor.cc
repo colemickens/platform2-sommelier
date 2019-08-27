@@ -532,7 +532,16 @@ bool DebugdDBusAdaptor::UpdateAndVerifyFWOnUsbStop(brillo::ErrorPtr* error,
 bool DebugdDBusAdaptor::SetSchedulerConfiguration(brillo::ErrorPtr* error,
                                                   const std::string& policy,
                                                   bool* result) {
-  *result = scheduler_configuration_tool_->SetPolicy(policy, error);
+  return SetSchedulerConfigurationV2(error, policy, false /* lock_policy */,
+                                     result);
+}
+
+bool DebugdDBusAdaptor::SetSchedulerConfigurationV2(brillo::ErrorPtr* error,
+                                                  const std::string& policy,
+                                                  bool lock_policy,
+                                                  bool* result) {
+  *result =
+      scheduler_configuration_tool_->SetPolicy(policy, lock_policy, error);
   return *result;
 }
 

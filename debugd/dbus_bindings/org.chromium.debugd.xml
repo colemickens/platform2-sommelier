@@ -1030,7 +1030,7 @@
       </arg>
       <arg name="result" type="b" direction="out">
         <tp:docstring>
-          Whether setting the policy was succesful.
+          Whether setting the policy was successful.
         </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
@@ -1058,6 +1058,29 @@
       <arg name="outfd" type="h" direction="out">
         <tp:docstring>
           File descriptor to send output to.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+    <method name="SetSchedulerConfigurationV2">
+      <tp:docstring>
+        Set the scheduler configuration policy.
+      </tp:docstring>
+      <arg name="policy" type="s" direction="in">
+        Either "conservative" or "performance".
+      </arg>
+      <arg name="lock_policy" type="b" direction="in">
+        Argument to lock the policy till the device is rebooted. Only takes
+        effect if set to true and policy is "conservative". Results in error if
+        set to true and the policy is "performance". Has no effect if set to
+        false.
+      </arg>
+      <arg name="result" type="b" direction="out">
+        <tp:docstring>
+          Whether setting the policy, and optionally locking it, was successful.
+          Returns false if locked to "consevative" and the policy argument is
+          "performance". Returns true if policy was locked to "conservative" and
+          the policy argument is "conservative".
         </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>

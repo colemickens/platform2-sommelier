@@ -268,7 +268,7 @@ class Service final {
 
   // Used to check for, and possibly enable, the conditions required for
   // untrusted VMs.
-  UntrustedVMUtils untrusted_vm_utils_;
+  std::unique_ptr<UntrustedVMUtils> untrusted_vm_utils_;
 
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 

@@ -9,6 +9,7 @@
 
 #include <base/files/file_path.h>
 #include <base/optional.h>
+#include <dbus/object_proxy.h>
 
 namespace vm_tools {
 namespace concierge {
@@ -20,11 +21,13 @@ class UntrustedVMUtils {
   // Used to represent kernel version.
   using KernelVersionAndMajorRevision = std::pair<int, int>;
 
+  // |debugd_proxy| - Used to call into debugd daemon.
   // |min_needed_version| - Minimum kernel version required to support untrusted
   // VMs.
   // |l1tf_status_path| - Path to read L1TF vulnerability status from.
   // |mds_status_path| - Path to read MDS vulnerability status from.
-  UntrustedVMUtils(KernelVersionAndMajorRevision min_needed_version,
+  UntrustedVMUtils(dbus::ObjectProxy* debugd_proxy,
+                   KernelVersionAndMajorRevision min_needed_version,
                    const base::FilePath& l1tf_status_path,
                    const base::FilePath& mds_status_path);
 
@@ -56,6 +59,9 @@ class UntrustedVMUtils {
       KernelVersionAndMajorRevision host_kernel_version);
 
  private:
+  // Not owned. Used for calling the debugd API.
+  dbus::ObjectProxy* const debugd_proxy_;
+
   // Minium kernel version required to support untrusted VMs.
   KernelVersionAndMajorRevision min_needed_version_;
 

@@ -18,9 +18,16 @@ class SchedulerConfigurationTool {
   ~SchedulerConfigurationTool() = default;
 
   // This sets the core sharing policy.
-  bool SetPolicy(const std::string& policy, brillo::ErrorPtr* error);
+  bool SetPolicy(const std::string& policy,
+                 bool lock_policy,
+                 brillo::ErrorPtr* error);
 
  private:
+  // Set to true when |SetAndLockConservativePolicy| is called for the first
+  // time. If set to |true| can't be set to false and configuration policy can't
+  // be changed.
+  bool policy_locked_conservative_ = false;
+
   DISALLOW_COPY_AND_ASSIGN(SchedulerConfigurationTool);
 };
 

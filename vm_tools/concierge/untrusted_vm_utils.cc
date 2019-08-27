@@ -6,6 +6,7 @@
 
 #include <sys/utsname.h>
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -14,11 +15,17 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_piece.h>
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/message.h>
 
 namespace vm_tools {
 namespace concierge {
 
 namespace {
+
+// Scheduler configuration to be passed to the debugd API to disable SMT on the
+// device.
+const char kSchedulerConfigurationConservative[] = "conservative";
 
 // Gets the kernel version of the host it's run on. Returns true if retrieved
 // successfully, false otherwise.
@@ -120,10 +127,12 @@ UntrustedVMUtils::MitigationStatus GetMDSMitigationStatus(
 }  // namespace
 
 UntrustedVMUtils::UntrustedVMUtils(
+    dbus::ObjectProxy* debugd_proxy,
     KernelVersionAndMajorRevision min_needed_version,
     const base::FilePath& l1tf_status_path,
     const base::FilePath& mds_status_path)
-    : min_needed_version_(min_needed_version),
+    : debugd_proxy_(debugd_proxy),
+      min_needed_version_(min_needed_version),
       l1tf_status_path_(l1tf_status_path),
       mds_status_path_(mds_status_path) {
   DCHECK(!l1tf_status_path.empty());
@@ -151,8 +160,25 @@ UntrustedVMUtils::CheckUntrustedVMMitigationStatus() {
 }
 
 bool UntrustedVMUtils::DisableSMT() {
-  // TODO(abhishekbh): Disable SMT.
-  return true;
+  dbus::MethodCall method_call(debugd::kDebugdInterface,
+                               debugd::kSetSchedulerConfigurationV2);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(kSchedulerConfigurationConservative);
+  writer.AppendBool(true /* lock_policy */);
+
+  std::unique_ptr<dbus::Response> response = debugd_proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (response == nullptr)
+    return false;
+
+  bool result;
+  dbus::MessageReader reader(response.get());
+  if (!reader.PopBool(&result)) {
+    LOG(ERROR) << "Failed to read SetAndLockConservativeSchedulerConfiguration "
+                  "response ";
+    return false;
+  }
+  return result;
 }
 
 void UntrustedVMUtils::SetKernelVersionForTesting(

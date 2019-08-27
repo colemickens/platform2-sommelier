@@ -28,6 +28,14 @@ namespace {
 constexpr char kErrorPath[] =
     "org.chromium.debugd.SchedulerConfigurationPolicyError";
 
+const char kConservativePolicy[] = "conservative";
+
+const char kPerformancePolicy[] = "performance";
+
+bool IsValidSchedulerPolicy(const std::string& policy) {
+  return ((policy == kConservativePolicy) || (policy == kPerformancePolicy));
+}
+
 constexpr bool IsX86_64() {
 #if defined(__x86_64__)
   return true;
@@ -71,9 +79,29 @@ bool RunHelper(const std::string& command,
 }  // namespace
 
 bool SchedulerConfigurationTool::SetPolicy(const std::string& policy,
+                                           bool lock_policy,
                                            brillo::ErrorPtr* error) {
   if (!IsX86_64()) {
     DEBUGD_ADD_ERROR(error, kErrorPath, "Invalid architecture");
+    return false;
+  }
+
+  if (!IsValidSchedulerPolicy(policy)) {
+    DEBUGD_ADD_ERROR(error, kErrorPath, "Invalid policy " + policy);
+    return false;
+  }
+  bool is_policy_conservative = (policy == kConservativePolicy);
+
+  if (policy_locked_conservative_) {
+    if (is_policy_conservative)
+      return true;
+
+    DEBUGD_ADD_ERROR(error, kErrorPath, "Policy locked to conservative");
+    return false;
+  }
+
+  if (lock_policy && !is_policy_conservative) {
+    DEBUGD_ADD_ERROR(error, kErrorPath, "Can't lock performance policy");
     return false;
   }
 
@@ -86,6 +114,11 @@ bool SchedulerConfigurationTool::SetPolicy(const std::string& policy,
   if (!status) {
     DEBUGD_ADD_ERROR(error, kErrorPath,
                      "scheduler_configuration_helper failed");
+  } else {
+    // The |policy_locked_conservative_| flag will only be set, if a
+    // "conservative" policy was successfully set when it was asked to be
+    // locked..
+    policy_locked_conservative_ = is_policy_conservative && lock_policy;
   }
 
   return status;
