@@ -121,6 +121,20 @@ EntryManager* GetEntryManagerOrDie() {
   return entry_manager;
 }
 
+int HandleAuthorizeAll(const std::vector<std::string>& argv) {
+  if (!argv.empty()) {
+    LOG(ERROR) << "Invalid options!";
+    PrintUsage();
+    return EXIT_FAILURE;
+  }
+
+  if (!usb_bouncer::AuthorizeAll()) {
+    LOG(FATAL) << "authorize-all failed!";
+    return EXIT_FAILURE;
+  }
+  return EXIT_SUCCESS;
+}
+
 int HandleCleanup(const std::vector<std::string>& argv) {
   if (!argv.empty()) {
     LOG(ERROR) << "Invalid options!";
@@ -224,6 +238,7 @@ int main(int argc, char** argv) {
     const std::string command;
     int (*handler)(const std::vector<std::string>& argv);
   } command_handlers[] = {
+      {"authorize-all", HandleAuthorizeAll},
       {"cleanup", HandleCleanup},
       {"genrules", HandleGenRules},
       {"udev", HandleUdev},

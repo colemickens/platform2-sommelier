@@ -40,6 +40,11 @@ constexpr uid_t kRootUid = 0;
 std::string Hash(const std::string& content);
 std::string Hash(const google::protobuf::RepeatedPtrField<std::string>& rules);
 
+// Set USB devices to be authorized by default and authorize any devices that
+// were left unauthorized. This is performed on unlock when USBGuard is
+// disabled. If an error occurs, false is returned.
+bool AuthorizeAll(const std::string& devpath = "/sys/devices");
+
 // Invokes usbguard to get a rule corresponding to |devpath|. Note that
 // |devpath| isn't actually a valid path until you prepend "/sys". This matches
 // the behavior of udev. The return value is a allow-list rule from usbguard

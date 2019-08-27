@@ -9,18 +9,23 @@
 #include <base/process/launch.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <brillo/cryptohome.h>
 #include <brillo/file_utils.h>
 #include <brillo/files/file_util.h>
+#include <brillo/files/scoped_dir.h>
 #include <brillo/userdb_utils.h>
 #include <fcntl.h>
 #include <openssl/sha.h>
 #include <session_manager/dbus-proxies.h>
 #include <sys/file.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <algorithm>
 #include <cstring>
+#include <utility>
 #include <vector>
 
 #include <usbguard/Device.hpp>
@@ -28,7 +33,9 @@
 #include <usbguard/DeviceManagerHooks.hpp>
 #include <usbguard/Rule.hpp>
 
+using brillo::GetFDPath;
 using brillo::SafeFD;
+using brillo::ScopedDIR;
 using brillo::cryptohome::home::GetHashedUserPath;
 using org::chromium::SessionManagerInterfaceProxy;
 
@@ -38,6 +45,13 @@ namespace {
 
 constexpr int kDbPermissions = S_IRUSR | S_IWUSR;
 constexpr int kDbDirPermissions = S_IRUSR | S_IWUSR | S_IXUSR;
+
+constexpr char kSysFSAuthorizedDefault[] = "authorized_default";
+constexpr char kSysFSAuthorized[] = "authorized";
+constexpr char kSysFSEnabled[] = "1";
+
+constexpr int kMaxWriteAttempts = 10;
+constexpr int kAttemptDelayMicroseconds = 10000;
 
 // Returns base64 encoded strings since proto strings must be valid UTF-8.
 std::string EncodeDigest(const std::vector<uint8_t>& digest) {
@@ -88,6 +102,168 @@ class UsbguardDeviceManagerHooksImpl : public usbguard::DeviceManagerHooks {
   usbguard::Rule lastRule_;
 };
 
+// |fd| is assumed to be non-blocking.
+bool WriteWithTimeout(SafeFD* fd,
+                      const std::string value,
+                      size_t max_tries = kMaxWriteAttempts,
+                      base::TimeDelta delay = base::TimeDelta::FromMicroseconds(
+                          kAttemptDelayMicroseconds)) {
+  size_t tries = 0;
+  size_t total = 0;
+  int written = 0;
+  while (tries < max_tries) {
+    ++tries;
+
+    written = write(fd->get(), value.c_str() + total, value.size() - total);
+    if (written < 0) {
+      if (errno == EAGAIN) {
+        // Writing would block. Wait and try again.
+        HANDLE_EINTR(usleep(delay.InMicroseconds()));
+        continue;
+      } else if (errno == EINTR) {
+        // Count EINTR against the tries.
+        continue;
+      } else {
+        PLOG(ERROR) << "Failed to write '" << GetFDPath(fd->get()).value()
+                    << "'";
+        return false;
+      }
+    }
+
+    total += written;
+    if (total == value.size()) {
+      if (HANDLE_EINTR(ftruncate(fd->get(), value.size())) != 0) {
+        PLOG(ERROR) << "Failed to truncate '" << GetFDPath(fd->get()).value()
+                    << "'";
+        return false;
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+bool WriteWithTimeoutIfExists(SafeFD* dir,
+                              const base::FilePath name,
+                              const std::string& value) {
+  SafeFD::Error err;
+  SafeFD file;
+  std::tie(file, err) =
+      dir->OpenExistingFile(name, O_CLOEXEC | O_RDWR | O_NONBLOCK);
+  if (err == SafeFD::Error::kDoesNotExist) {
+    return true;
+  } else if (SafeFD::IsError(err)) {
+    LOG(ERROR) << "Failed to open authorized_default for '"
+               << GetFDPath(dir->get()).value() << "'";
+    return false;
+  }
+
+  return WriteWithTimeout(&file, value);
+}
+
+// This opens a subdirectory represented by a directory entry if it points to a
+// subdirectory.
+SafeFD::SafeFDResult OpenIfSubdirectory(SafeFD* parent,
+                                        const struct stat& parent_info,
+                                        const dirent& entry) {
+  if (strcmp(entry.d_name, ".") == 0 || strcmp(entry.d_name, "..") == 0) {
+    return std::make_pair(SafeFD(), SafeFD::Error::kNoError);
+  }
+
+  if (entry.d_type != DT_DIR) {
+    return std::make_pair(SafeFD(), SafeFD::Error::kNoError);
+  }
+
+  struct stat child_info;
+  if (fstatat(parent->get(), entry.d_name, &child_info,
+              AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW) != 0) {
+    PLOG(ERROR) << "fstatat failed for '" << GetFDPath(parent->get()).value()
+                << "/" << entry.d_name << "'";
+    return std::make_pair(SafeFD(), SafeFD::Error::kIOError);
+  }
+
+  if (child_info.st_dev != parent_info.st_dev) {
+    // Do not cross file system boundary.
+    return std::make_pair(SafeFD(), SafeFD::Error::kBoundaryDetected);
+  }
+
+  SafeFD::SafeFDResult subdir =
+      parent->OpenExistingDir(base::FilePath(entry.d_name));
+  if (SafeFD::IsError(subdir.second)) {
+    LOG(ERROR) << "Failed to open '" << GetFDPath(parent->get()).value() << "/"
+               << entry.d_name << "'";
+  }
+
+  return subdir;
+}
+
+bool AuthorizeAllImpl(SafeFD* dir,
+                      size_t max_depth = SafeFD::kDefaultMaxPathDepth) {
+  if (max_depth == 0) {
+    LOG(ERROR) << "AuthorizeAll read max depth at '"
+               << GetFDPath(dir->get()).value() << "'";
+    return false;
+  }
+
+  bool success = true;
+  if (!WriteWithTimeoutIfExists(dir, base::FilePath(kSysFSAuthorizedDefault),
+                                kSysFSEnabled)) {
+    success = false;
+  }
+
+  if (!WriteWithTimeoutIfExists(dir, base::FilePath(kSysFSAuthorized),
+                                kSysFSEnabled)) {
+    success = false;
+  }
+
+  // The ScopedDIR takes ownership of this so dup_fd is not scoped on its own.
+  int dup_fd = dup(dir->get());
+  if (dup_fd < 0) {
+    PLOG(ERROR) << "dup failed for '" << GetFDPath(dir->get()).value() << "'";
+    return false;
+  }
+
+  ScopedDIR listing(fdopendir(dup_fd));
+  if (!listing.is_valid()) {
+    PLOG(ERROR) << "fdopendir failed for '" << GetFDPath(dir->get()).value()
+                << "'";
+    HANDLE_EINTR(close(dup_fd));
+    return false;
+  }
+
+  struct stat dir_info;
+  if (fstat(dir->get(), &dir_info) != 0) {
+    return false;
+  }
+
+  for (;;) {
+    errno = 0;
+    const dirent* entry = HANDLE_EINTR_IF_EQ(readdir(listing.get()), nullptr);
+    if (entry == nullptr) {
+      break;
+    }
+
+    SafeFD::SafeFDResult subdir = OpenIfSubdirectory(dir, dir_info, *entry);
+    if (SafeFD::IsError(subdir.second)) {
+      success = false;
+    }
+
+    if (subdir.first.is_valid()) {
+      if (!AuthorizeAllImpl(&subdir.first, max_depth - 1)) {
+        success = false;
+      }
+    }
+  }
+  if (errno != 0) {
+    PLOG(ERROR) << "readdir failed for '" << GetFDPath(dir->get()).value()
+                << "'";
+    return false;
+  }
+
+  // Check sub directories
+  return success;
+}
+
 }  // namespace
 
 std::string Hash(const std::string& content) {
@@ -122,6 +298,23 @@ std::string Hash(const google::protobuf::RepeatedPtrField<std::string>& rules) {
 
   SHA256_Final(digest.data(), &ctx);
   return EncodeDigest(digest);
+}
+
+bool AuthorizeAll(const std::string& devpath) {
+  if (devpath.front() != '/') {
+    return false;
+  }
+
+  SafeFD::Error err;
+  SafeFD dir;
+  std::tie(dir, err) =
+      SafeFD::Root().first.OpenExistingDir(base::FilePath(devpath.substr(1)));
+  if (SafeFD::IsError(err)) {
+    LOG(ERROR) << "Failed to open '" << GetFDPath(dir.get()).value() << "'.";
+    return false;
+  }
+
+  return AuthorizeAllImpl(&dir);
 }
 
 std::string GetRuleFromDevPath(const std::string& devpath) {
