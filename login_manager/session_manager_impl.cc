@@ -1650,6 +1650,12 @@ std::vector<std::string> SessionManagerImpl::CreateUpgradeArcEnvVars(
                    << request.packages_cache_mode() << ".";
   }
 
+  if (request.skip_gms_core_cache()) {
+    env_vars.emplace_back("SKIP_GMS_CORE_CACHE_SETUP=1");
+  } else {
+    env_vars.emplace_back("SKIP_GMS_CORE_CACHE_SETUP=0");
+  }
+
   DCHECK(request.has_locale());
   env_vars.emplace_back("LOCALE=" + request.locale());
 

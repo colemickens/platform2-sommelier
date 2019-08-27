@@ -708,8 +708,8 @@ void ArcSetup::SetUpAndroidData() {
     // Note, GMS and GServices caches are valid only in case packages cache is
     // set which contains predefined value for shared Google user uid. That let
     // to set valid resources owner.
-    SetUpGmsCoreCache();
-    SetUpGservicesCache();
+    if (SetUpGmsCoreCache())
+      SetUpGservicesCache();
   }
 }
 
@@ -761,8 +761,13 @@ bool ArcSetup::SetUpPackagesCache() {
   return true;
 }
 
-void ArcSetup::SetUpGmsCoreCache() {
+bool ArcSetup::SetUpGmsCoreCache() {
   base::ElapsedTimer timer;
+
+  if (config_.GetBoolOrDie("SKIP_GMS_CORE_CACHE_SETUP")) {
+    LOG(INFO) << "GMS Core cache setup is disabled.";
+    return false;
+  }
 
   const base::FilePath user_de =
       arc_paths_->android_mutable_source.Append("data/user_de");
@@ -774,14 +779,14 @@ void ArcSetup::SetUpGmsCoreCache() {
   // first run for GMS Core. Install set of pre-computed cache files if they
   // exist.
   if (base::PathExists(user_de_0_gms))
-    return;
+    return false;
 
   const base::FilePath source_cache_dir =
       arc_paths_->android_rootfs_directory.Append("system/etc/gms_core_cache");
   if (!base::PathExists(source_cache_dir)) {
     LOG(INFO) << "GMS Core cache was not found "
               << "(this expected for manually-pushed images).";
-    return;
+    return false;
   }
 
   LOG(INFO) << "Installing GMS Core cache to " << user_de_0_gms.value() << ".";
@@ -792,6 +797,8 @@ void ArcSetup::SetUpGmsCoreCache() {
 
   LOG(INFO) << "GMS Core cache setup competed in "
             << timer.Elapsed().InMillisecondsRoundedUp() << " ms";
+
+  return true;
 }
 
 void ArcSetup::SetUpGservicesCache() {

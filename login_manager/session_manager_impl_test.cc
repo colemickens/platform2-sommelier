@@ -17,6 +17,7 @@
 #include <memory>
 #include <string>
 #include <type_traits>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -317,6 +318,10 @@ std::string ExpectedCopyPackagesCacheFlagValue(bool enabled) {
   return base::StringPrintf("COPY_PACKAGES_CACHE=%d", enabled);
 }
 
+std::string ExpectedSkipGmsCoreCacheSetupFlagValue(bool enabled) {
+  return base::StringPrintf("SKIP_GMS_CORE_CACHE_SETUP=%d", enabled);
+}
+
 #endif  // USE_CHEETS
 
 }  // namespace
@@ -510,6 +515,11 @@ class SessionManagerImplTest : public ::testing::Test,
       return *this;
     }
 
+    UpgradeContainerExpectationsBuilder& SetSkipGmsCoreCache(bool v) {
+      skip_gms_core_cache_ = v;
+      return *this;
+    }
+
     UpgradeContainerExpectationsBuilder& SetLocale(const std::string& v) {
       locale_ = v;
       return *this;
@@ -539,6 +549,7 @@ class SessionManagerImplTest : public ::testing::Test,
           "SUPERVISION_TRANSITION=" + std::to_string(supervision_transition_),
           ExpectedSkipPackagesCacheSetupFlagValue(skip_packages_cache_),
           ExpectedCopyPackagesCacheFlagValue(copy_packages_cache_),
+          ExpectedSkipGmsCoreCacheSetupFlagValue(skip_gms_core_cache_),
           "LOCALE=" + locale_, "PREFERRED_LANGUAGES=" + preferred_languages_};
     }
 
@@ -549,6 +560,7 @@ class SessionManagerImplTest : public ::testing::Test,
     std::string demo_session_apps_path_;
     bool skip_packages_cache_ = false;
     bool copy_packages_cache_ = false;
+    bool skip_gms_core_cache_ = false;
     std::string locale_ = kDefaultLocale;
     std::string preferred_languages_;
     int supervision_transition_ = 0;
@@ -890,7 +902,7 @@ class SessionManagerImplTest : public ::testing::Test,
 class SessionManagerPackagesCacheTest
     : public SessionManagerImplTest,
       public testing::WithParamInterface<
-          UpgradeArcContainerRequest_PackageCacheMode> {
+          std::tuple<UpgradeArcContainerRequest_PackageCacheMode, bool>> {
  public:
   SessionManagerPackagesCacheTest() = default;
   ~SessionManagerPackagesCacheTest() override = default;
@@ -2231,7 +2243,7 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
 
   bool skip_packages_cache_setup = false;
   bool copy_cache_setup = false;
-  switch (GetParam()) {
+  switch (std::get<0>(GetParam())) {
     case UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT:
       skip_packages_cache_setup = true;
       FALLTHROUGH;
@@ -2251,6 +2263,7 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
                   UpgradeContainerExpectationsBuilder()
                       .SetSkipPackagesCache(skip_packages_cache_setup)
                       .SetCopyPackagesCache(copy_cache_setup)
+                      .SetSkipGmsCoreCache(std::get<1>(GetParam()))
                       .Build(),
                   InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
@@ -2261,7 +2274,8 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
-  upgrade_request.set_packages_cache_mode(GetParam());
+  upgrade_request.set_packages_cache_mode(std::get<0>(GetParam()));
+  upgrade_request.set_skip_gms_core_cache(std::get<1>(GetParam()));
   EXPECT_TRUE(
       impl_->UpgradeArcContainer(&error, SerializeAsBlob(upgrade_request)));
   EXPECT_TRUE(android_container_.running());
@@ -2273,10 +2287,12 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
 INSTANTIATE_TEST_CASE_P(
     ,
     SessionManagerPackagesCacheTest,
-    ::testing::ValuesIn(
-        {UpgradeArcContainerRequest_PackageCacheMode_DEFAULT,
-         UpgradeArcContainerRequest_PackageCacheMode_COPY_ON_INIT,
-         UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT}));
+    ::testing::Combine(
+        ::testing::Values(
+            UpgradeArcContainerRequest_PackageCacheMode_DEFAULT,
+            UpgradeArcContainerRequest_PackageCacheMode_COPY_ON_INIT,
+            UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT),
+        ::testing::Bool()));
 
 TEST_P(SessionManagerPlayStoreAutoUpdateTest, PlayStoreAutoUpdate) {
   ExpectAndRunStartSession(kSaneEmail);

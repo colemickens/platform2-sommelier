@@ -134,9 +134,11 @@ class ArcSetup {
   // Sets up packages cache. Returns true if cache was set and false otherwise.
   bool SetUpPackagesCache();
 
-  // Sets up GMS Core cache. Requires packages cache be set.
-  void SetUpGmsCoreCache();
-  // Sets GServices Core cache. Requires packages cache be set.
+  // Sets up GMS Core cache. Requires packages cache be set. Returns true if
+  // cache was set and false otherwise.
+  bool SetUpGmsCoreCache();
+
+  // Sets GServices Core cache. Requires GMS Core cache be set.
   void SetUpGservicesCache();
 
   // Sets up shared APK cache directory.
