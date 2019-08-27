@@ -31,8 +31,9 @@ namespace cros {
 
 MetadataHandler::MetadataHandler(const camera_metadata_t& metadata,
                                  const DeviceInfo& device_info,
+                                 V4L2CameraDevice* device,
                                  const SupportedFormats& supported_formats)
-    : device_info_(device_info), af_trigger_(false) {
+    : device_info_(device_info), device_(device), af_trigger_(false) {
   // MetadataBase::operator= will make a copy of camera_metadata_t.
   metadata_ = &metadata;
 
@@ -95,12 +96,6 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
   const uint8_t ae_precapture_trigger =
       ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_IDLE;
   UPDATE(ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER, &ae_precapture_trigger, 1);
-
-  const uint8_t af_available_modes[] = {ANDROID_CONTROL_AF_MODE_AUTO,
-                                        ANDROID_CONTROL_AF_MODE_OFF};
-  UPDATE(ANDROID_CONTROL_AF_AVAILABLE_MODES, af_available_modes,
-         ARRAY_SIZE(af_available_modes));
-  UPDATE(ANDROID_CONTROL_AF_MODE, &af_available_modes[0], 1);
 
   const uint8_t af_trigger = ANDROID_CONTROL_AF_TRIGGER_IDLE;
   UPDATE(ANDROID_CONTROL_AF_TRIGGER, &af_trigger, 1);
@@ -634,6 +629,19 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
          1);
   UPDATE(ANDROID_CONTROL_AE_ANTIBANDING_MODE, &ae_antibanding_mode, 1);
 
+  bool support_af =
+      V4L2CameraDevice::IsAutoFocusSupported(device_info.device_path);
+  const uint8_t af_available_modes[] = {ANDROID_CONTROL_AF_MODE_OFF,
+                                        ANDROID_CONTROL_AF_MODE_AUTO};
+  if (support_af) {
+    UPDATE(ANDROID_CONTROL_AF_AVAILABLE_MODES, af_available_modes,
+           ARRAY_SIZE(af_available_modes));
+    UPDATE(ANDROID_CONTROL_AF_MODE, &af_available_modes[1], 1);
+  } else {
+    UPDATE(ANDROID_CONTROL_AF_AVAILABLE_MODES, af_available_modes, 1);
+    UPDATE(ANDROID_CONTROL_AF_MODE, &af_available_modes[0], 1);
+  }
+
   // Set vendor tags for specified boards.
   if (device_info.quirks & kQuirkMonocle) {
     int32_t timestamp_sync =
@@ -662,6 +670,14 @@ void MetadataHandler::PreHandleRequest(
       af_trigger_ = true;
     } else if (entry.data.u8[0] == ANDROID_CONTROL_AF_TRIGGER_CANCEL) {
       af_trigger_ = false;
+    }
+  }
+  if (metadata.exists(ANDROID_CONTROL_AF_MODE)) {
+    camera_metadata_ro_entry entry = metadata.find(ANDROID_CONTROL_AF_MODE);
+    if (entry.data.u8[0] == ANDROID_CONTROL_AF_MODE_OFF) {
+      device_->SetAutoFocus(false);
+    } else if (entry.data.u8[0] == ANDROID_CONTROL_AF_MODE_AUTO) {
+      device_->SetAutoFocus(true);
     }
   }
   current_frame_number_ = frame_number;

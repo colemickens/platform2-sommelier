@@ -80,6 +80,10 @@ class V4L2CameraDevice {
   // outgoing queue.
   bool IsBufferFilled(uint32_t buffer_id);
 
+  // Return 0 if device set auto focus mode successfully. Otherwise, return
+  // |-errno|.
+  int SetAutoFocus(bool enable);
+
   // TODO(shik): Change the type of |device_path| to base::FilePath.
 
   // Get all supported formats of device by |device_path|. This function can be
@@ -90,6 +94,8 @@ class V4L2CameraDevice {
   // Get power frequency supported from device.
   static PowerLineFrequency GetPowerLineFrequency(
       const std::string& device_path);
+
+  static bool IsAutoFocusSupported(const std::string& device_path);
 
   static bool IsCameraDevice(const std::string& device_path);
 
@@ -123,6 +129,10 @@ class V4L2CameraDevice {
 
   // StreamOn state
   bool stream_on_;
+
+  // AF state
+  bool autofocus_on_;
+  bool autofocus_supported_;
 
   // True if the buffer is used by client after GetNextFrameBuffer().
   std::vector<bool> buffers_at_client_;

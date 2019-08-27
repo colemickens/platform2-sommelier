@@ -14,6 +14,7 @@
 
 #include "hal/usb/common_types.h"
 #include "hal/usb/sensor_handler.h"
+#include "hal/usb/v4l2_camera_device.h"
 
 namespace cros {
 
@@ -32,6 +33,7 @@ class MetadataHandler {
  public:
   MetadataHandler(const camera_metadata_t& metadata,
                   const DeviceInfo& device_info,
+                  V4L2CameraDevice* device,
                   const SupportedFormats& supported_formats);
   ~MetadataHandler();
 
@@ -89,6 +91,9 @@ class MetadataHandler {
 
   // Camera device information.
   const DeviceInfo device_info_;
+
+  // Delegate to communicate with camera device. Caller owns the ownership.
+  V4L2CameraDevice* device_;
 
   int current_frame_number_;
 

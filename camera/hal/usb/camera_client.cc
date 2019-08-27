@@ -58,7 +58,7 @@ CameraClient::CameraClient(int id,
       GetQualifiedFormats(supported_formats, device_info_.quirks);
 
   metadata_handler_ = std::make_unique<MetadataHandler>(
-      static_info, device_info, qualified_formats_);
+      static_info, device_info, device_.get(), qualified_formats_);
 }
 
 CameraClient::~CameraClient() {}

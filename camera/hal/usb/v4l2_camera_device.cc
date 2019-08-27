@@ -91,6 +91,19 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
       }
     }
   }
+
+  // Initial autofocus state.
+  struct v4l2_control control;
+  control.id = V4L2_CID_FOCUS_AUTO;
+  ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_G_CTRL, &control));
+  if (ret < 0) {
+    LOGF(WARNING) << "Failed to get V4L2_CID_FOCUS_AUTO";
+    autofocus_supported_ = false;
+    autofocus_on_ = false;
+  } else {
+    autofocus_supported_ = true;
+    autofocus_on_ = control.value;
+  }
   return 0;
 }
 
@@ -365,6 +378,22 @@ bool V4L2CameraDevice::IsBufferFilled(uint32_t buffer_id) {
   return buffer.flags & V4L2_BUF_FLAG_DONE;
 }
 
+int V4L2CameraDevice::SetAutoFocus(bool enable) {
+  if (!autofocus_supported_ || enable == autofocus_on_)
+    return 0;
+  int ret;
+  struct v4l2_control control;
+  control.id = V4L2_CID_FOCUS_AUTO;
+  control.value = enable ? 1 : 0;
+  ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_S_CTRL, &control));
+  if (ret < 0) {
+    LOGF(WARNING) << "Failed to set V4L2_CID_FOCUS_AUTO";
+  } else {
+    autofocus_on_ = enable;
+  }
+  return ret;
+}
+
 // static
 const SupportedFormats V4L2CameraDevice::GetDeviceSupportedFormats(
     const std::string& device_path) {
@@ -627,6 +656,22 @@ PowerLineFrequency V4L2CameraDevice::GetPowerLineFrequency(
     return PowerLineFrequency::FREQ_ERROR;
   }
   return frequency;
+}
+
+// static
+bool V4L2CameraDevice::IsAutoFocusSupported(const std::string& device_path) {
+  base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
+  if (!fd.is_valid()) {
+    PLOGF(ERROR) << "Failed to open " << device_path;
+    return false;
+  }
+  struct v4l2_queryctrl query_ctrl;
+  query_ctrl.id = V4L2_CID_FOCUS_AUTO;
+  if (TEMP_FAILURE_RETRY(ioctl(fd.get(), VIDIOC_QUERYCTRL, &query_ctrl)) < 0) {
+    LOGF(WARNING) << "Failed to qery V4L2_CID_FOCUS_AUTO";
+    return false;
+  }
+  return !(query_ctrl.flags & V4L2_CTRL_FLAG_DISABLED);
 }
 
 int V4L2CameraDevice::SetPowerLineFrequency(PowerLineFrequency setting) {
