@@ -163,6 +163,14 @@ void DpslRequesterImpl::GetBluetoothData(
       std::move(request), std::move(callback));
 }
 
+void DpslRequesterImpl::GetDriveSystemData(
+    std::unique_ptr<grpc_api::GetDriveSystemDataRequest> request,
+    GetDriveSystemDataCallback callback) {
+  ScheduleGrpcClientMethodCall(
+      FROM_HERE, &grpc_api::WilcoDtcSupportd::Stub::AsyncGetDriveSystemData,
+      std::move(request), std::move(callback));
+}
+
 template <typename GrpcStubMethod, typename RequestType, typename ResponseType>
 void DpslRequesterImpl::ScheduleGrpcClientMethodCall(
     const base::Location& location,

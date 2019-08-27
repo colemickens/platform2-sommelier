@@ -61,6 +61,9 @@ class DpslRequesterImpl final : public DpslRequester {
   void GetBluetoothData(
       std::unique_ptr<grpc_api::GetBluetoothDataRequest> request,
       GetBluetoothDataCallback callback) override;
+  void GetDriveSystemData(
+      std::unique_ptr<grpc_api::GetDriveSystemDataRequest> request,
+      GetDriveSystemDataCallback callback) override;
 
  private:
   using AsyncGrpcWilcoDtcSupportdClient =
