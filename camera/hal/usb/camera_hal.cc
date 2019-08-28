@@ -195,7 +195,7 @@ int CameraHal::SetCallbacks(const camera_module_callbacks_t* callbacks) {
   // enumerate existing devices again after we return from SetCallbacks().
   base::MessageLoop::current()->task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(IgnoreResult(&UdevWatcher::EnumerateExistingDevices),
+      base::Bind(base::IgnoreResult(&UdevWatcher::EnumerateExistingDevices),
                  base::Unretained(&udev_watcher_)));
 
   return 0;

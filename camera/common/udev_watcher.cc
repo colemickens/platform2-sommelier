@@ -28,8 +28,16 @@ void UdevWatcher::Observer::OnDeviceRemoved(ScopedUdevDevicePtr /*device*/) {}
 UdevWatcher::UdevWatcher(Observer* observer, std::string subsystem)
     : observer_(observer),
       subsystem_(std::move(subsystem)),
-      fd_watcher_(FROM_HERE),
       thread_("UdevWatcherThread") {}
+
+UdevWatcher::~UdevWatcher() {
+  // Post a task to reset FileDescriptorWatcher and explicitly call
+  // Thread::Stop() to ensure it is completed before destroying fields.
+  thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&UdevWatcher::StopOnThread, base::Unretained(this)));
+  thread_.Stop();
+}
 
 bool UdevWatcher::Start(
     scoped_refptr<base::SingleThreadTaskRunner> task_runner) {
@@ -123,10 +131,11 @@ bool UdevWatcher::EnumerateExistingDevices() {
 void UdevWatcher::StartOnThread(int fd, base::Callback<void(bool)> callback) {
   DCHECK(thread_.task_runner()->BelongsToCurrentThread());
 
-  if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
-          fd, /*persistent=*/true, base::MessageLoopForIO::WATCH_READ,
-          &fd_watcher_, this)) {
-    LOGF(ERROR) << "WatchFileDescriptor failed";
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      fd,
+      base::BindRepeating(&UdevWatcher::OnReadable, base::Unretained(this)));
+  if (!watcher_) {
+    LOGF(ERROR) << "Failed to start watching a file descriptor";
     callback.Run(false);
     return;
   }
@@ -134,7 +143,11 @@ void UdevWatcher::StartOnThread(int fd, base::Callback<void(bool)> callback) {
   callback.Run(true);
 }
 
-void UdevWatcher::OnFileCanReadWithoutBlocking(int /*fd*/) {
+void UdevWatcher::StopOnThread() {
+  watcher_ = nullptr;
+}
+
+void UdevWatcher::OnReadable() {
   DCHECK(thread_.task_runner()->BelongsToCurrentThread());
 
   ScopedUdevDevicePtr dev(udev_monitor_receive_device(mon_.get()));
@@ -162,11 +175,6 @@ void UdevWatcher::OnFileCanReadWithoutBlocking(int /*fd*/) {
   callback_task_runner_->PostTask(
       FROM_HERE, base::Bind(callback, base::Unretained(observer_),
                             base::Passed(std::move(dev))));
-}
-
-void UdevWatcher::OnFileCanWriteWithoutBlocking(int fd) {
-  DCHECK(thread_.task_runner()->BelongsToCurrentThread());
-  NOTREACHED() << "Unexpected non-blocking write notification for fd " << fd;
 }
 
 }  // namespace cros

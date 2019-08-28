@@ -7,11 +7,12 @@
 #ifndef CAMERA_INCLUDE_CROS_CAMERA_UDEV_WATCHER_H_
 #define CAMERA_INCLUDE_CROS_CAMERA_UDEV_WATCHER_H_
 
+#include <memory>
 #include <string>
 
 #include <libudev.h>
 
-#include <base/message_loop/message_loop.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/threading/thread.h>
 
 #include "cros-camera/common.h"
@@ -34,7 +35,7 @@ namespace cros {
 // TODO(shik): There are some other packages in CrOS use libudev in the wrong
 // way.  We should fix them as well.
 
-class CROS_CAMERA_EXPORT UdevWatcher : public base::MessageLoopForIO::Watcher {
+class CROS_CAMERA_EXPORT UdevWatcher {
  public:
   class Observer {
    public:
@@ -45,6 +46,7 @@ class CROS_CAMERA_EXPORT UdevWatcher : public base::MessageLoopForIO::Watcher {
 
   // The observer must outlive this wathcer.
   UdevWatcher(Observer* observer, std::string subsystem);
+  ~UdevWatcher();
 
   // Disallow copy constructor and assign operator.
   UdevWatcher(const UdevWatcher&) = delete;
@@ -59,16 +61,16 @@ class CROS_CAMERA_EXPORT UdevWatcher : public base::MessageLoopForIO::Watcher {
   bool EnumerateExistingDevices();
 
  private:
-  // Implementation of base::MessageLoopForIO::Watcher.
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override;
+  void OnReadable();
 
   void StartOnThread(int fd, base::Callback<void(bool)> callback);
+  void StopOnThread();
 
   Observer* observer_;
   std::string subsystem_;
-  base::MessageLoopForIO::FileDescriptorWatcher fd_watcher_;
   base::Thread thread_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
+
   ScopedUdevPtr udev_;
   ScopedUdevMonitorPtr mon_;
   scoped_refptr<base::SingleThreadTaskRunner> callback_task_runner_;
