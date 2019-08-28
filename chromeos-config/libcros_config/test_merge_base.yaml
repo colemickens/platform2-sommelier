@@ -11,6 +11,7 @@ shared_config: &shared_config
     smbios-name-match: "SMBiosNameMatch"
     sku-id: "{{$sku-id}}"
   firmware:
+    image-name: "{{$name}}_firmware"
     no-firmware: true
   wallpaper: "{{$wallpaper}}"
 

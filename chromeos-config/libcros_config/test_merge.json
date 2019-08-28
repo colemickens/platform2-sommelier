@@ -3,6 +3,7 @@
     "configs": [
       {
         "firmware": {
+          "image-name": "IdentityMatch_firmware",
           "no-firmware": true
         },
         "identity": {
@@ -15,6 +16,7 @@
       },
       {
         "firmware": {
+          "image-name": "IdentityMatch_firmware",
           "no-firmware": true
         },
         "identity": {
@@ -27,6 +29,7 @@
       },
       {
         "firmware": {
+          "image-name": "NameMatch_firmware",
           "no-firmware": true
         },
         "identity": {
@@ -39,6 +42,7 @@
       },
       {
         "firmware": {
+          "image-name": "foo",
           "no-firmware": true
         },
         "identity": {

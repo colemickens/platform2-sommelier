@@ -284,7 +284,7 @@ In the tables below,
 | brand-code | string |  | False |  | False | Brand code of the model (also called RLZ code). |
 | camera | [camera](#camera) |  | False |  | False |  |
 | fingerprint | [fingerprint](#fingerprint) |  | False |  | False | Contains details about the model's fingerprint implementation. |
-| firmware | [firmware](#firmware) |  | True |  | True |  |
+| firmware | [firmware](#firmware) |  | True |  | False |  |
 | firmware-signing | [firmware-signing](#firmware-signing) |  | False |  | True |  |
 | hardware-properties | [hardware-properties](#hardware-properties) |  | False |  | False | Contains boolean flags or enums for hardware properties of this board, for example if it's convertible, has a touchscreen, has a camera, etc. This information is used to auto-generate C code that is consumed by the EC build process in order to do run-time configuration. If a value is defined within a config file, but not for a specific model, that value will be assumed to be false for that model. If a value is an enum and is not specified for a specific model, it will default to "none". All properties must be booleans or enums. If non-boolean properties are desired, the generation code in cros_config_schema.py must be updated to support them. |
 | identity | [identity](#identity) |  | False |  | False | Defines attributes that are used by cros_config to detect the identity of the platform and which corresponding config should be used. This tuple must either contain x86 properties only or ARM properties only. |
@@ -373,7 +373,7 @@ In the tables below,
 | bcs-overlay | string |  | False |  | True | BCS overlay path used to determine BCS file path for binary firmware downloads. |
 | build-targets | [build-targets](#build-targets) |  | False |  | True |  |
 | ec-ro-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |
-| image-name | string |  | False |  | True | The name of the firmware image used by the firmware updater. Typically the device name, but can differ when a device may have two or more different firmware images. |
+| image-name | string |  | False |  | False | The name of the firmware image used by the firmware updater. Typically the device name, but can differ when a device may have two or more different firmware images. |
 | key-id | string |  | False |  | True | Key ID from the signer key set that is used to sign the given firmware image. |
 | main-ro-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |
 | main-rw-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |

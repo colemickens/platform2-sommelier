@@ -11,6 +11,7 @@ another_config: &another_config
     device-tree-compatible-match: "google,another"
     sku-id: "{{$sku-id}}"
   firmware:
+    image-name: "{{$name}}_firmware"
     no-firmware: true
 
 chromeos:
@@ -24,6 +25,7 @@ chromeos:
             identity:
               device-tree-compatible-match: "google,some"
             firmware:
+              image-name: "{{$name}}_unsigned"
               no-firmware: true
             wallpaper: "some-wallpaper"
     - $name: "whitelabel"
@@ -41,6 +43,7 @@ chromeos:
               device-tree-compatible-match: "google,whitelabel"
               whitelabel-tag: "{{$whitelabel-tag}}"
             firmware:
+              image-name: "{{$name}}_signed"
               no-firmware: true
             wallpaper: "{{$wallpaper}}"
     - $name: "another1"

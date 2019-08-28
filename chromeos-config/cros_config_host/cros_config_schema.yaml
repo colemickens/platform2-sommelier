@@ -5,6 +5,7 @@
 typeDefs:
   bcs-file-name: &bcs_file_name
     type: string
+    build-only-element: true
     description: Name of the file located in BCS under the respective bcs-overlay.
   deprecated_string: &deprecated_string
     type: string
@@ -221,14 +222,15 @@ properties:
               additionalProperties: false
             firmware:
               type: object
-              build-only-element: true
               properties:
                 bcs-overlay:
                   description: BCS overlay path used to determine BCS file path for binary
                     firmware downloads.
                   type: string
+                  build-only-element: true
                 build-targets:
                   type: object
+                  build-only-element: true
                   properties:
                     base:
                       description: Build target of the base EC firmware for a detachable device,
@@ -253,6 +255,7 @@ properties:
                   description: Key ID from the signer key set that is used to sign the
                     given firmware image.
                   type: string
+                  build-only-element: true
                 main-ro-image: *bcs_file_name
                 main-rw-image: *bcs_file_name
                 name:
@@ -261,12 +264,14 @@ properties:
                     Mainly, this is only for compatibility testing with device tree (since DT
                     allowed firmwares to be named).
                   type: string
+                  build-only-element: true
                 image-name:
                   description: The name of the firmware image used by the
                     firmware updater. Typically the device name, but can differ
                     when a device may have two or more different firmware
                     images.
                   type: string
+                  build-only-element: false
                 no-firmware:
                   description: If present this indicates that this model has no firmware at present.
                     This means that it will be omitted from the firmware updater
@@ -275,6 +280,7 @@ properties:
                     This option is often useful when a model is first added,
                     since it may not have firmware at that point.
                   type: boolean
+                  build-only-element: true
               additionalProperties: false
             firmware-signing:
               type: object

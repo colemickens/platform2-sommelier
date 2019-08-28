@@ -29,4 +29,5 @@ chromeos:
               smbios-name-match: "SMBiosNameMatch"
               sku-id: 4
             firmware:
+              image-name: "foo"
               no-firmware: true

@@ -21,6 +21,7 @@
         "camera": {
           "count": 1
         },
+        "firmware": {},
         "hardware-properties": {
           "has-base-accelerometer": true,
           "has-base-gyroscope": true,
@@ -81,6 +82,7 @@
         "camera": {
           "count": 1
         },
+        "firmware": {},
         "hardware-properties": {
           "is-lid-convertible": false
         },
@@ -122,6 +124,7 @@
             "ucm-suffix": "another"
           }
         },
+        "firmware": {},
         "hardware-properties": {
           "is-lid-convertible": true
         },
@@ -138,6 +141,7 @@
         "wallpaper": "default"
       },
       {
+        "firmware": {},
         "identity": {
           "customization-id": "SomeCustomization",
           "platform-name": "SomeCustomization",
@@ -160,6 +164,7 @@
         "camera": {
           "count": 1
         },
+        "firmware": {},
         "hardware-properties": {
           "is-lid-convertible": false
         },
@@ -207,6 +212,7 @@
         "camera": {
           "count": 1
         },
+        "firmware": {},
         "hardware-properties": {
           "is-lid-convertible": false
         },
@@ -253,6 +259,7 @@
         "camera": {
           "count": 1
         },
+        "firmware": {},
         "hardware-properties": {
           "is-lid-convertible": false
         },
@@ -300,6 +307,7 @@
         "camera": {
           "count": 1
         },
+        "firmware": {},
         "hardware-properties": {
           "is-lid-convertible": false
         },

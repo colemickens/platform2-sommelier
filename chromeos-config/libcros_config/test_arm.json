@@ -2,6 +2,9 @@
   "chromeos": {
     "configs": [
       {
+        "firmware": {
+          "image-name": "some_unsigned"
+        },
         "identity": {
           "device-tree-compatible-match": "google,some"
         },
@@ -9,6 +12,9 @@
         "wallpaper": "some-wallpaper"
       },
       {
+        "firmware": {
+          "image-name": "whitelabel_signed"
+        },
         "identity": {
           "device-tree-compatible-match": "google,whitelabel",
           "whitelabel-tag": "whitelabel1"
@@ -17,6 +23,9 @@
         "wallpaper": "whitelabel1-wallpaper"
       },
       {
+        "firmware": {
+          "image-name": "whitelabel_signed"
+        },
         "identity": {
           "device-tree-compatible-match": "google,whitelabel",
           "whitelabel-tag": "whitelabel2"
@@ -25,6 +34,9 @@
         "wallpaper": "whitelabel2-wallpaper"
       },
       {
+        "firmware": {
+          "image-name": "whitelabel_signed"
+        },
         "identity": {
           "device-tree-compatible-match": "google,whitelabel",
           "whitelabel-tag": ""
@@ -33,6 +45,9 @@
         "wallpaper": "whitelabel-default-wallpaper"
       },
       {
+        "firmware": {
+          "image-name": "another1_firmware"
+        },
         "identity": {
           "device-tree-compatible-match": "google,another",
           "platform-name": "Another",
@@ -41,6 +56,9 @@
         "name": "another1"
       },
       {
+        "firmware": {
+          "image-name": "another2_firmware"
+        },
         "identity": {
           "device-tree-compatible-match": "google,another",
           "platform-name": "Another",
