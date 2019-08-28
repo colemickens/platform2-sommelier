@@ -139,6 +139,15 @@ constexpr char FileTest::kSymbolicDirName[];
 
 class FileUtilTest : public FileTest {};
 
+TEST_F(FileUtilTest, GetFDPath_SimpleSuccess) {
+  EXPECT_EQ(GetFDPath(root_.get()), temp_dir_.GetPath());
+}
+
+TEST_F(FileUtilTest, GetFDPath_BadFD) {
+  base::FilePath path = GetFDPath(-1);
+  EXPECT_TRUE(path.empty());
+}
+
 TEST_F(FileUtilTest, OpenOrRemakeDir_SimpleSuccess) {
   SafeFD::Error err;
   SafeFD dir;

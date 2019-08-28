@@ -15,6 +15,10 @@ namespace brillo {
 
 SafeFD::Error IsValidFilename(const std::string& filename);
 
+// Obtain the canonical path of the file descriptor or base::FilePath() on
+// failure.
+BRILLO_EXPORT base::FilePath GetFDPath(int fd);
+
 // Open or create a child directory named |name| as a child of |parent| with
 // the specified permissions and ownership. Custom open flags can be set with
 // |flags|. The directory will be re-created if:

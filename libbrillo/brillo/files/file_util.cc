@@ -10,7 +10,9 @@
 
 #include <utility>
 
+#include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/syslog_logging.h>
 
 namespace brillo {
@@ -75,6 +77,16 @@ SafeFD::Error IsValidFilename(const std::string& filename) {
     return SafeFD::Error::kBadArgument;
   }
   return SafeFD::Error::kNoError;
+}
+
+base::FilePath GetFDPath(int fd) {
+  const base::FilePath proc_fd(base::StringPrintf("/proc/self/fd/%d", fd));
+  base::FilePath resolved;
+  if (!base::ReadSymbolicLink(proc_fd, &resolved)) {
+    LOG(ERROR) << "Failed to read " << proc_fd.value();
+    return base::FilePath();
+  }
+  return resolved;
 }
 
 SafeFD::SafeFDResult OpenOrRemakeDir(SafeFD* parent,
