@@ -10,6 +10,7 @@
 #include <sysexits.h>
 
 #include <base/bind.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
@@ -91,13 +92,14 @@ class GoldfishDaemon : public brillo::Daemon {
       return EX_UNAVAILABLE;
     }
 
-    brillo::MessageLoop::current()->WatchFileDescriptor(
-        FROM_HERE, fd_.get(), brillo::MessageLoop::kWatchRead, true,
-        base::Bind(&GoldfishDaemon::HandleHostMessage, base::Unretained(this)));
+    watcher_ = base::FileDescriptorWatcher::WatchReadable(
+        fd_.get(), base::BindRepeating(&GoldfishDaemon::HandleHostMessage,
+                                       base::Unretained(this)));
     return EX_OK;
   }
 
   base::ScopedFD fd_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
 
   DISALLOW_COPY_AND_ASSIGN(GoldfishDaemon);
 };
