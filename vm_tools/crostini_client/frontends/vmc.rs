@@ -502,7 +502,7 @@ const USAGE: &str = r#"
      usb-attach <vm name> <bus>:<device> |
      usb-detach <vm name> <port> |
      usb-list <vm name> |
-     help ]
+     --help | -h ]
 "#;
 
 /// A frontend that implements a `vmc` (Virtual Machine Controller) style command line interface.
