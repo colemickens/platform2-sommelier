@@ -209,22 +209,6 @@ message GetDebugInformationResponse {
   string debug_information = 1;
 }
 
-// Request to search for Linux packages that are not installed and that match
-// the passed query.
-message AppSearchRequest {
-  // Query (plaintext) to search. Query is compared against the names of
-  // packages.
-  string query = 1;
-}
-
-// Response for AppSearch containing packages that match the searched
-// search query and are not installed.
-message AppSearchResponse {
-  message AppSearchResult { string package_name = 1; }
-  // List of valid packages matching the search query.
-  repeated AppSearchResult packages = 1;
-}
-
 message ConnectChunnelRequest {
   uint32 chunneld_port = 1;
 
@@ -292,9 +276,6 @@ service Garcon {
   // Get debug information about container state.
   rpc GetDebugInformation(GetDebugInformationRequest)
       returns (GetDebugInformationResponse);
-
-  // Search for and return not installed apps matching passed query.
-  rpc AppSearch(AppSearchRequest) returns (AppSearchResponse);
 
   // Connects to chunnel to forward traffic to localhost.
   rpc ConnectChunnel(ConnectChunnelRequest) returns (ConnectChunnelResponse);

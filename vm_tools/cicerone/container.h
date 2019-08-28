@@ -110,10 +110,6 @@ class Container {
   UninstallPackageOwningFile(const std::string& desktop_file_id,
                              std::string* out_error);
 
-  bool AppSearch(const std::string& query,
-                 std::vector<std::string>* out_package_names,
-                 std::string* out_error);
-
   vm_tools::container::ApplyAnsiblePlaybookResponse::Status
   ApplyAnsiblePlaybook(const std::string& playbook, std::string* out_error);
 

@@ -59,7 +59,6 @@ class ServiceTestingHelper {
     kSetTimezone,
     kGetLxdContainerUsername,
     kSetUpLxdContainerUser,
-    kAppSearch,
     kExportLxdContainer,
     kImportLxdContainer,
     kCancelExportLxdContainer,

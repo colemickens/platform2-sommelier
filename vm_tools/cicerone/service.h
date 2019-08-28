@@ -389,9 +389,6 @@ class Service final {
   std::unique_ptr<dbus::Response> GetDebugInformation(
       dbus::MethodCall* method_call);
 
-  // Handles a request to search for not installed apps.
-  std::unique_ptr<dbus::Response> AppSearch(dbus::MethodCall* method_call);
-
   // Handles a request to apply Ansible playbook to a container.
   std::unique_ptr<dbus::Response> ApplyAnsiblePlaybook(
       dbus::MethodCall* method_call);

@@ -17,7 +17,6 @@ group("guest") {
   ]
   if (use.test) {
     deps += [
-      ":garcon_app_search_test",
       ":garcon_desktop_file_test",
       ":garcon_icon_finder_test",
       ":garcon_icon_index_file_test",
@@ -49,7 +48,6 @@ static_library("libmaitred") {
 static_library("libgarcon") {
   sources = [
     "../common/spawn_util.cc",
-    "../garcon/app_search.cc",
     "../garcon/desktop_file.cc",
     "../garcon/host_notifier.cc",
     "../garcon/icon_finder.cc",
@@ -299,20 +297,6 @@ if (use.test) {
     deps = [
       ":libnotificationd",
       ":notification-protocol",
-      "../../common-mk/testrunner:testrunner",
-    ]
-  }
-
-  executable("garcon_app_search_test") {
-    sources = [
-      "../garcon/app_search_test.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    deps = [
-      ":libgarcon",
       "../../common-mk/testrunner:testrunner",
     ]
   }
