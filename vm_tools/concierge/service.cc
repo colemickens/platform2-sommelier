@@ -82,6 +82,15 @@ constexpr char kVmKernelName[] = "vm_kernel";
 // Name of the VM rootfs image.
 constexpr char kVmRootfsName[] = "vm_rootfs.img";
 
+// Name of the VM tools image to be mounted at kToolsMountPath.
+constexpr char kVmToolsDiskName[] = "vm_tools.img";
+
+// Filesystem location to mount VM tools image.
+constexpr char kToolsMountPath[] = "/opt/google/cros-containers";
+
+// Filesystem type of VM tools image.
+constexpr char kToolsFsType[] = "ext4";
+
 // Maximum number of extra disks to be mounted inside the VM.
 constexpr int kMaxExtraDisks = 10;
 
@@ -955,7 +964,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     return dbus_response;
   }
 
-  base::FilePath kernel, rootfs;
+  base::FilePath kernel, rootfs, tools_disk;
 
   // A VM is trusted when this daemon chooses the kernel and rootfs path.
   bool is_trusted_vm = false;
@@ -970,6 +979,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
     kernel = component_path.Append(kVmKernelName);
     rootfs = component_path.Append(kVmRootfsName);
+    tools_disk = component_path.Append(kVmToolsDiskName);
     is_trusted_vm = true;
   } else if (!request.allow_untrusted()) {
     LOG(ERROR) << "Untrusted VMs aren't allowed";
@@ -1063,6 +1073,27 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     });
   }
 
+  // Track the next available virtio-blk device name.
+  // Assume that the rootfs filesystem was assigned /dev/vda and that
+  // every subsequent image was assigned a letter in alphabetical order
+  // starting from 'b'.
+  unsigned char disk_letter = 'b';
+
+  // In newer components, the /opt/google/cros-containers directory
+  // is split into its own disk image(vm_tools.img).  Detect whether it exists
+  // to keep compatibility with older components with only vm_rootfs.img.
+  string tools_device;
+  if (base::PathExists(tools_disk)) {
+    disks.push_back(TerminaVm::Disk{
+        .path = std::move(tools_disk),
+        .writable = false,
+    });
+    tools_device = base::StringPrintf("/dev/vd%c", disk_letter++);
+  }
+
+  // Assume the stateful device is the first disk in the request.
+  string stateful_device = base::StringPrintf("/dev/vd%c", disk_letter);
+
   for (const auto& disk : request.disks()) {
     if (!base::PathExists(base::FilePath(disk.path()))) {
       LOG(ERROR) << "Missing disk path: " << disk.path();
@@ -1135,10 +1166,11 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       .gpu = request.enable_gpu(),
       .software_tpm = request.software_tpm(),
   };
-  auto vm = TerminaVm::Create(
-      std::move(kernel), std::move(rootfs), std::move(disks),
-      std::move(mac_address), std::move(subnet), vsock_cid,
-      std::move(server_proxy), std::move(runtime_dir), features);
+  auto vm =
+      TerminaVm::Create(std::move(kernel), std::move(rootfs), std::move(disks),
+                        std::move(mac_address), std::move(subnet), vsock_cid,
+                        std::move(server_proxy), std::move(runtime_dir),
+                        std::move(stateful_device), features);
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 
@@ -1169,14 +1201,20 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     return dbus_response;
   }
 
-  // Do all the mounts.  Assume that the rootfs filesystem was assigned
-  // /dev/vda and that every subsequent image was assigned a letter in
-  // alphabetical order starting from 'b'.
-  unsigned char disk_letter = 'b';
-  unsigned char offset = 0;
+  // Mount the tools disk if it exists.
+  if (!tools_device.empty()) {
+    if (!vm->Mount(tools_device, kToolsMountPath, kToolsFsType, MS_RDONLY,
+                   "")) {
+      LOG(ERROR) << "Failed to mount tools disk";
+      response.set_failure_reason("Failed to mount tools disk");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+  }
+
+  // Do all the mounts.
   for (const auto& disk : request.disks()) {
-    string src = base::StringPrintf("/dev/vd%c", disk_letter + offset);
-    ++offset;
+    string src = base::StringPrintf("/dev/vd%c", disk_letter++);
 
     if (!disk.do_mount())
       continue;
@@ -1907,10 +1945,9 @@ bool Service::StartTermina(TerminaVm* vm, string* failure_reason) {
   std::string container_subnet_cidr =
       base::StringPrintf("%s/%zu", dst_addr.c_str(), prefix_length);
 
-  std::string stateful_device = "/dev/vdb";
   string error;
-  if (!vm->StartTermina(std::move(container_subnet_cidr),
-                        std::move(stateful_device), &error)) {
+  if (!vm->StartTermina(std::move(container_subnet_cidr), vm->StatefulDevice(),
+                        &error)) {
     failure_reason->assign(error);
     return false;
   }

@@ -74,12 +74,14 @@ TerminaVm::TerminaVm(
     uint32_t vsock_cid,
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
     base::FilePath runtime_dir,
+    std::string stateful_device,
     VmFeatures features)
     : mac_addr_(std::move(mac_addr)),
       subnet_(std::move(subnet)),
       vsock_cid_(vsock_cid),
       seneschal_server_proxy_(std::move(seneschal_server_proxy)),
-      features_(features) {
+      features_(features),
+      stateful_device_(stateful_device) {
   CHECK(subnet_);
   CHECK(base::DirectoryExists(runtime_dir));
 
@@ -100,10 +102,12 @@ std::unique_ptr<TerminaVm> TerminaVm::Create(
     uint32_t vsock_cid,
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
     base::FilePath runtime_dir,
+    std::string stateful_device,
     VmFeatures features) {
-  auto vm = base::WrapUnique(new TerminaVm(
-      std::move(mac_addr), std::move(subnet), vsock_cid,
-      std::move(seneschal_server_proxy), std::move(runtime_dir), features));
+  auto vm = base::WrapUnique(
+      new TerminaVm(std::move(mac_addr), std::move(subnet), vsock_cid,
+                    std::move(seneschal_server_proxy), std::move(runtime_dir),
+                    std::move(stateful_device), features));
 
   if (!vm->Start(std::move(kernel), std::move(rootfs), std::move(disks))) {
     vm.reset();
@@ -607,15 +611,16 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
     std::unique_ptr<arc_networkd::Subnet> subnet,
     uint32_t vsock_cid,
     base::FilePath runtime_dir,
+    std::string stateful_device,
     std::string kernel_version,
     std::unique_ptr<vm_tools::Maitred::Stub> stub) {
   VmFeatures features{
       .gpu = false,
       .software_tpm = false,
   };
-  auto vm = base::WrapUnique(
-      new TerminaVm(std::move(mac_addr), std::move(subnet), vsock_cid, nullptr,
-                    std::move(runtime_dir), features));
+  auto vm = base::WrapUnique(new TerminaVm(
+      std::move(mac_addr), std::move(subnet), vsock_cid, nullptr,
+      std::move(runtime_dir), std::move(stateful_device), features));
   vm->set_kernel_version_for_testing(kernel_version);
   vm->set_stub_for_testing(std::move(stub));
 

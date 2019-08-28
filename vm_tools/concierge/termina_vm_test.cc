@@ -387,10 +387,12 @@ void TerminaVmTest::SetUp() {
   ASSERT_TRUE(IPv4AddressToString(subnet->Netmask(), &netmask_));
   ASSERT_TRUE(IPv4AddressToString(subnet->AddressAtOffset(0), &gateway_));
 
+  std::string stateful_device = "/dev/vdb";
+
   // Create the TerminaVm.
-  vm_ = TerminaVm::CreateForTesting(std::move(mac_addr), std::move(subnet),
-                                    vsock_cid, temp_dir_.GetPath(),
-                                    kKernelVersion, std::move(stub));
+  vm_ = TerminaVm::CreateForTesting(
+      std::move(mac_addr), std::move(subnet), vsock_cid, temp_dir_.GetPath(),
+      std::move(stateful_device), kKernelVersion, std::move(stub));
   ASSERT_TRUE(vm_);
 }
 

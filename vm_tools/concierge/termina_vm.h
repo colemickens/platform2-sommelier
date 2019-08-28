@@ -70,6 +70,7 @@ class TerminaVm final : public VmInterface {
       uint32_t vsock_cid,
       std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
       base::FilePath runtime_dir,
+      std::string stateful_device,
       VmFeatures features);
   ~TerminaVm() override;
 
@@ -147,6 +148,9 @@ class TerminaVm final : public VmInterface {
   // Returns INADDR_ANY if there is no container subnet.
   uint32_t ContainerSubnet() const;
 
+  // Name of the guest block device for the stateful filesystem (e.g. /dev/vdb).
+  std::string StatefulDevice() const { return stateful_device_; }
+
   // Whether a TremplinStartedSignal has been received for the VM.
   bool IsTremplinStarted() const { return is_tremplin_started_; }
 
@@ -183,6 +187,7 @@ class TerminaVm final : public VmInterface {
       std::unique_ptr<arc_networkd::Subnet> subnet,
       uint32_t vsock_cid,
       base::FilePath runtime_dir,
+      std::string stateful_device,
       std::string kernel_version,
       std::unique_ptr<vm_tools::Maitred::Stub> stub);
 
@@ -192,6 +197,7 @@ class TerminaVm final : public VmInterface {
             uint32_t vsock_cid,
             std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
             base::FilePath runtime_dir,
+            std::string stateful_device,
             VmFeatures features);
 
   // Returns the path to the VM control socket.
@@ -246,6 +252,9 @@ class TerminaVm final : public VmInterface {
 
   // Kernel version retrieved at startup.
   std::string kernel_version_;
+
+  // Stateful device name.
+  std::string stateful_device_;
 
   DISALLOW_COPY_AND_ASSIGN(TerminaVm);
 };
