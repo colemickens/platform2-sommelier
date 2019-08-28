@@ -35,7 +35,8 @@ class ChromeCollector : public CrashCollector {
   bool HandleCrashThroughMemfd(int memfd,
                                pid_t pid,
                                uid_t uid,
-                               const std::string& exe_name);
+                               const std::string& exe_name,
+                               const std::string& dump_dir);
 
   void set_max_upload_bytes_for_test(int max_upload_bytes) {
     max_upload_bytes_ = max_upload_bytes;
@@ -55,7 +56,8 @@ class ChromeCollector : public CrashCollector {
   bool HandleCrashWithDumpData(const std::string& data,
                                pid_t pid,
                                uid_t uid,
-                               const std::string& exe_name);
+                               const std::string& exe_name,
+                               const std::string& dump_dir);
 
   // Crashes are expected to be in a TLV-style format of:
   // <name>:<length>:<value>

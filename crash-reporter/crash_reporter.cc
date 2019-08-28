@@ -29,6 +29,7 @@
 #include "crash-reporter/udev_collector.h"
 #include "crash-reporter/unclean_shutdown_collector.h"
 #include "crash-reporter/user_collector.h"
+#include "crash-reporter/util.h"
 
 using base::FilePath;
 
@@ -40,9 +41,13 @@ const char kUncleanShutdownDetected[] =
     "/run/metrics/external/crash-reporter/unclean-shutdown-detected";
 const char kBootCollectorDone[] = "/run/crash_reporter/boot-collector-done";
 
+bool always_allow_feedback = false;
+
 MetricsLibrary s_metrics_lib;
 
 bool IsFeedbackAllowed() {
+  if (always_allow_feedback)
+    return true;
   return s_metrics_lib.AreMetricsEnabled();
 }
 
@@ -195,7 +200,8 @@ int HandleChromeCrashThroughMemfd(ChromeCollector* chrome_collector,
                                   int memfd,
                                   pid_t pid,
                                   uid_t uid,
-                                  const std::string& exe) {
+                                  const std::string& exe,
+                                  const std::string& dump_dir) {
   CHECK(memfd >= 0) << "--chrome_memfd= must be set";
   CHECK(pid >= (pid_t)0) << "--pid= must be set";
   CHECK(uid >= (uid_t)0) << "--uid= must be set";
@@ -203,7 +209,7 @@ int HandleChromeCrashThroughMemfd(ChromeCollector* chrome_collector,
 
   brillo::LogToString(true);
   bool handled =
-      chrome_collector->HandleCrashThroughMemfd(memfd, pid, uid, exe);
+      chrome_collector->HandleCrashThroughMemfd(memfd, pid, uid, exe, dump_dir);
   brillo::LogToString(false);
   if (!handled)
     return 1;
@@ -329,8 +335,15 @@ int main(int argc, char* argv[]) {
                 "The specific ARC service name that failed");
   DEFINE_string(service_failure, "", "The specific service name that failed");
   DEFINE_bool(selinux_violation, false, "Report collected SELinux violation");
+  // TODO(crbug.com/1000398): Remove --chrome flag after Chrome switches from
+  // breakpad to crashpad.
+  // Note: --chrome is being replaced by --chrome_memfd;
+  //       --chrome_dump_dir is only used for tests and only used when
+  // --chrome_memfd is used and not when --chrome is used.
   DEFINE_string(chrome, "", "Chrome crash dump file");
   DEFINE_int32(chrome_memfd, -1, "Chrome crash dump memfd");
+  DEFINE_string(chrome_dump_dir, "",
+                "Directory to write Chrome minidumps, used for tests only");
   DEFINE_int32(pid, -1, "PID of crashing process");
   DEFINE_int32(uid, -1, "UID of crashing process");
   DEFINE_string(exe, "", "Executable name of crashing process");
@@ -341,6 +354,9 @@ int main(int argc, char* argv[]) {
       DEFINE_bool(core2md_failure, false, "Core2md failure test");
   DEFINE_bool(directory_failure, false, "Spool directory failure test");
   DEFINE_string(filter_in, "", "Ignore all crashes but this for testing");
+  DEFINE_bool(
+      always_allow_feedback, false,
+      "Force if feedback is allowed check to return true, used for tests only");
 #if USE_CHEETS
   DEFINE_string(arc_java_crash, "",
                 "Read Java crash log of the given type from standard input");
@@ -361,6 +377,11 @@ int main(int argc, char* argv[]) {
   } else {
     brillo::OpenLog(my_path.BaseName().value().c_str(), true);
     brillo::InitLog(brillo::kLogToSyslog);
+  }
+
+  if (FLAGS_always_allow_feedback) {
+    CHECK(util::IsTestImage()) << "--always_allow_feedback is only for tests";
+    always_allow_feedback = true;
   }
 
   // Now that we've processed the command line, sandbox ourselves.
@@ -494,8 +515,11 @@ int main(int argc, char* argv[]) {
   }
 
   if (FLAGS_chrome_memfd != -1) {
+    CHECK(FLAGS_chrome_dump_dir.empty() || util::IsTestImage())
+        << "--chrome_dump_dir is only for tests";
     return HandleChromeCrashThroughMemfd(&chrome_collector, FLAGS_chrome_memfd,
-                                         FLAGS_pid, FLAGS_uid, FLAGS_exe);
+                                         FLAGS_pid, FLAGS_uid, FLAGS_exe,
+                                         FLAGS_chrome_dump_dir);
   }
 
 #if USE_CHEETS

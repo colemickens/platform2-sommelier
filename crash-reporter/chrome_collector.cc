@@ -62,7 +62,8 @@ ChromeCollector::~ChromeCollector() {}
 bool ChromeCollector::HandleCrashWithDumpData(const std::string& data,
                                               pid_t pid,
                                               uid_t uid,
-                                              const std::string& exe_name) {
+                                              const std::string& exe_name,
+                                              const std::string& dump_dir) {
   if (!is_feedback_allowed_function_())
     return true;
 
@@ -75,7 +76,9 @@ bool ChromeCollector::HandleCrashWithDumpData(const std::string& data,
   }
 
   FilePath dir;
-  if (!GetCreatedCrashDirectoryByEuid(uid, &dir, nullptr)) {
+  if (!dump_dir.empty()) {
+    dir = FilePath(dump_dir);
+  } else if (!GetCreatedCrashDirectoryByEuid(uid, &dir, nullptr)) {
     LOG(ERROR) << "Can't create crash directory for uid " << uid;
     return false;
   }
@@ -131,20 +134,21 @@ bool ChromeCollector::HandleCrash(const FilePath& file_path,
     return false;
   }
 
-  return HandleCrashWithDumpData(data, pid, uid, exe_name);
+  return HandleCrashWithDumpData(data, pid, uid, exe_name, "" /* dump_dir */);
 }
 
 bool ChromeCollector::HandleCrashThroughMemfd(int memfd,
                                               pid_t pid,
                                               uid_t uid,
-                                              const std::string& exe_name) {
+                                              const std::string& exe_name,
+                                              const std::string& dump_dir) {
   std::string data;
   if (!util::ReadMemfdToString(memfd, &data)) {
     PLOG(ERROR) << "Can't read crash log from memfd: " << memfd;
     return false;
   }
 
-  return HandleCrashWithDumpData(data, pid, uid, exe_name);
+  return HandleCrashWithDumpData(data, pid, uid, exe_name, dump_dir);
 }
 
 bool ChromeCollector::ParseCrashLog(const std::string& data,
