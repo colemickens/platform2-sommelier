@@ -9,12 +9,13 @@
 
 #include <deque>
 #include <map>
+#include <memory>
 #include <vector>
 
 #include <base/callback.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/memory/ref_counted.h>
-#include <base/message_loop/message_loop.h>
 #include <base/task_runner.h>
 #include <base/threading/thread.h>
 
@@ -22,10 +23,10 @@ namespace arc {
 namespace appfuse {
 
 // DataFilter verifies input from /dev/fuse and reject unexpected data.
-class DataFilter : public base::MessageLoopForIO::Watcher {
+class DataFilter {
  public:
   DataFilter();
-  ~DataFilter() override;
+  ~DataFilter();
 
   // The given callback will be run when this filter stops.
   void set_on_stopped_callback(const base::Closure& callback) {
@@ -35,10 +36,6 @@ class DataFilter : public base::MessageLoopForIO::Watcher {
   // Starts watching the given /dev/fuse FD and returns a filtered FD.
   base::ScopedFD Start(base::ScopedFD fd_dev);
 
-  // MessageLoopForIO::Watcher overrides:
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override;
-
  private:
   // Starts watching the file descriptors on the watch thread.
   void StartWatching();
@@ -46,8 +43,25 @@ class DataFilter : public base::MessageLoopForIO::Watcher {
   // Aborts watching the file descriptors.
   void AbortWatching();
 
-  // Returns true if fd == fd_dev_.
-  bool IsDevFuseFD(int fd) { return fd == fd_dev_.get(); }
+  // Called when |fd_dev_| gets readable.
+  void OnDevReadable();
+
+  // Called when |fd_dev_| gets writable.
+  void OnDevWritable();
+
+  // Maybe start or stop watching writable state of |fd_dev_| depending
+  // on |pending_data_to_dev_|.
+  void UpdateDevWritableWatcher();
+
+  // Called when |fd_socket_| gets readable.
+  void OnSocketReadable();
+
+  // Called when |fd_socket_| gets writable.
+  void OnSocketWritable();
+
+  // Maybe start or stop watching writable state of |fd_socket_| depending
+  // on |pending_data_to_socket_|.
+  void UpdateSocketWritableWatcher();
 
   // Filters data from /dev/fuse and forwards it to the socket.
   bool FilterDataFromDev(std::vector<char>* data);
@@ -58,8 +72,14 @@ class DataFilter : public base::MessageLoopForIO::Watcher {
   base::Thread watch_thread_;
   base::ScopedFD fd_dev_;
   base::ScopedFD fd_socket_;
-  base::MessageLoopForIO::FileDescriptorWatcher watcher_dev_;
-  base::MessageLoopForIO::FileDescriptorWatcher watcher_socket_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller>
+      dev_readable_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller>
+      dev_writable_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller>
+      socket_readable_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller>
+      socket_writable_watcher_;
 
   std::deque<std::vector<char>> pending_data_to_dev_;
   std::deque<std::vector<char>> pending_data_to_socket_;

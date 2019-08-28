@@ -13,6 +13,7 @@
 #include <base/bind.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <base/strings/string_piece.h>
 
 namespace arc {
 namespace appfuse {
@@ -23,15 +24,39 @@ namespace {
 // Android's system/core/libappfuse/include/libappfuse/FuseBuffer.h.
 constexpr size_t kMaxFuseDataSize = 256 * 1024;
 
+// Writes the |data| into |fd| with one write(2) (unless EINTR),
+// and returns whether or not it succeeded. |name| is used for logging message.
+bool WriteData(int fd, const std::vector<char>& data, base::StringPiece name) {
+  int result = HANDLE_EINTR(write(fd, data.data(), data.size()));
+  if (result != data.size()) {
+    if (result < 0) {
+      PLOG(ERROR) << "Failed to write to " << name;
+    } else {
+      // Partial write should never happen with /dev/fuse nor sockets.
+      LOG(ERROR) << "Unexpected write result " << result << " when writing "
+                 << data.size() << " byte(s) to " << name;
+    }
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace
 
 DataFilter::DataFilter()
     : watch_thread_("DataFilter"),
-      watcher_dev_(FROM_HERE),
-      watcher_socket_(FROM_HERE),
       origin_task_runner_(base::ThreadTaskRunnerHandle::Get()) {}
 
 DataFilter::~DataFilter() {
+  // File watching must be cleaned up on the |watch_thread_|.
+  // Unretained(this) here is safe because watch_thread_ is owned by |this|.
+  watch_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&DataFilter::AbortWatching, base::Unretained(this)));
+
+  // Explicitly call Stop() here to ensure the AbortWatching posted above
+  // is completed before destructing any field.
   watch_thread_.Stop();
 }
 
@@ -61,71 +86,96 @@ base::ScopedFD DataFilter::Start(base::ScopedFD fd_dev) {
   return socket_for_app;
 }
 
-void DataFilter::OnFileCanReadWithoutBlocking(int fd) {
-  std::vector<char> buf(kMaxFuseDataSize);
-  int result = HANDLE_EINTR(read(fd, buf.data(), buf.size()));
+void DataFilter::OnDevReadable() {
+  std::vector<char> data(kMaxFuseDataSize);
+  int result = HANDLE_EINTR(read(fd_dev_.get(), data.data(), data.size()));
   if (result <= 0) {
-    if (result < 0) {
-      PLOG(ERROR) << "Failed to read "
-                  << (IsDevFuseFD(fd) ? "/dev/fuse" : "socket");
-    } else if (IsDevFuseFD(fd)) {
+    if (result == 0)
       LOG(ERROR) << "Unexpected EOF on /dev/fuse";
-    }
+    else
+      PLOG(ERROR) << "Failed to read /dev/fuse";
     AbortWatching();
     return;
   }
-  buf.resize(result);
+  data.resize(result);
 
-  if (IsDevFuseFD(fd)) {
-    if (!FilterDataFromDev(&buf))
-      AbortWatching();
-  } else {
-    if (!FilterDataFromSocket(&buf))
-      AbortWatching();
+  if (!FilterDataFromDev(&data))
+    AbortWatching();
+}
+
+void DataFilter::OnDevWritable() {
+  DCHECK(!pending_data_to_dev_.empty());
+  if (!WriteData(fd_dev_.get(), pending_data_to_dev_.front(), "/dev/fuse")) {
+    AbortWatching();
+    return;
+  }
+  pending_data_to_dev_.pop_front();
+  UpdateDevWritableWatcher();
+}
+
+void DataFilter::UpdateDevWritableWatcher() {
+  if (pending_data_to_dev_.empty() && dev_writable_watcher_) {
+    dev_writable_watcher_ = nullptr;
+  } else if (!pending_data_to_dev_.empty() && !dev_writable_watcher_) {
+    dev_writable_watcher_ = base::FileDescriptorWatcher::WatchWritable(
+        fd_dev_.get(), base::BindRepeating(&DataFilter::OnDevWritable,
+                                           base::Unretained(this)));
   }
 }
 
-void DataFilter::OnFileCanWriteWithoutBlocking(int fd) {
-  auto* pending_data =
-      IsDevFuseFD(fd) ? &pending_data_to_dev_ : &pending_data_to_socket_;
-
-  if (pending_data->empty())  // Nothing to do.
-    return;
-
-  std::vector<char> buf = std::move(pending_data->front());
-  pending_data->pop_front();
-  int result = HANDLE_EINTR(write(fd, buf.data(), buf.size()));
-  if (result != buf.size()) {
-    if (result < 0) {
-      PLOG(ERROR) << "Failed to write to "
-                  << (IsDevFuseFD(fd) ? "/dev/fuse" : "socket");
-    } else {
-      // Partial write should never happen with /dev/fuse nor sockets.
-      LOG(ERROR) << "Unexpected write result " << result << " when writing to "
-                 << (IsDevFuseFD(fd) ? "/dev/fuse" : "socket");
-    }
+void DataFilter::OnSocketReadable() {
+  std::vector<char> data(kMaxFuseDataSize);
+  int result = HANDLE_EINTR(read(fd_socket_.get(), data.data(), data.size()));
+  if (result <= 0) {
+    PLOG_IF(ERROR, result < 0) << "Failed to read socket";
     AbortWatching();
     return;
+  }
+  data.resize(result);
+
+  if (!FilterDataFromSocket(&data))
+    AbortWatching();
+}
+
+void DataFilter::OnSocketWritable() {
+  DCHECK(!pending_data_to_socket_.empty());
+  if (!WriteData(fd_socket_.get(), pending_data_to_socket_.front(), "socket")) {
+    AbortWatching();
+    return;
+  }
+  pending_data_to_socket_.pop_front();
+  UpdateSocketWritableWatcher();
+}
+
+void DataFilter::UpdateSocketWritableWatcher() {
+  if (pending_data_to_socket_.empty() && socket_writable_watcher_) {
+    socket_writable_watcher_ = nullptr;
+  } else if (!pending_data_to_socket_.empty() && !socket_writable_watcher_) {
+    socket_writable_watcher_ = base::FileDescriptorWatcher::WatchWritable(
+        fd_socket_.get(), base::BindRepeating(&DataFilter::OnSocketWritable,
+                                              base::Unretained(this)));
   }
 }
 
 void DataFilter::StartWatching() {
-  CHECK(base::MessageLoopForIO::current()->WatchFileDescriptor(
-      fd_dev_.get(), true, base::MessageLoopForIO::WATCH_READ_WRITE,
-      &watcher_dev_, this));
-  CHECK(base::MessageLoopForIO::current()->WatchFileDescriptor(
-      fd_socket_.get(), true, base::MessageLoopForIO::WATCH_READ_WRITE,
-      &watcher_socket_, this));
+  dev_readable_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      fd_dev_.get(),
+      base::BindRepeating(&DataFilter::OnDevReadable, base::Unretained(this)));
+  socket_readable_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      fd_socket_.get(), base::BindRepeating(&DataFilter::OnSocketReadable,
+                                            base::Unretained(this)));
 }
 
 void DataFilter::AbortWatching() {
-  watcher_dev_.StopWatchingFileDescriptor();
-  watcher_socket_.StopWatchingFileDescriptor();
+  dev_readable_watcher_ = nullptr;
+  dev_writable_watcher_ = nullptr;
+  socket_readable_watcher_ = nullptr;
+  socket_writable_watcher_ = nullptr;
   fd_dev_.reset();
   fd_socket_.reset();
 
   if (!on_stopped_callback_.is_null())
-    origin_task_runner_->PostTask(FROM_HERE, on_stopped_callback_);
+    origin_task_runner_->PostTask(FROM_HERE, std::move(on_stopped_callback_));
 }
 
 bool DataFilter::FilterDataFromDev(std::vector<char>* data) {
@@ -161,11 +211,13 @@ bool DataFilter::FilterDataFromDev(std::vector<char>* data) {
       out_header->error = -ENOSYS;
       out_header->unique = header->unique;
       pending_data_to_dev_.push_back(std::move(response));
+      UpdateDevWritableWatcher();
       return true;
     }
   }
   // Pass the data to the socket.
   pending_data_to_socket_.push_back(std::move(*data));
+  UpdateSocketWritableWatcher();
   return true;
 }
 
@@ -217,6 +269,7 @@ bool DataFilter::FilterDataFromSocket(std::vector<char>* data) {
   }
   // Pass the data to /dev/fuse.
   pending_data_to_dev_.push_back(std::move(*data));
+  UpdateDevWritableWatcher();
   return true;
 }
 
