@@ -95,6 +95,9 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::DeviceAdaptor,
 
   bool RemoveAllWakeOnPacketConnections(brillo::ErrorPtr* error) override;
 
+  void SetUsbEthernetMacAddressSource(DBusMethodResponsePtr<> response,
+                                      const std::string& source) override;
+
   Device* device() const { return device_; }
 
  private:

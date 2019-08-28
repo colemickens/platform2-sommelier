@@ -278,4 +278,14 @@ bool DeviceDBusAdaptor::RemoveAllWakeOnPacketConnections(
   return !e.ToChromeosError(error);
 }
 
+void DeviceDBusAdaptor::SetUsbEthernetMacAddressSource(
+    DBusMethodResponsePtr<> response, const std::string& source) {
+  SLOG(this, 2) << __func__;
+
+  Error e(Error::kOperationInitiated);
+  ResultCallback callback = GetMethodReplyCallback(std::move(response));
+  device_->SetUsbEthernetMacAddressSource(source, &e, callback);
+  ReturnResultOrDefer(callback, e);
+}
+
 }  // namespace shill

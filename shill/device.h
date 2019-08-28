@@ -324,6 +324,13 @@ class Device : public base::RefCounted<Device> {
   // the result of the operation.
   virtual void RemoveAllWakeOnPacketConnections(Error* error);
 
+  // Sets MAC address source for USB Ethernet device. Callback will only be
+  // invoke when device successfully changed MAC address or failed to change MAC
+  // address.
+  virtual void SetUsbEthernetMacAddressSource(const std::string& source,
+                                              Error* error,
+                                              const ResultCallback& callback);
+
   // Initiate renewal of existing DHCP lease.
   void RenewDHCPLease();
 

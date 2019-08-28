@@ -708,6 +708,15 @@ void Device::RemoveAllWakeOnPacketConnections(Error* error) {
   return;
 }
 
+void Device::SetUsbEthernetMacAddressSource(const std::string& source,
+                                            Error* error,
+                                            const ResultCallback& callback) {
+  Error::PopulateAndLog(
+      FROM_HERE, error, Error::kNotSupported,
+      "SetUsbEthernetMacAddressSource not implemented for " + link_name_ + ".");
+  return;
+}
+
 void Device::RenewDHCPLease() {
   LOG(INFO) << __func__;
 
