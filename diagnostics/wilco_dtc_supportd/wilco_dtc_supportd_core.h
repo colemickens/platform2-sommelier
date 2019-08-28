@@ -138,6 +138,9 @@ class WilcoDtcSupportdCore final
   void HandleMojoEvent(const MojoEvent& mojo_event) override;
 
   // WilcoDtcSupportdGrpcService::Delegate overrides:
+  void SendWilcoDtcMessageToUi(
+      const std::string& json_message,
+      const SendMessageToUiCallback& callback) override;
   void PerformWebRequestToBrowser(
       WebRequestHttpMethod http_method,
       const std::string& url,

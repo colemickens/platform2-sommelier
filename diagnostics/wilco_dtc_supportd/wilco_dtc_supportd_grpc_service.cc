@@ -34,6 +34,8 @@ const int kMaxNumberOfHeadersInPerformWebRequestParameter = 1000 * 1000;
 
 namespace {
 
+using SendMessageToUiCallback =
+    WilcoDtcSupportdGrpcService::SendMessageToUiCallback;
 using PerformWebRequestResponseCallback =
     WilcoDtcSupportdGrpcService::PerformWebRequestResponseCallback;
 using DelegateWebRequestStatus =
@@ -85,6 +87,14 @@ int64_t CalculateWebRequestParameterSize(
     size += header.length();
   }
   return size;
+}
+
+// Forwards and wraps the result of a SendMessageToUi into gRPC response.
+void ForwardSendMessageToUiResponse(const SendMessageToUiCallback& callback,
+                                    base::StringPiece response_json_message) {
+  auto reply = std::make_unique<grpc_api::SendMessageToUiResponse>();
+  reply->set_response_json_message(response_json_message.as_string());
+  callback.Run(std::move(reply));
 }
 
 // Forwards and wraps status & HTTP status into gRPC PerformWebRequestResponse.
@@ -259,7 +269,9 @@ WilcoDtcSupportdGrpcService::~WilcoDtcSupportdGrpcService() = default;
 void WilcoDtcSupportdGrpcService::SendMessageToUi(
     std::unique_ptr<grpc_api::SendMessageToUiRequest> request,
     const SendMessageToUiCallback& callback) {
-  NOTIMPLEMENTED();
+  delegate_->SendWilcoDtcMessageToUi(
+      request->json_message(),
+      base::Bind(&ForwardSendMessageToUiResponse, callback));
 }
 
 void WilcoDtcSupportdGrpcService::GetProcData(

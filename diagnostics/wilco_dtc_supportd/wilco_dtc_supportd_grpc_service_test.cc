@@ -194,6 +194,9 @@ class MockWilcoDtcSupportdGrpcServiceDelegate
     : public WilcoDtcSupportdGrpcService::Delegate {
  public:
   // WilcoDtcSupportdGrpcService::Delegate overrides:
+  MOCK_METHOD2(SendWilcoDtcMessageToUi,
+               void(const std::string& json_message,
+                    const SendMessageToUiCallback& callback));
   MOCK_METHOD5(PerformWebRequestToBrowser,
                void(WebRequestHttpMethod http_method,
                     const std::string& url,
@@ -231,6 +234,21 @@ class WilcoDtcSupportdGrpcServiceTest : public testing::Test {
 
   StrictMock<MockWilcoDtcSupportdGrpcServiceDelegate>* delegate() {
     return &delegate_;
+  }
+
+  void ExecuteSendMessageToUi(
+      const std::string& json_message,
+      std::unique_ptr<grpc_api::SendMessageToUiResponse>* response) {
+    auto request = std::make_unique<grpc_api::SendMessageToUiRequest>();
+    request->set_json_message(json_message);
+    EXPECT_CALL(delegate_, SendWilcoDtcMessageToUi(json_message, _))
+        .WillOnce(WithArgs<1>(Invoke(
+            [json_message](
+                const base::Callback<void(base::StringPiece)>& callback) {
+              callback.Run(json_message);
+            })));
+    service()->SendMessageToUi(std::move(request),
+                               GrpcCallbackResponseSaver(response));
   }
 
   void ExecuteGetProcData(grpc_api::GetProcDataRequest::Type request_type,
@@ -429,6 +447,14 @@ class WilcoDtcSupportdGrpcServiceTest : public testing::Test {
   StrictMock<MockWilcoDtcSupportdGrpcServiceDelegate> delegate_;
   WilcoDtcSupportdGrpcService service_{&delegate_};
 };
+
+TEST_F(WilcoDtcSupportdGrpcServiceTest, SendMessageToUi) {
+  constexpr char kFakeJsonMessage[] = "Fake Message From Wilco DTC to UI";
+  std::unique_ptr<grpc_api::SendMessageToUiResponse> response;
+  ExecuteSendMessageToUi(kFakeJsonMessage, &response);
+  ASSERT_TRUE(response);
+  EXPECT_EQ(response->response_json_message(), kFakeJsonMessage);
+}
 
 TEST_F(WilcoDtcSupportdGrpcServiceTest, GetProcDataUnsetType) {
   std::vector<grpc_api::FileDump> file_dumps;

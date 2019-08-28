@@ -42,7 +42,7 @@ class MockMojomWilcoDtcSupportdClient
       const MojoPerformWebRequestCallback& callback) override;
 
   MOCK_METHOD2(SendWilcoDtcMessageToUiImpl,
-               void(mojo::ScopedHandle* json_message,
+               void(const std::string& json_message,
                     const SendWilcoDtcMessageToUiCallback& callback));
   MOCK_METHOD5(PerformWebRequestImpl,
                void(MojoWilcoDtcSupportdWebRequestHttpMethod http_method,

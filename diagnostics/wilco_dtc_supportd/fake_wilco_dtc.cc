@@ -41,6 +41,14 @@ FakeWilcoDtc::~FakeWilcoDtc() {
   run_loop.Run();
 }
 
+void FakeWilcoDtc::SendMessageToUi(
+    const grpc_api::SendMessageToUiRequest& request,
+    SendMessageToUiCallback callback) {
+  wilco_dtc_supportd_grp_client_.CallRpc(
+      &grpc_api::WilcoDtcSupportd::Stub::AsyncSendMessageToUi, request,
+      callback);
+}
+
 void FakeWilcoDtc::GetProcData(const grpc_api::GetProcDataRequest& request,
                                GetProcDataCallback callback) {
   wilco_dtc_supportd_grp_client_.CallRpc(

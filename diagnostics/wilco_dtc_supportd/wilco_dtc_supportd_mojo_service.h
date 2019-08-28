@@ -37,6 +37,8 @@ class WilcoDtcSupportdMojoService final
       chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestStatus;
   using MojomWilcoDtcSupportdEvent =
       chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
+  using MojomSendWilcoDtcMessageToUiCallback =
+      base::Callback<void(base::StringPiece)>;
   using MojomPerformWebRequestCallback = base::Callback<void(
       MojomWilcoDtcSupportdWebRequestStatus, int, base::StringPiece)>;
   using MojomGetConfigurationDataCallback =
@@ -88,6 +90,9 @@ class WilcoDtcSupportdMojoService final
   void NotifyConfigurationDataChanged() override;
 
   // Calls to WilcoDtcSupportdClient.
+  void SendWilcoDtcMessageToUi(
+      const std::string& json,
+      const MojomSendWilcoDtcMessageToUiCallback& callback);
   void PerformWebRequest(MojomWilcoDtcSupportdWebRequestHttpMethod http_method,
                          const std::string& url,
                          const std::vector<std::string>& headers,

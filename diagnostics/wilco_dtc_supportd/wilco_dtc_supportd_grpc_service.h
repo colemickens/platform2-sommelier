@@ -56,6 +56,8 @@ class WilcoDtcSupportdGrpcService final {
       kIdentityAttributes,
     };
 
+    using SendMessageToUiCallback =
+        base::Callback<void(base::StringPiece response_json_message)>;
     using PerformWebRequestToBrowserCallback =
         base::Callback<void(WebRequestStatus status,
                             int http_status,
@@ -78,6 +80,15 @@ class WilcoDtcSupportdGrpcService final {
 
     virtual ~Delegate() = default;
 
+    // Called when gRPC |SendMessageToUi| was called.
+    //
+    // Calls wilco_dtc_supportd daemon mojo function |SendWilcoDtcMessageToUi|
+    // method and passes all fields of |SendMessageToUiRequest| to
+    // send a message to the diagnostics UI extension. The result
+    // of the call is returned via |callback|.
+    virtual void SendWilcoDtcMessageToUi(
+        const std::string& json_message,
+        const SendMessageToUiCallback& callback) = 0;
     // Called when gRPC |PerformWebRequest| was called.
     //
     // Calls wilco_dtc_supportd daemon mojo function

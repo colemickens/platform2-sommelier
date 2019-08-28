@@ -625,6 +625,31 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, NotifyConfigurationDataChanged) {
   run_loop.Run();
 }
 
+// Test that message can be send from wilco_dtc to browser and
+// returns an expected response
+TEST_F(BootstrappedWilcoDtcSupportdCoreTest, SendWilcoDtcMessageToUi) {
+  const std::string kFakeMessageToUi =
+      "{\"fake-message\": \"Fake JSON message\"}";
+  EXPECT_CALL(*wilco_dtc_supportd_client(),
+              SendWilcoDtcMessageToUiImpl(kFakeMessageToUi, _));
+
+  std::unique_ptr<grpc_api::SendMessageToUiResponse> response;
+  {
+    base::RunLoop run_loop;
+    grpc_api::SendMessageToUiRequest request;
+    request.set_json_message(kFakeMessageToUi);
+    fake_wilco_dtc()->SendMessageToUi(
+        request, MakeAsyncResponseWriter(&response, &run_loop));
+    run_loop.Run();
+  }
+
+  ASSERT_TRUE(response);
+  grpc_api::SendMessageToUiResponse expected_response;
+  expected_response.set_response_json_message(kFakeMessageToUi);
+  EXPECT_THAT(*response, ProtobufEquals(expected_response))
+      << "Actual: {" << response->ShortDebugString() << "}";
+}
+
 // Test that the GetProcData() method exposed by the daemon's gRPC server
 // returns a dump of the corresponding file from the disk.
 TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetProcDataGrpcCall) {

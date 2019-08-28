@@ -304,6 +304,18 @@ void WilcoDtcSupportdCore::ShutDownDueToMojoError(
   delegate_->BeginDaemonShutdown();
 }
 
+void WilcoDtcSupportdCore::SendWilcoDtcMessageToUi(
+    const std::string& json_message, const SendMessageToUiCallback& callback) {
+  VLOG(1) << "SendWilcoDtcMessageToUi() json_message=" << json_message;
+  if (!mojo_service_) {
+    LOG(WARNING) << "GetConfigurationDataFromBrowser happens before Mojo "
+                 << "connection is established.";
+    callback.Run("");
+    return;
+  }
+  mojo_service_->SendWilcoDtcMessageToUi(json_message, callback);
+}
+
 void WilcoDtcSupportdCore::PerformWebRequestToBrowser(
     WebRequestHttpMethod http_method,
     const std::string& url,

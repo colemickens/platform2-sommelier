@@ -28,6 +28,8 @@ namespace diagnostics {
 // |wilco_dtc_supportd_grpc_uri| gRPC URI.
 class FakeWilcoDtc final {
  public:
+  using SendMessageToUiCallback = base::Callback<void(
+      std::unique_ptr<grpc_api::SendMessageToUiResponse> response)>;
   using GetProcDataCallback =
       base::Callback<void(std::unique_ptr<grpc_api::GetProcDataResponse>)>;
   using GetEcTelemetryCallback =
@@ -56,6 +58,8 @@ class FakeWilcoDtc final {
 
   // Methods that correspond to the "WilcoDtcSupportd" gRPC interface and allow
   // to perform actual gRPC requests as if the wilco_dtc daemon would do them:
+  void SendMessageToUi(const grpc_api::SendMessageToUiRequest& request,
+                       SendMessageToUiCallback callback);
   void GetProcData(const grpc_api::GetProcDataRequest& request,
                    GetProcDataCallback callback);
   void GetEcTelemetry(const grpc_api::GetEcTelemetryRequest& request,

@@ -14,9 +14,13 @@ namespace diagnostics {
 void MockMojomWilcoDtcSupportdClient::SendWilcoDtcMessageToUi(
     mojo::ScopedHandle json_message,
     const SendWilcoDtcMessageToUiCallback& callback) {
+  std::string json_message_content =
+      GetStringFromMojoHandle(std::move(json_message));
   // Redirect to a separate mockable method to workaround GMock's issues with
   // move-only parameters.
-  SendWilcoDtcMessageToUiImpl(&json_message, callback);
+  SendWilcoDtcMessageToUiImpl(json_message_content, callback);
+  // The callback must be called.
+  callback.Run(CreateReadOnlySharedMemoryMojoHandle(json_message_content));
 }
 
 void MockMojomWilcoDtcSupportdClient::PerformWebRequest(

@@ -99,6 +99,23 @@ class WilcoDtcSupportdMojoServiceTest : public testing::Test {
     service_->NotifyConfigurationDataChanged();
   }
 
+  void SendWilcoDtcMessageToUi(base::StringPiece expected_json_message) {
+    base::RunLoop run_loop;
+    // According to the implementation of MockMojomWilcoDtcSupportdClient
+    // expected_json_message is equal to json_message returned from callback.
+    service_->SendWilcoDtcMessageToUi(
+        expected_json_message.as_string(),
+        base::Bind(
+            [](const base::Closure& quit_closure,
+               base::StringPiece expected_json_message,
+               base::StringPiece json_message) {
+              EXPECT_EQ(expected_json_message, json_message);
+              quit_closure.Run();
+            },
+            run_loop.QuitClosure(), expected_json_message));
+    run_loop.Run();
+  }
+
   void PerformWebRequest(MojomWilcoDtcSupportdWebRequestHttpMethod http_method,
                          const std::string& url,
                          const std::vector<std::string>& headers,
@@ -155,8 +172,19 @@ TEST_F(WilcoDtcSupportdMojoServiceTest, SendUiMessageToWilcoDtc) {
 
 TEST_F(WilcoDtcSupportdMojoServiceTest, SendUiMessageToWilcoDtcInvalidJSON) {
   base::StringPiece json_message("{'message': 'Hello world!'}");
-  EXPECT_CALL(*delegate(), SendGrpcUiMessageToWilcoDtc(_, _)).Times(0);
   ASSERT_NO_FATAL_FAILURE(SendJsonMessage(json_message));
+}
+
+TEST_F(WilcoDtcSupportdMojoServiceTest, SendWilcoDtcMessageToUi) {
+  const base::StringPiece kJsonMessage("{\"message\": \"Hello world!\"}");
+  EXPECT_CALL(*mojo_client(),
+              SendWilcoDtcMessageToUiImpl(kJsonMessage.as_string(), _));
+  ASSERT_NO_FATAL_FAILURE(SendWilcoDtcMessageToUi(kJsonMessage));
+}
+
+TEST_F(WilcoDtcSupportdMojoServiceTest, SendWilcoDtcMessageToUiEmptyMessage) {
+  const base::StringPiece kJsonMessage("");
+  ASSERT_NO_FATAL_FAILURE(SendWilcoDtcMessageToUi(kJsonMessage));
 }
 
 TEST_F(WilcoDtcSupportdMojoServiceTest, PerformWebRequest) {

@@ -34,6 +34,22 @@ void ForwardMojoJsonResponse(
   mojo_response_callback.Run(std::move(response_json_message_handle));
 }
 
+void ForwardMojoSendtoUiResponse(
+    const WilcoDtcSupportdMojoService::MojomSendWilcoDtcMessageToUiCallback&
+        callback,
+    mojo::ScopedHandle response_body_handle) {
+  auto shared_memory =
+      GetReadOnlySharedMemoryFromMojoHandle(std::move(response_body_handle));
+  if (!shared_memory) {
+    LOG(ERROR) << "Failed to read data from mojo handle";
+    callback.Run(base::StringPiece());
+    return;
+  }
+  callback.Run(
+      base::StringPiece(static_cast<const char*>(shared_memory->memory()),
+                        shared_memory->mapped_size()));
+}
+
 void ForwardMojoWebResponse(
     const WilcoDtcSupportdMojoService::MojomPerformWebRequestCallback& callback,
     WilcoDtcSupportdMojoService::MojomWilcoDtcSupportdWebRequestStatus status,
@@ -101,6 +117,23 @@ void WilcoDtcSupportdMojoService::SendUiMessageToWilcoDtc(
 
 void WilcoDtcSupportdMojoService::NotifyConfigurationDataChanged() {
   delegate_->NotifyConfigurationDataChangedToWilcoDtc();
+}
+
+void WilcoDtcSupportdMojoService::SendWilcoDtcMessageToUi(
+    const std::string& json_message,
+    const MojomSendWilcoDtcMessageToUiCallback& callback) {
+  VLOG(1) << "SendWilcoDtcMessageToUi json_message=" << json_message;
+  mojo::ScopedHandle json_message_mojo_handle =
+      CreateReadOnlySharedMemoryMojoHandle(json_message);
+  if (!json_message_mojo_handle.is_valid()) {
+    LOG(ERROR) << "Failed to create a mojo handle.";
+    callback.Run(base::StringPiece());
+    return;
+  }
+
+  client_ptr_->SendWilcoDtcMessageToUi(
+      std::move(json_message_mojo_handle),
+      base::Bind(&ForwardMojoSendtoUiResponse, callback));
 }
 
 void WilcoDtcSupportdMojoService::PerformWebRequest(
