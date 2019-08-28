@@ -15,13 +15,10 @@
 #include <dbus/cros_healthd/dbus-constants.h>
 #include <mojo/edk/embedder/embedder.h>
 
-#include "diagnostics/cros_healthd/cros_healthd_routine_service_impl.h"
-
 namespace diagnostics {
 
 CrosHealthd::CrosHealthd()
-    : DBusServiceDaemon(kCrosHealthdServiceName /* service_name */),
-      routine_service_(std::make_unique<CrosHealthdRoutineServiceImpl>()) {}
+    : DBusServiceDaemon(kCrosHealthdServiceName /* service_name */) {}
 
 CrosHealthd::~CrosHealthd() = default;
 
@@ -128,8 +125,8 @@ bool CrosHealthd::BootstrapMojoConnection(brillo::ErrorPtr* error,
 
   mojo_service_bind_attempted_ = true;
   mojo_service_ = std::make_unique<CrosHealthdMojoService>(
-      routine_service_.get(), mojo::edk::CreateChildMessagePipe(
-                                  kCrosHealthdMojoConnectionChannelToken));
+      mojo::edk::CreateChildMessagePipe(
+          kCrosHealthdMojoConnectionChannelToken));
   if (!mojo_service_) {
     constexpr char kBootstrapFailed[] = "Mojo bootstrap failed";
     *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,

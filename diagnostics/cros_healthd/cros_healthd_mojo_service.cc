@@ -20,34 +20,12 @@ namespace diagnostics {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 CrosHealthdMojoService::CrosHealthdMojoService(
-    CrosHealthdRoutineService* routine_service,
     mojo::ScopedMessagePipeHandle mojo_pipe_handle)
-    : routine_service_(routine_service),
-      self_binding_(this /* impl */, std::move(mojo_pipe_handle)) {
-  DCHECK(routine_service_);
+    : self_binding_(this /* impl */, std::move(mojo_pipe_handle)) {
   DCHECK(self_binding_.is_bound());
 }
 
 CrosHealthdMojoService::~CrosHealthdMojoService() = default;
-
-void CrosHealthdMojoService::GetAvailableRoutines(
-    const GetAvailableRoutinesCallback& callback) {
-  NOTIMPLEMENTED();
-}
-
-void CrosHealthdMojoService::RunRoutine(mojo_ipc::DiagnosticRoutineEnum routine,
-                                        mojo_ipc::RoutineParametersPtr params,
-                                        const RunRoutineCallback& callback) {
-  NOTIMPLEMENTED();
-}
-
-void CrosHealthdMojoService::GetRoutineUpdate(
-    int32_t uuid,
-    mojo_ipc::DiagnosticRoutineCommandEnum command,
-    bool include_output,
-    const GetRoutineUpdateCallback& callback) {
-  NOTIMPLEMENTED();
-}
 
 void CrosHealthdMojoService::set_connection_error_handler(
     const base::Closure& error_handler) {

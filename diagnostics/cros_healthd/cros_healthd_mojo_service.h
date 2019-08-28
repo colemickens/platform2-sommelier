@@ -11,7 +11,6 @@
 #include <base/macros.h>
 #include <mojo/public/cpp/bindings/binding.h>
 
-#include "diagnostics/cros_healthd/cros_healthd_routine_service.h"
 #include "mojo/cros_healthd.mojom.h"
 
 namespace diagnostics {
@@ -21,24 +20,12 @@ namespace diagnostics {
 class CrosHealthdMojoService final
     : public chromeos::cros_healthd::mojom::CrosHealthdService {
  public:
-  // |routine_service_| - Unowned pointer; must outlive this instance.
   // |mojo_pipe_handle| - Pipe to bind this instance to.
-  CrosHealthdMojoService(CrosHealthdRoutineService* routine_service,
-                         mojo::ScopedMessagePipeHandle mojo_pipe_handle);
+  explicit CrosHealthdMojoService(
+      mojo::ScopedMessagePipeHandle mojo_pipe_handle);
   ~CrosHealthdMojoService() override;
 
   // chromeos::cros_healthd::mojom::CrosHealthdService overrides:
-  void GetAvailableRoutines(
-      const GetAvailableRoutinesCallback& callback) override;
-  void RunRoutine(chromeos::cros_healthd::mojom::DiagnosticRoutineEnum routine,
-                  chromeos::cros_healthd::mojom::RoutineParametersPtr params,
-                  const RunRoutineCallback& callback) override;
-  void GetRoutineUpdate(
-      int32_t uuid,
-      chromeos::cros_healthd::mojom::DiagnosticRoutineCommandEnum command,
-      bool include_output,
-      const GetRoutineUpdateCallback& callback) override;
-
   void ProbeBatteryInfo(const ProbeBatteryInfoCallback& callback) override;
   void ProbeNonRemovableBlockDeviceInfo(
       const ProbeNonRemovableBlockDeviceInfoCallback& callback) override;
@@ -49,9 +36,6 @@ class CrosHealthdMojoService final
   void set_connection_error_handler(const base::Closure& error_handler);
 
  private:
-  // Unowned. The routine service should outlive this instance.
-  CrosHealthdRoutineService* const routine_service_;
-
   // Mojo binding that connects |this| with the message pipe, allowing the
   // remote end to call our methods.
   mojo::Binding<chromeos::cros_healthd::mojom::CrosHealthdService>
