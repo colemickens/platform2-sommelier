@@ -10,6 +10,8 @@
 
 #include <algorithm>
 
+#include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
@@ -126,7 +128,7 @@ bool CrosFpDevice::EcDevInit() {
   return true;
 }
 
-void CrosFpDevice::OnFileCanReadWithoutBlocking(int fd) {
+void CrosFpDevice::OnEventReadable() {
   struct ec_response_get_next_event evt;
   ssize_t sz = read(cros_fd_.get(), &evt, sizeof(evt));
 
@@ -441,9 +443,10 @@ bool CrosFpDevice::Init() {
   LOG(INFO) << "  Template Data Size    : " << info_.template_size;
   LOG(INFO) << "  Max number of fingers : " << info_.template_max;
 
-  if (!MessageLoopForIO::current()->WatchFileDescriptor(
-          cros_fd_.get(), true, MessageLoopForIO::WATCH_READ, fd_watcher_.get(),
-          this)) {
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      cros_fd_.get(), base::BindRepeating(&CrosFpDevice::OnEventReadable,
+                                          base::Unretained(this)));
+  if (!watcher_) {
     LOG(ERROR) << "Unable to watch MKBP events";
     return false;
   }

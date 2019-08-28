@@ -9,6 +9,7 @@
 
 #include <base/bind.h>
 #include <base/command_line.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_loop.h>
@@ -551,6 +552,7 @@ int main(int argc, char* argv[]) {
   }
 
   base::MessageLoopForIO message_loop;
+  base::FileDescriptorWatcher watcher(&message_loop);
   dbus::Bus::Options bus_options;
   bus_options.bus_type = dbus::Bus::SYSTEM;
   scoped_refptr<dbus::Bus> bus(new dbus::Bus(bus_options));

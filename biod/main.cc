@@ -6,6 +6,7 @@
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -52,6 +53,7 @@ int main(int argc, char* argv[]) {
   LOG(INFO) << "vcsid " << VCSID;
 
   base::MessageLoopForIO message_loop;
+  base::FileDescriptorWatcher watcher(&message_loop);
   biod::BiometricsDaemon bio_daemon;
   base::RunLoop().Run();
   return 0;

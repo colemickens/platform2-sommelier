@@ -11,8 +11,8 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_util.h>
-#include <base/message_loop/message_loop.h>
 #include <chromeos/ec/cros_ec_dev.h>
 #include <chromeos/ec/ec_commands.h>
 
@@ -20,22 +20,18 @@
 #include "biod/fp_mode.h"
 #include "biod/uinput_device.h"
 
-using MessageLoopForIO = base::MessageLoopForIO;
-
 using VendorTemplate = std::vector<uint8_t>;
 
 namespace biod {
 
-class CrosFpDevice : public MessageLoopForIO::Watcher {
+class CrosFpDevice {
  public:
   using MkbpCallback = base::Callback<void(const uint32_t event)>;
   explicit CrosFpDevice(const MkbpCallback& mkbp_event,
                         BiodMetrics* biod_metrics)
       : mkbp_event_(mkbp_event),
-        fd_watcher_(std::make_unique<MessageLoopForIO::FileDescriptorWatcher>(
-            FROM_HERE)),
         biod_metrics_(biod_metrics) {}
-  ~CrosFpDevice() override;
+  ~CrosFpDevice();
 
   struct EcVersion {
     std::string ro_version;
@@ -77,11 +73,6 @@ class CrosFpDevice : public MessageLoopForIO::Watcher {
 
   static constexpr int kLastTemplate = -1;
 
- protected:
-  // MessageLoopForIO::Watcher overrides:
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override {}
-
  private:
   bool Init();
 
@@ -102,15 +93,16 @@ class CrosFpDevice : public MessageLoopForIO::Watcher {
   // entropy too.
   bool UpdateEntropy(bool reset);
 
+  void OnEventReadable();
+
   base::ScopedFD cros_fd_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
   ssize_t max_read_size_ = 0;
   ssize_t max_write_size_ = 0;
   struct ec_response_fp_info info_ = {};
 
   MkbpCallback mkbp_event_;
   UinputDevice input_device_;
-
-  std::unique_ptr<MessageLoopForIO::FileDescriptorWatcher> fd_watcher_;
 
   BiodMetrics* biod_metrics_ = nullptr;  // Not owned.
 
