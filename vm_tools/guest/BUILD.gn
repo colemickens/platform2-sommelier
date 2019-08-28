@@ -48,6 +48,7 @@ static_library("libmaitred") {
 
 static_library("libgarcon") {
   sources = [
+    "../common/spawn_util.cc",
     "../garcon/app_search.cc",
     "../garcon/desktop_file.cc",
     "../garcon/host_notifier.cc",
