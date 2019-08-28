@@ -2280,7 +2280,6 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
 
-  // DNS Failure, start DNS test for fallback DNS servers.
   PortalDetector::Result result_redirect(PortalDetector::Phase::kContent,
                                          PortalDetector::Status::kRedirect);
   PortalDetector::Result https_result(PortalDetector::Phase::kContent,
@@ -2300,6 +2299,31 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
   Mock::VerifyAndClearExpectations(device_.get());
 }
 
+TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoUrl) {
+  static const char* const kGoogleDNSServers[] = {"8.8.8.8", "8.8.4.4"};
+  vector<string> fallback_dns_servers(kGoogleDNSServers, kGoogleDNSServers + 2);
+  const string kInterfaceName("int0");
+  EXPECT_CALL(*connection_, interface_name())
+      .WillRepeatedly(ReturnRef(kInterfaceName));
+
+  PortalDetector::Result result_redirect(PortalDetector::Phase::kContent,
+                                         PortalDetector::Status::kRedirect);
+  PortalDetector::Result https_result(PortalDetector::Phase::kContent,
+                                      PortalDetector::Status::kSuccess);
+  EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*service_,
+              SetPortalDetectionFailure(kPortalDetectionPhaseContent,
+                                        kPortalDetectionStatusRedirect));
+  EXPECT_CALL(*service_, SetState(Service::kStatePortalSuspected));
+  EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
+  EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
+  EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
+                            IsPortalDetectorResult(result_redirect),
+                            IsPortalDetectorResult(https_result)));
+  PortalDetectorCallback(result_redirect, https_result);
+  Mock::VerifyAndClearExpectations(device_.get());
+}
+
 TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
   static const char* const kGoogleDNSServers[] = {"8.8.8.8", "8.8.4.4"};
   vector<string> fallback_dns_servers(kGoogleDNSServers, kGoogleDNSServers + 2);
@@ -2307,7 +2331,6 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
 
-  // DNS Failure, start DNS test for fallback DNS servers.
   PortalDetector::Result http_result(PortalDetector::Phase::kContent,
                                      PortalDetector::Status::kSuccess);
   PortalDetector::Result https_result(PortalDetector::Phase::kContent,

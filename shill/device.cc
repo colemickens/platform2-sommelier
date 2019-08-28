@@ -107,7 +107,9 @@ Service::ConnectState CalculatePortalStateFromProbeResults(
       https_result.status == PortalDetector::Status::kSuccess) {
     return Service::kStateOnline;
   } else if (http_result.status == PortalDetector::Status::kRedirect) {
-    CHECK(!http_result.redirect_url_string.empty());
+    if (http_result.redirect_url_string.empty()) {
+      return Service::kStatePortalSuspected;
+    }
     return Service::kStateRedirectFound;
   } else if ((http_result.status == PortalDetector::Status::kSuccess &&
               https_result.status != PortalDetector::Status::kSuccess) ||
