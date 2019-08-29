@@ -137,14 +137,11 @@ const std::vector<Log> kCommandLogs {
   {kFile, "cros_ish.log", "/var/log/cros_ish.log"},
   {kCommand, "dmesg", "/bin/dmesg"},
   {kFile, "ec_info", "/var/log/ec_info.txt"},
-  // The sed command replaces the EDID serial number (4 bytes at position 12)
-  // with zeroes. See https://en.wikipedia.org/wiki/EDID#EDID_1.4_data_format.
   {kCommand, "edid-decode",
     "for f in /sys/class/drm/card0-*/edid; do "
       "echo \"----------- ${f}\"; "
-      "sed -E 's/^(.{11}).{4}/\\1\\x0\\x0\\x0\\x0/' \"${f}\" | "
       // edid-decode's stderr output is redundant, so silence it.
-      "edid-decode 2>/dev/null; "
+      "edid-decode \"${f}\" 2>/dev/null; "
     "done"},
   {kFile, "eventlog", "/var/log/eventlog.txt"},
   {kCommand, "font_info", "/usr/share/userfeedback/scripts/font_info"},
