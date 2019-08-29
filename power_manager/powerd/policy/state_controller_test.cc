@@ -18,6 +18,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <gtest/gtest.h>
+#include <update_engine/proto_bindings/update_engine.pb.h>
 
 #include "power_manager/common/action_recorder.h"
 #include "power_manager/common/clock.h"
@@ -117,13 +118,17 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
   DISALLOW_COPY_AND_ASSIGN(TestDelegate);
 };
 
-// Fills an update_engine message used either for a GetStatus response or a
-// StatusUpdate signal.
-void FillUpdateMessage(dbus::Message* message, const std::string& operation) {
+// Fills an update_engine message used either for a GetStatusAdvanced response
+// or a StatusUpdateAdvanced signal.
+void FillUpdateMessage(dbus::Message* message,
+                       const update_engine::Operation& operation) {
+  update_engine::StatusResult status;
+  status.set_last_checked_time(1 /* arbitrary */);
+  status.set_progress(0.0 /* arbitrary */);
+  status.set_current_operation(operation);
+
   dbus::MessageWriter writer(message);
-  writer.AppendInt64(1 /* last_checked_time; arbitrary */);
-  writer.AppendDouble(0.0 /* progress; arbitrary */);
-  writer.AppendString(operation);
+  writer.AppendProtoAsArrayOfBytes(status);
 }
 
 // Returns a string representation of an IdleActionImminent D-Bus signal. See
@@ -184,7 +189,7 @@ class StateControllerTest : public testing::Test {
         initial_display_mode_(DisplayMode::NORMAL),
         send_initial_display_mode_(true),
         send_initial_policy_(true),
-        update_engine_operation_(update_engine::kUpdateStatusIdle) {
+        update_engine_operation_(update_engine::Operation::IDLE) {
     dbus_wrapper_.SetMethodCallback(base::Bind(
         &StateControllerTest::HandleDBusMethodCall, base::Unretained(this)));
 
@@ -288,10 +293,10 @@ class StateControllerTest : public testing::Test {
            StepTimeAndTriggerTimeout(default_ac_suspend_delay_);
   }
 
-  // Emits a StatusUpdate D-Bus signal on behalf of update_engine.
-  void EmitStatusUpdateSignal(const std::string& operation) {
+  // Emits a StatusUpdateAdvanced D-Bus signal on behalf of update_engine.
+  void EmitStatusUpdateSignal(const update_engine::Operation& operation) {
     dbus::Signal signal(update_engine::kUpdateEngineInterface,
-                        update_engine::kStatusUpdate);
+                        update_engine::kStatusUpdateAdvanced);
     FillUpdateMessage(&signal, operation);
     dbus_wrapper_.EmitRegisteredSignal(update_engine_proxy_, &signal);
   }
@@ -303,7 +308,7 @@ class StateControllerTest : public testing::Test {
     dbus_method_calls_.push_back(call->GetMember());
     if (proxy == update_engine_proxy_ &&
         call->GetInterface() == update_engine::kUpdateEngineInterface &&
-        call->GetMember() == update_engine::kGetStatus) {
+        call->GetMember() == update_engine::kGetStatusAdvanced) {
       std::unique_ptr<dbus::Response> response =
           dbus::Response::FromMethodCall(call);
       FillUpdateMessage(response.get(), update_engine_operation_);
@@ -429,8 +434,9 @@ class StateControllerTest : public testing::Test {
   PowerManagementPolicy initial_policy_;
   bool send_initial_policy_;
 
-  // Operation for update_engine to return in response to GetStatus calls.
-  std::string update_engine_operation_;
+  // Operation for update_engine to return in response to GetStatusAdvanced
+  // calls.
+  update_engine::Operation update_engine_operation_;
 
   // Names of D-Bus method calls.
   std::vector<std::string> dbus_method_calls_;
@@ -1272,14 +1278,14 @@ TEST_F(StateControllerTest, AvoidSuspendDuringSystemUpdate) {
   // When update_engine comes up, make it report that an update is being
   // applied.  The screen should dim and be turned off, but the system should
   // stay awake.
-  update_engine_operation_ = update_engine::kUpdateStatusDownloading;
+  update_engine_operation_ = update_engine::Operation::DOWNLOADING;
   dbus_wrapper_.NotifyServiceAvailable(update_engine_proxy_, true);
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, nullptr),
             delegate_.GetActions());
 
   // When the update has been applied, the system should suspend immediately.
-  EmitStatusUpdateSignal(update_engine::kUpdateStatusUpdatedNeedReboot);
+  EmitStatusUpdateSignal(update_engine::Operation::UPDATED_NEED_REBOOT);
   EXPECT_EQ(kSuspendIdle, delegate_.GetActions());
 
   // Resume the system and announce another update.
@@ -1287,7 +1293,7 @@ TEST_F(StateControllerTest, AvoidSuspendDuringSystemUpdate) {
   controller_.HandleUserActivity();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, nullptr),
             delegate_.GetActions());
-  EmitStatusUpdateSignal(update_engine::kUpdateStatusFinalizing);
+  EmitStatusUpdateSignal(update_engine::Operation::FINALIZING);
 
   // Closing the lid should still suspend.
   controller_.HandleLidStateChange(LidState::CLOSED);
@@ -1303,7 +1309,7 @@ TEST_F(StateControllerTest, AvoidSuspendDuringSystemUpdate) {
 
   // The system should also suspend immediately after transitioning from
   // the "updating" state back to "idle" (i.e. the update was unsuccessful).
-  EmitStatusUpdateSignal(update_engine::kUpdateStatusIdle);
+  EmitStatusUpdateSignal(update_engine::Operation::IDLE);
   EXPECT_EQ(kSuspendIdle, delegate_.GetActions());
   controller_.HandleResume(LidState::OPEN);
   controller_.HandleUserActivity();
@@ -1316,7 +1322,7 @@ TEST_F(StateControllerTest, AvoidSuspendDuringSystemUpdate) {
   PowerManagementPolicy policy;
   policy.set_ac_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
   controller_.HandlePolicyChange(policy);
-  EmitStatusUpdateSignal(update_engine::kUpdateStatusDownloading);
+  EmitStatusUpdateSignal(update_engine::Operation::DOWNLOADING);
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kStopSession, nullptr),
             delegate_.GetActions());

@@ -19,6 +19,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <update_engine/proto_bindings/update_engine.pb.h>
 
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
@@ -383,7 +384,7 @@ void StateController::Init(Delegate* delegate,
                  weak_ptr_factory_.GetWeakPtr()));
   dbus_wrapper_->RegisterForSignal(
       update_engine_dbus_proxy_, update_engine::kUpdateEngineInterface,
-      update_engine::kStatusUpdate,
+      update_engine::kStatusUpdateAdvanced,
       base::Bind(&StateController::HandleUpdateEngineStatusUpdateSignal,
                  weak_ptr_factory_.GetWeakPtr()));
 
@@ -1318,7 +1319,7 @@ void StateController::HandleUpdateEngineAvailable(bool available) {
   }
 
   dbus::MethodCall method_call(update_engine::kUpdateEngineInterface,
-                               update_engine::kGetStatus);
+                               update_engine::kGetStatusAdvanced);
   std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
       update_engine_dbus_proxy_, &method_call, kUpdateEngineDBusTimeout);
   if (!response)
@@ -1335,22 +1336,24 @@ void StateController::HandleUpdateEngineStatusUpdateSignal(
 void StateController::HandleUpdateEngineStatusMessage(dbus::Message* message) {
   DCHECK(message);
   dbus::MessageReader reader(message);
-  int64_t last_checked_time = 0;
-  double progress = 0.0;
-  std::string operation;
-  if (!reader.PopInt64(&last_checked_time) || !reader.PopDouble(&progress) ||
-      !reader.PopString(&operation)) {
-    LOG(ERROR) << "Unable to read update status args";
+  update_engine::StatusResult status;
+  if (!reader.PopArrayOfBytesAsProto(&status)) {
+    LOG(ERROR) << "Unable to read update status args.";
     return;
   }
 
+  update_engine::Operation operation = status.current_operation();
+  // TODO(crbug.com/977320): Through the protobuf we don't have access to the
+  // string value of the current operation. One way to get around this is to add
+  // a new |current_operation_string| value to the protobuf with the current
+  // operation's string representation for these logging purposes.
   LOG(INFO) << "Update operation is " << operation;
   UpdaterState state = UpdaterState::IDLE;
-  if (operation == update_engine::kUpdateStatusDownloading ||
-      operation == update_engine::kUpdateStatusVerifying ||
-      operation == update_engine::kUpdateStatusFinalizing) {
+  if (operation == update_engine::Operation::DOWNLOADING ||
+      operation == update_engine::Operation::VERIFYING ||
+      operation == update_engine::Operation::FINALIZING) {
     state = UpdaterState::UPDATING;
-  } else if (operation == update_engine::kUpdateStatusUpdatedNeedReboot) {
+  } else if (operation == update_engine::Operation::UPDATED_NEED_REBOOT) {
     state = UpdaterState::UPDATED;
   }
 

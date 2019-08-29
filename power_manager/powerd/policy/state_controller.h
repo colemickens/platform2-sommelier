@@ -374,13 +374,14 @@ class StateController : public PrefsObserver {
   // Handles the update_engine D-Bus service becoming initially available.
   void HandleUpdateEngineAvailable(bool available);
 
-  // Hadles StatusUpdate D-Bus signals from update_engine.
+  // Hadles StatusUpdateAdvanced D-Bus signals from update_engine.
   void HandleUpdateEngineStatusUpdateSignal(dbus::Signal* signal);
 
   // Handles status updates from update_engine. This is a helper used by both
   // HandleUpdateEngineStatusUpdateSignal() and HandleUpdateEngineAvailable(),
-  // and |message| can be either a StatusUpdate D-Bus signal or the response to
-  // a GetStatus D-Bus method call; both have the same arguments.
+  // and |message| can be either a StatusUpdateAdvanced D-Bus signal or the
+  // response to a GetStatusAdvanced D-Bus method call; both have the same
+  // arguments.
   void HandleUpdateEngineStatusMessage(dbus::Message* message);
 
   // Announces that the screen's dimmed- or off-for-inactivity state has
