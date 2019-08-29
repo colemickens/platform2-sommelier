@@ -39,10 +39,10 @@ LECredBackendError ConvertStatus(const std::string& operation,
     return LE_TPM_ERROR_TPM_OP_FAILED;
   }
 
-  // TODO(808688): This is useful to diagnose pinweaver behavior in the field.
-  // Remove once pinweaver is mature enough so the benefit does no longer
-  // justify the log spam.
-  LOG(INFO) << "Pinweaver " << operation << ": " << pinweaver_status;
+  if (pinweaver_status != 0 /* EC_SUCCESS */) {
+    LOG(WARNING) << "Pinweaver " << operation << ": status "
+                 << pinweaver_status;
+  }
 
   switch (pinweaver_status) {
     case 0:  // EC_SUCCESS
@@ -138,8 +138,6 @@ bool PinweaverLECredentialBackend::IsSupported() {
               std::min(protocol_version_,
                        static_cast<uint8_t>(PW_PROTOCOL_VERSION));
 
-        LOG(INFO) << "Protocol version: "
-                  << static_cast<int>(protocol_version_);
         return std::make_pair(result, 0 /* EC_SUCCESS */);
       });
 }
