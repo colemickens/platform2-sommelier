@@ -18,9 +18,13 @@ class WakeupDevice : public WakeupDeviceInterface {
  public:
   static std::unique_ptr<WakeupDeviceInterface> CreateWakeupDevice(
       const base::FilePath& path);
-  // Relative path to device specific wakeup_count from the device sysfs
-  // path (power/wakeup_count).
-  static const char kPowerWakeupCount[];
+
+  // Relative path to device specific wakeup directory from the device sys
+  // path.
+  static const char kWakeupDir[];
+  // Relative path to device specific event_count from the wakeup/wakeupN
+  // directory under device sysfs path (wakeup/wakeupN/event_count).
+  static const char kPowerEventCountPath[];
 
   ~WakeupDevice() override;
 
@@ -31,9 +35,9 @@ class WakeupDevice : public WakeupDeviceInterface {
 
  private:
   explicit WakeupDevice(const base::FilePath& path);
-  // Reads the |kPowerWakeupCount|. |wakeup_count_out| is set to the read value
-  // if the read is successful. Returns true on success, false otherwise.
-  bool ReadWakeupCount(uint64_t* wakeup_count_out);
+  // Reads the |kPowerEventCountPath|. |event_count_out| is set to the read
+  // value if the read is successful. Returns true on success, false otherwise.
+  bool ReadEventCount(uint64_t* event_count_out);
 
   // Sysfs path of the device. Can be overridden by tests.
   base::FilePath sys_path_;
@@ -41,10 +45,10 @@ class WakeupDevice : public WakeupDeviceInterface {
   // Did this device cause last wake?
   bool caused_last_wake_ = false;
 
-  // Wakeup count of the device before the last suspend.
-  uint64_t wakeup_count_before_suspend_ = 0;
+  // Event count of the device before the last suspend.
+  uint64_t event_count_before_suspend_ = 0;
 
-  // Was wakeup_count read before suspend successful?
+  // Was event_count read before suspend successful?
   bool was_pre_suspend_read_successful_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(WakeupDevice);

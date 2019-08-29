@@ -11,6 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/power_constants.h"
@@ -36,8 +37,11 @@ class WakeupDeviceTest : public testing::Test {
 
     wakeup_attr_path_ = wakeup_device_path_.Append(kPowerWakeup);
     WriteFile(wakeup_attr_path_, "enabled");
-    wakeup_count_attr_path_ =
-        wakeup_device_path_.Append(WakeupDevice::kPowerWakeupCount);
+    std::string random_events_count_dir = "wakeup45";
+    event_count_attr_path_ =
+        wakeup_device_path_.Append(WakeupDevice::kWakeupDir)
+            .Append(random_events_count_dir)
+            .Append(WakeupDevice::kPowerEventCountPath);
 
     wakeup_device_ = WakeupDevice::CreateWakeupDevice(wakeup_device_path_);
     CHECK(wakeup_device_);
@@ -50,67 +54,67 @@ class WakeupDeviceTest : public testing::Test {
 
   base::FilePath wakeup_device_path_;
   base::FilePath wakeup_attr_path_;
-  base::FilePath wakeup_count_attr_path_;
+  base::FilePath event_count_attr_path_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(WakeupDeviceTest);
 };
 
-// An incremented wakeup_count value should result in proper identification of
+// An incremented event_count value should result in proper identification of
 // wakeup device.
 TEST_F(WakeupDeviceTest, TestWakeupCountIncrement) {
-  const std::string kWakeupCountBeforeSuspendStr = "1";
-  WriteFile(wakeup_count_attr_path_, kWakeupCountBeforeSuspendStr);
+  const std::string kEventCountBeforeSuspendStr = "1";
+  WriteFile(event_count_attr_path_, kEventCountBeforeSuspendStr);
   wakeup_device_->PrepareForSuspend();
-  const std::string kWakeupCountAfterResumeStr = "2";
-  WriteFile(wakeup_count_attr_path_, kWakeupCountAfterResumeStr);
+  const std::string kEventCountAfterResumeStr = "2";
+  WriteFile(event_count_attr_path_, kEventCountAfterResumeStr);
   wakeup_device_->HandleResume();
   EXPECT_TRUE(wakeup_device_->CausedLastWake());
 }
 
-// A overflow of wakeup_count value should result in proper identification of
+// A overflow of event_count value should result in proper identification of
 // wakeup device.
 TEST_F(WakeupDeviceTest, TestWakeupCountOverflow) {
-  const std::string kWakeupCountBeforeSuspendStr =
+  const std::string kEventCountBeforeSuspendStr =
       base::NumberToString(std::numeric_limits<uint64_t>::max());
-  WriteFile(wakeup_count_attr_path_, kWakeupCountBeforeSuspendStr);
+  WriteFile(event_count_attr_path_, kEventCountBeforeSuspendStr);
   wakeup_device_->PrepareForSuspend();
-  const std::string kWakeupCountAfterResumeStr =
+  const std::string kEventCountAfterResumeStr =
       base::NumberToString(std::numeric_limits<uint64_t>::max() + 1);
-  WriteFile(wakeup_count_attr_path_, kWakeupCountAfterResumeStr);
+  WriteFile(event_count_attr_path_, kEventCountAfterResumeStr);
   wakeup_device_->HandleResume();
   EXPECT_TRUE(wakeup_device_->CausedLastWake());
 }
 
-// A empty wakeup_count file should result in proper identification of
+// A empty event_count file should result in proper identification of
 // wakeup device.
 TEST_F(WakeupDeviceTest, TestEmptyWakeupCountFile) {
-  const std::string kWakeupCountBeforeSuspendStr = "";
-  WriteFile(wakeup_count_attr_path_, kWakeupCountBeforeSuspendStr);
+  const std::string kEventCountBeforeSuspendStr = "";
+  WriteFile(event_count_attr_path_, kEventCountBeforeSuspendStr);
   wakeup_device_->PrepareForSuspend();
-  const std::string kWakeupCountAfterResumeStr = "2";
-  WriteFile(wakeup_count_attr_path_, kWakeupCountAfterResumeStr);
+  const std::string kEventCountAfterResumeStr = "2";
+  WriteFile(event_count_attr_path_, kEventCountAfterResumeStr);
   wakeup_device_->HandleResume();
   EXPECT_TRUE(wakeup_device_->CausedLastWake());
 }
 
-// Failure to read the wakeup count before suspend should not mark the device as
+// Failure to read the event_count before suspend should not mark the device as
 // wake source.
 TEST_F(WakeupDeviceTest, TestWakeupCountReadFailBeforeSuspend) {
   wakeup_device_->PrepareForSuspend();
-  const std::string kWakeupCountAfterResumeStr = base::NumberToString(1);
-  WriteFile(wakeup_count_attr_path_, kWakeupCountAfterResumeStr);
+  const std::string kEventCountAfterResumeStr = base::NumberToString(1);
+  WriteFile(event_count_attr_path_, kEventCountAfterResumeStr);
   wakeup_device_->HandleResume();
   EXPECT_FALSE(wakeup_device_->CausedLastWake());
 }
 
-// Failure to read the wakeup count after resume should not mark the device as
+// Failure to read the event_count after resume should not mark the device as
 // wake source.
 TEST_F(WakeupDeviceTest, TestWakeupCountReadFailAfterResume) {
-  const std::string kWakeupCountBeforeSuspendStr = "1";
-  WriteFile(wakeup_count_attr_path_, kWakeupCountBeforeSuspendStr);
+  const std::string kEventCountBeforeSuspendStr = "1";
+  WriteFile(event_count_attr_path_, kEventCountBeforeSuspendStr);
   wakeup_device_->PrepareForSuspend();
-  ASSERT_TRUE(base::DeleteFile(wakeup_count_attr_path_, false));
+  ASSERT_TRUE(base::DeleteFile(event_count_attr_path_, false));
   wakeup_device_->HandleResume();
   EXPECT_FALSE(wakeup_device_->CausedLastWake());
 }

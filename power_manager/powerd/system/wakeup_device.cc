@@ -7,12 +7,21 @@
 #include <string>
 #include <utility>
 
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/string_number_conversions.h>
 
 #include "power_manager/common/power_constants.h"
+
+namespace {
+
+// Regex that looks for wakeupN directory under |kWakeupDir| of a given
+// device.
+char kWakeupSysDirPattern[] = "wakeup*";
+
+}  // namespace
 
 namespace power_manager {
 namespace system {
@@ -29,7 +38,8 @@ std::unique_ptr<WakeupDeviceInterface> WakeupDevice::CreateWakeupDevice(
 }
 
 // static
-const char WakeupDevice::kPowerWakeupCount[] = "power/wakeup_count";
+const char WakeupDevice::kWakeupDir[] = "wakeup";
+const char WakeupDevice::kPowerEventCountPath[] = "event_count";
 
 WakeupDevice::WakeupDevice(const base::FilePath& path) : sys_path_(path) {}
 
@@ -39,7 +49,7 @@ void WakeupDevice::PrepareForSuspend() {
   // This can happen when the device is no more a wake source (if power/wakeup
   // is disabled).
   was_pre_suspend_read_successful_ =
-      ReadWakeupCount(&wakeup_count_before_suspend_);
+      ReadEventCount(&event_count_before_suspend_);
 }
 
 void WakeupDevice::HandleResume() {
@@ -48,17 +58,17 @@ void WakeupDevice::HandleResume() {
     return;
   }
 
-  uint64_t wakeup_count_after_resume = 0;
+  uint64_t event_count_after_resume = 0;
 
   // This can happen when the device is no more a wake source (if power/wakeup
   // is disabled).
-  if (!ReadWakeupCount(&wakeup_count_after_resume))
+  if (!ReadEventCount(&event_count_after_resume))
     return;
 
-  if (wakeup_count_after_resume != wakeup_count_before_suspend_) {
-    LOG(INFO) << "Device " << sys_path_.value() << " had wakeup count "
-              << wakeup_count_before_suspend_ << " before suspend and "
-              << wakeup_count_after_resume << " after resume";
+  if (event_count_after_resume != event_count_before_suspend_) {
+    LOG(INFO) << "Device " << sys_path_.value() << " had event_count "
+              << event_count_before_suspend_ << " before suspend and "
+              << event_count_after_resume << " after resume";
     caused_last_wake_ = true;
   }
 }
@@ -67,31 +77,51 @@ bool WakeupDevice::CausedLastWake() const {
   return caused_last_wake_;
 }
 
-bool WakeupDevice::ReadWakeupCount(uint64_t* wakeup_count_out) {
-  DCHECK(wakeup_count_out);
-  std::string wakeup_count_str;
+bool WakeupDevice::ReadEventCount(uint64_t* event_count_out) {
+  DCHECK(event_count_out);
+  std::string event_count_str;
 
-  const base::FilePath wakeup_count_path = sys_path_.Append(kPowerWakeupCount);
+  auto wakeup_dir = sys_path_.Append(kWakeupDir);
+  // event_count lies under wakeup/wakeupN directory. Thus look for wakeupN
+  // directory under |wakeup_dir|.
+  base::FileEnumerator events_count_dir(
+      wakeup_dir, /*recursive=*/false,
+      base::FileEnumerator::DIRECTORIES | base::FileEnumerator::SHOW_SYM_LINKS,
+      kWakeupSysDirPattern);
+
+  auto events_count_dir_path = events_count_dir.Next();
   // This can happen if the device is not wake capable anymore.
-  if (!base::PathExists(wakeup_count_path))
+  if (events_count_dir_path.empty())
     return false;
 
-  if (!base::ReadFileToString(wakeup_count_path, &wakeup_count_str)) {
-    PLOG(ERROR) << "Unable to read wakeup count for " << sys_path_.value();
+  if (!events_count_dir.Next().empty()) {
+    LOG(ERROR) << "More than one wakeupN dir found in " << wakeup_dir.value();
     return false;
   }
-  // Some drivers leave the wakeup_count empty initially.
-  if (wakeup_count_str.empty()) {
-    *wakeup_count_out = 0;
+
+  const base::FilePath event_count_path =
+      events_count_dir_path.Append(kPowerEventCountPath);
+
+  // This can happen if the device is not wake enabled anymore.
+  if (!base::PathExists(event_count_path))
+    return false;
+
+  if (!base::ReadFileToString(event_count_path, &event_count_str)) {
+    PLOG(ERROR) << "Unable to read event count for " << sys_path_.value();
+    return false;
+  }
+
+  // Some drivers leave the event_count empty initially.
+  if (event_count_str.empty()) {
+    *event_count_out = 0;
     return true;
   }
-  base::TrimWhitespaceASCII(wakeup_count_str, base::TRIM_TRAILING,
-                            &wakeup_count_str);
-  if (base::StringToUint64(wakeup_count_str, wakeup_count_out)) {
+  base::TrimWhitespaceASCII(event_count_str, base::TRIM_TRAILING,
+                            &event_count_str);
+  if (base::StringToUint64(event_count_str, event_count_out))
     return true;
-  }
-  LOG(ERROR) << "Could not parse wakeup_count sysattr for "
-             << sys_path_.value();
+
+  LOG(ERROR) << "Could not parse event_count sysattr for " << sys_path_.value();
   return false;
 }
 
