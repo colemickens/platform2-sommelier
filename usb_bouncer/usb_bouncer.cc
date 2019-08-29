@@ -2,14 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sys/mount.h>
+
 #include <cstdio>
 #include <cstdlib>
 
 #include <base/command_line.h>
 #include <brillo/syslog_logging.h>
+#include <brillo/flag_helper.h>
 #include <libminijail.h>
 #include <scoped_minijail.h>
-#include <sys/mount.h>
 
 #include "usb_bouncer/entry_manager.h"
 #include "usb_bouncer/util.h"
@@ -18,27 +20,31 @@ using usb_bouncer::EntryManager;
 
 namespace {
 
-void PrintUsage() {
-  printf(R"(Usage:
-  help - prints this help message.
+static constexpr char kUsageMessage[] = R"(Usage:
   cleanup - removes stale allow-list entries.
   genrules - writes the generated rules configuration and to stdout.
   udev (add|remove) <devpath> - handles a udev device event.
   userlogin - add current entries to user allow-list.
-)");
-}
+)";
+
+enum class SeccompEnforcement {
+  kEnabled,
+  kDisabled,
+};
 
 static constexpr char kLogPath[] = "/dev/log";
 
-void DropPrivileges() {
+void DropPrivileges(SeccompEnforcement seccomp) {
   ScopedMinijail j(minijail_new());
   minijail_change_user(j.get(), usb_bouncer::kUsbBouncerUser);
   minijail_change_group(j.get(), usb_bouncer::kUsbBouncerGroup);
   minijail_inherit_usergroups(j.get());
   minijail_no_new_privs(j.get());
-  minijail_use_seccomp_filter(j.get());
-  minijail_parse_seccomp_filters(
-      j.get(), "/usr/share/policy/usb_bouncer-seccomp.policy");
+  if (seccomp == SeccompEnforcement::kEnabled) {
+    minijail_use_seccomp_filter(j.get());
+    minijail_parse_seccomp_filters(
+        j.get(), "/usr/share/policy/usb_bouncer-seccomp.policy");
+  }
 
   minijail_namespace_ipc(j.get());
   minijail_namespace_net(j.get());
@@ -95,8 +101,8 @@ void DropPrivileges() {
     LOG(WARNING) << "Path \"" << usb_bouncer::kUserDbParentDir
                  << "\" doesn't exist; userdb will be inaccessible this run.";
   } else if (minijail_mount(j.get(), usb_bouncer::kUserDbParentDir,
-                     usb_bouncer::kUserDbParentDir, "none",
-                     MS_BIND | MS_REC) != 0) {
+                            usb_bouncer::kUserDbParentDir, "none",
+                            MS_BIND | MS_REC) != 0) {
     PLOG(FATAL) << "minijail_mount(\"/" << usb_bouncer::kUserDbParentDir
                 << "\") failed";
   }
@@ -109,11 +115,11 @@ void DropPrivileges() {
   umask(0077);
 }
 
-EntryManager* GetEntryManagerOrDie() {
+EntryManager* GetEntryManagerOrDie(SeccompEnforcement seccomp) {
   if (!EntryManager::CreateDefaultGlobalDB()) {
     LOG(FATAL) << "Unable to create default global DB!";
   }
-  DropPrivileges();
+  DropPrivileges(seccomp);
   EntryManager* entry_manager = EntryManager::GetInstance();
   if (!entry_manager) {
     LOG(FATAL) << "EntryManager::GetInstance() failed!";
@@ -121,10 +127,10 @@ EntryManager* GetEntryManagerOrDie() {
   return entry_manager;
 }
 
-int HandleAuthorizeAll(const std::vector<std::string>& argv) {
+int HandleAuthorizeAll(SeccompEnforcement seccomp,
+                       const std::vector<std::string>& argv) {
   if (!argv.empty()) {
     LOG(ERROR) << "Invalid options!";
-    PrintUsage();
     return EXIT_FAILURE;
   }
 
@@ -135,14 +141,14 @@ int HandleAuthorizeAll(const std::vector<std::string>& argv) {
   return EXIT_SUCCESS;
 }
 
-int HandleCleanup(const std::vector<std::string>& argv) {
+int HandleCleanup(SeccompEnforcement seccomp,
+                  const std::vector<std::string>& argv) {
   if (!argv.empty()) {
     LOG(ERROR) << "Invalid options!";
-    PrintUsage();
     return EXIT_FAILURE;
   }
 
-  EntryManager* entry_manager = GetEntryManagerOrDie();
+  EntryManager* entry_manager = GetEntryManagerOrDie(seccomp);
   if (!entry_manager->GarbageCollect()) {
     LOG(ERROR) << "cleanup failed!";
     return EXIT_FAILURE;
@@ -150,14 +156,14 @@ int HandleCleanup(const std::vector<std::string>& argv) {
   return EXIT_SUCCESS;
 }
 
-int HandleGenRules(const std::vector<std::string>& argv) {
+int HandleGenRules(SeccompEnforcement seccomp,
+                   const std::vector<std::string>& argv) {
   if (!argv.empty()) {
     LOG(ERROR) << "Invalid options!";
-    PrintUsage();
     return EXIT_FAILURE;
   }
 
-  EntryManager* entry_manager = GetEntryManagerOrDie();
+  EntryManager* entry_manager = GetEntryManagerOrDie(seccomp);
   std::string rules = entry_manager->GenerateRules();
   if (rules.empty()) {
     LOG(ERROR) << "genrules failed!";
@@ -168,10 +174,10 @@ int HandleGenRules(const std::vector<std::string>& argv) {
   return EXIT_SUCCESS;
 }
 
-int HandleUdev(const std::vector<std::string>& argv) {
+int HandleUdev(SeccompEnforcement seccomp,
+               const std::vector<std::string>& argv) {
   if (argv.size() != 2) {
     LOG(ERROR) << "Invalid options!";
-    PrintUsage();
     return EXIT_FAILURE;
   }
 
@@ -182,11 +188,10 @@ int HandleUdev(const std::vector<std::string>& argv) {
     action = EntryManager::UdevAction::kRemove;
   } else {
     LOG(ERROR) << "Invalid options!";
-    PrintUsage();
     return EXIT_FAILURE;
   }
 
-  EntryManager* entry_manager = GetEntryManagerOrDie();
+  EntryManager* entry_manager = GetEntryManagerOrDie(seccomp);
   if (!entry_manager->HandleUdev(action, argv[1])) {
     LOG(ERROR) << "udev failed!";
     return EXIT_FAILURE;
@@ -194,14 +199,14 @@ int HandleUdev(const std::vector<std::string>& argv) {
   return EXIT_SUCCESS;
 }
 
-int HandleUserLogin(const std::vector<std::string>& argv) {
+int HandleUserLogin(SeccompEnforcement seccomp,
+                    const std::vector<std::string>& argv) {
   if (!argv.empty()) {
     LOG(ERROR) << "Invalid options!";
-    PrintUsage();
     return EXIT_FAILURE;
   }
 
-  EntryManager* entry_manager = GetEntryManagerOrDie();
+  EntryManager* entry_manager = GetEntryManagerOrDie(seccomp);
   if (!entry_manager->HandleUserLogin()) {
     LOG(ERROR) << "userlogin failed!";
     return EXIT_FAILURE;
@@ -212,6 +217,12 @@ int HandleUserLogin(const std::vector<std::string>& argv) {
 }  // namespace
 
 int main(int argc, char** argv) {
+  DEFINE_bool(
+      seccomp, true,
+      DCHECK_IS_ON()
+          ? "Enable or disable seccomp filtering."
+          : "Flag is ignored in production, but reported as a crash if false.");
+  brillo::FlagHelper::Init(argc, argv, kUsageMessage);
   base::CommandLine::Init(argc, argv);
 
   // Logging may not be ready at early boot in which case it is ok if the logs
@@ -223,38 +234,70 @@ int main(int argc, char** argv) {
   brillo::InitLog(log_flags);
 
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
-  const auto& args = cl->argv();
+  std::vector<std::string> args = cl->argv();
+
+  // Remove switches.
+  for (int x = 1; x < args.size();) {
+    if (args[x].size() >= 2 && args[x].substr(0, 2) == "--") {
+      args.erase(args.begin() + x);
+      if (args[x].size() == 2) {
+        break;
+      }
+    } else {
+      ++x;
+    }
+  }
 
   if (args.size() < 2) {
     LOG(ERROR) << "Invalid options!";
-    PrintUsage();
     return EXIT_FAILURE;
   }
 
   const auto& command = args[1];
   auto command_args_start = args.begin() + 2;
+  SeccompEnforcement seccomp;
+  if (!FLAGS_seccomp) {
+    if (DCHECK_IS_ON()) {
+      seccomp = SeccompEnforcement::kDisabled;
+    } else {
+      // Spin off a child to log a crash if --secomp=false is set in production.
+      pid_t pid = fork();
+      if (pid < 0) {
+        PLOG(FATAL) << "Failed to fork()";
+      }
+      if (pid == 0) {
+        LOG(FATAL) << "--seccomp=false set for production code.";
+      }
+
+      seccomp = SeccompEnforcement::kEnabled;
+    }
+  } else {
+    seccomp = SeccompEnforcement::kEnabled;
+  }
 
   const struct {
     const std::string command;
-    int (*handler)(const std::vector<std::string>& argv);
+    int (*handler)(SeccompEnforcement seccomp,
+                   const std::vector<std::string>& argv);
   } command_handlers[] = {
+      // clang-format off
       {"authorize-all", HandleAuthorizeAll},
       {"cleanup", HandleCleanup},
       {"genrules", HandleGenRules},
       {"udev", HandleUdev},
       {"userlogin", HandleUserLogin},
+      // clang-format on
   };
 
   for (const auto& command_handler : command_handlers) {
     if (command_handler.command == command) {
       return command_handler.handler(
-          std::vector<std::string>(command_args_start, args.end()));
+          seccomp, std::vector<std::string>(command_args_start, args.end()));
     }
   }
 
   if (command != "help") {
     LOG(ERROR) << "Invalid options!";
   }
-  PrintUsage();
   return EXIT_FAILURE;
 }
