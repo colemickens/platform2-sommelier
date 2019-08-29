@@ -147,8 +147,6 @@ const std::vector<Log> kCommandLogs {
       "edid-decode 2>/dev/null; "
     "done"},
   {kFile, "eventlog", "/var/log/eventlog.txt"},
-  {kFile, "exynos_gem_objects", "/sys/kernel/debug/dri/0/exynos_gem_objects",
-    SandboxedProcess::kDefaultUser, kDebugfsGroup},
   {kCommand, "font_info", "/usr/share/userfeedback/scripts/font_info"},
   {kFile, "fwupd_state", "/var/lib/fwupd/state.json"},
   {kCommand, "sensor_info", "/usr/share/userfeedback/scripts/sensor_info"},
