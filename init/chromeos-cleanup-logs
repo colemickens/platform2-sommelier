@@ -191,6 +191,11 @@ main() {
   metrics_client Platform.StatefulLifetimeWrites \
     "$((LIFETIME_WRITES / 1000000))" 0 16777216 100
 
+  # Report used space from the stateful partition in GBs.
+  STATEFUL_USED="$(get_stateful_used_space_blocks 1000)"
+  metrics_client Platform.StatefulUsedSpace \
+    "$((STATEFUL_USED / 1000000))" 0 16777216 50
+
   NUMBER_OF_USERS="$(ls /home/user/ | wc -l)"
   metrics_client Platform.DiskUsage.NumUserHomeDirectories \
                 "${NUMBER_OF_USERS}" 1 50 50

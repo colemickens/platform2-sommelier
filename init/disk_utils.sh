@@ -49,3 +49,12 @@ get_stateful_total_space_blocks() {
   local bs="${1:-1K}"
   get_stateful_df_data "${bs}" | awk '{print $2}'
 }
+
+# Get the used space on the stateful partition.
+#
+# inputs:
+#   bs        -- size of block as understood by strosize (suffixes allowed)
+get_stateful_used_space_blocks() {
+  local bs="${1:-1K}"
+  get_stateful_df_data "${bs}" | awk '{print $3}'
+}
