@@ -16,6 +16,7 @@
 #include <dbus/message.h>
 #include <mojo/edk/embedder/embedder.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 
 namespace cups_proxy {
@@ -49,6 +50,12 @@ base::ScopedFD InitSocket() {
   // Delete any old FS instances.
   if (unlink(socket_name.c_str()) < 0 && errno != ENOENT) {
     PLOG(ERROR) << "unlink " << socket_name;
+    return {};
+  }
+
+  // Sets the correct socket permissions.
+  if (fchmod(fd.get(), 0660) < 0) {
+    PLOG(ERROR) << "Failed to set permissions";
     return {};
   }
 
