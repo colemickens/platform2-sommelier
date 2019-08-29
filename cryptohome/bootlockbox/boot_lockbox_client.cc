@@ -68,8 +68,8 @@ bool BootLockboxClient::Store(const std::string& key,
     return false;
   }
 
-  LOG(INFO) << "BootLockboxClient::Store took "
-            << timer.Elapsed().InMillisecondsRoundedUp() << "ms";
+  VLOG(1) << "BootLockboxClient::Store took "
+          << timer.Elapsed().InMillisecondsRoundedUp() << "ms";
   return true;
 }
 
@@ -122,8 +122,8 @@ bool BootLockboxClient::Finalize() {
                << base_reply.error();
     return false;
   }
-  LOG(INFO) << "Finalize took " << timer.Elapsed().InMillisecondsRoundedUp()
-            << "ms";
+  VLOG(1) << "BootLockboxClient::Finalize took "
+          << timer.Elapsed().InMillisecondsRoundedUp() << "ms";
   return true;
 }
 
