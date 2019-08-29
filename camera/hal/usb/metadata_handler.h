@@ -55,15 +55,15 @@ class MetadataHandler {
 
   // Called before the request is processed. This function is used for checking
   // metadata values to setup related states and image settings.
-  void PreHandleRequest(int frame_number,
-                        const android::CameraMetadata& metadata);
+  int PreHandleRequest(int frame_number,
+                       const Size& resolution,
+                       android::CameraMetadata* metadata);
 
   // Called after the request is processed. This function is used to update
   // required metadata which can be gotton from 3A or image processor.
   int PostHandleRequest(int frame_number,
                         int64_t timestamp,
-                        android::CameraMetadata* metadata,
-                        const Size& resolution);
+                        android::CameraMetadata* metadata);
 
  private:
   // Check |template_type| is valid or not.

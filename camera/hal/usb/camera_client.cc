@@ -591,12 +591,10 @@ void CameraClient::RequestHandler::HandleRequest(
     return;
   }
 
-  android::CameraMetadata* metadata = request->GetMetadata();
-  metadata_handler_->PreHandleRequest(capture_result.frame_number, *metadata);
-
   VLOGFID(1, device_id_) << "Request Frame:" << capture_result.frame_number
                          << ", Number of output buffers: "
                          << capture_result.num_output_buffers;
+  android::CameraMetadata* metadata = request->GetMetadata();
   bool constant_frame_rate = ShouldEnableConstantFrameRate(*metadata);
   VLOGFID(1, device_id_) << "constant_frame_rate " << std::boolalpha
                          << constant_frame_rate;
@@ -666,6 +664,12 @@ void CameraClient::RequestHandler::HandleRequest(
     return;
   }
 
+  ret = metadata_handler_->PreHandleRequest(capture_result.frame_number,
+                                            stream_on_resolution_, metadata);
+  if (ret) {
+    LOGFID(WARNING, device_id_) << "Update metadata in PreHandleRequest failed";
+  }
+
   // Handle each stream output buffer and convert it to corresponding format.
   for (size_t i = 0; i < capture_result.num_output_buffers; i++) {
     ret = WriteStreamBuffer(i, *metadata, &capture_result.output_buffers[i]);
@@ -686,9 +690,8 @@ void CameraClient::RequestHandler::HandleRequest(
   }
 
   NotifyShutter(capture_result.frame_number);
-  ret = metadata_handler_->PostHandleRequest(capture_result.frame_number,
-                                             CurrentBufferTimestamp(), metadata,
-                                             stream_on_resolution_);
+  ret = metadata_handler_->PostHandleRequest(
+      capture_result.frame_number, CurrentBufferTimestamp(), metadata);
   if (ret) {
     LOGFID(WARNING, device_id_)
         << "Update metadata in PostHandleRequest failed";

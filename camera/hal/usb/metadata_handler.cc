@@ -661,32 +661,42 @@ const camera_metadata_t* MetadataHandler::GetDefaultRequestSettings(
   return template_settings_[template_type].get();
 }
 
-void MetadataHandler::PreHandleRequest(
-    int frame_number, const android::CameraMetadata& metadata) {
+int MetadataHandler::PreHandleRequest(int frame_number,
+                                      const Size& resolution,
+                                      android::CameraMetadata* metadata) {
   DCHECK(thread_checker_.CalledOnValidThread());
-  if (metadata.exists(ANDROID_CONTROL_AF_TRIGGER)) {
-    camera_metadata_ro_entry entry = metadata.find(ANDROID_CONTROL_AF_TRIGGER);
+  if (metadata->exists(ANDROID_CONTROL_AF_TRIGGER)) {
+    camera_metadata_entry entry = metadata->find(ANDROID_CONTROL_AF_TRIGGER);
     if (entry.data.u8[0] == ANDROID_CONTROL_AF_TRIGGER_START) {
       af_trigger_ = true;
     } else if (entry.data.u8[0] == ANDROID_CONTROL_AF_TRIGGER_CANCEL) {
       af_trigger_ = false;
     }
   }
-  if (metadata.exists(ANDROID_CONTROL_AF_MODE)) {
-    camera_metadata_ro_entry entry = metadata.find(ANDROID_CONTROL_AF_MODE);
+
+  if (metadata->exists(ANDROID_CONTROL_AF_MODE)) {
+    camera_metadata_entry entry = metadata->find(ANDROID_CONTROL_AF_MODE);
     if (entry.data.u8[0] == ANDROID_CONTROL_AF_MODE_OFF) {
       device_->SetAutoFocus(false);
     } else if (entry.data.u8[0] == ANDROID_CONTROL_AF_MODE_AUTO) {
       device_->SetAutoFocus(true);
     }
   }
+
+  const int64_t rolling_shutter_skew =
+      sensor_handler_->GetRollingShutterSkew(resolution);
+  UPDATE(ANDROID_SENSOR_ROLLING_SHUTTER_SKEW, &rolling_shutter_skew, 1);
+
+  const int64_t exposure_time = sensor_handler_->GetExposureTime(resolution);
+  UPDATE(ANDROID_SENSOR_EXPOSURE_TIME, &exposure_time, 1);
+
   current_frame_number_ = frame_number;
+  return 0;
 }
 
 int MetadataHandler::PostHandleRequest(int frame_number,
                                        int64_t timestamp,
-                                       android::CameraMetadata* metadata,
-                                       const Size& resolution) {
+                                       android::CameraMetadata* metadata) {
   DCHECK(thread_checker_.CalledOnValidThread());
   if (current_frame_number_ != frame_number) {
     LOGF(ERROR)
@@ -748,15 +758,6 @@ int MetadataHandler::PostHandleRequest(int frame_number,
 
   // android.sensor
   UPDATE(ANDROID_SENSOR_TIMESTAMP, &timestamp, 1);
-
-  // Rolling shutter skew and exposure time values are fake due to ARCore
-  // test requirement.
-  const int64_t rolling_shutter_skew =
-      sensor_handler_->GetRollingShutterSkew(resolution);
-  UPDATE(ANDROID_SENSOR_ROLLING_SHUTTER_SKEW, &rolling_shutter_skew, 1);
-
-  const int64_t exposure_time = sensor_handler_->GetExposureTime(resolution);
-  UPDATE(ANDROID_SENSOR_EXPOSURE_TIME, &exposure_time, 1);
 
   // android.statistics
   const uint8_t lens_shading_map_mode =
