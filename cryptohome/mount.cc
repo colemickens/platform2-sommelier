@@ -187,12 +187,9 @@ bool Mount::Init(Platform* platform, Crypto* crypto,
 
   current_user_->Init(system_salt_);
 
-  // All mount(2) operations happen in the MountHelper object now so it's OK for
-  // |mounter_| to have a pointer to |mounts_|.
-  mounter_.reset(new MountHelper(default_user_, default_group_,
-                                 default_access_group_, shadow_root_,
-                                 skel_source_, system_salt_, legacy_mount_,
-                                 platform_, homedirs_, &mounts_));
+  mounter_.reset(new MountHelper(
+      default_user_, default_group_, default_access_group_, shadow_root_,
+      skel_source_, system_salt_, legacy_mount_, platform_, homedirs_));
 
   return result;
 }
@@ -496,8 +493,8 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   // Ensure we don't leave any mounts hanging on intermediate errors.
   // The closure won't outlive the function so |this| will always be valid.
-  base::ScopedClosureRunner unmount_all_runner(
-      base::Bind(&Mount::UnmountAll, this));
+  base::ScopedClosureRunner unmount_and_drop_keys_runner(
+      base::Bind(&Mount::UnmountAndDropKeys, this));
 
   std::string key_signature, fnek_signature;
   if (should_mount_ecryptfs) {
@@ -596,7 +593,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   // At this point we're done mounting so release the closure without running
   // it.
-  ignore_result(unmount_all_runner.Release());
+  ignore_result(unmount_and_drop_keys_runner.Release());
 
   *mount_error = MOUNT_ERROR_NONE;
 
@@ -632,36 +629,22 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 }
 
 void Mount::CleanUpEphemeral() {
-  if (!ephemeral_loop_device_.empty()) {
-    if (!platform_->DetachLoop(ephemeral_loop_device_)) {
-      ReportCryptohomeError(kEphemeralCleanUpFailed);
-      PLOG(ERROR) << "Can't detach loop device '"
-                  << ephemeral_loop_device_.value() << "'";
-    }
-    ephemeral_loop_device_.clear();
-  }
-  if (!ephemeral_file_path_.empty()) {
-    if (!platform_->DeleteFile(ephemeral_file_path_, false /* recursive */)) {
-      ReportCryptohomeError(kEphemeralCleanUpFailed);
-      PLOG(ERROR) << "Failed to clean up ephemeral sparse file: "
-                  << ephemeral_file_path_.value();
-    }
-    ephemeral_file_path_.clear();
+  if (!mounter_->CleanUpEphemeral()) {
+    ReportCryptohomeError(kEphemeralCleanUpFailed);
   }
 }
 
 bool Mount::MountEphemeralCryptohome(const std::string& username) {
   // Ephemeral cryptohome can't be mounted twice.
-  CHECK(ephemeral_file_path_.empty());
-  CHECK(ephemeral_loop_device_.empty());
+  CHECK(mounter_->CanPerformEphemeralMount());
 
   base::ScopedClosureRunner clean_up_ephemeral_runner(
       base::Bind(&Mount::CleanUpEphemeral, this));
-  base::ScopedClosureRunner unmount_all_runner(
-      base::Bind(&Mount::UnmountAll, this));
 
-  if (!mounter_->PerformEphemeralMount(username, &ephemeral_loop_device_,
-                                       &ephemeral_file_path_)) {
+  base::ScopedClosureRunner unmount_and_drop_keys_runner(
+      base::Bind(&Mount::UnmountAndDropKeys, this));
+
+  if (!mounter_->PerformEphemeralMount(username)) {
     LOG(ERROR) << "MountHelper::PerformEphemeralMount failed, aborting"
                << " ephemeral mount";
     return false;
@@ -674,70 +657,19 @@ bool Mount::MountEphemeralCryptohome(const std::string& username) {
 
   // Mount succeeded, release closures without running them.
   ignore_result(clean_up_ephemeral_runner.Release());
-  ignore_result(unmount_all_runner.Release());
+  ignore_result(unmount_and_drop_keys_runner.Release());
 
   mount_type_ = MountType::EPHEMERAL;
   return true;
 }
 
-bool Mount::RememberMount(const FilePath& src,
-                          const FilePath& dest,
-                          const std::string& type,
-                          const std::string& options) {
-  return mounter_->MountAndPush(src, dest, type, options);
-}
-
-bool Mount::RememberBind(const FilePath& src, const FilePath& dest) {
-  return mounter_->BindAndPush(src, dest);
-}
-
-void Mount::UnmountAll() {
-  FilePath src, dest;
-  const FilePath ephemeral_mount_path =
-      FilePath(kEphemeralCryptohomeDir).Append(kEphemeralMountDir);
-  while (mounts_.Pop(&src, &dest)) {
-    ForceUnmount(src, dest);
-    // Clean up destination directory for ephemeral loop device mounts.
-    if (ephemeral_mount_path.IsParent(dest))
-      platform_->DeleteFile(dest, true /* recursive */);
-  }
+void Mount::UnmountAndDropKeys() {
+  mounter_->UnmountAll();
 
   // Invalidate dircrypto key to make directory contents inaccessible.
   if (dircrypto_key_id_ != dircrypto::kInvalidKeySerial) {
     platform_->InvalidateDirCryptoKey(dircrypto_key_id_, shadow_root_);
     dircrypto_key_id_ = dircrypto::kInvalidKeySerial;
-  }
-}
-
-void Mount::ForceUnmount(const FilePath& src, const FilePath& dest) {
-  // Try an immediate unmount.
-  bool was_busy;
-  if (!platform_->Unmount(dest, false, &was_busy)) {
-    LOG(ERROR) << "Couldn't unmount '" << dest.value()
-               << "' immediately, was_busy=" << std::boolalpha << was_busy;
-    if (was_busy) {
-      std::vector<ProcessInformation> processes;
-      platform_->GetProcessesWithOpenFiles(dest, &processes);
-      for (const auto& proc : processes) {
-        LOG(ERROR) << "Process " << proc.get_process_id()
-                   << " had open files.  Command line: "
-                   << proc.GetCommandLine();
-        if (proc.get_cwd().length()) {
-          LOG(ERROR) << "  (" << proc.get_process_id() << ") CWD: "
-                     << proc.get_cwd();
-        }
-        for (const auto& file : proc.get_open_files()) {
-          LOG(ERROR) << "  (" << proc.get_process_id() << ") Open File: "
-                     << file.value();
-        }
-      }
-    }
-    // Failed to unmount immediately, do a lazy unmount.  If |was_busy| we also
-    // want to sync before the unmount to help prevent data loss.
-    if (was_busy)
-      platform_->SyncDirectory(dest);
-    platform_->LazyUnmount(dest);
-    platform_->SyncDirectory(src);
   }
 }
 
@@ -750,7 +682,7 @@ bool Mount::UnmountCryptohome() {
   // Stop dircrypto migration if in progress.
   MaybeCancelActiveDircryptoMigrationAndWait();
 
-  UnmountAll();
+  UnmountAndDropKeys();
   CleanUpEphemeral();
   if (homedirs_->AreEphemeralUsersEnabled())
     homedirs_->RemoveNonOwnerCryptohomes();
@@ -767,7 +699,7 @@ bool Mount::UnmountCryptohome() {
 }
 
 bool Mount::IsMounted() const {
-  return mounts_.size() != 0;
+  return mounter_ && mounter_->MountPerformed();
 }
 
 bool Mount::IsNonEphemeralMounted() const {
@@ -775,7 +707,7 @@ bool Mount::IsNonEphemeralMounted() const {
 }
 
 bool Mount::OwnsMountPoint(const FilePath& path) const {
-  return mounts_.ContainsDest(path);
+  return mounter_ && mounter_->IsPathMounted(path);
 }
 
 bool Mount::CreateCryptohome(const Credentials& credentials) const {
@@ -1393,7 +1325,7 @@ bool Mount::MigrateToDircrypto(
       GetUserTemporaryMountDirectory(obfuscated_username);
   if (!IsMounted() || mount_type_ != MountType::DIR_CRYPTO ||
       !platform_->DirectoryExists(temporary_mount) ||
-      !mounts_.ContainsDest(temporary_mount)) {
+      !mounter_->IsPathMounted(temporary_mount)) {
     LOG(ERROR) << "Not mounted for eCryptfs->dircrypto migration.";
     return false;
   }
@@ -1414,7 +1346,7 @@ bool Mount::MigrateToDircrypto(
     active_dircrypto_migrator_ = &migrator;
   }
   bool success = migrator.Migrate(callback);
-  UnmountAll();
+  UnmountAndDropKeys();
   {  // Signal the waiting thread.
     base::AutoLock lock(active_dircrypto_migrator_lock_);
     active_dircrypto_migrator_ = nullptr;

@@ -789,12 +789,11 @@ TEST_P(MountTest, BindMyFilesDownloadsSuccess) {
   EXPECT_CALL(platform_, Bind(downloads_path, downloads_in_myfiles))
       .WillOnce(Return(true));
 
-  MountStack stack;
-  MountHelper helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
-                     kSkelDir, helper_.system_salt, true /*legacy_mount*/,
-                     &platform_, &homedirs_, &stack);
+  MountHelper mnt_helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
+                         kSkelDir, helper_.system_salt, true /*legacy_mount*/,
+                         &platform_, &homedirs_);
 
-  EXPECT_TRUE(helper.BindMyFilesDownloads(dest_dir));
+  EXPECT_TRUE(mnt_helper.BindMyFilesDownloads(dest_dir));
 }
 
 TEST_P(MountTest, BindMyFilesDownloadsMissingUserHome) {
@@ -803,12 +802,11 @@ TEST_P(MountTest, BindMyFilesDownloadsMissingUserHome) {
   // When dest_dir doesn't exists BindMyFilesDownloads returns false.
   EXPECT_CALL(platform_, DirectoryExists(dest_dir)).WillOnce(Return(false));
 
-  MountStack stack;
-  MountHelper helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
-                     kSkelDir, helper_.system_salt, true /*legacy_mount*/,
-                     &platform_, &homedirs_, &stack);
+  MountHelper mnt_helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
+                         kSkelDir, helper_.system_salt, true /*legacy_mount*/,
+                         &platform_, &homedirs_);
 
-  EXPECT_FALSE(helper.BindMyFilesDownloads(dest_dir));
+  EXPECT_FALSE(mnt_helper.BindMyFilesDownloads(dest_dir));
 }
 
 TEST_P(MountTest, BindMyFilesDownloadsMissingDownloads) {
@@ -820,12 +818,11 @@ TEST_P(MountTest, BindMyFilesDownloadsMissingDownloads) {
   EXPECT_CALL(platform_, DirectoryExists(downloads_path))
       .WillOnce(Return(false));
 
-  MountStack stack;
-  MountHelper helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
-                     kSkelDir, helper_.system_salt, true /*legacy_mount*/,
-                     &platform_, &homedirs_, &stack);
+  MountHelper mnt_helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
+                         kSkelDir, helper_.system_salt, true /*legacy_mount*/,
+                         &platform_, &homedirs_);
 
-  EXPECT_FALSE(helper.BindMyFilesDownloads(dest_dir));
+  EXPECT_FALSE(mnt_helper.BindMyFilesDownloads(dest_dir));
 }
 
 TEST_P(MountTest, BindMyFilesDownloadsMissingMyFilesDownloads) {
@@ -840,12 +837,11 @@ TEST_P(MountTest, BindMyFilesDownloadsMissingMyFilesDownloads) {
   EXPECT_CALL(platform_, DirectoryExists(downloads_in_myfiles))
       .WillOnce(Return(false));
 
-  MountStack stack;
-  MountHelper helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
-                     kSkelDir, helper_.system_salt, true /*legacy_mount*/,
-                     &platform_, &homedirs_, &stack);
+  MountHelper mnt_helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
+                         kSkelDir, helper_.system_salt, true /*legacy_mount*/,
+                         &platform_, &homedirs_);
 
-  EXPECT_FALSE(helper.BindMyFilesDownloads(dest_dir));
+  EXPECT_FALSE(mnt_helper.BindMyFilesDownloads(dest_dir));
 }
 
 // A fixture for testing chaps directory checks.
@@ -1803,13 +1799,11 @@ TEST_P(MountTest, UserActivityTimestampUpdated) {
 }
 
 TEST_P(MountTest, RememberMountOrderingTest) {
-  // Checks that mounts made with RememberMount/RememberBind are undone in the
+  // Checks that mounts made with MountAndPush/BindAndPush are undone in the
   // right order.
-  EXPECT_CALL(platform_, DirectoryExists(kImageDir))
-    .WillRepeatedly(Return(true));
-  EXPECT_TRUE(DoMountInit());
-  SecureBlob salt;
-  salt.assign('A', 16);
+  MountHelper mnt_helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
+                         kSkelDir, helper_.system_salt, true /*legacy_mount*/,
+                         &platform_, &homedirs_);
 
   FilePath src("/src");
   FilePath dest0("/dest/foo");
@@ -1830,10 +1824,10 @@ TEST_P(MountTest, RememberMountOrderingTest) {
     EXPECT_CALL(platform_, Unmount(dest0, _, _))
         .WillOnce(Return(true));
 
-    EXPECT_TRUE(mount_->RememberMount(src, dest0, "", ""));
-    EXPECT_TRUE(mount_->RememberBind(src, dest1));
-    EXPECT_TRUE(mount_->RememberMount(src, dest2, "", ""));
-    mount_->UnmountAll();
+    EXPECT_TRUE(mnt_helper.MountAndPush(src, dest0, "", ""));
+    EXPECT_TRUE(mnt_helper.BindAndPush(src, dest1));
+    EXPECT_TRUE(mnt_helper.MountAndPush(src, dest2, "", ""));
+    mnt_helper.UnmountAll();
   }
 }
 
@@ -2566,12 +2560,11 @@ TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloads) {
                                  shared_gid_, _))
       .WillRepeatedly(Return(true));
 
-  MountStack stack;
-  MountHelper helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
-                     kSkelDir, helper_.system_salt, true /*legacy_mount*/,
-                     &platform_, &homedirs_, &stack);
+  MountHelper mnt_helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
+                         kSkelDir, helper_.system_salt, true /*legacy_mount*/,
+                         &platform_, &homedirs_);
 
-  ASSERT_TRUE(helper.SetUpEphemeralCryptohome(base_path));
+  ASSERT_TRUE(mnt_helper.SetUpEphemeralCryptohome(base_path));
 }
 
 TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloadsAlreadyExists) {
@@ -2612,12 +2605,11 @@ TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloadsAlreadyExists) {
                                  shared_gid_, _))
       .WillRepeatedly(Return(true));
 
-  MountStack stack;
-  MountHelper helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
-                     kSkelDir, helper_.system_salt, true /*legacy_mount*/,
-                     &platform_, &homedirs_, &stack);
+  MountHelper mnt_helper(chronos_uid_, chronos_gid_, shared_gid_, kImageDir,
+                         kSkelDir, helper_.system_salt, true /*legacy_mount*/,
+                         &platform_, &homedirs_);
 
-  ASSERT_TRUE(helper.SetUpEphemeralCryptohome(base_path));
+  ASSERT_TRUE(mnt_helper.SetUpEphemeralCryptohome(base_path));
 }
 
 TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {

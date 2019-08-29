@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// MountHelper objects carry out mount(2) and unmount(2) operations for a single
+// cryptohome mount.
+
 #ifndef CRYPTOHOME_MOUNT_HELPER_H_
 #define CRYPTOHOME_MOUNT_HELPER_H_
 
@@ -35,8 +38,7 @@ class MountHelper {
               const brillo::SecureBlob& system_salt,
               bool legacy_mount,
               Platform* platform,
-              HomeDirs* homedirs,
-              MountStack* stack)
+              HomeDirs* homedirs)
       : default_uid_(uid),
         default_gid_(gid),
         default_access_gid_(access_gid),
@@ -45,8 +47,7 @@ class MountHelper {
         system_salt_(system_salt),
         legacy_mount_(legacy_mount),
         platform_(platform),
-        homedirs_(homedirs),
-        stack_(stack) {}
+        homedirs_(homedirs) {}
   ~MountHelper() = default;
 
   struct Options {
@@ -74,27 +75,6 @@ class MountHelper {
   FilePath GetUserTemporaryMountDirectory(
       const std::string& obfuscated_username) const;
 
-  // Mounts a mount point and pushes it to the mount stack.
-  // Returns true if the mount succeeds, false otherwise.
-  //
-  // Parameters
-  //   src - Directory to mount from
-  //   dest - Directory to mount to
-  //   type - Filesystem type to mount with
-  //   options - Filesystem options to supply
-  bool MountAndPush(const base::FilePath& src,
-                    const base::FilePath& dest,
-                    const std::string& type,
-                    const std::string& options);
-
-  // Binds a mount point, remembering it for later unmounting.
-  // Returns true if the bind succeeds, false otherwise.
-  //
-  // Parameters
-  //   src - Directory to bind from
-  //   dest - Directory to bind to
-  bool BindAndPush(const FilePath& src, const FilePath& dest);
-
   // Creates the tracked subdirectories in a user's cryptohome.
   // If the cryptohome did not have tracked directories, but had them untracked,
   // migrate their contents.
@@ -118,9 +98,24 @@ class MountHelper {
 
   // Carries out dircrypto mount(2) operations for an ephemeral cryptohome.
   // Does not clean up on failure.
-  bool PerformEphemeralMount(const std::string& username,
-                             base::FilePath* ephemeral_loop_device,
-                             base::FilePath* ephemeral_file_path);
+  bool PerformEphemeralMount(const std::string& username);
+
+  // Unmounts all mount points.
+  // Relies on ForceUnmount() internally; see the caveat listed for it.
+  void UnmountAll();
+
+  // Deletes loop device used for ephemeral cryptohome and underlying temporary
+  // sparse file.
+  bool CleanUpEphemeral();
+
+  // Returns whether an ephemeral mount operation can be performed.
+  bool CanPerformEphemeralMount();
+
+  // Returns whether a mount operation has been performed.
+  bool MountPerformed();
+
+  // Returns whether |path| is the destination of an existing mount.
+  bool IsPathMounted(const base::FilePath& path);
 
  private:
   // Returns the names of all tracked subdirectories.
@@ -138,6 +133,27 @@ class MountHelper {
   //   obfuscated_username - Obfuscated username field of the credentials.
   FilePath GetMountedRootHomePath(
       const std::string& obfuscated_username) const;
+
+  // Mounts a mount point and pushes it to the mount stack.
+  // Returns true if the mount succeeds, false otherwise.
+  //
+  // Parameters
+  //   src - Path to mount from
+  //   dest - Path to mount to
+  //   type - Filesystem type to mount with
+  //   options - Filesystem options to supply
+  bool MountAndPush(const base::FilePath& src,
+                    const base::FilePath& dest,
+                    const std::string& type,
+                    const std::string& options);
+
+  // Binds a mount point, remembering it for later unmounting.
+  // Returns true if the bind succeeds, false otherwise.
+  //
+  // Parameters
+  //   src - Path to bind from
+  //   dest - Path to bind to
+  bool BindAndPush(const FilePath& src, const FilePath& dest);
 
   // Bind mounts |user_home|/Downloads to |user_home|/MyFiles/Downloads so Files
   // app can manage MyFiles as user volume instead of just Downloads.
@@ -173,6 +189,14 @@ class MountHelper {
   bool EnsureNewUserDirExists(const base::FilePath& dir,
                               uid_t uid,
                               gid_t gid) const;
+
+  // Attempts to unmount a mountpoint. If the unmount fails, logs processes with
+  // open handles to it and performs a lazy unmount.
+  //
+  // Parameters
+  //   src - Path mounted at |dest|
+  //   dest - Mount point to unmount
+  void ForceUnmount(const base::FilePath& src, const base::FilePath& dest);
 
   // Migrates from the home-in-encfs setup to the home-in-subdir setup. Instead
   // of storing all the user's files in the root of the encfs, we store them in
@@ -216,6 +240,9 @@ class MountHelper {
   // /home/chronos/user.
   bool MountLegacyHome(const FilePath& from);
 
+  // Creates a loop device formatted as an ext4 partition.
+  bool PrepareEphemeralDevice(const std::string& obfuscated_username);
+
   // Recursively copies directory contents to the destination if the destination
   // file does not exist.  Sets ownership to |default_user_|.
   //
@@ -248,9 +275,19 @@ class MountHelper {
 
   bool legacy_mount_ = true;
 
+  // Stack of mounts (in the mount(2) sense) that have been made.
+  MountStack stack_;
+
+  // Tracks loop device used for ephemeral cryptohome.
+  // Empty when the device is not present.
+  base::FilePath ephemeral_loop_device_;
+
+  // Tracks path to ephemeral cryptohome sparse file.
+  // Empty when the file is not created or already deleted.
+  base::FilePath ephemeral_file_path_;
+
   Platform* platform_;  // Un-owned.
   HomeDirs* homedirs_;  // Un-owned.
-  MountStack* stack_;  // Un-owned.
 
   FRIEND_TEST(MountTest, BindMyFilesDownloadsSuccess);
   FRIEND_TEST(MountTest, BindMyFilesDownloadsMissingUserHome);
@@ -259,6 +296,8 @@ class MountHelper {
 
   FRIEND_TEST(MountTest, CreateTrackedSubdirectories);
   FRIEND_TEST(MountTest, CreateTrackedSubdirectoriesReplaceExistingDir);
+
+  FRIEND_TEST(MountTest, RememberMountOrderingTest);
 
   FRIEND_TEST(EphemeralNoUserSystemTest, CreateMyFilesDownloads);
   FRIEND_TEST(EphemeralNoUserSystemTest, CreateMyFilesDownloadsAlreadyExists);

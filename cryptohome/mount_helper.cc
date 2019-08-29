@@ -456,7 +456,7 @@ bool MountHelper::MountAndPush(const base::FilePath& src,
     return false;
   }
 
-  stack_->Push(src, dest);
+  stack_.Push(src, dest);
   return true;
 }
 
@@ -467,7 +467,7 @@ bool MountHelper::BindAndPush(const FilePath& src, const FilePath& dest) {
     return false;
   }
 
-  stack_->Push(src, dest);
+  stack_.Push(src, dest);
   return true;
 }
 
@@ -743,9 +743,8 @@ bool MountHelper::PerformMount(const Options& mount_opts,
   return true;
 }
 
-bool MountHelper::PerformEphemeralMount(const std::string& username,
-                                        base::FilePath* ephemeral_loop_device,
-                                        base::FilePath* ephemeral_file_path) {
+bool MountHelper::PrepareEphemeralDevice(
+    const std::string& obfuscated_username) {
   // Underlying sparse file will be created in a temporary directory in RAM.
   const FilePath ephemeral_root(kEphemeralCryptohomeDir);
 
@@ -758,24 +757,22 @@ bool MountHelper::PerformEphemeralMount(const std::string& username,
   const size_t sparse_size = vfs.f_blocks * vfs.f_frsize;
 
   // Create underlying sparse file.
-  const std::string obfuscated_username =
-      BuildObfuscatedUsername(username, system_salt_);
   const FilePath sparse_file = GetEphemeralSparseFile(obfuscated_username);
   if (!platform_->CreateDirectory(sparse_file.DirName())) {
     LOG(ERROR) << "Can't create directory for ephemeral sparse files";
     return false;
   }
 
-  // Return the file to clean up if an error happens during file creation.
-  *ephemeral_file_path = sparse_file;
+  // Remember the file to clean up if an error happens during file creation.
+  ephemeral_file_path_ = sparse_file;
   if (!platform_->CreateSparseFile(sparse_file, sparse_size)) {
     LOG(ERROR) << "Can't create ephemeral sparse file";
     return false;
   }
 
-  // Format the sparse file into ext4.
+  // Format the sparse file as ext4.
   if (!platform_->FormatExt4(sparse_file, kDefaultExt4FormatOpts, 0)) {
-    LOG(ERROR) << "Can't format ephemeral sparse file into ext4";
+    LOG(ERROR) << "Can't format ephemeral sparse file as ext4";
     return false;
   }
 
@@ -786,8 +783,19 @@ bool MountHelper::PerformEphemeralMount(const std::string& username,
     return false;
   }
 
-  // Return the loop device to clean up if an error happens.
-  *ephemeral_loop_device = loop_device;
+  // Remember the loop device to clean up if an error happens.
+  ephemeral_loop_device_ = loop_device;
+  return true;
+}
+
+bool MountHelper::PerformEphemeralMount(const std::string& username) {
+  const std::string obfuscated_username =
+      BuildObfuscatedUsername(username, system_salt_);
+
+  if (!PrepareEphemeralDevice(obfuscated_username)) {
+    LOG(ERROR) << "Can't prepare ephemeral device";
+    return false;
+  }
 
   const FilePath mount_point =
       GetUserEphemeralMountDirectory(obfuscated_username);
@@ -795,7 +803,7 @@ bool MountHelper::PerformEphemeralMount(const std::string& username,
     PLOG(ERROR) << "Directory creation failed for " << mount_point.value();
     return false;
   }
-  if (!MountAndPush(loop_device, mount_point, kEphemeralMountType,
+  if (!MountAndPush(ephemeral_loop_device_, mount_point, kEphemeralMountType,
                     kEphemeralMountOptions)) {
     LOG(ERROR) << "Can't mount ephemeral mount point";
     return false;
@@ -822,6 +830,84 @@ bool MountHelper::PerformEphemeralMount(const std::string& username,
   }
 
   return true;
+}
+
+void MountHelper::UnmountAll() {
+  FilePath src, dest;
+  const FilePath ephemeral_mount_path =
+      FilePath(kEphemeralCryptohomeDir).Append(kEphemeralMountDir);
+  while (stack_.Pop(&src, &dest)) {
+    ForceUnmount(src, dest);
+    // Clean up destination directory for ephemeral loop device mounts.
+    if (ephemeral_mount_path.IsParent(dest))
+      platform_->DeleteFile(dest, true /* recursive */);
+  }
+}
+
+bool MountHelper::CleanUpEphemeral() {
+  bool success = true;
+  if (!ephemeral_loop_device_.empty()) {
+    if (!platform_->DetachLoop(ephemeral_loop_device_)) {
+      PLOG(ERROR) << "Can't detach loop device '"
+                  << ephemeral_loop_device_.value() << "'";
+      success = false;
+    }
+    ephemeral_loop_device_.clear();
+  }
+  if (!ephemeral_file_path_.empty()) {
+    if (!platform_->DeleteFile(ephemeral_file_path_, false /* recursive */)) {
+      PLOG(ERROR) << "Failed to clean up ephemeral sparse file '"
+                  << ephemeral_file_path_.value() << "'";
+      success = false;
+    }
+    ephemeral_file_path_.clear();
+  }
+
+  return success;
+}
+
+void MountHelper::ForceUnmount(const FilePath& src, const FilePath& dest) {
+  // Try an immediate unmount.
+  bool was_busy;
+  if (!platform_->Unmount(dest, false, &was_busy)) {
+    LOG(ERROR) << "Couldn't unmount '" << dest.value()
+               << "' immediately, was_busy=" << std::boolalpha << was_busy;
+    if (was_busy) {
+      std::vector<ProcessInformation> processes;
+      platform_->GetProcessesWithOpenFiles(dest, &processes);
+      for (const auto& proc : processes) {
+        LOG(ERROR) << "Process " << proc.get_process_id()
+                   << " had open files.  Command line: "
+                   << proc.GetCommandLine();
+        if (proc.get_cwd().length()) {
+          LOG(ERROR) << "  (" << proc.get_process_id() << ") CWD: "
+                     << proc.get_cwd();
+        }
+        for (const auto& file : proc.get_open_files()) {
+          LOG(ERROR) << "  (" << proc.get_process_id() << ") Open File: "
+                     << file.value();
+        }
+      }
+    }
+    // Failed to unmount immediately, do a lazy unmount.  If |was_busy| we also
+    // want to sync before the unmount to help prevent data loss.
+    if (was_busy)
+      platform_->SyncDirectory(dest);
+    platform_->LazyUnmount(dest);
+    platform_->SyncDirectory(src);
+  }
+}
+
+bool MountHelper::CanPerformEphemeralMount() {
+  return ephemeral_file_path_.empty() && ephemeral_loop_device_.empty();
+}
+
+bool MountHelper::MountPerformed() {
+  return stack_.size() > 0;
+}
+
+bool MountHelper::IsPathMounted(const base::FilePath& path) {
+  return stack_.ContainsDest(path);
 }
 
 }  // namespace cryptohome

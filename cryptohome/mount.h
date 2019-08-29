@@ -37,7 +37,6 @@
 #include "cryptohome/migration_type.h"
 #include "cryptohome/mount_constants.h"
 #include "cryptohome/mount_helper.h"
-#include "cryptohome/mount_stack.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/user_session.h"
@@ -526,48 +525,13 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   void GetUserSalt(const Credentials& credentials, bool force_new,
                    int key_index, brillo::SecureBlob* salt) const;
 
-  // The following two functions are only temporarily kept around for testing.
-  // TODO(jorgelo,crbug.com/985492): Remove them.
-  // Mounts a mount point, remembering it for later unmounting.
-  // Returns true if the mount succeeds, false otherwise.
-  //
-  // Parameters
-  //   src - Directory to mount from
-  //   dest - Directory to mount to
-  //   type - Filesystem type to mount with
-  //   options - Filesystem options to supply
-  bool RememberMount(const base::FilePath& src,
-                     const base::FilePath& dest,
-                     const std::string& type,
-                     const std::string& options);
-
-  // Binds a mount point, remembering it for later unmounting.
-  // Returns true if the bind succeeds, false otherwise.
-  //
-  // Parameters
-  //   src - Directory to bind from
-  //   dest - Directory to bind to
-  bool RememberBind(const base::FilePath& src,
-                    const base::FilePath& dest);
-
-  // Unmounts all mount points
+  // Unmounts all mount points, and invalidates the dircrypto encryption key.
   // Relies on ForceUnmount() internally; see the caveat listed for it
-  //
-  void UnmountAll();
+  void UnmountAndDropKeys();
 
-  // Deletes loop device used for ephemeral cryptohome and underlying
-  // temporary sparse file.
+  // Deletes loop device used for ephemeral cryptohome and underlying temporary
+  // sparse file.
   void CleanUpEphemeral();
-
-  // Forcibly unmounts a mountpoint, killing processes with open handles to it
-  // if necessary. Note that this approach is not bulletproof - if a process can
-  // avoid being killed by racing against us, then grab a handle to the
-  // mountpoint, it can prevent the lazy unmount from ever completing.
-  //
-  // Parameters
-  //   src - Path mounted at |dest|
-  //   dest - Mount point to unmount
-  void ForceUnmount(const base::FilePath& src, const base::FilePath& dest);
 
   // Derives PKCS #11 token authorization data from a passkey. This may take up
   // to ~100ms (dependant on CPU / memory performance). Returns true on success.
@@ -659,9 +623,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // of authorization data based on the passkey needs to be performed also.
   bool is_pkcs11_passkey_migration_required_;
 
-  // Stack of mounts (in the mount(2) sense) that we've made.
-  MountStack mounts_;
-
   // Dircrypto key ID.
   key_serial_t dircrypto_key_id_;
 
@@ -675,14 +636,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // true if mounted with |shadow_only|=true. This is only valid when
   // IsMounted() is true.
   bool shadow_only_;
-
-  // Tracks loop device used for ephemeral cryptohome.
-  // Empty when device is not present.
-  base::FilePath ephemeral_loop_device_;
-
-  // Tracks path to ephemeral cryptohome sparse file.
-  // Empty when file is not created or already deleted.
-  base::FilePath ephemeral_file_path_;
 
   std::unique_ptr<ChapsClientFactory> default_chaps_client_factory_;
   ChapsClientFactory* chaps_client_factory_;
