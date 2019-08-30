@@ -48,6 +48,8 @@ UserState::UserState(org::chromium::SessionManagerInterfaceProxy* sm_proxy,
   LoadState();
 }
 
+UserState::UserState() : weak_ptr_factory_(this), counter_min_(0) {}
+
 base::Optional<brillo::SecureBlob> UserState::GetUserSecret() {
   if (user_secret_.has_value()) {
     return *user_secret_;

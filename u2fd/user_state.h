@@ -25,21 +25,27 @@ class UserState {
   UserState(org::chromium::SessionManagerInterfaceProxy* sm_proxy,
             uint32_t counter_min);
 
+  virtual ~UserState() = default;
+
   // Get*() methods return base::nullopt if user state is currently
   // unavailable.
 
   // Get the user secret.
-  base::Optional<brillo::SecureBlob> GetUserSecret();
+  virtual base::Optional<brillo::SecureBlob> GetUserSecret();
 
   // Returns the current counter value. The returned value must not be
   // returned externally until the counter has succesfully been
   // incremented (and persisted to disk).
-  base::Optional<std::vector<uint8_t>> GetCounter();
+  virtual base::Optional<std::vector<uint8_t>> GetCounter();
 
   // Increments the counter value, which is subsequently immediately
   // flushed to disk. Returns true on success, false if the counter
   // could not be persisted to disk.
-  bool IncrementCounter();
+  virtual bool IncrementCounter();
+
+ protected:
+  // Constructor for use by mock objects.
+  UserState();
 
  private:
   // Handler for the SessionStateChanged signal.
