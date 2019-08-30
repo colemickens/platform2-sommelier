@@ -7,15 +7,13 @@
 #include "chromeos-config/libcros_config/cros_config.h"
 
 #include <string>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/sys_info.h>
-#include "chromeos-config/libcros_config/cros_config_interface.h"
 #include "chromeos-config/libcros_config/cros_config_json.h"
-#include "chromeos-config/libcros_config/identity_arm.h"
-#include "chromeos-config/libcros_config/identity_x86.h"
+#include "chromeos-config/libcros_config/identity.h"
 
 namespace {
 const char kCustomizationId[] = "/sys/firmware/vpd/ro/customization_id";
@@ -43,81 +41,107 @@ bool CrosConfig::InitCheck() const {
 }
 
 bool CrosConfig::Init(const int sku_id) {
-  return InitModel(sku_id);
-}
-
-bool CrosConfig::Init() {
-  return InitModel();
-}
-
-bool CrosConfig::InitForTestX86(const base::FilePath& filepath,
-                                const std::string& name,
-                                int sku_id,
-                                const std::string& customization_id) {
-  base::FilePath product_name_file, product_sku_file, vpd_file;
-  CrosConfigIdentityX86 identity;
-  if (!identity.FakeVpd(customization_id, &vpd_file)) {
-    CROS_CONFIG_LOG(ERROR) << "FakeVpd() failed";
-    return false;
-  }
-  if (!identity.Fake(name, sku_id, &product_name_file, &product_sku_file)) {
-    CROS_CONFIG_LOG(ERROR) << "FakeVpd() failed";
-    return false;
-  }
-  return InitCrosConfig(filepath) &&
-         SelectConfigByIdentityX86(product_name_file, product_sku_file,
-                                   vpd_file);
-}
-
-bool CrosConfig::InitForTestArm(const base::FilePath& filepath,
-                                const std::string& dt_compatible_name,
-                                int sku_id,
-                                const std::string& customization_id) {
-  base::FilePath dt_compatible_file, sku_id_file, vpd_file;
-  CrosConfigIdentityArm identity;
-  if (!identity.FakeVpd(customization_id, &vpd_file)) {
-    CROS_CONFIG_LOG(ERROR) << "FakeVpd() failed";
-    return false;
-  }
-  if (!identity.Fake(dt_compatible_name, sku_id, &dt_compatible_file,
-                     &sku_id_file)) {
-    CROS_CONFIG_LOG(ERROR) << "FakeDtCompatible() failed";
-    return false;
-  }
-  return InitCrosConfig(filepath) &&
-         SelectConfigByIdentityArm(dt_compatible_file,
-                                   sku_id_file, vpd_file);
-}
-
-bool CrosConfig::InitModel() {
-  return InitModel(kDefaultSkuId);
-}
-
-bool CrosConfig::InitModel(const int sku_id) {
-  base::FilePath json_path(kConfigJsonPath);
-  bool init_config = false;
-  if (base::PathExists(json_path)) {
-    init_config = InitCrosConfig(json_path);
-  }
-  if (!init_config) {
-    return false;
-  }
-  const std::string system_arch = base::SysInfo::OperatingSystemArchitecture();
   base::FilePath vpd_file(kWhitelabelTag);
   if (!base::PathExists(vpd_file)) {
     vpd_file = base::FilePath(kCustomizationId);
   }
-  if (system_arch == "x86_64" || system_arch == "x86") {
-    base::FilePath product_name_file(kProductName);
-    base::FilePath product_sku_file(kProductSku);
-    return SelectConfigByIdentityX86(product_name_file, product_sku_file,
-                                     vpd_file, sku_id);
+
+  base::FilePath product_name_file;
+  base::FilePath product_sku_file;
+  SystemArchitecture arch = CrosConfigIdentity::CurrentSystemArchitecture();
+  if (arch == SystemArchitecture::kX86) {
+    product_name_file = base::FilePath(kProductName);
+    product_sku_file = base::FilePath(kProductSku);
+  } else if (arch == SystemArchitecture::kArm) {
+    product_name_file = base::FilePath(kDeviceTreeCompatiblePath);
+    product_sku_file = base::FilePath(kArmSkuId);
   } else {
-    base::FilePath dt_compatible_file(kDeviceTreeCompatiblePath);
-    base::FilePath sku_id_file(kArmSkuId);
-    return SelectConfigByIdentityArm(dt_compatible_file, sku_id_file,
-                                     vpd_file, sku_id);
+    CROS_CONFIG_LOG(ERROR) << "System architecture is unknown";
+    return false;
   }
+
+  base::FilePath json_path(kConfigJsonPath);
+  return InitInternal(sku_id, json_path, arch, product_name_file,
+                      product_sku_file, vpd_file);
+}
+
+// TODO(jrosenth): delete this alias once nobody is calling InitModel
+bool CrosConfig::InitModel() {
+  return Init();
+}
+
+bool CrosConfig::InitForTest(const int sku_id,
+                             const base::FilePath& json_path,
+                             const SystemArchitecture arch,
+                             const std::string& name,
+                             const std::string& customization_id) {
+  auto identity = CrosConfigIdentity::FromArchitecture(arch);
+  if (!identity) {
+    CROS_CONFIG_LOG(ERROR) << "Provided architecture is unknown";
+    return false;
+  }
+  base::FilePath product_name_file, product_sku_file, vpd_file;
+  if (!identity->FakeVpdFileForTesting(customization_id, &vpd_file)) {
+    CROS_CONFIG_LOG(ERROR) << "FakeVpdFileForTesting() failed";
+    return false;
+  }
+  if (!identity->FakeProductFilesForTesting(name, sku_id, &product_name_file,
+                                            &product_sku_file)) {
+    CROS_CONFIG_LOG(ERROR) << "FakeProductFilesForTesting() failed";
+    return false;
+  }
+  return InitInternal(sku_id, json_path, arch, product_name_file,
+                      product_sku_file, vpd_file);
+}
+
+bool CrosConfig::InitInternal(const int sku_id,
+                              const base::FilePath& json_path,
+                              const SystemArchitecture arch,
+                              const base::FilePath& product_name_file,
+                              const base::FilePath& product_sku_file,
+                              const base::FilePath& vpd_file) {
+  if (!base::PathExists(json_path)) {
+    // TODO(crbug.com/991653): Fallback to mosys platform when running
+    // on non-unibuild platforms
+    //
+    // Implemented in child CL (crrev.com/c/1761410)
+    return false;
+  }
+
+  auto cros_config_json = std::make_unique<CrosConfigJson>();
+  CROS_CONFIG_LOG(INFO) << ">>>>> reading config file: path="
+                        << json_path.MaybeAsASCII();
+  if (!cros_config_json->ReadConfigFile(json_path))
+    return false;
+  CROS_CONFIG_LOG(INFO) << ">>>>> config file successfully read";
+
+  CROS_CONFIG_LOG(INFO) << ">>>>> Starting to read identity";
+  auto identity = CrosConfigIdentity::FromArchitecture(arch);
+  if (!identity->ReadVpd(vpd_file)) {
+    CROS_CONFIG_LOG(ERROR) << "Cannot read VPD identity";
+    return false;
+  }
+  if (!identity->ReadInfo(product_name_file, product_sku_file)) {
+    CROS_CONFIG_LOG(ERROR) << "Cannot read SMBIOS or dt-compatible info";
+    return false;
+  }
+  if (sku_id != kDefaultSkuId) {
+    identity->SetSkuId(sku_id);
+    CROS_CONFIG_LOG(INFO) << "Set sku_id to explicitly assigned value "
+                          << sku_id;
+  }
+  if (!cros_config_json->SelectConfigByIdentity(*identity)) {
+    CROS_CONFIG_LOG(ERROR) << "Cannot find config for "
+                           << identity->DebugString() << " (VPD ID from "
+                           << vpd_file.MaybeAsASCII() << ")";
+    return false;
+  }
+  CROS_CONFIG_LOG(INFO) << ">>>>> Completed initialization";
+
+  // Downgrade CrosConfigJson to CrosConfigInterface now that
+  // initialization has finished
+  cros_config_ = std::move(cros_config_json);
+  return true;
 }
 
 bool CrosConfig::GetString(const std::string& path,
@@ -127,94 +151,6 @@ bool CrosConfig::GetString(const std::string& path,
     return false;
   }
   return cros_config_->GetString(path, property, val_out);
-}
-
-bool CrosConfig::SelectConfigByIdentityX86(
-    const base::FilePath& product_name_file,
-    const base::FilePath& product_sku_file,
-    const base::FilePath& vpd_file,
-    const int sku_id) {
-  CROS_CONFIG_LOG(INFO) << ">>>>> Starting to read X86 identity";
-  CrosConfigIdentityX86 identity;
-  if (!identity.ReadVpd(vpd_file)) {
-    CROS_CONFIG_LOG(ERROR) << "Cannot read VPD identity";
-    return false;
-  }
-  if (!identity.ReadInfo(product_name_file, product_sku_file)) {
-    CROS_CONFIG_LOG(ERROR) << "Cannot read SMBIOS identity";
-    return false;
-  }
-  if (sku_id != kDefaultSkuId) {
-    identity.SetSkuId(sku_id);
-    CROS_CONFIG_LOG(INFO) << "Set sku_id to explicitly assigned value "
-                          << sku_id;
-  }
-  if (!cros_config_->SelectConfigByIdentityX86(identity)) {
-    CROS_CONFIG_LOG(ERROR) << "Cannot find config for"
-                           << " name: " << identity.GetName()
-                           << " SKU ID: " << identity.GetSkuId()
-                           << " VPD ID from " << vpd_file.MaybeAsASCII() << ": "
-                           << identity.GetVpdId();
-    return false;
-  }
-
-  CROS_CONFIG_LOG(INFO) << ">>>>> Completed initialization with x86 identity";
-
-  return true;
-}
-
-bool CrosConfig::SelectConfigByIdentityArm(
-    const base::FilePath& dt_compatible_file,
-    const base::FilePath& sku_id_file,
-    const base::FilePath& vpd_file,
-    const int sku_id) {
-  CROS_CONFIG_LOG(INFO) << ">>>>> Starting to read ARM identity";
-  CrosConfigIdentityArm identity;
-  if (!identity.ReadVpd(vpd_file)) {
-    CROS_CONFIG_LOG(ERROR) << "Cannot read VPD identity";
-    return false;
-  }
-  if (!identity.ReadInfo(dt_compatible_file, sku_id_file)) {
-    CROS_CONFIG_LOG(ERROR) << "Cannot read device-tree compatible and "
-                           << "sku-id identities";
-    return false;
-  }
-  if (sku_id != kDefaultSkuId) {
-    identity.SetSkuId(sku_id);
-    CROS_CONFIG_LOG(INFO) << "Set sku_id to explicitly assigned value "
-                          << sku_id;
-  }
-  if (!cros_config_->SelectConfigByIdentityArm(identity)) {
-    CROS_CONFIG_LOG(ERROR) << "Cannot find config for "
-                           << "device-tree compatible string: "
-                           << identity.GetCompatibleDeviceString()
-                           << " SKU ID: " << identity.GetSkuId()
-                           << " VPD ID from " << vpd_file.MaybeAsASCII()
-                           << ": " << identity.GetVpdId();
-    return false;
-  }
-
-  CROS_CONFIG_LOG(INFO) << ">>>>> Completed initialization with ARM identity";
-
-  return true;
-}
-
-bool CrosConfig::InitCrosConfig(const base::FilePath& filepath) {
-  CROS_CONFIG_LOG(INFO) << ">>>>> reading config file: path="
-                        << filepath.MaybeAsASCII();
-  // Many systems will not have a config database (yet), so just skip all the
-  // setup without any errors if the config file doesn't exist.
-  if (!base::PathExists(filepath)) {
-    return false;
-  }
-
-  cros_config_ = std::make_unique<CrosConfigJson>();
-
-  cros_config_->ReadConfigFile(filepath);
-
-  CROS_CONFIG_LOG(INFO) << ">>>>> config file successfully read";
-
-  return true;
 }
 
 }  // namespace brillo

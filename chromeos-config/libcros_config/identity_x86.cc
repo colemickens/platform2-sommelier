@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/values.h>
 #include "chromeos-config/libcros_config/cros_config_interface.h"
 
 namespace brillo {
@@ -22,10 +23,11 @@ CrosConfigIdentityX86::CrosConfigIdentityX86() {}
 
 CrosConfigIdentityX86::~CrosConfigIdentityX86() {}
 
-bool CrosConfigIdentityX86::Fake(const std::string& name,
-                                 int sku_id,
-                                 base::FilePath* product_name_file_out,
-                                 base::FilePath* product_sku_file_out) {
+bool CrosConfigIdentityX86::FakeProductFilesForTesting(
+    const std::string& name,
+    const int sku_id,
+    base::FilePath* product_name_file_out,
+    base::FilePath* product_sku_file_out) {
   *product_name_file_out = base::FilePath("product_name");
   // Add a newline to mimic the kernel file.
   std::string content = name + "\n";
@@ -67,6 +69,19 @@ bool CrosConfigIdentityX86::ReadInfo(const base::FilePath& product_name_file,
   CROS_CONFIG_LOG(INFO) << "Read SMBIOS Identity - name: " << name_
                         << ", sku_id: " << sku_id_;
   return true;
+}
+
+bool CrosConfigIdentityX86::PlatformIdentityMatch(
+    const base::DictionaryValue& identity_dict) const {
+  std::string name_match;
+  if (!identity_dict.GetString("smbios-name-match", &name_match))
+    return false;
+  return name_ == name_match;
+}
+
+std::string CrosConfigIdentityX86::DebugString() const {
+  return base::StringPrintf("x86-identity[name=\"%s\", sku=%d, vpd=\"%s\"]",
+                            name_.c_str(), sku_id_, GetVpdId().c_str());
 }
 
 }  // namespace brillo

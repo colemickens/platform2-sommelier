@@ -7,12 +7,16 @@
 
 #include "chromeos-config/libcros_config/identity.h"
 
+#include <memory>
 #include <string>
 
 #include <base/logging.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/sys_info.h>
 #include "chromeos-config/libcros_config/cros_config_interface.h"
+#include "chromeos-config/libcros_config/identity_arm.h"
+#include "chromeos-config/libcros_config/identity_x86.h"
 
 namespace brillo {
 
@@ -20,8 +24,35 @@ CrosConfigIdentity::CrosConfigIdentity() {}
 
 CrosConfigIdentity::~CrosConfigIdentity() {}
 
-bool CrosConfigIdentity::FakeVpd(const std::string& vpd_id,
-                                 base::FilePath* vpd_file_out) {
+SystemArchitecture CrosConfigIdentity::CurrentSystemArchitecture() {
+  return CurrentSystemArchitecture(
+      base::SysInfo::OperatingSystemArchitecture());
+}
+
+SystemArchitecture CrosConfigIdentity::CurrentSystemArchitecture(
+    const std::string& arch) {
+  if (arch == "x86" || arch == "x86_64")
+    return SystemArchitecture::kX86;
+  if (arch == "arm" || arch == "aarch64" || arch == "aarch64_be" ||
+      arch == "armv8b" || arch == "armv8l")
+    return SystemArchitecture::kArm;
+  return SystemArchitecture::kUnknown;
+}
+
+std::unique_ptr<CrosConfigIdentity> CrosConfigIdentity::FromArchitecture(
+    const SystemArchitecture& arch) {
+  switch (arch) {
+    case SystemArchitecture::kX86:
+      return std::make_unique<CrosConfigIdentityX86>();
+    case SystemArchitecture::kArm:
+      return std::make_unique<CrosConfigIdentityArm>();
+    case SystemArchitecture::kUnknown:
+      return nullptr;
+  }
+}
+
+bool CrosConfigIdentity::FakeVpdFileForTesting(const std::string& vpd_id,
+                                               base::FilePath* vpd_file_out) {
   *vpd_file_out = base::FilePath("vpd");
   if (base::WriteFile(*vpd_file_out, vpd_id.c_str(), vpd_id.length()) !=
       vpd_id.length()) {
