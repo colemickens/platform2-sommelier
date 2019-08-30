@@ -186,10 +186,10 @@ main() {
   # Report overall stateful usage.
   metrics_client -e Platform.StatefulUsage "$(get_stateful_usage_percent)" 101
 
-  # Report lifetime writes from the stateful partition in GBs.
+  # Report lifetime writes from the stateful partition in GiBs.
   LIFETIME_WRITES="$(get_stateful_lifetime_writes)"
   metrics_client Platform.StatefulLifetimeWrites \
-    "$((LIFETIME_WRITES / 1000000))" 0 16777216 100
+    "$((LIFETIME_WRITES / 1048576))" 0 16777216 100
 
   # Report used space from the stateful partition in GBs.
   STATEFUL_USED="$(get_stateful_used_space_blocks 1000)"
