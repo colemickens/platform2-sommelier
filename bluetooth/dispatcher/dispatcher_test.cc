@@ -79,6 +79,7 @@ class DispatcherTest : public ::testing::Test {
         bluetooth_adapter::kBluetoothAdapterInterface,
         bluetooth_device::kBluetoothDeviceInterface,
         bluetooth_gatt_characteristic::kBluetoothGattCharacteristicInterface,
+        bluetooth_gatt_manager::kBluetoothGattManagerInterface,
         bluetooth_input::kBluetoothInputInterface,
         bluetooth_media::kBluetoothMediaInterface,
         bluetooth_gatt_service::kBluetoothGattServiceInterface,

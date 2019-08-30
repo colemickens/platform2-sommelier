@@ -102,10 +102,14 @@ BluezGattCharacteristicInterfaceHandler::
   AddMethodForwarding(bluetooth_gatt_characteristic::kPrepareWriteValue);
 }
 
+BluezGattManagerInterfaceHandler::BluezGattManagerInterfaceHandler() {
+  AddMethodForwarding(bluetooth_gatt_manager::kRegisterApplication);
+  AddMethodForwarding(bluetooth_gatt_manager::kUnregisterApplication);
+}
+
 BluezInputInterfaceHandler::BluezInputInterfaceHandler() {
   AddPropertyFactory<std::string>(bluetooth_input::kReconnectModeProperty);
 }
-
 
 BluezMediaInterfaceHandler::BluezMediaInterfaceHandler() {
   AddMethodForwarding(bluetooth_media::kRegisterEndpoint);

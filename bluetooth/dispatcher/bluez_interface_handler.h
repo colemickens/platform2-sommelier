@@ -87,6 +87,15 @@ class BluezGattCharacteristicInterfaceHandler : public BluezInterfaceHandler {
   DISALLOW_COPY_AND_ASSIGN(BluezGattCharacteristicInterfaceHandler);
 };
 
+// org.bluez.GattManager1 interface.
+class BluezGattManagerInterfaceHandler : public BluezInterfaceHandler {
+ public:
+  BluezGattManagerInterfaceHandler();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(BluezGattManagerInterfaceHandler);
+};
+
 // org.bluez.Input1 interface.
 class BluezInputInterfaceHandler : public BluezInterfaceHandler {
  public:

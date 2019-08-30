@@ -54,6 +54,8 @@ bool Dispatcher::Init(PassthroughMode mode) {
   interface_handlers
       [bluetooth_gatt_characteristic::kBluetoothGattCharacteristicInterface] =
           std::make_unique<BluezGattCharacteristicInterfaceHandler>();
+  interface_handlers[bluetooth_gatt_manager::kBluetoothGattManagerInterface] =
+      std::make_unique<BluezGattManagerInterfaceHandler>();
   interface_handlers[bluetooth_input::kBluetoothInputInterface] =
       std::make_unique<BluezInputInterfaceHandler>();
   interface_handlers[bluetooth_media::kBluetoothMediaInterface] =
