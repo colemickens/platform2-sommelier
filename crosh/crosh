@@ -1085,7 +1085,7 @@ cmd_modem() (
   debugd_shill modem "$@"
 )
 
-USAGE_modem_set_carrier='carrier-name'
+USAGE_modem_set_carrier='<carrier-name>'
 HELP_modem_set_carrier='
   Configures the modem for the specified carrier.
 '
