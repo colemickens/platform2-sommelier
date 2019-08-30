@@ -206,6 +206,24 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
     SendOnInstallStatusSignal(install_status);
     return true;
   }
+  Operation update_engine_operation;
+  if (!GetUpdateEngineStatus(&update_engine_operation)) {
+    LogAndSetError(err, kErrorInternal,
+                   "Failed to get the status of Update Engine.");
+    return false;
+  }
+  switch (update_engine_operation) {
+    case update_engine::UPDATED_NEED_REBOOT:
+      LogAndSetError(err, kErrorNeedReboot,
+                     "Update Engine applied update, device needs a reboot.");
+      return false;
+    case update_engine::IDLE:
+      break;
+    default:
+      LogAndSetError(err, kErrorBusy,
+                     "Update Engine is performing operations.");
+      return false;
+  }
 
   // Note: this holds the list of directories that were created and need to be
   // freed in case an error happens.
@@ -226,20 +244,6 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
     }
 
     scoped_paths.emplace_back(std::move(scoped_path));
-  }
-
-  // TODO(kimjae): No need to request twice, should cache on call and provide a
-  // way to propagate correct errors depending on update_engine status. Checking
-  // for update_engine status can be completely removed if reason for error is
-  // propagated up from update_engine on |AttemptInstall| call.
-  if (CheckForUpdateEngineStatus({update_engine::UPDATED_NEED_REBOOT})) {
-    LogAndSetError(err, kErrorNeedReboot,
-                   "Update Engine applied update, device needs a reboot.");
-    return false;
-  }
-  if (!CheckForUpdateEngineStatus({update_engine::IDLE})) {
-    LogAndSetError(err, kErrorBusy, "Update Engine is performing operations.");
-    return false;
   }
 
   // Invokes update_engine to install the DLC module.
@@ -278,10 +282,19 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
     return false;
   }
 
-  if (!CheckForUpdateEngineStatus(
-          {update_engine::IDLE, update_engine::UPDATED_NEED_REBOOT})) {
-    LogAndSetError(err, kErrorBusy, "Install or update is in progress.");
+  Operation update_engine_operation;
+  if (!GetUpdateEngineStatus(&update_engine_operation)) {
+    LogAndSetError(err, kErrorInternal,
+                   "Failed to get the status of Update Engine");
     return false;
+  }
+  switch (update_engine_operation) {
+    case update_engine::IDLE:
+    case update_engine::UPDATED_NEED_REBOOT:
+      break;
+    default:
+      LogAndSetError(err, kErrorBusy, "Install or update is in progress.");
+      return false;
   }
 
   if (!UnmountDlc(err, id_in))
@@ -445,19 +458,12 @@ string DlcServiceDBusAdaptor::ScanDlcModulePackage(const string& id) {
   return *(utils::ScanDirectory(manifest_dir_.Append(id)).begin());
 }
 
-bool DlcServiceDBusAdaptor::CheckForUpdateEngineStatus(
-    const vector<Operation>& status_list) {
+bool DlcServiceDBusAdaptor::GetUpdateEngineStatus(Operation* operation) {
   StatusResult status_result;
   if (!update_engine_proxy_->GetStatusAdvanced(&status_result, nullptr)) {
-    LOG(ERROR) << "Update Engine is not available.";
     return false;
   }
-  if (!std::any_of(status_list.begin(), status_list.end(),
-                   [&status_result](const Operation& status) {
-                     return status_result.current_operation() == status;
-                   })) {
-    return false;
-  }
+  *operation = status_result.current_operation();
   return true;
 }
 

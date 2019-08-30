@@ -230,6 +230,26 @@ TEST_F(DlcServiceDBusAdaptorTest, UninstallImageLoaderFailureTest) {
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
 }
 
+TEST_F(DlcServiceDBusAdaptorTest, UninstallUpdateEngineBusyFailureTest) {
+  StatusResult status_result;
+  status_result.set_current_operation(Operation::CHECKING_FOR_UPDATE);
+  ON_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillByDefault(DoAll(SetArgPointee<0>(status_result), Return(true)));
+
+  EXPECT_FALSE(dlc_service_dbus_adaptor_->Uninstall(nullptr, kFirstDlc));
+  EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
+}
+
+TEST_F(DlcServiceDBusAdaptorTest, UninstallUpdatedNeedRebootSuccessTest) {
+  StatusResult status_result;
+  status_result.set_current_operation(Operation::UPDATED_NEED_REBOOT);
+  ON_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillByDefault(DoAll(SetArgPointee<0>(status_result), Return(true)));
+
+  EXPECT_TRUE(dlc_service_dbus_adaptor_->Uninstall(nullptr, kFirstDlc));
+  EXPECT_FALSE(base::PathExists(content_path_.Append(kFirstDlc)));
+}
+
 TEST_F(DlcServiceDBusAdaptorTest, InstallEmptyDlcModuleListFailsTest) {
   EXPECT_FALSE(dlc_service_dbus_adaptor_->Install(nullptr, {}));
 }
