@@ -56,7 +56,7 @@ class U2fCommandAdpu {
   // Returns the max response length for this ADPU.
   uint32_t MaxResponseLength() const { return max_response_length_; }
   // Serializes this ADPU to a string.
-  std::string ToString();
+  std::string ToString() const;
 
  protected:
   Header header_;
@@ -113,7 +113,7 @@ class U2fAuthenticateRequestAdpu {
   // Returns true if the ADPU is for a U2F_AUTHENTICATE check-only
   // request. Check-only requests should verify whether the specified key handle
   // is owned by this U2F device, but not perform any authentication.
-  bool IsAuthenticateCheckOnly() { return auth_check_only_; }
+  bool IsAuthenticateCheckOnly() const { return auth_check_only_; }
 
   // Accessors for the request fields.
   const std::vector<uint8_t>& GetAppId() const { return app_id_; }
@@ -135,7 +135,7 @@ class U2fResponseAdpu {
   U2fResponseAdpu() = default;
 
   // Serialize the response to the specified string.
-  bool ToString(std::string* out);
+  bool ToString(std::string* out) const;
 
   // Methods to append data to the response.
   void AppendByte(uint8_t byte) { data_.push_back(byte); }

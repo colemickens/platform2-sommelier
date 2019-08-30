@@ -192,7 +192,7 @@ void AppendLe(std::string* adpu, size_t lc, size_t le) {
 
 }  // namespace
 
-std::string U2fCommandAdpu::ToString() {
+std::string U2fCommandAdpu::ToString() const {
   std::string adpu;
 
   adpu.push_back(kAdpuCla);
@@ -336,7 +336,7 @@ U2fAuthenticateRequestAdpu::FromCommandAdpu(const U2fCommandAdpu& adpu,
 //
 //////////////////////////////////////////////////////////////////////
 
-bool U2fResponseAdpu::ToString(std::string* out) {
+bool U2fResponseAdpu::ToString(std::string* out) const {
   out->append(data_.begin(), data_.end());
   out->push_back(sw1_);
   out->push_back(sw2_);
