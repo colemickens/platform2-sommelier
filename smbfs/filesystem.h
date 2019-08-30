@@ -11,6 +11,7 @@
 #include <string>
 
 #include <base/macros.h>
+#include <base/optional.h>
 
 #include "smbfs/request.h"
 
@@ -24,7 +25,64 @@ class Filesystem {
   virtual void Lookup(std::unique_ptr<EntryRequest> request,
                       fuse_ino_t parent_inode,
                       const std::string& name);
+  virtual void Forget(fuse_ino_t inode, uint64_t count);
   virtual void GetAttr(std::unique_ptr<AttrRequest> request, fuse_ino_t inode);
+  virtual void SetAttr(std::unique_ptr<AttrRequest> request,
+                       fuse_ino_t inode,
+                       base::Optional<uint64_t> file_handle,
+                       const struct stat& attr,
+                       int to_set);
+
+  // File operations.
+  virtual void Open(std::unique_ptr<OpenRequest> request,
+                    fuse_ino_t inode,
+                    int flags);
+  virtual void Create(std::unique_ptr<CreateRequest> request,
+                      fuse_ino_t parent_inode,
+                      const std::string& name,
+                      mode_t mode,
+                      int flags);
+  virtual void Read(std::unique_ptr<BufRequest> request,
+                    fuse_ino_t inode,
+                    uint64_t file_handle,
+                    size_t size,
+                    off_t offset);
+  virtual void Write(std::unique_ptr<WriteRequest> request,
+                     fuse_ino_t inode,
+                     uint64_t file_handle,
+                     const char* buf,
+                     size_t size,
+                     off_t offset);
+  virtual void Release(std::unique_ptr<SimpleRequest> request,
+                       fuse_ino_t inode,
+                       uint64_t file_handle);
+  virtual void Rename(std::unique_ptr<SimpleRequest> request,
+                      fuse_ino_t old_parent_inode,
+                      const std::string& old_name,
+                      fuse_ino_t new_parent_inode,
+                      const std::string& new_name);
+  virtual void Unlink(std::unique_ptr<SimpleRequest> request,
+                      fuse_ino_t parent_inode,
+                      const std::string& name);
+
+  // Directory operations.
+  virtual void OpenDir(std::unique_ptr<OpenRequest> request,
+                       fuse_ino_t inode,
+                       int flags);
+  virtual void ReadDir(std::unique_ptr<DirentryRequest> request,
+                       fuse_ino_t inode,
+                       uint64_t file_handle,
+                       off_t offset);
+  virtual void ReleaseDir(std::unique_ptr<SimpleRequest> request,
+                          fuse_ino_t inode,
+                          uint64_t file_handle);
+  virtual void MkDir(std::unique_ptr<EntryRequest> request,
+                     fuse_ino_t parent_inode,
+                     const std::string& name,
+                     mode_t mode);
+  virtual void RmDir(std::unique_ptr<SimpleRequest> request,
+                     fuse_ino_t parent_inode,
+                     const std::string& name);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Filesystem);

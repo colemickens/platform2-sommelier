@@ -35,7 +35,7 @@ void TestFilesystem::GetAttr(std::unique_ptr<AttrRequest> request,
     stat.st_uid = uid_;
     stat.st_gid = gid_;
     stat.st_size = 4096;
-    request->ReplyAttr(&stat, kAttrTimeout);
+    request->ReplyAttr(stat, kAttrTimeout);
     return;
   }
 

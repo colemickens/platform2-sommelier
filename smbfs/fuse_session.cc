@@ -19,13 +19,300 @@
 
 namespace smbfs {
 
+class FuseSession::Impl {
+ public:
+  Impl(FuseSession* session, std::unique_ptr<Filesystem> fs)
+      : session_(session), fs_(std::move(fs)) {
+    DCHECK(fs_);
+  }
+  ~Impl() = default;
+
+  // FUSE low-level operations. See fuse_lowlevel_ops in fuse_lowlevel.h for
+  // details.
+  static void FuseDestroy(void* userdata) {
+    static_cast<Impl*>(userdata)->Destroy();
+  }
+
+  static void FuseLookup(fuse_req_t request,
+                         fuse_ino_t parent_inode,
+                         const char* name) {
+    static_cast<Impl*>(fuse_req_userdata(request))
+        ->Lookup(request, parent_inode, name);
+  }
+
+  static void FuseForget(fuse_req_t request,
+                         fuse_ino_t inode,
+                         unsigned long count) {  // NOLINT(runtime/int)
+    static_cast<Impl*>(fuse_req_userdata(request))
+        ->Forget(request, inode, count);
+  }
+
+  static void FuseGetAttr(fuse_req_t request,
+                          fuse_ino_t inode,
+                          fuse_file_info* info) {
+    static_cast<Impl*>(fuse_req_userdata(request))
+        ->GetAttr(request, inode, info);
+  }
+
+  static void FuseSetAttr(fuse_req_t request,
+                          fuse_ino_t inode,
+                          struct stat* attr,
+                          int to_set,
+                          fuse_file_info* info) {
+    static_cast<Impl*>(fuse_req_userdata(request))
+        ->SetAttr(request, inode, attr, to_set, info);
+  }
+
+  static void FuseOpen(fuse_req_t request,
+                       fuse_ino_t inode,
+                       fuse_file_info* info) {
+    static_cast<Impl*>(fuse_req_userdata(request))->Open(request, inode, info);
+  }
+
+  static void FuseCreate(fuse_req_t request,
+                         fuse_ino_t parent_inode,
+                         const char* name,
+                         mode_t mode,
+                         fuse_file_info* info) {
+    static_cast<Impl*>(fuse_req_userdata(request))
+        ->Create(request, parent_inode, name, mode, info);
+  }
+
+  static void FuseRead(fuse_req_t request,
+                       fuse_ino_t inode,
+                       size_t size,
+                       off_t off,
+                       fuse_file_info* info) {
+    static_cast<Impl*>(fuse_req_userdata(request))
+        ->Read(request, inode, size, off, info);
+  }
+
+  static void FuseWrite(fuse_req_t request,
+                        fuse_ino_t inode,
+                        const char* buf,
+                        size_t size,
+                        off_t off,
+                        fuse_file_info* info) {
+    static_cast<Impl*>(fuse_req_userdata(request))
+        ->Write(request, inode, buf, size, off, info);
+  }
+
+  static void FuseRelease(fuse_req_t request,
+                          fuse_ino_t inode,
+                          fuse_file_info* info) {
+    static_cast<Impl*>(fuse_req_userdata(request))
+        ->Release(request, inode, info);
+  }
+
+  static void FuseRename(fuse_req_t request,
+                         fuse_ino_t old_parent,
+                         const char* old_name,
+                         fuse_ino_t new_parent,
+                         const char* new_name) {
+    static_cast<Impl*>(fuse_req_userdata(request))
+        ->Rename(request, old_parent, old_name, new_parent, new_name);
+  }
+
+  static void FuseUnlink(fuse_req_t request,
+                         fuse_ino_t parent_inode,
+                         const char* name) {
+    static_cast<Impl*>(fuse_req_userdata(request))
+        ->Unlink(request, parent_inode, name);
+  }
+
+  static void FuseOpenDir(fuse_req_t request,
+                          fuse_ino_t inode,
+                          fuse_file_info* info) {
+    static_cast<Impl*>(fuse_req_userdata(request))
+        ->OpenDir(request, inode, info);
+  }
+
+  static void FuseReadDir(fuse_req_t request,
+                          fuse_ino_t inode,
+                          size_t size,
+                          off_t off,
+                          fuse_file_info* info) {
+    static_cast<Impl*>(fuse_req_userdata(request))
+        ->ReadDir(request, inode, size, off, info);
+  }
+
+  static void FuseReleaseDir(fuse_req_t request,
+                             fuse_ino_t inode,
+                             fuse_file_info* info) {
+    static_cast<Impl*>(fuse_req_userdata(request))
+        ->ReleaseDir(request, inode, info);
+  }
+
+  static void FuseMkDir(fuse_req_t request,
+                        fuse_ino_t parent_inode,
+                        const char* name,
+                        mode_t mode) {
+    static_cast<Impl*>(fuse_req_userdata(request))
+        ->MkDir(request, parent_inode, name, mode);
+  }
+
+  static void FuseRmDir(fuse_req_t request,
+                        fuse_ino_t parent_inode,
+                        const char* name) {
+    static_cast<Impl*>(fuse_req_userdata(request))
+        ->RmDir(request, parent_inode, name);
+  }
+
+ private:
+  void Destroy() {
+    VLOG(1) << "FuseSession::Destroy";
+    session_->RequestStop();
+  }
+
+  void Lookup(fuse_req_t request, fuse_ino_t parent_inode, const char* name) {
+    VLOG(1) << "FuseSession::Lookup parent: " << parent_inode
+            << " name:" << name;
+    fs_->Lookup(std::make_unique<EntryRequest>(request), parent_inode, name);
+  }
+
+  void Forget(fuse_req_t request,
+              fuse_ino_t inode,
+              unsigned long count) {  // NOLINT(runtime/int)
+    VLOG(1) << "FuseSession::Forget inode: " << inode << " count:" << count;
+    fs_->Forget(inode, count);
+    fuse_reply_none(request);
+  }
+
+  void GetAttr(fuse_req_t request,
+               fuse_ino_t inode,
+               fuse_file_info* unused_info) {
+    VLOG(1) << "FuseSession::GetAttr: " << inode;
+    fs_->GetAttr(std::make_unique<AttrRequest>(request), inode);
+  }
+
+  void SetAttr(fuse_req_t request,
+               fuse_ino_t inode,
+               struct stat* attr,
+               int to_set,
+               fuse_file_info* info) {
+    VLOG(1) << "FuseSession::SetAttr: " << inode << " to_set: " << to_set
+            << " handle: " << (info ? info->fh : 0);
+    fs_->SetAttr(std::make_unique<AttrRequest>(request), inode,
+                 info ? info->fh : base::Optional<uint64_t>(), *attr, to_set);
+  }
+
+  void Open(fuse_req_t request, fuse_ino_t inode, fuse_file_info* info) {
+    VLOG(1) << "FuseSession::Open inode: " << inode << " flags:" << info->flags;
+    fs_->Open(std::make_unique<OpenRequest>(request), inode, info->flags);
+  }
+
+  void Create(fuse_req_t request,
+              fuse_ino_t parent_inode,
+              const char* name,
+              mode_t mode,
+              fuse_file_info* info) {
+    VLOG(1) << "FuseSession::Create parent: " << parent_inode
+            << " name: " << name << " mode: " << mode
+            << " flags: " << info->flags;
+    fs_->Create(std::make_unique<CreateRequest>(request), parent_inode, name,
+                mode, info->flags);
+  }
+
+  void Read(fuse_req_t request,
+            fuse_ino_t inode,
+            size_t size,
+            off_t off,
+            fuse_file_info* info) {
+    VLOG(1) << "FuseSession::Read inode: " << inode << " handle:" << info->fh
+            << " offset: " << off << " size: " << size;
+    fs_->Read(std::make_unique<BufRequest>(request), inode, info->fh, size,
+              off);
+  }
+
+  void Write(fuse_req_t request,
+             fuse_ino_t inode,
+             const char* buf,
+             size_t size,
+             off_t off,
+             fuse_file_info* info) {
+    VLOG(1) << "FuseSession::Write inode: " << inode << " handle:" << info->fh
+            << " offset: " << off << " size: " << size;
+    fs_->Write(std::make_unique<WriteRequest>(request), inode, info->fh, buf,
+               size, off);
+  }
+
+  void Release(fuse_req_t request, fuse_ino_t inode, fuse_file_info* info) {
+    VLOG(1) << "FuseSession::Release inode: " << inode
+            << " handle:" << info->fh;
+    fs_->Release(std::make_unique<SimpleRequest>(request), inode, info->fh);
+  }
+
+  void Rename(fuse_req_t request,
+              fuse_ino_t old_parent,
+              const char* old_name,
+              fuse_ino_t new_parent,
+              const char* new_name) {
+    VLOG(1) << "FuseSession::Rename old_parent: " << old_parent
+            << " old_name: " << old_name << " new_parent: " << new_parent
+            << " new_name: " << new_name;
+    fs_->Rename(std::make_unique<SimpleRequest>(request), old_parent, old_name,
+                new_parent, new_name);
+  }
+
+  void Unlink(fuse_req_t request, fuse_ino_t parent_inode, const char* name) {
+    VLOG(1) << "FuseSession::Unlink parent_inode: " << parent_inode
+            << " name: " << name;
+    fs_->Unlink(std::make_unique<SimpleRequest>(request), parent_inode, name);
+  }
+
+  void OpenDir(fuse_req_t request, fuse_ino_t inode, fuse_file_info* info) {
+    VLOG(1) << "FuseSession::OpenDir inode: " << inode
+            << " flags:" << info->flags;
+    fs_->OpenDir(std::make_unique<OpenRequest>(request), inode, info->flags);
+  }
+
+  void ReadDir(fuse_req_t request,
+               fuse_ino_t inode,
+               size_t size,
+               off_t off,
+               fuse_file_info* info) {
+    VLOG(1) << "FuseSession::ReadDir inode: " << inode << " handle:" << info->fh
+            << " offset: " << off;
+    fs_->ReadDir(std::make_unique<DirentryRequest>(request, size), inode,
+                 info->fh, off);
+  }
+
+  void ReleaseDir(fuse_req_t request, fuse_ino_t inode, fuse_file_info* info) {
+    VLOG(1) << "FuseSession::ReleaseDir inode: " << inode
+            << " handle:" << info->fh;
+    fs_->ReleaseDir(std::make_unique<SimpleRequest>(request), inode, info->fh);
+  }
+
+  void MkDir(fuse_req_t request,
+             fuse_ino_t parent_inode,
+             const char* name,
+             mode_t mode) {
+    VLOG(1) << "FuseSession::MkDir parent_inode: " << parent_inode
+            << " name:" << name << " mode: " << mode;
+    fs_->MkDir(std::make_unique<EntryRequest>(request), parent_inode, name,
+               mode);
+  }
+
+  void RmDir(fuse_req_t request, fuse_ino_t parent_inode, const char* name) {
+    VLOG(1) << "FuseSession::RmDir parent_inode: " << parent_inode
+            << " name:" << name;
+    fs_->RmDir(std::make_unique<SimpleRequest>(request), parent_inode, name);
+  }
+
+  FuseSession* session_;
+  std::unique_ptr<Filesystem> fs_;
+
+  DISALLOW_COPY_AND_ASSIGN(Impl);
+};
+
 FuseSession::FuseSession(std::unique_ptr<Filesystem> fs, fuse_chan* chan)
-    : fs_(std::move(fs)), chan_(chan) {
-  DCHECK(fs_);
+    : impl_(std::make_unique<Impl>(this, std::move(fs))), chan_(chan) {
   DCHECK(chan_);
 }
 
 FuseSession::~FuseSession() {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+
   // Ensure |stop_callback_| isn't called as a result of destruction.
   stop_callback_ = {};
 
@@ -45,11 +332,25 @@ bool FuseSession::Start(base::OnceClosure stop_callback) {
   CHECK_EQ(session_, nullptr);
 
   fuse_lowlevel_ops ops = {0};
-  ops.destroy = &FuseSession::FuseDestroy;
-  ops.lookup = &FuseSession::FuseLookup;
-  ops.getattr = &FuseSession::FuseGetAttr;
+  ops.destroy = &Impl::FuseDestroy;
+  ops.lookup = &Impl::FuseLookup;
+  ops.forget = &Impl::FuseForget;
+  ops.getattr = &Impl::FuseGetAttr;
+  ops.setattr = &Impl::FuseSetAttr;
+  ops.open = &Impl::FuseOpen;
+  ops.create = &Impl::FuseCreate;
+  ops.read = &Impl::FuseRead;
+  ops.write = &Impl::FuseWrite;
+  ops.release = &Impl::FuseRelease;
+  ops.rename = &Impl::FuseRename;
+  ops.unlink = &Impl::FuseUnlink;
+  ops.opendir = &Impl::FuseOpenDir;
+  ops.readdir = &Impl::FuseReadDir;
+  ops.releasedir = &Impl::FuseReleaseDir;
+  ops.mkdir = &Impl::FuseMkDir;
+  ops.rmdir = &Impl::FuseRmDir;
 
-  session_ = fuse_lowlevel_new(nullptr, &ops, sizeof(ops), this);
+  session_ = fuse_lowlevel_new(nullptr, &ops, sizeof(ops), impl_.get());
   if (!session_) {
     LOG(ERROR) << "Unable to create new FUSE session";
     return false;
@@ -66,50 +367,8 @@ bool FuseSession::Start(base::OnceClosure stop_callback) {
   return true;
 }
 
-// static
-void FuseSession::FuseDestroy(void* userdata) {
-  static_cast<FuseSession*>(userdata)->Destroy();
-}
-
-// static
-void FuseSession::FuseLookup(fuse_req_t request,
-                             fuse_ino_t parent_inode,
-                             const char* name) {
-  static_cast<FuseSession*>(fuse_req_userdata(request))
-      ->Lookup(request, parent_inode, name);
-}
-
-// static
-void FuseSession::FuseGetAttr(fuse_req_t request,
-                              fuse_ino_t inode,
-                              fuse_file_info* info) {
-  static_cast<FuseSession*>(fuse_req_userdata(request))
-      ->GetAttr(request, inode, info);
-}
-
-void FuseSession::Destroy() {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
-  VLOG(1) << "FuseSession::Destroy";
-  RequestStop();
-}
-
-void FuseSession::Lookup(fuse_req_t request,
-                         fuse_ino_t parent_inode,
-                         const char* name) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
-  VLOG(1) << "FuseSession::Lookup parent: " << parent_inode << " name:" << name;
-  fs_->Lookup(std::make_unique<EntryRequest>(request), parent_inode, name);
-}
-
-void FuseSession::GetAttr(fuse_req_t request,
-                          fuse_ino_t inode,
-                          fuse_file_info* unused_info) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
-  VLOG(1) << "FuseSession::GetAttr: " << inode;
-  fs_->GetAttr(std::make_unique<AttrRequest>(request), inode);
-}
-
 void FuseSession::OnChannelReadable() {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   VLOG(2) << "FuseSession::OnChannelReadable";
   fuse_buf buf = {
       .mem = read_buffer_.data(),

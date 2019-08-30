@@ -29,18 +29,7 @@ class FuseSession {
   bool Start(base::OnceClosure stop_callback);
 
  private:
-  // FUSE low-level operations. See fuse_lowlevel_ops in fuse_lowlevel.h for
-  // details.
-  static void FuseDestroy(void* userdata);
-  static void FuseLookup(fuse_req_t request,
-                         fuse_ino_t parent_inode,
-                         const char* name);
-  static void FuseGetAttr(fuse_req_t request,
-                          fuse_ino_t inode,
-                          fuse_file_info* info);
-  void Destroy();
-  void Lookup(fuse_req_t request, fuse_ino_t parent_inode, const char* name);
-  void GetAttr(fuse_req_t request, fuse_ino_t inode, fuse_file_info* info);
+  class Impl;
 
   // Callback for channel FD read watcher.
   void OnChannelReadable();
@@ -50,7 +39,7 @@ class FuseSession {
   // |stop_callback_| on the first call.
   void RequestStop();
 
-  std::unique_ptr<Filesystem> fs_;
+  std::unique_ptr<Impl> impl_;
   fuse_chan* const chan_;
   fuse_session* session_ = nullptr;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> read_watcher_;
