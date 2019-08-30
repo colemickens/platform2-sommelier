@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_MOJO_SERVICE_H_
 
 #include <memory>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/macros.h>
@@ -20,16 +21,16 @@ namespace diagnostics {
 class CrosHealthdMojoService final
     : public chromeos::cros_healthd::mojom::CrosHealthdService {
  public:
+  using ProbeCategoryEnum = chromeos::cros_healthd::mojom::ProbeCategoryEnum;
+
   // |mojo_pipe_handle| - Pipe to bind this instance to.
   explicit CrosHealthdMojoService(
       mojo::ScopedMessagePipeHandle mojo_pipe_handle);
   ~CrosHealthdMojoService() override;
 
   // chromeos::cros_healthd::mojom::CrosHealthdService overrides:
-  void ProbeBatteryInfo(const ProbeBatteryInfoCallback& callback) override;
-  void ProbeNonRemovableBlockDeviceInfo(
-      const ProbeNonRemovableBlockDeviceInfoCallback& callback) override;
-  void ProbeCachedVpdInfo(const ProbeCachedVpdInfoCallback& callback) override;
+  void ProbeTelemetryInfo(const std::vector<ProbeCategoryEnum>& categories,
+                          const ProbeTelemetryInfoCallback& callback) override;
 
   // Set the function that will be called if the binding encounters a connection
   // error.

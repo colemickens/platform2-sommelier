@@ -10,6 +10,7 @@
 
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/optional.h>
 #include <dbus/cros_healthd/dbus-constants.h>
 #include <mojo/edk/embedder/embedder.h>
 
@@ -32,21 +33,32 @@ void CrosHealthdMojoService::set_connection_error_handler(
   self_binding_.set_connection_error_handler(error_handler);
 }
 
-void CrosHealthdMojoService::ProbeBatteryInfo(
-    const ProbeBatteryInfoCallback& callback) {
-  callback.Run(FetchBatteryInfo());
-}
+void CrosHealthdMojoService::ProbeTelemetryInfo(
+    const std::vector<ProbeCategoryEnum>& categories,
+    const ProbeTelemetryInfoCallback& callback) {
+  chromeos::cros_healthd::mojom::TelemetryInfo telemetry_info;
+  for (const auto category : categories) {
+    switch (category) {
+      case ProbeCategoryEnum::kBattery: {
+        auto batteries = FetchBatteryInfo();
+        telemetry_info.battery_info.Swap(&batteries[0]);
+        break;
+      }
+      case ProbeCategoryEnum::kCachedVpdData: {
+        auto vpd_info = disk_utils::FetchCachedVpdInfo(base::FilePath("/"));
+        telemetry_info.vpd_info.Swap(&vpd_info);
+        break;
+      }
+      case ProbeCategoryEnum::kNonRemovableBlockDevices: {
+        telemetry_info.block_device_info = base::Optional<std::vector<
+            chromeos::cros_healthd::mojom::NonRemovableBlockDeviceInfoPtr>>(
+            disk_utils::FetchNonRemovableBlockDevicesInfo(base::FilePath("/")));
+        break;
+      }
+    }
+  }
 
-void CrosHealthdMojoService::ProbeNonRemovableBlockDeviceInfo(
-    const ProbeNonRemovableBlockDeviceInfoCallback& callback) {
-  // Gather various info on non-removeable block devices.
-  callback.Run(
-      disk_utils::FetchNonRemovableBlockDevicesInfo(base::FilePath("/")));
-}
-
-void CrosHealthdMojoService::ProbeCachedVpdInfo(
-    const ProbeCachedVpdInfoCallback& callback) {
-  callback.Run(disk_utils::FetchCachedVpdInfo(base::FilePath("/")));
+  callback.Run(telemetry_info.Clone());
 }
 
 }  // namespace diagnostics
