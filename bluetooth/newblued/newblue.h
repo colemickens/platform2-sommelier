@@ -124,7 +124,7 @@ enum class AttError : uint8_t {
 enum class GattClientOperationType {
   SERVICES_ENUM,
   PRIMARY_SERVICE_TRAV,
-  READ_VALUE,
+  READ_LONG_VALUE,
 };
 
 // These are based on GATT_CLI_AUTH_REQ_* defined in newblue/gatt.h.
@@ -196,13 +196,12 @@ class Newblue {
                           UniqueId transaction_id,
                           std::unique_ptr<GattService> service)>;
 
-  // If |status| is GattClientOperationStatus::OK, |error| should be
-  // AttError::NONE. Otherwise the rest of the AttError are given in |error|.
-  using GattClientReadValueCallback =
+  // Empty |value| indicates error. If |value| is empty, |error| should be
+  // any AttError code other than AttError::NONE.
+  using GattClientReadLongValueCallback =
       base::Callback<void(gatt_client_conn_t conn,
                           UniqueId transaction_id,
-                          uint16_t handle,
-                          GattClientOperationStatus status,
+                          uint16_t value_handle,
                           AttError error,
                           const std::vector<uint8_t>& value)>;
 
@@ -211,7 +210,7 @@ class Newblue {
     GattClientOperationType type;
     GattClientServicesEnumCallback services_enum_callback;
     GattClientPrimaryServiceTravCallback service_trav_callback;
-    GattClientReadValueCallback read_value_callback;
+    GattClientReadLongValueCallback read_long_value_callback;
   };
 
   explicit Newblue(std::unique_ptr<LibNewblue> libnewblue);
@@ -288,14 +287,13 @@ class Newblue {
       UniqueId transaction_id,
       GattClientPrimaryServiceTravCallback callback);
 
-  // Reads the value of a GATT characteristic or a GATT descriptor.
-  GattClientOperationStatus GattClientReadValue(
+  // Reads the complete value of a GATT characteristic or a GATT descriptor.
+  GattClientOperationStatus GattClientReadLongValue(
       gatt_client_conn_t conn_id,
       uint16_t value_handle,
       GattClientOperationAuthentication authentication,
-      uint16_t offset,
       UniqueId transaction_id,
-      GattClientReadValueCallback callback);
+      GattClientReadLongValueCallback callback);
 
  private:
   // Posts task to the thread which created this Newblue object.
@@ -361,20 +359,18 @@ class Newblue {
       uniq_t transaction_id,
       std::unique_ptr<GattService> service);
 
-  static void GattClientReadCallbackThunk(void* userData,
-                                          gatt_client_conn_t conn,
-                                          uniq_t transaction_id,
-                                          uint16_t value_handle,
-                                          uint8_t status,
-                                          uint8_t error,
-                                          sg data);
-  // Called when the read result is received.
-  void GattClientReadCallback(gatt_client_conn_t conn,
-                              uniq_t transaction_id,
-                              uint16_t value_handle,
-                              uint8_t status,
-                              uint8_t error,
-                              std::vector<uint8_t> value);
+  static void GattClientReadLongCallbackThunk(void* user_data,
+                                              gatt_client_conn_t conn,
+                                              uniq_t transaction_id,
+                                              uint16_t handle,
+                                              uint8_t error,
+                                              sg data);
+  // Called when the result of reading long value is received.
+  void GattClientReadLongCallback(gatt_client_conn_t conn,
+                                  uniq_t transaction_id,
+                                  uint16_t handle,
+                                  AttError error,
+                                  std::vector<uint8_t> value);
 
   static void PasskeyDisplayObserverCallbackThunk(
       void* data,

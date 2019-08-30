@@ -324,13 +324,12 @@ GattClientOperationStatus Newblue::GattClientTravPrimaryService(
           &Newblue::GattClientTravPrimaryServiceCallbackThunk));
 }
 
-GattClientOperationStatus Newblue::GattClientReadValue(
+GattClientOperationStatus Newblue::GattClientReadLongValue(
     gatt_client_conn_t conn_id,
     uint16_t value_handle,
     GattClientOperationAuthentication authentication,
-    uint16_t offset,
     UniqueId transaction_id,
-    GattClientReadValueCallback callback) {
+    GattClientReadLongValueCallback callback) {
   if (conn_id == kInvalidGattConnectionId) {
     LOG(WARNING) << "Invalid GATT conn ID " << conn_id
                  << " provided, ignoring rquest";
@@ -348,15 +347,15 @@ GattClientOperationStatus Newblue::GattClientReadValue(
     return GattClientOperationStatus::ERR;
   }
 
-  GattClientOperation op = {.type = GattClientOperationType::READ_VALUE,
-                            .read_value_callback = std::move(callback)};
+  GattClientOperation op = {.type = GattClientOperationType::READ_LONG_VALUE,
+                            .read_long_value_callback = std::move(callback)};
   gatt_client_ops_.emplace(transaction_id, std::move(op));
 
-  auto status =
-      static_cast<GattClientOperationStatus>(libnewblue_->GattClientRead(
+  auto status = static_cast<GattClientOperationStatus>(
+      libnewblue_->GattClientUtilLongRead(
           this, conn_id, value_handle, static_cast<uint8_t>(authentication),
-          offset, static_cast<uniq_t>(transaction_id),
-          &Newblue::GattClientReadCallbackThunk));
+          static_cast<uniq_t>(transaction_id),
+          &Newblue::GattClientReadLongCallbackThunk));
   if (status != GattClientOperationStatus::OK)
     gatt_client_ops_.erase(transaction_id);
 
@@ -542,13 +541,12 @@ void Newblue::GattClientTravPrimaryServiceCallback(
   gatt_client_ops_.erase(tran_id);
 }
 
-void Newblue::GattClientReadCallbackThunk(void* user_data,
-                                          gatt_client_conn_t conn_id,
-                                          uniq_t transaction_id,
-                                          uint16_t value_handle,
-                                          uint8_t status,
-                                          uint8_t error,
-                                          sg data) {
+void Newblue::GattClientReadLongCallbackThunk(void* user_data,
+                                              gatt_client_conn_t conn_id,
+                                              uniq_t transaction_id,
+                                              uint16_t handle,
+                                              uint8_t error,
+                                              sg data) {
   Newblue* newblue = static_cast<Newblue*>(user_data);
 
   CHECK(newblue != nullptr);
@@ -556,28 +554,25 @@ void Newblue::GattClientReadCallbackThunk(void* user_data,
   std::vector<uint8_t> value = GetBytesFromSg(data);
   sgFree(data);
 
-  newblue->PostTask(
-      FROM_HERE,
-      base::Bind(&Newblue::GattClientReadCallback, newblue->GetWeakPtr(),
-                 conn_id, transaction_id, value_handle, status, error, value));
+  newblue->PostTask(FROM_HERE,
+                    base::Bind(&Newblue::GattClientReadLongCallback,
+                               newblue->GetWeakPtr(), conn_id, transaction_id,
+                               handle, static_cast<AttError>(error), value));
 }
 
-void Newblue::GattClientReadCallback(gatt_client_conn_t conn_id,
-                                     uniq_t transaction_id,
-                                     uint16_t value_handle,
-                                     uint8_t status,
-                                     uint8_t error,
-                                     std::vector<uint8_t> value) {
+void Newblue::GattClientReadLongCallback(gatt_client_conn_t conn_id,
+                                         uniq_t transaction_id,
+                                         uint16_t handle,
+                                         AttError error,
+                                         std::vector<uint8_t> value) {
   UniqueId tran_id = static_cast<UniqueId>(transaction_id);
   auto op = gatt_client_ops_.find(tran_id);
 
   CHECK(op != gatt_client_ops_.end());
-  CHECK(op->second.type == GattClientOperationType::READ_VALUE);
+  CHECK(op->second.type == GattClientOperationType::READ_LONG_VALUE);
 
-  op->second.read_value_callback.Run(
-      conn_id, tran_id, value_handle,
-      static_cast<GattClientOperationStatus>(status),
-      static_cast<AttError>(error), value);
+  op->second.read_long_value_callback.Run(conn_id, tran_id, handle, error,
+                                          value);
   gatt_client_ops_.erase(tran_id);
 }
 

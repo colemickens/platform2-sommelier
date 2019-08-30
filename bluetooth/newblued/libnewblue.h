@@ -55,15 +55,14 @@ class LibNewblue {
                              const struct uuid*,
                              uniq_t,
                              gattCliUtilSvcTraversedCbk));
-  LIBNEWBLUE_METHOD7(GattClientRead,
-                     gattClientRead,
+  LIBNEWBLUE_METHOD6(GattClientUtilLongRead,
+                     gattClientUtilLongRead,
                      uint8_t(void*,
                              gatt_client_conn_t,
                              uint16_t,
                              uint8_t,
-                             uint16_t,
                              uniq_t,
-                             gattCliReadCbk));
+                             gattCliUtilLongReadCompletedCbk));
 
   // gatt-builtin.h
   LIBNEWBLUE_METHOD0(GattBuiltinInit, gattBuiltinInit, bool());

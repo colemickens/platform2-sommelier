@@ -90,20 +90,20 @@ class Gatt final : public DeviceInterfaceHandler::DeviceObserver {
   void AddGattObserver(GattObserver* observer);
   void RemoveGattObserver(GattObserver* observer);
 
-  // Reads the value associated with a GATT client characteristic. |offset|
-  // indicates the starting point of reading, e.g. given |offset| 2, the return
-  // of reading from value {0x00, 0x01, 0x02, 0x03} will be {0x02, 0x03}. This
-  // returns a valid UniqueId to indicate that the read is ongoing.
+  // Reads the complete value associated with a GATT client characteristic
+  // starting from |offset|, e.g. given |offset| 2, the return of reading from
+  // value {0x00, 0x01, 0x02, 0x03} will be {0x02, 0x03}. This returns a valid
+  // UniqueId to indicate that the read is ongoing.
   UniqueId ReadCharacteristicValue(const std::string& device_address,
                                    uint16_t service_handle,
                                    uint16_t char_handle,
                                    uint16_t offset,
                                    ReadCharacteristicValueCallback callback);
 
-  // Reads the value associated with a GATT client descriptor. |offset|
-  // indicates the starting point of reading, e.g. given |offset| 2, the return
-  // of reading from value {0x00, 0x01, 0x02, 0x03} will be {0x02, 0x03}. This
-  // returns a valid UniqueId to indicate that the read is ongoing.
+  // Reads the complete value associated with a GATT client descriptor start
+  // from |offset| , e.g. given |offset| 2, the return of reading from value
+  // {0x00, 0x01, 0x02, 0x03} will be {0x02, 0x03}. This returns a valid
+  // UniqueId to indicate that the read is ongoing.
   UniqueId ReadDescriptorValue(const std::string& device_address,
                                uint16_t service_handle,
                                uint16_t char_handle,
@@ -118,6 +118,23 @@ class Gatt final : public DeviceInterfaceHandler::DeviceObserver {
                           gatt_client_conn_t conn_id) override;
 
  private:
+  // Represents the intermediate state which is used to perform sub-procedure.
+  struct ClientOperationState {
+    ClientOperationState(uint16_t s_handle,
+                         uint16_t c_handle,
+                         uint16_t d_handle,
+                         uint16_t os)
+        : service_handle(s_handle),
+          char_handle(c_handle),
+          desc_handle(d_handle),
+          offset(os) {}
+    uint16_t service_handle;
+    uint16_t char_handle;
+    uint16_t desc_handle;
+    uint16_t offset;
+    std::vector<uint8_t> value;
+  };
+
   // Represents the mapping between a request and an GATT operation. Extra
   // information are kept here to perform async callback.
   struct ClientOperation {
@@ -140,6 +157,12 @@ class Gatt final : public DeviceInterfaceHandler::DeviceObserver {
                                              uint16_t service_handle,
                                              uint16_t char_handle) const;
 
+  // Returns the target descriptor if it exists, nullptr otherwise.
+  GattDescriptor* FindGattDescriptor(const std::string& device_address,
+                                     uint16_t service_handle,
+                                     uint16_t char_handle,
+                                     uint16_t desc_handle) const;
+
   void OnGattClientEnumServices(bool finished,
                                 gatt_client_conn_t conn_id,
                                 UniqueId transaction_id,
@@ -154,40 +177,34 @@ class Gatt final : public DeviceInterfaceHandler::DeviceObserver {
                                       std::unique_ptr<GattService> service);
 
   // Called when GATT client read value operation is done. Note that
-  // |service_handle|, |char_handle| and |desc_handle| are attached to the
-  // callback in advance as extra information when the callback is invoked.
-  void OnGattClientReadValue(uint16_t service_handle,
-                             uint16_t char_handle,
-                             uint16_t desc_handle,
-                             gatt_client_conn_t conn_id,
-                             UniqueId transaction_id,
-                             uint16_t value_handle,
-                             GattClientOperationStatus status,
-                             AttError error,
-                             const std::vector<uint8_t>& value);
+  // |state| is attached to the callback in advance as extra information
+  // such as attribute handles.
+  void OnGattClientReadLongValue(std::unique_ptr<ClientOperationState> state,
+                                 gatt_client_conn_t conn_id,
+                                 UniqueId transaction_id,
+                                 uint16_t value_handle,
+                                 AttError error,
+                                 const std::vector<uint8_t>& value);
 
-  // Called by OnGattClientReadValue() to report the result of reading
+  // Called by OnGattClientReadLongValue() to report the result of reading
   // characteristic value.
-  void OnGattClientReadCharacteristicValue(UniqueId transaction_id,
-                                           const std::string& device_address,
-                                           uint16_t service_handle,
-                                           uint16_t char_handle,
-                                           uint16_t char_value_handle,
-                                           GattClientOperationStatus status,
-                                           AttError error,
-                                           const std::vector<uint8_t>& value);
+  void OnGattClientReadLongCharacteristicValue(
+      std::unique_ptr<ClientOperationState> state,
+      const std::string& device_address,
+      UniqueId transaction_id,
+      uint16_t value_handle,
+      AttError error,
+      const std::vector<uint8_t>& value);
 
-  // Called by OnGattClientReadValue() to report the result of reading
+  // Called by OnGattClientReadLongValue() to report the result of reading
   // descriptor value.
-  void OnGattClientReadDescriptorValue(UniqueId transaction_id,
-                                       const std::string& device_address,
-                                       uint16_t service_handle,
-                                       uint16_t char_handle,
-                                       uint16_t desc_handle,
-                                       uint16_t value_handle,
-                                       GattClientOperationStatus status,
-                                       AttError error,
-                                       const std::vector<uint8_t>& value);
+  void OnGattClientReadLongDescriptorValue(
+      std::unique_ptr<ClientOperationState> state,
+      const std::string& device_address,
+      UniqueId transaction_id,
+      uint16_t value_handle,
+      AttError error,
+      const std::vector<uint8_t>& value);
 
   Newblue* newblue_;
 
