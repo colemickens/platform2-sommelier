@@ -60,6 +60,32 @@
     return c_name(a1, a2, a3, a4, a5);                                    \
   }
 
+#define LIBNEWBLUE_METHOD6(cpp_name, c_name, func_type)                     \
+  virtual LIBNEWBLUE_RESULT_(func_type) cpp_name(                           \
+      LIBNEWBLUE_ARG_(1, func_type) a1, LIBNEWBLUE_ARG_(2, func_type) a2,   \
+      LIBNEWBLUE_ARG_(3, func_type) a3, LIBNEWBLUE_ARG_(4, func_type) a4,   \
+      LIBNEWBLUE_ARG_(5, func_type) a5, LIBNEWBLUE_ARG_(6, func_type) a6) { \
+    return c_name(a1, a2, a3, a4, a5, a6);                                  \
+  }
+
+#define LIBNEWBLUE_METHOD7(cpp_name, c_name, func_type)                   \
+  virtual LIBNEWBLUE_RESULT_(func_type) cpp_name(                         \
+      LIBNEWBLUE_ARG_(1, func_type) a1, LIBNEWBLUE_ARG_(2, func_type) a2, \
+      LIBNEWBLUE_ARG_(3, func_type) a3, LIBNEWBLUE_ARG_(4, func_type) a4, \
+      LIBNEWBLUE_ARG_(5, func_type) a5, LIBNEWBLUE_ARG_(6, func_type) a6, \
+      LIBNEWBLUE_ARG_(7, func_type) a7) {                                 \
+    return c_name(a1, a2, a3, a4, a5, a6, a7);                            \
+  }
+
+#define LIBNEWBLUE_METHOD8(cpp_name, c_name, func_type)                     \
+  virtual LIBNEWBLUE_RESULT_(func_type) cpp_name(                           \
+      LIBNEWBLUE_ARG_(1, func_type) a1, LIBNEWBLUE_ARG_(2, func_type) a2,   \
+      LIBNEWBLUE_ARG_(3, func_type) a3, LIBNEWBLUE_ARG_(4, func_type) a4,   \
+      LIBNEWBLUE_ARG_(5, func_type) a5, LIBNEWBLUE_ARG_(6, func_type) a6,   \
+      LIBNEWBLUE_ARG_(7, func_type) a7, LIBNEWBLUE_ARG_(8, func_type) a8) { \
+    return c_name(a1, a2, a3, a4, a5, a6, a7, a8);                          \
+  }
+
 namespace bluetooth {
 
 template <typename F>
@@ -100,6 +126,45 @@ template <typename R,
 struct LibNewblueFunction<R(A1, A2, A3, A4, A5)>
     : LibNewblueFunction<R(A1, A2, A3, A4)> {
   using Argument5 = A5;
+};
+
+template <typename R,
+          typename A1,
+          typename A2,
+          typename A3,
+          typename A4,
+          typename A5,
+          typename A6>
+struct LibNewblueFunction<R(A1, A2, A3, A4, A5, A6)>
+    : LibNewblueFunction<R(A1, A2, A3, A4, A5)> {
+  using Argument6 = A6;
+};
+
+template <typename R,
+          typename A1,
+          typename A2,
+          typename A3,
+          typename A4,
+          typename A5,
+          typename A6,
+          typename A7>
+struct LibNewblueFunction<R(A1, A2, A3, A4, A5, A6, A7)>
+    : LibNewblueFunction<R(A1, A2, A3, A4, A5, A6)> {
+  using Argument7 = A7;
+};
+
+template <typename R,
+          typename A1,
+          typename A2,
+          typename A3,
+          typename A4,
+          typename A5,
+          typename A6,
+          typename A7,
+          typename A8>
+struct LibNewblueFunction<R(A1, A2, A3, A4, A5, A6, A7, A8)>
+    : LibNewblueFunction<R(A1, A2, A3, A4, A5, A6, A7)> {
+  using Argument8 = A8;
 };
 
 }  // namespace bluetooth
