@@ -6,9 +6,13 @@ genfscon proc / u:object_r:proc:s0
 genfscon proc /cmdline u:object_r:proc_cmdline:s0
 genfscon proc /cpuinfo u:object_r:proc_cpuinfo:s0
 genfscon proc /filesystems u:object_r:proc_filesystems:s0
+genfscon proc /interrupts u:object_r:proc_interrupts:s0
 genfscon proc /iomem u:object_r:proc_iomem:s0
 genfscon proc /kmsg u:object_r:proc_kmsg:s0
+genfscon proc /loadavg u:object_r:proc_loadavg:s0
 genfscon proc /meminfo u:object_r:proc_meminfo:s0
+genfscon proc /misc u:object_r:proc_misc:s0
+genfscon proc /modules u:object_r:proc_modules:s0
 genfscon proc /net u:object_r:proc_net:s0
 genfscon proc /net/xt_qtaguid/ctrl u:object_r:qtaguid_proc:s0
 genfscon proc /stat u:object_r:proc_stat:s0
@@ -44,10 +48,14 @@ genfscon proc /sys/vm/mmap_rnd_bits u:object_r:proc_security:s0
 genfscon proc /sys/vm/mmap_rnd_compat_bits u:object_r:proc_security:s0
 genfscon proc /sys/vm/page-cluster u:object_r:proc_page_cluster:s0
 genfscon proc /sysrq-trigger u:object_r:proc_sysrq:s0
+genfscon proc /timer_list u:object_r:proc_timer:s0
+genfscon proc /timer_stats u:object_r:proc_timer:s0
 genfscon proc /uid_cputime/remove_uid_range u:object_r:proc_uid_cputime_removeuid:s0
 genfscon proc /uid_cputime/show_uid_stat u:object_r:proc_uid_cputime_showstat:s0
 genfscon proc /uptime u:object_r:proc_uptime:s0
+genfscon proc /vmallocinfo u:object_r:proc_vmallocinfo:s0
 genfscon proc /vmstat u:object_r:proc_vmstat:s0
+genfscon proc /zoneinfo u:object_r:proc_zoneinfo:s0
 
 # selinuxfs booleans can be individually labeled.
 genfscon selinuxfs / u:object_r:selinuxfs:s0
