@@ -11,7 +11,10 @@ group("all") {
     ":u2fd",
   ]
   if (use.test) {
-    deps += [ ":g2f_client_test" ]
+    deps += [
+      ":g2f_client_test",
+      ":u2fd_test_runner",
+    ]
   }
 }
 
@@ -38,15 +41,15 @@ pkg_config("u2fd_config") {
   ]
 }
 
-executable("u2fd") {
+static_library("libu2fd") {
   configs += [
     ":target_defaults",
     ":u2fd_config",
   ]
   sources = [
-    "main.cc",
     "tpm_vendor_cmd.cc",
     "u2f_adpu.cc",
+    "u2f_msg_handler.cc",
     "u2fhid.cc",
     "uhid_device.cc",
     "user_state.cc",
@@ -56,6 +59,17 @@ executable("u2fd") {
   deps = [
     ":user_state_proto",
     "//common-mk/external_dependencies:policy-protos",
+  ]
+}
+
+executable("u2fd") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "main.cc",
+  ]
+  libs = [ "policy-${libbase_ver}" ]
+  deps = [
+    ":libu2fd",
   ]
 }
 
@@ -101,6 +115,29 @@ if (use.test) {
       "g2f_tools/g2f_client_test.cc",
     ]
     deps = [
+      "//common-mk/testrunner",
+    ]
+  }
+
+  pkg_config("u2fd_test_config") {
+    pkg_deps = [
+      "libbrillo-test-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+
+  executable("u2fd_test_runner") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":u2fd_config",
+      ":u2fd_test_config",
+    ]
+    sources = [
+      "u2f_msg_handler_test.cc",
+    ]
+    deps = [
+      ":libu2fd",
       "//common-mk/testrunner",
     ]
   }
