@@ -20,6 +20,10 @@ namespace {
 
 const char kBiometricsManagerName[] = "BiometricsManager";
 
+const base::FilePath kFilePath("TestFile");
+
+constexpr int kInvalidRecordFormatVersion = -1;
+
 const char kRecordId1[] = "00000000_0000_0000_0000_000000000001";
 const char kUserId1[] = "0000000000000000000000000000000000000001";
 const char kLabel1[] = "record1";
@@ -104,6 +108,16 @@ class BiodStorageBaseTest : public ::testing::Test {
 
   ~BiodStorageBaseTest() override {
     EXPECT_TRUE(base::DeleteFile(temp_dir_.GetPath(), true));
+  }
+
+  base::DictionaryValue CreateRecordDictionary(
+      const std::vector<uint8_t>& validation_val) {
+    base::DictionaryValue record_dictionary;
+    std::string validation_value_str(validation_val.begin(),
+                                     validation_val.end());
+    base::Base64Encode(validation_value_str, &validation_value_str);
+    record_dictionary.SetString("match_validation_value", validation_value_str);
+    return record_dictionary;
   }
 
  protected:
@@ -209,6 +223,31 @@ TEST_F(BiodStorageBaseTest, TestEqualOperator) {
 
   EXPECT_NE(TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1),
             TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal2, kData1));
+}
+
+TEST_F(BiodStorageBaseTest, TestReadValidationValueFromRecord) {
+  auto record_dictionary = CreateRecordDictionary(kValidationVal1);
+  auto ret = biod_storage_->ReadValidationValueFromRecord(
+      kRecordFormatVersion, &record_dictionary, kFilePath);
+  EXPECT_TRUE(ret != nullptr);
+  EXPECT_EQ(*ret, kValidationVal1);
+}
+
+TEST_F(BiodStorageBaseTest, TestReadValidationValueFromRecordOldVersion) {
+  auto record_dictionary = CreateRecordDictionary(kValidationVal1);
+  std::vector<uint8_t> empty;
+  auto ret = biod_storage_->ReadValidationValueFromRecord(
+      kRecordFormatVersionNoValidationValue, &record_dictionary, kFilePath);
+  EXPECT_TRUE(ret != nullptr);
+  EXPECT_EQ(*ret, empty);
+}
+
+TEST_F(BiodStorageBaseTest, TestReadValidationValueFromRecordInvalidVersion) {
+  auto record_dictionary = CreateRecordDictionary(kValidationVal1);
+  std::vector<uint8_t> empty;
+  auto ret = biod_storage_->ReadValidationValueFromRecord(
+      kInvalidRecordFormatVersion, &record_dictionary, kFilePath);
+  EXPECT_EQ(ret, nullptr);
 }
 
 INSTANTIATE_TEST_CASE_P(RecordsSupportPositiveMatchSecret,
