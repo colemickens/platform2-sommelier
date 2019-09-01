@@ -12,7 +12,7 @@ import os
 import subprocess
 import unittest
 
-CLI_FILE = 'python -m cros_config_host.cros_config_host'
+CLI_FILE = 'python2 -m cros_config_host.cros_config_host'
 YAML_FILE = '../libcros_config/test.yaml'
 
 

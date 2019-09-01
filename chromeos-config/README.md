@@ -260,7 +260,7 @@ do whatever makes sense in the YAML (from a sharing perspective) as long as it
 generates compliant JSON that passes the schema validation.
 
 The schema documentation is auto-generated (and put into this README.md file)
-via: python -m cros_config_host.generate_schema_doc -o README.md
+via: python2 -m cros_config_host.generate_schema_doc -o README.md
 
 The schema definition is below:
 
@@ -502,7 +502,7 @@ To introduce a new property, first add its definition to the schema:
 
 Then update the README.md automatically via (unit tests will check this):
 
-*   python -m cros_config_host.generate_schema_doc -o README.md
+*   python2 -m cros_config_host.generate_schema_doc -o README.md
 
 To install the updated schema, run:
 

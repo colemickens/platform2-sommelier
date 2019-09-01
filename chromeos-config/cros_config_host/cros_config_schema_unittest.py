@@ -461,7 +461,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
         json_output,
         gen_c_output_dir=self.tempdir)
     regen_cmd = ('To regenerate the expected output, run:\n'
-                 '\tpython -m cros_config_host.cros_config_schema '
+                 '\tpython2 -m cros_config_host.cros_config_schema '
                  '-c libcros_config/test.yaml '
                  '-o libcros_config/test_build.json '
                  '-g libcros_config')
@@ -482,7 +482,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
         filter_build_details=True)
 
     regen_cmd = ('To regenerate the expected output, run:\n'
-                 '\tpython -m cros_config_host.cros_config_schema '
+                 '\tpython2 -m cros_config_host.cros_config_schema '
                  '-f True '
                  '-c libcros_config/test.yaml '
                  '-o libcros_config/test.json')
@@ -500,7 +500,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
         filter_build_details=True,
         gen_c_output_dir=self.tempdir)
     regen_cmd = ('To regenerate the expected output, run:\n'
-                 '\tpython -m cros_config_host.cros_config_schema '
+                 '\tpython2 -m cros_config_host.cros_config_schema '
                  '-f True '
                  '-c libcros_config/test_arm.yaml '
                  '-o libcros_config/test_arm.json '
@@ -520,7 +520,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
         os.path.join(this_dir, '../libcros_config/test_import.yaml'),
         output)
     regen_cmd = ('To regenerate the expected output, run:\n'
-                 '\tpython -m cros_config_host.cros_config_schema '
+                 '\tpython2 -m cros_config_host.cros_config_schema '
                  '-c libcros_config/test_import.yaml '
                  '-o libcros_config/test_import.json')
     expected_file = os.path.join(this_dir, '../libcros_config/test_import.json')
@@ -536,7 +536,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
         configs=[os.path.join(base_path, 'test_merge_base.yaml'),
                  os.path.join(base_path, 'test_merge_overlay.yaml')])
     regen_cmd = ('To regenerate the expected output, run:\n'
-                 '\tpython -m cros_config_host.cros_config_schema '
+                 '\tpython2 -m cros_config_host.cros_config_schema '
                  '-o libcros_config/test_merge.json '
                  '-m libcros_config/test_merge_base.yaml '
                  'libcros_config/test_merge_overlay.yaml')
