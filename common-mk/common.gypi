@@ -105,6 +105,9 @@
       '-Wall',
       '-Wno-psabi',
       '-Wunused',
+       # We use C99 array designators in C++ code.  Our compilers support this
+       # extension since C++ has no equivalent yet (as of C++20).
+      '-Wno-c99-designator',
       '-Wno-unused-parameter',
       '-Wunreachable-code',
       '-ggdb3',
