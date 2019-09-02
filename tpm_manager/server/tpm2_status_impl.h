@@ -24,9 +24,10 @@
 
 #include <base/logging.h>
 #include <base/macros.h>
-#include <tpm_manager/server/dbus_service.h>
 #include <trunks/tpm_state.h>
 #include <trunks/trunks_factory.h>
+
+#include "tpm_manager/common/typedefs.h"
 
 namespace tpm_manager {
 

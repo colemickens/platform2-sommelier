@@ -28,6 +28,7 @@
 
 #include "tpm_manager/common/tpm_nvram_interface.h"
 #include "tpm_manager/common/tpm_ownership_interface.h"
+#include "tpm_manager/common/typedefs.h"
 #include "tpm_manager/server/local_data_store.h"
 
 namespace tpm_manager {
@@ -36,7 +37,6 @@ using brillo::dbus_utils::DBusMethodResponse;
 using brillo::dbus_utils::DBusObject;
 using brillo::dbus_utils::DBusSignal;
 
-using OwnershipTakenCallBack = base::Closure;
 
 // Handles D-Bus communication with the TpmManager daemon.
 class DBusService : public brillo::DBusServiceDaemon {

@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include <base/at_exit.h>
+#include <base/bind.h>
 #include <base/run_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

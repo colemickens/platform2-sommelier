@@ -25,7 +25,7 @@
 #include <base/macros.h>
 #include <trunks/trunks_factory.h>
 
-#include "tpm_manager/server/dbus_service.h"
+#include "tpm_manager/common/typedefs.h"
 #include "tpm_manager/server/local_data_store.h"
 #include "tpm_manager/server/openssl_crypto_util.h"
 #include "tpm_manager/server/tpm_status.h"

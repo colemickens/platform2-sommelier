@@ -18,11 +18,13 @@
 
 #include <memory>
 
+#include <base/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <tpm_manager/server/dbus_service.h>
 #include <trunks/mock_tpm_state.h>
 #include <trunks/trunks_factory_for_test.h>
+
+#include "tpm_manager/common/typedefs.h"
 
 using testing::NiceMock;
 using testing::Return;

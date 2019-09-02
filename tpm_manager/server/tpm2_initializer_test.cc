@@ -18,6 +18,7 @@
 
 #include <memory>
 
+#include <base/bind.h>
 #include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -25,7 +26,7 @@
 #include <trunks/mock_tpm_utility.h>
 #include <trunks/trunks_factory_for_test.h>
 
-#include "tpm_manager/server/dbus_service.h"
+#include "tpm_manager/common/typedefs.h"
 #include "tpm_manager/server/mock_local_data_store.h"
 #include "tpm_manager/server/mock_openssl_crypto_util.h"
 #include "tpm_manager/server/mock_tpm_status.h"
