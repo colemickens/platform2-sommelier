@@ -14,6 +14,7 @@
 // limitations under the License.
 //
 
+#include <utility>
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
@@ -51,19 +52,15 @@ int main(int argc, char* argv[]) {
   tpm_manager::LocalDataStoreImpl local_data_store;
   bool perform_preinit = !base::PathExists(base::FilePath(kNoPreinitFlagFile));
 
-  tpm_manager::TpmManagerService tpm_manager_service(
-      cl->HasSwitch(kWaitForOwnershipTriggerSwitch),
-      perform_preinit,
-      &local_data_store);
-  tpm_manager::DBusService ipc_service(&tpm_manager_service,
-                                       &tpm_manager_service,
+  std::unique_ptr<tpm_manager::TpmManagerService> tpm_manager_service{
+      new tpm_manager::TpmManagerService(
+          cl->HasSwitch(kWaitForOwnershipTriggerSwitch), perform_preinit,
+          &local_data_store)};
+
+  // From now on, the ownership of |tpm_manager_service| is transferred from
+  // main function to |ipc_service|.
+  tpm_manager::DBusService ipc_service(std::move(tpm_manager_service),
                                        &local_data_store);
-
-  tpm_manager_service.SetOwnershipTakenCallback(
-      base::Bind(&tpm_manager::DBusService::NotifyOwnershipIsTaken,
-                 base::Unretained(&ipc_service)));
-
-  CHECK(tpm_manager_service.Initialize()) << "Failed to initialize service.";
 
   LOG(INFO) << "Starting TPM Manager...";
   return ipc_service.Run();
