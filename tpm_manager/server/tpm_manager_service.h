@@ -92,7 +92,7 @@ class TpmManagerService : public TpmNvramInterface,
                     TpmInitializer* tpm_initializer,
                     TpmNvram* tpm_nvram);
 
-  ~TpmManagerService() override = default;
+  ~TpmManagerService() override;
 
   // Performs initialization tasks. This method must be called before calling
   // any other method in this class. Returns true on success.

@@ -73,6 +73,10 @@ TpmManagerService::TpmManagerService(bool wait_for_ownership,
       wait_for_ownership_(wait_for_ownership),
       perform_preinit_(perform_preinit) {}
 
+TpmManagerService::~TpmManagerService() {
+  worker_thread_->Stop();
+}
+
 bool TpmManagerService::Initialize() {
   worker_thread_.reset(new base::Thread("TpmManager Service Worker"));
   worker_thread_->StartWithOptions(
