@@ -27,6 +27,7 @@
 #include <chromeos/constants/cryptohome.h>
 #include <dbus/bus.h>
 #include <dbus/dbus.h>
+#include <glib-unix.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -589,6 +590,11 @@ bool Service::Initialize() {
                                   &gobject::dbus_glib_cryptohome_object_info);
   if (!Reset()) {
     result = false;
+  }
+
+  // Registers the signal callbacks so the loop can exit gracefully.
+  for (int sig : {SIGTERM, SIGINT, SIGHUP}) {
+    g_unix_signal_add(sig, ShutdownService, this);
   }
 
   // This ownership taken signal registration should be done before any
@@ -3882,6 +3888,14 @@ void Service::SendAsyncIdInfoToUma(int async_id, base::Time finished_time) {
   const RequestTrackedInfo& info = it->second;
   ReportAsyncDbusRequestTotalTime(info.name, finished_time - info.start_time);
   async_id_tracked_info_.erase(it);
+}
+
+gboolean Service::ShutdownService(gpointer user_data) {
+  Service* service = reinterpret_cast<Service*>(user_data);
+  LOG(INFO) << "Service shutting down...";
+  service->Shutdown();
+  // Returns false because we only need to handle it once.
+  return false;
 }
 
 }  // namespace cryptohome

@@ -1009,6 +1009,9 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
   // An atomic incrementing sequence for setting asynchronous call ids.
   base::AtomicSequenceNumber sequence_holder_;
 
+  // The signal callback to make GMainLoop quit gracefully.
+  static gboolean ShutdownService(gpointer user_data);
+
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
 
