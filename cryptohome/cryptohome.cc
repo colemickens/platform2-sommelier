@@ -2318,7 +2318,7 @@ int main(int argc, char **argv) {
             is_user_specific,
             account_id.c_str(),
             key_name.c_str(),
-            "cros@crosdmsregtest.com",
+            account_id.c_str(),
             device_id.get(),
             TRUE,
             challenge.get(),
