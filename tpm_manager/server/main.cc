@@ -14,8 +14,6 @@
 // limitations under the License.
 //
 
-#include <sysexits.h>
-#include <string>
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
@@ -68,14 +66,5 @@ int main(int argc, char* argv[]) {
   CHECK(tpm_manager_service.Initialize()) << "Failed to initialize service.";
 
   LOG(INFO) << "Starting TPM Manager...";
-  const int ipc_service_exit_code = ipc_service.Run();
-  if (ipc_service_exit_code == EX_OK) {
-    // It's possible that TpmInitializer already took TPM ownership in another
-    // thread before ipc_service.Run() was called, in which case the callback
-    // ipc_service.NotifyOwnershipIsTaken() didn't trigger the signal sending.
-    // Therefore, we have to try again here.
-    ipc_service.MaybeSendOwnershipTakenSignal();
-  }
-
-  return ipc_service_exit_code;
+  return ipc_service.Run();
 }
