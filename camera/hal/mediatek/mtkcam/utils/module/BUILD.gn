@@ -1,0 +1,17 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+shared_library("libmtkcam_modulehelper") {
+  import("//camera/hal/mediatek/common-config.gni")
+  sources = [
+    "helper.cpp",
+  ]
+  include_dirs += [
+    ".",
+    "${mtk_root_path}/mtkcam/utils",
+  ]
+  libs += [ "dl" ]
+  deps +=
+      [ "//camera/hal/mediatek/mtkcam/utils/property_service:libmtk_property" ]
+}

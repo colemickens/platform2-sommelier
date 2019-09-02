@@ -1,0 +1,27 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+shared_library("libmtkcam_stdutils") {
+  import("//camera/hal/mediatek/common-config.gni")
+  sources = [
+    "DebugDrawID.cpp",
+    "DebugScanLine.cpp",
+    "Format.cpp",
+    "FrameController.cpp",
+    "ILogger.cpp",
+    "LogTool.cpp",
+    "Misc.cpp",
+    "Profile.cpp",
+    "StlUtils.cpp",
+    "Sync.cpp",
+    "Time.cpp",
+  ]
+  include_dirs += [
+    ".",
+    "${mtk_root_path}/mtkcam/utils",
+  ]
+  libs += [ "sync" ]
+  deps +=
+      [ "//camera/hal/mediatek/mtkcam/utils/property_service:libmtk_property" ]
+}

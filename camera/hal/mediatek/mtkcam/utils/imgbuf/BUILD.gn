@@ -1,0 +1,26 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+shared_library("libmtkcam_imgbuf") {
+  import("//camera/hal/mediatek/common-config.gni")
+  sources = [
+    "BaseImageBuffer.cpp",
+    "BaseImageBufferHeap.cpp",
+    "DummyImageBufferHeap.cpp",
+    "GbmImageBufferHeap.cpp",
+    "GraphicImageBufferHeap.cpp",
+    "ImageBufferAllocator.cpp",
+    "ImageBufferHeap.cpp",
+  ]
+  include_dirs += [
+    ".",
+    "${mtk_root_path}/mtkcam/custom/common/hal/inc",
+  ]
+  libs += [ "cbm" ]
+  deps += [
+    "//camera/hal/mediatek/mtkcam/utils/gralloc:libmtkcam_grallocutils",
+    "//camera/hal/mediatek/mtkcam/utils/property_service:libmtk_property",
+    "//camera/hal/mediatek/mtkcam/utils/std:libmtkcam_stdutils",
+  ]
+}

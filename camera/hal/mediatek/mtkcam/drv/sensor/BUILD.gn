@@ -1,0 +1,55 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+action("gen_static_metadata") {
+  script = "run_script.py"
+  outputs = [
+    "$target_gen_dir/custgen.config_metadata.h",
+  ]
+  args = [
+    rebase_path("./mt8183/custom/gen_static_metadata.sh", root_build_dir),
+    "${sysroot}/usr/include/cros-camera/custom/imgsensor_metadata",
+    "${target_gen_dir}",
+  ]
+}
+
+shared_library("libmtk_halsensor") {
+  import("//camera/hal/mediatek/common-config.gni")
+  sources = [
+    "HalSensor.cpp",
+    "HalSensorList.cpp",
+    "IPCHalSensor.cpp",
+    "IPCHalSensorList.cpp",
+    "custom/custom.cpp",
+    "imgsensor_info.cpp",
+  ]
+  include_dirs += [
+    ".",
+    "./custom",
+    "./mt8183",
+    "${mtk_root_path}/mtkcam/custom",
+    "${mtk_root_path}/mtkcam/custom/common/hal/inc",
+    "${mtk_root_path}/mtkcam/custom/mt8183",
+    "${mtk_root_path}/mtkcam/custom/mt8183/hal/inc",
+    "${mtk_root_path}/mtkcam/custom/mt8183/hal/imgsensor_src",
+    "${mtk_root_path}/mtkcam/custom/mt8183/kernel/imgsensor",
+    "${mtk_root_path}/mtkcam/include",
+    "${mtk_root_path}/mtkcam/include/mtkcam/def",
+    "${mtk_root_path}/mtkcam/include/mtkcam/drv/def",
+    "${mtk_root_path}/mtkcam/utils",
+    "${mtk_root_path}/mtklibv4l2",
+    "${target_gen_dir}",
+  ]
+  libs += [
+    "dl",
+    "pthread",
+  ]
+  deps += [
+    ":gen_static_metadata",
+    "//camera/hal/mediatek/mtkcam/custom:libcameracustom",
+    "//camera/hal/mediatek/mtkcam/utils/TuningUtils:libmtkcam_tuning_utils",
+    "//camera/hal/mediatek/mtkcam/utils/metadata:libmtkcam_metadata",
+    "//camera/hal/mediatek/mtkcam/utils/module:libmtkcam_modulehelper",
+  ]
+}

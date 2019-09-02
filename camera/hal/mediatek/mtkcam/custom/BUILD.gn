@@ -1,0 +1,27 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+shared_library("libcameracustom") {
+  import("//camera/hal/mediatek/common-config.gni")
+  sources = [
+    "./mt8183/hal/camera/camera_custom_3dnr.cpp",
+    "./mt8183/hal/camera/camera_custom_capture_nr.cpp",
+    "./mt8183/hal/camera/camera_custom_eis.cpp",
+    "./mt8183/hal/camera/camera_custom_fd.cpp",
+    "./mt8183/hal/camera_exif/camera_custom_exif.cpp",
+    "./mt8183/hal/imgsensor_src/cfg_setting_imgsensor.cpp",
+  ]
+  include_dirs += [
+    ".",
+    "${mtk_root_path}",
+    "${mtk_root_path}/mtkcam/custom/common/hal/inc",
+    "${mtk_root_path}/mtkcam/custom/mt8183/hal/inc",
+    "${mtk_root_path}/mtkcam/custom/mt8183/hal/inc/debug_exif/cam",
+    "${mtk_root_path}/mtkcam/custom/mt8183/kernel/cam_cal",
+    "${mtk_root_path}/mtkcam/custom/mt8183/kernel/imgsensor",
+    "${mtk_root_path}/mtkcam/include",
+  ]
+  deps +=
+      [ "//camera/hal/mediatek/mtkcam/utils/property_service:libmtk_property" ]
+}

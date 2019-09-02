@@ -1,0 +1,51 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+shared_library("libcam_algo_client") {
+  import("//camera/hal/mediatek/common-config.gni")
+  sources = [
+    "../IPCCommon.cpp",
+    "FDIpcClientAdapter.cpp",
+    "Hal3AIpcAdapter.cpp",
+    "Hal3aIpcCommon.cpp",
+    "HalLcsIpcClientAdapter.cpp",
+    "IspMgrIpcAdapter.cpp",
+    "Mediatek3AClient.cpp",
+    "NR3DIpcClientAdapter.cpp",
+    "SWNRIpcClientAdapter.cpp",
+  ]
+  include_dirs += [
+    ".",
+    "${mtk_root_path}/libcamera_feature",
+    "${mtk_root_path}/libcamera_feature/libfdft_lib/include",
+    "${mtk_root_path}/mtkcam/custom/mt8183/hal/inc",
+    "${mtk_root_path}/mtkcam/custom/mt8183/kernel/imgsensor",
+    "${mtk_root_path}/mtkcam/drv/sensor",
+    "${mtk_root_path}/mtkcam/drv/sensor/mt8183",
+    "${mtk_root_path}/mtkcam/include",
+    "${mtk_root_path}/mtkcam/include/mtkcam",
+    "${mtk_root_path}/mtkcam/include/mtkcam/def",
+    "${mtk_root_path}/mtkcam/include/mtkcam/drv/def",
+    "${mtk_root_path}/mtkcam/ipc",
+    "${mtk_root_path}/mtkcam/utils/property_service",
+  ]
+  libs += [
+    "camalgo.eis",
+    "camera_client",
+    "camera_common",
+    "cbm",
+    "dl",
+    "pthread",
+    "rt",
+    "sync",
+  ]
+  deps += [
+    "//camera/hal/mediatek/mtkcam/drv/sensor:libmtk_halsensor",
+    "//camera/hal/mediatek/mtkcam/utils/hw:libmtkcam_hwutils",
+    "//camera/hal/mediatek/mtkcam/utils/imgbuf:libmtkcam_imgbuf",
+    "//camera/hal/mediatek/mtkcam/utils/metadata:libmtkcam_metadata",
+    "//camera/hal/mediatek/mtkcam/utils/metastore:libmtkcam_metastore",
+    "//camera/hal/mediatek/mtkcam/utils/module:libmtkcam_modulehelper",
+  ]
+}

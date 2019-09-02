@@ -1,0 +1,61 @@
+mtk_root_path = "//camera/hal/mediatek"
+include_dirs = [
+  "${mtk_root_path}",
+  "${mtk_root_path}/mtkcam/include",
+  "${mtk_root_path}/mtkcam/utils",
+  "${mtk_root_path}/mtkcam/utils/property_service",
+  "//camera",
+  "//camera/include",
+]
+ldflags = [ "-Wl,--no-undefined" ]
+libs = [ "base-${libbase_ver}" ]
+pkg_deps = [
+  "cros-camera-android-headers",
+  "libcamera_common",
+  "libcamera_metadata",
+  "libcab",
+  "libcbm",
+  "libdrm",
+  "libyuv",
+]
+deps = [
+  "//camera/common:libcamera_jpeg",
+  "//camera/common:libcamera_metrics",
+]
+CAMERA_HAL_VERSION = "3"
+MTKCAM_IP_BASE = "1"
+MTKCAM_HAVE_SANDBOX_SUPPORT = "1"
+MTK_CAM_DUAL_ZOOM_SUPPORT = "no"
+MTK_CAM_FD_SUPPORT = "yes"
+MTK_CAM_HDR_DETECTION_MODE = "1"
+MTK_CAM_HDR_SUPPORT = "yes"
+MTK_CAM_LTM_SUPPORT = "1"
+MTK_CAM_MFB_SUPPORT = "3"
+MTK_CAM_NR3D_SUPPORT = "yes"
+MTK_CAM_STEREO_CAMERA_SUPPORT = "no"
+MTK_CAM_VHDR_SUPPORT = "yes"
+MTK_CAM_VSDOF_SUPPORT = "no"
+PLATFORM_SDK_VERSION = "21"
+TARGET_BOARD_PLATFORM = "mt8183"
+
+defines = [
+  "MTKCAM_ENABLE_IPC=1",
+  "MTKCAM_FOV_USE_WPE=0",
+  "MTKCAM_HAL_VERSION=3",
+  "MTKCAM_HAVE_AEE_FEATURE=0",
+  "MTKCAM_HAVE_DUAL_ZOOM_SUPPORT=0",
+  "MTKCAM_HAVE_FD_SUPPORT=1",
+  "MTKCAM_HAVE_HDR_SUPPORT=1",
+  "MTKCAM_HAVE_MFB_SUPPORT=3",
+  "MTKCAM_HAVE_SANDBOX_SUPPORT=1",
+  "MTKCAM_HAVE_STEREO_CAMERA_SUPPORT=0",
+  "MTKCAM_HAVE_VHDR_SUPPORT=1",
+  "MTKCAM_HAVE_VSDOF_SUPPORT=0",
+  "MTKCAM_HAVE_RR_PRIORITY=0",
+  "MTKCAM_HDR_DETECTION_MODE=1",
+  "MTKCAM_ISP_SUPPORT_IQ=0",
+  "MTKCAM_LTM_SUPPORT=1",
+  "MTKCAM_SYSTRACE_LEVEL_DEFAULT=1",
+  "MTK_CAM_NEW_NVRAM_SUPPORT=1",
+  "PLATFORM_SDK_VERSION=21",
+]

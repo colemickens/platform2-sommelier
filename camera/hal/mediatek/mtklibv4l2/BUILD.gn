@@ -1,0 +1,23 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+shared_library("libmtk_mc_libv4l2") {
+  import("//camera/hal/mediatek/common-config.gni")
+  sources = [
+    "MediaCtrlConfig.cpp",
+    "MediaEntity.cpp",
+    "MtkCameraV4L2API.cpp",
+    "MtkMediaController.cpp",
+    "SysCall.cpp",
+  ]
+  include_dirs += [
+    ".",
+    "${mtk_root_path}/mtkcam/include/mtkcam/def/",
+    "${mtk_root_path}/mtkcam/include/",
+  ]
+  libs += [
+    "camera_v4l2_device",
+    "pthread",
+  ]
+}

@@ -1,0 +1,37 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+shared_library("libcam_iopie_utils") {
+  import("//camera/hal/mediatek/common-config.gni")
+  sources = [
+    "CamCapability/Cam_cap.cpp",
+    "CamCapability/cam_capability.cpp",
+  ]
+  include_dirs += [
+    ".",
+    "${mtk_root_path}/mtkcam/custom",
+    "${mtk_root_path}/mtkcam/custom/common/hal/inc",
+    "${mtk_root_path}/mtkcam/custom/mt8183",
+    "${mtk_root_path}/mtkcam/custom/mt8183/hal/inc",
+    "${mtk_root_path}/mtkcam/custom/mt8183/hal/imgsensor_src",
+    "${mtk_root_path}/mtkcam/custom/mt8183/kernel/imgsensor",
+    "${mtk_root_path}/mtkcam/drv/iopipe/include",
+    "${mtk_root_path}/mtkcam/drv/iopipe/src/common",
+    "${mtk_root_path}/mtkcam/drv/iopipe/src/utils",
+    "${mtk_root_path}/mtkcam/include",
+    "${mtk_root_path}/mtkcam/include/mtkcam/def",
+    "${mtk_root_path}/mtkcam/include/mtkcam/drv/def",
+    "${mtk_root_path}/mtkcam/include/mtkcam/drv/iopipe/CamIO",
+    "${mtk_root_path}/mtkcam/utils",
+    "${mtk_root_path}/mtklibv4l2",
+  ]
+  libs += [ "pthread" ]
+  deps += [
+    "//camera/hal/mediatek/mtkcam/utils/gralloc:libmtkcam_grallocutils",
+    "//camera/hal/mediatek/mtkcam/utils/imgbuf:libmtkcam_imgbuf",
+    "//camera/hal/mediatek/mtkcam/utils/property_service:libmtk_property",
+    "//camera/hal/mediatek/mtkcam/utils/std:libmtkcam_stdutils",
+    "//camera/hal/mediatek/mtklibv4l2:libmtk_mc_libv4l2",
+  ]
+}

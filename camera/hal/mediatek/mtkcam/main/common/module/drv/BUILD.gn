@@ -1,0 +1,31 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+shared_library("libmtkcam_modulefactory_drv") {
+  import("//camera/hal/mediatek/common-config.gni")
+  sources = [
+    "../store.cpp",
+    "register_HalSensor.cpp",
+    "register_iopipe_CamIO_NormalPipe.cpp",
+  ]
+  include_dirs += [
+    ".",
+    "${mtk_root_path}/mtkcam/custom/common/hal/inc",
+    "${mtk_root_path}/mtkcam/custom/mt8183/hal/inc",
+    "${mtk_root_path}/mtkcam/custom/mt8183/kernel/imgsensor",
+    "${mtk_root_path}/mtkcam/include",
+    "${mtk_root_path}/mtkcam/include/mtkcam/def",
+    "${mtk_root_path}/mtkcam/main/common/module",
+  ]
+  defines += [
+    "MTKCAM_GET_MODULE_FACTORY=MtkCam_getModuleFactory_drv",
+    "MTKCAM_MODULE_GROUP_ID=MTKCAM_MODULE_GROUP_ID_DRV",
+    "MTKCAM_MODULE_GROUP_ID_START=MTKCAM_MODULE_ID_DRV_START",
+    "MTKCAM_MODULE_GROUP_ID_END=MTKCAM_MODULE_ID_DRV_END",
+  ]
+  deps += [
+    "//camera/hal/mediatek/mtkcam/drv/iopipe/src/pass1:libcam_normalpipe",
+    "//camera/hal/mediatek/mtkcam/drv/sensor:libmtk_halsensor",
+  ]
+}

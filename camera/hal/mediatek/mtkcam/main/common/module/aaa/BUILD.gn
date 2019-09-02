@@ -1,0 +1,44 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+shared_library("libmtkcam_modulefactory_aaa") {
+  import("//camera/hal/mediatek/common-config.gni")
+  sources = [
+    "../store.cpp",
+    "register_3DNR_IPC.cpp",
+    "register_DngInfo.cpp",
+    "register_Hal3A.cpp",
+    "register_Hal3A_IPC.cpp",
+    "register_HalLcs_IPC.cpp",
+    "register_IspMgrIf.cpp",
+    "register_IspMgrIf_IPC.cpp",
+    "register_SWNR_IPC.cpp",
+    "register_SwNR.cpp",
+    "register_lcs_hal.cpp",
+  ]
+  include_dirs += [
+    ".",
+    "${mtk_root_path}/mtkcam/custom/common/hal/inc",
+    "${mtk_root_path}/mtkcam/custom/mt8183/hal/inc",
+    "${mtk_root_path}/mtkcam/include",
+    "${mtk_root_path}/libcamera_feature",
+    "${mtk_root_path}/mtkcam/include/mtkcam/def",
+    "${mtk_root_path}/mtkcam/main/common/module",
+  ]
+  defines += [
+    "MTKCAM_GET_MODULE_FACTORY=MtkCam_getModuleFactory_aaa",
+    "MTKCAM_MODULE_GROUP_ID=MTKCAM_MODULE_GROUP_ID_AAA",
+    "MTKCAM_MODULE_GROUP_ID_START=MTKCAM_MODULE_ID_AAA_START",
+    "MTKCAM_MODULE_GROUP_ID_END=MTKCAM_MODULE_ID_AAA_END",
+  ]
+  libs += [
+    "cam.hal3a.v3",
+    "cam.hal3a.v3.dng",
+    "cam.hal3a.v3.lsctbl.50",
+    "cam.hal3a.v3.nvram.50",
+    "cam.lcs",
+    "pthread",
+  ]
+  deps += [ "//camera/hal/mediatek/mtkcam/ipc/client:libcam_algo_client" ]
+}

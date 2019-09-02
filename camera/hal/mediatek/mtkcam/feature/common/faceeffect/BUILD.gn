@@ -1,0 +1,41 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+shared_library("libfeature.face") {
+  import("//camera/hal/mediatek/common-config.gni")
+  sources = [
+    "FaceDetection/FD4.0/fd_hal_base.cpp",
+    "FaceDetection/FD4.0/fdvt_hal.cpp",
+  ]
+  include_dirs += [
+    ".",
+    "${mtk_root_path}/libcamera_feature/libfdft_lib/include",
+    "${mtk_root_path}/mtkcam/custom",
+    "${mtk_root_path}/mtkcam/custom/mt8183",
+    "${mtk_root_path}/mtkcam/utils",
+    "${mtk_root_path}/mtkcam/include",
+    "${mtk_root_path}/mtkcam/include/mtkcam",
+    "${mtk_root_path}/mtkcam/include/mtkcam/utils/std",
+    "${mtk_root_path}/mtkcam/include/mtkcam/def",
+    "${mtk_root_path}/mtkcam/include/mtkcam/drv/def",
+    "${mtk_root_path}/mtkcam/drv/fdvt/4.0",
+    "${mtk_root_path}/mtkcam/custom/common/hal/inc",
+    "${mtk_root_path}/mtkcam/custom/mt8183/hal/inc",
+    "${mtk_root_path}/mtkcam/custom/mt8183/hal/imgsensor_src",
+    "${mtk_root_path}/mtkcam/custom/mt8183/kernel/imgsensor",
+    "${mtk_root_path}/mtkcam/ipc/client",
+    "${mtk_root_path}/mtkcam/ipc",
+  ]
+  libs += [
+    "pthread",
+    "camalgo.fdft",
+  ]
+  deps += [
+    "//camera/hal/mediatek/mtkcam/custom:libcameracustom",
+    "//camera/hal/mediatek/mtkcam/drv/fdvt/4.0:libmtkcam_fdvt",
+    "//camera/hal/mediatek/mtkcam/ipc/client:libcam_algo_client",
+    "//camera/hal/mediatek/mtkcam/utils/property_service:libmtk_property",
+    "//camera/hal/mediatek/mtkcam/utils/std:libmtkcam_stdutils",
+  ]
+}

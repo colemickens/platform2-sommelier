@@ -1,0 +1,51 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+shared_library("libcamera.mt8183") {
+  import("//camera/hal/mediatek/common-config.gni")
+  sources = [
+    "depend/CamDeviceManagerImp.cpp",
+    "devicemgr/CamDeviceManagerBase.cpp",
+    "devicemgr/CamDeviceManagerBase.enumDevice.cpp",
+    "devicemgr/CamDeviceManagerBase.openDevice.cpp",
+    "module/entry.cpp",
+  ]
+  defines += [
+    "MTKCAM_HAVE_METADATA='1'",
+    "MTKCAM_HAVE_SENSOR_HAL='1'",
+  ]
+  include_dirs += [
+    ".",
+    "./depend",
+    "./devicemgr",
+    "./devicemgr/VendorTag",
+    "./module",
+    "${mtk_root_path}/mtkcam/app/",
+    "${mtk_root_path}/mtkcam/custom/common/hal/inc",
+    "${mtk_root_path}/mtkcam/custom/mt8183/hal/inc",
+    "${mtk_root_path}/mtkcam/custom/mt8183/kernel/imgsensor",
+    "${mtk_root_path}/mtkcam/include",
+    "${mtk_root_path}/mtkcam/include/mtkcam/def",
+    "${mtk_root_path}/mtkcam/ipc",
+    "${mtk_root_path}/mtkcam/main/common/module",
+    "${mtk_root_path}/mtkcam/main/hal/include/",
+  ]
+  libs += [
+    "dl",
+    "pthread",
+  ]
+  deps += [
+    "//camera/hal/mediatek/mtkcam/app:libcam3_app",
+    "//camera/hal/mediatek/mtkcam/ipc/client:libcam_algo_client",
+    "//camera/hal/mediatek/mtkcam/main/hal/device3:libcam.device3",
+    "//camera/hal/mediatek/mtkcam/pipeline/model:libmtkcam_pipelinemodel",
+    "//camera/hal/mediatek/mtkcam/utils/LogicalCam:libmtkcam.logicalmodule",
+    "//camera/hal/mediatek/mtkcam/utils/hw:libmtkcam_hwutils",
+    "//camera/hal/mediatek/mtkcam/utils/metadata:libmtkcam_metadata",
+    "//camera/hal/mediatek/mtkcam/utils/metastore:libmtkcam_metastore",
+    "//camera/hal/mediatek/mtkcam/utils/module:libmtkcam_modulehelper",
+    "//camera/hal/mediatek/mtkcam/utils/property_service:libmtk_property",
+    "//camera/hal/mediatek/mtkcam/utils/std:libmtkcam_stdutils",
+  ]
+}

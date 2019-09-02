@@ -1,0 +1,29 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+shared_library("libmtkcam_metadata") {
+  import("//camera/hal/mediatek/common-config.gni")
+  sources = [
+    "./conversion/MetadataConverter.cpp",
+    "./conversion/TypeConvert.androidMetadata.cpp",
+    "./conversion/TypeConvert.mtkMetadata.cpp",
+    "./getDumpFilenamePrefix/getDumpFilenamePrefix.cpp",
+    "./metadata/Metadata.cpp",
+    "./metadata/MetadataTagSet.cpp",
+  ]
+  include_dirs += [
+    ".",
+    "./conversion",
+    "./metadata",
+    "./vendortag",
+    "${mtk_root_path}/mtkcam/custom/common/hal/inc",
+  ]
+  libs += [
+    "camera_metadata",
+    "dl",
+    "pthread",
+  ]
+  deps +=
+      [ "//camera/hal/mediatek/mtkcam/utils/property_service:libmtk_property" ]
+}

@@ -1,0 +1,36 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+shared_library("libmtkcam_3rdparty") {
+  import("//camera/hal/mediatek/common-config.gni")
+  sources = [
+    "common/PipelinePlugin.cpp",
+    "common/scenario_mgr.cpp",
+    "customer/customer_scenario_mgr.cpp",
+    "mtk/mtk_scenario_mgr.cpp",
+    "mtk/swnr/SWNRImpl.cpp",
+  ]
+  defines += [ "MTK_CAM_NEW_NVRAM_SUPPORT=1" ]
+  include_dirs += [
+    ".",
+    "${mtk_root_path}/mtkcam/custom",
+    "${mtk_root_path}/mtkcam/custom/common/hal/inc",
+    "${mtk_root_path}/mtkcam/custom/mt8183",
+    "${mtk_root_path}/mtkcam/custom/mt8183/hal/imgsensor_src",
+    "${mtk_root_path}/mtkcam/custom/mt8183/hal/inc",
+    "${mtk_root_path}/mtkcam/custom/mt8183/kernel/imgsensor",
+    "${mtk_root_path}/mtkcam/include",
+    "${mtk_root_path}/mtkcam/include/mtkcam/utils/std",
+    "${mtk_root_path}/mtkcam/utils",
+  ]
+  libs += [ "pthread" ]
+  deps += [
+    "//camera/hal/mediatek/mtkcam/custom:libcameracustom",
+    "//camera/hal/mediatek/mtkcam/utils/TuningUtils:libmtkcam_tuning_utils",
+    "//camera/hal/mediatek/mtkcam/utils/metadata:libmtkcam_metadata",
+    "//camera/hal/mediatek/mtkcam/utils/module:libmtkcam_modulehelper",
+    "//camera/hal/mediatek/mtkcam/utils/property_service:libmtk_property",
+    "//camera/hal/mediatek/mtkcam/utils/std:libmtkcam_stdutils",
+  ]
+}

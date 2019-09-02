@@ -1,0 +1,31 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+shared_library("libmtkcam_v4l2drvmgr") {
+  import("//camera/hal/mediatek/common-config.gni")
+  sources = [
+    "V4L2DriverWorker.cpp",
+    "V4L2HwEventMgr.cpp",
+    "V4L2LensMgr.cpp",
+    "V4L2P13ACallback.cpp",
+    "V4L2SensorMgr.cpp",
+    "V4L2SttPipeMgr.cpp",
+    "V4L2TuningPipeMgr.cpp",
+  ]
+  include_dirs += [
+    ".",
+    "${mtk_root_path}/mtkcam/custom/mt8183/kernel/imgsensor",
+    "${mtk_root_path}/mtklibv4l2",
+  ]
+  libs += [
+    "dl",
+    "pthread",
+  ]
+  deps += [
+    "//camera/hal/mediatek/mtkcam/custom:libcameracustom",
+    "//camera/hal/mediatek/mtkcam/utils/metadata:libmtkcam_metadata",
+    "//camera/hal/mediatek/mtkcam/utils/module:libmtkcam_modulehelper",
+    "//camera/hal/mediatek/mtkcam/utils/property_service:libmtk_property",
+  ]
+}

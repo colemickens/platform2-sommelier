@@ -1,0 +1,49 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+shared_library("libmtkcam.featurepipe.core") {
+  import("//camera/hal/mediatek/common-config.gni")
+  sources = [
+    "src/BufferPool.cpp",
+    "src/CamThread.cpp",
+    "src/DebugUtil.cpp",
+    "src/IIBuffer.cpp",
+    "src/ImageBufferPool.cpp",
+    "src/SeqUtil.cpp",
+    "src/SyncUtil.cpp",
+    "src/Timer.cpp",
+    "src/TuningBufferPool.cpp",
+    "src/WaitQueue.cpp",
+  ]
+  defines += [
+    "MTK_CAM_NEW_NVRAM_SUPPORT=1",
+    "MTK_DP_ENABLE=0",
+  ]
+  include_dirs += [
+    ".",
+    "${mtk_root_path}/libcamera_feature/libfdft_lib/include",
+    "${mtk_root_path}/mtkcam/custom",
+    "${mtk_root_path}/mtkcam/custom/common/hal/inc",
+    "${mtk_root_path}/mtkcam/custom/mt8183",
+    "${mtk_root_path}/mtkcam/custom/mt8183/hal/imgsensor_src",
+    "${mtk_root_path}/mtkcam/custom/mt8183/hal/inc",
+    "${mtk_root_path}/mtkcam/custom/mt8183/kernel/imgsensor",
+    "${mtk_root_path}/mtkcam/feature/featureCore/featurePipe",
+    "${mtk_root_path}/mtkcam/feature/featureCore/featurePipe/common",
+    "${mtk_root_path}/mtkcam/include",
+    "${mtk_root_path}/mtkcam/include/mtkcam/drv/iopipe",
+    "${mtk_root_path}/mtkcam/include/mtkcam/utils/std",
+    "${mtk_root_path}/mtkcam/utils",
+  ]
+  libs += [ "pthread" ]
+  deps += [
+    "//camera/hal/mediatek/mtkcam/3rdparty:libmtkcam_3rdparty",
+    "//camera/hal/mediatek/mtkcam/drv/iopipe/src/pass2:libcam_normalstream",
+    "//camera/hal/mediatek/mtkcam/utils/imgbuf:libmtkcam_imgbuf",
+    "//camera/hal/mediatek/mtkcam/utils/metadata:libmtkcam_metadata",
+    "//camera/hal/mediatek/mtkcam/utils/module:libmtkcam_modulehelper",
+    "//camera/hal/mediatek/mtkcam/utils/property_service:libmtk_property",
+    "//camera/hal/mediatek/mtkcam/utils/std:libmtkcam_stdutils",
+  ]
+}
