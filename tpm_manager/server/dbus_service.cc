@@ -33,6 +33,17 @@ namespace tpm_manager {
 
 using brillo::dbus_utils::DBusObject;
 
+DBusService::DBusService(
+    std::unique_ptr<TpmManagerService>&& tpm_manager_service,
+    LocalDataStore* local_data_store)
+    : DBusService(tpm_manager_service.get(),
+                  tpm_manager_service.get(),
+                  local_data_store) {
+  tpm_manager_service->SetOwnershipTakenCallback(
+      base::Bind(&DBusService::NotifyOwnershipIsTaken, base::Unretained(this)));
+  tpm_manager_service_ = std::move(tpm_manager_service);
+}
+
 DBusService::DBusService(TpmNvramInterface* nvram_service,
                          TpmOwnershipInterface* ownership_service,
                          LocalDataStore* local_data_store)
@@ -151,6 +162,17 @@ void DBusService::RegisterDBusObjectsAsync(
 
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed to register D-Bus object.", true));
+}
+
+int DBusService::OnInit() {
+  int ret = brillo::DBusServiceDaemon::OnInit();
+  // Initializes TpmManagerService only when we have ownership of it. This must
+  // go after brillo::DBusServiceDaemon::OnInit() so the asynchronous signal
+  // handling works as expected.
+  if (tpm_manager_service_) {
+    CHECK(tpm_manager_service_->Initialize());
+  }
+  return ret;
 }
 
 void DBusService::NotifyOwnershipIsTaken() {

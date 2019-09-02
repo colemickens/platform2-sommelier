@@ -30,6 +30,7 @@
 #include "tpm_manager/common/tpm_ownership_interface.h"
 #include "tpm_manager/common/typedefs.h"
 #include "tpm_manager/server/local_data_store.h"
+#include "tpm_manager/server/tpm_manager_service.h"
 
 namespace tpm_manager {
 
@@ -41,6 +42,11 @@ using brillo::dbus_utils::DBusSignal;
 // Handles D-Bus communication with the TpmManager daemon.
 class DBusService : public brillo::DBusServiceDaemon {
  public:
+  // Constructs the instance with taking ownership of embedded
+  // |tpm_manager_service|. With this constructor, this instance is also
+  // responsible for initializing |tpm_manager_service|.
+  DBusService(std::unique_ptr<TpmManagerService>&& tpm_manager_service,
+              LocalDataStore* local_data_store);
   // Does not take ownership of |nvram_service|, |ownership_service|, or
   // |local_data_store|. The services and local data store provided must be
   // initialized, and must remain valid for the lifetime of this instance.
@@ -70,6 +76,10 @@ class DBusService : public brillo::DBusServiceDaemon {
   //
   // Returns whether the signal was successfully sent.
   bool MaybeSendOwnershipTakenSignal();
+
+ protected:
+  // brillo::DBusServiceDaemon overrides
+  int OnInit() override;
 
  private:
   friend class DBusServiceTest;
@@ -101,6 +111,7 @@ class DBusService : public brillo::DBusServiceDaemon {
       const RequestProtobufType& request);
 
   std::unique_ptr<DBusObject> dbus_object_;
+  std::unique_ptr<TpmManagerService> tpm_manager_service_;
   TpmNvramInterface* nvram_service_;
   TpmOwnershipInterface* ownership_service_;
   LocalDataStore* local_data_store_;
