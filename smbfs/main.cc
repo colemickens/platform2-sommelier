@@ -106,9 +106,12 @@ int main(int argc, char** argv) {
     return EX_USAGE;
   }
 
-  if (!options.share_path.empty() &&
-      !base::StartsWith(options.share_path, "smb://",
-                        base::CompareCase::SENSITIVE)) {
+  if (!options.use_test && options.share_path.empty()) {
+    LOG(ERROR) << "Either --test or [share_path] must be specified";
+    return EX_USAGE;
+  } else if (!options.share_path.empty() &&
+             !base::StartsWith(options.share_path, "smb://",
+                               base::CompareCase::SENSITIVE)) {
     LOG(ERROR) << "Share path must begin with smb://";
     return EX_USAGE;
   }

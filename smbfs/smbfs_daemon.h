@@ -9,12 +9,14 @@
 #include <sys/types.h>
 
 #include <memory>
+#include <string>
 
 #include <base/macros.h>
 #include <brillo/daemons/dbus_daemon.h>
 
 namespace smbfs {
 
+class Filesystem;
 class FuseSession;
 struct Options;
 
@@ -25,14 +27,17 @@ class SmbFsDaemon : public brillo::DBusDaemon {
 
  protected:
   // brillo::Daemon overrides.
+  int OnInit() override;
   int OnEventLoopStarted() override;
 
  private:
   fuse_chan* chan_;
   const bool use_test_fs_;
+  const std::string share_path_;
   const uid_t uid_;
   const gid_t gid_;
   std::unique_ptr<FuseSession> session_;
+  std::unique_ptr<Filesystem> fs_;
 
   DISALLOW_COPY_AND_ASSIGN(SmbFsDaemon);
 };
