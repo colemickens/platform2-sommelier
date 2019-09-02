@@ -241,13 +241,34 @@ class TpmManagerService : public TpmNvramInterface,
   // owner password is not available.
   std::string GetOwnerPassword();
 
+  // Shutdown to be run on the worker thread.
+  void ShutdownTask();
+
   LocalDataStore* local_data_store_;
   TpmStatus* tpm_status_ = nullptr;
   TpmInitializer* tpm_initializer_ = nullptr;
   TpmNvram* tpm_nvram_ = nullptr;
 
+  // base::Thread subclass so we can implement CleanUp.
+  class ServiceWorkerThread : public base::Thread {
+   public:
+    explicit ServiceWorkerThread(const std::string& name,
+                                 TpmManagerService* service)
+        : base::Thread(name), service_(service) {
+      DCHECK(service_);
+    }
+    ~ServiceWorkerThread() override { Stop(); }
+
+   private:
+    void CleanUp() override { service_->ShutdownTask(); }
+
+    TpmManagerService* const service_;
+
+    DISALLOW_COPY_AND_ASSIGN(ServiceWorkerThread);
+  };
+
 #if USE_TPM2
-  trunks::TrunksFactoryImpl default_trunks_factory_;
+  std::unique_ptr<trunks::TrunksFactoryImpl> default_trunks_factory_;
   std::unique_ptr<Tpm2StatusImpl> default_tpm_status_;
   std::unique_ptr<Tpm2InitializerImpl> default_tpm_initializer_;
   std::unique_ptr<Tpm2NvramImpl> default_tpm_nvram_;
@@ -268,7 +289,7 @@ class TpmManagerService : public TpmNvramInterface,
   bool perform_preinit_;
   // Background thread to allow processing of potentially lengthy TPM requests
   // in the background.
-  std::unique_ptr<base::Thread> worker_thread_;
+  std::unique_ptr<ServiceWorkerThread> worker_thread_;
   // Declared last so any weak pointers are destroyed first.
   base::WeakPtrFactory<TpmManagerService> weak_factory_{this};
 
