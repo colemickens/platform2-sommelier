@@ -102,6 +102,13 @@ class TpmVendorCommandProxy : public trunks::TrunksDBusProxy {
   // Retrieve and record in the log the individual attestation certificate.
   void LogIndividualCertificate();
 
+  // Cr50 loses U2F state during deep sleep; this function sends a command
+  // that will re-load it. Returns true iff state was successfully reloaded.
+  bool ReloadCr50State();
+
+  // Mode set on the most recent call to SetU2fVendorMode();
+  uint8_t last_u2f_vendor_mode_;
+
   DISALLOW_COPY_AND_ASSIGN(TpmVendorCommandProxy);
 };
 

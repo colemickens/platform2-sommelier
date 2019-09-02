@@ -43,7 +43,7 @@ const uint16_t kVendorCcU2fAttest = 46;
 
 namespace u2f {
 
-TpmVendorCommandProxy::TpmVendorCommandProxy() {}
+TpmVendorCommandProxy::TpmVendorCommandProxy() : last_u2f_vendor_mode_(0) {}
 TpmVendorCommandProxy::~TpmVendorCommandProxy() {}
 
 uint32_t TpmVendorCommandProxy::VendorCommand(uint16_t cc,
@@ -140,10 +140,11 @@ uint32_t TpmVendorCommandProxy::SetU2fVendorMode(uint8_t mode) {
   int rc = SendU2fApdu(vendor_mode, &rmode);
 
   if (!rc) {
+    last_u2f_vendor_mode_ = rmode[0];
     // remove the 16-bit status code at the end
-    VLOG(1) << "current mode " << static_cast<int>(rmode[0]);
+    VLOG(1) << "current mode " << static_cast<int>(last_u2f_vendor_mode_);
     // record the individual attestation certificate if the extension is on.
-    if (rmode[0] == kU2fExtended && VLOG_IS_ON(1))
+    if (last_u2f_vendor_mode_ == kU2fExtended && VLOG_IS_ON(1))
       LogIndividualCertificate();
   }
 
@@ -198,11 +199,19 @@ uint32_t TpmVendorCommandProxy::SendU2fApdu(const std::string& req,
 
 uint32_t TpmVendorCommandProxy::SendU2fGenerate(const U2F_GENERATE_REQ& req,
                                                 U2F_GENERATE_RESP* resp_out) {
+  if (!ReloadCr50State()) {
+    return kVendorRcInvalidResponse;
+  }
+
   return VendorCommandStruct(kVendorCcU2fGenerate, req, resp_out);
 }
 
 uint32_t TpmVendorCommandProxy::SendU2fSign(const U2F_SIGN_REQ& req,
                                             U2F_SIGN_RESP* resp_out) {
+  if (!ReloadCr50State()) {
+    return kVendorRcInvalidResponse;
+  }
+
   std::string output_str;
   uint32_t resp_code =
       VendorCommand(kVendorCcU2fSign, RequestToString(req), &output_str);
@@ -231,6 +240,10 @@ uint32_t TpmVendorCommandProxy::SendU2fSign(const U2F_SIGN_REQ& req,
 
 uint32_t TpmVendorCommandProxy::SendU2fAttest(const U2F_ATTEST_REQ& req,
                                               U2F_ATTEST_RESP* resp_out) {
+  if (!ReloadCr50State()) {
+    return kVendorRcInvalidResponse;
+  }
+
   return VendorCommandStruct(kVendorCcU2fAttest, req, resp_out);
 }
 
@@ -298,6 +311,16 @@ void TpmVendorCommandProxy::LogIndividualCertificate() {
             << cert_status;
   } else {
     VLOG(1) << "Certificate: " << base::HexEncode(cert.data(), cert.size());
+  }
+}
+
+bool TpmVendorCommandProxy::ReloadCr50State() {
+  if (last_u2f_vendor_mode_) {
+    return SetU2fVendorMode(last_u2f_vendor_mode_) == 0;
+  } else {
+    // Vendor mode is part of cr50 state, and must be set before we can attempt
+    // to re-load state.
+    return false;
   }
 }
 
