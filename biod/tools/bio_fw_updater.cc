@@ -177,7 +177,7 @@ int main(int argc, char* argv[]) {
   switch (result.status) {
     case UpdateStatus::kUpdateFailedGetVersion:
       LOG(INFO) << "Failed to fetch EC version, aborting.";
-      metrics.Finished(FwUpdaterStatus::kFailureUpdateFlashProtect);
+      metrics.Finished(FwUpdaterStatus::kFailureUpdateVersionCheck);
       return EXIT_FAILURE;
     case UpdateStatus::kUpdateFailedFlashProtect:
       LOG(ERROR) << "Failed to fetch flash protect status, aborting.";
