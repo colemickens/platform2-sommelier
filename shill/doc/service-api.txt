@@ -1424,65 +1424,6 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 					reach the "ready" state. Consult the
 					Error propery for details.
 
-		string StaticIP.Address [readwrite]
-		string StaticIP.Gateway [readwrite]
-		int32 StaticIP.Mtu [readwrite]
-		string StaticIP.NameServers [readwrite]
-		string StaticIP.SearchDomains [readwrite]
-		string StaticIP.PeerAddress [readwrite]
-		int32 StaticIP.Prefixlen [readwrite]
-		string StaticIP.ExcludedRoutes [readwrite]
-		string StaticIP.IncludedRoutes [readwrite]
-
-			[Deprecated] The properties above are deprecated in
-			favor of StaticIPConfig property.
-
-			The properties above can be set on a service to
-			selectively override individual parameters received
-			over DHCP or whatever default IP acquisition technique
-			is used by the service.  The "StaticIP.NameServers"
-			property should be a comma-separated list of IP
-			addresses.
-
-			Additionally, in services that use DHCP, if the
-			"StaticIP.Address" and "StaticIP.Prefixlen"
-			parameters are both set on a service, the service
-			will be configured as soon as a link is established,
-			in order to allow full static IP configuration.  A
-			DHCP client will be launched in parallel, which, if
-			successful, will provide values for any parameters
-			that were not set statically.
-
-			The IPConfig associated with the service (object
-			path supplied in the "IPConfig" property above)
-			will display the result of the merged network
-			parameters.
-
-		string SavedIP.Address [readonly]
-		string SavedIP.Gateway [readonly]
-		int32 SavedIP.Mtu [readonly]
-		string SavedIP.NameServers [readonly]
-		string SavedIP.SearchDomains [readonly]
-		string SavedIP.PeerAddress [readonly]
-		int32 SavedIP.Prefixlen [readonly]
-		string SavedIP.ExcludedRoutes [readonly]
-		string SavedIP.IncludedRoutes [readonly]
-
-			[Deprecated] The properties above are deprecated in
-			favor of SavedIPConfig property.
-
-			The properties above are set on a service to present
-			the configuration that was received from the DHCP
-			server prior to applying any "StaticIP.*" parameters
-			during the most recent connection attempt.  All
-			parameters are saved regardless of whether they were
-			overridden.
-
-			Note that if a "StaticIP.*" parameter is set on
-			a service, but the service has not been re-connected,
-			the IPConfig object will still contain the true
-			value that the interface is set to.
-
 		dict StaticIPConfig [readwrite]
 
 			A dictionary of static IP configuration parameters

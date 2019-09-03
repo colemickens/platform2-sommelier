@@ -60,8 +60,6 @@ class StaticIPParameters {
   friend class StaticIPParametersTest;
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
   FRIEND_TEST(DeviceTest, PrependWithStaticConfiguration);
-  FRIEND_TEST(StaticIPParametersTest, SavedParameters);
-  FRIEND_TEST(StaticIPParametersTest, SavedParametersDict);
 
   struct Property {
     enum Type {
@@ -97,33 +95,6 @@ class StaticIPParameters {
   void RestoreRoutes(const std::string& property,
                      const std::string& gateway,
                      std::vector<IPConfig::Route>* value_out);
-
-  void ClearMappedProperty(const size_t& index, Error* error);
-  void ClearMappedSavedProperty(const size_t& index, Error* error);
-  int32_t GetMappedInt32Property(const size_t& index, Error* error);
-  int32_t GetMappedSavedInt32Property(const size_t& index, Error* error);
-  std::string GetMappedStringProperty(const size_t& index, Error* error);
-  std::string GetMappedSavedStringProperty(const size_t& index, Error* error);
-  std::string GetMappedStringsProperty(const size_t& index, Error* error);
-  std::string GetMappedSavedStringsProperty(const size_t& index, Error* error);
-  bool SetMappedInt32Property(const size_t& index,
-                              const int32_t& value,
-                              Error* error);
-  bool SetMappedSavedInt32Property(const size_t& index,
-                                   const int32_t& value,
-                                   Error* error);
-  bool SetMappedStringProperty(const size_t& index,
-                               const std::string& value,
-                               Error* error);
-  bool SetMappedSavedStringProperty(const size_t& index,
-                                    const std::string& value,
-                                    Error* error);
-  bool SetMappedStringsProperty(const size_t& index,
-                                const std::string& value,
-                                Error* error);
-  bool SetMappedSavedStringsProperty(const size_t& index,
-                                     const std::string& value,
-                                     Error* error);
 
   KeyValueStore GetSavedIPConfig(Error* error);
   KeyValueStore GetStaticIPConfig(Error* error);

@@ -13,6 +13,7 @@
 #include "shill/property_store.h"
 
 using std::string;
+using std::vector;
 using testing::_;
 using testing::DoAll;
 using testing::Return;
@@ -114,42 +115,32 @@ class StaticIPParametersTest : public Test {
   void ExpectPropertiesWithVersion(PropertyStore* store,
                                    const string& property_prefix,
                                    int version) {
-    string string_value;
+    KeyValueStore args;
     Error unused_error;
-    EXPECT_TRUE(store->GetStringProperty(property_prefix + ".Address",
-                                         &string_value, &unused_error));
-    EXPECT_EQ(VersionedAddress(kAddress, version), string_value);
-    EXPECT_TRUE(store->GetStringProperty(property_prefix + ".Gateway",
-                                         &string_value, &unused_error));
-    EXPECT_EQ(VersionedAddress(kGateway, version), string_value);
-    int32_t int_value;
-    EXPECT_TRUE(store->GetInt32Property(property_prefix + ".Mtu", &int_value,
-                                        &unused_error));
-    EXPECT_EQ(kMtu + version, int_value);
-    EXPECT_TRUE(store->GetStringProperty(property_prefix + ".NameServers",
-                                         &string_value, &unused_error));
-    EXPECT_EQ(VersionedAddress(kNameServer0, version) + "," +
-                  VersionedAddress(kNameServer1, version),
-              string_value);
-    EXPECT_TRUE(store->GetStringProperty(property_prefix + ".SearchDomains",
-                                         &string_value, &unused_error));
-    EXPECT_EQ(VersionedAddress(kSearchDomain0, version) + "," +
-                  VersionedAddress(kSearchDomain1, version),
-              string_value);
-    EXPECT_TRUE(store->GetStringProperty(property_prefix + ".PeerAddress",
-                                         &string_value, &unused_error));
-    EXPECT_EQ(VersionedAddress(kPeerAddress, version), string_value);
-    EXPECT_TRUE(store->GetInt32Property(property_prefix + ".Prefixlen",
-                                        &int_value, &unused_error));
-    EXPECT_EQ(kPrefixLen + version, int_value);
-    EXPECT_TRUE(store->GetStringProperty(property_prefix + ".ExcludedRoutes",
-                                         &string_value, &unused_error));
-    EXPECT_EQ(VersionedAddress(kExcludedRoute0, version) + "," +
-                  VersionedAddress(kExcludedRoute1, version),
-              string_value);
-    EXPECT_TRUE(store->GetStringProperty(property_prefix + ".IncludedRoutes",
-                                         &string_value, &unused_error));
-    EXPECT_EQ(VersionedAddress(kIncludedRoutes, version), string_value);
+    EXPECT_TRUE(store->GetKeyValueStoreProperty(property_prefix + "Config",
+                                                &args, &unused_error));
+    EXPECT_EQ(VersionedAddress(kAddress, version),
+              args.GetString(kAddressProperty));
+    EXPECT_EQ(VersionedAddress(kGateway, version),
+              args.GetString(kGatewayProperty));
+    EXPECT_EQ(kMtu + version, args.GetInt(kMtuProperty));
+    vector<string> kTestNameServers({VersionedAddress(kNameServer0, version),
+                                     VersionedAddress(kNameServer1, version)});
+    EXPECT_EQ(kTestNameServers, args.GetStrings(kNameServersProperty));
+    vector<string> kTestSearchDomains(
+        {VersionedAddress(kSearchDomain0, version),
+         VersionedAddress(kSearchDomain1, version)});
+    EXPECT_EQ(kTestSearchDomains, args.GetStrings(kSearchDomainsProperty));
+    EXPECT_EQ(VersionedAddress(kPeerAddress, version),
+              args.GetString(kPeerAddressProperty));
+    EXPECT_EQ(kPrefixLen + version, args.GetInt(kPrefixlenProperty));
+    vector<string> kTestExcludedRoutes(
+        {VersionedAddress(kExcludedRoute0, version),
+         VersionedAddress(kExcludedRoute1, version)});
+    EXPECT_EQ(kTestExcludedRoutes, args.GetStrings(kExcludedRoutesProperty));
+    vector<string> kTestIncludedRoutes(
+        {VersionedAddress(kIncludedRoutes, version)});
+    EXPECT_EQ(kTestIncludedRoutes, args.GetStrings(kIncludedRoutesProperty));
   }
   void ExpectProperties(PropertyStore* store, const string& property_prefix) {
     ExpectPropertiesWithVersion(store, property_prefix, 0);
@@ -165,36 +156,10 @@ class StaticIPParametersTest : public Test {
     ipconfig_props_.exclusion_list = {kExcludedRoute0, kExcludedRoute1};
     ipconfig_props_.routes = {kIncludedRoute0};
   }
-  void SetStaticPropertiesWithVersion(PropertyStore* store, int version) {
-    Error error;
-    store->SetStringProperty("StaticIP.Address",
-                             VersionedAddress(kAddress, version), &error);
-    store->SetStringProperty("StaticIP.Gateway",
-                             VersionedAddress(kGateway, version), &error);
-    store->SetInt32Property("StaticIP.Mtu", kMtu + version, &error);
-    store->SetStringProperty("StaticIP.NameServers",
-                             VersionedAddress(kNameServer0, version) + "," +
-                                 VersionedAddress(kNameServer1, version),
-                             &error);
-    store->SetStringProperty("StaticIP.SearchDomains",
-                             VersionedAddress(kSearchDomain0, version) + "," +
-                                 VersionedAddress(kSearchDomain1, version),
-                             &error);
-    store->SetStringProperty("StaticIP.PeerAddress",
-                             VersionedAddress(kPeerAddress, version), &error);
-    store->SetInt32Property("StaticIP.Prefixlen", kPrefixLen + version, &error);
-    store->SetStringProperty("StaticIP.ExcludedRoutes",
-                             VersionedAddress(kExcludedRoute0, version) + "," +
-                                 VersionedAddress(kExcludedRoute1, version),
-                             &error);
-    store->SetStringProperty("StaticIP.IncludedRoutes",
-                             VersionedAddress(kIncludedRoutes, version),
-                             &error);
-  }
   void SetStaticProperties(PropertyStore* store) {
     SetStaticPropertiesWithVersion(store, 0);
   }
-  void SetStaticDictPropertiesWithVersion(PropertyStore* store, int version) {
+  void SetStaticPropertiesWithVersion(PropertyStore* store, int version) {
     KeyValueStore args;
     args.SetString(kAddressProperty, VersionedAddress(kAddress, version));
     args.SetString(kGatewayProperty, VersionedAddress(kGateway, version));
@@ -217,6 +182,8 @@ class StaticIPParametersTest : public Test {
     Error error;
     store->SetKeyValueStoreProperty(kStaticIPConfigProperty, args, &error);
   }
+  KeyValueStore* static_args() { return &static_params_.args_; }
+  KeyValueStore* saved_args() { return &static_params_.saved_args_; }
 
  protected:
   StaticIPParameters static_params_;
@@ -240,16 +207,17 @@ TEST_F(StaticIPParametersTest, ApplyEmptyParameters) {
 
 TEST_F(StaticIPParametersTest, ControlInterface) {
   PropertyStore store;
+  int version = 0;
   static_params_.PlumbPropertyStore(&store);
   SetStaticProperties(&store);
   static_params_.ApplyTo(&ipconfig_props_);
   ExpectPopulatedIPConfig();
 
   EXPECT_TRUE(static_params_.ContainsAddress());
-  Error unused_error;
-  store.ClearProperty("StaticIP.Address", &unused_error);
+  EXPECT_TRUE(store.Contains("StaticIPConfig"));
+  static_args()->Remove("Address");
   EXPECT_FALSE(static_params_.ContainsAddress());
-  store.ClearProperty("StaticIP.Mtu", &unused_error);
+  static_args()->Remove("Mtu");
   IPConfig::Properties props;
   const string kTestAddress("test_address");
   props.address = kTestAddress;
@@ -259,39 +227,26 @@ TEST_F(StaticIPParametersTest, ControlInterface) {
   EXPECT_EQ(kTestAddress, props.address);
   EXPECT_EQ(kTestMtu, props.mtu);
 
-  {
-    Error error;
-    EXPECT_FALSE(store.GetStringProperty("StaticIP.Address", nullptr, &error));
-    EXPECT_EQ(Error::kNotFound, error.type());
-  }
-  string string_value;
-  EXPECT_TRUE(store.GetStringProperty("StaticIP.Gateway", &string_value,
-                                      &unused_error));
-  EXPECT_EQ(kGateway, string_value);
-  {
-    Error error;
-    EXPECT_FALSE(store.GetInt32Property("StaticIP.Mtu", nullptr, &error));
-    EXPECT_EQ(Error::kNotFound, error.type());
-  }
-  EXPECT_TRUE(store.GetStringProperty("StaticIP.NameServers", &string_value,
-                                      &unused_error));
-  EXPECT_EQ(kNameServers, string_value);
-  EXPECT_TRUE(store.GetStringProperty("StaticIP.SearchDomains", &string_value,
-                                      &unused_error));
-  EXPECT_EQ(kSearchDomains, string_value);
-  EXPECT_TRUE(store.GetStringProperty("StaticIP.PeerAddress", &string_value,
-                                      &unused_error));
-  EXPECT_EQ(kPeerAddress, string_value);
-  int32_t int_value;
-  EXPECT_TRUE(
-      store.GetInt32Property("StaticIP.Prefixlen", &int_value, &unused_error));
-  EXPECT_EQ(kPrefixLen, int_value);
-  EXPECT_TRUE(store.GetStringProperty("StaticIP.ExcludedRoutes", &string_value,
-                                      &unused_error));
-  EXPECT_EQ(kExcludedRoutes, string_value);
-  EXPECT_TRUE(store.GetStringProperty("StaticIP.IncludedRoutes", &string_value,
-                                      &unused_error));
-  EXPECT_EQ(kIncludedRoutes, string_value);
+  EXPECT_FALSE(static_args()->ContainsString("Address"));
+  EXPECT_EQ(kGateway, static_args()->GetString("Gateway"));
+  EXPECT_FALSE(static_args()->ContainsInt("Mtu"));
+  vector<string> kTestNameServers({VersionedAddress(kNameServer0, version),
+                                   VersionedAddress(kNameServer1, version)});
+  EXPECT_EQ(kTestNameServers, static_args()->GetStrings("NameServers"));
+  vector<string> kTestSearchDomains(
+      {VersionedAddress(kSearchDomain0, version),
+       VersionedAddress(kSearchDomain1, version)});
+  EXPECT_EQ(kTestSearchDomains, static_args()->GetStrings("SearchDomains"));
+  EXPECT_EQ(VersionedAddress(kPeerAddress, version),
+            static_args()->GetString("PeerAddress"));
+  EXPECT_EQ(kPrefixLen + version, static_args()->GetInt("Prefixlen"));
+  vector<string> kTestExcludedRoutes(
+      {VersionedAddress(kExcludedRoute0, version),
+       VersionedAddress(kExcludedRoute1, version)});
+  EXPECT_EQ(kTestExcludedRoutes, static_args()->GetStrings("ExcludedRoutes"));
+  vector<string> kTestIncludedRoutes(
+      {VersionedAddress(kIncludedRoutes, version)});
+  EXPECT_EQ(kTestIncludedRoutes, static_args()->GetStrings("IncludedRoutes"));
 }
 
 TEST_F(StaticIPParametersTest, Profile) {
@@ -358,7 +313,7 @@ TEST_F(StaticIPParametersTest, SavedParameters) {
   ExpectPopulatedIPConfigWithVersion(1);
 
   // Clear all "StaticIP" parameters.
-  static_params_.args_.Clear();
+  static_args()->Clear();
 
   // Another ApplyTo() call rotates the version 1 properties in
   // |ipconfig_props_| over to SavedIP.*.  Since there are no StaticIP
@@ -378,52 +333,7 @@ TEST_F(StaticIPParametersTest, SavedParameters) {
   ExpectPopulatedIPConfigWithVersion(1);
 
   // All "SavedIP" parameters should be cleared.
-  EXPECT_TRUE(static_params_.saved_args_.IsEmpty());
-
-  // Static IP parameters should be unchanged.
-  ExpectPropertiesWithVersion(&static_params_props, "StaticIP", 2);
-}
-
-TEST_F(StaticIPParametersTest, SavedParametersDict) {
-  // Calling RestoreTo() when no parameters are set should not crash or
-  // add any entries.
-  static_params_.RestoreTo(&ipconfig_props_);
-  ExpectEmptyIPConfig();
-
-  PopulateIPConfig();
-  PropertyStore static_params_props;
-  static_params_.PlumbPropertyStore(&static_params_props);
-  SetStaticDictPropertiesWithVersion(&static_params_props, 1);
-  static_params_.ApplyTo(&ipconfig_props_);
-
-  // The version 0 properties in |ipconfig_props_| are now in SavedIP.*
-  // properties, while the version 1 StaticIP parameters are now in
-  // |ipconfig_props_|.
-  ExpectPropertiesWithVersion(&static_params_props, "SavedIP", 0);
-  ExpectPopulatedIPConfigWithVersion(1);
-
-  // Clear all "StaticIP" parameters.
-  static_params_.args_.Clear();
-
-  // Another ApplyTo() call rotates the version 1 properties in
-  // |ipconfig_props_| over to SavedIP.*.  Since there are no StaticIP
-  // parameters, |ipconfig_props_| should remain populated with version 1
-  // parameters.
-  static_params_.ApplyTo(&ipconfig_props_);
-  ExpectPropertiesWithVersion(&static_params_props, "SavedIP", 1);
-  ExpectPopulatedIPConfigWithVersion(1);
-
-  // Reset |ipconfig_props_| to version 0.
-  PopulateIPConfig();
-
-  // A RestoreTo() call moves the version 1 "SavedIP" parameters into
-  // |ipconfig_props_|.
-  SetStaticDictPropertiesWithVersion(&static_params_props, 2);
-  static_params_.RestoreTo(&ipconfig_props_);
-  ExpectPopulatedIPConfigWithVersion(1);
-
-  // All "SavedIP" parameters should be cleared.
-  EXPECT_TRUE(static_params_.saved_args_.IsEmpty());
+  EXPECT_TRUE(saved_args()->IsEmpty());
 
   // Static IP parameters should be unchanged.
   ExpectPropertiesWithVersion(&static_params_props, "StaticIP", 2);
