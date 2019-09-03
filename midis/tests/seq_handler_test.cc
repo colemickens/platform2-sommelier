@@ -115,12 +115,12 @@ TEST_F(SeqHandlerTest, TestProcessAlsaClientFdNegative) {
   seq_handler->ProcessAlsaClientFd();
 
   snd_seq_event_t invalid_event = {
+    // This event type should never show up on this client+port.
+    .type = SND_SEQ_EVENT_SONGPOS,
     .source = {
       .client = SND_SEQ_CLIENT_SYSTEM,
       .port = SND_SEQ_PORT_SYSTEM_ANNOUNCE,
     },
-    // This event type should never show up on this client+port.
-    .type = SND_SEQ_EVENT_SONGPOS,
   };
 
   // Check invalid events.
@@ -136,11 +136,11 @@ TEST_F(SeqHandlerTest, TestProcessAlsaClientFdPositive) {
   auto seq_handler = std::make_unique<SeqHandlerMock>();
 
   snd_seq_event_t valid_event1 = {
+    .type = SND_SEQ_EVENT_PORT_START,
     .source = {
       .client = SND_SEQ_CLIENT_SYSTEM,
       .port = SND_SEQ_PORT_SYSTEM_ANNOUNCE,
     },
-    .type = SND_SEQ_EVENT_PORT_START,
   };
 
   EXPECT_CALL(*seq_handler, AddSeqDevice(_)).Times(1);
@@ -155,11 +155,11 @@ TEST_F(SeqHandlerTest, TestProcessAlsaClientFdPositive) {
   seq_handler->ProcessAlsaClientFd();
 
   snd_seq_event_t valid_event2 = {
+    .type = SND_SEQ_EVENT_CLIENT_EXIT,
     .source = {
       .client = SND_SEQ_CLIENT_SYSTEM,
       .port = SND_SEQ_PORT_SYSTEM_ANNOUNCE,
     },
-    .type = SND_SEQ_EVENT_CLIENT_EXIT,
     .data = {
       .addr = {
         .client = 3,
