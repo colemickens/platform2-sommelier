@@ -69,7 +69,7 @@ class MockMetrics : public KerberosMetrics {
   MOCK_METHOD0(StartAcquireTgtTimer, void());
   MOCK_METHOD0(StopAcquireTgtTimerAndReport, void());
   MOCK_METHOD1(ReportValidateConfigErrorCode, void(ConfigErrorCode));
-  MOCK_METHOD2(ReportDBusCallResult, void(const char*, ErrorType));
+  MOCK_METHOD2(ReportDBusCallResult, void(const std::string&, ErrorType));
   MOCK_METHOD0(ShouldReportDailyUsageStats, bool());
 
  private:
@@ -281,15 +281,8 @@ TEST_F(KerberosAdaptorTest, AddRemoveAccountSucceess) {
   EXPECT_EQ(ERROR_NONE, RemoveAccount());
 }
 
-#if defined(BRILLO_ASAN_BUILD)
-// This test is failing on ASan bots: https://crbug.com/991316.
-#define MAYBE_Metrics_ReportDBusCallResult DISABLED_Metrics_ReportDBusCallResult
-#else
-#define MAYBE_Metrics_ReportDBusCallResult Metrics_ReportDBusCallResult
-#endif
-
 // Checks that metrics are reported for all D-Bus calls.
-TEST_F(KerberosAdaptorTest, MAYBE_Metrics_ReportDBusCallResult) {
+TEST_F(KerberosAdaptorTest, Metrics_ReportDBusCallResult) {
   EXPECT_CALL(*metrics_, ReportDBusCallResult("AddAccount", ERROR_NONE));
   EXPECT_CALL(*metrics_, ReportDBusCallResult("ListAccounts", ERROR_NONE));
   EXPECT_CALL(*metrics_, ReportDBusCallResult("SetConfig", ERROR_NONE));

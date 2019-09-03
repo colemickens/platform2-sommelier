@@ -76,7 +76,7 @@ void KerberosMetrics::StopAcquireTgtTimerAndReport() {
   acquire_tgt_timer_.ReportMilliseconds();
 }
 
-void KerberosMetrics::ReportDBusCallResult(const char* method_name,
+void KerberosMetrics::ReportDBusCallResult(const std::string& method_name,
                                            ErrorType error) {
   metrics_lib_.SendEnumToUMA(kerberos_ + kResult + method_name,
                              static_cast<int>(error),

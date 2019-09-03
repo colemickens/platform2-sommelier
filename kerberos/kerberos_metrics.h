@@ -35,7 +35,9 @@ class KerberosMetrics {
 
   // Sends |error| to the UMA stat for Kerberos.Result.|method_name|, where
   // |method_name| should be a Kerberos D-Bus method (e.g. 'AddAccount').
-  virtual void ReportDBusCallResult(const char* method_name, ErrorType error);
+  // crbug.com/991316: Use std::string as workaround for ASAN.
+  virtual void ReportDBusCallResult(const std::string& method_name,
+                                    ErrorType error);
 
   // Sends |code| to the UMA stat for Kerberos.ValidateConfigErrorCode.
   virtual void ReportValidateConfigErrorCode(ConfigErrorCode code);
