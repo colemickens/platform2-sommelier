@@ -29,6 +29,7 @@ class StorageTool : public SubprocessTool {
                    const base::FilePath vendFile,
                    std::string* errorMsg);
   std::string Mmc(const std::string& option);
+  std::string Nvme(const std::string& option);
 
  private:
   // Returns the partition of |dst| as a string. |dst| is expected

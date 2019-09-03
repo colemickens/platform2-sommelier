@@ -30,6 +30,7 @@ const char kBadblocks[] = "/sbin/badblocks";
 const char kMountFile[] = "/proc/1/mounts";
 const char kSource[] = "/mnt/stateful_partition";
 const char kMmc[] = "/usr/bin/mmc";
+const char kNvme[] = "/usr/sbin/nvme";
 
 }  // namespace
 
@@ -67,9 +68,8 @@ void StorageTool::StripPartition(base::FilePath* dstPath) {
 
     base::FilePath basename = dstPath->BaseName();
     std::string bname = basename.value();
-    if (bname.compare(0, 4, "loop") == 0
-        && bname.compare(bname.size() - part.length(),
-                         part.length(), part) == 0)
+    if (bname.compare(0, 4, "loop") == 0 &&
+        bname.compare(bname.size() - part.length(), part.length(), part) == 0)
       return;
   }
   dst.erase(location, part_size);
@@ -142,8 +142,8 @@ bool StorageTool::IsSupported(const base::FilePath typeFile,
 }
 
 std::string StorageTool::Smartctl(const std::string& option) {
-  const base::FilePath device = GetDevice(base::FilePath(kSource),
-                                          base::FilePath(kMountFile));
+  const base::FilePath device =
+      GetDevice(base::FilePath(kSource), base::FilePath(kMountFile));
 
   if (device.empty()) {
     LOG(ERROR) << "Failed to find device for " << kSource;
@@ -171,13 +171,13 @@ std::string StorageTool::Smartctl(const std::string& option) {
       process.AddArg("-c");
     if (option == "error")
       process.AddStringOption("-l", "error");
-    if (option == "abort_test" || option == "health" ||
-        option == "selftest" || option == "short_test")
+    if (option == "abort_test" || option == "health" || option == "selftest" ||
+        option == "short_test")
       return "<Option not supported>";
 
   } else {
-    const base::FilePath dir = base::FilePath("/sys/block/" + bname.value()
-                                        + "/device/");
+    const base::FilePath dir =
+        base::FilePath("/sys/block/" + bname.value() + "/device/");
     const base::FilePath typeFile = dir.Append("type");
     const base::FilePath vendFile = dir.Append("vendor");
     std::string message;
@@ -212,8 +212,8 @@ std::string StorageTool::Smartctl(const std::string& option) {
 }
 
 std::string StorageTool::Start(const base::ScopedFD& outfd) {
-  const base::FilePath device = GetDevice(base::FilePath(kSource),
-                                          base::FilePath(kMountFile));
+  const base::FilePath device =
+      GetDevice(base::FilePath(kSource), base::FilePath(kMountFile));
 
   if (device.empty()) {
     LOG(ERROR) << "Failed to find device for " << kSource;
@@ -253,8 +253,33 @@ std::string StorageTool::Mmc(const std::string& option) {
     return "<Option not supported>";
   }
 
-  const base::FilePath rootdev = GetDevice(base::FilePath(kSource),
-                                           base::FilePath(kMountFile));
+  const base::FilePath rootdev =
+      GetDevice(base::FilePath(kSource), base::FilePath(kMountFile));
+  process.AddArg(rootdev.value());
+  process.Run();
+  std::string output;
+  process.GetOutput(&output);
+  return output;
+}
+
+std::string StorageTool::Nvme(const std::string& option) {
+  ProcessWithOutput process;
+  // Disabling sandboxing since nvme requires higher privileges.
+  process.DisableSandbox();
+  if (!process.Init())
+    return "<process init failed>";
+
+  process.AddArg(kNvme);
+
+  if (option == "identify_controller") {
+    process.AddArg("id-ctrl");
+    process.AddArg("--vendor-specific");
+  } else {
+    return "<Option not supported>";
+  }
+
+  const base::FilePath rootdev =
+      GetDevice(base::FilePath(kSource), base::FilePath(kMountFile));
   process.AddArg(rootdev.value());
   process.Run();
   std::string output;
