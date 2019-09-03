@@ -16,15 +16,8 @@
 
 namespace cryptohome {
 
-void LegacyCryptohomeInterfaceAdaptor::RegisterAsync(
-    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
-        completion_callback) {
-  // completion_callback is a callback that will be run when all method
-  // registration have finished. We don't have anything to run after completion
-  // so we'll just pass this along to libbrillo. This callback is typically used
-  // to signal to the DBus Daemon that method registration is complete
-  RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAsync(completion_callback);
+void LegacyCryptohomeInterfaceAdaptor::RegisterAsync() {
+  RegisterWithDBusObject(dbus_object_);
 
   // Register the dbus signal handlers
   userdataauth_proxy_->RegisterDircryptoMigrationProgressSignalHandler(

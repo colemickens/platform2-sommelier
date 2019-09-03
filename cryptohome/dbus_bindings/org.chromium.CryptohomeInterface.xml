@@ -7,7 +7,7 @@
      dbus-binding-tool -mode=glib-server -prefix=cryptohome cryptohome.xml
                         &gt; bindings/server.h
 -->
-<node name="/org/chromium/">
+<node name="/org/chromium/Cryptohome">
   <interface name="org.chromium.CryptohomeInterface">
     <annotation name="org.freedesktop.DBus.GLib.CSymbol"
                 value="cryptohome"/>

@@ -4,6 +4,7 @@
 
 #include <string>
 
+#include <brillo/dbus/introspectable_helper.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
 #include "cryptohome/proxy/dbus_proxy_service.h"
@@ -17,9 +18,22 @@ CryptohomeProxyService::CryptohomeProxyService(scoped_refptr<dbus::Bus> bus)
 
 void CryptohomeProxyService::OnInit() {
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
-  adaptor_.reset(new LegacyCryptohomeInterfaceAdaptor(bus_));
-  adaptor_->RegisterAsync(
+
+  DCHECK(!dbus_object_);
+  dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
+      nullptr, bus_, dbus::ObjectPath(kCryptohomeServicePath));
+
+  adaptor_.reset(
+      new LegacyCryptohomeInterfaceAdaptor(bus_, dbus_object_.get()));
+  adaptor_->RegisterAsync();
+
+  brillo::dbus_utils::IntrospectableInterfaceHelper introspection;
+  introspection.AddInterfaceXml(adaptor_->GetIntrospectionXml());
+  introspection.RegisterWithDBusObject(dbus_object_.get());
+
+  dbus_object_->RegisterAsync(
       sequencer->GetHandler("RegisterAsync() failed", true));
+
   sequencer->OnAllTasksCompletedCall({base::Bind(
       &CryptohomeProxyService::TakeServiceOwnership, base::Unretained(this))});
 }

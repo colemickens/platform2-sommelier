@@ -8,6 +8,8 @@
 #include <memory>
 #include <dbus/bus.h>
 
+#include <brillo/dbus/dbus_object.h>
+
 #include "cryptohome/proxy/legacy_cryptohome_interface_adaptor.h"
 
 namespace cryptohome {
@@ -32,6 +34,7 @@ class CryptohomeProxyService {
 
  private:
   scoped_refptr<dbus::Bus> bus_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<LegacyCryptohomeInterfaceAdaptor> adaptor_;
 };
 

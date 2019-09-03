@@ -15,6 +15,7 @@
 #include <base/atomic_sequence_num.h>
 #include <base/location.h>
 #include <base/optional.h>
+#include <brillo/dbus/dbus_object.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
@@ -70,9 +71,10 @@ class LegacyCryptohomeInterfaceAdaptor
     : public org::chromium::CryptohomeInterfaceInterface,
       public org::chromium::CryptohomeInterfaceAdaptor {
  public:
-  explicit LegacyCryptohomeInterfaceAdaptor(scoped_refptr<dbus::Bus> bus)
+  explicit LegacyCryptohomeInterfaceAdaptor(
+      scoped_refptr<dbus::Bus> bus, brillo::dbus_utils::DBusObject* dbus_object)
       : org::chromium::CryptohomeInterfaceAdaptor(this),
-        dbus_object_(nullptr, bus, dbus::ObjectPath(kCryptohomeServicePath)),
+        dbus_object_(dbus_object),
         default_attestation_proxy_(new org::chromium::AttestationProxy(bus)),
         attestation_proxy_(default_attestation_proxy_.get()),
         default_tpm_ownership_proxy_(new org::chromium::TpmOwnershipProxy(bus)),
@@ -96,9 +98,7 @@ class LegacyCryptohomeInterfaceAdaptor
         default_platform_(new Platform()),
         platform_(default_platform_.get()) {}
 
-  void RegisterAsync(
-      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
-          completion_callback);
+  void RegisterAsync();
 
   // The actual dbus methods
   void IsMounted(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>>
@@ -526,8 +526,7 @@ class LegacyCryptohomeInterfaceAdaptor
       org::chromium::CryptohomeMiscInterfaceProxyInterface* misc_proxy,
       cryptohome::Platform* platform)
       : org::chromium::CryptohomeInterfaceAdaptor(this),
-        dbus_object_(
-            nullptr, nullptr, dbus::ObjectPath(kCryptohomeServicePath)),
+        dbus_object_(nullptr),
         attestation_proxy_(attestation_proxy),
         tpm_ownership_proxy_(tpm_ownership_proxy),
         tpm_nvram_proxy_(tpm_nvram_proxy),
@@ -940,7 +939,10 @@ class LegacyCryptohomeInterfaceAdaptor
   // followed.
   static void ClearErrorIfNotSet(cryptohome::BaseReply* reply);
 
-  brillo::dbus_utils::DBusObject dbus_object_;
+  // This is the DBus Object that this interface is registered to. Note that
+  // this DBus Object is not owned by this class because multiple interfaces can
+  // be associated with the same object.
+  brillo::dbus_utils::DBusObject* dbus_object_;
 
   // Below are the DBus proxy objects that are used in this class. The default_*
   // versions are for holding an instance that is only used in actual,
