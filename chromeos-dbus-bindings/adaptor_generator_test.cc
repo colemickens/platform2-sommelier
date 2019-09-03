@@ -160,6 +160,37 @@ class TestAdaptor {
     return dbus::ObjectPath{"/org/chromium/Test"};
   }
 
+  static const char* GetIntrospectionXml() {
+    return
+        "  <interface name=\"org.chromium.Test\">\n"
+        "    <method name=\"Kaneda\">\n"
+        "      <arg name=\"iwata\" type=\"s\" direction=\"in\"/>\n"
+        "      <arg name=\"clarke\" type=\"ao\" direction=\"in\"/>\n"
+        "      <arg name=\"\" type=\"s\" direction=\"out\"/>\n"
+        "    </method>\n"
+        "    <method name=\"Tetsuo\">\n"
+        "      <arg name=\"\" type=\"i\" direction=\"in\"/>\n"
+        "      <arg name=\"\" type=\"x\" direction=\"out\"/>\n"
+        "    </method>\n"
+        "    <method name=\"Kei\">\n"
+        "    </method>\n"
+        "    <method name=\"Kiyoko\">\n"
+        "      <arg name=\"akira\" type=\"x\" direction=\"out\"/>\n"
+        "      <arg name=\"\" type=\"s\" direction=\"out\"/>\n"
+        "    </method>\n"
+        "    <method name=\"Takashi\">\n"
+        "      <arg name=\"onishi\" type=\"ay\" direction=\"in\"/>\n"
+        "      <arg name=\"miyako\" type=\"ay\" direction=\"out\"/>\n"
+        "    </method>\n"
+        "    <signal name=\"Update\">\n"
+        "    </signal>\n"
+        "    <signal name=\"Mapping\">\n"
+        "      <arg name=\"key\" type=\"s\"/>\n"
+        "      <arg name=\"\" type=\"ao\"/>\n"
+        "    </signal>\n"
+        "  </interface>\n";
+  }
+
  private:
   using SignalUpdateType = brillo::dbus_utils::DBusSignal<>;
   std::weak_ptr<SignalUpdateType> signal_Update_;
@@ -219,6 +250,23 @@ class Test2Adaptor {
         "Kei2",
         base::Unretained(interface_),
         &Test2Interface::Kei2);
+  }
+
+  static const char* GetIntrospectionXml() {
+    return
+        "  <interface name=\"org.chromium.Test2\">\n"
+        "    <method name=\"Kaneda2\">\n"
+        "      <arg name=\"iwata\" type=\"s\" direction=\"in\"/>\n"
+        "      <arg name=\"\" type=\"s\" direction=\"out\"/>\n"
+        "    </method>\n"
+        "    <method name=\"Tetsuo2\">\n"
+        "      <arg name=\"\" type=\"i\" direction=\"in\"/>\n"
+        "      <arg name=\"\" type=\"x\" direction=\"out\"/>\n"
+        "    </method>\n"
+        "    <method name=\"Kei2\">\n"
+        "      <arg name=\"\" type=\"b\" direction=\"out\"/>\n"
+        "    </method>\n"
+        "  </interface>\n";
   }
 
  private:
@@ -286,6 +334,19 @@ class TestAdaptor {
 
   static dbus::ObjectPath GetObjectPath() {
     return dbus::ObjectPath{"/org/chromium/Test"};
+  }
+
+  static const char* GetIntrospectionXml() {
+    return
+        "  <interface name=\"org.chromium.Test\">\n"
+        "    <method name=\"WrapFileDescriptor\">\n"
+        "      <arg name=\"\" type=\"h\" direction=\"in\"/>\n"
+        "      <arg name=\"\" type=\"h\" direction=\"out\"/>\n"
+        "    </method>\n"
+        "    <signal name=\"File\">\n"
+        "      <arg name=\"\" type=\"h\"/>\n"
+        "    </signal>\n"
+        "  </interface>\n";
   }
 
  private:

@@ -68,6 +68,11 @@ class AdaptorGenerator {
   // Generate ExportProperty data members for the properties.
   void AddPropertyDataMembers(const Interface& interface, IndentedText* text);
 
+  // Generate a static method that returns a const char* that contains the
+  // introspection interface for this particular interface.
+  void GenerateQuotedIntrospectionForInterface(const Interface& interface,
+                                               IndentedText* text);
+
   DISALLOW_COPY_AND_ASSIGN(AdaptorGenerator);
 };
 

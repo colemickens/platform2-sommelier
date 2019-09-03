@@ -101,9 +101,12 @@ void AdaptorGenerator::GenerateInterfaceAdaptor(
     text->PopOffset();
     text->AddLine("}");
   }
-  text->PopOffset();
-
   text->AddBlankLine();
+
+  GenerateQuotedIntrospectionForInterface(interface, text);
+  text->PopOffset();
+  text->AddBlankLine();
+
   text->AddLineWithOffset("private:", kScopeOffset);
   text->PushOffset(kBlockOffset);
   AddSignalDataMembers(interface, text);
@@ -506,6 +509,62 @@ void AdaptorGenerator::AddPropertyDataMembers(const Interface& interface,
     block.AddBlankLine();
 
   text->AddBlock(block);
+}
+
+void AdaptorGenerator::GenerateQuotedIntrospectionForInterface(
+    const Interface& interface, IndentedText* text) {
+  text->AddLine("static const char* GetIntrospectionXml() {");
+  text->PushOffset(kBlockOffset);
+
+  // Create a utility function for handling arguments.
+  auto AppendArgs = [](IndentedText* text, const string& extra,
+                       const vector<Interface::Argument>& args) {
+    for (const auto& arg : args) {
+      string arg_type = arg.type;
+      if (!arg_type.empty() && arg_type[0] == '^') {
+        arg_type = "ay";
+      }
+      text->AddLine(
+          StringPrintf(R"raw("      <arg name=\"%s\" type=\"%s\"%s/>\n")raw",
+                       arg.name.c_str(), arg_type.c_str(), extra.c_str()));
+    }
+  };
+
+  text->AddLine("return");
+  text->PushOffset(kLineContinuationOffset);
+  text->AddLine(StringPrintf(R"raw("  <interface name=\"%s\">\n")raw",
+                             interface.name.c_str()));
+
+  // Add the methods
+  for (const auto& method : interface.methods) {
+    text->AddLine(StringPrintf(R"raw("    <method name=\"%s\">\n")raw",
+                               method.name.c_str()));
+
+    // Add the input arguments
+    AppendArgs(text, R"( direction=\"in\")", method.input_arguments);
+
+    // Add the output arguments
+    AppendArgs(text, R"( direction=\"out\")", method.output_arguments);
+
+    text->AddLine(R"raw("    </method>\n")raw");
+  }
+
+  // Add the signals
+  for (const auto& signal : interface.signals) {
+    text->AddLine(StringPrintf(R"raw("    <signal name=\"%s\">\n")raw",
+                               signal.name.c_str()));
+
+    // Add the arguments
+    AppendArgs(text, "", signal.arguments);
+
+    text->AddLine(R"raw("    </signal>\n")raw");
+  }
+
+  text->AddLine(R"raw("  </interface>\n";)raw");
+
+  text->PopOffset();
+  text->PopOffset();
+  text->AddLine("}");
 }
 
 }  // namespace chromeos_dbus_bindings
