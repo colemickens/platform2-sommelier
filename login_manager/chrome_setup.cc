@@ -347,9 +347,6 @@ void AddSystemFlags(ChromiumCommandBuilder* builder) {
   if (!builder->UseFlagIsSet("compupdates"))
     builder->AddArg("--disable-component-update");
 
-  if (builder->UseFlagIsSet("ml_service"))
-    builder->AddFeatureEnableOverride("MachineLearningService");
-
   if (builder->UseFlagIsSet("smartdim"))
     builder->AddFeatureEnableOverride("SmartDim");
 
