@@ -50,33 +50,6 @@
       'includes': ['xml2cpp.gypi'],
     },
     {
-      'target_name': 'cloud_policy_proto_generator',
-      'type': 'none',
-      'hard_dependency': 1,
-      'variables': {
-        'policy_tools_dir': '<(sysroot)/usr/share/policy_tools',
-        'policy_resources_dir': '<(sysroot)/usr/share/policy_resources',
-        'proto_out_dir': '<(SHARED_INTERMEDIATE_DIR)/proto',
-      },
-      'actions': [{
-        'action_name': 'run_generate_script',
-        'inputs': [
-          '<(policy_tools_dir)/generate_policy_source.py',
-          '<(policy_resources_dir)/policy_templates.json',
-          '<(policy_resources_dir)/VERSION',
-        ],
-        'outputs': [ '<(proto_out_dir)/cloud_policy.proto' ],
-        'action': [
-          'python', '<(policy_tools_dir)/generate_policy_source.py',
-          '--cloud-policy-protobuf=<(proto_out_dir)/cloud_policy.proto',
-          '<(policy_resources_dir)/VERSION',
-          '<(OS)',
-          '1',         # chromeos-flag
-          '<(policy_resources_dir)/policy_templates.json',
-        ],
-      }],
-    },
-    {
       'target_name': 'policy-protos',
       'type': 'static_library',
       # policy-protos.a is used by a shared_libary object:
@@ -92,21 +65,6 @@
         '<(proto_in_dir)/chrome_device_policy.proto',
         '<(proto_in_dir)/chrome_extension_policy.proto',
         '<(proto_in_dir)/device_management_backend.proto',
-      ],
-      'includes': ['protoc.gypi'],
-    },
-    {
-      'target_name': 'user_policy-protos',
-      'type': 'static_library',
-      'variables': {
-        'proto_in_dir': '<(SHARED_INTERMEDIATE_DIR)/proto',
-        'proto_out_dir': 'include/bindings',
-      },
-      'dependencies': [
-        'cloud_policy_proto_generator',
-      ],
-      'sources': [
-        '<(proto_in_dir)/cloud_policy.proto',
       ],
       'includes': ['protoc.gypi'],
     },

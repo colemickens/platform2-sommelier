@@ -59,10 +59,9 @@ action("cloud_policy_proto_generator") {
   ]
   args = [
     "--cloud-policy-protobuf=${proto_out_dir}/cloud_policy.proto",
-    "${policy_resources_dir}/VERSION",
-    "${OS}",
-    "1",  # chromeos-flag
-    "${policy_resources_dir}/policy_templates.json",
+    "--chrome-version-file=${policy_resources_dir}/VERSION",
+    "--target-platform=chromeos",
+    "--policy-templates-file=${policy_resources_dir}/policy_templates.json",
   ]
 }
 
