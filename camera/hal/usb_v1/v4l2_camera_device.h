@@ -40,12 +40,16 @@ class V4L2CameraDevice : public CameraDeviceDelegate {
   const DeviceInfos GetCameraDeviceInfos() override;
 
  private:
+  static bool IsCameraDevice(const std::string& device_path);
+
   std::vector<float> GetFrameRateList(int fd,
                                       uint32_t fourcc,
                                       uint32_t width,
                                       uint32_t height);
+
   const std::unordered_map<std::string, std::string> GetCameraDevicesByPattern(
       std::string pattern);
+
   int RetryDeviceOpen(const std::string& device_path, int flags);
 
   // Get power frequency supported from device.
@@ -66,10 +70,6 @@ class V4L2CameraDevice : public CameraDeviceDelegate {
 
   // True if the buffer is used by client after GetNextFrameBuffer().
   std::vector<bool> buffers_at_client_;
-
-  // Keep internal camera devices to distinguish external camera.
-  // First index is VID:PID and second index is the device path.
-  std::unordered_map<std::string, std::string> internal_devices_;
 
   DISALLOW_COPY_AND_ASSIGN(V4L2CameraDevice);
 };
