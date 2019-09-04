@@ -13,7 +13,33 @@ allow cros_crash cros_syslog:file r_file_perms;
 
 allow cros_crash unlabeled:dir search;
 
-domain_auto_trans({chromeos_domain -cros_crash}, cros_crash_reporter_exec, cros_crash);
+
+# FOR DEBUG
+# Allow execute (but not transition to escape from enforced domain) crash_reporter to observe if there's
+# other permissive callers than below.
+allow chromeos_domain cros_crash_reporter_exec:file execute;
+auditallow {
+chromeos_domain
+-kernel
+-cros_init
+-cros_init_scripts
+-cros_init_scripts_domain
+-cros_shill
+-cros_anomaly_detector
+-cros_crash # self-exec
+} cros_crash_reporter_exec:file execute;
+
+
+# crash-reporter to be executed by anomaly_detector/init/init scripts/shill
+domain_auto_trans({
+kernel
+cros_init
+cros_init_scripts
+cros_init_scripts_domain
+cros_shill
+cros_anomaly_detector
+}, cros_crash_reporter_exec, cros_crash);
+
 allow cros_crash cros_anomaly_detector:fd use;
 # Kernel and cros_anomaly_detector are expected to run crash_reporter.
 # This audit allow is used to catch more unexpected usage.
