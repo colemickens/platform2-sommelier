@@ -8,6 +8,7 @@
 #include <memory>
 
 #include <base/macros.h>
+#include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 
 #include <brillo/brillo_export.h>
@@ -23,6 +24,11 @@ class BRILLO_EXPORT ScopedMountNamespace {
   // unique_ptr that restores the original mount namespace when it goes out of
   // scope.
   static std::unique_ptr<ScopedMountNamespace> CreateForPid(pid_t pid);
+
+  // Enters the mount namespace identified by |path| and returns a unique_ptr
+  // that restores the original mount namespace when it goes out of scope.
+  static std::unique_ptr<ScopedMountNamespace> CreateFromPath(
+      base::FilePath ns_path);
 
   explicit ScopedMountNamespace(base::ScopedFD mount_namespace_fd);
   ~ScopedMountNamespace();

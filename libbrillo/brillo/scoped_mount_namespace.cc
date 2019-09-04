@@ -9,10 +9,15 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <string>
 #include <utility>
 
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/stringprintf.h>
+
+namespace {
+constexpr char kCurrentMountNamespacePath[] = "/proc/self/ns/mnt";
+}  // anonymous namespace
 
 namespace brillo {
 
@@ -25,26 +30,35 @@ ScopedMountNamespace::~ScopedMountNamespace() {
 }
 
 // static
-std::unique_ptr<ScopedMountNamespace>
-ScopedMountNamespace::CreateForPid(pid_t pid) {
-  constexpr char kCurrentMountNamespacePath[] = "/proc/self/ns/mnt";
+std::unique_ptr<ScopedMountNamespace> ScopedMountNamespace::CreateForPid(
+    pid_t pid) {
+  std::string ns_path = base::StringPrintf("/proc/%d/ns/mnt", pid);
+  return CreateFromPath(base::FilePath(ns_path));
+}
+
+// static
+std::unique_ptr<ScopedMountNamespace> ScopedMountNamespace::CreateFromPath(
+    base::FilePath ns_path) {
   base::ScopedFD original_mount_namespace_fd(
       HANDLE_EINTR(open(kCurrentMountNamespacePath, O_RDONLY)));
   if (!original_mount_namespace_fd.is_valid()) {
-    PLOG(ERROR) << "Failed to get the original mount namespace FD";
+    PLOG(ERROR) << "Failed to open original mount namespace FD at "
+                << kCurrentMountNamespacePath;
     return nullptr;
   }
-  base::ScopedFD mount_namespace_fd(HANDLE_EINTR(
-      open(base::StringPrintf("/proc/%d/ns/mnt", pid).c_str(), O_RDONLY)));
+
+  base::ScopedFD mount_namespace_fd(
+      HANDLE_EINTR(open(ns_path.value().c_str(), O_RDONLY)));
   if (!mount_namespace_fd.is_valid()) {
-    PLOG(ERROR) << "Failed to get PID " << pid << "'s mount namespace FD";
+    PLOG(ERROR) << "Failed to open mount namespace FD at " << ns_path.value();
     return nullptr;
   }
 
   if (setns(mount_namespace_fd.get(), CLONE_NEWNS) != 0) {
-    PLOG(ERROR) << "Failed to enter PID " << pid << "'s mount namespace";
+    PLOG(ERROR) << "Failed to enter mount namespace at " << ns_path.value();
     return nullptr;
   }
+
   return std::make_unique<ScopedMountNamespace>(
       std::move(original_mount_namespace_fd));
 }
