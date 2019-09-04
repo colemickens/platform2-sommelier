@@ -115,6 +115,7 @@ const char kPowerWakeup[] = "power/wakeup";
 const double kEpsilon = 0.001;
 const int64_t kFastBacklightTransitionMs = 200;
 const int64_t kSlowBacklightTransitionMs = 2000;
+const char kInputUdevSubsystem[] = "input";
 
 std::string PowerSourceToString(PowerSource source) {
   switch (source) {

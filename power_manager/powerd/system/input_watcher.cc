@@ -98,7 +98,6 @@ bool GetPowerButtonStateFromEvent(const input_event& event,
 
 }  // namespace
 
-const char InputWatcher::kInputUdevSubsystem[] = "input";
 const char InputWatcher::kPowerButtonToSkip[] = "LNXPWRBN";
 const char InputWatcher::kPowerButtonToSkipForLegacy[] = "isa";
 const char InputWatcher::kAcpiLidDevice[] = "PNP0C0D";
@@ -140,9 +139,7 @@ bool InputWatcher::Init(
     for (auto const& input_device : input_device_list) {
       int num = -1;
       if (GetInputNumber(input_device.sysname, &num)) {
-        HandleAddedInput(input_device.sysname, num,
-                         input_device.wakeup_device_path,
-                         false /* notify_state */);
+        HandleAddedInput(input_device.sysname, num, false /* notify_state */);
       }
     }
   } else {
@@ -235,33 +232,12 @@ bool InputWatcher::IsUSBInputDeviceConnected() const {
   return false;
 }
 
-void InputWatcher::PrepareForSuspendRequest() {
-  for (const auto& wakeup_pair : wakeup_devices_) {
-    wakeup_pair.second->PrepareForSuspend();
-  }
-}
-
-void InputWatcher::HandleResume() {
-  for (const auto& wakeup_pair : wakeup_devices_) {
-    wakeup_pair.second->HandleResume();
-  }
-}
-
-bool InputWatcher::InputDeviceCausedLastWake() const {
-  for (const auto& wakeup_pair : wakeup_devices_) {
-    if (wakeup_pair.second->CausedLastWake())
-      return true;
-  }
-  return false;
-}
-
 void InputWatcher::OnUdevEvent(const UdevEvent& event) {
   DCHECK_EQ(event.device_info.subsystem, kInputUdevSubsystem);
   int input_num = -1;
   if (GetInputNumber(event.device_info.sysname, &input_num)) {
     if (event.action == UdevEvent::Action::ADD) {
       HandleAddedInput(event.device_info.sysname, input_num,
-                       event.device_info.wakeup_device_path,
                        true /* notify_state */);
     } else if (event.action == UdevEvent::Action::REMOVE) {
       HandleRemovedInput(input_num);
@@ -394,7 +370,6 @@ void InputWatcher::ProcessHoverEvent(const input_event& event) {
 
 void InputWatcher::HandleAddedInput(const std::string& input_name,
                                     int input_num,
-                                    const base::FilePath& wakeup_device_path,
                                     bool notify_state) {
   if (event_devices_.count(input_num) > 0) {
     LOG(WARNING) << "Input " << input_num << " already registered";
@@ -482,21 +457,6 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
     VLOG(1) << "Event device with phys path " << device->GetDebugName()
             << " is not monitored for input events";
   }
-
-  // If we do not know the wakeup path of the input device, we cannot monitor
-  //  the wakeup counts.
-  if (wakeup_device_path.empty()) {
-    LOG(INFO) << "Input device " << device->GetDebugName()
-              << " is not wake-capable";
-    return;
-  }
-
-  // Any input device should also be a valid wake source (if wake enabled).
-  if (MonitorWakeupDevice(input_num, wakeup_device_path)) {
-    LOG(INFO) << "Monitoring input device " << input_name
-              << " with wakeup path " << wakeup_device_path.value()
-              << " to identify the wake source";
-  }
 }
 
 void InputWatcher::HandleRemovedInput(int input_num) {
@@ -512,28 +472,6 @@ void InputWatcher::HandleRemovedInput(int input_num) {
       hover_device_ = nullptr;
     event_devices_.erase(it);
   }
-
-  if (wakeup_devices_.erase(input_num)) {
-    LOG(INFO) << "Stopping monitoring input " << input_num
-              << " for wake events";
-  }
-}
-
-bool InputWatcher::MonitorWakeupDevice(
-    int input_num, const base::FilePath& wakeup_device_path) {
-  if (wakeup_devices_.count(input_num))
-    return true;
-
-  VLOG(1) << "Creating wakeup device for " << wakeup_device_path.value();
-  std::unique_ptr<WakeupDeviceInterface> wakeup_device =
-      WakeupDevice::CreateWakeupDevice(wakeup_device_path);
-  if (!wakeup_device) {
-    LOG(ERROR) << "Creating wakeup device for " << wakeup_device_path.value()
-               << " failed";
-    return false;
-  }
-  wakeup_devices_.insert(std::make_pair(input_num, std::move(wakeup_device)));
-  return true;
 }
 
 void InputWatcher::SendQueuedEvents() {

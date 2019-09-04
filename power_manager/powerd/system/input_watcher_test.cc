@@ -21,7 +21,6 @@
 #include "power_manager/powerd/system/event_device_stub.h"
 #include "power_manager/powerd/system/input_observer.h"
 #include "power_manager/powerd/system/udev_stub.h"
-#include "power_manager/powerd/system/wakeup_device_stub.h"
 
 namespace power_manager {
 namespace system {
@@ -78,12 +77,6 @@ const char* GetPowerButtonAction(ButtonState state) {
   }
   NOTREACHED() << "Invalid power button state " << static_cast<int>(state);
   return "power-invalid";
-}
-
-// Creates |sys_path|. Also creates all necessary parent directories.
-void CreateFile(const base::FilePath& sys_path) {
-  ASSERT_TRUE(base::CreateDirectory(sys_path.DirName()));
-  CHECK_EQ(base::WriteFile(sys_path, "", 0), 0);
 }
 
 // InputObserver implementation that just records the events that it receives.
@@ -172,17 +165,7 @@ class InputWatcherTest : public testing::Test {
     UdevDeviceInfo input_device_info;
     input_device_info.sysname = name;
     input_device_info.syspath = syspath;
-    // Point wakeup_device_path to a random sys path under temp
-    // directory and create a empty |kPowerWakeup| file in that directory so
-    // that CreateWakeupDevice() does not err out.
-    std::string kTestSysPath = "sys/devices/pci0000:00/0000:00:14.0/usb1/1-2/";
-    base::FilePath wakeup_device_path =
-        temp_dir_.GetPath().Append(kTestSysPath);
-    base::FilePath wakeup_attr_path = wakeup_device_path.Append(kPowerWakeup);
-    CreateFile(wakeup_attr_path);
-    input_device_info.wakeup_device_path = wakeup_device_path;
-    udev_.AddSubsystemDevice(InputWatcher::kInputUdevSubsystem,
-                             input_device_info, {});
+    udev_.AddSubsystemDevice(kInputUdevSubsystem, input_device_info, {});
     event_device_factory_->RegisterDevice(path, device);
   }
 
@@ -297,12 +280,6 @@ TEST_F(InputWatcherTest, PowerButton) {
   skipped_power_button->AppendEvent(EV_KEY, KEY_POWER, 1);
   skipped_power_button->NotifyAboutEvents();
   EXPECT_EQ(kNoActions, observer_->GetActions());
-  // Check ACPI power button is monitored for wake events.
-  EXPECT_TRUE(input_watcher_->is_wakeup_device_tracked_for_testing(
-      kSkippedPowerButtonEventNum));
-  // Check normal power button is monitored for wake events.
-  EXPECT_TRUE(input_watcher_->is_wakeup_device_tracked_for_testing(
-      kNormalPowerButtonEventNum));
   // Now set the legacy power button pref and test again.
   legacy_power_button_pref_ = 1;
   skipped_power_button->set_phys_path(
@@ -332,10 +309,6 @@ TEST_F(InputWatcherTest, LidSwitch) {
   // is returned but no event is sent.
   Init();
   EXPECT_EQ(kNoActions, observer_->GetActions());
-
-  // Check ACPI lid switch is monitored for wake events.
-  EXPECT_TRUE(
-      input_watcher_->is_wakeup_device_tracked_for_testing(kLidSwitchEventNum));
 
   EXPECT_EQ(LidState::CLOSED, input_watcher_->QueryLidState());
 
@@ -394,10 +367,6 @@ TEST_F(InputWatcherTest, TabletModeSwitch) {
   EXPECT_EQ(TabletMode::ON, input_watcher_->GetTabletMode());
   EXPECT_EQ(kNoActions, observer_->GetActions());
 
-  // Check tablet mode switch is monitored for wake events.
-  EXPECT_TRUE(input_watcher_->is_wakeup_device_tracked_for_testing(
-      kTabletModeSwitchEventNum));
-
   // Add an event, run the message loop, and check that the observer was
   // notified and that GetTabletMode() returns the updated mode.
   tablet_mode_switch->AppendEvent(EV_SW, SW_TABLET_MODE, 0);
@@ -441,13 +410,6 @@ TEST_F(InputWatcherTest, HoverMultitouch) {
 
   detect_hover_pref_ = 1;
   Init();
-
-  // Check touch pad is monitored for wake events.
-  EXPECT_TRUE(
-      input_watcher_->is_wakeup_device_tracked_for_testing(kTouchPadEventNum));
-  // Check touch screen is monitored for wake events.
-  EXPECT_TRUE(input_watcher_->is_wakeup_device_tracked_for_testing(
-      kTouchScreenEventNum));
 
   // Indicate that a finger is being tracked. No events should be generated yet.
   touchpad->AppendEvent(EV_ABS, ABS_MT_TRACKING_ID, 0);
@@ -683,8 +645,8 @@ TEST_F(InputWatcherTest, SingleDeviceForAllTypes) {
 
 TEST_F(InputWatcherTest, RegisterForUdevEvents) {
   Init();
-  EXPECT_TRUE(udev_.HasSubsystemObserver(InputWatcher::kInputUdevSubsystem,
-                                         input_watcher_.get()));
+  EXPECT_TRUE(
+      udev_.HasSubsystemObserver(kInputUdevSubsystem, input_watcher_.get()));
 
   // Connect a keyboard and send a power button event.
   const char kDeviceName[] = "event0";
@@ -692,23 +654,20 @@ TEST_F(InputWatcherTest, RegisterForUdevEvents) {
   keyboard->set_is_power_button(true);
   AddDevice(kDeviceName, keyboard, "");
   udev_.NotifySubsystemObservers(
-      {{InputWatcher::kInputUdevSubsystem, "", kDeviceName, ""},
-       UdevEvent::Action::ADD});
+      {{kInputUdevSubsystem, "", kDeviceName, ""}, UdevEvent::Action::ADD});
   keyboard->AppendEvent(EV_KEY, KEY_POWER, 1);
   keyboard->NotifyAboutEvents();
   EXPECT_EQ(kPowerButtonDownAction, observer_->GetActions());
 
   // Disconnect the keyboard.
   udev_.NotifySubsystemObservers(
-      {{InputWatcher::kInputUdevSubsystem, "", kDeviceName, ""},
-       UdevEvent::Action::REMOVE});
+      {{kInputUdevSubsystem, "", kDeviceName, ""}, UdevEvent::Action::REMOVE});
 
   // Check that the InputWatcher unregisters itself.
   InputWatcher* dead_ptr = input_watcher_.get();
   observer_.reset();
   input_watcher_.reset();
-  EXPECT_FALSE(
-      udev_.HasSubsystemObserver(InputWatcher::kInputUdevSubsystem, dead_ptr));
+  EXPECT_FALSE(udev_.HasSubsystemObserver(kInputUdevSubsystem, dead_ptr));
 }
 
 TEST_F(InputWatcherTest, NotifyAboutAddedSwitch) {
@@ -723,8 +682,7 @@ TEST_F(InputWatcherTest, NotifyAboutAddedSwitch) {
   lid_switch->set_initial_lid_state(LidState::OPEN);
   AddDevice("event0", lid_switch, "");
   udev_.NotifySubsystemObservers(
-      {{InputWatcher::kInputUdevSubsystem, "", "event0", ""},
-       UdevEvent::Action::ADD});
+      {{kInputUdevSubsystem, "", "event0", ""}, UdevEvent::Action::ADD});
   EXPECT_EQ(kLidOpenAction, observer_->GetActions());
 
   // The same thing should happen if a tablet mode switch appears. This is
@@ -735,8 +693,7 @@ TEST_F(InputWatcherTest, NotifyAboutAddedSwitch) {
   tablet_mode_switch->set_initial_tablet_mode(TabletMode::ON);
   AddDevice("event1", tablet_mode_switch, "");
   udev_.NotifySubsystemObservers(
-      {{InputWatcher::kInputUdevSubsystem, "", "event1", ""},
-       UdevEvent::Action::ADD});
+      {{kInputUdevSubsystem, "", "event1", ""}, UdevEvent::Action::ADD});
   EXPECT_EQ(TabletMode::ON, input_watcher_->GetTabletMode());
   EXPECT_EQ(kTabletModeOnAction, observer_->GetActions());
 }

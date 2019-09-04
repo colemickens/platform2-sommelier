@@ -6,7 +6,7 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
-#include "power_manager/powerd/system/input_watcher_interface.h"
+#include "power_manager/powerd/system/wakeup_source_identifier.h"
 
 namespace power_manager {
 namespace system {
@@ -16,12 +16,12 @@ DarkResume::DarkResume() {}
 DarkResume::~DarkResume() {}
 
 void DarkResume::Init(PrefsInterface* prefs,
-                      InputWatcherInterface* input_watcher) {
+                      WakeupSourceIdentifier* wakeup_source_identifier) {
   DCHECK(prefs);
-  DCHECK(input_watcher);
+  DCHECK(wakeup_source_identifier);
 
   prefs_ = prefs;
-  input_watcher_ = input_watcher;
+  wakeup_source_identifier_ = wakeup_source_identifier;
 
   bool disable = false;
   enabled_ = (!prefs_->GetBool(kDisableDarkResumePref, &disable) || !disable);
@@ -32,7 +32,7 @@ void DarkResume::PrepareForSuspendRequest() {
   // We want to keep track of wakeup count of devices even when dark resume is
   // not enabled as this will help in identifying the wake source when debugging
   // spurious wakes.
-  input_watcher_->PrepareForSuspendRequest();
+  wakeup_source_identifier_->PrepareForSuspendRequest();
 }
 
 void DarkResume::UndoPrepareForSuspendRequest() {
@@ -42,8 +42,8 @@ void DarkResume::UndoPrepareForSuspendRequest() {
 void DarkResume::HandleSuccessfulResume() {
   in_dark_resume_ = false;
 
-  input_watcher_->HandleResume();
-  if (input_watcher_->InputDeviceCausedLastWake()) {
+  wakeup_source_identifier_->HandleResume();
+  if (wakeup_source_identifier_->InputDeviceCausedLastWake()) {
     VLOG(1) << "User triggered wake";
   } else {
     VLOG(1) << "Wake not triggered by user";

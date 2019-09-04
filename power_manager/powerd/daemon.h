@@ -77,6 +77,7 @@ class PowerSupplyInterface;
 class UserProximityWatcherInterface;
 class SuspendConfiguratorInterface;
 class UdevInterface;
+class WakeupSourceIdentifier;
 }  // namespace system
 
 class Daemon;
@@ -296,6 +297,7 @@ class Daemon : public policy::InputEventHandler::Delegate,
   std::unique_ptr<policy::WifiController> wifi_controller_;
   std::unique_ptr<policy::CellularController> cellular_controller_;
   std::unique_ptr<system::SuspendConfiguratorInterface> suspend_configurator_;
+  std::unique_ptr<system::WakeupSourceIdentifier> wakeup_source_identifier_;
 
   std::unique_ptr<metrics::MetricsCollector> metrics_collector_;
 

@@ -15,7 +15,7 @@ class PrefsInterface;
 
 namespace system {
 
-class InputWatcherInterface;
+class WakeupSourceIdentifier;
 
 // Newer implementation of dark resume. Uses per device (peripheral) wakeup
 // count to identify the wake source.
@@ -25,7 +25,8 @@ class DarkResume : public DarkResumeInterface {
   ~DarkResume() override;
 
   // Reads preferences on whether dark resume is enabled.
-  void Init(PrefsInterface* prefs, InputWatcherInterface* input_watcher);
+  void Init(PrefsInterface* prefs,
+            WakeupSourceIdentifier* wakeup_source_identifier);
 
   // DarkResumeInterface implementation:
   void PrepareForSuspendRequest() override;
@@ -44,7 +45,7 @@ class DarkResume : public DarkResumeInterface {
 
   PrefsInterface* prefs_;  // weak
 
-  InputWatcherInterface* input_watcher_;  // weak
+  WakeupSourceIdentifier* wakeup_source_identifier_;  // weak
 
   DISALLOW_COPY_AND_ASSIGN(DarkResume);
 };

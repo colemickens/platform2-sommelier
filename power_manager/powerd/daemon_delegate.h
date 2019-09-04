@@ -38,6 +38,7 @@ class PowerSupplyInterface;
 class UserProximityWatcherInterface;
 class SuspendConfiguratorInterface;
 class UdevInterface;
+class WakeupSourceIdentifier;
 }  // namespace system
 
 class MetricsSenderInterface;
@@ -126,11 +127,12 @@ class DaemonDelegate {
       BatteryPercentageConverter* battery_percentage_converter) = 0;
 
   virtual std::unique_ptr<system::UserProximityWatcherInterface>
-      CreateUserProximityWatcher(PrefsInterface* prefs,
-                                 system::UdevInterface* udev) = 0;
+  CreateUserProximityWatcher(PrefsInterface* prefs,
+                             system::UdevInterface* udev) = 0;
 
   virtual std::unique_ptr<system::DarkResumeInterface> CreateDarkResume(
-      PrefsInterface* prefs, system::InputWatcherInterface* input_watcher) = 0;
+      PrefsInterface* prefs,
+      system::WakeupSourceIdentifier* wakeup_source_identifier) = 0;
 
   virtual std::unique_ptr<system::AudioClientInterface> CreateAudioClient(
       system::DBusWrapperInterface* dbus_wrapper) = 0;

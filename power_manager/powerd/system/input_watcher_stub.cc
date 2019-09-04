@@ -58,12 +58,5 @@ bool InputWatcherStub::IsUSBInputDeviceConnected() const {
   return usb_input_device_connected_;
 }
 
-void InputWatcherStub::PrepareForSuspendRequest() {}
-
-void InputWatcherStub::HandleResume() {}
-
-bool InputWatcherStub::InputDeviceCausedLastWake() const {
-  return true;
-}
 }  // namespace system
 }  // namespace power_manager

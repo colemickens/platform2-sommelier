@@ -212,9 +212,9 @@ class DaemonDelegateImpl : public DaemonDelegate {
 
   std::unique_ptr<system::DarkResumeInterface> CreateDarkResume(
       PrefsInterface* prefs,
-      system::InputWatcherInterface* input_watcher) override {
+      system::WakeupSourceIdentifier* wakeup_source_identifier) override {
     auto dark_resume = std::make_unique<system::DarkResume>();
-    dark_resume->Init(prefs, input_watcher);
+    dark_resume->Init(prefs, wakeup_source_identifier);
     return dark_resume;
   }
 

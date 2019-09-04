@@ -36,14 +36,10 @@ class EventDeviceFactoryInterface;
 class InputObserver;
 struct UdevEvent;
 class UdevInterface;
-class WakeupDeviceInterface;
 
 class InputWatcher : public InputWatcherInterface,
                      public UdevSubsystemObserver {
  public:
-  // udev subsystem to watch for input device-related events.
-  static const char kInputUdevSubsystem[];
-
   // Physical location (as returned by EVIOCGPHYS()) of power button devices
   // that should be skipped.
   //
@@ -69,9 +65,6 @@ class InputWatcher : public InputWatcherInterface,
   void set_sys_class_input_path_for_testing(const base::FilePath& path) {
     sys_class_input_path_ = path;
   }
-  bool is_wakeup_device_tracked_for_testing(int input_num) const {
-    return wakeup_devices_.find(input_num) != wakeup_devices_.end();
-  }
   // Leaves the InputWatcher in an unusable state, but useful for tests that
   // want to use the same event_device_factory_ across multiple InputWatchers.
   EventDeviceFactoryInterface* release_event_device_factory_for_testing() {
@@ -88,9 +81,6 @@ class InputWatcher : public InputWatcherInterface,
   LidState QueryLidState() override;
   TabletMode GetTabletMode() override;
   bool IsUSBInputDeviceConnected() const override;
-  void PrepareForSuspendRequest() override;
-  void HandleResume() override;
-  bool InputDeviceCausedLastWake() const override;
 
   // UdevSubsystemObserver implementation:
   void OnUdevEvent(const UdevEvent& event) override;
@@ -129,18 +119,9 @@ class InputWatcher : public InputWatcherInterface,
   // the state of new devices.
   void HandleAddedInput(const std::string& input_name,
                         int input_num,
-                        const base::FilePath& wakeup_device_path,
                         bool notify_state);
 
   void HandleRemovedInput(int input_num);
-
-  // Monitors a device (with |wakeup_device_path|) to identify the potential
-  // wakeup reason. Monitors only if the |wakeup_device_path| points to a
-  // directory with power/wakeup property. Returns true if the device is
-  // being monitored.
-  // Example: /sys/devices/pci0000:00/0000:00:14.0/usb1/1-2/
-  bool MonitorWakeupDevice(int input_num,
-                           const base::FilePath& wakeup_device_path);
 
   // Calls NotifyObserversAboutEvent() for each event in |queued_events_| and
   // clears the vector.
@@ -223,10 +204,6 @@ class InputWatcher : public InputWatcherInterface,
   // Keyed by input event number.
   typedef std::map<int, linked_ptr<EventDeviceInterface>> InputMap;
   InputMap event_devices_;
-
-  // Keyed by the input event number.
-  using WakeupDeviceMap = std::map<int, std::unique_ptr<WakeupDeviceInterface>>;
-  WakeupDeviceMap wakeup_devices_;
 
   base::ObserverList<InputObserver> observers_;
 

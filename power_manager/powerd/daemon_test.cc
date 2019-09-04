@@ -257,15 +257,15 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     return std::move(passed_power_supply_);
   }
   std::unique_ptr<system::UserProximityWatcherInterface>
-      CreateUserProximityWatcher(PrefsInterface* prefs,
-                                 system::UdevInterface* udev) override {
+  CreateUserProximityWatcher(PrefsInterface* prefs,
+                             system::UdevInterface* udev) override {
     EXPECT_EQ(prefs_, prefs);
     EXPECT_EQ(udev_, udev);
     return std::move(passed_sar_watcher_);
   }
   std::unique_ptr<system::DarkResumeInterface> CreateDarkResume(
       PrefsInterface* prefs,
-      system::InputWatcherInterface* input_watcher) override {
+      system::WakeupSourceIdentifier* wakeup_source_identifier) override {
     EXPECT_EQ(prefs_, prefs);
     return std::move(passed_dark_resume_);
   }

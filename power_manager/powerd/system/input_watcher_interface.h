@@ -35,16 +35,6 @@ class InputWatcherInterface {
   // Checks if any USB input devices are connected.
   virtual bool IsUSBInputDeviceConnected() const = 0;
 
-  // Should be called at the beginning of a new suspend request.
-  virtual void PrepareForSuspendRequest() = 0;
-
-  // Should be called at the end of a suspend request.
-  virtual void HandleResume() = 0;
-
-  // Returns true if any of the input devices' wakeup counts differed (compared
-  // to the pre-suspend wakeup counts).
-  virtual bool InputDeviceCausedLastWake() const = 0;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(InputWatcherInterface);
 };

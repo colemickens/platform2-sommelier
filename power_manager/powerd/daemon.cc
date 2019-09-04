@@ -60,6 +60,7 @@
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/powerd/system/user_proximity_watcher_interface.h"
 #include "power_manager/powerd/system/wake_on_dp_configurator.h"
+#include "power_manager/powerd/system/wakeup_source_identifier.h"
 #include "power_manager/powerd/system/wilco_charge_controller_helper.h"
 #include "power_manager/proto_bindings/idle.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
@@ -309,6 +310,8 @@ void Daemon::Init() {
   udev_ = delegate_->CreateUdev();
   input_watcher_ = delegate_->CreateInputWatcher(prefs_.get(), udev_.get());
   suspend_configurator_ = delegate_->CreateSuspendConfigurator(prefs_.get());
+  wakeup_source_identifier_ =
+      std::make_unique<system::WakeupSourceIdentifier>(udev_.get());
 
   const TabletMode tablet_mode = input_watcher_->GetTabletMode();
   if (tablet_mode == TabletMode::ON)
@@ -380,8 +383,8 @@ void Daemon::Init() {
                            keyboard_backlight_controller_.get(), power_status,
                            first_run_after_boot_);
 
-  dark_resume_ =
-      delegate_->CreateDarkResume(prefs_.get(), input_watcher_.get());
+  dark_resume_ = delegate_->CreateDarkResume(prefs_.get(),
+                                             wakeup_source_identifier_.get());
 
   shutdown_from_suspend_->Init(prefs_.get(), power_supply_.get());
 

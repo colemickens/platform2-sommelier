@@ -293,6 +293,8 @@ extern const double kEpsilon;
 // BacklightController implementations may not use animated transitions.
 extern const int64_t kFastBacklightTransitionMs;
 extern const int64_t kSlowBacklightTransitionMs;
+// udev subsystem to watch for input device related events.
+extern const char kInputUdevSubsystem[];
 
 enum class PowerSource {
   AC,
