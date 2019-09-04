@@ -907,6 +907,12 @@ TEST_F(Camera3ModuleFixture, StaticKeysTest) {
     ASSERT_EQ(0, cam_module_.GetCameraInfo(cam_id, &info))
         << "Can't get camera info for " << cam_id;
     auto c = const_cast<camera_metadata_t*>(info.static_camera_characteristics);
+
+    // The BACKWARD_COMPATIBLE capability must always be defined for HALv3:
+    // https://source.android.com/devices/camera/versioning#camera_api2
+    EXPECT_TRUE(AreAllCapabilitiesSupported(
+        c, {ANDROID_REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE}));
+
     ExpectKeyAvailable(
         c, ANDROID_COLOR_CORRECTION_AVAILABLE_ABERRATION_MODES,
         IGNORE_HARDWARE_LEVEL,
