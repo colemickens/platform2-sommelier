@@ -61,37 +61,37 @@ class Device : public base::RefCounted<Device> {
   // Enable or disable the device. This is a convenience method for
   // cases where we want to SetEnabledNonPersistent, but don't care
   // about the results.
-  virtual void SetEnabled(bool enable);
+  mockable void SetEnabled(bool enable);
   // Enable or disable the device. Unlike SetEnabledPersistent, it does not
   // save the setting in the profile.
   //
   // TODO(quiche): Replace both of the next two methods with calls to
   // SetEnabledChecked.
-  virtual void SetEnabledNonPersistent(bool enable,
-                                       Error* error,
-                                       const ResultCallback& callback);
+  mockable void SetEnabledNonPersistent(bool enable,
+                                        Error* error,
+                                        const ResultCallback& callback);
   // Enable or disable the device, and save the setting in the profile.
   // The setting is persisted before the enable or disable operation
   // starts, so that even if it fails, the user's intent is still recorded
   // for the next time shill restarts.
-  virtual void SetEnabledPersistent(bool enable,
-                                    Error* error,
-                                    const ResultCallback& callback);
+  mockable void SetEnabledPersistent(bool enable,
+                                     Error* error,
+                                     const ResultCallback& callback);
   // Enable or disable the Device, depending on |enable|.
   // Save the new setting to the profile, if |persist| is true.
   // Report synchronous errors using |error|, and asynchronous completion
   // with |callback|.
-  virtual void SetEnabledChecked(bool enable,
-                                 bool persist,
-                                 Error* error,
-                                 const ResultCallback& callback);
+  void SetEnabledChecked(bool enable,
+                         bool persist,
+                         Error* error,
+                         const ResultCallback& callback);
   // Similar to SetEnabledChecked, but without sanity checking, and
   // without saving the new value of |enable| to the profile. If you
   // are sane (i.e. not Cellular), you should use
   // SetEnabledChecked instead.
-  virtual void SetEnabledUnchecked(bool enable,
-                                   Error* error,
-                                   const ResultCallback& callback);
+  void SetEnabledUnchecked(bool enable,
+                           Error* error,
+                           const ResultCallback& callback);
 
   // Returns true if the underlying device reports that it is already enabled.
   // Used when the device is registered with the Manager, so that shill can
@@ -128,9 +128,9 @@ class Device : public base::RefCounted<Device> {
   // IPv6, which can be overridden by a derived class.
   virtual bool IsIPv6Allowed() const;
 
-  virtual void DisableIPv6();
-  virtual void EnableIPv6();
-  virtual void EnableIPv6Privacy();
+  mockable void DisableIPv6();
+  mockable void EnableIPv6();
+  mockable void EnableIPv6Privacy();
 
   // Returns true if the selected service on the device (if any) is connected.
   // Returns false if there is no selected service, or if the selected service
@@ -143,30 +143,30 @@ class Device : public base::RefCounted<Device> {
 
   // Called by the Connection so that the Device can update the service sorting
   // after one connection is bound to another.
-  virtual void OnConnectionUpdated();
+  mockable void OnConnectionUpdated();
 
   // Returns true if the selected service on the device (if any) is connected
   // and matches the passed-in argument |service|.  Returns false if there is
   // no connected service, or if it does not match |service|.
-  virtual bool IsConnectedToService(const ServiceRefPtr& service) const;
+  mockable bool IsConnectedToService(const ServiceRefPtr& service) const;
 
   // Returns true if the DHCP parameters provided indicate that we are tethered
   // to a mobile device.
-  virtual bool IsConnectedViaTether() const;
+  mockable bool IsConnectedViaTether() const;
 
   // Restart the portal detection process on a connected device.  This is
   // useful if the properties on the connected service have changed in a
   // way that may affect the decision to run portal detection at all.
   // Returns true if portal detection was started.
-  virtual bool RestartPortalDetection();
+  mockable bool RestartPortalDetection();
 
   // Called by the manager to start a single connectivity test.  This is used to
   // log connection state triggered by a user feedback log request.
-  virtual bool StartConnectivityTest();
+  mockable bool StartConnectivityTest();
 
   // Get receive and transmit byte counters.
-  virtual uint64_t GetReceiveByteCount();
-  virtual uint64_t GetTransmitByteCount();
+  mockable uint64_t GetReceiveByteCount();
+  mockable uint64_t GetTransmitByteCount();
 
   // Perform a TDLS |operation| on the underlying device, with respect
   // to a given |peer|.  The string returned is empty for any operation
@@ -183,7 +183,7 @@ class Device : public base::RefCounted<Device> {
 
   // Requests that portal detection be done, if this device has the default
   // connection.  Returns true if portal detection was started.
-  virtual bool RequestPortalDetection();
+  mockable bool RequestPortalDetection();
 
   RpcIdentifier GetRpcIdentifier() const;
   virtual std::string GetStorageIdentifier() const;
@@ -196,37 +196,37 @@ class Device : public base::RefCounted<Device> {
   // Enable or disable this interface to receive packets even if it is not
   // the default connection.  This is useful in limited situations such as
   // during portal detection.
-  virtual void SetLooseRouting(bool is_loose_routing);
+  mockable void SetLooseRouting(bool is_loose_routing);
 
   // Blackhole outgoing traffic using the specified source address for a certain
   // amount of time.
-  virtual void BlackholeAddress(IPAddress address, base::TimeDelta lifetime);
+  void BlackholeAddress(IPAddress address, base::TimeDelta lifetime);
 
   // Enable or disable same-net multi-home support for this interface.  When
   // enabled, ARP filtering is enabled in order to avoid the "ARP Flux"
   // effect where peers may end up with inaccurate IP address mappings due to
   // the default Linux ARP transmit / reply behavior.  See
   // http://linux-ip.net/html/ether-arp.html for more details on this effect.
-  virtual void SetIsMultiHomed(bool is_multi_homed);
+  mockable void SetIsMultiHomed(bool is_multi_homed);
 
   // Used for devices that are managed by an entity other than shill.
   // If true, shill will not attempt to change the device's IP
   // address, subnet mask, broadcast address, or manipulate the interface
   // state.  This setting is disabled by default.
-  virtual void SetFixedIpParams(bool fixed_ip_params);
+  void SetFixedIpParams(bool fixed_ip_params);
 
   const std::string& mac_address() const { return mac_address_; }
   const std::string& link_name() const { return link_name_; }
   int interface_index() const { return interface_index_; }
-  virtual const ConnectionRefPtr& connection() const { return connection_; }
+  mockable const ConnectionRefPtr& connection() const { return connection_; }
   bool enabled() const { return enabled_; }
   bool enabled_persistent() const { return enabled_persistent_; }
-  virtual Technology technology() const { return technology_; }
+  mockable Technology technology() const { return technology_; }
   std::string GetTechnologyString(Error* error);
 
-  virtual const IPConfigRefPtr& ipconfig() const { return ipconfig_; }
-  virtual const IPConfigRefPtr& ip6config() const { return ip6config_; }
-  virtual const IPConfigRefPtr& dhcpv6_config() const { return dhcpv6_config_; }
+  const IPConfigRefPtr& ipconfig() const { return ipconfig_; }
+  const IPConfigRefPtr& ip6config() const { return ip6config_; }
+  const IPConfigRefPtr& dhcpv6_config() const { return dhcpv6_config_; }
   void set_ipconfig(const IPConfigRefPtr& config) { ipconfig_ = config; }
 
   // Returns a string that is guaranteed to uniquely identify this Device
@@ -283,15 +283,15 @@ class Device : public base::RefCounted<Device> {
 
   // Destroy the lease, if any, with this |name|.
   // Called by the service during Unload() as part of the cleanup sequence.
-  virtual void DestroyIPConfigLease(const std::string& name);
+  mockable void DestroyIPConfigLease(const std::string& name);
 
   // Called by DeviceInfo when the kernel adds or removes a globally-scoped
   // IPv6 address from this interface.
-  virtual void OnIPv6AddressChanged();
+  mockable void OnIPv6AddressChanged();
 
   // Called by DeviceInfo when the kernel receives a update for IPv6 DNS server
   // addresses from this interface.
-  virtual void OnIPv6DnsServerAddressesChanged();
+  mockable void OnIPv6DnsServerAddressesChanged();
 
   // Called when link becomes unreliable (multiple link monitor failures
   // detected in short period of time).
@@ -299,7 +299,7 @@ class Device : public base::RefCounted<Device> {
 
   // Called when link becomes reliable (no link failures in a predefined period
   // of time).
-  virtual void OnReliableLink();
+  void OnReliableLink();
 
   // Program a rule into the NIC to wake the system from suspend upon receiving
   // packets from |ip_endpoint|. |error| indicates the result of the
@@ -339,9 +339,9 @@ class Device : public base::RefCounted<Device> {
   // address, or could involve an ARP table lookup.  Returns true and populates
   // |output| if the resolution completes, otherwise returns false and
   // populates |error|.
-  virtual bool ResolvePeerMacAddress(const std::string& input,
-                                     std::string* output,
-                                     Error* error);
+  bool ResolvePeerMacAddress(const std::string& input,
+                             std::string* output,
+                             Error* error);
 
   // Creates a byte vector from a colon-separated hardware address string.
   static std::vector<uint8_t> MakeHardwareAddressFromString(
@@ -359,11 +359,11 @@ class Device : public base::RefCounted<Device> {
 
   // Drops the current connection and the selected service, if any.  Does not
   // change the state of the previously selected service.
-  virtual void ResetConnection();
+  mockable void ResetConnection();
 
   // If the status of browser traffic blackholing changed, this will restart
   // the active connection with the right setting.
-  virtual void RefreshIPConfig();
+  mockable void RefreshIPConfig();
 
  protected:
   friend class base::RefCounted<Device>;
@@ -555,9 +555,8 @@ class Device : public base::RefCounted<Device> {
   // Called by the Portal Detector whenever a trial completes.  Device
   // subclasses that choose unique mappings from portal results to connected
   // states can override this method in order to do so.
-  virtual void PortalDetectorCallback(
-      const PortalDetector::Result& http_result,
-      const PortalDetector::Result& https_result);
+  void PortalDetectorCallback(const PortalDetector::Result& http_result,
+                              const PortalDetector::Result& https_result);
 
   // Initiate portal detection, if enabled for this device type.
   bool StartPortalDetection();
@@ -567,7 +566,7 @@ class Device : public base::RefCounted<Device> {
 
   // Initiate connection diagnostics with the |result| from a completed portal
   // detection attempt.
-  virtual bool StartConnectionDiagnosticsAfterPortalDetection(
+  mockable bool StartConnectionDiagnosticsAfterPortalDetection(
       const PortalDetector::Result& http_result,
       const PortalDetector::Result& https_result);
 
@@ -587,7 +586,7 @@ class Device : public base::RefCounted<Device> {
   virtual void OnLinkMonitorFailure();
 
   // Respond to a LinkMonitor gateway's MAC address found/change event.
-  virtual void OnLinkMonitorGatewayChange();
+  void OnLinkMonitorGatewayChange();
 
   // Returns true if traffic monitor is enabled on this device. The default
   // implementation will return false, which can be overridden by a derived
@@ -604,12 +603,12 @@ class Device : public base::RefCounted<Device> {
   // callback will only be invoke when the test succeed or the test failed to
   // start (internal error). This function will return false if there is a test
   // that's already running, and true otherwise.
-  virtual bool StartDNSTest(
+  mockable bool StartDNSTest(
       const std::vector<std::string>& dns_servers,
       const bool retry_until_success,
       const base::Callback<void(const DnsServerTester::Status)>& callback);
   // Stop DNS test if one is running.
-  virtual void StopDNSTest();
+  void StopDNSTest();
 
   // Timer function for monitoring IPv6 DNS server's lifetime.
   void StartIPv6DNSServerTimer(uint32_t lifetime_seconds);
@@ -619,11 +618,9 @@ class Device : public base::RefCounted<Device> {
   // down or changing network connection on the device.
   void StopAllActivities();
 
-  // Called by the Traffic Monitor when it detects a network problem. Device
-  // subclasses that want to roam to a different network when encountering
-  // network problems can override this method in order to do so. The parent
-  // implementation handles the metric reporting of the network problem.
-  virtual void OnEncounterNetworkProblem(int reason);
+  // Called by the Traffic Monitor when it detects a network problem. Handles
+  // metric reporting of the network problem.
+  void OnEncounterNetworkProblem(int reason);
 
   // Set the state of the selected service, with checks to make sure
   // the service is already in a connected state before doing so.
@@ -652,9 +649,8 @@ class Device : public base::RefCounted<Device> {
                                       uint64_t (Device::*get)(Error*));
 
   // Called by the ConnectionTester whenever a connectivity test completes.
-  virtual void ConnectionTesterCallback(
-      const PortalDetector::Result& http_result,
-      const PortalDetector::Result& https_result);
+  void ConnectionTesterCallback(const PortalDetector::Result& http_result,
+                                const PortalDetector::Result& https_result);
 
   // Property getters reserved for subclasses
   ControlInterface* control_interface() const;
@@ -702,9 +698,9 @@ class Device : public base::RefCounted<Device> {
   // "ipv4". |flag| should be the name of the flag to be set and |value| is
   // what this flag should be set to. Overridden by unit tests to pretend
   // writing to procfs.
-  virtual bool SetIPFlag(IPAddress::Family family,
-                         const std::string& flag,
-                         const std::string& value);
+  mockable bool SetIPFlag(IPAddress::Family family,
+                          const std::string& flag,
+                          const std::string& value);
 
   // Request the removal of reverse-path filtering for this interface.
   // This will allow packets destined for this interface to be accepted,
