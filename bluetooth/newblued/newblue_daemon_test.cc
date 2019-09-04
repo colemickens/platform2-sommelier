@@ -543,8 +543,8 @@ class NewblueDaemonTest : public ::testing::Test {
     start_discovery_method_call.SetSerial(kTestSerial);
     std::unique_ptr<dbus::Response> start_discovery_response;
     Newblue::DeviceDiscoveredCallback on_device_discovered;
-    EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, /* active */ true,
-                                                 /* use_random_addr */ false))
+    EXPECT_CALL(*libnewblue_,
+                HciDiscoverLeStart(_, _, /* active */ true, _, _, _, _, _))
         .WillOnce(DoAll(SaveArg<0>(inquiry_response_callback),
                         SaveArg<1>(inquiry_response_callback_data),
                         Return(kTestDiscoveryId)));
@@ -556,7 +556,8 @@ class NewblueDaemonTest : public ::testing::Test {
     ASSERT_NE(nullptr, *inquiry_response_callback_data);
     // StartDiscovery again by the same client, it should return D-Bus error and
     // should not affect NewBlue discovery state.
-    EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, _, _)).Times(0);
+    EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, _, _, _, _, _, _))
+        .Times(0);
     start_discovery_handler.Run(
         &start_discovery_method_call,
         base::Bind(&SaveResponse, &start_discovery_response));
@@ -566,7 +567,8 @@ class NewblueDaemonTest : public ::testing::Test {
     // should not affect NewBlue discovery state since it has already been
     // started.
     start_discovery_method_call.SetSender(kTestSender2);
-    EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, _, _)).Times(0);
+    EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, _, _, _, _, _, _))
+        .Times(0);
     start_discovery_handler.Run(
         &start_discovery_method_call,
         base::Bind(&SaveResponse, &start_discovery_response));
@@ -1029,8 +1031,7 @@ TEST_F(NewblueDaemonTest, BackgroundScan) {
 
   // After the pairing is done, we should start background scan to look for the
   // unconnected paired device.
-  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, /* active */ true,
-                                               /* use_random_addr */ false))
+  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, _, _, _, _, _, _))
       .WillOnce(Return(kTestDiscoveryId));
   TestPair(pair_handler);
 
@@ -1103,8 +1104,7 @@ TEST_F(NewblueDaemonTest, BackgroundScanWithRandomResolvableDevice) {
 
   // After the pairing is done, we should start background scan to look for the
   // unconnected paired device.
-  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, /* active */ true,
-                                               /* use_random_addr */ false))
+  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, _, _, _, _, _, _))
       .WillOnce(Return(kTestDiscoveryId));
   TestPair(pair_handler);
 

@@ -126,15 +126,21 @@ bool Newblue::BringUp() {
   return true;
 }
 
-bool Newblue::StartDiscovery(DeviceDiscoveredCallback callback) {
+bool Newblue::StartDiscovery(bool active,
+                             uint16_t scan_interval,
+                             uint16_t scan_window,
+                             bool use_random_addr,
+                             bool only_whitelist,
+                             bool filter_duplicates,
+                             DeviceDiscoveredCallback callback) {
   if (discovery_handle_ != 0) {
     LOG(WARNING) << "Discovery is already started, ignoring request";
     return false;
   }
 
   discovery_handle_ = libnewblue_->HciDiscoverLeStart(
-      &Newblue::DiscoveryCallbackThunk, this, true /* active */,
-      false /* use_random_addr */);
+      &Newblue::DiscoveryCallbackThunk, this, active, scan_interval,
+      scan_window, use_random_addr, only_whitelist, filter_duplicates);
   if (discovery_handle_ == 0) {
     LOG(ERROR) << "Failed to start LE discovery";
     return false;

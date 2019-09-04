@@ -169,6 +169,9 @@ bool AdapterInterfaceHandler::UpdateDiscovery(int n_discovery_clients) {
     // requesting it or background scan is enabled.
     VLOG(1) << "Trying to start discovery";
     if (!newblue_->StartDiscovery(
+            /* active */ true, /* scan_interval */ 36, /* scan_window */ 18,
+            /* use_random_addr */ false,
+            /* only_whitelist */ false, /* filter_duplicates */ false,
             base::Bind(&AdapterInterfaceHandler::DeviceDiscoveryCallback,
                        weak_ptr_factory_.GetWeakPtr()))) {
       LOG(ERROR) << "Failed to start discovery";

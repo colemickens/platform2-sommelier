@@ -30,6 +30,9 @@ constexpr uniq_t kDiscoveryHandle = 11;
 // A random handle value.
 constexpr uniq_t kPairStateChangeHandle = 3;
 constexpr uniq_t kPasskeyDisplayObserverHandle = 4;
+// Test scanning parameters
+constexpr uint16_t kTestScanInterval = 36;  // 22.5 msec
+constexpr uint16_t kTestScanWindow = 18;    // 11.25 msec
 
 }  // namespace
 
@@ -168,11 +171,18 @@ TEST_F(NewblueTest, StartDiscovery) {
 
   hciDeviceDiscoveredLeCbk inquiry_response_callback;
   void* inquiry_response_callback_data;
-  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, true, false))
+  EXPECT_CALL(*libnewblue_,
+              HciDiscoverLeStart(_, _, /* active */ true, kTestScanInterval,
+                                 kTestScanWindow, /* useOwnRandomAddr */ false,
+                                 /* onlyWhitelist */ false,
+                                 /* filterDuplicates */ false))
       .WillOnce(DoAll(SaveArg<0>(&inquiry_response_callback),
                       SaveArg<1>(&inquiry_response_callback_data),
                       Return(kDiscoveryHandle)));
   newblue_->StartDiscovery(
+      /* active */ true, kTestScanInterval, kTestScanWindow,
+      /* use_random_addr */ false,
+      /* only_whitelist */ false, /* filter_duplicates */ false,
       base::Bind(&NewblueTest::OnDeviceDiscovered, base::Unretained(this)));
 
   // 2 devices discovered.
@@ -230,11 +240,18 @@ TEST_F(NewblueTest, PairStateChanged) {
 
   hciDeviceDiscoveredLeCbk inquiry_response_callback;
   void* inquiry_response_callback_data;
-  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, true, false))
+  EXPECT_CALL(*libnewblue_,
+              HciDiscoverLeStart(_, _, /* active */ true, kTestScanInterval,
+                                 kTestScanWindow, /* useOwnRandomAddr */ false,
+                                 /* onlyWhitelist */ false,
+                                 /* filterDuplicates */ false))
       .WillOnce(DoAll(SaveArg<0>(&inquiry_response_callback),
                       SaveArg<1>(&inquiry_response_callback_data),
                       Return(kDiscoveryHandle)));
   newblue_->StartDiscovery(
+      /* active */ true, kTestScanInterval, kTestScanWindow,
+      /* use_random_addr */ false,
+      /* only_whitelist */ false, /* filter_duplicates */ false,
       base::Bind(&NewblueTest::OnDeviceDiscovered, base::Unretained(this)));
 
   // 1 device discovered.
@@ -308,11 +325,18 @@ TEST_F(NewblueTest, Pair) {
 
   hciDeviceDiscoveredLeCbk inquiry_response_callback;
   void* inquiry_response_callback_data;
-  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, true, false))
+  EXPECT_CALL(*libnewblue_,
+              HciDiscoverLeStart(_, _, /* active */ true, kTestScanInterval,
+                                 kTestScanWindow, /* useOwnRandomAddr */ false,
+                                 /* onlyWhitelist */ false,
+                                 /* filterDuplicates */ false))
       .WillOnce(DoAll(SaveArg<0>(&inquiry_response_callback),
                       SaveArg<1>(&inquiry_response_callback_data),
                       Return(kDiscoveryHandle)));
   newblue_->StartDiscovery(
+      /* active */ true, kTestScanInterval, kTestScanWindow,
+      /* use_random_addr */ false,
+      /* only_whitelist */ false, /* filter_duplicates */ false,
       base::Bind(&NewblueTest::OnDeviceDiscovered, base::Unretained(this)));
 
   // 1 device discovered.
@@ -349,11 +373,18 @@ TEST_F(NewblueTest, CancelPairing) {
 
   hciDeviceDiscoveredLeCbk inquiry_response_callback;
   void* inquiry_response_callback_data;
-  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, true, false))
+  EXPECT_CALL(*libnewblue_,
+              HciDiscoverLeStart(_, _, /* active */ true, kTestScanInterval,
+                                 kTestScanWindow, /* useOwnRandomAddr */ false,
+                                 /* onlyWhitelist */ false,
+                                 /* filterDuplicates */ false))
       .WillOnce(DoAll(SaveArg<0>(&inquiry_response_callback),
                       SaveArg<1>(&inquiry_response_callback_data),
                       Return(kDiscoveryHandle)));
   newblue_->StartDiscovery(
+      /* active */ true, kTestScanInterval, kTestScanWindow,
+      /* use_random_addr */ false,
+      /* only_whitelist */ false, /* filter_duplicates */ false,
       base::Bind(&NewblueTest::OnDeviceDiscovered, base::Unretained(this)));
 
   // 1 device discovered.

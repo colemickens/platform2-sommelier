@@ -245,7 +245,13 @@ class Newblue {
 
   // Starts LE scanning, |callback| will be called every time inquiry response
   // is received.
-  bool StartDiscovery(DeviceDiscoveredCallback callback);
+  bool StartDiscovery(bool active,
+                      uint16_t scan_interval,
+                      uint16_t scan_window,
+                      bool use_random_addr,
+                      bool only_whitelist,
+                      bool filter_duplicates,
+                      DeviceDiscoveredCallback callback);
   // Stops LE scanning.
   bool StopDiscovery();
 

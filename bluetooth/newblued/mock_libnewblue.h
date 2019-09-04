@@ -52,8 +52,15 @@ class MockLibNewblue : public LibNewblue {
   MOCK_METHOD3(HciUp, bool(const uint8_t*, hciReadyForUpCbk, void*));
   MOCK_METHOD0(HciDown, void());
   MOCK_METHOD0(HciIsUp, bool());
-  MOCK_METHOD4(HciDiscoverLeStart,
-               uniq_t(hciDeviceDiscoveredLeCbk, void*, bool, bool));
+  MOCK_METHOD8(HciDiscoverLeStart,
+               uniq_t(hciDeviceDiscoveredLeCbk,
+                      void*,
+                      bool,
+                      uint16_t,
+                      uint16_t,
+                      bool,
+                      bool,
+                      bool));
   MOCK_METHOD1(HciDiscoverLeStop, bool(uniq_t));
   MOCK_METHOD1(HciAdvSetEnable, bool(hci_adv_set_t));
 
