@@ -12,6 +12,8 @@
 
 #include <base/strings/stringprintf.h>
 
+#include <base/strings/stringprintf.h>
+
 namespace arc_networkd {
 
 std::string IPv4AddressToString(uint32_t addr) {

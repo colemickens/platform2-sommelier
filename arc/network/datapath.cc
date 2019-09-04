@@ -4,11 +4,29 @@
 
 #include "arc/network/datapath.h"
 
+#include <fcntl.h>
+#include <linux/if_tun.h>
+#include <linux/sockios.h>
+#include <net/if.h>
+#include <net/if_arp.h>
+#include <netinet/in.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+
+#include <base/files/scoped_file.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+
+#include "arc/network/net_util.h"
 
 namespace arc_networkd {
 
+namespace {
 constexpr char kDefaultNetmask[] = "255.255.255.252";
+constexpr char kDefaultIfname[] = "vmtap%d";
+constexpr char kTunDev[] = "/dev/net/tun";
+}  // namespace
 
 std::string ArcVethHostName(std::string ifname) {
   return "veth_" + ifname;
@@ -19,7 +37,10 @@ std::string ArcVethPeerName(std::string ifname) {
 }
 
 Datapath::Datapath(MinijailedProcessRunner* process_runner)
-    : process_runner_(process_runner) {
+    : Datapath(process_runner, ioctl) {}
+
+Datapath::Datapath(MinijailedProcessRunner* process_runner, ioctl_t ioctl_hook)
+    : process_runner_(process_runner), ioctl_(ioctl_hook) {
   CHECK(process_runner_);
 }
 
@@ -56,6 +77,107 @@ void Datapath::RemoveBridge(const std::string& ifname) {
                         ifname, "-j", "MARK", "--set-mark", "1", "-w"});
   process_runner_->Run({kIfConfigPath, ifname, "down"});
   process_runner_->Run({kBrctlPath, "delbr", ifname});
+}
+
+std::string Datapath::AddTAP(const std::string& name,
+                             const MacAddress& mac_addr,
+                             const SubnetAddress& ipv4_addr,
+                             uid_t user_id) {
+  base::ScopedFD dev(open(kTunDev, O_RDWR | O_NONBLOCK));
+  if (!dev.is_valid()) {
+    PLOG(ERROR) << "Failed to open " << kTunDev;
+    return "";
+  }
+
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  strncpy(ifr.ifr_name, name.empty() ? kDefaultIfname : name.c_str(),
+          sizeof(ifr.ifr_name));
+  ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
+
+  // If a template was given as the name, ifr_name will be updated with the
+  // actual interface name.
+  if ((*ioctl_)(dev.get(), TUNSETIFF, &ifr) != 0) {
+    PLOG(ERROR) << "Failed to create tap interface " << name << " {"
+                << ipv4_addr.ToCidrString() << "}";
+    return "";
+  }
+  const char* ifname = ifr.ifr_name;
+
+  if ((*ioctl_)(dev.get(), TUNSETPERSIST, 1) != 0) {
+    PLOG(ERROR) << "Failed to persist the interface " << ifname << " {"
+                << ipv4_addr.ToCidrString() << "}";
+    return "";
+  }
+
+  if (user_id != -1 && (*ioctl_)(dev.get(), TUNSETOWNER, user_id) != 0) {
+    PLOG(ERROR) << "Failed to set owner " << user_id << " of tap interface "
+                << ifname << " {" << ipv4_addr.ToCidrString() << "}";
+    RemoveTAP(ifname);
+    return "";
+  }
+
+  // Create control socket for configuing the interface.
+  base::ScopedFD sock(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
+  if (!sock.is_valid()) {
+    PLOG(ERROR) << "Failed to create control socket for tap interface "
+                << ifname << " {" << ipv4_addr.ToCidrString() << "}";
+    RemoveTAP(ifname);
+    return "";
+  }
+
+  struct sockaddr_in* addr =
+      reinterpret_cast<struct sockaddr_in*>(&ifr.ifr_addr);
+  addr->sin_family = AF_INET;
+  addr->sin_addr.s_addr = static_cast<in_addr_t>(ipv4_addr.Address());
+  if ((*ioctl_)(sock.get(), SIOCSIFADDR, &ifr) != 0) {
+    PLOG(ERROR) << "Failed to set ip address for vmtap interface " << ifname
+                << " {" << ipv4_addr.ToCidrString() << "}";
+    RemoveTAP(ifname);
+    return "";
+  }
+
+  struct sockaddr_in* netmask =
+      reinterpret_cast<struct sockaddr_in*>(&ifr.ifr_netmask);
+  netmask->sin_family = AF_INET;
+  netmask->sin_addr.s_addr = static_cast<in_addr_t>(ipv4_addr.Netmask());
+  if ((*ioctl_)(sock.get(), SIOCSIFNETMASK, &ifr) != 0) {
+    PLOG(ERROR) << "Failed to set netmask for vmtap interface " << ifname
+                << " {" << ipv4_addr.ToCidrString() << "}";
+    RemoveTAP(ifname);
+    return "";
+  }
+
+  struct sockaddr* hwaddr = &ifr.ifr_hwaddr;
+  hwaddr->sa_family = ARPHRD_ETHER;
+  memcpy(&hwaddr->sa_data, &mac_addr, sizeof(mac_addr));
+  if ((*ioctl_)(sock.get(), SIOCSIFHWADDR, &ifr) != 0) {
+    PLOG(ERROR) << "Failed to set mac address for vmtap interface " << ifname
+                << " {" << ipv4_addr.ToCidrString() << "}";
+    RemoveTAP(ifname);
+    return "";
+  }
+
+  if ((*ioctl_)(sock.get(), SIOCGIFFLAGS, &ifr) != 0) {
+    PLOG(ERROR) << "Failed to get flags for tap interface " << ifname << " {"
+                << ipv4_addr.ToCidrString() << "}";
+    RemoveTAP(ifname);
+    return "";
+  }
+
+  ifr.ifr_flags |= (IFF_UP | IFF_RUNNING);
+  if ((*ioctl_)(sock.get(), SIOCSIFFLAGS, &ifr) != 0) {
+    PLOG(ERROR) << "Failed to enable tap interface " << ifname << " {"
+                << ipv4_addr.ToCidrString() << "}";
+    RemoveTAP(ifname);
+    return "";
+  }
+
+  return ifname;
+}
+
+void Datapath::RemoveTAP(const std::string& ifname) {
+  process_runner_->Run({kIpPath, "tuntap", "del", ifname, "mode", "tap"});
 }
 
 std::string Datapath::AddVirtualBridgedInterface(const std::string& ifname,

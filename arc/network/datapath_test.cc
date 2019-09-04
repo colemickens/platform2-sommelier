@@ -4,16 +4,70 @@
 
 #include "arc/network/datapath.h"
 
+#include <linux/if_tun.h>
+#include <sys/ioctl.h>
+
+#include <set>
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/strings/string_util.h>
-
 #include <gtest/gtest.h>
 
 #include "arc/network/fake_process_runner.h"
+#include "arc/network/net_util.h"
 
 namespace arc_networkd {
+namespace {
+
+std::set<unsigned long> ioctl_reqs;
+
+// Capture all ioctls and succeed.
+int ioctl_req_cap(int fd, unsigned long req, ...) {
+  ioctl_reqs.insert(req);
+  return 0;
+}
+
+}  // namespace
+
+TEST(DatapathTest, AddTAP) {
+  FakeProcessRunner runner;
+  Datapath datapath(&runner, ioctl_req_cap);
+  MacAddress mac = {1, 2, 3, 4, 5, 6};
+  Subnet subnet(Ipv4Addr(100, 115, 92, 4), 30, base::Bind(&base::DoNothing));
+  auto addr = subnet.AllocateAtOffset(0);
+  auto ifname = datapath.AddTAP("foo0", mac, *addr.get(), -1);
+  EXPECT_EQ(ifname, "foo0");
+  std::set<unsigned long> expected = {
+      TUNSETIFF,     TUNSETPERSIST, SIOCSIFADDR, SIOCSIFNETMASK,
+      SIOCSIFHWADDR, SIOCGIFFLAGS,  SIOCSIFFLAGS};
+  EXPECT_EQ(ioctl_reqs, expected);
+  ioctl_reqs.clear();
+}
+
+TEST(DatapathTest, AddTAPWithOwner) {
+  FakeProcessRunner runner;
+  Datapath datapath(&runner, ioctl_req_cap);
+  MacAddress mac = {1, 2, 3, 4, 5, 6};
+  Subnet subnet(Ipv4Addr(100, 115, 92, 4), 30, base::Bind(&base::DoNothing));
+  auto addr = subnet.AllocateAtOffset(0);
+  auto ifname = datapath.AddTAP("foo0", mac, *addr.get(), 100);
+  EXPECT_EQ(ifname, "foo0");
+  std::set<unsigned long> expected = {
+      TUNSETIFF,      TUNSETPERSIST, TUNSETOWNER,  SIOCSIFADDR,
+      SIOCSIFNETMASK, SIOCSIFHWADDR, SIOCGIFFLAGS, SIOCSIFFLAGS};
+  EXPECT_EQ(ioctl_reqs, expected);
+  ioctl_reqs.clear();
+}
+
+TEST(DatapathTest, RemoveTAP) {
+  FakeProcessRunner runner;
+  runner.Capture(true);
+  Datapath datapath(&runner);
+  datapath.RemoveTAP("foo0");
+  runner.VerifyRuns({"/bin/ip tuntap del foo0 mode tap"});
+}
 
 TEST(DatapathTest, AddBridge) {
   FakeProcessRunner runner;

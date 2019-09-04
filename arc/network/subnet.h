@@ -42,6 +42,9 @@ class BRILLO_EXPORT SubnetAddress {
   // 192.168.0.34.
   std::string ToIPv4String() const;
 
+  // Returns the subnet etmask in network-byte order.
+  uint32_t Netmask() const;
+
  private:
   // The address in network-byte order.
   uint32_t addr_;

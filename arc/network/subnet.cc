@@ -55,6 +55,10 @@ std::string SubnetAddress::ToIPv4String() const {
   return IPv4AddressToString(addr_);
 }
 
+uint32_t SubnetAddress::Netmask() const {
+  return htonl((0xffffffffull << (32 - prefix_length_)) & 0xffffffff);
+}
+
 Subnet::Subnet(uint32_t base_addr,
                uint32_t prefix_length,
                base::Closure release_cb)
