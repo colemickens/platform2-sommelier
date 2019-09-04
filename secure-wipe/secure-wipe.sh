@@ -8,7 +8,7 @@
 # securly the disk and verify it has been erased properly.
 
 # if used inside the test harness, 2 variables are defined:
-# TEST_DELAY: to reduce the amount of time checking for the emmc to be ready
+# TEST_DELAY: to reduce the amount of time checking for the eMMC to be ready
 #             again,
 # TEST_FIO_OUTPUT: to send the output of fio to a known file. By default,
 #             if the file is generated with $(mktemp fio_output_XXXXXX)
@@ -165,12 +165,12 @@ get_mmc_status() {
   # valid (see X or R mode) or some bit are reserved.
   # Therefore, we limit only to flags that are always valid:
   # bit 6: EXCEPTION_EVENT: set to 0
-  # bit 8: READY_FOR_DATA: set to 0 (1 while sanitizing)
+  # bit 8: READY_FOR_DATA: set to 1 (0 while sanitizing)
   # bit 9-12: CURRENT_STATE: set to 4 (Tran), set to 7 (Prg while sanitizing)
   printf "0x%08x\n" $((status & 0x00001F40))
 }
 
-# Erase a mmc device using firmware functions
+# Erase an MMC device using firmware functions
 #
 # Ask the device to trim all sectors.
 # Then, ask the device to physically erase all trimmed sectors.
@@ -188,9 +188,9 @@ secure_erase_mmc() {
   local secure
   local rc
 
-  # Mark all location as unused - try secure first.
-  for secure in "-s" " "; do
-    blkdiscard "${secure}" "${disk}"
+  # Mark all location as unused -- try secure first.
+  for secure in "-s" ""; do
+    blkdiscard ${secure} "${disk}"
     rc=$?
     if [ ${rc} -eq 0 ]; then
       break
@@ -201,6 +201,7 @@ secure_erase_mmc() {
   fi
 
   # Physically erase unused locations.
+  # 0x00000900 equals to READY_FOR_DATA=1 and CURRENT_STATE=4 (Tran)
   mmc_orig_status=$(get_mmc_status "${disk}")
   if [ "${mmc_orig_status}" != "0x00000900" ]; then
     echo "Not ready for sanitize: status ${mmc_orig_status}."
@@ -378,7 +379,7 @@ secure_erase() {
   local disk="$1"
   local strict="$2"
   local disk_type=$(get_device_type "${disk}")
-  # Identify if mmc or sata.
+  # Identify if MMC or SATA.
   case "$disk_type" in
     MMC)
       secure_erase_mmc "${disk}" "${strict}"
