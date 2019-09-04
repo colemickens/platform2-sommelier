@@ -501,40 +501,10 @@ class Device : public base::RefCounted<Device> {
   // Called when IPv6 configuration changes.
   virtual void OnIPv6ConfigUpdated();
 
-  // Callback invoked on IP configuration failures.
-  void OnIPConfigFailed(const IPConfigRefPtr& ipconfig);
-
-  // Callback invoked when "Refresh" is invoked on an IPConfig.  This usually
-  // signals a change in static IP parameters.
-  void OnIPConfigRefreshed(const IPConfigRefPtr& ipconfig);
-
-  // Callback invoked when an IPConfig restarts due to lease expiry.  This
-  // is advisory, since an "Updated" or "Failed" signal is guaranteed to
-  // follow.
-  void OnIPConfigExpired(const IPConfigRefPtr& ipconfig);
-
   // Called by Device so that subclasses can run hooks on the selected service
   // failing to get an IP.  The default implementation disconnects the selected
   // service with Service::kFailureDHCP.
   virtual void OnIPConfigFailure();
-
-  // Callback invoked on successful DHCPv6 configuration updates.
-  void OnDHCPv6ConfigUpdated(const IPConfigRefPtr& ipconfig,
-                             bool new_lease_acquired);
-
-  // Callback invoked on DHCPv6 configuration failures.
-  void OnDHCPv6ConfigFailed(const IPConfigRefPtr& ipconfig);
-
-  // Callback invoked when an DHCPv6Config restarts due to lease expiry.  This
-  // is advisory, since an "Updated" or "Failed" signal is guaranteed to
-  // follow.
-  void OnDHCPv6ConfigExpired(const IPConfigRefPtr& ipconfig);
-
-  // Maintain connection state (Routes, IP Addresses and DNS) in the OS.
-  void CreateConnection();
-
-  // Remove connection state
-  void DestroyConnection();
 
   // Selects a service to be "current" -- i.e. link-state or configuration
   // events that happen to the device are attributed to this service.
@@ -552,94 +522,16 @@ class Device : public base::RefCounted<Device> {
   // Avoids showing a failure mole in the UI.
   virtual void SetServiceFailureSilent(Service::ConnectFailure failure_state);
 
-  // Called by the Portal Detector whenever a trial completes.  Device
-  // subclasses that choose unique mappings from portal results to connected
-  // states can override this method in order to do so.
-  void PortalDetectorCallback(const PortalDetector::Result& http_result,
-                              const PortalDetector::Result& https_result);
-
-  // Initiate portal detection, if enabled for this device type.
-  bool StartPortalDetection();
-
   // Schedule a single portal detection trial, and set loose routing.
   bool StartPortalDetectionTrial(PortalDetector* portal_detector,
                                  const PortalDetector::Properties& props,
                                  int delay_seconds);
 
-  // Stop portal detection if it is running.
-  void StopPortalDetection();
-
-  // Initiate connection diagnostics with the |result| from a completed portal
-  // detection attempt.
-  mockable bool StartConnectionDiagnosticsAfterPortalDetection(
-      const PortalDetector::Result& http_result,
-      const PortalDetector::Result& https_result);
-
-  // Stop connection diagnostics if it is running.
-  void StopConnectionDiagnostics();
-
-  // Stop connectivity tester if it exists.
-  void StopConnectivityTest();
-
-  // Initiate link monitoring, if enabled for this device type.
-  bool StartLinkMonitor();
-
-  // Stop link monitoring if it is running.
-  void StopLinkMonitor();
-
   // Respond to a LinkMonitor failure in a Device-specific manner.
   virtual void OnLinkMonitorFailure();
 
-  // Respond to a LinkMonitor gateway's MAC address found/change event.
-  void OnLinkMonitorGatewayChange();
-
-  // Returns true if traffic monitor is enabled on this device. The default
-  // implementation will return false, which can be overridden by a derived
-  // class.
-  virtual bool IsTrafficMonitorEnabled() const;
-
-  // Initiates traffic monitoring on the device if traffic monitor is enabled.
-  void StartTrafficMonitor();
-
-  // Stops traffic monitoring on the device if traffic monitor is enabled.
-  void StopTrafficMonitor();
-
-  // Start DNS test for the given servers. When retry_until_success is set,
-  // callback will only be invoke when the test succeed or the test failed to
-  // start (internal error). This function will return false if there is a test
-  // that's already running, and true otherwise.
-  mockable bool StartDNSTest(
-      const std::vector<std::string>& dns_servers,
-      const bool retry_until_success,
-      const base::Callback<void(const DnsServerTester::Status)>& callback);
-  // Stop DNS test if one is running.
-  void StopDNSTest();
-
-  // Timer function for monitoring IPv6 DNS server's lifetime.
-  void StartIPv6DNSServerTimer(uint32_t lifetime_seconds);
-  void StopIPv6DNSServerTimer();
-
-  // Stop all monitoring/testing activities on this device. Called when tearing
-  // down or changing network connection on the device.
-  void StopAllActivities();
-
-  // Called by the Traffic Monitor when it detects a network problem. Handles
-  // metric reporting of the network problem.
-  void OnEncounterNetworkProblem(int reason);
-
-  // Set the state of the selected service, with checks to make sure
-  // the service is already in a connected state before doing so.
-  void SetServiceConnectedState(Service::ConnectState state);
-
-  // Specifies whether an ARP gateway should be used for the
-  // device technology.
-  virtual bool ShouldUseArpGateway() const;
-
   // Indicates if the selected service is configured with a static IP address.
   bool IsUsingStaticIP() const;
-
-  // Indicates if the selected service is configured with static nameservers.
-  bool IsUsingStaticNameServers() const;
 
   void HelpRegisterConstDerivedString(const std::string& name,
                                       std::string (Device::*get)(Error*));
@@ -653,10 +545,6 @@ class Device : public base::RefCounted<Device> {
   void HelpRegisterConstDerivedUint64(const std::string& name,
                                       uint64_t (Device::*get)(Error*));
 
-  // Called by the ConnectionTester whenever a connectivity test completes.
-  void ConnectionTesterCallback(const PortalDetector::Result& http_result,
-                                const PortalDetector::Result& https_result);
-
   // Property getters reserved for subclasses
   ControlInterface* control_interface() const;
   Metrics* metrics() const;
@@ -664,10 +552,6 @@ class Device : public base::RefCounted<Device> {
   const LinkMonitor* link_monitor() const { return link_monitor_.get(); }
   void set_link_monitor(LinkMonitor* link_monitor);
   bool fixed_ip_params() const { return fixed_ip_params_; }
-
-  // Use for unit test.
-  void set_traffic_monitor_for_test(
-      std::unique_ptr<TrafficMonitor> traffic_monitor);
 
   // Calculates the time (in seconds) till a DHCP lease is due for renewal,
   // and stores this value in |result|. Returns false is there is no upcoming
@@ -728,9 +612,6 @@ class Device : public base::RefCounted<Device> {
   RpcIdentifier GetSelectedServiceRpcIdentifier(Error* error);
   RpcIdentifiers AvailableIPConfigs(Error* error);
 
-  // Get the LinkMonitor's average response time.
-  uint64_t GetLinkMonitorResponseTime(Error* error);
-
   // Get receive and transmit byte counters. These methods simply wrap
   // GetReceiveByteCount and GetTransmitByteCount in order to be used by
   // HelpRegisterConstDerivedUint64.
@@ -749,8 +630,36 @@ class Device : public base::RefCounted<Device> {
   // Update DNS setting with the given DNS servers for the current connection.
   void SwitchDNSServers(const std::vector<std::string>& dns_servers);
 
+  // Timer function for monitoring IPv6 DNS server's lifetime.
+  void StartIPv6DNSServerTimer(uint32_t lifetime_seconds);
+  void StopIPv6DNSServerTimer();
+
   // Called when the lifetime for IPv6 DNS server expires.
   void IPv6DNSServerExpired();
+
+  // Callback invoked on IP configuration failures.
+  void OnIPConfigFailed(const IPConfigRefPtr& ipconfig);
+
+  // Callback invoked when "Refresh" is invoked on an IPConfig.  This usually
+  // signals a change in static IP parameters.
+  void OnIPConfigRefreshed(const IPConfigRefPtr& ipconfig);
+
+  // Callback invoked when an IPConfig restarts due to lease expiry.  This
+  // is advisory, since an "Updated" or "Failed" signal is guaranteed to
+  // follow.
+  void OnIPConfigExpired(const IPConfigRefPtr& ipconfig);
+
+  // Callback invoked on successful DHCPv6 configuration updates.
+  void OnDHCPv6ConfigUpdated(const IPConfigRefPtr& ipconfig,
+                             bool new_lease_acquired);
+
+  // Callback invoked on DHCPv6 configuration failures.
+  void OnDHCPv6ConfigFailed(const IPConfigRefPtr& ipconfig);
+
+  // Callback invoked when an DHCPv6Config restarts due to lease expiry.  This
+  // is advisory, since an "Updated" or "Failed" signal is guaranteed to
+  // follow.
+  void OnDHCPv6ConfigExpired(const IPConfigRefPtr& ipconfig);
 
   // Return true if given IP configuration contain both IP address and DNS
   // servers. Hence, ready to be used for network connection.
@@ -759,6 +668,12 @@ class Device : public base::RefCounted<Device> {
   // Setup network connection with given IP configuration, and start portal
   // detection on that connection.
   void SetupConnection(const IPConfigRefPtr& ipconfig);
+
+  // Maintain connection state (Routes, IP Addresses and DNS) in the OS.
+  void CreateConnection();
+
+  // Remove connection state
+  void DestroyConnection();
 
   // Set the system hostname to |hostname| if this device is configured to
   // do so.  If |hostname| is too long, truncate this parameter to fit within
@@ -776,10 +691,96 @@ class Device : public base::RefCounted<Device> {
   void PrependDNSServers(const IPAddress::Family family,
                          std::vector<std::string>* servers);
 
+  // Called by the Portal Detector whenever a trial completes.  Device
+  // subclasses that choose unique mappings from portal results to connected
+  // states can override this method in order to do so.
+  void PortalDetectorCallback(const PortalDetector::Result& http_result,
+                              const PortalDetector::Result& https_result);
+
+  // Initiate portal detection, if enabled for this device type.
+  bool StartPortalDetection();
+
+  // Stop portal detection if it is running.
+  void StopPortalDetection();
+
+  // Initiate connection diagnostics with the |result| from a completed portal
+  // detection attempt.
+  mockable bool StartConnectionDiagnosticsAfterPortalDetection(
+      const PortalDetector::Result& http_result,
+      const PortalDetector::Result& https_result);
+
+  // Stop connection diagnostics if it is running.
+  void StopConnectionDiagnostics();
+
+  // Stop connectivity tester if it exists.
+  void StopConnectivityTest();
+
   // Called by |connection_diagnostics| after diagnostics have finished.
   void ConnectionDiagnosticsCallback(
       const std::string& connection_issue,
       const std::vector<ConnectionDiagnostics::Event>& diagnostic_events);
+
+  // Called by the ConnectionTester whenever a connectivity test completes.
+  void ConnectionTesterCallback(const PortalDetector::Result& http_result,
+                                const PortalDetector::Result& https_result);
+
+  // Initiate link monitoring, if enabled for this device type.
+  bool StartLinkMonitor();
+
+  // Stop link monitoring if it is running.
+  void StopLinkMonitor();
+
+  // Get the LinkMonitor's average response time.
+  uint64_t GetLinkMonitorResponseTime(Error* error);
+
+  // Respond to a LinkMonitor gateway's MAC address found/change event.
+  void OnLinkMonitorGatewayChange();
+
+  // Returns true if traffic monitor is enabled on this device. The default
+  // implementation will return false, which can be overridden by a derived
+  // class.
+  virtual bool IsTrafficMonitorEnabled() const;
+
+  // Initiates traffic monitoring on the device if traffic monitor is enabled.
+  void StartTrafficMonitor();
+
+  // Stops traffic monitoring on the device if traffic monitor is enabled.
+  void StopTrafficMonitor();
+
+  // Start DNS test for the given servers. When retry_until_success is set,
+  // callback will only be invoke when the test succeed or the test failed to
+  // start (internal error). This function will return false if there is a test
+  // that's already running, and true otherwise.
+  mockable bool StartDNSTest(
+      const std::vector<std::string>& dns_servers,
+      const bool retry_until_success,
+      const base::Callback<void(const DnsServerTester::Status)>& callback);
+
+  // Stop DNS test if one is running.
+  void StopDNSTest();
+
+  // Stop all monitoring/testing activities on this device. Called when tearing
+  // down or changing network connection on the device.
+  void StopAllActivities();
+
+  // Called by the Traffic Monitor when it detects a network problem. Handles
+  // metric reporting of the network problem.
+  void OnEncounterNetworkProblem(int reason);
+
+  // Set the state of the selected service, with checks to make sure
+  // the service is already in a connected state before doing so.
+  void SetServiceConnectedState(Service::ConnectState state);
+
+  // Specifies whether an ARP gateway should be used for the
+  // device technology.
+  virtual bool ShouldUseArpGateway() const;
+
+  // Indicates if the selected service is configured with static nameservers.
+  bool IsUsingStaticNameServers() const;
+
+  // Use for unit test.
+  void set_traffic_monitor_for_test(
+      std::unique_ptr<TrafficMonitor> traffic_monitor);
 
   // |enabled_persistent_| is the value of the Powered property, as
   // read from the profile. If it is not found in the profile, it
