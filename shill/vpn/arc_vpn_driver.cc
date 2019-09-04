@@ -102,8 +102,14 @@ void ArcVpnDriver::Connect(const VPNServiceRefPtr& service, Error* error) {
 
   // This will always create the per-device routing table, but it might
   // not have any routes if |ip_properties.routes| is empty.
-  ip_properties.allowed_uids = manager()->user_traffic_uids();
-  CHECK(!ip_properties.allowed_uids.empty());
+  manager()->vpn_provider()->SetDefaultRoutingPolicy(&ip_properties);
+  // VPNProvider includes the arc device in the list of allowed iifs. This
+  // would create a routing loop for ARC N traffic when an ARC VPN is used.
+  //
+  // TODO - This should be removed after ARC N is deprecated OR after we have
+  // explicit linking between virtual interfaces and the "lower" interface that
+  // will carry its traffic.
+  base::Erase(ip_properties.allowed_iifs, device_->link_name());
 
   ip_properties.default_route = false;
 

@@ -64,8 +64,9 @@ class ArcVpnDriverTest : public testing::Test {
 
   void SetUp() override {
     manager_.vpn_provider_ = std::make_unique<MockVPNProvider>();
-    manager_.user_traffic_uids_.push_back(1000);
+    manager_.vpn_provider_->manager_ = &manager_;
     manager_.vpn_provider_->arc_device_ = device_;
+    manager_.user_traffic_uids_.push_back(1000);
     manager_.UpdateProviderMapping();
   }
 
