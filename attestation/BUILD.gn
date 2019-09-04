@@ -154,13 +154,6 @@ shared_library("libattestation") {
     ":proto_library",
     ":proto_library_proto",
   ]
-  pkg_deps = [
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "protobuf",
-  ]
 }
 
 # A client command line utility.

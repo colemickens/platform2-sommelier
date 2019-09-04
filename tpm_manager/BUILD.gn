@@ -65,13 +65,6 @@ static_library("proto_library") {
   sources = [
     "${proto_in_dir}/print_tpm_manager_proto.cc",
   ]
-  pkg_deps = [
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "protobuf",
-  ]
 }
 
 # A shared library for clients.
@@ -84,13 +77,6 @@ shared_library("libtpm_manager") {
   ]
   deps = [
     ":proto_library",
-  ]
-  pkg_deps = [
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "protobuf",
   ]
 }
 
