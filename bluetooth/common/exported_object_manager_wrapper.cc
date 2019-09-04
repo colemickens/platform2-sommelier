@@ -7,6 +7,7 @@
 #include <memory>
 #include <set>
 #include <utility>
+#include <vector>
 
 #include <base/stl_util.h>
 #include <brillo/dbus/exported_object_manager.h>
@@ -82,19 +83,26 @@ void ExportedInterface::AddRawMethodHandler(
       ->AddRawMethodHandler(method_name, handler);
 }
 
-void ExportedInterface::SyncPropertyToExportedProperty(
+void ExportedInterface::SyncPropertiesToExportedProperty(
     const std::string& property_name,
-    dbus::PropertyBase* property_base,
+    const std::vector<dbus::PropertyBase*>& remote_properties,
     PropertyFactoryBase* property_factory) {
-  if (!property_base->is_valid()) {
+  bool unregister = true;
+  for (dbus::PropertyBase* property : remote_properties) {
+    if (property != nullptr && property->is_valid()) {
+      unregister = false;
+      break;
+    }
+  }
+  if (unregister) {
     EnsureExportedPropertyUnregistered(property_name);
     return;
   }
 
   brillo::dbus_utils::ExportedPropertyBase* exported_property_base =
       EnsureExportedPropertyRegistered(property_name, property_factory);
-  property_factory->CopyPropertyToExportedProperty(property_base,
-                                                   exported_property_base);
+  property_factory->MergePropertiesToExportedProperty(remote_properties,
+                                                      exported_property_base);
 }
 
 brillo::dbus_utils::ExportedPropertyBase*

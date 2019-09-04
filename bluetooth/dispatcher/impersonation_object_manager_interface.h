@@ -115,6 +115,8 @@ class ImpersonationObjectManagerInterface
                                        const std::string& service_name);
   void RemoveImpersonatedServiceForObject(const std::string& object_path,
                                           const std::string& service_name);
+  bool HasImpersonatedServiceForObject(const std::string& object_path,
+                                       const std::string& service_name);
   // Returns the default service that exports the object. The default is chosen
   // to be the one which is registered first via RegisterToObjectManager().
   std::string GetDefaultServiceForObject(const std::string& object_path) const;

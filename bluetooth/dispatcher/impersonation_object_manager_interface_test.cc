@@ -47,6 +47,7 @@ constexpr char kTestMethodName2[] = "Method2";
 constexpr char kStringPropertyName[] = "SomeString";
 constexpr char kIntPropertyName[] = "SomeInt";
 constexpr char kBoolPropertyName[] = "SomeBool";
+constexpr char kMergeStringPropertyName[] = "SomeStringForMerging";
 
 constexpr char kTestMethodCallString[] = "The Method Call";
 constexpr char kTestResponseString[] = "The Response";
@@ -70,6 +71,9 @@ class TestInterfaceHandler : public InterfaceHandler {
         std::make_unique<PropertyFactory<int>>();
     property_factory_map_[kBoolPropertyName] =
         std::make_unique<PropertyFactory<bool>>();
+    property_factory_map_[kMergeStringPropertyName] =
+        std::make_unique<PropertyFactory<std::string>>(
+            MergingRule::CONCATENATION);
 
     method_forwardings_[kTestMethodName1] = ForwardingRule::FORWARD_DEFAULT;
     method_forwardings_[kTestMethodName2] = ForwardingRule::FORWARD_ALL;
@@ -902,6 +906,102 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MultiService) {
   EXPECT_CALL(*exported_object1, Unregister()).Times(1);
   impersonation_om_interface->ObjectRemoved(kTestServiceName2, object_path1,
                                             kTestInterfaceName1);
+}
+
+TEST_F(ImpersonationObjectManagerInterfaceTest, MultiServiceMerging) {
+  dbus::ObjectPath object_path1(kTestObjectPath1);
+
+  std::map<std::string, std::unique_ptr<ExportedObject>> exported_objects;
+  auto impersonation_om_interface =
+      std::make_unique<ImpersonationObjectManagerInterface>(
+          bus_, exported_object_manager_wrapper_.get(),
+          std::make_unique<TestInterfaceHandler>(), kTestInterfaceName1,
+          client_manager_.get());
+
+  impersonation_om_interface->RegisterToObjectManager(object_manager1_.get(),
+                                                      kTestServiceName1);
+  impersonation_om_interface->RegisterToObjectManager(object_manager2_.get(),
+                                                      kTestServiceName2);
+
+  scoped_refptr<dbus::MockExportedObject> exported_object1 =
+      new dbus::MockExportedObject(bus_.get(), object_path1);
+  EXPECT_CALL(*bus_, GetExportedObject(object_path1))
+      .WillOnce(Return(exported_object1.get()));
+
+  // D-Bus properties methods should be exported.
+  ExpectExportPropertiesMethods(exported_object1.get());
+  // CreateProperties called for an object.
+  std::unique_ptr<dbus::PropertySet> dbus_property_set1(
+      impersonation_om_interface->CreateProperties(
+          kTestServiceName1, object_proxy_.get(), object_path1,
+          kTestInterfaceName1));
+
+  PropertySet* property_set1 =
+      static_cast<PropertySet*>(dbus_property_set1.get());
+  // The properties should all be registered.
+  ASSERT_NE(nullptr, property_set1->GetProperty(kMergeStringPropertyName));
+  EXPECT_CALL(*object_manager1_,
+              GetProperties(object_path1, kTestInterfaceName1))
+      .WillRepeatedly(Return(property_set1));
+  SetPropertyValue<std::string>(
+      property_set1->GetProperty(kMergeStringPropertyName), "string1");
+  // Trigger property changed event and check that the exported properties are
+  // updated.
+  property_set1->NotifyPropertyChanged(kMergeStringPropertyName);
+  ExportedInterface* interface =
+      exported_object_manager_wrapper_->GetExportedInterface(
+          object_path1, kTestInterfaceName1);
+  ExpectExportedPropertyEquals<std::string>(
+      "string1",
+      interface->GetRegisteredExportedProperty(kMergeStringPropertyName));
+
+  // Now the second service creates the same property.
+  std::unique_ptr<dbus::PropertySet> dbus_property_set2(
+      impersonation_om_interface->CreateProperties(
+          kTestServiceName2, object_proxy_.get(), object_path1,
+          kTestInterfaceName1));
+  PropertySet* property_set2 =
+      static_cast<PropertySet*>(dbus_property_set2.get());
+  // The properties should all be registered.
+  ASSERT_NE(nullptr, property_set2->GetProperty(kMergeStringPropertyName));
+  EXPECT_CALL(*object_manager2_,
+              GetProperties(object_path1, kTestInterfaceName1))
+      .WillRepeatedly(Return(property_set2));
+  SetPropertyValue<std::string>(
+      property_set2->GetProperty(kMergeStringPropertyName), "string2");
+
+  // Trigger property changed event and check that the exported properties are
+  // updated.
+  property_set2->NotifyPropertyChanged(kMergeStringPropertyName);
+  ExpectExportedPropertyEquals<std::string>(
+      "string1 string2",
+      interface->GetRegisteredExportedProperty(kMergeStringPropertyName));
+
+  // ObjectAdded events
+  dbus::ExportedObject::MethodCallCallback method1_handler;
+  dbus::ExportedObject::MethodCallCallback method2_handler;
+  ExpectExportTestMethods(exported_object1.get(), kTestInterfaceName1,
+                          &method1_handler, &method2_handler);
+  impersonation_om_interface->ObjectAdded(kTestServiceName1, object_path1,
+                                          kTestInterfaceName1);
+  impersonation_om_interface->ObjectAdded(kTestServiceName2, object_path1,
+                                          kTestInterfaceName1);
+  // ObjectRemoved events
+  impersonation_om_interface->ObjectRemoved(kTestServiceName1, object_path1,
+                                            kTestInterfaceName1);
+  // Service1 removed the object, so now the property of this object should
+  // be updated based on the property of Service2.
+  ExpectExportedPropertyEquals<std::string>(
+      "string2",
+      interface->GetRegisteredExportedProperty(kMergeStringPropertyName));
+
+  // The last service removes the object, the corrseponding exported object
+  // should be unregistered and the exported property removed.
+  ExpectUnexportTestMethods(exported_object1.get(), kTestInterfaceName1);
+  impersonation_om_interface->ObjectRemoved(kTestServiceName2, object_path1,
+                                            kTestInterfaceName1);
+  EXPECT_EQ(nullptr,
+            interface->GetRegisteredExportedProperty(kMergeStringPropertyName));
 }
 
 TEST_F(ImpersonationObjectManagerInterfaceTest,

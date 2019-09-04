@@ -39,6 +39,13 @@ class BluezInterfaceHandler : public InterfaceHandler {
                                   std::make_unique<PropertyFactory<T>>());
   }
 
+  template <typename T>
+  void AddPropertyFactory(const std::string& property_name,
+                          MergingRule merging_rule) {
+    property_factory_map_.emplace(
+        property_name, std::make_unique<PropertyFactory<T>>(merging_rule));
+  }
+
   void AddMethodForwarding(const std::string& method_name) {
     method_forwardings_[method_name] = ForwardingRule::FORWARD_DEFAULT;
   }

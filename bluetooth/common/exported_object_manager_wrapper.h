@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <brillo/dbus/exported_object_manager.h>
 
@@ -67,13 +68,14 @@ class ExportedInterface {
         ->AddMethodHandlerWithMessage(method_name, handler);
   }
 
-  // Copies the value of the property having name |property_name| to the
-  // corresponding exported property, or unregisters the corresponding exported
-  // property if property |property_name| is no longer valid.
-  // Doesn't own |property_base| and |property_factory| and doesn't keep them.
-  void SyncPropertyToExportedProperty(const std::string& property_name,
-                                      dbus::PropertyBase* property_base,
-                                      PropertyFactoryBase* property_factory);
+  // Merges the values of the remote properties having name |property_name| to
+  // the corresponding exported property, or unregisters the corresponding
+  // exported property if property |property_name| is no longer valid. Doesn't
+  // own |property_base| and |property_factory| and doesn't keep them.
+  void SyncPropertiesToExportedProperty(
+      const std::string& property_name,
+      const std::vector<dbus::PropertyBase*>& remote_properties,
+      PropertyFactoryBase* property_factory);
 
   // Registers the specified exported property if not already registered.
   // Doesn't own |property_factory| and doesn't keep it.

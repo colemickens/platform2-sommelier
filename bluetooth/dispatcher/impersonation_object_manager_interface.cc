@@ -230,6 +230,13 @@ void ImpersonationObjectManagerInterface::RemoveImpersonatedServiceForObject(
     impersonated_services_.erase(object_path);
 }
 
+bool ImpersonationObjectManagerInterface::HasImpersonatedServiceForObject(
+    const std::string& object_path, const std::string& service_name) {
+  return base::ContainsKey(impersonated_services_, object_path) &&
+         base::ContainsValue(impersonated_services_.at(object_path),
+                             service_name);
+}
+
 dbus::ObjectManager* ImpersonationObjectManagerInterface::GetObjectManager(
     const std::string& service_name) {
   auto it = object_managers().find(service_name);
@@ -244,11 +251,8 @@ void ImpersonationObjectManagerInterface::OnPropertyChanged(
     const std::string& interface_name,
     const std::string& property_name) {
   VLOG(2) << "Property " << property_name << " on interface " << interface_name
-          << " of object " << object_path.value() << " changed.";
-
-  // Ignore any changed property of non-default services.
-  if (service_name != GetDefaultServiceForObject(object_path.value()))
-    return;
+          << " of object " << object_path.value() << " from service "
+          << service_name << " changed.";
 
   PropertyFactoryBase* property_factory =
       interface_handler_->GetPropertyFactoryMap()
@@ -264,13 +268,30 @@ void ImpersonationObjectManagerInterface::OnPropertyChanged(
   if (exported_interface == nullptr)
     return;
 
-  exported_interface->SyncPropertyToExportedProperty(
-      property_name,
-      static_cast<PropertySet*>(
-          GetObjectManager(service_name)
-              ->GetProperties(object_path, interface_name))
-          ->GetProperty(property_name),
-      property_factory);
+  std::vector<dbus::PropertyBase*> remote_properties;
+  for (const std::string& service : service_names()) {
+    if (!HasImpersonatedServiceForObject(object_path.value(), service))
+      continue;
+
+    auto object_manager = GetObjectManager(service);
+    if (object_manager == nullptr) {
+      remote_properties.emplace_back(nullptr);
+      continue;
+    }
+
+    auto properties =
+        object_manager->GetProperties(object_path, interface_name);
+    if (properties == nullptr) {
+      remote_properties.emplace_back(nullptr);
+      continue;
+    }
+
+    remote_properties.emplace_back(
+        static_cast<PropertySet*>(properties)->GetProperty(property_name));
+  }
+
+  exported_interface->SyncPropertiesToExportedProperty(
+      property_name, remote_properties, property_factory);
 }
 
 void ImpersonationObjectManagerInterface::

@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <brillo/dbus/exported_property_set.h>
@@ -189,41 +190,71 @@ TEST_F(ExportedObjectManagerWrapperTest, SyncProperty) {
   EXPECT_TRUE(dbus_object->FindInterface(kTestInterfaceName1) != nullptr);
 
   // Prepare property for testing.
-  PropertyFactory<int> property_factory;
-  std::unique_ptr<dbus::PropertyBase> property_base =
+  PropertyFactory<std::string> property_factory(MergingRule::CONCATENATION);
+  std::unique_ptr<dbus::PropertyBase> property_base1 =
       property_factory.CreateProperty();
-  auto property_set = std::make_unique<dbus::PropertySet>(
+  auto property_set1 = std::make_unique<dbus::PropertySet>(
       object_proxy_.get(), kTestInterfaceName1,
       base::Bind([](const std::string& property_name) {}));
-  property_base->Init(property_set.get(), kTestPropertyName);
-  property_base->set_valid(true);
-  dbus::Property<int>* property =
-      static_cast<dbus::Property<int>*>(property_base.get());
-  int expected_value = 3;
+  property_base1->Init(property_set1.get(), kTestPropertyName);
+  property_base1->set_valid(true);
+  dbus::Property<std::string>* property1 =
+      static_cast<dbus::Property<std::string>*>(property_base1.get());
+
+  std::unique_ptr<dbus::PropertyBase> property_base2 =
+      property_factory.CreateProperty();
+  auto property_set2 = std::make_unique<dbus::PropertySet>(
+      object_proxy_.get(), kTestInterfaceName1,
+      base::Bind([](const std::string& property_name) {}));
+  property_base2->Init(property_set1.get(), kTestPropertyName);
+  property_base2->set_valid(true);
+  dbus::Property<std::string>* property2 =
+      static_cast<dbus::Property<std::string>*>(property_base2.get());
+
+  std::string value1 = "string1";
   EXPECT_CALL(*object_proxy_, MockCallMethodAndBlock(_, _)).Times(1);
-  property->SetAndBlock(expected_value);
-  property->ReplaceValueWithSetValue();
-  ASSERT_EQ(expected_value, property->value());
+  property1->SetAndBlock(value1);
+  property1->ReplaceValueWithSetValue();
+  ASSERT_EQ(value1, property1->value());
+
+  std::string value2 = "string2";
+  EXPECT_CALL(*object_proxy_, MockCallMethodAndBlock(_, _)).Times(1);
+  property2->SetAndBlock(value2);
+  property2->ReplaceValueWithSetValue();
+  ASSERT_EQ(value2, property2->value());
+
   interface->ExportAsync(base::Bind([](bool success) {}));
 
-  interface->SyncPropertyToExportedProperty(
-      kTestPropertyName, property_base.get(), &property_factory);
+  interface->SyncPropertiesToExportedProperty(
+      kTestPropertyName, {property_base1.get(), property_base2.get()},
+      &property_factory);
 
   // Check that the property is exported and the exported property has the
   // same value as the origin property.
   brillo::dbus_utils::ExportedPropertyBase* exported_property_base =
       interface->GetRegisteredExportedProperty(kTestPropertyName);
   ASSERT_NE(nullptr, exported_property_base);
-  brillo::dbus_utils::ExportedProperty<int>* exported_property =
-      static_cast<brillo::dbus_utils::ExportedProperty<int>*>(
+  brillo::dbus_utils::ExportedProperty<std::string>* exported_property =
+      static_cast<brillo::dbus_utils::ExportedProperty<std::string>*>(
           exported_property_base);
+  std::string expected_value = "string1 string2";
   EXPECT_EQ(expected_value, exported_property->value());
 
-  // Syncing an invalidated property will remove the exported property.
-  property_base->set_valid(false);
-  interface->SyncPropertyToExportedProperty(
-      kTestPropertyName, property_base.get(), &property_factory);
-  // Check that the property is no longer exported.
+  // One property is invalid the value should equal to the other one.
+  property_base1->set_valid(false);
+  interface->SyncPropertiesToExportedProperty(
+      kTestPropertyName, {property_base1.get(), property_base2.get()},
+      &property_factory);
+  expected_value = "string2";
+  ASSERT_NE(nullptr,
+            interface->GetRegisteredExportedProperty(kTestPropertyName));
+  EXPECT_EQ(expected_value, exported_property->value());
+
+  // Making both properties invalid will remove the exported property.
+  property_base2->set_valid(false);
+  interface->SyncPropertiesToExportedProperty(
+      kTestPropertyName, {property_base1.get(), property_base2.get()},
+      &property_factory);
   ASSERT_EQ(nullptr,
             interface->GetRegisteredExportedProperty(kTestPropertyName));
 }

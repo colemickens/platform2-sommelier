@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <dbus/mock_bus.h>
@@ -58,7 +59,6 @@ TEST_F(PropertySetTest, PropertyFactory) {
   brillo::dbus_utils::ExportedProperty<int>* exported_property =
       static_cast<brillo::dbus_utils::ExportedProperty<int>*>(
           exported_property_base.get());
-
   dbus::PropertySet property_set(
       object_proxy.get(), kTestInterfaceName,
       base::Bind([](const std::string& property_name) {}));
@@ -70,17 +70,18 @@ TEST_F(PropertySetTest, PropertyFactory) {
   EXPECT_CALL(*object_proxy, MockCallMethodAndBlock(_, _)).Times(1);
   property->SetAndBlock(expected_value);
   property->ReplaceValueWithSetValue();
+  property->set_valid(true);
   ASSERT_EQ(expected_value, property->value());
 
   EXPECT_EQ(0, exported_property_update_count_);
-  property_factory.CopyPropertyToExportedProperty(property_base.get(),
-                                                  exported_property_base.get());
+  property_factory.MergePropertiesToExportedProperty(
+      {property_base.get()}, exported_property_base.get());
   // exported_property should be updated to be the same as property.
   EXPECT_EQ(expected_value, exported_property->value());
   EXPECT_EQ(1, exported_property_update_count_);
 
-  property_factory.CopyPropertyToExportedProperty(property_base.get(),
-                                                  exported_property_base.get());
+  property_factory.MergePropertiesToExportedProperty(
+      {property_base.get()}, exported_property_base.get());
   // Now that the values are already the same, exported_property shouldn't get
   // updated.
   EXPECT_EQ(1, exported_property_update_count_);
@@ -90,9 +91,10 @@ TEST_F(PropertySetTest, PropertyFactory) {
   EXPECT_CALL(*object_proxy, MockCallMethodAndBlock(_, _)).Times(1);
   property->SetAndBlock(expected_value);
   property->ReplaceValueWithSetValue();
+  property->set_valid(true);
   ASSERT_EQ(expected_value, property->value());
-  property_factory.CopyPropertyToExportedProperty(property_base.get(),
-                                                  exported_property_base.get());
+  property_factory.MergePropertiesToExportedProperty(
+      {property_base.get()}, exported_property_base.get());
   // exported_property should be updated to be the same as property.
   EXPECT_EQ(expected_value, exported_property->value());
   EXPECT_EQ(2, exported_property_update_count_);
@@ -124,6 +126,387 @@ TEST_F(PropertySetTest, PropertySet) {
   // The dbus::PropertyBase::name() should return the registered name.
   EXPECT_EQ(kTestPropertyName1, expected_int_property->name());
   EXPECT_EQ(kTestPropertyName2, expected_bool_property->name());
+}
+
+TEST_F(PropertySetTest, PropertyMergingDefault) {
+  scoped_refptr<dbus::MockObjectProxy> object_proxy = new dbus::MockObjectProxy(
+      bus_.get(), kTestServiceName, dbus::ObjectPath(kTestObjectPath));
+
+  PropertyFactory<int> property_factory(MergingRule::DEFAULT);
+  std::unique_ptr<dbus::PropertyBase> property_base1 =
+      property_factory.CreateProperty();
+  dbus::Property<int>* property1 =
+      static_cast<dbus::Property<int>*>(property_base1.get());
+  dbus::PropertySet property_set1(
+      object_proxy.get(), kTestInterfaceName,
+      base::Bind([](const std::string& property_name) {}));
+  property_base1->Init(&property_set1, kTestPropertyName1);
+
+  std::unique_ptr<dbus::PropertyBase> property_base2 =
+      property_factory.CreateProperty();
+  dbus::Property<int>* property2 =
+      static_cast<dbus::Property<int>*>(property_base2.get());
+  dbus::PropertySet property_set2(
+      object_proxy.get(), kTestInterfaceName,
+      base::Bind([](const std::string& property_name) {}));
+  property_base2->Init(&property_set2, kTestPropertyName1);
+
+  std::unique_ptr<brillo::dbus_utils::ExportedPropertyBase>
+      exported_property_base = property_factory.CreateExportedProperty();
+  brillo::dbus_utils::ExportedProperty<int>* exported_property =
+      static_cast<brillo::dbus_utils::ExportedProperty<int>*>(
+          exported_property_base.get());
+
+  exported_property_base->SetUpdateCallback(base::Bind(
+      &PropertySetTest::OnExportedPropertyUpdated, base::Unretained(this)));
+
+  int value1 = 3;
+  int value2 = 5;
+  property1->SetAndBlock(value1);
+  property1->ReplaceValueWithSetValue();
+  property1->set_valid(true);
+
+  property2->SetAndBlock(value2);
+  property2->ReplaceValueWithSetValue();
+  property2->set_valid(true);
+
+  property_factory.MergePropertiesToExportedProperty(
+      {property_base1.get(), property_base2.get()},
+      exported_property_base.get());
+  EXPECT_EQ(value1, exported_property->value());
+}
+
+TEST_F(PropertySetTest, PropertyMergingAnd) {
+  scoped_refptr<dbus::MockObjectProxy> object_proxy = new dbus::MockObjectProxy(
+      bus_.get(), kTestServiceName, dbus::ObjectPath(kTestObjectPath));
+
+  PropertyFactory<bool> property_factory(MergingRule::AND);
+  std::unique_ptr<dbus::PropertyBase> property_base1 =
+      property_factory.CreateProperty();
+  dbus::Property<bool>* property1 =
+      static_cast<dbus::Property<bool>*>(property_base1.get());
+  dbus::PropertySet property_set1(
+      object_proxy.get(), kTestInterfaceName,
+      base::Bind([](const std::string& property_name) {}));
+  property_base1->Init(&property_set1, kTestPropertyName1);
+
+  std::unique_ptr<dbus::PropertyBase> property_base2 =
+      property_factory.CreateProperty();
+  dbus::Property<bool>* property2 =
+      static_cast<dbus::Property<bool>*>(property_base2.get());
+  dbus::PropertySet property_set2(
+      object_proxy.get(), kTestInterfaceName,
+      base::Bind([](const std::string& property_name) {}));
+  property_base2->Init(&property_set2, kTestPropertyName1);
+
+  std::unique_ptr<brillo::dbus_utils::ExportedPropertyBase>
+      exported_property_base = property_factory.CreateExportedProperty();
+  brillo::dbus_utils::ExportedProperty<bool>* exported_property =
+      static_cast<brillo::dbus_utils::ExportedProperty<bool>*>(
+          exported_property_base.get());
+
+  exported_property_base->SetUpdateCallback(base::Bind(
+      &PropertySetTest::OnExportedPropertyUpdated, base::Unretained(this)));
+
+  property1->SetAndBlock(true);
+  property1->ReplaceValueWithSetValue();
+  property1->set_valid(true);
+
+  property2->SetAndBlock(false);
+  property2->ReplaceValueWithSetValue();
+  property2->set_valid(true);
+
+  property_factory.MergePropertiesToExportedProperty(
+      {property_base1.get(), property_base2.get()},
+      exported_property_base.get());
+  EXPECT_EQ(false, exported_property->value());
+
+  property2->SetAndBlock(true);
+  property2->ReplaceValueWithSetValue();
+  property2->set_valid(true);
+
+  property_factory.MergePropertiesToExportedProperty(
+      {property_base1.get(), property_base2.get()},
+      exported_property_base.get());
+  EXPECT_EQ(true, exported_property->value());
+}
+
+TEST_F(PropertySetTest, PropertyMergingAndInvalidType) {
+  scoped_refptr<dbus::MockObjectProxy> object_proxy = new dbus::MockObjectProxy(
+      bus_.get(), kTestServiceName, dbus::ObjectPath(kTestObjectPath));
+
+  PropertyFactory<int> property_factory(MergingRule::AND);
+  std::unique_ptr<dbus::PropertyBase> property_base1 =
+      property_factory.CreateProperty();
+  dbus::Property<int>* property1 =
+      static_cast<dbus::Property<int>*>(property_base1.get());
+  dbus::PropertySet property_set1(
+      object_proxy.get(), kTestInterfaceName,
+      base::Bind([](const std::string& property_name) {}));
+  property_base1->Init(&property_set1, kTestPropertyName1);
+
+  std::unique_ptr<brillo::dbus_utils::ExportedPropertyBase>
+      exported_property_base = property_factory.CreateExportedProperty();
+
+  exported_property_base->SetUpdateCallback(base::Bind(
+      &PropertySetTest::OnExportedPropertyUpdated, base::Unretained(this)));
+
+  property1->SetAndBlock(1);
+  property1->ReplaceValueWithSetValue();
+  property1->set_valid(true);
+
+  EXPECT_DEATH(property_factory.MergePropertiesToExportedProperty(
+                   {property_base1.get()}, exported_property_base.get()),
+               "AND merging not supported for the given value type");
+}
+
+TEST_F(PropertySetTest, PropertyMergingOr) {
+  scoped_refptr<dbus::MockObjectProxy> object_proxy = new dbus::MockObjectProxy(
+      bus_.get(), kTestServiceName, dbus::ObjectPath(kTestObjectPath));
+
+  PropertyFactory<bool> property_factory(MergingRule::OR);
+  std::unique_ptr<dbus::PropertyBase> property_base1 =
+      property_factory.CreateProperty();
+  dbus::Property<bool>* property1 =
+      static_cast<dbus::Property<bool>*>(property_base1.get());
+  dbus::PropertySet property_set1(
+      object_proxy.get(), kTestInterfaceName,
+      base::Bind([](const std::string& property_name) {}));
+  property_base1->Init(&property_set1, kTestPropertyName1);
+
+  std::unique_ptr<dbus::PropertyBase> property_base2 =
+      property_factory.CreateProperty();
+  dbus::Property<bool>* property2 =
+      static_cast<dbus::Property<bool>*>(property_base2.get());
+  dbus::PropertySet property_set2(
+      object_proxy.get(), kTestInterfaceName,
+      base::Bind([](const std::string& property_name) {}));
+  property_base2->Init(&property_set2, kTestPropertyName1);
+
+  std::unique_ptr<brillo::dbus_utils::ExportedPropertyBase>
+      exported_property_base = property_factory.CreateExportedProperty();
+  brillo::dbus_utils::ExportedProperty<bool>* exported_property =
+      static_cast<brillo::dbus_utils::ExportedProperty<bool>*>(
+          exported_property_base.get());
+
+  exported_property_base->SetUpdateCallback(base::Bind(
+      &PropertySetTest::OnExportedPropertyUpdated, base::Unretained(this)));
+
+  property1->SetAndBlock(false);
+  property1->ReplaceValueWithSetValue();
+  property1->set_valid(true);
+
+  property2->SetAndBlock(true);
+  property2->ReplaceValueWithSetValue();
+  property2->set_valid(true);
+
+  property_factory.MergePropertiesToExportedProperty(
+      {property_base1.get(), property_base2.get()},
+      exported_property_base.get());
+  EXPECT_EQ(true, exported_property->value());
+
+  property2->SetAndBlock(false);
+  property2->ReplaceValueWithSetValue();
+  property2->set_valid(true);
+
+  property_factory.MergePropertiesToExportedProperty(
+      {property_base1.get(), property_base2.get()},
+      exported_property_base.get());
+  EXPECT_EQ(false, exported_property->value());
+}
+
+TEST_F(PropertySetTest, PropertyMergingOrInvalidType) {
+  scoped_refptr<dbus::MockObjectProxy> object_proxy = new dbus::MockObjectProxy(
+      bus_.get(), kTestServiceName, dbus::ObjectPath(kTestObjectPath));
+
+  PropertyFactory<int> property_factory(MergingRule::OR);
+  std::unique_ptr<dbus::PropertyBase> property_base1 =
+      property_factory.CreateProperty();
+  dbus::Property<int>* property1 =
+      static_cast<dbus::Property<int>*>(property_base1.get());
+  dbus::PropertySet property_set1(
+      object_proxy.get(), kTestInterfaceName,
+      base::Bind([](const std::string& property_name) {}));
+  property_base1->Init(&property_set1, kTestPropertyName1);
+
+  std::unique_ptr<brillo::dbus_utils::ExportedPropertyBase>
+      exported_property_base = property_factory.CreateExportedProperty();
+
+  exported_property_base->SetUpdateCallback(base::Bind(
+      &PropertySetTest::OnExportedPropertyUpdated, base::Unretained(this)));
+
+  property1->SetAndBlock(1);
+  property1->ReplaceValueWithSetValue();
+  property1->set_valid(true);
+
+  EXPECT_DEATH(property_factory.MergePropertiesToExportedProperty(
+                   {property_base1.get()}, exported_property_base.get()),
+               "OR merging not supported for the given value type");
+}
+
+TEST_F(PropertySetTest, PropertyMergingUnion) {
+  scoped_refptr<dbus::MockObjectProxy> object_proxy = new dbus::MockObjectProxy(
+      bus_.get(), kTestServiceName, dbus::ObjectPath(kTestObjectPath));
+
+  PropertyFactory<std::vector<std::string>> property_factory(
+      MergingRule::UNION);
+  std::unique_ptr<dbus::PropertyBase> property_base1 =
+      property_factory.CreateProperty();
+  dbus::Property<std::vector<std::string>>* property1 =
+      static_cast<dbus::Property<std::vector<std::string>>*>(
+          property_base1.get());
+  dbus::PropertySet property_set1(
+      object_proxy.get(), kTestInterfaceName,
+      base::Bind([](const std::string& property_name) {}));
+  property_base1->Init(&property_set1, kTestPropertyName1);
+
+  std::unique_ptr<dbus::PropertyBase> property_base2 =
+      property_factory.CreateProperty();
+  dbus::Property<std::vector<std::string>>* property2 =
+      static_cast<dbus::Property<std::vector<std::string>>*>(
+          property_base2.get());
+  dbus::PropertySet property_set2(
+      object_proxy.get(), kTestInterfaceName,
+      base::Bind([](const std::string& property_name) {}));
+  property_base2->Init(&property_set2, kTestPropertyName1);
+
+  std::unique_ptr<brillo::dbus_utils::ExportedPropertyBase>
+      exported_property_base = property_factory.CreateExportedProperty();
+  brillo::dbus_utils::ExportedProperty<std::vector<std::string>>*
+      exported_property = static_cast<
+          brillo::dbus_utils::ExportedProperty<std::vector<std::string>>*>(
+          exported_property_base.get());
+
+  exported_property_base->SetUpdateCallback(base::Bind(
+      &PropertySetTest::OnExportedPropertyUpdated, base::Unretained(this)));
+
+  property1->SetAndBlock({"string1"});
+  property1->ReplaceValueWithSetValue();
+  property1->set_valid(true);
+
+  property2->SetAndBlock({"string2"});
+  property2->ReplaceValueWithSetValue();
+  property2->set_valid(true);
+
+  std::vector<std::string> expected_value = {"string1", "string2"};
+  property_factory.MergePropertiesToExportedProperty(
+      {property_base1.get(), property_base2.get()},
+      exported_property_base.get());
+  EXPECT_EQ(expected_value, exported_property->value());
+
+  property2->SetAndBlock({"string1"});
+  property2->ReplaceValueWithSetValue();
+  property2->set_valid(true);
+
+  expected_value = {"string1"};
+  property_factory.MergePropertiesToExportedProperty(
+      {property_base1.get(), property_base2.get()},
+      exported_property_base.get());
+  EXPECT_EQ(expected_value, exported_property->value());
+}
+
+TEST_F(PropertySetTest, PropertyMergingUnionInvalidType) {
+  scoped_refptr<dbus::MockObjectProxy> object_proxy = new dbus::MockObjectProxy(
+      bus_.get(), kTestServiceName, dbus::ObjectPath(kTestObjectPath));
+
+  PropertyFactory<int> property_factory(MergingRule::UNION);
+  std::unique_ptr<dbus::PropertyBase> property_base1 =
+      property_factory.CreateProperty();
+  dbus::Property<int>* property1 =
+      static_cast<dbus::Property<int>*>(property_base1.get());
+  dbus::PropertySet property_set1(
+      object_proxy.get(), kTestInterfaceName,
+      base::Bind([](const std::string& property_name) {}));
+  property_base1->Init(&property_set1, kTestPropertyName1);
+
+  std::unique_ptr<brillo::dbus_utils::ExportedPropertyBase>
+      exported_property_base = property_factory.CreateExportedProperty();
+
+  exported_property_base->SetUpdateCallback(base::Bind(
+      &PropertySetTest::OnExportedPropertyUpdated, base::Unretained(this)));
+
+  property1->SetAndBlock(1);
+  property1->ReplaceValueWithSetValue();
+  property1->set_valid(true);
+
+  EXPECT_DEATH(property_factory.MergePropertiesToExportedProperty(
+                   {property_base1.get()}, exported_property_base.get()),
+               "UNION merging not supported for the given value type");
+}
+
+TEST_F(PropertySetTest, PropertyMergingCancatenation) {
+  scoped_refptr<dbus::MockObjectProxy> object_proxy = new dbus::MockObjectProxy(
+      bus_.get(), kTestServiceName, dbus::ObjectPath(kTestObjectPath));
+
+  PropertyFactory<std::string> property_factory(MergingRule::CONCATENATION);
+  std::unique_ptr<dbus::PropertyBase> property_base1 =
+      property_factory.CreateProperty();
+  dbus::Property<std::string>* property1 =
+      static_cast<dbus::Property<std::string>*>(property_base1.get());
+  dbus::PropertySet property_set1(
+      object_proxy.get(), kTestInterfaceName,
+      base::Bind([](const std::string& property_name) {}));
+  property_base1->Init(&property_set1, kTestPropertyName1);
+
+  std::unique_ptr<dbus::PropertyBase> property_base2 =
+      property_factory.CreateProperty();
+  dbus::Property<std::string>* property2 =
+      static_cast<dbus::Property<std::string>*>(property_base2.get());
+  dbus::PropertySet property_set2(
+      object_proxy.get(), kTestInterfaceName,
+      base::Bind([](const std::string& property_name) {}));
+  property_base2->Init(&property_set2, kTestPropertyName1);
+
+  std::unique_ptr<brillo::dbus_utils::ExportedPropertyBase>
+      exported_property_base = property_factory.CreateExportedProperty();
+  brillo::dbus_utils::ExportedProperty<std::string>* exported_property =
+      static_cast<brillo::dbus_utils::ExportedProperty<std::string>*>(
+          exported_property_base.get());
+
+  exported_property_base->SetUpdateCallback(base::Bind(
+      &PropertySetTest::OnExportedPropertyUpdated, base::Unretained(this)));
+
+  property1->SetAndBlock("string1");
+  property1->ReplaceValueWithSetValue();
+  property1->set_valid(true);
+
+  property2->SetAndBlock("string2");
+  property2->ReplaceValueWithSetValue();
+  property2->set_valid(true);
+
+  property_factory.MergePropertiesToExportedProperty(
+      {property_base1.get(), property_base2.get()},
+      exported_property_base.get());
+  EXPECT_EQ("string1 string2", exported_property->value());
+}
+
+TEST_F(PropertySetTest, PropertyMergingConcatenationInvalidType) {
+  scoped_refptr<dbus::MockObjectProxy> object_proxy = new dbus::MockObjectProxy(
+      bus_.get(), kTestServiceName, dbus::ObjectPath(kTestObjectPath));
+
+  PropertyFactory<int> property_factory(MergingRule::CONCATENATION);
+  std::unique_ptr<dbus::PropertyBase> property_base1 =
+      property_factory.CreateProperty();
+  dbus::Property<int>* property1 =
+      static_cast<dbus::Property<int>*>(property_base1.get());
+  dbus::PropertySet property_set1(
+      object_proxy.get(), kTestInterfaceName,
+      base::Bind([](const std::string& property_name) {}));
+  property_base1->Init(&property_set1, kTestPropertyName1);
+
+  std::unique_ptr<brillo::dbus_utils::ExportedPropertyBase>
+      exported_property_base = property_factory.CreateExportedProperty();
+
+  exported_property_base->SetUpdateCallback(base::Bind(
+      &PropertySetTest::OnExportedPropertyUpdated, base::Unretained(this)));
+
+  property1->SetAndBlock(1);
+  property1->ReplaceValueWithSetValue();
+  property1->set_valid(true);
+
+  EXPECT_DEATH(property_factory.MergePropertiesToExportedProperty(
+                   {property_base1.get()}, exported_property_base.get()),
+               "CONCATENATION merging not supported for the given value type");
 }
 
 }  // namespace bluetooth
