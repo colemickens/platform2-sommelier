@@ -48,11 +48,6 @@ class V4L2CameraDevice : public CameraDeviceDelegate {
       std::string pattern);
   int RetryDeviceOpen(const std::string& device_path, int flags);
 
-  // External camera is the only one camera device of /dev/video* which is not
-  // in |internal_devices_|. Ruturns <VID:PID, device_path> if external camera
-  // is found. Otherwise, returns empty strings.
-  std::pair<std::string, std::string> FindExternalCamera();
-
   // Get power frequency supported from device.
   cros::PowerLineFrequency GetPowerLineFrequency(
       const std::string& device_path);
