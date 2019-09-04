@@ -10,5 +10,7 @@ overflow-checks = true
 
 [dependencies]
 libc = "0.2.44"
-sys_util = "*"
+remain = "*"
+regex = "1.0.6"
+sys_util = { path = "../../platform/crosvm/sys_util" } # provided by ebuild
 termion = "1.5.1"
