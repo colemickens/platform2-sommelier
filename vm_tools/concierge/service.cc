@@ -868,8 +868,8 @@ void Service::HandleChildExit() {
     });
 
     if (iter != vms_.end()) {
-      // Notify cicerone that the VM has exited.
-      NotifyCiceroneOfVmStopped(iter->first);
+      // Notify that the VM has exited.
+      NotifyVmStopped(iter->first);
 
       // Now remove it from the vm list.
       vms_.erase(iter);
@@ -1213,6 +1213,8 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   }
 
   // Notify cicerone that we have started a VM.
+  // We must notify cicerone now before calling StartTermina, but we will only
+  // send the VmStartedSignal on success.
   VmId vm_id(request.owner_id(), request.name());
   NotifyCiceroneOfVmStarted(vm_id, vm->cid(), "");
 
@@ -1234,6 +1236,8 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   vm_info->set_cid(vsock_cid);
   vm_info->set_seneschal_server_handle(seneschal_server_handle);
   writer.AppendProtoAsArrayOfBytes(response);
+
+  SendVmStartedSignal(vm_id, *vm_info, response.status());
 
   vms_[vm_id] = std::move(vm);
   return dbus_response;
@@ -1482,6 +1486,7 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
   writer.AppendProtoAsArrayOfBytes(response);
 
   NotifyCiceroneOfVmStarted(vm_id, 0 /* cid */, std::move(vm_token));
+  SendVmStartedSignal(vm_id, *vm_info, response.status());
 
   vms_[vm_id] = std::move(vm);
   return dbus_response;
@@ -1704,8 +1709,8 @@ std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
     return dbus_response;
   }
 
-  // Notify cicerone that we have stopped a VM.
-  NotifyCiceroneOfVmStopped(iter->first);
+  // Notify that we have stopped a VM.
+  NotifyVmStopped(iter->first);
 
   vms_.erase(iter);
   response.set_success(true);
@@ -1721,8 +1726,8 @@ std::unique_ptr<dbus::Response> Service::StopAllVms(
 
   // Spawn a thread for each VM to shut it down.
   for (auto& iter : vms_) {
-    // Notify cicerone that we have stopped a VM.
-    NotifyCiceroneOfVmStopped(iter.first);
+    // Notify that we have stopped a VM.
+    NotifyVmStopped(iter.first);
 
     // Resetting the unique_ptr will call the destructor for that VM,
     // which will try stopping it normally (and then forcibly) it if
@@ -2185,8 +2190,8 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
       return dbus_response;
     }
 
-    // Notify cicerone that we have stopped a VM.
-    NotifyCiceroneOfVmStopped(iter->first);
+    // Notify that we have stopped a VM.
+    NotifyVmStopped(iter->first);
     vms_.erase(iter);
   }
 
@@ -2930,8 +2935,22 @@ void Service::NotifyCiceroneOfVmStarted(const VmId& vm_id,
   }
 }
 
-void Service::NotifyCiceroneOfVmStopped(const VmId& vm_id) {
+void Service::SendVmStartedSignal(const VmId& vm_id,
+                                  const vm_tools::concierge::VmInfo& vm_info,
+                                  vm_tools::concierge::VmStatus status) {
+  dbus::Signal signal(kVmConciergeInterface, kVmStartedSignal);
+  vm_tools::concierge::VmStartedSignal proto;
+  proto.set_owner_id(vm_id.owner_id());
+  proto.set_name(vm_id.name());
+  proto.mutable_vm_info()->CopyFrom(vm_info);
+  proto.set_status(status);
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
+  exported_object_->SendSignal(&signal);
+}
+
+void Service::NotifyVmStopped(const VmId& vm_id) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
+  // Notify cicerone.
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
                                vm_tools::cicerone::kNotifyVmStoppedMethod);
   dbus::MessageWriter writer(&method_call);
@@ -2945,6 +2964,14 @@ void Service::NotifyCiceroneOfVmStopped(const VmId& vm_id) {
   if (!dbus_response) {
     LOG(ERROR) << "Failed notifying cicerone of VM stopped";
   }
+
+  // Send the D-Bus signal out to notify everyone that we have stopped a VM.
+  dbus::Signal signal(kVmConciergeInterface, kVmStoppedSignal);
+  vm_tools::concierge::VmStoppedSignal proto;
+  proto.set_owner_id(vm_id.owner_id());
+  proto.set_name(vm_id.name());
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
+  exported_object_->SendSignal(&signal);
 }
 
 std::string Service::GetContainerToken(const VmId& vm_id,
