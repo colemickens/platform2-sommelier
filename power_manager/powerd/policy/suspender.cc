@@ -21,6 +21,7 @@
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
 #include "power_manager/powerd/system/input_watcher.h"
+#include "power_manager/powerd/system/wakeup_source_identifier.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
 namespace {
@@ -59,11 +60,13 @@ void Suspender::Init(
     system::DBusWrapperInterface* dbus_wrapper,
     system::DarkResumeInterface* dark_resume,
     system::DisplayWatcherInterface* display_watcher,
+    system::WakeupSourceIdentifierInterface* wakeup_source_identifier,
     policy::ShutdownFromSuspendInterface* shutdown_from_suspend,
     PrefsInterface* prefs) {
   delegate_ = delegate;
   dbus_wrapper_ = dbus_wrapper;
   dark_resume_ = dark_resume;
+  wakeup_source_identifier_ = wakeup_source_identifier;
   shutdown_from_suspend_ = shutdown_from_suspend;
 
   const int initial_id = delegate_->GetInitialSuspendId();
@@ -501,7 +504,7 @@ void Suspender::StartRequest() {
   // to the signal.
   delegate_->PrepareToSuspend();
   suspend_delay_controller_->PrepareForSuspend(suspend_request_id_, false);
-  dark_resume_->PrepareForSuspendRequest();
+  wakeup_source_identifier_->PrepareForSuspendRequest();
   delegate_->SetSuspendAnnounced(true);
 
   SuspendImminent proto;
@@ -540,7 +543,6 @@ void Suspender::FinishRequest(bool success) {
     delegate_->GenerateDarkResumeMetrics(dark_resume_wake_durations_,
                                          suspend_duration);
   }
-  dark_resume_->UndoPrepareForSuspendRequest();
 }
 
 Suspender::State Suspender::Suspend() {
@@ -573,8 +575,17 @@ Suspender::State Suspender::Suspend() {
   }
 
   current_num_attempts_++;
-  const Delegate::SuspendResult result = delegate_->DoSuspend(
+  Delegate::SuspendResult result = delegate_->DoSuspend(
       wakeup_count_, wakeup_count_valid_, suspend_duration_);
+
+  wakeup_source_identifier_->HandleResume();
+
+  //  If we saw a wakeup event and it if it is from any input devices, treat
+  //  previous resume as successful as a wake event from input device implies a
+  //  user interaction.
+  if (result == Delegate::SuspendResult::CANCELED &&
+      wakeup_source_identifier_->InputDeviceCausedLastWake())
+    result = Delegate::SuspendResult::SUCCESS;
 
   if (result == Delegate::SuspendResult::SUCCESS) {
     // Reset this immediately right after a successful suspend, leave it

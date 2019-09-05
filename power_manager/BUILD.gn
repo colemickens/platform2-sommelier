@@ -142,6 +142,7 @@ static_library("libsystem_stub") {
     "powerd/system/power_supply_stub.cc",
     "powerd/system/udev_stub.cc",
     "powerd/system/user_proximity_watcher_stub.cc",
+    "powerd/system/wakeup_source_identifier_stub.cc",
   ]
 }
 

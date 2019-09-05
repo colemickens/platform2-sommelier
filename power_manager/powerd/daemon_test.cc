@@ -265,7 +265,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   }
   std::unique_ptr<system::DarkResumeInterface> CreateDarkResume(
       PrefsInterface* prefs,
-      system::WakeupSourceIdentifier* wakeup_source_identifier) override {
+      system::WakeupSourceIdentifierInterface* wakeup_source_identifier)
+      override {
     EXPECT_EQ(prefs_, prefs);
     return std::move(passed_dark_resume_);
   }

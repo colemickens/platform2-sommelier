@@ -26,8 +26,6 @@ class DarkResumeStub : public DarkResumeInterface {
   void set_enabled(bool enabled) { enabled_ = enabled; }
 
   // DarkResumeInterface implementation:
-  void PrepareForSuspendRequest() override;
-  void UndoPrepareForSuspendRequest() override;
   void HandleSuccessfulResume() override;
   bool InDarkResume() override;
   bool IsEnabled() override;

@@ -389,8 +389,8 @@ void Daemon::Init() {
   shutdown_from_suspend_->Init(prefs_.get(), power_supply_.get());
 
   suspender_->Init(this, dbus_wrapper_.get(), dark_resume_.get(),
-                   display_watcher_.get(), shutdown_from_suspend_.get(),
-                   prefs_.get());
+                   display_watcher_.get(), wakeup_source_identifier_.get(),
+                   shutdown_from_suspend_.get(), prefs_.get());
 
   input_event_handler_->Init(input_watcher_.get(), this, display_watcher_.get(),
                              dbus_wrapper_.get(), prefs_.get());

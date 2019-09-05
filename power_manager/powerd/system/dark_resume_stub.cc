@@ -11,10 +11,6 @@ DarkResumeStub::DarkResumeStub() {}
 
 DarkResumeStub::~DarkResumeStub() {}
 
-void DarkResumeStub::PrepareForSuspendRequest() {}
-
-void DarkResumeStub::UndoPrepareForSuspendRequest() {}
-
 void DarkResumeStub::HandleSuccessfulResume() {}
 
 bool DarkResumeStub::InDarkResume() {

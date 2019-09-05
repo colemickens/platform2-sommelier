@@ -16,6 +16,7 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
+#include "power_manager/powerd/system/wakeup_source_identifier_interface.h"
 
 namespace power_manager {
 namespace system {
@@ -24,26 +25,18 @@ struct UdevEvent;
 class UdevInterface;
 class WakeupDeviceInterface;
 
-// Monitors device sys paths to identify the potential wakeup reason. Monitors
-// only if the |wakeup_device_path| points to a directory with power/wakeup
-// property.
-
-class WakeupSourceIdentifier : public UdevSubsystemObserver {
+class WakeupSourceIdentifier : public WakeupSourceIdentifierInterface,
+                               public UdevSubsystemObserver {
  public:
   explicit WakeupSourceIdentifier(UdevInterface* udev);
-  ~WakeupSourceIdentifier();
+  ~WakeupSourceIdentifier() override;
 
-  // Should be called at the beginning of a new suspend request.
-  void PrepareForSuspendRequest();
+  // WakeupSourceIdentifierInterface implementation.
+  void PrepareForSuspendRequest() override;
+  void HandleResume() override;
+  bool InputDeviceCausedLastWake() const override;
 
-  // Should be called at the end of a suspend request.
-  void HandleResume();
-
-  // Returns true if any of the input devices' wakeup counts differed (compared
-  // to the pre-suspend wakeup counts).
-  bool InputDeviceCausedLastWake() const;
-
-  // UdevSubsystemObserver implementation:
+  // UdevSubsystemObserver implementation.
   void OnUdevEvent(const UdevEvent& event) override;
 
  private:

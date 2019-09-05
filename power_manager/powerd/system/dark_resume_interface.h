@@ -19,12 +19,6 @@ class DarkResumeInterface {
   DarkResumeInterface() {}
   virtual ~DarkResumeInterface() {}
 
-  // These methods bracket each suspend request. PrepareForSuspendRequest will
-  // take a snapshot of wake counts before suspend to be compared to the wake
-  // counts after resume to identify the wake source.
-  virtual void PrepareForSuspendRequest() = 0;
-  virtual void UndoPrepareForSuspendRequest() = 0;
-
   // Reads the system state to see if it's in a dark resume.
   virtual void HandleSuccessfulResume() = 0;
 

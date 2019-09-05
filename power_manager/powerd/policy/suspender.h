@@ -36,6 +36,7 @@ class DarkResumeInterface;
 class DBusWrapperInterface;
 class DisplayWatcherInterface;
 class InputWatcher;
+class WakeupSourceIdentifierInterface;
 }  // namespace system
 
 namespace policy {
@@ -206,6 +207,7 @@ class Suspender : public SuspendDelayObserver,
             system::DBusWrapperInterface* dbus_wrapper,
             system::DarkResumeInterface* dark_resume,
             system::DisplayWatcherInterface* display_watcher,
+            system::WakeupSourceIdentifierInterface* wakeup_source_identifier,
             policy::ShutdownFromSuspendInterface* shutdown_from_suspend,
             PrefsInterface* prefs);
 
@@ -360,6 +362,8 @@ class Suspender : public SuspendDelayObserver,
   Delegate* delegate_ = nullptr;                          // weak
   system::DBusWrapperInterface* dbus_wrapper_ = nullptr;  // weak
   system::DarkResumeInterface* dark_resume_ = nullptr;    // weak
+  system::WakeupSourceIdentifierInterface* wakeup_source_identifier_ =
+      nullptr;  // weak
   policy::ShutdownFromSuspendInterface* shutdown_from_suspend_ =
       nullptr;  // weak
 

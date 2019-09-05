@@ -6,7 +6,7 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
-#include "power_manager/powerd/system/wakeup_source_identifier.h"
+#include "power_manager/powerd/system/wakeup_source_identifier_interface.h"
 
 namespace power_manager {
 namespace system {
@@ -15,8 +15,9 @@ DarkResume::DarkResume() {}
 
 DarkResume::~DarkResume() {}
 
-void DarkResume::Init(PrefsInterface* prefs,
-                      WakeupSourceIdentifier* wakeup_source_identifier) {
+void DarkResume::Init(
+    PrefsInterface* prefs,
+    WakeupSourceIdentifierInterface* wakeup_source_identifier) {
   DCHECK(prefs);
   DCHECK(wakeup_source_identifier);
 
@@ -28,21 +29,9 @@ void DarkResume::Init(PrefsInterface* prefs,
   LOG(INFO) << "Dark resume user space " << (enabled_ ? "enabled" : "disabled");
 }
 
-void DarkResume::PrepareForSuspendRequest() {
-  // We want to keep track of wakeup count of devices even when dark resume is
-  // not enabled as this will help in identifying the wake source when debugging
-  // spurious wakes.
-  wakeup_source_identifier_->PrepareForSuspendRequest();
-}
-
-void DarkResume::UndoPrepareForSuspendRequest() {
-  in_dark_resume_ = false;
-}
-
 void DarkResume::HandleSuccessfulResume() {
   in_dark_resume_ = false;
 
-  wakeup_source_identifier_->HandleResume();
   if (wakeup_source_identifier_->InputDeviceCausedLastWake()) {
     VLOG(1) << "User triggered wake";
   } else {

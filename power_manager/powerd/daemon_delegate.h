@@ -38,7 +38,7 @@ class PowerSupplyInterface;
 class UserProximityWatcherInterface;
 class SuspendConfiguratorInterface;
 class UdevInterface;
-class WakeupSourceIdentifier;
+class WakeupSourceIdentifierInterface;
 }  // namespace system
 
 class MetricsSenderInterface;
@@ -132,7 +132,7 @@ class DaemonDelegate {
 
   virtual std::unique_ptr<system::DarkResumeInterface> CreateDarkResume(
       PrefsInterface* prefs,
-      system::WakeupSourceIdentifier* wakeup_source_identifier) = 0;
+      system::WakeupSourceIdentifierInterface* wakeup_source_identifier) = 0;
 
   virtual std::unique_ptr<system::AudioClientInterface> CreateAudioClient(
       system::DBusWrapperInterface* dbus_wrapper) = 0;

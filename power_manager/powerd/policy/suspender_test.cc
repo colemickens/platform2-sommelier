@@ -20,6 +20,7 @@
 #include "power_manager/powerd/system/dark_resume_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/display/display_watcher_stub.h"
+#include "power_manager/powerd/system/wakeup_source_identifier_stub.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
 namespace power_manager {
@@ -207,7 +208,8 @@ class SuspenderTest : public testing::Test {
         base::TimeTicks() + base::TimeDelta::FromHours(1));
     delegate_.set_clock(test_api_.clock());
     suspender_.Init(&delegate_, &dbus_wrapper_, &dark_resume_,
-                    &display_watcher_, &shutdown_from_suspend_, &prefs_);
+                    &display_watcher_, &wakeup_source_identifier_,
+                    &shutdown_from_suspend_, &prefs_);
   }
 
   // Returns the ID from a SuspendImminent signal at |position|.
@@ -267,6 +269,7 @@ class SuspenderTest : public testing::Test {
   system::DBusWrapperStub dbus_wrapper_;
   system::DarkResumeStub dark_resume_;
   system::DisplayWatcherStub display_watcher_;
+  system::WakeupSourceIdentifierStub wakeup_source_identifier_;
   policy::ShutdownFromSuspendStub shutdown_from_suspend_;
   Suspender suspender_;
   Suspender::TestApi test_api_;
@@ -347,6 +350,39 @@ TEST_F(SuspenderTest, IgnoreDuplicateSuspendRequests) {
   suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   EXPECT_EQ(orig_suspend_id, test_api_.suspend_id());
+}
+
+// Tests that suspend cancel due to wake event from input device is treated as
+// successful resume.
+TEST_F(SuspenderTest, SuspendCancelDueToInputDeviceWakeEvent) {
+  Init();
+
+  const uint64_t kOrigWakeupCount = 46;
+  delegate_.set_wakeup_count(kOrigWakeupCount);
+  delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::CANCELED);
+  suspender_.RequestSuspend(SuspendImminent_Reason_LID_CLOSED,
+                            base::TimeDelta());
+  const int suspend_id = test_api_.suspend_id();
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_TRUE(delegate_.suspend_announced());
+  wakeup_source_identifier_.SetInputDeviceCausedLastWake(true);
+  dbus_wrapper_.ClearSentSignals();
+  AnnounceReadyForSuspend(suspend_id);
+  EXPECT_EQ(kOrigWakeupCount, delegate_.suspend_wakeup_count());
+  EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
+  EXPECT_TRUE(delegate_.suspend_was_successful());
+  EXPECT_EQ(1, delegate_.num_suspend_attempts());
+
+  // A SuspendDone signal should be emitted to announce that the attempt is
+  // complete.
+  SuspendDone done_proto;
+  EXPECT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kSuspendDoneSignal, &done_proto, nullptr));
+  EXPECT_EQ(suspend_id, done_proto.suspend_id());
+  EXPECT_FALSE(delegate_.suspend_announced());
+
+  // A resuspend timeout shouldn't be set.
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 }
 
 // Tests that suspend is retried on failure.
