@@ -45,6 +45,11 @@ class SmbFilesystem : public Filesystem {
               const std::string& name) override;
   void Forget(fuse_ino_t inode, uint64_t count) override;
   void GetAttr(std::unique_ptr<AttrRequest> request, fuse_ino_t inode) override;
+  void SetAttr(std::unique_ptr<AttrRequest> request,
+               fuse_ino_t inode,
+               base::Optional<uint64_t> file_handle,
+               const struct stat& attr,
+               int to_set) override;
   void Open(std::unique_ptr<OpenRequest> request,
             fuse_ino_t inode,
             int flags) override;
@@ -85,6 +90,11 @@ class SmbFilesystem : public Filesystem {
                       const std::string& name);
   void ForgetInternal(fuse_ino_t inode, uint64_t count);
   void GetAttrInternal(std::unique_ptr<AttrRequest> request, fuse_ino_t inode);
+  void SetAttrInternal(std::unique_ptr<AttrRequest> request,
+                       fuse_ino_t inode,
+                       base::Optional<uint64_t> file_handle,
+                       const struct stat& attr,
+                       int to_set);
   void OpenInternal(std::unique_ptr<OpenRequest> request,
                     fuse_ino_t inode,
                     int flags);
@@ -138,6 +148,7 @@ class SmbFilesystem : public Filesystem {
   SMBCCTX* context_ = nullptr;
   smbc_close_fn smbc_close_ctx_ = nullptr;
   smbc_closedir_fn smbc_closedir_ctx_ = nullptr;
+  smbc_ftruncate_fn smbc_ftruncate_ctx_ = nullptr;
   smbc_lseek_fn smbc_lseek_ctx_ = nullptr;
   smbc_lseekdir_fn smbc_lseekdir_ctx_ = nullptr;
   smbc_open_fn smbc_open_ctx_ = nullptr;

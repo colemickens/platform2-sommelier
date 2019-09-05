@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/callback_helpers.h>
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
 
@@ -60,6 +61,7 @@ SmbFilesystem::SmbFilesystem(const std::string& share_path,
 
   smbc_close_ctx_ = smbc_getFunctionClose(context_);
   smbc_closedir_ctx_ = smbc_getFunctionClosedir(context_);
+  smbc_ftruncate_ctx_ = smbc_getFunctionFtruncate(context_);
   smbc_lseek_ctx_ = smbc_getFunctionLseek(context_);
   smbc_lseekdir_ctx_ = smbc_getFunctionLseekdir(context_);
   smbc_open_ctx_ = smbc_getFunctionOpen(context_);
@@ -230,6 +232,94 @@ void SmbFilesystem::GetAttrInternal(std::unique_ptr<AttrRequest> request,
   }
 
   struct stat reply_stat = MakeStat(inode, smb_stat);
+  request->ReplyAttr(reply_stat, kAttrTimeoutSeconds);
+}
+
+void SmbFilesystem::SetAttr(std::unique_ptr<AttrRequest> request,
+                            fuse_ino_t inode,
+                            base::Optional<uint64_t> file_handle,
+                            const struct stat& attr,
+                            int to_set) {
+  samba_thread_.task_runner()->PostTask(
+      FROM_HERE, base::BindOnce(&SmbFilesystem::SetAttrInternal,
+                                base::Unretained(this), std::move(request),
+                                inode, std::move(file_handle), attr, to_set));
+}
+
+void SmbFilesystem::SetAttrInternal(std::unique_ptr<AttrRequest> request,
+                                    fuse_ino_t inode,
+                                    base::Optional<uint64_t> file_handle,
+                                    const struct stat& attr,
+                                    int to_set) {
+  if (request->IsInterrupted()) {
+    return;
+  }
+
+  // Currently, only setting size is supported (ie. O_TRUC, ftruncate()).
+  const int kSupportedAttrs = FUSE_SET_ATTR_SIZE;
+  if (to_set & ~kSupportedAttrs) {
+    LOG(WARNING) << "Unsupported |to_set| flags on setattr: " << to_set;
+    request->ReplyError(ENOTSUP);
+    return;
+  }
+  if (!to_set) {
+    VLOG(1) << "No supported |to_set| flags set on setattr: " << to_set;
+    request->ReplyError(EINVAL);
+    return;
+  }
+
+  const std::string share_file_path = ShareFilePathFromInode(inode);
+
+  struct stat smb_stat = {0};
+  int error = smbc_stat_ctx_(context_, share_file_path.c_str(), &smb_stat);
+  if (error < 0) {
+    request->ReplyError(errno);
+    return;
+  }
+  if (smb_stat.st_mode & S_IFDIR) {
+    request->ReplyError(EISDIR);
+    return;
+  } else if (!(smb_stat.st_mode & S_IFREG)) {
+    VLOG(1) << "Disallowed file mode " << smb_stat.st_mode << " for path "
+            << share_file_path;
+    request->ReplyError(EACCES);
+    return;
+  }
+  struct stat reply_stat = MakeStat(inode, smb_stat);
+
+  SMBCFILE* file = nullptr;
+  base::ScopedClosureRunner file_closer;
+  if (file_handle) {
+    file = open_files_.Lookup(*file_handle);
+    if (!file) {
+      request->ReplyError(EBADF);
+      return;
+    }
+  } else {
+    file = smbc_open_ctx_(context_, share_file_path.c_str(), O_WRONLY, 0);
+    if (!file) {
+      int err = errno;
+      VPLOG(1) << "smbc_open path: " << share_file_path << " failed";
+      request->ReplyError(err);
+      return;
+    }
+
+    file_closer.ReplaceClosure(base::Bind(
+        [](SMBCCTX* context, SMBCFILE* file) {
+          if (smbc_getFunctionClose(context)(context, file) < 0) {
+            PLOG(ERROR) << "smbc_close failed on temporary setattr file";
+          }
+        },
+        context_, file));
+  }
+
+  if (smbc_ftruncate_ctx_(context_, file, attr.st_size) < 0) {
+    int err = errno;
+    VPLOG(1) << "smbc_ftruncate size: " << attr.st_size << " failed";
+    request->ReplyError(err);
+    return;
+  }
+  reply_stat.st_size = attr.st_size;
   request->ReplyAttr(reply_stat, kAttrTimeoutSeconds);
 }
 
