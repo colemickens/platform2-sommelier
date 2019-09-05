@@ -102,7 +102,9 @@ class TpmVendorCommandProxy : public trunks::TrunksDBusProxy {
   // that will re-load it. Returns true iff state was successfully reloaded.
   bool ReloadCr50State();
 
-  // Mode set on the most recent call to SetU2fVendorMode();
+  // Whether Cr50 supports the vendor mode command, default is true.
+  bool vendor_mode_supported_;
+  // Mode set on the most recent call to SetU2fVendorMode()
   uint8_t last_u2f_vendor_mode_;
 
   DISALLOW_COPY_AND_ASSIGN(TpmVendorCommandProxy);

@@ -43,7 +43,8 @@ const uint16_t kVendorCcU2fAttest = 46;
 
 namespace u2f {
 
-TpmVendorCommandProxy::TpmVendorCommandProxy() : last_u2f_vendor_mode_(0) {}
+TpmVendorCommandProxy::TpmVendorCommandProxy()
+    : vendor_mode_supported_(true), last_u2f_vendor_mode_(0) {}
 TpmVendorCommandProxy::~TpmVendorCommandProxy() {}
 
 uint32_t TpmVendorCommandProxy::VendorCommand(uint16_t cc,
@@ -146,6 +147,8 @@ uint32_t TpmVendorCommandProxy::SetU2fVendorMode(uint8_t mode) {
     // record the individual attestation certificate if the extension is on.
     if (last_u2f_vendor_mode_ == kU2fExtended && VLOG_IS_ON(1))
       LogIndividualCertificate();
+  } else if (rc == kVendorRcNoSuchCommand) {
+    vendor_mode_supported_ = false;
   }
 
   return rc;
@@ -274,13 +277,19 @@ void TpmVendorCommandProxy::LogIndividualCertificate() {
 }
 
 bool TpmVendorCommandProxy::ReloadCr50State() {
+  if (!vendor_mode_supported_) {
+    // We're running against a newer build of cr50 that doesn't support the
+    // vendor mode command; it is not necessary to set it, or re-load state.
+    return true;
+  }
+
   if (last_u2f_vendor_mode_) {
     return SetU2fVendorMode(last_u2f_vendor_mode_) == 0;
-  } else {
-    // Vendor mode is part of cr50 state, and must be set before we can attempt
-    // to re-load state.
-    return false;
   }
+
+  // Vendor mode is supported, and has not been set. Vendor mode is part of
+  // cr50 state, and must be set before we can attempt to re-load state.
+  return false;
 }
 
 }  // namespace u2f

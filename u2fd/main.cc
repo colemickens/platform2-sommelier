@@ -206,13 +206,12 @@ class U2fDaemon : public brillo::Daemon {
       LOG(ERROR) << "Failed to initialize D-Bus proxy with trunksd.";
       return EX_IOERR;
     }
-    int rc = tpm_proxy_.SetU2fVendorMode(static_cast<uint8_t>(u2f_mode_));
-    if (rc == u2f::kVendorRcNoSuchCommand) {
-      LOG(WARNING) << "U2F Feature not available in firmware.";
-      // Will exit gracefully as we don't want to re-spawn.
-      return EX_UNAVAILABLE;
-    } else if (rc) {
-      LOG(WARNING) << "Error setting U2F Vendor Mode: " << rc;
+    uint32_t vendor_mode_rc =
+        tpm_proxy_.SetU2fVendorMode(static_cast<uint8_t>(u2f_mode_));
+    if (vendor_mode_rc == u2f::kVendorRcNoSuchCommand) {
+      LOG(WARNING) << "U2F Vendor Mode not supported in firmware, ignoring.";
+    } else if (vendor_mode_rc) {
+      LOG(ERROR) << "Failed to set U2F Vendor Mode.";
       return EX_PROTOCOL;
     }
 
