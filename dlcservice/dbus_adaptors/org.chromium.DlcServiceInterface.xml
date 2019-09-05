@@ -15,7 +15,7 @@
       <tp:docstring>
         A serialized protobuf (DlcModuleList,
         src/platform2/system_api/dbus/dlcservice/dlcservice.proto) of a list of
-        installed DLC modules.
+        DLC modules to install.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                   value="dlcservice::DlcModuleList"/>
