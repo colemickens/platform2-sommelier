@@ -2349,6 +2349,31 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
   Mock::VerifyAndClearExpectations(device_.get());
 }
 
+TEST_F(DevicePortalDetectionTest, PortalDetectionNoConnectivity) {
+  static const char* const kGoogleDNSServers[] = {"8.8.8.8", "8.8.4.4"};
+  vector<string> fallback_dns_servers(kGoogleDNSServers, kGoogleDNSServers + 2);
+  const string kInterfaceName("int0");
+  EXPECT_CALL(*connection_, interface_name())
+      .WillRepeatedly(ReturnRef(kInterfaceName));
+
+  PortalDetector::Result http_result(PortalDetector::Phase::kUnknown,
+                                     PortalDetector::Status::kFailure);
+  PortalDetector::Result https_result(PortalDetector::Phase::kContent,
+                                      PortalDetector::Status::kFailure);
+  EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*service_,
+              SetPortalDetectionFailure(kPortalDetectionPhaseUnknown,
+                                        kPortalDetectionStatusFailure));
+  EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
+  EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
+  EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
+  EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
+                            IsPortalDetectorResult(http_result),
+                            IsPortalDetectorResult(https_result)));
+  PortalDetectorCallback(http_result, https_result);
+  Mock::VerifyAndClearExpectations(device_.get());
+}
+
 TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
   scoped_refptr<MockIPConfig> ipconfig =
       new MockIPConfig(control_interface(), kDeviceName);
