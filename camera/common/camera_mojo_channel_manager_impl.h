@@ -16,7 +16,7 @@
 
 namespace cros {
 
-class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
+class CameraMojoChannelManagerImpl final : public CameraMojoChannelManager {
  public:
   CameraMojoChannelManagerImpl();
   ~CameraMojoChannelManagerImpl() final;
