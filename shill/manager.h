@@ -753,8 +753,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Hold pointer to singleton Resolver instance for testing purposes.
   Resolver* resolver_;
   bool running_;
-  // Used to facilitate unit tests which can't use RPC.
-  bool connect_profiles_to_rpc_;
   std::vector<DeviceRefPtr> devices_;
   // We store Services in a vector, because we want to keep them sorted.
   // Services that are connected appear first in the vector.  See

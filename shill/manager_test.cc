@@ -105,7 +105,6 @@ class ManagerTest : public PropertyStoreTest {
     ON_CALL(*control_interface(), CreatePowerManagerProxy(_, _, _))
         .WillByDefault(ReturnNull());
 
-    manager()->connect_profiles_to_rpc_ = false;
     SetRunning(true);
 
     // Replace the manager's adaptor with a quieter one, and one

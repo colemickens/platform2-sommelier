@@ -166,7 +166,6 @@ Manager::Manager(ControlInterface* control_interface,
       throttler_(new Throttler(dispatcher, this)),
       resolver_(Resolver::GetInstance()),
       running_(false),
-      connect_profiles_to_rpc_(true),
       last_default_physical_service_(nullptr),
       last_default_physical_service_connected_(false),
       ephemeral_profile_(new EphemeralProfile(this)),
@@ -482,8 +481,7 @@ void Manager::PushProfileInternal(const Profile::Identifier& ident,
     LoadProperties(default_profile);
     profile = default_profile;
   } else {
-    profile =
-        new Profile(this, ident, user_storage_path_, connect_profiles_to_rpc_);
+    profile = new Profile(this, ident, user_storage_path_, true);
     if (!profile->InitStorage(Profile::kOpenExisting, error)) {
       // |error| will have been populated by InitStorage().
       return;
