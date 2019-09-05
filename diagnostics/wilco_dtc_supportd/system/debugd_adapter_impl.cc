@@ -16,6 +16,22 @@ namespace diagnostics {
 namespace {
 
 constexpr char kSmartAttributesOption[] = "attributes";
+constexpr char kNvmeIdentityOption[] = "identify_controller";
+
+auto CreateSuccessCallback(
+    const DebugdAdapter::StringResultCallback& callback) {
+  return base::Bind(
+      [](const DebugdAdapter::StringResultCallback& callback,
+         const std::string& result) { callback.Run(result, nullptr); },
+      callback);
+}
+
+auto CreateErrorCallback(const DebugdAdapter::StringResultCallback& callback) {
+  return base::Bind(
+      [](const DebugdAdapter::StringResultCallback& callback,
+         brillo::Error* error) { callback.Run(std::string(), error); },
+      callback);
+}
 
 }  // namespace
 
@@ -28,19 +44,16 @@ DebugdAdapterImpl::DebugdAdapterImpl(
 DebugdAdapterImpl::~DebugdAdapterImpl() = default;
 
 void DebugdAdapterImpl::GetSmartAttributes(
-    const SmartAttributesCallback& callback) {
-  auto success_callback = base::Bind(
-      [](const SmartAttributesCallback& callback, const std::string& result) {
-        callback.Run(result, nullptr);
-      },
-      callback);
-  auto error_callback = base::Bind(
-      [](const SmartAttributesCallback& callback, brillo::Error* error) {
-        callback.Run(std::string(), error);
-      },
-      callback);
-  debugd_proxy_->SmartctlAsync(kSmartAttributesOption, success_callback,
-                               error_callback);
+    const StringResultCallback& callback) {
+  debugd_proxy_->SmartctlAsync(kSmartAttributesOption,
+                               CreateSuccessCallback(callback),
+                               CreateErrorCallback(callback));
+  return;
+}
+
+void DebugdAdapterImpl::GetNvmeIdentity(const StringResultCallback& callback) {
+  debugd_proxy_->NvmeAsync(kNvmeIdentityOption, CreateSuccessCallback(callback),
+                           CreateErrorCallback(callback));
   return;
 }
 

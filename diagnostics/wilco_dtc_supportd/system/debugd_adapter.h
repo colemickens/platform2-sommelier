@@ -15,14 +15,18 @@ namespace diagnostics {
 // Adapter for communication with debugd daemon.
 class DebugdAdapter {
  public:
-  using SmartAttributesCallback =
+  using StringResultCallback =
       base::Callback<void(const std::string& result, brillo::Error* error)>;
 
   virtual ~DebugdAdapter() = default;
 
   // Sends async request to debugd via D-Bus call. On success, debugd runs
   // smartctl util to retrieve SMART attributes and returns output via callback.
-  virtual void GetSmartAttributes(const SmartAttributesCallback& callback) = 0;
+  virtual void GetSmartAttributes(const StringResultCallback& callback) = 0;
+
+  // Sends async request to debugd via D-Bus call. On success, debugd runs
+  // nvme util to retrieve NVMe identity data and returns output via callback.
+  virtual void GetNvmeIdentity(const StringResultCallback& callback) = 0;
 };
 
 }  // namespace diagnostics
