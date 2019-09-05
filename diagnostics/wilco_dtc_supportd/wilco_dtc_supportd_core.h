@@ -156,7 +156,8 @@ class WilcoDtcSupportdCore final
       const GetRoutineUpdateRequestToServiceCallback& callback) override;
   void GetConfigurationDataFromBrowser(
       const GetConfigurationDataFromBrowserCallback& callback) override;
-  void GetDriveSystemData(const GetDriveSystemDataCallback& callback) override;
+  void GetDriveSystemData(DriveSystemDataType data_type,
+                          const GetDriveSystemDataCallback& callback) override;
 
   // WilcoDtcSupportdMojoService::Delegate overrides:
   void SendGrpcUiMessageToWilcoDtc(

@@ -46,6 +46,8 @@ using DelegateWebRequestHttpMethod =
     WilcoDtcSupportdGrpcService::Delegate::WebRequestHttpMethod;
 using DelegateWebRequestStatus =
     WilcoDtcSupportdGrpcService::Delegate::WebRequestStatus;
+using DelegateDriveSystemDataType =
+    WilcoDtcSupportdGrpcService::Delegate::DriveSystemDataType;
 
 constexpr char kFakeFileContentsChars[] = "\0fake row 1\nfake row 2\n\0\377";
 constexpr char kFakeSecondFileContentsChars[] =
@@ -210,8 +212,9 @@ class MockWilcoDtcSupportdGrpcServiceDelegate
                     const GetRoutineUpdateRequestToServiceCallback& callback));
   MOCK_METHOD1(GetConfigurationDataFromBrowser,
                void(const GetConfigurationDataFromBrowserCallback& callback));
-  MOCK_METHOD1(GetDriveSystemData,
-               void(const GetDriveSystemDataCallback& callback));
+  MOCK_METHOD2(GetDriveSystemData,
+               void(DriveSystemDataType data_type,
+                    const GetDriveSystemDataCallback& callback));
 };
 
 // Tests for the WilcoDtcSupportdGrpcService class.
@@ -631,8 +634,8 @@ TEST_F(WilcoDtcSupportdGrpcServiceTest, GetDriveSystemDataTypeUnknown) {
 TEST_F(WilcoDtcSupportdGrpcServiceTest, GetDriveSystemDataInternalError) {
   auto request = std::make_unique<grpc_api::GetDriveSystemDataRequest>();
   request->set_type(grpc_api::GetDriveSystemDataRequest::SMART_ATTRIBUTES);
-  EXPECT_CALL(*delegate(), GetDriveSystemData(_))
-      .WillOnce(WithArgs<0>(
+  EXPECT_CALL(*delegate(), GetDriveSystemData(_, _))
+      .WillOnce(WithArgs<1>(
           Invoke([](const base::Callback<void(const std::string& payload,
                                               bool success)>& callback) {
             callback.Run("", false /* success */);
@@ -646,34 +649,6 @@ TEST_F(WilcoDtcSupportdGrpcServiceTest, GetDriveSystemDataInternalError) {
       std::make_unique<grpc_api::GetDriveSystemDataResponse>();
   expected_response->set_status(
       grpc_api::GetDriveSystemDataResponse::STATUS_ERROR_REQUEST_PROCESSING);
-  EXPECT_THAT(*response, ProtobufEquals(*expected_response))
-      << "Actual response: {" << response->ShortDebugString() << "}";
-}
-
-// Test that GetDriveSystemData() parses gRPC message and calls delegate
-// function.
-TEST_F(WilcoDtcSupportdGrpcServiceTest, GetSmartctl) {
-  constexpr char kFakeSmartctlData[] = "Fake smartctl data";
-
-  auto request = std::make_unique<grpc_api::GetDriveSystemDataRequest>();
-  request->set_type(grpc_api::GetDriveSystemDataRequest::SMART_ATTRIBUTES);
-  EXPECT_CALL(*delegate(), GetDriveSystemData(_))
-      .WillOnce(WithArgs<0>(
-          Invoke([kFakeSmartctlData](
-                     const base::Callback<void(const std::string& payload,
-                                               bool success)>& callback) {
-            callback.Run(kFakeSmartctlData, true /* success */);
-          })));
-
-  std::unique_ptr<grpc_api::GetDriveSystemDataResponse> response;
-  service()->GetDriveSystemData(std::move(request),
-                                GrpcCallbackResponseSaver(&response));
-
-  auto expected_response =
-      std::make_unique<grpc_api::GetDriveSystemDataResponse>();
-  expected_response->set_status(
-      grpc_api::GetDriveSystemDataResponse::STATUS_OK);
-  expected_response->set_payload(kFakeSmartctlData);
   EXPECT_THAT(*response, ProtobufEquals(*expected_response))
       << "Actual response: {" << response->ShortDebugString() << "}";
 }
@@ -1384,6 +1359,63 @@ INSTANTIATE_TEST_CASE_P(
                         "" /* file_contents */,
                         grpc_api::GetVpdFieldResponse::STATUS_ERROR_INTERNAL,
                         "" /* expected_value */)));
+
+// Test for the GetDriveSystemData() method of WilcoDtcSupportdGrpcService.
+//
+// This is a parametrized test with the following parameters:
+// * |vpd_field| - the requested drive system data type
+// * |expected_data_type| - the expected internal drive system data type value.
+class GetDriveSystemDataWilcoDtcSupportdGrpcServiceTest
+    : public WilcoDtcSupportdGrpcServiceTest,
+      public testing::WithParamInterface<
+          std::tuple<grpc_api::GetDriveSystemDataRequest::Type /* data_type */,
+                     DelegateDriveSystemDataType /* expected_data_type */>> {
+ protected:
+  grpc_api::GetDriveSystemDataRequest::Type data_type() const {
+    return std::get<0>(GetParam());
+  }
+  DelegateDriveSystemDataType expected_data_type() const {
+    return std::get<1>(GetParam());
+  }
+};
+
+// Test that GetDriveSystemData() parses gRPC message and calls delegate
+// function with appropriate data type.
+TEST_P(GetDriveSystemDataWilcoDtcSupportdGrpcServiceTest, GetDriveSystem) {
+  constexpr char kFakeDriveSystemData[] = "Fake DriveSystem data";
+
+  auto request = std::make_unique<grpc_api::GetDriveSystemDataRequest>();
+  request->set_type(data_type());
+  EXPECT_CALL(*delegate(), GetDriveSystemData(expected_data_type(), _))
+      .WillOnce(WithArgs<1>(
+          Invoke([kFakeDriveSystemData](
+                     const base::Callback<void(const std::string& payload,
+                                               bool success)>& callback) {
+            callback.Run(kFakeDriveSystemData, true /* success */);
+          })));
+
+  std::unique_ptr<grpc_api::GetDriveSystemDataResponse> response;
+  service()->GetDriveSystemData(std::move(request),
+                                GrpcCallbackResponseSaver(&response));
+
+  auto expected_response =
+      std::make_unique<grpc_api::GetDriveSystemDataResponse>();
+  expected_response->set_status(
+      grpc_api::GetDriveSystemDataResponse::STATUS_OK);
+  expected_response->set_payload(kFakeDriveSystemData);
+  EXPECT_THAT(*response, ProtobufEquals(*expected_response))
+      << "Actual response: {" << response->ShortDebugString() << "}";
+}
+
+INSTANTIATE_TEST_CASE_P(
+    ,
+    GetDriveSystemDataWilcoDtcSupportdGrpcServiceTest,
+    testing::Values(
+        std::make_tuple(grpc_api::GetDriveSystemDataRequest::SMART_ATTRIBUTES,
+                        DelegateDriveSystemDataType::kSmartAttributes),
+        std::make_tuple(
+            grpc_api::GetDriveSystemDataRequest::IDENTITY_ATTRIBUTES,
+            DelegateDriveSystemDataType::kIdentityAttributes)));
 
 }  // namespace
 

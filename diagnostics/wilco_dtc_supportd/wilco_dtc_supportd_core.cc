@@ -422,14 +422,14 @@ void WilcoDtcSupportdCore::GetConfigurationDataFromBrowser(
 }
 
 void WilcoDtcSupportdCore::GetDriveSystemData(
-    const GetDriveSystemDataCallback& callback) {
+    DriveSystemDataType data_type, const GetDriveSystemDataCallback& callback) {
   if (!debugd_adapter_) {
     LOG(WARNING) << "DebugdAdapter is not yet ready for incoming requests";
     callback.Run("", false /* success */);
     return;
   }
 
-  debugd_adapter_->GetSmartAttributes(base::Bind(
+  auto result_callback = base::Bind(
       [](const GetDriveSystemDataCallback& callback, const std::string& result,
          brillo::Error* error) {
         if (error) {
@@ -440,7 +440,16 @@ void WilcoDtcSupportdCore::GetDriveSystemData(
         }
         callback.Run(result, true /* success */);
       },
-      callback));
+      callback);
+
+  switch (data_type) {
+    case DriveSystemDataType::kSmartAttributes:
+      debugd_adapter_->GetSmartAttributes(result_callback);
+      break;
+    case DriveSystemDataType::kIdentityAttributes:
+      debugd_adapter_->GetNvmeIdentity(result_callback);
+      break;
+  }
 }
 
 void WilcoDtcSupportdCore::SendGrpcUiMessageToWilcoDtc(

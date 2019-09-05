@@ -50,6 +50,12 @@ class WilcoDtcSupportdGrpcService final {
       kPut,
     };
 
+    // Drive system data type to be retrieved by |GetDriveSystemData|.
+    enum class DriveSystemDataType {
+      kSmartAttributes,
+      kIdentityAttributes,
+    };
+
     using PerformWebRequestToBrowserCallback =
         base::Callback<void(WebRequestStatus status,
                             int http_status,
@@ -122,10 +128,10 @@ class WilcoDtcSupportdGrpcService final {
 
     // Called when gRPC |GetDriveSystemData| was called.
     //
-    // Calls wilco_dtc_supportd daemon D-Bus function
-    // |GetDriveSystemData| method. The result of the call is returned
-    // via |callback|.
+    // Calls wilco_dtc_supportd daemon |GetDriveSystemData| method. The result
+    // of the call is returned via |callback|.
     virtual void GetDriveSystemData(
+        DriveSystemDataType data_type,
         const GetDriveSystemDataCallback& callback) = 0;
   };
 

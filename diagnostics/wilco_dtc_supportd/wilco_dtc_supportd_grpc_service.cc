@@ -662,19 +662,26 @@ void WilcoDtcSupportdGrpcService::GetDriveSystemData(
     const GetDriveSystemDataCallback& callback) {
   DCHECK(request);
 
-  if (request->type() !=
-      grpc_api::GetDriveSystemDataRequest::SMART_ATTRIBUTES) {
-    LOG(ERROR) << "The GetDriveSystemDataRequest::Type is unset or invalid: "
-               << static_cast<int>(request->type());
-    auto reply = std::make_unique<grpc_api::GetDriveSystemDataResponse>();
-    reply->set_status(grpc_api::GetDriveSystemDataResponse::
-                          STATUS_ERROR_REQUEST_TYPE_UNKNOWN);
-    callback.Run(std::move(reply));
-    return;
+  Delegate::DriveSystemDataType data_type;
+  switch (request->type()) {
+    case grpc_api::GetDriveSystemDataRequest::SMART_ATTRIBUTES:
+      data_type = Delegate::DriveSystemDataType::kSmartAttributes;
+      break;
+    case grpc_api::GetDriveSystemDataRequest::IDENTITY_ATTRIBUTES:
+      data_type = Delegate::DriveSystemDataType::kIdentityAttributes;
+      break;
+    default:
+      LOG(ERROR) << "The GetDriveSystemDataRequest::Type is unset or invalid: "
+                 << static_cast<int>(request->type());
+      auto reply = std::make_unique<grpc_api::GetDriveSystemDataResponse>();
+      reply->set_status(grpc_api::GetDriveSystemDataResponse::
+                            STATUS_ERROR_REQUEST_TYPE_UNKNOWN);
+      callback.Run(std::move(reply));
+      return;
   }
 
   delegate_->GetDriveSystemData(
-      base::Bind(&ForwardGetDriveSystemDataResponse, callback));
+      data_type, base::Bind(&ForwardGetDriveSystemDataResponse, callback));
 }
 
 void WilcoDtcSupportdGrpcService::AddFileDump(
