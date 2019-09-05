@@ -16,27 +16,6 @@
 
 namespace shill {
 
-// A Google Mock action (similar to testing::ReturnPointee) that takes a pointer
-// to a unique_ptr object, releases and returns the raw pointer managed by the
-// unique_ptr object when the action is invoked.
-//
-// Example usage:
-//
-//   TEST(FactoryTest, CreateStuff) {
-//     MockFactory factory;
-//     unique_ptr<Stuff> stuff(new Stuff());
-//     EXPECT_CALL(factory, CreateStuff())
-//         .WillOnce(ReturnAndReleasePointee(&stuff));
-//   }
-//
-// If |factory.CreateStuff()| is called, the ownership of the Stuff object
-// managed by |stuff| is transferred to the caller of |factory.CreateStuff()|.
-// Otherwise, the Stuff object will be destroyed once |stuff| goes out of
-// scope when the test completes.
-ACTION_P(ReturnAndReleasePointee, unique_pointer) {
-  return unique_pointer->release();
-}
-
 MATCHER(IsSuccess, "") {
   return arg.IsSuccess();
 }
@@ -66,16 +45,6 @@ MATCHER(NotNullRefPtr, "") {
 // system teardown.
 MATCHER_P(IsRefPtrTo, ref_address, "") {
   return arg.get() == ref_address;
-}
-
-MATCHER_P(KeyValueStoreEq, value, "") {
-  bool match = value.properties() == arg.properties();
-  if (!match) {
-    *result_listener << "\nExpected KeyValueStore:\n"
-                     << "\tproperties: "
-                     << testing::PrintToString(value.properties());
-  }
-  return match;
 }
 
 template <int error_argument_index>
