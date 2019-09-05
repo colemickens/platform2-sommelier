@@ -55,18 +55,24 @@ struct __attribute__((packed)) ChildErrorInfo {
 
 // Executed a process with the specified |argv| arguments using the |env|
 // environment. If |working_dir| is not empty, it is executed inside of that
-// working directory. Returns true on successful execution, false otherwise.
+// working directory. Redirects child's stdio to |stdio_fd|, discards io for
+// fds specified as -1.
+// Returns true on successful execution, false otherwise.
 bool Spawn(std::vector<std::string> argv,
            std::map<std::string, std::string> env,
-           const std::string& working_dir);
+           const std::string& working_dir,
+           int stdio_fd[3]);
 
 // Performs various setup steps in the child process after calling fork() but
 // before calling exec(). |error_fd| should be a valid file descriptor for a
 // socket and will be used to send error information back to the parent process
-// if any of the setup steps fail.
+// if any of the setup steps fail. |stdio_fd| should contain valid fds or -1,
+// child's stdio would be redirected to the specified fds or discarded in case
+// -1 is specified.
 void DoChildSetup(const std::map<std::string, std::string>& env,
                   std::string working_dir,
-                  int error_fd);
+                  int error_fd,
+                  int stdio_fd[3]);
 
 // Logs information about the error that occurred in the child process.
 void LogChildError(const struct ChildErrorInfo& child_info,

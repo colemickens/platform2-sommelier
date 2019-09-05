@@ -52,7 +52,10 @@ bool ExecuteAnsiblePlaybook(const base::FilePath& ansible_playbook_file_path,
       "--inventory",      "127.0.0.1,", ansible_playbook_file_path.value()};
 
   // TODO(okalitova): Pipe stderr/stdout from child process and report progress.
-  if (!Spawn(std::move(argv), {}, "")) {
+  // Discard child's process stdio,
+  int stdio_fd[] = {-1, -1, -1};
+
+  if (!Spawn(std::move(argv), {}, "", stdio_fd)) {
     *error_msg = "Failed to spawn ansible-playbook";
     return false;
   }
@@ -165,7 +168,10 @@ grpc::Status ServiceImpl::LaunchApplication(
     env[kXCursorSizeEnv] = std::getenv(kLowDensityXCursorSizeEnv);
   }
 
-  if (!Spawn(std::move(argv), std::move(env), desktop_file->path())) {
+  // Discard child's process stdio,
+  int stdio_fd[] = {-1, -1, -1};
+
+  if (!Spawn(std::move(argv), std::move(env), desktop_file->path(), stdio_fd)) {
     response->set_success(false);
     response->set_failure_reason("Failure in execution of application");
   } else {
@@ -217,7 +223,10 @@ grpc::Status ServiceImpl::LaunchVshd(
       "/opt/google/cros-containers/bin/vshd", "--inherit_env",
       base::StringPrintf("--forward_to_host_port=%u", request->port())};
 
-  if (!Spawn(std::move(argv), {}, "")) {
+  // Discard child's process stdio,
+  int stdio_fd[] = {-1, -1, -1};
+
+  if (!Spawn(std::move(argv), {}, "", stdio_fd)) {
     response->set_success(false);
     response->set_failure_reason("Failed to spawn vshd");
   } else {
@@ -440,7 +449,10 @@ grpc::Status ServiceImpl::ConnectChunnel(
       "--local",
       base::StringPrintf("127.0.0.1:%u", request->target_tcp4_port())};
 
-  if (!Spawn(std::move(argv), {}, "")) {
+  // Discard child's process stdio,
+  int stdio_fd[] = {-1, -1, -1};
+
+  if (!Spawn(std::move(argv), {}, "", stdio_fd)) {
     response->set_success(false);
     response->set_failure_reason("Failed to spawn chunnel");
   } else {

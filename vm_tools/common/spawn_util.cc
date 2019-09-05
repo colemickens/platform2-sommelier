@@ -60,7 +60,8 @@ int ResetSignalHandlers() {
 
 bool Spawn(std::vector<std::string> argv,
            std::map<std::string, std::string> env,
-           const std::string& working_dir) {
+           const std::string& working_dir,
+           int stdio_fd[3]) {
   CHECK(!argv.empty());
 
   // Build the argv.
@@ -99,7 +100,7 @@ bool Spawn(std::vector<std::string> argv,
     // Child process.
     close(info_fds[0]);
 
-    DoChildSetup(env, working_dir, info_fds[1]);
+    DoChildSetup(env, working_dir, info_fds[1], stdio_fd);
 
     // Launch the process.
     execvp(argv_c[0], const_cast<char* const*>(argv_c.data()));
@@ -150,7 +151,8 @@ bool Spawn(std::vector<std::string> argv,
 
 void DoChildSetup(const std::map<std::string, std::string>& env,
                   std::string working_dir,
-                  int error_fd) {
+                  int error_fd,
+                  int stdio_fd[3]) {
   // Create a new session and process group.
   if (setsid() == -1) {
     struct ChildErrorInfo info = {
@@ -162,9 +164,9 @@ void DoChildSetup(const std::map<std::string, std::string>& env,
     _exit(errno);
   }
 
-  // File descriptor for the child's stdio.
-  int fd = open(kForkedProcessConsole, O_RDWR | O_NOCTTY);
-  if (fd < 0) {
+  // File descriptor for the child's stdio in case it should be discarded.
+  int null_fd = open(kForkedProcessConsole, O_RDWR | O_NOCTTY);
+  if (null_fd < 0) {
     struct ChildErrorInfo info = {
         .reason = ChildErrorInfo::Reason::CONSOLE,
         .err = errno,
@@ -174,8 +176,15 @@ void DoChildSetup(const std::map<std::string, std::string>& env,
     _exit(errno);
   }
 
-  // Override the parent's stdio fds with the console fd.
+  // Override the child's stdio fds with the fds specified in |stdio_fd|. If fd
+  // specified in |stdio_fd| is -1 discards child's stdio by overriding it with
+  // console fd.
   for (int newfd = 0; newfd < 3; ++newfd) {
+    int fd = null_fd;
+    if (stdio_fd[newfd] != -1) {
+      fd = stdio_fd[newfd];
+    }
+
     if (dup2(fd, newfd) < 0) {
       struct ChildErrorInfo info = {
           .reason = ChildErrorInfo::Reason::STDIO_FD,
@@ -189,8 +198,8 @@ void DoChildSetup(const std::map<std::string, std::string>& env,
   }
 
   // Close the console fd, if necessary.
-  if (fd >= 3) {
-    close(fd);
+  if (null_fd >= 3) {
+    close(null_fd);
   }
 
   // Set the umask back to a reasonable default.
