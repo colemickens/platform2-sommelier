@@ -229,6 +229,11 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
         static_cast<em::DeviceRebootOnUserSignoutProto_RebootOnSignoutMode>(
             value));
   });
+
+  EncodeBoolean(key::kDevicePowerwashAllowed, [policy](bool value) {
+    policy->mutable_device_powerwash_allowed()->set_device_powerwash_allowed(
+        value);
+  });
 }
 
 void DevicePolicyEncoder::EncodeNetworkPolicies(
@@ -340,6 +345,11 @@ void DevicePolicyEncoder::EncodeAccessibilityPolicies(
                 [policy](bool value) {
                   policy->mutable_accessibility_settings()
                       ->set_login_screen_default_large_cursor_enabled(value);
+                });
+  EncodeBoolean(key::kDeviceLoginScreenLargeCursorEnabled,
+                [policy](bool value) {
+                  policy->mutable_accessibility_settings()
+                      ->set_login_screen_large_cursor_enabled(value);
                 });
   EncodeBoolean(key::kDeviceLoginScreenDefaultSpokenFeedbackEnabled,
                 [policy](bool value) {
@@ -569,11 +579,6 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
                  policy->mutable_device_login_screen_isolate_origins()
                      ->set_isolate_origins(value);
                });
-
-  EncodeBoolean(key::kDeviceLoginScreenSitePerProcess, [policy](bool value) {
-    policy->mutable_device_login_screen_site_per_process()
-        ->set_site_per_process(value);
-  });
 
   EncodeBoolean(key::kVirtualMachinesAllowed, [policy](bool value) {
     policy->mutable_virtual_machines_allowed()->set_virtual_machines_allowed(

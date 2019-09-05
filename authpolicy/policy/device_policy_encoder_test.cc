@@ -135,6 +135,10 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
                 em::DeviceRebootOnUserSignoutProto_RebootOnSignoutMode_ALWAYS);
   EXPECT_EQ(em::DeviceRebootOnUserSignoutProto_RebootOnSignoutMode_ALWAYS,
             policy.device_reboot_on_user_signout().reboot_on_signout_mode());
+
+  EncodeBoolean(&policy, key::kDevicePowerwashAllowed, kBool);
+  EXPECT_EQ(kBool,
+            policy.device_powerwash_allowed().device_powerwash_allowed());
   //
   // Network policies.
   //
@@ -231,6 +235,11 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
                 kBool);
   EXPECT_EQ(kBool, policy.accessibility_settings()
                        .login_screen_default_large_cursor_enabled());
+
+  EncodeBoolean(&policy, key::kDeviceLoginScreenLargeCursorEnabled, kBool);
+  EXPECT_EQ(
+      kBool,
+      policy.accessibility_settings().login_screen_large_cursor_enabled());
 
   EncodeBoolean(&policy, key::kDeviceLoginScreenDefaultSpokenFeedbackEnabled,
                 kBool);
@@ -470,10 +479,6 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeString(&policy, key::kDeviceLoginScreenIsolateOrigins, kString);
   EXPECT_EQ(kString,
             policy.device_login_screen_isolate_origins().isolate_origins());
-
-  EncodeBoolean(&policy, key::kDeviceLoginScreenSitePerProcess, kBool);
-  EXPECT_EQ(kBool,
-            policy.device_login_screen_site_per_process().site_per_process());
 
   EncodeBoolean(&policy, key::kVirtualMachinesAllowed, kBool);
   EXPECT_EQ(kBool,
