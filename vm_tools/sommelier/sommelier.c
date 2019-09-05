@@ -75,6 +75,7 @@ enum {
   PROPERTY_WM_CLIENT_LEADER,
   PROPERTY_MOTIF_WM_HINTS,
   PROPERTY_NET_STARTUP_ID,
+  PROPERTY_NET_WM_STATE,
   PROPERTY_GTK_THEME_VARIANT,
 };
 
@@ -750,6 +751,9 @@ void sl_window_update(struct sl_window* window) {
                                     window->max_width / ctx->scale,
                                     window->max_height / ctx->scale);
     }
+    if (window->maximized) {
+      zxdg_toplevel_v6_set_maximized(window->xdg_toplevel);
+    }
   } else if (!window->xdg_popup) {
     struct zxdg_positioner_v6* positioner;
 
@@ -1385,6 +1389,7 @@ static void sl_create_window(struct sl_context* ctx,
   window->managed = 0;
   window->realized = 0;
   window->activated = 0;
+  window->maximized = 0;
   window->allow_resize = 1;
   window->transient_for = XCB_WINDOW_NONE;
   window->client_leader = XCB_WINDOW_NONE;
@@ -1553,12 +1558,15 @@ static void sl_handle_map_request(struct sl_context* ctx,
       {PROPERTY_WM_CLIENT_LEADER, ctx->atoms[ATOM_WM_CLIENT_LEADER].value},
       {PROPERTY_MOTIF_WM_HINTS, ctx->atoms[ATOM_MOTIF_WM_HINTS].value},
       {PROPERTY_NET_STARTUP_ID, ctx->atoms[ATOM_NET_STARTUP_ID].value},
+      {PROPERTY_NET_WM_STATE, ctx->atoms[ATOM_NET_WM_STATE].value},
       {PROPERTY_GTK_THEME_VARIANT, ctx->atoms[ATOM_GTK_THEME_VARIANT].value},
   };
   xcb_get_geometry_cookie_t geometry_cookie;
   xcb_get_property_cookie_t property_cookies[ARRAY_SIZE(properties)];
   struct sl_wm_size_hints size_hints = {0};
   struct sl_mwm_hints mwm_hints = {0};
+  xcb_atom_t* reply_atoms;
+  bool maximize_h = false, maximize_v = false;
   uint32_t values[5];
   int i;
 
@@ -1651,6 +1659,24 @@ static void sl_handle_map_request(struct sl_context* ctx,
       case PROPERTY_NET_STARTUP_ID:
         window->startup_id = strndup(xcb_get_property_value(reply),
                                      xcb_get_property_value_length(reply));
+        break;
+      case PROPERTY_NET_WM_STATE:
+        reply_atoms = xcb_get_property_value(reply);
+        for (i = 0;
+             i < xcb_get_property_value_length(reply) / sizeof(xcb_atom_t);
+             ++i) {
+          if (reply_atoms[i] ==
+              ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_HORZ].value) {
+            maximize_h = true;
+          } else if (reply_atoms[i] ==
+                     ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_VERT].value) {
+            maximize_v = true;
+          }
+        }
+        // Neither wayland not CrOS support 1D maximizing, so sommelier will
+        // only consider a window maximized if both dimensions are. This
+        // behaviour is consistent with sl_handle_client_message().
+        window->maximized = maximize_h && maximize_v;
         break;
       case PROPERTY_GTK_THEME_VARIANT:
         if (xcb_get_property_value_length(reply) >= 4)

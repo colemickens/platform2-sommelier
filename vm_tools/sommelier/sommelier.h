@@ -458,6 +458,7 @@ struct sl_window {
   int managed;
   int realized;
   int activated;
+  int maximized;
   int allow_resize;
   xcb_window_t transient_for;
   xcb_window_t client_leader;
