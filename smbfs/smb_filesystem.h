@@ -11,6 +11,7 @@
 #include <memory>
 #include <ostream>
 #include <string>
+#include <vector>
 
 #include <base/id_map.h>
 #include <base/macros.h>
@@ -44,6 +45,28 @@ class SmbFilesystem : public Filesystem {
               const std::string& name) override;
   void Forget(fuse_ino_t inode, uint64_t count) override;
   void GetAttr(std::unique_ptr<AttrRequest> request, fuse_ino_t inode) override;
+  void Open(std::unique_ptr<OpenRequest> request,
+            fuse_ino_t inode,
+            int flags) override;
+  void Create(std::unique_ptr<CreateRequest> request,
+              fuse_ino_t parent_inode,
+              const std::string& name,
+              mode_t mode,
+              int flags) override;
+  void Read(std::unique_ptr<BufRequest> request,
+            fuse_ino_t inode,
+            uint64_t file_handle,
+            size_t size,
+            off_t offset) override;
+  void Write(std::unique_ptr<WriteRequest> request,
+             fuse_ino_t inode,
+             uint64_t file_handle,
+             const char* buf,
+             size_t size,
+             off_t offset) override;
+  void Release(std::unique_ptr<SimpleRequest> request,
+               fuse_ino_t inode,
+               uint64_t file_handle) override;
   void OpenDir(std::unique_ptr<OpenRequest> request,
                fuse_ino_t inode,
                int flags) override;
@@ -62,6 +85,27 @@ class SmbFilesystem : public Filesystem {
                       const std::string& name);
   void ForgetInternal(fuse_ino_t inode, uint64_t count);
   void GetAttrInternal(std::unique_ptr<AttrRequest> request, fuse_ino_t inode);
+  void OpenInternal(std::unique_ptr<OpenRequest> request,
+                    fuse_ino_t inode,
+                    int flags);
+  void CreateInternal(std::unique_ptr<CreateRequest> request,
+                      fuse_ino_t parent_inode,
+                      const std::string& name,
+                      mode_t mode,
+                      int flags);
+  void ReadInternal(std::unique_ptr<BufRequest> request,
+                    fuse_ino_t inode,
+                    uint64_t file_handle,
+                    size_t size,
+                    off_t offset);
+  void WriteInternal(std::unique_ptr<WriteRequest> request,
+                     fuse_ino_t inode,
+                     uint64_t file_handle,
+                     const std::vector<char>& buf,
+                     off_t offset);
+  void ReleaseInternal(std::unique_ptr<SimpleRequest> request,
+                       fuse_ino_t inode,
+                       uint64_t file_handle);
   void OpenDirInternal(std::unique_ptr<OpenRequest> request,
                        fuse_ino_t inode,
                        int flags);
@@ -92,12 +136,17 @@ class SmbFilesystem : public Filesystem {
   IDMap<SMBCFILE*, uint64_t> open_files_;
 
   SMBCCTX* context_ = nullptr;
+  smbc_close_fn smbc_close_ctx_ = nullptr;
   smbc_closedir_fn smbc_closedir_ctx_ = nullptr;
+  smbc_lseek_fn smbc_lseek_ctx_ = nullptr;
   smbc_lseekdir_fn smbc_lseekdir_ctx_ = nullptr;
+  smbc_open_fn smbc_open_ctx_ = nullptr;
   smbc_opendir_fn smbc_opendir_ctx_ = nullptr;
+  smbc_read_fn smbc_read_ctx_ = nullptr;
   smbc_readdir_fn smbc_readdir_ctx_ = nullptr;
   smbc_stat_fn smbc_stat_ctx_ = nullptr;
   smbc_telldir_fn smbc_telldir_ctx_ = nullptr;
+  smbc_write_fn smbc_write_ctx_ = nullptr;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(SmbFilesystem);
 };

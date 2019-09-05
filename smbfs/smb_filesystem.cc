@@ -5,6 +5,7 @@
 #include "smbfs/smb_filesystem.h"
 
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/logging.h>
@@ -57,12 +58,17 @@ SmbFilesystem::SmbFilesystem(const std::string& share_path,
     smbc_setDebug(context_, vlog_level);
   }
 
+  smbc_close_ctx_ = smbc_getFunctionClose(context_);
   smbc_closedir_ctx_ = smbc_getFunctionClosedir(context_);
+  smbc_lseek_ctx_ = smbc_getFunctionLseek(context_);
   smbc_lseekdir_ctx_ = smbc_getFunctionLseekdir(context_);
+  smbc_open_ctx_ = smbc_getFunctionOpen(context_);
   smbc_opendir_ctx_ = smbc_getFunctionOpendir(context_);
+  smbc_read_ctx_ = smbc_getFunctionRead(context_);
   smbc_readdir_ctx_ = smbc_getFunctionReaddir(context_);
   smbc_stat_ctx_ = smbc_getFunctionStat(context_);
   smbc_telldir_ctx_ = smbc_getFunctionTelldir(context_);
+  smbc_write_ctx_ = smbc_getFunctionWrite(context_);
 
   CHECK(samba_thread_.Start());
 }
@@ -225,6 +231,219 @@ void SmbFilesystem::GetAttrInternal(std::unique_ptr<AttrRequest> request,
 
   struct stat reply_stat = MakeStat(inode, smb_stat);
   request->ReplyAttr(reply_stat, kAttrTimeoutSeconds);
+}
+
+void SmbFilesystem::Open(std::unique_ptr<OpenRequest> request,
+                         fuse_ino_t inode,
+                         int flags) {
+  samba_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&SmbFilesystem::OpenInternal, base::Unretained(this),
+                     std::move(request), inode, flags));
+}
+
+void SmbFilesystem::OpenInternal(std::unique_ptr<OpenRequest> request,
+                                 fuse_ino_t inode,
+                                 int flags) {
+  if (request->IsInterrupted()) {
+    return;
+  }
+
+  if (inode == FUSE_ROOT_ID) {
+    request->ReplyError(EISDIR);
+    return;
+  }
+
+  const std::string share_file_path = ShareFilePathFromInode(inode);
+  SMBCFILE* file = smbc_open_ctx_(context_, share_file_path.c_str(), flags, 0);
+  if (!file) {
+    int err = errno;
+    VPLOG(1) << "smbc_open on path " << share_file_path << " failed";
+    request->ReplyError(err);
+    return;
+  }
+
+  request->ReplyOpen(open_files_.Add(file));
+}
+
+void SmbFilesystem::Create(std::unique_ptr<CreateRequest> request,
+                           fuse_ino_t parent_inode,
+                           const std::string& name,
+                           mode_t mode,
+                           int flags) {
+  samba_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&SmbFilesystem::CreateInternal, base::Unretained(this),
+                     std::move(request), parent_inode, name, mode, flags));
+}
+
+void SmbFilesystem::CreateInternal(std::unique_ptr<CreateRequest> request,
+                                   fuse_ino_t parent_inode,
+                                   const std::string& name,
+                                   mode_t mode,
+                                   int flags) {
+  if (request->IsInterrupted()) {
+    return;
+  }
+
+  flags |= O_CREAT;
+  mode &= 0777;
+
+  const base::FilePath parent_path = inode_map_.GetPath(parent_inode);
+  CHECK(!parent_path.empty())
+      << "Lookup on invalid parent inode: " << parent_inode;
+  const base::FilePath file_path = parent_path.Append(name);
+  const std::string share_file_path = MakeShareFilePath(file_path);
+
+  // NOTE: |mode| appears to be ignored by libsmbclient.
+  SMBCFILE* file =
+      smbc_open_ctx_(context_, share_file_path.c_str(), flags, mode);
+  if (!file) {
+    int err = errno;
+    VPLOG(1) << "smbc_open path: " << share_file_path << " failed";
+    request->ReplyError(err);
+    return;
+  }
+
+  uint64_t handle = open_files_.Add(file);
+
+  ino_t inode = inode_map_.IncInodeRef(file_path);
+  struct stat entry_stat = MakeStat(inode, {0});
+  entry_stat.st_mode = S_IFREG | mode;
+  fuse_entry_param entry = {0};
+  entry.ino = inode;
+  entry.generation = 1;
+  entry.attr = entry_stat;
+  entry.attr_timeout = kAttrTimeoutSeconds;
+  entry.entry_timeout = kAttrTimeoutSeconds;
+  request->ReplyCreate(entry, handle);
+}
+
+void SmbFilesystem::Read(std::unique_ptr<BufRequest> request,
+                         fuse_ino_t inode,
+                         uint64_t file_handle,
+                         size_t size,
+                         off_t offset) {
+  samba_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&SmbFilesystem::ReadInternal, base::Unretained(this),
+                     std::move(request), inode, file_handle, size, offset));
+}
+
+void SmbFilesystem::ReadInternal(std::unique_ptr<BufRequest> request,
+                                 fuse_ino_t inode,
+                                 uint64_t file_handle,
+                                 size_t size,
+                                 off_t offset) {
+  if (request->IsInterrupted()) {
+    return;
+  }
+
+  SMBCFILE* file = open_files_.Lookup(file_handle);
+  if (!file) {
+    request->ReplyError(EBADF);
+    return;
+  }
+
+  if (smbc_lseek_ctx_(context_, file, offset, SEEK_SET) < 0) {
+    int err = errno;
+    VPLOG(1) << "smbc_lseek path: " << ShareFilePathFromInode(inode)
+             << ", offset: " << offset << " failed";
+    request->ReplyError(err);
+    return;
+  }
+
+  std::vector<char> buf(size);
+  ssize_t bytes_read = smbc_read_ctx_(context_, file, buf.data(), size);
+  if (bytes_read < 0) {
+    int err = errno;
+    VPLOG(1) << "smbc_read path: " << ShareFilePathFromInode(inode)
+             << " offset: " << offset << ", size: " << size << " failed";
+    request->ReplyError(err);
+    return;
+  }
+
+  request->ReplyBuf(buf.data(), bytes_read);
+}
+
+void SmbFilesystem::Write(std::unique_ptr<WriteRequest> request,
+                          fuse_ino_t inode,
+                          uint64_t file_handle,
+                          const char* buf,
+                          size_t size,
+                          off_t offset) {
+  samba_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&SmbFilesystem::WriteInternal, base::Unretained(this),
+                     std::move(request), inode, file_handle,
+                     std::vector<char>(buf, buf + size), offset));
+}
+
+void SmbFilesystem::WriteInternal(std::unique_ptr<WriteRequest> request,
+                                  fuse_ino_t inode,
+                                  uint64_t file_handle,
+                                  const std::vector<char>& buf,
+                                  off_t offset) {
+  if (request->IsInterrupted()) {
+    return;
+  }
+
+  SMBCFILE* file = open_files_.Lookup(file_handle);
+  if (!file) {
+    request->ReplyError(EBADF);
+    return;
+  }
+
+  if (smbc_lseek_ctx_(context_, file, offset, SEEK_SET) < 0) {
+    int err = errno;
+    VPLOG(1) << "smbc_lseek path: " << ShareFilePathFromInode(inode)
+             << ", offset: " << offset << " failed";
+    request->ReplyError(err);
+    return;
+  }
+
+  ssize_t bytes_written =
+      smbc_write_ctx_(context_, file, buf.data(), buf.size());
+  if (bytes_written < 0) {
+    int err = errno;
+    VPLOG(1) << "smbc_write path: " << ShareFilePathFromInode(inode)
+             << " offset: " << offset << ", size: " << buf.size() << " failed";
+    request->ReplyError(err);
+    return;
+  }
+
+  request->ReplyWrite(bytes_written);
+}
+
+void SmbFilesystem::Release(std::unique_ptr<SimpleRequest> request,
+                            fuse_ino_t inode,
+                            uint64_t file_handle) {
+  samba_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&SmbFilesystem::ReleaseInternal, base::Unretained(this),
+                     std::move(request), inode, file_handle));
+}
+
+void SmbFilesystem::ReleaseInternal(std::unique_ptr<SimpleRequest> request,
+                                    fuse_ino_t inode,
+                                    uint64_t file_handle) {
+  if (request->IsInterrupted()) {
+    return;
+  }
+
+  SMBCFILE* file = open_files_.Lookup(file_handle);
+  if (!file) {
+    request->ReplyError(EBADF);
+    return;
+  }
+
+  if (smbc_close_ctx_(context_, file) < 0) {
+    request->ReplyError(errno);
+    return;
+  }
+
+  open_files_.Remove(file_handle);
+  request->ReplyOk();
 }
 
 void SmbFilesystem::OpenDir(std::unique_ptr<OpenRequest> request,
