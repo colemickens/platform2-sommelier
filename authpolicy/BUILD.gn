@@ -215,19 +215,19 @@ if (use.test) {
       ":target_defaults",
     ]
     sources = [
-      "anonymizer_unittest.cc",
-      "auth_data_cache_unittest.cc",
-      "authpolicy_flags_unittest.cc",
-      "authpolicy_unittest.cc",
-      "gpo_version_cache_unittest.cc",
-      "policy/device_policy_encoder_unittest.cc",
-      "policy/extension_policy_encoder_unittest.cc",
-      "policy/preg_parser_unittest.cc",
-      "policy/preg_policy_encoder_unittest.cc",
+      "anonymizer_test.cc",
+      "auth_data_cache_test.cc",
+      "authpolicy_flags_test.cc",
+      "authpolicy_test.cc",
+      "gpo_version_cache_test.cc",
+      "policy/device_policy_encoder_test.cc",
+      "policy/extension_policy_encoder_test.cc",
+      "policy/preg_parser_test.cc",
+      "policy/preg_policy_encoder_test.cc",
       "policy/preg_policy_writer.cc",
-      "policy/user_policy_encoder_unittest.cc",
-      "process_executor_unittest.cc",
-      "samba_helper_unittest.cc",
+      "policy/user_policy_encoder_test.cc",
+      "process_executor_test.cc",
+      "samba_helper_test.cc",
     ]
     defines = [ "UNIT_TEST" ]
     deps = [
