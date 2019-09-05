@@ -8,20 +8,20 @@ for all users of the device.
 
 ## Keywords
 
-**Record** - specific piece of biometric data that a user registers along with
+**Record**: specific piece of biometric data that a user registers along with
 its metadata.
 
-**Enroll** - the act of registering a record.
+**Enroll**: the act of registering a record.
 
-**EnrollSession** - the session during which enrolling of a record happens.
+**EnrollSession**: the session during which enrolling of a record happens.
 
-**Authenticate** - the act of checking a new piece of biometric data against
+**Authenticate**: the act of checking a new piece of biometric data against
 stored records.
 
-**AuthSession** - the session during which authenticating a new piece of
+**AuthSession**: the session during which authenticating a new piece of
 biometric data against stored records happens.
 
-**BiometricsManager** - manager for a piece of device/hardware/sensor for
+**BiometricsManager**: manager for a piece of device/hardware/sensor for
 collecting a specific type of biometric data. Each `BiometricsManager` is in
 charge of storing the records that it enrolled.
 
@@ -32,19 +32,19 @@ For more context, see the [Chromium OS Developer Guide].
 *   Start working on the `biod` package:
 
     ```bash
-    (chroot)$ cros_workon-<board> start biod
+    (chroot) $ cros_workon-<board> start biod
     ```
 
 *   Build `biod`:
 
     ```bash
-    (chroot)$ emerge-<board> biod
+    (chroot) $ emerge-<board> biod
     ```
 
 *   Deploy `biod` to your `DUT`:
 
     ```bash
-    (chroot)$ cros deploy ${DUT_IP_ADDR} biod
+    (chroot) $ cros deploy ${DUT_IP_ADDR} biod
     ```
 
     As a shortcut, you can also `scp` the `biod` binary to your DUT.
@@ -53,19 +53,19 @@ For more context, see the [Chromium OS Developer Guide].
 
 `biod` is controlled by `upstart`.
 
-### Start `biod`
+### Start biod
 
 ```bash
 (dut)$ start biod
 ```
 
-### Stop `biod`
+### Stop biod
 
 ```bash
 (dut)$ stop biod
 ```
 
-### Check whether `biod` is running
+### Check whether biod is running
 
 ```bash
 (dut)$ status biod
@@ -184,7 +184,7 @@ after the D-Bus client disconnects, for example while testing out `biod` using
 `dbus-send` or other single shot command line dbus tool. Each
 `BiometricsManager` can have only one session running concurrently.
 
-### `org.chromium.BiometricsDaemon.BiometricsManager`
+### org.chromium.BiometricsDaemon.BiometricsManager
 
 #### StartEnrollSession (Method)
 
@@ -281,7 +281,7 @@ UINT32 Type
 *   0 = Unknown
 *   1 = Fingerprint
 
-### `org.chromium.BiometricsDaemon.AuthSession`
+### org.chromium.BiometricsDaemon.AuthSession
 
 #### End (Method)
 
@@ -289,11 +289,11 @@ UINT32 Type
 End()
 ```
 
-Ends the authenticatation session and destroys this object path. Generally, the
+Ends the authentication session and destroys this object path. Generally, the
 client should call this at some point because authentication sessions do not end
 on their own, unless there is some error.
 
-### `org.chromium.BiometricsDaemon.EnrollSession`
+### org.chromium.BiometricsDaemon.EnrollSession
 
 #### Cancel (Method)
 
@@ -308,7 +308,7 @@ that there was some error on the client side, the user explicitly canceled the
 session, or the client has determined the user to have given up, perhaps after
 some timeout has elapsed.
 
-### `org.chromium.BiometricsDaemon.Record`
+### org.chromium.BiometricsDaemon.Record
 
 #### Remove (Method)
 
