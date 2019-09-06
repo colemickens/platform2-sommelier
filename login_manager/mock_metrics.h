@@ -25,6 +25,7 @@ class MockMetrics : public LoginMetrics {
   MOCK_METHOD1(RecordStats, void(const char*));
   MOCK_METHOD0(HasRecordedChromeExec, bool());
   MOCK_METHOD1(SendSessionExitType, void(SessionExitType));
+  MOCK_METHOD1(SendBrowserShutdownTime, void(base::TimeDelta));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);

@@ -102,6 +102,9 @@ class SessionManagerProcessTest : public ::testing::Test {
         .WillOnce(Return(false))
         .WillOnce(Return(true));
 
+    // Browser shutdown time is not tracked if browser does not request stop.
+    EXPECT_CALL(metrics_, SendBrowserShutdownTime(_)).Times(0);
+
     job->set_fake_child_process(std::make_unique<FakeChildProcess>(
         kDummyPid, exit_status, manager_->test_api()));
   }
@@ -298,6 +301,8 @@ TEST_F(SessionManagerProcessTest, ChildExitFlagFileStop) {
   EXPECT_CALL(metrics_,
               SendSessionExitType(LoginMetrics::SessionExitType::NORMAL_EXIT))
       .Times(1);
+  // Browser shutdown time is track when browser request to stop.
+  EXPECT_CALL(metrics_, SendBrowserShutdownTime(_)).Times(1);
   job->set_should_run(false);
 
   EXPECT_CALL(*session_manager_impl_, ShouldEndSession(_))
@@ -344,6 +349,8 @@ TEST_F(SessionManagerProcessTest, LockedExit) {
   EXPECT_CALL(metrics_,
               SendSessionExitType(LoginMetrics::SessionExitType::NORMAL_EXIT))
       .Times(1);
+  // Browser shutdown time is not tracked if browser does not request stop.
+  EXPECT_CALL(metrics_, SendBrowserShutdownTime(_)).Times(0);
 
   SimpleRunManager();
 }
@@ -356,6 +363,7 @@ TEST_F(SessionManagerProcessTest, LivenessCheckingStartStop) {
     EXPECT_CALL(*liveness_checker_, Start()).Times(2);
     EXPECT_CALL(*liveness_checker_, Stop()).Times(AtLeast(1));
   }
+  EXPECT_CALL(metrics_, SendBrowserShutdownTime(_)).Times(0);
   ExpectOneJobReRun(job, PackSignal(0));
   SimpleRunManager();
 }
@@ -365,13 +373,15 @@ TEST_F(SessionManagerProcessTest, MustStopChild) {
   FakeBrowserJob* job = CreateMockJobAndInitManager(true);
   ExpectLivenessChecking();
   EXPECT_CALL(*job, KillEverything(SIGKILL, _)).Times(AnyNumber());
+  // ShouldStop returning true indicates a login crash loop.
   EXPECT_CALL(*job, ShouldStop()).WillOnce(Return(true));
   EXPECT_CALL(*session_manager_impl_, ShouldEndSession(_))
       .WillRepeatedly(Return(false));
-  // ShouldStop returning true indicates a login crash loop.
   EXPECT_CALL(metrics_, SendSessionExitType(
                             LoginMetrics::SessionExitType::LOGIN_CRASH_LOOP))
       .Times(1);
+  // Browser shutdown time is not tracked if browser does not request stop.
+  EXPECT_CALL(metrics_, SendBrowserShutdownTime(_)).Times(0);
 
   SimpleRunManager();
 }

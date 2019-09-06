@@ -506,7 +506,9 @@ void SessionManagerService::SetExitAndScheduleShutdown(ExitCode code) {
 
 void SessionManagerService::CleanupChildren(base::TimeDelta timeout,
                                             ExitCode code) {
-  std::string reason = ExitCodeToString(code);
+  const std::string reason = ExitCodeToString(code);
+
+  const base::TimeTicks browser_exit_start_time = base::TimeTicks::Now();
   browser_->Kill(SIGTERM, reason);
   key_gen_.RequestJobExit(reason);
   android_container_->RequestJobExit(
@@ -514,6 +516,12 @@ void SessionManagerService::CleanupChildren(base::TimeDelta timeout,
           ? ArcContainerStopReason::SESSION_MANAGER_SHUTDOWN
           : ArcContainerStopReason::BROWSER_SHUTDOWN);
   browser_->WaitAndAbort(timeout);
+  if (code == SessionManagerService::SUCCESS) {
+    // Only record shutdown time for normal exit.
+    login_metrics_->SendBrowserShutdownTime(base::TimeTicks::Now() -
+                                            browser_exit_start_time);
+  }
+
   key_gen_.EnsureJobExit(timeout);
   android_container_->EnsureJobExit(SessionManagerImpl::kContainerTimeout);
 }

@@ -24,6 +24,10 @@ namespace {
 // For any signout stats are recorded.
 const char kChromeUptimeFile[] = "/tmp/uptime-chrome-exec";
 
+// A metric to track the time between when SIGTERM is sent to the browser
+// process and when the browser process group exits (or killed via SIGABRT).
+const char kLoginBrowserShutdownTimeMetric[] = "Login.BrowserShutdownTime";
+
 const char kLoginConsumerAllowsNewUsersMetric[] =
     "Login.ConsumerNewUsersAllowed";
 const char kLoginPolicyFilesMetric[] = "Login.PolicyFilesStatePerBoot";
@@ -122,6 +126,16 @@ void LoginMetrics::SendSessionExitType(SessionExitType session_exit_type) {
   metrics_lib_.SendEnumToUMA(kSessionExitTypeMetric,
                              static_cast<int>(session_exit_type),
                              static_cast<int>(SessionExitType::NUM_VALUES));
+}
+
+void LoginMetrics::SendBrowserShutdownTime(
+    base::TimeDelta browser_shutdown_time) {
+  // Browser shutdown time is between 0 - 12s and split it up into 50 buckets.
+  metrics_lib_.SendToUMA(
+      kLoginBrowserShutdownTimeMetric,
+      static_cast<int>(browser_shutdown_time.InMilliseconds()),
+      static_cast<int>(base::TimeDelta::FromMilliseconds(1).InMilliseconds()),
+      static_cast<int>(base::TimeDelta::FromSeconds(12).InMilliseconds()), 50);
 }
 
 // static

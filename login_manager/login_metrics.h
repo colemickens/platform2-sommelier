@@ -9,6 +9,7 @@
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
+#include <base/time/time.h>
 #include <metrics/metrics_library.h>
 
 namespace login_manager {
@@ -120,6 +121,9 @@ class LoginMetrics {
 
   // Submits to UMA whether or not the session exited due to a login crash loop.
   virtual void SendSessionExitType(SessionExitType session_exit_type);
+
+  // Submits to UMA the browser shutdown time of normal exit.
+  virtual void SendBrowserShutdownTime(base::TimeDelta browser_shutdown_time);
 
  private:
   friend class LoginMetricsTest;
