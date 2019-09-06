@@ -108,16 +108,23 @@ bool Device::HostLinkUp(bool link_up) {
   return true;
 }
 
-void Device::Enable(const std::string& ifname) {
+bool Device::IsFullyUp() const {
   if (!host_link_up_)
-    return;
+    return false;
 
   // TODO(garrick): Clean this up when more guests are added.
   // This is really just a hack around not having to worry about specific guests
   for (const auto& c : ctx_) {
     if (!c.second->IsLinkUp())
-      return;
+      return false;
   }
+
+  return true;
+}
+
+void Device::Enable(const std::string& ifname) {
+  if (!IsFullyUp())
+    return;
 
   if (options_.fwd_multicast) {
     if (!mdns_forwarder_) {
@@ -146,25 +153,28 @@ void Device::Enable(const std::string& ifname) {
     }
   }
 
-  if (options_.find_ipv6_routes && !router_finder_) {
-    LOG(INFO) << "Enabling IPV6 route finding for device " << ifname_
-              << " on interface " << ifname;
-    // In the case this is the Android device, |ifname| is the current default
-    // interface and must be used.
-    ipv6_config_.ifname = (IsAndroid() || IsLegacyAndroid()) ? ifname : ifname_;
-    ipv6_config_.addr_attempts = 0;
-    router_finder_.reset(new RouterFinder());
-    router_finder_->Start(
-        ifname, base::Bind(&Device::OnRouteFound, weak_factory_.GetWeakPtr()));
-  }
+  StartIPv6Routing(ifname);
+}
+
+void Device::StartIPv6Routing(const std::string& ifname) {
+  if (!IsFullyUp())
+    return;
+
+  if (!options_.find_ipv6_routes || router_finder_)
+    return;
+
+  LOG(INFO) << "Starting IPV6 route finding for device " << ifname_
+            << " on interface " << ifname;
+  // In the case this is the Android device, |ifname| is the current default
+  // interface and must be used.
+  ipv6_config_.ifname = (IsAndroid() || IsLegacyAndroid()) ? ifname : ifname_;
+  ipv6_config_.addr_attempts = 0;
+  router_finder_.reset(new RouterFinder());
+  router_finder_->Start(
+      ifname, base::Bind(&Device::OnRouteFound, weak_factory_.GetWeakPtr()));
 }
 
 void Device::Disable() {
-  if (neighbor_finder_ || router_finder_) {
-    LOG(INFO) << "Disabling IPv6 route finding for device " << ifname_;
-    neighbor_finder_.reset();
-    router_finder_.reset();
-  }
   if (ssdp_forwarder_) {
     LOG(INFO) << "Disabling SSDP forwarding for device " << ifname_;
     ssdp_forwarder_.reset();
@@ -172,6 +182,15 @@ void Device::Disable() {
   if (mdns_forwarder_) {
     LOG(INFO) << "Disabling mDNS forwarding for device " << ifname_;
     mdns_forwarder_.reset();
+  }
+  StopIPv6Routing();
+}
+
+void Device::StopIPv6Routing() {
+  if (neighbor_finder_ || router_finder_) {
+    LOG(INFO) << "Disabling IPv6 route finding for device " << ifname_;
+    neighbor_finder_.reset();
+    router_finder_.reset();
   }
 
   if (!ipv6_down_handler_.is_null())

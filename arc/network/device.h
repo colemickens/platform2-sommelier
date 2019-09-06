@@ -123,12 +123,17 @@ class Device {
   void Enable(const std::string& ifname);
   void Disable();
 
+  void StartIPv6Routing(const std::string& ifname);
+  void StopIPv6Routing();
+
   void OnGuestStart(GuestMessage::GuestType guest);
   void OnGuestStop(GuestMessage::GuestType guest);
 
   friend std::ostream& operator<<(std::ostream& stream, const Device& device);
 
  private:
+  bool IsFullyUp() const;
+
   // Callback from RouterFinder.  May be triggered multiple times, e.g.
   // if the route disappears or changes.
   void OnRouteFound(const struct in6_addr& prefix,

@@ -371,22 +371,41 @@ bool ArcService::ShouldProcessDevice(const Device& device) const {
 }
 
 void ArcService::OnDefaultInterfaceChanged(const std::string& ifname) {
-  if (pid_ == kInvalidPID || guest_ != GuestMessage::ARC_LEGACY)
+  if (pid_ == kInvalidPID)
     return;
 
-  datapath_->RemoveLegacyIPv4InboundDNAT();
+  // For ARC N, we must always be able to find the arc0 device and, at a
+  // minimum, disable it.
+  if (guest_ == GuestMessage::ARC_LEGACY) {
+    datapath_->RemoveLegacyIPv4InboundDNAT();
+    auto* device = dev_mgr_->FindByGuestInterface("arc0");
+    if (!device) {
+      LOG(DFATAL) << "Expected legacy Android device missing";
+      return;
+    }
+    device->Disable();
 
-  auto* device = dev_mgr_->FindByGuestInterface("arc0");
+    // If a new default interface was given, then re-enable with that.
+    if (!ifname.empty()) {
+      datapath_->AddLegacyIPv4InboundDNAT(ifname);
+      device->Enable(ifname);
+    }
+    return;
+  }
+
+  // For ARC P and later, we're only concerned with resetting the device when it
+  // becomes the default (again) in order to ensure any previous configuration.
+  // is cleared.
+  if (ifname.empty())
+    return;
+
+  auto* device = dev_mgr_->FindByGuestInterface(ifname);
   if (!device) {
-    LOG(DFATAL) << "Expected legacy Android device missing";
+    LOG(ERROR) << "Expected default device missing: " << ifname;
     return;
   }
-
-  device->Disable();
-  if (!ifname.empty()) {
-    datapath_->AddLegacyIPv4InboundDNAT(ifname);
-    device->Enable(ifname);
-  }
+  device->StopIPv6Routing();
+  device->StartIPv6Routing(ifname);
 }
 
 void ArcService::LinkMsgHandler(const shill::RTNLMessage& msg) {
@@ -533,7 +552,7 @@ void ArcService::TeardownIPv6(Device* device) {
   auto& ipv6_config = device->ipv6_config();
   LOG(INFO) << "Clearing IPv6 for " << ipv6_config.ifname;
   int table_id = ctx->RoutingTableID();
-  ctx->SetHasIPv6(kInvalidTableID);
+  ctx->ClearIPv6();
 
   char buf[INET6_ADDRSTRLEN] = {0};
   if (!inet_ntop(AF_INET6, &ipv6_config.addr, buf, sizeof(buf))) {
@@ -609,6 +628,11 @@ bool ArcService::Context::SetHasIPv6(int routing_table_id) {
 
   routing_table_id_ = routing_table_id;
   return true;
+}
+
+void ArcService::Context::ClearIPv6() {
+  routing_table_id_ = kInvalidTableID;
+  routing_table_attempts_ = 0;
 }
 
 int ArcService::Context::RoutingTableID() const {

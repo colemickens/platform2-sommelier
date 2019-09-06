@@ -36,6 +36,9 @@ class ArcService : public GuestService {
     bool HasIPv6() const;
     // Returns false if |routing_tid| is invalid.
     bool SetHasIPv6(int routing_tid);
+    // Resets the IPv6 attributes.
+    void ClearIPv6();
+
     int RoutingTableID() const;
     // Returns the current value and increments the counter.
     int RoutingTableAttempts();
