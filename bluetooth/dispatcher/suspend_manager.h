@@ -39,6 +39,8 @@ class SuspendManager {
   void HandleSuspendDoneSignal(dbus::Signal* signal);
   // Called when power manager's RegisterSuspendDelay method returns.
   void OnSuspendDelayRegistered(dbus::Response* response);
+  // Called when power manager's RegisterSuspendDelay method returns an error.
+  void OnSuspendDelayRegisteredError(dbus::ErrorResponse* response);
 
   // Called when BlueZ and NewBlue HandleSuspendImminent/
   // HandleSuspendDone method returns.

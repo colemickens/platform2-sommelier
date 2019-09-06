@@ -99,9 +99,11 @@ void SuspendManager::HandlePowerManagerAvailableOrRestarted(bool available) {
   writer.AppendProtoAsArrayOfBytes(request);
 
   VLOG(1) << "Calling RegisterSuspendDelay to powerd";
-  power_manager_dbus_proxy_->CallMethod(
+  power_manager_dbus_proxy_->CallMethodWithErrorCallback(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
       base::Bind(&SuspendManager::OnSuspendDelayRegistered,
+                 weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&SuspendManager::OnSuspendDelayRegisteredError,
                  weak_ptr_factory_.GetWeakPtr()));
 #else
   VLOG(1) << "Skip registration of SuspendManager in Power manager.";
@@ -146,6 +148,14 @@ void SuspendManager::OnSuspendDelayRegistered(dbus::Response* response) {
     return;
   }
   suspend_delay_id_ = reply.delay_id();
+}
+
+void SuspendManager::OnSuspendDelayRegisteredError(
+    dbus::ErrorResponse* response) {
+  // TODO(sonnysasaka): Handle error when RegisterSuspendDelay fails, e.g. retry
+  // or watch powerd availability.
+  LOG(ERROR) << "Received error of RegisterSuspendDelay from powerd: "
+             << (response ? response->GetErrorName() : "null response");
 }
 
 void SuspendManager::OnSuspendImminentHandled(dbus::Response* response) {
