@@ -62,6 +62,7 @@ class HttpRequest {
   // has started successfully and is now in progress.
   virtual Result Start(
       const std::string& url_string,
+      const brillo::http::HeaderList& headers,
       const base::Callback<void(std::shared_ptr<brillo::http::Response>)>&
           request_success_callback,
       const base::Callback<void(Result)>& request_error_callback);
@@ -98,6 +99,7 @@ class HttpRequest {
   brillo::http::RequestID request_id_;
   std::string url_string_;
   std::string server_hostname_;
+  brillo::http::HeaderList headers_;
   int server_port_;
   std::string server_path_;
   bool is_running_;

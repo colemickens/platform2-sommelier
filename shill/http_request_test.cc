@@ -195,7 +195,7 @@ class HttpRequestTest : public Test {
     request_->GetDNSResult(error, address);
   }
   HttpRequest::Result StartRequest(const string& url) {
-    return request_->Start(url, target_.request_success_callback(),
+    return request_->Start(url, {}, target_.request_success_callback(),
                            target_.request_error_callback());
   }
   void ExpectCreateConnection(const string& url) {

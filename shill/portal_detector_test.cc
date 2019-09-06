@@ -147,9 +147,9 @@ class PortalDetectorTest : public Test {
   }
 
   void StartTrialTask() {
-    EXPECT_CALL(*http_request(), Start(_, _, _))
+    EXPECT_CALL(*http_request(), Start(_, _, _, _))
         .WillOnce(Return(HttpRequest::kResultInProgress));
-    EXPECT_CALL(*https_request(), Start(_, _, _))
+    EXPECT_CALL(*https_request(), Start(_, _, _, _))
         .WillOnce(Return(HttpRequest::kResultInProgress));
     EXPECT_CALL(
         dispatcher(),
@@ -273,7 +273,7 @@ TEST_F(PortalDetectorTest, StartAttemptFailed) {
   EXPECT_TRUE(StartPortalRequest(props, 0));
 
   // Expect that the request will be started -- return failure.
-  EXPECT_CALL(*http_request(), Start(_, _, _))
+  EXPECT_CALL(*http_request(), Start(_, _, _, _))
       .WillOnce(Return(HttpRequest::kResultDNSFailure));
 
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(0);

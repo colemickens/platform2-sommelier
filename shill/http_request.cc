@@ -79,6 +79,7 @@ HttpRequest::~HttpRequest() {
 
 HttpRequest::Result HttpRequest::Start(
     const string& url_string,
+    const brillo::http::HeaderList& headers,
     const Callback<void(std::shared_ptr<brillo::http::Response>)>&
         request_success_callback,
     const Callback<void(Result)>& request_error_callback) {
@@ -92,6 +93,7 @@ HttpRequest::Result HttpRequest::Start(
     return kResultInvalidInput;
   }
   url_string_ = url_string;
+  headers_ = headers;
   is_running_ = true;
   server_hostname_ = url.host();
   server_port_ = url.port();
@@ -123,7 +125,7 @@ HttpRequest::Result HttpRequest::Start(
 }
 
 void HttpRequest::StartRequest() {
-  request_id_ = brillo::http::Get(url_string_, {}, transport_,
+  request_id_ = brillo::http::Get(url_string_, headers_, transport_,
                                   success_callback_, error_callback_);
 }
 

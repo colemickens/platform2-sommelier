@@ -21,10 +21,11 @@ class MockHttpRequest : public HttpRequest {
   explicit MockHttpRequest(ConnectionRefPtr connection);
   ~MockHttpRequest() override;
 
-  MOCK_METHOD3(
+  MOCK_METHOD4(
       Start,
       HttpRequest::Result(
           const std::string& url_string,
+          const brillo::http::HeaderList& headers,
           const base::Callback<void(std::shared_ptr<brillo::http::Response>)>&
               request_success_callback,
           const base::Callback<void(Result)>& request_error_callback));

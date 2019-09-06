@@ -26,6 +26,15 @@ using base::Callback;
 using base::StringPrintf;
 using std::string;
 
+namespace {
+const char kLinuxUserAgent[] =
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (kHTML, like Gecko) "
+    "Chrome/7.0.38.09.132 Safari/537.36";
+const brillo::http::HeaderList kHeaders{
+    {brillo::http::request_header::kUserAgent, kLinuxUserAgent},
+};
+}  // namespace
+
 namespace shill {
 
 namespace Logging {
@@ -142,9 +151,9 @@ void PortalDetector::StartTrialTask() {
   base::Callback<void(HttpRequest::Result)> http_request_error_callback(
       Bind(&PortalDetector::HttpRequestErrorCallback,
            weak_ptr_factory_.GetWeakPtr()));
-  HttpRequest::Result http_result =
-      http_request_->Start(http_url_string_, http_request_success_callback,
-                           http_request_error_callback);
+  HttpRequest::Result http_result = http_request_->Start(
+      http_url_string_, kHeaders, http_request_success_callback,
+      http_request_error_callback);
   if (http_result != HttpRequest::kResultInProgress) {
     // Return successful HTTPS probe by default.
     CompleteTrial(PortalDetector::GetPortalResultForRequestResult(http_result),
@@ -159,9 +168,9 @@ void PortalDetector::StartTrialTask() {
   base::Callback<void(HttpRequest::Result)> https_request_error_callback(
       Bind(&PortalDetector::HttpsRequestErrorCallback,
            weak_ptr_factory_.GetWeakPtr()));
-  HttpRequest::Result https_result =
-      https_request_->Start(https_url_string_, https_request_success_callback,
-                            https_request_error_callback);
+  HttpRequest::Result https_result = https_request_->Start(
+      https_url_string_, kHeaders, https_request_success_callback,
+      https_request_error_callback);
   if (https_result != HttpRequest::kResultInProgress) {
     https_result_ =
         std::make_unique<Result>(GetPortalResultForRequestResult(https_result));
