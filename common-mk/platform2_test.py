@@ -24,7 +24,7 @@ import signal
 import sys
 import tempfile
 
-import psutil
+import psutil  # pylint: disable=import-error
 
 from chromite.lib import commandline
 from chromite.lib import cros_build_lib
@@ -109,8 +109,14 @@ ENV_PASSTHRU_REGEX_LIST = list(re.compile(x) for x in (
 class Platform2Test(object):
   """Framework for running platform2 tests"""
 
-  _BIND_MOUNT_PATHS = ('dev', 'dev/pts', 'proc', 'mnt/host/source', 'sys')
-  _BIND_MOUNT_IF_NOT_SYMLINK_PATHS = ('run/shm',)
+  _BIND_MOUNT_PATHS = (
+      'dev',
+      'dev/pts',
+      'dev/shm',
+      'proc',
+      'mnt/host/source',
+      'sys',
+  )
 
   def __init__(self, test_bin, board, host, framework,
                user, gtest_filter, user_gtest_filter,
@@ -331,10 +337,7 @@ class Platform2Test(object):
     # once), so run them automatically for the user if they test by hand.
     self.pre_test()
 
-    paths_to_mount = (list(self._BIND_MOUNT_PATHS) +
-                      [mount for mount in self._BIND_MOUNT_IF_NOT_SYMLINK_PATHS
-                       if not os.path.islink('/' + mount)])
-    for mount in paths_to_mount:
+    for mount in self._BIND_MOUNT_PATHS:
       path = os.path.join(self.sysroot, mount)
       osutils.SafeMakedirs(path)
       osutils.Mount('/' + mount, path, 'none', osutils.MS_BIND)
