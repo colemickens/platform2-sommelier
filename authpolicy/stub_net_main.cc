@@ -29,6 +29,7 @@ const char kMachinePass[] = "machine_pass";
 const char kStateDir[] = "state";
 const char kSambaDir[] = "samba";
 const char kKrb5CCUser[] = "krb5cc_user";
+const char kFakeDomainSidMarker[] = "fake_domain_sid_marker";
 
 // Various stub error messages.
 const char kSmbConfArgMissingError[] =
@@ -404,6 +405,24 @@ std::string FormatServerTime(const base::Time& time) {
   return std::string(str);
 }
 
+// Returns the path of a marker file to check whether "net setdomainsid" has
+// been called.
+base::FilePath GetDomainSidMarkerPath(const std::string& smb_conf_path) {
+  return base::FilePath(smb_conf_path).DirName().Append(kFakeDomainSidMarker);
+}
+
+// Fakes setting a "net setdomainsid" call by writing a marker file.
+void SetFakeDomainSid(const std::string& smb_conf_path) {
+  char c = 0;
+  CHECK_EQ(base::WriteFile(GetDomainSidMarkerPath(smb_conf_path), &c, 1), 1);
+}
+
+// Checks whether "net setdomainsid" has been called before by checking the
+// marker file.
+bool IsFakeDomainSidSet(const std::string& smb_conf_path) {
+  return base::PathExists(GetDomainSidMarkerPath(smb_conf_path));
+}
+
 // Handles a stub 'net ads workgroup' call. Different behavior is triggered by
 // passing different machine names (in smb.conf) and user credential caches.
 int HandleWorkgroup(const std::string& smb_conf_path) {
@@ -570,6 +589,10 @@ int HandleGpoList(const std::string& smb_conf_path) {
   if (machine_name == base::ToUpperASCII(kEmptyGpoMachineName))
     return kExitCodeOk;
 
+  // Samba 4.10.7 requires a domain sid for this command.
+  if (!IsFakeDomainSidSet(smb_conf_path))
+    return kExitCodeError;
+
   // All other GPO lists use the local GPO.
   std::string gpos = kStubLocalGpo;
 
@@ -650,6 +673,18 @@ int HandleSearch(const std::string& command_line) {
   return kExitCodeOk;
 }
 
+// Handles a stub 'net setdomainsid' call. Writes out a marker file to indicate
+// that the domain sid has been set. This is checked in 'net ads gpo list'. This
+// fakes the behavior of Samba 4.10.7, which requires the domain sid to be set
+// for that command.
+int HandleSetDomainSid(const std::string& smb_conf_path) {
+  // net setdomainsid should be called at most once.
+  if (IsFakeDomainSidSet(smb_conf_path))
+    return kExitCodeError;
+  SetFakeDomainSid(smb_conf_path);
+  return kExitCodeOk;
+}
+
 int HandleCommandLine(const std::string& command_line,
                       const std::string& smb_conf_path) {
   // Make sure the caller adds the debug level.
@@ -678,6 +713,10 @@ int HandleCommandLine(const std::string& command_line,
   // Stub net ads search.
   if (StartsWithCaseSensitive(command_line, "ads search"))
     return HandleSearch(command_line);
+
+  // Stub net setdomainsid.
+  if (StartsWithCaseSensitive(command_line, "setdomainsid"))
+    return HandleSetDomainSid(smb_conf_path);
 
   NOTREACHED() << "UNHANDLED COMMAND LINE " << command_line;
   return kExitCodeError;

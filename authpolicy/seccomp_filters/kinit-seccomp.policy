@@ -45,12 +45,14 @@ rt_sigprocmask: 1
 rt_sigreturn: 1
 select: 1
 sendto: 1
+sendmsg: 1
 setsockopt: 1
 set_robust_list: 1
 set_tid_address: 1
 # socket: arg0 == PF_INET || arg0 == PF_INET6 || arg0 == PF_NETLINK
 socket: arg0 == 2 || arg0 == 10 || arg0 == 16
 stat: 1
+umask: 1
 uname: 1
 unlink: 1
 writev: 1

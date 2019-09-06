@@ -38,6 +38,7 @@ restart_syscall: 1
 rt_sigaction: 1
 rt_sigreturn: 1
 sendto: 1
+sendmsg: 1
 setsockopt: 1
 socket: arg0 == AF_INET || arg0 == AF_NETLINK
 stat: 1

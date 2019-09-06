@@ -25,6 +25,7 @@ ftruncate: 1
 futex: 1
 getcwd: 1
 getdents: 1
+getegid: 1
 geteuid: 1
 getpeername: 1
 getrandom: 1
@@ -39,6 +40,7 @@ ioctl: arg1 == 0x5401 || arg1 == 0x5404 || arg1 == 0x541b || arg1 == 0x5421 || a
 lseek: 1
 lstat: 1
 kill: 1
+mkdir: 1
 # Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
 mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
@@ -59,13 +61,16 @@ rt_sigreturn: 1
 rt_sigsuspend: 1
 select: 1
 sendto: 1
+sendmsg: 1
 setsockopt: 1
 set_robust_list: 1
 set_tid_address: 1
 # socket: arg0 == PF_INET || arg0 == PF_LOCAL || arg0 == PF_INET6 || arg0 == PF_NETLINK
 socket: arg0 == 2 || arg0 == 1 || arg0 == 10 || arg0 == 16
 stat: 1
+umask: 1
 uname: 1
+unlink: 1
 utime: 1
 wait4: 1
 writev: 1

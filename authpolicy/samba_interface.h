@@ -371,7 +371,7 @@ class SambaInterface : public TgtManager::Delegate {
   // GetGpos() for an explanation of |source| and |scope|.
   ErrorType GetGpoList(GpoSource source,
                        PolicyScope scope,
-                       protos::GpoList* gpo_list) const WARN_UNUSED_RESULT;
+                       protos::GpoList* gpo_list) WARN_UNUSED_RESULT;
 
   // Downloads user or device GPOs in the given |gpo_list|. See GetGpos() for an
   // explanation of |source| and |scope|. Returns the downloaded GPO file paths
@@ -430,6 +430,16 @@ class SambaInterface : public TgtManager::Delegate {
 
   // Similar to SetUser, but sets user_account_.realm.
   void SetUserRealm(const std::string& user_realm);
+
+  // Calls net setdomainsid S-1-5-21-0000000000-0000000000-00000000. This is a
+  // workaround for Samba 4.8.6+, which expects a domain SID to exist in
+  // add_builtin_guests() (Samba code). The SID is stored in Samba's,
+  // secrets.tdb, which authpolicyd places in /tmp/authpolicyd/samba/private,
+  // so it is wiped whenever the daemon is restarted and the SID is lost.
+  // However, the SID is not really needed for our purposes, so we set a fake
+  // SID here.
+  // Earlies out if set successfully before.
+  ErrorType MaybeSetFakeDomainSid() WARN_UNUSED_RESULT;
 
   // Sets machine name and realm on the device account and the tgt manager.
   void InitDeviceAccount(const std::string& netbios_name,
@@ -551,6 +561,9 @@ class SambaInterface : public TgtManager::Delegate {
 
   // Whether device policy has been fetched or loaded from disk on startup.
   bool has_device_policy_ = false;
+
+  // Whether a fake domain SID was set to work around Samba issue.
+  bool fake_domain_sid_was_set_ = false;
 
   // For testing only. Used/consumed during Initialize().
   std::unique_ptr<policy::DevicePolicyImpl> device_policy_impl_for_testing;

@@ -54,6 +54,10 @@ constexpr char kSmbConfData[] =
     "\tclient ipc min protocol = SMB2\n"
     "\tclient ldap sasl wrapping = sign\n";
 
+// Fake domain SID to work around issue in Samba-4.8.6+, see
+// MaybeSetFakeDomainSid().
+constexpr char kFakeDomainSid[] = "S-1-5-21-0000000000-0000000000-00000000";
+
 constexpr int kFileMode_rwr = base::FILE_PERMISSION_READ_BY_USER |
                               base::FILE_PERMISSION_WRITE_BY_USER |
                               base::FILE_PERMISSION_READ_BY_GROUP;
@@ -117,6 +121,9 @@ constexpr base::TimeDelta kZeroDelta = base::TimeDelta::FromHours(0);
 
 // Keys for interpreting net output.
 constexpr char kKeyJoinAccessDenied[] = "NT_STATUS_ACCESS_DENIED";
+constexpr char kKeyJoinAccessDenied2[] =
+    "Failed to join domain: failed to set machine os attributes: Insufficient "
+    "access";
 constexpr char kKeyInvalidMachineName[] = "Improperly formed account name";
 constexpr char kKeyInvalidMachineName2[] =
     "The name provided is not a properly formed account name";
@@ -227,7 +234,8 @@ WARN_UNUSED_RESULT ErrorType GetNetError(const ProcessExecutor& executor,
     LOG(ERROR) << error_msg << "must change password";
     return ERROR_PASSWORD_EXPIRED;
   }
-  if (Contains(net_out, kKeyJoinAccessDenied)) {
+  if (Contains(net_out, kKeyJoinAccessDenied) ||
+      Contains(net_out, kKeyJoinAccessDenied2)) {
     LOG(ERROR) << error_msg << "user is not permitted to join the domain";
     return ERROR_JOIN_ACCESS_DENIED;
   }
@@ -1755,11 +1763,16 @@ ErrorType SambaInterface::GetGpos(GpoSource source,
 
 ErrorType SambaInterface::GetGpoList(GpoSource source,
                                      PolicyScope scope,
-                                     protos::GpoList* gpo_list) const {
+                                     protos::GpoList* gpo_list) {
   DCHECK(gpo_list);
   LOG(INFO) << "Getting " << (scope == PolicyScope::USER ? "user" : "device")
             << " GPO list for "
             << (source == GpoSource::USER ? "user" : "device") << " account";
+
+  // Work around issue in Samba 4.8.6+.
+  ErrorType error = MaybeSetFakeDomainSid();
+  if (error != ERROR_NONE)
+    return error;
 
   const AccountData& account = GetAccount(source);
   const TgtManager& tgt_manager = GetTgtManager(source);
@@ -2238,6 +2251,32 @@ void SambaInterface::SetUserRealm(const std::string& user_realm) {
   user_account_.realm = user_realm;
   user_tgt_manager_.SetRealm(user_account_.realm);
   AnonymizeRealm(user_realm, kUserRealmPlaceholder);
+}
+
+ErrorType SambaInterface::MaybeSetFakeDomainSid() {
+  if (fake_domain_sid_was_set_)
+    return ERROR_NONE;
+
+  // Make sure config is up-to-date.
+  ErrorType error = UpdateAccountData(&device_account_);
+  if (error != ERROR_NONE)
+    return error;
+
+  // Reuse the NET_ADS_SECCOMP filter for simplicity, even though it's not a net
+  // ads command.
+  ProcessExecutor net_cmd({paths_->Get(Path::NET), "setdomainsid",
+                           kFakeDomainSid, kConfigParam,
+                           paths_->Get(Path::DEVICE_SMB_CONF), kDebugParam,
+                           flags_.net_log_level()});
+  if (!jail_helper_.SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP,
+                                    TIMER_NONE)) {
+    // This is actually a local operation.
+    LOG(ERROR) << "Failed to set fake domain SID";
+    return ERROR_LOCAL_IO;
+  }
+
+  fake_domain_sid_was_set_ = true;
+  return ERROR_NONE;
 }
 
 void SambaInterface::InitDeviceAccount(const std::string& netbios_name,
