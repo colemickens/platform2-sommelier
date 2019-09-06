@@ -7,15 +7,18 @@
 #include <errno.h>
 #include <unistd.h>
 
+#include <string>
 #include <utility>
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
+#include <base/strings/stringprintf.h>
 
 #include "smbfs/filesystem.h"
 #include "smbfs/request.h"
+#include "smbfs/util.h"
 
 namespace smbfs {
 
@@ -190,14 +193,16 @@ class FuseSession::Impl {
                struct stat* attr,
                int to_set,
                fuse_file_info* info) {
-    VLOG(1) << "FuseSession::SetAttr: " << inode << " to_set: " << to_set
+    VLOG(1) << "FuseSession::SetAttr: " << inode
+            << " to_set: " << ToSetFlagsToString(to_set)
             << " handle: " << (info ? info->fh : 0);
     fs_->SetAttr(std::make_unique<AttrRequest>(request), inode,
                  info ? info->fh : base::Optional<uint64_t>(), *attr, to_set);
   }
 
   void Open(fuse_req_t request, fuse_ino_t inode, fuse_file_info* info) {
-    VLOG(1) << "FuseSession::Open inode: " << inode << " flags:" << info->flags;
+    VLOG(1) << "FuseSession::Open inode: " << inode
+            << " flags: " << OpenFlagsToString(info->flags);
     fs_->Open(std::make_unique<OpenRequest>(request), inode, info->flags);
   }
 
@@ -207,8 +212,8 @@ class FuseSession::Impl {
               mode_t mode,
               fuse_file_info* info) {
     VLOG(1) << "FuseSession::Create parent: " << parent_inode
-            << " name: " << name << " mode: " << mode
-            << " flags: " << info->flags;
+            << " name: " << name << " mode: " << base::StringPrintf("0%o", mode)
+            << " flags: " << OpenFlagsToString(info->flags);
     fs_->Create(std::make_unique<CreateRequest>(request), parent_inode, name,
                 mode, info->flags);
   }
@@ -262,7 +267,7 @@ class FuseSession::Impl {
 
   void OpenDir(fuse_req_t request, fuse_ino_t inode, fuse_file_info* info) {
     VLOG(1) << "FuseSession::OpenDir inode: " << inode
-            << " flags:" << info->flags;
+            << " flags: " << OpenFlagsToString(info->flags);
     fs_->OpenDir(std::make_unique<OpenRequest>(request), inode, info->flags);
   }
 
@@ -288,7 +293,7 @@ class FuseSession::Impl {
              const char* name,
              mode_t mode) {
     VLOG(1) << "FuseSession::MkDir parent_inode: " << parent_inode
-            << " name:" << name << " mode: " << mode;
+            << " name:" << name << " mode: " << base::StringPrintf("0%o", mode);
     fs_->MkDir(std::make_unique<EntryRequest>(request), parent_inode, name,
                mode);
   }
