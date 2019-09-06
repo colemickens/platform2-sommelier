@@ -394,13 +394,22 @@ std::string CreateEsdfsMountOpts(uid_t fsuid,
   return opts;
 }
 
+// Return path of layout_version based on |sdk_version|.
+std::string GetInstalldLayoutRelativePath(AndroidSdkVersion sdk_version) {
+  return sdk_version > AndroidSdkVersion::ANDROID_Q
+             ? "data/misc/installd/layout_version"
+             : "data/.layout_version";
+}
+
 // Wait upto kInstalldTimeout for the sdcard source directory to be setup.
 // On failure, exit.
-bool WaitForSdcardSource(const base::FilePath& android_root) {
+bool WaitForSdcardSource(const base::FilePath& android_root,
+                         AndroidSdkVersion sdk_version) {
   bool ret;
   base::TimeDelta elapsed;
   // <android_root>/data path to synchronize with installd
-  const base::FilePath fs_version = android_root.Append("data/.layout_version");
+  const base::FilePath fs_version =
+      android_root.Append(GetInstalldLayoutRelativePath(sdk_version));
 
   LOG(INFO) << "Waiting upto " << kInstalldTimeout
             << " for installd to complete setting up /data.";
@@ -990,7 +999,8 @@ void ArcSetup::SetUpSdcard() {
 
   // Installd setups up the user data directory skeleton on first-time boot.
   // Wait for setup
-  EXIT_IF(!WaitForSdcardSource(arc_paths_->android_mutable_source));
+  EXIT_IF(!WaitForSdcardSource(arc_paths_->android_mutable_source,
+                               GetSdkVersion()));
 
   for (const auto& mount : GetEsdfsMounts(GetSdkVersion())) {
     base::FilePath dest_directory =
