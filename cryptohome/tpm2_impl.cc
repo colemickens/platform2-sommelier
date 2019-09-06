@@ -1395,12 +1395,14 @@ bool Tpm2Impl::LoadPublicKeyFromSpki(
     return false;
   }
   SecureBlob key_modulus(RSA_size(rsa.get()));
-  if (BN_bn2bin(rsa->n, key_modulus.data()) != key_modulus.size()) {
+  const BIGNUM* n = rsa->n;
+  if (BN_bn2bin(n, key_modulus.data()) != key_modulus.size()) {
     LOG(ERROR) << "Error extracting public key modulus";
     return false;
   }
   constexpr BN_ULONG kInvalidBnWord = ~static_cast<BN_ULONG>(0);
-  const BN_ULONG exponent_word = BN_get_word(rsa->e);
+  const BIGNUM* e = rsa->e;
+  const BN_ULONG exponent_word = BN_get_word(e);
   if (exponent_word == kInvalidBnWord ||
       !base::IsValueInRangeForNumericType<uint32_t>(exponent_word)) {
     LOG(ERROR) << "Error extracting public key exponent";
@@ -1431,12 +1433,19 @@ void Tpm2Impl::HandleOwnershipTakenSignal() {
 bool Tpm2Impl::PublicAreaToPublicKeyDER(const trunks::TPMT_PUBLIC& public_area,
                                         brillo::SecureBlob* public_key_der) {
   crypto::ScopedRSA rsa(RSA_new());
-  rsa.get()->e = BN_new();
-  CHECK(rsa.get()->e) << "Error setting exponent for RSA.";
-  BN_set_word(rsa.get()->e, kDefaultTpmPublicExponent);
-  rsa.get()->n = BN_bin2bn(public_area.unique.rsa.buffer,
-                           public_area.unique.rsa.size, nullptr);
-  CHECK(rsa.get()->n) << "Error setting modulus for RSA.";
+  crypto::ScopedBIGNUM e(BN_new()), n(BN_new());
+  if (!rsa || !e || !n) {
+    LOG(ERROR) << "Failed to allocate RSA or BIGNUM for public key.";
+    return false;
+  }
+  if (!BN_set_word(e.get(), kDefaultTpmPublicExponent) ||
+      !BN_bin2bn(public_area.unique.rsa.buffer,
+                 public_area.unique.rsa.size, n.get())) {
+    LOG(ERROR) << "Failed to set modulus for RSA.";
+    return false;
+  }
+  rsa->n = n.release();
+  rsa->e = e.release();
   int der_length = i2d_RSAPublicKey(rsa.get(), nullptr);
   if (der_length < 0) {
     LOG(ERROR) << "Failed to get DER-encoded public key length.";

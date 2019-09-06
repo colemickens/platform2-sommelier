@@ -351,8 +351,13 @@ void TpmImpl::GetStatus(TpmKeyHandle key_handle,
   // Perform ROCA vulnerability check.
   crypto::ScopedRSA public_srk = ParseRsaFromTpmPubkeyBlob(Blob(
       public_srk_bytes.value(), public_srk_bytes.value() + public_srk_size));
-  status->srk_vulnerable_roca =
-      public_srk && CryptoLib::TestRocaVulnerable(public_srk.get()->n);
+
+  if (public_srk) {
+    const BIGNUM* n = public_srk->n;
+    status->srk_vulnerable_roca = CryptoLib::TestRocaVulnerable(n);
+  } else {
+    status->srk_vulnerable_roca = false;
+  }
 
   // Check the Cryptohome key by using what we have been told.
   status->has_cryptohome_key = (tpm_context_.value() != 0) && (key_handle != 0);
@@ -2028,7 +2033,8 @@ bool TpmImpl::MakeIdentity(SecureBlob* identity_public_key_der,
     return false;
   }
   unsigned char modulus_buffer[kDefaultTpmRsaKeyBits/8];
-  BN_bn2bin(fake_pca_key.get()->n, modulus_buffer);
+  const BIGNUM* n = fake_pca_key->n;
+  BN_bn2bin(n, modulus_buffer);
 
   // Create a TSS object for the fake PCA public key.
   ScopedTssKey pca_public_key_object(context_handle);

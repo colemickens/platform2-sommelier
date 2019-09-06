@@ -224,7 +224,8 @@ bool Pkcs11KeyStore::Register(bool is_user_specific,
     return false;
   }
   SecureBlob modulus(RSA_size(public_key.get()));
-  int length = BN_bn2bin(public_key.get()->n, modulus.data());
+  const BIGNUM* n = public_key->n;
+  int length = BN_bn2bin(n, modulus.data());
   if (length <= 0) {
     LOG(ERROR) << "Pkcs11KeyStore: Failed to extract public key modulus.";
     return false;

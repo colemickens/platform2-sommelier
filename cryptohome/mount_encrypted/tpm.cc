@@ -492,12 +492,18 @@ result_code Tpm::TakeOwnership() {
   }
 
   crypto::ScopedRSA rsa(RSA_new());
-  CHECK(rsa.get());
-  rsa.get()->e = BN_new();
-  CHECK(rsa.get()->e);
-  BN_set_word(rsa.get()->e, public_exponent);
-  rsa.get()->n = BN_bin2bn(modulus, modulus_size, NULL);
-  CHECK(rsa.get()->n);
+  crypto::ScopedBIGNUM e(BN_new()), n(BN_new());
+  if (!rsa || !e || !n) {
+    LOG(ERROR) << "Failed to allocate RSA or BIGNUM.";
+    return RESULT_FAIL_FATAL;
+  }
+  if (!BN_set_word(e.get(), public_exponent) ||
+      !BN_bin2bn(modulus, modulus_size, n.get())) {
+    LOG(ERROR) << "Failed to convert BIGNUM for RSA.";
+    return RESULT_FAIL_FATAL;
+  }
+  rsa->n = n.release();
+  rsa->e = e.release();
 
   // Encrypt the well-known owner secret under the EK.
   brillo::SecureBlob owner_auth(kOwnerSecret, kOwnerSecret + kOwnerSecretSize);

@@ -183,7 +183,8 @@ class UnsealingSessionTpm1Impl final
 // Extracts the public modulus from the OpenSSL RSA struct.
 bool GetRsaModulus(const RSA& rsa, Blob* modulus) {
   modulus->resize(RSA_size(&rsa));
-  if (BN_bn2bin(rsa.n, modulus->data()) != modulus->size()) {
+  const BIGNUM* n = rsa.n;
+  if (BN_bn2bin(n, modulus->data()) != modulus->size()) {
     LOG(ERROR) << "Failed to extract RSA modulus: size mismatch";
     return false;
   }
@@ -209,7 +210,8 @@ bool ParseProtectionKeySpki(const Blob& public_key_spki_der,
     LOG(ERROR) << "Error parsing protection public key: Non-RSA key";
     return false;
   }
-  const BN_ULONG key_exponent_word = BN_get_word(rsa->e);
+  const BIGNUM* e = rsa->e;
+  const BN_ULONG key_exponent_word = BN_get_word(e);
   if (key_exponent_word != kWellKnownExponent) {
     // Trousers only supports the well-known exponent, failing internally on
     // incorrect data serialization when other exponents are used.

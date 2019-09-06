@@ -136,13 +136,15 @@ bool CryptoLib::CreateRsaKey(size_t key_bits, SecureBlob* n, SecureBlob* p) {
   }
 
   SecureBlob local_n(RSA_size(rsa.get()));
-  if (BN_bn2bin(rsa.get()->n, local_n.data()) <= 0) {
+  const BIGNUM* rsa_n = rsa->n;
+  if (BN_bn2bin(rsa_n, local_n.data()) <= 0) {
     LOG(ERROR) << "Unable to get modulus from RSA key.";
     return false;
   }
 
-  SecureBlob local_p(BN_num_bytes(rsa.get()->p));
-  if (BN_bn2bin(rsa.get()->p, local_p.data()) <= 0) {
+  const BIGNUM* rsa_p = rsa->p;
+  SecureBlob local_p(BN_num_bytes(rsa_p));
+  if (BN_bn2bin(rsa_p, local_p.data()) <= 0) {
     LOG(ERROR) << "Unable to get private key from RSA key.";
     return false;
   }
@@ -171,7 +173,8 @@ bool CryptoLib::FillRsaPrivateKeyFromSecretPrime(
     return false;
   }
   // Calculate the second prime by dividing the public modulus.
-  if (!BN_div(q.get(), remainder.get(), rsa->n, p.get(), bn_context.get())) {
+  const BIGNUM* rsa_n = rsa->n;
+  if (!BN_div(q.get(), remainder.get(), rsa_n, p.get(), bn_context.get())) {
     LOG(ERROR) << "Failed to divide public modulus";
     return false;
   }
@@ -189,14 +192,17 @@ bool CryptoLib::FillRsaPrivateKeyFromSecretPrime(
     LOG(ERROR) << "Failed to allocate BIGNUM structure";
     return false;
   }
-  if (!BN_sub(decremented_p.get(), rsa->p, BN_value_one()) ||
-      !BN_sub(decremented_q.get(), rsa->q, BN_value_one()) ||
+  const BIGNUM* rsa_p = rsa->p;
+  const BIGNUM* rsa_q = rsa->q;
+  if (!BN_sub(decremented_p.get(), rsa_p, BN_value_one()) ||
+      !BN_sub(decremented_q.get(), rsa_q, BN_value_one()) ||
       !BN_mul(totient.get(), decremented_p.get(), decremented_q.get(),
               bn_context.get())) {
     LOG(ERROR) << "Failed to calculate totient function";
     return false;
   }
-  if (!BN_mod_inverse(d.get(), rsa->e, totient.get(), bn_context.get())) {
+  const BIGNUM* rsa_e = rsa->e;
+  if (!BN_mod_inverse(d.get(), rsa_e, totient.get(), bn_context.get())) {
     LOG(ERROR) << "Failed to calculate modular inverse";
     return false;
   }
@@ -208,13 +214,14 @@ bool CryptoLib::FillRsaPrivateKeyFromSecretPrime(
     LOG(ERROR) << "Failed to allocate BIGNUM structure";
     return false;
   }
-  if (!BN_mod(dmp1.get(), rsa->d, decremented_p.get(), bn_context.get()) ||
-      !BN_mod(dmq1.get(), rsa->d, decremented_q.get(), bn_context.get())) {
+  const BIGNUM* rsa_d = rsa->d;
+  if (!BN_mod(dmp1.get(), rsa_d, decremented_p.get(), bn_context.get()) ||
+      !BN_mod(dmq1.get(), rsa_d, decremented_q.get(), bn_context.get())) {
     LOG(ERROR) << "Failed to calculate the private exponent over the modulo";
     return false;
   }
   // Calculate the inverse of the second prime modulo the first prime.
-  if (!BN_mod_inverse(iqmp.get(), rsa->q, rsa->p, bn_context.get())) {
+  if (!BN_mod_inverse(iqmp.get(), rsa_q, rsa_p, bn_context.get())) {
     LOG(ERROR) << "Failed to calculate the inverse of the prime module the "
                   "other prime";
     return false;

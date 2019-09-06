@@ -41,32 +41,33 @@ crypto::ScopedRSA ParseRsaFromTpmPubkeyBlob(const Blob& pubkey) {
   ScopedByteArray scoped_parms(parsed.algorithmParms.parms);
   TPM_RSA_KEY_PARMS* parms =
       reinterpret_cast<TPM_RSA_KEY_PARMS*>(parsed.algorithmParms.parms);
+  // Get the public exponent.
   crypto::ScopedRSA rsa(RSA_new());
-  if (!rsa) {
-    LOG(ERROR) << "Failed to create RSA object";
+  crypto::ScopedBIGNUM e(BN_new()), n(BN_new());
+  if (!rsa || !e || !n) {
+    LOG(ERROR) << "Failed to create RSA or BIGNUM";
     return nullptr;
   }
-  // Get the public exponent.
   if (!parms->exponentSize) {
-    rsa->e = BN_new();
-    if (!rsa->e) {
-      LOG(ERROR) << "Failed to create BN exponent";
+    if (!BN_set_word(e.get(), kWellKnownExponent)) {
+      LOG(ERROR) << "Failed to set BN exponent to WellKnownExponent";
       return nullptr;
     }
-    BN_set_word(rsa->e, kWellKnownExponent);
   } else {
-    rsa->e = BN_bin2bn(parms->exponent, parms->exponentSize, nullptr);
-    if (!rsa->e) {
+    if (!BN_bin2bn(parms->exponent, parms->exponentSize, e.get())) {
       LOG(ERROR) << "Failed to load BN exponent from TPM_PUBKEY";
       return nullptr;
     }
   }
   // Get the modulus.
-  rsa->n = BN_bin2bn(parsed.pubKey.key, parsed.pubKey.keyLength, nullptr);
-  if (!rsa->n) {
+  if (!BN_bin2bn(parsed.pubKey.key, parsed.pubKey.keyLength, n.get())) {
     LOG(ERROR) << "Failed to load BN modulus from TPM_PUBKEY";
     return nullptr;
   }
+
+  rsa->n = n.release();
+  rsa->e = e.release();
+
   return rsa;
 }
 

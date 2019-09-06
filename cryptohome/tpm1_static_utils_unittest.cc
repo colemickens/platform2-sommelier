@@ -25,7 +25,8 @@ namespace {
 // given RSA public key.
 Blob BuildRsaTpmPubkeyBlob(const RSA& rsa) {
   Blob modulus(RSA_size(&rsa));
-  EXPECT_EQ(BN_bn2bin(rsa.n, modulus.data()), modulus.size());
+  const BIGNUM* n = rsa.n;
+  EXPECT_EQ(BN_bn2bin(n, modulus.data()), modulus.size());
 
   // Build the TPM_RSA_KEY_PARMS structure.
   TPM_RSA_KEY_PARMS rsa_key_parms;
@@ -93,8 +94,14 @@ TEST_P(Tpm1StaticUtilsRsaKeyTest, ParseRsaFromTpmPubkeyBlob) {
 
   crypto::ScopedRSA parsed_rsa = ParseRsaFromTpmPubkeyBlob(pubkey_blob);
   ASSERT_TRUE(parsed_rsa);
-  EXPECT_EQ(BN_cmp(rsa()->n, parsed_rsa->n), 0);
-  EXPECT_EQ(BN_cmp(rsa()->e, parsed_rsa->e), 0);
+
+  const BIGNUM* n = rsa()->n;
+  const BIGNUM* e = rsa()->e;
+  const BIGNUM* parsed_n = parsed_rsa->n;
+  const BIGNUM* parsed_e = parsed_rsa->e;
+
+  EXPECT_EQ(BN_cmp(n, parsed_n), 0);
+  EXPECT_EQ(BN_cmp(e, parsed_e), 0);
 }
 
 INSTANTIATE_TEST_CASE_P(,

@@ -1485,10 +1485,10 @@ class Tpm2RsaSignatureSecretSealingTest
              i2d_PUBKEY(pkey.get(), &key_spki_der_buffer));
     // Obtain the key modulus.
     key_modulus_.resize(RSA_size(rsa.get()));
+    const BIGNUM* n = rsa->n;
     CHECK_EQ(
         key_modulus_.length(),
-        BN_bn2bin(rsa.get()->n,
-                  reinterpret_cast<unsigned char*>(&key_modulus_[0])));
+        BN_bn2bin(n, reinterpret_cast<unsigned char*>(&key_modulus_[0])));
   }
 
   const std::vector<ChallengeSignatureAlgorithm>& supported_algorithms() const {

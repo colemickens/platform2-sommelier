@@ -1785,7 +1785,8 @@ bool Attestation::VerifyCertifiedKey(
     return false;
   }
   SecureBlob modulus(RSA_size(rsa.get()));
-  BN_bn2bin(rsa.get()->n, modulus.data());
+  const BIGNUM* n = rsa->n;
+  BN_bn2bin(n, modulus.data());
   SecureBlob key_digest = CryptoLib::Sha1(modulus);
   if (std::search(certified_key_info.begin(),
                   certified_key_info.end(),
@@ -2387,17 +2388,16 @@ crypto::ScopedRSA
 Attestation::CreateRSAFromHexModulus(
     const std::string& hex_modulus) {
   crypto::ScopedRSA rsa(RSA_new());
-  if (!rsa.get())
+  crypto::ScopedBIGNUM n(BN_new()), e(BN_new());
+  if (!rsa || !n || !e)
     return nullptr;
-  rsa->e = BN_new();
-  if (!rsa->e)
+  if (!BN_set_word(e.get(), kWellKnownExponent))
     return nullptr;
-  BN_set_word(rsa->e, kWellKnownExponent);
-  rsa->n = BN_new();
-  if (!rsa->n)
+  BIGNUM* pn = n.get();
+  if (0 == BN_hex2bn(&pn, hex_modulus.c_str()))
     return nullptr;
-  if (0 == BN_hex2bn(&rsa->n, hex_modulus.c_str()))
-    return nullptr;
+  rsa->n = n.release();
+  rsa->e = e.release();
   return rsa;
 }
 
@@ -2459,7 +2459,8 @@ bool Attestation::CreateSignedPublicKey(
   // Be explicit that there are zero unused bits; otherwise i2d below will
   // automatically detect unused bits but signatures require zero unused bits.
   spki.get()->signature->flags = ASN1_STRING_FLAG_BITS_LEFT;
-  X509_ALGOR_set0(spki.get()->sig_algor,
+  X509_ALGOR* sig_algor = spki->sig_algor;
+  X509_ALGOR_set0(sig_algor,
                   OBJ_nid2obj(NID_sha256WithRSAEncryption),
                   V_ASN1_NULL,
                   NULL);
@@ -2894,7 +2895,8 @@ Tpm::TpmRetryAction Attestation::ComputeEnterpriseEnrollmentIdInternal(
     return Tpm::kTpmRetryFailNoRetry;
   }
   brillo::Blob modulus(RSA_size(public_key.get()), 0);
-  int length = BN_bn2bin(public_key.get()->n, modulus.data());
+  const BIGNUM* n = public_key->n;
+  int length = BN_bn2bin(n, modulus.data());
   if (length <= 0) {
     LOG(ERROR)
         << "Attestation: Failed to extract public endorsement key modulus.";
