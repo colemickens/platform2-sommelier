@@ -381,6 +381,42 @@ properties:
                 - key-id
                 - signature-id
               additionalProperties: false
+            detachable-base:
+              type: object
+              description: "Contains the configuration for the hammerd which
+                is used to update the detachable base firmware."
+              properties:
+                ec-image-name:
+                  description: "The target EC binary name which is placed under
+                    /lib/firmware."
+                  type: string
+                touch-image-name:
+                  description: "The touchpad binary name which is placed under
+                    /lib/firmware. This is only needed if the detachable base
+                    contains touchpad."
+                  type: string
+                vendor-id:
+                  description: "The Vendor ID of the detachable base. This
+                    value can be queried by command 'lsusb'.
+                    By taking this as an example:
+                    Bus 001 Device 032: ID 18d1:503c Google Inc.
+                    the vendor-id is 6353(=0x18d1)."
+                  type: integer
+                product-id:
+                  description: "The Product ID of the detachable base. This
+                    value can be queried by command 'lsusb'.
+                    By taking this as an example:
+                    Bus 001 Device 032: ID 18d1:503c Google Inc.
+                    the product-id is 20540(=0x503c)."
+                  type: integer
+                usb-path:
+                  description: "Searches and finds the idVendor and idProduct
+                    under sysfs /sys/bus/usb/devices/* which matches the
+                    vendor-id and product-id. By taking this as an example:
+                    '/sys/bus/usb/devices/1-1.1'
+                    The usb-path is '1-1.1'."
+                  type: string
+              additionalProperties: false
             identity:
               type: object
               description: Defines attributes that are used by cros_config to detect the identity

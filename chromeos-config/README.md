@@ -300,6 +300,7 @@ In the tables below,
 | bluetooth | [bluetooth](#bluetooth) |  | False |  | False |  |
 | brand-code | string |  | False |  | False | Brand code of the model (also called RLZ code). |
 | camera | [camera](#camera) |  | False |  | False |  |
+| detachable-base | [detachable-base](#detachable-base) |  | False |  | False | Contains the configuration for the hammerd which is used to update the detachable base firmware. |
 | fingerprint | [fingerprint](#fingerprint) |  | False |  | False | Contains details about the model's fingerprint implementation. |
 | firmware | [firmware](#firmware) |  | True |  | False |  |
 | firmware-signing | [firmware-signing](#firmware-signing) |  | False |  | True |  |
@@ -385,6 +386,15 @@ In the tables below,
 | clock | string |  | False |  | False | Specified the camera clock on the model. |
 | config-path | string |  | False |  | False | Specified the camera configuration file path on the model. |
 | count | integer |  | False |  | False | Specified the number of cameras on the model. |
+
+### detachable-base
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| ec-image-name | string |  | False |  | False | The target EC binary name which is placed under /lib/firmware. |
+| product-id | integer |  | False |  | False | The Product ID of the detachable base. This value can be queried by command 'lsusb'. By taking this as an example: Bus 001 Device 032: ID 18d1:503c Google Inc. the product-id is 20540(=0x503c). |
+| touch-image-name | string |  | False |  | False | The touchpad binary name which is placed under /lib/firmware. This is only needed if the detachable base contains touchpad. |
+| usb-path | string |  | False |  | False | Searches and finds the idVendor and idProduct under sysfs /sys/bus/usb/devices/* which matches the vendor-id and product-id. By taking this as an example: '/sys/bus/usb/devices/1-1.1' The usb-path is '1-1.1'. |
+| vendor-id | integer |  | False |  | False | The Vendor ID of the detachable base. This value can be queried by command 'lsusb'. By taking this as an example: Bus 001 Device 032: ID 18d1:503c Google Inc. the vendor-id is 6353(=0x18d1). |
 
 ### fingerprint
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
