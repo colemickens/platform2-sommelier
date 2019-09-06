@@ -16,16 +16,7 @@ CHROMIUMOS_PROCESS_MGMT_POLICIES="/sys/kernel/security/chromiumos\
 # Path to the securityfs file for configuring process management security
 # policies in the SafeSetID LSM (used for kernel version >= 4.14).
 SAFESETID_PROCESS_MGMT_POLICIES="/sys/kernel/security/safesetid\
-/add_whitelist_policy"
-
-# Add process management policy.
-add_process_mgmt_policy() {
-  if [ -e "${CHROMIUMOS_PROCESS_MGMT_POLICIES}" ]; then
-    printf "%s" "$1" > "${CHROMIUMOS_PROCESS_MGMT_POLICIES}"
-  else
-    printf "%s" "$1" > "${SAFESETID_PROCESS_MGMT_POLICIES}"
-  fi
-}
+/whitelist_policy"
 
 # Project-specific process management policies. Projects may add policies by
 # adding a file under /usr/share/cros/startup/process_management_policies/
@@ -43,6 +34,7 @@ add_process_mgmt_policy() {
 # 20104:202
 configure_process_mgmt_security() {
   local file policy
+  local accum=""
   for file in /usr/share/cros/startup/process_management_policies/*; do
     if [ -f "${file}" ]; then
       while read -r policy; do
@@ -52,10 +44,17 @@ configure_process_mgmt_security() {
         # Ignore comments.
         "#"*) ;;
         *)
-          add_process_mgmt_policy "${policy}"
+          if [ -e "${CHROMIUMOS_PROCESS_MGMT_POLICIES}" ]; then
+            printf "%s" "${policy}" > "${CHROMIUMOS_PROCESS_MGMT_POLICIES}"
+          else
+            accum="${accum}${policy}\n"
+          fi
           ;;
         esac
       done < "${file}"
     fi
   done
+  if [ -e "${SAFESETID_PROCESS_MGMT_POLICIES}" ]; then
+    printf "%b" "${accum}" > "${SAFESETID_PROCESS_MGMT_POLICIES}"
+  fi
 }
