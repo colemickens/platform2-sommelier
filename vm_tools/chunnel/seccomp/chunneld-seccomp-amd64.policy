@@ -51,3 +51,4 @@ getresuid: 1
 getresgid: 1
 prctl: arg0 == PR_SET_NAME
 getpid: 1
+pipe2: 1

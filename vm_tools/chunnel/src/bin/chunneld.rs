@@ -6,22 +6,25 @@ use std::collections::btree_map::Entry as BTreeMapEntry;
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::ffi::CStr;
 use std::fmt;
+use std::fs::File;
 use std::io;
 use std::mem;
 use std::net::{Ipv4Addr, Ipv6Addr, TcpListener};
 use std::os::raw::c_int;
-use std::os::unix::io::AsRawFd;
+use std::os::unix::io::{AsRawFd, IntoRawFd};
 use std::result;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use dbus::{self, tree, Connection as DBusConnection, Error as DBusError, Message as DBusMessage};
+use dbus::{
+    self, tree, Connection as DBusConnection, Error as DBusError, Message as DBusMessage, OwnedFd,
+};
 use libchromeos::syslog;
 use libchromeos::vsock::{VsockListener, VMADDR_PORT_ANY};
 use log::{error, warn};
 use protobuf::{self, Message as ProtoMessage, ProtobufError};
-use sys_util::{self, block_signal, EventFd, PollContext, PollToken};
+use sys_util::{self, block_signal, pipe, EventFd, PollContext, PollToken};
 
 use chunnel::forwarder::ForwarderSession;
 use system_api::chunneld_service::*;
@@ -37,6 +40,13 @@ const VM_CICERONE_INTERFACE: &str = "org.chromium.VmCicerone";
 const VM_CICERONE_SERVICE_PATH: &str = "/org/chromium/VmCicerone";
 const VM_CICERONE_SERVICE_NAME: &str = "org.chromium.VmCicerone";
 const CONNECT_CHUNNEL_METHOD: &str = "ConnectChunnel";
+
+// permission_broker dbus-constants.h
+const PERMISSION_BROKER_INTERFACE: &str = "org.chromium.PermissionBroker";
+const PERMISSION_BROKER_SERVICE_PATH: &str = "/org/chromium/PermissionBroker";
+const PERMISSION_BROKER_SERVICE_NAME: &str = "org.chromium.PermissionBroker";
+const REQUEST_LOOPBACK_TCP_PORT_LOCKDOWN_METHOD: &str = "RequestLoopbackTcpPortLockdown";
+const RELEASE_LOOPBACK_TCP_PORT_METHOD: &str = "ReleaseLoopbackTcpPort";
 
 // chunneld dbus-constants.h
 const UPDATE_LISTENING_PORTS_METHOD: &str = "UpdateListeningPorts";
@@ -62,6 +72,7 @@ enum Error {
     EventFdClone(sys_util::Error),
     EventFdNew(sys_util::Error),
     IncorrectCid(u32),
+    LifelinePipe(sys_util::Error),
     NoListenerForPort(u16),
     NoSessionForTag(SessionTag),
     PollContextAdd(sys_util::Error),
@@ -101,6 +112,7 @@ impl fmt::Display for Error {
             EventFdClone(e) => write!(f, "failed to clone eventfd: {}", e),
             EventFdNew(e) => write!(f, "failed to create eventfd: {}", e),
             IncorrectCid(cid) => write!(f, "chunnel connection from unexpected cid {}", cid),
+            LifelinePipe(e) => write!(f, "failed to create firewall lifeline pipe {}", e),
             NoListenerForPort(port) => write!(f, "could not find listener for port: {}", port),
             NoSessionForTag(tag) => write!(f, "could not find session for tag: {:x}", tag),
             PollContextAdd(e) => write!(f, "failed to add fd to poll context: {}", e),
@@ -152,6 +164,7 @@ struct PortListeners {
     tcp4_listener: TcpListener,
     tcp6_listener: TcpListener,
     forward_target: TcpForwardTarget,
+    _firewall_lifeline: File,
 }
 
 /// SocketFamily specifies whether a socket uses IPv4 or IPv6.
@@ -199,6 +212,26 @@ impl ForwarderSessions {
                 continue;
             }
             if let BTreeMapEntry::Vacant(o) = self.listening_ports.entry(port) {
+                // Lock down the port to allow only Chrome to connect to it.
+                let (firewall_lifeline, dbus_fd) = pipe(true).map_err(Error::LifelinePipe)?;
+                let dbus_request = DBusMessage::new_method_call(
+                    PERMISSION_BROKER_SERVICE_NAME,
+                    PERMISSION_BROKER_SERVICE_PATH,
+                    PERMISSION_BROKER_INTERFACE,
+                    REQUEST_LOOPBACK_TCP_PORT_LOCKDOWN_METHOD,
+                )
+                .map_err(Error::DBusCreateMethodCall)?
+                .append2(port, OwnedFd::new(dbus_fd.into_raw_fd()));
+                let dbus_reply = self
+                    .dbus_conn
+                    .send_with_reply_and_block(dbus_request, DBUS_TIMEOUT_MS)
+                    .map_err(Error::DBusMessageSend)?;
+                let allowed: bool = dbus_reply.read1().map_err(Error::DBusMessageRead)?;
+                if !allowed {
+                    warn!("failed to lock down loopback TCP port {}", port);
+                    continue;
+                }
+
                 // Failing to bind a port is not fatal, but we should log it.
                 // Both IPv4 and IPv6 localhost must be bound since the host may resolve
                 // "localhost" to either.
@@ -226,6 +259,7 @@ impl ForwarderSessions {
                     tcp4_listener,
                     tcp6_listener,
                     forward_target: target,
+                    _firewall_lifeline: firewall_lifeline,
                 });
             }
             active_ports.insert(port);
@@ -236,7 +270,26 @@ impl ForwarderSessions {
         let old_ports: Vec<u16> = self.listening_ports.keys().cloned().collect();
         for port in old_ports.iter() {
             if !active_ports.contains(port) {
-                self.listening_ports.remove(&port);
+                // Remove the PortListeners struct first - on error we want to drop it and the
+                // fds it contains.
+                let _listening_port = self.listening_ports.remove(&port);
+                // Release the locked down port.
+                let dbus_request = DBusMessage::new_method_call(
+                    PERMISSION_BROKER_SERVICE_NAME,
+                    PERMISSION_BROKER_SERVICE_PATH,
+                    PERMISSION_BROKER_INTERFACE,
+                    RELEASE_LOOPBACK_TCP_PORT_METHOD,
+                )
+                .map_err(Error::DBusCreateMethodCall)?
+                .append1(port);
+                let dbus_reply = self
+                    .dbus_conn
+                    .send_with_reply_and_block(dbus_request, DBUS_TIMEOUT_MS)
+                    .map_err(Error::DBusMessageSend)?;
+                let allowed: bool = dbus_reply.read1().map_err(Error::DBusMessageRead)?;
+                if !allowed {
+                    warn!("failed to release loopback TCP port {}", port);
+                }
             }
         }
 

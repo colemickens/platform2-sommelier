@@ -53,3 +53,4 @@ exit: 1
 exit_group: 1
 rt_sigreturn: 1
 getpid: 1
+pipe2: 1
