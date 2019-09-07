@@ -17,7 +17,7 @@ namespace cros {
 
 // Read config from camera configure file.
 // Reference for all options from: include/cros-camera/constants.h
-class CameraConfigImpl : public CameraConfig {
+class CameraConfigImpl final : public CameraConfig {
  public:
   explicit CameraConfigImpl(std::unique_ptr<base::DictionaryValue> config);
 

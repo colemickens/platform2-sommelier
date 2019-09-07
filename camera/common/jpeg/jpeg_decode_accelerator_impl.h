@@ -29,7 +29,7 @@ class JpegDecodeAcceleratorTest;
 // Encapsulates a converter from JPEG to YU12 format. This class is not
 // thread-safe.
 // Before using this class, make sure mojo is initialized first.
-class JpegDecodeAcceleratorImpl : public JpegDecodeAccelerator {
+class JpegDecodeAcceleratorImpl final : public JpegDecodeAccelerator {
  public:
   JpegDecodeAcceleratorImpl();
 
