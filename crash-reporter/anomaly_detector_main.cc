@@ -174,6 +174,7 @@ int main(int argc, char* argv[]) {
   parsers["audit"] = std::make_unique<anomaly::SELinuxParser>();
   parsers["init"] = std::make_unique<anomaly::ServiceParser>();
   parsers["kernel"] = std::make_unique<anomaly::KernelParser>();
+  parsers["powerd_suspend"] = std::make_unique<anomaly::SuspendParser>();
 
   while (true) {
     JournalEntry entry = j.GetNextEntry();

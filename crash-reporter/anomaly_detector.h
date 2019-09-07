@@ -61,6 +61,11 @@ class KernelParser : public Parser {
   std::string flag_;
 };
 
+class SuspendParser : public Parser {
+ public:
+  MaybeCrashReport ParseLogEntry(const std::string& line) override;
+};
+
 }  // namespace anomaly
 
 #endif  // CRASH_REPORTER_ANOMALY_DETECTOR_H_

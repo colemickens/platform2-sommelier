@@ -21,6 +21,7 @@
 #include "crash-reporter/chrome_collector.h"
 #include "crash-reporter/early_crash_meta_collector.h"
 #include "crash-reporter/ec_collector.h"
+#include "crash-reporter/generic_failure_collector.h"
 #include "crash-reporter/kernel_collector.h"
 #include "crash-reporter/kernel_warning_collector.h"
 #include "crash-reporter/paths.h"
@@ -241,6 +242,14 @@ int HandleKernelWarning(KernelWarningCollector* kernel_warning_collector,
   return 0;
 }
 
+int HandleSuspendFailure(GenericFailureCollector* suspend_failure_collector) {
+  // Accumulate logs to help in diagnosing failures during collection.
+  brillo::LogToString(true);
+  bool handled = suspend_failure_collector->Collect();
+  brillo::LogToString(false);
+  return handled ? 0 : 1;
+}
+
 int HandleServiceFailure(ServiceFailureCollector* service_failure_collector,
                          const std::string& service_name) {
   // Accumulate logs to help in diagnosing failures during collection.
@@ -333,6 +342,7 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(log_to_stderr, false, "Log to stderr instead of syslog.");
   DEFINE_string(arc_service_failure, "",
                 "The specific ARC service name that failed");
+  DEFINE_bool(suspend_failure, false, "Report collected suspend failure logs.");
   DEFINE_string(service_failure, "", "The specific service name that failed");
   DEFINE_bool(selinux_violation, false, "Report collected SELinux violation");
   // TODO(crbug.com/1000398): Remove --chrome flag after Chrome switches from
@@ -452,6 +462,10 @@ int main(int argc, char* argv[]) {
   ServiceFailureCollector service_failure_collector;
   service_failure_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
 
+  GenericFailureCollector suspend_failure_collector(
+      GenericFailureCollector::kSuspendFailure);
+  suspend_failure_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
+
   SELinuxViolationCollector selinux_violation_collector;
   selinux_violation_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
 
@@ -496,6 +510,10 @@ int main(int argc, char* argv[]) {
   if (!FLAGS_arc_service_failure.empty()) {
     return HandleServiceFailure(&arc_service_failure_collector,
                                 FLAGS_arc_service_failure);
+  }
+
+  if (FLAGS_suspend_failure) {
+    return HandleSuspendFailure(&suspend_failure_collector);
   }
 
   if (!FLAGS_service_failure.empty()) {

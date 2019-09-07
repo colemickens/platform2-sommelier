@@ -179,4 +179,20 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
   return base::nullopt;
 }
 
+constexpr LazyRE2 suspend_failure = {
+    R"(^Error writing to /sys/power/state: (.+))"};
+
+MaybeCrashReport SuspendParser::ParseLogEntry(const std::string& line) {
+  std::string exit_status;
+
+  if (!RE2::FullMatch(line, *suspend_failure, &exit_status))
+    return base::nullopt;
+
+  uint32_t hash = StringHash(exit_status.c_str());
+  std::string text = base::StringPrintf("%08x-suspend failure: %s\n", hash,
+                                        exit_status.c_str());
+
+  return {{std::move(text), "--suspend_failure"}};
+}
+
 }  // namespace anomaly
