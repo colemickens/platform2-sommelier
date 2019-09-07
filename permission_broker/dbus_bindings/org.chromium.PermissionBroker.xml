@@ -43,6 +43,12 @@
       <arg name="allowed" type="b" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="RequestLoopbackTcpPortLockdown">
+      <arg type="q" name="port" direction="in"/>
+      <arg type="h" name="lifeline_fd" direction="in"/>
+      <arg name="allowed" type="b" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
     <method name="ReleaseTcpPort">
       <arg type="q" name="port" direction="in"/>
       <arg type="s" name="interface" direction="in"/>
@@ -53,6 +59,11 @@
       <arg type="q" name="port" direction="in"/>
       <arg type="s" name="interface" direction="in"/>
       <arg name="success" type="b" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="ReleaseLoopbackTcpPort">
+      <arg type="q" name="port" direction="in"/>
+      <arg name="allowed" type="b" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
   </interface>

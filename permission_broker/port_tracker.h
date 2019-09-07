@@ -29,9 +29,14 @@ class PortTracker {
   bool AllowUdpPortAccess(uint16_t port, const std::string& iface, int dbus_fd);
   bool RevokeTcpPortAccess(uint16_t port, const std::string& iface);
   bool RevokeUdpPortAccess(uint16_t port, const std::string& iface);
+  bool LockDownLoopbackTcpPort(uint16_t port, int dbus_fd);
+  bool ReleaseLoopbackTcpPort(uint16_t port);
 
   // Close all outstanding firewall holes.
   void RevokeAllPortAccess();
+
+  // Unblock all loopback ports.
+  void UnblockLoopbackPorts();
 
  protected:
   PortTracker(scoped_refptr<base::SequencedTaskRunner> task_runner,
@@ -62,6 +67,14 @@ class PortTracker {
   // |{tcp|udp}_holes_| each time.
   std::map<Hole, int> tcp_fds_;
   std::map<Hole, int> udp_fds_;
+
+  // For each fd (process), keep track of which loopback port it requested.
+  std::map<int, uint16_t> tcp_loopback_ports_;
+
+  // For each loopback port, keep track of which fd requested it.
+  // We need this for ReleaseLoopbackTcpPort() to avoid traversing
+  // |tcp_loopback_ports_| each time.
+  std::map<uint16_t, int> tcp_loopback_fds_;
 
   // |firewall_| is owned by the PermissionBroker object owning this instance
   // of PortTracker.

@@ -143,4 +143,49 @@ TEST_F(FirewallTest, AddAcceptRules_Ipv6Fails) {
   ASSERT_FALSE(mock_firewall.AddAcceptRules(kProtocolUdp, 53, "iface"));
 }
 
+TEST_F(FirewallTest, Port0LockdownFails) {
+  MockFirewall mock_firewall;
+  // Don't fail on anything.
+  int id = mock_firewall.SetRunInMinijailFailCriterion(
+      std::vector<std::string>(), true, true);
+
+  // Try to lock down TCP port 0, port 0 is not a valid port.
+  EXPECT_FALSE(mock_firewall.AddLoopbackLockdownRules(kProtocolTcp, 0));
+  // Try to lock down UDP port 0, port 0 is not a valid port.
+  EXPECT_FALSE(mock_firewall.AddLoopbackLockdownRules(kProtocolUdp, 0));
+
+  // We should not be adding/removing any rules for port 0.
+  EXPECT_EQ(mock_firewall.GetRunInMinijailCriterionMatchCount(id), 0);
+}
+
+TEST_F(FirewallTest, AddLoopbackLockdownRules_Success) {
+  MockFirewall mock_firewall;
+  SetMockExpectations(&mock_firewall, true /* success */);
+  ASSERT_TRUE(mock_firewall.AddLoopbackLockdownRules(kProtocolTcp, 80));
+  ASSERT_TRUE(mock_firewall.AddLoopbackLockdownRules(kProtocolUdp, 53));
+  ASSERT_TRUE(mock_firewall.AddLoopbackLockdownRules(kProtocolTcp, 1234));
+  ASSERT_TRUE(mock_firewall.AddLoopbackLockdownRules(kProtocolTcp, 8080));
+}
+
+TEST_F(FirewallTest, AddLoopbackLockdownRules_Fails) {
+  MockFirewall mock_firewall;
+  SetMockExpectations(&mock_firewall, false /* success */);
+
+  // Lock down TCP port 80, should fail.
+  ASSERT_FALSE(mock_firewall.AddLoopbackLockdownRules(kProtocolTcp, 80));
+  // Lock down UDP port 53, should fail.
+  ASSERT_FALSE(mock_firewall.AddLoopbackLockdownRules(kProtocolUdp, 53));
+}
+
+TEST_F(FirewallTest, AddLoopbackLockdownRules_Ipv6Fails) {
+  MockFirewall mock_firewall;
+  SetMockExpectationsPerExecutable(&mock_firewall, true /* ip4_success */,
+                                   false /* ip6_success */);
+
+  // Lock down TCP port 80, should fail because 'ip6tables' fails.
+  ASSERT_FALSE(mock_firewall.AddLoopbackLockdownRules(kProtocolTcp, 80));
+  // Lock down UDP port 53, should fail because 'ip6tables' fails.
+  ASSERT_FALSE(mock_firewall.AddLoopbackLockdownRules(kProtocolUdp, 53));
+}
+
 }  // namespace permission_broker

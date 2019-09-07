@@ -144,6 +144,11 @@ bool PermissionBroker::OpenPath(brillo::ErrorPtr* error,
   return true;
 }
 
+bool PermissionBroker::RequestLoopbackTcpPortLockdown(
+    uint16_t in_port, const base::ScopedFD& in_lifeline_fd) {
+  return port_tracker_.LockDownLoopbackTcpPort(in_port, in_lifeline_fd.get());
+}
+
 bool PermissionBroker::RequestTcpPortAccess(
     uint16_t in_port,
     const std::string& in_interface,
@@ -170,6 +175,9 @@ bool PermissionBroker::ReleaseUdpPort(uint16_t in_port,
   return port_tracker_.RevokeUdpPortAccess(in_port, in_interface);
 }
 
+bool PermissionBroker::ReleaseLoopbackTcpPort(uint16_t in_port) {
+  return port_tracker_.ReleaseLoopbackTcpPort(in_port);
+}
 void PowerCycleUsbPortsResultCallback(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
     bool result) {

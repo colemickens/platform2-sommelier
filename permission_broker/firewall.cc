@@ -104,6 +104,40 @@ bool Firewall::DeleteAcceptRules(ProtocolEnum protocol,
   return ip4_success && ip6_success;
 }
 
+bool Firewall::AddLoopbackLockdownRules(ProtocolEnum protocol, uint16_t port) {
+  if (port == 0U) {
+    LOG(ERROR) << "Port 0 is not a valid port";
+    return false;
+  }
+
+  if (!AddLoopbackLockdownRule(kIpTablesPath, protocol, port)) {
+    LOG(ERROR) << "Could not add loopback REJECT rule using '" << kIpTablesPath
+               << "'";
+    return false;
+  }
+
+  if (!AddLoopbackLockdownRule(kIp6TablesPath, protocol, port)) {
+    LOG(ERROR) << "Could not add loopback REJECT rule using '" << kIp6TablesPath
+               << "', aborting operation";
+    DeleteLoopbackLockdownRule(kIpTablesPath, protocol, port);
+    return false;
+  }
+
+  return true;
+}
+
+bool Firewall::DeleteLoopbackLockdownRules(ProtocolEnum protocol,
+                                           uint16_t port) {
+  if (port == 0U) {
+    LOG(ERROR) << "Port 0 is not a valid port";
+    return false;
+  }
+
+  bool ip4_success = DeleteLoopbackLockdownRule(kIpTablesPath, protocol, port);
+  bool ip6_success = DeleteLoopbackLockdownRule(kIp6TablesPath, protocol, port);
+  return ip4_success && ip6_success;
+}
+
 bool Firewall::AddAcceptRule(const std::string& executable_path,
                              ProtocolEnum protocol,
                              uint16_t port,
@@ -144,6 +178,58 @@ bool Firewall::DeleteAcceptRule(const std::string& executable_path,
   argv.push_back("-j");
   argv.push_back("ACCEPT");
   argv.push_back("-w");  // Wait for xtables lock.
+
+  return RunInMinijail(argv) == 0;
+}
+
+bool Firewall::AddLoopbackLockdownRule(const std::string& executable_path,
+                                       ProtocolEnum protocol,
+                                       uint16_t port) {
+  std::vector<std::string> argv{
+      executable_path,
+      "-I",  // insert
+      "OUTPUT",
+      "-p",  // protocol
+      protocol == kProtocolTcp ? "tcp" : "udp",
+      "--dport",  // destination port
+      std::to_string(port),
+      "-o",  // output interface
+      "lo",
+      "-m",  // match extension
+      "owner",
+      "!",
+      "--uid-owner",
+      "chronos",
+      "-j",
+      "REJECT",
+      "-w",  // Wait for xtables lock.
+  };
+
+  return RunInMinijail(argv) == 0;
+}
+
+bool Firewall::DeleteLoopbackLockdownRule(const std::string& executable_path,
+                                          ProtocolEnum protocol,
+                                          uint16_t port) {
+  std::vector<std::string> argv{
+      executable_path,
+      "-D",  // delete
+      "OUTPUT",
+      "-p",  // protocol
+      protocol == kProtocolTcp ? "tcp" : "udp",
+      "--dport",  // destination port
+      std::to_string(port),
+      "-o",  // output interface
+      "lo",
+      "-m",  // match extension
+      "owner",
+      "!",
+      "--uid-owner",
+      "chronos",
+      "-j",
+      "REJECT",
+      "-w",  // Wait for xtables lock.
+  };
 
   return RunInMinijail(argv) == 0;
 }

@@ -213,4 +213,74 @@ TEST_F(PortTrackerTest, RevokeUdpPortAccess_EpollFailure) {
   ASSERT_FALSE(port_tracker_.RevokeUdpPortAccess(udp_port, interface));
 }
 
+TEST_F(PortTrackerTest, LockDownLoopbackTcpPort_Success) {
+  SetMockExpectations(&mock_firewall_, true /* success */);
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(0));
+  ASSERT_TRUE(port_tracker_.LockDownLoopbackTcpPort(tcp_port, dbus_fd));
+}
+
+TEST_F(PortTrackerTest, LockDownLoopbackTcpPort_Twice) {
+  SetMockExpectations(&mock_firewall_, true /* success */);
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(0));
+  EXPECT_CALL(port_tracker_, CheckLifelineFds(false));
+  ASSERT_TRUE(port_tracker_.LockDownLoopbackTcpPort(tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.LockDownLoopbackTcpPort(tcp_port, dbus_fd));
+}
+
+TEST_F(PortTrackerTest, LockDownLoopbackTcpPort_FirewallFailure) {
+  // Make 'iptables' fail.
+  SetMockExpectations(&mock_firewall_, false /* success */);
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd))
+      .WillOnce(Return(tracked_fd));
+  EXPECT_CALL(port_tracker_, DeleteLifelineFd(tracked_fd))
+      .WillOnce(Return(true));
+  ASSERT_FALSE(port_tracker_.LockDownLoopbackTcpPort(tcp_port, dbus_fd));
+}
+
+TEST_F(PortTrackerTest, LockDownLoopbackTcpPort_EpollFailure) {
+  SetMockExpectations(&mock_firewall_, true /* success */);
+  // Make epoll(7) fail.
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(-1));
+  ASSERT_FALSE(port_tracker_.LockDownLoopbackTcpPort(tcp_port, dbus_fd));
+}
+
+TEST_F(PortTrackerTest, ReleaseLoopbackTcpPort_Success) {
+  SetMockExpectations(&mock_firewall_, true /* success */);
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd))
+      .WillOnce(Return(tracked_fd));
+  ASSERT_TRUE(port_tracker_.LockDownLoopbackTcpPort(tcp_port, dbus_fd));
+
+  EXPECT_CALL(port_tracker_, DeleteLifelineFd(tracked_fd))
+      .WillOnce(Return(true));
+  ASSERT_TRUE(port_tracker_.ReleaseLoopbackTcpPort(tcp_port));
+}
+
+TEST_F(PortTrackerTest, ReleaseLoopbackTcpPort_FirewallFailure) {
+  // Make releasing the lockdown fail.
+  mock_firewall_.SetRunInMinijailFailCriterion(
+      std::vector<std::string>({"-D", "-p", "tcp"}), true /* repeat */,
+      false /* omit_failure */);
+
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd))
+      .WillOnce(Return(tracked_fd));
+  ASSERT_TRUE(port_tracker_.LockDownLoopbackTcpPort(tcp_port, dbus_fd));
+
+  EXPECT_CALL(port_tracker_, DeleteLifelineFd(tracked_fd))
+      .WillOnce(Return(true));
+  ASSERT_FALSE(port_tracker_.ReleaseLoopbackTcpPort(tcp_port));
+}
+
+TEST_F(PortTrackerTest, ReleaseLoopbackTcpPort_EpollFailure) {
+  SetMockExpectations(&mock_firewall_, true /* success */);
+
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd))
+      .WillOnce(Return(tracked_fd));
+  ASSERT_TRUE(port_tracker_.LockDownLoopbackTcpPort(tcp_port, dbus_fd));
+
+  // Make epoll(7) fail.
+  EXPECT_CALL(port_tracker_, DeleteLifelineFd(tracked_fd))
+      .WillOnce(Return(false));
+  ASSERT_FALSE(port_tracker_.ReleaseLoopbackTcpPort(tcp_port));
+}
+
 }  // namespace permission_broker

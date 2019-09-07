@@ -36,6 +36,7 @@ PortTracker::PortTracker(scoped_refptr<base::SequencedTaskRunner> task_runner,
 
 PortTracker::~PortTracker() {
   RevokeAllPortAccess();
+  UnblockLoopbackPorts();
 
   if (epfd_ >= 0) {
     close(epfd_);
@@ -196,6 +197,82 @@ void PortTracker::RevokeAllPortAccess() {
   CHECK(udp_holes_.size() == 0) << "Failed to plug all UDP holes";
 }
 
+void PortTracker::UnblockLoopbackPorts() {
+  VLOG(1) << "Unblocking all loopback ports";
+
+  // Copy the containers so that we can remove elements from the originals.
+  auto ports = tcp_loopback_ports_;
+  for (const auto& pair : ports) {
+    int fd = pair.first;
+    PlugFirewallHole(fd);
+    DeleteLifelineFd(fd);
+  }
+
+  CHECK(tcp_loopback_ports_.size() == 0)
+      << "Failed to unblock all TCP loopback ports";
+}
+
+bool PortTracker::LockDownLoopbackTcpPort(uint16_t port, int dbus_fd) {
+  if (tcp_loopback_fds_.find(port) != tcp_loopback_fds_.end()) {
+    // This can happen when a requesting process has just been restarted but
+    // the scheduled lifeline FD check hasn't yet been performed, so we might
+    // have stale file descriptors around.
+    // Force the FD check to see if they will be removed now.
+    CheckLifelineFds(false);
+
+    // Then try again. If this still fails, we know it's an invalid request.
+    if (tcp_loopback_fds_.find(port) != tcp_loopback_fds_.end()) {
+      LOG(ERROR) << "Loopback TCP port " << port << " already locked down";
+      return false;
+    }
+  }
+
+  // We use |lifeline_fd| to track the lifetime of the process requesting
+  // port access.
+  int lifeline_fd = AddLifelineFd(dbus_fd);
+  if (lifeline_fd < 0) {
+    LOG(ERROR) << "Tracking lifeline fd for loopback TCP port " << port
+               << " failed";
+    return false;
+  }
+
+  // Track the port.
+  tcp_loopback_ports_[lifeline_fd] = port;
+  tcp_loopback_fds_[port] = lifeline_fd;
+
+  bool success = firewall_->AddLoopbackLockdownRules(kProtocolTcp, port);
+  if (!success) {
+    // If we fail to lock down the port in the firewall, stop tracking the
+    // lifetime of the process.
+    LOG(ERROR) << "Failed to lock down loopback TCP port " << port;
+    DeleteLifelineFd(lifeline_fd);
+    tcp_loopback_ports_.erase(lifeline_fd);
+    tcp_loopback_fds_.erase(port);
+    return false;
+  }
+  return true;
+}
+
+bool PortTracker::ReleaseLoopbackTcpPort(uint16_t port) {
+  auto p = tcp_loopback_fds_.find(port);
+  if (p == tcp_loopback_fds_.end()) {
+    LOG(ERROR) << "Not tracking loopback TCP port " << port;
+    return false;
+  }
+
+  int fd = p->second;
+  bool plugged = PlugFirewallHole(fd);
+  bool deleted = DeleteLifelineFd(fd);
+  // PlugFirewallHole() prints an error message on failure,
+  // but DeleteLifelineFd() does not, and even if it did,
+  // we mock it out in tests.
+  if (!deleted) {
+    LOG(ERROR) << "Failed to delete file descriptor " << fd
+               << " from epoll instance";
+  }
+  return plugged && deleted;
+}
+
 int PortTracker::AddLifelineFd(int dbus_fd) {
   if (!InitializeEpollOnce()) {
     return kInvalidHandle;
@@ -310,6 +387,17 @@ bool PortTracker::PlugFirewallHole(int fd) {
     if (!success) {
       LOG(ERROR) << "Failed to plug hole for UDP port " << hole.first
                  << " on interface '" << hole.second << "'";
+      return false;
+    }
+  } else if (tcp_loopback_ports_.find(fd) != tcp_loopback_ports_.end()) {
+    // It was a blocked TCP loopback port.
+    uint16_t port = tcp_loopback_ports_[fd];
+    success = firewall_->DeleteLoopbackLockdownRules(kProtocolTcp, port);
+    tcp_loopback_ports_.erase(fd);
+    tcp_loopback_fds_.erase(port);
+    if (!success) {
+      LOG(ERROR) << "Failed to delete loopback lockdown rule for TCP port "
+                 << port;
       return false;
     }
   } else {

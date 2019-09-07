@@ -36,6 +36,8 @@ class Firewall {
   bool DeleteAcceptRules(ProtocolEnum protocol,
                          uint16_t port,
                          const std::string& interface);
+  bool AddLoopbackLockdownRules(ProtocolEnum protocol, uint16_t port);
+  bool DeleteLoopbackLockdownRules(ProtocolEnum protocol, uint16_t port);
 
  private:
   friend class FirewallTest;
@@ -47,6 +49,13 @@ class Firewall {
                                 ProtocolEnum protocol,
                                 uint16_t port,
                                 const std::string& interface);
+
+  virtual bool AddLoopbackLockdownRule(const std::string& executable_path,
+                                       ProtocolEnum protocol,
+                                       uint16_t port);
+  virtual bool DeleteLoopbackLockdownRule(const std::string& executable_path,
+                                          ProtocolEnum protocol,
+                                          uint16_t port);
 
   // Even though permission_broker runs as a regular user, it can still add
   // other restrictions when launching 'iptables'.
