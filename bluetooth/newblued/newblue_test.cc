@@ -174,14 +174,14 @@ TEST_F(NewblueTest, StartDiscovery) {
       base::Bind(&NewblueTest::OnDeviceDiscovered, base::Unretained(this)));
 
   // 2 devices discovered.
-  struct bt_addr addr1 = {.type = BT_ADDR_TYPE_LE_RANDOM,
-                          .addr = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}};
+  struct bt_addr addr1 = {.addr = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06},
+                          .type = BT_ADDR_TYPE_LE_RANDOM};
   uint8_t eir1[] = {
       6, static_cast<uint8_t>(EirType::NAME_SHORT), 'a', 'l', 'i', 'c', 'e'};
   inquiry_response_callback(inquiry_response_callback_data, &addr1, -101,
                             HCI_ADV_TYPE_SCAN_RSP, &eir1, arraysize(eir1));
-  struct bt_addr addr2 = {.type = BT_ADDR_TYPE_LE_PUBLIC,
-                          .addr = {0x02, 0x03, 0x04, 0x05, 0x06, 0x07}};
+  struct bt_addr addr2 = {.addr = {0x02, 0x03, 0x04, 0x05, 0x06, 0x07},
+                          .type = BT_ADDR_TYPE_LE_PUBLIC};
   uint8_t eir2[] = {
       5, static_cast<uint8_t>(EirType::NAME_SHORT), 'b', 'o', 'b', '\0'};
   inquiry_response_callback(inquiry_response_callback_data, &addr2, -102,
@@ -228,10 +228,10 @@ TEST_F(NewblueTest, PairStateChanged) {
       base::Bind(&NewblueTest::OnDeviceDiscovered, base::Unretained(this)));
 
   // 1 device discovered.
-  struct bt_addr addr1 = {.type = BT_ADDR_TYPE_LE_RANDOM,
-                          .addr = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}};
-  struct bt_addr identity_addr = {.type = BT_ADDR_TYPE_LE_RANDOM,
-                                  .addr = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16}};
+  struct bt_addr addr1 = {.addr = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06},
+                          .type = BT_ADDR_TYPE_LE_RANDOM};
+  struct bt_addr identity_addr = {.addr = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16},
+                                  .type = BT_ADDR_TYPE_LE_RANDOM};
   uint8_t eir1[] = {
       6, static_cast<uint8_t>(EirType::NAME_SHORT), 'a', 'l', 'i', 'c', 'e'};
   inquiry_response_callback(inquiry_response_callback_data, &addr1, -101,
@@ -305,8 +305,8 @@ TEST_F(NewblueTest, Pair) {
       base::Bind(&NewblueTest::OnDeviceDiscovered, base::Unretained(this)));
 
   // 1 device discovered.
-  struct bt_addr addr = {.type = BT_ADDR_TYPE_LE_RANDOM,
-                         .addr = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}};
+  struct bt_addr addr = {.addr = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06},
+                         .type = BT_ADDR_TYPE_LE_RANDOM};
   std::string device_addr("06:05:04:03:02:01");
   uint8_t eir[] = {
       // Flag
@@ -345,8 +345,8 @@ TEST_F(NewblueTest, CancelPairing) {
       base::Bind(&NewblueTest::OnDeviceDiscovered, base::Unretained(this)));
 
   // 1 device discovered.
-  struct bt_addr addr = {.type = BT_ADDR_TYPE_LE_RANDOM,
-                         .addr = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}};
+  struct bt_addr addr = {.addr = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06},
+                         .type = BT_ADDR_TYPE_LE_RANDOM};
   std::string device_addr("06:05:04:03:02:01");
   uint8_t eir[] = {
       // Flag
@@ -400,8 +400,8 @@ TEST_F(NewblueTest, PasskeyDisplayObserver) {
   TestPairingAgent pairing_agent;
   newblue_->RegisterPairingAgent(&pairing_agent);
 
-  struct bt_addr peer_addr = {.type = BT_ADDR_TYPE_LE_RANDOM,
-                              .addr = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}};
+  struct bt_addr peer_addr = {.addr = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06},
+                              .type = BT_ADDR_TYPE_LE_RANDOM};
   struct smPasskeyDisplay passkey_display = {
       .valid = true, .passkey = 123456, .peerAddr = peer_addr};
   passkey_display_callback_(passkey_display_callback_data_, &passkey_display,
