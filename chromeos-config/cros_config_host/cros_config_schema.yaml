@@ -510,6 +510,12 @@ properties:
                 has-base-magnetometer:
                   description: Is there a magnetometer in the base of the device.
                   type: boolean
+                has-base-light-sensor:
+                  description: Is there a light sensor in the base of the device.
+                  type: boolean
+                has-lid-light-sensor:
+                  description: Is there a light sensor in the lid of the device.
+                  type: boolean
                 has-touchscreen:
                   description: Does the device have a touchscreen.
                   type: boolean
