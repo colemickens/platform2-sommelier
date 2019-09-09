@@ -43,6 +43,7 @@ rt_sigreturn: 1
 
 # These were not included by security.USBBouncer.
 ARM_set_tls: 1
+fstatat64: 1
 getpid: 1
 lstat64: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
