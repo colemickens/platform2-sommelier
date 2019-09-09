@@ -1,23 +1,22 @@
-#!/usr/bin/python
+#!/usr/bin/env python2
 
-import dbus, flimflam, sys
+from __future__ import print_function
+import sys
 
-if (len(sys.argv) < 2):
-    print "Usage: %s <device | interface>" % (sys.argv[0])
-    sys.exit(1)
+import dbus
+import flimflam
 
-(_, name) = sys.argv
+if len(sys.argv) < 2:
+  print('Usage: %s <device | interface>' % sys.argv[0])
+  sys.exit(1)
+
+name = sys.argv[1]
 
 flim = flimflam.FlimFlam(dbus.SystemBus())
 
 device = flim.FindElementByNameSubstring('Device', name)
 if device is None:
-    device = flim.FindElementByPropertySubstring('Device', 'Interface', name)
+  device = flim.FindElementByPropertySubstring('Device', 'Interface', name)
 
-print "Enabling device %s" % (device.object_path)
-
-# Shill uses the Enable method, flimflam uses a SetProperty call
-try:
-    device.Enable()
-except dbus.DBusException, error:
-    device.SetProperty("Powered", dbus.Boolean(1))
+print('Enabling device %s' % device.object_path)
+device.Enable()
