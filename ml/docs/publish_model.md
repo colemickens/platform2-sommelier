@@ -32,7 +32,8 @@ CrOS major version:
 | M74             | 1.9.0            |
 | M75             | 1.9.0            |
 | M76             | 1.9.0            |
-| M77             | 1.14.0 (planned) |
+| M77             | 1.9.0            |
+| M78             | 1.14.0           |
 
 
 ## Two methods to publish your models
