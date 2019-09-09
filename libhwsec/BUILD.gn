@@ -78,6 +78,7 @@ if (use.test) {
     ]
     sources = [
       "crypto_utility_test.cc",
+      "message_loop_idle_test.cc",
       "task_dispatching_framework_test.cc",
     ]
     deps = [
