@@ -122,7 +122,6 @@ class CellularService : public Service {
   FRIEND_TEST(CellularServiceTest, LoadFromFirstOfMultipleMatchingProfiles);
   FRIEND_TEST(CellularServiceTest, LoadFromProfileMatchingImsi);
   FRIEND_TEST(CellularServiceTest, LoadFromProfileMatchingMeid);
-  FRIEND_TEST(CellularServiceTest, LoadFromProfileMatchingStorageIdentifier);
   FRIEND_TEST(CellularServiceTest, LoadResetsPPPAuthFailure);
   FRIEND_TEST(CellularServiceTest, Save);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);

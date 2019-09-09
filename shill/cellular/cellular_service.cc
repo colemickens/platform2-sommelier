@@ -232,27 +232,14 @@ bool CellularService::Load(StoreInterface* storage) {
   // MEID, etc).
   string id = GetLoadableStorageIdentifier(*storage);
   if (id.empty()) {
-    // The default storage identifier is still used for backward compatibility
-    // as an older profile doesn't have other service related properties
-    // stored.
-    //
-    // TODO(benchan): We can probably later switch to match profiles solely
-    // based on service properties, instead of storage identifier.
-    id = GetStorageIdentifier();
-    SLOG(this, 2) << __func__
-                  << ": No service with matching properties found; "
-                     "try storage identifier instead";
-    if (!storage->ContainsGroup(id)) {
-      LOG(WARNING) << "Service is not available in the persistent store: "
-                   << id;
-      return false;
-    }
-  } else {
-    SLOG(this, 2) << __func__
-                  << ": Service with matching properties found: " << id;
-    // Set our storage identifier to match the storage name in the Profile.
-    storage_identifier_ = id;
+    LOG(WARNING) << "No service with matching properties found";
+    return false;
   }
+
+  SLOG(this, 2) << __func__
+                << ": Service with matching properties found: " << id;
+  // Set our storage identifier to match the storage name in the Profile.
+  storage_identifier_ = id;
 
   // Load properties common to all Services.
   if (!Service::Load(storage))
@@ -429,10 +416,7 @@ string CellularService::GetLoadableStorageIdentifier(
 }
 
 bool CellularService::IsLoadableFrom(const StoreInterface& storage) const {
-  // TODO(benchan): Remove `|| Service::IsLoadableFrom(storage)` once we no
-  // longer locate a profile based on storage identifier.
-  return !GetLoadableStorageIdentifier(storage).empty() ||
-         Service::IsLoadableFrom(storage);
+  return !GetLoadableStorageIdentifier(storage).empty();
 }
 
 void CellularService::SetActivationType(ActivationType type) {

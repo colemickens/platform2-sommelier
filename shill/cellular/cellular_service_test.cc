@@ -267,6 +267,7 @@ TEST_F(CellularServiceTest, LastGoodApn) {
 }
 
 TEST_F(CellularServiceTest, IsAutoConnectable) {
+  device_->set_imsi("111222123456789");
   const char* reason = nullptr;
 
   // Auto-connect should be suppressed if the device is not running.
@@ -316,8 +317,11 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
   // But if the Service is reloaded, it is eligible for auto-connect
   // again.
   NiceMock<MockStore> storage;
-  EXPECT_CALL(storage, ContainsGroup(service_->GetStorageIdentifier()))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(storage, ContainsGroup(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(storage, GetString(_, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(storage, GetGroupsWithProperties(ContainsCellularProperties(
+                           CellularService::kStorageImsi, device_->imsi())))
+      .WillRepeatedly(Return(std::set<string>{"matching-storage-id"}));
   EXPECT_TRUE(service_->Load(&storage));
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
@@ -341,9 +345,14 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
 }
 
 TEST_F(CellularServiceTest, LoadResetsPPPAuthFailure) {
+  device_->set_imsi("111222123456789");
+
   NiceMock<MockStore> storage;
   EXPECT_CALL(storage, ContainsGroup(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(storage, GetString(_, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(storage, GetGroupsWithProperties(ContainsCellularProperties(
+                           CellularService::kStorageImsi, device_->imsi())))
+      .WillRepeatedly(Return(std::set<string>{"matching-storage-id"}));
 
   const string kDefaultUser;
   const string kDefaultPass;
@@ -376,16 +385,6 @@ TEST_F(CellularServiceTest, LoadResetsPPPAuthFailure) {
       }
     }
   }
-}
-
-TEST_F(CellularServiceTest, LoadFromProfileMatchingStorageIdentifier) {
-  NiceMock<MockStore> storage;
-  string storage_id = service_->GetStorageIdentifier();
-  EXPECT_CALL(storage, ContainsGroup(storage_id)).WillRepeatedly(Return(true));
-  EXPECT_CALL(storage, GetString(_, _, _)).WillRepeatedly(Return(true));
-  EXPECT_TRUE(service_->IsLoadableFrom(storage));
-  EXPECT_TRUE(service_->Load(&storage));
-  EXPECT_EQ(storage_id, service_->GetStorageIdentifier());
 }
 
 TEST_F(CellularServiceTest, LoadFromProfileMatchingImsi) {
