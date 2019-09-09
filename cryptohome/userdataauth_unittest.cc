@@ -421,11 +421,16 @@ static_assert(
         static_cast<int>(cryptohome::CRYPTOHOME_ERROR_FAILED_TO_EXTEND_PCR),
     "Enum member CRYPTOHOME_ERROR_FAILED_TO_EXTEND_PCR differs between "
     "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_TPM_UPDATE_REQUIRED) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_TPM_UPDATE_REQUIRED),
+    "Enum member CRYPTOHOME_ERROR_TPM_UPDATE_REQUIRED differs between "
+    "user_data_auth:: and cryptohome::");
 
 static_assert(
-    user_data_auth::CryptohomeErrorCode_MAX == 40,
+    user_data_auth::CryptohomeErrorCode_MAX == 41,
     "user_data_auth::CrytpohomeErrorCode's element count is incorrect");
-static_assert(cryptohome::CryptohomeErrorCode_MAX == 40,
+static_assert(cryptohome::CryptohomeErrorCode_MAX == 41,
               "cryptohome::CrytpohomeErrorCode's element count is incorrect");
 }  // namespace CryptohomeErrorCodeEquivalenceTest
 
