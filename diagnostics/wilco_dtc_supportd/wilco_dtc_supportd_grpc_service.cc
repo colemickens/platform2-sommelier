@@ -17,6 +17,7 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/sys_info.h>
 
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
@@ -594,13 +595,25 @@ void WilcoDtcSupportdGrpcService::GetOsVersion(
   DCHECK(request);
 
   std::string version;
+  std::string milestone_str;
+  int milestone = 0;
+
   if (!base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_VERSION",
                                          &version)) {
     LOG(ERROR) << "Could not read the release version";
   }
+  if (!base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_CHROME_MILESTONE",
+                                         &milestone_str)) {
+    LOG(ERROR) << "Could not read the release milestone";
+  }
 
+  if (!base::StringToInt(milestone_str, &milestone)) {
+    LOG(ERROR) << "Failed to convert the milestone '" << milestone_str
+               << "' to integer.";
+  }
   auto reply = std::make_unique<grpc_api::GetOsVersionResponse>();
   reply->set_version(version);
+  reply->set_milestone(milestone);
   callback.Run(std::move(reply));
 }
 

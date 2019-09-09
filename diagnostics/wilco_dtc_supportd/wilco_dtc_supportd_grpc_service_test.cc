@@ -374,15 +374,11 @@ class WilcoDtcSupportdGrpcServiceTest : public testing::Test {
                                 GrpcCallbackResponseSaver(response));
   }
 
-  void ExecuteGetOsVersion(std::string* version) {
+  void ExecuteGetOsVersion(
+      std::unique_ptr<grpc_api::GetOsVersionResponse>* response) {
     auto request = std::make_unique<grpc_api::GetOsVersionRequest>();
-    std::unique_ptr<grpc_api::GetOsVersionResponse> response;
     service()->GetOsVersion(std::move(request),
-                            GrpcCallbackResponseSaver(&response));
-
-    // Expect the method to return immediately.
-    ASSERT_TRUE(response);
-    *version = response->version();
+                            GrpcCallbackResponseSaver(response));
   }
 
   void ExecuteGetConfigurationData(
@@ -572,23 +568,33 @@ TEST_F(WilcoDtcSupportdGrpcServiceTest, RunUrandomRoutineNoParameters) {
 }
 
 TEST_F(WilcoDtcSupportdGrpcServiceTest, GetOsVersionUnset) {
+  std::unique_ptr<grpc_api::GetOsVersionResponse> response;
   base::SysInfo::SetChromeOSVersionInfoForTest("", base::Time());
-  std::string version;
-  ExecuteGetOsVersion(&version);
+  ExecuteGetOsVersion(&response);
 
-  EXPECT_TRUE(version.empty());
+  ASSERT_TRUE(response);
+
+  EXPECT_TRUE(response->version().empty());
+  EXPECT_EQ(response->milestone(), 0);
 }
 
 TEST_F(WilcoDtcSupportdGrpcServiceTest, GetOsVersion) {
-  constexpr char kLsbRelease[] = "CHROMEOS_RELEASE_VERSION=%s";
+  constexpr char kLsbRelease[] =
+      "CHROMEOS_RELEASE_CHROME_MILESTONE=%d\n"
+      "CHROMEOS_RELEASE_VERSION=%s";
+  constexpr int kMilestone = 75;
   constexpr char kOsVersion[] = "11932.0.2019_03_20_1100";
 
+  std::unique_ptr<grpc_api::GetOsVersionResponse> response;
   base::SysInfo::SetChromeOSVersionInfoForTest(
-      base::StringPrintf(kLsbRelease, kOsVersion), base::Time());
-  std::string version;
-  ExecuteGetOsVersion(&version);
+      base::StringPrintf(kLsbRelease, kMilestone, kOsVersion), base::Time());
 
-  EXPECT_EQ(version, kOsVersion);
+  ExecuteGetOsVersion(&response);
+
+  ASSERT_TRUE(response);
+
+  EXPECT_EQ(response->version(), kOsVersion);
+  EXPECT_EQ(response->milestone(), kMilestone);
 }
 
 // Test that an empty string is a valid result.

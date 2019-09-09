@@ -495,6 +495,8 @@ message GetOsVersionResponse {
   // - for a dev/test build: 11932.0.2019_03_20_1100
   // - for an official build: 11932.0.0
   string version = 1;
+  // The milestone is the Chrome OS branch number, 0 in case of any error.
+  int32 milestone = 2;
 }
 
 // Parameters for the GetVpdField RPC.
