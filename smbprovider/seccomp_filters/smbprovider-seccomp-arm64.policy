@@ -15,9 +15,11 @@ epoll_pwait: 1
 exit: 1
 exit_group: 1
 faccessat: 1
+fallocate: 1
 fcntl: 1
 fdatasync: 1
 fstat: 1
+ftruncate: 1
 futex: 1
 getdents64: 1
 getegid: 1
