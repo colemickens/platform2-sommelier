@@ -100,6 +100,7 @@ libbrillo_sublibs = [
         "brillo/dbus/dbus_signal.cc",
         "brillo/dbus/exported_object_manager.cc",
         "brillo/dbus/exported_property_set.cc",
+        "brillo/dbus/introspectable_helper.cc",
         "brillo/dbus/utils.cc",
       ]
     }
