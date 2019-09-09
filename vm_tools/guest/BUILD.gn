@@ -10,6 +10,7 @@ group("guest") {
     ":garcon",
     ":maitred",
     ":notificationd",
+    ":upgrade_container",
     ":virtwl_guest_proxy",
     ":vm_syslog",
     ":vshd",
@@ -179,6 +180,15 @@ executable("notificationd") {
   deps = [
     ":libnotificationd",
     ":notification-protocol",
+  ]
+}
+
+copy("upgrade_container") {
+  sources = [
+    "../upgrade_container/upgrade_container",
+  ]
+  outputs = [
+    "$root_out_dir/upgrade_container",
   ]
 }
 

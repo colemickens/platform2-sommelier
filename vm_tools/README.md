@@ -69,6 +69,11 @@ uses TCP/IP for the transport and firewall rules ensure that only the container
 IPs are allowed to connect to the corresponding port for `garcon` that is open
 in `vm_cicerone`.
 
+## upgrade_container
+
+`upgrade_container` is executed inside a container by Tremplin to upgrade the
+container e.g. a Debian Stretch container to Debian Buster.
+
 ## p9
 
 The [p9](p9/) directory holds a server implementation of the [9p] file system
