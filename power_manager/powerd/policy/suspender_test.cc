@@ -300,6 +300,9 @@ TEST_F(SuspenderTest, SuspendResume) {
   const base::TimeDelta kDuration = base::TimeDelta::FromMinutes(20);
   delegate_.set_suspend_advance_time(kDuration);
 
+  // Indicate to suspender that input device triggered the wake.
+  wakeup_source_identifier_.SetInputDeviceCausedLastWake(false);
+
   // When Suspender receives notice that the system is ready to be
   // suspended, it should immediately suspend the system.
   dbus_wrapper_.ClearSentSignals();
@@ -317,6 +320,7 @@ TEST_F(SuspenderTest, SuspendResume) {
       dbus_wrapper_.GetSentSignal(0, kSuspendDoneSignal, &done_proto, nullptr));
   EXPECT_EQ(suspend_id, done_proto.suspend_id());
   EXPECT_EQ(kDuration.ToInternalValue(), done_proto.suspend_duration());
+  EXPECT_EQ(done_proto.wakeup_type(), SuspendDone_WakeupType_OTHER);
   EXPECT_FALSE(delegate_.suspend_announced());
 
   // A resuspend timeout shouldn't be set.
@@ -379,6 +383,7 @@ TEST_F(SuspenderTest, SuspendCancelDueToInputDeviceWakeEvent) {
   EXPECT_TRUE(
       dbus_wrapper_.GetSentSignal(0, kSuspendDoneSignal, &done_proto, nullptr));
   EXPECT_EQ(suspend_id, done_proto.suspend_id());
+  EXPECT_EQ(done_proto.wakeup_type(), SuspendDone_WakeupType_INPUT);
   EXPECT_FALSE(delegate_.suspend_announced());
 
   // A resuspend timeout shouldn't be set.

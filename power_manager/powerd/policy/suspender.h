@@ -334,7 +334,7 @@ class Suspender : public SuspendDelayObserver,
 
   // Completes the current suspend request, undoing any work performed by
   // StartRequest().
-  void FinishRequest(bool success);
+  void FinishRequest(bool success, SuspendDone::WakeupType wakeup_type);
 
   // Actually performs a suspend attempt and waits for the system to resume,
   // returning a new value for |state_|.
@@ -353,7 +353,8 @@ class Suspender : public SuspendDelayObserver,
 
   // Emits D-Bus signal announcing the end of a suspend request.
   void EmitSuspendDoneSignal(int suspend_request_id,
-                             const base::TimeDelta& suspend_duration);
+                             const base::TimeDelta& suspend_duration,
+                             SuspendDone::WakeupType wakeup_type);
 
   // Emits a D-Bus signal announcing that the system will soon resuspend from
   // dark resume. |dark_resume_id_| is used as the request ID.

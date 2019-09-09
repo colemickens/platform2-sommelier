@@ -106,7 +106,8 @@ void Suspender::Init(
   // but before emitting SuspendDone.
   if (delegate_->GetSuspendAnnounced()) {
     LOG(INFO) << "Previous run exited mid-suspend; emitting SuspendDone";
-    EmitSuspendDoneSignal(0, base::TimeDelta());
+    EmitSuspendDoneSignal(0, base::TimeDelta(),
+                          SuspendDone_WakeupType_NOT_APPLICABLE);
     delegate_->SetSuspendAnnounced(false);
   }
 }
@@ -427,7 +428,7 @@ void Suspender::HandleEventInWaitingForNormalSuspendDelays(Event event) {
       state_ = HandleWakeEventInSuspend(event);
       break;
     case Event::SHUTDOWN_STARTED:
-      FinishRequest(false);
+      FinishRequest(false, SuspendDone_WakeupType_NOT_APPLICABLE);
       state_ = State::SHUTTING_DOWN;
       break;
     default:
@@ -452,7 +453,7 @@ void Suspender::HandleEventInDarkResumeOrRetrySuspend(Event event) {
       state_ = HandleWakeEventInSuspend(event);
       break;
     case Event::SHUTDOWN_STARTED:
-      FinishRequest(false);
+      FinishRequest(false, SuspendDone_WakeupType_NOT_APPLICABLE);
       state_ = State::SHUTTING_DOWN;
       break;
     default:
@@ -475,7 +476,7 @@ Suspender::State Suspender::HandleWakeEventInSuspend(Event event) {
     return state_;
 
   LOG(INFO) << "Aborting request in response to event " << EventToString(event);
-  FinishRequest(false);
+  FinishRequest(false, SuspendDone_WakeupType_NOT_APPLICABLE);
   return State::IDLE;
 }
 
@@ -513,7 +514,8 @@ void Suspender::StartRequest() {
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kSuspendImminentSignal, proto);
 }
 
-void Suspender::FinishRequest(bool success) {
+void Suspender::FinishRequest(bool success,
+                              SuspendDone::WakeupType wakeup_type) {
   const base::TimeTicks end_time = clock_->GetCurrentBootTime();
   base::TimeDelta suspend_duration = end_time - suspend_request_start_time_;
   if (suspend_duration < base::TimeDelta()) {
@@ -530,7 +532,7 @@ void Suspender::FinishRequest(bool success) {
   suspend_delay_controller_->FinishSuspend(suspend_request_id_);
   dark_suspend_delay_controller_->FinishSuspend(dark_suspend_id_);
   shutdown_from_suspend_->HandleFullResume();
-  EmitSuspendDoneSignal(suspend_request_id_, suspend_duration);
+  EmitSuspendDoneSignal(suspend_request_id_, suspend_duration, wakeup_type);
   delegate_->SetSuspendAnnounced(false);
   dark_resume_->ExitDarkResume();
   delegate_->UndoPrepareToSuspend(success, initial_num_attempts_
@@ -601,15 +603,23 @@ Suspender::State Suspender::Suspend() {
 }
 
 Suspender::State Suspender::HandleNormalResume(Delegate::SuspendResult result) {
-  // If an external wakeup count was provided and the suspend attempt failed due
-  // to a wakeup count mismatch, this indicates that a test probably triggered
-  // this suspend attempt after setting a wake alarm, and if we retry later,
-  // it's likely that the alarm will have already fired and the system will
-  // never wake up.
+  SuspendDone::WakeupType wakeup_type = SuspendDone_WakeupType_NOT_APPLICABLE;
+
+  if (result == Delegate::SuspendResult::SUCCESS) {
+    wakeup_type = wakeup_source_identifier_->InputDeviceCausedLastWake()
+                      ? SuspendDone_WakeupType_INPUT
+                      : SuspendDone_WakeupType_OTHER;
+  }
+
+  // If an external wakeup count was provided and the suspend attempt
+  // failed due to a wakeup count mismatch, this indicates that a test
+  // probably triggered this suspend attempt after setting a wake alarm,
+  // and if we retry later, it's likely that the alarm will have already
+  // fired and the system will never wake up.
   if ((result == Delegate::SuspendResult::SUCCESS) ||
       (result == Delegate::SuspendResult::CANCELED &&
        suspend_request_supplied_wakeup_count_)) {
-    FinishRequest(result == Delegate::SuspendResult::SUCCESS);
+    FinishRequest(result == Delegate::SuspendResult::SUCCESS, wakeup_type);
     return State::IDLE;
   }
 
@@ -690,10 +700,12 @@ void Suspender::ScheduleResuspend(const base::TimeDelta& delay) {
 }
 
 void Suspender::EmitSuspendDoneSignal(int suspend_request_id,
-                                      const base::TimeDelta& suspend_duration) {
+                                      const base::TimeDelta& suspend_duration,
+                                      SuspendDone::WakeupType wakeup_type) {
   SuspendDone proto;
   proto.set_suspend_id(suspend_request_id);
   proto.set_suspend_duration(suspend_duration.ToInternalValue());
+  proto.set_wakeup_type(wakeup_type);
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kSuspendDoneSignal, proto);
 }
 
