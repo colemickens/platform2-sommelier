@@ -2055,11 +2055,16 @@ void LegacyCryptohomeInterfaceAdaptor::GetLoginStatusOnSuccess(
     const user_data_auth::GetLoginStatusReply& reply) {
   cryptohome::BaseReply result;
   result.set_error(static_cast<cryptohome::CryptohomeErrorCode>(reply.error()));
-  result.MutableExtension(cryptohome::GetLoginStatusReply::reply)
-      ->set_owner_user_exists(reply.owner_user_exists());
+  auto* extension =
+      result.MutableExtension(cryptohome::GetLoginStatusReply::reply);
+  extension->set_owner_user_exists(reply.owner_user_exists());
 
   // See definition of user_data_auth::GetLoginStatusReply for more information
-  // on why |boot_lockbox_finalized| is not included here.
+  // on why |boot_lockbox_finalized| is deprecated.
+  // Note that it's set to a false value here to ensure clients that expect this
+  // field continues to work.
+  extension->set_boot_lockbox_finalized(false);
+
   ClearErrorIfNotSet(&result);
   response->Return(result);
 }
