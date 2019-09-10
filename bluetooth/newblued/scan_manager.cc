@@ -10,13 +10,16 @@
 #include <utility>
 
 #include "bluetooth/newblued/util.h"
+#include <chromeos/dbus/service_constants.h>
 
 namespace bluetooth {
 
 ScanManager::ScanManager(Newblue* newblue,
-                         DeviceInterfaceHandler* device_interface_handler)
+                         DeviceInterfaceHandler* device_interface_handler,
+                         ExportedInterface* adapter_interface)
     : newblue_(newblue),
       device_interface_handler_(device_interface_handler),
+      adapter_interface_(adapter_interface),
       weak_ptr_factory_(this) {
   CHECK(newblue_);
   CHECK(device_interface_handler_);
@@ -298,6 +301,12 @@ bool ScanManager::UpdateScan(void) {
   }
 
   scan_state_ = scan_state_new;
+  adapter_interface_
+      ->EnsureExportedPropertyRegistered<bool>(
+          bluetooth_adapter::kDiscoveringProperty)
+      ->SetValue(scan_state_ == ScanState::ACTIVE_SCAN ||
+                 scan_state_ == ScanState::PASSIVE_SCAN);
+
   return true;
 }
 

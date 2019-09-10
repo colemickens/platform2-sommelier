@@ -13,6 +13,7 @@
 
 #include <base/memory/weak_ptr.h>
 
+#include "bluetooth/common/exported_object_manager_wrapper.h"
 #include "bluetooth/newblued/device_interface_handler.h"
 #include "bluetooth/newblued/newblue.h"
 
@@ -23,10 +24,11 @@ enum class FilterKeys { INVALID, RSSI, PATHLOSS, UUIDS };
 // Core implementation of scan management.
 class ScanManager final : public DeviceInterfaceHandler::DeviceObserver {
  public:
-  // |newblue| and |device_interface_handler| not owned, caller must make sure
-  // it outlives this object.
+  // |newblue|, |device_interface_handler| and |adapter_interface| not owned,
+  // caller must make sure they outlive this object.
   ScanManager(Newblue* newblue,
-              DeviceInterfaceHandler* device_interface_handler);
+              DeviceInterfaceHandler* device_interface_handler,
+              ExportedInterface* adapter_interface);
   ~ScanManager() override;
 
   // Overrides of DeviceInterfaceHandler::DeviceObserver.
@@ -134,6 +136,8 @@ class ScanManager final : public DeviceInterfaceHandler::DeviceObserver {
   // constructor should take the pointer to the object holding the device
   // connection instead of DeviceInterfaceHandler.
   DeviceInterfaceHandler* device_interface_handler_;
+
+  ExportedInterface* adapter_interface_;
 
   // Contains pairs of <device address, PairedDevice Objects> to store the
   // paired devices information.

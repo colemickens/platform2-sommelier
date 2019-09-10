@@ -25,6 +25,10 @@
 namespace bluetooth {
 
 namespace {
+constexpr char kNewblueAdapterName[] = "NewBlue";
+constexpr char kNewblueAdapterAddress[] = "AA:BB:CC:DD:EE:FF";
+constexpr char kGapUUID[] = "00001800-0000-1000-8000-00805f9b34fb";
+constexpr char kGattUUID[] = "00001801-0000-1000-8000-00805f9b34fb";
 
 // A string to FilterKeys mapping table, used to convert keys of scan
 // parameters into NewBlue standardized enum.
@@ -103,8 +107,6 @@ void AdapterInterfaceHandler::Init(
   CHECK(device_interface_handler != nullptr);
   CHECK(newblue != nullptr);
 
-  scan_manager_ =
-      std::make_unique<ScanManager>(newblue, device_interface_handler);
   device_interface_handler_ = device_interface_handler;
   dbus::ObjectPath adapter_object_path(kAdapterObjectPath);
   exported_object_manager_wrapper_->AddExportedInterface(
@@ -113,7 +115,8 @@ void AdapterInterfaceHandler::Init(
   ExportedInterface* adapter_interface =
       exported_object_manager_wrapper_->GetExportedInterface(
           adapter_object_path, bluetooth_adapter::kBluetoothAdapterInterface);
-
+  scan_manager_ = std::make_unique<ScanManager>(
+      newblue, device_interface_handler, adapter_interface);
   // Expose the "Powered" property of the adapter. This property is only
   // controlled by BlueZ, so newblued's "Powered" property is ignored by
   // btdispatch. However, it is useful to have the dummy "Powered" property
@@ -127,6 +130,19 @@ void AdapterInterfaceHandler::Init(
       ->EnsureExportedPropertyRegistered<bool>(
           bluetooth_adapter::kStackSyncQuittingProperty)
       ->SetValue(false);
+  adapter_interface
+      ->EnsureExportedPropertyRegistered<std::string>(
+          bluetooth_adapter::kNameProperty)
+      ->SetValue(kNewblueAdapterName);
+  const std::vector<std::string> uuids = {kGapUUID, kGattUUID};
+  adapter_interface
+      ->EnsureExportedPropertyRegistered<std::vector<std::string>>(
+          bluetooth_adapter::kUUIDsProperty)
+      ->SetValue(uuids);
+  adapter_interface
+      ->EnsureExportedPropertyRegistered<std::string>(
+          bluetooth_adapter::kAddressProperty)
+      ->SetValue(kNewblueAdapterAddress);
 
   adapter_interface->AddSimpleMethodHandlerWithErrorAndMessage(
       bluetooth_adapter::kSetDiscoveryFilter, base::Unretained(this),
