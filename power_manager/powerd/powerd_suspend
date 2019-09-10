@@ -72,11 +72,11 @@ readonly COMPACT_ORDER3_THRESHOLD=500
 readonly NO_COMPACT_FILE="${ROOT_RUN_DIR}"/no-compact
 
 log_msg() {
-  logger -t "powerd_suspend[$$]" -- "$@"
+  logger -t "powerd_suspend" --id="$$" -- "$@"
 }
 
 log_msg_from_file() {
-  logger -t "powerd_suspend[$$]" -f "$1"
+  logger -t "powerd_suspend" --id="$$" -f "$1"
 }
 
 log_wakeup_count() {
