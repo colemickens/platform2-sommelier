@@ -9,6 +9,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/lockbox.h"
 
 namespace cryptohome {
@@ -24,26 +25,53 @@ bool CacheLockbox(cryptohome::Platform* platform,
   brillo::SecureBlob nvram;
   if (!platform->ReadFileToSecureBlob(nvram_path, &nvram)) {
     LOG(INFO) << "Failed to read NVRAM contents from " << nvram_path.value();
+    ReportInstallAttributesValidation(
+        InstallAttributesValidationEvent::kNvramReadFailed);
     return false;
   }
   std::unique_ptr<LockboxContents> lockbox = LockboxContents::New(nvram.size());
   if (!lockbox) {
     LOG(ERROR) << "Unsupported lockbox size!";
+    ReportInstallAttributesValidation(
+        InstallAttributesValidationEvent::kNvramInvalidSizeRead);
     return false;
   }
   if (!lockbox->Decode(nvram)) {
     LOG(ERROR) << "Lockbox failed to decode NVRAM data";
+    ReportInstallAttributesValidation(
+        InstallAttributesValidationEvent::kNvramDecodeFailed);
     return false;
   }
 
   brillo::Blob lockbox_data;
   if (!platform->ReadFile(lockbox_path, &lockbox_data)) {
     LOG(INFO) << "Failed to read lockbox data from " << lockbox_path.value();
+    ReportInstallAttributesValidation(
+        InstallAttributesValidationEvent::kDataReadFailed);
     return false;
   }
-  if (lockbox->Verify(lockbox_data) !=
-      LockboxContents::VerificationResult::kValid) {
-    LOG(ERROR) << "Lockbox did not verify!";
+
+  LockboxContents::VerificationResult result = lockbox->Verify(lockbox_data);
+
+  if (result != LockboxContents::VerificationResult::kValid) {
+    switch (result) {
+      case LockboxContents::VerificationResult::kSizeMismatch:
+        LOG(ERROR) << "Lockbox did not verify due to invalid size!";
+        ReportInstallAttributesValidation(
+            InstallAttributesValidationEvent::kDataVerificationSizeFailed);
+        break;
+
+      case LockboxContents::VerificationResult::kHashMismatch:
+        LOG(ERROR) << "Lockbox did not verify due to invalid hash!";
+        ReportInstallAttributesValidation(
+            InstallAttributesValidationEvent::kDataVerificationHashFailed);
+        break;
+
+      default:
+        NOTREACHED() << "Unexpected LockboxContents::VerificationResult";
+        break;
+    }
+
     return false;
   }
 
@@ -51,9 +79,13 @@ bool CacheLockbox(cryptohome::Platform* platform,
   if (!platform->WriteFileAtomic(cache_path, lockbox_data,
                                  kCacheFilePermissions)) {
     LOG(ERROR) << "Failed to write cache file";
+    ReportInstallAttributesValidation(
+        InstallAttributesValidationEvent::kCacheWriteFailed);
     return false;
   }
 
+  ReportInstallAttributesValidation(
+      InstallAttributesValidationEvent::kCacheWriteSucceeded);
   return true;
 }
 

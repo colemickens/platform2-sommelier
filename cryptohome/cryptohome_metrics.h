@@ -213,6 +213,35 @@ enum class DeprecatedApiEvent {
   kMaxValue,                    // 8
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class InstallAttributesValidationEvent {
+  kCacheWriteSucceeded = 0,
+  kNvramReadFailed = 1,
+  kNvramInvalidSizeRead = 2,
+  kNvramDecodeFailed = 3,
+  kDataReadFailed = 4,
+  kDataVerificationSizeFailed = 5,
+  kDataVerificationHashFailed = 6,
+  kCacheWriteFailed = 7,
+  kMaxValue = kCacheWriteFailed
+};
+
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class InstallAttributesUsageEvent {
+  kCacheReadSucceeded = 0,
+  kFirstInstall = 1,
+  kCacheParseFailed = 2,
+  kTpmNotOwned = 3,
+  kTpmInvalidState = 4,
+  kNvramSpaceAbsent = 5,
+  kNvramInvalid = 6,
+  kTpmUnavailable = 7,
+  kTpmError = 8,
+  kMaxValue = kTpmError
+};
+
 // Just to make sure I count correctly.
 static_assert(static_cast<int>(DeprecatedApiEvent::kMaxValue) == 8,
               "DeprecatedApiEvent Enum miscounted");
@@ -370,6 +399,12 @@ void ReportParallelTasks(int amount_of_task);
 // This is used to determine which deprecated function is truly dead code,
 // and removing it will not trigger side effects.
 void ReportDeprecatedApiCalled(DeprecatedApiEvent event);
+
+// Reports the result of the validation of install_attributes.pb
+void ReportInstallAttributesValidation(InstallAttributesValidationEvent event);
+
+// Reports the result of the usage of install_attributes.pb
+void ReportInstallAttributesUsage(InstallAttributesUsageEvent event);
 
 // Initialization helper.
 class ScopedMetricsInitializer {

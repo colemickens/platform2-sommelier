@@ -7,6 +7,7 @@
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/lockbox-cache.h"
 #include "cryptohome/platform.h"
 
@@ -21,6 +22,8 @@ int main(int argc, char **argv) {
   base::CommandLine::Init(argc, argv);
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
+
+  cryptohome::ScopedMetricsInitializer metrics_initializer;
 
   // Allow the commands to be configurable.
   base::CommandLine *cl = base::CommandLine::ForCurrentProcess();

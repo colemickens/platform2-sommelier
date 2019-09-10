@@ -74,6 +74,10 @@ constexpr char kDircryptoMigrationInitialFreeSpaceInMbHistogram[] =
 constexpr char kDircryptoMigrationNoSpaceXattrSizeInBytesHistogram[] =
     "Cryptohome.DircryptoMigrationNoSpaceXattrSizeInBytes";
 constexpr char kTpmAlertsHistogram[] = "Platform.TPM.HardwareAlerts";
+constexpr char kInstallAttributesValidationHistogram[] =
+    "Cryptohome.InstallAttributesValidation";
+constexpr char kInstallAttributesUsageHistogram[] =
+    "Cryptohome.InstallAttributesUsage";
 
 // Histogram parameters. This should match the order of 'TimerType'.
 // Min and max samples are in milliseconds.
@@ -462,6 +466,30 @@ void ReportDeprecatedApiCalled(DeprecatedApiEvent event) {
 
   constexpr auto max_event = static_cast<int>(DeprecatedApiEvent::kMaxValue);
   g_metrics->SendEnumToUMA(kCryptohomeDeprecatedApiHistogramName,
+                           static_cast<int>(event),
+                           static_cast<int>(max_event));
+}
+
+void ReportInstallAttributesValidation(InstallAttributesValidationEvent event) {
+  if (!g_metrics) {
+    return;
+  }
+
+  constexpr auto max_event =
+      static_cast<int>(InstallAttributesValidationEvent::kMaxValue);
+  g_metrics->SendEnumToUMA(kInstallAttributesValidationHistogram,
+                           static_cast<int>(event),
+                           static_cast<int>(max_event));
+}
+
+void ReportInstallAttributesUsage(InstallAttributesUsageEvent event) {
+  if (!g_metrics) {
+    return;
+  }
+
+  constexpr auto max_event =
+      static_cast<int>(InstallAttributesUsageEvent::kMaxValue);
+  g_metrics->SendEnumToUMA(kInstallAttributesUsageHistogram,
                            static_cast<int>(event),
                            static_cast<int>(max_event));
 }

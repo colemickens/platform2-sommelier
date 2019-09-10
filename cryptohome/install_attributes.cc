@@ -14,6 +14,7 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/lockbox.h"
 #include "cryptohome/tpm_init.h"
 
@@ -73,6 +74,8 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
            static_cast<google::protobuf::uint8*>(blob.data()),
            blob.size())) {
       LOG(ERROR) << "Failed to parse data file (" << blob.size() << " bytes)";
+      ReportInstallAttributesUsage(
+          InstallAttributesUsageEvent::kCacheParseFailed);
       attributes_->Clear();
       status_ = Status::kInvalid;
       return false;
@@ -84,6 +87,8 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
     // first boot.
     tpm_init->RemoveTpmOwnerDependency(
         TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
+    ReportInstallAttributesUsage(
+        InstallAttributesUsageEvent::kCacheReadSucceeded);
     return true;
   }
 
@@ -91,6 +96,7 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
   if (!is_secure()) {
     LOG(INFO) << "Init() assuming first-time install for TPM-less system.";
     status_ = Status::kFirstInstall;
+    ReportInstallAttributesUsage(InstallAttributesUsageEvent::kFirstInstall);
     return true;
   }
 
@@ -117,11 +123,13 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
       // Don't flag invalid here - Chrome verifies that install attributes
       // aren't invalid before locking them as part of enterprise enrollment.
       status_ = Status::kTpmNotOwned;
+      ReportInstallAttributesUsage(InstallAttributesUsageEvent::kTpmNotOwned);
       return false;
     }
 
     // Cases that don't look like a cleared TPM get flagged invalid.
     status_ = Status::kInvalid;
+    ReportInstallAttributesUsage(InstallAttributesUsageEvent::kTpmInvalidState);
     return false;
   }
 
@@ -137,18 +145,25 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
         status_ = Status::kValid;
         tpm_init->RemoveTpmOwnerDependency(
             TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
+        ReportInstallAttributesUsage(
+            InstallAttributesUsageEvent::kNvramSpaceAbsent);
         return true;
       case LockboxError::kNvramInvalid:
         LOG(ERROR) << "Inconsistent install attributes state.";
         status_ = Status::kInvalid;
+        ReportInstallAttributesUsage(
+            InstallAttributesUsageEvent::kNvramInvalid);
         return false;
       case LockboxError::kTpmUnavailable:
         NOTREACHED() << "Should never call lockbox when TPM is unavailable.";
         status_ = Status::kInvalid;
+        ReportInstallAttributesUsage(
+            InstallAttributesUsageEvent::kTpmUnavailable);
         return false;
       case LockboxError::kTpmError:
         LOG(ERROR) << "TPM error on install attributes initialization.";
         status_ = Status::kInvalid;
+        ReportInstallAttributesUsage(InstallAttributesUsageEvent::kTpmError);
         return false;
     }
   }
@@ -162,6 +177,7 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
   status_ = Status::kFirstInstall;
   tpm_init->RemoveTpmOwnerDependency(
       TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
+  ReportInstallAttributesUsage(InstallAttributesUsageEvent::kFirstInstall);
   return true;
 }
 
