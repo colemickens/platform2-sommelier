@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BLUETOOTH_NEWBLUED_DEBUG_MANAGER_H_
-#define BLUETOOTH_NEWBLUED_DEBUG_MANAGER_H_
+#ifndef BLUETOOTH_NEWBLUED_NEWBLUE_DEBUG_MANAGER_H_
+#define BLUETOOTH_NEWBLUED_NEWBLUE_DEBUG_MANAGER_H_
 
 #include <string>
 
@@ -20,10 +20,10 @@ namespace bluetooth {
 // This class subscribes the NewblueLevel property of D-Bus interface
 // org.chromium.Bluetooth.Debug, and use it to set the verbosity level of
 // newblue daemon.
-class DebugManager final : public dbus::ObjectManager::Interface {
+class NewblueDebugManager final : public dbus::ObjectManager::Interface {
  public:
-  explicit DebugManager(scoped_refptr<dbus::Bus> bus);
-  ~DebugManager() override = default;
+  explicit NewblueDebugManager(scoped_refptr<dbus::Bus> bus);
+  ~NewblueDebugManager() override = default;
 
   void Init();
 
@@ -45,11 +45,11 @@ class DebugManager final : public dbus::ObjectManager::Interface {
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.
-  base::WeakPtrFactory<DebugManager> weak_ptr_factory_;
+  base::WeakPtrFactory<NewblueDebugManager> weak_ptr_factory_;
 
-  DISALLOW_COPY_AND_ASSIGN(DebugManager);
+  DISALLOW_COPY_AND_ASSIGN(NewblueDebugManager);
 };
 
 }  // namespace bluetooth
 
-#endif  // BLUETOOTH_NEWBLUED_DEBUG_MANAGER_H_
+#endif  // BLUETOOTH_NEWBLUED_NEWBLUE_DEBUG_MANAGER_H_

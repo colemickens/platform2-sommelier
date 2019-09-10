@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "bluetooth/newblued/debug_manager.h"
+#include "bluetooth/newblued/newblue_debug_manager.h"
 
 #include <utility>
 
@@ -18,10 +18,10 @@ constexpr uint8_t kNewblueMinimumVerbosityLevel = 0;
 
 }  // namespace
 
-DebugManager::DebugManager(scoped_refptr<dbus::Bus> bus)
+NewblueDebugManager::NewblueDebugManager(scoped_refptr<dbus::Bus> bus)
     : bus_(bus), weak_ptr_factory_(this) {}
 
-void DebugManager::Init() {
+void NewblueDebugManager::Init() {
   bus_->GetObjectManager(
           bluetooth_object_manager::kBluetoothObjectManagerServiceName,
           dbus::ObjectPath(
@@ -29,20 +29,20 @@ void DebugManager::Init() {
       ->RegisterInterface(bluetooth_debug::kBluetoothDebugInterface, this);
 }
 
-dbus::PropertySet* DebugManager::CreateProperties(
+dbus::PropertySet* NewblueDebugManager::CreateProperties(
     dbus::ObjectProxy* object_proxy,
     const dbus::ObjectPath& object_path,
     const std::string& interface) {
   dbus::PropertySet* properties =
       new dbus::PropertySet(object_proxy, interface,
-                            base::Bind(&DebugManager::OnPropertyChanged,
+                            base::Bind(&NewblueDebugManager::OnPropertyChanged,
                                        weak_ptr_factory_.GetWeakPtr()));
   properties->RegisterProperty(bluetooth_debug::kNewblueLevelProperty,
                                &newblue_level_);
   return properties;
 }
 
-void DebugManager::OnPropertyChanged(const std::string& prop_name) {
+void NewblueDebugManager::OnPropertyChanged(const std::string& prop_name) {
   if (prop_name != bluetooth_debug::kNewblueLevelProperty)
     return;
 
@@ -50,7 +50,7 @@ void DebugManager::OnPropertyChanged(const std::string& prop_name) {
     SetNewblueLogLevel(newblue_level_.value());
 }
 
-void DebugManager::SetNewblueLogLevel(int verbosity) {
+void NewblueDebugManager::SetNewblueLogLevel(int verbosity) {
   if (verbosity < kNewblueMinimumVerbosityLevel) {
     LOG(WARNING) << "Invalid verbosity level for newblue";
     return;
