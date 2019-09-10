@@ -12,6 +12,15 @@
 namespace cros_disks {
 namespace {
 
+static_assert(!FORMAT_ERROR_NONE,
+              "FORMAT_ERROR_NONE must convert to false in boolean context");
+
+static_assert(!MOUNT_ERROR_NONE,
+              "MOUNT_ERROR_NONE must convert to false in boolean context");
+
+static_assert(!RENAME_ERROR_NONE,
+              "RENAME_ERROR_NONE must convert to false in boolean context");
+
 template <typename T>
 std::string ToString(T error) {
   std::ostringstream out;
