@@ -281,8 +281,6 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
 
   bool InDarkResume() override { return in_dark_resume_; }
 
-  bool connected_before_suspend() const { return connected_before_suspend_; }
-
   void OnWiphyIndexReceived(uint32_t index) override;
 
  private:
