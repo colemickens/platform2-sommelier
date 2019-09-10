@@ -8,8 +8,8 @@
 #include <memory>
 
 #include "bluetooth/common/bluetooth_daemon.h"
-#include "bluetooth/dispatcher/debug_manager.h"
 #include "bluetooth/dispatcher/dispatcher.h"
+#include "bluetooth/dispatcher/dispatcher_debug_manager.h"
 #include "bluetooth/dispatcher/suspend_manager.h"
 
 namespace bluetooth {
@@ -34,7 +34,7 @@ class DispatcherDaemon : public BluetoothDaemon {
   std::unique_ptr<SuspendManager> suspend_manager_;
 
   // Exposes D-Bus API to enable debug logs
-  std::unique_ptr<DebugManager> debug_manager_;
+  std::unique_ptr<DispatcherDebugManager> debug_manager_;
 
   // Exposes BlueZ-compatible D-Bus API and handles the client requests.
   std::unique_ptr<Dispatcher> dispatcher_;

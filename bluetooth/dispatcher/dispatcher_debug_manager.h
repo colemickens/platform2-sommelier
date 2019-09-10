@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BLUETOOTH_DISPATCHER_DEBUG_MANAGER_H_
-#define BLUETOOTH_DISPATCHER_DEBUG_MANAGER_H_
+#ifndef BLUETOOTH_DISPATCHER_DISPATCHER_DEBUG_MANAGER_H_
+#define BLUETOOTH_DISPATCHER_DISPATCHER_DEBUG_MANAGER_H_
 
 #include <memory>
 #include <string>
@@ -21,13 +21,14 @@ namespace bluetooth {
 // This class exposes four D-Bus properties, the verbosity of debug logs for
 // each of the dispatcher, newblue, bluez, and kernel. The values can be set
 // with a D-Bus method that is also exposed here.
-class DebugManager final {
+class DispatcherDebugManager final {
  public:
   // |exported_object_manager_wrapper| not owned, caller must make
   // sure it outlives this object.
-  DebugManager(scoped_refptr<dbus::Bus> bus,
-               ExportedObjectManagerWrapper* exported_object_manager_wrapper);
-  ~DebugManager() = default;
+  DispatcherDebugManager(
+      scoped_refptr<dbus::Bus> bus,
+      ExportedObjectManagerWrapper* exported_object_manager_wrapper);
+  ~DispatcherDebugManager() = default;
 
   // Initializes the D-Bus operations.
   void Init();
@@ -64,11 +65,11 @@ class DebugManager final {
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.
-  base::WeakPtrFactory<DebugManager> weak_ptr_factory_;
+  base::WeakPtrFactory<DispatcherDebugManager> weak_ptr_factory_;
 
-  DISALLOW_COPY_AND_ASSIGN(DebugManager);
+  DISALLOW_COPY_AND_ASSIGN(DispatcherDebugManager);
 };
 
 }  // namespace bluetooth
 
-#endif  // BLUETOOTH_DISPATCHER_DEBUG_MANAGER_H_
+#endif  // BLUETOOTH_DISPATCHER_DISPATCHER_DEBUG_MANAGER_H_

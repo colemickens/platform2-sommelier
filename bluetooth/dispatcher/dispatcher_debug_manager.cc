@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "bluetooth/dispatcher/debug_manager.h"
+#include "bluetooth/dispatcher/dispatcher_debug_manager.h"
 
 #include <memory>
 #include <string>
@@ -36,7 +36,7 @@ constexpr const char* kDebugProperties[] = {
 
 }  // namespace
 
-DebugManager::DebugManager(
+DispatcherDebugManager::DispatcherDebugManager(
     scoped_refptr<dbus::Bus> bus,
     ExportedObjectManagerWrapper* exported_object_manager_wrapper)
     : bus_(bus),
@@ -45,7 +45,7 @@ DebugManager::DebugManager(
   CHECK(exported_object_manager_wrapper_ != nullptr);
 }
 
-void DebugManager::Init() {
+void DispatcherDebugManager::Init() {
   dbus::ObjectPath object_path(kBluetoothDebugObjectPath);
 
   // Initialize D-Bus proxies.
@@ -65,12 +65,12 @@ void DebugManager::Init() {
 
   debug_interface_->AddSimpleMethodHandlerWithErrorAndMessage(
       bluetooth_debug::kSetLevels, base::Unretained(this),
-      &DebugManager::HandleSetLevels);
+      &DispatcherDebugManager::HandleSetLevels);
 
   debug_interface_->ExportAndBlock();
 }
 
-void DebugManager::RegisterProperties() {
+void DispatcherDebugManager::RegisterProperties() {
   std::vector<uint8_t> prop_values;
   int expected_num_of_props = arraysize(kDebugProperties);
 
@@ -84,8 +84,8 @@ void DebugManager::RegisterProperties() {
   }
 }
 
-bool DebugManager::ParseConfigFile(int expected_num_of_values,
-                                   std::vector<uint8_t>* values) {
+bool DispatcherDebugManager::ParseConfigFile(int expected_num_of_values,
+                                             std::vector<uint8_t>* values) {
   base::FilePath conf_path(kDebugConfigFile);
   std::string file_content;
   if (!base::PathExists(conf_path))
@@ -116,12 +116,12 @@ bool DebugManager::ParseConfigFile(int expected_num_of_values,
   return true;
 }
 
-bool DebugManager::HandleSetLevels(brillo::ErrorPtr* error,
-                                   dbus::Message* message,
-                                   uint8_t dispatcher_level,
-                                   uint8_t newblue_level,
-                                   uint8_t bluez_level,
-                                   uint8_t kernel_level) {
+bool DispatcherDebugManager::HandleSetLevels(brillo::ErrorPtr* error,
+                                             dbus::Message* message,
+                                             uint8_t dispatcher_level,
+                                             uint8_t newblue_level,
+                                             uint8_t bluez_level,
+                                             uint8_t kernel_level) {
   VLOG(2) << "Sender=" << message->GetSender() << " set debug level:"
           << " dispatcher:" << static_cast<int>(dispatcher_level)
           << ", newblue:" << static_cast<int>(newblue_level)
@@ -153,7 +153,7 @@ bool DebugManager::HandleSetLevels(brillo::ErrorPtr* error,
   return true;
 }
 
-void DebugManager::SetDispatcherLogLevel(int verbosity) {
+void DispatcherDebugManager::SetDispatcherLogLevel(int verbosity) {
   if (verbosity < kDispatcherMinimumVerbosityLevel) {
     LOG(WARNING) << "Invalid verbosity level for dispatcher";
     return;

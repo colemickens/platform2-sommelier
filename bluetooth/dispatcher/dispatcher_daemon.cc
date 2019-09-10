@@ -36,7 +36,7 @@ bool DispatcherDaemon::Init(scoped_refptr<dbus::Bus> bus,
   }
 
   suspend_manager_ = std::make_unique<SuspendManager>(bus);
-  debug_manager_ = std::make_unique<DebugManager>(
+  debug_manager_ = std::make_unique<DispatcherDebugManager>(
       bus, exported_object_manager_wrapper_.get());
   dispatcher_ =
       std::make_unique<Dispatcher>(bus, exported_object_manager_wrapper_.get());
