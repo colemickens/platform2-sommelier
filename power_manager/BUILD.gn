@@ -482,5 +482,8 @@ if (use.amd64) {
     sources = [
       "tools/dump_intel_rapl_consumption.cc",
     ]
+    deps = [
+      ":libutil",
+    ]
   }
 }
