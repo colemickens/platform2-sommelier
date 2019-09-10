@@ -45,7 +45,6 @@ const BASE_COMMANDS: &[&str] = &[
     "set_apn",
     "set_arpgw",
     "set_cellular_ppp",
-    "set_time",
     "set_wake_on_lan",
     "ssh",
     "storage_test_1",
@@ -152,6 +151,8 @@ mod tests {
     use std::io::{prelude::*, BufReader};
     use std::path::PathBuf;
 
+    use crate::base;
+
     const SOURCE_PATH_VAR: &str = "S";
     const BIN_DIR_SHELL: &str = "/usr/bin/crosh.sh";
     const DEFAULT_ROOT: &str = "/usr/share/crosh";
@@ -205,6 +206,7 @@ mod tests {
         match shell {
             ShellSource::Base => {
                 register(&mut dispatcher);
+                base::register(&mut dispatcher);
             }
             ShellSource::Dev => {
                 register_dev_mode_commands(&mut dispatcher);

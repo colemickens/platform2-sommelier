@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+mod base;
 mod dispatcher;
 mod history;
 mod legacy;
@@ -381,6 +382,7 @@ fn setup_dispatcher() -> Dispatcher {
         legacy::register_removable_commands(&mut dispatcher);
     }
 
+    base::register(&mut dispatcher);
     legacy::register(&mut dispatcher);
 
     if let Err(err) = dispatcher.validate() {
