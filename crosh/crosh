@@ -653,10 +653,11 @@ cmd_newblue() (
     status|"")
       reply="$(dbus-send --system --type=method_call --print-reply \
           --dest=org.bluez /org/bluez \
-          org.chromium.BluetoothExperimental.GetNewblueEnabled)"
+          org.chromium.BluetoothExperimental.GetNewblueEnabled 2>&1)"
 
       if [ $? -ne 0 ]; then
         echo "ERROR: querying newblue status failed"
+        echo "${reply}"
         return 1
       fi
 
@@ -678,11 +679,14 @@ cmd_newblue() (
       ;;
   esac
 
-  dbus-send --system --type=method_call --dest=org.bluez /org/bluez \
-      org.chromium.BluetoothExperimental.SetNewblueEnabled "boolean:${enabled}"
+  reply="$(dbus-send --system --print-reply --type=method_call \
+      --dest=org.bluez /org/bluez \
+      org.chromium.BluetoothExperimental.SetNewblueEnabled \
+      "boolean:${enabled}" 2>&1)"
 
   if [ $? -ne 0 ]; then
     echo "ERROR: setting newblue status failed"
+    echo "${reply}"
     return 1
   fi
 )
