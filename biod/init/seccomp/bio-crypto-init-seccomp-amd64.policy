@@ -15,6 +15,7 @@ exit_group: 1
 fstat: 1
 getpid: 1
 gettid: 1
+gettimeofday: 1
 # ioctl:
 # CROS_EC_DEV_IOCXCMD_V2: 0xc014ec00
 ioctl: arg1 == 0xc014ec00
