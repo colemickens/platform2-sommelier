@@ -133,7 +133,6 @@ void EthernetProvider::RefreshGenericEthernetService() {
   service_->ResetStorageIdentifier();
   if (service_->HasEthernet() && base::ContainsValue(services_, service_)) {
     manager_->MatchProfileWithService(service_);
-    ReconnectToGenericEthernetService();
   }
 
   // Set the storage ID of the new first Ethernet service to be ethernet_any and
@@ -142,24 +141,6 @@ void EthernetProvider::RefreshGenericEthernetService() {
   service_->SetStorageIdentifier(
       EthernetService::kDefaultEthernetDeviceIdentifier);
   manager_->MatchProfileWithService(service_);
-  ReconnectToGenericEthernetService();
-}
-
-void EthernetProvider::ReconnectToGenericEthernetService() const {
-  if (!service_) {
-    return;
-  }
-
-  Error error;
-  service_->Disconnect(&error, __func__);
-  if (error.IsFailure()) {
-    LOG(ERROR) << "Disconnect failed: " << error.message();
-    return;
-  }
-  service_->Connect(&error, __func__);
-  if (error.IsFailure()) {
-    LOG(ERROR) << "Connect failed: " << error.message();
-  }
 }
 
 void EthernetProvider::Start() {
