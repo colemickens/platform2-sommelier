@@ -143,6 +143,12 @@ int CameraDevice::Init(mojom::IpCameraDevicePtr ip_device,
 
   mojom::IpCameraFrameListenerPtr listener;
   binding_.Bind(mojo::MakeRequest(&listener));
+
+  binding_.set_connection_error_handler(
+      base::Bind(&CameraDevice::OnConnectionError, base::Unretained(this)));
+  ip_device_.set_connection_error_handler(
+      base::Bind(&CameraDevice::OnConnectionError, base::Unretained(this)));
+
   ip_device_->RegisterFrameListener(std::move(listener));
 
   return 0;
@@ -177,15 +183,21 @@ int CameraDevice::Initialize(const camera3_callback_ops_t* callback_ops) {
 }
 
 void CameraDevice::Close() {
-  DCHECK(!ipc_task_runner_->BelongsToCurrentThread());
   open_ = false;
   request_queue_.Flush();
 
-  auto return_val = Future<void>::Create(nullptr);
-  ipc_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&CameraDevice::StopStreamingOnIpcThread,
-                                base::Unretained(this), return_val));
-  return_val->Wait(-1);
+  // If called from the HAL it won't be on the IPC thread, and we should tell
+  // the IP camera to stop streaming. If called from the IPC thread, it's
+  // because the connection was lost or the device was reported as disconnected,
+  // so no need to tell it to stop streaming (the pointer probably isn't valid
+  // anyway).
+  if (!ipc_task_runner_->BelongsToCurrentThread()) {
+    auto return_val = Future<void>::Create(nullptr);
+    ipc_task_runner_->PostTask(
+        FROM_HERE, base::BindOnce(&CameraDevice::StopStreamingOnIpcThread,
+                                  base::Unretained(this), return_val));
+    return_val->Wait(-1);
+  }
 }
 
 void CameraDevice::StopStreamingOnIpcThread(
@@ -366,6 +378,12 @@ void CameraDevice::OnFrameCaptured(mojo::ScopedHandle shm_handle,
   close(fd);
 
   request_queue_.NotifyCapture(std::move(request));
+}
+
+void CameraDevice::OnConnectionError() {
+  LOGF(ERROR) << "Lost connection to IP Camera";
+  ip_device_.reset();
+  binding_.Close();
 }
 
 }  // namespace cros

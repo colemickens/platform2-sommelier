@@ -5,6 +5,7 @@ access: 1
 arch_prctl: 1
 bind: 1
 brk: 1
+clock_getres: 1
 clock_gettime: 1
 clone: 1
 close: 1
@@ -36,6 +37,8 @@ getitimer: 1
 getpid: 1
 getppid: 1
 getrandom: 1
+getresgid: 1
+getresuid: 1
 getrlimit: 1
 getsockname: 1
 gettid: 1

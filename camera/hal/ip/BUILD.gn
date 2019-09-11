@@ -2,11 +2,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/generate-dbus-proxies.gni")
 import("//common-mk/mojom_bindings_generator.gni")
 
 group("all") {
   deps = [
     ":libcamera_hal",
+  ]
+}
+
+generate_dbus_proxies("libcamera_hal_dbus") {
+  proxy_output_file = "include/dbus_proxies/dbus-proxies.h"
+  sources = [
+    "dbus/org.chromium.IpPeripheralService.xml",
   ]
 }
 
@@ -21,19 +29,18 @@ shared_library("libcamera_hal") {
   sources = [
     "camera_device.cc",
     "camera_hal.cc",
-    "ip_camera.cc",
-    "ip_camera_detector.cc",
     "metadata_handler.cc",
-    "mock_frame_generator.cc",
     "request_queue.cc",
   ]
   configs += [ "//camera/build:cros_camera_common" ]
   pkg_deps = [
     "cros-camera-android-headers",
+    "libbrillo-${libbase_ver}",
     "libcamera_common",
     "libcamera_metadata",
   ]
   deps = [
+    ":libcamera_hal_dbus",
     ":libcamera_hal_mojom",
     "//camera/common/libcamera_ipc:libcamera_ipc",
   ]

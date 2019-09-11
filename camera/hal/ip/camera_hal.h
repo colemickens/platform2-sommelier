@@ -12,11 +12,11 @@
 #include <camera/camera_metadata.h>
 #include <map>
 #include <memory>
+#include <string>
 #include <sys/types.h>
 
 #include "cros-camera/future.h"
 #include "hal/ip/camera_device.h"
-#include "hal/ip/ip_camera_detector.h"
 #include "mojo/ip/ip_camera.mojom.h"
 
 namespace cros {
@@ -44,10 +44,12 @@ class CameraHal : public mojom::IpCameraConnectionListener {
 
   void InitOnIpcThread(scoped_refptr<Future<int>> return_val);
   void DestroyOnIpcThread();
+  void OnConnectionError();
 
   base::Thread ipc_thread_;
-  std::unique_ptr<IpCameraDetectorImpl> detector_impl_;
+  mojom::IpCameraDetectorPtr detector_;
   mojo::Binding<IpCameraConnectionListener> binding_;
+  std::string peer_token_;
 
   // The maps, as well as |next_camera_id_| are protected by this lock
   base::Lock camera_map_lock_;

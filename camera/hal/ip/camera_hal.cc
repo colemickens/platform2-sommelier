@@ -3,15 +3,18 @@
  * found in the LICENSE file.
  */
 
-
 #include <base/strings/string_number_conversions.h>
+#include <brillo/dbus/dbus_connection.h>
 #include <mojo/edk/embedder/embedder.h>
+#include <mojo/edk/embedder/platform_channel_pair.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <sys/uio.h>
 #include <utility>
 
 #include "cros-camera/common.h"
 #include "cros-camera/export.h"
+#include "dbus_proxies/dbus-proxies.h"
 #include "hal/ip/camera_hal.h"
 #include "hal/ip/metadata_handler.h"
 
@@ -26,8 +29,6 @@ CameraHal::CameraHal()
       callbacks_(nullptr) {}
 
 CameraHal::~CameraHal() {
-  detector_impl_.reset();
-
   if (ipc_thread_.IsRunning()) {
     ipc_thread_.task_runner()->PostTask(
         FROM_HERE,
@@ -36,9 +37,6 @@ CameraHal::~CameraHal() {
   }
 
   mojo::edk::ShutdownIPCSupport(base::Bind(&base::DoNothing));
-  base::AutoLock l(camera_map_lock_);
-
-  cameras_.clear();
 }
 
 CameraHal& CameraHal::GetInstance() {
@@ -119,23 +117,66 @@ int CameraHal::Init() {
 }
 
 void CameraHal::InitOnIpcThread(scoped_refptr<Future<int>> return_val) {
-  detector_impl_ = std::make_unique<IpCameraDetectorImpl>();
+  brillo::DBusConnection dbus_connection;
+  org::chromium::IpPeripheralServiceProxy proxy(
+      dbus_connection.Connect(), "org.chromium.IpPeripheralService");
 
-  mojom::IpCameraDetectorPtr detector;
-  int ret = detector_impl_->Init(mojo::MakeRequest(&detector));
-  if (ret != 0) {
-    return_val->Set(ret);
+  mojo::edk::PlatformChannelPair channel_pair;
+  brillo::dbus_utils::FileDescriptor handle(
+      channel_pair.PassClientHandle().get().handle);
+
+  if (!proxy.BootstrapMojoConnection(handle, nullptr)) {
+    LOGF(ERROR) << "Failed to send handle over DBus";
+    return_val->Set(-ENODEV);
     return;
   }
 
+  peer_token_ = mojo::edk::GenerateRandomToken();
+  mojo::ScopedMessagePipeHandle pipe = mojo::edk::ConnectToPeerProcess(
+      channel_pair.PassServerHandle(), peer_token_);
+
+  detector_.Bind(mojom::IpCameraDetectorPtrInfo(std::move(pipe), 0u));
+  detector_.set_connection_error_handler(
+      base::Bind(&CameraHal::OnConnectionError, base::Unretained(this)));
+
   mojom::IpCameraConnectionListenerPtr listener;
   binding_.Bind(mojo::MakeRequest(&listener));
-  detector->RegisterConnectionListener(std::move(listener));
+  binding_.set_connection_error_handler(
+      base::Bind(&CameraHal::OnConnectionError, base::Unretained(this)));
+
+  detector_->RegisterConnectionListener(std::move(listener));
   return_val->Set(0);
 }
 
 void CameraHal::DestroyOnIpcThread() {
   binding_.Close();
+  detector_.reset();
+
+  {
+    base::AutoLock l(camera_map_lock_);
+    cameras_.clear();
+  }
+
+  mojo::edk::ClosePeerConnection(peer_token_);
+}
+
+void CameraHal::OnConnectionError() {
+  binding_.Close();
+  detector_.reset();
+
+  {
+    base::AutoLock l(camera_map_lock_);
+    while (!detector_ids_.empty()) {
+      int32_t detector_id = detector_ids_.begin()->first;
+
+      base::AutoUnlock u(camera_map_lock_);
+      OnDeviceDisconnected(detector_id);
+    }
+  }
+
+  mojo::edk::ClosePeerConnection(peer_token_);
+
+  LOGF(FATAL) << "Lost connection to IP peripheral server";
 }
 
 void CameraHal::OnDeviceConnected(int32_t id,
