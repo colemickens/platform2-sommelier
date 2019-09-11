@@ -56,7 +56,8 @@ IPConfig::IPConfig(ControlInterface* control_interface,
       serial_(global_serial_++),
       adaptor_(control_interface->CreateIPConfigAdaptor(this)),
       current_lease_expiration_time_({kDefaultLeaseExpirationTime, 0}),
-      time_(Time::GetInstance()) {
+      time_(Time::GetInstance()),
+      weak_ptr_factory_(this) {
   store_.RegisterConstString(kAddressProperty, &properties_.address);
   store_.RegisterConstString(kBroadcastProperty,
                              &properties_.broadcast_address);
@@ -116,6 +117,7 @@ void IPConfig::Refresh(Error* /*error*/) {
 void IPConfig::ApplyStaticIPParameters(
     StaticIPParameters* static_ip_parameters) {
   static_ip_parameters->ApplyTo(&properties_);
+  static_ip_parameters->SetIPConfig(weak_ptr_factory_.GetWeakPtr());
   EmitChanges();
 }
 

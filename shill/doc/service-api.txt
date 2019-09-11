@@ -1428,7 +1428,7 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 
 			A dictionary of static IP configuration parameters
 			used to selectively override individual parameters
-			received over DHCP or whatever default IP aquisition
+			received over DHCP or whatever default IP acquisition
 			technique is used by the service.
 
 			Additionally, in services that use DHCP, if the
@@ -1441,7 +1441,8 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 
 			The IPConfig associated with the service (object
 			path supplied in the "IPConfig" property above)
-			will display the result of the merged network
+			will automatically refresh when this property is set
+			and display the result of the merged network
 			parameters.
 
 			ExcludedRoutes and IncludedRoutes should be in
@@ -1465,11 +1466,6 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			applying any static IP parameters during the most
 			recent connection attempt. All parameters are saved
 			regardless of whether they were overridden.
-
-			Note that if a static IP parameter is set on
-			a service, but the service has not been re-connected,
-			the IPConfig object will still contain the true
-			value that the interface is set to.
 
 			Here are the expected keys within the dict:
 				string Address

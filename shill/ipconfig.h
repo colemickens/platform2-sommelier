@@ -12,6 +12,7 @@
 
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
+#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/net/ip_address.h"
@@ -182,7 +183,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   virtual bool ReleaseIP(ReleaseReason reason);
 
   // Refresh IP configuration.  Called by the DBus Adaptor "Refresh" call.
-  void Refresh(Error* error);
+  virtual void Refresh(Error* error);
 
   PropertyStore* mutable_store() { return &store_; }
   const PropertyStore& store() const { return store_; }
@@ -245,6 +246,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   FRIEND_TEST(ResolverTest, NonEmpty);
   FRIEND_TEST(RoutingTableTest, ConfigureRoutes);
   FRIEND_TEST(RoutingTableTest, RouteAddDelete);
+  FRIEND_TEST(StaticIPParametersTest, IPConfigRefreshed);
 
   static const char kType[];
 
@@ -261,6 +263,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   Callback expire_callback_;
   struct timeval current_lease_expiration_time_;
   Time* time_;
+  base::WeakPtrFactory<IPConfig> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(IPConfig);
 };

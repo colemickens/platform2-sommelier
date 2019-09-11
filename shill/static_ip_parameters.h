@@ -56,6 +56,9 @@ class StaticIPParameters {
   // Return whether configuration parameters contain a namerservers property.
   bool ContainsNameServers() const;
 
+  // Set the IPConfig object to update when static IP changes.
+  void SetIPConfig(base::WeakPtr<IPConfig> ipconfig);
+
  private:
   friend class StaticIPParametersTest;
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
@@ -98,10 +101,11 @@ class StaticIPParameters {
 
   KeyValueStore GetSavedIPConfig(Error* error);
   KeyValueStore GetStaticIPConfig(Error* error);
-  bool SetStaticIPConfig(const KeyValueStore& value, Error* error);
+  bool SetStaticIP(const KeyValueStore& value, Error* error);
 
   KeyValueStore args_;
   KeyValueStore saved_args_;
+  base::WeakPtr<IPConfig> ipconfig_;
 
   DISALLOW_COPY_AND_ASSIGN(StaticIPParameters);
 };

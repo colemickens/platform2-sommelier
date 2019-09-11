@@ -9,6 +9,8 @@
 #include <gtest/gtest.h>
 
 #include "shill/ipconfig.h"
+#include "shill/mock_control.h"
+#include "shill/mock_ipconfig.h"
 #include "shill/mock_store.h"
 #include "shill/property_store.h"
 
@@ -337,6 +339,16 @@ TEST_F(StaticIPParametersTest, SavedParameters) {
 
   // Static IP parameters should be unchanged.
   ExpectPropertiesWithVersion(&static_params_props, "StaticIP", 2);
+}
+
+TEST_F(StaticIPParametersTest, IPConfigRefreshed) {
+  MockControl control;
+  scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(&control, "int0");
+  static_params_.SetIPConfig(ipconfig->weak_ptr_factory_.GetWeakPtr());
+  EXPECT_CALL(*ipconfig, Refresh(_));
+  PropertyStore store;
+  static_params_.PlumbPropertyStore(&store);
+  SetStaticProperties(&store);
 }
 
 }  // namespace shill

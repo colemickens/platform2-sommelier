@@ -25,6 +25,7 @@ class MockIPConfig : public IPConfig {
   MOCK_METHOD0(RequestIP, bool());
   MOCK_METHOD0(RenewIP, bool());
   MOCK_METHOD1(ReleaseIP, bool(ReleaseReason reason));
+  MOCK_METHOD1(Refresh, void(Error* error));
   MOCK_METHOD0(ResetProperties, void());
   MOCK_METHOD0(EmitChanges, void());
   MOCK_METHOD1(UpdateDNSServers,

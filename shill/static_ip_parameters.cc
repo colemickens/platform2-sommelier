@@ -56,28 +56,29 @@ void StaticIPParameters::PlumbPropertyStore(PropertyStore* store) {
       KeyValueStoreAccessor(
           new CustomAccessor<StaticIPParameters, KeyValueStore>(
               this, &StaticIPParameters::GetStaticIPConfig,
-              &StaticIPParameters::SetStaticIPConfig)));
+              &StaticIPParameters::SetStaticIP)));
 }
 
 void StaticIPParameters::Load(StoreInterface* storage,
                               const string& storage_id) {
+  KeyValueStore args;
   for (const auto& property : kProperties) {
     const string name(string(kConfigKeyPrefix) + property.name);
     switch (property.type) {
       case Property::kTypeInt32: {
         int32_t value;
         if (storage->GetInt(storage_id, name, &value)) {
-          args_.SetInt(property.name, value);
+          args.SetInt(property.name, value);
         } else {
-          args_.Remove(property.name);
+          args.Remove(property.name);
         }
       } break;
       case Property::kTypeString: {
         string value;
         if (storage->GetString(storage_id, name, &value)) {
-          args_.SetString(property.name, value);
+          args.SetString(property.name, value);
         } else {
-          args_.Remove(property.name);
+          args.Remove(property.name);
         }
       } break;
       case Property::kTypeStrings: {
@@ -87,9 +88,9 @@ void StaticIPParameters::Load(StoreInterface* storage,
         if (storage->GetString(storage_id, name, &value)) {
           vector<string> string_list = base::SplitString(
               value, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-          args_.SetStrings(property.name, string_list);
+          args.SetStrings(property.name, string_list);
         } else {
-          args_.Remove(property.name);
+          args.Remove(property.name);
         }
       } break;
       default:
@@ -97,6 +98,7 @@ void StaticIPParameters::Load(StoreInterface* storage,
         break;
     }
   }
+  SetStaticIP(args, nullptr);
 }
 
 void StaticIPParameters::Save(StoreInterface* storage,
@@ -269,13 +271,20 @@ KeyValueStore StaticIPParameters::GetStaticIPConfig(Error* /*error*/) {
   return args_;
 }
 
-bool StaticIPParameters::SetStaticIPConfig(const KeyValueStore& value,
-                                           Error* /*error*/) {
+bool StaticIPParameters::SetStaticIP(const KeyValueStore& value,
+                                     Error* /*error*/) {
   if (args_ == value) {
     return false;
   }
   args_ = value;
+  if (ipconfig_) {
+    ipconfig_->Refresh(nullptr);
+  }
   return true;
+}
+
+void StaticIPParameters::SetIPConfig(base::WeakPtr<IPConfig> ipconfig) {
+  ipconfig_ = ipconfig;
 }
 
 }  // namespace shill
