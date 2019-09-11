@@ -67,9 +67,8 @@ class TpmInitializerImpl : public TpmInitializer {
 
  private:
   // This method checks if an EndorsementKey exists on the Tpm and creates it
-  // if not. Returns true on success, else false. The |connection| already has
-  // the owner password injected.
-  bool InitializeEndorsementKey(TpmConnection* connection);
+  // if not. Returns true on success, else false.
+  bool InitializeEndorsementKey();
 
   // This method takes ownership of the Tpm with the default TSS password.
   // Returns true on success, else false. The |connection| already has the

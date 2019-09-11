@@ -68,9 +68,25 @@ bool TpmInitializerImpl::InitializeTpm() {
     VLOG(1) << "Tpm already owned.";
     return true;
   }
+  // Makes sure EK is there when unowned.
+  if (ownership_status != TpmStatus::kTpmUnowned) {
+    LOG(INFO) << __func__
+              << ": TPM ownership is taken already; skip initializing EK.";
+  } else if (!InitializeEndorsementKey()) {
+    LOG(ERROR) << __func__ << ": failed to initialize endorsement key";
+    return false;
+  }
   TpmConnection connection(GetDefaultOwnerPassword());
-  if (!InitializeEndorsementKey(&connection) || !TakeOwnership(&connection) ||
-      !InitializeSrk(&connection)) {
+  if (ownership_status != TpmStatus::kTpmUnowned) {
+    LOG(INFO) << __func__
+              << ": TPM ownership is taken already; skip taking ownership.";
+  } else if (!TakeOwnership(&connection)) {
+    LOG(ERROR) << __func__ << ": failed to take TPM ownership";
+    return false;
+  }
+  // TPM ownership is taken; now the status is pre-owned.
+  if (!InitializeSrk(&connection)) {
+    LOG(ERROR) << __func__ << ": failed to initialize SRK";
     return false;
   }
   std::string owner_password;
@@ -211,25 +227,29 @@ void TpmInitializerImpl::PruneStoredPasswords() {
   }
 }
 
-bool TpmInitializerImpl::InitializeEndorsementKey(TpmConnection* connection) {
-  trousers::ScopedTssKey local_key_handle(connection->GetContext());
+bool TpmInitializerImpl::InitializeEndorsementKey() {
+  TpmConnection connection;
+  trousers::ScopedTssKey local_key_handle(connection.GetContext());
   TSS_RESULT result = Tspi_TPM_GetPubEndorsementKey(
-      connection->GetTpm(), false, nullptr, local_key_handle.ptr());
+      connection.GetTpm(), false, nullptr, local_key_handle.ptr());
   if (TPM_ERROR(result) == TPM_SUCCESS) {
     // In this case the EK already exists, so we can return true here.
     VLOG(1) << "EK already exists.";
     return true;
+  } else if (TPM_ERROR(result) != TPM_E_NO_ENDORSEMENT) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_GetPubEndorsementKey";
+    return false;
   }
-  // At this point the EK does not exist, so we create it.
+  TPM_LOG(INFO, result) << "No EK is present; creating it.";
   TSS_FLAG init_flags = TSS_KEY_TYPE_LEGACY | TSS_KEY_SIZE_2048;
   if (TPM_ERROR(result = Tspi_Context_CreateObject(
-                    connection->GetContext(), TSS_OBJECT_TYPE_RSAKEY,
-                    init_flags, local_key_handle.ptr()))) {
+                    connection.GetContext(), TSS_OBJECT_TYPE_RSAKEY, init_flags,
+                    local_key_handle.ptr()))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Context_CreateObject";
     return false;
   }
   if (TPM_ERROR(result = Tspi_TPM_CreateEndorsementKey(
-                    connection->GetTpm(), local_key_handle, NULL))) {
+                    connection.GetTpm(), local_key_handle, NULL))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_CreateEndorsementKey";
     return false;
   }
@@ -237,10 +257,6 @@ bool TpmInitializerImpl::InitializeEndorsementKey(TpmConnection* connection) {
 }
 
 bool TpmInitializerImpl::TakeOwnership(TpmConnection* connection) {
-  if (tpm_status_->TestTpmWithDefaultOwnerPassword()) {
-    VLOG(1) << "The Tpm already has the default owner password.";
-    return true;
-  }
   TSS_RESULT result;
   trousers::ScopedTssKey srk_handle(connection->GetContext());
   TSS_FLAG init_flags = TSS_KEY_TSP_SRK | TSS_KEY_AUTHORIZATION;
