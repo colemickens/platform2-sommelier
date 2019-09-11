@@ -24,6 +24,7 @@ sendto: 1
 # socket: arg0 == PF_LOCAL
 socket: arg0 == 1
 write: 1
+gettid: 1
 
 # The following are only needed without RD_PRELOAD
 
