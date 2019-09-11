@@ -27,7 +27,6 @@ pkg_config("target_defaults") {
     "libmetrics-${libbase_ver}",
     "libminijail",
     "libsession_manager-client",
-    "libudev",
   ]
   libs = [ "rootdev" ]
 }

@@ -8,23 +8,27 @@
 #include <blkid/blkid.h>
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
+#include <base/callback.h>
 #include <base/macros.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 
 #include "cros-disks/disk.h"
 
-struct udev_device;
+namespace brillo {
+class UdevDevice;
+}  // namespace brillo
 
 namespace cros_disks {
 
 // A utility class that helps query information about a udev device.
 class UdevDevice {
  public:
-  explicit UdevDevice(udev_device* dev);
+  explicit UdevDevice(std::unique_ptr<brillo::UdevDevice> dev);
   ~UdevDevice();
 
   // Gets the string value of a device attribute.
@@ -112,6 +116,9 @@ class UdevDevice {
   Disk ToDisk();
 
  private:
+  using EnumerateCallback =
+      base::RepeatingCallback<bool(const brillo::UdevDevice& device)>;
+
   // Returns |str| if |str| is a valid UTF8 string (determined by
   // base::IsStringUTF8) or an empty string otherwise.
   static std::string EnsureUTF8String(const std::string& str);
@@ -119,11 +126,15 @@ class UdevDevice {
   // Checks if the device is on a SD card device.
   bool IsOnSdDevice() const;
 
+  // Walks up the device parents, starting at the current device, invoking
+  // |callback| until |callback| returns true. Returns true if |callback|
+  // returned true, and false if finished walking up the device tree.
+  bool EnumerateParentDevices(const EnumerateCallback& callback) const;
+
   // Checks if a string contains a "1" (as Boolean true).
   static bool IsValueBooleanTrue(const char* value);
 
-  mutable udev_device* dev_;
-
+  const std::unique_ptr<brillo::UdevDevice> dev_;
   blkid_cache blkid_cache_;
 
   FRIEND_TEST(UdevDeviceTest, EnsureUTF8String);

@@ -5,10 +5,11 @@
 #include "cros-disks/disk_monitor.h"
 
 #include <inttypes.h>
-#include <libudev.h>
 #include <string.h>
 #include <sys/mount.h>
 #include <time.h>
+
+#include <utility>
 
 #include <base/bind.h>
 #include <base/logging.h>
@@ -17,6 +18,10 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <brillo/udev/udev.h>
+#include <brillo/udev/udev_device.h>
+#include <brillo/udev/udev_enumerate.h>
+#include <brillo/udev/udev_monitor.h>
 
 #include "cros-disks/device_ejector.h"
 #include "cros-disks/quote.h"
@@ -38,11 +43,12 @@ const char kPropertyDiskMediaChange[] = "DISK_MEDIA_CHANGE";
 // An EnumerateBlockDevices callback that appends a Disk object, created from
 // |dev|, to |disks| if |dev| should not be ignored by cros-disks. Always
 // returns true to continue the enumeration in EnumerateBlockDevices.
-bool AppendDiskIfNotIgnored(std::vector<Disk>* disks, udev_device* dev) {
+bool AppendDiskIfNotIgnored(std::vector<Disk>* disks,
+                            std::unique_ptr<brillo::UdevDevice> dev) {
   DCHECK(disks);
   DCHECK(dev);
 
-  UdevDevice device(dev);
+  UdevDevice device(std::move(dev));
   if (!device.IsIgnored())
     disks->push_back(device.ToDisk());
 
@@ -58,68 +64,65 @@ bool AppendDiskIfNotIgnored(std::vector<Disk>* disks, udev_device* dev) {
 bool MatchDiskByPath(const std::string& path,
                      bool* match,
                      Disk* disk,
-                     udev_device* dev) {
+                     std::unique_ptr<brillo::UdevDevice> dev) {
   DCHECK(match);
   DCHECK(dev);
 
-  const char* sys_path = udev_device_get_syspath(dev);
-  const char* dev_path = udev_device_get_devpath(dev);
-  const char* dev_file = udev_device_get_devnode(dev);
+  const char* sys_path = dev->GetSysPath();
+  const char* dev_path = dev->GetDevicePath();
+  const char* dev_file = dev->GetDeviceNode();
   *match = (sys_path && path == sys_path) || (dev_path && path == dev_path) ||
            (dev_file && path == dev_file);
   if (!*match)
     return true;  // Not a match. Continue the enumeration.
 
   if (disk)
-    *disk = UdevDevice(dev).ToDisk();
+    *disk = UdevDevice(std::move(dev)).ToDisk();
 
   return false;  // Match. Stop enumeration.
 }
 
 // Logs a device with its properties.
-void LogUdevDevice(udev_device* const dev) {
+void LogUdevDevice(const brillo::UdevDevice& dev) {
   if (!VLOG_IS_ON(1))
     return;
 
   // Some device events (eg USB drive removal) result in devnode being null.
   // This is gracefully handled by quote() without crashing.
-  VLOG(1) << "   node: " << quote(udev_device_get_devnode(dev));
-  VLOG(1) << "   subsystem: " << quote(udev_device_get_subsystem(dev));
-  VLOG(1) << "   devtype: " << quote(udev_device_get_devtype(dev));
-  VLOG(1) << "   devpath: " << quote(udev_device_get_devpath(dev));
-  VLOG(1) << "   sysname: " << quote(udev_device_get_sysname(dev));
-  VLOG(1) << "   syspath: " << quote(udev_device_get_syspath(dev));
+  VLOG(1) << "   node: " << quote(dev.GetDeviceNode());
+  VLOG(1) << "   subsystem: " << quote(dev.GetSubsystem());
+  VLOG(1) << "   devtype: " << quote(dev.GetDeviceType());
+  VLOG(1) << "   devpath: " << quote(dev.GetDevicePath());
+  VLOG(1) << "   sysname: " << quote(dev.GetSysName());
+  VLOG(1) << "   syspath: " << quote(dev.GetSysPath());
 
   if (!VLOG_IS_ON(2))
     return;
 
   // Log all properties.
-  for (udev_list_entry* entry = udev_device_get_properties_list_entry(dev);
-       entry; entry = udev_list_entry_get_next(entry)) {
-    VLOG(2) << "   " << udev_list_entry_get_name(entry) << ": "
-            << quote(udev_list_entry_get_value(entry));
+  for (std::unique_ptr<brillo::UdevListEntry> prop =
+           dev.GetPropertiesListEntry();
+       prop; prop = prop->GetNext()) {
+    VLOG(2) << "   " << prop->GetName() << ": " << quote(prop->GetValue());
   }
 }
 
 }  // namespace
 
-DiskMonitor::DiskMonitor() : udev_(udev_new()), udev_monitor_fd_(0) {
+DiskMonitor::DiskMonitor() : udev_(brillo::Udev::Create()) {
   CHECK(udev_) << "Failed to initialize udev";
-  udev_monitor_ = udev_monitor_new_from_netlink(udev_, "udev");
+  udev_monitor_ = udev_->CreateMonitorFromNetlink("udev");
   CHECK(udev_monitor_) << "Failed to create a udev monitor";
-  udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_,
-                                                  kBlockSubsystem, nullptr);
-  udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_, kMmcSubsystem,
-                                                  nullptr);
-  udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_, kScsiSubsystem,
-                                                  kScsiDevice);
-  udev_monitor_enable_receiving(udev_monitor_);
-  udev_monitor_fd_ = udev_monitor_get_fd(udev_monitor_);
+  udev_monitor_->FilterAddMatchSubsystemDeviceType(kBlockSubsystem, nullptr);
+  udev_monitor_->FilterAddMatchSubsystemDeviceType(kMmcSubsystem, nullptr);
+  udev_monitor_->FilterAddMatchSubsystemDeviceType(kScsiSubsystem, kScsiDevice);
+  CHECK(udev_monitor_->EnableReceiving());
 }
 
-DiskMonitor::~DiskMonitor() {
-  udev_monitor_unref(udev_monitor_);
-  udev_unref(udev_);
+DiskMonitor::~DiskMonitor() = default;
+
+int DiskMonitor::udev_monitor_fd() const {
+  return udev_monitor_->GetFileDescriptor();
 }
 
 bool DiskMonitor::Initialize() {
@@ -131,13 +134,12 @@ bool DiskMonitor::Initialize() {
   return true;
 }
 
-bool DiskMonitor::EmulateAddBlockDeviceEvent(udev_device* dev) {
-  DCHECK(dev);
+bool DiskMonitor::EmulateAddBlockDeviceEvent(
+    std::unique_ptr<brillo::UdevDevice> dev) {
   DeviceEventList events;
-  ProcessBlockDeviceEvents(dev, kUdevAddAction, &events);
-  LOG(INFO) << "Emulated action 'add' on device "
-            << quote(udev_device_get_sysname(dev));
-  LogUdevDevice(dev);
+  LOG(INFO) << "Emulating action 'add' on device " << quote(dev->GetSysName());
+  LogUdevDevice(*dev);
+  ProcessBlockDeviceEvents(std::move(dev), kUdevAddAction, &events);
   return true;  // Continue the enumeration.
 }
 
@@ -149,34 +151,34 @@ std::vector<Disk> DiskMonitor::EnumerateDisks() const {
 }
 
 void DiskMonitor::EnumerateBlockDevices(
-    const base::Callback<bool(udev_device* dev)>& callback) const {
-  udev_enumerate* enumerate = udev_enumerate_new(udev_);
-  udev_enumerate_add_match_subsystem(enumerate, kBlockSubsystem);
-  udev_enumerate_scan_devices(enumerate);
+    const base::Callback<bool(std::unique_ptr<brillo::UdevDevice> dev)>&
+        callback) const {
+  std::unique_ptr<brillo::UdevEnumerate> enumerate = udev_->CreateEnumerate();
+  enumerate->AddMatchSubsystem(kBlockSubsystem);
+  enumerate->ScanDevices();
 
-  udev_list_entry *device_list, *device_list_entry;
-  device_list = udev_enumerate_get_list_entry(enumerate);
-  udev_list_entry_foreach(device_list_entry, device_list) {
-    const char* path = udev_list_entry_get_name(device_list_entry);
-    udev_device* dev = udev_device_new_from_syspath(udev_, path);
-    if (dev == nullptr)
+  for (std::unique_ptr<brillo::UdevListEntry> entry = enumerate->GetListEntry();
+       entry; entry = entry->GetNext()) {
+    std::unique_ptr<brillo::UdevDevice> dev =
+        udev_->CreateDeviceFromSysPath(entry->GetName());
+    if (!dev)
       continue;
 
-    VLOG(1) << "Found device " << quote(udev_device_get_sysname(dev));
-    LogUdevDevice(dev);
+    VLOG(1) << "Found device " << quote(dev->GetSysName());
+    LogUdevDevice(*dev);
 
-    bool continue_enumeration = callback.Run(dev);
-    udev_device_unref(dev);
+    bool continue_enumeration = callback.Run(std::move(dev));
     if (!continue_enumeration)
       break;
   }
-  udev_enumerate_unref(enumerate);
 }
 
-void DiskMonitor::ProcessBlockDeviceEvents(udev_device* dev,
-                                           const char* action,
-                                           DeviceEventList* events) {
-  UdevDevice device(dev);
+void DiskMonitor::ProcessBlockDeviceEvents(
+    std::unique_ptr<brillo::UdevDevice> dev,
+    const char* action,
+    DeviceEventList* events) {
+  brillo::UdevDevice* raw_dev = dev.get();
+  UdevDevice device(std::move(dev));
   if (device.IsIgnored())
     return;
 
@@ -213,9 +215,10 @@ void DiskMonitor::ProcessBlockDeviceEvents(udev_device* dev,
 
         // Add the disk as a child of its parent if the parent is already
         // added to |disks_detected_|.
-        udev_device* parent = udev_device_get_parent(dev);
+        std::unique_ptr<brillo::UdevDevice> parent = raw_dev->GetParent();
         if (parent) {
-          std::string parent_device_path = UdevDevice(parent).NativePath();
+          std::string parent_device_path =
+              UdevDevice(std::move(parent)).NativePath();
           if (base::ContainsKey(disks_detected_, parent_device_path)) {
             disks_detected_[parent_device_path].insert(device_path);
           }
@@ -242,10 +245,11 @@ void DiskMonitor::ProcessBlockDeviceEvents(udev_device* dev,
   }
 }
 
-void DiskMonitor::ProcessMmcOrScsiDeviceEvents(udev_device* dev,
-                                               const char* action,
-                                               DeviceEventList* events) {
-  UdevDevice device(dev);
+void DiskMonitor::ProcessMmcOrScsiDeviceEvents(
+    std::unique_ptr<brillo::UdevDevice> dev,
+    const char* action,
+    DeviceEventList* events) {
+  UdevDevice device(std::move(dev));
   if (device.IsMobileBroadbandDevice())
     return;
 
@@ -268,36 +272,34 @@ void DiskMonitor::ProcessMmcOrScsiDeviceEvents(udev_device* dev,
 bool DiskMonitor::GetDeviceEvents(DeviceEventList* events) {
   CHECK(events) << "Invalid device event list";
 
-  udev_device* dev = udev_monitor_receive_device(udev_monitor_);
+  std::unique_ptr<brillo::UdevDevice> dev = udev_monitor_->ReceiveDevice();
   if (!dev) {
     LOG(WARNING) << "Ignore device event with no associated udev device.";
     return false;
   }
 
-  const char* sys_path = udev_device_get_syspath(dev);
-  const char* subsystem = udev_device_get_subsystem(dev);
-  const char* action = udev_device_get_action(dev);
+  const char* sys_path = dev->GetSysPath();
+  const char* subsystem = dev->GetSubsystem();
+  const char* action = dev->GetAction();
 
   LOG(INFO) << "Got action " << quote(action) << " on device "
-            << quote(udev_device_get_sysname(dev));
-  LogUdevDevice(dev);
+            << quote(dev->GetSysName());
+  LogUdevDevice(*dev);
 
   if (!sys_path || !subsystem || !action) {
-    udev_device_unref(dev);
     return false;
   }
 
   // |udev_monitor_| only monitors block, mmc, and scsi device changes, so
   // subsystem is either "block", "mmc", or "scsi".
   if (strcmp(subsystem, kBlockSubsystem) == 0) {
-    ProcessBlockDeviceEvents(dev, action, events);
+    ProcessBlockDeviceEvents(std::move(dev), action, events);
   } else {
     // strcmp(subsystem, kMmcSubsystem) == 0 ||
     // strcmp(subsystem, kScsiSubsystem) == 0
-    ProcessMmcOrScsiDeviceEvents(dev, action, events);
+    ProcessMmcOrScsiDeviceEvents(std::move(dev), action, events);
   }
 
-  udev_device_unref(dev);
   return true;
 }
 

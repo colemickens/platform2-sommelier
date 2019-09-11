@@ -5,8 +5,6 @@
 #ifndef CROS_DISKS_DISK_MONITOR_H_
 #define CROS_DISKS_DISK_MONITOR_H_
 
-#include <libudev.h>
-
 #include <map>
 #include <memory>
 #include <set>
@@ -22,6 +20,12 @@
 #include "cros-disks/device_event_source_interface.h"
 #include "cros-disks/disk.h"
 #include "cros-disks/mount_manager.h"
+
+namespace brillo {
+class Udev;
+class UdevDevice;
+class UdevMonitor;
+}  // namespace brillo
 
 namespace cros_disks {
 
@@ -51,7 +55,7 @@ class DiskMonitor : public DeviceEventSourceInterface {
   bool IsPathRecognized(const base::FilePath& path) const;
 
   // A file descriptor that can be select()ed or poll()ed for system changes.
-  int udev_monitor_fd() const { return udev_monitor_fd_; }
+  int udev_monitor_fd() const;
 
   // Implements the DeviceEventSourceInterface interface to read the changes
   // from udev and converts the changes into device events. Returns false on
@@ -62,34 +66,31 @@ class DiskMonitor : public DeviceEventSourceInterface {
   // An EnumerateBlockDevices callback that emulates an 'add' action on
   // |device|. Always returns true to continue enumeration in
   // EnumerateBlockDevices.
-  bool EmulateAddBlockDeviceEvent(udev_device* device);
+  bool EmulateAddBlockDeviceEvent(std::unique_ptr<brillo::UdevDevice> device);
 
   // Enumerates the block devices on the system and invokes |callback| for each
-  // device found during the enumeration. The ownership of |udev_device| is not
-  // transferred to |callback|. The enumeration stops if |callback| returns
-  // false.
+  // device found during the enumeration. The enumeration stops if |callback|
+  // returns false.
   void EnumerateBlockDevices(
-      const base::Callback<bool(udev_device* dev)>& callback) const;
+      const base::Callback<bool(std::unique_ptr<brillo::UdevDevice> dev)>&
+          callback) const;
 
   // Determines one or more device/disk events from a udev block device change.
-  void ProcessBlockDeviceEvents(udev_device* device,
+  void ProcessBlockDeviceEvents(std::unique_ptr<brillo::UdevDevice> device,
                                 const char* action,
                                 DeviceEventList* events);
 
   // Determines one or more device/disk events from a udev MMC or SCSI device
   // change.
-  void ProcessMmcOrScsiDeviceEvents(udev_device* device,
+  void ProcessMmcOrScsiDeviceEvents(std::unique_ptr<brillo::UdevDevice> device,
                                     const char* action,
                                     DeviceEventList* events);
 
   // The root udev object.
-  mutable udev* udev_;
+  std::unique_ptr<brillo::Udev> udev_;
 
   // Provides access to udev changes as they occur.
-  udev_monitor* udev_monitor_;
-
-  // A file descriptor that indicates changes to the system.
-  int udev_monitor_fd_;
+  std::unique_ptr<brillo::UdevMonitor> udev_monitor_;
 
   // A set of device sysfs paths detected by the udev monitor.
   std::set<std::string> devices_detected_;
