@@ -69,7 +69,7 @@ const BASE_COMMANDS: &[&str] = &[
     "wpa_debug",
 ];
 
-const DEV_COMMANDS: &[&str] = &["live_in_a_coal_mine", "packet_capture", "shell", "systrace"];
+const DEV_COMMANDS: &[&str] = &["live_in_a_coal_mine", "packet_capture", "systrace"];
 
 const USB_COMMANDS: &[&str] = &["update_firmware", "install", "upgrade"];
 
@@ -152,6 +152,7 @@ mod tests {
     use std::path::PathBuf;
 
     use crate::base;
+    use crate::dev;
 
     const SOURCE_PATH_VAR: &str = "S";
     const BIN_DIR_SHELL: &str = "/usr/bin/crosh.sh";
@@ -210,6 +211,7 @@ mod tests {
             }
             ShellSource::Dev => {
                 register_dev_mode_commands(&mut dispatcher);
+                dev::register(&mut dispatcher);
             }
             ShellSource::USB => {
                 register_removable_commands(&mut dispatcher);

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 mod base;
+mod dev;
 mod dispatcher;
 mod history;
 mod legacy;
@@ -376,6 +377,7 @@ fn setup_dispatcher() -> Dispatcher {
 
     if util::dev_commands_included() {
         legacy::register_dev_mode_commands(&mut dispatcher);
+        dev::register(&mut dispatcher);
     }
 
     if util::usb_commands_included() {
