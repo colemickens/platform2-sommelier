@@ -20,6 +20,7 @@ struct Options {
   gid_t gid = 0;
   int use_test = 0;
   int log_level = 1;
+  int foreground = 0;
 
   std::string share_path;
   std::string mountpoint;

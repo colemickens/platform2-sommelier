@@ -20,6 +20,7 @@ void PrintUsage(const char* self) {
       "usage: %s [-o options] [share_path] <mountpoint>\n\n"
       "general options:\n"
       "    -o opt,[opt...]        mount options\n"
+      "    -f                     foreground operation\n"
       "    -h   --help            print help\n"
       "    -V   --version         print version\n"
       "\n"
@@ -36,6 +37,7 @@ void PrintUsage(const char* self) {
 #define OPT_DEF(t, p, v) \
   { t, offsetof(smbfs::Options, p), v }
 const struct fuse_opt options_definition[] = {
+    OPT_DEF("-f", foreground, 1),
     OPT_DEF("-h", show_help, 1),
     OPT_DEF("--help", show_help, 1),
     OPT_DEF("-V", show_version, 1),
@@ -121,6 +123,8 @@ int main(int argc, char** argv) {
     LOG(ERROR) << "Unable to mount FUSE mountpoint";
     return EX_SOFTWARE;
   }
+
+  fuse_daemonize(options.foreground);
 
   int exit_code = EX_OK;
   {
