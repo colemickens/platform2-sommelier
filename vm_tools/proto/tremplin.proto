@@ -629,6 +629,114 @@ message ListeningPortInfo {
   map<string, ContainerPortInfo> container_ports = 1;
 }
 
+// Sent to Tremplin to start it upgrading a container.
+message UpgradeContainerRequest {
+  enum Version {
+    // Unknown version.
+    UNKNOWN = 0;
+
+    //  Debian 9 AKA Stretch.
+    DEBIAN_STRETCH = 1;
+
+    // Debian 10 AKA Buster.
+    DEBIAN_BUSTER = 2;
+  }
+
+  // Name of the container e.g. penguin.
+  string container_name = 1;
+
+  // Source version to upgrade from.
+  Version source_version = 2;
+
+  // Version to upgrade to.
+  Version target_version = 3;
+}
+
+// Sent by Tremplin to report the status of an in-progress container upgrade.
+message UpgradeContainerResponse {
+  enum Status {
+    // The result is unknown.
+    UNKNOWN = 0;
+
+    // Upgrade successfully started.
+    STARTED = 1;
+
+    // An upgrade is already running.
+    ALREADY_RUNNING = 2;
+
+    // Upgrade path not supported e.g. buster->stretch.
+    NOT_SUPPORTED = 3;
+
+    // The container is already at the target version
+    ALREADY_UPGRADED = 4;
+
+    // Failed to start the upgrade for some other reason.
+    FAILED = 5;
+  }
+
+  // The status.
+  Status status = 1;
+
+  // Human-readable message.
+  string failure_reason = 2;
+}
+
+// Periodically sent by Tremplin to report the status of an active upgrade,
+// including being sent once upon completion.
+message UpgradeContainerProgress {
+  enum Status {
+    // The current status is unknown.
+    UNKNOWN = 0;
+
+    // Still in progress.
+    IN_PROGRESS = 1;
+
+    // Completed successfully.
+    SUCCEEDED = 2;
+
+    // Failed to complete.
+    FAILED = 3;
+  }
+
+  // Name of the container this progress refers to.
+  string container_name = 1;
+
+  // The current status.
+  Status status = 2;
+
+  // Human-readable messages detailing progress.
+  repeated string progress_messages = 3;
+}
+
+// Request to cancel an in-progress upgrade.
+message CancelUpgradeContainerRequest {
+  // Name of the container to cancel the upgrade on.
+  string container = 1;
+}
+
+// The response to trying to cancel an upgrade.
+message CancelUpgradeContainerResponse {
+  enum Status {
+    // The status is unknown.
+    UNKNOWN = 0;
+
+    // Upgrade was not in progress, nothing to do.
+    NOT_RUNNING = 1;
+
+    // Upgrade cancelled.
+    CANCELLED = 2;
+
+    // Failed to cancel.
+    FAILED = 3;
+  }
+
+  // The status.
+  Status status = 1;
+
+  // Human-readable failure reason if cancellation failed.
+  string failure_reason = 2;
+}
+
 // Tremplin service methods.
 service Tremplin {
   rpc CreateContainer(CreateContainerRequest) returns (CreateContainerResponse);
@@ -646,6 +754,10 @@ service Tremplin {
   rpc ImportContainer(ImportContainerRequest) returns (ImportContainerResponse);
   rpc CancelImportContainer(CancelImportContainerRequest)
       returns (CancelImportContainerResponse);
+  rpc UpgradeContainer(UpgradeContainerRequest)
+      returns (UpgradeContainerResponse);
+  rpc CancelUpgradeContainer(CancelUpgradeContainerRequest)
+      returns (CancelUpgradeContainerResponse);
 }
 
 // Service that is notified of events from tremplin.
@@ -658,4 +770,5 @@ service TremplinListener {
   rpc UpdateImportStatus(ContainerImportProgress) returns (EmptyMessage);
   rpc ContainerShutdown(ContainerShutdownInfo) returns (EmptyMessage);
   rpc UpdateListeningPorts(ListeningPortInfo) returns (EmptyMessage);
+  rpc UpgradeContainerStatus(UpgradeContainerProgress) returns (EmptyMessage);
 }
