@@ -23,6 +23,8 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
+#include <base/sys_info.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
@@ -32,16 +34,21 @@
 
 namespace {
 
+// Path to the powercap driver sysfs interface, if it doesn't exist,
+// either the kernel is old w/o powercap driver, or it is not configured.
+constexpr const char kPowercapPath[] = "/sys/class/powercap";
+
 struct {
   const char* node;
   const char* name;
 } const kPowercapDomains[] = {
-    {"/sys/class/powercap/intel-rapl:0/energy_uj", "pkg"},
-    {"/sys/class/powercap/intel-rapl:0:0/energy_uj", "pp0"},
-    {"/sys/class/powercap/intel-rapl:0:1/energy_uj", "gfx"},
-    {"/sys/class/powercap/intel-rapl:0:2/energy_uj", "dram"},
+    {"intel-rapl:0", "pkg"},
+    {"intel-rapl:0:0", "pp0"},
+    {"intel-rapl:0:1", "gfx"},
+    {"intel-rapl:0:2", "dram"},
+    {"intel-rapl:1", "psys"},
 };
-const size_t kNumPowercapDomains = arraysize(kPowercapDomains);
+const size_t kMaxPowercapDomains = arraysize(kPowercapDomains);
 
 }  // namespace
 
@@ -57,32 +64,53 @@ int main(int argc, char** argv) {
   const base::CPU cpu;
   CHECK_EQ("GenuineIntel", cpu.vendor_name()) << "Only GenuineIntel supported";
 
-  base::FilePath energy_file_path[kNumPowercapDomains];
-  for (int i = 0; i < kNumPowercapDomains; ++i) {
-    energy_file_path[i] = base::FilePath(kPowercapDomains[i].node);
-    PCHECK(base::PathExists(energy_file_path[i]))
-        << "Error opening " << energy_file_path[i].value();
+  // Kernel v3.13+ supports powercap, it also requires a proper configuration
+  // enabling it; leave a verbose footprint of the kernel string, and examine
+  // whether or not the system supports the powercap driver.
+  if (FLAGS_verbose) {
+    const base::SysInfo sys;
+    printf("OS version: %s\n", sys.OperatingSystemVersion().c_str());
+  }
+  base::FilePath powercap_file_path(kPowercapPath);
+  PCHECK(base::PathExists(powercap_file_path))
+      << "No powercap driver sysfs interface, couldn't find "
+      << powercap_file_path.value();
+
+  std::vector<std::pair<base::FilePath, std::string>> power_domains;
+  for (int i = 0; i < kMaxPowercapDomains; ++i) {
+    base::FilePath energy_file_path(base::StringPrintf("%s/%s/energy_uj",
+        kPowercapPath, kPowercapDomains[i].node));
+
+    if (!base::PathExists(energy_file_path))
+      continue;
+
+    if (FLAGS_verbose)
+      printf("Found RAPL domain %s\n", kPowercapDomains[i].name);
+    power_domains.push_back({energy_file_path, kPowercapDomains[i].name});
   }
 
-  for (const auto& domain : kPowercapDomains)
-    printf("%10s ", domain.name);
+  for (const auto& domain : power_domains)
+    printf("%10s ", domain.second.c_str());
   printf(" (Note: 'pkg' includes 'pp0' and 'gfx'. Values in Watts)\n");
 
-  uint64_t energy_before[kNumPowercapDomains] = {};
-  uint64_t energy_after[kNumPowercapDomains] = {};
+  uint32_t num_domains = power_domains.size();
+  uint64_t energy_before[kMaxPowercapDomains] = {};
+  uint64_t energy_after[kMaxPowercapDomains] = {};
   do {
-    for (int i = 0; i < kNumPowercapDomains; ++i)
-      power_manager::util::ReadUint64File(energy_file_path[i], &energy_before[i]);
+    for (int i = 0; i < num_domains; ++i)
+      power_manager::util::ReadUint64File(power_domains[i].first,
+                                          &energy_before[i]);
     const base::TimeTicks ticks_before = base::TimeTicks::Now();
 
     base::PlatformThread::Sleep(
         base::TimeDelta::FromMilliseconds(FLAGS_interval_ms));
 
-    for (int i = 0; i < kNumPowercapDomains; ++i)
-      power_manager::util::ReadUint64File(energy_file_path[i], &energy_after[i]);
+    for (int i = 0; i < num_domains; ++i)
+      power_manager::util::ReadUint64File(power_domains[i].first,
+                                          &energy_after[i]);
     const base::TimeDelta time_delta = base::TimeTicks::Now() - ticks_before;
 
-    for (int i = 0; i < kNumPowercapDomains; ++i) {
+    for (int i = 0; i < num_domains; ++i) {
       printf("%10.6f ", (energy_after[i] - energy_before[i]) /
                             (time_delta.InSecondsF() * 1e6));
     }
