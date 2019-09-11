@@ -94,11 +94,8 @@ message StartContainerRequest {
   // Container token.
   string token = 4;
 
-  // If true, StartContainer will return immediately and provide updates to the
-  // host via UpdateStartStatus. If false, StartContainer will block until the
-  // container has started. This field will be required to be true once all
-  // clients are migrated to use async.
-  bool async = 5;
+  // Deprecated.  All calls are async.
+  bool async = 5 [deprecated = true];
 }
 
 // OsRelease encapsulates a subset of the os-release info as documented

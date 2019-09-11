@@ -2090,9 +2090,9 @@ std::unique_ptr<dbus::Response> Service::StartLxdContainer(
   CHECK(container);
   container->set_drivefs_mount_path(request.drivefs_mount_path());
 
-  VirtualMachine::StartLxdContainerStatus status = vm->StartLxdContainer(
-      container_name, container_private_key, host_public_key, container_token,
-      request.async(), &error_msg);
+  VirtualMachine::StartLxdContainerStatus status =
+      vm->StartLxdContainer(container_name, container_private_key,
+                            host_public_key, container_token, &error_msg);
 
   switch (status) {
     case VirtualMachine::StartLxdContainerStatus::UNKNOWN:
