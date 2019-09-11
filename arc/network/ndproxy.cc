@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include <arpa/inet.h>
+#include <linux/filter.h>
 #include <linux/if_packet.h>
 #include <linux/in6.h>
 #include <net/ethernet.h>
@@ -22,8 +23,38 @@
 
 namespace arc_networkd {
 namespace {
-const unsigned char ether_addr_broadcast[] = {0xff, 0xff, 0xff,
+const unsigned char kBroadcastMacAddress[] = {0xff, 0xff, 0xff,
                                               0xff, 0xff, 0xff};
+
+sock_filter kNDFrameBpfInstructions[] = {
+    // Load ethernet type.
+    BPF_STMT(BPF_LD | BPF_H | BPF_ABS, offsetof(ether_header, ether_type)),
+    // Check if it equals IPv6, if not, then goto return 0.
+    BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, ETHERTYPE_IPV6, 0, 9),
+    // Move index to start of IPv6 header.
+    BPF_STMT(BPF_LDX | BPF_IMM, sizeof(ether_header)),
+    // Load IPv6 next header.
+    BPF_STMT(BPF_LD | BPF_B | BPF_IND, offsetof(ip6_hdr, ip6_nxt)),
+    // Check if equals ICMPv6, if not, then goto return 0.
+    BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, IPPROTO_ICMPV6, 0, 6),
+    // Move index to start of ICMPv6 header.
+    BPF_STMT(BPF_LDX | BPF_IMM, sizeof(ether_header) + sizeof(ip6_hdr)),
+    // Load ICMPv6 type.
+    BPF_STMT(BPF_LD | BPF_B | BPF_IND, offsetof(icmp6_hdr, icmp6_type)),
+    // Check if is ND ICMPv6 message.
+    BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, ND_ROUTER_SOLICIT, 4, 0),
+    BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, ND_ROUTER_ADVERT, 3, 0),
+    BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, ND_NEIGHBOR_SOLICIT, 2, 0),
+    BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, ND_NEIGHBOR_ADVERT, 1, 0),
+    // Return 0.
+    BPF_STMT(BPF_RET | BPF_K, 0),
+    // Return MAX.
+    BPF_STMT(BPF_RET | BPF_K, IP_MAXPACKET),
+};
+const sock_fprog kNDFrameBpfProgram = {
+    .len = sizeof(kNDFrameBpfInstructions) / sizeof(sock_filter),
+    .filter = kNDFrameBpfInstructions};
+
 }  // namespace
 
 const ssize_t NDProxy::kTranslateErrorNotICMPv6Frame = -1;
@@ -114,7 +145,7 @@ ssize_t NDProxy::TranslateNDFrame(const uint8_t* in_frame,
   // If destination MAC is unicast (Individual/Group bit in MAC address == 0),
   // it needs to be modified into broadcast so guest OS L3 stack can see it.
   if (!(eth->h_dest[0] & 0x1)) {
-    memcpy(eth->h_dest, ether_addr_broadcast, ETHER_ADDR_LEN);
+    memcpy(eth->h_dest, kBroadcastMacAddress, ETHER_ADDR_LEN);
   }
 
   switch (icmp6->icmp6_type) {
@@ -248,6 +279,11 @@ void NDProxy::Start() {
   fd_ = base::ScopedFD(socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IPV6)));
   if (!fd_.is_valid()) {
     PLOG(ERROR) << "socket() failed";
+    return;
+  }
+  if (setsockopt(fd_.get(), SOL_SOCKET, SO_ATTACH_FILTER, &kNDFrameBpfProgram,
+                 sizeof(kNDFrameBpfProgram))) {
+    PLOG(ERROR) << "setsockopt(SO_ATTACH_FILTER) failed";
     return;
   }
 
