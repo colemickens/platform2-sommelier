@@ -27,8 +27,8 @@ RTNLListener::~RTNLListener() {
   rtnl_handler_->RemoveListener(this);
 }
 
-void RTNLListener::NotifyEvent(int type, const RTNLMessage& msg) {
-  if ((type & listen_flags_) != 0)
+void RTNLListener::NotifyEvent(int type, const RTNLMessage& msg) const {
+  if (type & listen_flags_)
     callback_.Run(msg);
 }
 

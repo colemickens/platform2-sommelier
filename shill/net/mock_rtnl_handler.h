@@ -28,6 +28,10 @@ class MockRTNLHandler : public RTNLHandler {
                     unsigned int flags,
                     unsigned int change));
   MOCK_METHOD2(SetInterfaceMTU, void(int interface_index, unsigned int mtu));
+  MOCK_METHOD3(SetInterfaceMac,
+               void(int interface_index,
+                    const ByteString& mac_address,
+                    ResponseCallback error_callback));
   MOCK_METHOD4(AddInterfaceAddress,
                bool(int interface_index,
                     const IPAddress& local,

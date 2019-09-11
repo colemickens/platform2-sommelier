@@ -5,15 +5,18 @@
 #ifndef SHILL_NET_RTNL_HANDLER_H_
 #define SHILL_NET_RTNL_HANDLER_H_
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/lazy_instance.h>
 #include <base/memory/ref_counted.h>
+#include <base/observer_list.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/net/io_handler_factory_container.h"
@@ -36,6 +39,10 @@ class Sockets;
 // state.
 class SHILL_EXPORT RTNLHandler {
  public:
+  // TODO(crbug.com/1005487): use this for all user-triggered messages.
+  // |error| is a positive errno or 0 for acknowledgements.
+  using ResponseCallback = base::OnceCallback<void(int32_t error)>;
+
   // Request mask.
   static const uint32_t kRequestLink;
   static const uint32_t kRequestAddr;
@@ -80,6 +87,13 @@ class SHILL_EXPORT RTNLHandler {
   // |interface_index|.
   virtual void SetInterfaceMac(int interface_index,
                                const ByteString& mac_address);
+
+  // Set the MAC address for the network interface that has a kernel index of
+  // |interface_index|. |response_callback| will be called when appropriate
+  // |NLMSG_ERROR| message received.
+  virtual void SetInterfaceMac(int interface_index,
+                               const ByteString& mac_address,
+                               ResponseCallback response_callback);
 
   // Set address of a network interface that has a kernel index of
   // 'interface_index'.
@@ -201,10 +215,15 @@ class SHILL_EXPORT RTNLHandler {
   // Mapping of sequence number to corresponding RTNLMessage.
   std::map<uint32_t, std::unique_ptr<RTNLMessage>> stored_requests_;
 
-  std::vector<RTNLListener*> listeners_;
+  base::ObserverList<RTNLListener> listeners_;
   std::unique_ptr<IOHandler> rtnl_handler_;
   IOHandlerFactory* io_handler_factory_;
   std::vector<ErrorMask> error_mask_window_;
+
+  // Once |NLMSG_ERROR| message was received, appropriate response_callback
+  // matched by message sequence id must be called with encoded error in
+  // |NLMSG_ERROR| message.
+  std::unordered_map<uint32_t, ResponseCallback> response_callbacks_;
 
   DISALLOW_COPY_AND_ASSIGN(RTNLHandler);
 };

@@ -55,6 +55,7 @@ const uint32_t RTNLHandler::kRequestRule = 8;
 const uint32_t RTNLHandler::kRequestRdnss = 16;
 const uint32_t RTNLHandler::kRequestNeighbor = 32;
 const uint32_t RTNLHandler::kRequestBridgeNeighbor = 64;
+
 const int RTNLHandler::kErrorWindowSize = 16;
 const uint32_t RTNLHandler::kStoredRequestWindowSize = 32;
 
@@ -125,21 +126,12 @@ void RTNLHandler::Stop() {
 }
 
 void RTNLHandler::AddListener(RTNLListener* to_add) {
-  for (const auto& listener : listeners_) {
-    if (to_add == listener)
-      return;
-  }
-  listeners_.push_back(to_add);
+  listeners_.AddObserver(to_add);
   SLOG(this, 2) << "RTNLHandler added listener";
 }
 
 void RTNLHandler::RemoveListener(RTNLListener* to_remove) {
-  for (auto it = listeners_.begin(); it != listeners_.end(); ++it) {
-    if (to_remove == *it) {
-      listeners_.erase(it);
-      return;
-    }
-  }
+  listeners_.RemoveObserver(to_remove);
   SLOG(this, 2) << "RTNLHandler removed listener";
 }
 
@@ -184,15 +176,25 @@ void RTNLHandler::SetInterfaceMTU(int interface_index, unsigned int mtu) {
 
 void RTNLHandler::SetInterfaceMac(int interface_index,
                                   const ByteString& mac_address) {
+  SetInterfaceMac(interface_index, mac_address, ResponseCallback());
+}
+
+void RTNLHandler::SetInterfaceMac(int interface_index,
+                                  const ByteString& mac_address,
+                                  ResponseCallback response_callback) {
   auto msg = std::make_unique<RTNLMessage>(
-      RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, NLM_F_REQUEST,
+      RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, NLM_F_REQUEST | NLM_F_ACK,
       0,  // sequence to be filled in by RTNLHandler::SendMessage().
       0,  // pid.
       interface_index, IPAddress::kFamilyUnknown);
 
   msg->SetAttribute(IFLA_ADDRESS, mac_address);
 
-  CHECK(SendMessage(std::move(msg), nullptr));
+  uint32_t seq;
+  CHECK(SendMessage(std::move(msg), &seq));
+  if (!response_callback.is_null()) {
+    response_callbacks_[seq] = std::move(response_callback);
+  }
 }
 
 void RTNLHandler::RequestDump(uint32_t request_flags) {
@@ -214,8 +216,8 @@ void RTNLHandler::RequestDump(uint32_t request_flags) {
 }
 
 void RTNLHandler::DispatchEvent(int type, const RTNLMessage& msg) {
-  for (const auto& listener : listeners_) {
-    listener->NotifyEvent(type, msg);
+  for (RTNLListener& listener : listeners_) {
+    listener.NotifyEvent(type, msg);
   }
 }
 
@@ -312,8 +314,12 @@ void RTNLHandler::ParseRTNL(InputData* data) {
           if (request_msg)
             request_str = " (" + request_msg->ToString() + ")";
 
-          if ((error_number >= 0 ||
-               error_number == std::numeric_limits<int>::min())) {
+          if (error_number == 0) {
+            SLOG(this, 3) << base::StringPrintf(
+                "sequence %d%s received success", hdr->nlmsg_seq,
+                request_str.c_str());
+          } else if ((error_number > 0 ||
+                      error_number == std::numeric_limits<int>::min())) {
             LOG(ERROR) << base::StringPrintf(
                 "sequence %d%s received invalid error %d", hdr->nlmsg_seq,
                 request_str.c_str(), error_number);
@@ -329,6 +335,14 @@ void RTNLHandler::ParseRTNL(InputData* data) {
               SLOG(this, 3) << error_msg;
             }
           }
+
+          auto response_callback_iter =
+              response_callbacks_.find(hdr->nlmsg_seq);
+          if (response_callback_iter != response_callbacks_.end()) {
+            std::move(response_callback_iter->second).Run(error_number);
+            response_callbacks_.erase(response_callback_iter);
+          }
+
           break;
         }
         default:

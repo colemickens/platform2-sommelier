@@ -16,6 +16,7 @@
 #include <sys/ioctl.h>
 
 #include <base/bind.h>
+#include <base/run_loop.h>
 
 #include "shill/mock_log.h"
 #include "shill/net/mock_io_handler_factory.h"
@@ -139,6 +140,9 @@ class RTNLHandlerTest : public Test {
   MockSockets* sockets_;
   StrictMock<MockIOHandlerFactory> io_handler_factory_;
   Callback<void(const RTNLMessage&)> callback_;
+
+ private:
+  base::MessageLoop message_loop_;
 };
 
 const int RTNLHandlerTest::kTestSocket = 123;
@@ -518,6 +522,31 @@ TEST_F(RTNLHandlerTest, OverflowStoreRequestLargerThanWindow) {
   EXPECT_NE(PopStoredRequest(kSequenceNumber4), nullptr);
   EXPECT_EQ(PopStoredRequest(kSequenceNumber4), nullptr);
   EXPECT_EQ(CalculateStoredRequestWindowSize(), 0);
+}
+
+TEST_F(RTNLHandlerTest, SetInterfaceMac) {
+  StartRTNLHandler();
+  constexpr uint32_t kSequenceNumber = 123456;
+  constexpr int32_t kErrorNumber = 115;
+  SetRequestSequence(kSequenceNumber);
+  EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0)).WillOnce(ReturnArg<2>());
+
+  base::RunLoop run_loop;
+
+  RTNLHandler::GetInstance()->SetInterfaceMac(
+      3, ByteString::CreateFromHexString("abcdef123456"),
+      base::BindOnce(
+          [](base::Closure callback, int32_t expected_error, int32_t error) {
+            EXPECT_EQ(expected_error, error);
+            callback.Run();
+          },
+          run_loop.QuitClosure(), kErrorNumber));
+
+  ReturnError(kSequenceNumber, kErrorNumber);
+
+  run_loop.Run();
+
+  StopRTNLHandler();
 }
 
 }  // namespace shill
