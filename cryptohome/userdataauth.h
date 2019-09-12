@@ -16,6 +16,8 @@
 #include <base/threading/thread.h>
 #include <brillo/secure_blob.h>
 #include <dbus/bus.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "cryptohome/arc_disk_quota.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
@@ -43,6 +45,11 @@ class UserDataAuth {
   // Note that this function must be called from the thread that created this
   // object, so that |origin_task_runner_| is initialized correctly.
   bool Initialize();
+
+  // This is the initialization function that is called after DBus is connected
+  // and set_dbus() has been called. Usually Initialize() is called before this
+  // method.
+  bool PostDBusInitialize();
 
   // =============== Mount Related Public DBus API ===============
   // Methods below are used directly by the DBus interface
@@ -605,6 +612,19 @@ class UserDataAuth {
   // a non-guest mount mounted. This can only be called on mount thread.
   void FinalizeInstallAttributesIfMounted();
 
+  // =============== Signal Related Utilities/Callback ===============
+
+  // This is called whenever the signal handlers for signals on tpm_manager's
+  // interface is registered/connected. This is only used by the signal handler
+  // registration function in tpm_manager's generated D-Bus proxy.
+  void OnTpmManagerSignalConnected(const std::string& interface,
+                                   const std::string& signal,
+                                   bool success);
+
+  // This is called whenever the OwnershipTaken signal is emitted by
+  // tpm_manager. This will notify |tpm_| about the emitted signal.
+  void OnOwnershipTakenSignal(const tpm_manager::OwnershipTakenSignal& signal);
+
   // =============== Threading Related Variables ===============
 
   // The task runner that belongs to the thread that created this UserDataAuth
@@ -686,6 +706,15 @@ class UserDataAuth {
   // The actual Firmware Management Parameters object that is used by this
   // class, but can be overridden for testing.
   FirmwareManagementParameters* firmware_management_parameters_;
+
+  // The default D-Bus proxy for invoking any ownership related methods in
+  // tpm_manager.
+  std::unique_ptr<org::chromium::TpmOwnershipProxyInterface>
+      default_tpm_ownership_proxy_;
+
+  // The actual D-Bus proxy for invoking any ownership related methods in
+  // tpm_manager, but can be overriden for testing.
+  org::chromium::TpmOwnershipProxyInterface* tpm_ownership_proxy_;
 
   // =============== Install Attributes Related Variables ===============
 

@@ -53,6 +53,8 @@ class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
         new CryptohomeMiscAdaptor(bus_, dbus_object_.get(), service_.get()));
     misc_adaptor_->RegisterAsync();
 
+    service_->PostDBusInitialize();
+
     dbus_object_->RegisterAsync(
         sequencer->GetHandler("RegisterAsync() for UserDataAuth failed", true));
   }

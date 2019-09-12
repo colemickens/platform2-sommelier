@@ -110,6 +110,8 @@ UserDataAuth::UserDataAuth()
       default_pkcs11_init_(new Pkcs11Init()),
       pkcs11_init_(default_pkcs11_init_.get()),
       firmware_management_parameters_(nullptr),
+      default_tpm_ownership_proxy_(),
+      tpm_ownership_proxy_(nullptr),
       default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
       install_attrs_(default_install_attrs_.get()),
       enterprise_owned_(false),
@@ -206,6 +208,43 @@ bool UserDataAuth::Initialize() {
       base::Bind(&UserDataAuth::OwnershipCallback, base::Unretained(this)));
 
   return true;
+}
+
+bool UserDataAuth::PostDBusInitialize() {
+  AssertOnOriginThread();
+  CHECK(bus_);
+
+  // Initialize the tpm_ownership_proxy_ and register the signals.
+  if (!default_tpm_ownership_proxy_) {
+    default_tpm_ownership_proxy_.reset(
+        new org::chromium::TpmOwnershipProxy(bus_));
+  }
+
+  if (!tpm_ownership_proxy_) {
+    tpm_ownership_proxy_ = default_tpm_ownership_proxy_.get();
+  }
+  tpm_ownership_proxy_->RegisterSignalOwnershipTakenSignalHandler(
+      base::Bind(&UserDataAuth::OnOwnershipTakenSignal, base::Unretained(this)),
+      base::Bind(&UserDataAuth::OnTpmManagerSignalConnected,
+                 base::Unretained(this)));
+
+  return true;
+}
+
+void UserDataAuth::OnTpmManagerSignalConnected(const std::string& interface,
+                                               const std::string& signal,
+                                               bool success) {
+  if (!success) {
+    LOG(ERROR)
+        << "Failure to connect DBus signal in cryptohome-proxy, interface="
+        << interface << ", signal=" << signal;
+  }
+}
+
+void UserDataAuth::OnOwnershipTakenSignal(
+    const tpm_manager::OwnershipTakenSignal& signal) {
+  // Notify the tpm_ object of the OwnershipTaken signal.
+  tpm_->HandleOwnershipTakenSignal();
 }
 
 bool UserDataAuth::PostTaskToOriginThread(
