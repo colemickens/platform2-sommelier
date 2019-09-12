@@ -25,10 +25,12 @@ class ProcessUnderTest : public Process {
  public:
   ProcessUnderTest() = default;
 
-  MOCK_METHOD3(StartImpl,
-               pid_t(base::ScopedFD*, base::ScopedFD*, base::ScopedFD*));
-  MOCK_METHOD0(WaitImpl, int());
-  MOCK_METHOD1(WaitNonBlockingImpl, bool(int*));
+  MOCK_METHOD(pid_t,
+              StartImpl,
+              (base::ScopedFD*, base::ScopedFD*, base::ScopedFD*),
+              (override));
+  MOCK_METHOD(int, WaitImpl, (), (override));
+  MOCK_METHOD(bool, WaitNonBlockingImpl, (int*), (override));
 };
 
 class ProcessTest : public ::testing::Test {

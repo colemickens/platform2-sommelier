@@ -23,12 +23,12 @@ namespace cros_disks {
 
 class MockDeviceEventDispatcher : public DeviceEventDispatcherInterface {
  public:
-  MOCK_METHOD1(DispatchDeviceEvent, void(const DeviceEvent& event));
+  MOCK_METHOD(void, DispatchDeviceEvent, (const DeviceEvent&), (override));
 };
 
 class MockDeviceEventSource : public DeviceEventSourceInterface {
  public:
-  MOCK_METHOD1(GetDeviceEvents, bool(DeviceEventList* event));
+  MOCK_METHOD(bool, GetDeviceEvents, (DeviceEventList*), (override));
 };
 
 class DeviceEventModeratorTest : public ::testing::Test {

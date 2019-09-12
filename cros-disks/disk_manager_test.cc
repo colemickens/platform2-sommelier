@@ -42,7 +42,7 @@ class MockDeviceEjector : public DeviceEjector {
  public:
   MockDeviceEjector() : DeviceEjector(nullptr) {}
 
-  MOCK_METHOD1(Eject, bool(const std::string& device_path));
+  MOCK_METHOD(bool, Eject, (const std::string&), (override));
 };
 
 class MockDiskMonitor : public DiskMonitor {
@@ -51,9 +51,11 @@ class MockDiskMonitor : public DiskMonitor {
 
   bool Initialize() override { return true; }
 
-  MOCK_CONST_METHOD0(EnumerateDisks, std::vector<Disk>());
-  MOCK_CONST_METHOD2(GetDiskByDevicePath,
-                     bool(const base::FilePath& device_path, Disk* disk));
+  MOCK_METHOD(std::vector<Disk>, EnumerateDisks, (), (const, override));
+  MOCK_METHOD(bool,
+              GetDiskByDevicePath,
+              (const base::FilePath&, Disk*),
+              (const, override));
 };
 
 class DiskManagerTest : public ::testing::Test {

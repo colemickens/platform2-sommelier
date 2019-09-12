@@ -45,20 +45,27 @@ class MockPlatform : public Platform {
  public:
   MockPlatform() = default;
 
-  MOCK_CONST_METHOD1(CreateDirectory, bool(const std::string& path));
-  MOCK_CONST_METHOD1(CreateOrReuseEmptyDirectory,
-                     bool(const std::string& path));
-  MOCK_CONST_METHOD3(CreateOrReuseEmptyDirectoryWithFallback,
-                     bool(std::string* path,
-                          unsigned max_suffix_to_retry,
-                          const std::set<std::string>& reserved_paths));
-  MOCK_CONST_METHOD1(RemoveEmptyDirectory, bool(const std::string& path));
-  MOCK_CONST_METHOD3(SetOwnership,
-                     bool(const std::string& path,
-                          uid_t user_id,
-                          gid_t group_id));
-  MOCK_CONST_METHOD2(SetPermissions,
-                     bool(const std::string& path, mode_t mode));
+  MOCK_METHOD(bool, CreateDirectory, (const std::string&), (const, override));
+  MOCK_METHOD(bool,
+              CreateOrReuseEmptyDirectory,
+              (const std::string&),
+              (const, override));
+  MOCK_METHOD(bool,
+              CreateOrReuseEmptyDirectoryWithFallback,
+              (std::string*, unsigned, const std::set<std::string>&),
+              (const, override));
+  MOCK_METHOD(bool,
+              RemoveEmptyDirectory,
+              (const std::string&),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetOwnership,
+              (const std::string&, uid_t, gid_t),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetPermissions,
+              (const std::string&, mode_t),
+              (const, override));
 };
 
 // A mock mount manager class for testing the mount manager base class.
@@ -69,21 +76,28 @@ class MountManagerUnderTest : public MountManager {
                         brillo::ProcessReaper* process_reaper)
       : MountManager(kMountRootDirectory, platform, metrics, process_reaper) {}
 
-  MOCK_CONST_METHOD1(CanMount, bool(const std::string& source_path));
-  MOCK_CONST_METHOD0(GetMountSourceType, MountSourceType());
-  MOCK_METHOD5(DoMount,
-               MountErrorType(const std::string& source_path,
-                              const std::string& filesystem_type,
-                              const std::vector<std::string>& options,
-                              const std::string& mount_path,
-                              MountOptions* applied_options));
-  MOCK_METHOD2(DoUnmount,
-               MountErrorType(const std::string& path,
-                              const std::vector<std::string>& options));
-  MOCK_CONST_METHOD1(ShouldReserveMountPathOnError,
-                     bool(MountErrorType error_type));
-  MOCK_CONST_METHOD1(SuggestMountPath,
-                     std::string(const std::string& source_path));
+  MOCK_METHOD(bool, CanMount, (const std::string&), (const, override));
+  MOCK_METHOD(MountSourceType, GetMountSourceType, (), (const, override));
+  MOCK_METHOD(MountErrorType,
+              DoMount,
+              (const std::string&,
+               const std::string&,
+               const std::vector<std::string>&,
+               const std::string&,
+               MountOptions*),
+              (override));
+  MOCK_METHOD(MountErrorType,
+              DoUnmount,
+              (const std::string&, const std::vector<std::string>&),
+              (override));
+  MOCK_METHOD(bool,
+              ShouldReserveMountPathOnError,
+              (MountErrorType),
+              (const, override));
+  MOCK_METHOD(std::string,
+              SuggestMountPath,
+              (const std::string&),
+              (const, override));
 };
 
 class MountManagerTest : public ::testing::Test {

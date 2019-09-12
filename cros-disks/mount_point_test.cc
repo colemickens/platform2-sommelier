@@ -23,7 +23,7 @@ class MockUnmounter : public Unmounter {
   MountErrorType Unmount(const MountPoint& mountpoint) override {
     return UnmountImpl(mountpoint.path());
   }
-  MOCK_METHOD1(UnmountImpl, MountErrorType(const base::FilePath& path));
+  MOCK_METHOD(MountErrorType, UnmountImpl, (const base::FilePath&));
 };
 
 }  // namespace
