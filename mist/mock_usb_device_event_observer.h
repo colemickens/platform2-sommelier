@@ -19,13 +19,11 @@ class MockUsbDeviceEventObserver : public UsbDeviceEventObserver {
   MockUsbDeviceEventObserver() = default;
   ~MockUsbDeviceEventObserver() override = default;
 
-  MOCK_METHOD5(OnUsbDeviceAdded,
-               void(const std::string& sys_path,
-                    uint8_t bus_number,
-                    uint8_t device_address,
-                    uint16_t vendor_id,
-                    uint16_t product_id));
-  MOCK_METHOD1(OnUsbDeviceRemoved, void(const std::string& sys_path));
+  MOCK_METHOD(void,
+              OnUsbDeviceAdded,
+              (const std::string&, uint8_t, uint8_t, uint16_t, uint16_t),
+              (override));
+  MOCK_METHOD(void, OnUsbDeviceRemoved, (const std::string&), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockUsbDeviceEventObserver);

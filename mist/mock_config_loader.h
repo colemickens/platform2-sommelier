@@ -16,11 +16,12 @@ class MockConfigLoader : public ConfigLoader {
   MockConfigLoader() = default;
   ~MockConfigLoader() override = default;
 
-  MOCK_METHOD0(LoadDefaultConfig, bool());
-  MOCK_METHOD1(LoadConfig, bool(const base::FilePath& config_file));
-  MOCK_CONST_METHOD2(GetUsbModemInfo,
-                     const UsbModemInfo*(uint16_t vendor_id,
-                                         uint16_t product_id));
+  MOCK_METHOD(bool, LoadDefaultConfig, (), (override));
+  MOCK_METHOD(bool, LoadConfig, (const base::FilePath&), (override));
+  MOCK_METHOD(const UsbModemInfo*,
+              GetUsbModemInfo,
+              (uint16_t, uint16_t),
+              (const, override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockConfigLoader);
