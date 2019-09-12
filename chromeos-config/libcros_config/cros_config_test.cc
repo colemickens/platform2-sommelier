@@ -29,7 +29,6 @@ class CrosConfigTest : public testing::Test {
     ASSERT_TRUE(cros_config_.InitForTest(sku_id, filepath,
                                          brillo::SystemArchitecture::kX86, name,
                                          whitelabel_name));
-    ASSERT_FALSE(cros_config_.FallbackModeEnabled());
   }
 
   void InitConfigArm(const std::string device_name = "google,some",
@@ -39,25 +38,15 @@ class CrosConfigTest : public testing::Test {
     ASSERT_TRUE(cros_config_.InitForTest(sku_id, filepath,
                                          brillo::SystemArchitecture::kArm,
                                          device_name, whitelabel_name));
-    ASSERT_FALSE(cros_config_.FallbackModeEnabled());
-  }
-
-  void InitConfigInvalid() {
-    base::FilePath filepath(kTestFileInvalid);
-
-    // InitForTest will decide to fallback to mosys platform and should
-    // succeed
-    ASSERT_TRUE(cros_config_.InitForTest(
-        -1, filepath, brillo::SystemArchitecture::kX86, "Another", ""));
-
-    ASSERT_TRUE(cros_config_.FallbackModeEnabled());
   }
 
   brillo::CrosConfig cros_config_;
 };
 
 TEST_F(CrosConfigTest, CheckMissingFile) {
-  InitConfigInvalid();
+  base::FilePath filepath(kTestFileInvalid);
+  ASSERT_FALSE(cros_config_.InitForTest(
+      -1, filepath, brillo::SystemArchitecture::kX86, "Another", ""));
 }
 
 TEST_F(CrosConfigTest, CheckUnknownModel) {
@@ -127,38 +116,6 @@ TEST_F(CrosConfigTest, CheckCameraCount) {
   ASSERT_EQ("1", val);
 }
 
-TEST_F(CrosConfigTest, CheckFallbackImageName) {
-  InitConfigInvalid();
-
-  // This is defined in the fake mosys under testbin/
-  std::string val;
-  ASSERT_TRUE(cros_config_.GetString("/firmware", "image-name", &val));
-  ASSERT_EQ("test_mosys_model_string", val);
-}
-
-TEST_F(CrosConfigTest, CheckFallbackBrandCode) {
-  InitConfigInvalid();
-
-  // This is defined in the fake mosys under testbin/
-  std::string val;
-  ASSERT_TRUE(cros_config_.GetString("/", "brand-code", &val));
-  ASSERT_EQ("BRND", val);
-}
-
-TEST_F(CrosConfigTest, CheckFallbackInvalidPath) {
-  InitConfigInvalid();
-
-  std::string val;
-  ASSERT_FALSE(cros_config_.GetString("/invalid", "image-name", &val));
-}
-
-TEST_F(CrosConfigTest, CheckFallbackInvalidProperty) {
-  InitConfigInvalid();
-
-  std::string val;
-  ASSERT_FALSE(cros_config_.GetString("/firmware", "invalid-prop", &val));
-}
-
 int main(int argc, char** argv) {
   int status = system("exec ./chromeos-config-test-setup.sh");
   if (status != 0)
@@ -171,21 +128,6 @@ int main(int argc, char** argv) {
   settings.delete_old = logging::DELETE_OLD_LOG_FILE;
   logging::InitLogging(settings);
   logging::SetMinLogLevel(-3);
-
-  // $SRC/testbin contains a fake mosys which is used by the tests
-  const char* src_path = getenv("SRC");
-  if (!src_path || !src_path[0]) {
-    LOG(ERROR) << "SRC must be set in the environment";
-    return EXIT_FAILURE;
-  }
-
-  std::string new_path(src_path);
-  new_path += "/testbin";
-
-  if (setenv("PATH", new_path.c_str(), true) < 0) {
-    LOG(ERROR) << "Failed to set PATH";
-    return EXIT_FAILURE;
-  }
 
   testing::InitGoogleTest(&argc, argv);
 
