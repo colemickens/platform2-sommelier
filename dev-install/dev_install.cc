@@ -146,6 +146,7 @@ int DevInstall::Run() {
   if (only_bootstrap_)
     argv.push_back("--only_bootstrap");
 
+  argv.push_back(nullptr);
   return Exec(argv);
 }
 
