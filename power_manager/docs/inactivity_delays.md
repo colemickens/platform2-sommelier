@@ -61,8 +61,8 @@ disabled.
 
 The above delays and actions can be configured by Chrome and are sent to the
 power manager as `PowerManagementPolicy` protocol buffers via D-Bus. Chrome's
-settings are controlled by [enterprise policies] and by the [chrome.power
-extension API].
+settings are controlled by "Power management" [enterprise policies] and by the
+[chrome.power extension API].
 
 On a running system, `/var/log/power_manager/powerd.LATEST` should contain
 enough details to understand why a given action was taken. This file is
@@ -76,6 +76,6 @@ accessible via `chrome://system` or by browsing to `file://var/log`.
     `StateController` class in power manager; responsible for managing delays
 
 [issue 190499]: https://crbug.com/190499
-[enterprise policies]: https://www.chromium.org/administrators/policy-list-3#PowerManagement
+[enterprise policies]: https://cloud.google.com/docs/chrome-enterprise/policies
 [chrome.power extension API]: https://developer.chrome.com/extensions/power.html
 [Smart Dim]: https://chromium.googlesource.com/chromium/src/+/master/chrome/browser/chromeos/power/ml/smart_dim
