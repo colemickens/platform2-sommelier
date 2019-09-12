@@ -122,6 +122,9 @@ namespace switches {
                                    "tpm_attestation_key_status",
                                    "tpm_attestation_register_key",
                                    "tpm_attestation_enterprise_challenge",
+                                   "tpm_attestation_simple_challenge",
+                                   "tpm_attestation_get_key_payload",
+                                   "tpm_attestation_set_key_payload",
                                    "tpm_attestation_delete",
                                    "tpm_attestation_get_ek",
                                    "tpm_attestation_reset_identity",
@@ -186,6 +189,9 @@ namespace switches {
     ACTION_TPM_ATTESTATION_KEY_STATUS,
     ACTION_TPM_ATTESTATION_REGISTER_KEY,
     ACTION_TPM_ATTESTATION_ENTERPRISE_CHALLENGE,
+    ACTION_TPM_ATTESTATION_SIMPLE_CHALLENGE,
+    ACTION_TPM_ATTESTATION_GET_KEY_PAYLOAD,
+    ACTION_TPM_ATTESTATION_SET_KEY_PAYLOAD,
     ACTION_TPM_ATTESTATION_DELETE,
     ACTION_TPM_ATTESTATION_GET_EK,
     ACTION_TPM_ATTESTATION_RESET_IDENTITY,
@@ -2337,6 +2343,116 @@ int main(int argc, char **argv) {
     base::WriteFileDescriptor(STDOUT_FILENO,
                               response_data.data(),
                               response_data.length());
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_TPM_ATTESTATION_SIMPLE_CHALLENGE],
+      action.c_str())) {
+    std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
+    std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
+    if (key_name.length() == 0) {
+      printf("No key name specified (--%s=<name>)\n",
+             switches::kAttrNameSwitch);
+      return 1;
+    }
+    gboolean is_user_specific = !account_id.empty();
+    std::string contents = "challenge";
+    brillo::glib::ScopedArray challenge(g_array_new(FALSE, FALSE, 1));
+    g_array_append_vals(challenge.get(), contents.data(), contents.length());
+    brillo::glib::ScopedError error;
+    ClientLoop client_loop;
+    client_loop.Initialize(&proxy);
+    gint async_id = -1;
+    if (!org_chromium_CryptohomeInterface_tpm_attestation_sign_simple_challenge(
+            proxy.gproxy(),
+            is_user_specific,
+            account_id.c_str(),
+            key_name.c_str(),
+            challenge.get(),
+            &async_id,
+            &brillo::Resetter(&error).lvalue())) {
+      printf("AsyncTpmAttestationSignSimpleChallenge call failed: %s.\n",
+             error->message);
+      return 1;
+    }
+    client_loop.Run(async_id);
+    if (!client_loop.get_return_status()) {
+      printf("Attestation challenge response failed.\n");
+      return 1;
+    }
+    std::string response_data = client_loop.get_return_data();
+    base::WriteFileDescriptor(STDOUT_FILENO,
+                              response_data.data(),
+                              response_data.length());
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_TPM_ATTESTATION_GET_KEY_PAYLOAD],
+      action.c_str())) {
+    std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
+    std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
+    if (key_name.length() == 0) {
+      printf("No key name specified (--%s=<name>)\n",
+             switches::kAttrNameSwitch);
+      return 1;
+    }
+    brillo::glib::ScopedArray payload;
+    gboolean is_user_specific = !account_id.empty();
+    brillo::glib::ScopedError error;
+    gboolean success = FALSE;
+    if (!org_chromium_CryptohomeInterface_tpm_attestation_get_key_payload(
+            proxy.gproxy(),
+            is_user_specific,
+            account_id.c_str(),
+            key_name.c_str(),
+          &brillo::Resetter(&payload).lvalue(),
+            &success,
+            &brillo::Resetter(&error).lvalue())) {
+      printf("AsyncTpmAttestationGetKetPayload call failed: %s.\n",
+             error->message);
+      return 1;
+    }
+    if (!success) {
+      printf("AsyncTpmAttestationGetKetPayload operation failed.\n");
+      return 1;
+    }
+    base::WriteFile(GetOutputFile(cl), payload->data, payload->len);
+    base::WriteFileDescriptor(STDOUT_FILENO,
+                              payload->data,
+                              payload->len);
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_TPM_ATTESTATION_SET_KEY_PAYLOAD],
+      action.c_str())) {
+    std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
+    std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
+    std::string value = cl->GetSwitchValueASCII(switches::kAttrValueSwitch);
+    if (key_name.length() == 0) {
+      printf("No key name specified (--%s=<name>)\n",
+             switches::kAttrNameSwitch);
+      return 1;
+    }
+    if (value.length() == 0) {
+      printf("No payload specified (--%s=<payload>)\n",
+             switches::kAttrValueSwitch);
+      return 1;
+    }
+    brillo::glib::ScopedArray payload(g_array_new(FALSE, FALSE, 1));
+    g_array_append_vals(payload.get(), value.data(), value.length());
+    gboolean is_user_specific = !account_id.empty();
+    brillo::glib::ScopedError error;
+    gboolean success = FALSE;
+    if (!org_chromium_CryptohomeInterface_tpm_attestation_set_key_payload(
+            proxy.gproxy(),
+            is_user_specific,
+            account_id.c_str(),
+            key_name.c_str(),
+            payload.get(),
+            &success,
+            &brillo::Resetter(&error).lvalue())) {
+      printf("AsyncTpmAttestationSetKetPayload call failed: %s.\n",
+             error->message);
+      return 1;
+    }
+    if (!success) {
+      printf("AsyncTpmAttestationSetKetPayload operation failed.\n");
+      return 1;
+    }
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_DELETE],
       action.c_str())) {
