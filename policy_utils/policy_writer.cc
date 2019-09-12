@@ -12,10 +12,16 @@
 
 namespace {
 
-// Property name and file name for policy DeviceAllowBluetooth.
+// Property name and corresponding file name for policies.
 const char kPolicyDeviceAllowBluetooth[] = "DeviceAllowBluetooth";
 const char kPolicyDeviceAllowBluetoothFileName[] =
     "device_allow_bluetooth.json";
+
+const char kPolicyShowHomeButton[] = "ShowHomeButton";
+const char kPolicyShowHomeButtonFileName[] = "show_home_bbuton.json";
+
+const char kPolicyBookmarkBarEnabled[] = "BookmarkBarEnabled";
+const char kPolicyBookmarkBarEnabledFileName[] = "bookmark_bar_enabled.json";
 
 // Create all non-existent directories in path |full_path. Each directory is
 // created with permission 0755. Return whether successful.
@@ -86,7 +92,29 @@ bool PolicyWriter::SetDeviceAllowBluetooth(bool is_allowed) const {
                            kPolicyDeviceAllowBluetoothFileName);
 }
 
+bool PolicyWriter::SetShowHomeButton(bool show) const {
+  base::DictionaryValue policy;
+  policy.SetBoolean(kPolicyShowHomeButton, show);
+  return WritePolicyToFile(policy, dest_dir_path_,
+                           kPolicyShowHomeButtonFileName);
+}
+
+bool PolicyWriter::SetBookmarkBarEnabled(bool is_enabled) const {
+  base::DictionaryValue policy;
+  policy.SetBoolean(kPolicyBookmarkBarEnabled, is_enabled);
+  return WritePolicyToFile(policy, dest_dir_path_,
+                           kPolicyBookmarkBarEnabledFileName);
+}
+
 bool PolicyWriter::ClearDeviceAllowBluetooth() const {
   return DeletePolicyFile(dest_dir_path_, kPolicyDeviceAllowBluetoothFileName);
+}
+
+bool PolicyWriter::ClearShowHomeButton() const {
+  return DeletePolicyFile(dest_dir_path_, kPolicyShowHomeButtonFileName);
+}
+
+bool PolicyWriter::ClearBookmarkBarEnabled() const {
+  return DeletePolicyFile(dest_dir_path_, kPolicyBookmarkBarEnabledFileName);
 }
 }  // namespace policy_utils

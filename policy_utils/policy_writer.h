@@ -29,10 +29,14 @@ class BRILLO_EXPORT PolicyWriter {
   // Sets policy DeviceAllowBluetooth to value |is_allowed|. Returns whether
   // successful.
   bool SetDeviceAllowBluetooth(bool is_allowed) const;
+  bool SetShowHomeButton(bool show) const;
+  bool SetBookmarkBarEnabled(bool is_enabled) const;
 
   // Clears local policy DeviceAllowBluetooth by deleting its local JSON file
   // override if it exists. Returns whether successful.
   bool ClearDeviceAllowBluetooth() const;
+  bool ClearShowHomeButton() const;
+  bool ClearBookmarkBarEnabled() const;
 
  private:
   // The path to the directory into which JSON policy files should be written.

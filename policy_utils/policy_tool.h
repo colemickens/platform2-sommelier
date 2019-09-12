@@ -21,12 +21,12 @@ class PolicyTool {
   // The directory path where JSON files should be stored to automatically
   // override policies in Chrome.
   constexpr static char kChromePolicyDirPath[] =
-      "/etc/opt/chrome/policies/recommended/";
+      "/etc/opt/chrome/policies/managed/";
 
   // The directory path where JSON files should be stored to automatically
   // override policies in Chromium.
   constexpr static char kChromiumPolicyDirPath[] =
-      "/etc/chromium/policies/recommended";
+      "/etc/chromium/policies/managed";
 
   // PolicyList is a list of policy names.
   typedef std::vector<const std::string> PolicyList;

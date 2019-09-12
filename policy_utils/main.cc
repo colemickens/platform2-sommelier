@@ -28,8 +28,9 @@ constexpr char kHelpMessage[] =
     "or the other.\n"
     "\n"
     "Examples:\n"
-    "    policy set DeviceAllowBluetooth true\n"
-    "    policy clear DeviceAllowBluetooth";
+    "    policy set ShowHomeButton true\n"
+    "    policy clear ShowHomeButton\n\n"
+    "Policy names are not case sensitive.";
 
 constexpr char kUsageMessage[] =
     "\n"
@@ -136,7 +137,7 @@ int main(int argc, char** argv) {
     std::string chrome_version;
     if (!GetChromeVersion(&chrome_version)) {
       LOG(ERROR) << "Unable to get Chrome version.\n"
-                    "You can use cmd-line options '--chrome' or '-chromium'\n"
+                    "You can use cmd-line options '--chrome' or '--chromium'\n"
                     "to force either Google Chrome or Chromium";
       return 1;
     }

@@ -18,10 +18,14 @@ enum class Command { CMD_CLEAR, CMD_SET, CMD_UNKNOWN };
 
 // Individual policies that this tool can handle.
 constexpr char kPolicyDeviceAllowBluetooth[] = "DeviceAllowBlueTooth";
+constexpr char kShowHomeButton[] = "ShowHomeButton";
+constexpr char kBookmarkBarEnabled[] = "BookmarkBarEnabled";
 
 // The same policies, bundled up in a list.
 const policy_utils::PolicyTool::PolicyList known_policies = {
-    kPolicyDeviceAllowBluetooth};
+    kBookmarkBarEnabled,
+    kPolicyDeviceAllowBluetooth,
+    kShowHomeButton};
 
 // Compare two strings for equality ignoring case.
 bool IsEqualNoCase(const std::string& a, const std::string& b) {
@@ -75,7 +79,9 @@ Value GetBoolValueFromArgs(const CommandLine::StringVector& args) {
 // the given policy.
 Value GetValueForSetCommand(const std::string& policy,
                             const CommandLine::StringVector& args) {
-  if (IsEqualNoCase(policy, kPolicyDeviceAllowBluetooth)) {
+  if (IsEqualNoCase(policy, kPolicyDeviceAllowBluetooth) ||
+      IsEqualNoCase(policy, kShowHomeButton) ||
+      IsEqualNoCase(policy, kBookmarkBarEnabled)) {
     return GetBoolValueFromArgs(args);
   }
 
@@ -111,6 +117,16 @@ bool HandleCommandForPolicy(Command cmd,
       result = writer.SetDeviceAllowBluetooth(set_value.GetBool());
     else
       result = writer.ClearDeviceAllowBluetooth();
+  } else if (IsEqualNoCase(policy, kShowHomeButton)) {
+    if (cmd == Command::CMD_SET)
+      result = writer.SetShowHomeButton(set_value.GetBool());
+    else
+      result = writer.ClearShowHomeButton();
+  } else if (IsEqualNoCase(policy, kBookmarkBarEnabled)) {
+    if (cmd == Command::CMD_SET)
+      result = writer.SetBookmarkBarEnabled(set_value.GetBool());
+    else
+      result = writer.ClearBookmarkBarEnabled();
   }
 
   if (!result) {
