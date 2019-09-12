@@ -5,9 +5,11 @@
 // The base module handles registration of a base set of crosh commands.
 
 mod set_time;
+mod vmc;
 
 use crate::dispatcher::Dispatcher;
 
 pub fn register(dispatcher: &mut Dispatcher) {
     set_time::register(dispatcher);
+    vmc::register(dispatcher);
 }

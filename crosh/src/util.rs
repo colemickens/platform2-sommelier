@@ -4,6 +4,7 @@
 
 // Provides helper functions used by handler implementations of crosh commands.
 
+use std::env;
 use std::error;
 use std::fmt::{self, Display};
 use std::fs::read_to_string;
@@ -11,7 +12,13 @@ use std::io::Read;
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use dbus::{BusType, Connection, Message};
 use regex::Regex;
+
+// 25 seconds is the default timeout for dbus-send.
+const TIMEOUT_MILLIS: i32 = 25000;
+
+const CROS_USER_ID_HASH: &str = "CROS_USER_ID_HASH";
 
 static INCLUDE_DEV: AtomicBool = AtomicBool::new(false);
 static INCLUDE_USB: AtomicBool = AtomicBool::new(false);
@@ -38,6 +45,75 @@ impl<T: error::Error> From<T> for Error {
     fn from(err: T) -> Self {
         Error::WrappedError(format!("{:?}", err).to_string())
     }
+}
+
+// Return the user ID hash from the environment. If it is not available, fetch it from session
+// manager and set the environment variable.
+pub fn get_user_id_hash() -> Result<String, ()> {
+    if let Ok(lookup) = env::var(CROS_USER_ID_HASH) {
+        return Ok(lookup);
+    }
+
+    let method: Message = Message::new_method_call(
+        "org.chromium.SessionManager",
+        "/org/chromium/SessionManager",
+        "org.chromium.SessionManagerInterface",
+        "RetrievePrimarySession",
+    )
+    .unwrap();
+
+    let connection = Connection::get_private(BusType::System);
+    if let Err(err) = connection {
+        eprintln!("ERROR: Failed to get D-Bus connection: {}", err);
+        return Err(());
+    }
+
+    let reply_res = connection
+        .unwrap()
+        .send_with_reply_and_block(method, TIMEOUT_MILLIS);
+    if let Err(err) = reply_res {
+        eprintln!("ERROR: D-Bus method call failed: {}", err);
+        return Err(());
+    }
+
+    let reply = reply_res.unwrap();
+    let (_, arg) = reply.get2::<String, String>();
+    if arg.is_none() {
+        println!("ERROR: Got unexpected result: {:?}", &reply);
+        return Err(());
+    }
+    let user_id_hash = arg.unwrap();
+
+    env::set_var(CROS_USER_ID_HASH, &user_id_hash);
+
+    Ok(user_id_hash)
+}
+
+pub fn is_chrome_feature_enabled(method_name: &str) -> Result<bool, ()> {
+    let method: Message = Message::new_method_call(
+        "org.chromium.ChromeFeaturesService",
+        "/org/chromium/ChromeFeaturesService",
+        "org.chromium.ChromeFeaturesServiceInterface",
+        method_name,
+    )
+    .unwrap()
+    .append1(get_user_id_hash()?);
+
+    let connection = Connection::get_private(BusType::System).or_else(|err| {
+        eprintln!("ERROR: Failed to get D-Bus connection: {}", err);
+        Err(())
+    })?;
+
+    let reply = connection
+        .send_with_reply_and_block(method, TIMEOUT_MILLIS)
+        .or_else(|err| {
+            eprintln!("ERROR: D-Bus method call failed: {}", err);
+            Err(())
+        })?;
+
+    reply.get1::<bool>().ok_or_else(|| {
+        println!("ERROR: Got unexpected result: {:?}", &reply);
+    })
 }
 
 pub fn is_dev_mode() -> Result<bool, Error> {

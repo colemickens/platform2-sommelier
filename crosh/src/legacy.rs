@@ -62,7 +62,6 @@ const BASE_COMMANDS: &[&str] = &[
     "upload_devcoredumps",
     "uptime",
     "verify_ro",
-    "vmc",
     "vmstat",
     "vsh",
     "wifi_power_save",
