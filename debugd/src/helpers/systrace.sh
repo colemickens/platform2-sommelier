@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/sh
 
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -7,15 +7,16 @@
 #
 # Helper script for turning system event tracing on/off.
 #
-# systrace start [ event-category ... ]
+# systrace start [ event-or-category ... ]
 # systrace stop
 # systrace [status]
 #
-# Event categories are one or more of "sched" (thread switch events),
-# "workq" (workq start/stop events), "gfx" (select i915 events),
-# and "power" (cpu frequency change events).  "all" can be used
-# to enable all supported events.  If no categories are specified
-# then "all" are enabled.
+# It is possible to pass either events category or event itself.
+# Category is a group of predefined events. Event categories are one or more of
+# "sched" (thread switch events), "workq" (workq start/stop events)
+# "gfx" (select i915 events) and "power" (cpu frequency change events).
+# "all" can be used to enable all supported event categories. If no
+# categories or events are specified then "all" are enabled.
 #
 # While collecting events the trace ring-buffer size is increased
 # based on the set of enabled events.
@@ -111,7 +112,7 @@ tracing_reset()
     tracing_write "" set_event                  # clear enabled events
 }
 
-parse_category()
+parse_event_or_category()
 {
     case $1 in
     gfx)    echo "${gfx_events}";;
@@ -125,8 +126,10 @@ parse_category()
                   ${power_events}
                   ${gfx_events}";;
     *)
-      echo "Unknown category \'${category}\'" >&2
-      exit
+      if ! echo "$1" | grep -E "^[a-z0-9_-]+:[a-zA-Z0-9_-]+$"; then
+        echo "Unknown event/category '$1'" >&2
+        exit 1
+      fi
       ;;
     esac
 }
@@ -138,10 +141,10 @@ start)
     events=""
     shift
     for cat; do
-        events="${events} $(parse_category $cat)"
+        events="${events} $(parse_event_or_category $cat)"
     done
     if [ -z "${events}" ]; then
-        events=$(parse_category 'all')
+        events=$(parse_event_or_category 'all')
     fi
 
     if [ "$is_enabled" = "1" ]; then
