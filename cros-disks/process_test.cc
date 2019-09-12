@@ -272,6 +272,27 @@ TEST_P(ProcessRunTest, DISABLED_CapturesLotsOfOutputData) {
   EXPECT_THAT(output, SizeIs(2000));
 }
 
+TEST_P(ProcessRunTest, DoesNotBlockWhenNotCapturingOutput) {
+  Process& process = *process_;
+  process.AddArgument("/bin/sh");
+  process.AddArgument("-c");
+
+  // TODO(crbug.com/1005642) Remove the trap for SIGPIPE.
+  process.AddArgument(R"(
+      trap '' PIPE
+      printf '%01000i\n' $(seq 1 100) >&1;
+      printf '%01000i\n' $(seq 1 100) >&2;
+      exit 42;
+    )");
+
+  // This process generates lots of output on stdout and stderr, ie more than
+  // what a pipe can hold without blocking. If the pipes connected to stdout and
+  // stderr were left open by Process::Run(), they would fill, the process would
+  // stall and Process::Run() would block forever. With closed pipes, the
+  // process should finish normally and its return code should be visible.
+  EXPECT_EQ(process.Run(), 42);
+}
+
 TEST_P(ProcessRunTest, DoesNotBlockWhenReadingFromStdIn) {
   Process& process = *process_;
   process.AddArgument("/bin/cat");
