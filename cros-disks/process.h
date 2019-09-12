@@ -17,7 +17,7 @@ namespace cros_disks {
 
 // A base class for executing a process.
 //
-// TODO(benchan): This base class is not feature complete yet.
+// TODO(crbug.com/1003654) This base class is not feature complete yet.
 class Process {
  public:
   // Invalid process ID assigned to a process that has not started.
@@ -93,7 +93,6 @@ class Process {
 
   FRIEND_TEST(ProcessTest, GetArguments);
   FRIEND_TEST(ProcessTest, GetArgumentsWithNoArgumentsAdded);
-  FRIEND_TEST(ProcessTest, Communicate);
 
   DISALLOW_COPY_AND_ASSIGN(Process);
 };
