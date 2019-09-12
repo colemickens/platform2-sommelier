@@ -758,7 +758,8 @@ std::unique_ptr<dbus::Response> Service::SharePath(
   base::FilePath owner_id(request.owner_id());
   bool owner_id_required =
       request.storage_location() == SharePathRequest::DOWNLOADS ||
-      request.storage_location() == SharePathRequest::MY_FILES;
+      request.storage_location() == SharePathRequest::MY_FILES ||
+      request.storage_location() == SharePathRequest::LINUX_FILES;
   if (owner_id.ReferencesParent() || owner_id.BaseName() != owner_id ||
       (owner_id_required && owner_id.value().size() == 0)) {
     LOG(ERROR) << "owner_id references parent, or is "
@@ -832,6 +833,12 @@ std::unique_ptr<dbus::Response> Service::SharePath(
     case SharePathRequest::PLAY_FILES:
       src = base::FilePath("/run/arc/sdcard/write/emulated/0");
       dst = dst.Append("PlayFiles");
+      break;
+    case SharePathRequest::LINUX_FILES:
+      src = base::FilePath("/media/fuse/")
+                .Append(base::JoinString(
+                    {"crostini", owner_id.value(), "termina", "penguin"}, "_"));
+      dst = dst.Append("LinuxFiles");
       break;
     default:
       LOG(ERROR) << "Unknown storage location: " << request.storage_location();
