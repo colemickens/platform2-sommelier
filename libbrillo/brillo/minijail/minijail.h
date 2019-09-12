@@ -13,13 +13,14 @@ extern "C" {
 }
 
 #include <base/lazy_instance.h>
+#include <brillo/brillo_export.h>
 
 #include <libminijail.h>
 
 namespace brillo {
 
 // A Minijail abstraction allowing Minijail mocking in tests.
-class Minijail {
+class BRILLO_EXPORT Minijail {
  public:
   virtual ~Minijail();
 
