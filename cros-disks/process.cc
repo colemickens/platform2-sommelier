@@ -12,6 +12,7 @@
 #include <poll.h>
 
 #include <base/files/file_util.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/process/kill.h>
 #include <base/strings/string_util.h>
 #include <base/strings/string_split.h>
@@ -233,7 +234,8 @@ void Process::Communicate(std::vector<std::string>* output) {
       break;
     }
 
-    int ret = poll(fds.data(), fds.size(), 10 /* milliseconds */);
+    const int ret =
+        HANDLE_EINTR(poll(fds.data(), fds.size(), 10 /* milliseconds */));
     if (ret == -1) {
       PLOG(ERROR) << "poll() failed";
       break;

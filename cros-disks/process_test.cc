@@ -324,6 +324,28 @@ TEST_P(ProcessRunTest, DoesNotWaitForBackgroundProcessToFinish) {
   EXPECT_EQ(Read(std::move(p2.read_fd)), "Continue and End");
 }
 
+TEST_P(ProcessRunTest, UndisturbedBySignalsWhenCapturingOutput) {
+  Process& process = *process_;
+  process.AddArgument("/bin/sh");
+  process.AddArgument("-c");
+  process.AddArgument(R"(
+      for i in $(seq 1 100); do
+        printf 'Line %0100i\n' $i;
+        sleep 0.01;
+      done;
+      exit 42;
+    )");
+
+  std::vector<std::string> output;
+
+  // Activate an interval timer.
+  const AlarmGuard guard(13 /* milliseconds */);
+  EXPECT_EQ(process.Run(&output), 42);
+  EXPECT_GT(AlarmGuard::count(), 0);
+  // This checks that crbug.com/1005590 is fixed.
+  EXPECT_THAT(output, SizeIs(100));
+}
+
 TEST_P(ProcessRunTest, UndisturbedBySignalsWhenWaiting) {
   Process& process = *process_;
   process.AddArgument("/bin/sh");
