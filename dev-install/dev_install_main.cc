@@ -36,6 +36,12 @@ int main(int argc, char* argv[]) {
   // This tool is only run by devs, so writing to syslog doesn't make sense.
   brillo::InitLog(brillo::kLogToStderr);
 
+  const base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
+  if (cl->GetArgs().size() > 0) {
+    LOG(ERROR) << "Unknown extra command line arguments; exiting";
+    return EXIT_FAILURE;
+  }
+
   if (getuid() != 0) {
     LOG(ERROR) << argv[0] << " must be run as root";
     return EXIT_FAILURE;
