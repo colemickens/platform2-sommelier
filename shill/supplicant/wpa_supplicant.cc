@@ -27,7 +27,6 @@ const char WPASupplicant::kBSSPropertyMode[] = "Mode";
 const char WPASupplicant::kBSSPropertyRates[] = "Rates";
 const char WPASupplicant::kBSSPropertySSID[] = "SSID";
 const char WPASupplicant::kBSSPropertySignal[] = "Signal";
-// TODO(gauravsh): Make this path be a configurable option. crbug.com/208594
 // Location of the system root CA certificates.
 const char WPASupplicant::kCaPath[] = "/etc/ssl/certs";
 const char WPASupplicant::kCurrentBSSNull[] = "/";
