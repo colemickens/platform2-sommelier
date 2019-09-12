@@ -7,45 +7,20 @@
 #ifndef CHROMEOS_CONFIG_LIBCROS_CONFIG_IDENTITY_H_
 #define CHROMEOS_CONFIG_LIBCROS_CONFIG_IDENTITY_H_
 
-#include <memory>
 #include <string>
 
 #include <base/macros.h>
-#include <brillo/brillo_export.h>
 
 namespace base {
-class DictionaryValue;
 class FilePath;
 }  // namespace base
 
 namespace brillo {
 
-enum class SystemArchitecture {
-  kX86,
-  kArm,
-  kUnknown,
-};
-
-class BRILLO_EXPORT CrosConfigIdentity {
+class CrosConfigIdentity {
  public:
   CrosConfigIdentity();
-  virtual ~CrosConfigIdentity();
-
-  // Get the current system architecture
-  // @return brillo::SystemArchitecture
-  static SystemArchitecture CurrentSystemArchitecture();
-
-  // Get the system architecture from a string
-  // @arch: string that is similar to the one provided by "uname -m"
-  // @return brillo::SystemArchitecture
-  static SystemArchitecture CurrentSystemArchitecture(const std::string& arch);
-
-  // Factory method to produce a CrosConfigIdentity from a
-  // SystemArchitecture
-  // @return CrosConfigIdentity, or NULL if passed an unknown
-  //     architecture
-  static std::unique_ptr<CrosConfigIdentity> FromArchitecture(
-      const SystemArchitecture& arch);
+  ~CrosConfigIdentity();
 
   // Reads the VPD identity information from the supplied VPD file.
   // @vpd_file: File containing the customization_id from VPD. Typically this
@@ -58,57 +33,12 @@ class BRILLO_EXPORT CrosConfigIdentity {
   // @vpd_file_out: Returns the '/sys/firmware/vpd/ro/customization_id'-style
   //     file that was written
   // @return true if OK, false on error
-  bool FakeVpdFileForTesting(const std::string& customization_id,
-                             base::FilePath* vpd_file_out);
-
-  // Read the compatible devices list from the kernel or device-tree
-  // compatible file.
-  //
-  // @product_name_file: File to read for product name or device-tree
-  //     compatible info
-  // @product_sku_file: File containing SKU ID
-  virtual bool ReadInfo(const base::FilePath& product_name_file,
-                        const base::FilePath& product_sku_file) = 0;
-
-  // Write out a fake product name (x86) or device-tree compatible
-  // file (arm), as well as a sku-id file, for testing purposes.
-  // @device_name: Name or device-tree compatible string to write to
-  //     the compatible file (e.g., "Reef")
-  // @sku_id: SKU ID number to write
-  // @product_name_file_out: Returns the file that was written
-  // @product_sku_file_out: File that the SKU ID integer was written
-  // into
-  // @return true if OK, false on error
-  virtual bool FakeProductFilesForTesting(
-      const std::string& device_name,
-      const int sku_id,
-      base::FilePath* product_name_file_out,
-      base::FilePath* product_sku_file_out) = 0;
-
-  // Architecture-specific check that the identity specified in the
-  // identity_dict is compatible with this identity
-  // @identity_dict: a dictionary specified under /chromeos/configs
-  // @return: true if the config is a possible identity, false otherwise
-  virtual bool PlatformIdentityMatch(
-      const base::DictionaryValue& identity_dict) const = 0;
-
-  // Get a string representation of the identity for logging purposes
-  // @return A string representing the identity
-  virtual std::string DebugString() const = 0;
-
-  // @return SKU ID value
-  int GetSkuId() const { return sku_id_; }
-
-  // Initially, the SKU ID will be read from SMBIOS or FDT, but it can
-  // be overridden for testing using this method.
-  void SetSkuId(const int sku_id) { sku_id_ = sku_id; }
+  bool FakeVpd(const std::string& customization_id,
+               base::FilePath* vpd_file_out);
 
   // Gets the VPD identitier value read via ReadVpd
   // @return VPD ID value
   const std::string& GetVpdId() const { return vpd_id_; }
-
- protected:
-  int sku_id_;
 
  private:
   std::string vpd_id_;

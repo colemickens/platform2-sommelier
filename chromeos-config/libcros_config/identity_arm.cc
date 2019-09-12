@@ -10,8 +10,6 @@
 #include <base/logging.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/strings/stringprintf.h>
-#include <base/values.h>
 #include "chromeos-config/libcros_config/cros_config_interface.h"
 
 namespace {
@@ -24,9 +22,9 @@ CrosConfigIdentityArm::CrosConfigIdentityArm() {}
 
 CrosConfigIdentityArm::~CrosConfigIdentityArm() {}
 
-bool CrosConfigIdentityArm::FakeProductFilesForTesting(
+bool CrosConfigIdentityArm::Fake(
     const std::string& device_name,
-    const int sku_id,
+    int sku_id,
     base::FilePath* dt_compatible_file_out,
     base::FilePath* sku_id_file_out) {
   *dt_compatible_file_out = base::FilePath("dt_compatible");
@@ -74,21 +72,6 @@ bool CrosConfigIdentityArm::ReadInfo(const base::FilePath& dt_compatible_file,
 
 bool CrosConfigIdentityArm::IsCompatible(const std::string& device_name) const {
   return compatible_devices_.find(device_name) != std::string::npos;
-}
-
-bool CrosConfigIdentityArm::PlatformIdentityMatch(
-    const base::DictionaryValue& identity_dict) const {
-  std::string dt_compatible_match;
-  if (!identity_dict.GetString("device-tree-compatible-match",
-                               &dt_compatible_match))
-    return false;
-  return IsCompatible(dt_compatible_match);
-}
-
-std::string CrosConfigIdentityArm::DebugString() const {
-  return base::StringPrintf(
-      "arm-identity[dt-compatible=\"%s\", sku=%d, vpd=\"%s\"]",
-      compatible_devices_.c_str(), sku_id_, GetVpdId().c_str());
 }
 
 }  // namespace brillo

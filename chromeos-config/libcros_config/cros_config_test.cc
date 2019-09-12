@@ -12,7 +12,6 @@
 #include <base/logging.h>
 #include <gtest/gtest.h>
 #include "chromeos-config/libcros_config/cros_config.h"
-#include "chromeos-config/libcros_config/identity.h"
 
 namespace {
 constexpr char kTestFile[] = "test.json";
@@ -26,18 +25,17 @@ class CrosConfigTest : public testing::Test {
                   int sku_id = -1,
                   std::string whitelabel_name = "") {
     base::FilePath filepath(kTestFile);
-    ASSERT_TRUE(cros_config_.InitForTest(sku_id, filepath,
-                                         brillo::SystemArchitecture::kX86, name,
-                                         whitelabel_name));
+    ASSERT_TRUE(
+        cros_config_.InitForTestX86(filepath, name, sku_id, whitelabel_name));
   }
 
   void InitConfigArm(const std::string device_name = "google,some",
                      int sku_id = -1,
                      std::string whitelabel_name = "") {
     base::FilePath filepath(kTestFileArm);
-    ASSERT_TRUE(cros_config_.InitForTest(sku_id, filepath,
-                                         brillo::SystemArchitecture::kArm,
-                                         device_name, whitelabel_name));
+    ASSERT_TRUE(
+        cros_config_.InitForTestArm(filepath, device_name,
+                                    sku_id, whitelabel_name));
   }
 
   brillo::CrosConfig cros_config_;
@@ -45,14 +43,12 @@ class CrosConfigTest : public testing::Test {
 
 TEST_F(CrosConfigTest, CheckMissingFile) {
   base::FilePath filepath(kTestFileInvalid);
-  ASSERT_FALSE(cros_config_.InitForTest(
-      -1, filepath, brillo::SystemArchitecture::kX86, "Another", ""));
+  ASSERT_FALSE(cros_config_.InitForTestX86(filepath, "Another", -1, ""));
 }
 
 TEST_F(CrosConfigTest, CheckUnknownModel) {
   base::FilePath filepath(kTestFile);
-  ASSERT_FALSE(cros_config_.InitForTest(
-      -1, filepath, brillo::SystemArchitecture::kX86, "no-model", ""));
+  ASSERT_FALSE(cros_config_.InitForTestX86(filepath, "no-model", -1, ""));
 }
 
 TEST_F(CrosConfigTest, Check111NoInit) {
