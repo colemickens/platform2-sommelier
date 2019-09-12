@@ -26,11 +26,11 @@ namespace vpn_manager {
 class MockService : public ServiceManager {
  public:
   MockService() : ServiceManager("mock", {}) {}
-  MOCK_METHOD0(Start, bool());
-  MOCK_METHOD0(Stop, void());
-  MOCK_METHOD0(Poll, int());
-  MOCK_METHOD0(ProcessOutput, void());
-  MOCK_METHOD1(IsChild, bool(pid_t pid));
+  MOCK_METHOD(bool, Start, (), (override));
+  MOCK_METHOD(void, Stop, (), (override));
+  MOCK_METHOD(int, Poll, (), (override));
+  MOCK_METHOD(void, ProcessOutput, (), (override));
+  MOCK_METHOD(bool, IsChild, (pid_t), (override));
 };
 
 class ServiceManagerTest : public ::testing::Test {

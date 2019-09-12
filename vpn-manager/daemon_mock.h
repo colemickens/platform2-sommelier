@@ -16,14 +16,16 @@ class DaemonMock : public Daemon {
   DaemonMock() : Daemon("") {}
   ~DaemonMock() override {}
 
-  MOCK_METHOD0(ClearProcess, void());
-  MOCK_METHOD0(CreateProcess, brillo::Process*());
-  MOCK_METHOD1(CreateProcessWithResourceLimits,
-               brillo::Process*(const ResourceLimits& rlimits));
-  MOCK_METHOD0(FindProcess, bool());
-  MOCK_METHOD0(IsRunning, bool());
-  MOCK_METHOD0(Terminate, bool());
-  MOCK_CONST_METHOD0(GetPid, pid_t());
+  MOCK_METHOD(void, ClearProcess, (), (override));
+  MOCK_METHOD(brillo::Process*, CreateProcess, (), (override));
+  MOCK_METHOD(brillo::Process*,
+              CreateProcessWithResourceLimits,
+              (const ResourceLimits&),
+              (override));
+  MOCK_METHOD(bool, FindProcess, (), (override));
+  MOCK_METHOD(bool, IsRunning, (), (override));
+  MOCK_METHOD(bool, Terminate, (), (override));
+  MOCK_METHOD(pid_t, GetPid, (), (const, override));
 };
 
 }  // namespace vpn_manager
