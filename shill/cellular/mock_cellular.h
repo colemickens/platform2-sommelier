@@ -31,7 +31,6 @@ class MockCellular : public Cellular {
                void(const std::string& interface,
                     const KeyValueStore& changed_properties,
                     const std::vector<std::string>& invalidated_properties));
-  MOCK_METHOD1(set_modem_state, void(ModemState state));
   MOCK_METHOD0(DestroyService, void());
   MOCK_METHOD1(StartPPP, void(const std::string& serial_device));
 

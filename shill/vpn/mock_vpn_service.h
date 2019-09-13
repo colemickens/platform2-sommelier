@@ -21,7 +21,6 @@ class MockVPNService : public VPNService {
   MOCK_METHOD1(SetState, void(ConnectState state));
   MOCK_METHOD1(SetFailure, void(ConnectFailure failure));
   MOCK_METHOD0(InitDriverPropertyStore, void());
-  MOCK_CONST_METHOD0(unloaded, bool());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockVPNService);
