@@ -148,7 +148,7 @@ bool Process::BuildArgumentsArray() {
 
 bool Process::Start() {
   CHECK_EQ(kInvalidProcessId, pid_);
-  CHECK(!finished_);
+  CHECK(!finished());
   CHECK(!arguments_.empty()) << "No arguments provided";
   LOG(INFO) << "Starting process " << quote(arguments_);
   pid_ = StartImpl(&in_fd_, &out_fd_, &err_fd_);
@@ -156,25 +156,25 @@ bool Process::Start() {
 }
 
 int Process::Wait() {
-  if (finished_) {
+  if (finished()) {
     return status_;
   }
 
   CHECK_NE(kInvalidProcessId, pid_);
   status_ = WaitImpl();
-
-  finished_ = true;
+  CHECK(finished());
   pid_ = kInvalidProcessId;
   return status_;
 }
 
 bool Process::IsFinished() {
-  if (!finished_) {
-    CHECK_NE(kInvalidProcessId, pid_);
-    status_ = WaitNonBlockingImpl();
-    finished_ = status_ >= 0;
+  if (finished()) {
+    return true;
   }
-  return finished_;
+
+  CHECK_NE(kInvalidProcessId, pid_);
+  status_ = WaitNonBlockingImpl();
+  return finished();
 }
 
 int Process::Run(std::vector<std::string>* output) {

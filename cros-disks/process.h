@@ -67,11 +67,11 @@ class Process {
   // Once either WaitImpl() or WaitNonBlockingImpl() has returned a nonnegative
   // exit status, none of these methods is called again.
 
-  // Waits for the process to finish and returns its exit status.
+  // Waits for the process to finish and returns its nonnegative exit status.
   virtual int WaitImpl() = 0;
 
-  // Checks if the process has finished and returns its exit status, or -1 if
-  // the process is still running.
+  // Checks if the process has finished and returns its nonnegative exit status,
+  // or -1 if the process is still running.
   virtual int WaitNonBlockingImpl() = 0;
 
  private:
@@ -83,6 +83,8 @@ class Process {
   // Existing values of |arguments_array_| and |arguments_buffer_| are
   // overridden. Return false if |arguments_| is empty.
   bool BuildArgumentsArray();
+
+  bool finished() const { return status_ >= 0; }
 
   // Process arguments.
   std::vector<std::string> arguments_;
@@ -96,8 +98,8 @@ class Process {
   base::ScopedFD out_fd_;
   base::ScopedFD err_fd_;
 
+  // Exit status. A nonnegative value indicates that the process has finished.
   int status_ = -1;
-  bool finished_ = false;
 
   FRIEND_TEST(ProcessTest, GetArguments);
   FRIEND_TEST(ProcessTest, GetArgumentsWithNoArgumentsAdded);
