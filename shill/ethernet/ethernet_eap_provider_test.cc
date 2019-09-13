@@ -27,8 +27,8 @@ class EthernetEapProviderTest : public testing::Test {
       : manager_(&control_, &dispatcher_, &metrics_), provider_(&manager_) {}
   ~EthernetEapProviderTest() override = default;
 
-  MOCK_METHOD0(Callback0, void());
-  MOCK_METHOD0(Callback1, void());
+  MOCK_METHOD(void, Callback0, ());
+  MOCK_METHOD(void, Callback1, ());
 
  protected:
   const EthernetEapProvider::CallbackMap& CallbackMap() {

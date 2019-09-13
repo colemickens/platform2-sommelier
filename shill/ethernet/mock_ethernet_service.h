@@ -18,24 +18,26 @@ class MockEthernetService : public EthernetService {
   MockEthernetService(Manager* manager, base::WeakPtr<Ethernet> ethernet);
   ~MockEthernetService() override;
 
-  MOCK_METHOD2(Configure, void(const KeyValueStore& args, Error* error));
-  MOCK_METHOD2(Disconnect, void(Error* error, const char* reason));
-  MOCK_CONST_METHOD1(GetDeviceRpcId, RpcIdentifier(Error* error));
-  MOCK_CONST_METHOD0(GetStorageIdentifier, std::string());
-  MOCK_CONST_METHOD0(IsConnected, bool());
-  MOCK_CONST_METHOD0(IsConnecting, bool());
-  MOCK_CONST_METHOD0(IsRemembered, bool());
-  MOCK_METHOD1(SetFailure, void(ConnectFailure failure));
-  MOCK_METHOD1(SetFailureSilent, void(ConnectFailure failure));
-  MOCK_METHOD1(SetState, void(ConnectState state));
-  MOCK_METHOD0(OnVisibilityChanged, void());
-  MOCK_CONST_METHOD0(technology, Technology());
+  MOCK_METHOD(void, Configure, (const KeyValueStore&, Error*), (override));
+  MOCK_METHOD(void, Disconnect, (Error*, const char*), (override));
+  MOCK_METHOD(RpcIdentifier, GetDeviceRpcId, (Error*), (const, override));
+  MOCK_METHOD(std::string, GetStorageIdentifier, (), (const, override));
+  MOCK_METHOD(bool, IsConnected, (), (const, override));
+  MOCK_METHOD(bool, IsConnecting, (), (const, override));
+  MOCK_METHOD(bool, IsRemembered, (), (const, override));
+  MOCK_METHOD(void, SetFailure, (ConnectFailure), (override));
+  MOCK_METHOD(void, SetFailureSilent, (ConnectFailure), (override));
+  MOCK_METHOD(void, SetState, (ConnectState), (override));
+  MOCK_METHOD(void, OnVisibilityChanged, (), (override));
+  MOCK_METHOD(Technology, technology, (), (const, override));
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-  MOCK_CONST_METHOD0(Is8021xConnectable, bool());
-  MOCK_METHOD2(AddEAPCertification,
-               bool(const std::string& name, size_t depth));
-  MOCK_METHOD0(ClearEAPCertification, void());
+  MOCK_METHOD(bool, Is8021xConnectable, (), (const, override));
+  MOCK_METHOD(bool,
+              AddEAPCertification,
+              (const std::string&, size_t),
+              (override));
+  MOCK_METHOD(void, ClearEAPCertification, (), (override));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
  private:

@@ -18,14 +18,19 @@ class MockEthernetProvider : public EthernetProvider {
   MockEthernetProvider();
   ~MockEthernetProvider() override;
 
-  MOCK_METHOD0(Start, void());
-  MOCK_METHOD0(Stop, void());
-  MOCK_METHOD1(CreateService, EthernetServiceRefPtr(base::WeakPtr<Ethernet>));
-  MOCK_METHOD2(GetService,
-               ServiceRefPtr(const KeyValueStore& args, Error* error));
-  MOCK_METHOD1(RegisterService, void(EthernetServiceRefPtr));
-  MOCK_METHOD1(DeregisterService, void(EthernetServiceRefPtr));
-  MOCK_METHOD0(RefreshGenericEthernetService, void());
+  MOCK_METHOD(void, Start, (), (override));
+  MOCK_METHOD(void, Stop, (), (override));
+  MOCK_METHOD(EthernetServiceRefPtr,
+              CreateService,
+              (base::WeakPtr<Ethernet>),
+              (override));
+  MOCK_METHOD(ServiceRefPtr,
+              GetService,
+              (const KeyValueStore& args, Error*),
+              (override));
+  MOCK_METHOD(void, RegisterService, (EthernetServiceRefPtr), (override));
+  MOCK_METHOD(void, DeregisterService, (EthernetServiceRefPtr), (override));
+  MOCK_METHOD(void, RefreshGenericEthernetService, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockEthernetProvider);
