@@ -62,8 +62,8 @@ class TestDHCPConfig : public DHCPConfig {
                           const KeyValueStore& configuration) override {}
   void ProcessStatusChangeSignal(const std::string& status) override {}
 
-  MOCK_METHOD0(ShouldFailOnAcquisitionTimeout, bool());
-  MOCK_METHOD0(ShouldKeepLeaseOnDisconnect, bool());
+  MOCK_METHOD(bool, ShouldFailOnAcquisitionTimeout, (), (override));
+  MOCK_METHOD(bool, ShouldKeepLeaseOnDisconnect, (), (override));
 };
 
 using TestDHCPConfigRefPtr = scoped_refptr<TestDHCPConfig>;
@@ -162,9 +162,8 @@ class DHCPConfigCallbackTest : public DHCPConfigTest {
     ip_config_ = config_;
   }
 
-  MOCK_METHOD2(SuccessCallback,
-               void(const IPConfigRefPtr& ipconfig, bool new_lease_acquired));
-  MOCK_METHOD1(FailureCallback, void(const IPConfigRefPtr& ipconfig));
+  MOCK_METHOD(void, SuccessCallback, (const IPConfigRefPtr&, bool));
+  MOCK_METHOD(void, FailureCallback, (const IPConfigRefPtr&));
 
   // The mock methods above take IPConfigRefPtr because this is the type
   // that the registered callbacks take.  This conversion of the DHCP

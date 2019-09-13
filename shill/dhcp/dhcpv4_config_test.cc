@@ -446,9 +446,8 @@ class DHCPv4ConfigCallbackTest : public DHCPv4ConfigTest {
     ip_config_ = config_;
   }
 
-  MOCK_METHOD2(SuccessCallback,
-               void(const IPConfigRefPtr& ipconfig, bool new_lease_acquired));
-  MOCK_METHOD1(FailureCallback, void(const IPConfigRefPtr& ipconfig));
+  MOCK_METHOD(void, SuccessCallback, (const IPConfigRefPtr&, bool));
+  MOCK_METHOD(void, FailureCallback, (const IPConfigRefPtr&));
 
   // The mock methods above take IPConfigRefPtr because this is the type
   // that the registered callbacks take.  This conversion of the DHCP

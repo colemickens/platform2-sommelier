@@ -18,8 +18,11 @@ class MockDhcpProperties : public DhcpProperties {
   MockDhcpProperties();
   ~MockDhcpProperties() override;
 
-  MOCK_CONST_METHOD2(Save, void(StoreInterface* store, const std::string& id));
-  MOCK_METHOD2(Load, void(StoreInterface* store, const std::string& id));
+  MOCK_METHOD(void,
+              Save,
+              (StoreInterface*, const std::string&),
+              (const, override));
+  MOCK_METHOD(void, Load, (StoreInterface*, const std::string&), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDhcpProperties);

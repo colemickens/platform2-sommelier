@@ -19,8 +19,8 @@ class MockDHCPProxy : public DHCPProxyInterface {
   MockDHCPProxy();
   ~MockDHCPProxy() override;
 
-  MOCK_METHOD1(Rebind, void(const std::string& interface));
-  MOCK_METHOD1(Release, void(const std::string& interface));
+  MOCK_METHOD(void, Rebind, (const std::string&), (override));
+  MOCK_METHOD(void, Release, (const std::string&), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDHCPProxy);

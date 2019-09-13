@@ -24,10 +24,10 @@ class MockDHCPConfig : public DHCPConfig {
                           const KeyValueStore& configuration) override;
   void ProcessStatusChangeSignal(const std::string& status) override;
 
-  MOCK_METHOD0(RequestIP, bool());
-  MOCK_METHOD1(ReleaseIP, bool(ReleaseReason));
-  MOCK_METHOD0(RenewIP, bool());
-  MOCK_METHOD1(set_minimum_mtu, void(int));
+  MOCK_METHOD(bool, RequestIP, (), (override));
+  MOCK_METHOD(bool, ReleaseIP, (ReleaseReason), (override));
+  MOCK_METHOD(bool, RenewIP, (), (override));
+  MOCK_METHOD(void, set_minimum_mtu, (int), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDHCPConfig);

@@ -22,19 +22,23 @@ class MockDHCPProvider : public DHCPProvider {
   MockDHCPProvider();
   ~MockDHCPProvider() override;
 
-  MOCK_METHOD3(Init, void(ControlInterface*, EventDispatcher*, Metrics*));
-  MOCK_METHOD4(CreateIPv4Config,
-               DHCPConfigRefPtr(const std::string& device_name,
-                                const std::string& storage_identifier,
-                                bool arp_gateway,
-                                const DhcpProperties& dhcp_props));
+  MOCK_METHOD(void,
+              Init,
+              (ControlInterface*, EventDispatcher*, Metrics*),
+              (override));
+  MOCK_METHOD(
+      DHCPConfigRefPtr,
+      CreateIPv4Config,
+      (const std::string&, const std::string&, bool, const DhcpProperties&),
+      (override));
 #ifndef DISABLE_DHCPV6
-  MOCK_METHOD2(CreateIPv6Config,
-               DHCPConfigRefPtr(const std::string& device_name,
-                                const std::string& storage_identifier));
+  MOCK_METHOD(DHCPConfigRefPtr,
+              CreateIPv6Config,
+              (const std::string&, const std::string&),
+              (override));
 #endif
-  MOCK_METHOD2(BindPID, void(int pid, const DHCPConfigRefPtr& config));
-  MOCK_METHOD1(UnbindPID, void(int pid));
+  MOCK_METHOD(void, BindPID, (int, const DHCPConfigRefPtr&), (override));
+  MOCK_METHOD(void, UnbindPID, (int), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDHCPProvider);
