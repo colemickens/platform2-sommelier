@@ -20,20 +20,18 @@ class MockModemSimpleProxy : public ModemSimpleProxyInterface {
   MockModemSimpleProxy();
   ~MockModemSimpleProxy() override;
 
-  MOCK_METHOD4(Connect,
-               void(const KeyValueStore& properties,
-                    Error* error,
-                    const RpcIdentifierCallback& callback,
-                    int timeout));
-  MOCK_METHOD4(Disconnect,
-               void(const RpcIdentifier& bearer,
-                    Error* error,
-                    const ResultCallback& callback,
-                    int timeout));
-  MOCK_METHOD3(GetStatus,
-               void(Error* error,
-                    const KeyValueStoreCallback& callback,
-                    int timeout));
+  MOCK_METHOD(void,
+              Connect,
+              (const KeyValueStore&, Error*, const RpcIdentifierCallback&, int),
+              (override));
+  MOCK_METHOD(void,
+              Disconnect,
+              (const RpcIdentifier&, Error*, const ResultCallback&, int),
+              (override));
+  MOCK_METHOD(void,
+              GetStatus,
+              (Error*, const KeyValueStoreCallback&, int),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemSimpleProxy);

@@ -49,9 +49,9 @@ class MockModemInfo : public ModemInfo {
   MockMetrics* mock_metrics() const { return mock_metrics_.get(); }
   MockManager* mock_manager() const { return mock_manager_.get(); }
 
-  MOCK_METHOD0(Start, void());
-  MOCK_METHOD0(Stop, void());
-  MOCK_METHOD1(OnDeviceInfoAvailable, void(const std::string& link_name));
+  MOCK_METHOD(void, Start, (), (override));
+  MOCK_METHOD(void, Stop, (), (override));
+  MOCK_METHOD(void, OnDeviceInfoAvailable, (const std::string&), (override));
 
  private:
   std::unique_ptr<MockControl> mock_control_;

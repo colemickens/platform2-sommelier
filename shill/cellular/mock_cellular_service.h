@@ -18,18 +18,18 @@ class MockCellularService : public CellularService {
   MockCellularService(Manager* manager, const CellularRefPtr& device);
   ~MockCellularService() override;
 
-  MOCK_METHOD0(AutoConnect, void());
-  MOCK_METHOD1(SetLastGoodApn, void(const Stringmap& apn_info));
-  MOCK_METHOD0(ClearLastGoodApn, void());
-  MOCK_METHOD1(SetActivationState, void(const std::string& state));
-  MOCK_METHOD2(Connect, void(Error* error, const char* reason));
-  MOCK_METHOD2(Disconnect, void(Error* error, const char* reason));
-  MOCK_METHOD1(SetState, void(ConnectState state));
-  MOCK_METHOD1(SetFailure, void(ConnectFailure failure));
-  MOCK_METHOD1(SetFailureSilent, void(ConnectFailure failure));
-  MOCK_CONST_METHOD0(state, ConnectState());
-  MOCK_CONST_METHOD0(explicitly_disconnected, bool());
-  MOCK_CONST_METHOD0(activation_state, const std::string&());
+  MOCK_METHOD(void, AutoConnect, (), (override));
+  MOCK_METHOD(void, SetLastGoodApn, (const Stringmap&), (override));
+  MOCK_METHOD(void, ClearLastGoodApn, (), (override));
+  MOCK_METHOD(void, SetActivationState, (const std::string&), (override));
+  MOCK_METHOD(void, Connect, (Error*, const char*), (override));
+  MOCK_METHOD(void, Disconnect, (Error*, const char*), (override));
+  MOCK_METHOD(void, SetState, (ConnectState), (override));
+  MOCK_METHOD(void, SetFailure, (ConnectFailure), (override));
+  MOCK_METHOD(void, SetFailureSilent, (ConnectFailure), (override));
+  MOCK_METHOD(ConnectState, state, (), (const, override));
+  MOCK_METHOD(bool, explicitly_disconnected, (), (const, override));
+  MOCK_METHOD(const std::string&, activation_state, (), (const, override));
 
  private:
   std::string default_activation_state_;

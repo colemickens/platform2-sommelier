@@ -248,9 +248,9 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
         timeout_milliseconds;
   }
 
-  MOCK_METHOD1(TestCallback, void(const Error& error));
+  MOCK_METHOD(void, TestCallback, (const Error&));
 
-  MOCK_METHOD0(DummyCallback, void());
+  MOCK_METHOD(void, DummyCallback, ());
 
   void SetMockRegistrationDroppedUpdateCallback() {
     capability_->registration_dropped_update_callback_.Reset(

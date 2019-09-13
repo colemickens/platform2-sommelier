@@ -63,8 +63,8 @@ class ModemManagerForTest : public ModemManager {
                       ModemInfo* modem_info)
       : ModemManager(service, path, modem_info) {}
 
-  MOCK_METHOD0(Start, void());
-  MOCK_METHOD0(Stop, void());
+  MOCK_METHOD(void, Start, (), (override));
+  MOCK_METHOD(void, Stop, (), (override));
 };
 
 class ModemManagerCoreTest : public ModemManagerTest {
@@ -118,7 +118,10 @@ class ModemManager1MockInit : public ModemManager1 {
                         ModemInfo* modem_info_)
       : ModemManager1(service, path, modem_info_) {}
 
-  MOCK_METHOD2(InitModem1, void(Modem1*, const InterfaceToProperties&));
+  MOCK_METHOD(void,
+              InitModem1,
+              (Modem1*, const InterfaceToProperties&),
+              (override));
 };
 
 class ModemManager1Test : public ModemManagerTest {

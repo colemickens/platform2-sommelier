@@ -20,29 +20,31 @@ class MockSimProxy : public SimProxyInterface {
   MockSimProxy();
   ~MockSimProxy() override;
 
-  MOCK_METHOD4(SendPin,
-               void(const std::string& pin,
-                    Error* error,
-                    const ResultCallback& callback,
-                    int timeout));
-  MOCK_METHOD5(SendPuk,
-               void(const std::string& puk,
-                    const std::string& pin,
-                    Error* error,
-                    const ResultCallback& callback,
-                    int timeout));
-  MOCK_METHOD5(EnablePin,
-               void(const std::string& pin,
-                    const bool enabled,
-                    Error* error,
-                    const ResultCallback& callback,
-                    int timeout));
-  MOCK_METHOD5(ChangePin,
-               void(const std::string& old_pin,
-                    const std::string& new_pin,
-                    Error* error,
-                    const ResultCallback& callback,
-                    int timeout));
+  MOCK_METHOD(void,
+              SendPin,
+              (const std::string&, Error*, const ResultCallback&, int),
+              (override));
+  MOCK_METHOD(void,
+              SendPuk,
+              (const std::string&,
+               const std::string&,
+               Error*,
+               const ResultCallback&,
+               int),
+              (override));
+  MOCK_METHOD(
+      void,
+      EnablePin,
+      (const std::string&, const bool, Error*, const ResultCallback&, int),
+      (override));
+  MOCK_METHOD(void,
+              ChangePin,
+              (const std::string&,
+               const std::string&,
+               Error*,
+               const ResultCallback&,
+               int),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSimProxy);

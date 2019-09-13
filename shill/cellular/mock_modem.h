@@ -23,14 +23,15 @@ class MockModem : public Modem {
   // This class only mocks the pure virtual methods; if you need a
   // more thorough mock, know that modem_test.cc depends on the
   // incompleteness of this mock.
-  MOCK_CONST_METHOD2(GetLinkName,
-                     bool(const KeyValueStore& modem_properties,
-                          std::string* name));
-  MOCK_CONST_METHOD0(GetModemInterface, std::string());
-  MOCK_METHOD3(ConstructCellular,
-               Cellular*(const std::string& link_name,
-                         const std::string& device_name,
-                         int ifindex));
+  MOCK_METHOD(bool,
+              GetLinkName,
+              (const KeyValueStore&, std::string*),
+              (const, override));
+  MOCK_METHOD(std::string, GetModemInterface, (), (const, override));
+  MOCK_METHOD(Cellular*,
+              ConstructCellular,
+              (const std::string&, const std::string&, int),
+              (override));
 };
 
 using StrictModem = ::testing::StrictMock<MockModem>;

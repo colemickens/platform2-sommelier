@@ -25,14 +25,16 @@ class MockCellular : public Cellular {
                const RpcIdentifier& path);
   ~MockCellular() override;
 
-  MOCK_METHOD1(Connect, void(Error* error));
-  MOCK_METHOD2(Disconnect, void(Error* error, const char* reason));
-  MOCK_METHOD3(OnPropertiesChanged,
-               void(const std::string& interface,
-                    const KeyValueStore& changed_properties,
-                    const std::vector<std::string>& invalidated_properties));
-  MOCK_METHOD0(DestroyService, void());
-  MOCK_METHOD1(StartPPP, void(const std::string& serial_device));
+  MOCK_METHOD(void, Connect, (Error*), (override));
+  MOCK_METHOD(void, Disconnect, (Error*, const char*), (override));
+  MOCK_METHOD(void,
+              OnPropertiesChanged,
+              (const std::string&,
+               const KeyValueStore&,
+               const std::vector<std::string>&),
+              (override));
+  MOCK_METHOD(void, DestroyService, (), (override));
+  MOCK_METHOD(void, StartPPP, (const std::string&), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockCellular);

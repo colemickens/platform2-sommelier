@@ -360,7 +360,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     }
   }
 
-  MOCK_METHOD1(TestCallback, void(const Error& error));
+  MOCK_METHOD(void, TestCallback, (const Error&));
 
  protected:
   static const char kTestDeviceName[];

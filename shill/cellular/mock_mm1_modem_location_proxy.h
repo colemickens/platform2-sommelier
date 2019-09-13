@@ -19,17 +19,14 @@ class MockModemLocationProxy : public ModemLocationProxyInterface {
   ~MockModemLocationProxy() override;
 
   // Inherited methods from ModemLocationProxyInterface.
-  MOCK_METHOD5(Setup,
-               void(uint32_t sources,
-                    bool signal_location,
-                    Error* error,
-                    const ResultCallback& callback,
-                    int timeout));
-
-  MOCK_METHOD3(GetLocation,
-               void(Error* error,
-                    const BrilloAnyCallback& callback,
-                    int timeout));
+  MOCK_METHOD(void,
+              Setup,
+              (uint32_t, bool, Error*, const ResultCallback&, int),
+              (override));
+  MOCK_METHOD(void,
+              GetLocation,
+              (Error*, const BrilloAnyCallback&, int),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemLocationProxy);

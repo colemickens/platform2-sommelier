@@ -17,14 +17,18 @@ class MockDBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
   MockDBusObjectManagerProxy();
   ~MockDBusObjectManagerProxy() override;
 
-  MOCK_METHOD3(GetManagedObjects,
-               void(Error* error,
-                    const ManagedObjectsCallback& callback,
-                    int timeout));
-  MOCK_METHOD1(set_interfaces_added_callback,
-               void(const InterfacesAddedSignalCallback& callback));
-  MOCK_METHOD1(set_interfaces_removed_callback,
-               void(const InterfacesRemovedSignalCallback& callback));
+  MOCK_METHOD(void,
+              GetManagedObjects,
+              (Error*, const ManagedObjectsCallback&, int),
+              (override));
+  MOCK_METHOD(void,
+              set_interfaces_added_callback,
+              (const InterfacesAddedSignalCallback&),
+              (override));
+  MOCK_METHOD(void,
+              set_interfaces_removed_callback,
+              (const InterfacesRemovedSignalCallback&),
+              (override));
   void IgnoreSetCallbacks();
 
  private:

@@ -87,7 +87,7 @@ class MockMobileOperatorInfoObserver : public MobileOperatorInfo::Observer {
  public:
   MockMobileOperatorInfoObserver() = default;
 
-  MOCK_METHOD0(OnOperatorChanged, void());
+  MOCK_METHOD(void, OnOperatorChanged, (), (override));
 };
 
 class MobileOperatorInfoInitTest : public Test {

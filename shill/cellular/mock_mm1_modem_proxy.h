@@ -22,57 +22,49 @@ class MockModemProxy : public ModemProxyInterface {
   ~MockModemProxy() override;
 
   // Inherited methods from ModemProxyInterface.
-  MOCK_METHOD4(Enable,
-               void(bool enable,
-                    Error* error,
-                    const ResultCallback& callback,
-                    int timeout));
-  MOCK_METHOD4(CreateBearer,
-               void(const KeyValueStore& properties,
-                    Error* error,
-                    const RpcIdentifierCallback& callback,
-                    int timeout));
-  MOCK_METHOD4(DeleteBearer,
-               void(const RpcIdentifier& bearer,
-                    Error* error,
-                    const ResultCallback& callback,
-                    int timeout));
-  MOCK_METHOD3(Reset,
-               void(Error* error, const ResultCallback& callback, int timeout));
-  MOCK_METHOD4(FactoryReset,
-               void(const std::string& code,
-                    Error* error,
-                    const ResultCallback& callback,
-                    int timeout));
-  MOCK_METHOD4(SetCurrentCapabilities,
-               void(uint32_t capabilities,
-                    Error* error,
-                    const ResultCallback& callback,
-                    int timeout));
-  MOCK_METHOD5(SetCurrentModes,
-               void(uint32_t allowed_modes,
-                    uint32_t preferred_mode,
-                    Error* error,
-                    const ResultCallback& callback,
-                    int timeout));
-  MOCK_METHOD4(SetCurrentBands,
-               void(const std::vector<uint32_t>& bands,
-                    Error* error,
-                    const ResultCallback& callback,
-                    int timeout));
-  MOCK_METHOD5(Command,
-               void(const std::string& cmd,
-                    uint32_t user_timeout,
-                    Error* error,
-                    const StringCallback& callback,
-                    int timeout));
-  MOCK_METHOD4(SetPowerState,
-               void(uint32_t power_state,
-                    Error* error,
-                    const ResultCallback& callback,
-                    int timeout));
-  MOCK_METHOD1(set_state_changed_callback,
-               void(const ModemStateChangedSignalCallback& callback));
+  MOCK_METHOD(void,
+              Enable,
+              (bool, Error*, const ResultCallback&, int),
+              (override));
+  MOCK_METHOD(void,
+              CreateBearer,
+              (const KeyValueStore&, Error*, const RpcIdentifierCallback&, int),
+              (override));
+  MOCK_METHOD(void,
+              DeleteBearer,
+              (const RpcIdentifier&, Error*, const ResultCallback&, int),
+              (override));
+  MOCK_METHOD(void, Reset, (Error*, const ResultCallback&, int), (override));
+  MOCK_METHOD(void,
+              FactoryReset,
+              (const std::string&, Error*, const ResultCallback&, int),
+              (override));
+  MOCK_METHOD(void,
+              SetCurrentCapabilities,
+              (uint32_t, Error*, const ResultCallback&, int),
+              (override));
+  MOCK_METHOD(void,
+              SetCurrentModes,
+              (uint32_t, uint32_t, Error*, const ResultCallback&, int),
+              (override));
+  MOCK_METHOD(
+      void,
+      SetCurrentBands,
+      (const std::vector<uint32_t>&, Error*, const ResultCallback&, int),
+      (override));
+  MOCK_METHOD(
+      void,
+      Command,
+      (const std::string&, uint32_t, Error*, const StringCallback&, int),
+      (override));
+  MOCK_METHOD(void,
+              SetPowerState,
+              (uint32_t, Error*, const ResultCallback&, int),
+              (override));
+  MOCK_METHOD(void,
+              set_state_changed_callback,
+              (const ModemStateChangedSignalCallback&),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemProxy);

@@ -20,21 +20,23 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
                          const std::string& info_owner);
   ~MockMobileOperatorInfo() override;
 
-  MOCK_CONST_METHOD0(IsMobileNetworkOperatorKnown, bool());
+  MOCK_METHOD(bool, IsMobileNetworkOperatorKnown, (), (const, override));
 
-  MOCK_CONST_METHOD0(mccmnc, const std::string&());
-  MOCK_CONST_METHOD0(olp_list,
-                     const std::vector<MobileOperatorInfo::OnlinePortal>&());
-  MOCK_CONST_METHOD0(activation_code, const std::string&());
-  MOCK_CONST_METHOD0(operator_name, const std::string&());
-  MOCK_CONST_METHOD0(country, const std::string&());
-  MOCK_CONST_METHOD0(uuid, const std::string&());
+  MOCK_METHOD(const std::string&, mccmnc, (), (const, override));
+  MOCK_METHOD(const std::vector<MobileOperatorInfo::OnlinePortal>&,
+              olp_list,
+              (),
+              (const, override));
+  MOCK_METHOD(const std::string&, activation_code, (), (const, override));
+  MOCK_METHOD(const std::string&, operator_name, (), (const, override));
+  MOCK_METHOD(const std::string&, country, (), (const, override));
+  MOCK_METHOD(const std::string&, uuid, (), (const, override));
 
-  MOCK_METHOD1(UpdateMCCMNC, void(const std::string&));
-  MOCK_METHOD1(UpdateSID, void(const std::string&));
-  MOCK_METHOD1(UpdateIMSI, void(const std::string&));
-  MOCK_METHOD1(UpdateNID, void(const std::string&));
-  MOCK_METHOD1(UpdateOperatorName, void(const std::string&));
+  MOCK_METHOD(void, UpdateMCCMNC, (const std::string&), (override));
+  MOCK_METHOD(void, UpdateSID, (const std::string&), (override));
+  MOCK_METHOD(void, UpdateIMSI, (const std::string&), (override));
+  MOCK_METHOD(void, UpdateNID, (const std::string&), (override));
+  MOCK_METHOD(void, UpdateOperatorName, (const std::string&), (override));
 
  private:
   std::string empty_mccmnc_;
