@@ -24,33 +24,47 @@ class MockWiFiService : public WiFiService {
                   bool hidden_ssid);
   ~MockWiFiService() override;
 
-  MOCK_METHOD2(Configure, void(const KeyValueStore& args, Error* error));
-  MOCK_METHOD1(SetFailure, void(ConnectFailure failure));
-  MOCK_METHOD1(SetFailureSilent, void(ConnectFailure failure));
-  MOCK_METHOD1(SetState, void(ConnectState state));
-  MOCK_METHOD2(AddEAPCertification,
-               bool(const std::string& name, size_t depth));
-  MOCK_METHOD0(HasRecentConnectionIssues, bool());
-  MOCK_METHOD0(AddSuspectedCredentialFailure, bool());
-  MOCK_METHOD0(ResetSuspectedCredentialFailures, void());
-  MOCK_METHOD1(AddEndpoint, void(const WiFiEndpointConstRefPtr& endpoint));
-  MOCK_METHOD1(RemoveEndpoint, void(const WiFiEndpointConstRefPtr& endpoint));
-  MOCK_METHOD1(NotifyCurrentEndpoint,
-               void(const WiFiEndpointConstRefPtr& endpoint));
-  MOCK_METHOD1(NotifyEndpointUpdated,
-               void(const WiFiEndpointConstRefPtr& endpoint));
-  MOCK_METHOD3(DisconnectWithFailure,
-               void(ConnectFailure failure, Error* error, const char* reason));
-  MOCK_METHOD1(IsActive, bool(Error* error));
-  MOCK_CONST_METHOD0(IsConnected, bool());
-  MOCK_CONST_METHOD0(IsConnecting, bool());
-  MOCK_CONST_METHOD0(GetEndpointCount, int());
-  MOCK_CONST_METHOD0(HasEndpoints, bool());
-  MOCK_CONST_METHOD0(IsRemembered, bool());
-  MOCK_METHOD0(ResetWiFi, void());
-  MOCK_CONST_METHOD0(GetSupplicantConfigurationParameters, KeyValueStore());
-  MOCK_CONST_METHOD1(IsAutoConnectable, bool(const char** reason));
-  MOCK_CONST_METHOD0(HasStaticIPAddress, bool());
+  MOCK_METHOD(void, Configure, (const KeyValueStore&, Error*), (override));
+  MOCK_METHOD(void, SetFailure, (ConnectFailure), (override));
+  MOCK_METHOD(void, SetFailureSilent, (ConnectFailure), (override));
+  MOCK_METHOD(void, SetState, (ConnectState), (override));
+  MOCK_METHOD(bool,
+              AddEAPCertification,
+              (const std::string&, size_t),
+              (override));
+  MOCK_METHOD(bool, HasRecentConnectionIssues, (), (override));
+  MOCK_METHOD(bool, AddSuspectedCredentialFailure, (), (override));
+  MOCK_METHOD(void, ResetSuspectedCredentialFailures, (), (override));
+  MOCK_METHOD(void, AddEndpoint, (const WiFiEndpointConstRefPtr&), (override));
+  MOCK_METHOD(void,
+              RemoveEndpoint,
+              (const WiFiEndpointConstRefPtr&),
+              (override));
+  MOCK_METHOD(void,
+              NotifyCurrentEndpoint,
+              (const WiFiEndpointConstRefPtr&),
+              (override));
+  MOCK_METHOD(void,
+              NotifyEndpointUpdated,
+              (const WiFiEndpointConstRefPtr&),
+              (override));
+  MOCK_METHOD(void,
+              DisconnectWithFailure,
+              (ConnectFailure, Error*, const char*),
+              (override));
+  MOCK_METHOD(bool, IsActive, (Error*), (override));
+  MOCK_METHOD(bool, IsConnected, (), (const, override));
+  MOCK_METHOD(bool, IsConnecting, (), (const, override));
+  MOCK_METHOD(int, GetEndpointCount, (), (const, override));
+  MOCK_METHOD(bool, HasEndpoints, (), (const, override));
+  MOCK_METHOD(bool, IsRemembered, (), (const, override));
+  MOCK_METHOD(void, ResetWiFi, (), (override));
+  MOCK_METHOD(KeyValueStore,
+              GetSupplicantConfigurationParameters,
+              (),
+              (const, override));
+  MOCK_METHOD(bool, IsAutoConnectable, (const char**), (const, override));
+  MOCK_METHOD(bool, HasStaticIPAddress, (), (const, override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiFiService);

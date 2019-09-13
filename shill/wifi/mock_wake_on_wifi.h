@@ -22,49 +22,60 @@ class MockWakeOnWiFi : public WakeOnWiFiInterface {
   MockWakeOnWiFi();
   ~MockWakeOnWiFi() override;
 
-  MOCK_METHOD1(InitPropertyStore, void(PropertyStore* store));
-  MOCK_METHOD0(StartMetricsTimer, void());
-  MOCK_METHOD2(AddWakeOnPacketConnection,
-               void(const std::string& ip_endpoint, Error* error));
-  MOCK_METHOD2(AddWakeOnPacketOfTypes,
-               void(const std::vector<std::string>& packet_types,
-                    Error* error));
-  MOCK_METHOD2(RemoveWakeOnPacketConnection,
-               void(const std::string& ip_endpoint, Error* error));
-  MOCK_METHOD2(RemoveWakeOnPacketOfTypes,
-               void(const std::vector<std::string>& packet_types,
-                    Error* error));
-  MOCK_METHOD1(RemoveAllWakeOnPacketConnections, void(Error* error));
-  MOCK_METHOD1(ParseWakeOnWiFiCapabilities,
-               void(const Nl80211Message& nl80211_message));
-  MOCK_METHOD7(OnBeforeSuspend,
-               void(bool is_connected,
-                    const std::vector<ByteString>& ssid_whitelist,
-                    const ResultCallback& done_callback,
-                    const base::Closure& renew_dhcp_lease_callback,
-                    const base::Closure& remove_supplicant_networks_callback,
-                    bool have_dhcp_lease,
-                    uint32_t time_to_next_lease_renewal));
-  MOCK_METHOD0(OnAfterResume, void());
-  MOCK_METHOD6(OnDarkResume,
-               void(bool is_connected,
-                    const std::vector<ByteString>& ssid_whitelist,
-                    const ResultCallback& done_callback,
-                    const base::Closure& renew_dhcp_lease_callback,
-                    const InitiateScanCallback& initiate_scan_callback,
-                    const base::Closure& remove_supplicant_networks_callback));
-  MOCK_METHOD2(OnConnectedAndReachable,
-               void(bool start_lease_renewal_timer,
-                    uint32_t time_to_next_lease_renewal));
-  MOCK_METHOD2(ReportConnectedToServiceAfterWake,
-               void(bool is_connected, int seconds_in_suspend));
-  MOCK_METHOD3(OnNoAutoConnectableServicesAfterScan,
-               void(const std::vector<ByteString>& ssid_whitelist,
-                    const base::Closure& remove_supplicant_networks_callback,
-                    const InitiateScanCallback& initiate_scan_callback));
-  MOCK_METHOD1(OnScanStarted, void(bool is_active_scan));
-  MOCK_METHOD0(InDarkResume, bool());
-  MOCK_METHOD1(OnWiphyIndexReceived, void(uint32_t));
+  MOCK_METHOD(void, InitPropertyStore, (PropertyStore * store), (override));
+  MOCK_METHOD(void, StartMetricsTimer, (), (override));
+  MOCK_METHOD(void,
+              AddWakeOnPacketConnection,
+              (const std::string&, Error*),
+              (override));
+  MOCK_METHOD(void,
+              AddWakeOnPacketOfTypes,
+              (const std::vector<std::string>&, Error*),
+              (override));
+  MOCK_METHOD(void,
+              RemoveWakeOnPacketConnection,
+              (const std::string&, Error*),
+              (override));
+  MOCK_METHOD(void,
+              RemoveWakeOnPacketOfTypes,
+              (const std::vector<std::string>&, Error*),
+              (override));
+  MOCK_METHOD(void, RemoveAllWakeOnPacketConnections, (Error*), (override));
+  MOCK_METHOD(void,
+              ParseWakeOnWiFiCapabilities,
+              (const Nl80211Message&),
+              (override));
+  MOCK_METHOD(void,
+              OnBeforeSuspend,
+              (bool,
+               const std::vector<ByteString>&,
+               const ResultCallback&,
+               const base::Closure&,
+               const base::Closure&,
+               bool,
+               uint32_t),
+              (override));
+  MOCK_METHOD(void, OnAfterResume, (), (override));
+  MOCK_METHOD(void,
+              OnDarkResume,
+              (bool,
+               const std::vector<ByteString>&,
+               const ResultCallback&,
+               const base::Closure&,
+               const InitiateScanCallback&,
+               const base::Closure&),
+              (override));
+  MOCK_METHOD(void, OnConnectedAndReachable, (bool, uint32_t), (override));
+  MOCK_METHOD(void, ReportConnectedToServiceAfterWake, (bool, int), (override));
+  MOCK_METHOD(void,
+              OnNoAutoConnectableServicesAfterScan,
+              (const std::vector<ByteString>&,
+               const base::Closure&,
+               const InitiateScanCallback&),
+              (override));
+  MOCK_METHOD(void, OnScanStarted, (bool), (override));
+  MOCK_METHOD(bool, InDarkResume, (), (override));
+  MOCK_METHOD(void, OnWiphyIndexReceived, (uint32_t), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWakeOnWiFi);

@@ -1183,7 +1183,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
   void SetWiFiEnabled(bool enabled) { wifi_->enabled_ = enabled; }
 
-  MOCK_METHOD1(SuspendCallback, void(const Error& error));
+  MOCK_METHOD(void, SuspendCallback, (const Error&));
 
   std::unique_ptr<EventDispatcher> event_dispatcher_;
   MockWakeOnWiFi* wake_on_wifi_;  // Owned by |wifi_|.

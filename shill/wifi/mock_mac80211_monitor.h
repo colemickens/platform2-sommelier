@@ -22,9 +22,9 @@ class MockMac80211Monitor : public Mac80211Monitor {
                       Metrics* metrics);
   ~MockMac80211Monitor() override;
 
-  MOCK_METHOD1(Start, void(const std::string& phy_name));
-  MOCK_METHOD0(Stop, void());
-  MOCK_METHOD1(UpdateConnectedState, void(bool new_state));
+  MOCK_METHOD(void, Start, (const std::string&), (override));
+  MOCK_METHOD(void, Stop, (), (override));
+  MOCK_METHOD(void, UpdateConnectedState, (bool), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMac80211Monitor);

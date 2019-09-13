@@ -1103,14 +1103,13 @@ class WakeOnWiFiTest : public ::testing::Test {
     return Timestamp(monotonic, boottime, "");
   }
 
-  MOCK_METHOD1(DoneCallback, void(const Error&));
-  MOCK_METHOD0(RenewDHCPLeaseCallback, void());
-  MOCK_METHOD1(InitiateScanCallback, void(const WiFi::FreqSet&));
-  MOCK_METHOD0(RemoveSupplicantNetworksCallback, void());
-  MOCK_METHOD0(DarkResumeActionsTimeoutCallback, void());
-  MOCK_METHOD0(OnTimerWakeDoNothing, void());
-  MOCK_METHOD1(RecordDarkResumeWakeReasonCallback,
-               void(const string& wake_reason));
+  MOCK_METHOD(void, DoneCallback, (const Error&));
+  MOCK_METHOD(void, RenewDHCPLeaseCallback, ());
+  MOCK_METHOD(void, InitiateScanCallback, (const WiFi::FreqSet&));
+  MOCK_METHOD(void, RemoveSupplicantNetworksCallback, ());
+  MOCK_METHOD(void, DarkResumeActionsTimeoutCallback, ());
+  MOCK_METHOD(void, OnTimerWakeDoNothing, ());
+  MOCK_METHOD(void, RecordDarkResumeWakeReasonCallback, (const string&));
 
  protected:
   MockControl control_interface_;

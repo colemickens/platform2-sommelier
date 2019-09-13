@@ -20,12 +20,14 @@ class MockTDLSManager : public TDLSManager {
   MockTDLSManager();
   ~MockTDLSManager() override;
 
-  MOCK_METHOD3(PerformOperation,
-               std::string(const std::string& peer_mac_address,
-                           const std::string& operation,
-                           Error* error));
-  MOCK_METHOD1(OnDiscoverResponseReceived,
-               void(const std::string& peer_mac_address));
+  MOCK_METHOD(std::string,
+              PerformOperation,
+              (const std::string&, const std::string&, Error*),
+              (override));
+  MOCK_METHOD(void,
+              OnDiscoverResponseReceived,
+              (const std::string&),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockTDLSManager);

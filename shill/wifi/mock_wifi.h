@@ -33,20 +33,26 @@ class MockWiFi : public WiFi {
            WakeOnWiFiInterface* wake_on_wifi);
   ~MockWiFi() override;
 
-  MOCK_METHOD2(Start,
-               void(Error* error, const EnabledStateChangedCallback& callback));
-  MOCK_METHOD2(Stop,
-               void(Error* error, const EnabledStateChangedCallback& callback));
-  MOCK_METHOD2(Scan, void(Error* error, const std::string& reason));
-  MOCK_METHOD1(DisconnectFromIfActive, void(WiFiService* service));
-  MOCK_METHOD1(DisconnectFrom, void(WiFiService* service));
-  MOCK_METHOD1(ClearCachedCredentials, void(const WiFiService* service));
-  MOCK_METHOD1(ConnectTo, void(WiFiService* service));
-  MOCK_CONST_METHOD0(IsIdle, bool());
-  MOCK_METHOD1(NotifyEndpointChanged,
-               void(const WiFiEndpointConstRefPtr& endpoint));
-  MOCK_METHOD1(DestroyIPConfigLease, void(const std::string&));
-  MOCK_CONST_METHOD0(IsConnectedViaTether, bool());
+  MOCK_METHOD(void,
+              Start,
+              (Error*, const EnabledStateChangedCallback&),
+              (override));
+  MOCK_METHOD(void,
+              Stop,
+              (Error*, const EnabledStateChangedCallback&),
+              (override));
+  MOCK_METHOD(void, Scan, (Error*, const std::string&), (override));
+  MOCK_METHOD(void, DisconnectFromIfActive, (WiFiService*), (override));
+  MOCK_METHOD(void, DisconnectFrom, (WiFiService*), (override));
+  MOCK_METHOD(void, ClearCachedCredentials, (const WiFiService*), (override));
+  MOCK_METHOD(void, ConnectTo, (WiFiService * service), (override));
+  MOCK_METHOD(bool, IsIdle, (), (const, override));
+  MOCK_METHOD(void,
+              NotifyEndpointChanged,
+              (const WiFiEndpointConstRefPtr&),
+              (override));
+  MOCK_METHOD(void, DestroyIPConfigLease, (const std::string&), (override));
+  MOCK_METHOD(bool, IsConnectedViaTether, (), (const, override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiFi);

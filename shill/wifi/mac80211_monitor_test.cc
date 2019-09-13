@@ -101,7 +101,7 @@ class Mac80211MonitorTest : public testing::Test {
     base::ReadFileToString(fake_wake_queues_file_path_, &wake_file_contents);
     return wake_file_contents != kJunkData;
   }
-  MOCK_METHOD0(OnRepairHandler, void());
+  MOCK_METHOD(void, OnRepairHandler, ());
 
   // Getters for Mac80211Monitor state.
   bool GetIsDeviceConnected() const {
