@@ -860,12 +860,7 @@ ServiceRefPtr Manager::CreateTemporaryServiceFromProfile(
   }
 
   ServiceRefPtr service = nullptr;
-  // Since there is no provider for Ethernet services (Ethernet services are
-  // created/provided by the Ethernet device), we will explicitly create
-  // temporary Ethernet services for loading Ethernet entries.
-  if (technology == Technology::kEthernet) {
-    service = new EthernetTemporaryService(this, entry_name);
-  } else if (base::ContainsKey(providers_, technology)) {
+  if (base::ContainsKey(providers_, technology)) {
     service = providers_[technology]->CreateTemporaryServiceFromProfile(
         profile, entry_name, error);
   }
