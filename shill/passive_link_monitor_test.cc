@@ -53,7 +53,7 @@ class ResultCallbackObserver {
                               Unretained(this))) {}
   virtual ~ResultCallbackObserver() = default;
 
-  MOCK_METHOD1(OnResultCallback, void(bool status));
+  MOCK_METHOD(void, OnResultCallback, (bool));
 
   const PassiveLinkMonitor::ResultCallback result_callback() const {
     return result_callback_;

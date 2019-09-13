@@ -21,21 +21,27 @@ class MockPPPDevice : public PPPDevice {
                 int interface_index);
   ~MockPPPDevice() override;
 
-  MOCK_METHOD2(Stop,
-               void(Error* error, const EnabledStateChangedCallback& callback));
-  MOCK_METHOD1(UpdateIPConfig, void(const IPConfig::Properties& properties));
-  MOCK_METHOD0(DropConnection, void());
-  MOCK_METHOD1(SelectService, void(const ServiceRefPtr& service));
-  MOCK_METHOD1(SetServiceState, void(Service::ConnectState));
-  MOCK_METHOD1(SetServiceFailure, void(Service::ConnectFailure));
-  MOCK_METHOD1(SetServiceFailureSilent, void(Service::ConnectFailure));
-  MOCK_METHOD1(SetEnabled, void(bool));
-  MOCK_METHOD2(UpdateIPConfigFromPPP,
-               void(const std::map<std::string, std::string>& config,
-                    bool blackhole_ipv6));
+  MOCK_METHOD(void,
+              Stop,
+              (Error*, const EnabledStateChangedCallback&),
+              (override));
+  MOCK_METHOD(void, UpdateIPConfig, (const IPConfig::Properties&), (override));
+  MOCK_METHOD(void, DropConnection, (), (override));
+  MOCK_METHOD(void, SelectService, (const ServiceRefPtr&), (override));
+  MOCK_METHOD(void, SetServiceState, (Service::ConnectState), (override));
+  MOCK_METHOD(void, SetServiceFailure, (Service::ConnectFailure), (override));
+  MOCK_METHOD(void,
+              SetServiceFailureSilent,
+              (Service::ConnectFailure),
+              (override));
+  MOCK_METHOD(void, SetEnabled, (bool), (override));
+  MOCK_METHOD(void,
+              UpdateIPConfigFromPPP,
+              ((const std::map<std::string, std::string>&), bool),
+              (override));
 #ifndef DISABLE_DHCPV6
-  MOCK_METHOD0(AcquireIPv6Config, bool());
-#endif  // DISABLE_DHCPV6
+  MOCK_METHOD(bool, AcquireIPv6Config, (), (override));
+#endif
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockPPPDevice);

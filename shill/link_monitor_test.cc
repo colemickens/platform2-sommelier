@@ -47,8 +47,8 @@ class LinkMonitorObserver {
             &LinkMonitorObserver::OnGatewayChangeCallback, Unretained(this))) {}
   virtual ~LinkMonitorObserver() = default;
 
-  MOCK_METHOD0(OnFailureCallback, void());
-  MOCK_METHOD0(OnGatewayChangeCallback, void());
+  MOCK_METHOD(void, OnFailureCallback, ());
+  MOCK_METHOD(void, OnGatewayChangeCallback, ());
 
   const LinkMonitor::FailureCallback failure_callback() const {
     return failure_callback_;

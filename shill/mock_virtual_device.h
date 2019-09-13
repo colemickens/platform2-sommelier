@@ -21,13 +21,15 @@ class MockVirtualDevice : public VirtualDevice {
                     Technology technology);
   ~MockVirtualDevice() override;
 
-  MOCK_METHOD2(Stop,
-               void(Error* error, const EnabledStateChangedCallback& callback));
-  MOCK_METHOD1(UpdateIPConfig, void(const IPConfig::Properties& properties));
-  MOCK_METHOD0(DropConnection, void());
-  MOCK_METHOD0(ResetConnection, void());
-  MOCK_METHOD1(SetServiceState, void(Service::ConnectState state));
-  MOCK_METHOD1(SetEnabled, void(bool));
+  MOCK_METHOD(void,
+              Stop,
+              (Error*, const EnabledStateChangedCallback&),
+              (override));
+  MOCK_METHOD(void, UpdateIPConfig, (const IPConfig::Properties&), (override));
+  MOCK_METHOD(void, DropConnection, (), (override));
+  MOCK_METHOD(void, ResetConnection, (), (override));
+  MOCK_METHOD(void, SetServiceState, (Service::ConnectState), (override));
+  MOCK_METHOD(void, SetEnabled, (bool), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockVirtualDevice);

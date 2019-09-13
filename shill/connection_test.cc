@@ -198,7 +198,7 @@ class ConnectionTest : public Test {
         : callback_(base::Bind(&DisconnectCallbackTarget::CallTarget,
                                base::Unretained(this))) {}
 
-    MOCK_METHOD0(CallTarget, void());
+    MOCK_METHOD(void, CallTarget, ());
     const base::Closure& callback() const { return callback_; }
 
    private:

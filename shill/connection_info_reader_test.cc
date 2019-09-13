@@ -41,7 +41,7 @@ class ConnectionInfoReaderUnderTest : public ConnectionInfoReader {
   // Mock out GetConnectionInfoFilePath to use a temporary created connection
   // info file instead of the actual path in procfs (i.e.
   // /proc/net/ip_conntrack).
-  MOCK_CONST_METHOD0(GetConnectionInfoFilePath, FilePath());
+  MOCK_METHOD(FilePath, GetConnectionInfoFilePath, (), (const, override));
 };
 
 class ConnectionInfoReaderTest : public testing::Test {

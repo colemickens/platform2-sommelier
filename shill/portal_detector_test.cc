@@ -116,9 +116,10 @@ class PortalDetectorTest : public Test {
         : result_callback_(
               Bind(&CallbackTarget::ResultCallback, Unretained(this))) {}
 
-    MOCK_METHOD2(ResultCallback,
-                 void(const PortalDetector::Result& http_result,
-                      const PortalDetector::Result& https_result));
+    MOCK_METHOD(void,
+                ResultCallback,
+                (const PortalDetector::Result&, const PortalDetector::Result&));
+
     Callback<void(const PortalDetector::Result&,
                   const PortalDetector::Result&)>&
     result_callback() {

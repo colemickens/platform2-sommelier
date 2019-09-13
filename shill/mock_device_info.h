@@ -24,45 +24,52 @@ class MockDeviceInfo : public DeviceInfo {
   explicit MockDeviceInfo(Manager* manager);
   ~MockDeviceInfo() override;
 
-  MOCK_METHOD1(IsDeviceBlackListed, bool(const std::string& device_name));
-  MOCK_METHOD1(AddDeviceToBlackList, void(const std::string& device_name));
-  MOCK_METHOD1(RemoveDeviceFromBlackList, void(const std::string& device_name));
-  MOCK_CONST_METHOD1(GetDevice, DeviceRefPtr(int interface_index));
-  MOCK_CONST_METHOD1(GetIndex, int(const std::string& interface_name));
-  MOCK_CONST_METHOD2(GetMacAddress,
-                     bool(int interface_index, ByteString* address));
-  MOCK_CONST_METHOD1(GetMacAddressFromKernel, ByteString(int interface_index));
-  MOCK_CONST_METHOD3(GetMacAddressOfPeer,
-                     bool(int interface_index,
-                          const IPAddress& peer,
-                          ByteString* address));
-  MOCK_CONST_METHOD3(GetByteCounts,
-                     bool(int interface_index,
-                          uint64_t* rx_bytes,
-                          uint64_t* tx_bytes));
-  MOCK_CONST_METHOD2(GetFlags, bool(int interface_index, unsigned int* flags));
-  MOCK_CONST_METHOD2(GetAddresses,
-                     bool(int interface_index,
-                          std::vector<AddressData>* addresses));
-  MOCK_CONST_METHOD1(FlushAddresses, void(int interface_index));
-  MOCK_CONST_METHOD2(HasOtherAddress,
-                     bool(int interface_index,
-                          const IPAddress& excluded_address));
-  MOCK_CONST_METHOD2(HasDirectConnectivityTo,
-                     bool(int interface_index, const IPAddress& address));
-  MOCK_METHOD2(GetPrimaryIPv6Address,
-               bool(int interface_index, IPAddress* address));
-  MOCK_METHOD3(GetIPv6DnsServerAddresses,
-               bool(int interface_index,
-                    std::vector<IPAddress>* address_list,
-                    uint32_t* life_time));
-  MOCK_CONST_METHOD1(CreateTunnelInterface, bool(std::string* interface_name));
-  MOCK_CONST_METHOD1(OpenTunnelInterface,
-                     int(const std::string& interface_name));
-  MOCK_CONST_METHOD1(DeleteInterface, bool(int interface_index));
-  MOCK_METHOD1(RegisterDevice, void(const DeviceRefPtr&));
-  MOCK_METHOD1(DeregisterDevice, void(const DeviceRefPtr&));
-  MOCK_CONST_METHOD1(SetHostname, bool(const std::string& hostname));
+  MOCK_METHOD(bool, IsDeviceBlackListed, (const std::string&), (override));
+  MOCK_METHOD(void, AddDeviceToBlackList, (const std::string&), (override));
+  MOCK_METHOD(void,
+              RemoveDeviceFromBlackList,
+              (const std::string&),
+              (override));
+  MOCK_METHOD(DeviceRefPtr, GetDevice, (int), (const, override));
+  MOCK_METHOD(int, GetIndex, (const std::string&), (const, override));
+  MOCK_METHOD(bool, GetMacAddress, (int, ByteString*), (const, override));
+  MOCK_METHOD(ByteString, GetMacAddressFromKernel, (int), (const, override));
+  MOCK_METHOD(bool,
+              GetMacAddressOfPeer,
+              (int, const IPAddress&, ByteString*),
+              (const, override));
+  MOCK_METHOD(bool,
+              GetByteCounts,
+              (int, uint64_t*, uint64_t*),
+              (const, override));
+  MOCK_METHOD(bool, GetFlags, (int, unsigned int*), (const, override));
+  MOCK_METHOD(bool,
+              GetAddresses,
+              (int, std::vector<AddressData>*),
+              (const, override));
+  MOCK_METHOD(void, FlushAddresses, (int), (const, override));
+  MOCK_METHOD(bool,
+              HasOtherAddress,
+              (int, const IPAddress&),
+              (const, override));
+  MOCK_METHOD(bool,
+              HasDirectConnectivityTo,
+              (int, const IPAddress&),
+              (const, override));
+  MOCK_METHOD(bool, GetPrimaryIPv6Address, (int, IPAddress*), (override));
+  MOCK_METHOD(bool,
+              GetIPv6DnsServerAddresses,
+              (int, std::vector<IPAddress>*, uint32_t*),
+              (override));
+  MOCK_METHOD(bool, CreateTunnelInterface, (std::string*), (const, override));
+  MOCK_METHOD(int,
+              OpenTunnelInterface,
+              (const std::string&),
+              (const, override));
+  MOCK_METHOD(bool, DeleteInterface, (int), (const, override));
+  MOCK_METHOD(void, RegisterDevice, (const DeviceRefPtr&), (override));
+  MOCK_METHOD(void, DeregisterDevice, (const DeviceRefPtr&), (override));
+  MOCK_METHOD(bool, SetHostname, (const std::string&), (const, override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDeviceInfo);

@@ -110,8 +110,7 @@ class RoutingTableTest : public Test {
           unreached_callback_(Bind(&QueryCallbackTarget::UnreachedTarget,
                                    weak_ptr_factory_.GetWeakPtr())) {}
 
-    MOCK_METHOD2(MockedTarget,
-                 void(int interface_index, const RoutingTableEntry& entry));
+    MOCK_METHOD(void, MockedTarget, (int, const RoutingTableEntry&));
 
     void UnreachedTarget(int interface_index, const RoutingTableEntry& entry) {
       CHECK(false);

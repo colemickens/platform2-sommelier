@@ -18,12 +18,13 @@ class MockIcmpSession : public IcmpSession {
   explicit MockIcmpSession(EventDispatcher* dispatcher);
   ~MockIcmpSession() override;
 
-  MOCK_METHOD3(
-      Start,
-      bool(const IPAddress& destination,
-           int interface_index,
-           const IcmpSession::IcmpSessionResultCallback& result_callback));
-  MOCK_METHOD0(Stop, void());
+  MOCK_METHOD(bool,
+              Start,
+              (const IPAddress&,
+               int,
+               const IcmpSession::IcmpSessionResultCallback&),
+              (override));
+  MOCK_METHOD(void, Stop, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockIcmpSession);

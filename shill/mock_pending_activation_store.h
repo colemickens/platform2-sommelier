@@ -19,15 +19,19 @@ class MockPendingActivationStore : public PendingActivationStore {
   MockPendingActivationStore();
   ~MockPendingActivationStore() override;
 
-  MOCK_METHOD1(InitStorage, bool(const base::FilePath& storage_path));
-  MOCK_CONST_METHOD2(GetActivationState,
-                     State(IdentifierType type, const std::string& iccid));
-  MOCK_METHOD3(SetActivationState,
-               bool(IdentifierType type,
-                    const std::string& iccid,
-                    State state));
-  MOCK_METHOD2(RemoveEntry,
-               bool(IdentifierType type, const std::string& iccid));
+  MOCK_METHOD(bool, InitStorage, (const base::FilePath&), (override));
+  MOCK_METHOD(State,
+              GetActivationState,
+              (IdentifierType, const std::string&),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetActivationState,
+              (IdentifierType, const std::string&, State),
+              (override));
+  MOCK_METHOD(bool,
+              RemoveEntry,
+              (IdentifierType, const std::string&),
+              (override));
 };
 
 }  // namespace shill

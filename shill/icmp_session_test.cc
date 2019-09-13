@@ -78,7 +78,7 @@ class IcmpSessionTest : public Test {
     IcmpSession::kNextUniqueEchoId = 0;
   }
 
-  MOCK_METHOD1(ResultCallback, void(const IcmpSession::IcmpSessionResult&));
+  MOCK_METHOD(void, ResultCallback, (const IcmpSession::IcmpSessionResult&));
 
  protected:
   static const char kIPAddress[];

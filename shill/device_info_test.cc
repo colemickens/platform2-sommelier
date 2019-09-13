@@ -70,10 +70,10 @@ namespace shill {
 
 class TestEventDispatcherForDeviceInfo : public EventDispatcherForTest {
  public:
-  MOCK_METHOD3(PostDelayedTask,
-               void(const base::Location& location,
-                    const base::Closure& task,
-                    int64_t delay_ms));
+  MOCK_METHOD(void,
+              PostDelayedTask,
+              (const base::Location&, const base::Closure&, int64_t),
+              (override));
 };
 
 class DeviceInfoTest : public Test {
@@ -1518,12 +1518,11 @@ class DeviceInfoForDelayedCreationTest : public DeviceInfo {
  public:
   explicit DeviceInfoForDelayedCreationTest(Manager* manager)
       : DeviceInfo(manager) {}
-  MOCK_METHOD4(CreateDevice,
-               DeviceRefPtr(const std::string& link_name,
-                            const std::string& address,
-                            int interface_index,
-                            Technology technology));
-  MOCK_METHOD1(GetDeviceTechnology, Technology(const string& iface_name));
+  MOCK_METHOD(DeviceRefPtr,
+              CreateDevice,
+              (const std::string&, const std::string&, int, Technology),
+              (override));
+  MOCK_METHOD(Technology, GetDeviceTechnology, (const string&), (override));
 };
 
 class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
@@ -1680,7 +1679,7 @@ class DeviceInfoWithMockedGetUserId : public DeviceInfo {
  public:
   explicit DeviceInfoWithMockedGetUserId(Manager* manager)
       : DeviceInfo(manager) {}
-  MOCK_METHOD2(GetUserId, bool(const std::string& user_name, uid_t* uid));
+  MOCK_METHOD(bool, GetUserId, (const std::string&, uid_t*), (override));
 };
 
 class DeviceInfoMockedGetUserId : public DeviceInfoTechnologyTest {

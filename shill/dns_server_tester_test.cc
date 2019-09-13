@@ -66,7 +66,8 @@ class DnsServerTesterTest : public Test {
         : result_callback_(
               Bind(&CallbackTarget::ResultCallback, Unretained(this))) {}
 
-    MOCK_METHOD1(ResultCallback, void(const DnsServerTester::Status status));
+    MOCK_METHOD(void, ResultCallback, (const DnsServerTester::Status));
+
     Callback<void(const DnsServerTester::Status)>& result_callback() {
       return result_callback_;
     }

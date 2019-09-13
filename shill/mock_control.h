@@ -70,67 +70,83 @@ class MockControl : public ControlInterface {
 #endif
   const RpcIdentifier& NullRpcIdentifier() override;
 
-  MOCK_METHOD3(CreatePowerManagerProxy,
-               std::unique_ptr<PowerManagerProxyInterface>(
-                   PowerManagerProxyDelegate* delegate,
-                   const base::Closure& service_appeared_callback,
-                   const base::Closure& service_vanished_callback));
+  MOCK_METHOD(std::unique_ptr<PowerManagerProxyInterface>,
+              CreatePowerManagerProxy,
+              (PowerManagerProxyDelegate*,
+               const base::Closure&,
+               const base::Closure&),
+              (override));
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-  MOCK_METHOD2(CreateSupplicantProcessProxy,
-               std::unique_ptr<SupplicantProcessProxyInterface>(
-                   const base::Closure& service_appeared_callback,
-                   const base::Closure& service_vanished_callback));
-  MOCK_METHOD2(CreateSupplicantInterfaceProxy,
-               std::unique_ptr<SupplicantInterfaceProxyInterface>(
-                   SupplicantEventDelegateInterface* delegate,
-                   const RpcIdentifier& object_path));
-  MOCK_METHOD1(CreateSupplicantNetworkProxy,
-               std::unique_ptr<SupplicantNetworkProxyInterface>(
-                   const RpcIdentifier& object_path));
+  MOCK_METHOD(std::unique_ptr<SupplicantProcessProxyInterface>,
+              CreateSupplicantProcessProxy,
+              (const base::Closure&, const base::Closure&),
+              (override));
+  MOCK_METHOD(std::unique_ptr<SupplicantInterfaceProxyInterface>,
+              CreateSupplicantInterfaceProxy,
+              (SupplicantEventDelegateInterface*, const RpcIdentifier&),
+              (override));
+  MOCK_METHOD(std::unique_ptr<SupplicantNetworkProxyInterface>,
+              CreateSupplicantNetworkProxy,
+              (const RpcIdentifier&),
+              (override));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 #if !defined(DISABLE_WIFI)
-  MOCK_METHOD2(CreateSupplicantBSSProxy,
-               std::unique_ptr<SupplicantBSSProxyInterface>(
-                   WiFiEndpoint* wifi_endpoint,
-                   const RpcIdentifier& object_path));
+  MOCK_METHOD(std::unique_ptr<SupplicantBSSProxyInterface>,
+              CreateSupplicantBSSProxy,
+              (WiFiEndpoint*, const RpcIdentifier&),
+              (override));
 #endif  // DISABLE_WIFI
-  MOCK_METHOD1(
-      CreateDHCPCDListener,
-      std::unique_ptr<DHCPCDListenerInterface>(DHCPProvider* provider));
-  MOCK_METHOD1(CreateDHCPProxy,
-               std::unique_ptr<DHCPProxyInterface>(const std::string& service));
+  MOCK_METHOD(std::unique_ptr<DHCPCDListenerInterface>,
+              CreateDHCPCDListener,
+              (DHCPProvider*),
+              (override));
+  MOCK_METHOD(std::unique_ptr<DHCPProxyInterface>,
+              CreateDHCPProxy,
+              (const std::string&),
+              (override));
 
-  MOCK_METHOD0(CreateUpstartProxy, std::unique_ptr<UpstartProxyInterface>());
+  MOCK_METHOD(std::unique_ptr<UpstartProxyInterface>,
+              CreateUpstartProxy,
+              (),
+              (override));
 
 #if !defined(DISABLE_CELLULAR)
-  MOCK_METHOD2(CreateDBusPropertiesProxy,
-               std::unique_ptr<DBusPropertiesProxyInterface>(
-                   const RpcIdentifier& path, const std::string& service));
+  MOCK_METHOD(std::unique_ptr<DBusPropertiesProxyInterface>,
+              CreateDBusPropertiesProxy,
+              (const RpcIdentifier&, const std::string&),
+              (override));
 
-  MOCK_METHOD4(CreateDBusObjectManagerProxy,
-               std::unique_ptr<DBusObjectManagerProxyInterface>(
-                   const RpcIdentifier& path,
-                   const std::string& service,
-                   const base::Closure& service_appeared_callback,
-                   const base::Closure& service_vanished_callback));
-  MOCK_METHOD2(CreateMM1ModemLocationProxy,
-               std::unique_ptr<mm1::ModemLocationProxyInterface>(
-                   const RpcIdentifier& path, const std::string& service));
-  MOCK_METHOD2(CreateMM1ModemModem3gppProxy,
-               std::unique_ptr<mm1::ModemModem3gppProxyInterface>(
-                   const RpcIdentifier& path, const std::string& service));
-  MOCK_METHOD2(CreateMM1ModemModemCdmaProxy,
-               std::unique_ptr<mm1::ModemModemCdmaProxyInterface>(
-                   const RpcIdentifier& path, const std::string& service));
-  MOCK_METHOD2(CreateMM1ModemProxy,
-               std::unique_ptr<mm1::ModemProxyInterface>(
-                   const RpcIdentifier& path, const std::string& service));
-  MOCK_METHOD2(CreateMM1ModemSimpleProxy,
-               std::unique_ptr<mm1::ModemSimpleProxyInterface>(
-                   const RpcIdentifier& path, const std::string& service));
-  MOCK_METHOD2(CreateMM1SimProxy,
-               std::unique_ptr<mm1::SimProxyInterface>(
-                   const RpcIdentifier& path, const std::string& service));
+  MOCK_METHOD(std::unique_ptr<DBusObjectManagerProxyInterface>,
+              CreateDBusObjectManagerProxy,
+              (const RpcIdentifier&,
+               const std::string&,
+               const base::Closure&,
+               const base::Closure&),
+              (override));
+  MOCK_METHOD(std::unique_ptr<mm1::ModemLocationProxyInterface>,
+              CreateMM1ModemLocationProxy,
+              (const RpcIdentifier&, const std::string&),
+              (override));
+  MOCK_METHOD(std::unique_ptr<mm1::ModemModem3gppProxyInterface>,
+              CreateMM1ModemModem3gppProxy,
+              (const RpcIdentifier&, const std::string&),
+              (override));
+  MOCK_METHOD(std::unique_ptr<mm1::ModemModemCdmaProxyInterface>,
+              CreateMM1ModemModemCdmaProxy,
+              (const RpcIdentifier&, const std::string&),
+              (override));
+  MOCK_METHOD(std::unique_ptr<mm1::ModemProxyInterface>,
+              CreateMM1ModemProxy,
+              (const RpcIdentifier&, const std::string&),
+              (override));
+  MOCK_METHOD(std::unique_ptr<mm1::ModemSimpleProxyInterface>,
+              CreateMM1ModemSimpleProxy,
+              (const RpcIdentifier&, const std::string&),
+              (override));
+  MOCK_METHOD(std::unique_ptr<mm1::SimProxyInterface>,
+              CreateMM1SimProxy,
+              (const RpcIdentifier&, const std::string&),
+              (override));
 #endif  // DISABLE_CELLULAR
 
  private:

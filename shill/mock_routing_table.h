@@ -17,51 +17,42 @@ class MockRoutingTable : public RoutingTable {
   MockRoutingTable();
   ~MockRoutingTable() override;
 
-  MOCK_METHOD0(Start, void());
-  MOCK_METHOD0(Stop, void());
-  MOCK_METHOD2(AddRoute,
-               bool(int interface_index, const RoutingTableEntry& entry));
-  MOCK_METHOD3(GetDefaultRoute,
-               bool(int interface_index,
-                    IPAddress::Family family,
-                    RoutingTableEntry* entry));
-  MOCK_METHOD4(SetDefaultRoute,
-               bool(int interface_index,
-                    const IPAddress& gateway_address,
-                    uint32_t metric,
-                    uint32_t table));
-  MOCK_METHOD4(ConfigureRoutes,
-               bool(int interface_index,
-                    const IPConfigRefPtr& ipconfig,
-                    uint32_t metric,
-                    uint32_t table));
-  MOCK_METHOD4(CreateBlackholeRoute,
-               bool(int interface_index,
-                    IPAddress::Family family,
-                    uint32_t metric,
-                    uint32_t table));
-  MOCK_METHOD4(CreateLinkRoute,
-               bool(int interface_index,
-                    const IPAddress& local_address,
-                    const IPAddress& remote_address,
-                    uint32_t table));
-  MOCK_METHOD1(FlushRoutes, void(int interface_index));
-  MOCK_METHOD1(FlushRoutesWithTag, void(int tag));
-  MOCK_METHOD0(FlushCache, bool());
-  MOCK_METHOD1(ResetTable, void(int interface_index));
-  MOCK_METHOD2(SetDefaultMetric, void(int interface_index, uint32_t metric));
-  MOCK_METHOD5(RequestRouteToHost,
-               bool(const IPAddress& addresss,
-                    int interface_index,
-                    int tag,
-                    const QueryCallback& callback,
-                    uint32_t table));
-
-  MOCK_METHOD0(AllocTableId, uint32_t());
-  MOCK_METHOD1(FreeTableId, void(uint32_t id));
-  MOCK_METHOD2(AddRule,
-               bool(int interface_index, const RoutingPolicyEntry& entry));
-  MOCK_METHOD1(FlushRules, void(int interface_index));
+  MOCK_METHOD(void, Start, (), (override));
+  MOCK_METHOD(void, Stop, (), (override));
+  MOCK_METHOD(bool, AddRoute, (int, const RoutingTableEntry&), (override));
+  MOCK_METHOD(bool,
+              GetDefaultRoute,
+              (int, IPAddress::Family, RoutingTableEntry*),
+              (override));
+  MOCK_METHOD(bool,
+              SetDefaultRoute,
+              (int, const IPAddress&, uint32_t, uint32_t),
+              (override));
+  MOCK_METHOD(bool,
+              ConfigureRoutes,
+              (int, const IPConfigRefPtr&, uint32_t, uint32_t),
+              (override));
+  MOCK_METHOD(bool,
+              CreateBlackholeRoute,
+              (int, IPAddress::Family, uint32_t, uint32_t),
+              (override));
+  MOCK_METHOD(bool,
+              CreateLinkRoute,
+              (int, const IPAddress&, const IPAddress&, uint32_t),
+              (override));
+  MOCK_METHOD(void, FlushRoutes, (int), (override));
+  MOCK_METHOD(void, FlushRoutesWithTag, (int), (override));
+  MOCK_METHOD(bool, FlushCache, (), (override));
+  MOCK_METHOD(void, ResetTable, (int), (override));
+  MOCK_METHOD(void, SetDefaultMetric, (int, uint32_t), (override));
+  MOCK_METHOD(bool,
+              RequestRouteToHost,
+              (const IPAddress&, int, int, const QueryCallback&, uint32_t),
+              (override));
+  MOCK_METHOD(uint32_t, AllocTableId, (), (override));
+  MOCK_METHOD(void, FreeTableId, (uint32_t), (override));
+  MOCK_METHOD(bool, AddRule, (int, const RoutingPolicyEntry&), (override));
+  MOCK_METHOD(void, FlushRules, (int), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockRoutingTable);

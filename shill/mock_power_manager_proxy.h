@@ -19,20 +19,22 @@ class MockPowerManagerProxy : public PowerManagerProxyInterface {
   MockPowerManagerProxy();
   ~MockPowerManagerProxy() override;
 
-  MOCK_METHOD3(RegisterSuspendDelay,
-               bool(base::TimeDelta timeout,
-                    const std::string& description,
-                    int* delay_id_out));
-  MOCK_METHOD1(UnregisterSuspendDelay, bool(int delay_id));
-  MOCK_METHOD2(ReportSuspendReadiness, bool(int delay_id, int suspend_id));
-  MOCK_METHOD3(RegisterDarkSuspendDelay,
-               bool(base::TimeDelta timeout,
-                    const std::string& description,
-                    int* delay_id_out));
-  MOCK_METHOD1(UnregisterDarkSuspendDelay, bool(int delay_id));
-  MOCK_METHOD2(ReportDarkSuspendReadiness, bool(int delay_id, int suspend_id));
-  MOCK_METHOD1(RecordDarkResumeWakeReason,
-               bool(const std::string& wake_reason));
+  MOCK_METHOD(bool,
+              RegisterSuspendDelay,
+              (base::TimeDelta, const std::string&, int*),
+              (override));
+  MOCK_METHOD(bool, UnregisterSuspendDelay, (int), (override));
+  MOCK_METHOD(bool, ReportSuspendReadiness, (int, int), (override));
+  MOCK_METHOD(bool,
+              RegisterDarkSuspendDelay,
+              (base::TimeDelta, const std::string&, int*),
+              (override));
+  MOCK_METHOD(bool, UnregisterDarkSuspendDelay, (int), (override));
+  MOCK_METHOD(bool, ReportDarkSuspendReadiness, (int, int), (override));
+  MOCK_METHOD(bool,
+              RecordDarkResumeWakeReason,
+              (const std::string&),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockPowerManagerProxy);

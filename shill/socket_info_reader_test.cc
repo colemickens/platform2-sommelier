@@ -55,8 +55,8 @@ class SocketInfoReaderUnderTest : public SocketInfoReader {
   // Mock out GetTcpv4SocketInfoFilePath and GetTcpv6SocketInfoFilePath to
   // use a temporary created socket info file instead of the actual path
   // in procfs (i.e. /proc/net/tcp and /proc/net/tcp6).
-  MOCK_CONST_METHOD0(GetTcpv4SocketInfoFilePath, FilePath());
-  MOCK_CONST_METHOD0(GetTcpv6SocketInfoFilePath, FilePath());
+  MOCK_METHOD(FilePath, GetTcpv4SocketInfoFilePath, (), (const, override));
+  MOCK_METHOD(FilePath, GetTcpv6SocketInfoFilePath, (), (const, override));
 };
 
 class SocketInfoReaderTest : public testing::Test {

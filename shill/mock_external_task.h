@@ -23,14 +23,16 @@ class MockExternalTask : public ExternalTask {
                    const base::Callback<void(pid_t, int)>& death_callback);
   ~MockExternalTask() override;
 
-  MOCK_METHOD5(Start,
-               bool(const base::FilePath& file,
-                    const std::vector<std::string>& arguments,
-                    const std::map<std::string, std::string>& environment,
-                    bool terminate_with_parent,
-                    Error* error));
-  MOCK_METHOD0(Stop, void());
-  MOCK_METHOD0(OnDelete, void());
+  MOCK_METHOD(bool,
+              Start,
+              (const base::FilePath&,
+               const std::vector<std::string>&,
+               (const std::map<std::string, std::string>&),
+               bool,
+               Error*),
+              (override));
+  MOCK_METHOD(void, Stop, (), (override));
+  MOCK_METHOD(void, OnDelete, ());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockExternalTask);

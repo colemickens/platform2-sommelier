@@ -18,92 +18,115 @@ class MockMetrics : public Metrics {
   MockMetrics();
   ~MockMetrics() override;
 
-  MOCK_METHOD0(Start, void());
-  MOCK_METHOD0(Stop, void());
-  MOCK_METHOD4(AddServiceStateTransitionTimer,
-               void(const Service& service,
-                    const std::string& histogram_name,
-                    Service::ConnectState start_state,
-                    Service::ConnectState stop_state));
-  MOCK_METHOD1(DeregisterDevice, void(int interface_index));
-  MOCK_METHOD1(NotifyDeviceScanStarted, void(int interface_index));
-  MOCK_METHOD1(NotifyDeviceScanFinished, void(int interface_index));
-  MOCK_METHOD1(ResetScanTimer, void(int interface_index));
-  MOCK_METHOD2(NotifyDeviceConnectStarted,
-               void(int interface_index, bool is_auto_connecting));
-  MOCK_METHOD1(NotifyDeviceConnectFinished, void(int interface_index));
-  MOCK_METHOD1(ResetConnectTimer, void(int interface_index));
-  MOCK_METHOD1(NotifyDefaultServiceChanged, void(const Service* service));
-  MOCK_METHOD2(NotifyServiceStateChanged,
-               void(const Service& service, Service::ConnectState new_state));
+  MOCK_METHOD(void, Start, (), (override));
+  MOCK_METHOD(void, Stop, (), (override));
+  MOCK_METHOD(void,
+              AddServiceStateTransitionTimer,
+              (const Service&,
+               const std::string&,
+               Service::ConnectState,
+               Service::ConnectState),
+              (override));
+  MOCK_METHOD(void, DeregisterDevice, (int), (override));
+  MOCK_METHOD(void, NotifyDeviceScanStarted, (int), (override));
+  MOCK_METHOD(void, NotifyDeviceScanFinished, (int), (override));
+  MOCK_METHOD(void, ResetScanTimer, (int), (override));
+  MOCK_METHOD(void, NotifyDeviceConnectStarted, (int, bool), (override));
+  MOCK_METHOD(void, NotifyDeviceConnectFinished, (int), (override));
+  MOCK_METHOD(void, ResetConnectTimer, (int), (override));
+  MOCK_METHOD(void, NotifyDefaultServiceChanged, (const Service*), (override));
+  MOCK_METHOD(void,
+              NotifyServiceStateChanged,
+              (const Service&, Service::ConnectState),
+              (override));
 #if !defined(DISABLE_WIFI)
-  MOCK_METHOD2(Notify80211Disconnect,
-               void(WiFiDisconnectByWhom by_whom,
-                    IEEE_80211::WiFiReasonCode reason));
+  MOCK_METHOD(void,
+              Notify80211Disconnect,
+              (WiFiDisconnectByWhom, IEEE_80211::WiFiReasonCode),
+              (override));
 #endif  // DISABLE_WIFI
-  MOCK_METHOD1(NotifyWiFiSupplicantSuccess, void(int attempts));
-  MOCK_METHOD0(Notify3GPPRegistrationDelayedDropPosted, void());
-  MOCK_METHOD0(Notify3GPPRegistrationDelayedDropCanceled, void());
-  MOCK_METHOD0(NotifyCorruptedProfile, void());
-  MOCK_METHOD3(SendEnumToUMA,
-               bool(const std::string& name, int sample, int max));
-  MOCK_METHOD5(SendToUMA,
-               bool(const std::string& name,
-                    int sample,
-                    int min,
-                    int max,
-                    int num_buckets));
-  MOCK_METHOD2(SendSparseToUMA, bool(const std::string& name, int sample));
-  MOCK_METHOD1(NotifyWifiAutoConnectableServices, void(int num_service));
-  MOCK_METHOD1(NotifyWifiAvailableBSSes, void(int num_bss));
-  MOCK_METHOD1(NotifyServicesOnSameNetwork, void(int num_service));
-  MOCK_METHOD1(NotifyUserInitiatedEvent, void(int event));
-  MOCK_METHOD1(NotifyWifiTxBitrate, void(int bitrate));
-  MOCK_METHOD2(NotifyUserInitiatedConnectionResult,
-               void(const std::string& name, int result));
-  MOCK_METHOD2(NotifyUserInitiatedConnectionFailureReason,
-               void(const std::string& name,
-                    const Service::ConnectFailure failure));
-  MOCK_METHOD2(NotifyNetworkProblemDetected,
-               void(Technology technology_id, int reason));
-  MOCK_METHOD2(NotifyFallbackDNSTestResult,
-               void(Technology technology_id, int result));
-  MOCK_METHOD1(NotifyDeviceConnectionStatus,
-               void(Metrics::ConnectionStatus status));
-  MOCK_METHOD1(NotifyDhcpClientStatus, void(Metrics::DhcpClientStatus status));
-  MOCK_METHOD2(NotifyNetworkConnectionIPType,
-               void(Technology technology_id,
-                    Metrics::NetworkConnectionIPType type));
-  MOCK_METHOD2(NotifyIPv6ConnectivityStatus,
-               void(Technology technology_id, bool status));
-  MOCK_METHOD2(NotifyDevicePresenceStatus,
-               void(Technology technology_id, bool status));
-  MOCK_METHOD2(NotifyUnreliableLinkSignalStrength,
-               void(Technology technology_id, int signal_strength));
-  MOCK_METHOD1(NotifyVerifyWakeOnWiFiSettingsResult,
-               void(VerifyWakeOnWiFiSettingsResult result));
-  MOCK_METHOD1(NotifyConnectedToServiceAfterWake,
-               void(WiFiConnectionStatusAfterWake status));
-  MOCK_METHOD2(NotifySuspendDurationAfterWake,
-               void(WiFiConnectionStatusAfterWake status,
-                    int seconds_in_suspend));
-  MOCK_METHOD0(NotifyWakeOnWiFiThrottled, void());
-  MOCK_METHOD0(NotifySuspendWithWakeOnWiFiEnabledDone, void());
-  MOCK_METHOD0(NotifyDarkResumeInitiateScan, void());
-  MOCK_METHOD0(NotifyWakeupReasonReceived, void());
+  MOCK_METHOD(void, NotifyWiFiSupplicantSuccess, (int), (override));
+  MOCK_METHOD(void, Notify3GPPRegistrationDelayedDropPosted, (), (override));
+  MOCK_METHOD(void, Notify3GPPRegistrationDelayedDropCanceled, (), (override));
+  MOCK_METHOD(void, NotifyCorruptedProfile, (), (override));
+  MOCK_METHOD(bool, SendEnumToUMA, (const std::string&, int, int), (override));
+  MOCK_METHOD(bool,
+              SendToUMA,
+              (const std::string&, int, int, int, int),
+              (override));
+  MOCK_METHOD(bool, SendSparseToUMA, (const std::string&, int), (override));
+  MOCK_METHOD(void, NotifyWifiAutoConnectableServices, (int), (override));
+  MOCK_METHOD(void, NotifyWifiAvailableBSSes, (int), (override));
+  MOCK_METHOD(void, NotifyServicesOnSameNetwork, (int), (override));
+  MOCK_METHOD(void, NotifyUserInitiatedEvent, (int), (override));
+  MOCK_METHOD(void, NotifyWifiTxBitrate, (int), (override));
+  MOCK_METHOD(void,
+              NotifyUserInitiatedConnectionResult,
+              (const std::string&, int),
+              (override));
+  MOCK_METHOD(void,
+              NotifyUserInitiatedConnectionFailureReason,
+              (const std::string&, const Service::ConnectFailure),
+              (override));
+  MOCK_METHOD(void,
+              NotifyNetworkProblemDetected,
+              (Technology, int),
+              (override));
+  MOCK_METHOD(void, NotifyFallbackDNSTestResult, (Technology, int), (override));
+  MOCK_METHOD(void,
+              NotifyDeviceConnectionStatus,
+              (Metrics::ConnectionStatus),
+              (override));
+  MOCK_METHOD(void,
+              NotifyDhcpClientStatus,
+              (Metrics::DhcpClientStatus),
+              (override));
+  MOCK_METHOD(void,
+              NotifyNetworkConnectionIPType,
+              (Technology, Metrics::NetworkConnectionIPType),
+              (override));
+  MOCK_METHOD(void,
+              NotifyIPv6ConnectivityStatus,
+              (Technology, bool),
+              (override));
+  MOCK_METHOD(void, NotifyDevicePresenceStatus, (Technology, bool), (override));
+  MOCK_METHOD(void,
+              NotifyUnreliableLinkSignalStrength,
+              (Technology, int),
+              (override));
+  MOCK_METHOD(void,
+              NotifyVerifyWakeOnWiFiSettingsResult,
+              (VerifyWakeOnWiFiSettingsResult),
+              (override));
+  MOCK_METHOD(void,
+              NotifyConnectedToServiceAfterWake,
+              (WiFiConnectionStatusAfterWake),
+              (override));
+  MOCK_METHOD(void,
+              NotifySuspendDurationAfterWake,
+              (WiFiConnectionStatusAfterWake, int),
+              (override));
+  MOCK_METHOD(void, NotifyWakeOnWiFiThrottled, (), (override));
+  MOCK_METHOD(void, NotifySuspendWithWakeOnWiFiEnabledDone, (), (override));
+  MOCK_METHOD(void, NotifyDarkResumeInitiateScan, (), (override));
+  MOCK_METHOD(void, NotifyWakeupReasonReceived, (), (override));
 #if !defined(DISABLE_WIFI)
-  MOCK_METHOD1(NotifyWakeOnWiFiOnDarkResume,
-               void(WakeOnWiFi::WakeOnWiFiTrigger reason));
+  MOCK_METHOD(void,
+              NotifyWakeOnWiFiOnDarkResume,
+              (WakeOnWiFi::WakeOnWiFiTrigger),
+              (override));
 #endif  // DISABLE_WIFI
-  MOCK_METHOD1(NotifyScanStartedInDarkResume, void(bool is_active_scan));
-  MOCK_METHOD0(NotifyDarkResumeScanRetry, void());
-  MOCK_METHOD2(NotifyBeforeSuspendActions,
-               void(bool is_connected, bool in_dark_resume));
-  MOCK_METHOD1(NotifyConnectionDiagnosticsIssue,
-               void(const std::string& issue));
-  MOCK_METHOD2(NotifyPortalDetectionMultiProbeResult,
-               void(const PortalDetector::Result&,
-                    const PortalDetector::Result&));
+  MOCK_METHOD(void, NotifyScanStartedInDarkResume, (bool), (override));
+  MOCK_METHOD(void, NotifyDarkResumeScanRetry, (), (override));
+  MOCK_METHOD(void, NotifyBeforeSuspendActions, (bool, bool), (override));
+  MOCK_METHOD(void,
+              NotifyConnectionDiagnosticsIssue,
+              (const std::string&),
+              (override));
+  MOCK_METHOD(void,
+              NotifyPortalDetectionMultiProbeResult,
+              (const PortalDetector::Result&, const PortalDetector::Result&),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);

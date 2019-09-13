@@ -58,11 +58,10 @@ class IPConfigTest : public Test {
     ipconfig_ = nullptr;
   }
 
-  MOCK_METHOD2(OnIPConfigUpdated,
-               void(const IPConfigRefPtr& ipconfig, bool new_lease_acquired));
-  MOCK_METHOD1(OnIPConfigFailed, void(const IPConfigRefPtr& ipconfig));
-  MOCK_METHOD1(OnIPConfigRefreshed, void(const IPConfigRefPtr& ipconfig));
-  MOCK_METHOD1(OnIPConfigExpired, void(const IPConfigRefPtr& ipconfig));
+  MOCK_METHOD(void, OnIPConfigUpdated, (const IPConfigRefPtr&, bool));
+  MOCK_METHOD(void, OnIPConfigFailed, (const IPConfigRefPtr&));
+  MOCK_METHOD(void, OnIPConfigRefreshed, (const IPConfigRefPtr&));
+  MOCK_METHOD(void, OnIPConfigExpired, (const IPConfigRefPtr&));
 
  protected:
   IPConfigMockAdaptor* GetAdaptor() {

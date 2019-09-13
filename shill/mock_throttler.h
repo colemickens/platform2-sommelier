@@ -19,36 +19,35 @@ class MockThrottler : public Throttler {
   MockThrottler();
   ~MockThrottler() override;
 
-  MOCK_METHOD1(DisableThrottlingOnAllInterfaces,
-               bool(const ResultCallback& callback));
-  MOCK_METHOD3(ThrottleInterfaces,
-               bool(const ResultCallback& callback,
-                    uint32_t upload_rate_kbits,
-                    uint32_t download_rate_kbits));
-  MOCK_METHOD1(ApplyThrottleToNewInterface,
-               bool(const std::string& interface_name));
-
-  MOCK_METHOD1(StartTCForCommands,
-               bool(const std::vector<std::string>& commands));
-
-  MOCK_METHOD4(Throttle,
-               bool(const ResultCallback& callback,
-                    const std::string& interface_name,
-                    uint32_t upload_rate_kbits,
-                    uint32_t download_rate_kbits));
-
-  MOCK_METHOD1(WriteTCCommands, void(int fd));
-  MOCK_METHOD1(OnProcessExited, void(int exit_status));
-
-  MOCK_METHOD3(Done,
-               void(const ResultCallback& callback,
-                    Error::Type error_type,
-                    const std::string& message));
-
-  MOCK_METHOD0(GetNextInterface, std::string());
-
-  MOCK_METHOD0(ClearTCState, void());
-  MOCK_METHOD0(ClearThrottleStatus, void());
+  MOCK_METHOD(bool,
+              DisableThrottlingOnAllInterfaces,
+              (const ResultCallback&),
+              (override));
+  MOCK_METHOD(bool,
+              ThrottleInterfaces,
+              (const ResultCallback&, uint32_t, uint32_t),
+              (override));
+  MOCK_METHOD(bool,
+              ApplyThrottleToNewInterface,
+              (const std::string&),
+              (override));
+  MOCK_METHOD(bool,
+              StartTCForCommands,
+              (const std::vector<std::string>&),
+              (override));
+  MOCK_METHOD(bool,
+              Throttle,
+              (const ResultCallback&, const std::string&, uint32_t, uint32_t),
+              (override));
+  MOCK_METHOD(void, WriteTCCommands, (int), (override));
+  MOCK_METHOD(void, OnProcessExited, (int), (override));
+  MOCK_METHOD(void,
+              Done,
+              (const ResultCallback&, Error::Type, const std::string&),
+              (override));
+  MOCK_METHOD(std::string, GetNextInterface, (), (override));
+  MOCK_METHOD(void, ClearTCState, (), (override));
+  MOCK_METHOD(void, ClearThrottleStatus, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockThrottler);

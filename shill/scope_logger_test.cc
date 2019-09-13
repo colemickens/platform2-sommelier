@@ -172,7 +172,7 @@ class ScopeChangeTarget {
  public:
   ScopeChangeTarget() : weak_ptr_factory_(this) {}
   virtual ~ScopeChangeTarget() = default;
-  MOCK_METHOD1(Callback, void(bool enabled));
+  MOCK_METHOD(void, Callback, (bool));
   ScopeLogger::ScopeEnableChangedCallback GetCallback() {
     return base::Bind(&ScopeChangeTarget::Callback,
                       weak_ptr_factory_.GetWeakPtr());

@@ -24,40 +24,54 @@ class MockDevice : public Device {
              int interface_index);
   ~MockDevice() override;
 
-  MOCK_METHOD0(Initialize, void());
-  MOCK_METHOD2(Start,
-               void(Error* error, const EnabledStateChangedCallback& callback));
-  MOCK_METHOD2(Stop,
-               void(Error* error, const EnabledStateChangedCallback& callback));
-  MOCK_METHOD1(SetEnabled, void(bool));
-  MOCK_METHOD3(SetEnabledPersistent,
-               void(bool enable, Error* error, const ResultCallback& callback));
-  MOCK_METHOD3(SetEnabledNonPersistent,
-               void(bool enable, Error* error, const ResultCallback& callback));
-  MOCK_METHOD2(Scan, void(Error* error, const std::string& reason));
-  MOCK_METHOD1(Load, bool(StoreInterface* storage));
-  MOCK_METHOD1(Save, bool(StoreInterface* storage));
-  MOCK_METHOD0(DisableIPv6, void());
-  MOCK_METHOD0(EnableIPv6, void());
-  MOCK_METHOD0(EnableIPv6Privacy, void());
-  MOCK_METHOD1(SetLooseRouting, void(bool));
-  MOCK_METHOD1(SetIsMultiHomed, void(bool is_multi_homed));
-  MOCK_METHOD0(RestartPortalDetection, bool());
-  MOCK_METHOD0(RequestPortalDetection, bool());
-  MOCK_METHOD0(GetReceiveByteCount, uint64_t());
-  MOCK_METHOD0(GetTransmitByteCount, uint64_t());
-  MOCK_CONST_METHOD1(IsConnectedToService, bool(const ServiceRefPtr& service));
-  MOCK_CONST_METHOD0(technology, Technology());
-  MOCK_METHOD1(OnBeforeSuspend, void(const ResultCallback& callback));
-  MOCK_METHOD1(OnDarkResume, void(const ResultCallback& callback));
-  MOCK_METHOD0(OnAfterResume, void());
-  MOCK_METHOD0(OnConnectionUpdated, void());
-  MOCK_METHOD0(OnIPv6AddressChanged, void());
-  MOCK_CONST_METHOD0(GetGeolocationObjects, std::vector<GeolocationInfo>());
-  MOCK_METHOD0(OnIPv6DnsServerAddressesChanged, void());
-  MOCK_METHOD0(StartConnectivityTest, bool());
-  MOCK_CONST_METHOD0(connection, const ConnectionRefPtr&());
-  MOCK_METHOD0(RefreshIPConfig, void());
+  MOCK_METHOD(void, Initialize, (), (override));
+  MOCK_METHOD(void,
+              Start,
+              (Error*, const EnabledStateChangedCallback&),
+              (override));
+  MOCK_METHOD(void,
+              Stop,
+              (Error*, const EnabledStateChangedCallback&),
+              (override));
+  MOCK_METHOD(void, SetEnabled, (bool), (override));
+  MOCK_METHOD(void,
+              SetEnabledPersistent,
+              (bool, Error*, const ResultCallback&),
+              (override));
+  MOCK_METHOD(void,
+              SetEnabledNonPersistent,
+              (bool, Error*, const ResultCallback&),
+              (override));
+  MOCK_METHOD(void, Scan, (Error*, const std::string&), (override));
+  MOCK_METHOD(bool, Load, (StoreInterface*), (override));
+  MOCK_METHOD(bool, Save, (StoreInterface*), (override));
+  MOCK_METHOD(void, DisableIPv6, (), (override));
+  MOCK_METHOD(void, EnableIPv6, (), (override));
+  MOCK_METHOD(void, EnableIPv6Privacy, (), (override));
+  MOCK_METHOD(void, SetLooseRouting, (bool), (override));
+  MOCK_METHOD(void, SetIsMultiHomed, (bool), (override));
+  MOCK_METHOD(bool, RestartPortalDetection, (), (override));
+  MOCK_METHOD(bool, RequestPortalDetection, (), (override));
+  MOCK_METHOD(uint64_t, GetReceiveByteCount, (), (override));
+  MOCK_METHOD(uint64_t, GetTransmitByteCount, (), (override));
+  MOCK_METHOD(bool,
+              IsConnectedToService,
+              (const ServiceRefPtr&),
+              (const, override));
+  MOCK_METHOD(Technology, technology, (), (const, override));
+  MOCK_METHOD(void, OnBeforeSuspend, (const ResultCallback&), (override));
+  MOCK_METHOD(void, OnDarkResume, (const ResultCallback&), (override));
+  MOCK_METHOD(void, OnAfterResume, (), (override));
+  MOCK_METHOD(void, OnConnectionUpdated, (), (override));
+  MOCK_METHOD(void, OnIPv6AddressChanged, (), (override));
+  MOCK_METHOD(std::vector<GeolocationInfo>,
+              GetGeolocationObjects,
+              (),
+              (const, override));
+  MOCK_METHOD(void, OnIPv6DnsServerAddressesChanged, (), (override));
+  MOCK_METHOD(bool, StartConnectivityTest, (), (override));
+  MOCK_METHOD(const ConnectionRefPtr&, connection, (), (const, override));
+  MOCK_METHOD(void, RefreshIPConfig, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDevice);

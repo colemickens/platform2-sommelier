@@ -201,9 +201,9 @@ class ConnectionDiagnosticsTest : public Test {
         : result_callback_(
               Bind(&CallbackTarget::ResultCallback, Unretained(this))) {}
 
-    MOCK_METHOD2(ResultCallback,
-                 void(const string&,
-                      const vector<ConnectionDiagnostics::Event>&));
+    MOCK_METHOD(void,
+                ResultCallback,
+                (const string&, const vector<ConnectionDiagnostics::Event>&));
 
     Callback<void(const string&, const vector<ConnectionDiagnostics::Event>&)>&
     result_callback() {

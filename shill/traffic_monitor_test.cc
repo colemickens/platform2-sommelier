@@ -64,7 +64,7 @@ class TrafficMonitorTest : public Test {
     remote_addr_.SetAddressFromString(kRemoteIpAddr);
   }
 
-  MOCK_METHOD1(OnNoOutgoingPackets, void(int));
+  MOCK_METHOD(void, OnNoOutgoingPackets, (int));
 
  protected:
   void SetUp() override {

@@ -31,9 +31,9 @@ const char kName3[] = "test3";
 
 class HookTableTest : public testing::Test {
  public:
-  MOCK_METHOD0(StartAction, void());
-  MOCK_METHOD0(StartAction2, void());
-  MOCK_METHOD1(DoneAction, void(const Error&));
+  MOCK_METHOD(void, StartAction, ());
+  MOCK_METHOD(void, StartAction2, ());
+  MOCK_METHOD(void, DoneAction, (const Error&));
 
  protected:
   HookTableTest() : hook_table_(&event_dispatcher_) {}

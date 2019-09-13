@@ -58,7 +58,7 @@ class EapListenerTest : public testing::Test {
                            struct sockaddr* src_addr,
                            socklen_t* addrlen);
 
-  MOCK_METHOD0(ReceiveCallback, void());
+  MOCK_METHOD(void, ReceiveCallback, ());
 
  protected:
   static const int kInterfaceIndex;

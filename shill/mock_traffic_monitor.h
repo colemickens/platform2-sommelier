@@ -16,8 +16,8 @@ class MockTrafficMonitor : public TrafficMonitor {
   MockTrafficMonitor();
   ~MockTrafficMonitor() override;
 
-  MOCK_METHOD0(Start, void());
-  MOCK_METHOD0(Stop, void());
+  MOCK_METHOD(void, Start, (), (override));
+  MOCK_METHOD(void, Stop, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockTrafficMonitor);

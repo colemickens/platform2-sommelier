@@ -17,8 +17,8 @@ class MockPassiveLinkMonitor : public PassiveLinkMonitor {
   MockPassiveLinkMonitor();
   ~MockPassiveLinkMonitor() override;
 
-  MOCK_METHOD1(Start, bool(int));
-  MOCK_METHOD0(Stop, void());
+  MOCK_METHOD(bool, Start, (int), (override));
+  MOCK_METHOD(void, Stop, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockPassiveLinkMonitor);

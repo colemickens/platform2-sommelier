@@ -106,24 +106,26 @@ class TestDevice : public Device {
     DCHECK(error);
   }
 
-  MOCK_CONST_METHOD0(IsIPv6Allowed, bool());
-  MOCK_CONST_METHOD0(IsTrafficMonitorEnabled, bool());
-  MOCK_CONST_METHOD0(ShouldBringNetworkInterfaceDownAfterDisabled, bool());
-
-  MOCK_METHOD3(SetIPFlag,
-               bool(IPAddress::Family family,
-                    const std::string& flag,
-                    const std::string& value));
-
-  MOCK_METHOD3(StartDNSTest,
-               bool(const std::vector<std::string>& dns_servers,
-                    const bool retry_until_success,
-                    const base::Callback<void(const DnsServerTester::Status)>&
-                        callback));
-
-  MOCK_METHOD2(StartConnectionDiagnosticsAfterPortalDetection,
-               bool(const PortalDetector::Result& http_result,
-                    const PortalDetector::Result& https_result));
+  MOCK_METHOD(bool, IsIPv6Allowed, (), (const, override));
+  MOCK_METHOD(bool, IsTrafficMonitorEnabled, (), (const, override));
+  MOCK_METHOD(bool,
+              ShouldBringNetworkInterfaceDownAfterDisabled,
+              (),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetIPFlag,
+              (IPAddress::Family, const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(bool,
+              StartDNSTest,
+              (const std::vector<std::string>&,
+               const bool,
+               const base::Callback<void(const DnsServerTester::Status)>&),
+              (override));
+  MOCK_METHOD(bool,
+              StartConnectionDiagnosticsAfterPortalDetection,
+              (const PortalDetector::Result&, const PortalDetector::Result&),
+              (override));
 
   virtual bool DeviceIsIPv6Allowed() const { return Device::IsIPv6Allowed(); }
 
@@ -229,7 +231,8 @@ class DeviceTest : public PropertyStoreTest {
 
   void SetManager(Manager* manager) { device_->manager_ = manager; }
 
-  MOCK_METHOD0(ReliableLinkCallback, void());
+  MOCK_METHOD(void, ReliableLinkCallback, ());
+
   void SetReliableLinkCallback() {
     device_->reliable_link_callback_.Reset(
         base::Bind(&DeviceTest::ReliableLinkCallback, base::Unretained(this)));

@@ -91,7 +91,7 @@ class ServiceTest : public PropertyStoreTest {
 
   ~ServiceTest() override = default;
 
-  MOCK_METHOD1(TestCallback, void(const Error& error));
+  MOCK_METHOD(void, TestCallback, (const Error&));
 
  protected:
   using MockProfileRefPtr = scoped_refptr<MockProfile>;
@@ -1434,8 +1434,11 @@ class ServiceWithMockOnEapCredentialsChanged : public ServiceUnderTest {
  public:
   explicit ServiceWithMockOnEapCredentialsChanged(Manager* manager)
       : ServiceUnderTest(manager), is_8021x_(false) {}
-  MOCK_METHOD1(OnEapCredentialsChanged, void(Service::UpdateCredentialsReason));
-  virtual bool Is8021x() const { return is_8021x_; }
+  MOCK_METHOD(void,
+              OnEapCredentialsChanged,
+              (Service::UpdateCredentialsReason),
+              (override));
+  bool Is8021x() const override { return is_8021x_; }
   void set_is_8021x(bool is_8021x) { is_8021x_ = is_8021x; }
 
  private:
@@ -1942,7 +1945,7 @@ class ServiceWithMockOnPropertyChanged : public ServiceUnderTest {
  public:
   explicit ServiceWithMockOnPropertyChanged(Manager* manager)
       : ServiceUnderTest(manager) {}
-  MOCK_METHOD1(OnPropertyChanged, void(const string& property));
+  MOCK_METHOD(void, OnPropertyChanged, (const string&), (override));
 };
 
 TEST_F(ServiceTest, ConfigureServiceTriggersOnPropertyChanged) {

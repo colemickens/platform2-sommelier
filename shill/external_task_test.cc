@@ -78,11 +78,13 @@ class ExternalTaskTest : public testing::Test, public RpcTaskDelegate {
 
  protected:
   // Implements RpcTaskDelegate interface.
-  MOCK_METHOD2(GetLogin, void(string* user, string* password));
-  MOCK_METHOD2(Notify,
-               void(const string& reason, const map<string, string>& dict));
+  MOCK_METHOD(void, GetLogin, (string*, string*), (override));
+  MOCK_METHOD(void,
+              Notify,
+              (const string&, (const map<string, string>&)),
+              (override));
 
-  MOCK_METHOD2(TaskDiedCallback, void(pid_t pid, int exit_status));
+  MOCK_METHOD(void, TaskDiedCallback, (pid_t, int));
 
   MockControl control_;
   EventDispatcherForTest dispatcher_;

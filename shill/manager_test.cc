@@ -307,7 +307,7 @@ class ManagerTest : public PropertyStoreTest {
     ServiceWatcher() = default;
     virtual ~ServiceWatcher() = default;
 
-    MOCK_METHOD1(OnDefaultServiceChanged, void(const ServiceRefPtr& service));
+    MOCK_METHOD(void, OnDefaultServiceChanged, (const ServiceRefPtr&));
 
    private:
     DISALLOW_COPY_AND_ASSIGN(ServiceWatcher);
@@ -321,7 +321,7 @@ class ManagerTest : public PropertyStoreTest {
     TerminationActionTest() : manager_(nullptr) {}
     virtual ~TerminationActionTest() = default;
 
-    MOCK_METHOD1(Done, void(const Error& error));
+    MOCK_METHOD(void, Done, (const Error&));
 
     void Action() { manager_->TerminationActionComplete("action"); }
 
@@ -338,9 +338,8 @@ class ManagerTest : public PropertyStoreTest {
     DestinationVerificationTest() = default;
     virtual ~DestinationVerificationTest() = default;
 
-    MOCK_METHOD2(ResultBoolCallbackStub, void(const Error& result, bool flag));
-    MOCK_METHOD2(ResultStringCallbackStub,
-                 void(const Error& result, const string& value));
+    MOCK_METHOD(void, ResultBoolCallbackStub, (const Error&, bool));
+    MOCK_METHOD(void, ResultStringCallbackStub, (const Error&, const string&));
 
    private:
     DISALLOW_COPY_AND_ASSIGN(DestinationVerificationTest);
@@ -352,7 +351,7 @@ class ManagerTest : public PropertyStoreTest {
     DisableTechnologyReplyHandler() = default;
     virtual ~DisableTechnologyReplyHandler() = default;
 
-    MOCK_METHOD1(ReportResult, void(const Error&));
+    MOCK_METHOD(void, ReportResult, (const Error&));
 
    private:
     DISALLOW_COPY_AND_ASSIGN(DisableTechnologyReplyHandler);
@@ -365,7 +364,7 @@ class ManagerTest : public PropertyStoreTest {
                                 Unretained(this))) {}
     virtual ~ResultCallbackObserver() = default;
 
-    MOCK_METHOD1(OnResultCallback, void(const Error& error));
+    MOCK_METHOD(void, OnResultCallback, (const Error&));
 
     const ResultCallback& result_callback() const { return result_callback_; }
 

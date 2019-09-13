@@ -89,9 +89,9 @@ class PowerManagerTest : public Test {
         Bind(&PowerManagerTest::DarkSuspendImminentAction, Unretained(this));
   }
 
-  MOCK_METHOD0(SuspendImminentAction, void());
-  MOCK_METHOD0(SuspendDoneAction, void());
-  MOCK_METHOD0(DarkSuspendImminentAction, void());
+  MOCK_METHOD(void, SuspendImminentAction, ());
+  MOCK_METHOD(void, SuspendDoneAction, ());
+  MOCK_METHOD(void, DarkSuspendImminentAction, ());
 
  protected:
   void SetUp() override {

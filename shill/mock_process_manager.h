@@ -22,40 +22,48 @@ class MockProcessManager : public ProcessManager {
   MockProcessManager();
   ~MockProcessManager() override;
 
-  MOCK_METHOD1(Init, void(EventDispatcher* dispatcher));
-  MOCK_METHOD0(Stop, void());
-  MOCK_METHOD6(StartProcess,
-               pid_t(const base::Location& spawn_source,
-                     const base::FilePath& program,
-                     const std::vector<std::string>& arguments,
-                     const std::map<std::string, std::string>& env,
-                     bool terminate_with_parent,
-                     const base::Callback<void(int)>& exit_callback));
-  MOCK_METHOD9(StartProcessInMinijail,
-               pid_t(const base::Location& spawn_source,
-                     const base::FilePath& program,
-                     const std::vector<std::string>& arguments,
-                     const std::string& user,
-                     const std::string& group,
-                     uint64_t capmask,
-                     bool inherit_supplementary_groups,
-                     bool close_nonstd_fds,
-                     const base::Callback<void(int)>& exit_callback));
-  MOCK_METHOD10(StartProcessInMinijailWithPipes,
-                pid_t(const base::Location& spawn_source,
-                      const base::FilePath& program,
-                      const std::vector<std::string>& arguments,
-                      const std::string& user,
-                      const std::string& group,
-                      uint64_t capmask,
-                      bool inherit_supplementary_groups,
-                      bool close_nonstd_fds,
-                      const base::Callback<void(int)>& exit_callback,
-                      struct std_file_descriptors std_fds));
-  MOCK_METHOD1(StopProcess, bool(pid_t pid));
-  MOCK_METHOD1(StopProcessAndBlock, bool(pid_t pid));
-  MOCK_METHOD2(UpdateExitCallback,
-               bool(pid_t pid, const base::Callback<void(int)>& new_callback));
+  MOCK_METHOD(void, Init, (EventDispatcher*), (override));
+  MOCK_METHOD(void, Stop, (), (override));
+  MOCK_METHOD(pid_t,
+              StartProcess,
+              (const base::Location&,
+               const base::FilePath&,
+               const std::vector<std::string>&,
+               (const std::map<std::string, std::string>&),
+               bool,
+               const base::Callback<void(int)>&),
+              (override));
+  MOCK_METHOD(pid_t,
+              StartProcessInMinijail,
+              (const base::Location&,
+               const base::FilePath&,
+               const std::vector<std::string>&,
+               const std::string&,
+               const std::string&,
+               uint64_t,
+               bool,
+               bool,
+               const base::Callback<void(int)>&),
+              (override));
+  MOCK_METHOD(pid_t,
+              StartProcessInMinijailWithPipes,
+              (const base::Location&,
+               const base::FilePath&,
+               const std::vector<std::string>&,
+               const std::string&,
+               const std::string&,
+               uint64_t,
+               bool,
+               bool,
+               const base::Callback<void(int)>&,
+               struct std_file_descriptors),
+              (override));
+  MOCK_METHOD(bool, StopProcess, (pid_t), (override));
+  MOCK_METHOD(bool, StopProcessAndBlock, (pid_t), (override));
+  MOCK_METHOD(bool,
+              UpdateExitCallback,
+              (pid_t, const base::Callback<void(int)>&),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockProcessManager);

@@ -18,10 +18,10 @@ class MockIcmp : public Icmp {
   MockIcmp();
   ~MockIcmp() override;
 
-  MOCK_METHOD2(Start, bool(const IPAddress& destination, int interface_index));
-  MOCK_METHOD0(Stop, void());
-  MOCK_CONST_METHOD0(IsStarted, bool());
-  MOCK_METHOD2(TransmitEchoRequest, bool(uint16_t id, uint16_t seq_num));
+  MOCK_METHOD(bool, Start, (const IPAddress&, int), (override));
+  MOCK_METHOD(void, Stop, (), (override));
+  MOCK_METHOD(bool, IsStarted, (), (const, override));
+  MOCK_METHOD(bool, TransmitEchoRequest, (uint16_t, uint16_t), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockIcmp);

@@ -16,11 +16,11 @@ class MockLinkMonitor : public LinkMonitor {
   MockLinkMonitor();
   ~MockLinkMonitor() override;
 
-  MOCK_METHOD0(Start, bool());
-  MOCK_METHOD0(Stop, void());
-  MOCK_METHOD0(OnAfterResume, void());
-  MOCK_CONST_METHOD0(GetResponseTimeMilliseconds, int());
-  MOCK_CONST_METHOD0(IsGatewayFound, bool());
+  MOCK_METHOD(bool, Start, (), (override));
+  MOCK_METHOD(void, Stop, (), (override));
+  MOCK_METHOD(void, OnAfterResume, (), (override));
+  MOCK_METHOD(int, GetResponseTimeMilliseconds, (), (const, override));
+  MOCK_METHOD(bool, IsGatewayFound, (), (const, override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockLinkMonitor);

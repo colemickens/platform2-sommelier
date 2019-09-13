@@ -19,15 +19,16 @@ class MockPowerManager : public PowerManager {
   explicit MockPowerManager(ControlInterface* control_interface);
   ~MockPowerManager() override;
 
-  MOCK_METHOD0(ReportSuspendReadiness, bool());
-  MOCK_METHOD0(ReportDarkSuspendReadiness, bool());
-  MOCK_METHOD4(
-      Start,
-      void(base::TimeDelta suspend_delay,
-           const PowerManager::SuspendImminentCallback& imminent_callback,
-           const PowerManager::SuspendDoneCallback& done_callback,
-           const PowerManager::DarkSuspendImminentCallback& dark_imminent));
-  MOCK_METHOD0(Stop, void());
+  MOCK_METHOD(bool, ReportSuspendReadiness, (), (override));
+  MOCK_METHOD(bool, ReportDarkSuspendReadiness, (), (override));
+  MOCK_METHOD(void,
+              Start,
+              (base::TimeDelta,
+               const PowerManager::SuspendImminentCallback&,
+               const PowerManager::SuspendDoneCallback&,
+               const PowerManager::DarkSuspendImminentCallback&),
+              (override));
+  MOCK_METHOD(void, Stop, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockPowerManager);

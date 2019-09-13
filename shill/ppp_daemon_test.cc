@@ -50,10 +50,11 @@ class PPPDaemonTest : public Test, public RpcTaskDelegate {
     return true;
   }
 
-  MOCK_METHOD2(GetLogin, void(std::string* user, std::string* password));
-  MOCK_METHOD2(Notify,
-               void(const std::string& reason,
-                    const std::map<std::string, std::string>& dict));
+  MOCK_METHOD(void, GetLogin, (std::string*, std::string*), (override));
+  MOCK_METHOD(void,
+              Notify,
+              (const std::string&, (const std::map<std::string, std::string>&)),
+              (override));
 
  protected:
   MockControl control_;
@@ -62,7 +63,7 @@ class PPPDaemonTest : public Test, public RpcTaskDelegate {
   std::vector<std::string> argv_;
   base::WeakPtrFactory<PPPDaemonTest> weak_ptr_factory_;
 
-  MOCK_METHOD2(DeathCallback, void(pid_t pid, int status));
+  MOCK_METHOD(void, DeathCallback, (pid_t, int));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(PPPDaemonTest);

@@ -20,22 +20,22 @@ class MockProfile : public Profile {
   MockProfile(Manager* manager, const std::string& identifier);
   ~MockProfile() override;
 
-  MOCK_METHOD1(AdoptService, bool(const ServiceRefPtr& service));
-  MOCK_METHOD1(AbandonService, bool(const ServiceRefPtr& service));
-  MOCK_METHOD1(LoadService, bool(const ServiceRefPtr& service));
-  MOCK_METHOD1(ConfigureService, bool(const ServiceRefPtr& service));
-  MOCK_METHOD1(ConfigureDevice, bool(const DeviceRefPtr& device));
-  MOCK_METHOD2(DeleteEntry, void(const std::string& entry_name, Error* error));
-  MOCK_CONST_METHOD0(GetRpcIdentifier, RpcIdentifier());
-  MOCK_METHOD1(UpdateService, bool(const ServiceRefPtr& service));
-  MOCK_METHOD1(UpdateDevice, bool(const DeviceRefPtr& device));
+  MOCK_METHOD(bool, AdoptService, (const ServiceRefPtr&), (override));
+  MOCK_METHOD(bool, AbandonService, (const ServiceRefPtr&), (override));
+  MOCK_METHOD(bool, LoadService, (const ServiceRefPtr&), (override));
+  MOCK_METHOD(bool, ConfigureService, (const ServiceRefPtr&), (override));
+  MOCK_METHOD(bool, ConfigureDevice, (const DeviceRefPtr&), (override));
+  MOCK_METHOD(void, DeleteEntry, (const std::string&, Error*), (override));
+  MOCK_METHOD(RpcIdentifier, GetRpcIdentifier, (), (const, override));
+  MOCK_METHOD(bool, UpdateService, (const ServiceRefPtr&), (override));
+  MOCK_METHOD(bool, UpdateDevice, (const DeviceRefPtr&), (override));
 #if !defined(DISABLE_WIFI)
-  MOCK_METHOD1(UpdateWiFiProvider, bool(const WiFiProvider& wifi_provider));
+  MOCK_METHOD(bool, UpdateWiFiProvider, (const WiFiProvider&), (override));
 #endif  // DISABLE_WIFI
-  MOCK_METHOD0(Save, bool());
-  MOCK_METHOD0(GetStorage, StoreInterface*());
-  MOCK_CONST_METHOD0(GetConstStorage, const StoreInterface*());
-  MOCK_CONST_METHOD0(IsDefault, bool());
+  MOCK_METHOD(bool, Save, (), (override));
+  MOCK_METHOD(StoreInterface*, GetStorage, (), (override));
+  MOCK_METHOD(const StoreInterface*, GetConstStorage, (), (const, override));
+  MOCK_METHOD(bool, IsDefault, (), (const, override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockProfile);

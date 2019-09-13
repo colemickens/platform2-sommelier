@@ -37,7 +37,7 @@ class ResultAggregatorTest : public ::testing::Test {
     aggregator_ = nullptr;  // Ensure ReportResult is invoked before our dtor.
   }
 
-  MOCK_METHOD1(ReportResult, void(const Error&));
+  MOCK_METHOD(void, ReportResult, (const Error&));
 
  protected:
   scoped_refptr<ResultAggregator> aggregator_;

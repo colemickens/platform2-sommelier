@@ -22,8 +22,10 @@ class MockIcmpSessionFactory : public IcmpSessionFactory {
   // This is a singleton. Use MockIcmpSessionFactory::GetInstance()->Foo().
   static MockIcmpSessionFactory* GetInstance();
 
-  MOCK_METHOD1(CreateIcmpSession,
-               std::unique_ptr<IcmpSession>(EventDispatcher* dispatcher));
+  MOCK_METHOD(std::unique_ptr<IcmpSession>,
+              CreateIcmpSession,
+              (EventDispatcher*),
+              (override));
 
  protected:
   MockIcmpSessionFactory();

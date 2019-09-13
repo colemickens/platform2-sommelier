@@ -23,63 +23,75 @@ class MockService : public Service {
   explicit MockService(Manager* manager);
   ~MockService() override;
 
-  MOCK_METHOD0(AutoConnect, void());
-  MOCK_METHOD2(Connect, void(Error* error, const char* reason));
-  MOCK_METHOD2(Disconnect, void(Error* error, const char* reason));
-  MOCK_METHOD3(DisconnectWithFailure,
-               void(Service::ConnectFailure failure,
-                    Error* error,
-                    const char* reason));
-  MOCK_METHOD2(UserInitiatedDisconnect, void(const char* reason, Error* error));
-  MOCK_METHOD1(CalculateState, std::string(Error* error));
-  MOCK_CONST_METHOD0(state, ConnectState());
-  MOCK_METHOD1(SetState, void(ConnectState state));
-  MOCK_METHOD2(SetPortalDetectionFailure,
-               void(const std::string& phase, const std::string& status));
-  MOCK_CONST_METHOD0(IsConnected, bool());
-  MOCK_CONST_METHOD0(IsConnecting, bool());
-  MOCK_CONST_METHOD0(IsFailed, bool());
-  MOCK_CONST_METHOD0(IsOnline, bool());
-  MOCK_CONST_METHOD0(IsVisible, bool());
-  MOCK_METHOD1(SetFailure, void(ConnectFailure failure));
-  MOCK_CONST_METHOD0(failure, ConnectFailure());
-  MOCK_CONST_METHOD1(GetDeviceRpcId, RpcIdentifier(Error* error));
-  MOCK_CONST_METHOD0(GetInnerDeviceRpcIdentifier, RpcIdentifier());
-  MOCK_CONST_METHOD0(GetRpcIdentifier, RpcIdentifier());
-  MOCK_CONST_METHOD1(IsAlwaysOnVpn, bool(const std::string& package));
-  MOCK_CONST_METHOD0(GetStorageIdentifier, std::string());
-  MOCK_CONST_METHOD1(GetLoadableStorageIdentifier,
-                     std::string(const StoreInterface& store_interface));
-  MOCK_METHOD1(Load, bool(StoreInterface* store_interface));
-  MOCK_METHOD0(Unload, bool());
-  MOCK_METHOD1(Save, bool(StoreInterface* store_interface));
-  MOCK_METHOD2(Configure, void(const KeyValueStore& args, Error* error));
-  MOCK_CONST_METHOD1(DoPropertiesMatch, bool(const KeyValueStore& args));
+  MOCK_METHOD(void, AutoConnect, (), (override));
+  MOCK_METHOD(void, Connect, (Error*, const char*), (override));
+  MOCK_METHOD(void, Disconnect, (Error*, const char*), (override));
+  MOCK_METHOD(void,
+              DisconnectWithFailure,
+              (Service::ConnectFailure, Error*, const char*),
+              (override));
+  MOCK_METHOD(void, UserInitiatedDisconnect, (const char*, Error*), (override));
+  MOCK_METHOD(std::string, CalculateState, (Error*), (override));
+  MOCK_METHOD(ConnectState, state, (), (const, override));
+  MOCK_METHOD(void, SetState, (ConnectState), (override));
+  MOCK_METHOD(void,
+              SetPortalDetectionFailure,
+              (const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(bool, IsConnected, (), (const, override));
+  MOCK_METHOD(bool, IsConnecting, (), (const, override));
+  MOCK_METHOD(bool, IsFailed, (), (const, override));
+  MOCK_METHOD(bool, IsOnline, (), (const, override));
+  MOCK_METHOD(bool, IsVisible, (), (const, override));
+  MOCK_METHOD(void, SetFailure, (ConnectFailure), (override));
+  MOCK_METHOD(ConnectFailure, failure, (), (const, override));
+  MOCK_METHOD(RpcIdentifier, GetDeviceRpcId, (Error*), (const, override));
+  MOCK_METHOD(RpcIdentifier,
+              GetInnerDeviceRpcIdentifier,
+              (),
+              (const, override));
+  MOCK_METHOD(RpcIdentifier, GetRpcIdentifier, (), (const, override));
+  MOCK_METHOD(bool, IsAlwaysOnVpn, (const std::string&), (const, override));
+  MOCK_METHOD(std::string, GetStorageIdentifier, (), (const, override));
+  MOCK_METHOD(std::string,
+              GetLoadableStorageIdentifier,
+              (const StoreInterface&),
+              (const, override));
+  MOCK_METHOD(bool, Load, (StoreInterface*), (override));
+  MOCK_METHOD(bool, Unload, (), (override));
+  MOCK_METHOD(bool, Save, (StoreInterface*), (override));
+  MOCK_METHOD(void, Configure, (const KeyValueStore&, Error*), (override));
+  MOCK_METHOD(bool,
+              DoPropertiesMatch,
+              (const KeyValueStore&),
+              (const, override));
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-  MOCK_CONST_METHOD0(Is8021xConnectable, bool());
+  MOCK_METHOD(bool, Is8021xConnectable, (), (const, override));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
-  MOCK_CONST_METHOD0(HasStaticNameServers, bool());
-  MOCK_CONST_METHOD0(IsPortalDetectionDisabled, bool());
-  MOCK_CONST_METHOD0(IsPortalDetectionAuto, bool());
-  MOCK_CONST_METHOD0(IsRemembered, bool());
-  MOCK_CONST_METHOD0(HasProxyConfig, bool());
-  MOCK_METHOD1(SetConnection, void(const ConnectionRefPtr& connection));
-  MOCK_CONST_METHOD0(connection, const ConnectionRefPtr&());
-  MOCK_CONST_METHOD0(explicitly_disconnected, bool());
+  MOCK_METHOD(bool, HasStaticNameServers, (), (const, override));
+  MOCK_METHOD(bool, IsPortalDetectionDisabled, (), (const, override));
+  MOCK_METHOD(bool, IsPortalDetectionAuto, (), (const, override));
+  MOCK_METHOD(bool, IsRemembered, (), (const, override));
+  MOCK_METHOD(bool, HasProxyConfig, (), (const, override));
+  MOCK_METHOD(void, SetConnection, (const ConnectionRefPtr&), (override));
+  MOCK_METHOD(const ConnectionRefPtr&, connection, (), (const, override));
+  MOCK_METHOD(bool, explicitly_disconnected, (), (const, override));
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-  MOCK_CONST_METHOD0(eap, const EapCredentials*());
+  MOCK_METHOD(const EapCredentials*, eap, (), (const, override));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
-  MOCK_CONST_METHOD0(technology, Technology());
-  MOCK_METHOD1(OnPropertyChanged, void(const std::string& property));
-  MOCK_METHOD0(ClearExplicitlyDisconnected, void());
-  MOCK_CONST_METHOD0(is_dns_auto_fallback_allowed, bool());
-  MOCK_METHOD0(NotifyIPConfigChanges, void());
-  MOCK_CONST_METHOD0(link_monitor_disabled, bool());
-  MOCK_METHOD0(EnableAndRetainAutoConnect, void());
-  MOCK_METHOD1(OnBeforeSuspend, void(const ResultCallback& callback));
-  MOCK_METHOD0(OnAfterResume, void());
-  MOCK_METHOD1(OnDefaultServiceStateChanged,
-               void(const ServiceRefPtr& service));
+  MOCK_METHOD(Technology, technology, (), (const, override));
+  MOCK_METHOD(void, OnPropertyChanged, (const std::string&), (override));
+  MOCK_METHOD(void, ClearExplicitlyDisconnected, (), (override));
+  MOCK_METHOD(bool, is_dns_auto_fallback_allowed, (), (const, override));
+  MOCK_METHOD(void, NotifyIPConfigChanges, (), (override));
+  MOCK_METHOD(bool, link_monitor_disabled, (), (const, override));
+  MOCK_METHOD(void, EnableAndRetainAutoConnect, (), (override));
+  MOCK_METHOD(void, OnBeforeSuspend, (const ResultCallback&), (override));
+  MOCK_METHOD(void, OnAfterResume, (), (override));
+  MOCK_METHOD(void,
+              OnDefaultServiceStateChanged,
+              (const ServiceRefPtr&),
+              (override));
 
   // Set a string for this Service via |store|.  Can be wired to Save() for
   // test purposes.

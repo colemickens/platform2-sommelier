@@ -18,14 +18,16 @@ class MockEventDispatcher : public EventDispatcher {
   MockEventDispatcher();
   ~MockEventDispatcher() override;
 
-  MOCK_METHOD0(DispatchForever, void());
-  MOCK_METHOD0(DispatchPendingEvents, void());
-  MOCK_METHOD2(PostTask,
-               void(const base::Location& location, const base::Closure& task));
-  MOCK_METHOD3(PostDelayedTask,
-               void(const base::Location& location,
-                    const base::Closure& task,
-                    int64_t delay_ms));
+  MOCK_METHOD(void, DispatchForever, (), (override));
+  MOCK_METHOD(void, DispatchPendingEvents, (), (override));
+  MOCK_METHOD(void,
+              PostTask,
+              (const base::Location&, const base::Closure&),
+              (override));
+  MOCK_METHOD(void,
+              PostDelayedTask,
+              (const base::Location&, const base::Closure&, int64_t),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockEventDispatcher);

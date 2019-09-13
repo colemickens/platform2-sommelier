@@ -21,8 +21,10 @@ class MockConnectionInfoReader : public ConnectionInfoReader {
   MockConnectionInfoReader();
   ~MockConnectionInfoReader() override;
 
-  MOCK_METHOD1(LoadConnectionInfo,
-               bool(std::vector<ConnectionInfo>* info_list));
+  MOCK_METHOD(bool,
+              LoadConnectionInfo,
+              (std::vector<ConnectionInfo>*),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockConnectionInfoReader);

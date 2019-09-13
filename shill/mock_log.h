@@ -67,10 +67,7 @@ class ScopedMockLog {
   // issues the log message, like "foo.cc".  |user_messages| is the message you
   // expect to see.  Arguments can be ignored by specifying ::testing::_.  You
   // can also specify gMock matchers for arguments.
-  MOCK_METHOD3(Log,
-               void(int severity,
-                    const char* file,
-                    const std::string& user_message));
+  MOCK_METHOD(void, Log, (int, const char*, const std::string&));
 
  private:
   // This function gets invoked by the logging subsystem for each message that

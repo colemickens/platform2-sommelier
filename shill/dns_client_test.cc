@@ -193,8 +193,8 @@ class DnsClientTest : public Test {
     DnsCallbackTarget()
         : callback_(Bind(&DnsCallbackTarget::CallTarget, Unretained(this))) {}
 
-    MOCK_METHOD2(CallTarget,
-                 void(const Error& error, const IPAddress& address));
+    MOCK_METHOD(void, CallTarget, (const Error&, const IPAddress&));
+
     const DnsClient::ClientCallback& callback() const { return callback_; }
 
    private:
@@ -218,7 +218,7 @@ class DnsClientTest : public Test {
 
 class SentinelIOHandler : public IOHandler {
  public:
-  MOCK_METHOD0(Die, void());
+  MOCK_METHOD(void, Die, ());
   virtual ~SentinelIOHandler() { Die(); }
 };
 

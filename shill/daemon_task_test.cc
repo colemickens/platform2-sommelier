@@ -100,8 +100,8 @@ class DaemonTaskTest : public Test {
     daemon_.ApplySettings();
   }
 
-  MOCK_METHOD0(TerminationAction, void());
-  MOCK_METHOD0(BreakTerminationLoop, void());
+  MOCK_METHOD(void, TerminationAction, ());
+  MOCK_METHOD(void, BreakTerminationLoop, ());
 
  protected:
   TestConfig config_;

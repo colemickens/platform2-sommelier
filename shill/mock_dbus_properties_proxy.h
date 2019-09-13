@@ -19,14 +19,19 @@ class MockDBusPropertiesProxy : public DBusPropertiesProxyInterface {
   MockDBusPropertiesProxy();
   ~MockDBusPropertiesProxy() override;
 
-  MOCK_METHOD1(GetAll, KeyValueStore(const std::string& interface_name));
-  MOCK_METHOD2(Get,
-               brillo::Any(const std::string& interface_name,
-                           const std::string& property));
-  MOCK_METHOD1(set_properties_changed_callback,
-               void(const PropertiesChangedCallback& callback));
-  MOCK_METHOD1(set_modem_manager_properties_changed_callback,
-               void(const ModemManagerPropertiesChangedCallback& callback));
+  MOCK_METHOD(KeyValueStore, GetAll, (const std::string&), (override));
+  MOCK_METHOD(brillo::Any,
+              Get,
+              (const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(void,
+              set_properties_changed_callback,
+              (const PropertiesChangedCallback&),
+              (override));
+  MOCK_METHOD(void,
+              set_modem_manager_properties_changed_callback,
+              (const ModemManagerPropertiesChangedCallback&),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDBusPropertiesProxy);

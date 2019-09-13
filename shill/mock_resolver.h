@@ -20,12 +20,16 @@ class MockResolver : public Resolver {
   MockResolver();
   ~MockResolver() override;
 
-  MOCK_METHOD2(SetDNSFromLists,
-               bool(const std::vector<std::string>& dns_servers,
-                    const std::vector<std::string>& domain_search));
-  MOCK_METHOD0(ClearDNS, bool());
-  MOCK_METHOD1(set_ignored_search_list,
-               void(const std::vector<std::string>& ignored_list));
+  MOCK_METHOD(bool,
+              SetDNSFromLists,
+              (const std::vector<std::string>&,
+               const std::vector<std::string>&),
+              (override));
+  MOCK_METHOD(bool, ClearDNS, (), (override));
+  MOCK_METHOD(void,
+              set_ignored_search_list,
+              (const std::vector<std::string>&),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockResolver);

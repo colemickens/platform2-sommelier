@@ -21,15 +21,15 @@ class MockHttpRequest : public HttpRequest {
   MockHttpRequest();
   ~MockHttpRequest() override;
 
-  MOCK_METHOD4(
+  MOCK_METHOD(
+      HttpRequest::Result,
       Start,
-      HttpRequest::Result(
-          const std::string& url_string,
-          const brillo::http::HeaderList& headers,
-          const base::Callback<void(std::shared_ptr<brillo::http::Response>)>&
-              request_success_callback,
-          const base::Callback<void(Result)>& request_error_callback));
-  MOCK_METHOD0(Stop, void());
+      (const std::string&,
+       const brillo::http::HeaderList&,
+       const base::Callback<void(std::shared_ptr<brillo::http::Response>)>&,
+       const base::Callback<void(Result)>&),
+      (override));
+  MOCK_METHOD(void, Stop, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockHttpRequest);

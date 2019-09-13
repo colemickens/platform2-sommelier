@@ -21,17 +21,19 @@ class MockIPConfig : public IPConfig {
                const std::string& device_name);
   ~MockIPConfig() override;
 
-  MOCK_CONST_METHOD0(properties, const Properties&());
-  MOCK_METHOD0(RequestIP, bool());
-  MOCK_METHOD0(RenewIP, bool());
-  MOCK_METHOD1(ReleaseIP, bool(ReleaseReason reason));
-  MOCK_METHOD1(Refresh, void(Error* error));
-  MOCK_METHOD0(ResetProperties, void());
-  MOCK_METHOD0(EmitChanges, void());
-  MOCK_METHOD1(UpdateDNSServers,
-               void(const std::vector<std::string>& dns_servers));
-  MOCK_METHOD1(UpdateLeaseExpirationTime, void(uint32_t new_lease_duration));
-  MOCK_METHOD0(ResetLeaseExpirationTime, void());
+  MOCK_METHOD(const Properties&, properties, (), (const, override));
+  MOCK_METHOD(bool, RequestIP, (), (override));
+  MOCK_METHOD(bool, RenewIP, (), (override));
+  MOCK_METHOD(bool, ReleaseIP, (ReleaseReason), (override));
+  MOCK_METHOD(void, Refresh, (Error*), (override));
+  MOCK_METHOD(void, ResetProperties, (), (override));
+  MOCK_METHOD(void, EmitChanges, (), (override));
+  MOCK_METHOD(void,
+              UpdateDNSServers,
+              (const std::vector<std::string>&),
+              (override));
+  MOCK_METHOD(void, UpdateLeaseExpirationTime, (uint32_t), (override));
+  MOCK_METHOD(void, ResetLeaseExpirationTime, (), (override));
 
  private:
   const Properties& real_properties() const { return IPConfig::properties(); }

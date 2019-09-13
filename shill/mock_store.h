@@ -22,69 +22,79 @@ class MockStore : public StoreInterface {
   MockStore();
   ~MockStore() override;
 
-  MOCK_CONST_METHOD0(IsEmpty, bool());
-  MOCK_METHOD0(Open, bool());
-  MOCK_METHOD0(Close, bool());
-  MOCK_METHOD0(Flush, bool());
-  MOCK_METHOD0(MarkAsCorrupted, bool());
-  MOCK_CONST_METHOD0(GetGroups, std::set<std::string>());
-  MOCK_CONST_METHOD1(GetGroupsWithKey,
-                     std::set<std::string>(const std::string& key));
-  MOCK_CONST_METHOD1(GetGroupsWithProperties,
-                     std::set<std::string>(const KeyValueStore& properties));
-  MOCK_CONST_METHOD1(ContainsGroup, bool(const std::string& group));
-  MOCK_METHOD2(DeleteKey,
-               bool(const std::string& group, const std::string& key));
-  MOCK_METHOD1(DeleteGroup, bool(const std::string& group));
-  MOCK_METHOD1(SetHeader, bool(const std::string& header));
-  MOCK_CONST_METHOD3(GetString,
-                     bool(const std::string& group,
-                          const std::string& key,
-                          std::string* value));
-  MOCK_METHOD3(SetString,
-               bool(const std::string& group,
-                    const std::string& key,
-                    const std::string& value));
-  MOCK_CONST_METHOD3(GetBool,
-                     bool(const std::string& group,
-                          const std::string& key,
-                          bool* value));
-  MOCK_METHOD3(SetBool,
-               bool(const std::string& group,
-                    const std::string& key,
-                    bool value));
-  MOCK_CONST_METHOD3(GetInt,
-                     bool(const std::string& group,
-                          const std::string& key,
-                          int* value));
-  MOCK_METHOD3(SetInt,
-               bool(const std::string& group,
-                    const std::string& key,
-                    int value));
-  MOCK_CONST_METHOD3(GetUint64,
-                     bool(const std::string& group,
-                          const std::string& key,
-                          uint64_t* value));
-  MOCK_METHOD3(SetUint64,
-               bool(const std::string& group,
-                    const std::string& key,
-                    uint64_t value));
-  MOCK_CONST_METHOD3(GetStringList,
-                     bool(const std::string& group,
-                          const std::string& key,
-                          std::vector<std::string>* value));
-  MOCK_METHOD3(SetStringList,
-               bool(const std::string& group,
-                    const std::string& key,
-                    const std::vector<std::string>& value));
-  MOCK_METHOD3(GetCryptedString,
-               bool(const std::string& group,
-                    const std::string& key,
-                    std::string* value));
-  MOCK_METHOD3(SetCryptedString,
-               bool(const std::string& group,
-                    const std::string& key,
-                    const std::string& value));
+  MOCK_METHOD(bool, IsEmpty, (), (const, override));
+  MOCK_METHOD(bool, Open, (), (override));
+  MOCK_METHOD(bool, Close, (), (override));
+  MOCK_METHOD(bool, Flush, (), (override));
+  MOCK_METHOD(bool, MarkAsCorrupted, (), (override));
+  MOCK_METHOD(std::set<std::string>, GetGroups, (), (const, override));
+  MOCK_METHOD(std::set<std::string>,
+              GetGroupsWithKey,
+              (const std::string&),
+              (const, override));
+  MOCK_METHOD(std::set<std::string>,
+              GetGroupsWithProperties,
+              (const KeyValueStore&),
+              (const, override));
+  MOCK_METHOD(bool, ContainsGroup, (const std::string&), (const, override));
+  MOCK_METHOD(bool,
+              DeleteKey,
+              (const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(bool, DeleteGroup, (const std::string&), (override));
+  MOCK_METHOD(bool, SetHeader, (const std::string&), (override));
+  MOCK_METHOD(bool,
+              GetString,
+              (const std::string&, const std::string&, std::string*),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetString,
+              (const std::string&, const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(bool,
+              GetBool,
+              (const std::string&, const std::string&, bool*),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetBool,
+              (const std::string&, const std::string&, bool),
+              (override));
+  MOCK_METHOD(bool,
+              GetInt,
+              (const std::string&, const std::string&, int*),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetInt,
+              (const std::string&, const std::string&, int),
+              (override));
+  MOCK_METHOD(bool,
+              GetUint64,
+              (const std::string&, const std::string&, uint64_t*),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetUint64,
+              (const std::string&, const std::string&, uint64_t),
+              (override));
+  MOCK_METHOD(bool,
+              GetStringList,
+              (const std::string&,
+               const std::string&,
+               std::vector<std::string>*),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetStringList,
+              (const std::string&,
+               const std::string&,
+               const std::vector<std::string>&),
+              (override));
+  MOCK_METHOD(bool,
+              GetCryptedString,
+              (const std::string&, const std::string&, std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              SetCryptedString,
+              (const std::string&, const std::string&, const std::string&),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockStore);

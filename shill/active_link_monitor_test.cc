@@ -62,11 +62,8 @@ class ActiveLinkMonitorObserver {
                                Unretained(this))) {}
   virtual ~ActiveLinkMonitorObserver() = default;
 
-  MOCK_METHOD3(OnFailureCallback,
-               void(Metrics::LinkMonitorFailure failrue_code,
-                    int broadcast_failure_count,
-                    int unicast_failure_count));
-  MOCK_METHOD0(OnSuccessCallback, void());
+  MOCK_METHOD(void, OnFailureCallback, (Metrics::LinkMonitorFailure, int, int));
+  MOCK_METHOD(void, OnSuccessCallback, ());
 
   const ActiveLinkMonitor::FailureCallback failure_callback() const {
     return failure_callback_;

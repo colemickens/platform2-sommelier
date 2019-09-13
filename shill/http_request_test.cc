@@ -98,9 +98,10 @@ class HttpRequestTest : public Test {
           request_error_callback_(Bind(&CallbackTarget::RequestErrorCallTarget,
                                        Unretained(this))) {}
 
-    MOCK_METHOD1(RequestSuccessCallTarget,
-                 void(std::shared_ptr<brillo::http::Response>));
-    MOCK_METHOD1(RequestErrorCallTarget, void(HttpRequest::Result));
+    MOCK_METHOD(void,
+                RequestSuccessCallTarget,
+                (std::shared_ptr<brillo::http::Response>));
+    MOCK_METHOD(void, RequestErrorCallTarget, (HttpRequest::Result));
 
     const Callback<void(std::shared_ptr<brillo::http::Response>)>&
     request_success_callback() const {

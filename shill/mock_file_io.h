@@ -15,10 +15,11 @@ class MockFileIO : public FileIO {
  public:
   MockFileIO() = default;
   ~MockFileIO() override = default;
-  MOCK_METHOD3(Write, ssize_t(int fd, const void* buf, size_t count));
-  MOCK_METHOD3(Read, ssize_t(int fd, void* buf, size_t count));
-  MOCK_METHOD1(Close, int(int fd));
-  MOCK_METHOD1(SetFdNonBlocking, int(int fd));
+
+  MOCK_METHOD(ssize_t, Write, (int, const void*, size_t), (override));
+  MOCK_METHOD(ssize_t, Read, (int, void*, size_t), (override));
+  MOCK_METHOD(int, Close, (int), (override));
+  MOCK_METHOD(int, SetFdNonBlocking, (int), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockFileIO);
