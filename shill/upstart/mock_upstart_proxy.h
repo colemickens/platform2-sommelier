@@ -20,10 +20,10 @@ class MockUpstartProxy : public UpstartProxyInterface {
   MockUpstartProxy();
   ~MockUpstartProxy() override;
 
-  MOCK_METHOD3(EmitEvent,
-               void(const std::string& name,
-                    const std::vector<std::string>& env,
-                    bool wait));
+  MOCK_METHOD(void,
+              EmitEvent,
+              (const std::string&, const std::vector<std::string>&, bool),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockUpstartProxy);

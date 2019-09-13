@@ -17,8 +17,8 @@ class MockUpstart : public Upstart {
   explicit MockUpstart(ControlInterface* control_interface);
   ~MockUpstart() override;
 
-  MOCK_METHOD0(NotifyDisconnected, void());
-  MOCK_METHOD0(NotifyConnected, void());
+  MOCK_METHOD(void, NotifyDisconnected, (), (override));
+  MOCK_METHOD(void, NotifyConnected, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockUpstart);
