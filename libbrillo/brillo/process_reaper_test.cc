@@ -73,7 +73,7 @@ TEST_F(ProcessReaperTest, UnregisterAndReregister) {
 
 TEST_F(ProcessReaperTest, ReapExitedChild) {
   pid_t pid = ForkChildAndExit(123);
-  EXPECT_TRUE(process_reaper_.WatchForChild(FROM_HERE, pid, base::Bind(
+  EXPECT_TRUE(process_reaper_.WatchForChild(FROM_HERE, pid, base::BindOnce(
       [](MessageLoop* loop, const siginfo_t& info) {
         EXPECT_EQ(CLD_EXITED, info.si_code);
         EXPECT_EQ(123, info.si_status);
@@ -90,7 +90,7 @@ TEST_F(ProcessReaperTest, ReapedChildrenMatchCallbacks) {
     // Different processes will have different exit values.
     int exit_value = 1 + i;
     pid_t pid = ForkChildAndExit(exit_value);
-    EXPECT_TRUE(process_reaper_.WatchForChild(FROM_HERE, pid, base::Bind(
+    EXPECT_TRUE(process_reaper_.WatchForChild(FROM_HERE, pid, base::BindOnce(
         [](MessageLoop* loop, int exit_value, int* running_children,
            const siginfo_t& info) {
           EXPECT_EQ(CLD_EXITED, info.si_code);
@@ -109,7 +109,7 @@ TEST_F(ProcessReaperTest, ReapedChildrenMatchCallbacks) {
 
 TEST_F(ProcessReaperTest, ReapKilledChild) {
   pid_t pid = ForkChildAndKill(SIGKILL);
-  EXPECT_TRUE(process_reaper_.WatchForChild(FROM_HERE, pid, base::Bind(
+  EXPECT_TRUE(process_reaper_.WatchForChild(FROM_HERE, pid, base::BindOnce(
       [](MessageLoop* loop, const siginfo_t& info) {
         EXPECT_EQ(CLD_KILLED, info.si_code);
         EXPECT_EQ(SIGKILL, info.si_status);
@@ -120,7 +120,7 @@ TEST_F(ProcessReaperTest, ReapKilledChild) {
 
 TEST_F(ProcessReaperTest, ReapKilledAndForgottenChild) {
   pid_t pid = ForkChildAndExit(0);
-  EXPECT_TRUE(process_reaper_.WatchForChild(FROM_HERE, pid, base::Bind(
+  EXPECT_TRUE(process_reaper_.WatchForChild(FROM_HERE, pid, base::BindOnce(
       [](MessageLoop* loop, const siginfo_t& /* info */) {
         ADD_FAILURE() << "Child process was still tracked.";
         loop->BreakLoop();
