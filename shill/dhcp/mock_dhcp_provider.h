@@ -28,9 +28,11 @@ class MockDHCPProvider : public DHCPProvider {
                                 const std::string& storage_identifier,
                                 bool arp_gateway,
                                 const DhcpProperties& dhcp_props));
+#ifndef DISABLE_DHCPV6
   MOCK_METHOD2(CreateIPv6Config,
                DHCPConfigRefPtr(const std::string& device_name,
                                 const std::string& storage_identifier));
+#endif
   MOCK_METHOD2(BindPID, void(int pid, const DHCPConfigRefPtr& config));
   MOCK_METHOD1(UnbindPID, void(int pid));
 
