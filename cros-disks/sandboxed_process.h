@@ -89,11 +89,9 @@ class SandboxedProcess : public Process {
                   base::ScopedFD* out_fd,
                   base::ScopedFD* err_fd) override;
   int WaitImpl() override;
-  bool WaitNonBlockingImpl(int* status) override;
+  int WaitNonBlockingImpl() override;
 
  private:
-  bool PollStatus(int* status);
-
   minijail* jail_;
   bool run_custom_init_ = false;
   base::ScopedFD custom_init_control_fd_;

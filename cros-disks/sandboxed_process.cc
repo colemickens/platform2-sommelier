@@ -185,34 +185,28 @@ int SandboxedProcess::WaitImpl() {
   }
 }
 
-bool SandboxedProcess::WaitNonBlockingImpl(int* status) {
-  if (run_custom_init_ && PollStatus(status)) {
-    *status = SandboxedInit::WStatusToStatus(*status);
-    return true;
+int SandboxedProcess::WaitNonBlockingImpl() {
+  int wstatus;
+
+  if (run_custom_init_ &&
+      SandboxedInit::PollLauncherStatus(&custom_init_control_fd_, &wstatus)) {
+    return SandboxedInit::WStatusToStatus(wstatus);
   }
 
-  // Minijail didn't implement the non-blocking wait.
-  // Code below is stolen from minijail_wait() with addition of WNOHANG.
-  int ret = waitpid(pid(), status, WNOHANG);
+  // TODO(chromium:971667) Use Minijail's non-blocking wait once it exists.
+  const pid_t child_pid = pid();
+  const int ret = waitpid(child_pid, &wstatus, WNOHANG);
   if (ret < 0) {
-    PLOG(ERROR) << "waitpid failed.";
-    return true;
+    PLOG(ERROR) << "Cannot wait for process " << child_pid;
+    return MINIJAIL_ERR_INIT;
   }
 
   if (ret == 0) {
-    return false;
+    // Process is still running.
+    return -1;
   }
 
-  if (WIFEXITED(*status) || WIFSIGNALED(*status)) {
-    *status = SandboxedInit::WStatusToStatus(*status);
-    return true;
-  }
-
-  return false;
-}
-
-bool SandboxedProcess::PollStatus(int* status) {
-  return SandboxedInit::PollLauncherStatus(&custom_init_control_fd_, status);
+  return SandboxedInit::WStatusToStatus(wstatus);
 }
 
 }  // namespace cros_disks

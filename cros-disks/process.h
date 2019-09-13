@@ -63,8 +63,16 @@ class Process {
   virtual pid_t StartImpl(base::ScopedFD* in_fd,
                           base::ScopedFD* out_fd,
                           base::ScopedFD* err_fd) = 0;
+
+  // Once either WaitImpl() or WaitNonBlockingImpl() has returned a nonnegative
+  // exit status, none of these methods is called again.
+
+  // Waits for the process to finish and returns its exit status.
   virtual int WaitImpl() = 0;
-  virtual bool WaitNonBlockingImpl(int* status) = 0;
+
+  // Checks if the process has finished and returns its exit status, or -1 if
+  // the process is still running.
+  virtual int WaitNonBlockingImpl() = 0;
 
  private:
   // Waits for process to finish collecting process' stdout and stderr

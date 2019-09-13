@@ -127,7 +127,7 @@ class MockSandboxedProcess : public SandboxedProcess {
               (base::ScopedFD*, base::ScopedFD*, base::ScopedFD*),
               (override));
   MOCK_METHOD(int, WaitImpl, (), (override));
-  MOCK_METHOD(bool, WaitNonBlockingImpl, (int*), (override));
+  MOCK_METHOD(int, WaitNonBlockingImpl, (), (override));
 };
 
 class FUSEMounterForTesting : public FUSEMounter {
@@ -156,6 +156,7 @@ class FUSEMounterForTesting : public FUSEMounter {
     ON_CALL(*mock, WaitImpl()).WillByDefault(Invoke([raw_ptr, this]() {
       return InvokeMountTool(raw_ptr->arguments());
     }));
+    ON_CALL(*mock, WaitNonBlockingImpl()).WillByDefault(Return(-1));
     return mock;
   }
 };

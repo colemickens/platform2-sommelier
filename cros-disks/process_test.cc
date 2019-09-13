@@ -133,7 +133,7 @@ class ProcessUnderTest : public Process {
               (base::ScopedFD*, base::ScopedFD*, base::ScopedFD*),
               (override));
   MOCK_METHOD(int, WaitImpl, (), (override));
-  MOCK_METHOD(bool, WaitNonBlockingImpl, (int*), (override));
+  MOCK_METHOD(int, WaitNonBlockingImpl, (), (override));
 };
 
 struct ProcessFactory {
@@ -177,7 +177,7 @@ TEST_F(ProcessTest, Run_Success) {
   process_.AddArgument("foo");
   EXPECT_CALL(process_, StartImpl(_, _, _)).WillOnce(Return(123));
   EXPECT_CALL(process_, WaitImpl()).WillOnce(Return(42));
-  EXPECT_CALL(process_, WaitNonBlockingImpl(_)).Times(0);
+  EXPECT_CALL(process_, WaitNonBlockingImpl()).Times(0);
   EXPECT_EQ(42, process_.Run());
 }
 
@@ -185,7 +185,7 @@ TEST_F(ProcessTest, Run_Fail) {
   process_.AddArgument("foo");
   EXPECT_CALL(process_, StartImpl(_, _, _)).WillOnce(Return(-1));
   EXPECT_CALL(process_, WaitImpl()).Times(0);
-  EXPECT_CALL(process_, WaitNonBlockingImpl(_)).Times(0);
+  EXPECT_CALL(process_, WaitNonBlockingImpl()).Times(0);
   EXPECT_EQ(-1, process_.Run());
 }
 

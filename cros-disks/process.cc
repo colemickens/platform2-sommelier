@@ -171,7 +171,8 @@ int Process::Wait() {
 bool Process::IsFinished() {
   if (!finished_) {
     CHECK_NE(kInvalidProcessId, pid_);
-    finished_ = WaitNonBlockingImpl(&status_);
+    status_ = WaitNonBlockingImpl();
+    finished_ = status_ >= 0;
   }
   return finished_;
 }
