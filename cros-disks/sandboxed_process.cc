@@ -166,7 +166,7 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD* in_fd,
       return kInvalidProcessId;
     }
     if (child_pid == 0) {
-      init_.RunInsideSandboxNoReturn(base::Bind(Exec, args));
+      init_.RunInsideSandboxNoReturn(base::BindOnce(Exec, args));
     } else {
       custom_init_control_fd_ = init_.TakeInitControlFD(in_fd, out_fd, err_fd);
       CHECK(base::SetNonBlocking(custom_init_control_fd_.get()));

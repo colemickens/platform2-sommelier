@@ -61,7 +61,8 @@ base::ScopedFD SandboxedInit::TakeInitControlFD(base::ScopedFD* in_fd,
   return std::move(fds_[kCtrlFileIndex][kReadEnd]);
 }
 
-void SandboxedInit::RunInsideSandboxNoReturn(base::Callback<int()> launcher) {
+void SandboxedInit::RunInsideSandboxNoReturn(
+    base::OnceCallback<int()> launcher) {
   // To run our custom init that handles daemonized processes inside the
   // sandbox we have to set up fork/exec ourselves. We do error-handling
   // the "minijail-style" - abort if something not right.
@@ -156,7 +157,7 @@ int SandboxedInit::RunInitLoop(pid_t root_pid, base::ScopedFD ctrl_fd) {
   return last_failure_code;
 }
 
-pid_t SandboxedInit::StartLauncher(base::Callback<int()> launcher) {
+pid_t SandboxedInit::StartLauncher(base::OnceCallback<int()> launcher) {
   pid_t exec_child = fork();
 
   if (exec_child == -1) {

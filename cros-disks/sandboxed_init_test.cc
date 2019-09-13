@@ -52,7 +52,7 @@ class SandboxedInitTest : public testing::Test {
   void RunUnderInit(std::function<int()> func) {
     SandboxedInit init;
     pid_ = RunInFork([&init, func]() {
-      init.RunInsideSandboxNoReturn(base::Bind(CallFunc, func));
+      init.RunInsideSandboxNoReturn(base::BindOnce(CallFunc, func));
       NOTREACHED();
       return 42;
     });

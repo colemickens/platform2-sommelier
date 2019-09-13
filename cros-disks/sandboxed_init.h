@@ -28,7 +28,7 @@ class SandboxedInit {
   ~SandboxedInit();
 
   // To be run inside the jail. Never returns.
-  void RunInsideSandboxNoReturn(base::Callback<int()> launcher);
+  void RunInsideSandboxNoReturn(base::OnceCallback<int()> launcher);
 
   // Returns side channel for reading the exit status of the launcher.
   base::ScopedFD TakeInitControlFD(base::ScopedFD* in_fd,
@@ -41,7 +41,7 @@ class SandboxedInit {
 
  private:
   int RunInitLoop(pid_t root_pid, base::ScopedFD ctrl_fd);
-  pid_t StartLauncher(base::Callback<int()> launcher);
+  pid_t StartLauncher(base::OnceCallback<int()> launcher);
 
   base::ScopedFD fds_[4][2];
 
