@@ -21,7 +21,6 @@
 #include "cros-disks/quote.h"
 
 namespace cros_disks {
-
 namespace {
 
 enum class ReadResult {
@@ -51,53 +50,52 @@ ReadResult ReadFD(int fd, std::string* data) {
 // Interleaves streams.
 class StreamMerger {
  public:
-  StreamMerger(const std::vector<std::string>& tags,
-               std::vector<std::string>* output)
-      : tags_(tags), output_(output) {
-    remaining_.resize(tags.size());
-  }
+  explicit StreamMerger(std::vector<std::string>* output) : output_(output) {}
 
   ~StreamMerger() {
-    for (size_t i = 0; i < tags_.size(); ++i) {
-      if (!remaining_[i].empty()) {
-        output_->push_back(tags_[i] + ": " +
-                           base::JoinString(remaining_[i], ""));
-      }
+    for (size_t i = 0; i < kStreamCount; ++i) {
+      const std::string& remaining = remaining_[i];
+      if (!remaining.empty())
+        output_->push_back(base::JoinString({kTags[i], ": ", remaining}, ""));
     }
   }
 
-  void Append(size_t stream, const std::string& data) {
+  void Append(const size_t stream, const base::StringPiece data) {
+    DCHECK_LT(stream, kStreamCount);
+
     if (data.empty()) {
       return;
     }
 
-    std::vector<std::string>& remaining = remaining_[stream];
-    const std::string& tag = tags_[stream];
+    std::string& remaining = remaining_[stream];
+    const base::StringPiece tag = kTags[stream];
 
-    auto lines = base::SplitStringPiece(
+    std::vector<base::StringPiece> lines = base::SplitStringPiece(
         data, "\n", base::WhitespaceHandling::KEEP_WHITESPACE,
         base::SplitResult::SPLIT_WANT_ALL);
-    auto last_line = lines.back();
+    const base::StringPiece last_line = lines.back();
     lines.pop_back();
 
-    for (auto& line : lines) {
-      // Flush whole buffer.
-      remaining.emplace_back(line.as_string());
-      output_->push_back(tag + ": " + base::JoinString(remaining, ""));
+    for (const base::StringPiece line : lines) {
+      output_->push_back(base::JoinString({tag, ": ", remaining, line}, ""));
       remaining.clear();
     }
-    if (!last_line.empty()) {
-      remaining.emplace_back(last_line.as_string());
-    }
+
+    remaining = last_line.as_string();
   }
 
  private:
-  const std::vector<std::string> tags_;
-  std::vector<std::string>* output_;
-  std::vector<std::vector<std::string>> remaining_;
+  // Number of streams to interleave.
+  static const size_t kStreamCount = 2;
+  static const base::StringPiece kTags[kStreamCount];
+  std::vector<std::string>* const output_;
+  std::string remaining_[kStreamCount];
 
   DISALLOW_COPY_AND_ASSIGN(StreamMerger);
 };
+
+const size_t StreamMerger::kStreamCount;
+const base::StringPiece StreamMerger::kTags[kStreamCount] = {"OUT", "ERR"};
 
 }  // namespace
 
@@ -219,7 +217,7 @@ void Process::Communicate(std::vector<std::string>* output) {
   }
 
   std::string data;
-  StreamMerger merger({"OUT", "ERR"}, output);
+  StreamMerger merger(output);
   std::array<struct pollfd, 2> fds;
   fds[0] = {out_fd.get(), POLLIN, 0};
   fds[1] = {err_fd.get(), POLLIN, 0};
