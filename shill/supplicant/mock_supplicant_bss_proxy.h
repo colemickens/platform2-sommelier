@@ -17,7 +17,7 @@ class MockSupplicantBSSProxy : public SupplicantBSSProxyInterface {
   MockSupplicantBSSProxy();
   ~MockSupplicantBSSProxy() override;
 
-  MOCK_METHOD0(Die, void());  // So we can EXPECT the dtor.
+  MOCK_METHOD(void, Die, ());  // So we can EXPECT the dtor.
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSupplicantBSSProxy);

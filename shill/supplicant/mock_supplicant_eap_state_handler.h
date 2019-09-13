@@ -18,12 +18,14 @@ class MockSupplicantEAPStateHandler : public SupplicantEAPStateHandler {
   MockSupplicantEAPStateHandler();
   ~MockSupplicantEAPStateHandler() override;
 
-  MOCK_METHOD3(ParseStatus,
-               bool(const std::string& status,
-                    const std::string& parameter,
-                    Service::ConnectFailure* failure));
-  MOCK_METHOD0(Reset, void());
-  MOCK_CONST_METHOD0(is_eap_in_progress, bool());
+  MOCK_METHOD(bool,
+              ParseStatus,
+              (const std::string&,
+               const std::string&,
+               Service::ConnectFailure*),
+              (override));
+  MOCK_METHOD(void, Reset, (), (override));
+  MOCK_METHOD(bool, is_eap_in_progress, (), (const, override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSupplicantEAPStateHandler);

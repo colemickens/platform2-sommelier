@@ -19,14 +19,18 @@ class MockSupplicantProcessProxy : public SupplicantProcessProxyInterface {
   MockSupplicantProcessProxy();
   ~MockSupplicantProcessProxy() override;
 
-  MOCK_METHOD2(CreateInterface,
-               bool(const KeyValueStore& args, RpcIdentifier* rpc_identifier));
-  MOCK_METHOD2(GetInterface,
-               bool(const std::string& ifname, RpcIdentifier* rpc_identifier));
-  MOCK_METHOD1(RemoveInterface, bool(const RpcIdentifier& rpc_identifier));
-  MOCK_METHOD1(GetDebugLevel, bool(std::string* level));
-  MOCK_METHOD1(SetDebugLevel, bool(const std::string& level));
-  MOCK_METHOD0(ExpectDisconnect, bool());
+  MOCK_METHOD(bool,
+              CreateInterface,
+              (const KeyValueStore&, RpcIdentifier*),
+              (override));
+  MOCK_METHOD(bool,
+              GetInterface,
+              (const std::string&, RpcIdentifier*),
+              (override));
+  MOCK_METHOD(bool, RemoveInterface, (const RpcIdentifier&), (override));
+  MOCK_METHOD(bool, GetDebugLevel, (std::string*), (override));
+  MOCK_METHOD(bool, SetDebugLevel, (const std::string&), (override));
+  MOCK_METHOD(bool, ExpectDisconnect, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSupplicantProcessProxy);

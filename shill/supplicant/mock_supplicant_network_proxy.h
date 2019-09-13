@@ -17,7 +17,7 @@ class MockSupplicantNetworkProxy : public SupplicantNetworkProxyInterface {
   MockSupplicantNetworkProxy();
   ~MockSupplicantNetworkProxy() override;
 
-  MOCK_METHOD1(SetEnabled, bool(bool enabled));
+  MOCK_METHOD(bool, SetEnabled, (bool), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSupplicantNetworkProxy);

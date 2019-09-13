@@ -21,35 +21,39 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   MockSupplicantInterfaceProxy();
   ~MockSupplicantInterfaceProxy() override;
 
-  MOCK_METHOD2(AddNetwork,
-               bool(const KeyValueStore& args, RpcIdentifier* rpc_identifier));
-  MOCK_METHOD0(EAPLogoff, bool());
-  MOCK_METHOD0(EAPLogon, bool());
-  MOCK_METHOD0(Disconnect, bool());
-  MOCK_METHOD1(FlushBSS, bool(const uint32_t& age));
-  MOCK_METHOD3(NetworkReply,
-               bool(const RpcIdentifier& network,
-                    const std::string& field,
-                    const std::string& value));
-  MOCK_METHOD0(Reassociate, bool());
-  MOCK_METHOD0(Reattach, bool());
-  MOCK_METHOD0(RemoveAllNetworks, bool());
-  MOCK_METHOD1(RemoveNetwork, bool(const RpcIdentifier& network));
-  MOCK_METHOD1(Roam, bool(const std::string& addr));
-  MOCK_METHOD1(Scan, bool(const KeyValueStore& args));
-  MOCK_METHOD1(SelectNetwork, bool(const RpcIdentifier& network));
-  MOCK_METHOD1(SetFastReauth, bool(bool enabled));
-  MOCK_METHOD1(SetRoamThreshold, bool(uint16_t threshold));
-  MOCK_METHOD1(SetScanInterval, bool(int32_t seconds));
-  MOCK_METHOD1(SetScan, bool(bool enable));
-  MOCK_METHOD1(TDLSDiscover, bool(const std::string& peer));
-  MOCK_METHOD1(TDLSSetup, bool(const std::string& peer));
-  MOCK_METHOD2(TDLSStatus, bool(const std::string& peer, std::string* status));
-  MOCK_METHOD1(TDLSTeardown, bool(const std::string& peer));
-  MOCK_METHOD2(SetHT40Enable, bool(const RpcIdentifier& network, bool enable));
-  MOCK_METHOD1(EnableMacAddressRandomization,
-               bool(const std::vector<unsigned char>& mask));
-  MOCK_METHOD0(DisableMacAddressRandomization, bool());
+  MOCK_METHOD(bool,
+              AddNetwork,
+              (const KeyValueStore&, RpcIdentifier*),
+              (override));
+  MOCK_METHOD(bool, EAPLogoff, (), (override));
+  MOCK_METHOD(bool, EAPLogon, (), (override));
+  MOCK_METHOD(bool, Disconnect, (), (override));
+  MOCK_METHOD(bool, FlushBSS, (const uint32_t&), (override));
+  MOCK_METHOD(bool,
+              NetworkReply,
+              (const RpcIdentifier&, const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(bool, Reassociate, (), (override));
+  MOCK_METHOD(bool, Reattach, (), (override));
+  MOCK_METHOD(bool, RemoveAllNetworks, (), (override));
+  MOCK_METHOD(bool, RemoveNetwork, (const RpcIdentifier&), (override));
+  MOCK_METHOD(bool, Roam, (const std::string&), (override));
+  MOCK_METHOD(bool, Scan, (const KeyValueStore&), (override));
+  MOCK_METHOD(bool, SelectNetwork, (const RpcIdentifier&), (override));
+  MOCK_METHOD(bool, SetFastReauth, (bool), (override));
+  MOCK_METHOD(bool, SetRoamThreshold, (uint16_t), (override));
+  MOCK_METHOD(bool, SetScanInterval, (int32_t), (override));
+  MOCK_METHOD(bool, SetScan, (bool), (override));
+  MOCK_METHOD(bool, TDLSDiscover, (const std::string&), (override));
+  MOCK_METHOD(bool, TDLSSetup, (const std::string&), (override));
+  MOCK_METHOD(bool, TDLSStatus, (const std::string&, std::string*), (override));
+  MOCK_METHOD(bool, TDLSTeardown, (const std::string&), (override));
+  MOCK_METHOD(bool, SetHT40Enable, (const RpcIdentifier&, bool), (override));
+  MOCK_METHOD(bool,
+              EnableMacAddressRandomization,
+              (const std::vector<unsigned char>&),
+              (override));
+  MOCK_METHOD(bool, DisableMacAddressRandomization, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSupplicantInterfaceProxy);
