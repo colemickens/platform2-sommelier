@@ -452,7 +452,6 @@ void CellularService::SetActivationState(const string& state) {
   }
   activation_state_ = state;
   adaptor()->EmitStringChanged(kActivationStateProperty, state);
-  SetConnectableFull(state != kActivationStateNotActivated);
 }
 
 void CellularService::SetOLP(const string& url,

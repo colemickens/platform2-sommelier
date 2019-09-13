@@ -74,51 +74,6 @@ TEST_F(CellularServiceTest, Constructor) {
   EXPECT_TRUE(service_->connectable());
 }
 
-TEST_F(CellularServiceTest, SetActivationState) {
-  {
-    InSequence call_sequence;
-    EXPECT_CALL(*adaptor_, EmitStringChanged(kActivationStateProperty,
-                                             kActivationStateNotActivated));
-    EXPECT_CALL(*adaptor_, EmitBoolChanged(kConnectableProperty, false));
-    EXPECT_CALL(*adaptor_, EmitStringChanged(kActivationStateProperty,
-                                             kActivationStateActivating));
-    EXPECT_CALL(*adaptor_, EmitBoolChanged(kConnectableProperty, true));
-    EXPECT_CALL(*adaptor_,
-                EmitStringChanged(kActivationStateProperty,
-                                  kActivationStatePartiallyActivated));
-    EXPECT_CALL(*adaptor_, EmitStringChanged(kActivationStateProperty,
-                                             kActivationStateActivated));
-    EXPECT_CALL(*adaptor_, EmitStringChanged(kActivationStateProperty,
-                                             kActivationStateNotActivated));
-    EXPECT_CALL(*adaptor_, EmitBoolChanged(kConnectableProperty, false));
-  }
-  EXPECT_CALL(*modem_info_.mock_manager(), HasService(_))
-      .WillRepeatedly(Return(false));
-
-  EXPECT_TRUE(service_->activation_state().empty());
-  EXPECT_TRUE(service_->connectable());
-
-  service_->SetActivationState(kActivationStateNotActivated);
-  EXPECT_EQ(kActivationStateNotActivated, service_->activation_state());
-  EXPECT_FALSE(service_->connectable());
-
-  service_->SetActivationState(kActivationStateActivating);
-  EXPECT_EQ(kActivationStateActivating, service_->activation_state());
-  EXPECT_TRUE(service_->connectable());
-
-  service_->SetActivationState(kActivationStatePartiallyActivated);
-  EXPECT_EQ(kActivationStatePartiallyActivated, service_->activation_state());
-  EXPECT_TRUE(service_->connectable());
-
-  service_->SetActivationState(kActivationStateActivated);
-  EXPECT_EQ(kActivationStateActivated, service_->activation_state());
-  EXPECT_TRUE(service_->connectable());
-
-  service_->SetActivationState(kActivationStateNotActivated);
-  EXPECT_EQ(kActivationStateNotActivated, service_->activation_state());
-  EXPECT_FALSE(service_->connectable());
-}
-
 TEST_F(CellularServiceTest, SetNetworkTechnology) {
   EXPECT_CALL(*adaptor_, EmitStringChanged(kNetworkTechnologyProperty,
                                            kNetworkTechnologyUmts));
