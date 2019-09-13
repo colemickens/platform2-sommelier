@@ -19,13 +19,14 @@ class MockOpenVPNManagementServer : public OpenVPNManagementServer {
   MockOpenVPNManagementServer();
   ~MockOpenVPNManagementServer() override;
 
-  MOCK_METHOD2(Start,
-               bool(Sockets* sockets,
-                    std::vector<std::vector<std::string>>* options));
-  MOCK_METHOD0(Stop, void());
-  MOCK_METHOD0(ReleaseHold, void());
-  MOCK_METHOD0(Hold, void());
-  MOCK_METHOD0(Restart, void());
+  MOCK_METHOD(bool,
+              Start,
+              (Sockets*, std::vector<std::vector<std::string>>*),
+              (override));
+  MOCK_METHOD(void, Stop, (), (override));
+  MOCK_METHOD(void, ReleaseHold, (), (override));
+  MOCK_METHOD(void, Hold, (), (override));
+  MOCK_METHOD(void, Restart, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockOpenVPNManagementServer);

@@ -18,9 +18,9 @@ class MockVPNService : public VPNService {
   MockVPNService(Manager* manager, std::unique_ptr<VPNDriver> driver);
   ~MockVPNService() override;
 
-  MOCK_METHOD1(SetState, void(ConnectState state));
-  MOCK_METHOD1(SetFailure, void(ConnectFailure failure));
-  MOCK_METHOD0(InitDriverPropertyStore, void());
+  MOCK_METHOD(void, SetState, (ConnectState), (override));
+  MOCK_METHOD(void, SetFailure, (ConnectFailure), (override));
+  MOCK_METHOD(void, InitDriverPropertyStore, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockVPNService);

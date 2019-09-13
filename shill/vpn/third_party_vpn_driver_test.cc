@@ -57,7 +57,7 @@ class ThirdPartyVpnDriverTest : public testing::Test {
     driver_->file_io_ = nullptr;
   }
 
-  MOCK_METHOD1(TestCallback, void(const Error& error));
+  MOCK_METHOD(void, TestCallback, (const Error&));
 
  protected:
   static const char kConfigName[];

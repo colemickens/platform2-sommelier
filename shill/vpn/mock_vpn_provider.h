@@ -19,13 +19,13 @@ class MockVPNProvider : public VPNProvider {
   MockVPNProvider();
   ~MockVPNProvider() override;
 
-  MOCK_METHOD0(Start, void());
-  MOCK_METHOD0(Stop, void());
-  MOCK_METHOD3(OnDeviceInfoAvailable,
-               bool(const std::string& link_name,
-                    int interface_index,
-                    Technology technology));
-  MOCK_CONST_METHOD0(HasActiveService, bool());
+  MOCK_METHOD(void, Start, (), (override));
+  MOCK_METHOD(void, Stop, (), (override));
+  MOCK_METHOD(bool,
+              OnDeviceInfoAvailable,
+              (const std::string&, int, Technology),
+              (override));
+  MOCK_METHOD(bool, HasActiveService, (), (const, override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockVPNProvider);

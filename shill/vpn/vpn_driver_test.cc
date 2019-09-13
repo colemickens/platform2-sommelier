@@ -55,12 +55,11 @@ class VPNDriverUnderTest : public VPNDriver {
   ~VPNDriverUnderTest() override = default;
 
   // Inherited from VPNDriver.
-  MOCK_METHOD2(ClaimInterface,
-               bool(const string& link_name, int interface_index));
-  MOCK_METHOD2(Connect, void(const VPNServiceRefPtr& service, Error* error));
-  MOCK_METHOD0(Disconnect, void());
-  MOCK_METHOD0(OnConnectionDisconnected, void());
-  MOCK_CONST_METHOD0(GetProviderType, string());
+  MOCK_METHOD(bool, ClaimInterface, (const string&, int), (override));
+  MOCK_METHOD(void, Connect, (const VPNServiceRefPtr&, Error*), (override));
+  MOCK_METHOD(void, Disconnect, (), (override));
+  MOCK_METHOD(void, OnConnectionDisconnected, (), (override));
+  MOCK_METHOD(string, GetProviderType, (), (const, override));
 
  private:
   static const Property kProperties[];
