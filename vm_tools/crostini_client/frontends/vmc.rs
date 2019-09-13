@@ -135,16 +135,13 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             .environ
             .get("CROS_USER_ID_HASH")
             .ok_or(ExpectedCrosUserIdHash)?;
+        let features = VmFeatures {
+            gpu: matches.opt_present("enable-gpu"),
+            software_tpm: matches.opt_present("software-tpm"),
+        };
 
         self.metrics_send_sample("Vm.VmcStart");
-        try_command!(self.backend.vm_start(
-            vm_name,
-            user_id_hash,
-            VmFeatures {
-                gpu: matches.opt_present("enable-gpu"),
-                software_tpm: matches.opt_present("software-tpm"),
-            },
-        ));
+        try_command!(self.backend.vm_start(vm_name, user_id_hash, features));
         self.metrics_send_sample("Vm.VmcStartSuccess");
         try_command!(self.backend.vsh_exec(vm_name, user_id_hash));
 
