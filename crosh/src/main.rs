@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 mod dispatcher;
+mod history;
 mod legacy;
 mod util;
 
@@ -24,6 +25,7 @@ use termion::raw::IntoRawMode;
 use termion::terminal_size;
 
 use crate::dispatcher::{CompletionResult, Dispatcher};
+use crate::history::History;
 
 fn usage(error: bool) {
     let usage_msg = r#"Usage: crosh [options] [-- [args]]
@@ -263,10 +265,17 @@ fn parse_command(command: &str) -> Vec<String> {
 
 // Handle user input to obtain a signal command. This includes handling cases like history lookups
 // and command completion.
-fn next_command(dispatcher: &Dispatcher) -> String {
+fn next_command(dispatcher: &Dispatcher, history: &mut History) -> String {
     let mut stdin_keys = stdin().keys();
     new_prompt();
     let mut command = String::new();
+
+    // Reprint the command.
+    fn refresh_command(command: &str) {
+        print!("\r\x1b[K");
+        new_prompt();
+        print!("{}", command);
+    };
 
     // Use the function scope to return stdout to normal mode before executing a command.
     let mut stdout = stdout().into_raw_mode().unwrap();
@@ -319,6 +328,18 @@ fn next_command(dispatcher: &Dispatcher) -> String {
                         break;
                     }
                 }
+                Key::Up => {
+                    if let Some(prev) = history.previous(&command) {
+                        command = prev.to_string();
+                        refresh_command(prev);
+                    }
+                }
+                Key::Down => {
+                    if let Some(next) = history.next() {
+                        command = next.to_string();
+                        refresh_command(next);
+                    }
+                }
                 _ => {
                     // Ignore
                 }
@@ -330,13 +351,15 @@ fn next_command(dispatcher: &Dispatcher) -> String {
         }
     }
     let _ = stdout.flush();
+    history.new_entry(command.to_string());
     command
 }
 
 // Loop for getting each command from the user and dispatching it to the handler.
 fn input_loop(dispatcher: Dispatcher) {
+    let mut history = History::new();
     loop {
-        let line = next_command(&dispatcher);
+        let line = next_command(&dispatcher, &mut history);
         let command = line.trim();
 
         if command == "exit" || command == "quit" {
