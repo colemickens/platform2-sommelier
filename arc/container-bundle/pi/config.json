@@ -418,14 +418,6 @@
 			]
 		},
 		{
-			"destination": "/proc/sys/vm/mmap_rnd_compat_bits",
-			"type": "bind",
-			"source": "/run/arc/fake_mmap_rnd_compat_bits",
-			"options": [
-				"bind"
-			]
-		},
-		{
 			"destination": "/proc/sys/vm/mmap_rnd_bits",
 			"type": "bind",
 			"source": "/run/arc/fake_mmap_rnd_bits",

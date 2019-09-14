@@ -2051,6 +2051,14 @@ void ArcSetup::BindMountInContainerNamespaceOnPreChroot(
           rootfs.Append(arc_paths_->system_lib64_arm64_directory_relative)));
     }
   }
+
+  const base::FilePath proc_rnd_compat =
+      rootfs.Append("proc/sys/vm/mmap_rnd_compat_bits");
+
+  if (base::PathExists(proc_rnd_compat)) {
+    EXIT_IF(!arc_mounter_->BindMount(arc_paths_->fake_mmap_rnd_compat_bits,
+                                     proc_rnd_compat));
+  }
 }
 
 void ArcSetup::RestoreContextOnPreChroot(const base::FilePath& rootfs) {
