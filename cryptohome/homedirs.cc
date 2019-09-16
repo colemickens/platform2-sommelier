@@ -116,6 +116,10 @@ bool HomeDirs::Init(Platform* platform, Crypto* crypto,
   return GetSystemSalt(NULL);
 }
 
+bool HomeDirs::IsFreableDiskSpaceAvaible() {
+  return enterprise_owned_ && CountUnmountedCryptohomes() > 0;
+}
+
 void HomeDirs::FreeDiskSpace() {
   const int64_t free_disk_space =
       platform_->AmountOfFreeDiskSpace(shadow_root_);
@@ -1023,6 +1027,30 @@ int HomeDirs::CountMountedCryptohomes() const {
       continue;
     }
     if (!platform_->IsDirectoryMounted(user_path)) {
+      continue;
+    }
+    mounts++;
+  }
+  return mounts;
+}
+
+int HomeDirs::CountUnmountedCryptohomes() const {
+  std::vector<FilePath> entries;
+  int mounts = 0;
+  if (!platform_->EnumerateDirectoryEntries(shadow_root_, false, &entries)) {
+    return 0;
+  }
+  for (const auto& entry : entries) {
+    const std::string obfuscated = entry.BaseName().value();
+    if (!brillo::cryptohome::home::IsSanitizedUserName(obfuscated)) {
+      continue;
+    }
+    FilePath user_path =
+        brillo::cryptohome::home::GetHashedUserPath(obfuscated);
+    if (!platform_->DirectoryExists(user_path)) {
+      continue;
+    }
+    if (platform_->IsDirectoryMounted(user_path)) {
       continue;
     }
     mounts++;

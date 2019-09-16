@@ -370,6 +370,123 @@ TEST_P(HomeDirsTest, GetTrackedDirectoryForDirCrypto) {
       temp_dir.GetPath(), FilePath("aaa/zzz"), &result));
 }
 
+TEST_P(HomeDirsTest, CountUnmountedCryptohomes) {
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
+      .WillOnce(DoAll(SetArgPointee<2>(homedir_paths_), Return(true)));
+
+  int count = 0;
+
+  for (int i = 0; i < homedir_paths_.size(); i++) {
+    FilePath homedir =
+        FilePath("/home/user/").Append(homedir_paths_[i].BaseName().value());
+
+    EXPECT_CALL(platform_, DirectoryExists(homedir)).WillOnce(Return(true));
+
+    if (i % 2 == 0) {
+      EXPECT_CALL(platform_, IsDirectoryMounted(homedir))
+          .WillOnce(Return(false));
+      count++;
+    } else {
+      EXPECT_CALL(platform_, IsDirectoryMounted(homedir))
+          .WillOnce(Return(true));
+    }
+  }
+
+  EXPECT_EQ(count, homedirs_.CountUnmountedCryptohomes());
+}
+
+TEST_P(HomeDirsTest, CountMountedCryptohomes) {
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
+      .WillOnce(DoAll(SetArgPointee<2>(homedir_paths_), Return(true)));
+
+  int count = 0;
+
+  for (int i = 0; i < homedir_paths_.size(); i++) {
+    FilePath homedir =
+        FilePath("/home/user/").Append(homedir_paths_[i].BaseName().value());
+
+    EXPECT_CALL(platform_, DirectoryExists(homedir)).WillOnce(Return(true));
+
+    if (i % 2 == 0) {
+      EXPECT_CALL(platform_, IsDirectoryMounted(homedir))
+          .WillOnce(Return(true));
+      count++;
+    } else {
+      EXPECT_CALL(platform_, IsDirectoryMounted(homedir))
+          .WillOnce(Return(false));
+    }
+  }
+
+  EXPECT_EQ(count, homedirs_.CountMountedCryptohomes());
+}
+
+TEST_P(HomeDirsTest, IsFreableDiskSpaceAvaible) {
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(homedir_paths_), Return(true)));
+
+  for (int i = 0; i < homedir_paths_.size(); i++) {
+    FilePath homedir =
+        FilePath("/home/user/").Append(homedir_paths_[i].BaseName().value());
+
+    EXPECT_CALL(platform_, DirectoryExists(homedir))
+        .WillRepeatedly(Return(true));
+
+    if (i % 2 == 0) {
+      EXPECT_CALL(platform_, IsDirectoryMounted(homedir))
+          .WillOnce(Return(true))
+          .WillOnce(Return(true));
+    } else {
+      EXPECT_CALL(platform_, IsDirectoryMounted(homedir))
+          .WillOnce(Return(false))
+          .WillOnce(Return(true));
+    }
+  }
+
+  homedirs_.set_enterprise_owned(true);
+  EXPECT_TRUE(homedirs_.IsFreableDiskSpaceAvaible());
+
+  // Does not check dirs as it is not enterprise enrolled
+  homedirs_.set_enterprise_owned(false);
+  EXPECT_FALSE(homedirs_.IsFreableDiskSpaceAvaible());
+
+  homedirs_.set_enterprise_owned(true);
+  EXPECT_FALSE(homedirs_.IsFreableDiskSpaceAvaible());
+}
+
+TEST_P(HomeDirsTest, CanFreeSpace) {
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
+      .WillOnce(DoAll(SetArgPointee<2>(homedir_paths_), Return(true)));
+
+  for (int i = 0; i < homedir_paths_.size(); i++) {
+    FilePath homedir =
+        FilePath("/home/user/").Append(homedir_paths_[i].BaseName().value());
+
+    EXPECT_CALL(platform_, DirectoryExists(homedir)).WillOnce(Return(true));
+
+    if (i == 0)
+      EXPECT_CALL(platform_, IsDirectoryMounted(homedir))
+          .WillOnce(Return(false));
+    else
+      EXPECT_CALL(platform_, IsDirectoryMounted(homedir))
+          .WillOnce(Return(true));
+  }
+
+  EXPECT_EQ(true, homedirs_.CountUnmountedCryptohomes() > 0);
+
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
+      .WillOnce(DoAll(SetArgPointee<2>(homedir_paths_), Return(true)));
+
+  for (int i = 0; i < homedir_paths_.size(); i++) {
+    FilePath homedir =
+        FilePath("/home/user/").Append(homedir_paths_[i].BaseName().value());
+
+    EXPECT_CALL(platform_, DirectoryExists(homedir)).WillOnce(Return(true));
+    EXPECT_CALL(platform_, IsDirectoryMounted(homedir)).WillOnce(Return(true));
+  }
+
+  EXPECT_EQ(false, homedirs_.CountUnmountedCryptohomes() > 0);
+}
+
 TEST_P(HomeDirsTest, GetUnmountedAndroidDataCount) {
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
       .WillOnce(DoAll(SetArgPointee<2>(homedir_paths_), Return(true)));

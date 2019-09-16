@@ -722,7 +722,6 @@ bool Service::Initialize() {
     }
   }
 
-  last_auto_cleanup_time_ = platform_->GetCurrentTime();
   last_user_activity_timestamp_time_ = platform_->GetCurrentTime();
 
   // Clean up space on start (once).
@@ -3393,6 +3392,7 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
 }
 
 void Service::DoAutoCleanup() {
+  last_auto_cleanup_time_ = platform_->GetCurrentTime();
   homedirs_->FreeDiskSpace();
   // Reset the dictionary attack counter if possible and necessary.
   ResetDictionaryAttackMitigation();
@@ -3426,14 +3426,13 @@ void Service::LowDiskCallback() {
 
   // We shouldn't repeat cleanups on every minute if the disk space
   // stays below the threshold. Trigger it only if there was no notification
-  // previously.
+  // previously or if enterprise owned and free space can be reclaimed.
   const bool early_cleanup_needed =
-      low_disk_space_signal_emitted && !low_disk_space_signal_was_emitted_;
+      low_disk_space_signal_emitted && (!low_disk_space_signal_was_emitted_ ||
+                                        homedirs_->IsFreableDiskSpaceAvaible());
 
-  if (time_for_auto_cleanup || early_cleanup_needed) {
-    last_auto_cleanup_time_ = current_time;
+  if (time_for_auto_cleanup || early_cleanup_needed)
     DoAutoCleanup();
-  }
 
   const bool time_for_user_activity_period_update =
       current_time - last_user_activity_timestamp_time_ >

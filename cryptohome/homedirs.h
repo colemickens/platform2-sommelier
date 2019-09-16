@@ -63,6 +63,9 @@ class HomeDirs {
   virtual bool Init(Platform* platform, Crypto* crypto,
                     UserOldestActivityTimestampCache *cache);
 
+  // Checks if it is possible to free up disk space
+  virtual bool IsFreableDiskSpaceAvaible();
+
   // Frees disk space for unused cryptohomes. If the available disk space is
   // below |kFreeSpaceThresholdToTriggerCleanup|, attempts to free space until
   // it goes up to |kTargetFreeSpaceAfterCleanup|.
@@ -286,6 +289,11 @@ class HomeDirs {
   // amount of free disk space or false otherwise.
   bool HasTargetFreeSpace() const;
 
+  // Returns the number of currently-mounted cryptohomes.
+  int CountMountedCryptohomes() const;
+  // Returns the number of currently-unmounted cryptohomes.
+  int CountUnmountedCryptohomes() const;
+
  private:
   base::TimeDelta GetUserInactivityThresholdForRemoval();
   // Loads the device policy, either by initializing it or reloading the
@@ -305,8 +313,6 @@ class HomeDirs {
   // Runs the supplied callback for every unmounted cryptohome with the user dir
   // path.
   void DoForEveryUnmountedCryptohome(const CryptohomeCallback& cryptohome_cb);
-  // Returns the number of currently-mounted cryptohomes.
-  int CountMountedCryptohomes() const;
   // Callback used during RemoveNonOwnerCryptohomes()
   void RemoveNonOwnerCryptohomesCallback(const base::FilePath& user_dir);
   // Callback used during FreeDiskSpace().
