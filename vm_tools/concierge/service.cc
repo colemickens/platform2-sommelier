@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/xattr.h>
 #include <unistd.h>
 
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
@@ -109,6 +110,10 @@ constexpr char kPluginVmDir[] = "pvm";
 
 // Cryptohome root base path.
 constexpr char kCryptohomeRoot[] = "/home/root";
+
+// Extended attribute indicating that user has picked a disk size and it should
+// not be resized.
+constexpr char kDiskImageFixedSizeXattr[] = "user.crostini.fixed_size";
 
 // File extension for raw disk types
 constexpr char kRawImageExtension[] = ".img";
@@ -2074,19 +2079,27 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
 
     // Automatically extend existing disk images if disk_size was not specified.
     if (request.disk_size() == 0) {
-      uint64_t disk_size = CalculateDesiredDiskSize(current_usage);
-      if (disk_size > current_size) {
-        LOG(INFO) << "Expanding disk image from " << current_size << " to "
-                  << disk_size;
-        if (expand_disk_image(disk_path.value().c_str(), disk_size) != 0) {
-          // If expanding the disk failed, continue with a warning.
-          // Currently, raw images can be resized, and qcow2 images cannot.
-          LOG(WARNING) << "Failed to expand disk image " << disk_path.value();
-        }
+      // If the user.crostini.fixed_size xattr exists, don't resize the disk.
+      // (The value stored in the xattr is ignored; only its existence matters.)
+      if (getxattr(disk_path.value().c_str(), kDiskImageFixedSizeXattr, NULL,
+                   0) > 0) {
+        LOG(INFO) << "Disk image has " << kDiskImageFixedSizeXattr
+                  << " xattr - keeping existing size " << current_size;
       } else {
-        LOG(INFO) << "Current size " << current_size
-                  << " is already at least requested size " << disk_size
-                  << " - not expanding";
+        uint64_t disk_size = CalculateDesiredDiskSize(current_usage);
+        if (disk_size > current_size) {
+          LOG(INFO) << "Expanding disk image from " << current_size << " to "
+                    << disk_size;
+          if (expand_disk_image(disk_path.value().c_str(), disk_size) != 0) {
+            // If expanding the disk failed, continue with a warning.
+            // Currently, raw images can be resized, and qcow2 images cannot.
+            LOG(WARNING) << "Failed to expand disk image " << disk_path.value();
+          }
+        } else {
+          LOG(INFO) << "Current size " << current_size
+                    << " is already at least requested size " << disk_size
+                    << " - not expanding";
+        }
       }
     }
 
