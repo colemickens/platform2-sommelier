@@ -187,10 +187,10 @@ class MockSocketQrtr : public SocketInterface {
     return bytes_read;
   }
 
-  MOCK_METHOD0(Close, void());
-  MOCK_METHOD3(StartService, bool(uint32_t, uint16_t, uint16_t));
-  MOCK_METHOD3(StopService, bool(uint32_t, uint16_t, uint16_t));
-  MOCK_METHOD3(Send, int(const void*, size_t, const void*));
+  MOCK_METHOD(void, Close, (), (override));
+  MOCK_METHOD(bool, StartService, (uint32_t, uint16_t, uint16_t), (override));
+  MOCK_METHOD(bool, StopService, (uint32_t, uint16_t, uint16_t), (override));
+  MOCK_METHOD(int, Send, (const void*, size_t, const void*), (override));
 
  private:
   friend class CardQrtrTest;

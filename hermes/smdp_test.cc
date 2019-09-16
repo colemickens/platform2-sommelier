@@ -14,17 +14,21 @@ namespace hermes {
 
 class SmdpFiTester {
  public:
-  MOCK_METHOD5(OnInitiateAuth, void(const std::string&,
-                                    const std::vector<uint8_t>&,
-                                    const std::vector<uint8_t>&,
-                                    const std::vector<uint8_t>&,
-                                    const std::vector<uint8_t>&));
-  MOCK_METHOD5(OnAuthClient, void(const std::string&,
-                                  const std::vector<uint8_t>&,
-                                  const std::vector<uint8_t>&,
-                                  const std::vector<uint8_t>&,
-                                  const std::vector<uint8_t>&));
-  MOCK_METHOD1(FakeError, void(const std::vector<uint8_t>& error_data));
+  MOCK_METHOD(void,
+              OnInitiateAuth,
+              (const std::string&,
+               const std::vector<uint8_t>&,
+               const std::vector<uint8_t>&,
+               const std::vector<uint8_t>&,
+               const std::vector<uint8_t>&));
+  MOCK_METHOD(void,
+              OnAuthClient,
+              (const std::string&,
+               const std::vector<uint8_t>&,
+               const std::vector<uint8_t>&,
+               const std::vector<uint8_t>&,
+               const std::vector<uint8_t>&));
+  MOCK_METHOD(void, FakeError, (const std::vector<uint8_t>& error_data));
 };
 
 class SmdpTest : public testing::Test {
