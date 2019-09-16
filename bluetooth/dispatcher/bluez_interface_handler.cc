@@ -15,17 +15,20 @@ namespace bluetooth {
 
 BluezAdapterInterfaceHandler::BluezAdapterInterfaceHandler() {
   AddPropertyFactory<std::string>(bluetooth_adapter::kAddressProperty);
-  AddPropertyFactory<std::string>(bluetooth_adapter::kNameProperty);
+  AddPropertyFactory<std::string>(bluetooth_adapter::kNameProperty,
+                                  MergingRule::CONCATENATION);
   AddPropertyFactory<std::string>(bluetooth_adapter::kAliasProperty);
   AddPropertyFactory<uint32_t>(bluetooth_adapter::kClassProperty);
-  AddPropertyFactory<bool>(bluetooth_adapter::kPoweredProperty);
+  AddPropertyFactory<bool>(bluetooth_adapter::kPoweredProperty,
+                           MergingRule::AND);
   AddPropertyFactory<bool>(bluetooth_adapter::kDiscoverableProperty);
   AddPropertyFactory<bool>(bluetooth_adapter::kPairableProperty);
   AddPropertyFactory<uint32_t>(bluetooth_adapter::kPairableTimeoutProperty);
   AddPropertyFactory<uint32_t>(bluetooth_adapter::kDiscoverableTimeoutProperty);
-  AddPropertyFactory<bool>(bluetooth_adapter::kDiscoveringProperty);
+  AddPropertyFactory<bool>(bluetooth_adapter::kDiscoveringProperty,
+                           MergingRule::OR);
   AddPropertyFactory<std::vector<std::string>>(
-      bluetooth_adapter::kUUIDsProperty);
+      bluetooth_adapter::kUUIDsProperty, MergingRule::UNION);
   AddPropertyFactory<std::string>(bluetooth_adapter::kModaliasProperty);
 
   AddMethodForwarding(bluetooth_adapter::kStartDiscovery,
