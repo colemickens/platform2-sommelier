@@ -10,8 +10,9 @@
 #include <utility>
 
 #include <base/files/file_util.h>
-#include "base/time/time.h"
+#include <base/time/time.h>
 #include <brillo/daemons/daemon.h>
+#include "timberslide/log_listener.h"
 
 namespace timberslide {
 
@@ -27,7 +28,7 @@ class TimberSlide : public brillo::Daemon,
 
  protected:
   // For testing
-  explicit TimberSlide();
+  explicit TimberSlide(std::unique_ptr<LogListener> log_listener);
 
  private:
   int OnInit() override;
@@ -47,6 +48,7 @@ class TimberSlide : public brillo::Daemon,
   int total_size_ = 0;
   base::File uptime_file_;
   bool uptime_file_valid_ = false;
+  std::unique_ptr<LogListener> log_listener_;
 };
 
 }  // namespace timberslide

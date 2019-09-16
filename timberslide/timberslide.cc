@@ -17,6 +17,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <brillo/daemons/daemon.h>
+#include "timberslide/log_listener_factory.h"
 #include "timberslide/timberslide.h"
 
 namespace timberslide {
@@ -108,9 +109,11 @@ TimberSlide::TimberSlide(const std::string& ec_type,
       uptime_file_valid_(uptime_file_.IsValid()) {
   current_log_ = log_dir.Append(ec_type + kCurrentLogExt);
   previous_log_ = log_dir.Append(ec_type + kPreviousLogExt);
+  log_listener_ = LogListenerFactory::Create(ec_type);
 }
 
-TimberSlide::TimberSlide() : fd_watcher_(FROM_HERE) {}
+TimberSlide::TimberSlide(std::unique_ptr<LogListener> log_listener)
+    : fd_watcher_(FROM_HERE), log_listener_(std::move(log_listener)) {}
 
 int TimberSlide::OnInit() {
   LOG(INFO) << "Starting timberslide daemon";
@@ -172,8 +175,11 @@ std::string TimberSlide::ProcessLogBuffer(const char* buffer,
 
   bool have_ec_uptime = GetEcUptime(&ec_current_uptime_ms);
 
-  auto fn_xfrm = [ec_current_uptime_ms, have_ec_uptime,
+  auto fn_xfrm = [this, ec_current_uptime_ms, have_ec_uptime,
                   now](const std::string& line) {
+    if (log_listener_) {
+      log_listener_->OnLogLine(line);
+    }
     if (!have_ec_uptime) {
       return line;
     }
@@ -209,7 +215,6 @@ void TimberSlide::OnFileCanReadWithoutBlocking(int fd) {
     Quit();
     return;
   }
-
 
   std::string str = ProcessLogBuffer(buffer, base::Time::Now());
   ret = str.size();

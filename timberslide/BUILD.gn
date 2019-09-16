@@ -17,12 +17,15 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libchrome-${libbase_ver}",
     "libbrillo-${libbase_ver}",
+    "libmetrics-${libbase_ver}",
+    "re2",
   ]
 }
 
 static_library("libtimberslide") {
   configs += [ ":target_defaults" ]
   sources = [
+    "fingerprint_log_listener_impl.cc",
     "timberslide.cc",
   ]
 }
@@ -48,6 +51,7 @@ if (use.test) {
       ":target_defaults",
     ]
     sources = [
+      "fingerprint_log_listener_impl_test.cc",
       "timberslide_test.cc",
       "timberslide_testrunner.cc",
     ]

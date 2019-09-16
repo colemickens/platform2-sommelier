@@ -69,6 +69,7 @@ const char* kCrosEventNames[] = {
     "Vm.VmcStart",                              // 21
     "Vm.VmcStartSuccess",                       // 22
     "Vm.DiskEraseFailed",                       // 23
+    "Fingerprint.MCU.Reboot",                   // 24
 };
 
 }  // namespace

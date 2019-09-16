@@ -24,6 +24,11 @@ const char kExpectedLogsWithUptime[] =
     "0101/000000.001000 [0.001000 UART initialized after sysjump]\n"
     "0101/000001.000000 [1.000000 Sensor create: 0x0]\n";
 
+class LogListenerImplMock : public LogListener {
+ public:
+  MOCK_METHOD(void, OnLogLine, (const std::string&), (override));
+};
+
 TEST(TimberslideTest, ProcessLogBuffer_GetEcUptimeSupported) {
   auto now = base::Time::FromDoubleT(1.0);
   NiceMock<MockTimberSlide> mock;
@@ -43,7 +48,29 @@ TEST(TimberslideTest, ProcessLogBuffer_GetEcUptimeNotSupported) {
   EXPECT_EQ(ret, kSampleLogs);
 }
 
+class TimberslideLogLineTest : public testing::TestWithParam<bool> {};
 
+TEST_P(TimberslideLogLineTest, ProcessLogBuffer_OnLogLine) {
+  base::Time now;
+  auto metrics_listener = std::make_unique<LogListenerImplMock>();
+  EXPECT_CALL(*metrics_listener, OnLogLine)
+      .WillOnce([](const std::string& line) {
+        EXPECT_EQ(line, "[0.001000 UART initialized after sysjump]");
+      })
+      .WillOnce([](const std::string& line) {
+        EXPECT_EQ(line, "[1.000000 Sensor create: 0x0]");
+      });
+  NiceMock<MockTimberSlide> mock(std::move(metrics_listener));
+  // We only pass the original EC log line to OnLogLine, not the additional
+  // timestamp we add if uptime is supported, so we test both variants.
+  ON_CALL(mock, GetEcUptime).WillByDefault(Return(GetParam()));
+  std::string ret = mock.ProcessLogBuffer(kSampleLogs, now);
+}
+
+INSTANTIATE_TEST_SUITE_P(TimberslideTest,
+                         TimberslideLogLineTest,
+                         testing::Bool(),
+                         testing::PrintToStringParamName());
 
 }  // namespace
 }  // namespace timberslide

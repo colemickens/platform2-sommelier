@@ -14,6 +14,9 @@ namespace timberslide {
 
 class MockTimberSlide : public TimberSlide {
  public:
+  explicit MockTimberSlide(
+      std::unique_ptr<LogListener> log_listener = nullptr)
+      : TimberSlide(std::move(log_listener)) {}
   ~MockTimberSlide() override = default;
   MOCK_METHOD(bool, GetEcUptime, (int64_t*), (override));
 };
