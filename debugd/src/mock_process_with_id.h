@@ -17,38 +17,43 @@
 namespace debugd {
 class MockProcessWithId : public ProcessWithId {
  public:
-  MOCK_METHOD0(Init, bool());
-  MOCK_METHOD1(Init, bool(const std::vector<std::string>& minijail_extra_args));
-  MOCK_METHOD0(DisableSandbox, void());
-  MOCK_METHOD2(SandboxAs,
-               void(const std::string& user, const std::string& group));
-  MOCK_METHOD0(InheritUsergroups, void());
-  MOCK_METHOD1(SetCapabilities, void(uint64_t capabilities_mask));
-  MOCK_METHOD1(SetSeccompFilterPolicyFile, void(const std::string& path));
-  MOCK_METHOD0(AllowAccessRootMountNamespace, void());
-  MOCK_METHOD0(KillProcessGroup, bool());
-  MOCK_METHOD1(AddArg, void(const std::string& arg));
-  MOCK_METHOD1(RedirectInput, void(const std::string& input_file));
-  MOCK_METHOD1(RedirectOutput, void(const std::string& output_file));
-  MOCK_METHOD2(RedirectUsingPipe, void(int child_fd, bool is_input));
-  MOCK_METHOD2(BindFd, void(int parent_fd, int child_fd));
-  MOCK_METHOD1(SetUid, void(uid_t));
-  MOCK_METHOD1(SetGid, void(gid_t));
-  MOCK_METHOD1(ApplySyscallFilter, void(const std::string& path));
-  MOCK_METHOD0(EnterNewPidNamespace, void());
-  MOCK_METHOD1(SetInheritParentSignalMask, void(bool));
-  MOCK_METHOD1(SetPreExecCallback, void(const PreExecCallback&));
-  MOCK_METHOD1(SetSearchPath, void(bool));
-  MOCK_METHOD1(GetPipe, int(int child_fd));
-  MOCK_METHOD0(Start, bool());
-  MOCK_METHOD0(Wait, int());
-  MOCK_METHOD0(Run, int());
-  MOCK_METHOD0(pid, pid_t());
-  MOCK_METHOD2(Kill, bool(int signal, int timeout));
-  MOCK_METHOD1(Reset, void(pid_t));
-  MOCK_METHOD1(ResetPidByFile, bool(const std::string& pid_file));
-  MOCK_METHOD0(Release, pid_t());
-  MOCK_METHOD1(SetCloseUnusedFileDescriptors, void(bool close_unused_fds));
+  MOCK_METHOD(bool, Init, (), (override));
+  MOCK_METHOD(bool, Init, (const std::vector<std::string>&), (override));
+  MOCK_METHOD(void, DisableSandbox, (), (override));
+  MOCK_METHOD(void,
+              SandboxAs,
+              (const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(void, InheritUsergroups, (), (override));
+  MOCK_METHOD(void, SetCapabilities, (uint64_t), (override));
+  MOCK_METHOD(void,
+              SetSeccompFilterPolicyFile,
+              (const std::string&),
+              (override));
+  MOCK_METHOD(void, AllowAccessRootMountNamespace, (), (override));
+  MOCK_METHOD(bool, KillProcessGroup, (), (override));
+  MOCK_METHOD(void, AddArg, (const std::string&), (override));
+  MOCK_METHOD(void, RedirectInput, (const std::string&), (override));
+  MOCK_METHOD(void, RedirectOutput, (const std::string&), (override));
+  MOCK_METHOD(void, RedirectUsingPipe, (int, bool), (override));
+  MOCK_METHOD(void, BindFd, (int, int), (override));
+  MOCK_METHOD(void, SetUid, (uid_t), (override));
+  MOCK_METHOD(void, SetGid, (gid_t), (override));
+  MOCK_METHOD(void, ApplySyscallFilter, (const std::string&), (override));
+  MOCK_METHOD(void, EnterNewPidNamespace, (), (override));
+  MOCK_METHOD(void, SetInheritParentSignalMask, (bool), (override));
+  MOCK_METHOD(void, SetPreExecCallback, (const PreExecCallback&), (override));
+  MOCK_METHOD(void, SetSearchPath, (bool), (override));
+  MOCK_METHOD(int, GetPipe, (int), (override));
+  MOCK_METHOD(bool, Start, (), (override));
+  MOCK_METHOD(int, Wait, (), (override));
+  MOCK_METHOD(int, Run, (), (override));
+  MOCK_METHOD(pid_t, pid, (), (override));
+  MOCK_METHOD(bool, Kill, (int signal, int), (override));
+  MOCK_METHOD(void, Reset, (pid_t), (override));
+  MOCK_METHOD(bool, ResetPidByFile, (const std::string&), (override));
+  MOCK_METHOD(pid_t, Release, (), (override));
+  MOCK_METHOD(void, SetCloseUnusedFileDescriptors, (bool), (override));
 };
 }  // namespace debugd
 #endif  // DEBUGD_SRC_MOCK_PROCESS_WITH_ID_H_

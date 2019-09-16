@@ -22,7 +22,10 @@ class TestDevFeaturesPasswordUtils : public debugd::DevFeaturesPasswordUtils {
   ~TestDevFeaturesPasswordUtils() override = default;
 
   // openssl may not be usable so we need to mock this function.
-  MOCK_METHOD2(HashPassword, bool(const std::string&, std::string*));
+  MOCK_METHOD(bool,
+              HashPassword,
+              (const std::string&, std::string*),
+              (override));
 };
 
 const char kTestPassword[] = "test0000";
