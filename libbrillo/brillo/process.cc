@@ -326,7 +326,7 @@ bool ProcessImpl::Start() {
     } else {
       execv(argv[0], &argv[0]);
     }
-    PLOG(ERROR) << "Exec of " << argv[0] << " failed:";
+    PLOG(ERROR) << "Exec of " << argv[0] << " failed";
     _exit(kErrorExitStatus);
   } else {
     // Still executing inside the parent process with known child pid.
