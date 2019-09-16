@@ -33,7 +33,9 @@ class MockPPPDevice : public PPPDevice {
   MOCK_METHOD2(UpdateIPConfigFromPPP,
                void(const std::map<std::string, std::string>& config,
                     bool blackhole_ipv6));
+#ifndef DISABLE_DHCPV6
   MOCK_METHOD0(AcquireIPv6Config, bool());
+#endif  // DISABLE_DHCPV6
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockPPPDevice);
