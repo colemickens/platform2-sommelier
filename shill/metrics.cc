@@ -11,6 +11,7 @@
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/bootstat.h>
 
@@ -48,10 +49,10 @@ constexpr char kMetricsDailyChosenFractionOnlineCellular[] =
     "Network.Shill.DailyChosenFractionOnline.Cellular";
 constexpr char kMetricsDailyChosenFractionOnlineWifi[] =
     "Network.Shill.DailyChosenFractionOnline.Wifi";
-constexpr int kMetricsDailyTimeOnlineSamplePeriod =
-    60 * 5;  // 5 minutes in seconds
-constexpr int kMetricsDailyTimeOnlineAccumulationPeriod =
-    24 * 60 * 60;  // 24 hours in seconds
+constexpr base::TimeDelta kMetricsDailyTimeOnlineSamplePeriod =
+    base::TimeDelta::FromMinutes(5);
+constexpr base::TimeDelta kMetricsDailyTimeOnlineAccumulationPeriod =
+    base::TimeDelta::FromDays(1);
 
 constexpr char kMetricsMonthlyChosenTechnologyAny[] = "monthly.chosentech.any";
 constexpr char kMetricsMonthlyChosenTechnologyWifi[] =
@@ -69,10 +70,10 @@ constexpr char kMetricsMonthlyChosenFractionOnlineCellular[] =
     "Network.Shill.MonthlyChosenFractionOnline.Cellular";
 constexpr char kMetricsMonthlyChosenFractionOnlineWifi[] =
     "Network.Shill.MonthlyChosenFractionOnline.Wifi";
-constexpr int kMetricsMonthlyTimeOnlineSamplePeriod =
-    60 * 5;  // 5 minutes in seconds
-constexpr int kMetricsMonthlyTimeOnlineAccumulationPeriod =
-    24 * 60 * 60 * 30;  // 30 days in seconds
+constexpr base::TimeDelta kMetricsMonthlyTimeOnlineSamplePeriod =
+    base::TimeDelta::FromMinutes(5);
+constexpr base::TimeDelta kMetricsMonthlyTimeOnlineAccumulationPeriod =
+    base::TimeDelta::FromDays(30);
 
 }  // namespace
 
@@ -782,23 +783,24 @@ void Metrics::Start() {
   base::FilePath backing_path(kMetricsCumulativeDirectory);
 
   daily_metrics_.reset(new chromeos_metrics::CumulativeMetrics(
-      backing_path, daily_cumulative_names,
-      base::TimeDelta::FromSeconds(kMetricsDailyTimeOnlineSamplePeriod),
+      backing_path, daily_cumulative_names, kMetricsDailyTimeOnlineSamplePeriod,
       base::Bind(&AccumulateTimeOnTechnology, this, daily_cumulative_names),
-      base::TimeDelta::FromSeconds(kMetricsDailyTimeOnlineAccumulationPeriod),
-      base::Bind(&ReportTimeOnTechnology, base::Unretained(&metrics_library_),
-                 daily_histogram_names, 10 /* histogram min (seconds) */,
-                 kMetricsDailyTimeOnlineAccumulationPeriod /* max */,
-                 daily_cumulative_names)));
+      kMetricsDailyTimeOnlineAccumulationPeriod,
+      base::Bind(
+          &ReportTimeOnTechnology, base::Unretained(&metrics_library_),
+          daily_histogram_names, 10 /* histogram min (seconds) */,
+          kMetricsDailyTimeOnlineAccumulationPeriod.InSeconds() /* max */,
+          daily_cumulative_names)));
   monthly_metrics_.reset(new chromeos_metrics::CumulativeMetrics(
       backing_path, monthly_cumulative_names,
-      base::TimeDelta::FromSeconds(kMetricsMonthlyTimeOnlineSamplePeriod),
+      kMetricsMonthlyTimeOnlineSamplePeriod,
       base::Bind(&AccumulateTimeOnTechnology, this, monthly_cumulative_names),
-      base::TimeDelta::FromSeconds(kMetricsMonthlyTimeOnlineAccumulationPeriod),
-      base::Bind(&ReportTimeOnTechnology, base::Unretained(&metrics_library_),
-                 monthly_histogram_names, 10 /* histogram min (seconds) */,
-                 kMetricsMonthlyTimeOnlineAccumulationPeriod /* max */,
-                 monthly_cumulative_names)));
+      kMetricsMonthlyTimeOnlineAccumulationPeriod,
+      base::Bind(
+          &ReportTimeOnTechnology, base::Unretained(&metrics_library_),
+          monthly_histogram_names, 10 /* histogram min (seconds) */,
+          kMetricsMonthlyTimeOnlineAccumulationPeriod.InSeconds() /* max */,
+          monthly_cumulative_names)));
 }
 
 void Metrics::Stop() {
@@ -878,8 +880,8 @@ void Metrics::AccumulateTimeOnTechnology(
 void Metrics::ReportTimeOnTechnology(
     MetricsLibraryInterface* mli,
     const std::vector<std::string> histogram_names,
-    const int min,
-    const int max,
+    const int min_seconds,
+    const int max_seconds,
     const std::vector<std::string> cumulative_names,
     chromeos_metrics::CumulativeMetrics* cm) {
   const int nbuckets = kMetricsCumulativeTimeOnlineBucketCount;
@@ -888,10 +890,12 @@ void Metrics::ReportTimeOnTechnology(
   int64_t chosen_cellular = cm->Get(cumulative_names[CHOSEN_CELLULAR]);
   int64_t chosen_wifi = cm->Get(cumulative_names[CHOSEN_WIFI]);
 
-  mli->SendToUMA(histogram_names[CHOSEN_ANY], chosen_any, min, max, nbuckets);
-  mli->SendToUMA(histogram_names[CHOSEN_CELLULAR], chosen_cellular, min, max,
-                 nbuckets);
-  mli->SendToUMA(histogram_names[CHOSEN_WIFI], chosen_wifi, min, max, nbuckets);
+  mli->SendToUMA(histogram_names[CHOSEN_ANY], chosen_any, min_seconds,
+                 max_seconds, nbuckets);
+  mli->SendToUMA(histogram_names[CHOSEN_CELLULAR], chosen_cellular, min_seconds,
+                 max_seconds, nbuckets);
+  mli->SendToUMA(histogram_names[CHOSEN_WIFI], chosen_wifi, min_seconds,
+                 max_seconds, nbuckets);
 
   if (chosen_any > 0) {
     mli->SendEnumToUMA(histogram_names[CHOSEN_FRACTION_CELLULAR],
