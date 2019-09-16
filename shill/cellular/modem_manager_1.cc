@@ -36,8 +36,8 @@ void ModemManager1::Start() {
   CHECK(!proxy_);
   proxy_ = control_interface()->CreateDBusObjectManagerProxy(
       path(), service(),
-      base::Bind(&ModemManager1::OnAppeared, base::Unretained(this)),
-      base::Bind(&ModemManager1::OnVanished, base::Unretained(this)));
+      base::Bind(&ModemManager1::OnAppeared, weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&ModemManager1::OnVanished, weak_ptr_factory_.GetWeakPtr()));
   proxy_->set_interfaces_added_callback(Bind(
       &ModemManager1::OnInterfacesAddedSignal, weak_ptr_factory_.GetWeakPtr()));
   proxy_->set_interfaces_removed_callback(
