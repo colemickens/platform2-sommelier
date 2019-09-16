@@ -27,14 +27,38 @@
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
+#include "power_manager/proto_bindings/suspend.pb.h"
+
 namespace {
 
 // The sysfs entry that controls RTC wake alarms.  To set an alarm, write
 // into this file the time of the alarm in seconds since the epoch.
 const char kRtcWakeAlarmPath[] = "/sys/class/rtc/rtc0/wakealarm";
 
+std::string WakeupTypeToString(power_manager::SuspendDone::WakeupType type) {
+  switch (type) {
+    case power_manager::SuspendDone_WakeupType_INPUT:
+      return "input";
+    case power_manager::SuspendDone_WakeupType_OTHER:
+      return "other";
+    case power_manager::SuspendDone_WakeupType_NOT_APPLICABLE:
+      return "not applicable";
+    case power_manager::SuspendDone_WakeupType_UNKNOWN:
+      return "not applicable";
+  }
+}
+
 // Exits when powerd announces that the suspend attempt has completed.
-void OnSuspendDone(base::RunLoop* run_loop, dbus::Signal* signal) {
+void OnSuspendDone(base::RunLoop* run_loop,
+                   bool print_wakeup_type,
+                   dbus::Signal* signal) {
+  if (print_wakeup_type) {
+    power_manager::SuspendDone info;
+    dbus::MessageReader reader(signal);
+    CHECK(reader.PopArrayOfBytesAsProto(&info));
+    LOG(INFO) << "Wakeup type: " << WakeupTypeToString(info.wakeup_type());
+  }
+
   run_loop->Quit();
 }
 
@@ -71,6 +95,7 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(suspend_for_sec, 0,
                "Ask powerd to suspend the device for this many seconds. powerd "
                "then sets an alarm just before going to suspend.");
+  DEFINE_bool(print_wakeup_type, false, "Print wakeup type of last resume.");
 
   brillo::FlagHelper::Init(argc, argv,
                            "Instruct powerd to suspend the system.");
@@ -96,10 +121,10 @@ int main(int argc, char* argv[]) {
   }
 
   base::RunLoop run_loop;
-  powerd_proxy->ConnectToSignal(power_manager::kPowerManagerInterface,
-                                power_manager::kSuspendDoneSignal,
-                                base::Bind(&OnSuspendDone, &run_loop),
-                                base::Bind(&OnDBusSignalConnected));
+  powerd_proxy->ConnectToSignal(
+      power_manager::kPowerManagerInterface, power_manager::kSuspendDoneSignal,
+      base::Bind(&OnSuspendDone, &run_loop, FLAGS_print_wakeup_type),
+      base::Bind(&OnDBusSignalConnected));
 
   // Send a suspend request.
   dbus::MethodCall method_call(power_manager::kPowerManagerInterface,
