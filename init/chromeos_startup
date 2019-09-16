@@ -155,6 +155,11 @@ POWER_OVERRIDE_DIR="/run/lock/power_override"
 mkdir -p "${POWER_OVERRIDE_DIR}"
 chmod 1777 "${POWER_OVERRIDE_DIR}"
 
+# Create a directory where we can keep persistent references to namespaces.
+mkdir /run/namespaces
+mount --bind /run/namespaces /run/namespaces
+mount --make-private /run/namespaces
+
 # Prepare to mount stateful partition
 ROOT_DEV="$(rootdev -s)"
 ROOTDEV_RET_CODE=$?
