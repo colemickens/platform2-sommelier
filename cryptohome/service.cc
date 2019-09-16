@@ -2937,7 +2937,8 @@ gboolean Service::InstallAttributesCount(gint* OUT_count, GError** error) {
 gboolean Service::InstallAttributesIsReady(gboolean* OUT_ready,
                                            GError** error) {
   *OUT_ready =
-      (install_attrs_->status() != InstallAttributes::Status::kUnknown);
+      (install_attrs_->status() != InstallAttributes::Status::kUnknown &&
+       install_attrs_->status() != InstallAttributes::Status::kTpmNotOwned);
   return TRUE;
 }
 

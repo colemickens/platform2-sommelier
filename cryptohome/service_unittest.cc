@@ -2165,8 +2165,7 @@ TEST_F(ServiceTest, InstallAttributesStatusQueries) {
   Mock::VerifyAndClear(&homedirs_);
   EXPECT_CALL(attrs_, status())
       .WillRepeatedly(Return(InstallAttributes::Status::kTpmNotOwned));
-  // TODO(https://crbug.com/1004282): This should be false.
-  EXPECT_TRUE(GetInstallAttributesIsReady(&service_));
+  EXPECT_FALSE(GetInstallAttributesIsReady(&service_));
   EXPECT_FALSE(GetInstallAttributesIsInvalid(&service_));
   EXPECT_FALSE(GetInstallAttributesIsFirstInstall(&service_));
 
