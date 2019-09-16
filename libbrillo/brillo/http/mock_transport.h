@@ -20,28 +20,35 @@ class MockTransport : public Transport {
  public:
   MockTransport() = default;
 
-  MOCK_METHOD6(CreateConnection,
-               std::shared_ptr<Connection>(const std::string&,
-                                           const std::string&,
-                                           const HeaderList&,
-                                           const std::string&,
-                                           const std::string&,
-                                           brillo::ErrorPtr*));
-  MOCK_METHOD2(RunCallbackAsync,
-               void(const base::Location&, const base::Closure&));
-  MOCK_METHOD3(StartAsyncTransfer, RequestID(Connection*,
-                                             const SuccessCallback&,
-                                             const ErrorCallback&));
-  MOCK_METHOD1(CancelRequest, bool(RequestID));
-  MOCK_METHOD1(SetDefaultTimeout, void(base::TimeDelta));
-  MOCK_METHOD1(SetLocalIpAddress, void(const std::string&));
-  MOCK_METHOD0(UseDefaultCertificate, void());
-  MOCK_METHOD1(UseCustomCertificate, void(Certificate));
-  MOCK_METHOD3(ResolveHostToIp,
-               void(const std::string&, uint16_t, const std::string&));
+  MOCK_METHOD(std::shared_ptr<Connection>,
+              CreateConnection,
+              (const std::string&,
+               const std::string&,
+               const HeaderList&,
+               const std::string&,
+               const std::string&,
+               brillo::ErrorPtr*),
+              (override));
+  MOCK_METHOD(void,
+              RunCallbackAsync,
+              (const base::Location&, const base::Closure&),
+              (override));
+  MOCK_METHOD(RequestID,
+              StartAsyncTransfer,
+              (Connection*, const SuccessCallback&, const ErrorCallback&),
+              (override));
+  MOCK_METHOD(bool, CancelRequest, (RequestID), (override));
+  MOCK_METHOD(void, SetDefaultTimeout, (base::TimeDelta), (override));
+  MOCK_METHOD(void, SetLocalIpAddress, (const std::string&), (override));
+  MOCK_METHOD(void, UseDefaultCertificate, (), (override));
+  MOCK_METHOD(void, UseCustomCertificate, (Certificate), (override));
+  MOCK_METHOD(void,
+              ResolveHostToIp,
+              (const std::string&, uint16_t, const std::string&),
+              (override));
 
  protected:
-  MOCK_METHOD0(ClearHost, void());
+  MOCK_METHOD(void, ClearHost, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockTransport);

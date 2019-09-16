@@ -18,20 +18,27 @@ class BRILLO_EXPORT MockUdevEnumerate : public UdevEnumerate {
   MockUdevEnumerate() = default;
   ~MockUdevEnumerate() override = default;
 
-  MOCK_METHOD1(AddMatchSubsystem, bool(const char* subsystem));
-  MOCK_METHOD1(AddNoMatchSubsystem, bool(const char* subsystem));
-  MOCK_METHOD2(AddMatchSysAttribute,
-               bool(const char* attribute, const char* value));
-  MOCK_METHOD2(AddNoMatchSysAttribute,
-               bool(const char* attribute, const char* value));
-  MOCK_METHOD2(AddMatchProperty, bool(const char* property, const char* value));
-  MOCK_METHOD1(AddMatchSysName, bool(const char* sys_name));
-  MOCK_METHOD1(AddMatchTag, bool(const char* tag));
-  MOCK_METHOD0(AddMatchIsInitialized, bool());
-  MOCK_METHOD1(AddSysPath, bool(const char* sys_path));
-  MOCK_METHOD0(ScanDevices, bool());
-  MOCK_METHOD0(ScanSubsystems, bool());
-  MOCK_CONST_METHOD0(GetListEntry, std::unique_ptr<UdevListEntry>());
+  MOCK_METHOD(bool, AddMatchSubsystem, (const char*), (override));
+  MOCK_METHOD(bool, AddNoMatchSubsystem, (const char*), (override));
+  MOCK_METHOD(bool,
+              AddMatchSysAttribute,
+              (const char*, const char*),
+              (override));
+  MOCK_METHOD(bool,
+              AddNoMatchSysAttribute,
+              (const char*, const char*),
+              (override));
+  MOCK_METHOD(bool, AddMatchProperty, (const char*, const char*), (override));
+  MOCK_METHOD(bool, AddMatchSysName, (const char*), (override));
+  MOCK_METHOD(bool, AddMatchTag, (const char*), (override));
+  MOCK_METHOD(bool, AddMatchIsInitialized, (), (override));
+  MOCK_METHOD(bool, AddSysPath, (const char*), (override));
+  MOCK_METHOD(bool, ScanDevices, (), (override));
+  MOCK_METHOD(bool, ScanSubsystems, (), (override));
+  MOCK_METHOD(std::unique_ptr<UdevListEntry>,
+              GetListEntry,
+              (),
+              (const, override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockUdevEnumerate);

@@ -177,8 +177,7 @@ class PropertyValidatorObserver {
                        base::Unretained(this))) {}
   virtual ~PropertyValidatorObserver() {}
 
-  MOCK_METHOD2_T(ValidateProperty,
-                 bool(brillo::ErrorPtr* error, const T& value));
+  MOCK_METHOD(bool, ValidateProperty, (brillo::ErrorPtr*, const T&));
 
   const base::Callback<bool(brillo::ErrorPtr*, const T&)>&
   validate_property_callback() const {

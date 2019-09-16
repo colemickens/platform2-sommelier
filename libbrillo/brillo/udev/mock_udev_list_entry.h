@@ -18,11 +18,13 @@ class BRILLO_EXPORT MockUdevListEntry : public UdevListEntry {
   MockUdevListEntry() = default;
   ~MockUdevListEntry() override = default;
 
-  MOCK_CONST_METHOD0(GetNext, std::unique_ptr<UdevListEntry>());
-  MOCK_CONST_METHOD1(GetByName,
-                     std::unique_ptr<UdevListEntry>(const char* name));
-  MOCK_CONST_METHOD0(GetName, const char*());
-  MOCK_CONST_METHOD0(GetValue, const char*());
+  MOCK_METHOD(std::unique_ptr<UdevListEntry>, GetNext, (), (const, override));
+  MOCK_METHOD(std::unique_ptr<UdevListEntry>,
+              GetByName,
+              (const char*),
+              (const, override));
+  MOCK_METHOD(const char*, GetName, (), (const, override));
+  MOCK_METHOD(const char*, GetValue, (), (const, override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockUdevListEntry);

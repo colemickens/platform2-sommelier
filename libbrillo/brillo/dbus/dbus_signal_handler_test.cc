@@ -80,7 +80,7 @@ TEST_F(DBusSignalHandlerTest, ConnectToSignal) {
 TEST_F(DBusSignalHandlerTest, CallSignal_3Args) {
   class SignalHandlerSink {
    public:
-    MOCK_METHOD3(Handler, void(int, int, double));
+    MOCK_METHOD(void, Handler, (int, int, double));
   } sink;
 
   EXPECT_CALL(sink, Handler(10, 20, 30.5)).Times(1);
@@ -91,7 +91,7 @@ TEST_F(DBusSignalHandlerTest, CallSignal_2Args) {
   class SignalHandlerSink {
    public:
     // Take string both by reference and by value to make sure this works too.
-    MOCK_METHOD2(Handler, void(const std::string&, std::string));
+    MOCK_METHOD(void, Handler, (const std::string&, std::string));
   } sink;
 
   EXPECT_CALL(sink, Handler(std::string{"foo"}, std::string{"bar"})).Times(1);
@@ -101,7 +101,7 @@ TEST_F(DBusSignalHandlerTest, CallSignal_2Args) {
 TEST_F(DBusSignalHandlerTest, CallSignal_NoArgs) {
   class SignalHandlerSink {
    public:
-    MOCK_METHOD0(Handler, void());
+    MOCK_METHOD(void, Handler, ());
   } sink;
 
   EXPECT_CALL(sink, Handler()).Times(1);
@@ -111,7 +111,7 @@ TEST_F(DBusSignalHandlerTest, CallSignal_NoArgs) {
 TEST_F(DBusSignalHandlerTest, CallSignal_Error_TooManyArgs) {
   class SignalHandlerSink {
    public:
-    MOCK_METHOD0(Handler, void());
+    MOCK_METHOD(void, Handler, ());
   } sink;
 
   // Handler() expects no args, but we send an int.
@@ -122,7 +122,7 @@ TEST_F(DBusSignalHandlerTest, CallSignal_Error_TooManyArgs) {
 TEST_F(DBusSignalHandlerTest, CallSignal_Error_TooFewArgs) {
   class SignalHandlerSink {
    public:
-    MOCK_METHOD2(Handler, void(std::string, bool));
+    MOCK_METHOD(void, Handler, (std::string, bool));
   } sink;
 
   // Handler() expects 2 args while we send it just one.
@@ -133,7 +133,7 @@ TEST_F(DBusSignalHandlerTest, CallSignal_Error_TooFewArgs) {
 TEST_F(DBusSignalHandlerTest, CallSignal_Error_TypeMismatchArgs) {
   class SignalHandlerSink {
    public:
-    MOCK_METHOD2(Handler, void(std::string, bool));
+    MOCK_METHOD(void, Handler, (std::string, bool));
   } sink;
 
   // Handler() expects "sb" while we send it "ii".

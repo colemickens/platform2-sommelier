@@ -26,14 +26,20 @@ class MockContiguousBuffer : public data_container::ContiguousBufferBase {
  public:
   MockContiguousBuffer() = default;
 
-  MOCK_METHOD2(Resize, bool(size_t, ErrorPtr*));
-  MOCK_CONST_METHOD0(GetSize, size_t());
-  MOCK_CONST_METHOD0(IsReadOnly, bool());
+  MOCK_METHOD(bool, Resize, (size_t, ErrorPtr*), (override));
+  MOCK_METHOD(size_t, GetSize, (), (const, override));
+  MOCK_METHOD(bool, IsReadOnly, (), (const, override));
 
-  MOCK_CONST_METHOD2(GetReadOnlyBuffer, const void*(size_t, ErrorPtr*));
-  MOCK_METHOD2(GetBuffer, void*(size_t, ErrorPtr*));
+  MOCK_METHOD(const void*,
+              GetReadOnlyBuffer,
+              (size_t, ErrorPtr*),
+              (const, override));
+  MOCK_METHOD(void*, GetBuffer, (size_t, ErrorPtr*), (override));
 
-  MOCK_CONST_METHOD3(CopyMemoryBlock, void(void*, const void*, size_t));
+  MOCK_METHOD(void,
+              CopyMemoryBlock,
+              (void*, const void*, size_t),
+              (const, override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockContiguousBuffer);

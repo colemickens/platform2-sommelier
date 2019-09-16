@@ -18,30 +18,45 @@ class BRILLO_EXPORT MockUdevDevice : public UdevDevice {
   MockUdevDevice() = default;
   ~MockUdevDevice() override = default;
 
-  MOCK_CONST_METHOD0(GetParent, std::unique_ptr<UdevDevice>());
-  MOCK_CONST_METHOD2(GetParentWithSubsystemDeviceType,
-                     std::unique_ptr<UdevDevice>(const char* subsystem,
-                                                 const char* device_type));
-  MOCK_CONST_METHOD0(IsInitialized, bool());
-  MOCK_CONST_METHOD0(GetMicrosecondsSinceInitialized, uint64_t());
-  MOCK_CONST_METHOD0(GetSequenceNumber, uint64_t());
-  MOCK_CONST_METHOD0(GetDevicePath, const char*());
-  MOCK_CONST_METHOD0(GetDeviceNode, const char*());
-  MOCK_CONST_METHOD0(GetDeviceNumber, dev_t());
-  MOCK_CONST_METHOD0(GetDeviceType, const char*());
-  MOCK_CONST_METHOD0(GetDriver, const char*());
-  MOCK_CONST_METHOD0(GetSubsystem, const char*());
-  MOCK_CONST_METHOD0(GetSysPath, const char*());
-  MOCK_CONST_METHOD0(GetSysName, const char*());
-  MOCK_CONST_METHOD0(GetSysNumber, const char*());
-  MOCK_CONST_METHOD0(GetAction, const char*());
-  MOCK_CONST_METHOD0(GetDeviceLinksListEntry, std::unique_ptr<UdevListEntry>());
-  MOCK_CONST_METHOD0(GetPropertiesListEntry, std::unique_ptr<UdevListEntry>());
-  MOCK_CONST_METHOD1(GetPropertyValue, const char*(const char* key));
-  MOCK_CONST_METHOD0(GetTagsListEntry, std::unique_ptr<UdevListEntry>());
-  MOCK_CONST_METHOD0(GetSysAttributeListEntry,
-                     std::unique_ptr<UdevListEntry>());
-  MOCK_CONST_METHOD1(GetSysAttributeValue, const char*(const char* attribute));
+  MOCK_METHOD(std::unique_ptr<UdevDevice>, GetParent, (), (const, override));
+  MOCK_METHOD(std::unique_ptr<UdevDevice>,
+              GetParentWithSubsystemDeviceType,
+              (const char*, const char*),
+              (const, override));
+  MOCK_METHOD(bool, IsInitialized, (), (const, override));
+  MOCK_METHOD(uint64_t, GetMicrosecondsSinceInitialized, (), (const, override));
+  MOCK_METHOD(uint64_t, GetSequenceNumber, (), (const, override));
+  MOCK_METHOD(const char*, GetDevicePath, (), (const, override));
+  MOCK_METHOD(const char*, GetDeviceNode, (), (const, override));
+  MOCK_METHOD(dev_t, GetDeviceNumber, (), (const, override));
+  MOCK_METHOD(const char*, GetDeviceType, (), (const, override));
+  MOCK_METHOD(const char*, GetDriver, (), (const, override));
+  MOCK_METHOD(const char*, GetSubsystem, (), (const, override));
+  MOCK_METHOD(const char*, GetSysPath, (), (const, override));
+  MOCK_METHOD(const char*, GetSysName, (), (const, override));
+  MOCK_METHOD(const char*, GetSysNumber, (), (const, override));
+  MOCK_METHOD(const char*, GetAction, (), (const, override));
+  MOCK_METHOD(std::unique_ptr<UdevListEntry>,
+              GetDeviceLinksListEntry,
+              (),
+              (const, override));
+  MOCK_METHOD(std::unique_ptr<UdevListEntry>,
+              GetPropertiesListEntry,
+              (),
+              (const, override));
+  MOCK_METHOD(const char*, GetPropertyValue, (const char*), (const, override));
+  MOCK_METHOD(std::unique_ptr<UdevListEntry>,
+              GetTagsListEntry,
+              (),
+              (const, override));
+  MOCK_METHOD(std::unique_ptr<UdevListEntry>,
+              GetSysAttributeListEntry,
+              (),
+              (const, override));
+  MOCK_METHOD(const char*,
+              GetSysAttributeValue,
+              (const char*),
+              (const, override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockUdevDevice);

@@ -22,8 +22,10 @@ class MockDBusObject : public DBusObject {
       : DBusObject(object_manager, bus, object_path) {}
   ~MockDBusObject() override = default;
 
-  MOCK_METHOD1(RegisterAsync,
-               void(const AsyncEventSequencer::CompletionAction&));
+  MOCK_METHOD(void,
+              RegisterAsync,
+              (const AsyncEventSequencer::CompletionAction&),
+              (override));
 };  // class MockDBusObject
 
 }  // namespace dbus_utils

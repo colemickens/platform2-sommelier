@@ -132,20 +132,23 @@ void SetToTrue(bool* target, const Error* /* error */) {
 // A mock file descriptor wrapper to test low-level file API used by FileStream.
 class MockFileDescriptor : public FileStream::FileDescriptorInterface {
  public:
-  MOCK_CONST_METHOD0(IsOpen, bool());
-  MOCK_METHOD2(Read, ssize_t(void*, size_t));
-  MOCK_METHOD2(Write, ssize_t(const void*, size_t));
-  MOCK_METHOD2(Seek, off64_t(off64_t, int));
-  MOCK_CONST_METHOD0(GetFileMode, mode_t());
-  MOCK_CONST_METHOD0(GetSize, uint64_t());
-  MOCK_CONST_METHOD1(Truncate, int(off64_t));
-  MOCK_METHOD0(Flush, int());
-  MOCK_METHOD0(Close, int());
-  MOCK_METHOD3(WaitForData,
-               bool(Stream::AccessMode, const DataCallback&, ErrorPtr*));
-  MOCK_METHOD3(WaitForDataBlocking,
-               int(Stream::AccessMode, base::TimeDelta, Stream::AccessMode*));
-  MOCK_METHOD0(CancelPendingAsyncOperations, void());
+  MOCK_METHOD(bool, IsOpen, (), (const, override));
+  MOCK_METHOD(ssize_t, Read, (void*, size_t), (override));
+  MOCK_METHOD(ssize_t, Write, (const void*, size_t), (override));
+  MOCK_METHOD(off64_t, Seek, (off64_t, int), (override));
+  MOCK_METHOD(mode_t, GetFileMode, (), (const, override));
+  MOCK_METHOD(uint64_t, GetSize, (), (const, override));
+  MOCK_METHOD(int, Truncate, (off64_t), (const, override));
+  MOCK_METHOD(int, Close, (), (override));
+  MOCK_METHOD(bool,
+              WaitForData,
+              (Stream::AccessMode, const DataCallback&, ErrorPtr*),
+              (override));
+  MOCK_METHOD(int,
+              WaitForDataBlocking,
+              (Stream::AccessMode, base::TimeDelta, Stream::AccessMode*),
+              (override));
+  MOCK_METHOD(void, CancelPendingAsyncOperations, (), (override));
 };
 
 class FileStreamTest : public testing::Test {

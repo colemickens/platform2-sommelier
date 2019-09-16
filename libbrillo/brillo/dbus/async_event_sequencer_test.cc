@@ -22,7 +22,7 @@ const char kTestMethod2[] = "TestMethod2";
 
 class AsyncEventSequencerTest : public ::testing::Test {
  public:
-  MOCK_METHOD1(HandleCompletion, void(bool all_succeeded));
+  MOCK_METHOD(void, HandleCompletion, (bool));
 
   void SetUp() {
     aec_ = new AsyncEventSequencer();

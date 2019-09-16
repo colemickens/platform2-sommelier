@@ -33,11 +33,17 @@ class MockMemoryContainer : public data_container::DataContainerInterface {
  public:
   MockMemoryContainer() = default;
 
-  MOCK_METHOD5(Read, bool(void*, size_t, size_t, size_t*, ErrorPtr*));
-  MOCK_METHOD5(Write, bool(const void*, size_t, size_t, size_t*, ErrorPtr*));
-  MOCK_METHOD2(Resize, bool(size_t, ErrorPtr*));
-  MOCK_CONST_METHOD0(GetSize, size_t());
-  MOCK_CONST_METHOD0(IsReadOnly, bool());
+  MOCK_METHOD(bool,
+              Read,
+              (void*, size_t, size_t, size_t*, ErrorPtr*),
+              (override));
+  MOCK_METHOD(bool,
+              Write,
+              (const void*, size_t, size_t, size_t*, ErrorPtr*),
+              (override));
+  MOCK_METHOD(bool, Resize, (size_t, ErrorPtr*), (override));
+  MOCK_METHOD(size_t, GetSize, (), (const, override));
+  MOCK_METHOD(bool, IsReadOnly, (), (const, override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMemoryContainer);

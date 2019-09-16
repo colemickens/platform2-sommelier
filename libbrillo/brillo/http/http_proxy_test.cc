@@ -49,7 +49,9 @@ class HttpProxyTest : public testing::Test {
     return CreateDBusResponse(method_call).release();
   }
 
-  MOCK_METHOD2(GetProxiesCallback, void(bool, const std::vector<std::string>&));
+  MOCK_METHOD(void,
+              GetProxiesCallback,
+              (bool, const std::vector<std::string>&));
 
  protected:
   HttpProxyTest() {

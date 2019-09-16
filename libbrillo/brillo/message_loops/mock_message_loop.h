@@ -57,20 +57,19 @@ class BRILLO_EXPORT MockMessageLoop : public MessageLoop {
   }
   ~MockMessageLoop() override = default;
 
-  MOCK_METHOD3(PostDelayedTask,
-               TaskId(const base::Location& from_here,
-                      const base::Closure& task,
-                      base::TimeDelta delay));
+  MOCK_METHOD(TaskId,
+              PostDelayedTask,
+              (const base::Location&, const base::Closure&, base::TimeDelta),
+              (override));
   using MessageLoop::PostDelayedTask;
-  MOCK_METHOD5(WatchFileDescriptor,
-               TaskId(const base::Location& from_here,
-                      int fd,
-                      WatchMode mode,
-                      bool persistent,
-                      const base::Closure& task));
+  MOCK_METHOD(
+      TaskId,
+      WatchFileDescriptor,
+      (const base::Location&, int, WatchMode, bool, const base::Closure&),
+      (override));
   using MessageLoop::WatchFileDescriptor;
-  MOCK_METHOD1(CancelTask, bool(TaskId task_id));
-  MOCK_METHOD1(RunOnce, bool(bool may_block));
+  MOCK_METHOD(bool, CancelTask, (TaskId), (override));
+  MOCK_METHOD(bool, RunOnce, (bool), (override));
 
   // Returns the actual FakeMessageLoop instance so default actions can be
   // override with other actions or call

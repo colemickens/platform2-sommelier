@@ -21,16 +21,23 @@ class BRILLO_EXPORT MockUdev : public Udev {
   MockUdev() : Udev(nullptr) {}
   ~MockUdev() override = default;
 
-  MOCK_METHOD1(CreateDeviceFromSysPath,
-               std::unique_ptr<UdevDevice>(const char* sys_path));
-  MOCK_METHOD2(CreateDeviceFromDeviceNumber,
-               std::unique_ptr<UdevDevice>(char type, dev_t device_number));
-  MOCK_METHOD2(CreateDeviceFromSubsystemSysName,
-               std::unique_ptr<UdevDevice>(const char* subsystem,
-                                           const char* sys_name));
-  MOCK_METHOD0(CreateEnumerate, std::unique_ptr<UdevEnumerate>());
-  MOCK_METHOD1(CreateMonitorFromNetlink,
-               std::unique_ptr<UdevMonitor>(const char* name));
+  MOCK_METHOD(std::unique_ptr<UdevDevice>,
+              CreateDeviceFromSysPath,
+              (const char*),
+              (override));
+  MOCK_METHOD(std::unique_ptr<UdevDevice>,
+              CreateDeviceFromDeviceNumber,
+              (char, dev_t),
+              (override));
+  MOCK_METHOD(std::unique_ptr<UdevDevice>,
+              CreateDeviceFromSubsystemSysName,
+              (const char*, const char*),
+              (override));
+  MOCK_METHOD(std::unique_ptr<UdevEnumerate>, CreateEnumerate, (), (override));
+  MOCK_METHOD(std::unique_ptr<UdevMonitor>,
+              CreateMonitorFromNetlink,
+              (const char*),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockUdev);

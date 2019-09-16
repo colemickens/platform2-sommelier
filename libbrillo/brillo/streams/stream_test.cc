@@ -42,39 +42,48 @@ class MockStreamImpl : public Stream {
  public:
   MockStreamImpl() = default;
 
-  MOCK_CONST_METHOD0(IsOpen, bool());
-  MOCK_CONST_METHOD0(CanRead, bool());
-  MOCK_CONST_METHOD0(CanWrite, bool());
-  MOCK_CONST_METHOD0(CanSeek, bool());
-  MOCK_CONST_METHOD0(CanGetSize, bool());
+  MOCK_METHOD(bool, IsOpen, (), (const, override));
+  MOCK_METHOD(bool, CanRead, (), (const, override));
+  MOCK_METHOD(bool, CanWrite, (), (const, override));
+  MOCK_METHOD(bool, CanSeek, (), (const, override));
+  MOCK_METHOD(bool, CanGetSize, (), (const, override));
 
-  MOCK_CONST_METHOD0(GetSize, uint64_t());
-  MOCK_METHOD2(SetSizeBlocking, bool(uint64_t, ErrorPtr*));
-  MOCK_CONST_METHOD0(GetRemainingSize, uint64_t());
+  MOCK_METHOD(uint64_t, GetSize, (), (const, override));
+  MOCK_METHOD(bool, SetSizeBlocking, (uint64_t, ErrorPtr*), (override));
+  MOCK_METHOD(uint64_t, GetRemainingSize, (), (const, override));
 
-  MOCK_CONST_METHOD0(GetPosition, uint64_t());
-  MOCK_METHOD4(Seek, bool(int64_t, Whence, uint64_t*, ErrorPtr*));
+  MOCK_METHOD(uint64_t, GetPosition, (), (const, override));
+  MOCK_METHOD(bool, Seek, (int64_t, Whence, uint64_t*, ErrorPtr*), (override));
 
   // Omitted: ReadAsync
   // Omitted: ReadAllAsync
-  MOCK_METHOD5(ReadNonBlocking, bool(void*, size_t, size_t*, bool*, ErrorPtr*));
+  MOCK_METHOD(bool,
+              ReadNonBlocking,
+              (void*, size_t, size_t*, bool*, ErrorPtr*),
+              (override));
   // Omitted: ReadBlocking
   // Omitted: ReadAllBlocking
 
   // Omitted: WriteAsync
   // Omitted: WriteAllAsync
-  MOCK_METHOD4(WriteNonBlocking, bool(const void*, size_t, size_t*, ErrorPtr*));
+  MOCK_METHOD(bool,
+              WriteNonBlocking,
+              (const void*, size_t, size_t*, ErrorPtr*),
+              (override));
   // Omitted: WriteBlocking
   // Omitted: WriteAllBlocking
 
-  MOCK_METHOD1(FlushBlocking, bool(ErrorPtr*));
-  MOCK_METHOD1(CloseBlocking, bool(ErrorPtr*));
+  MOCK_METHOD(bool, FlushBlocking, (ErrorPtr*), (override));
+  MOCK_METHOD(bool, CloseBlocking, (ErrorPtr*), (override));
 
-  MOCK_METHOD3(WaitForData, bool(AccessMode,
-                                 const base::Callback<void(AccessMode)>&,
-                                 ErrorPtr*));
-  MOCK_METHOD4(WaitForDataBlocking,
-               bool(AccessMode, base::TimeDelta, AccessMode*, ErrorPtr*));
+  MOCK_METHOD(bool,
+              WaitForData,
+              (AccessMode, const base::Callback<void(AccessMode)>&, ErrorPtr*),
+              (override));
+  MOCK_METHOD(bool,
+              WaitForDataBlocking,
+              (AccessMode, base::TimeDelta, AccessMode*, ErrorPtr*),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockStreamImpl);
@@ -333,7 +342,10 @@ TEST(Stream, ReadBlocking) {
 TEST(Stream, ReadAllBlocking) {
   class MockReadBlocking : public MockStreamImpl {
    public:
-    MOCK_METHOD4(ReadBlocking, bool(void*, size_t, size_t*, ErrorPtr*));
+    MOCK_METHOD(bool,
+                ReadBlocking,
+                (void*, size_t, size_t*, ErrorPtr*),
+                (override));
   } stream_mock;
 
   char buf[1024];
@@ -471,7 +483,10 @@ TEST(Stream, WriteBlocking) {
 TEST(Stream, WriteAllBlocking) {
   class MockWritelocking : public MockStreamImpl {
    public:
-    MOCK_METHOD4(WriteBlocking, bool(const void*, size_t, size_t*, ErrorPtr*));
+    MOCK_METHOD(bool,
+                WriteBlocking,
+                (const void*, size_t, size_t*, ErrorPtr*),
+                (override));
   } stream_mock;
 
   char buf[1024];

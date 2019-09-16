@@ -18,15 +18,17 @@ class BRILLO_EXPORT MockUdevMonitor : public UdevMonitor {
   MockUdevMonitor() = default;
   ~MockUdevMonitor() override = default;
 
-  MOCK_METHOD0(EnableReceiving, bool());
-  MOCK_METHOD1(SetReceiveBufferSize, bool(int size));
-  MOCK_CONST_METHOD0(GetFileDescriptor, int());
-  MOCK_METHOD0(ReceiveDevice, std::unique_ptr<UdevDevice>());
-  MOCK_METHOD2(FilterAddMatchSubsystemDeviceType,
-               bool(const char* subsystem, const char* device_type));
-  MOCK_METHOD1(FilterAddMatchTag, bool(const char* tag));
-  MOCK_METHOD0(FilterUpdate, bool());
-  MOCK_METHOD0(FilterRemove, bool());
+  MOCK_METHOD(bool, EnableReceiving, (), (override));
+  MOCK_METHOD(bool, SetReceiveBufferSize, (int), (override));
+  MOCK_METHOD(int, GetFileDescriptor, (), (const, override));
+  MOCK_METHOD(std::unique_ptr<UdevDevice>, ReceiveDevice, (), (override));
+  MOCK_METHOD(bool,
+              FilterAddMatchSubsystemDeviceType,
+              (const char*, const char*),
+              (override));
+  MOCK_METHOD(bool, FilterAddMatchTag, (const char*), (override));
+  MOCK_METHOD(bool, FilterUpdate, (), (override));
+  MOCK_METHOD(bool, FilterRemove, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockUdevMonitor);
