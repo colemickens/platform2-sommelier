@@ -40,9 +40,6 @@ class MockThrottler : public Throttler {
   MOCK_METHOD1(WriteTCCommands, void(int fd));
   MOCK_METHOD1(OnProcessExited, void(int exit_status));
 
-  MOCK_METHOD2(AppendCommands,
-               void(std::string* file_contents,
-                    std::vector<std::string>* commands));
   MOCK_METHOD3(Done,
                void(const ResultCallback& callback,
                     Error::Type error_type,

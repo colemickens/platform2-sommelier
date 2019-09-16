@@ -19,8 +19,6 @@ class MockCertificateFile : public CertificateFile {
   MockCertificateFile();
   ~MockCertificateFile() override;
 
-  MOCK_METHOD1(CreatePEMFromString,
-               base::FilePath(const std::string& pem_contents));
   MOCK_METHOD1(CreatePEMFromStrings,
                base::FilePath(const std::vector<std::string>& pem_contents));
 

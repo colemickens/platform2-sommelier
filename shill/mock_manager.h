@@ -31,7 +31,6 @@ class MockManager : public Manager {
 #if !defined(DISABLE_WIRED_8021X)
   MOCK_CONST_METHOD0(ethernet_eap_provider, EthernetEapProvider*());
 #endif  // DISABLE_WIRED_8021X
-  MOCK_METHOD0(mutable_store, PropertyStore*());
   MOCK_CONST_METHOD0(store, const PropertyStore&());
   MOCK_CONST_METHOD0(run_path, const base::FilePath&());
   MOCK_METHOD0(Start, void());
@@ -123,7 +122,6 @@ class MockManager : public Manager {
                     Error* error));
   MOCK_METHOD0(OnDeviceClaimerVanished, void());
   MOCK_METHOD0(GetDeviceInterfaceNames, std::vector<std::string>());
-  MOCK_CONST_METHOD0(GetFTEnabled, bool());
   MOCK_CONST_METHOD0(ActiveProfile, const ProfileRefPtr&());
   MOCK_METHOD0(GetFirstEthernetService, ServiceRefPtr());
 
