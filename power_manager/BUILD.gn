@@ -88,6 +88,7 @@ static_library("libsystem") {
   sources = [
     "powerd/system/acpi_wakeup_helper.cc",
     "powerd/system/ambient_light_sensor.cc",
+    "powerd/system/ambient_light_sensor_manager.cc",
     "powerd/system/arc_timer_manager.cc",
     "powerd/system/async_file_reader.cc",
     "powerd/system/audio_client.cc",
@@ -127,6 +128,7 @@ static_library("libsystem_stub") {
   all_dependent_configs = [ ":libsystem_stub_dependent_config" ]
   sources = [
     "powerd/system/acpi_wakeup_helper_stub.cc",
+    "powerd/system/ambient_light_sensor_manager_stub.cc",
     "powerd/system/ambient_light_sensor_stub.cc",
     "powerd/system/audio_client_stub.cc",
     "powerd/system/backlight_stub.cc",
@@ -390,6 +392,7 @@ if (use.test) {
     sources = [
       "common/testrunner.cc",
       "powerd/system/acpi_wakeup_helper_test.cc",
+      "powerd/system/ambient_light_sensor_manager_test.cc",
       "powerd/system/ambient_light_sensor_test.cc",
       "powerd/system/arc_timer_manager_test.cc",
       "powerd/system/async_file_reader_test.cc",

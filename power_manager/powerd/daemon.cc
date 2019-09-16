@@ -41,7 +41,7 @@
 #include "power_manager/powerd/policy/shutdown_from_suspend.h"
 #include "power_manager/powerd/policy/state_controller.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper_interface.h"
-#include "power_manager/powerd/system/ambient_light_sensor.h"
+#include "power_manager/powerd/system/ambient_light_sensor_manager.h"
 #include "power_manager/powerd/system/arc_timer_manager.h"
 #include "power_manager/powerd/system/audio_client_interface.h"
 #include "power_manager/powerd/system/backlight_interface.h"
@@ -326,8 +326,10 @@ void Daemon::Init() {
 
   // Ignore the ALS and backlights in factory mode.
   if (!factory_mode_) {
-    if (BoolPrefIsTrue(kHasAmbientLightSensorPref))
-      light_sensor_ = delegate_->CreateAmbientLightSensor();
+    int64_t num_light_sensors = 0;
+    prefs_->GetInt64(kHasAmbientLightSensorPref, &num_light_sensors);
+    light_sensor_manager_ =
+        delegate_->CreateAmbientLightSensorManager(num_light_sensors);
 
     if (BoolPrefIsTrue(kExternalDisplayOnlyPref)) {
       display_backlight_controller_ =
@@ -344,7 +346,8 @@ void Daemon::Init() {
       } else {
         display_backlight_controller_ =
             delegate_->CreateInternalBacklightController(
-                display_backlight_.get(), prefs_.get(), light_sensor_.get(),
+                display_backlight_.get(), prefs_.get(),
+                light_sensor_manager_->GetSensorForInternalBacklight(),
                 display_power_setter_.get(), dbus_wrapper_.get(), lid_state);
       }
     }
@@ -357,7 +360,8 @@ void Daemon::Init() {
           base::FilePath(kKeyboardBacklightPath), kKeyboardBacklightPattern);
       keyboard_backlight_controller_ =
           delegate_->CreateKeyboardBacklightController(
-              keyboard_backlight_.get(), prefs_.get(), light_sensor_.get(),
+              keyboard_backlight_.get(), prefs_.get(),
+              light_sensor_manager_->GetSensorForKeyboardBacklight(),
               dbus_wrapper_.get(), display_backlight_controller_.get(),
               lid_state, tablet_mode);
       all_backlight_controllers_.push_back(
@@ -1196,8 +1200,8 @@ std::unique_ptr<dbus::Response> Daemon::HandleHasAmbientColorDeviceMethod(
   std::unique_ptr<dbus::Response> response(
       dbus::Response::FromMethodCall(method_call));
   bool has_color_device = false;
-  if (light_sensor_)
-    has_color_device = light_sensor_->IsColorSensor();
+  if (light_sensor_manager_)
+    has_color_device = light_sensor_manager_->HasColorSensor();
 
   dbus::MessageWriter(response.get()).AppendBool(has_color_device);
   return response;

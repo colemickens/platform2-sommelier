@@ -21,6 +21,12 @@
 namespace power_manager {
 namespace system {
 
+enum class SensorLocation {
+  UNKNOWN,
+  BASE,
+  LID,
+};
+
 class AmbientLightSensorInterface {
  public:
   AmbientLightSensorInterface() {}
@@ -37,6 +43,10 @@ class AmbientLightSensorInterface {
   // for the ambient light level. -1 is considered an error value.
   virtual int GetAmbientLightLux() = 0;
 
+  // Returns the path to the illuminance file being monitored, or an empty path
+  // if a device has not yet been found.
+  virtual base::FilePath GetIlluminancePath() const = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(AmbientLightSensorInterface);
 };
@@ -49,6 +59,7 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
   static const int kNumInitAttemptsBeforeGivingUp;
 
   AmbientLightSensor();
+  explicit AmbientLightSensor(SensorLocation expected_sensor_location);
   ~AmbientLightSensor() override;
 
   void set_device_list_path_for_testing(const base::FilePath& path) {
@@ -63,10 +74,6 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
   // tests can call set_*_for_testing() first.
   void Init(bool read_immediately);
 
-  // Returns the path to the illuminance file being monitored, or an empty path
-  // if a device has not yet been found.
-  base::FilePath GetIlluminancePath() const;
-
   // If |poll_timer_| is running, calls ReadAls() and returns true. Otherwise,
   // returns false.
   bool TriggerPollTimerForTesting();
@@ -76,6 +83,7 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
   void RemoveObserver(AmbientLightObserver* observer) override;
   bool IsColorSensor() const override;
   int GetAmbientLightLux() override;
+  base::FilePath GetIlluminancePath() const override;
 
  private:
   // Starts |poll_timer_|.
@@ -114,6 +122,10 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
 
   // This is the ambient light sensor asynchronous file I/O object.
   AsyncFileReader als_file_;
+
+  // Location on the device (e.g. lid, base) where this sensor reports itself
+  // to be. If set to unknown, powerd looks for a sensor at any location.
+  SensorLocation expected_sensor_location_;
 
   DISALLOW_COPY_AND_ASSIGN(AmbientLightSensor);
 };

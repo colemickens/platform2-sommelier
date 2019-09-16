@@ -23,6 +23,7 @@ class BacklightController;
 namespace system {
 class AcpiWakeupHelperInterface;
 class AmbientLightSensorInterface;
+class AmbientLightSensorManagerInterface;
 class AudioClientInterface;
 class BacklightInterface;
 class ChargeControllerHelperInterface;
@@ -61,8 +62,8 @@ class DaemonDelegate {
   // Crashes if udev initialization fails.
   virtual std::unique_ptr<system::UdevInterface> CreateUdev() = 0;
 
-  virtual std::unique_ptr<system::AmbientLightSensorInterface>
-  CreateAmbientLightSensor() = 0;
+  virtual std::unique_ptr<system::AmbientLightSensorManagerInterface>
+  CreateAmbientLightSensorManager(int num_sensors) = 0;
 
   virtual std::unique_ptr<system::DisplayWatcherInterface> CreateDisplayWatcher(
       system::UdevInterface* udev) = 0;

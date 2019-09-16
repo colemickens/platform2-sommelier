@@ -11,6 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
+#include <brillo/file_utils.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/test_main_loop_runner.h"
@@ -61,9 +62,9 @@ class AmbientLightSensorTest : public ::testing::Test {
 
   void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());
-    base::FilePath device_dir = temp_dir_.GetPath().Append("device0");
-    CHECK(base::CreateDirectory(device_dir));
-    data_file_ = device_dir.Append("illuminance0_input");
+    device_dir_ = temp_dir_.GetPath().Append("device0");
+    CHECK(base::CreateDirectory(device_dir_));
+    data_file_ = device_dir_.Append("illuminance0_input");
     sensor_.reset(new AmbientLightSensor);
     sensor_->set_device_list_path_for_testing(temp_dir_.GetPath());
     sensor_->set_poll_interval_ms_for_testing(kPollIntervalMs);
@@ -78,16 +79,14 @@ class AmbientLightSensorTest : public ::testing::Test {
   // a new light level.
   void WriteLux(int lux) {
     std::string lux_string = base::NumberToString(lux);
-    int bytes_written =
-        base::WriteFile(data_file_, lux_string.data(), lux_string.size());
-    CHECK(bytes_written == static_cast<int>(lux_string.size()))
-        << "Wrote " << bytes_written << " byte(s) instead of "
-        << lux_string.size() << " to " << data_file_.value();
+    CHECK(brillo::WriteStringToFile(data_file_, lux_string));
   }
 
   // Temporary directory mimicking a /sys directory containing a set of sensor
   // devices.
   base::ScopedTempDir temp_dir_;
+
+  base::FilePath device_dir_;
 
   // Illuminance file containing the sensor's current brightness level.
   base::FilePath data_file_;
@@ -125,6 +124,43 @@ TEST_F(AmbientLightSensorTest, GiveUpAfterTooManyFailures) {
 
   EXPECT_FALSE(sensor_->TriggerPollTimerForTesting());
   EXPECT_LT(sensor_->GetAmbientLightLux(), 0);
+}
+
+TEST_F(AmbientLightSensorTest, FailToFindSensorAtLid) {
+  // Test that the timer is eventually stopped after many failures if |sensor_|
+  // is unable to find the sensor at the expected location.
+  sensor_.reset(new AmbientLightSensor(SensorLocation::LID));
+  sensor_->set_device_list_path_for_testing(temp_dir_.GetPath());
+  sensor_->set_poll_interval_ms_for_testing(kPollIntervalMs);
+  sensor_->AddObserver(&observer_);
+  sensor_->Init(false /* read_immediately */);
+
+  for (int i = 0; i < AmbientLightSensor::kNumInitAttemptsBeforeGivingUp; ++i) {
+    EXPECT_TRUE(sensor_->TriggerPollTimerForTesting());
+    EXPECT_LT(sensor_->GetAmbientLightLux(), 0);
+  }
+
+  EXPECT_FALSE(sensor_->TriggerPollTimerForTesting());
+  EXPECT_LT(sensor_->GetAmbientLightLux(), 0);
+}
+
+TEST_F(AmbientLightSensorTest, FindSensorAtBase) {
+  // Test that |sensor_| is able to find the correct sensor at the expected
+  // location.
+  base::FilePath loc_file = device_dir_.Append("location");
+  CHECK(brillo::WriteStringToFile(loc_file, "base"));
+
+  sensor_.reset(new AmbientLightSensor(SensorLocation::BASE));
+  sensor_->set_device_list_path_for_testing(temp_dir_.GetPath());
+  sensor_->set_poll_interval_ms_for_testing(kPollIntervalMs);
+  sensor_->AddObserver(&observer_);
+  sensor_->Init(false /* read_immediately */);
+
+  WriteLux(100);
+  ASSERT_TRUE(observer_.RunUntilAmbientLightUpdated());
+  EXPECT_EQ(100, sensor_->GetAmbientLightLux());
+
+  EXPECT_EQ(data_file_, sensor_->GetIlluminancePath());
 }
 
 }  // namespace system

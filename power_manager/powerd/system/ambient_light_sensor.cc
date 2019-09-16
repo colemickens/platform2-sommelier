@@ -33,16 +33,39 @@ const char kDefaultDeviceListPath[] = "/sys/bus/iio/devices";
 // Default interval for polling the ambient light sensor.
 const int kDefaultPollIntervalMs = 1000;
 
+SensorLocation StringToSensorLocation(const std::string& location) {
+  if (location == "base")
+    return SensorLocation::BASE;
+  if (location == "lid")
+    return SensorLocation::LID;
+  return SensorLocation::UNKNOWN;
+}
+
+std::string SensorLocationToString(SensorLocation location) {
+  switch (location) {
+    case SensorLocation::UNKNOWN:
+      return "unknown";
+    case SensorLocation::BASE:
+      return "base";
+    case SensorLocation::LID:
+      return "lid";
+  }
+}
+
 }  // namespace
 
 const int AmbientLightSensor::kNumInitAttemptsBeforeLogging = 5;
 const int AmbientLightSensor::kNumInitAttemptsBeforeGivingUp = 20;
 
 AmbientLightSensor::AmbientLightSensor()
+    : AmbientLightSensor(SensorLocation::UNKNOWN) {}
+
+AmbientLightSensor::AmbientLightSensor(SensorLocation expected_sensor_location)
     : device_list_path_(kDefaultDeviceListPath),
       poll_interval_ms_(kDefaultPollIntervalMs),
       lux_value_(-1),
-      num_init_attempts_(0) {}
+      num_init_attempts_(0),
+      expected_sensor_location_(expected_sensor_location) {}
 
 AmbientLightSensor::~AmbientLightSensor() {}
 
@@ -142,12 +165,26 @@ bool AmbientLightSensor::InitAlsFile() {
   num_init_attempts_++;
   for (base::FilePath check_path = dir_enumerator.Next(); !check_path.empty();
        check_path = dir_enumerator.Next()) {
+    if (expected_sensor_location_ != SensorLocation::UNKNOWN) {
+      base::FilePath loc_path = check_path.Append("location");
+      std::string location;
+      if (!base::ReadFileToString(loc_path, &location)) {
+        continue;
+      }
+      base::TrimWhitespaceASCII(location, base::TRIM_ALL, &location);
+      SensorLocation als_loc = StringToSensorLocation(location);
+      if (als_loc != expected_sensor_location_) {
+        continue;
+      }
+    }
     for (unsigned int i = 0; i < arraysize(input_names); i++) {
       base::FilePath als_path = check_path.Append(input_names[i]);
       if (!base::PathExists(als_path))
         continue;
       if (als_file_.Init(als_path)) {
-        LOG(INFO) << "Using lux file " << als_path.value();
+        LOG(INFO) << "Using lux file " << als_path.value() << " for "
+                  << SensorLocationToString(expected_sensor_location_)
+                  << " ALS";
         return true;
       }
     }

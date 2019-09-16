@@ -182,7 +182,7 @@ extern const char kIgnoreExternalPolicyPref[];
 // Written by powerd to persist the count across reboots for metrics-reporting.
 extern const char kNumSessionsOnCurrentChargePref[];
 
-// If true, the device has an ambient light sensor.
+// Number of ambient light sensors on the device.
 extern const char kHasAmbientLightSensorPref[];
 
 // If true, the device has a charge controller responsible for handling

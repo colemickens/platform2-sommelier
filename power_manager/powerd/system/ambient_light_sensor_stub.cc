@@ -36,5 +36,9 @@ int AmbientLightSensorStub::GetAmbientLightLux() {
   return lux_;
 }
 
+base::FilePath AmbientLightSensorStub::GetIlluminancePath() const {
+  return path_;
+}
+
 }  // namespace system
 }  // namespace power_manager

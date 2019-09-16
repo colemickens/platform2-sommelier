@@ -27,7 +27,7 @@
 #include "power_manager/powerd/daemon_delegate.h"
 #include "power_manager/powerd/policy/backlight_controller_stub.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper_stub.h"
-#include "power_manager/powerd/system/ambient_light_sensor_stub.h"
+#include "power_manager/powerd/system/ambient_light_sensor_manager_stub.h"
 #include "power_manager/powerd/system/audio_client_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/charge_controller_helper_stub.h"
@@ -56,7 +56,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
       : passed_prefs_(new FakePrefs()),
         passed_dbus_wrapper_(new system::DBusWrapperStub()),
         passed_udev_(new system::UdevStub()),
-        passed_ambient_light_sensor_(new system::AmbientLightSensorStub(0)),
+        passed_ambient_light_sensor_manager_(
+            new system::AmbientLightSensorManagerStub()),
         passed_display_watcher_(new system::DisplayWatcherStub()),
         passed_display_power_setter_(new system::DisplayPowerSetterStub()),
         passed_internal_backlight_(new system::BacklightStub(100, 100)),
@@ -82,7 +83,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
         prefs_(passed_prefs_.get()),
         dbus_wrapper_(passed_dbus_wrapper_.get()),
         udev_(passed_udev_.get()),
-        ambient_light_sensor_(passed_ambient_light_sensor_.get()),
+        ambient_light_sensor_manager_(
+            passed_ambient_light_sensor_manager_.get()),
         display_watcher_(passed_display_watcher_.get()),
         display_power_setter_(passed_display_power_setter_.get()),
         internal_backlight_(passed_internal_backlight_.get()),
@@ -147,9 +149,9 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<system::UdevInterface> CreateUdev() override {
     return std::move(passed_udev_);
   }
-  std::unique_ptr<system::AmbientLightSensorInterface>
-  CreateAmbientLightSensor() override {
-    return std::move(passed_ambient_light_sensor_);
+  std::unique_ptr<system::AmbientLightSensorManagerInterface>
+  CreateAmbientLightSensorManager(int num_sensors) override {
+    return std::move(passed_ambient_light_sensor_manager_);
   }
   std::unique_ptr<system::DisplayWatcherInterface> CreateDisplayWatcher(
       system::UdevInterface* udev) override {
@@ -200,7 +202,10 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
       LidState initial_lid_state) override {
     EXPECT_EQ(internal_backlight_, backlight);
     EXPECT_EQ(prefs_, prefs);
-    EXPECT_TRUE(!sensor || sensor == ambient_light_sensor_);
+    EXPECT_TRUE(
+        !sensor ||
+        sensor ==
+            ambient_light_sensor_manager_->GetSensorForInternalBacklight());
     EXPECT_EQ(display_power_setter_, power_setter);
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
     EXPECT_EQ(input_watcher_->QueryLidState(), initial_lid_state);
@@ -217,7 +222,10 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
       TabletMode initial_tablet_mode) override {
     EXPECT_EQ(keyboard_backlight_, backlight);
     EXPECT_EQ(prefs_, prefs);
-    EXPECT_TRUE(!sensor || sensor == ambient_light_sensor_);
+    EXPECT_TRUE(
+        !sensor ||
+        sensor ==
+            ambient_light_sensor_manager_->GetSensorForKeyboardBacklight());
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
     EXPECT_EQ(internal_backlight_controller_, display_backlight_controller);
     EXPECT_EQ(input_watcher_->QueryLidState(), initial_lid_state);
@@ -333,7 +341,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<FakePrefs> passed_prefs_;
   std::unique_ptr<system::DBusWrapperStub> passed_dbus_wrapper_;
   std::unique_ptr<system::UdevStub> passed_udev_;
-  std::unique_ptr<system::AmbientLightSensorStub> passed_ambient_light_sensor_;
+  std::unique_ptr<system::AmbientLightSensorManagerStub>
+      passed_ambient_light_sensor_manager_;
   std::unique_ptr<system::DisplayWatcherStub> passed_display_watcher_;
   std::unique_ptr<system::DisplayPowerSetterStub> passed_display_power_setter_;
   std::unique_ptr<system::BacklightStub> passed_internal_backlight_;
@@ -364,7 +373,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   FakePrefs* prefs_;
   system::DBusWrapperStub* dbus_wrapper_;
   system::UdevStub* udev_;
-  system::AmbientLightSensorStub* ambient_light_sensor_;
+  system::AmbientLightSensorManagerStub* ambient_light_sensor_manager_;
   system::DisplayWatcherStub* display_watcher_;
   system::DisplayPowerSetterStub* display_power_setter_;
   system::BacklightStub* internal_backlight_;
@@ -759,7 +768,7 @@ TEST_F(DaemonTest, FactoryMode) {
 
   // Check that Daemon didn't initialize most objects related to adjusting the
   // display or keyboard backlights.
-  EXPECT_TRUE(passed_ambient_light_sensor_);
+  EXPECT_TRUE(passed_ambient_light_sensor_manager_);
   EXPECT_TRUE(passed_internal_backlight_);
   EXPECT_TRUE(passed_keyboard_backlight_);
   EXPECT_TRUE(passed_external_backlight_controller_);

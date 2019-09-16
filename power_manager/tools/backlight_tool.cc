@@ -25,7 +25,7 @@
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/internal_backlight_controller.h"
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
-#include "power_manager/powerd/system/ambient_light_sensor.h"
+#include "power_manager/powerd/system/ambient_light_sensor_manager.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
@@ -42,7 +42,8 @@ using power_manager::TabletMode;
 using power_manager::policy::BacklightController;
 using power_manager::policy::InternalBacklightController;
 using power_manager::policy::KeyboardBacklightController;
-using power_manager::system::AmbientLightSensor;
+using power_manager::system::AmbientLightSensorInterface;
+using power_manager::system::AmbientLightSensorManager;
 using power_manager::system::AmbientLightSensorStub;
 using power_manager::system::BacklightStub;
 using power_manager::system::DBusWrapperStub;
@@ -161,18 +162,26 @@ class Converter {
 // Prints the path to the ambient light sensor illuminance file that powerd
 // would monitor and a trailing newline to stdout. Prints an error and aborts
 // with status code 1 if the ALS has been disabled or no path was found.
-void PrintAmbientLightPath() {
+void PrintAmbientLightPath(bool keyboard) {
   Prefs prefs;
   CHECK(prefs.Init(Prefs::GetDefaultStore(), Prefs::GetDefaultSources()));
-  bool has_als = false;
-  if (prefs.GetBool(power_manager::kHasAmbientLightSensorPref, &has_als) &&
-      !has_als) {
+  int64_t num_als = 0;
+  if (!prefs.GetInt64(power_manager::kHasAmbientLightSensorPref, &num_als) ||
+      !num_als) {
     Abort("Ambient light sensor not enabled");
   }
 
-  AmbientLightSensor als;
-  als.Init(true /* read_immediately */);
-  const base::FilePath path = als.GetIlluminancePath();
+  AmbientLightSensorManager als_manager;
+  als_manager.SetNumSensorsAndInit(num_als);
+  als_manager.Run(true /* read_immediately */);
+
+  AmbientLightSensorInterface* sensor;
+  sensor = keyboard ? als_manager.GetSensorForKeyboardBacklight()
+                    : als_manager.GetSensorForInternalBacklight();
+  if (!sensor)
+    Abort("Ambient light sensor not found");
+
+  base::FilePath path = sensor->GetIlluminancePath();
   if (path.empty())
     Abort("Ambient light sensor illuminance file not found");
 
@@ -242,7 +251,7 @@ int main(int argc, char* argv[]) {
     Abort("At most one of -set_brightness* may be passed.");
 
   if (FLAGS_get_ambient_light_path) {
-    PrintAmbientLightPath();
+    PrintAmbientLightPath(FLAGS_keyboard);
     return 0;
   }
 
