@@ -19,14 +19,22 @@ class MockJournal : public Journal {
   MockJournal() {}
   ~MockJournal() override = default;
 
-  MOCK_METHOD2(MarkStartOfFlashingMainFirmware,
-               void(const std::string&, const std::string&));
-  MOCK_METHOD2(MarkEndOfFlashingMainFirmware,
-               void(const std::string&, const std::string&));
-  MOCK_METHOD2(MarkStartOfFlashingCarrierFirmware,
-               void(const std::string&, const std::string&));
-  MOCK_METHOD2(MarkEndOfFlashingCarrierFirmware,
-               void(const std::string&, const std::string&));
+  MOCK_METHOD(void,
+              MarkStartOfFlashingMainFirmware,
+              (const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(void,
+              MarkEndOfFlashingMainFirmware,
+              (const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(void,
+              MarkStartOfFlashingCarrierFirmware,
+              (const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(void,
+              MarkEndOfFlashingCarrierFirmware,
+              (const std::string&, const std::string&),
+              (override));
 };
 
 }  // namespace modemfwd

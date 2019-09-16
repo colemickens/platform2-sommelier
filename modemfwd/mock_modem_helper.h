@@ -20,9 +20,9 @@ class MockModemHelper : public ModemHelper {
   MockModemHelper() = default;
   ~MockModemHelper() override = default;
 
-  MOCK_METHOD1(GetFirmwareInfo, bool(FirmwareInfo*));
-  MOCK_METHOD1(FlashMainFirmware, bool(const base::FilePath&));
-  MOCK_METHOD1(FlashCarrierFirmware, bool(const base::FilePath&));
+  MOCK_METHOD(bool, GetFirmwareInfo, (FirmwareInfo*), (override));
+  MOCK_METHOD(bool, FlashMainFirmware, (const base::FilePath&), (override));
+  MOCK_METHOD(bool, FlashCarrierFirmware, (const base::FilePath&), (override));
 };
 
 }  // namespace modemfwd
