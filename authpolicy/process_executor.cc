@@ -177,6 +177,9 @@ bool ProcessExecutor::Execute() {
   for (char* env : old_environ)
     putenv(env);
 
+  if (perform_pipe_io_after_process_exit_for_testing_)
+    exit_code_ = minijail_wait(jail.get());
+
   // Write to child_stdin and read from child_stdout and child_stderr while
   // there is still data to read/write.
   bool io_success =
@@ -184,7 +187,8 @@ bool ProcessExecutor::Execute() {
                     input_str_, &out_data_, &err_data_);
 
   // Wait for the process to exit.
-  exit_code_ = minijail_wait(jail.get());
+  if (!perform_pipe_io_after_process_exit_for_testing_)
+    exit_code_ = minijail_wait(jail.get());
   jail.reset();
 
   // Print out a useful error message for seccomp failures.
@@ -216,6 +220,12 @@ void ProcessExecutor::LogOutputOnce() {
   LogLongString(kColorCommandStderr, args_[0] + " stderr: ", err_data_,
                 anonymizer_);
   output_logged_ = true;
+}
+
+void ProcessExecutor::SetPerformPipeIoAfterProcessExitForTesting(
+    bool perform_pipe_io_after_process_exit_for_testing) {
+  perform_pipe_io_after_process_exit_for_testing_ =
+      perform_pipe_io_after_process_exit_for_testing;
 }
 
 void ProcessExecutor::ResetOutput() {

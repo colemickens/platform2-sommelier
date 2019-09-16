@@ -174,7 +174,9 @@ bool PerformPipeIo(int stdin_fd,
          stderr_scoped_fd.is_valid()) {
     // Note that closed files (*_scoped_fd.get() == -1) are ignored.
     const int kIndexStdin = 0, kIndexStdout = 1, kIndexStderr = 2;
+    const char* kPipeNames[] = {"stdin", "stdout", "stderr"};
     const int kPollCount = 3;
+
     struct pollfd poll_fds[kPollCount];
     poll_fds[kIndexStdin] = {stdin_scoped_fd.get(), POLLOUT, 0};
     poll_fds[kIndexStdout] = {stdout_scoped_fd.get(), POLLIN, 0};
@@ -186,11 +188,32 @@ bool PerformPipeIo(int stdin_fd,
       PLOG(ERROR) << "poll() failed";
       return false;
     }
-    for (int n = 0; n < kPollCount; ++n) {
-      if (poll_fds[n].revents & (POLLERR | POLLNVAL)) {
-        LOG(ERROR) << "POLLERR or POLLNVAL for fd " << poll_fds[n].fd;
-        return false;
+    // Treat POLLNVAL as an error for all pipes.
+    for (int n : {kIndexStdin, kIndexStdout, kIndexStderr}) {
+      if ((poll_fds[n].revents & POLLNVAL) == 0)
+        continue;
+      LOG(ERROR) << "POLLNVAL for " << kPipeNames[n];
+      return false;
+    }
+    // Special case: POLLERR can legitimately happen on the child process'
+    // stdin if it already exited. Do not treat that as an error unless
+    // there was data the parent process wanted to send to the child
+    // process.
+    for (int n : {kIndexStdin, kIndexStdout, kIndexStderr}) {
+      if ((poll_fds[n].revents & POLLERR) == 0)
+        continue;
+      if (n == kIndexStdin) {
+        if (!splicing_input_fd && input_str.size() == input_str_pos) {
+          LOG(INFO) << "Ignoring POLLERR for stdin.";
+          stdin_scoped_fd.reset();
+          continue;
+        }
+
+        LOG(ERROR) << "Child process stdin closed due to POLLERR when "
+                   << "there was still data to write.";
       }
+      LOG(ERROR) << "POLLERR for " << kPipeNames[n];
+      return false;
     }
 
     // Should only happen on timeout. Log a warning here, so we get at least a
@@ -199,7 +222,8 @@ bool PerformPipeIo(int stdin_fd,
       LOG(WARNING) << "poll() timed out. Process might be stale.";
 
     // Read stdout to the stdout string.
-    if (poll_fds[kIndexStdout].revents & (POLLIN | POLLHUP)) {
+    if (stdout_scoped_fd.is_valid() &&
+        (poll_fds[kIndexStdout].revents & (POLLIN | POLLHUP))) {
       bool done = false;
       if (!ReadPipe(stdout_scoped_fd.get(), stdout, &done))
         return false;
@@ -208,7 +232,8 @@ bool PerformPipeIo(int stdin_fd,
     }
 
     // Read stderr to the stderr string.
-    if (poll_fds[kIndexStderr].revents & (POLLIN | POLLHUP)) {
+    if (stderr_scoped_fd.is_valid() &&
+        (poll_fds[kIndexStderr].revents & (POLLIN | POLLHUP))) {
       bool done = false;
       if (!ReadPipe(stderr_scoped_fd.get(), stderr, &done))
         return false;
@@ -216,7 +241,7 @@ bool PerformPipeIo(int stdin_fd,
         stderr_scoped_fd.reset();
     }
 
-    if (poll_fds[kIndexStdin].revents & POLLOUT) {
+    if (stdin_scoped_fd.is_valid() && poll_fds[kIndexStdin].revents & POLLOUT) {
       bool done = false;
       if (splicing_input_fd) {
         // Splice input_fd to stdin_scoped_fd.

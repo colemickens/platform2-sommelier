@@ -7,6 +7,7 @@
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/macros.h>
@@ -79,6 +80,12 @@ class ProcessExecutor {
   // want to log anyway, e.g. since the data was bad or unexpected.
   void LogOutputOnce();
 
+  // When set to true, will perform IO on the child process' stdin, stdout and
+  // stderr only after the child process has exited. Intended to allow testing
+  // of the handling of error conditions.
+  void SetPerformPipeIoAfterProcessExitForTesting(
+      bool perform_pipe_io_after_process_exit_for_testing);
+
   // Populated after execute call.
   const std::string& GetStdout() const { return out_data_; }
   const std::string& GetStderr() const { return err_data_; }
@@ -111,6 +118,7 @@ class ProcessExecutor {
   bool log_output_on_error_ = false;
   Anonymizer* anonymizer_ = nullptr;
   bool output_logged_ = false;
+  bool perform_pipe_io_after_process_exit_for_testing_ = false;
 
   // We better not copy/assign because of |input_fd_|.
   DISALLOW_COPY_AND_ASSIGN(ProcessExecutor);

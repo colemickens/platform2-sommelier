@@ -155,6 +155,16 @@ TEST_F(ProcessExecutorTest, RepeatedExecutionWorks_Stderr) {
   EXPECT_EQ(cmd.GetStderr(), stderr);
 }
 
+// Execute command with no additional args.
+TEST_F(ProcessExecutorTest, ChildProcessAlreadyExited) {
+  ProcessExecutor cmd({kCmdEcho});
+  cmd.SetPerformPipeIoAfterProcessExitForTesting(true);
+  EXPECT_TRUE(cmd.Execute());
+  EXPECT_EQ(cmd.GetExitCode(), 0);
+  EXPECT_FALSE(cmd.GetStdout().empty());
+  EXPECT_TRUE(cmd.GetStderr().empty());
+}
+
 // Reading output from stdout.
 TEST_F(ProcessExecutorTest, ReadFromStdout) {
   ProcessExecutor cmd({kCmdEcho, "test"});
