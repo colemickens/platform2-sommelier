@@ -41,8 +41,11 @@ bool IsMetrics() {
 
 class UserCollectorMock : public UserCollector {
  public:
-  MOCK_METHOD0(SetUpDBus, void());
-  MOCK_CONST_METHOD1(GetCommandLine, std::vector<std::string>(pid_t pid));
+  MOCK_METHOD(void, SetUpDBus, (), (override));
+  MOCK_METHOD(std::vector<std::string>,
+              GetCommandLine,
+              (pid_t),
+              (const, override));
 };
 
 class UserCollectorTest : public ::testing::Test {

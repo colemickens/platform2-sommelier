@@ -104,7 +104,7 @@ bool IsMetrics() {
 class ChromeCollectorMock : public ChromeCollector {
  public:
   ChromeCollectorMock() : ChromeCollector(kNormalCrashSendMode) {}
-  MOCK_METHOD0(SetUpDBus, void());
+  MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 
 class ChromeCollectorTest : public ::testing::Test {

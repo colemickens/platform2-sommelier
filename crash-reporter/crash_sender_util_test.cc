@@ -66,7 +66,7 @@ std::string* g_connection_state;
 class MockClock : public base::Clock {
  public:
   ~MockClock() override {}
-  MOCK_METHOD0(Now, base::Time());
+  MOCK_METHOD(base::Time, Now, (), (override));
 };
 
 // A Clock that advances 10 seconds on each call. It will not fail the test

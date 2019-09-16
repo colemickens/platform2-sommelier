@@ -42,7 +42,7 @@ bool DirectoryHasFileWithPattern(const FilePath& directory,
 
 class KernelWarningCollectorMock : public KernelWarningCollector {
  public:
-  MOCK_METHOD0(SetUpDBus, void());
+  MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 
 class KernelWarningCollectorTest : public ::testing::Test {

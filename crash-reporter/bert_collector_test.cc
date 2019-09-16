@@ -31,7 +31,7 @@ bool IsMetrics() {
 
 class BERTCollectorMock : public BERTCollector {
  public:
-  MOCK_METHOD0(SetUpDBus, void());
+  MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 
 class BERTCollectorTest : public ::testing::Test {

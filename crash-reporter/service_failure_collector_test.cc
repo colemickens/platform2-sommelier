@@ -35,7 +35,7 @@ bool IsMetrics() {
 
 class ServiceFailureCollectorMock : public ServiceFailureCollector {
  public:
-  MOCK_METHOD0(SetUpDBus, void());
+  MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 
 class ServiceFailureCollectorTest : public ::testing::Test {

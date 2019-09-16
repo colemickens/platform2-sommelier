@@ -70,7 +70,7 @@ const char k64BitAuxv[] = R"(
 class MockArcCollector : public ArcCollector {
  public:
   using ArcCollector::ArcCollector;
-  MOCK_METHOD0(SetUpDBus, void());
+  MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 
 class Test : public ::testing::Test {

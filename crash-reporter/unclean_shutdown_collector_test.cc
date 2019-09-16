@@ -32,7 +32,7 @@ bool IsMetrics() {
 
 class UncleanShutdownCollectorMock : public UncleanShutdownCollector {
  public:
-  MOCK_METHOD0(SetUpDBus, void());
+  MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 
 class UncleanShutdownCollectorTest : public ::testing::Test {

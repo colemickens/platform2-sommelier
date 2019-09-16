@@ -43,7 +43,7 @@ bool IsMetrics() {
 
 class SELinuxViolationCollectorMock : public SELinuxViolationCollector {
  public:
-  MOCK_METHOD0(SetUpDBus, void());
+  MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 
 class SELinuxViolationCollectorTest : public ::testing::Test {

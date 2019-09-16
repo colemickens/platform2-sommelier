@@ -12,8 +12,8 @@
 
 class KernelCollectorMock : public KernelCollector {
  public:
-  MOCK_METHOD0(DumpDirMounted, bool());
-  MOCK_METHOD0(SetUpDBus, void());
+  MOCK_METHOD(bool, DumpDirMounted, (), (override));
+  MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 
 #endif  // CRASH_REPORTER_KERNEL_COLLECTOR_TEST_H_

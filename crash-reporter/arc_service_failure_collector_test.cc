@@ -35,7 +35,7 @@ bool IsMetrics() {
 
 class ArcServiceFailureCollectorMock : public ArcServiceFailureCollector {
  public:
-  MOCK_METHOD0(SetUpDBus, void());
+  MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 
 class ArcServiceFailureCollectorTest : public ::testing::Test {

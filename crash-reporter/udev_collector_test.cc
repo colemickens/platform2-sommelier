@@ -63,7 +63,7 @@ int GetNumFiles(const FilePath& path, const std::string& file_pattern) {
 
 class UdevCollectorMock : public UdevCollector {
  public:
-  MOCK_METHOD0(SetUpDBus, void());
+  MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 
 class UdevCollectorTest : public ::testing::Test {

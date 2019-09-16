@@ -28,7 +28,7 @@ bool IsMetrics() {
 
 class ECCollectorMock : public ECCollector {
  public:
-  MOCK_METHOD0(SetUpDBus, void());
+  MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 
 class ECCollectorTest : public ::testing::Test {
