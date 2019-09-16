@@ -17,9 +17,19 @@ pkg_config("target_defaults") {
   ]
 }
 
-executable("timberslide") {
+static_library("libtimberslide") {
   configs += [ ":target_defaults" ]
   sources = [
     "timberslide.cc",
+  ]
+}
+
+executable("timberslide") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "main.cc",
+  ]
+  deps = [
+    ":libtimberslide",
   ]
 }
