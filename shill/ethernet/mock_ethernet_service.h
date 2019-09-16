@@ -18,14 +18,10 @@ class MockEthernetService : public EthernetService {
   MockEthernetService(Manager* manager, base::WeakPtr<Ethernet> ethernet);
   ~MockEthernetService() override;
 
-  MOCK_METHOD2(AddEAPCertification,
-               bool(const std::string& name, size_t depth));
-  MOCK_METHOD0(ClearEAPCertification, void());
   MOCK_METHOD2(Configure, void(const KeyValueStore& args, Error* error));
   MOCK_METHOD2(Disconnect, void(Error* error, const char* reason));
   MOCK_CONST_METHOD1(GetDeviceRpcId, RpcIdentifier(Error* error));
   MOCK_CONST_METHOD0(GetStorageIdentifier, std::string());
-  MOCK_CONST_METHOD0(Is8021xConnectable, bool());
   MOCK_CONST_METHOD0(IsConnected, bool());
   MOCK_CONST_METHOD0(IsConnecting, bool());
   MOCK_CONST_METHOD0(IsRemembered, bool());
@@ -34,6 +30,13 @@ class MockEthernetService : public EthernetService {
   MOCK_METHOD1(SetState, void(ConnectState state));
   MOCK_METHOD0(OnVisibilityChanged, void());
   MOCK_CONST_METHOD0(technology, Technology());
+
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+  MOCK_CONST_METHOD0(Is8021xConnectable, bool());
+  MOCK_METHOD2(AddEAPCertification,
+               bool(const std::string& name, size_t depth));
+  MOCK_METHOD0(ClearEAPCertification, void());
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockEthernetService);
