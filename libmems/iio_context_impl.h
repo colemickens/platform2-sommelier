@@ -23,6 +23,7 @@ class LIBMEMS_EXPORT IioContextImpl : public IioContext {
   ~IioContextImpl() override = default;
 
   void Reload() override;
+  bool SetTimeout(uint32_t timeout) override;
   IioDevice* GetDevice(const std::string& name) override;
 
  private:

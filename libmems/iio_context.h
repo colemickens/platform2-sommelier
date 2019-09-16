@@ -29,6 +29,13 @@ class LIBMEMS_EXPORT IioContext {
   // new devices of interest to show up.
   virtual void Reload() = 0;
 
+  // Sets |timeout| in milliseconds for I/O operations, mainly for reading
+  // events. Sets |timeout| as 0 to specify that no timeout should occur.
+  // Default for network/unix_socket backend: 5000 milliseconds.
+  // Default for local backend: 1000 millisecond.
+  // Returns true if success.
+  virtual bool SetTimeout(uint32_t timeout) = 0;
+
   // Returns an IioDevice given the device's name or ID.
   // Returns nullptr if the device cannot be found.
   // The device object is guaranteed to stay valid as long as

@@ -9,6 +9,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
+#include "libmems/common_types.h"
 #include "libmems/iio_channel_impl.h"
 #include "libmems/iio_context_impl.h"
 #include "libmems/iio_device_impl.h"
@@ -19,7 +20,6 @@ namespace libmems {
 
 namespace {
 
-constexpr int kErrorBufferSize = 256;
 constexpr int kNumSamples = 1;
 
 };  // namespace

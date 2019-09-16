@@ -7,6 +7,7 @@
 
 #include <base/logging.h>
 
+#include "libmems/common_types.h"
 #include "libmems/iio_channel_impl.h"
 #include "libmems/iio_context_impl.h"
 #include "libmems/iio_device_impl.h"
@@ -34,6 +35,19 @@ iio_context* IioContextImpl::GetCurrentContext() const {
   if (context_.empty())
     return nullptr;
   return context_.back().get();
+}
+
+bool IioContextImpl::SetTimeout(uint32_t timeout) {
+  int error = iio_context_set_timeout(GetCurrentContext(), timeout);
+  if (error) {
+    char errMsg[kErrorBufferSize];
+    iio_strerror(-error, errMsg, sizeof(errMsg));
+    LOG(ERROR) << "Unable to set timeout " << timeout << ": " << errMsg;
+
+    return false;
+  }
+
+  return true;
 }
 
 IioDevice* IioContextImpl::GetDevice(const std::string& name) {

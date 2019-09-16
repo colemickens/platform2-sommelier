@@ -117,11 +117,16 @@ class LIBMEMS_EXPORT FakeIioContext : public IioContext {
   void AddDevice(FakeIioDevice* device);
 
   void Reload() override {}
+  bool SetTimeout(uint32_t timeout) override {
+    timeout_ = timeout;
+    return true;
+  }
 
   IioDevice* GetDevice(const std::string& name) override;
 
  private:
   std::map<std::string, FakeIioDevice*> devices_;
+  uint32_t timeout_;
 };
 
 }  // namespace fakes
