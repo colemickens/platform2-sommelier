@@ -2181,42 +2181,11 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
       return dbus_response;
     }
 
-    // If a raw disk was explicitly requested, return early without checking
-    // for FALLOC_FL_PUNCH_HOLE support.
-    if (request.image_type() == DISK_IMAGE_RAW) {
-      response.set_status(DISK_STATUS_CREATED);
-      response.set_disk_path(disk_path.value());
-      writer.AppendProtoAsArrayOfBytes(response);
+    response.set_status(DISK_STATUS_CREATED);
+    response.set_disk_path(disk_path.value());
+    writer.AppendProtoAsArrayOfBytes(response);
 
-      return dbus_response;
-    }
-
-    ret = fallocate(fd.get(), FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE, 0,
-                    disk_size);
-    if (ret == 0) {
-      LOG(INFO) << "fallocate(FALLOC_FL_PUNCH_HOLE) is supported";
-      response.set_status(DISK_STATUS_CREATED);
-      response.set_disk_path(disk_path.value());
-      writer.AppendProtoAsArrayOfBytes(response);
-
-      return dbus_response;
-    }
-
-    // If hole punch is not available and the type is DISK_IMAGE_AUTO,
-    // try to create a qcow2 file instead.
-    LOG(INFO) << "fallocate(FALLOC_FL_PUNCH_HOLE) not supported for raw file: "
-              << strerror(errno);
-    unlink(disk_path.value().c_str());
-    if (!GetDiskPathFromName(request.disk_path(), request.cryptohome_id(),
-                             request.storage_location(),
-                             true, /* create_parent_dir */
-                             &disk_path, DISK_IMAGE_QCOW2)) {
-      response.set_status(DISK_STATUS_FAILED);
-      response.set_failure_reason("Failed to create vm image");
-      writer.AppendProtoAsArrayOfBytes(response);
-
-      return dbus_response;
-    }
+    return dbus_response;
   }
 
   LOG(INFO) << "Creating qcow2 disk at: " << disk_path.value() << " size "
