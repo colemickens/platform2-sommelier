@@ -10,6 +10,7 @@
 #include <base/threading/thread.h>
 
 typedef struct vda_event vda_event_t;
+typedef struct vea_event vea_event_t;
 
 namespace arc {
 
@@ -26,6 +27,10 @@ class EventPipe {
   // Writes a VDA event to the event pipe. Atomic writes are
   // guaranteed as writes are marshalled onto its own thread.
   void WriteVdaEvent(const vda_event_t& event);
+
+  // Writes a VEA event to the event pipe. Atomic writes are
+  // guaranteed as writes are marshalled onto its own thread.
+  void WriteVeaEvent(const vea_event_t& event);
 
  private:
   base::ScopedFD event_read_fd_;

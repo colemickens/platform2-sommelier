@@ -13,6 +13,7 @@
 #include <base/logging.h>
 
 #include "arc/vm/libvda/libvda_decode.h"
+#include "arc/vm/libvda/libvda_encode.h"
 
 namespace arc {
 
@@ -55,6 +56,12 @@ void EventPipe::WriteVdaEvent(const vda_event_t& event) {
   event_write_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::BindOnce(&WriteToFd<vda_event_t>, event_write_fd_.get(), event));
+}
+
+void EventPipe::WriteVeaEvent(const vea_event_t& event) {
+  event_write_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&WriteToFd<vea_event_t>, event_write_fd_.get(), event));
 }
 
 }  // namespace arc
