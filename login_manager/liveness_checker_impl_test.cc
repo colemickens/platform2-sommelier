@@ -10,10 +10,10 @@
 #include <base/time/time.h>
 #include <brillo/message_loops/fake_message_loop.h>
 #include <dbus/message.h>
+#include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "login_manager/mock_object_proxy.h"
 #include "login_manager/mock_process_manager_service.h"
 
 using ::base::TimeDelta;
@@ -32,7 +32,8 @@ class LivenessCheckerImplTest : public ::testing::Test {
   void SetUp() override {
     fake_loop_.SetAsCurrent();
     manager_.reset(new StrictMock<MockProcessManagerService>);
-    object_proxy_ = new MockObjectProxy;
+    object_proxy_ =
+        new dbus::MockObjectProxy(nullptr, "", dbus::ObjectPath(""));
     checker_.reset(new LivenessCheckerImpl(manager_.get(), object_proxy_.get(),
                                            true, TimeDelta::FromSeconds(10)));
   }
@@ -61,7 +62,7 @@ class LivenessCheckerImplTest : public ::testing::Test {
   }
 
   brillo::FakeMessageLoop fake_loop_{nullptr};
-  scoped_refptr<MockObjectProxy> object_proxy_;
+  scoped_refptr<dbus::MockObjectProxy> object_proxy_;
   std::unique_ptr<StrictMock<MockProcessManagerService>> manager_;
 
   std::unique_ptr<LivenessCheckerImpl> checker_;

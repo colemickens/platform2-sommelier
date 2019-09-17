@@ -19,6 +19,7 @@
 #include <base/strings/string_util.h>
 #include <brillo/message_loops/fake_message_loop.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -30,7 +31,6 @@
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_liveness_checker.h"
 #include "login_manager/mock_metrics.h"
-#include "login_manager/mock_object_proxy.h"
 #include "login_manager/mock_session_manager.h"
 #include "login_manager/system_utils_impl.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
@@ -416,7 +416,8 @@ TEST_F(SessionManagerProcessTest, TestAbortedBrowserPidWritten) {
 // When the vm_concierge service is running, stop all vms when chrome exits.
 TEST_F(SessionManagerProcessTest, StopAllVms) {
   FakeBrowserJob* job = CreateMockJobAndInitManager(true);
-  scoped_refptr<MockObjectProxy> vm_concierge_proxy(new MockObjectProxy());
+  scoped_refptr<dbus::MockObjectProxy> vm_concierge_proxy(
+      new dbus::MockObjectProxy(nullptr, "", dbus::ObjectPath("")));
   manager_->test_api().set_vm_concierge_proxy(vm_concierge_proxy.get());
   manager_->test_api().set_vm_concierge_available(true);
 

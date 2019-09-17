@@ -7,12 +7,12 @@
 #include <memory>
 
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h"
 #include "login_manager/dbus_test_util.h"
-#include "login_manager/mock_object_proxy.h"
 
 using ::testing::_;
 
@@ -44,7 +44,8 @@ void QueryCallbackAdaptor(bool* enabled, bool e) {
 class ArcSideloadStatusTest : public ::testing::Test {
  public:
   ArcSideloadStatusTest()
-      : boot_lockbox_proxy_(new MockObjectProxy()),
+      : boot_lockbox_proxy_(
+            new dbus::MockObjectProxy(nullptr, "", dbus::ObjectPath(""))),
         bootlockbox_read_method_call_(cryptohome::kBootLockboxInterface,
                                       cryptohome::kBootLockboxReadBootLockbox),
         bootlockbox_store_method_call_(
@@ -109,7 +110,7 @@ class ArcSideloadStatusTest : public ::testing::Test {
     return base::Bind(&EnableCallbackAdaptor, enabled, error);
   }
 
-  scoped_refptr<MockObjectProxy> boot_lockbox_proxy_;
+  scoped_refptr<dbus::MockObjectProxy> boot_lockbox_proxy_;
   std::unique_ptr<ArcSideloadStatus> arc_sideload_status_;
   dbus::MethodCall bootlockbox_read_method_call_;
   dbus::MethodCall bootlockbox_store_method_call_;

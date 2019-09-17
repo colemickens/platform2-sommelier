@@ -45,6 +45,7 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/mock_exported_object.h>
+#include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libpasswordprovider/password.h>
@@ -70,7 +71,6 @@
 #include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_metrics.h"
 #include "login_manager/mock_nss_util.h"
-#include "login_manager/mock_object_proxy.h"
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_process_manager_service.h"
@@ -285,8 +285,10 @@ class SessionManagerImplTest : public ::testing::Test,
       : bus_(new FakeBus()),
         state_key_generator_(&utils_, &metrics_),
         android_container_(kAndroidPid),
-        powerd_proxy_(new MockObjectProxy()),
-        system_clock_proxy_(new MockObjectProxy()) {}
+        powerd_proxy_(
+            new dbus::MockObjectProxy(nullptr, "", dbus::ObjectPath(""))),
+        system_clock_proxy_(
+            new dbus::MockObjectProxy(nullptr, "", dbus::ObjectPath(""))) {}
 
   ~SessionManagerImplTest() override = default;
 
@@ -755,11 +757,11 @@ class SessionManagerImplTest : public ::testing::Test,
   FakeContainerManager android_container_;
   MockInstallAttributesReader install_attributes_reader_;
 
-  scoped_refptr<MockObjectProxy> powerd_proxy_;
+  scoped_refptr<dbus::MockObjectProxy> powerd_proxy_;
   dbus::ObjectProxy::SignalCallback suspend_imminent_callback_;
   dbus::ObjectProxy::SignalCallback suspend_done_callback_;
 
-  scoped_refptr<MockObjectProxy> system_clock_proxy_;
+  scoped_refptr<dbus::MockObjectProxy> system_clock_proxy_;
   dbus::ObjectProxy::WaitForServiceToBeAvailableCallback available_callback_;
 
   password_provider::FakePasswordProvider* password_provider_ = nullptr;
