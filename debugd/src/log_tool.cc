@@ -163,6 +163,7 @@ const std::vector<Log> kCommandLogs {
   {kCommand, "ifconfig", "/bin/ifconfig -a"},
   {kFile, "input_devices", "/proc/bus/input/devices"},
   // Hardware capabilities of the wiphy device.
+  {kFile, "interrupts", "/proc/interrupts"},
   {kCommand, "iw_list", "/usr/sbin/iw list"},
 #if USE_IWLWIFI_DUMP
   {kCommand, "iwlmvm_module_params", CMD_KERNEL_MODULE_PARAMS(iwlmvm)},
