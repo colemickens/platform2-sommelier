@@ -37,7 +37,6 @@ class MockPolicyKey : public PolicyKey {
   MOCK_METHOD1(ClobberCompromisedKey, bool(const std::vector<uint8_t>&));
   MOCK_METHOD2(Verify,
                bool(const std::vector<uint8_t>&, const std::vector<uint8_t>&));
-  MOCK_METHOD2(Sign, bool(const std::vector<uint8_t>&, std::vector<uint8_t>*));
   MOCK_CONST_METHOD0(public_key_der, const std::vector<uint8_t>&());
 };
 }  // namespace login_manager

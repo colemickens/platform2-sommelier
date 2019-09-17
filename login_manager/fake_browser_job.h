@@ -44,8 +44,6 @@ class FakeBrowserJob : public BrowserJobInterface {
   MOCK_METHOD1(SetExtraArguments, void(const std::vector<std::string>&));
   MOCK_METHOD1(SetExtraEnvironmentVariables,
                void(const std::vector<std::string>&));
-  MOCK_METHOD1(SetOneTimeArguments, void(const std::vector<std::string>&));
-  MOCK_METHOD0(ClearOneTimeArguments, void());
 
   bool RunInBackground() override;
   const std::string GetName() const override;
