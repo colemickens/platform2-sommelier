@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "arc/vm/libvda/test/libvda_unittest_common.h"
+#include "arc/vm/libvda/decode/test/decode_unittest_common.h"
 
 ImplPtr SetupImpl(vda_impl_type_t impl_type) {
   return ImplPtr(initialize(impl_type));

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ARC_VM_LIBVDA_LIBVDA_H_
-#define ARC_VM_LIBVDA_LIBVDA_H_
+#ifndef ARC_VM_LIBVDA_LIBVDA_DECODE_H_
+#define ARC_VM_LIBVDA_LIBVDA_DECODE_H_
 
 #include <stddef.h>
 #include <stdint.h>
@@ -268,4 +268,4 @@ vda_result_t LIBVDA_EXPORT vda_reset(void* ctx);
 }  // extern "C"
 #endif
 
-#endif  // ARC_VM_LIBVDA_LIBVDA_H_
+#endif  // ARC_VM_LIBVDA_LIBVDA_DECODE_H_

@@ -8,7 +8,7 @@
 #include <base/posix/eintr_wrapper.h>
 #include <gtest/gtest.h>
 
-#include "arc/vm/libvda/test/libvda_unittest_common.h"
+#include "arc/vm/libvda/decode/test/decode_unittest_common.h"
 
 class LibvdaFakeTest : public ::testing::Test {
  public:

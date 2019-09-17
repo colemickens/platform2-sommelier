@@ -15,8 +15,8 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/threading/thread.h>
 
-#include "arc/vm/libvda/libvda.h"
-#include "arc/vm/libvda/test/libvda_unittest_common.h"
+#include "arc/vm/libvda/decode/test/decode_unittest_common.h"
+#include "arc/vm/libvda/libvda_decode.h"
 
 namespace {
 
@@ -204,7 +204,7 @@ class DataReader {
     // 32 bit integer is populated.
     uint32_t value = 0;
     for (int i = 0; i < 4; ++i) {
-        value = (value << 8) | GetUint8();
+      value = (value << 8) | GetUint8();
     }
     return value;
   }

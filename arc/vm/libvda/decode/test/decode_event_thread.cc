@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "arc/vm/libvda/test/decode_event_thread.h"
+#include "arc/vm/libvda/decode/test/decode_event_thread.h"
 
 #include <fcntl.h>
 

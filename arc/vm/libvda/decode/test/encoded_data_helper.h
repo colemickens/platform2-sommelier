@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ARC_VM_LIBVDA_TEST_ENCODED_DATA_HELPER_H_
-#define ARC_VM_LIBVDA_TEST_ENCODED_DATA_HELPER_H_
+#ifndef ARC_VM_LIBVDA_DECODE_TEST_ENCODED_DATA_HELPER_H_
+#define ARC_VM_LIBVDA_DECODE_TEST_ENCODED_DATA_HELPER_H_
 
 #include <stdint.h>
 
@@ -12,7 +12,7 @@
 
 #include <base/macros.h>
 
-#include "arc/vm/libvda/libvda.h"
+#include "arc/vm/libvda/libvda_decode.h"
 
 // This class is forked from Chromium's VDA testing helpers. See
 // src/media/gpu/test/video_decode_accelerator_unittest_helpers.h.
@@ -51,4 +51,4 @@ class EncodedDataHelper {
   DISALLOW_COPY_AND_ASSIGN(EncodedDataHelper);
 };
 
-#endif  // ARC_VM_LIBVDA_TEST_ENCODED_DATA_HELPER_H_
+#endif  // ARC_VM_LIBVDA_DECODE_TEST_ENCODED_DATA_HELPER_H_

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ARC_VM_LIBVDA_GPU_GPU_VDA_IMPL_H_
-#define ARC_VM_LIBVDA_GPU_GPU_VDA_IMPL_H_
+#ifndef ARC_VM_LIBVDA_DECODE_GPU_GPU_VDA_IMPL_H_
+#define ARC_VM_LIBVDA_DECODE_GPU_GPU_VDA_IMPL_H_
 
 #include <stdint.h>
 
@@ -14,8 +14,8 @@
 #include <base/threading/thread.h>
 #include <base/threading/thread_checker.h>
 
+#include "arc/vm/libvda/decode_wrapper.h"
 #include "arc/vm/libvda/gpu/mojom/video.mojom.h"
-#include "arc/vm/libvda/wrapper.h"
 
 namespace base {
 class WaitableEvent;
@@ -68,4 +68,4 @@ class GpuVdaImpl : public VdaImpl {
 
 }  // namespace arc
 
-#endif  // ARC_VM_LIBVDA_GPU_GPU_VDA_IMPL_H_
+#endif  // ARC_VM_LIBVDA_DECODE_GPU_GPU_VDA_IMPL_H_

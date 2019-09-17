@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ARC_VM_LIBVDA_TEST_DECODE_EVENT_THREAD_H_
-#define ARC_VM_LIBVDA_TEST_DECODE_EVENT_THREAD_H_
+#ifndef ARC_VM_LIBVDA_DECODE_TEST_DECODE_EVENT_THREAD_H_
+#define ARC_VM_LIBVDA_DECODE_TEST_DECODE_EVENT_THREAD_H_
 
 #include <stdint.h>
 
@@ -18,7 +18,7 @@
 #include <base/threading/thread.h>
 
 #include "arc/vm/libvda/gbm_util.h"
-#include "arc/vm/libvda/libvda.h"
+#include "arc/vm/libvda/libvda_decode.h"
 
 namespace arc {
 namespace test {
@@ -94,4 +94,4 @@ class DecodeEventThread {
 }  // namespace test
 }  // namespace arc
 
-#endif  // ARC_VM_LIBVDA_TEST_DECODE_EVENT_THREAD_H_
+#endif  // ARC_VM_LIBVDA_DECODE_TEST_DECODE_EVENT_THREAD_H_

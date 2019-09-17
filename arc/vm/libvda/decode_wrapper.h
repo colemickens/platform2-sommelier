@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ARC_VM_LIBVDA_WRAPPER_H_
-#define ARC_VM_LIBVDA_WRAPPER_H_
+#ifndef ARC_VM_LIBVDA_DECODE_WRAPPER_H_
+#define ARC_VM_LIBVDA_DECODE_WRAPPER_H_
 
 #include <stdint.h>
 
@@ -13,7 +13,7 @@
 #include <base/macros.h>
 #include <base/threading/thread.h>
 
-#include "arc/vm/libvda/libvda.h"
+#include "arc/vm/libvda/libvda_decode.h"
 
 namespace arc {
 
@@ -121,4 +121,4 @@ class VdaImpl {
 
 }  // namespace arc
 
-#endif  // ARC_VM_LIBVDA_WRAPPER_H_
+#endif  // ARC_VM_LIBVDA_DECODE_WRAPPER_H_

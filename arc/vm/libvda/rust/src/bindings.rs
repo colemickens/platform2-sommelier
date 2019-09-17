@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-//! Auto-generated code from /platform2/arc/vm/libvda/libvda.h.
+//! Auto-generated code from /platform2/arc/vm/libvda/libvda_decode.h.
 
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::all))]
 #![allow(

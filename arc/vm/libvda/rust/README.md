@@ -36,5 +36,5 @@ environment first.
 
 ```shell
 $ cd ${CHROMEOS_DIR}/src/platform2/
-$ bindgen arc/vm/libvda/libvda.h -- -I . > arc/vm/libvda/rust/src/bindings.rs
+$ bindgen arc/vm/libvda/libvda_decode.h -- -I . > arc/vm/libvda/rust/src/bindings.rs
 ```

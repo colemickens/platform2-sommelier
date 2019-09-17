@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ARC_VM_LIBVDA_TEST_LIBVDA_UNITTEST_COMMON_H_
-#define ARC_VM_LIBVDA_TEST_LIBVDA_UNITTEST_COMMON_H_
+#ifndef ARC_VM_LIBVDA_DECODE_TEST_DECODE_UNITTEST_COMMON_H_
+#define ARC_VM_LIBVDA_DECODE_TEST_DECODE_UNITTEST_COMMON_H_
 
 #include <memory>
 
-#include "arc/vm/libvda/libvda.h"
+#include "arc/vm/libvda/libvda_decode.h"
 
 struct ImplDeleter {
   void operator()(void* impl) { deinitialize(impl); }
@@ -32,4 +32,4 @@ ImplPtr SetupImpl(vda_impl_type_t impl_type);
 
 SessionPtr SetupSession(const ImplPtr& impl, vda_profile_t profile);
 
-#endif  // ARC_VM_LIBVDA_TEST_LIBVDA_UNITTEST_COMMON_H_
+#endif  // ARC_VM_LIBVDA_DECODE_TEST_DECODE_UNITTEST_COMMON_H_

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "arc/vm/libvda/test/encoded_data_helper.h"
+#include "arc/vm/libvda/decode/test/encoded_data_helper.h"
 
 #include <base/stl_util.h>
 

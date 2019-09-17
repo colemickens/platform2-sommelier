@@ -57,10 +57,10 @@ source_set("libvda_source_set") {
     ":video_mojo_bindings",
   ]
   sources = [
-    "fake/fake_vda_impl.cc",
+    "decode/fake/fake_vda_impl.cc",
+    "decode/gpu/gpu_vda_impl.cc",
+    "decode_wrapper.cc",
     "gbm_util.cc",
-    "gpu/gpu_vda_impl.cc",
-    "wrapper.cc",
   ]
 }
 
@@ -102,8 +102,8 @@ if (use.test) {
       "gbm",
     ]
     sources = [
-      "libvda_fake_unittest.cc",
-      "test/libvda_unittest_common.cc",
+      "decode/test/decode_unittest_common.cc",
+      "decode_fake_test.cc",
     ]
   }
 }
@@ -126,10 +126,10 @@ executable("libvda_gpu_unittest") {
     "gbm",
   ]
   sources = [
-    "libvda_gpu_unittest.cc",
-    "test/decode_event_thread.cc",
-    "test/encoded_data_helper.cc",
-    "test/libvda_unittest_common.cc",
+    "decode/test/decode_event_thread.cc",
+    "decode/test/decode_unittest_common.cc",
+    "decode/test/encoded_data_helper.cc",
+    "decode_gpu_test.cc",
   ]
 }
 
@@ -139,8 +139,8 @@ if (use.fuzzer) {
     configs -= [ "//common-mk:no_exceptions" ]
     sources = [
       "at_exit_util.cc",
-      "libvda_fuzzer.cc",
-      "test/libvda_unittest_common.cc",
+      "decode/test/decode_unittest_common.cc",
+      "decode_fuzzer.cc",
     ]
     pkg_deps = [ "gbm" ]
     deps = [

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "arc/vm/libvda/wrapper.h"
+#include "arc/vm/libvda/decode_wrapper.h"
 
 #include <fcntl.h>
 
@@ -11,8 +11,8 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
-#include "arc/vm/libvda/fake/fake_vda_impl.h"
-#include "arc/vm/libvda/gpu/gpu_vda_impl.h"
+#include "arc/vm/libvda/decode/fake/fake_vda_impl.h"
+#include "arc/vm/libvda/decode/gpu/gpu_vda_impl.h"
 
 namespace arc {
 

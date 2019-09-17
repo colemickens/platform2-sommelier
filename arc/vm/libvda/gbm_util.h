@@ -11,7 +11,7 @@
 
 #include <gbm.h>
 
-#include "arc/vm/libvda/libvda.h"
+#include "arc/vm/libvda/libvda_decode.h"
 
 namespace arc {
 

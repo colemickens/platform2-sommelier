@@ -23,10 +23,10 @@
 #include <base/timer/elapsed_timer.h>
 #include <gtest/gtest.h>
 
-#include "arc/vm/libvda/libvda.h"
-#include "arc/vm/libvda/test/decode_event_thread.h"
-#include "arc/vm/libvda/test/encoded_data_helper.h"
-#include "arc/vm/libvda/test/libvda_unittest_common.h"
+#include "arc/vm/libvda/decode/test/decode_event_thread.h"
+#include "arc/vm/libvda/decode/test/decode_unittest_common.h"
+#include "arc/vm/libvda/decode/test/encoded_data_helper.h"
+#include "arc/vm/libvda/libvda_decode.h"
 
 namespace {
 
