@@ -224,9 +224,9 @@ void NDProxy::ProxyNDFrame(int target_if, ssize_t frame_len) {
   };
   sockaddr_ll addr = {
       .sll_family = AF_PACKET,
+      .sll_protocol = htons(ETH_P_IPV6),
       .sll_ifindex = target_if,
       .sll_halen = ETHER_ADDR_LEN,
-      .sll_protocol = htons(ETH_P_IPV6),
   };
   memcpy(addr.sll_addr, reinterpret_cast<ethhdr*>(out_frame_buffer_)->h_dest,
          ETHER_ADDR_LEN);
