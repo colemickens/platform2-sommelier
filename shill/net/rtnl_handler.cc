@@ -332,7 +332,7 @@ void RTNLHandler::ParseRTNL(InputData* data) {
           break;
         }
         default:
-          NOTIMPLEMENTED() << "Unknown NL message type.";
+          LOG(ERROR) << "Unknown NL message type: " << hdr->nlmsg_type;
       }
     } else {
       switch (msg.type()) {
@@ -358,7 +358,7 @@ void RTNLHandler::ParseRTNL(InputData* data) {
           // DNSSL support is not implemented. Just ignore it.
           break;
         default:
-          NOTIMPLEMENTED() << "Unknown RTNL message type.";
+          LOG(ERROR) << "Unknown RTNL message type: " << msg.type();
       }
     }
     buf += NLMSG_ALIGN(hdr->nlmsg_len);
