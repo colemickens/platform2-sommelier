@@ -21,10 +21,12 @@ class MockInitDaemonController : public InitDaemonController {
   MockInitDaemonController();
   ~MockInitDaemonController() override;
 
-  MOCK_METHOD3(TriggerImpulse,
-               std::unique_ptr<dbus::Response>(const std::string&,
-                                               const std::vector<std::string>&,
-                                               TriggerMode));
+  MOCK_METHOD(std::unique_ptr<dbus::Response>,
+              TriggerImpulse,
+              (const std::string&,
+               const std::vector<std::string>&,
+               TriggerMode),
+              (override));
 };
 
 }  // namespace login_manager

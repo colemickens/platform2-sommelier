@@ -25,13 +25,18 @@ class MockPolicyService : public PolicyService {
  public:
   MockPolicyService();
   ~MockPolicyService() override;
-  MOCK_METHOD5(Store,
-               bool(const PolicyNamespace&,
-                    const std::vector<uint8_t>&,
-                    int,
-                    SignatureCheck,
-                    const Completion&));
-  MOCK_METHOD2(Retrieve, bool(const PolicyNamespace&, std::vector<uint8_t>*));
+  MOCK_METHOD(bool,
+              Store,
+              (const PolicyNamespace&,
+               const std::vector<uint8_t>&,
+               int,
+               SignatureCheck,
+               const Completion&),
+              (override));
+  MOCK_METHOD(bool,
+              Retrieve,
+              (const PolicyNamespace&, std::vector<uint8_t>*),
+              (override));
 
   static Completion CreateDoNothing() {
     return base::Bind(&MockPolicyService::DoNothingWithError);
@@ -72,7 +77,7 @@ class MockPolicyService : public PolicyService {
     void HandleError(brillo::ErrorPtr error) {
       HandleErrorInternal(error.get());
     }
-    MOCK_METHOD1(HandleErrorInternal, void(brillo::Error* error));
+    MOCK_METHOD(void, HandleErrorInternal, (brillo::Error*));
 
    private:
     DISALLOW_COPY_AND_ASSIGN(ExpectingErrorHandler);
@@ -85,8 +90,8 @@ class MockPolicyServiceDelegate : public PolicyService::Delegate {
  public:
   MockPolicyServiceDelegate();
   ~MockPolicyServiceDelegate() override;
-  MOCK_METHOD1(OnPolicyPersisted, void(bool));
-  MOCK_METHOD1(OnKeyPersisted, void(bool));
+  MOCK_METHOD(void, OnPolicyPersisted, (bool), (override));
+  MOCK_METHOD(void, OnKeyPersisted, (bool), (override));
 };
 }  // namespace login_manager
 

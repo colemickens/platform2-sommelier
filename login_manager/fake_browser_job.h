@@ -34,16 +34,27 @@ class FakeBrowserJob : public BrowserJobInterface {
   // Overridden from BrowserJobInterface
   bool IsGuestSession() override;
   bool ShouldRunBrowser() override;
-  MOCK_CONST_METHOD0(ShouldStop, bool());
-  MOCK_METHOD2(KillEverything, void(int, const std::string&));
-  MOCK_METHOD2(Kill, void(int, const std::string&));
-  MOCK_METHOD1(WaitAndAbort, void(base::TimeDelta));
-  MOCK_METHOD2(StartSession, void(const std::string&, const std::string&));
-  MOCK_METHOD0(StopSession, void());
-  MOCK_METHOD1(SetArguments, void(const std::vector<std::string>&));
-  MOCK_METHOD1(SetExtraArguments, void(const std::vector<std::string>&));
-  MOCK_METHOD1(SetExtraEnvironmentVariables,
-               void(const std::vector<std::string>&));
+  MOCK_METHOD(bool, ShouldStop, (), (const, override));
+  MOCK_METHOD(void, KillEverything, (int, const std::string&), (override));
+  MOCK_METHOD(void, Kill, (int, const std::string&), (override));
+  MOCK_METHOD(void, WaitAndAbort, (base::TimeDelta), (override));
+  MOCK_METHOD(void,
+              StartSession,
+              (const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(void, StopSession, (), (override));
+  MOCK_METHOD(void,
+              SetArguments,
+              (const std::vector<std::string>&),
+              (override));
+  MOCK_METHOD(void,
+              SetExtraArguments,
+              (const std::vector<std::string>&),
+              (override));
+  MOCK_METHOD(void,
+              SetExtraEnvironmentVariables,
+              (const std::vector<std::string>&),
+              (override));
 
   bool RunInBackground() override;
   const std::string GetName() const override;

@@ -23,14 +23,16 @@ class MockSubprocess : public SubprocessInterface {
   MockSubprocess();
   ~MockSubprocess() override;
 
-  MOCK_METHOD0(UseNewMountNamespace, void());
-  MOCK_METHOD2(ForkAndExec,
-               bool(const std::vector<std::string>& args,
-                    const std::vector<std::string>& env_vars));
-  MOCK_METHOD1(Kill, void(int signal));
-  MOCK_METHOD1(KillEverything, void(int signal));
-  MOCK_CONST_METHOD0(GetPid, pid_t());
-  MOCK_METHOD0(ClearPid, void());
+  MOCK_METHOD(void, UseNewMountNamespace, (), (override));
+  MOCK_METHOD(bool,
+              ForkAndExec,
+              (const std::vector<std::string>&,
+               const std::vector<std::string>&),
+              (override));
+  MOCK_METHOD(void, Kill, (int), (override));
+  MOCK_METHOD(void, KillEverything, (int), (override));
+  MOCK_METHOD(pid_t, GetPid, (), (const, override));
+  MOCK_METHOD(void, ClearPid, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSubprocess);

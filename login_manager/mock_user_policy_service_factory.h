@@ -18,9 +18,14 @@ class MockUserPolicyServiceFactory : public UserPolicyServiceFactory {
  public:
   MockUserPolicyServiceFactory();
   ~MockUserPolicyServiceFactory() override;
-  MOCK_METHOD1(Create, std::unique_ptr<PolicyService>(const std::string&));
-  MOCK_METHOD1(CreateForHiddenUserHome,
-               std::unique_ptr<PolicyService>(const std::string&));
+  MOCK_METHOD(std::unique_ptr<PolicyService>,
+              Create,
+              (const std::string&),
+              (override));
+  MOCK_METHOD(std::unique_ptr<PolicyService>,
+              CreateForHiddenUserHome,
+              (const std::string&),
+              (override));
 };
 
 }  // namespace login_manager

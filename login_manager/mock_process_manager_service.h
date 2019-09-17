@@ -20,20 +20,25 @@ class MockProcessManagerService : public ProcessManagerServiceInterface {
   MockProcessManagerService();
   ~MockProcessManagerService() override;
 
-  MOCK_METHOD0(ScheduleShutdown, void());
-  MOCK_METHOD0(RunBrowser, void());
-  MOCK_METHOD2(AbortBrowser, void(int, const std::string&));
-  MOCK_METHOD3(RestartBrowserWithArgs,
-               void(const std::vector<std::string>&,
-                    bool,
-                    const std::vector<std::string>&));
-  MOCK_METHOD2(SetBrowserSessionForUser,
-               void(const std::string&, const std::string&));
-  MOCK_METHOD2(SetFlagsForUser,
-               void(const std::string& username,
-                    const std::vector<std::string>& flags));
-  MOCK_METHOD1(IsBrowser, bool(pid_t));
-  MOCK_METHOD0(GetLastBrowserRestartTime, base::TimeTicks());
+  MOCK_METHOD(void, ScheduleShutdown, (), (override));
+  MOCK_METHOD(void, RunBrowser, (), (override));
+  MOCK_METHOD(void, AbortBrowser, (int, const std::string&), (override));
+  MOCK_METHOD(void,
+              RestartBrowserWithArgs,
+              (const std::vector<std::string>&,
+               bool,
+               const std::vector<std::string>&),
+              (override));
+  MOCK_METHOD(void,
+              SetBrowserSessionForUser,
+              (const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(void,
+              SetFlagsForUser,
+              (const std::string&, const std::vector<std::string>&),
+              (override));
+  MOCK_METHOD(bool, IsBrowser, (pid_t), (override));
+  MOCK_METHOD(base::TimeTicks, GetLastBrowserRestartTime, (), (override));
 };
 }  // namespace login_manager
 

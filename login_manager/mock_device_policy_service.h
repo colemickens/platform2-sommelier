@@ -28,30 +28,47 @@ class MockDevicePolicyService : public DevicePolicyService {
   explicit MockDevicePolicyService(PolicyKey* policy_key);
   ~MockDevicePolicyService() override;
 
-  MOCK_METHOD5(Store,
-               bool(const PolicyNamespace&,
-                    const std::vector<uint8_t>&,
-                    int,
-                    SignatureCheck,
-                    const Completion&));
-  MOCK_METHOD2(Retrieve, bool(const PolicyNamespace&, std::vector<uint8_t>*));
-  MOCK_METHOD2(Delete, bool(const PolicyNamespace&, SignatureCheck));
-  MOCK_METHOD1(ListComponentIds, std::vector<std::string>(PolicyDomain));
-  MOCK_METHOD4(
-      CheckAndHandleOwnerLogin,
-      bool(const std::string&, PK11SlotInfo*, bool*, brillo::ErrorPtr*));
-  MOCK_METHOD3(ValidateAndStoreOwnerKey,
-               bool(const std::string&,
-                    const std::vector<uint8_t>&,
-                    PK11SlotInfo*));
-  MOCK_METHOD0(KeyMissing, bool(void));
-  MOCK_METHOD0(Mitigating, bool(void));
-  MOCK_METHOD0(Initialize, bool(void));
-  MOCK_METHOD2(ReportPolicyFileMetrics, void(bool, bool));
-  MOCK_METHOD0(InstallAttributesEnterpriseMode, bool(void));
-  MOCK_METHOD1(ClearForcedReEnrollmentFlags, void(const Completion&));
-  MOCK_METHOD1(ValidateRemoteDeviceWipeCommand,
-               bool(const std::vector<uint8_t>&));
+  MOCK_METHOD(bool,
+              Store,
+              (const PolicyNamespace&,
+               const std::vector<uint8_t>&,
+               int,
+               SignatureCheck,
+               const Completion&),
+              (override));
+  MOCK_METHOD(bool,
+              Retrieve,
+              (const PolicyNamespace&, std::vector<uint8_t>*),
+              (override));
+  MOCK_METHOD(bool,
+              Delete,
+              (const PolicyNamespace&, SignatureCheck),
+              (override));
+  MOCK_METHOD(std::vector<std::string>,
+              ListComponentIds,
+              (PolicyDomain),
+              (override));
+  MOCK_METHOD(bool,
+              CheckAndHandleOwnerLogin,
+              (const std::string&, PK11SlotInfo*, bool*, brillo::ErrorPtr*),
+              (override));
+  MOCK_METHOD(bool,
+              ValidateAndStoreOwnerKey,
+              (const std::string&, const std::vector<uint8_t>&, PK11SlotInfo*),
+              (override));
+  MOCK_METHOD(bool, KeyMissing, (), (override));
+  MOCK_METHOD(bool, Mitigating, (), (override));
+  MOCK_METHOD(bool, Initialize, (), (override));
+  MOCK_METHOD(void, ReportPolicyFileMetrics, (bool, bool), (override));
+  MOCK_METHOD(bool, InstallAttributesEnterpriseMode, (), (override));
+  MOCK_METHOD(void,
+              ClearForcedReEnrollmentFlags,
+              (const Completion&),
+              (override));
+  MOCK_METHOD(bool,
+              ValidateRemoteDeviceWipeCommand,
+              (const std::vector<uint8_t>&),
+              (override));
 
   void set_crossystem(Crossystem* crossystem) { crossystem_ = crossystem; }
   void set_vpd_process(VpdProcess* vpd_process) { vpd_process_ = vpd_process; }

@@ -19,14 +19,14 @@ class MockSessionManager : public SessionManagerInterface {
   MockSessionManager();
   ~MockSessionManager() override;
 
-  MOCK_METHOD0(Initialize, bool());
-  MOCK_METHOD0(Finalize, void());
-  MOCK_METHOD0(StartDBusService, bool());
-  MOCK_METHOD0(GetStartUpFlags, std::vector<std::string>());
-  MOCK_METHOD0(AnnounceSessionStoppingIfNeeded, void());
-  MOCK_METHOD0(AnnounceSessionStopped, void());
-  MOCK_METHOD1(ShouldEndSession, bool(std::string*));
-  MOCK_METHOD1(InitiateDeviceWipe, void(const std::string&));
+  MOCK_METHOD(bool, Initialize, (), (override));
+  MOCK_METHOD(void, Finalize, (), (override));
+  MOCK_METHOD(bool, StartDBusService, (), (override));
+  MOCK_METHOD(std::vector<std::string>, GetStartUpFlags, (), (override));
+  MOCK_METHOD(void, AnnounceSessionStoppingIfNeeded, (), (override));
+  MOCK_METHOD(void, AnnounceSessionStopped, (), (override));
+  MOCK_METHOD(bool, ShouldEndSession, (std::string*), (override));
+  MOCK_METHOD(void, InitiateDeviceWipe, (const std::string&), (override));
 };
 }  // namespace login_manager
 

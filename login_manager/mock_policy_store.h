@@ -12,12 +12,17 @@ class MockPolicyStore : public PolicyStore {
  public:
   MockPolicyStore();
   ~MockPolicyStore() override;
-  MOCK_METHOD0(DefunctPrefsFilePresent, bool(void));
-  MOCK_METHOD0(EnsureLoadedOrCreated, bool(void));
-  MOCK_CONST_METHOD0(Get,
-                     const enterprise_management::PolicyFetchResponse&(void));
-  MOCK_METHOD0(Persist, bool(void));
-  MOCK_METHOD1(Set, void(const enterprise_management::PolicyFetchResponse&));
+  MOCK_METHOD(bool, DefunctPrefsFilePresent, (), (override));
+  MOCK_METHOD(bool, EnsureLoadedOrCreated, (), (override));
+  MOCK_METHOD(const enterprise_management::PolicyFetchResponse&,
+              Get,
+              (),
+              (const, override));
+  MOCK_METHOD(bool, Persist, (), (override));
+  MOCK_METHOD(void,
+              Set,
+              (const enterprise_management::PolicyFetchResponse&),
+              (override));
 };
 }  // namespace login_manager
 

@@ -14,7 +14,7 @@ class MockFileChecker : public FileChecker {
  public:
   MockFileChecker();
   ~MockFileChecker();
-  MOCK_METHOD0(exists, bool());
+  MOCK_METHOD(bool, exists, (), (override));
 };
 }  // namespace login_manager
 

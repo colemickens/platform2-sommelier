@@ -45,9 +45,9 @@ class FakeGeneratorJob : public GeneratorJobInterface {
   ~FakeGeneratorJob() override;
 
   bool RunInBackground() override;
-  MOCK_METHOD2(KillEverything, void(int, const std::string&));
-  MOCK_METHOD2(Kill, void(int, const std::string&));
-  MOCK_METHOD1(WaitAndAbort, void(base::TimeDelta));
+  MOCK_METHOD(void, KillEverything, (int, const std::string&), (override));
+  MOCK_METHOD(void, Kill, (int, const std::string&), (override));
+  MOCK_METHOD(void, WaitAndAbort, (base::TimeDelta), (override));
 
   const std::string GetName() const override { return name_; }
   pid_t CurrentPid() const override { return pid_; }

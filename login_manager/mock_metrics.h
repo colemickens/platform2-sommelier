@@ -18,14 +18,20 @@ class MockMetrics : public LoginMetrics {
   MockMetrics();
   ~MockMetrics() override;
 
-  MOCK_METHOD1(SendConsumerAllowsNewUsers, void(bool));
-  MOCK_METHOD3(SendLoginUserType, void(bool, bool, bool));
-  MOCK_METHOD1(SendPolicyFilesStatus, bool(const PolicyFilesStatus&));
-  MOCK_METHOD1(SendStateKeyGenerationStatus, void(StateKeyGenerationStatus));
-  MOCK_METHOD1(RecordStats, void(const char*));
-  MOCK_METHOD0(HasRecordedChromeExec, bool());
-  MOCK_METHOD1(SendSessionExitType, void(SessionExitType));
-  MOCK_METHOD1(SendBrowserShutdownTime, void(base::TimeDelta));
+  MOCK_METHOD(void, SendConsumerAllowsNewUsers, (bool), (override));
+  MOCK_METHOD(void, SendLoginUserType, (bool, bool, bool), (override));
+  MOCK_METHOD(bool,
+              SendPolicyFilesStatus,
+              (const PolicyFilesStatus&),
+              (override));
+  MOCK_METHOD(void,
+              SendStateKeyGenerationStatus,
+              (StateKeyGenerationStatus),
+              (override));
+  MOCK_METHOD(void, RecordStats, (const char*), (override));
+  MOCK_METHOD(bool, HasRecordedChromeExec, (), (override));
+  MOCK_METHOD(void, SendSessionExitType, (SessionExitType), (override));
+  MOCK_METHOD(void, SendBrowserShutdownTime, (base::TimeDelta), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);

@@ -16,10 +16,10 @@ class MockArcSideloadStatus : public ArcSideloadStatusInterface {
   MockArcSideloadStatus() {}
   ~MockArcSideloadStatus() override {}
 
-  MOCK_METHOD0(Initialize, void());
-  MOCK_METHOD0(IsAdbSideloadAllowed, bool());
-  MOCK_METHOD1(EnableAdbSideload, void(EnableAdbSideloadCallback));
-  MOCK_METHOD1(QueryAdbSideload, void(QueryAdbSideloadCallback));
+  MOCK_METHOD(void, Initialize, (), (override));
+  MOCK_METHOD(bool, IsAdbSideloadAllowed, (), (override));
+  MOCK_METHOD(void, EnableAdbSideload, (EnableAdbSideloadCallback), (override));
+  MOCK_METHOD(void, QueryAdbSideload, (QueryAdbSideloadCallback), (override));
 };
 
 }  // namespace login_manager

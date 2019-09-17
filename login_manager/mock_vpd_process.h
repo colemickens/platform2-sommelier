@@ -21,10 +21,10 @@ class SystemUtils;
 class MockVpdProcess : public VpdProcess {
  public:
   MockVpdProcess() : VpdProcess() {}
-  MOCK_METHOD3(RunInBackground,
-               bool(const KeyValuePairs& updates,
-                    bool ignore_cache,
-                    const CompletionCallback& completion));
+  MOCK_METHOD(bool,
+              RunInBackground,
+              (const KeyValuePairs&, bool, const CompletionCallback&),
+              (override));
 };
 
 }  // namespace login_manager

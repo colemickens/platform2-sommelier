@@ -23,54 +23,80 @@ class MockSystemUtils : public SystemUtils {
   MockSystemUtils();
   ~MockSystemUtils() override;
 
-  MOCK_METHOD3(kill, int(pid_t pid, uid_t uid, int signal));
-  MOCK_METHOD1(time, time_t(time_t*));  // NOLINT
-  MOCK_METHOD0(fork, pid_t(void));
-  MOCK_METHOD1(close, int(int fd));
-  MOCK_METHOD1(chdir, int(const base::FilePath& path));
-  MOCK_METHOD0(setsid, pid_t(void));
-  MOCK_METHOD3(execve,
-               int(const base::FilePath& exec_file,
-                   const char* const argv[],
-                   const char* const envp[]));
-  MOCK_METHOD0(EnterNewMountNamespace, bool(void));
-  MOCK_METHOD2(GetAppOutput,
-               bool(const std::vector<std::string>&, std::string*));
-  MOCK_METHOD0(GetDevModeState, DevModeState(void));
-  MOCK_METHOD0(GetVmState, VmState(void));
-  MOCK_METHOD2(ProcessGroupIsGone,
-               bool(pid_t child_spec, base::TimeDelta timeout));
-  MOCK_METHOD2(ProcessIsGone, bool(pid_t child_spec, base::TimeDelta timeout));
-  MOCK_METHOD3(Wait, pid_t(pid_t, base::TimeDelta, int*));
-  MOCK_METHOD2(EnsureAndReturnSafeFileSize,
-               bool(const base::FilePath& file, int32_t* file_size_32));
-  MOCK_METHOD1(Exists, bool(const base::FilePath& file));
-  MOCK_METHOD1(DirectoryExists, bool(const base::FilePath& dir));
-  MOCK_METHOD1(CreateDir, bool(const base::FilePath& dir));
-  MOCK_METHOD3(EnumerateFiles,
-               bool(const base::FilePath&, int, std::vector<base::FilePath>*));
-  MOCK_METHOD1(GetUniqueFilenameInWriteOnlyTempDir,
-               bool(base::FilePath* temp_file_path));
-  MOCK_METHOD1(RemoveFile, bool(const base::FilePath& filename));
-  MOCK_METHOD2(AtomicFileWrite,
-               bool(const base::FilePath& filename, const std::string& data));
-  MOCK_METHOD1(AmountOfFreeDiskSpace, int64_t(const base::FilePath& path));
-  MOCK_METHOD3(GetGidAndGroups,
-               bool(uid_t uid, gid_t* out_gid, std::vector<gid_t>*));
+  MOCK_METHOD(int, kill, (pid_t, uid_t, int), (override));
+  MOCK_METHOD(time_t, time, (time_t*), (override));  // NOLINT
+  MOCK_METHOD(pid_t, fork, (), (override));
+  MOCK_METHOD(int, close, (int), (override));
+  MOCK_METHOD(int, chdir, (const base::FilePath&), (override));
+  MOCK_METHOD(pid_t, setsid, (), (override));
+  MOCK_METHOD(int,
+              execve,
+              (const base::FilePath&, const char* const[], const char* const[]),
+              (override));
+  MOCK_METHOD(bool, EnterNewMountNamespace, (), (override));
+  MOCK_METHOD(bool,
+              GetAppOutput,
+              (const std::vector<std::string>&, std::string*),
+              (override));
+  MOCK_METHOD(DevModeState, GetDevModeState, (), (override));
+  MOCK_METHOD(VmState, GetVmState, (), (override));
+  MOCK_METHOD(bool, ProcessGroupIsGone, (pid_t, base::TimeDelta), (override));
+  MOCK_METHOD(bool, ProcessIsGone, (pid_t, base::TimeDelta), (override));
+  MOCK_METHOD(pid_t, Wait, (pid_t, base::TimeDelta, int*), (override));
+  MOCK_METHOD(bool,
+              EnsureAndReturnSafeFileSize,
+              (const base::FilePath&, int32_t*),
+              (override));
+  MOCK_METHOD(bool, Exists, (const base::FilePath&), (override));
+  MOCK_METHOD(bool, DirectoryExists, (const base::FilePath&), (override));
+  MOCK_METHOD(bool, CreateDir, (const base::FilePath&), (override));
+  MOCK_METHOD(bool,
+              EnumerateFiles,
+              (const base::FilePath&, int, std::vector<base::FilePath>*),
+              (override));
+  MOCK_METHOD(bool,
+              GetUniqueFilenameInWriteOnlyTempDir,
+              (base::FilePath*),
+              (override));
+  MOCK_METHOD(bool, RemoveFile, (const base::FilePath&), (override));
+  MOCK_METHOD(bool,
+              AtomicFileWrite,
+              (const base::FilePath&, const std::string&),
+              (override));
+  MOCK_METHOD(int64_t,
+              AmountOfFreeDiskSpace,
+              (const base::FilePath&),
+              (override));
+  MOCK_METHOD(bool,
+              GetGidAndGroups,
+              (uid_t, gid_t*, std::vector<gid_t>*),
+              (override));
 
-  MOCK_METHOD2(ReadFileToString, bool(const base::FilePath&, std::string*));
-  MOCK_METHOD2(WriteStringToFile,
-               bool(const base::FilePath&, const std::string&));
+  MOCK_METHOD(bool,
+              ReadFileToString,
+              (const base::FilePath&, std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              WriteStringToFile,
+              (const base::FilePath&, const std::string&),
+              (override));
 
-  MOCK_METHOD2(ChangeBlockedSignals,
-               bool(int how, const std::vector<int>& signals));
+  MOCK_METHOD(bool,
+              ChangeBlockedSignals,
+              (int, const std::vector<int>&),
+              (override));
 
-  MOCK_METHOD2(LaunchAndWait, bool(const std::vector<std::string>&, int*));
-  MOCK_METHOD4(RunInMinijail,
-               bool(const ScopedMinijail& jail,
-                    const std::vector<std::string>&,
-                    const std::vector<std::string>&,
-                    pid_t*));
+  MOCK_METHOD(bool,
+              LaunchAndWait,
+              (const std::vector<std::string>&, int*),
+              (override));
+  MOCK_METHOD(bool,
+              RunInMinijail,
+              (const ScopedMinijail& jail,
+               const std::vector<std::string>&,
+               const std::vector<std::string>&,
+               pid_t*),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSystemUtils);

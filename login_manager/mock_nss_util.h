@@ -38,21 +38,31 @@ class MockNssUtil : public NssUtil {
 
   crypto::ScopedPK11Slot OpenUserDB(
       const base::FilePath& user_homedir) override;
-  MOCK_METHOD2(GetPrivateKeyForUser,
-               std::unique_ptr<crypto::RSAPrivateKey>(
-                   const std::vector<uint8_t>&, PK11SlotInfo*));
-  MOCK_METHOD1(GenerateKeyPairForUser,
-               std::unique_ptr<crypto::RSAPrivateKey>(PK11SlotInfo*));
-  MOCK_METHOD0(GetNssdbSubpath, base::FilePath());
-  MOCK_METHOD1(CheckPublicKeyBlob, bool(const std::vector<uint8_t>&));
-  MOCK_METHOD3(Verify,
-               bool(const std::vector<uint8_t>& signature,
-                    const std::vector<uint8_t>& data,
-                    const std::vector<uint8_t>& public_key));
-  MOCK_METHOD3(Sign,
-               bool(const std::vector<uint8_t>& data,
-                    crypto::RSAPrivateKey* key,
-                    std::vector<uint8_t>* out_signature));
+  MOCK_METHOD(std::unique_ptr<crypto::RSAPrivateKey>,
+              GetPrivateKeyForUser,
+              (const std::vector<uint8_t>&, PK11SlotInfo*),
+              (override));
+  MOCK_METHOD(std::unique_ptr<crypto::RSAPrivateKey>,
+              GenerateKeyPairForUser,
+              (PK11SlotInfo*),
+              (override));
+  MOCK_METHOD(base::FilePath, GetNssdbSubpath, (), (override));
+  MOCK_METHOD(bool,
+              CheckPublicKeyBlob,
+              (const std::vector<uint8_t>&),
+              (override));
+  MOCK_METHOD(bool,
+              Verify,
+              (const std::vector<uint8_t>&,
+               const std::vector<uint8_t>&,
+               const std::vector<uint8_t>&),
+              (override));
+  MOCK_METHOD(bool,
+              Sign,
+              (const std::vector<uint8_t>&,
+               crypto::RSAPrivateKey*,
+               std::vector<uint8_t>*),
+              (override));
   base::FilePath GetOwnerKeyFilePath() override;
 
   PK11SlotInfo* GetSlot();

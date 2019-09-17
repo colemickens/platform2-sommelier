@@ -19,7 +19,7 @@ class MockServerBackedStateKeyGenerator : public ServerBackedStateKeyGenerator {
       : ServerBackedStateKeyGenerator(system_utils, metrics) {}
   ~MockServerBackedStateKeyGenerator() override {}
 
-  MOCK_METHOD1(RequestStateKeys, void(const StateKeyCallback&));
+  MOCK_METHOD(void, RequestStateKeys, (const StateKeyCallback&), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockServerBackedStateKeyGenerator);

@@ -17,9 +17,9 @@ class MockLivenessChecker : public LivenessChecker {
   MockLivenessChecker();
   ~MockLivenessChecker() override;
 
-  MOCK_METHOD0(Start, void());
-  MOCK_METHOD0(Stop, void());
-  MOCK_METHOD0(IsRunning, bool());
+  MOCK_METHOD(void, Start, (), (override));
+  MOCK_METHOD(void, Stop, (), (override));
+  MOCK_METHOD(bool, IsRunning, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockLivenessChecker);
