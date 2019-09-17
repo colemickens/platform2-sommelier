@@ -33,6 +33,7 @@ group("all") {
 
 pkg_config("target_defaults") {
   defines = [
+    "USE_CELLULAR=${use.cellular}",
     "USE_IWLWIFI_DUMP=${use.iwlwifi_dump}",
     "USE_TPM=${use.tpm}",
   ]
