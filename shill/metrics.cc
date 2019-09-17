@@ -29,7 +29,52 @@ static string ObjectID(const Metrics* m) {
 }
 }  // namespace Logging
 
-static const char kMetricPrefix[] = "Network.Shill";
+namespace {
+
+constexpr char kMetricPrefix[] = "Network.Shill";
+
+constexpr char kMetricsDailyChosenTechnologyAny[] = "daily.chosentech.any";
+constexpr char kMetricsDailyChosenTechnologyWifi[] = "daily.chosentech.wifi";
+constexpr char kMetricsDailyChosenTechnologyCellular[] =
+    "daily.chosentech.cellular";
+
+constexpr char kMetricsDailyChosenTimeOnlineAny[] =
+    "Network.Shill.DailyChosenTimeOnline.Any";
+constexpr char kMetricsDailyChosenTimeOnlineCellular[] =
+    "Network.Shill.DailyChosenTimeOnline.Cellular";
+constexpr char kMetricsDailyChosenTimeOnlineWifi[] =
+    "Network.Shill.DailyChosenTimeOnline.Wifi";
+constexpr char kMetricsDailyChosenFractionOnlineCellular[] =
+    "Network.Shill.DailyChosenFractionOnline.Cellular";
+constexpr char kMetricsDailyChosenFractionOnlineWifi[] =
+    "Network.Shill.DailyChosenFractionOnline.Wifi";
+constexpr int kMetricsDailyTimeOnlineSamplePeriod =
+    60 * 5;  // 5 minutes in seconds
+constexpr int kMetricsDailyTimeOnlineAccumulationPeriod =
+    24 * 60 * 60;  // 24 hours in seconds
+
+constexpr char kMetricsMonthlyChosenTechnologyAny[] = "monthly.chosentech.any";
+constexpr char kMetricsMonthlyChosenTechnologyWifi[] =
+    "monthly.chosentech.wifi";
+constexpr char kMetricsMonthlyChosenTechnologyCellular[] =
+    "monthly.chosentech.cellular";
+
+constexpr char kMetricsMonthlyChosenTimeOnlineAny[] =
+    "Network.Shill.MonthlyChosenTimeOnline.Any";
+constexpr char kMetricsMonthlyChosenTimeOnlineCellular[] =
+    "Network.Shill.MonthlyChosenTimeOnline.Cellular";
+constexpr char kMetricsMonthlyChosenTimeOnlineWifi[] =
+    "Network.Shill.MonthlyChosenTimeOnline.Wifi";
+constexpr char kMetricsMonthlyChosenFractionOnlineCellular[] =
+    "Network.Shill.MonthlyChosenFractionOnline.Cellular";
+constexpr char kMetricsMonthlyChosenFractionOnlineWifi[] =
+    "Network.Shill.MonthlyChosenFractionOnline.Wifi";
+constexpr int kMetricsMonthlyTimeOnlineSamplePeriod =
+    60 * 5;  // 5 minutes in seconds
+constexpr int kMetricsMonthlyTimeOnlineAccumulationPeriod =
+    24 * 60 * 60 * 30;  // 30 days in seconds
+
+}  // namespace
 
 // static
 // Our disconnect enumeration values are 0 (System Disconnect) and
@@ -97,38 +142,6 @@ const char Metrics::kMetricTimeToScanAndConnectMillisecondsSuffix[] =
 constexpr char Metrics::kMetricsCumulativeDirectory[] =
     "/var/lib/shill/metrics";
 constexpr int Metrics::kMetricsCumulativeTimeOnlineBucketCount = 40;
-
-constexpr char Metrics::kMetricsDailyChosenTimeOnlineAny[] =
-    "Network.Shill.DailyChosenTimeOnline.Any";
-constexpr char Metrics::kMetricsDailyChosenTimeOnlineCellular[] =
-    "Network.Shill.DailyChosenTimeOnline.Cellular";
-constexpr char Metrics::kMetricsDailyChosenTimeOnlineWifi[] =
-    "Network.Shill.DailyChosenTimeOnline.Wifi";
-constexpr char Metrics::kMetricsDailyChosenFractionOnlineCellular[] =
-    "Network.Shill.DailyChosenFractionOnline.Cellular";
-constexpr char Metrics::kMetricsDailyChosenFractionOnlineWifi[] =
-    "Network.Shill.DailyChosenFractionOnline.Wifi";
-
-constexpr int Metrics::kMetricsDailyTimeOnlineSamplePeriod =
-    60 * 5;  // 5 minutes in seconds
-constexpr int Metrics::kMetricsDailyTimeOnlineAccumulationPeriod =
-    24 * 60 * 60;  // 24 hours in seconds
-
-constexpr char Metrics::kMetricsMonthlyChosenTimeOnlineAny[] =
-    "Network.Shill.MonthlyChosenTimeOnline.Any";
-constexpr char Metrics::kMetricsMonthlyChosenTimeOnlineCellular[] =
-    "Network.Shill.MonthlyChosenTimeOnline.Cellular";
-constexpr char Metrics::kMetricsMonthlyChosenTimeOnlineWifi[] =
-    "Network.Shill.MonthlyChosenTimeOnline.Wifi";
-constexpr char Metrics::kMetricsMonthlyChosenFractionOnlineCellular[] =
-    "Network.Shill.MonthlyChosenFractionOnline.Cellular";
-constexpr char Metrics::kMetricsMonthlyChosenFractionOnlineWifi[] =
-    "Network.Shill.MonthlyChosenFractionOnline.Wifi";
-
-constexpr int Metrics::kMetricsMonthlyTimeOnlineSamplePeriod =
-    60 * 5;  // 5 minutes in seconds
-constexpr int Metrics::kMetricsMonthlyTimeOnlineAccumulationPeriod =
-    24 * 60 * 60 * 30;  // 30 days in seconds
 
 const char Metrics::kMetricTimeToDropSeconds[] = "Network.Shill.TimeToDrop";
 const int Metrics::kMetricTimeToDropSecondsMax = 8 * 60 * 60;  // 8 hours
@@ -512,21 +525,6 @@ const char Metrics::kMetricUnreliableLinkSignalStrengthSuffix[] =
 const int Metrics::kMetricServiceSignalStrengthMin = 1;
 const int Metrics::kMetricServiceSignalStrengthMax = 100;
 const int Metrics::kMetricServiceSignalStrengthNumBuckets = 40;
-
-namespace {
-
-constexpr char kMetricsDailyChosenTechnologyAny[] = "daily.chosentech.any";
-constexpr char kMetricsDailyChosenTechnologyWifi[] = "daily.chosentech.wifi";
-constexpr char kMetricsDailyChosenTechnologyCellular[] =
-    "daily.chosentech.cellular";
-
-constexpr char kMetricsMonthlyChosenTechnologyAny[] = "monthly.chosentech.any";
-constexpr char kMetricsMonthlyChosenTechnologyWifi[] =
-    "monthly.chosentech.wifi";
-constexpr char kMetricsMonthlyChosenTechnologyCellular[] =
-    "monthly.chosentech.cellular";
-
-}  // namespace
 
 Metrics::Metrics()
     : library_(&metrics_library_),
