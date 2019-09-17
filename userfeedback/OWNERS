@@ -1,4 +1,4 @@
-adlr@chromium.org
-afakhry@chromium.org
-benchan@chromium.org
-briannorris@chromium.org
+set noparent
+include /metrics/OWNERS
+
+# COMPONENT: OS>Systems>Feedback

@@ -1,10 +1,4 @@
 set noparent
-# Alphabetical
-benchan@chromium.org
-iby@chromium.org
-jkardatzke@chromium.org
-mutexlox@chromium.org
-timzheng@chromium.org
-vapier@chromium.org
+include /metrics/OWNERS
 
 # COMPONENT: OS>Systems>CrashReporting
