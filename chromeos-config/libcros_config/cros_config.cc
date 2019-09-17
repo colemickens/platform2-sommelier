@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include "chromeos-config/libcros_config/cros_config_fallback.h"
 #include "chromeos-config/libcros_config/cros_config_json.h"
 #include "chromeos-config/libcros_config/identity.h"
 
@@ -101,11 +102,10 @@ bool CrosConfig::InitInternal(const int sku_id,
                               const base::FilePath& product_sku_file,
                               const base::FilePath& vpd_file) {
   if (!base::PathExists(json_path)) {
-    // TODO(crbug.com/991653): Fallback to mosys platform when running
-    // on non-unibuild platforms
-    //
-    // Implemented in child CL (crrev.com/c/1761410)
-    return false;
+    // Fallback to mosys platform on non-unibuild systems
+    cros_config_ = std::make_unique<CrosConfigFallback>();
+    fallback_mode_ = true;
+    return true;
   }
 
   auto cros_config_json = std::make_unique<CrosConfigJson>();

@@ -25,6 +25,7 @@ shared_library("libcros_config") {
   configs += [ ":target_defaults" ]
   sources = [
     "libcros_config/cros_config.cc",
+    "libcros_config/cros_config_fallback.cc",
     "libcros_config/cros_config_impl.cc",
     "libcros_config/cros_config_json.cc",
     "libcros_config/fake_cros_config.cc",
