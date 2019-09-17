@@ -26,7 +26,12 @@ TEST_F(DiskMonitorTest, EnumerateDisks) {
   std::vector<Disk> disks = monitor_.EnumerateDisks();
 }
 
-TEST_F(DiskMonitorTest, GetDiskByDevicePath) {
+// TODO(crbug.com/1002570): Disabled due to flakiness. This test relies on the
+// disk enumeration being stable for the life of the tests. However, if another
+// process on the system is modifying disks (i.e. adding/removing loopback
+// devices), this test might fail because a device found by EnumerateDisks() may
+// no longer exist when GetDiskByDevicePath() is called.
+TEST_F(DiskMonitorTest, DISABLED_GetDiskByDevicePath) {
   std::vector<Disk> disks = monitor_.EnumerateDisks();
   if (disks.empty()) {
     LOG(WARNING) << "No disks found to test.";
