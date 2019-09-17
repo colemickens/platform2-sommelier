@@ -14,6 +14,8 @@
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/process_reaper.h>
+#include <chromeos/dbus/service_constants.h>
+#include <patchpanel/proto_bindings/patchpanel-service.pb.h>
 
 #include "arc/network/address_manager.h"
 #include "arc/network/arc_service.h"
@@ -48,6 +50,19 @@ class Manager final : public brillo::DBusDaemon {
   // the daemon should clean up in preparation to exit.
   void OnShutdown(int* exit_code) override;
 
+  // Handles DBus notification indicating ARC++ is booting up.
+  std::unique_ptr<dbus::Response> OnArcStartup(dbus::MethodCall* method_call);
+
+  // Handles DBus notification indicating ARC++ is spinning down.
+  std::unique_ptr<dbus::Response> OnArcShutdown(dbus::MethodCall* method_call);
+
+  // Handles DBus notification indicating ARCVM is booting up.
+  std::unique_ptr<dbus::Response> OnArcVmStartup(dbus::MethodCall* method_call);
+
+  // Handles DBus notification indicating ARCVM is spinning down.
+  std::unique_ptr<dbus::Response> OnArcVmShutdown(
+      dbus::MethodCall* method_call);
+
   // Processes notification messages received from guests.
   void OnGuestMessage(const GuestMessage& msg);
 
@@ -59,6 +74,9 @@ class Manager final : public brillo::DBusDaemon {
 
   // Guest services.
   std::unique_ptr<ArcService> arc_svc_;
+
+  // DBus service.
+  dbus::ExportedObject* dbus_svc_path_;  // Owned by |bus_|.
 
   // Other services.
   brillo::ProcessReaper process_reaper_;

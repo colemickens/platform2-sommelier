@@ -10,6 +10,7 @@ group("all") {
     ":arc-networkd",
     ":libarcnetwork",
     ":libarcnetwork-util",
+    ":libpatchpanel-client",
   ]
   if (use.fuzzer) {
     deps += [
@@ -30,6 +31,8 @@ pkg_config("target_defaults") {
     "libndp",
     "libshill-client",
     "libshill-net-${libbase_ver}",
+    "protobuf-lite",
+    "system_api",
   ]
   if (use.fuzzer) {
     pkg_deps += [ "protobuf" ]
@@ -68,6 +71,11 @@ guest_sources = [
 ]
 
 static_library("libarcnetwork") {
+  configs += [ ":target_defaults" ]
+  all_dependent_pkg_deps = [
+    "protobuf",
+    "system_api",
+  ]
   sources = [
     "adb_proxy.cc",
     "datapath.cc",
@@ -91,9 +99,19 @@ static_library("libarcnetwork") {
   ]
   sources += guest_sources
   sources += util_sources
-  configs += [ ":target_defaults" ]
   deps = [
     ":protos",
+  ]
+}
+
+shared_library("libpatchpanel-client") {
+  configs += [ ":target_defaults" ]
+  all_dependent_pkg_deps = [
+    "protobuf",
+    "system_api",
+  ]
+  sources = [
+    "client.cc",
   ]
 }
 

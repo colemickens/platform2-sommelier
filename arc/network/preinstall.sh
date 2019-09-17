@@ -14,3 +14,8 @@ sed \
   -e "s/@BSLOT@/${v}/g" \
   -e "s:@INCLUDE_DIR@:${include_dir}:g" \
   "libarcnetwork-util.pc.in" > "${out}/libarcnetwork-util.pc"
+
+sed \
+  -e "s/@BSLOT@/${v}/g" \
+  -e "s:@INCLUDE_DIR@:${include_dir}:g" \
+  "libpatchpanel-client.pc.in" > "${out}/libpatchpanel-client.pc"

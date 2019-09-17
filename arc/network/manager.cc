@@ -27,6 +27,22 @@
 #include "arc/network/ipc.pb.h"
 
 namespace arc_networkd {
+namespace {
+
+// Passes |method_call| to |handler| and passes the response to
+// |response_sender|. If |handler| returns nullptr, an empty response is
+// created and sent.
+void HandleSynchronousDBusMethodCall(
+    base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)> handler,
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  std::unique_ptr<dbus::Response> response = handler.Run(method_call);
+  if (!response)
+    response = dbus::Response::FromMethodCall(method_call);
+  response_sender.Run(std::move(response));
+}
+
+}  // namespace
 
 Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy,
                  std::unique_ptr<HelperProcess> mcast_proxy,
@@ -97,12 +113,46 @@ int Manager::OnInit() {
 }
 
 void Manager::InitialSetup() {
+  LOG(INFO) << "Setting up DBus service interface";
+  dbus_svc_path_ = bus_->GetExportedObject(
+      dbus::ObjectPath(patchpanel::kPatchPanelServicePath));
+  if (!dbus_svc_path_) {
+    LOG(FATAL) << "Failed to export " << patchpanel::kPatchPanelServicePath
+               << " object";
+  }
+
+  using ServiceMethod =
+      std::unique_ptr<dbus::Response> (Manager::*)(dbus::MethodCall*);
+  const std::map<const char*, ServiceMethod> kServiceMethods = {
+      {patchpanel::kArcStartupMethod, &Manager::OnArcStartup},
+      {patchpanel::kArcShutdownMethod, &Manager::OnArcShutdown},
+      {patchpanel::kArcVmStartupMethod, &Manager::OnArcVmStartup},
+      {patchpanel::kArcVmShutdownMethod, &Manager::OnArcVmShutdown},
+  };
+
+  for (const auto& kv : kServiceMethods) {
+    if (!dbus_svc_path_->ExportMethodAndBlock(
+            patchpanel::kPatchPanelInterface, kv.first,
+            base::Bind(&HandleSynchronousDBusMethodCall,
+                       base::Bind(kv.second, base::Unretained(this))))) {
+      LOG(FATAL) << "Failed to export method " << kv.first;
+    }
+  }
+
+  if (!bus_->RequestOwnershipAndBlock(patchpanel::kPatchPanelServiceName,
+                                      dbus::Bus::REQUIRE_PRIMARY)) {
+    LOG(FATAL) << "Failed to take ownership of "
+               << patchpanel::kPatchPanelServiceName;
+  }
+  LOG(INFO) << "DBus service interface ready";
+
+  const bool is_legacy = !enable_multinet_;
   device_mgr_ = std::make_unique<DeviceManager>(
-      std::make_unique<ShillClient>(std::move(bus_)), &addr_mgr_,
-      datapath_.get(), !enable_multinet_, mcast_proxy_.get(), nd_proxy_.get());
+      std::make_unique<ShillClient>(bus_), &addr_mgr_, datapath_.get(),
+      is_legacy, mcast_proxy_.get(), nd_proxy_.get());
 
   arc_svc_ = std::make_unique<ArcService>(device_mgr_.get(), datapath_.get(),
-                                          !enable_multinet_);
+                                          is_legacy);
   arc_svc_->RegisterMessageHandler(
       base::Bind(&Manager::OnGuestMessage, weak_factory_.GetWeakPtr()));
 
@@ -148,6 +198,106 @@ void Manager::OnShutdown(int* exit_code) {
 void Manager::OnSubprocessExited(pid_t pid, const siginfo_t& info) {
   LOG(ERROR) << "Subprocess " << pid << " exited unexpectedly";
   Quit();
+}
+
+std::unique_ptr<dbus::Response> Manager::OnArcStartup(
+    dbus::MethodCall* method_call) {
+  LOG(INFO) << "ARC++ starting up";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  patchpanel::ArcStartupRequest request;
+  patchpanel::ArcStartupResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse request";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Nothing to do yet.
+  // TODO(garrick): create and start ArcService.
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Manager::OnArcShutdown(
+    dbus::MethodCall* method_call) {
+  LOG(INFO) << "ARC++ shutting down";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  patchpanel::ArcShutdownRequest request;
+  patchpanel::ArcShutdownResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse request";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Nothing to do yet.
+  // TODO(garrick): delete ArcService.
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Manager::OnArcVmStartup(
+    dbus::MethodCall* method_call) {
+  LOG(INFO) << "ARCVM starting up";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  patchpanel::ArcVmStartupRequest request;
+  patchpanel::ArcVmStartupResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse request";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Nothing to do yet.
+  // TODO(garrick): create and start ArcVmService.
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Manager::OnArcVmShutdown(
+    dbus::MethodCall* method_call) {
+  LOG(INFO) << "ARCVM shutting down";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  patchpanel::ArcVmShutdownRequest request;
+  patchpanel::ArcVmShutdownResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse request";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Nothing to do yet.
+  // TODO(garrick): delete ArcVmService.
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
 }
 
 void Manager::OnGuestMessage(const GuestMessage& msg) {

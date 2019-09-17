@@ -19,7 +19,7 @@ namespace arc_networkd {
 // network interface (if any) is being used as the default service.
 class ShillClient {
  public:
-  explicit ShillClient(scoped_refptr<dbus::Bus> bus);
+  explicit ShillClient(const scoped_refptr<dbus::Bus>& bus);
   virtual ~ShillClient() = default;
 
   void RegisterDefaultInterfaceChangedHandler(

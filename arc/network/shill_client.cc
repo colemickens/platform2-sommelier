@@ -41,7 +41,7 @@ std::set<std::string> GetDevices(const brillo::Any& property_value) {
 
 namespace arc_networkd {
 
-ShillClient::ShillClient(scoped_refptr<dbus::Bus> bus) : bus_(bus) {
+ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus) : bus_(bus) {
   manager_proxy_.reset(new org::chromium::flimflam::ManagerProxy(bus_));
   manager_proxy_->RegisterPropertyChangedSignalHandler(
       base::Bind(&ShillClient::OnManagerPropertyChange,
