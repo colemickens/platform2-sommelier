@@ -640,6 +640,11 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
   } else {
     UPDATE(ANDROID_CONTROL_AF_AVAILABLE_MODES, af_available_modes, 1);
     UPDATE(ANDROID_CONTROL_AF_MODE, &af_available_modes[0], 1);
+    // If auto focus is not supported, the minimum focus distance should be 0.
+    // Overwrite the value here since there are many camera modules have wrong
+    // config.
+    float min_distance = 0.0f;
+    UPDATE(ANDROID_LENS_INFO_MINIMUM_FOCUS_DISTANCE, &min_distance, 1);
   }
 
   // Set vendor tags for specified boards.
