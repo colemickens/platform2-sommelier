@@ -58,6 +58,9 @@ class CrosFpDevice : public CrosFpDeviceInterface {
   int MaxTemplateCount() override { return info_.template_max; }
   int TemplateVersion() override { return info_.template_version; }
 
+  EcCmdVersionSupportStatus EcCmdVersionSupported(uint16_t cmd,
+                                                  uint32_t ver) override;
+
   // Kernel device exposing the MCU command interface.
   static constexpr char kCrosFpPath[] = "/dev/cros_fp";
 

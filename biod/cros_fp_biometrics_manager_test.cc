@@ -42,6 +42,11 @@ class FakeCrosFpDevice : public CrosFpDeviceInterface {
   int MaxTemplateCount() override { return kMaxTemplateCount; }
   int TemplateVersion() override { return FP_TEMPLATE_FORMAT_VERSION; }
 
+  EcCmdVersionSupportStatus EcCmdVersionSupported(uint16_t cmd,
+                                                  uint32_t ver) override {
+    return EcCmdVersionSupportStatus::UNSUPPORTED;
+  }
+
  private:
   friend class CrosFpBiometricsManagerPeer;
   std::vector<uint8_t> positive_match_secret_;

@@ -17,6 +17,12 @@
 
 namespace biod {
 
+enum class EcCmdVersionSupportStatus {
+  UNKNOWN = 0,
+  SUPPORTED = 1,
+  UNSUPPORTED = 2,
+};
+
 // Empty request or response for the EcCommand template below.
 struct EmptyParam {};
 // empty struct is one byte in C++, get the size we want instead.

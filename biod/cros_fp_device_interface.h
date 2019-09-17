@@ -11,6 +11,8 @@
 #include <base/message_loop/message_loop.h>
 #include <chromeos/ec/ec_commands.h>
 
+#include "biod/ec_command.h"
+
 using MessageLoopForIO = base::MessageLoopForIO;
 
 using VendorTemplate = std::vector<uint8_t>;
@@ -45,6 +47,9 @@ class CrosFpDeviceInterface {
 
   virtual int MaxTemplateCount() = 0;
   virtual int TemplateVersion() = 0;
+
+  virtual EcCmdVersionSupportStatus EcCmdVersionSupported(uint16_t cmd,
+                                                          uint32_t ver) = 0;
 
   DISALLOW_COPY_AND_ASSIGN(CrosFpDeviceInterface);
 };

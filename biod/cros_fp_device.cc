@@ -213,6 +213,28 @@ bool CrosFpDevice::FpFrame(int index, std::vector<uint8_t>* frame) {
   return true;
 }
 
+EcCmdVersionSupportStatus CrosFpDevice::EcCmdVersionSupported(uint16_t cmd_code,
+                                                              uint32_t ver) {
+  EcCommand<struct ec_params_get_cmd_versions_v1,
+            struct ec_response_get_cmd_versions>
+      cmd(EC_CMD_GET_CMD_VERSIONS, 1, {.cmd = cmd_code});
+  uint16_t result;
+
+  if (!cmd.Run(cros_fd_.get(), kMaxIoAttempts, &result) && result == 0xff)
+    // Running EC_CMD_GET_CMD_VERSIONS itself failed (e.g. due to timeout).
+    return EcCmdVersionSupportStatus::UNKNOWN;
+
+  if (result != EC_RES_SUCCESS)
+    // Command not found on EC.
+    return EcCmdVersionSupportStatus::UNSUPPORTED;
+
+  if ((cmd.Resp()->version_mask & EC_VER_MASK(ver)) == 0)
+    // Command found but version not supported.
+    return EcCmdVersionSupportStatus::UNSUPPORTED;
+
+  return EcCmdVersionSupportStatus::SUPPORTED;
+}
+
 bool CrosFpDevice::UpdateFpInfo() {
   EcCommand<EmptyParam, struct ec_response_fp_info> cmd(EC_CMD_FP_INFO, 1);
   if (!cmd.Run(cros_fd_.get())) {
