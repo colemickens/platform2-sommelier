@@ -47,7 +47,7 @@ TEST_F(NssUtilTest, FindFromPublicKey) {
   // Create a keypair, which will put the keys in the user's NSSDB.
   std::unique_ptr<RSAPrivateKey> pair(
       util_->GenerateKeyPairForUser(slot_.get()));
-  ASSERT_NE(pair.get(), reinterpret_cast<RSAPrivateKey*>(NULL));
+  ASSERT_NE(pair, nullptr);
 
   std::vector<uint8_t> public_key;
   ASSERT_TRUE(pair->ExportPublicKey(&public_key));
@@ -56,7 +56,7 @@ TEST_F(NssUtilTest, FindFromPublicKey) {
 
   std::unique_ptr<RSAPrivateKey> private_key(
       util_->GetPrivateKeyForUser(public_key, slot_.get()));
-  EXPECT_NE(private_key.get(), reinterpret_cast<RSAPrivateKey*>(NULL));
+  EXPECT_NE(private_key, nullptr);
 }
 
 TEST_F(NssUtilTest, RejectBadPublicKey) {

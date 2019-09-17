@@ -48,7 +48,7 @@ namespace login_manager {
 class SessionManagerProcessTest : public ::testing::Test {
  public:
   SessionManagerProcessTest()
-      : manager_(NULL),
+      : manager_(nullptr),
         liveness_checker_(new MockLivenessChecker),
         session_manager_impl_(new MockSessionManager),
         must_destroy_mocks_(true) {}
@@ -69,7 +69,7 @@ class SessionManagerProcessTest : public ::testing::Test {
 
   void TearDown() override {
     must_destroy_mocks_ = !manager_.get();
-    manager_ = NULL;
+    manager_ = nullptr;
   }
 
  protected:

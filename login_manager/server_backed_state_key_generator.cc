@@ -157,7 +157,7 @@ void ServerBackedStateKeyGenerator::ComputeKeys(
 
   // Get the current time in quantized form.
   const int64_t quantum_size = 1 << kDeviceStateKeyTimeQuantumPower;
-  int64_t quantized_time = system_utils_->time(NULL) & ~(quantum_size - 1);
+  int64_t quantized_time = system_utils_->time(nullptr) & ~(quantum_size - 1);
 
   // Compute the state keys.
   if (!stable_device_secret_.empty()) {

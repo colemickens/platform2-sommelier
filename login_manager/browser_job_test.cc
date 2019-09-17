@@ -114,7 +114,7 @@ TEST_F(BrowserJobTest, WaitAndAbort) {
   EXPECT_CALL(utils_, RunInMinijail(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(kDummyPid), Return(true)));
   EXPECT_CALL(utils_, kill(-kDummyPid, _, SIGABRT)).Times(1);
-  EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));
+  EXPECT_CALL(utils_, time(nullptr)).WillRepeatedly(Return(0));
   EXPECT_CALL(utils_, ProcessGroupIsGone(kDummyPid, _)).WillOnce(Return(false));
 
   EXPECT_CALL(metrics_, HasRecordedChromeExec()).WillRepeatedly(Return(false));
@@ -131,7 +131,7 @@ TEST_F(BrowserJobTest, WaitAndAbort_AlreadyGone) {
       .WillOnce(DoAll(SetArgPointee<1>(kDummyGid), Return(true)));
   EXPECT_CALL(utils_, RunInMinijail(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(kDummyPid), Return(true)));
-  EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));
+  EXPECT_CALL(utils_, time(nullptr)).WillRepeatedly(Return(0));
   EXPECT_CALL(utils_, ProcessGroupIsGone(kDummyPid, _)).WillOnce(Return(true));
 
   EXPECT_CALL(metrics_, HasRecordedChromeExec()).WillRepeatedly(Return(false));
@@ -142,7 +142,7 @@ TEST_F(BrowserJobTest, WaitAndAbort_AlreadyGone) {
 }
 
 TEST_F(BrowserJobTest, ShouldStopTest) {
-  EXPECT_CALL(utils_, time(NULL))
+  EXPECT_CALL(utils_, time(nullptr))
       .WillRepeatedly(Return(BrowserJob::kRestartWindowSeconds));
   for (int i = 0; i < BrowserJob::kRestartTries - 1; ++i)
     job_->RecordTime();
@@ -156,7 +156,7 @@ TEST_F(BrowserJobTest, ShouldStopTest) {
 }
 
 TEST_F(BrowserJobTest, ShouldNotStopTest) {
-  EXPECT_CALL(utils_, time(NULL))
+  EXPECT_CALL(utils_, time(nullptr))
       .WillOnce(Return(BrowserJob::kRestartWindowSeconds))
       .WillOnce(Return(3 * BrowserJob::kRestartWindowSeconds));
   job_->RecordTime();
@@ -164,7 +164,7 @@ TEST_F(BrowserJobTest, ShouldNotStopTest) {
 }
 
 TEST_F(BrowserJobTest, ShouldDropExtraArgumentsAndEnvironmentVariablesTest) {
-  EXPECT_CALL(utils_, time(NULL))
+  EXPECT_CALL(utils_, time(nullptr))
       .WillRepeatedly(Return(BrowserJob::kRestartWindowSeconds));
 
   // Simulate restart kUseExtraArgsRuns - 1 times and no dropping.
@@ -184,7 +184,7 @@ TEST_F(BrowserJobTest, ShouldAddCrashLoopArgBeforeStopping) {
       .WillRepeatedly(DoAll(SetArgPointee<1>(kDummyGid), Return(true)));
   EXPECT_CALL(utils_, RunInMinijail(_, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<3>(kDummyPid), Return(true)));
-  EXPECT_CALL(utils_, time(NULL))
+  EXPECT_CALL(utils_, time(nullptr))
       .WillRepeatedly(Return(BrowserJob::kRestartWindowSeconds + 1));
   for (int i = 0; i < BrowserJob::kRestartTries - 1; ++i) {
     EXPECT_FALSE(job_->ShouldStop());
@@ -197,7 +197,8 @@ TEST_F(BrowserJobTest, ShouldAddCrashLoopArgBeforeStopping) {
 
   EXPECT_FALSE(job_->ShouldStop());
   EXPECT_TRUE(job_->RunInBackground());
-  // 121 = 61 (the time time(NULL) is returning) + 60 (kRestartWindowSeconds).
+  // 121 = 61 (the time time(nullptr) is returning) + 60
+  // (kRestartWindowSeconds).
   ASSERT_EQ(BrowserJob::kRestartWindowSeconds, 60)
       << "Need to change expected value if kRestartWindowSeconds changes";
   ExpectArgsToContainFlag(job_->ExportArgv(),
@@ -217,7 +218,7 @@ TEST_F(BrowserJobTest, ShouldRunTest) {
 }
 
 TEST_F(BrowserJobTest, NullFileCheckerTest) {
-  BrowserJob job(argv_, env_, NULL, &metrics_, &utils_,
+  BrowserJob job(argv_, env_, nullptr, &metrics_, &utils_,
                  BrowserJob::Config{false},
                  std::make_unique<login_manager::Subprocess>(1, &utils_));
   EXPECT_TRUE(job.ShouldRunBrowser());
@@ -232,7 +233,7 @@ TEST_F(BrowserJobTest, OneTimeBootFlags) {
       .WillRepeatedly(DoAll(SetArgPointee<1>(kDummyGid), Return(true)));
   EXPECT_CALL(utils_, RunInMinijail(_, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<3>(kDummyPid), Return(true)));
-  EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));
+  EXPECT_CALL(utils_, time(nullptr)).WillRepeatedly(Return(0));
 
   EXPECT_CALL(metrics_, HasRecordedChromeExec())
       .WillOnce(Return(false))
@@ -257,7 +258,7 @@ TEST_F(BrowserJobTest, RunBrowserTermMessage) {
   EXPECT_CALL(utils_, RunInMinijail(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(kDummyPid), Return(true)));
   EXPECT_CALL(utils_, kill(kDummyPid, _, signal)).Times(1);
-  EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));
+  EXPECT_CALL(utils_, time(nullptr)).WillRepeatedly(Return(0));
 
   EXPECT_CALL(metrics_, HasRecordedChromeExec()).WillRepeatedly(Return(false));
   EXPECT_CALL(metrics_, RecordStats(_)).Times(AnyNumber());

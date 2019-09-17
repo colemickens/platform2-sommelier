@@ -56,7 +56,7 @@ class KeyGeneratorTest : public ::testing::Test {
 
   void TearDown() override {
     SetUserHomePrefix(original_user_prefix_.value());
-    SetSystemSalt(NULL);
+    SetSystemSalt(nullptr);
   }
 
  protected:

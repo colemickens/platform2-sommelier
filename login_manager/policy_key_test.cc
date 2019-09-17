@@ -187,7 +187,7 @@ TEST_F(PolicyKeyTest, SignVerify) {
 
   std::unique_ptr<crypto::RSAPrivateKey> pair(
       CreateRSAPrivateKey(test_db.slot(), 512));
-  ASSERT_NE(pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
+  ASSERT_NE(pair, nullptr);
 
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
   ASSERT_TRUE(key.HaveCheckedDisk());
@@ -215,7 +215,7 @@ TEST_F(PolicyKeyTest, RotateKey) {
 
   std::unique_ptr<crypto::RSAPrivateKey> pair(
       CreateRSAPrivateKey(test_db.slot(), 512));
-  ASSERT_NE(pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
+  ASSERT_NE(pair, nullptr);
 
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
   ASSERT_TRUE(key.HaveCheckedDisk());
@@ -237,7 +237,7 @@ TEST_F(PolicyKeyTest, RotateKey) {
 
   std::unique_ptr<crypto::RSAPrivateKey> new_pair(
       CreateRSAPrivateKey(test_db.slot(), 512));
-  ASSERT_NE(new_pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
+  ASSERT_NE(new_pair, nullptr);
   std::vector<uint8_t> new_export;
   ASSERT_TRUE(new_pair->ExportPublicKey(&new_export));
 

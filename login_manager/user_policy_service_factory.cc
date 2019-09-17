@@ -60,7 +60,7 @@ std::unique_ptr<PolicyService> UserPolicyServiceFactory::Create(
       GetDaemonPath(username, kDaemonName).Append(kPolicyDir));
   if (!base::CreateDirectory(policy_dir)) {
     PLOG(ERROR) << "Failed to create user policy directory.";
-    return NULL;
+    return nullptr;
   }
 
   return CreateInternal(username, policy_dir);
@@ -81,7 +81,7 @@ std::unique_ptr<PolicyService> UserPolicyServiceFactory::CreateInternal(
   bool key_load_success = key->PopulateFromDiskIfPossible();
   if (!key_load_success) {
     LOG(ERROR) << "Failed to load user policy key from disk.";
-    return NULL;
+    return nullptr;
   }
 
   using brillo::cryptohome::home::SanitizeUserName;

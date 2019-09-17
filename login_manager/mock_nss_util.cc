@@ -39,7 +39,7 @@ std::unique_ptr<crypto::RSAPrivateKey> MockNssUtil::CreateShortKey() {
                                     &private_key_obj)) {
     ret.reset(crypto::RSAPrivateKey::CreateFromKey(private_key_obj.get()));
   }
-  LOG_IF(ERROR, ret == nullptr) << "returning NULL!!!";
+  LOG_IF(ERROR, ret == nullptr) << "returning nullptr!!!";
   return ret;
 }
 

@@ -65,7 +65,7 @@ PolicyService::PolicyService(const base::FilePath& policy_dir,
       policy_dir_(policy_dir),
       policy_key_(policy_key),
       resilient_chrome_policy_store_(resilient_chrome_policy_store),
-      delegate_(NULL),
+      delegate_(nullptr),
       weak_ptr_factory_(this) {}
 
 PolicyService::~PolicyService() = default;

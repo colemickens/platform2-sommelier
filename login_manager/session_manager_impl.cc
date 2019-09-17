@@ -401,7 +401,7 @@ SessionManagerImpl::SessionManagerImpl(
 }
 
 SessionManagerImpl::~SessionManagerImpl() {
-  device_policy_->set_delegate(NULL);  // Could use WeakPtr instead?
+  device_policy_->set_delegate(nullptr);  // Could use WeakPtr instead?
 }
 
 void SessionManagerImpl::SetPolicyServicesForTesting(

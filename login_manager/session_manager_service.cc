@@ -366,14 +366,14 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
     ::dbus_message_append_args(get_pid, DBUS_TYPE_STRING, &sender,
                                DBUS_TYPE_INVALID);
     DBusMessage* got_pid =
-        ::dbus_connection_send_with_reply_and_block(conn, get_pid, -1, NULL);
+        ::dbus_connection_send_with_reply_and_block(conn, get_pid, -1, nullptr);
     ::dbus_message_unref(get_pid);
     if (!got_pid) {
       LOG(ERROR) << "Could not look up sender of RestartJob.";
       return DBUS_HANDLER_RESULT_HANDLED;
     }
     uint32_t pid;
-    if (!::dbus_message_get_args(got_pid, NULL, DBUS_TYPE_UINT32, &pid,
+    if (!::dbus_message_get_args(got_pid, nullptr, DBUS_TYPE_UINT32, &pid,
                                  DBUS_TYPE_INVALID)) {
       ::dbus_message_unref(got_pid);
       LOG(ERROR) << "Could not extract pid of sender of RestartJob.";
@@ -385,7 +385,7 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
                    << ") is no child of mine!";
       DBusMessage* denial = dbus_message_new_error(
           message, DBUS_ERROR_ACCESS_DENIED, "Sender is not browser.");
-      if (!denial || !::dbus_connection_send(conn, denial, NULL))
+      if (!denial || !::dbus_connection_send(conn, denial, nullptr))
         LOG(ERROR) << "Could not create error response to RestartJob.";
       return DBUS_HANDLER_RESULT_HANDLED;
     }
@@ -399,10 +399,10 @@ void SessionManagerService::SetUpHandlers() {
   struct sigaction action;
   memset(&action, 0, sizeof(action));
   action.sa_handler = SIG_IGN;
-  CHECK_EQ(sigaction(SIGUSR1, &action, NULL), 0);
+  CHECK_EQ(sigaction(SIGUSR1, &action, nullptr), 0);
 
   action.sa_handler = DoNothing;
-  CHECK_EQ(sigaction(SIGALRM, &action, NULL), 0);
+  CHECK_EQ(sigaction(SIGALRM, &action, nullptr), 0);
 
   signal_handler_.Init();
   DCHECK(!child_exit_dispatcher_.get());
@@ -420,8 +420,8 @@ void SessionManagerService::SetUpHandlers() {
 void SessionManagerService::RevertHandlers() {
   struct sigaction action = {};
   action.sa_handler = SIG_DFL;
-  RAW_CHECK(sigaction(SIGUSR1, &action, NULL) == 0);
-  RAW_CHECK(sigaction(SIGALRM, &action, NULL) == 0);
+  RAW_CHECK(sigaction(SIGUSR1, &action, nullptr) == 0);
+  RAW_CHECK(sigaction(SIGALRM, &action, nullptr) == 0);
 }
 
 base::TimeDelta SessionManagerService::GetKillTimeout() {

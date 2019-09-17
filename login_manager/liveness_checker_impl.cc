@@ -109,7 +109,7 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
 }
 
 void LivenessCheckerImpl::HandleAck(dbus::Response* response) {
-  last_ping_acked_ = (response != NULL);
+  last_ping_acked_ = (response != nullptr);
 }
 
 }  // namespace login_manager

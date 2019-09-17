@@ -80,7 +80,7 @@ bool DeviceLocalAccountManager::MigrateUppercaseDirs() {
     if (IsValidAccountKey(lower) && lower != upper) {
       base::FilePath subdir_to(subdir.DirName().Append(lower));
       LOG(INFO) << "Migrating " << upper << " to " << lower;
-      if (!base::ReplaceFile(subdir, subdir_to, NULL))
+      if (!base::ReplaceFile(subdir, subdir_to, nullptr))
         LOG(ERROR) << "Failed to migrate " << subdir.value();
     }
   }
