@@ -21,19 +21,10 @@ class MockInitDaemonController : public InitDaemonController {
   MockInitDaemonController();
   ~MockInitDaemonController() override;
 
-  // Work around. gmock 1.7 does not support returning move-only-type value.
-  // TODO(crbug.com/733104): Remove this when gmock is upgraded to 1.8.
-  std::unique_ptr<dbus::Response> TriggerImpulse(
-      const std::string& name,
-      const std::vector<std::string>& arg_keyvals,
-      TriggerMode mode) override {
-    return std::unique_ptr<dbus::Response>(
-        TriggerImpulseInternal(name, arg_keyvals, mode));
-  }
-  MOCK_METHOD3(TriggerImpulseInternal,
-               dbus::Response*(const std::string&,
-                               const std::vector<std::string>&,
-                               TriggerMode));
+  MOCK_METHOD3(TriggerImpulse,
+               std::unique_ptr<dbus::Response>(const std::string&,
+                                               const std::vector<std::string>&,
+                                               TriggerMode));
 };
 
 }  // namespace login_manager

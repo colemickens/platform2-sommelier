@@ -88,6 +88,7 @@ using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::AtLeast;
 using ::testing::AtMost;
+using ::testing::ByMove;
 using ::testing::DoAll;
 using ::testing::ElementsAre;
 using ::testing::ElementsAreArray;
@@ -106,7 +107,6 @@ using ::testing::SetArgPointee;
 using ::testing::StartsWith;
 using ::testing::StrEq;
 using ::testing::WithArg;
-using ::testing::WithoutArgs;
 
 using brillo::cryptohome::home::GetRootPath;
 using brillo::cryptohome::home::kGuestUserName;
@@ -242,16 +242,6 @@ UpgradeArcContainerRequest CreateUpgradeArcContainerRequest() {
   return request;
 }
 #endif
-
-// gmock 1.7 does not support returning move-only-type value.
-// Usage:
-//   EXPECT_CALL(
-//       *init_controller_,
-//       TriggerImpulseInternal(...args...))
-//       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-dbus::Response* CreateEmptyResponse() {
-  return dbus::Response::CreateEmpty().release();
-}
 
 constexpr char kEmptyAccountId[] = "";
 
@@ -642,7 +632,7 @@ class SessionManagerImplTest : public ::testing::Test,
 #if USE_CHEETS
   void SetUpArcMiniContainer() {
     EXPECT_CALL(*init_controller_,
-                TriggerImpulseInternal(
+                TriggerImpulse(
                     SessionManagerImpl::kStartArcInstanceImpulse,
                     ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                                 "NATIVE_BRIDGE_EXPERIMENT=0",
@@ -650,7 +640,7 @@ class SessionManagerImplTest : public ::testing::Test,
                                 "ARC_CUSTOM_TABS_EXPERIMENT=0",
                                 "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
                     InitDaemonController::TriggerMode::ASYNC))
-        .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+        .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
     brillo::ErrorPtr error;
     EXPECT_TRUE(impl_->StartArcMiniContainer(
@@ -804,12 +794,11 @@ class SessionManagerImplTest : public ::testing::Test,
     EXPECT_CALL(*device_policy_service_, KeyMissing()).WillOnce(Return(false));
 
     EXPECT_CALL(metrics_, SendLoginUserType(false, guest, for_owner)).Times(1);
-    EXPECT_CALL(
-        *init_controller_,
-        TriggerImpulseInternal(SessionManagerImpl::kStartUserSessionImpulse,
+    EXPECT_CALL(*init_controller_,
+                TriggerImpulse(SessionManagerImpl::kStartUserSessionImpulse,
                                ElementsAre(StartsWith("CHROMEOS_USER=")),
                                InitDaemonController::TriggerMode::ASYNC))
-        .WillOnce(Return(nullptr));
+        .WillOnce(Return(ByMove(nullptr)));
     EXPECT_CALL(*exported_object(),
                 SendSignal(SignalEq(login_manager::kSessionStateChangedSignal,
                                     SessionManagerImpl::kStarted)))
@@ -842,12 +831,11 @@ class SessionManagerImplTest : public ::testing::Test,
       EXPECT_CALL(key_gen_, Start(_)).Times(0);
 
     EXPECT_CALL(metrics_, SendLoginUserType(false, false, false)).Times(1);
-    EXPECT_CALL(
-        *init_controller_,
-        TriggerImpulseInternal(SessionManagerImpl::kStartUserSessionImpulse,
+    EXPECT_CALL(*init_controller_,
+                TriggerImpulse(SessionManagerImpl::kStartUserSessionImpulse,
                                ElementsAre(StartsWith("CHROMEOS_USER=")),
                                InitDaemonController::TriggerMode::ASYNC))
-        .WillOnce(Return(nullptr));
+        .WillOnce(Return(ByMove(nullptr)));
     EXPECT_CALL(*exported_object(),
                 SendSignal(SignalEq(login_manager::kSessionStateChangedSignal,
                                     SessionManagerImpl::kStarted)))
@@ -905,16 +893,16 @@ TEST_F(SessionManagerImplTest, EmitLoginPromptVisible) {
               SendSignal(SignalEq(login_manager::kLoginPromptVisibleSignal)))
       .Times(1);
   EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal("login-prompt-visible", ElementsAre(),
-                                     InitDaemonController::TriggerMode::ASYNC))
+              TriggerImpulse("login-prompt-visible", ElementsAre(),
+                             InitDaemonController::TriggerMode::ASYNC))
       .Times(1);
   impl_->EmitLoginPromptVisible();
 }
 
 TEST_F(SessionManagerImplTest, EmitAshInitialized) {
   EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal("ash-initialized", ElementsAre(),
-                                     InitDaemonController::TriggerMode::ASYNC))
+              TriggerImpulse("ash-initialized", ElementsAre(),
+                             InitDaemonController::TriggerMode::ASYNC))
       .Times(1);
   impl_->EmitAshInitialized();
 }
@@ -1829,11 +1817,11 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
   ExpectAndRunStartSession(kSaneEmail);
   ExpectLockScreen();
   brillo::ErrorPtr error;
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(SessionManagerImpl::kScreenLockedImpulse,
-                                     ElementsAre(),
-                                     InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kScreenLockedImpulse, ElementsAre(),
+                     InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
   EXPECT_TRUE(impl_->LockScreen(&error));
   EXPECT_FALSE(error.get());
   EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
@@ -1849,11 +1837,11 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
   EXPECT_CALL(*exported_object(),
               SendSignal(SignalEq(login_manager::kScreenIsUnlockedSignal)))
       .Times(1);
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(SessionManagerImpl::kScreenUnlockedImpulse,
-                                     ElementsAre(),
-                                     InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kScreenUnlockedImpulse, ElementsAre(),
+                     InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
   impl_->HandleLockScreenDismissed();
   EXPECT_FALSE(impl_->ShouldEndSession(nullptr));
 
@@ -2077,16 +2065,16 @@ TEST_F(SessionManagerImplTest, StartArcMiniContainer) {
     EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
   }
 
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceImpulse,
-                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=0",
-                              "ARC_FILE_PICKER_EXPERIMENT=0",
-                              "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                              "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                     ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                                 "NATIVE_BRIDGE_EXPERIMENT=0",
+                                 "ARC_FILE_PICKER_EXPERIMENT=0",
+                                 "ARC_CUSTOM_TABS_EXPERIMENT=0",
+                                 "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
+                     InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
@@ -2103,11 +2091,11 @@ TEST_F(SessionManagerImplTest, StartArcMiniContainer) {
     EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
   }
 
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
-                  InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
+                     InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
   EXPECT_CALL(*exported_object(),
               SendSignal(SignalEq(login_manager::kArcInstanceStopped,
                                   ArcContainerStopReason::USER_REQUEST)))
@@ -2125,16 +2113,16 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
   ExpectAndRunStartSession(kSaneEmail);
 
   // First, start ARC for login screen.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceImpulse,
-                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=0",
-                              "ARC_FILE_PICKER_EXPERIMENT=0",
-                              "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                              "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                     ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                                 "NATIVE_BRIDGE_EXPERIMENT=0",
+                                 "ARC_FILE_PICKER_EXPERIMENT=0",
+                                 "ARC_CUSTOM_TABS_EXPERIMENT=0",
+                                 "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
+                     InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
@@ -2149,18 +2137,16 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
     EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
   }
 
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
+                             UpgradeContainerExpectationsBuilder().Build(),
+                             InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
   EXPECT_CALL(
       *init_controller_,
-      TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
-                             UpgradeContainerExpectationsBuilder()
-                                 .Build(),
-                             InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
-                  InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+      TriggerImpulse(SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
+                     InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   EXPECT_TRUE(
@@ -2193,14 +2179,13 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerWithSupervisionTransition) {
   SetUpArcMiniContainer();
 
   // Expect continue-arc-boot and start-arc-network impulses.
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
                              UpgradeContainerExpectationsBuilder()
                                  .SetSupervisionTransition(1)
                                  .Build(),
                              InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   upgrade_request.set_supervision_transition(
@@ -2218,16 +2203,16 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
   ExpectAndRunStartSession(kSaneEmail);
 
   // First, start ARC for login screen.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceImpulse,
-                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=0",
-                              "ARC_FILE_PICKER_EXPERIMENT=0",
-                              "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                              "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                     ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                                 "NATIVE_BRIDGE_EXPERIMENT=0",
+                                 "ARC_FILE_PICKER_EXPERIMENT=0",
+                                 "ARC_CUSTOM_TABS_EXPERIMENT=0",
+                                 "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
+                     InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
@@ -2249,21 +2234,21 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
   }
 
   // Then, upgrade it to a fully functional one.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kContinueArcBootImpulse,
-                  UpgradeContainerExpectationsBuilder()
-                      .SetSkipPackagesCache(skip_packages_cache_setup)
-                      .SetCopyPackagesCache(copy_cache_setup)
-                      .SetSkipGmsCoreCache(std::get<1>(GetParam()))
-                      .Build(),
-                  InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
-                  InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
+                     UpgradeContainerExpectationsBuilder()
+                         .SetSkipPackagesCache(skip_packages_cache_setup)
+                         .SetCopyPackagesCache(copy_cache_setup)
+                         .SetSkipGmsCoreCache(std::get<1>(GetParam()))
+                         .Build(),
+                     InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
+                     InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   upgrade_request.set_packages_cache_mode(std::get<0>(GetParam()));
@@ -2293,8 +2278,8 @@ TEST_P(SessionManagerPlayStoreAutoUpdateTest, PlayStoreAutoUpdate) {
   request.set_play_store_auto_update(GetParam());
 
   std::vector<std::string> expectations{
-      "CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-      "NATIVE_BRIDGE_EXPERIMENT=0", "ARC_FILE_PICKER_EXPERIMENT=0",
+      "CHROMEOS_DEV_MODE=0",          "CHROMEOS_INSIDE_VM=0",
+      "NATIVE_BRIDGE_EXPERIMENT=0",   "ARC_FILE_PICKER_EXPERIMENT=0",
       "ARC_CUSTOM_TABS_EXPERIMENT=0", "ARC_PRINT_SPOOLER_EXPERIMENT=0"};
 
   switch (GetParam()) {
@@ -2311,11 +2296,11 @@ TEST_P(SessionManagerPlayStoreAutoUpdateTest, PlayStoreAutoUpdate) {
   }
 
   // First, start ARC for login screen.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceImpulse, expectations,
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse, expectations,
+                     InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
@@ -2333,16 +2318,16 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerForDemoSession) {
   ExpectAndRunStartSession(kSaneEmail);
 
   // First, start ARC for login screen.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceImpulse,
-                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=0",
-                              "ARC_FILE_PICKER_EXPERIMENT=0",
-                              "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                              "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                     ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                                 "NATIVE_BRIDGE_EXPERIMENT=0",
+                                 "ARC_FILE_PICKER_EXPERIMENT=0",
+                                 "ARC_CUSTOM_TABS_EXPERIMENT=0",
+                                 "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
+                     InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
@@ -2357,21 +2342,21 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerForDemoSession) {
     EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
   }
 
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kContinueArcBootImpulse,
-                  UpgradeContainerExpectationsBuilder()
-                      .SetIsDemoSession(true)
-                      .SetDemoSessionAppsPath(
-                          "/run/imageloader/0.1/demo_apps/img.squash")
-                      .Build(),
-                  InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
-                  InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
+                     UpgradeContainerExpectationsBuilder()
+                         .SetIsDemoSession(true)
+                         .SetDemoSessionAppsPath(
+                             "/run/imageloader/0.1/demo_apps/img.squash")
+                         .Build(),
+                     InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
+                     InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   upgrade_request.set_is_demo_session(true);
@@ -2390,16 +2375,16 @@ TEST_F(SessionManagerImplTest,
   ExpectAndRunStartSession(kSaneEmail);
 
   // First, start ARC for login screen.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceImpulse,
-                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=0",
-                              "ARC_FILE_PICKER_EXPERIMENT=0",
-                              "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                              "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                     ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                                 "NATIVE_BRIDGE_EXPERIMENT=0",
+                                 "ARC_FILE_PICKER_EXPERIMENT=0",
+                                 "ARC_CUSTOM_TABS_EXPERIMENT=0",
+                                 "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
+                     InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
@@ -2416,16 +2401,16 @@ TEST_F(SessionManagerImplTest,
 
   EXPECT_CALL(
       *init_controller_,
-      TriggerImpulseInternal(
+      TriggerImpulse(
           SessionManagerImpl::kContinueArcBootImpulse,
           UpgradeContainerExpectationsBuilder().SetIsDemoSession(true).Build(),
           InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
-                  InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
+                     InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   upgrade_request.set_is_demo_session(true);
@@ -2438,16 +2423,16 @@ TEST_F(SessionManagerImplTest,
 }
 
 TEST_F(SessionManagerImplTest, ArcNativeBridgeExperiment) {
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceImpulse,
-                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=1",
-                              "ARC_FILE_PICKER_EXPERIMENT=0",
-                              "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                              "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                     ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                                 "NATIVE_BRIDGE_EXPERIMENT=1",
+                                 "ARC_FILE_PICKER_EXPERIMENT=0",
+                                 "ARC_CUSTOM_TABS_EXPERIMENT=0",
+                                 "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
+                     InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
   StartArcMiniContainerRequest request;
@@ -2458,16 +2443,16 @@ TEST_F(SessionManagerImplTest, ArcNativeBridgeExperiment) {
 }
 
 TEST_F(SessionManagerImplTest, ArcFilePickerExperiment) {
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceImpulse,
-                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=0",
-                              "ARC_FILE_PICKER_EXPERIMENT=1",
-                              "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                              "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                     ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                                 "NATIVE_BRIDGE_EXPERIMENT=0",
+                                 "ARC_FILE_PICKER_EXPERIMENT=1",
+                                 "ARC_CUSTOM_TABS_EXPERIMENT=0",
+                                 "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
+                     InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
   StartArcMiniContainerRequest request;
@@ -2478,16 +2463,16 @@ TEST_F(SessionManagerImplTest, ArcFilePickerExperiment) {
 }
 
 TEST_F(SessionManagerImplTest, ArcCustomTabsExperiment) {
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceImpulse,
-                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=0",
-                              "ARC_FILE_PICKER_EXPERIMENT=0",
-                              "ARC_CUSTOM_TABS_EXPERIMENT=1",
-                              "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                     ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                                 "NATIVE_BRIDGE_EXPERIMENT=0",
+                                 "ARC_FILE_PICKER_EXPERIMENT=0",
+                                 "ARC_CUSTOM_TABS_EXPERIMENT=1",
+                                 "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
+                     InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
   StartArcMiniContainerRequest request;
@@ -2498,16 +2483,16 @@ TEST_F(SessionManagerImplTest, ArcCustomTabsExperiment) {
 }
 
 TEST_F(SessionManagerImplTest, ArcPrintSpoolerExperiment) {
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceImpulse,
-                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=0",
-                              "ARC_FILE_PICKER_EXPERIMENT=0",
-                              "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                              "ARC_PRINT_SPOOLER_EXPERIMENT=1"),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                     ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                                 "NATIVE_BRIDGE_EXPERIMENT=0",
+                                 "ARC_FILE_PICKER_EXPERIMENT=0",
+                                 "ARC_CUSTOM_TABS_EXPERIMENT=0",
+                                 "ARC_PRINT_SPOOLER_EXPERIMENT=1"),
+                     InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
   StartArcMiniContainerRequest request;
@@ -2520,7 +2505,7 @@ TEST_F(SessionManagerImplTest, ArcPrintSpoolerExperiment) {
 TEST_F(SessionManagerImplTest, ArcLcdDensity) {
   EXPECT_CALL(
       *init_controller_,
-      TriggerImpulseInternal(
+      TriggerImpulse(
           SessionManagerImpl::kStartArcInstanceImpulse,
           ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
                       "NATIVE_BRIDGE_EXPERIMENT=0",
@@ -2528,7 +2513,7 @@ TEST_F(SessionManagerImplTest, ArcLcdDensity) {
                       "ARC_CUSTOM_TABS_EXPERIMENT=0",
                       "ARC_PRINT_SPOOLER_EXPERIMENT=0", "ARC_LCD_DENSITY=240"),
           InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
   StartArcMiniContainerRequest request;
@@ -2574,29 +2559,29 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
   ON_CALL(utils_, GetDevModeState())
       .WillByDefault(Return(DevModeState::DEV_MODE_ON));
 
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceImpulse,
-                  ElementsAre("CHROMEOS_DEV_MODE=1", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=0",
-                              "ARC_FILE_PICKER_EXPERIMENT=0",
-                              "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                              "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                     ElementsAre("CHROMEOS_DEV_MODE=1", "CHROMEOS_INSIDE_VM=0",
+                                 "NATIVE_BRIDGE_EXPERIMENT=0",
+                                 "ARC_FILE_PICKER_EXPERIMENT=0",
+                                 "ARC_CUSTOM_TABS_EXPERIMENT=0",
+                                 "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
+                     InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   EXPECT_CALL(
       *init_controller_,
-      TriggerImpulseInternal(
+      TriggerImpulse(
           SessionManagerImpl::kContinueArcBootImpulse,
           UpgradeContainerExpectationsBuilder().SetDevMode(true).Build(),
           InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
-                  InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
+                     InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   {
     brillo::ErrorPtr error;
@@ -2634,16 +2619,16 @@ TEST_F(SessionManagerImplTest, LocaleAndPreferredLanguages) {
   ExpectAndRunStartSession(kSaneEmail);
 
   // First, start ARC for login screen.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceImpulse,
-                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=0",
-                              "ARC_FILE_PICKER_EXPERIMENT=0",
-                              "ARC_CUSTOM_TABS_EXPERIMENT=0",
-                              "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                     ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                                 "NATIVE_BRIDGE_EXPERIMENT=0",
+                                 "ARC_FILE_PICKER_EXPERIMENT=0",
+                                 "ARC_CUSTOM_TABS_EXPERIMENT=0",
+                                 "ARC_PRINT_SPOOLER_EXPERIMENT=0"),
+                     InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
@@ -2658,15 +2643,14 @@ TEST_F(SessionManagerImplTest, LocaleAndPreferredLanguages) {
     EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
   }
 
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
                              UpgradeContainerExpectationsBuilder()
                                  .SetLocale("fr_FR")
                                  .SetPreferredLanguages("ru,en")
                                  .Build(),
                              InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   upgrade_request.set_locale("fr_FR");
@@ -2709,21 +2693,21 @@ TEST_F(SessionManagerImplTest, SetArcCpuRestrictionFails) {
 TEST_F(SessionManagerImplTest, EmitArcBooted) {
 #if USE_CHEETS
   EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(SessionManagerImpl::kArcBootedImpulse,
-                                     ElementsAre(StartsWith("CHROMEOS_USER=")),
-                                     InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(nullptr));
+              TriggerImpulse(SessionManagerImpl::kArcBootedImpulse,
+                             ElementsAre(StartsWith("CHROMEOS_USER=")),
+                             InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(nullptr)));
   {
     brillo::ErrorPtr error;
     EXPECT_TRUE(impl_->EmitArcBooted(&error, kSaneEmail));
     EXPECT_FALSE(error.get());
   }
 
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(SessionManagerImpl::kArcBootedImpulse,
-                                     ElementsAre(),
-                                     InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(nullptr));
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kArcBootedImpulse, ElementsAre(),
+                     InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(nullptr)));
   {
     brillo::ErrorPtr error;
     EXPECT_TRUE(impl_->EmitArcBooted(&error, std::string()));
