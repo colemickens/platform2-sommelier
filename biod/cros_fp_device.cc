@@ -15,6 +15,9 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/ec/cros_ec_dev.h>
+
+#include "biod/ec_command.h"
 
 namespace {
 

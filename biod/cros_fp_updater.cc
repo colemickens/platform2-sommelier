@@ -24,6 +24,7 @@
 
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_firmware.h"
+#include "biod/ec_command.h"
 #include "biod/update_reason.h"
 
 namespace {

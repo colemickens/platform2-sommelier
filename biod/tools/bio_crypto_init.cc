@@ -29,6 +29,7 @@
 #include <chromeos/ec/ec_commands.h>
 
 #include "biod/cros_fp_device.h"
+#include "biod/ec_command.h"
 
 namespace {
 
