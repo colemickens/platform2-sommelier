@@ -47,6 +47,18 @@ constexpr size_t kGuestAddressOffset = 1;
 // The CPU cgroup where all the ARCVM's crosvm processes should belong to.
 constexpr char kArcvmCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/arc";
 
+// Returns the maximum number of logical CPU cores crosvm can use.
+// TODO(yusukes): Move the logic to Chromium. See b/139752657#comment3
+int NumberOfProcessorsAvailable() {
+#if defined(__x86_64__)
+  long res = sysconf(_SC_NPROCESSORS_ONLN);  // NOLINT(runtime/int)
+  CHECK_NE(-1L, res);
+  return static_cast<int>(res);
+#else
+  return base::SysInfo::NumberOfProcessors();
+#endif
+}
+
 }  // namespace
 
 ArcVm::ArcVm(arc_networkd::MacAddress mac_addr,
@@ -114,7 +126,7 @@ bool ArcVm::Start(base::FilePath kernel,
   // clang-format off
   std::vector<string> args = {
     kCrosvmBin,       "run",
-    "--cpus",         std::to_string(base::SysInfo::NumberOfProcessors()),
+    "--cpus",         std::to_string(NumberOfProcessorsAvailable()),
     "--mem",          GetVmMemoryMiB(),
     "--disk",         rootfs.value(),
     "--tap-fd",       std::to_string(tap_fd.get()),
