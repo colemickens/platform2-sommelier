@@ -47,6 +47,8 @@ BluezAdapterInterfaceHandler::BluezAdapterInterfaceHandler() {
   AddMethodForwarding(bluetooth_adapter::kHandleSuspendDone,
                       ForwardingRule::FORWARD_ALL);
   AddMethodForwarding(bluetooth_adapter::kGetSupportedCapabilities);
+  AddMethodForwarding(bluetooth_adapter::kSetLongTermKeys,
+                      ForwardingRule::FORWARD_ALL);
 }
 
 BluezDeviceInterfaceHandler::BluezDeviceInterfaceHandler() {
