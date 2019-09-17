@@ -21,7 +21,7 @@ namespace vm_tools {
 namespace concierge {
 
 // Path to the crosvm binary.
-const char kCrosvmBin[] = "/usr/bin/crosvm";
+extern const char kCrosvmBin[];
 
 // Calculates the amount of memory to give the virtual machine. Currently
 // configured to provide 75% of system memory. This is deliberately over

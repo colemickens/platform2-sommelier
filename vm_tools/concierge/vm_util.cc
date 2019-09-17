@@ -28,6 +28,10 @@
 
 namespace vm_tools {
 namespace concierge {
+
+// Path to the crosvm binary.
+const char kCrosvmBin[] = "/usr/bin/crosvm";
+
 namespace {
 
 // Examples of the format of the given string can be seen at the enum
@@ -228,8 +232,6 @@ bool CheckProcessExists(pid_t pid) {
 }
 
 void RunCrosvmCommand(std::string command, std::string socket_path) {
-  constexpr char kCrosvmBin[] = "/usr/bin/crosvm";
-
   brillo::ProcessImpl crosvm;
   crosvm.AddArg(kCrosvmBin);
   crosvm.AddArg(std::move(command));
