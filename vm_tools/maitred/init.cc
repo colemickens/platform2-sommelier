@@ -1038,7 +1038,7 @@ void Init::Worker::Start() {
   watcher_ = base::FileDescriptorWatcher::WatchReadable(
       signal_fd_.get(), base::BindRepeating(&Init::Worker::OnSignalReadable,
                                             base::Unretained(this)));
-  CHECK(!watcher_) << "Failed to watch SIGHCHLD file descriptor";
+  CHECK(watcher_) << "Failed to watch SIGHCHLD file descriptor";
 }
 
 void Init::Worker::Spawn(struct ChildInfo info,
