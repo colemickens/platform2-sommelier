@@ -20,9 +20,11 @@
 
 #include <base/cpu.h>
 #include <base/files/file.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/sys_info.h>
 #include <base/threading/platform_thread.h>
@@ -37,18 +39,6 @@ namespace {
 // Path to the powercap driver sysfs interface, if it doesn't exist,
 // either the kernel is old w/o powercap driver, or it is not configured.
 constexpr const char kPowercapPath[] = "/sys/class/powercap";
-
-struct {
-  const char* node;
-  const char* name;
-} const kPowercapDomains[] = {
-    {"intel-rapl:0", "pkg"},
-    {"intel-rapl:0:0", "pp0"},
-    {"intel-rapl:0:1", "gfx"},
-    {"intel-rapl:0:2", "dram"},
-    {"intel-rapl:1", "psys"},
-};
-const size_t kMaxPowercapDomains = arraysize(kPowercapDomains);
 
 }  // namespace
 
@@ -77,25 +67,50 @@ int main(int argc, char** argv) {
       << powercap_file_path.value();
 
   std::vector<std::pair<base::FilePath, std::string>> power_domains;
-  for (int i = 0; i < kMaxPowercapDomains; ++i) {
-    base::FilePath energy_file_path(base::StringPrintf("%s/%s/energy_uj",
-        kPowercapPath, kPowercapDomains[i].node));
+  std::string domain_name;
 
-    if (!base::PathExists(energy_file_path))
+  // Probe the power domains and sub-domains
+  base::FilePath powercap_path(kPowercapPath);
+  base::FileEnumerator dirs(powercap_path, false,
+                            base::FileEnumerator::DIRECTORIES,
+                            FILE_PATH_LITERAL("intel-rapl:*"));
+  for (base::FilePath dir = dirs.Next(); !dir.empty(); dir = dirs.Next()) {
+    base::FilePath domain_file_path = dir.Append("name");
+    base::FilePath energy_file_path = dir.Append("energy_uj");
+
+    if (!base::PathExists(domain_file_path)) {
+      fprintf(stderr, "Unable to find %s\n", domain_file_path.value().c_str());
       continue;
+    }
+    if (!base::PathExists(energy_file_path)) {
+      fprintf(stderr, "Unable to find %s\n", energy_file_path.value().c_str());
+      continue;
+    }
 
+    base::ReadFileToString(domain_file_path, &domain_name);
+    base::TrimWhitespaceASCII(domain_name, base::TRIM_ALL, &domain_name);
+    power_domains.push_back({energy_file_path, domain_name});
     if (FLAGS_verbose)
-      printf("Found RAPL domain %s\n", kPowercapDomains[i].name);
-    power_domains.push_back({energy_file_path, kPowercapDomains[i].name});
+      printf("Found RAPL domain %-10s at %s\n", domain_name.c_str(),
+             dir.value().c_str());
   }
+
+  PCHECK(!power_domains.empty())
+      << "No power domain found at " << powercap_file_path.value();
+
+  // As the enumeration above does not guarantee the order, transform the
+  // paths in lexicographical order, make the collecting data in a style
+  // of domain follows by sub-domain, it can be done by sorting.
+  // e.g., package-0 psys core ... -> package-0 core ... psys
+  sort(power_domains.begin(), power_domains.end());
 
   for (const auto& domain : power_domains)
     printf("%10s ", domain.second.c_str());
-  printf(" (Note: 'pkg' includes 'pp0' and 'gfx'. Values in Watts)\n");
+  printf(" (Note: Values in Watts)\n");
 
   uint32_t num_domains = power_domains.size();
-  uint64_t energy_before[kMaxPowercapDomains] = {};
-  uint64_t energy_after[kMaxPowercapDomains] = {};
+  std::vector<uint64_t> energy_before(num_domains);
+  std::vector<uint64_t> energy_after(num_domains);
   do {
     for (int i = 0; i < num_domains; ++i)
       power_manager::util::ReadUint64File(power_domains[i].first,
