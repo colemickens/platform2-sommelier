@@ -987,7 +987,7 @@ class Init::Worker {
   Worker() = default;
   ~Worker() = default;
 
-  // Start the worker.  This will set up a signalfd for receiving SIGHCHLD
+  // Start the worker.  This will set up a signalfd for receiving SIGCHLD
   // events.
   void Start();
 
@@ -1038,7 +1038,7 @@ void Init::Worker::Start() {
   watcher_ = base::FileDescriptorWatcher::WatchReadable(
       signal_fd_.get(), base::BindRepeating(&Init::Worker::OnSignalReadable,
                                             base::Unretained(this)));
-  CHECK(watcher_) << "Failed to watch SIGHCHLD file descriptor";
+  CHECK(watcher_) << "Failed to watch SIGCHLD file descriptor";
 }
 
 void Init::Worker::Spawn(struct ChildInfo info,
