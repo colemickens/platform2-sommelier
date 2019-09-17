@@ -38,6 +38,7 @@ class EcCommand {
                     .insize = realsizeof<I>()},
             .req = req,
         }) {}
+  virtual ~EcCommand() = default;
 
   void SetRespSize(uint32_t insize) { data_.cmd.insize = insize; }
   void SetReqSize(uint32_t outsize) { data_.cmd.outsize = outsize; }
@@ -91,17 +92,24 @@ class EcCommand {
   }
 
   I* Resp() { return &data_.resp; }
+  uint32_t RespSize() { return data_.cmd.insize; }
   O* Req() { return &data_.req; }
   uint16_t Result() { return data_.cmd.result; }
 
- private:
-  struct {
+  struct Data {
     struct cros_ec_command_v2 cmd;
     union {
       O req;
       I resp;
     };
-  } data_;
+  };
+
+ private:
+  Data data_;
+
+  virtual int ioctl(int fd, uint32_t request, Data* data) {
+    return ::ioctl(fd, request, data);
+  }
 
   DISALLOW_COPY_AND_ASSIGN(EcCommand);
 };

@@ -131,6 +131,7 @@ if (use.test) {
       "cros_fp_biometrics_manager_test.cc",
       "cros_fp_firmware_test.cc",
       "cros_fp_updater_test.cc",
+      "ec_command_test.cc",
       "fp_mode_test.cc",
       "power_button_filter_test.cc",
       "power_manager_client_test.cc",
