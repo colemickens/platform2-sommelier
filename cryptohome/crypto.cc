@@ -1584,6 +1584,11 @@ bool Crypto::ResetLECredential(const SerializedVaultKeyset& serialized_reset,
   return true;
 }
 
+int Crypto::GetWrongAuthAttempts(
+    const SerializedVaultKeyset& le_serialized) const {
+  return le_manager_->GetWrongAuthAttempts(le_serialized.le_label());
+}
+
 bool Crypto::RemoveLECredential(uint64_t label) const {
   if (!use_tpm_ || !tpm_) {
     LOG(WARNING) << "No TPM instance for RemoveLECredential.";

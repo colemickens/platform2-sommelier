@@ -128,6 +128,11 @@ class LECredentialManager {
   // Returns whether the provided label needs valid PCR criteria attached.
   virtual bool NeedsPcrBinding(const uint64_t& label);
 
+  // Returns the number of wrong authentication attempts done since the label
+  // was reset or created. Returns -1 if |label| is not present in the tree or
+  // the tree is corrupted.
+  virtual int GetWrongAuthAttempts(const uint64_t& label);
+
  private:
   // Since the CheckCredential() and ResetCredential() functions are very
   // similar, this function combines the common parts of both the calls

@@ -236,6 +236,9 @@ class Crypto {
   // https://buganizer.corp.google.com/issues/127321828.
   bool CanUnsealWithUserAuth() const;
 
+  // Returns the number of wrong authentication attempts for the LE keyset.
+  int GetWrongAuthAttempts(const SerializedVaultKeyset& le_serialized) const;
+
   // Sets whether or not to use the TPM (must be called before init, depends
   // on the presence of a functioning, initialized TPM).  The TPM is merely used
   // to add a layer of difficulty in a brute-force attack against the user's

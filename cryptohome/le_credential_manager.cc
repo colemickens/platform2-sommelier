@@ -245,6 +245,20 @@ bool LECredentialManager::NeedsPcrBinding(const uint64_t& label) {
   return le_tpm_backend_->NeedsPCRBinding(orig_cred);
 }
 
+int LECredentialManager::GetWrongAuthAttempts(const uint64_t& label) {
+  SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
+
+  std::vector<uint8_t> orig_cred, orig_mac;
+  std::vector<std::vector<uint8_t>> h_aux;
+  bool metadata_lost;
+  LECredError ret = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
+                                      &h_aux, &metadata_lost);
+  if (ret != LE_CRED_SUCCESS)
+    return -1;
+
+  return le_tpm_backend_->GetWrongAuthAttempts(orig_cred);
+}
+
 LECredError LECredentialManager::RetrieveLabelInfo(
     const SignInHashTree::Label& label,
     std::vector<uint8_t>* cred_metadata,

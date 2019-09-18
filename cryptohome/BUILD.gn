@@ -461,7 +461,10 @@ if (use.test) {
     ]
 
     if (use.tpm2) {
-      sources += [ "tpm2_test.cc" ]
+      sources += [
+        "pinweaver_le_credential_backend_unittest.cc",
+        "tpm2_test.cc",
+      ]
       libs += [
         "trunks_test",
         "tpm_manager_test",

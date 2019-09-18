@@ -37,6 +37,7 @@ class PinweaverLECredentialBackend : public LECredentialBackend {
                         std::vector<uint8_t>* mac,
                         std::vector<uint8_t>* new_root) override;
   bool NeedsPCRBinding(const std::vector<uint8_t>& cred_metadata) override;
+  int GetWrongAuthAttempts(const std::vector<uint8_t>& cred_metadata) override;
   bool CheckCredential(const uint64_t label,
                        const std::vector<std::vector<uint8_t>>& h_aux,
                        const std::vector<uint8_t>& orig_cred_metadata,

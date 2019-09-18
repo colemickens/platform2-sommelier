@@ -1607,6 +1607,8 @@ void HomeDirs::ResetLECredentials(const Credentials& creds) {
     // Skip non-LE Credentials.
     if (!vk_reset->IsLECredential())
       continue;
+    if (crypto_->GetWrongAuthAttempts(vk_reset->serialized()) == 0)
+      continue;
 
     if (!credentials_checked) {
       // Make sure the credential can actually be used for sign-in.

@@ -192,10 +192,40 @@ bool PinweaverLECredentialBackend::NeedsPCRBinding(
       unimported->head.leaf_version.major == 0)
       return true;
 
+  if (cred_metadata.size() <
+      offsetof(unimported_leaf_data_t, payload) +
+          offsetof(leaf_public_data_t, valid_pcr_criteria) +
+          PW_MAX_PCR_CRITERIA_COUNT * sizeof(struct valid_pcr_value_t)) {
+    LOG(ERROR) << "PinweaverLECredentialBackend metadata too short "
+               << cred_metadata.size();
+    return true;
+  }
+
   const struct leaf_public_data_t *leaf_data =
       reinterpret_cast<const struct leaf_public_data_t*>(unimported->payload);
   return leaf_data->valid_pcr_criteria[0].bitmask[0] == 0 &&
          leaf_data->valid_pcr_criteria[0].bitmask[1] == 0;
+}
+
+int PinweaverLECredentialBackend::GetWrongAuthAttempts(
+    const std::vector<uint8_t>& cred_metadata) {
+  // Just like in NeedsPCRBinding, the assumption is that leaf_public_data_t
+  // structure will have the existing part immutable in the future.
+  const struct unimported_leaf_data_t* unimported =
+      reinterpret_cast<const struct unimported_leaf_data_t*>(
+          cred_metadata.data());
+
+  if (cred_metadata.size() < offsetof(unimported_leaf_data_t, payload) +
+                                 offsetof(leaf_public_data_t, attempt_count) +
+                                 sizeof(struct attempt_count_t)) {
+    LOG(ERROR) << "GetWrongAuthAttempts metadata too short "
+               << cred_metadata.size();
+    return -1;
+  }
+
+  const struct leaf_public_data_t* leaf_data =
+      reinterpret_cast<const struct leaf_public_data_t*>(unimported->payload);
+  return leaf_data->attempt_count.v;
 }
 
 bool PinweaverLECredentialBackend::CheckCredential(

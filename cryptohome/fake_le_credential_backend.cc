@@ -102,6 +102,17 @@ bool FakeLECredentialBackend::NeedsPCRBinding(
   return false;
 }
 
+int FakeLECredentialBackend::GetWrongAuthAttempts(
+    const std::vector<uint8_t>& cred_metadata) {
+  FakeLECredentialMetadata metadata_tmp;
+  if (!metadata_tmp.ParseFromArray(cred_metadata.data(),
+                                   cred_metadata.size())) {
+    LOG(INFO) << "Couldn't parse the data.";
+    return -1;
+  }
+  return metadata_tmp.attempt_count();
+}
+
 void FakeLECredentialBackend::ExtendArcPCR(const std::string& data) {
   pcr_digest += data;
 }

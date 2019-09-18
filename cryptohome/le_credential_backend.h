@@ -139,6 +139,11 @@ class LECredentialBackend {
   // to PCR.
   virtual bool NeedsPCRBinding(const std::vector<uint8_t>& cred_metadata) = 0;
 
+  // Looks into the metadata and retrieves the number of wrong authentication
+  // attempts. Returns -1 on error.
+  virtual int GetWrongAuthAttempts(
+      const std::vector<uint8_t>& cred_metadata) = 0;
+
   // Tries to verify/authenticate a credential.
   //
   // The obfuscated LE Credential is |le_secret| and the credential metadata is
