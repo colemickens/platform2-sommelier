@@ -612,8 +612,15 @@ base::File Sender::AcquireLockFileOrDie() {
                << base::File::ErrorToString(lock_file.error_details());
   }
 
-  const base::TimeDelta kWaitForLockFile = base::TimeDelta::FromMinutes(5);
-  base::Time stop_time = clock_->Now() + kWaitForLockFile;
+  base::TimeDelta wait_for_lock_file = base::TimeDelta::FromMinutes(5);
+
+  if (IsCrashTestInProgress()) {
+    // When running logging_CrashSender's sender_single_instance test, don't
+    // wait a full 5 minutes before completing the test.
+    wait_for_lock_file = base::TimeDelta::FromSeconds(5);
+  }
+
+  base::Time stop_time = clock_->Now() + wait_for_lock_file;
   while (clock_->Now() < stop_time) {
     if (lock_file.Lock() == base::File::FILE_OK) {
       return lock_file;
