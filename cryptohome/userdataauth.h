@@ -386,16 +386,20 @@ class UserDataAuth {
   // Post Task to origin thread. For the caller, from_here is usually FROM_HERE
   // macro, while task is a callback function to be posted. Will return true if
   // the task may be run sometime in the future, false if it will definitely not
-  // run.
+  // run. Specify |delay| if you want the task to be deferred for |delay| amount
+  // of time.
   bool PostTaskToOriginThread(const base::Location& from_here,
-                              base::OnceClosure task);
+                              base::OnceClosure task,
+                              const base::TimeDelta& delay = base::TimeDelta());
 
   // Post Task to mount thread. For the caller, from_here is usually FROM_HERE
   // macro, while task is a callback function to be posted. Will return true if
   // the task may be run sometime in the future, false if it will definitely not
-  // run.
+  // run. Specify |delay| if you want the task to be deferred for |delay| amount
+  // of time.
   bool PostTaskToMountThread(const base::Location& from_here,
-                             base::OnceClosure task);
+                             base::OnceClosure task,
+                             const base::TimeDelta& delay = base::TimeDelta());
 
   // ================= Testing Utilities ==================
   // Note that all functions below in this section should only be used for unit

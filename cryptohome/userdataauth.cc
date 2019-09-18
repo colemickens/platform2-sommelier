@@ -247,22 +247,34 @@ void UserDataAuth::OnOwnershipTakenSignal(
   tpm_->HandleOwnershipTakenSignal();
 }
 
-bool UserDataAuth::PostTaskToOriginThread(
-    const base::Location& from_here, base::OnceClosure task) {
+bool UserDataAuth::PostTaskToOriginThread(const base::Location& from_here,
+                                          base::OnceClosure task,
+                                          const base::TimeDelta& delay) {
   if (disable_threading_) {
+    CHECK(delay.is_zero());
     std::move(task).Run();
     return true;
   }
-  return origin_task_runner_->PostTask(from_here, std::move(task));
+  if (delay.is_zero()) {
+    return origin_task_runner_->PostTask(from_here, std::move(task));
+  }
+  return origin_task_runner_->PostDelayedTask(from_here, std::move(task),
+                                              delay);
 }
 
-bool UserDataAuth::PostTaskToMountThread(
-    const base::Location& from_here, base::OnceClosure task) {
+bool UserDataAuth::PostTaskToMountThread(const base::Location& from_here,
+                                         base::OnceClosure task,
+                                         const base::TimeDelta& delay) {
   if (disable_threading_) {
+    CHECK(delay.is_zero());
     std::move(task).Run();
     return true;
   }
-  return mount_thread_.task_runner()->PostTask(from_here, std::move(task));
+  if (delay.is_zero()) {
+    return mount_thread_.task_runner()->PostTask(from_here, std::move(task));
+  }
+  return mount_thread_.task_runner()->PostDelayedTask(from_here,
+                                                      std::move(task), delay);
 }
 
 bool UserDataAuth::IsMounted(const std::string& username,
