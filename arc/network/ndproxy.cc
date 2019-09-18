@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sysexits.h>
 #include <unistd.h>
 
 #include <arpa/inet.h>
@@ -20,6 +21,9 @@
 #include <sys/socket.h>
 
 #include <string>
+#include <utility>
+
+#include <base/bind.h>
 
 namespace arc_networkd {
 namespace {
@@ -275,18 +279,51 @@ void NDProxy::ProxyNDFrame(int target_if, ssize_t frame_len) {
   }
 }
 
-void NDProxy::Start() {
+NDProxy::NDProxy() {}
+
+NDProxy::NDProxy(base::ScopedFD control_fd)
+    : msg_dispatcher_(
+          std::make_unique<MessageDispatcher>(std::move(control_fd))) {}
+
+NDProxy::~NDProxy() {}
+
+int NDProxy::OnInit() {
+  // Prevent the main process from sending us any signals.
+  if (setsid() < 0) {
+    PLOG(ERROR) << "Failed to created a new session with setsid: exiting";
+    return EX_OSERR;
+  }
+
+  // Register control fd callbacks
+  if (msg_dispatcher_) {
+    msg_dispatcher_->RegisterFailureHandler(
+        base::Bind(&NDProxy::OnParentProcessExit, weak_factory_.GetWeakPtr()));
+    msg_dispatcher_->RegisterDeviceMessageHandler(
+        base::Bind(&NDProxy::OnDeviceMessage, weak_factory_.GetWeakPtr()));
+  }
+
+  // Initialize data fd
   fd_ = base::ScopedFD(socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IPV6)));
   if (!fd_.is_valid()) {
     PLOG(ERROR) << "socket() failed";
-    return;
+    return EX_OSERR;
   }
   if (setsockopt(fd_.get(), SOL_SOCKET, SO_ATTACH_FILTER, &kNDFrameBpfProgram,
                  sizeof(kNDFrameBpfProgram))) {
     PLOG(ERROR) << "setsockopt(SO_ATTACH_FILTER) failed";
-    return;
+    return EX_OSERR;
   }
 
+  // Start watching on data fd
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      fd_.get(),
+      base::Bind(&NDProxy::OnDataSocketReadReady, weak_factory_.GetWeakPtr()));
+  LOG(INFO) << "Started watching on packet fd...";
+
+  return Daemon::OnInit();
+}
+
+void NDProxy::OnDataSocketReadReady() {
   sockaddr_ll dst_addr;
   struct iovec iov = {
       .iov_base = in_frame_buffer_,
@@ -303,36 +340,52 @@ void NDProxy::Start() {
   };
 
   ssize_t len;
-  while (true) {
-    if ((len = recvmsg(fd_.get(), &hdr, 0)) < 0) {
-      PLOG(ERROR) << "recvmsg() failed";
-      return;
-    }
-    ip6_hdr* ip6 = reinterpret_cast<ip6_hdr*>(in_frame_buffer_ + ETH_HLEN);
-    icmp6_hdr* icmp6 = reinterpret_cast<icmp6_hdr*>(
-        in_frame_buffer_ + ETHER_HDR_LEN + sizeof(ip6_hdr));
-    if (ip6->ip6_nxt == IPPROTO_ICMPV6 &&
-        icmp6->icmp6_type >= ND_ROUTER_SOLICIT &&
-        icmp6->icmp6_type <= ND_NEIGHBOR_ADVERT) {
-      auto map_entry =
-          MapForType(icmp6->icmp6_type)->find(dst_addr.sll_ifindex);
-      if (map_entry != MapForType(icmp6->icmp6_type)->end()) {
-        const auto& target_ifs = map_entry->second;
-        for (auto target_if : target_ifs) {
-          ProxyNDFrame(target_if, len);
-        }
-      }
-    }
+  if ((len = recvmsg(fd_.get(), &hdr, 0)) < 0) {
+    PLOG(ERROR) << "recvmsg() failed";
+    return;
+  }
+  ip6_hdr* ip6 = reinterpret_cast<ip6_hdr*>(in_frame_buffer_ + ETH_HLEN);
+  icmp6_hdr* icmp6 = reinterpret_cast<icmp6_hdr*>(
+      in_frame_buffer_ + ETHER_HDR_LEN + sizeof(ip6_hdr));
+  if (ip6->ip6_nxt != IPPROTO_ICMPV6 || icmp6->icmp6_type < ND_ROUTER_SOLICIT ||
+      icmp6->icmp6_type > ND_NEIGHBOR_ADVERT)
+    return;
+  auto map_entry = MapForType(icmp6->icmp6_type)->find(dst_addr.sll_ifindex);
+  if (map_entry == MapForType(icmp6->icmp6_type)->end())
+    return;
+  const auto& target_ifs = map_entry->second;
+  for (int target_if : target_ifs) {
+    ProxyNDFrame(target_if, len);
+  }
+}
+
+void NDProxy::OnParentProcessExit() {
+  LOG(ERROR) << "Quitting because the parent process died";
+  Quit();
+}
+
+void NDProxy::OnDeviceMessage(const DeviceMessage& msg) {
+  const std::string& dev_ifname = msg.dev_ifname();
+  LOG_IF(DFATAL, dev_ifname.empty())
+      << "Received DeviceMessage w/ empty dev_ifname";
+  if (msg.has_br_ifname()) {
+    AddRouterInterfacePair(dev_ifname, msg.br_ifname());
+  } else if (msg.has_teardown()) {
+    RemoveInterface(dev_ifname);
   }
 }
 
 bool NDProxy::AddRouterInterfacePair(const std::string& ifname_physical,
                                      const std::string& ifname_guest) {
+  LOG(INFO) << "Adding interface pair between physical: " << ifname_physical
+            << ", guest: " << ifname_guest;
   return AddInterfacePairInternal(ifname_physical, ifname_guest, true);
 }
 
 bool NDProxy::AddPeeringInterfacePair(const std::string& ifname1,
                                       const std::string& ifname2) {
+  LOG(INFO) << "Adding peering interface pair between " << ifname1 << " and "
+            << ifname2;
   return AddInterfacePairInternal(ifname1, ifname2, false);
 }
 
@@ -364,6 +417,7 @@ bool NDProxy::AddInterfacePairInternal(const std::string& ifname1,
 }
 
 bool NDProxy::RemoveInterface(const std::string& ifname) {
+  LOG(INFO) << "Removing interface " << ifname;
   int ifindex = if_nametoindex(ifname.c_str());
   if (ifindex == 0) {
     PLOG(ERROR) << "Get interface index failed on " << ifname;

@@ -12,11 +12,15 @@
 #include <netinet/ip6.h>
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
+#include <brillo/daemons/daemon.h>
+
+#include "arc/network/message_dispatcher.h"
 
 namespace arc_networkd {
 
@@ -24,14 +28,19 @@ namespace arc_networkd {
 // RFC 4389. Support asymmetric proxy that RS will be proxied one-way from
 // guest interface to physical interface ('Outbound') and RA the other way back
 // ('Inbound'), as well as symmetric proxy among guest interfaces that only
-// NS/NA will be proxied. Sample Usage:
+// NS/NA will be proxied.
+// Sample Usage 1:
 //   arc_networkd::NDProxy nd_proxy;
 //   nd_proxy.AddRouterInterfacePair("eth0", "arc_eth0");
-//   nd_proxy.Start();
-class NDProxy {
+//   nd_proxy.Run();
+// Sample Usage 2:
+//   arc_networkd::NDProxy nd_proxy(control_fd);
+//   nd_proxy.Run();  // Control messages can later be sent through control_fd
+class NDProxy : public brillo::Daemon {
  public:
-  NDProxy() = default;
-  ~NDProxy() = default;
+  NDProxy();
+  explicit NDProxy(base::ScopedFD control_fd);
+  virtual ~NDProxy();
 
   static const ssize_t kTranslateErrorNotICMPv6Frame;
   static const ssize_t kTranslateErrorNotNDFrame;
@@ -50,9 +59,6 @@ class NDProxy {
   // Remove all proxy interface pair with ifindex.
   bool RemoveInterface(const std::string& ifname);
 
-  // Start proxying. This is a blocking call.
-  void Start();
-
   static uint16_t Icmpv6Checksum(const ip6_hdr* ip6, const icmp6_hdr* icmp6);
   static void ReplaceMacInIcmpOption(uint8_t* frame,
                                      ssize_t frame_len,
@@ -70,6 +76,14 @@ class NDProxy {
   // 1 and 2 will be proxied to each other.
   using interface_mapping = std::map<int, std::set<int>>;
 
+  // Overrides Daemon init callback. Returns 0 on success and < 0 on error.
+  int OnInit() override;
+  // FileDescriptorWatcher callbacks for new data on fd_.
+  void OnDataSocketReadReady();
+  // Callbacks to be registered to msg_dispatcher to handle control messages.
+  void OnParentProcessExit();
+  void OnDeviceMessage(const DeviceMessage& msg);
+
   interface_mapping* MapForType(uint8_t type);
   bool AddInterfacePairInternal(const std::string& ifname1,
                                 const std::string& ifname2,
@@ -77,13 +91,19 @@ class NDProxy {
 
   void ProxyNDFrame(int target_if, ssize_t frame_len);
 
+  // Utilize MessageDispatcher to watch control fd
+  std::unique_ptr<MessageDispatcher> msg_dispatcher_;
+  // Data fd and its watcher
   base::ScopedFD fd_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
   uint8_t in_frame_buffer_[IP_MAXPACKET];
   uint8_t out_frame_buffer_[IP_MAXPACKET];
 
   interface_mapping if_map_rs_;
   interface_mapping if_map_ra_;
   interface_mapping if_map_ns_na_;
+
+  base::WeakPtrFactory<NDProxy> weak_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(NDProxy);
 };
