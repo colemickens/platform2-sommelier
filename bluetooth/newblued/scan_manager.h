@@ -17,6 +17,8 @@
 
 namespace bluetooth {
 
+// Scan filter parameters supported by Scan Manager.
+enum class FilterKeys { INVALID, RSSI, PATHLOSS, UUIDS };
 // Core implementation of scan management.
 class ScanManager final : public DeviceInterfaceHandler::DeviceObserver {
  public:
@@ -37,6 +39,8 @@ class ScanManager final : public DeviceInterfaceHandler::DeviceObserver {
 
   // Functions for external clients to request scan activities. |client_id|
   // is used to uniquely identify the clients who requested a scan session.
+  bool SetFilter(const std::string client_id,
+                 const brillo::VariantDictionary& filter);
   bool StartScan(std::string client_id);
   bool StopScan(std::string client_id);
   bool UpdateScanSuspensionState(bool is_in_suspension);

@@ -12,6 +12,7 @@
 
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
+#include <base/values.h>
 #include <brillo/errors/error.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -62,6 +63,9 @@ class AdapterInterfaceHandler {
 
  private:
   // D-Bus method handlers for adapter object.
+  bool HandleSetDiscoveryFilter(brillo::ErrorPtr* error,
+                                dbus::Message* message,
+                                const brillo::VariantDictionary& properties);
   bool HandleStartDiscovery(brillo::ErrorPtr* error, dbus::Message* message);
   bool HandleStopDiscovery(brillo::ErrorPtr* error, dbus::Message* message);
   bool HandleRemoveDevice(brillo::ErrorPtr* error,

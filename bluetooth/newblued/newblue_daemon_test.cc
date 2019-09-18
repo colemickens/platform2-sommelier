@@ -453,6 +453,15 @@ class NewblueDaemonTest : public ::testing::Test {
     EXPECT_CALL(
         *exported_adapter_object,
         ExportMethodAndBlock(bluetooth_adapter::kBluetoothAdapterInterface,
+                             bluetooth_adapter::kSetDiscoveryFilter, _))
+        .WillOnce(DoAll(SaveArg<2>(GetMethodHandler(
+                            adapter_method_handlers,
+                            bluetooth_adapter::kSetDiscoveryFilter)),
+                        Return(true)));
+
+    EXPECT_CALL(
+        *exported_adapter_object,
+        ExportMethodAndBlock(bluetooth_adapter::kBluetoothAdapterInterface,
                              bluetooth_adapter::kStartDiscovery, _))
         .WillOnce(DoAll(
             SaveArg<2>(GetMethodHandler(adapter_method_handlers,

@@ -75,6 +75,14 @@ void ScanManager::OnDeviceUnpaired(const std::string& device_address) {
   UpdateBackgroundScan();
 }
 
+bool ScanManager::SetFilter(const std::string client_id,
+                            const brillo::VariantDictionary& filter) {
+  VLOG(2) << __func__;
+
+  // TODO(michaelfsun): Finish the core logic for set scan filters.
+  return true;
+}
+
 bool ScanManager::StartScan(std::string client_id) {
   clients_.push_back(client_id);
   if (!UpdateScan()) {

@@ -5,20 +5,91 @@
 #include "bluetooth/newblued/adapter_interface_handler.h"
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/values.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_path.h>
 
 #include "bluetooth/common/exported_object_manager_wrapper.h"
 #include "bluetooth/newblued/newblue.h"
+#include "bluetooth/newblued/scan_manager.h"
 #include "bluetooth/newblued/util.h"
+#include "bluetooth/newblued/uuid.h"
 
 namespace bluetooth {
+
+namespace {
+
+// A string to FilterKeys mapping table, used to convert keys of scan
+// parameters into NewBlue standardized enum.
+const std::map<std::string, FilterKeys> kFilterKeyTable = {
+    {"RSSI", FilterKeys::RSSI},
+    {"Pathloss", FilterKeys::PATHLOSS},
+    {"UUIDs", FilterKeys::UUIDS}};
+
+// Check and convert the key of scan filter parameters into NewBlue standardized
+// enum.
+FilterKeys ConvertFilterKey(const std::string& key) {
+  const auto it = kFilterKeyTable.find(key);
+  if (it != kFilterKeyTable.end())
+    return it->second;
+
+  return FilterKeys::INVALID;
+}
+
+// Translate the filter properties into a NewBlue scan dictionary. Translation
+// will filter out the non-supported feature, check data format, and converting
+// UUID into NewBlue formatting.
+bool TranslateDiscoveryFilter(
+    const brillo::VariantDictionary& filter_properties,
+    brillo::VariantDictionary* filter) {
+  VLOG(1) << __func__;
+
+  // If the dict is empty, client is using the method to remove existing filter.
+  if (filter_properties.empty())
+    return true;
+
+  for (const auto& pair : filter_properties) {
+    switch (ConvertFilterKey(pair.first)) {
+      case FilterKeys::INVALID:
+        // The keyword for this parameter is not supported by NewBlue, ignored.
+        break;
+      case FilterKeys::RSSI:
+        if (!pair.second.IsTypeCompatible<int16_t>())
+          return false;
+        filter->emplace(pair.first, pair.second);
+        break;
+      case FilterKeys::PATHLOSS:
+        if (!pair.second.IsTypeCompatible<uint16_t>())
+          return false;
+        filter->emplace(pair.first, pair.second);
+        break;
+      case FilterKeys::UUIDS:
+        // Convert the UUID table into NewBlue formatting.
+        std::set<Uuid> uuids;
+        auto uuids_string = pair.second.Get<std::vector<std::string>>();
+
+        for (auto& uuid_string : uuids_string) {
+          uuids.insert(Uuid(uuid_string));
+        }
+        if (uuids.empty())
+          return false;
+        filter->emplace(pair.first, uuids);
+        break;
+    }
+  }
+  if (filter->empty())
+    return false;
+  return true;
+}
+
+}  // namespace
 
 AdapterInterfaceHandler::AdapterInterfaceHandler(
     scoped_refptr<dbus::Bus> bus,
@@ -58,6 +129,9 @@ void AdapterInterfaceHandler::Init(
       ->SetValue(false);
 
   adapter_interface->AddSimpleMethodHandlerWithErrorAndMessage(
+      bluetooth_adapter::kSetDiscoveryFilter, base::Unretained(this),
+      &AdapterInterfaceHandler::HandleSetDiscoveryFilter);
+  adapter_interface->AddSimpleMethodHandlerWithErrorAndMessage(
       bluetooth_adapter::kStartDiscovery, base::Unretained(this),
       &AdapterInterfaceHandler::HandleStartDiscovery);
   adapter_interface->AddSimpleMethodHandlerWithErrorAndMessage(
@@ -79,6 +153,42 @@ void AdapterInterfaceHandler::Init(
   suspend_resume_state_ = SuspendResumeState::RUNNING;
 
   adapter_interface->ExportAndBlock();
+}
+
+bool AdapterInterfaceHandler::HandleSetDiscoveryFilter(
+    brillo::ErrorPtr* error,
+    dbus::Message* message,
+    const brillo::VariantDictionary& filter_properties) {
+  VLOG(1) << __func__;
+
+  const std::string& client_address = message->GetSender();
+
+  // If transport parameter is BR/EDR, the method is not for LE scan. Ignore the
+  // request.
+  if ("bredr" == brillo::GetVariantValueOrDefault<std::string>(
+                     filter_properties, "Transport")) {
+    VLOG(2) << "Scan filter is for BR/EDR only, ignored by NewBlue. Client: "
+            << client_address;
+    return true;
+  }
+
+  brillo::VariantDictionary filter;
+
+  if (!TranslateDiscoveryFilter(filter_properties, &filter)) {
+    brillo::Error::AddTo(
+        error, FROM_HERE, brillo::errors::dbus::kDomain,
+        bluetooth_adapter::kErrorFailed,
+        "Scan Filter contains no valid or ill-format parameters.");
+    return false;
+  }
+
+  if (!scan_manager_->SetFilter(client_address, filter)) {
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         bluetooth_adapter::kErrorFailed,
+                         "Failed to set discovery filter");
+    return false;
+  }
+  return true;
 }
 
 bool AdapterInterfaceHandler::HandleStartDiscovery(brillo::ErrorPtr* error,
