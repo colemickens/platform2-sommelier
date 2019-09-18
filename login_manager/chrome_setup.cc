@@ -134,6 +134,8 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
     disallowed_params_out->insert("-arc-available");
   }
 
+  if (builder->UseFlagIsSet("arc_adb_sideloading"))
+    builder->AddFeatureEnableOverride("ArcAdbSideloading");
   if (builder->UseFlagIsSet("arc_oobe_optin"))
     builder->AddArg("--enable-arc-oobe-optin");
   if (builder->UseFlagIsSet("arc_oobe_optin_no_skip"))
