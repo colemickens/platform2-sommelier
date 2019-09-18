@@ -82,6 +82,7 @@ constexpr uint32_t kPackageKitFilterInstalled = 2;
 // See:
 // https://www.freedesktop.org/software/PackageKit/gtk-doc/PackageKit-Enumerations.html#PkInfoEnum
 constexpr uint32_t kPackageKitInfoSecurity = 8;
+constexpr uint32_t kPackageKitInfoBlocked = 9;
 // See:
 // https://www.freedesktop.org/software/PackageKit/gtk-doc/PackageKit-Enumerations.html#PkTransactionFlagEnum
 constexpr uint32_t kPackageKitTransactionFlagEnumNone = 0;
@@ -1007,9 +1008,14 @@ class GetUpdatesTransaction : public PackageKitTransaction {
     if (!cros_updates_disabled_ &&
         base::EndsWith(package_id, kManagedPackageIdSuffix,
                        base::CompareCase::SENSITIVE)) {
-      LOG(INFO) << "Found managed package that is upgradeable, add it to the "
-                << "list: " << package_id;
-      package_ids_.emplace_back(package_id);
+      if (code == kPackageKitInfoBlocked) {
+        LOG(WARNING) << "Managed package is blocked from upgrading: "
+                     << package_id;
+      } else {
+        LOG(INFO) << "Found managed package that is upgradeable, add it to the "
+                  << "list: " << package_id;
+        package_ids_.emplace_back(package_id);
+      }
     } else if (!security_updates_disabled_ && code == kPackageKitInfoSecurity) {
       LOG(INFO) << "Found package with security update, add it to the "
                 << "list: " << package_id;
