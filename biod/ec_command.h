@@ -104,9 +104,10 @@ class EcCommand {
     };
   };
 
- private:
+ protected:
   Data data_;
 
+ private:
   virtual int ioctl(int fd, uint32_t request, Data* data) {
     return ::ioctl(fd, request, data);
   }
