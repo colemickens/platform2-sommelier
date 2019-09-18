@@ -4,11 +4,13 @@
 
 #include "cryptohome/userdataauth.h"
 
+#include <memory>
+#include <vector>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <brillo/cryptohome.h>
 #include <chaps/token_manager_client_mock.h>
-#include <vector>
 
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mock_arc_disk_quota.h"
@@ -71,18 +73,26 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
   void SetUp() override {
     tpm_init_.set_tpm(&tpm_);
 
-    userdataauth_.set_crypto(&crypto_);
-    userdataauth_.set_homedirs(&homedirs_);
-    userdataauth_.set_install_attrs(&attrs_);
-    userdataauth_.set_tpm(&tpm_);
-    userdataauth_.set_tpm_init(&tpm_init_);
-    userdataauth_.set_platform(&platform_);
-    userdataauth_.set_chaps_client(&chaps_client_);
-    userdataauth_.set_firmware_management_parameters(&fwmp_);
-    userdataauth_.set_arc_disk_quota(&arc_disk_quota_);
-    userdataauth_.set_pkcs11_init(&pkcs11_init_);
-    userdataauth_.set_mount_factory(&mount_factory_);
-    userdataauth_.set_disable_threading(true);
+    if (!userdataauth_) {
+      // Note that this branch is usually taken as |userdataauth_| is usually
+      // NULL. The reason for this branch is because some derived-class of this
+      // class (such as UserDataAuthTestThreaded) need to have the constructor
+      // of UserDataAuth run on a specific thread, and therefore will construct
+      // |userdataauth_| before calling UserDataAuthTestNotInitialized::SetUp().
+      userdataauth_.reset(new UserDataAuth());
+    }
+    userdataauth_->set_crypto(&crypto_);
+    userdataauth_->set_homedirs(&homedirs_);
+    userdataauth_->set_install_attrs(&attrs_);
+    userdataauth_->set_tpm(&tpm_);
+    userdataauth_->set_tpm_init(&tpm_init_);
+    userdataauth_->set_platform(&platform_);
+    userdataauth_->set_chaps_client(&chaps_client_);
+    userdataauth_->set_firmware_management_parameters(&fwmp_);
+    userdataauth_->set_arc_disk_quota(&arc_disk_quota_);
+    userdataauth_->set_pkcs11_init(&pkcs11_init_);
+    userdataauth_->set_mount_factory(&mount_factory_);
+    userdataauth_->set_disable_threading(true);
     homedirs_.set_crypto(&crypto_);
     homedirs_.set_platform(&platform_);
     ON_CALL(homedirs_, Init(_, _, _)).WillByDefault(Return(true));
@@ -103,7 +113,7 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
   // user. After calling this function, |mount_| is available for use.
   void SetupMount(const std::string& username) {
     mount_ = new NiceMock<MockMount>();
-    userdataauth_.set_mount_for_user(username, mount_.get());
+    userdataauth_->set_mount_for_user(username, mount_.get());
   }
 
   // This is a helper function that compute the obfuscated username with the
@@ -161,7 +171,7 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
   // Declare |userdataauth_| last so it gets destroyed before all the mocks.
   // This is important because otherwise the background thread may call into
   // mocks that have already been destroyed.
-  UserDataAuth userdataauth_;
+  std::unique_ptr<UserDataAuth> userdataauth_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UserDataAuthTestNotInitialized);
@@ -175,7 +185,7 @@ class UserDataAuthTest : public UserDataAuthTestNotInitialized {
 
   void SetUp() override {
     UserDataAuthTestNotInitialized::SetUp();
-    ASSERT_TRUE(userdataauth_.Initialize());
+    ASSERT_TRUE(userdataauth_->Initialize());
   }
 
  private:
@@ -436,8 +446,8 @@ static_assert(cryptohome::CryptohomeErrorCode_MAX == 41,
 
 TEST_F(UserDataAuthTest, IsMounted) {
   // By default there are no mount right after initialization
-  EXPECT_FALSE(userdataauth_.IsMounted());
-  EXPECT_FALSE(userdataauth_.IsMounted("foo@gmail.com"));
+  EXPECT_FALSE(userdataauth_->IsMounted());
+  EXPECT_FALSE(userdataauth_->IsMounted("foo@gmail.com"));
 
   // Add a mount associated with foo@gmail.com
   SetupMount("foo@gmail.com");
@@ -445,25 +455,25 @@ TEST_F(UserDataAuthTest, IsMounted) {
   // Test the code path that doesn't specify a user, and when there's a mount
   // that's unmounted.
   EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(false));
-  EXPECT_FALSE(userdataauth_.IsMounted());
+  EXPECT_FALSE(userdataauth_->IsMounted());
 
   // Test to see if is_ephemeral works and test the code path that doesn't
   // specify a user.
   bool is_ephemeral = true;
   EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(true));
-  EXPECT_TRUE(userdataauth_.IsMounted("", &is_ephemeral));
+  EXPECT_TRUE(userdataauth_->IsMounted("", &is_ephemeral));
   EXPECT_FALSE(is_ephemeral);
 
   // Test to see if is_ephemeral works, and test the code path that specify the
   // user.
   EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(false));
-  EXPECT_TRUE(userdataauth_.IsMounted("foo@gmail.com", &is_ephemeral));
+  EXPECT_TRUE(userdataauth_->IsMounted("foo@gmail.com", &is_ephemeral));
   EXPECT_TRUE(is_ephemeral);
 
   // Note: IsMounted will not be called in this case.
-  EXPECT_FALSE(userdataauth_.IsMounted("bar@gmail.com", &is_ephemeral));
+  EXPECT_FALSE(userdataauth_->IsMounted("bar@gmail.com", &is_ephemeral));
   EXPECT_FALSE(is_ephemeral);
 }
 
@@ -481,10 +491,10 @@ TEST_F(UserDataAuthTest, Unmount) {
   ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
 
   // Unmount should be successful.
-  EXPECT_TRUE(userdataauth_.Unmount());
+  EXPECT_TRUE(userdataauth_->Unmount());
 
   // It should be unmounted in the end.
-  EXPECT_FALSE(userdataauth_.IsMounted());
+  EXPECT_FALSE(userdataauth_->IsMounted());
 
   // Add another mount associated with bar@gmail.com
   SetupMount("bar@gmail.com");
@@ -495,16 +505,16 @@ TEST_F(UserDataAuthTest, Unmount) {
   ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
 
   // Unmount should be honest about failures.
-  EXPECT_FALSE(userdataauth_.Unmount());
+  EXPECT_FALSE(userdataauth_->Unmount());
 
   // Unmount will remove all mounts even if it failed.
-  EXPECT_FALSE(userdataauth_.IsMounted());
+  EXPECT_FALSE(userdataauth_->IsMounted());
 }
 
 TEST_F(UserDataAuthTest, InitializePkcs11Success) {
   // This test the most common success case for PKCS#11 initialization.
 
-  EXPECT_FALSE(userdataauth_.IsMounted());
+  EXPECT_FALSE(userdataauth_->IsMounted());
 
   // Add a mount associated with foo@gmail.com
   SetupMount("foo@gmail.com");
@@ -518,7 +528,7 @@ TEST_F(UserDataAuthTest, InitializePkcs11Success) {
   // |mount_| should get a request to insert PKCS#11 token.
   EXPECT_CALL(*mount_, InsertPkcs11Token()).WillOnce(Return(true));
 
-  userdataauth_.InitializePkcs11(mount_.get());
+  userdataauth_->InitializePkcs11(mount_.get());
 
   EXPECT_EQ(mount_->pkcs11_state(), cryptohome::Mount::kIsInitialized);
 }
@@ -539,7 +549,7 @@ TEST_F(UserDataAuthTest, InitializePkcs11TpmNotOwned) {
   ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).Times(AtLeast(1)).WillRepeatedly(Return(false));
 
-  userdataauth_.InitializePkcs11(mount_.get());
+  userdataauth_->InitializePkcs11(mount_.get());
 
   EXPECT_EQ(mount_->pkcs11_state(), cryptohome::Mount::kIsWaitingOnTPM);
 
@@ -561,7 +571,7 @@ TEST_F(UserDataAuthTest, InitializePkcs11TpmNotOwned) {
   ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).Times(AtLeast(1)).WillRepeatedly(Return(true));
 
-  userdataauth_.InitializePkcs11(mount_.get());
+  userdataauth_->InitializePkcs11(mount_.get());
 
   EXPECT_EQ(mount_->pkcs11_state(), cryptohome::Mount::kIsInitialized);
 }
@@ -579,70 +589,70 @@ TEST_F(UserDataAuthTest, InitializePkcs11Unmounted) {
   // |mount_| should not get a request to insert PKCS#11 token.
   EXPECT_CALL(*mount_, InsertPkcs11Token()).Times(0);
 
-  userdataauth_.InitializePkcs11(mount_.get());
+  userdataauth_->InitializePkcs11(mount_.get());
 
   EXPECT_EQ(mount_->pkcs11_state(), cryptohome::Mount::kUninitialized);
 }
 
 TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
   // When there's no mount at all, it should be true.
-  EXPECT_TRUE(userdataauth_.Pkcs11IsTpmTokenReady());
+  EXPECT_TRUE(userdataauth_->Pkcs11IsTpmTokenReady());
 
   constexpr char kUsername1[] = "foo@gmail.com";
   constexpr char kUsername2[] = "bar@gmail.com";
 
   // Check when there's 1 mount, and it's initialized.
   scoped_refptr<NiceMock<MockMount>> mount1 = new NiceMock<MockMount>();
-  userdataauth_.set_mount_for_user(kUsername1, mount1.get());
+  userdataauth_->set_mount_for_user(kUsername1, mount1.get());
   EXPECT_CALL(*mount1, pkcs11_state())
       .WillOnce(Return(cryptohome::Mount::kIsInitialized));
-  EXPECT_TRUE(userdataauth_.Pkcs11IsTpmTokenReady());
+  EXPECT_TRUE(userdataauth_->Pkcs11IsTpmTokenReady());
 
   // Check various other PKCS#11 states.
   EXPECT_CALL(*mount1, pkcs11_state())
       .WillOnce(Return(cryptohome::Mount::kUninitialized));
-  EXPECT_FALSE(userdataauth_.Pkcs11IsTpmTokenReady());
+  EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
 
   EXPECT_CALL(*mount1, pkcs11_state())
       .WillOnce(Return(cryptohome::Mount::kIsWaitingOnTPM));
-  EXPECT_FALSE(userdataauth_.Pkcs11IsTpmTokenReady());
+  EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
 
   EXPECT_CALL(*mount1, pkcs11_state())
       .WillOnce(Return(cryptohome::Mount::kIsBeingInitialized));
-  EXPECT_FALSE(userdataauth_.Pkcs11IsTpmTokenReady());
+  EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
 
   EXPECT_CALL(*mount1, pkcs11_state())
       .WillOnce(Return(cryptohome::Mount::kIsFailed));
-  EXPECT_FALSE(userdataauth_.Pkcs11IsTpmTokenReady());
+  EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
 
   EXPECT_CALL(*mount1, pkcs11_state())
       .WillOnce(Return(cryptohome::Mount::kInvalidState));
-  EXPECT_FALSE(userdataauth_.Pkcs11IsTpmTokenReady());
+  EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
 
   // Check when there's another mount.
   scoped_refptr<NiceMock<MockMount>> mount2 = new NiceMock<MockMount>();
-  userdataauth_.set_mount_for_user(kUsername2, mount2.get());
+  userdataauth_->set_mount_for_user(kUsername2, mount2.get());
 
   // Both is initialized.
   EXPECT_CALL(*mount1, pkcs11_state())
       .WillOnce(Return(cryptohome::Mount::kIsInitialized));
   EXPECT_CALL(*mount2, pkcs11_state())
       .WillOnce(Return(cryptohome::Mount::kIsInitialized));
-  EXPECT_TRUE(userdataauth_.Pkcs11IsTpmTokenReady());
+  EXPECT_TRUE(userdataauth_->Pkcs11IsTpmTokenReady());
 
   // Only one is initialized.
   EXPECT_CALL(*mount1, pkcs11_state())
       .WillOnce(Return(cryptohome::Mount::kIsInitialized));
   EXPECT_CALL(*mount2, pkcs11_state())
       .WillOnce(Return(cryptohome::Mount::kUninitialized));
-  EXPECT_FALSE(userdataauth_.Pkcs11IsTpmTokenReady());
+  EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
 
   // Both uninitialized.
   EXPECT_CALL(*mount1, pkcs11_state())
       .WillOnce(Return(cryptohome::Mount::kUninitialized));
   EXPECT_CALL(*mount2, pkcs11_state())
       .WillOnce(Return(cryptohome::Mount::kUninitialized));
-  EXPECT_FALSE(userdataauth_.Pkcs11IsTpmTokenReady());
+  EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
 }
 
 TEST_F(UserDataAuthTest, Pkcs11GetTpmTokenInfo) {
@@ -654,7 +664,7 @@ TEST_F(UserDataAuthTest, Pkcs11GetTpmTokenInfo) {
   // Check the system token case.
   EXPECT_CALL(pkcs11_init_, GetTpmTokenSlotForPath(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kSlot), Return(true)));
-  info = userdataauth_.Pkcs11GetTpmTokenInfo("");
+  info = userdataauth_->Pkcs11GetTpmTokenInfo("");
 
   EXPECT_EQ(info.label(), Pkcs11Init::kDefaultSystemLabel);
   EXPECT_EQ(info.user_pin(), Pkcs11Init::kDefaultPin);
@@ -663,7 +673,7 @@ TEST_F(UserDataAuthTest, Pkcs11GetTpmTokenInfo) {
   // Check the user token case.
   EXPECT_CALL(pkcs11_init_, GetTpmTokenSlotForPath(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kSlot), Return(true)));
-  info = userdataauth_.Pkcs11GetTpmTokenInfo(kUsername1);
+  info = userdataauth_->Pkcs11GetTpmTokenInfo(kUsername1);
 
   // Note that the label will usually be appended with a part of the sanitized
   // username. However, the sanitized username cannot be generated during
@@ -677,24 +687,24 @@ TEST_F(UserDataAuthTest, Pkcs11GetTpmTokenInfo) {
   // Verify that if GetTpmTokenSlotForPath fails, we'll get -1 for slot.
   EXPECT_CALL(pkcs11_init_, GetTpmTokenSlotForPath(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kSlot), Return(false)));
-  info = userdataauth_.Pkcs11GetTpmTokenInfo("");
+  info = userdataauth_->Pkcs11GetTpmTokenInfo("");
   EXPECT_EQ(info.slot(), -1);
 
   EXPECT_CALL(pkcs11_init_, GetTpmTokenSlotForPath(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kSlot), Return(false)));
-  info = userdataauth_.Pkcs11GetTpmTokenInfo(kUsername1);
+  info = userdataauth_->Pkcs11GetTpmTokenInfo(kUsername1);
   EXPECT_EQ(info.slot(), -1);
 }
 
 TEST_F(UserDataAuthTest, Pkcs11Terminate) {
   // Check that it'll not crash when there's no mount
-  userdataauth_.Pkcs11Terminate();
+  userdataauth_->Pkcs11Terminate();
 
   // Check that we'll indeed get the Mount object to remove the PKCS#11 token.
   constexpr char kUsername1[] = "foo@gmail.com";
   SetupMount(kUsername1);
   EXPECT_CALL(*mount_, RemovePkcs11Token()).WillOnce(Return());
-  userdataauth_.Pkcs11Terminate();
+  userdataauth_->Pkcs11Terminate();
 }
 
 TEST_F(UserDataAuthTestNotInitialized, InstallAttributesEnterpriseOwned) {
@@ -706,9 +716,9 @@ TEST_F(UserDataAuthTestNotInitialized, InstallAttributesEnterpriseOwned) {
 
   EXPECT_CALL(attrs_, Get("enterprise.owned", _))
       .WillOnce(DoAll(SetArgPointee<1>(blob_true), Return(true)));
-  userdataauth_.Initialize();
+  userdataauth_->Initialize();
 
-  EXPECT_TRUE(userdataauth_.IsEnterpriseOwned());
+  EXPECT_TRUE(userdataauth_->IsEnterpriseOwned());
 }
 
 TEST_F(UserDataAuthTestNotInitialized, InstallAttributesNotEnterpriseOwned) {
@@ -720,9 +730,9 @@ TEST_F(UserDataAuthTestNotInitialized, InstallAttributesNotEnterpriseOwned) {
 
   EXPECT_CALL(attrs_, Get("enterprise.owned", _))
       .WillOnce(DoAll(SetArgPointee<1>(blob_true), Return(true)));
-  userdataauth_.Initialize();
+  userdataauth_->Initialize();
 
-  EXPECT_FALSE(userdataauth_.IsEnterpriseOwned());
+  EXPECT_FALSE(userdataauth_->IsEnterpriseOwned());
 }
 
 constexpr char kInstallAttributeName[] = "SomeAttribute";
@@ -740,13 +750,14 @@ TEST_F(UserDataAuthTest, InstallAttributesGet) {
             return true;
           }));
   std::vector<uint8_t> data;
-  EXPECT_TRUE(userdataauth_.InstallAttributesGet(kInstallAttributeName, &data));
+  EXPECT_TRUE(
+      userdataauth_->InstallAttributesGet(kInstallAttributeName, &data));
   EXPECT_THAT(data, ElementsAreArray(kInstallAttributeData));
 
   // Test for unsuccessful case.
   EXPECT_CALL(attrs_, Get(kInstallAttributeName, _)).WillOnce(Return(false));
   EXPECT_FALSE(
-      userdataauth_.InstallAttributesGet(kInstallAttributeName, &data));
+      userdataauth_->InstallAttributesGet(kInstallAttributeName, &data));
 }
 
 TEST_F(UserDataAuthTest, InstallAttributesSet) {
@@ -758,39 +769,40 @@ TEST_F(UserDataAuthTest, InstallAttributesSet) {
   std::vector<uint8_t> data(
       kInstallAttributeData,
       kInstallAttributeData + sizeof(kInstallAttributeData));
-  EXPECT_TRUE(userdataauth_.InstallAttributesSet(kInstallAttributeName, data));
+  EXPECT_TRUE(userdataauth_->InstallAttributesSet(kInstallAttributeName, data));
 
   // Test for unsuccessful case.
   EXPECT_CALL(attrs_, Set(kInstallAttributeName,
                           ElementsAreArray(kInstallAttributeData)))
       .WillOnce(Return(false));
-  EXPECT_FALSE(userdataauth_.InstallAttributesSet(kInstallAttributeName, data));
+  EXPECT_FALSE(
+      userdataauth_->InstallAttributesSet(kInstallAttributeName, data));
 }
 
 TEST_F(UserDataAuthTest, InstallAttributesFinalize) {
   // Test for successful case.
   EXPECT_CALL(attrs_, Finalize()).WillOnce(Return(true));
-  EXPECT_TRUE(userdataauth_.InstallAttributesFinalize());
+  EXPECT_TRUE(userdataauth_->InstallAttributesFinalize());
 
   // Test for unsuccessful case.
   EXPECT_CALL(attrs_, Finalize()).WillOnce(Return(false));
-  EXPECT_FALSE(userdataauth_.InstallAttributesFinalize());
+  EXPECT_FALSE(userdataauth_->InstallAttributesFinalize());
 }
 
 TEST_F(UserDataAuthTest, InstallAttributesCount) {
   constexpr int kCount = 42;  // The Answer!!
   EXPECT_CALL(attrs_, Count()).WillOnce(Return(kCount));
-  EXPECT_EQ(kCount, userdataauth_.InstallAttributesCount());
+  EXPECT_EQ(kCount, userdataauth_->InstallAttributesCount());
 }
 
 TEST_F(UserDataAuthTest, InstallAttributesIsSecure) {
   // Test for successful case.
   EXPECT_CALL(attrs_, is_secure()).WillOnce(Return(true));
-  EXPECT_TRUE(userdataauth_.InstallAttributesIsSecure());
+  EXPECT_TRUE(userdataauth_->InstallAttributesIsSecure());
 
   // Test for unsuccessful case.
   EXPECT_CALL(attrs_, is_secure()).WillOnce(Return(false));
-  EXPECT_FALSE(userdataauth_.InstallAttributesIsSecure());
+  EXPECT_FALSE(userdataauth_->InstallAttributesIsSecure());
 }
 
 TEST_F(UserDataAuthTest, InstallAttributesGetStatus) {
@@ -802,7 +814,7 @@ TEST_F(UserDataAuthTest, InstallAttributesGetStatus) {
 
   for (auto& s : status_list) {
     EXPECT_CALL(attrs_, status()).WillOnce(Return(s));
-    EXPECT_EQ(s, userdataauth_.InstallAttributesGetStatus());
+    EXPECT_EQ(s, userdataauth_->InstallAttributesGetStatus());
   }
 }
 
@@ -831,15 +843,15 @@ TEST_F(UserDataAuthTestNotInitialized, InstallAttributesStatusToProtoEnum) {
 
 TEST_F(UserDataAuthTestNotInitialized, InitializeArcDiskQuota) {
   EXPECT_CALL(arc_disk_quota_, Initialize()).Times(1);
-  EXPECT_TRUE(userdataauth_.Initialize());
+  EXPECT_TRUE(userdataauth_->Initialize());
 }
 
 TEST_F(UserDataAuthTestNotInitialized, IsArcQuotaSupported) {
   EXPECT_CALL(arc_disk_quota_, IsQuotaSupported()).WillOnce(Return(true));
-  EXPECT_TRUE(userdataauth_.IsArcQuotaSupported());
+  EXPECT_TRUE(userdataauth_->IsArcQuotaSupported());
 
   EXPECT_CALL(arc_disk_quota_, IsQuotaSupported()).WillOnce(Return(false));
-  EXPECT_FALSE(userdataauth_.IsArcQuotaSupported());
+  EXPECT_FALSE(userdataauth_->IsArcQuotaSupported());
 }
 
 TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceFoArcUid) {
@@ -848,7 +860,7 @@ TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceFoArcUid) {
 
   EXPECT_CALL(arc_disk_quota_, GetCurrentSpaceForUid(kUID))
       .WillOnce(Return(kSpaceUsage));
-  EXPECT_EQ(kSpaceUsage, userdataauth_.GetCurrentSpaceForArcUid(kUID));
+  EXPECT_EQ(kSpaceUsage, userdataauth_->GetCurrentSpaceForArcUid(kUID));
 }
 
 TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceForArcGid) {
@@ -857,7 +869,7 @@ TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceForArcGid) {
 
   EXPECT_CALL(arc_disk_quota_, GetCurrentSpaceForGid(kGID))
       .WillOnce(Return(kSpaceUsage));
-  EXPECT_EQ(kSpaceUsage, userdataauth_.GetCurrentSpaceForArcGid(kGID));
+  EXPECT_EQ(kSpaceUsage, userdataauth_->GetCurrentSpaceForArcGid(kGID));
 }
 
 TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootSanity20) {
@@ -878,7 +890,7 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootSanity20) {
   EXPECT_CALL(tpm_, ExtendPCR(kTpmSingleUserPCR, extention_blob))
       .WillOnce(Return(true));
 
-  EXPECT_EQ(userdataauth_.LockToSingleUserMountUntilReboot(account_id),
+  EXPECT_EQ(userdataauth_->LockToSingleUserMountUntilReboot(account_id),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 
@@ -901,7 +913,7 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootSanity12) {
   EXPECT_CALL(tpm_, ExtendPCR(kTpmSingleUserPCR, extention_blob))
       .WillOnce(Return(true));
 
-  EXPECT_EQ(userdataauth_.LockToSingleUserMountUntilReboot(account_id),
+  EXPECT_EQ(userdataauth_->LockToSingleUserMountUntilReboot(account_id),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 
@@ -913,7 +925,7 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootReadPCRFail) {
   ON_CALL(homedirs_, SetLockedToSingleUser()).WillByDefault(Return(true));
   EXPECT_CALL(tpm_, ReadPCR(kTpmSingleUserPCR, _)).WillOnce(Return(false));
 
-  EXPECT_EQ(userdataauth_.LockToSingleUserMountUntilReboot(account_id),
+  EXPECT_EQ(userdataauth_->LockToSingleUserMountUntilReboot(account_id),
             user_data_auth::CRYPTOHOME_ERROR_FAILED_TO_READ_PCR);
 }
 
@@ -931,7 +943,7 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootAlreadyExtended) {
   EXPECT_CALL(tpm_, ReadPCR(kTpmSingleUserPCR, _))
       .WillOnce(DoAll(SetArgPointee<1>(empty_pcr), Return(true)));
 
-  EXPECT_EQ(userdataauth_.LockToSingleUserMountUntilReboot(account_id),
+  EXPECT_EQ(userdataauth_->LockToSingleUserMountUntilReboot(account_id),
             user_data_auth::CRYPTOHOME_ERROR_PCR_ALREADY_EXTENDED);
 }
 
@@ -953,7 +965,7 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootExtendFail) {
   EXPECT_CALL(tpm_, ExtendPCR(kTpmSingleUserPCR, extention_blob))
       .WillOnce(Return(false));
 
-  EXPECT_EQ(userdataauth_.LockToSingleUserMountUntilReboot(account_id),
+  EXPECT_EQ(userdataauth_->LockToSingleUserMountUntilReboot(account_id),
             user_data_auth::CRYPTOHOME_ERROR_FAILED_TO_EXTEND_PCR);
 }
 
@@ -972,7 +984,7 @@ TEST_F(UserDataAuthTest, GetFirmwareManagementParametersSuccess) {
 
   user_data_auth::FirmwareManagementParameters fwmp;
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-            userdataauth_.GetFirmwareManagementParameters(&fwmp));
+            userdataauth_->GetFirmwareManagementParameters(&fwmp));
 
   EXPECT_EQ(kFlag, fwmp.flags());
   EXPECT_EQ(kHash, fwmp.developer_key_hash());
@@ -987,7 +999,7 @@ TEST_F(UserDataAuthTest, GetFirmwareManagementParametersError) {
   user_data_auth::FirmwareManagementParameters fwmp;
   EXPECT_EQ(
       user_data_auth::CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID,
-      userdataauth_.GetFirmwareManagementParameters(&fwmp));
+      userdataauth_->GetFirmwareManagementParameters(&fwmp));
 
   // Test GetFlags() fail.
   EXPECT_CALL(fwmp_, Load()).WillRepeatedly(Return(true));
@@ -995,7 +1007,7 @@ TEST_F(UserDataAuthTest, GetFirmwareManagementParametersError) {
 
   EXPECT_EQ(
       user_data_auth::CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID,
-      userdataauth_.GetFirmwareManagementParameters(&fwmp));
+      userdataauth_->GetFirmwareManagementParameters(&fwmp));
 
   // Test GetDeveloperKeyHash fail.
   EXPECT_CALL(fwmp_, Load()).WillRepeatedly(Return(true));
@@ -1005,7 +1017,7 @@ TEST_F(UserDataAuthTest, GetFirmwareManagementParametersError) {
 
   EXPECT_EQ(
       user_data_auth::CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID,
-      userdataauth_.GetFirmwareManagementParameters(&fwmp));
+      userdataauth_->GetFirmwareManagementParameters(&fwmp));
 }
 
 TEST_F(UserDataAuthTest, SetFirmwareManagementParametersSuccess) {
@@ -1024,7 +1036,7 @@ TEST_F(UserDataAuthTest, SetFirmwareManagementParametersSuccess) {
   fwmp.set_developer_key_hash(kHash);
 
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-            userdataauth_.SetFirmwareManagementParameters(fwmp));
+            userdataauth_->SetFirmwareManagementParameters(fwmp));
 
   EXPECT_EQ(hash, out_hash);
 }
@@ -1039,7 +1051,7 @@ TEST_F(UserDataAuthTest, SetFirmwareManagementParametersNoHash) {
   fwmp.set_flags(kFlag);
 
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-            userdataauth_.SetFirmwareManagementParameters(fwmp));
+            userdataauth_->SetFirmwareManagementParameters(fwmp));
 }
 
 TEST_F(UserDataAuthTest, SetFirmwareManagementParametersCreateError) {
@@ -1054,7 +1066,7 @@ TEST_F(UserDataAuthTest, SetFirmwareManagementParametersCreateError) {
 
   EXPECT_EQ(user_data_auth::
                 CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE,
-            userdataauth_.SetFirmwareManagementParameters(fwmp));
+            userdataauth_->SetFirmwareManagementParameters(fwmp));
 }
 
 TEST_F(UserDataAuthTest, SetFirmwareManagementParametersStoreError) {
@@ -1070,29 +1082,29 @@ TEST_F(UserDataAuthTest, SetFirmwareManagementParametersStoreError) {
 
   EXPECT_EQ(user_data_auth::
                 CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE,
-            userdataauth_.SetFirmwareManagementParameters(fwmp));
+            userdataauth_->SetFirmwareManagementParameters(fwmp));
 }
 
 TEST_F(UserDataAuthTest, RemoveFirmwareManagementParametersSuccess) {
   EXPECT_CALL(fwmp_, Destroy()).WillOnce(Return(true));
 
-  EXPECT_TRUE(userdataauth_.RemoveFirmwareManagementParameters());
+  EXPECT_TRUE(userdataauth_->RemoveFirmwareManagementParameters());
 }
 
 TEST_F(UserDataAuthTest, RemoveFirmwareManagementParametersError) {
   EXPECT_CALL(fwmp_, Destroy()).WillOnce(Return(false));
 
-  EXPECT_FALSE(userdataauth_.RemoveFirmwareManagementParameters());
+  EXPECT_FALSE(userdataauth_->RemoveFirmwareManagementParameters());
 }
 
 TEST_F(UserDataAuthTest, GetSystemSaltSucess) {
   brillo::SecureBlob salt;
   AssignSalt(CRYPTOHOME_DEFAULT_SALT_LENGTH, &salt);
-  EXPECT_EQ(salt, userdataauth_.GetSystemSalt());
+  EXPECT_EQ(salt, userdataauth_->GetSystemSalt());
 }
 
 TEST_F(UserDataAuthTestNotInitialized, GetSystemSaltUninitialized) {
-  EXPECT_DEATH(userdataauth_.GetSystemSalt(),
+  EXPECT_DEATH(userdataauth_->GetSystemSalt(),
                "Cannot call GetSystemSalt before initialization");
 }
 
@@ -1104,7 +1116,7 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {
   EXPECT_CALL(*mount_, UpdateCurrentUserActivityTimestamp(kTimeshift))
       .WillOnce(Return(true));
 
-  EXPECT_TRUE(userdataauth_.UpdateCurrentUserActivityTimestamp(kTimeshift));
+  EXPECT_TRUE(userdataauth_->UpdateCurrentUserActivityTimestamp(kTimeshift));
 
   // Test case for multiple mounts
   scoped_refptr<MockMount> prev_mount = mount_;
@@ -1115,7 +1127,7 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {
   EXPECT_CALL(*prev_mount, UpdateCurrentUserActivityTimestamp(kTimeshift))
       .WillOnce(Return(true));
 
-  EXPECT_TRUE(userdataauth_.UpdateCurrentUserActivityTimestamp(kTimeshift));
+  EXPECT_TRUE(userdataauth_->UpdateCurrentUserActivityTimestamp(kTimeshift));
 }
 
 TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampFailure) {
@@ -1126,7 +1138,7 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampFailure) {
   EXPECT_CALL(*mount_, UpdateCurrentUserActivityTimestamp(kTimeshift))
       .WillOnce(Return(false));
 
-  EXPECT_FALSE(userdataauth_.UpdateCurrentUserActivityTimestamp(kTimeshift));
+  EXPECT_FALSE(userdataauth_->UpdateCurrentUserActivityTimestamp(kTimeshift));
 }
 
 // ======================= CleanUpStaleMounts tests ==========================
@@ -1247,7 +1259,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_NoOpenFiles_Ephemeral) {
   EXPECT_CALL(platform_, DeleteFile(kSparseFiles[1], _)).WillOnce(Return(true));
   EXPECT_CALL(platform_, DeleteFile(kLoopDevMounts[0].dst, _))
       .WillOnce(Return(true));
-  EXPECT_FALSE(userdataauth_.CleanUpStaleMounts(false));
+  EXPECT_FALSE(userdataauth_->CleanUpStaleMounts(false));
 }
 
 TEST_F(UserDataAuthTest, CleanUpStale_OpenLegacy_Ephemeral) {
@@ -1276,7 +1288,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_OpenLegacy_Ephemeral) {
       .WillRepeatedly(SetArgPointee<1>(processes));
 
   EXPECT_CALL(platform_, Unmount(_, _, _)).Times(0);
-  EXPECT_TRUE(userdataauth_.CleanUpStaleMounts(false));
+  EXPECT_TRUE(userdataauth_->CleanUpStaleMounts(false));
 }
 
 TEST_F(UserDataAuthTest, CleanUpStale_OpenLegacy_Ephemeral_Forced) {
@@ -1308,7 +1320,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_OpenLegacy_Ephemeral_Forced) {
   EXPECT_CALL(platform_, DeleteFile(kSparseFiles[1], _)).WillOnce(Return(true));
   EXPECT_CALL(platform_, DeleteFile(kLoopDevMounts[0].dst, _))
       .WillOnce(Return(true));
-  EXPECT_FALSE(userdataauth_.CleanUpStaleMounts(true));
+  EXPECT_FALSE(userdataauth_->CleanUpStaleMounts(true));
 }
 
 TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_NoOpenFiles_ShadowOnly) {
@@ -1330,7 +1342,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_NoOpenFiles_ShadowOnly) {
   EXPECT_CALL(platform_, Unmount(_, true, _))
       .Times(kShadowMountsCount)
       .WillRepeatedly(Return(true));
-  EXPECT_FALSE(userdataauth_.CleanUpStaleMounts(false));
+  EXPECT_FALSE(userdataauth_->CleanUpStaleMounts(false));
 }
 
 TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_OpenLegacy_ShadowOnly) {
@@ -1363,7 +1375,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_OpenLegacy_ShadowOnly) {
               true, _))
       .Times(5)
       .WillRepeatedly(Return(true));
-  EXPECT_TRUE(userdataauth_.CleanUpStaleMounts(false));
+  EXPECT_TRUE(userdataauth_->CleanUpStaleMounts(false));
 }
 
 TEST_F(UserDataAuthTest, StartMigrateToDircryptoSanity) {
@@ -1379,7 +1391,7 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoSanity) {
       .WillOnce(Return(true));
 
   int success_cnt = 0;
-  userdataauth_.StartMigrateToDircrypto(
+  userdataauth_->StartMigrateToDircrypto(
       request,
       base::Bind(
           [](int* success_cnt_ptr,
@@ -1402,7 +1414,7 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoFailure) {
 
   // Test mount non-existent.
   int call_cnt = 0;
-  userdataauth_.StartMigrateToDircrypto(
+  userdataauth_->StartMigrateToDircrypto(
       request,
       base::Bind(
           [](int* call_cnt_ptr,
@@ -1422,7 +1434,7 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoFailure) {
       .WillOnce(Return(false));
 
   call_cnt = 0;
-  userdataauth_.StartMigrateToDircrypto(
+  userdataauth_->StartMigrateToDircrypto(
       request,
       base::Bind(
           [](int* call_cnt_ptr,
@@ -1443,49 +1455,49 @@ TEST_F(UserDataAuthTest, NeedsDircryptoMigration) {
 
   // Test the case when we are forced to use eCryptfs, and thus no migration is
   // needed.
-  userdataauth_.set_force_ecryptfs(true);
+  userdataauth_->set_force_ecryptfs(true);
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_EQ(userdataauth_.NeedsDircryptoMigration(account, &result),
+  EXPECT_EQ(userdataauth_->NeedsDircryptoMigration(account, &result),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_FALSE(result);
 
   // Test the case when dircrypto is already in use.
-  userdataauth_.set_force_ecryptfs(false);
+  userdataauth_->set_force_ecryptfs(false);
   EXPECT_CALL(homedirs_, NeedsDircryptoMigration(_)).WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_EQ(userdataauth_.NeedsDircryptoMigration(account, &result),
+  EXPECT_EQ(userdataauth_->NeedsDircryptoMigration(account, &result),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_FALSE(result);
 
   // Test the case when eCryptfs is being used.
-  userdataauth_.set_force_ecryptfs(false);
+  userdataauth_->set_force_ecryptfs(false);
   EXPECT_CALL(homedirs_, NeedsDircryptoMigration(_)).WillOnce(Return(true));
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_EQ(userdataauth_.NeedsDircryptoMigration(account, &result),
+  EXPECT_EQ(userdataauth_->NeedsDircryptoMigration(account, &result),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_TRUE(result);
 
   // Test for account not found.
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(false));
-  EXPECT_EQ(userdataauth_.NeedsDircryptoMigration(account, &result),
+  EXPECT_EQ(userdataauth_->NeedsDircryptoMigration(account, &result),
             user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
 }
 
 TEST_F(UserDataAuthTest, LowEntropyCredentialSupported) {
   // Test when there's no Low Entropy Credential Backend.
   EXPECT_CALL(tpm_, GetLECredentialBackend()).WillOnce(Return(nullptr));
-  EXPECT_FALSE(userdataauth_.IsLowEntropyCredentialSupported());
+  EXPECT_FALSE(userdataauth_->IsLowEntropyCredentialSupported());
 
   NiceMock<MockLECredentialBackend> backend;
   EXPECT_CALL(tpm_, GetLECredentialBackend()).WillRepeatedly(Return(&backend));
 
   // Test when the backend says it's not supported.
   EXPECT_CALL(backend, IsSupported()).WillOnce(Return(false));
-  EXPECT_FALSE(userdataauth_.IsLowEntropyCredentialSupported());
+  EXPECT_FALSE(userdataauth_->IsLowEntropyCredentialSupported());
 
   // Test when it's supported.
   EXPECT_CALL(backend, IsSupported()).WillOnce(Return(true));
-  EXPECT_TRUE(userdataauth_.IsLowEntropyCredentialSupported());
+  EXPECT_TRUE(userdataauth_->IsLowEntropyCredentialSupported());
 }
 
 TEST_F(UserDataAuthTest, GetAccountDiskUsage) {
@@ -1493,7 +1505,7 @@ TEST_F(UserDataAuthTest, GetAccountDiskUsage) {
   AccountIdentifier account;
   account.set_account_id("non_existent_user");
 
-  EXPECT_EQ(0, userdataauth_.GetAccountDiskUsage(account));
+  EXPECT_EQ(0, userdataauth_->GetAccountDiskUsage(account));
 
   // Test when the user exists and home directory is not empty.
   constexpr char kUsername1[] = "foo@gmail.com";
@@ -1502,7 +1514,7 @@ TEST_F(UserDataAuthTest, GetAccountDiskUsage) {
   constexpr int64_t kHomedirSize = 12345678912345;
   EXPECT_CALL(homedirs_, ComputeSize(kUsername1))
       .WillOnce(Return(kHomedirSize));
-  EXPECT_EQ(kHomedirSize, userdataauth_.GetAccountDiskUsage(account));
+  EXPECT_EQ(kHomedirSize, userdataauth_->GetAccountDiskUsage(account));
 }
 
 // ==================== Mount and Keys related tests =======================
@@ -1591,7 +1603,7 @@ TEST_F(UserDataAuthExTest, MountGuestSanity) {
   }));
 
   bool called = false;
-  userdataauth_.DoMount(
+  userdataauth_->DoMount(
       *mount_req_,
       base::BindOnce(
           [](bool* called_ptr, const user_data_auth::MountReply& reply) {
@@ -1602,7 +1614,7 @@ TEST_F(UserDataAuthExTest, MountGuestSanity) {
 
   EXPECT_TRUE(called);
 
-  EXPECT_NE(userdataauth_.get_mount_for_user(
+  EXPECT_NE(userdataauth_->get_mount_for_user(
                 brillo::cryptohome::home::kGuestUserName),
             nullptr);
 }
@@ -1626,7 +1638,7 @@ TEST_F(UserDataAuthExTest, MountGuestMountPointBusy) {
   }));
 
   bool called = false;
-  userdataauth_.DoMount(
+  userdataauth_->DoMount(
       *mount_req_,
       base::BindOnce(
           [](bool* called_ptr, const user_data_auth::MountReply& reply) {
@@ -1638,7 +1650,7 @@ TEST_F(UserDataAuthExTest, MountGuestMountPointBusy) {
 
   EXPECT_TRUE(called);
 
-  EXPECT_EQ(userdataauth_.get_mount_for_user(
+  EXPECT_EQ(userdataauth_->get_mount_for_user(
                 brillo::cryptohome::home::kGuestUserName),
             nullptr);
 }
@@ -1656,7 +1668,7 @@ TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
   }));
 
   bool called = false;
-  userdataauth_.DoMount(
+  userdataauth_->DoMount(
       *mount_req_,
       base::BindOnce(
           [](bool* called_ptr, const user_data_auth::MountReply& reply) {
@@ -1684,7 +1696,7 @@ TEST_F(UserDataAuthExTest, MountInvalidArgs) {
   // is called), and is CRYPTOHOME_ERROR_INVALID_ARGUMENT.
   auto CallDoMountAndCheckResultIsInvalidArgument = [&called, this]() {
     called = false;
-    userdataauth_.DoMount(
+    userdataauth_->DoMount(
         *mount_req_,
         base::BindOnce(
             [](bool* called_ptr, const user_data_auth::MountReply& reply) {
@@ -1742,7 +1754,7 @@ TEST_F(UserDataAuthExTest, MountPublicWithExistingMounts) {
 
   bool called = false;
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  userdataauth_.DoMount(
+  userdataauth_->DoMount(
       *mount_req_,
       base::BindOnce(
           [](bool* called_ptr, const user_data_auth::MountReply& reply) {
@@ -1777,7 +1789,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
   }));
 
   bool called = false;
-  userdataauth_.DoMount(
+  userdataauth_->DoMount(
       *mount_req_,
       base::BindOnce(
           [](bool* called_ptr, const user_data_auth::MountReply& reply) {
@@ -1793,25 +1805,25 @@ TEST_F(UserDataAuthExTest, AddKeyInvalidArgs) {
   PrepareArguments();
 
   // Test for when there's no email supplied.
-  EXPECT_EQ(userdataauth_.AddKey(*add_req_.get()),
+  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
   // Test for when there's no secret.
   add_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  EXPECT_EQ(userdataauth_.AddKey(*add_req_.get()),
+  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
   // Test for when there's no new key.
   add_req_->mutable_authorization_request()->mutable_key()->set_secret("blerg");
   add_req_->clear_key();
-  EXPECT_EQ(userdataauth_.AddKey(*add_req_.get()),
+  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
   // Test for no new key label.
   add_req_->mutable_key();
   // No label
   add_req_->mutable_key()->set_secret("some secret");
-  EXPECT_EQ(userdataauth_.AddKey(*add_req_.get()),
+  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
@@ -1828,7 +1840,7 @@ TEST_F(UserDataAuthExTest, AddKeySanity) {
   EXPECT_CALL(homedirs_, AddKeyset(_, _, _, _, _))
       .WillOnce(Return(cryptohome::CRYPTOHOME_ERROR_NOT_SET));
 
-  EXPECT_EQ(userdataauth_.AddKey(*add_req_.get()),
+  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 
@@ -1846,7 +1858,7 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckSuccess) {
   EXPECT_CALL(*mount_, AreSameUser(_)).WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
   EXPECT_CALL(homedirs_, AreCredentialsValid(_)).WillOnce(Return(true));
-  EXPECT_EQ(userdataauth_.CheckKey(*check_req_.get()),
+  EXPECT_EQ(userdataauth_->CheckKey(*check_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 
@@ -1862,7 +1874,7 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckFail) {
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(homedirs_, AreCredentialsValid(_)).WillOnce(Return(false));
 
-  EXPECT_EQ(userdataauth_.CheckKey(*check_req_.get()),
+  EXPECT_EQ(userdataauth_->CheckKey(*check_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
 }
 
@@ -1876,7 +1888,7 @@ TEST_F(UserDataAuthExTest, CheckKeyMountCheckSuccess) {
   EXPECT_CALL(*mount_, AreSameUser(_)).WillOnce(Return(true));
   EXPECT_CALL(*mount_, AreValid(_)).WillOnce(Return(true));
 
-  EXPECT_EQ(userdataauth_.CheckKey(*check_req_.get()),
+  EXPECT_EQ(userdataauth_->CheckKey(*check_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 
@@ -1892,7 +1904,7 @@ TEST_F(UserDataAuthExTest, CheckKeyMountCheckFail) {
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(homedirs_, AreCredentialsValid(_)).WillOnce(Return(false));
 
-  EXPECT_EQ(userdataauth_.CheckKey(*check_req_.get()),
+  EXPECT_EQ(userdataauth_->CheckKey(*check_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
 }
 
@@ -1900,17 +1912,17 @@ TEST_F(UserDataAuthExTest, CheckKeyInvalidArgs) {
   PrepareArguments();
 
   // No email supplied.
-  EXPECT_EQ(userdataauth_.CheckKey(*check_req_.get()),
+  EXPECT_EQ(userdataauth_->CheckKey(*check_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
   // No secret.
   check_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  EXPECT_EQ(userdataauth_.CheckKey(*check_req_.get()),
+  EXPECT_EQ(userdataauth_->CheckKey(*check_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
   // Empty secret.
   check_req_->mutable_authorization_request()->mutable_key()->set_secret("");
-  EXPECT_EQ(userdataauth_.CheckKey(*check_req_.get()),
+  EXPECT_EQ(userdataauth_->CheckKey(*check_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
@@ -1932,13 +1944,13 @@ TEST_F(UserDataAuthExTest, RemoveKeySanity) {
                            Property(&KeyData::label, kLabel1)))
       .WillOnce(Return(cryptohome::CRYPTOHOME_ERROR_NOT_SET));
 
-  EXPECT_EQ(userdataauth_.RemoveKey(*remove_req_.get()),
+  EXPECT_EQ(userdataauth_->RemoveKey(*remove_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Check the case when the account doesn't exist.
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(false));
 
-  EXPECT_EQ(userdataauth_.RemoveKey(*remove_req_.get()),
+  EXPECT_EQ(userdataauth_->RemoveKey(*remove_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
 
   // Check when RemoveKeyset failed.
@@ -1948,7 +1960,7 @@ TEST_F(UserDataAuthExTest, RemoveKeySanity) {
                            Property(&KeyData::label, kLabel1)))
       .WillOnce(Return(cryptohome::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
 
-  EXPECT_EQ(userdataauth_.RemoveKey(*remove_req_.get()),
+  EXPECT_EQ(userdataauth_->RemoveKey(*remove_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
 }
 
@@ -1956,24 +1968,24 @@ TEST_F(UserDataAuthExTest, RemoveKeyInvalidArgs) {
   PrepareArguments();
 
   // No email supplied.
-  EXPECT_EQ(userdataauth_.RemoveKey(*remove_req_.get()),
+  EXPECT_EQ(userdataauth_->RemoveKey(*remove_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
   // No secret.
   remove_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  EXPECT_EQ(userdataauth_.RemoveKey(*remove_req_.get()),
+  EXPECT_EQ(userdataauth_->RemoveKey(*remove_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
   // Empty secret.
   remove_req_->mutable_authorization_request()->mutable_key()->set_secret("");
-  EXPECT_EQ(userdataauth_.RemoveKey(*remove_req_.get()),
+  EXPECT_EQ(userdataauth_->RemoveKey(*remove_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
   // No label provided for removal.
   remove_req_->mutable_authorization_request()->mutable_key()->set_secret(
       "some secret");
   remove_req_->mutable_key()->mutable_data();
-  EXPECT_EQ(userdataauth_.RemoveKey(*remove_req_.get()),
+  EXPECT_EQ(userdataauth_->RemoveKey(*remove_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
@@ -1999,7 +2011,7 @@ TEST_F(UserDataAuthExTest, ListKeysSanity) {
           }));
 
   std::vector<std::string> labels;
-  EXPECT_EQ(userdataauth_.ListKeys(*list_keys_req_, &labels),
+  EXPECT_EQ(userdataauth_->ListKeys(*list_keys_req_, &labels),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   EXPECT_THAT(labels, ElementsAre(ListKeysSanityTest_label1,
@@ -2007,13 +2019,13 @@ TEST_F(UserDataAuthExTest, ListKeysSanity) {
 
   // Test for account not found case.
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(false));
-  EXPECT_EQ(userdataauth_.ListKeys(*list_keys_req_, &labels),
+  EXPECT_EQ(userdataauth_->ListKeys(*list_keys_req_, &labels),
             user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
 
   // Test for key not found case.
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
   EXPECT_CALL(homedirs_, GetVaultKeysetLabels(_, _)).WillOnce(Return(false));
-  EXPECT_EQ(userdataauth_.ListKeys(*list_keys_req_, &labels),
+  EXPECT_EQ(userdataauth_->ListKeys(*list_keys_req_, &labels),
             user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
 }
 
@@ -2022,12 +2034,12 @@ TEST_F(UserDataAuthExTest, ListKeysInvalidArgs) {
   std::vector<std::string> labels;
 
   // No Email.
-  EXPECT_EQ(userdataauth_.ListKeys(*list_keys_req_, &labels),
+  EXPECT_EQ(userdataauth_->ListKeys(*list_keys_req_, &labels),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
   // Empty email.
   list_keys_req_->mutable_account_id()->set_account_id("");
-  EXPECT_EQ(userdataauth_.ListKeys(*list_keys_req_, &labels),
+  EXPECT_EQ(userdataauth_->ListKeys(*list_keys_req_, &labels),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
@@ -2048,7 +2060,7 @@ TEST_F(UserDataAuthExTest, GetKeyDataExNoMatch) {
 
   cryptohome::KeyData keydata_out;
   bool found = false;
-  EXPECT_EQ(userdataauth_.GetKeyData(*get_key_data_req_, &keydata_out, &found),
+  EXPECT_EQ(userdataauth_->GetKeyData(*get_key_data_req_, &keydata_out, &found),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   // In case of no matching key, we should still return no error.
 
@@ -2072,7 +2084,7 @@ TEST_F(UserDataAuthExTest, GetKeyDataExOneMatch) {
 
   cryptohome::KeyData keydata_out;
   bool found = false;
-  EXPECT_EQ(userdataauth_.GetKeyData(*get_key_data_req_, &keydata_out, &found),
+  EXPECT_EQ(userdataauth_->GetKeyData(*get_key_data_req_, &keydata_out, &found),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   EXPECT_TRUE(found);
@@ -2085,7 +2097,7 @@ TEST_F(UserDataAuthExTest, GetKeyDataInvalidArgs) {
   // No email.
   cryptohome::KeyData keydata_out;
   bool found = false;
-  EXPECT_EQ(userdataauth_.GetKeyData(*get_key_data_req_, &keydata_out, &found),
+  EXPECT_EQ(userdataauth_->GetKeyData(*get_key_data_req_, &keydata_out, &found),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   EXPECT_FALSE(found);
 }
@@ -2108,7 +2120,7 @@ TEST_F(UserDataAuthExTest, UpdateKeySanity) {
                            update_req_->authorization_signature()))
       .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
 
-  EXPECT_EQ(userdataauth_.UpdateKey(*update_req_),
+  EXPECT_EQ(userdataauth_->UpdateKey(*update_req_),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 
@@ -2116,18 +2128,18 @@ TEST_F(UserDataAuthExTest, UpdateKeyInvalidArguments) {
   PrepareArguments();
 
   // No email.
-  EXPECT_EQ(userdataauth_.UpdateKey(*update_req_),
+  EXPECT_EQ(userdataauth_->UpdateKey(*update_req_),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
   // No authorization request key secret.
   update_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  EXPECT_EQ(userdataauth_.UpdateKey(*update_req_),
+  EXPECT_EQ(userdataauth_->UpdateKey(*update_req_),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
   // No changes field.
   update_req_->mutable_authorization_request()->mutable_key()->set_secret(
       "some secret");
-  EXPECT_EQ(userdataauth_.UpdateKey(*update_req_),
+  EXPECT_EQ(userdataauth_->UpdateKey(*update_req_),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
@@ -2145,7 +2157,7 @@ TEST_F(UserDataAuthExTest, UpdateKeyError) {
   EXPECT_CALL(homedirs_, Exists(GetObfuscatedUsername(kUsername1)))
       .WillOnce(Return(false));
 
-  EXPECT_EQ(userdataauth_.UpdateKey(*update_req_),
+  EXPECT_EQ(userdataauth_->UpdateKey(*update_req_),
             user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
 
   // Check when UpdateKeyset returns an error.
@@ -2156,7 +2168,7 @@ TEST_F(UserDataAuthExTest, UpdateKeyError) {
                            update_req_->authorization_signature()))
       .WillOnce(Return(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED));
 
-  EXPECT_EQ(userdataauth_.UpdateKey(*update_req_),
+  EXPECT_EQ(userdataauth_->UpdateKey(*update_req_),
             user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
 }
 
@@ -2176,13 +2188,13 @@ TEST_F(UserDataAuthExTest, MigrateKeySanity) {
   EXPECT_CALL(homedirs_, Migrate(Property(&Credentials::username, kUsername1),
                                  brillo::SecureBlob(kSecret1), Eq(mount_)))
       .WillOnce(Return(true));
-  EXPECT_EQ(userdataauth_.MigrateKey(*migrate_req_),
+  EXPECT_EQ(userdataauth_->MigrateKey(*migrate_req_),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Test for unsuccessful case.
   EXPECT_CALL(homedirs_, Migrate(_, brillo::SecureBlob(kSecret1), Eq(mount_)))
       .WillOnce(Return(false));
-  EXPECT_EQ(userdataauth_.MigrateKey(*migrate_req_),
+  EXPECT_EQ(userdataauth_->MigrateKey(*migrate_req_),
             user_data_auth::CRYPTOHOME_ERROR_MIGRATE_KEY_FAILED);
 }
 
@@ -2190,12 +2202,12 @@ TEST_F(UserDataAuthExTest, MigrateKeyInvalidArguments) {
   PrepareArguments();
 
   // No email.
-  EXPECT_EQ(userdataauth_.MigrateKey(*migrate_req_),
+  EXPECT_EQ(userdataauth_->MigrateKey(*migrate_req_),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
   // No authorization request key secret.
   migrate_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  EXPECT_EQ(userdataauth_.MigrateKey(*migrate_req_),
+  EXPECT_EQ(userdataauth_->MigrateKey(*migrate_req_),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
@@ -2208,12 +2220,12 @@ TEST_F(UserDataAuthExTest, RemoveSanity) {
 
   // Test for successful case.
   EXPECT_CALL(homedirs_, Remove(kUsername1)).WillOnce(Return(true));
-  EXPECT_EQ(userdataauth_.Remove(*remove_homedir_req_),
+  EXPECT_EQ(userdataauth_->Remove(*remove_homedir_req_),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Test for unsuccessful case.
   EXPECT_CALL(homedirs_, Remove(kUsername1)).WillOnce(Return(false));
-  EXPECT_EQ(userdataauth_.Remove(*remove_homedir_req_),
+  EXPECT_EQ(userdataauth_->Remove(*remove_homedir_req_),
             user_data_auth::CRYPTOHOME_ERROR_REMOVE_FAILED);
 }
 
@@ -2221,12 +2233,12 @@ TEST_F(UserDataAuthExTest, RemoveInvalidArguments) {
   PrepareArguments();
 
   // No account_id
-  EXPECT_EQ(userdataauth_.Remove(*remove_homedir_req_),
+  EXPECT_EQ(userdataauth_->Remove(*remove_homedir_req_),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
   // Empty account_id
   remove_homedir_req_->mutable_identifier()->set_account_id("");
-  EXPECT_EQ(userdataauth_.Remove(*remove_homedir_req_),
+  EXPECT_EQ(userdataauth_->Remove(*remove_homedir_req_),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
@@ -2243,19 +2255,19 @@ TEST_F(UserDataAuthExTest, RenameSanity) {
   // Test for successful case.
   EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Rename(kUsername1, kUsername2)).WillOnce(Return(true));
-  EXPECT_EQ(userdataauth_.Rename(*rename_homedir_req_),
+  EXPECT_EQ(userdataauth_->Rename(*rename_homedir_req_),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Test for unsuccessful case.
   EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Rename(kUsername1, kUsername2))
       .WillOnce(Return(false));
-  EXPECT_EQ(userdataauth_.Rename(*rename_homedir_req_),
+  EXPECT_EQ(userdataauth_->Rename(*rename_homedir_req_),
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
 
   // Test for mount point busy case.
   EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
-  EXPECT_EQ(userdataauth_.Rename(*rename_homedir_req_),
+  EXPECT_EQ(userdataauth_->Rename(*rename_homedir_req_),
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
 }
 
@@ -2267,13 +2279,13 @@ TEST_F(UserDataAuthExTest, RenameInvalidArguments) {
   rename_homedir_req_->mutable_id_from()->set_account_id(kUsername1);
 
   // No id_to
-  EXPECT_EQ(userdataauth_.Rename(*rename_homedir_req_),
+  EXPECT_EQ(userdataauth_->Rename(*rename_homedir_req_),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
   // No id_from
   rename_homedir_req_->clear_id_from();
   rename_homedir_req_->mutable_id_to()->set_account_id(kUsername1);
-  EXPECT_EQ(userdataauth_.Rename(*rename_homedir_req_),
+  EXPECT_EQ(userdataauth_->Rename(*rename_homedir_req_),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
