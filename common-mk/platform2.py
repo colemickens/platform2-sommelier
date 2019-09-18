@@ -167,8 +167,6 @@ class Platform2(object):
 
   def get_portageq_envvars(self, varnames, board=None):
     """Returns the values of a given set of variables using portageq."""
-    if isinstance(varnames, basestring):
-      varnames = [varnames]
 
     # See if the env already has these settings.  If so, grab them directly.
     # This avoids the need to specify --board at all most of the time.
