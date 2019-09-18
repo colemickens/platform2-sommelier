@@ -11,6 +11,8 @@
 #include <utility>
 #include <vector>
 
+#include <attestation/proto_bindings/interface.pb.h>
+#include <attestation-client/attestation/dbus-proxies.h>
 #include <base/files/file_path.h>
 #include <base/location.h>
 #include <base/threading/thread.h>
@@ -443,6 +445,17 @@ class UserDataAuth {
     firmware_management_parameters_ = fwmp;
   }
 
+  // Override |attestation_proxy_| for testing purpose
+  void set_attestation_proxy(
+      org::chromium::AttestationProxyInterface* attestation_proxy) {
+    attestation_proxy_ = attestation_proxy;
+  }
+
+  void set_tpm_ownership_proxy(
+      org::chromium::TpmOwnershipProxyInterface* tpm_ownership_proxy) {
+    tpm_ownership_proxy_ = tpm_ownership_proxy;
+  }
+
   // Override |mount_factory_| for testing purpose
   void set_mount_factory(MountFactory* mount_factory) {
     mount_factory_ = mount_factory;
@@ -629,6 +642,26 @@ class UserDataAuth {
   // tpm_manager. This will notify |tpm_| about the emitted signal.
   void OnOwnershipTakenSignal(const tpm_manager::OwnershipTakenSignal& signal);
 
+  // This method will try to call SetSystemSalt() in attestationd, to ensure
+  // that attestationd is initialized with the System Salt.
+  // |attempt| is the number of times that we've tried to call SetSystemSalt().
+  void TryAttestationSetSystemSalt(int attempt);
+
+  // This is called when the call to SetSystemSalt() in attestationd is
+  // successful.
+  // |attempt| is the number of times that we've tried to call SetSystemSalt().
+  void AttestationSetSystemSaltOnSuccess(
+      int attempt, const attestation::SetSystemSaltReply& reply);
+
+  // This is called when the call to SetSystemSalt() in attestationd failed.
+  // |attempt| is the number of times that we've tried to call SetSystemSalt().
+  void AttestationSetSystemSaltOnFailure(int attempt,
+                                         brillo::Error* /* error */);
+
+  // Call this method to schedule a retry for TryAttestationSetSystemSalt().
+  // |attempt| is the number of times that we've tried to call SetSystemSalt().
+  void RetryAttestationSetSystemSalt(int attempt);
+
   // =============== Threading Related Variables ===============
 
   // The task runner that belongs to the thread that created this UserDataAuth
@@ -717,8 +750,16 @@ class UserDataAuth {
       default_tpm_ownership_proxy_;
 
   // The actual D-Bus proxy for invoking any ownership related methods in
-  // tpm_manager, but can be overriden for testing.
+  // tpm_manager, but can be overridden for testing.
   org::chromium::TpmOwnershipProxyInterface* tpm_ownership_proxy_;
+
+  // The default D-Bus proxy for invoking methods in attestation.
+  std::unique_ptr<org::chromium::AttestationProxyInterface>
+      default_attestation_proxy_;
+
+  // The actual D-Bus proxy for invoking methods in attestation, but can be
+  // overridden for testing.
+  org::chromium::AttestationProxyInterface* attestation_proxy_;
 
   // =============== Install Attributes Related Variables ===============
 
@@ -727,7 +768,7 @@ class UserDataAuth {
   std::unique_ptr<cryptohome::InstallAttributes> default_install_attrs_;
 
   // The actual install attributes object used by this class, usually set to
-  // |default_install_attrs_|, but can be overriden for testing. This object
+  // |default_install_attrs_|, but can be overridden for testing. This object
   // should only be accessed on the origin thread.
   cryptohome::InstallAttributes* install_attrs_;
 

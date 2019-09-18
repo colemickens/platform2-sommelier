@@ -34,7 +34,9 @@ const char kMountThreadName[] = "MountThread";
 const char kPublicMountSaltFilePath[] = "/var/lib/public_mount_salt";
 
 namespace {
-// Some utility functions used by UserDataAuth.
+// Some utility functions and constants used by UserDataAuth.
+
+static constexpr int kAttestationSetSystemSaltRetryTimes = 6;
 
 // Get the Account ID for an AccountIdentifier proto.
 const std::string& GetAccountId(const AccountIdentifier& id) {
@@ -112,6 +114,7 @@ UserDataAuth::UserDataAuth()
       firmware_management_parameters_(nullptr),
       default_tpm_ownership_proxy_(),
       tpm_ownership_proxy_(nullptr),
+      attestation_proxy_(nullptr),
       default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
       install_attrs_(default_install_attrs_.get()),
       enterprise_owned_(false),
@@ -228,7 +231,69 @@ bool UserDataAuth::PostDBusInitialize() {
       base::Bind(&UserDataAuth::OnTpmManagerSignalConnected,
                  base::Unretained(this)));
 
+  // Initialize the attestation_proxy_ and set system salt for attestation
+  if (!default_attestation_proxy_) {
+    default_attestation_proxy_.reset(new org::chromium::AttestationProxy(bus_));
+  }
+
+  if (!attestation_proxy_) {
+    attestation_proxy_ = default_attestation_proxy_.get();
+  }
+
+  // Try to call SetSystemSalt() in attestationd, and we've not attempted it yet
+  // since it's during initialization.
+  TryAttestationSetSystemSalt(0);
+
   return true;
+}
+
+void UserDataAuth::TryAttestationSetSystemSalt(int attempt) {
+  AssertOnOriginThread();
+
+  DCHECK(!system_salt_.empty());
+  attempt++;
+  attestation::SetSystemSaltRequest request;
+  request.set_system_salt(system_salt_.to_string());
+  attestation_proxy_->SetSystemSaltAsync(
+      request,
+      base::Bind(&UserDataAuth::AttestationSetSystemSaltOnSuccess,
+                 base::Unretained(this), attempt),
+      base::Bind(&UserDataAuth::AttestationSetSystemSaltOnFailure,
+                 base::Unretained(this), attempt));
+}
+
+void UserDataAuth::AttestationSetSystemSaltOnSuccess(
+    int attempt, const attestation::SetSystemSaltReply& reply) {
+  if (reply.status() == attestation::AttestationStatus::STATUS_SUCCESS) {
+    LOG(INFO) << "SetSystemSalt() succeeded.";
+    return;
+  }
+
+  RetryAttestationSetSystemSalt(attempt);
+}
+
+void UserDataAuth::AttestationSetSystemSaltOnFailure(
+    int attempt, brillo::Error* /* error */) {
+  RetryAttestationSetSystemSalt(attempt);
+}
+
+void UserDataAuth::RetryAttestationSetSystemSalt(int attempt) {
+  if (attempt >= kAttestationSetSystemSaltRetryTimes) {
+    LOG(ERROR) << "Failed to call SetSystemSalt() in attestationd multiple "
+                  "times. Giving up.";
+    return;
+  }
+
+  LOG(WARNING) << "Retrying call to SetSystemSalt() in attestationd.";
+
+  DCHECK_GE(attempt, 1);
+  // Exponential back off in retry.
+  const int wait_time = 1 << (attempt - 1);
+
+  PostTaskToOriginThread(FROM_HERE,
+                         base::Bind(&UserDataAuth::TryAttestationSetSystemSalt,
+                                    base::Unretained(this), attempt),
+                         base::TimeDelta::FromSeconds(wait_time));
 }
 
 void UserDataAuth::OnTpmManagerSignalConnected(const std::string& interface,
