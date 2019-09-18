@@ -261,22 +261,6 @@ class DeviceInterfaceHandler {
   // Updates EIR data of |device|.
   static void UpdateEir(Device* device, const std::vector<uint8_t>& eir);
 
-  // Updates the service UUIDs based on data of EirTypes including
-  // UUID16_INCOMPLETE, UUID16_COMPLETE, UUID32_INCOMPLETE, UUID32_COMPLETE,
-  // UUID128_INCOMPLETE and UUID128_COMPLETE.
-  static void UpdateServiceUuids(std::set<Uuid>* service_uuids,
-                                 uint8_t uuid_size,
-                                 const uint8_t* data,
-                                 uint8_t data_len);
-
-  // Updates the service data based on data of EirTypes including SVC_DATA16,
-  // SVC_DATA32 and SVC_DATA128.
-  static void UpdateServiceData(
-      std::map<Uuid, std::vector<uint8_t>>* service_data,
-      uint8_t uuid_size,
-      const uint8_t* data,
-      uint8_t data_len);
-
   // Resets the update status of device properties.
   void ClearPropertiesUpdated(Device* device);
 

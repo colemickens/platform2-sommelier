@@ -4,7 +4,6 @@
 
 #include "bluetooth/newblued/device_interface_handler.h"
 
-#include <algorithm>
 #include <memory>
 #include <set>
 #include <string>
@@ -41,9 +40,6 @@ constexpr uint16_t kDefaultAppearance = 0;
 constexpr uint16_t kDefaultManufacturerId = 0xFFFF;
 
 constexpr char kDeviceTypeLe[] = "LE";
-
-// TODO(mcchou): Move GATT assigned number and masks to a separate file.
-constexpr uint32_t kAppearanceMask = 0xffc0;
 
 // Updates device alias based on its name or address.
 void UpdateDeviceAlias(Device* device) {
@@ -119,82 +115,6 @@ std::string ConvertConnectStateToString(ConnectState state) {
   }
 }
 
-// These value are defined at https://www.bluetooth.com/specifications/gatt/
-// viewer?attributeXmlFile=org.bluetooth.characteristic.gap.appearance.xml.
-// The translated strings come from BlueZ.
-std::string ConvertAppearanceToIcon(uint16_t appearance) {
-  switch ((appearance & kAppearanceMask) >> 6) {
-    case 0x00:
-      return "unknown";
-    case 0x01:
-      return "phone";
-    case 0x02:
-      return "computer";
-    case 0x03:
-      return "watch";
-    case 0x04:
-      return "clock";
-    case 0x05:
-      return "video-display";
-    case 0x06:
-      return "remote-control";
-    case 0x07:
-      return "eye-glasses";
-    case 0x08:
-      return "tag";
-    case 0x09:
-      return "key-ring";
-    case 0x0a:
-      return "multimedia-player";
-    case 0x0b:
-      return "scanner";
-    case 0x0c:
-      return "thermometer";
-    case 0x0d:
-      return "heart-rate-sensor";
-    case 0x0e:
-      return "blood-pressure";
-    case 0x0f:  // HID Generic
-      switch (appearance & 0x3f) {
-        case 0x01:
-          return "input-keyboard";
-        case 0x02:
-          return "input-mouse";
-        case 0x03:
-        case 0x04:
-          return "input-gaming";
-        case 0x05:
-          return "input-tablet";
-        case 0x08:
-          return "scanner";
-      }
-      break;
-    case 0x10:
-      return "glucose-meter";
-    case 0x11:
-      return "running-walking-sensor";
-    case 0x12:
-      return "cycling";
-    case 0x31:
-      return "pulse-oximeter";
-    case 0x32:
-      return "weight-scale";
-    case 0x33:
-      return "personal-mobility-device";
-    case 0x34:
-      return "continuous-glucose-monitor";
-    case 0x35:
-      return "insulin-pump";
-    case 0x36:
-      return "medication-delivery";
-    case 0x51:
-      return "outdoor-sports-activity";
-    default:
-      break;
-  }
-  return std::string();
-}
-
 // Converts the security manager pairing errors to BlueZ's D-Bus errors.
 std::string ConvertSmPairErrorToDbusError(PairError error_code) {
   switch (error_code) {
@@ -234,24 +154,6 @@ std::string ConvertSmPairErrorToDbusError(PairError error_code) {
   }
 }
 
-// Filters out non-ASCII characters from a string by replacing them with spaces.
-std::string AsciiString(std::string name) {
-  /* Replace all non-ASCII characters with spaces */
-  for (auto& ch : name) {
-    if (!isascii(ch))
-      ch = ' ';
-  }
-
-  return name;
-}
-
-std::map<uint16_t, std::vector<uint8_t>> MakeManufacturer(
-    uint16_t manufacturer_id, std::vector<uint8_t> manufacturer_data) {
-  std::map<uint16_t, std::vector<uint8_t>> manufacturer;
-  manufacturer.emplace(manufacturer_id, std::move(manufacturer_data));
-  return manufacturer;
-}
-
 bool IsHid(uint16_t appearance) {
   return true;
   // TODO(mcchou): Check appearance after we memorize the value of properties.
@@ -277,8 +179,8 @@ Device::Device(const std::string& address)
       appearance(kDefaultAppearance),
       icon(ConvertAppearanceToIcon(kDefaultAppearance)),
       flags({0}),
-      manufacturer(
-          MakeManufacturer(kDefaultManufacturerId, std::vector<uint8_t>())),
+      manufacturer(ParseDataIntoManufacturer(kDefaultManufacturerId,
+                                             std::vector<uint8_t>())),
       identity_address("") {}
 
 DeviceInterfaceHandler::DeviceInterfaceHandler(
@@ -1021,15 +923,15 @@ void DeviceInterfaceHandler::UpdateEir(Device* device,
       // type of a UUID size, the later one(s) will be cached as well.
       case EirType::UUID16_INCOMPLETE:
       case EirType::UUID16_COMPLETE:
-        UpdateServiceUuids(&service_uuids, kUuid16Size, data, data_len);
+        ParseDataIntoUuids(&service_uuids, kUuid16Size, data, data_len);
         break;
       case EirType::UUID32_INCOMPLETE:
       case EirType::UUID32_COMPLETE:
-        UpdateServiceUuids(&service_uuids, kUuid32Size, data, data_len);
+        ParseDataIntoUuids(&service_uuids, kUuid32Size, data, data_len);
         break;
       case EirType::UUID128_INCOMPLETE:
       case EirType::UUID128_COMPLETE:
-        UpdateServiceUuids(&service_uuids, kUuid128Size, data, data_len);
+        ParseDataIntoUuids(&service_uuids, kUuid128Size, data, data_len);
         break;
 
       // Name
@@ -1044,7 +946,8 @@ void DeviceInterfaceHandler::UpdateEir(Device* device,
             std::min(data_len, static_cast<uint8_t>(HCI_DEV_NAME_LEN));
         strncpy(c_name, reinterpret_cast<const char*>(data), name_len);
         c_name[name_len] = '\0';
-        device->name.SetValue(AsciiString(c_name) + kNewblueNameSuffix);
+        device->name.SetValue(ConvertToAsciiString(c_name) +
+                              kNewblueNameSuffix);
       } break;
 
       case EirType::TX_POWER:
@@ -1059,13 +962,13 @@ void DeviceInterfaceHandler::UpdateEir(Device* device,
 
       // If the UUID already exists, the service data will be updated.
       case EirType::SVC_DATA16:
-        UpdateServiceData(&service_data, kUuid16Size, data, data_len);
+        ParseDataIntoServiceData(&service_data, kUuid16Size, data, data_len);
         break;
       case EirType::SVC_DATA32:
-        UpdateServiceData(&service_data, kUuid32Size, data, data_len);
+        ParseDataIntoServiceData(&service_data, kUuid32Size, data, data_len);
         break;
       case EirType::SVC_DATA128:
-        UpdateServiceData(&service_data, kUuid128Size, data, data_len);
+        ParseDataIntoServiceData(&service_data, kUuid128Size, data, data_len);
         break;
 
       case EirType::GAP_APPEARANCE:
@@ -1081,7 +984,7 @@ void DeviceInterfaceHandler::UpdateEir(Device* device,
           // The order of manufacturer data is not specified explicitly in
           // Supplement to the Bluetooth Core Specification, so the original
           // order used in BlueZ is adopted.
-          device->manufacturer.SetValue(MakeManufacturer(
+          device->manufacturer.SetValue(ParseDataIntoManufacturer(
               GetNumFromLE16(data),
               std::vector<uint8_t>(data + 2,
                                    data + std::max<uint8_t>(data_len, 2))));
@@ -1105,48 +1008,6 @@ void DeviceInterfaceHandler::UpdateEir(Device* device,
     device->service_uuids.SetValue(std::move(service_uuids));
   if (!service_data.empty())
     device->service_data.SetValue(std::move(service_data));
-}
-
-void DeviceInterfaceHandler::UpdateServiceUuids(std::set<Uuid>* service_uuids,
-                                                uint8_t uuid_size,
-                                                const uint8_t* data,
-                                                uint8_t data_len) {
-  CHECK(service_uuids && data);
-
-  if (!data_len || data_len % uuid_size != 0) {
-    LOG(WARNING) << "Failed to parse EIR service UUIDs";
-    return;
-  }
-
-  // Service UUIDs are presented in little-endian order.
-  for (uint8_t i = 0; i < data_len; i += uuid_size) {
-    Uuid uuid(GetBytesFromLE(data + i, uuid_size));
-    CHECK(uuid.format() != UuidFormat::UUID_INVALID);
-    service_uuids->insert(uuid);
-  }
-}
-
-void DeviceInterfaceHandler::UpdateServiceData(
-    std::map<Uuid, std::vector<uint8_t>>* service_data,
-    uint8_t uuid_size,
-    const uint8_t* data,
-    uint8_t data_len) {
-  CHECK(service_data && data);
-
-  if (!data_len || data_len <= uuid_size) {
-    LOG(WARNING) << "Failed to parse EIR service data";
-    return;
-  }
-
-  // A service UUID and its data are presented in little-endian order where the
-  // format is {<bytes of service UUID>, <bytes of service data>}. For instance,
-  // the service data associated with the battery service can be
-  // {0x0F, 0x18, 0x22, 0x11}
-  // where {0x18 0x0F} is the UUID and {0x11, 0x22} is the data.
-  Uuid uuid(GetBytesFromLE(data, uuid_size));
-  CHECK_NE(UuidFormat::UUID_INVALID, uuid.format());
-  service_data->emplace(uuid,
-                        GetBytesFromLE(data + uuid_size, data_len - uuid_size));
 }
 
 void DeviceInterfaceHandler::ClearPropertiesUpdated(Device* device) {

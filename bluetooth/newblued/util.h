@@ -6,7 +6,9 @@
 #define BLUETOOTH_NEWBLUED_UTIL_H_
 
 #include <cstdint>
+#include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -32,6 +34,9 @@ constexpr int16_t kInvalidServiceHandle = -1;
 constexpr int32_t kInvalidCharacteristicHandle = -1;
 constexpr int16_t kInvalidDescriptorHandle = -1;
 
+// TODO(mcchou): Move GATT assigned number and masks to a separate file.
+constexpr uint32_t kAppearanceMask = 0xffc0;
+
 ////////////////////////////////////////////////////////////////////////////////
 // Miscellaneous utility functions
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,6 +56,35 @@ std::vector<uint8_t> GetBytesFromLE(const uint8_t* buf, size_t buf_len);
 // Retrieves a unique identifier which can be used for tracking the clients and
 // the data associated with them.
 UniqueId GetNextId();
+
+////////////////////////////////////////////////////////////////////////////////
+// Parsing Discovered Device Information
+////////////////////////////////////////////////////////////////////////////////
+
+// Convert device appearance into icon
+std::string ConvertAppearanceToIcon(uint16_t appearance);
+
+// Filters out non-ASCII characters from a string by replacing them with spaces.
+std::string ConvertToAsciiString(std::string name);
+
+std::map<uint16_t, std::vector<uint8_t>> ParseDataIntoManufacturer(
+    uint16_t manufacturer_id, std::vector<uint8_t> manufacturer_data);
+
+// Updates the service UUIDs based on data of EirTypes including
+// UUID16_INCOMPLETE, UUID16_COMPLETE, UUID32_INCOMPLETE, UUID32_COMPLETE,
+// UUID128_INCOMPLETE and UUID128_COMPLETE.
+void ParseDataIntoUuids(std::set<Uuid>* service_uuids,
+                        uint8_t uuid_size,
+                        const uint8_t* data,
+                        uint8_t data_len);
+
+// Updates the service data based on data of EirTypes including SVC_DATA16,
+// SVC_DATA32 and SVC_DATA128.
+void ParseDataIntoServiceData(
+    std::map<Uuid, std::vector<uint8_t>>* service_data,
+    uint8_t uuid_size,
+    const uint8_t* data,
+    uint8_t data_len);
 
 ////////////////////////////////////////////////////////////////////////////////
 // D-Bus object path helpers and export helpers.

@@ -76,6 +76,145 @@ UniqueId GetNextId() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Parsing Discovered Device Information
+////////////////////////////////////////////////////////////////////////////////
+
+std::string ConvertAppearanceToIcon(uint16_t appearance) {
+  // These value are defined at https://www.bluetooth.com/specifications/gatt/
+  // viewer?attributeXmlFile=org.bluetooth.characteristic.gap.appearance.xml.
+  // The translated strings come from BlueZ.
+  switch ((appearance & kAppearanceMask) >> 6) {
+    case 0x00:
+      return "unknown";
+    case 0x01:
+      return "phone";
+    case 0x02:
+      return "computer";
+    case 0x03:
+      return "watch";
+    case 0x04:
+      return "clock";
+    case 0x05:
+      return "video-display";
+    case 0x06:
+      return "remote-control";
+    case 0x07:
+      return "eye-glasses";
+    case 0x08:
+      return "tag";
+    case 0x09:
+      return "key-ring";
+    case 0x0a:
+      return "multimedia-player";
+    case 0x0b:
+      return "scanner";
+    case 0x0c:
+      return "thermometer";
+    case 0x0d:
+      return "heart-rate-sensor";
+    case 0x0e:
+      return "blood-pressure";
+    case 0x0f:  // HID Generic
+      switch (appearance & 0x3f) {
+        case 0x01:
+          return "input-keyboard";
+        case 0x02:
+          return "input-mouse";
+        case 0x03:
+        case 0x04:
+          return "input-gaming";
+        case 0x05:
+          return "input-tablet";
+        case 0x08:
+          return "scanner";
+      }
+      break;
+    case 0x10:
+      return "glucose-meter";
+    case 0x11:
+      return "running-walking-sensor";
+    case 0x12:
+      return "cycling";
+    case 0x31:
+      return "pulse-oximeter";
+    case 0x32:
+      return "weight-scale";
+    case 0x33:
+      return "personal-mobility-device";
+    case 0x34:
+      return "continuous-glucose-monitor";
+    case 0x35:
+      return "insulin-pump";
+    case 0x36:
+      return "medication-delivery";
+    case 0x51:
+      return "outdoor-sports-activity";
+    default:
+      break;
+  }
+  return std::string();
+}
+
+std::string ConvertToAsciiString(std::string name) {
+  /* Replace all non-ASCII characters with spaces */
+  for (auto& ch : name) {
+    if (!isascii(ch))
+      ch = ' ';
+  }
+
+  return name;
+}
+
+std::map<uint16_t, std::vector<uint8_t>> ParseDataIntoManufacturer(
+    uint16_t manufacturer_id, std::vector<uint8_t> manufacturer_data) {
+  std::map<uint16_t, std::vector<uint8_t>> manufacturer;
+  manufacturer.emplace(manufacturer_id, std::move(manufacturer_data));
+  return manufacturer;
+}
+
+void ParseDataIntoUuids(std::set<Uuid>* service_uuids,
+                        uint8_t uuid_size,
+                        const uint8_t* data,
+                        uint8_t data_len) {
+  CHECK(service_uuids && data);
+
+  if (!data_len || data_len % uuid_size != 0) {
+    LOG(WARNING) << "Failed to parse EIR service UUIDs";
+    return;
+  }
+
+  // Service UUIDs are presented in little-endian order.
+  for (uint8_t i = 0; i < data_len; i += uuid_size) {
+    Uuid uuid(GetBytesFromLE(data + i, uuid_size));
+    CHECK(uuid.format() != UuidFormat::UUID_INVALID);
+    service_uuids->insert(uuid);
+  }
+}
+
+void ParseDataIntoServiceData(
+    std::map<Uuid, std::vector<uint8_t>>* service_data,
+    uint8_t uuid_size,
+    const uint8_t* data,
+    uint8_t data_len) {
+  CHECK(service_data && data);
+
+  if (!data_len || data_len <= uuid_size) {
+    LOG(WARNING) << "Failed to parse EIR service data";
+    return;
+  }
+
+  // A service UUID and its data are presented in little-endian order where the
+  // format is {<bytes of service UUID>, <bytes of service data>}. For instance,
+  // the service data associated with the battery service can be
+  // {0x0F, 0x18, 0x22, 0x11}
+  // where {0x18 0x0F} is the UUID and {0x11, 0x22} is the data.
+  Uuid uuid(GetBytesFromLE(data, uuid_size));
+  CHECK_NE(UuidFormat::UUID_INVALID, uuid.format());
+  service_data->emplace(uuid,
+                        GetBytesFromLE(data + uuid_size, data_len - uuid_size));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Translation between D-Bus object path and newblued types.
 ////////////////////////////////////////////////////////////////////////////////
 
