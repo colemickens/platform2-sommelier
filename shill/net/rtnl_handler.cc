@@ -62,6 +62,9 @@ const uint32_t RTNLHandler::kStoredRequestWindowSize = 32;
 namespace {
 base::LazyInstance<RTNLHandler>::DestructorAtExit g_rtnl_handler =
     LAZY_INSTANCE_INITIALIZER;
+
+// Increasing buffer size to avoid overflows on IPV6 routing events.
+constexpr int kReceiveBufferBytes = 1024 * 1024;
 }  // namespace
 
 RTNLHandler::RTNLHandler()
@@ -96,6 +99,8 @@ void RTNLHandler::Start(uint32_t netlink_groups_mask) {
     LOG(ERROR) << "Failed to open rtnl socket";
     return;
   }
+
+  SetReceiverBufferSize(kReceiveBufferBytes);
 
   rtnl_handler_.reset(io_handler_factory_->CreateIOInputHandler(
       rtnl_socket_, Bind(&RTNLHandler::ParseRTNL, Unretained(this)),

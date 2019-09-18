@@ -36,6 +36,7 @@ using testing::Return;
 using testing::ReturnArg;
 using testing::StrictMock;
 using testing::Test;
+using testing::AtLeast;
 
 namespace shill {
 
@@ -155,7 +156,9 @@ void RTNLHandlerTest::StartRTNLHandler() {
       .WillOnce(Return(kTestSocket));
   EXPECT_CALL(*sockets_, Bind(kTestSocket, _, sizeof(sockaddr_nl)))
       .WillOnce(Return(0));
-  EXPECT_CALL(*sockets_, SetReceiveBuffer(kTestSocket, _)).WillOnce(Return(0));
+  EXPECT_CALL(*sockets_, SetReceiveBuffer(kTestSocket, _))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(0));
   EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(kTestSocket, _, _));
   RTNLHandler::GetInstance()->Start(0);
 }
