@@ -7,6 +7,7 @@
 
 #include <map>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -20,6 +21,35 @@ namespace permission_broker {
 
 class PortTracker {
  public:
+  struct PortRuleKey {
+    ProtocolEnum proto;
+    uint16_t input_dst_port;
+    std::string input_ifname;
+
+    bool operator==(const PortRuleKey& other) const {
+      return proto == other.proto && input_dst_port == other.input_dst_port &&
+             input_ifname == other.input_ifname;
+    }
+  };
+
+  struct PortRuleKeyHasher {
+    std::size_t operator()(const PortRuleKey& k) const {
+      return ((std::hash<int>()(k.proto) ^
+               (std::hash<uint16_t>()(k.input_dst_port) << 1)) >>
+              1) ^
+             (std::hash<std::string>()(k.input_ifname) << 1);
+    }
+  };
+
+  struct PortRule {
+    int lifeline_fd;
+    ProtocolEnum proto;
+    uint16_t input_dst_port;
+    std::string input_ifname;
+    std::string dst_ip;
+    uint16_t dst_port;
+  };
+
   typedef std::pair<uint16_t, std::string> Hole;
 
   explicit PortTracker(Firewall* firewall);
@@ -31,10 +61,26 @@ class PortTracker {
   bool RevokeUdpPortAccess(uint16_t port, const std::string& iface);
   bool LockDownLoopbackTcpPort(uint16_t port, int dbus_fd);
   bool ReleaseLoopbackTcpPort(uint16_t port);
+  bool StartTcpPortForwarding(uint16_t input_dst_port,
+                              const std::string& input_ifname,
+                              const std::string& dst_ip,
+                              uint16_t dst_port,
+                              int dbus_fd);
+  bool StartUdpPortForwarding(uint16_t input_dst_port,
+                              const std::string& input_ifname,
+                              const std::string& dst_ip,
+                              uint16_t dst_port,
+                              int dbus_fd);
+  bool StopTcpPortForwarding(uint16_t input_dst_port,
+                             const std::string& input_ifname);
+  bool StopUdpPortForwarding(uint16_t input_dst_port,
+                             const std::string& input_ifname);
   bool HasActiveRules();
 
   // Close all outstanding firewall holes.
   void RevokeAllPortAccess();
+  // Revoke all outstanding forwarding rules.
+  void RevokeAllForwardingRules();
 
   // Unblock all loopback ports.
   void UnblockLoopbackPorts();
@@ -52,6 +98,8 @@ class PortTracker {
   virtual void ScheduleLifelineCheck();
 
   bool PlugFirewallHole(int fd);
+  bool AddForwardingRule(const PortRule& rule, int dbus_fd);
+  bool RemoveForwardingRule(const PortRuleKey& key);
 
   // epoll(7) helper functions.
   virtual bool InitializeEpollOnce();
@@ -77,6 +125,13 @@ class PortTracker {
   // We need this for ReleaseLoopbackTcpPort() to avoid traversing
   // |tcp_loopback_ports_| each time.
   std::map<uint16_t, int> tcp_loopback_fds_;
+
+  // Keeps track of each forwarding rule (protocol, port, interface) and which
+  // process requested it. The bidirectional maps avoid any traversal for
+  // removal or for checking duplicates during insertion.
+  std::unordered_map<PortRuleKey, PortRule, PortRuleKeyHasher>
+      forwarding_rules_fds_;
+  std::map<int, PortRuleKey> forwarding_rules_;
 
   // |firewall_| is owned by the PermissionBroker object owning this instance
   // of PortTracker.

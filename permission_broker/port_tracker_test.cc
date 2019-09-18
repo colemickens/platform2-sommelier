@@ -63,10 +63,16 @@ class PortTrackerTest : public testing::Test {
 
   uint16_t tcp_port = 8080;
   uint16_t udp_port = 5353;
+  uint16_t reserved_port = 443;
 
   std::string interface = "interface";
 
-  int dbus_fd = 3;  // First fd not std{in|out|err}. Doesn't get used at all.
+  std::string arc_addr = "100.115.92.2";
+  std::string crosvm_addr = "100.115.92.6";
+  std::string non_guest_addr = "192.168.1.128";
+  std::string ipv4_any = "0.0.0.0";
+
+  int dbus_fd = 3;     // First fd not std{in|out|err}. Doesn't get used at all.
   int tracked_fd = 4;  // Next "available" fd. Used only as a placeholder.
 
  private:
@@ -303,4 +309,201 @@ TEST_F(PortTrackerTest, ReleaseLoopbackTcpPort_EpollFailure) {
   ASSERT_FALSE(port_tracker_.HasActiveRules());
 }
 
+TEST_F(PortTrackerTest, StartPortForwarding_BaseSuccessCase) {
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(5));
+  ASSERT_TRUE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(6));
+  ASSERT_TRUE(port_tracker_.StartUdpPortForwarding(
+      tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+
+  ASSERT_TRUE(port_tracker_.HasActiveRules());
+}
+
+TEST_F(PortTrackerTest, StartPortForwarding_LifelineFdFailure) {
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(-1));
+  ASSERT_FALSE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(-1));
+  ASSERT_FALSE(port_tracker_.StartUdpPortForwarding(
+      tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
+}
+
+TEST_F(PortTrackerTest, StartPortForwarding_IptablesFailure) {
+  SetMockExpectations(&mock_firewall_, false /* failure */);
+
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(5));
+  EXPECT_CALL(port_tracker_, DeleteLifelineFd(5)).WillOnce(Return(true));
+  ASSERT_FALSE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(6));
+  EXPECT_CALL(port_tracker_, DeleteLifelineFd(6)).WillOnce(Return(true));
+  ASSERT_FALSE(port_tracker_.StartUdpPortForwarding(
+      tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
+}
+
+TEST_F(PortTrackerTest, StartPortForwarding_InputPortValidation) {
+  ASSERT_FALSE(port_tracker_.StartTcpPortForwarding(
+      reserved_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartUdpPortForwarding(
+      reserved_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
+
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(5));
+  ASSERT_TRUE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "eth0", crosvm_addr, reserved_port, dbus_fd));
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(6));
+  ASSERT_TRUE(port_tracker_.StartUdpPortForwarding(
+      tcp_port, "eth0", crosvm_addr, reserved_port, dbus_fd));
+  ASSERT_TRUE(port_tracker_.HasActiveRules());
+}
+
+TEST_F(PortTrackerTest, StartPortForwarding_InputInterfaceValidation) {
+  ASSERT_FALSE(port_tracker_.StartTcpPortForwarding(tcp_port, "", crosvm_addr,
+                                                    tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartUdpPortForwarding(tcp_port, "", crosvm_addr,
+                                                    tcp_port, dbus_fd));
+
+  ASSERT_FALSE(port_tracker_.StartTcpPortForwarding(tcp_port, "lo", crosvm_addr,
+                                                    tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartUdpPortForwarding(tcp_port, "lo", crosvm_addr,
+                                                    tcp_port, dbus_fd));
+
+  ASSERT_FALSE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "iface0", crosvm_addr, tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartUdpPortForwarding(
+      tcp_port, "iface0", crosvm_addr, tcp_port, dbus_fd));
+
+  ASSERT_FALSE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "ETH0", crosvm_addr, tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartUdpPortForwarding(
+      tcp_port, "WLAN0", crosvm_addr, tcp_port, dbus_fd));
+
+  ASSERT_TRUE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+  ASSERT_TRUE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "eth1", crosvm_addr, tcp_port, dbus_fd));
+  ASSERT_TRUE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "usb0", crosvm_addr, tcp_port, dbus_fd));
+  ASSERT_TRUE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "wlan0", crosvm_addr, tcp_port, dbus_fd));
+  ASSERT_TRUE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "mlan0", crosvm_addr, tcp_port, dbus_fd));
+
+  ASSERT_TRUE(port_tracker_.HasActiveRules());
+}
+
+TEST_F(PortTrackerTest, StartPortForwarding_TargetIpAddressValidation) {
+  ASSERT_FALSE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "eth0", "not_an_ip", tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartTcpPortForwarding(tcp_port, "eth0", ipv4_any,
+                                                    tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "eth0", non_guest_addr, tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartUdpPortForwarding(
+      tcp_port, "eth0", "2001:db8::1", tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartUdpPortForwarding(tcp_port, "eth0", ipv4_any,
+                                                    tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartUdpPortForwarding(
+      tcp_port, "eth0", non_guest_addr, tcp_port, dbus_fd));
+
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
+}
+
+TEST_F(PortTrackerTest, StopPortForwarding) {
+  // Cannot stop before starting.
+  ASSERT_FALSE(port_tracker_.StopTcpPortForwarding(tcp_port, "eth0"));
+  ASSERT_FALSE(port_tracker_.StopUdpPortForwarding(tcp_port, "eth0"));
+
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(5));
+  ASSERT_TRUE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(6));
+  ASSERT_TRUE(port_tracker_.StartUdpPortForwarding(
+      tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+
+  EXPECT_CALL(port_tracker_, DeleteLifelineFd(5)).WillOnce(Return(true));
+  ASSERT_TRUE(port_tracker_.StopTcpPortForwarding(tcp_port, "eth0"));
+  EXPECT_CALL(port_tracker_, DeleteLifelineFd(6)).WillOnce(Return(true));
+  ASSERT_TRUE(port_tracker_.StopUdpPortForwarding(tcp_port, "eth0"));
+
+  // Cannot stop twice.
+  ASSERT_FALSE(port_tracker_.StopTcpPortForwarding(tcp_port, "eth0"));
+  ASSERT_FALSE(port_tracker_.StopUdpPortForwarding(tcp_port, "eth0"));
+
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
+}
+
+TEST_F(PortTrackerTest, StartPortForwarding_PreventOverwrite) {
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(5));
+  ASSERT_TRUE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(6));
+  ASSERT_TRUE(port_tracker_.StartUdpPortForwarding(
+      tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+
+  // Cannot overwrite a (protocol, port, interface) entry.
+  ASSERT_FALSE(port_tracker_.StartTcpPortForwarding(tcp_port, "eth0", arc_addr,
+                                                    443, dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartUdpPortForwarding(tcp_port, "eth0", arc_addr,
+                                                    443, dbus_fd));
+
+  EXPECT_CALL(port_tracker_, DeleteLifelineFd(5)).WillOnce(Return(true));
+  ASSERT_TRUE(port_tracker_.StopTcpPortForwarding(tcp_port, "eth0"));
+  EXPECT_CALL(port_tracker_, DeleteLifelineFd(6)).WillOnce(Return(true));
+  ASSERT_TRUE(port_tracker_.StopUdpPortForwarding(tcp_port, "eth0"));
+
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
+
+  // Previous entry was deleted.
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(5));
+  ASSERT_TRUE(port_tracker_.StartTcpPortForwarding(tcp_port, "eth0", arc_addr,
+                                                   443, dbus_fd));
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(6));
+  ASSERT_TRUE(port_tracker_.StartUdpPortForwarding(tcp_port, "eth0", arc_addr,
+                                                   443, dbus_fd));
+
+  ASSERT_TRUE(port_tracker_.HasActiveRules());
+
+  ASSERT_FALSE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartUdpPortForwarding(
+      tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+}
+
+TEST_F(PortTrackerTest, StartPortForwarding_PreventForwardingOpenPort) {
+  SetMockExpectations(&mock_firewall_, true /* success */);
+
+  // Open TCP port, that port cannot be forwarded for the same interface.
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(5));
+  ASSERT_TRUE(port_tracker_.AllowTcpPortAccess(tcp_port, "eth0", dbus_fd));
+  ASSERT_FALSE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+
+  // Forward UDP port, that port cannot be opened for the same interface.
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(6));
+  ASSERT_TRUE(port_tracker_.StartUdpPortForwarding(
+      udp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.AllowUdpPortAccess(udp_port, "eth0", dbus_fd));
+
+  // Close TCP port, that port can now be forwarded.
+  EXPECT_CALL(port_tracker_, DeleteLifelineFd(5)).WillOnce(Return(true));
+  ASSERT_TRUE(port_tracker_.RevokeTcpPortAccess(tcp_port, "eth0"));
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(7));
+  ASSERT_TRUE(port_tracker_.StartTcpPortForwarding(
+      tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
+
+  // Stop forwarding UDP port, that port can now be opened.
+  EXPECT_CALL(port_tracker_, DeleteLifelineFd(6)).WillOnce(Return(true));
+  ASSERT_TRUE(port_tracker_.StopUdpPortForwarding(udp_port, "eth0"));
+  EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(8));
+  ASSERT_TRUE(port_tracker_.AllowUdpPortAccess(udp_port, "eth0", dbus_fd));
+}
 }  // namespace permission_broker
