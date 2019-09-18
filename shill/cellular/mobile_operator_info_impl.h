@@ -77,8 +77,8 @@ class MobileOperatorInfoImpl {
   // Constructor
   MobileOperatorInfoImpl(EventDispatcher* dispatcher,
                          const std::string& info_owner,
-                         const std::string& default_db_path,
-                         const std::string& override_db_path);
+                         const base::FilePath& default_db_path,
+                         const base::FilePath& override_db_path);
 
   // ///////////////////////////////////////////////////////////////////////////
   // Static variables.

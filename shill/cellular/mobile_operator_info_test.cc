@@ -1563,8 +1563,8 @@ class MobileOperatorInfoOverrideTest
       : operator_info_impl_(new MobileOperatorInfoImpl(
             &dispatcher_,
             "Operator",
-            GetTestProtoPath("init_test_override_db_init_1.pbf").value(),
-            GetTestProtoPath("init_test_override_db_init_2.pbf").value())) {}
+            GetTestProtoPath("init_test_override_db_init_1.pbf"),
+            GetTestProtoPath("init_test_override_db_init_2.pbf"))) {}
 
   void SetUp() override { EXPECT_TRUE(operator_info_impl_->Init()); }
 

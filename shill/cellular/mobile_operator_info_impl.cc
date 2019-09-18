@@ -78,8 +78,8 @@ string GetApnAuthentication(const MobileAPN& apn) {
 
 MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
                                                const string& info_owner,
-                                               const string& default_db_path,
-                                               const string& override_db_path)
+                                               const FilePath& default_db_path,
+                                               const FilePath& override_db_path)
     : dispatcher_(dispatcher),
       info_owner_(info_owner),
       operator_code_type_(OperatorCodeType::kUnknown),
@@ -90,17 +90,19 @@ MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
       user_olp_empty_(true),
       weak_ptr_factory_(this) {
   // Overrides need to be installed before defaults
-  if (PathExists(FilePath(override_db_path))) {
-    AddDatabasePath(FilePath(override_db_path));
+  if (PathExists(override_db_path)) {
+    AddDatabasePath(override_db_path);
   }
-  AddDatabasePath(FilePath(default_db_path));
+  AddDatabasePath(default_db_path);
 }
 
 MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
                                                const string& info_owner)
     : MobileOperatorInfoImpl::MobileOperatorInfoImpl(
-          dispatcher, info_owner, kDefaultDatabasePath, kOverrideDatabasePath) {
-}
+          dispatcher,
+          info_owner,
+          base::FilePath(kDefaultDatabasePath),
+          base::FilePath(kOverrideDatabasePath)) {}
 
 MobileOperatorInfoImpl::~MobileOperatorInfoImpl() = default;
 
