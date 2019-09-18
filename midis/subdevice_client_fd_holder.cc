@@ -15,8 +15,6 @@
 
 namespace midis {
 
-SubDeviceClientFdHolder::~SubDeviceClientFdHolder() { StopClientMonitoring(); }
-
 SubDeviceClientFdHolder::SubDeviceClientFdHolder(
     uint32_t client_id, uint32_t subdevice_id, base::ScopedFD fd,
     ClientDataCallback client_data_cb)
@@ -26,6 +24,8 @@ SubDeviceClientFdHolder::SubDeviceClientFdHolder(
       client_data_cb_(client_data_cb),
       queue_(std::make_unique<midi::MidiMessageQueue>(true)),
       weak_factory_(this) {}
+
+SubDeviceClientFdHolder::~SubDeviceClientFdHolder() = default;
 
 std::unique_ptr<SubDeviceClientFdHolder> SubDeviceClientFdHolder::Create(
     uint32_t client_id, uint32_t subdevice_id, base::ScopedFD fd,
@@ -56,11 +56,11 @@ void SubDeviceClientFdHolder::WriteDeviceDataToClient(const void* buffer,
 bool SubDeviceClientFdHolder::StartClientMonitoring() {
   // TODO(pmalani): Should make this conditional on whether the device
   // can accept input.
-  pipe_taskid_ = brillo::MessageLoop::current()->WatchFileDescriptor(
-      FROM_HERE, fd_.get(), brillo::MessageLoop::kWatchRead, true,
-      base::Bind(&SubDeviceClientFdHolder::HandleClientMidiData,
-                 weak_factory_.GetWeakPtr()));
-  if (pipe_taskid_ == brillo::MessageLoop::kTaskIdNull) {
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      fd_.get(),
+      base::BindRepeating(&SubDeviceClientFdHolder::HandleClientMidiData,
+                          weak_factory_.GetWeakPtr()));
+  if (!watcher_) {
     LOG(ERROR) << "Client id: " << client_id_
                << " watcher for pipeFD, for output to"
                   " subdevice: "
@@ -68,11 +68,6 @@ bool SubDeviceClientFdHolder::StartClientMonitoring() {
     return false;
   }
   return true;
-}
-
-void SubDeviceClientFdHolder::StopClientMonitoring() {
-  brillo::MessageLoop::current()->CancelTask(pipe_taskid_);
-  pipe_taskid_ = brillo::MessageLoop::kTaskIdNull;
 }
 
 void SubDeviceClientFdHolder::HandleClientMidiData() {

@@ -7,8 +7,8 @@
 
 #include <memory>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/memory/weak_ptr.h>
-#include <brillo/message_loops/message_loop.h>
 #include <gtest/gtest_prod.h>
 
 #include "midis/device.h"
@@ -148,7 +148,7 @@ class SeqHandler {
   int out_client_id_;
   int in_port_id_;
   std::unique_ptr<pollfd> pfd_;
-  brillo::MessageLoop::TaskId taskid_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
 
   AddDeviceCallback add_device_cb_;
   RemoveDeviceCallback remove_device_cb_;

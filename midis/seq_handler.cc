@@ -118,11 +118,11 @@ bool SeqHandler::InitSeq() {
   pfd_ = std::make_unique<pollfd>();
   snd_seq_poll_descriptors(in_client_.get(), pfd_.get(), 1, POLLIN);
 
-  taskid_ = brillo::MessageLoop::current()->WatchFileDescriptor(
-      FROM_HERE, pfd_.get()->fd, brillo::MessageLoop::kWatchRead, true,
-      base::Bind(&SeqHandler::ProcessAlsaClientFd, weak_factory_.GetWeakPtr()));
-
-  if (taskid_ == brillo::MessageLoop::kTaskIdNull) {
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      pfd_->fd,
+      base::BindRepeating(&SeqHandler::ProcessAlsaClientFd,
+                          weak_factory_.GetWeakPtr()));
+  if (!watcher_) {
     in_client_.reset();
     out_client_.reset();
     decoder_.reset();

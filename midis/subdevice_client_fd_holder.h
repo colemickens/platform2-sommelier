@@ -7,9 +7,9 @@
 
 #include <memory>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
-#include <brillo/message_loops/message_loop.h>
 
 #include "media/midi/message_util.h"
 #include "media/midi/midi_message_queue.h"
@@ -39,18 +39,17 @@ class SubDeviceClientFdHolder {
 
  private:
   // This function is used as the callback which is run when a
-  // WatchFileDescriptor is set up on the client's fd for this particular
-  // subdevice. It reads the data *from* the client, and in turn invokes
-  // client_data_cb_ which writes the data to the device h/w.
+  // base::FileDescriptorWatcher is set up on the client's fd for this
+  // particular subdevice. It reads the data *from* the client, and in turn
+  // invokes client_data_cb_ which writes the data to the device h/w.
   void HandleClientMidiData();
-  // Starts the WatchFileDescriptor for the client pipe FD.
+  // Starts to watch the client pipe FD.
   bool StartClientMonitoring();
-  void StopClientMonitoring();
 
   uint32_t client_id_;
   uint32_t subdevice_id_;
   base::ScopedFD fd_;
-  brillo::MessageLoop::TaskId pipe_taskid_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
   ClientDataCallback client_data_cb_;
   std::unique_ptr<midi::MidiMessageQueue> queue_;
   base::WeakPtrFactory<SubDeviceClientFdHolder> weak_factory_;
