@@ -26,6 +26,9 @@ namespace diagnostics {
 //   MyRpcHandler my_rpc_handler;
 //   auto thread_context = DpslThreadContext.Create(...);
 //   auto rpc_server = DpslRpcServer::Create(..., &my_rpc_handler, ...);
+//   if (!rpc_server) {
+//     ... // Handle error
+//   }
 //   thread_context->RunEventLoop();
 //
 // This will start a gRPC server that listens for incoming requests on the

@@ -29,6 +29,9 @@ class DpslThreadContext;
 //
 //   auto thread_context = DpslThreadContext::Create(...);
 //   auto requester = DpslRequester::Create(thread_context.get(), ...);
+//   if (!requester) {
+//     ... // Handle error
+//   }
 //   requester->GetProcData(
 //       ...,
 //       [](std::unique_ptr<grpc_api::GetProcDataResponse> response){
