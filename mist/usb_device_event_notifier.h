@@ -37,7 +37,7 @@ class UsbDeviceEventNotifier {
   // thus they should outlive this object.
   explicit UsbDeviceEventNotifier(brillo::Udev* udev);
 
-  virtual ~UsbDeviceEventNotifier();
+  ~UsbDeviceEventNotifier();
 
   // Initializes USB device event monitoring such that this object can notify
   // registered observers upon USB device events. Returns true on success.

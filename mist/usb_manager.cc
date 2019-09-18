@@ -10,6 +10,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/bind.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
 #include <base/strings/stringprintf.h>
@@ -22,18 +23,17 @@ namespace mist {
 
 namespace {
 
-base::MessageLoopForIO::Mode ConvertEventFlagsToWatchMode(
-    short events) {  // NOLINT
+EventDispatcher::Mode ConvertEventFlagsToWatchMode(short events) {  // NOLINT
   if ((events & POLLIN) && (events & POLLOUT))
-    return base::MessageLoopForIO::WATCH_READ_WRITE;
+    return EventDispatcher::Mode::READ_WRITE;
 
   if (events & POLLIN)
-    return base::MessageLoopForIO::WATCH_READ;
+    return EventDispatcher::Mode::READ;
 
   if (events & POLLOUT)
-    return base::MessageLoopForIO::WATCH_WRITE;
+    return EventDispatcher::Mode::WRITE;
 
-  return base::MessageLoopForIO::WATCH_READ_WRITE;
+  return EventDispatcher::Mode::READ_WRITE;
 }
 
 }  // namespace
@@ -129,7 +129,9 @@ void UsbManager::OnPollFileDescriptorAdded(int file_descriptor,
       events);
   UsbManager* manager = reinterpret_cast<UsbManager*>(user_data);
   manager->dispatcher_->StartWatchingFileDescriptor(
-      file_descriptor, ConvertEventFlagsToWatchMode(events), manager);
+      file_descriptor, ConvertEventFlagsToWatchMode(events),
+      base::BindRepeating(&UsbManager::HandleEventsNonBlocking,
+                          manager->weak_factory_.GetWeakPtr()));
 }
 
 void UsbManager::OnPollFileDescriptorRemoved(int file_descriptor,
@@ -161,7 +163,9 @@ bool UsbManager::StartWatchingPollFileDescriptors() {
         "Poll file descriptor %d for events 0x%016x added.", pollfd.fd,
         pollfd.events);
     if (!dispatcher_->StartWatchingFileDescriptor(
-            pollfd.fd, ConvertEventFlagsToWatchMode(pollfd.events), this)) {
+            pollfd.fd, ConvertEventFlagsToWatchMode(pollfd.events),
+            base::BindRepeating(&UsbManager::HandleEventsNonBlocking,
+                                weak_factory_.GetWeakPtr()))) {
       return false;
     }
   }
@@ -176,18 +180,6 @@ void UsbManager::HandleEventsNonBlocking() {
       libusb_handle_events_timeout_completed(context_, &zero_tv, nullptr);
   UsbError error(static_cast<libusb_error>(result));
   LOG_IF(ERROR, !error.IsSuccess()) << "Could not handle USB events: " << error;
-}
-
-void UsbManager::OnFileCanReadWithoutBlocking(int file_descriptor) {
-  VLOG(3) << base::StringPrintf("File descriptor %d available for read.",
-                                file_descriptor);
-  HandleEventsNonBlocking();
-}
-
-void UsbManager::OnFileCanWriteWithoutBlocking(int file_descriptor) {
-  VLOG(3) << base::StringPrintf("File descriptor %d available for write.",
-                                file_descriptor);
-  HandleEventsNonBlocking();
 }
 
 }  // namespace mist

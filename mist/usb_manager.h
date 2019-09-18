@@ -11,7 +11,7 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <base/message_loop/message_loop.h>
+#include <base/memory/weak_ptr.h>
 
 #include "mist/usb_error.h"
 
@@ -23,14 +23,14 @@ class EventDispatcher;
 class UsbDevice;
 
 // A USB manager for managing a USB session created by libusb 1.0.
-class UsbManager : public base::MessageLoopForIO::Watcher {
+class UsbManager {
  public:
   // Constructs a UsbManager object by taking a raw pointer to an
   // EventDispatcher as |dispatcher|. The ownership of |dispatcher| is not
   // transferred, and thus it should outlive this object.
   explicit UsbManager(EventDispatcher* dispatcher);
 
-  virtual ~UsbManager();
+  ~UsbManager();
 
   // Initializes a USB session via libusb. Returns true on success.
   bool Initialize();
@@ -69,13 +69,11 @@ class UsbManager : public base::MessageLoopForIO::Watcher {
   // Handles libusb events in non-blocking mode.
   void HandleEventsNonBlocking();
 
-  // Implements base::MessageLoopForIO::Watcher.
-  void OnFileCanReadWithoutBlocking(int file_descriptor) override;
-  void OnFileCanWriteWithoutBlocking(int file_descriptor) override;
-
   EventDispatcher* const dispatcher_;
   libusb_context* context_;
   UsbError error_;
+
+  base::WeakPtrFactory<UsbManager> weak_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(UsbManager);
 };

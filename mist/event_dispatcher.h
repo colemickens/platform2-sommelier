@@ -23,6 +23,12 @@ namespace mist {
 // is used as the underlying message loop.
 class EventDispatcher {
  public:
+  enum class Mode {
+    READ,
+    WRITE,
+    READ_WRITE,
+  };
+
   EventDispatcher();
   ~EventDispatcher();
 
@@ -40,11 +46,11 @@ class EventDispatcher {
   bool PostDelayedTask(const base::Closure& task, const base::TimeDelta& delay);
 
   // Starts watching |file_descriptor| for its readiness for I/O based on |mode|
-  // |watcher| is notified when |file_descriptor| is ready for I/O. Returns true
+  // |callback| is invoked when |file_descriptor| is ready for I/O. Returns true
   // on success.
   bool StartWatchingFileDescriptor(int file_descriptor,
-                                   base::MessageLoopForIO::Mode mode,
-                                   base::MessageLoopForIO::Watcher* watcher);
+                                   Mode mode,
+                                   const base::RepeatingClosure& callback);
 
   // Stops watching |file_descriptor| for its readiness for I/O. Returns true on
   // success.
@@ -55,13 +61,15 @@ class EventDispatcher {
   void StopWatchingAllFileDescriptors();
 
  private:
-  using FileDescriptorWatcherMap =
-      std::map<int, base::MessageLoopForIO::FileDescriptorWatcher*>;
+  struct Watcher {
+    std::unique_ptr<base::FileDescriptorWatcher::Controller> read_watcher;
+    std::unique_ptr<base::FileDescriptorWatcher::Controller> write_watcher;
+  };
 
   base::MessageLoopForIO message_loop_;  // Do not use this directly.
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
   base::FileDescriptorWatcher watcher_{&message_loop_};
-  FileDescriptorWatcherMap file_descriptor_watchers_;
+  std::map<int, Watcher> file_descriptor_watchers_;
 
   DISALLOW_COPY_AND_ASSIGN(EventDispatcher);
 };

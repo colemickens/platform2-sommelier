@@ -8,15 +8,10 @@
 
 #include <vector>
 
+#include <base/bind.h>
 #include <gtest/gtest.h>
 
 namespace mist {
-
-class TestFileDescriptorWatcher : public base::MessageLoopForIO::Watcher {
- public:
-  void OnFileCanReadWithoutBlocking(int file_descriptor) {}
-  void OnFileCanWriteWithoutBlocking(int file_descriptor) {}
-};
 
 class EventDispatcherTest : public testing::Test {
  protected:
@@ -38,7 +33,6 @@ class EventDispatcherTest : public testing::Test {
   }
 
   EventDispatcher dispatcher_;
-  TestFileDescriptorWatcher watcher_;
   std::vector<int> file_descriptors_;
 };
 
@@ -49,17 +43,22 @@ TEST_F(EventDispatcherTest, StartAndStopWatchingFileDescriptor) {
   // watched, should fail.
   EXPECT_FALSE(dispatcher_.StopWatchingFileDescriptor(file_descriptor));
 
+  // TODO(crbug.com/909719): Use base::DoNothing after libchrome uprev
+  // to r576297.
   EXPECT_TRUE(dispatcher_.StartWatchingFileDescriptor(
-      file_descriptor, base::MessageLoopForIO::WATCH_READ, &watcher_));
+      file_descriptor, EventDispatcher::Mode::READ,
+      base::BindRepeating([]() {})));
 
   // StartWatchingFileDescriptor on the same file descriptor should be ok.
   EXPECT_TRUE(dispatcher_.StartWatchingFileDescriptor(
-      file_descriptor, base::MessageLoopForIO::WATCH_READ, &watcher_));
+      file_descriptor, EventDispatcher::Mode::READ,
+      base::BindRepeating([]() {})));
   EXPECT_TRUE(dispatcher_.StartWatchingFileDescriptor(
-      file_descriptor, base::MessageLoopForIO::WATCH_WRITE, &watcher_));
+      file_descriptor, EventDispatcher::Mode::WRITE,
+      base::BindRepeating([]() {})));
   EXPECT_TRUE(dispatcher_.StartWatchingFileDescriptor(
-      file_descriptor, base::MessageLoopForIO::WATCH_READ_WRITE, &watcher_));
-
+      file_descriptor, EventDispatcher::Mode::READ_WRITE,
+      base::BindRepeating([]() {})));
   EXPECT_TRUE(dispatcher_.StopWatchingFileDescriptor(file_descriptor));
   EXPECT_FALSE(dispatcher_.StopWatchingFileDescriptor(file_descriptor));
 }
@@ -69,9 +68,11 @@ TEST_F(EventDispatcherTest, StopWatchingAllFileDescriptors) {
   int file_descriptor2 = CreatePollFileDescriptor();
 
   EXPECT_TRUE(dispatcher_.StartWatchingFileDescriptor(
-      file_descriptor1, base::MessageLoopForIO::WATCH_READ, &watcher_));
+      file_descriptor1, EventDispatcher::Mode::READ,
+      base::BindRepeating([]() {})));
   EXPECT_TRUE(dispatcher_.StartWatchingFileDescriptor(
-      file_descriptor2, base::MessageLoopForIO::WATCH_READ, &watcher_));
+      file_descriptor2, EventDispatcher::Mode::READ,
+      base::BindRepeating([]() {})));
   dispatcher_.StopWatchingAllFileDescriptors();
   EXPECT_FALSE(dispatcher_.StopWatchingFileDescriptor(file_descriptor1));
   EXPECT_FALSE(dispatcher_.StopWatchingFileDescriptor(file_descriptor2));
