@@ -442,6 +442,10 @@ void DeviceInterfaceHandler::AddDeviceMethodHandlers(
       bluetooth_device::kDisconnect,
       base::Bind(&DeviceInterfaceHandler::HandleDisconnect,
                  base::Unretained(this)));
+  device_interface->AddMethodHandlerWithMessage(
+      bluetooth_device::kExecuteWrite,
+      base::Bind(&DeviceInterfaceHandler::HandleExecuteWrite,
+                 base::Unretained(this)));
 }
 
 void DeviceInterfaceHandler::HandlePair(
@@ -550,6 +554,15 @@ void DeviceInterfaceHandler::HandleDisconnect(
 
   DisconnectInternal(device_address, std::move(response),
                      /* disconnect_by_us */ false);
+}
+
+void DeviceInterfaceHandler::HandleExecuteWrite(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    dbus::Message* message) {
+  CHECK(message);
+
+  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
+                           bluetooth_device::kErrorFailed, "Not implemented");
 }
 
 void DeviceInterfaceHandler::ConnectInternal(

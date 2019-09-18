@@ -168,6 +168,14 @@ class NewblueDaemonTest : public ::testing::Test {
         .WillOnce(DoAll(SaveArg<2>(GetMethodHandler(
                             method_handlers, bluetooth_device::kDisconnect)),
                         Return(true)));
+
+    EXPECT_CALL(
+        *exported_object,
+        ExportMethodAndBlock(bluetooth_device::kBluetoothDeviceInterface,
+                             bluetooth_device::kExecuteWrite, _))
+        .WillOnce(DoAll(SaveArg<2>(GetMethodHandler(
+                            method_handlers, bluetooth_device::kExecuteWrite)),
+                        Return(true)));
   }
 
   // Expects that the methods on org.bluez.Device1 interface are unexported.
@@ -192,6 +200,11 @@ class NewblueDaemonTest : public ::testing::Test {
         *exported_object,
         UnexportMethodAndBlock(bluetooth_device::kBluetoothDeviceInterface,
                                bluetooth_device::kDisconnect))
+        .WillOnce(Return(true));
+    EXPECT_CALL(
+        *exported_object,
+        UnexportMethodAndBlock(bluetooth_device::kBluetoothDeviceInterface,
+                               bluetooth_device::kExecuteWrite))
         .WillOnce(Return(true));
   }
 

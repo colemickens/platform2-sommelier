@@ -215,11 +215,13 @@ class DeviceInterfaceHandler {
   void HandleDisconnect(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
       dbus::Message* message);
+  void HandleExecuteWrite(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      dbus::Message* message);
   // TODO(mcchou): Handle the rest of the D-Bus methods of the device interface.
   // ConnectProfile() - No op, but we may need dummy implementation later.
   // DisconnectPorfile() - No op, but we may need dummy implementation later.
   // GetServiceRecords() - No op, but we may need dummy implementation later.
-  // ExecuteWrite()
 
   // Initiates LE connection/disconnection to a peer device. These are internal
   // functions called by the user facing D-Bus Connect() method and newblued for
