@@ -189,8 +189,9 @@ TEST_F(NewblueTest, StartDiscovery) {
   struct bt_addr addr1 = {.addr = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06},
                           .type = BT_ADDR_TYPE_LE_RANDOM};
   struct bt_addr resolved_addr1 = {
-      .type = BT_ADDR_TYPE_LE_RANDOM,
-      .addr = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16}};
+      .addr = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16},
+      .type = BT_ADDR_TYPE_LE_RANDOM};
+
   uint8_t eir1[] = {
       6, static_cast<uint8_t>(EirType::NAME_SHORT), 'a', 'l', 'i', 'c', 'e'};
   inquiry_response_callback(inquiry_response_callback_data, &addr1,
