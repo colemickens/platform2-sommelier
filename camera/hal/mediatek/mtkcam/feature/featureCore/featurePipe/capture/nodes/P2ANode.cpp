@@ -23,10 +23,16 @@
 #include <common/include/PipeLog.h>
 #include <isp_tuning/isp_tuning.h>
 #include <INormalStream.h>
+
 #include <memory>
 #include <mtkcam/feature/featureCore/featurePipe/capture/nodes/P2ANode.h>
 #include <mtkcam/utils/metadata/hal/mtk_platform_metadata_tag.h>
+#include <mtkcam/drv/IHalSensor.h>
 #include <mtkcam/drv/def/Dip_Notify_datatype.h>
+
+#include <mtkcam/pipeline/stream/StreamId.h>
+#include <mtkcam/pipeline/utils/streaminfo/ImageStreamInfo.h>
+
 #include <mtkcam/utils/TuningUtils/FileDumpNamingRule.h>
 #include <property_lib.h>
 #include <string>
@@ -58,6 +64,9 @@ using NSCam::NSIoPipe::PORT_LCEI;
 using NSCam::NSIoPipe::PORT_TUNING;
 using NSCam::NSIoPipe::PORT_WDMAO;
 using NSCam::NSIoPipe::PORT_WROTO;
+
+using NSCam::v3::IImageStreamInfo;
+using NSCam::v3::Utils::ImageStreamInfo;
 
 #define ISP30_TOLERANCE_CROP_OFFSET (128)
 #define ISP30_TOLERANCE_RESIZE_RATIO (8)
@@ -123,11 +132,8 @@ MBOOL P2ANode::configNormalStream(const StreamConfigure config) {
   StreamConfigure normal;
   StreamConfigure reprocessing;
 
-  normal.mOutStreams = config.mOutStreams;
-  if (normal.mOutStreams.size() > 2) {
-    MY_LOGW("Too many stream configured for P2");
-    normal.mOutStreams.erase(normal.mOutStreams.begin() + 2);
-  }
+  std::shared_ptr<ImageStreamInfo> fullYuv;
+  std::shared_ptr<ImageStreamInfo> reprocessYuv;
 
   for (auto& it : config.mInStreams) {
     if (it != nullptr) {
@@ -150,28 +156,24 @@ MBOOL P2ANode::configNormalStream(const StreamConfigure config) {
         case NSCam::eImgFmt_FG_BAYER12:
         case NSCam::eImgFmt_FG_BAYER14:
           normal.mInStreams.push_back(it);
+          fullYuv = std::make_shared<ImageStreamInfo>(
+              "Hal:Image:Main-YUV", eSTREAMID_BEGIN_OF_INTERNAL,
+              v3::eSTREAMTYPE_IMAGE_OUT, 8, 2, 0, eImgFmt_YV12,
+              it->getImgSize(), it->getBufPlanes());
+          normal.mOutStreams.push_back(fullYuv);
           break;
         default:
           MY_LOGE("Unsupported format:0x%x", it->getImgFormat());
       }
     }
   }
-
-  auto& inputYuv = reprocessing.mInStreams;
-  auto& outputYuv = reprocessing.mOutStreams;
-
-  if (inputYuv.size() > 0) {
-    outputYuv = config.mOutStreams;
-  }
-  if (outputYuv.size() > 1) {
-    for (int i = 0; i < outputYuv.size(); ++i) {
-      if (inputYuv[0]->getImgSize() == outputYuv[i]->getImgSize() &&
-          inputYuv[0]->getImgFormat() == outputYuv[i]->getImgFormat() &&
-          inputYuv[0]->getTransform() == outputYuv[i]->getTransform()) {
-        outputYuv.erase(outputYuv.begin() + i);
-        break;
-      }
-    }
+  if (reprocessing.mInStreams.size() > 0) {
+    reprocessYuv = std::make_shared<ImageStreamInfo>(
+        "Hal:Image:REPROCESS-YUV", eSTREAMID_BEGIN_OF_INTERNAL,
+        v3::eSTREAMTYPE_IMAGE_OUT, 8, 2, 0, eImgFmt_YV12,
+        reprocessing.mInStreams[0]->getImgSize(),
+        reprocessing.mInStreams[0]->getBufPlanes());
+    reprocessing.mOutStreams.push_back(reprocessYuv);
   }
 
   for (auto& it : normal.mInStreams) {
@@ -190,6 +192,7 @@ MBOOL P2ANode::configNormalStream(const StreamConfigure config) {
   if (normal.mInStreams.size() > 0 && normal.mOutStreams.size() > 0) {
     ret = mpP2Opt->configNormalStream(v4l2::ENormalStreamTag_Cap, normal);
   }
+
   if (reprocessing.mInStreams.size() > 0 &&
       reprocessing.mOutStreams.size() > 0) {
     ret = mpP2ReqOpt->configNormalStream(v4l2::ENormalStreamTag_Rep,
@@ -365,7 +368,7 @@ P2ANode::enqueISP(const RequestPtr& pRequest,
   GetCropRegion("COPY1", enqueData.mCopy1, pCopy1);
   GetCropRegion("COPY2", enqueData.mCopy2, pCopy2);
 
-  MY_LOGD("%s", strEnqueLog.c_str());
+  MY_LOGI("%s", strEnqueLog.c_str());
 
   // 3.1 ISP tuning
   TuningParam tuningParam = {NULL, NULL};
@@ -844,7 +847,7 @@ P2ANode::onP2SuccessCallback(QParams* pParams) {
   }
   pPackage->stop();
 
-  MY_LOGD("R/F Num: %d/%d, task:%d, timeconsuming: %dms", rData.mRequestNo,
+  MY_LOGI("R/F Num: %d/%d, task:%d, timeconsuming: %dms", rData.mRequestNo,
           rData.mFrameNo, rData.mTaskId, pPackage->getElapsed());
 
   if (rData.mDebugDump) {
@@ -984,7 +987,7 @@ P2ANode::onP2FailedCallback(QParams* pParams) {
 
   pPackage->stop();
 
-  MY_LOGD("R/F Num: %d/%d, task:%d, timeconsuming: %dms", rData.mRequestNo,
+  MY_LOGI("R/F Num: %d/%d, task:%d, timeconsuming: %dms", rData.mRequestNo,
           rData.mFrameNo, rData.mTaskId, pPackage->getElapsed());
 
   // TODO(MTK): check it
@@ -1007,7 +1010,7 @@ P2ANode::onRequestProcess(RequestPtr& pRequest) {
 #endif
 
   CAM_TRACE_FMT_BEGIN("p2a:process|r%df%d", requestNo, frameNo);
-  MY_LOGD("+, R/F Num: %d/%d", requestNo, frameNo);
+  MY_LOGI("+, R/F Num: %d/%d", requestNo, frameNo);
 
   auto pNodeReq = pRequest->getNodeRequest(NID_P2A);
   MBOOL ret;
@@ -1124,6 +1127,23 @@ P2ANode::onRequestProcess(RequestPtr& pRequest) {
       }
 
       rEnqueData.mIMGI.mpBuf = pNodeReq->acquireBuffer(rEnqueData.mIMGI.mBufId);
+
+      MUINT sensorDev = 0;
+      IHalSensorList* const pIHalSensorList = GET_HalSensorList();
+      if (pIHalSensorList) {
+        sensorDev =
+            (MUINT32)pIHalSensorList->querySensorDevIdx(rEnqueData.mSensorId);
+        NSCam::SensorStaticInfo sensorStaticInfo;
+        memset(&sensorStaticInfo, 0, sizeof(NSCam::SensorStaticInfo));
+        pIHalSensorList->querySensorStaticInfo(sensorDev, &sensorStaticInfo);
+        auto pHeap = rEnqueData.mIMGI.mpBuf->getImageBufferHeap();
+        if (pHeap != nullptr && pHeap->getColorArrangement() < 0) {
+          pHeap->setColorArrangement(
+              (MINT32)sensorStaticInfo.sensorFormatOrder);
+          MY_LOGD("set ColorArrangement %d",
+                  sensorStaticInfo.sensorFormatOrder);
+        }
+      }
 
       isPureRaw = MFALSE;
       rEnqueData.mIMGI.mPureRaw = isPureRaw;
@@ -1424,31 +1444,6 @@ MERROR P2ANode::evaluate(CaptureFeatureInferenceData* rInfer) {
     dst_0.mSize = rInfer->getSize(TID_MAN_FULL_YUV);
     dst_0.mFormat = eImgFmt_YV12;
 
-    rDstData.emplace_back();
-    auto& dst_1 = rDstData.back();
-    dst_1.mTypeId = TID_MAN_CROP1_YUV;
-
-    rDstData.emplace_back();
-    auto& dst_2 = rDstData.back();
-    dst_2.mTypeId = TID_MAN_CROP2_YUV;
-
-    rDstData.emplace_back();
-    auto& dst_3 = rDstData.back();
-    dst_3.mTypeId = TID_JPEG;
-
-    rDstData.emplace_back();
-    auto& dst_4 = rDstData.back();
-    dst_4.mTypeId = TID_THUMBNAIL;
-
-#if !P2LIMITED
-    rDstData.emplace_back();
-    auto& dst_5 = rDstData.back();
-    dst_5.mTypeId = TID_MAN_FD_YUV;
-#endif
-    rDstData.emplace_back();
-    auto& dst_6 = rDstData.back();
-    dst_6.mTypeId = TID_POSTVIEW;
-
     hasMain = MTRUE;
   } else if (rInfer->hasType(TID_MAN_FULL_RAW)) {
     rSrcData.emplace_back();
@@ -1471,17 +1466,6 @@ MERROR P2ANode::evaluate(CaptureFeatureInferenceData* rInfer) {
     } else {
       dst_0.mFormat = eImgFmt_YV12;
     }
-    rDstData.emplace_back();
-    auto& dst_1 = rDstData.back();
-    dst_1.mTypeId = TID_MAN_CROP1_YUV;
-
-    rDstData.emplace_back();
-    auto& dst_2 = rDstData.back();
-    dst_2.mTypeId = TID_MAN_CROP2_YUV;
-
-    rDstData.emplace_back();
-    auto& dst_3 = rDstData.back();
-    dst_3.mTypeId = TID_MAN_SPEC_YUV;
 
     hasMain = MTRUE;
   }

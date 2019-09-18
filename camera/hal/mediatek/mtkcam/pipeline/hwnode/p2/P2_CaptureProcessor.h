@@ -32,6 +32,8 @@ using NSCam::NSCamFeature::NSFeaturePipe::NSCapture::ICaptureFeaturePipe;
 using NSCam::NSCamFeature::NSFeaturePipe::NSCapture::ICaptureFeatureRequest;
 using NSCam::NSCamFeature::NSFeaturePipe::NSCapture::RequestCallback;
 
+#define MAX_OUT_META_COUNT 20
+
 namespace P2 {
 class CaptureProcessor;
 class CaptureRequestCallback : virtual public RequestCallback {
@@ -58,6 +60,10 @@ class CaptureProcessor
   CaptureProcessor();
   virtual ~CaptureProcessor();
 
+  virtual MVOID releaseImage(std::shared_ptr<P2Request> pRequest, ID_IMG imgId);
+  virtual MVOID releaseMeta(std::shared_ptr<P2Request> pRequest,
+                            ID_META metaId);
+
  protected:
   virtual MBOOL onInit(const P2InitParam& param);
   virtual MVOID onUninit();
@@ -83,6 +89,13 @@ class CaptureProcessor
   ILog mLog;
   P2Info mP2Info;
   std::shared_ptr<ICaptureFeaturePipe> mpFeaturePipe;
+  struct MetadataPair {
+    MINT64 mTimeStamp = -1;
+    IMetadata* mpMetadata = NULL;
+  };
+  MBOOL mbPass3AInfo;  // pass 3A info to JpegNode while reprocessing
+  MINT32 mIdx = 0;
+  MetadataPair mvMetaData[MAX_OUT_META_COUNT];
 };
 
 }  // namespace P2

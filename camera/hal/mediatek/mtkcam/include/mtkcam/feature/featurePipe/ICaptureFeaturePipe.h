@@ -225,6 +225,9 @@ class ICaptureFeatureRequest {
   virtual MVOID addFeature(FeatureID_T) = 0;
   virtual MVOID setFeatures(MUINT64) = 0;
 
+  virtual MVOID setTimeStamp(MINT64) = 0;
+  virtual MINT64 getTimeStamp() = 0;
+
   //    virtual MVOID                   setRequestNo(MINT32);
   virtual MINT32 getRequestNo() = 0;
 

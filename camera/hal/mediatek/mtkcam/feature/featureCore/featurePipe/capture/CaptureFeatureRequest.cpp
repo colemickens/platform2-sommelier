@@ -198,6 +198,14 @@ MINT32 CaptureFeatureRequest::getRequestNo() {
   return mParameter[PID_REQUEST_NUM];
 }
 
+MVOID CaptureFeatureRequest::setTimeStamp(MINT64 timestamp) {
+  mSensorTimeStamp = timestamp;
+}
+
+MINT64 CaptureFeatureRequest::getTimeStamp() {
+  return mSensorTimeStamp;
+}
+
 MINT32 CaptureFeatureRequest::getFrameNo() {
   return mParameter[PID_FRAME_NUM];
 }

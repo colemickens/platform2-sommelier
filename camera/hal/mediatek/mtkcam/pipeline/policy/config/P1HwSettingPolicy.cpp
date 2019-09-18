@@ -82,6 +82,11 @@ makePolicy_Configuration_P1HwSetting_Default() {
       MSize largeYuvStreamSize(0, 0);
 
       for (const auto& n : pParsedAppImageStreamInfo->vAppImage_Output_Proc) {
+        if (!(n.second->getUsageForConsumer() & GRALLOC_USAGE_HW_TEXTURE) &&
+            !(n.second->getUsageForConsumer() & GRALLOC_USAGE_HW_COMPOSER) &&
+            !(n.second->getUsageForConsumer() & GRALLOC_USAGE_HW_VIDEO_ENCODER))
+          continue;
+
         MSize const streamSize = (n.second)->getImgSize();
         // if stream's size is suitable to use rrzo
         if (streamSize.w <= max_preview_size.w &&

@@ -32,22 +32,27 @@ namespace P2 {
 class P2BufferHandle : public virtual NSCam::NSCamFeature::NSFeaturePipe::
                            NSCapture::BufferHandle {
  public:
-  P2BufferHandle(const std::shared_ptr<P2Request> pRequest, ID_IMG id)
+  P2BufferHandle(const std::shared_ptr<P2Request> pRequest,
+                 ID_IMG id,
+                 CaptureProcessor* pProcessor)
       : mpRequest(pRequest),
         mpP2Img(nullptr),
         mImgId(id),
-        mpImageBuffer(nullptr) {
+        mpImageBuffer(nullptr),
+        mpProcessor(pProcessor) {
     if (mpRequest->isValidImg(id)) {
       mpP2Img = mpRequest->getImg(id);
     }
   }
 
   P2BufferHandle(const std::shared_ptr<P2Request> pRequest,
-                 std::shared_ptr<P2Img> pP2Img)
+                 std::shared_ptr<P2Img> pP2Img,
+                 CaptureProcessor* pProcessor)
       : mpRequest(pRequest),
         mpP2Img(pP2Img),
         mImgId(OUT_YUV),
-        mpImageBuffer(nullptr) {}
+        mpImageBuffer(nullptr),
+        mpProcessor(pProcessor) {}
 
   virtual MERROR acquire(MINT usage) {
     (void)usage;
@@ -65,8 +70,10 @@ class P2BufferHandle : public virtual NSCam::NSCamFeature::NSFeaturePipe::
   virtual IImageBuffer* native() { return mpImageBuffer; }
 
   virtual void release() {
-    if (mpRequest != nullptr && mImgId != OUT_YUV) {
-      mpRequest->releaseImg(mImgId);
+    if (mpRequest != nullptr) {
+      if (mImgId != OUT_YUV && mImgId != OUT_JPEG_YUV) {
+        mpProcessor->releaseImage(mpRequest, mImgId);
+      }
     }
     mpImageBuffer = nullptr;
     mpP2Img = nullptr;
@@ -92,16 +99,20 @@ class P2BufferHandle : public virtual NSCam::NSCamFeature::NSFeaturePipe::
   std::shared_ptr<P2Img> mpP2Img;
   ID_IMG mImgId;
   IImageBuffer* mpImageBuffer;
+  CaptureProcessor* mpProcessor;
 };
 
 class P2MetadataHandle : public virtual NSCam::NSCamFeature::NSFeaturePipe::
                              NSCapture::MetadataHandle {
  public:
-  P2MetadataHandle(const std::shared_ptr<P2Request> pRequest, ID_META id)
+  P2MetadataHandle(const std::shared_ptr<P2Request> pRequest,
+                   ID_META id,
+                   CaptureProcessor* pProcessor)
       : mpRequest(pRequest),
         mpP2Meta(nullptr),
         mMetaId(id),
-        mpMetadata(nullptr) {}
+        mpMetadata(nullptr),
+        mpProcessor(pProcessor) {}
 
   virtual MERROR acquire() {
     if (mpRequest->isValidMeta(mMetaId)) {
@@ -117,10 +128,12 @@ class P2MetadataHandle : public virtual NSCam::NSCamFeature::NSFeaturePipe::
   virtual IMetadata* native() { return mpMetadata; }
 
   virtual void release() {
-    mpRequest->releaseMeta(mMetaId);
     mpMetadata = nullptr;
     mpP2Meta = nullptr;
-    mpRequest = nullptr;
+    if (mpRequest != nullptr) {
+      mpProcessor->releaseMeta(mpRequest, mMetaId);
+      mpRequest = nullptr;
+    }
   }
 
   virtual ~P2MetadataHandle() {
@@ -135,10 +148,13 @@ class P2MetadataHandle : public virtual NSCam::NSCamFeature::NSFeaturePipe::
   std::shared_ptr<P2Meta> mpP2Meta;
   ID_META mMetaId;
   IMetadata* mpMetadata;
+  CaptureProcessor* mpProcessor;
 };
 
 CaptureProcessor::CaptureProcessor() : Processor(P2_CAPTURE_THREAD_NAME) {
   MY_LOG_FUNC_ENTER();
+  mbPass3AInfo =
+      property_get_int32("vendor.debug.camera.p2c.pass3AInfo", 1) > 0;
   MY_LOG_FUNC_EXIT();
 }
 
@@ -182,6 +198,13 @@ MVOID CaptureProcessor::onUninit() {
   P2_CAM_TRACE_NAME(TRACE_DEFAULT, "P2_Capture:uninit()");
 
   mpFeaturePipe->uninit();
+
+  for (auto idx = 0; idx < MAX_OUT_META_COUNT; idx++) {
+    if (mvMetaData[idx].mpMetadata != NULL) {
+      delete mvMetaData[idx].mpMetadata;
+      mvMetaData[idx].mpMetadata = NULL;
+    }
+  }
 
   MY_LOG_S_FUNC_EXIT(mLog);
 }
@@ -302,7 +325,7 @@ MBOOL CaptureProcessor::onEnque(
               metaId) -> void {
     if (pRequest->isValidMeta(id)) {
       pCapRequest->addMetadata(
-          metaId, std::make_shared<P2MetadataHandle>(pRequest, id));
+          metaId, std::make_shared<P2MetadataHandle>(pRequest, id, this));
     }
   };
 
@@ -324,8 +347,8 @@ MBOOL CaptureProcessor::onEnque(
           NSCam::NSCamFeature::NSFeaturePipe::NSCapture::CaptureBufferID bufId)
       -> MBOOL {
     if (pRequest->isValidImg(id)) {
-      pCapRequest->addBuffer(bufId,
-                             std::make_shared<P2BufferHandle>(pRequest, id));
+      pCapRequest->addBuffer(
+          bufId, std::make_shared<P2BufferHandle>(pRequest, id, this));
       return MTRUE;
     }
     return MFALSE;
@@ -363,6 +386,33 @@ MBOOL CaptureProcessor::onEnque(
   // Trigger Batch Release
   pRequest->beginBatchRelease();
 
+  MINT64 timestamp;
+  std::shared_ptr<P2Meta> meta;
+  // get timestamp from in-app if reprocessing or get from in-p1-app
+  if (pRequest->isReprocess()) {
+    if (pRequest->isValidMeta(IN_APP)) {
+      meta = pRequest->getMeta(IN_APP);
+      if (tryGet<MINT64>(meta, MTK_SENSOR_TIMESTAMP, &timestamp)) {
+        MY_S_LOGD(log, "get ts from in-app %" PRId64, timestamp);
+        pCapRequest->setTimeStamp(timestamp);
+      } else {
+        MY_S_LOGD(log, "Can't get ts from in-app!");
+      }
+    } else {
+      MY_S_LOGD(log, "Can't get ts from in-app!");
+    }
+  } else {
+    if (pRequest->isValidMeta(IN_P1_APP)) {
+      meta = pRequest->getMeta(IN_P1_APP);
+      if (tryGet<MINT64>(meta, MTK_SENSOR_TIMESTAMP, &timestamp)) {
+        MY_S_LOGD(log, "get ts from in-p1-app %" PRId64, timestamp);
+        pCapRequest->setTimeStamp(timestamp);
+      } else {
+        MY_S_LOGD(log, "Can't get ts from in-p1-app!");
+      }
+    }
+  }
+
   // Request Pair
   {
     std::lock_guard<std::mutex> _l(mPairLock);
@@ -378,6 +428,152 @@ MBOOL CaptureProcessor::onEnque(
 
   MY_LOG_S_FUNC_EXIT(log);
   return ret;
+}
+
+MVOID CaptureProcessor::releaseImage(std::shared_ptr<P2Request> pRequest,
+                                     ID_IMG imgId) {
+  TRACE_S_FUNC_ENTER(mLog);
+  P2_CAM_TRACE_NAME(TRACE_DEFAULT, "P2_Capture:releaseImage()");
+  std::lock_guard<std::mutex> _l(mPairLock);
+  pRequest->releaseImg(imgId);
+  TRACE_S_FUNC_EXIT(mLog);
+}
+
+MVOID CaptureProcessor::releaseMeta(std::shared_ptr<P2Request> pRequest,
+                                    ID_META metaId) {
+  TRACE_S_FUNC_ENTER(mLog);
+  P2_CAM_TRACE_NAME(TRACE_DEFAULT, "P2_Capture:releaseMeta()");
+  std::lock_guard<std::mutex> _l(mPairLock);
+  if (metaId == OUT_HAL) {
+    IMetadata* pMetadata = pRequest->getMeta(metaId)->getIMetadataPtr();
+    auto it = mRequestPairs.begin();
+    for (; it != mRequestPairs.end(); it++) {
+      if (it->mNodeRequest == pRequest) {
+        auto& pCapRequest = it->mPipeRequest;
+        if (pCapRequest->getTimeStamp() < 0) {
+          continue;
+        }
+        if (pRequest->isReprocess()) {
+          // get from metadata queue and append 3A info to OUT_HAL
+          MINT32 idx;
+          for (idx = 0; idx < MAX_OUT_META_COUNT; idx++) {
+            MY_S_LOGI(mLog, "idx %d, ts %" PRId64, idx,
+                      mvMetaData[idx].mTimeStamp);
+            if (mvMetaData[idx].mTimeStamp == pCapRequest->getTimeStamp()) {
+              MUINT8 encodeType;
+              MINT32 uniqueKey, requestNo, frameNo, fnumber;
+              MINT32 focallength, exposureTime, iso, awbmode, focallength35mm;
+              MINT32 lightsource, expProgram, sceneCapType, flashlightTime;
+              MINT32 aeMeterMode, aeExpBias;
+              IMetadata exif;
+              IMetadata* pKeepMetaData = mvMetaData[idx].mpMetadata;
+              encodeType = 0;
+              uniqueKey = requestNo = frameNo = -1;
+
+              if (tryGet<MUINT8>(pKeepMetaData, MTK_JPG_ENCODE_TYPE,
+                                 &encodeType)) {
+                trySet<MUINT8>(pMetadata, MTK_JPG_ENCODE_TYPE, encodeType);
+              }
+              if (tryGet<MINT32>(pKeepMetaData, MTK_PIPELINE_UNIQUE_KEY,
+                                 &uniqueKey)) {
+                trySet<MINT32>(pMetadata, MTK_PIPELINE_UNIQUE_KEY, uniqueKey);
+              }
+              if (tryGet<MINT32>(pKeepMetaData, MTK_PIPELINE_REQUEST_NUMBER,
+                                 &requestNo)) {
+                trySet<MINT32>(pMetadata, MTK_PIPELINE_REQUEST_NUMBER,
+                               requestNo);
+              }
+              if (tryGet<MINT32>(pKeepMetaData, MTK_PIPELINE_FRAME_NUMBER,
+                                 &frameNo)) {
+                trySet<MINT32>(pMetadata, MTK_PIPELINE_FRAME_NUMBER, frameNo);
+              }
+              if (tryGet<IMetadata>(pKeepMetaData, MTK_3A_EXIF_METADATA,
+                                    &exif)) {
+                if (!mbPass3AInfo) {
+#define extractExif(srcmeta, outmeta, tag, type, tmp) \
+  do {                                                \
+    if (tryGet<type>(&srcmeta, tag, &tmp)) {          \
+      trySet<type>(&outmeta, tag, tmp);               \
+    }                                                 \
+  } while (0)
+
+                  IMetadata metaExif;
+                  extractExif(exif, metaExif, MTK_3A_EXIF_FNUMBER, MINT32,
+                              fnumber);
+                  extractExif(exif, metaExif, MTK_3A_EXIF_FOCAL_LENGTH, MINT32,
+                              focallength);
+                  extractExif(exif, metaExif, MTK_3A_EXIF_CAP_EXPOSURE_TIME,
+                              MINT32, exposureTime);
+                  extractExif(exif, metaExif, MTK_3A_EXIF_AE_ISO_SPEED, MINT32,
+                              iso);
+                  extractExif(exif, metaExif, MTK_3A_EXIF_FOCAL_LENGTH_35MM,
+                              MINT32, focallength35mm);
+                  extractExif(exif, metaExif, MTK_3A_EXIF_AWB_MODE, MINT32,
+                              awbmode);
+                  extractExif(exif, metaExif, MTK_3A_EXIF_LIGHT_SOURCE, MINT32,
+                              lightsource);
+                  extractExif(exif, metaExif, MTK_3A_EXIF_EXP_PROGRAM, MINT32,
+                              expProgram);
+                  extractExif(exif, metaExif, MTK_3A_EXIF_SCENE_CAP_TYPE,
+                              MINT32, sceneCapType);
+                  extractExif(exif, metaExif, MTK_3A_EXIF_FLASH_LIGHT_TIME_US,
+                              MINT32, flashlightTime);
+                  extractExif(exif, metaExif, MTK_3A_EXIF_AE_METER_MODE, MINT32,
+                              aeMeterMode);
+                  extractExif(exif, metaExif, MTK_3A_EXIF_AE_EXP_BIAS, MINT32,
+                              aeExpBias);
+                  trySet<IMetadata>(pMetadata, MTK_3A_EXIF_METADATA, metaExif);
+
+#undef extractExif
+                } else {
+                  trySet<IMetadata>(pMetadata, MTK_3A_EXIF_METADATA, exif);
+                }
+              }
+              MY_S_LOGI(mLog, "Set to OutMeta, e %d, u %d, req %d, frame %d",
+                        encodeType, uniqueKey, requestNo, frameNo);
+              break;
+            }
+          }
+          if (idx == MAX_OUT_META_COUNT) {
+            MY_S_LOGE(mLog, "Can't find OutMeta in Queue, ts %" PRId64,
+                      pCapRequest->getTimeStamp());
+          }
+        } else {
+          // save OUT_HAL to metadata queue
+          mIdx = (mIdx + 1) % MAX_OUT_META_COUNT;
+          if (mvMetaData[mIdx].mpMetadata != NULL) {
+            delete mvMetaData[mIdx].mpMetadata;
+          }
+          mvMetaData[mIdx].mTimeStamp = pCapRequest->getTimeStamp();
+          mvMetaData[mIdx].mpMetadata = new IMetadata();
+          *mvMetaData[mIdx].mpMetadata = *pMetadata;
+          IMetadata* pKeepMetaData = mvMetaData[mIdx].mpMetadata;
+          MUINT8 encodeType;
+          MINT32 uniqueKey, requestNo, frameNo;
+          encodeType = 0;
+          uniqueKey = requestNo = frameNo = -1;
+          tryGet<MUINT8>(pKeepMetaData, MTK_JPG_ENCODE_TYPE, &encodeType);
+          tryGet<MINT32>(pKeepMetaData, MTK_PIPELINE_UNIQUE_KEY, &uniqueKey);
+          tryGet<MINT32>(pKeepMetaData, MTK_PIPELINE_REQUEST_NUMBER,
+                         &requestNo);
+          tryGet<MINT32>(pKeepMetaData, MTK_PIPELINE_FRAME_NUMBER, &frameNo);
+
+          IMetadata exif;
+          if (!tryGet<IMetadata>(pKeepMetaData, MTK_3A_EXIF_METADATA, &exif)) {
+            MY_S_LOGW(mLog, "can't get exif metadata!");
+          }
+          MY_S_LOGI(mLog,
+                    "add OutMeta to queue, ts %" PRId64
+                    " e %d, u %d, req %d, frame %d",
+                    mvMetaData[mIdx].mTimeStamp, encodeType, uniqueKey,
+                    requestNo, frameNo);
+        }
+        break;
+      }
+    }
+  }
+  pRequest->releaseMeta(metaId);
+  TRACE_S_FUNC_EXIT(mLog);
 }
 
 MVOID CaptureProcessor::onNotifyFlush() {

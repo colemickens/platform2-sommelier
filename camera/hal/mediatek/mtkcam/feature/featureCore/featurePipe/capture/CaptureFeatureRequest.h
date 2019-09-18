@@ -201,6 +201,9 @@ class CaptureFeatureRequest
   virtual MINT32 getParameter(ParameterID_T);
   virtual MINT32 getRequestNo();
 
+  virtual MVOID setTimeStamp(MINT64);
+  virtual MINT64 getTimeStamp();
+
  public:
   virtual MINT32 getFrameNo();
   virtual MVOID setCrossRequest(
@@ -278,6 +281,8 @@ class CaptureFeatureRequest
 
   // Record all pathes to traverse
   std::bitset<64> mTraverse;
+
+  MINT64 mSensorTimeStamp = -1;
 };
 
 typedef std::shared_ptr<CaptureFeatureRequest> RequestPtr;

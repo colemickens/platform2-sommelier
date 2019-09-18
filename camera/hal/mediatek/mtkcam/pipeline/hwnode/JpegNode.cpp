@@ -1755,6 +1755,7 @@ JpegNodeImp::getJpegParams(IMetadata* pMetadata_request,
 
 #undef getAppParam
 #undef getParam
+
   if (mJpegRotationEnable) {
     if ((*rParams).orientation == 90 || (*rParams).orientation == 270) {
       MINT32 tmp = (*rParams).size_thumbnail.w;
@@ -2056,11 +2057,10 @@ JpegNodeImp::calcZoomRatio(MRect const& cropRegion, MSize const& rSize) const {
     }
   }
 
-  MY_LOGD_IF(0,
-             "active(%d, %d, %dx%d), cropRegion(%d, %d, %dx%d), zoomRatio %d",
-             mActiveArray.p.x, mActiveArray.p.y, mActiveArray.s.w,
-             mActiveArray.s.h, cropRegion.p.x, cropRegion.p.y, cropRegion.s.w,
-             cropRegion.s.h, zoomRatio);
+  MY_LOGD("active(%d, %d, %dx%d), cropRegion(%d, %d, %dx%d), zoomRatio %d",
+          mActiveArray.p.x, mActiveArray.p.y, mActiveArray.s.w,
+          mActiveArray.s.h, cropRegion.p.x, cropRegion.p.y, cropRegion.s.w,
+          cropRegion.s.h, zoomRatio);
   pthread_rwlock_unlock(&mConfigRWLock);
   return zoomRatio;
 }

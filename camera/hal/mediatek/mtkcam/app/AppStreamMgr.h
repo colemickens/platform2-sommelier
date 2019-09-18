@@ -89,6 +89,12 @@ class AppStreamMgr : public IAppStreamManager, public IErrorCallback {
     std::vector<std::shared_ptr<IMetaStreamBuffer>> buffer;
   };
 
+  typedef enum {
+    TYPE_NONE = 0,
+    TYPE_YUV = 1,
+    TYPE_IMPLEMENTATION_DEFINED = 2,
+  } stream_input_type;
+
  public:  ////
   typedef std::map<MUINT32, std::shared_ptr<ResultItem>> ResultQueueT;
 
@@ -135,7 +141,9 @@ class AppStreamMgr : public IAppStreamManager, public IErrorCallback {
   //                          latest timestamp / callback time
   MUINT64 mTimestamp;
   MUINT64 mCallbackTime;
-  MBOOL mHasImp;
+  std::bitset<8> mInputType;
+  MBOOL mHasImplemt;
+  MBOOL mHasVideoEnc;
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   //  Implementations.
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -151,7 +159,7 @@ class AppStreamMgr : public IAppStreamManager, public IErrorCallback {
   MERROR checkStreams(camera3_stream_configuration_t* stream_list) const;
 
   std::shared_ptr<AppImageStreamInfo> createImageStreamInfo(
-      StreamId_T suggestedStreamId, camera3_stream* stream) const;
+      StreamId_T suggestedStreamId, camera3_stream* stream);
 
   std::shared_ptr<AppMetaStreamInfo> createMetaStreamInfo(
       StreamId_T suggestedStreamId) const;

@@ -21,7 +21,8 @@
 /*****************************************************************************
  *
  *****************************************************************************/
-
+#include <chrono>
+#include <condition_variable>
 #include <memory>
 // Local header file
 #include "QParamTemplate.h"
@@ -66,6 +67,7 @@ class VISIBILITY_PUBLIC P2Operator {
   MINT32 miOpenId = -1;
 
   mutable std::mutex mLock;
+  std::condition_variable mCond;
 
   std::shared_ptr<v4l2::INormalStream> mpINormalStream = nullptr;
   std::vector<std::shared_ptr<IImageBuffer> > mTuningBuffers;

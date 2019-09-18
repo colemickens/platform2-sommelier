@@ -108,10 +108,14 @@ NSCam::NSCamFeature::NSFeaturePipe::P2Operator::enque(QParams* pEnqueParam,
 
 std::shared_ptr<IImageBuffer>
 NSCam::NSCamFeature::NSFeaturePipe::P2Operator::getTuningBuffer() {
-  std::lock_guard<std::mutex> _l(mLock);
-  if (mTuningBuffers.empty()) {
-    MY_LOGE("empty tuning buffer pool");
-    return nullptr;
+  std::unique_lock<std::mutex> _l(mLock);
+  while (mTuningBuffers.empty()) {
+    // blocking and wait buffer to enque (wait 1s and check again)
+    auto status = mCond.wait_for(_l, std::chrono::seconds(1));
+    if (status == std::cv_status::timeout) {
+      MY_LOGE("Timeout wait for Tunning Buffer");
+      return nullptr;
+    }
   }
   auto buf = mTuningBuffers[0];
   mTuningBuffers.erase(mTuningBuffers.begin());
@@ -122,6 +126,7 @@ void NSCam::NSCamFeature::NSFeaturePipe::P2Operator::putTuningBuffer(
     std::shared_ptr<IImageBuffer> buf) {
   std::lock_guard<std::mutex> _l(mLock);
   mTuningBuffers.push_back(buf);
+  mCond.notify_all();
 }
 
 MERROR

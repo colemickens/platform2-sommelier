@@ -472,18 +472,18 @@ NSCam::v3::Imp::AppStreamMgr::FrameHandler::isReturnable(
         }
         return MFALSE;
       }
-      std::shared_ptr<MetaItem> const& pMetaItem =
-          (--(pFrame->vOutputMetaItem.end()))->second;
-      if ((pFrame->vOutputMetaItem.hasLastPartial && pMetaItem != NULL) ||
-          (!pFrame->vOutputMetaItem
-                .hasLastPartial /* && pMetaItem == NULL */)) {
+      MBOOL isAllMetaReturned = (pFrame->vOutputMetaItem.size() ==
+                                 pFrame->vOutputMetaItem.numReturnedStreams);
+
+      if ((pFrame->vOutputMetaItem.hasLastPartial && isAllMetaReturned) ||
+          (!pFrame->vOutputMetaItem.hasLastPartial)) {
         MY_LOGD(
             "Block to return the final meta of frameNo:%u since frameNo:%u "
-            "(%zu|%zu) partial:%d isNULL:%d",
+            "(%zu|%zu) partial:%d",
             pFrame2->frameNo, pFrame->frameNo,
             pFrame->vOutputMetaItem.numReturnedStreams,
             pFrame->vOutputMetaItem.size(),
-            pFrame->vOutputMetaItem.hasLastPartial, pMetaItem == NULL);
+            pFrame->vOutputMetaItem.hasLastPartial);
         return MFALSE;
       }
       //
@@ -569,9 +569,9 @@ NSCam::v3::Imp::AppStreamMgr::FrameHandler::isFrameRemovable(
     }
   } else {
     // Not all meta streams have been returned.
-    std::shared_ptr<MetaItem> const& pItem =
-        (--(pFrame->vOutputMetaItem.end()))->second;
-    if (!pFrame->vOutputMetaItem.hasLastPartial || pItem != nullptr) {
+    MBOOL isAllMetaReturned = (pFrame->vOutputMetaItem.size() ==
+                               pFrame->vOutputMetaItem.numReturnedStreams);
+    if (!pFrame->vOutputMetaItem.hasLastPartial || !isAllMetaReturned) {
       return MFALSE;
     }
     //
@@ -610,7 +610,6 @@ NSCam::v3::Imp::AppStreamMgr::FrameHandler::prepareCallbackIfPossible(
         // Valid Buffer but Not Returned
         if (!pItem->history.test(HistoryBit::RETURNED)) {
           // separate shutter and metadata
-          MINT64 timestamp = 0;
           updateShutterTimeIfPossible(pItem);
           if (isShutterReturnable(pItem) &&
               (prepareShutterNotificationIfPossible(rCbParcel, pItem))) {
@@ -618,8 +617,7 @@ NSCam::v3::Imp::AppStreamMgr::FrameHandler::prepareCallbackIfPossible(
             if (isReturnable(pItem)) {
               prepareReturnMeta(rCbParcel, pItem);
             }
-          } else if (isReturnable(pItem) &&
-                     (!getShutterTime(pItem, &timestamp))) {
+          } else if (isReturnable(pItem)) {
             prepareReturnMeta(rCbParcel, pItem);
             anyUpdate = MTRUE;
           }
@@ -704,7 +702,7 @@ bool NSCam::v3::Imp::AppStreamMgr::FrameHandler::isShutterReturnable(
     }
     if ((*itFrame)->frameNo != pFrame->frameNo &&
         (*itFrame)->bShutterCallbacked == false) {
-      MY_LOGW("previous shutter (%u:%p) is not ready for frame(%u)",
+      MY_LOGI("previous shutter (%u:%p) is not ready for frame(%u)",
               (*itFrame)->frameNo, (*itFrame).get(), pFrame->frameNo);
       return MFALSE;
     } else if ((*itFrame)->frameNo == pFrame->frameNo) {
@@ -958,8 +956,7 @@ NSCam::v3::Imp::AppStreamMgr::FrameHandler::update(
       // put output meta into vOutputMetaItem
       std::shared_ptr<MetaItem> pMetaItem = NULL;  // last partial metadata
       MetaItemSet* pItemSet = &pFrame->vOutputMetaItem;
-      std::vector<std::shared_ptr<IMetaStreamBuffer> >::iterator it =
-          iter->second->buffer.begin();
+      auto it = iter->second->buffer.begin();
       for (; it != iter->second->buffer.end(); it++) {
         std::shared_ptr<IMetaStreamBuffer> const pBuffer = *it;
         //

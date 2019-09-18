@@ -554,9 +554,9 @@ static int configContextLocked_P2SNode(
     //
     for (const auto& n : pParsedAppImageStreamInfo->vAppImage_Output_Proc) {
       cfgParam.vOutImage.push_back(n.second);
-      // oapaue reprocessing do not add stream information to P2StreamNode
-      if (!pParsedAppImageStreamInfo->pAppImage_Input_Priv &&
-          !pParsedAppImageStreamInfo->pAppImage_Output_Priv) {
+      if (n.second->getUsageForConsumer() & GRALLOC_USAGE_HW_TEXTURE ||
+          n.second->getUsageForConsumer() & GRALLOC_USAGE_HW_COMPOSER ||
+          n.second->getUsageForConsumer() & GRALLOC_USAGE_HW_VIDEO_ENCODER) {
         cfgParam.vStreamConfigure.mOutStreams.push_back(n.second);
       }
     }
@@ -764,33 +764,11 @@ static int configContextLocked_P2CNode(
     //
     for (const auto& n : pParsedAppImageStreamInfo->vAppImage_Output_Proc) {
       cfgParam.vpOutImages.push_back(n.second);
-      if (n.second->getUsageForConsumer() & GRALLOC_USAGE_HW_TEXTURE ||
-          n.second->getUsageForConsumer() & GRALLOC_USAGE_HW_COMPOSER ||
-          n.second->getUsageForConsumer() & GRALLOC_USAGE_HW_VIDEO_ENCODER) {
-        MY_LOGI("skip for preview/video stream");
-        continue;
-      }
-      // 1. oapaue reprocessing add stream information to P2CaptureNode
-      if (pParsedAppImageStreamInfo->pAppImage_Input_Priv &&
-          pParsedAppImageStreamInfo->pAppImage_Output_Priv) {
-        cfgParam.vStreamConfigure.mOutStreams.push_back(n.second);
-        continue;
-      }
-      // 2. yuv reprocessing add stream information to P2CaptureNode
-      if (pParsedAppImageStreamInfo->pAppImage_Input_Yuv) {
-        cfgParam.vStreamConfigure.mOutStreams.push_back(n.second);
-      }
     }
     //
     cfgParam.pOutJpegYuv = pParsedStreamInfo_NonP1->pHalImage_Jpeg_YUV;
     cfgParam.pOutThumbnailYuv =
         pParsedStreamInfo_NonP1->pHalImage_Thumbnail_YUV;
-    auto& ref = (*pParsedStreamInfo_P1)[0].pHalImage_P1_Imgo;
-    auto pStreamInfo = std::make_shared<NSCam::v3::Utils::ImageStreamInfo>(
-        "Hal:Image:Main-YUV", 0x100000000L, eSTREAMTYPE_IMAGE_OUT, 8, 2,
-        ref->getUsageForConsumer(), NSCam::eImgFmt_YV12, ref->getImgSize(),
-        ref->getBufPlanes(), ref->getTransform());
-    cfgParam.vStreamConfigure.mOutStreams.push_back(pStreamInfo);
   }
 
   std::shared_ptr<NodeActorT> pNode =

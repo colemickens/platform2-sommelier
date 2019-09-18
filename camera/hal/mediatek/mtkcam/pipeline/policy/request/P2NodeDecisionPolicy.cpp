@@ -111,7 +111,9 @@ static auto decideStreamOut(
       } else if (!(it.second->getUsageForConsumer() &
                    GRALLOC_USAGE_HW_TEXTURE) &&
                  !(it.second->getUsageForConsumer() &
-                   GRALLOC_USAGE_HW_VIDEO_ENCODER)) {
+                   GRALLOC_USAGE_HW_VIDEO_ENCODER) &&
+                 !(it.second->getUsageForConsumer() &
+                   GRALLOC_USAGE_HW_COMPOSER)) {
         needP2CaptureNode = true;
         imageIds_Capture.push_back(it.first);
         MAX_IMAGE_SIZE(out->maxP2CaptureSize, it.second->getImgSize());
@@ -205,6 +207,9 @@ static auto evaluateRequest(
   }
 
   decideStreamOut(out, &in);
+
+  MY_LOGI("requestNo:%d use P2C node(%d), P2S node(%d)", in.requestNo,
+          out->needP2CaptureNode, out->needP2StreamNode);
   return NSCam::OK;
 }
 

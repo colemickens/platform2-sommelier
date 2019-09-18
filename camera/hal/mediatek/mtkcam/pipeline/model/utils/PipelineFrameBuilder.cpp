@@ -48,10 +48,12 @@ static int32_t gLogLevel = getDebugLogLevel();
  *
  ******************************************************************************/
 static void print(BuildPipelineFrameInputParams const& o) {
+  MY_LOGI("requestNo %d", o.requestNo);
   if (auto p = o.pAppImageStreamBuffers) {
     std::string os;
     os += "App image stream buffers=";
     os += p->toString();
+    MY_LOGI("%s", os.c_str());
   }
   if (auto p = o.pAppMetaStreamBuffers) {
     std::string os;
@@ -60,6 +62,7 @@ static void print(BuildPipelineFrameInputParams const& o) {
       os += "\n    ";
       os += v->toString();
     }
+    MY_LOGI("%s", os.c_str());
   }
   if (auto p = o.pHalImageStreamBuffers) {
     std::string os;
@@ -68,6 +71,7 @@ static void print(BuildPipelineFrameInputParams const& o) {
       os += "\n    ";
       os += v->toString();
     }
+    MY_LOGI("%s", os.c_str());
   }
   if (auto p = o.pHalMetaStreamBuffers) {
     std::string os;
@@ -76,6 +80,7 @@ static void print(BuildPipelineFrameInputParams const& o) {
       os += "\n    ";
       os += v->toString();
     }
+    MY_LOGI("%s", os.c_str());
   }
 
   if (auto p = o.pvUpdatedImageStreamInfo) {
@@ -85,6 +90,7 @@ static void print(BuildPipelineFrameInputParams const& o) {
       os += "\n    ";
       os += v.second->toString();
     }
+    MY_LOGI("%s", os.c_str());
   }
 
   if (auto p = o.pnodeSet) {
@@ -94,18 +100,21 @@ static void print(BuildPipelineFrameInputParams const& o) {
       os += base::StringPrintf("%#" PRIxPTR " ", v);
     }
     os += "}";
+    MY_LOGI("%s", os.c_str());
   }
 
   if (auto p = o.pRootNodes) {
     std::string os;
     os += ".root=";
     os += NSCam::v3::NSPipelineContext::toString(*p);
+    MY_LOGI("%s", os.c_str());
   }
 
   if (auto p = o.pEdges) {
     std::string os;
     os += ".edges=";
     os += toString(*p);
+    MY_LOGI("%s", os.c_str());
   }
 
   if (auto p = o.pnodeIOMapImage) {
@@ -115,6 +124,7 @@ static void print(BuildPipelineFrameInputParams const& o) {
       os += base::StringPrintf("\n    <nodeId %#" PRIxPTR ">=", v.first);
       os += toString(v.second);
     }
+    MY_LOGI("%s", os.c_str());
   }
 
   if (auto p = o.pnodeIOMapMeta) {
@@ -124,11 +134,13 @@ static void print(BuildPipelineFrameInputParams const& o) {
       os += base::StringPrintf("\n    <nodeId %#" PRIxPTR ">=", v.first);
       os += toString(v.second);
     }
+    MY_LOGI("%s", os.c_str());
   }
 
   if (auto p = o.pCallback.expired()) {
     std::string os;
     os += base::StringPrintf(".pCallback=%p", reinterpret_cast<void*>(p));
+    MY_LOGI("%s", os.c_str());
   }
 
   if (auto p = o.pPipelineContext.get()) {
@@ -234,9 +246,10 @@ auto buildPipelineFrame(std::shared_ptr<IPipelineFrame>* out,
 
   *out = pFrame;
 
-  if (CC_UNLIKELY(gLogLevel >= 2)) {
+  if (CC_UNLIKELY(gLogLevel >= 1)) {
     dumpToLog(in);
   }
+
   return OK;
 }
 };  // namespace model

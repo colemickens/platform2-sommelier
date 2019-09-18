@@ -689,6 +689,7 @@ P1NodeAct::frameImageGet(STREAM_IMG const streamImg,
     if (mpP1NodeImp->mDebugScanLineMask != 0) {
       groupUsage |= GRALLOC_USAGE_SW_WRITE_OFTEN;
     }
+
     std::shared_ptr<IImageBufferHeap> pImageBufferHeap = nullptr;
     pImageBufferHeap.reset(
         pImageStreamBuffer->tryWriteLock(getNodeName()),
@@ -699,7 +700,6 @@ P1NodeAct::frameImageGet(STREAM_IMG const streamImg,
               P1INFO_STREAM_IMG_VAR(*this), P1INFO_ACT_VAR(*this));
       return BAD_VALUE;
     }
-#if 1  // for opaque out image stream add info
     if (streamImg == STREAM_IMG_OUT_OPAQUE) {
       pImageBufferHeap->lockBuf(getNodeName());
       if (OK != OpaqueReprocUtil::setOpaqueInfoToHeap(
@@ -712,7 +712,6 @@ P1NodeAct::frameImageGet(STREAM_IMG const streamImg,
       }
       pImageBufferHeap->unlockBuf(getNodeName());
     }
-#endif
     // get ImageBuffer from ImageBufferHeap
     std::shared_ptr<IImageBuffer> pImageBuffer = nullptr;
     if (streamImg == STREAM_IMG_OUT_OPAQUE ||

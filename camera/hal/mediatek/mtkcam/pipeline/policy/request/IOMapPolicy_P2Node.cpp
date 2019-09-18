@@ -221,8 +221,10 @@ static MERROR evaluateRequest_P2CaptureNode(
       bImgo = true;
     }
 
-    if (need_P1Dma & P1_LCSO) {
-      imgoMap.addIn(p1Info.pHalImage_P1_Lcso->getStreamId());
+    if (!in.pRequest_AppImageStreamInfo->pAppImage_Input_Yuv) {
+      if (need_P1Dma & P1_LCSO) {
+        imgoMap.addIn(p1Info.pHalImage_P1_Lcso->getStreamId());
+      }
     }
 
     metaMap.addIn(p1Info.pAppMeta_DynamicP1->getStreamId());

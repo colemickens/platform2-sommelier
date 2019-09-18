@@ -376,7 +376,7 @@ Cam3DeviceImp::onConfigureStreamsLocked(
  ******************************************************************************/
 MERROR
 Cam3DeviceImp::i_process_capture_request(camera3_capture_request_t* request) {
-  MY_LOGD("i_process_capture_request!!!");
+  MY_LOGI("i_process_capture_request frameNo:%d", request->frame_number);
 
   if ((request == NULL) || (request->output_buffers->stream->priv == NULL)) {
     MY_LOGE("request is NULL or UnConfig Stream!");

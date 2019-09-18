@@ -16,6 +16,7 @@
 
 #define LOG_TAG "MtkCam/GrallocHelper"
 //
+#include <_videodev2.h>
 #include <camera_buffer_handle.h>
 #include <cros-camera/camera_buffer_manager.h>
 #include <linux/videodev2.h>
@@ -79,8 +80,9 @@ std::string gQueryPixelFormatName(int format) {
   }
 
 #undef _ENUM_TO_NAME_
+  std::string str("_UNKNOWN_");
   //
-  return nullptr;
+  return str;
 }
 
 /**
@@ -177,14 +179,9 @@ namespace {
 MERROR
 queryStaticInfo(buffer_handle_t const bh, MyStaticInfo* info) {
   int v4l2Fmt = g_cbm->GetV4L2PixelFormat(bh);
-  int zsl = info->usage & GRALLOC_USAGE_HW_CAMERA_ZSL;
   switch (v4l2Fmt) {
-    case V4L2_PIX_FMT_YUYV:
-      if (zsl == GRALLOC_USAGE_HW_CAMERA_ZSL) {
-        info->format = HAL_PIXEL_FORMAT_RAW_OPAQUE;
-      } else {
-        info->format = HAL_PIXEL_FORMAT_YCbCr_422_I;
-      }
+    case V4L2_PIX_FMT_MTISP_SBGGR10:
+      info->format = HAL_PIXEL_FORMAT_RAW_OPAQUE;
       break;
     case V4L2_PIX_FMT_NV21:
     case V4L2_PIX_FMT_NV21M:
@@ -285,8 +282,8 @@ queryStaticInfo(buffer_handle_t const bh, MyStaticInfo* info) {
       info->planes.resize(1);
       {
         MyStaticInfo::Plane& plane = info->planes.at(0);
-        plane.rowStrideInBytes = g_cbm->GetPlaneStride(bh, 0);
-        plane.sizeInBytes = g_cbm->GetPlaneSize(bh, 0);
+        plane.rowStrideInBytes = info->widthInPixels * 2;
+        plane.sizeInBytes = info->widthInPixels * info->heightInPixels * 2;
         info->allocSize += plane.sizeInBytes;
       }
     } break;

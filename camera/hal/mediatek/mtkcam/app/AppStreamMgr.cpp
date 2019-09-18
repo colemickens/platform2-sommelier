@@ -147,7 +147,9 @@ NSCam::v3::Imp::AppStreamMgr::AppStreamMgr(
       mMaxFrameCount(33),
       mTimestamp(0),
       mCallbackTime(0),
-      mHasImp(false) {
+      mInputType(TYPE_NONE),
+      mHasImplemt(false),
+      mHasVideoEnc(false) {
   IMetadata::IEntry const& entry =
       mpMetadataProvider->getMtkStaticCharacteristics().entryFor(
           MTK_REQUEST_PARTIAL_RESULT_COUNT);
@@ -178,15 +180,14 @@ NSCam::v3::Imp::AppStreamMgr::waitUntilDrained(int64_t const timeout) {
   {
     //
     int64_t const startTime = NSCam::Utils::getTimeInNs();
-    std::unique_lock<std::mutex> lck(mFrameHandlerLock);
+    std::unique_lock<std::mutex> l(mFrameHandlerLock);
     //
     std::cv_status err;
     int64_t const elapsedInterval = (NSCam::Utils::getTimeInNs() - startTime);
-    int64_t const timeoutToWait =
+    int64_t const timeWait =
         (timeout > elapsedInterval) ? (timeout - elapsedInterval) : 0;
     while (!mFrameHandler->isEmptyFrameQueue()) {
-      err = mFrameHandlerCond.wait_for(lck,
-                                       std::chrono::nanoseconds(timeoutToWait));
+      err = mFrameHandlerCond.wait_for(l, std::chrono::nanoseconds(timeWait));
       if (err == std::cv_status::timeout) {
         MY_LOGW("FrameQueue#:%zu timeout(ns):%" PRId64 " elapsed(ns):%" PRId64
                 ".",
@@ -203,6 +204,11 @@ NSCam::v3::Imp::AppStreamMgr::waitUntilDrained(int64_t const timeout) {
   if (mThread.joinable()) {
     mThread.join();
   }
+
+  mInputType.reset();
+  mHasImplemt = false;
+  mHasVideoEnc = false;
+
   MY_LOGI("wait mResultQueueCond done");
   {
     std::lock_guard<std::mutex> _l(mResultQueueLock);
@@ -386,8 +392,7 @@ NSCam::v3::Imp::AppStreamMgr::checkStreams(
   size_t const num_stream_I = typeNum[CAMERA3_STREAM_INPUT];
   size_t const num_stream_IO = typeNum[CAMERA3_STREAM_BIDIRECTIONAL];
 
-  if ((num_stream_I + num_stream_IO) > 1 ||
-      (num_stream_O + num_stream_IO) == 0) {
+  if (num_stream_O + num_stream_IO == 0) {
     MY_LOGE("bad stream count: (out, in, in-out)=(%zu, %zu, %zu)", num_stream_O,
             num_stream_I, num_stream_IO);
     return -EINVAL;
@@ -438,7 +443,17 @@ NSCam::v3::Imp::AppStreamMgr::configureStreams(
     if (stream_list->streams[i]->stream_type == CAMERA3_STREAM_OUTPUT &&
         stream_list->streams[i]->format ==
             HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
-      mHasImp = true;
+      mHasImplemt = true;
+    }
+    if (stream_list->streams[i]->stream_type == CAMERA3_STREAM_BIDIRECTIONAL ||
+        stream_list->streams[i]->stream_type == CAMERA3_STREAM_INPUT) {
+      if (stream_list->streams[i]->format ==
+          HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
+        mInputType.set(TYPE_IMPLEMENTATION_DEFINED);
+      } else if (stream_list->streams[i]->format ==
+                 HAL_PIXEL_FORMAT_YCbCr_420_888) {
+        mInputType.set(TYPE_YUV);
+      }
     }
   }
 
@@ -467,7 +482,7 @@ NSCam::v3::Imp::AppStreamMgr::configureStreams(
  ******************************************************************************/
 std::shared_ptr<NSCam::v3::Imp::AppStreamMgr::AppImageStreamInfo>
 NSCam::v3::Imp::AppStreamMgr::createImageStreamInfo(
-    StreamId_T suggestedStreamId, camera3_stream* stream) const {
+    StreamId_T suggestedStreamId, camera3_stream* stream) {
   MERROR err = OK;
   //
   MINT formatToAllocate = stream->format;
@@ -478,28 +493,39 @@ NSCam::v3::Imp::AppStreamMgr::createImageStreamInfo(
     usageForAllocator |= GRALLOC_USAGE_HW_CAMERA_WRITE;
   } else if (stream->stream_type == CAMERA3_STREAM_INPUT) {
     usageForAllocator |= GRALLOC_USAGE_HW_CAMERA_READ;
-  } else if (stream->stream_type == CAMERA3_STREAM_BIDIRECTIONAL) {
+  } else if (stream->stream_type == CAMERA3_STREAM_BIDIRECTIONAL &&
+             formatToAllocate == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
     usageForAllocator |= GRALLOC_USAGE_HW_CAMERA_ZSL;
+  } else {
+    usageForAllocator |= GRALLOC_USAGE_HW_CAMERA_WRITE;
   }
 
   if (formatToAllocate == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
     if (stream->stream_type == CAMERA3_STREAM_OUTPUT) {
-      usageForConsumer |= GRALLOC_USAGE_HW_TEXTURE | GRALLOC_USAGE_HW_COMPOSER;
+      bool isPreviewSurface = usageForConsumer & (GRALLOC_USAGE_HW_COMPOSER |
+                                                  GRALLOC_USAGE_HW_TEXTURE);
+      if (!isPreviewSurface && mInputType.test(TYPE_IMPLEMENTATION_DEFINED)) {
+        usageForAllocator |= GRALLOC_USAGE_HW_CAMERA_ZSL;
+        usageForConsumer |= GRALLOC_USAGE_HW_CAMERA_ZSL;
+      } else {
+        usageForAllocator |= GRALLOC_USAGE_HW_COMPOSER;
+        usageForConsumer |= GRALLOC_USAGE_HW_COMPOSER;
+      }
+    } else if (stream->stream_type == CAMERA3_STREAM_INPUT) {
+      usageForAllocator |= GRALLOC_USAGE_HW_CAMERA_ZSL;
+      usageForConsumer |= GRALLOC_USAGE_HW_CAMERA_ZSL;
     }
   } else if (formatToAllocate == HAL_PIXEL_FORMAT_RAW_OPAQUE) {
     usageForAllocator |= GRALLOC_USAGE_HW_CAMERA_ZSL;
   } else if (formatToAllocate == HAL_PIXEL_FORMAT_YCbCr_420_888) {
-#if 0
-        int u = GRALLOC_USAGE_HW_COMPOSER | GRALLOC_USAGE_SW_READ_OFTEN |
-                GRALLOC_USAGE_SW_WRITE_OFTEN;
-        if (!(usageForConsumer & u)) {
-            usageForConsumer |= GRALLOC_USAGE_HW_VIDEO_ENCODER;
-        }
-#endif
-    if (mHasImp) {
+    if (mHasImplemt && !mInputType.test(TYPE_IMPLEMENTATION_DEFINED) &&
+        !mInputType.test(TYPE_YUV) && !mHasVideoEnc) {
       usageForConsumer |= GRALLOC_USAGE_HW_VIDEO_ENCODER;
-    } else if (!mHasImp) {
-      usageForConsumer |= GRALLOC_USAGE_HW_TEXTURE | GRALLOC_USAGE_HW_COMPOSER;
+      mHasVideoEnc = true;
+    } else if (!mHasImplemt && !mInputType.test(TYPE_IMPLEMENTATION_DEFINED) &&
+               !mInputType.test(TYPE_YUV)) {
+      usageForConsumer |= GRALLOC_USAGE_HW_COMPOSER;
+      mHasImplemt = true;
     }
   }
 
@@ -612,7 +638,7 @@ NSCam::v3::Imp::AppStreamMgr::createImageStreamInfo(
       transform,  // transform
       stream->data_space);
 
-  MY_LOGD("[%" PRId64
+  MY_LOGI("[%" PRId64
           " %s] stream:%p->%p %dx%d type:%d"
           "rotation(%d)->transform(%d) dataspace(%d) "
           "formatToAllocate:%#x(%s) formatAllocated:%#x(%s) "
@@ -803,7 +829,7 @@ NSCam::v3::Imp::AppStreamMgr::createRequest(camera3_capture_request_t* request,
 std::shared_ptr<NSCam::v3::Imp::AppStreamMgr::AppImageStreamBuffer>
 NSCam::v3::Imp::AppStreamMgr::createImageStreamBuffer(
     camera3_stream_buffer const* buffer) const {
-  MY_LOGD(
+  MY_LOGI(
       "stream:%p buffer:%p status:%d acquire_fence:%d release_fence:%d type "
       "%d, width %d, height %d, format %d rotation %d",
       buffer->stream, buffer->buffer, buffer->status, buffer->acquire_fence,

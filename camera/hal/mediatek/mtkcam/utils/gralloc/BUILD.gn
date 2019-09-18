@@ -10,6 +10,7 @@ shared_library("libmtkcam_grallocutils") {
   include_dirs += [
     ".",
     "${mtk_root_path}/mtkcam/utils",
+    "${mtk_root_path}/mtklibv4l2",
     "../../../../../common",
   ]
   libs += [ "cbm" ]
