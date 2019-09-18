@@ -10,6 +10,7 @@
 #include <string>
 
 #include <base/callback.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/macros.h>
 #include <brillo/message_loops/message_loop.h>
 
@@ -101,7 +102,8 @@ class NeighborDiscoveryProxy {
 
   // Maps file descripters to their associated watching task.  Used
   // for removing the FD from the watch pool when closed.
-  std::map<int32_t, brillo::MessageLoop::TaskId> fd_tasks_;
+  std::map<int32_t, std::unique_ptr<base::FileDescriptorWatcher::Controller>>
+      fd_tasks_;
 
   // Maps interface names to their task which handles the loop-timeout.
   // If a loop is detected on a downstream interface, then the

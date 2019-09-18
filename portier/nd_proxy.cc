@@ -61,18 +61,18 @@ Status NeighborDiscoveryProxy::ManagerInterface(const string& if_name) {
 
   // Setup event handler.
   const int nd_fd = proxy_if->GetNDFd();
-  const TaskId nd_task_id = MessageLoop::current()->WatchFileDescriptor(
-      nd_fd, MessageLoop::kWatchRead, true /* presistent */,
-      base::Bind(&NeighborDiscoveryProxy::HandleNeighborDiscoverPacket,
-                 base::Unretained(this), if_name));
-  fd_tasks_.insert(FdTaskPair(nd_fd, nd_task_id));
+
+  auto nd_task = base::FileDescriptorWatcher::WatchReadable(
+      nd_fd,
+      base::BindRepeating(&NeighborDiscoveryProxy::HandleNeighborDiscoverPacket,
+                          base::Unretained(this), if_name));
+  fd_tasks_.emplace(nd_fd, std::move(nd_task));
 
   const int ipv6_fd = proxy_if->GetIPv6Fd();
-  const TaskId ipv6_task_id = MessageLoop::current()->WatchFileDescriptor(
-      ipv6_fd, MessageLoop::kWatchRead, true /* presistent */,
-      base::Bind(&NeighborDiscoveryProxy::HandleIPv6Packet,
-                 base::Unretained(this), if_name));
-  fd_tasks_.insert(FdTaskPair(ipv6_fd, ipv6_task_id));
+  auto ipv6_task = base::FileDescriptorWatcher::WatchReadable(
+      ipv6_fd, base::BindRepeating(&NeighborDiscoveryProxy::HandleIPv6Packet,
+                                   base::Unretained(this), if_name));
+  fd_tasks_.emplace(ipv6_fd, std::move(ipv6_task));
 
   LOG(INFO) << "ND Proxy is now managing interface " << if_name;
   return Status();
@@ -94,16 +94,8 @@ Status NeighborDiscoveryProxy::ReleaseInterface(const string& if_name) {
   }
 
   // Cancel all associated tasks.
-  const auto nd_pair = fd_tasks_.find(proxy_if->GetNDFd());
-  if (nd_pair != fd_tasks_.end()) {
-    MessageLoop::current()->CancelTask(nd_pair->second);
-    fd_tasks_.erase(nd_pair);
-  }
-  const auto ipv6_pair = fd_tasks_.find(proxy_if->GetIPv6Fd());
-  if (ipv6_pair != fd_tasks_.end()) {
-    MessageLoop::current()->CancelTask(ipv6_pair->second);
-    fd_tasks_.erase(ipv6_pair);
-  }
+  fd_tasks_.erase(proxy_if->GetNDFd());
+  fd_tasks_.erase(proxy_if->GetIPv6Fd());
   const auto loop_pair = loop_tasks_.find(if_name);
   if (loop_pair != loop_tasks_.end()) {
     MessageLoop::current()->CancelTask(loop_pair->second);
