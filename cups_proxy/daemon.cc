@@ -53,16 +53,17 @@ base::ScopedFD InitSocket() {
     return {};
   }
 
-  // Sets the correct socket permissions.
-  if (fchmod(fd.get(), 0660) < 0) {
-    PLOG(ERROR) << "Failed to set permissions";
-    return {};
-  }
-
   // Bind the socket.
   if (bind(fd.get(), reinterpret_cast<const sockaddr*>(&unix_addr),
            unix_addr_len) < 0) {
     PLOG(ERROR) << "bind " << socket_path.value();
+    return {};
+  }
+
+  // Sets the correct socket permissions.
+  if (chmod(socket_name.c_str(), 0660) < 0) {
+    PLOG(ERROR) << "Failed to set permissions";
+    unlink(socket_name.c_str());
     return {};
   }
 
