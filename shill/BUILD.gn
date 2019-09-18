@@ -124,6 +124,24 @@ protoc_text_to_bin("mobile_operator_db-db") {
   ]
 }
 
+protoc_text_to_bin("mobile_operator_db-test-db") {
+  protoc_proto_def = "mobile_operator_db.proto"
+  protoc_message_name = "shill.mobile_operator_db.MobileOperatorDB"
+  protoc_text_dir = "mobile_operator_db/test_protos"
+  protoc_proto_dir = "mobile_operator_db"
+  protoc_bin_dir = "${root_out_dir}"
+  sources = [
+    "${protoc_text_dir}/data_test.prototxt",
+    "${protoc_text_dir}/init_test_empty_db_init.prototxt",
+    "${protoc_text_dir}/init_test_multiple_db_init_1.prototxt",
+    "${protoc_text_dir}/init_test_multiple_db_init_2.prototxt",
+    "${protoc_text_dir}/init_test_override_db_init_1.prototxt",
+    "${protoc_text_dir}/init_test_override_db_init_2.prototxt",
+    "${protoc_text_dir}/init_test_successful_init.prototxt",
+    "${protoc_text_dir}/main_test.prototxt",
+  ]
+}
+
 static_library("mobile_operator_db") {
   configs += [ ":target_defaults" ]
   configs -= [ "//common-mk:no_exceptions" ]
@@ -828,6 +846,7 @@ if (use.test) {
         "cellular/verizon_subscription_state_test.cc",
         "mock_dbus_properties_proxy.cc",
       ]
+      deps += [ ":mobile_operator_db-test-db" ]
     }
 
     if (use.dhcpv6) {

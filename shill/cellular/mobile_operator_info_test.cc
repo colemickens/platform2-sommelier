@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/files/file_util.h>
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -18,19 +18,6 @@
 #include "shill/cellular/mobile_operator_info_impl.h"
 #include "shill/logging.h"
 #include "shill/test_event_dispatcher.h"
-
-// These files contain binary protobuf definitions used by the following tests
-// inside the namespace ::mobile_operator_db
-#define IN_MOBILE_OPERATOR_INFO_UNITTEST_CC
-#include "shill/mobile_operator_db/test_protos/data_test.h"
-#include "shill/mobile_operator_db/test_protos/init_test_empty_db_init.h"
-#include "shill/mobile_operator_db/test_protos/init_test_multiple_db_init_1.h"
-#include "shill/mobile_operator_db/test_protos/init_test_multiple_db_init_2.h"
-#include "shill/mobile_operator_db/test_protos/init_test_override_db_init_1.h"
-#include "shill/mobile_operator_db/test_protos/init_test_override_db_init_2.h"
-#include "shill/mobile_operator_db/test_protos/init_test_successful_init.h"
-#include "shill/mobile_operator_db/test_protos/main_test.h"
-#undef IN_MOBILE_OPERATOR_INFO_UNITTEST_CC
 
 using base::FilePath;
 using shill::mobile_operator_db::MobileOperatorDB;
@@ -70,15 +57,10 @@ enum EventCheckingPolicy {
   kEventCheckingPolicyNonStrict
 };
 
-FilePath CreateTempDatabase(const unsigned char database_data[],
-                            size_t num_elems) {
-  FilePath tmp_db_path;
-
-  CHECK(base::CreateTemporaryFile(&tmp_db_path));
-  base::WriteFile(tmp_db_path, reinterpret_cast<const char*>(database_data),
-                  num_elems);
-
-  return tmp_db_path;
+FilePath GetTestProtoPath(const string& file) {
+  const char* out_dir = getenv("OUT");
+  CHECK_NE(out_dir, nullptr);
+  return FilePath(out_dir).Append(file);
 }
 
 }  // namespace
@@ -96,17 +78,13 @@ class MobileOperatorInfoInitTest : public Test {
       : operator_info_(new MobileOperatorInfo(&dispatcher_, "Operator")),
         operator_info_impl_(operator_info_->impl()) {}
 
-  void TearDown() override {
-    for (const auto& tmp_db_path : tmp_db_paths_) {
-      base::DeleteFile(tmp_db_path, false);
-    }
-  }
-
  protected:
-  void AddDatabase(const unsigned char database_data[], size_t num_elems) {
-    FilePath tmp_db_path = CreateTempDatabase(database_data, num_elems);
-    tmp_db_paths_.push_back(tmp_db_path);
-    operator_info_->AddDatabasePath(tmp_db_paths_.back());
+  bool SetUpDatabase(const vector<string>& files) {
+    operator_info_->ClearDatabasePaths();
+    for (const string& file : files) {
+      operator_info_->AddDatabasePath(GetTestProtoPath(file));
+    }
+    return operator_info_->Init();
   }
 
   void AssertDatabaseEmpty() {
@@ -119,7 +97,6 @@ class MobileOperatorInfoInitTest : public Test {
   }
 
   EventDispatcherForTest dispatcher_;
-  vector<FilePath> tmp_db_paths_;
   std::unique_ptr<MobileOperatorInfo> operator_info_;
   // Owned by |operator_info_| and tied to its life cycle.
   MobileOperatorInfoImpl* operator_info_impl_;
@@ -139,10 +116,7 @@ TEST_F(MobileOperatorInfoInitTest, FailedInitNoPath) {
 TEST_F(MobileOperatorInfoInitTest, FailedInitBadPath) {
   // - Initialize object with non-existent path.
   // - Verify that initialization fails.
-  const FilePath database_path("nonexistent.pbf");
-  operator_info_->ClearDatabasePaths();
-  operator_info_->AddDatabasePath(database_path);
-  EXPECT_FALSE(operator_info_->Init());
+  EXPECT_FALSE(SetUpDatabase({"nonexistent.pbf"}));
   AssertDatabaseEmpty();
 }
 
@@ -155,18 +129,12 @@ TEST_F(MobileOperatorInfoInitTest, FailedInitBadDatabase) {
 TEST_F(MobileOperatorInfoInitTest, EmptyDBInit) {
   // - Initialize the object with a database file that is empty.
   // - Verify that initialization succeeds, and that the database is empty.
-  operator_info_->ClearDatabasePaths();
-  // Can't use arraysize on empty array.
-  AddDatabase(mobile_operator_db::init_test_empty_db_init, 0);
-  EXPECT_TRUE(operator_info_->Init());
+  EXPECT_TRUE(SetUpDatabase({"init_test_empty_db_init.pbf"}));
   AssertDatabaseEmpty();
 }
 
 TEST_F(MobileOperatorInfoInitTest, SuccessfulInit) {
-  operator_info_->ClearDatabasePaths();
-  AddDatabase(mobile_operator_db::init_test_successful_init,
-              arraysize(mobile_operator_db::init_test_successful_init));
-  EXPECT_TRUE(operator_info_->Init());
+  EXPECT_TRUE(SetUpDatabase({"init_test_successful_init.pbf"}));
   EXPECT_GT(GetDatabase()->mno_size(), 0);
   EXPECT_GT(GetDatabase()->mvno_size(), 0);
 }
@@ -174,12 +142,9 @@ TEST_F(MobileOperatorInfoInitTest, SuccessfulInit) {
 TEST_F(MobileOperatorInfoInitTest, MultipleDBInit) {
   // - Initialize the object with two database files.
   // - Verify that intialization succeeds, and both databases are loaded.
-  operator_info_->ClearDatabasePaths();
-  AddDatabase(mobile_operator_db::init_test_multiple_db_init_1,
-              arraysize(mobile_operator_db::init_test_multiple_db_init_1));
-  AddDatabase(mobile_operator_db::init_test_multiple_db_init_2,
-              arraysize(mobile_operator_db::init_test_multiple_db_init_2));
-  operator_info_->Init();
+  EXPECT_TRUE(SetUpDatabase({"init_test_multiple_db_init_1.pbf",
+                             "init_test_multiple_db_init_2.pbf"}));
+  EXPECT_TRUE(operator_info_->Init());
   EXPECT_GT(GetDatabase()->mno_size(), 0);
   EXPECT_GT(GetDatabase()->mvno_size(), 0);
 }
@@ -190,9 +155,7 @@ TEST_F(MobileOperatorInfoInitTest, InitWithObserver) {
   // - Verify innitialization succeeds.
   MockMobileOperatorInfoObserver dumb_observer;
 
-  operator_info_->ClearDatabasePaths();
-  // Can't use arraysize with empty array.
-  AddDatabase(mobile_operator_db::init_test_empty_db_init, 0);
+  EXPECT_TRUE(SetUpDatabase({"init_test_empty_db_init.pbf"}));
   operator_info_->AddObserver(&dumb_observer);
   EXPECT_TRUE(operator_info_->Init());
 }
@@ -204,10 +167,7 @@ class MobileOperatorInfoMainTest
   MobileOperatorInfoMainTest() : event_checking_policy_(GetParam()) {}
 
   void SetUp() override {
-    operator_info_->ClearDatabasePaths();
-    AddDatabase(mobile_operator_db::main_test,
-                arraysize(mobile_operator_db::main_test));
-    operator_info_->Init();
+    EXPECT_TRUE(SetUpDatabase({"main_test.pbf"}));
     operator_info_->AddObserver(&observer_);
   }
 
@@ -1074,10 +1034,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
   // Same as MobileOperatorInfoMainTest, except that the database used is
   // different.
   void SetUp() override {
-    operator_info_->ClearDatabasePaths();
-    AddDatabase(mobile_operator_db::data_test,
-                arraysize(mobile_operator_db::data_test));
-    operator_info_->Init();
+    EXPECT_TRUE(SetUpDatabase({"data_test.pbf"}));
     operator_info_->AddObserver(&observer_);
   }
 
@@ -1504,12 +1461,7 @@ class MobileOperatorInfoObserverTest : public MobileOperatorInfoMainTest {
 
   // Same as |MobileOperatorInfoMainTest::SetUp|, except that we don't add a
   // default observer.
-  void SetUp() override {
-    operator_info_->ClearDatabasePaths();
-    AddDatabase(mobile_operator_db::data_test,
-                arraysize(mobile_operator_db::data_test));
-    operator_info_->Init();
-  }
+  void SetUp() override { EXPECT_TRUE(SetUpDatabase({"data_test.pbf"})); }
 
  protected:
   // ///////////////////////////////////////////////////////////////////////////
@@ -1607,23 +1559,14 @@ TEST_P(MobileOperatorInfoObserverTest, LateObserver) {
 class MobileOperatorInfoOverrideTest
     : public ::testing::TestWithParam<vector<std::pair<string, string>>> {
  public:
-  MobileOperatorInfoOverrideTest() {
-    PopulateDatabases(
-        mobile_operator_db::init_test_override_db_init_2,
-        arraysize(mobile_operator_db::init_test_override_db_init_2),
-        mobile_operator_db::init_test_override_db_init_1,
-        arraysize(mobile_operator_db::init_test_override_db_init_1));
+  MobileOperatorInfoOverrideTest()
+      : operator_info_impl_(new MobileOperatorInfoImpl(
+            &dispatcher_,
+            "Operator",
+            GetTestProtoPath("init_test_override_db_init_1.pbf").value(),
+            GetTestProtoPath("init_test_override_db_init_2.pbf").value())) {}
 
-    this->operator_info_impl_.reset(new MobileOperatorInfoImpl(
-        &dispatcher_, "Operator", db_path_, override_db_path_));
-  }
-
-  void SetUp() override { operator_info_impl_->Init(); }
-  void TearDown() override {
-    for (const auto& tmp_db_path : tmp_db_paths_) {
-      base::DeleteFile(tmp_db_path, false);
-    }
-  }
+  void SetUp() override { EXPECT_TRUE(operator_info_impl_->Init()); }
 
  protected:
   void VerifyAPNForMCCMNC(const string& mccmnc, const string& apn) {
@@ -1647,25 +1590,7 @@ class MobileOperatorInfoOverrideTest
   }
 
   EventDispatcherForTest dispatcher_;
-  vector<FilePath> tmp_db_paths_;
   std::unique_ptr<MobileOperatorInfoImpl> operator_info_impl_;
-  string db_path_;
-  string override_db_path_;
-
- private:
-  void PopulateDatabases(const unsigned char override_db_data[],
-                         size_t override_num_elems,
-                         const unsigned char db_data[],
-                         size_t num_elems) {
-    FilePath override_tmp_path =
-        CreateTempDatabase(override_db_data, override_num_elems);
-    tmp_db_paths_.push_back(override_tmp_path);
-    this->override_db_path_ = override_tmp_path.MaybeAsASCII();
-
-    FilePath tmp_path = CreateTempDatabase(db_data, num_elems);
-    tmp_db_paths_.push_back(tmp_path);
-    this->db_path_ = tmp_path.MaybeAsASCII();
-  }
 };
 
 // Prevent regression of database override behavior introduced in
