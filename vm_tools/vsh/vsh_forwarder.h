@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <brillo/asynchronous_signal_handler.h>
@@ -48,8 +49,9 @@ class VshForwarder {
   void SendExitMessage();
 
   std::array<base::ScopedFD, 3> stdio_pipes_;
-  brillo::MessageLoop::TaskId stdout_task_;
-  brillo::MessageLoop::TaskId stderr_task_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> socket_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> stdout_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> stderr_watcher_;
   base::ScopedFD ptm_fd_;
   base::ScopedFD sock_fd_;
   bool inherit_env_;

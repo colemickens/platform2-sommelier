@@ -97,9 +97,7 @@ std::unique_ptr<VshForwarder> VshForwarder::Create(base::ScopedFD sock_fd,
 }
 
 VshForwarder::VshForwarder(base::ScopedFD sock_fd, bool inherit_env)
-    : stdout_task_(brillo::MessageLoop::kTaskIdNull),
-      stderr_task_(brillo::MessageLoop::kTaskIdNull),
-      sock_fd_(std::move(sock_fd)),
+    : sock_fd_(std::move(sock_fd)),
       inherit_env_(inherit_env),
       interactive_(true),
       exit_pending_(false) {}
@@ -285,29 +283,26 @@ bool VshForwarder::Init() {
     close(stderr_pipe[1]);
   }
 
-  brillo::MessageLoop* message_loop = brillo::MessageLoop::current();
-  message_loop->WatchFileDescriptor(
-      FROM_HERE, sock_fd_.get(), brillo::MessageLoop::WatchMode::kWatchRead,
-      true,
-      base::Bind(&VshForwarder::HandleVsockReadable, base::Unretained(this)));
+  socket_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      sock_fd_.get(), base::BindRepeating(&VshForwarder::HandleVsockReadable,
+                                          base::Unretained(this)));
 
   if (interactive_) {
-    stdout_task_ = message_loop->WatchFileDescriptor(
-        FROM_HERE, ptm_fd_.get(), brillo::MessageLoop::WatchMode::kWatchRead,
-        true,
-        base::Bind(&VshForwarder::HandleTargetReadable, base::Unretained(this),
-                   ptm_fd_.get(), STDOUT_STREAM));
+    stdout_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+        ptm_fd_.get(), base::BindRepeating(&VshForwarder::HandleTargetReadable,
+                                           base::Unretained(this),
+                                           ptm_fd_.get(), STDOUT_STREAM));
   } else {
-    stdout_task_ = message_loop->WatchFileDescriptor(
-        FROM_HERE, stdio_pipes_[STDOUT_FILENO].get(),
-        brillo::MessageLoop::WatchMode::kWatchRead, true,
-        base::Bind(&VshForwarder::HandleTargetReadable, base::Unretained(this),
-                   stdio_pipes_[STDOUT_FILENO].get(), STDOUT_STREAM));
-    stderr_task_ = message_loop->WatchFileDescriptor(
-        FROM_HERE, stdio_pipes_[STDERR_FILENO].get(),
-        brillo::MessageLoop::WatchMode::kWatchRead, true,
-        base::Bind(&VshForwarder::HandleTargetReadable, base::Unretained(this),
-                   stdio_pipes_[STDERR_FILENO].get(), STDERR_STREAM));
+    stdout_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+        stdio_pipes_[STDOUT_FILENO].get(),
+        base::BindRepeating(&VshForwarder::HandleTargetReadable,
+                            base::Unretained(this),
+                            stdio_pipes_[STDOUT_FILENO].get(), STDOUT_STREAM));
+    stderr_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+        stdio_pipes_[STDERR_FILENO].get(),
+        base::BindRepeating(&VshForwarder::HandleTargetReadable,
+                            base::Unretained(this),
+                            stdio_pipes_[STDERR_FILENO].get(), STDERR_STREAM));
   }
 
   SendConnectionResponse(READY, "vsh ready");
@@ -491,8 +486,7 @@ bool VshForwarder::HandleSigchld(const struct signalfd_siginfo& siginfo) {
   exit_pending_ = true;
 
   // There's no output to flush, so it's safe to quit.
-  if (stdout_task_ == brillo::MessageLoop::kTaskIdNull &&
-      stderr_task_ == brillo::MessageLoop::kTaskIdNull) {
+  if (!stdout_watcher_ && !stderr_watcher_) {
     SendExitMessage();
     return true;
   }
@@ -599,21 +593,16 @@ void VshForwarder::HandleTargetReadable(int fd, StdioStream stream_type) {
     PLOG(ERROR) << "Failed to read from stdio";
     return;
   } else if (count == 0) {
-    // Cancel the watch task, otherwise the handler will fire forever.
+    // Stop watching, otherwise the handler will fire forever.
     if (stream_type == STDOUT_STREAM) {
-      brillo::MessageLoop* message_loop = brillo::MessageLoop::current();
-      message_loop->CancelTask(stdout_task_);
-      stdout_task_ = brillo::MessageLoop::kTaskIdNull;
+      stdout_watcher_ = nullptr;
     } else {
-      brillo::MessageLoop* message_loop = brillo::MessageLoop::current();
-      message_loop->CancelTask(stderr_task_);
-      stderr_task_ = brillo::MessageLoop::kTaskIdNull;
+      stderr_watcher_ = nullptr;
     }
 
     // Only exit if we got SIGCHLD and all output is flushed to the host.
     if (exit_pending_) {
-      if (stdout_task_ == brillo::MessageLoop::kTaskIdNull &&
-          stderr_task_ == brillo::MessageLoop::kTaskIdNull) {
+      if (!stdout_watcher_ && !stderr_watcher_) {
         SendExitMessage();
         return;
       }
