@@ -6,6 +6,7 @@
 
 #include <unistd.h>
 
+#include <base/bind.h>
 #include <base/logging.h>
 
 namespace shill {
@@ -14,45 +15,30 @@ IOReadyHandler::IOReadyHandler(int fd,
                                ReadyMode mode,
                                const ReadyCallback& ready_callback)
     : fd_(fd),
-      fd_watcher_(FROM_HERE),
       ready_mode_(mode),
       ready_callback_(ready_callback) {}
 
-IOReadyHandler::~IOReadyHandler() {
-  Stop();
-}
+IOReadyHandler::~IOReadyHandler() = default;
 
 void IOReadyHandler::Start() {
-  CHECK(ready_mode_ == kModeOutput || ready_mode_ == kModeInput);
-  base::MessageLoopForIO::Mode mode;
-  if (ready_mode_ == kModeOutput) {
-    mode = base::MessageLoopForIO::WATCH_WRITE;
-  } else {
-    mode = base::MessageLoopForIO::WATCH_READ;
+  switch (ready_mode_) {
+    case kModeInput:
+      watcher_ = base::FileDescriptorWatcher::WatchReadable(
+          fd_, base::BindRepeating(ready_callback_, fd_));
+      break;
+    case kModeOutput:
+      watcher_ = base::FileDescriptorWatcher::WatchWritable(
+          fd_, base::BindRepeating(ready_callback_, fd_));
+      break;
+    default:
+      LOG(FATAL) << "Unknown ready_mode_: " << ready_mode_;
   }
 
-  if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
-          fd_, true, mode, &fd_watcher_, this)) {
-    LOG(ERROR) << "WatchFileDescriptor failed on read";
-  }
+  LOG_IF(ERROR, !watcher_) << "Failed on watching fd";
 }
 
 void IOReadyHandler::Stop() {
-  fd_watcher_.StopWatchingFileDescriptor();
-}
-
-void IOReadyHandler::OnFileCanReadWithoutBlocking(int fd) {
-  CHECK_EQ(fd_, fd);
-  CHECK_EQ(ready_mode_, kModeInput);
-
-  ready_callback_.Run(fd_);
-}
-
-void IOReadyHandler::OnFileCanWriteWithoutBlocking(int fd) {
-  CHECK_EQ(fd_, fd);
-  CHECK_EQ(ready_mode_, kModeOutput);
-
-  ready_callback_.Run(fd_);
+  watcher_ = nullptr;
 }
 
 }  // namespace shill

@@ -5,6 +5,9 @@
 #ifndef SHILL_NET_IO_READY_HANDLER_H_
 #define SHILL_NET_IO_READY_HANDLER_H_
 
+#include <memory>
+
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/message_loop/message_loop.h>
 
 #include "shill/net/io_handler.h"
@@ -15,8 +18,7 @@ namespace shill {
 // in that we don't read from the file handle and
 // leave that to the caller.  This is useful in accept()ing
 // sockets and effort to working with peripheral libraries.
-class IOReadyHandler : public IOHandler,
-                       public base::MessageLoopForIO::Watcher {
+class IOReadyHandler : public IOHandler {
  public:
   IOReadyHandler(int fd, ReadyMode mode, const ReadyCallback& ready_callback);
   ~IOReadyHandler();
@@ -25,12 +27,8 @@ class IOReadyHandler : public IOHandler,
   void Stop() override;
 
  private:
-  // base::MessageLoopForIO::Watcher methods.
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override;
-
   int fd_;
-  base::MessageLoopForIO::FileDescriptorWatcher fd_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
   ReadyMode ready_mode_;
   ReadyCallback ready_callback_;
 };

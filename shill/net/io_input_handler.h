@@ -5,6 +5,9 @@
 #ifndef SHILL_NET_IO_INPUT_HANDLER_H_
 #define SHILL_NET_IO_INPUT_HANDLER_H_
 
+#include <memory>
+
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/message_loop/message_loop.h>
 
 #include "shill/net/io_handler.h"
@@ -12,8 +15,7 @@
 namespace shill {
 
 // Monitor file descriptor for reading.
-class IOInputHandler : public IOHandler,
-                       public base::MessageLoopForIO::Watcher {
+class IOInputHandler : public IOHandler {
  public:
   IOInputHandler(int fd,
                  const InputCallback& input_callback,
@@ -24,12 +26,10 @@ class IOInputHandler : public IOHandler,
   void Stop() override;
 
  private:
-  // base::MessageLoopForIO::Watcher methods.
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override;
+  void OnReadable();
 
   int fd_;
-  base::MessageLoopForIO::FileDescriptorWatcher fd_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
   InputCallback input_callback_;
   ErrorCallback error_callback_;
 };

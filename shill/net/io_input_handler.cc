@@ -7,6 +7,8 @@
 #include <string>
 #include <unistd.h>
 
+#include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
@@ -16,30 +18,25 @@ IOInputHandler::IOInputHandler(int fd,
                                const InputCallback& input_callback,
                                const ErrorCallback& error_callback)
     : fd_(fd),
-      fd_watcher_(FROM_HERE),
       input_callback_(input_callback),
       error_callback_(error_callback) {}
 
-IOInputHandler::~IOInputHandler() {
-  Stop();
-}
+IOInputHandler::~IOInputHandler() = default;
 
 void IOInputHandler::Start() {
-  if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
-          fd_, true, base::MessageLoopForIO::WATCH_READ, &fd_watcher_, this)) {
-    LOG(ERROR) << "WatchFileDescriptor failed on read";
-  }
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      fd_,
+      base::BindRepeating(&IOInputHandler::OnReadable, base::Unretained(this)));
+  LOG_IF(ERROR, !watcher_) << "Failed on watching read";
 }
 
 void IOInputHandler::Stop() {
-  fd_watcher_.StopWatchingFileDescriptor();
+  watcher_ = nullptr;
 }
 
-void IOInputHandler::OnFileCanReadWithoutBlocking(int fd) {
-  CHECK_EQ(fd_, fd);
-
+void IOInputHandler::OnReadable() {
   unsigned char buf[IOHandler::kDataBufferSize];
-  ssize_t len = read(fd, buf, sizeof(buf));
+  ssize_t len = read(fd_, buf, sizeof(buf));
   if (len < 0) {
     std::string condition = base::StringPrintf("File read error: %d", errno);
     LOG(ERROR) << condition;
@@ -48,10 +45,6 @@ void IOInputHandler::OnFileCanReadWithoutBlocking(int fd) {
     InputData input_data(buf, len);
     input_callback_.Run(&input_data);
   }
-}
-
-void IOInputHandler::OnFileCanWriteWithoutBlocking(int fd) {
-  NOTREACHED() << "Not watching file descriptor for write";
 }
 
 }  // namespace shill
