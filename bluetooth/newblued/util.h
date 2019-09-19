@@ -57,6 +57,17 @@ std::vector<uint8_t> GetBytesFromLE(const uint8_t* buf, size_t buf_len);
 // the data associated with them.
 UniqueId GetNextId();
 
+template <typename T>
+bool GetVariantValue(const brillo::VariantDictionary& dictionary,
+                     const std::string& key,
+                     T* output) {
+  brillo::VariantDictionary::const_iterator it = dictionary.find(key);
+  if (it == dictionary.end())
+    return false;
+  *output = it->second.TryGet<T>();
+  return true;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Parsing Discovered Device Information
 ////////////////////////////////////////////////////////////////////////////////

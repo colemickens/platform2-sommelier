@@ -9,29 +9,13 @@
 #include <string>
 #include <utility>
 
+#include "bluetooth/newblued/util.h"
+
 namespace bluetooth {
 
 ScanManager::ScanManager(Newblue* newblue,
                          DeviceInterfaceHandler* device_interface_handler)
-    : needs_background_scan_(false),
-      is_in_suspension_(false),
-      number_of_clients_(0),
-      scan_state_(ScanState::IDLE),
-      profiles_({{"active-scan",
-                  {.active = true,
-                   .scan_interval = 36,
-                   .scan_window = 18,
-                   .use_randomAddr = true,
-                   .only_whitelist = false,
-                   .filter_duplicates = false}},
-                 {"passive-scan",
-                  {.active = false,
-                   .scan_interval = 96,
-                   .scan_window = 48,
-                   .use_randomAddr = false,
-                   .only_whitelist = false,
-                   .filter_duplicates = true}}}),
-      newblue_(newblue),
+    : newblue_(newblue),
       device_interface_handler_(device_interface_handler),
       weak_ptr_factory_(this) {
   CHECK(newblue_);
@@ -64,7 +48,7 @@ void ScanManager::OnGattDisconnected(const std::string& device_address,
 
 void ScanManager::OnDevicePaired(const std::string& device_address) {
   VLOG(2) << __func__;
-  ScanManager::PairedDevice paired_device;
+  PairedDevice paired_device;
   paired_devices_.emplace(device_address, paired_device);
   UpdateBackgroundScan();
 }
@@ -79,14 +63,110 @@ bool ScanManager::SetFilter(const std::string client_id,
                             const brillo::VariantDictionary& filter) {
   VLOG(2) << __func__;
 
-  // TODO(michaelfsun): Finish the core logic for set scan filters.
+  // If failed to parse the filter parameters return with false.
+  if (!ParseAndSaveFilter(client_id, filter))
+    return false;
+
+  // If the there is no scanning activity or the client has not requested a
+  // scan. Postpone the filter merging.
+  if (scan_state_ == ScanState::IDLE ||
+      std::find(clients_.begin(), clients_.end(), client_id) ==
+          clients_.end()) {
+    return true;
+  }
+
+  MergeFilters();
   return true;
+}
+
+bool ScanManager::ParseAndSaveFilter(const std::string client_id,
+                                     const brillo::VariantDictionary& filter) {
+  // Initialize the filter struct with minimum RSSI requirement, largest
+  // pathloss tolerance, and none UUIDs filters.
+  Filter parsing_filter{SHRT_MIN, USHRT_MAX, std::set<Uuid>()};
+
+  // When this method is called with no filter parameter, filter is removed.
+  if (filter.empty()) {
+    filters_[client_id] = Filter();
+    VLOG(2) << "Filter removed for client: " << client_id;
+    return true;
+  }
+
+  // Parse and save the filter parameters.
+  GetVariantValue<int16_t>(filter, "RSSI", &parsing_filter.rssi);
+  GetVariantValue<uint16_t>(filter, "Pathloss", &parsing_filter.pathloss);
+  GetVariantValue<std::set<Uuid>>(filter, "UUIDs", &parsing_filter.uuids);
+  filters_[client_id] = parsing_filter;
+
+  VLOG(2) << "Scan Filter Parameters: |RSSI = " << parsing_filter.rssi
+          << "|Pathloss = " << parsing_filter.pathloss
+          << "|# of UUIDs = " << parsing_filter.uuids.size() << "|";
+
+  return true;
+}
+
+void ScanManager::MergeFilters(void) {
+  VLOG(2) << __func__;
+
+  // Check if there is any active clients. Set the master flag accordingly.
+  if (clients_.empty()) {
+    is_filtered_scan_ = false;
+    VLOG(2) << "Filter Scan: is_filtered_scan_ = " << is_filtered_scan_;
+    return;
+  }
+  // Initialize the filter struct with maximum RSSI requirement, smallest
+  // pathloss tolerance, and none UUIDs filters.
+  Filter merged_filter{SHRT_MAX, 0, std::set<Uuid>()};
+  bool is_filter_by_uuid = true;
+
+  for (auto item : filters_) {
+    // If the client, who own this filter has not requested a scan. Do not
+    // merge this filter.
+    if (std::find(clients_.begin(), clients_.end(), item.first) ==
+        clients_.end()) {
+      continue;
+    }
+
+    // Choose the lower rssi and higher pathloss value.
+    if (item.second.rssi < merged_filter.rssi)
+      merged_filter.rssi = item.second.rssi;
+    if (item.second.pathloss > merged_filter.pathloss)
+      merged_filter.pathloss = item.second.pathloss;
+
+    // If client passed uuid parameter with no list entry, disable uuid
+    // filtering, allow all to pass.
+    if (is_filter_by_uuid) {
+      if (item.second.uuids.size() == 0) {
+        is_filter_by_uuid = false;
+        merged_filter.uuids.clear();
+        continue;
+      }
+      // Insert the UUID into merged filter UUID list and check for duplicates.
+      for (auto uuid : item.second.uuids) {
+        merged_filter.uuids.insert(uuid);
+      }
+    }
+  }
+
+  merged_filter_ = merged_filter;
+  is_filtered_scan_ = merged_filter_.rssi != SHRT_MIN ||
+                      merged_filter_.pathloss != USHRT_MAX || is_filter_by_uuid;
+
+  VLOG(2) << "Merged Filter Parameters: |is_filtered_scan = "
+          << is_filtered_scan_ << "|RSSI = " << merged_filter_.rssi
+          << "|Pathloss = " << merged_filter_.pathloss
+          << "|# of UUIDs = " << merged_filter_.uuids.size() << "|";
 }
 
 bool ScanManager::StartScan(std::string client_id) {
   clients_.push_back(client_id);
+  // Create and initialize a new filter for the client if not exist yet.
+  if (!base::ContainsKey(filters_, client_id))
+    filters_[client_id] = Filter();
+  MergeFilters();
   if (!UpdateScan()) {
     clients_.pop_back();
+    filters_.erase(client_id);
     return false;
   }
   return true;
@@ -95,10 +175,12 @@ bool ScanManager::StartScan(std::string client_id) {
 bool ScanManager::StopScan(std::string client_id) {
   clients_.erase(std::remove(clients_.begin(), clients_.end(), client_id),
                  clients_.end());
+  MergeFilters();
   if (!UpdateScan()) {
     clients_.push_back(client_id);
     return false;
   }
+  filters_.erase(client_id);
   return true;
 }
 
@@ -153,6 +235,7 @@ bool ScanManager::UpdateScan(void) {
         // Update state to IDLE in case start scan failed later.
         scan_state_ = ScanState::IDLE;
       }
+
       if (!newblue_->StartDiscovery(
               profiles_["active-scan"].active,
               profiles_["active-scan"].scan_interval,

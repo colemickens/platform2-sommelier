@@ -6,6 +6,7 @@
 #define BLUETOOTH_NEWBLUED_SCAN_MANAGER_H_
 
 #include <map>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -56,6 +57,13 @@ class ScanManager final : public DeviceInterfaceHandler::DeviceObserver {
     bool filter_duplicates;
   };
 
+  // Struct to hold scan filters parameters.
+  struct Filter {
+    int16_t rssi{SHRT_MIN};
+    uint16_t pathloss{USHRT_MAX};
+    std::set<Uuid> uuids{std::set<Uuid>()};
+  };
+
   // struct to hold paired device information.
   struct PairedDevice {
     bool is_connected = false;
@@ -80,18 +88,44 @@ class ScanManager final : public DeviceInterfaceHandler::DeviceObserver {
                                int8_t rssi,
                                uint8_t reply_type,
                                const std::vector<uint8_t>& eir);
-  // Parse the EIR information for a discovered device
+  // Parse the EIR information for a discovered device.
   static void ParseEir(DeviceInfo* device_info,
                        const std::vector<uint8_t>& eir);
+  // Parse and save scan filter for each client.
+  bool ParseAndSaveFilter(const std::string client_id,
+                          const brillo::VariantDictionary& filter);
+  // Combine all filters provided by client into one.
+  void MergeFilters(void);
 
-  bool needs_background_scan_;
-  bool is_in_suspension_;
-  int number_of_clients_;
+  bool needs_background_scan_ = false;
+  bool is_in_suspension_ = false;
+  int number_of_clients_ = 0;
   // Initialized with IDLE state.
-  ScanState scan_state_;
-  // An unordered map to stored scan profiles, which consists sets of scan
+  ScanState scan_state_ = ScanState::IDLE;
+  // Scan filter merged from parameters provided by all actively scanning
+  // clients.
+  Filter merged_filter_;
+  bool is_filtered_scan_ = false;
+  // An unordered map to store scan profiles, which consists sets of scan
   // parameters.
-  std::unordered_map<std::string, ScanSettings> profiles_;
+  std::unordered_map<std::string, ScanSettings> profiles_ = {
+      {"active-scan",
+       {.active = true,
+        .scan_interval = 36,
+        .scan_window = 18,
+        .use_randomAddr = true,
+        .only_whitelist = false,
+        .filter_duplicates = false}},
+      {"passive-scan",
+       {.active = false,
+        .scan_interval = 96,
+        .scan_window = 48,
+        .use_randomAddr = false,
+        .only_whitelist = false,
+        .filter_duplicates = true}}};
+  // An unordered map to store scan filters, the clients here may not have
+  // a scan session requested.
+  std::unordered_map<std::string, Filter> filters_;
 
   Newblue* newblue_;
 
