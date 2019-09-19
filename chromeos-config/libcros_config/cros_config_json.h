@@ -46,6 +46,15 @@ class CrosConfigJson : public CrosConfigImpl {
   // on the X86 versus ARM identity attributes.
   bool SelectConfigByIdentity(const CrosConfigIdentityArm* identity_arm,
                               const CrosConfigIdentityX86* identity_x86);
+
+  // Helper used by SelectConfigByIdentity
+  // @identity_arm: The ARM identity to match, or NULL for X86
+  // @identity_x86: The x86 identity to match, or NULL for ARM
+  // @return: true on success, false otherwise
+  bool SelectConfigByIdentityInternal(
+      const CrosConfigIdentityArm* identity_arm,
+      const CrosConfigIdentityX86* identity_x86);
+
   std::unique_ptr<const base::Value> json_config_;
   // Owned by json_config_
   const base::DictionaryValue* config_dict_;  // Root of configs
