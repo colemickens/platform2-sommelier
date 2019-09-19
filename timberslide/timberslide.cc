@@ -9,6 +9,8 @@
 #include <sysexits.h>
 #include <sys/types.h>
 
+#include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/files/file_util.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
@@ -103,7 +105,6 @@ TimberSlide::TimberSlide(const std::string& ec_type,
                          base::File uptime_file,
                          const base::FilePath& log_dir)
     : device_file_(std::move(device_file)),
-      fd_watcher_(FROM_HERE),
       total_size_(0),
       uptime_file_(std::move(uptime_file)),
       uptime_file_valid_(uptime_file_.IsValid()) {
@@ -113,7 +114,7 @@ TimberSlide::TimberSlide(const std::string& ec_type,
 }
 
 TimberSlide::TimberSlide(std::unique_ptr<LogListener> log_listener)
-    : fd_watcher_(FROM_HERE), log_listener_(std::move(log_listener)) {}
+    : log_listener_(std::move(log_listener)) {}
 
 int TimberSlide::OnInit() {
   LOG(INFO) << "Starting timberslide daemon";
@@ -128,14 +129,12 @@ int TimberSlide::OnInit() {
 
   RotateLogs(previous_log_, current_log_);
 
-  CHECK(base::MessageLoopForIO::current()->WatchFileDescriptor(
-      device_file_.GetPlatformFile(), true, base::MessageLoopForIO::WATCH_READ,
-      &fd_watcher_, this));
-  return EX_OK;
-}
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      device_file_.GetPlatformFile(),
+      base::BindRepeating(&TimberSlide::OnEventReadable,
+                          base::Unretained(this)));
 
-void TimberSlide::OnFileCanWriteWithoutBlocking(int fd) {
-  LOG(FATAL) << "Unexpected call to write event handler";
+  return watcher_ ? EX_OK : EX_OSERR;
 }
 
 //
@@ -198,11 +197,10 @@ std::string TimberSlide::ProcessLogBuffer(const char* buffer,
 }
 
 
-void TimberSlide::OnFileCanReadWithoutBlocking(int fd) {
+void TimberSlide::OnEventReadable() {
   char buffer[4096];
   int ret;
 
-  CHECK_EQ(fd, device_file_.GetPlatformFile());
   memset(buffer, 0, sizeof(buffer));
 
   ret = TEMP_FAILURE_RETRY(

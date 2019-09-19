@@ -16,8 +16,7 @@
 
 namespace timberslide {
 
-class TimberSlide : public brillo::Daemon,
-                    public base::MessageLoopForIO::Watcher {
+class TimberSlide : public brillo::Daemon {
  public:
   TimberSlide(const std::string& ec_type,
               base::File device_file,
@@ -33,8 +32,7 @@ class TimberSlide : public brillo::Daemon,
  private:
   int OnInit() override;
 
-  void OnFileCanWriteWithoutBlocking(int fd) override;
-  void OnFileCanReadWithoutBlocking(int fd) override;
+  void OnEventReadable();
 
   virtual bool GetEcUptime(int64_t* ec_uptime_ms);
 
@@ -44,7 +42,7 @@ class TimberSlide : public brillo::Daemon,
   base::File device_file_;
   base::FilePath current_log_;
   base::FilePath previous_log_;
-  base::MessageLoopForIO::FileDescriptorWatcher fd_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
   int total_size_ = 0;
   base::File uptime_file_;
   bool uptime_file_valid_ = false;
