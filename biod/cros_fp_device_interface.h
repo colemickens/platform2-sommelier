@@ -5,6 +5,7 @@
 #ifndef BIOD_CROS_FP_DEVICE_INTERFACE_H_
 #define BIOD_CROS_FP_DEVICE_INTERFACE_H_
 
+#include <bitset>
 #include <string>
 #include <vector>
 
@@ -12,6 +13,7 @@
 #include <chromeos/ec/ec_commands.h>
 
 #include "biod/ec_command.h"
+#include "biod/fp_mode.h"
 
 using MessageLoopForIO = base::MessageLoopForIO;
 

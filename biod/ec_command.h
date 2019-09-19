@@ -35,9 +35,17 @@ constexpr size_t realsizeof() {
 static constexpr auto kEcCommandUninitializedResult =
     std::numeric_limits<uint32_t>::max();
 
+class EcCommandInterface {
+ public:
+  virtual ~EcCommandInterface() = default;
+  virtual bool Run(int fd) = 0;
+  virtual uint32_t Version() const = 0;
+  virtual uint32_t Command() const = 0;
+};
+
 // Helper to build and send the command structures for cros_fp.
 template <typename O, typename I>
-class EcCommand {
+class EcCommand : public EcCommandInterface {
  public:
   explicit EcCommand(uint32_t cmd, uint32_t ver = 0, const O& req = {})
       : data_({
@@ -48,7 +56,7 @@ class EcCommand {
                     .insize = realsizeof<I>()},
             .req = req,
         }) {}
-  virtual ~EcCommand() = default;
+  ~EcCommand() override = default;
 
   void SetRespSize(uint32_t insize) { data_.cmd.insize = insize; }
   void SetReqSize(uint32_t outsize) { data_.cmd.outsize = outsize; }
@@ -64,7 +72,7 @@ class EcCommand {
    * The caller must be careful to only retry EC state-less
    * commands, that can be rerun without consequence.
    */
-  virtual bool Run(int ec_fd) {
+  bool Run(int ec_fd) override {
     data_.cmd.result = kEcCommandUninitializedResult;
 
     // We rely on the ioctl preserving data_.req when the command fails.
@@ -109,9 +117,12 @@ class EcCommand {
   }
 
   I* Resp() { return &data_.resp; }
-  uint32_t RespSize() { return data_.cmd.insize; }
+  uint32_t RespSize() const { return data_.cmd.insize; }
   O* Req() { return &data_.req; }
-  uint32_t Result() { return data_.cmd.result; }
+  uint32_t Result() const { return data_.cmd.result; }
+
+  uint32_t Version() const override { return data_.cmd.version; }
+  uint32_t Command() const override { return data_.cmd.command; }
 
   struct Data {
     struct cros_ec_command_v2 cmd;
