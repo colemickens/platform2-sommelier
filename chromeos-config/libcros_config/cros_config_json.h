@@ -34,17 +34,10 @@ class CrosConfigJson : public CrosConfigImpl {
                  std::string* val_out) override;
 
   // CrosConfigImpl:
-  bool SelectConfigByIdentityArm(
-      const CrosConfigIdentityArm& identity) override;
-  bool SelectConfigByIdentityX86(
-      const CrosConfigIdentityX86& identity) override;
+  bool SelectConfigByIdentity(const CrosConfigIdentity& identity) override;
   bool ReadConfigFile(const base::FilePath& filepath) override;
 
  private:
-  // Temporary for CL splitting. Gets made public and the Arm/X86
-  // methods are removed in crrev.com/c/1809878.
-  bool SelectConfigByIdentity(const CrosConfigIdentity& identity);
-
   // Helper used by SelectConfigByIdentity
   // @identity: The identity to match
   // @return: true on success, false otherwise

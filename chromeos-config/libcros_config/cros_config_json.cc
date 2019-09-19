@@ -94,15 +94,6 @@ bool CrosConfigJson::SelectConfigByIdentity(
   return true;
 }
 
-bool CrosConfigJson::SelectConfigByIdentityArm(
-    const CrosConfigIdentityArm& identity) {
-  return SelectConfigByIdentity(identity);
-}
-bool CrosConfigJson::SelectConfigByIdentityX86(
-    const CrosConfigIdentityX86& identity) {
-  return SelectConfigByIdentity(identity);
-}
-
 bool CrosConfigJson::GetString(const std::string& path,
                                const std::string& property,
                                std::string* val_out) {

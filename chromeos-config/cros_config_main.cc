@@ -13,6 +13,7 @@
 #include <brillo/flag_helper.h>
 
 #include "chromeos-config/libcros_config/cros_config.h"
+#include "chromeos-config/libcros_config/identity.h"
 
 int main(int argc, char* argv[]) {
   DEFINE_string(test_file, "",
@@ -45,9 +46,10 @@ int main(int argc, char* argv[]) {
       return 1;
     }
   } else {
-    if (!cros_config.InitForTestX86(base::FilePath(FLAGS_test_file),
-                                    FLAGS_test_name, FLAGS_test_sku_id,
-                                    FLAGS_whitelabel_tag)) {
+    if (!cros_config.InitForTest(
+            FLAGS_test_sku_id, base::FilePath(FLAGS_test_file),
+            brillo::CrosConfigIdentity::CurrentSystemArchitecture(),
+            FLAGS_test_name, FLAGS_whitelabel_tag)) {
       return 1;
     }
   }

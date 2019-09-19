@@ -7,9 +7,11 @@
 #ifndef CHROMEOS_CONFIG_LIBCROS_CONFIG_IDENTITY_H_
 #define CHROMEOS_CONFIG_LIBCROS_CONFIG_IDENTITY_H_
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
+#include <brillo/brillo_export.h>
 
 namespace base {
 class DictionaryValue;
@@ -18,10 +20,32 @@ class FilePath;
 
 namespace brillo {
 
-class CrosConfigIdentity {
+enum class SystemArchitecture {
+  kX86,
+  kArm,
+  kUnknown,
+};
+
+class BRILLO_EXPORT CrosConfigIdentity {
  public:
   CrosConfigIdentity();
-  ~CrosConfigIdentity();
+  virtual ~CrosConfigIdentity();
+
+  // Get the current system architecture
+  // @return brillo::SystemArchitecture
+  static SystemArchitecture CurrentSystemArchitecture();
+
+  // Get the system architecture from a string
+  // @arch: string that is similar to the one provided by "uname -m"
+  // @return brillo::SystemArchitecture
+  static SystemArchitecture CurrentSystemArchitecture(const std::string& arch);
+
+  // Factory method to produce a CrosConfigIdentity from a
+  // SystemArchitecture
+  // @return CrosConfigIdentity, or NULL if passed an unknown
+  //     architecture
+  static std::unique_ptr<CrosConfigIdentity> FromArchitecture(
+      const SystemArchitecture& arch);
 
   // Reads the VPD identity information from the supplied VPD file.
   // @vpd_file: File containing the customization_id from VPD. Typically this
