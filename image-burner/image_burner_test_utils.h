@@ -18,29 +18,35 @@ namespace imageburn {
 
 class MockFileSystemWriter : public FileSystemWriter {
  public:
-  MOCK_METHOD1(Open, bool(const char*));
-  MOCK_METHOD0(Close, bool());
-  MOCK_METHOD2(Write, int(const char*, int));
+  MOCK_METHOD(bool, Open, (const char*), (override));
+  MOCK_METHOD(bool, Close, (), (override));
+  MOCK_METHOD(int, Write, (const char*, int), (override));
 };
 
 class MockFileSystemReader : public FileSystemReader {
  public:
-  MOCK_METHOD1(Open, bool(const char*));
-  MOCK_METHOD0(Close, bool());
-  MOCK_METHOD0(GetSize, int64_t());
-  MOCK_METHOD2(Read, int(char*, int));
+  MOCK_METHOD(bool, Open, (const char*), (override));
+  MOCK_METHOD(bool, Close, (), (override));
+  MOCK_METHOD(int64_t, GetSize, (), (override));
+  MOCK_METHOD(int, Read, (char*, int), (override));
 };
 
 class MockSignalSender : public SignalSender {
  public:
-  MOCK_METHOD3(SendFinishedSignal, void(const char*, bool, const char*));
-  MOCK_METHOD3(SendProgressSignal, void(int64_t, int64_t, const char*));
+  MOCK_METHOD(void,
+              SendFinishedSignal,
+              (const char*, bool, const char*),
+              (override));
+  MOCK_METHOD(void,
+              SendProgressSignal,
+              (int64_t, int64_t, const char*),
+              (override));
 };
 
 class MockPathGetter : public PathGetter {
  public:
-  MOCK_METHOD2(GetRealPath, bool(const char*, std::string*));
-  MOCK_METHOD1(GetRootPath, bool(std::string*));
+  MOCK_METHOD(bool, GetRealPath, (const char*, std::string*), (override));
+  MOCK_METHOD(bool, GetRootPath, (std::string*), (override));
 };
 
 }  // namespace imageburn
