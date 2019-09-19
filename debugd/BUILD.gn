@@ -46,6 +46,7 @@ pkg_config("target_defaults") {
     "libminijail",
     "libpcrecpp",
     "vboot_host",
+    "re2",
   ]
 }
 
@@ -79,6 +80,7 @@ static_library("libdebugd") {
     "src/constants.cc",
     "src/container_tool.cc",
     "src/crash_sender_tool.cc",
+    "src/cros_healthd_tool.cc",
     "src/cups_tool.cc",
     "src/debug_logs_tool.cc",
     "src/debug_mode_tool.cc",

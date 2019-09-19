@@ -24,6 +24,7 @@
 #include "debugd/src/battery_tool.h"
 #include "debugd/src/container_tool.h"
 #include "debugd/src/crash_sender_tool.h"
+#include "debugd/src/cros_healthd_tool.h"
 #include "debugd/src/cups_tool.h"
 #include "debugd/src/debug_logs_tool.h"
 #include "debugd/src/debug_mode_tool.h"
@@ -204,6 +205,8 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
       const std::string& sandbox_info,
       const std::string& probe_statement,
       brillo::dbus_utils::FileDescriptor* outfd) override;
+  bool GetManufactureDate(brillo::ErrorPtr* error,
+                          brillo::dbus_utils::FileDescriptor* outfd) override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
@@ -244,6 +247,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<WifiFWDumpTool> wifi_fw_dump_tool_;
   std::unique_ptr<WifiPowerTool> wifi_power_tool_;
   std::unique_ptr<ProbeTool> probe_tool_;
+  std::unique_ptr<CrosHealthdTool> cros_healthd_tool_;
 };
 
 }  // namespace debugd

@@ -39,6 +39,7 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
   container_tool_ = std::make_unique<ContainerTool>();
   crash_sender_tool_ = std::make_unique<CrashSenderTool>();
   cups_tool_ = std::make_unique<CupsTool>();
+  cros_healthd_tool_ = std::make_unique<CrosHealthdTool>();
   debug_logs_tool_ = std::make_unique<DebugLogsTool>(bus);
   debug_mode_tool_ = std::make_unique<DebugModeTool>(bus);
   dev_features_tool_wrapper_ =
@@ -566,6 +567,11 @@ bool DebugdDBusAdaptor::EvaluateProbeFunction(
     brillo::dbus_utils::FileDescriptor *outfd) {
   return probe_tool_->EvaluateProbeFunction(
           error, sandbox_info, probe_statement, outfd);
+}
+
+bool DebugdDBusAdaptor::GetManufactureDate(
+    brillo::ErrorPtr* error, brillo::dbus_utils::FileDescriptor* outfd) {
+  return cros_healthd_tool_->GetManufactureDate(error, outfd);
 }
 
 }  // namespace debugd

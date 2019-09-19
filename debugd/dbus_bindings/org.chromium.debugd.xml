@@ -1118,5 +1118,18 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="GetManufactureDate">
+      <tp:docstring>
+        Runs the ectool i2cread command with pre-defined
+        sandbox options in rootfs and retrieves the
+        manufacture_date_smart used by cros_healthd.
+      </tp:docstring>
+      <arg name="outfd" type="h" direction="out">
+        <tp:docstring>
+          File descriptor to send output to.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
   </interface>
 </node>
