@@ -13,6 +13,7 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 
+#include "bluetooth/common/runtime_flags.h"
 #include "bluetooth/dispatcher/service_watcher.h"
 
 namespace bluetooth {
@@ -82,6 +83,9 @@ class SuspendManager {
 
   // Watches powerd service availability.
   std::unique_ptr<ServiceWatcher> service_watcher_;
+
+  // Keeps track of flags
+  std::unique_ptr<RuntimeFlags> flags_;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.

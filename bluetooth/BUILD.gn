@@ -19,6 +19,7 @@ group("all") {
 
 pkg_config("target_defaults") {
   pkg_deps = [
+    "libcros_config",
     "dbus-1",
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
@@ -39,8 +40,11 @@ static_library("libcommon") {
     "common/dbus_daemon.cc",
     "common/exported_object_manager_wrapper.cc",
     "common/property.cc",
+    "common/runtime_flags.cc",
     "common/util.cc",
   ]
+  defines =
+      [ "USE_BLUETOOTH_SUSPEND_MANAGEMENT=${use.bluetooth_suspend_management}" ]
 }
 
 static_library("libdispatcher") {
@@ -60,8 +64,6 @@ static_library("libdispatcher") {
     "dispatcher/service_watcher.cc",
     "dispatcher/suspend_manager.cc",
   ]
-  defines =
-      [ "USE_BLUETOOTH_SUSPEND_MANAGEMENT=${use.bluetooth_suspend_management}" ]
 }
 
 static_library("libnewblued") {

@@ -12,13 +12,13 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_proxy.h>
 
+#include "bluetooth/common/runtime_flags.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
 namespace bluetooth {
 
 namespace {
 
-#if USE_BLUETOOTH_SUSPEND_MANAGEMENT
 // Description for power manager's RegisterSuspendDelay.
 constexpr char kSuspendDelayDescription[] = "btdispatch";
 
@@ -26,7 +26,6 @@ constexpr char kSuspendDelayDescription[] = "btdispatch";
 // Bluez's PauseDiscovery should take less than 5 seconds to complete.
 constexpr base::TimeDelta kSuspendDelayTimeout =
     base::TimeDelta::FromSeconds(5);
-#endif
 
 // Used for ObjectProxy::ConnectToSignal callbacks.
 void HandleSignalConnected(const std::string& interface,
@@ -76,10 +75,18 @@ void SuspendManager::Init() {
       base::Bind(&SuspendManager::HandleSuspendDoneSignal,
                  weak_ptr_factory_.GetWeakPtr()),
       base::Bind(&HandleSignalConnected));
+
+  flags_ = std::make_unique<RuntimeFlags>();
+  flags_->Init();
 }
 
 void SuspendManager::HandlePowerManagerAvailableOrRestarted(bool available) {
-#if USE_BLUETOOTH_SUSPEND_MANAGEMENT
+  if (!flags_->Get("enable-suspend-management")) {
+    LOG(INFO) << "Skip registration of SuspendManager in Power manager.";
+    suspend_delay_id_ = 0;
+    return;
+  }
+
   if (!available) {
     LOG(INFO) << "Power manager becomes not available";
     // Power manager is dead, undo suspend to make sure we're not stack in
@@ -105,10 +112,8 @@ void SuspendManager::HandlePowerManagerAvailableOrRestarted(bool available) {
                  weak_ptr_factory_.GetWeakPtr()),
       base::Bind(&SuspendManager::OnSuspendDelayRegisteredError,
                  weak_ptr_factory_.GetWeakPtr()));
-#else
-  VLOG(1) << "Skip registration of SuspendManager in Power manager.";
-  suspend_delay_id_ = 0;
-#endif
+
+  LOG(INFO) << "Register SuspendManager with Power Manager";
 }
 
 void SuspendManager::HandleSuspendImminentSignal(dbus::Signal* signal) {
