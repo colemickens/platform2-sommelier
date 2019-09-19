@@ -204,7 +204,7 @@ bool PerformPipeIo(int stdin_fd,
         continue;
       if (n == kIndexStdin) {
         if (!splicing_input_fd && input_str.size() == input_str_pos) {
-          LOG(INFO) << "Ignoring POLLERR for stdin.";
+          VLOG(1) << "Ignoring POLLERR for stdin.";
           stdin_scoped_fd.reset();
           continue;
         }
