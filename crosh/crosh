@@ -65,6 +65,8 @@ CROSH_DEVMODE=
 # Gets set to "1" when running on removable media (e.g. USB stick).
 CROSH_REMOVABLE=
 CROSH_MODPATH="/usr/share/crosh"
+# Gets set to "1" when a single command is being executed followed by exit.
+CROSH_SINGLE_COMMAND=
 
 check_digits() {
   expr "$1" : '^[[:digit:]]*$' > /dev/null
@@ -82,7 +84,9 @@ load_modules() {
     # Then turn path expansion back off.
     set -f
     if [ -e "${mod}" ]; then
-      echo "Loading extra module: ${mod}"
+      if [ "${CROSH_SINGLE_COMMAND}" != "1" ]; then
+        echo "Loading extra module: ${mod}"
+      fi
       . "${mod}" || :
     fi
   done
@@ -2046,7 +2050,6 @@ main() {
     echo "Loading from local paths instead: ${CROSH_MODPATH}"
   fi
 
-  local single_command=0
   while [ $# -gt 0 ]; do
     case $1 in
     --dash)
@@ -2062,7 +2065,7 @@ main() {
       usage
       ;;
     --)
-      single_command=1
+      CROSH_SINGLE_COMMAND=1
       shift
       break
       ;;
@@ -2075,7 +2078,7 @@ main() {
 
   load_extra_crosh
 
-  if [ "${single_command}" -eq 1 ]; then
+  if [ "${CROSH_SINGLE_COMMAND}" == "1" ]; then
     # Don't trap anymore.
     trap 'exit 1' INT QUIT
 
