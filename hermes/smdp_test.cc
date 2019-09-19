@@ -4,6 +4,8 @@
 
 #include "hermes/smdp.h"
 
+#include <vector>
+
 #include <base/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
