@@ -14,8 +14,8 @@
 // limitations under the License.
 //
 
-#ifndef TPM_MANAGER_SERVER_MOCK_OPENSSL_CRYPT_UTIL_H_
-#define TPM_MANAGER_SERVER_MOCK_OPENSSL_CRYPT_UTIL_H_
+#ifndef TPM_MANAGER_SERVER_MOCK_OPENSSL_CRYPTO_UTIL_H_
+#define TPM_MANAGER_SERVER_MOCK_OPENSSL_CRYPTO_UTIL_H_
 
 #include <gmock/gmock.h>
 
@@ -36,4 +36,4 @@ class MockOpensslCryptoUtil : public OpensslCryptoUtil {
 
 }  // namespace tpm_manager
 
-#endif  // TPM_MANAGER_SERVER_MOCK_OPENSSL_CRYPT_UTIL_H_
+#endif  // TPM_MANAGER_SERVER_MOCK_OPENSSL_CRYPTO_UTIL_H_
