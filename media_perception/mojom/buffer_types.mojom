@@ -63,12 +63,15 @@ struct NativePixmapPlane {
 [EnableIf=supports_native_pixmap]
 struct NativePixmapHandle {
   array<NativePixmapPlane> planes;
+
   uint64 modifier;
 
   [EnableIf=is_fuchsia]
   mojo_base.mojom.UnguessableToken? buffer_collection_id;
   [EnableIf=is_fuchsia]
   uint32 buffer_index;
+  [EnableIf=is_fuchsia]
+  bool ram_coherency;
 };
 
 [EnableIf=is_android]
