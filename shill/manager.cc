@@ -301,6 +301,10 @@ void Manager::Start() {
   CHECK(base::CreateDirectory(run_path_)) << run_path_.value();
   resolver_->set_path(run_path_.Append("resolv.conf"));
 
+  if (metrics_) {
+    AddDefaultServiceObserver(metrics_);
+  }
+
   InitializeProfiles();
   running_ = true;
   device_info_.Start();
@@ -353,6 +357,9 @@ void Manager::Stop() {
   device_info_.Stop();
   device_status_check_task_.Cancel();
   sort_services_task_.Cancel();
+  if (metrics_) {
+    RemoveDefaultServiceObserver(metrics_);
+  }
   power_manager_->Stop();
   power_manager_.reset();
 }
@@ -1543,7 +1550,6 @@ void Manager::ReportServicesOnSameNetwork(int connection_id) {
 
 void Manager::UpdateDefaultServices(const ServiceRefPtr& logical_service,
                                     const ServiceRefPtr& physical_service) {
-  metrics_->NotifyDefaultServiceChanged(logical_service.get());
   // Since GetDefaultService returns nullptr when the Service doesn't
   // have a corresponding Connection, this takes into account both a
   // change in default Service and a change in loss/gain of Connection

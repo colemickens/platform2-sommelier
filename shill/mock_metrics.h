@@ -34,7 +34,6 @@ class MockMetrics : public Metrics {
   MOCK_METHOD(void, NotifyDeviceConnectStarted, (int, bool), (override));
   MOCK_METHOD(void, NotifyDeviceConnectFinished, (int), (override));
   MOCK_METHOD(void, ResetConnectTimer, (int), (override));
-  MOCK_METHOD(void, NotifyDefaultServiceChanged, (const Service*), (override));
   MOCK_METHOD(void,
               NotifyServiceStateChanged,
               (const Service&, Service::ConnectState),

@@ -535,6 +535,7 @@ const int Metrics::kMetricServiceSignalStrengthNumBuckets = 40;
 Metrics::Metrics()
     : library_(&metrics_library_),
       last_default_technology_(Technology::kUnknown),
+      last_physical_technology_(Technology::kUnknown),
       was_last_online_(false),
       time_online_timer_(new chromeos_metrics::Timer),
       time_to_drop_timer_(new chromeos_metrics::Timer),
@@ -910,11 +911,17 @@ void Metrics::ReportTimeOnTechnology(
   }
 }
 
-void Metrics::NotifyDefaultServiceChanged(const Service* service) {
-  base::TimeDelta elapsed_seconds;
+void Metrics::OnDefaultServiceChanged(const ServiceRefPtr& logical_service,
+                                      bool /* logical_service_changed */,
+                                      const ServiceRefPtr& physical_service,
+                                      bool /* physical_service_changed */) {
+  last_physical_technology_ = physical_service
+                                  ? physical_service->technology()
+                                  : Technology(Technology::kUnknown);
 
-  Technology technology =
-      service ? service->technology() : Technology(Technology::kUnknown);
+  base::TimeDelta elapsed_seconds;
+  Technology technology = logical_service ? logical_service->technology()
+                                          : Technology(Technology::kUnknown);
   if (technology != last_default_technology_) {
     if (last_default_technology_ != Technology::kUnknown) {
       string histogram = GetFullMetricName(kMetricTimeOnlineSecondsSuffix,
@@ -931,12 +938,12 @@ void Metrics::NotifyDefaultServiceChanged(const Service* service) {
   // Only consider transitions from online to offline and vice-versa; i.e.
   // ignore switching between wired and wireless or wireless and cellular.
   // TimeToDrop measures time online regardless of how we are connected.
-  bool staying_online = ((service != nullptr) && was_last_online_);
-  bool staying_offline = ((service == nullptr) && !was_last_online_);
+  bool staying_online = ((logical_service != nullptr) && was_last_online_);
+  bool staying_offline = ((logical_service == nullptr) && !was_last_online_);
   if (staying_online || staying_offline)
     return;
 
-  if (service == nullptr) {
+  if (logical_service == nullptr) {
     time_to_drop_timer_->GetElapsedTime(&elapsed_seconds);
     SendToUMA(kMetricTimeToDropSeconds, elapsed_seconds.InSeconds(),
               kMetricTimeToDropSecondsMin, kMetricTimeToDropSecondsMax,
@@ -945,7 +952,7 @@ void Metrics::NotifyDefaultServiceChanged(const Service* service) {
     time_to_drop_timer_->Start();
   }
 
-  was_last_online_ = (service != nullptr);
+  was_last_online_ = (logical_service != nullptr);
 }
 
 void Metrics::NotifyServiceStateChanged(const Service& service,

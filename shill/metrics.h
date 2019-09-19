@@ -15,6 +15,7 @@
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 
+#include "shill/default_service_observer.h"
 #include "shill/portal_detector.h"
 #include "shill/power_manager.h"
 #include "shill/refptr_types.h"
@@ -27,7 +28,7 @@
 
 namespace shill {
 
-class Metrics {
+class Metrics : public DefaultServiceObserver {
  public:
   enum WiFiChannel {
     kWiFiChannelUndef = 0,
@@ -984,9 +985,11 @@ class Metrics {
   std::string GetSuspendDurationMetricNameFromStatus(
       WiFiConnectionStatusAfterWake status);
 
-  // Notifies this object that the default service has changed.
-  // |service| is the new default service.
-  virtual void NotifyDefaultServiceChanged(const Service* service);
+  // Implements DefaultServiceObserver.
+  void OnDefaultServiceChanged(const ServiceRefPtr& logical_service,
+                               bool logical_service_changed,
+                               const ServiceRefPtr& physical_service,
+                               bool physical_service_changed) override;
 
   // Notifies this object that |service| state has changed.
   virtual void NotifyServiceStateChanged(const Service& service,
@@ -1420,6 +1423,7 @@ class Metrics {
   MetricsLibraryInterface* library_;
   ServiceMetricsLookupMap services_metrics_;
   Technology last_default_technology_;
+  Technology last_physical_technology_;
   bool was_last_online_;
   std::unique_ptr<chromeos_metrics::Timer> time_online_timer_;
   std::unique_ptr<chromeos_metrics::Timer> time_to_drop_timer_;

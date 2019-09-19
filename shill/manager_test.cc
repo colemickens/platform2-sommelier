@@ -1263,9 +1263,6 @@ TEST_F(ManagerTest, HandleProfileEntryDeletionWithUnload) {
   MockServiceRefPtr s_will_not_remove0(new NiceMock<MockService>(manager()));
   MockServiceRefPtr s_will_not_remove1(new NiceMock<MockService>(manager()));
 
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr))
-      .Times(4);  // Once for each registration.
-
   string entry_name("entry_name");
   EXPECT_CALL(*s_will_remove0, GetStorageIdentifier())
       .WillRepeatedly(Return(entry_name));
@@ -1332,9 +1329,6 @@ TEST_F(ManagerTest, PopProfileWithUnload) {
   MockServiceRefPtr s_will_remove1(new NiceMock<MockService>(manager()));
   MockServiceRefPtr s_will_not_remove0(new NiceMock<MockService>(manager()));
   MockServiceRefPtr s_will_not_remove1(new NiceMock<MockService>(manager()));
-
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr))
-      .Times(5);  // Once for each registration, and one after profile pop.
 
   manager()->RegisterService(s_will_remove0);
   CompleteServiceSort();
@@ -2175,7 +2169,6 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // A single registered Service, without a connection.  The
   // DefaultService should be nullptr.  If a change notification is
   // generated, it should reference kNullPath.
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr));
   EXPECT_CALL(*manager_adaptor_, EmitRpcIdentifierChanged(
                                      kDefaultServiceProperty,
                                      control_interface()->NullRpcIdentifier()))
@@ -2186,7 +2179,6 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // Adding another Service, also without a connection, does not
   // change DefaultService.  Furthermore, we do not send a change
   // notification for DefaultService.
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _))
       .Times(0);
@@ -2195,7 +2187,6 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
 
   // An explicit sort doesn't change anything, and does not emit a
   // change notification for DefaultService.
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _))
       .Times(0);
@@ -2206,7 +2197,6 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // DefaultService, and (hence) does not emit a change notification
   // for DefaultService.
   mock_service1->SetPriority(1, nullptr);
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _))
       .Times(0);
@@ -2217,7 +2207,6 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // DefaultService, and (hence) does not emit a change notification
   // for DefaultService.
   mock_service1->SetPriority(0, nullptr);
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _))
       .Times(0);
@@ -2249,7 +2238,6 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   EXPECT_CALL(*mock_connection1, SetMetric(Connection::kDefaultMetric +
                                                2 * Connection::kMetricIncrement,
                                            false));
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(mock_service0.get()));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
   manager()->SortServicesTask();
@@ -2271,7 +2259,6 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
                                            true));
   EXPECT_CALL(*mock_connection1, SetMetric(Connection::kDefaultMetric, true));
   EXPECT_CALL(service_watcher, OnDefaultServiceChanged(_, _, _, _));
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(mock_service1.get()));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
   manager()->SortServicesTask();
@@ -2290,7 +2277,6 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
                                                Connection::kMetricIncrement,
                                            true));
   EXPECT_CALL(*mock_connection0, SetMetric(Connection::kDefaultMetric, true));
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(mock_service0.get()));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
   mock_service1->set_mock_connection(nullptr);  // So DeregisterService works.
@@ -2299,7 +2285,6 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
 
   // Deregistering the only Service causes the DefaultService to become
   // nullptr.  Appropriate notifications are sent.
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
   mock_service0->set_mock_connection(nullptr);  // So DeregisterService works.
@@ -2308,7 +2293,6 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
 
   // An explicit sort doesn't change anything, and does not generate
   // an external notification.
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _))
       .Times(0);
@@ -2322,7 +2306,6 @@ TEST_F(ManagerTest, UpdateDefaultServices) {
   ServiceRefPtr service = mock_service;
   ServiceRefPtr null_service = nullptr;
 
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr));
   manager()->UpdateDefaultServices(null_service, null_service);
 
   ServiceWatcher service_watcher1;
@@ -2334,27 +2317,23 @@ TEST_F(ManagerTest, UpdateDefaultServices) {
               OnDefaultServiceChanged(service, false, service, true));
   EXPECT_CALL(service_watcher2,
               OnDefaultServiceChanged(service, false, service, true));
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(service.get()));
   manager()->UpdateDefaultServices(mock_service, mock_service);
 
   EXPECT_CALL(service_watcher1,
               OnDefaultServiceChanged(null_service, false, null_service, true));
   EXPECT_CALL(service_watcher2,
               OnDefaultServiceChanged(null_service, false, null_service, true));
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr));
   manager()->UpdateDefaultServices(null_service, null_service);
 
   manager()->RemoveDefaultServiceObserver(&service_watcher1);
   EXPECT_CALL(service_watcher1, OnDefaultServiceChanged(_, _, _, _)).Times(0);
   EXPECT_CALL(service_watcher2,
               OnDefaultServiceChanged(service, false, service, true));
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(service.get()));
   manager()->UpdateDefaultServices(mock_service, mock_service);
   EXPECT_EQ(GetDefaultServiceObserverCount(), 1);
 
   manager()->RemoveDefaultServiceObserver(&service_watcher2);
   EXPECT_CALL(service_watcher2, OnDefaultServiceChanged(_, _, _, _)).Times(0);
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr));
   manager()->UpdateDefaultServices(null_service, null_service);
 
   EXPECT_EQ(GetDefaultServiceObserverCount(), 0);
@@ -2367,7 +2346,6 @@ TEST_F(ManagerTest, UpdateDefaultServicesWithDefaultServiceCallbacksRemoved) {
   ServiceRefPtr service = mock_service;
   ServiceRefPtr null_service = nullptr;
 
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr));
   manager()->UpdateDefaultServices(null_service, null_service);
 
   // Register many callbacks where each callback simply deregisters itself from
@@ -2385,14 +2363,12 @@ TEST_F(ManagerTest, UpdateDefaultServicesWithDefaultServiceCallbacksRemoved) {
         }));
   }
 
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(service.get()));
   manager()->UpdateDefaultServices(mock_service, mock_service);
   EXPECT_EQ(GetDefaultServiceObserverCount(), 0);
 
   for (auto& service_watcher : service_watchers) {
     EXPECT_CALL(service_watcher, OnDefaultServiceChanged(_, _, _, _)).Times(0);
   }
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr));
   manager()->UpdateDefaultServices(null_service, null_service);
   EXPECT_EQ(GetDefaultServiceObserverCount(), 0);
 }
@@ -2404,7 +2380,6 @@ TEST_F(ManagerTest, DefaultServiceStateChange) {
   manager()->RegisterService(mock_service0);
   manager()->RegisterService(mock_service1);
 
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(mock_service0.get()));
   manager()->UpdateDefaultServices(mock_service0, mock_service0);
 
   // Changing the default service's state should notify both services.
@@ -2419,7 +2394,6 @@ TEST_F(ManagerTest, DefaultServiceStateChange) {
   EXPECT_CALL(*mock_service1, OnDefaultServiceStateChanged(_)).Times(0);
   manager()->NotifyServiceStateChanged(mock_service1);
 
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(nullptr));
   manager()->UpdateDefaultServices(nullptr, nullptr);
 
   manager()->DeregisterService(mock_service1);
@@ -3009,8 +2983,6 @@ TEST_F(ManagerTest, CalculateStateOffline) {
   EXPECT_FALSE(manager()->IsConnected());
   EXPECT_EQ("offline", manager()->CalculateState(nullptr));
 
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(_)).Times(AnyNumber());
-
   MockServiceRefPtr mock_service0(new NiceMock<MockService>(manager()));
   MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
 
@@ -3028,8 +3000,6 @@ TEST_F(ManagerTest, CalculateStateOffline) {
 }
 
 TEST_F(ManagerTest, CalculateStateOnline) {
-  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(_)).Times(AnyNumber());
-
   MockServiceRefPtr mock_service0(new NiceMock<MockService>(manager()));
   MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
 
