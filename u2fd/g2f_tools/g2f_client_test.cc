@@ -320,13 +320,17 @@ TEST_F(G2fClientTest, HidDeviceRecvResponseReadFail) {
 class MockHidDevice : public HidDevice {
  public:
   MockHidDevice() : HidDevice("unused") {}
-  MOCK_CONST_METHOD0(IsOpened, bool());
-  MOCK_METHOD0(Open, bool());
-  MOCK_METHOD0(Close, void());
-  MOCK_METHOD3(SendRequest,
-               bool(const Cid& cid, uint8_t cmd, const brillo::Blob& payload));
-  MOCK_METHOD4(RecvResponse, bool(const Cid& cid, uint8_t* cmd,
-                                  brillo::Blob* payload, int timeout_ms));
+  MOCK_METHOD(bool, IsOpened, (), (const, override));
+  MOCK_METHOD(bool, Open, (), (override));
+  MOCK_METHOD(void, Close, (), (override));
+  MOCK_METHOD(bool,
+              SendRequest,
+              (const Cid&, uint8_t, const brillo::Blob&),
+              (override));
+  MOCK_METHOD(bool,
+              RecvResponse,
+              (const Cid&, uint8_t*, brillo::Blob*, int),
+              (override));
 };
 
 class U2FHidTest : public ::testing::Test {
@@ -538,9 +542,7 @@ TEST_F(U2FHidTest, Wink) {
 class MockU2FHid : public U2FHid {
  public:
   MockU2FHid() : U2FHid(nullptr) {}
-  MOCK_METHOD2(Msg,
-               bool(const brillo::Blob& request,
-                    brillo::Blob* response));
+  MOCK_METHOD(bool, Msg, (const brillo::Blob&, brillo::Blob*), (override));
 };
 
 
