@@ -12,6 +12,7 @@
 #include <base/macros.h>
 #include <mojo/public/cpp/bindings/binding.h>
 
+#include "diagnostics/cros_healthd/utils/battery_utils.h"
 #include "mojo/cros_healthd.mojom.h"
 
 namespace diagnostics {
@@ -25,7 +26,8 @@ class CrosHealthdMojoService final
 
   // |mojo_pipe_handle| - Pipe to bind this instance to.
   explicit CrosHealthdMojoService(
-      mojo::ScopedMessagePipeHandle mojo_pipe_handle);
+      mojo::ScopedMessagePipeHandle mojo_pipe_handle,
+      BatteryFetcher* battery_fetcher);
   ~CrosHealthdMojoService() override;
 
   // chromeos::cros_healthd::mojom::CrosHealthdService overrides:
@@ -41,6 +43,10 @@ class CrosHealthdMojoService final
   // remote end to call our methods.
   mojo::Binding<chromeos::cros_healthd::mojom::CrosHealthdService>
       self_binding_;
+
+  // Unowned pointer that should outlive this CrosHealthdMojoService
+  // instance.
+  BatteryFetcher* battery_fetcher_;
 
   DISALLOW_COPY_AND_ASSIGN(CrosHealthdMojoService);
 };

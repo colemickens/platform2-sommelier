@@ -4,74 +4,143 @@
 
 #include "diagnostics/cros_healthd/utils/battery_utils.h"
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <base/process/launch.h>
+#include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/time/time.h>
+#include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 #include <re2/re2.h>
 
+#include "debugd/dbus-proxies.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
 namespace diagnostics {
 
-using BatteryInfoPtr = ::chromeos::cros_healthd::mojom::BatteryInfoPtr;
-using BatteryInfo = ::chromeos::cros_healthd::mojom::BatteryInfo;
+BatteryFetcher::BatteryFetcher(org::chromium::debugdProxyInterface* proxy)
+    : proxy_(proxy) {}
+BatteryFetcher::~BatteryFetcher() = default;
 
-// This is a temporary hack enabling the battery_prober to provide the
-// manufacture_date_smart property on Sona devices. The proper way to do this
-// will take some planning. Details will be tracked here:
-// https://crbug.com/978615.
-bool FetchManufactureDateSmart(int64_t* manufacture_date_smart) {
-  const char mosys_command[] = "mosys";
-  const char mosys_subcommand[] = "platform";
-  const char platform_subcommand[] = "model";
-  std::string model_name;
-  if (!base::GetAppOutput(
-          {mosys_command, mosys_subcommand, platform_subcommand},
-          &model_name)) {
+namespace {
+enum class PipeState {
+  PENDING,  // Bytes are currently being written to the destination string
+  ERROR,    // Failed to succesfully read bytes from source file descriptor
+  DONE      // All bytes were succesfully read from the source file descriptor
+};
+
+// The system-defined size of buffer used to read from a pipe.
+const size_t kBufferSize = PIPE_BUF;
+// Seconds to wait for debugd to return probe results.
+const time_t kWaitSeconds = 5;
+
+PipeState ReadPipe(int src_fd, std::string* dst_str) {
+  char buffer[kBufferSize];
+  const ssize_t bytes_read = HANDLE_EINTR(read(src_fd, buffer, kBufferSize));
+  if (bytes_read < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+    PLOG(ERROR) << "read() from fd " << src_fd << " failed";
+    return PipeState::ERROR;
+  }
+  if (bytes_read == 0) {
+    return PipeState::DONE;
+  }
+  if (bytes_read > 0) {
+    dst_str->append(buffer, bytes_read);
+  }
+  return PipeState::PENDING;
+}
+
+bool ReadNonblockingPipeToString(int fd, std::string* out) {
+  fd_set read_fds;
+  struct timeval timeout;
+
+  FD_ZERO(&read_fds);
+  FD_SET(fd, &read_fds);
+
+  timeout.tv_sec = kWaitSeconds;
+  timeout.tv_usec = 0;
+
+  while (true) {
+    int retval = select(fd + 1, &read_fds, nullptr, nullptr, &timeout);
+    if (retval < 0) {
+      PLOG(ERROR) << "select() failed from debugd";
+      return false;
+    }
+
+    // Should only happen on timeout. Log a warning here, so we get at least a
+    // log if the process is stale.
+    if (retval == 0) {
+      LOG(WARNING) << "select() timed out. Process might be stale.";
+      return false;
+    }
+
+    PipeState state = ReadPipe(fd, out);
+    if (state == PipeState::DONE) {
+      return true;
+    }
+    if (state == PipeState::ERROR) {
+      return false;
+    }
+  }
+}
+
+}  // namespace
+
+// Currently, the battery_prober provides the manufacture_date_smart property
+// only on Sona devices. Eventually, this property will be reported for all
+// devices. Details will be tracked here: https://crbug.com/978615.
+bool BatteryFetcher::FetchManufactureDateSmart(
+    int64_t* manufacture_date_smart) {
+  constexpr auto kDebugdEcToolFunction = "GetManufactureDate";
+  dbus::MethodCall method_call(debugd::kDebugdInterface, kDebugdEcToolFunction);
+
+  dbus::MessageWriter writer(&method_call);
+
+  // In milliseconds, the time to wait for a debugd call.
+  constexpr base::TimeDelta kDebugdTimeOut =
+      base::TimeDelta::FromMilliseconds(10 * 1000);
+  std::unique_ptr<dbus::Response> response =
+      proxy_->GetObjectProxy()->CallMethodAndBlock(
+          &method_call, kDebugdTimeOut.InMilliseconds());
+
+  if (!response) {
+    LOG(ERROR) << "Failed to issue D-Bus call to method "
+               << kDebugdEcToolFunction << " of debugd D-Bus interface";
     return false;
   }
-  // CollapseWhitespaceASCII() is used to remove the newline from model_name.
-  // This string is collected as output from the terminal.
-  if (base::CollapseWhitespaceASCII(base::ToLowerASCII(model_name), true) !=
-      "sona") {
+
+  dbus::MessageReader reader(response.get());
+  base::ScopedFD read_fd{};
+  if (!reader.PopFileDescriptor(&read_fd)) {
+    LOG(ERROR) << "Failed to read fd that represents the read end of the pipe"
+                  " from debugd";
     return false;
   }
-  std::string ectool_output;
-  // The command follows the format:
-  // ectool i2cread <8 | 16> <port> <addr8> <offset>
-  constexpr char num_bits[] = "16";
-  constexpr char port[] = "2";
-  constexpr char addr[] = "0x16";
-  constexpr char offset[] = "0x1b";
-  if (!base::GetAppOutput({"ectool", "i2cread", num_bits, port, addr, offset},
-                          &ectool_output)) {
+
+  std::string debugd_result;
+  if (!ReadNonblockingPipeToString(read_fd.get(), &debugd_result)) {
+    LOG(ERROR) << "Cannot read result from debugd";
     return false;
   }
-  constexpr auto kRegexPattern =
-      R"(^Read from I2C port [\d]+ at .* offset .* = (.+)$)";
-  std::string reg_value;
-  // CollapseWhitespaceASCII is used to remove the newline from ectool_output.
-  // This string is collected as output from the terminal.
-  if (!RE2::PartialMatch(base::CollapseWhitespaceASCII(ectool_output, true),
-                         kRegexPattern, &reg_value))
-    return false;
-  return base::HexStringToInt64(reg_value, manufacture_date_smart);
+
+  base::StringToInt64(debugd_result, manufacture_date_smart);
+  return true;
 }
 
 // Extract the battery metrics from the PowerSupplyProperties protobuf.
 // Return true if the metrics could be successfully extracted from |response|
 // and put into |output_info|.
-bool ExtractBatteryMetrics(dbus::Response* response,
-                           BatteryInfoPtr* output_info) {
+bool BatteryFetcher::ExtractBatteryMetrics(dbus::Response* response,
+                                           BatteryInfoPtr* output_info) {
   DCHECK(response);
   DCHECK(output_info);
 
@@ -116,11 +185,9 @@ bool ExtractBatteryMetrics(dbus::Response* response,
   return true;
 }
 
-namespace {
-
-// Make a D-bus call to get the PowerSupplyProperties proto, which contains the
+// Make a D-Bus call to get the PowerSupplyProperties proto, which contains the
 // battery metrics.
-bool FetchBatteryMetrics(BatteryInfoPtr* output_info) {
+bool BatteryFetcher::FetchBatteryMetrics(BatteryInfoPtr* output_info) {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
   scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
@@ -140,9 +207,7 @@ bool FetchBatteryMetrics(BatteryInfoPtr* output_info) {
   return ExtractBatteryMetrics(response.get(), output_info);
 }
 
-}  // namespace
-
-std::vector<BatteryInfoPtr> FetchBatteryInfo() {
+std::vector<BatteryFetcher::BatteryInfoPtr> BatteryFetcher::FetchBatteryInfo() {
   // Since Chromebooks currently only support a single battery (main battery),
   // the vector should have a size of one. In the future, if Chromebooks
   // contain more batteries, they can easily be supported by the vector.

@@ -17,8 +17,10 @@
 
 namespace diagnostics {
 
-CrosHealthd::CrosHealthd()
-    : DBusServiceDaemon(kCrosHealthdServiceName /* service_name */) {}
+CrosHealthd::CrosHealthd(std::unique_ptr<org::chromium::debugdProxy> proxy)
+    : DBusServiceDaemon(kCrosHealthdServiceName /* service_name */),
+      proxy_(std::move(proxy)),
+      battery_fetcher_(std::make_unique<BatteryFetcher>(proxy_.get())) {}
 
 CrosHealthd::~CrosHealthd() = default;
 
@@ -125,8 +127,8 @@ bool CrosHealthd::BootstrapMojoConnection(brillo::ErrorPtr* error,
 
   mojo_service_bind_attempted_ = true;
   mojo_service_ = std::make_unique<CrosHealthdMojoService>(
-      mojo::edk::CreateChildMessagePipe(
-          kCrosHealthdMojoConnectionChannelToken));
+      mojo::edk::CreateChildMessagePipe(kCrosHealthdMojoConnectionChannelToken),
+      battery_fetcher_.get());
   if (!mojo_service_) {
     constexpr char kBootstrapFailed[] = "Mojo bootstrap failed";
     *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,

@@ -9,7 +9,9 @@
 
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include <brillo/dbus/dbus_connection.h>
 
+#include "debugd/dbus-proxies.h"
 #include "diagnostics/cros_healthd/cros_healthd.h"
 #include "diagnostics/cros_healthd/utils/battery_utils.h"
 #include "diagnostics/cros_healthd/utils/disk_utils.h"
@@ -27,6 +29,16 @@ int main(int argc, char** argv) {
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
+  // Setting up the D-bus connection and initiating debugdProxy, which
+  // cros_healthd will use to speak to debugd.
+  brillo::DBusConnection connection;
+  scoped_refptr<dbus::Bus> bus = connection.Connect();
+  if (!bus) {
+    LOG(ERROR) << "cros_healthd: Failed to connect to system D-bus bus";
+    return EXIT_FAILURE;
+  }
+  auto proxy = std::make_unique<org::chromium::debugdProxy>(bus);
+
   if (FLAGS_probe_block_devices) {
     base::FilePath root_dir{"/"};
     auto devices = diagnostics::FetchNonRemovableBlockDevicesInfo(root_dir);
@@ -39,7 +51,8 @@ int main(int argc, char** argv) {
              device->name.c_str(), device->serial);
     }
   } else if (FLAGS_probe_battery_metrics) {
-    auto batteries = diagnostics::FetchBatteryInfo();
+    diagnostics::BatteryFetcher battery_fetcher(proxy.get());
+    auto batteries = battery_fetcher.FetchBatteryInfo();
     printf(
         "charge_full,charge_full_design,cycle_count,serial_number,"
         "vendor(manufacturer),voltage_now,voltage_min_design,"
@@ -64,7 +77,8 @@ int main(int argc, char** argv) {
     }
     printf("sku_number: %s\n", sku_number.c_str());
   } else {
-    return diagnostics::CrosHealthd().Run();
+    diagnostics::CrosHealthd daemon(std::move(proxy));
+    return daemon.Run();
   }
   return EXIT_SUCCESS;
 }

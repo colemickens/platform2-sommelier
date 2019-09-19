@@ -21,9 +21,12 @@ namespace diagnostics {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 CrosHealthdMojoService::CrosHealthdMojoService(
-    mojo::ScopedMessagePipeHandle mojo_pipe_handle)
-    : self_binding_(this /* impl */, std::move(mojo_pipe_handle)) {
+    mojo::ScopedMessagePipeHandle mojo_pipe_handle,
+    BatteryFetcher* battery_fetcher)
+    : self_binding_(this /* impl */, std::move(mojo_pipe_handle)),
+      battery_fetcher_(battery_fetcher) {
   DCHECK(self_binding_.is_bound());
+  DCHECK(battery_fetcher_);
 }
 
 CrosHealthdMojoService::~CrosHealthdMojoService() = default;
@@ -40,7 +43,7 @@ void CrosHealthdMojoService::ProbeTelemetryInfo(
   for (const auto category : categories) {
     switch (category) {
       case ProbeCategoryEnum::kBattery: {
-        auto batteries = FetchBatteryInfo();
+        auto batteries = battery_fetcher_->FetchBatteryInfo();
         telemetry_info.battery_info.Swap(&batteries[0]);
         break;
       }

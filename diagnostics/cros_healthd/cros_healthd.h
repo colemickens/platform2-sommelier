@@ -14,7 +14,9 @@
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/errors/error.h>
 
+#include "debugd/dbus-proxies.h"
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
+#include "diagnostics/cros_healthd/utils/battery_utils.h"
 #include "mojo/cros_healthd.mojom.h"
 
 namespace diagnostics {
@@ -22,7 +24,7 @@ namespace diagnostics {
 // Daemon class for cros_healthd.
 class CrosHealthd final : public brillo::DBusServiceDaemon {
  public:
-  CrosHealthd();
+  explicit CrosHealthd(std::unique_ptr<org::chromium::debugdProxy> proxy);
   ~CrosHealthd() override;
 
  private:
@@ -39,6 +41,9 @@ class CrosHealthd final : public brillo::DBusServiceDaemon {
                                const base::ScopedFD& mojo_fd);
 
   void ShutDownDueToMojoError(const std::string& debug_reason);
+
+  std::unique_ptr<org::chromium::debugdProxy> proxy_;
+  std::unique_ptr<BatteryFetcher> battery_fetcher_;
 
   bool mojo_service_bind_attempted_ = false;
   std::unique_ptr<CrosHealthdMojoService> mojo_service_;
