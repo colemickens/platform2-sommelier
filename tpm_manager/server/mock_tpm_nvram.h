@@ -41,27 +41,37 @@ class MockTpmNvram : public TpmNvram {
   MockTpmNvram();
   ~MockTpmNvram() override;
 
-  MOCK_METHOD5(DefineSpace,
-               NvramResult(uint32_t,
-                           size_t,
-                           const std::vector<NvramSpaceAttribute>&,
-                           const std::string&,
-                           NvramSpacePolicy));
-  MOCK_METHOD1(DestroySpace, NvramResult(uint32_t));
-  MOCK_METHOD3(WriteSpace,
-               NvramResult(uint32_t, const std::string&, const std::string&));
-  MOCK_METHOD3(ReadSpace,
-               NvramResult(uint32_t, std::string*, const std::string&));
-  MOCK_METHOD4(LockSpace,
-               NvramResult(uint32_t, bool, bool, const std::string&));
-  MOCK_METHOD1(ListSpaces, NvramResult(std::vector<uint32_t>*));
-  MOCK_METHOD6(GetSpaceInfo,
-               NvramResult(uint32_t,
-                           uint32_t*,
-                           bool*,
-                           bool*,
-                           std::vector<NvramSpaceAttribute>*,
-                           NvramSpacePolicy*));
+  MOCK_METHOD(NvramResult,
+              DefineSpace,
+              (uint32_t,
+               size_t,
+               const std::vector<NvramSpaceAttribute>&,
+               const std::string&,
+               NvramSpacePolicy),
+              (override));
+  MOCK_METHOD(NvramResult, DestroySpace, (uint32_t), (override));
+  MOCK_METHOD(NvramResult,
+              WriteSpace,
+              (uint32_t, const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(NvramResult,
+              ReadSpace,
+              (uint32_t, std::string*, const std::string&),
+              (override));
+  MOCK_METHOD(NvramResult,
+              LockSpace,
+              (uint32_t, bool, bool, const std::string&),
+              (override));
+  MOCK_METHOD(NvramResult, ListSpaces, (std::vector<uint32_t>*), (override));
+  MOCK_METHOD(NvramResult,
+              GetSpaceInfo,
+              (uint32_t,
+               uint32_t*,
+               bool*,
+               bool*,
+               std::vector<NvramSpaceAttribute>*,
+               NvramSpacePolicy*),
+              (override));
 
  private:
   NvramResult FakeDefineSpace(

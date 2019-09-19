@@ -28,24 +28,34 @@ class MockTpmOwnershipInterface : public TpmOwnershipInterface {
   MockTpmOwnershipInterface();
   ~MockTpmOwnershipInterface() override;
 
-  MOCK_METHOD2(GetTpmStatus,
-               void(const GetTpmStatusRequest& request,
-                    const GetTpmStatusCallback& callback));
-  MOCK_METHOD2(GetDictionaryAttackInfo,
-               void(const GetDictionaryAttackInfoRequest& request,
-                    const GetDictionaryAttackInfoCallback& callback));
-  MOCK_METHOD2(ResetDictionaryAttackLock,
-               void(const ResetDictionaryAttackLockRequest& request,
-                    const ResetDictionaryAttackLockCallback& callback));
-  MOCK_METHOD2(TakeOwnership,
-               void(const TakeOwnershipRequest& request,
-                    const TakeOwnershipCallback& callback));
-  MOCK_METHOD2(RemoveOwnerDependency,
-               void(const RemoveOwnerDependencyRequest& request,
-                    const RemoveOwnerDependencyCallback& callback));
-  MOCK_METHOD2(ClearStoredOwnerPassword,
-               void(const ClearStoredOwnerPasswordRequest& request,
-                    const ClearStoredOwnerPasswordCallback& callback));
+  MOCK_METHOD(void,
+              GetTpmStatus,
+              (const GetTpmStatusRequest&, const GetTpmStatusCallback&),
+              (override));
+  MOCK_METHOD(void,
+              GetDictionaryAttackInfo,
+              (const GetDictionaryAttackInfoRequest&,
+               const GetDictionaryAttackInfoCallback&),
+              (override));
+  MOCK_METHOD(void,
+              ResetDictionaryAttackLock,
+              (const ResetDictionaryAttackLockRequest&,
+               const ResetDictionaryAttackLockCallback&),
+              (override));
+  MOCK_METHOD(void,
+              TakeOwnership,
+              (const TakeOwnershipRequest&, const TakeOwnershipCallback&),
+              (override));
+  MOCK_METHOD(void,
+              RemoveOwnerDependency,
+              (const RemoveOwnerDependencyRequest&,
+               const RemoveOwnerDependencyCallback&),
+              (override));
+  MOCK_METHOD(void,
+              ClearStoredOwnerPassword,
+              (const ClearStoredOwnerPasswordRequest&,
+               const ClearStoredOwnerPasswordCallback&),
+              (override));
 };
 
 }  // namespace tpm_manager

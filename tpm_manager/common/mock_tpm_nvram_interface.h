@@ -28,27 +28,34 @@ class MockTpmNvramInterface : public TpmNvramInterface {
   MockTpmNvramInterface();
   ~MockTpmNvramInterface() override;
 
-  MOCK_METHOD2(DefineSpace,
-               void(const DefineSpaceRequest& request,
-                    const DefineSpaceCallback& callback));
-  MOCK_METHOD2(DestroySpace,
-               void(const DestroySpaceRequest& request,
-                    const DestroySpaceCallback& callback));
-  MOCK_METHOD2(WriteSpace,
-               void(const WriteSpaceRequest& request,
-                    const WriteSpaceCallback& callback));
-  MOCK_METHOD2(ReadSpace,
-               void(const ReadSpaceRequest& request,
-                    const ReadSpaceCallback& callback));
-  MOCK_METHOD2(LockSpace,
-               void(const LockSpaceRequest& request,
-                    const LockSpaceCallback& callback));
-  MOCK_METHOD2(ListSpaces,
-               void(const ListSpacesRequest& request,
-                    const ListSpacesCallback& callback));
-  MOCK_METHOD2(GetSpaceInfo,
-               void(const GetSpaceInfoRequest& request,
-                    const GetSpaceInfoCallback& callback));
+  MOCK_METHOD(void,
+              DefineSpace,
+              (const DefineSpaceRequest&, const DefineSpaceCallback&),
+              (override));
+  MOCK_METHOD(void,
+              DestroySpace,
+              (const DestroySpaceRequest&, const DestroySpaceCallback&),
+              (override));
+  MOCK_METHOD(void,
+              WriteSpace,
+              (const WriteSpaceRequest&, const WriteSpaceCallback&),
+              (override));
+  MOCK_METHOD(void,
+              ReadSpace,
+              (const ReadSpaceRequest&, const ReadSpaceCallback&),
+              (override));
+  MOCK_METHOD(void,
+              LockSpace,
+              (const LockSpaceRequest&, const LockSpaceCallback&),
+              (override));
+  MOCK_METHOD(void,
+              ListSpaces,
+              (const ListSpacesRequest&, const ListSpacesCallback&),
+              (override));
+  MOCK_METHOD(void,
+              GetSpaceInfo,
+              (const GetSpaceInfoRequest&, const GetSpaceInfoCallback&),
+              (override));
 };
 
 }  // namespace tpm_manager

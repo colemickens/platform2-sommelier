@@ -30,22 +30,26 @@ class MockTpmStatus : public TpmStatus {
   MockTpmStatus();
   ~MockTpmStatus() override;
 
-  MOCK_METHOD0(IsTpmEnabled, bool());
-  MOCK_METHOD1(CheckAndNotifyIfTpmOwned, bool(TpmOwnershipStatus*));
-  MOCK_METHOD4(GetDictionaryAttackInfo,
-               bool(uint32_t* counter,
-                    uint32_t* threshold,
-                    bool* lockout,
-                    uint32_t* seconds_remaining));
-  MOCK_METHOD6(GetVersionInfo,
-               bool(uint32_t* family,
-                    uint64_t* spec_level,
-                    uint32_t* manufacturer,
-                    uint32_t* tpm_model,
-                    uint64_t* firmware_version,
-                    std::vector<uint8_t>* vendor_specific));
-  MOCK_METHOD0(TestTpmWithDefaultOwnerPassword, bool());
-  MOCK_METHOD0(MarkOwnerPasswordStateDirty, void());
+  MOCK_METHOD(bool, IsTpmEnabled, (), (override));
+  MOCK_METHOD(bool,
+              CheckAndNotifyIfTpmOwned,
+              (TpmOwnershipStatus*),
+              (override));
+  MOCK_METHOD(bool,
+              GetDictionaryAttackInfo,
+              (uint32_t*, uint32_t*, bool*, uint32_t*),
+              (override));
+  MOCK_METHOD(bool,
+              GetVersionInfo,
+              (uint32_t*,
+               uint64_t*,
+               uint32_t*,
+               uint32_t*,
+               uint64_t*,
+               std::vector<uint8_t>*),
+              (override));
+  MOCK_METHOD(bool, TestTpmWithDefaultOwnerPassword, (), (override));
+  MOCK_METHOD(void, MarkOwnerPasswordStateDirty, (), (override));
 };
 
 }  // namespace tpm_manager

@@ -28,8 +28,8 @@ class MockLocalDataStore : public LocalDataStore {
   MockLocalDataStore();
   ~MockLocalDataStore() override;
 
-  MOCK_METHOD1(Read, bool(LocalData*));
-  MOCK_METHOD1(Write, bool(const LocalData&));
+  MOCK_METHOD(bool, Read, (LocalData*), (override));
+  MOCK_METHOD(bool, Write, (const LocalData&), (override));
 
   const LocalData& GetFakeData() const { return fake_; }
   LocalData& GetMutableFakeData() { return fake_; }

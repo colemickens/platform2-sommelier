@@ -30,7 +30,7 @@ class MockOpensslCryptoUtil : public OpensslCryptoUtil {
   MockOpensslCryptoUtil();
   ~MockOpensslCryptoUtil() override;
 
-  MOCK_METHOD2(GetRandomBytes, bool(size_t, std::string*));
+  MOCK_METHOD(bool, GetRandomBytes, (size_t, std::string*), (override));
 
  private:
   bool FakeGetRandomBytes(size_t num_bytes, std::string* random_data);

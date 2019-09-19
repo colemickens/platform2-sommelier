@@ -18,9 +18,14 @@ class MockTpmOwnershipTakenSignalHandler
  public:
   MockTpmOwnershipTakenSignalHandler() = default;
   virtual ~MockTpmOwnershipTakenSignalHandler() = default;
-  MOCK_METHOD1(OnOwnershipTaken, void(const OwnershipTakenSignal&));
-  MOCK_METHOD3(OnSignalConnected,
-               void(const std::string&, const std::string&, bool));
+  MOCK_METHOD(void,
+              OnOwnershipTaken,
+              (const OwnershipTakenSignal&),
+              (override));
+  MOCK_METHOD(void,
+              OnSignalConnected,
+              (const std::string&, const std::string&, bool),
+              (override));
 };
 
 }  // namespace tpm_manager

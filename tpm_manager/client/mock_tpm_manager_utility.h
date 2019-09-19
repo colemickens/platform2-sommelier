@@ -33,18 +33,29 @@ class TPM_MANAGER_EXPORT MockTpmManagerUtility : public TpmManagerUtility {
   }
   ~MockTpmManagerUtility() override = default;
 
-  MOCK_METHOD0(Initialize, bool());
-  MOCK_METHOD0(TakeOwnership, bool());
-  MOCK_METHOD3(GetTpmStatus, bool(bool*, bool*, LocalData*));
-  MOCK_METHOD1(RemoveOwnerDependency, bool(const std::string&));
-  MOCK_METHOD0(ClearStoredOwnerPassword, bool());
-  MOCK_METHOD4(GetDictionaryAttackInfo, bool(int*, int*, bool*, int*));
-  MOCK_METHOD0(ResetDictionaryAttackLock, bool());
-  MOCK_METHOD3(ReadSpace, bool(uint32_t, bool, std::string*));
-  MOCK_METHOD3(GetOwnershipTakenSignalStatus, bool(bool*, bool*, LocalData*));
-  MOCK_METHOD1(OnOwnershipTaken, void(const OwnershipTakenSignal&));
-  MOCK_METHOD3(OnSignalConnected,
-               void(const std::string&, const std::string&, bool));
+  MOCK_METHOD(bool, Initialize, (), (override));
+  MOCK_METHOD(bool, TakeOwnership, (), (override));
+  MOCK_METHOD(bool, GetTpmStatus, (bool*, bool*, LocalData*), (override));
+  MOCK_METHOD(bool, RemoveOwnerDependency, (const std::string&), (override));
+  MOCK_METHOD(bool, ClearStoredOwnerPassword, (), (override));
+  MOCK_METHOD(bool,
+              GetDictionaryAttackInfo,
+              (int*, int*, bool*, int*),
+              (override));
+  MOCK_METHOD(bool, ResetDictionaryAttackLock, (), (override));
+  MOCK_METHOD(bool, ReadSpace, (uint32_t, bool, std::string*), (override));
+  MOCK_METHOD(bool,
+              GetOwnershipTakenSignalStatus,
+              (bool*, bool*, LocalData*),
+              (override));
+  MOCK_METHOD(void,
+              OnOwnershipTaken,
+              (const OwnershipTakenSignal&),
+              (override));
+  MOCK_METHOD(void,
+              OnSignalConnected,
+              (const std::string&, const std::string&, bool),
+              (override));
 };
 
 }  // namespace tpm_manager
