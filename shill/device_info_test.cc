@@ -601,7 +601,9 @@ TEST_F(DeviceInfoTest, CreateDeviceLoopback) {
 
 TEST_F(DeviceInfoTest, CreateDeviceCDCEthernet) {
   // A cdc_ether / cdc_ncm device should be postponed to a task.
+#if !defined(DISABLE_CELLULAR)
   EXPECT_CALL(manager_, modem_info()).Times(0);
+#endif  // DISABLE_CELLULAR
   EXPECT_CALL(routing_table_, FlushRoutes(_)).Times(0);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _)).Times(0);
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _));

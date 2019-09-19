@@ -26,7 +26,9 @@ class MockManager : public Manager {
   ~MockManager() override;
 
   MOCK_METHOD0(device_info, DeviceInfo*());
+#if !defined(DISABLE_CELLULAR)
   MOCK_METHOD0(modem_info, ModemInfo*());
+#endif  // DISABLE_CELLULAR
   MOCK_METHOD0(ethernet_provider, EthernetProvider*());
 #if !defined(DISABLE_WIRED_8021X)
   MOCK_CONST_METHOD0(ethernet_eap_provider, EthernetEapProvider*());
@@ -50,7 +52,9 @@ class MockManager : public Manager {
                int(const ServiceCallback& callback));
   MOCK_METHOD1(DeregisterDefaultServiceCallback, void(int tag));
   MOCK_METHOD1(UpdateDevice, void(const DeviceRefPtr& to_update));
+#if !defined(DISABLE_WIFI)
   MOCK_METHOD0(UpdateWiFiProvider, void());
+#endif  // DISABLE_WIFI
   MOCK_METHOD0(GetPrimaryPhysicalService, ServiceRefPtr());
   MOCK_METHOD1(OnDeviceGeolocationInfoUpdated,
                void(const DeviceRefPtr& device));

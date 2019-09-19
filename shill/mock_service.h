@@ -55,7 +55,9 @@ class MockService : public Service {
   MOCK_METHOD1(Save, bool(StoreInterface* store_interface));
   MOCK_METHOD2(Configure, void(const KeyValueStore& args, Error* error));
   MOCK_CONST_METHOD1(DoPropertiesMatch, bool(const KeyValueStore& args));
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   MOCK_CONST_METHOD0(Is8021xConnectable, bool());
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   MOCK_CONST_METHOD0(HasStaticNameServers, bool());
   MOCK_CONST_METHOD0(IsPortalDetectionDisabled, bool());
   MOCK_CONST_METHOD0(IsPortalDetectionAuto, bool());

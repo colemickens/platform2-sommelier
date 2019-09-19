@@ -29,7 +29,9 @@ class MockProfile : public Profile {
   MOCK_CONST_METHOD0(GetRpcIdentifier, RpcIdentifier());
   MOCK_METHOD1(UpdateService, bool(const ServiceRefPtr& service));
   MOCK_METHOD1(UpdateDevice, bool(const DeviceRefPtr& device));
+#if !defined(DISABLE_WIFI)
   MOCK_METHOD1(UpdateWiFiProvider, bool(const WiFiProvider& wifi_provider));
+#endif  // DISABLE_WIFI
   MOCK_METHOD0(Save, bool());
   MOCK_METHOD0(GetStorage, StoreInterface*());
   MOCK_CONST_METHOD0(GetConstStorage, const StoreInterface*());
