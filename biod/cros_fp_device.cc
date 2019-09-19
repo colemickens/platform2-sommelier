@@ -18,6 +18,7 @@
 #include <chromeos/ec/cros_ec_dev.h>
 
 #include "biod/ec_command.h"
+#include "biod/ec_command_async.h"
 
 namespace {
 
@@ -329,28 +330,24 @@ bool CrosFpDevice::EcReboot(ec_current_image to_image) {
 
 bool CrosFpDevice::AddEntropy(bool reset) {
   // Create the secret.
-  EcCommand<struct ec_params_rollback_add_entropy, EmptyParam> cmd_add_entropy(
-      EC_CMD_ADD_ENTROPY);
+  EcCommandAsync<struct ec_params_rollback_add_entropy, EmptyParam>
+      cmd_add_entropy(EC_CMD_ADD_ENTROPY, ADD_ENTROPY_GET_RESULT);
   if (reset) {
     cmd_add_entropy.SetReq({.action = ADD_ENTROPY_RESET_ASYNC});
   } else {
     cmd_add_entropy.SetReq({.action = ADD_ENTROPY_ASYNC});
   }
-  if (!cmd_add_entropy.Run(cros_fd_.get())) {
-    LOG(ERROR) << "Failed to send command to add entropy.";
-    return false;
-  }
-  int tries = 20;
-  while (tries) {
-    tries--;
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
-    cmd_add_entropy.SetReq({.action = ADD_ENTROPY_GET_RESULT});
-    // EC will return EC_RES_BUSY initially, ignore the return code.
-    cmd_add_entropy.Run(cros_fd_.get());
-    if (cmd_add_entropy.Result() == EC_RES_SUCCESS) {
-      LOG(INFO) << "Entropy has been successfully added.";
-      return true;
-    }
+
+  if (cmd_add_entropy.Run(
+          cros_fd_.get(),
+          {.poll_for_result_num_attempts = 20,
+           .poll_interval = base::TimeDelta::FromMilliseconds(100),
+           // The EC temporarily stops responding to EC commands when this
+           // command is run, so we will keep trying until we get success (or
+           // time out).
+           .validate_poll_result = false})) {
+    LOG(INFO) << "Entropy has been successfully added.";
+    return true;
   }
   LOG(ERROR) << "Failed to check status of entropy command.";
   return false;
