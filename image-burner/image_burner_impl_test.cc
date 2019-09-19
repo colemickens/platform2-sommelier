@@ -575,7 +575,7 @@ TEST_F(ImageBurnerImplTest, FileSizeNotDivisibleByDAtaBlockSize) {
   EXPECT_CALL(reader_, Read(_, kTestDataBlockSize))
       .WillOnce(DoAll(SetArgCharString(kDataBlockLength1),
                       Return(1)))
-      .RetiresOnSaturation();;
+      .RetiresOnSaturation();
   EXPECT_CALL(reader_, Read(_, kTestDataBlockSize))
       .Times(2)
       .WillRepeatedly(DoAll(SetArgCharString(kDataBlockLength8),
@@ -612,7 +612,7 @@ TEST_F(ImageBurnerImplTest, FileSizeNotDivisibleByDAtaBlockSizeSDCard) {
   EXPECT_CALL(reader_, Read(_, kTestDataBlockSize))
       .WillOnce(DoAll(SetArgCharString(kDataBlockLength1),
                       Return(1)))
-      .RetiresOnSaturation();;
+      .RetiresOnSaturation();
   EXPECT_CALL(reader_, Read(_, kTestDataBlockSize))
       .Times(2)
       .WillRepeatedly(DoAll(SetArgCharString(kDataBlockLength8),
