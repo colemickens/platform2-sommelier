@@ -53,6 +53,7 @@ constexpr uint32_t kTestNode = 0;
 constexpr uint32_t kTestPort = 59;
 const char* kQrtrFilename = "/tmp/hermes_qrtr_test";
 
+// clang-format off
 constexpr auto kQrtrNewServerResp = hermes::make_array<uint8_t>(
   0x04, 0x00, 0x00, 0x00, 0x0B, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x3B, 0x00, 0x00, 0x00
@@ -100,8 +101,10 @@ constexpr auto kGetChallengeResp = hermes::make_array<uint8_t>(
   0x23, 0x71, 0x94, 0xBE, 0xAB, 0x24, 0xF4, 0xEF, 0xAB, 0x54, 0xB7, 0x3A, 0x59,
   0xCF, 0x90, 0x00
 );
+// clang-format on
 
-void NullResponseCallback(std::vector<std::vector<uint8_t>>& responses, int err) {}
+void NullResponseCallback(std::vector<std::vector<uint8_t>>& responses,
+                          int err) {}
 
 // Create a full QRTR packet given the data of an APDU message. The current
 // implementation only works for non-fragmented APDUs.
@@ -130,15 +133,15 @@ hermes::EnableIfIterator_t<Iterator, std::vector<uint8_t>> CreateQrtrFromApdu(
 // to this macro.
 #define EXPECT_SEND(socket_obj, data)                                         \
   EXPECT_CALL(socket_obj, Send(_, data.size(), _))                            \
-    .Times(1)                                                                 \
-    .WillOnce(WithArgs<0, 1>(Invoke(                                          \
-      [this, d = data](const void* arr, size_t l) {                           \
-        auto expected = d;                                                    \
-        expected[1] = ((uint8_t*)arr)[1];                                     \
-        this->receive_ids_.push_back(expected[1]);                            \
-        EXPECT_THAT(expected, ElementsAreArray((uint8_t*)arr, l));            \
-        return 0;                                                             \
-      })))
+      .Times(1)                                                               \
+      .WillOnce(                                                              \
+          WithArgs<0, 1>(Invoke([this, d = data](const void* arr, size_t l) { \
+            auto expected = d;                                                \
+            expected[1] = ((uint8_t*)arr)[1];                                 \
+            this->receive_ids_.push_back(expected[1]);                        \
+            EXPECT_THAT(expected, ElementsAreArray((uint8_t*)arr, l));        \
+            return 0;                                                         \
+          })))
 
 namespace hermes {
 
@@ -147,9 +150,7 @@ namespace hermes {
 // data from kQrtrFilename rather than from an actual QRTR socket.
 class MockSocketQrtr : public SocketInterface {
  public:
-  void SetDataAvailableCallback(DataAvailableCallback cb) override {
-    cb_ = cb;
-  }
+  void SetDataAvailableCallback(DataAvailableCallback cb) override { cb_ = cb; }
 
   bool Open() override {
     socket_ = base::ScopedFD(open(kQrtrFilename, O_RDWR));
@@ -230,10 +231,11 @@ class CardQrtrTest : public testing::Test {
   void SendApdus(std::vector<lpa::card::Apdu> commands,
                  CardQrtr::ResponseCallback cb) {
     EXPECT_CALL(*socket_, StartService(_, _, _))
-      // Add a receive transaction id when new_lookup is called.
-      .WillOnce(WithoutArgs(Invoke([this](){
-        this->receive_ids_.push_back(0);
-        return true; })));
+        // Add a receive transaction id when new_lookup is called.
+        .WillOnce(WithoutArgs(Invoke([this]() {
+          this->receive_ids_.push_back(0);
+          return true;
+        })));
 
     {
       ::testing::InSequence dummy;
@@ -252,8 +254,8 @@ class CardQrtrTest : public testing::Test {
 
   // Cause |card_| to receive the provided data.
   template <typename Iterator>
-  EnableIfIterator_t<Iterator, void> CardReceiveData(
-      Iterator first, Iterator last) {
+  EnableIfIterator_t<Iterator, void> CardReceiveData(Iterator first,
+                                                     Iterator last) {
     std::vector<uint8_t> receive_data(first, last);
     receive_data[1] = receive_ids_[0];
     receive_ids_.pop_front();
@@ -300,9 +302,9 @@ TEST_F(CardQrtrTest, EmptyApdu) {
 TEST_F(CardQrtrTest, RequestGetEid) {
   EXPECT_SEND(*socket_, CreateQrtrFromApdu(kGetChallengeApdu.begin(),
                                            kGetChallengeApdu.end()));
-  std::vector<lpa::card::Apdu> commands = {lpa::card::Apdu::NewStoreData(
-      std::vector<uint8_t>(kGetChallengeApdu.begin(),
-                           kGetChallengeApdu.end()))};
+  std::vector<lpa::card::Apdu> commands = {
+      lpa::card::Apdu::NewStoreData(std::vector<uint8_t>(
+          kGetChallengeApdu.begin(), kGetChallengeApdu.end()))};
   SendApdus(std::move(commands), NullResponseCallback);
 }
 
@@ -318,13 +320,11 @@ TEST_F(CardQrtrTest, SendTwoApdus) {
   }
 
   std::vector<lpa::card::Apdu> commands = {
-    lpa::card::Apdu::NewStoreData(
-      std::vector<uint8_t>(kGetChallengeApdu.begin(),
-                           kGetChallengeApdu.end())),
+      lpa::card::Apdu::NewStoreData(std::vector<uint8_t>(
+          kGetChallengeApdu.begin(), kGetChallengeApdu.end())),
       lpa::card::Apdu::NewStoreData({})};
   SendApdus(std::move(commands), NullResponseCallback);
-  CardReceiveData(kGetChallengeResp.begin(),
-                  kGetChallengeResp.end());
+  CardReceiveData(kGetChallengeResp.begin(), kGetChallengeResp.end());
 }
 
 }  // namespace hermes

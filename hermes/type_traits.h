@@ -10,8 +10,12 @@
 
 namespace hermes_internal {
 
-template<typename... Ts> struct make_void { typedef void type; };
-template<typename... Ts> using void_t = typename make_void<Ts...>::type;
+template <typename... Ts>
+struct make_void {
+  typedef void type;
+};
+template <typename... Ts>
+using void_t = typename make_void<Ts...>::type;
 
 template <typename T>
 struct is_array : std::false_type {};
@@ -29,8 +33,9 @@ template <typename, typename = void>
 struct is_iterator : std::false_type {};
 
 template <typename T>
-struct is_iterator<T, void_t<
-    typename std::iterator_traits<T>::iterator_category>> : std::true_type {};
+struct is_iterator<T,
+                   void_t<typename std::iterator_traits<T>::iterator_category>>
+    : std::true_type {};
 
 }  // namespace hermes_internal
 
@@ -39,13 +44,12 @@ namespace hermes {
 template <typename T, typename ReturnType>
 using EnableIfArrayOrVector_t =
     std::enable_if_t<hermes_internal::is_vector<T>::value ||
-                     hermes_internal::is_array<T>::value,
+                         hermes_internal::is_array<T>::value,
                      ReturnType>;
 
 template <typename T, typename ReturnType>
 using EnableIfIterator_t =
-    std::enable_if_t<hermes_internal::is_iterator<T>::value,
-                     ReturnType>;
+    std::enable_if_t<hermes_internal::is_iterator<T>::value, ReturnType>;
 
 }  // namespace hermes
 

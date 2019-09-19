@@ -17,24 +17,26 @@
 namespace hermes {
 
 SmdpFactory::SmdpFactory(Logger* logger, Executor* executor)
-    : logger_(logger),
-      executor_(executor) {}
+    : logger_(logger), executor_(executor) {}
 
 std::unique_ptr<lpa::smdp::SmdpClient> SmdpFactory::NewSmdpClient(
-      std::string tls_certs_dir, std::string smdp_addr,
-      const lpa::proto::EuiccSpecVersion& card_verison) {
+    std::string tls_certs_dir,
+    std::string smdp_addr,
+    const lpa::proto::EuiccSpecVersion& card_verison) {
   return std::make_unique<Smdp>(std::move(smdp_addr), std::move(tls_certs_dir),
                                 logger_, executor_);
 }
 
-Smdp::Smdp(std::string server_addr, std::string certs_dir, Logger* logger,
+Smdp::Smdp(std::string server_addr,
+           std::string certs_dir,
+           Logger* logger,
            Executor* executor)
     : server_transport_(brillo::http::Transport::CreateDefault()),
       logger_(logger),
       executor_(executor),
       weak_factory_(this) {
   server_transport_->UseCustomCertificate(
-    brillo::http::Transport::Certificate::kHermesProd);
+      brillo::http::Transport::Certificate::kHermesProd);
   smdp_addr_ = std::move(server_addr);
   // Ensure |smdp_addr_| does not begin with a scheme (e.g. "https://"), as this
   // variable will be used for the smdpAddress field in SM-DP+ communications.
@@ -52,13 +54,13 @@ lpa::util::Executor* Smdp::executor() {
   return executor_;
 }
 
-void Smdp::SendHttps(const std::string& path, const std::string& request,
+void Smdp::SendHttps(const std::string& path,
+                     const std::string& request,
                      LpaCallback cb) {
   brillo::ErrorPtr error = nullptr;
   std::string url = "https://" + smdp_addr_ + path;
   VLOG(1) << __func__ << ": sending data to " << url << ": " << request;
-  brillo::http::Request http_request(url,
-                                     brillo::http::request_type::kPost,
+  brillo::http::Request http_request(url, brillo::http::request_type::kPost,
                                      server_transport_);
   http_request.SetContentType("application/json");
   http_request.SetUserAgent("gsma-rsp-lpad");
@@ -70,7 +72,8 @@ void Smdp::SendHttps(const std::string& path, const std::string& request,
       base::Bind(&Smdp::OnHttpsError, weak_factory_.GetWeakPtr(), cb));
 }
 
-void Smdp::OnHttpsResponse(LpaCallback cb, brillo::http::RequestID request_id,
+void Smdp::OnHttpsResponse(LpaCallback cb,
+                           brillo::http::RequestID request_id,
                            std::unique_ptr<brillo::http::Response> response) {
   std::string raw_data;
   if (!response) {
@@ -84,7 +87,8 @@ void Smdp::OnHttpsResponse(LpaCallback cb, brillo::http::RequestID request_id,
   cb(response->GetStatusCode(), raw_data, lpa::smdp::SmdpClient::kNoError);
 }
 
-void Smdp::OnHttpsError(LpaCallback cb, brillo::http::RequestID request_id,
+void Smdp::OnHttpsError(LpaCallback cb,
+                        brillo::http::RequestID request_id,
                         const brillo::Error* error) {
   LOG(WARNING) << "HTTPS request failed (brillo error code " << error->GetCode()
                << "): " << error->GetMessage();

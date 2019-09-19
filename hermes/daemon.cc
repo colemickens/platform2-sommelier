@@ -21,22 +21,21 @@ Daemon::Daemon()
     : DBusServiceDaemon(kHermesServiceName),
       executor_(base::MessageLoop::current()),
       smdp_(&logger_, &executor_) {
-  card_ = CardQrtr::Create(std::make_unique<SocketQrtr>(), &logger_,
-                           &executor_);
+  card_ =
+      CardQrtr::Create(std::make_unique<SocketQrtr>(), &logger_, &executor_);
 
   lpa::core::Lpa::Builder b;
   b.SetEuiccCard(card_.get())
-    .SetSmdpClientFactory(&smdp_)
-    .SetSmdsClientFactory(&smds_)
-    .SetLogger(&logger_);
+      .SetSmdpClientFactory(&smdp_)
+      .SetSmdsClientFactory(&smds_)
+      .SetLogger(&logger_);
   lpa_ = b.Build();
 }
 
 void Daemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
-      nullptr, bus_,
-      org::chromium::HermesAdaptor::GetObjectPath());
+      nullptr, bus_, org::chromium::HermesAdaptor::GetObjectPath());
   dbus_adaptor_ = std::make_unique<DBusAdaptor>(lpa_.get(), &executor_);
   dbus_adaptor_->RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(

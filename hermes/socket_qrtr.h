@@ -29,9 +29,11 @@ class SocketQrtr : public SocketInterface,
   bool IsValid() const override { return socket_.is_valid(); }
   Type GetType() const override { return Type::kQrtr; }
 
-  bool StartService(uint32_t service, uint16_t version_major,
+  bool StartService(uint32_t service,
+                    uint16_t version_major,
                     uint16_t version_minor) override;
-  bool StopService(uint32_t service, uint16_t version_major,
+  bool StopService(uint32_t service,
+                   uint16_t version_major,
                    uint16_t version_minor) override;
 
   // If the metadata ptr is not null, it must point to a

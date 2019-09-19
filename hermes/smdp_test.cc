@@ -63,10 +63,9 @@ TEST_F(SmdpTest, AuthenticateClientTest) {
   EXPECT_CALL(smdp_tester_, FakeError(_)).Times(0);
 
   smdp_.AuthenticateClient(
-    transaction_id,
-    esim_data,
-    base::Bind(&SmdpFiTester::OnAuthClient, base::Unretained(&smdp_tester_)),
-    base::Bind(&SmdpFiTester::FakeError, base::Unretained(&smdp_tester_)));
+      transaction_id, esim_data,
+      base::Bind(&SmdpFiTester::OnAuthClient, base::Unretained(&smdp_tester_)),
+      base::Bind(&SmdpFiTester::FakeError, base::Unretained(&smdp_tester_)));
 }
 
 }  // namespace hermes

@@ -36,8 +36,7 @@ namespace hermes {
 
 struct ApduTxInfo : public CardQrtr::TxInfo {
   explicit ApduTxInfo(CommandApdu apdu, CardQrtr::ResponseCallback cb = nullptr)
-      : apdu_(std::move(apdu)),
-        callback_(cb) {}
+      : apdu_(std::move(apdu)), callback_(cb) {}
   CommandApdu apdu_;
   CardQrtr::ResponseCallback callback_;
 };

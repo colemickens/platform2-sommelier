@@ -96,29 +96,30 @@ DBusAdaptor::DBusAdaptor(lpa::core::Lpa* lpa, Executor* executor)
 void DBusAdaptor::InstallProfile(
     std::unique_ptr<DBusResponse<ProfileInfo>> response,
     const std::string& in_activation_code) {
-  auto profile_cb =
-    [response{std::shared_ptr<DBusResponse<ProfileInfo>>(std::move(response))},
-     this](lpa::proto::ProfileInfo& profile, int error) {
-      if (!HandleLpaError(error, &error_map_, response.get())) {
-        return;
-      }
-      response->Return(profile);
-    };
+  auto profile_cb = [response{std::shared_ptr<DBusResponse<ProfileInfo>>(
+                         std::move(response))},
+                     this](lpa::proto::ProfileInfo& profile, int error) {
+    if (!HandleLpaError(error, &error_map_, response.get())) {
+      return;
+    }
+    response->Return(profile);
+  };
   if (in_activation_code.empty()) {
     lpa_->GetDefaultProfileFromSmdp("", executor_, std::move(profile_cb));
     return;
   }
 
-  auto simple_cb =
-    [response{std::shared_ptr<DBusResponse<ProfileInfo>>(std::move(response))},
-     cb{std::move(profile_cb)}, in_activation_code, this](int error) {
-      if (!HandleLpaError(error, &error_map_, response.get())) {
-        return;
-      }
-      // TODO(crbug.com/963555) Return valid ProfileInfo
-      lpa::proto::ProfileInfo empty;
-      cb(empty, error);
-    };
+  auto simple_cb = [response{std::shared_ptr<DBusResponse<ProfileInfo>>(
+                        std::move(response))},
+                    cb{std::move(profile_cb)}, in_activation_code,
+                    this](int error) {
+    if (!HandleLpaError(error, &error_map_, response.get())) {
+      return;
+    }
+    // TODO(crbug.com/963555) Return valid ProfileInfo
+    lpa::proto::ProfileInfo empty;
+    cb(empty, error);
+  };
   lpa::core::Lpa::DownloadOptions options;
   options.enable_profile = false;
   options.allow_policy_rules = false;
@@ -179,10 +180,10 @@ void DBusAdaptor::GetInstalledProfiles(
 
       VLOG(2) << "";
       VLOG(2) << "    ICCID: " << profile.iccid();
-      VLOG_IF(2, profile.has_activation_code()) << "    Activation code: "
-                                                << profile.activation_code();
-      VLOG_IF(2, profile.has_profile_name()) << "    Profile name: "
-                                             << profile.profile_name();
+      VLOG_IF(2, profile.has_activation_code())
+          << "    Activation code: " << profile.activation_code();
+      VLOG_IF(2, profile.has_profile_name())
+          << "    Profile name: " << profile.profile_name();
     }
     response->Return(profile_list);
   };

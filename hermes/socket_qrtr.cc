@@ -14,8 +14,7 @@ constexpr uint8_t kQrtrPort = 0;
 
 namespace hermes {
 
-SocketQrtr::SocketQrtr()
-    : watcher_(FROM_HERE) {}
+SocketQrtr::SocketQrtr() : watcher_(FROM_HERE) {}
 
 void SocketQrtr::SetDataAvailableCallback(DataAvailableCallback cb) {
   cb_ = cb;
@@ -49,13 +48,15 @@ void SocketQrtr::Close() {
   }
 }
 
-bool SocketQrtr::StartService(uint32_t service, uint16_t version_major,
+bool SocketQrtr::StartService(uint32_t service,
+                              uint16_t version_major,
                               uint16_t version_minor) {
   return qrtr_new_lookup(socket_.get(), service, version_major,
                          version_minor) >= 0;
 }
 
-bool SocketQrtr::StopService(uint32_t service, uint16_t version_major,
+bool SocketQrtr::StopService(uint32_t service,
+                             uint16_t version_major,
                              uint16_t version_minor) {
   return qrtr_remove_lookup(socket_.get(), service, version_major,
                             version_minor) >= 0;
@@ -77,7 +78,7 @@ int SocketQrtr::Send(const void* data, size_t size, const void* metadata) {
   uint32_t node = 0, port = 0;
   if (metadata) {
     const PacketMetadata* data =
-      reinterpret_cast<const PacketMetadata*>(metadata);
+        reinterpret_cast<const PacketMetadata*>(metadata);
     node = data->node;
     port = data->port;
   }

@@ -41,12 +41,14 @@ class SocketInterface {
   // Requests a service start (e.g. a QMI or MBIM service). The caller is
   // responsible for handling any (potentially asynchronous) response to the
   // service request. Returns whether the request was successfully sent.
-  virtual bool StartService(uint32_t service, uint16_t version_major,
+  virtual bool StartService(uint32_t service,
+                            uint16_t version_major,
                             uint16_t version_minor) = 0;
   // Requests a service stop. The caller is responsible for handling any
   // (potentially asynchronous) response to the service end request. Returns
   // whether the request was successfully sent.
-  virtual bool StopService(uint32_t service, uint16_t version_major,
+  virtual bool StopService(uint32_t service,
+                           uint16_t version_major,
                            uint16_t version_minor) = 0;
 
   // Receives data into the provided data buffer. On success, returns the bytes

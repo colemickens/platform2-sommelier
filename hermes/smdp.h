@@ -23,7 +23,8 @@ class SmdpFactory : public lpa::smdp::SmdpClientFactory {
   SmdpFactory(Logger* logger, Executor* executor);
 
   std::unique_ptr<lpa::smdp::SmdpClient> NewSmdpClient(
-      std::string tls_certs_dir, std::string smdp_addr,
+      std::string tls_certs_dir,
+      std::string smdp_addr,
       const lpa::proto::EuiccSpecVersion& card_verison) override;
 
  private:
@@ -40,7 +41,9 @@ class Smdp : public lpa::smdp::SmdpClient {
   using LpaCallback =
       std::function<void(int code, std::string& http_resp, int err)>;
 
-  Smdp(std::string server_addr, std::string certs_dir, Logger* logger,
+  Smdp(std::string server_addr,
+       std::string certs_dir,
+       Logger* logger,
        Executor* executor);
 
   // lpa::smdp::SmdpClient override.
@@ -49,14 +52,17 @@ class Smdp : public lpa::smdp::SmdpClient {
  protected:
   // lpa::smdp::SmdpClient overrides.
   lpa::util::Executor* executor() override;
-  void SendHttps(const std::string& path, const std::string& request,
+  void SendHttps(const std::string& path,
+                 const std::string& request,
                  LpaCallback cb) override;
 
  private:
-  void OnHttpsResponse(LpaCallback cb, brillo::http::RequestID request_id,
+  void OnHttpsResponse(LpaCallback cb,
+                       brillo::http::RequestID request_id,
                        std::unique_ptr<brillo::http::Response> response);
 
-  void OnHttpsError(LpaCallback cb, brillo::http::RequestID request_id,
+  void OnHttpsError(LpaCallback cb,
+                    brillo::http::RequestID request_id,
                     const brillo::Error* error);
 
   std::shared_ptr<brillo::http::Transport> server_transport_;

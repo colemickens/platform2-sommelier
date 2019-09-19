@@ -33,8 +33,8 @@ class DBusAdaptor : public org::chromium::HermesInterface,
   // Install a profile. An empty activation code will cause the default profile
   // to be installed.
   void InstallProfile(
-    std::unique_ptr<DBusResponse<lpa::proto::ProfileInfo>> response,
-    const std::string& in_activation_code) override;
+      std::unique_ptr<DBusResponse<lpa::proto::ProfileInfo>> response,
+      const std::string& in_activation_code) override;
   void UninstallProfile(std::unique_ptr<DBusResponse<>> response,
                         const std::string& in_iccid) override;
   void EnableProfile(std::unique_ptr<DBusResponse<>> response,
@@ -46,7 +46,7 @@ class DBusAdaptor : public org::chromium::HermesInterface,
                           const std::string& in_nickname) override;
   // Get a list of the ICCIDs of all profiles installed on the eUICC.
   void GetInstalledProfiles(
-    std::unique_ptr<DBusResponse<lpa::proto::ProfileInfoList>> resp) override;
+      std::unique_ptr<DBusResponse<lpa::proto::ProfileInfoList>> resp) override;
   // Set/unset test mode. Normally, only production profiles may be
   // downloaded. In test mode, only test profiles may be downloaded.
   void SetTestMode(bool in_is_test_mode) override;

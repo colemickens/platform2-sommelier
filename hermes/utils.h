@@ -17,7 +17,7 @@ namespace hermes {
 template <typename ElementType, typename... T>
 constexpr auto make_array(T&&... values) {
   return std::array<ElementType, sizeof...(T)>{
-    static_cast<ElementType>(std::forward<T>(values))...};
+      static_cast<ElementType>(std::forward<T>(values))...};
 }
 
 }  // namespace hermes

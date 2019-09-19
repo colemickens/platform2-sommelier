@@ -46,8 +46,7 @@ struct uim_open_logical_channel_resp {
   uint8_t select_response[kBufferDataSize];
 };
 
-struct uim_reset_req {
-};
+struct uim_reset_req {};
 
 struct uim_reset_resp {
   uim_qmi_result result;
