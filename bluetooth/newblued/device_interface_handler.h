@@ -23,6 +23,12 @@
 
 namespace bluetooth {
 
+// Appended at the end of LE device names. This is a UX mark to indicate to user
+// that this device originates from NewBlue stack. This will be removed once
+// NewBlue is stable and enabled by default.
+// TODO(sonnysasaka): Remove this when NewBlue is enabled by default.
+constexpr char kNewblueNameSuffix[] = " \xF0\x9F\x90\xBE";
+
 // Structure representing a discovered device.
 struct Device {
   Device();
@@ -81,6 +87,49 @@ struct Device {
   Property<std::string> advertised_address;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
+};
+
+// Structure used by scan_manager to provide discovered device information to
+// device interface
+struct DeviceInfo {
+  DeviceInfo(bool has_active_discovery_client,
+             const std::string& adv_address,
+             uint8_t address_type,
+             const std::string& resolved_address,
+             int8_t rssi,
+             uint8_t reply_type);
+
+  // Whether has an active discovery client when receive the device info.
+  bool has_active_discovery_client;
+  // Advertised address (in format XX:XX:XX:XX:XX:XX).
+  std::string advertised_address;
+  // libnewblue's BT_ADDR_TYPE_*
+  uint8_t address_type;
+  // Resolved address (in format XX:XX:XX:XX:XX:XX).
+  std::string resolved_address;
+  // RSSI of last received inquiry response.
+  int8_t rssi;
+  uint8_t reply_type;
+  // Advertising flags.
+  std::vector<uint8_t> flags;
+  // Service UUIDs of 16-bit 32-bit and 128-bit.
+  std::set<Uuid> service_uuids;
+  // A readable name of the device.
+  std::string name;
+  // Transmission power level of the advertisement packet
+  int16_t tx_power;
+  // Class of the device.
+  uint32_t eir_class;
+  // Service data associated with UUIDs.
+  std::map<Uuid, std::vector<uint8_t>> service_data;
+  // External appearance of the device.
+  uint16_t appearance;
+  // Icon type of the device based on the value of |appearance|.
+  std::string icon;
+  // Manufacturer identifier with the extra manufacturer data
+  std::map<uint16_t, std::vector<uint8_t>> manufacturer;
+
+  DISALLOW_COPY_AND_ASSIGN(DeviceInfo);
 };
 
 // These are based on the connection state defined in newblue/gatt.h.
@@ -160,13 +209,7 @@ class DeviceInterfaceHandler {
   // Called when an update of a device info is received.
   // |scanned_by_client| being true means that the scan result is due to scan
   // requested by clients rather than a background scan.
-  void OnDeviceDiscovered(bool scanned_by_client,
-                          const std::string& adv_address,
-                          uint8_t address_type,
-                          const std::string& resolved_address,
-                          int8_t rssi,
-                          uint8_t reply_type,
-                          const std::vector<uint8_t>& eir);
+  void OnDeviceDiscovered(const DeviceInfo& device_info);
 
   // Removes a device D-Bus object and forgets its pairing information.
   bool RemoveDevice(const std::string& address, std::string* dbus_error);
@@ -261,7 +304,7 @@ class DeviceInterfaceHandler {
                               bool is_new_device);
 
   // Updates EIR data of |device|.
-  static void UpdateEir(Device* device, const std::vector<uint8_t>& eir);
+  static void UpdateDevice(Device* device, const DeviceInfo& device_info);
 
   // Resets the update status of device properties.
   void ClearPropertiesUpdated(Device* device);
@@ -306,9 +349,6 @@ class DeviceInterfaceHandler {
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.
   base::WeakPtrFactory<DeviceInterfaceHandler> weak_ptr_factory_;
-
-  FRIEND_TEST(DeviceInterfaceHandlerTest, UpdateEirNormal);
-  FRIEND_TEST(DeviceInterfaceHandlerTest, UpdateEirAbnormal);
 
   DISALLOW_COPY_AND_ASSIGN(DeviceInterfaceHandler);
 };

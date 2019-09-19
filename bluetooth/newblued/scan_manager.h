@@ -76,6 +76,9 @@ class ScanManager final : public DeviceInterfaceHandler::DeviceObserver {
                                int8_t rssi,
                                uint8_t reply_type,
                                const std::vector<uint8_t>& eir);
+  // Parse the EIR information for a discovered device
+  static void ParseEir(DeviceInfo* device_info,
+                       const std::vector<uint8_t>& eir);
 
   bool needs_background_scan_;
   bool is_in_suspension_;
@@ -103,6 +106,9 @@ class ScanManager final : public DeviceInterfaceHandler::DeviceObserver {
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.
   base::WeakPtrFactory<ScanManager> weak_ptr_factory_;
+
+  FRIEND_TEST(ScanManagerTest, ParseEirNormal);
+  FRIEND_TEST(ScanManagerTest, ParseEirAbnormal);
 
   DISALLOW_COPY_AND_ASSIGN(ScanManager);
 };

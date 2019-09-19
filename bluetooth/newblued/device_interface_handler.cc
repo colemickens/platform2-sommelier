@@ -22,12 +22,6 @@ namespace bluetooth {
 
 namespace {
 
-// Appended at the end of LE device names. This is a UX mark to indicate to user
-// that this device originates from NewBlue stack. This will be removed once
-// NewBlue is stable and enabled by default.
-// TODO(sonnysasaka): Remove this when NewBlue is enabled by default.
-constexpr char kNewblueNameSuffix[] = " \xF0\x9F\x90\xBE";
-
 // The default values of Flags, TX Power, EIR Class, Appearance and
 // Manufacturer ID come from the assigned numbers and Supplement to the
 // Bluetooth Core Specification defined by Bluetooth SIG. These default values
@@ -38,6 +32,7 @@ constexpr int8_t kDefaultTxPower = -128;
 constexpr uint32_t kDefaultEirClass = 0x1F00;
 constexpr uint16_t kDefaultAppearance = 0;
 constexpr uint16_t kDefaultManufacturerId = 0xFFFF;
+const std::vector<uint8_t> kDefaultFlags({0});
 
 constexpr char kDeviceTypeLe[] = "LE";
 
@@ -178,10 +173,33 @@ Device::Device(const std::string& address)
       eir_class(kDefaultEirClass),
       appearance(kDefaultAppearance),
       icon(ConvertAppearanceToIcon(kDefaultAppearance)),
-      flags({0}),
+      flags(kDefaultFlags),
       manufacturer(ParseDataIntoManufacturer(kDefaultManufacturerId,
                                              std::vector<uint8_t>())),
       identity_address("") {}
+
+DeviceInfo::DeviceInfo(bool has_active_discovery_client,
+                       const std::string& adv_address,
+                       uint8_t address_type,
+                       const std::string& resolved_address,
+                       int8_t rssi,
+                       uint8_t reply_type)
+    : has_active_discovery_client(has_active_discovery_client),
+      advertised_address(adv_address),
+      address_type(address_type),
+      resolved_address(resolved_address),
+      rssi(rssi),
+      reply_type(reply_type),
+      flags(kDefaultFlags),
+      service_uuids(std::set<Uuid>()),
+      name(""),
+      tx_power(kDefaultTxPower),
+      eir_class(kDefaultEirClass),
+      service_data(std::map<Uuid, std::vector<uint8_t>>()),
+      appearance(kDefaultAppearance),
+      icon(ConvertAppearanceToIcon(kDefaultAppearance)),
+      manufacturer(ParseDataIntoManufacturer(kDefaultManufacturerId,
+                                             std::vector<uint8_t>())) {}
 
 DeviceInterfaceHandler::DeviceInterfaceHandler(
     scoped_refptr<dbus::Bus> bus,
@@ -231,31 +249,26 @@ base::WeakPtr<DeviceInterfaceHandler> DeviceInterfaceHandler::GetWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
 }
 
-void DeviceInterfaceHandler::OnDeviceDiscovered(
-    bool scanned_by_client,
-    const std::string& adv_address,
-    uint8_t address_type,
-    const std::string& resolved_address,
-    int8_t rssi,
-    uint8_t reply_type,
-    const std::vector<uint8_t>& eir) {
-  const std::string& key_address =
-      resolved_address.empty() ? adv_address : resolved_address;
+void DeviceInterfaceHandler::OnDeviceDiscovered(const DeviceInfo& device_info) {
+  const std::string& key_address = device_info.resolved_address.empty()
+                                       ? device_info.advertised_address
+                                       : device_info.resolved_address;
   Device* device = FindDevice(key_address);
   if (device && device->paired.value()) {
-    device->advertised_address.SetValue(adv_address);
+    device->advertised_address.SetValue(device_info.advertised_address);
     ConnectInternal(key_address, /* connect_response */ nullptr,
                     /* connect_by_us */ true);
   }
 
-  if (!scanned_by_client)
+  if (!device_info.has_active_discovery_client)
     return;
 
-  device = AddOrGetDiscoveredDevice(key_address, adv_address, address_type);
+  device = AddOrGetDiscoveredDevice(key_address, device_info.advertised_address,
+                                    device_info.address_type);
 
-  device->rssi.SetValue(rssi);
+  device->rssi.SetValue(device_info.rssi);
 
-  UpdateEir(device, eir);
+  UpdateDevice(device, device_info);
   ExportOrUpdateDevice(device);
 }
 
@@ -891,136 +904,33 @@ void DeviceInterfaceHandler::UpdateDeviceProperties(
                      device.identity_address, false);
 }
 
-void DeviceInterfaceHandler::UpdateEir(Device* device,
-                                       const std::vector<uint8_t>& eir) {
+void DeviceInterfaceHandler::UpdateDevice(Device* device,
+                                          const DeviceInfo& device_info) {
   CHECK(device);
 
-  uint8_t pos = 0;
-  std::set<Uuid> service_uuids;
-  std::map<Uuid, std::vector<uint8_t>> service_data;
-
-  while (pos + 1 < eir.size()) {
-    uint8_t field_len = eir[pos];
-
-    // End of EIR
-    if (field_len == 0)
-      break;
-
-    // Corrupt EIR data
-    if (pos + field_len >= eir.size())
-      break;
-
-    EirType eir_type = static_cast<EirType>(eir[pos + 1]);
-    const uint8_t* data = &eir[pos + 2];
-
-    // A field consists of 1 byte field type + data:
-    // | 1-byte field_len | 1-byte type | (field length - 1) bytes data ... |
-    uint8_t data_len = field_len - 1;
-
-    switch (eir_type) {
-      case EirType::FLAGS:
-        // No default value should be set for flags according to Supplement to
-        // the Bluetooth Core Specification. Flags field can be 0 or more octets
-        // long. If the length is 1, then flags[0] is octet[0]. Store only
-        // octet[0] for now due to lack of definition of the following octets
-        // in Supplement to the Bluetooth Core Specification.
-        if (data_len > 0)
-          device->flags.SetValue(std::vector<uint8_t>(data, data + 1));
-        // If |data_len| is 0, we avoid setting zero-length advertising flags as
-        // this currently causes Chrome to crash.
-        // TODO(crbug.com/876908): Fix Chrome to not crash with zero-length
-        // advertising flags.
-        break;
-
-      // If there are more than one instance of either COMPLETE or INCOMPLETE
-      // type of a UUID size, the later one(s) will be cached as well.
-      case EirType::UUID16_INCOMPLETE:
-      case EirType::UUID16_COMPLETE:
-        ParseDataIntoUuids(&service_uuids, kUuid16Size, data, data_len);
-        break;
-      case EirType::UUID32_INCOMPLETE:
-      case EirType::UUID32_COMPLETE:
-        ParseDataIntoUuids(&service_uuids, kUuid32Size, data, data_len);
-        break;
-      case EirType::UUID128_INCOMPLETE:
-      case EirType::UUID128_COMPLETE:
-        ParseDataIntoUuids(&service_uuids, kUuid128Size, data, data_len);
-        break;
-
-      // Name
-      case EirType::NAME_SHORT:
-      case EirType::NAME_COMPLETE: {
-        char c_name[HCI_DEV_NAME_LEN + 1];
-
-        // Some device has trailing '\0' at the end of the name data.
-        // So make sure we only take the characters before '\0' and limited
-        // to the max length allowed by Bluetooth spec (HCI_DEV_NAME_LEN).
-        uint8_t name_len =
-            std::min(data_len, static_cast<uint8_t>(HCI_DEV_NAME_LEN));
-        strncpy(c_name, reinterpret_cast<const char*>(data), name_len);
-        c_name[name_len] = '\0';
-        device->name.SetValue(ConvertToAsciiString(c_name) +
-                              kNewblueNameSuffix);
-      } break;
-
-      case EirType::TX_POWER:
-        if (data_len == 1)
-          device->tx_power.SetValue(static_cast<int8_t>(*data));
-        break;
-      case EirType::CLASS_OF_DEV:
-        // 24-bit little endian data
-        if (data_len == 3)
-          device->eir_class.SetValue(GetNumFromLE24(data));
-        break;
-
-      // If the UUID already exists, the service data will be updated.
-      case EirType::SVC_DATA16:
-        ParseDataIntoServiceData(&service_data, kUuid16Size, data, data_len);
-        break;
-      case EirType::SVC_DATA32:
-        ParseDataIntoServiceData(&service_data, kUuid32Size, data, data_len);
-        break;
-      case EirType::SVC_DATA128:
-        ParseDataIntoServiceData(&service_data, kUuid128Size, data, data_len);
-        break;
-
-      case EirType::GAP_APPEARANCE:
-        // 16-bit little endian data
-        if (data_len == 2) {
-          uint16_t appearance = GetNumFromLE16(data);
-          device->appearance.SetValue(appearance);
-          device->icon.SetValue(ConvertAppearanceToIcon(appearance));
-        }
-        break;
-      case EirType::MANUFACTURER_DATA:
-        if (data_len >= 2) {
-          // The order of manufacturer data is not specified explicitly in
-          // Supplement to the Bluetooth Core Specification, so the original
-          // order used in BlueZ is adopted.
-          device->manufacturer.SetValue(ParseDataIntoManufacturer(
-              GetNumFromLE16(data),
-              std::vector<uint8_t>(data + 2,
-                                   data + std::max<uint8_t>(data_len, 2))));
-        }
-        break;
-      default:
-        // Do nothing for unhandled EIR type.
-        break;
-    }
-
-    pos += field_len + 1;
+  // Update device information only if received update from EIR
+  if (device_info.flags != kDefaultFlags)
+    device->flags.SetValue(device_info.flags);
+  if (!device_info.name.empty())
+    device->name.SetValue(device_info.name);
+  if (device_info.tx_power != kDefaultTxPower)
+    device->tx_power.SetValue(device_info.tx_power);
+  if (device_info.eir_class != kDefaultEirClass)
+    device->eir_class.SetValue(device_info.eir_class);
+  if (device_info.appearance != kDefaultAppearance) {
+    device->appearance.SetValue(device_info.appearance);
+    device->icon.SetValue(device_info.icon);
   }
-
+  if (device_info.manufacturer !=
+      ParseDataIntoManufacturer(kDefaultManufacturerId,
+                                std::vector<uint8_t>())) {
+    device->manufacturer.SetValue(device_info.manufacturer);
+  }
+  if (!device_info.service_uuids.empty())
+    device->service_uuids.SetValue(device_info.service_uuids);
+  if (!device_info.service_data.empty())
+    device->service_data.SetValue(device_info.service_data);
   UpdateDeviceAlias(device);
-
-  // This is different from BlueZ where it memorizes all service UUIDs and
-  // service data ever received for the same device. If there is no service
-  // UUIDs/service data being presented, service UUIDs/servicedata will not
-  // be updated.
-  if (!service_uuids.empty())
-    device->service_uuids.SetValue(std::move(service_uuids));
-  if (!service_data.empty())
-    device->service_data.SetValue(std::move(service_data));
 }
 
 void DeviceInterfaceHandler::ClearPropertiesUpdated(Device* device) {

@@ -1,14 +1,15 @@
-// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "bluetooth/newblued/device_interface_handler.h"
+#include "bluetooth/newblued/scan_manager.h"
 
 #include <vector>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "bluetooth/newblued/util.h"
 #include "bluetooth/newblued/uuid.h"
 
 using ::testing::Pair;
@@ -16,10 +17,11 @@ using ::testing::UnorderedElementsAre;
 
 namespace bluetooth {
 
-constexpr char kNewblueNameSuffix[] = " \xF0\x9F\x90\xBE";
-
-TEST(DeviceInterfaceHandlerTest, UpdateEirNormal) {
-  Device device;
+TEST(ScanManagerTest, ParseEirNormal) {
+  DeviceInfo device_info(/* has_active_discovery_client */ true,
+                         /* adv_address */ "", /* address_type */ 0,
+                         /* resolved_address */ "", /* rssi */ 0,
+                         /* reply_type */ 0);
   uint8_t eir[] = {
       // Flag
       3, static_cast<uint8_t>(EirType::FLAGS), 0xAA, 0xBB,
@@ -56,24 +58,24 @@ TEST(DeviceInterfaceHandlerTest, UpdateEirNormal) {
       std::vector<uint8_t>({0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
                             0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}));
 
-  DeviceInterfaceHandler::UpdateEir(
-      &device, std::vector<uint8_t>(eir, eir + arraysize(eir)));
+  ScanManager::ParseEir(&device_info,
+                        std::vector<uint8_t>(eir, eir + arraysize(eir)));
 
-  EXPECT_EQ(std::vector<uint8_t>({0xAA}), device.flags.value());
-  EXPECT_THAT(device.service_uuids.value(),
+  EXPECT_EQ(std::vector<uint8_t>({0xAA}), device_info.flags);
+  EXPECT_THAT(device_info.service_uuids,
               UnorderedElementsAre(battery_service_uuid16,
                                    blood_pressure_uuid32, uuid128));
-  EXPECT_EQ(std::string("foo") + kNewblueNameSuffix, device.name.value());
-  EXPECT_EQ(-57, device.tx_power.value());
-  EXPECT_EQ(0x00030201, device.eir_class.value());
-  EXPECT_THAT(device.service_data.value(),
+  EXPECT_EQ(std::string("foo") + kNewblueNameSuffix, device_info.name);
+  EXPECT_EQ(-57, device_info.tx_power);
+  EXPECT_EQ(0x00030201, device_info.eir_class);
+  EXPECT_THAT(device_info.service_data,
               UnorderedElementsAre(Pair(battery_service_uuid16,
                                         std::vector<uint8_t>({0x11, 0x22})),
                                    Pair(bond_management_service_uuid32,
                                         std::vector<uint8_t>({0x33, 0x44}))));
-  EXPECT_EQ(0x0201, device.appearance.value());
+  EXPECT_EQ(0x0201, device_info.appearance);
   EXPECT_THAT(
-      device.manufacturer.value(),
+      device_info.manufacturer,
       UnorderedElementsAre(Pair(0x000E, std::vector<uint8_t>({0x55, 0x66}))));
 
   uint8_t eir2[] = {
@@ -86,26 +88,29 @@ TEST(DeviceInterfaceHandlerTest, UpdateEirNormal) {
       7, static_cast<uint8_t>(EirType::SVC_DATA32), 0x1E, 0x18, 0x00, 0x00,
       0x66, 0x55};
 
-  DeviceInterfaceHandler::UpdateEir(
-      &device, std::vector<uint8_t>(eir2, eir2 + arraysize(eir2)));
+  ScanManager::ParseEir(&device_info,
+                        std::vector<uint8_t>(eir2, eir2 + arraysize(eir2)));
 
-  EXPECT_FALSE(device.flags.value().empty());
-  EXPECT_THAT(device.service_uuids.value(),
+  EXPECT_FALSE(device_info.flags.empty());
+  EXPECT_THAT(device_info.service_uuids,
               UnorderedElementsAre(bond_management_service_uuid32));
-  EXPECT_EQ(std::string("foo") + kNewblueNameSuffix, device.name.value());
-  EXPECT_EQ(-57, device.tx_power.value());
-  EXPECT_EQ(0x00030201, device.eir_class.value());
-  EXPECT_THAT(device.service_data.value(),
+  EXPECT_EQ(std::string("foo") + kNewblueNameSuffix, device_info.name);
+  EXPECT_EQ(-57, device_info.tx_power);
+  EXPECT_EQ(0x00030201, device_info.eir_class);
+  EXPECT_THAT(device_info.service_data,
               UnorderedElementsAre(Pair(bond_management_service_uuid32,
                                         std::vector<uint8_t>({0x55, 0x66}))));
-  EXPECT_EQ(0x0201, device.appearance.value());
+  EXPECT_EQ(0x0201, device_info.appearance);
   EXPECT_THAT(
-      device.manufacturer.value(),
+      device_info.manufacturer,
       UnorderedElementsAre(Pair(0x000E, std::vector<uint8_t>({0x55, 0x66}))));
 }
 
-TEST(DeviceInterfaceHandlerTest, UpdateEirAbnormal) {
-  Device device;
+TEST(ScanManagerTest, ParseEirAbnormal) {
+  DeviceInfo device_info(/* has_active_discovery_client */ true,
+                         /* adv_address */ "", /* address_type */ 0,
+                         /* resolved_address */ "", /* rssi */ 0,
+                         /* reply_type */ 0);
   uint8_t eir[] = {
       // Even if there are more than one instance of a UUID size of either
       // COMPLETE or INCOMPLETE type, the later one will still be honored
@@ -129,20 +134,20 @@ TEST(DeviceInterfaceHandlerTest, UpdateEirAbnormal) {
   Uuid battery_service_uuid16(std::vector<uint8_t>({0x18, 0x0F}));
   Uuid blood_pressure_uuid16(std::vector<uint8_t>({0x18, 0x10}));
 
-  DeviceInterfaceHandler::UpdateEir(
-      &device, std::vector<uint8_t>(eir, eir + arraysize(eir)));
+  ScanManager::ParseEir(&device_info,
+                        std::vector<uint8_t>(eir, eir + arraysize(eir)));
 
   // Non-ascii characters are replaced with spaces.
-  EXPECT_FALSE(device.flags.value().empty());
+  EXPECT_FALSE(device_info.flags.empty());
   EXPECT_THAT(
-      device.service_uuids.value(),
+      device_info.service_uuids,
       UnorderedElementsAre(battery_service_uuid16, blood_pressure_uuid16));
-  EXPECT_EQ(std::string("  a") + kNewblueNameSuffix, device.name.value());
-  EXPECT_EQ(-128, device.tx_power.value());
-  EXPECT_EQ(0x1F00, device.eir_class.value());
-  EXPECT_TRUE(device.service_data.value().empty());
-  EXPECT_EQ(0x0000, device.appearance.value());
-  EXPECT_THAT(device.manufacturer.value(),
+  EXPECT_EQ(std::string("  a") + kNewblueNameSuffix, device_info.name);
+  EXPECT_EQ(-128, device_info.tx_power);
+  EXPECT_EQ(0x1F00, device_info.eir_class);
+  EXPECT_TRUE(device_info.service_data.empty());
+  EXPECT_EQ(0x0000, device_info.appearance);
+  EXPECT_THAT(device_info.manufacturer,
               UnorderedElementsAre(Pair(0xFFFF, std::vector<uint8_t>())));
 }
 
