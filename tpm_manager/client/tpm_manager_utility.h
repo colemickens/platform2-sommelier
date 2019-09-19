@@ -28,7 +28,7 @@ class TPM_MANAGER_EXPORT TpmManagerUtility
   // a constructor which enables injection of mock interfaces.
   TpmManagerUtility(tpm_manager::TpmOwnershipInterface* tpm_owner,
                     tpm_manager::TpmNvramInterface* tpm_nvram);
-  virtual ~TpmManagerUtility() = default;
+  ~TpmManagerUtility() override = default;
 
   // Initializes the worker thread and proxies of |tpm_manager| and returns
   // |true| if successful. Returns |false| if we cannot start

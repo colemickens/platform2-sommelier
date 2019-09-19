@@ -278,7 +278,7 @@ class LocalDataMigratorWithFakeFile : public LocalDataMigrator {
  public:
   using FileContentMap = std::unordered_map<std::string, std::string>;
   LocalDataMigratorWithFakeFile() = default;
-  virtual ~LocalDataMigratorWithFakeFile() = default;
+  ~LocalDataMigratorWithFakeFile() override = default;
 
   // Updates the entry in |file_content_map_| with |path| as the key and
   // |content| as the value.

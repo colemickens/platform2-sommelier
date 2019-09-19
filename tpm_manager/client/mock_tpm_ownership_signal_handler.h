@@ -17,7 +17,7 @@ class MockTpmOwnershipTakenSignalHandler
     : public TpmOwnershipTakenSignalHandler {
  public:
   MockTpmOwnershipTakenSignalHandler() = default;
-  virtual ~MockTpmOwnershipTakenSignalHandler() = default;
+  ~MockTpmOwnershipTakenSignalHandler() override = default;
   MOCK_METHOD(void,
               OnOwnershipTaken,
               (const OwnershipTakenSignal&),

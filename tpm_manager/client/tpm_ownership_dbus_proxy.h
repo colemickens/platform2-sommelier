@@ -40,7 +40,7 @@ namespace tpm_manager {
 class TPM_MANAGER_EXPORT TpmOwnershipDBusProxy : public TpmOwnershipInterface {
  public:
   TpmOwnershipDBusProxy() = default;
-  virtual ~TpmOwnershipDBusProxy();
+  ~TpmOwnershipDBusProxy() override;
 
   // Performs initialization tasks. This method must be called before calling
   // any other method in this class. Returns true on success.
