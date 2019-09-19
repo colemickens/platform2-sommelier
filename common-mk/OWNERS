@@ -1,6 +1,2 @@
 set noparent
-
-vapier@chromium.org
-benchan@chromium.org
-
-include chromiumos/chromite:OWNERS.build
+include chromiumos/chromite:/OWNERS.build
