@@ -256,6 +256,19 @@ class Service final {
                                 bool* result,
                                 base::WaitableEvent* event);
 
+  // Sends a D-Bus signal to inform listeners on update for the progress or
+  // completion of a Ansible playbook application. It will use |cid| to
+  // resolve the request to a VM and then |container_token| to resolve it to a
+  // container. |progress_signal| should have all related fields from the
+  // container request set in it. |result| is set to true on success, false
+  // otherwise. Signals |event| when done.
+  void ApplyAnsiblePlaybookProgress(
+      const std::string& container_token,
+      const uint32_t cid,
+      ApplyAnsiblePlaybookProgressSignal* progress_signal,
+      bool* result,
+      base::WaitableEvent* event);
+
   // Sends a D-Bus message to Chrome to tell it to open a terminal that is
   // connected back to the VM/container and if there are params in
   // |terminal_params| then those should be executed in that terminal.

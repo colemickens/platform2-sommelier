@@ -161,6 +161,32 @@ message UninstallPackageProgressInfo {
   string failure_details = 4;
 }
 
+message ApplyAnsiblePlaybookProgressInfo {
+  // The security token the container was given.
+  string token = 1;
+
+  enum Status {
+    UNKNOWN = 0;
+
+    // Application has completed and was successful. No further signals will be
+    // sent after this one.
+    SUCCEEDED = 1;
+
+    // Application failed to complete, the specific reason will be in
+    // failure_details. No further signals will be sent after this one.
+    FAILED = 2;
+
+    // Ansible playbook is being currently applied.
+    IN_PROGRESS = 3;
+  }
+
+  // Current status of the application progress.
+  Status status = 2;
+
+  // Details relating to the failure state.
+  string failure_details = 3;
+}
+
 // Request protobuf for opening a new terminal in the container.
 message OpenTerminalRequest {
   // The security token the container was given.
@@ -211,6 +237,11 @@ service ContainerListener {
       returns (EmptyMessage);
 
   rpc UninstallPackageProgress(UninstallPackageProgressInfo)
+      returns (EmptyMessage);
+
+  // Called by a container during a Ansible playbook application to update on
+  // progress and completion/failure.
+  rpc ApplyAnsiblePlaybookProgress(ApplyAnsiblePlaybookProgressInfo)
       returns (EmptyMessage);
 
   // Called by a container to have the host open a new terminal that is

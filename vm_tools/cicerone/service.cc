@@ -1187,6 +1187,45 @@ void Service::UninstallPackageProgress(
   event->Signal();
 }
 
+void Service::ApplyAnsiblePlaybookProgress(
+    const std::string& container_token,
+    const uint32_t cid,
+    ApplyAnsiblePlaybookProgressSignal* progress_signal,
+    bool* result,
+    base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  CHECK(progress_signal);
+  CHECK(result);
+  CHECK(event);
+  *result = false;
+  VirtualMachine* vm;
+  std::string owner_id;
+  std::string vm_name;
+
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
+    LOG(ERROR) << "No VM for cid or token";
+    event->Signal();
+    return;
+  }
+  std::string container_name = vm->GetContainerNameForToken(container_token);
+  if (container_name.empty()) {
+    LOG(ERROR) << "No container name for token";
+    event->Signal();
+    return;
+  }
+
+  // Send the D-Bus signal out updating progress/completion for the application.
+  dbus::Signal signal(kVmCiceroneInterface,
+                      kApplyAnsiblePlaybookProgressSignal);
+  progress_signal->set_vm_name(vm_name);
+  progress_signal->set_container_name(container_name);
+  progress_signal->set_owner_id(owner_id);
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(*progress_signal);
+  exported_object_->SendSignal(&signal);
+  *result = true;
+  event->Signal();
+}
+
 void Service::OpenTerminal(const std::string& container_token,
                            vm_tools::apps::TerminalParams terminal_params,
                            uint32_t cid,

@@ -275,6 +275,13 @@ DEFINE_PROTO_FUZZER(
             &tremplin_response);
         break;
 
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kApplyAnsiblePlaybookProgressInfo:
+        container_listener->ApplyAnsiblePlaybookProgress(
+            &context, &action.apply_ansible_playbook_progress_info(),
+            &response);
+        break;
+
       default:
         NOTREACHED();
     }

@@ -719,6 +719,83 @@ TEST(ContainerListenerImplTest,
   EXPECT_EQ(png_iter->second, "image/png");
 }
 
+TEST(ContainerListenerImplTest,
+     ValidApplyAnsiblePlaybookProgressCallShouldProduceDBusMessage) {
+  ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
+  test_framework.SetUpDefaultVmAndContainer();
+  test_framework.ExpectNoDBusMessages();
+
+  vm_tools::container::ApplyAnsiblePlaybookProgressInfo request;
+  vm_tools::EmptyMessage response;
+
+  request.set_token(ServiceTestingHelper::kDefaultContainerToken);
+  request.set_status(
+      vm_tools::container::ApplyAnsiblePlaybookProgressInfo::SUCCEEDED);
+
+  ApplyAnsiblePlaybookProgressSignal dbus_result;
+  EXPECT_CALL(
+      test_framework.get_mock_exported_object(),
+      SendSignal(AllOf(HasInterfaceName(kVmCiceroneInterface),
+                       HasMethodName(kApplyAnsiblePlaybookProgressSignal))))
+      .WillOnce(Invoke([&dbus_result](dbus::Signal* signal) {
+        ProtoSignalHelper(signal, &dbus_result);
+      }));
+
+  grpc::ServerContext ctx;
+  grpc::Status status =
+      test_framework.get_service()
+          .GetContainerListenerImpl()
+          ->ApplyAnsiblePlaybookProgress(&ctx, &request, &response);
+  ASSERT_TRUE(status.ok()) << status.error_message();
+
+  EXPECT_EQ(dbus_result.vm_name(), ServiceTestingHelper::kDefaultVmName);
+  EXPECT_EQ(dbus_result.container_name(),
+            ServiceTestingHelper::kDefaultContainerName);
+  EXPECT_EQ(dbus_result.owner_id(), ServiceTestingHelper::kDefaultOwnerId);
+  EXPECT_EQ(dbus_result.status(),
+            ApplyAnsiblePlaybookProgressSignal::SUCCEEDED);
+  EXPECT_EQ(dbus_result.failure_details(), "");
+}
+
+TEST(ContainerListenerImplTest,
+     FailedApplyAnsiblePlaybookProgressCallShouldProduceDBusMessage) {
+  ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
+  test_framework.SetUpDefaultVmAndContainer();
+  test_framework.ExpectNoDBusMessages();
+
+  vm_tools::container::ApplyAnsiblePlaybookProgressInfo request;
+  vm_tools::EmptyMessage response;
+
+  const std::string kFailureDetails = "Hahaha NO";
+  request.set_token(ServiceTestingHelper::kDefaultContainerToken);
+  request.set_status(
+      vm_tools::container::ApplyAnsiblePlaybookProgressInfo::FAILED);
+  request.set_failure_details(kFailureDetails);
+
+  ApplyAnsiblePlaybookProgressSignal dbus_result;
+  EXPECT_CALL(
+      test_framework.get_mock_exported_object(),
+      SendSignal(AllOf(HasInterfaceName(kVmCiceroneInterface),
+                       HasMethodName(kApplyAnsiblePlaybookProgressSignal))))
+      .WillOnce(Invoke([&dbus_result](dbus::Signal* signal) {
+        ProtoSignalHelper(signal, &dbus_result);
+      }));
+
+  grpc::ServerContext ctx;
+  grpc::Status status =
+      test_framework.get_service()
+          .GetContainerListenerImpl()
+          ->ApplyAnsiblePlaybookProgress(&ctx, &request, &response);
+  ASSERT_TRUE(status.ok()) << status.error_message();
+
+  EXPECT_EQ(dbus_result.vm_name(), ServiceTestingHelper::kDefaultVmName);
+  EXPECT_EQ(dbus_result.container_name(),
+            ServiceTestingHelper::kDefaultContainerName);
+  EXPECT_EQ(dbus_result.owner_id(), ServiceTestingHelper::kDefaultOwnerId);
+  EXPECT_EQ(dbus_result.status(), ApplyAnsiblePlaybookProgressSignal::FAILED);
+  EXPECT_EQ(dbus_result.failure_details(), kFailureDetails);
+}
+
 }  // namespace
 
 }  // namespace cicerone

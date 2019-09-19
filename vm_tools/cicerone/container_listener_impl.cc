@@ -315,6 +315,44 @@ grpc::Status ContainerListenerImpl::UninstallPackageProgress(
   return grpc::Status::OK;
 }
 
+grpc::Status ContainerListenerImpl::ApplyAnsiblePlaybookProgress(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::ApplyAnsiblePlaybookProgressInfo* request,
+    vm_tools::EmptyMessage* response) {
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
+  if (cid == 0) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failed parsing cid for ContainerListener");
+  }
+  ApplyAnsiblePlaybookProgressSignal progress_signal;
+  if (!ApplyAnsiblePlaybookProgressSignal::Status_IsValid(
+          static_cast<int>(request->status()))) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Invalid status field in protobuf request");
+  }
+  progress_signal.set_status(
+      static_cast<ApplyAnsiblePlaybookProgressSignal::Status>(
+          request->status()));
+  progress_signal.set_failure_details(request->failure_details());
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+  bool result = false;
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::Bind(&vm_tools::cicerone::Service::ApplyAnsiblePlaybookProgress,
+                 service_, request->token(), cid, &progress_signal, &result,
+                 &event));
+  event.Wait();
+  if (!result) {
+    LOG(ERROR) << "Failure updating Ansible playbook application progress from "
+                  "ContainerListener";
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failure in ApplyAnsiblePlaybookProgress");
+  }
+
+  return grpc::Status::OK;
+}
+
 grpc::Status ContainerListenerImpl::OpenTerminal(
     grpc::ServerContext* ctx,
     const vm_tools::container::OpenTerminalRequest* request,

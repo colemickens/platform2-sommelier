@@ -61,6 +61,10 @@ class ContainerListenerImpl final
       grpc::ServerContext* ctx,
       const vm_tools::container::UninstallPackageProgressInfo* request,
       vm_tools::EmptyMessage* response) override;
+  grpc::Status ApplyAnsiblePlaybookProgress(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::ApplyAnsiblePlaybookProgressInfo* request,
+      vm_tools::EmptyMessage* response) override;
   grpc::Status OpenTerminal(
       grpc::ServerContext* ctx,
       const vm_tools::container::OpenTerminalRequest* request,
