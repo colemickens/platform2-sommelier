@@ -21,15 +21,15 @@ using base::FilePath;
 
 static void Usage(FILE* output) {
   fprintf(output,
-    "Usage:\n"
-    "  p2p-http-server [OPTION..]\n"
-    "\n"
-    "Options:\n"
-    " --help           Show help options\n"
-    " --directory=DIR  Directory to serve from (default: .)\n"
-    " --port=PORT      TCP port number to listen on (default: 16725)\n"
-    " -v=NUMBER        Verbosity level (default: 0)\n"
-    "\n");
+          "Usage:\n"
+          "  p2p-http-server [OPTION..]\n"
+          "\n"
+          "Options:\n"
+          " --help           Show help options\n"
+          " --directory=DIR  Directory to serve from (default: .)\n"
+          " --port=PORT      TCP port number to listen on (default: 16725)\n"
+          " -v=NUMBER        Verbosity level (default: 0)\n"
+          "\n");
 }
 
 int main(int argc, char* argv[]) {

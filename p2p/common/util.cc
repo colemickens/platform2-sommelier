@@ -31,10 +31,10 @@ static bool SyslogFunc(int severity,
                        size_t message_start,
                        const string& str) {
   int base_severity_to_syslog_priority[logging::LOG_NUM_SEVERITIES] = {
-    LOG_INFO,     // logging::LOG_INFO
-    LOG_WARNING,  // logging::LOG_WARNING
-    LOG_ERR,      // logging::LOG_ERROR
-    LOG_ALERT,    // logging::LOG_FATAL
+      LOG_INFO,     // logging::LOG_INFO
+      LOG_WARNING,  // logging::LOG_WARNING
+      LOG_ERR,      // logging::LOG_ERROR
+      LOG_ALERT,    // logging::LOG_FATAL
   };
 
   int priority = LOG_NOTICE;
@@ -65,7 +65,7 @@ void SetupSyslog(const char* program_name, bool include_pid) {
 }
 
 bool IsXAttrSupported(const base::FilePath& dir_path) {
-  char *path = strdup(dir_path.Append("xattr_test_XXXXXX").value().c_str());
+  char* path = strdup(dir_path.Append("xattr_test_XXXXXX").value().c_str());
 
   int fd = mkstemp(path);
   if (fd == -1) {

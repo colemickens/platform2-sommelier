@@ -16,7 +16,7 @@ namespace util {
 
 // StructSerializerWrite writes the passed struct T |data| to a file descriptor
 // that should be consumed by a StructSerializerWatcher in the other end.
-template<typename T>
+template <typename T>
 bool StructSerializerWrite(int fd, const T& data) {
   const char* p = reinterpret_cast<const char*>(&data);
   size_t to_write = sizeof(T);
@@ -42,22 +42,21 @@ bool StructSerializerWrite(int fd, const T& data) {
 // representing it is copied from StructSerializerWrite to
 // StructSerializerWatcher without any conversion, thus only suitable for
 // structs of basic types and fixed length arrays of those.
-template<typename T>
+template <typename T>
 class StructSerializerWatcher {
  public:
   // The callback function type that will be used for a StructSerializerWatcher
   // of the struct T.
   typedef void StructSerializerCallback(const T& data, void* user_data);
 
-  StructSerializerWatcher(
-      int fd,
-      StructSerializerCallback* callback,
-      void* user_data)
+  StructSerializerWatcher(int fd,
+                          StructSerializerCallback* callback,
+                          void* user_data)
       : source_id_(0),
-      fd_(fd),
-      callback_(callback),
-      user_data_(user_data),
-      buffer_len_(0) {
+        fd_(fd),
+        callback_(callback),
+        user_data_(user_data),
+        buffer_len_(0) {
     GError* error = NULL;
 
     GIOChannel* io_channel = g_io_channel_unix_new(fd);
@@ -70,8 +69,7 @@ class StructSerializerWatcher {
     source_id_ = g_io_add_watch(
         io_channel,
         static_cast<GIOCondition>(G_IO_IN | G_IO_PRI | G_IO_ERR | G_IO_HUP),
-        OnIOChannelActivity,
-        this);
+        OnIOChannelActivity, this);
     g_io_channel_unref(io_channel);
   }
 
@@ -92,8 +90,7 @@ class StructSerializerWatcher {
     char* char_buffer = reinterpret_cast<char*>(&watcher->buffer_);
 
     do {
-      bytes_read = read(watcher->fd_,
-                        char_buffer + watcher->buffer_len_,
+      bytes_read = read(watcher->fd_, char_buffer + watcher->buffer_len_,
                         struct_size_ - watcher->buffer_len_);
     } while (bytes_read < 0 && errno == EAGAIN);
     if (bytes_read < 0) {

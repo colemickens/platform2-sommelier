@@ -145,8 +145,7 @@ void ServicePublisherAvahi::Publish(bool may_delay) {
     }
     delay_timeout_id_ =
         g_timeout_add(kFileChangedDelayMSec,
-                      static_cast<GSourceFunc>(OnDelayTimeoutExpired),
-                      this);
+                      static_cast<GSourceFunc>(OnDelayTimeoutExpired), this);
     VLOG(1) << "Scheduling publishing to happen in " << kFileChangedDelayMSec
             << " msec";
     return;
@@ -164,26 +163,21 @@ void ServicePublisherAvahi::Publish(bool may_delay) {
 
   txt = CalculateTXTRecords();
   if (group_ == NULL) {
-    group_ = avahi_entry_group_new(client_,
-                                   NULL,
-                                   NULL); /* user_data */
+    group_ = avahi_entry_group_new(client_, NULL, NULL); /* user_data */
     if (group_ == NULL) {
       LOG(ERROR) << "Error creating AvahiEntryGroup: "
                  << avahi_strerror(avahi_client_errno(client_));
       avahi_string_list_free(txt);
       return;
     }
-    rc = avahi_entry_group_add_service_strlst(group_,
-                                              AVAHI_IF_UNSPEC,
-                                              AVAHI_PROTO_UNSPEC,
-                                              (AvahiPublishFlags) 0,
-                                              lan_name_.c_str(),
-                                              "_cros_p2p._tcp",
-                                              /* service type */
-                                              NULL,       /* domain */
-                                              NULL,       /* host */
-                                              http_port_, /* IP port */
-                                              txt);
+    rc = avahi_entry_group_add_service_strlst(
+        group_, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC, (AvahiPublishFlags)0,
+        lan_name_.c_str(), "_cros_p2p._tcp",
+        /* service type */
+        NULL,       /* domain */
+        NULL,       /* host */
+        http_port_, /* IP port */
+        txt);
     if (rc != AVAHI_OK) {
       LOG(ERROR) << "Error adding service to AvahiEntryGroup: "
                  << avahi_strerror(avahi_client_errno(client_));
@@ -197,15 +191,12 @@ void ServicePublisherAvahi::Publish(bool may_delay) {
                  << avahi_strerror(avahi_client_errno(client_));
     }
   } else {
-    avahi_entry_group_update_service_txt_strlst(group_,
-                                                AVAHI_IF_UNSPEC,
-                                                AVAHI_PROTO_UNSPEC,
-                                                (AvahiPublishFlags) 0,
-                                                lan_name_.c_str(),
-                                                "_cros_p2p._tcp",
-                                                /* service type */
-                                                NULL, /* domain */
-                                                txt);
+    avahi_entry_group_update_service_txt_strlst(
+        group_, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC, (AvahiPublishFlags)0,
+        lan_name_.c_str(), "_cros_p2p._tcp",
+        /* service type */
+        NULL, /* domain */
+        txt);
   }
 
   avahi_string_list_free(txt);
@@ -241,11 +232,8 @@ bool ServicePublisherAvahi::Init() {
   int error;
 
   poll_ = avahi_glib_poll_new(NULL, G_PRIORITY_DEFAULT);
-  client_ = avahi_client_new(avahi_glib_poll_get(poll_),
-                             (AvahiClientFlags) 0,
-                             OnAvahiChanged,
-                             this,
-                             &error);
+  client_ = avahi_client_new(avahi_glib_poll_get(poll_), (AvahiClientFlags)0,
+                             OnAvahiChanged, this, &error);
   if (client_ == NULL) {
     LOG(ERROR) << "Error constructing AvahiClient: " << error;
     return false;
@@ -283,7 +271,9 @@ void ServicePublisherAvahi::SetNumConnections(int num_connections) {
   Publish(false);
 }
 
-map<string, size_t> ServicePublisherAvahi::files() { return files_; }
+map<string, size_t> ServicePublisherAvahi::files() {
+  return files_;
+}
 
 // -----------------------------------------------------------------------------
 

@@ -18,9 +18,9 @@ namespace common {
 class FakeClock : public ClockInterface {
  public:
   FakeClock()
-    : monotonic_time_(base::Time::Now()),
-    sleep_called_(base::WaitableEvent::ResetPolicy::MANUAL,
-                  base::WaitableEvent::InitialState::NOT_SIGNALED) {}
+      : monotonic_time_(base::Time::Now()),
+        sleep_called_(base::WaitableEvent::ResetPolicy::MANUAL,
+                      base::WaitableEvent::InitialState::NOT_SIGNALED) {}
 
   virtual void Sleep(const base::TimeDelta& duration) {
     slept_duration_ += duration;
@@ -30,17 +30,11 @@ class FakeClock : public ClockInterface {
     sleep_called_.Signal();
   }
 
-  virtual base::Time GetMonotonicTime() {
-    return monotonic_time_;
-  }
+  virtual base::Time GetMonotonicTime() { return monotonic_time_; }
 
-  base::TimeDelta GetSleptTime() {
-    return slept_duration_;
-  }
+  base::TimeDelta GetSleptTime() { return slept_duration_; }
 
-  void SetMonotonicTime(const base::Time &time) {
-    monotonic_time_ = time;
-  }
+  void SetMonotonicTime(const base::Time& time) { monotonic_time_ = time; }
 
   // Blocks the caller thread until a different thread calls Sleep().
   void BlockUntilSleepIsCalled() {

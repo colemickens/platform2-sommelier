@@ -39,17 +39,17 @@ enum P2PServerRequestResult {
   kP2PRequestResultResponseInterrupted,
 
   kP2PRequestResultMalformed,  // Request was malformed.
-  kP2PRequestResultNotFound,  // Requested resource was not found.
-  kP2PRequestResultIndex,  // Requested the '/' or '/index.html' resource.
+  kP2PRequestResultNotFound,   // Requested resource was not found.
+  kP2PRequestResultIndex,      // Requested the '/' or '/index.html' resource.
 
   // Add new P2PServerRequestResults above this line.
   kNumP2PServerRequestResults
 };
 
 struct P2PServerMessage {
-  uint64_t magic;  // The magic value fixed to be "MoonShot".
+  uint64_t magic;         // The magic value fixed to be "MoonShot".
   uint32_t message_type;  // The P2PServerMessageType.
-  int64_t value;  // The value for the provided message type.
+  int64_t value;          // The value for the provided message type.
 };
 
 // Returns whether the magic field in the provided |message| is valid.
@@ -61,8 +61,7 @@ bool ParseP2PServerMessageType(uint32_t value, P2PServerMessageType* result);
 
 // Converts a int64_t |value| to a P2PServerRequestResult if the provided
 // |value| is in range. Returns whether the conversion was successful.
-bool ParseP2PServerRequestResult(int64_t value,
-                                 P2PServerRequestResult* result);
+bool ParseP2PServerRequestResult(int64_t value, P2PServerRequestResult* result);
 
 // Convertion to human-readable string for debugging purposes.
 std::string ToString(const P2PServerMessage& message);

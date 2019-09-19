@@ -17,9 +17,9 @@
 
 using base::FilePath;
 using p2p::server::HttpServerExternalProcess;
-using p2p::util::P2PServerMessage;
 using p2p::util::kNumP2PServerMessageTypes;
 using p2p::util::kP2PServerMagic;
+using p2p::util::P2PServerMessage;
 
 struct Environment {
   Environment() {

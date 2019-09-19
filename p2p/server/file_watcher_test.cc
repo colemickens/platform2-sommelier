@@ -67,11 +67,10 @@ class FileWatcherListener {
 class MockFileWatcherListener : public FileWatcherListener {
  public:
   explicit MockFileWatcherListener(FileWatcher* file_watcher)
-      : FileWatcherListener(file_watcher),
-      num_calls_(0) {
+      : FileWatcherListener(file_watcher), num_calls_(0) {
     ON_CALL(*this, OnChanged(_, _))
-      .WillByDefault(testing::InvokeWithoutArgs(
-          this, &MockFileWatcherListener::OnCall));
+        .WillByDefault(
+            testing::InvokeWithoutArgs(this, &MockFileWatcherListener::OnCall));
   }
 
   MOCK_METHOD(void,
@@ -108,20 +107,17 @@ TEST(FileWatcher, TouchNonExisting) {
   }
 
   StrictMock<MockFileWatcherListener> listener(watcher);
-  EXPECT_CALL(listener,
-              OnChanged(testdir.Append("file.p2p"),
-                        FileWatcher::EventType::kFileAdded));
-  EXPECT_CALL(listener,
-              OnChanged(testdir.Append("file.p2p"),
-                        FileWatcher::EventType::kFileChanged));
+  EXPECT_CALL(listener, OnChanged(testdir.Append("file.p2p"),
+                                  FileWatcher::EventType::kFileAdded));
+  EXPECT_CALL(listener, OnChanged(testdir.Append("file.p2p"),
+                                  FileWatcher::EventType::kFileChanged));
   EXPECT_COMMAND(0, "touch %s", testdir.Append("file.p2p").value().c_str());
 
   // At this point, all the events should be generated, but the directory
   // watcher could be implemented using polling.
   RunGMainLoopUntil(kDefaultMainLoopTimeoutMs,
                     Bind(&MockFileWatcherListener::NumCallsReached,
-                         Unretained(&listener),
-                         2 /* num_calls */));
+                         Unretained(&listener), 2 /* num_calls */));
 
   {
     vector<FilePath> expected_files;
@@ -148,15 +144,13 @@ TEST(FileWatcher, TouchExisting) {
   }
 
   StrictMock<MockFileWatcherListener> listener(watcher);
-  EXPECT_CALL(listener,
-              OnChanged(testdir.Append("existing.p2p"),
-                        FileWatcher::EventType::kFileChanged));
+  EXPECT_CALL(listener, OnChanged(testdir.Append("existing.p2p"),
+                                  FileWatcher::EventType::kFileChanged));
   EXPECT_COMMAND(0, "touch %s", testdir.Append("existing.p2p").value().c_str());
 
   RunGMainLoopUntil(kDefaultMainLoopTimeoutMs,
                     Bind(&MockFileWatcherListener::NumCallsReached,
-                         Unretained(&listener),
-                         1 /* num_calls */));
+                         Unretained(&listener), 1 /* num_calls */));
 
   {
     vector<FilePath> expected_files;
@@ -180,20 +174,16 @@ TEST(FileWatcher, CreateFile) {
   }
 
   StrictMock<MockFileWatcherListener> listener(watcher);
-  EXPECT_CALL(listener,
-              OnChanged(testdir.Append("new-file.p2p"),
-                        FileWatcher::EventType::kFileAdded));
-  EXPECT_CALL(listener,
-              OnChanged(testdir.Append("new-file.p2p"),
-                        FileWatcher::EventType::kFileChanged));
-  EXPECT_COMMAND(0,
-                 "dd if=/dev/zero of=%s bs=1000 count=1",
+  EXPECT_CALL(listener, OnChanged(testdir.Append("new-file.p2p"),
+                                  FileWatcher::EventType::kFileAdded));
+  EXPECT_CALL(listener, OnChanged(testdir.Append("new-file.p2p"),
+                                  FileWatcher::EventType::kFileChanged));
+  EXPECT_COMMAND(0, "dd if=/dev/zero of=%s bs=1000 count=1",
                  testdir.Append("new-file.p2p").value().c_str());
 
   RunGMainLoopUntil(kDefaultMainLoopTimeoutMs,
                     Bind(&MockFileWatcherListener::NumCallsReached,
-                         Unretained(&listener),
-                         2 /* num_calls */));
+                         Unretained(&listener), 2 /* num_calls */));
 
   {
     vector<FilePath> expected_files;
@@ -219,16 +209,14 @@ TEST(FileWatcher, AppendToFile) {
   }
 
   StrictMock<MockFileWatcherListener> listener(watcher);
-  EXPECT_CALL(listener,
-              OnChanged(testdir.Append("existing.p2p"),
-                        FileWatcher::EventType::kFileChanged));
-  EXPECT_COMMAND(
-      0, "echo -n xyz >> %s", testdir.Append("existing.p2p").value().c_str());
+  EXPECT_CALL(listener, OnChanged(testdir.Append("existing.p2p"),
+                                  FileWatcher::EventType::kFileChanged));
+  EXPECT_COMMAND(0, "echo -n xyz >> %s",
+                 testdir.Append("existing.p2p").value().c_str());
 
   RunGMainLoopUntil(kDefaultMainLoopTimeoutMs,
                     Bind(&MockFileWatcherListener::NumCallsReached,
-                         Unretained(&listener),
-                         1 /* num_calls */));
+                         Unretained(&listener), 1 /* num_calls */));
 
   {
     vector<FilePath> expected_files;
@@ -255,15 +243,13 @@ TEST(FileWatcher, RemoveFile) {
   }
 
   StrictMock<MockFileWatcherListener> listener(watcher);
-  EXPECT_CALL(listener,
-              OnChanged(testdir.Append("file.p2p"),
-                        FileWatcher::EventType::kFileRemoved));
+  EXPECT_CALL(listener, OnChanged(testdir.Append("file.p2p"),
+                                  FileWatcher::EventType::kFileRemoved));
   EXPECT_COMMAND(0, "rm -f %s", testdir.Append("file.p2p").value().c_str());
 
   RunGMainLoopUntil(kDefaultMainLoopTimeoutMs,
                     Bind(&MockFileWatcherListener::NumCallsReached,
-                         Unretained(&listener),
-                         1 /* num_calls */));
+                         Unretained(&listener), 1 /* num_calls */));
 
   {
     vector<FilePath> expected_files;
@@ -289,11 +275,9 @@ TEST(FileWatcher, RenameInto) {
   }
 
   StrictMock<MockFileWatcherListener> listener(watcher);
-  EXPECT_CALL(listener,
-              OnChanged(testdir.Append("bar.p2p"),
-                        FileWatcher::EventType::kFileAdded));
-  EXPECT_COMMAND(0,
-                 "dd if=/dev/zero of=%s bs=100 count=10",
+  EXPECT_CALL(listener, OnChanged(testdir.Append("bar.p2p"),
+                                  FileWatcher::EventType::kFileAdded));
+  EXPECT_COMMAND(0, "dd if=/dev/zero of=%s bs=100 count=10",
                  testdir.Append("bar.p2p.tmp").value().c_str());
   int rc = rename(testdir.Append("bar.p2p.tmp").value().c_str(),
                   testdir.Append("bar.p2p").value().c_str());
@@ -301,8 +285,7 @@ TEST(FileWatcher, RenameInto) {
 
   RunGMainLoopUntil(kDefaultMainLoopTimeoutMs,
                     Bind(&MockFileWatcherListener::NumCallsReached,
-                         Unretained(&listener),
-                         1 /* num_calls */));
+                         Unretained(&listener), 1 /* num_calls */));
 
   {
     vector<FilePath> expected_files;
@@ -330,16 +313,14 @@ TEST(FileWatcher, RenameAway) {
   }
 
   StrictMock<MockFileWatcherListener> listener(watcher);
-  EXPECT_CALL(listener,
-              OnChanged(testdir.Append("foo.p2p"),
-                        FileWatcher::EventType::kFileRemoved));
+  EXPECT_CALL(listener, OnChanged(testdir.Append("foo.p2p"),
+                                  FileWatcher::EventType::kFileRemoved));
   int rc = rename(testdir.Append("foo.p2p").value().c_str(),
                   testdir.Append("foo.p2p.tmp").value().c_str());
   EXPECT_EQ(rc, 0);
   RunGMainLoopUntil(kDefaultMainLoopTimeoutMs,
                     Bind(&MockFileWatcherListener::NumCallsReached,
-                         Unretained(&listener),
-                         1 /* num_calls */));
+                         Unretained(&listener), 1 /* num_calls */));
 
   {
     vector<FilePath> expected_files;
@@ -368,18 +349,15 @@ TEST(FileWatcher, ExistingFiles) {
   }
 
   StrictMock<MockFileWatcherListener> listener(watcher);
-  EXPECT_CALL(listener,
-              OnChanged(testdir.Append("4.p2p"),
-                        FileWatcher::EventType::kFileAdded));
-  EXPECT_CALL(listener,
-              OnChanged(testdir.Append("4.p2p"),
-                        FileWatcher::EventType::kFileChanged));
+  EXPECT_CALL(listener, OnChanged(testdir.Append("4.p2p"),
+                                  FileWatcher::EventType::kFileAdded));
+  EXPECT_CALL(listener, OnChanged(testdir.Append("4.p2p"),
+                                  FileWatcher::EventType::kFileChanged));
   EXPECT_COMMAND(0, "touch %s", testdir.Append("4.p2p").value().c_str());
 
   RunGMainLoopUntil(kDefaultMainLoopTimeoutMs,
                     Bind(&MockFileWatcherListener::NumCallsReached,
-                         Unretained(&listener),
-                         2 /* num_calls */));
+                         Unretained(&listener), 2 /* num_calls */));
 
   {
     vector<FilePath> expected_files;
@@ -400,23 +378,20 @@ TEST(FileWatcher, ActivityOnNonMatchingFiles) {
 
   FileWatcher* watcher = FileWatcher::Construct(testdir, ".p2p");
   StrictMock<MockFileWatcherListener> listener(watcher);
-  EXPECT_COMMAND(0,
-                 "touch %s", testdir.Append("non-match.boo").value().c_str());
+  EXPECT_COMMAND(0, "touch %s",
+                 testdir.Append("non-match.boo").value().c_str());
 
   // We use a second file to flag the test completion and ensure the event
   // from the non-match.boo file was processed and properly ignored.
-  EXPECT_CALL(listener,
-              OnChanged(testdir.Append("match.p2p"),
-                        FileWatcher::EventType::kFileAdded));
-  EXPECT_CALL(listener,
-              OnChanged(testdir.Append("match.p2p"),
-                        FileWatcher::EventType::kFileChanged));
+  EXPECT_CALL(listener, OnChanged(testdir.Append("match.p2p"),
+                                  FileWatcher::EventType::kFileAdded));
+  EXPECT_CALL(listener, OnChanged(testdir.Append("match.p2p"),
+                                  FileWatcher::EventType::kFileChanged));
   EXPECT_COMMAND(0, "touch %s", testdir.Append("match.p2p").value().c_str());
 
   RunGMainLoopUntil(kDefaultMainLoopTimeoutMs,
                     Bind(&MockFileWatcherListener::NumCallsReached,
-                         Unretained(&listener),
-                         2 /* num_calls */));
+                         Unretained(&listener), 2 /* num_calls */));
   delete watcher;
   TeardownTestDir(testdir);
 }

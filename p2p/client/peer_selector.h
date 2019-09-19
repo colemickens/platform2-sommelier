@@ -74,7 +74,7 @@ class PeerSelector {
   p2p::common::ClockInterface* clock_;
 
   enum LookupResult {
-    kFound,  // The resource was found.
+    kFound,     // The resource was found.
     kNotFound,  // The resource was not found.
     kVanished,  // The resource was found but vanished while waiting in line.
     kCanceled,  // The request was canceled with Abort().

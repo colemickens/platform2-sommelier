@@ -69,8 +69,8 @@ bool HttpServerExternalProcess::Start() {
 
   vector<const char*> args;
   string dir_arg = string("--directory=") + root_dir_.value();
-  string requested_port_arg = string("--port=") +
-      std::to_string(requested_port_);
+  string requested_port_arg =
+      string("--port=") + std::to_string(requested_port_);
 
   args.push_back(http_binary_path_.value().c_str());
   args.push_back(dir_arg.c_str());
@@ -81,8 +81,7 @@ bool HttpServerExternalProcess::Start() {
   if (!g_spawn_async_with_pipes(NULL,  // working_dir
                                 const_cast<gchar**>(args.data()),
                                 NULL,  // envp
-                                (GSpawnFlags) 0,
-                                NULL,
+                                (GSpawnFlags)0, NULL,
                                 NULL,  // child_setup, user_data
                                 &pid_,
                                 NULL,  // standard_input
@@ -130,11 +129,10 @@ void HttpServerExternalProcess::OnMessageReceived(const P2PServerMessage& msg,
       metric = "P2P.Server.RequestResult";
       p2p::util::P2PServerRequestResult req_res;
       if (p2p::util::ParseP2PServerRequestResult(msg.value, &req_res)) {
-        LOG(INFO) << "Uploading " << ToString(req_res)
-                  << " for metric " <<  metric;
-        server->metrics_lib_->SendEnumToUMA(metric,
-                                   req_res,
-                                   p2p::util::kNumP2PServerRequestResults);
+        LOG(INFO) << "Uploading " << ToString(req_res) << " for metric "
+                  << metric;
+        server->metrics_lib_->SendEnumToUMA(
+            metric, req_res, p2p::util::kNumP2PServerRequestResults);
       } else {
         LOG(ERROR) << "Received invalid message: " << p2p::util::ToString(msg);
       }
@@ -142,50 +140,50 @@ void HttpServerExternalProcess::OnMessageReceived(const P2PServerMessage& msg,
 
     case p2p::util::kP2PServerServedSuccessfullyMB:
       metric = "P2P.Server.ContentServedSuccessfullyMB";
-      LOG(INFO) << "Uploading " << msg.value
-                << " (count) for metric " <<  metric;
-      server->metrics_lib_->SendToUMA(
-          metric, msg.value, 0 /* min */, 1000 /* max */, 50);
+      LOG(INFO) << "Uploading " << msg.value << " (count) for metric "
+                << metric;
+      server->metrics_lib_->SendToUMA(metric, msg.value, 0 /* min */,
+                                      1000 /* max */, 50);
       break;
 
     case p2p::util::kP2PServerServedInterruptedMB:
       metric = "P2P.Server.ContentServedInterruptedMB";
-      LOG(INFO) << "Uploading " << msg.value
-                << " (count) for metric " <<  metric;
-      server->metrics_lib_->SendToUMA(
-          metric, msg.value, 0 /* min */, 1000 /* max */, 50);
+      LOG(INFO) << "Uploading " << msg.value << " (count) for metric "
+                << metric;
+      server->metrics_lib_->SendToUMA(metric, msg.value, 0 /* min */,
+                                      1000 /* max */, 50);
       break;
 
     case p2p::util::kP2PServerRangeBeginPercentage:
       metric = "P2P.Server.RangeBeginPercentage";
-      LOG(INFO) << "Uploading " << msg.value
-                << " (count) for metric " <<  metric;
-      server->metrics_lib_->SendToUMA(
-          metric, msg.value, 0 /* min */, 100 /* max */, 100);
+      LOG(INFO) << "Uploading " << msg.value << " (count) for metric "
+                << metric;
+      server->metrics_lib_->SendToUMA(metric, msg.value, 0 /* min */,
+                                      100 /* max */, 100);
       break;
 
     case p2p::util::kP2PServerDownloadSpeedKBps:
       metric = "P2P.Server.DownloadSpeedKBps";
-      LOG(INFO) << "Uploading " << msg.value
-                << " (count) for metric " <<  metric;
-      server->metrics_lib_->SendToUMA(
-          metric, msg.value, 0 /* min */, 10000 /* max */, 100);
+      LOG(INFO) << "Uploading " << msg.value << " (count) for metric "
+                << metric;
+      server->metrics_lib_->SendToUMA(metric, msg.value, 0 /* min */,
+                                      10000 /* max */, 100);
       break;
 
     case p2p::util::kP2PServerPeakDownloadSpeedKBps:
       metric = "P2P.Server.PeakDownloadSpeedKBps";
-      LOG(INFO) << "Uploading " << msg.value
-                << " (count) for metric " <<  metric;
-      server->metrics_lib_->SendToUMA(
-          metric, msg.value, 0 /* min */, 10000 /* max */, 100);
+      LOG(INFO) << "Uploading " << msg.value << " (count) for metric "
+                << metric;
+      server->metrics_lib_->SendToUMA(metric, msg.value, 0 /* min */,
+                                      10000 /* max */, 100);
       break;
 
     case p2p::util::kP2PServerClientCount:
       metric = "P2P.Server.ClientCount";
-      LOG(INFO) << "Uploading " << msg.value
-                << " (count) for metric " <<  metric;
-      server->metrics_lib_->SendToUMA(
-          metric, msg.value, 0 /* min */, 50 /* max */, 50);
+      LOG(INFO) << "Uploading " << msg.value << " (count) for metric "
+                << metric;
+      server->metrics_lib_->SendToUMA(metric, msg.value, 0 /* min */,
+                                      50 /* max */, 50);
       break;
 
     case p2p::util::kP2PServerPortNumber:
@@ -231,9 +229,13 @@ bool HttpServerExternalProcess::Stop() {
   return true;
 }
 
-bool HttpServerExternalProcess::IsRunning() { return pid_ != 0; }
+bool HttpServerExternalProcess::IsRunning() {
+  return pid_ != 0;
+}
 
-uint16_t HttpServerExternalProcess::Port() { return port_; }
+uint16_t HttpServerExternalProcess::Port() {
+  return port_;
+}
 
 void HttpServerExternalProcess::SetNumConnectionsCallback(
     NumConnectionsCallback callback) {

@@ -25,8 +25,7 @@ namespace server {
 // A FileWatcher that doesn't really do anything.
 class FakeFileWatcher : public FileWatcher {
  public:
-  FakeFileWatcher(const base::FilePath& dir,
-                  const std::string& file_extension)
+  FakeFileWatcher(const base::FilePath& dir, const std::string& file_extension)
       : dir_(dir), file_extension_(file_extension), source_id_(0) {}
 
   virtual ~FakeFileWatcher() {
@@ -43,13 +42,9 @@ class FakeFileWatcher : public FileWatcher {
     changed_callback_ = changed_callback;
   }
 
-  virtual const base::FilePath& dir() const {
-    return dir_;
-  }
+  virtual const base::FilePath& dir() const { return dir_; }
 
-  virtual const std::string& file_extension() const {
-    return file_extension_;
-  }
+  virtual const std::string& file_extension() const { return file_extension_; }
 
   // Fake methods.
 
@@ -59,43 +54,42 @@ class FakeFileWatcher : public FileWatcher {
   // provided callback with the appropriate arguments in each case from the main
   // loop.
   bool AddFile(const base::FilePath& filename, size_t file_size) {
-    if (files_.find(filename) != files_.end()) return false;
+    if (files_.find(filename) != files_.end())
+      return false;
     files_.insert(filename);
 
     // Schedule the action.
     if (pending_actions_.empty())
       source_id_ = g_idle_add(OnFileChanged, this);
-    pending_actions_.push((FileEvent){
-        .filename = filename,
-        .event_type = kFileAdded,
-        .file_size = file_size});
+    pending_actions_.push((FileEvent){.filename = filename,
+                                      .event_type = kFileAdded,
+                                      .file_size = file_size});
     return true;
   }
 
   bool RemoveFile(const base::FilePath& filename) {
-    if (files_.find(filename) == files_.end()) return false;
+    if (files_.find(filename) == files_.end())
+      return false;
     files_.erase(filename);
 
     // Schedule the action.
     if (pending_actions_.empty())
       source_id_ = g_idle_add(OnFileChanged, this);
     pending_actions_.push((FileEvent){
-        .filename = filename,
-        .event_type = kFileRemoved,
-        .file_size = 0});
+        .filename = filename, .event_type = kFileRemoved, .file_size = 0});
     return true;
   }
 
   bool TouchFile(const base::FilePath& filename, size_t file_size) {
-    if (files_.find(filename) != files_.end()) return false;
+    if (files_.find(filename) != files_.end())
+      return false;
 
     // Schedule the action.
     if (pending_actions_.empty())
       source_id_ = g_idle_add(OnFileChanged, this);
-    pending_actions_.push((FileEvent){
-        .filename = filename,
-        .event_type = kFileChanged,
-        .file_size = file_size});
+    pending_actions_.push((FileEvent){.filename = filename,
+                                      .event_type = kFileChanged,
+                                      .file_size = file_size});
     return true;
   }
 
@@ -118,8 +112,8 @@ class FakeFileWatcher : public FileWatcher {
         break;
       case kFileRemoved:
         watcher->exposed_files_.erase(find(watcher->exposed_files_.begin(),
-                                            watcher->exposed_files_.end(),
-                                            event.filename));
+                                           watcher->exposed_files_.end(),
+                                           event.filename));
         unlink(event.filename.value().c_str());
         break;
     }

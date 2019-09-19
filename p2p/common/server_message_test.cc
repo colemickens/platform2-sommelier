@@ -12,7 +12,7 @@ namespace p2p {
 namespace util {
 
 TEST(ServerMessageTest, ValidP2PServerMessageMagicTest) {
-  P2PServerMessage msg = (P2PServerMessage) { .magic = 1234 };
+  P2PServerMessage msg = (P2PServerMessage){.magic = 1234};
   EXPECT_FALSE(ValidP2PServerMessageMagic(msg));
 
   msg.magic = kP2PServerMagic;
@@ -23,8 +23,8 @@ TEST(ServerMessageTest, ParseP2PServerMessageTypeTest) {
   P2PServerMessageType message_type = kNumP2PServerMessageTypes;
 
   EXPECT_FALSE(ParseP2PServerMessageType(99999, &message_type));
-  EXPECT_FALSE(ParseP2PServerMessageType(
-      static_cast<uint32_t>(-1), &message_type));
+  EXPECT_FALSE(
+      ParseP2PServerMessageType(static_cast<uint32_t>(-1), &message_type));
   EXPECT_FALSE(ParseP2PServerMessageType(
       static_cast<uint32_t>(kNumP2PServerMessageTypes), &message_type));
 
@@ -37,8 +37,7 @@ TEST(ServerMessageTest, ParseP2PServerRequestResultTest) {
   P2PServerRequestResult req_res = kNumP2PServerRequestResults;
 
   EXPECT_FALSE(ParseP2PServerRequestResult(99999, &req_res));
-  EXPECT_FALSE(ParseP2PServerRequestResult(
-      static_cast<int64_t>(-1), &req_res));
+  EXPECT_FALSE(ParseP2PServerRequestResult(static_cast<int64_t>(-1), &req_res));
   EXPECT_FALSE(ParseP2PServerRequestResult(
       static_cast<int64_t>(kNumP2PServerRequestResults), &req_res));
 
@@ -50,4 +49,3 @@ TEST(ServerMessageTest, ParseP2PServerRequestResultTest) {
 }  // namespace util
 
 }  // namespace p2p
-

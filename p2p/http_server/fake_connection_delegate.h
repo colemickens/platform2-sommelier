@@ -18,22 +18,21 @@ namespace http_server {
 // serve any data.
 class FakeConnectionDelegate : public ConnectionDelegateInterface {
  public:
-  FakeConnectionDelegate(
-      int dirfd,
-      int fd,
-      const std::string& pretty_addr,
-      ServerInterface* server,
-      int64_t max_download_rate) : fd_(fd), server_(server) {}
+  FakeConnectionDelegate(int dirfd,
+                         int fd,
+                         const std::string& pretty_addr,
+                         ServerInterface* server,
+                         int64_t max_download_rate)
+      : fd_(fd), server_(server) {}
 
   // A ConnectionDelegate factory.
-  static ConnectionDelegateInterface* Construct(
-      int dirfd,
-      int fd,
-      const std::string& pretty_addr,
-      ServerInterface* server,
-      int64_t max_download_rate) {
+  static ConnectionDelegateInterface* Construct(int dirfd,
+                                                int fd,
+                                                const std::string& pretty_addr,
+                                                ServerInterface* server,
+                                                int64_t max_download_rate) {
     return new FakeConnectionDelegate(dirfd, fd, pretty_addr, server,
-        max_download_rate);
+                                      max_download_rate);
   }
 
   // Overrides ConnectionDelegateInterface.

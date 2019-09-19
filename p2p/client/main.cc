@@ -40,25 +40,25 @@ static void sigterm_handler(int signum) {
 
 static void Usage(FILE* output) {
   fprintf(output,
-    "Usage:\n"
-    "  p2p-client [OPTION..]\n"
-    "\n"
-    "Options:\n"
-    " --help             Show help options\n"
-    " --list-all         Scan network and list available files\n"
-    " --list-urls=ID     Like --list-all but only show peers for ID\n"
-    " --get-url=ID       Scan for ID and pick a suitable peer\n"
-    " --num-connections  Show total number of connections in the LAN\n"
-    " -v=NUMBER          Verbosity level (default: 0)\n"
-    " --minimum-size=NUM When used with --get-url, scans for files\n"
-    "                    with at least NUM bytes (default: 1).\n"
-    "\n");
+          "Usage:\n"
+          "  p2p-client [OPTION..]\n"
+          "\n"
+          "Options:\n"
+          " --help             Show help options\n"
+          " --list-all         Scan network and list available files\n"
+          " --list-urls=ID     Like --list-all but only show peers for ID\n"
+          " --get-url=ID       Scan for ID and pick a suitable peer\n"
+          " --num-connections  Show total number of connections in the LAN\n"
+          " -v=NUMBER          Verbosity level (default: 0)\n"
+          " --minimum-size=NUM When used with --get-url, scans for files\n"
+          "                    with at least NUM bytes (default: 1).\n"
+          "\n");
 }
 
 // Lists all URLs discovered via |finder|. If |id| is not the empty
 // string then only lists URLs matching it.
 static void ListUrls(p2p::client::ServiceFinder* finder,
-                     const std::string &id) {
+                     const std::string& id) {
   vector<string> files = finder->AvailableFiles();
 
   for (auto const& file_name : files) {

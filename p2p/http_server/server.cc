@@ -43,8 +43,10 @@ namespace p2p {
 
 namespace http_server {
 
-Server::Server(const FilePath& directory, uint16_t port, int message_fd,
-    ConnectionDelegateFactory delegate_factory)
+Server::Server(const FilePath& directory,
+               uint16_t port,
+               int message_fd,
+               ConnectionDelegateFactory delegate_factory)
     : thread_pool_("p2p-http-server", 10),
       directory_(directory),
       dirfd_(-1),
@@ -129,18 +131,15 @@ bool Server::Start() {
   sock_addr.sin6_port = htons(port_);
 
   int optval = 1;
-  if (setsockopt(
-          listen_fd_, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval) ==
-      -1) {
+  if (setsockopt(listen_fd_, SOL_SOCKET, SO_REUSEADDR, &optval,
+                 sizeof optval) == -1) {
     PLOG(ERROR) << "setsockopt failed";
     Stop();
     return false;
   }
 
-  if (bind(listen_fd_,
-           reinterpret_cast<const struct ::sockaddr*>(&sock_addr),
-           sizeof sock_addr) ==
-      -1) {
+  if (bind(listen_fd_, reinterpret_cast<const struct ::sockaddr*>(&sock_addr),
+           sizeof sock_addr) == -1) {
     PLOG(ERROR) << "bind failed";
     Stop();
     return false;
@@ -154,12 +153,11 @@ bool Server::Start() {
 
   // Figure out port number if we asked bind(2) for a random one
   if (port_ == 0) {
-    struct ::sockaddr_in bound_addr = { 0 };
+    struct ::sockaddr_in bound_addr = {0};
     socklen_t bound_addr_len = sizeof bound_addr;
     if (getsockname(listen_fd_,
                     reinterpret_cast<struct ::sockaddr*>(&bound_addr),
-                    &bound_addr_len) !=
-        0) {
+                    &bound_addr_len) != 0) {
       PLOG(ERROR) << "getsockname failed";
       Stop();
       return false;
@@ -173,8 +171,7 @@ bool Server::Start() {
   listen_source_id_ = g_io_add_watch(
       io_channel,
       static_cast<GIOCondition>(G_IO_IN | G_IO_PRI | G_IO_ERR | G_IO_HUP),
-      OnIOChannelActivity,
-      this);
+      OnIOChannelActivity, this);
   CHECK_NE(0U, listen_source_id_);
   g_io_channel_unref(io_channel);
 
@@ -189,9 +186,13 @@ void Server::SetMaxDownloadRate(int64_t bytes_per_sec) {
   max_download_rate_ = bytes_per_sec;
 }
 
-uint16_t Server::Port() { return port_; }
+uint16_t Server::Port() {
+  return port_;
+}
 
-int Server::NumConnections() { return num_connections_; }
+int Server::NumConnections() {
+  return num_connections_;
+}
 
 p2p::common::ClockInterface* Server::Clock() {
   return clock_.get();
@@ -232,13 +233,8 @@ static string PrintAddress(struct ::sockaddr* addr, socklen_t addr_len) {
       if (dwords[0] == 0x00000000 && dwords[1] == 0x00000000 &&
           dwords[2] == htonl(0x0000ffff)) {
         uint8_t* bytes = reinterpret_cast<uint8_t*>(&addr_in6->sin6_addr);
-        snprintf(buf,
-                 sizeof buf,
-                 "%d.%d.%d.%d",
-                 bytes[12],
-                 bytes[13],
-                 bytes[14],
-                 bytes[15]);
+        snprintf(buf, sizeof buf, "%d.%d.%d.%d", bytes[12], bytes[13],
+                 bytes[14], bytes[15]);
         ret = string(buf);
       } else {
         if (inet_ntop(AF_INET6, &addr_in6->sin6_addr, buf, sizeof buf) ==
@@ -259,11 +255,9 @@ static string PrintAddress(struct ::sockaddr* addr, socklen_t addr_len) {
 }
 
 void Server::ReportServerMessage(P2PServerMessageType msg_type, int64_t value) {
-  P2PServerMessage msg = (P2PServerMessage) {
-    .magic = p2p::util::kP2PServerMagic,
-    .message_type = msg_type,
-    .value = value
-  };
+  P2PServerMessage msg = (P2PServerMessage){.magic = p2p::util::kP2PServerMagic,
+                                            .message_type = msg_type,
+                                            .value = value};
   LOG(INFO) << "Sending message " << ToString(msg);
   lock_.Acquire();
   p2p::util::StructSerializerWrite<P2PServerMessage>(message_fd_, msg);
@@ -286,7 +280,7 @@ gboolean Server::OnIOChannelActivity(GIOChannel* source,
                                      GIOCondition condition,
                                      gpointer user_data) {
   Server* server = reinterpret_cast<Server*>(user_data);
-  struct ::sockaddr_in6 addr_in6 = { 0 };
+  struct ::sockaddr_in6 addr_in6 = {0};
   struct ::sockaddr* addr = reinterpret_cast<struct ::sockaddr*>(&addr_in6);
   socklen_t addr_len = sizeof addr_in6;
   int fd = -1;
@@ -298,10 +292,7 @@ gboolean Server::OnIOChannelActivity(GIOChannel* source,
     PLOG(ERROR) << "accept failed";
   } else {
     ConnectionDelegateInterface* delegate = server->delegate_factory_(
-        server->dirfd_,
-        fd,
-        PrintAddress(addr, addr_len),
-        server,
+        server->dirfd_, fd, PrintAddress(addr, addr_len), server,
         server->max_download_rate_);
     server->UpdateNumConnections(1);
 

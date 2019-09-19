@@ -49,7 +49,7 @@ class ServiceFinderAvahi : public ServiceFinder {
   static ServiceFinderAvahi* Construct();
 
  private:
-  static gboolean quit_lookup_loop(GIOChannel *channel,
+  static gboolean quit_lookup_loop(GIOChannel* channel,
                                    GIOCondition cond,
                                    gpointer user_data);
 
@@ -71,7 +71,7 @@ class ServiceFinderAvahi : public ServiceFinder {
                                  AvahiLookupResultFlags flags,
                                  void* user_data);
 
-  bool IsOwnService(const char *name);
+  bool IsOwnService(const char* name);
 
   void HandleResolverEvent(const AvahiAddress* a,
                            uint16_t port,
@@ -108,7 +108,7 @@ class ServiceFinderAvahi : public ServiceFinder {
 
   // A GIOChannel on top of |abort_pipe_[0]| in order to watch it from the main
   // loop.
-  GIOChannel *abort_io_channel_;
+  GIOChannel* abort_io_channel_;
 
   // The source tag for the |abort_io_channel_| watch on the main loop.
   guint abort_source_;
@@ -135,8 +135,8 @@ ServiceFinderAvahi::ServiceFinderAvahi()
   }
 
   abort_io_channel_ = g_io_channel_unix_new(abort_pipe_[0]);
-  abort_source_ = g_io_add_watch(
-      abort_io_channel_, G_IO_IN, quit_lookup_loop, this);
+  abort_source_ =
+      g_io_add_watch(abort_io_channel_, G_IO_IN, quit_lookup_loop, this);
 }
 
 ServiceFinderAvahi::~ServiceFinderAvahi() {
@@ -283,17 +283,22 @@ void ServiceFinderAvahi::service_resolve_cb(AvahiServiceResolver* r,
   finder->BrowserCheckIfDone();
 }
 
-bool ServiceFinderAvahi::IsOwnService(const char *name) {
+bool ServiceFinderAvahi::IsOwnService(const char* name) {
   return g_strcmp0(name, avahi_client_get_host_name(client_)) == 0;
 }
 
 static string ToString(AvahiBrowserEvent event) {
   switch (event) {
-    case AVAHI_BROWSER_FAILURE: return "AVAHI_BROWSER_FAILURE";
-    case AVAHI_BROWSER_NEW: return "AVAHI_BROWSER_NEW";
-    case AVAHI_BROWSER_REMOVE: return "AVAHI_BROWSER_REMOVE";
-    case AVAHI_BROWSER_CACHE_EXHAUSTED: return "AVAHI_BROWSER_CACHE_EXHAUSTED";
-    case AVAHI_BROWSER_ALL_FOR_NOW: return "AVAHI_BROWSER_ALL_FOR_NOW";
+    case AVAHI_BROWSER_FAILURE:
+      return "AVAHI_BROWSER_FAILURE";
+    case AVAHI_BROWSER_NEW:
+      return "AVAHI_BROWSER_NEW";
+    case AVAHI_BROWSER_REMOVE:
+      return "AVAHI_BROWSER_REMOVE";
+    case AVAHI_BROWSER_CACHE_EXHAUSTED:
+      return "AVAHI_BROWSER_CACHE_EXHAUSTED";
+    case AVAHI_BROWSER_ALL_FOR_NOW:
+      return "AVAHI_BROWSER_ALL_FOR_NOW";
   }
   return "Unknown";
 }
@@ -328,22 +333,14 @@ void ServiceFinderAvahi::on_service_browser_changed(
 
   switch (event) {
     case AVAHI_BROWSER_FAILURE:
-      LOG(ERROR) << "Browser failure: " << avahi_strerror(avahi_client_errno(
-                                               finder->client_));
+      LOG(ERROR) << "Browser failure: "
+                 << avahi_strerror(avahi_client_errno(finder->client_));
       break;
 
     case AVAHI_BROWSER_NEW: {
-      AvahiServiceResolver* resolver =
-          avahi_service_resolver_new(finder->client_,
-                                     interface,
-                                     protocol,
-                                     name,
-                                     type,
-                                     domain,
-                                     AVAHI_PROTO_UNSPEC,
-                                     (AvahiLookupFlags) 0,
-                                     service_resolve_cb,
-                                     finder);
+      AvahiServiceResolver* resolver = avahi_service_resolver_new(
+          finder->client_, interface, protocol, name, type, domain,
+          AVAHI_PROTO_UNSPEC, (AvahiLookupFlags)0, service_resolve_cb, finder);
       if (!resolver) {
         LOG(ERROR) << "avahi_service_resolver_new() failed: "
                    << avahi_strerror(avahi_client_errno(finder->client_));
@@ -389,14 +386,10 @@ bool ServiceFinderAvahi::Lookup() {
   lookup_all_for_now_ = false;
 
   lookup_loop_ = g_main_loop_new(NULL, FALSE);
-  lookup_browser_ = avahi_service_browser_new(client_,
-                                              AVAHI_IF_UNSPEC,
-                                              AVAHI_PROTO_UNSPEC,
-                                              "_cros_p2p._tcp",
-                                              NULL, /* domain */
-                                              (AvahiLookupFlags) 0,
-                                              on_service_browser_changed,
-                                              this);
+  lookup_browser_ = avahi_service_browser_new(
+      client_, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC, "_cros_p2p._tcp",
+      NULL, /* domain */
+      (AvahiLookupFlags)0, on_service_browser_changed, this);
   if (!lookup_browser_) {
     LOG(ERROR) << "avahi_service_browser_new() failed: "
                << avahi_strerror(avahi_client_errno(client_));
@@ -417,7 +410,7 @@ bool ServiceFinderAvahi::Lookup() {
   return true;
 }
 
-gboolean ServiceFinderAvahi::quit_lookup_loop(GIOChannel *channel,
+gboolean ServiceFinderAvahi::quit_lookup_loop(GIOChannel* channel,
                                               GIOCondition cond,
                                               gpointer user_data) {
   LOG(INFO) << "Abort() processed, quiting main loop.";
@@ -464,11 +457,8 @@ bool ServiceFinderAvahi::Initialize() {
   // doing a sync D-Bus method call... short of fixing libavahi-client
   // there's really no way around this :-/
   poll_ = avahi_glib_poll_new(NULL, G_PRIORITY_DEFAULT);
-  client_ = avahi_client_new(avahi_glib_poll_get(poll_),
-                             (AvahiClientFlags) 0,
-                             on_avahi_changed,
-                             this,
-                             &error);
+  client_ = avahi_client_new(avahi_glib_poll_get(poll_), (AvahiClientFlags)0,
+                             on_avahi_changed, this, &error);
   if (client_ == NULL) {
     LOG(ERROR) << "Error constructing AvahiClient: " << error;
     return false;

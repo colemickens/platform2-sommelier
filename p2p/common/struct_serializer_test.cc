@@ -43,7 +43,8 @@ class TestStructCalls {
 };
 
 bool SetupPipes(int fds[2]) {
-  if (pipe(fds) != 0) return false;
+  if (pipe(fds) != 0)
+    return false;
 
   // Set the reading end as non-blocking.
   int flags = fcntl(fds[0], F_GETFL, 0);
@@ -78,8 +79,8 @@ TEST(StructSerializer, WatchSeveralMessages) {
   ASSERT_TRUE(SetupPipes(fds));
 
   TestStructCalls calls = TestStructCalls();
-  StructSerializerWatcher<TestStruct> watch(
-      fds[0], TestStructCalls::CountCalls, &calls);
+  StructSerializerWatcher<TestStruct> watch(fds[0], TestStructCalls::CountCalls,
+                                            &calls);
 
   TestStruct sample = {1, 2, 3};
   EXPECT_TRUE(StructSerializerWrite<TestStruct>(fds[1], sample));
@@ -89,7 +90,8 @@ TEST(StructSerializer, WatchSeveralMessages) {
   EXPECT_TRUE(StructSerializerWrite<TestStruct>(fds[1], sample));
 
   // Run the main loop until all the events are dispatched.
-  while (g_main_context_iteration(NULL, FALSE)) {}
+  while (g_main_context_iteration(NULL, FALSE)) {
+  }
 
   EXPECT_EQ(calls.num_calls, 3);
   const TestStruct result = {1, 4, 5};
@@ -104,8 +106,8 @@ TEST(StructSerializer, WatchNoMessages) {
   ASSERT_TRUE(SetupPipes(fds));
 
   TestStructCalls calls = TestStructCalls();
-  StructSerializerWatcher<TestStruct> watch(
-      fds[0], TestStructCalls::CountCalls, &calls);
+  StructSerializerWatcher<TestStruct> watch(fds[0], TestStructCalls::CountCalls,
+                                            &calls);
 
   // Close the write end.
   close(fds[1]);
@@ -124,8 +126,8 @@ TEST(StructSerializer, WatchPartialMessage) {
   ASSERT_TRUE(SetupPipes(fds));
 
   TestStructCalls calls = TestStructCalls();
-  StructSerializerWatcher<TestStruct> watch(
-      fds[0], TestStructCalls::CountCalls, &calls);
+  StructSerializerWatcher<TestStruct> watch(fds[0], TestStructCalls::CountCalls,
+                                            &calls);
 
   // Write a partial message.
   int x = -1;

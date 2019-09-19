@@ -46,11 +46,13 @@ class TimeBombAbort {
 // Utility macro to run the command expressed by the printf()-style string
 // |command_format| using the system(3) utility function. Will assert unless
 // the command exits normally with exit status |expected_exit_status|.
-#define EXPECT_COMMAND(expected_exit_status, command_format, ...) do { \
-  int rc = system(base::StringPrintf(command_format, ## __VA_ARGS__).c_str()); \
-  EXPECT_TRUE(WIFEXITED(rc)); \
-  EXPECT_EQ(WEXITSTATUS(rc), expected_exit_status); \
-} while (0);
+#define EXPECT_COMMAND(expected_exit_status, command_format, ...)          \
+  do {                                                                     \
+    int rc =                                                               \
+        system(base::StringPrintf(command_format, ##__VA_ARGS__).c_str()); \
+    EXPECT_TRUE(WIFEXITED(rc));                                            \
+    EXPECT_EQ(WEXITSTATUS(rc), expected_exit_status);                      \
+  } while (0);
 
 // Creates a unique and empty directory and returns the
 // path. Your code should call TeardownTestDir() when

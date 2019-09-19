@@ -18,12 +18,9 @@ namespace p2p {
 namespace client {
 
 FakeServiceFinder::FakeServiceFinder()
-    : num_lookup_calls_(0),
-    service_filtered_(false) {
-}
+    : num_lookup_calls_(0), service_filtered_(false) {}
 
-FakeServiceFinder::~FakeServiceFinder() {
-}
+FakeServiceFinder::~FakeServiceFinder() {}
 
 vector<const Peer*> FakeServiceFinder::GetPeersForFile(
     const string& file) const {
@@ -95,8 +92,7 @@ bool FakeServiceFinder::Lookup() {
   return !service_filtered_;
 }
 
-void FakeServiceFinder::Abort() {
-}
+void FakeServiceFinder::Abort() {}
 
 int FakeServiceFinder::GetNumLookupCalls() {
   return num_lookup_calls_;
@@ -107,16 +103,15 @@ void FakeServiceFinder::SetServiceFiltered(bool filtered) {
 }
 
 int FakeServiceFinder::NewPeer(string address, bool is_ipv6, uint16_t port) {
-  peers_.push_back((Peer){
-      .address = address,
-      .is_ipv6 = is_ipv6,
-      .port = port,
-      .num_connections = 0,
-      .files = map<string, size_t>()});
+  peers_.push_back((Peer){.address = address,
+                          .is_ipv6 = is_ipv6,
+                          .port = port,
+                          .num_connections = 0,
+                          .files = map<string, size_t>()});
   return peers_.size() - 1;
 }
 
-bool FakeServiceFinder::SetPeerConnections(int peer_id, int  connections) {
+bool FakeServiceFinder::SetPeerConnections(int peer_id, int connections) {
   if (peer_id < 0 || static_cast<unsigned>(peer_id) >= peers_.size()) {
     LOG(ERROR) << "Invalid peer_id provided: " << peer_id << ".";
     return false;
@@ -133,9 +128,7 @@ bool FakeServiceFinder::SetPeerConnectionsOnLookup(int at_call,
   if (at_call == num_lookup_calls_)
     return SetPeerConnections(peer_id, connections);
   set_peer_connections_calls_[at_call].push_back(
-      (SetPeerConnectionsCall){
-          .peer_id = peer_id,
-          .connections = connections});
+      (SetPeerConnectionsCall){.peer_id = peer_id, .connections = connections});
   return true;
 }
 
@@ -159,10 +152,7 @@ bool FakeServiceFinder::PeerShareFileOnLookup(int at_call,
   if (at_call == num_lookup_calls_)
     return PeerShareFile(peer_id, file, size);
   peer_share_file_calls_[at_call].push_back(
-      (PeerShareFileCall){
-          .peer_id = peer_id,
-          .file = file,
-          .size = size});
+      (PeerShareFileCall){.peer_id = peer_id, .file = file, .size = size});
   return true;
 }
 

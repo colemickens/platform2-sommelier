@@ -28,20 +28,19 @@ namespace client {
 PeerSelector::PeerSelector(ServiceFinder* finder,
                            p2p::common::ClockInterface* clock)
     : finder_(finder),
-    clock_(clock),
-    lookup_result_(kNumLookupResults),
-    candidate_files_count_(-1),
-    victim_connections_(-1),
-    num_total_peers_(-1),
-    url_waiting_time_sec_(-1),
-    must_exit_now_(false) {
-}
+      clock_(clock),
+      lookup_result_(kNumLookupResults),
+      candidate_files_count_(-1),
+      victim_connections_(-1),
+      num_total_peers_(-1),
+      url_waiting_time_sec_(-1),
+      must_exit_now_(false) {}
 
 // Type used for std::sort()
 struct SortPeerBySize {
   explicit SortPeerBySize(const std::string& id) : id_(id) {}
 
-  bool operator() (const Peer *a, const Peer *b) {
+  bool operator()(const Peer* a, const Peer* b) {
     map<string, size_t>::const_iterator iter_a = a->files.find(id_);
     map<string, size_t>::const_iterator iter_b = b->files.find(id_);
     if (iter_a == a->files.end())
@@ -93,7 +92,7 @@ string PeerSelector::PickUrlForId(const string& id, size_t minimum_size) {
 
   // If we have any files left, pick randomly from the top 33%
   int victim_number = 0;
-  int num_possible_victims = peers.size()/3 - 1;
+  int num_possible_victims = peers.size() / 3 - 1;
   if (num_possible_victims > 1)
     victim_number = base::RandInt(0, num_possible_victims - 1);
   const Peer* victim = peers[victim_number];
@@ -104,7 +103,7 @@ string PeerSelector::PickUrlForId(const string& id, size_t minimum_size) {
   if (victim->is_ipv6)
     address = "[" + address + "]";
   return string("http://") + address + ":" + std::to_string(victim->port) +
-      "/" + id;
+         "/" + id;
 }
 
 string PeerSelector::GetUrlAndWait(const string& id, size_t minimum_size) {
@@ -151,8 +150,8 @@ string PeerSelector::GetUrlAndWait(const string& id, size_t minimum_size) {
 
     LOG(INFO) << "Found peer for the given ID but there are already "
               << num_total_conn << " download(s) in the LAN which exceeds "
-              << "the threshold of "
-              << constants::kMaxSimultaneousDownloads << " download(s). "
+              << "the threshold of " << constants::kMaxSimultaneousDownloads
+              << " download(s). "
               << "Sleeping "
               << constants::kMaxSimultaneousDownloadsPollTimeSeconds
               << " seconds until retrying.";
@@ -186,18 +185,23 @@ void PeerSelector::Abort() {
   finder_->Abort();
 }
 
-
 string PeerSelector::ToString(LookupResult lookup_result) {
   switch (lookup_result) {
-    case kFound:    return "Found";
-    case kNotFound: return "NotFound";
-    case kVanished: return "Vanished";
-    case kCanceled: return "Canceled";
-    case kFiltered: return "Filtered";
+    case kFound:
+      return "Found";
+    case kNotFound:
+      return "NotFound";
+    case kVanished:
+      return "Vanished";
+    case kCanceled:
+      return "Canceled";
+    case kFiltered:
+      return "Filtered";
 
     // Don't add a default case to let the compiler warn about newly added
     // lookup results which should be added here.
-    case kNumLookupResults: return "Unknown";
+    case kNumLookupResults:
+      return "Unknown";
   }
   return "Unknown";
 }
@@ -215,15 +219,15 @@ bool PeerSelector::ReportMetrics(MetricsLibraryInterface* metrics_lib) {
   // Report the last lookup_result.
   metric = "P2P.Client.LookupResult";
   metrics_lib->SendEnumToUMA(metric, lookup_result_, kNumLookupResults);
-  LOG(INFO) << "Uploading " << ToString(lookup_result_)
-            << " for metric " <<  metric;
+  LOG(INFO) << "Uploading " << ToString(lookup_result_) << " for metric "
+            << metric;
 
   if (lookup_result_ != kFiltered && lookup_result_ != kCanceled) {
     // Report the number of peers implementing p2p file sharing on the network.
     // This metric is only reported if the mDNS service is not filtered.
     metric = "P2P.Client.NumPeers";
     value = num_total_peers_;
-    LOG(INFO) << "Uploading " << value << " (count) for metric " <<  metric;
+    LOG(INFO) << "Uploading " << value << " (count) for metric " << metric;
     metrics_lib->SendToUMA(metric, value, 1 /* min */, 1000 /* max */, 100);
   }
 
@@ -231,17 +235,17 @@ bool PeerSelector::ReportMetrics(MetricsLibraryInterface* metrics_lib) {
     // Report
     metric = "P2P.Client.Found.WaitingTimeSeconds";
     value = url_waiting_time_sec_;
-    LOG(INFO) << "Uploading " << value << " (count) for metric " <<  metric;
+    LOG(INFO) << "Uploading " << value << " (count) for metric " << metric;
     metrics_lib->SendToUMA(metric, value, 0 /* min */, 86400 /* max */, 100);
 
     metric = "P2P.Client.Found.ConnectionCount";
     value = victim_connections_;
-    LOG(INFO) << "Uploading " << value << " (count) for metric " <<  metric;
+    LOG(INFO) << "Uploading " << value << " (count) for metric " << metric;
     metrics_lib->SendToUMA(metric, value, 0 /* min */, 50 /* max */, 50);
 
     metric = "P2P.Client.Found.CandidateCount";
     value = candidate_files_count_;
-    LOG(INFO) << "Uploading " << value << " (count) for metric " <<  metric;
+    LOG(INFO) << "Uploading " << value << " (count) for metric " << metric;
     metrics_lib->SendToUMA(metric, value, 1 /* min */, 50 /* max */, 50);
   }
 
@@ -251,7 +255,7 @@ bool PeerSelector::ReportMetrics(MetricsLibraryInterface* metrics_lib) {
     // waiting for it.
     metric = "P2P.Client.Vanished.WaitingTimeSeconds";
     value = url_waiting_time_sec_;
-    LOG(INFO) << "Uploading " << value << " (count) for metric " <<  metric;
+    LOG(INFO) << "Uploading " << value << " (count) for metric " << metric;
     metrics_lib->SendToUMA(metric, value, 0 /* min */, 86400 /* max */, 100);
   }
 
@@ -259,7 +263,7 @@ bool PeerSelector::ReportMetrics(MetricsLibraryInterface* metrics_lib) {
     // Report the wall-clock time spent until a lookup was cancelled.
     metric = "P2P.Client.Canceled.WaitingTimeSeconds";
     value = url_waiting_time_sec_;
-    LOG(INFO) << "Uploading " << value << " (count) for metric " <<  metric;
+    LOG(INFO) << "Uploading " << value << " (count) for metric " << metric;
     metrics_lib->SendToUMA(metric, value, 0 /* min */, 86400 /* max */, 100);
   }
 

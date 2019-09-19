@@ -54,9 +54,9 @@ namespace p2p {
 
 namespace http_server {
 
-static void OnMessageReceivedAppend(
-    const P2PServerMessage& msg, void* user_data) {
-  vector<string> *messages = reinterpret_cast<vector<string>*>(user_data);
+static void OnMessageReceivedAppend(const P2PServerMessage& msg,
+                                    void* user_data) {
+  vector<string>* messages = reinterpret_cast<vector<string>*>(user_data);
   EXPECT_TRUE(ValidP2PServerMessageMagic(msg));
   messages->push_back(ToString(msg));
 }
@@ -113,7 +113,7 @@ class Barrier {
 TEST(P2PHttpServer, InvalidDirectoryFails) {
   FilePath testdir_path("/path/to/invalid/directory");
   Server server(testdir_path, 0, STDOUT_FILENO,
-      FakeConnectionDelegate::Construct);
+                FakeConnectionDelegate::Construct);
   EXPECT_FALSE(server.Start());
 }
 
@@ -123,14 +123,13 @@ TEST(P2PHttpServer, AlreadyUsedPortFails) {
   EXPECT_NE(dev_null, -1);
 
   // Create a server on a port number provided by the kernel.
-  Server server1(testdir_path, 0, dev_null,
-      FakeConnectionDelegate::Construct);
+  Server server1(testdir_path, 0, dev_null, FakeConnectionDelegate::Construct);
   EXPECT_TRUE(server1.Start());
   EXPECT_NE(server1.Port(), 0);
 
   // Attempt to create a server on the same port must fail.
   Server server2(testdir_path, server1.Port(), dev_null,
-      FakeConnectionDelegate::Construct);
+                 FakeConnectionDelegate::Construct);
   EXPECT_FALSE(server2.Start());
 
   // Stop the first server allows the second server to run. This ensures that
@@ -152,8 +151,7 @@ TEST(P2PHttpServer, ReportServerMessageTest) {
   int pipefd[2];
   ASSERT_EQ(0, pipe(pipefd));
   StructSerializerWatcher<P2PServerMessage> watch(
-      pipefd[0],
-      OnMessageReceivedAppend, reinterpret_cast<void*>(&messages));
+      pipefd[0], OnMessageReceivedAppend, reinterpret_cast<void*>(&messages));
 
   // Bring up the HTTP server.
   Server server(testdir_path, 0, pipefd[1], FakeConnectionDelegate::Construct);
@@ -172,8 +170,8 @@ TEST(P2PHttpServer, ReportServerMessageTest) {
 
   // Check the messages reported by the Server.
   ASSERT_EQ(messages.size(), 4);
-  EXPECT_TRUE(base::StartsWith(messages[0], "{PortNumber: ",
-                               base::CompareCase::INSENSITIVE_ASCII));
+  EXPECT_TRUE(base::StartsWith(
+      messages[0], "{PortNumber: ", base::CompareCase::INSENSITIVE_ASCII));
   EXPECT_EQ(messages[1], "{NumConnections: 1}");
   EXPECT_EQ(messages[2], "{ClientCount: 1}");
   EXPECT_EQ(messages[3], "{NumConnections: 0}");
@@ -188,8 +186,11 @@ static const int kMultipleTestNumConnections = 5;
 
 class MultipleClientThread : public base::SimpleThread {
  public:
-  MultipleClientThread(uint16_t port, int id, ServerInterface* server,
-                       Barrier* pre_check, Barrier* post_check)
+  MultipleClientThread(uint16_t port,
+                       int id,
+                       ServerInterface* server,
+                       Barrier* pre_check,
+                       Barrier* post_check)
       : base::SimpleThread("test-multiple", base::SimpleThread::Options()),
         port_(port),
         id_(id),
@@ -252,9 +253,8 @@ TEST(P2PHttpServer, MultipleConnections) {
   Barrier post_check(kMultipleTestNumConnections);
   vector<MultipleClientThread*> threads;
   for (int n = 0; n < kMultipleTestNumConnections; n++) {
-    MultipleClientThread* thread =
-        new MultipleClientThread(server.Port(), n,
-                                 &server, &pre_check, &post_check);
+    MultipleClientThread* thread = new MultipleClientThread(
+        server.Port(), n, &server, &pre_check, &post_check);
     thread->Start();
     threads.push_back(thread);
   }
@@ -263,7 +263,7 @@ TEST(P2PHttpServer, MultipleConnections) {
   // there's no need to run the main loop, all the work is done by the
   // ConnectionDelegate threads.
   RunGMainLoopUntil(30000, base::Bind(&ConnectionsReached, &server,
-      kMultipleTestNumConnections));
+                                      kMultipleTestNumConnections));
 
   // Wait for all threads to finish the work.
   for (auto& t : threads) {

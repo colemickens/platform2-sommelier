@@ -38,12 +38,11 @@ class ConnectionDelegate : public ConnectionDelegateInterface {
   virtual ~ConnectionDelegate();
 
   // A ConnectionDelegate factory.
-  static ConnectionDelegateInterface* Construct(
-      int dirfd,
-      int fd,
-      const std::string& pretty_addr,
-      ServerInterface* server,
-      int64_t max_download_rate);
+  static ConnectionDelegateInterface* Construct(int dirfd,
+                                                int fd,
+                                                const std::string& pretty_addr,
+                                                ServerInterface* server,
+                                                int64_t max_download_rate);
 
   // Overrides DelegateSimpleThread::Delegate
   // Run() handles the connection passed on Construct() and deletes

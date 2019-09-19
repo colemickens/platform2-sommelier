@@ -55,12 +55,11 @@ class ConnectionDelegateTest : public ::testing::Test {
  public:
   ConnectionDelegateTest()
       : testdir_fd_(-1),
-      server_fd_(-1),
-      client_fd_(-1),
-      thread_(NULL),
-      delegate_(NULL) {
-    ON_CALL(mock_server_, Clock())
-      .WillByDefault(testing::Return(&clock_));
+        server_fd_(-1),
+        client_fd_(-1),
+        thread_(NULL),
+        delegate_(NULL) {
+    ON_CALL(mock_server_, Clock()).WillByDefault(testing::Return(&clock_));
     EXPECT_CALL(mock_server_, Clock()).Times(testing::AtLeast(0));
   }
 
@@ -81,8 +80,7 @@ class ConnectionDelegateTest : public ::testing::Test {
       PLOG(ERROR) << "Creating a server socket()";
     ASSERT_NE(servsock, -1);
 
-    client_fd_ = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC,
-                        IPPROTO_TCP);
+    client_fd_ = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
     if (client_fd_ == -1)
       PLOG(ERROR) << "Creating a client socket()";
     ASSERT_NE(client_fd_, -1);
@@ -94,9 +92,9 @@ class ConnectionDelegateTest : public ::testing::Test {
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(0);  // any port
     server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    ASSERT_NE(-1, bind(servsock,
-                       reinterpret_cast<struct sockaddr*>(&server_addr),
-                       sizeof(server_addr)));
+    ASSERT_NE(-1,
+              bind(servsock, reinterpret_cast<struct sockaddr*>(&server_addr),
+                   sizeof(server_addr)));
     // Read back the selected address and port.
     ASSERT_NE(-1, getsockname(servsock,
                               reinterpret_cast<struct sockaddr*>(&server_addr),
@@ -112,9 +110,9 @@ class ConnectionDelegateTest : public ::testing::Test {
                           reinterpret_cast<struct sockaddr*>(&server_addr),
                           sizeof(server_addr)));
 
-    server_fd_ = accept(servsock,
-                        reinterpret_cast<struct sockaddr*>(&client_addr),
-                        &client_len);
+    server_fd_ =
+        accept(servsock, reinterpret_cast<struct sockaddr*>(&client_addr),
+               &client_len);
     if (server_fd_ == -1)
       PLOG(ERROR) << "Accepting the client connection.";
     ASSERT_NE(server_fd_, -1);
@@ -123,8 +121,8 @@ class ConnectionDelegateTest : public ::testing::Test {
     ASSERT_EQ(close(servsock), 0);
 
     // Create the Server
-    delegate_ = new ConnectionDelegate(
-        testdir_fd_, server_fd_, "[addr]", &mock_server_, kDefaultDownloadRate);
+    delegate_ = new ConnectionDelegate(testdir_fd_, server_fd_, "[addr]",
+                                       &mock_server_, kDefaultDownloadRate);
 
     thread_ = new base::DelegateSimpleThread(delegate_, "delegate");
   }
@@ -171,16 +169,13 @@ class ConnectionDelegateTest : public ::testing::Test {
 class HTTPRequest {
  public:
   HTTPRequest()
-      : method_("GET"),
-      http_version_("1.1"),
-      uri_("/"),
-      host_("127.0.0.1") {
+      : method_("GET"), http_version_("1.1"), uri_("/"), host_("127.0.0.1") {
     headers_["User-Agent"] = "HTTPRequest/1.0 (unittester)";
   }
 
   string ToString() const {
     string res = method_ + " " + uri_ + " HTTP/" + http_version_ + "\r\n" +
-        "Host: " + host_ + "\r\n";
+                 "Host: " + host_ + "\r\n";
     for (const auto& it : headers_)
       res += it.first + ": " + it.second + "\r\n";
     res += "\r\n" + post_data_;
@@ -230,7 +225,7 @@ class HTTPResponse {
       int i;
       for (i = 0; i < line_len; ++i) {
         if (line[i] == '\n') {
-          if (i > 0 && line[i-1] == '\r') {
+          if (i > 0 && line[i - 1] == '\r') {
             // Found \r\n ending line.
             line_len = i + 1;
             break;
@@ -333,7 +328,8 @@ class HTTPResponse {
 //   ReadHTTPResponse(some_sock, &resp, 0);
 //   // ... do some checking of the headers, read the Content-Length if present.
 //   ReadHTTPResponse(some_sock, &resp, expect_content_size);
-static bool ReadHTTPResponse(int fd, string* response,
+static bool ReadHTTPResponse(int fd,
+                             string* response,
                              int min_content_size = -1) {
   char buf[16 * 1024];  // 16KiB is a reasonable buffer for recv().
   int res;
@@ -379,9 +375,9 @@ TEST_F(ConnectionDelegateTest, NoRequestAndClose) {
   SetupDelegate();
 
   p2p::testutil::TimeBombAbort bomb(60, "Test NoRequestAndClose timeout\n");
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRequestResult,
-      p2p::util::kP2PRequestResultMalformed));
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerRequestResult,
+                                  p2p::util::kP2PRequestResultMalformed));
   EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
@@ -393,9 +389,9 @@ TEST_F(ConnectionDelegateTest, NoRequestAndClose) {
 TEST_F(ConnectionDelegateTest, RequestUnsupportedMode) {
   SetupDelegate();
 
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRequestResult,
-      p2p::util::kP2PRequestResultMalformed));
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerRequestResult,
+                                  p2p::util::kP2PRequestResultMalformed));
   EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
@@ -419,15 +415,15 @@ TEST_F(ConnectionDelegateTest, GetExistentFile) {
   const string content = "Hello World!";
   WriteFile(testdir_path_.Append("hello.p2p"), content.c_str(), content.size());
 
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerRequestResult,
+                                  p2p::util::kP2PRequestResultResponseSent));
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRequestResult,
-      p2p::util::kP2PRequestResultResponseSent));
+                                p2p::util::kP2PServerServedSuccessfullyMB, 0));
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerDownloadSpeedKBps, _));
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerServedSuccessfullyMB, 0));
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerDownloadSpeedKBps, _));
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRangeBeginPercentage, 0));
+                                p2p::util::kP2PServerRangeBeginPercentage, 0));
   EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
@@ -453,15 +449,16 @@ TEST_F(ConnectionDelegateTest, PostExistentFile) {
   GeneratePrintableData(9 * 1000 * 1000 - 1, &content);
   WriteFile(testdir_path_.Append("a.foo.p2p"), content.c_str(), content.size());
 
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerRequestResult,
+                                  p2p::util::kP2PRequestResultResponseSent));
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerServedSuccessfullyMB,
+                                  8));  // Almost 9 MB served.
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerDownloadSpeedKBps, _));
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRequestResult,
-      p2p::util::kP2PRequestResultResponseSent));
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerServedSuccessfullyMB, 8));  // Almost 9 MB served.
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerDownloadSpeedKBps, _));
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRangeBeginPercentage, 0));
+                                p2p::util::kP2PServerRangeBeginPercentage, 0));
   EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
@@ -486,15 +483,15 @@ TEST_F(ConnectionDelegateTest, GetEmptyFile) {
 
   WriteFile(testdir_path_.Append("empty.p2p"), "", 0);
 
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRequestResult,
-      p2p::util::kP2PRequestResultResponseSent));
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerRequestResult,
+                                  p2p::util::kP2PRequestResultResponseSent));
   // The reported download speed should be 0 in this case, and no
   // kP2PServerServedSuccessfullyMB is reported.
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerDownloadSpeedKBps, 0));
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerDownloadSpeedKBps, 0));
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRangeBeginPercentage, 0));
+                                p2p::util::kP2PServerRangeBeginPercentage, 0));
   EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
@@ -520,15 +517,15 @@ TEST_F(ConnectionDelegateTest, GetRangeOfFile) {
   GeneratePrintableData(60 * 1000, &content);
   WriteFile(testdir_path_.Append("data.p2p"), content.c_str(), content.size());
 
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerRequestResult,
+                                  p2p::util::kP2PRequestResultResponseSent));
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRequestResult,
-      p2p::util::kP2PRequestResultResponseSent));
+                                p2p::util::kP2PServerServedSuccessfullyMB, 0));
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerDownloadSpeedKBps, _));
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerServedSuccessfullyMB, 0));
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerDownloadSpeedKBps, _));
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRangeBeginPercentage, 25));
+                                p2p::util::kP2PServerRangeBeginPercentage, 25));
   EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
@@ -558,9 +555,9 @@ TEST_F(ConnectionDelegateTest, GetInvalidRangeOfFile) {
   GeneratePrintableData(64 * 1000, &content);
   WriteFile(testdir_path_.Append("data.p2p"), content.c_str(), content.size());
 
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRequestResult,
-      p2p::util::kP2PRequestResultMalformed));
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerRequestResult,
+                                  p2p::util::kP2PRequestResultMalformed));
   EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
@@ -586,15 +583,15 @@ TEST_F(ConnectionDelegateTest, GetLastPartOfFile) {
   GeneratePrintableData(5 * 1000, &content);
   WriteFile(testdir_path_.Append("data.p2p"), content.c_str(), content.size());
 
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerRequestResult,
+                                  p2p::util::kP2PRequestResultResponseSent));
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRequestResult,
-      p2p::util::kP2PRequestResultResponseSent));
+                                p2p::util::kP2PServerServedSuccessfullyMB, 0));
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerDownloadSpeedKBps, _));
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerServedSuccessfullyMB, 0));
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerDownloadSpeedKBps, _));
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRangeBeginPercentage, 80));
+                                p2p::util::kP2PServerRangeBeginPercentage, 80));
   EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
@@ -632,18 +629,19 @@ TEST_F(ConnectionDelegateTest, GetIncompleteFile) {
   string content;
   GeneratePrintableData(50 * 1000, &content);
   WriteFile(testdir_path_.Append("data.p2p"), content.c_str(), content.size());
-  ASSERT_TRUE(SetExpectedFileSize(testdir_path_.Append("data.p2p"),
-                                  100 * 1000));
+  ASSERT_TRUE(
+      SetExpectedFileSize(testdir_path_.Append("data.p2p"), 100 * 1000));
 
+  EXPECT_CALL(
+      mock_server_,
+      ReportServerMessage(p2p::util::kP2PServerRequestResult,
+                          p2p::util::kP2PRequestResultResponseInterrupted));
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerServedInterruptedMB, 0));
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerDownloadSpeedKBps, _));
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRequestResult,
-      p2p::util::kP2PRequestResultResponseInterrupted));
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerServedInterruptedMB, 0));
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerDownloadSpeedKBps, _));
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRangeBeginPercentage, 0));
+                                p2p::util::kP2PServerRangeBeginPercentage, 0));
   EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
@@ -680,17 +678,17 @@ TEST_F(ConnectionDelegateTest, GetPartOfIncompleteFile) {
   WriteFile(testdir_path_.Append("data.p2p"), content.c_str(), content.size());
   ASSERT_TRUE(SetExpectedFileSize(testdir_path_.Append("data.p2p"), 10 * 1000));
 
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerRequestResult,
+                                  p2p::util::kP2PRequestResultResponseSent));
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRequestResult,
-      p2p::util::kP2PRequestResultResponseSent));
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerServedSuccessfullyMB, 0));
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerDownloadSpeedKBps, _));
+                                p2p::util::kP2PServerServedSuccessfullyMB, 0));
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerDownloadSpeedKBps, _));
   // Total file size is 10KB, but actual file size is 5KB. A range starting
   // at 2KB should be reported as 20%.
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRangeBeginPercentage, 20));
+                                p2p::util::kP2PServerRangeBeginPercentage, 20));
   EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
@@ -716,9 +714,9 @@ TEST_F(ConnectionDelegateTest, GetPartOfIncompleteFile) {
 TEST_F(ConnectionDelegateTest, GetNonExistentFile) {
   SetupDelegate();
 
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRequestResult,
-      p2p::util::kP2PRequestResultNotFound));
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerRequestResult,
+                                  p2p::util::kP2PRequestResultNotFound));
   EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
@@ -740,9 +738,9 @@ TEST_F(ConnectionDelegateTest, URIArgumentsNotParsed) {
   const string content = "Hello World!";
   WriteFile(testdir_path_.Append("hello.p2p"), content.c_str(), content.size());
 
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRequestResult,
-      p2p::util::kP2PRequestResultNotFound));
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerRequestResult,
+                                  p2p::util::kP2PRequestResultNotFound));
   EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
@@ -761,9 +759,9 @@ TEST_F(ConnectionDelegateTest, URIArgumentsNotParsed) {
 TEST_F(ConnectionDelegateTest, URIUsesRelativePath) {
   SetupDelegate();
 
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRequestResult,
-      p2p::util::kP2PRequestResultMalformed));
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerRequestResult,
+                                  p2p::util::kP2PRequestResultMalformed));
   EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
@@ -785,9 +783,9 @@ TEST_F(ConnectionDelegateTest, MalformedInversedRange) {
   const string content = "Hello World!";
   WriteFile(testdir_path_.Append("hello.p2p"), content.c_str(), content.size());
 
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRequestResult,
-      p2p::util::kP2PRequestResultMalformed));
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerRequestResult,
+                                  p2p::util::kP2PRequestResultMalformed));
   EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
@@ -821,18 +819,18 @@ TEST_F(ConnectionDelegateTest, Waiting) {
   string content;
   GeneratePrintableData(100 * 1000, &content);
   WriteFile(testdir_path_.Append("wait.p2p"), content.c_str(), 50 * 1000);
-  ASSERT_TRUE(SetExpectedFileSize(testdir_path_.Append("wait.p2p"),
-                                  100 * 1000));
+  ASSERT_TRUE(
+      SetExpectedFileSize(testdir_path_.Append("wait.p2p"), 100 * 1000));
 
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerRequestResult,
+                                  p2p::util::kP2PRequestResultResponseSent));
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRequestResult,
-      p2p::util::kP2PRequestResultResponseSent));
+                                p2p::util::kP2PServerServedSuccessfullyMB, 0));
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerDownloadSpeedKBps, _));
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerServedSuccessfullyMB, 0));
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerDownloadSpeedKBps, _));
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRangeBeginPercentage, 0));
+                                p2p::util::kP2PServerRangeBeginPercentage, 0));
   EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
@@ -889,20 +887,20 @@ TEST_F(ConnectionDelegateTest, LimitDownloadSpeed) {
   string content;
   GeneratePrintableData(50 * 1000 * 1000, &content);
   WriteFile(testdir_path_.Append("50mb.p2p"), content.c_str(), content.size());
-  ASSERT_TRUE(SetExpectedFileSize(testdir_path_.Append("50mb.p2p"),
-                                  content.size()));
+  ASSERT_TRUE(
+      SetExpectedFileSize(testdir_path_.Append("50mb.p2p"), content.size()));
 
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerRequestResult,
+                                  p2p::util::kP2PRequestResultResponseSent));
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRequestResult,
-      p2p::util::kP2PRequestResultResponseSent));
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerServedSuccessfullyMB, 50));
+                                p2p::util::kP2PServerServedSuccessfullyMB, 50));
   // The reported download speed should be the maximum default speed used in
   // this test (kDefaultDownloadRate).
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerDownloadSpeedKBps, 5000));
+                                p2p::util::kP2PServerDownloadSpeedKBps, 5000));
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRangeBeginPercentage, 0));
+                                p2p::util::kP2PServerRangeBeginPercentage, 0));
   EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();
@@ -936,20 +934,20 @@ TEST_F(ConnectionDelegateTest, DisregardTimeWaitingFromTransferBudget) {
   string content;
   GeneratePrintableData(25 * 1000 * 1000, &content);
   WriteFile(testdir_path_.Append("50mb.p2p"), content.c_str(), content.size());
-  ASSERT_TRUE(SetExpectedFileSize(testdir_path_.Append("50mb.p2p"),
-                                  50 * 1000 * 1000));
+  ASSERT_TRUE(
+      SetExpectedFileSize(testdir_path_.Append("50mb.p2p"), 50 * 1000 * 1000));
 
+  EXPECT_CALL(mock_server_,
+              ReportServerMessage(p2p::util::kP2PServerRequestResult,
+                                  p2p::util::kP2PRequestResultResponseSent));
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRequestResult,
-      p2p::util::kP2PRequestResultResponseSent));
-  EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerServedSuccessfullyMB, 50));
+                                p2p::util::kP2PServerServedSuccessfullyMB, 50));
   // The reported download speed should be the maximum default speed used in
   // this test (kDefaultDownloadRate).
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerDownloadSpeedKBps, 5000));
+                                p2p::util::kP2PServerDownloadSpeedKBps, 5000));
   EXPECT_CALL(mock_server_, ReportServerMessage(
-      p2p::util::kP2PServerRangeBeginPercentage, 0));
+                                p2p::util::kP2PServerRangeBeginPercentage, 0));
   EXPECT_CALL(mock_server_, ConnectionTerminated(delegate_));
 
   thread_->Start();

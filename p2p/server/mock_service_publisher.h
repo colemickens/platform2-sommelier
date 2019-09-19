@@ -22,12 +22,15 @@ class MockServicePublisher : public ServicePublisher {
     // Delegate all calls to the fake instance
     ON_CALL(*this, AddFile(testing::_, testing::_))
         .WillByDefault(testing::Invoke(&fake_, &FakeServicePublisher::AddFile));
-    ON_CALL(*this, RemoveFile(testing::_)).WillByDefault(
-        testing::Invoke(&fake_, &FakeServicePublisher::RemoveFile));
-    ON_CALL(*this, UpdateFileSize(testing::_, testing::_)).WillByDefault(
-        testing::Invoke(&fake_, &FakeServicePublisher::UpdateFileSize));
-    ON_CALL(*this, SetNumConnections(testing::_)).WillByDefault(
-        testing::Invoke(&fake_, &FakeServicePublisher::SetNumConnections));
+    ON_CALL(*this, RemoveFile(testing::_))
+        .WillByDefault(
+            testing::Invoke(&fake_, &FakeServicePublisher::RemoveFile));
+    ON_CALL(*this, UpdateFileSize(testing::_, testing::_))
+        .WillByDefault(
+            testing::Invoke(&fake_, &FakeServicePublisher::UpdateFileSize));
+    ON_CALL(*this, SetNumConnections(testing::_))
+        .WillByDefault(
+            testing::Invoke(&fake_, &FakeServicePublisher::SetNumConnections));
     ON_CALL(*this, files())
         .WillByDefault(testing::Invoke(&fake_, &FakeServicePublisher::files));
   }

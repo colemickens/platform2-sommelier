@@ -51,8 +51,8 @@ TEST(TestUtil, ExpectCommandSimple) {
 TEST(TestUtil, ExpectCommandSideEffects) {
   FilePath testdir = SetupTestDir("expect-command-side-effects");
 
-  EXPECT_COMMAND(
-      0, "echo -n xyz > %s", testdir.Append("file.txt").value().c_str());
+  EXPECT_COMMAND(0, "echo -n xyz > %s",
+                 testdir.Append("file.txt").value().c_str());
 
   string contents;
   EXPECT_TRUE(base::ReadFileToString(testdir.Append("file.txt"), &contents));

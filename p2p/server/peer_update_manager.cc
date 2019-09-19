@@ -79,7 +79,7 @@ void PeerUpdateManager::UpdateFileCountMetric() {
   // Report P2P.Server.FileCount every time a file is added (Publish) or
   // removed (Unpublish).
   string metric = "P2P.Server.FileCount";
-  LOG(INFO) << "Uploading " << metric << " (count) for metric " <<  num_files;
+  LOG(INFO) << "Uploading " << metric << " (count) for metric " << num_files;
   metrics_lib_->SendToUMA(metric, num_files, 0 /* min */, 50 /* max */, 50);
 }
 
@@ -105,8 +105,7 @@ void PeerUpdateManager::UpdateNumConnections(int num_connections) {
 }
 
 void PeerUpdateManager::OnFileWatcherChanged(
-    const FilePath& file,
-    FileWatcher::EventType event_type) {
+    const FilePath& file, FileWatcher::EventType event_type) {
   VLOG(2) << "FileWatcher changed, path=" << file.value()
           << ", event_type=" << event_type;
 

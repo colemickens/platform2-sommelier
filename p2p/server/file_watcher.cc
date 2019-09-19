@@ -72,7 +72,9 @@ class FileWatcherGLib : public FileWatcher {
   DISALLOW_COPY_AND_ASSIGN(FileWatcherGLib);
 };
 
-const FilePath& FileWatcherGLib::dir() const { return dir_; }
+const FilePath& FileWatcherGLib::dir() const {
+  return dir_;
+}
 
 const string& FileWatcherGLib::file_extension() const {
   return file_extension_;
@@ -112,8 +114,7 @@ bool FileWatcherGLib::Init() {
   GError* error = NULL;
 
   file = g_file_new_for_path(dir_.value().c_str());
-  monitor_ = g_file_monitor_directory(file,
-                                      G_FILE_MONITOR_NONE,
+  monitor_ = g_file_monitor_directory(file, G_FILE_MONITOR_NONE,
                                       NULL, /* GCancellable */
                                       &error);
   if (monitor_ == NULL) {
@@ -134,8 +135,8 @@ bool FileWatcherGLib::Init() {
 
 FileWatcherGLib::~FileWatcherGLib() {
   if (monitor_ != NULL) {
-    g_signal_handlers_disconnect_by_func(
-        monitor_, (gpointer) OnMonitorChanged, this);
+    g_signal_handlers_disconnect_by_func(monitor_, (gpointer)OnMonitorChanged,
+                                         this);
     g_clear_object(&monitor_);
   }
 }
@@ -190,9 +191,8 @@ void FileWatcherGLib::ReloadDir(const FilePath* changed_file) {
   const char* name;
   vector<FilePath> new_files;
 
-  VLOG(2)
-      << "in ReloadDir(), dir=" << dir_.value()
-      << "file=" << (changed_file != NULL ? changed_file->value() : "(none)");
+  VLOG(2) << "in ReloadDir(), dir=" << dir_.value() << "file="
+          << (changed_file != NULL ? changed_file->value() : "(none)");
 
   dir = g_dir_open(dir_.value().c_str(), 0, &error);
   if (dir == NULL) {
@@ -216,13 +216,8 @@ void FileWatcherGLib::ReloadDir(const FilePath* changed_file) {
   std::sort(new_files.begin(), new_files.end());
   // TODO(zeuthen): actually unnecessary to sort files_
   std::sort(files_.begin(), files_.end());
-  diff_sorted_vectors(files_.begin(),
-                      files_.end(),
-                      new_files.begin(),
-                      new_files.end(),
-                      &added,
-                      &removed,
-                      &unchanged);
+  diff_sorted_vectors(files_.begin(), files_.end(), new_files.begin(),
+                      new_files.end(), &added, &removed, &unchanged);
   files_ = new_files;
 
   if (!changed_callback_.is_null()) {

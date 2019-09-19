@@ -19,16 +19,16 @@
 #include "p2p/common/testutil.h"
 #include "p2p/common/util.h"
 
-using testing::StrictMock;
 using testing::_;
+using testing::StrictMock;
 
 using p2p::testutil::ExpectFileSize;
+using p2p::testutil::kDefaultMainLoopTimeoutMs;
 using p2p::testutil::RunGMainLoopMaxIterations;
 using p2p::testutil::RunGMainLoopUntil;
 using p2p::testutil::SetExpectedFileSize;
 using p2p::testutil::SetupTestDir;
 using p2p::testutil::TeardownTestDir;
-using p2p::testutil::kDefaultMainLoopTimeoutMs;
 
 using std::string;
 using std::vector;
@@ -63,11 +63,10 @@ class HttpServerListener {
 class MockHttpServerListener : public HttpServerListener {
  public:
   explicit MockHttpServerListener(HttpServer* server)
-      : HttpServerListener(server),
-      num_calls_(0) {
+      : HttpServerListener(server), num_calls_(0) {
     ON_CALL(*this, NumConnectionsCallback(_))
-      .WillByDefault(testing::InvokeWithoutArgs(
-          this, &MockHttpServerListener::OnCall));
+        .WillByDefault(
+            testing::InvokeWithoutArgs(this, &MockHttpServerListener::OnCall));
   }
 
   MOCK_METHOD(void, NumConnectionsCallback, (int));
@@ -100,10 +99,7 @@ class ClientThread : public base::SimpleThread {
  private:
   virtual void Run() {
     const char* dir = testdir_path_.value().c_str();
-    EXPECT_COMMAND(0,
-                   "curl -s -o %s/dl_%d http://127.0.0.1:%d/file",
-                   dir,
-                   num_,
+    EXPECT_COMMAND(0, "curl -s -o %s/dl_%d http://127.0.0.1:%d/file", dir, num_,
                    port_);
     EXPECT_COMMAND(0, "cmp -l -b %s/file.p2p %s/dl_%d", dir, dir, num_);
 
@@ -131,8 +127,8 @@ TEST(HttpServer, DISABLED_Basic) {
   StrictMock<MetricsLibraryMock> metrics_lib;
 
   // Run p2p-http-server from the build directory.
-  HttpServer* server = HttpServer::Construct(
-      &metrics_lib, testdir, FilePath("."), 0);
+  HttpServer* server =
+      HttpServer::Construct(&metrics_lib, testdir, FilePath("."), 0);
   server->Start();
 
   // Wait until the HTTP server is running and accepting connections.
@@ -142,25 +138,25 @@ TEST(HttpServer, DISABLED_Basic) {
   StrictMock<MockHttpServerListener> listener(server);
 
   // Set the metric expectations.
-  EXPECT_CALL(metrics_lib, SendEnumToUMA(
-      "P2P.Server.RequestResult",
-      p2p::util::kP2PRequestResultResponseSent,
-      p2p::util::kNumP2PServerRequestResults))
+  EXPECT_CALL(metrics_lib,
+              SendEnumToUMA("P2P.Server.RequestResult",
+                            p2p::util::kP2PRequestResultResponseSent,
+                            p2p::util::kNumP2PServerRequestResults))
       .Times(kMultipleTestNumFiles);
 
   // The server file has 2000 bytes, so is reported as 0 MB.
-  EXPECT_CALL(metrics_lib, SendToUMA(
-      "P2P.Server.ContentServedSuccessfullyMB", 0, _, _, _))
+  EXPECT_CALL(metrics_lib,
+              SendToUMA("P2P.Server.ContentServedSuccessfullyMB", 0, _, _, _))
       .Times(kMultipleTestNumFiles);
 
-  EXPECT_CALL(metrics_lib, SendToUMA(
-      "P2P.Server.RangeBeginPercentage", 0, _, _, _))
+  EXPECT_CALL(metrics_lib,
+              SendToUMA("P2P.Server.RangeBeginPercentage", 0, _, _, _))
       .Times(kMultipleTestNumFiles);
 
   // We cant ensure that the reported download speed here is correct, but
   // at least a download speed has to be reported.
-  EXPECT_CALL(metrics_lib, SendToUMA(
-      "P2P.Server.DownloadSpeedKBps", _, _, _, _))
+  EXPECT_CALL(metrics_lib,
+              SendToUMA("P2P.Server.DownloadSpeedKBps", _, _, _, _))
       .Times(kMultipleTestNumFiles);
 
   // Now set the expectations for the number of connections. We'll
@@ -188,8 +184,7 @@ TEST(HttpServer, DISABLED_Basic) {
   // indicating that it's 2000 bytes. This will make clients hang
   // and thus enable us to reliably get the NumConnections count
   // to N.
-  EXPECT_COMMAND(0,
-                 "dd if=/dev/urandom of=%s/file.p2p bs=1000 count=1",
+  EXPECT_COMMAND(0, "dd if=/dev/urandom of=%s/file.p2p bs=1000 count=1",
                  testdir.value().c_str());
   ASSERT_TRUE(SetExpectedFileSize(testdir.Append("file.p2p"), 2000));
 
@@ -203,10 +198,10 @@ TEST(HttpServer, DISABLED_Basic) {
 
   // Allow clients to start - this ensures that the server reaches
   // the number of connections kMultipleTestNumFiles.
-  RunGMainLoopUntil(3 * kDefaultMainLoopTimeoutMs,
-                    Bind(&MockHttpServerListener::NumCallsReached,
-                         base::Unretained(&listener),
-                         kMultipleTestNumFiles /* num_calls */));
+  RunGMainLoopUntil(
+      3 * kDefaultMainLoopTimeoutMs,
+      Bind(&MockHttpServerListener::NumCallsReached,
+           base::Unretained(&listener), kMultipleTestNumFiles /* num_calls */));
 
   // Now, complete the file. This causes each client to finish up.
   EXPECT_COMMAND(0,
@@ -241,8 +236,8 @@ TEST(HttpServer, PortNumberTest) {
   StrictMock<MetricsLibraryMock> metrics_lib;
 
   // Run p2p-http-server from the build directory.
-  HttpServer* server = HttpServer::Construct(
-      &metrics_lib, testdir, FilePath("."), 0);
+  HttpServer* server =
+      HttpServer::Construct(&metrics_lib, testdir, FilePath("."), 0);
   EXPECT_EQ(server->Port(), 0);
   server->Start();
 

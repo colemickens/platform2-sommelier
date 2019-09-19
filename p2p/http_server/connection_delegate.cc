@@ -74,10 +74,12 @@ ConnectionDelegateInterface* ConnectionDelegate::Construct(
     ServerInterface* server,
     int64_t max_download_rate) {
   return new ConnectionDelegate(dirfd, fd, pretty_addr, server,
-      max_download_rate);
+                                max_download_rate);
 }
 
-ConnectionDelegate::~ConnectionDelegate() { CHECK_EQ(-1, fd_); }
+ConnectionDelegate::~ConnectionDelegate() {
+  CHECK_EQ(-1, fd_);
+}
 
 bool ConnectionDelegate::ReadLine(string* str) {
   CHECK(str != NULL);
@@ -168,8 +170,7 @@ P2PServerRequestResult ConnectionDelegate::ParseHttpRequest() {
 
   request_method = string(request_line, 0, sp1_pos);
   request_uri = string(request_line, sp1_pos + 1, sp2_pos - sp1_pos - 1);
-  request_http_version =
-      string(request_line, sp2_pos + 1, string::npos);
+  request_http_version = string(request_line, sp2_pos + 1, string::npos);
 
   VLOG(1) << "Parsed request line. "
           << "method=`" << request_method << "' "
@@ -198,10 +199,8 @@ P2PServerRequestResult ConnectionDelegate::ParseHttpRequest() {
     string value = string(line, colon_pos + 2, string::npos);
 
     // HTTP headers are case-insensitive so lower-case.
-    std::transform(key.begin(),
-                   key.end(),
-                   key.begin(),
-                   static_cast<int(*)(int c)>(std::tolower));
+    std::transform(key.begin(), key.end(), key.begin(),
+                   static_cast<int (*)(int c)>(std::tolower));
 
     VLOG(1) << "Header[" << headers.size() << "] `" << key << "' -> `" << value
             << "'";
@@ -215,8 +214,8 @@ P2PServerRequestResult ConnectionDelegate::ParseHttpRequest() {
   }
 
   // OK, looks like a valid HTTP request. Service the client.
-  return ServiceHttpRequest(
-      request_method, request_uri, request_http_version, headers);
+  return ServiceHttpRequest(request_method, request_uri, request_http_version,
+                            headers);
 }
 
 void ConnectionDelegate::Run() {
@@ -238,11 +237,10 @@ void ConnectionDelegate::Run() {
   delete this;
 }
 
-bool ConnectionDelegate::SendResponse(
-    int http_response_code,
-    const string& http_response_status,
-    const map<string, string>& headers,
-    const string& body) {
+bool ConnectionDelegate::SendResponse(int http_response_code,
+                                      const string& http_response_status,
+                                      const map<string, string>& headers,
+                                      const string& body) {
   string response;
   const char* buf;
   size_t num_to_send;
@@ -297,8 +295,7 @@ bool ConnectionDelegate::SendResponse(
 /* ------------------------------------------------------------------------ */
 
 bool ConnectionDelegate::SendSimpleResponse(
-    int http_response_code,
-    const string& http_response_status) {
+    int http_response_code, const string& http_response_status) {
   map<string, string> headers;
   return SendResponse(http_response_code, http_response_status, headers, "");
 }
@@ -334,7 +331,7 @@ static bool ParseRange(const string& range_str,
 }
 
 bool ConnectionDelegate::SendFile(int file_fd, size_t num_bytes_to_send) {
-  ClockInterface *clock;
+  ClockInterface* clock;
   total_time_spent_ = TimeDelta();
   int seconds_spent_waiting = 0;
   char buf[kPayloadBufferSize];
@@ -343,8 +340,8 @@ bool ConnectionDelegate::SendFile(int file_fd, size_t num_bytes_to_send) {
 
   total_bytes_sent_ = 0;
   while (total_bytes_sent_ < num_bytes_to_send) {
-    size_t num_to_read = std::min(sizeof buf,
-                                  num_bytes_to_send - total_bytes_sent_);
+    size_t num_to_read =
+        std::min(sizeof buf, num_bytes_to_send - total_bytes_sent_);
     size_t num_to_send_from_buf;
     size_t num_sent_from_buf;
     ssize_t num_read;
@@ -397,14 +394,14 @@ bool ConnectionDelegate::SendFile(int file_fd, size_t num_bytes_to_send) {
     // could be improved by using e.g. a sliding window over the last
     // 30 seconds or so.
     if (max_download_rate_ != 0) {
-      int64_t bytes_allowed = max_download_rate_ *
-          total_time_spent_.InSecondsF();
+      int64_t bytes_allowed =
+          max_download_rate_ * total_time_spent_.InSecondsF();
       if (static_cast<int64_t>(total_bytes_sent_) > bytes_allowed) {
-        int64_t over_budget = static_cast<int64_t>(total_bytes_sent_)
-            - bytes_allowed;
-        int64_t usec_to_sleep = (
-            over_budget / static_cast<double>(max_download_rate_))
-            * Time::kMicrosecondsPerSecond;
+        int64_t over_budget =
+            static_cast<int64_t>(total_bytes_sent_) - bytes_allowed;
+        int64_t usec_to_sleep =
+            (over_budget / static_cast<double>(max_download_rate_)) *
+            Time::kMicrosecondsPerSecond;
         TimeDelta sleep_duration = TimeDelta::FromMicroseconds(usec_to_sleep);
         clock->Sleep(sleep_duration);
         total_time_spent_ += sleep_duration;
@@ -413,8 +410,8 @@ bool ConnectionDelegate::SendFile(int file_fd, size_t num_bytes_to_send) {
   }
 
   // If we served a file, log the time it took us.
-  double total_seconds_spent = total_time_spent_.InSecondsF() +
-      seconds_spent_waiting;
+  double total_seconds_spent =
+      total_time_spent_.InSecondsF() + seconds_spent_waiting;
   if (total_bytes_sent_ > 0 && total_seconds_spent > 0) {
     LOG(INFO) << pretty_addr_ << " - sent " << total_bytes_sent_
               << " bytes of response body in " << std::fixed
@@ -432,8 +429,8 @@ void ConnectionDelegate::ReportSendFileMetrics(bool send_file_result) {
   // download was served at, every time a file was served, interrupted or not.
   int average_speed_kbps = 0;
   if (total_time_spent_.InSecondsF() > 0.) {
-    average_speed_kbps = total_bytes_sent_ / total_time_spent_.InSecondsF() /
-        kBytesPerKB;
+    average_speed_kbps =
+        total_bytes_sent_ / total_time_spent_.InSecondsF() / kBytesPerKB;
   }
   server_->ReportServerMessage(p2p::util::kP2PServerDownloadSpeedKBps,
                                average_speed_kbps);
@@ -475,7 +472,7 @@ P2PServerRequestResult ConnectionDelegate::ServiceHttpRequest(
   map<string, string>::const_iterator header_it;
   string file_name;
   int file_fd = -1;
-  char ea_value[64] = { 0 };
+  char ea_value[64] = {0};
   bool send_file_result;
   ssize_t ea_size;
   // Initialize the result in an invalid RequestResult.
@@ -536,7 +533,7 @@ P2PServerRequestResult ConnectionDelegate::ServiceHttpRequest(
     int64_t val;
     if (base::StringToInt64(ea_value, &val)) {
       VLOG(1) << "Read user.cros-p2p-filesize=" << val;
-      if ((size_t) val > file_size) {
+      if ((size_t)val > file_size) {
         // Simply update file_size to what the EA says - code below
         // handles that by checking for EOF and sleeping
         file_size = val;
@@ -553,8 +550,8 @@ P2PServerRequestResult ConnectionDelegate::ServiceHttpRequest(
   } else {
     header_it = headers.find("range");
     if (header_it != headers.end()) {
-      if (!ParseRange(
-              header_it->second, file_size, &range_first, &range_last)) {
+      if (!ParseRange(header_it->second, file_size, &range_first,
+                      &range_last)) {
         SendSimpleResponse(400, "Error parsing Range header");
         req_res = p2p::util::kP2PRequestResultMalformed;
         goto out;
@@ -566,9 +563,9 @@ P2PServerRequestResult ConnectionDelegate::ServiceHttpRequest(
       }
       response_code = 206;
       response_string = "Partial Content";
-      response_headers["Content-Range"] =
-          std::to_string(range_first) + "-" + std::to_string(range_last) + "/" +
-          std::to_string(file_size);
+      response_headers["Content-Range"] = std::to_string(range_first) + "-" +
+                                          std::to_string(range_last) + "/" +
+                                          std::to_string(file_size);
     } else {
       range_first = 0;
       range_last = file_size - 1;
@@ -588,7 +585,7 @@ P2PServerRequestResult ConnectionDelegate::ServiceHttpRequest(
   }
 
   if (range_first > 0) {
-    if (lseek(file_fd, (off_t) range_first, SEEK_SET) != (off_t) range_first) {
+    if (lseek(file_fd, (off_t)range_first, SEEK_SET) != (off_t)range_first) {
       PLOG(ERROR) << "Error seeking";
       req_res = p2p::util::kP2PRequestResultNotFound;
       goto out;
@@ -608,7 +605,7 @@ P2PServerRequestResult ConnectionDelegate::ServiceHttpRequest(
   ReportSendFileMetrics(send_file_result);
 
   req_res = send_file_result ? p2p::util::kP2PRequestResultResponseSent
-      : p2p::util::kP2PRequestResultResponseInterrupted;
+                             : p2p::util::kP2PRequestResultResponseInterrupted;
 
 out:
   if (file_fd != -1)

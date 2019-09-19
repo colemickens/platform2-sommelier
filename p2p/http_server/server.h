@@ -33,7 +33,9 @@ class Server : public ServerInterface {
   // If |port| is 0, the kernel assigns a random free port that can be
   // retrieved with Port(). The Server will report messages as
   // P2PServerMessage strunct on the |message_fd|.
-  Server(const base::FilePath& directory, uint16_t port, int message_fd,
+  Server(const base::FilePath& directory,
+         uint16_t port,
+         int message_fd,
          ConnectionDelegateFactory delegate_factory);
 
   virtual ~Server();

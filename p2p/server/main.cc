@@ -28,17 +28,18 @@ using std::string;
 using base::FilePath;
 
 static void Usage(FILE* output) {
-  fprintf(output,
-    "Usage:\n"
-    "  p2p-server [OPTION..]\n"
-    "\n"
-    "Options:\n"
-    " --help            Show help options\n"
-    " --path=DIR        Where to serve from\n"
-    "\n"
-    " --port=NUMBER     TCP port number for HTTP server (default: 16725)\n"
-    " -v=NUMBER         Verbosity level (default: 0)\n"
-    "\n");
+  fprintf(
+      output,
+      "Usage:\n"
+      "  p2p-server [OPTION..]\n"
+      "\n"
+      "Options:\n"
+      " --help            Show help options\n"
+      " --path=DIR        Where to serve from\n"
+      "\n"
+      " --port=NUMBER     TCP port number for HTTP server (default: 16725)\n"
+      " -v=NUMBER         Verbosity level (default: 0)\n"
+      "\n");
 }
 
 int main(int argc, char* argv[]) {
@@ -93,8 +94,8 @@ int main(int argc, char* argv[]) {
     exit(1);
   }
 
-  p2p::server::PeerUpdateManager manager(
-      file_watcher, service_publisher, http_server, &metrics_lib);
+  p2p::server::PeerUpdateManager manager(file_watcher, service_publisher,
+                                         http_server, &metrics_lib);
   manager.Init();
 
   loop = g_main_loop_new(NULL, FALSE);

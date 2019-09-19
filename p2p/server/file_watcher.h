@@ -30,11 +30,7 @@ class FileWatcher {
   // kFileChanged
   //  A file has changed.
   //
-  enum EventType {
-    kFileAdded,
-    kFileRemoved,
-    kFileChanged
-  };
+  enum EventType { kFileAdded, kFileRemoved, kFileChanged };
 
   // Type for a callback that is called when a file matching the given
   // extension in the given directory has been added, removed or changed.

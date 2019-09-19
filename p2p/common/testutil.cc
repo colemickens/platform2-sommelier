@@ -52,9 +52,11 @@ TimeBombAbort::~TimeBombAbort() {
 void TimeBombAbort::TimeoutHandler(int signal) {
   // Does a "best-effort" write.
   const char* msg = "\n\nTimeBombAbort::TimeoutHandler reached.\n";
-  if (write(STDERR_FILENO, msg, strlen(msg))) {}  // Ignore the return value.
+  if (write(STDERR_FILENO, msg, strlen(msg))) {
+  }  // Ignore the return value.
   if (write(STDERR_FILENO, time_bomb_abort_message_,
-            strlen(time_bomb_abort_message_))) {}  // Ignore the return value.
+            strlen(time_bomb_abort_message_))) {
+  }  // Ignore the return value.
   exit(1);
 }
 
@@ -81,8 +83,7 @@ static gboolean RunGMainLoopOnTimeout(gpointer user_data) {
   return FALSE;  // Remove timeout source
 }
 
-void RunGMainLoopUntil(int timeout_msec,
-                                         base::Callback<bool()> terminate) {
+void RunGMainLoopUntil(int timeout_msec, base::Callback<bool()> terminate) {
   GMainLoop* loop = g_main_loop_new(NULL, FALSE);
   GMainContext* context = g_main_context_default();
 
@@ -101,13 +102,13 @@ int RunGMainLoopMaxIterations(int iterations) {
   int result;
   GMainContext* context = g_main_context_default();
   for (result = 0;
-      result < iterations && g_main_context_iteration(context, FALSE);
-      result++) {}
+       result < iterations && g_main_context_iteration(context, FALSE);
+       result++) {
+  }
   return result;
 }
 
-size_t FileSize(const FilePath& dir,
-                const string& file_name) {
+size_t FileSize(const FilePath& dir, const string& file_name) {
   struct stat stat_buf;
   FilePath path = dir.Append(file_name);
   if (stat(path.value().c_str(), &stat_buf) != 0) {
@@ -128,8 +129,8 @@ bool SetExpectedFileSize(const FilePath& filename, size_t size) {
     return false;
 
   string decimal_size = base::UintToString(size);
-  if (fsetxattr(fd, "user.cros-p2p-filesize",
-                decimal_size.c_str(), decimal_size.size(), 0) != 0) {
+  if (fsetxattr(fd, "user.cros-p2p-filesize", decimal_size.c_str(),
+                decimal_size.size(), 0) != 0) {
     close(fd);
     return false;
   }

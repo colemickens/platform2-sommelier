@@ -20,7 +20,7 @@ class ServerInterface;
 // The ConnectionDelegateInterface exposes a single Run() method intended to
 // be run from the thread that handles this connection manager.
 class ConnectionDelegateInterface
-  : public base::DelegateSimpleThread::Delegate {
+    : public base::DelegateSimpleThread::Delegate {
  public:
   virtual ~ConnectionDelegateInterface() {}
 
@@ -38,7 +38,7 @@ class ConnectionDelegateInterface
 // rate not bigger than |max_download_rate| bytes per second.
 // |pretty_addr| is a string identifying the client's address and the |server|
 // points to the ServerInterface instance to notify when the transfer is done.
-typedef ConnectionDelegateInterface* (ConnectionDelegateFactory)(
+typedef ConnectionDelegateInterface*(ConnectionDelegateFactory)(
     int dirfd,
     int fd,
     const std::string& pretty_addr,

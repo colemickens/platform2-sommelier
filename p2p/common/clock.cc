@@ -14,8 +14,8 @@ namespace common {
 void Clock::Sleep(const base::TimeDelta& duration) {
   int64_t duration_usec = duration.InMicroseconds();
   int64_t duration_sec = duration_usec / base::Time::kMicrosecondsPerSecond;
-  int64_t fractional_usec = duration_usec -
-    duration_sec * base::Time::kMicrosecondsPerSecond;
+  int64_t fractional_usec =
+      duration_usec - duration_sec * base::Time::kMicrosecondsPerSecond;
   struct timespec req;
   req.tv_sec = duration_sec;
   req.tv_nsec = fractional_usec * base::Time::kNanosecondsPerMicrosecond;
@@ -31,7 +31,7 @@ base::Time Clock::GetMonotonicTime() {
   }
   struct timeval now_tv;
   now_tv.tv_sec = now_ts.tv_sec;
-  now_tv.tv_usec = now_ts.tv_nsec/base::Time::kNanosecondsPerMicrosecond;
+  now_tv.tv_usec = now_ts.tv_nsec / base::Time::kNanosecondsPerMicrosecond;
   return base::Time::FromTimeVal(now_tv);
 }
 
