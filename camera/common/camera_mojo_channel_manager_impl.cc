@@ -166,6 +166,10 @@ void CameraMojoChannelManagerImpl::ConnectToDispatcherOnIpcThread(
     base::Closure on_connection_error) {
   DCHECK(ipc_thread_->task_runner()->BelongsToCurrentThread());
 
+  if (dispatcher_.is_bound()) {
+    return;
+  }
+
   EnsureDispatcherConnectedOnIpcThread();
   if (!dispatcher_.is_bound()) {
     on_connection_error.Run();
