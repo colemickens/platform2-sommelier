@@ -1,3 +1,2 @@
 set noparent
-benchan@chromium.org
-ahassani@chromium.org
+include aosp/platform/system/update_engine:/OWNERS
