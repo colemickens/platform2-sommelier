@@ -97,7 +97,7 @@ class ClientThread : public base::SimpleThread {
         num_(num) {}
 
  private:
-  virtual void Run() {
+  void Run() override {
     const char* dir = testdir_path_.value().c_str();
     EXPECT_COMMAND(0, "curl -s -o %s/dl_%d http://127.0.0.1:%d/file", dir, num_,
                    port_);

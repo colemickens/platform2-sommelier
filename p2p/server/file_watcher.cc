@@ -27,14 +27,14 @@ class FileWatcherGLib : public FileWatcher {
  public:
   FileWatcherGLib(const FilePath& dir, const string& file_extension);
 
-  virtual ~FileWatcherGLib();
+  ~FileWatcherGLib() override;
 
-  virtual const vector<FilePath>& files() const;
+  const vector<FilePath>& files() const override;
 
-  virtual const FilePath& dir() const;
-  virtual const string& file_extension() const;
+  const FilePath& dir() const override;
+  const string& file_extension() const override;
 
-  virtual void SetChangedCallback(FileWatcherCallback changed_callback);
+  void SetChangedCallback(FileWatcherCallback changed_callback) override;
 
   bool Init();
 

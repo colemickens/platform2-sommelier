@@ -34,17 +34,17 @@ class ServicePublisherAvahi : public ServicePublisher {
  public:
   explicit ServicePublisherAvahi(uint16_t http_port);
 
-  virtual ~ServicePublisherAvahi();
+  ~ServicePublisherAvahi() override;
 
-  virtual void AddFile(const string& file, size_t file_size);
+  void AddFile(const string& file, size_t file_size) override;
 
-  virtual void RemoveFile(const string& file);
+  void RemoveFile(const string& file) override;
 
-  virtual void UpdateFileSize(const string& file, size_t file_size);
+  void UpdateFileSize(const string& file, size_t file_size) override;
 
-  virtual void SetNumConnections(int num_connections);
+  void SetNumConnections(int num_connections) override;
 
-  virtual map<string, size_t> files();
+  map<string, size_t> files() override;
 
   bool Init();
 

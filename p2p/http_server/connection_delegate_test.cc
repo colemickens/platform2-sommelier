@@ -127,7 +127,7 @@ class ConnectionDelegateTest : public ::testing::Test {
     thread_ = new base::DelegateSimpleThread(delegate_, "delegate");
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     if (thread_)
       delete thread_;
     // The ConnectionDelegate deletes itself when Run() finishes.

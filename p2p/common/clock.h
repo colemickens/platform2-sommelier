@@ -17,9 +17,9 @@ class Clock : public ClockInterface {
  public:
   Clock() = default;
 
-  virtual void Sleep(const base::TimeDelta& duration);
+  void Sleep(const base::TimeDelta& duration) override;
 
-  virtual base::Time GetMonotonicTime();
+  base::Time GetMonotonicTime() override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Clock);

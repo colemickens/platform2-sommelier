@@ -23,21 +23,21 @@ class FakeHttpServer : public HttpServer {
  public:
   FakeHttpServer() : is_running_(false), num_connections_(0) {}
 
-  virtual bool Start() {
+  bool Start() override {
     is_running_ = true;
     return true;
   }
 
-  virtual bool Stop() {
+  bool Stop() override {
     is_running_ = false;
     return true;
   }
 
-  virtual bool IsRunning() { return is_running_; }
+  bool IsRunning() override { return is_running_; }
 
-  virtual uint16_t Port() { return 1234; }
+  uint16_t Port() override { return 1234; }
 
-  virtual void SetNumConnectionsCallback(NumConnectionsCallback callback) {
+  void SetNumConnectionsCallback(NumConnectionsCallback callback) override {
     callback_ = callback;
   }
 

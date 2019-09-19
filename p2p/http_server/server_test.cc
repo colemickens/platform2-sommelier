@@ -199,7 +199,7 @@ class MultipleClientThread : public base::SimpleThread {
         post_check_(post_check) {}
 
  private:
-  virtual void Run() {
+  void Run() override {
     // Connect to the Server and wait until all the threads reached that point.
     int sock = ConnectToLocalPort(port_);
     ASSERT_NE(-1, sock);

@@ -35,7 +35,7 @@ class ConnectionDelegate : public ConnectionDelegateInterface {
                      ServerInterface* server,
                      int64_t max_download_rate);
 
-  virtual ~ConnectionDelegate();
+  ~ConnectionDelegate() override;
 
   // A ConnectionDelegate factory.
   static ConnectionDelegateInterface* Construct(int dirfd,
@@ -47,7 +47,7 @@ class ConnectionDelegate : public ConnectionDelegateInterface {
   // Overrides DelegateSimpleThread::Delegate
   // Run() handles the connection passed on Construct() and deletes
   // itself when the work is done.
-  virtual void Run();
+  void Run() override;
 
  private:
   // Reads from the socket until a '\n' character is encountered

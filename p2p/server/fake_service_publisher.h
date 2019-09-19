@@ -19,25 +19,25 @@ class FakeServicePublisher : public ServicePublisher {
  public:
   FakeServicePublisher() : num_connections_(0) {}
 
-  virtual void AddFile(const std::string& file, size_t file_size) {
+  void AddFile(const std::string& file, size_t file_size) override {
     files_[file] = file_size;
   }
 
-  virtual void RemoveFile(const std::string& file) {
+  void RemoveFile(const std::string& file) override {
     std::map<std::string, size_t>::iterator it = files_.find(file);
     if (it != files_.end())
       files_.erase(it);
   }
 
-  virtual void UpdateFileSize(const std::string& file, size_t file_size) {
+  void UpdateFileSize(const std::string& file, size_t file_size) override {
     files_[file] = file_size;
   }
 
-  virtual void SetNumConnections(int num_connections) {
+  void SetNumConnections(int num_connections) override {
     num_connections_ = num_connections;
   }
 
-  virtual std::map<std::string, size_t> files() { return files_; }
+  std::map<std::string, size_t> files() override { return files_; }
 
  private:
   std::map<std::string, size_t> files_;

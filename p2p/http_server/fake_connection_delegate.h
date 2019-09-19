@@ -36,7 +36,7 @@ class FakeConnectionDelegate : public ConnectionDelegateInterface {
   }
 
   // Overrides ConnectionDelegateInterface.
-  virtual void Run() {
+  void Run() override {
     FILE* f = fdopen(fd_, "r+");
     char* cmd = NULL;
     size_t cmd_len = 0;

@@ -20,20 +20,21 @@ namespace client {
 class FakeServiceFinder : public ServiceFinder {
  public:
   FakeServiceFinder();
-  virtual ~FakeServiceFinder();
+  ~FakeServiceFinder() override;
 
   // ServiceFinder interface methods.
-  std::vector<const Peer*> GetPeersForFile(const std::string& file) const;
+  std::vector<const Peer*> GetPeersForFile(
+      const std::string& file) const override;
 
-  std::vector<std::string> AvailableFiles() const;
+  std::vector<std::string> AvailableFiles() const override;
 
-  int NumTotalConnections() const;
+  int NumTotalConnections() const override;
 
-  int NumTotalPeers() const;
+  int NumTotalPeers() const override;
 
-  bool Lookup();
+  bool Lookup() override;
 
-  void Abort();
+  void Abort() override;
 
   // FakeServiceFinder methods.
 

@@ -28,23 +28,23 @@ class FakeFileWatcher : public FileWatcher {
   FakeFileWatcher(const base::FilePath& dir, const std::string& file_extension)
       : dir_(dir), file_extension_(file_extension), source_id_(0) {}
 
-  virtual ~FakeFileWatcher() {
+  ~FakeFileWatcher() override {
     if (source_id_ != 0)
       g_source_remove(source_id_);
   }
 
-  virtual const std::vector<base::FilePath>& files() const {
+  const std::vector<base::FilePath>& files() const override {
     return exposed_files_;
   }
 
-  virtual void SetChangedCallback(
-      FileWatcher::FileWatcherCallback changed_callback) {
+  void SetChangedCallback(
+      FileWatcher::FileWatcherCallback changed_callback) override {
     changed_callback_ = changed_callback;
   }
 
-  virtual const base::FilePath& dir() const { return dir_; }
+  const base::FilePath& dir() const override { return dir_; }
 
-  virtual const std::string& file_extension() const { return file_extension_; }
+  const std::string& file_extension() const override { return file_extension_; }
 
   // Fake methods.
 

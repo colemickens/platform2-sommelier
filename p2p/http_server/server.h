@@ -38,18 +38,18 @@ class Server : public ServerInterface {
          int message_fd,
          ConnectionDelegateFactory delegate_factory);
 
-  virtual ~Server();
+  ~Server() override;
 
   // ServerInterface override methods.
-  virtual bool Start();
-  virtual void Stop();
-  virtual void SetMaxDownloadRate(int64_t bytes_per_sec);
-  virtual uint16_t Port();
-  virtual int NumConnections();
-  virtual p2p::common::ClockInterface* Clock();
-  virtual void ConnectionTerminated(ConnectionDelegateInterface* delegate);
-  virtual void ReportServerMessage(p2p::util::P2PServerMessageType msg_type,
-                                   int64_t value);
+  bool Start() override;
+  void Stop() override;
+  void SetMaxDownloadRate(int64_t bytes_per_sec) override;
+  uint16_t Port() override;
+  int NumConnections() override;
+  p2p::common::ClockInterface* Clock() override;
+  void ConnectionTerminated(ConnectionDelegateInterface* delegate) override;
+  void ReportServerMessage(p2p::util::P2PServerMessageType msg_type,
+                           int64_t value) override;
 
  private:
   // Callback used clients connect to our listening socket.

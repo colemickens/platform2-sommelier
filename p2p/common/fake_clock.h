@@ -22,7 +22,7 @@ class FakeClock : public ClockInterface {
         sleep_called_(base::WaitableEvent::ResetPolicy::MANUAL,
                       base::WaitableEvent::InitialState::NOT_SIGNALED) {}
 
-  virtual void Sleep(const base::TimeDelta& duration) {
+  void Sleep(const base::TimeDelta& duration) override {
     slept_duration_ += duration;
     monotonic_time_ += duration;
     // Signal that the Sleep() function was called, either if there is a caller
@@ -30,7 +30,7 @@ class FakeClock : public ClockInterface {
     sleep_called_.Signal();
   }
 
-  virtual base::Time GetMonotonicTime() { return monotonic_time_; }
+  base::Time GetMonotonicTime() override { return monotonic_time_; }
 
   base::TimeDelta GetSleptTime() { return slept_duration_; }
 
