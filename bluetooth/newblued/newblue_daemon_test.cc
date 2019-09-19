@@ -1104,7 +1104,8 @@ TEST_F(NewblueDaemonTest, BackgroundScanWithRandomResolvableDevice) {
 
   // After the pairing is done, we should start background scan to look for the
   // unconnected paired device.
-  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, _, _, _, _, _, _))
+  EXPECT_CALL(*libnewblue_,
+              HciDiscoverLeStart(_, _, /* active */ false, _, _, _, _, _))
       .WillOnce(Return(kTestDiscoveryId));
   TestPair(pair_handler);
 
@@ -1135,6 +1136,135 @@ TEST_F(NewblueDaemonTest, BackgroundScanWithRandomResolvableDevice) {
                                static_cast<uint8_t>(ConnectState::CONNECTED));
   base::RunLoop().RunUntilIdle();
 
+  TestDeinit();
+}
+
+TEST_F(NewblueDaemonTest, ScanState) {
+  dbus::ExportedObject::MethodCallCallback start_discovery_handler;
+  dbus::ExportedObject::MethodCallCallback stop_discovery_handler;
+  dbus::ExportedObject::MethodCallCallback suspend_imminent_handler;
+  dbus::ExportedObject::MethodCallCallback suspend_done_handler;
+  dbus::ExportedObject::MethodCallCallback pair_handler;
+  MethodHandlerMap method_handlers = {
+      {bluetooth_adapter::kStartDiscovery, &start_discovery_handler},
+      {bluetooth_adapter::kStopDiscovery, &stop_discovery_handler},
+      {bluetooth_adapter::kHandleSuspendImminent, &suspend_imminent_handler},
+      {bluetooth_adapter::kHandleSuspendDone, &suspend_done_handler},
+      {bluetooth_device::kPair, &pair_handler},
+  };
+
+  TestInit(method_handlers);
+  // With previously paired device, background scan should start
+  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, _, _, _, _, _, _))
+      .Times(0);
+  TestAdapterBringUp(exported_adapter_object_, method_handlers,
+                     /* with_saved_devices */ false);
+
+  hciDeviceDiscoveredLeCbk inquiry_response_callback;
+  void* inquiry_response_callback_data;
+
+  // Two clients will request start discovery.
+  TestStartDiscovery(start_discovery_handler, &inquiry_response_callback,
+                     &inquiry_response_callback_data);
+
+  // Device discovered.
+  ExpectDeviceObjectExported(dbus::ObjectPath(kTestDeviceObjectPath),
+                             method_handlers);
+  struct bt_addr address;
+  ConvertToBtAddr(false, kTestDeviceAddress, &address);
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address,
+                               /* resolved_address */ nullptr,
+                               /* rssi */ -101, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ {},
+                               /* eir_len*/ 0);
+  base::RunLoop().RunUntilIdle();
+  // Paired with the device
+  TestPair(pair_handler);
+  base::RunLoop().RunUntilIdle();
+
+  // Trigger suspend imminent, all discovery activities should stop
+  dbus::MethodCall suspend_imminent_method_call(
+      bluetooth_adapter::kBluetoothAdapterInterface,
+      bluetooth_adapter::kHandleSuspendImminent);
+  suspend_imminent_method_call.SetPath(dbus::ObjectPath(kAdapterObjectPath));
+  suspend_imminent_method_call.SetSender(kTestSender);
+  suspend_imminent_method_call.SetSerial(kTestSerial);
+  std::unique_ptr<dbus::Response> suspend_imminent_response;
+
+  EXPECT_CALL(*libnewblue_, HciDiscoverLeStop(kTestDiscoveryId))
+      .WillOnce(Return(true));
+  suspend_imminent_handler.Run(
+      &suspend_imminent_method_call,
+      base::Bind(&SaveResponse, &suspend_imminent_response));
+  base::RunLoop().RunUntilIdle();
+
+  // System wake up, expect active discovery to be resumed
+  dbus::MethodCall suspend_done_method_call(
+      bluetooth_adapter::kBluetoothAdapterInterface,
+      bluetooth_adapter::kHandleSuspendDone);
+  suspend_done_method_call.SetPath(dbus::ObjectPath(kAdapterObjectPath));
+  suspend_done_method_call.SetSender(kTestSender);
+  suspend_done_method_call.SetSerial(kTestSerial);
+  std::unique_ptr<dbus::Response> suspend_done_response;
+
+  EXPECT_CALL(*libnewblue_,
+              HciDiscoverLeStart(_, _, /* active */ true, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<0>(&inquiry_response_callback),
+                      SaveArg<1>(&inquiry_response_callback_data),
+                      Return(kTestDiscoveryId)));
+  suspend_done_handler.Run(&suspend_done_method_call,
+                           base::Bind(&SaveResponse, &suspend_done_response));
+  base::RunLoop().RunUntilIdle();
+
+  // Stop discovery, however passive scan should resume because not all paired
+  // device is connected. There two clients having discovery session now.
+  dbus::MethodCall stop_discovery_method_call(
+      bluetooth_adapter::kBluetoothAdapterInterface,
+      bluetooth_adapter::kStopDiscovery);
+  stop_discovery_method_call.SetPath(dbus::ObjectPath(kAdapterObjectPath));
+  stop_discovery_method_call.SetSender(kTestSender);
+  stop_discovery_method_call.SetSerial(kTestSerial);
+  std::unique_ptr<dbus::Response> stop_discovery_response;
+  // Stop the first clients.
+  stop_discovery_handler.Run(
+      &stop_discovery_method_call,
+      base::Bind(&SaveResponse, &stop_discovery_response));
+  // Stop discovery for second clients.
+  stop_discovery_method_call.SetSender(kTestSender2);
+  EXPECT_CALL(*libnewblue_, HciDiscoverLeStop(kTestDiscoveryId))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*libnewblue_,
+              HciDiscoverLeStart(_, _, /* active */ false, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<0>(&inquiry_response_callback),
+                      SaveArg<1>(&inquiry_response_callback_data),
+                      Return(kTestDiscoveryId)));
+  stop_discovery_handler.Run(
+      &stop_discovery_method_call,
+      base::Bind(&SaveResponse, &stop_discovery_response));
+  base::RunLoop().RunUntilIdle();
+
+  // Upon receiving an advertisement from a paired device, connection should be
+  // initiated.
+  void* data;
+  gattCliConnectResultCbk gatt_client_connect_callback;
+  EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _))
+      .WillOnce(DoAll(SaveArg<0>(&data),
+                      SaveArg<2>(&gatt_client_connect_callback),
+                      Return(kTestGattClientConnectionId)));
+  ConvertToBtAddr(false, kTestDeviceAddress, &address);
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address,
+                               /* resolved_address */ nullptr,
+                               /* rssi */ -101, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ {},
+                               /* eir_len*/ 0);
+  base::RunLoop().RunUntilIdle();
+
+  // The connection succeeds, the background scan should stop
+  EXPECT_CALL(*libnewblue_, HciDiscoverLeStop(kTestDiscoveryId))
+      .WillOnce(Return(true));
+  gatt_client_connect_callback(data, kTestGattClientConnectionId,
+                               static_cast<uint8_t>(ConnectState::CONNECTED));
+  base::RunLoop().RunUntilIdle();
   TestDeinit();
 }
 

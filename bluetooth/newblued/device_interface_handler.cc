@@ -325,13 +325,6 @@ bool DeviceInterfaceHandler::Init() {
   return true;
 }
 
-void DeviceInterfaceHandler::SetScanManagementCallback(
-    ScanManagementCallback callback) {
-  CHECK(scan_management_callback_.is_null())
-      << "ScanManagementCallback already defined";
-  scan_management_callback_ = callback;
-}
-
 base::WeakPtr<DeviceInterfaceHandler> DeviceInterfaceHandler::GetWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
 }
@@ -389,6 +382,8 @@ bool DeviceInterfaceHandler::RemoveDevice(const std::string& address,
   }
   // Clear internal pairing state.
   newblue_->CancelPair(address, device->is_random_address);
+  for (auto& observer : observers_)
+    observer.OnDeviceUnpaired(address);
 
   // For ongoing connection, reply to D-Bus calls to prevent timeout.
   auto connection_session = connection_sessions_.find(address);
@@ -415,7 +410,6 @@ bool DeviceInterfaceHandler::RemoveDevice(const std::string& address,
   exported_object_manager_wrapper_->RemoveExportedInterface(
       device_path, bluetooth_device::kBluetoothDeviceInterface);
   discovered_devices_.erase(address);
-  UpdateBackgroundScan();
   return true;
 }
 
@@ -801,6 +795,7 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
   auto temp_connections = connections_;
   std::map<std::string, gatt_client_conn_t>::iterator iter =
       connection_attempts_.end();
+  bool is_disconnected_by_newblue = true;
 
   // See if there is a match in ongoing connection attempts.
   for (auto it = connection_attempts_.begin(); it != connection_attempts_.end();
@@ -852,6 +847,8 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
       VLOG(1) << "Unexpected GATT connection error";
       FALLTHROUGH;
     case ConnectState::DISCONNECTED:
+      is_disconnected_by_newblue = false;
+      FALLTHROUGH;
     case ConnectState::DISCONNECTED_BY_US:
       // Close the connection attempt when there is a match.
       if (dev_to_be_connected) {
@@ -878,7 +875,8 @@ void DeviceInterfaceHandler::OnGattClientConnectCallback(
         dev_to_notify = FindDevice(connection.first);
 
         for (auto& observer : observers_)
-          observer.OnGattDisconnected(connection.first, conn_id);
+          observer.OnGattDisconnected(connection.first, conn_id,
+                                      is_disconnected_by_newblue);
         break;
       }
       break;
@@ -903,25 +901,14 @@ void DeviceInterfaceHandler::SetDeviceConnected(Device* device,
   CHECK(device != nullptr);
 
   device->connected.SetValue(is_connected);
-  UpdateBackgroundScan();
 }
 
 void DeviceInterfaceHandler::SetDevicePaired(Device* device, bool is_paired) {
   CHECK(device != nullptr);
 
   device->paired.SetValue(is_paired);
-  UpdateBackgroundScan();
-}
-
-void DeviceInterfaceHandler::UpdateBackgroundScan() {
-  bool needs_background_scan = false;
-  for (const auto& kv : discovered_devices_) {
-    Device* dev = kv.second.get();
-    if (dev->paired.value() && !dev->connected.value()) {
-      needs_background_scan = true;
-    }
-  }
-  scan_management_callback_.Run(needs_background_scan);
+  for (auto& observer : observers_)
+    observer.OnDevicePaired(device->address);
 }
 
 Device* DeviceInterfaceHandler::FindDevice(const std::string& device_address) {

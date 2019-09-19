@@ -232,7 +232,8 @@ void Gatt::OnGattConnected(const std::string& device_address,
 }
 
 void Gatt::OnGattDisconnected(const std::string& device_address,
-                              gatt_client_conn_t conn_id) {
+                              gatt_client_conn_t conn_id,
+                              bool is_disconnected_by_newblue) {
   CHECK(!device_address.empty());
 
   // TODO(b:137581907): Investigate if the removal of transaction can rely on

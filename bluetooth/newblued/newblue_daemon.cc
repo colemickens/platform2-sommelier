@@ -56,7 +56,7 @@ bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus,
   }
 
   adapter_interface_handler_ = std::make_unique<AdapterInterfaceHandler>(
-      bus_, newblue_.get(), exported_object_manager_wrapper_.get());
+      bus_, exported_object_manager_wrapper_.get());
   device_interface_handler_ = std::make_unique<DeviceInterfaceHandler>(
       bus_, newblue_.get(), exported_object_manager_wrapper_.get());
   advertising_manager_interface_handler_ =
@@ -114,7 +114,8 @@ void NewblueDaemon::OnHciReadyForUp() {
     dbus_daemon_->QuitWithExitCode(EX_UNAVAILABLE);
     return;
   }
-  adapter_interface_handler_->Init(device_interface_handler_.get());
+  adapter_interface_handler_->Init(device_interface_handler_.get(),
+                                   newblue_.get());
   stack_sync_monitor_.RegisterBluezDownCallback(
       bus_.get(),
       base::Bind(&NewblueDaemon::OnBluezDown, weak_ptr_factory_.GetWeakPtr()));

@@ -129,15 +129,19 @@ class DeviceInterfaceHandler {
     virtual ~DeviceObserver() {}
     virtual void OnGattConnected(const std::string& device_address,
                                  gatt_client_conn_t conn_id) {}
+    // |is_disconnected_by_newblue| indicate if the device is disconnected by
+    // the newblue stack
+    // TODO(b:140626102): Add disconnection intention information to the persist
     virtual void OnGattDisconnected(const std::string& device_address,
-                                    gatt_client_conn_t conn_id) {}
+                                    gatt_client_conn_t conn_id,
+                                    bool is_disconnected_by_newblue) {}
+    virtual void OnDevicePaired(const std::string& device_address) {}
+    virtual void OnDeviceUnpaired(const std::string& device_address) {}
   };
 
   using ConnectCallback = base::Callback<void(const std::string& device_address,
                                               bool success,
                                               const std::string& dbus_error)>;
-
-  using ScanManagementCallback = base::Callback<void(bool enabled)>;
 
   // |newblue| and |exported_object_manager_wrapper| not owned, caller must make
   // sure it outlives this object.
@@ -149,9 +153,6 @@ class DeviceInterfaceHandler {
 
   // Starts listening pair state events from Newblue.
   bool Init();
-
-  // Sets the callback to manage background scan.
-  void SetScanManagementCallback(ScanManagementCallback callback);
 
   // Returns weak pointer of this object.
   base::WeakPtr<DeviceInterfaceHandler> GetWeakPtr();
@@ -245,7 +246,6 @@ class DeviceInterfaceHandler {
 
   void SetDeviceConnected(Device* device, bool is_connected);
   void SetDevicePaired(Device* device, bool is_connected);
-  void UpdateBackgroundScan();
 
   // Finds a device from |discovered_devices_| with the given |device_address|.
   // Returns nullptr if no such device is found.
@@ -295,8 +295,6 @@ class DeviceInterfaceHandler {
   scoped_refptr<dbus::Bus> bus_;
   Newblue* newblue_;
   ExportedObjectManagerWrapper* exported_object_manager_wrapper_;
-
-  ScanManagementCallback scan_management_callback_;
 
   // Keeps the discovered devices.
   // TODO(sonnysasaka): Clear old devices according to BlueZ mechanism.

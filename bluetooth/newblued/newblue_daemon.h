@@ -68,6 +68,7 @@ class NewblueDaemon : public BluetoothDaemon {
   std::unique_ptr<AgentManagerInterfaceHandler>
       agent_manager_interface_handler_;
   std::unique_ptr<NewblueDebugManager> debug_manager_;
+  std::unique_ptr<ScanManager> scan_manager_;
 
   std::unique_ptr<Gatt> gatt_;
   std::unique_ptr<GattInterfaceHandler> gatt_interface_handler_;

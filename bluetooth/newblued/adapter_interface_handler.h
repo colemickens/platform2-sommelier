@@ -20,6 +20,7 @@
 #include "bluetooth/common/exported_object_manager_wrapper.h"
 #include "bluetooth/newblued/device_interface_handler.h"
 #include "bluetooth/newblued/newblue.h"
+#include "bluetooth/newblued/scan_manager.h"
 
 namespace bluetooth {
 
@@ -50,7 +51,6 @@ class AdapterInterfaceHandler {
   // sure it outlives this object.
   AdapterInterfaceHandler(
       scoped_refptr<dbus::Bus> bus,
-      Newblue* newblue,
       ExportedObjectManagerWrapper* exported_object_manager_wrapper);
   virtual ~AdapterInterfaceHandler() = default;
 
@@ -58,7 +58,7 @@ class AdapterInterfaceHandler {
   // The properties of this object will be ignored by btdispatch, but the object
   // still has to be exposed to be able to receive org.bluez.Adapter1 method
   // calls, e.g. StartDiscovery(), StopDiscovery().
-  void Init(DeviceInterfaceHandler* device_interface_handler);
+  void Init(DeviceInterfaceHandler* device_interface_handler, Newblue* newblue);
 
  private:
   // D-Bus method handlers for adapter object.
@@ -67,22 +67,6 @@ class AdapterInterfaceHandler {
   bool HandleRemoveDevice(brillo::ErrorPtr* error,
                           dbus::Message* message,
                           const dbus::ObjectPath& device_path);
-
-  bool UpdateDiscovery(int n_discovery_clients);
-
-  // Changes the state of background scan. If true, background scan will be
-  // active even though there is no client requesting discovery.
-  void SetBackgroundScanEnable(bool enabled);
-
-  // Called when an update of a device info is received. The callback takes
-  // two address, the first one is the latest advertising address, the second
-  // one is the resolved address using IRK.
-  void DeviceDiscoveryCallback(const std::string& adv_address,
-                               uint8_t address_type,
-                               const std::string& resolved_address,
-                               int8_t rssi,
-                               uint8_t reply_type,
-                               const std::vector<uint8_t>& eir);
 
   // Called when a client is disconnected from D-Bus.
   void OnClientUnavailable(const std::string& client_address);
@@ -104,9 +88,12 @@ class AdapterInterfaceHandler {
 
   scoped_refptr<dbus::Bus> bus_;
 
-  Newblue* newblue_;
-
   DeviceInterfaceHandler* device_interface_handler_;
+
+  // All scanning-related requests must be delegated to |scan_manager_|.
+  // TODO(b/140810173): |scan_manager_| should be owned by
+  // AdapterInterfaceHandler instead of Adapter.
+  std::unique_ptr<ScanManager> scan_manager_;
 
   ExportedObjectManagerWrapper* exported_object_manager_wrapper_;
 
@@ -115,10 +102,6 @@ class AdapterInterfaceHandler {
   // Clients which currently have active discovery mapped by its D-Bus address.
   // (D-Bus address -> DBusClient object).
   std::map<std::string, std::unique_ptr<DBusClient>> discovery_clients_;
-
-  bool is_background_scan_enabled_ = false;
-
-  bool is_discovering_ = false;
 
   bool is_in_suspension_ = false;
 

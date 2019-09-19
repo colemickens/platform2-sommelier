@@ -115,7 +115,8 @@ class Gatt final : public DeviceInterfaceHandler::DeviceObserver {
   void OnGattConnected(const std::string& device_address,
                        gatt_client_conn_t conn_id) override;
   void OnGattDisconnected(const std::string& device_address,
-                          gatt_client_conn_t conn_id) override;
+                          gatt_client_conn_t conn_id,
+                          bool is_disconnected_by_newblue) override;
 
  private:
   // Represents the intermediate state which is used to perform sub-procedure.
