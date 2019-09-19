@@ -16,6 +16,7 @@
 #include <cstdlib>
 
 #include <base/logging.h>
+#include <base/macros.h>
 #include <base/strings/string_number_conversions.h>
 #include <gtest/gtest.h>
 
@@ -52,11 +53,9 @@ TimeBombAbort::~TimeBombAbort() {
 void TimeBombAbort::TimeoutHandler(int signal) {
   // Does a "best-effort" write.
   const char* msg = "\n\nTimeBombAbort::TimeoutHandler reached.\n";
-  if (write(STDERR_FILENO, msg, strlen(msg))) {
-  }  // Ignore the return value.
-  if (write(STDERR_FILENO, time_bomb_abort_message_,
-            strlen(time_bomb_abort_message_))) {
-  }  // Ignore the return value.
+  ignore_result(write(STDERR_FILENO, msg, strlen(msg)));
+  ignore_result(write(STDERR_FILENO, time_bomb_abort_message_,
+                      strlen(time_bomb_abort_message_)));
   exit(1);
 }
 
