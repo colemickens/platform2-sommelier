@@ -112,7 +112,7 @@ class SeqHandler {
   // This function processes the MIDI data received from H/W or an external
   // client, and invokes the callback |handle_rx_data_cb_| which handles the
   // data accordingly.
-  void ProcessMidiEvent(snd_seq_event_t* event);
+  virtual void ProcessMidiEvent(snd_seq_event_t* event);
 
   // Wrappers for functions that interact with the ALSA Sequencer interface.
   // These are kept separately, because the intention is to mock these functions
