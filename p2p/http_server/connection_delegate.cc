@@ -533,7 +533,7 @@ P2PServerRequestResult ConnectionDelegate::ServiceHttpRequest(
     int64_t val;
     if (base::StringToInt64(ea_value, &val)) {
       VLOG(1) << "Read user.cros-p2p-filesize=" << val;
-      if ((size_t)val > file_size) {
+      if (static_cast<size_t>(val) > file_size) {
         // Simply update file_size to what the EA says - code below
         // handles that by checking for EOF and sleeping
         file_size = val;
@@ -585,7 +585,8 @@ P2PServerRequestResult ConnectionDelegate::ServiceHttpRequest(
   }
 
   if (range_first > 0) {
-    if (lseek(file_fd, (off_t)range_first, SEEK_SET) != (off_t)range_first) {
+    if (lseek(file_fd, static_cast<off_t>(range_first), SEEK_SET) !=
+        static_cast<off_t>(range_first)) {
       PLOG(ERROR) << "Error seeking";
       req_res = p2p::util::kP2PRequestResultNotFound;
       goto out;
