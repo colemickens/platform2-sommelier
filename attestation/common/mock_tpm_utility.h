@@ -94,8 +94,6 @@ class MockTpmUtility : public TpmUtility {
                           const std::string&,
                           uint32_t));
   MOCK_CONST_METHOD2(ReadPCR, bool(uint32_t, std::string*));
-  MOCK_METHOD2(GetRSAPublicKeyFromTpmPublicKey,
-               bool(const std::string&, std::string*));
   MOCK_METHOD0(RemoveOwnerDependency, bool());
   MOCK_METHOD2(CreateIdentity, bool(KeyType, AttestationDatabase::Identity*));
   MOCK_METHOD1(GetRsuDeviceId, bool(std::string*));

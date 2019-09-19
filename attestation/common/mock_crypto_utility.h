@@ -53,7 +53,6 @@ class MockCryptoUtility : public CryptoUtility {
   MOCK_METHOD2(GetRSASubjectPublicKeyInfo,
                bool(const std::string&, std::string*));
   MOCK_METHOD2(GetRSAPublicKey, bool(const std::string&, std::string*));
-  MOCK_METHOD2(GetRSAPublicKeyForTpm2, bool(const std::string&, std::string*));
   MOCK_METHOD5(EncryptIdentityCredential,
                bool(TpmVersion,
                     const std::string&,

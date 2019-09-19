@@ -99,8 +99,6 @@ MockTpmUtility::MockTpmUtility() {
   ON_CALL(*this, GetNVDataSize(_, _)).WillByDefault(Return(true));
   ON_CALL(*this, CertifyNV(_, _, _, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, ReadPCR(_, _)).WillByDefault(Return(true));
-  ON_CALL(*this, GetRSAPublicKeyFromTpmPublicKey(_, _))
-      .WillByDefault(Return(true));
   ON_CALL(*this, RemoveOwnerDependency()).WillByDefault(Return(true));
   ON_CALL(*this, CreateIdentity(_, _))
       .WillByDefault(WithArgs<1>(Invoke(SetFakeIdentity)));

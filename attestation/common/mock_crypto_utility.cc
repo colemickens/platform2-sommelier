@@ -48,8 +48,6 @@ MockCryptoUtility::MockCryptoUtility() {
   ON_CALL(*this, GetRSASubjectPublicKeyInfo(_, _))
       .WillByDefault(Invoke(CopyString));
   ON_CALL(*this, GetRSAPublicKey(_, _)).WillByDefault(Invoke(CopyString));
-  ON_CALL(*this, GetRSAPublicKeyForTpm2(_, _))
-      .WillByDefault(Invoke(CopyString));
   ON_CALL(*this, EncryptIdentityCredential(_, _, _, _, _))
       .WillByDefault(Return(true));
   ON_CALL(*this, DecryptIdentityCertificateForTpm2(_, _, _))
