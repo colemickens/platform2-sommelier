@@ -14,17 +14,20 @@ namespace midis {
 
 class SeqHandlerMock : public SeqHandler {
  public:
-  MOCK_METHOD2(SndSeqEventOutputDirect,
-               int(snd_seq_t* out_client, snd_seq_event_t* event));
-  MOCK_METHOD2(SndSeqEventInput,
-               int(snd_seq_t* in_client, snd_seq_event_t** event));
-  MOCK_METHOD2(SndSeqEventInputPending,
-               int(snd_seq_t* in_client, int fetch_sequencer));
-  MOCK_METHOD1(AddSeqDevice, void(uint32_t device_id));
-  MOCK_METHOD2(AddSeqPort, void(uint32_t device_id, uint32_t port_id));
-  MOCK_METHOD1(RemoveSeqDevice, void(uint32_t device_id));
-  MOCK_METHOD2(RemoveSeqPort, void(uint32_t device_id, uint32_t port_id));
-  MOCK_METHOD1(ProcessMidiEvent, void(snd_seq_event_t* event));
+  MOCK_METHOD(int,
+              SndSeqEventOutputDirect,
+              (snd_seq_t*, snd_seq_event_t*),
+              (override));
+  MOCK_METHOD(int,
+              SndSeqEventInput,
+              (snd_seq_t*, snd_seq_event_t**),
+              (override));
+  MOCK_METHOD(int, SndSeqEventInputPending, (snd_seq_t*, int), (override));
+  MOCK_METHOD(void, AddSeqDevice, (uint32_t), (override));
+  MOCK_METHOD(void, AddSeqPort, (uint32_t, uint32_t), (override));
+  MOCK_METHOD(void, RemoveSeqDevice, (uint32_t), (override));
+  MOCK_METHOD(void, RemoveSeqPort, (uint32_t, uint32_t), (override));
+  MOCK_METHOD(void, ProcessMidiEvent, (snd_seq_event_t*), (override));
 };
 
 }  // namespace midis

@@ -32,23 +32,17 @@ const int kOutClientId = 2;
 // into the constructor of SeqHandler() when needed.
 class CallbacksMock {
  public:
-  MOCK_METHOD1(FakeAddDeviceCallbackMock, void(midis::Device* device));
+  MOCK_METHOD(void, FakeAddDeviceCallbackMock, (midis::Device*));
   void FakeAddDeviceCallback(std::unique_ptr<midis::Device> device) {
     FakeAddDeviceCallbackMock(device.get());
   }
 
-  MOCK_METHOD2(RemoveDeviceCallback,
-               void(uint32_t card_num, uint32_t device_num));
-  MOCK_METHOD5(HandleReceiveDataCallback,
-               void(uint32_t card_id,
-                    uint32_t device_id,
-                    uint32_t port_id,
-                    const char* buffer,
-                    size_t buf_len));
-  MOCK_METHOD2(IsDevicePresentCallback,
-               bool(uint32_t card_num, uint32_t device_num));
-  MOCK_METHOD3(IsPortPresentCallback,
-               bool(uint32_t card_num, uint32_t device_num, uint32_t port_id));
+  MOCK_METHOD(void, RemoveDeviceCallback, (uint32_t, uint32_t));
+  MOCK_METHOD(void,
+              HandleReceiveDataCallback,
+              (uint32_t, uint32_t, uint32_t, const char*, size_t));
+  MOCK_METHOD(bool, IsDevicePresentCallback, (uint32_t, uint32_t));
+  MOCK_METHOD(bool, IsPortPresentCallback, (uint32_t, uint32_t, uint32_t));
 };
 
 }  //  namespace
