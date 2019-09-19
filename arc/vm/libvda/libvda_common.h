@@ -5,6 +5,8 @@
 #ifndef ARC_VM_LIBVDA_LIBVDA_COMMON_H_
 #define ARC_VM_LIBVDA_LIBVDA_COMMON_H_
 
+#include <stdint.h>
+
 // Copy of VideoFramePlane.
 typedef struct video_frame_plane {
   int32_t offset;

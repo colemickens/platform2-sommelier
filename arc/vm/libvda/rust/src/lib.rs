@@ -2,7 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-mod bindings;
+mod common_bindings;
+mod decode_bindings;
+mod encode_bindings;
 
 mod error;
 mod event;

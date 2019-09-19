@@ -1,11 +1,12 @@
 # Libvda Rust wrapper
 
-Rust wrapper for libvda. This library is intended to be used as a back-end of
-crosvm's virtio-vdec device.
+Rust wrapper for libvda. This library is used to enable communication with
+Chrome's GPU process to perform hardware accelerated decoding and encoding.
+It is currently in development to be used by crosvm's virtio-video device.
 
-## Building package
+## Building for a CrOS board
 
-You can build and run unittests with emerge in choot.
+You can build and run unittests with emerge in chroot.
 
 ```shell
 # Build
@@ -13,6 +14,8 @@ You can build and run unittests with emerge in choot.
 # Unit tests
 (chroot)$ FEATURES=test emerge-{BOARD} dev-rust/libvda
 ```
+
+### Building for the host environment
 
 You can also execute `cargo` directly for faster build and tests. This would be
 useful when you are developing this crate.
@@ -30,11 +33,10 @@ environment first.
 (chroot)$ cargo test
 ```
 
-## Updating bindings.rs
+## Updating generated bindings
 
-`src/bindings.rs` is an automatically generated code from `libvda.h`.
+`src/common_bindings.rs` is automatically generated from `libvda_common.h`.
+`src/decode_bindings.rs` is automatically generated from `libvda_decode.h`.
+`src/encode_bindings.rs` is automatically generated from `libvda_encode.h`.
 
-```shell
-$ cd ${CHROMEOS_DIR}/src/platform2/
-$ bindgen arc/vm/libvda/libvda_decode.h -- -I . > arc/vm/libvda/rust/src/bindings.rs
-```
+See the header of the bindings file for the generation command.
