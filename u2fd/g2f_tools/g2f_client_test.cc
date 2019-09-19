@@ -334,9 +334,6 @@ class U2FHidTest : public ::testing::Test {
   U2FHidTest() : hid_(&device_) {}
   virtual ~U2FHidTest() = default;
 
-  void SetUp() {
-  }
-
  protected:
   void ExpectInit(bool copy_nonce,
                   const char* cid,
@@ -551,9 +548,6 @@ class U2FTest : public ::testing::Test {
  public:
   U2FTest() : u2f_(&u2f_hid_) {}
   virtual ~U2FTest() = default;
-
-  void SetUp() {
-  }
 
  protected:
   void RunRegisterExpectFail() {
