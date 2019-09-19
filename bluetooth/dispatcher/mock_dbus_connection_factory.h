@@ -16,7 +16,7 @@ class MockDBusConnectionFactory : public DBusConnectionFactory {
  public:
   using DBusConnectionFactory::DBusConnectionFactory;
 
-  MOCK_METHOD0(GetNewBus, scoped_refptr<dbus::Bus>());
+  MOCK_METHOD(scoped_refptr<dbus::Bus>, GetNewBus, (), (override));
 };
 
 }  // namespace bluetooth

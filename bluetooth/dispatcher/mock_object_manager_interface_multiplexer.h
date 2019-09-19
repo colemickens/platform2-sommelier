@@ -18,19 +18,21 @@ class MockObjectManagerInterfaceMultiplexer
  public:
   using ObjectManagerInterfaceMultiplexer::ObjectManagerInterfaceMultiplexer;
 
-  MOCK_METHOD4(CreateProperties,
-               dbus::PropertySet*(const std::string& service_name,
-                                  dbus::ObjectProxy* object_proxy,
-                                  const dbus::ObjectPath& object_path,
-                                  const std::string& interface_name));
-  MOCK_METHOD3(ObjectAdded,
-               void(const std::string& service_name,
-                    const dbus::ObjectPath& object_path,
-                    const std::string& interface_name));
-  MOCK_METHOD3(ObjectRemoved,
-               void(const std::string& service_name,
-                    const dbus::ObjectPath& object_path,
-                    const std::string& interface_name));
+  MOCK_METHOD(dbus::PropertySet*,
+              CreateProperties,
+              (const std::string&,
+               dbus::ObjectProxy*,
+               const dbus::ObjectPath&,
+               const std::string&),
+              (override));
+  MOCK_METHOD(void,
+              ObjectAdded,
+              (const std::string&, const dbus::ObjectPath&, const std::string&),
+              (override));
+  MOCK_METHOD(void,
+              ObjectRemoved,
+              (const std::string&, const dbus::ObjectPath&, const std::string&),
+              (override));
 };
 
 }  // namespace bluetooth

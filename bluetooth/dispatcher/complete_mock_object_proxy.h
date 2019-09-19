@@ -13,10 +13,14 @@ namespace bluetooth {
 class CompleteMockObjectProxy : public dbus::MockObjectProxy {
  public:
   using MockObjectProxy::MockObjectProxy;
-  MOCK_METHOD1(WaitForServiceToBeAvailable,
-               void(ObjectProxy::WaitForServiceToBeAvailableCallback));
-  MOCK_METHOD1(SetNameOwnerChangedCallback,
-               void(ObjectProxy::NameOwnerChangedCallback));
+  MOCK_METHOD(void,
+              WaitForServiceToBeAvailable,
+              (ObjectProxy::WaitForServiceToBeAvailableCallback),
+              (override));
+  MOCK_METHOD(void,
+              SetNameOwnerChangedCallback,
+              (ObjectProxy::NameOwnerChangedCallback),
+              (override));
 };
 
 }  // namespace bluetooth

@@ -16,76 +16,97 @@ class MockLibNewblue : public LibNewblue {
   using LibNewblue::LibNewblue;
 
   // att.h
-  MOCK_METHOD0(AttInit, bool());
-  MOCK_METHOD0(AttDeinit, void());
+  MOCK_METHOD(bool, AttInit, (), (override));
+  MOCK_METHOD(void, AttDeinit, (), (override));
 
   // gatt.h
-  MOCK_METHOD0(GattProfileInit, bool());
-  MOCK_METHOD0(GattProfileDeinit, void());
-  MOCK_METHOD3(GattClientConnect,
-               gatt_client_conn_t(void* userData,
-                                  const struct bt_addr*,
-                                  gattCliConnectResultCbk));
-  MOCK_METHOD1(GattClientDisconnect, uint8_t(gatt_client_conn_t));
-  MOCK_METHOD5(
-      GattClientEnumServices,
-      uint8_t(void*, gatt_client_conn_t, bool, uniq_t, gattCliSvcEnumCbk));
-  MOCK_METHOD5(GattClientUtilFindAndTraversePrimaryService,
-               uint8_t(void*,
-                       gatt_client_conn_t,
-                       const struct uuid*,
-                       uniq_t,
-                       gattCliUtilSvcTraversedCbk));
-  MOCK_METHOD6(GattClientUtilLongRead,
-               uint8_t(void*,
-                       gatt_client_conn_t,
-                       uint16_t,
-                       uint8_t,
-                       uniq_t,
-                       gattCliUtilLongReadCompletedCbk));
+  MOCK_METHOD(bool, GattProfileInit, (), (override));
+  MOCK_METHOD(void, GattProfileDeinit, (), (override));
+  MOCK_METHOD(gatt_client_conn_t,
+              GattClientConnect,
+              (void* userData, const struct bt_addr*, gattCliConnectResultCbk),
+              (override));
+  MOCK_METHOD(uint8_t, GattClientDisconnect, (gatt_client_conn_t), (override));
+  MOCK_METHOD(uint8_t,
+              GattClientEnumServices,
+              (void*, gatt_client_conn_t, bool, uniq_t, gattCliSvcEnumCbk),
+              (override));
+  MOCK_METHOD(uint8_t,
+              GattClientUtilFindAndTraversePrimaryService,
+              (void*,
+               gatt_client_conn_t,
+               const struct uuid*,
+               uniq_t,
+               gattCliUtilSvcTraversedCbk),
+              (override));
+  MOCK_METHOD(uint8_t,
+              GattClientUtilLongRead,
+              (void*,
+               gatt_client_conn_t,
+               uint16_t,
+               uint8_t,
+               uniq_t,
+               gattCliUtilLongReadCompletedCbk),
+              (override));
 
   // gatt-builtin.h
-  MOCK_METHOD0(GattBuiltinInit, bool());
-  MOCK_METHOD0(GattBuiltinDeinit, void());
+  MOCK_METHOD(bool, GattBuiltinInit, (), (override));
+  MOCK_METHOD(void, GattBuiltinDeinit, (), (override));
 
   // hci.h
-  MOCK_METHOD3(HciUp, bool(const uint8_t*, hciReadyForUpCbk, void*));
-  MOCK_METHOD0(HciDown, void());
-  MOCK_METHOD0(HciIsUp, bool());
-  MOCK_METHOD8(HciDiscoverLeStart,
-               uniq_t(hciDeviceDiscoveredLeCbk,
-                      void*,
-                      bool,
-                      uint16_t,
-                      uint16_t,
-                      bool,
-                      bool,
-                      bool));
-  MOCK_METHOD1(HciDiscoverLeStop, bool(uniq_t));
-  MOCK_METHOD1(HciAdvSetEnable, bool(hci_adv_set_t));
+  MOCK_METHOD(bool,
+              HciUp,
+              (const uint8_t*, hciReadyForUpCbk, void*),
+              (override));
+  MOCK_METHOD(void, HciDown, (), (override));
+  MOCK_METHOD(bool, HciIsUp, (), (override));
+  MOCK_METHOD(uniq_t,
+              HciDiscoverLeStart,
+              (hciDeviceDiscoveredLeCbk,
+               void*,
+               bool,
+               uint16_t,
+               uint16_t,
+               bool,
+               bool,
+               bool),
+              (override));
+  MOCK_METHOD(bool, HciDiscoverLeStop, (uniq_t), (override));
+  MOCK_METHOD(bool, HciAdvSetEnable, (hci_adv_set_t), (override));
 
   // l2cap.h
-  MOCK_METHOD0(L2cInit, int());
-  MOCK_METHOD0(L2cDeinit, void());
+  MOCK_METHOD(int, L2cInit, (), (override));
+  MOCK_METHOD(void, L2cDeinit, (), (override));
 
   // sm.h
-  MOCK_METHOD0(SmInit, bool());
-  MOCK_METHOD0(SmDeinit, void());
-  MOCK_METHOD2(SmRegisterPairStateObserver,
-               uniq_t(void*, smPairStateChangeCbk));
-  MOCK_METHOD1(SmUnregisterPairStateObserver, void(uniq_t));
-  MOCK_METHOD2(SmPair,
-               void(const struct bt_addr*,
-                    const struct smPairSecurityRequirements*));
-  MOCK_METHOD1(SmUnpair, void(const struct bt_addr*));
-  MOCK_METHOD2(SmRegisterPasskeyDisplayObserver,
-               uniq_t(void*, smPasskeyDisplayCbk));
-  MOCK_METHOD0(SmGetKnownDevices, struct smKnownDevNode*());
-  MOCK_METHOD1(SmKnownDevicesFree, void(struct smKnownDevNode*));
+  MOCK_METHOD(bool, SmInit, (), (override));
+  MOCK_METHOD(void, SmDeinit, (), (override));
+  MOCK_METHOD(uniq_t,
+              SmRegisterPairStateObserver,
+              (void*, smPairStateChangeCbk),
+              (override));
+  MOCK_METHOD(void, SmUnregisterPairStateObserver, (uniq_t), (override));
+  MOCK_METHOD(void,
+              SmPair,
+              (const struct bt_addr*, const struct smPairSecurityRequirements*),
+              (override));
+  MOCK_METHOD(void, SmUnpair, (const struct bt_addr*), (override));
+  MOCK_METHOD(uniq_t,
+              SmRegisterPasskeyDisplayObserver,
+              (void*, smPasskeyDisplayCbk),
+              (override));
+  MOCK_METHOD(struct smKnownDevNode*, SmGetKnownDevices, (), (override));
+  MOCK_METHOD(void, SmKnownDevicesFree, (struct smKnownDevNode*), (override));
 
   // btleHid.h
-  MOCK_METHOD2(BtleHidInit, void(BtleHidConnStateCbk, BtleHidReportRxCbk));
-  MOCK_METHOD2(BtleHidAttach, ble_hid_conn_t(gatt_client_conn_t, const char*));
+  MOCK_METHOD(void,
+              BtleHidInit,
+              (BtleHidConnStateCbk, BtleHidReportRxCbk),
+              (override));
+  MOCK_METHOD(ble_hid_conn_t,
+              BtleHidAttach,
+              (gatt_client_conn_t, const char*),
+              (override));
 };
 
 }  // namespace bluetooth
