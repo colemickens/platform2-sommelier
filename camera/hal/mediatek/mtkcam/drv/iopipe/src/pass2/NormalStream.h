@@ -204,7 +204,8 @@ class VISIBILITY_PUBLIC NormalStream : public INormalStream,
   virtual MBOOL requestBuffers(
       int type,
       IImageBufferAllocator::ImgParam imgParam,
-      std::vector<std::shared_ptr<IImageBuffer>>* p_buffers);
+      std::vector<std::shared_ptr<IImageBuffer>>* p_buffers,
+      int buf_pool_size);
 
   /**
    * @brief send isp extra command

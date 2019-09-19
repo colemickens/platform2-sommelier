@@ -171,7 +171,7 @@ MBOOL FDNode::onRequestProcess(RequestPtr& pRequest) {
 
   // [1] acquire the FD buffer whose width must be not more than 640
   IImageBuffer* pInBuffer = nullptr;
-  BufferID_T uFDBuffer = pNodeReq->mapBufferID(TID_MAN_FD_YUV, INPUT);
+  BufferID_T uFDBuffer = pNodeReq->mapBufferID(TID_MAIN_FD_YUV, INPUT);
   if (uFDBuffer != NULL_BUFFER) {
     pInBuffer = pNodeReq->acquireBuffer(uFDBuffer);
   }
@@ -180,7 +180,7 @@ MBOOL FDNode::onRequestProcess(RequestPtr& pRequest) {
     return MFALSE;
   }
 
-  IMetadata* pAppMeta = pNodeReq->acquireMetadata(MID_MAN_IN_APP);
+  IMetadata* pAppMeta = pNodeReq->acquireMetadata(MID_MAIN_IN_APP);
 
   MINT32 jpegOrientation;
   if (!tryGetMetadata<MINT32>(pAppMeta, MTK_JPEG_ORIENTATION,
@@ -327,7 +327,7 @@ MBOOL FDNode::onRequestProcess(RequestPtr& pRequest) {
   pAppMeta->update(MTK_FACE_FEATURE_POSE_ORIENTATIONS, entryPoseOriens);
 
   // Release
-  pNodeReq->releaseMetadata(MID_MAN_IN_APP);
+  pNodeReq->releaseMetadata(MID_MAIN_IN_APP);
 
   dispatch(pRequest);
 
@@ -342,12 +342,12 @@ MERROR FDNode::evaluate(CaptureFeatureInferenceData* rInfer) {
   auto& features = rInfer->getSharedFeatures();
   auto& metadatas = rInfer->getSharedMetadatas();
 
-  if (rInfer->hasType(TID_MAN_FD_YUV)) {
+  if (rInfer->hasType(TID_MAIN_FD_YUV)) {
     MSize srcSize;
-    if (rInfer->hasType(TID_MAN_FULL_RAW)) {
-      srcSize = rInfer->getSize(TID_MAN_FULL_RAW);
-    } else if (rInfer->hasType(TID_MAN_RSZ_RAW)) {
-      srcSize = rInfer->getSize(TID_MAN_RSZ_RAW);
+    if (rInfer->hasType(TID_MAIN_FULL_RAW)) {
+      srcSize = rInfer->getSize(TID_MAIN_FULL_RAW);
+    } else if (rInfer->hasType(TID_MAIN_RSZ_RAW)) {
+      srcSize = rInfer->getSize(TID_MAIN_RSZ_RAW);
     } else {
       return OK;
     }
@@ -362,17 +362,17 @@ MERROR FDNode::evaluate(CaptureFeatureInferenceData* rInfer) {
     }
     srcData.emplace_back();
     auto& src_0 = srcData.back();
-    src_0.mTypeId = TID_MAN_FD_YUV;
+    src_0.mTypeId = TID_MAIN_FD_YUV;
     src_0.mSizeId = SID_SPECIFIC;
     src_0.mSize = fdSize;
     src_0.mFormat = eImgFmt_YUY2;
 
     dstData.emplace_back();
     auto& dst_0 = dstData.back();
-    dst_0.mTypeId = TID_MAN_FD;
+    dst_0.mTypeId = TID_MAIN_FD;
     dst_0.mSizeId = NULL_SIZE;
 
-    metadatas.push_back(MID_MAN_IN_APP);
+    metadatas.push_back(MID_MAIN_IN_APP);
 
     rInfer->addNodeIO(NID_FD, srcData, dstData, metadatas, features);
   }

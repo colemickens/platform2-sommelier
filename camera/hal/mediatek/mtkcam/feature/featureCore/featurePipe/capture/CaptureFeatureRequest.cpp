@@ -41,37 +41,37 @@ MVOID CaptureFeatureRequest::addBuffer(
   mBufferMap.emplace(bufId, pBufHandle);
   TypeID_T typeId = NULL_TYPE;
   switch (bufId) {
-    case BID_MAN_IN_FULL:
-      typeId = TID_MAN_FULL_RAW;
+    case BID_MAIN_IN_FULL:
+      typeId = TID_MAIN_FULL_RAW;
       break;
-    case BID_MAN_IN_YUV:
-      typeId = TID_MAN_FULL_YUV;
+    case BID_MAIN_IN_YUV:
+      typeId = TID_MAIN_FULL_YUV;
       break;
-    case BID_MAN_IN_LCS:
-      typeId = TID_MAN_LCS;
+    case BID_MAIN_IN_LCS:
+      typeId = TID_MAIN_LCS;
       break;
-    case BID_MAN_IN_RSZ:
-      typeId = TID_MAN_RSZ_RAW;
+    case BID_MAIN_IN_RSZ:
+      typeId = TID_MAIN_RSZ_RAW;
       break;
-    case BID_MAN_OUT_YUV00:
-      typeId = TID_MAN_CROP1_YUV;
+    case BID_MAIN_OUT_YUV00:
+      typeId = TID_MAIN_CROP1_YUV;
       break;
-    case BID_MAN_OUT_YUV01:
-      typeId = TID_MAN_CROP2_YUV;
+    case BID_MAIN_OUT_YUV01:
+      typeId = TID_MAIN_CROP2_YUV;
       break;
-    case BID_MAN_OUT_JPEG:
+    case BID_MAIN_OUT_JPEG:
       typeId = TID_JPEG;
       break;
-    case BID_MAN_OUT_THUMBNAIL:
+    case BID_MAIN_OUT_THUMBNAIL:
       typeId = TID_THUMBNAIL;
       break;
-    case BID_MAN_OUT_POSTVIEW:
+    case BID_MAIN_OUT_POSTVIEW:
       typeId = TID_POSTVIEW;
       break;
-    case BID_MAN_OUT_DEPTH:
-      typeId = TID_MAN_DEPTH;
+    case BID_MAIN_OUT_DEPTH:
+      typeId = TID_MAIN_DEPTH;
       break;
-    case BID_MAN_OUT_CLEAN:
+    case BID_MAIN_OUT_CLEAN:
       // TODO(MTK)
       break;
     case BID_SUB_IN_FULL:

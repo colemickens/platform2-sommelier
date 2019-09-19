@@ -55,6 +55,13 @@ class VISIBILITY_PUBLIC P2Operator {
 
   void putTuningBuffer(std::shared_ptr<IImageBuffer> buf);
 
+  MBOOL requsetCapBuffer(int type,
+                         MUINT32 width,
+                         MUINT32 height,
+                         MUINT32 format,
+                         MUINT32 number,
+                         std::vector<std::shared_ptr<IImageBuffer>>* p_buffers);
+
   MERROR release();
   //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   //  RefBase Interface.
@@ -70,7 +77,7 @@ class VISIBILITY_PUBLIC P2Operator {
   std::condition_variable mCond;
 
   std::shared_ptr<v4l2::INormalStream> mpINormalStream = nullptr;
-  std::vector<std::shared_ptr<IImageBuffer> > mTuningBuffers;
+  std::vector<std::shared_ptr<IImageBuffer>> mTuningBuffers;
 };
 
 };  // namespace NSFeaturePipe

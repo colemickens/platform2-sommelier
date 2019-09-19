@@ -331,15 +331,15 @@ MBOOL CaptureProcessor::onEnque(
 
   MapMetadata(
       IN_P1_APP,
-      NSCam::NSCamFeature::NSFeaturePipe::NSCapture::MID_MAN_IN_P1_DYNAMIC);
+      NSCam::NSCamFeature::NSFeaturePipe::NSCapture::MID_MAIN_IN_P1_DYNAMIC);
   MapMetadata(IN_P1_HAL,
-              NSCam::NSCamFeature::NSFeaturePipe::NSCapture::MID_MAN_IN_HAL);
+              NSCam::NSCamFeature::NSFeaturePipe::NSCapture::MID_MAIN_IN_HAL);
   MapMetadata(IN_APP,
-              NSCam::NSCamFeature::NSFeaturePipe::NSCapture::MID_MAN_IN_APP);
+              NSCam::NSCamFeature::NSFeaturePipe::NSCapture::MID_MAIN_IN_APP);
   MapMetadata(OUT_APP,
-              NSCam::NSCamFeature::NSFeaturePipe::NSCapture::MID_MAN_OUT_APP);
+              NSCam::NSCamFeature::NSFeaturePipe::NSCapture::MID_MAIN_OUT_APP);
   MapMetadata(OUT_HAL,
-              NSCam::NSCamFeature::NSFeaturePipe::NSCapture::MID_MAN_OUT_HAL);
+              NSCam::NSCamFeature::NSFeaturePipe::NSCapture::MID_MAIN_OUT_HAL);
 
   // Image
   auto MapBuffer =
@@ -355,23 +355,23 @@ MBOOL CaptureProcessor::onEnque(
   };
 
   MapBuffer(IN_OPAQUE,
-            NSCam::NSCamFeature::NSFeaturePipe::NSCapture::BID_MAN_IN_FULL);
+            NSCam::NSCamFeature::NSFeaturePipe::NSCapture::BID_MAIN_IN_FULL);
   MapBuffer(IN_FULL,
-            NSCam::NSCamFeature::NSFeaturePipe::NSCapture::BID_MAN_IN_FULL);
+            NSCam::NSCamFeature::NSFeaturePipe::NSCapture::BID_MAIN_IN_FULL);
   MapBuffer(IN_RESIZED,
-            NSCam::NSCamFeature::NSFeaturePipe::NSCapture::BID_MAN_IN_RSZ);
+            NSCam::NSCamFeature::NSFeaturePipe::NSCapture::BID_MAIN_IN_RSZ);
   MapBuffer(IN_LCSO,
-            NSCam::NSCamFeature::NSFeaturePipe::NSCapture::BID_MAN_IN_LCS);
+            NSCam::NSCamFeature::NSFeaturePipe::NSCapture::BID_MAIN_IN_LCS);
   MapBuffer(IN_REPROCESS,
-            NSCam::NSCamFeature::NSFeaturePipe::NSCapture::BID_MAN_IN_YUV);
+            NSCam::NSCamFeature::NSFeaturePipe::NSCapture::BID_MAIN_IN_YUV);
   MapBuffer(OUT_JPEG_YUV,
-            NSCam::NSCamFeature::NSFeaturePipe::NSCapture::BID_MAN_OUT_JPEG);
+            NSCam::NSCamFeature::NSFeaturePipe::NSCapture::BID_MAIN_OUT_JPEG);
   MapBuffer(
       OUT_THN_YUV,
-      NSCam::NSCamFeature::NSFeaturePipe::NSCapture::BID_MAN_OUT_THUMBNAIL);
+      NSCam::NSCamFeature::NSFeaturePipe::NSCapture::BID_MAIN_OUT_THUMBNAIL);
   MapBuffer(
       OUT_POSTVIEW,
-      NSCam::NSCamFeature::NSFeaturePipe::NSCapture::BID_MAN_OUT_POSTVIEW);
+      NSCam::NSCamFeature::NSFeaturePipe::NSCapture::BID_MAIN_OUT_POSTVIEW);
 
   size_t n = pRequest->mImgOutArray.size();
   if (n > 2) {
@@ -380,8 +380,9 @@ MBOOL CaptureProcessor::onEnque(
   }
   for (size_t i = 0; i < n; i++) {
     pCapRequest->addBuffer(
-        NSCam::NSCamFeature::NSFeaturePipe::NSCapture::BID_MAN_OUT_YUV00 + i,
-        std::make_shared<P2BufferHandle>(pRequest, pRequest->mImgOutArray[i]));
+        NSCam::NSCamFeature::NSFeaturePipe::NSCapture::BID_MAIN_OUT_YUV00 + i,
+        std::make_shared<P2BufferHandle>(pRequest, pRequest->mImgOutArray[i],
+                                         this));
   }
   // Trigger Batch Release
   pRequest->beginBatchRelease();

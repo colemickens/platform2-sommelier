@@ -345,8 +345,9 @@ MBOOL StreamingProcessor::prepareOutputs(
             mapping_cropRect_control.p.y = cropRect_control.p.y / mapping_ratio;
             mapping_cropRect_control.s.w = cropRect_control.s.w / mapping_ratio;
             mapping_cropRect_control.s.h = cropRect_control.s.h / mapping_ratio;
-            cropF = cropper->applyViewRatio(payload->mLog,
-                mapping_cropRect_control, out.mImg->getTransformSize());
+            cropF =
+                cropper->applyViewRatio(payload->mLog, mapping_cropRect_control,
+                                        out.mImg->getTransformSize());
           }
         }
         out.mCrop = cropF;

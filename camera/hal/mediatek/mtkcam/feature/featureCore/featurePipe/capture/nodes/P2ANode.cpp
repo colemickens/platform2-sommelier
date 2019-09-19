@@ -71,6 +71,7 @@ using NSCam::v3::Utils::ImageStreamInfo;
 #define ISP30_TOLERANCE_CROP_OFFSET (128)
 #define ISP30_TOLERANCE_RESIZE_RATIO (8)
 #define P2LIMITED (1)
+#define CAPTURE_CACHE_BUFFER_NUM 6
 
 namespace NSCam {
 namespace NSCamFeature {
@@ -95,6 +96,7 @@ P2ANode::P2ANode(NodeID_T nid, const char* name)
       mISP3_0(MFALSE)
 #endif
       ,
+      mHasAllocDip(MFALSE),
       mTaskQueue(nullptr) {
   TRACE_FUNC_ENTER();
   this->addWaitQueue(&mRequests);
@@ -215,6 +217,11 @@ MBOOL P2ANode::onInit() {
 
   mISP3_0 = MFALSE;
 
+  for (auto& it : mDipBuffers) {
+    it->unlockBuf("V4L2");
+  }
+
+  mHasAllocDip = MFALSE;
   TRACE_FUNC_EXIT();
   return MTRUE;
 }
@@ -1025,11 +1032,11 @@ P2ANode::onRequestProcess(RequestPtr& pRequest) {
                                          });
 
   // 0-1. Acquire Metadata
-  IMetadata* pIMetaDynamic = pNodeReq->acquireMetadata(MID_MAN_IN_P1_DYNAMIC);
-  IMetadata* pIMetaApp = pNodeReq->acquireMetadata(MID_MAN_IN_APP);
-  IMetadata* pIMetaHal = pNodeReq->acquireMetadata(MID_MAN_IN_HAL);
-  IMetadata* pOMetaApp = pNodeReq->acquireMetadata(MID_MAN_OUT_APP);
-  IMetadata* pOMetaHal = pNodeReq->acquireMetadata(MID_MAN_OUT_HAL);
+  IMetadata* pIMetaDynamic = pNodeReq->acquireMetadata(MID_MAIN_IN_P1_DYNAMIC);
+  IMetadata* pIMetaApp = pNodeReq->acquireMetadata(MID_MAIN_IN_APP);
+  IMetadata* pIMetaHal = pNodeReq->acquireMetadata(MID_MAIN_IN_HAL);
+  IMetadata* pOMetaApp = pNodeReq->acquireMetadata(MID_MAIN_OUT_APP);
+  IMetadata* pOMetaHal = pNodeReq->acquireMetadata(MID_MAIN_OUT_HAL);
 
   IMetadata* pIMetaHal2 = NULL;
   IMetadata* pIMetaDynamic2 = NULL;
@@ -1048,7 +1055,7 @@ P2ANode::onRequestProcess(RequestPtr& pRequest) {
   // 1. Full RAW of main sensor
   // YUV Reprocessing
   MBOOL isYuvRep =
-      pNodeReq->mapBufferID(TID_MAN_FULL_YUV, INPUT) != NULL_BUFFER;
+      pNodeReq->mapBufferID(TID_MAIN_FULL_YUV, INPUT) != NULL_BUFFER;
   // Down Scale: Only for IMGO
   MINT32 iDSRatio = 1;
   IImageBuffer* pDownScaleBuffer = nullptr;
@@ -1072,9 +1079,9 @@ P2ANode::onRequestProcess(RequestPtr& pRequest) {
     std::shared_ptr<P2EnqueData> pEnqueData = std::make_shared<P2EnqueData>();
     P2EnqueData& rEnqueData = *pEnqueData.get();
     rEnqueData.mpHolder = pHolder;
-    rEnqueData.mIMGI.mBufId = pNodeReq->mapBufferID(TID_MAN_FULL_RAW, INPUT);
+    rEnqueData.mIMGI.mBufId = pNodeReq->mapBufferID(TID_MAIN_FULL_RAW, INPUT);
     rEnqueData.mIMGI.mpBuf = pNodeReq->acquireBuffer(rEnqueData.mIMGI.mBufId);
-    rEnqueData.mLCEI.mBufId = pNodeReq->mapBufferID(TID_MAN_LCS, INPUT);
+    rEnqueData.mLCEI.mBufId = pNodeReq->mapBufferID(TID_MAIN_LCS, INPUT);
     rEnqueData.mpIMetaApp = pIMetaApp;
     rEnqueData.mpIMetaHal = pIMetaHal;
 
@@ -1119,11 +1126,11 @@ P2ANode::onRequestProcess(RequestPtr& pRequest) {
     } else {
       if (isYuvRep) {
         rEnqueData.mIMGI.mBufId =
-            pNodeReq->mapBufferID(TID_MAN_FULL_YUV, INPUT);
+            pNodeReq->mapBufferID(TID_MAIN_FULL_YUV, INPUT);
         rEnqueData.mYuvRep = MTRUE;
       } else {
         rEnqueData.mIMGI.mBufId =
-            pNodeReq->mapBufferID(TID_MAN_FULL_RAW, INPUT);
+            pNodeReq->mapBufferID(TID_MAIN_FULL_RAW, INPUT);
       }
 
       rEnqueData.mIMGI.mpBuf = pNodeReq->acquireBuffer(rEnqueData.mIMGI.mBufId);
@@ -1147,21 +1154,44 @@ P2ANode::onRequestProcess(RequestPtr& pRequest) {
 
       isPureRaw = MFALSE;
       rEnqueData.mIMGI.mPureRaw = isPureRaw;
-      rEnqueData.mLCEI.mBufId = pNodeReq->mapBufferID(TID_MAN_LCS, INPUT);
+      rEnqueData.mLCEI.mBufId = pNodeReq->mapBufferID(TID_MAIN_LCS, INPUT);
       srcSize = rEnqueData.mIMGI.mpBuf->getImgSize();
     }
 
     // the larger size has higher priority, the smaller size could using larger
     // image to copy via MDP
-    const TypeID_T typeIds[] = {
-        TID_MAN_FULL_YUV, TID_JPEG,       TID_MAN_CROP1_YUV, TID_MAN_CROP2_YUV,
-        TID_MAN_SPEC_YUV, TID_MAN_FD_YUV, TID_POSTVIEW,      TID_THUMBNAIL};
+    const TypeID_T typeIds[] = {TID_MAIN_FULL_YUV,  TID_JPEG,
+                                TID_MAIN_CROP1_YUV, TID_MAIN_CROP2_YUV,
+                                TID_MAIN_SPEC_YUV,  TID_MAIN_FD_YUV,
+                                TID_POSTVIEW,       TID_THUMBNAIL};
 
     MBOOL hasP2Cropper = !mISP3_0 || !isPureRaw;
     for (TypeID_T typeId : typeIds) {
       BufferID_T bufId = pNodeReq->mapBufferID(typeId, OUTPUT);
       if (bufId == NULL_BUFFER) {
         continue;
+      }
+
+      if ((typeId == TID_MAIN_FULL_YUV) && (mHasAllocDip == MFALSE)) {
+        MSize size = pRequest->getImageSize(bufId);
+        MINT format = pRequest->getImageFormat(bufId);
+        MBOOL bUseSingleBuffer = format == eImgFmt_I422;
+        PoolKey_T poolKey = std::make_tuple(size.w, size.h, format);
+        auto pImagePool = ImageBufferPool::create(
+            "CapturePipe", size.w, size.h, (EImageFormat)format,
+            ImageBufferPool::USAGE_HW_AND_SW, bUseSingleBuffer);
+        if (pImagePool != nullptr) {
+          mpP2Opt->requsetCapBuffer(NSImageio::NSIspio::EPortIndex_WDMAO,
+                                    size.w, size.h, format,
+                                    CAPTURE_CACHE_BUFFER_NUM, &mDipBuffers);
+          for (auto& it : mDipBuffers) {
+            pImagePool->add(it);
+          }
+          mHasAllocDip = MTRUE;
+          mpBufferPool->addToPool(poolKey, pImagePool);
+        } else {
+          MY_LOGE("create buffer pool failed!");
+        }
       }
 
       IImageBuffer* pBuf = pNodeReq->acquireBuffer(bufId);
@@ -1171,8 +1201,8 @@ P2ANode::onRequestProcess(RequestPtr& pRequest) {
       }
 
       MUINT32 trans = pNodeReq->getImageTransform(bufId);
-      MBOOL needCrop = typeId == TID_JPEG || typeId == TID_MAN_CROP1_YUV ||
-                       typeId == TID_MAN_CROP2_YUV || typeId == TID_POSTVIEW ||
+      MBOOL needCrop = typeId == TID_JPEG || typeId == TID_MAIN_CROP1_YUV ||
+                       typeId == TID_MAIN_CROP2_YUV || typeId == TID_POSTVIEW ||
                        typeId == TID_THUMBNAIL;
 
       auto UsedOutput = [&](P2Output& o) -> MBOOL {
@@ -1189,10 +1219,10 @@ P2ANode::onRequestProcess(RequestPtr& pRequest) {
       // Use P2 resizer to serve FD or thumbnail buffer,
       // but do NOT use IMG2O to crop in ISP 3.0 while enque pure raw
       if (!UsedOutput(rEnqueData.mIMG2O) &&
-          (typeId == TID_MAN_FD_YUV || typeId == TID_THUMBNAIL) &&
+          (typeId == TID_MAIN_FD_YUV || typeId == TID_THUMBNAIL) &&
           (hasP2Cropper || !needCrop)) {
         SetOutput(rEnqueData.mIMG2O);
-      } else if (typeId == TID_MAN_FULL_YUV && mForceImg3o) {
+      } else if (typeId == TID_MAIN_FULL_YUV && mForceImg3o) {
         SetOutput(rEnqueData.mIMG3O);
       } else if (!UsedOutput(rEnqueData.mWDMAO) && trans == 0) {
         SetOutput(rEnqueData.mWDMAO);
@@ -1264,13 +1294,13 @@ P2ANode::onRequestProcess(RequestPtr& pRequest) {
 
   // 3. Resized RAW of main sensor
   {
-    BufferID_T uOBufId = pNodeReq->mapBufferID(TID_MAN_RSZ_YUV, OUTPUT);
+    BufferID_T uOBufId = pNodeReq->mapBufferID(TID_MAIN_RSZ_YUV, OUTPUT);
     if (uOBufId != NULL_BUFFER) {
       shared_ptr<P2EnqueData> pEnqueData = make_shared<P2EnqueData>();
       P2EnqueData& rEnqueData = *pEnqueData.get();
 
       rEnqueData.mpHolder = pHolder;
-      rEnqueData.mIMGI.mBufId = pNodeReq->mapBufferID(TID_MAN_RSZ_RAW, INPUT);
+      rEnqueData.mIMGI.mBufId = pNodeReq->mapBufferID(TID_MAIN_RSZ_RAW, INPUT);
       rEnqueData.mWDMAO.mBufId = uOBufId;
       rEnqueData.mWDMAO.mBufId = uOBufId;
       rEnqueData.mpIMetaApp = pIMetaApp;
@@ -1431,36 +1461,36 @@ MERROR P2ANode::evaluate(CaptureFeatureInferenceData* rInfer) {
   MBOOL hasSub = MFALSE;
 
   // Reprocessing
-  if (rInfer->hasType(TID_MAN_FULL_YUV)) {
+  if (rInfer->hasType(TID_MAIN_FULL_YUV)) {
     rSrcData.emplace_back();
     auto& src_0 = rSrcData.back();
-    src_0.mTypeId = TID_MAN_FULL_YUV;
+    src_0.mTypeId = TID_MAIN_FULL_YUV;
     src_0.mSizeId = SID_FULL;
 
     rDstData.emplace_back();
     auto& dst_0 = rDstData.back();
-    dst_0.mTypeId = TID_MAN_FULL_YUV;
+    dst_0.mTypeId = TID_MAIN_FULL_YUV;
     dst_0.mSizeId = SID_FULL;
-    dst_0.mSize = rInfer->getSize(TID_MAN_FULL_YUV);
+    dst_0.mSize = rInfer->getSize(TID_MAIN_FULL_YUV);
     dst_0.mFormat = eImgFmt_YV12;
 
     hasMain = MTRUE;
-  } else if (rInfer->hasType(TID_MAN_FULL_RAW)) {
+  } else if (rInfer->hasType(TID_MAIN_FULL_RAW)) {
     rSrcData.emplace_back();
     auto& src_0 = rSrcData.back();
-    src_0.mTypeId = TID_MAN_FULL_RAW;
+    src_0.mTypeId = TID_MAIN_FULL_RAW;
     src_0.mSizeId = SID_FULL;
 
     rSrcData.emplace_back();
     auto& src_1 = rSrcData.back();
-    src_1.mTypeId = TID_MAN_LCS;
+    src_1.mTypeId = TID_MAIN_LCS;
     src_1.mSizeId = SID_ARBITRARY;
 
     rDstData.emplace_back();
     auto& dst_0 = rDstData.back();
-    dst_0.mTypeId = TID_MAN_FULL_YUV;
+    dst_0.mTypeId = TID_MAIN_FULL_YUV;
     dst_0.mSizeId = SID_FULL;
-    dst_0.mSize = rInfer->getSize(TID_MAN_FULL_RAW);
+    dst_0.mSize = rInfer->getSize(TID_MAIN_FULL_RAW);
     if (mForceImg3o422) {
       dst_0.mFormat = eImgFmt_YUY2;
     } else {
@@ -1494,17 +1524,17 @@ MERROR P2ANode::evaluate(CaptureFeatureInferenceData* rInfer) {
     hasSub = MTRUE;
   }
 
-  if (rInfer->hasType(TID_MAN_RSZ_RAW)) {
+  if (rInfer->hasType(TID_MAIN_RSZ_RAW)) {
     rSrcData.emplace_back();
     auto& src_0 = rSrcData.back();
-    src_0.mTypeId = TID_MAN_RSZ_RAW;
+    src_0.mTypeId = TID_MAIN_RSZ_RAW;
     src_0.mSizeId = SID_RESIZED;
 
     rDstData.emplace_back();
     auto& dst_0 = rDstData.back();
-    dst_0.mTypeId = TID_MAN_RSZ_YUV;
+    dst_0.mTypeId = TID_MAIN_RSZ_YUV;
     dst_0.mSizeId = SID_RESIZED;
-    dst_0.mSize = rInfer->getSize(TID_MAN_RSZ_RAW);
+    dst_0.mSize = rInfer->getSize(TID_MAIN_RSZ_RAW);
     dst_0.mFormat = eImgFmt_YV12;
 
     hasMain = MTRUE;
@@ -1527,11 +1557,11 @@ MERROR P2ANode::evaluate(CaptureFeatureInferenceData* rInfer) {
   }
 
   if (hasMain) {
-    rMetadatas.push_back(MID_MAN_IN_P1_DYNAMIC);
-    rMetadatas.push_back(MID_MAN_IN_APP);
-    rMetadatas.push_back(MID_MAN_IN_HAL);
-    rMetadatas.push_back(MID_MAN_OUT_APP);
-    rMetadatas.push_back(MID_MAN_OUT_HAL);
+    rMetadatas.push_back(MID_MAIN_IN_P1_DYNAMIC);
+    rMetadatas.push_back(MID_MAIN_IN_APP);
+    rMetadatas.push_back(MID_MAIN_IN_HAL);
+    rMetadatas.push_back(MID_MAIN_OUT_APP);
+    rMetadatas.push_back(MID_MAIN_OUT_HAL);
   }
 
   if (hasSub) {

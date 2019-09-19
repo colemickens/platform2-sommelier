@@ -386,9 +386,9 @@ MERROR CaptureFeatureInference::evaluate(
   };
 
   CaptureFeatureInferenceData data;
-  data.mpIMetadataHal = getMetaPtr(MID_MAN_IN_HAL);
-  data.mpIMetadataApp = getMetaPtr(MID_MAN_IN_APP);
-  data.mpIMetadataDynamic = getMetaPtr(MID_MAN_IN_P1_DYNAMIC);
+  data.mpIMetadataHal = getMetaPtr(MID_MAIN_IN_HAL);
+  data.mpIMetadataApp = getMetaPtr(MID_MAIN_IN_APP);
+  data.mpIMetadataDynamic = getMetaPtr(MID_MAIN_IN_P1_DYNAMIC);
 
   data.mFeatures = rRequest.mFeatures;
   if (pRequest->getParameter(PID_FRAME_INDEX) >= 0) {
@@ -414,10 +414,10 @@ MERROR CaptureFeatureInference::evaluate(
   };
 
   // 1. add all given input buffers
-  addSource(BID_MAN_IN_YUV, TID_MAN_FULL_YUV);
-  addSource(BID_MAN_IN_FULL, TID_MAN_FULL_RAW);
-  addSource(BID_MAN_IN_RSZ, TID_MAN_RSZ_RAW);
-  addSource(BID_MAN_IN_LCS, TID_MAN_LCS);
+  addSource(BID_MAIN_IN_YUV, TID_MAIN_FULL_YUV);
+  addSource(BID_MAIN_IN_FULL, TID_MAIN_FULL_RAW);
+  addSource(BID_MAIN_IN_RSZ, TID_MAIN_RSZ_RAW);
+  addSource(BID_MAIN_IN_LCS, TID_MAIN_LCS);
   addSource(BID_SUB_IN_FULL, TID_SUB_FULL_RAW);
   addSource(BID_SUB_IN_RSZ, TID_SUB_RSZ_RAW);
   addSource(BID_SUB_IN_LCS, TID_SUB_LCS);
@@ -433,11 +433,11 @@ MERROR CaptureFeatureInference::evaluate(
   rRequest.mFeatures = data.mFeatures;
 
   // 3. add output buffers
-  addTarget(BID_MAN_OUT_JPEG, TID_JPEG);
-  addTarget(BID_MAN_OUT_THUMBNAIL, TID_THUMBNAIL);
-  addTarget(BID_MAN_OUT_POSTVIEW, TID_POSTVIEW);
-  addTarget(BID_MAN_OUT_YUV00, TID_MAN_CROP1_YUV);
-  addTarget(BID_MAN_OUT_YUV01, TID_MAN_CROP2_YUV);
+  addTarget(BID_MAIN_OUT_JPEG, TID_JPEG);
+  addTarget(BID_MAIN_OUT_THUMBNAIL, TID_THUMBNAIL);
+  addTarget(BID_MAIN_OUT_POSTVIEW, TID_POSTVIEW);
+  addTarget(BID_MAIN_OUT_YUV00, TID_MAIN_CROP1_YUV);
+  addTarget(BID_MAIN_OUT_YUV01, TID_MAIN_CROP2_YUV);
 
   // 4. determin final pathes, which contain all node's input and output
   data.determine(pRequest);

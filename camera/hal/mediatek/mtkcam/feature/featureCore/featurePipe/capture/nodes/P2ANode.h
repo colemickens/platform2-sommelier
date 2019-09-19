@@ -161,7 +161,10 @@ class P2ANode : public CaptureFeatureNode {
   MBOOL mDebugImg3o;
   MBOOL mForceImg3o;
   MBOOL mForceImg3o422;
+  MBOOL mHasAllocDip;
   std::unique_ptr<CaptureTaskQueue> mTaskQueue;
+  std::vector<std::shared_ptr<IImageBuffer>> mDipBuffers;
+  typedef std::tuple<MUINT32, MUINT32, MUINT32> PoolKey_T;
 
  private:
   struct EnquePackage : public Timer {

@@ -382,7 +382,7 @@ status_t NormalStream::_find_format_and_erase(MSize img_size,
 
 /*
      Layout of this Meta Buffer
-     |        28k        |            2k                 |       98k    |    288k     |
+     |        28k        |            2k                 |       98k    | 288k |
      | tuning buffer  | LSC+LCE header info |LSC buffer | LCE buffer |
 */
 #define META_BUFFER_TUNING_SIZE 1024 * 28
@@ -953,22 +953,24 @@ NormalStream::enque(QParams* pParams) {
           unstarted_node_num++;
           if (it->mvIn[i].mPortID.index !=
               NSImageio::NSIspio::EPortIndex_TUNING) {
-            MINT32 bufBoundaryInBytes[3] = {0, 0, 0};
-            MUINT32 bufStridesInBytes[3] = {0, 0, 0};
-            IImageBufferAllocator::ImgParam imgParam(
-                it->mvIn[i].mBuffer->getImgFormat(),
-                it->mvIn[i].mBuffer->getImgSize(), bufStridesInBytes,
-                bufBoundaryInBytes, 1, it->mvIn[i].mBuffer->getColorProfile(),
-                it->mvIn[i].mBuffer->getColorArrangement());
-            status = node->setBufFormat(&imgParam);
-            if (status != NO_ERROR) {
-              LOGE("setBufFormat failed, %d", it->mvIn[i].mPortID.index);
-              return MFALSE;
-            }
-            status = node->setupBuffers();
-            if (status != NO_ERROR) {
-              LOGE("setupBuffers failed, %d", it->mvIn[i].mPortID.index);
-              return MFALSE;
+            if (!node->isPrepared()) {
+              MINT32 bufBoundaryInBytes[3] = {0, 0, 0};
+              MUINT32 bufStridesInBytes[3] = {0, 0, 0};
+              IImageBufferAllocator::ImgParam imgParam(
+                  it->mvIn[i].mBuffer->getImgFormat(),
+                  it->mvIn[i].mBuffer->getImgSize(), bufStridesInBytes,
+                  bufBoundaryInBytes, 1, it->mvIn[i].mBuffer->getColorProfile(),
+                  it->mvIn[i].mBuffer->getColorArrangement());
+              status = node->setBufFormat(&imgParam);
+              if (status != NO_ERROR) {
+                LOGE("setBufFormat failed, %d", it->mvIn[i].mPortID.index);
+                return MFALSE;
+              }
+              status = node->setupBuffers();
+              if (status != NO_ERROR) {
+                LOGE("setupBuffers failed, %d", it->mvIn[i].mPortID.index);
+                return MFALSE;
+              }
             }
           }
           // remove info in mPortIdxToFmt
@@ -1093,21 +1095,24 @@ NormalStream::enque(QParams* pParams) {
       // Dynamic Link
       if (mFirstFrame && it == pParams->mvFrameParams.begin()) {
         unstarted_node_num++;
-        MINT32 bufBoundaryInBytes[3] = {0, 0, 0};
-        MUINT32 bufStridesInBytes[3] = {0, 0, 0};
-        IImageBufferAllocator::ImgParam imgParam(
-            it->mvOut[i].mBuffer->getImgFormat(),
-            it->mvOut[i].mBuffer->getImgSize(), bufStridesInBytes,
-            bufBoundaryInBytes, 1, it->mvOut[i].mBuffer->getColorProfile());
-        status = node->setBufFormat(&imgParam);
-        if (status != NO_ERROR) {
-          LOGE("setBufFormat failed, %d", p_idx);
-          return MFALSE;
-        }
-        status = node->setupBuffers();
-        if (status != NO_ERROR) {
-          LOGE("setupBuffers failed, %d", p_idx);
-          return MFALSE;
+
+        if (!node->isPrepared()) {
+          MINT32 bufBoundaryInBytes[3] = {0, 0, 0};
+          MUINT32 bufStridesInBytes[3] = {0, 0, 0};
+          IImageBufferAllocator::ImgParam imgParam(
+              it->mvOut[i].mBuffer->getImgFormat(),
+              it->mvOut[i].mBuffer->getImgSize(), bufStridesInBytes,
+              bufBoundaryInBytes, 1, it->mvOut[i].mBuffer->getColorProfile());
+          status = node->setBufFormat(&imgParam);
+          if (status != NO_ERROR) {
+            LOGE("setBufFormat failed, %d", p_idx);
+            return MFALSE;
+          }
+          status = node->setupBuffers();
+          if (status != NO_ERROR) {
+            LOGE("setupBuffers failed, %d", p_idx);
+            return MFALSE;
+          }
         }
 
         if (mStreamTag != NSCam::v4l2::ENormalStreamTag_Cap_S) {
@@ -1471,7 +1476,8 @@ NormalStream::deque(QParams* p_rParams, MINT64 i8TimeoutNs) {
 MBOOL NormalStream::requestBuffers(
     int type,
     IImageBufferAllocator::ImgParam imgParam,
-    std::vector<std::shared_ptr<IImageBuffer>>* p_buffers) {
+    std::vector<std::shared_ptr<IImageBuffer>>* p_buffers,
+    int buf_pool_size) {
   LOGI("+");
   std::lock_guard<std::mutex> _l(mLock);
   status_t status = NO_ERROR;
@@ -1482,6 +1488,14 @@ MBOOL NormalStream::requestBuffers(
   if (status != NO_ERROR) {
     LOGE("Fail to validNode");
     return MFALSE;
+  }
+
+  if (buf_pool_size > 0) {
+    status = node->setBufPoolSize(buf_pool_size);
+    if (status != NO_ERROR) {
+      LOGE("Fail to setBufPoolSize = %d", buf_pool_size);
+      return MFALSE;
+    }
   }
 
   if (node->isStart()) {

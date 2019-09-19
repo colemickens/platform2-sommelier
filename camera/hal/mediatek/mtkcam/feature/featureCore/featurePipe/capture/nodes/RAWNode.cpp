@@ -238,8 +238,8 @@ MBOOL RAWNode::onRequestProcess(RequestPtr& pRequest) {
     return MFALSE;
   }
 
-  BufferID_T uIBufFull = pNodeReq->mapBufferID(TID_MAN_FULL_RAW, INPUT);
-  BufferID_T uOBufFull = pNodeReq->mapBufferID(TID_MAN_FULL_RAW, OUTPUT);
+  BufferID_T uIBufFull = pNodeReq->mapBufferID(TID_MAIN_FULL_RAW, INPUT);
+  BufferID_T uOBufFull = pNodeReq->mapBufferID(TID_MAIN_FULL_RAW, OUTPUT);
 
   auto pPluginReq = mPlugin->createRequest();
   MBOOL isInPlace = pProvider->property().mInPlace;
@@ -253,25 +253,25 @@ MBOOL RAWNode::onRequestProcess(RequestPtr& pRequest) {
         std::make_shared<PluginBufferHandle>(pNodeReq, uOBufFull);
   }
 
-  if (pNodeReq->hasMetadata(MID_MAN_IN_P1_DYNAMIC)) {
-    pPluginReq->mIMetadataDynamic =
-        std::make_shared<PluginMetadataHandle>(pNodeReq, MID_MAN_IN_P1_DYNAMIC);
+  if (pNodeReq->hasMetadata(MID_MAIN_IN_P1_DYNAMIC)) {
+    pPluginReq->mIMetadataDynamic = std::make_shared<PluginMetadataHandle>(
+        pNodeReq, MID_MAIN_IN_P1_DYNAMIC);
   }
-  if (pNodeReq->hasMetadata(MID_MAN_IN_APP)) {
+  if (pNodeReq->hasMetadata(MID_MAIN_IN_APP)) {
     pPluginReq->mIMetadataApp =
-        std::make_shared<PluginMetadataHandle>(pNodeReq, MID_MAN_IN_APP);
+        std::make_shared<PluginMetadataHandle>(pNodeReq, MID_MAIN_IN_APP);
   }
-  if (pNodeReq->hasMetadata(MID_MAN_IN_HAL)) {
+  if (pNodeReq->hasMetadata(MID_MAIN_IN_HAL)) {
     pPluginReq->mIMetadataHal =
-        std::make_shared<PluginMetadataHandle>(pNodeReq, MID_MAN_IN_HAL);
+        std::make_shared<PluginMetadataHandle>(pNodeReq, MID_MAIN_IN_HAL);
   }
-  if (pNodeReq->hasMetadata(MID_MAN_OUT_APP)) {
+  if (pNodeReq->hasMetadata(MID_MAIN_OUT_APP)) {
     pPluginReq->mOMetadataApp =
-        std::make_shared<PluginMetadataHandle>(pNodeReq, MID_MAN_OUT_APP);
+        std::make_shared<PluginMetadataHandle>(pNodeReq, MID_MAIN_OUT_APP);
   }
-  if (pNodeReq->hasMetadata(MID_MAN_OUT_HAL)) {
+  if (pNodeReq->hasMetadata(MID_MAIN_OUT_HAL)) {
     pPluginReq->mOMetadataHal =
-        std::make_shared<PluginMetadataHandle>(pNodeReq, MID_MAN_OUT_HAL);
+        std::make_shared<PluginMetadataHandle>(pNodeReq, MID_MAIN_OUT_HAL);
   }
 
   {
@@ -369,8 +369,8 @@ MERROR RAWNode::evaluate(CaptureFeatureInferenceData* rInfer) {
         rSrcData.emplace_back();
         auto& src_0 = rSrcData.back();
 
-        src_0.mTypeId = TID_MAN_FULL_RAW;
-        if (!rInfer->hasType(TID_MAN_FULL_RAW)) {
+        src_0.mTypeId = TID_MAIN_FULL_RAW;
+        if (!rInfer->hasType(TID_MAIN_FULL_RAW)) {
           isValid = MFALSE;
         }
 
@@ -382,10 +382,10 @@ MERROR RAWNode::evaluate(CaptureFeatureInferenceData* rInfer) {
         if (rProperty.mInPlace) {
           rDstData.emplace_back();
           auto& dst_0 = rDstData.back();
-          dst_0.mTypeId = TID_MAN_FULL_RAW;
+          dst_0.mTypeId = TID_MAIN_FULL_RAW;
           dst_0.mSizeId = src_0.mSizeId;
           dst_0.mFormat = src_0.mFormat;
-          dst_0.mSize = rInfer->getSize(TID_MAN_FULL_RAW);
+          dst_0.mSize = rInfer->getSize(TID_MAIN_FULL_RAW);
           dst_0.mInPlace = true;
         }
       } else {
@@ -398,33 +398,33 @@ MERROR RAWNode::evaluate(CaptureFeatureInferenceData* rInfer) {
       if (sel.mOBufferFull.isValid()) {
         rDstData.emplace_back();
         auto& dst_0 = rDstData.back();
-        dst_0.mTypeId = TID_MAN_FULL_RAW;
+        dst_0.mTypeId = TID_MAIN_FULL_RAW;
         dst_0.mSizeId = sel.mOBufferFull.getSizes()[0];
         dst_0.mFormat = sel.mOBufferFull.getFormats()[0];
-        dst_0.mSize = rInfer->getSize(TID_MAN_FULL_RAW);
+        dst_0.mSize = rInfer->getSize(TID_MAIN_FULL_RAW);
       } else {
         isValid = MFALSE;
       }
     }
 
     if (sel.mIMetadataDynamic.getRequired()) {
-      metadatas.push_back(MID_MAN_IN_P1_DYNAMIC);
+      metadatas.push_back(MID_MAIN_IN_P1_DYNAMIC);
     }
 
     if (sel.mIMetadataApp.getRequired()) {
-      metadatas.push_back(MID_MAN_IN_APP);
+      metadatas.push_back(MID_MAIN_IN_APP);
     }
 
     if (sel.mIMetadataHal.getRequired()) {
-      metadatas.push_back(MID_MAN_IN_HAL);
+      metadatas.push_back(MID_MAIN_IN_HAL);
     }
 
     if (sel.mIMetadataApp.getRequired()) {
-      metadatas.push_back(MID_MAN_OUT_APP);
+      metadatas.push_back(MID_MAIN_OUT_APP);
     }
 
     if (sel.mOMetadataHal.getRequired()) {
-      metadatas.push_back(MID_MAN_OUT_HAL);
+      metadatas.push_back(MID_MAIN_OUT_HAL);
     }
 
     if (isValid) {

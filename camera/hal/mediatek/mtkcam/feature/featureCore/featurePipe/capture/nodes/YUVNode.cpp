@@ -329,8 +329,8 @@ MBOOL YUVNode::onRequestProcess(RequestPtr& pRequest) {
     return MFALSE;
   }
 
-  BufferID_T uIBufFull = pNodeReq->mapBufferID(TID_MAN_FULL_YUV, INPUT);
-  BufferID_T uOBufFull = pNodeReq->mapBufferID(TID_MAN_FULL_YUV, OUTPUT);
+  BufferID_T uIBufFull = pNodeReq->mapBufferID(TID_MAIN_FULL_YUV, INPUT);
+  BufferID_T uOBufFull = pNodeReq->mapBufferID(TID_MAIN_FULL_YUV, OUTPUT);
 
   auto pPluginReq = mPlugin->createRequest();
 
@@ -343,25 +343,25 @@ MBOOL YUVNode::onRequestProcess(RequestPtr& pRequest) {
         std::make_shared<PluginBufferHandle>(pNodeReq, uOBufFull);
   }
 
-  if (pNodeReq->hasMetadata(MID_MAN_IN_P1_DYNAMIC)) {
-    pPluginReq->mIMetadataDynamic =
-        std::make_shared<PluginMetadataHandle>(pNodeReq, MID_MAN_IN_P1_DYNAMIC);
+  if (pNodeReq->hasMetadata(MID_MAIN_IN_P1_DYNAMIC)) {
+    pPluginReq->mIMetadataDynamic = std::make_shared<PluginMetadataHandle>(
+        pNodeReq, MID_MAIN_IN_P1_DYNAMIC);
   }
-  if (pNodeReq->hasMetadata(MID_MAN_IN_APP)) {
+  if (pNodeReq->hasMetadata(MID_MAIN_IN_APP)) {
     pPluginReq->mIMetadataApp =
-        std::make_shared<PluginMetadataHandle>(pNodeReq, MID_MAN_IN_APP);
+        std::make_shared<PluginMetadataHandle>(pNodeReq, MID_MAIN_IN_APP);
   }
-  if (pNodeReq->hasMetadata(MID_MAN_IN_HAL)) {
+  if (pNodeReq->hasMetadata(MID_MAIN_IN_HAL)) {
     pPluginReq->mIMetadataHal =
-        std::make_shared<PluginMetadataHandle>(pNodeReq, MID_MAN_IN_HAL);
+        std::make_shared<PluginMetadataHandle>(pNodeReq, MID_MAIN_IN_HAL);
   }
-  if (pNodeReq->hasMetadata(MID_MAN_OUT_APP)) {
+  if (pNodeReq->hasMetadata(MID_MAIN_OUT_APP)) {
     pPluginReq->mOMetadataApp =
-        std::make_shared<PluginMetadataHandle>(pNodeReq, MID_MAN_OUT_APP);
+        std::make_shared<PluginMetadataHandle>(pNodeReq, MID_MAIN_OUT_APP);
   }
-  if (pNodeReq->hasMetadata(MID_MAN_OUT_HAL)) {
+  if (pNodeReq->hasMetadata(MID_MAIN_OUT_HAL)) {
     pPluginReq->mOMetadataHal =
-        std::make_shared<PluginMetadataHandle>(pNodeReq, MID_MAN_OUT_HAL);
+        std::make_shared<PluginMetadataHandle>(pNodeReq, MID_MAIN_OUT_HAL);
   }
 
   MBOOL ret = MFALSE;
@@ -467,8 +467,8 @@ MERROR YUVNode::evaluate(CaptureFeatureInferenceData* rInfer) {
         rSrcData.emplace_back();
         auto& src_0 = rSrcData.back();
 
-        src_0.mTypeId = TID_MAN_FULL_YUV;
-        if (!rInfer->hasType(TID_MAN_FULL_YUV)) {
+        src_0.mTypeId = TID_MAIN_FULL_YUV;
+        if (!rInfer->hasType(TID_MAIN_FULL_YUV)) {
           isValid = MFALSE;
         }
 
@@ -480,10 +480,10 @@ MERROR YUVNode::evaluate(CaptureFeatureInferenceData* rInfer) {
         if (rProperty.mInPlace) {
           rDstData.emplace_back();
           auto& dst_0 = rDstData.back();
-          dst_0.mTypeId = TID_MAN_FULL_YUV;
+          dst_0.mTypeId = TID_MAIN_FULL_YUV;
           dst_0.mSizeId = src_0.mSizeId;
           dst_0.mFormat = src_0.mFormat;
-          dst_0.mSize = rInfer->getSize(TID_MAN_FULL_YUV);
+          dst_0.mSize = rInfer->getSize(TID_MAIN_FULL_YUV);
           dst_0.mInPlace = true;
         }
       } else {
@@ -495,7 +495,7 @@ MERROR YUVNode::evaluate(CaptureFeatureInferenceData* rInfer) {
     if (rProperty.mFaceData == eFD_Current) {
       rSrcData.emplace_back();
       auto& src_1 = rSrcData.back();
-      src_1.mTypeId = TID_MAN_FD;
+      src_1.mTypeId = TID_MAIN_FD;
       src_1.mSizeId = NULL_SIZE;
     }
 
@@ -504,33 +504,33 @@ MERROR YUVNode::evaluate(CaptureFeatureInferenceData* rInfer) {
       if (sel.mOBufferFull.isValid()) {
         rDstData.emplace_back();
         auto& dst_0 = rDstData.back();
-        dst_0.mTypeId = TID_MAN_FULL_YUV;
+        dst_0.mTypeId = TID_MAIN_FULL_YUV;
         dst_0.mSizeId = sel.mOBufferFull.getSizes()[0];
         dst_0.mFormat = sel.mOBufferFull.getFormats()[0];
-        dst_0.mSize = rInfer->getSize(TID_MAN_FULL_YUV);
+        dst_0.mSize = rInfer->getSize(TID_MAIN_FULL_YUV);
       } else {
         isValid = MFALSE;
       }
     }
 
     if (sel.mIMetadataDynamic.getRequired()) {
-      rMetadatas.push_back(MID_MAN_IN_P1_DYNAMIC);
+      rMetadatas.push_back(MID_MAIN_IN_P1_DYNAMIC);
     }
 
     if (sel.mIMetadataApp.getRequired()) {
-      rMetadatas.push_back(MID_MAN_IN_APP);
+      rMetadatas.push_back(MID_MAIN_IN_APP);
     }
 
     if (sel.mIMetadataHal.getRequired()) {
-      rMetadatas.push_back(MID_MAN_IN_HAL);
+      rMetadatas.push_back(MID_MAIN_IN_HAL);
     }
 
     if (sel.mOMetadataApp.getRequired()) {
-      rMetadatas.push_back(MID_MAN_OUT_APP);
+      rMetadatas.push_back(MID_MAIN_OUT_APP);
     }
 
     if (sel.mOMetadataHal.getRequired()) {
-      rMetadatas.push_back(MID_MAN_OUT_HAL);
+      rMetadatas.push_back(MID_MAIN_OUT_HAL);
     }
 
     if (isValid) {

@@ -129,6 +129,41 @@ void NSCam::NSCamFeature::NSFeaturePipe::P2Operator::putTuningBuffer(
   mCond.notify_all();
 }
 
+MBOOL
+NSCam::NSCamFeature::NSFeaturePipe::P2Operator::requsetCapBuffer(
+    int type,
+    MUINT32 width,
+    MUINT32 height,
+    MUINT32 format,
+    MUINT32 number,
+    std::vector<std::shared_ptr<IImageBuffer>>* p_buffers) {
+  MY_LOGI("requsetCapBuffer+");
+
+  MINT32 bufBoundaryInBytes[3] = {0, 0, 0};
+  MUINT32 bufStridesInBytes[3] = {0, 0, 0};
+  MUINT32 planeCount = NSCam::Utils::Format::queryPlaneCount(format);
+  MUINT32 ret;
+
+  for (unsigned i = 0; i < planeCount; ++i) {
+    bufStridesInBytes[i] =
+        (NSCam::Utils::Format::queryPlaneWidthInPixels(format, i, width) *
+             NSCam::Utils::Format::queryPlaneBitsPerPixel(format, i) +
+         7) /
+        8;
+  }
+
+  IImageBufferAllocator::ImgParam imgParam(
+      static_cast<EImageFormat>(format), MSize(width, height),
+      bufStridesInBytes, bufBoundaryInBytes, static_cast<size_t>(planeCount));
+
+  ret = mpINormalStream->requestBuffers(type, imgParam, p_buffers, number);
+  if (ret != MTRUE) {
+    MY_LOGE("requestBuffers failed");
+    return MFALSE;
+  }
+  return MTRUE;
+}
+
 MERROR
 NSCam::NSCamFeature::NSFeaturePipe::P2Operator::release() {
   return OK;

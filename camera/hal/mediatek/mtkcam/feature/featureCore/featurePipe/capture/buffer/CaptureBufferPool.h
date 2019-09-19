@@ -23,6 +23,7 @@
 #include <map>
 #include <memory>
 #include <tuple>
+#include <util/P2Operator.h>
 #include <vector>
 
 namespace NSCam {
@@ -122,6 +123,13 @@ class CaptureBufferPool {
 
   // Image buffers
   std::map<PoolKey_T, std::shared_ptr<ImageBufferPool>> mvImagePools;
+
+ public:
+  /**
+   * @brief to add to ImagePool
+   */
+  MVOID addToPool(PoolKey_T poolKey,
+                  std::shared_ptr<ImageBufferPool> pImagePool);
 };
 
 /***************************************************************************

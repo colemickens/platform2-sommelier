@@ -173,18 +173,18 @@ MBOOL CaptureBufferPool::uninit() {
     return MFALSE;
   }
 
-  // image buffers release
-  for (auto& it : mvImagePools) {
-    ImageBufferPool::destroy(&(it.second));
-  }
   mvImagePools.clear();
-
   mbInit = MFALSE;
   return MTRUE;
 }
 
 MBOOL CaptureBufferPool::allocate() {
   return MTRUE;
+}
+
+MVOID CaptureBufferPool::addToPool(
+    PoolKey_T poolKey, std::shared_ptr<ImageBufferPool> pImagePool) {
+  mvImagePools.emplace(poolKey, pImagePool);
 }
 
 SmartImageBuffer CaptureBufferPool::getImageBuffer(MUINT32 width,
@@ -205,11 +205,11 @@ SmartImageBuffer CaptureBufferPool::getImageBuffer(MUINT32 width,
       return (SmartImageBuffer)nullHandle;
     }
 
-    pImagePool->setAutoAllocate(8);
     mvImagePools.emplace(poolKey, pImagePool);
   }
 
   std::shared_ptr<ImageBufferPool> pImagePool = mvImagePools.at(poolKey);
+  MY_LOGD("poolsize = %d!", pImagePool->peakPoolSize());
 
   return pImagePool->request();
 }

@@ -507,8 +507,8 @@ MBOOL MDPNode::onRequestProcess(RequestPtr& pRequest) {
     return MFALSE;
   }
 
-  IMetadata* pInHalMeta = pNodeReq->acquireMetadata(MID_MAN_IN_HAL);
-  IMetadata* pInAppMeta = pNodeReq->acquireMetadata(MID_MAN_IN_APP);
+  IMetadata* pInHalMeta = pNodeReq->acquireMetadata(MID_MAIN_IN_HAL);
+  IMetadata* pInAppMeta = pNodeReq->acquireMetadata(MID_MAIN_IN_APP);
 
   if (pInHalMeta != nullptr) {
     tryGetMetadata<MINT32>(pInHalMeta, MTK_P1NODE_PROCESSOR_MAGICNUM,
@@ -516,7 +516,7 @@ MBOOL MDPNode::onRequestProcess(RequestPtr& pRequest) {
   }
 
   // Input
-  BufferID_T uIBufFull = pNodeReq->mapBufferID(TID_MAN_FULL_YUV, INPUT);
+  BufferID_T uIBufFull = pNodeReq->mapBufferID(TID_MAIN_FULL_YUV, INPUT);
   IImageBuffer* pSrcBuffer = pNodeReq->acquireBuffer(uIBufFull);
   if (pSrcBuffer == nullptr) {
     MY_LOGE("no source image!");
@@ -549,7 +549,7 @@ MBOOL MDPNode::onRequestProcess(RequestPtr& pRequest) {
     mBufferItems.emplace_back();
     BufferItem& item = mBufferItems.back();
 
-    item.mIsCapture = (bufId == BID_MAN_OUT_JPEG);
+    item.mIsCapture = (bufId == BID_MAIN_OUT_JPEG);
     item.mpImageBuffer = pDstBuffer;
     item.mTransform = pNodeReq->getImageTransform(bufId);
     int rotate = rotTrans(item.mTransform);
@@ -645,7 +645,7 @@ MVOID MDPNode::onRequestFinish(RequestPtr& pRequest) {
 
     // Get Unique Key
     MINT32 iUniqueKey = 0;
-    IMetadata* pInHalMeta = pNodeReq->acquireMetadata(MID_MAN_IN_HAL);
+    IMetadata* pInHalMeta = pNodeReq->acquireMetadata(MID_MAIN_IN_HAL);
     tryGetMetadata<MINT32>(pInHalMeta, MTK_PIPELINE_UNIQUE_KEY, &iUniqueKey);
 
     char filename[256] = {0};
@@ -684,16 +684,16 @@ MERROR MDPNode::evaluate(CaptureFeatureInferenceData* rInfer) {
 
   srcData.emplace_back();
   auto& src_0 = srcData.back();
-  src_0.mTypeId = TID_MAN_FULL_YUV;
+  src_0.mTypeId = TID_MAIN_FULL_YUV;
   src_0.mSizeId = SID_FULL;
 
   dstData.emplace_back();
   auto& dst_1 = dstData.back();
-  dst_1.mTypeId = TID_MAN_CROP1_YUV;
+  dst_1.mTypeId = TID_MAIN_CROP1_YUV;
 
   dstData.emplace_back();
   auto& dst_2 = dstData.back();
-  dst_2.mTypeId = TID_MAN_CROP2_YUV;
+  dst_2.mTypeId = TID_MAIN_CROP2_YUV;
 
   dstData.emplace_back();
   auto& dst_3 = dstData.back();
@@ -703,9 +703,9 @@ MERROR MDPNode::evaluate(CaptureFeatureInferenceData* rInfer) {
   auto& dst_4 = dstData.back();
   dst_4.mTypeId = TID_JPEG;
 
-  metadatas.push_back(MID_MAN_IN_P1_DYNAMIC);
-  metadatas.push_back(MID_MAN_IN_APP);
-  metadatas.push_back(MID_MAN_IN_HAL);
+  metadatas.push_back(MID_MAIN_IN_P1_DYNAMIC);
+  metadatas.push_back(MID_MAIN_IN_APP);
+  metadatas.push_back(MID_MAIN_IN_HAL);
 
   rInfer->addNodeIO(NID_MDP, srcData, dstData, metadatas, features);
 

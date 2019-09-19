@@ -139,7 +139,9 @@ class VISIBILITY_PUBLIC V4L2StreamNode {
   virtual ID getId() const { return mId; }
   virtual std::shared_ptr<V4L2VideoNode> getVideoNode() const { return mNode; }
   virtual bool getActive() const { return mActive; }
+  virtual int getBufferPoolSize() const { return mBufferPoolSize; }
   virtual bool isStart();
+  virtual bool isPrepared();
   virtual bool isActive();
 
   enum StreamNodeState {

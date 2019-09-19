@@ -94,17 +94,17 @@ enum CaptureFeatureNodeID {
 };
 
 enum CaptureFeatureBufferTypeID {
-  TID_MAN_FULL_RAW,
-  TID_MAN_FULL_YUV,
-  TID_MAN_RSZ_RAW,
-  TID_MAN_RSZ_YUV,
-  TID_MAN_CROP1_YUV,  // Only for Output
-  TID_MAN_CROP2_YUV,  // Only for Output
-  TID_MAN_SPEC_YUV,
-  TID_MAN_DEPTH,
-  TID_MAN_LCS,
-  TID_MAN_FD_YUV,
-  TID_MAN_FD,  // Support per-frame computinf FD
+  TID_MAIN_FULL_RAW,
+  TID_MAIN_FULL_YUV,
+  TID_MAIN_RSZ_RAW,
+  TID_MAIN_RSZ_YUV,
+  TID_MAIN_CROP1_YUV,  // Only for Output
+  TID_MAIN_CROP2_YUV,  // Only for Output
+  TID_MAIN_SPEC_YUV,
+  TID_MAIN_DEPTH,
+  TID_MAIN_LCS,
+  TID_MAIN_FD_YUV,
+  TID_MAIN_FD,  // Support per-frame computinf FD
   TID_SUB_FULL_RAW,
   TID_SUB_FULL_YUV,
   TID_SUB_RSZ_RAW,

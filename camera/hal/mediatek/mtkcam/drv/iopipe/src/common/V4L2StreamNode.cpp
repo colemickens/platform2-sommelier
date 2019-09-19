@@ -427,6 +427,12 @@ bool V4L2StreamNode::isStart() {
   return (mState == StreamNodeState::STARTED);
 }
 
+bool V4L2StreamNode::isPrepared() {
+  std::lock_guard<std::mutex> _l(mOpLock);
+  LOGD("+");
+  return (mState == StreamNodeState::PREPARED);
+}
+
 bool V4L2StreamNode::isActive() {
   std::lock_guard<std::mutex> _l(mOpLock);
   LOGD("+");

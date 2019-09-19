@@ -253,6 +253,12 @@ NSCam::v3::Imp::AppStreamMgr::checkStream(camera3_stream* stream) const {
    *          - Unsupported rotation configuration (only applies to
    *            devices with version >= CAMERA_DEVICE_API_VERSION_3_3)
    */
+  if (stream->crop_rotate_scale_degrees != CAMERA3_STREAM_ROTATION_0 &&
+      stream->crop_rotate_scale_degrees != CAMERA3_STREAM_ROTATION_90 &&
+      stream->crop_rotate_scale_degrees != CAMERA3_STREAM_ROTATION_270) {
+    MY_LOGE("Invalid rotation value %d", stream->crop_rotate_scale_degrees);
+    return -EINVAL;
+  }
   if (stream->rotation == CAMERA3_STREAM_ROTATION_0 &&
       stream->crop_rotate_scale_degrees != CAMERA3_STREAM_ROTATION_0) {
     stream->rotation = stream->crop_rotate_scale_degrees;
@@ -615,11 +621,6 @@ NSCam::v3::Imp::AppStreamMgr::createImageStreamInfo(
                 : (stream->rotation == CAMERA3_STREAM_ROTATION_270)
                       ? HAL_TRANSFORM_ROT_90
                       : 0;
-  if (stream->crop_rotate_scale_degrees != CAMERA3_STREAM_ROTATION_0 &&
-      stream->crop_rotate_scale_degrees != CAMERA3_STREAM_ROTATION_90 &&
-      stream->crop_rotate_scale_degrees != CAMERA3_STREAM_ROTATION_270) {
-    MY_LOGE("Invalid rotation value %d", stream->crop_rotate_scale_degrees);
-  }
   if (stream->crop_rotate_scale_degrees != 0) {
     transform =
         (stream->crop_rotate_scale_degrees == CAMERA3_STREAM_ROTATION_90)

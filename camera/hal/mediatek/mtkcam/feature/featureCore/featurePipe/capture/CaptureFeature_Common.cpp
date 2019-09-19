@@ -553,28 +553,28 @@ const char* NodeID2Name(NodeID_T nid) {
 
 const char* TypeID2Name(TypeID_T tid) {
   switch (tid) {
-    case TID_MAN_FULL_RAW:
-      return "man_full_raw";
-    case TID_MAN_FULL_YUV:
-      return "man_full_yuv";
-    case TID_MAN_RSZ_RAW:
-      return "man_rsz_raw";
-    case TID_MAN_RSZ_YUV:
-      return "man_rsz_yuv";
-    case TID_MAN_CROP1_YUV:
-      return "man_crop1_yuv";
-    case TID_MAN_CROP2_YUV:
-      return "man_crop2_yuv";
-    case TID_MAN_SPEC_YUV:
-      return "man_spec_yuv";
-    case TID_MAN_DEPTH:
-      return "man_depth";
-    case TID_MAN_LCS:
-      return "man_lcs";
-    case TID_MAN_FD_YUV:
-      return "man_fd_yuv";
-    case TID_MAN_FD:
-      return "man_fd";
+    case TID_MAIN_FULL_RAW:
+      return "main_full_raw";
+    case TID_MAIN_FULL_YUV:
+      return "main_full_yuv";
+    case TID_MAIN_RSZ_RAW:
+      return "main_rsz_raw";
+    case TID_MAIN_RSZ_YUV:
+      return "main_rsz_yuv";
+    case TID_MAIN_CROP1_YUV:
+      return "main_crop1_yuv";
+    case TID_MAIN_CROP2_YUV:
+      return "main_crop2_yuv";
+    case TID_MAIN_SPEC_YUV:
+      return "main_spec_yuv";
+    case TID_MAIN_DEPTH:
+      return "main_depth";
+    case TID_MAIN_LCS:
+      return "main_lcs";
+    case TID_MAIN_FD_YUV:
+      return "main_fd_yuv";
+    case TID_MAIN_FD:
+      return "main_fd";
     case TID_SUB_FULL_RAW:
       return "sub_full_raw";
     case TID_SUB_FULL_YUV:
