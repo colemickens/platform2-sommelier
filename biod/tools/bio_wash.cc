@@ -17,6 +17,7 @@
 #include <brillo/flag_helper.h>
 #include <dbus/bus.h>
 
+#include "biod/biod_version.h"
 #include "biod/cros_fp_biometrics_manager.h"
 #include "biod/cros_fp_device_factory_impl.h"
 
@@ -66,6 +67,8 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(factory_init, false, "First time initialisation in the factory.");
 
   brillo::FlagHelper::Init(argc, argv, kHelpMessage);
+
+  biod::LogVersion();
 
   pid_t pid;
   pid = fork();

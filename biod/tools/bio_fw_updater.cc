@@ -18,6 +18,7 @@
 #include <cros_config/cros_config.h>
 
 #include "biod/biod_metrics.h"
+#include "biod/biod_version.h"
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_updater.h"
 #include "biod/update_reason.h"
@@ -99,6 +100,8 @@ int main(int argc, char* argv[]) {
     brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty |
                     brillo::kLogHeader);
   }
+
+  biod::LogVersion();
 
   // Check for firmware disable mechanism
   if (biod::updater::UpdateDisallowed()) {

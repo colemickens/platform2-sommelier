@@ -28,6 +28,7 @@
 #include <brillo/syslog_logging.h>
 #include <chromeos/ec/ec_commands.h>
 
+#include "biod/biod_version.h"
 #include "biod/cros_fp_device.h"
 #include "biod/ec_command.h"
 
@@ -132,6 +133,8 @@ int main(int argc, char* argv[]) {
                        true,    // thread ID
                        true,    // timestamp
                        false);  // tickcount
+
+  biod::LogVersion();
 
   // We fork the process so that can we program the seed in the child, and
   // terminate it if it hangs.

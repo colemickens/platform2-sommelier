@@ -18,11 +18,8 @@
 #include <brillo/daemons/daemon.h>
 #include <brillo/flag_helper.h>
 
+#include "biod/biod_version.h"
 #include "biod/biometrics_daemon.h"
-
-#ifndef VCSID
-#define VCSID "<not set>"
-#endif
 
 int main(int argc, char* argv[]) {
   base::AtExitManager at_exit_manager;
@@ -50,7 +47,8 @@ int main(int argc, char* argv[]) {
                        true,    // thread ID
                        true,    // timestamp
                        false);  // tickcount
-  LOG(INFO) << "vcsid " << VCSID;
+
+  biod::LogVersion();
 
   base::MessageLoopForIO message_loop;
   base::FileDescriptorWatcher watcher(&message_loop);

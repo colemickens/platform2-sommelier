@@ -24,6 +24,7 @@
 #include <dbus/bus.h>
 #include <dbus/object_manager.h>
 
+#include "biod/biod_version.h"
 #include "biod/biometrics_manager.h"
 #include "biod/proto_bindings/constants.pb.h"
 #include "biod/proto_bindings/messages.pb.h"
@@ -541,6 +542,8 @@ int DoList(BiodProxy* biod, const std::string& user_id) {
 
 int main(int argc, char* argv[]) {
   brillo::FlagHelper::Init(argc, argv, kHelpText);
+
+  biod::LogVersion();
 
   base::CommandLine::StringVector args =
       base::CommandLine::ForCurrentProcess()->GetArgs();
