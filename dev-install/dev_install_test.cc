@@ -25,9 +25,12 @@ namespace {
 
 class DevInstallMock : public DevInstall {
  public:
-  MOCK_METHOD1(Exec, int(const std::vector<const char*>&));
-  MOCK_CONST_METHOD0(IsDevMode, bool());
-  MOCK_METHOD2(PromptUser, bool(std::istream&, const std::string&));
+  MOCK_METHOD(int, Exec, (const std::vector<const char*>&), (override));
+  MOCK_METHOD(bool, IsDevMode, (), (const, override));
+  MOCK_METHOD(bool,
+              PromptUser,
+              (std::istream&, const std::string&),
+              (override));
 };
 
 class DevInstallTest : public ::testing::Test {
