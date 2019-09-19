@@ -37,7 +37,7 @@ class FileWatcher {
   typedef base::Callback<void(const base::FilePath& file, EventType event_type)>
       FileWatcherCallback;
 
-  virtual ~FileWatcher() {}
+  virtual ~FileWatcher() = default;
 
   // Gets all files currently matching the given extension.
   virtual const std::vector<base::FilePath>& files() const = 0;

@@ -28,7 +28,7 @@ class ClockInterface {
   // (This is a simple wrapper around clock_gettime(2) / CLOCK_MONOTONIC_RAW.)
   virtual base::Time GetMonotonicTime() = 0;
 
-  virtual ~ClockInterface() {}
+  virtual ~ClockInterface() = default;
 };
 
 }  // namespace common

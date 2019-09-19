@@ -40,7 +40,7 @@ PeerUpdateManager::PeerUpdateManager(FileWatcher* file_watcher,
       metrics_lib_(metrics_lib),
       num_connections_(0) {}
 
-PeerUpdateManager::~PeerUpdateManager() {}
+PeerUpdateManager::~PeerUpdateManager() = default;
 
 void PeerUpdateManager::Publish(const FilePath& file) {
   if (file.Extension() == file_watcher_->file_extension()) {

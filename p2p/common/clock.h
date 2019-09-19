@@ -15,7 +15,7 @@ namespace common {
 
 class Clock : public ClockInterface {
  public:
-  Clock() {}
+  Clock() = default;
 
   virtual void Sleep(const base::TimeDelta& duration);
 

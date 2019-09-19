@@ -16,7 +16,7 @@ namespace server {
 // local machine as well as how many clients are currently downloading.
 class ServicePublisher {
  public:
-  virtual ~ServicePublisher() {}
+  virtual ~ServicePublisher() = default;
 
   // Exports a file with identifier |file| and size in bytes given by
   // by |file_size|.

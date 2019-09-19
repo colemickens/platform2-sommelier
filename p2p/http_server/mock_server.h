@@ -16,7 +16,7 @@ namespace http_server {
 
 class MockServer : public ServerInterface {
  public:
-  MockServer() {}
+  MockServer() = default;
 
   MOCK_METHOD(bool, Start, (), (override));
   MOCK_METHOD(void, Stop, (), (override));

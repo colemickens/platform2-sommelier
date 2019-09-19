@@ -17,7 +17,7 @@ namespace http_server {
 
 class ServerInterface {
  public:
-  virtual ~ServerInterface() {}
+  virtual ~ServerInterface() = default;
 
   // Starts the server. Returns false on failure.
   virtual bool Start() = 0;

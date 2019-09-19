@@ -21,7 +21,7 @@ namespace client {
 // Interface for finding local peers willing to serve files.
 class ServiceFinder {
  public:
-  virtual ~ServiceFinder() {}
+  virtual ~ServiceFinder() = default;
 
   // Given a file identified by the |file| paramater, returns a list
   // of peers that can serve it.

@@ -22,7 +22,7 @@ class ServerInterface;
 class ConnectionDelegateInterface
     : public base::DelegateSimpleThread::Delegate {
  public:
-  virtual ~ConnectionDelegateInterface() {}
+  virtual ~ConnectionDelegateInterface() = default;
 
   // The ConnectionDelegateInterface::Run() method should serve any .p2p file in
   // the |dirfd| directory over the |fd| socket and close the socket once done.

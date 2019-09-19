@@ -24,7 +24,7 @@ class HttpServer {
   // Called when number of connections changes
   typedef base::Callback<void(int num_connections)> NumConnectionsCallback;
 
-  virtual ~HttpServer() {}
+  virtual ~HttpServer() = default;
 
   // Statrs the HTTP server.
   virtual bool Start() = 0;

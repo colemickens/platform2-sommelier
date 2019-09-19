@@ -20,7 +20,7 @@ namespace client {
 FakeServiceFinder::FakeServiceFinder()
     : num_lookup_calls_(0), service_filtered_(false) {}
 
-FakeServiceFinder::~FakeServiceFinder() {}
+FakeServiceFinder::~FakeServiceFinder() = default;
 
 vector<const Peer*> FakeServiceFinder::GetPeersForFile(
     const string& file) const {
