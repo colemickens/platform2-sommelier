@@ -35,11 +35,14 @@ class MockHttpServer : public HttpServer {
         testing::Invoke(&fake_, &FakeHttpServer::SetNumConnectionsCallback));
   }
 
-  MOCK_METHOD0(Start, bool());
-  MOCK_METHOD0(Stop, bool());
-  MOCK_METHOD0(IsRunning, bool());
-  MOCK_METHOD0(Port, uint16_t());
-  MOCK_METHOD1(SetNumConnectionsCallback, void(NumConnectionsCallback));
+  MOCK_METHOD(bool, Start, (), (override));
+  MOCK_METHOD(bool, Stop, (), (override));
+  MOCK_METHOD(bool, IsRunning, (), (override));
+  MOCK_METHOD(uint16_t, Port, (), (override));
+  MOCK_METHOD(void,
+              SetNumConnectionsCallback,
+              (NumConnectionsCallback),
+              (override));
 
   FakeHttpServer& fake() { return fake_; }
 

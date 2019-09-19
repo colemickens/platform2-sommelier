@@ -74,8 +74,10 @@ class MockFileWatcherListener : public FileWatcherListener {
           this, &MockFileWatcherListener::OnCall));
   }
 
-  MOCK_METHOD2(OnChanged,
-               void(const FilePath& file, FileWatcher::EventType event_type));
+  MOCK_METHOD(void,
+              OnChanged,
+              (const FilePath&, FileWatcher::EventType),
+              (override));
 
   // NumCallsReached() returns true when the number of calls to |this|
   // is at least |num_calls|. This is used to terminate the GLib main loop

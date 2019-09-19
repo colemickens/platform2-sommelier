@@ -18,16 +18,20 @@ class MockServer : public ServerInterface {
  public:
   MockServer() {}
 
-  MOCK_METHOD0(Start, bool());
-  MOCK_METHOD0(Stop, void());
-  MOCK_METHOD1(SetMaxDownloadRate, void(int64_t));
-  MOCK_METHOD0(Port, uint16_t());
-  MOCK_METHOD0(NumConnections, int());
-  MOCK_METHOD0(Clock, p2p::common::ClockInterface*());
-  MOCK_METHOD1(ConnectionTerminated,
-               void(ConnectionDelegateInterface*)); // NOLINT
-  MOCK_METHOD2(ReportServerMessage,
-               void(p2p::util::P2PServerMessageType, int64_t));
+  MOCK_METHOD(bool, Start, (), (override));
+  MOCK_METHOD(void, Stop, (), (override));
+  MOCK_METHOD(void, SetMaxDownloadRate, (int64_t), (override));
+  MOCK_METHOD(uint16_t, Port, (), (override));
+  MOCK_METHOD(int, NumConnections, (), (override));
+  MOCK_METHOD(p2p::common::ClockInterface*, Clock, (), (override));
+  MOCK_METHOD(void,
+              ConnectionTerminated,
+              (ConnectionDelegateInterface*),
+              (override));
+  MOCK_METHOD(void,
+              ReportServerMessage,
+              (p2p::util::P2PServerMessageType, int64_t),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockServer);

@@ -70,7 +70,7 @@ class MockHttpServerListener : public HttpServerListener {
           this, &MockHttpServerListener::OnCall));
   }
 
-  MOCK_METHOD1(NumConnectionsCallback, void(int));
+  MOCK_METHOD(void, NumConnectionsCallback, (int));
 
   // NumCallsReached() returns true when the number of calls to |this|
   // is at least |num_calls|. This is used to terminate the GLib main loop

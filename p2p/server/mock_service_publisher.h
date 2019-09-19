@@ -32,15 +32,11 @@ class MockServicePublisher : public ServicePublisher {
         .WillByDefault(testing::Invoke(&fake_, &FakeServicePublisher::files));
   }
 
-  MOCK_METHOD2(AddFile, void(const std::string&, size_t));
-  MOCK_METHOD1(RemoveFile, void(const std::string&));
-  MOCK_METHOD2(UpdateFileSize, void(const std::string&, size_t));
-  MOCK_METHOD1(SetNumConnections, void(int));
-  // TODO(zeuthen): The MOCK_METHOD0 macro and/or compiler appears to
-  // be broken so we use typedef to work around. Remove this typedef
-  // when the library and/or toolchain has been fixed.
-  typedef std::map<std::string, size_t> MapStringToSize;
-  MOCK_METHOD0(files, MapStringToSize());
+  MOCK_METHOD(void, AddFile, (const std::string&, size_t), (override));
+  MOCK_METHOD(void, RemoveFile, (const std::string&), (override));
+  MOCK_METHOD(void, UpdateFileSize, (const std::string&, size_t), (override));
+  MOCK_METHOD(void, SetNumConnections, (int), (override));
+  MOCK_METHOD((std::map<std::string, size_t>), files, (), (override));
 
   FakeServicePublisher& fake() { return fake_; }
 
