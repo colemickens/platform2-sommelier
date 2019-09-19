@@ -30,66 +30,99 @@ class MockCryptoUtility : public CryptoUtility {
   MockCryptoUtility();
   ~MockCryptoUtility() override;
 
-  MOCK_CONST_METHOD2(GetRandom, bool(size_t, std::string*));
+  MOCK_METHOD(bool, GetRandom, (size_t, std::string*), (const, override));
 
-  MOCK_METHOD2(CreateSealedKey,
-               bool(std::string* aes_key, std::string* sealed_key));
+  MOCK_METHOD(bool, CreateSealedKey, (std::string*, std::string*), (override));
 
-  MOCK_METHOD4(EncryptData,
-               bool(const std::string& data,
-                    const std::string& aes_key,
-                    const std::string& sealed_key,
-                    std::string* encrypted_data));
+  MOCK_METHOD(bool,
+              EncryptData,
+              (const std::string&,
+               const std::string&,
+               const std::string&,
+               std::string*),
+              (override));
 
-  MOCK_METHOD3(UnsealKey,
-               bool(const std::string& encrypted_data,
-                    std::string* aes_key,
-                    std::string* sealed_key));
+  MOCK_METHOD(bool,
+              UnsealKey,
+              (const std::string&, std::string*, std::string*),
+              (override));
 
-  MOCK_METHOD3(DecryptData,
-               bool(const std::string& encrypted_data,
-                    const std::string& aes_key,
-                    std::string* data));
-  MOCK_METHOD2(GetRSASubjectPublicKeyInfo,
-               bool(const std::string&, std::string*));
-  MOCK_METHOD2(GetRSAPublicKey, bool(const std::string&, std::string*));
-  MOCK_METHOD5(EncryptIdentityCredential,
-               bool(TpmVersion,
-                    const std::string&,
-                    const std::string&,
-                    const std::string&,
-                    EncryptedIdentityCredential*));
-  MOCK_METHOD3(DecryptIdentityCertificateForTpm2,
-               bool(const std::string&, const EncryptedData&, std::string*));
-  MOCK_METHOD3(EncryptForUnbind,
-               bool(const std::string&, const std::string&, std::string*));
-  MOCK_METHOD4(
-      VerifySignature,
-      bool(int, const std::string&, const std::string&, const std::string&));
-  MOCK_METHOD4(
-      VerifySignatureUsingHexKey,
-      bool(int, const std::string&, const std::string&, const std::string&));
-  MOCK_METHOD4(EncryptDataForGoogle,
-               bool(const std::string&,
-                    const std::string&,
-                    const std::string&,
-                    EncryptedData*));
-  MOCK_METHOD3(CreateSPKAC,
-               bool(const std::string&,
-                    const std::string&,
-                    std::string*));
-  MOCK_METHOD2(VerifyCertificate,
-               bool(const std::string&, const std::string&));
-  MOCK_METHOD2(GetCertificateIssuerName,
-               bool(const std::string&, std::string*));
-  MOCK_METHOD2(GetCertificateSubjectPublicKeyInfo,
-               bool(const std::string&, std::string*));
-  MOCK_METHOD2(GetCertificatePublicKey, bool(const std::string&, std::string*));
-  MOCK_METHOD2(GetKeyDigest,
-               bool(const std::string&, std::string*));
-  MOCK_METHOD2(HmacSha256, std::string(const std::string&, const std::string&));
-  MOCK_METHOD2(HmacSha512, std::string(const std::string&, const std::string&));
-  MOCK_METHOD0(DefaultDigestAlgoForSingature, int());
+  MOCK_METHOD(bool,
+              DecryptData,
+              (const std::string&, const std::string&, std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              GetRSASubjectPublicKeyInfo,
+              (const std::string&, std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              GetRSAPublicKey,
+              (const std::string&, std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              EncryptIdentityCredential,
+              (TpmVersion,
+               const std::string&,
+               const std::string&,
+               const std::string&,
+               EncryptedIdentityCredential*),
+              (override));
+  MOCK_METHOD(bool,
+              DecryptIdentityCertificateForTpm2,
+              (const std::string&, const EncryptedData&, std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              EncryptForUnbind,
+              (const std::string&, const std::string&, std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              VerifySignature,
+              (int, const std::string&, const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(bool,
+              VerifySignatureUsingHexKey,
+              (int, const std::string&, const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(bool,
+              EncryptDataForGoogle,
+              (const std::string&,
+               const std::string&,
+               const std::string&,
+               EncryptedData*),
+              (override));
+  MOCK_METHOD(bool,
+              CreateSPKAC,
+              (const std::string&, const std::string&, std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              VerifyCertificate,
+              (const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(bool,
+              GetCertificateIssuerName,
+              (const std::string&, std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              GetCertificateSubjectPublicKeyInfo,
+              (const std::string&, std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              GetCertificatePublicKey,
+              (const std::string&, std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              GetKeyDigest,
+              (const std::string&, std::string*),
+              (override));
+  MOCK_METHOD(std::string,
+              HmacSha256,
+              (const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(std::string,
+              HmacSha512,
+              (const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(int, DefaultDigestAlgoForSingature, (), (override));
 };
 
 }  // namespace attestation

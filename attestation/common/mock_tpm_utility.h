@@ -38,65 +38,81 @@ class MockTpmUtility : public TpmUtility {
   static std::string Transform(const std::string& method,
                                const std::string& input);
 
-  MOCK_METHOD0(Initialize, bool());
-  MOCK_METHOD0(GetVersion, TpmVersion());
-  MOCK_METHOD0(IsTpmReady, bool());
-  MOCK_METHOD4(ActivateIdentity,
-               bool(const std::string&,
-                    const std::string&,
-                    const std::string&,
-                    std::string*));
-  MOCK_METHOD6(ActivateIdentityForTpm2,
-               bool(KeyType key_type,
-                    const std::string&,
-                    const std::string&,
-                    const std::string&,
-                    const std::string&,
-                    std::string*));
-  MOCK_METHOD9(CreateCertifiedKey,
-               bool(KeyType,
-                    KeyUsage,
-                    const std::string&,
-                    const std::string&,
-                    std::string*,
-                    std::string*,
-                    std::string*,
-                    std::string*,
-                    std::string*));
-  MOCK_METHOD2(SealToPCR0, bool(const std::string&, std::string*));
-  MOCK_METHOD2(Unseal, bool(const std::string&, std::string*));
-  MOCK_METHOD2(GetEndorsementPublicKey, bool(KeyType, std::string*));
-  MOCK_METHOD2(GetEndorsementPublicKeyModulus, bool(KeyType, std::string*));
-  MOCK_METHOD2(GetEndorsementCertificate,
-               bool(KeyType, std::string*));
-  MOCK_METHOD3(Unbind,
-               bool(const std::string&, const std::string&, std::string*));
-  MOCK_METHOD3(Sign,
-               bool(const std::string&, const std::string&, std::string*));
-  MOCK_METHOD5(QuotePCR,
-               bool(uint32_t,
-                    const std::string&,
-                    std::string*,
-                    std::string*,
-                    std::string*));
-  MOCK_CONST_METHOD2(GetNVDataSize,
-                     bool(uint32_t,
-                          uint16_t*));
-  MOCK_METHOD5(CertifyNV,
-               bool(uint32_t,
-                    int,
-                    const std::string&,
-                    std::string*,
-                    std::string*));
-  MOCK_CONST_METHOD4(IsQuoteForPCR,
-                     bool(const std::string&,
-                          const std::string&,
-                          const std::string&,
-                          uint32_t));
-  MOCK_CONST_METHOD2(ReadPCR, bool(uint32_t, std::string*));
-  MOCK_METHOD0(RemoveOwnerDependency, bool());
-  MOCK_METHOD2(CreateIdentity, bool(KeyType, AttestationDatabase::Identity*));
-  MOCK_METHOD1(GetRsuDeviceId, bool(std::string*));
+  MOCK_METHOD(bool, Initialize, (), (override));
+  MOCK_METHOD(TpmVersion, GetVersion, (), (override));
+  MOCK_METHOD(bool, IsTpmReady, (), (override));
+  MOCK_METHOD(bool,
+              ActivateIdentity,
+              (const std::string&,
+               const std::string&,
+               const std::string&,
+               std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              ActivateIdentityForTpm2,
+              (KeyType,
+               const std::string&,
+               const std::string&,
+               const std::string&,
+               const std::string&,
+               std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              CreateCertifiedKey,
+              (KeyType,
+               KeyUsage,
+               const std::string&,
+               const std::string&,
+               std::string*,
+               std::string*,
+               std::string*,
+               std::string*,
+               std::string*),
+              (override));
+  MOCK_METHOD(bool, SealToPCR0, (const std::string&, std::string*), (override));
+  MOCK_METHOD(bool, Unseal, (const std::string&, std::string*), (override));
+  MOCK_METHOD(bool,
+              GetEndorsementPublicKey,
+              (KeyType, std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              GetEndorsementPublicKeyModulus,
+              (KeyType, std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              GetEndorsementCertificate,
+              (KeyType, std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              Unbind,
+              (const std::string&, const std::string&, std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              Sign,
+              (const std::string&, const std::string&, std::string*),
+              (override));
+  MOCK_METHOD(
+      bool,
+      QuotePCR,
+      (uint32_t, const std::string&, std::string*, std::string*, std::string*),
+      (override));
+  MOCK_METHOD(bool, GetNVDataSize, (uint32_t, uint16_t*), (const, override));
+  MOCK_METHOD(bool,
+              CertifyNV,
+              (uint32_t, int, const std::string&, std::string*, std::string*),
+              (override));
+  MOCK_METHOD(
+      bool,
+      IsQuoteForPCR,
+      (const std::string&, const std::string&, const std::string&, uint32_t),
+      (const, override));
+  MOCK_METHOD(bool, ReadPCR, (uint32_t, std::string*), (const, override));
+  MOCK_METHOD(bool, RemoveOwnerDependency, (), (override));
+  MOCK_METHOD(bool,
+              CreateIdentity,
+              (KeyType, AttestationDatabase::Identity*),
+              (override));
+  MOCK_METHOD(bool, GetRsuDeviceId, (std::string*), (override));
 };
 
 }  // namespace attestation

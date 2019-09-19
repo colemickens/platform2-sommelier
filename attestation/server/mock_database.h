@@ -28,10 +28,10 @@ class MockDatabase : public Database {
   MockDatabase();
   ~MockDatabase() override;
 
-  MOCK_CONST_METHOD0(GetProtobuf, const AttestationDatabase&());
-  MOCK_METHOD0(GetMutableProtobuf, AttestationDatabase*());
-  MOCK_METHOD0(SaveChanges, bool());
-  MOCK_METHOD0(Reload, bool());
+  MOCK_METHOD(const AttestationDatabase&, GetProtobuf, (), (const, override));
+  MOCK_METHOD(AttestationDatabase*, GetMutableProtobuf, (), (override));
+  MOCK_METHOD(bool, SaveChanges, (), (override));
+  MOCK_METHOD(bool, Reload, (), (override));
 
  private:
   AttestationDatabase fake_;

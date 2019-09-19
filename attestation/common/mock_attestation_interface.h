@@ -30,71 +30,111 @@ class MockAttestationInterface : public AttestationInterface {
   MockAttestationInterface() = default;
   virtual ~MockAttestationInterface() = default;
 
-  MOCK_METHOD0(Initialize, bool());
-  MOCK_METHOD2(GetKeyInfo,
-               void(const GetKeyInfoRequest&, const GetKeyInfoCallback&));
-  MOCK_METHOD2(GetEndorsementInfo,
-               void(const GetEndorsementInfoRequest&,
-                    const GetEndorsementInfoCallback&));
-  MOCK_METHOD2(GetAttestationKeyInfo,
-               void(const GetAttestationKeyInfoRequest&,
-                    const GetAttestationKeyInfoCallback&));
-  MOCK_METHOD2(ActivateAttestationKey,
-               void(const ActivateAttestationKeyRequest&,
-                    const ActivateAttestationKeyCallback&));
-  MOCK_METHOD2(CreateCertifiableKey,
-               void(const CreateCertifiableKeyRequest&,
-                    const CreateCertifiableKeyCallback&));
-  MOCK_METHOD2(Decrypt, void(const DecryptRequest&, const DecryptCallback&));
-  MOCK_METHOD2(Sign, void(const SignRequest&, const SignCallback&));
-  MOCK_METHOD2(RegisterKeyWithChapsToken,
-               void(const RegisterKeyWithChapsTokenRequest&,
-                    const RegisterKeyWithChapsTokenCallback&));
-  MOCK_METHOD2(GetEnrollmentPreparations,
-               void(const GetEnrollmentPreparationsRequest&,
-                    const GetEnrollmentPreparationsCallback&));
-  MOCK_METHOD2(GetStatus,
-               void(const GetStatusRequest&,
-                    const GetStatusCallback&));
-  MOCK_METHOD2(Verify,
-               void(const VerifyRequest&,
-                    const VerifyCallback&));
-  MOCK_METHOD2(CreateEnrollRequest,
-               void(const CreateEnrollRequestRequest&,
-                    const CreateEnrollRequestCallback&));
-  MOCK_METHOD2(FinishEnroll,
-               void(const FinishEnrollRequest&,
-                    const FinishEnrollCallback&));
-  MOCK_METHOD2(CreateCertificateRequest,
-               void(const CreateCertificateRequestRequest&,
-                    const CreateCertificateRequestCallback&));
-  MOCK_METHOD2(FinishCertificateRequest,
-               void(const FinishCertificateRequestRequest&,
-                    const FinishCertificateRequestCallback&));
-  MOCK_METHOD2(SignEnterpriseChallenge,
-               void(const SignEnterpriseChallengeRequest&,
-                    const SignEnterpriseChallengeCallback&));
-  MOCK_METHOD2(SignSimpleChallenge,
-               void(const SignSimpleChallengeRequest&,
-                    const SignSimpleChallengeCallback&));
-  MOCK_METHOD2(SetKeyPayload,
-               void(const SetKeyPayloadRequest&,
-                    const SetKeyPayloadCallback&));
-  MOCK_METHOD2(DeleteKeys,
-               void(const DeleteKeysRequest&,
-                    const DeleteKeysCallback&));
-  MOCK_METHOD2(ResetIdentity,
-               void(const ResetIdentityRequest&,
-                    const ResetIdentityCallback&));
-  MOCK_METHOD2(SetSystemSalt,
-               void(const SetSystemSaltRequest&,
-                    const SetSystemSaltCallback&));
-  MOCK_METHOD2(GetEnrollmentId,
-               void(const GetEnrollmentIdRequest&,
-                    const GetEnrollmentIdCallback&));
-  MOCK_METHOD2(GetCertifiedNvIndex,
-               void(const GetCertifiedNvIndexRequest&,
-                    const GetCertifiedNvIndexCallback&));
+  MOCK_METHOD(bool, Initialize, (), (override));
+  MOCK_METHOD(void,
+              GetKeyInfo,
+              (const GetKeyInfoRequest&, const GetKeyInfoCallback&),
+              (override));
+  MOCK_METHOD(void,
+              GetEndorsementInfo,
+              (const GetEndorsementInfoRequest&,
+               const GetEndorsementInfoCallback&),
+              (override));
+  MOCK_METHOD(void,
+              GetAttestationKeyInfo,
+              (const GetAttestationKeyInfoRequest&,
+               const GetAttestationKeyInfoCallback&),
+              (override));
+  MOCK_METHOD(void,
+              ActivateAttestationKey,
+              (const ActivateAttestationKeyRequest&,
+               const ActivateAttestationKeyCallback&),
+              (override));
+  MOCK_METHOD(void,
+              CreateCertifiableKey,
+              (const CreateCertifiableKeyRequest&,
+               const CreateCertifiableKeyCallback&),
+              (override));
+  MOCK_METHOD(void,
+              Decrypt,
+              (const DecryptRequest&, const DecryptCallback&),
+              (override));
+  MOCK_METHOD(void,
+              Sign,
+              (const SignRequest&, const SignCallback&),
+              (override));
+  MOCK_METHOD(void,
+              RegisterKeyWithChapsToken,
+              (const RegisterKeyWithChapsTokenRequest&,
+               const RegisterKeyWithChapsTokenCallback&),
+              (override));
+  MOCK_METHOD(void,
+              GetEnrollmentPreparations,
+              (const GetEnrollmentPreparationsRequest&,
+               const GetEnrollmentPreparationsCallback&),
+              (override));
+  MOCK_METHOD(void,
+              GetStatus,
+              (const GetStatusRequest&, const GetStatusCallback&),
+              (override));
+  MOCK_METHOD(void,
+              Verify,
+              (const VerifyRequest&, const VerifyCallback&),
+              (override));
+  MOCK_METHOD(void,
+              CreateEnrollRequest,
+              (const CreateEnrollRequestRequest&,
+               const CreateEnrollRequestCallback&),
+              (override));
+  MOCK_METHOD(void,
+              FinishEnroll,
+              (const FinishEnrollRequest&, const FinishEnrollCallback&),
+              (override));
+  MOCK_METHOD(void,
+              CreateCertificateRequest,
+              (const CreateCertificateRequestRequest&,
+               const CreateCertificateRequestCallback&),
+              (override));
+  MOCK_METHOD(void,
+              FinishCertificateRequest,
+              (const FinishCertificateRequestRequest&,
+               const FinishCertificateRequestCallback&),
+              (override));
+  MOCK_METHOD(void,
+              SignEnterpriseChallenge,
+              (const SignEnterpriseChallengeRequest&,
+               const SignEnterpriseChallengeCallback&),
+              (override));
+  MOCK_METHOD(void,
+              SignSimpleChallenge,
+              (const SignSimpleChallengeRequest&,
+               const SignSimpleChallengeCallback&),
+              (override));
+  MOCK_METHOD(void,
+              SetKeyPayload,
+              (const SetKeyPayloadRequest&, const SetKeyPayloadCallback&),
+              (override));
+  MOCK_METHOD(void,
+              DeleteKeys,
+              (const DeleteKeysRequest&, const DeleteKeysCallback&),
+              (override));
+  MOCK_METHOD(void,
+              ResetIdentity,
+              (const ResetIdentityRequest&, const ResetIdentityCallback&),
+              (override));
+  MOCK_METHOD(void,
+              SetSystemSalt,
+              (const SetSystemSaltRequest&, const SetSystemSaltCallback&),
+              (override));
+  MOCK_METHOD(void,
+              GetEnrollmentId,
+              (const GetEnrollmentIdRequest&, const GetEnrollmentIdCallback&),
+              (override));
+  MOCK_METHOD(void,
+              GetCertifiedNvIndex,
+              (const GetCertifiedNvIndexRequest&,
+               const GetCertifiedNvIndexCallback&),
+              (override));
 };
 
 }  // namespace attestation

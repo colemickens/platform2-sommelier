@@ -31,30 +31,36 @@ class MockKeyStore : public KeyStore {
   MockKeyStore();
   ~MockKeyStore() override;
 
-  MOCK_METHOD3(Read,
-               bool(const std::string& username,
-                    const std::string& name,
-                    std::string* key_data));
-  MOCK_METHOD3(Write,
-               bool(const std::string& username,
-                    const std::string& name,
-                    const std::string& key_data));
-  MOCK_METHOD2(Delete,
-               bool(const std::string& username, const std::string& name));
-  MOCK_METHOD2(DeleteByPrefix,
-               bool(const std::string& username,
-                    const std::string& key_prefix));
-  MOCK_METHOD7(Register,
-               bool(const std::string& username,
-                    const std::string& label,
-                    KeyType key_type,
-                    KeyUsage key_usage,
-                    const std::string& private_key_blob,
-                    const std::string& public_key_der,
-                    const std::string& certificate));
-  MOCK_METHOD2(RegisterCertificate,
-               bool(const std::string& username,
-                    const std::string& certificate));
+  MOCK_METHOD(bool,
+              Read,
+              (const std::string&, const std::string&, std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              Write,
+              (const std::string&, const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(bool,
+              Delete,
+              (const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(bool,
+              DeleteByPrefix,
+              (const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(bool,
+              Register,
+              (const std::string&,
+               const std::string&,
+               KeyType,
+               KeyUsage,
+               const std::string&,
+               const std::string&,
+               const std::string&),
+              (override));
+  MOCK_METHOD(bool,
+              RegisterCertificate,
+              (const std::string&, const std::string&),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockKeyStore);
