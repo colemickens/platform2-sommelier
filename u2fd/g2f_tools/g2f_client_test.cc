@@ -106,9 +106,9 @@ class G2fClientTest : public ::testing::Test {
  public:
   G2fClientTest() =  default;
 
-  virtual ~G2fClientTest() = default;
+  ~G2fClientTest() override = default;
 
-  void SetUp() {
+  void SetUp() override {
     hid_open_called = 0;
     hid_close_called = 0;
     memset(hid_write_data, 0, kRwBufSize);
@@ -332,7 +332,7 @@ class MockHidDevice : public HidDevice {
 class U2FHidTest : public ::testing::Test {
  public:
   U2FHidTest() : hid_(&device_) {}
-  virtual ~U2FHidTest() = default;
+  ~U2FHidTest() override = default;
 
  protected:
   void ExpectInit(bool copy_nonce,
@@ -547,7 +547,7 @@ class MockU2FHid : public U2FHid {
 class U2FTest : public ::testing::Test {
  public:
   U2FTest() : u2f_(&u2f_hid_) {}
-  virtual ~U2FTest() = default;
+  ~U2FTest() override = default;
 
  protected:
   void RunRegisterExpectFail() {
