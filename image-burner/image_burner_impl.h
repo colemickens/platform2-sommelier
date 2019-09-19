@@ -44,9 +44,7 @@ class BurnerImpl {
   void InitSignalSender(SignalSender* signal_sender);
 
   // We use this primary for testing.
-  void SetDataBlockSize(int value) {
-    data_block_size_ = value;
-  }
+  void SetDataBlockSize(int value) { data_block_size_ = value; }
 
  private:
   FRIEND_TEST(ImageBurnerImplTest, IsSourcePathAllowed);

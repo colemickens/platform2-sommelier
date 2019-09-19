@@ -22,10 +22,7 @@ struct ImageBurner;
 
 const int kNumSignals = 2;
 
-enum BurnSignals {
-  kSignalBurnFinished,
-  kSignalBurnUpdate
-};
+enum BurnSignals { kSignalBurnFinished, kSignalBurnUpdate };
 
 // Provides a wrapper for exporting ImageBurnerInterface to
 // D-Bus and entering the glib run loop.
@@ -36,27 +33,28 @@ class ImageBurnService : public brillo::dbus::AbstractDbusService,
   virtual ~ImageBurnService();
 
   // brillo::dbus::AbstractDbusService implementation.
-  const char *service_name() const override;
-  const char *service_path() const override;
-  const char *service_interface() const override;
-  GObject *service_object() const override;
+  const char* service_name() const override;
+  const char* service_path() const override;
+  const char* service_interface() const override;
+  GObject* service_object() const override;
   bool Initialize() override;
   bool Reset() override;
   bool Shutdown() override;
 
   // SignalSender interface.
-  void SendFinishedSignal(const char* target_path, bool success,
+  void SendFinishedSignal(const char* target_path,
+                          bool success,
                           const char* error_message) override;
-  void SendProgressSignal(int64_t amount_burnt, int64_t total_size,
+  void SendProgressSignal(int64_t amount_burnt,
+                          int64_t total_size,
                           const char* target_path) override;
 
-  gboolean BurnImageAsync(gchar* from_path, gchar* to_path,
-      DBusGMethodInvocation* context);
+  gboolean BurnImageAsync(gchar* from_path,
+                          gchar* to_path,
+                          DBusGMethodInvocation* context);
 
  protected:
-  GMainLoop *main_loop() override {
-    return main_loop_;
-  }
+  GMainLoop* main_loop() override { return main_loop_; }
 
  private:
   void Cleanup();

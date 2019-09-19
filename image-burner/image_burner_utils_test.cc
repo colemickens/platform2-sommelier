@@ -190,9 +190,9 @@ TEST_F(BurnWriterTest, ReusingClosedReader) {
   ASSERT_TRUE(file_writer_.Close());
 
   ASSERT_TRUE(file_writer_.Open(test_file_path_.value().c_str()));
-  ASSERT_EQ(kTestFileContent.size(),
-            file_writer_.Write(kTestFileContent.data(),
-                               kTestFileContent.size()));
+  ASSERT_EQ(
+      kTestFileContent.size(),
+      file_writer_.Write(kTestFileContent.data(), kTestFileContent.size()));
 
   ASSERT_TRUE(base::ReadFileToString(test_file_path_, &file_content));
   EXPECT_EQ(kTestFileContent, file_content);

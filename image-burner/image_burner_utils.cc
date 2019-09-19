@@ -141,4 +141,3 @@ bool BurnPathGetter::GetRootPath(std::string* path) {
 }
 
 }  // namespace imageburn
-

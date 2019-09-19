@@ -38,9 +38,11 @@ class PathGetter {
 class SignalSender {
  public:
   virtual ~SignalSender() {}
-  virtual void SendFinishedSignal(const char* target_path, bool success,
+  virtual void SendFinishedSignal(const char* target_path,
+                                  bool success,
                                   const char* error_message) = 0;
-  virtual void SendProgressSignal(int64_t amount_burnt, int64_t total_size,
+  virtual void SendProgressSignal(int64_t amount_burnt,
+                                  int64_t total_size,
                                   const char* target_path) = 0;
 };
 

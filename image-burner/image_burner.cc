@@ -20,7 +20,7 @@ G_DEFINE_TYPE(ImageBurner, image_burner, G_TYPE_OBJECT);
 
 GObject* image_burner_constructor(GType gtype,
                                   guint n_properties,
-                                  GObjectConstructParam *properties) {
+                                  GObjectConstructParam* properties) {
   GObject* obj;
   GObjectClass* parent_class;
   // Instantiate using the parent class, then extend for local properties.
@@ -34,13 +34,13 @@ GObject* image_burner_constructor(GType gtype,
   return obj;
 }
 
-void image_burner_class_init(ImageBurnerClass *real_class) {
+void image_burner_class_init(ImageBurnerClass* real_class) {
   // Called once to configure the "class" structure.
   GObjectClass* gobject_class = G_OBJECT_CLASS(real_class);
   gobject_class->constructor = image_burner_constructor;
 }
 
-void image_burner_init(ImageBurner *self) { }
+void image_burner_init(ImageBurner* self) {}
 
 gboolean image_burner_burn_image(ImageBurner* self,
                                  gchar* from_path,

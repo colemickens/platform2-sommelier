@@ -22,8 +22,7 @@ namespace {
 
 const int kBurningBlockSize = 4 * 1024;  // 4 KiB
 
-const char* kFilePathPatterns[] =
-    { "^/dev/sd[a-z]+$", "^/dev/mmcblk[0-9]+$" };
+const char* kFilePathPatterns[] = {"^/dev/sd[a-z]+$", "^/dev/mmcblk[0-9]+$"};
 const int kFilePathPatternCount = 2;
 
 const char kMediaDirectory[] = "/media";
@@ -51,8 +50,7 @@ BurnerImpl::BurnerImpl(FileSystemWriter* writer,
       reader_(reader),
       signal_sender_(signal_sender),
       path_getter_(path_getter),
-      data_block_size_(kBurningBlockSize) {
-}
+      data_block_size_(kBurningBlockSize) {}
 
 ErrorCode BurnerImpl::BurnImage(const char* from_path, const char* to_path) {
   ErrorCode err = IMAGEBURN_OK;
@@ -145,8 +143,9 @@ bool BurnerImpl::ValidateSourcePath(const char* path,
   return true;
 }
 
-bool BurnerImpl::DoBurn(const char* from_path, const char* to_path,
-                    ErrorCode* error) {
+bool BurnerImpl::DoBurn(const char* from_path,
+                        const char* to_path,
+                        ErrorCode* error) {
   LOG(INFO) << "Burning " << from_path << " to " << to_path;
   *error = IMAGEBURN_OK;
 

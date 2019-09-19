@@ -12,10 +12,12 @@ namespace imageburn {
 
 struct ImageBurner {
   GObject parent_instance;
-  ImageBurnService *service;  // pointer to implementing service.
+  ImageBurnService* service;  // pointer to implementing service.
 };
 
-struct ImageBurnerClass { GObjectClass parent_class; };
+struct ImageBurnerClass {
+  GObjectClass parent_class;
+};
 
 // image_burner_get_type() is defined in interface.cc by the
 // G_DEFINE_TYPE() macro.  This macro defines a number of other GLib
@@ -24,11 +26,10 @@ struct ImageBurnerClass { GObjectClass parent_class; };
 GType image_burner_get_type();  // defined by G_DEFINE_TYPE
 
 // Interface function prototypes which wrap service.
-gboolean image_burner_burn_image(ImageBurner *self,
-                                 gchar *from_path,
-                                 gchar *to_path,
+gboolean image_burner_burn_image(ImageBurner* self,
+                                 gchar* from_path,
+                                 gchar* to_path,
                                  DBusGMethodInvocation* context);
 }  // namespace imageburn
 
 #endif  // IMAGE_BURNER_IMAGE_BURNER_H_
-
