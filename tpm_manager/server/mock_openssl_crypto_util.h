@@ -17,6 +17,8 @@
 #ifndef TPM_MANAGER_SERVER_MOCK_OPENSSL_CRYPTO_UTIL_H_
 #define TPM_MANAGER_SERVER_MOCK_OPENSSL_CRYPTO_UTIL_H_
 
+#include <string>
+
 #include <gmock/gmock.h>
 
 #include "tpm_manager/server/openssl_crypto_util.h"
