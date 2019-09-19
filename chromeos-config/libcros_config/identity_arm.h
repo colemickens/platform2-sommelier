@@ -22,13 +22,6 @@ class CrosConfigIdentityArm : public CrosConfigIdentity {
   CrosConfigIdentityArm();
   ~CrosConfigIdentityArm();
 
-  // @return SKU ID value read via FDT
-  int GetSkuId() const { return sku_id_; }
-
-  // Initially, the SKU ID will be read from FDT but if user would like to
-  // have the identify with different SKU ID then you can overwrite it here.
-  void SetSkuId(const int sku_id) { sku_id_ = sku_id; }
-
   // Read the compatible devices list from the device-tree compatible file.
   //
   // @dt_compatible_file: File to read - typically /proc/device-tree/compatible
@@ -58,7 +51,6 @@ class CrosConfigIdentityArm : public CrosConfigIdentity {
 
  private:
   std::string compatible_devices_;
-  int sku_id_;
 
   DISALLOW_COPY_AND_ASSIGN(CrosConfigIdentityArm);
 };

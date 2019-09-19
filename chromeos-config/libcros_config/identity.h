@@ -36,9 +36,19 @@ class CrosConfigIdentity {
   bool FakeVpd(const std::string& customization_id,
                base::FilePath* vpd_file_out);
 
+  // @return SKU ID value
+  int GetSkuId() const { return sku_id_; }
+
+  // Initially, the SKU ID will be read from SMBIOS or FDT, but it can
+  // be overridden using this method.
+  void SetSkuId(const int sku_id) { sku_id_ = sku_id; }
+
   // Gets the VPD identitier value read via ReadVpd
   // @return VPD ID value
   const std::string& GetVpdId() const { return vpd_id_; }
+
+ protected:
+  int sku_id_;
 
  private:
   std::string vpd_id_;
