@@ -150,16 +150,19 @@ TEST_F(SchedulerConfigurationHelperTest, TestSchedulers) {
       temp_dir.GetPath().Append("devices").Append("system").Append("cpu");
   CreateSysInterface(cpu_root_dir);
 
+  size_t num_cpus_disabled = 0;
   debugd::SchedulerConfigurationUtils utils(temp_dir.GetPath());
   ASSERT_TRUE(utils.GetControlFDs());
-  ASSERT_TRUE(utils.EnablePerformanceConfiguration());
+  ASSERT_TRUE(utils.EnablePerformanceConfiguration(&num_cpus_disabled));
+  ASSERT_EQ(0U, num_cpus_disabled);
 
   CheckPerformanceMode(cpu_root_dir);
 
   // Now enable conservative mode.
   SchedulerConfigurationUtils utils2(temp_dir.GetPath());
   ASSERT_TRUE(utils2.GetControlFDs());
-  ASSERT_TRUE(utils2.EnableConservativeConfiguration());
+  ASSERT_TRUE(utils2.EnableConservativeConfiguration(&num_cpus_disabled));
+  ASSERT_EQ(2U, num_cpus_disabled);
 
   CheckConservativeMode(cpu_root_dir);
 
@@ -177,7 +180,8 @@ TEST_F(SchedulerConfigurationHelperTest, TestSchedulers) {
   // Re-enable performance and test.
   SchedulerConfigurationUtils utils3(temp_dir.GetPath());
   ASSERT_TRUE(utils3.GetControlFDs());
-  ASSERT_TRUE(utils3.EnablePerformanceConfiguration());
+  ASSERT_TRUE(utils3.EnablePerformanceConfiguration(&num_cpus_disabled));
+  ASSERT_EQ(0U, num_cpus_disabled);
 
   CheckPerformanceMode(cpu_root_dir);
 }

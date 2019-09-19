@@ -50,6 +50,7 @@ constexpr bool IsX86_64() {
 // otherwise, and sets |exit_status| if it isn't null.
 bool RunHelper(const std::string& command,
                const ProcessWithOutput::ArgList& arguments,
+               std::string* stdout,
                int* exit_status,
                brillo::ErrorPtr* error) {
   std::string helper_path;
@@ -64,7 +65,7 @@ bool RunHelper(const std::string& command,
   std::string stderr;
   int result = ProcessWithOutput::RunProcess(
       helper_path, arguments, true /*requires_root*/,
-      true /* disable_sandbox */, nullptr, nullptr, &stderr, error);
+      true /* disable_sandbox */, nullptr, stdout, &stderr, error);
 
   if (!stderr.empty()) {
     DEBUGD_ADD_ERROR(error, kErrorPath, stderr.c_str());
@@ -80,7 +81,10 @@ bool RunHelper(const std::string& command,
 
 bool SchedulerConfigurationTool::SetPolicy(const std::string& policy,
                                            bool lock_policy,
-                                           brillo::ErrorPtr* error) {
+                                           brillo::ErrorPtr* error,
+                                           uint32_t* num_cores_disabled) {
+  *num_cores_disabled = 0;
+
   if (!IsX86_64()) {
     DEBUGD_ADD_ERROR(error, kErrorPath, "Invalid architecture");
     return false;
@@ -106,14 +110,16 @@ bool SchedulerConfigurationTool::SetPolicy(const std::string& policy,
   }
 
   int exit_status;
+  std::string stdout;
   bool result = RunHelper("scheduler_configuration_helper",
                           ProcessWithOutput::ArgList{"--policy=" + policy},
-                          &exit_status, error);
+                          &stdout, &exit_status, error);
 
-  bool status = result && (exit_status == 0);
+  bool status = base::StringToUint(
+      stdout, num_cores_disabled) && result && (exit_status == 0);
   if (!status) {
     DEBUGD_ADD_ERROR(error, kErrorPath,
-                     "scheduler_configuration_helper failed");
+                     "scheduler_configuration_helper failed: stdout=" + stdout);
   } else {
     // The |policy_locked_conservative_| flag will only be set, if a
     // "conservative" policy was successfully set when it was asked to be

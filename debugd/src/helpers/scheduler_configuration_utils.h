@@ -28,11 +28,14 @@ class SchedulerConfigurationUtils {
 
   ~SchedulerConfigurationUtils() = default;
 
-  // This enables all cores.
-  bool EnablePerformanceConfiguration();
+  // This enables all cores. The number of cores disabled after changing the
+  // configuration is written to |num_cores_disabled| regardless of the return
+  // value of the function.
+  bool EnablePerformanceConfiguration(size_t* num_cores_disabled);
 
-  // This disables virtual cores.
-  bool EnableConservativeConfiguration();
+  // This disables virtual cores. |num_cores_disabled| is updated in the same
+  // way as EnablePerformanceConfiguration.
+  bool EnableConservativeConfiguration(size_t* num_cores_disabled);
 
   // Store a map of all the CPU control files. The CPU number is mapped to its
   // file descriptor. This also stores the vector of offline and offline CPUs,
@@ -40,8 +43,14 @@ class SchedulerConfigurationUtils {
   bool GetControlFDs();
 
  private:
+  enum class DisableSiblingsResult {
+    PHYSICAL_CORE,
+    SUCCESS,
+    ERROR,
+  };
+
   // This disables sibling threads of physical cores.
-  bool DisableSiblings(const std::string& cpu_num);
+  DisableSiblingsResult DisableSiblings(const std::string& cpu_num);
 
   // Writes the online status to CPU control file fd.
   static bool WriteFlagToCPUControlFile(const base::ScopedFD& fd,

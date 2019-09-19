@@ -1083,6 +1083,13 @@
           the policy argument is "conservative".
         </tp:docstring>
       </arg>
+      <arg name="num_cores_disabled" type="u" direction="out">
+        <tp:docstring>
+          The number of logical CPU cores disabled after the D-Bus call is done.
+          This is always populated regardless of whether the |result| argument
+          is true.
+        </tp:docstring>
+      </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
   </interface>

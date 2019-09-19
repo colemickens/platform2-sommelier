@@ -105,11 +105,16 @@ bool SchedulerConfigurationUtils::EnableCPU(const std::string& cpu_number) {
 }
 
 // This enables all cores.
-bool SchedulerConfigurationUtils::EnablePerformanceConfiguration() {
+bool SchedulerConfigurationUtils::EnablePerformanceConfiguration(
+    size_t* num_cores_disabled) {
   std::string failed_cpus;
   bool result = true;
+  *num_cores_disabled = offline_cpus_.size();
+
   for (const auto& cpu : offline_cpus_) {
-    if (!EnableCPU(cpu)) {
+    if (EnableCPU(cpu)) {
+      --(*num_cores_disabled);
+    } else {
       failed_cpus = failed_cpus + " " + cpu;
       result = false;
     }
@@ -130,34 +135,47 @@ base::FilePath SchedulerConfigurationUtils::GetSiblingPath(
 }
 
 // This disables sibling threads of physical cores.
-bool SchedulerConfigurationUtils::DisableSiblings(const std::string& cpu_num) {
+SchedulerConfigurationUtils::DisableSiblingsResult
+SchedulerConfigurationUtils::DisableSiblings(const std::string& cpu_num) {
   base::FilePath path = GetSiblingPath(cpu_num);
 
   std::string siblings_list;
   if (!base::ReadFileToString(path, &siblings_list)) {
     PLOG(ERROR) << "Failed to read sibling thread list from: " << path.value();
-    return false;
+    return DisableSiblingsResult::ERROR;
   }
 
   std::vector<std::string> sibling_nums;
   if (!ParseCPUNumbers(siblings_list, &sibling_nums)) {
     LOG(ERROR) << "Unknown range: " << siblings_list;
-    return false;
+    return DisableSiblingsResult::ERROR;
   }
 
   // The physical core is the first number in the range.
-  if (cpu_num != sibling_nums[0])
-    return DisableCPU(cpu_num);
+  if (cpu_num != sibling_nums[0]) {
+    return DisableCPU(cpu_num) ?
+        DisableSiblingsResult::SUCCESS : DisableSiblingsResult::ERROR;
+  }
 
-  return true;
+  return DisableSiblingsResult::PHYSICAL_CORE;
 }
 
-bool SchedulerConfigurationUtils::EnableConservativeConfiguration() {
+bool SchedulerConfigurationUtils::EnableConservativeConfiguration(
+    size_t* num_cores_disabled) {
   bool status = true;
+  *num_cores_disabled = offline_cpus_.size();
+
   for (const auto& cpu_num : online_cpus_) {
-    if (!DisableSiblings(cpu_num)) {
-      status = false;
-      LOG(ERROR) << "Failed to disable CPU: " << cpu_num;
+    switch (DisableSiblings(cpu_num)) {
+      case DisableSiblingsResult::PHYSICAL_CORE:
+        break;
+      case DisableSiblingsResult::SUCCESS:
+        ++(*num_cores_disabled);
+        break;
+      case DisableSiblingsResult::ERROR:
+        status = false;
+        LOG(ERROR) << "Failed to disable CPU: " << cpu_num;
+        break;
     }
   }
 

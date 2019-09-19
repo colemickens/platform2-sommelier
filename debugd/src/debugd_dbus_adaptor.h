@@ -193,7 +193,8 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   bool SetSchedulerConfigurationV2(brillo::ErrorPtr* error,
                                    const std::string& policy,
                                    bool lock_policy,
-                                   bool* out) override;
+                                   bool* result,
+                                   uint32_t* num_cores_disabled) override;
   bool EvaluateProbeFunction(
       brillo::ErrorPtr* error,
       const std::string& sandbox_info,

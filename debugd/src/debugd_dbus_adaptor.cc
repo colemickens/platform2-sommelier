@@ -532,16 +532,19 @@ bool DebugdDBusAdaptor::UpdateAndVerifyFWOnUsbStop(brillo::ErrorPtr* error,
 bool DebugdDBusAdaptor::SetSchedulerConfiguration(brillo::ErrorPtr* error,
                                                   const std::string& policy,
                                                   bool* result) {
+  uint32_t num_cores_disabled;
   return SetSchedulerConfigurationV2(error, policy, false /* lock_policy */,
-                                     result);
+                                     result, &num_cores_disabled);
 }
 
-bool DebugdDBusAdaptor::SetSchedulerConfigurationV2(brillo::ErrorPtr* error,
-                                                  const std::string& policy,
-                                                  bool lock_policy,
-                                                  bool* result) {
-  *result =
-      scheduler_configuration_tool_->SetPolicy(policy, lock_policy, error);
+bool DebugdDBusAdaptor::SetSchedulerConfigurationV2(
+    brillo::ErrorPtr* error,
+    const std::string& policy,
+    bool lock_policy,
+    bool* result,
+    uint32_t* num_cores_disabled) {
+  *result = scheduler_configuration_tool_->SetPolicy(policy, lock_policy, error,
+                                                     num_cores_disabled);
   return *result;
 }
 

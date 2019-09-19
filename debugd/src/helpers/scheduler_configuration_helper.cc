@@ -80,11 +80,15 @@ int main(int argc, char* argv[]) {
   EnterSandbox();
 
   int status = 1;
+  size_t num_cores_disabled = 0;
   if (FLAGS_policy == kPerformanceScheduler) {
-    status = utils.EnablePerformanceConfiguration() ? 0 : 1;
+    status = utils.EnablePerformanceConfiguration(&num_cores_disabled) ? 0 : 1;
   } else if (FLAGS_policy == kConservativeScheduler) {
-    status = utils.EnableConservativeConfiguration() ? 0 : 1;
+    status = utils.EnableConservativeConfiguration(&num_cores_disabled) ? 0 : 1;
   }
+
+  fprintf(stdout, "%zu", num_cores_disabled);
+  fflush(stdout);
 
   return status;
 }
