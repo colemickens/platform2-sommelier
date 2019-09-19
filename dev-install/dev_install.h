@@ -19,12 +19,12 @@ namespace dev_install {
 class DevInstall {
  public:
   DevInstall();
-  explicit DevInstall(const std::string& binhost,
-                      const std::string& binhost_version,
-                      bool reinstall,
-                      bool uninstall,
-                      bool yes,
-                      bool only_bootstrap);
+  DevInstall(const std::string& binhost,
+             const std::string& binhost_version,
+             bool reinstall,
+             bool uninstall,
+             bool yes,
+             bool only_bootstrap);
 
   // Run the dev_install routine.
   int Run();
