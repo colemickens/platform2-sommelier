@@ -870,7 +870,7 @@ bool CryptoUtilityImpl::VerifyCertificate(
   return true;
 }
 
-bool CryptoUtilityImpl::GetCertificatePublicKey(
+bool CryptoUtilityImpl::GetCertificateSubjectPublicKeyInfo(
     const std::string& certificate,
     std::string* public_key) {
   // Some TPM 1.2 certificates use OAEP key type (rsaOAEP (PKCS #1)). It is not
@@ -897,6 +897,19 @@ bool CryptoUtilityImpl::GetCertificatePublicKey(
   }
   crypto::ScopedOpenSSLBytes scoped_pubkey_buffer(pubkey_buffer);
   public_key->assign(reinterpret_cast<char*>(pubkey_buffer), length);
+  return true;
+}
+
+bool CryptoUtilityImpl::GetCertificatePublicKey(const std::string& certificate,
+                                                std::string* public_key) {
+  auto x509 = CreateX509FromCertificate(certificate);
+  if (!x509.get()) {
+    LOG(ERROR) << __func__ << ": Failed to parse certificate.";
+    return false;
+  }
+  public_key->assign(
+      reinterpret_cast<char*>(x509.get()->cert_info->key->public_key->data),
+      x509.get()->cert_info->key->public_key->length);
   return true;
 }
 

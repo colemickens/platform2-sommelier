@@ -83,8 +83,9 @@ class MockCryptoUtility : public CryptoUtility {
                bool(const std::string&, const std::string&));
   MOCK_METHOD2(GetCertificateIssuerName,
                bool(const std::string&, std::string*));
-  MOCK_METHOD2(GetCertificatePublicKey,
+  MOCK_METHOD2(GetCertificateSubjectPublicKeyInfo,
                bool(const std::string&, std::string*));
+  MOCK_METHOD2(GetCertificatePublicKey, bool(const std::string&, std::string*));
   MOCK_METHOD2(GetKeyDigest,
                bool(const std::string&, std::string*));
   MOCK_METHOD2(HmacSha256, std::string(const std::string&, const std::string&));

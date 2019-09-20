@@ -2322,17 +2322,36 @@ void AttestationService::VerifyTask(
     return;
   }
 
-  // Verify that the given public key matches the public key in the credential.
-  // Note: Do not use any openssl functions that attempt to decode the public
-  // key. These will fail because openssl does not recognize the OAEP key type.
-  // Note2: GetCertificatePublicKey will return SubjectPublicKeyInfo.
-  // TODO(crbug/942487): remove Note2 comments after migration
+  // Verifies that the given public key matches the one in the credential.
+
+  // Gets the public key by GetCertificatePublicKey and
+  // GetCertificateSubjectPublicKeyInfo for TPM1.2 and TPM2.0 respectively.
+  // TODO(crbug/942487): Only use GetCertificateSubjectPublicKeyInfo after the
+  // bug is resolved.
   std::string cert_public_key_info;
-  if (!crypto_utility_->GetCertificatePublicKey(ek_cert.value(),
-                                                &cert_public_key_info)) {
-    LOG(ERROR) << __func__ << ": Failed to get certificate public key.";
-    return;
+  switch (tpm_utility_->GetVersion()) {
+    case TPM_1_2:
+      if (!crypto_utility_->GetCertificatePublicKey(ek_cert.value(),
+                                                    &cert_public_key_info)) {
+        LOG(ERROR) << __func__ << ": Failed to call GetCertificatePublicKey.";
+        return;
+      }
+      break;
+    case TPM_2_0:
+      if (!crypto_utility_->GetCertificateSubjectPublicKeyInfo(
+              ek_cert.value(), &cert_public_key_info)) {
+        LOG(ERROR) << __func__
+                   << ": Failed to call GetCertificateSubjectPublicKeyInfo.";
+        return;
+      }
+      break;
+    default:
+      NOTREACHED() << "Unexpected TPM version.";
   }
+
+  // Note: Do not use any openssl functions that attempt to decode the public
+  // key. These will fail because openssl does not recognize the OAEP key type,
+  // which could happen for some TPM1.2 chips.
   if (cert_public_key_info != ek_public_key.value()) {
     LOG(ERROR) << __func__ << ": Bad certificate public key.";
     return;

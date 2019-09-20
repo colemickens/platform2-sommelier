@@ -86,6 +86,8 @@ class CryptoUtilityImpl : public CryptoUtility {
                          const std::string& ca_public_key_hex) override;
   bool GetCertificateIssuerName(const std::string& certificate,
                                 std::string* issuer_name) override;
+  bool GetCertificateSubjectPublicKeyInfo(const std::string& certificate,
+                                          std::string* public_key) override;
   bool GetCertificatePublicKey(const std::string& certificate,
                                std::string* public_key) override;
   bool GetKeyDigest(const std::string& public_key,
