@@ -16,21 +16,32 @@ namespace cert_provision {
 class MockCryptohomeProxy : public CryptohomeProxy {
  public:
   MockCryptohomeProxy() = default;
-  MOCK_METHOD0(Init, OpResult());
-  MOCK_METHOD1(CheckIfPrepared, OpResult(bool *));
-  MOCK_METHOD1(CheckIfEnrolled, OpResult(bool *));
-  MOCK_METHOD2(CreateEnrollRequest, OpResult(PCAType, brillo::SecureBlob*));
-  MOCK_METHOD2(ProcessEnrollResponse,
-               OpResult(PCAType, const brillo::SecureBlob&));
-  MOCK_METHOD3(CreateCertRequest,
-               OpResult(PCAType, CertificateProfile, brillo::SecureBlob*));
-  MOCK_METHOD3(ProcessCertResponse,
-               OpResult(const std::string&,
-                        const brillo::SecureBlob&,
-                        brillo::SecureBlob*));
-  MOCK_METHOD2(GetPublicKey,
-               OpResult(const std::string&, brillo::SecureBlob*));
-  MOCK_METHOD1(Register, OpResult(const std::string&));
+  MOCK_METHOD(OpResult, Init, (), (override));
+  MOCK_METHOD(OpResult, CheckIfPrepared, (bool*), (override));
+  MOCK_METHOD(OpResult, CheckIfEnrolled, (bool*), (override));
+  MOCK_METHOD(OpResult,
+              CreateEnrollRequest,
+              (PCAType, brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(OpResult,
+              ProcessEnrollResponse,
+              (PCAType, const brillo::SecureBlob&),
+              (override));
+  MOCK_METHOD(OpResult,
+              CreateCertRequest,
+              (PCAType, CertificateProfile, brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(OpResult,
+              ProcessCertResponse,
+              (const std::string&,
+               const brillo::SecureBlob&,
+               brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(OpResult,
+              GetPublicKey,
+              (const std::string&, brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(OpResult, Register, (const std::string&), (override));
 };
 
 }  // namespace cert_provision

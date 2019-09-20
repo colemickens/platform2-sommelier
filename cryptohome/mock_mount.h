@@ -19,31 +19,41 @@ class MockMount : public Mount {
  public:
   MockMount();
   ~MockMount();
-  MOCK_METHOD4(Init, bool(Platform*, Crypto*,
-                          UserOldestActivityTimestampCache*,
-                          PreMountCallback pre_mount_callback));
-  MOCK_METHOD1(AreSameUser, bool(const Credentials&));
-  MOCK_METHOD1(AreValid, bool(const Credentials&));
-  MOCK_METHOD3(MountCryptohome, bool(const Credentials&,
-                                           const Mount::MountArgs&,
-                                           MountError*));
-  MOCK_METHOD0(UnmountCryptohome, bool());
-  MOCK_CONST_METHOD0(IsMounted, bool());
-  MOCK_CONST_METHOD0(IsNonEphemeralMounted, bool());
-  MOCK_METHOD0(MountGuestCryptohome, bool());
-  MOCK_METHOD1(UpdateCurrentUserActivityTimestamp, bool(int)); // NOLINT
-  MOCK_CONST_METHOD0(mount_point, const base::FilePath&());
-  MOCK_CONST_METHOD1(OwnsMountPoint, bool(const base::FilePath&));
-  MOCK_METHOD0(InsertPkcs11Token, bool());
-  MOCK_METHOD0(RemovePkcs11Token, void());
-  MOCK_METHOD0(pkcs11_state, Pkcs11State());
+  MOCK_METHOD(bool,
+              Init,
+              (Platform*,
+               Crypto*,
+               UserOldestActivityTimestampCache*,
+               PreMountCallback pre_mount_callback),
+              (override));
+  MOCK_METHOD(bool, AreSameUser, (const Credentials&), (override));
+  MOCK_METHOD(bool, AreValid, (const Credentials&), (override));
+  MOCK_METHOD(bool,
+              MountCryptohome,
+              (const Credentials&, const Mount::MountArgs&, MountError*),
+              (override));
+  MOCK_METHOD(bool, UnmountCryptohome, (), (override));
+  MOCK_METHOD(bool, IsMounted, (), (const, override));
+  MOCK_METHOD(bool, IsNonEphemeralMounted, (), (const, override));
+  MOCK_METHOD(bool, MountGuestCryptohome, (), (override));
+  MOCK_METHOD(bool,
+              UpdateCurrentUserActivityTimestamp,
+              (int),
+              (override));  // NOLINT
+  MOCK_METHOD(const base::FilePath&, mount_point, (), (const, override));
+  MOCK_METHOD(bool, OwnsMountPoint, (const base::FilePath&), (const, override));
+  MOCK_METHOD(bool, InsertPkcs11Token, (), (override));
+  MOCK_METHOD(void, RemovePkcs11Token, (), (override));
+  MOCK_METHOD(Pkcs11State, pkcs11_state, (), (override));
 
   Pkcs11State Real_pkcs11_state() { return Mount::pkcs11_state(); }
 
-  MOCK_METHOD2(
+  MOCK_METHOD(
+      bool,
       MigrateToDircrypto,
-      bool(const dircrypto_data_migrator::MigrationHelper::ProgressCallback&,
-           MigrationType migration_type));
+      (const dircrypto_data_migrator::MigrationHelper::ProgressCallback&,
+       MigrationType),
+      (override));
 };
 }  // namespace cryptohome
 

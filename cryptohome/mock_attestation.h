@@ -22,94 +22,124 @@ class MockAttestation : public Attestation {
   MockAttestation(): Attestation() { }
   virtual ~MockAttestation() {}
 
-  MOCK_METHOD7(Initialize, void(Tpm*,
-                                TpmInit*,
-                                Platform*,
-                                Crypto*,
-                                InstallAttributes*,
-                                const brillo::SecureBlob&,
-                                bool));
-  MOCK_METHOD0(IsPreparedForEnrollment, bool());
-  MOCK_METHOD0(IsEnrolled, bool());
-  MOCK_METHOD0(PrepareForEnrollment, void());
-  MOCK_METHOD0(CacheEndorsementData, void());
-  MOCK_METHOD0(PrepareForEnrollmentAsync, void());
-  MOCK_METHOD1(Verify, bool(bool));
-  MOCK_METHOD1(VerifyEK, bool(bool));
-  MOCK_METHOD2(CreateEnrollRequest, bool(Attestation::PCAType,
-                                         brillo::SecureBlob*));
-  MOCK_METHOD2(Enroll, bool(Attestation::PCAType,
-                            const brillo::SecureBlob&));
-  MOCK_METHOD5(CreateCertRequest, bool(Attestation::PCAType,
-                                       CertificateProfile,
-                                       const std::string&,
-                                       const std::string&,
-                                       brillo::SecureBlob*));
-  MOCK_METHOD5(FinishCertRequest, bool(const brillo::SecureBlob&,
-                                       bool,
-                                       const std::string&,
-                                       const std::string&,
-                                       brillo::SecureBlob*));
-  MOCK_METHOD4(GetCertificateChain, bool(bool,
-                                         const std::string&,
-                                         const std::string&,
-                                         brillo::SecureBlob*));
-  MOCK_METHOD4(GetPublicKey, bool(bool,
-                                  const std::string&,
-                                  const std::string&,
-                                  brillo::SecureBlob*));
-  MOCK_METHOD3(DoesKeyExist, bool(bool,
-                                  const std::string&,
-                                  const std::string&));
-  MOCK_METHOD8(SignEnterpriseChallenge, bool(bool,
-                                             const std::string&,
-                                             const std::string&,
-                                             const std::string&,
-                                             const brillo::SecureBlob&,
-                                             bool,
-                                             const brillo::SecureBlob&,
-                                             brillo::SecureBlob*));
-  MOCK_METHOD10(SignEnterpriseVaChallenge, bool(Attestation::VAType,
-                                               bool,
-                                               const std::string&,
-                                               const std::string&,
-                                               const std::string&,
-                                               const brillo::SecureBlob&,
-                                               bool,
-                                               const brillo::SecureBlob&,
-                                               const std::string&,
-                                               brillo::SecureBlob*));
-  MOCK_METHOD5(SignSimpleChallenge, bool(bool,
-                                         const std::string&,
-                                         const std::string&,
-                                         const brillo::SecureBlob&,
-                                         brillo::SecureBlob*));
-  MOCK_METHOD4(RegisterKey, bool(bool,
-                                 const std::string&,
-                                 const std::string&,
-                                 bool));
-  MOCK_METHOD4(GetKeyPayload, bool(bool,
-                                   const std::string&,
-                                   const std::string&,
-                                   brillo::SecureBlob*));
-  MOCK_METHOD4(SetKeyPayload, bool(bool,
-                                   const std::string&,
-                                   const std::string&,
-                                   const brillo::SecureBlob&));
-  MOCK_METHOD3(DeleteKeysByPrefix, bool(bool,
-                                        const std::string&,
-                                        const std::string&));
-  MOCK_METHOD1(GetEKInfo, bool(std::string*));
-  MOCK_METHOD2(GetIdentityResetRequest, bool(const std::string&,
-                                             brillo::SecureBlob*));
-  MOCK_METHOD1(set_database_path, void(const char*));
-  MOCK_METHOD2(set_enterprise_test_key, void(Attestation::VAType,
-                                             RSA*));  // NOLINT "unnamed" param.
-  MOCK_METHOD0(ThreadMain, void());
-  MOCK_METHOD0(OnFinalized, void());
-  MOCK_METHOD3(GetDelegateCredentials, bool(brillo::Blob*,
-                                            brillo::Blob*,
-                                            bool*));
+  MOCK_METHOD(void,
+              Initialize,
+              (Tpm*,
+               TpmInit*,
+               Platform*,
+               Crypto*,
+               InstallAttributes*,
+               const brillo::SecureBlob&,
+               bool),
+              (override));
+  MOCK_METHOD(bool, IsPreparedForEnrollment, (), (override));
+  MOCK_METHOD(bool, IsEnrolled, (), (override));
+  MOCK_METHOD(void, PrepareForEnrollment, (), (override));
+  MOCK_METHOD(void, CacheEndorsementData, (), (override));
+  MOCK_METHOD(void, PrepareForEnrollmentAsync, (), (override));
+  MOCK_METHOD(bool, Verify, (bool), (override));
+  MOCK_METHOD(bool, VerifyEK, (bool), (override));
+  MOCK_METHOD(bool,
+              CreateEnrollRequest,
+              (Attestation::PCAType, brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool,
+              Enroll,
+              (Attestation::PCAType, const brillo::SecureBlob&),
+              (override));
+  MOCK_METHOD(bool,
+              CreateCertRequest,
+              (Attestation::PCAType,
+               CertificateProfile,
+               const std::string&,
+               const std::string&,
+               brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool,
+              FinishCertRequest,
+              (const brillo::SecureBlob&,
+               bool,
+               const std::string&,
+               const std::string&,
+               brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(
+      bool,
+      GetCertificateChain,
+      (bool, const std::string&, const std::string&, brillo::SecureBlob*),
+      (override));
+  MOCK_METHOD(
+      bool,
+      GetPublicKey,
+      (bool, const std::string&, const std::string&, brillo::SecureBlob*),
+      (override));
+  MOCK_METHOD(bool,
+              DoesKeyExist,
+              (bool, const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(bool,
+              SignEnterpriseChallenge,
+              (bool,
+               const std::string&,
+               const std::string&,
+               const std::string&,
+               const brillo::SecureBlob&,
+               bool,
+               const brillo::SecureBlob&,
+               brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool,
+              SignEnterpriseVaChallenge,
+              (Attestation::VAType,
+               bool,
+               const std::string&,
+               const std::string&,
+               const std::string&,
+               const brillo::SecureBlob&,
+               bool,
+               const brillo::SecureBlob&,
+               const std::string&,
+               brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool,
+              SignSimpleChallenge,
+              (bool,
+               const std::string&,
+               const std::string&,
+               const brillo::SecureBlob&,
+               brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool,
+              RegisterKey,
+              (bool, const std::string&, const std::string&, bool),
+              (override));
+  MOCK_METHOD(
+      bool,
+      GetKeyPayload,
+      (bool, const std::string&, const std::string&, brillo::SecureBlob*),
+      (override));
+  MOCK_METHOD(
+      bool,
+      SetKeyPayload,
+      (bool, const std::string&, const std::string&, const brillo::SecureBlob&),
+      (override));
+  MOCK_METHOD(bool,
+              DeleteKeysByPrefix,
+              (bool, const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(bool, GetEKInfo, (std::string*), (override));
+  MOCK_METHOD(bool,
+              GetIdentityResetRequest,
+              (const std::string&, brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(void, set_database_path, (const char*), (override));
+  MOCK_METHOD(void, set_enterprise_test_key, (Attestation::VAType, RSA*));
+  MOCK_METHOD(void, ThreadMain, (), (override));
+  MOCK_METHOD(void, OnFinalized, (), (override));
+  MOCK_METHOD(bool,
+              GetDelegateCredentials,
+              (brillo::Blob*, brillo::Blob*, bool*),
+              (override));
 };
 
 }  // namespace cryptohome

@@ -19,12 +19,15 @@ class MockNVRamBootLockbox : public NVRamBootLockbox {
   MockNVRamBootLockbox() : NVRamBootLockbox(NULL) {}
   virtual ~MockNVRamBootLockbox() {}
 
-  MOCK_METHOD2(Store, bool(const std::string&, const std::string&));
-  MOCK_METHOD2(Read, bool(const std::string&, std::string*));
-  MOCK_METHOD0(Finalize, bool());
-  MOCK_METHOD0(GetState, NVSpaceState());
-  MOCK_METHOD0(DefineSpace, bool());
-  MOCK_METHOD0(Load, bool());
+  MOCK_METHOD(bool,
+              Store,
+              (const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(bool, Read, (const std::string&, std::string*), (override));
+  MOCK_METHOD(bool, Finalize, (), (override));
+  MOCK_METHOD(NVSpaceState, GetState, (), (override));
+  MOCK_METHOD(bool, DefineSpace, (), (override));
+  MOCK_METHOD(bool, Load, (), (override));
 };
 
 }  // namespace cryptohome

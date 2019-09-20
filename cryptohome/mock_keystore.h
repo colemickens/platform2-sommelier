@@ -19,30 +19,37 @@ class MockKeyStore : public KeyStore {
   MockKeyStore();
   virtual ~MockKeyStore();
 
-  MOCK_METHOD4(Read, bool(bool is_user_specific,
-                          const std::string& username,
-                          const std::string& name,
-                          brillo::SecureBlob* key_data));
-  MOCK_METHOD4(Write, bool(bool is_user_specific,
-                           const std::string& username,
-                           const std::string& name,
-                           const brillo::SecureBlob& key_data));
-  MOCK_METHOD3(Delete, bool(bool is_user_specific,
-                            const std::string& username,
-                            const std::string& name));
-  MOCK_METHOD3(DeleteByPrefix, bool(bool is_user_specific,
-                                    const std::string& username,
-                                    const std::string& key_prefix));
-  MOCK_METHOD6(Register, bool(bool is_user_specific,
-                              const std::string& username,
-                              const std::string& label,
-                              const brillo::SecureBlob& private_key_blob,
-                              const brillo::SecureBlob& public_key_der,
-                              const brillo::SecureBlob& certificate));
-  MOCK_METHOD3(RegisterCertificate,
-               bool(bool is_user_specific,
-                    const std::string& username,
-                    const brillo::SecureBlob& certificate));
+  MOCK_METHOD(
+      bool,
+      Read,
+      (bool, const std::string&, const std::string&, brillo::SecureBlob*),
+      (override));
+  MOCK_METHOD(
+      bool,
+      Write,
+      (bool, const std::string&, const std::string&, const brillo::SecureBlob&),
+      (override));
+  MOCK_METHOD(bool,
+              Delete,
+              (bool, const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(bool,
+              DeleteByPrefix,
+              (bool, const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(bool,
+              Register,
+              (bool,
+               const std::string&,
+               const std::string&,
+               const brillo::SecureBlob&,
+               const brillo::SecureBlob&,
+               const brillo::SecureBlob&),
+              (override));
+  MOCK_METHOD(bool,
+              RegisterCertificate,
+              (bool, const std::string&, const brillo::SecureBlob&),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockKeyStore);

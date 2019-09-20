@@ -23,14 +23,18 @@ class MockCrypto : public Crypto {
   MockCrypto(): Crypto(NULL) { set_use_tpm(true); }
   virtual ~MockCrypto() {}
 
-  MOCK_CONST_METHOD4(GetOrCreateSalt, bool(const base::FilePath&,
-                                           size_t,
-                                           bool,
-                                           brillo::SecureBlob*));
-  MOCK_CONST_METHOD2(EncryptWithTpm, bool(const brillo::SecureBlob&,
-                                          std::string*));
-  MOCK_CONST_METHOD2(DecryptWithTpm, bool(const std::string&,
-                                          brillo::SecureBlob*));
+  MOCK_METHOD(bool,
+              GetOrCreateSalt,
+              (const base::FilePath&, size_t, bool, brillo::SecureBlob*),
+              (const, override));
+  MOCK_METHOD(bool,
+              EncryptWithTpm,
+              (const brillo::SecureBlob&, std::string*),
+              (const, override));
+  MOCK_METHOD(bool,
+              DecryptWithTpm,
+              (const std::string&, brillo::SecureBlob*),
+              (const, override));
 };
 
 }  // namespace cryptohome

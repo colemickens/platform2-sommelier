@@ -16,7 +16,7 @@ class MockVaultKeysetFactory : public VaultKeysetFactory {
  public:
   MockVaultKeysetFactory() {}
   virtual ~MockVaultKeysetFactory() {}
-  MOCK_METHOD2(New, VaultKeyset*(Platform*, Crypto*));
+  MOCK_METHOD(VaultKeyset*, New, (Platform*, Crypto*), (override));
 };
 }  // namespace cryptohome
 

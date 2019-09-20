@@ -16,16 +16,18 @@ class MockTpmInit : public TpmInit {
   MockTpmInit();
   ~MockTpmInit();
 
-  MOCK_METHOD1(Init, void(OwnershipCallback));
-  MOCK_METHOD1(SetupTpm, bool(bool));
-  MOCK_METHOD1(RemoveTpmOwnerDependency,
-               void(TpmPersistentState::TpmOwnerDependency));
-  MOCK_METHOD0(HasCryptohomeKey, bool());
-  MOCK_METHOD0(IsTpmReady, bool());
-  MOCK_METHOD0(IsTpmEnabled, bool());
-  MOCK_METHOD0(IsTpmOwned, bool());
-  MOCK_METHOD1(GetTpmPassword, bool(brillo::SecureBlob*));
-  MOCK_METHOD0(ShallInitialize, bool());
+  MOCK_METHOD(void, Init, (OwnershipCallback), (override));
+  MOCK_METHOD(bool, SetupTpm, (bool), (override));
+  MOCK_METHOD(void,
+              RemoveTpmOwnerDependency,
+              (TpmPersistentState::TpmOwnerDependency),
+              (override));
+  MOCK_METHOD(bool, HasCryptohomeKey, (), (override));
+  MOCK_METHOD(bool, IsTpmReady, (), (override));
+  MOCK_METHOD(bool, IsTpmEnabled, (), (override));
+  MOCK_METHOD(bool, IsTpmOwned, (), (override));
+  MOCK_METHOD(bool, GetTpmPassword, (brillo::SecureBlob*), (override));
+  MOCK_METHOD(bool, ShallInitialize, (), (override));
 };
 
 }  // namespace cryptohome

@@ -24,10 +24,11 @@ class MockKeyChallengeService : public KeyChallengeService {
   MockKeyChallengeService();
   ~MockKeyChallengeService() override;
 
-  MOCK_METHOD3(ChallengeKeyMovable,
-               void(const AccountIdentifier&,
-                    const KeyChallengeRequest&,
-                    ResponseCallback*));
+  MOCK_METHOD(void,
+              ChallengeKeyMovable,
+              (const AccountIdentifier&,
+               const KeyChallengeRequest&,
+               ResponseCallback*));
 
   void ChallengeKey(const AccountIdentifier& account_id,
                     const KeyChallengeRequest& key_challenge_request,

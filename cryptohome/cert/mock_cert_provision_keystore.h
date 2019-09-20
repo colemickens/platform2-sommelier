@@ -16,20 +16,28 @@ namespace cert_provision {
 class MockKeyStore : public KeyStore {
  public:
   MockKeyStore() = default;
-  MOCK_METHOD0(Init, OpResult());
-  MOCK_METHOD0(TearDown, void());
-  MOCK_METHOD5(Sign,
-               OpResult(const std::string&,
-                        const std::string&,
-                        SignMechanism,
-                        const std::string&,
-                        std::string*));
-  MOCK_METHOD2(ReadProvisionStatus,
-               OpResult(const std::string&, google::protobuf::MessageLite*));
-  MOCK_METHOD2(WriteProvisionStatus,
-               OpResult(const std::string&,
-                        const google::protobuf::MessageLite&));
-  MOCK_METHOD2(DeleteKeys, OpResult(const std::string&, const std::string&));
+  MOCK_METHOD(OpResult, Init, (), (override));
+  MOCK_METHOD(void, TearDown, (), (override));
+  MOCK_METHOD(OpResult,
+              Sign,
+              (const std::string&,
+               const std::string&,
+               SignMechanism,
+               const std::string&,
+               std::string*),
+              (override));
+  MOCK_METHOD(OpResult,
+              ReadProvisionStatus,
+              (const std::string&, google::protobuf::MessageLite*),
+              (override));
+  MOCK_METHOD(OpResult,
+              WriteProvisionStatus,
+              (const std::string&, const google::protobuf::MessageLite&),
+              (override));
+  MOCK_METHOD(OpResult,
+              DeleteKeys,
+              (const std::string&, const std::string&),
+              (override));
 };
 
 }  // namespace cert_provision

@@ -86,11 +86,18 @@ class LegacyCryptohomeInterfaceAdaptorForTesting
                                          misc_proxy,
                                          platform) {}
 
-  MOCK_METHOD3(VirtualSendAsyncCallStatusSignal, void(int32_t, bool, int32_t));
-  MOCK_METHOD3(VirtualSendAsyncCallStatusWithDataSignal,
-               void(int32_t, bool, const std::vector<uint8_t>&));
-  MOCK_METHOD3(VirtualSendDircryptoMigrationProgressSignal,
-               void(int32_t, uint64_t, uint64_t));
+  MOCK_METHOD(void,
+              VirtualSendAsyncCallStatusSignal,
+              (int32_t, bool, int32_t),
+              (override));
+  MOCK_METHOD(void,
+              VirtualSendAsyncCallStatusWithDataSignal,
+              (int32_t, bool, const std::vector<uint8_t>&),
+              (override));
+  MOCK_METHOD(void,
+              VirtualSendDircryptoMigrationProgressSignal,
+              (int32_t, uint64_t, uint64_t),
+              (override));
 };
 
 // Some common constants used for testing.

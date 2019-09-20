@@ -22,15 +22,21 @@ class MockInstallAttributes : public InstallAttributes {
   MockInstallAttributes();
   virtual ~MockInstallAttributes();
 
-  MOCK_METHOD1(SetTpm, void(Tpm*));  // NOLINT(readability/function)
-  MOCK_METHOD1(Init, bool(TpmInit*));  // NOLINT(readability/function)
-  MOCK_CONST_METHOD2(Get, bool(const std::string&, brillo::Blob*));
-  MOCK_CONST_METHOD3(GetByIndex, bool(int, std::string*, brillo::Blob*));
-  MOCK_METHOD2(Set, bool(const std::string&, const brillo::Blob&));
-  MOCK_METHOD0(Finalize, bool());
-  MOCK_CONST_METHOD0(Count, int());
-  MOCK_CONST_METHOD0(is_secure, bool());
-  MOCK_CONST_METHOD0(status, InstallAttributes::Status());
+  MOCK_METHOD(void, SetTpm, (Tpm*), (override));
+  MOCK_METHOD(bool, Init, (TpmInit*), (override));
+  MOCK_METHOD(bool,
+              Get,
+              (const std::string&, brillo::Blob*),
+              (const, override));
+  MOCK_METHOD(bool,
+              GetByIndex,
+              (int, std::string*, brillo::Blob*),
+              (const, override));
+  MOCK_METHOD(bool, Set, (const std::string&, const brillo::Blob&), (override));
+  MOCK_METHOD(bool, Finalize, (), (override));
+  MOCK_METHOD(int, Count, (), (const, override));
+  MOCK_METHOD(bool, is_secure, (), (const, override));
+  MOCK_METHOD(InstallAttributes::Status, status, (), (const, override));
 };
 
 }  // namespace cryptohome

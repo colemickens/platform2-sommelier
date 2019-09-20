@@ -25,45 +25,71 @@ class MockHomeDirs : public HomeDirs {
   MockHomeDirs();
   virtual ~MockHomeDirs();
 
-  MOCK_METHOD3(Init, bool(Platform*, Crypto*,
-                          UserOldestActivityTimestampCache*));
-  MOCK_METHOD0(FreeDiskSpace, void());
-  MOCK_METHOD1(GetPlainOwner, bool(std::string*));
-  MOCK_METHOD1(AreCredentialsValid, bool(const Credentials&));
-  MOCK_METHOD4(GetValidKeyset,
-               bool(const Credentials&, VaultKeyset*, int*, MountError*));
-  MOCK_METHOD1(Remove, bool(const std::string&));
-  MOCK_METHOD2(Rename, bool(const std::string&, const std::string&));
-  MOCK_METHOD1(ComputeSize, int64_t(const std::string&));
-  MOCK_METHOD3(Migrate, bool(const Credentials&,
-                             const brillo::SecureBlob&,
-                             scoped_refptr<Mount>));
-  MOCK_CONST_METHOD1(Exists, bool(const std::string&));
-  MOCK_CONST_METHOD2(GetVaultKeyset,
-                     VaultKeyset*(const std::string&, const std::string&));
-  MOCK_CONST_METHOD2(GetVaultKeysets,
-                     bool(const std::string&, std::vector<int>*));
-  MOCK_CONST_METHOD2(GetVaultKeysetLabels,
-                     bool(const std::string&, std::vector<std::string>*));
-  MOCK_METHOD5(AddKeyset, CryptohomeErrorCode(const Credentials&,
-                                              const brillo::SecureBlob&,
-                                              const KeyData*,
-                                              bool,
-                                              int*));
-  MOCK_METHOD2(RemoveKeyset, CryptohomeErrorCode(const Credentials&,
-                                                 const KeyData&));
-  MOCK_METHOD3(UpdateKeyset,
-               CryptohomeErrorCode(const Credentials& credentials,
-                                   const Key* changed_data,
-                                   const std::string& authorization_signature));
-  MOCK_METHOD2(ForceRemoveKeyset, bool(const std::string&, int));
-  MOCK_METHOD3(MoveKeyset, bool(const std::string&, int, int));
-  MOCK_CONST_METHOD0(AmountOfFreeDiskSpace, int64_t(void));
-  MOCK_METHOD0(GetUnmountedAndroidDataCount, int32_t());
+  MOCK_METHOD(bool,
+              Init,
+              (Platform*, Crypto*, UserOldestActivityTimestampCache*),
+              (override));
+  MOCK_METHOD(void, FreeDiskSpace, (), (override));
+  MOCK_METHOD(bool, GetPlainOwner, (std::string*), (override));
+  MOCK_METHOD(bool, AreCredentialsValid, (const Credentials&), (override));
+  MOCK_METHOD(bool,
+              GetValidKeyset,
+              (const Credentials&, VaultKeyset*, int*, MountError*),
+              (override));
+  MOCK_METHOD(bool, Remove, (const std::string&), (override));
+  MOCK_METHOD(bool,
+              Rename,
+              (const std::string&, const std::string&),
+              (override));
+  MOCK_METHOD(int64_t, ComputeSize, (const std::string&), (override));
+  MOCK_METHOD(bool,
+              Migrate,
+              (const Credentials&,
+               const brillo::SecureBlob&,
+               scoped_refptr<Mount>),
+              (override));
+  MOCK_METHOD(bool, Exists, (const std::string&), (const, override));
+  MOCK_METHOD(VaultKeyset*,
+              GetVaultKeyset,
+              (const std::string&, const std::string&),
+              (const, override));
+  MOCK_METHOD(bool,
+              GetVaultKeysets,
+              (const std::string&, std::vector<int>*),
+              (const, override));
+  MOCK_METHOD(bool,
+              GetVaultKeysetLabels,
+              (const std::string&, std::vector<std::string>*),
+              (const, override));
+  MOCK_METHOD(CryptohomeErrorCode,
+              AddKeyset,
+              (const Credentials&,
+               const brillo::SecureBlob&,
+               const KeyData*,
+               bool,
+               int*),
+              (override));
+  MOCK_METHOD(CryptohomeErrorCode,
+              RemoveKeyset,
+              (const Credentials&, const KeyData&),
+              (override));
+  MOCK_METHOD(CryptohomeErrorCode,
+              UpdateKeyset,
+              (const Credentials& credentials,
+               const Key* changed_data,
+               const std::string& authorization_signature),
+              (override));
+  MOCK_METHOD(bool, ForceRemoveKeyset, (const std::string&, int), (override));
+  MOCK_METHOD(bool, MoveKeyset, (const std::string&, int, int), (override));
+  MOCK_METHOD(int64_t, AmountOfFreeDiskSpace, (), (const, override));
+  MOCK_METHOD(int32_t, GetUnmountedAndroidDataCount, (), (override));
 
-  MOCK_CONST_METHOD1(NeedsDircryptoMigration, bool(const std::string&));
+  MOCK_METHOD(bool,
+              NeedsDircryptoMigration,
+              (const std::string&),
+              (const, override));
 
-  MOCK_CONST_METHOD0(SetLockedToSingleUser, bool());
+  MOCK_METHOD(bool, SetLockedToSingleUser, (), (const, override));
 
   // Some unit tests require that MockHomeDirs actually call the real
   // GetPlainOwner() function. In those cases, you can use this function

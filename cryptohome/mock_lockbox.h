@@ -17,13 +17,13 @@ class MockLockbox : public Lockbox {
  public:
   MockLockbox();
   virtual ~MockLockbox();
-  MOCK_METHOD1(Reset, bool(LockboxError*));
-  MOCK_METHOD2(Store, bool(const brillo::Blob&, LockboxError*));
+  MOCK_METHOD(bool, Reset, (LockboxError*), (override));
+  MOCK_METHOD(bool, Store, (const brillo::Blob&, LockboxError*), (override));
 
-  MOCK_METHOD1(set_tpm, void(Tpm*));
-  MOCK_METHOD0(tpm, Tpm*());
+  MOCK_METHOD(void, set_tpm, (Tpm*), (override));
+  MOCK_METHOD(Tpm*, tpm, (), (override));
 
-  MOCK_METHOD1(set_platform, void(Platform*));
+  MOCK_METHOD(void, set_platform, (Platform*), (override));
 };
 
 }  // namespace cryptohome

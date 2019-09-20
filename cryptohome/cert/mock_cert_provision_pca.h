@@ -16,10 +16,12 @@ namespace cert_provision {
 class MockPCAProxy : public PCAProxy {
  public:
   MockPCAProxy() : PCAProxy("") {}
-  MOCK_METHOD3(MakeRequest,
-               OpResult(const std::string&,
-                        const brillo::SecureBlob&,
-                        brillo::SecureBlob*));
+  MOCK_METHOD(OpResult,
+              MakeRequest,
+              (const std::string&,
+               const brillo::SecureBlob&,
+               brillo::SecureBlob*),
+              (override));
 };
 
 }  // namespace cert_provision

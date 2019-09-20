@@ -23,146 +23,220 @@ class MockTpm : public Tpm {
  public:
   MockTpm();
   ~MockTpm();
-  MOCK_METHOD0(GetVersion, TpmVersion());
-  MOCK_METHOD4(EncryptBlob, TpmRetryAction(TpmKeyHandle,
-                                           const brillo::SecureBlob&,
-                                           const brillo::SecureBlob&,
-                                           brillo::SecureBlob*));
-  MOCK_METHOD5(DecryptBlob,
-      TpmRetryAction(TpmKeyHandle,
-                     const brillo::SecureBlob&,
-                     const brillo::SecureBlob&,
-                     const std::map<uint32_t, std::string>& pcr_map,
-                     brillo::SecureBlob*));
-  MOCK_METHOD5(SealToPcrWithAuthorization,
-      TpmRetryAction(TpmKeyHandle,
-                     const brillo::SecureBlob&,
-                     const brillo::SecureBlob&,
-                     const std::map<uint32_t, std::string>& pcr_map,
-                     brillo::SecureBlob*));
-  MOCK_METHOD5(UnsealWithAuthorization,
-      TpmRetryAction(TpmKeyHandle,
-                     const brillo::SecureBlob&,
-                     const brillo::SecureBlob&,
-                     const std::map<uint32_t, std::string>& pcr_map,
-                     brillo::SecureBlob*));
-  MOCK_METHOD2(GetPublicKeyHash, TpmRetryAction(TpmKeyHandle,
-                                                brillo::SecureBlob*));
-  MOCK_METHOD1(GetOwnerPassword, bool(brillo::SecureBlob*));
-  MOCK_METHOD0(IsEnabled, bool());
-  MOCK_METHOD1(SetIsEnabled, void(bool));
-  MOCK_METHOD0(IsOwned, bool());
-  MOCK_METHOD1(SetIsOwned, void(bool));
-  MOCK_METHOD2(PerformEnabledOwnedCheck, bool(bool*, bool*));
-  MOCK_METHOD0(IsInitialized, bool());
-  MOCK_METHOD1(SetIsInitialized, void(bool));
-  MOCK_METHOD0(IsBeingOwned, bool());
-  MOCK_METHOD1(SetIsBeingOwned, void(bool));
-  MOCK_METHOD2(GetRandomDataBlob, bool(size_t, brillo::Blob*));
-  MOCK_METHOD2(GetRandomDataSecureBlob, bool(size_t, brillo::SecureBlob*));
-  MOCK_METHOD1(GetAlertsData, bool(Tpm::AlertsData*));
-  MOCK_METHOD3(DefineNvram, bool(uint32_t, size_t, uint32_t));
-  MOCK_METHOD2(WriteNvram, bool(uint32_t, const brillo::SecureBlob&));
-  MOCK_METHOD2(ReadNvram, bool(uint32_t, brillo::SecureBlob*));
-  MOCK_METHOD1(DestroyNvram, bool(uint32_t));
-  MOCK_METHOD1(IsNvramDefined, bool(uint32_t));
-  MOCK_METHOD1(IsNvramLocked, bool(uint32_t));
-  MOCK_METHOD1(WriteLockNvram, bool(uint32_t));
-  MOCK_METHOD1(GetNvramSize, unsigned int(uint32_t));
-  MOCK_METHOD1(GetEndorsementPublicKey, TpmRetryAction(brillo::SecureBlob*));
-  MOCK_METHOD3(GetEndorsementPublicKeyWithDelegate,
-      TpmRetryAction(brillo::SecureBlob*,
-                     const brillo::Blob&,
-                     const brillo::Blob&));
-  MOCK_METHOD1(GetEndorsementCredential, bool(brillo::SecureBlob*));
-  MOCK_METHOD9(MakeIdentity, bool(brillo::SecureBlob*,
-                                  brillo::SecureBlob*,
-                                  brillo::SecureBlob*,
-                                  brillo::SecureBlob*,
-                                  brillo::SecureBlob*,
-                                  brillo::SecureBlob*,
-                                  brillo::SecureBlob*,
-                                  brillo::SecureBlob*,
-                                  brillo::SecureBlob*));
-  MOCK_METHOD6(QuotePCR,
-               bool(uint32_t,
-                    const brillo::SecureBlob&,
-                    const brillo::SecureBlob&,
-                    brillo::Blob*,
-                    brillo::SecureBlob*,
-                    brillo::SecureBlob*));
-  MOCK_METHOD2(SealToPCR0, bool(const brillo::SecureBlob&,
-                                brillo::SecureBlob*));
-  MOCK_METHOD2(Unseal, bool(const brillo::SecureBlob&, brillo::SecureBlob*));
-  MOCK_METHOD7(CreateCertifiedKey, bool(const brillo::SecureBlob&,
-                                        const brillo::SecureBlob&,
-                                        brillo::SecureBlob*,
-                                        brillo::SecureBlob*,
-                                        brillo::SecureBlob*,
-                                        brillo::SecureBlob*,
-                                        brillo::SecureBlob*));
-  MOCK_METHOD5(CreateDelegate,
-               bool(const std::set<uint32_t>&,
-                    uint8_t,
-                    uint8_t,
-                    brillo::Blob*,
-                    brillo::Blob*));
-  MOCK_METHOD6(ActivateIdentity, bool(const brillo::Blob&,
-                                      const brillo::Blob&,
-                                      const brillo::SecureBlob&,
-                                      const brillo::SecureBlob&,
-                                      const brillo::SecureBlob&,
-                                      brillo::SecureBlob*));
-  MOCK_METHOD4(Sign,
-               bool(const brillo::SecureBlob&,
-                    const brillo::SecureBlob&,
-                    uint32_t,
-                    brillo::SecureBlob*));
-  MOCK_METHOD2(ExtendPCR, bool(uint32_t, const brillo::Blob&));
-  MOCK_METHOD2(ReadPCR, bool(uint32_t, brillo::Blob*));
-  MOCK_METHOD5(CreatePCRBoundKey, bool(const std::map<uint32_t, std::string>&,
-                                       AsymmetricKeyUsage key_type,
-                                       brillo::SecureBlob*,
-                                       brillo::SecureBlob*,
-                                       brillo::SecureBlob*));
-  MOCK_METHOD3(VerifyPCRBoundKey, bool(const std::map<uint32_t, std::string>&,
-                                       const brillo::SecureBlob&,
-                                       const brillo::SecureBlob&));
-  MOCK_METHOD0(IsEndorsementKeyAvailable, bool());
-  MOCK_METHOD0(CreateEndorsementKey, bool());
-  MOCK_METHOD2(TakeOwnership, bool(int, const brillo::SecureBlob&));
-  MOCK_METHOD1(InitializeSrk, bool(const brillo::SecureBlob&));
-  MOCK_METHOD2(ChangeOwnerPassword, bool(const brillo::SecureBlob&,
-                                         const brillo::SecureBlob&));
-  MOCK_METHOD1(TestTpmAuth, bool(const brillo::SecureBlob&));
-  MOCK_METHOD1(SetOwnerPassword, void(const brillo::SecureBlob&));
-  MOCK_METHOD3(WrapRsaKey, bool(const brillo::SecureBlob&,
-                                const brillo::SecureBlob&,
-                                brillo::SecureBlob*));
-  MOCK_METHOD2(LoadWrappedKey, TpmRetryAction(const brillo::SecureBlob&,
-                                              ScopedKeyHandle*));
-  MOCK_METHOD2(LegacyLoadCryptohomeKey, bool(ScopedKeyHandle*,
-                                             brillo::SecureBlob*));
-  MOCK_METHOD1(CloseHandle, void(TpmKeyHandle));
-  MOCK_METHOD2(GetStatus, void(TpmKeyHandle, TpmStatusInfo*));
-  MOCK_METHOD0(IsSrkRocaVulnerable, base::Optional<bool>());
-  MOCK_METHOD4(GetDictionaryAttackInfo, bool(int*, int*, bool*, int*));
-  MOCK_METHOD2(ResetDictionaryAttackMitigation,
-               bool(const brillo::Blob&, const brillo::Blob&));
-  MOCK_METHOD0(DeclareTpmFirmwareStable, void());
-  MOCK_METHOD1(RemoveOwnerDependency,
-               bool(TpmPersistentState::TpmOwnerDependency));
-  MOCK_METHOD0(ClearStoredPassword, bool());
-  MOCK_METHOD1(GetVersionInfo, bool(TpmVersionInfo*));
-  MOCK_METHOD1(GetIFXFieldUpgradeInfo, bool(IFXFieldUpgradeInfo*));
-  MOCK_METHOD1(SetUserType, bool(Tpm::UserType));
-  MOCK_METHOD1(GetRsuDeviceId, bool(std::string*));
-  MOCK_METHOD0(GetLECredentialBackend, LECredentialBackend*());
-  MOCK_METHOD0(GetSignatureSealingBackend, SignatureSealingBackend*());
-  MOCK_METHOD0(HandleOwnershipTakenSignal, void());
-  MOCK_METHOD3(GetDelegate, bool(brillo::Blob*, brillo::Blob*, bool*));
-  MOCK_METHOD0(DoesUseTpmManager, bool());
-  MOCK_METHOD0(CanResetDictionaryAttackWithCurrentPCR0, bool());
+  MOCK_METHOD(TpmVersion, GetVersion, (), (override));
+  MOCK_METHOD(TpmRetryAction,
+              EncryptBlob,
+              (TpmKeyHandle,
+               const brillo::SecureBlob&,
+               const brillo::SecureBlob&,
+               brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(TpmRetryAction,
+              DecryptBlob,
+              (TpmKeyHandle,
+               const brillo::SecureBlob&,
+               const brillo::SecureBlob&,
+               (const std::map<uint32_t, std::string>&),
+               brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(TpmRetryAction,
+              SealToPcrWithAuthorization,
+              (TpmKeyHandle,
+               const brillo::SecureBlob&,
+               const brillo::SecureBlob&,
+               (const std::map<uint32_t, std::string>&),
+               brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(TpmRetryAction,
+              UnsealWithAuthorization,
+              (TpmKeyHandle,
+               const brillo::SecureBlob&,
+               const brillo::SecureBlob&,
+               (const std::map<uint32_t, std::string>&),
+               brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(TpmRetryAction,
+              GetPublicKeyHash,
+              (TpmKeyHandle, brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool, GetOwnerPassword, (brillo::SecureBlob*), (override));
+  MOCK_METHOD(bool, IsEnabled, (), (override));
+  MOCK_METHOD(void, SetIsEnabled, (bool), (override));
+  MOCK_METHOD(bool, IsOwned, (), (override));
+  MOCK_METHOD(void, SetIsOwned, (bool), (override));
+  MOCK_METHOD(bool, PerformEnabledOwnedCheck, (bool*, bool*), (override));
+  MOCK_METHOD(bool, IsInitialized, (), (override));
+  MOCK_METHOD(void, SetIsInitialized, (bool), (override));
+  MOCK_METHOD(bool, IsBeingOwned, (), (override));
+  MOCK_METHOD(void, SetIsBeingOwned, (bool), (override));
+  MOCK_METHOD(bool, GetRandomDataBlob, (size_t, brillo::Blob*), (override));
+  MOCK_METHOD(bool,
+              GetRandomDataSecureBlob,
+              (size_t, brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool, GetAlertsData, (Tpm::AlertsData*), (override));
+  MOCK_METHOD(bool, DefineNvram, (uint32_t, size_t, uint32_t), (override));
+  MOCK_METHOD(bool,
+              WriteNvram,
+              (uint32_t, const brillo::SecureBlob&),
+              (override));
+  MOCK_METHOD(bool, ReadNvram, (uint32_t, brillo::SecureBlob*), (override));
+  MOCK_METHOD(bool, DestroyNvram, (uint32_t), (override));
+  MOCK_METHOD(bool, IsNvramDefined, (uint32_t), (override));
+  MOCK_METHOD(bool, IsNvramLocked, (uint32_t), (override));
+  MOCK_METHOD(bool, WriteLockNvram, (uint32_t), (override));
+  MOCK_METHOD(unsigned int, GetNvramSize, (uint32_t), (override));
+  MOCK_METHOD(TpmRetryAction,
+              GetEndorsementPublicKey,
+              (brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(TpmRetryAction,
+              GetEndorsementPublicKeyWithDelegate,
+              (brillo::SecureBlob*, const brillo::Blob&, const brillo::Blob&),
+              (override));
+  MOCK_METHOD(bool,
+              GetEndorsementCredential,
+              (brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool,
+              MakeIdentity,
+              (brillo::SecureBlob*,
+               brillo::SecureBlob*,
+               brillo::SecureBlob*,
+               brillo::SecureBlob*,
+               brillo::SecureBlob*,
+               brillo::SecureBlob*,
+               brillo::SecureBlob*,
+               brillo::SecureBlob*,
+               brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool,
+              QuotePCR,
+              (uint32_t,
+               const brillo::SecureBlob&,
+               const brillo::SecureBlob&,
+               brillo::Blob*,
+               brillo::SecureBlob*,
+               brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool,
+              SealToPCR0,
+              (const brillo::SecureBlob&, brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool,
+              Unseal,
+              (const brillo::SecureBlob&, brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool,
+              CreateCertifiedKey,
+              (const brillo::SecureBlob&,
+               const brillo::SecureBlob&,
+               brillo::SecureBlob*,
+               brillo::SecureBlob*,
+               brillo::SecureBlob*,
+               brillo::SecureBlob*,
+               brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool,
+              CreateDelegate,
+              (const std::set<uint32_t>&,
+               uint8_t,
+               uint8_t,
+               brillo::Blob*,
+               brillo::Blob*),
+              (override));
+  MOCK_METHOD(bool,
+              ActivateIdentity,
+              (const brillo::Blob&,
+               const brillo::Blob&,
+               const brillo::SecureBlob&,
+               const brillo::SecureBlob&,
+               const brillo::SecureBlob&,
+               brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool,
+              Sign,
+              (const brillo::SecureBlob&,
+               const brillo::SecureBlob&,
+               uint32_t,
+               brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool, ExtendPCR, (uint32_t, const brillo::Blob&), (override));
+  MOCK_METHOD(bool, ReadPCR, (uint32_t, brillo::Blob*), (override));
+  MOCK_METHOD(bool,
+              CreatePCRBoundKey,
+              ((const std::map<uint32_t, std::string>&),
+               AsymmetricKeyUsage,
+               brillo::SecureBlob*,
+               brillo::SecureBlob*,
+               brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool,
+              VerifyPCRBoundKey,
+              ((const std::map<uint32_t, std::string>&),
+               const brillo::SecureBlob&,
+               const brillo::SecureBlob&),
+              (override));
+  MOCK_METHOD(bool, IsEndorsementKeyAvailable, (), (override));
+  MOCK_METHOD(bool, CreateEndorsementKey, (), (override));
+  MOCK_METHOD(bool,
+              TakeOwnership,
+              (int, const brillo::SecureBlob&),
+              (override));
+  MOCK_METHOD(bool, InitializeSrk, (const brillo::SecureBlob&), (override));
+  MOCK_METHOD(bool,
+              ChangeOwnerPassword,
+              (const brillo::SecureBlob&, const brillo::SecureBlob&),
+              (override));
+  MOCK_METHOD(bool, TestTpmAuth, (const brillo::SecureBlob&), (override));
+  MOCK_METHOD(void, SetOwnerPassword, (const brillo::SecureBlob&), (override));
+  MOCK_METHOD(bool,
+              WrapRsaKey,
+              (const brillo::SecureBlob&,
+               const brillo::SecureBlob&,
+               brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(TpmRetryAction,
+              LoadWrappedKey,
+              (const brillo::SecureBlob&, ScopedKeyHandle*),
+              (override));
+  MOCK_METHOD(bool,
+              LegacyLoadCryptohomeKey,
+              (ScopedKeyHandle*, brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(void, CloseHandle, (TpmKeyHandle), (override));
+  MOCK_METHOD(void, GetStatus, (TpmKeyHandle, TpmStatusInfo*), (override));
+  MOCK_METHOD(base::Optional<bool>, IsSrkRocaVulnerable, (), (override));
+  MOCK_METHOD(bool,
+              GetDictionaryAttackInfo,
+              (int*, int*, bool*, int*),
+              (override));
+  MOCK_METHOD(bool,
+              ResetDictionaryAttackMitigation,
+              (const brillo::Blob&, const brillo::Blob&),
+              (override));
+  MOCK_METHOD(void, DeclareTpmFirmwareStable, (), (override));
+  MOCK_METHOD(bool,
+              RemoveOwnerDependency,
+              (TpmPersistentState::TpmOwnerDependency),
+              (override));
+  MOCK_METHOD(bool, ClearStoredPassword, (), (override));
+  MOCK_METHOD(bool, GetVersionInfo, (TpmVersionInfo*), (override));
+  MOCK_METHOD(bool, GetIFXFieldUpgradeInfo, (IFXFieldUpgradeInfo*), (override));
+  MOCK_METHOD(bool, SetUserType, (Tpm::UserType), (override));
+  MOCK_METHOD(bool, GetRsuDeviceId, (std::string*), (override));
+  MOCK_METHOD(LECredentialBackend*, GetLECredentialBackend, (), (override));
+  MOCK_METHOD(SignatureSealingBackend*,
+              GetSignatureSealingBackend,
+              (),
+              (override));
+  MOCK_METHOD(void, HandleOwnershipTakenSignal, (), (override));
+  MOCK_METHOD(bool,
+              GetDelegate,
+              (brillo::Blob*, brillo::Blob*, bool*),
+              (override));
+  MOCK_METHOD(bool, DoesUseTpmManager, (), (override));
+  MOCK_METHOD(bool, CanResetDictionaryAttackWithCurrentPCR0, (), (override));
 
  private:
   TpmRetryAction XorDecrypt(TpmKeyHandle _key,

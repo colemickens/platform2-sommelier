@@ -17,12 +17,17 @@ class MockBootLockbox : public BootLockbox {
   MockBootLockbox() : BootLockbox(NULL, NULL, NULL) {}
   virtual ~MockBootLockbox() {}
 
-  MOCK_METHOD2(Sign, bool(const brillo::Blob&, brillo::SecureBlob*));
-  MOCK_METHOD2(Verify, bool(const brillo::Blob&,
-                            const brillo::SecureBlob&));
-  MOCK_METHOD0(FinalizeBoot, bool());
-  MOCK_METHOD0(IsFinalized, bool());
-  MOCK_METHOD0(PreLoadKey, bool());
+  MOCK_METHOD(bool,
+              Sign,
+              (const brillo::Blob&, brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool,
+              Verify,
+              (const brillo::Blob&, const brillo::SecureBlob&),
+              (override));
+  MOCK_METHOD(bool, FinalizeBoot, (), (override));
+  MOCK_METHOD(bool, IsFinalized, (), (override));
+  MOCK_METHOD(bool, PreLoadKey, (), (override));
 };
 
 }  // namespace cryptohome

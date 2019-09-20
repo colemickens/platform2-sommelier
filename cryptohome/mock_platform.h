@@ -38,8 +38,8 @@ class MockFileEnumerator : public FileEnumerator {
     entries_.emplace_back(FileInfo(path, s));
   }
 
-  MOCK_METHOD0(Next, base::FilePath(void));
-  MOCK_METHOD0(GetInfo, FileInfo(void));
+  MOCK_METHOD(base::FilePath, Next, (), (override));
+  MOCK_METHOD(FileInfo, GetInfo, (), (override));
 
   std::vector<FileInfo> entries_;
 
@@ -96,151 +96,297 @@ class MockPlatform : public Platform {
  public:
   MockPlatform();
   virtual ~MockPlatform();
-  MOCK_METHOD5(Mount, bool(const base::FilePath&, const base::FilePath&,
-                           const std::string&, uint32_t, const std::string&));
-  MOCK_METHOD2(Bind, bool(const base::FilePath&, const base::FilePath&));
-  MOCK_METHOD3(Unmount, bool(const base::FilePath&, bool, bool*));
-  MOCK_METHOD1(LazyUnmount, void(const base::FilePath&));
-  MOCK_METHOD1(GetLoopDeviceMounts, bool(
-      std::multimap<const base::FilePath, const base::FilePath>*));
-  MOCK_METHOD2(GetMountsBySourcePrefix, bool(const base::FilePath&,
-                  std::multimap<const base::FilePath, const base::FilePath>*));
-  MOCK_METHOD1(IsDirectoryMounted, bool(const base::FilePath&));
-  MOCK_METHOD2(GetProcessesWithOpenFiles, void(const base::FilePath&,
-                                          std::vector<ProcessInformation>*));
-  MOCK_CONST_METHOD4(GetOwnership,
-                     bool(const base::FilePath&, uid_t*, gid_t*, bool));
-  MOCK_CONST_METHOD4(SetOwnership,
-                     bool(const base::FilePath&, uid_t, gid_t, bool));
-  MOCK_CONST_METHOD2(GetPermissions, bool(const base::FilePath&, mode_t*));
-  MOCK_CONST_METHOD2(SetPermissions, bool(const base::FilePath&, mode_t));
-  MOCK_CONST_METHOD3(SetGroupAccessible, bool(const base::FilePath&,
-                                              gid_t group_id,
-                                              mode_t group_mode));
-  MOCK_CONST_METHOD1(SetMask, int(int));
-  MOCK_CONST_METHOD3(GetUserId, bool(const std::string&, uid_t*, gid_t*));
-  MOCK_CONST_METHOD2(GetGroupId, bool(const std::string&, gid_t*));
-  MOCK_CONST_METHOD1(AmountOfFreeDiskSpace, int64_t(const base::FilePath&));
-  MOCK_CONST_METHOD2(GetQuotaCurrentSpaceForUid,
-                     int64_t(const base::FilePath&, uid_t));
-  MOCK_CONST_METHOD2(GetQuotaCurrentSpaceForGid,
-                     int64_t(const base::FilePath&, gid_t));
-  MOCK_METHOD1(FileExists, bool(const base::FilePath&));
-  MOCK_METHOD2(Access, int(const base::FilePath&, uint32_t));
-  MOCK_METHOD2(GetFileSize, bool(const base::FilePath&, int64_t*));
-  MOCK_METHOD1(ComputeDirectorySize, int64_t(const base::FilePath&));
-  MOCK_METHOD2(OpenFile, FILE*(const base::FilePath&, const char*));
-  MOCK_METHOD3(InitializeFile,
-               void(base::File*, const base::FilePath&, uint32_t));
-  MOCK_METHOD1(LockFile, bool(int));
-  MOCK_METHOD1(CloseFile, bool(FILE*));  // NOLINT(readability/function)
-  MOCK_METHOD1(CreateAndOpenTemporaryFile, FILE*(base::FilePath*));
-  MOCK_METHOD2(Stat, bool(const base::FilePath&, struct stat*));
-  MOCK_METHOD2(HasExtendedFileAttribute,
-               bool(const base::FilePath&, const std::string&));
-  MOCK_METHOD2(ListExtendedFileAttributes,
-               bool(const base::FilePath&, std::vector<std::string>*));
-  MOCK_METHOD3(GetExtendedFileAttributeAsString,
-               bool(const base::FilePath&, const std::string&, std::string*));
-  MOCK_METHOD4(
-      GetExtendedFileAttribute,
-      bool(const base::FilePath&, const std::string&, char*, ssize_t size));
-  MOCK_METHOD4(
-      SetExtendedFileAttribute,
-      bool(const base::FilePath&, const std::string&, const char*, size_t));
-  MOCK_METHOD2(RemoveExtendedFileAttribute,
-               bool(const base::FilePath&, const std::string&));
-  MOCK_METHOD2(GetExtFileAttributes, bool(const base::FilePath&, int*));
-  MOCK_METHOD2(SetExtFileAttributes, bool(const base::FilePath&, int));
-  MOCK_METHOD1(HasNoDumpFileAttribute, bool(const base::FilePath&));
-  MOCK_METHOD2(ReadFile, bool(const base::FilePath&, brillo::Blob*));
-  MOCK_METHOD2(ReadFileToString, bool(const base::FilePath&, std::string*));
-  MOCK_METHOD2(ReadFileToSecureBlob,
-               bool(const base::FilePath&, brillo::SecureBlob*));
-  MOCK_METHOD2(Rename, bool(const base::FilePath&, const base::FilePath&));
-  MOCK_METHOD2(WriteOpenFile, bool(FILE*, const brillo::Blob&));
-  MOCK_METHOD2(WriteFile, bool(const base::FilePath&, const brillo::Blob&));
-  MOCK_METHOD2(WriteSecureBlobToFile, bool(const base::FilePath&,
-                                           const brillo::SecureBlob&));
-  MOCK_METHOD3(WriteFileAtomic, bool(const base::FilePath&,
-                                     const brillo::Blob&,
-                                     mode_t mode));
-  MOCK_METHOD3(WriteSecureBlobToFileAtomic, bool(const base::FilePath&,
-                                                 const brillo::SecureBlob&,
-                                                 mode_t mode));
-  MOCK_METHOD3(WriteFileAtomicDurable, bool(const base::FilePath&,
-                                            const brillo::Blob&,
-                                            mode_t mode));
-  MOCK_METHOD3(WriteSecureBlobToFileAtomicDurable,
-               bool(const base::FilePath&,
-                    const brillo::SecureBlob&,
-                    mode_t mode));
-  MOCK_METHOD2(WriteStringToFile, bool(const base::FilePath&,
-                                       const std::string&));
-  MOCK_METHOD3(WriteStringToFileAtomicDurable, bool(const base::FilePath&,
-                                                    const std::string&,
-                                                    mode_t mode));
-  MOCK_METHOD3(WriteArrayToFile, bool(const base::FilePath& path,
-                                      const char* data,
-                                      size_t size));
-  MOCK_METHOD1(TouchFileDurable, bool(const base::FilePath& path));
-  MOCK_CONST_METHOD0(GetCurrentTime, base::Time());
-  MOCK_METHOD2(Copy, bool(const base::FilePath&, const base::FilePath&));
-  MOCK_METHOD2(Move, bool(const base::FilePath&, const base::FilePath&));
-  MOCK_METHOD2(StatVFS, bool(const base::FilePath&, struct statvfs*));
-  MOCK_METHOD2(SameVFS, bool(const base::FilePath&, const base::FilePath&));
-  MOCK_METHOD2(ReportFilesystemDetails, bool(const base::FilePath&,
-                                             const base::FilePath&));
-  MOCK_METHOD2(FindFilesystemDevice, bool(const base::FilePath&,
-                                          std::string*));
-  MOCK_METHOD3(EnumerateDirectoryEntries, bool(const base::FilePath&, bool,
-                                               std::vector<base::FilePath>*));
-  MOCK_METHOD2(DeleteFile, bool(const base::FilePath&, bool));
-  MOCK_METHOD2(DeleteFileDurable, bool(const base::FilePath&, bool));
-  MOCK_METHOD1(DirectoryExists, bool(const base::FilePath&));
-  MOCK_METHOD1(CreateDirectory, bool(const base::FilePath&));
-  MOCK_METHOD0(SetupProcessKeyring, bool());
-  MOCK_METHOD1(GetDirCryptoKeyState,
-               dircrypto::KeyState(const base::FilePath&));
-  MOCK_METHOD2(SetDirCryptoKey, bool(const base::FilePath&,
-                                     const brillo::SecureBlob&));
-  MOCK_METHOD3(AddDirCryptoKeyToKeyring, bool(const brillo::SecureBlob&,
-                                              const brillo::SecureBlob&,
-                                              key_serial_t*));
-  MOCK_METHOD2(InvalidateDirCryptoKey, bool(key_serial_t,
-                                            const base::FilePath&));
-  MOCK_METHOD0(ClearUserKeyring, bool(void));
-  MOCK_METHOD3(AddEcryptfsAuthToken,
-               bool(const brillo::SecureBlob&,
-                    const std::string&,
-                    const brillo::SecureBlob&));
-  MOCK_METHOD3(GetFileEnumerator, FileEnumerator*(const base::FilePath&,
-                                                  bool,
-                                                  int));
-  MOCK_METHOD0(FirmwareWriteProtected, bool(void));
-  MOCK_METHOD1(DataSyncFile, bool(const base::FilePath&));
-  MOCK_METHOD1(SyncFile, bool(const base::FilePath&));
-  MOCK_METHOD1(SyncDirectory, bool(const base::FilePath&));
-  MOCK_METHOD0(Sync, void());
-  MOCK_METHOD0(GetHardwareID, std::string(void));
-  MOCK_METHOD2(CreateSymbolicLink,
-               bool(const base::FilePath&, const base::FilePath&));
-  MOCK_METHOD2(ReadLink, bool(const base::FilePath&, base::FilePath*));
-  MOCK_METHOD4(SetFileTimes,
-               bool(const base::FilePath&,
-                    const struct timespec&,
-                    const struct timespec&,
-                    bool));
-  MOCK_METHOD4(SendFile, bool(int, int, off_t, size_t));
-  MOCK_METHOD2(CreateSparseFile, bool(const base::FilePath&, size_t));
-  MOCK_METHOD2(GetBlkSize, bool(const base::FilePath&, uint64_t*));
-  MOCK_METHOD1(AttachLoop, base::FilePath(const base::FilePath&));
-  MOCK_METHOD1(DetachLoop, bool(const base::FilePath&));
-  MOCK_METHOD0(GetAttachedLoopDevices, std::vector<LoopDevice>());
-  MOCK_METHOD3(FormatExt4, bool(const base::FilePath&,
-                                const std::vector<std::string>&, uint64_t));
-  MOCK_METHOD2(ResizeFilesystem, bool(const base::FilePath&, uint64_t));
-  MOCK_METHOD2(RestoreSELinuxContexts, bool(const base::FilePath&, bool));
+  MOCK_METHOD(bool,
+              Mount,
+              (const base::FilePath&,
+               const base::FilePath&,
+               const std::string&,
+               uint32_t,
+               const std::string&),
+              (override));
+  MOCK_METHOD(bool,
+              Bind,
+              (const base::FilePath&, const base::FilePath&),
+              (override));
+  MOCK_METHOD(bool, Unmount, (const base::FilePath&, bool, bool*), (override));
+  MOCK_METHOD(void, LazyUnmount, (const base::FilePath&), (override));
+  MOCK_METHOD(bool,
+              GetLoopDeviceMounts,
+              ((std::multimap<const base::FilePath, const base::FilePath>*)),
+              (override));
+  MOCK_METHOD(bool,
+              GetMountsBySourcePrefix,
+              (const base::FilePath&,
+               (std::multimap<const base::FilePath, const base::FilePath>*)),
+              (override));
+  MOCK_METHOD(bool, IsDirectoryMounted, (const base::FilePath&), (override));
+  MOCK_METHOD(void,
+              GetProcessesWithOpenFiles,
+              (const base::FilePath&, std::vector<ProcessInformation>*),
+              (override));
+  MOCK_METHOD(bool,
+              GetOwnership,
+              (const base::FilePath&, uid_t*, gid_t*, bool),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetOwnership,
+              (const base::FilePath&, uid_t, gid_t, bool),
+              (const, override));
+  MOCK_METHOD(bool,
+              GetPermissions,
+              (const base::FilePath&, mode_t*),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetPermissions,
+              (const base::FilePath&, mode_t),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetGroupAccessible,
+              (const base::FilePath&, gid_t group_id, mode_t group_mode),
+              (const, override));
+  MOCK_METHOD(int, SetMask, (int), (const, override));
+  MOCK_METHOD(bool,
+              GetUserId,
+              (const std::string&, uid_t*, gid_t*),
+              (const, override));
+  MOCK_METHOD(bool,
+              GetGroupId,
+              (const std::string&, gid_t*),
+              (const, override));
+  MOCK_METHOD(int64_t,
+              AmountOfFreeDiskSpace,
+              (const base::FilePath&),
+              (const, override));
+  MOCK_METHOD(int64_t,
+              GetQuotaCurrentSpaceForUid,
+              (const base::FilePath&, uid_t),
+              (const, override));
+  MOCK_METHOD(int64_t,
+              GetQuotaCurrentSpaceForGid,
+              (const base::FilePath&, gid_t),
+              (const, override));
+  MOCK_METHOD(bool, FileExists, (const base::FilePath&), (override));
+  MOCK_METHOD(int, Access, (const base::FilePath&, uint32_t), (override));
+  MOCK_METHOD(bool, GetFileSize, (const base::FilePath&, int64_t*), (override));
+  MOCK_METHOD(int64_t,
+              ComputeDirectorySize,
+              (const base::FilePath&),
+              (override));
+  MOCK_METHOD(FILE*,
+              OpenFile,
+              (const base::FilePath&, const char*),
+              (override));
+  MOCK_METHOD(void,
+              InitializeFile,
+              (base::File*, const base::FilePath&, uint32_t),
+              (override));
+  MOCK_METHOD(bool, LockFile, (int), (override));
+  MOCK_METHOD(bool,
+              CloseFile,
+              (FILE*),
+              (override));  // NOLINT(readability/function)
+  MOCK_METHOD(FILE*, CreateAndOpenTemporaryFile, (base::FilePath*), (override));
+  MOCK_METHOD(bool, Stat, (const base::FilePath&, struct stat*), (override));
+  MOCK_METHOD(bool,
+              HasExtendedFileAttribute,
+              (const base::FilePath&, const std::string&),
+              (override));
+  MOCK_METHOD(bool,
+              ListExtendedFileAttributes,
+              (const base::FilePath&, std::vector<std::string>*),
+              (override));
+  MOCK_METHOD(bool,
+              GetExtendedFileAttributeAsString,
+              (const base::FilePath&, const std::string&, std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              GetExtendedFileAttribute,
+              (const base::FilePath&, const std::string&, char*, ssize_t),
+              (override));
+  MOCK_METHOD(bool,
+              SetExtendedFileAttribute,
+              (const base::FilePath&, const std::string&, const char*, size_t),
+              (override));
+  MOCK_METHOD(bool,
+              RemoveExtendedFileAttribute,
+              (const base::FilePath&, const std::string&),
+              (override));
+  MOCK_METHOD(bool,
+              GetExtFileAttributes,
+              (const base::FilePath&, int*),
+              (override));
+  MOCK_METHOD(bool,
+              SetExtFileAttributes,
+              (const base::FilePath&, int),
+              (override));
+  MOCK_METHOD(bool,
+              HasNoDumpFileAttribute,
+              (const base::FilePath&),
+              (override));
+  MOCK_METHOD(bool,
+              ReadFile,
+              (const base::FilePath&, brillo::Blob*),
+              (override));
+  MOCK_METHOD(bool,
+              ReadFileToString,
+              (const base::FilePath&, std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              ReadFileToSecureBlob,
+              (const base::FilePath&, brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool,
+              Rename,
+              (const base::FilePath&, const base::FilePath&),
+              (override));
+  MOCK_METHOD(bool, WriteOpenFile, (FILE*, const brillo::Blob&), (override));
+  MOCK_METHOD(bool,
+              WriteFile,
+              (const base::FilePath&, const brillo::Blob&),
+              (override));
+  MOCK_METHOD(bool,
+              WriteSecureBlobToFile,
+              (const base::FilePath&, const brillo::SecureBlob&),
+              (override));
+  MOCK_METHOD(bool,
+              WriteFileAtomic,
+              (const base::FilePath&, const brillo::Blob&, mode_t mode),
+              (override));
+  MOCK_METHOD(bool,
+              WriteSecureBlobToFileAtomic,
+              (const base::FilePath&, const brillo::SecureBlob&, mode_t mode),
+              (override));
+  MOCK_METHOD(bool,
+              WriteFileAtomicDurable,
+              (const base::FilePath&, const brillo::Blob&, mode_t mode),
+              (override));
+  MOCK_METHOD(bool,
+              WriteSecureBlobToFileAtomicDurable,
+              (const base::FilePath&, const brillo::SecureBlob&, mode_t mode),
+              (override));
+  MOCK_METHOD(bool,
+              WriteStringToFile,
+              (const base::FilePath&, const std::string&),
+              (override));
+  MOCK_METHOD(bool,
+              WriteStringToFileAtomicDurable,
+              (const base::FilePath&, const std::string&, mode_t mode),
+              (override));
+  MOCK_METHOD(bool,
+              WriteArrayToFile,
+              (const base::FilePath& path, const char* data, size_t size),
+              (override));
+  MOCK_METHOD(bool, TouchFileDurable, (const base::FilePath& path), (override));
+  MOCK_METHOD(base::Time, GetCurrentTime, (), (const, override));
+  MOCK_METHOD(bool,
+              Copy,
+              (const base::FilePath&, const base::FilePath&),
+              (override));
+  MOCK_METHOD(bool,
+              Move,
+              (const base::FilePath&, const base::FilePath&),
+              (override));
+  MOCK_METHOD(bool,
+              StatVFS,
+              (const base::FilePath&, struct statvfs*),
+              (override));
+  MOCK_METHOD(bool,
+              SameVFS,
+              (const base::FilePath&, const base::FilePath&),
+              (override));
+  MOCK_METHOD(bool,
+              ReportFilesystemDetails,
+              (const base::FilePath&, const base::FilePath&),
+              (override));
+  MOCK_METHOD(bool,
+              FindFilesystemDevice,
+              (const base::FilePath&, std::string*),
+              (override));
+  MOCK_METHOD(bool,
+              EnumerateDirectoryEntries,
+              (const base::FilePath&, bool, std::vector<base::FilePath>*),
+              (override));
+  MOCK_METHOD(bool, DeleteFile, (const base::FilePath&, bool), (override));
+  MOCK_METHOD(bool,
+              DeleteFileDurable,
+              (const base::FilePath&, bool),
+              (override));
+  MOCK_METHOD(bool, DirectoryExists, (const base::FilePath&), (override));
+  MOCK_METHOD(bool, CreateDirectory, (const base::FilePath&), (override));
+  MOCK_METHOD(bool, SetupProcessKeyring, (), (override));
+  MOCK_METHOD(dircrypto::KeyState,
+              GetDirCryptoKeyState,
+              (const base::FilePath&),
+              (override));
+  MOCK_METHOD(bool,
+              SetDirCryptoKey,
+              (const base::FilePath&, const brillo::SecureBlob&),
+              (override));
+  MOCK_METHOD(bool,
+              AddDirCryptoKeyToKeyring,
+              (const brillo::SecureBlob&,
+               const brillo::SecureBlob&,
+               key_serial_t*),
+              (override));
+  MOCK_METHOD(bool,
+              InvalidateDirCryptoKey,
+              (key_serial_t, const base::FilePath&),
+              (override));
+  MOCK_METHOD(bool, ClearUserKeyring, (), (override));
+  MOCK_METHOD(bool,
+              AddEcryptfsAuthToken,
+              (const brillo::SecureBlob&,
+               const std::string&,
+               const brillo::SecureBlob&),
+              (override));
+  MOCK_METHOD(FileEnumerator*,
+              GetFileEnumerator,
+              (const base::FilePath&, bool, int),
+              (override));
+  MOCK_METHOD(bool, FirmwareWriteProtected, (), (override));
+  MOCK_METHOD(bool, DataSyncFile, (const base::FilePath&), (override));
+  MOCK_METHOD(bool, SyncFile, (const base::FilePath&), (override));
+  MOCK_METHOD(bool, SyncDirectory, (const base::FilePath&), (override));
+  MOCK_METHOD(void, Sync, (), (override));
+  MOCK_METHOD(std::string, GetHardwareID, (), (override));
+  MOCK_METHOD(bool,
+              CreateSymbolicLink,
+              (const base::FilePath&, const base::FilePath&),
+              (override));
+  MOCK_METHOD(bool,
+              ReadLink,
+              (const base::FilePath&, base::FilePath*),
+              (override));
+  MOCK_METHOD(bool,
+              SetFileTimes,
+              (const base::FilePath&,
+               const struct timespec&,
+               const struct timespec&,
+               bool),
+              (override));
+  MOCK_METHOD(bool, SendFile, (int, int, off_t, size_t), (override));
+  MOCK_METHOD(bool,
+              CreateSparseFile,
+              (const base::FilePath&, size_t),
+              (override));
+  MOCK_METHOD(bool, GetBlkSize, (const base::FilePath&, uint64_t*), (override));
+  MOCK_METHOD(base::FilePath, AttachLoop, (const base::FilePath&), (override));
+  MOCK_METHOD(bool, DetachLoop, (const base::FilePath&), (override));
+  MOCK_METHOD(std::vector<LoopDevice>, GetAttachedLoopDevices, (), (override));
+  MOCK_METHOD(bool,
+              FormatExt4,
+              (const base::FilePath&,
+               const std::vector<std::string>&,
+               uint64_t),
+              (override));
+  MOCK_METHOD(bool,
+              ResizeFilesystem,
+              (const base::FilePath&, uint64_t),
+              (override));
+  MOCK_METHOD(bool,
+              RestoreSELinuxContexts,
+              (const base::FilePath&, bool),
+              (override));
 
   MockFileEnumerator* mock_enumerator() { return mock_enumerator_.get(); }
 

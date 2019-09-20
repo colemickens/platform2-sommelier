@@ -22,16 +22,22 @@ class MockService : public ServiceMonolithic {
   MockService();  // For convenience in unit tests.
   virtual ~MockService();
 
-  MOCK_METHOD7(Mount, gboolean(const gchar *,
-                               const gchar *,
-                               gboolean,
-                               gboolean,
-                               gint *,
-                               gboolean *,
-                               GError **));
-  MOCK_METHOD2(Unmount, gboolean(gboolean *, GError **));
-  MOCK_METHOD2(GetMountPointForUser, bool(const std::string&, base::FilePath*));
-  MOCK_METHOD1(IsOwner, bool(const std::string&));
+  MOCK_METHOD(gboolean,
+              Mount,
+              (const gchar*,
+               const gchar*,
+               gboolean,
+               gboolean,
+               gint*,
+               gboolean*,
+               GError**),
+              (override));
+  MOCK_METHOD(gboolean, Unmount, (gboolean*, GError**), (override));
+  MOCK_METHOD(bool,
+              GetMountPointForUser,
+              (const std::string&, base::FilePath*),
+              (override));
+  MOCK_METHOD(bool, IsOwner, (const std::string&), (override));
 };
 
 }  // namespace cryptohome

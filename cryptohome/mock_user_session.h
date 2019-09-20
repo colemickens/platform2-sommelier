@@ -18,12 +18,13 @@ class MockUserSession : public UserSession {
  public:
   MockUserSession();
   ~MockUserSession();
-  MOCK_METHOD1(Init, void(const brillo::SecureBlob&));
-  MOCK_METHOD1(SetUser, bool(const Credentials&));
-  MOCK_METHOD0(Reset, void(void));
-  MOCK_CONST_METHOD1(CheckUser, bool(const Credentials&));
-  MOCK_CONST_METHOD1(Verify, bool(const Credentials&));
-  MOCK_METHOD1(set_key_index, void(int));
+  MOCK_METHOD(void, Init, (const brillo::SecureBlob&), (override));
+  MOCK_METHOD(bool, SetUser, (const Credentials&), (override));
+  MOCK_METHOD(void, Reset, (), (override));
+  MOCK_METHOD(bool, CheckUser, (const Credentials&), (const, override));
+  MOCK_METHOD(bool, Verify, (const Credentials&), (const, override));
+  MOCK_METHOD(void, set_key_index, (int), (override));
+
  private:
   UserSession user_session_;
 };

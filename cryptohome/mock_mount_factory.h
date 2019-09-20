@@ -19,7 +19,7 @@ class MockMountFactory : public MountFactory {
   }
 
   virtual ~MockMountFactory() {}
-  MOCK_METHOD0(New, Mount*());
+  MOCK_METHOD(Mount*, New, (), (override));
 
   // Backdoor to access real method, for delegating calls to parent class
   Mount* NewConcrete() { return MountFactory::New(); }

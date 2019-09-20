@@ -17,10 +17,10 @@ class MockArcDiskQuota : public ArcDiskQuota {
       : ArcDiskQuota(nullptr, nullptr, base::FilePath("/home")) {}
   ~MockArcDiskQuota() override {}
 
-  MOCK_METHOD0(Initialize, void());
-  MOCK_CONST_METHOD0(IsQuotaSupported, bool());
-  MOCK_CONST_METHOD1(GetCurrentSpaceForUid, int64_t(uid_t));
-  MOCK_CONST_METHOD1(GetCurrentSpaceForGid, int64_t(gid_t));
+  MOCK_METHOD(void, Initialize, (), (override));
+  MOCK_METHOD(bool, IsQuotaSupported, (), (const, override));
+  MOCK_METHOD(int64_t, GetCurrentSpaceForUid, (uid_t), (const, override));
+  MOCK_METHOD(int64_t, GetCurrentSpaceForGid, (gid_t), (const, override));
 };
 
 }  // namespace cryptohome

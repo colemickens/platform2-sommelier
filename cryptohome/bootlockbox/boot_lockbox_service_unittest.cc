@@ -27,13 +27,16 @@ class MockDBusBus : public dbus::Bus {
  public:
   MockDBusBus() : dbus::Bus(dbus::Bus::Options()) {}
 
-  MOCK_METHOD0(Connect, bool());
-  MOCK_METHOD0(ShutdownAndBlock, void());
-  MOCK_METHOD2(GetServiceOwnerAndBlock,
-               std::string(const std::string&,
-                           dbus::Bus::GetServiceOwnerOption));
-  MOCK_METHOD2(GetObjectProxy,
-               dbus::ObjectProxy*(const std::string&, const dbus::ObjectPath&));
+  MOCK_METHOD(bool, Connect, (), (override));
+  MOCK_METHOD(void, ShutdownAndBlock, (), (override));
+  MOCK_METHOD(std::string,
+              GetServiceOwnerAndBlock,
+              (const std::string&, dbus::Bus::GetServiceOwnerOption),
+              (override));
+  MOCK_METHOD(dbus::ObjectProxy*,
+              GetObjectProxy,
+              (const std::string&, const dbus::ObjectPath&),
+              (override));
 };
 
 // Captures the D-Bus Response object passed via DBusMethodResponse via

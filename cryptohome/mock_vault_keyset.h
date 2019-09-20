@@ -24,32 +24,37 @@ class MockVaultKeyset : public VaultKeyset {
   MockVaultKeyset();
   virtual ~MockVaultKeyset();
 
-  MOCK_METHOD2(Initialize, void(Platform*, Crypto*));
-  MOCK_METHOD1(FromVaultKeyset, void(const VaultKeyset&));
-  MOCK_METHOD1(FromKeys, void(const VaultKeysetKeys&));
-  MOCK_METHOD1(FromKeysBlob, bool(const brillo::SecureBlob&));
-  MOCK_CONST_METHOD1(ToKeys, bool(VaultKeysetKeys*));  // NOLINT 'unnamed' param
-  MOCK_CONST_METHOD1(ToKeysBlob, bool(brillo::SecureBlob*));
+  MOCK_METHOD(void, Initialize, (Platform*, Crypto*), (override));
+  MOCK_METHOD(void, FromVaultKeyset, (const VaultKeyset&), (override));
+  MOCK_METHOD(void, FromKeys, (const VaultKeysetKeys&), (override));
+  MOCK_METHOD(bool, FromKeysBlob, (const brillo::SecureBlob&), (override));
+  MOCK_METHOD(bool, ToKeys, (VaultKeysetKeys*), (const, override));
+  MOCK_METHOD(bool, ToKeysBlob, (brillo::SecureBlob*), (const, override));
 
-  MOCK_METHOD0(CreateRandom, void(void));
+  MOCK_METHOD(void, CreateRandom, (), (override));
 
-  MOCK_CONST_METHOD0(fek, const brillo::SecureBlob&(void));
-  MOCK_CONST_METHOD0(fek_sig, const brillo::SecureBlob&(void));
-  MOCK_CONST_METHOD0(fek_salt, const brillo::SecureBlob&(void));
-  MOCK_CONST_METHOD0(fnek, const brillo::SecureBlob&(void));
-  MOCK_CONST_METHOD0(fnek_sig, const brillo::SecureBlob&(void));
-  MOCK_CONST_METHOD0(fnek_salt, const brillo::SecureBlob&(void));
+  MOCK_METHOD(const brillo::SecureBlob&, fek, (), (const, override));
+  MOCK_METHOD(const brillo::SecureBlob&, fek_sig, (), (const, override));
+  MOCK_METHOD(const brillo::SecureBlob&, fek_salt, (), (const, override));
+  MOCK_METHOD(const brillo::SecureBlob&, fnek, (), (const, override));
+  MOCK_METHOD(const brillo::SecureBlob&, fnek_sig, (), (const, override));
+  MOCK_METHOD(const brillo::SecureBlob&, fnek_salt, (), (const, override));
 
-  MOCK_METHOD1(Load, bool(const base::FilePath&));
-  MOCK_METHOD3(Decrypt, bool(const brillo::SecureBlob&, bool,
-                             Crypto::CryptoError*));
-  MOCK_METHOD1(Save, bool(const base::FilePath&));
-  MOCK_METHOD2(Encrypt, bool(const brillo::SecureBlob&, const std::string&));
-  MOCK_CONST_METHOD0(serialized, const SerializedVaultKeyset&(void));
-  MOCK_METHOD0(mutable_serialized, SerializedVaultKeyset*(void));
-  MOCK_CONST_METHOD0(source_file, const base::FilePath&(void));
-  MOCK_METHOD1(set_legacy_index, void(int));
-  MOCK_CONST_METHOD0(legacy_index, const int(void));
+  MOCK_METHOD(bool, Load, (const base::FilePath&), (override));
+  MOCK_METHOD(bool,
+              Decrypt,
+              (const brillo::SecureBlob&, bool, Crypto::CryptoError*),
+              (override));
+  MOCK_METHOD(bool, Save, (const base::FilePath&), (override));
+  MOCK_METHOD(bool,
+              Encrypt,
+              (const brillo::SecureBlob&, const std::string&),
+              (override));
+  MOCK_METHOD(const SerializedVaultKeyset&, serialized, (), (const, override));
+  MOCK_METHOD(SerializedVaultKeyset*, mutable_serialized, (), (override));
+  MOCK_METHOD(const base::FilePath&, source_file, (), (const, override));
+  MOCK_METHOD(void, set_legacy_index, (int), (override));
+  MOCK_METHOD(const int, legacy_index, (), (const, override));
 
  private:
   SerializedVaultKeyset stub_serialized_;

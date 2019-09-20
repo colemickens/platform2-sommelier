@@ -18,10 +18,10 @@ class MockBootAttributes : public BootAttributes {
   MockBootAttributes() : BootAttributes(NULL, NULL) {}
   virtual ~MockBootAttributes() {}
 
-  MOCK_METHOD0(Load, bool());
-  MOCK_CONST_METHOD2(Get, bool(const std::string&, std::string*));
-  MOCK_METHOD2(Set, void(const std::string&, const std::string&));
-  MOCK_METHOD0(FlushAndSign, bool());
+  MOCK_METHOD(bool, Load, (), (override));
+  MOCK_METHOD(bool, Get, (const std::string&, std::string*), (const, override));
+  MOCK_METHOD(void, Set, (const std::string&, const std::string&), (override));
+  MOCK_METHOD(bool, FlushAndSign, (), (override));
 };
 
 }  // namespace cryptohome

@@ -23,62 +23,74 @@ class MockLECredentialBackend : public LECredentialBackend {
 
   virtual ~MockLECredentialBackend() = default;
 
-  MOCK_METHOD1(Reset, bool(std::vector<uint8_t>*));
-  MOCK_METHOD0(IsSupported, bool());
+  MOCK_METHOD(bool, Reset, (std::vector<uint8_t>*), (override));
+  MOCK_METHOD(bool, IsSupported, (), (override));
 
-  MOCK_METHOD10(InsertCredential,
-                bool(const uint64_t,
-                     const std::vector<std::vector<uint8_t>>&,
-                     const brillo::SecureBlob&,
-                     const brillo::SecureBlob&,
-                     const brillo::SecureBlob&,
-                     const std::map<uint32_t, uint32_t>&,
-                     const ValidPcrCriteria&,
-                     std::vector<uint8_t>*,
-                     std::vector<uint8_t>*,
-                     std::vector<uint8_t>*));
+  MOCK_METHOD(bool,
+              InsertCredential,
+              (const uint64_t,
+               const std::vector<std::vector<uint8_t>>&,
+               const brillo::SecureBlob&,
+               const brillo::SecureBlob&,
+               const brillo::SecureBlob&,
+               (const std::map<uint32_t, uint32_t>&),
+               const ValidPcrCriteria&,
+               std::vector<uint8_t>*,
+               std::vector<uint8_t>*,
+               std::vector<uint8_t>*),
+              (override));
 
-  MOCK_METHOD1(NeedsPCRBinding, bool(const std::vector<uint8_t>&));
+  MOCK_METHOD(bool, NeedsPCRBinding, (const std::vector<uint8_t>&), (override));
 
-  MOCK_METHOD10(CheckCredential,
-                bool(const uint64_t,
-                     const std::vector<std::vector<uint8_t>>&,
-                     const std::vector<uint8_t>&,
-                     const brillo::SecureBlob&,
-                     std::vector<uint8_t>*,
-                     std::vector<uint8_t>*,
-                     brillo::SecureBlob*,
-                     brillo::SecureBlob*,
-                     LECredBackendError*,
-                     std::vector<uint8_t>*));
+  MOCK_METHOD(bool,
+              CheckCredential,
+              (const uint64_t,
+               const std::vector<std::vector<uint8_t>>&,
+               const std::vector<uint8_t>&,
+               const brillo::SecureBlob&,
+               std::vector<uint8_t>*,
+               std::vector<uint8_t>*,
+               brillo::SecureBlob*,
+               brillo::SecureBlob*,
+               LECredBackendError*,
+               std::vector<uint8_t>*),
+              (override));
 
-  MOCK_METHOD8(ResetCredential,
-               bool(const uint64_t,
-                    const std::vector<std::vector<uint8_t>>&,
-                    const std::vector<uint8_t>&,
-                    const brillo::SecureBlob&,
-                    std::vector<uint8_t>*,
-                    std::vector<uint8_t>*,
-                    LECredBackendError*,
-                    std::vector<uint8_t>*));
+  MOCK_METHOD(bool,
+              ResetCredential,
+              (const uint64_t,
+               const std::vector<std::vector<uint8_t>>&,
+               const std::vector<uint8_t>&,
+               const brillo::SecureBlob&,
+               std::vector<uint8_t>*,
+               std::vector<uint8_t>*,
+               LECredBackendError*,
+               std::vector<uint8_t>*),
+              (override));
 
-  MOCK_METHOD4(RemoveCredential,
-               bool(const uint64_t,
-                    const std::vector<std::vector<uint8_t>>&,
-                    const std::vector<uint8_t>&,
-                    std::vector<uint8_t>*));
+  MOCK_METHOD(bool,
+              RemoveCredential,
+              (const uint64_t,
+               const std::vector<std::vector<uint8_t>>&,
+               const std::vector<uint8_t>&,
+               std::vector<uint8_t>*),
+              (override));
 
-  MOCK_METHOD3(GetLog,
-               bool(const std::vector<uint8_t>&,
-                    std::vector<uint8_t>*,
-                    std::vector<LELogEntry>*));
+  MOCK_METHOD(bool,
+              GetLog,
+              (const std::vector<uint8_t>&,
+               std::vector<uint8_t>*,
+               std::vector<LELogEntry>*),
+              (override));
 
-  MOCK_METHOD5(ReplayLogOperation,
-               bool(const std::vector<uint8_t>&,
-                    const std::vector<std::vector<uint8_t>>&,
-                    const std::vector<uint8_t>&,
-                    std::vector<uint8_t>*,
-                    std::vector<uint8_t>*));
+  MOCK_METHOD(bool,
+              ReplayLogOperation,
+              (const std::vector<uint8_t>&,
+               const std::vector<std::vector<uint8_t>>&,
+               const std::vector<uint8_t>&,
+               std::vector<uint8_t>*,
+               std::vector<uint8_t>*),
+              (override));
 };
 
 }  // namespace cryptohome

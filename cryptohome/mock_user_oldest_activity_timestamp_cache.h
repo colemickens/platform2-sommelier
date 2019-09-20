@@ -18,14 +18,20 @@ class MockUserOldestActivityTimestampCache :
   MockUserOldestActivityTimestampCache();
   virtual ~MockUserOldestActivityTimestampCache();
 
-  MOCK_METHOD0(Initialize, void(void));
-  MOCK_CONST_METHOD0(initialized, bool(void));
-  MOCK_METHOD2(AddExistingUser, void(const base::FilePath&, base::Time));
-  MOCK_METHOD2(UpdateExistingUser, void(const base::FilePath&, base::Time));
-  MOCK_METHOD1(AddExistingUserNotime, void(const base::FilePath&));
-  MOCK_CONST_METHOD0(oldest_known_timestamp, base::Time(void));
-  MOCK_CONST_METHOD0(empty, bool(void));
-  MOCK_METHOD0(RemoveOldestUser, base::FilePath(void));
+  MOCK_METHOD(void, Initialize, (), (override));
+  MOCK_METHOD(bool, initialized, (), (const, override));
+  MOCK_METHOD(void,
+              AddExistingUser,
+              (const base::FilePath&, base::Time),
+              (override));
+  MOCK_METHOD(void,
+              UpdateExistingUser,
+              (const base::FilePath&, base::Time),
+              (override));
+  MOCK_METHOD(void, AddExistingUserNotime, (const base::FilePath&), (override));
+  MOCK_METHOD(base::Time, oldest_known_timestamp, (), (const, override));
+  MOCK_METHOD(bool, empty, (), (const, override));
+  MOCK_METHOD(base::FilePath, RemoveOldestUser, (), (override));
 
  private:
   base::Time StubOldestKnownTimestamp() const {

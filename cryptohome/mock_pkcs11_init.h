@@ -16,8 +16,10 @@ class MockPkcs11Init : public Pkcs11Init {
   MockPkcs11Init();
   virtual ~MockPkcs11Init();
 
-  MOCK_METHOD2(GetTpmTokenSlotForPath, bool(const base::FilePath&,
-                                            CK_SLOT_ID_PTR));
+  MOCK_METHOD(bool,
+              GetTpmTokenSlotForPath,
+              (const base::FilePath&, CK_SLOT_ID_PTR),
+              (override));
 };
 
 }  // namespace cryptohome

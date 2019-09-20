@@ -14,17 +14,17 @@ class MockFirmwareManagementParameters : public FirmwareManagementParameters {
   MockFirmwareManagementParameters();
   virtual ~MockFirmwareManagementParameters();
 
-  MOCK_METHOD0(Create, bool());
-  MOCK_METHOD0(Destroy, bool());
-  MOCK_METHOD0(Load, bool());
-  MOCK_METHOD2(Store, bool(uint32_t, const brillo::Blob*));
-  MOCK_METHOD1(GetFlags, bool(uint32_t*));
-  MOCK_METHOD1(GetDeveloperKeyHash, bool(brillo::Blob*));
-  MOCK_CONST_METHOD0(IsLoaded, bool());
+  MOCK_METHOD(bool, Create, (), (override));
+  MOCK_METHOD(bool, Destroy, (), (override));
+  MOCK_METHOD(bool, Load, (), (override));
+  MOCK_METHOD(bool, Store, (uint32_t, const brillo::Blob*), (override));
+  MOCK_METHOD(bool, GetFlags, (uint32_t*), (override));
+  MOCK_METHOD(bool, GetDeveloperKeyHash, (brillo::Blob*), (override));
+  MOCK_METHOD(bool, IsLoaded, (), (const, override));
 
   // Formerly protected methods.
-  MOCK_CONST_METHOD0(HasAuthorization, bool());
-  MOCK_CONST_METHOD0(TpmIsReady, bool());
+  MOCK_METHOD(bool, HasAuthorization, (), (const, override));
+  MOCK_METHOD(bool, TpmIsReady, (), (const, override));
 };
 }  // namespace cryptohome
 
