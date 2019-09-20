@@ -25,6 +25,7 @@
 #include <wayland-client.h>
 #include <xcb/composite.h>
 #include <xcb/xfixes.h>
+#include <xcb/xproto.h>
 
 #include "aura-shell-client-protocol.h"
 #include "drm-server-protocol.h"
@@ -567,6 +568,34 @@ static void sl_window_set_wm_state(struct sl_window* window, int state) {
                       ctx->atoms[ATOM_WM_STATE].value, 32, 2, values);
 }
 
+void sl_update_application_id(struct sl_context* ctx,
+                              struct sl_window* window) {
+  if (!window->aura_surface)
+    return;
+  if (ctx->application_id) {
+    zaura_surface_set_application_id(window->aura_surface, ctx->application_id);
+    return;
+  }
+  // Don't set application id for X11 override redirect. This prevents
+  // aura shell from thinking that these are regular application windows
+  // that should appear in application lists.
+  if (!ctx->xwayland || window->managed) {
+    char* application_id_str;
+    if (window->clazz) {
+      application_id_str =
+          sl_xasprintf(WM_CLASS_APPLICATION_ID_FORMAT, window->clazz);
+    } else if (window->client_leader != XCB_WINDOW_NONE) {
+      application_id_str = sl_xasprintf(WM_CLIENT_LEADER_APPLICATION_ID_FORMAT,
+                                        window->client_leader);
+    } else {
+      application_id_str = sl_xasprintf(XID_APPLICATION_ID_FORMAT, window->id);
+    }
+
+    zaura_surface_set_application_id(window->aura_surface, application_id_str);
+    free(application_id_str);
+  }
+}
+
 void sl_window_update(struct sl_window* window) {
   struct wl_resource* host_resource = NULL;
   struct sl_host_surface* host_surface;
@@ -701,31 +730,7 @@ void sl_window_update(struct sl_window* window) {
                                    frame_color);
     zaura_surface_set_startup_id(window->aura_surface, window->startup_id);
 
-    if (ctx->application_id) {
-      zaura_surface_set_application_id(window->aura_surface,
-                                       ctx->application_id);
-    } else {
-      // Don't set application id for X11 override redirect. This prevents
-      // aura shell from thinking that these are regular application windows
-      // that should appear in application lists.
-      if (!ctx->xwayland || window->managed) {
-        char* application_id_str;
-        if (window->clazz) {
-          application_id_str =
-              sl_xasprintf(WM_CLASS_APPLICATION_ID_FORMAT, window->clazz);
-        } else if (window->client_leader != XCB_WINDOW_NONE) {
-          application_id_str = sl_xasprintf(
-              WM_CLIENT_LEADER_APPLICATION_ID_FORMAT, window->client_leader);
-        } else {
-          application_id_str =
-              sl_xasprintf(XID_APPLICATION_ID_FORMAT, window->id);
-        }
-
-        zaura_surface_set_application_id(window->aura_surface,
-                                         application_id_str);
-        free(application_id_str);
-      }
-    }
+    sl_update_application_id(ctx, window);
   }
 
   // Always use top-level surface for X11 windows as we can't control when the
@@ -1544,6 +1549,20 @@ static void sl_handle_reparent_notify(struct sl_context* ctx,
   sl_destroy_window(window);
 }
 
+static void sl_decode_wm_class(struct sl_window* window,
+                               xcb_get_property_reply_t* reply) {
+  // WM_CLASS property contains two consecutive null-terminated strings.
+  // These specify the Instance and Class names. If a global app ID is
+  // not set then use Class name for app ID.
+  const char* value = xcb_get_property_value(reply);
+  int value_length = xcb_get_property_value_length(reply);
+  int instance_length = strnlen(value, value_length);
+  if (value_length > instance_length) {
+    window->clazz = strndup(value + instance_length + 1,
+                            value_length - instance_length - 1);
+  }
+}
+
 static void sl_handle_map_request(struct sl_context* ctx,
                                   xcb_map_request_event_t* event) {
   struct sl_window* window = sl_lookup_window(ctx, event->window);
@@ -1627,18 +1646,9 @@ static void sl_handle_map_request(struct sl_context* ctx,
         window->name = strndup(xcb_get_property_value(reply),
                                xcb_get_property_value_length(reply));
         break;
-      case PROPERTY_WM_CLASS: {
-        // WM_CLASS property contains two consecutive null-terminated strings.
-        // These specify the Instance and Class names. If a global app ID is
-        // not set then use Class name for app ID.
-        const char* value = xcb_get_property_value(reply);
-        int value_length = xcb_get_property_value_length(reply);
-        int instance_length = strnlen(value, value_length);
-        if (value_length > instance_length) {
-          window->clazz = strndup(value + instance_length + 1,
-                                  value_length - instance_length - 1);
-        }
-      } break;
+      case PROPERTY_WM_CLASS:
+        sl_decode_wm_class(window, reply);
+        break;
       case PROPERTY_WM_TRANSIENT_FOR:
         if (xcb_get_property_value_length(reply) >= 4)
           window->transient_for = *((uint32_t*)xcb_get_property_value(reply));
@@ -2326,6 +2336,21 @@ static void sl_handle_property_notify(struct sl_context* ctx,
     } else {
       zxdg_toplevel_v6_set_title(window->xdg_toplevel, "");
     }
+  } else if (event->atom == XCB_ATOM_WM_CLASS) {
+    struct sl_window* window = sl_lookup_window(ctx, event->window);
+    if (!window || event->state == XCB_PROPERTY_DELETE)
+      return;
+
+    xcb_get_property_cookie_t cookie =
+        xcb_get_property(ctx->connection, 0, window->id, XCB_ATOM_WM_CLASS,
+                         XCB_ATOM_ANY, 0, 2048);
+    xcb_get_property_reply_t* reply =
+        xcb_get_property_reply(ctx->connection, cookie, NULL);
+    if (reply) {
+      sl_decode_wm_class(window, reply);
+      free(reply);
+    }
+    sl_update_application_id(ctx, window);
   } else if (event->atom == XCB_ATOM_WM_NORMAL_HINTS) {
     struct sl_window* window = sl_lookup_window(ctx, event->window);
     if (!window)
