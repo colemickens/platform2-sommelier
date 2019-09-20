@@ -27,7 +27,7 @@ DnsResourceRecord::DnsResourceRecord() = default;
 
 DnsResourceRecord::~DnsResourceRecord() = default;
 
-DnsRecordParser::DnsRecordParser() : packet_(NULL), length_(0), cur_(0) {}
+DnsRecordParser::DnsRecordParser() : packet_(nullptr), length_(0), cur_(0) {}
 
 DnsRecordParser::DnsRecordParser(const void* packet,
                                  size_t length,
@@ -130,7 +130,7 @@ bool DnsRecordParser::ReadRecord(DnsResourceRecord* out) {
 }
 
 bool DnsRecordParser::SkipQuestion() {
-  size_t consumed = ReadName(cur_, NULL);
+  size_t consumed = ReadName(cur_, nullptr);
   if (!consumed)
     return false;
 

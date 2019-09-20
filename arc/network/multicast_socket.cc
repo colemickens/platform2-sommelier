@@ -122,7 +122,7 @@ bool MulticastSocket::SendTo(const void* data,
     PLOG(WARNING) << "sendto failed";
     return false;
   }
-  last_used_ = time(NULL);
+  last_used_ = time(nullptr);
   return true;
 }
 }  // namespace arc_networkd

@@ -240,7 +240,7 @@ void MulticastForwarder::TranslateMdnsIp(const struct in_addr& lan_ip,
 }
 
 void MulticastForwarder::CleanupTask() {
-  time_t exp = time(NULL) - kCleanupTimeSeconds;
+  time_t exp = time(nullptr) - kCleanupTimeSeconds;
   for (auto it = temp_sockets_.begin(); it != temp_sockets_.end();) {
     if ((*it)->last_used() < exp)
       it = temp_sockets_.erase(it);
