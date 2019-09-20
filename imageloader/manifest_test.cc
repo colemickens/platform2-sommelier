@@ -8,9 +8,7 @@
 
 namespace imageloader {
 
-class ManifestTest : public testing::Test {};
-
-TEST_F(ManifestTest, ParseManifest) {
+TEST(ManifestTest, ParseManifest) {
   const std::string fs_type = R"("ext4")";
   const std::string is_removable = R"(true)";
   const std::string image_sha256_hash =
@@ -60,7 +58,7 @@ TEST_F(ManifestTest, ParseManifest) {
   EXPECT_EQ(manifest.size(), 42);
 }
 
-TEST_F(ManifestTest, ParseManifestNoOptional) {
+TEST(ManifestTest, ParseManifestNoOptional) {
   const std::string is_removable = R"(true)";
   const std::string image_sha256_hash =
       R"("4CF41BD11362CCB4707FB93939DBB5AC48745EDFC9DC8D7702852FFAA81B3B3F")";
@@ -93,7 +91,7 @@ TEST_F(ManifestTest, ParseManifestNoOptional) {
   EXPECT_EQ(manifest.manifest_version(), 1);
 }
 
-TEST_F(ManifestTest, ParseManifestNoImageHash) {
+TEST(ManifestTest, ParseManifestNoImageHash) {
   const std::string is_removable = R"(true)";
   const std::string table_sha256_hash =
       R"("0E11DA3D7140C6B95496787F50D15152434EBA22B60443BFA7E054FF4C799276")";
@@ -115,7 +113,7 @@ TEST_F(ManifestTest, ParseManifestNoImageHash) {
   ASSERT_FALSE(manifest.ParseManifest(manifest_raw));
 }
 
-TEST_F(ManifestTest, ParseManifestNoTableHash) {
+TEST(ManifestTest, ParseManifestNoTableHash) {
   const std::string is_removable = R"(true)";
   const std::string image_sha256_hash =
       R"("4CF41BD11362CCB4707FB93939DBB5AC48745EDFC9DC8D7702852FFAA81B3B3F")";
@@ -137,7 +135,7 @@ TEST_F(ManifestTest, ParseManifestNoTableHash) {
   ASSERT_FALSE(manifest.ParseManifest(manifest_raw));
 }
 
-TEST_F(ManifestTest, ParseManifestNoVersion) {
+TEST(ManifestTest, ParseManifestNoVersion) {
   const std::string is_removable = R"(true)";
   const std::string image_sha256_hash =
       R"("4CF41BD11362CCB4707FB93939DBB5AC48745EDFC9DC8D7702852FFAA81B3B3F")";
