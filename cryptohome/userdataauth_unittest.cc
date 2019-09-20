@@ -2289,4 +2289,77 @@ TEST_F(UserDataAuthExTest, RenameInvalidArguments) {
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
+// ================ Tests requiring fully threaded environment ================
+
+// Test fixture that implements fully threaded environment in UserDataAuth.
+// Note that this does not initialize |userdataauth_|.
+class UserDataAuthTestThreaded : public UserDataAuthTestNotInitialized {
+ public:
+  UserDataAuthTestThreaded() : origin_thread_("origin_thread") {}
+  ~UserDataAuthTestThreaded() override = default;
+
+  // Post a task to the origin thread, then wait for it to finish.
+  void PostToOriginAndBlock(base::OnceClosure task) {
+    base::WaitableEvent done(base::WaitableEvent::ResetPolicy::MANUAL,
+                             base::WaitableEvent::InitialState::NOT_SIGNALED);
+
+    origin_thread_.task_runner()->PostTask(
+        FROM_HERE, base::BindOnce(
+                       [](base::OnceClosure task, base::WaitableEvent* done) {
+                         std::move(task).Run();
+                         done->Signal();
+                       },
+                       std::move(task), base::Unretained(&done)));
+
+    done.Wait();
+  }
+
+  void SetUp() override {
+    origin_thread_.Start();
+
+    PostToOriginAndBlock(base::BindOnce(
+        &UserDataAuthTestThreaded::SetUpInOrigin, base::Unretained(this)));
+  }
+
+  void SetUpInOrigin() {
+    // Create the |userdataauth_| object.
+    userdataauth_.reset(new UserDataAuth());
+
+    // Setup the usual stuff
+    UserDataAuthTestNotInitialized::SetUp();
+
+    // We do the real threading stuff for this test fixture.
+    userdataauth_->set_disable_threading(false);
+  }
+
+  void TearDown() override {
+    PostToOriginAndBlock(base::BindOnce(
+        &UserDataAuthTestThreaded::TearDownInOrigin, base::Unretained(this)));
+
+    origin_thread_.Stop();
+  }
+
+  void TearDownInOrigin() {
+    // Destruct the |userdataauth_| object.
+    userdataauth_.reset();
+  }
+
+  // Initialize |userdataauth_| in |origin_thread_|
+  void InitializeUserDataAuth() {
+    PostToOriginAndBlock(base::BindOnce(
+        [](UserDataAuth* userdataauth) {
+          ASSERT_TRUE(userdataauth->Initialize());
+        },
+        base::Unretained(userdataauth_.get())));
+  }
+
+ protected:
+  // The thread on which the |userdataauth_| object is created. This is the same
+  // as |userdataauth_->origin_thread_|.
+  base::Thread origin_thread_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(UserDataAuthTestThreaded);
+};
+
 }  // namespace cryptohome
