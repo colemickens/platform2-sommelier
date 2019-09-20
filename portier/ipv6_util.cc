@@ -16,8 +16,6 @@ namespace portier {
 using shill::ByteString;
 using shill::IPAddress;
 
-using Code = Status::Code;
-
 namespace {
 
 // Used to mask the lower 16 bits of a 32-bit number.

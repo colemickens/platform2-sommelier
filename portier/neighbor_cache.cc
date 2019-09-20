@@ -14,7 +14,6 @@
 namespace portier {
 
 using std::string;
-using std::vector;
 
 using base::TimeDelta;
 using base::TimeTicks;

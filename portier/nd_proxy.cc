@@ -19,7 +19,6 @@ using std::string;
 
 using brillo::MessageLoop;
 using shill::ByteString;
-using shill::IPAddress;
 
 using TaskId = brillo::MessageLoop::TaskId;
 using Code = Status::Code;

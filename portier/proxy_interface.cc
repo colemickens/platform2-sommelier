@@ -26,7 +26,6 @@ namespace portier {
 
 using std::string;
 using std::unique_ptr;
-using std::vector;
 
 using shill::ByteString;
 using shill::IPAddress;

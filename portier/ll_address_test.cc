@@ -13,7 +13,6 @@
 
 namespace portier {
 
-using std::string;
 using shill::ByteString;
 using Type = LLAddress::Type;
 

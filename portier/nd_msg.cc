@@ -13,7 +13,6 @@ namespace portier {
 // Type aliasing.
 using std::vector;
 using std::string;
-using std::map;
 
 using base::TimeDelta;
 

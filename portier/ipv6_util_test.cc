@@ -8,13 +8,11 @@
 #include <netinet/icmp6.h>
 
 #include <gtest/gtest.h>
-#include <shill/net/byte_string.h>
 #include <shill/net/ip_address.h>
 
 namespace portier {
 
 using shill::IPAddress;
-using shill::ByteString;
 
 using Code = Status::Code;
 

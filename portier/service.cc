@@ -8,8 +8,6 @@
 
 #include "portier/portierd.h"
 
-using std::string;
-
 using portier::Portierd;
 
 int main(int argc, char** argv) {

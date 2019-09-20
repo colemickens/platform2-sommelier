@@ -5,8 +5,6 @@
 #include "portier/group_manager.h"
 
 #include <memory>
-#include <string>
-#include <vector>
 
 #include <base/stl_util.h>
 #include <gtest/gtest.h>
@@ -17,9 +15,6 @@
 namespace portier {
 
 using std::shared_ptr;
-using std::weak_ptr;
-using std::string;
-using std::vector;
 
 using Code = Status::Code;
 
