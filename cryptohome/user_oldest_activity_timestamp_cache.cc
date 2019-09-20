@@ -4,6 +4,8 @@
 
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
 
+#include <utility>
+
 #include <base/files/file_path.h>
 #include <base/logging.h>
 
