@@ -18,8 +18,8 @@ namespace imageloader {
 // Mock helper process used for unit testing.
 class MockHelperProcessProxy : public HelperProcessProxy {
  public:
-  MockHelperProcessProxy() {}
-  ~MockHelperProcessProxy() {}
+  MockHelperProcessProxy() = default;
+  ~MockHelperProcessProxy() = default;
 
   // Sends a message telling the helper process to mount the file backed by |fd|
   // at the |path|.

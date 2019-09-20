@@ -14,7 +14,7 @@ namespace imageloader {
 
 class MockVerityMounter : public VerityMounter {
  public:
-  MockVerityMounter() {}
+  MockVerityMounter() = default;
   MOCK_METHOD(bool,
               Mount,
               (const base::ScopedFD&,

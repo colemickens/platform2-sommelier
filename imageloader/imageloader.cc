@@ -33,7 +33,7 @@ ImageLoader::ImageLoader(ImageLoaderConfig config,
       impl_(std::move(config)),
       helper_process_proxy_(std::move(proxy)) {}
 
-ImageLoader::~ImageLoader() {}
+ImageLoader::~ImageLoader() = default;
 
 // static
 void ImageLoader::EnterSandbox() {

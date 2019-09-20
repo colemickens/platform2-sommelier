@@ -17,8 +17,8 @@ namespace imageloader {
 
 class VerityMounter {
  public:
-  VerityMounter() {}
-  virtual ~VerityMounter() {}
+  VerityMounter() = default;
+  virtual ~VerityMounter() = default;
 
   virtual bool Mount(const base::ScopedFD& image_fd,
                      const base::FilePath& mount_point,
