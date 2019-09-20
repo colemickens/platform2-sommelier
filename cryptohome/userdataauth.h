@@ -603,6 +603,16 @@ class UserDataAuth {
       const Mount::MountArgs& mount_args,
       base::OnceCallback<void(const user_data_auth::MountReply&)> on_done);
 
+  // =============== Low Disk Space/Cleanup Related Methods ===============
+
+  // This is called periodically, and does some routine cleanups. Currently this
+  // free disk space consumed by unused cryptohomes and reset the dictionary
+  // attack mitigation.
+  void DoAutoCleanup();
+
+  // Does what its name suggests. Usually called by DoAutoCleanup().
+  void ResetDictionaryAttackMitigation();
+
   // =============== PKCS#11 Related Utilities ===============
 
   // This is called when TPM is enabled and owned, so that we can continue

@@ -2209,4 +2209,52 @@ std::string UserDataAuth::GetStatusString() {
   return json;
 }
 
+void UserDataAuth::ResetDictionaryAttackMitigation() {
+  if (!tpm_init_ || !tpm_init_->IsTpmReady()) {
+    return;
+  }
+  int counter = 0;
+  int threshold;
+  int seconds_remaining;
+  bool lockout;
+  if (!tpm_->GetDictionaryAttackInfo(&counter, &threshold, &lockout,
+                                     &seconds_remaining)) {
+    ReportDictionaryAttackResetStatus(kCounterQueryFailed);
+    return;
+  }
+  ReportDictionaryAttackCounter(counter);
+  if (counter == 0) {
+    ReportDictionaryAttackResetStatus(kResetNotNecessary);
+    return;
+  }
+  brillo::Blob delegate_blob, delegate_secret;
+  bool has_reset_lock_permissions = false;
+
+  // TPM Delegate is required for TPM1.2. For TPM2.0, this is a no-op.
+  if (!tpm_->GetDelegate(&delegate_blob, &delegate_secret,
+                         &has_reset_lock_permissions)) {
+    ReportDictionaryAttackResetStatus(kDelegateNotAvailable);
+    return;
+  }
+  if (!has_reset_lock_permissions) {
+    ReportDictionaryAttackResetStatus(kDelegateNotAllowed);
+    return;
+  }
+  if (!tpm_->CanResetDictionaryAttackWithCurrentPCR0()) {
+    ReportDictionaryAttackResetStatus(kInvalidPcr0State);
+    return;
+  }
+  if (!tpm_->ResetDictionaryAttackMitigation(delegate_blob, delegate_secret)) {
+    ReportDictionaryAttackResetStatus(kResetAttemptFailed);
+    return;
+  }
+  ReportDictionaryAttackResetStatus(kResetAttemptSucceeded);
+}
+
+void UserDataAuth::DoAutoCleanup() {
+  homedirs_->FreeDiskSpace();
+  // Reset the dictionary attack counter if possible and necessary.
+  ResetDictionaryAttackMitigation();
+}
+
 }  // namespace cryptohome
