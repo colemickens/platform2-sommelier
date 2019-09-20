@@ -12,6 +12,7 @@
 #include "chromeos-config/libcros_config/identity.h"
 
 namespace base {
+class DictionaryValue;
 class FilePath;
 }  // namespace base
 
@@ -48,6 +49,14 @@ class CrosConfigIdentityArm : public CrosConfigIdentity {
   const std::string& GetCompatibleDeviceString() const {
     return compatible_devices_;
   }
+
+  // CrosConfigIdentity:
+  // Check that the identity is device-tree compatible with the one
+  // specified in the identity dictionary
+  bool PlatformIdentityMatch(
+      const base::DictionaryValue& identity_dict) const override;
+
+  std::string DebugString() const override;
 
  private:
   std::string compatible_devices_;

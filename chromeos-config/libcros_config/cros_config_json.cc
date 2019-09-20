@@ -27,8 +27,7 @@ CrosConfigJson::CrosConfigJson() : config_dict_(nullptr) {}
 CrosConfigJson::~CrosConfigJson() {}
 
 bool CrosConfigJson::SelectConfigByIdentityInternal(
-    const CrosConfigIdentityArm* identity_arm,
-    const CrosConfigIdentityX86* identity_x86) {
+    const CrosConfigIdentity& identity) {
   const base::DictionaryValue* root_dict;
   if (!json_config_->GetAsDictionary(&root_dict))
     return false;
@@ -41,15 +40,8 @@ bool CrosConfigJson::SelectConfigByIdentityInternal(
   if (!chromeos->GetList("configs", &configs_list))
     return false;
 
-  const CrosConfigIdentity* identity;
-  if (identity_arm) {
-    identity = identity_arm;
-  } else {
-    identity = identity_x86;
-  }
-
-  const std::string& find_whitelabel_name = identity->GetVpdId();
-  const int find_sku_id = identity->GetSkuId();
+  const std::string& find_whitelabel_name = identity.GetVpdId();
+  const int find_sku_id = identity.GetSkuId();
 
   for (size_t i = 0; i < configs_list->GetSize(); ++i) {
     const base::DictionaryValue* config_dict;
@@ -61,22 +53,8 @@ bool CrosConfigJson::SelectConfigByIdentityInternal(
       continue;
 
     // Check SMBIOS name matches (x86) or dt-compatible (arm)
-    if (identity_x86) {
-      const std::string& find_name = identity_x86->GetName();
-
-      std::string current_name;
-      if (!identity_dict->GetString("smbios-name-match", &current_name) ||
-          current_name != find_name) {
-        continue;
-      }
-    } else if (identity_arm) {
-      std::string current_dt_compatible_match;
-      if (!identity_dict->GetString("device-tree-compatible-match",
-                                    &current_dt_compatible_match) ||
-          !identity_arm->IsCompatible(current_dt_compatible_match)) {
-        continue;
-      }
-    }
+    if (!identity.PlatformIdentityMatch(*identity_dict))
+      continue;
 
     // Check that either the SKU is less than zero, or the current
     // entry has a matching SKU id. If sku-id is not defined in the
@@ -106,19 +84,10 @@ bool CrosConfigJson::SelectConfigByIdentityInternal(
 }
 
 bool CrosConfigJson::SelectConfigByIdentity(
-    const CrosConfigIdentityArm* identity_arm,
-    const CrosConfigIdentityX86* identity_x86) {
-  if (!SelectConfigByIdentityInternal(identity_arm, identity_x86)) {
-    if (identity_arm) {
-      CROS_CONFIG_LOG(ERROR)
-          << "Failed to find config for device-tree compatible string: "
-          << identity_arm->GetCompatibleDeviceString();
-    } else {
-      CROS_CONFIG_LOG(ERROR)
-          << "Failed to find config for name: " << identity_x86->GetName()
-          << " sku_id: " << identity_x86->GetSkuId()
-          << " customization_id: " << identity_x86->GetVpdId();
-    }
+    const CrosConfigIdentity& identity) {
+  if (!SelectConfigByIdentityInternal(identity)) {
+    CROS_CONFIG_LOG(ERROR) << "Failed to find config for "
+                           << identity.DebugString();
     return false;
   }
   inited_ = true;
@@ -127,11 +96,11 @@ bool CrosConfigJson::SelectConfigByIdentity(
 
 bool CrosConfigJson::SelectConfigByIdentityArm(
     const CrosConfigIdentityArm& identity) {
-  return SelectConfigByIdentity(&identity, NULL);
+  return SelectConfigByIdentity(identity);
 }
 bool CrosConfigJson::SelectConfigByIdentityX86(
     const CrosConfigIdentityX86& identity) {
-  return SelectConfigByIdentity(NULL, &identity);
+  return SelectConfigByIdentity(identity);
 }
 
 bool CrosConfigJson::GetString(const std::string& path,

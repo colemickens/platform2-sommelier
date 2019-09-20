@@ -12,6 +12,7 @@
 #include <base/macros.h>
 
 namespace base {
+class DictionaryValue;
 class FilePath;
 }  // namespace base
 
@@ -35,6 +36,17 @@ class CrosConfigIdentity {
   // @return true if OK, false on error
   bool FakeVpdFileForTesting(const std::string& customization_id,
                              base::FilePath* vpd_file_out);
+
+  // Architecture-specific check that the identity specified in the
+  // identity_dict is compatible with this identity
+  // @identity_dict: a dictionary specified under /chromeos/configs
+  // @return: true if the config is a possible identity, false otherwise
+  virtual bool PlatformIdentityMatch(
+      const base::DictionaryValue& identity_dict) const = 0;
+
+  // Get a string representation of the identity for logging purposes
+  // @return A string representing the identity
+  virtual std::string DebugString() const = 0;
 
   // @return SKU ID value
   int GetSkuId() const { return sku_id_; }

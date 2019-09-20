@@ -10,6 +10,7 @@
 
 #include <base/macros.h>
 #include "chromeos-config/libcros_config/cros_config_impl.h"
+#include "chromeos-config/libcros_config/identity.h"
 #include "chromeos-config/libcros_config/identity_arm.h"
 #include "chromeos-config/libcros_config/identity_x86.h"
 
@@ -40,20 +41,14 @@ class CrosConfigJson : public CrosConfigImpl {
   bool ReadConfigFile(const base::FilePath& filepath) override;
 
  private:
-  // Common impl for both the X86 and ARM based identity schemes.
-  // Shares all of the basic logic for iterating through configs;
-  // however, performs slight variations on identity matching based
-  // on the X86 versus ARM identity attributes.
-  bool SelectConfigByIdentity(const CrosConfigIdentityArm* identity_arm,
-                              const CrosConfigIdentityX86* identity_x86);
+  // Temporary for CL splitting. Gets made public and the Arm/X86
+  // methods are removed in crrev.com/c/1809878.
+  bool SelectConfigByIdentity(const CrosConfigIdentity& identity);
 
   // Helper used by SelectConfigByIdentity
-  // @identity_arm: The ARM identity to match, or NULL for X86
-  // @identity_x86: The x86 identity to match, or NULL for ARM
+  // @identity: The identity to match
   // @return: true on success, false otherwise
-  bool SelectConfigByIdentityInternal(
-      const CrosConfigIdentityArm* identity_arm,
-      const CrosConfigIdentityX86* identity_x86);
+  bool SelectConfigByIdentityInternal(const CrosConfigIdentity& identity);
 
   std::unique_ptr<const base::Value> json_config_;
   // Owned by json_config_
