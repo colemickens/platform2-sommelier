@@ -125,7 +125,6 @@ class MockPlatform : public Platform {
                      int64_t(const base::FilePath&, uid_t));
   MOCK_CONST_METHOD2(GetQuotaCurrentSpaceForGid,
                      int64_t(const base::FilePath&, gid_t));
-  MOCK_METHOD2(Symlink, bool(const base::FilePath&, const base::FilePath&));
   MOCK_METHOD1(FileExists, bool(const base::FilePath&));
   MOCK_METHOD2(Access, int(const base::FilePath&, uint32_t));
   MOCK_METHOD2(GetFileSize, bool(const base::FilePath&, int64_t*));

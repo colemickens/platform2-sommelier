@@ -33,12 +33,12 @@ class MockVaultKeyset : public VaultKeyset {
 
   MOCK_METHOD0(CreateRandom, void(void));
 
-  MOCK_CONST_METHOD0(FEK, const brillo::SecureBlob&(void));
-  MOCK_CONST_METHOD0(FEK_SIG, const brillo::SecureBlob&(void));
-  MOCK_CONST_METHOD0(FEK_SALT, const brillo::SecureBlob&(void));
-  MOCK_CONST_METHOD0(FNEK, const brillo::SecureBlob&(void));
-  MOCK_CONST_METHOD0(FNEK_SIG, const brillo::SecureBlob&(void));
-  MOCK_CONST_METHOD0(FNEK_SALT, const brillo::SecureBlob&(void));
+  MOCK_CONST_METHOD0(fek, const brillo::SecureBlob&(void));
+  MOCK_CONST_METHOD0(fek_sig, const brillo::SecureBlob&(void));
+  MOCK_CONST_METHOD0(fek_salt, const brillo::SecureBlob&(void));
+  MOCK_CONST_METHOD0(fnek, const brillo::SecureBlob&(void));
+  MOCK_CONST_METHOD0(fnek_sig, const brillo::SecureBlob&(void));
+  MOCK_CONST_METHOD0(fnek_salt, const brillo::SecureBlob&(void));
 
   MOCK_METHOD1(Load, bool(const base::FilePath&));
   MOCK_METHOD3(Decrypt, bool(const brillo::SecureBlob&, bool,

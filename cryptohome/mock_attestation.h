@@ -30,12 +30,7 @@ class MockAttestation : public Attestation {
                                 const brillo::SecureBlob&,
                                 bool));
   MOCK_METHOD0(IsPreparedForEnrollment, bool());
-  MOCK_METHOD2(GetEnrollmentPreparations, bool(const brillo::SecureBlob&,
-                                               brillo::SecureBlob));
   MOCK_METHOD0(IsEnrolled, bool());
-  MOCK_METHOD1(IsFirstIdentityEnrolledWith, bool(Attestation::PCAType));
-  MOCK_METHOD2(GetIdentityCertificates, bool(const brillo::SecureBlob&,
-                                                  brillo::SecureBlob));
   MOCK_METHOD0(PrepareForEnrollment, void());
   MOCK_METHOD0(CacheEndorsementData, void());
   MOCK_METHOD0(PrepareForEnrollmentAsync, void());
@@ -66,14 +61,13 @@ class MockAttestation : public Attestation {
   MOCK_METHOD3(DoesKeyExist, bool(bool,
                                   const std::string&,
                                   const std::string&));
-  MOCK_METHOD9(SignEnterpriseChallenge, bool(bool,
+  MOCK_METHOD8(SignEnterpriseChallenge, bool(bool,
                                              const std::string&,
                                              const std::string&,
                                              const std::string&,
                                              const brillo::SecureBlob&,
                                              bool,
                                              const brillo::SecureBlob&,
-                                             const std::string&,
                                              brillo::SecureBlob*));
   MOCK_METHOD10(SignEnterpriseVaChallenge, bool(Attestation::VAType,
                                                bool,

@@ -24,7 +24,6 @@ class MockInstallAttributes : public InstallAttributes {
 
   MOCK_METHOD1(SetTpm, void(Tpm*));  // NOLINT(readability/function)
   MOCK_METHOD1(Init, bool(TpmInit*));  // NOLINT(readability/function)
-  MOCK_CONST_METHOD0(IsReady, bool());
   MOCK_CONST_METHOD2(Get, bool(const std::string&, brillo::Blob*));
   MOCK_CONST_METHOD3(GetByIndex, bool(int, std::string*, brillo::Blob*));
   MOCK_METHOD2(Set, bool(const std::string&, const brillo::Blob&));
