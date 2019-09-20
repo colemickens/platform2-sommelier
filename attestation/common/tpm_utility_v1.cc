@@ -21,6 +21,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
+#include <base/sha1.h>
 #include <base/stl_util.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
@@ -31,6 +32,7 @@
 #include <trousers/trousers.h>
 #include <trousers/tss.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -57,6 +59,7 @@ constexpr unsigned int kWellKnownExponent = 65537;
 constexpr unsigned char kSha256DigestInfo[] = {
     0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
     0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20};
+constexpr size_t kSelectBitmapSize = 2;
 
 BYTE* StringAsTSSBuffer(std::string* s) {
   return reinterpret_cast<BYTE*>(base::data(*s));
@@ -68,6 +71,32 @@ BYTE* StringAsTSSBuffer(const std::string* s) {
 
 std::string TSSBufferAsString(const BYTE* buffer, size_t length) {
   return std::string(reinterpret_cast<const char*>(buffer), length);
+}
+
+// Builds the seciralized TPM_PCR_COMPOSITE stream, where |pcr_index| is the PCR
+// index, and |quoted_pcr_value| is the value of the register.
+std::string buildPcrComposite(uint32_t pcr_index,
+                              const std::string& quoted_pcr_value) {
+  CHECK_LT(pcr_index, kSelectBitmapSize * 8);
+  struct __attribute__((packed)) {
+    // Corresponding to TPM_PCR_SELECTION.sizeOfSelect.
+    uint16_t select_size;
+    // Corresponding to TPM_PCR_SELECTION.pcrSelect.
+    uint8_t select_bitmap[kSelectBitmapSize];
+    // Corresponding to  TPM_PCR_COMPOSITE.valueSize.
+    uint32_t value_size;
+  } composite_header = {0};
+  static_assert(sizeof(composite_header) ==
+                    sizeof(uint16_t) + kSelectBitmapSize + sizeof(uint32_t),
+                "Expect no padding between composite struct.");
+  // Sets to 2 bytes.
+  composite_header.select_size = (htons(2u));
+  composite_header.select_bitmap[pcr_index / 8] = 1 << (pcr_index % 8);
+  composite_header.value_size = htonl(quoted_pcr_value.length());
+  const char* composite_header_buffer =
+      reinterpret_cast<const char*>(&composite_header);
+  return std::string(composite_header_buffer, sizeof(composite_header)) +
+         quoted_pcr_value;
 }
 
 }  // namespace
@@ -640,10 +669,27 @@ bool TpmUtilityV1::QuotePCR(uint32_t pcr_index,
   return true;
 }
 
-bool TpmUtilityV1::IsQuoteForPCR(const std::string& quote,
+bool TpmUtilityV1::IsQuoteForPCR(const std::string& quoted_pcr_value,
+                                 const std::string& quoted_data,
+                                 const std::string& quote,
                                  uint32_t pcr_index) const {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
+  // Checks that the quoted value matches the given PCR value by reconstructing
+  // the TPM_PCR_COMPOSITE structure the TPM would create.
+  const std::string pcr_digest =
+      base::SHA1HashString(buildPcrComposite(pcr_index, quoted_pcr_value));
+
+  // The PCR digest should appear starting at 8th byte of the quoted data. See
+  // the TPM_QUOTE_INFO structure.
+  if (quoted_data.length() < pcr_digest.length() + 8) {
+    LOG(ERROR) << __func__ << ": Quoted data too short.";
+    return false;
+  }
+  if (!std::equal(pcr_digest.begin(), pcr_digest.end(),
+                  quoted_data.begin() + 8)) {
+    LOG(ERROR) << __func__ << "PCR value mismatch.";
+    return false;
+  }
+  return true;
 }
 
 bool TpmUtilityV1::ReadPCR(uint32_t pcr_index, std::string* pcr_value) const {

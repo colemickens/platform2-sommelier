@@ -2113,7 +2113,9 @@ bool AttestationService::VerifyQuoteSignature(
     LOG(ERROR) << __func__ << ": Signature mismatch.";
     return false;
   }
-  if (!tpm_utility_->IsQuoteForPCR(quote.quoted_data(), pcr_index)) {
+  if (!tpm_utility_->IsQuoteForPCR(quote.quoted_pcr_value(),
+                                   quote.quoted_data(), quote.quote(),
+                                   pcr_index)) {
     LOG(ERROR) << __func__ << ": Invalid quote.";
     return false;
   }

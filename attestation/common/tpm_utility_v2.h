@@ -83,7 +83,9 @@ class TpmUtilityV2 : public TpmUtility {
                 std::string* quoted_pcr_value,
                 std::string* quoted_data,
                 std::string* quote) override;
-  bool IsQuoteForPCR(const std::string& quote,
+  bool IsQuoteForPCR(const std::string& quoted_pcr_value,
+                     const std::string& quoted_data,
+                     const std::string& quote,
                      uint32_t pcr_index) const override;
   bool ReadPCR(uint32_t pcr_index, std::string* pcr_value) const override;
   bool GetNVDataSize(uint32_t nv_index, uint16_t* nv_size) const override;

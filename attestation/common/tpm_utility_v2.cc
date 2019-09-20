@@ -993,7 +993,10 @@ bool TpmUtilityV2::QuotePCR(uint32_t pcr_index,
   return true;
 }
 
-bool TpmUtilityV2::IsQuoteForPCR(const std::string& quote,
+// TODO(b/141520502): Verify the quote against expected output.
+bool TpmUtilityV2::IsQuoteForPCR(const std::string& /* quoted_pcr_value */,
+                                 const std::string& /* quoted_data */,
+                                 const std::string& quote,
                                  uint32_t pcr_index) const {
   std::string buffer = quote;
   trunks::TPMS_ATTEST parsed_quote;

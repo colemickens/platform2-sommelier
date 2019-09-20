@@ -133,9 +133,12 @@ class TpmUtility {
                         std::string* quoted_data,
                         std::string* quote) = 0;
 
-  // Checks if the provided |quote| is a valid quote for a single PCR specified
-  // by |pcr_index|.
-  virtual bool IsQuoteForPCR(const std::string& quote,
+  // Checks if |quote| is valid for a single PCR specified by |pcr_index|
+  // acoording to |quoted_pcr_value| and |quoted_data|. See |QuotePCR| above for
+  // more information about the input variables.
+  virtual bool IsQuoteForPCR(const std::string& quoted_pcr_value,
+                             const std::string& quoted_data,
+                             const std::string& quote,
                              uint32_t pcr_index) const = 0;
 
   // Reads a PCR specified by |pcr_index|. On success returns true and
