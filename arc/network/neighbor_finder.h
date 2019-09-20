@@ -23,8 +23,8 @@ namespace arc_networkd {
 // the network is already using IP address |addr|.
 class NeighborFinder : public NdpHandler {
  public:
-  NeighborFinder() {}
-  virtual ~NeighborFinder() {}
+  NeighborFinder() = default;
+  virtual ~NeighborFinder() = default;
 
   bool Check(const std::string& ifname,
              const struct in6_addr& addr,

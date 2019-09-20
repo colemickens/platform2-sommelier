@@ -39,7 +39,7 @@ class FakeAddressManager : public AddressManager {
 
 class DeviceManagerTest : public testing::Test {
  protected:
-  DeviceManagerTest() : testing::Test() {}
+  DeviceManagerTest() = default;
 
   void SetUp() override {}
 

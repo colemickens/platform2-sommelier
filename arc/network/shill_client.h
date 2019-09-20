@@ -20,7 +20,7 @@ namespace arc_networkd {
 class ShillClient {
  public:
   explicit ShillClient(scoped_refptr<dbus::Bus> bus);
-  virtual ~ShillClient() {}
+  virtual ~ShillClient() = default;
 
   void RegisterDefaultInterfaceChangedHandler(
       const base::Callback<void(const std::string&)>& callback);

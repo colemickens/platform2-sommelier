@@ -26,8 +26,8 @@ namespace arc_networkd {
 // is random, so the forwarder needs to keep a table of open sessions).
 class MulticastForwarder {
  public:
-  MulticastForwarder() {}
-  virtual ~MulticastForwarder() {}
+  MulticastForwarder() = default;
+  virtual ~MulticastForwarder() = default;
 
   // Start forwarding multicast packets between the container's P2P link
   // |int_ifname| and the external LAN interface |lan_ifname|.  This

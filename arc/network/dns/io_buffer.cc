@@ -63,7 +63,7 @@ IOBufferWithSize::IOBufferWithSize(char* data, size_t size)
   AssertValidBufferSize(size);
 }
 
-IOBufferWithSize::~IOBufferWithSize() {}
+IOBufferWithSize::~IOBufferWithSize() = default;
 
 StringIOBuffer::StringIOBuffer(const std::string& s)
     : IOBuffer(static_cast<char*>(NULL)), string_data_(s) {
@@ -151,7 +151,7 @@ GrowableIOBuffer::~GrowableIOBuffer() {
   data_ = NULL;
 }
 
-PickledIOBuffer::PickledIOBuffer() : IOBuffer() {}
+PickledIOBuffer::PickledIOBuffer() = default;
 
 void PickledIOBuffer::Done() {
   data_ = const_cast<char*>(static_cast<const char*>(pickle_.data()));
