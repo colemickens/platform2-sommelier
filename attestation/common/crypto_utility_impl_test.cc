@@ -202,12 +202,9 @@ TEST_F(CryptoUtilityImplTest, GetRSASubjectPublicKeyInfoPairWise) {
 
 TEST_F(CryptoUtilityImplTest, EncryptIdentityCredential) {
   std::string public_key = HexDecode(kValidPublicKeyHex);
-  std::string public_key_info;
-  EXPECT_TRUE(crypto_utility_->GetRSASubjectPublicKeyInfo(public_key,
-                                                          &public_key_info));
   EncryptedIdentityCredential output;
   EXPECT_TRUE(crypto_utility_->EncryptIdentityCredential(
-      TPM_1_2, "credential", public_key_info, "aik", &output));
+      TPM_1_2, "credential", public_key, "aik", &output));
   EXPECT_TRUE(output.has_asym_ca_contents());
   EXPECT_TRUE(output.has_sym_ca_attestation());
   EXPECT_EQ(TPM_1_2, output.tpm_version());

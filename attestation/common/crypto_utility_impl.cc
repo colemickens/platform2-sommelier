@@ -225,15 +225,17 @@ bool CryptoUtilityImpl::EncryptIdentityCredential(
     EncryptedIdentityCredential* encrypted) {
   auto asn1_ptr =
       reinterpret_cast<const unsigned char*>(ek_public_key_info.data());
-  crypto::ScopedRSA rsa(
-      d2i_RSA_PUBKEY(NULL, &asn1_ptr, ek_public_key_info.size()));
-  if (!rsa.get()) {
-    LOG(ERROR) << __func__
-               << ": Failed to decode EK public key: " << GetOpenSSLError();
-    return false;
-  }
   encrypted->set_tpm_version(tpm_version);
   if (tpm_version == TPM_1_2) {
+    // TODO(crbug/942487): Only use d2i_RSA_PUBKEY for both TPM version and move
+    // it back to the start of this function after the bug is resolved.
+    crypto::ScopedRSA rsa(
+        d2i_RSAPublicKey(NULL, &asn1_ptr, ek_public_key_info.size()));
+    if (!rsa.get()) {
+      LOG(ERROR) << __func__
+                 << ": Failed to decode EK public key: " << GetOpenSSLError();
+      return false;
+    }
     const char kAlgAES256 = 9;   // This comes from TPM_ALG_AES256.
     const char kEncModeCBC = 2;  // This comes from TPM_SYM_MODE_CBC.
     const char kAsymContentHeader[] = {0, 0,           0, kAlgAES256,
@@ -277,6 +279,13 @@ bool CryptoUtilityImpl::EncryptIdentityCredential(
     encrypted->set_asym_ca_contents(encrypted_asym_content);
     encrypted->set_sym_ca_attestation(sym_content);
   } else if (tpm_version == TPM_2_0) {
+    crypto::ScopedRSA rsa(
+        d2i_RSA_PUBKEY(NULL, &asn1_ptr, ek_public_key_info.size()));
+    if (!rsa.get()) {
+      LOG(ERROR) << __func__
+                 << ": Failed to decode EK public key: " << GetOpenSSLError();
+      return false;
+    }
     // The 'credential' parameter is actually the certificate. The 'credential'
     // used in the wrapping process is referred to as 'inner_credential' below.
     std::string certificate = credential;
