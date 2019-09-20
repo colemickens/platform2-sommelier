@@ -42,10 +42,10 @@ class CrosConfigIdentityX86 : public CrosConfigIdentity {
   // @product_name_file_out: File that the name was written into
   // @product_sku_file_out: File that the SKU ID string was written into
   // @return true if OK, false on error
-  bool Fake(const std::string& name,
-            int sku_id,
-            base::FilePath* product_name_file_out,
-            base::FilePath* product_sku_file_out);
+  bool FakeProductFilesForTesting(const std::string& name,
+                                  int sku_id,
+                                  base::FilePath* product_name_file_out,
+                                  base::FilePath* product_sku_file_out);
 
  private:
   std::string name_;

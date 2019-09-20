@@ -56,12 +56,13 @@ bool CrosConfig::InitForTestX86(const base::FilePath& filepath,
                                 const std::string& customization_id) {
   base::FilePath product_name_file, product_sku_file, vpd_file;
   CrosConfigIdentityX86 identity;
-  if (!identity.FakeVpd(customization_id, &vpd_file)) {
-    CROS_CONFIG_LOG(ERROR) << "FakeVpd() failed";
+  if (!identity.FakeVpdFileForTesting(customization_id, &vpd_file)) {
+    CROS_CONFIG_LOG(ERROR) << "FakeVpdFileForTesting() failed";
     return false;
   }
-  if (!identity.Fake(name, sku_id, &product_name_file, &product_sku_file)) {
-    CROS_CONFIG_LOG(ERROR) << "FakeVpd() failed";
+  if (!identity.FakeProductFilesForTesting(name, sku_id, &product_name_file,
+                                           &product_sku_file)) {
+    CROS_CONFIG_LOG(ERROR) << "FakeProductFilesForTesting() failed";
     return false;
   }
   return InitCrosConfig(filepath) &&
@@ -75,13 +76,13 @@ bool CrosConfig::InitForTestArm(const base::FilePath& filepath,
                                 const std::string& customization_id) {
   base::FilePath dt_compatible_file, sku_id_file, vpd_file;
   CrosConfigIdentityArm identity;
-  if (!identity.FakeVpd(customization_id, &vpd_file)) {
-    CROS_CONFIG_LOG(ERROR) << "FakeVpd() failed";
+  if (!identity.FakeVpdFileForTesting(customization_id, &vpd_file)) {
+    CROS_CONFIG_LOG(ERROR) << "FakeVpdFileForTesting() failed";
     return false;
   }
-  if (!identity.Fake(dt_compatible_name, sku_id, &dt_compatible_file,
-                     &sku_id_file)) {
-    CROS_CONFIG_LOG(ERROR) << "FakeDtCompatible() failed";
+  if (!identity.FakeProductFilesForTesting(dt_compatible_name, sku_id,
+                                           &dt_compatible_file, &sku_id_file)) {
+    CROS_CONFIG_LOG(ERROR) << "FakeProductFilesForTesting() failed";
     return false;
   }
   return InitCrosConfig(filepath) &&

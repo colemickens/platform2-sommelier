@@ -22,9 +22,9 @@ CrosConfigIdentityArm::CrosConfigIdentityArm() {}
 
 CrosConfigIdentityArm::~CrosConfigIdentityArm() {}
 
-bool CrosConfigIdentityArm::Fake(
+bool CrosConfigIdentityArm::FakeProductFilesForTesting(
     const std::string& device_name,
-    int sku_id,
+    const int sku_id,
     base::FilePath* dt_compatible_file_out,
     base::FilePath* sku_id_file_out) {
   *dt_compatible_file_out = base::FilePath("dt_compatible");

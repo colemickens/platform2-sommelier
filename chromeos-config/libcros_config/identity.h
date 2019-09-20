@@ -33,8 +33,8 @@ class CrosConfigIdentity {
   // @vpd_file_out: Returns the '/sys/firmware/vpd/ro/customization_id'-style
   //     file that was written
   // @return true if OK, false on error
-  bool FakeVpd(const std::string& customization_id,
-               base::FilePath* vpd_file_out);
+  bool FakeVpdFileForTesting(const std::string& customization_id,
+                             base::FilePath* vpd_file_out);
 
   // @return SKU ID value
   int GetSkuId() const { return sku_id_; }

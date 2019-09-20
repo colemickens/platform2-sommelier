@@ -20,8 +20,8 @@ CrosConfigIdentity::CrosConfigIdentity() {}
 
 CrosConfigIdentity::~CrosConfigIdentity() {}
 
-bool CrosConfigIdentity::FakeVpd(const std::string& vpd_id,
-                                 base::FilePath* vpd_file_out) {
+bool CrosConfigIdentity::FakeVpdFileForTesting(const std::string& vpd_id,
+                                               base::FilePath* vpd_file_out) {
   *vpd_file_out = base::FilePath("vpd");
   if (base::WriteFile(*vpd_file_out, vpd_id.c_str(), vpd_id.length()) !=
       vpd_id.length()) {

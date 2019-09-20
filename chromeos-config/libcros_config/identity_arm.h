@@ -35,10 +35,10 @@ class CrosConfigIdentityArm : public CrosConfigIdentity {
   // @dt_compatible_file_out: Returns the file that was written
   // @sku_id_file_out: File that the SKU ID integer was written into
   // @return true if OK, false on error
-  bool Fake(const std::string& device_name,
-            int sku_id,
-            base::FilePath* dt_compatible_file_out,
-            base::FilePath* sku_id_file_out);
+  bool FakeProductFilesForTesting(const std::string& device_name,
+                                  const int sku_id,
+                                  base::FilePath* dt_compatible_file_out,
+                                  base::FilePath* sku_id_file_out);
 
   // Checks if the device_name exists in the compatible devices string.
   // @return true if device is compatible

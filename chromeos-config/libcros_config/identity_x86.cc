@@ -22,10 +22,11 @@ CrosConfigIdentityX86::CrosConfigIdentityX86() {}
 
 CrosConfigIdentityX86::~CrosConfigIdentityX86() {}
 
-bool CrosConfigIdentityX86::Fake(const std::string& name,
-                                 int sku_id,
-                                 base::FilePath* product_name_file_out,
-                                 base::FilePath* product_sku_file_out) {
+bool CrosConfigIdentityX86::FakeProductFilesForTesting(
+    const std::string& name,
+    const int sku_id,
+    base::FilePath* product_name_file_out,
+    base::FilePath* product_sku_file_out) {
   *product_name_file_out = base::FilePath("product_name");
   // Add a newline to mimic the kernel file.
   std::string content = name + "\n";
