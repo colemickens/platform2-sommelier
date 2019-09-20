@@ -176,9 +176,9 @@ bool JpegCompressorImpl::CompressImageFromHandle(buffer_handle_t input,
     return false;
   }
 
-  LOGF(INFO) << "Compressed JPEG with " << method_used << ": "
-             << (width * height * 12) / 8 << "[" << width << "x" << height
-             << "] -> " << *out_data_size << " bytes";
+  VLOGF(1) << "Compressed JPEG with " << method_used << ": "
+           << (width * height * 12) / 8 << "[" << width << "x" << height
+           << "] -> " << *out_data_size << " bytes";
   return true;
 }
 
@@ -207,9 +207,9 @@ bool JpegCompressorImpl::CompressImageFromMemory(void* input,
       EncodeSw(input, input_format, output, output_buffer_size, width, height,
                quality, app1_ptr, app1_size, out_data_size);
   if (isSuccess) {
-    LOGF(INFO) << "Compressed JPEG with software : "
-               << (width * height * 12) / 8 << "[" << width << "x" << height
-               << "] -> " << *out_data_size << " bytes";
+    VLOGF(1) << "Compressed JPEG with software : " << (width * height * 12) / 8
+             << "[" << width << "x" << height << "] -> " << *out_data_size
+             << " bytes";
   } else {
     LOGF(ERROR) << "Failed to compress image with memory.";
   }
