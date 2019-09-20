@@ -94,6 +94,7 @@ namespace attestation {
 CryptoUtilityImpl::CryptoUtilityImpl(TpmUtility* tpm_utility)
     : tpm_utility_(tpm_utility) {
   OpenSSL_add_all_algorithms();
+  EVP_PKEY_asn1_add_alias(EVP_PKEY_RSA, NID_rsaesOaep);
   ERR_load_crypto_strings();
 }
 
@@ -916,9 +917,32 @@ bool CryptoUtilityImpl::GetCertificatePublicKey(const std::string& certificate,
     LOG(ERROR) << __func__ << ": Failed to parse certificate.";
     return false;
   }
-  public_key->assign(
-      reinterpret_cast<char*>(x509.get()->cert_info->key->public_key->data),
-      x509.get()->cert_info->key->public_key->length);
+  crypto::ScopedEVP_PKEY pkey(X509_get_pubkey(x509.get()));
+  if (!pkey) {
+    LOG(ERROR) << __func__ << ": Failed to get EVP_PKEY from the certificate: "
+               << GetOpenSSLError();
+    return false;
+  }
+  crypto::ScopedRSA rsa(EVP_PKEY_get1_RSA(pkey.get()));
+  if (!rsa) {
+    LOG(ERROR) << __func__
+               << ": Failed to get RSA from EVP_PKEY: " << GetOpenSSLError();
+    return false;
+  }
+  int der_length = i2d_RSAPublicKey(rsa.get(), nullptr);
+  if (der_length < 0) {
+    LOG(ERROR) << __func__
+               << ": Bad length of der-encoded output: " << GetOpenSSLError();
+    return false;
+  }
+  public_key->resize(der_length);
+  unsigned char* der_buffer =
+      reinterpret_cast<unsigned char*>(base::data(*public_key));
+  if ((der_length = i2d_RSAPublicKey(rsa.get(), &der_buffer)) < 0) {
+    LOG(ERROR) << __func__
+               << ": Bad length of der-encoded output: " << GetOpenSSLError();
+    return false;
+  }
   return true;
 }
 
