@@ -143,29 +143,45 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD* in_fd,
                                   base::ScopedFD* err_fd) {
   char* const* const args = GetArguments();
   DCHECK(args && args[0]);
+
   pid_t child_pid = kInvalidProcessId;
   if (!run_custom_init_) {
     int in = kInvalidFD, out = kInvalidFD, err = kInvalidFD;
-    if (minijail_run_pid_pipes(jail_, args[0], args, &child_pid, &in, &out,
-                               &err) != 0) {
+    const int ret = minijail_run_pid_pipes(jail_, args[0], args, &child_pid,
+                                           &in, &out, &err);
+    if (ret < 0) {
+      LOG(ERROR) << "Cannot run minijail_run_pid_pipes: "
+                 << base::safe_strerror(-ret);
       return kInvalidProcessId;
     }
+
     in_fd->reset(in);
     out_fd->reset(out);
     err_fd->reset(err);
   } else {
+    // Create SandboxedInit before calling minijail_fork because it sets up the
+    // pipes that need to be passed to the child process.
     SandboxedInit init_;
+
+    // Create child process.
     child_pid = minijail_fork(jail_);
-    if (child_pid == kInvalidProcessId) {
+    if (child_pid < 0) {
+      LOG(ERROR) << "Cannot run minijail_fork: "
+                 << base::safe_strerror(-child_pid);
       return kInvalidProcessId;
     }
+
     if (child_pid == 0) {
+      // In child process.
       init_.RunInsideSandboxNoReturn(base::BindOnce(Exec, args));
+      NOTREACHED();
     } else {
+      // In parent process.
       custom_init_control_fd_ = init_.TakeInitControlFD(in_fd, out_fd, err_fd);
       CHECK(base::SetNonBlocking(custom_init_control_fd_.get()));
     }
   }
+
   return child_pid;
 }
 
