@@ -89,14 +89,15 @@ void EthernetProvider::RegisterService(EthernetServiceRefPtr service) {
 void EthernetProvider::DeregisterService(EthernetServiceRefPtr service) {
   SLOG(this, 2) << __func__;
   // Remove the service from the services_ list if it is not the only remaining
-  // service remaining. Otherwise, turn it into the ethernet_any service. A
-  // service is deregistered with the Manager if and only if it is also
-  // deregistered with the EthernetProvider.
-  if (services_.size() == 1 && service_->HasEthernet() && service_ == service) {
+  // service. Otherwise, turn it into the ethernet_any service. A service is
+  // deregistered with the Manager if and only if it is also deregistered with
+  // the EthernetProvider.
+  CHECK(base::ContainsValue(services_, service))
+      << "De-registering an unregistered service";
+  if (services_.size() == 1 && service->HasEthernet()) {
     service->ResetEthernet();
     return;
   }
-  CHECK(base::ContainsValue(services_, service));
   base::Erase(services_, service);
   manager_->DeregisterService(service);
 }
