@@ -52,8 +52,8 @@ bool ParseHeader(const std::string& command, uint16_t* tag, uint32_t* size,
 namespace trunks {
 
 FuzzedCommandTransceiver::FuzzedCommandTransceiver(
-    base::FuzzedDataProvider* const data_provider, size_t max_message_size)
-      : data_provider_(data_provider), max_message_size_(max_message_size) {
+    FuzzedDataProvider* const data_provider, size_t max_message_size)
+    : data_provider_(data_provider), max_message_size_(max_message_size) {
   CHECK(data_provider);
 }
 
@@ -122,7 +122,8 @@ uint32_t FuzzedCommandTransceiver::ConsumeCommandCode() {
   if (ConsumeBoolWithProbability(kPureRandomProb)) {
     return ConsumeUint32();
   }
-  return data_provider_->ConsumeUint32InRange(TPM_CC_FIRST, TPM_CC_LAST);
+  return data_provider_->ConsumeIntegralInRange<uint32_t>(TPM_CC_FIRST,
+                                                          TPM_CC_LAST);
 }
 
 uint32_t FuzzedCommandTransceiver::ConsumeResponseCode() {
@@ -130,7 +131,7 @@ uint32_t FuzzedCommandTransceiver::ConsumeResponseCode() {
   if (ConsumeBoolWithProbability(kPureRandomProb)) {
     return ConsumeUint32();
   }
-  uint32_t rc = data_provider_->ConsumeUint32InRange(0, 0xFFF);
+  uint32_t rc = data_provider_->ConsumeIntegralInRange<uint32_t>(0, 0xFFF);
   if (data_provider_->ConsumeBool()) {
     // Generate WARN or FMT0 error RC.
     rc &= 0x97F;
@@ -144,7 +145,7 @@ uint32_t FuzzedCommandTransceiver::ConsumeResponseCode() {
 uint16_t FuzzedCommandTransceiver::ConsumeCommandTag() {
   // Decide between realistic and purely random value.
   if (ConsumeBoolWithProbability(kPureRandomProb)) {
-    return data_provider_->ConsumeUint16();
+    return data_provider_->ConsumeIntegral<uint16_t>();
   }
   if (data_provider_->ConsumeBool()) {
     return TPM_ST_SESSIONS;
@@ -179,7 +180,7 @@ std::string FuzzedCommandTransceiver::ConsumePayload(size_t pre_payload_size) {
 
 bool FuzzedCommandTransceiver::ConsumeBoolWithProbability(
     uint32_t probability) {
-  return data_provider_->ConsumeUint32InRange(0, 99) < probability;
+  return data_provider_->ConsumeIntegralInRange<uint32_t>(0, 99) < probability;
 }
 
 std::string FuzzedCommandTransceiver::ConsumeRandomMessage() {
@@ -187,7 +188,7 @@ std::string FuzzedCommandTransceiver::ConsumeRandomMessage() {
 }
 
 uint32_t FuzzedCommandTransceiver::ConsumeUint32() {
-  return data_provider_->ConsumeUint32InRange(0, 0xFFFFFFFFu);
+  return data_provider_->ConsumeIntegralInRange<uint32_t>(0, 0xFFFFFFFFu);
 }
 
 }  // namespace trunks

@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/test/fuzzed_data_provider.h>
+#include <fuzzer/FuzzedDataProvider.h>
 
 #include "dlcservice/boot_device.h"
 #include "dlcservice/boot_slot.h"
+
+#include <base/logging.h>
 
 namespace dlcservice {
 
@@ -38,10 +40,11 @@ class Environment {
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
-  base::FuzzedDataProvider fuzzed_data_provider(data, size);
+  FuzzedDataProvider fuzzed_data_provider(data, size);
 
   bool is_removable_device = fuzzed_data_provider.ConsumeBool();
-  std::string boot_device = fuzzed_data_provider.ConsumeRemainingBytes();
+  std::string boot_device =
+      fuzzed_data_provider.ConsumeRemainingBytesAsString();
 
   dlcservice::BootSlot boot_slot(std::make_unique<dlcservice::FakeBootDevice>(
       boot_device, is_removable_device));

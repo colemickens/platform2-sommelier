@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include <set>
 
 #include "base/logging.h"
-#include "base/test/fuzzed_data_provider.h"
 
 #include "permission_broker/firewall.h"
 
@@ -37,16 +37,16 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
 
   permission_broker::FakeFirewall fake_firewall;
-  base::FuzzedDataProvider data_provider(data, size);
+  FuzzedDataProvider data_provider(data, size);
 
   std::set<uint16_t> tcp_ports;
   std::set<uint16_t> udp_ports;
 
   // How many ports should we try?
-  uint8_t num_ports = data_provider.ConsumeUint8();
+  uint8_t num_ports = data_provider.ConsumeIntegral<uint8_t>();
   for (size_t i = 0; i < num_ports; i++) {
     bool is_tcp = data_provider.ConsumeBool();
-    uint16_t port = data_provider.ConsumeUint16();
+    uint16_t port = data_provider.ConsumeIntegral<uint16_t>();
 
     if (!is_tcp && port == 0) {
       // Did we run out of data? Consume another bool to check.
@@ -61,12 +61,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       // Port does not exist.
       // With small probability, hit the error case: delete a port that doesn't
       // exist.
-      do_add = data_provider.ConsumeUint8() < 0xFF;
+      do_add = data_provider.ConsumeIntegral<uint8_t>() < 0xFF;
     } else {
       // Port exists.
       // With small probability, hit the error case: add a port that already
       // exists.
-      do_add = data_provider.ConsumeUint8() == 0xFF;
+      do_add = data_provider.ConsumeIntegral<uint8_t>() == 0xFF;
     }
 
     if (do_add) {

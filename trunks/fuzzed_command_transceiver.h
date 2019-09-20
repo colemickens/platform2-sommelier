@@ -9,10 +9,10 @@
 #define TRUNKS_FUZZED_COMMAND_TRANSCEIVER_H_
 
 #include <cstdint>
+#include <fuzzer/FuzzedDataProvider.h>
 #include <string>
 
 #include <base/macros.h>
-#include <base/test/fuzzed_data_provider.h>
 
 #include "trunks/command_transceiver.h"
 
@@ -21,7 +21,7 @@ namespace trunks {
 // Provides responses based on random data consumed from FuzzedDataProvider.
 class FuzzedCommandTransceiver : public CommandTransceiver {
  public:
-  FuzzedCommandTransceiver(base::FuzzedDataProvider* const data_provider,
+  FuzzedCommandTransceiver(FuzzedDataProvider* const data_provider,
                            size_t max_message_size);
 
   // CommandTransceiver methods.
@@ -64,7 +64,7 @@ class FuzzedCommandTransceiver : public CommandTransceiver {
   // Returns a random uint32_t.
   uint32_t ConsumeUint32();
 
-  base::FuzzedDataProvider* const data_provider_;
+  FuzzedDataProvider* const data_provider_;
   const size_t max_message_size_;
 
   DISALLOW_COPY_AND_ASSIGN(FuzzedCommandTransceiver);

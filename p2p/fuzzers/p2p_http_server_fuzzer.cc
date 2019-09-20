@@ -6,10 +6,10 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include <memory>
 
 #include <base/logging.h>
-#include <base/test/fuzzed_data_provider.h>
 #include <metrics/metrics_library.h>
 
 #include "p2p/common/server_message.h"
@@ -33,18 +33,18 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   if (size < 8)
     return 0;
 
-  base::FuzzedDataProvider data_provider(data, size);
+  FuzzedDataProvider data_provider(data, size);
 
   int64_t value;
-  std::string value_bytes = data_provider.ConsumeBytes(sizeof(value));
+  std::string value_bytes = data_provider.ConsumeBytesAsString(sizeof(value));
   memcpy(&value, value_bytes.data(), value_bytes.size());
 
   // The values of magic and message_type are constrained to ensure
   // OnMessageReceived does not exit().
   P2PServerMessage msg{
       .magic = kP2PServerMagic,
-      .message_type =
-          data_provider.ConsumeUint32InRange(0, kNumP2PServerMessageTypes - 1),
+      .message_type = data_provider.ConsumeIntegralInRange<uint32_t>(
+          0, kNumP2PServerMessageTypes - 1),
       .value = value,
   };
 

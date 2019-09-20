@@ -3,14 +3,13 @@
 // found in the LICENSE file.
 
 #include "kerberos/config_validator.h"
+#include "kerberos/krb5_interface_impl.h"
 
 #include <stddef.h>
 #include <stdint.h>
+#include <fuzzer/FuzzedDataProvider.h>
 
 #include "base/logging.h"
-#include "base/test/fuzzed_data_provider.h"
-
-#include "kerberos/krb5_interface_impl.h"
 
 struct Environment {
   Environment() { logging::SetMinLogLevel(logging::LOG_FATAL); }

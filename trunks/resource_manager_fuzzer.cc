@@ -24,14 +24,15 @@ struct Environment {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
 
-  base::FuzzedDataProvider data_provider(data, size);
+  FuzzedDataProvider data_provider(data, size);
 
   trunks::TrunksFactoryForTest test_factory;
   trunks::FuzzedCommandTransceiver transceiver(&data_provider,
                                                kMaxMessageLength);
   trunks::ResourceManager resource_manager(test_factory, &transceiver);
 
-  size_t num_cmd = data_provider.ConsumeUint32InRange(1, kMaxCommands);
+  size_t num_cmd =
+      data_provider.ConsumeIntegralInRange<uint32_t>(1, kMaxCommands);
   for (size_t n = 0; n < num_cmd; n++) {
     resource_manager.SendCommandAndWait(transceiver.ConsumeCommand());
   }

@@ -7,10 +7,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "base/test/fuzzed_data_provider.h"
+#include <fuzzer/FuzzedDataProvider.h>
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  base::FuzzedDataProvider data_provider(data, size);
+  FuzzedDataProvider data_provider(data, size);
 
   const std::string usb_info = data_provider.ConsumeRandomLengthString(size);
   uint16_t vid;

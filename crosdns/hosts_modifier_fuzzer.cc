@@ -4,13 +4,13 @@
 
 #include "crosdns/hosts_modifier.h"
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include <string>
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/test/fuzzed_data_provider.h>
 
 constexpr char kBaseFileContents[] =
     "# Example /etc/hosts file\n"
@@ -32,7 +32,7 @@ struct Environment {
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
-  base::FuzzedDataProvider data_provider(data, size);
+  FuzzedDataProvider data_provider(data, size);
   // The aspects that we randomize based on the fuzzed data for better coverage
   // are:
   // - Using a valid numerical IP address (i.e. x.x.x.x where x < 256)
@@ -45,12 +45,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     bool useValidIpRange = data_provider.ConsumeBool();
     if (useValidIpRange) {
       ip = kValidIpPrefix;
-      ip.append(base::IntToString(data_provider.ConsumeUint8()));
+      ip.append(base::IntToString(data_provider.ConsumeIntegral<uint8_t>()));
     } else {
-      ip = base::IntToString(data_provider.ConsumeUint8()) + "." +
-           base::IntToString(data_provider.ConsumeUint8()) + "." +
-           base::IntToString(data_provider.ConsumeUint8()) + "." +
-           base::IntToString(data_provider.ConsumeUint8());
+      ip = base::IntToString(data_provider.ConsumeIntegral<uint8_t>()) + "." +
+           base::IntToString(data_provider.ConsumeIntegral<uint8_t>()) + "." +
+           base::IntToString(data_provider.ConsumeIntegral<uint8_t>()) + "." +
+           base::IntToString(data_provider.ConsumeIntegral<uint8_t>());
     }
   } else {
     // We will want up to 3 strings, so take a random length of 1/3 the total

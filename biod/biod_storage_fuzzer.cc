@@ -6,14 +6,14 @@
 
 #include <stddef.h>
 #include <stdint.h>
+
+#include <fuzzer/FuzzedDataProvider.h>
 #include <vector>
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <base/values.h>
-
-#include "base/logging.h"
-#include "base/test/fuzzed_data_provider.h"
 
 class Environment {
  public:
@@ -60,23 +60,23 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   int MAX_LEN = 255;
   int MAX_DATA_LEN = 45000;
 
-  base::FuzzedDataProvider data_provider(data, size);
+  FuzzedDataProvider data_provider(data, size);
 
-  int id_len = data_provider.ConsumeInt32InRange(1, MAX_LEN);
-  int user_id_len = data_provider.ConsumeInt32InRange(1, MAX_LEN);
-  int label_len = data_provider.ConsumeInt32InRange(1, MAX_LEN);
-  int data_len = data_provider.ConsumeInt32InRange(MAX_DATA_LEN - 1000,
-                                                   MAX_DATA_LEN);
+  int id_len = data_provider.ConsumeIntegralInRange<int32_t>(1, MAX_LEN);
+  int user_id_len = data_provider.ConsumeIntegralInRange<int32_t>(1, MAX_LEN);
+  int label_len = data_provider.ConsumeIntegralInRange<int32_t>(1, MAX_LEN);
+  int data_len = data_provider.ConsumeIntegralInRange<int32_t>(
+      MAX_DATA_LEN - 1000, MAX_DATA_LEN);
 
-  const std::string id = data_provider.ConsumeBytes(id_len);
-  const std::string user_id = data_provider.ConsumeBytes(user_id_len);
-  const std::string label = data_provider.ConsumeBytes(label_len);
+  const std::string id = data_provider.ConsumeBytesAsString(id_len);
+  const std::string user_id = data_provider.ConsumeBytesAsString(user_id_len);
+  const std::string label = data_provider.ConsumeBytesAsString(label_len);
   std::string biod_data;
 
   if (data_provider.remaining_bytes() > data_len)
-    biod_data = data_provider.ConsumeBytes(data_len);
+    biod_data = data_provider.ConsumeBytesAsString(data_len);
   else
-    biod_data = data_provider.ConsumeRemainingBytes();
+    biod_data = data_provider.ConsumeRemainingBytesAsString();
 
   biod::BiodStorage biod_storage =
         biod::BiodStorage("BiometricsManager", base::Bind(&LoadRecord));

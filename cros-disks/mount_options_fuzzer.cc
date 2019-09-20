@@ -4,11 +4,10 @@
 
 #include <stdint.h>
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include <base/test/fuzzed_data_provider.h>
 
 #include "cros-disks/mount_options.h"
 
@@ -16,28 +15,30 @@ namespace cros_disks {
 namespace {
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  base::FuzzedDataProvider data_provider(data, size);
+  FuzzedDataProvider data_provider(data, size);
 
   MountOptions mount_options;
 
-  size_t num_whitelisted_options = data_provider.ConsumeUint32InRange(0, 50);
+  size_t num_whitelisted_options =
+      data_provider.ConsumeIntegralInRange<uint32_t>(0, 50);
   for (size_t i = 0; i < num_whitelisted_options; ++i) {
     mount_options.WhitelistOption(data_provider.ConsumeRandomLengthString(100));
   }
 
   size_t num_whitelisted_option_prefixes =
-      data_provider.ConsumeUint32InRange(0, 50);
+      data_provider.ConsumeIntegralInRange<uint32_t>(0, 50);
   for (size_t i = 0; i < num_whitelisted_option_prefixes; ++i) {
     mount_options.WhitelistOptionPrefix(
         data_provider.ConsumeRandomLengthString(100));
   }
 
-  size_t num_enforced_options = data_provider.ConsumeUint32InRange(0, 50);
+  size_t num_enforced_options =
+      data_provider.ConsumeIntegralInRange<uint32_t>(0, 50);
   for (size_t i = 0; i < num_enforced_options; ++i) {
     mount_options.EnforceOption(data_provider.ConsumeRandomLengthString(100));
   }
 
-  size_t num_options = data_provider.ConsumeUint32InRange(0, 1000);
+  size_t num_options = data_provider.ConsumeIntegralInRange<uint32_t>(0, 1000);
   std::vector<std::string> options;
   options.reserve(num_options);
   for (size_t i = 0; i < num_options; ++i) {

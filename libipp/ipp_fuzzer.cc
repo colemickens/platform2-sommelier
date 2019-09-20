@@ -5,17 +5,16 @@
 #include "libipp/ipp.h"
 
 #include <cstdint>
+#include <fuzzer/FuzzedDataProvider.h>
 #include <limits>
 #include <vector>
 
-#include "base/test/fuzzed_data_provider.h"
-
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  base::FuzzedDataProvider fuzz_data(data, size);
+  FuzzedDataProvider fuzz_data(data, size);
   const bool is_client = fuzz_data.ConsumeBool();
   const ipp::Operation oper_id =
-      static_cast<ipp::Operation>(fuzz_data.ConsumeUint16());
-  const std::string packet_str = fuzz_data.ConsumeRemainingBytes();
+      static_cast<ipp::Operation>(fuzz_data.ConsumeIntegral<uint16_t>());
+  const std::string packet_str = fuzz_data.ConsumeRemainingBytesAsString();
   const std::vector<uint8_t> packet_bytes(packet_str.begin(), packet_str.end());
 
   if (is_client) {
