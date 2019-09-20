@@ -175,7 +175,7 @@ LLAddress::LLAddress(LLAddress::Type type, const string& address)
 }
 
 LLAddress::LLAddress(const struct sockaddr_ll* address_struct) {
-  if (NULL == address_struct) {
+  if (address_struct == nullptr) {
     type_ = Type::kInvalid;
     return;
   }

@@ -152,7 +152,7 @@ Status EtherSocket::AttachFilter(const struct sock_fprog* sock_filter_prog) {
 
   if (sock_filter_prog == nullptr) {
     // Remove socket filter.
-    if (setsockopt(fd(), SOL_SOCKET, SO_DETACH_FILTER, NULL, 0) < 0) {
+    if (setsockopt(fd(), SOL_SOCKET, SO_DETACH_FILTER, nullptr, 0) < 0) {
       const int saved_errno = errno;
       return Status(Code::UNEXPECTED_FAILURE)
              << "Failed to detach BPF: setsockopt(): "
