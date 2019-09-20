@@ -19,6 +19,8 @@ int main(int argc, char* argv[]) {
   DEFINE_string(test_file, "",
                 "Override path to system config database for testing.");
   DEFINE_string(test_name, "", "Override platform name for testing.");
+  DEFINE_string(test_arch, "x86_64",
+                "Override the machine architecture for testing.");
   DEFINE_int32(test_sku_id, brillo::kDefaultSkuId,
                "Override SKU ID for testing.");
   DEFINE_string(whitelabel_tag, "", "Override whitelabel tag for testing.");
@@ -48,7 +50,8 @@ int main(int argc, char* argv[]) {
   } else {
     if (!cros_config.InitForTest(
             FLAGS_test_sku_id, base::FilePath(FLAGS_test_file),
-            brillo::CrosConfigIdentity::CurrentSystemArchitecture(),
+            brillo::CrosConfigIdentity::CurrentSystemArchitecture(
+                FLAGS_test_arch),
             FLAGS_test_name, FLAGS_whitelabel_tag)) {
       return 1;
     }
