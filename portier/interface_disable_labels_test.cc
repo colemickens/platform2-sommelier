@@ -16,8 +16,8 @@ class MockInterface : public InterfaceDisableLabels {
   MockInterface() = default;
   ~MockInterface() override = default;
 
-  MOCK_METHOD0(OnEnabled, void());
-  MOCK_METHOD0(OnDisabled, void());
+  MOCK_METHOD(void, OnEnabled, (), (override));
+  MOCK_METHOD(void, OnDisabled, (), (override));
 };
 
 }  // namespace

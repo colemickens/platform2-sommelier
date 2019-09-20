@@ -16,8 +16,8 @@ class MockGroupMember : public GroupMemberInterface<MockGroupMember> {
  public:
   MockGroupMember() {}
 
-  MOCK_METHOD0(PostJoinGroup, void());
-  MOCK_METHOD0(PostLeaveGroup, void());
+  MOCK_METHOD(void, PostJoinGroup, (), (override));
+  MOCK_METHOD(void, PostLeaveGroup, (), (override));
 };
 
 using MockGroup = MockGroupMember::GroupType;
