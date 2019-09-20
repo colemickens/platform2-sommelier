@@ -920,7 +920,7 @@ TEST(ModifyNeighborDiscoveryMessageTest, SetProxyFlag) {
 
 class ParsedRouterSolicitationTest : public ::testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     // Start with the base message.
     ByteString rs_packet(kRSMessage1, sizeof(kRSMessage1));
 
@@ -977,7 +977,7 @@ TEST_F(ParsedRouterSolicitationTest, SourceLinkLayerOptionCorrect) {
 
 class ParsedRouterAdvertisementTest : public ::testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     ByteString ra_packet(kRAMessage1, sizeof(kRAMessage1));
 
     // Add a source link-layer option.
@@ -1126,7 +1126,7 @@ TEST_F(ParsedRouterAdvertisementTest, PrefixOptionCorrect) {
 
 class ParsedNeighborSolicitTest : public ::testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     // Start with the base message.
     ByteString ns_packet(kNSMessage1, sizeof(kNSMessage1));
 
@@ -1172,7 +1172,7 @@ TEST_F(ParsedNeighborSolicitTest, SourceLinkLayerOptionCorrect) {
 
 class ParsedNeighborAdvertTest : public ::testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     // Start with the base message.
     ByteString na_packet(kNAMessage1, sizeof(kNAMessage1));
 
@@ -1229,7 +1229,7 @@ TEST_F(ParsedNeighborAdvertTest, TargetLinkLayerOptionCorrect) {
 
 class ParsedRedirectTest : public ::testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     // Start with the base message.
     ByteString rd_packet(kRMessage1, sizeof(kRMessage1));
 

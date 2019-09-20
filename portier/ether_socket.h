@@ -48,7 +48,7 @@ struct IPv6EtherHeader {
 class EtherSocket : public NetworkSocket {
  public:
   static std::unique_ptr<EtherSocket> Create(const std::string& if_name);
-  virtual ~EtherSocket();
+  ~EtherSocket() override;
 
   // Socket options.
 

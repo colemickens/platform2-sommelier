@@ -107,7 +107,7 @@ bool CompareEntries(const NeighborCacheEntry& entry1,
 //                          +---------------+
 class NeighborCacheTest : public testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     now_ = base::TimeTicks::Now();
 
     router1_.ip_address = kRouterAddress1;

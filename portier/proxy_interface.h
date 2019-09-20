@@ -57,7 +57,7 @@ class ProxyInterface : public GroupMemberInterface<ProxyInterface>,
   // interface.
   static std::unique_ptr<ProxyInterface> Create(const std::string& if_name);
 
-  ~ProxyInterface();
+  ~ProxyInterface() override;
 
   State state() const { return state_; }
 
