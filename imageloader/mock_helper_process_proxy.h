@@ -23,13 +23,17 @@ class MockHelperProcessProxy : public HelperProcessProxy {
 
   // Sends a message telling the helper process to mount the file backed by |fd|
   // at the |path|.
-  MOCK_METHOD4(SendMountCommand,
-               bool(int, const std::string&, FileSystem, const std::string&));
+  MOCK_METHOD(bool,
+              SendMountCommand,
+              (int, const std::string&, FileSystem, const std::string&),
+              (override));
 
-  MOCK_METHOD3(SendUnmountAllCommand,
-               bool(bool, const std::string&, std::vector<std::string>* paths));
+  MOCK_METHOD(bool,
+              SendUnmountAllCommand,
+              (bool, const std::string&, std::vector<std::string>* paths),
+              (override));
 
-  MOCK_METHOD1(SendUnmountCommand, bool(const std::string&));
+  MOCK_METHOD(bool, SendUnmountCommand, (const std::string&), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockHelperProcessProxy);
