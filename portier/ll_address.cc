@@ -194,7 +194,7 @@ LLAddress::LLAddress(const struct sockaddr_ll* address_struct) {
   }
 }
 
-LLAddress::~LLAddress() {}
+LLAddress::~LLAddress() = default;
 
 // Copy constructor.
 

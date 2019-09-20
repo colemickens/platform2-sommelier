@@ -14,7 +14,7 @@ namespace portier {
 // A mock implementation of a Group Member.  Used for testing.
 class MockGroupMember : public GroupMemberInterface<MockGroupMember> {
  public:
-  MockGroupMember() {}
+  MockGroupMember() = default;
 
   MOCK_METHOD(void, PostJoinGroup, (), (override));
   MOCK_METHOD(void, PostLeaveGroup, (), (override));

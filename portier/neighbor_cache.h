@@ -41,7 +41,7 @@ struct NeighborCacheEntry {
 // event loop.
 class NeighborCache {
  public:
-  NeighborCache() {}
+  NeighborCache() = default;
   ~NeighborCache() = default;
 
   // Get the neighbor cache entry that is associated to the given
