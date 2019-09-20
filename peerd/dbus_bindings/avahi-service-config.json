@@ -1,6 +1,0 @@
-{
-  "service_name": "org.freedesktop.Avahi",
-  "ignore_interfaces": [
-    "org.freedesktop.DBus.Introspectable"
-  ]
-}

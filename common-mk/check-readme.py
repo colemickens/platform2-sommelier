@@ -118,7 +118,6 @@ def CheckSubdirs():
       'lorgnette',
       'modem-utilities',
       'mtpd',
-      'peerd',
       'salsa',
       'shill',
       'thd',
