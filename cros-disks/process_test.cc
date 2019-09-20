@@ -531,4 +531,21 @@ INSTANTIATE_TEST_SUITE_P(ProcessRun,
                              }}),
                          PrintToStringParamName());
 
+// TODO(crbug.com/1023727) Make it work on ARM and ARM64.
+#if defined(__x86_64__)
+INSTANTIATE_TEST_SUITE_P(ProcessRunAsRoot,
+                         ProcessRunTest,
+                         Values(ProcessFactory{
+                             "WithPidNamespace",
+                             []() -> std::unique_ptr<Process> {
+                               auto process =
+                                   std::make_unique<SandboxedProcess>();
+                               process->NewPidNamespace();
+                               // TODO(crbug.com/1008262) Remove this line.
+                               process->SkipRemountPrivate();
+                               return process;
+                             }}),
+                         PrintToStringParamName());
+#endif
+
 }  // namespace cros_disks
