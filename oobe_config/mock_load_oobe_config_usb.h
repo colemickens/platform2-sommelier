@@ -20,10 +20,12 @@ class MockLoadOobeConfigUsb : public LoadOobeConfigUsb {
                         const base::FilePath& store_dir)
       : LoadOobeConfigUsb(stateful_dir, device_ids_dir, store_dir) {}
 
-  MOCK_METHOD0(VerifyPublicKey, bool(void));
-  MOCK_METHOD2(MountUsbDevice,
-               bool(const base::FilePath&, const base::FilePath&));
-  MOCK_METHOD1(UnmountUsbDevice, bool(const base::FilePath&));
+  MOCK_METHOD(bool, VerifyPublicKey, (), (override));
+  MOCK_METHOD(bool,
+              MountUsbDevice,
+              (const base::FilePath&, const base::FilePath&),
+              (override));
+  MOCK_METHOD(bool, UnmountUsbDevice, (const base::FilePath&), (override));
 };
 
 }  // namespace oobe_config
