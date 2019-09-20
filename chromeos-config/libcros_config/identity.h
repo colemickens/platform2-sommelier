@@ -37,6 +37,30 @@ class CrosConfigIdentity {
   bool FakeVpdFileForTesting(const std::string& customization_id,
                              base::FilePath* vpd_file_out);
 
+  // Read the compatible devices list from the kernel or device-tree
+  // compatible file.
+  //
+  // @product_name_file: File to read for product name or device-tree
+  //     compatible info
+  // @product_sku_file: File containing SKU ID
+  // @return true if OK, false on error
+  virtual bool ReadInfo(const base::FilePath& product_name_file,
+                        const base::FilePath& product_sku_file) = 0;
+
+  // Write out a fake product name (x86) or device-tree compatible
+  // file (arm), as well as a sku-id file, for testing purposes.
+  // @device_name: Name or device-tree compatible string to write to
+  //     the compatible file (e.g., "Reef")
+  // @sku_id: SKU ID number to write
+  // @product_name_file_out: Returns the file that was written
+  // @product_sku_file_out: File that the SKU ID integer was written into
+  // @return true if OK, false on error
+  virtual bool FakeProductFilesForTesting(
+      const std::string& device_name,
+      const int sku_id,
+      base::FilePath* product_name_file_out,
+      base::FilePath* product_sku_file_out) = 0;
+
   // Architecture-specific check that the identity specified in the
   // identity_dict is compatible with this identity
   // @identity_dict: a dictionary specified under /chromeos/configs

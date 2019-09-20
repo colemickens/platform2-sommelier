@@ -27,26 +27,14 @@ class CrosConfigIdentityX86 : public CrosConfigIdentity {
   // @return Name value read via ReadSmbios
   const std::string& GetName() const { return name_; }
 
-  // Read the device identity infromation from the kernel files.
-  // This information is set up by AP firmware, so in effect AP firmware
-  // sets the device identity.
-  //
-  // @product_name_file: File containing product name
-  // @product_sku_file: File containing SKU ID string
   bool ReadInfo(const base::FilePath& product_name_file,
-                const base::FilePath& product_sku_file);
+                const base::FilePath& product_sku_file) override;
 
-  // Write out fake file containing fake identity information.
-  // This is only used for testing.
-  // @name: Platform name to write (e.g. 'Reef')
-  // @sku_id: SKU ID number to write (e.g. 8)
-  // @product_name_file_out: File that the name was written into
-  // @product_sku_file_out: File that the SKU ID string was written into
-  // @return true if OK, false on error
-  bool FakeProductFilesForTesting(const std::string& name,
-                                  int sku_id,
-                                  base::FilePath* product_name_file_out,
-                                  base::FilePath* product_sku_file_out);
+  bool FakeProductFilesForTesting(
+      const std::string& name,
+      const int sku_id,
+      base::FilePath* product_name_file_out,
+      base::FilePath* product_sku_file_out) override;
 
   // CrosConfigIdentity:
   // Check that the SMBIOS name matches the one specified in the

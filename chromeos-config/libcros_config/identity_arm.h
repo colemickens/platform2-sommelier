@@ -23,24 +23,6 @@ class CrosConfigIdentityArm : public CrosConfigIdentity {
   CrosConfigIdentityArm();
   ~CrosConfigIdentityArm();
 
-  // Read the compatible devices list from the device-tree compatible file.
-  //
-  // @dt_compatible_file: File to read - typically /proc/device-tree/compatible
-  // @sku_id_file: File containing SKU ID integer
-  bool ReadInfo(const base::FilePath& dt_compatible_file,
-                const base::FilePath& sku_id_file);
-
-  // Write out fake device-tree compatible file for testing purposes.
-  // @device_name: Device name to write to the compatible file
-  // @sku_id_file: File containing SKU ID integer
-  // @dt_compatible_file_out: Returns the file that was written
-  // @sku_id_file_out: File that the SKU ID integer was written into
-  // @return true if OK, false on error
-  bool FakeProductFilesForTesting(const std::string& device_name,
-                                  const int sku_id,
-                                  base::FilePath* dt_compatible_file_out,
-                                  base::FilePath* sku_id_file_out);
-
   // Checks if the device_name exists in the compatible devices string.
   // @return true if device is compatible
   bool IsCompatible(const std::string& device_name) const;
@@ -51,6 +33,14 @@ class CrosConfigIdentityArm : public CrosConfigIdentity {
   }
 
   // CrosConfigIdentity:
+  bool ReadInfo(const base::FilePath& dt_compatible_file,
+                const base::FilePath& sku_id_file) override;
+
+  bool FakeProductFilesForTesting(const std::string& device_name,
+                                  const int sku_id,
+                                  base::FilePath* dt_compatible_file_out,
+                                  base::FilePath* sku_id_file_out) override;
+
   // Check that the identity is device-tree compatible with the one
   // specified in the identity dictionary
   bool PlatformIdentityMatch(
