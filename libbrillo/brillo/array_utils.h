@@ -1,13 +1,14 @@
-// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef HERMES_UTILS_H_
-#define HERMES_UTILS_H_
+#ifndef LIBBRILLO_BRILLO_ARRAY_UTILS_H_
+#define LIBBRILLO_BRILLO_ARRAY_UTILS_H_
 
+#include <array>
 #include <utility>
 
-namespace hermes {
+namespace brillo {
 
 // Create a std::array from a set of values without manually specifying the
 // size of the array. Note that unlike the make_array likely to make its way
@@ -20,6 +21,6 @@ constexpr auto make_array(T&&... values) {
       static_cast<ElementType>(std::forward<T>(values))...};
 }
 
-}  // namespace hermes
+}  // namespace brillo
 
-#endif  // HERMES_UTILS_H_
+#endif  // LIBBRILLO_BRILLO_ARRAY_UTILS_H_
