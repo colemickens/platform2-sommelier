@@ -23,15 +23,6 @@ const char kFakePasskey[] = "176c1e698b521373d77ce655d2e56a1d";
 // salt must have even number of characters.
 const char kFakeSystemSalt[] = "01234567890123456789";
 
-class CredentialsTest : public ::testing::Test {
- public:
-  CredentialsTest() {}
-  virtual ~CredentialsTest() {}
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(CredentialsTest);
-};
-
 TEST(CredentialsTest, UsernameTest) {
   char username[80];
   snprintf(username, sizeof(username), "%s%s", kFakeUser, "@gmail.com");

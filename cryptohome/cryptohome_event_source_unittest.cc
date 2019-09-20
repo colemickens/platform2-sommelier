@@ -16,15 +16,6 @@
 
 namespace cryptohome {
 
-class CryptohomeEventSourceTest : public ::testing::Test {
- public:
-  CryptohomeEventSourceTest() = default;
-  virtual ~CryptohomeEventSourceTest() = default;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(CryptohomeEventSourceTest);
-};
-
 class EventDestructorWatcher {
  public:
   virtual void NotifyDestroy(CryptohomeEventBase* event) = 0;
@@ -71,7 +62,7 @@ class EventSink : public CryptohomeEventSourceSink,
   std::vector<int> destroyed_events_;
 };
 
-TEST_F(CryptohomeEventSourceTest, TestEventSink) {
+TEST(CryptohomeEventSourceTest, TestEventSink) {
   EventSink event_sink;
   CryptohomeEventSource event_source;
   event_source.Reset(&event_sink, NULL);
@@ -88,7 +79,7 @@ TEST_F(CryptohomeEventSourceTest, TestEventSink) {
   EXPECT_EQ(kEventCount, event_sink.destroyed_events_.size());
 }
 
-TEST_F(CryptohomeEventSourceTest, TestEventSinkNoClear) {
+TEST(CryptohomeEventSourceTest, TestEventSinkNoClear) {
   EventSink event_sink;
 
   static const int kEventCount = 4096;

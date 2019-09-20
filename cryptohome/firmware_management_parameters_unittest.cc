@@ -51,8 +51,6 @@ class FirmwareManagementParametersTest : public ::testing::Test {
     fwmp_hash_ptr_ = &fwmp_hash_;
   }
 
-  virtual void TearDown() { }
-
   // Perform an NVRAM store.
   // fwmp: FirmwareManagementParameters object to operate on.
   // nvram_data: destination for blob saved to NVRAM
