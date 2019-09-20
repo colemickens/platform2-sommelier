@@ -83,9 +83,6 @@ class SandboxedProcess : public Process {
   // same file descriptor. Only effective if CloseOpenFds has been called.
   bool PreserveFile(const base::File& file);
 
-  // Waits for all processes inside the sandbox to terminate.
-  int WaitAll();
-
  protected:
   // Process overrides:
   pid_t StartImpl(base::ScopedFD* in_fd,

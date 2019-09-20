@@ -137,13 +137,6 @@ bool SandboxedProcess::PreserveFile(const base::File& file) {
                               file.GetPlatformFile()) == 0;
 }
 
-int SandboxedProcess::WaitAll() {
-  if (!run_custom_init_) {
-    return Wait();
-  }
-  return WaitImpl();
-}
-
 pid_t SandboxedProcess::StartImpl(base::ScopedFD* in_fd,
                                   base::ScopedFD* out_fd,
                                   base::ScopedFD* err_fd) {
