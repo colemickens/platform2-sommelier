@@ -16,6 +16,7 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/values.h>
+#include "chromeos-config/libcros_config/cros_config.h"
 #include "chromeos-config/libcros_config/identity.h"
 #include "chromeos-config/libcros_config/identity_arm.h"
 #include "chromeos-config/libcros_config/identity_x86.h"
@@ -60,7 +61,7 @@ bool CrosConfigJson::SelectConfigByIdentityInternal(
     // entry has a matching SKU id. If sku-id is not defined in the
     // identity dictionary, this entry will match any SKU id.
     int current_sku_id;
-    if (find_sku_id > -1 &&
+    if (find_sku_id != kDefaultSkuId &&
         identity_dict->GetInteger("sku-id", &current_sku_id) &&
         current_sku_id != find_sku_id)
       continue;
