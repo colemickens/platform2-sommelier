@@ -16,17 +16,21 @@ class MockPairManager : public PairManager {
  public:
   MockPairManager() = default;
 
-  MOCK_METHOD2(GenerateChallenge,
-               void(PairChallengeRequest* request, uint8_t* private_key));
+  MOCK_METHOD(void,
+              GenerateChallenge,
+              (PairChallengeRequest*, uint8_t*),
+              (override));
 };
 
 // Mock public method PairChallenge() used to inject into HammerUpdater.
 class MockPairManagerInterface : public PairManagerInterface {
  public:
   MockPairManagerInterface() = default;
-  MOCK_METHOD2(PairChallenge,
-               ChallengeStatus(FirmwareUpdaterInterface* fw_updater,
-                               DBusWrapperInterface* dbus_wrapper));
+
+  MOCK_METHOD(ChallengeStatus,
+              PairChallenge,
+              (FirmwareUpdaterInterface*, DBusWrapperInterface*),
+              (override));
 };
 
 }  // namespace hammerd

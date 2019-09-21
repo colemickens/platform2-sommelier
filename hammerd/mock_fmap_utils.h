@@ -15,9 +15,11 @@ namespace hammerd {
 
 class MockFmap : public FmapInterface {
  public:
-  MOCK_METHOD2(Find, int64_t(const uint8_t* image, unsigned int len));
-  MOCK_METHOD2(FindArea,
-               const fmap_area*(const fmap* fmap, const std::string& name));
+  MOCK_METHOD(int64_t, Find, (const uint8_t*, unsigned int), (override));
+  MOCK_METHOD(const fmap_area*,
+              FindArea,
+              (const fmap*, const std::string&),
+              (override));
 };
 
 }  // namespace hammerd

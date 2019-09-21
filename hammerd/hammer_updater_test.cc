@@ -70,7 +70,7 @@ class MockRunOnceHammerUpdater : public HammerUpdater {
   using HammerUpdater::HammerUpdater;
   ~MockRunOnceHammerUpdater() override = default;
 
-  MOCK_METHOD0(RunOnce, RunStatus());
+  MOCK_METHOD(RunStatus, RunOnce, (), (override));
 };
 
 class MockRWProcessHammerUpdater : public HammerUpdater {
@@ -78,7 +78,7 @@ class MockRWProcessHammerUpdater : public HammerUpdater {
   using HammerUpdater::HammerUpdater;
   ~MockRWProcessHammerUpdater() override = default;
 
-  MOCK_METHOD0(PostRWProcess, RunStatus());
+  MOCK_METHOD(RunStatus, PostRWProcess, (), (override));
 };
 
 class MockNothing : public HammerUpdater {

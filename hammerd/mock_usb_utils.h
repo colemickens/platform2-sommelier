@@ -23,12 +23,12 @@ class MockUsbEndpoint : public UsbEndpointInterface {
  public:
   MockUsbEndpoint() = default;
   ~MockUsbEndpoint() override = default;
-  MOCK_METHOD0(UsbSysfsExists, bool());
-  MOCK_METHOD0(Connect, UsbConnectStatus());
-  MOCK_METHOD0(Close, void());
-  MOCK_CONST_METHOD0(IsConnected, bool());
-  MOCK_CONST_METHOD0(GetChunkLength, int());
-  MOCK_CONST_METHOD0(GetConfigurationString, std::string());
+  MOCK_METHOD(bool, UsbSysfsExists, (), (override));
+  MOCK_METHOD(UsbConnectStatus, Connect, (), (override));
+  MOCK_METHOD(void, Close, (), (override));
+  MOCK_METHOD(bool, IsConnected, (), (const, override));
+  MOCK_METHOD(int, GetChunkLength, (), (const, override));
+  MOCK_METHOD(std::string, GetConfigurationString, (), (const, override));
 
   // Use implementation identical to UsbEndpoint::Transfer, and test calls
   // to Send and Receive instead.
@@ -50,12 +50,9 @@ class MockUsbEndpoint : public UsbEndpointInterface {
     return SendHelper(out, outbuf, outlen);
   }
 
-  MOCK_METHOD3(SendHelper,
-               int(std::vector<uint8_t> out, const void* outbuf, int outlen));
+  MOCK_METHOD(int, SendHelper, (std::vector<uint8_t>, const void*, int));
 
-  MOCK_METHOD4(
-      Receive,
-      int(void* inbuf, int inlen, bool allow_less, unsigned int timeout_ms));
+  MOCK_METHOD(int, Receive, (void*, int, bool, unsigned int), (override));
 };
 
 }  // namespace hammerd
