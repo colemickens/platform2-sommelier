@@ -23,12 +23,12 @@ class MockPortTracker : public PortTracker {
       : PortTracker(nullptr, firewall) {}
   ~MockPortTracker() override = default;
 
-  MOCK_METHOD1(AddLifelineFd, int(int));
-  MOCK_METHOD1(DeleteLifelineFd, bool(int));
-  MOCK_METHOD1(CheckLifelineFds, void(bool));
-  MOCK_METHOD0(ScheduleLifelineCheck, void());
+  MOCK_METHOD(int, AddLifelineFd, (int), (override));
+  MOCK_METHOD(bool, DeleteLifelineFd, (int), (override));
+  MOCK_METHOD(void, CheckLifelineFds, (bool), (override));
+  MOCK_METHOD(void, ScheduleLifelineCheck, (), (override));
 
-  MOCK_METHOD0(InitializeEpollOnce, bool());
+  MOCK_METHOD(bool, InitializeEpollOnce, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockPortTracker);

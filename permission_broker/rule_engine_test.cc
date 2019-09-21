@@ -22,7 +22,7 @@ class MockRule : public Rule {
   MockRule() : Rule("MockRule") {}
   ~MockRule() override = default;
 
-  MOCK_METHOD1(ProcessDevice, Result(udev_device* device));
+  MOCK_METHOD(Result, ProcessDevice, (udev_device * device), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockRule);
@@ -33,7 +33,7 @@ class MockRuleEngine : public RuleEngine {
   MockRuleEngine() : RuleEngine() {}
   ~MockRuleEngine() override = default;
 
-  MOCK_METHOD0(WaitForEmptyUdevQueue, void(void));
+  MOCK_METHOD(void, WaitForEmptyUdevQueue, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockRuleEngine);
