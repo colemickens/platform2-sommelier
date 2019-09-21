@@ -85,7 +85,8 @@ bool UsbDevice::SetPowerState(bool enabled, uint16_t port) const {
       enabled ? LIBUSB_REQUEST_SET_FEATURE : LIBUSB_REQUEST_CLEAR_FEATURE;
   result = libusb_control_transfer(
       handle, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, request,
-      USB_PORT_FEAT_POWER, port, NULL, 0, kUsbControlTimeout.InMilliseconds());
+      USB_PORT_FEAT_POWER, port, nullptr, 0,
+      kUsbControlTimeout.InMilliseconds());
   libusb_close(handle);
 
   if (result < 0) {
