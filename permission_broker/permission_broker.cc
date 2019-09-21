@@ -89,7 +89,7 @@ PermissionBroker::PermissionBroker(scoped_refptr<dbus::Bus> bus,
   rule_engine_.AddRule(new DenyFwUpdateHidrawDeviceRule());
 }
 
-PermissionBroker::~PermissionBroker() {}
+PermissionBroker::~PermissionBroker() = default;
 
 void PermissionBroker::RegisterAsync(
     const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {

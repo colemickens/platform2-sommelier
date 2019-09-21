@@ -8,7 +8,7 @@ namespace permission_broker {
 
 RuleTest::RuleTest() : udev_(udev_new()) {}
 
-RuleTest::~RuleTest() {}
+RuleTest::~RuleTest() = default;
 
 ScopedUdevDevicePtr RuleTest::FindDevice(const std::string& path) {
   ScopedUdevEnumeratePtr enumerate(udev_enumerate_new(udev_.get()));

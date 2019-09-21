@@ -29,7 +29,8 @@ struct UsbDriverTracker::UsbInterfaces{
   std::vector<uint8_t> ifaces;
 };
 
-UsbDriverTracker::UsbDriverTracker() {}
+UsbDriverTracker::UsbDriverTracker() = default;
+
 UsbDriverTracker::~UsbDriverTracker() {
   // Re-attach all delegated USB interfaces
   for (auto& elem : dev_fds_) {

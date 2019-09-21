@@ -30,7 +30,7 @@ class MockRule : public Rule {
 
 class MockRuleEngine : public RuleEngine {
  public:
-  MockRuleEngine() : RuleEngine() {}
+  MockRuleEngine() = default;
   ~MockRuleEngine() override = default;
 
   MOCK_METHOD(void, WaitForEmptyUdevQueue, (), (override));

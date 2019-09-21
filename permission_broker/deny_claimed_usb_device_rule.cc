@@ -34,7 +34,7 @@ namespace permission_broker {
 DenyClaimedUsbDeviceRule::DenyClaimedUsbDeviceRule()
     : UsbSubsystemUdevRule("DenyClaimedUsbDeviceRule"), policy_loaded_(false) {}
 
-DenyClaimedUsbDeviceRule::~DenyClaimedUsbDeviceRule() {}
+DenyClaimedUsbDeviceRule::~DenyClaimedUsbDeviceRule() = default;
 
 bool DenyClaimedUsbDeviceRule::LoadPolicy() {
   usb_whitelist_.clear();

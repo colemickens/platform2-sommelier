@@ -25,7 +25,7 @@ namespace permission_broker {
 
 class DenyFwUpdateHidrawDeviceRuleTest : public testing::Test {
  public:
-  DenyFwUpdateHidrawDeviceRuleTest() {}
+  DenyFwUpdateHidrawDeviceRuleTest() = default;
   ~DenyFwUpdateHidrawDeviceRuleTest() override = default;
 
  protected:
