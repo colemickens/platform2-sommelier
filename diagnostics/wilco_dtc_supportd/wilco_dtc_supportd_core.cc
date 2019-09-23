@@ -72,6 +72,27 @@ bool ConvertStatusFromMojom(
   return false;
 }
 
+bool ConvertPowerEventToGrpc(
+    PowerdEventService::Observer::PowerEventType type,
+    grpc_api::HandlePowerNotificationRequest::PowerEvent* type_out) {
+  DCHECK(type_out);
+  switch (type) {
+    case PowerdEventService::Observer::PowerEventType::kAcInsert:
+      *type_out = grpc_api::HandlePowerNotificationRequest::AC_INSERT;
+      return true;
+    case PowerdEventService::Observer::PowerEventType::kAcRemove:
+      *type_out = grpc_api::HandlePowerNotificationRequest::AC_REMOVE;
+      return true;
+    case PowerdEventService::Observer::PowerEventType::kOsSuspend:
+      *type_out = grpc_api::HandlePowerNotificationRequest::OS_SUSPEND;
+      return true;
+    case PowerdEventService::Observer::PowerEventType::kOsResume:
+      *type_out = grpc_api::HandlePowerNotificationRequest::OS_RESUME;
+      return true;
+  }
+  return false;
+}
+
 }  // namespace
 
 WilcoDtcSupportdCore::WilcoDtcSupportdCore(
@@ -88,7 +109,11 @@ WilcoDtcSupportdCore::WilcoDtcSupportdCore(
   DCHECK(delegate);
 }
 
-WilcoDtcSupportdCore::~WilcoDtcSupportdCore() = default;
+WilcoDtcSupportdCore::~WilcoDtcSupportdCore() {
+  if (powerd_event_service_) {
+    powerd_event_service_->RemoveObserver(this);
+  }
+}
 
 bool WilcoDtcSupportdCore::Start() {
   // Associate RPCs of the to-be-exposed gRPC interface with methods of
@@ -224,6 +249,15 @@ void WilcoDtcSupportdCore::RegisterDBusObjectsAsync(
       true /* failure_is_fatal */));
 
   debugd_adapter_ = delegate_->CreateDebugdAdapter(bus);
+  DCHECK(debugd_adapter_);
+
+  powerd_adapter_ = delegate_->CreatePowerdAdapter(bus);
+  DCHECK(powerd_adapter_);
+
+  powerd_event_service_ =
+      delegate_->CreatePowerdEventService(powerd_adapter_.get());
+  DCHECK(powerd_event_service_);
+  powerd_event_service_->AddObserver(this);
 }
 
 bool WilcoDtcSupportdCore::StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
@@ -527,6 +561,35 @@ void WilcoDtcSupportdCore::NotifyConfigurationDataChangedToWilcoDtc() {
               VLOG(1) << "gRPC method HandleConfigurationDaraChanged was "
                          "successfully called on wilco_dtc";
             }));
+  }
+}
+
+void WilcoDtcSupportdCore::OnPowerdEvent(PowerEventType type) {
+  VLOG(1) << "WilcoDtcSupportdCore::OnPowerdEvent: " << static_cast<int>(type);
+
+  grpc_api::HandlePowerNotificationRequest::PowerEvent grpc_type;
+  if (!ConvertPowerEventToGrpc(type, &grpc_type)) {
+    LOG(ERROR) << "Unable to convert power event to gRPC power event: "
+               << static_cast<int>(type);
+    return;
+  }
+
+  grpc_api::HandlePowerNotificationRequest request;
+  request.set_power_event(grpc_type);
+
+  for (auto& client : wilco_dtc_grpc_clients_) {
+    client->CallRpc(
+        &grpc_api::WilcoDtc::Stub::AsyncHandlePowerNotification, request,
+        base::Bind([](std::unique_ptr<grpc_api::HandlePowerNotificationResponse>
+                          response) {
+          if (!response) {
+            VLOG(1) << "Failed to call HandlePowerNotification gRPC "
+                       "method on wilco_dtc: response message is nullptr";
+            return;
+          }
+          VLOG(1) << "gRPC method HandlePowerNotification was "
+                     "successfully called on wilco_dtc";
+        }));
   }
 }
 

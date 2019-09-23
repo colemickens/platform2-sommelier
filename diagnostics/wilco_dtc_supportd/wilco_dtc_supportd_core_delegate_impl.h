@@ -11,6 +11,8 @@
 #include <brillo/daemons/daemon.h>
 
 #include "diagnostics/wilco_dtc_supportd/system/debugd_adapter.h"
+#include "diagnostics/wilco_dtc_supportd/system/powerd_adapter.h"
+#include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core.h"
 
 namespace diagnostics {
@@ -30,6 +32,10 @@ class WilcoDtcSupportdCoreDelegateImpl final
   void BeginDaemonShutdown() override;
   std::unique_ptr<DebugdAdapter> CreateDebugdAdapter(
       const scoped_refptr<dbus::Bus>& bus) override;
+  std::unique_ptr<PowerdAdapter> CreatePowerdAdapter(
+      const scoped_refptr<dbus::Bus>& bus) override;
+  std::unique_ptr<PowerdEventService> CreatePowerdEventService(
+      PowerdAdapter* powerd_adapter) override;
 
  private:
   // Unowned. The daemon must outlive this instance.

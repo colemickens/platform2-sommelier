@@ -25,6 +25,10 @@ FakeWilcoDtc::FakeWilcoDtc(const std::string& grpc_server_uri,
       &grpc_api::WilcoDtc::AsyncService::RequestHandleEcNotification,
       base::Bind(&FakeWilcoDtc::HandleEcNotification, base::Unretained(this)));
   grpc_server_.RegisterHandler(
+      &grpc_api::WilcoDtc::AsyncService::RequestHandlePowerNotification,
+      base::Bind(&FakeWilcoDtc::HandlePowerNotification,
+                 base::Unretained(this)));
+  grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtc::AsyncService::RequestHandleConfigurationDataChanged,
       base::Bind(&FakeWilcoDtc::HandleConfigurationDataChanged,
                  base::Unretained(this)));
@@ -139,6 +143,17 @@ void FakeWilcoDtc::HandleEcNotification(
   callback.Run(std::move(response));
 
   handle_ec_event_request_callback_->Run(request->type(), request->payload());
+}
+
+void FakeWilcoDtc::HandlePowerNotification(
+    std::unique_ptr<grpc_api::HandlePowerNotificationRequest> request,
+    const HandlePowerNotificationCallback& callback) {
+  DCHECK(handle_power_event_request_callback_);
+
+  auto response = std::make_unique<grpc_api::HandlePowerNotificationResponse>();
+  callback.Run(std::move(response));
+
+  handle_power_event_request_callback_->Run(request->power_event());
 }
 
 void FakeWilcoDtc::HandleConfigurationDataChanged(

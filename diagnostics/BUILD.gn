@@ -384,6 +384,7 @@ if (use.test) {
       "wilco_dtc_supportd/system/fake_powerd_adapter.cc",
       "wilco_dtc_supportd/system/mock_debugd_adapter.cc",
       "wilco_dtc_supportd/system/powerd_adapter_impl_test.cc",
+      "wilco_dtc_supportd/telemetry/fake_powerd_event_service.cc",
       "wilco_dtc_supportd/telemetry/powerd_event_service_impl_test.cc",
       "wilco_dtc_supportd/wilco_dtc_supportd_core_test.cc",
       "wilco_dtc_supportd/wilco_dtc_supportd_dbus_service_test.cc",

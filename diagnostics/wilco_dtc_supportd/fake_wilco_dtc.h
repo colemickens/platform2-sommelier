@@ -40,6 +40,8 @@ class FakeWilcoDtc final {
       std::unique_ptr<grpc_api::HandleMessageFromUiResponse>)>;
   using HandleEcNotificationCallback = base::Callback<void(
       std::unique_ptr<grpc_api::HandleEcNotificationResponse>)>;
+  using HandlePowerNotificationCallback = base::Callback<void(
+      std::unique_ptr<grpc_api::HandlePowerNotificationResponse>)>;
   using PerformWebRequestResponseCallback = base::Callback<void(
       std::unique_ptr<grpc_api::PerformWebRequestResponse>)>;
   using GetConfigurationDataCallback = base::Callback<void(
@@ -51,6 +53,8 @@ class FakeWilcoDtc final {
 
   using HandleEcNotificationRequestCallback =
       base::RepeatingCallback<void(int32_t, const std::string&)>;
+  using HandlePowerNotificationRequestCallback = base::RepeatingCallback<void(
+      grpc_api::HandlePowerNotificationRequest::PowerEvent)>;
 
   FakeWilcoDtc(const std::string& grpc_server_uri,
                const std::string& wilco_dtc_supportd_grpc_uri);
@@ -74,25 +78,36 @@ class FakeWilcoDtc final {
   void GetDriveSystemData(const grpc_api::GetDriveSystemDataRequest& request,
                           const GetDriveSystemDataCallback& callback);
 
-  // Setups callback for the next |HandleMessageFromUi| gRPC call.
+  // Sets up the passed callback to be used for subsequent
+  // |HandleMessageFromUi| gRPC calls.
   void set_handle_message_from_ui_callback(
       base::Closure handle_message_from_ui_callback);
 
-  // Setups json message response for the next |HandleMessageFromUi| gRPC call.
+  // Sets up the passed json message to be used as a response for subsequent
+  // |HandleMessageFromUi| gRPC calls.
   void set_handle_message_from_ui_json_message_response(
       const std::string& json_message_response);
 
-  // Setups callback for the next |HandleEcNotification| gRPC call.
-  // |handle_ec_event_request_callback_| will be called multiple times.
+  // Sets up the passed callback to be used for subsequent
+  // |HandleEcNotification| gRPC calls.
   void set_handle_ec_event_request_callback(
       HandleEcNotificationRequestCallback handle_ec_event_request_callback) {
     handle_ec_event_request_callback_ = handle_ec_event_request_callback;
   }
 
+  // Sets up the passed callback to be used for subsequent
+  // |HandlePowerNotification| gRPC calls.
+  void set_handle_power_event_request_callback(
+      HandlePowerNotificationRequestCallback
+          handle_powerd_event_request_callback) {
+    handle_power_event_request_callback_ = handle_powerd_event_request_callback;
+  }
+
   const base::Optional<std::string>&
   handle_message_from_ui_actual_json_message() const;
 
-  // Setups callback for the next |HandleConfigurationDataChanged| gRPC call.
+  // Sets up the passed callback to be used for subsequent
+  // |HandleConfigurationDataChanged| gRPC calls.
   void set_configuration_data_changed_callback(base::RepeatingClosure callback);
 
  private:
@@ -116,6 +131,13 @@ class FakeWilcoDtc final {
       const HandleEcNotificationCallback& callback);
 
   // Receives gRPC request and invokes the given |callback| with gRPC response.
+  // Calls the callback |handle_power_event_request_callback_| after all with
+  // the request type and payload.
+  void HandlePowerNotification(
+      std::unique_ptr<grpc_api::HandlePowerNotificationRequest> request,
+      const HandlePowerNotificationCallback& callback);
+
+  // Receives gRPC request and invokes the given |callback| with gRPC response.
   // Calls the callback |configuration_data_changed_callback_| after all.
   void HandleConfigurationDataChanged(
       std::unique_ptr<grpc_api::HandleConfigurationDataChangedRequest> request,
@@ -130,6 +152,9 @@ class FakeWilcoDtc final {
 
   base::Optional<HandleEcNotificationRequestCallback>
       handle_ec_event_request_callback_;
+
+  base::Optional<HandlePowerNotificationRequestCallback>
+      handle_power_event_request_callback_;
 
   base::Optional<base::RepeatingClosure> configuration_data_changed_callback_;
 

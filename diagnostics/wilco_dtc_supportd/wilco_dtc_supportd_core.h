@@ -23,6 +23,8 @@
 #include "diagnostics/grpc_async_adapter/async_grpc_client.h"
 #include "diagnostics/grpc_async_adapter/async_grpc_server.h"
 #include "diagnostics/wilco_dtc_supportd/system/debugd_adapter.h"
+#include "diagnostics/wilco_dtc_supportd/system/powerd_adapter.h"
+#include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_dbus_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_ec_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_grpc_service.h"
@@ -43,7 +45,8 @@ class WilcoDtcSupportdCore final
       public WilcoDtcSupportdGrpcService::Delegate,
       public WilcoDtcSupportdMojoService::Delegate,
       public chromeos::wilco_dtc_supportd::mojom::
-          WilcoDtcSupportdServiceFactory {
+          WilcoDtcSupportdServiceFactory,
+      public PowerdEventService::Observer {
  public:
   class Delegate {
    public:
@@ -67,9 +70,20 @@ class WilcoDtcSupportdCore final
     // Begins the graceful shutdown of the wilco_dtc_supportd daemon.
     virtual void BeginDaemonShutdown() = 0;
 
-    // Creates DebugdAdapter.
+    // Creates DebugdAdapter. For performance reason, must be called no more
+    // than once.
     virtual std::unique_ptr<DebugdAdapter> CreateDebugdAdapter(
         const scoped_refptr<dbus::Bus>& bus) = 0;
+
+    // Creates PowerdAdapter. For performance reason, must be called no more
+    // than once.
+    virtual std::unique_ptr<PowerdAdapter> CreatePowerdAdapter(
+        const scoped_refptr<dbus::Bus>& bus) = 0;
+
+    // Creates PowerdEventService. For performance reason, must be called no
+    // more than once.
+    virtual std::unique_ptr<PowerdEventService> CreatePowerdEventService(
+        PowerdAdapter* powerd_adapter) = 0;
   };
 
   // |grpc_service_uris| are the URIs on which the gRPC interface exposed by the
@@ -174,6 +188,9 @@ class WilcoDtcSupportdCore final
                   MojomWilcoDtcSupportdClientPtr client,
                   const GetServiceCallback& callback) override;
 
+  // PowerdEventService::Observer overrides:
+  void OnPowerdEvent(PowerEventType type) override;
+
   // Unowned. The delegate should outlive this instance.
   Delegate* const delegate_;
 
@@ -238,6 +255,12 @@ class WilcoDtcSupportdCore final
 
   // D-Bus adapters for system daemons.
   std::unique_ptr<DebugdAdapter> debugd_adapter_;
+  std::unique_ptr<PowerdAdapter> powerd_adapter_;
+
+  // Telemetry services:
+
+  // Observes Power Events emitted by the powerd
+  std::unique_ptr<PowerdEventService> powerd_event_service_;
 
   // Diagnostic routine-related members:
 

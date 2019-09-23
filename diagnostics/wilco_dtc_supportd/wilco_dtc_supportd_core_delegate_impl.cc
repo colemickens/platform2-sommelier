@@ -13,8 +13,9 @@
 #include <mojo/edk/embedder/scoped_platform_handle.h>
 
 #include "debugd/dbus-proxies.h"
-#include "diagnostics/wilco_dtc_supportd/system/debugd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/system/debugd_adapter_impl.h"
+#include "diagnostics/wilco_dtc_supportd/system/powerd_adapter_impl.h"
+#include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service_impl.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"
 
 namespace diagnostics {
@@ -61,6 +62,20 @@ WilcoDtcSupportdCoreDelegateImpl::CreateDebugdAdapter(
   DCHECK(bus);
   return std::make_unique<DebugdAdapterImpl>(
       std::make_unique<org::chromium::debugdProxy>(bus));
+}
+
+std::unique_ptr<PowerdAdapter>
+WilcoDtcSupportdCoreDelegateImpl::CreatePowerdAdapter(
+    const scoped_refptr<dbus::Bus>& bus) {
+  DCHECK(bus);
+  return std::make_unique<PowerdAdapterImpl>(bus);
+}
+
+std::unique_ptr<PowerdEventService>
+WilcoDtcSupportdCoreDelegateImpl::CreatePowerdEventService(
+    PowerdAdapter* powerd_adapter) {
+  DCHECK(powerd_adapter);
+  return std::make_unique<PowerdEventServiceImpl>(powerd_adapter);
 }
 
 }  // namespace diagnostics

@@ -13,6 +13,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -49,7 +50,9 @@
 #include "diagnostics/wilco_dtc_supportd/mojo_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_utils.h"
 #include "diagnostics/wilco_dtc_supportd/protobuf_test_utils.h"
+#include "diagnostics/wilco_dtc_supportd/system/fake_powerd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/system/mock_debugd_adapter.h"
+#include "diagnostics/wilco_dtc_supportd/telemetry/fake_powerd_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"
 #include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
@@ -96,11 +99,17 @@ base::Callback<void(std::unique_ptr<ValueType>)> MakeAsyncResponseWriter(
       base::Unretained(response), base::Unretained(run_loop));
 }
 
-class MockWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
+class FakeWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
  public:
-  MockWilcoDtcSupportdCoreDelegate()
-      : passed_debugd_adapter_(new StrictMock<MockDebugdAdapter>()),
-        debugd_adapter_(passed_debugd_adapter_.get()) {}
+  FakeWilcoDtcSupportdCoreDelegate()
+      : passed_debugd_adapter_(
+            std::make_unique<StrictMock<MockDebugdAdapter>>()),
+        passed_powerd_adapter_(std::make_unique<FakePowerdAdapter>()),
+        passed_powerd_event_service_(
+            std::make_unique<FakePowerdEventService>()),
+        debugd_adapter_(passed_debugd_adapter_.get()),
+        powerd_adapter_(passed_powerd_adapter_.get()),
+        powerd_event_service_(passed_powerd_event_service_.get()) {}
 
   std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>
   BindWilcoDtcSupportdMojoServiceFactory(
@@ -116,12 +125,33 @@ class MockWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
   // Must be called no more than once.
   std::unique_ptr<DebugdAdapter> CreateDebugdAdapter(
       const scoped_refptr<dbus::Bus>& bus) override {
+    DCHECK(bus);
     DCHECK(passed_debugd_adapter_);
     return std::move(passed_debugd_adapter_);
   }
 
+  // Must be called no more than once.
+  std::unique_ptr<PowerdAdapter> CreatePowerdAdapter(
+      const scoped_refptr<dbus::Bus>& bus) override {
+    DCHECK(bus);
+    DCHECK(passed_powerd_adapter_);
+    return std::move(passed_powerd_adapter_);
+  }
+
+  // Must be called no more than once.
+  std::unique_ptr<PowerdEventService> CreatePowerdEventService(
+      PowerdAdapter* powerd_adapter) override {
+    DCHECK(powerd_adapter);
+    DCHECK(passed_powerd_event_service_);
+    return std::move(passed_powerd_event_service_);
+  }
+
   StrictMock<MockDebugdAdapter>* debugd_adapter() const {
     return debugd_adapter_;
+  }
+
+  FakePowerdEventService* powerd_event_service() const {
+    return powerd_event_service_;
   }
 
   MOCK_METHOD2(BindWilcoDtcSupportdMojoServiceFactoryImpl,
@@ -133,11 +163,15 @@ class MockWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
  private:
   // Mock objects to be transferred by Create* methods.
   std::unique_ptr<StrictMock<MockDebugdAdapter>> passed_debugd_adapter_;
+  std::unique_ptr<FakePowerdAdapter> passed_powerd_adapter_;
+  std::unique_ptr<FakePowerdEventService> passed_powerd_event_service_;
 
   // Pointers to objects originally stored in |passed_*| members. These allow
   // continued access by tests even after the corresponding Create* method has
   // been called and ownership has been transferred to |core_|.
   StrictMock<MockDebugdAdapter>* debugd_adapter_;
+  FakePowerdAdapter* powerd_adapter_;
+  FakePowerdEventService* powerd_event_service_;
 };
 
 // Tests for the WilcoDtcSupportdCore class.
@@ -158,7 +192,7 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
     return core_.get();
   }
 
-  MockWilcoDtcSupportdCoreDelegate* core_delegate() { return &core_delegate_; }
+  FakeWilcoDtcSupportdCoreDelegate* core_delegate() { return &core_delegate_; }
 
  private:
   // Initialize the Mojo subsystem.
@@ -166,7 +200,7 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
 
   base::MessageLoop message_loop_;
 
-  StrictMock<MockWilcoDtcSupportdCoreDelegate> core_delegate_;
+  StrictMock<FakeWilcoDtcSupportdCoreDelegate> core_delegate_;
 
   std::unique_ptr<WilcoDtcSupportdCore> core_;
 };
@@ -927,6 +961,84 @@ TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
   // Expect only EC event with valid size.
   ExpectAllFakeWilcoDtcReceivedEcEvents({{kFakeEcEventType1, GetPayload(6)}});
 }
+
+// Tests for powerd event service.
+//
+// This is a parametrized test with the following parameters:
+// * |power_event| - the power event.
+// * |expected_power_event| - the expected power event passed to fake_wilco_dtc
+//                            over gRPC.
+class PowerdEventServiceBootstrappedWilcoDtcSupportdCoreTest
+    : public BootstrappedWilcoDtcSupportdCoreTest,
+      public testing::WithParamInterface<std::tuple<
+          PowerdEventService::Observer::PowerEventType /* power_event */,
+          grpc_api::HandlePowerNotificationRequest::
+              PowerEvent /* expected_power_event */>> {
+ protected:
+  PowerdEventService::Observer::PowerEventType power_event() const {
+    return std::get<0>(GetParam());
+  }
+  grpc_api::HandlePowerNotificationRequest::PowerEvent expected_power_event()
+      const {
+    return std::get<1>(GetParam());
+  }
+
+  void SetupFakeWilcoDtcPowerEventCallback(
+      const base::Closure& callback,
+      FakeWilcoDtc* fake_wilco_dtc,
+      grpc_api::HandlePowerNotificationRequest::PowerEvent* event_out) {
+    DCHECK(fake_wilco_dtc);
+    DCHECK(event_out);
+    fake_wilco_dtc->set_handle_power_event_request_callback(base::BindRepeating(
+        [](const base::Closure& callback,
+           grpc_api::HandlePowerNotificationRequest::PowerEvent* event_out,
+           grpc_api::HandlePowerNotificationRequest::PowerEvent event) {
+          DCHECK(event_out);
+          *event_out = event;
+          callback.Run();
+        },
+        callback, event_out));
+  }
+};
+
+// Test that the method |HandlePowerNotification()| exposed by wilco_dtc gRPC is
+// called by wilco_dtc support daemon.
+TEST_P(PowerdEventServiceBootstrappedWilcoDtcSupportdCoreTest, PowerEvent) {
+  core_delegate()->powerd_event_service()->EmitPowerEvent(power_event());
+
+  base::RunLoop run_loop;
+  auto barrier_closure = BarrierClosure(2, run_loop.QuitClosure());
+
+  grpc_api::HandlePowerNotificationRequest::PowerEvent
+      fake_wilco_dtc_power_event;
+  grpc_api::HandlePowerNotificationRequest::PowerEvent
+      fake_ui_message_receiver_wilco_dtc_power_event;
+  SetupFakeWilcoDtcPowerEventCallback(barrier_closure, fake_wilco_dtc(),
+                                      &fake_wilco_dtc_power_event);
+  SetupFakeWilcoDtcPowerEventCallback(
+      barrier_closure, fake_ui_message_receiver_wilco_dtc(),
+      &fake_ui_message_receiver_wilco_dtc_power_event);
+
+  run_loop.Run();
+
+  EXPECT_EQ(fake_wilco_dtc_power_event, expected_power_event());
+  EXPECT_EQ(fake_ui_message_receiver_wilco_dtc_power_event,
+            expected_power_event());
+}
+
+INSTANTIATE_TEST_CASE_P(
+    ,
+    PowerdEventServiceBootstrappedWilcoDtcSupportdCoreTest,
+    testing::Values(
+        std::make_tuple(PowerdEventService::Observer::PowerEventType::kAcInsert,
+                        grpc_api::HandlePowerNotificationRequest::AC_INSERT),
+        std::make_tuple(PowerdEventService::Observer::PowerEventType::kAcRemove,
+                        grpc_api::HandlePowerNotificationRequest::AC_REMOVE),
+        std::make_tuple(
+            PowerdEventService::Observer::PowerEventType::kOsSuspend,
+            grpc_api::HandlePowerNotificationRequest::OS_SUSPEND),
+        std::make_tuple(PowerdEventService::Observer::PowerEventType::kOsResume,
+                        grpc_api::HandlePowerNotificationRequest::OS_RESUME)));
 
 }  // namespace
 
