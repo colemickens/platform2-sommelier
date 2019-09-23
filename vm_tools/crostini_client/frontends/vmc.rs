@@ -61,9 +61,10 @@ impl fmt::Display for VmcError {
             ExpectedVmAndFileName => {
                 write!(f, "expected <vm name> <file name> [removable storage name]")
             }
-            ExpectedVmAndMaybeFileName => {
-                write!(f, "expected <vm name> [<file name> [removable storage name]]")
-            }
+            ExpectedVmAndMaybeFileName => write!(
+                f,
+                "expected <vm name> [<file name> [removable storage name]]"
+            ),
             ExpectedVmAndPath => write!(f, "expected <vm name> <path>"),
             ExpectedVmBusDevice => write!(f, "expected <vm name> <bus>:<device>"),
             ExpectedNoArgs => write!(f, "expected no arguments"),
