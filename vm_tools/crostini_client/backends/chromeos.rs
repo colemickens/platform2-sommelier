@@ -140,7 +140,6 @@ enum ChromeOSError {
     BadVmStatus(VmStatus, String),
     BadVmPluginDispatcherStatus,
     CrostiniVmDisabled,
-    EnableGpuOnStable,
     ExportPathExists,
     ImportPathDoesNotExist,
     FailedAttachUsb(String),
@@ -184,7 +183,6 @@ impl fmt::Display for ChromeOSError {
             BadVmStatus(s, reason) => write!(f, "bad VM status: `{:?}`: {}", s, reason),
             BadVmPluginDispatcherStatus => write!(f, "failed to start Plugin VM dispatcher"),
             CrostiniVmDisabled => write!(f, "Crostini VMs are currently disabled"),
-            EnableGpuOnStable => write!(f, "gpu support is disabled on the stable channel"),
             ExportPathExists => write!(f, "disk export path already exists"),
             ImportPathDoesNotExist => write!(f, "disk import path does not exist"),
             FailedAttachUsb(reason) => write!(f, "failed to attach usb device to vm: {}", reason),
@@ -1307,9 +1305,6 @@ impl Backend for ChromeOS {
             }
 
             let is_stable_channel = is_stable_channel();
-            if features.gpu && is_stable_channel {
-                return Err(EnableGpuOnStable.into());
-            }
             if features.software_tpm && is_stable_channel {
                 return Err(TpmOnStable.into());
             }
