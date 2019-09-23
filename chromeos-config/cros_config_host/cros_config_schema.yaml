@@ -77,6 +77,19 @@ typeDefs:
     - none
     - internal
     - external
+  psu-type: &psu-type
+    description: |
+      Type of PSU the device has:
+      - battery: the device has a battery intended for primary use
+      - AC_primary: the device has a battery, but it is not intended for primary use
+      - AC_only: the device has no battery
+      - no_power: the device does not receive power in any direct manner (e.g., it is virtualized)
+    type: string
+    enum:
+      - battery
+      - AC_primary
+      - AC_only
+      - no_power
 type: object
 properties:
   chromeos:
@@ -520,6 +533,7 @@ properties:
                   description: Does the device have a touchscreen.
                   type: boolean
                 stylus-category: *stylus-category
+                psu-type: *psu-type
               additionalProperties: false
           additionalProperties: false
           required:

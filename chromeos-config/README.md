@@ -414,6 +414,7 @@ In the tables below,
 | has-lid-magnetometer | boolean |  | False |  | False | Is there a magnetometer in the lid of the device. |
 | has-touchscreen | boolean |  | False |  | False | Does the device have a touchscreen. |
 | is-lid-convertible | boolean |  | False |  | False | Can the lid be rotated 360 degrees. |
+| psu-type | string |  | False |  | False | Type of PSU the device has: - battery: the device has a battery intended for primary use - AC_primary: the device has a battery, but it is not intended for primary use - AC_only: the device has no battery - no_power: the device does not receive power in any direct manner (e.g., it is virtualized)  |
 | stylus-category | string |  | False |  | False | Denotes the category of stylus this device contains. |
 
 ### identity
