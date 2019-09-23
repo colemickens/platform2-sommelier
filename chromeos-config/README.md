@@ -404,6 +404,7 @@ In the tables below,
 ### hardware-properties
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| display-type | string |  | False |  | False | Denotes the type of display this device contains. |
 | has-base-accelerometer | boolean |  | False |  | False | Is there an accelerometer in the base of the device. |
 | has-base-gyroscope | boolean |  | False |  | False | Is there a gyroscope in the base of the device. |
 | has-base-light-sensor | boolean |  | False |  | False | Is there a light sensor in the base of the device. |

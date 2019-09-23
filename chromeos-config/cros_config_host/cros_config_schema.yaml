@@ -90,6 +90,12 @@ typeDefs:
       - AC_primary
       - AC_only
       - no_power
+  display-type: &display-type
+    description: "Denotes the type of display this device contains."
+    type: string
+    enum:
+    - default
+    - old
 type: object
 properties:
   chromeos:
@@ -532,6 +538,7 @@ properties:
                 has-touchscreen:
                   description: Does the device have a touchscreen.
                   type: boolean
+                display-type: *display-type
                 stylus-category: *stylus-category
                 psu-type: *psu-type
               additionalProperties: false
