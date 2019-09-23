@@ -83,9 +83,9 @@ bool ParseUsbControlResponse(base::StringPiece s,
       unsigned port;
       unsigned vid;
       unsigned pid;
-      if (!(base::StringToUint(device_parts[0], &port) &&
-            base::HexStringToUInt(device_parts[1], &vid) &&
-            base::HexStringToUInt(device_parts[2], &pid))) {
+      if (!(base::StringToUint(device_parts[i + 0], &port) &&
+            base::HexStringToUInt(device_parts[i + 1], &vid) &&
+            base::HexStringToUInt(device_parts[i + 2], &pid))) {
         return false;
       }
       if (port > UINT8_MAX || vid > UINT16_MAX || pid > UINT16_MAX) {
