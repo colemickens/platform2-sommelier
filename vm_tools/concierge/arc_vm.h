@@ -49,6 +49,7 @@ class ArcVm final : public VmInterface {
   static std::unique_ptr<ArcVm> Create(
       base::FilePath kernel,
       base::FilePath rootfs,
+      base::FilePath fstab,
       std::vector<Disk> disks,
       arc_networkd::MacAddress mac_addr,
       std::unique_ptr<arc_networkd::Subnet> subnet,
@@ -126,6 +127,7 @@ class ArcVm final : public VmInterface {
   // Starts the VM with the given kernel and root file system.
   bool Start(base::FilePath kernel,
              base::FilePath rootfs,
+             base::FilePath fstab,
              std::vector<Disk> disks,
              std::vector<std::string> params);
 

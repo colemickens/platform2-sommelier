@@ -44,6 +44,7 @@ constexpr char kDlcPath[] = "/run/imageloader/arcvm-dlc/package/root";
 constexpr char kKernel[] = "vmlinux";
 constexpr char kRootFs[] = "system.raw.img";
 constexpr char kVendorImage[] = "vendor.raw.img";
+constexpr char kFstab[] = "fstab";
 
 constexpr auto DEFAULT_TIMEOUT = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
 
@@ -304,6 +305,9 @@ vm_tools::concierge::StartArcVmRequest CreateStartArcVmRequest(
   disk_image->set_image_type(vm_tools::concierge::DISK_IMAGE_AUTO);
   disk_image->set_writable(false);
   disk_image->set_do_mount(true);
+
+  // Add Android fstab
+  request.set_fstab(SelectDlcOrBuiltin(base::FilePath(kFstab)).value());
 
   return request;
 }

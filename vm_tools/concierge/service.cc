@@ -1595,6 +1595,7 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
 
   const base::FilePath kernel(request.vm().kernel());
   const base::FilePath rootfs(request.vm().rootfs());
+  const base::FilePath fstab(request.fstab());
 
   if (!base::PathExists(kernel)) {
     LOG(ERROR) << "Missing VM kernel path: " << kernel.value();
@@ -1608,6 +1609,14 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
     LOG(ERROR) << "Missing VM rootfs path: " << rootfs.value();
 
     response.set_failure_reason("Rootfs path does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (!base::PathExists(fstab)) {
+    LOG(ERROR) << "Missing VM fstab path: " << fstab.value();
+
+    response.set_failure_reason("Fstab path does not exist");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -1682,8 +1691,8 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   features.gpu = base::SysInfo::OperatingSystemArchitecture() == "x86_64";
 
   auto vm = ArcVm::Create(std::move(kernel), std::move(rootfs),
-                          std::move(disks), kArcVmMacAddress, std::move(subnet),
-                          vsock_cid, std::move(server_proxy),
+                          std::move(fstab), std::move(disks), kArcVmMacAddress,
+                          std::move(subnet), vsock_cid, std::move(server_proxy),
                           std::move(runtime_dir), features, std::move(params));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";

@@ -86,6 +86,7 @@ ArcVm::~ArcVm() {
 std::unique_ptr<ArcVm> ArcVm::Create(
     base::FilePath kernel,
     base::FilePath rootfs,
+    base::FilePath fstab,
     std::vector<ArcVm::Disk> disks,
     arc_networkd::MacAddress mac_addr,
     std::unique_ptr<arc_networkd::Subnet> subnet,
@@ -98,8 +99,8 @@ std::unique_ptr<ArcVm> ArcVm::Create(
       std::move(mac_addr), std::move(subnet), vsock_cid,
       std::move(seneschal_server_proxy), std::move(runtime_dir), features));
 
-  if (!vm->Start(std::move(kernel), std::move(rootfs), std::move(disks),
-                 std::move(params))) {
+  if (!vm->Start(std::move(kernel), std::move(rootfs), std::move(fstab),
+                 std::move(disks), std::move(params))) {
     vm.reset();
   }
 
@@ -112,6 +113,7 @@ std::string ArcVm::GetVmSocketPath() const {
 
 bool ArcVm::Start(base::FilePath kernel,
                   base::FilePath rootfs,
+                  base::FilePath fstab,
                   std::vector<ArcVm::Disk> disks,
                   std::vector<string> params) {
   // Set up the tap device.
@@ -138,6 +140,7 @@ bool ArcVm::Start(base::FilePath kernel,
     "--syslog-tag",   base::StringPrintf("ARCVM(%u)", vsock_cid_),
     "--cras-audio",
     "--cras-capture",
+    "--android-fstab", fstab.value(),
     "--params",       base::JoinString(params, " "),
   };
   // clang-format on

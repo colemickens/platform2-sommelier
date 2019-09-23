@@ -1009,6 +1009,7 @@ int StartArcVm(dbus::ObjectProxy* proxy,
                string name,
                string kernel,
                string rootfs,
+               string fstab,
                string extra_disks,
                const std::vector<string>& params) {
   constexpr char arcvm_prefix[] = "/opt/google/vms/android";
@@ -1031,6 +1032,16 @@ int StartArcVm(dbus::ObjectProxy* proxy,
   if (rootfs.empty()) {
     rootfs = base::StringPrintf("%s/system.raw.img", arcvm_prefix);
     LOG(INFO) << "using default rootfs " << rootfs;
+  }
+
+  if (fstab.empty()) {
+    fstab = base::StringPrintf("%s/fstab", arcvm_prefix);
+    if (base::PathExists(base::FilePath(fstab))) {
+      LOG(INFO) << "using default fstab " << fstab;
+    } else {
+      LOG(ERROR) << fstab << " does not exist";
+      return -1;
+    }
   }
 
   if (extra_disks.empty()) {
@@ -1063,6 +1074,7 @@ int StartArcVm(dbus::ObjectProxy* proxy,
   vm_tools::concierge::StartArcVmRequest request;
   request.set_owner_id(std::move(cryptohome_id));
   request.set_name(std::move(name));
+  request.set_fstab(std::move(fstab));
 
   request.mutable_vm()->set_kernel(std::move(kernel));
   request.mutable_vm()->set_rootfs(std::move(rootfs));
@@ -1457,6 +1469,7 @@ int main(int argc, char** argv) {
   DEFINE_string(container_name, "", "Name of the container within the VM");
   DEFINE_string(removable_media, "", "Name of the removable media to use");
   DEFINE_string(image_name, "", "Name of the file on removable media to use");
+  DEFINE_string(android_fstab, "", "Path to the Android fstab");
 
   // create_disk parameters.
   DEFINE_string(cryptohome_id, "", "User cryptohome id");
@@ -1584,7 +1597,8 @@ int main(int argc, char** argv) {
   } else if (FLAGS_start_arc_vm) {
     return StartArcVm(proxy, std::move(FLAGS_cryptohome_id),
                       std::move(FLAGS_name), std::move(FLAGS_kernel),
-                      std::move(FLAGS_rootfs), std::move(FLAGS_extra_disks),
+                      std::move(FLAGS_rootfs), std::move(FLAGS_android_fstab),
+                      std::move(FLAGS_extra_disks),
                       base::CommandLine::ForCurrentProcess()->GetArgs());
   } else if (FLAGS_sync_time) {
     return SyncVmTimes(proxy);
