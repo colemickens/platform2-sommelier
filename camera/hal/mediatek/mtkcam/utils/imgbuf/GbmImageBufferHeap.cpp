@@ -80,14 +80,12 @@ class GbmImageBufferHeap
  public:  ////                    Destructor/Constructors.
   virtual ~GbmImageBufferHeap();
   GbmImageBufferHeap(char const* szCallerName,
-                     AllocImgParam_t const& rImgParam,
-                     AllocExtraParam const& rExtraParam);
+                     AllocImgParam_t const& rImgParam);
 
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   //  Data Members.
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  protected:  ////                    Info to Allocate.
-  AllocExtraParam mExtraParam;
   size_t mImgFormat;  // image format.
   MSize mImgSize;     // image size.
 
@@ -112,10 +110,8 @@ class GbmImageBufferHeap
 std::shared_ptr<IGbmImageBufferHeap> IGbmImageBufferHeap::create(
     char const* szCallerName,
     AllocImgParam_t const& rImgParam,
-    AllocExtraParam const& rExtraParam,
     MBOOL const enableLog) {
-  auto pHeap = std::make_shared<GbmImageBufferHeap>(szCallerName, rImgParam,
-                                                    rExtraParam);
+  auto pHeap = std::make_shared<GbmImageBufferHeap>(szCallerName, rImgParam);
   if (!pHeap) {
     CAM_LOGE("Fail to new");
     return NULL;
@@ -135,10 +131,8 @@ std::shared_ptr<IGbmImageBufferHeap> IGbmImageBufferHeap::create(
  *
  ******************************************************************************/
 GbmImageBufferHeap::GbmImageBufferHeap(char const* szCallerName,
-                                       AllocImgParam_t const& rImgParam,
-                                       AllocExtraParam const& rExtraParam)
+                                       AllocImgParam_t const& rImgParam)
     : BaseImageBufferHeap(szCallerName),
-      mExtraParam(rExtraParam),
       mImgFormat(rImgParam.imgFormat),
       mImgSize(rImgParam.imgSize),
       mpHwBuffer(nullptr),
@@ -164,8 +158,7 @@ GbmImageBufferHeap::impInit(BufInfoVect_t const& rvBufInfo) {
   uint32_t stride = 0;
   int err;
 
-  MY_LOGD("[w,h]=[%d,%d],format=%x,usage=%x", mImgSize.w, mImgSize.h,
-          mImgFormat, mExtraParam.usage);
+  MY_LOGD("[w,h]=[%d,%d],format=%x", mImgSize.w, mImgSize.h, mImgFormat);
   //  Allocate memory and setup mBufHeapInfo & rBufHeapInfo.
   mGbmBufferManager = cros::CameraBufferManager::GetInstance();
   if (mGbmBufferManager == nullptr) {
@@ -199,8 +192,8 @@ GbmImageBufferHeap::impInit(BufInfoVect_t const& rvBufInfo) {
   }
 
   err = mGbmBufferManager->Allocate(mBufsize, 1, HAL_PIXEL_FORMAT_BLOB,
-                                    mExtraParam.usage, cros::GRALLOC, &handle,
-                                    &stride);
+                                    GRALLOC_USAGE_HW_CAMERA_WRITE,
+                                    cros::GRALLOC, &handle, &stride);
   if (err != 0) {
     MY_LOGE("Allocate handle failed! %d", ret);
     goto lbExit;

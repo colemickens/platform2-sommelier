@@ -438,7 +438,6 @@ NSCam::v3::Utils::HalImageStreamBuffer::Allocator::operator()(
     std::shared_ptr<IStreamBufferPoolT> pPool) {
   std::shared_ptr<IGbmImageBufferHeap> pImageBufferHeap =
       IGbmImageBufferHeap::create(mpStreamInfo->getStreamName(), mAllocImgParam,
-                                  IGbmImageBufferHeap::AllocExtraParam(),
                                   MFALSE);
   if (CC_UNLIKELY(pImageBufferHeap == nullptr)) {
     MY_LOGE("IGbmImageBufferHeap::create: %s", mpStreamInfo->getStreamName());

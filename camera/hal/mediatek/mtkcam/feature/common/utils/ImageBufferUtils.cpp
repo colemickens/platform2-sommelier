@@ -119,22 +119,11 @@ MBOOL ImageBufferUtils::allocBuffer(std::shared_ptr<IImageBuffer>* imageBuf,
                                   tmpImageBuffer);
     }
   } else {
-#if 1  // check later
     IImageBufferAllocator::ImgParam imgParam(MSize(w, h), (*strideInBytes),
                                              (*bufBoundaryInBytes));
     imgParam.imgFormat = format;
-    std::shared_ptr<IImageBufferHeap> heap = IGbmImageBufferHeap::create(
-        LOG_TAG, imgParam,
-        // check_later
-        IGbmImageBufferHeap::AllocExtraParam(eBUFFER_USAGE_HW_TEXTURE), MFALSE);
-
-#else
-    IIonImageBufferHeap::AllocImgParam_t imgParam(
-        format, MSize(w, h), strideInBytes, bufBoundaryInBytes, planeCount);
-
-    std::shared_ptr<IIonImageBufferHeap> heap = IIonImageBufferHeap::create(
-        LOG_TAG, imgParam, IIonImageBufferHeap::AllocExtraParam(), MFALSE);
-#endif
+    std::shared_ptr<IImageBufferHeap> heap =
+        IGbmImageBufferHeap::create(LOG_TAG, imgParam, MFALSE);
 
     if (heap == NULL) {
       CAM_LOGE("heap is NULL");
@@ -337,33 +326,15 @@ MBOOL ImageBufferUtils::createBuffer(std::shared_ptr<IImageBuffer>* output_buf,
   IImageBufferAllocator::ImgParam imgParam = IImageBufferAllocator::ImgParam(
       (EImageFormat)format, input_buf->getImgSize(), bufStridesInBytes,
       bufBoundaryInBytes, (size_t)planeCount);
-#if 1  // check later
-  std::shared_ptr<IImageBufferHeap> pHeap = IGbmImageBufferHeap::create(
-      LOG_TAG, imgParam,
-      // check_later
-      IGbmImageBufferHeap::AllocExtraParam(eBUFFER_USAGE_HW_TEXTURE), MFALSE);
+
+  std::shared_ptr<IImageBufferHeap> pHeap =
+      IGbmImageBufferHeap::create(LOG_TAG, imgParam, MFALSE);
   if (pHeap == NULL) {
     CAM_LOGE("[%s] Stuff ImageBufferHeap create fail", LOG_TAG);
     return MFALSE;
   }
 
   std::shared_ptr<IImageBuffer> pImgBuf = pHeap->createImageBuffer();
-#else
-  std::shared_ptr<IIonImageBufferHeap> pHeap =
-      IIonImageBufferHeap::create(LOG_TAG, imgParam);
-  if (pHeap == nullptr) {
-    CAM_LOGE("[%s] Stuff ImageBufferHeap create fail", LOG_TAG);
-    return MFALSE;
-  }
-
-  MINT imgFormat = pHeap->getImgFormat();
-  ImgBufCreator creator(imgFormat);
-  sp<IImageBuffer> pImgBuf = pHeap->createImageBuffer(&creator);
-  if (pImgBuf == NULL) {
-    CAM_LOGE("[%s] Stuff ImageBuffer create fail", LOG_TAG);
-    return MFALSE;
-  }
-#endif
 
   // lock buffer
   if (!(pImgBuf->lockBuf(LOG_TAG, BUFFER_USAGE_SW))) {

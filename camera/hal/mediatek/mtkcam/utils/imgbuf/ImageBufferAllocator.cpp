@@ -60,8 +60,6 @@ std::shared_ptr<IImageBuffer> IImageBufferAllocator::alloc_gbm(
   std::shared_ptr<IImageBuffer> pImgBuf = nullptr;
   //
   IGbmImageBufferHeap::AllocImgParam_t imgParam = rImgParam;
-  IGbmImageBufferHeap::AllocExtraParam extraParam(rExtraParam.usage,
-                                                  rExtraParam.nocache);
   if (eImgFmt_JPEG == rImgParam.imgFormat) {
     if (0 == imgParam.bufSize) {
       CAM_LOGE("Err imgParam: bufSize should not be 0 for JPEG memory");
@@ -70,8 +68,8 @@ std::shared_ptr<IImageBuffer> IImageBufferAllocator::alloc_gbm(
     imgParam.imgFormat = eImgFmt_BLOB;
   }
   //
-  std::shared_ptr<IImageBufferHeap> pHeap = IGbmImageBufferHeap::create(
-      szCallerName, imgParam, extraParam, enableLog);
+  std::shared_ptr<IImageBufferHeap> pHeap =
+      IGbmImageBufferHeap::create(szCallerName, imgParam, enableLog);
   if (pHeap == nullptr) {
     CAM_LOGE("NULL Heap");
     return NULL;

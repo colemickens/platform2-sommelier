@@ -36,27 +36,10 @@ class VISIBILITY_PUBLIC IGbmImageBufferHeap : public virtual IImageBufferHeap {
  public:  ////                    Params for Allocations.
   typedef IImageBufferAllocator::ImgParam AllocImgParam_t;
 
-  struct AllocExtraParam {
-    MINT32 usage;
-    MINT32 nocache;
-    MINT32 security;
-    MINT32 coherence;
-    //
-    AllocExtraParam(MINT32 _usage = GRALLOC_USAGE_HW_TEXTURE,
-                    MINT32 _nocache = 0,
-                    MINT32 _security = 0,
-                    MINT32 _coherence = 0)
-        : usage(_usage),
-          nocache(_nocache),
-          security(_security),
-          coherence(_coherence) {}
-  };
-
  public:  ////                    Creation.
   static std::shared_ptr<IGbmImageBufferHeap> create(
       char const* szCallerName,
       AllocImgParam_t const& rImgParam,
-      AllocExtraParam const& rExtraParam = AllocExtraParam(),
       MBOOL const enableLog = MTRUE);
 
  protected:  ////                    Destructor/Constructors.

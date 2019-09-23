@@ -121,7 +121,6 @@ class GraphicBufferPool : public BufferPool<GraphicBufferHandle> {
   size_t mBoundary[3];
   NativeBufferWrapper::ColorSpace mColorSpace;
   IImageBufferAllocator::ImgParam mAllocatorParam;
-  IGrallocImageBufferHeap::AllocExtraParam mAllocatorExtraParam;
 };
 
 };      // namespace NSFeaturePipe

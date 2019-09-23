@@ -257,11 +257,9 @@ MINT32 LMVHalImp::CreateMultiMemBuf(
     CAM_LOGD("totalSize:%d, memSize:%d, num:%d", totalSize, memSize, index);
 
     NSCam::IImageBufferAllocator::ImgParam imgParam(totalSize, 0);
-    NSCam::IGbmImageBufferHeap::AllocExtraParam extraParam(
-        GRALLOC_USAGE_HW_TEXTURE);
 
     std::shared_ptr<NSCam::IImageBufferHeap> pHeap =
-        NSCam::IGbmImageBufferHeap::create(LMV_HAL_NAME, imgParam, extraParam);
+        NSCam::IGbmImageBufferHeap::create(LMV_HAL_NAME, imgParam);
     if (pHeap == NULL) {
       CAM_LOGE("image buffer heap create fail");
       return LMV_RETURN_MEMORY_ERROR;
