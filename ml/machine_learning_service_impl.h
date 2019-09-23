@@ -36,13 +36,6 @@ class MachineLearningServiceImpl
 
  private:
   // chromeos::machine_learning::mojom::MachineLearningService:
-  // TODO(crbug.com/990619): Remove this once clients migrate to
-  // |LoadBuiltinModel|.
-  void LoadModel(chromeos::machine_learning::mojom::ModelSpecPtr spec,
-                 chromeos::machine_learning::mojom::ModelRequest request,
-                 const LoadModelCallback& callback) override;
-
-  // chromeos::machine_learning::mojom::MachineLearningService:
   void LoadBuiltinModel(
       chromeos::machine_learning::mojom::BuiltinModelSpecPtr spec,
       chromeos::machine_learning::mojom::ModelRequest request,
@@ -53,12 +46,6 @@ class MachineLearningServiceImpl
       chromeos::machine_learning::mojom::FlatBufferModelSpecPtr spec,
       chromeos::machine_learning::mojom::ModelRequest request,
       const LoadFlatBufferModelCallback& callback) override;
-
-  // Metadata required to load models. Initialized at construction.
-  // TODO(crbug.com/990619): Remove this once clients migrate to
-  // |LoadBuiltinModel|.
-  const std::map<chromeos::machine_learning::mojom::ModelId, ModelMetadata>
-      model_metadata_;
 
   // Metadata required to load builtin models. Initialized at construction.
   const std::map<chromeos::machine_learning::mojom::BuiltinModelId,

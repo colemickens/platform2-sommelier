@@ -17,24 +17,6 @@ module chromeos.machine_learning.mojom;
 //       between Chromium and Chrome OS versions of this file.
 import "ml/mojom/graph_executor.mojom";
 
-// Deprecated in favor of |BuiltinModelId|
-enum ModelId {
-  // Unknown ML model. It is marked as unsupported.
-  UNSUPPORTED_UNKNOWN = 0,
-  // Test ML model.
-  TEST_MODEL = 1,
-  // The Smart Dim (20181115) ML model.
-  SMART_DIM_20181115 = 2,
-  // The Smart Dim (20190221) ML model.
-  SMART_DIM_20190221 = 3,
-  // The Top Cat (20190722) ML model.
-  TOP_CAT_20190722 = 4,
-  // The Smart Dim (20190521) ML model.
-  SMART_DIM_20190521 = 5,
-  // The Search Ranker (20190923) ML model.
-  SEARCH_RANKER_20190923 = 6,
-};
-
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
 // ModelIds prefixed with UNSUPPORTED_ are no longer supported. Attempts to load
@@ -64,11 +46,6 @@ enum CreateGraphExecutorResult {
   MEMORY_ALLOCATION_ERROR = 2,
   // Remove kMax and use builtin kMaxValue after Mojo uprev (crbug.com/909719).
   kMax = MEMORY_ALLOCATION_ERROR,
-};
-
-// Deprecated in favor of |BuiltinModelSpec| and |FlatBufferModelSpec|
-struct ModelSpec {
-  ModelId id;
 };
 
 // Model specification for builtin models.

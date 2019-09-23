@@ -51,16 +51,24 @@ request for a particular model:
   usage of the request, which is scaled to one CPU core, namely it may be
   greater than ElapsedTimeMicrosec if there are multi cores.
 
-|MetricsModelName| is specified in the model's [metadata][model_metadata.cc].
-The above request can be following:
+|MetricsModelName| is specified in the model's [metadata][model_metadata.cc] for
+builtin models and is specified in |FlatBufferModelSpec| by the client for
+flatbuffer models.
+The above |request| can be following:
 
-* LoadModel
-* CreateGraphExecutor
-* Execute (model inference)
+* LoadModelResult
+* CreateGraphExecutorResult
+* ExecuteResult (model inference)
+
+The request name "LoadModelResult" is used no matter the model is loaded by
+|LoadBuiltinModel| or by |LoadFlatBufferModel|. This is valid based on the fact
+that for a particular model, it is either loaded by |LoadBuiltinModel| or by
+|LoadFlatBufferModel| and never both.
 
 There is also an enum histogram "MachineLearningService.LoadModelResult"
-which records a generic model specification error event during a LoadModel
-request when the model name is unknown.
+which records a generic model specification error event during a
+|LoadBuiltinModel| or |LoadFlatBufferModel| request when the model name is
+unknown.
 
 ## Original design docs
 

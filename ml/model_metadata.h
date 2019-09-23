@@ -13,27 +13,6 @@
 namespace ml {
 
 // The information about one supported model.
-// Deprecated in favor of |BuiltinModelMetadata|
-// TODO(crbug.com/990619): Remove this once clients migrate to
-// |LoadBuiltinModel|.
-struct ModelMetadata {
-  chromeos::machine_learning::mojom::ModelId id;
-  std::string model_file;
-
-  // As accepted by the constructor of ModelImpl.
-  std::map<std::string, int> required_inputs;
-  std::map<std::string, int> required_outputs;
-
-  // Used in naming the UMA metric histograms of the model. An example of the
-  // names of the histograms is:
-  //
-  // MachineLearningService.|metrics_model_name|.ExecuteResult.CpuTimeMicrosec
-  //
-  // This variable must NOT be empty.
-  std::string metrics_model_name;
-};
-
-// The information about one supported model.
 struct BuiltinModelMetadata {
   chromeos::machine_learning::mojom::BuiltinModelId id;
   std::string model_file;
@@ -50,13 +29,6 @@ struct BuiltinModelMetadata {
   // This variable must NOT be empty.
   std::string metrics_model_name;
 };
-
-// Returns a map from model ID to model metdata for each supported model.
-// Deprecated in favor of |GetBuiltinModelMetadata|.
-// TODO(crbug.com/990619): Remove this once clients migrate to
-// |LoadBuiltinModel|.
-std::map<chromeos::machine_learning::mojom::ModelId, ModelMetadata>
-GetModelMetadata();
 
 // Returns a map from model ID to model metdata for each supported model.
 std::map<chromeos::machine_learning::mojom::BuiltinModelId,

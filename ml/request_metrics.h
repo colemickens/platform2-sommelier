@@ -24,13 +24,13 @@
 
 namespace ml {
 
-// Performs UMA metrics logging for LoadModel, CreateGraphExecutor and Execute.
-// Metrics includes events(enumerators defined by RequestEventEnum),
-// memory_usage, elapsed_time and cpu_time.
-// RequestEventEnum is an enum class which defines different events for some
-// specific actions, currently we reuse the enum classes defined in mojoms.
-// The enum class generally contains an OK and several different Errors,
-// besides, there should be a kMax which shares the value of the highest
+// Performs UMA metrics logging for model loading (LoadBuiltinModel or
+// LoadFlatBufferModel), CreateGraphExecutor and Execute. Metrics includes
+// events(enumerators defined by RequestEventEnum), memory_usage, elapsed_time
+// and cpu_time. RequestEventEnum is an enum class which defines different
+// events for some specific actions, currently we reuse the enum classes defined
+// in mojoms. The enum class generally contains an OK and several different
+// Errors, besides, there should be a kMax which shares the value of the highest
 // enumerator.
 template <class RequestEventEnum>
 class RequestMetrics {
@@ -160,7 +160,8 @@ void RequestMetrics<RequestEventEnum>::FinishRecordingPerformanceMetrics() {
                              kCpuTimeBuckets);
 }
 
-// Records a generic model specification error event during a LoadModel Request
+// Records a generic model specification error event during a model loading
+// (LoadBuiltinModel or LoadFlatBufferModel) request.
 void RecordModelSpecificationErrorEvent();
 
 }  // namespace ml
