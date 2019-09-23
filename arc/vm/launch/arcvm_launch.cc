@@ -37,16 +37,13 @@
 namespace {
 
 constexpr char kHomeDirectory[] = "/home";
-constexpr char kKernelPath[] = "/opt/google/vms/android/vmlinux";
-constexpr char kRootFsPath[] = "/opt/google/vms/android/system.raw.img";
-constexpr char kVendorImagePath[] = "/opt/google/vms/android/vendor.raw.img";
 
-constexpr char kDlcKernelPath[] =
-    "/run/imageloader/arcvm-dlc/package/root/vmlinux";
-constexpr char kDlcRootFsPath[] =
-    "/run/imageloader/arcvm-dlc/package/root/system.raw.img";
-constexpr char kDlcVendorImagePath[] =
-    "/run/imageloader/arcvm-dlc/package/root/vendor.raw.img";
+constexpr char kBuiltinPath[] = "/opt/google/vms/android";
+constexpr char kDlcPath[] = "/run/imageloader/arcvm-dlc/package/root";
+
+constexpr char kKernel[] = "vmlinux";
+constexpr char kRootFs[] = "system.raw.img";
+constexpr char kVendorImage[] = "vendor.raw.img";
 
 constexpr auto DEFAULT_TIMEOUT = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
 
@@ -59,6 +56,15 @@ bool IsHostRootfsWritable() {
   const bool rw = !(buf.f_flag & ST_RDONLY);
   LOG(INFO) << "Host's rootfs is " << (rw ? "rw" : "ro");
   return rw;
+}
+
+base::FilePath SelectDlcOrBuiltin(const base::FilePath& file) {
+  const base::FilePath dlc_path = base::FilePath(kDlcPath).Append(file);
+  if (base::PathExists(dlc_path)) {
+    LOG(INFO) << "arcvm-dlc will be used for " << file.value();
+    return dlc_path;
+  }
+  return base::FilePath(kBuiltinPath).Append(file);
 }
 
 }  // namespace
@@ -279,19 +285,10 @@ vm_tools::concierge::StartArcVmRequest CreateStartArcVmRequest(
 
   vm_tools::concierge::VirtualMachineSpec* vm = request.mutable_vm();
 
-  if (base::PathExists(base::FilePath(kDlcKernelPath))) {
-    LOG(INFO) << "arcvm-dlc will be used for vmlinux";
-    vm->set_kernel(kDlcKernelPath);
-  } else {
-    vm->set_kernel(kKernelPath);
-  }
+  vm->set_kernel(SelectDlcOrBuiltin(base::FilePath(kKernel)).value());
+
   // Add / as /dev/vda.
-  if (base::PathExists(base::FilePath(kDlcRootFsPath))) {
-    LOG(INFO) << "arcvm-dlc will be used for system.raw.img";
-    vm->set_rootfs(kDlcRootFsPath);
-  } else {
-    vm->set_rootfs(kRootFsPath);
-  }
+  vm->set_rootfs(SelectDlcOrBuiltin(base::FilePath(kRootFs)).value());
 
   // Add /data as /dev/vdb.
   vm_tools::concierge::DiskImage* disk_image = request.add_disks();
@@ -301,12 +298,9 @@ vm_tools::concierge::StartArcVmRequest CreateStartArcVmRequest(
   disk_image->set_do_mount(true);
   // Add /vendor as /dev/vdc.
   disk_image = request.add_disks();
-  if (base::PathExists(base::FilePath(kDlcVendorImagePath))) {
-    LOG(INFO) << "arcvm-dlc will be used for vendor.raw.img";
-    disk_image->set_path(kDlcVendorImagePath);
-  } else {
-    disk_image->set_path(kVendorImagePath);
-  }
+  disk_image->set_path(
+      SelectDlcOrBuiltin(base::FilePath(kVendorImage)).value());
+
   disk_image->set_image_type(vm_tools::concierge::DISK_IMAGE_AUTO);
   disk_image->set_writable(false);
   disk_image->set_do_mount(true);
