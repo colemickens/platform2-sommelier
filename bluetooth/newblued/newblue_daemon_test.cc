@@ -1211,6 +1211,10 @@ TEST_F(NewblueDaemonTest, ScanState) {
   suspend_imminent_method_call.SetPath(dbus::ObjectPath(kAdapterObjectPath));
   suspend_imminent_method_call.SetSender(kTestSender);
   suspend_imminent_method_call.SetSerial(kTestSerial);
+  // Add action (empty string)
+  dbus::MessageWriter suspendWriter(&suspend_imminent_method_call);
+  suspendWriter.AppendString("");
+
   std::unique_ptr<dbus::Response> suspend_imminent_response;
 
   EXPECT_CALL(*libnewblue_, HciDiscoverLeStop(kTestDiscoveryId))
@@ -1227,6 +1231,9 @@ TEST_F(NewblueDaemonTest, ScanState) {
   suspend_done_method_call.SetPath(dbus::ObjectPath(kAdapterObjectPath));
   suspend_done_method_call.SetSender(kTestSender);
   suspend_done_method_call.SetSerial(kTestSerial);
+  // Add action (empty string)
+  dbus::MessageWriter doneWriter(&suspend_done_method_call);
+  doneWriter.AppendString("");
   std::unique_ptr<dbus::Response> suspend_done_response;
 
   EXPECT_CALL(*libnewblue_,

@@ -22,6 +22,11 @@ namespace {
 // Description for power manager's RegisterSuspendDelay.
 constexpr char kSuspendDelayDescription[] = "btdispatch";
 
+// Stop on suspend flag
+constexpr char kStopOnSuspend[] = "stop-on-suspend";
+constexpr char kStop[] = "stop";
+constexpr char kStart[] = "start";
+
 // Timeout for power manager's SuspendImminent wait.
 // Bluez's PauseDiscovery should take less than 5 seconds to complete.
 constexpr base::TimeDelta kSuspendDelayTimeout =
@@ -226,6 +231,10 @@ void SuspendManager::HandleSuspendImminent(int new_suspend_id) {
   dbus::MethodCall method_call(bluetooth_adapter::kBluetoothAdapterInterface,
                                bluetooth_adapter::kHandleSuspendImminent);
 
+  // Forward stop-on-suspend flag
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(flags_->Get(kStopOnSuspend) ? kStop : "");
+
   VLOG(1) << "Calling SuspendImminent to BlueZ and/or NewBlue";
   btdispatch_dbus_proxy_->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
@@ -250,7 +259,13 @@ void SuspendManager::HandleSuspendDone() {
   dbus::MethodCall method_call(bluetooth_adapter::kBluetoothAdapterInterface,
                                bluetooth_adapter::kHandleSuspendDone);
 
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(flags_->Get(kStopOnSuspend) ? kStart : "");
+
   VLOG(1) << "Calling HandleSuspendDone to BlueZ and/or NewBlue";
+  // In case the bluetooth chip resets on suspend, this method call might
+  // produce an error log. It is innocuous and occurs because the adapter
+  // also restarts and goes into a known/clean state.
   btdispatch_dbus_proxy_->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
       base::Bind(&SuspendManager::OnSuspendDoneHandled,

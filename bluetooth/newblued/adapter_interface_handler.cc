@@ -296,7 +296,8 @@ void AdapterInterfaceHandler::OnClientUnavailable(
 
 void AdapterInterfaceHandler::HandleSuspendImminent(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-    dbus::Message* message) {
+    dbus::Message* message,
+    const std::string& action) {
   VLOG(1) << __func__;
   CHECK(message != nullptr);
   CHECK(response != nullptr);
@@ -310,7 +311,8 @@ void AdapterInterfaceHandler::HandleSuspendImminent(
 
 void AdapterInterfaceHandler::HandleSuspendDone(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-    dbus::Message* message) {
+    dbus::Message* message,
+    const std::string& action) {
   VLOG(1) << __func__;
   CHECK(message != nullptr);
   CHECK(response != nullptr);

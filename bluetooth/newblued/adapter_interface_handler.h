@@ -78,10 +78,12 @@ class AdapterInterfaceHandler {
   // D-Bus method handlers for suspend/resume related methods
   void HandleSuspendImminent(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-      dbus::Message* message);
+      dbus::Message* message,
+      const std::string& action);
   void HandleSuspendDone(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-      dbus::Message* message);
+      dbus::Message* message,
+      const std::string& action);
 
   // Perform pause/unpause discovery action
   void PauseUnpauseDiscovery(void);
