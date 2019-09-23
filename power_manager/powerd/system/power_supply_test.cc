@@ -1646,6 +1646,12 @@ TEST_F(PowerSupplyTest, IgnoreSpuriousUdevEvents) {
   EXPECT_EQ(MakeEstimateString(false, kLowCurrentSec, 0),
             GetEstimateStringFromStatus(power_supply_->GetPowerStatus()));
 
+  // If the battery percentage changes, a new notification should be sent
+  // to the observers.
+  observer.reset_num_updates();
+  UpdateChargeAndCurrent(kCharge - 0.1, kHighCurrent);
+  SendUdevEvent();
+  EXPECT_EQ(1, observer.num_updates());
   // Return to the low current and check that the high current sample wasn't
   // incorporated into the average.
   UpdateChargeAndCurrent(kCharge, kLowCurrent);

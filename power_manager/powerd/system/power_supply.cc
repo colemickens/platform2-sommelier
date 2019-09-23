@@ -748,6 +748,7 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
       power_status_initialized_ &&
       status.external_power == power_status_.external_power &&
       status.battery_state == power_status_.battery_state &&
+      status.battery_percentage == power_status_.battery_percentage &&
       ConnectedSourcesAreEqual(status, power_status_) &&
       status.battery_charge_full == power_status_.battery_charge_full)
     return false;
@@ -895,7 +896,7 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   }
   if (base::PathExists(path.Append("voltage_max_design"))) {
     status->line_power_max_voltage =
-      ReadScaledDouble(path, "voltage_max_design");
+        ReadScaledDouble(path, "voltage_max_design");
     status->has_line_power_max_voltage = true;
   }
   if (base::PathExists(path.Append("current_max"))) {
