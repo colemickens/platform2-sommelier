@@ -1,3 +1,5 @@
 /dev_mem
-/test*.dtb
+/product_name
+/product_sku
+/test*.json
 /vpd
