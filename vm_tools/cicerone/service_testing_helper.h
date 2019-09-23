@@ -66,6 +66,8 @@ class ServiceTestingHelper {
     kGetDebugInformation,
     kApplyAnsiblePlaybook,
     kConnectChunnel,
+    kUpgradeContainer,
+    kCancelUpgradeContainer,
 
     kNumDbusCalls
   };

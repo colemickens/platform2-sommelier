@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 #include <vm_protos/proto_bindings/tremplin.grpc.pb.h>
 
@@ -96,6 +97,22 @@ class VirtualMachine {
     UNKNOWN,
     CANCEL_QUEUED,
     OPERATION_NOT_FOUND,
+    FAILED,
+  };
+
+  enum class UpgradeContainerStatus {
+    UNKNOWN,
+    STARTED,
+    ALREADY_RUNNING,
+    NOT_SUPPORTED,
+    ALREADY_UPGRADED,
+    FAILED,
+  };
+
+  enum class CancelUpgradeContainerStatus {
+    UNKNOWN,
+    NOT_RUNNING,
+    CANCELED,
     FAILED,
   };
 
@@ -209,6 +226,9 @@ class VirtualMachine {
   const OsRelease* GetOsReleaseForContainer(
       const std::string& container_name) const;
 
+  void SetOsReleaseForTesting(const std::string& container_name,
+                              const OsRelease& os_release);
+
   // Creates an LXD container.
   CreateLxdContainerStatus CreateLxdContainer(const std::string& container_name,
                                               const std::string& image_server,
@@ -265,6 +285,17 @@ class VirtualMachine {
 
   CancelImportLxdContainerStatus CancelImportLxdContainer(
       const std::string& in_progress_container_name, std::string* out_error);
+
+  // Begins a container OS upgrade (e.g. from debian/stretch to debian/buster).
+  UpgradeContainerStatus UpgradeContainer(
+      const Container* container,
+      const UpgradeContainerRequest::Version& source_version,
+      const UpgradeContainerRequest::Version& target_version,
+      std::string* out_error);
+
+  // Cancels a running container OS upgrade.
+  CancelUpgradeContainerStatus CancelUpgradeContainer(Container* container,
+                                                      std::string* out_error);
 
   // Gets a list of all the active container names in this VM.
   std::vector<std::string> GetContainerNames();

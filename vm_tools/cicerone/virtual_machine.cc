@@ -234,6 +234,11 @@ const OsRelease* VirtualMachine::GetOsReleaseForContainer(
   return &iter->second;
 }
 
+void VirtualMachine::SetOsReleaseForTesting(const std::string& container_name,
+                                            const OsRelease& os_release) {
+  container_os_releases_[container_name] = os_release;
+}
+
 std::vector<std::string> VirtualMachine::GetContainerNames() {
   std::vector<std::string> retval;
   for (auto& container_entry : containers_) {
@@ -708,5 +713,55 @@ VirtualMachine::CancelImportLxdContainer(
       return VirtualMachine::CancelImportLxdContainerStatus::UNKNOWN;
   }
 }
+
+namespace {
+UpgradeContainerRequest::Version VersionFromOsRelease(
+    const OsRelease* os_release) {
+  if (os_release->id() != "debian") {
+    return UpgradeContainerRequest::UNKNOWN;
+  }
+  if (os_release->version_id() == "9") {
+    return UpgradeContainerRequest::DEBIAN_STRETCH;
+  }
+  if (os_release->version_id() == "10") {
+    return UpgradeContainerRequest::DEBIAN_BUSTER;
+  }
+  return UpgradeContainerRequest::UNKNOWN;
+}
+}  // namespace
+
+VirtualMachine::UpgradeContainerStatus VirtualMachine::UpgradeContainer(
+    const Container* container,
+    const UpgradeContainerRequest::Version& source_version,
+    const UpgradeContainerRequest::Version& target_version,
+    std::string* out_error) {
+  DCHECK(container);
+  DCHECK(out_error);
+  const OsRelease* os_release = GetOsReleaseForContainer(container->name());
+  if (!os_release) {
+    out_error->assign("No OsRelease data found for container. Can't upgrade.");
+    LOG(ERROR) << *out_error;
+    return VirtualMachine::UpgradeContainerStatus::FAILED;
+  }
+  auto current_version = VersionFromOsRelease(os_release);
+  if (current_version == UpgradeContainerRequest::UNKNOWN) {
+    LOG(ERROR) << "Unknown OsRelease. Can't upgrade.";
+    return VirtualMachine::UpgradeContainerStatus::NOT_SUPPORTED;
+  }
+  if (current_version == target_version) {
+    return VirtualMachine::UpgradeContainerStatus::ALREADY_UPGRADED;
+  }
+  // TODO(crbug:930901) Call tremplin to start the upgrade.
+
+  return VirtualMachine::UpgradeContainerStatus::UNKNOWN;
+}
+
+VirtualMachine::CancelUpgradeContainerStatus
+VirtualMachine::CancelUpgradeContainer(Container* container,
+                                       std::string* out_error) {
+  NOTREACHED();
+  return VirtualMachine::CancelUpgradeContainerStatus::UNKNOWN;
+}
+
 }  // namespace cicerone
 }  // namespace vm_tools

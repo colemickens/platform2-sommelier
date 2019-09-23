@@ -9,6 +9,7 @@
 #include <base/macros.h>
 #include <gtest/gtest.h>
 
+#include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
 #include "vm_tools/cicerone/virtual_machine.h"
 
 namespace vm_tools {
@@ -119,6 +120,53 @@ TEST_F(VirtualMachineTest, PluginVmRegisterContainer) {
 TEST_F(VirtualMachineTest, VerifyVmTypes) {
   EXPECT_FALSE(termina_vm_.IsPluginVm());
   EXPECT_TRUE(plugin_vm_.IsPluginVm());
+}
+
+class UpgradeContainerTest : public VirtualMachineTest {
+ public:
+  void SetUp() override {
+    std::string token = termina_vm_.GenerateContainerToken(kFakeContainerName1);
+    EXPECT_TRUE(
+        termina_vm_.RegisterContainer(token, kFakeGarconPort1, kFakeIp1));
+    container_ = termina_vm_.GetContainerForName(kFakeContainerName1);
+    EXPECT_NE(container_, nullptr);
+  }
+
+ protected:
+  const Container* container_;
+};
+
+TEST_F(UpgradeContainerTest, UpgradeContainer_NoOsRelease) {
+  std::string error_msg;
+  VirtualMachine::UpgradeContainerStatus status = termina_vm_.UpgradeContainer(
+      container_, UpgradeContainerRequest::DEBIAN_STRETCH,
+      UpgradeContainerRequest::DEBIAN_BUSTER, &error_msg);
+  EXPECT_EQ(status, VirtualMachine::UpgradeContainerStatus::FAILED);
+}
+
+TEST_F(UpgradeContainerTest, UpgradeContainer_UnknownOsRelease) {
+  OsRelease os_release;
+  os_release.set_id("not debian");
+  termina_vm_.SetOsReleaseForTesting(kFakeContainerName1, os_release);
+
+  std::string error_msg;
+  VirtualMachine::UpgradeContainerStatus status = termina_vm_.UpgradeContainer(
+      container_, UpgradeContainerRequest::DEBIAN_STRETCH,
+      UpgradeContainerRequest::DEBIAN_BUSTER, &error_msg);
+  EXPECT_EQ(status, VirtualMachine::UpgradeContainerStatus::NOT_SUPPORTED);
+}
+
+TEST_F(UpgradeContainerTest, UpgradeContainer_AlreadyUpgraded) {
+  OsRelease os_release;
+  os_release.set_id("debian");
+  os_release.set_version_id("10");
+  termina_vm_.SetOsReleaseForTesting(kFakeContainerName1, os_release);
+
+  std::string error_msg;
+  VirtualMachine::UpgradeContainerStatus status = termina_vm_.UpgradeContainer(
+      container_, UpgradeContainerRequest::DEBIAN_STRETCH,
+      UpgradeContainerRequest::DEBIAN_BUSTER, &error_msg);
+  EXPECT_EQ(status, VirtualMachine::UpgradeContainerStatus::ALREADY_UPGRADED);
 }
 
 }  // namespace cicerone

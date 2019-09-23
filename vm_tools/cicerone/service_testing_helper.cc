@@ -20,7 +20,6 @@
 #include "vm_tools/cicerone/tremplin_listener_impl.h"
 #include "vm_tools/common/constants.h"
 
-
 namespace vm_tools {
 namespace cicerone {
 
@@ -505,6 +504,9 @@ void ServiceTestingHelper::SetDbusCallbackNames() {
   dbus_callbacks_[kApplyAnsiblePlaybook].method_name =
       kApplyAnsiblePlaybookMethod;
   dbus_callbacks_[kConnectChunnel].method_name = kConnectChunnelMethod;
+  dbus_callbacks_[kUpgradeContainer].method_name = kUpgradeContainerMethod;
+  dbus_callbacks_[kCancelUpgradeContainer].method_name =
+      kCancelUpgradeContainerMethod;
 
   // Check we didn't forget any.
   for (const auto& callback_info : dbus_callbacks_) {

@@ -393,6 +393,14 @@ class Service final {
   std::unique_ptr<dbus::Response> ApplyAnsiblePlaybook(
       dbus::MethodCall* method_call);
 
+  // Handles a request to upgrade a container.
+  std::unique_ptr<dbus::Response> UpgradeContainer(
+      dbus::MethodCall* method_call);
+
+  // Handles a request to cancel an ongoing container upgrade.
+  std::unique_ptr<dbus::Response> CancelUpgradeContainer(
+      dbus::MethodCall* method_call);
+
   // Gets the VirtualMachine that corresponds to a container at |cid|
   // or the |vm_token| for the VM itself and sets |vm_out| to the
   // VirtualMachine, |owner_id_out| to the owner id of the VM, and |name_out| to

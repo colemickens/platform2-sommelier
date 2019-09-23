@@ -2810,6 +2810,120 @@ std::unique_ptr<dbus::Response> Service::ApplyAnsiblePlaybook(
   return dbus_response;
 }
 
+std::unique_ptr<dbus::Response> Service::UpgradeContainer(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received UpgradeContainer request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  UpgradeContainerRequest request;
+  UpgradeContainerResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse UpgradeContainerRequest from message";
+    response.set_status(UpgradeContainerResponse::FAILED);
+    response.set_failure_reason(
+        "unable to parse UpgradeContainerRequest from message");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_status(UpgradeContainerResponse::FAILED);
+    response.set_failure_reason(base::StringPrintf(
+        "requested VM does not exist: %s", request.vm_name().c_str()));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  Container* container = vm->GetContainerForName(request.container_name());
+  if (!container) {
+    std::string error_reason = base::StringPrintf(
+        "requested container %s does not exist on vm %s",
+        request.container_name().c_str(), request.vm_name().c_str());
+    LOG(ERROR) << error_reason;
+    response.set_status(UpgradeContainerResponse::FAILED);
+    response.set_failure_reason(std::move(error_reason));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string error_msg;
+  VirtualMachine::UpgradeContainerStatus status =
+      vm->UpgradeContainer(container, request.source_version(),
+                           request.target_version(), &error_msg);
+
+  response.set_status(UpgradeContainerResponse::UNKNOWN);
+  if (UpgradeContainerResponse::Status_IsValid(static_cast<int>(status))) {
+    response.set_status(static_cast<UpgradeContainerResponse::Status>(status));
+  }
+  response.set_failure_reason(error_msg);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::CancelUpgradeContainer(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received CancelUpgradeContainer request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  CancelUpgradeContainerRequest request;
+  CancelUpgradeContainerResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse CancelUpgradeContainerRequest from message";
+    response.set_status(CancelUpgradeContainerResponse::FAILED);
+    response.set_failure_reason(
+        "unable to parse CancelUpgradeContainerRequest from message");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_status(CancelUpgradeContainerResponse::FAILED);
+    response.set_failure_reason(base::StringPrintf(
+        "requested VM does not exist: %s", request.vm_name().c_str()));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  Container* container = vm->GetContainerForName(request.container_name());
+  if (!container) {
+    std::string error_reason = base::StringPrintf(
+        "requested container %s does not exist on vm %s",
+        request.container_name().c_str(), request.vm_name().c_str());
+    LOG(ERROR) << error_reason;
+    response.set_status(CancelUpgradeContainerResponse::FAILED);
+    response.set_failure_reason(std::move(error_reason));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string error_msg;
+  VirtualMachine::CancelUpgradeContainerStatus status =
+      vm->CancelUpgradeContainer(container, &error_msg);
+
+  response.set_status(CancelUpgradeContainerResponse::UNKNOWN);
+  if (CancelUpgradeContainerResponse::Status_IsValid(
+          static_cast<int>(status))) {
+    response.set_status(
+        static_cast<CancelUpgradeContainerResponse::Status>(status));
+  }
+  response.set_failure_reason(error_msg);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
 bool Service::GetVirtualMachineForCidOrToken(const uint32_t cid,
                                              const std::string& vm_token,
                                              VirtualMachine** vm_out,
