@@ -62,69 +62,69 @@ TEST_F(CrosConfigTest, CheckMissingFile) {
 
 TEST_F(CrosConfigTest, CheckUnknownModel) {
   base::FilePath filepath(kTestFile);
-  ASSERT_FALSE(cros_config_.InitForTest(
+  EXPECT_FALSE(cros_config_.InitForTest(
       -1, filepath, brillo::SystemArchitecture::kX86, "no-model", ""));
 }
 
 TEST_F(CrosConfigTest, Check111NoInit) {
   std::string val;
-  ASSERT_FALSE(cros_config_.GetString("/", "wallpaper", &val));
+  EXPECT_FALSE(cros_config_.GetString("/", "wallpaper", &val));
 }
 
 TEST_F(CrosConfigTest, CheckWrongPath) {
   InitConfig();
   std::string val;
-  ASSERT_FALSE(cros_config_.GetString("/wibble", "wallpaper", &val));
+  EXPECT_FALSE(cros_config_.GetString("/wibble", "wallpaper", &val));
 }
 
 TEST_F(CrosConfigTest, CheckBadString) {
   InitConfig();
   std::string val;
-  ASSERT_FALSE(cros_config_.GetString("/", "string-list", &val));
+  EXPECT_FALSE(cros_config_.GetString("/", "string-list", &val));
 }
 
 TEST_F(CrosConfigTest, CheckGoodStringRoot) {
   InitConfig();
   std::string val;
   ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
-  ASSERT_EQ("default", val);
+  EXPECT_EQ("default", val);
 }
 
 TEST_F(CrosConfigTest, CheckGoodStringNonRoot) {
   InitConfig();
   std::string val;
   ASSERT_TRUE(cros_config_.GetString("/touch", "present", &val));
-  ASSERT_EQ("probe", val);
+  EXPECT_EQ("probe", val);
 }
 
 TEST_F(CrosConfigTest, CheckEmptyPathError) {
   InitConfig();
   std::string val;
   ASSERT_FALSE(cros_config_.GetString("", "wallpaper", &val));
-  ASSERT_EQ("", val);
+  EXPECT_EQ("", val);
 }
 
 TEST_F(CrosConfigTest, CheckPathWithoutSlashError) {
   InitConfig();
   std::string val;
   ASSERT_FALSE(cros_config_.GetString("noslash", "wallpaper", &val));
-  ASSERT_EQ("", val);
+  EXPECT_EQ("", val);
 }
 
 TEST_F(CrosConfigTest, CheckUiPowerPosition) {
   InitConfig("Some", 1);
   std::string val;
   ASSERT_TRUE(cros_config_.GetString("/ui/power-button", "edge", &val));
-  ASSERT_EQ("left", val);
+  EXPECT_EQ("left", val);
   ASSERT_TRUE(cros_config_.GetString("/ui/power-button", "position", &val));
-  ASSERT_EQ("0.3", val);
+  EXPECT_EQ("0.3", val);
 }
 
 TEST_F(CrosConfigTest, CheckCameraCount) {
   InitConfig("Some", 0);
   std::string val;
   ASSERT_TRUE(cros_config_.GetString("/camera", "count", &val));
-  ASSERT_EQ("1", val);
+  EXPECT_EQ("1", val);
 }
 
 TEST_F(CrosConfigTest, CheckFallbackImageName) {
