@@ -194,6 +194,20 @@ properties:
               type: object
               properties:
                 config: *system_file_v2
+                flags:
+                  type: object
+                  properties:
+                    enable-suspend-management:
+                      description: Enable powerd suspend management callbacks.
+                      type: boolean
+                    # TODO(abhishekpandit) - Remove once no longer used
+                    stop-on-suspend:
+                      description: Stop the bluetooth adapter on suspend and start it on resume.
+                      type: boolean
+                    reset-on-resume:
+                      description: Expect bluetooth chip to have reset on resume.
+                      type: boolean
+                  additionalProperties: false
               additionalProperties: false
               required:
               - config
