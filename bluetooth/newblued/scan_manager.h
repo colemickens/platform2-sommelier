@@ -96,6 +96,7 @@ class ScanManager final : public DeviceInterfaceHandler::DeviceObserver {
                           const brillo::VariantDictionary& filter);
   // Combine all filters provided by client into one.
   void MergeFilters(void);
+  bool IsFilterMatch(const DeviceInfo& device_info) const;
 
   bool needs_background_scan_ = false;
   bool is_in_suspension_ = false;

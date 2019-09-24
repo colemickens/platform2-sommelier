@@ -158,6 +158,23 @@ void ScanManager::MergeFilters(void) {
           << "|# of UUIDs = " << merged_filter_.uuids.size() << "|";
 }
 
+bool ScanManager::IsFilterMatch(const DeviceInfo& device_info) const {
+  VLOG(2) << __func__;
+
+  if (!is_filtered_scan_)
+    return true;
+  if (device_info.rssi < merged_filter_.rssi &&
+      device_info.tx_power - device_info.rssi > merged_filter_.pathloss)
+    return false;
+  if (merged_filter_.uuids.empty())
+    return true;
+  for (auto uuid : merged_filter_.uuids) {
+    if (device_info.service_uuids.find(uuid) != device_info.service_uuids.end())
+      return true;
+  }
+  return false;
+}
+
 bool ScanManager::StartScan(std::string client_id) {
   clients_.push_back(client_id);
   // Create and initialize a new filter for the client if not exist yet.
@@ -307,7 +324,8 @@ void ScanManager::DeviceDiscoveryCallback(const std::string& adv_address,
   DeviceInfo device_info(has_active_discovery_client, adv_address, address_type,
                          resolved_address, rssi, reply_type);
   ParseEir(&device_info, eir);
-  device_interface_handler_->OnDeviceDiscovered(device_info);
+  if (IsFilterMatch(device_info))
+    device_interface_handler_->OnDeviceDiscovered(device_info);
 }
 
 void ScanManager::ParseEir(DeviceInfo* device_info,
