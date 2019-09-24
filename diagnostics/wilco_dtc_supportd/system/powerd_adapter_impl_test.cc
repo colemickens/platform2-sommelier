@@ -64,7 +64,7 @@ class MockPowerdAdapterObserver : public PowerdAdapter::Observer {
     OnSignal(SUSPEND_DONE);
   }
 
-  MOCK_METHOD1(OnSignal, void(SignalType type));
+  MOCK_METHOD(void, OnSignal, (SignalType));
 };
 
 }  // namespace

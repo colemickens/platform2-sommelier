@@ -154,11 +154,10 @@ class FakeWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
     return powerd_event_service_;
   }
 
-  MOCK_METHOD2(BindWilcoDtcSupportdMojoServiceFactoryImpl,
-               mojo::Binding<MojomWilcoDtcSupportdServiceFactory>*(
-                   MojomWilcoDtcSupportdServiceFactory* mojo_service_factory,
-                   int mojo_pipe_fd));
-  MOCK_METHOD0(BeginDaemonShutdown, void());
+  MOCK_METHOD(mojo::Binding<MojomWilcoDtcSupportdServiceFactory>*,
+              BindWilcoDtcSupportdMojoServiceFactoryImpl,
+              (MojomWilcoDtcSupportdServiceFactory*, int));
+  MOCK_METHOD(void, BeginDaemonShutdown, (), (override));
 
  private:
   // Mock objects to be transferred by Create* methods.

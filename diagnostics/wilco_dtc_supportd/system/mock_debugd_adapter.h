@@ -17,8 +17,11 @@ class MockDebugdAdapter : public DebugdAdapter {
   MockDebugdAdapter();
   ~MockDebugdAdapter() override;
 
-  MOCK_METHOD1(GetSmartAttributes, void(const StringResultCallback& callback));
-  MOCK_METHOD1(GetNvmeIdentity, void(const StringResultCallback& callback));
+  MOCK_METHOD(void,
+              GetSmartAttributes,
+              (const StringResultCallback&),
+              (override));
+  MOCK_METHOD(void, GetNvmeIdentity, (const StringResultCallback&), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDebugdAdapter);

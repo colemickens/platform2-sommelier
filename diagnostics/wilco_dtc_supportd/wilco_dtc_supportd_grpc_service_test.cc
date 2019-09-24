@@ -185,30 +185,42 @@ class MockWilcoDtcSupportdGrpcServiceDelegate
     : public WilcoDtcSupportdGrpcService::Delegate {
  public:
   // WilcoDtcSupportdGrpcService::Delegate overrides:
-  MOCK_METHOD2(SendWilcoDtcMessageToUi,
-               void(const std::string& json_message,
-                    const SendMessageToUiCallback& callback));
-  MOCK_METHOD5(PerformWebRequestToBrowser,
-               void(WebRequestHttpMethod http_method,
-                    const std::string& url,
-                    const std::vector<std::string>& headers,
-                    const std::string& request_body,
-                    const PerformWebRequestToBrowserCallback& callback));
-  MOCK_METHOD1(GetAvailableRoutinesToService,
-               void(const GetAvailableRoutinesToServiceCallback& callback));
-  MOCK_METHOD2(RunRoutineToService,
-               void(const grpc_api::RunRoutineRequest& request,
-                    const RunRoutineToServiceCallback& callback));
-  MOCK_METHOD4(GetRoutineUpdateRequestToService,
-               void(const int uuid,
-                    const grpc_api::GetRoutineUpdateRequest::Command command,
-                    const bool include_output,
-                    const GetRoutineUpdateRequestToServiceCallback& callback));
-  MOCK_METHOD1(GetConfigurationDataFromBrowser,
-               void(const GetConfigurationDataFromBrowserCallback& callback));
-  MOCK_METHOD2(GetDriveSystemData,
-               void(DriveSystemDataType data_type,
-                    const GetDriveSystemDataCallback& callback));
+  MOCK_METHOD(void,
+              SendWilcoDtcMessageToUi,
+              (const std::string&, const SendMessageToUiCallback&),
+              (override));
+  MOCK_METHOD(void,
+              PerformWebRequestToBrowser,
+              (WebRequestHttpMethod,
+               const std::string&,
+               const std::vector<std::string>&,
+               const std::string&,
+               const PerformWebRequestToBrowserCallback&),
+              (override));
+  MOCK_METHOD(void,
+              GetAvailableRoutinesToService,
+              (const GetAvailableRoutinesToServiceCallback&),
+              (override));
+  MOCK_METHOD(void,
+              RunRoutineToService,
+              (const grpc_api::RunRoutineRequest&,
+               const RunRoutineToServiceCallback&),
+              (override));
+  MOCK_METHOD(void,
+              GetRoutineUpdateRequestToService,
+              (const int,
+               const grpc_api::GetRoutineUpdateRequest::Command,
+               const bool,
+               const GetRoutineUpdateRequestToServiceCallback&),
+              (override));
+  MOCK_METHOD(void,
+              GetConfigurationDataFromBrowser,
+              (const GetConfigurationDataFromBrowserCallback&),
+              (override));
+  MOCK_METHOD(void,
+              GetDriveSystemData,
+              (DriveSystemDataType, const GetDriveSystemDataCallback&),
+              (override));
 };
 
 // Tests for the WilcoDtcSupportdGrpcService class.

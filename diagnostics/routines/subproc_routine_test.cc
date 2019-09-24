@@ -28,12 +28,15 @@ using ::testing::AtMost;
 
 class MockDiagProcessAdapter : public DiagProcessAdapter {
  public:
-  MOCK_CONST_METHOD1(GetStatus,
-                     base::TerminationStatus(const base::ProcessHandle&));
-  MOCK_METHOD2(StartProcess,
-               bool(const std::vector<std::string>& args,
-                    base::ProcessHandle* handle));
-  MOCK_METHOD1(KillProcess, bool(const base::ProcessHandle&));
+  MOCK_METHOD(base::TerminationStatus,
+              GetStatus,
+              (const base::ProcessHandle&),
+              (const, override));
+  MOCK_METHOD(bool,
+              StartProcess,
+              (const std::vector<std::string>&, base::ProcessHandle*),
+              (override));
+  MOCK_METHOD(bool, KillProcess, (const base::ProcessHandle&), (override));
 };
 
 }  // namespace

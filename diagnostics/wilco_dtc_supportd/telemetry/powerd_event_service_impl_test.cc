@@ -25,7 +25,7 @@ namespace {
 
 class MockPowerdEventServiceObserver : public PowerdEventService::Observer {
  public:
-  MOCK_METHOD1(OnPowerdEvent, void(PowerEventType type));
+  MOCK_METHOD(void, OnPowerdEvent, (PowerEventType), (override));
 };
 
 }  // namespace

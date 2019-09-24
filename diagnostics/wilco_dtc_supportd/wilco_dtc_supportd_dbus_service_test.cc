@@ -35,8 +35,7 @@ class MockWilcoDtcSupportdDBusServiceDelegate
     return StartMojoServiceFactoryImpl(mojo_pipe_fd.get(), error_message);
   }
 
-  MOCK_METHOD2(StartMojoServiceFactoryImpl,
-               bool(int mojo_pipe_fd, std::string* error_message));
+  MOCK_METHOD(bool, StartMojoServiceFactoryImpl, (int, std::string*));
 };
 
 // Tests for the WilcoDtcSupportdDBusService class.

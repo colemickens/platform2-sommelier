@@ -36,8 +36,8 @@ using MojoEvent = chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
 class MockWilcoDtcSupportdEcEventServiceDelegate
     : public WilcoDtcSupportdEcEventService::Delegate {
  public:
-  MOCK_METHOD1(SendGrpcEcEventToWilcoDtc, void(const EcEvent& ec_event));
-  MOCK_METHOD1(HandleMojoEvent, void(const MojoEvent& mojo_event));
+  MOCK_METHOD(void, SendGrpcEcEventToWilcoDtc, (const EcEvent&), (override));
+  MOCK_METHOD(void, HandleMojoEvent, (const MojoEvent&), (override));
 };
 
 class WilcoDtcSupportdEcEventServiceTest : public testing::Test {

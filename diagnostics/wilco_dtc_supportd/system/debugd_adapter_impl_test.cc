@@ -31,8 +31,9 @@ constexpr char kNvmeIdentity[] = "identify_controller";
 
 class MockCallback {
  public:
-  MOCK_METHOD2(OnStringResultCallback,
-               void(const std::string& result, brillo::Error* error));
+  MOCK_METHOD(void,
+              OnStringResultCallback,
+              (const std::string&, brillo::Error*));
 };
 
 }  // namespace

@@ -47,17 +47,22 @@ class MockDiagAsyncGrpcClientAdapter : public DiagAsyncGrpcClientAdapter {
  public:
   void Connect(const std::string& target_uri) override {}
 
-  MOCK_CONST_METHOD0(IsConnected, bool());
-  MOCK_METHOD1(Shutdown, void(const base::Closure& on_shutdown));
-  MOCK_METHOD2(GetAvailableRoutines,
-               void(const grpc_api::GetAvailableRoutinesRequest& request,
-                    GetAvailableRoutinesCallback callback));
-  MOCK_METHOD2(RunRoutine,
-               void(const grpc_api::RunRoutineRequest& request,
-                    RunRoutineCallback callback));
-  MOCK_METHOD2(GetRoutineUpdate,
-               void(const grpc_api::GetRoutineUpdateRequest& request,
-                    GetRoutineUpdateCallback callback));
+  MOCK_METHOD(bool, IsConnected, (), (const, override));
+  MOCK_METHOD(void, Shutdown, (const base::Closure&), (override));
+  MOCK_METHOD(void,
+              GetAvailableRoutines,
+              (const grpc_api::GetAvailableRoutinesRequest&,
+               GetAvailableRoutinesCallback),
+              (override));
+  MOCK_METHOD(void,
+              RunRoutine,
+              (const grpc_api::RunRoutineRequest&, RunRoutineCallback),
+              (override));
+  MOCK_METHOD(void,
+              GetRoutineUpdate,
+              (const grpc_api::GetRoutineUpdateRequest&,
+               GetRoutineUpdateCallback),
+              (override));
 };
 
 grpc_api::RunRoutineRequest ConstructRunBatteryRoutineRequest(int low_mah,

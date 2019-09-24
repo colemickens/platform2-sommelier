@@ -41,18 +41,21 @@ class MockMojomWilcoDtcSupportdClient
       mojo::ScopedHandle request_body,
       const MojoPerformWebRequestCallback& callback) override;
 
-  MOCK_METHOD2(SendWilcoDtcMessageToUiImpl,
-               void(const std::string& json_message,
-                    const SendWilcoDtcMessageToUiCallback& callback));
-  MOCK_METHOD5(PerformWebRequestImpl,
-               void(MojoWilcoDtcSupportdWebRequestHttpMethod http_method,
-                    const std::string& url,
-                    const std::vector<std::string>& headers,
-                    const std::string& request_body,
-                    const MojoPerformWebRequestCallback& callback));
-  MOCK_METHOD1(GetConfigurationData,
-               void(const MojoGetConfigurationDataCallback& callback));
-  MOCK_METHOD1(HandleEvent, void(const MojoWilcoDtcSupportdEvent event));
+  MOCK_METHOD(void,
+              SendWilcoDtcMessageToUiImpl,
+              (const std::string&, const SendWilcoDtcMessageToUiCallback&));
+  MOCK_METHOD(void,
+              PerformWebRequestImpl,
+              (MojoWilcoDtcSupportdWebRequestHttpMethod,
+               const std::string&,
+               const std::vector<std::string>&,
+               const std::string&,
+               const MojoPerformWebRequestCallback&));
+  MOCK_METHOD(void,
+              GetConfigurationData,
+              (const MojoGetConfigurationDataCallback&),
+              (override));
+  MOCK_METHOD(void, HandleEvent, (const MojoWilcoDtcSupportdEvent), (override));
 };
 
 }  // namespace diagnostics

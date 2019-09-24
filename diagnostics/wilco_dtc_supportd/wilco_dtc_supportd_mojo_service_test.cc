@@ -57,10 +57,11 @@ void EmptySendUiMessageToWilcoDtcCallback(
 class MockWilcoDtcSupportdMojoServiceDelegate
     : public WilcoDtcSupportdMojoService::Delegate {
  public:
-  MOCK_METHOD2(SendGrpcUiMessageToWilcoDtc,
-               void(base::StringPiece json_message,
-                    const SendGrpcUiMessageToWilcoDtcCallback& callback));
-  MOCK_METHOD0(NotifyConfigurationDataChangedToWilcoDtc, void());
+  MOCK_METHOD(void,
+              SendGrpcUiMessageToWilcoDtc,
+              (base::StringPiece, const SendGrpcUiMessageToWilcoDtcCallback&),
+              (override));
+  MOCK_METHOD(void, NotifyConfigurationDataChangedToWilcoDtc, (), (override));
 };
 
 // Tests for the WilcoDtcSupportdMojoService class.
