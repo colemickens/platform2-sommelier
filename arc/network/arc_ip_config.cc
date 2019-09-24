@@ -39,6 +39,7 @@ constexpr int kInvalidNs = 0;
 constexpr int kInvalidTableId = -1;
 constexpr int kMaxTableRetries = 10;  // Based on 1 second delay.
 constexpr base::TimeDelta kTableRetryDelay = base::TimeDelta::FromSeconds(1);
+constexpr char kDefaultNetmask[] = "255.255.255.252";
 
 const struct in6_addr* ExtractAddr6(const std::string& in) {
   if (in.size() != sizeof(struct in6_addr)) {
@@ -60,6 +61,15 @@ bool ValidateIfname(const std::string& ifname) {
   return true;
 }
 
+// Returns for given interface name the host name of a ARC veth pair.
+std::string ArcVethHostName(std::string ifname) {
+  return "veth_" + ifname;
+}
+
+// Returns for given interface name the peer name of a ARC veth pair.
+std::string ArcVethPeerName(std::string ifname) {
+  return "peer_" + ifname;
+}
 }  // namespace
 
 namespace arc_networkd {
@@ -80,17 +90,72 @@ ArcIpConfig::ArcIpConfig(
       con_netns_(kInvalidNs),
       routing_table_id_(kInvalidTableId),
       routing_table_attempts_(0),
+      if_up_(false),
       ipv6_configured_(false),
+      inbound_configured_(false),
       ipv6_dev_ifname_(ifname),
       process_runner_(std::move(process_runner)) {
   if (!datapath) {
     datapath = std::make_unique<Datapath>(process_runner_.get());
   }
   datapath_ = std::move(datapath);
+  Setup();
 }
 
 ArcIpConfig::~ArcIpConfig() {
+  Teardown();
+}
+
+void ArcIpConfig::Setup() {
+  LOG(INFO) << "Setting up " << ifname_ << " bridge: " << config_.br_ifname()
+            << " guest_iface: " << config_.arc_ifname();
+
+  if (!datapath_->AddBridge(config_.br_ifname(), config_.br_ipv4())) {
+    LOG(ERROR) << "Failed to create ARC bridge " << config_.br_ifname();
+    return;
+  }
+
+  if (ifname_ == kAndroidDevice)
+    return;
+
+  if (ifname_ == kAndroidLegacyDevice) {
+    if (!datapath_->AddLegacyIPv4DNAT(config_.arc_ipv4()))
+      LOG(ERROR) << "Failed to configure ARC traffic rules";
+
+    if (!datapath_->AddOutboundIPv4(config_.br_ifname()))
+      LOG(ERROR) << "Failed to configure egress traffic rules";
+
+    return;
+  }
+
+  if (!datapath_->AddInboundIPv4DNAT(ifname_, config_.arc_ipv4())) {
+    LOG(ERROR) << "Failed to configure ingress traffic rules for " << ifname_;
+    return;
+  }
+
+  // TODO(garrick): Verify this is still needed.
+  if (!datapath_->AddOutboundIPv4(config_.br_ifname()))
+    LOG(ERROR) << "Failed to configure egresstraffic rules";
+}
+
+void ArcIpConfig::Teardown() {
+  LOG(INFO) << "Tearing down " << ifname_ << " bridge: " << config_.br_ifname()
+            << " guest_iface: " << config_.arc_ifname();
   Clear();
+
+  if (ifname_ == kAndroidLegacyDevice) {
+    DisableInbound();
+    datapath_->RemoveOutboundIPv4(config_.br_ifname());
+    datapath_->RemoveLegacyIPv4DNAT();
+  } else if (ifname_ != kAndroidDevice) {
+    datapath_->RemoveOutboundIPv4(config_.br_ifname());
+    datapath_->RemoveInboundIPv4DNAT(ifname_, config_.arc_ipv4());
+
+    process_runner_->Run({kIpPath, "link", "delete", ArcVethHostName(ifname_)},
+                         true /* log_failures */);
+  }
+
+  datapath_->RemoveBridge(config_.br_ifname());
 }
 
 bool ArcIpConfig::Init(pid_t con_netns) {
@@ -98,13 +163,65 @@ bool ArcIpConfig::Init(pid_t con_netns) {
     LOG(INFO) << "Uninitializing " << ifname_
               << " bridge: " << config_.br_ifname()
               << " guest_iface: " << config_.arc_ifname();
+    ContainerReady(false);
     con_netns_ = kInvalidNs;
     return true;
   }
 
   con_netns_ = con_netns;
 
+  LOG(INFO) << "Initializing " << ifname_ << " bridge: " << config_.br_ifname()
+            << " guest_iface: " << config_.arc_ifname() << " for container pid "
+            << con_netns_;
+
+  const std::string pid = base::IntToString(con_netns_);
+  const std::string veth = ArcVethHostName(ifname_);
+  const std::string peer = ArcVethPeerName(ifname_);
+  process_runner_->Run({kIpPath, "link", "delete", veth},
+                       false /* log_failures */);
+  process_runner_->Run(
+      {kIpPath, "link", "add", veth, "type", "veth", "peer", "name", peer});
+  process_runner_->Run({kIfConfigPath, veth, "up"});
+  process_runner_->Run({kIpPath, "link", "set", "dev", peer, "addr",
+                        config_.mac_addr(), "down"});
+  process_runner_->Run({kBrctlPath, "addif", config_.br_ifname(), veth});
+
+  // Container ns needs to be ready here. For now this is gated by the wait
+  // loop the conf file.
+  // TODO(garrick): Run this in response to the RTNETLINK (NEWNSID) event:
+  // https://elixir.bootlin.com/linux/v4.14/source/net/core/net_namespace.c#L234
+
+  process_runner_->Run({kIpPath, "link", "set", peer, "netns", pid});
+  process_runner_->AddInterfaceToContainer(peer, config_.arc_ifname(),
+                                           config_.arc_ipv4(), kDefaultNetmask,
+                                           config_.fwd_multicast(), pid);
+
+  // Signal the container that the network device is ready.
+  // This is only applicable for arc0.
+  if (ifname_ == kAndroidDevice || ifname_ == kAndroidLegacyDevice) {
+    process_runner_->WriteSentinelToContainer(pid);
+  }
   return true;
+}
+
+void ArcIpConfig::ContainerReady(bool ready) {
+  if (!if_up_ && ready) {
+    LOG(INFO) << config_.arc_ifname() << " is now up.";
+  } else if (if_up_ && !ready) {
+    LOG(INFO) << config_.arc_ifname() << " is now down.";
+  }
+  if_up_ = ready;
+  if (if_up_) {
+    if (!pending_inbound_ifname_.empty()) {
+      std::string ifname = std::move(pending_inbound_ifname_);
+      EnableInbound(ifname);
+    }
+    if (pending_ipv6_) {
+      SetArcIp arc_ip = *pending_ipv6_.get();
+      pending_ipv6_.reset();
+      Set(arc_ip);
+    }
+  }
 }
 
 void ArcIpConfig::AssignTableIdForArcInterface() {
@@ -187,13 +304,20 @@ bool ArcIpConfig::GetV6Address(const std::string& ifname,
 void ArcIpConfig::Set(const SetArcIp& arc_ip) {
   Clear();
 
-  // If this device config has not yet been initialized then just return.
-  // Currently, it should only be the case that this function is triggered
-  // after both sides of the veth pair are up.
-  if (con_netns_ == kInvalidNs) {
-    LOG(DFATAL) << "Invalid container";
+  if (!if_up_) {
+    LOG(INFO) << "Setting IPv6 for " << config_.arc_ifname()
+              << " pending container interface up.";
+    pending_ipv6_.reset(new SetArcIp);
+    *pending_ipv6_.get() = arc_ip;
     return;
   }
+
+  // If this device config has not yet been initialized then just return.
+  // This allows for the IPv6 settings to arrive beforehand but also
+  // prevents the retry loop below from executing if the device was shut
+  // down before completing.
+  if (con_netns_ == kInvalidNs)
+    return;
 
   if (arc_ip.prefix_len() == 0 || arc_ip.prefix_len() > 128) {
     LOG(DFATAL) << "Invalid prefix len " << arc_ip.prefix_len();
@@ -303,6 +427,11 @@ void ArcIpConfig::Set(const SetArcIp& arc_ip) {
 }
 
 void ArcIpConfig::Clear() {
+  if (pending_ipv6_) {
+    LOG(INFO) << "Clearing pending IPv6 settings for " << config_.arc_ifname();
+    pending_ipv6_.reset();
+  }
+
   int routing_tid = routing_table_id_;
   routing_table_id_ = kInvalidTableId;
   routing_table_attempts_ = 0;
@@ -331,25 +460,21 @@ void ArcIpConfig::Clear() {
                         "dev", ipv6_dev_ifname_},
                        false /* log_failures */);
 
-  // These can fail if the interface has already been removed, which will happen
-  // as long as there is this temporary split between arc_service and arc_helper
+  // This can fail if the interface disappears (e.g. hot-unplug).  Rare.
 
   process_runner_->Run({kIpPath, "-6", "route", "del", ipv6_address_full_,
-                        "dev", config_.br_ifname()},
-                       false);
+                        "dev", config_.br_ifname()});
 
   {
     ScopedNS ns(con_netns_);
     if (ns.IsValid()) {
-      process_runner_->Run(
-          {kIpPath, "-6", "route", "del", "default", "via", ipv6_router_, "dev",
-           config_.arc_ifname(), "table", std::to_string(routing_tid)},
-          false);
+      process_runner_->Run({kIpPath, "-6", "route", "del", "default", "via",
+                            ipv6_router_, "dev", config_.arc_ifname(), "table",
+                            std::to_string(routing_tid)});
 
-      process_runner_->Run(
-          {kIpPath, "-6", "route", "del", ipv6_router_, "dev",
-           config_.arc_ifname(), "table", std::to_string(routing_tid)},
-          false);
+      process_runner_->Run({kIpPath, "-6", "route", "del", ipv6_router_, "dev",
+                            config_.arc_ifname(), "table",
+                            std::to_string(routing_tid)});
 
       // This often fails because ARC tries to delete the address on its own
       // when it is notified that the LAN is down.
@@ -362,6 +487,58 @@ void ArcIpConfig::Clear() {
 
   ipv6_dev_ifname_.clear();
   ipv6_configured_ = false;
+}
+
+void ArcIpConfig::EnableInbound(const std::string& lan_ifname) {
+  if (ifname_ != kAndroidLegacyDevice) {
+    LOG(ERROR) << "Enabling inbound traffic on non-legacy device is unexpected "
+                  "and not supported: "
+               << ifname_;
+    return;
+  }
+
+  if (!if_up_) {
+    LOG(INFO) << "Enable inbound for " << ifname_ << " ["
+              << config_.arc_ifname() << "]"
+              << " on " << lan_ifname << " pending on container interface up.";
+    pending_inbound_ifname_ = lan_ifname;
+    return;
+  }
+
+  DisableInbound();
+
+  LOG(INFO) << "Enabling inbound for " << ifname_ << " ["
+            << config_.arc_ifname() << "]"
+            << " on " << lan_ifname;
+
+  if (process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "try_arc", "-i",
+                            lan_ifname, "-j", "dnat_arc", "-w"}) != 0) {
+    LOG(DFATAL) << "Could not update iptables";
+    return;
+  }
+
+  inbound_configured_ = true;
+}
+
+void ArcIpConfig::DisableInbound() {
+  if (!pending_inbound_ifname_.empty()) {
+    LOG(INFO) << "Clearing pending inbound request for " << ifname_ << " ["
+              << config_.arc_ifname() << "] ";
+    pending_inbound_ifname_.clear();
+  }
+
+  if (!inbound_configured_)
+    return;
+
+  LOG(INFO) << "Disabling inbound for " << ifname_ << " ["
+            << config_.arc_ifname() << "] ";
+
+  if (process_runner_->Run(
+          {kIpTablesPath, "-t", "nat", "-F", "try_arc", "-w"}) != 0) {
+    LOG(DFATAL) << "Could not update iptables";
+  }
+
+  inbound_configured_ = false;
 }
 
 std::ostream& operator<<(std::ostream& stream, const ArcIpConfig& conf) {

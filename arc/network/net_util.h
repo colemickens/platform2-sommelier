@@ -6,8 +6,6 @@
 
 #include <string>
 
-#include "arc/network/mac_address_generator.h"
-
 #ifndef ARC_NETWORK_NET_UTIL_H_
 #define ARC_NETWORK_NET_UTIL_H_
 
@@ -56,9 +54,6 @@ std::string IPv4AddressToString(uint32_t addr);
 // Returns the CIDR representation of an IPv4 address given in network byte
 // order.
 std::string IPv4AddressToCidrString(uint32_t addr, uint32_t prefix_length);
-
-// Returns a string representation of MAC address given.
-std::string MacAddressToString(const MacAddress& addr);
 
 }  // namespace arc_networkd
 

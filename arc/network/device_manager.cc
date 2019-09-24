@@ -120,11 +120,6 @@ void DeviceManager::RegisterDeviceRemovedHandler(const DeviceHandler& handler) {
   rm_handlers_.emplace_back(handler);
 }
 
-void DeviceManager::RegisterDefaultInterfaceChangedHandler(
-    const NameHandler& handler) {
-  default_iface_handlers_.emplace_back(handler);
-}
-
 void DeviceManager::ProcessDevices(const DeviceHandler& handler) {
   for (const auto& d : devices_) {
     handler.Run(d.second.get());
@@ -132,17 +127,11 @@ void DeviceManager::ProcessDevices(const DeviceHandler& handler) {
 }
 
 void DeviceManager::OnGuestStart(GuestMessage::GuestType guest) {
-  for (auto& d : devices_) {
-    d.second->OnGuestStart(guest);
-  }
   Add(is_arc_legacy_ ? kAndroidLegacyDevice : kAndroidDevice);
 }
 
 void DeviceManager::OnGuestStop(GuestMessage::GuestType guest) {
   Remove(is_arc_legacy_ ? kAndroidLegacyDevice : kAndroidDevice);
-  for (auto& d : devices_) {
-    d.second->OnGuestStop(guest);
-  }
 }
 
 bool DeviceManager::Add(const std::string& name) {
@@ -159,6 +148,9 @@ bool DeviceManager::Add(const std::string& name) {
   for (auto& h : add_handlers_) {
     h.Run(device.get());
   }
+
+  if (is_arc_legacy_ && !default_ifname_.empty())
+    device->Enable(default_ifname_);
 
   devices_.emplace(name, std::move(device));
   return true;
@@ -179,30 +171,8 @@ bool DeviceManager::Remove(const std::string& name) {
   return true;
 }
 
-Device* DeviceManager::FindByHostInterface(const std::string& ifname) const {
-  // As long as the device list is small, this linear search is fine.
-  for (auto& d : devices_) {
-    if (d.second->config().host_ifname() == ifname)
-      return d.second.get();
-  }
-  return nullptr;
-}
-
-Device* DeviceManager::FindByGuestInterface(const std::string& ifname) const {
-  // As long as the device list is small, this linear search is fine.
-  for (auto& d : devices_) {
-    if (d.second->config().guest_ifname() == ifname)
-      return d.second.get();
-  }
-  return nullptr;
-}
-
 bool DeviceManager::Exists(const std::string& name) const {
   return devices_.find(name) != devices_.end();
-}
-
-const std::string& DeviceManager::DefaultInterface() const {
-  return default_ifname_;
 }
 
 void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
@@ -222,19 +192,39 @@ void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
   if (!IsArcDevice(ifname))
     return;
 
-  bool link_up = msg.link_status().flags & IFF_UP;
-  Device* device = FindByHostInterface(ifname);
-  if (!device || !device->LinkUp(ifname, link_up))
-    return;
+  bool run = msg.link_status().flags & IFF_RUNNING;
+  auto it = running_devices_.find(ifname);
+  if (it != running_devices_.end()) {
+    // Interface no longer running.
+    if (!run) {
+      LOG(INFO) << ifname << " is no longer running";
+      // If this event is triggered because the guest is going down,
+      // then the host device must be disabled. If the device is no longer
+      // being tracked then it was physically removed (unplugged) and there
+      // is nothing to do.
+      auto dev_it = devices_.find(ifname.substr(strlen(kArcDevicePrefix)));
+      if (dev_it != devices_.end())
+        dev_it->second->Disable();
 
-  if (!link_up) {
-    LOG(INFO) << ifname << " is now down";
+      running_devices_.erase(it);
+    }
     return;
   }
 
-  // The link is now up.
-  LOG(INFO) << ifname << " is now up";
-  device->Enable(device->config().guest_ifname());
+  if (run && it == running_devices_.end()) {
+    // Untracked interface now running.
+    // As long as the device list is small, this linear search is fine.
+    for (auto& d : devices_) {
+      auto& dev = d.second;
+      if (dev->config().host_ifname() != ifname)
+        continue;
+
+      LOG(INFO) << ifname << " is now running";
+      running_devices_.insert(ifname);
+      dev->Enable(dev->config().guest_ifname());
+      return;
+    }
+  }
 }
 
 std::unique_ptr<Device> DeviceManager::MakeDevice(
@@ -310,11 +300,19 @@ void DeviceManager::OnDefaultInterfaceChanged(const std::string& ifname) {
 
   LOG(INFO) << "Default interface changed from [" << default_ifname_ << "] to ["
             << ifname << "]";
-
   default_ifname_ = ifname;
-  for (const auto& h : default_iface_handlers_) {
-    h.Run(default_ifname_);
+
+  if (!is_arc_legacy_)
+    return;
+
+  const auto it = devices_.find(kAndroidLegacyDevice);
+  if (it == devices_.end()) {
+    LOG(INFO) << "Legacy Android device not yet available";
+    return;
   }
+  it->second->Disable();
+  if (!default_ifname_.empty())
+    it->second->Enable(default_ifname_);
 }
 
 void DeviceManager::OnDevicesChanged(const std::set<std::string>& devices) {

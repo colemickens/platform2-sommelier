@@ -103,7 +103,26 @@ TEST_F(DeviceTest, DtorSendsTeardown) {
   VerifyMsgs({msg});
 }
 
-TEST_F(DeviceTest, DisableLegacyAndroidDeviceSendsMessage) {
+TEST_F(DeviceTest, EnableSendsMessageForLegacyAndroid) {
+  Device::Options opts = {false, false};
+  auto dev = NewDevice(kAndroidLegacyDevice, opts);
+  capture_msgs_ = true;
+  dev->Enable("eth0");
+  DeviceMessage enable_msg;
+  enable_msg.set_dev_ifname(kAndroidLegacyDevice);
+  enable_msg.set_enable_inbound_ifname("eth0");
+  VerifyMsgs({enable_msg});
+}
+
+TEST_F(DeviceTest, EnableDoesNothingForNonLegacyAndroid) {
+  Device::Options opts = {false, false};
+  auto dev = NewDevice(kAndroidDevice, opts);
+  capture_msgs_ = true;
+  dev->Enable("eth0");
+  VerifyMsgs({});
+}
+
+TEST_F(DeviceTest, DisableLegacyAndroidDeviceSendsTwoMessages) {
   Device::Options opts = {false, false};
   auto dev = NewDevice(kAndroidLegacyDevice, opts);
   dev->Enable("eth0");
@@ -113,12 +132,15 @@ TEST_F(DeviceTest, DisableLegacyAndroidDeviceSendsMessage) {
   // route finding enabled, so we want to verify the 'clear' message is
   // emitted for this device. This hack allows the check to pass and the
   // message to be sent.
-  const_cast<Device::Options*>(&dev->options())->find_ipv6_routes = true;
+  const_cast<Device::Options*>(&dev->options_)->find_ipv6_routes = true;
   dev->Disable();
   DeviceMessage clear_msg;
   clear_msg.set_dev_ifname(kAndroidLegacyDevice);
   clear_msg.set_clear_arc_ip(true);
-  VerifyMsgs({clear_msg});
+  DeviceMessage disable_msg;
+  disable_msg.set_dev_ifname(kAndroidLegacyDevice);
+  disable_msg.set_disable_inbound(true);
+  VerifyMsgs({clear_msg, disable_msg});
 }
 
 TEST_F(DeviceTest, DisableDoesNothingForNonLegacyAndroid) {
@@ -143,7 +165,10 @@ TEST_F(DeviceTest, ClearMessageNotSentIfIPv6RouteFindingIsOff) {
   dev->Enable("eth0");
   capture_msgs_ = true;
   dev->Disable();
-  VerifyMsgs({});
+  DeviceMessage disable_msg;
+  disable_msg.set_dev_ifname(kAndroidLegacyDevice);
+  disable_msg.set_disable_inbound(true);
+  VerifyMsgs({disable_msg});
 }
 
 }  // namespace arc_networkd

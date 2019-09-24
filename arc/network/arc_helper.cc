@@ -4,6 +4,11 @@
 
 #include "arc/network/arc_helper.h"
 
+#include <ctype.h>
+#include <linux/rtnetlink.h>
+#include <net/if.h>
+#include <unistd.h>
+
 #include <utility>
 #include <vector>
 
@@ -11,8 +16,28 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <shill/net/rtnl_handler.h>
+#include <shill/net/rtnl_message.h>
 
 #include "arc/network/minijailed_process_runner.h"
+#include "arc/network/scoped_ns.h"
+
+namespace {
+
+// This wrapper is required since the base class is a singleton that hides its
+// constructor. It is necessary here because the message loop thread has to be
+// reassociated to the container's network namespace; and since the container
+// can be repeatedly created and destroyed, the handler must be as well.
+class RTNetlinkHandler : public shill::RTNLHandler {
+ public:
+  RTNetlinkHandler() = default;
+  ~RTNetlinkHandler() = default;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(RTNetlinkHandler);
+};
+
+}  // namespace
 
 namespace arc_networkd {
 
@@ -62,6 +87,25 @@ void ArcHelper::Start(pid_t pid) {
   pid_ = pid;
   CHECK_NE(pid_, 0);
 
+  // Start listening for RTNetlink messages in the container's net namespace
+  // to be notified whenever it brings up an interface.
+  {
+    ScopedNS ns(pid_);
+    if (!ns.IsValid()) {
+      // This is kind of bad - it means we won't ever be able to tell when
+      // the container brings up an interface.
+      LOG(ERROR) << "Cannot start netlink listener";
+      return;
+    }
+
+    rtnl_handler_ = std::make_unique<RTNetlinkHandler>();
+    rtnl_handler_->Start(RTMGRP_LINK);
+    link_listener_ = std::make_unique<shill::RTNLListener>(
+        shill::RTNLHandler::kRequestLink,
+        Bind(&ArcHelper::LinkMsgHandler, weak_factory_.GetWeakPtr()),
+        rtnl_handler_.get());
+  }
+
   // Initialize the container interfaces.
   for (auto& config : arc_ip_configs_) {
     config.second->Init(pid_);
@@ -74,6 +118,9 @@ void ArcHelper::Stop(pid_t pid) {
     return;
   }
   LOG(INFO) << "Container stopping [" << pid_ << "]";
+
+  link_listener_.reset();
+  rtnl_handler_.reset();
 
   // Reset the container interfaces.
   for (auto& config : arc_ip_configs_) {
@@ -118,8 +165,27 @@ void ArcHelper::HandleCommand(const DeviceMessage& cmd) {
     config->Clear();
   } else if (cmd.has_set_arc_ip()) {
     config->Set(cmd.set_arc_ip());
+  } else if (cmd.has_enable_inbound_ifname()) {
+    config->EnableInbound(cmd.enable_inbound_ifname());
+  } else if (cmd.has_disable_inbound()) {
+    config->DisableInbound();
   } else if (cmd.has_teardown()) {
     RemoveDevice(dev_ifname);
+  }
+}
+
+void ArcHelper::LinkMsgHandler(const shill::RTNLMessage& msg) {
+  if (!msg.HasAttribute(IFLA_IFNAME)) {
+    LOG(ERROR) << "Link event message does not have IFLA_IFNAME";
+    return;
+  }
+  bool link_up = msg.link_status().flags & IFF_UP;
+  shill::ByteString b(msg.GetAttribute(IFLA_IFNAME));
+  std::string ifname(reinterpret_cast<const char*>(
+      b.GetSubstring(0, IFNAMSIZ).GetConstData()));
+  auto it = configs_by_arc_ifname_.find(ifname);
+  if (it != configs_by_arc_ifname_.end()) {
+    it->second->ContainerReady(link_up);
   }
 }
 

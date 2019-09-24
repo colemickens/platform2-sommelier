@@ -6,8 +6,6 @@
 
 #include <arpa/inet.h>
 
-#include <base/strings/stringprintf.h>
-
 namespace arc_networkd {
 
 std::string IPv4AddressToString(uint32_t addr) {
@@ -19,11 +17,6 @@ std::string IPv4AddressToString(uint32_t addr) {
 
 std::string IPv4AddressToCidrString(uint32_t addr, uint32_t prefix_length) {
   return IPv4AddressToString(addr) + "/" + std::to_string(prefix_length);
-}
-
-std::string MacAddressToString(const MacAddress& addr) {
-  return base::StringPrintf("%02x:%02x:%02x:%02x:%02x:%02x", addr[0], addr[1],
-                            addr[2], addr[3], addr[4], addr[5]);
 }
 
 }  // namespace arc_networkd

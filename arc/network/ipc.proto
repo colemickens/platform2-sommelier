@@ -34,6 +34,8 @@ message DeviceMessage {
     DeviceConfig dev_config = 2;
     SetArcIp set_arc_ip = 3;           // IPv6 parameters
     bool clear_arc_ip = 4;             // value is ignored
+    string enable_inbound_ifname = 5;  // value is LAN ifname
+    bool disable_inbound = 6;          // value is ignored
     bool teardown = 7;                 // value is ignored
   }
 }

@@ -9,14 +9,12 @@
 namespace arc_networkd {
 
 GuestService::GuestService(GuestMessage::GuestType guest,
-                           DeviceManagerBase* dev_mgr)
+                           DeviceManager* dev_mgr)
     : guest_(guest), dev_mgr_(dev_mgr) {
   dev_mgr_->RegisterDeviceAddedHandler(
       base::Bind(&GuestService::OnDeviceAdded, base::Unretained(this)));
   dev_mgr_->RegisterDeviceRemovedHandler(
       base::Bind(&GuestService::OnDeviceRemoved, base::Unretained(this)));
-  dev_mgr_->RegisterDefaultInterfaceChangedHandler(base::Bind(
-      &GuestService::OnDefaultInterfaceChanged, base::Unretained(this)));
 }
 
 void GuestService::RegisterMessageHandler(const MessageHandler& handler) {

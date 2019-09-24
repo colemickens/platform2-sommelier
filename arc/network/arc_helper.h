@@ -14,6 +14,8 @@
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
+#include <shill/net/rtnl_handler.h>
+#include <shill/net/rtnl_listener.h>
 
 #include "arc/network/arc_ip_config.h"
 #include "arc/network/device.h"
@@ -38,8 +40,12 @@ class ArcHelper {
   void AddDevice(const std::string& ifname, const DeviceConfig& config);
   void RemoveDevice(const std::string& ifname);
 
+  void LinkMsgHandler(const shill::RTNLMessage& msg);
+
   // ARC++ container PID.
   pid_t pid_ = 0;
+  std::unique_ptr<shill::RTNLHandler> rtnl_handler_;
+  std::unique_ptr<shill::RTNLListener> link_listener_;
 
   // IP configurations for the devices representing both physical host
   // interfaces (e.g. eth0) as well a pseudo devices (e.g. Android)
