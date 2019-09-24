@@ -459,6 +459,11 @@ disk_mmc_upgrade() {
   local fw_options="$3"
   local options=""
 
+  if [ "${fw_options}" = "new" ]; then
+     "${FLAGS_mmc}" ffu "${fw_file}" "/dev/${device}"
+     return $?
+  fi
+
   if [ "${fw_options}" != "-" ]; then
      # Options for mmc in the config files are separated with commas.
      # Translate the option for the command line.

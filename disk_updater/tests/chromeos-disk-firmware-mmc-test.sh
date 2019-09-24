@@ -90,6 +90,9 @@ mmc_fwrev=(
   '0x0c00000000000000'
   '0xfe00000000000000'
   '0xfe00000000000000'
+  '0x3536323330613137'
+  '0x3739323330363138'
+  '0x3739323330363138'
   '0x0b00000000000000'
   '0xff00000000000000'
 )
@@ -101,6 +104,9 @@ mmc_model=(
   'MAG3GC'
   'MAG3GC'
   'MAG3GC'
+  'DA4032'
+  'DA4032'
+  'DA4032'
   'MAG2GC'
   'MAG2GC'
 )
@@ -117,14 +123,18 @@ run_test
 check_test 3 mmc_upgraded 0 $?
 echo MMC PASS 3
 
+run_test
+check_test 4 mmc_upgraded 0 $?
+echo MMC PASS 4
+
 # set firmware upgrade to fail
 disk_mmc_upgrade() {
   return 1
 }
 
 run_test
-check_test 4 mmc_upgrade_failed 1 $?
-echo MMC PASS 4
+check_test 5 mmc_upgrade_failed 1 $?
+echo MMC PASS 5
 
 
 rm -rf "${DISK_TEMP}"
