@@ -15,27 +15,27 @@ namespace chromeos_metrics {
 
 class TimerMock : public Timer {
  public:
-  MOCK_METHOD0(Start, bool());
-  MOCK_METHOD0(Stop, bool());
-  MOCK_METHOD0(Reset, bool());
-  MOCK_CONST_METHOD0(HasStarted, bool());
-  MOCK_CONST_METHOD1(GetElapsedTime, bool(base::TimeDelta* elapsed_time));
+  MOCK_METHOD(bool, Start, (), (override));
+  MOCK_METHOD(bool, Stop, (), (override));
+  MOCK_METHOD(bool, Reset, (), (override));
+  MOCK_METHOD(bool, HasStarted, (), (const, override));
+  MOCK_METHOD(bool, GetElapsedTime, (base::TimeDelta*), (const, override));
 };
 
 class TimerReporterMock : public TimerReporter {
  public:
   TimerReporterMock() : TimerReporter("", 0, 0, 0) {}
-  MOCK_METHOD0(Start, bool());
-  MOCK_METHOD0(Stop, bool());
-  MOCK_METHOD0(Reset, bool());
-  MOCK_CONST_METHOD0(HasStarted, bool());
-  MOCK_CONST_METHOD1(GetElapsedTime, bool(base::TimeDelta* elapsed_time));
-  MOCK_CONST_METHOD0(ReportMilliseconds, bool());
+  MOCK_METHOD(bool, Start, (), (override));
+  MOCK_METHOD(bool, Stop, (), (override));
+  MOCK_METHOD(bool, Reset, (), (override));
+  MOCK_METHOD(bool, HasStarted, (), (const, override));
+  MOCK_METHOD(bool, GetElapsedTime, (base::TimeDelta*), (const, override));
+  MOCK_METHOD(bool, ReportMilliseconds, (), (const, override));
 };
 
 class ClockWrapperMock : public ClockWrapper {
  public:
-  MOCK_CONST_METHOD0(GetCurrentTime, base::TimeTicks());
+  MOCK_METHOD(base::TimeTicks, GetCurrentTime, (), (const, override));
 };
 
 }  // namespace chromeos_metrics

@@ -13,26 +13,21 @@
 
 class MetricsLibraryMock : public MetricsLibraryInterface {
  public:
-  MOCK_METHOD0(Init, void());  // TODO(chromium:940343): Remove this function.
-  MOCK_METHOD5(SendToUMA,
-               bool(const std::string& name,
-                    int sample,
-                    int min,
-                    int max,
-                    int nbuckets));
-  MOCK_METHOD3(SendEnumToUMA,
-               bool(const std::string& name, int sample, int max));
-  MOCK_METHOD2(SendBoolToUMA, bool(const std::string& name, bool sample));
-  MOCK_METHOD2(SendSparseToUMA, bool(const std::string& name, int sample));
-  MOCK_METHOD1(SendUserActionToUMA, bool(const std::string& action));
+  // TODO(chromium:940343): Remove this function.
+  MOCK_METHOD(void, Init, (), (override));
+  MOCK_METHOD(bool,
+              SendToUMA,
+              (const std::string&, int, int, int, int),
+              (override));
+  MOCK_METHOD(bool, SendEnumToUMA, (const std::string&, int, int), (override));
+  MOCK_METHOD(bool, SendBoolToUMA, (const std::string&, bool), (override));
+  MOCK_METHOD(bool, SendSparseToUMA, (const std::string&, int), (override));
+  MOCK_METHOD(bool, SendUserActionToUMA, (const std::string&), (override));
 #if USE_METRICS_UPLOADER
-  MOCK_METHOD6(SendRepeatedToUMA,
-               bool(const std::string& name,
-                    int sample,
-                    int min,
-                    int max,
-                    int nbuckets,
-                    int num_samples));
+  MOCK_METHOD(bool,
+              SendRepeatedToUMA,
+              (const std::string&, int, int, int, int, int),
+              (override));
 #endif
   bool AreMetricsEnabled() override { return metrics_enabled_; };
   bool IsGuestMode() override { return guest_mode_; }
