@@ -62,14 +62,8 @@ result_code IsSpaceDefinedCorrectly(NvramSpace* space) {
 
 // Derive the system key from the key material in |area|.
 brillo::SecureBlob DeriveSystemKey(const struct nvram_area_tpm2* area) {
-  brillo::SecureBlob system_key =
-      cryptohome::CryptoLib::Sha256(brillo::SecureBlob(
-          area->key_material, area->key_material + sizeof(area->key_material)));
-
-  VLOG(1) << "system key "
-          << base::HexEncode(system_key.data(), system_key.size());
-
-  return system_key;
+  return cryptohome::CryptoLib::Sha256(brillo::SecureBlob(
+      area->key_material, area->key_material + sizeof(area->key_material)));
 }
 
 }  // namespace
@@ -170,11 +164,6 @@ brillo::SecureBlob Tpm2SystemKeyLoader::Generate() {
   area->ver_flags = kNvramAreaTpm2CurrentVersion;
   cryptohome::CryptoLib::GetSecureRandom(area->key_material,
                                          sizeof(area->key_material));
-
-  VLOG(1) << "key nvram "
-          << base::HexEncode(provisional_contents_->data(),
-                             provisional_contents_->size());
-
   return DeriveSystemKey(area);
 }
 

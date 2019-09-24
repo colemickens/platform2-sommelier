@@ -59,9 +59,8 @@ static result_code get_system_property(const char* prop, char* buf,
                                        size_t length) {
   const char* rc;
 
-  LOG(INFO) << "Fetching System Property: " << prop;
   rc = VbGetSystemPropertyString(prop, buf, length);
-  LOG(INFO) << "Got System Property 'mainfw_type': " << (rc ? buf : "FAIL");
+  LOG(INFO) << "Got System Property '" << prop << "': " << (rc ? buf : "FAIL");
 
   return rc != NULL ? RESULT_SUCCESS : RESULT_FAIL_FATAL;
 }

@@ -450,12 +450,7 @@ result_code Tpm1SystemKeyLoader::LoadEncStatefulKey(
     return rc;
   }
 
-  VLOG(1) << "key material "
-          << base::HexEncode(area->key_material, sizeof(area->key_material));
   *system_key = area->DeriveKey(kLabelSystemKey);
-  VLOG(1) << "system_key "
-          << base::HexEncode(system_key->data(), system_key->size());
-
   return RESULT_SUCCESS;
 }
 
@@ -477,12 +472,7 @@ result_code Tpm1SystemKeyLoader::LoadLockboxKey(
     return RESULT_FAIL_FATAL;
   }
 
-  VLOG(1) << "rand_bytes "
-          << base::HexEncode(key_material.data(), key_material.size());
   *system_key = cryptohome::CryptoLib::Sha256(key_material);
-  VLOG(1) << "system_key "
-          << base::HexEncode(system_key->data(), system_key->size());
-
   return RESULT_SUCCESS;
 }
 

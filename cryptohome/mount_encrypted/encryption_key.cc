@@ -144,10 +144,6 @@ void ShredFile(const base::FilePath& file) {
   }
 }
 
-std::string HexEncode(const brillo::SecureBlob& data) {
-  return base::HexEncode(data.data(), data.size());
-}
-
 brillo::SecureBlob Sha256(const std::string& str) {
   brillo::SecureBlob blob(str);
   return cryptohome::CryptoLib::Sha256(blob);
@@ -176,7 +172,6 @@ brillo::SecureBlob GetKeyFromKernelCmdline() {
   value = value.substr(0, value.find(' '));
 
   brillo::SecureBlob key = Sha256(value);
-  VLOG(1) << "system key: " << HexEncode(key);
   return key;
 }
 
@@ -218,7 +213,6 @@ result_code EncryptionKey::SetInsecureFallbackSystemKey() {
   if (base::ReadFileToStringWithMaxSize(base::FilePath(paths::kProductUUID),
                                          &product_uuid, kMaxReadSize)) {
     system_key_ = Sha256(product_uuid);
-    VLOG(1) << "system key: " << HexEncode(system_key_);
     LOG(INFO) << "Using UUID as system key.";
     system_key_status_ = SystemKeyStatus::kProductUUID;
     return RESULT_SUCCESS;
@@ -226,7 +220,6 @@ result_code EncryptionKey::SetInsecureFallbackSystemKey() {
 
   LOG(INFO) << "Using default insecure system key.";
   system_key_ = Sha256(kStaticKeyDefault);
-  VLOG(1) << "system key: " << HexEncode(system_key_);
   system_key_status_ = SystemKeyStatus::kStaticFallback;
   return RESULT_SUCCESS;
 }

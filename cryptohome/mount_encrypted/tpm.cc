@@ -448,12 +448,6 @@ NvramSpace* Tpm::GetLockboxSpace() {
     LOG(INFO) << "No Lockbox NVRAM area defined.";
   }
 
-  if (lockbox_space_->is_valid()) {
-    VLOG(1) << "lockbox nvram "
-            << base::HexEncode(lockbox_space_->contents().data(),
-                               lockbox_space_->contents().size());
-  }
-
   return lockbox_space_.get();
 }
 
