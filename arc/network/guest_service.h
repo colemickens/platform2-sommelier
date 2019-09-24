@@ -27,9 +27,6 @@ class GuestService {
   virtual void OnStart();
   virtual void OnStop();
 
-  virtual void OnDeviceAdded(Device* device) {}
-  virtual void OnDeviceRemoved(Device* device) {}
-
   void DispatchMessage(const GuestMessage& msg);
 
   const GuestMessage::GuestType guest_;

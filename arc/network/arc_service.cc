@@ -67,8 +67,4 @@ void ArcService::OnStop() {
   GuestService::OnStop();
 }
 
-void ArcService::OnDeviceAdded(Device* device) {}
-
-void ArcService::OnDeviceRemoved(Device* device) {}
-
 }  // namespace arc_networkd
