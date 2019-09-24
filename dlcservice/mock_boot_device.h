@@ -17,8 +17,8 @@ class MockBootDevice : public BootDeviceInterface {
  public:
   MockBootDevice() = default;
 
-  MOCK_METHOD1(IsRemovableDevice, bool(const std::string&));
-  MOCK_METHOD0(GetBootDevice, std::string());
+  MOCK_METHOD(bool, IsRemovableDevice, (const std::string&), (override));
+  MOCK_METHOD(std::string, GetBootDevice, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockBootDevice);
