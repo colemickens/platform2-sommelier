@@ -175,46 +175,45 @@ struct MockGbm {
     _lseek = nullptr;
   }
 
-  MOCK_METHOD1(Close, int(int fd));
-  MOCK_METHOD0(CreateGbmDevice, struct gbm_device*());
-  MOCK_METHOD1(GbmDeviceGetFd, int(struct gbm_device* device));
-  MOCK_METHOD1(GbmDeviceDestroy, void(struct gbm_device* device));
-  MOCK_METHOD5(GbmBoCreate,
-               struct gbm_bo*(struct gbm_device* device,
-                              uint32_t width,
-                              uint32_t height,
-                              uint32_t format,
-                              uint32_t flags));
-  MOCK_METHOD4(GbmBoImport,
-               struct gbm_bo*(struct gbm_device* device,
-                              uint32_t type,
-                              void* buffer,
-                              uint32_t usage));
-  MOCK_METHOD9(GbmBoMap,
-               void*(struct gbm_bo* bo,
-                     uint32_t x,
-                     uint32_t y,
-                     uint32_t width,
-                     uint32_t height,
-                     uint32_t flags,
-                     uint32_t* stride,
-                     void** map_data,
-                     size_t plane));
-  MOCK_METHOD2(GbmBoUnmap, void(struct gbm_bo* bo, void* map_data));
-  MOCK_METHOD1(GbmBoGetNumPlanes, size_t(struct gbm_bo* bo));
-  MOCK_METHOD2(GbmBoGetPlaneFd, int(struct gbm_bo* bo, size_t plane));
-  MOCK_METHOD2(GbmBoGetPlaneOffset, uint32_t(struct gbm_bo* bo, size_t plane));
-  MOCK_METHOD2(GbmBoGetPlaneStride, uint32_t(struct gbm_bo* bo, size_t plane));
-  MOCK_METHOD1(GbmBoDestroy, void(struct gbm_bo* bo));
-  MOCK_METHOD6(Mmap,
-               void*(void* addr,
-                     size_t length,
-                     int prot,
-                     int flags,
-                     int fd,
-                     off_t offset));
-  MOCK_METHOD2(Munmap, int(void* addr, size_t length));
-  MOCK_METHOD3(Lseek, off_t(int fd, off_t offset, int whence));
+  MOCK_METHOD(int, Close, (int), (override));
+  MOCK_METHOD(struct gbm_device*, CreateGbmDevice, (), (override));
+  MOCK_METHOD(int, GbmDeviceGetFd, (struct gbm_device*), (override));
+  MOCK_METHOD(void, GbmDeviceDestroy, (struct gbm_device*), (override));
+  MOCK_METHOD(struct gbm_bo*,
+              GbmBoCreate,
+              (struct gbm_device*, uint32_t, uint32_t, uint32_t, uint32_t),
+              (override));
+  MOCK_METHOD(struct gbm_bo*,
+              GbmBoImport,
+              (struct gbm_device*, uint32_t, void*, uint32_t),
+              (override));
+  MOCK_METHOD(void*,
+              GbmBoMap,
+              (struct gbm_bo*,
+               uint32_t,
+               uint32_t,
+               uint32_t,
+               uint32_t,
+               uint32_t,
+               uint32_t*,
+               void**,
+               size_t),
+              (override));
+  MOCK_METHOD(void, GbmBoUnmap, (struct gbm_bo*, void*), (override));
+  MOCK_METHOD(size_t, GbmBoGetNumPlanes, (struct gbm_bo*), (override));
+  MOCK_METHOD(int, GbmBoGetPlaneFd, (struct gbm_bo*, size_t), (override));
+  MOCK_METHOD(uint32_t,
+              GbmBoGetPlaneOffset,
+              (struct gbm_bo*, size_t),
+              (override));
+  MOCK_METHOD(uint32_t,
+              GbmBoGetPlaneStride,
+              (struct gbm_bo*, size_t),
+              (override));
+  MOCK_METHOD(void, GbmBoDestroy, (struct gbm_bo*), (override));
+  MOCK_METHOD(void*, Mmap, (void*, size_t, int, int, int, off_t), (override));
+  MOCK_METHOD(int, Munmap, (void*, size_t), (override));
+  MOCK_METHOD(off_t, Lseek, (int, off_t, int), (override));
 };
 
 // global scope mock functions. These functions indirectly invoke the mock
