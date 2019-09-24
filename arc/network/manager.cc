@@ -26,8 +26,11 @@
 
 namespace arc_networkd {
 
-Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy, bool enable_multinet)
-    : adb_proxy_(std::move(adb_proxy)),
+Manager::Manager(std::unique_ptr<HelperProcess> ip_helper,
+                 std::unique_ptr<HelperProcess> adb_proxy,
+                 bool enable_multinet)
+    : ip_helper_(std::move(ip_helper)),
+      adb_proxy_(std::move(adb_proxy)),
       addr_mgr_({
           AddressManager::Guest::ARC,
           AddressManager::Guest::ARC_NET,
@@ -39,6 +42,12 @@ int Manager::OnInit() {
 
   // Handle subprocess lifecycle.
   process_reaper_.Register(this);
+
+  CHECK(process_reaper_.WatchForChild(
+      FROM_HERE, ip_helper_->pid(),
+      base::Bind(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),
+                 ip_helper_->pid())))
+      << "Failed to watch ip-helper child process";
 
   CHECK(process_reaper_.WatchForChild(
       FROM_HERE, adb_proxy_->pid(),
@@ -64,6 +73,7 @@ int Manager::OnInit() {
 void Manager::InitialSetup() {
   device_mgr_ = std::make_unique<DeviceManager>(
       std::make_unique<ShillClient>(std::move(bus_)), &addr_mgr_,
+      base::Bind(&Manager::SendDeviceMessage, weak_factory_.GetWeakPtr()),
       !enable_multinet_);
 
   arc_svc_ = std::make_unique<ArcService>(device_mgr_.get(), !enable_multinet_);
@@ -90,7 +100,14 @@ void Manager::OnSubprocessExited(pid_t pid, const siginfo_t& info) {
 void Manager::OnGuestMessage(const GuestMessage& msg) {
   IpHelperMessage ipm;
   *ipm.mutable_guest_message() = msg;
+  ip_helper_->SendMessage(ipm);
   adb_proxy_->SendMessage(ipm);
+}
+
+void Manager::SendDeviceMessage(const DeviceMessage& msg) {
+  IpHelperMessage ipm;
+  *ipm.mutable_device_message() = msg;
+  ip_helper_->SendMessage(ipm);
 }
 
 }  // namespace arc_networkd

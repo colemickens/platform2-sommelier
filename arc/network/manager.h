@@ -27,7 +27,9 @@ namespace arc_networkd {
 // Main class that runs the mainloop and responds to LAN interface changes.
 class Manager final : public brillo::DBusDaemon {
  public:
-  Manager(std::unique_ptr<HelperProcess> adb_proxy, bool enable_multinet);
+  Manager(std::unique_ptr<HelperProcess> ip_helper,
+          std::unique_ptr<HelperProcess> adb_proxy,
+          bool enable_multinet);
   ~Manager() = default;
 
  protected:
@@ -47,6 +49,9 @@ class Manager final : public brillo::DBusDaemon {
   // Processes notification messages received from guests.
   void OnGuestMessage(const GuestMessage& msg);
 
+  // Relays device messages to the IpHelper process.
+  void SendDeviceMessage(const DeviceMessage& msg);
+
   // TODO(garrick): Remove this workaround ASAP.
   bool OnSignal(const struct signalfd_siginfo& info);
   void OnFileCanReadWithoutBlocking();
@@ -57,10 +62,11 @@ class Manager final : public brillo::DBusDaemon {
   std::unique_ptr<ArcService> arc_svc_;
 
   // Other services.
-  brillo::ProcessReaper process_reaper_;
+  std::unique_ptr<HelperProcess> ip_helper_;
   std::unique_ptr<HelperProcess> adb_proxy_;
 
   AddressManager addr_mgr_;
+  brillo::ProcessReaper process_reaper_;
   std::unique_ptr<DeviceManager> device_mgr_;
 
   bool enable_multinet_;
