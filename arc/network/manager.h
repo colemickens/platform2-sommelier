@@ -17,11 +17,11 @@
 
 #include "arc/network/address_manager.h"
 #include "arc/network/arc_ip_config.h"
-#include "arc/network/arc_service.h"
 #include "arc/network/device_manager.h"
 #include "arc/network/guest_events.h"
 #include "arc/network/helper_process.h"
 #include "arc/network/shill_client.h"
+#include "arc/network/socket.h"
 
 namespace arc_networkd {
 
@@ -31,7 +31,7 @@ class Manager final : public brillo::DBusDaemon {
   Manager(std::unique_ptr<HelperProcess> ip_helper,
           std::unique_ptr<HelperProcess> adb_proxy,
           bool enable_multinet);
-  ~Manager() = default;
+  ~Manager();
 
  protected:
   int OnInit() override;
@@ -48,21 +48,20 @@ class Manager final : public brillo::DBusDaemon {
   void OnShutdown(int* exit_code) override;
 
   // Processes notification messages received from guests.
-  void OnGuestMessage(const GuestMessage& msg);
+  void OnGuestNotification(const std::string& notification);
+  void OnGuestEvent(const ArcGuestEvent& event);
+
+  // Relays guest messages to the helper processes.
+  void SendGuestMessage(const GuestMessage& msg);
 
   // Relays device messages to the IpHelper process.
   void SendDeviceMessage(const DeviceMessage& msg);
 
-  // TODO(garrick): Remove this workaround ASAP.
   bool OnSignal(const struct signalfd_siginfo& info);
   void OnFileCanReadWithoutBlocking();
 
   friend std::ostream& operator<<(std::ostream& stream, const Manager& manager);
 
-  // Guest services.
-  std::unique_ptr<ArcService> arc_svc_;
-
-  // Other services.
   std::unique_ptr<HelperProcess> ip_helper_;
   std::unique_ptr<HelperProcess> adb_proxy_;
 
@@ -71,6 +70,10 @@ class Manager final : public brillo::DBusDaemon {
   std::unique_ptr<DeviceManager> device_mgr_;
 
   bool enable_multinet_;
+  int arc_pid_;
+
+  Socket gsock_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> gsock_watcher_;
 
   base::WeakPtrFactory<Manager> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Manager);

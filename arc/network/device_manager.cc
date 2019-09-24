@@ -9,7 +9,6 @@
 #include <sys/ioctl.h>
 
 #include <utility>
-#include <vector>
 
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -117,28 +116,14 @@ DeviceManager::~DeviceManager() {
   shill_client_->UnregisterDevicesChangedHandler();
 }
 
-void DeviceManager::RegisterDeviceAddedHandler(const DeviceHandler& handler) {
-  add_handlers_.emplace_back(handler);
-}
-
-void DeviceManager::RegisterDeviceRemovedHandler(const DeviceHandler& handler) {
-  rm_handlers_.emplace_back(handler);
-}
-
-void DeviceManager::ProcessDevices(const DeviceHandler& handler) {
-  for (const auto& d : devices_) {
-    handler.Run(d.second.get());
-  }
-}
-
-void DeviceManager::OnGuestStart(GuestMessage::GuestType guest) {
+void DeviceManager::OnGuestStart() {
   if (is_arc_legacy_) {
     shill_client_->RegisterDefaultInterfaceChangedHandler(base::Bind(
         &DeviceManager::OnDefaultInterfaceChanged, weak_factory_.GetWeakPtr()));
   }
 }
 
-void DeviceManager::OnGuestStop(GuestMessage::GuestType guest) {
+void DeviceManager::OnGuestStop() {
   if (is_arc_legacy_) {
     shill_client_->UnregisterDefaultInterfaceChangedHandler();
     default_ifname_.clear();
@@ -146,7 +131,7 @@ void DeviceManager::OnGuestStop(GuestMessage::GuestType guest) {
 }
 
 bool DeviceManager::Add(const std::string& name) {
-  if (name.empty() || Exists(name))
+  if (name.empty() || devices_.find(name) != devices_.end())
     return false;
 
   auto device = MakeDevice(name);
@@ -154,11 +139,6 @@ bool DeviceManager::Add(const std::string& name) {
     return false;
 
   LOG(INFO) << "Adding device " << *device;
-
-  for (auto& h : add_handlers_) {
-    h.Run(device.get());
-  }
-
   devices_.emplace(name, std::move(device));
   return true;
 }
