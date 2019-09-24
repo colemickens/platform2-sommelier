@@ -10,6 +10,8 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
+#include "arc/vm/libvda/encode/fake/fake_vea_impl.h"
+
 namespace arc {
 
 VeaImpl::VeaImpl() {
@@ -91,8 +93,7 @@ void VeaContext::DispatchNotifyError(vea_error_t error) {
 void* initialize_encode(vea_impl_type_t impl_type) {
   switch (impl_type) {
     case VEA_FAKE:
-      NOTIMPLEMENTED();
-      return nullptr;
+      return arc::FakeVeaImpl::Create();
     case GAVEA:
       NOTIMPLEMENTED();
       return nullptr;

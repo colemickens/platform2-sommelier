@@ -52,6 +52,8 @@ class FakeContext : public VdaContext {
   vda_result_t ReuseOutputBuffer(int32_t picture_buffer_id) override;
   vda_result_t Reset() override;
   vda_result_t Flush() override;
+
+  DISALLOW_COPY_AND_ASSIGN(FakeContext);
 };
 
 FakeContext::FakeContext() = default;

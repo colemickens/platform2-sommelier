@@ -26,6 +26,8 @@ class FakeVdaImpl : public VdaImpl {
 
  private:
   FakeVdaImpl();
+
+  DISALLOW_COPY_AND_ASSIGN(FakeVdaImpl);
 };
 
 }  // namespace arc
