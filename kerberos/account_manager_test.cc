@@ -61,8 +61,11 @@ class MockMetrics : public KerberosMetrics {
       : KerberosMetrics(storage_dir) {}
   ~MockMetrics() override = default;
 
-  MOCK_METHOD0(ShouldReportDailyUsageStats, bool());
-  MOCK_METHOD5(ReportDailyUsageStats, void(int, int, int, int, int));
+  MOCK_METHOD(bool, ShouldReportDailyUsageStats, (), (override));
+  MOCK_METHOD(void,
+              ReportDailyUsageStats,
+              (int, int, int, int, int),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);

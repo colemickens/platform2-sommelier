@@ -39,12 +39,15 @@ class MockTgtRenewalSchedulerDelegate : public TgtRenewalScheduler::Delegate {
   MockTgtRenewalSchedulerDelegate() = default;
   ~MockTgtRenewalSchedulerDelegate() override = default;
 
-  MOCK_METHOD2(GetTgtStatus,
-               ErrorType(const std::string&, Krb5Interface::TgtStatus*));
-  MOCK_METHOD1(RenewTgt, ErrorType(const std::string&));
-  MOCK_METHOD2(NotifyTgtExpiration,
-               void(const std::string&,
-                    TgtRenewalScheduler::TgtExpiration expiration));
+  MOCK_METHOD(ErrorType,
+              GetTgtStatus,
+              (const std::string&, Krb5Interface::TgtStatus*),
+              (override));
+  MOCK_METHOD(ErrorType, RenewTgt, (const std::string&), (override));
+  MOCK_METHOD(void,
+              NotifyTgtExpiration,
+              (const std::string&, TgtRenewalScheduler::TgtExpiration),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockTgtRenewalSchedulerDelegate);

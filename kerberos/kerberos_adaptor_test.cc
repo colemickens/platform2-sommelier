@@ -66,11 +66,17 @@ class MockMetrics : public KerberosMetrics {
       : KerberosMetrics(storage_dir) {}
   ~MockMetrics() override = default;
 
-  MOCK_METHOD0(StartAcquireTgtTimer, void());
-  MOCK_METHOD0(StopAcquireTgtTimerAndReport, void());
-  MOCK_METHOD1(ReportValidateConfigErrorCode, void(ConfigErrorCode));
-  MOCK_METHOD2(ReportDBusCallResult, void(const std::string&, ErrorType));
-  MOCK_METHOD0(ShouldReportDailyUsageStats, bool());
+  MOCK_METHOD(void, StartAcquireTgtTimer, (), (override));
+  MOCK_METHOD(void, StopAcquireTgtTimerAndReport, (), (override));
+  MOCK_METHOD(void,
+              ReportValidateConfigErrorCode,
+              (ConfigErrorCode),
+              (override));
+  MOCK_METHOD(void,
+              ReportDBusCallResult,
+              (const std::string&, ErrorType),
+              (override));
+  MOCK_METHOD(bool, ShouldReportDailyUsageStats, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);
