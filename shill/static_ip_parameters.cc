@@ -278,7 +278,7 @@ bool StaticIPParameters::SetStaticIP(const KeyValueStore& value,
   }
   args_ = value;
   if (ipconfig_) {
-    ipconfig_->Refresh(nullptr);
+    ipconfig_->Refresh();
   }
   return true;
 }

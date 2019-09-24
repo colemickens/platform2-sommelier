@@ -122,6 +122,7 @@ class Device : public base::RefCounted<Device> {
                          Error* error,
                          const ResultCallback& callback);
   virtual void Reset(Error* error, const ResultCallback& callback);
+  virtual void RefreshIPConfig(Error* error);
 
   // Returns true if IPv6 is allowed and should be enabled when the device
   // tries to acquire an IP configuration. The default implementation allows
@@ -332,7 +333,7 @@ class Device : public base::RefCounted<Device> {
                                               const ResultCallback& callback);
 
   // Initiate renewal of existing DHCP lease.
-  void RenewDHCPLease();
+  void RenewDHCPLease(bool from_dbus, Error* error);
 
   // Resolve the |input| string into a MAC address for a peer local to this
   // device. This could be a trivial operation if the |input| is already a MAC

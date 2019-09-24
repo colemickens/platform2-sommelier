@@ -102,11 +102,4 @@ bool IPConfigDBusAdaptor::Remove(brillo::ErrorPtr* error) {
   return !Error(Error::kNotSupported).ToChromeosError(error);
 }
 
-bool IPConfigDBusAdaptor::Refresh(brillo::ErrorPtr* error) {
-  SLOG(this, 2) << __func__;
-  Error e;
-  ipconfig_->Refresh(&e);
-  return !e.ToChromeosError(error);
-}
-
 }  // namespace shill

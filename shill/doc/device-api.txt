@@ -119,6 +119,10 @@ Methods		dict GetProperties()
 			more attempt is made to register, after switching back
 			to automatic registration mode.
 
+		void RenewDHCPLease()
+
+			Request the renewal of all DHCPv4 and DHCPv6 leases.
+
 		void Reset()
 
 			Reset the device. The implementation is device-

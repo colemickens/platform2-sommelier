@@ -182,8 +182,9 @@ class IPConfig : public base::RefCounted<IPConfig> {
   virtual bool RenewIP();
   virtual bool ReleaseIP(ReleaseReason reason);
 
-  // Refresh IP configuration.  Called by the DBus Adaptor "Refresh" call.
-  virtual void Refresh(Error* error);
+  // Refresh IP configuration. This will cause DHCPConfig children to renew
+  // their lease.
+  virtual void Refresh();
 
   PropertyStore* mutable_store() { return &store_; }
   const PropertyStore& store() const { return store_; }

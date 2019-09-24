@@ -209,6 +209,13 @@ void DeviceDBusAdaptor::Reset(DBusMethodResponsePtr<> response) {
   ReturnResultOrDefer(callback, e);
 }
 
+bool DeviceDBusAdaptor::RenewDHCPLease(brillo::ErrorPtr* error) {
+  SLOG(this, 2) << __func__;
+  Error e;
+  device_->RenewDHCPLease(true, &e);
+  return !e.ToChromeosError(error);
+}
+
 bool DeviceDBusAdaptor::PerformTDLSOperation(brillo::ErrorPtr* error,
                                              const string& operation,
                                              const string& peer,

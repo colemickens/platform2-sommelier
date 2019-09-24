@@ -24,13 +24,6 @@ Methods		dict GetProperties()
 			Return properties for the IPConfig object. See
 			the properties section for available properties.
 
-		void Refresh()
-
-			Cause the IP configuration to be refreshed.  In
-			the case of DHCP configurations, the lease is
-			renewed, and any Static IP configuration from
-			the service is re-applied.
-
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given

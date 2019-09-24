@@ -107,7 +107,7 @@ bool IPConfig::ReleaseIP(ReleaseReason reason) {
   return false;
 }
 
-void IPConfig::Refresh(Error* /*error*/) {
+void IPConfig::Refresh() {
   if (!refresh_callback_.is_null()) {
     refresh_callback_.Run(this);
   }

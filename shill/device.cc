@@ -282,6 +282,13 @@ void Device::Reset(Error* error, const ResultCallback& /*callback*/) {
                         "Device doesn't support Reset.");
 }
 
+void Device::RefreshIPConfig(Error* /*error*/) {
+  SLOG(this, 2) << __func__;
+  if (ipconfig_) {
+    ipconfig_->Refresh();
+  }
+}
+
 bool Device::IsIPv6Allowed() const {
   return true;
 }
@@ -472,7 +479,7 @@ void Device::OnBeforeSuspend(const ResultCallback& callback) {
 }
 
 void Device::OnAfterResume() {
-  RenewDHCPLease();
+  RenewDHCPLease(false, nullptr);
   if (link_monitor_) {
     SLOG(this, 3) << "Informing Link Monitor of resume.";
     link_monitor_->OnAfterResume();
@@ -720,14 +727,14 @@ void Device::SetUsbEthernetMacAddressSource(const std::string& source,
   return;
 }
 
-void Device::RenewDHCPLease() {
+void Device::RenewDHCPLease(bool from_dbus, Error* /*error*/) {
   LOG(INFO) << __func__;
 
   if (ipconfig_) {
     SLOG(this, 3) << "Renewing IPv4 Address";
     ipconfig_->RenewIP();
   }
-  if (ip6config_) {
+  if (ip6config_ && !from_dbus) {
     SLOG(this, 3) << "Waiting for new IPv6 configuration";
     // Invalidate the old IPv6 configuration, will receive notifications
     // from kernel for new IPv6 configuration if there is one.

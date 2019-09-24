@@ -199,7 +199,7 @@ TEST_F(IPConfigTest, Callbacks) {
   EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_)).Times(0);
   EXPECT_CALL(*this, OnIPConfigRefreshed(ipconfig_));
   EXPECT_CALL(*this, OnIPConfigExpired(ipconfig_)).Times(0);
-  ipconfig_->Refresh(nullptr);
+  ipconfig_->Refresh();
   Mock::VerifyAndClearExpectations(this);
 
   EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_, true)).Times(0);
