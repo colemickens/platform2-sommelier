@@ -67,38 +67,6 @@ class Datapath {
   virtual bool AddOutboundIPv4(const std::string& ifname);
   virtual void RemoveOutboundIPv4(const std::string& ifname);
 
-  // Methods supporting the IPv6 hacks for ARC.
-
-  virtual bool AddIPv6GatewayRoutes(const std::string& ifname,
-                                    const std::string& ipv6_addr,
-                                    const std::string& ipv6_router,
-                                    int ipv6_prefix_len,
-                                    int routing_table);
-  virtual void RemoveIPv6GatewayRoutes(const std::string& ifname,
-                                       const std::string& ipv6_addr,
-                                       const std::string& ipv6_router,
-                                       int ipv6_prefix_len,
-                                       int routing_table);
-
-  virtual bool AddIPv6HostRoute(const std::string& ifname,
-                                const std::string& ipv6_addr,
-                                int ipv6_prefix_len);
-  virtual void RemoveIPv6HostRoute(const std::string& ifname,
-                                   const std::string& ipv6_addr,
-                                   int ipv6_prefix_len);
-
-  virtual bool AddIPv6Neighbor(const std::string& ifname,
-                               const std::string& ipv6_addr);
-  virtual void RemoveIPv6Neighbor(const std::string& ifname,
-                                  const std::string& ipv6_addr);
-
-  virtual bool AddIPv6Forwarding(const std::string& ifname1,
-                                 const std::string& ifname2);
-  virtual void RemoveIPv6Forwarding(const std::string& ifname1,
-                                    const std::string& ifname2);
-
-  MinijailedProcessRunner& runner() const;
-
  private:
   MinijailedProcessRunner* process_runner_;
 

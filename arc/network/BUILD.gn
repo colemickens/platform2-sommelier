@@ -61,6 +61,7 @@ static_library("libarcnetwork") {
   sources = [
     "adb_proxy.cc",
     "arc_helper.cc",
+    "arc_ip_config.cc",
     "datapath.cc",
     "device.cc",
     "device_manager.cc",

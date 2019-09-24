@@ -22,7 +22,6 @@ using testing::StrEq;
 
 namespace arc_networkd {
 namespace {
-constexpr char kTestPID[] = "-2";
 
 class MockDeviceManager : public DeviceManagerBase {
  public:
@@ -33,8 +32,6 @@ class MockDeviceManager : public DeviceManagerBase {
   MOCK_METHOD1(RegisterDeviceRemovedHandler, void(const DeviceHandler&));
   MOCK_METHOD1(RegisterDefaultInterfaceChangedHandler,
                void(const NameHandler&));
-  MOCK_METHOD1(RegisterDeviceIPv6AddressFoundHandler,
-               void(const DeviceHandler&));
   MOCK_METHOD1(OnGuestStart, void(GuestMessage::GuestType));
   MOCK_METHOD1(OnGuestStop, void(GuestMessage::GuestType));
   MOCK_METHOD1(ProcessDevices, void(const DeviceHandler&));
@@ -121,7 +118,6 @@ TEST_F(ArcServiceTest, VerifyOnDeviceAddedDatapathForLegacyAndroid) {
   auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
   NewService(true)->OnDeviceAdded(dev.get());
-  runner_->VerifyWriteSentinel(kTestPID);
 }
 
 TEST_F(ArcServiceTest, VerifyOnDeviceAddedDoesNothingLegacyAndroidNoARC) {
@@ -129,14 +125,6 @@ TEST_F(ArcServiceTest, VerifyOnDeviceAddedDoesNothingLegacyAndroidNoARC) {
   auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
   NewService(false, false)->OnDeviceAdded(dev.get());
-}
-
-TEST_F(ArcServiceTest,
-       VerifyOnDeviceAddedDoesNothingLegacyAndroidOtherInterface) {
-  // In ARC N, only the legacy interface is added.
-  auto dev = MakeDevice("eth0", "arc_eth0", "eth0");
-  ASSERT_TRUE(dev);
-  NewService(true)->OnDeviceAdded(dev.get());
 }
 
 TEST_F(ArcServiceTest, VerifyOnDeviceRemovedDatapathForLegacyAndroid) {
@@ -161,7 +149,6 @@ TEST_F(ArcServiceTest, VerifyOnDeviceAddedDatapathForAndroid) {
   auto dev = MakeDevice(kAndroidDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
   NewService()->OnDeviceAdded(dev.get());
-  runner_->VerifyWriteSentinel(kTestPID);
 }
 
 TEST_F(ArcServiceTest, VerifyOnDeviceRemovedDatapathForAndroid) {

@@ -2,12 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <arpa/inet.h>
-#include <ifaddrs.h>
-#include <linux/in6.h>
-#include <netinet/in.h>
 #include <stdint.h>
-#include <sys/types.h>
 
 #include <string>
 
@@ -64,13 +59,6 @@ std::string IPv4AddressToCidrString(uint32_t addr, uint32_t prefix_length);
 
 // Returns a string representation of MAC address given.
 std::string MacAddressToString(const MacAddress& addr);
-
-bool FindFirstIPv6Address(const std::string& ifname, struct in6_addr* address);
-
-bool GenerateRandomIPv6Prefix(struct in6_addr* prefix, int len);
-
-std::ostream& operator<<(std::ostream& stream, const struct in_addr& addr);
-std::ostream& operator<<(std::ostream& stream, const struct in6_addr& addr);
 
 }  // namespace arc_networkd
 

@@ -34,8 +34,6 @@ class DeviceManagerBase {
   virtual void RegisterDeviceRemovedHandler(const DeviceHandler& handler) = 0;
   virtual void RegisterDefaultInterfaceChangedHandler(
       const NameHandler& handler) = 0;
-  virtual void RegisterDeviceIPv6AddressFoundHandler(
-      const DeviceHandler& handler) = 0;
 
   // Invoked when a guest starts or stops.
   virtual void OnGuestStart(GuestMessage::GuestType guest) = 0;
@@ -71,8 +69,6 @@ class DeviceManager : public DeviceManagerBase {
   void RegisterDeviceRemovedHandler(const DeviceHandler& handler) override;
   void RegisterDefaultInterfaceChangedHandler(
       const NameHandler& handler) override;
-  void RegisterDeviceIPv6AddressFoundHandler(
-      const DeviceHandler& handler) override;
 
   // Invoked when a guest starts or stops.
   void OnGuestStart(GuestMessage::GuestType guest) override;
@@ -108,10 +104,6 @@ class DeviceManager : public DeviceManagerBase {
   // (e.g. "eth0", "wlan0", etc).
   void OnDevicesChanged(const std::set<std::string>& devices);
 
-  // Callback from Device, invoked when an IPv6 address is discovered and
-  // assigned to the device.
-  void OnIPv6AddressFound(Device* device);
-
   // Callback from RTNetlink listener, invoked when an interface changes
   // run state.
   void LinkMsgHandler(const shill::RTNLMessage& msg);
@@ -132,7 +124,6 @@ class DeviceManager : public DeviceManagerBase {
   // |devices_|.
   std::vector<DeviceHandler> add_handlers_;
   std::vector<DeviceHandler> rm_handlers_;
-  std::vector<DeviceHandler> ipv6_handlers_;
   std::vector<NameHandler> default_iface_handlers_;
 
   // Connected devices keyed by the interface name.

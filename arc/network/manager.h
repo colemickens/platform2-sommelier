@@ -16,6 +16,7 @@
 #include <brillo/process_reaper.h>
 
 #include "arc/network/address_manager.h"
+#include "arc/network/arc_ip_config.h"
 #include "arc/network/arc_service.h"
 #include "arc/network/device_manager.h"
 #include "arc/network/guest_events.h"

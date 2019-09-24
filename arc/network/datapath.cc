@@ -23,10 +23,6 @@ Datapath::Datapath(MinijailedProcessRunner* process_runner)
   CHECK(process_runner_);
 }
 
-MinijailedProcessRunner& Datapath::runner() const {
-  return *process_runner_;
-}
-
 bool Datapath::AddBridge(const std::string& ifname,
                          const std::string& ipv4_addr) {
   // Configure the persistent Chrome OS bridge interface with static IP.
@@ -221,100 +217,6 @@ bool Datapath::AddOutboundIPv4(const std::string& ifname) {
 void Datapath::RemoveOutboundIPv4(const std::string& ifname) {
   process_runner_->Run({kIpTablesPath, "-t", "filter", "-D", "FORWARD", "-o",
                         ifname, "-j", "ACCEPT", "-w"});
-}
-
-bool Datapath::AddIPv6GatewayRoutes(const std::string& ifname,
-                                    const std::string& ipv6_addr,
-                                    const std::string& ipv6_router,
-                                    int ipv6_prefix_len,
-                                    int routing_table) {
-  std::string ipv6_addr_cidr =
-      ipv6_addr + "/" + std::to_string(ipv6_prefix_len);
-
-  process_runner_->Run(
-      {kIpPath, "-6", "addr", "add", ipv6_addr_cidr, "dev", ifname});
-
-  process_runner_->Run({kIpPath, "-6", "route", "add", ipv6_router, "dev",
-                        ifname, "table", std::to_string(routing_table)});
-
-  process_runner_->Run({kIpPath, "-6", "route", "add", "default", "via",
-                        ipv6_router, "dev", ifname, "table",
-                        std::to_string(routing_table)});
-  return true;
-}
-
-void Datapath::RemoveIPv6GatewayRoutes(const std::string& ifname,
-                                       const std::string& ipv6_addr,
-                                       const std::string& ipv6_router,
-                                       int ipv6_prefix_len,
-                                       int routing_table) {
-  std::string ipv6_addr_cidr =
-      ipv6_addr + "/" + std::to_string(ipv6_prefix_len);
-
-  process_runner_->Run({kIpPath, "-6", "route", "del", "default", "via",
-                        ipv6_router, "dev", ifname, "table",
-                        std::to_string(routing_table)});
-  process_runner_->Run({kIpPath, "-6", "route", "del", ipv6_router, "dev",
-                        ifname, "table", std::to_string(routing_table)});
-  process_runner_->Run(
-      {kIpPath, "-6", "addr", "del", ipv6_addr_cidr, "dev", ifname}, false);
-}
-
-bool Datapath::AddIPv6HostRoute(const std::string& ifname,
-                                const std::string& ipv6_addr,
-                                int ipv6_prefix_len) {
-  std::string ipv6_addr_cidr =
-      ipv6_addr + "/" + std::to_string(ipv6_prefix_len);
-
-  return process_runner_->Run({kIpPath, "-6", "route", "add", ipv6_addr_cidr,
-                               "dev", ifname}) == 0;
-}
-
-void Datapath::RemoveIPv6HostRoute(const std::string& ifname,
-                                   const std::string& ipv6_addr,
-                                   int ipv6_prefix_len) {
-  std::string ipv6_addr_cidr =
-      ipv6_addr + "/" + std::to_string(ipv6_prefix_len);
-
-  process_runner_->Run(
-      {kIpPath, "-6", "route", "del", ipv6_addr_cidr, "dev", ifname});
-}
-
-bool Datapath::AddIPv6Neighbor(const std::string& ifname,
-                               const std::string& ipv6_addr) {
-  return process_runner_->Run({kIpPath, "-6", "neigh", "add", "proxy",
-                               ipv6_addr, "dev", ifname}) == 0;
-}
-
-void Datapath::RemoveIPv6Neighbor(const std::string& ifname,
-                                  const std::string& ipv6_addr) {
-  process_runner_->Run(
-      {kIpPath, "-6", "neigh", "del", "proxy", ipv6_addr, "dev", ifname});
-}
-
-bool Datapath::AddIPv6Forwarding(const std::string& ifname1,
-                                 const std::string& ifname2) {
-  if (process_runner_->Run({kIp6TablesPath, "-A", "FORWARD", "-i", ifname1,
-                            "-o", ifname2, "-j", "ACCEPT", "-w"}) != 0) {
-    return false;
-  }
-
-  if (process_runner_->Run({kIp6TablesPath, "-A", "FORWARD", "-i", ifname2,
-                            "-o", ifname1, "-j", "ACCEPT", "-w"}) != 0) {
-    RemoveIPv6Forwarding(ifname1, ifname2);
-    return false;
-  }
-
-  return true;
-}
-
-void Datapath::RemoveIPv6Forwarding(const std::string& ifname1,
-                                    const std::string& ifname2) {
-  process_runner_->Run({kIp6TablesPath, "-D", "FORWARD", "-i", ifname1, "-o",
-                        ifname2, "-j", "ACCEPT", "-w"});
-
-  process_runner_->Run({kIp6TablesPath, "-D", "FORWARD", "-i", ifname2, "-o",
-                        ifname1, "-j", "ACCEPT", "-w"});
 }
 
 }  // namespace arc_networkd

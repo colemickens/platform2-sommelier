@@ -82,4 +82,68 @@ TEST_F(DeviceTest, FillProto) {
   EXPECT_TRUE(msg.find_ipv6_routes());
 }
 
+TEST_F(DeviceTest, CtorSendsAnnounce) {
+  capture_msgs_ = true;
+  Device::Options opts = {true, true};
+  auto dev = NewDevice(kAndroidDevice, opts);
+  DeviceMessage msg;
+  msg.set_dev_ifname(kAndroidDevice);
+  *msg.mutable_dev_config() = msg_;
+  VerifyMsgs({msg});
+}
+
+TEST_F(DeviceTest, DtorSendsTeardown) {
+  Device::Options opts = {true, true};
+  auto dev = NewDevice(kAndroidDevice, opts);
+  capture_msgs_ = true;
+  dev.reset();
+  DeviceMessage msg;
+  msg.set_dev_ifname(kAndroidDevice);
+  msg.set_teardown(true);
+  VerifyMsgs({msg});
+}
+
+TEST_F(DeviceTest, DisableLegacyAndroidDeviceSendsMessage) {
+  Device::Options opts = {false, false};
+  auto dev = NewDevice(kAndroidLegacyDevice, opts);
+  dev->Enable("eth0");
+  capture_msgs_ = true;
+  // HACK(garrick): We have to turn off IPv6 route finding during testing
+  // to avoid an unrelated crash but the Android device does have IPv6
+  // route finding enabled, so we want to verify the 'clear' message is
+  // emitted for this device. This hack allows the check to pass and the
+  // message to be sent.
+  const_cast<Device::Options*>(&dev->options())->find_ipv6_routes = true;
+  dev->Disable();
+  DeviceMessage clear_msg;
+  clear_msg.set_dev_ifname(kAndroidLegacyDevice);
+  clear_msg.set_clear_arc_ip(true);
+  VerifyMsgs({clear_msg});
+}
+
+TEST_F(DeviceTest, DisableDoesNothingForNonLegacyAndroid) {
+  Device::Options opts = {false, false};
+  auto dev = NewDevice(kAndroidDevice, opts);
+  capture_msgs_ = true;
+  dev->Disable();
+  VerifyMsgs({});
+}
+
+TEST_F(DeviceTest, DisableDoesNothingIfNotEnabled) {
+  Device::Options opts = {false, false};
+  auto dev = NewDevice(kAndroidLegacyDevice, opts);
+  capture_msgs_ = true;
+  dev->Disable();
+  VerifyMsgs({});
+}
+
+TEST_F(DeviceTest, ClearMessageNotSentIfIPv6RouteFindingIsOff) {
+  Device::Options opts = {false, false};
+  auto dev = NewDevice(kAndroidLegacyDevice, opts);
+  dev->Enable("eth0");
+  capture_msgs_ = true;
+  dev->Disable();
+  VerifyMsgs({});
+}
+
 }  // namespace arc_networkd

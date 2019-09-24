@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "arc/network/manager.h"
 #include "arc/network/neighbor_finder.h"
 
 #include <arpa/inet.h>
@@ -13,8 +14,6 @@
 #include <ndp.h>
 
 #include <base/message_loop/message_loop.h>
-
-#include "arc/network/net_util.h"
 
 namespace {
 
