@@ -939,13 +939,8 @@ void ArcSetup::CreateBuildProperties() {
                arc_paths_->android_generated_properties_directory, 0755)
                .is_valid());
 
-  // InitModel won't succeed on non-unibuild boards, but that doesn't matter
-  // because the property files won't contain any templates that need to be
-  // expanded.  On unibuild boards, if it doesn't succeed then
-  // ExpandPropertyFile() will later fail when it can't look up the template
-  // expansions.  Either way, errors here should be ignored.
   auto config = std::make_unique<brillo::CrosConfig>();
-  IGNORE_ERRORS(config->InitModel());
+  EXIT_IF(!config->Init());
 
   constexpr const char* prop_files[] = {"default.prop", "system/build.prop"};
   for (const auto& prop_file : prop_files) {
