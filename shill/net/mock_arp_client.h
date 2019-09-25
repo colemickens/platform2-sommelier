@@ -18,13 +18,15 @@ class MockArpClient : public ArpClient {
   MockArpClient();
   ~MockArpClient() override;
 
-  MOCK_METHOD0(StartReplyListener, bool());
-  MOCK_METHOD0(StartRequestListener, bool());
-  MOCK_METHOD0(Stop, void());
-  MOCK_CONST_METHOD2(ReceivePacket,
-                     bool(ArpPacket* packet, ByteString* sender));
-  MOCK_CONST_METHOD1(TransmitRequest, bool(const ArpPacket& packet));
-  MOCK_CONST_METHOD0(socket, int());
+  MOCK_METHOD(bool, StartReplyListener, (), (override));
+  MOCK_METHOD(bool, StartRequestListener, (), (override));
+  MOCK_METHOD(void, Stop, (), (override));
+  MOCK_METHOD(bool,
+              ReceivePacket,
+              (ArpPacket*, ByteString*),
+              (const, override));
+  MOCK_METHOD(bool, TransmitRequest, (const ArpPacket&), (const, override));
+  MOCK_METHOD(int, socket, (), (const, override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockArpClient);

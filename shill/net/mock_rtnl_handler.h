@@ -20,29 +20,30 @@ class MockRTNLHandler : public RTNLHandler {
   MockRTNLHandler() = default;
   ~MockRTNLHandler() override = default;
 
-  MOCK_METHOD1(Start, void(uint32_t netlink_groups_mask));
-  MOCK_METHOD1(AddListener, void(RTNLListener* to_add));
-  MOCK_METHOD1(RemoveListener, void(RTNLListener* to_remove));
-  MOCK_METHOD3(SetInterfaceFlags,
-               void(int interface_index,
-                    unsigned int flags,
-                    unsigned int change));
-  MOCK_METHOD2(SetInterfaceMTU, void(int interface_index, unsigned int mtu));
-  MOCK_METHOD3(SetInterfaceMac,
-               void(int interface_index,
-                    const ByteString& mac_address,
-                    ResponseCallback error_callback));
-  MOCK_METHOD4(AddInterfaceAddress,
-               bool(int interface_index,
-                    const IPAddress& local,
-                    const IPAddress& broadcast,
-                    const IPAddress& peer));
-  MOCK_METHOD2(RemoveInterfaceAddress,
-               bool(int interface_index, const IPAddress& local));
-  MOCK_METHOD1(RemoveInterface, bool(int interface_index));
-  MOCK_METHOD1(RequestDump, void(uint32_t request_flags));
-  MOCK_METHOD1(GetInterfaceIndex, int(const std::string& interface_name));
-  MOCK_METHOD2(DoSendMessage, bool(RTNLMessage* message, uint32_t* seq));
+  MOCK_METHOD(void, Start, (uint32_t), (override));
+  MOCK_METHOD(void, AddListener, (RTNLListener*), (override));
+  MOCK_METHOD(void, RemoveListener, (RTNLListener*), (override));
+  MOCK_METHOD(void,
+              SetInterfaceFlags,
+              (int, unsigned int, unsigned int),
+              (override));
+  MOCK_METHOD(void, SetInterfaceMTU, (int, unsigned int), (override));
+  MOCK_METHOD(void,
+              SetInterfaceMac,
+              (int, const ByteString&, ResponseCallback),
+              (override));
+  MOCK_METHOD(bool,
+              AddInterfaceAddress,
+              (int, const IPAddress&, const IPAddress&, const IPAddress&),
+              (override));
+  MOCK_METHOD(bool,
+              RemoveInterfaceAddress,
+              (int, const IPAddress&),
+              (override));
+  MOCK_METHOD(bool, RemoveInterface, (int), (override));
+  MOCK_METHOD(void, RequestDump, (uint32_t), (override));
+  MOCK_METHOD(int, GetInterfaceIndex, (const std::string&), (override));
+  MOCK_METHOD(bool, DoSendMessage, (RTNLMessage*, uint32_t*));
   bool SendMessage(std::unique_ptr<RTNLMessage> message,
                    uint32_t* seq) override {
     return DoSendMessage(message.get(), seq);

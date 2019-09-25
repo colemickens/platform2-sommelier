@@ -125,7 +125,7 @@ class RTNLHandlerTest : public Test {
     return RTNLHandler::GetInstance()->oldest_request_sequence_;
   }
 
-  MOCK_METHOD1(HandlerCallback, void(const RTNLMessage&));
+  MOCK_METHOD(void, HandlerCallback, (const RTNLMessage&));
 
  protected:
   static const int kTestSocket;

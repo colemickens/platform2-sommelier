@@ -17,13 +17,16 @@ class MockTime : public Time {
   MockTime() = default;
   ~MockTime() override = default;
 
-  MOCK_METHOD1(GetSecondsMonotonic, bool(time_t* seconds));
-  MOCK_METHOD1(GetSecondsBoottime, bool(time_t* seconds));
-  MOCK_METHOD1(GetTimeMonotonic, int(struct timeval* tv));
-  MOCK_METHOD1(GetTimeBoottime, int(struct timeval* tv));
-  MOCK_METHOD2(GetTimeOfDay, int(struct timeval* tv, struct timezone* tz));
-  MOCK_METHOD0(GetNow, Timestamp());
-  MOCK_CONST_METHOD0(GetSecondsSinceEpoch, time_t());
+  MOCK_METHOD(bool, GetSecondsMonotonic, (time_t*), (override));
+  MOCK_METHOD(bool, GetSecondsBoottime, (time_t*), (override));
+  MOCK_METHOD(int, GetTimeMonotonic, (struct timeval*), (override));
+  MOCK_METHOD(int, GetTimeBoottime, (struct timeval*), (override));
+  MOCK_METHOD(int,
+              GetTimeOfDay,
+              (struct timeval*, struct timezone*),
+              (override));
+  MOCK_METHOD(Timestamp, GetNow, (), (override));
+  MOCK_METHOD(time_t, GetSecondsSinceEpoch, (), (const, override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockTime);

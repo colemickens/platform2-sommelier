@@ -16,15 +16,16 @@ class MockIOHandlerFactory : public IOHandlerFactory {
   MockIOHandlerFactory() = default;
   ~MockIOHandlerFactory() override = default;
 
-  MOCK_METHOD3(CreateIOInputHandler,
-               IOHandler*(int fd,
-                          const IOHandler::InputCallback& input_callback,
-                          const IOHandler::ErrorCallback& error_callback));
-
-  MOCK_METHOD3(CreateIOReadyHandler,
-               IOHandler*(int fd,
-                          IOHandler::ReadyMode mode,
-                          const IOHandler::ReadyCallback& ready_callback));
+  MOCK_METHOD(IOHandler*,
+              CreateIOInputHandler,
+              (int,
+               const IOHandler::InputCallback&,
+               const IOHandler::ErrorCallback&),
+              (override));
+  MOCK_METHOD(IOHandler*,
+              CreateIOReadyHandler,
+              (int, IOHandler::ReadyMode, const IOHandler::ReadyCallback&),
+              (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockIOHandlerFactory);

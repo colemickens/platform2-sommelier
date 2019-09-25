@@ -17,7 +17,7 @@ namespace {
 
 class RtnlWatcher {
  public:
-  MOCK_METHOD1(ListenerCallback, void(const RTNLMessage&));
+  MOCK_METHOD(void, ListenerCallback, (const RTNLMessage&));
 };
 
 }  // namespace

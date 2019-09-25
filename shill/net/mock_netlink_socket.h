@@ -18,13 +18,14 @@ class ByteString;
 class MockNetlinkSocket : public NetlinkSocket {
  public:
   MockNetlinkSocket() = default;
-  MOCK_METHOD0(Init, bool());
 
   uint32_t GetLastSequenceNumber() const { return sequence_number_; }
-  MOCK_CONST_METHOD0(file_descriptor, int());
-  MOCK_METHOD1(SendMessage, bool(const ByteString& out_string));
-  MOCK_METHOD1(SubscribeToEvents, bool(uint32_t group_id));
-  MOCK_METHOD1(RecvMessage, bool(ByteString* message));
+
+  MOCK_METHOD(bool, Init, (), (override));
+  MOCK_METHOD(int, file_descriptor, (), (const, override));
+  MOCK_METHOD(bool, SendMessage, (const ByteString&), (override));
+  MOCK_METHOD(bool, SubscribeToEvents, (uint32_t), (override));
+  MOCK_METHOD(bool, RecvMessage, (ByteString*), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockNetlinkSocket);

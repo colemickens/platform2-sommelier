@@ -182,7 +182,7 @@ class NetlinkManagerTest : public Test {
     MockHandlerNetlink()
         : on_netlink_message_(base::Bind(&MockHandlerNetlink::OnNetlinkMessage,
                                          base::Unretained(this))) {}
-    MOCK_METHOD1(OnNetlinkMessage, void(const NetlinkMessage& msg));
+    MOCK_METHOD(void, OnNetlinkMessage, (const NetlinkMessage& msg));
     const NetlinkManager::NetlinkMessageHandler& on_netlink_message() const {
       return on_netlink_message_;
     }
@@ -198,9 +198,9 @@ class NetlinkManagerTest : public Test {
         : on_netlink_message_(
               base::Bind(&MockHandlerNetlinkAuxilliary::OnErrorHandler,
                          base::Unretained(this))) {}
-    MOCK_METHOD2(OnErrorHandler,
-                 void(NetlinkManager::AuxilliaryMessageType type,
-                      const NetlinkMessage* msg));
+    MOCK_METHOD(void,
+                OnErrorHandler,
+                (NetlinkManager::AuxilliaryMessageType, const NetlinkMessage*));
     const NetlinkManager::NetlinkAuxilliaryMessageHandler& on_netlink_message()
         const {
       return on_netlink_message_;
@@ -216,7 +216,7 @@ class NetlinkManagerTest : public Test {
     MockHandler80211()
         : on_netlink_message_(base::Bind(&MockHandler80211::OnNetlinkMessage,
                                          base::Unretained(this))) {}
-    MOCK_METHOD1(OnNetlinkMessage, void(const Nl80211Message& msg));
+    MOCK_METHOD(void, OnNetlinkMessage, (const Nl80211Message&));
     const NetlinkManager::Nl80211MessageHandler& on_netlink_message() const {
       return on_netlink_message_;
     }
@@ -231,7 +231,7 @@ class NetlinkManagerTest : public Test {
     MockHandlerNetlinkAck()
         : on_netlink_message_(base::Bind(&MockHandlerNetlinkAck::OnAckHandler,
                                          base::Unretained(this))) {}
-    MOCK_METHOD1(OnAckHandler, void(bool* remove_callbacks));
+    MOCK_METHOD(void, OnAckHandler, (bool*));
     const NetlinkManager::NetlinkAckHandler& on_netlink_message() const {
       return on_netlink_message_;
     }

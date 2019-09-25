@@ -25,7 +25,7 @@ namespace shill {
 
 class AttributeListTest : public Test {
  public:
-  MOCK_METHOD2(AttributeMethod, bool(int id, const ByteString& value));
+  MOCK_METHOD(bool, AttributeMethod, (int, const ByteString&));
 
  protected:
   static const uint16_t kHeaderLength = 4;

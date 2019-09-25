@@ -19,49 +19,52 @@ class MockSockets : public Sockets {
   MockSockets() = default;
   ~MockSockets() override = default;
 
-  MOCK_CONST_METHOD3(
-      Accept, int(int sockfd, struct sockaddr* addr, socklen_t* addrlen));
-  MOCK_CONST_METHOD2(AttachFilter, int(int sockfd, struct sock_fprog* pf));
-  MOCK_CONST_METHOD3(
-      Bind, int(int sockfd, const struct sockaddr* addr, socklen_t addrlen));
-  MOCK_CONST_METHOD2(BindToDevice, int(int sockfd, const std::string& device));
-  MOCK_CONST_METHOD1(ReuseAddress, int(int sockfd));
-  MOCK_CONST_METHOD2(AddMulticastMembership, int(int sockfd, in_addr_t addr));
-  MOCK_CONST_METHOD1(Close, int(int fd));
-  MOCK_CONST_METHOD3(
-      Connect, int(int sockfd, const struct sockaddr* addr, socklen_t addrlen));
-  MOCK_CONST_METHOD0(Error, int());
-  MOCK_CONST_METHOD3(
-      GetSockName, int(int sockfd, struct sockaddr* addr, socklen_t* addrlen));
-  MOCK_CONST_METHOD1(GetSocketError, int(int fd));
-  MOCK_CONST_METHOD3(Ioctl, int(int d, int request, void* argp));
-  MOCK_CONST_METHOD2(Listen, int(int d, int backlog));
-  MOCK_CONST_METHOD6(RecvFrom,
-                     ssize_t(int sockfd,
-                             void* buf,
-                             size_t len,
-                             int flags,
-                             struct sockaddr* src_addr,
-                             socklen_t* addrlen));
-  MOCK_CONST_METHOD5(Select,
-                     int(int nfds,
-                         fd_set* readfds,
-                         fd_set* writefds,
-                         fd_set* exceptfds,
-                         struct timeval* timeout));
-  MOCK_CONST_METHOD4(
-      Send, ssize_t(int sockfd, const void* buf, size_t len, int flags));
-  MOCK_CONST_METHOD6(SendTo,
-                     ssize_t(int sockfd,
-                             const void* buf,
-                             size_t len,
-                             int flags,
-                             const struct sockaddr* dest_addr,
-                             socklen_t addrlen));
-  MOCK_CONST_METHOD1(SetNonBlocking, int(int sockfd));
-  MOCK_CONST_METHOD2(SetReceiveBuffer, int(int sockfd, int size));
-  MOCK_CONST_METHOD2(ShutDown, int(int sockfd, int how));
-  MOCK_CONST_METHOD3(Socket, int(int domain, int type, int protocol));
+  MOCK_METHOD(int,
+              Accept,
+              (int, struct sockaddr*, socklen_t*),
+              (const, override));
+  MOCK_METHOD(int, AttachFilter, (int, struct sock_fprog*), (const, override));
+  MOCK_METHOD(int,
+              Bind,
+              (int, const struct sockaddr*, socklen_t),
+              (const, override));
+  MOCK_METHOD(int, BindToDevice, (int, const std::string&), (const, override));
+  MOCK_METHOD(int, ReuseAddress, (int), (const, override));
+  MOCK_METHOD(int, AddMulticastMembership, (int, in_addr_t), (const, override));
+  MOCK_METHOD(int, Close, (int fd), (const, override));
+  MOCK_METHOD(int,
+              Connect,
+              (int, const struct sockaddr*, socklen_t),
+              (const, override));
+  MOCK_METHOD(int, Error, (), (const, override));
+  MOCK_METHOD(int,
+              GetSockName,
+              (int, struct sockaddr*, socklen_t*),
+              (const, override));
+  MOCK_METHOD(int, GetSocketError, (int), (const, override));
+  MOCK_METHOD(int, Ioctl, (int, int, void*), (const, override));
+  MOCK_METHOD(int, Listen, (int, int), (const, override));
+  MOCK_METHOD(ssize_t,
+              RecvFrom,
+              (int, void*, size_t, int, struct sockaddr*, socklen_t*),
+              (const, override));
+  MOCK_METHOD(int,
+              Select,
+              (int, fd_set*, fd_set*, fd_set*, struct timeval*),
+              (const, override));
+  MOCK_METHOD(ssize_t,
+              Send,
+              (int, const void*, size_t, int),
+              (const, override));
+  MOCK_METHOD(
+      ssize_t,
+      SendTo,
+      (int, const void*, size_t, int, const struct sockaddr*, socklen_t),
+      (const, override));
+  MOCK_METHOD(int, SetNonBlocking, (int), (const, override));
+  MOCK_METHOD(int, SetReceiveBuffer, (int, int), (const, override));
+  MOCK_METHOD(int, ShutDown, (int, int), (const, override));
+  MOCK_METHOD(int, Socket, (int, int, int), (const, override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSockets);
