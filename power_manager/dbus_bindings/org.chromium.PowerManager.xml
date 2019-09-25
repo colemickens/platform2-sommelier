@@ -155,6 +155,9 @@
       </tp:docstring>
       <arg name="serialized_reply_proto" direction="out" type="ay" />
     </method>
+    <method name="HasAmbientColorDevice">
+      <arg name="has_device" direction="out" type="b" />
+    </method>
 
     <!-- Signals -->
     <signal name="ScreenBrightnessChanged">
