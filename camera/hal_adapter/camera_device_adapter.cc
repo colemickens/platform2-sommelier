@@ -591,15 +591,8 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
   }
   size_t num_planes = fds.size();
 
-  std::unique_ptr<camera_buffer_handle_t> buffer_handle;
-  if (allocated_stream_buffers_.find(buffer_id) !=
-      allocated_stream_buffers_.end()) {
-    buffer_handle = std::make_unique<camera_buffer_handle_t>(
-        *camera_buffer_handle_t::FromBufferHandle(
-            allocated_stream_buffers_[buffer_id]));
-  } else {
-    buffer_handle = std::make_unique<camera_buffer_handle_t>();
-  }
+  std::unique_ptr<camera_buffer_handle_t> buffer_handle =
+      std::make_unique<camera_buffer_handle_t>();
   buffer_handle->base.version = sizeof(buffer_handle->base);
   buffer_handle->base.numFds = kCameraBufferHandleNumFds;
   buffer_handle->base.numInts = kCameraBufferHandleNumInts;
