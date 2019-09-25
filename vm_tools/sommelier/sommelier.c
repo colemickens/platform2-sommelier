@@ -193,6 +193,7 @@ struct sl_mwm_hints {
   APPLICATION_ID_FORMAT_PREFIX ".wmclass.%s"
 
 #define MIN_AURA_SHELL_VERSION 6
+#define MAX_AURA_SHELL_VERSION 9
 
 // Performs an asprintf operation and checks the result for validity and calls
 // abort() if there's a failure. Returns a newly allocated string rather than
@@ -1190,7 +1191,7 @@ static void sl_registry_handler(void* data,
       assert(aura_shell);
       aura_shell->ctx = ctx;
       aura_shell->id = id;
-      aura_shell->version = MIN(MIN_AURA_SHELL_VERSION, version);
+      aura_shell->version = MIN(MAX_AURA_SHELL_VERSION, version);
       aura_shell->host_gtk_shell_global = NULL;
       aura_shell->internal = wl_registry_bind(
           registry, id, &zaura_shell_interface, aura_shell->version);
@@ -2054,11 +2055,17 @@ static uint32_t sl_resize_edge(int net_wm_moveresize_size) {
   }
 }
 
-static void sl_request_attention(struct sl_window* window) {
-  // TODO(hollingum): implement me.
-  fprintf(stderr,
-          "The active window request for %p is not currently supported.\n",
-          window);
+static void sl_request_attention(struct sl_context* ctx,
+                                 struct sl_window* window,
+                                 bool is_strong_request) {
+  if (!window->aura_surface ||
+      ctx->aura_shell->version < ZAURA_SURFACE_DRAW_ATTENTION_SINCE_VERSION)
+    return;
+  if (is_strong_request) {
+    zaura_surface_activate(window->aura_surface);
+  } else {
+    zaura_surface_draw_attention(window->aura_surface);
+  }
 }
 
 static void sl_handle_client_message(struct sl_context* ctx,
@@ -2080,7 +2087,7 @@ static void sl_handle_client_message(struct sl_context* ctx,
   } else if (event->type == ctx->atoms[ATOM_NET_ACTIVE_WINDOW].value) {
     struct sl_window* window = sl_lookup_window(ctx, event->window);
     if (window)
-      sl_request_attention(window);
+      sl_request_attention(ctx, window, /*is_strong_request=*/true);
   } else if (event->type == ctx->atoms[ATOM_NET_WM_MOVERESIZE].value) {
     struct sl_window* window = sl_lookup_window(ctx, event->window);
 
@@ -2454,7 +2461,7 @@ static void sl_handle_property_notify(struct sl_context* ctx,
     free(reply);
 
     if (wm_hints.flags & WM_HINTS_FLAG_URGENCY) {
-      sl_request_attention(window);
+      sl_request_attention(ctx, window, /*is_strong_request=*/false);
     }
   } else if (event->atom == ctx->atoms[ATOM_MOTIF_WM_HINTS].value) {
     struct sl_window* window = sl_lookup_window(ctx, event->window);
