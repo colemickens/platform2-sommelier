@@ -60,6 +60,7 @@ class PPPoEServiceTest : public testing::Test {
     Error error;
     service_->Connect(&error, "in test");
     EXPECT_TRUE(error.IsSuccess());
+    service_->SetState(Service::kStateConnected);
   }
 
   EventDispatcherForTest dispatcher_;

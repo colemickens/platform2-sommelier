@@ -138,6 +138,9 @@ class WiFiServiceTest : public PropertyStoreTest {
   WiFiServiceRefPtr MakeServiceWithWiFi(const string& security) {
     WiFiServiceRefPtr service = MakeSimpleService(security);
     SetWiFiForService(service, wifi_);
+    scoped_refptr<MockProfile> mock_profile(
+        new NiceMock<MockProfile>(manager()));
+    service->set_profile(mock_profile);
     return service;
   }
   WiFiServiceRefPtr MakeServiceWithMockManager() {
@@ -492,8 +495,6 @@ TEST_F(WiFiServiceTest, ConnectTaskRSN) {
 TEST_F(WiFiServiceTest, ConnectConditions) {
   Error error;
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityNone);
-  scoped_refptr<MockProfile> mock_profile(new NiceMock<MockProfile>(manager()));
-  wifi_service->set_profile(mock_profile);
   // With nothing else going on, the service should attempt to connect.
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   wifi_service->Connect(&error, "in test");
@@ -994,8 +995,8 @@ TEST_F(WiFiServiceTest, LoadPassphraseClearCredentials) {
   service->passphrase_ = kOldPassphrase;
   service->has_ever_connected_ = true;
 
-  scoped_refptr<MockProfile> mock_profile(new NiceMock<MockProfile>(manager()));
-  service->set_profile(mock_profile);
+  scoped_refptr<MockProfile> mock_profile =
+      static_cast<MockProfile*>(service->profile().get());
   // Detect if the service is going to attempt to update the stored profile.
   EXPECT_CALL(*mock_profile, GetConstStorage()).Times(0);
 
@@ -1128,6 +1129,8 @@ TEST_F(WiFiServiceTest, ConfigureRedundantProperties) {
 
 TEST_F(WiFiServiceTest, DisconnectWithWiFi) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityWep);
+  // An inactive Service will not have OnDisconnected triggered.
+  service->SetState(Service::kStateConnected);
   EXPECT_CALL(*wifi(), DisconnectFromIfActive(service.get())).Times(1);
   Error error;
   service->Disconnect(&error, "in test");
@@ -1136,6 +1139,7 @@ TEST_F(WiFiServiceTest, DisconnectWithWiFi) {
 TEST_F(WiFiServiceTest, DisconnectWithoutWiFi) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityWep);
   EXPECT_CALL(*wifi(), DisconnectFrom(_)).Times(0);
+  service->SetState(Service::kStateAssociating);
   Error error;
   service->Disconnect(&error, "in test");
   EXPECT_EQ(Error::kOperationFailed, error.type());
@@ -1156,6 +1160,8 @@ TEST_F(WiFiServiceTest, DisconnectWithoutWiFiWhileAssociating) {
 
 TEST_F(WiFiServiceTest, UnloadAndClearCacheWEP) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityWep);
+  // An inactive Service will not have OnDisconnected triggered.
+  service->SetState(Service::kStateConnected);
   EXPECT_CALL(*wifi(), ClearCachedCredentials(service.get())).Times(1);
   EXPECT_CALL(*wifi(), DisconnectFromIfActive(service.get())).Times(1);
   service->Unload();
@@ -1163,6 +1169,8 @@ TEST_F(WiFiServiceTest, UnloadAndClearCacheWEP) {
 
 TEST_F(WiFiServiceTest, UnloadAndClearCache8021x) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurity8021x);
+  // An inactive Service will not have OnDisconnected triggered.
+  service->SetState(Service::kStateConnected);
   EXPECT_CALL(*wifi(), ClearCachedCredentials(service.get())).Times(1);
   EXPECT_CALL(*wifi(), DisconnectFromIfActive(service.get())).Times(1);
   service->Unload();

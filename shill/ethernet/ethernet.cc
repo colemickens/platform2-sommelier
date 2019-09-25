@@ -521,7 +521,15 @@ bool Ethernet::ConfigurePPPoEMode(const bool& enable, Error* error) {
   }
 
   CHECK(service);
-  service_->Disconnect(error, nullptr);
+  // If |service_| has not begun to connect (i.e. this method is called prior to
+  // Manager::SortServicesTask being executed and triggering an autoconnect),
+  // Disconnect would return an error. We can get away with ignoring any error
+  // here because DisconnectFrom does not have any failure scenarios.
+  //
+  // TODO(crbug.com/1003958) If/when PPPoE is redesigned, this hack will be
+  // unnecessary to begin with.
+  Error unused_error;
+  service_->Disconnect(&unused_error, nullptr);
   DeregisterService(service_);
   service_ = service;
   RegisterService(service_);

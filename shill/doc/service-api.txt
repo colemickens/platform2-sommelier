@@ -89,11 +89,11 @@ Methods		dict GetProperties()
 
 		void Disconnect()
 
-			Disconnect a service. If the service is not
-			connected or in the process of connecting an
-			error message will be generated.
+			Disconnect a Service. If the Service is neither
+			connected nor in the process of connecting, a
+			NotConnected error will be returned.
 
-			For Ethernet devices this will remove all
+			For Ethernet devices, this will remove all
 			Layer 3 state and mark the associated network
 			interface down.  If no cable is plugged in this
 			request will fail.
@@ -102,7 +102,7 @@ Methods		dict GetProperties()
 			connection attempt via the Connect method.
 
 			Possible Errors: [service].Error.InvalidArguments
-					 [service].Error.OperationFailed
+					 [service].Error.NotConnected
 
 		void Remove()
 

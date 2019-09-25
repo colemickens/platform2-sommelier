@@ -78,6 +78,7 @@ TEST_F(EthernetServiceTest, ConnectDisconnectDelegation) {
   EXPECT_CALL(*ethernet_, link_up()).WillRepeatedly(Return(true));
   EXPECT_CALL(*ethernet_, ConnectTo(service_.get()));
   service_->AutoConnect();
+  service_->SetState(Service::kStateConnected);
   EXPECT_CALL(*ethernet_, DisconnectFrom(service_.get()));
   Error error;
   service_->Disconnect(&error, "in test");

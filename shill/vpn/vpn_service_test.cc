@@ -133,6 +133,7 @@ TEST_F(VPNServiceTest, ConnectAlreadyConnected) {
 
 TEST_F(VPNServiceTest, Disconnect) {
   Error error;
+  service_->SetState(Service::kStateConnected);
   EXPECT_CALL(*driver_, Disconnect());
   service_->Disconnect(&error, "in test");
   EXPECT_TRUE(error.IsSuccess());
@@ -221,6 +222,7 @@ TEST_F(VPNServiceTest, SaveCredentials) {
 TEST_F(VPNServiceTest, Unload) {
   service_->SetAutoConnect(true);
   service_->set_save_credentials(true);
+  service_->SetState(Service::kStateConnected);
   EXPECT_CALL(*driver_, Disconnect());
   EXPECT_CALL(*driver_, UnloadCredentials());
   MockVPNProvider* provider = new MockVPNProvider;
