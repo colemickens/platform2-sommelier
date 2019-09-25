@@ -242,5 +242,12 @@
       </tp:docstring>
       <arg name="serialized_proto" type="ay" />
     </signal>
+    <signal name="AmbientColorTemperatureChanged">
+      <tp:docstring>
+        |color_temp| describes the correlated color temperature of the current
+        ambient light conditions.
+      </tp:docstring>
+      <arg name="color_temp" type="u" />
+    </signal>
   </interface>
 </node>
