@@ -14,6 +14,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use dbus::{BusType, Connection, Message};
 use regex::Regex;
+use system_api::OrgChromiumSessionManagerInterface;
 
 // 25 seconds is the default timeout for dbus-send.
 const TIMEOUT_MILLIS: i32 = 25000;
@@ -54,38 +55,20 @@ pub fn get_user_id_hash() -> Result<String, ()> {
         return Ok(lookup);
     }
 
-    let method: Message = Message::new_method_call(
+    let connection = Connection::get_private(BusType::System).map_err(|err| {
+        eprintln!("ERROR: Failed to get D-Bus connection: {}", err);
+    })?;
+    let conn_path = connection.with_path(
         "org.chromium.SessionManager",
         "/org/chromium/SessionManager",
-        "org.chromium.SessionManagerInterface",
-        "RetrievePrimarySession",
-    )
-    .unwrap();
+        TIMEOUT_MILLIS,
+    );
 
-    let connection = Connection::get_private(BusType::System);
-    if let Err(err) = connection {
-        eprintln!("ERROR: Failed to get D-Bus connection: {}", err);
-        return Err(());
-    }
-
-    let reply_res = connection
-        .unwrap()
-        .send_with_reply_and_block(method, TIMEOUT_MILLIS);
-    if let Err(err) = reply_res {
-        eprintln!("ERROR: D-Bus method call failed: {}", err);
-        return Err(());
-    }
-
-    let reply = reply_res.unwrap();
-    let (_, arg) = reply.get2::<String, String>();
-    if arg.is_none() {
-        println!("ERROR: Got unexpected result: {:?}", &reply);
-        return Err(());
-    }
-    let user_id_hash = arg.unwrap();
+    let (_, user_id_hash) = conn_path.retrieve_primary_session().map_err(|err| {
+        println!("ERROR: Got unexpected result: {}", err);
+    })?;
 
     env::set_var(CROS_USER_ID_HASH, &user_id_hash);
-
     Ok(user_id_hash)
 }
 
@@ -112,7 +95,7 @@ pub fn is_chrome_feature_enabled(method_name: &str) -> Result<bool, ()> {
         })?;
 
     reply.get1::<bool>().ok_or_else(|| {
-        println!("ERROR: Got unexpected result: {:?}", &reply);
+        eprintln!("ERROR: Got unexpected result: {:?}", &reply);
     })
 }
 

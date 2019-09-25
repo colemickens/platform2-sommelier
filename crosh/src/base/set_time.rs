@@ -10,8 +10,9 @@ use std::fmt::{self, Display};
 use std::io::Read;
 use std::process::{self, Stdio};
 
-use dbus::{BusType, Connection, Message};
+use dbus::{BusType, Connection};
 use remain::sorted;
+use tlsdate_dbus::OrgTorprojectTlsdate;
 
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
 
@@ -101,22 +102,13 @@ E.g., set_time 10 February 2012 11:21am
 }
 
 fn set_time(timestamp: i64) -> Result<(), Error> {
-    let method = Message::new_method_call(
+    let connection = Connection::get_private(BusType::System).or(Err(Error::DBusError))?;
+    let conn_path = connection.with_path(
         "org.torproject.tlsdate",
         "/org/torproject/tlsdate",
-        "org.torproject.tlsdate",
-        "SetTime",
-    )
-    .or(Err(Error::DBusError))?
-    .append1(timestamp);
-
-    let connection = Connection::get_private(BusType::System).or(Err(Error::DBusError))?;
-
-    let reply = connection
-        .send_with_reply_and_block(method, TIMEOUT_MILLIS)
-        .or(Err(Error::DBusError))?;
-
-    match reply.get1::<u32>().ok_or(Error::UnexpectedResponse(None))? {
+        TIMEOUT_MILLIS,
+    );
+    match conn_path.set_time(timestamp).or(Err(Error::DBusError))? {
         0 => Ok(()),
         1 => Err(Error::InvalidTime),
         2 => Err(Error::NetworkTimeSet),
