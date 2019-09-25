@@ -110,8 +110,6 @@ class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
                   const std::string& false_option,
                   std::vector<std::string>* options);
 
-  static Service::ConnectFailure TranslateExitStatusToFailure(int status);
-
   // Returns true if neither a PSK nor a client certificate has been provided
   // for the IPSec phase of the authentication process.
   bool IsPskRequired() const;

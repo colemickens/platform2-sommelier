@@ -64,6 +64,7 @@ static string ObjectID(L2TPIPSecDriver* l) {
 }  // namespace Logging
 
 namespace {
+
 const char kL2TPIPSecIPSecTimeoutProperty[] = "L2TPIPsec.IPsecTimeout";
 const char kL2TPIPSecLeftProtoPortProperty[] = "L2TPIPsec.LeftProtoPort";
 const char kL2TPIPSecLengthBitProperty[] = "L2TPIPsec.LengthBit";
@@ -73,6 +74,31 @@ const char kL2TPIPSecRekeyProperty[] = "L2TPIPsec.Rekey";
 const char kL2TPIPSecRequireAuthProperty[] = "L2TPIPsec.RequireAuth";
 const char kL2TPIPSecRequireChapProperty[] = "L2TPIPsec.RequireChap";
 const char kL2TPIPSecRightProtoPortProperty[] = "L2TPIPsec.RightProtoPort";
+
+Service::ConnectFailure ExitStatusToFailure(int status) {
+  switch (status) {
+    case vpn_manager::kServiceErrorNoError:
+      return Service::kFailureNone;
+    case vpn_manager::kServiceErrorInternal:
+    case vpn_manager::kServiceErrorInvalidArgument:
+      return Service::kFailureInternal;
+    case vpn_manager::kServiceErrorResolveHostnameFailed:
+      return Service::kFailureDNSLookup;
+    case vpn_manager::kServiceErrorIpsecConnectionFailed:
+    case vpn_manager::kServiceErrorL2tpConnectionFailed:
+    case vpn_manager::kServiceErrorPppConnectionFailed:
+      return Service::kFailureConnect;
+    case vpn_manager::kServiceErrorIpsecPresharedKeyAuthenticationFailed:
+      return Service::kFailureIPSecPSKAuth;
+    case vpn_manager::kServiceErrorIpsecCertificateAuthenticationFailed:
+      return Service::kFailureIPSecCertAuth;
+    case vpn_manager::kServiceErrorPppAuthenticationFailed:
+      return Service::kFailurePPPAuth;
+    default:
+      return Service::kFailureUnknown;
+  }
+}
+
 }  // namespace
 
 // static
@@ -385,33 +411,8 @@ bool L2TPIPSecDriver::AppendFlag(const string& property,
 }
 
 void L2TPIPSecDriver::OnL2TPIPSecVPNDied(pid_t /*pid*/, int status) {
-  FailService(TranslateExitStatusToFailure(status));
+  FailService(ExitStatusToFailure(status));
   // TODO(petkov): Figure if we need to restart the connection.
-}
-
-// static
-Service::ConnectFailure L2TPIPSecDriver::TranslateExitStatusToFailure(
-    int status) {
-  if (!WIFEXITED(status)) {
-    return Service::kFailureInternal;
-  }
-  switch (WEXITSTATUS(status)) {
-    case vpn_manager::kServiceErrorResolveHostnameFailed:
-      return Service::kFailureDNSLookup;
-    case vpn_manager::kServiceErrorIpsecConnectionFailed:
-    case vpn_manager::kServiceErrorL2tpConnectionFailed:
-    case vpn_manager::kServiceErrorPppConnectionFailed:
-      return Service::kFailureConnect;
-    case vpn_manager::kServiceErrorIpsecPresharedKeyAuthenticationFailed:
-      return Service::kFailureIPSecPSKAuth;
-    case vpn_manager::kServiceErrorIpsecCertificateAuthenticationFailed:
-      return Service::kFailureIPSecCertAuth;
-    case vpn_manager::kServiceErrorPppAuthenticationFailed:
-      return Service::kFailurePPPAuth;
-    default:
-      break;
-  }
-  return Service::kFailureUnknown;
 }
 
 void L2TPIPSecDriver::GetLogin(string* user, string* password) {

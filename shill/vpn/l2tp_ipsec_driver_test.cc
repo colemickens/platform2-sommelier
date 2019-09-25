@@ -504,8 +504,8 @@ TEST_F(L2TPIPSecDriverTest, OnL2TPIPSecVPNDied) {
   const int kPID = 123456;
   driver_->service_ = service_;
   EXPECT_CALL(*service_, SetFailure(Service::kFailureDNSLookup));
-  driver_->OnL2TPIPSecVPNDied(
-      kPID, vpn_manager::kServiceErrorResolveHostnameFailed << 8);
+  driver_->OnL2TPIPSecVPNDied(kPID,
+                              vpn_manager::kServiceErrorResolveHostnameFailed);
   EXPECT_FALSE(driver_->service_);
 }
 
