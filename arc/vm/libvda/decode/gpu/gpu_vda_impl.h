@@ -16,6 +16,7 @@
 
 #include "arc/vm/libvda/decode_wrapper.h"
 #include "arc/vm/libvda/gpu/mojom/video.mojom.h"
+#include "arc/vm/libvda/gpu/vaf_connection.h"
 
 namespace base {
 class WaitableEvent;
@@ -23,12 +24,11 @@ class WaitableEvent;
 
 namespace arc {
 
-// GpuVdaImpl connects to GpuArcVideoDecodeAccelerator using the LibvdaService
-// D-Bus service LibvdaService and Mojo to perform video decoding. Only a single
-// instantiated GpuVdaImpl object should exist at a time.
+// GpuVdaImpl uses a mojo connection to the VideoDecodeAccelerator interface
+// to perform video decoding.
 class GpuVdaImpl : public VdaImpl {
  public:
-  GpuVdaImpl();
+  explicit GpuVdaImpl(VafConnection* conn);
   ~GpuVdaImpl();
 
   // VdaImpl overrides.
@@ -39,7 +39,7 @@ class GpuVdaImpl : public VdaImpl {
   // pointer instead of a unique_ptr since this will eventually be returned to a
   // C interface. This object should be destroyed with the 'delete' operator
   // when no longer used.
-  static GpuVdaImpl* Create();
+  static GpuVdaImpl* Create(VafConnection* conn);
 
  private:
   bool PopulateCapabilities();
@@ -54,16 +54,10 @@ class GpuVdaImpl : public VdaImpl {
       std::unique_ptr<VdaContext> context,
       vda_result_t result);
   void CloseDecodeSessionOnIpcThread(VdaContext* context);
-  void CleanupOnIpcThread();
-  void OnVdaFactoryError(uint32_t custom_reason,
-                         const std::string& description);
 
+  arc::VafConnection* const connection_;
   std::vector<vda_pixel_format_t> output_formats_;
-  base::Thread ipc_thread_;
-  // TODO(alexlau): Use THREAD_CHECKER macro after libchrome uprev
-  // (crbug.com/909719).
-  base::ThreadChecker ipc_thread_checker_;
-  arc::mojom::VideoAcceleratorFactoryPtr vda_factory_ptr_;
+  scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner_;
 };
 
 }  // namespace arc

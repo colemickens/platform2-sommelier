@@ -10,6 +10,7 @@
 
 #include "arc/vm/libvda/decode/fake/fake_vda_impl.h"
 #include "arc/vm/libvda/decode/gpu/gpu_vda_impl.h"
+#include "arc/vm/libvda/gpu/vaf_connection.h"
 
 namespace arc {
 
@@ -111,8 +112,14 @@ void* initialize(vda_impl_type_t impl_type) {
   switch (impl_type) {
     case FAKE:
       return arc::FakeVdaImpl::Create();
-    case GAVDA:
-      return arc::GpuVdaImpl::Create();
+    case GAVDA: {
+      arc::VafConnection* conn = arc::VafConnection::Get();
+      if (conn == nullptr) {
+        LOG(ERROR) << "Failed to retrieve VAF connection.";
+        return nullptr;
+      }
+      return arc::GpuVdaImpl::Create(conn);
+    }
     default:
       LOG(ERROR) << "Unknown impl type " << impl_type;
       return nullptr;

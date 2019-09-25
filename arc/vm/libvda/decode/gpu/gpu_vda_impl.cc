@@ -44,35 +44,6 @@ constexpr vda_input_format_t kInputFormats[] = {
     {H264PROFILE_MAIN /* profile */, 2 /* min_width */, 2 /* min_height */,
      1920 /* max_width */, 1080 /* max_height */}};
 
-// Minimum required version of VideoAcceleratorFactory interface.
-// Set to 6 which is when CreateDecodeAccelerator was introduced.
-constexpr uint32_t kRequiredVideoAcceleratorFactoryMojoVersion = 6;
-
-// Global GpuVdaImpl object.
-GpuVdaImpl* active_impl = nullptr;
-
-void RunTaskOnThread(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
-                     base::OnceClosure task) {
-  if (task_runner->BelongsToCurrentThread()) {
-    LOG(WARNING) << "RunTaskOnThread called on target thread.";
-    std::move(task).Run();
-    return;
-  }
-
-  base::WaitableEvent task_complete_event(
-      base::WaitableEvent::ResetPolicy::MANUAL,
-      base::WaitableEvent::InitialState::NOT_SIGNALED);
-  task_runner->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](base::OnceClosure task, base::WaitableEvent* task_complete_event) {
-            std::move(task).Run();
-            task_complete_event->Signal();
-          },
-          std::move(task), &task_complete_event));
-  task_complete_event.Wait();
-}
-
 inline vda_result_t ConvertResult(
     arc::mojom::VideoDecodeAccelerator::Result error) {
   switch (error) {
@@ -571,13 +542,8 @@ void GpuVdaContext::NotifyEndOfBitstreamBuffer(int32_t bitstream_id) {
 }  // namespace
 
 // static
-GpuVdaImpl* GpuVdaImpl::Create() {
-  if (active_impl) {
-    // A instantiated GpuVdaImpl object already exists, return nullptr.
-    return nullptr;
-  }
-
-  auto impl = std::make_unique<GpuVdaImpl>();
+GpuVdaImpl* GpuVdaImpl::Create(VafConnection* conn) {
+  auto impl = std::make_unique<GpuVdaImpl>(conn);
   if (!impl->Initialize()) {
     LOG(ERROR) << "Could not initialize GpuVdaImpl.";
     return nullptr;
@@ -586,30 +552,9 @@ GpuVdaImpl* GpuVdaImpl::Create() {
   return impl.release();
 }
 
-GpuVdaImpl::GpuVdaImpl() : ipc_thread_("MojoIpcThread") {
-  CHECK_EQ(active_impl, nullptr);
+GpuVdaImpl::GpuVdaImpl(VafConnection* conn) : connection_(conn) {}
 
-  // TODO(alexlau): Use DETACH_FROM_THREAD macro after libchrome uprev
-  // (crbug.com/909719).
-  ipc_thread_checker_.DetachFromThread();
-
-  active_impl = this;
-
-  mojo::edk::Init();
-  CHECK(ipc_thread_.StartWithOptions(
-      base::Thread::Options(base::MessageLoop::TYPE_IO, 0)));
-  mojo::edk::InitIPCSupport(ipc_thread_.task_runner());
-}
-
-GpuVdaImpl::~GpuVdaImpl() {
-  RunTaskOnThread(
-      ipc_thread_.task_runner(),
-      base::BindOnce(&GpuVdaImpl::CleanupOnIpcThread, base::Unretained(this)));
-  mojo::edk::ShutdownIPCSupport(base::BindRepeating(&base::DoNothing));
-
-  CHECK_EQ(active_impl, this);
-  active_impl = nullptr;
-}
+GpuVdaImpl::~GpuVdaImpl() = default;
 
 bool GpuVdaImpl::PopulateCapabilities() {
   capabilities_.num_input_formats = arraysize(kInputFormats);
@@ -628,93 +573,17 @@ bool GpuVdaImpl::Initialize() {
   if (!PopulateCapabilities())
     return false;
 
-  bool init_success = false;
-  RunTaskOnThread(ipc_thread_.task_runner(),
-                  base::BindOnce(&GpuVdaImpl::InitializeOnIpcThread,
-                                 base::Unretained(this), &init_success));
-  return init_success;
-}
-
-void GpuVdaImpl::InitializeOnIpcThread(bool* init_success) {
-  // Since ipc_thread_checker_ binds to whichever thread it's created on, check
-  // that we're on the correct thread first using BelongsToCurrentThread.
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  // TODO(alexlau): Use DCHECK_CALLED_ON_VALID_THREAD macro after libchrome
-  // uprev (crbug.com/909719).
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
-
-  dbus::Bus::Options opts;
-  opts.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus = new dbus::Bus(std::move(opts));
-  if (!bus->Connect()) {
-    DLOG(ERROR) << "Failed to connect to system bus";
-    return;
-  }
-
-  dbus::ObjectProxy* proxy = bus->GetObjectProxy(
-      libvda::kLibvdaServiceName, dbus::ObjectPath(libvda::kLibvdaServicePath));
-  if (!proxy) {
-    // TODO(alexlau): Would this ever start before Chrome such that we should
-    //                call WaitForServiceToBeAvailable here?
-    DLOG(ERROR) << "Unable to get dbus proxy for "
-                << libvda::kLibvdaServiceName;
-    return;
-  }
-
-  dbus::MethodCall method_call(libvda::kLibvdaServiceInterface,
-                               libvda::kProvideMojoConnectionMethod);
-  std::unique_ptr<dbus::Response> response(proxy->CallMethodAndBlock(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
-  if (!response.get()) {
-    DLOG(ERROR) << "Unable to get response from method call "
-                << libvda::kProvideMojoConnectionMethod;
-    return;
-  }
-
-  dbus::MessageReader reader(response.get());
-
-  // Read the mojo pipe FD.
-  base::ScopedFD fd;
-  if (!reader.PopFileDescriptor(&fd)) {
-    DLOG(ERROR) << "Unable to read mojo pipe fd";
-    return;
-  }
-  if (!fd.is_valid()) {
-    DLOG(ERROR) << "Received invalid mojo pipe fd";
-    return;
-  }
-
-  std::string pipe_name;
-  if (!reader.PopString(&pipe_name)) {
-    DLOG(ERROR) << "Unable to read mojo pipe name.";
-    return;
-  }
-
-  // Setup the mojo pipe.
-  mojo::edk::SetParentPipeHandle(
-      mojo::edk::ScopedPlatformHandle(mojo::edk::PlatformHandle(fd.release())));
-  mojo::ScopedMessagePipeHandle scoped_message_pipe_handle =
-      mojo::edk::CreateChildMessagePipe(pipe_name);
-  mojo::InterfacePtrInfo<arc::mojom::VideoAcceleratorFactory>
-      interface_ptr_info(std::move(scoped_message_pipe_handle),
-                         kRequiredVideoAcceleratorFactoryMojoVersion);
-  vda_factory_ptr_ = mojo::MakeProxy(std::move(interface_ptr_info));
-  vda_factory_ptr_.set_connection_error_with_reason_handler(base::BindRepeating(
-      &GpuVdaImpl::OnVdaFactoryError, base::Unretained(this)));
-
-  *init_success = true;
-}
-
-void GpuVdaImpl::OnVdaFactoryError(uint32_t custom_reason,
-                                   const std::string& description) {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
-  DLOG(ERROR)
-      << "VideoDecodeAcceleratorFactory mojo connection error. custom_reason="
-      << custom_reason << " description=" << description;
+  ipc_task_runner_ = connection_->GetIpcTaskRunner();
+  return true;
 }
 
 VdaContext* GpuVdaImpl::InitDecodeSession(vda_profile_t profile) {
-  DCHECK(!ipc_thread_checker_.CalledOnValidThread());
+  DCHECK(!ipc_task_runner_->BelongsToCurrentThread());
+
+  if (!connection_) {
+    DLOG(FATAL) << "InitDecodeSession called before successful Initialize().";
+    return nullptr;
+  }
 
   DLOG(INFO) << "Initializing decode session with profile " << profile;
 
@@ -723,13 +592,11 @@ VdaContext* GpuVdaImpl::InitDecodeSession(vda_profile_t profile) {
       base::WaitableEvent::InitialState::NOT_SIGNALED);
 
   VdaContext* context = nullptr;
-  ipc_thread_.task_runner()->PostTask(
+  ipc_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&GpuVdaImpl::InitDecodeSessionOnIpcThread,
                                 base::Unretained(this), profile,
                                 &init_complete_event, &context));
-
   init_complete_event.Wait();
-
   return context;
 }
 
@@ -737,13 +604,13 @@ void GpuVdaImpl::InitDecodeSessionOnIpcThread(
     vda_profile_t profile,
     base::WaitableEvent* init_complete_event,
     VdaContext** out_context) {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
   arc::mojom::VideoDecodeAcceleratorPtr vda_ptr;
-  vda_factory_ptr_->CreateDecodeAccelerator(mojo::MakeRequest(&vda_ptr));
+  connection_->CreateDecodeAccelerator(&vda_ptr);
 
-  std::unique_ptr<GpuVdaContext> context = std::make_unique<GpuVdaContext>(
-      ipc_thread_.task_runner(), std::move(vda_ptr));
+  std::unique_ptr<GpuVdaContext> context =
+      std::make_unique<GpuVdaContext>(ipc_task_runner_, std::move(vda_ptr));
   GpuVdaContext* context_ptr = context.get();
   context_ptr->Initialize(
       profile,
@@ -758,7 +625,7 @@ void GpuVdaImpl::InitDecodeSessionAfterContextInitializedOnIpcThread(
     VdaContext** out_context,
     std::unique_ptr<VdaContext> context,
     vda_result_t result) {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
   if (result == SUCCESS) {
     *out_context = context.release();
@@ -769,21 +636,19 @@ void GpuVdaImpl::InitDecodeSessionAfterContextInitializedOnIpcThread(
 }
 
 void GpuVdaImpl::CloseDecodeSession(VdaContext* context) {
+  if (!connection_) {
+    DLOG(FATAL) << "CloseDecodeSession called before successful Initialize().";
+    return;
+  }
   DLOG(INFO) << "Closing decode session";
-  ipc_thread_.task_runner()->PostTask(
+  ipc_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&GpuVdaImpl::CloseDecodeSessionOnIpcThread,
                                 base::Unretained(this), context));
 }
 
 void GpuVdaImpl::CloseDecodeSessionOnIpcThread(VdaContext* context) {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   delete context;
-}
-
-void GpuVdaImpl::CleanupOnIpcThread() {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
-  if (vda_factory_ptr_.is_bound())
-    vda_factory_ptr_.reset();
 }
 
 }  // namespace arc

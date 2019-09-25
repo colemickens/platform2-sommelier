@@ -64,6 +64,7 @@ source_set("libvda_source_set") {
     "encode_wrapper.cc",
     "event_pipe.cc",
     "gbm_util.cc",
+    "gpu/vaf_connection.cc",
   ]
 }
 
