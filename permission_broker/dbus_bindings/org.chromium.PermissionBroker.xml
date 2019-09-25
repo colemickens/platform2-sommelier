@@ -55,16 +55,5 @@
       <arg name="success" type="b" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
-    <method name="RequestVpnSetup">
-      <arg type="as" name="usernames" direction="in"/>
-      <arg type="s" name="interface" direction="in"/>
-      <arg type="h" name="lifeline_fd" direction="in"/>
-      <arg name="success" type="b" direction="out"/>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
-    </method>
-    <method name="RemoveVpnSetup">
-      <arg name="success" type="b" direction="out"/>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
-    </method>
   </interface>
 </node>

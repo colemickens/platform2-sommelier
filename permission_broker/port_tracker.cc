@@ -25,7 +25,6 @@ namespace permission_broker {
 PortTracker::PortTracker(Firewall* firewall)
     : task_runner_{base::MessageLoopForIO::current()->task_runner()},
       epfd_{kInvalidHandle},
-      vpn_lifeline_{kInvalidHandle},
       firewall_{firewall} {}
 
 // Test-only.
@@ -33,7 +32,6 @@ PortTracker::PortTracker(scoped_refptr<base::SequencedTaskRunner> task_runner,
                          Firewall* firewall)
     : task_runner_{task_runner},
       epfd_{kInvalidHandle},
-      vpn_lifeline_{kInvalidHandle},
       firewall_{firewall} {}
 
 PortTracker::~PortTracker() {
@@ -198,59 +196,6 @@ void PortTracker::RevokeAllPortAccess() {
   CHECK(udp_holes_.size() == 0) << "Failed to plug all UDP holes";
 }
 
-bool PortTracker::PerformVpnSetup(const std::vector<std::string>& usernames,
-                                  const std::string& interface,
-                                  int dbus_fd) {
-  if (vpn_lifeline_ != kInvalidHandle) {
-    LOG(ERROR) << "Already tracking a VPN lifeline";
-    return false;
-  }
-
-  // We use |lifeline_fd| to track the lifetime of the process requesting
-  // VPN setup.
-  int lifeline_fd = AddLifelineFd(dbus_fd);
-  if (lifeline_fd < 0) {
-    LOG(ERROR) << "Tracking lifeline fd for VPN failed";
-    return false;
-  }
-
-  bool success = firewall_->ApplyVpnSetup(usernames, interface, true /* add */);
-  if (!success) {
-    LOG(ERROR) << "Failed to set up rules for VPN";
-    DeleteVpnRules();
-    DeleteLifelineFd(lifeline_fd);
-    return false;
-  }
-  vpn_usernames_ = usernames;
-  vpn_interface_ = interface;
-  vpn_lifeline_ = lifeline_fd;
-
-  return true;
-}
-
-bool PortTracker::DeleteVpnRules() {
-  bool success = firewall_->ApplyVpnSetup(vpn_usernames_, vpn_interface_,
-                                         false /* remove */);
-  vpn_usernames_.clear();
-  vpn_interface_.clear();
-  vpn_lifeline_ = kInvalidHandle;
-
-  return success;
-}
-
-bool PortTracker::RemoveVpnSetup() {
-  if (vpn_lifeline_ == kInvalidHandle) {
-    LOG(ERROR) << "RemoveVpnSetup called without VPN rules set";
-    return false;
-  }
-  DeleteLifelineFd(vpn_lifeline_);
-  if (!DeleteVpnRules()) {
-    LOG(ERROR) << "Failed to delete VPN rules";
-    return false;
-  }
-  return true;
-}
-
 int PortTracker::AddLifelineFd(int dbus_fd) {
   if (!InitializeEpollOnce()) {
     return kInvalidHandle;
@@ -267,8 +212,7 @@ int PortTracker::AddLifelineFd(int dbus_fd) {
   }
 
   // If this is the first port request, start lifeline checks.
-  if ((tcp_holes_.size() + udp_holes_.size() == 0) &&
-      vpn_lifeline_ == kInvalidHandle) {
+  if (tcp_holes_.size() + udp_holes_.size() == 0) {
     VLOG(1) << "Starting lifeline checks";
     ScheduleLifelineCheck();
   }
@@ -326,8 +270,7 @@ void PortTracker::CheckLifelineFds(bool reschedule_check) {
 
   if (reschedule_check) {
     // If there's still processes to track, schedule lifeline checks.
-    if (tcp_holes_.size() + tcp_holes_.size() > 0 ||
-        vpn_lifeline_ != kInvalidHandle) {
+    if (tcp_holes_.size() + tcp_holes_.size() > 0) {
       ScheduleLifelineCheck();
     } else {
       VLOG(1) << "Stopping lifeline checks";
@@ -367,11 +310,6 @@ bool PortTracker::PlugFirewallHole(int fd) {
     if (!success) {
       LOG(ERROR) << "Failed to plug hole for UDP port " << hole.first
                  << " on interface '" << hole.second << "'";
-      return false;
-    }
-  } else if (fd == vpn_lifeline_) {
-    if (!DeleteVpnRules()) {
-      LOG(ERROR) << "Failed to delete VPN rules";
       return false;
     }
   } else {

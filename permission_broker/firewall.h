@@ -20,7 +20,6 @@ namespace permission_broker {
 
 extern const char kIpTablesPath[];
 extern const char kIp6TablesPath[];
-extern const char kIpPath[];
 
 enum ProtocolEnum { kProtocolTcp, kProtocolUdp };
 
@@ -37,19 +36,9 @@ class Firewall {
   bool DeleteAcceptRules(ProtocolEnum protocol,
                          uint16_t port,
                          const std::string& interface);
-  bool ApplyVpnSetup(const std::vector<std::string>& usernames,
-                     const std::string& interface,
-                     bool add);
 
  private:
   friend class FirewallTest;
-  FRIEND_TEST(FirewallTest, ApplyVpnSetupAdd_Success);
-  FRIEND_TEST(FirewallTest, ApplyVpnSetupAdd_FailureInUsername);
-  FRIEND_TEST(FirewallTest, ApplyVpnSetupAdd_FailureInMasquerade);
-  FRIEND_TEST(FirewallTest, ApplyVpnSetupAdd_FailureInRuleForUserTraffic);
-  FRIEND_TEST(FirewallTest, ApplyVpnSetupRemove_Success);
-  FRIEND_TEST(FirewallTest, ApplyVpnSetupRemove_Failure);
-
   virtual bool AddAcceptRule(const std::string& executable_path,
                              ProtocolEnum protocol,
                              uint16_t port,
@@ -58,20 +47,6 @@ class Firewall {
                                 ProtocolEnum protocol,
                                 uint16_t port,
                                 const std::string& interface);
-
-  virtual bool ApplyMasquerade(const std::string& interface, bool add);
-  bool ApplyMasqueradeWithExecutable(const std::string& interface,
-                                     const std::string& executable_path,
-                                     bool add);
-
-  virtual bool ApplyMarkForUserTraffic(const std::string& username, bool add);
-  bool ApplyMarkForUserTrafficWithExecutable(const std::string& username,
-                                             const std::string& executable_path,
-                                             bool add);
-
-  virtual bool ApplyRuleForUserTraffic(bool add);
-  bool ApplyRuleForUserTrafficWithVersion(const std::string& ip_version,
-                                          bool add);
 
   // Even though permission_broker runs as a regular user, it can still add
   // other restrictions when launching 'iptables'.

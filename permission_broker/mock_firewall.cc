@@ -60,16 +60,11 @@ std::vector<std::string> MockFirewall::GetInverseCommand(
   }
 
   bool isIpTablesCommand = argv[0] == kIpTablesPath;
-  bool isIpCommand = argv[0] == kIpPath;
   for (const auto& arg : argv) {
     if (arg == "-A" && isIpTablesCommand)
       inverse.push_back("-D");
     else if (arg == "-D" && isIpTablesCommand)
       inverse.push_back("-A");
-    else if (arg == "add" && isIpCommand)
-      inverse.push_back("delete");
-    else if (arg == "delete" && isIpCommand)
-      inverse.push_back("add");
     else
       inverse.push_back(arg);
   }

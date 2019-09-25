@@ -170,18 +170,6 @@ bool PermissionBroker::ReleaseUdpPort(uint16_t in_port,
   return port_tracker_.RevokeUdpPortAccess(in_port, in_interface);
 }
 
-bool PermissionBroker::RequestVpnSetup(
-    const std::vector<std::string>& usernames,
-    const std::string& interface,
-    const base::ScopedFD& in_lifeline_fd) {
-  return port_tracker_.PerformVpnSetup(usernames, interface,
-                                       in_lifeline_fd.get());
-}
-
-bool PermissionBroker::RemoveVpnSetup() {
-  return port_tracker_.RemoveVpnSetup();
-}
-
 void PowerCycleUsbPortsResultCallback(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
     bool result) {

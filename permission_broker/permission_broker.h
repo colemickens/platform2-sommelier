@@ -57,10 +57,6 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
                       const std::string& in_interface) override;
   bool ReleaseUdpPort(uint16_t in_port,
                       const std::string& in_interface) override;
-  bool RequestVpnSetup(const std::vector<std::string>& usernames,
-                       const std::string& interface,
-                       const base::ScopedFD& dbus_fd) override;
-  bool RemoveVpnSetup() override;
   void PowerCycleUsbPorts(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
       uint16_t in_vid,
