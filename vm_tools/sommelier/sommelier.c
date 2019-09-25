@@ -106,6 +106,29 @@ struct sl_wm_size_hints {
   int32_t win_gravity;
 };
 
+// WM_HINTS is defined at: https://tronche.com/gui/x/icccm/sec-4.html
+
+#define WM_HINTS_FLAG_INPUT (1L << 0)
+#define WM_HINTS_FLAG_STATE (1L << 1)
+#define WM_HINTS_FLAG_ICON_PIXMAP (1L << 2)
+#define WM_HINTS_FLAG_ICON_WINDOW (1L << 3)
+#define WM_HINTS_FLAG_ICON_POSITION (1L << 4)
+#define WM_HINTS_FLAG_ICON_MASK (1L << 5)
+#define WM_HINTS_FLAG_WINDOW_GROUP (1L << 6)
+#define WM_HINTS_FLAG_MESSAGE (1L << 7)
+#define WM_HINTS_FLAG_URGENCY (1L << 8)
+
+struct sl_wm_hints {
+  uint32_t flags;
+  uint32_t input;
+  uint32_t initiali_state;
+  xcb_pixmap_t icon_pixmap;
+  xcb_window_t icon_window;
+  int32_t icon_x;
+  int32_t icon_y;
+  xcb_pixmap_t icon_mask;
+};
+
 #define MWM_HINTS_FUNCTIONS (1L << 0)
 #define MWM_HINTS_DECORATIONS (1L << 1)
 #define MWM_HINTS_INPUT_MODE (1L << 2)
@@ -2031,6 +2054,13 @@ static uint32_t sl_resize_edge(int net_wm_moveresize_size) {
   }
 }
 
+static void sl_request_attention(struct sl_window* window) {
+  // TODO(hollingum): implement me.
+  fprintf(stderr,
+          "The active window request for %p is not currently supported.\n",
+          window);
+}
+
 static void sl_handle_client_message(struct sl_context* ctx,
                                      xcb_client_message_event_t* event) {
   if (event->type == ctx->atoms[ATOM_WL_SURFACE_ID].value) {
@@ -2047,6 +2077,10 @@ static void sl_handle_client_message(struct sl_context* ctx,
       unpaired_window->host_surface_id = event->data.data32[0];
       sl_window_update(unpaired_window);
     }
+  } else if (event->type == ctx->atoms[ATOM_NET_ACTIVE_WINDOW].value) {
+    struct sl_window* window = sl_lookup_window(ctx, event->window);
+    if (window)
+      sl_request_attention(window);
   } else if (event->type == ctx->atoms[ATOM_NET_WM_MOVERESIZE].value) {
     struct sl_window* window = sl_lookup_window(ctx, event->window);
 
@@ -2399,6 +2433,28 @@ static void sl_handle_property_notify(struct sl_context* ctx,
                                     window->max_height / ctx->scale);
     } else {
       zxdg_toplevel_v6_set_max_size(window->xdg_toplevel, 0, 0);
+    }
+  } else if (event->atom == XCB_ATOM_WM_HINTS) {
+    struct sl_window* window = sl_lookup_window(ctx, event->window);
+    if (!window)
+      return;
+
+    if (event->state == XCB_PROPERTY_DELETE)
+      return;
+    struct sl_wm_hints wm_hints = {0};
+    xcb_get_property_reply_t* reply = xcb_get_property_reply(
+        ctx->connection,
+        xcb_get_property(ctx->connection, 0, window->id, XCB_ATOM_WM_HINTS,
+                         XCB_ATOM_ANY, 0, sizeof(wm_hints)),
+        NULL);
+
+    if (!reply)
+      return;
+    memcpy(&wm_hints, xcb_get_property_value(reply), sizeof(wm_hints));
+    free(reply);
+
+    if (wm_hints.flags & WM_HINTS_FLAG_URGENCY) {
+      sl_request_attention(window);
     }
   } else if (event->atom == ctx->atoms[ATOM_MOTIF_WM_HINTS].value) {
     struct sl_window* window = sl_lookup_window(ctx, event->window);
@@ -2917,6 +2973,25 @@ static int sl_handle_x_connection_event(int fd, uint32_t mask, void* data) {
   return count;
 }
 
+static void sl_set_supported(struct sl_context* ctx) {
+  const xcb_atom_t supported_atoms[] = {
+      ctx->atoms[ATOM_NET_ACTIVE_WINDOW].value,
+      ctx->atoms[ATOM_NET_WM_MOVERESIZE].value,
+      ctx->atoms[ATOM_NET_WM_NAME].value,
+      ctx->atoms[ATOM_NET_WM_STATE].value,
+      ctx->atoms[ATOM_NET_WM_STATE_FULLSCREEN].value,
+      ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_VERT].value,
+      ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_HORZ].value,
+      // TODO(hollingum): STATE_MODAL and CLIENT_LIST, based on what wlroots
+      // has.
+  };
+
+  xcb_change_property(ctx->connection, XCB_PROP_MODE_REPLACE, ctx->screen->root,
+                      ctx->atoms[ATOM_NET_SUPPORTED].value, XCB_ATOM_ATOM, 32,
+                      sizeof(supported_atoms) / sizeof(xcb_atom_t),
+                      supported_atoms);
+}
+
 static void sl_connect(struct sl_context* ctx) {
   const char wm_name[] = "Sommelier";
   const xcb_setup_t* setup;
@@ -3049,6 +3124,7 @@ static void sl_connect(struct sl_context* ctx) {
   xcb_change_property(ctx->connection, XCB_PROP_MODE_REPLACE, ctx->screen->root,
                       ctx->atoms[ATOM_NET_SUPPORTING_WM_CHECK].value,
                       XCB_ATOM_WINDOW, 32, 1, &ctx->window);
+  sl_set_supported(ctx);
   xcb_set_selection_owner(ctx->connection, ctx->window,
                           ctx->atoms[ATOM_WM_S0].value, XCB_CURRENT_TIME);
 
@@ -3515,8 +3591,10 @@ int main(int argc, char** argv) {
               [ATOM_WL_SURFACE_ID] = {"WL_SURFACE_ID"},
               [ATOM_UTF8_STRING] = {"UTF8_STRING"},
               [ATOM_MOTIF_WM_HINTS] = {"_MOTIF_WM_HINTS"},
+              [ATOM_NET_ACTIVE_WINDOW] = {"_NET_ACTIVE_WINDOW"},
               [ATOM_NET_FRAME_EXTENTS] = {"_NET_FRAME_EXTENTS"},
               [ATOM_NET_STARTUP_ID] = {"_NET_STARTUP_ID"},
+              [ATOM_NET_SUPPORTED] = {"_NET_SUPPORTED"},
               [ATOM_NET_SUPPORTING_WM_CHECK] = {"_NET_SUPPORTING_WM_CHECK"},
               [ATOM_NET_WM_NAME] = {"_NET_WM_NAME"},
               [ATOM_NET_WM_MOVERESIZE] = {"_NET_WM_MOVERESIZE"},
