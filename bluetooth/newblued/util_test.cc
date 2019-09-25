@@ -184,19 +184,19 @@ TEST(UtilTest, ConvertToObjectPath) {
   std::string dp("/desc01FF");
 
   // device
-  EXPECT_TRUE(ConvertDeviceAddressToObjectPath("").empty());
-  EXPECT_EQ(dev_p, ConvertDeviceAddressToObjectPath(address));
+  EXPECT_TRUE(ConvertDeviceAddressToObjectPath("").value().empty());
+  EXPECT_EQ(dev_p, ConvertDeviceAddressToObjectPath(address).value());
 
   // service
-  EXPECT_EQ(dev_p + sp, ConvertServiceHandleToObjectPath(address, sh));
+  EXPECT_EQ(dev_p + sp, ConvertServiceHandleToObjectPath(address, sh).value());
 
   // characteristic
   EXPECT_EQ(dev_p + sp + cp,
-            ConvertCharacteristicHandleToObjectPath(address, sh, ch));
+            ConvertCharacteristicHandleToObjectPath(address, sh, ch).value());
 
   // descriptor
   EXPECT_EQ(dev_p + sp + cp + dp,
-            ConvertDescriptorHandleToObjectPath(address, sh, ch, dh));
+            ConvertDescriptorHandleToObjectPath(address, sh, ch, dh).value());
 }
 
 TEST(UtilTest, ConvertDeviceObjectPathToAddress) {

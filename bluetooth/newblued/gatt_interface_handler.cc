@@ -24,7 +24,7 @@ std::string CanonicalizeUuid(const Uuid& uuid) {
 }
 
 // Converts GATT service into its D-Bus object path.
-std::string ConvertServiceToObjectPath(const GattService* const& service) {
+dbus::ObjectPath ConvertServiceToObjectPath(const GattService* const& service) {
   CHECK(service);
   CHECK(service->HasOwner());
 
@@ -34,7 +34,7 @@ std::string ConvertServiceToObjectPath(const GattService* const& service) {
 }
 
 // Converts GATT characteristic into its D-Bus object path.
-std::string ConvertCharToObjectPath(
+dbus::ObjectPath ConvertCharToObjectPath(
     const GattCharacteristic* const& characteristic) {
   CHECK(characteristic);
 
@@ -155,11 +155,10 @@ void GattInterfaceHandler::OnGattServiceAdded(const GattService& service) {
 void GattInterfaceHandler::OnGattServiceRemoved(const GattService& service) {
   CHECK(service.HasOwner());
 
-  std::string path(ConvertServiceHandleToObjectPath(
+  dbus::ObjectPath service_path(ConvertServiceHandleToObjectPath(
       service.device_address().value(), service.first_handle()));
-  dbus::ObjectPath service_path(path);
 
-  VLOG(1) << "Unexporting a GATT service object at " << path;
+  VLOG(1) << "Unexporting a GATT service object at " << service_path.value();
 
   exported_object_manager_wrapper_->RemoveExportedInterface(
       service_path, bluetooth_gatt_service::kBluetoothGattServiceInterface);
@@ -180,12 +179,12 @@ void GattInterfaceHandler::OnGattCharacteristicRemoved(
 
   CHECK(service->HasOwner());
 
-  std::string path(ConvertCharacteristicHandleToObjectPath(
+  dbus::ObjectPath char_path(ConvertCharacteristicHandleToObjectPath(
       service->device_address().value(), service->first_handle(),
       characteristic.first_handle()));
-  dbus::ObjectPath char_path(path);
 
-  VLOG(1) << "Unexporting a GATT characteristic object at " << path;
+  VLOG(1) << "Unexporting a GATT characteristic object at "
+          << char_path.value();
 
   exported_object_manager_wrapper_->RemoveExportedInterface(
       char_path,
@@ -194,7 +193,7 @@ void GattInterfaceHandler::OnGattCharacteristicRemoved(
   // Remove ongoing transaction(s) associated with the object.
   for (auto it = gatt_client_requests_.begin();
        it != gatt_client_requests_.end();) {
-    if (it->second.object_path == path)
+    if (it->second.object_path == char_path.value())
       it = gatt_client_requests_.erase(it);
     else
       ++it;
@@ -219,12 +218,11 @@ void GattInterfaceHandler::OnGattDescriptorRemoved(
 
   CHECK(service->HasOwner());
 
-  std::string path(ConvertDescriptorHandleToObjectPath(
+  dbus::ObjectPath desc_path(ConvertDescriptorHandleToObjectPath(
       service->device_address().value(), service->first_handle(),
       characteristic->first_handle(), descriptor.handle()));
-  dbus::ObjectPath desc_path(path);
 
-  VLOG(1) << "Unexporting a GATT descriptor object at " << path;
+  VLOG(1) << "Unexporting a GATT descriptor object at " << desc_path.value();
 
   exported_object_manager_wrapper_->RemoveExportedInterface(
       desc_path, bluetooth_gatt_descriptor::kBluetoothGattDescriptorInterface);
@@ -358,16 +356,16 @@ void GattInterfaceHandler::ExportGattServiceInterface(
 
   bool is_new = false;
   std::string device_address = service.device_address().value();
-  std::string path =
+  dbus::ObjectPath service_path =
       ConvertServiceHandleToObjectPath(device_address, service.first_handle());
-  dbus::ObjectPath service_path(path);
   ExportedInterface* service_interface =
       exported_object_manager_wrapper_->GetExportedInterface(
           service_path, bluetooth_gatt_service::kBluetoothGattServiceInterface);
   if (service_interface == nullptr) {
     is_new = true;
 
-    VLOG(1) << "Exporting a new GATT service object at " << path;
+    VLOG(1) << "Exporting a new GATT service object at "
+            << service_path.value();
 
     exported_object_manager_wrapper_->AddExportedInterface(
         service_path, bluetooth_gatt_service::kBluetoothGattServiceInterface,
@@ -376,7 +374,7 @@ void GattInterfaceHandler::ExportGattServiceInterface(
     service_interface = exported_object_manager_wrapper_->GetExportedInterface(
         service_path, bluetooth_gatt_service::kBluetoothGattServiceInterface);
   } else {
-    VLOG(2) << "Updating GATT service object at " << path;
+    VLOG(2) << "Updating GATT service object at " << service_path.value();
   }
 
   ExportGattServiceProperties(is_new, service_interface, service);
@@ -392,9 +390,8 @@ void GattInterfaceHandler::ExportGattCharacteristicInterface(
 
   bool is_new = false;
   std::string device_address = service->device_address().value();
-  std::string path = ConvertCharacteristicHandleToObjectPath(
+  dbus::ObjectPath char_path = ConvertCharacteristicHandleToObjectPath(
       device_address, service->first_handle(), characteristic.first_handle());
-  dbus::ObjectPath char_path(path);
 
   ExportedInterface* char_interface =
       exported_object_manager_wrapper_->GetExportedInterface(
@@ -403,7 +400,8 @@ void GattInterfaceHandler::ExportGattCharacteristicInterface(
   if (char_interface == nullptr) {
     is_new = true;
 
-    VLOG(1) << "Exporting a new GATT characteristic object at " << path;
+    VLOG(1) << "Exporting a new GATT characteristic object at "
+            << char_path.value();
 
     exported_object_manager_wrapper_->AddExportedInterface(
         char_path,
@@ -416,7 +414,7 @@ void GattInterfaceHandler::ExportGattCharacteristicInterface(
 
     AddGattCharacteristicMethodHandlers(char_interface);
   } else {
-    VLOG(2) << "Updating GATT characteristic object at " << path;
+    VLOG(2) << "Updating GATT characteristic object at " << char_path.value();
   }
 
   ExportGattCharacteristicProperties(is_new, char_interface, characteristic);
@@ -434,10 +432,9 @@ void GattInterfaceHandler::ExportGattDescriptorInterface(
 
   bool is_new = false;
   std::string device_address = service->device_address().value();
-  std::string path = ConvertDescriptorHandleToObjectPath(
+  dbus::ObjectPath desc_path = ConvertDescriptorHandleToObjectPath(
       device_address, service->first_handle(), characteristic->first_handle(),
       descriptor.handle());
-  dbus::ObjectPath desc_path(path);
 
   ExportedInterface* desc_interface =
       exported_object_manager_wrapper_->GetExportedInterface(
@@ -446,7 +443,8 @@ void GattInterfaceHandler::ExportGattDescriptorInterface(
   if (desc_interface == nullptr) {
     is_new = true;
 
-    VLOG(1) << "Exporting a new GATT descriptor object at " << path;
+    VLOG(1) << "Exporting a new GATT descriptor object at "
+            << desc_path.value();
 
     exported_object_manager_wrapper_->AddExportedInterface(
         desc_path, bluetooth_gatt_descriptor::kBluetoothGattDescriptorInterface,
@@ -458,7 +456,7 @@ void GattInterfaceHandler::ExportGattDescriptorInterface(
 
     AddGattDescriptorMethodHandlers(desc_interface);
   } else {
-    VLOG(2) << "Updating new GATT descriptor object at " << path;
+    VLOG(2) << "Updating new GATT descriptor object at " << desc_path.value();
   }
 
   ExportGattDescriptorProperties(is_new, desc_interface, descriptor);
@@ -629,7 +627,8 @@ void GattInterfaceHandler::OnReadCharacteristicValue(
   CHECK(request->second.read_value_response != nullptr);
   CHECK(request->second.object_path ==
         ConvertCharacteristicHandleToObjectPath(device_address, service_handle,
-                                                char_handle));
+                                                char_handle)
+            .value());
 
   auto response = std::move(request->second.read_value_response);
 
@@ -674,7 +673,8 @@ void GattInterfaceHandler::OnReadDescriptorValue(
   CHECK(request->second.read_value_response != nullptr);
   CHECK(request->second.object_path ==
         ConvertDescriptorHandleToObjectPath(device_address, service_handle,
-                                            char_handle, desc_handle));
+                                            char_handle, desc_handle)
+            .value());
 
   auto response = std::move(request->second.read_value_response);
 

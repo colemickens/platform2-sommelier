@@ -296,15 +296,15 @@ std::string ConvertDeviceObjectPathToAddress(const std::string& path) {
   return address;
 }
 
-std::string ConvertDeviceAddressToObjectPath(const std::string& address) {
+dbus::ObjectPath ConvertDeviceAddressToObjectPath(const std::string& address) {
   std::string path;
 
   if (address.empty())
-    return "";
+    return dbus::ObjectPath("");
 
   path = base::StringPrintf("%s/dev_%s", kAdapterObjectPath, address.c_str());
   std::replace(path.begin(), path.end(), ':', '_');
-  return path;
+  return dbus::ObjectPath(path);
 }
 
 bool ConvertServiceObjectPathToHandle(std::string* address,
@@ -325,13 +325,13 @@ bool ConvertServiceObjectPathToHandle(std::string* address,
   return true;
 }
 
-std::string ConvertServiceHandleToObjectPath(const std::string& address,
-                                             uint16_t handle) {
-  std::string dev = ConvertDeviceAddressToObjectPath(address);
+dbus::ObjectPath ConvertServiceHandleToObjectPath(const std::string& address,
+                                                  uint16_t handle) {
+  std::string dev = ConvertDeviceAddressToObjectPath(address).value();
   std::string s = base::StringPrintf("/service%04X", handle);
   if (dev.empty() || s.empty())
-    return "";
-  return dev + s;
+    return dbus::ObjectPath("");
+  return dbus::ObjectPath(dev + s);
 }
 
 bool ConvertCharacteristicObjectPathToHandles(std::string* address,
@@ -354,14 +354,14 @@ bool ConvertCharacteristicObjectPathToHandles(std::string* address,
   return true;
 }
 
-std::string ConvertCharacteristicHandleToObjectPath(const std::string& address,
-                                                    uint16_t service_handle,
-                                                    uint16_t char_handle) {
-  std::string s = ConvertServiceHandleToObjectPath(address, service_handle);
+dbus::ObjectPath ConvertCharacteristicHandleToObjectPath(
+    const std::string& address, uint16_t service_handle, uint16_t char_handle) {
+  std::string s =
+      ConvertServiceHandleToObjectPath(address, service_handle).value();
   std::string c = base::StringPrintf("/char%04X", char_handle);
   if (s.empty() || c.empty())
-    return "";
-  return s + c;
+    return dbus::ObjectPath("");
+  return dbus::ObjectPath(s + c);
 }
 
 bool ConvertDescriptorObjectPathToHandles(std::string* address,
@@ -387,16 +387,17 @@ bool ConvertDescriptorObjectPathToHandles(std::string* address,
   return true;
 }
 
-std::string ConvertDescriptorHandleToObjectPath(const std::string& address,
-                                                uint16_t service_handle,
-                                                uint16_t char_handle,
-                                                uint16_t desc_handle) {
+dbus::ObjectPath ConvertDescriptorHandleToObjectPath(const std::string& address,
+                                                     uint16_t service_handle,
+                                                     uint16_t char_handle,
+                                                     uint16_t desc_handle) {
   std::string c = ConvertCharacteristicHandleToObjectPath(
-      address, service_handle, char_handle);
+                      address, service_handle, char_handle)
+                      .value();
   std::string d = base::StringPrintf("/desc%04X", desc_handle);
   if (c.empty() || d.empty())
-    return "";
-  return c + d;
+    return dbus::ObjectPath("");
+  return dbus::ObjectPath(c + d);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

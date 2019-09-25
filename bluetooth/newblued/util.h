@@ -103,7 +103,7 @@ std::string ConvertDeviceObjectPathToAddress(const std::string& path);
 
 // Converts device object path from device address, e.g.
 // 00:01:02:03:04:05 will be /org/bluez/hci0/dev_00_01_02_03_04_05
-std::string ConvertDeviceAddressToObjectPath(const std::string& address);
+dbus::ObjectPath ConvertDeviceAddressToObjectPath(const std::string& address);
 
 // Converts GATT service object path to service handle, e.g.
 // /org/bluez/hci0/dev_00_01_02_03_04_05/service01FF will return true with
@@ -115,8 +115,8 @@ bool ConvertServiceObjectPathToHandle(std::string* address,
 // Converts service handle to service object path, e.g. with device address
 // 00:01:02:03:04:05 and service handle 0X01FF, this will return
 // /org/bluez/hci0/dev_00_01_02_03_04_05/service01FF.
-std::string ConvertServiceHandleToObjectPath(const std::string& address,
-                                             uint16_t handle);
+dbus::ObjectPath ConvertServiceHandleToObjectPath(const std::string& address,
+                                                  uint16_t handle);
 
 // Converts GATT characteristic object path to service handle, e.g.
 // /org/bluez/hci0/dev_00_01_02_03_04_05/service01FF/char0123 will return true
@@ -131,9 +131,8 @@ bool ConvertCharacteristicObjectPathToHandles(std::string* address,
 // device address 00:01:02:03:04:05, service handle 0X01FF and characteristic
 // handle 0x0123, this will return
 // /org/bluez/hci0/dev_00_01_02_03_04_05/service01FF/char0123.
-std::string ConvertCharacteristicHandleToObjectPath(const std::string& address,
-                                                    uint16_t service_handle,
-                                                    uint16_t char_handle);
+dbus::ObjectPath ConvertCharacteristicHandleToObjectPath(
+    const std::string& address, uint16_t service_handle, uint16_t char_handle);
 
 // Converts GATT descriptor object path to service handle, e.g.
 // /org/bluez/hci0/dev_00_01_02_03_04_05/service01FF/char0123/descriptor0012
@@ -149,10 +148,10 @@ bool ConvertDescriptorObjectPathToHandles(std::string* address,
 // address 00:01:02:03:04:05, service handle 0X01FF, characteristic handle
 // 0x0123 and descriptor handle 0x0012, this will return
 // /org/bluez/hci0/dev_00_01_02_03_04_05/service01FF/char0123/descriptor0012.
-std::string ConvertDescriptorHandleToObjectPath(const std::string& address,
-                                                uint16_t service_handle,
-                                                uint16_t char_handle,
-                                                uint16_t desc_handle);
+dbus::ObjectPath ConvertDescriptorHandleToObjectPath(const std::string& address,
+                                                     uint16_t service_handle,
+                                                     uint16_t char_handle,
+                                                     uint16_t desc_handle);
 
 // Exposes or updates the device object's property depends on the whether it
 // was exposed before or should be forced updated.
