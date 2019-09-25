@@ -4,11 +4,8 @@
 
 #include "arc/vm/libvda/decode_wrapper.h"
 
-#include <fcntl.h>
-
 #include <utility>
 
-#include <base/files/file_util.h>
 #include <base/logging.h>
 
 #include "arc/vm/libvda/decode/fake/fake_vda_impl.h"
@@ -29,38 +26,16 @@ const vda_capabilities_t* const VdaImpl::GetCapabilities() {
   return &capabilities_;
 }
 
-VdaContext::VdaContext() : event_write_thread_("EventWriteThread") {
-  int pipe_fds[2];
-  CHECK_EQ(pipe2(pipe_fds, O_CLOEXEC), 0);
-
-  event_read_fd_.reset(pipe_fds[0]);
-  event_write_fd_.reset(pipe_fds[1]);
-
-  // Start the dedicated event write thread for this decode session context.
-  CHECK(event_write_thread_.StartWithOptions(
-      base::Thread::Options(base::MessageLoop::TYPE_DEFAULT, 0)));
-}
+VdaContext::VdaContext() = default;
 
 VdaContext::~VdaContext() = default;
 
 int VdaContext::GetEventFd() {
-  return event_read_fd_.get();
+  return event_pipe_.GetReadFd();
 }
 
-// This method should only be called on the |event_write_thread| in order to
-// write |event|. This is done so that all events are sent in sequence
-// (important for PICTURE_READY events), and to ensure that a full write of
-// |event| is always done as a single operation. Using the IPC thread was
-// considered, but then in cases where the pipe buffer is close to being full,
-// write() could block, which would not be acceptable to the IPC thread.
-// Setting the pipe to non-blocking mode was also considered, but then
-// we would have to re-post a new task to complete the write which could
-// cause ordering issues.
-void VdaContext::WriteOnEventWriteThread(vda_event_t event) {
-  DCHECK(event_write_thread_.task_runner()->BelongsToCurrentThread());
-  CHECK(base::WriteFileDescriptor(event_write_fd_.get(),
-                                  reinterpret_cast<const char*>(&event),
-                                  sizeof(vda_event_t)));
+void VdaContext::WriteEvent(const vda_event_t& event) {
+  event_pipe_.WriteVdaEvent(event);
 }
 
 void VdaContext::DispatchProvidePictureBuffers(uint32_t min_num_buffers,
@@ -82,9 +57,7 @@ void VdaContext::DispatchProvidePictureBuffers(uint32_t min_num_buffers,
       visible_rect_right;
   event.event_data.provide_picture_buffers.visible_rect_bottom =
       visible_rect_bottom;
-  event_write_thread_.task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(&VdaContext::WriteOnEventWriteThread,
-                                base::Unretained(this), std::move(event)));
+  WriteEvent(event);
 }
 
 void VdaContext::DispatchPictureReady(int32_t picture_buffer_id,
@@ -101,45 +74,35 @@ void VdaContext::DispatchPictureReady(int32_t picture_buffer_id,
   event.event_data.picture_ready.crop_top = crop_top;
   event.event_data.picture_ready.crop_right = crop_right;
   event.event_data.picture_ready.crop_bottom = crop_bottom;
-  event_write_thread_.task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(&VdaContext::WriteOnEventWriteThread,
-                                base::Unretained(this), std::move(event)));
+  WriteEvent(event);
 }
 
 void VdaContext::DispatchNotifyEndOfBitstreamBuffer(int32_t bitstream_id) {
   vda_event_t event;
   event.event_type = NOTIFY_END_OF_BITSTREAM_BUFFER;
   event.event_data.bitstream_id = bitstream_id;
-  event_write_thread_.task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(&VdaContext::WriteOnEventWriteThread,
-                                base::Unretained(this), std::move(event)));
+  WriteEvent(event);
 }
 
 void VdaContext::DispatchNotifyError(vda_result_t result) {
   vda_event_t event;
   event.event_type = NOTIFY_ERROR;
   event.event_data.result = result;
-  event_write_thread_.task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(&VdaContext::WriteOnEventWriteThread,
-                                base::Unretained(this), std::move(event)));
+  WriteEvent(event);
 }
 
 void VdaContext::DispatchResetResponse(vda_result_t result) {
   vda_event_t event;
   event.event_type = RESET_RESPONSE;
   event.event_data.result = result;
-  event_write_thread_.task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(&VdaContext::WriteOnEventWriteThread,
-                                base::Unretained(this), std::move(event)));
+  WriteEvent(event);
 }
 
 void VdaContext::DispatchFlushResponse(vda_result_t result) {
   vda_event_t event;
   event.event_type = FLUSH_RESPONSE;
   event.event_data.result = result;
-  event_write_thread_.task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(&VdaContext::WriteOnEventWriteThread,
-                                base::Unretained(this), std::move(event)));
+  WriteEvent(event);
 }
 
 }  // namespace arc
@@ -165,7 +128,7 @@ const vda_capabilities_t* get_vda_capabilities(void* impl) {
   return static_cast<arc::VdaImpl*>(impl)->GetCapabilities();
 }
 
-vda_session_info_t* init_decode_session(void* impl, vda_profile profile) {
+vda_session_info_t* init_decode_session(void* impl, vda_profile_t profile) {
   arc::VdaContext* context =
       static_cast<arc::VdaImpl*>(impl)->InitDecodeSession(profile);
   if (!context)

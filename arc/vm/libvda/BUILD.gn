@@ -60,6 +60,7 @@ source_set("libvda_source_set") {
     "decode/fake/fake_vda_impl.cc",
     "decode/gpu/gpu_vda_impl.cc",
     "decode_wrapper.cc",
+    "event_pipe.cc",
     "gbm_util.cc",
   ]
 }

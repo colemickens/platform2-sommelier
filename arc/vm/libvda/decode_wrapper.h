@@ -9,10 +9,9 @@
 
 #include <memory>
 
-#include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <base/threading/thread.h>
 
+#include "arc/vm/libvda/event_pipe.h"
 #include "arc/vm/libvda/libvda_decode.h"
 
 namespace arc {
@@ -86,12 +85,9 @@ class VdaContext {
   void DispatchFlushResponse(vda_result_t result);
 
  private:
-  void WriteOnEventWriteThread(vda_event_t event);
+  void WriteEvent(const vda_event_t& event);
 
-  base::ScopedFD event_read_fd_;
-  base::ScopedFD event_write_fd_;
-
-  base::Thread event_write_thread_;
+  EventPipe event_pipe_;
 
   DISALLOW_COPY_AND_ASSIGN(VdaContext);
 };
@@ -108,7 +104,7 @@ class VdaImpl {
   virtual const vda_capabilities_t* const GetCapabilities();
 
   // Initializes a new decode session and returns a new decode session context.
-  virtual VdaContext* InitDecodeSession(vda_profile profile) = 0;
+  virtual VdaContext* InitDecodeSession(vda_profile_t profile) = 0;
 
   // Closes an open decode session.
   virtual void CloseDecodeSession(VdaContext* ctx) = 0;
