@@ -52,12 +52,6 @@ class Firewall {
   // other restrictions when launching 'iptables'.
   virtual int RunInMinijail(const std::vector<std::string>& argv);
 
-  // Tracks whether IPv6 filtering is enabled. If set to |true| (the default),
-  // then it is required to be working. If |false|, then adding of IPv6 rules is
-  // still attempted but not mandatory; however, if it is successful even once,
-  // then it'll be changed to |true| and enforced thereafter.
-  bool ip6_enabled_ = true;
-
   DISALLOW_COPY_AND_ASSIGN(Firewall);
 };
 

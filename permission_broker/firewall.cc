@@ -74,19 +74,11 @@ bool Firewall::AddAcceptRules(ProtocolEnum protocol,
     return false;
   }
 
-  if (AddAcceptRule(kIp6TablesPath, protocol, port, interface)) {
-    // This worked, record this fact and insist that it works thereafter.
-    ip6_enabled_ = true;
-  } else if (ip6_enabled_) {
-    // It's supposed to work, fail.
+  if (!AddAcceptRule(kIp6TablesPath, protocol, port, interface)) {
     LOG(ERROR) << "Could not add ACCEPT rule using '" << kIp6TablesPath
                << "', aborting operation";
     DeleteAcceptRule(kIpTablesPath, protocol, port, interface);
     return false;
-  } else {
-    // It never worked, just ignore it.
-    LOG(WARNING) << "Could not add ACCEPT rule using '" << kIp6TablesPath
-                 << "', ignoring";
   }
 
   return true;
@@ -107,8 +99,8 @@ bool Firewall::DeleteAcceptRules(ProtocolEnum protocol,
 
   bool ip4_success = DeleteAcceptRule(kIpTablesPath, protocol, port,
                                       interface);
-  bool ip6_success = !ip6_enabled_ || DeleteAcceptRule(kIp6TablesPath, protocol,
-                                                       port, interface);
+  bool ip6_success = DeleteAcceptRule(kIp6TablesPath, protocol,
+                                      port, interface);
   return ip4_success && ip6_success;
 }
 
