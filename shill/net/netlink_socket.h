@@ -49,7 +49,7 @@ class SHILL_EXPORT NetlinkSocket {
   virtual ~NetlinkSocket();
 
   // Non-trivial initialization.
-  bool Init();
+  virtual bool Init();
 
   // Returns the file descriptor used by the socket.
   virtual int file_descriptor() const { return file_descriptor_; }
