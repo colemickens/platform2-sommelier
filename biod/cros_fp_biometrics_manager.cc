@@ -494,6 +494,25 @@ void CrosFpBiometricsManager::DoEnrollImageEvent(InternalRecord record,
     return;
   }
 
+  if (use_positive_match_secret_) {
+    brillo::SecureBlob secret(FP_POSITIVE_MATCH_SECRET_BYTES);
+    if (!cros_dev_->GetPositiveMatchSecret(CrosFpDevice::kLastTemplate,
+                                           &secret)) {
+      LOG(ERROR) << "Failed to get positive match secret.";
+      OnSessionFailed();
+      return;
+    }
+
+    std::vector<uint8_t> validation_val;
+    if (!ComputeValidationValue(secret, record.user_id, &validation_val)) {
+      LOG(ERROR) << "Failed to compute validation value.";
+      OnSessionFailed();
+      return;
+    }
+    record.validation_val = std::move(validation_val);
+    LOG(INFO) << "Computed validation value for enrolled finger.";
+  }
+
   records_.emplace_back(record);
   Record current_record(weak_factory_.GetWeakPtr(), records_.size() - 1);
   if (!WriteRecord(current_record, tmpl.data(), tmpl.size())) {
