@@ -779,6 +779,12 @@ class Service : public base::RefCounted<Service> {
   // Note that autoconnect could be disabled for other reasons as well.
   void ThrottleFutureAutoConnects();
 
+  // Returns whether a Service can be disconnected. |error| will only be
+  // modified if this method returns false, in which case it will be populated
+  // with the appropriate error information.
+  // WiFiService is an example of this being potentially false.
+  virtual bool IsDisconnectable(Error* error) const { return true; }
+
   // Saves settings to profile, if we have one. Unlike
   // SaveServiceToProfile, SaveToProfile never assigns this service
   // into a profile.
@@ -822,6 +828,12 @@ class Service : public base::RefCounted<Service> {
   // True if the device was visible on the last call to
   // NotifyIfVisibilityChanged().
   bool was_visible_;
+
+  // Task to run Connect when a disconnection completes and a connection was
+  // attempted while disconnecting. In the case that a distinct Connect
+  // invocation occurs between disconnect completion and the invocation of this
+  // task, this will be canceled to avoid spurious Connect errors.
+  base::CancelableClosure pending_connect_task_;
 
   std::string check_portal_;
   bool connectable_;

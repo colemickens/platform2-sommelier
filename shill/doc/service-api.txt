@@ -57,7 +57,10 @@ Methods		dict GetProperties()
 
 		void Connect()
 
-			Initiate a connection for the specified service.
+			Initiate a connection for the specified service. The
+			service will not necessarily be in a connected/online
+			state by the time this call returns; clients that are
+			interested must continue to watch the service state.
 
 			For Ethernet devices this method can only be used
 			if it has previously been disconnected. Otherwise
@@ -77,6 +80,13 @@ Methods		dict GetProperties()
 			connecting then it is terminated before this request
 			is handled.
 
+			If the requested service is currently disconnecting (in
+			state "disconnecting") and is connectable, this call will
+			immediately return successfully. Once the disconnection
+			completes, a new connection will be triggered. Multiple
+			Connect attempts in this case will not cause any different
+			behavior.
+
 			If the requested service cannot, for reasons not
 			described above, be connected, OperationFailed is
 			returned.
@@ -89,9 +99,14 @@ Methods		dict GetProperties()
 
 		void Disconnect()
 
-			Disconnect a Service. If the Service is neither
-			connected nor in the process of connecting, a
-			NotConnected error will be returned.
+			Initiate a Service disconnection. If this call returns
+			successfully, the Service will either be in state "idle"
+			or state "disconnecting". If the Service is in state
+			"disconnecting", clients that care about the disconnect
+			completion should watch for the state to reach "idle".
+
+			If the Service is neither connected nor in the process of
+			connecting, a NotConnected error will be returned.
 
 			For Ethernet devices, this will remove all
 			Layer 3 state and mark the associated network

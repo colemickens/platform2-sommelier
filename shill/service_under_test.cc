@@ -20,7 +20,7 @@ const char ServiceUnderTest::kStringsProperty[] = "strings";
 const char ServiceUnderTest::kStorageId[] = "service";
 
 ServiceUnderTest::ServiceUnderTest(Manager* manager)
-    : Service(manager, Technology::kUnknown) {
+    : Service(manager, Technology::kUnknown), disconnectable_(true) {
   mutable_store()->RegisterStrings(kStringsProperty, &strings_);
   mutable_store()->RegisterDerivedKeyValueStore(
       kKeyValueStoreProperty,

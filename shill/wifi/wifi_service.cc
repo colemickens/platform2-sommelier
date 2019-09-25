@@ -640,20 +640,25 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
 }
 
 void WiFiService::OnDisconnect(Error* error, const char* /*reason*/) {
+  wifi_->DisconnectFrom(this);
+}
+
+bool WiFiService::IsDisconnectable(Error* error) const {
   if (!wifi_) {
+    CHECK(!IsConnected())
+        << "WiFi device does not exist. Cannot disconnect service "
+        << unique_name();
     // If we are connecting to a hidden service, but have not yet found
     // any endpoints, we could end up with a disconnect request without
-    // a wifi_ reference.  This is not a fatal error.
-    LOG_IF(ERROR, IsConnecting())
-        << "WiFi endpoints do not (yet) exist.  Cannot disconnect service "
-        << unique_name();
-    LOG_IF(FATAL, IsConnected())
-        << "WiFi device does not exist.  Cannot disconnect service "
-        << unique_name();
-    error->Populate(Error::kOperationFailed);
-    return;
+    // a wifi_ reference.
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kOperationFailed,
+        base::StringPrintf(
+            "WiFi endpoints do not (yet) exist. Cannot disconnect service %s",
+            unique_name().c_str()));
+    return false;
   }
-  wifi_->DisconnectFromIfActive(this);
+  return wifi_->IsPendingService(this) || wifi_->IsCurrentService(this);
 }
 
 RpcIdentifier WiFiService::GetDeviceRpcId(Error* error) const {

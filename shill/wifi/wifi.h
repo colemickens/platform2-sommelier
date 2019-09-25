@@ -201,8 +201,12 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // superclass).
   void OnUnreliableLink() override;
 
-  bool IsCurrentService(const WiFiServiceRefPtr service) {
-    return service.get() == current_service_.get();
+  virtual bool IsCurrentService(const WiFiService* service) const {
+    return service == current_service_.get();
+  }
+
+  bool IsPendingService(const WiFiService* service) const {
+    return service == pending_service_.get();
   }
 
   const WiFiEndpointConstRefPtr GetCurrentEndpoint() const;

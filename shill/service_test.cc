@@ -168,6 +168,12 @@ class ServiceTest : public PropertyStoreTest {
     return service_->SetAutoConnectFull(connect, error);
   }
 
+  const base::CancelableClosure& GetPendingConnectTask() {
+    return service_->pending_connect_task_;
+  }
+
+  bool HasPendingConnect() { return !GetPendingConnectTask().IsCancelled(); }
+
   bool SortingOrderIs(const ServiceRefPtr& service0,
                       const ServiceRefPtr& service1,
                       bool should_compare_connectivity_state) {
@@ -2145,6 +2151,87 @@ TEST_F(ServiceTest, SanitizeStorageIdentifier) {
 
   EXPECT_EQ("service_1_2_3_2_Dummy_Net_",
             Service::SanitizeStorageIdentifier("service_1-2:3.2_Dummy^Net!"));
+}
+
+TEST_F(ServiceTest, DisconnectSetsDisconnectState) {
+  EXPECT_EQ(service_->state(), Service::kStateIdle);
+
+  // Inactive Service will immediately fail a Disconnect call.
+  Error error;
+  service_->Disconnect(&error, __func__);
+  EXPECT_EQ(error.type(), Error::kNotConnected);
+  EXPECT_EQ(service_->state(), Service::kStateIdle);
+
+  // Non-disconnectable Service will also immediately fail a Disconnect call.
+  service_->SetDisconnectable(false);
+  error.Reset();
+  service_->Disconnect(&error, __func__);
+  EXPECT_EQ(error.type(), Error::kNotConnected);
+  EXPECT_EQ(service_->state(), Service::kStateIdle);
+
+  service_->SetDisconnectable(true);
+
+  // Otherwise the state will be driven to kStateDisconnecting.
+  service_->SetState(Service::kStateAssociating);
+  error.Reset();
+  service_->Disconnect(&error, __func__);
+  EXPECT_EQ(error.type(), Error::kSuccess);
+  EXPECT_EQ(service_->state(), Service::kStateDisconnecting);
+}
+
+TEST_F(ServiceTest, DelayedDisconnect) {
+  // Any state that causes IsActive to return true will do.
+  service_->SetState(Service::kStateAssociating);
+
+  // Begin disconnect but do not finish.
+  Error error;
+  service_->Disconnect(&error, __func__);
+  EXPECT_EQ(error.type(), Error::kSuccess);
+  EXPECT_EQ(service_->state(), Service::kStateDisconnecting);
+
+  // Trigger connection.
+  ASSERT_TRUE(service_->connectable());
+  service_->Connect(&error, __func__);
+  EXPECT_EQ(error.type(), Error::kSuccess);
+  EXPECT_EQ(service_->state(), Service::kStateDisconnecting);
+  EXPECT_TRUE(HasPendingConnect());
+
+  // Finish the disconnection by driving state to kStateIdle.
+  service_->SetState(Service::kStateIdle);
+  EXPECT_TRUE(HasPendingConnect());
+
+  // Invoke the pending disconnect task.
+  GetPendingConnectTask().callback().Run();
+  EXPECT_FALSE(HasPendingConnect());
+}
+
+TEST_F(ServiceTest, DelayedDisconnectWithAdditionalConnect) {
+  // Any state that causes IsActive to return true will do.
+  service_->SetState(Service::kStateAssociating);
+
+  // Begin disconnect but do not finish.
+  Error error;
+  service_->Disconnect(&error, __func__);
+  EXPECT_EQ(error.type(), Error::kSuccess);
+  EXPECT_EQ(service_->state(), Service::kStateDisconnecting);
+
+  // Trigger connection.
+  ASSERT_TRUE(service_->connectable());
+  service_->Connect(&error, __func__);
+  EXPECT_EQ(error.type(), Error::kSuccess);
+  EXPECT_EQ(service_->state(), Service::kStateDisconnecting);
+  EXPECT_TRUE(HasPendingConnect());
+
+  // Finish the disconnection by driving state to kStateIdle.
+  service_->SetState(Service::kStateIdle);
+  EXPECT_TRUE(HasPendingConnect());
+
+  // Trigger connection prior to the pending connect task being run;
+  // ensure that the pending connect task will be cancelled.
+  ASSERT_TRUE(service_->connectable());
+  service_->Connect(&error, __func__);
+  EXPECT_EQ(error.type(), Error::kSuccess);
+  EXPECT_FALSE(HasPendingConnect());
 }
 
 }  // namespace shill

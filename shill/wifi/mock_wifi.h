@@ -51,6 +51,7 @@ class MockWiFi : public WiFi {
               NotifyEndpointChanged,
               (const WiFiEndpointConstRefPtr&),
               (override));
+  MOCK_METHOD(bool, IsCurrentService, (const WiFiService* service), (const));
   MOCK_METHOD(void, DestroyIPConfigLease, (const std::string&), (override));
   MOCK_METHOD(bool, IsConnectedViaTether, (), (const, override));
 

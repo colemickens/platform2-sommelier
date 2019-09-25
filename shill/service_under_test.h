@@ -41,16 +41,25 @@ class ServiceUnderTest : public Service {
   bool SetKeyValueStore(const KeyValueStore& value, Error* error);
   KeyValueStore GetKeyValueStore(Error* error);
 
+  void SetDisconnectable(bool disconnectable) {
+    disconnectable_ = disconnectable;
+  }
+
  protected:
   // Inherited from Service.
   void OnConnect(Error* error) override {}
   void OnDisconnect(Error* /*error*/, const char* /*reason*/) override {}
+  bool IsDisconnectable(Error* /*error*/) const override {
+    return disconnectable_;
+  }
 
  private:
   // The Service superclass has no string array or KeyValueStore properties
   // but we need them in order to test Service::Configure.
   std::vector<std::string> strings_;
   KeyValueStore key_value_store_;
+
+  bool disconnectable_;
 
   DISALLOW_COPY_AND_ASSIGN(ServiceUnderTest);
 };

@@ -58,6 +58,7 @@ const char kServiceSortProfileOrder[] = "ProfileOrder";
 const char kServiceSortEtc[] = "Etc";
 const char kServiceSortSerialNumber[] = "SerialNumber";
 const char kServiceSortTechnology[] = "Technology";
+
 }  // namespace
 
 namespace Logging {
@@ -301,8 +302,16 @@ void Service::Connect(Error* error, const char* reason) {
                            technology().GetName().c_str(),
                            unique_name().c_str()));
     return;
+  } else if (IsDisconnecting()) {
+    // SetState will re-trigger a connection after this disconnection has
+    // completed.
+    pending_connect_task_.Reset(
+        Bind(&Service::Connect, weak_ptr_factory_.GetWeakPtr(),
+             base::Owned(new Error()), "Triggering delayed Connect"));
+    return;
   }
 
+  pending_connect_task_.Cancel();
   // This cannot be called until here because |explicitly_disconnected_| is
   // used in determining whether or not this Service can be AutoConnected.
   ClearExplicitlyDisconnected();
@@ -324,7 +333,15 @@ void Service::Disconnect(Error* error, const char* reason) {
     return;
   }
 
+  if (!IsDisconnectable(error)) {
+    LOG(WARNING)
+        << "Service " << unique_name()
+        << " Disconnect attempted but the Service is not Disconnectable";
+    return;
+  }
+
   LOG(INFO) << "Disconnecting from service " << unique_name() << ": " << reason;
+  SetState(kStateDisconnecting);
   // Perform connection logic defined by children. This logic will
   // drive the state to kStateIdle.
   OnDisconnect(error, reason);
@@ -444,6 +461,11 @@ void Service::SetState(ConnectState state) {
   LOG(INFO) << "Service " << unique_name_ << ": state "
             << ConnectStateToString(state_) << " -> "
             << ConnectStateToString(state);
+
+  if (!pending_connect_task_.IsCancelled() &&
+      (state == kStateFailure || state == kStateIdle)) {
+    dispatcher()->PostTask(FROM_HERE, pending_connect_task_.callback());
+  }
 
   // Metric reporting for result of user-initiated connection attempt.
   if (is_in_user_connect_ &&

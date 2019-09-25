@@ -173,6 +173,7 @@ class WiFiService : public Service {
   // Inherited from Service.
   void OnConnect(Error* error) override;
   void OnDisconnect(Error* error, const char* reason) override;
+  bool IsDisconnectable(Error* error) const override;
 
   void SetEAPKeyManagement(const std::string& key_management) override;
   std::string GetTethering(Error* error) const override;
