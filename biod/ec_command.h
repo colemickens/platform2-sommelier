@@ -10,6 +10,7 @@
 #include <cerrno>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 
 #include <base/logging.h>
 #include <base/macros.h>
@@ -31,6 +32,9 @@ constexpr size_t realsizeof() {
   return std::is_empty<T>::value ? 0 : sizeof(T);
 }
 
+static constexpr auto kEcCommandUninitializedResult =
+    std::numeric_limits<uint32_t>::max();
+
 // Helper to build and send the command structures for cros_fp.
 template <typename O, typename I>
 class EcCommand {
@@ -39,7 +43,7 @@ class EcCommand {
       : data_({
             .cmd = {.version = ver,
                     .command = cmd,
-                    .result = 0xff,
+                    .result = kEcCommandUninitializedResult,
                     .outsize = realsizeof<O>(),
                     .insize = realsizeof<I>()},
             .req = req,
@@ -51,56 +55,63 @@ class EcCommand {
   void SetReq(const O& req) { data_.req = req; }
 
   /**
-   * Run an EC command. Optionally retry the command when the underlying ioctl
-   * returns ETIMEDOUT.
+   * Run an EC command.
    *
    * @param ec_fd file descriptor for the EC device
-   * @param num_attempts number of attempts to try, optional
-   * @param result pointer to variable to hold the return code of the command,
-   * optional
    * @return true if command runs successfully and response size is same as
    * expected, false otherwise
    *
    * The caller must be careful to only retry EC state-less
    * commands, that can be rerun without consequence.
    */
-  bool Run(int ec_fd, int num_attempts = 1, uint16_t* result = nullptr) {
-    CHECK_GT(num_attempts, 0);
+  virtual bool Run(int ec_fd) {
+    data_.cmd.result = kEcCommandUninitializedResult;
+
+    // We rely on the ioctl preserving data_.req when the command fails.
+    // This is important for subsequent retries using the same data_.req.
+    int ret = ioctl(ec_fd, CROS_EC_DEV_IOCXCMD_V2, &data_);
+    if (ret < 0) {
+      // If the ioctl fails for some reason let's make sure that the driver
+      // didn't touch the result.
+      data_.cmd.result = kEcCommandUninitializedResult;
+      PLOG(ERROR) << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
+                  << std::dec << " failed";
+      return false;
+    }
+
+    return (static_cast<uint32_t>(ret) == data_.cmd.insize);
+  }
+
+  bool RunWithMultipleAttempts(int fd, int num_attempts) {
     for (int retry = 0; retry < num_attempts; retry++) {
-      data_.cmd.result = 0xff;
-      // We rely on the ioctl preserving data_.req when the command fails.
-      // This is important for subsequent retries using the same data_.req.
-      int ret = ioctl(ec_fd, CROS_EC_DEV_IOCXCMD_V2, &data_);
-      if (ret >= 0) {
+      bool ret = Run(fd);
+
+      if (ret) {
         LOG_IF(INFO, retry > 0)
             << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
             << std::dec << " succeeded on attempt " << retry + 1 << "/"
             << num_attempts << ".";
-        if (result != nullptr)
-          *result = data_.cmd.result;
-        return (static_cast<uint32_t>(ret) == data_.cmd.insize);
+        return true;
       }
-      if (result != nullptr)
-        // 0xff means Run() failed and we don't have any result.
-        *result = 0xff;
+
       if (errno != ETIMEDOUT) {
-        PLOG(ERROR) << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
-                    << std::dec << " failed on attempt " << retry + 1 << "/"
-                    << num_attempts << ", retry is not allowed for error";
+        LOG(ERROR) << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
+                   << std::dec << " failed on attempt " << retry + 1 << "/"
+                   << num_attempts << ", retry is not allowed for error";
         return false;
       }
-      PLOG(ERROR) << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
-                  << std::dec << " failed on attempt " << retry + 1 << "/"
-                  << num_attempts;
-    }
 
+      LOG(ERROR) << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
+                 << std::dec << " failed on attempt " << retry + 1 << "/"
+                 << num_attempts;
+    }
     return false;
   }
 
   I* Resp() { return &data_.resp; }
   uint32_t RespSize() { return data_.cmd.insize; }
   O* Req() { return &data_.req; }
-  uint16_t Result() { return data_.cmd.result; }
+  uint32_t Result() { return data_.cmd.result; }
 
   struct Data {
     struct cros_ec_command_v2 cmd;

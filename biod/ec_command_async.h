@@ -25,13 +25,6 @@ namespace biod {
 template <typename O, typename I>
 class EcCommandAsync : public EcCommand<O, I> {
  public:
-  EcCommandAsync(uint32_t cmd,
-                 uint8_t async_result_action,
-                 uint32_t ver = 0,
-                 const O& req = {})
-      : EcCommand<O, I>(cmd, ver, req),
-        async_result_action_(async_result_action) {}
-
   struct Options {
     int poll_for_result_num_attempts = 20;
     base::TimeDelta poll_interval = base::TimeDelta::FromMilliseconds(100);
@@ -45,17 +38,26 @@ class EcCommandAsync : public EcCommand<O, I> {
     bool validate_poll_result = true;
   };
 
-  bool Run(int fd, const Options& options) {
-    CHECK_GT(options.poll_for_result_num_attempts, 0);
+  EcCommandAsync(uint32_t cmd,
+                 uint8_t async_result_action,
+                 const Options& options,
+                 uint32_t ver = 0,
+                 const O& req = {})
+      : EcCommand<O, I>(cmd, ver, req),
+        async_result_action_(async_result_action),
+        options_(options) {}
+
+  bool Run(int fd) override {
+    CHECK_GT(options_.poll_for_result_num_attempts, 0);
 
     if (!BaseCmd::Run(fd)) {
       LOG(ERROR) << "Failed to start command";
       return false;
     }
 
-    int num_attempts = options.poll_for_result_num_attempts;
+    int num_attempts = options_.poll_for_result_num_attempts;
     while (num_attempts--) {
-      base::PlatformThread::Sleep(options.poll_interval);
+      base::PlatformThread::Sleep(options_.poll_interval);
 
       BaseCmd::Req()->action = async_result_action_;
       BaseCmd::Run(fd);
@@ -64,7 +66,7 @@ class EcCommandAsync : public EcCommand<O, I> {
         return true;
       }
 
-      if (options.validate_poll_result && ret != EC_RES_BUSY) {
+      if (options_.validate_poll_result && ret != EC_RES_BUSY) {
         LOG(ERROR) << "Failed to get command result, ret: " << ret;
         return false;
       }
@@ -77,7 +79,8 @@ class EcCommandAsync : public EcCommand<O, I> {
 
  private:
   using BaseCmd = EcCommand<O, I>;
-  uint8_t async_result_action_;
+  uint8_t async_result_action_ = 0;
+  Options options_;
 };
 
 }  // namespace biod

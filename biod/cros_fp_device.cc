@@ -53,7 +53,7 @@ bool CrosFpDevice::EcProtoInfo(ssize_t* max_read, ssize_t* max_write) {
       EC_CMD_GET_PROTOCOL_INFO);
   // We retry this command because it is known to occasionally fail
   // with ETIMEDOUT on first attempt.
-  if (!cmd.Run(cros_fd_.get(), kMaxIoAttempts))
+  if (!cmd.RunWithMultipleAttempts(cros_fd_.get(), kMaxIoAttempts))
     return false;
 
   *max_read =
@@ -218,13 +218,13 @@ EcCmdVersionSupportStatus CrosFpDevice::EcCmdVersionSupported(uint16_t cmd_code,
   EcCommand<struct ec_params_get_cmd_versions_v1,
             struct ec_response_get_cmd_versions>
       cmd(EC_CMD_GET_CMD_VERSIONS, 1, {.cmd = cmd_code});
-  uint16_t result;
 
-  if (!cmd.Run(cros_fd_.get(), kMaxIoAttempts, &result) && result == 0xff)
+  if (!cmd.RunWithMultipleAttempts(cros_fd_.get(), kMaxIoAttempts) &&
+      cmd.Result() == kEcCommandUninitializedResult)
     // Running EC_CMD_GET_CMD_VERSIONS itself failed (e.g. due to timeout).
     return EcCmdVersionSupportStatus::UNKNOWN;
 
-  if (result != EC_RES_SUCCESS)
+  if (cmd.Result() != EC_RES_SUCCESS)
     // Command not found on EC.
     return EcCmdVersionSupportStatus::UNSUPPORTED;
 
@@ -353,21 +353,20 @@ bool CrosFpDevice::EcReboot(ec_current_image to_image) {
 bool CrosFpDevice::AddEntropy(bool reset) {
   // Create the secret.
   EcCommandAsync<struct ec_params_rollback_add_entropy, EmptyParam>
-      cmd_add_entropy(EC_CMD_ADD_ENTROPY, ADD_ENTROPY_GET_RESULT);
+      cmd_add_entropy(EC_CMD_ADD_ENTROPY, ADD_ENTROPY_GET_RESULT,
+                      {.poll_for_result_num_attempts = 20,
+                       .poll_interval = base::TimeDelta::FromMilliseconds(100),
+                       // The EC temporarily stops responding to EC commands
+                       // when this command is run, so we will keep trying until
+                       // we get success (or time out).
+                       .validate_poll_result = false});
   if (reset) {
     cmd_add_entropy.SetReq({.action = ADD_ENTROPY_RESET_ASYNC});
   } else {
     cmd_add_entropy.SetReq({.action = ADD_ENTROPY_ASYNC});
   }
 
-  if (cmd_add_entropy.Run(
-          cros_fd_.get(),
-          {.poll_for_result_num_attempts = 20,
-           .poll_interval = base::TimeDelta::FromMilliseconds(100),
-           // The EC temporarily stops responding to EC commands when this
-           // command is run, so we will keep trying until we get success (or
-           // time out).
-           .validate_poll_result = false})) {
+  if (cmd_add_entropy.Run(cros_fd_.get())) {
     LOG(INFO) << "Entropy has been successfully added.";
     return true;
   }

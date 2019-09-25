@@ -37,19 +37,19 @@ class MockFpModeCommand : public MockEcCommand<struct ec_params_fp_mode,
 //   returns sizeof(EC response) (>=0) on success, -1 on failure
 //   cmd.result is error code from EC (EC_RES_SUCCESS, etc)
 
-TEST(EcCommand, RunOnceSuccess) {
+TEST(EcCommand, Run_Success) {
   MockFpModeCommand mock;
   EXPECT_CALL(mock, ioctl).WillOnce(Return(mock.RespSize()));
   EXPECT_TRUE(mock.Run(kDummyFd));
 }
 
-TEST(EcCommand, RunOnceFailure) {
+TEST(EcCommand, Run_Failure) {
   MockFpModeCommand mock;
   EXPECT_CALL(mock, ioctl).WillOnce(Return(kIoctlFailureRetVal));
   EXPECT_FALSE(mock.Run(kDummyFd));
 }
 
-TEST(EcCommand, RunWithResultSuccess) {
+TEST(EcCommand, Run_CheckResult_Success) {
   constexpr int kExpectedResult = 42;
   MockFpModeCommand mock;
   EXPECT_CALL(mock, ioctl)
@@ -57,20 +57,25 @@ TEST(EcCommand, RunWithResultSuccess) {
         data->cmd.result = kExpectedResult;
         return data->cmd.insize;
       });
-  uint16_t result = 0;
-  EXPECT_TRUE(mock.Run(kDummyFd, 1, &result));
-  EXPECT_EQ(result, kExpectedResult);
+  EXPECT_TRUE(mock.Run(kDummyFd));
+  EXPECT_EQ(mock.Result(), kExpectedResult);
 }
 
-TEST(EcCommand, RunWithResultFailure) {
+TEST(EcCommand, Run_CheckResult_Failure) {
   MockFpModeCommand mock;
-  EXPECT_CALL(mock, ioctl).WillOnce(Return(kIoctlFailureRetVal));
-  uint16_t result = 0;
-  EXPECT_FALSE(mock.Run(kDummyFd, 1, &result));
-  EXPECT_EQ(result, 0xFF);
+  EXPECT_CALL(mock, ioctl)
+      .WillOnce([](int, uint32_t, MockFpModeCommand::Data* data) {
+        // Note that it's not expected that the result would be set by the
+        // kernel driver in this case, but we want to be defensive against
+        // the behavior in case there is an instance where it does.
+        data->cmd.result = EC_RES_ERROR;
+        return kIoctlFailureRetVal;
+      });
+  EXPECT_FALSE(mock.Run(kDummyFd));
+  EXPECT_EQ(mock.Result(), kEcCommandUninitializedResult);
 }
 
-TEST(EcCommand, RunMultipleTimesSuccess) {
+TEST(EcCommand, RunWithMultipleAttempts_Success) {
   constexpr int kNumAttempts = 2;
   MockFpModeCommand mock;
   EXPECT_CALL(mock, ioctl)
@@ -82,10 +87,10 @@ TEST(EcCommand, RunMultipleTimesSuccess) {
       }))
       // Second ioctl() succeeds
       .WillOnce(Return(mock.RespSize()));
-  EXPECT_TRUE(mock.Run(kDummyFd, kNumAttempts));
+  EXPECT_TRUE(mock.RunWithMultipleAttempts(kDummyFd, kNumAttempts));
 }
 
-TEST(EcCommand, RunMultipleTimesFailure) {
+TEST(EcCommand, RunWithMultipleAttempts_Timeout_Failure) {
   constexpr int kNumAttempts = 2;
   MockFpModeCommand mock;
   EXPECT_CALL(mock, ioctl)
@@ -95,7 +100,21 @@ TEST(EcCommand, RunMultipleTimesFailure) {
         errno = ETIMEDOUT;
         return kIoctlFailureRetVal;
       }));
-  EXPECT_FALSE(mock.Run(kDummyFd, kNumAttempts));
+  EXPECT_FALSE(mock.RunWithMultipleAttempts(kDummyFd, kNumAttempts));
+}
+
+TEST(EcCommand, RunWithMultipleAttempts_ErrorNotTimeout_Failure) {
+  constexpr int kNumAttempts = 2;
+  MockFpModeCommand mock;
+  EXPECT_CALL(mock, ioctl)
+      // Errors other than timeout should cause immediate failure even when
+      // attempting retries.
+      .Times(1)
+      .WillOnce(InvokeWithoutArgs([]() {
+        errno = EINVAL;
+        return kIoctlFailureRetVal;
+      }));
+  EXPECT_FALSE(mock.RunWithMultipleAttempts(kDummyFd, kNumAttempts));
 }
 
 }  // namespace

@@ -31,8 +31,9 @@ class MockAddEntropyCommand
     : public MockEcCommandAsync<struct ec_params_rollback_add_entropy,
                                 EmptyParam> {
  public:
-  MockAddEntropyCommand()
-      : MockEcCommandAsync(EC_CMD_ADD_ENTROPY, ADD_ENTROPY_GET_RESULT) {}
+  explicit MockAddEntropyCommand(const Options& options)
+      : MockEcCommandAsync(
+            EC_CMD_ADD_ENTROPY, ADD_ENTROPY_GET_RESULT, options) {}
 };
 
 // ioctl behavior for EC commands:
@@ -40,8 +41,10 @@ class MockAddEntropyCommand
 //   cmd.result is error code from EC (EC_RES_SUCCESS, etc)
 
 TEST(EcCommandAsync, Run_Success) {
-  MockAddEntropyCommand mock;
-  EXPECT_CALL(mock, ioctl)
+  MockAddEntropyCommand mock_cmd(
+      {.poll_for_result_num_attempts = 2,
+       .poll_interval = base::TimeDelta::FromMilliseconds(1)});
+  EXPECT_CALL(mock_cmd, ioctl)
       .Times(3)
       // First call to ioctl() to start the command; EC returns success.
       .WillOnce([](int, uint32_t, MockAddEntropyCommand::Data* data) {
@@ -59,16 +62,16 @@ TEST(EcCommandAsync, Run_Success) {
         return data->cmd.insize;
       });
 
-  EXPECT_TRUE(mock.Run(
-      kDummyFd, {.poll_for_result_num_attempts = 2,
-                 .poll_interval = base::TimeDelta::FromMilliseconds(1)}));
-  EXPECT_EQ(mock.Result(), EC_RES_SUCCESS);
+  EXPECT_TRUE(mock_cmd.Run(kDummyFd));
+  EXPECT_EQ(mock_cmd.Result(), EC_RES_SUCCESS);
 }
 
 TEST(EcCommandAsync, Run_TimeoutFailure) {
-  MockAddEntropyCommand mock;
+  MockAddEntropyCommand mock_cmd(
+      {.poll_for_result_num_attempts = 2,
+       .poll_interval = base::TimeDelta::FromMilliseconds(1)});
 
-  EXPECT_CALL(mock, ioctl)
+  EXPECT_CALL(mock_cmd, ioctl)
       .Times(3)
       // First call to ioctl() to start the command; EC returns success.
       .WillOnce([](int, uint32_t, MockAddEntropyCommand::Data* data) {
@@ -81,15 +84,20 @@ TEST(EcCommandAsync, Run_TimeoutFailure) {
         return data->cmd.insize;
       });
 
-  EXPECT_FALSE(mock.Run(
-      kDummyFd, {.poll_for_result_num_attempts = 2,
-                 .poll_interval = base::TimeDelta::FromMilliseconds(1)}));
-  EXPECT_EQ(mock.Result(), EC_RES_BUSY);
+  EXPECT_FALSE(mock_cmd.Run(kDummyFd));
+  EXPECT_EQ(mock_cmd.Result(), EC_RES_BUSY);
 }
 
 TEST(EcCommandAsync, Run_Failure) {
-  MockAddEntropyCommand mock;
-  EXPECT_CALL(mock, ioctl)
+  MockAddEntropyCommand mock_cmd(
+      {// With the number of attempts set to 2, there will be at most
+       // 3 ioctl calls (the extra one starts the command). In this
+       // test case, we're validating that the last ioctl() call will
+       // not be performed because we got an error on the second
+       // ioctl() call.
+       .poll_for_result_num_attempts = 2,
+       .poll_interval = base::TimeDelta::FromMilliseconds(1)});
+  EXPECT_CALL(mock_cmd, ioctl)
       .Times(2)
       // First call to ioctl() to start the command; EC returns success.
       .WillOnce([](int, uint32_t, MockAddEntropyCommand::Data* data) {
@@ -102,19 +110,20 @@ TEST(EcCommandAsync, Run_Failure) {
         return data->cmd.insize;
       });
 
-  EXPECT_FALSE(mock.Run(
-      kDummyFd, {// With the number of attempts set to 2, there will be at most
-                 // 3 ioctl calls (the extra one starts the command). In this
-                 // test case, we're validating that the last ioctl() call will
-                 // not be performed because we got an error on the second
-                 // ioctl() call.
-                 .poll_for_result_num_attempts = 2,
-                 .poll_interval = base::TimeDelta::FromMilliseconds(1)}));
-  EXPECT_EQ(mock.Result(), EC_RES_ERROR);
+  EXPECT_FALSE(mock_cmd.Run(kDummyFd));
+  EXPECT_EQ(mock_cmd.Result(), EC_RES_ERROR);
 }
 
 TEST(EcCommandAsync, Run_IoctlTimesOut) {
-  MockAddEntropyCommand mock;
+  MockAddEntropyCommand mock({
+      // With the number of attempts set to 2, there will be at
+      // most 3 ioctl calls (the extra one starts the command). In
+      // this test case, we're validating that the last ioctl()
+      // call will not be performed because we got an error on
+      // the second ioctl() call.
+      .poll_for_result_num_attempts = 2,
+      .poll_interval = base::TimeDelta::FromMilliseconds(1),
+  });
   EXPECT_CALL(mock, ioctl)
       .Times(2)
       // First call to ioctl() to start the command; EC returns success.
@@ -129,21 +138,15 @@ TEST(EcCommandAsync, Run_IoctlTimesOut) {
         return kIoctlFailureRetVal;
       });
 
-  EXPECT_FALSE(mock.Run(
-      kDummyFd, {
-                    // With the number of attempts set to 2, there will be at
-                    // most 3 ioctl calls (the extra one starts the command). In
-                    // this test case, we're validating that the last ioctl()
-                    // call will not be performed because we got an error on
-                    // the second ioctl() call.
-                    .poll_for_result_num_attempts = 2,
-                    .poll_interval = base::TimeDelta::FromMilliseconds(1),
-                }));
-  EXPECT_EQ(mock.Result(), 255);
+  EXPECT_FALSE(mock.Run(kDummyFd));
+  EXPECT_EQ(mock.Result(), kEcCommandUninitializedResult);
 }
 
 TEST(EcCommandAsync, Run_IoctlTimesOut_IgnoreFailure) {
-  MockAddEntropyCommand mock;
+  MockAddEntropyCommand mock(
+      {.poll_for_result_num_attempts = 2,
+       .poll_interval = base::TimeDelta::FromMilliseconds(1),
+       .validate_poll_result = false});
   EXPECT_CALL(mock, ioctl)
       .Times(3)
       // First call to ioctl() to start the command; EC returns success.
@@ -163,23 +166,18 @@ TEST(EcCommandAsync, Run_IoctlTimesOut_IgnoreFailure) {
         return data->cmd.insize;
       });
 
-  EXPECT_TRUE(
-      mock.Run(kDummyFd, {.poll_for_result_num_attempts = 2,
-                          .poll_interval = base::TimeDelta::FromMilliseconds(1),
-                          .validate_poll_result = false}));
+  EXPECT_TRUE(mock.Run(kDummyFd));
   EXPECT_EQ(mock.Result(), EC_RES_SUCCESS);
 }
 
 TEST(EcCommandAsync, Run_InvalidOptions_ZeroPollAttempts) {
-  MockAddEntropyCommand mock;
-  EXPECT_DEATH(mock.Run(kDummyFd, {.poll_for_result_num_attempts = 0}),
-               "options.poll_for_result_num_attempts > 0");
+  MockAddEntropyCommand mock({.poll_for_result_num_attempts = 0});
+  EXPECT_DEATH(mock.Run(kDummyFd), "poll_for_result_num_attempts > 0");
 }
 
 TEST(EcCommandAsync, Run_InvalidOptions_NegativePollAttempts) {
-  MockAddEntropyCommand mock;
-  EXPECT_DEATH(mock.Run(kDummyFd, {.poll_for_result_num_attempts = -1}),
-               "options.poll_for_result_num_attempts > 0");
+  MockAddEntropyCommand mock({.poll_for_result_num_attempts = -1});
+  EXPECT_DEATH(mock.Run(kDummyFd), "poll_for_result_num_attempts > 0");
 }
 
 TEST(EcCommandAsync, DefaultOptions) {
