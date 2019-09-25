@@ -360,6 +360,11 @@ void AddSystemFlags(ChromiumCommandBuilder* builder) {
     // Needed for scheduled update checks on Wilco.
     builder->AddArg("--register-max-dark-suspend-delay");
   }
+
+  // Breakpad doesn't work on some platforms, specifically kukui. Force
+  // crashpad on those platforms.
+  if (builder->UseFlagIsSet("force_crashpad"))
+    builder->AddArg("--enable-crashpad");
 }
 
 // Adds UI-related flags to the command line.
