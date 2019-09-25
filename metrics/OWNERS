@@ -1,9 +1,8 @@
 set noparent
 # Alphabetical.
 iby@chromium.org
-jkardatzke@chromium.org
+jkardatzke@google.com
 mutexlox@chromium.org
-timzheng@chromium.org
 vapier@chromium.org
 
 # COMPONENT: Internals>Metrics
