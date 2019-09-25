@@ -31,10 +31,6 @@ class TimerReporterMock : public TimerReporter {
   MOCK_CONST_METHOD0(HasStarted, bool());
   MOCK_CONST_METHOD1(GetElapsedTime, bool(base::TimeDelta* elapsed_time));
   MOCK_CONST_METHOD0(ReportMilliseconds, bool());
-  MOCK_CONST_METHOD0(histogram_name, std::string&());
-  MOCK_CONST_METHOD0(min, int());
-  MOCK_CONST_METHOD0(max, int());
-  MOCK_CONST_METHOD0(num_buckets, int());
 };
 
 class ClockWrapperMock : public ClockWrapper {
