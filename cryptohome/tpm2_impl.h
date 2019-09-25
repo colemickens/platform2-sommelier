@@ -230,6 +230,10 @@ class Tpm2Impl : public Tpm {
   bool DoesUseTpmManager() override;
 
   bool CanResetDictionaryAttackWithCurrentPCR0() override;
+  void SetDelegateData(const std::string& delegate_blob,
+                       bool has_reset_lock_permissions) override;
+  base::Optional<bool> IsDelegateBoundToPcr() override;
+  bool DelegateCanResetDACounter() override;
 
  private:
   // This method given a Tpm generated public area, returns the DER encoded

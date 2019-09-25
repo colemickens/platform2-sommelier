@@ -789,6 +789,18 @@ class Tpm {
   // That happens if PCR0 was not extended multiple times.
   virtual bool CanResetDictionaryAttackWithCurrentPCR0() = 0;
 
+  // Processes the delegate blob and establishes if it's bound to any PCR. Also
+  // keeps the information about reset_lock_permissions.
+  virtual void SetDelegateData(const std::string& delegate_blob,
+                               bool has_reset_lock_permissions) = 0;
+
+  // Returns whether the delegate set by SetDelegateData() is bound to PCR.
+  virtual base::Optional<bool> IsDelegateBoundToPcr() = 0;
+
+  // Returns whether the delegate set by SetDelegateData() has reset lock
+  // permissions.
+  virtual bool DelegateCanResetDACounter() = 0;
+
  private:
   static Tpm* singleton_;
   static base::Lock singleton_lock_;

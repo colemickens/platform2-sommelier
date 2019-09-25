@@ -463,6 +463,9 @@ void Attestation::Initialize(Tpm* tpm,
     // Make sure the owner password is not being held on our account.
     tpm_init_->RemoveTpmOwnerDependency(
         TpmPersistentState::TpmOwnerDependency::kAttestation);
+    // Pass the delegate data to TPM.
+    tpm_->SetDelegateData(database_pb_.delegate().blob(),
+                          database_pb_.delegate().has_reset_lock_permissions());
   }
 }
 

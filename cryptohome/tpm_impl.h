@@ -178,6 +178,10 @@ class TpmImpl : public Tpm {
   void HandleOwnershipTakenSignal() override;
   bool DoesUseTpmManager() override;
   bool CanResetDictionaryAttackWithCurrentPCR0() override;
+  void SetDelegateData(const std::string& delegate_blob,
+                       bool has_reset_lock_permissions) override;
+  base::Optional<bool> IsDelegateBoundToPcr() override;
+  bool DelegateCanResetDACounter() override;
 
   bool CreatePolicyWithRandomPassword(TSS_HCONTEXT context_handle,
                                       TSS_FLAG policy_type,
@@ -378,6 +382,12 @@ class TpmImpl : public Tpm {
 
   // Indicates if the TPM is being owned
   bool is_being_owned_;
+
+  // Indicates if the delegate is bound to PCR.
+  base::Optional<bool> is_delegate_bound_to_pcr_;
+
+  // Indicates if the delegate is allowed to reset dictional attack counter.
+  bool has_reset_lock_permissions_ = false;
 
   // Tpm Context information
   trousers::ScopedTssContext tpm_context_;

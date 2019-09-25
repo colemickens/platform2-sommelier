@@ -208,6 +208,10 @@ class StubTpm : public Tpm {
   }
   void HandleOwnershipTakenSignal() override {}
   bool CanResetDictionaryAttackWithCurrentPCR0() override { return true; }
+  void SetDelegateData(const std::string& delegate_blob,
+                       bool has_reset_lock_permissions) override {}
+  base::Optional<bool> IsDelegateBoundToPcr() override { return true; }
+  bool DelegateCanResetDACounter() override { return true; }
 };
 
 }  // namespace cryptohome

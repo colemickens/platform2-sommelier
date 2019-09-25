@@ -1667,7 +1667,17 @@ std::map<uint32_t, std::string> Crypto::GetPcrMap(
 }
 
 bool Crypto::CanUnsealWithUserAuth() const {
-  return tpm_ && tpm_->GetVersion() != Tpm::TPM_1_2;
+  if (!tpm_)
+    return false;
+  if (tpm_->GetVersion() != Tpm::TPM_1_2)
+    return true;
+  if (!tpm_->DelegateCanResetDACounter())
+    return false;
+  base::Optional<bool> is_pcr_bound = tpm_->IsDelegateBoundToPcr();
+  if (is_pcr_bound.has_value() && !is_pcr_bound.value())
+    return true;
+  // TODO(igorcov): Add the check if the board has a double PCR extend issue.
+  return false;
 }
 
 }  // namespace cryptohome

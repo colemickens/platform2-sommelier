@@ -237,6 +237,9 @@ class MockTpm : public Tpm {
               (override));
   MOCK_METHOD(bool, DoesUseTpmManager, (), (override));
   MOCK_METHOD(bool, CanResetDictionaryAttackWithCurrentPCR0, (), (override));
+  MOCK_METHOD2(SetDelegateData, void(const std::string&, bool));
+  MOCK_METHOD0(IsDelegateBoundToPcr, base::Optional<bool>());
+  MOCK_METHOD0(DelegateCanResetDACounter, bool());
 
  private:
   TpmRetryAction XorDecrypt(TpmKeyHandle _key,

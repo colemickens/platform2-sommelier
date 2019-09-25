@@ -2615,6 +2615,8 @@ bool TpmImpl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
     return false;
   }
   delegate_blob->assign(delegate.begin(), delegate.end());
+  is_delegate_bound_to_pcr_ = !bound_pcrs.empty();
+  has_reset_lock_permissions_ = true;
 
   return true;
 }
@@ -3408,6 +3410,37 @@ bool TpmImpl::GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) {
   CHECK_EQ(offset, kFieldUpgradeResponseSize);
 
   return true;
+}
+
+void TpmImpl::SetDelegateData(const std::string& delegate_blob,
+                              bool has_reset_lock_permissions) {
+  if (delegate_blob.size() == 0) {
+    return;
+  }
+
+  has_reset_lock_permissions_ = has_reset_lock_permissions;
+  UINT64 offset = 0;
+  TPM_DELEGATE_OWNER_BLOB ownerBlob;
+  brillo::Blob blob = brillo::BlobFromString(delegate_blob);
+  TSS_RESULT tss_result = Trspi_UnloadBlob_TPM_DELEGATE_OWNER_BLOB(
+      &offset, blob.data(), &ownerBlob);
+
+  if (tss_result != TSS_SUCCESS) {
+    LOG(ERROR) << "Failed to unload delegate blob";
+    return;
+  }
+
+  is_delegate_bound_to_pcr_ =
+      (ownerBlob.pub.pcrInfo.pcrSelection.pcrSelect[0] != 0) ||
+      (ownerBlob.pub.pcrInfo.pcrSelection.pcrSelect[1] != 0);
+}
+
+base::Optional<bool> TpmImpl::IsDelegateBoundToPcr() {
+  return is_delegate_bound_to_pcr_;
+}
+
+bool TpmImpl::DelegateCanResetDACounter() {
+  return has_reset_lock_permissions_;
 }
 
 bool TpmImpl::SetUserType(Tpm::UserType type) {
