@@ -16,6 +16,7 @@
 // [1] https://www.intel.com/content/www/us/en/architecture-and-technology/64-ia-32-architectures-software-developer-vol-3b-part-2-manual.html
 // [2] https://github.com/torvalds/linux/blob/master/Documentation/power/powercap/powercap.rst
 
+#include <inttypes.h>
 #include <math.h>
 
 #include <base/cpu.h>
@@ -39,6 +40,19 @@ namespace {
 // Path to the powercap driver sysfs interface, if it doesn't exist,
 // either the kernel is old w/o powercap driver, or it is not configured.
 constexpr const char kPowercapPath[] = "/sys/class/powercap";
+
+// Cap of a maximal reasonable power in Watts
+constexpr const double kMaxWatts = 1e3;
+
+struct PowerDomain {
+  base::FilePath file_path;
+  std::string name;
+  uint64_t max_energy;
+
+  bool operator<(const PowerDomain& that) const {
+    return file_path < that.file_path;
+  }
+};
 
 }  // namespace
 
@@ -66,7 +80,7 @@ int main(int argc, char** argv) {
       << "No powercap driver sysfs interface, couldn't find "
       << powercap_file_path.value();
 
-  std::vector<std::pair<base::FilePath, std::string>> power_domains;
+  std::vector<PowerDomain> power_domains;
   std::string domain_name;
 
   // Probe the power domains and sub-domains
@@ -77,6 +91,8 @@ int main(int argc, char** argv) {
   for (base::FilePath dir = dirs.Next(); !dir.empty(); dir = dirs.Next()) {
     base::FilePath domain_file_path = dir.Append("name");
     base::FilePath energy_file_path = dir.Append("energy_uj");
+    base::FilePath maxeng_file_path = dir.Append("max_energy_range_uj");
+    uint64_t max_energy_uj;
 
     if (!base::PathExists(domain_file_path)) {
       fprintf(stderr, "Unable to find %s\n", domain_file_path.value().c_str());
@@ -86,13 +102,18 @@ int main(int argc, char** argv) {
       fprintf(stderr, "Unable to find %s\n", energy_file_path.value().c_str());
       continue;
     }
+    if (!base::PathExists(maxeng_file_path)) {
+      fprintf(stderr, "Unable to find %s\n", maxeng_file_path.value().c_str());
+      continue;
+    }
 
     base::ReadFileToString(domain_file_path, &domain_name);
     base::TrimWhitespaceASCII(domain_name, base::TRIM_ALL, &domain_name);
-    power_domains.push_back({energy_file_path, domain_name});
+    power_manager::util::ReadUint64File(maxeng_file_path, &max_energy_uj);
+    power_domains.push_back({energy_file_path, domain_name, max_energy_uj});
     if (FLAGS_verbose)
-      printf("Found RAPL domain %-10s at %s\n", domain_name.c_str(),
-             dir.value().c_str());
+      printf("Found domain %-10s (max %" PRIu64 " uj) at %s\n",
+             domain_name.c_str(), max_energy_uj, dir.value().c_str());
   }
 
   PCHECK(!power_domains.empty())
@@ -105,7 +126,7 @@ int main(int argc, char** argv) {
   sort(power_domains.begin(), power_domains.end());
 
   for (const auto& domain : power_domains)
-    printf("%10s ", domain.second.c_str());
+    printf("%10s ", domain.name.c_str());
   printf(" (Note: Values in Watts)\n");
 
   uint32_t num_domains = power_domains.size();
@@ -113,7 +134,7 @@ int main(int argc, char** argv) {
   std::vector<uint64_t> energy_after(num_domains);
   do {
     for (int i = 0; i < num_domains; ++i)
-      power_manager::util::ReadUint64File(power_domains[i].first,
+      power_manager::util::ReadUint64File(power_domains[i].file_path,
                                           &energy_before[i]);
     const base::TimeTicks ticks_before = base::TimeTicks::Now();
 
@@ -121,13 +142,23 @@ int main(int argc, char** argv) {
         base::TimeDelta::FromMilliseconds(FLAGS_interval_ms));
 
     for (int i = 0; i < num_domains; ++i)
-      power_manager::util::ReadUint64File(power_domains[i].first,
+      power_manager::util::ReadUint64File(power_domains[i].file_path,
                                           &energy_after[i]);
     const base::TimeDelta time_delta = base::TimeTicks::Now() - ticks_before;
 
     for (int i = 0; i < num_domains; ++i) {
-      printf("%10.6f ", (energy_after[i] - energy_before[i]) /
-                            (time_delta.InSecondsF() * 1e6));
+      uint64_t energy_delta = (energy_after[i] >= energy_before[i])
+                                  ? energy_after[i] - energy_before[i]
+                                  : power_domains[i].max_energy -
+                                        energy_before[i] + energy_after[i];
+      double average_power = energy_delta / (time_delta.InSecondsF() * 1e6);
+
+      // Skip enormous sample if the counter is reset during suspend-to-RAM
+      if (average_power > kMaxWatts) {
+        printf("%10s ", "skip");
+        continue;
+      }
+      printf("%10.6f ", average_power);
     }
     printf("\n");
   } while (FLAGS_repeat);
