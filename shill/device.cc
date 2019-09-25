@@ -825,7 +825,7 @@ bool Device::AcquireIPv6ConfigWithLeaseName(const string& lease_name) {
 }
 #endif  // DISABLE_DHCPV6
 
-void Device::RefreshIPConfig() {
+void Device::UpdateBlackholeUserTraffic() {
   SLOG(this, 2) << __func__;
   if (ipconfig_) {
     bool updated;

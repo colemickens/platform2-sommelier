@@ -2650,7 +2650,7 @@ void Manager::UpdateBlackholeUserTraffic() {
     return;
   }
   for (const auto& device : devices_) {
-    device->RefreshIPConfig();
+    device->UpdateBlackholeUserTraffic();
   }
 }
 

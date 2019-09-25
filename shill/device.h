@@ -363,7 +363,7 @@ class Device : public base::RefCounted<Device> {
 
   // If the status of browser traffic blackholing changed, this will restart
   // the active connection with the right setting.
-  mockable void RefreshIPConfig();
+  mockable void UpdateBlackholeUserTraffic();
 
  protected:
   friend class base::RefCounted<Device>;

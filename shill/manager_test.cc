@@ -4427,7 +4427,7 @@ TEST_F(ManagerTest, ShouldBlackholeUserTraffic) {
   EXPECT_EQ(false, manager()->ShouldBlackholeUserTraffic(kUnregistered));
 }
 
-TEST_F(ManagerTest, RefreshIPConfig) {
+TEST_F(ManagerTest, UpdateBlackholeUserTraffic) {
   manager()->RegisterDevice(mock_devices_[0]);
 
   const string kOnlinePackage = "com.example.test.vpn1";
@@ -4440,23 +4440,23 @@ TEST_F(ManagerTest, RefreshIPConfig) {
       .WillRepeatedly(Return(true));
   manager()->RegisterService(service);
 
-  EXPECT_CALL(*mock_devices_[0], RefreshIPConfig()).Times(1);
+  EXPECT_CALL(*mock_devices_[0], UpdateBlackholeUserTraffic()).Times(1);
   manager()->SetAlwaysOnVpnPackage(kOtherPackage, nullptr);
 
-  EXPECT_CALL(*mock_devices_[0], RefreshIPConfig()).Times(0);
+  EXPECT_CALL(*mock_devices_[0], UpdateBlackholeUserTraffic()).Times(0);
   manager()->SetAlwaysOnVpnPackage(kOnlinePackage, nullptr);
 
-  EXPECT_CALL(*mock_devices_[0], RefreshIPConfig()).Times(0);
+  EXPECT_CALL(*mock_devices_[0], UpdateBlackholeUserTraffic()).Times(0);
   manager()->UpdateBlackholeUserTraffic();
 
-  EXPECT_CALL(*mock_devices_[0], RefreshIPConfig()).Times(1);
+  EXPECT_CALL(*mock_devices_[0], UpdateBlackholeUserTraffic()).Times(1);
   EXPECT_CALL(*service, IsOnline()).WillRepeatedly(Return(true));
   manager()->UpdateBlackholeUserTraffic();
 
-  EXPECT_CALL(*mock_devices_[0], RefreshIPConfig()).Times(1);
+  EXPECT_CALL(*mock_devices_[0], UpdateBlackholeUserTraffic()).Times(1);
   manager()->SetAlwaysOnVpnPackage(kOtherPackage, nullptr);
 
-  EXPECT_CALL(*mock_devices_[0], RefreshIPConfig()).Times(1);
+  EXPECT_CALL(*mock_devices_[0], UpdateBlackholeUserTraffic()).Times(1);
   manager()->SetAlwaysOnVpnPackage("", nullptr);
 }
 
