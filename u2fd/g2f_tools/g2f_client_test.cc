@@ -101,6 +101,7 @@ using ::testing::SetArgPointee;
 using ::testing::StrEq;
 
 static HidDevice::Cid kDummyCid = { { 0xAA, 0xBB, 0xCC, 0xDD } };
+static constexpr int kHidTimeoutMs = 100;
 
 class G2fClientTest : public ::testing::Test {
  public:
@@ -236,7 +237,7 @@ TEST_F(G2fClientTest, HidDeviceRecvResponse) {
   brillo::Blob payload;
 
   EXPECT_TRUE(device_->Open());
-  EXPECT_TRUE(device_->RecvResponse(kDummyCid, &cmd, &payload, 10));
+  EXPECT_TRUE(device_->RecvResponse(kDummyCid, &cmd, &payload, kHidTimeoutMs));
 
   EXPECT_THAT(payload, ElementsAre(0xDE, 0xAD, 0xBE, 0xEF,
                                    0, 0, 0, 0));
@@ -251,7 +252,7 @@ TEST_F(G2fClientTest, HidDeviceRecvResponseMultiPart) {
   brillo::Blob payload;
 
   EXPECT_TRUE(device_->Open());
-  EXPECT_TRUE(device_->RecvResponse(kDummyCid, &cmd, &payload, 10));
+  EXPECT_TRUE(device_->RecvResponse(kDummyCid, &cmd, &payload, kHidTimeoutMs));
 
   EXPECT_EQ(0x50, payload.size());
   EXPECT_THAT(payload, Each(0xDE));
@@ -266,7 +267,7 @@ TEST_F(G2fClientTest, HidDeviceRecvResponseUnexpectedInit) {
   brillo::Blob payload;
 
   EXPECT_TRUE(device_->Open());
-  EXPECT_FALSE(device_->RecvResponse(kDummyCid, &cmd, &payload, 10));
+  EXPECT_FALSE(device_->RecvResponse(kDummyCid, &cmd, &payload, kHidTimeoutMs));
 }
 
 TEST_F(G2fClientTest, HidDeviceRecvResponseUnexpectedCont) {
@@ -277,7 +278,7 @@ TEST_F(G2fClientTest, HidDeviceRecvResponseUnexpectedCont) {
   brillo::Blob payload;
 
   EXPECT_TRUE(device_->Open());
-  EXPECT_FALSE(device_->RecvResponse(kDummyCid, &cmd, &payload, 10));
+  EXPECT_FALSE(device_->RecvResponse(kDummyCid, &cmd, &payload, kHidTimeoutMs));
 }
 
 TEST_F(G2fClientTest, HidDeviceRecvResponseUnexpectedChannel) {
@@ -288,8 +289,8 @@ TEST_F(G2fClientTest, HidDeviceRecvResponseUnexpectedChannel) {
   brillo::Blob payload;
 
   EXPECT_TRUE(device_->Open());
-  EXPECT_FALSE(device_->RecvResponse({ 0xFF, 0xFF, 0xFF, 0xFF },
-                                     &cmd, &payload, 10));
+  EXPECT_FALSE(device_->RecvResponse({0xFF, 0xFF, 0xFF, 0xFF}, &cmd, &payload,
+                                     kHidTimeoutMs));
 }
 
 TEST_F(G2fClientTest, HidDeviceRecvResponseUnexpectedSeq) {
@@ -303,7 +304,7 @@ TEST_F(G2fClientTest, HidDeviceRecvResponseUnexpectedSeq) {
   brillo::Blob payload;
 
   EXPECT_TRUE(device_->Open());
-  EXPECT_FALSE(device_->RecvResponse(kDummyCid, &cmd, &payload, 10));
+  EXPECT_FALSE(device_->RecvResponse(kDummyCid, &cmd, &payload, kHidTimeoutMs));
 }
 
 TEST_F(G2fClientTest, HidDeviceRecvResponseReadFail) {
@@ -314,7 +315,7 @@ TEST_F(G2fClientTest, HidDeviceRecvResponseReadFail) {
   brillo::Blob payload;
 
   EXPECT_TRUE(device_->Open());
-  EXPECT_FALSE(device_->RecvResponse(kDummyCid, &cmd, &payload, 10));
+  EXPECT_FALSE(device_->RecvResponse(kDummyCid, &cmd, &payload, kHidTimeoutMs));
 }
 
 class MockHidDevice : public HidDevice {
