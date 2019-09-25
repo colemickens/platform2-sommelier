@@ -602,7 +602,7 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
-    <tp:property name="CrashSenderTestMode" type="b">
+    <tp:property name="CrashSenderTestMode" type="b" access="readwrite">
       <tp:docstring>
         If true, any UploadSingleCrash call will invoke crash_sender with
         --test_mode.
