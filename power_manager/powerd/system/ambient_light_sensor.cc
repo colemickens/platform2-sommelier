@@ -78,6 +78,10 @@ int AmbientLightSensor::GetAmbientLightLux() {
   return lux_value_;
 }
 
+bool AmbientLightSensor::IsColorSensor() const {
+  return false;
+}
+
 void AmbientLightSensor::StartTimer() {
   poll_timer_.Start(FROM_HERE,
                     base::TimeDelta::FromMilliseconds(poll_interval_ms_), this,

@@ -26,6 +26,7 @@ class AmbientLightSensorStub : public AmbientLightSensorInterface {
   // AmbientLightSensorInterface implementation:
   void AddObserver(AmbientLightObserver* observer) override;
   void RemoveObserver(AmbientLightObserver* observer) override;
+  bool IsColorSensor() const override;
   int GetAmbientLightLux() override;
 
  private:

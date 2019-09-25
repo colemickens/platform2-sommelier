@@ -30,6 +30,9 @@ class AmbientLightSensorInterface {
   virtual void AddObserver(AmbientLightObserver* observer) = 0;
   virtual void RemoveObserver(AmbientLightObserver* observer) = 0;
 
+  // Whether or not this ALS supports color readings.
+  virtual bool IsColorSensor() const = 0;
+
   // Used by observers in their callback to get the raw reading from the sensor
   // for the ambient light level. -1 is considered an error value.
   virtual int GetAmbientLightLux() = 0;
@@ -71,6 +74,7 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
   // AmbientLightSensorInterface implementation:
   void AddObserver(AmbientLightObserver* observer) override;
   void RemoveObserver(AmbientLightObserver* observer) override;
+  bool IsColorSensor() const override;
   int GetAmbientLightLux() override;
 
  private:

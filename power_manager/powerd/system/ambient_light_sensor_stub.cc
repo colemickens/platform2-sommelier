@@ -28,6 +28,10 @@ void AmbientLightSensorStub::RemoveObserver(AmbientLightObserver* observer) {
   observers_.RemoveObserver(observer);
 }
 
+bool AmbientLightSensorStub::IsColorSensor() const {
+  return false;
+}
+
 int AmbientLightSensorStub::GetAmbientLightLux() {
   return lux_;
 }
