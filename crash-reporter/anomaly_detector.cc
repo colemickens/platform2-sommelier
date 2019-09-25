@@ -127,6 +127,8 @@ std::string DetermineFlag(const std::string& info) {
 
 constexpr char cut_here[] = "------------[ cut here";
 constexpr char end_trace[] = "---[ end trace";
+constexpr char crash_report_rlimit[] =
+    "(crash_reporter) has RLIMIT_CORE set to";
 
 // The CPU and PID information got added in the 3.11 kernel development cycle
 // per commit dcb6b45254e2281b6f99ea7f2d51343954aa3ba8. That part is marked
@@ -174,6 +176,16 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
       return {{std::move(text_tmp), std::move(flag_)}};
     }
     text_ += line + "\n";
+  }
+
+  if (line.find(crash_report_rlimit) != std::string::npos) {
+    // Rate limit reporting crash_reporter failures to prevent crash loops.
+    if (crash_reporter_last_crashed_.is_null() ||
+        (base::TimeTicks::Now() - crash_reporter_last_crashed_) >
+            base::TimeDelta::FromHours(1)) {
+      crash_reporter_last_crashed_ = base::TimeTicks::Now();
+      return {{"", "--crash_reporter_crashed"}};
+    }
   }
 
   return base::nullopt;

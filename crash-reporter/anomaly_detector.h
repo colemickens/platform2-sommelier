@@ -6,6 +6,7 @@
 #define CRASH_REPORTER_ANOMALY_DETECTOR_H_
 
 #include <base/optional.h>
+#include <base/time/time.h>
 
 #include <string>
 
@@ -59,6 +60,9 @@ class KernelParser : public Parser {
   LineType last_line_ = LineType::None;
   std::string text_;
   std::string flag_;
+
+  // Timestamp of last time crash_reporter failed.
+  base::TimeTicks crash_reporter_last_crashed_ = base::TimeTicks();
 };
 
 class SuspendParser : public Parser {

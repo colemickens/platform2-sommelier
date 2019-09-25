@@ -135,6 +135,20 @@ TEST(AnomalyDetectorTest, KernelWarningSuspend) {
   ParserTest<KernelParser>("TEST_WARNING", {suspend_warning});
 }
 
+TEST(AnomalyDetectorTest, CrashReporterCrash) {
+  ParserRun crash_reporter_crash = {.expected_flag =
+                                        "--crash_reporter_crashed"s};
+  ParserTest<KernelParser>("TEST_CR_CRASH", {crash_reporter_crash});
+}
+
+TEST(AnomalyDetectorTest, CrashReporterCrashRateLimit) {
+  ParserRun crash_reporter_crash = {.expected_flag =
+                                        "--crash_reporter_crashed"s};
+  ParserRun empty = {.expected_size = 0};
+  ParserTest<KernelParser>("TEST_CR_CRASH",
+                           {crash_reporter_crash, empty, empty});
+}
+
 TEST(AnomalyDetectorTest, ServiceFailure) {
   ParserRun one{.expected_text = "-exit2-"s};
   ParserRun two{.find_this = "crash-crash"s, .replace_with = "fresh-fresh"s};

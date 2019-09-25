@@ -58,6 +58,7 @@ static_library("libcrash_reporter") {
     "bert_collector.cc",
     "chrome_collector.cc",
     "crash_collector.cc",
+    "crash_reporter_failure_collector.cc",
     "early_crash_meta_collector.cc",
     "ec_collector.cc",
     "generic_failure_collector.cc",
@@ -167,9 +168,7 @@ executable("anomaly_detector") {
     "anomaly_detector.cc",
     "anomaly_detector_main.cc",
   ]
-  libs = [
-    "system_api-metrics_event-protos",
-  ]
+  libs = [ "system_api-metrics_event-protos" ]
 }
 
 if (use.cheets) {
@@ -244,6 +243,7 @@ if (use.test) {
       "chrome_collector_test.cc",
       "crash_collector_test.cc",
       "crash_collector_test.h",
+      "crash_reporter_failure_collector_test.cc",
       "crash_reporter_logs_test.cc",
       "crash_sender_util_test.cc",
       "early_crash_meta_collector_test.cc",

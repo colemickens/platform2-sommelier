@@ -33,6 +33,8 @@ TEST(ValidateProgramArgs, GoodCrashReporter) {
                                    "--core2md_failure", "--filter_in=blah"}));
   EXPECT_TRUE(ValidateProgramArgs({"/sbin/crash_reporter", "--user=foo",
                                    "--directory_failure", "--filter_in=blah"}));
+  EXPECT_TRUE(ValidateProgramArgs(
+      {"/sbin/crash_reporter", "--user=foo", "--crash_test"}));
 }
 
 TEST(ValidateProgramArgs, BadCrashReporter) {

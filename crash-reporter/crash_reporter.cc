@@ -19,6 +19,7 @@
 #include "crash-reporter/arc_service_failure_collector.h"
 #include "crash-reporter/bert_collector.h"
 #include "crash-reporter/chrome_collector.h"
+#include "crash-reporter/crash_reporter_failure_collector.h"
 #include "crash-reporter/early_crash_meta_collector.h"
 #include "crash-reporter/ec_collector.h"
 #include "crash-reporter/generic_failure_collector.h"
@@ -267,6 +268,14 @@ int HandleSELinuxViolation(
   return handled ? 0 : 1;
 }
 
+void HandleCrashReporterFailure(
+    CrashReporterFailureCollector* crash_reporter_failure_collector) {
+  // Accumulate logs to help in diagnosing failures during collection.
+  brillo::LogToString(true);
+  crash_reporter_failure_collector->Collect();
+  brillo::LogToString(false);
+}
+
 // Ensure stdout, stdin, and stderr are open file descriptors.  If
 // they are not, any code which writes to stderr/stdout may write out
 // to files opened during execution.  In particular, when
@@ -340,6 +349,8 @@ int main(int argc, char* argv[]) {
   DEFINE_string(arc_service_failure, "",
                 "The specific ARC service name that failed");
   DEFINE_bool(suspend_failure, false, "Report collected suspend failure logs.");
+  DEFINE_bool(crash_reporter_crashed, false,
+              "Report crash_reporter itself crashing");
   DEFINE_string(service_failure, "", "The specific service name that failed");
   DEFINE_bool(selinux_violation, false, "Report collected SELinux violation");
   // TODO(crbug.com/1000398): Remove --chrome flag after Chrome switches from
@@ -466,6 +477,9 @@ int main(int argc, char* argv[]) {
   SELinuxViolationCollector selinux_violation_collector;
   selinux_violation_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
 
+  CrashReporterFailureCollector crash_reporter_failure_collector;
+  crash_reporter_failure_collector.Initialize(IsFeedbackAllowed, FLAGS_early);
+
   if (FLAGS_init) {
     return Initialize(&user_collector, &udev_collector, FLAGS_early);
   }
@@ -520,6 +534,11 @@ int main(int argc, char* argv[]) {
 
   if (FLAGS_selinux_violation) {
     return HandleSELinuxViolation(&selinux_violation_collector);
+  }
+
+  if (FLAGS_crash_reporter_crashed) {
+    HandleCrashReporterFailure(&crash_reporter_failure_collector);
+    return 0;
   }
 
   if (!FLAGS_chrome.empty()) {

@@ -33,6 +33,14 @@ bool ValidateCrashReporter(int argc, const char* argv[]) {
       base::StartsWith(argv[2], "--filter_in=", base::CompareCase::SENSITIVE)) {
     return true;
   }
+
+  // Allow for crash-reporter crash testing invocations.
+  if (argc == 3 &&
+      base::StartsWith(argv[1], "--user=", base::CompareCase::SENSITIVE) &&
+      std::string_view(argv[2]) == "--crash_test") {
+    return true;
+  }
+
   if (argc == 4 &&
       base::StartsWith(argv[1], "--user=", base::CompareCase::SENSITIVE) &&
       (std::string_view(argv[2]) == "--core2md_failure" ||
