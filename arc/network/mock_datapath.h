@@ -19,33 +19,28 @@ class MockDatapath : public Datapath {
   explicit MockDatapath(MinijailedProcessRunner* runner) : Datapath(runner) {}
   ~MockDatapath() = default;
 
-  MOCK_METHOD(bool,
-              AddBridge,
-              (const std::string&, const std::string&),
-              (override));
-  MOCK_METHOD(void, RemoveBridge, (const std::string&), (override));
-  MOCK_METHOD(std::string,
-              AddVirtualBridgedInterface,
-              (const std::string&, const std::string&, const std::string&),
-              (override));
-  MOCK_METHOD(void, RemoveInterface, (const std::string&), (override));
-  MOCK_METHOD(
-      bool,
-      AddInterfaceToContainer,
-      (int, const std::string&, const std::string&, const std::string&, bool),
-      (override));
-  MOCK_METHOD(bool, AddLegacyIPv4DNAT, (const std::string&), (override));
-  MOCK_METHOD(void, RemoveLegacyIPv4DNAT, (), (override));
-  MOCK_METHOD(bool,
-              AddInboundIPv4DNAT,
-              (const std::string&, const std::string&),
-              (override));
-  MOCK_METHOD(void,
-              RemoveInboundIPv4DNAT,
-              (const std::string&, const std::string&),
-              (override));
-  MOCK_METHOD(bool, AddOutboundIPv4, (const std::string&), (override));
-  MOCK_METHOD(void, RemoveOutboundIPv4, (const std::string&), (override));
+  MOCK_METHOD2(AddBridge,
+               bool(const std::string& ifname, const std::string& ipv4_addr));
+  MOCK_METHOD1(RemoveBridge, void(const std::string& ifname));
+  MOCK_METHOD3(AddVirtualBridgedInterface,
+               std::string(const std::string& ifname,
+                           const std::string& mac_addr,
+                           const std::string& br_ifname));
+  MOCK_METHOD1(RemoveInterface, void(const std::string& ifname));
+  MOCK_METHOD5(AddInterfaceToContainer,
+               bool(int ns,
+                    const std::string& src_ifname,
+                    const std::string& dst_ifname,
+                    const std::string& dst_ipv4,
+                    bool fwd_multicast));
+  MOCK_METHOD1(AddLegacyIPv4DNAT, bool(const std::string& ipv4_addr));
+  MOCK_METHOD0(RemoveLegacyIPv4DNAT, void());
+  MOCK_METHOD2(AddInboundIPv4DNAT,
+               bool(const std::string& ifname, const std::string& ipv4_addr));
+  MOCK_METHOD2(RemoveInboundIPv4DNAT,
+               void(const std::string& ifname, const std::string& ipv4_addr));
+  MOCK_METHOD1(AddOutboundIPv4, bool(const std::string& ifname));
+  MOCK_METHOD1(RemoveOutboundIPv4, void(const std::string& ifname));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDatapath);

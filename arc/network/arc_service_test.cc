@@ -29,35 +29,19 @@ class MockDeviceManager : public DeviceManagerBase {
   MockDeviceManager() = default;
   ~MockDeviceManager() = default;
 
-  MOCK_METHOD(void,
-              RegisterDeviceAddedHandler,
-              (const DeviceHandler&),
-              (override));
-  MOCK_METHOD(void,
-              RegisterDeviceRemovedHandler,
-              (const DeviceHandler&),
-              (override));
-  MOCK_METHOD(void,
-              RegisterDefaultInterfaceChangedHandler,
-              (const NameHandler&),
-              (override));
-  MOCK_METHOD(void,
-              RegisterDeviceIPv6AddressFoundHandler,
-              (const DeviceHandler&),
-              (override));
-  MOCK_METHOD(void, OnGuestStart, (GuestMessage::GuestType), (override));
-  MOCK_METHOD(void, OnGuestStop, (GuestMessage::GuestType), (override));
-  MOCK_METHOD(void, ProcessDevices, (const DeviceHandler&), (override));
-  MOCK_METHOD(bool, Exists, (const std::string&), (const, override));
-  MOCK_METHOD(Device*,
-              FindByHostInterface,
-              (const std::string&),
-              (const, override));
-  MOCK_METHOD(Device*,
-              FindByGuestInterface,
-              (const std::string&),
-              (const, override));
-  MOCK_METHOD(const std::string&, DefaultInterface, (), (const, override));
+  MOCK_METHOD1(RegisterDeviceAddedHandler, void(const DeviceHandler&));
+  MOCK_METHOD1(RegisterDeviceRemovedHandler, void(const DeviceHandler&));
+  MOCK_METHOD1(RegisterDefaultInterfaceChangedHandler,
+               void(const NameHandler&));
+  MOCK_METHOD1(RegisterDeviceIPv6AddressFoundHandler,
+               void(const DeviceHandler&));
+  MOCK_METHOD1(OnGuestStart, void(GuestMessage::GuestType));
+  MOCK_METHOD1(OnGuestStop, void(GuestMessage::GuestType));
+  MOCK_METHOD1(ProcessDevices, void(const DeviceHandler&));
+  MOCK_CONST_METHOD1(Exists, bool(const std::string& name));
+  MOCK_CONST_METHOD1(FindByHostInterface, Device*(const std::string& ifname));
+  MOCK_CONST_METHOD1(FindByGuestInterface, Device*(const std::string& ifname));
+  MOCK_CONST_METHOD0(DefaultInterface, const std::string&());
 };
 
 }  // namespace
