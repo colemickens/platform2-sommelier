@@ -4,8 +4,6 @@
 
 #include "arc/vm/libvda/decode/gpu/gpu_vda_impl.h"
 
-#include <fcntl.h>
-
 #include <memory>
 #include <set>
 #include <string>
@@ -17,7 +15,6 @@
 #include <base/callback.h>
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
-#include <base/posix/eintr_wrapper.h>
 #include <base/single_thread_task_runner.h>
 #include <base/synchronization/waitable_event.h>
 #include <chromeos/dbus/service_constants.h>
@@ -140,38 +137,6 @@ inline arc::mojom::VideoCodecProfile ConvertVdaProfileToMojoProfile(
     default:
       return arc::mojom::VideoCodecProfile::VIDEO_CODEC_PROFILE_UNKNOWN;
   }
-}
-
-std::vector<vda_pixel_format_t> GetOutputPixelFormats() {
-  // TODO(alexlau): don't hardcode this path, see
-  // http://cs/chromeos_public/src/platform/minigbm/cros_gralloc/cros_gralloc_driver.cc?l=29&rcl=cc35e699f36cce0f0b3a130b0d6ce4e2a393b373
-  base::ScopedFD fd(HANDLE_EINTR(open("/dev/dri/renderD128", O_RDWR)));
-  if (!fd.is_valid()) {
-    LOG(ERROR) << "Could not open vgem.";
-    return {};
-  }
-
-  arc::ScopedGbmDevicePtr device(gbm_create_device(fd.get()));
-  if (!device.get()) {
-    LOG(ERROR) << "Could not create gbm device.";
-    return {};
-  }
-
-  std::vector<vda_pixel_format_t> formats;
-  constexpr vda_pixel_format_t pixel_formats[] = {YV12, NV12};
-  for (vda_pixel_format_t pixel_format : pixel_formats) {
-    uint32_t gbm_format = ConvertPixelFormatToGbmFormat(pixel_format);
-    if (gbm_format == 0u)
-      continue;
-    if (!gbm_device_is_format_supported(
-            device.get(), gbm_format,
-            GBM_BO_USE_TEXTURING | GBM_BO_USE_HW_VIDEO_DECODER)) {
-      DLOG(INFO) << "Not supported: " << pixel_format;
-      continue;
-    }
-    formats.push_back(pixel_format);
-  }
-  return formats;
 }
 
 bool CheckValidOutputFormat(vda_pixel_format_t format, size_t num_planes) {
@@ -560,7 +525,7 @@ bool GpuVdaImpl::PopulateCapabilities() {
   capabilities_.num_input_formats = arraysize(kInputFormats);
   capabilities_.input_formats = kInputFormats;
 
-  output_formats_ = GetOutputPixelFormats();
+  output_formats_ = GetSupportedRawFormats(GbmUsageType::DECODE);
   if (output_formats_.empty())
     return false;
 

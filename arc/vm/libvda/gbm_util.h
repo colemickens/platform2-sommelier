@@ -8,10 +8,11 @@
 #include <stdint.h>
 
 #include <memory>
+#include <vector>
 
 #include <gbm.h>
 
-#include "arc/vm/libvda/libvda_decode.h"
+#include "arc/vm/libvda/libvda_common.h"
 
 namespace arc {
 
@@ -26,7 +27,14 @@ struct GbmBoDeleter {
 using ScopedGbmBoPtr = std::unique_ptr<gbm_bo, GbmBoDeleter>;
 
 // Converts from libvda's pixel format to GBM format.
-uint32_t ConvertPixelFormatToGbmFormat(vda_pixel_format_t format);
+uint32_t ConvertPixelFormatToGbmFormat(video_pixel_format_t format);
+
+enum GbmUsageType { DECODE, ENCODE };
+
+// Returns a list of supported raw formats. When |encode| is true, it will
+// check for formats suitable for encoding, else for decoding.
+std::vector<video_pixel_format_t> GetSupportedRawFormats(
+    GbmUsageType usage_type);
 
 }  // namespace arc
 
