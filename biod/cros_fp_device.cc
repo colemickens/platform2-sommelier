@@ -19,6 +19,7 @@
 
 #include "biod/ec_command.h"
 #include "biod/ec_command_async.h"
+#include "biod/fp_context_command_factory.h"
 
 namespace {
 
@@ -527,16 +528,14 @@ bool CrosFpDevice::UploadTemplate(const VendorTemplate& tmpl) {
 }
 
 bool CrosFpDevice::SetContext(std::string user_hex) {
-  struct ec_params_fp_context ctxt = {};
-  if (!user_hex.empty()) {
-    std::vector<uint8_t> user_id;
-    if (base::HexStringToBytes(user_hex, &user_id))
-      memcpy(ctxt.userid, user_id.data(),
-             std::min(user_id.size(), sizeof(ctxt.userid)));
+  auto fp_context_cmd = FpContextCommandFactory::Create(this, user_hex);
+
+  if (!fp_context_cmd) {
+    LOG(ERROR) << "Unable to create FP context command";
+    return false;
   }
-  EcCommand<struct ec_params_fp_context, EmptyParam> cmd(EC_CMD_FP_CONTEXT, 0,
-                                                         ctxt);
-  return cmd.Run(cros_fd_.get());
+
+  return fp_context_cmd->Run(cros_fd_.get());
 }
 
 bool CrosFpDevice::ResetContext() {
