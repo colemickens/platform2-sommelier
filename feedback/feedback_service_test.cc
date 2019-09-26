@@ -41,7 +41,7 @@ class MockFeedbackUploader : public feedback::FeedbackUploader {
       const base::FilePath& path,
       base::SequencedWorkerPool* pool) : FeedbackUploader(path, pool) {}
 
-  MOCK_METHOD1(DispatchReport, void(const std::string&));
+  MOCK_METHOD(void, DispatchReport, (const std::string&), (override));
 };
 
 class MockFeedbackUploaderQueue : public MockFeedbackUploader {
@@ -50,7 +50,7 @@ class MockFeedbackUploaderQueue : public MockFeedbackUploader {
       const base::FilePath& path,
       base::SequencedWorkerPool* pool) : MockFeedbackUploader(path, pool) {}
 
-  MOCK_METHOD1(QueueReport, void(const std::string&));
+  MOCK_METHOD(void, QueueReport, (const std::string&), (override));
 };
 
 class FailedFeedbackUploader : public MockFeedbackUploader {
