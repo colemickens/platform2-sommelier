@@ -10,6 +10,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/sys_info.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <gmock/gmock.h>
@@ -114,6 +115,12 @@ class V4L2TestEnvironment : public ::testing::Environment {
       // Disable new requirements added in HALv3.
       AddNegativeGtestFilter("V4L2Test.FirstFrameAfterStreamOn");
       AddNegativeGtestFilter("V4L2Test.CroppingResolution");
+
+      // Some snappy old SKU cannot meet the requirement. Skip the test to
+      // avoid alarm. Please see http://crbug.com/737874 for detail.
+      if (base::SysInfo::GetLsbReleaseBoard() == "snappy") {
+        AddNegativeGtestFilter("V4L2Test.MaximumSupportedResolution");
+      }
     } else if (test_list == kCertificationTestList) {
       // There is no facing information when running certification test.
       AddNegativeGtestFilter("V4L2Test.MaximumSupportedResolution");
