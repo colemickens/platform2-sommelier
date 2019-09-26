@@ -118,7 +118,9 @@ void ShillClient::OnServicePropertyChangeRegistration(
   }
 
   auto it = properties.find(shill::kIPConfigProperty);
-  CHECK(it != properties.end()) << "Shill should always publish an IPConfig.";
+  if (it == properties.end()) {
+    return;
+  }
   OnServicePropertyChange(shill::kIPConfigProperty, it->second);
 }
 
@@ -146,8 +148,9 @@ void ShillClient::OnServicePropertyChange(const std::string& property_name,
   }
 
   auto it = properties.find(shill::kMethodProperty);
-  CHECK(it != properties.end())
-      << "Shill should always publish a method for IPConfig.";
+  if (it == properties.end()) {
+    return;
+  }
 
   const std::string ipconfig_method{it->second.TryGet<std::string>()};
   if (ipconfig_method == shill::kTypeIPv6 ||
@@ -179,14 +182,14 @@ void ShillClient::OnIPConfigPropertyChangeRegistration(
   }
 
   auto ns_it = properties.find(shill::kNameServersProperty);
-  CHECK(ns_it != properties.end())
-      << "Shill should always publish IPConfig nameservers.";
-  OnIPConfigPropertyChange(shill::kNameServersProperty, ns_it->second);
+  if (ns_it != properties.end()) {
+    OnIPConfigPropertyChange(shill::kNameServersProperty, ns_it->second);
+  }
 
   auto sd_it = properties.find(shill::kSearchDomainsProperty);
-  CHECK(sd_it != properties.end())
-      << "Shill should always publish IPConfig search domains.";
-  OnIPConfigPropertyChange(shill::kSearchDomainsProperty, sd_it->second);
+  if (sd_it != properties.end()) {
+    OnIPConfigPropertyChange(shill::kSearchDomainsProperty, sd_it->second);
+  }
 }
 
 void ShillClient::OnIPConfigPropertyChange(const std::string& property_name,
