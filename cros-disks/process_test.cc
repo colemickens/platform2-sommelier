@@ -24,6 +24,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cros-disks/sandboxed_init.h"
 #include "cros-disks/sandboxed_process.h"
 
 namespace cros_disks {
@@ -84,22 +85,6 @@ class AlarmGuard {
 
 int AlarmGuard::count_ = 0;
 AlarmGuard::SigHandler AlarmGuard::old_handler_ = nullptr;
-
-// Anonymous pipe.
-struct Pipe {
-  base::ScopedFD read_fd, write_fd;
-
-  // Creates an open pipe.
-  Pipe() {
-    int fds[2];
-    if (pipe(fds) < 0) {
-      PLOG(FATAL) << "Cannot create pipe ";
-    }
-
-    read_fd.reset(fds[0]);
-    write_fd.reset(fds[1]);
-  }
-};
 
 std::string Read(const base::ScopedFD fd) {
   char buffer[PIPE_BUF];

@@ -16,11 +16,7 @@
 #include <chromeos/libminijail.h>
 
 namespace cros_disks {
-
 namespace {
-constexpr size_t kCtrlFileIndex = 3;
-constexpr size_t kReadEnd = 0;
-constexpr size_t kWriteEnd = 1;
 
 void SigTerm(int sig) {
   if (kill(-1, sig) == -1) {
@@ -31,16 +27,17 @@ void SigTerm(int sig) {
 
 }  // namespace
 
-SandboxedInit::SandboxedInit() {
-  for (size_t i = STDIN_FILENO; i <= kCtrlFileIndex; ++i) {
-    int p[2];
-    if (pipe(p) == -1) {
-      PLOG(FATAL) << "Can't create pipe " << i;
-    }
-    fds_[i][0].reset(p[0]);
-    fds_[i][1].reset(p[1]);
+Pipe::Pipe() {
+  int fds[2];
+  if (pipe(fds) < 0) {
+    PLOG(FATAL) << "Cannot create pipe ";
   }
+
+  read_fd.reset(fds[0]);
+  write_fd.reset(fds[1]);
 }
+
+SandboxedInit::SandboxedInit() = default;
 
 SandboxedInit::~SandboxedInit() = default;
 
@@ -49,16 +46,16 @@ base::ScopedFD SandboxedInit::TakeInitControlFD(base::ScopedFD* in_fd,
                                                 base::ScopedFD* err_fd) {
   // Close "other" sides of the pipes. For the outside of sandbox
   // "their" stdin is for writing and all other are for reading.
-  fds_[STDIN_FILENO][kReadEnd].reset();
-  fds_[STDOUT_FILENO][kWriteEnd].reset();
-  fds_[STDERR_FILENO][kWriteEnd].reset();
-  fds_[kCtrlFileIndex][kWriteEnd].reset();
+  in_.read_fd.reset();
+  out_.write_fd.reset();
+  err_.write_fd.reset();
+  ctrl_.write_fd.reset();
 
-  *in_fd = std::move(fds_[STDIN_FILENO][kWriteEnd]);
-  *out_fd = std::move(fds_[STDOUT_FILENO][kReadEnd]);
-  *err_fd = std::move(fds_[STDERR_FILENO][kReadEnd]);
+  *in_fd = std::move(in_.write_fd);
+  *out_fd = std::move(out_.read_fd);
+  *err_fd = std::move(err_.read_fd);
 
-  return std::move(fds_[kCtrlFileIndex][kReadEnd]);
+  return std::move(ctrl_.read_fd);
 }
 
 [[noreturn]] void SandboxedInit::RunInsideSandboxNoReturn(
@@ -71,29 +68,28 @@ base::ScopedFD SandboxedInit::TakeInitControlFD(base::ScopedFD* in_fd,
   // Redirect in/out so logging can communicate assertions and children
   // to inherit right FDs.
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
-  if (dup2(fds_[STDERR_FILENO][kWriteEnd].get(), STDERR_FILENO) !=
-      STDERR_FILENO) {
+  if (dup2(err_.write_fd.get(), STDERR_FILENO) < 0) {
     PLOG(FATAL) << "Can't dup2 " << STDERR_FILENO;
   }
-  if (dup2(fds_[STDOUT_FILENO][kWriteEnd].get(), STDOUT_FILENO) !=
-      STDOUT_FILENO) {
+  if (dup2(out_.write_fd.get(), STDOUT_FILENO) < 0) {
     PLOG(FATAL) << "Can't dup2 " << STDOUT_FILENO;
   }
-  if (dup2(fds_[STDIN_FILENO][kReadEnd].get(), STDIN_FILENO) != STDIN_FILENO) {
+  if (dup2(in_.read_fd.get(), STDIN_FILENO) < 0) {
     PLOG(FATAL) << "Can't dup2 " << STDIN_FILENO;
   }
 
   // Set an identifiable process name.
-  if (prctl(PR_SET_NAME, "cros-disks-INIT") == -1) {
+  if (prctl(PR_SET_NAME, "cros-disks-INIT") < 0) {
     PLOG(WARNING) << "Can't set init's process name";
   }
 
   // Close unused sides of the pipes.
-  for (int i = STDIN_FILENO; i <= STDERR_FILENO; ++i) {
-    fds_[i][kReadEnd].reset();
-    fds_[i][kWriteEnd].reset();
+  for (Pipe* const p : {&in_, &out_, &err_}) {
+    p->read_fd.reset();
+    p->write_fd.reset();
   }
-  fds_[kCtrlFileIndex][kReadEnd].reset();
+
+  ctrl_.read_fd.reset();
 
   // PID of the launcher process inside the jail PID namespace (e.g. PID 2).
   pid_t root_pid = StartLauncher(std::move(launcher));
@@ -105,7 +101,7 @@ base::ScopedFD SandboxedInit::TakeInitControlFD(base::ScopedFD* in_fd,
   HANDLE_EINTR(close(STDOUT_FILENO));
   HANDLE_EINTR(close(STDERR_FILENO));
 
-  _exit(RunInitLoop(root_pid, std::move(fds_[kCtrlFileIndex][kWriteEnd])));
+  _exit(RunInitLoop(root_pid, std::move(ctrl_.write_fd)));
   NOTREACHED();
 }
 
@@ -170,16 +166,18 @@ int SandboxedInit::RunInitLoop(pid_t root_pid, base::ScopedFD ctrl_fd) {
 pid_t SandboxedInit::StartLauncher(base::OnceCallback<int()> launcher) {
   pid_t exec_child = fork();
 
-  if (exec_child == -1) {
+  if (exec_child < 0) {
     PLOG(FATAL) << "Can't fork";
   }
 
   if (exec_child == 0) {
+    // In child process
     // Launch the invoked program.
     _exit(std::move(launcher).Run());
     NOTREACHED();
   }
 
+  // In parent process
   return exec_child;
 }
 
@@ -187,10 +185,12 @@ bool SandboxedInit::PollLauncherStatus(base::ScopedFD* ctrl_fd, int* wstatus) {
   CHECK(ctrl_fd->is_valid());
   ssize_t read_bytes =
       HANDLE_EINTR(read(ctrl_fd->get(), wstatus, sizeof(*wstatus)));
-  if (read_bytes == sizeof(*wstatus)) {
-    ctrl_fd->reset();
+  if (read_bytes != sizeof(*wstatus)) {
+    return false;
   }
-  return read_bytes == sizeof(*wstatus);
+
+  ctrl_fd->reset();
+  return true;
 }
 
 int SandboxedInit::WStatusToStatus(int wstatus) {

@@ -17,6 +17,14 @@
 
 namespace cros_disks {
 
+// Anonymous pipe.
+struct Pipe {
+  base::ScopedFD read_fd, write_fd;
+
+  // Creates an open pipe.
+  Pipe();
+};
+
 // To run daemons in a PID namespace under minijail we need to provide
 // an "init" process for the sandbox. As we rely on return code of the
 // launcher of the daemonized process we must send it through a side
@@ -44,7 +52,7 @@ class SandboxedInit {
   int RunInitLoop(pid_t root_pid, base::ScopedFD ctrl_fd);
   pid_t StartLauncher(base::OnceCallback<int()> launcher);
 
-  base::ScopedFD fds_[4][2];
+  Pipe in_, out_, err_, ctrl_;
 
   DISALLOW_COPY_AND_ASSIGN(SandboxedInit);
 };
