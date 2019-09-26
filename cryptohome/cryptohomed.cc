@@ -78,6 +78,9 @@ int main(int argc, char** argv) {
   // Initialize OpenSSL.
   OpenSSL_add_all_algorithms();
 
+  // Initialize cryptohome metrics
+  cryptohome::ScopedMetricsInitializer metrics_initializer;
+
   if (use_new_dbus_interface) {
 #if USE_CRYPTOHOME_USERDATAAUTH_INTERFACE
     // Note that there's an AtExitManager in the constructor of
@@ -110,8 +113,6 @@ int main(int argc, char** argv) {
 
     // Create an AtExitManager
     base::AtExitManager exit_manager;
-
-    cryptohome::ScopedMetricsInitializer metrics_initializer;
 
     cryptohome::Service* service = cryptohome::Service::CreateDefault(abe_data);
 
