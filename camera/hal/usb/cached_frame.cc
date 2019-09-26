@@ -481,10 +481,28 @@ int CachedFrame::CompressNV12(const android::CameraMetadata& metadata,
     if (thumbnail_width == 0 && thumbnail_height == 0) {
       LOGF(INFO) << "Thumbnail size = (0, 0), nothing will be generated";
     } else {
+      const uint8_t* i420_data;
+      if (in_frame.GetFourcc() == V4L2_PIX_FMT_YUV420) {
+        i420_data = in_frame.GetData();
+      } else {
+        if (!ReallocateSharedFrameBuffer(
+                in_frame.GetWidth(), in_frame.GetHeight(), V4L2_PIX_FMT_YUV420,
+                &temp_i420_frame_)) {
+          LOGF(ERROR) << "Failed to allocate shared memory buffer";
+          return -EINVAL;
+        }
+        int ret =
+            image_processor_->ConvertFormat(in_frame, temp_i420_frame_.get());
+        if (ret) {
+          LOGF(ERROR) << "Failed to convert frame to I420";
+          return ret;
+        }
+        i420_data = temp_i420_frame_->GetData();
+      }
       uint32_t thumbnail_data_size = 0;
       thumbnail.resize(thumbnail_width * thumbnail_height * 1.5);
       if (jpeg_compressor_->GenerateThumbnail(
-              in_frame.GetData(), in_frame.GetWidth(), in_frame.GetHeight(),
+              i420_data, in_frame.GetWidth(), in_frame.GetHeight(),
               thumbnail_width, thumbnail_height, thumbnail_jpeg_quality,
               thumbnail.size(), thumbnail.data(), &thumbnail_data_size)) {
         thumbnail.resize(thumbnail_data_size);
