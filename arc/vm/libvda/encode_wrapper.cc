@@ -11,6 +11,7 @@
 #include <base/logging.h>
 
 #include "arc/vm/libvda/encode/fake/fake_vea_impl.h"
+#include "arc/vm/libvda/encode/gpu/gpu_vea_impl.h"
 
 namespace arc {
 
@@ -49,6 +50,8 @@ void VeaContext::DispatchRequireInputBuffers(uint32_t input_count,
   event.event_data.require_input_buffers.input_frame_width = input_frame_width;
   event.event_data.require_input_buffers.input_frame_height =
       input_frame_height;
+  event.event_data.require_input_buffers.output_buffer_size =
+      output_buffer_size;
   WriteEvent(event);
 }
 
@@ -94,9 +97,14 @@ void* initialize_encode(vea_impl_type_t impl_type) {
   switch (impl_type) {
     case VEA_FAKE:
       return arc::FakeVeaImpl::Create();
-    case GAVEA:
-      NOTIMPLEMENTED();
-      return nullptr;
+    case GAVEA: {
+      arc::VafConnection* conn = arc::VafConnection::Get();
+      if (conn == nullptr) {
+        LOG(ERROR) << "Failed to retrieve VAF connection.";
+        return nullptr;
+      }
+      return arc::GpuVeaImpl::Create(conn);
+    }
     default:
       LOG(ERROR) << "Unknown impl type " << impl_type;
       return nullptr;
