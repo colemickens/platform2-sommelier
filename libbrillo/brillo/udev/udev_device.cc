@@ -121,4 +121,8 @@ const char* UdevDevice::GetSysAttributeValue(const char* attribute) const {
   return udev_device_get_sysattr_value(device_, attribute);
 }
 
+std::unique_ptr<UdevDevice> UdevDevice::Clone() {
+  return std::make_unique<UdevDevice>(device_);
+}
+
 }  // namespace brillo

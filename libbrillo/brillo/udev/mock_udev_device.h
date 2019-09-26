@@ -57,6 +57,7 @@ class BRILLO_EXPORT MockUdevDevice : public UdevDevice {
               GetSysAttributeValue,
               (const char*),
               (const, override));
+  MOCK_METHOD(std::unique_ptr<UdevDevice>, Clone, (), (override));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockUdevDevice);

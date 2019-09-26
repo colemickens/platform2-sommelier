@@ -95,6 +95,10 @@ class BRILLO_EXPORT UdevDevice {
   // Wraps udev_device_get_sysattr_value().
   virtual const char* GetSysAttributeValue(const char* attribute) const;
 
+  // Creates a copy of this UdevDevice pointing to the same underlying
+  // struct udev_device* (increasing its libudev reference count by 1).
+  virtual std::unique_ptr<UdevDevice> Clone();
+
  private:
   // Allows MockUdevDevice to invoke the private default constructor below.
   friend class MockUdevDevice;
