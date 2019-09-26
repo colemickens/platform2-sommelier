@@ -21,7 +21,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include "base/threading/platform_thread.h"
+#include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
