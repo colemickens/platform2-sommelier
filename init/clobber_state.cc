@@ -1253,7 +1253,9 @@ void ClobberState::AttemptSwitchToFastWipe(bool is_rotational) {
   if (!args_.fast_wipe && is_rotational) {
     LOG(INFO) << "Stateful device is on rotational disk, shredding files";
     ShredRotationalStatefulFiles();
-    ForceDelay();
+    if (!args_.factory_wipe) {
+      ForceDelay();
+    }
     args_.fast_wipe = true;
     LOG(INFO) << "Switching to fast wipe";
   }
@@ -1266,7 +1268,9 @@ void ClobberState::AttemptSwitchToFastWipe(bool is_rotational) {
     LOG(INFO) << "Attempting to wipe encryption keysets";
     if (WipeKeysets()) {
       LOG(INFO) << "Wiping encryption keysets succeeded";
-      ForceDelay();
+      if (!args_.factory_wipe) {
+        ForceDelay();
+      }
       args_.fast_wipe = true;
       LOG(INFO) << "Switching to fast wipe";
     } else {

@@ -1095,6 +1095,21 @@ TEST_F(AttemptSwitchToFastWipeTest, SecureEraseNotRotational) {
   CheckPathsUntouched(shredded_paths_);
 }
 
+TEST_F(AttemptSwitchToFastWipeTest, SecureEraseNotRotationalFactoryWipe) {
+  ClobberState::Arguments args;
+  args.fast_wipe = false;
+  args.factory_wipe = true;
+  clobber_.SetArgsForTest(args);
+
+  clobber_.SetSecureEraseSupported(true);
+  clobber_.AttemptSwitchToFastWipe(false);
+  EXPECT_FALSE(clobber_.DelayForced());
+  EXPECT_TRUE(clobber_.GetArgsForTest().fast_wipe);
+  CheckPathsUntouched(encrypted_stateful_paths_);
+  CheckPathsDeleted(keyset_paths_);
+  CheckPathsUntouched(shredded_paths_);
+}
+
 TEST_F(AttemptSwitchToFastWipeTest, RotationalSecureErase) {
   ClobberState::Arguments args;
   args.fast_wipe = false;
@@ -1103,6 +1118,21 @@ TEST_F(AttemptSwitchToFastWipeTest, RotationalSecureErase) {
   clobber_.SetSecureEraseSupported(true);
   clobber_.AttemptSwitchToFastWipe(true);
   EXPECT_TRUE(clobber_.DelayForced());
+  EXPECT_TRUE(clobber_.GetArgsForTest().fast_wipe);
+  CheckPathsDeleted(encrypted_stateful_paths_);
+  CheckPathsShredded(keyset_paths_);
+  CheckPathsShredded(shredded_paths_);
+}
+
+TEST_F(AttemptSwitchToFastWipeTest, RotationalSecureEraseFactoryWipe) {
+  ClobberState::Arguments args;
+  args.fast_wipe = false;
+  args.factory_wipe = true;
+  clobber_.SetArgsForTest(args);
+
+  clobber_.SetSecureEraseSupported(true);
+  clobber_.AttemptSwitchToFastWipe(true);
+  EXPECT_FALSE(clobber_.DelayForced());
   EXPECT_TRUE(clobber_.GetArgsForTest().fast_wipe);
   CheckPathsDeleted(encrypted_stateful_paths_);
   CheckPathsShredded(keyset_paths_);
