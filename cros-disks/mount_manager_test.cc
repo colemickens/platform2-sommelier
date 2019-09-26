@@ -903,6 +903,38 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPath) {
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
+// Verifies that MountManager::Unmount() removes mount path from cache if
+// it appears to be not mounted.
+TEST_F(MountManagerTest, UnmountRemovesFromCacheIfNotMounted) {
+  source_path_ = kTestSourcePath;
+  mount_path_ = kTestMountPath;
+
+  EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(mount_path_))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
+      .Times(0);
+  EXPECT_CALL(platform_, SetOwnership(mount_path_, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, SetPermissions(mount_path_, _)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(mount_path_))
+      .WillOnce(Return(true));
+  EXPECT_CALL(manager_,
+              DoMount(source_path_, filesystem_type_, options_, mount_path_, _))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(manager_, DoUnmount(mount_path_, _))
+      .WillOnce(Return(MOUNT_ERROR_PATH_NOT_MOUNTED));
+  EXPECT_CALL(manager_, SuggestMountPath(_)).Times(0);
+
+  EXPECT_EQ(MOUNT_ERROR_NONE, manager_.Mount(source_path_, filesystem_type_,
+                                             options_, &mount_path_));
+  EXPECT_EQ(kTestMountPath, mount_path_);
+  EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
+
+  EXPECT_EQ(MOUNT_ERROR_PATH_NOT_MOUNTED,
+            manager_.Unmount(mount_path_, options_));
+  EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
+}
+
 // Verifies that MountManager::Unmount() returns no error when it is invoked
 // to unmount the source path of a reserved mount path.
 TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePathInReservedCase) {
