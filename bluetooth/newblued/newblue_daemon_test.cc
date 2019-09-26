@@ -9,16 +9,19 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
+#include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <dbus/mock_object_manager.h>
 #include <dbus/mock_object_proxy.h>
 #include <dbus/object_manager.h>
+#include <dbus/values_util.h>
 #include <gtest/gtest.h>
 
 #include "bluetooth/newblued/mock_libnewblue.h"
@@ -39,9 +42,12 @@ constexpr char kTestSender[] = ":1.1";
 constexpr char kTestSender2[] = ":1.2";
 constexpr int kTestSerial = 10;
 constexpr char kTestDeviceAddress[] = "06:05:04:03:02:01";
+constexpr char kTestDeviceAddress2[] = "06:05:04:03:02:02";
 constexpr char kLatestAddress[] = "16:15:14:13:12:11";
 constexpr char kTestDeviceObjectPath[] =
     "/org/bluez/hci0/dev_06_05_04_03_02_01";
+constexpr char kTestDeviceObjectPath2[] =
+    "/org/bluez/hci0/dev_06_05_04_03_02_02";
 constexpr char kUnknownDeviceObjectPath[] =
     "/org/bluez/hci0/dev_FF_FF_FF_FF_FF_FF";
 
@@ -49,6 +55,65 @@ constexpr uniq_t kTestDiscoveryId = 7;
 
 constexpr gatt_client_conn_t kTestGattClientConnectionId = 3;
 
+const std::map<std::string, brillo::VariantDictionary> filters = {
+    {"clear", {}},
+    {"classic_loose",
+     {
+         {"Transport", std::string{"bredr"}},
+         {"RSSI", int16_t{-120}},
+         {"Pathloss", uint16_t{120}},
+     }},
+    {"tight",
+     {{"Transport", std::string{"auto"}},
+      {"RSSI", int16_t{-80}},
+      {"Pathloss", uint16_t{20}},
+      {"UUIDs",
+       std::vector<std::string>{"0000181e-0000-1000-8000-00805f9b34fb"}}}},
+    {"loose",
+     {
+         {"Transport", std::string{"auto"}},
+         {"RSSI", int16_t{-120}},
+         {"Pathloss", uint16_t{120}},
+     }},
+    {"looser_rssi",
+     {{"Transport", std::string{"le"}},
+      {"RSSI", int16_t{-100}},
+      {"Pathloss", uint16_t{20}},
+      {"UUIDs",
+       std::vector<std::string>{"0000181e-0000-1000-8000-00805f9b34fb"}}}},
+    {"uuid",
+     {{"Transport", std::string{"le"}},
+      {"RSSI", int16_t{-100}},
+      {"Pathloss", uint16_t{20}},
+      {"UUIDs",
+       std::vector<std::string>{"0000181f-0000-1000-8000-00805f9b34fb"}}}}};
+
+constexpr uint8_t eir[] = {
+    // Flag
+    3, static_cast<uint8_t>(EirType::FLAGS), 0xAA, 0xBB,
+    // UUID16_COMPLETE - Battery Service
+    3, static_cast<uint8_t>(EirType::UUID16_COMPLETE), 0x0F, 0x18,
+    // UUID32_INCOMPLETE - Blood Pressure
+    5, static_cast<uint8_t>(EirType::UUID32_INCOMPLETE), 0x10, 0x18, 0x00, 0x00,
+    // UUID128_COMPLETE
+    17, static_cast<uint8_t>(EirType::UUID128_COMPLETE), 0xFB, 0x34, 0x9B, 0x5F,
+    0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0x1E, 0x18, 0x00, 0x00,
+    // Name
+    4, static_cast<uint8_t>(EirType::NAME_SHORT), 'f', 'o', 'o',
+    // TX Power
+    2, static_cast<uint8_t>(EirType::TX_POWER), 0x0A,
+    // Class
+    4, static_cast<uint8_t>(EirType::CLASS_OF_DEV), 0x01, 0x02, 0x03,
+    // Service data associated with 16-bit Battery Service UUID
+    5, static_cast<uint8_t>(EirType::SVC_DATA16), 0x0F, 0x18, 0x22, 0x11,
+    // Service data associate with 32-bit Bond Management Service UUID
+    7, static_cast<uint8_t>(EirType::SVC_DATA32), 0x1E, 0x18, 0x00, 0x00, 0x44,
+    0x33,
+    // Appearance
+    3, static_cast<uint8_t>(EirType::GAP_APPEARANCE), 0x01, 0x02,
+    // Manufacturer data
+    5, static_cast<uint8_t>(EirType::MANUFACTURER_DATA), 0x0E, 0x00, 0x55,
+    0x66};
 void SaveResponse(std::unique_ptr<dbus::Response>* saved_response,
                   std::unique_ptr<dbus::Response> response) {
   *saved_response = std::move(response);
@@ -280,6 +345,14 @@ class NewblueDaemonTest : public ::testing::Test {
         AddOrGetMockExportedObject(device_object_path);
     ExpectDeviceMethodsUnexported(exported_dev_object);
     EXPECT_CALL(*exported_dev_object, Unregister()).Times(1);
+  }
+
+  void ExpectDeviceObjectNotExported(
+      const dbus::ObjectPath& device_object_path) {
+    scoped_refptr<dbus::MockExportedObject> exported_dev_object =
+        AddOrGetMockExportedObject(device_object_path);
+    EXPECT_CALL(*bus_, GetExportedObject(device_object_path)).Times(0);
+    EXPECT_CALL(*exported_dev_object, SendSignal(_)).Times(0);
   }
 
   scoped_refptr<dbus::MockExportedObject> SetupExportedRootObject() {
@@ -548,6 +621,29 @@ class NewblueDaemonTest : public ::testing::Test {
     remove_device_method_call->SetSerial(kTestSerial);
     dbus::MessageWriter writer(remove_device_method_call);
     writer.AppendObjectPath(dbus::ObjectPath(device_object_path));
+  }
+
+  void CallSetDiscoveryFilterMethod(
+      dbus::ExportedObject::MethodCallCallback set_discovery_filter_handler,
+      std::string sender,
+      std::string filter_type) {
+    // Initialization for Set Discovery Filter method.
+    dbus::MethodCall set_discovery_filter_method_call(
+        bluetooth_adapter::kBluetoothAdapterInterface,
+        bluetooth_adapter::kSetDiscoveryFilter);
+    std::unique_ptr<dbus::Response> set_discovery_filter_response;
+    set_discovery_filter_method_call.SetPath(
+        dbus::ObjectPath(kAdapterObjectPath));
+    set_discovery_filter_method_call.SetSender(sender);
+    set_discovery_filter_method_call.SetSerial(kTestSerial);
+
+    dbus::MessageWriter writer(&set_discovery_filter_method_call);
+    brillo::dbus_utils::AppendValueToWriter(&writer,
+                                            filters.find(filter_type)->second);
+
+    set_discovery_filter_handler.Run(
+        &set_discovery_filter_method_call,
+        base::Bind(&SaveResponse, &set_discovery_filter_response));
   }
 
   // Tests org.bluez.Adapter1.StartDiscovery
@@ -1297,6 +1393,268 @@ TEST_F(NewblueDaemonTest, ScanState) {
   TestDeinit();
 }
 
+TEST_F(NewblueDaemonTest, DiscoveryFilter) {
+  dbus::ExportedObject::MethodCallCallback set_discovery_filter_handler;
+  dbus::ExportedObject::MethodCallCallback start_discovery_handler;
+  dbus::ExportedObject::MethodCallCallback stop_discovery_handler;
+  dbus::ExportedObject::MethodCallCallback remove_device_handler;
+  MethodHandlerMap method_handlers = {
+      {bluetooth_adapter::kSetDiscoveryFilter, &set_discovery_filter_handler},
+      {bluetooth_adapter::kStartDiscovery, &start_discovery_handler},
+      {bluetooth_adapter::kStopDiscovery, &stop_discovery_handler},
+      {bluetooth_adapter::kRemoveDevice, &remove_device_handler},
+  };
+
+  TestInit(method_handlers);
+  TestAdapterBringUp(exported_adapter_object_, method_handlers,
+                     /* with_saved_devices */ false);
+
+  // Initialization.
+  dbus::MethodCall start_discovery_method_call(
+      bluetooth_adapter::kBluetoothAdapterInterface,
+      bluetooth_adapter::kStartDiscovery);
+  start_discovery_method_call.SetPath(dbus::ObjectPath(kAdapterObjectPath));
+  start_discovery_method_call.SetSender(kTestSender);
+  start_discovery_method_call.SetSerial(kTestSerial);
+  std::unique_ptr<dbus::Response> start_discovery_response;
+  dbus::MethodCall stop_discovery_method_call(
+      bluetooth_adapter::kBluetoothAdapterInterface,
+      bluetooth_adapter::kStopDiscovery);
+  stop_discovery_method_call.SetPath(dbus::ObjectPath(kAdapterObjectPath));
+  stop_discovery_method_call.SetSender(kTestSender);
+  stop_discovery_method_call.SetSerial(kTestSerial);
+  std::unique_ptr<dbus::Response> stop_discovery_response;
+  Newblue::DeviceDiscoveredCallback on_device_discovered;
+  hciDeviceDiscoveredLeCbk inquiry_response_callback;
+  void* inquiry_response_callback_data;
+  struct bt_addr address, address2;
+  ConvertToBtAddr(false, kTestDeviceAddress, &address);
+  ConvertToBtAddr(false, kTestDeviceAddress2, &address2);
+
+  // Setup the discovery filter to filter out low RSSI devices.
+  CallSetDiscoveryFilterMethod(set_discovery_filter_handler, kTestSender,
+                               "tight");
+
+  // Start discovery
+  EXPECT_CALL(*libnewblue_,
+              HciDiscoverLeStart(_, _, /* active */ true, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<0>(&inquiry_response_callback),
+                      SaveArg<1>(&inquiry_response_callback_data),
+                      Return(kTestDiscoveryId)));
+  start_discovery_handler.Run(
+      &start_discovery_method_call,
+      base::Bind(&SaveResponse, &start_discovery_response));
+
+  // Both devices are blocked by the "tight" filter.
+  ExpectDeviceObjectNotExported(dbus::ObjectPath(kTestDeviceObjectPath));
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address,
+                               /* resolved_address */ nullptr,
+                               /* rssi */ -90, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ eir,
+                               /* eir_len*/ sizeof(eir));
+  base::RunLoop().RunUntilIdle();
+  ExpectDeviceObjectNotExported(dbus::ObjectPath(kTestDeviceObjectPath2));
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address2,
+                               /* resolved_address */ nullptr,
+                               /* rssi */ -110, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ eir,
+                               /* eir_len*/ sizeof(eir));
+  base::RunLoop().RunUntilIdle();
+
+  // Update the filter for the same client.
+  CallSetDiscoveryFilterMethod(set_discovery_filter_handler, kTestSender,
+                               "classic_loose");
+
+  // Both devices are still blocked because the latest filter is for classic
+  // only and ignored by NewBlue.
+  ExpectDeviceObjectNotExported(dbus::ObjectPath(kTestDeviceObjectPath));
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address,
+                               /* resolved_address */ nullptr,
+                               /* rssi */ -90, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ eir,
+                               /* eir_len*/ sizeof(eir));
+  base::RunLoop().RunUntilIdle();
+  ExpectDeviceObjectNotExported(dbus::ObjectPath(kTestDeviceObjectPath2));
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address2,
+                               /* resolved_address */ nullptr,
+                               /* rssi */ -110, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ eir,
+                               /* eir_len*/ sizeof(eir));
+  base::RunLoop().RunUntilIdle();
+
+  // Setup the discovery filter to have slightly lower RSSI threshold.
+  CallSetDiscoveryFilterMethod(set_discovery_filter_handler, kTestSender,
+                               "looser_rssi");
+  // One device with higher RSSI shall pass, but not the second one.
+  ExpectDeviceObjectExported(dbus::ObjectPath(kTestDeviceObjectPath),
+                             method_handlers);
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address,
+                               /* resolved_address */ nullptr,
+                               /* rssi */ -90, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ eir,
+                               /* eir_len*/ sizeof(eir));
+  base::RunLoop().RunUntilIdle();
+  ExpectDeviceObjectNotExported(dbus::ObjectPath(kTestDeviceObjectPath2));
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address2,
+                               /* resolved_address */ nullptr,
+                               /* rssi */ -110, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ eir,
+                               /* eir_len*/ 0);
+  base::RunLoop().RunUntilIdle();
+
+  // Clear the filter for the client by sending an empty filter dict.
+  CallSetDiscoveryFilterMethod(set_discovery_filter_handler, kTestSender,
+                               "clear");
+  // The second device with lower RSSI shall pass now.
+  ExpectDeviceObjectExported(dbus::ObjectPath(kTestDeviceObjectPath2),
+                             method_handlers);
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address2,
+                               /* resolved_address */ nullptr,
+                               /* rssi */ -110, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ eir,
+                               /* eir_len*/ 0);
+  base::RunLoop().RunUntilIdle();
+
+  // Remove both discovered devices for the following tests.
+  dbus::MethodCall remove_device_method_call(
+      bluetooth_adapter::kBluetoothAdapterInterface,
+      bluetooth_adapter::kRemoveDevice);
+  ConstructRemoveDeviceMethodCall(&remove_device_method_call,
+                                  kTestDeviceObjectPath);
+  ExpectDeviceObjectUnexported(dbus::ObjectPath(kTestDeviceObjectPath));
+  std::unique_ptr<dbus::Response> remove_device_response;
+  remove_device_handler.Run(&remove_device_method_call,
+                            base::Bind(&SaveResponse, &remove_device_response));
+  RemoveMockExportedObject(dbus::ObjectPath(kTestDeviceObjectPath));
+  dbus::MethodCall remove_device_method_call2(
+      bluetooth_adapter::kBluetoothAdapterInterface,
+      bluetooth_adapter::kRemoveDevice);
+  ConstructRemoveDeviceMethodCall(&remove_device_method_call2,
+                                  kTestDeviceObjectPath2);
+  ExpectDeviceObjectUnexported(dbus::ObjectPath(kTestDeviceObjectPath2));
+  std::unique_ptr<dbus::Response> remove_device_response2;
+  remove_device_handler.Run(
+      &remove_device_method_call2,
+      base::Bind(&SaveResponse, &remove_device_response2));
+  RemoveMockExportedObject(dbus::ObjectPath(kTestDeviceObjectPath2));
+
+  // Setup the discovery filter to looking for a wrong UUID.
+  CallSetDiscoveryFilterMethod(set_discovery_filter_handler, kTestSender,
+                               "uuid");
+  // Both devices are blocked by the "uuid filter".
+  ExpectDeviceObjectNotExported(dbus::ObjectPath(kTestDeviceObjectPath));
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address,
+                               /* resolved_address */ nullptr,
+                               /* rssi */ -90, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ eir,
+                               /* eir_len*/ sizeof(eir));
+  base::RunLoop().RunUntilIdle();
+  ExpectDeviceObjectNotExported(dbus::ObjectPath(kTestDeviceObjectPath2));
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address2,
+                               /* resolved_address */ nullptr,
+                               /* rssi */ -110, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ eir,
+                               /* eir_len*/ sizeof(eir));
+  base::RunLoop().RunUntilIdle();
+
+  // Setup a looser RSSI with correct uuid filter by second client. However,
+  // since second client have not started a scan session. No effect on filters.
+  CallSetDiscoveryFilterMethod(set_discovery_filter_handler, kTestSender2,
+                               "looser_rssi");
+  // Both devices are still blocked by the "uuid filter".
+  ExpectDeviceObjectNotExported(dbus::ObjectPath(kTestDeviceObjectPath));
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address,
+                               /* resolved_address */ nullptr,
+                               /* rssi */ -90, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ eir,
+                               /* eir_len*/ sizeof(eir));
+  base::RunLoop().RunUntilIdle();
+  ExpectDeviceObjectNotExported(dbus::ObjectPath(kTestDeviceObjectPath2));
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address2,
+                               /* resolved_address */ nullptr,
+                               /* rssi */ -110, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ eir,
+                               /* eir_len*/ sizeof(eir));
+  base::RunLoop().RunUntilIdle();
+
+  // Try start discovery by the second client. Now the filters will merge to
+  // become a "looser RSSI filter" to allow one device to pass.
+  start_discovery_method_call.SetSender(kTestSender2);
+  start_discovery_handler.Run(
+      &start_discovery_method_call,
+      base::Bind(&SaveResponse, &start_discovery_response));
+  // One device with higher RSSI shall pass, but not the second one.
+  ExpectDeviceObjectExported(dbus::ObjectPath(kTestDeviceObjectPath),
+                             method_handlers);
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address,
+                               /* resolved_address */ nullptr,
+                               /* rssi */ -90, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ eir,
+                               /* eir_len*/ sizeof(eir));
+  base::RunLoop().RunUntilIdle();
+
+  // Update the filter for first client to be loose. The other device should
+  // pass now.
+  CallSetDiscoveryFilterMethod(set_discovery_filter_handler, kTestSender,
+                               "loose");
+  // The second device with lower RSSI shall pass now.
+  ExpectDeviceObjectExported(dbus::ObjectPath(kTestDeviceObjectPath2),
+                             method_handlers);
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address2,
+                               /* resolved_address */ nullptr,
+                               /* rssi */ -110, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ eir,
+                               /* eir_len*/ 0);
+  base::RunLoop().RunUntilIdle();
+
+  // Remove both discovered devices for the following tests.
+  ExpectDeviceObjectUnexported(dbus::ObjectPath(kTestDeviceObjectPath));
+  remove_device_handler.Run(&remove_device_method_call,
+                            base::Bind(&SaveResponse, &remove_device_response));
+  RemoveMockExportedObject(dbus::ObjectPath(kTestDeviceObjectPath));
+  ExpectDeviceObjectUnexported(dbus::ObjectPath(kTestDeviceObjectPath2));
+  remove_device_handler.Run(
+      &remove_device_method_call2,
+      base::Bind(&SaveResponse, &remove_device_response2));
+  RemoveMockExportedObject(dbus::ObjectPath(kTestDeviceObjectPath2));
+
+  // Try stop discovery by the first client. Now the merged filter will back to
+  // what second client holds: a "looser_rssi" filter.
+  stop_discovery_handler.Run(
+      &stop_discovery_method_call,
+      base::Bind(&SaveResponse, &stop_discovery_response));
+  // One device with higher RSSI shall pass, but not the second one.
+  ExpectDeviceObjectExported(dbus::ObjectPath(kTestDeviceObjectPath),
+                             method_handlers);
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address,
+                               /* resolved_address */ nullptr,
+                               /* rssi */ -90, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ eir,
+                               /* eir_len*/ sizeof(eir));
+  base::RunLoop().RunUntilIdle();
+  ExpectDeviceObjectNotExported(dbus::ObjectPath(kTestDeviceObjectPath2));
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address2,
+                               /* resolved_address */ nullptr,
+                               /* rssi */ -110, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ eir,
+                               /* eir_len*/ 0);
+  base::RunLoop().RunUntilIdle();
+
+  // Clear the filter for the second client by sending an empty filter dict.
+  CallSetDiscoveryFilterMethod(set_discovery_filter_handler, kTestSender2,
+                               "clear");
+  // The second device with lower RSSI shall pass now.
+  ExpectDeviceObjectExported(dbus::ObjectPath(kTestDeviceObjectPath2),
+                             method_handlers);
+  (*inquiry_response_callback)(inquiry_response_callback_data, &address2,
+                               /* resolved_address */ nullptr,
+                               /* rssi */ -110, HCI_ADV_TYPE_SCAN_RSP,
+                               /* eir */ eir,
+                               /* eir_len*/ 0);
+  base::RunLoop().RunUntilIdle();
+
+  TestDeinit();
+}
 // TODO(mcchou): Add a test case where the connection is terminated by remote
 // device.
 
