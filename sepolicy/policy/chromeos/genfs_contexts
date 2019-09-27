@@ -1,0 +1,1 @@
+genfscon debugfs /dri/ u:object_r:debugfs_gpu:s0

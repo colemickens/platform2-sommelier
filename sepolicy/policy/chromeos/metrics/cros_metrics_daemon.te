@@ -61,3 +61,5 @@ allow cros_metrics_daemon domain:dir { search getattr };
 # TODO(crbug.com/954670)
 # Temporary workaround before a fixed signer have /etc/lsb-release correctly labelled.
 r_dir_file(cros_metrics_daemon, unlabeled);
+
+r_dir_file(cros_metrics_daemon, debugfs_gpu);

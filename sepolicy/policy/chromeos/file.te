@@ -283,6 +283,8 @@ neverallow fs_type file_type:filesystem associate;
 type sysfs_class_devcoredump, sysfs_type;
 type sysfs_net, sysfs_type;
 
+type debugfs_gpu, debugfs_type;
+
 type wayland_socket, file_type, cros_file_type, cros_run_file_type;
 type cros_system_bus_socket, file_type, cros_file_type, cros_run_file_type;
 type cros_tcsd_socket, file_type, cros_file_type, cros_run_file_type;
