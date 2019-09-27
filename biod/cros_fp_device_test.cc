@@ -9,6 +9,8 @@
 #include "biod/mock_biod_metrics.h"
 #include "biod/mock_cros_fp_device.h"
 
+using testing::Return;
+
 namespace biod {
 namespace {
 
@@ -80,6 +82,64 @@ TEST_F(CrosFpDevice_ResetContext, Failure) {
               SendResetContextMode(FpMode(FpMode::Mode::kModeInvalid)));
 
   mock_cros_fp_device.ResetContext();
+}
+
+class CrosFpDevice_SetContext : public testing::Test {
+ public:
+  class MockCrosFpDevice : public CrosFpDevice {
+   public:
+    using CrosFpDevice::CrosFpDevice;
+    MOCK_METHOD(bool, GetFpMode, (FpMode * mode));
+    MOCK_METHOD(bool, SetFpMode, (const FpMode& mode), (override));
+  };
+  metrics::MockBiodMetrics mock_biod_metrics;
+  MockCrosFpDevice mock_cros_fp_device{
+      CrosFpDevice::MkbpCallback(), &mock_biod_metrics,
+      std::make_unique<MockEcCommandFactory>()};
+};
+
+// Test that if FPMCU is in match mode, setting context will trigger a call to
+// set FPMCU to none mode then another call to set it back to match mode, and
+// will send the original mode to UMA.
+TEST_F(CrosFpDevice_SetContext, MatchMode) {
+  {
+    testing::InSequence s;
+    EXPECT_CALL(mock_cros_fp_device, GetFpMode).WillOnce([](FpMode* mode) {
+      *mode = FpMode(FpMode::Mode::kMatch);
+      return true;
+    });
+    EXPECT_CALL(mock_cros_fp_device, SetFpMode(FpMode(FpMode::Mode::kNone)))
+        .WillOnce(Return(true));
+    EXPECT_CALL(mock_biod_metrics,
+                SendSetContextMode(FpMode(FpMode::Mode::kMatch)));
+    EXPECT_CALL(mock_cros_fp_device, SetFpMode(FpMode(FpMode::Mode::kMatch)))
+        .WillOnce(Return(true));
+    EXPECT_CALL(mock_biod_metrics, SendSetContextSuccess(true));
+  }
+
+  mock_cros_fp_device.SetContext("beef");
+}
+
+// Test that failure to get FPMCU mode in setting context will cause the
+// failure to be sent to UMA.
+TEST_F(CrosFpDevice_SetContext, SendMetricsOnFailingToGetMode) {
+  EXPECT_CALL(mock_cros_fp_device, GetFpMode).WillOnce(Return(false));
+  EXPECT_CALL(mock_biod_metrics, SendSetContextSuccess(false));
+
+  mock_cros_fp_device.SetContext("beef");
+}
+
+// Test that failure to set FPMCU mode in setting context will cause the
+// failure to be sent to UMA.
+TEST_F(CrosFpDevice_SetContext, SendMetricsOnFailingToSetMode) {
+  EXPECT_CALL(mock_cros_fp_device, GetFpMode).WillOnce([](FpMode* mode) {
+    *mode = FpMode(FpMode::Mode::kMatch);
+    return true;
+  });
+  EXPECT_CALL(mock_cros_fp_device, SetFpMode).WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_biod_metrics, SendSetContextSuccess(false));
+
+  mock_cros_fp_device.SetContext("beef");
 }
 
 }  // namespace

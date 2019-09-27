@@ -33,6 +33,8 @@ class MockBiodMetrics : public BiodMetricsInterface {
               (bool is_ignored),
               (override));
   MOCK_METHOD(bool, SendResetContextMode, (const FpMode& mode), (override));
+  MOCK_METHOD(bool, SendSetContextMode, (const FpMode& mode), (override));
+  MOCK_METHOD(bool, SendSetContextSuccess, (bool success), (override));
 };
 
 }  // namespace metrics

@@ -532,10 +532,48 @@ bool CrosFpDevice::SetContext(std::string user_hex) {
 
   if (!fp_context_cmd) {
     LOG(ERROR) << "Unable to create FP context command";
+    biod_metrics_->SendSetContextSuccess(false);
     return false;
   }
 
-  return fp_context_cmd->Run(cros_fd_.get());
+  bool success = true;
+  FpMode original_mode;
+  if (!GetFpMode(&original_mode)) {
+    LOG(ERROR) << "Unable to get FP Mode.";
+    success = false;
+  }
+
+  // FPMCU does not allow resetting context when mode is not none, to prevent
+  // interrupting sensor library and leaking memory. However, for removing
+  // fingerprints, since the user is in the fingerprint list UI, FPMCU is in
+  // match mode. In this case we have to exit match mode and re-enter after
+  // setting context.
+  if (original_mode == FpMode(FpMode::Mode::kMatch)) {
+    LOG(INFO) << "Attempting to set context with match mode.";
+    if (!SetFpMode(FpMode(FpMode::Mode::kNone))) {
+      LOG(ERROR) << "Setting FPMCU context: failed to switch mode from match "
+                 << "to none.";
+      success = false;
+    }
+  } else if (original_mode != FpMode(FpMode::Mode::kNone)) {
+    LOG(ERROR) << "Attempting to set context with mode: " << original_mode
+               << ".";
+    success = false;
+  }
+  biod_metrics_->SendSetContextMode(original_mode);
+
+  success &= fp_context_cmd->Run(cros_fd_.get());
+
+  if (original_mode == FpMode(FpMode::Mode::kMatch)) {
+    if (!SetFpMode(original_mode)) {
+      LOG(ERROR) << "Setting FPMCU context: failed to switch back to match "
+                 << "mode after setting context.";
+      success = false;
+    }
+  }
+
+  biod_metrics_->SendSetContextSuccess(success);
+  return success;
 }
 
 bool CrosFpDevice::ResetContext() {

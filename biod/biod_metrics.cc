@@ -31,6 +31,8 @@ constexpr char kFpNoMatchDurationOverall[] =
 constexpr char kFpMatchIgnoredDueToPowerButtonPress[] =
     "Fingerprint.Unlock.MatchIgnoredDueToPowerButtonPress";
 constexpr char kResetContextMode[] = "Fingerprint.Reset.ResetContextMode";
+constexpr char kSetContextMode[] = "Fingerprint.SetContext.SetContextMode";
+constexpr char kSetContextSuccess[] = "Fingerprint.SetContext.Success";
 constexpr char kUpdaterStatus[] = "Fingerprint.Updater.Status";
 constexpr char kUpdaterReason[] = "Fingerprint.Updater.Reason";
 constexpr char kUpdaterDurationNoUpdate[] =
@@ -129,6 +131,15 @@ void BiodMetrics::SetMetricsLibraryForTesting(
 bool BiodMetrics::SendResetContextMode(const FpMode& mode) {
   return metrics_lib_->SendEnumToUMA(metrics::kResetContextMode, mode.EnumVal(),
                                      mode.MaxEnumVal());
+}
+
+bool BiodMetrics::SendSetContextMode(const FpMode& mode) {
+  return metrics_lib_->SendEnumToUMA(metrics::kSetContextMode, mode.EnumVal(),
+                                     mode.MaxEnumVal());
+}
+
+bool BiodMetrics::SendSetContextSuccess(bool success) {
+  return metrics_lib_->SendBoolToUMA(metrics::kSetContextSuccess, success);
 }
 
 }  // namespace biod

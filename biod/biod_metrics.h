@@ -25,6 +25,8 @@ extern const char kFpNoMatchDurationCapture[];
 extern const char kFpNoMatchDurationMatcher[];
 extern const char kFpNoMatchDurationOverall[];
 extern const char kResetContextMode[];
+extern const char kSetContextMode[];
+extern const char kSetContextSuccess[];
 extern const char kUpdaterStatus[];
 extern const char kUpdaterReason[];
 extern const char kUpdaterDurationNoUpdate[];
@@ -66,6 +68,8 @@ class BiodMetricsInterface {
                                    int overall_ms) = 0;
   virtual bool SendIgnoreMatchEventOnPowerButtonPress(bool is_ignored) = 0;
   virtual bool SendResetContextMode(const FpMode& mode) = 0;
+  virtual bool SendSetContextMode(const FpMode& mode) = 0;
+  virtual bool SendSetContextSuccess(bool success) = 0;
 };
 
 class BiodMetrics : public BiodMetricsInterface {
@@ -94,6 +98,12 @@ class BiodMetrics : public BiodMetricsInterface {
 
   // Was CrosFpDevice::ResetContext called while the FPMCU was in correct mode?
   bool SendResetContextMode(const FpMode& mode) override;
+
+  // What mode was FPMCU in when we set context?
+  bool SendSetContextMode(const FpMode& mode) override;
+
+  // Did setting context succeed?
+  bool SendSetContextSuccess(bool success) override;
 
   void SetMetricsLibraryForTesting(
       std::unique_ptr<MetricsLibraryInterface> metrics_lib);
