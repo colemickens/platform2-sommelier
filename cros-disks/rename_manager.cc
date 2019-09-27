@@ -145,8 +145,8 @@ RenameErrorType RenameManager::StartRenaming(
 
   process_reaper_->WatchForChild(
       FROM_HERE, process->pid(),
-      base::Bind(&RenameManager::OnRenameProcessTerminated,
-                 weak_ptr_factory_.GetWeakPtr(), device_path));
+      base::BindOnce(&RenameManager::OnRenameProcessTerminated,
+                     weak_ptr_factory_.GetWeakPtr(), device_path));
   return RENAME_ERROR_NONE;
 }
 

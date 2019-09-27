@@ -49,8 +49,8 @@ bool DeviceEjector::Eject(const std::string& device_path) {
   if (started) {
     process_reaper_->WatchForChild(
         FROM_HERE, process->pid(),
-        base::Bind(&DeviceEjector::OnEjectProcessTerminated,
-                   weak_ptr_factory_.GetWeakPtr(), device_path));
+        base::BindOnce(&DeviceEjector::OnEjectProcessTerminated,
+                       weak_ptr_factory_.GetWeakPtr(), device_path));
   } else {
     eject_process_.erase(device_path);
     LOG(WARNING) << "Cannot eject media from device " << quote(device_path);

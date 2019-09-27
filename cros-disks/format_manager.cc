@@ -207,8 +207,8 @@ FormatErrorType FormatManager::StartFormatting(
   if (error == FORMAT_ERROR_NONE) {
     process_reaper_->WatchForChild(
         FROM_HERE, process->pid(),
-        base::Bind(&FormatManager::OnFormatProcessTerminated,
-                   weak_ptr_factory_.GetWeakPtr(), device_path));
+        base::BindOnce(&FormatManager::OnFormatProcessTerminated,
+                       weak_ptr_factory_.GetWeakPtr(), device_path));
   } else {
     format_process_.erase(device_path);
   }

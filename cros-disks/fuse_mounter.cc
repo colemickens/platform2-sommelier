@@ -362,10 +362,8 @@ MountErrorType FUSEMounter::MountImpl() const {
   // namespace terminates.
   process_reaper_->WatchForChild(
       FROM_HERE, mount_process->pid(),
-      // TODO(crbug.com/993857): Get rid of base::Passed, when WatchForChild
-      // takes base::OnceCallback.
-      base::Bind(CleanUpCallback, base::Passed(fuse_cleanup_runner.Release()),
-                 target_path()));
+      base::BindOnce(CleanUpCallback, fuse_cleanup_runner.Release(),
+                     target_path()));
 
   return MOUNT_ERROR_NONE;
 }
