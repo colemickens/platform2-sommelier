@@ -63,22 +63,35 @@ class U2fDaemon : public brillo::Daemon {
   // short time.
   void IgnorePowerButtonPress();
 
-  bool force_u2f_;
-  bool force_g2f_;
-  bool legacy_kh_fallback_;
+  // U2F Behavior Flags
+  const bool force_u2f_;
+  const bool force_g2f_;
+  const bool legacy_kh_fallback_;
+  U2fMode u2f_mode_;
+
+  // Virtual USB Device ID
   uint32_t vendor_id_;
   uint32_t product_id_;
-  U2fMode u2f_mode_;
-  u2f::TpmVendorCommandProxy tpm_proxy_;
+
+  // DBus
   scoped_refptr<dbus::Bus> bus_;
-  std::unique_ptr<org::chromium::PowerManagerProxy> pm_proxy_;
-  std::unique_ptr<org::chromium::SessionManagerInterfaceProxy> sm_proxy_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+
+  // Signal sent by this daemon
   std::weak_ptr<brillo::dbus_utils::DBusSignal<u2f::UserNotification>>
       wink_signal_;
+
+  // Proxies to call other daemons
+  u2f::TpmVendorCommandProxy tpm_proxy_;
+  std::unique_ptr<org::chromium::PowerManagerProxy> pm_proxy_;
+  std::unique_ptr<org::chromium::SessionManagerInterfaceProxy> sm_proxy_;
+
+  // Virtual USB Device
   std::unique_ptr<u2f::U2fHid> u2fhid_;
-  MetricsLibrary metrics_library_;
   std::unique_ptr<u2f::U2fMessageHandler> u2f_msg_handler_;
+
+  // UMA, used by Virtual USB Device
+  MetricsLibrary metrics_library_;
 
   DISALLOW_COPY_AND_ASSIGN(U2fDaemon);
 };
