@@ -131,6 +131,27 @@ bool ProtosAreEqual(const google::protobuf::MessageLite& lhs,
          serialized_lhs == serialized_rhs;
 }
 
+bool GetInstallAttributesIsReady(Service* service) {
+  gboolean result = false;
+  GError* error_result = nullptr;
+  EXPECT_TRUE(service->InstallAttributesIsReady(&result, &error_result));
+  return result;
+}
+
+bool GetInstallAttributesIsInvalid(Service* service) {
+  gboolean result = false;
+  GError* error_result = nullptr;
+  EXPECT_TRUE(service->InstallAttributesIsInvalid(&result, &error_result));
+  return result;
+}
+
+bool GetInstallAttributesIsFirstInstall(Service* service) {
+  gboolean result = false;
+  GError* error_result = nullptr;
+  EXPECT_TRUE(service->InstallAttributesIsFirstInstall(&result, &error_result));
+  return result;
+}
+
 }  // namespace
 
 // Tests that need to do more setup work before calling Service::Initialize can
@@ -1998,6 +2019,177 @@ TEST_F(ServiceTest, PostTaskToEventLoop) {
   DispatchEvents();
 
   PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(20));
+}
+
+TEST_F(ServiceTest, InstallAttributesGetExistingValue) {
+  const std::string value_str = "value";
+  const brillo::Blob value_blob = brillo::BlobFromString(value_str);
+  // Not const because InstallAttributesGet takes gchar*.
+  char attr_name[] = "attr";
+
+  EXPECT_CALL(attrs_, Get(StrEq(attr_name), _))
+      .WillOnce(DoAll(SetArgPointee<1>(value_blob), Return(true)));
+
+  GArray* value_result = nullptr;
+  gboolean successful_result = false;
+  GError* error_result = nullptr;
+  EXPECT_TRUE(service_.InstallAttributesGet(attr_name, &value_result,
+                                            &successful_result, &error_result));
+
+  EXPECT_TRUE(successful_result);
+  ASSERT_TRUE(value_result);
+  ASSERT_EQ(value_str.size(), value_result->len);
+  for (size_t i = 0; i < value_str.size(); ++i) {
+    EXPECT_EQ(value_str[i], g_array_index(value_result, uint8_t, i));
+  }
+  g_array_free(value_result, true);
+}
+
+TEST_F(ServiceTest, InstallAttributesGetMissingValue) {
+  // Not const because InstallAttributesGet takes gchar*.
+  char attr_name[] = "attr";
+
+  EXPECT_CALL(attrs_, Get(StrEq(attr_name), _)).WillOnce(Return(false));
+
+  GArray* value_result = nullptr;
+  gboolean successful_result = true;
+  GError* error_result = nullptr;
+  EXPECT_TRUE(service_.InstallAttributesGet(attr_name, &value_result,
+                                            &successful_result, &error_result));
+  EXPECT_TRUE(value_result);
+}
+
+TEST_F(ServiceTest, InstallAttributesSetSuccess) {
+  const std::string value_str = "value";
+  const brillo::Blob value_blob = brillo::BlobFromString(value_str);
+  // Not const because InstallAttributesGet takes gchar*.
+  char attr_name[] = "attr";
+
+  EXPECT_CALL(attrs_, Set(StrEq(attr_name), value_blob)).WillOnce(Return(true));
+
+  GArray* value_array = g_array_new(false, false, sizeof(value_blob.front()));
+  ASSERT_TRUE(value_array);
+  g_array_append_vals(value_array, value_blob.data(), value_blob.size());
+
+  gboolean successful_result = false;
+  GError* error_result = nullptr;
+  EXPECT_TRUE(service_.InstallAttributesSet(attr_name, value_array,
+                                            &successful_result, &error_result));
+  g_array_free(value_array, true);
+
+  EXPECT_TRUE(successful_result);
+}
+
+TEST_F(ServiceTest, InstallAttributesSetFailure) {
+  const std::string value_str = "value";
+  const brillo::Blob value_blob = brillo::BlobFromString(value_str);
+  // Not const because InstallAttributesGet takes gchar*.
+  char attr_name[] = "attr";
+
+  EXPECT_CALL(attrs_, Set(StrEq(attr_name), value_blob))
+      .WillOnce(Return(false));
+
+  GArray* value_array = g_array_new(false, false, sizeof(value_blob.front()));
+  ASSERT_TRUE(value_array);
+  g_array_append_vals(value_array, value_blob.data(), value_blob.size());
+
+  gboolean successful_result = false;
+  GError* error_result = nullptr;
+  EXPECT_TRUE(service_.InstallAttributesSet(attr_name, value_array,
+                                            &successful_result, &error_result));
+  g_array_free(value_array, true);
+
+  EXPECT_FALSE(successful_result);
+}
+
+TEST_F(ServiceTest, InstallAttributesFinalizeSuccess) {
+  EXPECT_CALL(attrs_, Finalize()).WillOnce(Return(true));
+
+  gboolean finalized_result = false;
+  GError* error_result = nullptr;
+  EXPECT_TRUE(
+      service_.InstallAttributesFinalize(&finalized_result, &error_result));
+  EXPECT_TRUE(finalized_result);
+
+  // TODO(https://crbug.com/1009096): Also test that if the device is enterprise
+  // owned according to install attributes, this got transferred to homedirs_
+  // and mount_ - see Service::DetectEnterpriseOwnership.
+}
+
+TEST_F(ServiceTest, InstallAttributesFinalizeFailure) {
+  EXPECT_CALL(attrs_, Finalize()).WillOnce(Return(false));
+
+  gboolean finalized_result = false;
+  GError* error_result = nullptr;
+  EXPECT_TRUE(
+      service_.InstallAttributesFinalize(&finalized_result, &error_result));
+  EXPECT_FALSE(finalized_result);
+}
+
+TEST_F(ServiceTest, InstallAttributesCount) {
+  EXPECT_CALL(attrs_, Count()).WillOnce(Return(3));
+
+  gint count_result = 0;
+  GError* error_result = nullptr;
+  EXPECT_TRUE(service_.InstallAttributesCount(&count_result, &error_result));
+  EXPECT_EQ(3, count_result);
+}
+
+TEST_F(ServiceTest, InstallAttributesIsSecureTrue) {
+  EXPECT_CALL(attrs_, is_secure()).WillOnce(Return(true));
+
+  gboolean is_secure_result = false;
+  GError* error_result = nullptr;
+  EXPECT_TRUE(
+      service_.InstallAttributesIsSecure(&is_secure_result, &error_result));
+  EXPECT_TRUE(is_secure_result);
+}
+
+TEST_F(ServiceTest, InstallAttributesIsSecureFalse) {
+  EXPECT_CALL(attrs_, is_secure()).WillOnce(Return(false));
+
+  gboolean is_secure_result = true;
+  GError* error_result = nullptr;
+  EXPECT_TRUE(
+      service_.InstallAttributesIsSecure(&is_secure_result, &error_result));
+  EXPECT_FALSE(is_secure_result);
+}
+
+TEST_F(ServiceTest, InstallAttributesStatusQueries) {
+  EXPECT_CALL(attrs_, status())
+      .WillRepeatedly(Return(InstallAttributes::Status::kUnknown));
+  EXPECT_FALSE(GetInstallAttributesIsReady(&service_));
+  EXPECT_FALSE(GetInstallAttributesIsInvalid(&service_));
+  EXPECT_FALSE(GetInstallAttributesIsFirstInstall(&service_));
+
+  Mock::VerifyAndClear(&homedirs_);
+  EXPECT_CALL(attrs_, status())
+      .WillRepeatedly(Return(InstallAttributes::Status::kTpmNotOwned));
+  // TODO(https://crbug.com/1004282): This should be false.
+  EXPECT_TRUE(GetInstallAttributesIsReady(&service_));
+  EXPECT_FALSE(GetInstallAttributesIsInvalid(&service_));
+  EXPECT_FALSE(GetInstallAttributesIsFirstInstall(&service_));
+
+  Mock::VerifyAndClear(&homedirs_);
+  EXPECT_CALL(attrs_, status())
+      .WillRepeatedly(Return(InstallAttributes::Status::kFirstInstall));
+  EXPECT_TRUE(GetInstallAttributesIsReady(&service_));
+  EXPECT_FALSE(GetInstallAttributesIsInvalid(&service_));
+  EXPECT_TRUE(GetInstallAttributesIsFirstInstall(&service_));
+
+  Mock::VerifyAndClear(&homedirs_);
+  EXPECT_CALL(attrs_, status())
+      .WillRepeatedly(Return(InstallAttributes::Status::kValid));
+  EXPECT_TRUE(GetInstallAttributesIsReady(&service_));
+  EXPECT_FALSE(GetInstallAttributesIsInvalid(&service_));
+  EXPECT_FALSE(GetInstallAttributesIsFirstInstall(&service_));
+
+  Mock::VerifyAndClear(&homedirs_);
+  EXPECT_CALL(attrs_, status())
+      .WillRepeatedly(Return(InstallAttributes::Status::kInvalid));
+  EXPECT_TRUE(GetInstallAttributesIsReady(&service_));
+  EXPECT_TRUE(GetInstallAttributesIsInvalid(&service_));
+  EXPECT_FALSE(GetInstallAttributesIsFirstInstall(&service_));
 }
 
 }  // namespace cryptohome
