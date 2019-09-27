@@ -78,17 +78,21 @@ const std::vector<enum ec_current_image> kEcCurrentImageEnums = {
 
 class MockCrosFpDeviceUpdate : public biod::CrosFpDeviceUpdate {
  public:
-  MOCK_CONST_METHOD1(GetVersion, bool(biod::CrosFpDevice::EcVersion* ecver));
-  MOCK_CONST_METHOD1(IsFlashProtectEnabled, bool(bool* status));
-  MOCK_CONST_METHOD2(Flash,
-                     bool(const biod::CrosFpFirmware& fw,
-                          enum ec_current_image image));
+  MOCK_METHOD(bool,
+              GetVersion,
+              (biod::CrosFpDevice::EcVersion*),
+              (const, override));
+  MOCK_METHOD(bool, IsFlashProtectEnabled, (bool*), (const, override));
+  MOCK_METHOD(bool,
+              Flash,
+              (const biod::CrosFpFirmware&, enum ec_current_image),
+              (const, override));
 };
 
 class MockCrosFpBootUpdateCtrl : public biod::CrosFpBootUpdateCtrl {
  public:
-  MOCK_CONST_METHOD0(TriggerBootUpdateSplash, bool());
-  MOCK_CONST_METHOD0(ScheduleReboot, bool());
+  MOCK_METHOD(bool, TriggerBootUpdateSplash, (), (const, override));
+  MOCK_METHOD(bool, ScheduleReboot, (), (const, override));
 };
 
 class MockCrosFpFirmware : public biod::CrosFpFirmware {
