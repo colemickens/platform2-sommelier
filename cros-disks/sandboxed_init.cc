@@ -196,10 +196,14 @@ bool SandboxedInit::PollLauncherStatus(base::ScopedFD* ctrl_fd, int* wstatus) {
 int SandboxedInit::WStatusToStatus(int wstatus) {
   if (WIFEXITED(wstatus)) {
     return WEXITSTATUS(wstatus);
-  } else if (WIFSIGNALED(wstatus)) {
-    // Mirrors minijail_wait().
-    return 128 + WTERMSIG(wstatus);
   }
+
+  if (WIFSIGNALED(wstatus)) {
+    // Mirrors behavior of minijail_wait().
+    const int signum = WTERMSIG(wstatus);
+    return signum == SIGSYS ? MINIJAIL_ERR_JAIL : 128 + signum;
+  }
+
   return -1;
 }
 
