@@ -50,28 +50,43 @@ class MockFUSEPlatform : public Platform {
     ON_CALL(*this, SetPermissions(_, _)).WillByDefault(Return(true));
   }
 
-  MOCK_CONST_METHOD3(GetUserAndGroupId,
-                     bool(const std::string&, uid_t* user_id, gid_t* group_id));
-  MOCK_CONST_METHOD2(GetGroupId, bool(const std::string&, gid_t* group_id));
-  MOCK_CONST_METHOD5(Mount,
-                     MountErrorType(const std::string&,
-                                    const std::string&,
-                                    const std::string&,
-                                    uint64_t flags,
-                                    const std::string&));
-  MOCK_CONST_METHOD2(Unmount, MountErrorType(const std::string&, int flags));
-  MOCK_CONST_METHOD1(PathExists, bool(const std::string& path));
-  MOCK_CONST_METHOD1(RemoveEmptyDirectory, bool(const std::string& path));
-  MOCK_CONST_METHOD3(SetOwnership,
-                     bool(const std::string& path,
-                          uid_t user_id,
-                          gid_t group_id));
-  MOCK_CONST_METHOD3(GetOwnership,
-                     bool(const std::string& path,
-                          uid_t* user_id,
-                          gid_t* group_id));
-  MOCK_CONST_METHOD2(SetPermissions,
-                     bool(const std::string& path, mode_t mode));
+  MOCK_METHOD(bool,
+              GetUserAndGroupId,
+              (const std::string&, uid_t*, gid_t*),
+              (const, override));
+  MOCK_METHOD(bool,
+              GetGroupId,
+              (const std::string&, gid_t*),
+              (const, override));
+  MOCK_METHOD(MountErrorType,
+              Mount,
+              (const std::string&,
+               const std::string&,
+               const std::string&,
+               uint64_t,
+               const std::string&),
+              (const, override));
+  MOCK_METHOD(MountErrorType,
+              Unmount,
+              (const std::string&, int),
+              (const, override));
+  MOCK_METHOD(bool, PathExists, (const std::string&), (const, override));
+  MOCK_METHOD(bool,
+              RemoveEmptyDirectory,
+              (const std::string&),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetOwnership,
+              (const std::string&, uid_t, gid_t),
+              (const, override));
+  MOCK_METHOD(bool,
+              GetOwnership,
+              (const std::string&, uid_t*, gid_t*),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetPermissions,
+              (const std::string&, mode_t),
+              (const, override));
 
  private:
   bool GetUserAndGroupIdImpl(const std::string& user,
@@ -131,8 +146,7 @@ class FUSEMounterForTesting : public FUSEMounter {
                     {},
                     false) {}
 
-  MOCK_CONST_METHOD1(InvokeMountTool,
-                     int(const std::vector<std::string>& args));
+  MOCK_METHOD(int, InvokeMountTool, (const std::vector<std::string>&), (const));
 
  private:
   std::unique_ptr<SandboxedProcess> CreateSandboxedProcess() const override {

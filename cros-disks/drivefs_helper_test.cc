@@ -58,25 +58,38 @@ class MockPlatform : public Platform {
 
   const base::FilePath& datadir() const { return temp_dir_.GetPath(); }
 
-  MOCK_CONST_METHOD2(GetRealPath, bool(const std::string&, std::string*));
-  MOCK_CONST_METHOD3(GetUserAndGroupId,
-                     bool(const std::string&, uid_t* user_id, gid_t* group_id));
-  MOCK_CONST_METHOD2(GetGroupId, bool(const std::string&, gid_t* group_id));
-  MOCK_CONST_METHOD1(PathExists, bool(const std::string& path));
-  MOCK_CONST_METHOD1(DirectoryExists, bool(const std::string& path));
-  MOCK_CONST_METHOD1(IsDirectoryEmpty, bool(const std::string& path));
-  MOCK_CONST_METHOD1(CreateDirectory, bool(const std::string& path));
-  MOCK_CONST_METHOD1(RemoveEmptyDirectory, bool(const std::string& path));
-  MOCK_CONST_METHOD3(SetOwnership,
-                     bool(const std::string& path,
-                          uid_t user_id,
-                          gid_t group_id));
-  MOCK_CONST_METHOD3(GetOwnership,
-                     bool(const std::string& path,
-                          uid_t* user_id,
-                          gid_t* group_id));
-  MOCK_CONST_METHOD2(SetPermissions,
-                     bool(const std::string& path, mode_t mode));
+  MOCK_METHOD(bool,
+              GetRealPath,
+              (const std::string&, std::string*),
+              (const, override));
+  MOCK_METHOD(bool,
+              GetUserAndGroupId,
+              (const std::string&, uid_t*, gid_t*),
+              (const, override));
+  MOCK_METHOD(bool,
+              GetGroupId,
+              (const std::string&, gid_t*),
+              (const, override));
+  MOCK_METHOD(bool, PathExists, (const std::string&), (const, override));
+  MOCK_METHOD(bool, DirectoryExists, (const std::string&), (const, override));
+  MOCK_METHOD(bool, IsDirectoryEmpty, (const std::string&), (const, override));
+  MOCK_METHOD(bool, CreateDirectory, (const std::string&), (const, override));
+  MOCK_METHOD(bool,
+              RemoveEmptyDirectory,
+              (const std::string&),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetOwnership,
+              (const std::string&, uid_t, gid_t),
+              (const, override));
+  MOCK_METHOD(bool,
+              GetOwnership,
+              (const std::string&, uid_t*, gid_t*),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetPermissions,
+              (const std::string&, mode_t),
+              (const, override));
 
  private:
   bool GetRealPathImpl(const std::string& path, std::string* real_path) const {
@@ -134,10 +147,14 @@ class TestDrivefsHelper : public DrivefsHelper {
             this, &TestDrivefsHelper::ForwardCheckMyFilesPermissionsToImpl));
   }
 
-  MOCK_CONST_METHOD1(SetupDirectoryForFUSEAccess,
-                     bool(const base::FilePath& dirpath));
-  MOCK_CONST_METHOD1(CheckMyFilesPermissions,
-                     bool(const base::FilePath& dirpath));
+  MOCK_METHOD(bool,
+              SetupDirectoryForFUSEAccess,
+              (const base::FilePath&),
+              (const, override));
+  MOCK_METHOD(bool,
+              CheckMyFilesPermissions,
+              (const base::FilePath&),
+              (const, override));
 
  private:
   bool ForwardSetupDirectoryForFUSEAccessToImpl(const base::FilePath& path) {

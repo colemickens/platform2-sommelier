@@ -25,19 +25,24 @@ const char kMountRootDirectory[] = "/media/archive";
 // Mock Platform implementation for testing.
 class MockPlatform : public Platform {
  public:
-  MOCK_CONST_METHOD1(CreateDirectory, bool(const std::string& path));
-  MOCK_CONST_METHOD1(DirectoryExists, bool(const std::string& path));
-  MOCK_CONST_METHOD3(GetUserAndGroupId,
-                     bool(const std::string& user_name,
-                          uid_t* user_id,
-                          gid_t* group_id));
-  MOCK_CONST_METHOD1(RemoveEmptyDirectory, bool(const std::string& path));
-  MOCK_CONST_METHOD3(SetOwnership,
-                     bool(const std::string& path,
-                          uid_t user_id,
-                          gid_t group_id));
-  MOCK_CONST_METHOD2(SetPermissions,
-                     bool(const std::string& path, mode_t mode));
+  MOCK_METHOD(bool, CreateDirectory, (const std::string&), (const, override));
+  MOCK_METHOD(bool, DirectoryExists, (const std::string&), (const, override));
+  MOCK_METHOD(bool,
+              GetUserAndGroupId,
+              (const std::string&, uid_t*, gid_t*),
+              (const, override));
+  MOCK_METHOD(bool,
+              RemoveEmptyDirectory,
+              (const std::string&),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetOwnership,
+              (const std::string&, uid_t, gid_t),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetPermissions,
+              (const std::string&, mode_t),
+              (const, override));
 };
 
 }  // namespace

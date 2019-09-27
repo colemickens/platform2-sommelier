@@ -72,14 +72,18 @@ class MockPlatform : public Platform {
     return false;
   }
 
-  MOCK_CONST_METHOD3(SetOwnership,
-                     bool(const std::string& path,
-                          uid_t user_id,
-                          gid_t group_id));
-  MOCK_CONST_METHOD2(SetPermissions,
-                     bool(const std::string& path, mode_t mode));
-  MOCK_CONST_METHOD3(WriteFile,
-                     int(const std::string& path, const char* data, int size));
+  MOCK_METHOD(bool,
+              SetOwnership,
+              (const std::string&, uid_t, gid_t),
+              (const, override));
+  MOCK_METHOD(bool,
+              SetPermissions,
+              (const std::string&, mode_t),
+              (const, override));
+  MOCK_METHOD(int,
+              WriteFile,
+              (const std::string&, const char*, int),
+              (const, override));
 };
 
 }  // namespace

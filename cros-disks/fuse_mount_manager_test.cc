@@ -43,16 +43,20 @@ class MockPlatform : public Platform {
  public:
   MockPlatform() = default;
 
-  MOCK_CONST_METHOD2(Unmount,
-                     MountErrorType(const std::string& path, int flags));
-  MOCK_CONST_METHOD1(DirectoryExists, bool(const std::string& path));
-  MOCK_CONST_METHOD1(CreateDirectory, bool(const std::string& path));
-  MOCK_CONST_METHOD2(SetPermissions,
-                     bool(const std::string& path, mode_t mode));
-  MOCK_CONST_METHOD3(CreateTemporaryDirInDir,
-                     bool(const std::string& dir,
-                          const std::string& prefix,
-                          std::string* path));
+  MOCK_METHOD(MountErrorType,
+              Unmount,
+              (const std::string&, int),
+              (const, override));
+  MOCK_METHOD(bool, DirectoryExists, (const std::string&), (const, override));
+  MOCK_METHOD(bool, CreateDirectory, (const std::string&), (const, override));
+  MOCK_METHOD(bool,
+              SetPermissions,
+              (const std::string&, mode_t),
+              (const, override));
+  MOCK_METHOD(bool,
+              CreateTemporaryDirInDir,
+              (const std::string&, const std::string&, std::string*),
+              (const, override));
 };
 
 // Mock implementation of FUSEHelper.
@@ -67,14 +71,15 @@ class MockHelper : public FUSEHelper {
                    base::FilePath("/sbin/" + tag),
                    "fuse-" + tag) {}
 
-  MOCK_CONST_METHOD1(CanMount, bool(const Uri& src));
-  MOCK_CONST_METHOD1(GetTargetSuffix, std::string(const Uri& src));
-  MOCK_CONST_METHOD4(
-      CreateMounter,
-      std::unique_ptr<FUSEMounter>(const base::FilePath& dir,
-                                   const Uri& source,
-                                   const base::FilePath& target,
-                                   const std::vector<std::string>& opts));
+  MOCK_METHOD(bool, CanMount, (const Uri&), (const, override));
+  MOCK_METHOD(std::string, GetTargetSuffix, (const Uri&), (const, override));
+  MOCK_METHOD(std::unique_ptr<FUSEMounter>,
+              CreateMounter,
+              (const base::FilePath&,
+               const Uri&,
+               const base::FilePath&,
+               const std::vector<std::string>&),
+              (const, override));
 };
 
 class MockMounter : public FUSEMounter {
@@ -91,7 +96,7 @@ class MockMounter : public FUSEMounter {
                     "",
                     {},
                     false) {}
-  MOCK_CONST_METHOD0(MountImpl, MountErrorType());
+  MOCK_METHOD(MountErrorType, MountImpl, (), (const, override));
 };
 
 }  // namespace

@@ -28,14 +28,17 @@ class MounterForTest : public Mounter {
  public:
   MounterForTest() : Mounter("fs_type") {}
 
-  MOCK_CONST_METHOD2(MountImpl,
-                     MountErrorType(const std::string& source,
-                                    const base::FilePath& target_path));
-  MOCK_CONST_METHOD1(UnmountImpl, MountErrorType(const base::FilePath& path));
-  MOCK_CONST_METHOD3(CanMount,
-                     bool(const std::string& source,
-                          const std::vector<std::string>& options,
-                          base::FilePath* suggested_dir_name));
+  MOCK_METHOD(MountErrorType,
+              MountImpl,
+              (const std::string&, const base::FilePath&),
+              (const));
+  MOCK_METHOD(MountErrorType, UnmountImpl, (const base::FilePath&), (const));
+  MOCK_METHOD(bool,
+              CanMount,
+              (const std::string&,
+               const std::vector<std::string>&,
+               base::FilePath*),
+              (const, override));
 
   std::unique_ptr<MountPoint> Mount(const std::string& source,
                                     const base::FilePath& target_path,
@@ -72,7 +75,7 @@ class MounterCompatForTest : public MounterCompat {
                        const MountOptions& mount_options)
       : MounterCompat(filesystem_type, source, target_path, mount_options) {}
 
-  MOCK_CONST_METHOD0(MountImpl, MountErrorType());
+  MOCK_METHOD(MountErrorType, MountImpl, (), (const, override));
 };
 
 }  // namespace
