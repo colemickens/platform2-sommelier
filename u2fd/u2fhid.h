@@ -22,9 +22,6 @@
 
 namespace u2f {
 
-constexpr uint32_t kDefaultVendorId = 0x18d1;
-constexpr uint32_t kDefaultProductId = 0x502c;
-
 // Mandatory length of the U2F HID report.
 constexpr size_t kU2fReportSize = 64;
 

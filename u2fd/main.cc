@@ -8,19 +8,25 @@
 #include <sysexits.h>
 
 #include "u2fd/u2f_daemon.h"
-#include "u2fd/u2fhid.h"
 
 #ifndef VCSID
 #define VCSID "<unknown>"
 #endif
 
+namespace {
+
+constexpr uint32_t kDefaultVendorId = 0x18d1;
+constexpr uint32_t kDefaultProductId = 0x502c;
+
+}  // namespace
+
 int main(int argc, char* argv[]) {
   DEFINE_bool(force_u2f, false, "force U2F mode even if disabled by policy");
   DEFINE_bool(
       force_g2f, false, "force U2F mode plus extensions regardless of policy");
-  DEFINE_int32(product_id, u2f::kDefaultProductId,
+  DEFINE_int32(product_id, kDefaultProductId,
                "Product ID for the HID device");
-  DEFINE_int32(vendor_id, u2f::kDefaultVendorId,
+  DEFINE_int32(vendor_id, kDefaultVendorId,
                "Vendor ID for the HID device");
   DEFINE_bool(verbose, false, "verbose logging");
   DEFINE_bool(user_keys, false, "Whether to use user-specific keys");
