@@ -25,7 +25,7 @@ typedef ProbeFunction::DataType DataType;
 
 class MockProbeFunction : public ProbeFunction {
  public:
-  MOCK_CONST_METHOD0(Eval, DataType());
+  MOCK_METHOD(DataType, Eval, (), (const, override));
 };
 
 TEST(SequenceFunctionTest, TestEvalFailTooManyResults) {
