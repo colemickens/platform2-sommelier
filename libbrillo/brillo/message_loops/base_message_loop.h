@@ -41,7 +41,7 @@ class BRILLO_EXPORT BaseMessageLoop : public MessageLoop {
 
   // MessageLoop overrides.
   TaskId PostDelayedTask(const base::Location& from_here,
-                         const base::Closure& task,
+                         base::OnceClosure task,
                          base::TimeDelta delay) override;
   using MessageLoop::PostDelayedTask;
   bool CancelTask(TaskId task_id) override;
@@ -51,7 +51,7 @@ class BRILLO_EXPORT BaseMessageLoop : public MessageLoop {
 
   // Returns a callback that will quit the current message loop. If the message
   // loop is not running, an empty (null) callback is returned.
-  base::Closure QuitClosure() const;
+  base::RepeatingClosure QuitClosure() const;
 
  private:
   FRIEND_TEST(BaseMessageLoopTest, ParseBinderMinor);
@@ -78,7 +78,7 @@ class BRILLO_EXPORT BaseMessageLoop : public MessageLoop {
     base::Location location;
 
     MessageLoop::TaskId task_id;
-    base::Closure closure;
+    base::OnceClosure closure;
   };
 
   // The base::MessageLoopForIO instance owned by this class, if any. This

@@ -213,7 +213,7 @@ void CopyData(StreamPtr in_stream,
   state->success_callback = success_callback;
   state->error_callback = error_callback;
   brillo::MessageLoop::current()->PostTask(FROM_HERE,
-                                             base::Bind(&PerformRead, state));
+                                           base::BindOnce(&PerformRead, state));
 }
 
 }  // namespace stream_utils

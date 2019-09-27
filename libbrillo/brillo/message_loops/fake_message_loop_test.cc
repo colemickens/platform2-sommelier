@@ -14,7 +14,7 @@
 
 #include <brillo/message_loops/message_loop.h>
 
-using base::Bind;
+using base::BindOnce;
 using base::Time;
 using base::TimeDelta;
 using std::vector;
@@ -44,18 +44,18 @@ TEST_F(FakeMessageLoopTest, CancelTaskInvalidValuesTest) {
 
 TEST_F(FakeMessageLoopTest, PostDelayedTaskRunsInOrder) {
   vector<int> order;
-  loop_->PostDelayedTask(Bind([](vector<int>* order) { order->push_back(1); },
-                              &order),
-                         TimeDelta::FromSeconds(1));
-  loop_->PostDelayedTask(Bind([](vector<int>* order) { order->push_back(4); },
-                              &order),
-                         TimeDelta::FromSeconds(4));
-  loop_->PostDelayedTask(Bind([](vector<int>* order) { order->push_back(3); },
-                              &order),
-                         TimeDelta::FromSeconds(3));
-  loop_->PostDelayedTask(Bind([](vector<int>* order) { order->push_back(2); },
-                              &order),
-                         TimeDelta::FromSeconds(2));
+  loop_->PostDelayedTask(
+      BindOnce([](vector<int>* order) { order->push_back(1); }, &order),
+      TimeDelta::FromSeconds(1));
+  loop_->PostDelayedTask(
+      BindOnce([](vector<int>* order) { order->push_back(4); }, &order),
+      TimeDelta::FromSeconds(4));
+  loop_->PostDelayedTask(
+      BindOnce([](vector<int>* order) { order->push_back(3); }, &order),
+      TimeDelta::FromSeconds(3));
+  loop_->PostDelayedTask(
+      BindOnce([](vector<int>* order) { order->push_back(2); }, &order),
+      TimeDelta::FromSeconds(2));
   // Run until all the tasks are run.
   loop_->Run();
   EXPECT_EQ((vector<int>{1, 2, 3, 4}), order);
@@ -66,8 +66,8 @@ TEST_F(FakeMessageLoopTest, PostDelayedTaskAdvancesTheTime) {
   clock_.SetNow(start);
   loop_.reset(new FakeMessageLoop(&clock_));
   // TODO(crbug.com/909719): Replace by base::DoNothing.
-  loop_->PostDelayedTask(Bind([]() {}), TimeDelta::FromSeconds(1));
-  loop_->PostDelayedTask(Bind([]() {}), TimeDelta::FromSeconds(2));
+  loop_->PostDelayedTask(BindOnce([]() {}), TimeDelta::FromSeconds(1));
+  loop_->PostDelayedTask(BindOnce([]() {}), TimeDelta::FromSeconds(2));
   EXPECT_FALSE(loop_->RunOnce(false));
   // If the callback didn't run, the time shouldn't change.
   EXPECT_EQ(start, clock_.Now());
@@ -87,7 +87,7 @@ TEST_F(FakeMessageLoopTest, PostDelayedTaskAdvancesTheTime) {
 
 TEST_F(FakeMessageLoopTest, PendingTasksTest) {
   // TODO(crbug.com/909719): Replace by base::DoNothing.
-  loop_->PostDelayedTask(Bind([]() {}), TimeDelta::FromSeconds(1));
+  loop_->PostDelayedTask(BindOnce([]() {}), TimeDelta::FromSeconds(1));
   EXPECT_TRUE(loop_->PendingTasks());
   loop_->Run();
 }

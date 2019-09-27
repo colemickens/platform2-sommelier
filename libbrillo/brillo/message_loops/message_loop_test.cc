@@ -21,12 +21,13 @@
 #include <brillo/message_loops/message_loop_utils.h>
 #include <brillo/unittest_utils.h>
 
-using base::Bind;
+using base::BindOnce;
+using base::BindRepeating;
 using base::TimeDelta;
 
 namespace {
 
-// Convenience functions for passing to base::Bind.
+// Convenience functions for passing to base::Bind{Once,Repeating}.
 void SetToTrue(bool* b) {
   *b = true;
 }
@@ -79,7 +80,8 @@ TYPED_TEST(MessageLoopTest, CancelTaskInvalidValuesTest) {
 
 TYPED_TEST(MessageLoopTest, PostTaskTest) {
   bool called = false;
-  TaskId task_id = this->loop_->PostTask(FROM_HERE, Bind(&SetToTrue, &called));
+  TaskId task_id =
+      this->loop_->PostTask(FROM_HERE, BindOnce(&SetToTrue, &called));
   EXPECT_NE(MessageLoop::kTaskIdNull, task_id);
   MessageLoopRunMaxIterations(this->loop_.get(), 100);
   EXPECT_TRUE(called);
@@ -88,7 +90,8 @@ TYPED_TEST(MessageLoopTest, PostTaskTest) {
 // Tests that we can cancel tasks right after we schedule them.
 TYPED_TEST(MessageLoopTest, PostTaskCancelledTest) {
   bool called = false;
-  TaskId task_id = this->loop_->PostTask(FROM_HERE, Bind(&SetToTrue, &called));
+  TaskId task_id =
+      this->loop_->PostTask(FROM_HERE, BindOnce(&SetToTrue, &called));
   EXPECT_TRUE(this->loop_->CancelTask(task_id));
   MessageLoopRunMaxIterations(this->loop_.get(), 100);
   EXPECT_FALSE(called);
@@ -98,12 +101,12 @@ TYPED_TEST(MessageLoopTest, PostTaskCancelledTest) {
 
 TYPED_TEST(MessageLoopTest, PostDelayedTaskRunsEventuallyTest) {
   bool called = false;
-  TaskId task_id = this->loop_->PostDelayedTask(
-      FROM_HERE, Bind(&SetToTrue, &called), TimeDelta::FromMilliseconds(50));
+  TaskId task_id =
+      this->loop_->PostDelayedTask(FROM_HERE, BindOnce(&SetToTrue, &called),
+                                   TimeDelta::FromMilliseconds(50));
   EXPECT_NE(MessageLoop::kTaskIdNull, task_id);
-  MessageLoopRunUntil(this->loop_.get(),
-                      TimeDelta::FromSeconds(10),
-                      Bind(&ReturnBool, &called));
+  MessageLoopRunUntil(this->loop_.get(), TimeDelta::FromSeconds(10),
+                      BindRepeating(&ReturnBool, &called));
   // Check that the main loop finished before the 10 seconds timeout, so it
   // finished due to the callback being called and not due to the timeout.
   EXPECT_TRUE(called);
@@ -114,7 +117,7 @@ TYPED_TEST(MessageLoopTest, PostDelayedTaskRunsEventuallyTest) {
 // virtual, so you need to unhide the other when overriding the virtual one.
 TYPED_TEST(MessageLoopTest, PostDelayedTaskWithoutLocation) {
   // TODO(crbug.com/909719): Replace by base::DoNothing.
-  this->loop_->PostDelayedTask(Bind([]() {}), TimeDelta());
+  this->loop_->PostDelayedTask(BindOnce([]() {}), TimeDelta());
   EXPECT_EQ(1, MessageLoopRunMaxIterations(this->loop_.get(), 100));
 }
 
@@ -124,9 +127,11 @@ TYPED_TEST(MessageLoopTest, DeleteTaskFromSelf) {
   TaskId task_id;
   task_id = this->loop_->PostTask(
       FROM_HERE,
-      Bind([](bool* cancel_result, MessageLoop* loop, TaskId* task_id) {
-        *cancel_result = loop->CancelTask(*task_id);
-      }, &cancel_result, this->loop_.get(), &task_id));
+      BindOnce(
+          [](bool* cancel_result, MessageLoop* loop, TaskId* task_id) {
+            *cancel_result = loop->CancelTask(*task_id);
+          },
+          &cancel_result, this->loop_.get(), &task_id));
   EXPECT_EQ(1, MessageLoopRunMaxIterations(this->loop_.get(), 100));
   EXPECT_FALSE(cancel_result);
 }

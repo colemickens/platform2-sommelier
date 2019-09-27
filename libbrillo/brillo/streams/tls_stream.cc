@@ -393,10 +393,10 @@ bool TlsStream::TlsStreamImpl::Init(StreamPtr socket,
   if (MessageLoop::ThreadHasCurrent()) {
     MessageLoop::current()->PostTask(
         FROM_HERE,
-        base::Bind(&TlsStreamImpl::DoHandshake,
-                   weak_ptr_factory_.GetWeakPtr(),
-                   success_callback,
-                   error_callback));
+        base::BindOnce(&TlsStreamImpl::DoHandshake,
+                       weak_ptr_factory_.GetWeakPtr(),
+                       success_callback,
+                       error_callback));
   } else {
     DoHandshake(success_callback, error_callback);
   }

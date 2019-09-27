@@ -25,7 +25,7 @@ ACTION_TEMPLATE(InvokeAsyncCallback,
                 HAS_1_TEMPLATE_PARAMS(int, k),
                 AND_1_VALUE_PARAMS(size)) {
   brillo::MessageLoop::current()->PostTask(
-      FROM_HERE, base::Bind(std::get<k>(args), size));
+      FROM_HERE, base::BindOnce(std::get<k>(args), size));
   return true;
 }
 
@@ -42,7 +42,8 @@ ACTION_TEMPLATE(InvokeAsyncErrorCallback,
   brillo::ErrorPtr error;
   brillo::Error::AddTo(&error, FROM_HERE, "test", code, "message");
   brillo::MessageLoop::current()->PostTask(
-      FROM_HERE, base::Bind(std::get<k>(args), base::Owned(error.release())));
+      FROM_HERE, base::BindOnce(std::get<k>(args),
+                                base::Owned(error.release())));
   return true;
 }
 

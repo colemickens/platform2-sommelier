@@ -37,7 +37,7 @@ class BRILLO_EXPORT MockMessageLoop : public MessageLoop {
           &fake_loop_,
           static_cast<TaskId(FakeMessageLoop::*)(
                       const base::Location&,
-                      const base::Closure&,
+                      base::OnceClosure,
                       base::TimeDelta)>(
               &FakeMessageLoop::PostDelayedTask)));
     ON_CALL(*this, CancelTask(::testing::_))
@@ -51,7 +51,7 @@ class BRILLO_EXPORT MockMessageLoop : public MessageLoop {
 
   MOCK_METHOD(TaskId,
               PostDelayedTask,
-              (const base::Location&, const base::Closure&, base::TimeDelta),
+              (const base::Location&, base::OnceClosure, base::TimeDelta),
               (override));
   using MessageLoop::PostDelayedTask;
   MOCK_METHOD(bool, CancelTask, (TaskId), (override));

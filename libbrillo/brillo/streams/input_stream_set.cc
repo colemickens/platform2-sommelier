@@ -172,7 +172,7 @@ bool InputStreamSet::WaitForData(
     return stream->WaitForData(mode, callback, error);
   }
 
-  MessageLoop::current()->PostTask(FROM_HERE, base::Bind(callback, mode));
+  MessageLoop::current()->PostTask(FROM_HERE, base::BindOnce(callback, mode));
   return true;
 }
 

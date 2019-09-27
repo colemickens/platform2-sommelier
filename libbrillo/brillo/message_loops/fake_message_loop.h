@@ -37,7 +37,7 @@ class BRILLO_EXPORT FakeMessageLoop : public MessageLoop {
   ~FakeMessageLoop() override = default;
 
   TaskId PostDelayedTask(const base::Location& from_here,
-                         const base::Closure& task,
+                         base::OnceClosure task,
                          base::TimeDelta delay) override;
   using MessageLoop::PostDelayedTask;
   bool CancelTask(TaskId task_id) override;
@@ -52,8 +52,7 @@ class BRILLO_EXPORT FakeMessageLoop : public MessageLoop {
  private:
   struct ScheduledTask {
     base::Location location;
-    bool persistent;
-    base::Closure callback;
+    base::OnceClosure callback;
   };
 
   // The sparse list of scheduled pending callbacks.

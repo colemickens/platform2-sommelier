@@ -15,7 +15,7 @@ FakeMessageLoop::FakeMessageLoop(base::SimpleTestClock* clock)
 
 MessageLoop::TaskId FakeMessageLoop::PostDelayedTask(
     const base::Location& from_here,
-    const base::Closure& task,
+    base::OnceClosure task,
     base::TimeDelta delay) {
   // If no SimpleTestClock was provided, we use the last time we fired a
   // callback. In this way, tasks scheduled from a Closure will have the right
@@ -25,7 +25,7 @@ MessageLoop::TaskId FakeMessageLoop::PostDelayedTask(
   MessageLoop::TaskId current_id = ++last_id_;
   // FakeMessageLoop is limited to only 2^64 tasks. That should be enough.
   CHECK(current_id);
-  tasks_.emplace(current_id, ScheduledTask{from_here, false, task});
+  tasks_.emplace(current_id, ScheduledTask{from_here, std::move(task)});
   fire_order_.push(std::make_pair(current_time_ + delay, current_id));
   VLOG_LOC(from_here, 1) << "Scheduling delayed task_id " << current_id
                          << " to run at " << current_time_ + delay
@@ -64,13 +64,13 @@ bool FakeMessageLoop::RunOnce(bool may_block) {
     // Move the Closure out of the map before delete it. We need to delete the
     // entry from the map before we call the callback, since calling CancelTask
     // for the task you are running now should fail and return false.
-    base::Closure callback = std::move(scheduled_task_ref->second.callback);
+    base::OnceClosure callback = std::move(scheduled_task_ref->second.callback);
     VLOG_LOC(scheduled_task_ref->second.location, 1)
         << "Running task_id " << task_ref.second
         << " at time " << current_time_ << " from this location.";
     tasks_.erase(scheduled_task_ref);
 
-    callback.Run();
+    std::move(callback).Run();
     return true;
   }
   return false;
@@ -79,8 +79,7 @@ bool FakeMessageLoop::RunOnce(bool may_block) {
 bool FakeMessageLoop::PendingTasks() {
   for (const auto& task : tasks_) {
     VLOG_LOC(task.second.location, 1)
-        << "Pending " << (task.second.persistent ? "persistent " : "")
-        << "task_id " << task.first << " scheduled from here.";
+        << "Pending task_id " << task.first << " scheduled from here.";
   }
   return !tasks_.empty();
 }
