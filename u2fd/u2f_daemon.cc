@@ -129,8 +129,22 @@ U2fDaemon::U2fDaemon(bool force_u2f,
 int U2fDaemon::OnInit() {
   brillo::Daemon::OnInit();
 
-  if (!bus_ && !InitializeDBus())
+  if (bus_) {
+    LOG(ERROR) << "OnInit unexpectedly called twice";
+    return EX_SOFTWARE;
+  }
+
+  if (!InitializeDBus()) {
+    LOG(ERROR) << "Failed to initialize DBus Connection";
     return EX_IOERR;
+  }
+
+  if (!InitializeDBusProxies()) {
+    return EX_IOERR;
+  }
+
+  RegisterDBusU2fInterface();
+
   sm_proxy_->RegisterPropertyChangeCompleteSignalHandler(
       base::Bind(&U2fDaemon::TryStartService, base::Unretained(this)),
       base::Bind(&OnPolicySignalConnected));
@@ -181,12 +195,6 @@ int U2fDaemon::StartService() {
     return EX_CONFIG;
   }
 
-  RegisterU2fDBusInterface();
-
-  if (!tpm_proxy_.Init()) {
-    LOG(ERROR) << "Failed to initialize D-Bus proxy with trunksd.";
-    return EX_IOERR;
-  }
   uint32_t vendor_mode_rc =
       tpm_proxy_.SetU2fVendorMode(static_cast<uint8_t>(u2f_mode_));
   if (vendor_mode_rc == u2f::kVendorRcNoSuchCommand) {
@@ -229,6 +237,15 @@ bool U2fDaemon::InitializeDBus() {
     return EX_IOERR;
   }
 
+  return true;
+}
+
+bool U2fDaemon::InitializeDBusProxies() {
+  if (!tpm_proxy_.Init()) {
+    LOG(ERROR) << "Failed to initialize D-Bus proxy with trunksd.";
+    return false;
+  }
+
   pm_proxy_ = std::make_unique<org::chromium::PowerManagerProxy>(bus_.get());
   sm_proxy_ =
       std::make_unique<org::chromium::SessionManagerInterfaceProxy>(bus_.get());
@@ -236,7 +253,7 @@ bool U2fDaemon::InitializeDBus() {
   return true;
 }
 
-void U2fDaemon::RegisterU2fDBusInterface() {
+void U2fDaemon::RegisterDBusU2fInterface() {
   dbus_object_.reset(new brillo::dbus_utils::DBusObject(
       nullptr, bus_, dbus::ObjectPath(u2f::kU2FServicePath)));
 

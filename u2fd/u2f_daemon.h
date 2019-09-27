@@ -49,11 +49,14 @@ class U2fDaemon : public brillo::Daemon {
   //   cannot be initialized EX_IOERR if DBus cannot be initialized
   int StartService();
 
-  // Takes ownership of the U2F DBus service, and initializes DBus proxies for
-  // PowerManager and SessionManager.
+  // Creates DBus connection and takes ownership of the U2F DBus service.
   bool InitializeDBus();
 
-  void RegisterU2fDBusInterface();
+  // Initializes DBus proxies for PowerManager, SessionManager, and Trunks.
+  bool InitializeDBusProxies();
+
+  // Registers the U2F interface.
+  void RegisterDBusU2fInterface();
 
   // Sends a DBus signal that indicates to Chrome a 'Press Power Button'
   // notification should be displayed.
