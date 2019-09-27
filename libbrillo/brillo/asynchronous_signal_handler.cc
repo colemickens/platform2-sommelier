@@ -11,7 +11,6 @@
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/message_loop/message_loop.h>
 #include <base/posix/eintr_wrapper.h>
 
 namespace {
@@ -28,15 +27,15 @@ AsynchronousSignalHandler::AsynchronousSignalHandler()
 }
 
 AsynchronousSignalHandler::~AsynchronousSignalHandler() {
-  if (descriptor_ != kInvalidDescriptor) {
-    MessageLoop::current()->CancelTask(fd_watcher_task_);
+  fd_watcher_ = nullptr;
 
-    if (IGNORE_EINTR(close(descriptor_)) != 0)
-      PLOG(WARNING) << "Failed to close file descriptor";
+  if (descriptor_ == kInvalidDescriptor)
+    return;
 
-    descriptor_ = kInvalidDescriptor;
-    CHECK_EQ(0, sigprocmask(SIG_SETMASK, &saved_signal_mask_, nullptr));
-  }
+  if (IGNORE_EINTR(close(descriptor_)) != 0)
+    PLOG(WARNING) << "Failed to close file descriptor";
+  descriptor_ = kInvalidDescriptor;
+  CHECK_EQ(0, sigprocmask(SIG_SETMASK, &saved_signal_mask_, nullptr));
 }
 
 void AsynchronousSignalHandler::Init() {
@@ -45,15 +44,11 @@ void AsynchronousSignalHandler::Init() {
   descriptor_ =
       signalfd(descriptor_, &signal_mask_, SFD_CLOEXEC | SFD_NONBLOCK);
   CHECK_NE(kInvalidDescriptor, descriptor_);
-  fd_watcher_task_ = MessageLoop::current()->WatchFileDescriptor(
-      FROM_HERE,
+  fd_watcher_ = base::FileDescriptorWatcher::WatchReadable(
       descriptor_,
-      MessageLoop::WatchMode::kWatchRead,
-      true,
-      base::Bind(&AsynchronousSignalHandler::OnFileCanReadWithoutBlocking,
-                 base::Unretained(this)));
-  CHECK(fd_watcher_task_ != MessageLoop::kTaskIdNull)
-      << "Watching shutdown pipe failed.";
+      base::BindRepeating(&AsynchronousSignalHandler::OnReadable,
+                          base::Unretained(this)));
+  CHECK(fd_watcher_) << "Watching shutdown pipe failed.";
 }
 
 void AsynchronousSignalHandler::RegisterHandler(int signal,
@@ -71,7 +66,7 @@ void AsynchronousSignalHandler::UnregisterHandler(int signal) {
   }
 }
 
-void AsynchronousSignalHandler::OnFileCanReadWithoutBlocking() {
+void AsynchronousSignalHandler::OnReadable() {
   struct signalfd_siginfo info;
   while (base::ReadFromFD(descriptor_,
                           reinterpret_cast<char*>(&info), sizeof(info))) {

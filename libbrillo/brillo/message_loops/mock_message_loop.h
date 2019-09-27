@@ -40,14 +40,6 @@ class BRILLO_EXPORT MockMessageLoop : public MessageLoop {
                       const base::Closure&,
                       base::TimeDelta)>(
               &FakeMessageLoop::PostDelayedTask)));
-    ON_CALL(*this, WatchFileDescriptor(
-        ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
-      .WillByDefault(::testing::Invoke(
-          &fake_loop_,
-          static_cast<TaskId(FakeMessageLoop::*)(
-                      const base::Location&, int, WatchMode, bool,
-                      const base::Closure&)>(
-              &FakeMessageLoop::WatchFileDescriptor)));
     ON_CALL(*this, CancelTask(::testing::_))
       .WillByDefault(::testing::Invoke(&fake_loop_,
                                        &FakeMessageLoop::CancelTask));
@@ -62,12 +54,6 @@ class BRILLO_EXPORT MockMessageLoop : public MessageLoop {
               (const base::Location&, const base::Closure&, base::TimeDelta),
               (override));
   using MessageLoop::PostDelayedTask;
-  MOCK_METHOD(
-      TaskId,
-      WatchFileDescriptor,
-      (const base::Location&, int, WatchMode, bool, const base::Closure&),
-      (override));
-  using MessageLoop::WatchFileDescriptor;
   MOCK_METHOD(bool, CancelTask, (TaskId), (override));
   MOCK_METHOD(bool, RunOnce, (bool), (override));
 

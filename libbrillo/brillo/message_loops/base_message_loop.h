@@ -44,12 +44,6 @@ class BRILLO_EXPORT BaseMessageLoop : public MessageLoop {
                          const base::Closure& task,
                          base::TimeDelta delay) override;
   using MessageLoop::PostDelayedTask;
-  TaskId WatchFileDescriptor(const base::Location& from_here,
-                             int fd,
-                             WatchMode mode,
-                             bool persistent,
-                             const base::Closure& task) override;
-  using MessageLoop::WatchFileDescriptor;
   bool CancelTask(TaskId task_id) override;
   bool RunOnce(bool may_block) override;
   void Run() override;
@@ -74,12 +68,6 @@ class BRILLO_EXPORT BaseMessageLoop : public MessageLoop {
   // scheduled with Post*Task() of id |task_id|, even if it was canceled.
   void OnRanPostedTask(MessageLoop::TaskId task_id);
 
-  // Called from the message loop when the IOTask should run the scheduled
-  // callback. This is a simple wrapper of IOTask::OnFileReadyPostedTask()
-  // posted from the BaseMessageLoop so it is deleted when the BaseMessageLoop
-  // goes out of scope since we can't cancel the callback otherwise.
-  void OnFileReadyPostedTask(MessageLoop::TaskId task_id);
-
   // Return a new unused task_id.
   TaskId NextTaskId();
 
@@ -93,77 +81,12 @@ class BRILLO_EXPORT BaseMessageLoop : public MessageLoop {
     base::Closure closure;
   };
 
-  class IOTask : public base::MessageLoopForIO::Watcher {
-   public:
-    IOTask(const base::Location& location,
-           BaseMessageLoop* loop,
-           MessageLoop::TaskId task_id,
-           int fd,
-           base::MessageLoopForIO::Mode base_mode,
-           bool persistent,
-           const base::Closure& task);
-
-    const base::Location& location() const { return location_; }
-
-    // Used to start/stop watching the file descriptor while keeping the
-    // IOTask entry available.
-    bool StartWatching();
-    void StopWatching();
-
-    // Called from the message loop as a PostTask() when the file descriptor is
-    // available, scheduled to run from OnFileReady().
-    void OnFileReadyPostedTask();
-
-    // Cancel the IOTask and returns whether it was actually canceled, with the
-    // same semantics as MessageLoop::CancelTask().
-    bool CancelTask();
-
-    // Sets the closure to be run immediately whenever the file descriptor
-    // becomes ready.
-    void RunImmediately() { immediate_run_ = true; }
-
-   private:
-    base::Location location_;
-    BaseMessageLoop* loop_;
-
-    // These are the arguments passed in the constructor, basically forwarding
-    // all the arguments passed to WatchFileDescriptor() plus the assigned
-    // TaskId for this task.
-    MessageLoop::TaskId task_id_;
-    int fd_;
-    base::MessageLoopForIO::Mode base_mode_;
-    bool persistent_;
-    base::Closure closure_;
-
-    base::MessageLoopForIO::FileDescriptorWatcher fd_watcher_;
-
-    // Tells whether there is a pending call to OnFileReadPostedTask().
-    bool posted_task_pending_{false};
-
-    // Whether the registered callback should be running immediately when the
-    // file descriptor is ready, as opposed to posting a task to the main loop
-    // to prevent starvation.
-    bool immediate_run_{false};
-
-    // base::MessageLoopForIO::Watcher overrides:
-    void OnFileCanReadWithoutBlocking(int fd) override;
-    void OnFileCanWriteWithoutBlocking(int fd) override;
-
-    // Common implementation for both the read and write case.
-    void OnFileReady();
-
-    DISALLOW_COPY_AND_ASSIGN(IOTask);
-  };
-
   // The base::MessageLoopForIO instance owned by this class, if any. This
   // is declared first in this class so it is destroyed last.
   std::unique_ptr<base::MessageLoopForIO> owned_base_loop_;
 
   // Tasks blocked on a timeout.
   std::map<MessageLoop::TaskId, DelayedTask> delayed_tasks_;
-
-  // Tasks blocked on I/O.
-  std::map<MessageLoop::TaskId, IOTask> io_tasks_;
 
   // Flag to mark that we should run the message loop only one iteration.
   bool run_once_{false};

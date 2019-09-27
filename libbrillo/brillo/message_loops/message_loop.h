@@ -67,33 +67,6 @@ class BRILLO_EXPORT MessageLoop {
     return PostDelayedTask(from_here, task, base::TimeDelta());
   }
 
-  // Watch mode flag used to watch for file descriptors.
-  enum WatchMode {
-    kWatchRead,
-    kWatchWrite,
-  };
-
-  // Watch a file descriptor |fd| for it to be ready to perform the operation
-  // passed in |mode| without blocking. When that happens, the |task| closure
-  // will be executed. If |persistent| is true, the file descriptor will
-  // continue to be watched and |task| will continue to be called until the task
-  // is canceled with CancelTask().
-  // Returns the TaskId describing this task. In case of error, returns
-  // kTaskIdNull.
-  virtual TaskId WatchFileDescriptor(const base::Location& from_here,
-                                     int fd,
-                                     WatchMode mode,
-                                     bool persistent,
-                                     const base::Closure& task) = 0;
-
-  // Convenience function to call WatchFileDescriptor() without a location.
-  TaskId WatchFileDescriptor(int fd,
-                             WatchMode mode,
-                             bool persistent,
-                             const base::Closure& task) {
-    return WatchFileDescriptor(base::Location(), fd, mode, persistent, task);
-  }
-
   // Cancel a scheduled task. Returns whether the task was canceled. For
   // example, if the callback was already executed (or is being executed) or was
   // already canceled this method will fail. Note that the TaskId can be reused

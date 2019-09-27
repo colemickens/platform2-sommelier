@@ -9,14 +9,14 @@
 #include <sys/signalfd.h>
 
 #include <map>
+#include <memory>
 
 #include <base/callback.h>
 #include <base/compiler_specific.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/macros.h>
-#include <base/message_loop/message_loop.h>
 #include <brillo/asynchronous_signal_handler_interface.h>
 #include <brillo/brillo_export.h>
-#include <brillo/message_loops/message_loop.h>
 
 namespace brillo {
 // Sets up signal handlers for registered signals, and converts signal receipt
@@ -40,10 +40,10 @@ class BRILLO_EXPORT AsynchronousSignalHandler final :
  private:
   // Called from the main loop when we can read from |descriptor_|, indicated
   // that a signal was processed.
-  void OnFileCanReadWithoutBlocking();
+  void OnReadable();
 
   // Controller used to manage watching of signalling pipe.
-  MessageLoop::TaskId fd_watcher_task_{MessageLoop::kTaskIdNull};
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> fd_watcher_;
 
   // The registered callbacks.
   typedef std::map<int, SignalHandler> Callbacks;

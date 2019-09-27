@@ -7,6 +7,7 @@
 #include <limits>
 
 #include <base/bind.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
@@ -22,7 +23,7 @@ namespace curl {
 // This is a class that stores connection data on particular CURL socket
 // and provides file descriptor watcher to monitor read and/or write operations
 // on the socket's file descriptor.
-class Transport::SocketPollData : public base::MessageLoopForIO::Watcher {
+class Transport::SocketPollData {
  public:
   SocketPollData(const std::shared_ptr<CurlInterface>& curl_interface,
                  CURLM* curl_multi_handle,
@@ -31,27 +32,35 @@ class Transport::SocketPollData : public base::MessageLoopForIO::Watcher {
       : curl_interface_(curl_interface),
         curl_multi_handle_(curl_multi_handle),
         transport_(transport),
-        socket_fd_(socket_fd),
-        file_descriptor_watcher_(FROM_HERE) {}
+        socket_fd_(socket_fd) {}
 
-  // Returns the pointer for the socket-specific file descriptor watcher.
-  base::MessageLoopForIO::FileDescriptorWatcher* GetWatcher() {
-    return &file_descriptor_watcher_;
+  void StopWatcher() {
+    read_watcher_ = nullptr;
+    write_watcher_ = nullptr;
+  }
+
+  bool WatchReadable() {
+    read_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+        socket_fd_,
+        base::BindRepeating(&Transport::SocketPollData::OnSocketReady,
+                            base::Unretained(this),
+                            CURL_CSELECT_IN));
+    return read_watcher_.get();
+  }
+
+  bool WatchWritable() {
+    write_watcher_ = base::FileDescriptorWatcher::WatchWritable(
+        socket_fd_,
+        base::BindRepeating(&Transport::SocketPollData::OnSocketReady,
+                            base::Unretained(this),
+                            CURL_CSELECT_OUT));
+    return write_watcher_.get();
   }
 
  private:
-  // Overrides from base::MessageLoopForIO::Watcher.
-  void OnFileCanReadWithoutBlocking(int fd) override {
-    OnSocketReady(fd, CURL_CSELECT_IN);
-  }
-  void OnFileCanWriteWithoutBlocking(int fd) override {
-    OnSocketReady(fd, CURL_CSELECT_OUT);
-  }
-
   // Data on the socket is available to be read from or written to.
   // Notify CURL of the action it needs to take on the socket file descriptor.
-  void OnSocketReady(int fd, int action) {
-    CHECK_EQ(socket_fd_, fd) << "Unexpected socket file descriptor";
+  void OnSocketReady(int action) {
     int still_running_count = 0;
     CURLMcode code = curl_interface_->MultiSocketAction(
         curl_multi_handle_, socket_fd_, action, &still_running_count);
@@ -70,8 +79,9 @@ class Transport::SocketPollData : public base::MessageLoopForIO::Watcher {
   Transport* transport_;
   // The socket file descriptor for the connection.
   curl_socket_t socket_fd_;
-  // File descriptor watcher to notify us of asynchronous I/O on the FD.
-  base::MessageLoopForIO::FileDescriptorWatcher file_descriptor_watcher_;
+
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> read_watcher_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> write_watcher_;
 
   DISALLOW_COPY_AND_ASSIGN(SocketPollData);
 };
@@ -386,7 +396,7 @@ int Transport::MultiSocketCallback(CURL* easy,
 
     // Make sure we stop watching the socket file descriptor now, before
     // we schedule the SocketPollData for deletion.
-    poll_data->GetWatcher()->StopWatchingFileDescriptor();
+    poll_data->StopWatcher();
     // This method can be called indirectly from SocketPollData::OnSocketReady,
     // so delay destruction of SocketPollData object till the next loop cycle.
     base::MessageLoopForIO::current()->task_runner()->DeleteSoon(
@@ -394,34 +404,15 @@ int Transport::MultiSocketCallback(CURL* easy,
     return 0;
   }
 
-  base::MessageLoopForIO::Mode watch_mode = base::MessageLoopForIO::WATCH_READ;
-  switch (what) {
-    case CURL_POLL_IN:
-      watch_mode = base::MessageLoopForIO::WATCH_READ;
-      break;
-    case CURL_POLL_OUT:
-      watch_mode = base::MessageLoopForIO::WATCH_WRITE;
-      break;
-    case CURL_POLL_INOUT:
-      watch_mode = base::MessageLoopForIO::WATCH_READ_WRITE;
-      break;
-    default:
-      LOG(FATAL) << "Unknown CURL socket action: " << what;
-      break;
-  }
+  poll_data->StopWatcher();
 
-  // WatchFileDescriptor() can be called with the same controller object
-  // (watcher) to amend the watch mode, however this has cumulative effect.
-  // For example, if we were watching a file descriptor for READ operations
-  // and now call it to watch for WRITE, it will end up watching for both
-  // READ and WRITE. This is not what we want here, so stop watching the
-  // file descriptor on previous controller before starting with a different
-  // mode.
-  if (!poll_data->GetWatcher()->StopWatchingFileDescriptor())
-    LOG(WARNING) << "Failed to stop watching the previous socket descriptor";
-  CHECK(base::MessageLoopForIO::current()->WatchFileDescriptor(
-      s, true, watch_mode, poll_data->GetWatcher(), poll_data))
-      << "Failed to watch the CURL socket.";
+  bool success = true;
+  if (what == CURL_POLL_IN || what == CURL_POLL_INOUT)
+    success = poll_data->WatchReadable() && success;
+  if (what == CURL_POLL_OUT || what == CURL_POLL_INOUT)
+    success = poll_data->WatchWritable() && success;
+
+  CHECK(success) << "Failed to watch the CURL socket.";
   return 0;
 }
 
