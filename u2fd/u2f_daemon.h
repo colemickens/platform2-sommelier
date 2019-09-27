@@ -41,8 +41,8 @@ class U2fDaemon : public brillo::Daemon {
   // service.
   void TryStartService(const std::string& /* unused dbus signal status */);
 
-  // Starts the service. Calling after the service is started is a no-op.
-  // Returns:
+  // Starts the service, and creates the virtual USB HID device. Calling after
+  // the service is started is a no-op. Returns:
   //   EX_OK on success
   //   EX_CONFIG if the service is disabled (by flags and/or policy)
   //   EX_PROTOCOL if the cr50 version is incompatible or virtual HID device
@@ -57,6 +57,14 @@ class U2fDaemon : public brillo::Daemon {
 
   // Registers the U2F interface.
   void RegisterDBusU2fInterface();
+
+  // Helpers to create these members.
+  void CreateU2fMsgHandler(bool allow_g2f_attestation);
+  void CreateU2fHid();
+
+  // Sets the vendor mode in cr50, if applicable, based on U2F mode.
+  // Newer builds of cr50 do not have a concept of vendor mode.
+  bool SetVendorMode(U2fMode mode);
 
   // Sends a DBus signal that indicates to Chrome a 'Press Power Button'
   // notification should be displayed.

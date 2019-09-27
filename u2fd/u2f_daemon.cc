@@ -4,8 +4,10 @@
 
 #include "u2fd/u2f_daemon.h"
 
+#include <functional>
 #include <string>
 #include <sysexits.h>
+#include <utility>
 
 #include <bindings/chrome_device_policy.pb.h>
 #include <dbus/u2f/dbus-constants.h>
@@ -200,29 +202,13 @@ int U2fDaemon::StartService() {
     return EX_CONFIG;
   }
 
-  uint32_t vendor_mode_rc =
-      tpm_proxy_.SetU2fVendorMode(static_cast<uint8_t>(u2f_mode));
-  if (vendor_mode_rc == u2f::kVendorRcNoSuchCommand) {
-    LOG(WARNING) << "U2F Vendor Mode not supported in firmware, ignoring.";
-  } else if (vendor_mode_rc) {
-    LOG(ERROR) << "Failed to set U2F Vendor Mode.";
+  if (!SetVendorMode(u2f_mode)) {
     return EX_PROTOCOL;
   }
 
-  u2f_msg_handler_ = std::make_unique<u2f::U2fMessageHandler>(
-      std::make_unique<u2f::UserState>(
-          sm_proxy_.get(), legacy_kh_fallback_ ? kLegacyKhCounterMin : 0),
-      [this]() {
-        IgnorePowerButtonPress();
-        SendWinkSignal();
-      },
-      &tpm_proxy_, &metrics_library_, u2f_mode == U2fMode::kU2fExtended,
-      legacy_kh_fallback_);
-
-  u2fhid_ = std::make_unique<u2f::U2fHid>(
-      std::make_unique<u2f::UHidDevice>(vendor_id_, product_id_, kDeviceName,
-                                        "u2fd-tpm-cr50"),
-      [this]() { SendWinkSignal(); }, u2f_msg_handler_.get());
+  CreateU2fMsgHandler(u2f_mode ==
+                      U2fMode::kU2fExtended /* Allow G2F Attestation */);
+  CreateU2fHid();
 
   return u2fhid_->Init() ? EX_OK : EX_PROTOCOL;
 }
@@ -268,6 +254,43 @@ void U2fDaemon::RegisterDBusU2fInterface() {
       u2f::kU2FUserNotificationSignal);
 
   dbus_object_->RegisterAndBlock();
+}
+
+void U2fDaemon::CreateU2fMsgHandler(bool allow_g2f_attestation) {
+  auto user_state = std::make_unique<u2f::UserState>(
+      sm_proxy_.get(), legacy_kh_fallback_ ? kLegacyKhCounterMin : 0);
+
+  std::function<void()> request_presence = [this]() {
+    IgnorePowerButtonPress();
+    SendWinkSignal();
+  };
+
+  u2f_msg_handler_ = std::make_unique<u2f::U2fMessageHandler>(
+      std::move(user_state), request_presence, &tpm_proxy_, &metrics_library_,
+      allow_g2f_attestation, legacy_kh_fallback_);
+}
+
+void U2fDaemon::CreateU2fHid() {
+  std::function<void()> send_wink = [this]() { SendWinkSignal(); };
+
+  u2fhid_ = std::make_unique<u2f::U2fHid>(
+      std::make_unique<u2f::UHidDevice>(vendor_id_, product_id_, kDeviceName,
+                                        "u2fd-tpm-cr50"),
+      send_wink, u2f_msg_handler_.get());
+}
+
+bool U2fDaemon::SetVendorMode(U2fMode mode) {
+  uint32_t vendor_mode_rc =
+      tpm_proxy_.SetU2fVendorMode(static_cast<uint8_t>(mode));
+
+  if (vendor_mode_rc == u2f::kVendorRcNoSuchCommand) {
+    LOG(WARNING) << "U2F Vendor Mode not supported in firmware, ignoring.";
+  } else if (vendor_mode_rc) {
+    LOG(ERROR) << "Failed to set U2F Vendor Mode.";
+    return false;
+  }
+
+  return true;
 }
 
 void U2fDaemon::SendWinkSignal() {
