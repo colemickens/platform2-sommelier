@@ -49,6 +49,7 @@ static_library("libu2fd") {
   sources = [
     "tpm_vendor_cmd.cc",
     "u2f_adpu.cc",
+    "u2f_daemon.cc",
     "u2f_msg_handler.cc",
     "u2fhid.cc",
     "uhid_device.cc",
