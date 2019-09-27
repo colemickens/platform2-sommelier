@@ -117,13 +117,12 @@ const char* U2fModeToString(U2fMode mode) {
 
 U2fDaemon::U2fDaemon(bool force_u2f,
                      bool force_g2f,
-                     bool user_keys,
                      bool legacy_kh_fallback,
                      uint32_t vendor_id,
                      uint32_t product_id)
     : force_u2f_(force_u2f),
       force_g2f_(force_g2f),
-      legacy_kh_fallback_(legacy_kh_fallback || !user_keys),
+      legacy_kh_fallback_(legacy_kh_fallback),
       vendor_id_(vendor_id),
       product_id_(product_id) {}
 

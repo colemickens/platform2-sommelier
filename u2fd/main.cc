@@ -43,9 +43,10 @@ int main(int argc, char* argv[]) {
 
   LOG(INFO) << "Daemon version " << VCSID;
 
-  u2f::U2fDaemon daemon(FLAGS_force_u2f, FLAGS_force_g2f, FLAGS_user_keys,
-                        FLAGS_legacy_kh_fallback, FLAGS_vendor_id,
-                        FLAGS_product_id);
+  bool legacy_kh_fallback = FLAGS_legacy_kh_fallback || !FLAGS_user_keys;
+
+  u2f::U2fDaemon daemon(FLAGS_force_u2f, FLAGS_force_g2f, legacy_kh_fallback,
+                        FLAGS_vendor_id, FLAGS_product_id);
   int rc = daemon.Run();
 
   return rc == EX_UNAVAILABLE ? EX_OK : rc;

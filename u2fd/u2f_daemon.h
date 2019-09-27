@@ -30,7 +30,6 @@ class U2fDaemon : public brillo::Daemon {
  public:
   U2fDaemon(bool force_u2f,
             bool force_g2f,
-            bool user_keys,
             bool legacy_kh_fallback,
             uint32_t vendor_id,
             uint32_t product_id);
