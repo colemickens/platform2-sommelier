@@ -17,9 +17,12 @@ namespace u2f {
 
 class MockUserState : public UserState {
  public:
-  MOCK_METHOD0(GetUserSecret, base::Optional<brillo::SecureBlob>(void));
-  MOCK_METHOD0(GetCounter, base::Optional<std::vector<uint8_t>>(void));
-  MOCK_METHOD0(IncrementCounter, bool(void));
+  MOCK_METHOD(base::Optional<brillo::SecureBlob>,
+              GetUserSecret,
+              (),
+              (override));
+  MOCK_METHOD(base::Optional<std::vector<uint8_t>>, GetCounter, (), (override));
+  MOCK_METHOD(bool, IncrementCounter, (), (override));
 };
 
 }  // namespace u2f

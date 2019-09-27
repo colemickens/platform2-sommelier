@@ -16,13 +16,20 @@ namespace u2f {
 
 class MockTpmVendorCommandProxy : public TpmVendorCommandProxy {
  public:
-  MOCK_METHOD1(SetU2fVendorMode, uint32_t(uint8_t));
-  MOCK_METHOD2(SendU2fGenerate,
-               uint32_t(const U2F_GENERATE_REQ&, U2F_GENERATE_RESP*));
-  MOCK_METHOD2(SendU2fSign, uint32_t(const U2F_SIGN_REQ&, U2F_SIGN_RESP*));
-  MOCK_METHOD2(SendU2fAttest,
-               uint32_t(const U2F_ATTEST_REQ&, U2F_ATTEST_RESP*));
-  MOCK_METHOD1(GetG2fCertificate, uint32_t(std::string*));
+  MOCK_METHOD(uint32_t, SetU2fVendorMode, (uint8_t), (override));
+  MOCK_METHOD(uint32_t,
+              SendU2fGenerate,
+              (const U2F_GENERATE_REQ&, U2F_GENERATE_RESP*),
+              (override));
+  MOCK_METHOD(uint32_t,
+              SendU2fSign,
+              (const U2F_SIGN_REQ&, U2F_SIGN_RESP*),
+              (override));
+  MOCK_METHOD(uint32_t,
+              SendU2fAttest,
+              (const U2F_ATTEST_REQ&, U2F_ATTEST_RESP*),
+              (override));
+  MOCK_METHOD(uint32_t, GetG2fCertificate, (std::string*), (override));
 };
 
 }  // namespace u2f
