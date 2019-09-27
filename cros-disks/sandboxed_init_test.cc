@@ -52,6 +52,8 @@ class SandboxedInitTest : public testing::Test {
   void RunUnderInit(std::function<int()> func) {
     SandboxedInit init;
     pid_ = RunInFork([&init, func]() {
+      CHECK_EQ(signal(SIGUSR1, [](int sig) { CHECK_EQ(sig, SIGUSR1); }),
+               SIG_DFL);
       init.RunInsideSandboxNoReturn(base::BindOnce(CallFunc, func));
       NOTREACHED();
       return 42;
@@ -135,7 +137,7 @@ TEST_F(SandboxedInitTest, RunInitNoDaemon_Crash) {
 
 TEST_F(SandboxedInitTest, RunInitNoDaemon_IO) {
   RunUnderInit([]() {
-    EXPECT_EQ(4, write(1, "abcd", 4));
+    EXPECT_EQ(4, write(STDOUT_FILENO, "abcd", 4));
     return 12;
   });
 
@@ -147,6 +149,46 @@ TEST_F(SandboxedInitTest, RunInitNoDaemon_IO) {
   int status;
   ASSERT_TRUE(Wait(&status, false));
   ASSERT_EQ(12, WEXITSTATUS(status));
+}
+
+TEST_F(SandboxedInitTest, RunInitNoDaemon_UndisturbedBySignal) {
+  RunUnderInit([]() {
+    // Signal that process started
+    HANDLE_EINTR(write(STDOUT_FILENO, "Begin", 5));
+
+    // Wait to be unblocked
+    char buffer[PIPE_BUF];
+    HANDLE_EINTR(read(STDIN_FILENO, buffer, PIPE_BUF));
+
+    // Signal that process was unblocked
+    HANDLE_EINTR(write(STDOUT_FILENO, "End", 3));
+    return 12;
+  });
+
+  // Wait for process to start.
+  char buffer[PIPE_BUF];
+  ssize_t rd = read(out_.get(), buffer, PIPE_BUF);
+  ASSERT_GT(rd, 0);
+  EXPECT_EQ(base::StringPiece(buffer, rd), "Begin");
+
+  // Send SIGUSR1 to init process.
+  for (int i = 0; i < 5; ++i) {
+    EXPECT_EQ(kill(pid_, SIGUSR1), 0);
+    usleep(100'000);
+  }
+
+  // Unblock the process.
+  ASSERT_GT(write(in_.get(), "Continue", 8), 0);
+
+  // Wait for process to continue.
+  rd = read(out_.get(), buffer, PIPE_BUF);
+  ASSERT_GT(rd, 0);
+  EXPECT_EQ(base::StringPiece(buffer, rd), "End");
+
+  // Wait for init process to finish.
+  int status;
+  ASSERT_TRUE(Wait(&status, false));
+  ASSERT_EQ(WEXITSTATUS(status), 12);
 }
 
 TEST_F(SandboxedInitTest, RunInitNoDaemon_ReadLauncherCode) {

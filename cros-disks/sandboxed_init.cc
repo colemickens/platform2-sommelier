@@ -122,12 +122,22 @@ int SandboxedInit::RunInitLoop(pid_t root_pid, base::ScopedFD ctrl_fd) {
 
   // This loop will only end when either there are no processes left inside
   // our PID namespace or we get a signal.
-  pid_t pid;
-  int wstatus;
   int last_failure_code = 0;
 
-  // Wait for any child to terminate.
-  while ((pid = wait(&wstatus)) > 0) {
+  while (true) {
+    // Wait for any child to terminate.
+    int wstatus;
+    const pid_t pid = HANDLE_EINTR(wait(&wstatus));
+
+    if (pid < 0) {
+      if (errno == ECHILD) {
+        // No more child
+        break;
+      }
+
+      PLOG(FATAL) << "Cannot wait for child processes";
+    }
+
     if (WIFEXITED(wstatus) || WIFSIGNALED(wstatus)) {
       // Something quit.
       const int exit_code = WStatusToStatus(wstatus);
