@@ -7,12 +7,14 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <functional>
 #include <limits>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <base/bind.h>
+#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -33,6 +35,15 @@ namespace {
 // this interval the timeout is reset. The browser should be sending these
 // messages ~5 seconds when video is playing.
 const int64_t kVideoTimeoutIntervalMs = 7000;
+
+// Maximum valid value for scaled percentages.
+const double kMaxPercent = 100.0;
+
+// Minimum valid value for scaled percentages.
+const double kMinPercent = 0.0;
+
+// Second minimum step in scaled percentages.
+const double kMinVisiblePercent = 10.0;
 
 // Returns the total duration for |style|.
 base::TimeDelta GetTransitionDuration(
@@ -136,14 +147,6 @@ void KeyboardBacklightController::Init(
   CHECK(prefs->GetInt64(kKeyboardBacklightKeepOnDuringVideoMsPref, &delay_ms));
   keep_on_during_video_delay_ = base::TimeDelta::FromMilliseconds(delay_ms);
 
-  if (backlight_->DeviceExists()) {
-    const int64_t current_level = backlight_->GetCurrentBrightnessLevel();
-    current_percent_ = LevelToPercent(current_level);
-    LOG(INFO) << "Backlight has range [0, "
-              << backlight_->GetMaxBrightnessLevel() << "] with initial level "
-              << current_level;
-  }
-
   // Read the user-settable brightness steps (one per line).
   std::string input_str;
   if (!prefs_->GetString(kKeyboardBacklightUserStepsPref, &input_str))
@@ -156,10 +159,24 @@ void KeyboardBacklightController::Init(
     if (!base::StringToDouble(*iter, &new_step))
       LOG(FATAL) << "Invalid line in pref " << kKeyboardBacklightUserStepsPref
                  << ": \"" << *iter << "\"";
-    user_steps_.push_back(util::ClampPercent(new_step));
+    user_steps_.push_back(new_step);
   }
-  CHECK(!user_steps_.empty()) << "No user brightness steps defined in "
-                              << kKeyboardBacklightUserStepsPref;
+
+  // Validate raw percentages in |user_steps_|.
+  std::string err_msg;
+  CHECK(ValidateUserSteps(&err_msg)) << err_msg;
+
+  // Initialize |min_raw_percent_|, |min_visible_raw_percent| and
+  // |max_raw_percent_| and calculate scaled percentages.
+  ScaleUserSteps();
+
+  if (backlight_->DeviceExists()) {
+    const int64_t current_level = backlight_->GetCurrentBrightnessLevel();
+    current_percent_ = LevelToPercent(current_level);
+    LOG(INFO) << "Backlight has range [0, "
+              << backlight_->GetMaxBrightnessLevel() << "] with initial level "
+              << current_level;
+  }
 
   if (ambient_light_handler_.get()) {
     std::string pref_value;
@@ -347,14 +364,16 @@ double KeyboardBacklightController::LevelToPercent(int64_t level) const {
   if (max_level == 0)
     return -1.0;
   level = std::max(std::min(level, max_level), static_cast<int64_t>(0));
-  return level * 100.0 / max_level;
+  double raw_percent = level * 100.0 / max_level;
+  return RawPercentToPercent(raw_percent);
 }
 
 int64_t KeyboardBacklightController::PercentToLevel(double percent) const {
   const int64_t max_level = backlight_->GetMaxBrightnessLevel();
   if (max_level == 0)
     return -1;
-  return lround(max_level * util::ClampPercent(percent) / 100.0);
+  double raw_percent = PercentToRawPercent(util::ClampPercent(percent));
+  return lround(max_level * raw_percent / 100.0);
 }
 
 void KeyboardBacklightController::SetBrightnessPercentForAmbientLight(
@@ -574,6 +593,96 @@ bool KeyboardBacklightController::ApplyBrightnessPercent(
   for (BacklightControllerObserver& observer : observers_)
     observer.OnBrightnessChange(percent, cause, this);
   return true;
+}
+
+bool KeyboardBacklightController::ValidateUserSteps(std::string* err_msg) {
+  if (user_steps_.empty()) {
+    *err_msg = base::StringPrintf("No user brightness steps defined in %s",
+                                  kKeyboardBacklightUserStepsPref);
+    return false;
+  }
+
+  if (user_steps_[0] != 0.0) {
+    *err_msg =
+        base::StringPrintf("%s starts at %f instead of 0.0",
+                           kKeyboardBacklightUserStepsPref, user_steps_[0]);
+    return false;
+  }
+
+  for (const double& step : user_steps_)
+    if (step < 0.0 || step > 100.0) {
+      *err_msg = base::StringPrintf("%s step %f is outside [0.0, 100.0]",
+                                    kKeyboardBacklightUserStepsPref, step);
+      return false;
+    }
+
+  if (user_steps_.end() != std::adjacent_find(user_steps_.begin(),
+                                              user_steps_.end(),
+                                              std::greater_equal<double>())) {
+    *err_msg = base::StringPrintf("%s is not strictly increasing",
+                                  kKeyboardBacklightUserStepsPref);
+    return false;
+  }
+
+  return true;
+}
+
+void KeyboardBacklightController::ScaleUserSteps() {
+  size_t num_steps = user_steps_.size();
+
+  if (num_steps < 3) {
+    LOG(INFO) << "Not scaling user steps because there are too few steps";
+    return;
+  }
+
+  // |user_steps_| is in strictly increasing order.
+  min_raw_percent_ = user_steps_[0];
+  max_raw_percent_ = user_steps_[num_steps - 1];
+  min_visible_raw_percent = user_steps_[1];
+
+  for (size_t i = 0; i < num_steps; i++) {
+    user_steps_[i] = RawPercentToPercent(user_steps_[i]);
+  }
+}
+
+double KeyboardBacklightController::RawPercentToPercent(
+    double raw_percent) const {
+  if (user_steps_.size() < 3)
+    return raw_percent;
+
+  raw_percent =
+      std::max(std::min(raw_percent, max_raw_percent_), min_raw_percent_);
+
+  if (raw_percent == min_visible_raw_percent)
+    return kMinVisiblePercent;
+  else if (raw_percent > min_visible_raw_percent)
+    return (raw_percent - min_visible_raw_percent) /
+               (max_raw_percent_ - min_visible_raw_percent) *
+               (kMaxPercent - kMinVisiblePercent) +
+           kMinVisiblePercent;
+  else  // raw_percent < min_visible_raw_percent
+    return (raw_percent - min_raw_percent_) /
+               (min_visible_raw_percent - min_raw_percent_) *
+               (kMinVisiblePercent - kMinPercent) +
+           kMinPercent;
+}
+
+double KeyboardBacklightController::PercentToRawPercent(double percent) const {
+  if (user_steps_.size() < 3)
+    return percent;
+
+  percent = util::ClampPercent(percent);
+
+  if (percent == kMinVisiblePercent)
+    return min_visible_raw_percent;
+  else if (percent > kMinVisiblePercent)
+    return (percent - kMinVisiblePercent) / (kMaxPercent - kMinVisiblePercent) *
+               (max_raw_percent_ - min_visible_raw_percent) +
+           min_visible_raw_percent;
+  else  // percent < kMinVisiblePercent
+    return (percent - kMinPercent) / (kMinVisiblePercent - kMinPercent) *
+               (min_visible_raw_percent - min_raw_percent_) +
+           min_raw_percent_;
 }
 
 }  // namespace policy

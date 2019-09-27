@@ -171,6 +171,24 @@ TEST_F(KeyboardBacklightControllerTest, GetBrightnessPercent) {
                    CallGetKeyboardBrightnessPercent());
 }
 
+TEST_F(KeyboardBacklightControllerTest, GetBrightnessPercentWithScaling) {
+  user_steps_pref_ = "0.0\n5.0\n20.0\n30.0\n50.0";
+  initial_backlight_level_ = 0;
+  Init();
+
+  // Level              0    5   20   30    50
+  // Raw percentages    0.0  5.0 20.0 30.0  50.0
+  // Scaled percentages 0.0 10.0 40.0 60.0 100.0
+  std::vector<double> scaled_percents{0.0, 10.0, 40.0, 60.0, 100.0};
+  std::vector<int> levels{0, 5, 20, 30, 50};
+
+  for (size_t i = 0; i < levels.size(); i++) {
+    EXPECT_DOUBLE_EQ(scaled_percents[i], CallGetKeyboardBrightnessPercent());
+    EXPECT_EQ(levels[i], backlight_.current_level());
+    CallIncreaseKeyboardBrightness();
+  }
+}
+
 TEST_F(KeyboardBacklightControllerTest, TurnOffForFullscreenVideo) {
   als_steps_pref_ = "20.0 -1 50\n50.0 35 75\n75.0 60 -1";
   user_steps_pref_ = "0.0\n100.0";
@@ -278,7 +296,7 @@ TEST_F(KeyboardBacklightControllerTest, OnAmbientLightUpdated) {
 TEST_F(KeyboardBacklightControllerTest, ChangeStates) {
   // Configure a single step for ALS and three steps for user control.
   als_steps_pref_ = "50.0 -1 -1";
-  user_steps_pref_ = "0.0\n60.0\n100.0";
+  user_steps_pref_ = "0.0\n10.0\n100.0";
   initial_backlight_level_ = 50;
   Init();
   light_sensor_.NotifyObservers();
@@ -368,7 +386,7 @@ TEST_F(KeyboardBacklightControllerTest, DeferChangesWhileDimmed) {
             backlight_.current_interval().InMilliseconds());
 }
 
-TEST_F(KeyboardBacklightControllerTest, InitialUserLevel) {
+TEST_F(KeyboardBacklightControllerTest, InitialUserLevelDownFirst) {
   // Set user steps at 0, 10, 40, 60, and 100.  The backlight should remain
   // at its starting level when Init() is called.
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
@@ -381,6 +399,23 @@ TEST_F(KeyboardBacklightControllerTest, InitialUserLevel) {
   // initial level (15) and then increase to the next step (40).
   CallIncreaseKeyboardBrightness();
   EXPECT_EQ(40, backlight_.current_level());
+  EXPECT_EQ(kFastBacklightTransitionMs,
+            backlight_.current_interval().InMilliseconds());
+}
+
+TEST_F(KeyboardBacklightControllerTest, InitialUserLevelUpFirst) {
+  // Set user steps at 0, 10, 40, 60, and 100.  The backlight should remain
+  // at its starting level when Init() is called.
+  user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
+  initial_backlight_level_ = 30;
+  Init();
+  EXPECT_EQ(30, backlight_.current_level());
+
+  // After an increase request switches to user control of the brightness
+  // level, the controller should first choose the step (40) nearest to the
+  // initial level (30) and then increase to the next step (60).
+  CallIncreaseKeyboardBrightness();
+  EXPECT_EQ(60, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
 }
@@ -632,7 +667,7 @@ TEST_F(KeyboardBacklightControllerTest, Hover) {
 TEST_F(KeyboardBacklightControllerTest, NoAmbientLightSensor) {
   initial_backlight_level_ = 0;
   no_als_brightness_pref_ = 40.0;
-  user_steps_pref_ = "0.0\n50.0\n100.0";
+  user_steps_pref_ = "0.0\n10.0\n100.0";
   pass_light_sensor_ = false;
   Init();
 
@@ -645,7 +680,7 @@ TEST_F(KeyboardBacklightControllerTest, NoAmbientLightSensor) {
   CallIncreaseKeyboardBrightness();
   EXPECT_EQ(100, backlight_.current_level());
   CallDecreaseKeyboardBrightness();
-  EXPECT_EQ(50, backlight_.current_level());
+  EXPECT_EQ(10, backlight_.current_level());
 }
 
 TEST_F(KeyboardBacklightControllerTest, EnableForUserActivity) {
@@ -771,6 +806,40 @@ TEST_F(KeyboardBacklightControllerTest, ChangeBacklightDevice) {
   backlight_.set_current_level(100);
   backlight_.NotifyDeviceChanged();
   EXPECT_EQ(200, backlight_.current_level());
+}
+
+TEST_F(KeyboardBacklightControllerTest, EmptyUserSteps) {
+  user_steps_pref_ = "";
+  EXPECT_DEATH(
+      Init(),
+      "No user brightness steps defined in keyboard_backlight_user_steps");
+}
+
+TEST_F(KeyboardBacklightControllerTest, UserStepsNotStartAt0) {
+  user_steps_pref_ = "10.0\n50.0\n100.0";
+  EXPECT_DEATH(
+      Init(),
+      "keyboard_backlight_user_steps starts at 10.000000 instead of 0.0");
+}
+
+TEST_F(KeyboardBacklightControllerTest, UserStepsTooBig) {
+  user_steps_pref_ = "0.0\n50.0\n110.0";
+  EXPECT_DEATH(Init(),
+               "keyboard_backlight_user_steps step 110.000000 is outside "
+               "\\[0.0, 100.0]");
+}
+
+TEST_F(KeyboardBacklightControllerTest, UserStepsTooSmall) {
+  user_steps_pref_ = "0.0\n-10.0\n100.0";
+  EXPECT_DEATH(Init(),
+               "keyboard_backlight_user_steps step -10.000000 is outside "
+               "\\[0.0, 100.0]");
+}
+
+TEST_F(KeyboardBacklightControllerTest, UserStepsNotStrictlyIncreasing) {
+  user_steps_pref_ = "0.0\n0.0\n100.0";
+  EXPECT_DEATH(Init(),
+               "keyboard_backlight_user_steps is not strictly increasing");
 }
 
 }  // namespace policy

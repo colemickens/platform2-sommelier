@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <base/compiler_specific.h>
@@ -152,6 +153,18 @@ class KeyboardBacklightController : public BacklightController,
                               Transition transition,
                               BacklightBrightnessChange_Cause cause);
 
+  // Returns true if the |user_steps_| is valid; otherwise returns false.
+  bool ValidateUserSteps(std::string* err_msg);
+
+  // Calculates scaled percentages in |user_steps_| from raw percentages.
+  void ScaleUserSteps();
+
+  // Calculates raw percentages to scaled percentages in |user_steps_|.
+  double RawPercentToPercent(double raw_percent) const;
+
+  // Calculates scaled percentages in |user_steps_| to raw percentages.
+  double PercentToRawPercent(double percent) const;
+
   mutable std::unique_ptr<Clock> clock_;
 
   // Not owned by this class.
@@ -201,6 +214,12 @@ class KeyboardBacklightController : public BacklightController,
   // Set of percentages that the user can select from for setting the
   // brightness. This is populated from a preference.
   std::vector<double> user_steps_;
+
+  // Min, min visible and max percentages used to calculate scaled percentages
+  // in |user_steps_| from raw percentages. This is populated from a preference.
+  double min_raw_percent_ = -1;
+  double min_visible_raw_percent = -1;
+  double max_raw_percent_ = -1;
 
   // Backlight brightness in the range [0.0, 100.0] to use when the ambient
   // light sensor is controlling the brightness. This is set by
