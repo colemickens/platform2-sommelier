@@ -38,7 +38,7 @@ class GenericFailureCollectorMock : public GenericFailureCollector {
   GenericFailureCollectorMock() : GenericFailureCollector() {}
   explicit GenericFailureCollectorMock(const std::string& exec_name)
       : GenericFailureCollector(exec_name) {}
-  MOCK_METHOD0(SetUpDBus, void());
+  MOCK_METHOD(void, SetUpDBus, (), (override));
 };
 
 class GenericFailureCollectorTest : public ::testing::Test {
