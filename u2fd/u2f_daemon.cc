@@ -70,23 +70,45 @@ U2fMode ReadU2fPolicy() {
   return static_cast<U2fMode>(mode);
 }
 
+const char* U2fModeToString(U2fMode mode) {
+  switch (mode) {
+    case U2fMode::kUnset:
+      return "unset";
+    case U2fMode::kDisabled:
+      return "disabled";
+    case U2fMode::kU2f:
+      return "U2F";
+    case U2fMode::kU2fExtended:
+      return "U2F+extensions";
+  }
+  return "unknown";
+}
+
 U2fMode GetU2fMode(bool force_u2f, bool force_g2f) {
   U2fMode policy_mode = ReadU2fPolicy();
+
+  LOG(INFO) << "Requested Mode: Policy[" << U2fModeToString(policy_mode)
+            << "], force_u2f[" << force_u2f << "], force_g2f[" << force_g2f
+            << "]";
 
   // Always honor the administrator request to disable even if given
   // contradictory override flags.
   if (policy_mode == U2fMode::kDisabled) {
+    LOG(INFO) << "Mode: Disabled (explicitly by policy)";
     return U2fMode::kDisabled;
   }
 
   if (force_g2f || policy_mode == U2fMode::kU2fExtended) {
+    LOG(INFO) << "Mode: U2F+extensions";
     return U2fMode::kU2fExtended;
   }
 
   if (force_u2f || policy_mode == U2fMode::kU2f) {
+    LOG(INFO) << "Mode:U2F";
     return U2fMode::kU2f;
   }
 
+  LOG(INFO) << "Mode: Disabled";
   return U2fMode::kDisabled;
 }
 
@@ -97,20 +119,6 @@ void OnPolicySignalConnected(const std::string& interface,
     LOG(FATAL) << "Could not connect to signal " << signal << " on interface "
                << interface;
   }
-}
-
-const char* U2fModeToString(U2fMode mode) {
-  switch (mode) {
-    case U2fMode::kUnset:
-      return "disabled (no policy)";
-    case U2fMode::kDisabled:
-      return "disabled";
-    case U2fMode::kU2f:
-      return "U2F";
-    case U2fMode::kU2fExtended:
-      return "U2F+extensions";
-  }
-  return "unknown";
 }
 
 }  // namespace
@@ -187,16 +195,13 @@ int U2fDaemon::StartService() {
     return EX_OK;
   }
 
-  u2f_mode_ = GetU2fMode(force_u2f_, force_g2f_);
-  LOG(INFO) << "Mode: " << U2fModeToString(u2f_mode_)
-            << " (force_u2f=" << force_u2f_ << " force_g2f=" << force_g2f_
-            << ")";
-  if (u2f_mode_ == U2fMode::kDisabled) {
+  U2fMode u2f_mode = GetU2fMode(force_u2f_, force_g2f_);
+  if (u2f_mode == U2fMode::kDisabled) {
     return EX_CONFIG;
   }
 
   uint32_t vendor_mode_rc =
-      tpm_proxy_.SetU2fVendorMode(static_cast<uint8_t>(u2f_mode_));
+      tpm_proxy_.SetU2fVendorMode(static_cast<uint8_t>(u2f_mode));
   if (vendor_mode_rc == u2f::kVendorRcNoSuchCommand) {
     LOG(WARNING) << "U2F Vendor Mode not supported in firmware, ignoring.";
   } else if (vendor_mode_rc) {
@@ -211,7 +216,7 @@ int U2fDaemon::StartService() {
         IgnorePowerButtonPress();
         SendWinkSignal();
       },
-      &tpm_proxy_, &metrics_library_, u2f_mode_ == U2fMode::kU2fExtended,
+      &tpm_proxy_, &metrics_library_, u2f_mode == U2fMode::kU2fExtended,
       legacy_kh_fallback_);
 
   u2fhid_ = std::make_unique<u2f::U2fHid>(

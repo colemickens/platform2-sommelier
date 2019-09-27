@@ -70,7 +70,6 @@ class U2fDaemon : public brillo::Daemon {
   const bool force_u2f_;
   const bool force_g2f_;
   const bool legacy_kh_fallback_;
-  U2fMode u2f_mode_;
 
   // Virtual USB Device ID
   uint32_t vendor_id_;
