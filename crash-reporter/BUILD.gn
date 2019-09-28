@@ -168,7 +168,6 @@ executable("anomaly_detector") {
     "anomaly_detector_main.cc",
   ]
   libs = [
-    "fl",
     "system_api-metrics_event-protos",
   ]
 }
