@@ -361,9 +361,6 @@ static_library("libshill") {
     "pending_activation_store.cc",
     "portal_detector.cc",
     "power_manager.cc",
-    "ppp_daemon.cc",
-    "ppp_device.cc",
-    "ppp_device_factory.cc",
     "process_manager.cc",
     "profile.cc",
     "property_store.cc",
@@ -439,6 +436,14 @@ static_library("libshill") {
       "protobuf_lite_streams.cc",
     ]
     deps += [ ":generate_cellular_proxies" ]
+  }
+
+  if (use.cellular || use.vpn || use.pppoe) {
+    sources += [
+      "ppp_daemon.cc",
+      "ppp_device.cc",
+      "ppp_device_factory.cc",
+    ]
   }
 
   if (use.pppoe) {
@@ -755,8 +760,6 @@ if (use.test) {
       "mock_portal_detector.cc",
       "mock_power_manager.cc",
       "mock_power_manager_proxy.cc",
-      "mock_ppp_device.cc",
-      "mock_ppp_device_factory.cc",
       "mock_process_manager.cc",
       "mock_profile.cc",
       "mock_resolver.cc",
@@ -785,8 +788,6 @@ if (use.test) {
       "pending_activation_store_test.cc",
       "portal_detector_test.cc",
       "power_manager_test.cc",
-      "ppp_daemon_test.cc",
-      "ppp_device_test.cc",
       "process_manager_test.cc",
       "profile_test.cc",
       "property_accessor_test.cc",
@@ -849,6 +850,15 @@ if (use.test) {
         "mock_dbus_properties_proxy.cc",
       ]
       deps += [ ":mobile_operator_db-test-db" ]
+    }
+
+    if (use.cellular || use.vpn || use.pppoe) {
+      sources += [
+        "mock_ppp_device.cc",
+        "mock_ppp_device_factory.cc",
+        "ppp_daemon_test.cc",
+        "ppp_device_test.cc",
+      ]
     }
 
     if (use.dhcpv6) {
