@@ -45,6 +45,21 @@ bool MockFirewall::MatchAndUpdate(const std::vector<std::string>& argv) {
   return false;
 }
 
+std::vector<std::string> MockFirewall::GetAllCommands() {
+  std::vector<std::string> commands;
+  commands.reserve(commands_.size());
+  for (const auto& argv : commands_) {
+    std::string joined_argv = "";
+    std::string separator = "";
+    for (const auto& arg : argv) {
+      joined_argv += separator + arg;
+      separator = " ";
+    }
+    commands.push_back(joined_argv);
+  }
+  return commands;
+}
+
 int MockFirewall::RunInMinijail(const std::vector<std::string>& argv) {
   if (MatchAndUpdate(argv))
     return 1;

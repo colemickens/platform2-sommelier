@@ -4,7 +4,9 @@
 
 #include "permission_broker/firewall.h"
 
+#include <arpa/inet.h>
 #include <linux/capability.h>
+#include <netinet/in.h>
 
 #include <string>
 #include <vector>
@@ -56,6 +58,18 @@ namespace permission_broker {
 const char kIpTablesPath[] = "/sbin/iptables";
 const char kIp6TablesPath[] = "/sbin/ip6tables";
 
+const char* ProtocolName(ProtocolEnum proto) {
+  switch (proto) {
+    case kProtocolTcp:
+      return "tcp";
+    case kProtocolUdp:
+      return "udp";
+    default:
+      NOTREACHED() << "Unexpected L4 protocol value " << proto;
+      return "unknown";
+  }
+}
+
 bool Firewall::AddAcceptRules(ProtocolEnum protocol,
                               uint16_t port,
                               const std::string& interface) {
@@ -104,6 +118,76 @@ bool Firewall::DeleteAcceptRules(ProtocolEnum protocol,
   return ip4_success && ip6_success;
 }
 
+bool Firewall::AddIpv4ForwardRule(ProtocolEnum protocol,
+                                  uint16_t port,
+                                  const std::string& interface,
+                                  const std::string& dst_ip,
+                                  uint16_t dst_port) {
+  return ModifyIpv4DNATRule(protocol, port, interface, dst_ip, dst_port, "-I");
+}
+
+bool Firewall::DeleteIpv4ForwardRule(ProtocolEnum protocol,
+                                     uint16_t port,
+                                     const std::string& interface,
+                                     const std::string& dst_ip,
+                                     uint16_t dst_port) {
+  return ModifyIpv4DNATRule(protocol, port, interface, dst_ip, dst_port, "-D");
+}
+
+bool Firewall::ModifyIpv4DNATRule(ProtocolEnum protocol,
+                                  uint16_t port,
+                                  const std::string& interface,
+                                  const std::string& dst_ip,
+                                  uint16_t dst_port,
+                                  const std::string& operation) {
+  if (port == 0U) {
+    LOG(ERROR) << "Port 0 is not a valid port";
+    return false;
+  }
+
+  if (!IsValidInterfaceName(interface) || interface.empty()) {
+    LOG(ERROR) << "Invalid interface name '" << interface << "'";
+    return false;
+  }
+
+  struct in_addr addr;
+  if (inet_pton(AF_INET, dst_ip.c_str(), &addr) != 1) {
+    LOG(ERROR) << "Invalid IPv4 address '" << dst_ip << "'";
+    return false;
+  }
+
+  if (dst_port == 0U) {
+    LOG(ERROR) << "Destination port 0 is not a valid port";
+    return false;
+  }
+
+  // Only support deleting existing forwarding rules or inserting rules in the
+  // first position: ARC++ generic inbound DNAT rule always need to go last.
+  if (operation != "-I" && operation != "-D") {
+    LOG(ERROR) << "Invalid chain operation '" << operation << "'";
+    return false;
+  }
+
+  std::vector<std::string> argv{
+      kIpTablesPath,
+      "-t",
+      "nat",
+      operation,
+      "PREROUTING",
+      "-i",
+      interface,
+      "-p",  // protocol
+      ProtocolName(protocol),
+      "--dport",  // input destination port
+      std::to_string(port),
+      "-j",
+      "DNAT",
+      "--to-destination",  // new output destination ip:port
+      dst_ip + ":" + std::to_string(dst_port),
+      "-w"};  // Wait for xtables lock.
+  return RunInMinijail(argv) == 0;
+}
+
 bool Firewall::AddLoopbackLockdownRules(ProtocolEnum protocol, uint16_t port) {
   if (port == 0U) {
     LOG(ERROR) << "Port 0 is not a valid port";
@@ -146,7 +230,7 @@ bool Firewall::AddAcceptRule(const std::string& executable_path,
                                 "-I",  // insert
                                 "INPUT",
                                 "-p",  // protocol
-                                protocol == kProtocolTcp ? "tcp" : "udp",
+                                ProtocolName(protocol),
                                 "--dport",  // destination port
                                 std::to_string(port)};
   if (!interface.empty()) {
@@ -168,7 +252,7 @@ bool Firewall::DeleteAcceptRule(const std::string& executable_path,
                                 "-D",  // delete
                                 "INPUT",
                                 "-p",  // protocol
-                                protocol == kProtocolTcp ? "tcp" : "udp",
+                                ProtocolName(protocol),
                                 "--dport",  // destination port
                                 std::to_string(port)};
   if (!interface.empty()) {
@@ -190,7 +274,7 @@ bool Firewall::AddLoopbackLockdownRule(const std::string& executable_path,
       "-I",  // insert
       "OUTPUT",
       "-p",  // protocol
-      protocol == kProtocolTcp ? "tcp" : "udp",
+      ProtocolName(protocol),
       "--dport",  // destination port
       std::to_string(port),
       "-o",  // output interface
@@ -216,7 +300,7 @@ bool Firewall::DeleteLoopbackLockdownRule(const std::string& executable_path,
       "-D",  // delete
       "OUTPUT",
       "-p",  // protocol
-      protocol == kProtocolTcp ? "tcp" : "udp",
+      ProtocolName(protocol),
       "--dport",  // destination port
       std::to_string(port),
       "-o",  // output interface

@@ -23,6 +23,8 @@ extern const char kIp6TablesPath[];
 
 enum ProtocolEnum { kProtocolTcp, kProtocolUdp };
 
+const char* ProtocolName(ProtocolEnum proto);
+
 class Firewall {
  public:
   typedef std::pair<uint16_t, std::string> Hole;
@@ -38,6 +40,16 @@ class Firewall {
                          const std::string& interface);
   bool AddLoopbackLockdownRules(ProtocolEnum protocol, uint16_t port);
   bool DeleteLoopbackLockdownRules(ProtocolEnum protocol, uint16_t port);
+  bool AddIpv4ForwardRule(ProtocolEnum protocol,
+                          uint16_t port,
+                          const std::string& interface,
+                          const std::string& dst_ip,
+                          uint16_t dst_port);
+  bool DeleteIpv4ForwardRule(ProtocolEnum protocol,
+                             uint16_t port,
+                             const std::string& interface,
+                             const std::string& dst_ip,
+                             uint16_t dst_port);
 
  private:
   friend class FirewallTest;
@@ -49,6 +61,13 @@ class Firewall {
                                 ProtocolEnum protocol,
                                 uint16_t port,
                                 const std::string& interface);
+
+  virtual bool ModifyIpv4DNATRule(ProtocolEnum protocol,
+                                  uint16_t port,
+                                  const std::string& interface,
+                                  const std::string& dst_ip,
+                                  uint16_t dst_port,
+                                  const std::string& operation);
 
   virtual bool AddLoopbackLockdownRule(const std::string& executable_path,
                                        ProtocolEnum protocol,

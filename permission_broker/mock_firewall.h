@@ -30,6 +30,9 @@ class MockFirewall : public Firewall {
   // from the match criteria.
   bool MatchAndUpdate(const std::vector<std::string>& argv);
 
+  // Returns all commands issued with RunInMinijail during the test.
+  std::vector<std::string> GetAllCommands();
+
  private:
   struct Criterion {
     std::vector<std::string> keywords;
