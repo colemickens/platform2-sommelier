@@ -364,7 +364,6 @@ static_library("libshill") {
     "ppp_daemon.cc",
     "ppp_device.cc",
     "ppp_device_factory.cc",
-    "pppoe/pppoe_service.cc",
     "process_manager.cc",
     "profile.cc",
     "property_store.cc",
@@ -440,6 +439,10 @@ static_library("libshill") {
       "protobuf_lite_streams.cc",
     ]
     deps += [ ":generate_cellular_proxies" ]
+  }
+
+  if (use.pppoe) {
+    sources += [ "pppoe/pppoe_service.cc" ]
   }
 
   if (use.vpn) {
@@ -784,7 +787,6 @@ if (use.test) {
       "power_manager_test.cc",
       "ppp_daemon_test.cc",
       "ppp_device_test.cc",
-      "pppoe/pppoe_service_test.cc",
       "process_manager_test.cc",
       "profile_test.cc",
       "property_accessor_test.cc",
@@ -851,6 +853,10 @@ if (use.test) {
 
     if (use.dhcpv6) {
       sources += [ "dhcp/dhcpv6_config_test.cc" ]
+    }
+
+    if (use.pppoe) {
+      sources += [ "pppoe/pppoe_service_test.cc" ]
     }
 
     if (use.vpn) {

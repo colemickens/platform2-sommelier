@@ -30,11 +30,14 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/net/rtnl_handler.h"
-#include "shill/pppoe/pppoe_service.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
 #include "shill/store_interface.h"
+
+#if !defined(DISABLE_PPPOE)
+#include "shill/pppoe/pppoe_service.h"
+#endif  // DISABLE_PPPOE
 
 #if !defined(DISABLE_WIRED_8021X)
 #include "shill/eap_credentials.h"
@@ -523,7 +526,12 @@ EthernetServiceRefPtr Ethernet::CreateEthernetService() {
 }
 
 EthernetServiceRefPtr Ethernet::CreatePPPoEService() {
+#if defined(DISABLE_PPPOE)
+  NOTREACHED() << __func__ << " should not be called when PPPoE is disabled";
+  return nullptr;
+#else
   return new PPPoEService(manager(), weak_ptr_factory_.GetWeakPtr());
+#endif  // DISABLE_PPPOE
 }
 
 void Ethernet::RegisterService(EthernetServiceRefPtr service) {
