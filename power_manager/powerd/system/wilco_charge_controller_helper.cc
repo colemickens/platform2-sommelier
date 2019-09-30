@@ -8,6 +8,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/file_utils.h>
 
 namespace power_manager {
 namespace system {
@@ -83,14 +84,6 @@ bool WeekDayToString(PowerManagementPolicy::WeekDay week_day,
   return false;
 }
 
-bool WriteDataToFile(const base::FilePath& filename, const std::string& data) {
-  if (base::WriteFile(filename, data.c_str(), data.length()) != data.length()) {
-    PLOG(ERROR) << "Unable to write \"" << data << "\" to " << filename.value();
-    return false;
-  }
-  return true;
-}
-
 }  // namespace
 
 WilcoChargeControllerHelper::WilcoChargeControllerHelper() = default;
@@ -98,52 +91,52 @@ WilcoChargeControllerHelper::WilcoChargeControllerHelper() = default;
 WilcoChargeControllerHelper::~WilcoChargeControllerHelper() = default;
 
 bool WilcoChargeControllerHelper::SetPeakShiftEnabled(bool enable) {
-  return WriteDataToFile(base::FilePath(kEcDriverSysfsDirectory)
-                             .Append(kChargeScheduleDirectory)
-                             .Append(kPeakShiftDirectory)
-                             .Append(kPeakShiftEnablePath),
-                         enable ? "1" : "0");
+  return brillo::WriteStringToFile(base::FilePath(kEcDriverSysfsDirectory)
+                                       .Append(kChargeScheduleDirectory)
+                                       .Append(kPeakShiftDirectory)
+                                       .Append(kPeakShiftEnablePath),
+                                   enable ? "1" : "0");
 }
 
 bool WilcoChargeControllerHelper::SetPeakShiftBatteryPercentThreshold(
     int threshold) {
-  return WriteDataToFile(base::FilePath(kEcDriverSysfsDirectory)
-                             .Append(kChargeScheduleDirectory)
-                             .Append(kPeakShiftDirectory)
-                             .Append(kPeakShiftThresholdPath),
-                         base::StringPrintf("%d", threshold));
+  return brillo::WriteStringToFile(base::FilePath(kEcDriverSysfsDirectory)
+                                       .Append(kChargeScheduleDirectory)
+                                       .Append(kPeakShiftDirectory)
+                                       .Append(kPeakShiftThresholdPath),
+                                   base::StringPrintf("%d", threshold));
 }
 
 bool WilcoChargeControllerHelper::SetPeakShiftDayConfig(
     PowerManagementPolicy::WeekDay week_day, const std::string& config) {
   std::string week_day_str;
   return WeekDayToString(week_day, &week_day_str) &&
-         WriteDataToFile(base::FilePath(kEcDriverSysfsDirectory)
-                             .Append(kChargeScheduleDirectory)
-                             .Append(kPeakShiftDirectory)
-                             .Append(week_day_str),
-                         config);
+         brillo::WriteStringToFile(base::FilePath(kEcDriverSysfsDirectory)
+                                       .Append(kChargeScheduleDirectory)
+                                       .Append(kPeakShiftDirectory)
+                                       .Append(week_day_str),
+                                   config);
 }
 
 bool WilcoChargeControllerHelper::SetBootOnAcEnabled(bool enable) {
-  return WriteDataToFile(
+  return brillo::WriteStringToFile(
       base::FilePath(kEcDriverSysfsDirectory).Append(kBootOnAcEnablePath),
       enable ? "1" : "0");
 }
 
 bool WilcoChargeControllerHelper::SetUsbPowerShareEnabled(bool enable) {
-  return WriteDataToFile(
+  return brillo::WriteStringToFile(
       base::FilePath(kEcDriverSysfsDirectory).Append(kUsbPowerShareEnablePath),
       enable ? "1" : "0");
 }
 
 bool WilcoChargeControllerHelper::SetAdvancedBatteryChargeModeEnabled(
     bool enable) {
-  return WriteDataToFile(base::FilePath(kEcDriverSysfsDirectory)
-                             .Append(kChargeScheduleDirectory)
-                             .Append(kAdvancedChargingDirectory)
-                             .Append(kAdvancedChargingEnablePath),
-                         enable ? "1" : "0");
+  return brillo::WriteStringToFile(base::FilePath(kEcDriverSysfsDirectory)
+                                       .Append(kChargeScheduleDirectory)
+                                       .Append(kAdvancedChargingDirectory)
+                                       .Append(kAdvancedChargingEnablePath),
+                                   enable ? "1" : "0");
   return false;
 }
 
@@ -151,11 +144,11 @@ bool WilcoChargeControllerHelper::SetAdvancedBatteryChargeModeDayConfig(
     PowerManagementPolicy::WeekDay week_day, const std::string& config) {
   std::string week_day_str;
   return WeekDayToString(week_day, &week_day_str) &&
-         WriteDataToFile(base::FilePath(kEcDriverSysfsDirectory)
-                             .Append(kChargeScheduleDirectory)
-                             .Append(kAdvancedChargingDirectory)
-                             .Append(week_day_str),
-                         config);
+         brillo::WriteStringToFile(base::FilePath(kEcDriverSysfsDirectory)
+                                       .Append(kChargeScheduleDirectory)
+                                       .Append(kAdvancedChargingDirectory)
+                                       .Append(week_day_str),
+                                   config);
 }
 
 bool WilcoChargeControllerHelper::SetBatteryChargeMode(
@@ -182,19 +175,21 @@ bool WilcoChargeControllerHelper::SetBatteryChargeMode(
     LOG(WARNING) << "Invalid battery charge mode " << mode;
     return false;
   }
-  return WriteDataToFile(
+  return brillo::WriteStringToFile(
       base::FilePath(kPowerSupplyDirectory).Append(kBatteryChargeModePath),
       charge_type);
 }
 
 bool WilcoChargeControllerHelper::SetBatteryChargeCustomThresholds(
     int custom_charge_start, int custom_charge_stop) {
-  return WriteDataToFile(base::FilePath(kPowerSupplyDirectory)
-                             .Append(kBatteryChargeCustomChargeStartPath),
-                         base::StringPrintf("%d", custom_charge_start)) &&
-         WriteDataToFile(base::FilePath(kPowerSupplyDirectory)
-                             .Append(kBatteryChargeCustomChargeStopPath),
-                         base::StringPrintf("%d", custom_charge_stop));
+  return brillo::WriteStringToFile(
+             base::FilePath(kPowerSupplyDirectory)
+                 .Append(kBatteryChargeCustomChargeStartPath),
+             base::StringPrintf("%d", custom_charge_start)) &&
+         brillo::WriteStringToFile(
+             base::FilePath(kPowerSupplyDirectory)
+                 .Append(kBatteryChargeCustomChargeStopPath),
+             base::StringPrintf("%d", custom_charge_stop));
 }
 
 }  // namespace system
