@@ -7,6 +7,11 @@ directly with `MethodCall` objects and unpacking the arguments manually, the
 generated bindings take care of marshalling and unmarshalling D-Bus method
 call arguments for you.
 
+Additionally, a Rust crate chromeos_dbus_bindings is supplied for generating a
+Rust library with D-Bus bindings from the introspection XML data. Most of the
+logic is already provided by dbus-codegen-rust, but the source XML is not always
+available to the crate file, so this wraps the generated sources.
+
 ## Setting up chromeos-dbus-bindings
 
 The XML format defining objects and interfaces is the same format used in
@@ -302,6 +307,56 @@ with the exception that the error argument appears at the end rather than the
 beginning. Even if they are marked `simple` in the interface, there are other
 possibilities for errors, such as timeouts, which need to be reported to the
 client.
+
+## chromeos_dbus_bindings: Rust D-Bus codegen helper
+
+Tools for generating a Rust library with D-Bus bindings from the introspection
+XML data. Most of the logic is already provided by dbus-codegen-rust, but the
+source XML is not always available to the crate file, so this wraps the
+generated sources.
+
+To use this tool:
+1) Add the following to `src/lib.rs`:
+    ```rust
+    include!(concat!(env!("OUT_DIR"), "/include_modules.rs"));
+    ```
+
+2) Add the following to `.gitignore`:
+    ```.gitignore
+    src/bindings
+    ```
+
+3) Create the `Cargo.toml` file (system_api is a good examples). Be sure to
+    include:
+    ```toml
+    [build-dependencies]
+    chromeos_dbus_bindings = { path = "../chromeos-dbus-bindings"} # provided by ebuild
+
+    [dependencies]
+    dbus = "0.6"
+    ```
+
+4) Create the`build.rs` file. Here is a skeleton:
+    ```rust
+    use std::path::Path;
+
+    use chromeos_dbus_bindings::{self, generate_module};
+
+    const SOURCE_DIR: &str = ".";
+
+    // (<module name>, <relative path to source xml>)
+    const BINDINGS_TO_GENERATE: &[(&str, &str)] = &[
+        (
+            "org_chromium_sessionmanagerinterface",
+            "dbus_bindings/org.chromium.SessionManagerInterface.xml",
+        ),
+    ];
+
+    fn main() {
+        generate_module(Path::new(SOURCE_DIR), BINDINGS_TO_GENERATE).unwrap();
+    }
+    ```
+
 
 [D-Bus]: https://www.freedesktop.org/wiki/Software/dbus/
 [libbrillo]: https://chromium.googlesource.com/aosp/platform/external/libbrillo/+/master/brillo/dbus/
