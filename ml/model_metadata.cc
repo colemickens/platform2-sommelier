@@ -58,6 +58,15 @@ std::map<ModelId, ModelMetadata> GetModelMetadata() {
         "TopCatModel",
       },
     },
+    {
+      ModelId::SEARCH_RANKER_20190923, {
+        ModelId::SEARCH_RANKER_20190923,
+        "mlservice-model-search_ranker-20190923.tflite",
+        {{"input", 7}},
+        {{"output", 8}},
+        "SearchRankerModel",
+      },
+    },
   };
 }
 
@@ -106,6 +115,15 @@ std::map<BuiltinModelId, BuiltinModelMetadata> GetBuiltinModelMetadata() {
         {{"input", 3}},
         {{"output", 4}},
         "TopCatModel",
+      },
+    },
+    {
+      BuiltinModelId::SEARCH_RANKER_20190923, {
+        BuiltinModelId::SEARCH_RANKER_20190923,
+        "mlservice-model-search_ranker-20190923.tflite",
+        {{"input", 7}},
+        {{"output", 8}},
+        "SearchRankerModel",
       },
     },
   };

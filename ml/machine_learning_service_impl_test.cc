@@ -27,6 +27,19 @@
 namespace ml {
 namespace {
 
+constexpr double kSearchRanker20190923TestInput[] = {
+    0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+    0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,
+};
+
 constexpr double kSmartDim20181115TestInput[] = {
     0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0,
     1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
@@ -506,7 +519,6 @@ TEST(ModelLoadAndInferenceTest, OldSmartDim20190521) {
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(infer_callback_done);
 }
-
 
 // Tests that the Top Cat (20190722) model file loads correctly and produces
 // the expected inference result.
@@ -1000,6 +1012,86 @@ TEST(ModelLoadAndInferenceTest, TopCat20190722) {
             EXPECT_THAT(out_tensor.GetShape(), ElementsAre(1, 1));
             EXPECT_THAT(out_tensor.GetValues(),
                         ElementsAre(DoubleNear(-3.02972, 0.1)));
+
+            *infer_callback_done = true;
+          },
+          &infer_callback_done));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(infer_callback_done);
+}
+
+// Tests that the Search Ranker (20190923) model file loads correctly and
+// produces the expected inference result.
+TEST(ModelLoadAndInferenceTest, SearchRanker20190923) {
+  MachineLearningServicePtr ml_service;
+  const MachineLearningServiceImplForTesting ml_service_impl(
+      mojo::MakeRequest(&ml_service).PassMessagePipe());
+
+  // Set up model spec.
+  BuiltinModelSpecPtr spec = BuiltinModelSpec::New();
+  spec->id = BuiltinModelId::SEARCH_RANKER_20190923;
+
+  // Load model.
+  ModelPtr model;
+  bool model_callback_done = false;
+  ml_service->LoadBuiltinModel(
+      std::move(spec), mojo::MakeRequest(&model),
+      base::Bind(
+          [](bool* model_callback_done, const LoadModelResult result) {
+            EXPECT_EQ(result, LoadModelResult::OK);
+            *model_callback_done = true;
+          },
+          &model_callback_done));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(model_callback_done);
+  ASSERT_TRUE(model.is_bound());
+
+  // Get graph executor.
+  GraphExecutorPtr graph_executor;
+  bool ge_callback_done = false;
+  model->CreateGraphExecutor(
+      mojo::MakeRequest(&graph_executor),
+      base::Bind(
+          [](bool* ge_callback_done, const CreateGraphExecutorResult result) {
+            EXPECT_EQ(result, CreateGraphExecutorResult::OK);
+            *ge_callback_done = true;
+          },
+          &ge_callback_done));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(ge_callback_done);
+  ASSERT_TRUE(graph_executor.is_bound());
+
+  // Construct input.
+  std::unordered_map<std::string, TensorPtr> inputs;
+  inputs.emplace("input", NewTensor<double>(
+                              {1, arraysize(kSearchRanker20190923TestInput)},
+                              std::vector<double>(
+                                  std::begin(kSearchRanker20190923TestInput),
+                                  std::end(kSearchRanker20190923TestInput))));
+  std::vector<std::string> outputs({"output"});
+
+  // Perform inference.
+  bool infer_callback_done = false;
+  graph_executor->Execute(
+      std::move(inputs), std::move(outputs),
+      base::Bind(
+          [](bool* infer_callback_done, const ExecuteResult result,
+             base::Optional<std::vector<TensorPtr>> outputs) {
+            // Check that the inference succeeded and gives the expected number
+            // of outputs.
+            EXPECT_EQ(result, ExecuteResult::OK);
+            ASSERT_TRUE(outputs.has_value());
+            ASSERT_EQ(outputs->size(), 1);
+
+            // Check that the output tensor has the right type and format.
+            const TensorView<double> out_tensor((*outputs)[0]);
+            EXPECT_TRUE(out_tensor.IsValidType());
+            EXPECT_TRUE(out_tensor.IsValidFormat());
+
+            // Check the output tensor has the expected shape and values.
+            EXPECT_THAT(out_tensor.GetShape(), ElementsAre(1));
+            EXPECT_THAT(out_tensor.GetValues(),
+                        ElementsAre(DoubleNear(0.658488, 0.01)));
 
             *infer_callback_done = true;
           },
