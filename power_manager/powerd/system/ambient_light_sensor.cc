@@ -10,6 +10,8 @@
 #include <cerrno>
 #include <cmath>
 #include <cstring>
+#include <map>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/files/file_enumerator.h>
@@ -33,6 +35,12 @@ const char kDefaultDeviceListPath[] = "/sys/bus/iio/devices";
 // Default interval for polling the ambient light sensor.
 const int kDefaultPollIntervalMs = 1000;
 
+enum class ChannelType {
+  X,
+  Y,
+  Z,
+};
+
 SensorLocation StringToSensorLocation(const std::string& location) {
   if (location == "base")
     return SensorLocation::BASE;
@@ -52,7 +60,31 @@ std::string SensorLocationToString(SensorLocation location) {
   }
 }
 
+bool ParseLuxData(const std::string& data, int* value) {
+  DCHECK(value);
+  std::string trimmed_data;
+  base::TrimWhitespaceASCII(data, base::TRIM_ALL, &trimmed_data);
+  if (!base::StringToInt(trimmed_data, value)) {
+    LOG(ERROR) << "Could not read lux value from ALS file contents: ["
+               << trimmed_data << "]";
+    return false;
+  }
+  VLOG(1) << "Read lux value " << value;
+  return true;
+}
+
 }  // namespace
+
+const struct ColorChannelInfo {
+  ChannelType type;
+  const char* rgb_name;
+  const char* xyz_name;
+  bool is_lux_channel;
+} kColorChannelConfig[] = {
+    {ChannelType::X, "red", "x", false},
+    {ChannelType::Y, "green", "y", true},
+    {ChannelType::Z, "blue", "z", false},
+};
 
 const int AmbientLightSensor::kNumInitAttemptsBeforeLogging = 5;
 const int AmbientLightSensor::kNumInitAttemptsBeforeGivingUp = 20;
@@ -64,6 +96,7 @@ AmbientLightSensor::AmbientLightSensor(SensorLocation expected_sensor_location)
     : device_list_path_(kDefaultDeviceListPath),
       poll_interval_ms_(kDefaultPollIntervalMs),
       lux_value_(-1),
+      color_temperature_(-1),
       num_init_attempts_(0),
       expected_sensor_location_(expected_sensor_location) {}
 
@@ -102,7 +135,11 @@ int AmbientLightSensor::GetAmbientLightLux() {
 }
 
 bool AmbientLightSensor::IsColorSensor() const {
-  return false;
+  return !color_als_files_.empty();
+}
+
+int AmbientLightSensor::GetColorTemperature() {
+  return color_temperature_;
 }
 
 void AmbientLightSensor::StartTimer() {
@@ -124,23 +161,29 @@ void AmbientLightSensor::ReadAls() {
 
   // The timer will be restarted after the read finishes.
   poll_timer_.Stop();
-  als_file_.StartRead(
-      base::Bind(&AmbientLightSensor::ReadCallback, base::Unretained(this)),
-      base::Bind(&AmbientLightSensor::ErrorCallback, base::Unretained(this)));
+  if (!IsColorSensor()) {
+    als_file_.StartRead(
+        base::Bind(&AmbientLightSensor::ReadCallback, base::Unretained(this)),
+        base::Bind(&AmbientLightSensor::ErrorCallback, base::Unretained(this)));
+    return;
+  }
+
+  color_readings_.clear();
+  for (const ColorChannelInfo& channel : kColorChannelConfig) {
+    color_als_files_[&channel].StartRead(
+        base::Bind(&AmbientLightSensor::ReadColorChannelCallback,
+                   base::Unretained(this), &channel),
+        base::Bind(&AmbientLightSensor::ErrorColorChannelCallback,
+                   base::Unretained(this), &channel));
+  }
 }
 
 void AmbientLightSensor::ReadCallback(const std::string& data) {
-  std::string trimmed_data;
-  base::TrimWhitespaceASCII(data, base::TRIM_ALL, &trimmed_data);
   int value = 0;
-  if (base::StringToInt(trimmed_data, &value)) {
+  if (ParseLuxData(data, &value)) {
     lux_value_ = value;
-    VLOG(1) << "Read lux " << lux_value_;
     for (AmbientLightObserver& observer : observers_)
       observer.OnAmbientLightUpdated(this);
-  } else {
-    LOG(ERROR) << "Could not read lux value from ALS file contents: ["
-               << trimmed_data << "]";
   }
   StartTimer();
 }
@@ -148,6 +191,87 @@ void AmbientLightSensor::ReadCallback(const std::string& data) {
 void AmbientLightSensor::ErrorCallback() {
   LOG(ERROR) << "Error reading ALS file";
   StartTimer();
+}
+
+void AmbientLightSensor::ReadColorChannelCallback(
+    const ColorChannelInfo* channel, const std::string& data) {
+  int value = -1;
+  ParseLuxData(data, &value);
+  color_readings_[channel] = value;
+  CollectChannelReadings();
+}
+
+void AmbientLightSensor::ErrorColorChannelCallback(
+    const ColorChannelInfo* channel) {
+  LOG(ERROR) << "Error reading ALS file for " << channel->xyz_name << "channel";
+  color_readings_[channel] = -1;
+  CollectChannelReadings();
+}
+
+void AmbientLightSensor::CollectChannelReadings() {
+  if (color_readings_.size() != arraysize(kColorChannelConfig))
+    return;
+
+  // We should notify observers if there is either a change in lux or a change
+  // in color temperature. This means that we can always notify when we have the
+  // Y value but otherwise we need all three.
+  std::map<ChannelType, int> valid_readings;
+  double scale_factor = 0;
+  for (const auto& reading : color_readings_) {
+    // -1 marks an invalid reading.
+    if (reading.second == -1)
+      continue;
+    if (reading.first->is_lux_channel)
+      lux_value_ = reading.second;
+    valid_readings[reading.first->type] = reading.second;
+    scale_factor += reading.second;
+  }
+
+  if (valid_readings.count(ChannelType::Y) == 0) {
+    StartTimer();
+    return;
+  }
+
+  if (valid_readings.size() != color_readings_.size() || scale_factor == 0) {
+    // We either don't have all of the channels or there is no light in the
+    // sensor and therefore no color temperature, but we can still notify
+    // for lux.
+    color_temperature_ = -1;
+  } else {
+    double scaled_x = valid_readings[ChannelType::X] / scale_factor;
+    double scaled_y = valid_readings[ChannelType::Y] / scale_factor;
+    // Avoid weird behavior around the function's pole.
+    if (scaled_y < 0.186) {
+      color_temperature_ = -1;
+    } else {
+      double n = (scaled_x - 0.3320) / (0.1858 - scaled_y);
+      color_temperature_ = static_cast<int>(449 * n * n * n + 3525 * n * n +
+                                            6823.3 * n + 5520.33);
+    }
+  }
+
+  for (AmbientLightObserver& observer : observers_)
+    observer.OnAmbientLightUpdated(this);
+  StartTimer();
+}
+
+void AmbientLightSensor::InitColorAlsFiles(const base::FilePath& device_dir) {
+  color_als_files_.clear();
+  std::map<const ColorChannelInfo*, AsyncFileReader> channel_map;
+
+  for (const ColorChannelInfo& channel : kColorChannelConfig) {
+    base::FilePath channel_path(device_dir.Append(
+        base::StringPrintf("in_illuminance_%s_raw", channel.rgb_name)));
+    if (!base::PathExists(channel_path))
+      return;
+    if (!channel_map[&channel].Init(channel_path))
+      return;
+    VLOG(2) << "Found " << channel.xyz_name << " light intensity file at "
+            << channel_path.value();
+  }
+
+  color_als_files_ = std::move(channel_map);
+  LOG(INFO) << "ALS at path " << device_dir.value() << " has color support";
 }
 
 bool AmbientLightSensor::InitAlsFile() {
@@ -185,6 +309,7 @@ bool AmbientLightSensor::InitAlsFile() {
         LOG(INFO) << "Using lux file " << als_path.value() << " for "
                   << SensorLocationToString(expected_sensor_location_)
                   << " ALS";
+        InitColorAlsFiles(check_path);
         return true;
       }
     }

@@ -149,5 +149,70 @@ TEST_F(AmbientLightSensorManagerTest, TwoSensors) {
   keyboard_backlight_sensor->RemoveObserver(&keyboard_backlight_observer_);
 }
 
+TEST_F(AmbientLightSensorManagerTest, HasColorSensor) {
+  // Default sensor has no color.
+  manager_->SetNumSensorsAndInit(1);
+  manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
+  manager_->set_poll_interval_ms_for_testing(kPollIntervalMs);
+  manager_->Run(false /* read_immediately */);
+
+  auto internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
+  internal_backlight_sensor->AddObserver(&internal_backlight_observer_);
+  ASSERT_TRUE(internal_backlight_observer_.RunUntilAmbientLightUpdated());
+  internal_backlight_sensor->RemoveObserver(&internal_backlight_observer_);
+
+  EXPECT_FALSE(manager_->HasColorSensor());
+
+  // Add a second sensor.
+  base::FilePath device1_dir = temp_dir_.GetPath().Append("device1");
+  CHECK(base::CreateDirectory(device1_dir));
+  base::FilePath data1_file = device1_dir.Append("illuminance0_input");
+  CHECK(brillo::WriteStringToFile(data1_file, base::NumberToString(1)));
+  base::FilePath loc1_file = device1_dir.Append("location");
+  CHECK(brillo::WriteStringToFile(loc1_file, "base"));
+
+  manager_->SetNumSensorsAndInit(2);
+  manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
+  manager_->set_poll_interval_ms_for_testing(kPollIntervalMs);
+  manager_->Run(false /* read_immediately */);
+
+  internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
+  internal_backlight_sensor->AddObserver(&internal_backlight_observer_);
+  ASSERT_TRUE(internal_backlight_observer_.RunUntilAmbientLightUpdated());
+  internal_backlight_sensor->RemoveObserver(&internal_backlight_observer_);
+
+  auto keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
+  keyboard_backlight_sensor->AddObserver(&keyboard_backlight_observer_);
+  ASSERT_TRUE(keyboard_backlight_observer_.RunUntilAmbientLightUpdated());
+  keyboard_backlight_sensor->RemoveObserver(&keyboard_backlight_observer_);
+
+  EXPECT_FALSE(manager_->HasColorSensor());
+
+  // Add color channels to the second sensor.
+  base::FilePath color_file = device1_dir.Append("in_illuminance_red_raw");
+  CHECK(brillo::WriteStringToFile(color_file, base::NumberToString(1)));
+  color_file = device1_dir.Append("in_illuminance_green_raw");
+  CHECK(brillo::WriteStringToFile(color_file, base::NumberToString(1)));
+  color_file = device1_dir.Append("in_illuminance_blue_raw");
+  CHECK(brillo::WriteStringToFile(color_file, base::NumberToString(1)));
+
+  manager_->SetNumSensorsAndInit(2);
+  manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
+  manager_->set_poll_interval_ms_for_testing(kPollIntervalMs);
+  manager_->Run(false /* read_immediately */);
+
+  internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
+  internal_backlight_sensor->AddObserver(&internal_backlight_observer_);
+  ASSERT_TRUE(internal_backlight_observer_.RunUntilAmbientLightUpdated());
+  internal_backlight_sensor->RemoveObserver(&internal_backlight_observer_);
+
+  keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
+  keyboard_backlight_sensor->AddObserver(&keyboard_backlight_observer_);
+  ASSERT_TRUE(keyboard_backlight_observer_.RunUntilAmbientLightUpdated());
+  keyboard_backlight_sensor->RemoveObserver(&keyboard_backlight_observer_);
+
+  EXPECT_TRUE(manager_->HasColorSensor());
+}
+
 }  // namespace system
 }  // namespace power_manager

@@ -6,6 +6,7 @@
 #define POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_H_
 
 #include <list>
+#include <map>
 #include <string>
 
 #include <base/compiler_specific.h>
@@ -20,6 +21,8 @@
 
 namespace power_manager {
 namespace system {
+
+struct ColorChannelInfo;
 
 enum class SensorLocation {
   UNKNOWN,
@@ -42,6 +45,10 @@ class AmbientLightSensorInterface {
   // Used by observers in their callback to get the raw reading from the sensor
   // for the ambient light level. -1 is considered an error value.
   virtual int GetAmbientLightLux() = 0;
+
+  // Latest color temperature measured if supported. -1 is considered an error
+  // value.
+  virtual int GetColorTemperature() = 0;
 
   // Returns the path to the illuminance file being monitored, or an empty path
   // if a device has not yet been found.
@@ -83,6 +90,7 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
   void RemoveObserver(AmbientLightObserver* observer) override;
   bool IsColorSensor() const override;
   int GetAmbientLightLux() override;
+  int GetColorTemperature() override;
   base::FilePath GetIlluminancePath() const override;
 
  private:
@@ -96,8 +104,19 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
   void ReadCallback(const std::string& data);
   void ErrorCallback();
 
-  // Initializes |als_file_|. Returns true on success.
+  // Asynchronous I/O handlers for color ALS and other utility methods used to
+  // put everything together.
+  void ReadColorChannelCallback(const ColorChannelInfo* channel,
+                                const std::string& data);
+  void ErrorColorChannelCallback(const ColorChannelInfo* channel);
+  void CollectChannelReadings();
+
+  // Initializes |als_file_| and optionally color ALS support if it exists.
+  // Returns true if at least lux information is available for use.
   bool InitAlsFile();
+
+  // Initializes |color_als_files_|.
+  void InitColorAlsFiles(const base::FilePath& device_dir);
 
   // Path containing backlight devices.  Typically under /sys, but can be
   // overridden by tests.
@@ -117,11 +136,23 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
   // occured yet this variable is set to -1.
   int lux_value_;
 
+  // Color temperature read by the class. If this read did not succeed or no
+  // read has occurred yet this variable is set to -1.
+  int color_temperature_;
+
   // Number of attempts to find and open the lux file made so far.
   int num_init_attempts_;
 
   // This is the ambient light sensor asynchronous file I/O object.
   AsyncFileReader als_file_;
+
+  // Async file I/O objects for color ALS channels if it is supported.
+  // If this map is empty, then there is no color support.
+  std::map<const ColorChannelInfo*, AsyncFileReader> color_als_files_;
+
+  // Values read by the |color_als_files_| readers. We need to gather data
+  // from each channel before computing a color temperature.
+  std::map<const ColorChannelInfo*, int> color_readings_;
 
   // Location on the device (e.g. lid, base) where this sensor reports itself
   // to be. If set to unknown, powerd looks for a sensor at any location.

@@ -6,6 +6,7 @@
 #define POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_STUB_H_
 
 #include <base/observer_list.h>
+#include <base/optional.h>
 
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 
@@ -19,6 +20,9 @@ class AmbientLightSensorStub : public AmbientLightSensorInterface {
   ~AmbientLightSensorStub() override;
 
   void set_lux(int lux) { lux_ = lux; }
+  void set_color_temperature(int color_temperature) {
+    color_temperature_ = color_temperature;
+  }
   void set_file_path(base::FilePath path) { path_ = path; }
 
   // Notifies |observers_| that the ambient light has changed.
@@ -29,6 +33,7 @@ class AmbientLightSensorStub : public AmbientLightSensorInterface {
   void RemoveObserver(AmbientLightObserver* observer) override;
   bool IsColorSensor() const override;
   int GetAmbientLightLux() override;
+  int GetColorTemperature() override;
   base::FilePath GetIlluminancePath() const override;
 
  private:
@@ -36,6 +41,11 @@ class AmbientLightSensorStub : public AmbientLightSensorInterface {
 
   // Value returned by GetAmbientLightLux().
   int lux_;
+
+  // If this is nullopt, IsColorSensor returns false and GetColorTemperature
+  // returns -1. Otherwise, IsColorSensor returns true and GetColorTemperature
+  // returns this value.
+  base::Optional<int> color_temperature_;
 
   // Value returned by GetIlluminancePath().
   base::FilePath path_;

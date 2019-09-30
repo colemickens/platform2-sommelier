@@ -29,11 +29,15 @@ void AmbientLightSensorStub::RemoveObserver(AmbientLightObserver* observer) {
 }
 
 bool AmbientLightSensorStub::IsColorSensor() const {
-  return false;
+  return color_temperature_.has_value();
 }
 
 int AmbientLightSensorStub::GetAmbientLightLux() {
   return lux_;
+}
+
+int AmbientLightSensorStub::GetColorTemperature() {
+  return color_temperature_.value_or(-1);
 }
 
 base::FilePath AmbientLightSensorStub::GetIlluminancePath() const {

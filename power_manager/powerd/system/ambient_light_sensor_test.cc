@@ -163,5 +163,44 @@ TEST_F(AmbientLightSensorTest, FindSensorAtBase) {
   EXPECT_EQ(data_file_, sensor_->GetIlluminancePath());
 }
 
+TEST_F(AmbientLightSensorTest, IsColorSensor) {
+  // Default sensor does not have color support.
+  WriteLux(100);
+  ASSERT_TRUE(observer_.RunUntilAmbientLightUpdated());
+  EXPECT_FALSE(sensor_->IsColorSensor());
+
+  // Add one color channel.
+  base::FilePath color_file = device_dir_.Append("in_illuminance_red_raw");
+  CHECK(brillo::WriteStringToFile(color_file, "50"));
+
+  sensor_.reset(new AmbientLightSensor);
+  sensor_->set_device_list_path_for_testing(temp_dir_.GetPath());
+  sensor_->set_poll_interval_ms_for_testing(kPollIntervalMs);
+  sensor_->AddObserver(&observer_);
+  sensor_->Init(false /* read_immediately */);
+
+  WriteLux(100);
+  ASSERT_TRUE(observer_.RunUntilAmbientLightUpdated());
+  // The sensor should still not have color support -- it needs all 3.
+  EXPECT_FALSE(sensor_->IsColorSensor());
+
+  // Add the other two channels.
+  color_file = device_dir_.Append("in_illuminance_green_raw");
+  CHECK(brillo::WriteStringToFile(color_file, "50"));
+  color_file = device_dir_.Append("in_illuminance_blue_raw");
+  CHECK(brillo::WriteStringToFile(color_file, "50"));
+
+  sensor_.reset(new AmbientLightSensor);
+  sensor_->set_device_list_path_for_testing(temp_dir_.GetPath());
+  sensor_->set_poll_interval_ms_for_testing(kPollIntervalMs);
+  sensor_->AddObserver(&observer_);
+  sensor_->Init(false /* read_immediately */);
+
+  WriteLux(100);
+  ASSERT_TRUE(observer_.RunUntilAmbientLightUpdated());
+  // Now we have all channels. The sensor should support color.
+  EXPECT_TRUE(sensor_->IsColorSensor());
+}
+
 }  // namespace system
 }  // namespace power_manager
