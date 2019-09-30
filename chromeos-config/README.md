@@ -493,50 +493,62 @@ In the tables below,
 
 ## Adding and testing new properties
 
-Before starting, cros_workon the following:
+Before starting, `cros_workon` the following:
 
-*   cros_workon --host start chromeos-config-host
-*   cros_workon --board=BOARD start chromeos-config-bsp chromeos-config
+```bash
+(chroot) $ cros_workon --host start chromeos-config-host
+(chroot) $ cros_workon --board=BOARD start chromeos-config-bsp chromeos-config
+```
 
 To introduce a new property, first add its definition to the schema:
 
-*   chromeos-config/cros_config_host/cros_config_schema.yaml
+```bash
+chromeos-config/cros_config_host/cros_config_schema.yaml
+```
 
-Then update the README.md automatically via (unit tests will check this):
+Then update the `README.md` automatically via (unit tests will check this):
 
-*   python2 -m cros_config_host.generate_schema_doc -o README.md
+```bash
+(chroot) $ python2 -m cros_config_host.generate_schema_doc -o README.md
+```
 
 To install the updated schema, run:
 
-*   FEATURES=test sudo -E emerge chromeos-config-host
+```bash
+(chroot) $ FEATURES=test sudo -E emerge chromeos-config-host
+```
 
-To use the new property, update your respective YAML source file. E.g.
-overlay-${BOARD}-private/chromeos-base/chromeos-config-bsp/files/model.yaml
+To use the new property, update your respective YAML source file. e.g.
+`overlay-${BOARD}-private/chromeos-base/chromeos-config-bsp/files/model.yaml`
 
 To install the changes, run:
 
-*   emerge-${BOARD} chromeos-config-bsp chromeos-config
+```bash
+(chroot) $ emerge-${BOARD} chromeos-config-bsp chromeos-config
+```
 
 At this point the updated config is located at:
 
-*   /build/${BOARD}/usr/share/chromeos-config/yaml/config.yaml
+```bash
+/build/${BOARD}/usr/share/chromeos-config/yaml/config.yaml
+```
 
 To query your new item run the test command in the chroot:
 
-*   cros_config_host -c
-    /build/${BOARD}/usr/share/chromeos-config/yaml/config.yaml -m <MODEL> get
-    </path/to/property> <property name>
+```bash
+(chroot) $  cros_config_host -c /build/${BOARD}/usr/share/chromeos-config/yaml/config.yaml -m <MODEL> get </path/to/property> <property name>
+```
 
 For instance:
 
-*   cros_config_host -c /build/coral/usr/share/chromeos-config/yaml/config.yaml
-    -m robo360 get /firmware key-id
-*   cros_config_host -c /build/coral/usr/share/chromeos-config/yaml/config.yaml
-    get-models
+```bash
+(chroot) $ cros_config_host -c /build/coral/usr/share/chromeos-config/yaml /config.yaml -m robo360 get /firmware key-id
+(chroot) $ cros_config_host -c /build/coral/usr/share/chromeos-config/yaml /config.yaml list-models
+```
 
 ## Device Testing
 
-To test configuration changes on actual devices use the platform.CrosConfig
-Tast test. This will run cros_config tests for unibuilds and mosys
+To test configuration changes on actual devices use the `platform.CrosConfig`
+Tast test. This will run `cros_config` tests for unibuilds and mosys
 for all devices.
 See [HOWTO](https://chromium.googlesource.com/chromiumos/platform/tast-tests/+/HEAD/src/chromiumos/tast/local/bundles/cros/platform/cros_config.md).
