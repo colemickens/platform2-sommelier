@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/system/dark_resume.h"
 
+#include <string>
+
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/system/wakeup_source_identifier_interface.h"
@@ -24,9 +26,8 @@ void DarkResume::Init(
   prefs_ = prefs;
   wakeup_source_identifier_ = wakeup_source_identifier;
 
-  bool disable = false;
-  enabled_ = (!prefs_->GetBool(kDisableDarkResumePref, &disable) || !disable);
-  LOG(INFO) << "Dark resume user space " << (enabled_ ? "enabled" : "disabled");
+  ReadDarkResumePref();
+  prefs_->AddObserver(this);
 }
 
 void DarkResume::HandleSuccessfulResume() {
@@ -55,6 +56,18 @@ void DarkResume::ExitDarkResume() {
   if (in_dark_resume_)
     LOG(INFO) << "Transitioning from dark resume to full resume";
   in_dark_resume_ = false;
+}
+
+void DarkResume::OnPrefChanged(const std::string& pref_name) {
+  if (pref_name != kDisableDarkResumePref)
+    return;
+  ReadDarkResumePref();
+}
+
+void DarkResume::ReadDarkResumePref() {
+  bool disable = false;
+  enabled_ = (!prefs_->GetBool(kDisableDarkResumePref, &disable) || !disable);
+  LOG(INFO) << "Dark resume " << (enabled_ ? "enabled" : "disabled");
 }
 
 }  // namespace system

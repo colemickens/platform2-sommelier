@@ -5,8 +5,11 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_DARK_RESUME_H_
 #define POWER_MANAGER_POWERD_SYSTEM_DARK_RESUME_H_
 
+#include <string>
+
 #include <base/macros.h>
 
+#include "power_manager/common/prefs_observer.h"
 #include "power_manager/powerd/system/dark_resume_interface.h"
 
 namespace power_manager {
@@ -19,7 +22,7 @@ class WakeupSourceIdentifierInterface;
 
 // Newer implementation of dark resume. Uses per device (peripheral) wakeup
 // count to identify the wake source.
-class DarkResume : public DarkResumeInterface {
+class DarkResume : public DarkResumeInterface, public PrefsObserver {
  public:
   DarkResume();
   ~DarkResume() override;
@@ -34,7 +37,12 @@ class DarkResume : public DarkResumeInterface {
   bool IsEnabled() override;
   void ExitDarkResume() override;
 
+  // PrefsInterface::Observer implementation:
+  void OnPrefChanged(const std::string& pref_name) override;
+
  private:
+  void ReadDarkResumePref();
+
   // Are we currently in dark resume?
   bool in_dark_resume_ = false;
 

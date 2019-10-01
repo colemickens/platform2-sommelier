@@ -94,7 +94,6 @@ Perform the following steps to enable Dark Resume:
 
 ```sh
 # echo 0 > /var/lib/power_manager/disable_dark_resume
-# restart powerd
 ```
 
 ### Disabling Dark Resume
@@ -103,15 +102,14 @@ Perform the following steps to disable Dark Resume:
 
 ```sh
 # echo 1 > /var/lib/power_manager/disable_dark_resume
-# restart powerd
 ```
 
 ### Check if Dark Resume is currently enabled
 
-Look for `Dark resume user space enabled` in
+Look for `Dark resume enabled` in
 `/var/log/power_manager/powerd.LATEST`.
 
-You should see *"Dark resume user space disabled"* in the powerd logs if Dark
+You should see *"Dark resume disabled"* in the powerd logs if Dark
 Resume is disabled.
 
 ### Debugging Incorrect Dark Wakeups
