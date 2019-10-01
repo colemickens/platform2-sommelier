@@ -140,30 +140,29 @@ bool SandboxedProcess::PreserveFile(const base::File& file) {
                               file.GetPlatformFile()) == 0;
 }
 
-pid_t SandboxedProcess::StartImpl(base::ScopedFD* in_fd,
-                                  base::ScopedFD* out_fd,
-                                  base::ScopedFD* err_fd) {
+pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd,
+                                  base::ScopedFD out_fd,
+                                  base::ScopedFD err_fd) {
   char* const* const args = GetArguments();
   DCHECK(args && args[0]);
 
   pid_t child_pid = kInvalidProcessId;
+
   if (!run_custom_init_) {
-    int in = kInvalidFD, out = kInvalidFD, err = kInvalidFD;
-    const int ret = minijail_run_pid_pipes(jail_, args[0], args, &child_pid,
-                                           &in, &out, &err);
+    minijail_preserve_fd(jail_, in_fd.get(), STDIN_FILENO);
+    minijail_preserve_fd(jail_, out_fd.get(), STDOUT_FILENO);
+    minijail_preserve_fd(jail_, err_fd.get(), STDERR_FILENO);
+
+    const int ret = minijail_run_pid(jail_, args[0], args, &child_pid);
     if (ret < 0) {
       LOG(ERROR) << "Cannot run minijail_run_pid_pipes: "
                  << base::safe_strerror(-ret);
       return kInvalidProcessId;
     }
-
-    in_fd->reset(in);
-    out_fd->reset(out);
-    err_fd->reset(err);
   } else {
-    // Create SandboxedInit before calling minijail_fork because it sets up the
-    // pipes that need to be passed to the child process.
-    SandboxedInit init_;
+    SandboxedInit init(std::move(in_fd), std::move(out_fd), std::move(err_fd),
+                       SubprocessPipe::Open(SubprocessPipe::kChildToParent,
+                                            &custom_init_control_fd_));
 
     // Create child process.
     child_pid = minijail_fork(jail_);
@@ -175,11 +174,10 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD* in_fd,
 
     if (child_pid == 0) {
       // In child process.
-      init_.RunInsideSandboxNoReturn(base::BindOnce(Exec, args));
+      init.RunInsideSandboxNoReturn(base::BindOnce(Exec, args));
       NOTREACHED();
     } else {
       // In parent process.
-      custom_init_control_fd_ = init_.TakeInitControlFD(in_fd, out_fd, err_fd);
       CHECK(base::SetNonBlocking(custom_init_control_fd_.get()));
     }
   }

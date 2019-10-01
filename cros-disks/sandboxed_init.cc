@@ -6,9 +6,10 @@
 
 #include <utility>
 #include <stdlib.h>
+#include <unistd.h>
+
 #include <sys/prctl.h>
 #include <sys/wait.h>
-#include <unistd.h>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -35,30 +36,25 @@ SubprocessPipe::SubprocessPipe(const Direction direction) {
   PCHECK(base::SetCloseOnExec(parent_fd.get()));
 }
 
-SandboxedInit::SandboxedInit()
-    : in_(SubprocessPipe::kParentToChild),
-      out_(SubprocessPipe::kChildToParent),
-      err_(SubprocessPipe::kChildToParent),
-      ctrl_(SubprocessPipe::kChildToParent) {}
+base::ScopedFD SubprocessPipe::Open(const Direction direction,
+                                    base::ScopedFD* const parent_fd) {
+  DCHECK(parent_fd);
+
+  SubprocessPipe p(direction);
+  *parent_fd = std::move(p.parent_fd);
+  return std::move(p.child_fd);
+}
+
+SandboxedInit::SandboxedInit(base::ScopedFD in_fd,
+                             base::ScopedFD out_fd,
+                             base::ScopedFD err_fd,
+                             base::ScopedFD ctrl_fd)
+    : in_fd_(std::move(in_fd)),
+      out_fd_(std::move(out_fd)),
+      err_fd_(std::move(err_fd)),
+      ctrl_fd_(std::move(ctrl_fd)) {}
 
 SandboxedInit::~SandboxedInit() = default;
-
-base::ScopedFD SandboxedInit::TakeInitControlFD(base::ScopedFD* in_fd,
-                                                base::ScopedFD* out_fd,
-                                                base::ScopedFD* err_fd) {
-  // Close "child" sides of the pipes. For the outside of sandbox
-  // "their" stdin is for writing and all other are for reading.
-  in_.child_fd.reset();
-  out_.child_fd.reset();
-  err_.child_fd.reset();
-  ctrl_.child_fd.reset();
-
-  *in_fd = std::move(in_.parent_fd);
-  *out_fd = std::move(out_.parent_fd);
-  *err_fd = std::move(err_.parent_fd);
-
-  return std::move(ctrl_.parent_fd);
-}
 
 [[noreturn]] void SandboxedInit::RunInsideSandboxNoReturn(
     base::OnceCallback<int()> launcher) {
@@ -70,14 +66,17 @@ base::ScopedFD SandboxedInit::TakeInitControlFD(base::ScopedFD* in_fd,
   // Redirect in/out so logging can communicate assertions and children
   // to inherit right FDs.
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
-  if (dup2(err_.child_fd.get(), STDERR_FILENO) < 0) {
-    PLOG(FATAL) << "Can't dup2 " << STDERR_FILENO;
+
+  if (dup2(in_fd_.get(), STDIN_FILENO) < 0) {
+    PLOG(FATAL) << "Cannot dup2 stdin";
   }
-  if (dup2(out_.child_fd.get(), STDOUT_FILENO) < 0) {
-    PLOG(FATAL) << "Can't dup2 " << STDOUT_FILENO;
+
+  if (dup2(out_fd_.get(), STDOUT_FILENO) < 0) {
+    PLOG(FATAL) << "Cannot dup2 stdout";
   }
-  if (dup2(in_.child_fd.get(), STDIN_FILENO) < 0) {
-    PLOG(FATAL) << "Can't dup2 " << STDIN_FILENO;
+
+  if (dup2(err_fd_.get(), STDERR_FILENO) < 0) {
+    PLOG(FATAL) << "Cannot dup2 stderr";
   }
 
   // Set an identifiable process name.
@@ -85,22 +84,19 @@ base::ScopedFD SandboxedInit::TakeInitControlFD(base::ScopedFD* in_fd,
     PLOG(WARNING) << "Can't set init's process name";
   }
 
-  // Close unused sides of the pipes.
-  for (SubprocessPipe* const p : {&in_, &out_, &err_}) {
-    p->child_fd.reset();
-    p->parent_fd.reset();
-  }
-
-  ctrl_.parent_fd.reset();
+  // Close unused file descriptors.
+  in_fd_.reset();
+  out_fd_.reset();
+  err_fd_.reset();
 
   // Avoid leaking file descriptor into launcher process.
-  PCHECK(base::SetCloseOnExec(ctrl_.child_fd.get()));
+  PCHECK(base::SetCloseOnExec(ctrl_fd_.get()));
 
   // PID of the launcher process inside the jail PID namespace (e.g. PID 2).
   pid_t root_pid = StartLauncher(std::move(launcher));
   CHECK_LT(0, root_pid);
 
-  _exit(RunInitLoop(root_pid, std::move(ctrl_.child_fd)));
+  _exit(RunInitLoop(root_pid, std::move(ctrl_fd_)));
   NOTREACHED();
 }
 

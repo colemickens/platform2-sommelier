@@ -31,7 +31,9 @@ class Process {
   // this method does not affect the process that has been started by Start().
   void AddArgument(const std::string& argument);
 
-  // Starts the process without waiting for it to terminate.
+  // Starts the process. The started process has its stdin, stdout and stderr
+  // connected to /dev/null. Returns true in case of success. Once started, the
+  // process can be waiting for to finish using Wait().
   bool Start();
 
   // Waits for the process to finish and returns its exit status.
@@ -62,9 +64,13 @@ class Process {
   // class.
   char* const* GetArguments();
 
-  virtual pid_t StartImpl(base::ScopedFD* in_fd,
-                          base::ScopedFD* out_fd,
-                          base::ScopedFD* err_fd) = 0;
+  // Starts a process, and connects to its stdin, stdout and stderr the given
+  // file descriptors.
+  //
+  // Returns the PID of the started process, or -1 in case of error.
+  virtual pid_t StartImpl(base::ScopedFD in_fd,
+                          base::ScopedFD out_fd,
+                          base::ScopedFD err_fd) = 0;
 
   // Once either WaitImpl() or WaitNonBlockingImpl() has returned a nonnegative
   // exit status, none of these methods is called again.
@@ -77,9 +83,17 @@ class Process {
   virtual int WaitNonBlockingImpl() = 0;
 
  private:
+  // Starts the process. The started process has its stdin, stdout and stderr
+  // redirected to the given file descriptors. Returns true in case of success.
+  bool Start(base::ScopedFD in_fd,
+             base::ScopedFD out_fd,
+             base::ScopedFD err_fd);
+
   // Waits for process to finish collecting process' stdout and stderr
   // output and fills interleaved version of it.
-  void Communicate(std::vector<std::string>* output);
+  void Communicate(std::vector<std::string>* output,
+                   base::ScopedFD out_fd,
+                   base::ScopedFD err_fd);
 
   // Builds |arguments_array_| and |arguments_buffer_| from |arguments_|.
   // Existing values of |arguments_array_| and |arguments_buffer_| are
@@ -95,10 +109,6 @@ class Process {
 
   // Process ID (default to kInvalidProcessId when the process has not started).
   pid_t pid_ = kInvalidProcessId;
-
-  base::ScopedFD in_fd_;
-  base::ScopedFD out_fd_;
-  base::ScopedFD err_fd_;
 
   // Exit status. A nonnegative value indicates that the process has finished.
   int status_ = -1;

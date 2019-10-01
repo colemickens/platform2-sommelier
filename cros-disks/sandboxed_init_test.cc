@@ -50,16 +50,17 @@ class SandboxedInitTest : public testing::Test {
   }
 
   void RunUnderInit(std::function<int()> func) {
-    SandboxedInit init;
+    SandboxedInit init(
+        SubprocessPipe::Open(SubprocessPipe::kParentToChild, &in_),
+        SubprocessPipe::Open(SubprocessPipe::kChildToParent, &out_),
+        SubprocessPipe::Open(SubprocessPipe::kChildToParent, &err_),
+        SubprocessPipe::Open(SubprocessPipe::kChildToParent, &ctrl_));
     pid_ = RunInFork([&init, func]() -> int {
       CHECK_EQ(signal(SIGUSR1, [](int sig) { CHECK_EQ(sig, SIGUSR1); }),
                SIG_DFL);
       init.RunInsideSandboxNoReturn(base::BindOnce(CallFunc, func));
       NOTREACHED();
     });
-
-    ctrl_ = init.TakeInitControlFD(&in_, &out_, &err_);
-    CHECK(ctrl_.is_valid());
     CHECK(base::SetNonBlocking(ctrl_.get()));
   }
 

@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include <fcntl.h>
 #include <poll.h>
 
 #include <base/files/file_util.h>
@@ -19,6 +20,7 @@
 #include <base/time/time.h>
 
 #include "cros-disks/quote.h"
+#include "cros-disks/sandboxed_init.h"
 
 namespace cros_disks {
 namespace {
@@ -97,6 +99,13 @@ class StreamMerger {
 const size_t StreamMerger::kStreamCount;
 const base::StringPiece StreamMerger::kTags[kStreamCount] = {"OUT", "ERR"};
 
+// Opens /dev/null. Dies in case of error.
+base::ScopedFD OpenNull(const bool for_output) {
+  const int ret = open("/dev/null", for_output ? O_WRONLY : O_RDONLY);
+  PLOG_IF(FATAL, ret < 0) << "Cannot open /dev/null";
+  return base::ScopedFD(ret);
+}
+
 }  // namespace
 
 // static
@@ -146,13 +155,19 @@ bool Process::BuildArgumentsArray() {
   return true;
 }
 
-bool Process::Start() {
+bool Process::Start(base::ScopedFD in_fd,
+                    base::ScopedFD out_fd,
+                    base::ScopedFD err_fd) {
   CHECK_EQ(kInvalidProcessId, pid_);
   CHECK(!finished());
   CHECK(!arguments_.empty()) << "No arguments provided";
   LOG(INFO) << "Starting process " << quote(arguments_);
-  pid_ = StartImpl(&in_fd_, &out_fd_, &err_fd_);
+  pid_ = StartImpl(std::move(in_fd), std::move(out_fd), std::move(err_fd));
   return pid_ != kInvalidProcessId;
+}
+
+bool Process::Start() {
+  return Start(OpenNull(false), OpenNull(true), OpenNull(true));
 }
 
 int Process::Wait() {
@@ -180,11 +195,14 @@ bool Process::IsFinished() {
 int Process::Run(std::vector<std::string>* output) {
   DCHECK(output);
 
-  if (!Start()) {
+  base::ScopedFD out_fd, err_fd;
+  if (!Start(OpenNull(false),
+             SubprocessPipe::Open(SubprocessPipe::kChildToParent, &out_fd),
+             SubprocessPipe::Open(SubprocessPipe::kChildToParent, &err_fd))) {
     return -1;
   }
 
-  Communicate(output);
+  Communicate(output, std::move(out_fd), std::move(err_fd));
 
   const int result = Wait();
 
@@ -199,12 +217,10 @@ int Process::Run(std::vector<std::string>* output) {
   return result;
 }
 
-void Process::Communicate(std::vector<std::string>* output) {
-  // We are not going to write there.
-  in_fd_.reset();
-  // No FD leaves this function alive!
-  base::ScopedFD out_fd = std::move(out_fd_);
-  base::ScopedFD err_fd = std::move(err_fd_);
+void Process::Communicate(std::vector<std::string>* output,
+                          base::ScopedFD out_fd,
+                          base::ScopedFD err_fd) {
+  DCHECK(output);
 
   if (out_fd.is_valid()) {
     CHECK(base::SetNonBlocking(out_fd.get()));

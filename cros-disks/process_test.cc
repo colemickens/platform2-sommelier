@@ -112,7 +112,7 @@ class ProcessUnderTest : public Process {
  public:
   MOCK_METHOD(pid_t,
               StartImpl,
-              (base::ScopedFD*, base::ScopedFD*, base::ScopedFD*),
+              (base::ScopedFD, base::ScopedFD, base::ScopedFD),
               (override));
   MOCK_METHOD(int, WaitImpl, (), (override));
   MOCK_METHOD(int, WaitNonBlockingImpl, (), (override));
@@ -331,17 +331,22 @@ TEST_P(ProcessRunTest, CapturesLotsOfOutputData) {
   EXPECT_THAT(output, SizeIs(2000));
 }
 
-// TODO(crbug.com/1005642) Enable test once bug 1005642 is fixed.
-TEST_P(ProcessRunTest, DISABLED_DoesNotBlockWhenNotCapturingOutput) {
+TEST_P(ProcessRunTest, DoesNotBlockWhenNotCapturingOutput) {
   Process& process = *process_;
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
 
-  process.AddArgument(R"(
-      printf '%01000i\n' $(seq 1 100) >&1;
-      printf '%01000i\n' $(seq 1 100) >&2;
+  // Pipe to monitor the process and wait for it to finish without calling
+  // Process::Wait.
+  SubprocessPipe to_wait(SubprocessPipe::kChildToParent);
+
+  process.AddArgument(base::StringPrintf(R"(
+      printf '%%01000i\n' $(seq 1 100) >&1;
+      printf '%%01000i\n' $(seq 1 100) >&2;
+      printf 'End' >&%d;
       exit 42;
-    )");
+    )",
+                                         to_wait.child_fd.get()));
 
   // This process generates lots of output on stdout and stderr, ie more than
   // what a pipe can hold without blocking. If the pipes connected to stdout and
@@ -350,6 +355,13 @@ TEST_P(ProcessRunTest, DISABLED_DoesNotBlockWhenNotCapturingOutput) {
   // would be killed by a SIGPIPE. With drained pipes, the process finishes
   // normally and its return code should be visible.
   EXPECT_TRUE(process.Start());
+
+  // The process should finish normally without the parent having to call
+  // Process::Wait() first.
+  to_wait.child_fd.reset();
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "End");
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "");
+
   EXPECT_EQ(process.Wait(), 42);
 }
 
@@ -364,8 +376,7 @@ TEST_P(ProcessRunTest, RunDoesNotBlockWhenReadingFromStdIn) {
   EXPECT_THAT(output, IsEmpty());
 }
 
-// TODO(crbug.com/1005642) Enable test one bug is fixed.
-TEST_P(ProcessRunTest, DISABLED_WaitDoesNotBlockWhenReadingFromStdIn) {
+TEST_P(ProcessRunTest, WaitDoesNotBlockWhenReadingFromStdIn) {
   Process& process = *process_;
   process.AddArgument("/bin/cat");
 
