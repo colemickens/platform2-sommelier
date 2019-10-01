@@ -21,6 +21,11 @@ base::LazyInstance<std::atomic_flag>::Leaky g_global_context_created =
 
 }  // namespace
 
+// static
+void DpslGlobalContextImpl::CleanGlobalCounterForTesting() {
+  g_global_context_created.Get().clear();
+}
+
 DpslGlobalContextImpl::DpslGlobalContextImpl() {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 }

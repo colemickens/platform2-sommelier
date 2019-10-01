@@ -17,6 +17,10 @@ namespace diagnostics {
 // Currently only does the logging configuration on construction.
 class DpslGlobalContextImpl final : public DpslGlobalContext {
  public:
+  // Cleans global counter which prevents from calling
+  // |DpslGlobalContext::Create()| more than once per process.
+  static void CleanGlobalCounterForTesting();
+
   DpslGlobalContextImpl();
   ~DpslGlobalContextImpl() override;
 

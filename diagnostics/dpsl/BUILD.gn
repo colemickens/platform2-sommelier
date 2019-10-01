@@ -11,6 +11,9 @@ group("all") {
     ":diagnostics_dpsl_test_listener",
     ":diagnostics_dpsl_test_requester",
   ]
+  if (use.test) {
+    deps += [ ":libdpsl_test" ]
+  }
 }
 
 # Library that provides the DPSL (diagnostics processor support library)
@@ -78,4 +81,27 @@ executable("diagnostics_dpsl_test_requester") {
   sources = [
     "test_utils/requester.cc",
   ]
+}
+
+if (use.test) {
+  pkg_config("libdpsl_test_pkg_deps") {
+    pkg_deps = [
+      "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+
+  executable("libdpsl_test") {
+    configs += [
+      ":libdpsl_test_pkg_deps",
+      "//common-mk:test",
+    ]
+    deps = [
+      ":libdpsl",
+      "../../common-mk/testrunner:testrunner",
+    ]
+    sources = [
+      "internal/dpsl_global_context_impl_test.cc",
+    ]
+  }
 }
