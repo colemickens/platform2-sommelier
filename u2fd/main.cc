@@ -24,10 +24,10 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(force_u2f, false, "force U2F mode even if disabled by policy");
   DEFINE_bool(
       force_g2f, false, "force U2F mode plus extensions regardless of policy");
-  DEFINE_int32(product_id, kDefaultProductId,
-               "Product ID for the HID device");
-  DEFINE_int32(vendor_id, kDefaultVendorId,
-               "Vendor ID for the HID device");
+  DEFINE_bool(g2f_allowlist_data, false,
+              "append allowlisting data to G2F register responses");
+  DEFINE_int32(product_id, kDefaultProductId, "Product ID for the HID device");
+  DEFINE_int32(vendor_id, kDefaultVendorId, "Vendor ID for the HID device");
   DEFINE_bool(verbose, false, "verbose logging");
   DEFINE_bool(user_keys, false, "Whether to use user-specific keys");
   DEFINE_bool(legacy_kh_fallback, false,
@@ -45,7 +45,8 @@ int main(int argc, char* argv[]) {
 
   bool legacy_kh_fallback = FLAGS_legacy_kh_fallback || !FLAGS_user_keys;
 
-  u2f::U2fDaemon daemon(FLAGS_force_u2f, FLAGS_force_g2f, legacy_kh_fallback,
+  u2f::U2fDaemon daemon(FLAGS_force_u2f, FLAGS_force_g2f,
+                        FLAGS_g2f_allowlist_data, legacy_kh_fallback,
                         FLAGS_vendor_id, FLAGS_product_id);
   int rc = daemon.Run();
 

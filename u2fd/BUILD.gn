@@ -28,6 +28,7 @@ pkg_config("target_defaults") {
 
 pkg_config("u2fd_config") {
   pkg_deps = [
+    "libattestation-client",
     "libmetrics-${libbase_ver}",
     "libpower_manager-client",
     "libtrunks",
@@ -47,6 +48,7 @@ static_library("libu2fd") {
     ":u2fd_config",
   ]
   sources = [
+    "allowlisting_util.cc",
     "tpm_vendor_cmd.cc",
     "u2f_adpu.cc",
     "u2f_daemon.cc",

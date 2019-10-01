@@ -14,6 +14,7 @@
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 
+#include "u2fd/mock_allowlisting_util.h"
 #include "u2fd/mock_tpm_vendor_cmd.h"
 #include "u2fd/mock_user_state.h"
 
@@ -86,12 +87,18 @@ class U2fMessageHandlerTest : public ::testing::Test {
  public:
   void SetUp() override { CreateHandler(false, false); }
 
+  void TearDown() override {
+    EXPECT_EQ(presence_requested_expected_, presence_requested_count_);
+  }
+
  protected:
   void CreateHandler(bool allow_legacy_kh, bool allow_g2f_attestation) {
     mock_user_state_ = new StrictMock<MockUserState>();
+    mock_allowlisting_util_ = new StrictMock<MockAllowlistingUtil>();
 
     handler_.reset(new U2fMessageHandler(
         std::unique_ptr<UserState>(mock_user_state_),
+        std::unique_ptr<AllowlistingUtil>(mock_allowlisting_util_),
         [this]() { presence_requested_count_++; }, &mock_tpm_proxy_,
         &mock_metrics_, allow_legacy_kh, allow_g2f_attestation));
   }
@@ -155,12 +162,16 @@ class U2fMessageHandlerTest : public ::testing::Test {
                 MsgEqStr(response));
   }
 
+  StrictMock<MockAllowlistingUtil>* mock_allowlisting_util_;  // Not Owned.
   StrictMock<MockTpmVendorCommandProxy> mock_tpm_proxy_;
   StrictMock<MockUserState>* mock_user_state_;  // Not Owned.
   NiceMock<MetricsLibraryMock> mock_metrics_;
 
   std::unique_ptr<U2fMessageHandler> handler_;
 
+  int presence_requested_expected_ = 0;
+
+ private:
   int presence_requested_count_ = 0;
 };
 
@@ -221,7 +232,6 @@ TEST_F(U2fMessageHandlerTest, RegisterSuccess) {
   // Just a basic sanity check, the correctness of message contents is tested by
   // integration tests.
   EXPECT_THAT(adpu_response, MatchesRegex(expected_response_regex));
-  EXPECT_EQ(0, presence_requested_count_);
 }
 
 // Errors detected during parsing; should not read user state or call cr50.
@@ -273,7 +283,7 @@ TEST_F(U2fMessageHandlerTest, RegisterNoPresence) {
   CheckResponseForMsg(kRequestRegisterPrefix, kChallenge, kAppId,
                       kMaxResponseSize, kErrorResponseConditionsNotSatisfied);
 
-  EXPECT_EQ(1, presence_requested_count_);
+  presence_requested_expected_ = 1;
 }
 
 TEST_F(U2fMessageHandlerTest, RegisterCr50UnknownError) {
@@ -295,6 +305,16 @@ TEST_F(U2fMessageHandlerTest, RegisterCr50UnknownError) {
 // one byte.
 constexpr char kRequestRegisterG2fPrefix[] = "0001830040";
 
+// See U2F_GENERATE_REQ in //platform/ec/include/u2f.h
+constexpr char kCr50ExpectedGenReqRegex[] =
+    "(AA){32}"  // AppId
+    "(EE){32}"  // User Secret
+    "03";       // U2F_AUTH_ENFORCE | G2F_ATTEST
+
+// Dummy generate response.
+constexpr U2F_GENERATE_RESP kCr50GenResp = {
+    .keyHandle = {[0 ... 63] = 0xFD}};  // cr50_gen_resp
+
 // Example of a cert that would be returned by cr50.
 constexpr char kDummyG2fCert[] =
     "308201363081DDA0030201020210442D32429223D041240350303716EE6B300A06082A8648"
@@ -306,16 +326,6 @@ constexpr char kDummyG2fCert[] =
     "040403020308300A06082A8648CE3D0403020348003045022100F09976F373920FEF8205C4"
     "B1FB1DA21EB9F3F176B7DF433A1ADE0F3F38B721960220179D9B9051BFCCCC90BA6BB42B86"
     "111D7A9C4FB56DFD39FB426081DD027AD609";
-
-// See U2F_GENERATE_REQ in //platform/ec/include/u2f.h
-constexpr char kCr50ExpectedGenReqRegex[] =
-    "(AA){32}"  // AppId
-    "(EE){32}"  // User Secret
-    "03";       // U2F_AUTH_ENFORCE | G2F_ATTEST
-
-// Dummy generate response.
-constexpr U2F_GENERATE_RESP kCr50GenResp = {
-    .keyHandle = {[0 ... 63] = 0xFD}};  // cr50_gen_resp
 
 std::string GetDummyG2fCert() {
   static std::string cert_str = []() {
@@ -366,6 +376,9 @@ TEST_F(U2fMessageHandlerTest, RegisterG2fSuccess) {
   EXPECT_CALL(mock_tpm_proxy_, GetG2fCertificate(_))
       .WillOnce(DoAll(SetArgPointee<0>(GetDummyG2fCert()), Return(0)));
 
+  EXPECT_CALL(*mock_allowlisting_util_, AppendDataToCert(_))
+      .WillOnce(Return(true));
+
   // See U2F_ATTEST_REQ in //platform/ec/include/u2f.h
   std::string expected_cr50_attest_req_regex =
       "(EE){32}"  // User Secret
@@ -397,7 +410,6 @@ TEST_F(U2fMessageHandlerTest, RegisterG2fSuccess) {
   // Just a basic sanity check, the correctness of message contents is tested by
   // integration tests.
   EXPECT_THAT(adpu_response, MatchesRegex(expected_response_regex));
-  EXPECT_EQ(0, presence_requested_count_);
 }
 
 // Error from cr50
@@ -413,7 +425,7 @@ TEST_F(U2fMessageHandlerTest, RegisterG2fNoPresence) {
   CheckResponseForMsg(kRequestRegisterG2fPrefix, kChallenge, kAppId,
                       kMaxResponseSize, kErrorResponseConditionsNotSatisfied);
 
-  EXPECT_EQ(1, presence_requested_count_);
+  presence_requested_expected_ = 1;
 }
 
 TEST_F(U2fMessageHandlerTest, RegisterG2fAttestSecretNotAvailable) {
@@ -565,7 +577,7 @@ TEST_F(U2fMessageHandlerTest, AuthenticateNoPresence) {
                       kRequestAuthenticateKeyHandle,
                       kErrorResponseConditionsNotSatisfied);
 
-  EXPECT_EQ(1, presence_requested_count_);
+  presence_requested_expected_ = 1;
 }
 
 TEST_F(U2fMessageHandlerTest, AuthenticateInvalidKeyHandle) {

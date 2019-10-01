@@ -7,7 +7,11 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
+#include <attestation/proto_bindings/interface.pb.h>
+#include <attestation-client/attestation/dbus-proxies.h>
+#include <base/optional.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/dbus_signal.h>
@@ -30,6 +34,7 @@ class U2fDaemon : public brillo::Daemon {
  public:
   U2fDaemon(bool force_u2f,
             bool force_g2f,
+            bool g2f_allowlist_data,
             bool legacy_kh_fallback,
             uint32_t vendor_id,
             uint32_t product_id);
@@ -74,9 +79,16 @@ class U2fDaemon : public brillo::Daemon {
   // short time.
   void IgnorePowerButtonPress();
 
+  // Returns a certified copy of the G2F certificate from attestationd, or
+  // base::nullopt on error. The size of the G2F certificate is variable, and
+  // must be specified in |g2f_cert_size|.
+  base::Optional<attestation::GetCertifiedNvIndexReply> GetCertifiedG2fCert(
+      int g2f_cert_size);
+
   // U2F Behavior Flags
   const bool force_u2f_;
   const bool force_g2f_;
+  const bool g2f_allowlist_data_;
   const bool legacy_kh_fallback_;
 
   // Virtual USB Device ID
@@ -93,6 +105,7 @@ class U2fDaemon : public brillo::Daemon {
 
   // Proxies to call other daemons
   u2f::TpmVendorCommandProxy tpm_proxy_;
+  dbus::ObjectProxy* attestation_proxy_;  // Not Owned.
   std::unique_ptr<org::chromium::PowerManagerProxy> pm_proxy_;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxy> sm_proxy_;
 

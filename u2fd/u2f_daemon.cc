@@ -8,11 +8,18 @@
 #include <string>
 #include <sysexits.h>
 #include <utility>
+#include <vector>
 
+#include <attestation/proto_bindings/interface.pb.h>
+#include <attestation-client/attestation/dbus-constants.h>
+#include <base/bind.h>
+#include <base/optional.h>
+#include <base/synchronization/waitable_event.h>
 #include <bindings/chrome_device_policy.pb.h>
 #include <dbus/u2f/dbus-constants.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
+#include <trunks/cr50_headers/virtual_nvmem.h>
 
 #include "u2fd/u2fhid.h"
 #include "u2fd/uhid_device.h"
@@ -127,11 +134,13 @@ void OnPolicySignalConnected(const std::string& interface,
 
 U2fDaemon::U2fDaemon(bool force_u2f,
                      bool force_g2f,
+                     bool g2f_allowlist_data,
                      bool legacy_kh_fallback,
                      uint32_t vendor_id,
                      uint32_t product_id)
     : force_u2f_(force_u2f),
       force_g2f_(force_g2f),
+      g2f_allowlist_data_(g2f_allowlist_data),
       legacy_kh_fallback_(legacy_kh_fallback),
       vendor_id_(vendor_id),
       product_id_(product_id) {}
@@ -233,7 +242,16 @@ bool U2fDaemon::InitializeDBus() {
 
 bool U2fDaemon::InitializeDBusProxies() {
   if (!tpm_proxy_.Init()) {
-    LOG(ERROR) << "Failed to initialize D-Bus proxy with trunksd.";
+    LOG(ERROR) << "Failed to initialize trunksd DBus proxy";
+    return false;
+  }
+
+  attestation_proxy_ = bus_->GetObjectProxy(
+      attestation::kAttestationServiceName,
+      dbus::ObjectPath(attestation::kAttestationServicePath));
+
+  if (!attestation_proxy_) {
+    LOG(ERROR) << "Failed to initialize attestationd DBus proxy";
     return false;
   }
 
@@ -265,9 +283,17 @@ void U2fDaemon::CreateU2fMsgHandler(bool allow_g2f_attestation) {
     SendWinkSignal();
   };
 
+  auto allowlisting_util =
+      g2f_allowlist_data_
+          ? std::make_unique<u2f::AllowlistingUtil>([this](int cert_size) {
+              return GetCertifiedG2fCert(cert_size);
+            })
+          : std::unique_ptr<u2f::AllowlistingUtil>(nullptr);
+
   u2f_msg_handler_ = std::make_unique<u2f::U2fMessageHandler>(
-      std::move(user_state), request_presence, &tpm_proxy_, &metrics_library_,
-      allow_g2f_attestation, legacy_kh_fallback_);
+      std::move(user_state), std::move(allowlisting_util), request_presence,
+      &tpm_proxy_, &metrics_library_, allow_g2f_attestation,
+      legacy_kh_fallback_);
 }
 
 void U2fDaemon::CreateU2fHid() {
@@ -315,6 +341,55 @@ void U2fDaemon::IgnorePowerButtonPress() {
   // Mask the next power button press for the UI
   pm_proxy_->IgnoreNextPowerButtonPress(kPresenceTimeout.ToInternalValue(),
                                         &err, -1);
+}
+
+namespace {
+
+constexpr char kKeyLabelEmk[] = "attest-ent-machine";
+
+}  // namespace
+
+base::Optional<attestation::GetCertifiedNvIndexReply>
+U2fDaemon::GetCertifiedG2fCert(int g2f_cert_size) {
+  if (g2f_cert_size < 1 || g2f_cert_size > VIRTUAL_NV_INDEX_G2F_CERT_SIZE) {
+    LOG(ERROR)
+        << "Invalid G2F cert size specified for whitelisting data request";
+    return base::nullopt;
+  }
+
+  attestation::GetCertifiedNvIndexRequest request;
+
+  request.set_nv_index(VIRTUAL_NV_INDEX_G2F_CERT);
+  request.set_nv_size(g2f_cert_size);
+  request.set_key_label(kKeyLabelEmk);
+
+  brillo::ErrorPtr error;
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      brillo::dbus_utils::CallMethodAndBlock(
+          attestation_proxy_, attestation::kAttestationInterface,
+          attestation::kGetCertifiedNvIndex, &error, request);
+
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to retrieve certified G2F cert from attestationd";
+    return base::nullopt;
+  }
+
+  attestation::GetCertifiedNvIndexReply reply;
+
+  dbus::MessageReader reader(dbus_response.get());
+  if (!reader.PopArrayOfBytesAsProto(&reply)) {
+    LOG(ERROR) << "Failed to parse GetCertifiedNvIndexReply";
+    return base::nullopt;
+  }
+
+  if (reply.status() != attestation::AttestationStatus::STATUS_SUCCESS) {
+    LOG(ERROR) << "Call get GetCertifiedNvIndex failed, status: "
+               << reply.status();
+    return base::nullopt;
+  }
+
+  return reply;
 }
 
 }  // namespace u2f

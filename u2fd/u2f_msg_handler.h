@@ -10,9 +10,11 @@
 #include <string>
 #include <vector>
 
+#include <attestation/proto_bindings/interface.pb.h>
 #include <base/optional.h>
 #include <metrics/metrics_library.h>
 
+#include "u2fd/allowlisting_util.h"
 #include "u2fd/tpm_vendor_cmd.h"
 #include "u2fd/u2f_adpu.h"
 #include "u2fd/user_state.h"
@@ -25,6 +27,7 @@ class U2fMessageHandler {
   // Constructs a new message handler. Does not take ownership of proxy or
   // metrics, both of which must outlive this instance.
   U2fMessageHandler(std::unique_ptr<UserState> user_state,
+                    std::unique_ptr<AllowlistingUtil> allowlisting_util,
                     std::function<void()> request_user_presence,
                     TpmVendorCommandProxy* proxy,
                     MetricsLibraryInterface* metrics,
@@ -86,6 +89,7 @@ class U2fMessageHandler {
   U2fResponseAdpu BuildErrorResponse(Cr50CmdStatus status);
 
   std::unique_ptr<UserState> user_state_;
+  std::unique_ptr<AllowlistingUtil> allowlisting_util_;
   std::function<void()> request_user_presence_;
   TpmVendorCommandProxy* proxy_;
   MetricsLibraryInterface* metrics_;

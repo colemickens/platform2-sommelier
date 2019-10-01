@@ -29,12 +29,14 @@ constexpr char kU2fCommand[] = "Platform.U2F.Command";
 
 U2fMessageHandler::U2fMessageHandler(
     std::unique_ptr<UserState> user_state,
+    std::unique_ptr<AllowlistingUtil> allowlisting_util,
     std::function<void()> request_user_presence,
     TpmVendorCommandProxy* proxy,
     MetricsLibraryInterface* metrics,
     bool allow_legacy_kh_sign,
     bool allow_g2f_attestation)
     : user_state_(std::move(user_state)),
+      allowlisting_util_(std::move(allowlisting_util)),
       request_user_presence_(request_user_presence),
       proxy_(proxy),
       metrics_(metrics),
@@ -166,6 +168,7 @@ U2fResponseAdpu U2fMessageHandler::ProcessU2fRegister(
 
   std::vector<uint8_t> attestation_cert;
   std::vector<uint8_t> signature;
+  std::vector<uint8_t> allowlisting_data;
 
   if (allow_g2f_attestation_ && request.UseG2fAttestation()) {
     base::Optional<std::vector<uint8_t>> g2f_cert = GetG2fCert();
@@ -180,6 +183,12 @@ U2fResponseAdpu U2fMessageHandler::ProcessU2fRegister(
         DoG2fAttest(data_to_sign, U2F_ATTEST_FORMAT_REG_RESP, &signature);
 
     if (attest_status != Cr50CmdStatus::kSuccess) {
+      return BuildEmptyResponse(U2F_SW_WTF);
+    }
+
+    if (allowlisting_util_ != nullptr &&
+        !allowlisting_util_->AppendDataToCert(&attestation_cert)) {
+      LOG(ERROR) << "Failed to get allowlisting data for G2F Enroll Request";
       return BuildEmptyResponse(U2F_SW_WTF);
     }
   } else if (!DoSoftwareAttest(data_to_sign, &attestation_cert, &signature)) {
