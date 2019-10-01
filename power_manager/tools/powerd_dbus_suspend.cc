@@ -22,6 +22,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
+#include <brillo/file_utils.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -34,6 +35,11 @@ namespace {
 // The sysfs entry that controls RTC wake alarms.  To set an alarm, write
 // into this file the time of the alarm in seconds since the epoch.
 const char kRtcWakeAlarmPath[] = "/sys/class/rtc/rtc0/wakealarm";
+
+// Location of disable_dark_resume preference file. Writing 1 to this file
+// disables dark resume.
+const char kDisableDarkResumePath[] =
+    "/var/lib/power_manager/disable_dark_resume";
 
 std::string WakeupTypeToString(power_manager::SuspendDone::WakeupType type) {
   switch (type) {
@@ -76,6 +82,59 @@ void OnTimeout() {
              << " signal within the timeout.";
 }
 
+class DarkResumeConfigurator {
+ public:
+  explicit DarkResumeConfigurator(bool disable) {
+    // Store previous setting of dark resume.
+    dark_resume_pref_exist_before_ =
+        base::PathExists(base::FilePath(kDisableDarkResumePath));
+    if (dark_resume_pref_exist_before_) {
+      if (!base::ReadFileToString(base::FilePath(kDisableDarkResumePath),
+                                  &prev_dark_resume_pref_state_)) {
+        PLOG(ERROR) << "Failed to read previous dark resume state from "
+                    << kDisableDarkResumePath;
+        exit(1);
+      }
+    }
+
+    if (!SetDarkResumeState(disable ? "1" : "0"))
+      exit(1);
+  }
+  ~DarkResumeConfigurator() {
+    // Restore dark resume state.
+    if (!dark_resume_pref_exist_before_) {
+      if (!base::DeleteFile(base::FilePath(kDisableDarkResumePath), false))
+        PLOG(ERROR) << "Failed to restore dark resume state.";
+    } else if (!SetDarkResumeState(prev_dark_resume_pref_state_)) {
+      PLOG(ERROR) << "Failed to restore dark resume state.";
+    }
+  }
+
+ private:
+  bool SetDarkResumeState(std::string state) {
+    auto dark_resume_pref_path = base::FilePath(kDisableDarkResumePath);
+
+    if (!base::CreateDirectory(dark_resume_pref_path.DirName())) {
+      PLOG(ERROR) << "Failed to create parent directories for "
+                  << kDisableDarkResumePath;
+      return false;
+    }
+
+    if (!brillo::WriteStringToFile(dark_resume_pref_path, state)) {
+      PLOG(ERROR) << "Failed to write " << state << " to "
+                  << kDisableDarkResumePath;
+      return false;
+    }
+    return true;
+  }
+
+  // Whether |kDisableDarkResumePath| exist before the script start.
+  bool dark_resume_pref_exist_before_ = false;
+  // Used to Store the original preference in |kDisableDarkResumePath| if the
+  // file exist(dark_resume_pref_exist_before_) before the start of the script.
+  std::string prev_dark_resume_pref_state_;
+};
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -96,6 +155,9 @@ int main(int argc, char* argv[]) {
                "Ask powerd to suspend the device for this many seconds. powerd "
                "then sets an alarm just before going to suspend.");
   DEFINE_bool(print_wakeup_type, false, "Print wakeup type of last resume.");
+  DEFINE_bool(disable_dark_resume, true,
+              "whether or not to disable dark resume before suspend. Resets to "
+              "previous preference on resume. Defaults to True.");
 
   brillo::FlagHelper::Init(argc, argv,
                            "Instruct powerd to suspend the system.");
@@ -120,6 +182,9 @@ int main(int argc, char* argv[]) {
                           alarm_string.c_str(), alarm_string.length()));
   }
 
+  // Enables/Disables dark resume for this script run based on
+  // |FLAGS_disable_dark_resume|. Restores the original preference on exit.
+  DarkResumeConfigurator dark_resume_configurator(FLAGS_disable_dark_resume);
   base::RunLoop run_loop;
   powerd_proxy->ConnectToSignal(
       power_manager::kPowerManagerInterface, power_manager::kSuspendDoneSignal,
@@ -150,5 +215,6 @@ int main(int argc, char* argv[]) {
   }
 
   run_loop.Run();
+
   return 0;
 }
