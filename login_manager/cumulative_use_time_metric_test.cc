@@ -72,7 +72,7 @@ class TestTickClockCopy : public base::TickClock {
       : tick_clock_(tick_clock) {}
   ~TestTickClockCopy() override = default;
 
-  base::TimeTicks NowTicks() override { return tick_clock_->NowTicks(); }
+  base::TimeTicks NowTicks() const override { return tick_clock_->NowTicks(); }
 
  private:
   base::SimpleTestTickClock* tick_clock_;
@@ -101,7 +101,7 @@ class FakeSingleThreadTaskRunner : public base::SingleThreadTaskRunner {
     return true;
   }
 
-  bool RunsTasksOnCurrentThread() const final { return true; }
+  bool RunsTasksInCurrentSequence() const final { return true; }
 
   bool PostNonNestableDelayedTask(const base::Location& from_here,
                                   base::OnceClosure task,
