@@ -109,10 +109,9 @@ ArcService::ArcService(DeviceManagerBase* dev_mgr,
 
   // Load networking modules needed by Android that are not compiled in the
   // kernel. Android does not allow auto-loading of kernel modules.
-  MinijailedProcessRunner runner;
 
   // These must succeed.
-  if (runner.ModprobeAll({
+  if (datapath_->runner().ModprobeAll({
           // The netfilter modules needed by netd for iptables commands.
           "ip6table_filter",
           "ip6t_ipv6header",
@@ -130,7 +129,7 @@ ArcService::ArcService(DeviceManagerBase* dev_mgr,
   }
 
   // Optional modules.
-  if (runner.ModprobeAll({
+  if (datapath_->runner().ModprobeAll({
           // This module is not available in kernels < 3.18
           "nf_reject_ipv6",
           // These modules are needed for supporting Chrome traffic on Android

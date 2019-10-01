@@ -85,6 +85,10 @@ class FakeProcessRunner : public MinijailedProcessRunner {
     EXPECT_EQ(con_pid, wr_con_pid_);
   }
 
+  int ModprobeAll(const std::vector<std::string>& modules) override {
+    return 0;
+  }
+
  private:
   bool capture_ = false;
   std::vector<std::string>* runs_;
