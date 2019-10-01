@@ -108,6 +108,7 @@ class KeyboardBacklightController : public BacklightController,
   void SetBrightnessPercentForAmbientLight(
       double brightness_percent,
       AmbientLightHandler::BrightnessChangeCause cause) override;
+  void OnColorTemperatureChanged(int color_temperature) override;
 
   // BacklightControllerObserver implementation:
   void OnBrightnessChange(double brightness_percent,

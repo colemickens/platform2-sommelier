@@ -372,6 +372,9 @@ void KeyboardBacklightController::SetBrightnessPercentForAmbientLight(
     num_als_adjustments_++;
 }
 
+void KeyboardBacklightController::OnColorTemperatureChanged(
+    int color_temperature) {}
+
 void KeyboardBacklightController::OnBrightnessChange(
     double brightness_percent,
     BacklightBrightnessChange_Cause cause,

@@ -110,6 +110,7 @@ class InternalBacklightController : public BacklightController,
   void SetBrightnessPercentForAmbientLight(
       double brightness_percent,
       AmbientLightHandler::BrightnessChangeCause cause) override;
+  void OnColorTemperatureChanged(int color_temperature) override;
 
  private:
   // Snaps |percent| to the nearest step, as defined by |step_percent_|.

@@ -183,6 +183,13 @@ void AmbientLightHandler::OnAmbientLightUpdated(
     return;
   }
 
+  // Currently we notify on every color temperature change.
+  if (sensor_->IsColorSensor()) {
+    const int color_temperature = sensor_->GetColorTemperature();
+    if (color_temperature >= 0)
+      delegate_->OnColorTemperatureChanged(color_temperature);
+  }
+
   if (recent_lux_readings_.size() < kNumRecentReadingsToLog) {
     recent_lux_readings_.push_back(raw_lux);
   } else {

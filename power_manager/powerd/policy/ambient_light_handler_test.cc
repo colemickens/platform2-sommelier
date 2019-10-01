@@ -36,6 +36,8 @@ class TestDelegate : public AmbientLightHandler::Delegate {
     cause_ = cause;
   }
 
+  void OnColorTemperatureChanged(int color_temperature) override {}
+
  private:
   double percent_;
   AmbientLightHandler::BrightnessChangeCause cause_;

@@ -53,6 +53,9 @@ class AmbientLightHandler : public system::AmbientLightObserver {
     // to a change in ambient light.
     virtual void SetBrightnessPercentForAmbientLight(
         double brightness_percent, BrightnessChangeCause cause) = 0;
+
+    // Invoked when the color temperature changes.
+    virtual void OnColorTemperatureChanged(int color_temperature) = 0;
   };
 
   AmbientLightHandler(system::AmbientLightSensorInterface* sensor,

@@ -16,6 +16,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <dbus/message.h>
 
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
@@ -517,6 +518,14 @@ void InternalBacklightController::SetBrightnessPercentForAmbientLight(
   UpdateState(backlight_cause, transition);
   if (ambient_light_changed && current_level_ != old_level)
     als_adjustment_count_++;
+}
+
+void InternalBacklightController::OnColorTemperatureChanged(
+    int color_temperature) {
+  dbus::Signal signal(kPowerManagerInterface,
+                      kAmbientColorTemperatureChangedSignal);
+  dbus::MessageWriter(&signal).AppendInt32(color_temperature);
+  dbus_wrapper_->EmitSignal(&signal);
 }
 
 double InternalBacklightController::SnapBrightnessPercentToNearestStep(
