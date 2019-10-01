@@ -35,10 +35,7 @@ pkg_config("host_target_defaults_pkgs") {
 
 config("host_target_defaults") {
   configs = [ ":host_target_defaults_pkgs" ]
-  defines = [
-    "USE_CROSVM_WL_DMABUF=${use.crosvm_wl_dmabuf}",
-    "USE_PMEM_DEVICE_FOR_ROOTFS=${use.amd64}",
-  ]
+  defines = [ "USE_CROSVM_WL_DMABUF=${use.crosvm_wl_dmabuf}" ]
 }
 
 executable("maitred_client") {
