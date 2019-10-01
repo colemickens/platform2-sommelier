@@ -85,6 +85,8 @@ class DeviceManager : public DeviceManagerBase {
   void OnGuestStart(GuestMessage::GuestType guest) override;
   void OnGuestStop(GuestMessage::GuestType guest) override;
 
+  void OnDeviceMessageFromNDProxy(const DeviceMessage& msg);
+
   // Used by a guest service to examine and potentially mutate tracked devices.
   void ProcessDevices(const DeviceHandler& handler) override;
 

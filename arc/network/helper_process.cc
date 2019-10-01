@@ -25,7 +25,9 @@ void HelperProcess::Start(int argc, char* argv[], const std::string& fd_arg) {
     PLOG(FATAL) << "socketpair failed";
   }
 
-  control_fd_.reset(control[0]);
+  base::ScopedFD control_fd(control[0]);
+  msg_dispatcher_ =
+      std::make_unique<MessageDispatcher>(std::move(control_fd), false);
   const int subprocess_fd = control[1];
 
   CHECK_GE(argc, 1);
@@ -48,14 +50,16 @@ void HelperProcess::Start(int argc, char* argv[], const std::string& fd_arg) {
 
 void HelperProcess::SendMessage(
     const google::protobuf::MessageLite& proto) const {
-  std::string str;
-  if (!proto.SerializeToString(&str)) {
-    LOG(FATAL) << "error serializing protobuf";
-  }
-  if (write(control_fd_.get(), str.data(), str.size()) !=
-      static_cast<ssize_t>(str.size())) {
-    LOG(FATAL) << "short write on protobuf";
-  }
+  msg_dispatcher_->SendMessage(proto);
+}
+
+void HelperProcess::Listen() {
+  msg_dispatcher_->Start();
+}
+
+void HelperProcess::RegisterDeviceMessageHandler(
+    const base::Callback<void(const DeviceMessage&)>& handler) {
+  msg_dispatcher_->RegisterDeviceMessageHandler(handler);
 }
 
 }  // namespace arc_networkd

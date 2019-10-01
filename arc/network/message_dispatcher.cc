@@ -14,12 +14,18 @@
 
 namespace arc_networkd {
 
-MessageDispatcher::MessageDispatcher(base::ScopedFD fd)
-    : fd_(std::move(fd)),
-      watcher_(base::FileDescriptorWatcher::WatchReadable(
-          fd_.get(),
-          base::BindRepeating(&MessageDispatcher::OnFileCanReadWithoutBlocking,
-                              base::Unretained(this)))) {}
+MessageDispatcher::MessageDispatcher(base::ScopedFD fd, bool start)
+    : fd_(std::move(fd)) {
+  if (start)
+    Start();
+}
+
+void MessageDispatcher::Start() {
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      fd_.get(),
+      base::BindRepeating(&MessageDispatcher::OnFileCanReadWithoutBlocking,
+                          base::Unretained(this)));
+}
 
 void MessageDispatcher::RegisterFailureHandler(
     const base::Callback<void()>& handler) {
@@ -62,6 +68,17 @@ void MessageDispatcher::OnFileCanReadWithoutBlocking() {
 
   if (msg_.has_device_message() && !device_handler_.is_null()) {
     device_handler_.Run(msg_.device_message());
+  }
+}
+void MessageDispatcher::SendMessage(
+    const google::protobuf::MessageLite& proto) const {
+  std::string str;
+  if (!proto.SerializeToString(&str)) {
+    LOG(ERROR) << "error serializing protobuf";
+  }
+  if (write(fd_.get(), str.data(), str.size()) !=
+      static_cast<ssize_t>(str.size())) {
+    LOG(ERROR) << "short write on protobuf";
   }
 }
 

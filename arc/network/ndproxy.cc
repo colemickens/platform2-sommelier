@@ -347,15 +347,33 @@ void NDProxy::OnDataSocketReadReady() {
   ip6_hdr* ip6 = reinterpret_cast<ip6_hdr*>(in_frame_buffer_ + ETH_HLEN);
   icmp6_hdr* icmp6 = reinterpret_cast<icmp6_hdr*>(
       in_frame_buffer_ + ETHER_HDR_LEN + sizeof(ip6_hdr));
+
   if (ip6->ip6_nxt != IPPROTO_ICMPV6 || icmp6->icmp6_type < ND_ROUTER_SOLICIT ||
       icmp6->icmp6_type > ND_NEIGHBOR_ADVERT)
     return;
   auto map_entry = MapForType(icmp6->icmp6_type)->find(dst_addr.sll_ifindex);
-  if (map_entry == MapForType(icmp6->icmp6_type)->end())
-    return;
-  const auto& target_ifs = map_entry->second;
-  for (int target_if : target_ifs) {
-    ProxyNDFrame(target_if, len);
+  if (map_entry != MapForType(icmp6->icmp6_type)->end()) {
+    const auto& target_ifs = map_entry->second;
+    for (int target_if : target_ifs) {
+      ProxyNDFrame(target_if, len);
+    }
+  }
+  // Notify DeviceManager on receiving guest NA with unicast IPv6 address so
+  // a /128 route to the guest can be added on the host
+  if ((ip6->ip6_src.s6_addr[0] & 0xe0) == 0x20  // Global Unicast
+      && icmp6->icmp6_type == ND_NEIGHBOR_ADVERT &&
+      IsGuestInterface(dst_addr.sll_ifindex)) {
+    char ifname[IFNAMSIZ];
+    if_indextoname(dst_addr.sll_ifindex, ifname);
+    char ipv6_addr_str[INET6_ADDRSTRLEN];
+    inet_ntop(AF_INET6, &(ip6->ip6_src.s6_addr), ipv6_addr_str,
+              INET6_ADDRSTRLEN);
+    DeviceMessage msg;
+    msg.set_dev_ifname(ifname);
+    msg.set_guest_ip6addr(ipv6_addr_str);
+    IpHelperMessage ipm;
+    *ipm.mutable_device_message() = msg;
+    msg_dispatcher_->SendMessage(ipm);
   }
 }
 
@@ -433,6 +451,10 @@ bool NDProxy::RemoveInterface(const std::string& ifname) {
   for (auto& kv : if_map_ns_na_)
     kv.second.erase(ifindex);
   return true;
+}
+
+bool NDProxy::IsGuestInterface(int ifindex) {
+  return if_map_rs_.find(ifindex) != if_map_rs_.end();
 }
 
 }  // namespace arc_networkd

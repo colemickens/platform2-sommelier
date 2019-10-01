@@ -88,6 +88,7 @@ class NDProxy : public brillo::Daemon {
   bool AddInterfacePairInternal(const std::string& ifname1,
                                 const std::string& ifname2,
                                 bool proxy_rs_ra);
+  bool IsGuestInterface(int ifindex);
 
   void ProxyNDFrame(int target_if, ssize_t frame_len);
 

@@ -7,11 +7,14 @@
 
 #include <sys/types.h>
 
+#include <memory>
 #include <string>
 
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <google/protobuf/message_lite.h>
+
+#include "arc/network/message_dispatcher.h"
 
 namespace arc_networkd {
 
@@ -31,13 +34,21 @@ class HelperProcess {
   // Serializes a protobuf and sends it to the helper process.
   void SendMessage(const google::protobuf::MessageLite& proto) const;
 
+  // Start listening on messages from subprocess and dispatching them to
+  // handlers. This function can only be called after that the message loop of
+  // main process is initialized.
+  void Listen();
+
+  void RegisterDeviceMessageHandler(
+      const base::Callback<void(const DeviceMessage&)>& handler);
+
   const pid_t pid() { return pid_; }
 
  protected:
   pid_t pid_{0};
-  base::ScopedFD control_fd_;
 
  private:
+  std::unique_ptr<MessageDispatcher> msg_dispatcher_;
   DISALLOW_COPY_AND_ASSIGN(HelperProcess);
 };
 

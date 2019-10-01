@@ -20,7 +20,9 @@ namespace arc_networkd {
 // Helper message processor
 class MessageDispatcher {
  public:
-  explicit MessageDispatcher(base::ScopedFD fd);
+  explicit MessageDispatcher(base::ScopedFD fd, bool start = true);
+
+  void Start();
 
   void RegisterFailureHandler(const base::Callback<void()>& handler);
 
@@ -29,6 +31,8 @@ class MessageDispatcher {
 
   void RegisterDeviceMessageHandler(
       const base::Callback<void(const DeviceMessage&)>& handler);
+
+  void SendMessage(const google::protobuf::MessageLite& proto) const;
 
  private:
   // Overrides MessageLoopForIO callbacks for new data on |control_fd_|.

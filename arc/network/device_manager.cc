@@ -113,6 +113,11 @@ DeviceManager::DeviceManager(std::unique_ptr<ShillClient> shill_client,
       base::Bind(&DeviceManager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
   shill_client_->ScanDevices(
       base::Bind(&DeviceManager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
+  if (nd_proxy) {
+    nd_proxy->RegisterDeviceMessageHandler(
+        base::Bind(&DeviceManager::OnDeviceMessageFromNDProxy,
+                   weak_factory_.GetWeakPtr()));
+  }
 }
 
 DeviceManager::~DeviceManager() {
@@ -153,6 +158,16 @@ void DeviceManager::OnGuestStart(GuestMessage::GuestType guest) {
 void DeviceManager::OnGuestStop(GuestMessage::GuestType guest) {
   for (auto& d : devices_) {
     d.second->OnGuestStop(guest);
+  }
+}
+
+void DeviceManager::OnDeviceMessageFromNDProxy(const DeviceMessage& msg) {
+  const std::string& dev_ifname = msg.dev_ifname();
+  LOG_IF(DFATAL, dev_ifname.empty())
+      << "Received DeviceMessage w/ empty dev_ifname";
+  if (!datapath_->AddIPv6HostRoute(dev_ifname, msg.guest_ip6addr(), 128)) {
+    LOG(WARNING) << "Failed to setup the IPv6 route for interface "
+                 << dev_ifname;
   }
 }
 

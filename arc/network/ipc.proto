@@ -14,8 +14,9 @@ package arc_networkd;
 message DeviceMessage {
   required string dev_ifname = 1;
   oneof message_type {
-    string br_ifname = 8;
     bool teardown = 7;  // value is ignored
+    string br_ifname = 8;
+    string guest_ip6addr = 9;
   }
 }
 

@@ -54,6 +54,11 @@ int Manager::OnInit() {
       base::Bind(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),
                  adb_proxy_->pid())))
       << "Failed to watch adb-proxy child process";
+  CHECK(process_reaper_.WatchForChild(
+      FROM_HERE, nd_proxy_->pid(),
+      base::Bind(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),
+                 nd_proxy_->pid())))
+      << "Failed to watch adb-proxy child process";
 
   // Setup the socket for guests to connect and notify certain events.
   // TODO(garrick): Remove once DBus API available.
@@ -93,6 +98,8 @@ void Manager::InitialSetup() {
                                           !enable_multinet_);
   arc_svc_->RegisterMessageHandler(
       base::Bind(&Manager::OnGuestMessage, weak_factory_.GetWeakPtr()));
+
+  nd_proxy_->Listen();
 }
 
 void Manager::OnFileCanReadWithoutBlocking() {
