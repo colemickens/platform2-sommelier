@@ -111,6 +111,7 @@ int CalculateUBIMaxBadBlocksPer1024(int partition_number) {
 }
 
 bool GetBlockCount(const base::FilePath& device_path,
+                   int64_t block_size,
                    int64_t* block_count_out) {
   if (!block_count_out)
     return false;
@@ -141,17 +142,20 @@ bool GetBlockCount(const base::FilePath& device_path,
     }
   }
 
-  // Fallback if using dumpe2fs failed.
+  // Fallback if using dumpe2fs failed. This interface always returns a count
+  // of sectors, not blocks, so we must convert to a block count.
+  // Per "include/linux/types.h", Linux always considers sectors to be
+  // 512 bytes long.
   base::FilePath fp("/sys/class/block");
   fp = fp.Append(device_path.BaseName());
   fp = fp.Append("size");
-  std::string block_count_str;
-  if (base::ReadFileToString(fp, &block_count_str)) {
-    base::TrimWhitespaceASCII(block_count_str, base::TRIM_ALL,
-                              &block_count_str);
-    int64_t block_count;
-    if (base::StringToInt64(block_count_str, &block_count)) {
-      *block_count_out = block_count;
+  std::string sector_count_str;
+  if (base::ReadFileToString(fp, &sector_count_str)) {
+    base::TrimWhitespaceASCII(sector_count_str, base::TRIM_ALL,
+                              &sector_count_str);
+    int64_t sector_count;
+    if (base::StringToInt64(sector_count_str, &sector_count)) {
+      *block_count_out = sector_count * 512 / block_size;
       return true;
     }
   }
@@ -669,7 +673,7 @@ bool ClobberState::WipeBlockDevice(const base::FilePath& device_path,
     }
     int64_t block_size = st.st_blksize;
     int64_t block_count;
-    if (!GetBlockCount(device_path, &block_count)) {
+    if (!GetBlockCount(device_path, block_size, &block_count)) {
       LOG(ERROR) << "Unable to get block count for " << device_path.value();
       return false;
     }
