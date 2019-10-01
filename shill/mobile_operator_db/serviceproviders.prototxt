@@ -13672,7 +13672,7 @@ mno {
         name : "Kajeet"
       }
       mobile_apn {
-        apn : "spl0400.i.dlsn"
+        apn : "spl2419.i.dlsn"
       }
     }
   }
