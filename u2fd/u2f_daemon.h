@@ -14,7 +14,7 @@
 #include <metrics/metrics_library.h>
 #include <power_manager-client/power_manager/dbus-proxies.h>
 #include <session_manager/dbus-proxies.h>
-#include <u2f/proto_bindings/interface.pb.h>
+#include <u2f/proto_bindings/u2f_interface.pb.h>
 
 #include "u2fd/tpm_vendor_cmd.h"
 #include "u2fd/u2f_msg_handler.h"
