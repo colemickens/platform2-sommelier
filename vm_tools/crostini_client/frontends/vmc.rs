@@ -395,15 +395,15 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             image_server,
             image_alias
         ));
-        try_command!(self
-            .backend
-            .container_start(vm_name, user_id_hash, container_name));
         try_command!(self.backend.container_setup_user(
             vm_name,
             user_id_hash,
             container_name,
             username
         ));
+        try_command!(self
+            .backend
+            .container_start(vm_name, user_id_hash, container_name));
         try_command!(self
             .backend
             .vsh_exec_container(vm_name, user_id_hash, container_name));

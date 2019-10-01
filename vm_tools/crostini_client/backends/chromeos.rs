@@ -1064,18 +1064,14 @@ impl ChromeOS {
         use self::StartLxdContainerResponse_Status::*;
         match response.status {
             STARTING => {
-                let signal: cicerone_service::LxdContainerStartingSignal = self
+                // TODO: listen for signal before calling the D-Bus method.
+                let _signal: cicerone_service::ContainerStartedSignal = self
                     .protobus_wait_for_signal_timeout(
                         VM_CICERONE_INTERFACE,
-                        LXD_CONTAINER_STARTING_SIGNAL,
+                        CONTAINER_STARTED_SIGNAL,
                         DEFAULT_TIMEOUT_MS,
                     )?;
-                match signal.status {
-                    LxdContainerStartingSignal_Status::STARTED => Ok(()),
-                    _ => {
-                        Err(FailedStartContainerSignal(signal.status, signal.failure_reason).into())
-                    }
-                }
+                Ok(())
             }
             RUNNING => Ok(()),
             _ => Err(FailedStartContainerStatus(response.status, response.failure_reason).into()),
@@ -1107,16 +1103,7 @@ impl ChromeOS {
 
         use self::SetUpLxdContainerUserResponse_Status::*;
         match response.status {
-            SUCCESS | EXISTS => {
-                // TODO: listen for signal before calling the D-Bus method.
-                let _signal: cicerone_service::ContainerStartedSignal = self
-                    .protobus_wait_for_signal_timeout(
-                        VM_CICERONE_INTERFACE,
-                        CONTAINER_STARTED_SIGNAL,
-                        DEFAULT_TIMEOUT_MS,
-                    )?;
-                Ok(())
-            }
+            SUCCESS | EXISTS => Ok(()),
             _ => Err(FailedSetupContainerUser(response.status, response.failure_reason).into()),
         }
     }
