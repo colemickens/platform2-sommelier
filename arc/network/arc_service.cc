@@ -395,8 +395,8 @@ void ArcService::OnDefaultInterfaceChanged(const std::string& ifname) {
     LOG(ERROR) << "Expected default device missing: " << ifname;
     return;
   }
-  device->StopIPv6Routing();
-  device->StartIPv6Routing(ifname);
+  device->StopIPv6RoutingLegacy();
+  device->StartIPv6RoutingLegacy(ifname);
 }
 
 void ArcService::LinkMsgHandler(const shill::RTNLMessage& msg) {
@@ -523,15 +523,6 @@ void ArcService::SetupIPv6(Device* device) {
     return;
   }
 
-  if (!datapath_->AddIPv6Forwarding(ipv6_config.ifname,
-                                    device->config().host_ifname())) {
-    LOG(ERROR) << "Failed to setup iptables for IPv6";
-    datapath_->RemoveIPv6Neighbor(ipv6_config.ifname, addr);
-    datapath_->RemoveIPv6HostRoute(config.host_ifname(), addr,
-                                   ipv6_config.prefix_len);
-    return;
-  }
-
   ctx->SetHasIPv6(table_id);
 }
 
@@ -559,7 +550,6 @@ void ArcService::TeardownIPv6(Device* device) {
   std::string router = buf;
 
   const auto& config = device->config();
-  datapath_->RemoveIPv6Forwarding(ipv6_config.ifname, config.host_ifname());
   datapath_->RemoveIPv6Neighbor(ipv6_config.ifname, addr);
   datapath_->RemoveIPv6HostRoute(config.host_ifname(), addr,
                                  ipv6_config.prefix_len);

@@ -15,7 +15,9 @@
 #include <shill/net/rtnl_listener.h>
 
 #include "arc/network/address_manager.h"
+#include "arc/network/datapath.h"
 #include "arc/network/device.h"
+#include "arc/network/helper_process.h"
 #include "arc/network/ipc.pb.h"
 #include "arc/network/shill_client.h"
 
@@ -62,10 +64,12 @@ class DeviceManagerBase {
 // Virtual methods for testing.
 class DeviceManager : public DeviceManagerBase {
  public:
-  // |addr_mgr| must not be null.
+  // |addr_mgr| and |datapath| must not be null.
   DeviceManager(std::unique_ptr<ShillClient> shill_client,
                 AddressManager* addr_mgr,
-                bool is_arc_legacy);
+                Datapath* datapath,
+                bool is_arc_legacy,
+                HelperProcess* nd_proxy = nullptr);
   virtual ~DeviceManager();
 
   // Used by guest service implementations to be notified when tracked devices
@@ -138,6 +142,9 @@ class DeviceManager : public DeviceManagerBase {
   // Connected devices keyed by the interface name.
   // The legacy device is mapped to the Android interface name.
   std::map<std::string, std::unique_ptr<Device>> devices_;
+
+  Datapath* datapath_;
+  HelperProcess* nd_proxy_;
 
   const bool is_arc_legacy_;
   std::string default_ifname_;

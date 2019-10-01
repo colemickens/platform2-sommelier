@@ -8,8 +8,8 @@
 #include <memory>
 #include <utility>
 
-#include <base/files/scoped_file.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/flag_helper.h>
@@ -102,6 +102,7 @@ int main(int argc, char* argv[]) {
       (FLAGS_force_multinet == "on") ||
       ((FLAGS_force_multinet != "off") && ShouldEnableMultinet());
   LOG(INFO) << "Starting arc-networkd manager";
-  arc_networkd::Manager manager(std::move(adb_proxy), enable_mnet);
+  arc_networkd::Manager manager(std::move(adb_proxy), std::move(nd_proxy),
+                                enable_mnet);
   return manager.Run();
 }

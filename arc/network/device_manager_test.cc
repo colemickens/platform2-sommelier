@@ -16,7 +16,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "arc/network/fake_process_runner.h"
 #include "arc/network/fake_shill_client.h"
+#include "arc/network/mock_datapath.h"
 #include "arc/network/net_util.h"
 
 namespace arc_networkd {
@@ -41,14 +43,19 @@ class DeviceManagerTest : public testing::Test {
  protected:
   DeviceManagerTest() = default;
 
-  void SetUp() override {}
+  void SetUp() override {
+    fpr_ = std::make_unique<FakeProcessRunner>();
+    fpr_->Capture(false);
+    datapath_ = std::make_unique<MockDatapath>(fpr_.get());
+  }
 
   std::unique_ptr<DeviceManager> NewManager(bool is_arc_legacy = false) {
     shill_helper_ = std::make_unique<FakeShillClientHelper>();
     auto shill_client = shill_helper_->FakeClient();
     shill_client_ = shill_client.get();
-    auto mgr = std::make_unique<DeviceManager>(std::move(shill_client),
-                                               &addr_mgr_, is_arc_legacy);
+
+    auto mgr = std::make_unique<DeviceManager>(
+        std::move(shill_client), &addr_mgr_, datapath_.get(), is_arc_legacy);
     return mgr;
   }
 
@@ -57,6 +64,9 @@ class DeviceManagerTest : public testing::Test {
  private:
   std::unique_ptr<FakeShillClientHelper> shill_helper_;
   FakeAddressManager addr_mgr_;
+
+  std::unique_ptr<MockDatapath> datapath_;
+  std::unique_ptr<FakeProcessRunner> fpr_;
 
   // This is required because of the RT netlink handler.
   base::MessageLoopForIO msg_loop_;
@@ -73,7 +83,7 @@ TEST_F(DeviceManagerTest, MakeEthernetDevices) {
   EXPECT_EQ(cfg.guest_ifname(), "eth0");
   EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 9));
   EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 10));
-  EXPECT_TRUE(eth0->options().find_ipv6_routes);
+  EXPECT_TRUE(eth0->options().ipv6_enabled);
 
   auto usb0 = mgr->MakeDevice("usb0");
   const auto& cfgu = usb0->config();
@@ -81,7 +91,7 @@ TEST_F(DeviceManagerTest, MakeEthernetDevices) {
   EXPECT_EQ(cfgu.guest_ifname(), "usb0");
   EXPECT_EQ(cfgu.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 13));
   EXPECT_EQ(cfgu.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 14));
-  EXPECT_TRUE(usb0->options().find_ipv6_routes);
+  EXPECT_TRUE(usb0->options().ipv6_enabled);
 }
 
 TEST_F(DeviceManagerTest, MakeWifiDevices) {
@@ -92,7 +102,7 @@ TEST_F(DeviceManagerTest, MakeWifiDevices) {
   EXPECT_EQ(cfg.guest_ifname(), "wlan0");
   EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 9));
   EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 10));
-  EXPECT_TRUE(wlan0->options().find_ipv6_routes);
+  EXPECT_TRUE(wlan0->options().ipv6_enabled);
 
   auto mlan0 = mgr->MakeDevice("mlan0");
   const auto& cfgm = mlan0->config();
@@ -100,7 +110,7 @@ TEST_F(DeviceManagerTest, MakeWifiDevices) {
   EXPECT_EQ(cfgm.guest_ifname(), "mlan0");
   EXPECT_EQ(cfgm.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 13));
   EXPECT_EQ(cfgm.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 14));
-  EXPECT_TRUE(mlan0->options().find_ipv6_routes);
+  EXPECT_TRUE(mlan0->options().ipv6_enabled);
 }
 
 TEST_F(DeviceManagerTest, MakeCellularDevice) {
@@ -111,7 +121,7 @@ TEST_F(DeviceManagerTest, MakeCellularDevice) {
   EXPECT_EQ(cfg.guest_ifname(), "wwan0");
   EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 9));
   EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 10));
-  EXPECT_FALSE(wwan0->options().find_ipv6_routes);
+  EXPECT_FALSE(wwan0->options().ipv6_enabled);
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_Android) {
@@ -122,7 +132,7 @@ TEST_F(DeviceManagerTest, MakeDevice_Android) {
   EXPECT_EQ(cfg.guest_ifname(), "arc0");
   EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 1));
   EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 2));
-  EXPECT_FALSE(arc0->options().find_ipv6_routes);
+  EXPECT_FALSE(arc0->options().ipv6_enabled);
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_LegacyAndroid) {
@@ -133,7 +143,7 @@ TEST_F(DeviceManagerTest, MakeDevice_LegacyAndroid) {
   EXPECT_EQ(cfg.guest_ifname(), "arc0");
   EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 1));
   EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 2));
-  EXPECT_TRUE(arc0->options().find_ipv6_routes);
+  EXPECT_TRUE(arc0->options().ipv6_enabled);
 }
 
 TEST_F(DeviceManagerTest, MakeVpnTunDevice) {
@@ -144,7 +154,7 @@ TEST_F(DeviceManagerTest, MakeVpnTunDevice) {
   EXPECT_EQ(cfg.guest_ifname(), "cros_tun0");
   EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 9));
   EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 10));
-  EXPECT_FALSE(tun0->options().find_ipv6_routes);
+  EXPECT_FALSE(tun0->options().ipv6_enabled);
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_NoMoreSubnets) {

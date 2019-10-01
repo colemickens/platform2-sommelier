@@ -153,14 +153,15 @@ void Device::Enable(const std::string& ifname) {
     }
   }
 
-  StartIPv6Routing(ifname);
+  if (options_.ipv6_enabled && options_.find_ipv6_routes_legacy)
+    StartIPv6RoutingLegacy(ifname);
 }
 
-void Device::StartIPv6Routing(const std::string& ifname) {
+void Device::StartIPv6RoutingLegacy(const std::string& ifname) {
   if (!IsFullyUp())
     return;
 
-  if (!options_.find_ipv6_routes || router_finder_)
+  if (router_finder_)
     return;
 
   LOG(INFO) << "Starting IPV6 route finding for device " << ifname_
@@ -183,10 +184,11 @@ void Device::Disable() {
     LOG(INFO) << "Disabling mDNS forwarding for device " << ifname_;
     mdns_forwarder_.reset();
   }
-  StopIPv6Routing();
+  if (options_.ipv6_enabled && options_.find_ipv6_routes_legacy)
+    StopIPv6RoutingLegacy();
 }
 
-void Device::StopIPv6Routing() {
+void Device::StopIPv6RoutingLegacy() {
   if (neighbor_finder_ || router_finder_) {
     LOG(INFO) << "Disabling IPv6 route finding for device " << ifname_;
     neighbor_finder_.reset();
@@ -277,7 +279,9 @@ std::ostream& operator<<(std::ostream& stream, const Device& device) {
          << ", guest_mac_addr: "
          << MacAddressToString(device.config_->guest_mac_addr())
          << ", fwd_multicast: " << device.options_.fwd_multicast
-         << ", find_ipv6_routes: " << device.options_.find_ipv6_routes << '}';
+         << ", ipv6_enabled: " << device.options_.ipv6_enabled
+         << ", find_ipv6_routes: " << device.options_.find_ipv6_routes_legacy
+         << '}';
   return stream;
 }
 

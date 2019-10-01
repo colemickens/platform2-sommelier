@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <map>
 #include <memory>
 #include <string>
 
@@ -83,7 +84,8 @@ class Device {
 
   struct Options {
     bool fwd_multicast;
-    bool find_ipv6_routes;
+    bool ipv6_enabled;
+    bool find_ipv6_routes_legacy;
   };
 
   struct IPv6Config {
@@ -123,8 +125,8 @@ class Device {
   void Enable(const std::string& ifname);
   void Disable();
 
-  void StartIPv6Routing(const std::string& ifname);
-  void StopIPv6Routing();
+  void StartIPv6RoutingLegacy(const std::string& ifname);
+  void StopIPv6RoutingLegacy();
 
   void OnGuestStart(GuestMessage::GuestType guest);
   void OnGuestStop(GuestMessage::GuestType guest);

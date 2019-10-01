@@ -26,9 +26,10 @@ class DeviceTest : public testing::Test {
  protected:
   void SetUp() override { ipv6_down_ = false; }
 
-  std::unique_ptr<Device> NewDevice(
-      const std::string& name,
-      const Device::Options& options = Device::Options()) {
+  std::unique_ptr<Device> NewDevice(const std::string& name,
+                                    const Device::Options& options = {
+                                        .ipv6_enabled = true,
+                                        .find_ipv6_routes_legacy = true}) {
     auto ipv4_subnet = std::make_unique<Subnet>(Ipv4Addr(100, 100, 100, 100),
                                                 30, base::Bind(&DoNothing));
     EXPECT_TRUE(ipv4_subnet);

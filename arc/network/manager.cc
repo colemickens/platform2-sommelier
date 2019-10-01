@@ -28,8 +28,11 @@
 
 namespace arc_networkd {
 
-Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy, bool enable_multinet)
+Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy,
+                 std::unique_ptr<HelperProcess> nd_proxy,
+                 bool enable_multinet)
     : adb_proxy_(std::move(adb_proxy)),
+      nd_proxy_(std::move(nd_proxy)),
       addr_mgr_({
           AddressManager::Guest::ARC,
           AddressManager::Guest::ARC_NET,
@@ -84,7 +87,7 @@ int Manager::OnInit() {
 void Manager::InitialSetup() {
   device_mgr_ = std::make_unique<DeviceManager>(
       std::make_unique<ShillClient>(std::move(bus_)), &addr_mgr_,
-      !enable_multinet_);
+      datapath_.get(), !enable_multinet_, nd_proxy_.get());
 
   arc_svc_ = std::make_unique<ArcService>(device_mgr_.get(), datapath_.get(),
                                           !enable_multinet_);

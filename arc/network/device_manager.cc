@@ -23,6 +23,11 @@ constexpr const char kVpnInterfaceGuestPrefix[] = "cros_";
 constexpr std::array<const char*, 2> kEthernetInterfacePrefixes{{"eth", "usb"}};
 constexpr std::array<const char*, 2> kWifiInterfacePrefixes{{"wlan", "mlan"}};
 
+// Global compile time switch for the method configuring Ipv6 address for ARC.
+// When set to true, arc-networkd will try to generate an address and set onto
+// ARC interface (legacy method); when set to false, NDProxy is enabled.
+constexpr const bool kFindIpv6RoutesLegacy = true;
+
 bool IsArcDevice(const std::string& ifname) {
   return base::StartsWith(ifname, kArcDevicePrefix,
                           base::CompareCase::INSENSITIVE_ASCII);
@@ -85,12 +90,18 @@ bool IsMulticastInterface(const std::string& ifname) {
 
 DeviceManager::DeviceManager(std::unique_ptr<ShillClient> shill_client,
                              AddressManager* addr_mgr,
-                             bool is_arc_legacy)
+                             Datapath* datapath,
+                             bool is_arc_legacy,
+                             HelperProcess* nd_proxy)
     : shill_client_(std::move(shill_client)),
       addr_mgr_(addr_mgr),
+      datapath_(datapath),
+      nd_proxy_(nd_proxy),
       is_arc_legacy_(is_arc_legacy) {
   DCHECK(shill_client_);
   DCHECK(addr_mgr_);
+  DCHECK(datapath_);
+
   link_listener_ = std::make_unique<shill::RTNLListener>(
       shill::RTNLHandler::kRequestLink,
       Bind(&DeviceManager::LinkMsgHandler, weak_factory_.GetWeakPtr()));
@@ -156,9 +167,18 @@ bool DeviceManager::Add(const std::string& name) {
 
   LOG(INFO) << "Adding device " << *device;
 
-  device->RegisterIPv6SetupHandler(base::Bind(
-      &DeviceManager::OnIPv6AddressFound, weak_factory_.GetWeakPtr()));
-
+  if (device->options().ipv6_enabled) {
+    if (!datapath_->AddIPv6Forwarding(device->ifname(),
+                                      device->config().host_ifname())) {
+      LOG(ERROR) << "Failed to setup iptables forwarding rule for IPv6 from "
+                 << device->ifname() << " to "
+                 << device->config().host_ifname();
+    }
+    if (device->options().find_ipv6_routes_legacy) {
+      device->RegisterIPv6SetupHandler(base::Bind(
+          &DeviceManager::OnIPv6AddressFound, weak_factory_.GetWeakPtr()));
+    }
+  }
   for (auto& h : add_handlers_) {
     h.Run(device.get());
   }
@@ -173,6 +193,11 @@ bool DeviceManager::Remove(const std::string& name) {
     return false;
 
   LOG(INFO) << "Removing device " << name;
+
+  if (it->second->options().ipv6_enabled) {
+    datapath_->RemoveIPv6Forwarding(it->second->ifname(),
+                                    it->second->config().host_ifname());
+  }
 
   for (auto& h : rm_handlers_) {
     h.Run(it->second.get());
@@ -231,8 +256,18 @@ void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
   if (!link_up) {
     LOG(INFO) << ifname << " is now down";
     device->Disable();
+    if (nd_proxy_ && device->options().ipv6_enabled &&
+        !device->options().find_ipv6_routes_legacy) {
+      DeviceMessage msg;
+      msg.set_dev_ifname(device->ifname());
+      msg.set_teardown(true);
+      IpHelperMessage ipm;
+      *ipm.mutable_device_message() = msg;
+      nd_proxy_->SendMessage(ipm);
+    }
     return;
   }
+
   // The link is now up.
   LOG(INFO) << ifname << " is now up";
 
@@ -240,6 +275,16 @@ void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
     device->Enable(default_ifname_);
   else if (!device->IsAndroid())
     device->Enable(device->config().guest_ifname());
+
+  if (nd_proxy_ != nullptr && device->options().ipv6_enabled &&
+      !device->options().find_ipv6_routes_legacy) {
+    DeviceMessage msg;
+    msg.set_dev_ifname(device->ifname());
+    msg.set_br_ifname(device->config().host_ifname());
+    IpHelperMessage ipm;
+    *ipm.mutable_device_message() = msg;
+    nd_proxy_->SendMessage(ipm);
+  }
 }
 
 std::unique_ptr<Device> DeviceManager::MakeDevice(
@@ -253,7 +298,8 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
   if (name == kAndroidLegacyDevice) {
     host_ifname = "arcbr0";
     guest_ifname = "arc0";
-    opts.find_ipv6_routes = true;
+    opts.ipv6_enabled = true;
+    opts.find_ipv6_routes_legacy = kFindIpv6RoutesLegacy;
     opts.fwd_multicast = true;
   } else {
     if (name == kAndroidDevice) {
@@ -274,10 +320,11 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
     if (IsHostVpnInterface(guest_ifname)) {
       guest_ifname = kVpnInterfaceGuestPrefix + guest_ifname;
     }
-    // TODO(crbug/726815) Also enable |find_ipv6_routes| for cellular networks
+    // TODO(crbug/726815) Also enable |ipv6_enabled| for cellular networks
     // once IPv6 is enabled on cellular networks in shill.
-    opts.find_ipv6_routes =
+    opts.ipv6_enabled =
         IsEthernetInterface(guest_ifname) || IsWifiInterface(guest_ifname);
+    opts.find_ipv6_routes_legacy = kFindIpv6RoutesLegacy;
   }
 
   auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(guest);
