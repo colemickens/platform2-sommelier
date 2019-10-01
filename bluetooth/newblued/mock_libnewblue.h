@@ -24,7 +24,10 @@ class MockLibNewblue : public LibNewblue {
   MOCK_METHOD(void, GattProfileDeinit, (), (override));
   MOCK_METHOD(gatt_client_conn_t,
               GattClientConnect,
-              (void* userData, const struct bt_addr*, gattCliConnectResultCbk),
+              (void* userData,
+               const struct bt_addr*,
+               const GattConnectParameters*,
+               gattCliConnectResultCbk),
               (override));
   MOCK_METHOD(uint8_t, GattClientDisconnect, (gatt_client_conn_t), (override));
   MOCK_METHOD(uint8_t,

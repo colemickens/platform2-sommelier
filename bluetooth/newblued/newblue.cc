@@ -217,7 +217,7 @@ gatt_client_conn_t Newblue::GattClientConnect(const std::string& device_address,
   struct bt_addr address;
   CHECK(ConvertToBtAddr(is_random_address, device_address, &address));
   gatt_client_conn_t conn_id = libnewblue_->GattClientConnect(
-      this, &address, &Newblue::GattConnectCallbackThunk);
+      this, &address, nullptr, &Newblue::GattConnectCallbackThunk);
   return conn_id;
 }
 
