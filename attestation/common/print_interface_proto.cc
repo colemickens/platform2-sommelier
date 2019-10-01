@@ -1556,11 +1556,11 @@ std::string GetProtoDebugStringWithIndent(const GetCertifiedNvIndexReply& value,
             .c_str());
     output += "\n";
   }
-  if (value.has_identity_certificate()) {
-    output += indent + "  identity_certificate: ";
+  if (value.has_key_certificate()) {
+    output += indent + "  key_certificate: ";
     base::StringAppendF(&output, "%s",
-                        base::HexEncode(value.identity_certificate().data(),
-                                        value.identity_certificate().size())
+                        base::HexEncode(value.key_certificate().data(),
+                                        value.key_certificate().size())
 
                             .c_str());
     output += "\n";

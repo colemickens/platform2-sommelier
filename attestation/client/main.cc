@@ -136,8 +136,9 @@ Commands:
         Otherwise the value from cache is returned if present.
 
   get_certified_nv_index [--index=<nv_index>] [--size=<bytes>]
-          [--output=<output_file>]
-      Returns a copy of the specified NV index, certified by the identity key.
+          [--key=<key_label>] [--output=<output_file>]
+      Returns a copy of the specified NV index, certified by the specified
+      key, eg "attest-ent-machine".
 )";
 
 // The Daemon class works well as a client loop as well.
@@ -450,7 +451,8 @@ class ClientLoop : public ClientLoopBase {
       task = base::Bind(&ClientLoop::GetCertifiedNvIndex,
                         weak_factory_.GetWeakPtr(),
                         command_line->GetSwitchValueASCII("index"),
-                        command_line->GetSwitchValueASCII("size"));
+                        command_line->GetSwitchValueASCII("size"),
+                        command_line->GetSwitchValueASCII("key_label"));
     } else {
       return EX_USAGE;
     }
@@ -868,7 +870,8 @@ class ClientLoop : public ClientLoopBase {
   }
 
   void GetCertifiedNvIndex(const std::string& index,
-                           const std::string& size_bytes) {
+                           const std::string& size_bytes,
+                           const std::string& key_label) {
     GetCertifiedNvIndexRequest request;
     uint32_t parsed_index;
     uint32_t parsed_size;
@@ -880,6 +883,8 @@ class ClientLoop : public ClientLoopBase {
 
     request.set_nv_index(parsed_index);
     request.set_nv_size(parsed_size);
+    request.set_key_label(key_label);
+
     attestation_->GetCertifiedNvIndex(
         request, base::Bind(&ClientLoop::OnGetCertifiedNvIndexComplete,
                             weak_factory_.GetWeakPtr()));

@@ -2957,25 +2957,11 @@ void AttestationService::GetCertifiedNvIndexTask(
     const std::shared_ptr<GetCertifiedNvIndexReply>& result) {
   result->set_status(STATUS_NOT_AVAILABLE);
 
-  auto database_pb = database_->GetProtobuf();
-  if (database_pb.identities().size() < kFirstIdentity) {
-    LOG(ERROR) << __func__ << ": Cannot certify NV index, identity "
-               << kFirstIdentity << " does not exist.";
-    return;
-  }
-
-  const auto& identity_pb = database_pb.identities(kFirstIdentity);
-  if (!identity_pb.has_identity_key()) {
-    LOG(ERROR) << __func__ << ": Identify key missing";
-    return;
-  }
-
-  auto cert_it = FindIdentityCertificate(kFirstIdentity, DEFAULT_ACA);
-  if (cert_it ==
-      database_->GetMutableProtobuf()->mutable_identity_certificates()->end()) {
-    LOG(ERROR) << __func__ << ": Identity " << kFirstIdentity
-               << " is not enrolled for attestation with "
-               << GetACAName(DEFAULT_ACA) << ".";
+  CertifiedKey key;
+  if (!FindKeyByLabel(std::string(), request.key_label(), &key)) {
+    LOG(WARNING) << "Attempted to certify NV space with missing key, label: "
+                 << request.key_label();
+    result->set_status(STATUS_INVALID_PARAMETER);
     return;
   }
 
@@ -2983,23 +2969,18 @@ void AttestationService::GetCertifiedNvIndexTask(
   std::string signature;
 
   if (!tpm_utility_->CertifyNV(request.nv_index(), request.nv_size(),
-                               identity_pb.identity_key().identity_key_blob(),
-                               &certified_value, &signature)) {
+                               key.key_blob(), &certified_value, &signature)) {
     LOG(WARNING) << "Attestation: Failed to certify NV data of size "
                  << request.nv_size() << " at index " << std::hex
-                 << std::showbase << request.nv_index() << ".";
+                 << std::showbase << request.nv_index()
+                 << ", using key with label: " << request.key_label();
     result->set_status(STATUS_INVALID_PARAMETER);
     return;
   }
 
-  const auto& identity_certificate = cert_it->second;
-  if (identity_certificate.has_identity_credential()) {
-    result->set_identity_certificate(
-        identity_certificate.identity_credential());
-  }
-
   result->set_certified_data(certified_value);
   result->set_signature(signature);
+  result->set_key_certificate(key.certified_key_credential());
   result->set_status(STATUS_SUCCESS);
 }
 
