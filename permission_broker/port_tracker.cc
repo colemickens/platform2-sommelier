@@ -87,67 +87,45 @@ PortTracker::~PortTracker() {
 bool PortTracker::AllowTcpPortAccess(uint16_t port,
                                      const std::string& iface,
                                      int dbus_fd) {
-  Hole hole = std::make_pair(port, iface);
-  if (tcp_fds_.find(hole) != tcp_fds_.end()) {
-    // This can happen when a requesting process has just been restarted but
-    // the scheduled lifeline FD check hasn't yet been performed, so we might
-    // have stale file descriptors around.
-    // Force the FD check to see if they will be removed now.
-    CheckLifelineFds(false /* reschedule_check */);
-
-    // Then try again. If this still fails, we know it's an invalid request.
-    if (tcp_fds_.find(hole) != tcp_fds_.end()) {
-      LOG(ERROR) << "Hole already punched for TCP port " << port;
-      return false;
-    }
-  }
-
-  // Check if the port is not already being forwarded.
   PortRuleKey key = {
       .proto = kProtocolTcp,
       .input_dst_port = port,
       .input_ifname = iface,
   };
-  if (forwarding_rules_fds_.find(key) != forwarding_rules_fds_.end()) {
-    // Remove stale lifeline fds and recheck.
-    CheckLifelineFds(false /* reschedule_check */);
-
-    if (forwarding_rules_fds_.find(key) != forwarding_rules_fds_.end()) {
-      LOG(ERROR) << "Already forwarding " << key;
-      return false;
-    }
-  }
-
-  // We use |lifeline_fd| to track the lifetime of the process requesting
-  // port access.
-  int lifeline_fd = AddLifelineFd(dbus_fd);
-  if (lifeline_fd < 0) {
-    LOG(ERROR) << "Tracking lifeline fd for TCP port " << port << " failed";
-    return false;
-  }
-
-  // Track the hole.
-  tcp_holes_[lifeline_fd] = hole;
-  tcp_fds_[hole] = lifeline_fd;
-
-  bool success = firewall_->AddAcceptRules(kProtocolTcp, port, iface);
-  if (!success) {
-    // If we fail to punch the hole in the firewall, stop tracking the lifetime
-    // of the process.
-    LOG(ERROR) << "Failed to punch hole for TCP port " << port;
-    DeleteLifelineFd(lifeline_fd);
-    tcp_holes_.erase(lifeline_fd);
-    tcp_fds_.erase(hole);
-    return false;
-  }
-  return true;
+  return OpenPort(key, dbus_fd);
 }
 
 bool PortTracker::AllowUdpPortAccess(uint16_t port,
                                      const std::string& iface,
                                      int dbus_fd) {
-  Hole hole = std::make_pair(port, iface);
-  if (udp_fds_.find(hole) != udp_fds_.end()) {
+  PortRuleKey key = {
+      .proto = kProtocolUdp,
+      .input_dst_port = port,
+      .input_ifname = iface,
+  };
+  return OpenPort(key, dbus_fd);
+}
+
+bool PortTracker::RevokeTcpPortAccess(uint16_t port, const std::string& iface) {
+  PortRuleKey key = {
+      .proto = kProtocolTcp,
+      .input_dst_port = port,
+      .input_ifname = iface,
+  };
+  return ClosePort(key);
+}
+
+bool PortTracker::RevokeUdpPortAccess(uint16_t port, const std::string& iface) {
+  PortRuleKey key = {
+      .proto = kProtocolUdp,
+      .input_dst_port = port,
+      .input_ifname = iface,
+  };
+  return ClosePort(key);
+}
+
+bool PortTracker::OpenPort(const PortRuleKey& key, int dbus_fd) {
+  if (open_port_fds_.find(key) != open_port_fds_.end()) {
     // This can happen when a requesting process has just been restarted but
     // the scheduled lifeline FD check hasn't yet been performed, so we might
     // have stale file descriptors around.
@@ -155,18 +133,13 @@ bool PortTracker::AllowUdpPortAccess(uint16_t port,
     CheckLifelineFds(false /* reschedule_check */);
 
     // Then try again. If this still fails, we know it's an invalid request.
-    if (udp_fds_.find(hole) != udp_fds_.end()) {
-      LOG(ERROR) << "Hole already punched for UDP port " << port;
+    if (open_port_fds_.find(key) != open_port_fds_.end()) {
+      LOG(ERROR) << "Hole already punched for " << key;
       return false;
     }
   }
 
   // Check if the port is not already being forwarded.
-  PortRuleKey key = {
-      .proto = kProtocolUdp,
-      .input_dst_port = port,
-      .input_ifname = iface,
-  };
   if (forwarding_rules_fds_.find(key) != forwarding_rules_fds_.end()) {
     // Remove stale lifeline fds and recheck.
     CheckLifelineFds(false /* reschedule_check */);
@@ -181,64 +154,44 @@ bool PortTracker::AllowUdpPortAccess(uint16_t port,
   // port access.
   int lifeline_fd = AddLifelineFd(dbus_fd);
   if (lifeline_fd < 0) {
-    LOG(ERROR) << "Tracking lifeline fd for UDP port " << port << " failed";
+    LOG(ERROR) << "Tracking lifeline fd for port " << key << " failed";
     return false;
   }
 
-  // Track the hole.
-  udp_holes_[lifeline_fd] = hole;
-  udp_fds_[hole] = lifeline_fd;
+  // Track the port rule.
+  open_port_rules_[lifeline_fd] = key;
+  open_port_fds_[key] = lifeline_fd;
 
-  bool success = firewall_->AddAcceptRules(kProtocolUdp, port, iface);
+  bool success = firewall_->AddAcceptRules(key.proto, key.input_dst_port,
+                                           key.input_ifname);
   if (!success) {
     // If we fail to punch the hole in the firewall, stop tracking the lifetime
     // of the process.
-    LOG(ERROR) << "Failed to punch hole for UDP port " << port;
+    LOG(ERROR) << "Failed to punch hole for port " << key;
     DeleteLifelineFd(lifeline_fd);
-    udp_holes_.erase(lifeline_fd);
-    udp_fds_.erase(hole);
+    open_port_rules_.erase(lifeline_fd);
+    open_port_fds_.erase(key);
     return false;
   }
   return true;
 }
 
-bool PortTracker::RevokeTcpPortAccess(uint16_t port, const std::string& iface) {
-  Hole hole = std::make_pair(port, iface);
-  auto p = tcp_fds_.find(hole);
-  if (p == tcp_fds_.end()) {
-    LOG(ERROR) << "Not tracking TCP port " << port << " on interface '" << iface
-               << "'";
+bool PortTracker::ClosePort(const PortRuleKey& key) {
+  auto p = open_port_fds_.find(key);
+  if (p == open_port_fds_.end()) {
+    LOG(ERROR) << "Not tracking port " << key;
     return false;
   }
 
   int fd = p->second;
-  bool plugged = PlugFirewallHole(fd);
+  bool plugged = firewall_->DeleteAcceptRules(key.proto, key.input_dst_port,
+                                              key.input_ifname);
   bool deleted = DeleteLifelineFd(fd);
-  // PlugFirewallHole() prints an error message on failure,
-  // but DeleteLifelineFd() does not, and even if it did,
-  // we mock it out in tests.
-  if (!deleted) {
-    LOG(ERROR) << "Failed to delete file descriptor " << fd
-               << " from epoll instance";
+  open_port_rules_.erase(fd);
+  open_port_fds_.erase(key);
+  if (!plugged) {
+    LOG(ERROR) << "Failed to close open port " << key;
   }
-  return plugged && deleted;
-}
-
-bool PortTracker::RevokeUdpPortAccess(uint16_t port, const std::string& iface) {
-  Hole hole = std::make_pair(port, iface);
-  auto p = udp_fds_.find(hole);
-  if (p == udp_fds_.end()) {
-    LOG(ERROR) << "Not tracking UDP port " << port << " on interface '" << iface
-               << "'";
-    return false;
-  }
-
-  int fd = p->second;
-  bool plugged = PlugFirewallHole(fd);
-  bool deleted = DeleteLifelineFd(fd);
-  // PlugFirewallHole() prints an error message on failure,
-  // but DeleteLifelineFd() does not, and even if it did,
-  // we mock it out in tests.
   if (!deleted) {
     LOG(ERROR) << "Failed to delete file descriptor " << fd
                << " from epoll instance";
@@ -249,25 +202,18 @@ bool PortTracker::RevokeUdpPortAccess(uint16_t port, const std::string& iface) {
 void PortTracker::RevokeAllPortAccess() {
   VLOG(1) << "Revoking all port access";
 
-  // Copy the containers so that we can remove elements from the originals.
-  // TCP
-  auto holes = tcp_holes_;
-  for (const auto& hole : holes) {
-    int fd = hole.first;
-    PlugFirewallHole(fd);
-    DeleteLifelineFd(fd);
+  // Copy the container so that we can remove elements from the original.
+  std::vector<PortRuleKey> all_rules;
+  all_rules.reserve(open_port_rules_.size());
+  for (const auto& kv : open_port_rules_) {
+    all_rules.push_back(kv.second);
+  }
+  for (const PortRuleKey& key : all_rules) {
+    ClosePort(key);
   }
 
-  // UDP
-  holes = udp_holes_;
-  for (const auto& hole : holes) {
-    int fd = hole.first;
-    PlugFirewallHole(fd);
-    DeleteLifelineFd(fd);
-  }
-
-  CHECK(tcp_holes_.size() == 0) << "Failed to plug all TCP holes";
-  CHECK(udp_holes_.size() == 0) << "Failed to plug all UDP holes";
+  CHECK(open_port_rules_.size() == 0) << "Failed to plug all open ports";
+  CHECK(open_port_fds_.size() == 0) << "Failed to plug all open ports";
 }
 
 void PortTracker::UnblockLoopbackPorts() {
@@ -461,14 +407,17 @@ bool PortTracker::AddForwardingRule(const PortRule& rule, int dbus_fd) {
     return false;
   }
 
+  PortRuleKey key = {
+      .proto = rule.proto,
+      .input_dst_port = rule.input_dst_port,
+      .input_ifname = rule.input_ifname,
+  };
+
   // Check if the port is not already open for ingress traffic.
-  const std::map<Hole, int>& port_hole_map =
-      (rule.proto == kProtocolTcp) ? tcp_fds_ : udp_fds_;
-  Hole hole = std::make_pair(rule.input_dst_port, rule.input_ifname);
-  if (port_hole_map.find(hole) != port_hole_map.end()) {
+  if (open_port_fds_.find(key) != open_port_fds_.end()) {
     // Remove stale lifeline fds and recheck.
     CheckLifelineFds(false /* reschedule_check */);
-    if (port_hole_map.find(hole) != port_hole_map.end()) {
+    if (open_port_fds_.find(key) != open_port_fds_.end()) {
       LOG(ERROR) << "Cannot apply forwarding rule " << rule
                  << ": port is already open for ingress traffic";
       return false;
@@ -476,11 +425,6 @@ bool PortTracker::AddForwardingRule(const PortRule& rule, int dbus_fd) {
   }
 
   // Check if the port is not already forwarded.
-  PortRuleKey key = {
-      .proto = rule.proto,
-      .input_dst_port = rule.input_dst_port,
-      .input_ifname = rule.input_ifname,
-  };
   if (forwarding_rules_fds_.find(key) != forwarding_rules_fds_.end()) {
     // Remove stale lifeline fds and recheck.
      /* reschedule_check */CheckLifelineFds(false /* reschedule_check */);
@@ -636,41 +580,18 @@ void PortTracker::ScheduleLifelineCheck() {
 }
 
 bool PortTracker::HasActiveRules() {
-  return !tcp_holes_.empty() || !udp_holes_.empty() ||
-         !tcp_loopback_ports_.empty() || !forwarding_rules_.empty();
+  return !open_port_rules_.empty() || !tcp_loopback_ports_.empty() ||
+         !forwarding_rules_.empty();
 }
 
 bool PortTracker::PlugFirewallHole(int fd) {
-  bool success = false;
-  Hole hole;
-  if (tcp_holes_.find(fd) != tcp_holes_.end()) {
-    // It was a TCP hole.
-    hole = tcp_holes_[fd];
-    success = firewall_->DeleteAcceptRules(kProtocolTcp, hole.first /* port */,
-                                          hole.second /* interface */);
-    tcp_holes_.erase(fd);
-    tcp_fds_.erase(hole);
-    if (!success) {
-      LOG(ERROR) << "Failed to plug hole for TCP port " << hole.first
-                 << " on interface '" << hole.second << "'";
-      return false;
-    }
-  } else if (udp_holes_.find(fd) != udp_holes_.end()) {
-    // It was a UDP hole.
-    hole = udp_holes_[fd];
-    success = firewall_->DeleteAcceptRules(kProtocolUdp, hole.first /* port */,
-                                          hole.second /* interface */);
-    udp_holes_.erase(fd);
-    udp_fds_.erase(hole);
-    if (!success) {
-      LOG(ERROR) << "Failed to plug hole for UDP port " << hole.first
-                 << " on interface '" << hole.second << "'";
-      return false;
-    }
+  if (open_port_rules_.find(fd) != open_port_rules_.end()) {
+    // It was a port accept rule.
+    return ClosePort(open_port_rules_[fd]);
   } else if (tcp_loopback_ports_.find(fd) != tcp_loopback_ports_.end()) {
     // It was a blocked TCP loopback port.
     uint16_t port = tcp_loopback_ports_[fd];
-    success = firewall_->DeleteLoopbackLockdownRules(kProtocolTcp, port);
+    bool success = firewall_->DeleteLoopbackLockdownRules(kProtocolTcp, port);
     tcp_loopback_ports_.erase(fd);
     tcp_loopback_fds_.erase(port);
     if (!success) {

@@ -98,6 +98,8 @@ class PortTracker {
   virtual void ScheduleLifelineCheck();
 
   bool PlugFirewallHole(int fd);
+  bool OpenPort(const PortRuleKey& key, int dbus_fd);
+  bool ClosePort(const PortRuleKey& key);
   bool AddForwardingRule(const PortRule& rule, int dbus_fd);
   bool RemoveForwardingRule(const PortRuleKey& key);
 
@@ -107,16 +109,14 @@ class PortTracker {
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
   int epfd_;
 
-  // For each fd (process), keep track of which hole (port, interface)
+  // For each fd (process), keep track of which hole (protocol, port, interface)
   // it requested.
-  std::map<int, Hole> tcp_holes_;
-  std::map<int, Hole> udp_holes_;
+  std::map<int, PortRuleKey> open_port_rules_;
 
-  // For each hole (port, interface), keep track of which fd requested it.
-  // We need this for Release{Tcp|Udp}Port(), to avoid traversing
-  // |{tcp|udp}_holes_| each time.
-  std::map<Hole, int> tcp_fds_;
-  std::map<Hole, int> udp_fds_;
+  // For each hole (protocol, port, interface), keep track of which fd
+  // requested it.  We need this for Release{Tcp|Udp}Port(), to avoid
+  // traversing |open_port_rules_| each time.
+  std::unordered_map<PortRuleKey, int, PortRuleKeyHasher> open_port_fds_;
 
   // For each fd (process), keep track of which loopback port it requested.
   std::map<int, uint16_t> tcp_loopback_ports_;
