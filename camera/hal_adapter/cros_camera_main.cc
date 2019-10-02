@@ -32,7 +32,7 @@ static void SetLogItems() {
 int main(int argc, char* argv[]) {
   // Init CommandLine for InitLogging.
   base::CommandLine::Init(argc, argv);
-  int kCameraProcessPriority = -20;
+  int kCameraProcessPriority = 0;
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
   // Override the log items set by brillo::InitLog.

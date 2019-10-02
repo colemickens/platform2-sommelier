@@ -26,7 +26,7 @@
 
 int main(int argc, char** argv) {
   static base::AtExitManager exit_manager;
-  int kCameraProcessPriority = -20;
+  int kCameraProcessPriority = 0;
 
   // Set up logging so we can enable VLOGs with -v / --vmodule.
   base::CommandLine::Init(argc, argv);
