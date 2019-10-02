@@ -4,6 +4,8 @@
 
 #include "cros-disks/fuse_mount_manager.h"
 
+#include <sys/mount.h>
+
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -105,13 +107,32 @@ MountErrorType FUSEMountManager::DoUnmount(
   // DoUnmount() is always called with |path| being the mount path.
   CHECK(!path.empty()) << "Invalid path argument";
 
-  int unmount_flags;
-  if (!ExtractUnmountOptions(options, &unmount_flags)) {
-    LOG(ERROR) << "Invalid unmount options";
-    return MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS;
+  LOG_IF(WARNING, !options.empty()) << "Ignoring non-empty unmount options";
+
+  // We take a 2-step approach to unmounting network FUSE filesystems. First,
+  // try a normal unmount. This lets the VFS flush any pending data and lets the
+  // filesystem shut down cleanly. If the filesystem is busy, force unmount the
+  // filesystem. This is done because there is no recovery path the user can
+  // take, and these filesystem are generally mounted and unmounted implicitly
+  // on login/logout/suspend. This action is similar to disk-based filesystems
+  // which are lazy unmounted if a regular unmount fails because the filesystem
+  // is busy.
+
+  MountErrorType error = platform()->Unmount(path, 0 /* flags */);
+  if (error != MOUNT_ERROR_PATH_ALREADY_MOUNTED) {
+    // MOUNT_ERROR_PATH_ALREADY_MOUNTED is returned on EBUSY.
+    return error;
   }
 
-  return platform()->Unmount(path, unmount_flags);
+  // For FUSE filesystems, MNT_FORCE will cause the kernel driver to immediately
+  // close the channel to the user-space driver program and cancel all
+  // outstanding requests. However, if any program is still accessing the
+  // filesystem, the umount2() will fail with EBUSY and the mountpoint will
+  // still be attached. Since the mountpoint is no longer valid, use MNT_DETACH
+  // to also force the mountpoint to be disconnected.
+  LOG(WARNING) << "Mount point " << quote(path)
+               << " is busy, using force unmount";
+  return platform()->Unmount(path, MNT_FORCE | MNT_DETACH);
 }
 
 bool FUSEMountManager::CanMount(const std::string& source) const {

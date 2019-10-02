@@ -69,6 +69,7 @@ class FUSEMountManager : public MountManager {
 
  private:
   FRIEND_TEST(FUSEMountManagerTest, DoUnmount);
+  FRIEND_TEST(FUSEMountManagerTest, DoUnmount_Busy);
   FRIEND_TEST(FUSEMountManagerTest, SuggestMountPath);
   friend class FUSEMountManagerTest;
 
