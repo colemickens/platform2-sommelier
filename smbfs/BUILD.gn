@@ -3,11 +3,13 @@
 # found in the LICENSE file.
 
 import("//common-mk/generate-dbus-proxies.gni")
+import("//common-mk/mojom_bindings_generator.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
     ":dbus_bindings",
+    ":mojo_bindings",
     ":smbfs",
   ]
   if (use.test) {
@@ -19,6 +21,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "libmojo-${libbase_ver}",
     "fuse",
     "smbclient",
 
@@ -59,6 +62,7 @@ static_library("libsmbfs") {
   configs += [ ":target_defaults" ]
   deps = [
     ":dbus_bindings",
+    ":mojo_bindings",
   ]
 }
 
@@ -68,6 +72,14 @@ generate_dbus_proxies("dbus_bindings") {
   ]
   proxy_output_file = "include/smbfs/dbus-proxies.h"
   mock_output_file = "include/smbfs/dbus-proxy-mocks.h"
+}
+
+generate_mojom_bindings("mojo_bindings") {
+  mojo_root = "${platform2_root}"
+  sources = [
+    "mojom/smbfs.mojom",
+  ]
+  configs = [ ":target_defaults" ]
 }
 
 executable("smbfs") {

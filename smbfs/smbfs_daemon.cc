@@ -12,9 +12,15 @@
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <brillo/message_loops/message_loop.h>
 #include <brillo/daemons/dbus_daemon.h>
+#include <chromeos/dbus/service_constants.h>
+#include <mojo/core/embedder/embedder.h>
+#include <mojo/edk/embedder/embedder.h>
+#include <mojo/edk/embedder/platform_channel_pair.h>
 
+#include "smbfs/dbus-proxies.h"
 #include "smbfs/fuse_session.h"
 #include "smbfs/smb_filesystem.h"
 #include "smbfs/smbfs.h"
@@ -45,6 +51,32 @@ bool CreateDirectoryAndLog(const base::FilePath& path) {
                           << ": " << base::File::ErrorToString(error);
   return success;
 }
+
+mojom::MountError ConnectErrorToMountError(SmbFilesystem::ConnectError error) {
+  switch (error) {
+    case SmbFilesystem::ConnectError::kNotFound:
+      return mojom::MountError::kNotFound;
+    case SmbFilesystem::ConnectError::kAccessDenied:
+      return mojom::MountError::kAccessDenied;
+    case SmbFilesystem::ConnectError::kSmb1Unsupported:
+      return mojom::MountError::kInvalidProtocol;
+    default:
+      return mojom::MountError::kUnknown;
+  }
+}
+
+}  // namespace
+
+namespace {
+
+// Temporary dummy implementation of the SmbFs Mojo interface.
+class SmbFsImpl : public mojom::SmbFs {
+ public:
+  SmbFsImpl() = default;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(SmbFsImpl);
+};
 
 }  // namespace
 
@@ -94,18 +126,29 @@ int SmbFsDaemon::OnEventLoopStarted() {
     fs = std::make_unique<TestFilesystem>(uid_, gid_);
   } else if (fs_) {
     fs = std::move(fs_);
+  } else if (!mojo_id_.empty()) {
+    if (!InitMojo()) {
+      return EX_SOFTWARE;
+    }
+    return EX_OK;
   } else {
     NOTREACHED();
   }
 
-  session_ = std::make_unique<FuseSession>(std::move(fs), chan_);
-  chan_ = nullptr;
-
-  if (!session_->Start(base::BindOnce(&Daemon::Quit, base::Unretained(this)))) {
+  if (!StartFuseSession(std::move(fs))) {
     return EX_SOFTWARE;
   }
 
   return EX_OK;
+}
+
+bool SmbFsDaemon::StartFuseSession(std::unique_ptr<Filesystem> fs) {
+  DCHECK(!session_);
+  DCHECK(chan_);
+
+  session_ = std::make_unique<FuseSession>(std::move(fs), chan_);
+  chan_ = nullptr;
+  return session_->Start(base::BindOnce(&Daemon::Quit, base::Unretained(this)));
 }
 
 base::FilePath SmbFsDaemon::KerberosConfFilePath(const std::string& file_name) {
@@ -142,6 +185,85 @@ bool SmbFsDaemon::SetupSmbConf() {
   return base::WriteFile(
              temp_dir_.GetPath().Append(kSmbConfDir).Append(kSmbConfFile),
              kSmbConfData, sizeof(kSmbConfData)) == sizeof(kSmbConfData);
+}
+
+void SmbFsDaemon::MountShare(mojom::MountOptionsPtr options,
+                             mojom::SmbFsDelegatePtr delegate,
+                             const MountShareCallback& callback) {
+  if (session_) {
+    LOG(ERROR) << "smbfs already connected to a share";
+    callback.Run(mojom::MountError::kUnknown, nullptr);
+    return;
+  }
+
+  if (options->share_path.find("smb://") != 0) {
+    // TODO(amistry): More extensive URL validation.
+    LOG(ERROR) << "Invalid share path: " << options->share_path;
+    callback.Run(mojom::MountError::kInvalidUrl, nullptr);
+    return;
+  }
+
+  auto fs = std::make_unique<SmbFilesystem>(options->share_path, uid_, gid_);
+  SmbFilesystem::ConnectError error = fs->EnsureConnected();
+  if (error != SmbFilesystem::ConnectError::kOk) {
+    LOG(ERROR) << "Unable to connect to SMB share " << options->share_path
+               << ": " << error;
+    callback.Run(ConnectErrorToMountError(error), nullptr);
+    return;
+  }
+
+  if (!StartFuseSession(std::move(fs))) {
+    callback.Run(mojom::MountError::kUnknown, nullptr);
+    return;
+  }
+
+  mojom::SmbFsPtr smbfs_ptr;
+  smbfs_binding_ = std::make_unique<mojo::Binding<mojom::SmbFs>>(
+      new SmbFsImpl, mojo::MakeRequest(&smbfs_ptr));
+
+  delegate_ = std::move(delegate);
+  callback.Run(mojom::MountError::kOk, std::move(smbfs_ptr));
+}
+
+bool SmbFsDaemon::InitMojo() {
+  LOG(INFO) << "Boostrapping connection using Mojo";
+
+  mojo::core::Init();
+  ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
+      base::ThreadTaskRunnerHandle::Get(),
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
+
+  mojo::edk::PlatformChannelPair channel;
+
+  // The SmbFs service is hosted in the browser, so is expected to
+  // already be running when this starts. If this is not the case, the D-Bus
+  // IPC below will fail and this process will shut down.
+  org::chromium::SmbFsProxy dbus_proxy(bus_, kSmbFsServiceName);
+  brillo::ErrorPtr error;
+  if (!dbus_proxy.OpenIpcChannel(
+          mojo_id_, channel.PassClientHandle().get().handle, &error)) {
+    return false;
+  }
+
+  mojo::edk::SetParentPipeHandle(channel.PassServerHandle());
+
+  mojom::SmbFsBootstrapRequest request;
+  request.Bind(mojo::edk::CreateChildMessagePipe("smbfs-bootstrap"));
+  bootstrap_binding_.Bind(std::move(request));
+  bootstrap_binding_.set_connection_error_handler(
+      base::Bind(&SmbFsDaemon::OnConnectionError, base::Unretained(this)));
+
+  return true;
+}
+
+void SmbFsDaemon::OnConnectionError() {
+  if (session_) {
+    // Do nothing because the session is running.
+    return;
+  }
+
+  LOG(ERROR) << "Connection error during Mojo bootstrap. Exiting.";
+  QuitWithExitCode(EX_SOFTWARE);
 }
 
 }  // namespace smbfs
