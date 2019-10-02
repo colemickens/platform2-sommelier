@@ -223,9 +223,10 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeString(&policy, key::kDeviceUpdateStagingSchedule, kString);
   EXPECT_EQ(kString, policy.auto_update_settings().staging_schedule());
 
-  EncodeString(&policy, key::kDeviceWebUsbAllowDevicesForUrls, kString);
-  EXPECT_EQ(kString, policy.device_webusb_allow_devices_for_urls()
-                         .device_webusb_allow_devices_for_urls());
+  EncodeString(&policy, key::kDeviceLoginScreenWebUsbAllowDevicesForUrls,
+               kString);
+  EXPECT_EQ(kString, policy.device_login_screen_webusb_allow_devices_for_urls()
+                         .device_login_screen_webusb_allow_devices_for_urls());
 
   //
   // Accessibility policies.
@@ -240,6 +241,52 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(
       kBool,
       policy.accessibility_settings().login_screen_large_cursor_enabled());
+
+  EncodeBoolean(&policy, key::kDeviceLoginScreenAutoclickEnabled, kBool);
+  EXPECT_EQ(kBool,
+            policy.accessibility_settings().login_screen_autoclick_enabled());
+
+  EncodeBoolean(&policy, key::kDeviceLoginScreenCaretHighlightEnabled, kBool);
+  EXPECT_EQ(
+      kBool,
+      policy.accessibility_settings().login_screen_caret_highlight_enabled());
+
+  EncodeBoolean(&policy, key::kDeviceLoginScreenCursorHighlightEnabled, kBool);
+  EXPECT_EQ(
+      kBool,
+      policy.accessibility_settings().login_screen_cursor_highlight_enabled());
+
+  EncodeBoolean(&policy, key::kDeviceLoginScreenDictationEnabled, kBool);
+  EXPECT_EQ(kBool,
+            policy.accessibility_settings().login_screen_dictation_enabled());
+
+  EncodeBoolean(&policy, key::kDeviceLoginScreenHighContrastEnabled, kBool);
+  EXPECT_EQ(
+      kBool,
+      policy.accessibility_settings().login_screen_high_contrast_enabled());
+
+  EncodeBoolean(&policy, key::kDeviceLoginScreenMonoAudioEnabled, kBool);
+  EXPECT_EQ(kBool,
+            policy.accessibility_settings().login_screen_mono_audio_enabled());
+
+  EncodeBoolean(&policy, key::kDeviceLoginScreenSelectToSpeakEnabled, kBool);
+  EXPECT_EQ(
+      kBool,
+      policy.accessibility_settings().login_screen_select_to_speak_enabled());
+
+  EncodeBoolean(&policy, key::kDeviceLoginScreenSpokenFeedbackEnabled, kBool);
+  EXPECT_EQ(
+      kBool,
+      policy.accessibility_settings().login_screen_spoken_feedback_enabled());
+
+  EncodeBoolean(&policy, key::kDeviceLoginScreenStickyKeysEnabled, kBool);
+  EXPECT_EQ(kBool,
+            policy.accessibility_settings().login_screen_sticky_keys_enabled());
+
+  EncodeBoolean(&policy, key::kDeviceLoginScreenVirtualKeyboardEnabled, kBool);
+  EXPECT_EQ(
+      kBool,
+      policy.accessibility_settings().login_screen_virtual_keyboard_enabled());
 
   EncodeBoolean(&policy, key::kDeviceLoginScreenDefaultSpokenFeedbackEnabled,
                 kBool);

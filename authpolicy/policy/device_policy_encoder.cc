@@ -332,11 +332,12 @@ void DevicePolicyEncoder::EncodeAutoUpdatePolicies(
     policy->mutable_auto_update_settings()->set_device_quick_fix_build_token(
         value);
   });
-  EncodeString(key::kDeviceWebUsbAllowDevicesForUrls,
-               [policy](const std::string& value) {
-                 policy->mutable_device_webusb_allow_devices_for_urls()
-                     ->set_device_webusb_allow_devices_for_urls(value);
-               });
+  EncodeString(
+      key::kDeviceLoginScreenWebUsbAllowDevicesForUrls,
+      [policy](const std::string& value) {
+        policy->mutable_device_login_screen_webusb_allow_devices_for_urls()
+            ->set_device_login_screen_webusb_allow_devices_for_urls(value);
+      });
 }
 
 void DevicePolicyEncoder::EncodeAccessibilityPolicies(
@@ -350,6 +351,52 @@ void DevicePolicyEncoder::EncodeAccessibilityPolicies(
                 [policy](bool value) {
                   policy->mutable_accessibility_settings()
                       ->set_login_screen_large_cursor_enabled(value);
+                });
+  EncodeBoolean(key::kDeviceLoginScreenAutoclickEnabled, [policy](bool value) {
+    policy->mutable_accessibility_settings()
+        ->set_login_screen_autoclick_enabled(value);
+  });
+  EncodeBoolean(key::kDeviceLoginScreenCaretHighlightEnabled,
+                [policy](bool value) {
+                  policy->mutable_accessibility_settings()
+                      ->set_login_screen_caret_highlight_enabled(value);
+                });
+  EncodeBoolean(key::kDeviceLoginScreenCursorHighlightEnabled,
+                [policy](bool value) {
+                  policy->mutable_accessibility_settings()
+                      ->set_login_screen_cursor_highlight_enabled(value);
+                });
+  EncodeBoolean(key::kDeviceLoginScreenDictationEnabled, [policy](bool value) {
+    policy->mutable_accessibility_settings()
+        ->set_login_screen_dictation_enabled(value);
+  });
+  EncodeBoolean(key::kDeviceLoginScreenHighContrastEnabled,
+                [policy](bool value) {
+                  policy->mutable_accessibility_settings()
+                      ->set_login_screen_high_contrast_enabled(value);
+                });
+  EncodeBoolean(key::kDeviceLoginScreenMonoAudioEnabled, [policy](bool value) {
+    policy->mutable_accessibility_settings()
+        ->set_login_screen_mono_audio_enabled(value);
+  });
+  EncodeBoolean(key::kDeviceLoginScreenSelectToSpeakEnabled,
+                [policy](bool value) {
+                  policy->mutable_accessibility_settings()
+                      ->set_login_screen_select_to_speak_enabled(value);
+                });
+  EncodeBoolean(key::kDeviceLoginScreenSpokenFeedbackEnabled,
+                [policy](bool value) {
+                  policy->mutable_accessibility_settings()
+                      ->set_login_screen_spoken_feedback_enabled(value);
+                });
+  EncodeBoolean(key::kDeviceLoginScreenStickyKeysEnabled, [policy](bool value) {
+    policy->mutable_accessibility_settings()
+        ->set_login_screen_sticky_keys_enabled(value);
+  });
+  EncodeBoolean(key::kDeviceLoginScreenVirtualKeyboardEnabled,
+                [policy](bool value) {
+                  policy->mutable_accessibility_settings()
+                      ->set_login_screen_virtual_keyboard_enabled(value);
                 });
   EncodeBoolean(key::kDeviceLoginScreenDefaultSpokenFeedbackEnabled,
                 [policy](bool value) {
