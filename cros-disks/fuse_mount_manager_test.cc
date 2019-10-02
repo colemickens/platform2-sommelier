@@ -28,14 +28,6 @@ using testing::Return;
 using testing::SetArgPointee;
 using testing::_;
 
-namespace base {
-
-void PrintTo(const base::FilePath& fp, std::ostream* os) {
-  *os << fp.value();
-}
-
-}  // namespace base
-
 namespace cros_disks {
 
 namespace {

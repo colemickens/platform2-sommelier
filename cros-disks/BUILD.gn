@@ -119,9 +119,13 @@ if (use.fuzzer) {
 }
 
 if (use.test) {
+  pkg_config("disks_test_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
   executable("disks_testrunner") {
     configs += [
       "//common-mk:test",
+      ":disks_test_config",
       ":target_defaults",
     ]
     sources = [
