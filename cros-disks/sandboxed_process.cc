@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/posix/safe_strerror.h>
 #include <chromeos/libminijail.h>
 
 #include "cros-disks/mount_options.h"
@@ -169,7 +170,19 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD* in_fd,
 }
 
 int SandboxedProcess::WaitImpl() {
-  return minijail_wait(jail_);
+  while (true) {
+    const int status = minijail_wait(jail_);
+    if (status >= 0) {
+      return status;
+    }
+
+    const int err = -status;
+    if (err != EINTR) {
+      LOG(ERROR) << "Cannot wait for process " << pid() << ": "
+                 << base::safe_strerror(err);
+      return MINIJAIL_ERR_INIT;
+    }
+  }
 }
 
 bool SandboxedProcess::WaitNonBlockingImpl(int* status) {
