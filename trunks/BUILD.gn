@@ -7,6 +7,7 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":libtrunks",
     ":pinweaver_client",
     ":trunks",
     ":trunks_client",
@@ -339,4 +340,11 @@ if (use.fuzzer) {
       ":trunks",
     ]
   }
+}
+
+generate_pkg_config("libtrunks") {
+  version = getenv("PV")
+  description = "Trunks shared library"
+  cflags = [ "-I/usr/include/trunks" ]
+  libs = [ "-ltrunks" ]
 }

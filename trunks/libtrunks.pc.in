@@ -1,7 +1,0 @@
-include_dir=@INCLUDE_DIR@
-
-Name: libtrunks
-Description: Trunks shared library.
-Version: @PV@
-CFlags: -I${include_dir}
-Libs: -ltrunks
