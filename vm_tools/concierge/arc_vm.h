@@ -50,6 +50,7 @@ class ArcVm final : public VmInterface {
       base::FilePath kernel,
       base::FilePath rootfs,
       base::FilePath fstab,
+      uint32_t cpus,
       std::vector<Disk> disks,
       arc_networkd::MacAddress mac_addr,
       std::unique_ptr<arc_networkd::Subnet> subnet,
@@ -128,6 +129,7 @@ class ArcVm final : public VmInterface {
   bool Start(base::FilePath kernel,
              base::FilePath rootfs,
              base::FilePath fstab,
+             uint32_t cpus,
              std::vector<Disk> disks,
              std::vector<std::string> params);
 

@@ -1553,6 +1553,15 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
     return dbus_response;
   }
 
+  // Check the CPU count.
+  // TODO(yusukes): Return an error when cpus() == 0.
+  if (request.cpus() > base::SysInfo::NumberOfProcessors()) {
+    LOG(ERROR) << "Invalid number of CPUs: " << request.cpus();
+    response.set_failure_reason("Invalid CPU count");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
   // Make sure the VM has a name.
   if (request.name().empty()) {
     LOG(ERROR) << "Ignoring request with empty name";
@@ -1689,10 +1698,11 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   // TODO(lepton): Enable GPU on non-x86_64 platforms.
   features.gpu = base::SysInfo::OperatingSystemArchitecture() == "x86_64";
 
-  auto vm = ArcVm::Create(std::move(kernel), std::move(rootfs),
-                          std::move(fstab), std::move(disks), kArcVmMacAddress,
-                          std::move(subnet), vsock_cid, std::move(server_proxy),
-                          std::move(runtime_dir), features, std::move(params));
+  auto vm =
+      ArcVm::Create(std::move(kernel), std::move(rootfs), std::move(fstab),
+                    request.cpus(), std::move(disks), kArcVmMacAddress,
+                    std::move(subnet), vsock_cid, std::move(server_proxy),
+                    std::move(runtime_dir), features, std::move(params));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 

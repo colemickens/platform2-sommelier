@@ -1075,6 +1075,7 @@ int StartArcVm(dbus::ObjectProxy* proxy,
   request.set_owner_id(std::move(cryptohome_id));
   request.set_name(std::move(name));
   request.set_fstab(std::move(fstab));
+  request.set_cpus(base::SysInfo::NumberOfProcessors());
 
   request.mutable_vm()->set_kernel(std::move(kernel));
   request.mutable_vm()->set_rootfs(std::move(rootfs));

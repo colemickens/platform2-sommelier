@@ -87,6 +87,7 @@ std::unique_ptr<ArcVm> ArcVm::Create(
     base::FilePath kernel,
     base::FilePath rootfs,
     base::FilePath fstab,
+    uint32_t cpus,
     std::vector<ArcVm::Disk> disks,
     arc_networkd::MacAddress mac_addr,
     std::unique_ptr<arc_networkd::Subnet> subnet,
@@ -99,7 +100,7 @@ std::unique_ptr<ArcVm> ArcVm::Create(
       std::move(mac_addr), std::move(subnet), vsock_cid,
       std::move(seneschal_server_proxy), std::move(runtime_dir), features));
 
-  if (!vm->Start(std::move(kernel), std::move(rootfs), std::move(fstab),
+  if (!vm->Start(std::move(kernel), std::move(rootfs), std::move(fstab), cpus,
                  std::move(disks), std::move(params))) {
     vm.reset();
   }
@@ -114,6 +115,7 @@ std::string ArcVm::GetVmSocketPath() const {
 bool ArcVm::Start(base::FilePath kernel,
                   base::FilePath rootfs,
                   base::FilePath fstab,
+                  uint32_t cpus,
                   std::vector<ArcVm::Disk> disks,
                   std::vector<string> params) {
   // Set up the tap device.
@@ -124,11 +126,15 @@ bool ArcVm::Start(base::FilePath kernel,
     return false;
   }
 
+  // TODO(yusukes): Remove this fallback once Chrome is updated.
+  if (cpus == 0)
+    cpus = NumberOfProcessorsAvailable();
+
   // Build up the process arguments.
   // clang-format off
   std::vector<string> args = {
     kCrosvmBin,       "run",
-    "--cpus",         std::to_string(NumberOfProcessorsAvailable()),
+    "--cpus",         std::to_string(cpus),
     "--mem",          GetVmMemoryMiB(),
     "--disk",         rootfs.value(),
     "--tap-fd",       std::to_string(tap_fd.get()),
