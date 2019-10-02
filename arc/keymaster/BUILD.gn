@@ -27,15 +27,15 @@ executable("arc-keymasterd") {
     "keymaster_server.cc",
     "main.cc",
   ]
-  deps = [
-    ":keymaster_mojo_bindings",
-    ":libarckeymaster_context",
-    ":libkeymaster",
-  ]
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
     "libmojo-${libbase_ver}",
+  ]
+  deps = [
+    ":keymaster_mojo_bindings",
+    ":libarckeymaster_context",
+    ":libkeymaster",
   ]
 }
 
@@ -56,16 +56,6 @@ config("boringssl_config") {
 
 # Keymaster context
 shared_library("libarckeymaster_context") {
-  deps = [
-    ":libkeymaster",
-  ]
-  pkg_deps = [ "libchrome-${libbase_ver}" ]
-  configs += [
-    # Needed since the keymaster context doesn't follow CrOS's guidelines.
-    # gnlint: disable=GnLintVisibilityFlags
-    "//common-mk:visibility_default",
-    ":boringssl_config",
-  ]
   sources = [
     "${keymaster_src}/android_keymaster/logger.cpp",
     "${keymaster_src}/contexts/pure_soft_keymaster_context.cpp",
@@ -74,6 +64,16 @@ shared_library("libarckeymaster_context") {
     "${keymaster_src}/km_openssl/soft_keymaster_enforcement.cpp",
     "context/hook.cc",
     "keymaster_logger.cc",
+  ]
+  pkg_deps = [ "libchrome-${libbase_ver}" ]
+  configs += [
+    # Needed since the keymaster context doesn't follow CrOS's guidelines.
+    # gnlint: disable=GnLintVisibilityFlags
+    "//common-mk:visibility_default",
+    ":boringssl_config",
+  ]
+  deps = [
+    ":libkeymaster",
   ]
 }
 
@@ -88,11 +88,6 @@ config("libkeymaster_config") {
 }
 
 shared_library("libkeymaster") {
-  public_configs = [ ":libkeymaster_config" ]
-  configs += [
-    "//common-mk:visibility_default",
-    ":boringssl_config",
-  ]
   sources = [
     "${keymaster_src}/android_keymaster/android_keymaster.cpp",
     "${keymaster_src}/android_keymaster/android_keymaster_messages.cpp",
@@ -138,6 +133,11 @@ shared_library("libkeymaster") {
     "${keymaster_src}/km_openssl/triple_des_operation.cpp",
     "${keymaster_src}/km_openssl/wrapped_key.cpp",
   ]
+  public_configs = [ ":libkeymaster_config" ]
+  configs += [
+    "//common-mk:visibility_default",
+    ":boringssl_config",
+  ]
 }
 
 if (use.test) {
@@ -148,6 +148,11 @@ if (use.test) {
     ]
   }
   executable("arc-keymasterd_testrunner") {
+    sources = [
+      "conversion.cc",
+      "conversion_test.cc",
+      "keymaster_logger_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":arc-keymasterd_testrunner_config",
@@ -157,11 +162,6 @@ if (use.test) {
       ":libarckeymaster_context",
       ":libkeymaster",
       "//common-mk/testrunner:testrunner",
-    ]
-    sources = [
-      "conversion.cc",
-      "conversion_test.cc",
-      "keymaster_logger_test.cc",
     ]
   }
 }

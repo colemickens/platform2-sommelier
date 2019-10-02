@@ -33,28 +33,28 @@ config("target_defaults") {
 }
 
 static_library("libmount_obb") {
-  configs += [ ":target_defaults" ]
   sources = [
     "mount_obb_fuse_main.cc",
     "util.cc",
     "volume.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("arc-obb-mounter") {
-  configs += [ ":target_defaults" ]
   sources = [
     "arc_obb_mounter.cc",
     "mount.cc",
     "service.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("mount-obb") {
-  configs += [ ":target_defaults" ]
   sources = [
     "mount_obb.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libmount_obb",
   ]
@@ -128,6 +128,9 @@ action("generate_squashfs") {
 
 if (use.test) {
   executable("arc-obb-mounter_testrunner") {
+    sources = [
+      "util_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
@@ -136,9 +139,6 @@ if (use.test) {
     deps = [
       ":libmount_obb",
       "//common-mk/testrunner:testrunner",
-    ]
-    sources = [
-      "util_test.cc",
     ]
   }
 }

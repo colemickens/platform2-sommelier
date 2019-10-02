@@ -18,10 +18,10 @@ pkg_config("libapk-cache-cleaner_config") {
 }
 
 static_library("libapk-cache-cleaner") {
-  configs += [ ":libapk-cache-cleaner_config" ]
   sources = [
     "cache_cleaner.cc",
   ]
+  configs += [ ":libapk-cache-cleaner_config" ]
 }
 
 pkg_config("apk-cache-cleaner_config") {
@@ -32,10 +32,10 @@ pkg_config("apk-cache-cleaner_config") {
 }
 
 executable("apk-cache-cleaner") {
-  configs += [ ":apk-cache-cleaner_config" ]
   sources = [
     "cache_cleaner_main.cc",
   ]
+  configs += [ ":apk-cache-cleaner_config" ]
   deps = [
     ":libapk-cache-cleaner",
   ]
@@ -49,6 +49,9 @@ if (use.test) {
     ]
   }
   executable("apk-cache-cleaner_testrunner") {
+    sources = [
+      "cache_cleaner_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":apk-cache-cleaner_testrunner_config",
@@ -56,9 +59,6 @@ if (use.test) {
     deps = [
       ":libapk-cache-cleaner",
       "//common-mk/testrunner:testrunner",
-    ]
-    sources = [
-      "cache_cleaner_test.cc",
     ]
   }
 }

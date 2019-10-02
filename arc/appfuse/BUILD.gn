@@ -26,11 +26,11 @@ pkg_config("target_defaults") {
 }
 
 static_library("libarcappfuse") {
-  configs += [ ":target_defaults" ]
   sources = [
     "appfuse_mount.cc",
     "data_filter.cc",
   ]
+  configs += [ ":target_defaults" ]
 }
 
 generate_dbus_adaptors("arc-appfuse-provider-adaptors") {
@@ -43,10 +43,10 @@ generate_dbus_adaptors("arc-appfuse-provider-adaptors") {
 }
 
 executable("arc-appfuse-provider") {
-  configs += [ ":target_defaults" ]
   sources = [
     "arc_appfuse_provider.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":arc-appfuse-provider-adaptors",
     ":libarcappfuse",
@@ -55,12 +55,12 @@ executable("arc-appfuse-provider") {
 
 if (use.test) {
   executable("arc-appfuse_testrunner") {
+    sources = [
+      "data_filter_test.cc",
+    ]
     configs += [
       ":target_defaults",
       "//common-mk:test",
-    ]
-    sources = [
-      "data_filter_test.cc",
     ]
     defines = [ "UNIT_TEST" ]
     deps = [

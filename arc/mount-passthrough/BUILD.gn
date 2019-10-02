@@ -19,8 +19,8 @@ pkg_config("mount-passthrough_config") {
 }
 
 executable("mount-passthrough") {
-  configs += [ ":mount-passthrough_config" ]
   sources = [
     "mount-passthrough.cc",
   ]
+  configs += [ ":mount-passthrough_config" ]
 }

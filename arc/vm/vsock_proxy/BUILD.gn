@@ -34,12 +34,6 @@ proto_library("message") {
 }
 
 static_library("vsock_proxy_lib") {
-  configs += [ ":target_defaults" ]
-  pkg_deps = [ "fuse" ]
-  defines = [ "FUSE_USE_VERSION=26" ]
-  deps = [
-    ":message",
-  ]
   sources = [
     "file_descriptor_util.cc",
     "file_stream.cc",
@@ -51,16 +45,21 @@ static_library("vsock_proxy_lib") {
     "vsock_proxy.cc",
     "vsock_stream.cc",
   ]
+  configs += [ ":target_defaults" ]
+  pkg_deps = [ "fuse" ]
+  defines = [ "FUSE_USE_VERSION=26" ]
+  deps = [
+    ":message",
+  ]
 }
 
 executable("server_proxy") {
+  sources = [
+    "server_proxy_main.cc",
+  ]
   configs += [ ":target_defaults" ]
   deps = [
     ":vsock_proxy_lib",
-  ]
-
-  sources = [
-    "server_proxy_main.cc",
   ]
 }
 
@@ -69,31 +68,16 @@ if (use.test) {
   # TODO(b/121198129): Add actual unittest for those code.
   # Currently, this exercises only that the library is successfully built.
   static_library("client_proxy_lib") {
+    sources = [
+      "client_proxy.cc",
+    ]
     configs += [ ":target_defaults" ]
     deps = [
       ":vsock_proxy_lib",
     ]
-    sources = [
-      "client_proxy.cc",
-    ]
   }
 
   executable("vsock_proxy_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-
-    pkg_deps = [
-      "libbrillo-test-${libbase_ver}",
-      "libchrome-test-${libbase_ver}",
-    ]
-
-    deps = [
-      ":vsock_proxy_lib",
-      "//common-mk/testrunner",
-    ]
-
     sources = [
       "file_descriptor_util_test.cc",
       "file_stream_test.cc",
@@ -103,6 +87,18 @@ if (use.test) {
       "socket_stream_test.cc",
       "vsock_proxy_test.cc",
       "vsock_stream_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    pkg_deps = [
+      "libbrillo-test-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+    deps = [
+      ":vsock_proxy_lib",
+      "//common-mk/testrunner",
     ]
   }
 }

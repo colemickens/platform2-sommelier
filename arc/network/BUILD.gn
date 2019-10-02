@@ -57,8 +57,8 @@ util_sources = [
 ]
 
 shared_library("libarcnetwork-util") {
-  configs += [ ":target_defaults" ]
   sources = util_sources
+  configs += [ ":target_defaults" ]
 }
 
 guest_sources = [
@@ -67,7 +67,6 @@ guest_sources = [
 ]
 
 static_library("libarcnetwork") {
-  configs += [ ":target_defaults" ]
   sources = [
     "adb_proxy.cc",
     "datapath.cc",
@@ -92,16 +91,17 @@ static_library("libarcnetwork") {
   ]
   sources += guest_sources
   sources += util_sources
+  configs += [ ":target_defaults" ]
   deps = [
     ":protos",
   ]
 }
 
 executable("arc-networkd") {
-  configs += [ ":target_defaults" ]
   sources = [
     "main.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libarcnetwork",
   ]
@@ -147,11 +147,6 @@ if (use.test) {
   }
 
   executable("arc_network_testrunner") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-      ":test_config",
-    ]
     sources = [
       "address_manager_test.cc",
       "arc_service_test.cc",
@@ -165,6 +160,11 @@ if (use.test) {
       "shill_client_test.cc",
       "subnet_pool_test.cc",
       "subnet_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
     ]
     defines = [ "UNIT_TEST" ]
     deps = [

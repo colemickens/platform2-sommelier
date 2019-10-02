@@ -67,12 +67,12 @@ source_set("libvda_source_set") {
 
 shared_library("libvda") {
   output_name = "libvda"
+  sources = [
+    "at_exit_util.cc",
+  ]
   pkg_deps = [ "gbm" ]
   deps = [
     ":libvda_source_set",
-  ]
-  sources = [
-    "at_exit_util.cc",
   ]
 }
 
@@ -93,56 +93,54 @@ generate_pkg_config("libvda_pc") {
 if (use.test) {
   # Unit tests for the fake VDA impl.
   executable("libvda_fake_unittest") {
-    configs += [ "//common-mk:test" ]
-    deps = [
-      ":libvda_source_set",
-      "//common-mk/testrunner",
+    sources = [
+      "decode/test/decode_unittest_common.cc",
+      "decode_fake_test.cc",
     ]
+    configs += [ "//common-mk:test" ]
     pkg_deps = [
       "libchrome-test-${libbase_ver}",
       "gbm",
     ]
-    sources = [
-      "decode/test/decode_unittest_common.cc",
-      "decode_fake_test.cc",
+    deps = [
+      ":libvda_source_set",
+      "//common-mk/testrunner",
     ]
   }
 }
 
 # Unit tests for the GPU VDA impl, to be executed by tast tests.
 executable("libvda_gpu_unittest") {
-  # Need to define UNIT_TEST for ShadowingAtExitManager.
-  defines = [ "UNIT_TEST" ]
-  ldflags = [ "-pthread" ]
-  libs = [
-    "gmock",
-    "gtest",
-    "pthread",
-  ]
-  deps = [
-    ":libvda_source_set",
-  ]
-  pkg_deps = [
-    "libchrome-test-${libbase_ver}",
-    "gbm",
-  ]
   sources = [
     "decode/test/decode_event_thread.cc",
     "decode/test/decode_unittest_common.cc",
     "decode/test/encoded_data_helper.cc",
     "decode_gpu_test.cc",
   ]
+
+  # Need to define UNIT_TEST for ShadowingAtExitManager.
+  defines = [ "UNIT_TEST" ]
+  ldflags = [ "-pthread" ]
+  configs += [ "//common-mk:test" ]
+  libs = [ "pthread" ]
+  pkg_deps = [
+    "libchrome-test-${libbase_ver}",
+    "gbm",
+  ]
+  deps = [
+    ":libvda_source_set",
+  ]
 }
 
 if (use.fuzzer) {
   executable("libvda_fuzzer") {
-    configs += [ "//common-mk/common_fuzzer" ]
-    configs -= [ "//common-mk:no_exceptions" ]
     sources = [
       "at_exit_util.cc",
       "decode/test/decode_unittest_common.cc",
       "decode_fuzzer.cc",
     ]
+    configs += [ "//common-mk/common_fuzzer" ]
+    configs -= [ "//common-mk:no_exceptions" ]
     pkg_deps = [ "gbm" ]
     deps = [
       ":libvda_source_set",

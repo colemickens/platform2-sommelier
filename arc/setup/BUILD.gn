@@ -46,15 +46,17 @@ config("target_defaults") {
 }
 
 static_library("libarc_setup") {
-  configs += [ ":target_defaults" ]
   sources = [
     "arc_read_ahead.cc",
     "arc_setup.cc",
     "arc_setup_metrics.cc",
     "arc_setup_util.cc",
     "art_container.cc",
+    "boot_lockbox_client.cc",
     "config.cc",
+    "priv_code_verifier.cc",
   ]
+  configs += [ ":target_defaults" ]
   defines = []
   if (defined(use.houdini) && use.houdini) {
     defines += [ "USE_HOUDINI=1" ]
@@ -69,10 +71,10 @@ static_library("libarc_setup") {
 }
 
 executable("arc-setup") {
-  configs += [ ":target_defaults" ]
   sources = [
     "main.cc",
   ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libarc_setup",
   ]
@@ -137,27 +139,23 @@ if (use.test) {
     ]
   }
   executable("arc-setup_testrunner") {
-    configs += [
-      "//common-mk:test",
-      ":arc-setup_testrunner_pkg_deps",
-      ":target_defaults",
-    ]
-    deps = [
-      ":libarc_setup",
-      "../../common-mk/testrunner:testrunner",
-    ]
-
-    # TODO(xzhou): Move boot_lockbox_client.cc and
-    # priv_code_verifier.cc back to libarc_setup.
     sources = [
       "arc_read_ahead_test.cc",
       "arc_setup_metrics_test.cc",
       "arc_setup_test.cc",
       "arc_setup_util_test.cc",
       "art_container_test.cc",
-      "boot_lockbox_client.cc",
       "config_test.cc",
-      "priv_code_verifier.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":arc-setup_testrunner_pkg_deps",
+      ":target_defaults",
+    ]
+
+    deps = [
+      ":libarc_setup",
+      "../../common-mk/testrunner:testrunner",
     ]
   }
 }
