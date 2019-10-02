@@ -486,7 +486,7 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
   }
 
   if (!init_->Spawn({"lxd", "--group", "lxd", "--syslog"}, kLxdEnv,
-                    true /*respawn*/, false /*use_console*/,
+                    true /*respawn*/, true /*use_console*/,
                     false /*wait_for_exit*/, &launch_info)) {
     return grpc::Status(grpc::INTERNAL, "failed to spawn lxd");
   }
@@ -496,7 +496,7 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
 
   string timeout = std::to_string(kLxdWaitreadyTimeoutSeconds);
   if (!init_->Spawn({"lxd", "waitready", "--timeout", timeout}, kLxdEnv,
-                    false /*respawn*/, false /*use_console*/,
+                    false /*respawn*/, true /*use_console*/,
                     true /*wait_for_exit*/, &launch_info)) {
     return grpc::Status(grpc::INTERNAL, "failed to spawn lxd waitready");
   }
