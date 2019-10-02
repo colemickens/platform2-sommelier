@@ -9,21 +9,21 @@
 
 namespace diagnostics {
 
-class DpslGlobalContextImplTest : public testing::Test {
+class DpslGlobalContextImplDeathTest : public testing::Test {
  public:
-  ~DpslGlobalContextImplTest() override {
+  ~DpslGlobalContextImplDeathTest() override {
     DpslGlobalContextImpl::CleanGlobalCounterForTesting();
   }
 };
 
-TEST_F(DpslGlobalContextImplTest, CreateAndForget) {
+TEST_F(DpslGlobalContextImplDeathTest, CreateAndForget) {
   ASSERT_TRUE(DpslGlobalContext::Create());
 
   ASSERT_DEATH(DpslGlobalContext::Create(),
                "Duplicate DpslGlobalContext instances");
 }
 
-TEST_F(DpslGlobalContextImplTest, CreateAndSave) {
+TEST_F(DpslGlobalContextImplDeathTest, CreateAndSave) {
   auto context = DpslGlobalContext::Create();
   ASSERT_TRUE(context);
 

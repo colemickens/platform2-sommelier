@@ -20,6 +20,10 @@ namespace diagnostics {
 // Real implementation of the DpslThreadContext interface.
 class DpslThreadContextImpl final : public DpslThreadContext {
  public:
+  // Cleans thread counter which prevents from calling
+  // |DpslThreadContext::Create()| more than once per thread.
+  static void CleanThreadCounterForTesting();
+
   DpslThreadContextImpl();
   ~DpslThreadContextImpl() override;
 

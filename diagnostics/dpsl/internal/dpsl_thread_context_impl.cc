@@ -25,6 +25,11 @@ base::LazyInstance<base::ThreadLocalBoolean>::Leaky
 
 }  // namespace
 
+// static
+void DpslThreadContextImpl::CleanThreadCounterForTesting() {
+  g_thread_context_impl_created.Pointer()->Set(false);
+}
+
 DpslThreadContextImpl::DpslThreadContextImpl()
     : thread_id_(base::PlatformThread::CurrentId()) {
   // Initialize the message loop only if there's no one yet (it could be already
@@ -37,7 +42,8 @@ DpslThreadContextImpl::DpslThreadContextImpl()
 }
 
 DpslThreadContextImpl::~DpslThreadContextImpl() {
-  CHECK(sequence_checker_.CalledOnValidSequence());
+  CHECK(sequence_checker_.CalledOnValidSequence())
+      << "Called from wrong thread";
 }
 
 bool DpslThreadContextImpl::BelongsToCurrentThread() {
@@ -45,7 +51,10 @@ bool DpslThreadContextImpl::BelongsToCurrentThread() {
 }
 
 void DpslThreadContextImpl::RunEventLoop() {
-  CHECK(sequence_checker_.CalledOnValidSequence());
+  CHECK(sequence_checker_.CalledOnValidSequence())
+      << "Called from wrong thread";
+  CHECK(!message_loop_->is_running())
+      << "Called from already running message loop";
 
   CHECK(!current_run_loop_);
   base::RunLoop run_loop;
@@ -57,7 +66,8 @@ void DpslThreadContextImpl::RunEventLoop() {
 }
 
 bool DpslThreadContextImpl::IsEventLoopRunning() {
-  CHECK(sequence_checker_.CalledOnValidSequence());
+  CHECK(sequence_checker_.CalledOnValidSequence())
+      << "Called from wrong thread";
   return current_run_loop_ != nullptr;
 }
 
@@ -68,14 +78,15 @@ void DpslThreadContextImpl::PostTask(std::function<void()> task) {
 
 void DpslThreadContextImpl::PostDelayedTask(std::function<void()> task,
                                             int64_t delay_milliseconds) {
-  CHECK_GE(delay_milliseconds, 0);
+  CHECK_GE(delay_milliseconds, 0) << "Delay must be non-negative";
   message_loop_->task_runner()->PostDelayedTask(
       FROM_HERE, MakeCallbackFromStdFunction(std::move(task)),
       base::TimeDelta::FromMilliseconds(delay_milliseconds));
 }
 
 void DpslThreadContextImpl::QuitEventLoop() {
-  CHECK(sequence_checker_.CalledOnValidSequence());
+  CHECK(sequence_checker_.CalledOnValidSequence())
+      << "Called from wrong thread";
 
   if (current_run_loop_)
     current_run_loop_->Quit();
@@ -84,7 +95,7 @@ void DpslThreadContextImpl::QuitEventLoop() {
 // static
 std::unique_ptr<DpslThreadContext> DpslThreadContext::Create(
     DpslGlobalContext* global_context) {
-  CHECK(global_context);
+  CHECK(global_context) << "GlobalContext is nullptr";
 
   // Verify we're not called twice on the current thread.
   CHECK(!g_thread_context_impl_created.Pointer()->Get())

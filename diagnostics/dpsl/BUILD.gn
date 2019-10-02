@@ -102,6 +102,7 @@ if (use.test) {
     ]
     sources = [
       "internal/dpsl_global_context_impl_test.cc",
+      "internal/dpsl_thread_context_impl_test.cc",
     ]
   }
 }
