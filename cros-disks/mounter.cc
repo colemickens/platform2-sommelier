@@ -80,8 +80,8 @@ MountErrorType MounterCompat::MountImpl() const {
   MountErrorType error = MOUNT_ERROR_NONE;
   // This default implementation implies using a new passed mounter to perform
   // the mounting. For legacy signature mounter is null, but this method is
-  // overriden and this code is never called.
-  CHECK(mounter_) << "Method must be overriden if mounter is not set";
+  // overridden and this code is never called.
+  CHECK(mounter_) << "Method must be overridden if mounter is not set";
   auto mountpoint = mounter_->Mount(source(), target_path(),
                                     mount_options().options(), &error);
   if (mountpoint) {

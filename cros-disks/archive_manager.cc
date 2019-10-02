@@ -405,7 +405,7 @@ MountErrorType ArchiveManager::MountAVFSPath(
       std::vector<FUSEMounter::BindPath>({
           // This needs to be recursively bind mounted so that any external
           // media (mounted under /media) or user (under /home/chronos) mounts
-          // are visiable to AVFS.
+          // are visible to AVFS.
           {base_path, false /* writable*/, true /* recursive */},
       }),
       false /* permit_network_access */, kAVFSMountGroup);

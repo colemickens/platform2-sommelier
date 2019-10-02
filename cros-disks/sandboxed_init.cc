@@ -83,7 +83,7 @@ void SandboxedInit::RunInsideSandboxNoReturn(
     PLOG(FATAL) << "Can't dup2 " << STDIN_FILENO;
   }
 
-  // Set an identifyable process name.
+  // Set an identifiable process name.
   if (prctl(PR_SET_NAME, "cros-disks-INIT") == -1) {
     PLOG(WARNING) << "Can't set init's process name";
   }
