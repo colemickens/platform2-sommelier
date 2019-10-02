@@ -17,12 +17,18 @@
 
 namespace libmems {
 
+namespace {
+
+constexpr int kErrorBufferSize = 256;
+constexpr int kNumSamples = 1;
+
+};  // namespace
+
 IioDeviceImpl::IioDeviceImpl(IioContextImpl* ctx, iio_device* dev)
     : IioDevice(),
       context_(ctx),
       device_(dev),
-      buffer_(nullptr, IioBufferDeleter),
-      buffer_size_(0) {
+      buffer_(nullptr, IioBufferDeleter) {
   CHECK(context_);
   CHECK(device_);
 }
@@ -168,7 +174,7 @@ IioChannel* IioDeviceImpl::GetChannel(const std::string& name) {
 base::Optional<size_t> IioDeviceImpl::GetSampleSize() const {
   ssize_t sample_size = iio_device_get_sample_size(device_);
   if (sample_size < 0) {
-    char errMsg[ERROR_BUFFER_SIZE];
+    char errMsg[kErrorBufferSize];
     iio_strerror(errno, errMsg, sizeof(errMsg));
     LOG(WARNING) << "Unable to get sample size: " << errMsg;
     return base::nullopt;
@@ -198,20 +204,18 @@ bool IioDeviceImpl::IsBufferEnabled(size_t* count) const {
   return enabled;
 }
 
-bool IioDeviceImpl::ReadEvents(uint32_t num_samples,
-                               std::vector<uint8_t>* events) {
-  if (!CreateBuffer(num_samples))
+bool IioDeviceImpl::ReadEvent(std::vector<uint8_t>* event) {
+  if (!CreateBuffer())
     return false;
 
-  events->clear();
+  event->clear();
 
   ssize_t ret = iio_buffer_refill(buffer_.get());
   if (ret < 0) {
-    char errMsg[ERROR_BUFFER_SIZE];
+    char errMsg[kErrorBufferSize];
     iio_strerror(-ret, errMsg, sizeof(errMsg));
     LOG(ERROR) << "Unable to refill buffer: " << errMsg;
     buffer_.reset();
-    buffer_size_ = 0;
 
     return false;
   }
@@ -224,7 +228,6 @@ bool IioDeviceImpl::ReadEvents(uint32_t num_samples,
     LOG(ERROR) << "sample_size doesn't match in refill: " << buf_step
                << ", sample_size: " << sample_size;
     buffer_.reset();
-    buffer_size_ = 0;
 
     return false;
   }
@@ -233,8 +236,8 @@ bool IioDeviceImpl::ReadEvents(uint32_t num_samples,
   size_t len = reinterpret_cast<intptr_t>(iio_buffer_end(buffer_.get())) -
                reinterpret_cast<intptr_t>(start);
 
-  events->reserve(len);
-  events->insert(events->begin(), start, start + len);
+  event->reserve(len);
+  event->insert(event->begin(), start, start + len);
 
   return true;
 }
@@ -245,27 +248,20 @@ void IioDeviceImpl::IioBufferDeleter(iio_buffer* buffer) {
   iio_buffer_destroy(buffer);
 }
 
-bool IioDeviceImpl::CreateBuffer(uint32_t num_samples) {
-  if (num_samples == 0) {
-    LOG(WARNING) << "Buffer size should not be zero.";
-    return false;
-  }
-
-  if (buffer_ && num_samples == buffer_size_ &&
+bool IioDeviceImpl::CreateBuffer() {
+  if (buffer_ &&
       iio_device_get_sample_size(device_) == iio_buffer_step(buffer_.get()))
     return true;
 
   buffer_.reset();
-  buffer_.reset(iio_device_create_buffer(device_, num_samples, false));
+  buffer_.reset(iio_device_create_buffer(device_, kNumSamples, false));
 
   if (!buffer_) {
-    char errMsg[ERROR_BUFFER_SIZE];
+    char errMsg[kErrorBufferSize];
     iio_strerror(errno, errMsg, sizeof(errMsg));
     LOG(ERROR) << "Unable to allocate buffer: " << errMsg;
     return false;
   }
-
-  buffer_size_ = num_samples;
 
   return true;
 }

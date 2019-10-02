@@ -95,9 +95,7 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
     return base::nullopt;
   }
 
-  bool ReadEvents(uint32_t num_samples, std::vector<uint8_t>* events) override {
-    return false;
-  }
+  bool ReadEvent(std::vector<uint8_t>* event) override { return false; }
 
  private:
   FakeIioContext* context_;

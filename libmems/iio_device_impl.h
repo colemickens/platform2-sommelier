@@ -61,20 +61,18 @@ class LIBMEMS_EXPORT IioDeviceImpl : public IioDevice {
   bool DisableBuffer() override;
   bool IsBufferEnabled(size_t* num = nullptr) const override;
 
-  bool ReadEvents(uint32_t num_samples, std::vector<uint8_t>* events) override;
+  bool ReadEvent(std::vector<uint8_t>* event) override;
 
  private:
   static void IioBufferDeleter(iio_buffer* buffer);
 
-  bool CreateBuffer(uint32_t num_samples);
+  bool CreateBuffer();
 
   IioContextImpl* context_;  // non-owned
   iio_device* const device_;       // non-owned
 
   using ScopedBuffer = std::unique_ptr<iio_buffer, decltype(&IioBufferDeleter)>;
   ScopedBuffer buffer_;
-
-  uint32_t buffer_size_;
 
   std::map<std::string, std::unique_ptr<IioChannelImpl>> channels_;
   DISALLOW_COPY_AND_ASSIGN(IioDeviceImpl);

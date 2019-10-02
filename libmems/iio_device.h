@@ -110,11 +110,10 @@ class LIBMEMS_EXPORT IioDevice {
   // If it is enabled, it sets |num| to the number of samples.
   virtual bool IsBufferEnabled(size_t* num = nullptr) const = 0;
 
-  // Creates a buffer to read exactly |num_samples| events , and fills |events|
-  // with the samples payload.
+  // Creates a buffer to read one event, and fills |event| with the sample's
+  // payload.
   // Returns false on failure.
-  virtual bool ReadEvents(uint32_t num_samples,
-                          std::vector<uint8_t>* events) = 0;
+  virtual bool ReadEvent(std::vector<uint8_t>* event) = 0;
 
  protected:
   IioDevice() = default;
