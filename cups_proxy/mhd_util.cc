@@ -78,7 +78,8 @@ int AccessHandler(void* cls,
     }
   }
 
-  int ret = MHD_queue_response(connection, MHD_HTTP_OK, mhd_resp.get());
+  int ret =
+      MHD_queue_response(connection, response.http_status_code, mhd_resp.get());
   return ret;
 }
 

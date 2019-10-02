@@ -21,6 +21,7 @@ using IppHeaders = std::vector<mojom::HttpHeaderPtr>;
 using IppBody = std::vector<uint8_t>;
 
 struct IppResponse {
+  int http_status_code;
   IppHeaders headers;
   IppBody body;
 };

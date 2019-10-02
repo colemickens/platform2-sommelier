@@ -15,6 +15,9 @@ namespace cups_proxy {
 
 namespace {
 
+// Minimum proxy.mojom CupsProxier interface version required.
+const int kMinVersionRequired = 1;
+
 std::string ShowHeaders(const IppHeaders& headers) {
   std::vector<std::string> ret;
   for (const auto& header : headers) {
@@ -87,6 +90,8 @@ void MojoHandler::SetupMojoPipeOnThread(base::Closure error_handler) {
       0u /* version */));
   chrome_proxy_.set_connection_error_handler(std::move(error_handler));
 
+  chrome_proxy_.RequireVersion(kMinVersionRequired);
+
   for (auto& callback : queued_requests_) {
     mojo_task_runner_->PostTask(FROM_HERE, std::move(callback));
   }
@@ -134,9 +139,10 @@ IppResponse MojoHandler::ProxyRequestSync(const MHDHttpRequest& request) {
 
   auto callback = base::Bind(
       [](IppResponse* response, base::WaitableEvent* event, IppHeaders headers,
-         const IppBody& ipp_message) {
+         const IppBody& ipp_message, int http_status_code) {
         response->headers = std::move(headers);
         response->body = ipp_message;
+        response->http_status_code = http_status_code;
         event->Signal();
       },
       &response, &event);
