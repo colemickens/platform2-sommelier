@@ -15,7 +15,7 @@ namespace diagnostics {
 
 namespace {
 
-constexpr char kSmartAttributesOption[] = "attributes";
+constexpr char kSmartctlAttributesOption[] = "attributes";
 constexpr char kNvmeIdentityOption[] = "identify_controller";
 
 auto CreateSuccessCallback(
@@ -45,16 +45,14 @@ DebugdAdapterImpl::~DebugdAdapterImpl() = default;
 
 void DebugdAdapterImpl::GetSmartAttributes(
     const StringResultCallback& callback) {
-  debugd_proxy_->SmartctlAsync(kSmartAttributesOption,
+  debugd_proxy_->SmartctlAsync(kSmartctlAttributesOption,
                                CreateSuccessCallback(callback),
                                CreateErrorCallback(callback));
-  return;
 }
 
 void DebugdAdapterImpl::GetNvmeIdentity(const StringResultCallback& callback) {
   debugd_proxy_->NvmeAsync(kNvmeIdentityOption, CreateSuccessCallback(callback),
                            CreateErrorCallback(callback));
-  return;
 }
 
 }  // namespace diagnostics
