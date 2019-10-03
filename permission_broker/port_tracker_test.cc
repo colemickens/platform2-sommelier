@@ -77,12 +77,14 @@ TEST_F(PortTrackerTest, AllowTcpPortAccess_Success) {
   SetMockExpectations(&mock_firewall_, true /* success */);
   EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(0));
   ASSERT_TRUE(port_tracker_.AllowTcpPortAccess(tcp_port, interface, dbus_fd));
+  ASSERT_TRUE(port_tracker_.HasActiveRules());
 }
 
 TEST_F(PortTrackerTest, AllowUdpPortAccess_Success) {
   SetMockExpectations(&mock_firewall_, true /* success */);
   EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(0));
   ASSERT_TRUE(port_tracker_.AllowUdpPortAccess(udp_port, interface, dbus_fd));
+  ASSERT_TRUE(port_tracker_.HasActiveRules());
 }
 
 TEST_F(PortTrackerTest, AllowTcpPortAccess_Twice) {
@@ -91,6 +93,7 @@ TEST_F(PortTrackerTest, AllowTcpPortAccess_Twice) {
   EXPECT_CALL(port_tracker_, CheckLifelineFds(false));
   ASSERT_TRUE(port_tracker_.AllowTcpPortAccess(tcp_port, interface, dbus_fd));
   ASSERT_FALSE(port_tracker_.AllowTcpPortAccess(tcp_port, interface, dbus_fd));
+  ASSERT_TRUE(port_tracker_.HasActiveRules());
 }
 
 TEST_F(PortTrackerTest, AllowUdpPortAccess_Twice) {
@@ -99,6 +102,7 @@ TEST_F(PortTrackerTest, AllowUdpPortAccess_Twice) {
   EXPECT_CALL(port_tracker_, CheckLifelineFds(false));
   ASSERT_TRUE(port_tracker_.AllowUdpPortAccess(udp_port, interface, dbus_fd));
   ASSERT_FALSE(port_tracker_.AllowUdpPortAccess(udp_port, interface, dbus_fd));
+  ASSERT_TRUE(port_tracker_.HasActiveRules());
 }
 
 TEST_F(PortTrackerTest, AllowTcpPortAccess_FirewallFailure) {
@@ -109,6 +113,7 @@ TEST_F(PortTrackerTest, AllowTcpPortAccess_FirewallFailure) {
   EXPECT_CALL(port_tracker_, DeleteLifelineFd(tracked_fd))
       .WillOnce(Return(true));
   ASSERT_FALSE(port_tracker_.AllowTcpPortAccess(tcp_port, interface, dbus_fd));
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
 }
 
 TEST_F(PortTrackerTest, AllowUdpPortAccess_FirewallFailure) {
@@ -119,6 +124,7 @@ TEST_F(PortTrackerTest, AllowUdpPortAccess_FirewallFailure) {
   EXPECT_CALL(port_tracker_, DeleteLifelineFd(tracked_fd))
       .WillOnce(Return(true));
   ASSERT_FALSE(port_tracker_.AllowUdpPortAccess(udp_port, interface, dbus_fd));
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
 }
 
 TEST_F(PortTrackerTest, AllowTcpPortAccess_EpollFailure) {
@@ -126,6 +132,7 @@ TEST_F(PortTrackerTest, AllowTcpPortAccess_EpollFailure) {
   // Make epoll(7) fail.
   EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(-1));
   ASSERT_FALSE(port_tracker_.AllowTcpPortAccess(tcp_port, interface, dbus_fd));
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
 }
 
 TEST_F(PortTrackerTest, AllowUdpPortAccess_EpollFailure) {
@@ -144,6 +151,7 @@ TEST_F(PortTrackerTest, RevokeTcpPortAccess_Success) {
   EXPECT_CALL(port_tracker_, DeleteLifelineFd(tracked_fd))
       .WillOnce(Return(true));
   ASSERT_TRUE(port_tracker_.RevokeTcpPortAccess(tcp_port, interface));
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
 }
 
 TEST_F(PortTrackerTest, RevokeUdpPortAccess_Success) {
@@ -155,6 +163,7 @@ TEST_F(PortTrackerTest, RevokeUdpPortAccess_Success) {
   EXPECT_CALL(port_tracker_, DeleteLifelineFd(tracked_fd))
       .WillOnce(Return(true));
   ASSERT_TRUE(port_tracker_.RevokeUdpPortAccess(udp_port, interface));
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
 }
 
 TEST_F(PortTrackerTest, RevokeTcpPortAccess_FirewallFailure) {
@@ -170,6 +179,7 @@ TEST_F(PortTrackerTest, RevokeTcpPortAccess_FirewallFailure) {
   EXPECT_CALL(port_tracker_, DeleteLifelineFd(tracked_fd))
       .WillOnce(Return(true));
   ASSERT_FALSE(port_tracker_.RevokeTcpPortAccess(tcp_port, interface));
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
 }
 
 TEST_F(PortTrackerTest, RevokeUdpPortAccess_DbusFailure) {
@@ -185,6 +195,7 @@ TEST_F(PortTrackerTest, RevokeUdpPortAccess_DbusFailure) {
   EXPECT_CALL(port_tracker_, DeleteLifelineFd(tracked_fd))
       .WillOnce(Return(true));
   ASSERT_FALSE(port_tracker_.RevokeUdpPortAccess(udp_port, interface));
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
 }
 
 TEST_F(PortTrackerTest, RevokeTcpPortAccess_EpollFailure) {
@@ -198,6 +209,7 @@ TEST_F(PortTrackerTest, RevokeTcpPortAccess_EpollFailure) {
   EXPECT_CALL(port_tracker_, DeleteLifelineFd(tracked_fd))
       .WillOnce(Return(false));
   ASSERT_FALSE(port_tracker_.RevokeTcpPortAccess(tcp_port, interface));
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
 }
 
 TEST_F(PortTrackerTest, RevokeUdpPortAccess_EpollFailure) {
@@ -211,12 +223,14 @@ TEST_F(PortTrackerTest, RevokeUdpPortAccess_EpollFailure) {
   EXPECT_CALL(port_tracker_, DeleteLifelineFd(tracked_fd))
       .WillOnce(Return(false));
   ASSERT_FALSE(port_tracker_.RevokeUdpPortAccess(udp_port, interface));
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
 }
 
 TEST_F(PortTrackerTest, LockDownLoopbackTcpPort_Success) {
   SetMockExpectations(&mock_firewall_, true /* success */);
   EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(0));
   ASSERT_TRUE(port_tracker_.LockDownLoopbackTcpPort(tcp_port, dbus_fd));
+  ASSERT_TRUE(port_tracker_.HasActiveRules());
 }
 
 TEST_F(PortTrackerTest, LockDownLoopbackTcpPort_Twice) {
@@ -225,6 +239,7 @@ TEST_F(PortTrackerTest, LockDownLoopbackTcpPort_Twice) {
   EXPECT_CALL(port_tracker_, CheckLifelineFds(false));
   ASSERT_TRUE(port_tracker_.LockDownLoopbackTcpPort(tcp_port, dbus_fd));
   ASSERT_FALSE(port_tracker_.LockDownLoopbackTcpPort(tcp_port, dbus_fd));
+  ASSERT_TRUE(port_tracker_.HasActiveRules());
 }
 
 TEST_F(PortTrackerTest, LockDownLoopbackTcpPort_FirewallFailure) {
@@ -235,6 +250,7 @@ TEST_F(PortTrackerTest, LockDownLoopbackTcpPort_FirewallFailure) {
   EXPECT_CALL(port_tracker_, DeleteLifelineFd(tracked_fd))
       .WillOnce(Return(true));
   ASSERT_FALSE(port_tracker_.LockDownLoopbackTcpPort(tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
 }
 
 TEST_F(PortTrackerTest, LockDownLoopbackTcpPort_EpollFailure) {
@@ -242,6 +258,7 @@ TEST_F(PortTrackerTest, LockDownLoopbackTcpPort_EpollFailure) {
   // Make epoll(7) fail.
   EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(-1));
   ASSERT_FALSE(port_tracker_.LockDownLoopbackTcpPort(tcp_port, dbus_fd));
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
 }
 
 TEST_F(PortTrackerTest, ReleaseLoopbackTcpPort_Success) {
@@ -253,6 +270,7 @@ TEST_F(PortTrackerTest, ReleaseLoopbackTcpPort_Success) {
   EXPECT_CALL(port_tracker_, DeleteLifelineFd(tracked_fd))
       .WillOnce(Return(true));
   ASSERT_TRUE(port_tracker_.ReleaseLoopbackTcpPort(tcp_port));
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
 }
 
 TEST_F(PortTrackerTest, ReleaseLoopbackTcpPort_FirewallFailure) {
@@ -268,6 +286,7 @@ TEST_F(PortTrackerTest, ReleaseLoopbackTcpPort_FirewallFailure) {
   EXPECT_CALL(port_tracker_, DeleteLifelineFd(tracked_fd))
       .WillOnce(Return(true));
   ASSERT_FALSE(port_tracker_.ReleaseLoopbackTcpPort(tcp_port));
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
 }
 
 TEST_F(PortTrackerTest, ReleaseLoopbackTcpPort_EpollFailure) {
@@ -281,6 +300,7 @@ TEST_F(PortTrackerTest, ReleaseLoopbackTcpPort_EpollFailure) {
   EXPECT_CALL(port_tracker_, DeleteLifelineFd(tracked_fd))
       .WillOnce(Return(false));
   ASSERT_FALSE(port_tracker_.ReleaseLoopbackTcpPort(tcp_port));
+  ASSERT_FALSE(port_tracker_.HasActiveRules());
 }
 
 }  // namespace permission_broker

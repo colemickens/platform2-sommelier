@@ -31,12 +31,14 @@ class PortTracker {
   bool RevokeUdpPortAccess(uint16_t port, const std::string& iface);
   bool LockDownLoopbackTcpPort(uint16_t port, int dbus_fd);
   bool ReleaseLoopbackTcpPort(uint16_t port);
+  bool HasActiveRules();
 
   // Close all outstanding firewall holes.
   void RevokeAllPortAccess();
 
   // Unblock all loopback ports.
   void UnblockLoopbackPorts();
+
 
  protected:
   PortTracker(scoped_refptr<base::SequencedTaskRunner> task_runner,

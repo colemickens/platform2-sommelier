@@ -289,7 +289,7 @@ int PortTracker::AddLifelineFd(int dbus_fd) {
   }
 
   // If this is the first port request, start lifeline checks.
-  if (tcp_holes_.size() + udp_holes_.size() == 0) {
+  if (HasActiveRules()) {
     VLOG(1) << "Starting lifeline checks";
     ScheduleLifelineCheck();
   }
@@ -347,7 +347,7 @@ void PortTracker::CheckLifelineFds(bool reschedule_check) {
 
   if (reschedule_check) {
     // If there's still processes to track, schedule lifeline checks.
-    if (tcp_holes_.size() + tcp_holes_.size() > 0) {
+    if (HasActiveRules()) {
       ScheduleLifelineCheck();
     } else {
       VLOG(1) << "Stopping lifeline checks";
@@ -360,6 +360,11 @@ void PortTracker::ScheduleLifelineCheck() {
       FROM_HERE,
       base::Bind(&PortTracker::CheckLifelineFds, base::Unretained(this), true),
       base::TimeDelta::FromSeconds(kLifelineIntervalSeconds));
+}
+
+bool PortTracker::HasActiveRules() {
+  return !tcp_holes_.empty() || !udp_holes_.empty() ||
+         !tcp_loopback_ports_.empty();
 }
 
 bool PortTracker::PlugFirewallHole(int fd) {
