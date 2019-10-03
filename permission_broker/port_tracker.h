@@ -77,13 +77,9 @@ class PortTracker {
                              const std::string& input_ifname);
   bool HasActiveRules();
 
-  // Close all outstanding firewall holes.
-  void RevokeAllPortAccess();
-  // Revoke all outstanding forwarding rules.
-  void RevokeAllForwardingRules();
-
-  // Unblock all loopback ports.
-  void UnblockLoopbackPorts();
+  // Close all outstanding firewall holes, revoke all forwarding rules, and
+  // unblock all loopback ports.
+  void RevokeAllPortRules();
 
 
  protected:
@@ -97,12 +93,12 @@ class PortTracker {
   virtual void CheckLifelineFds(bool reschedule_check);
   virtual void ScheduleLifelineCheck();
 
-  bool PlugFirewallHole(int fd);
   bool ReleaseLoopbackTcpPortInternal(const PortRuleKey& key);
   bool OpenPort(const PortRuleKey& key, int dbus_fd);
   bool ClosePort(const PortRuleKey& key);
   bool AddForwardingRule(const PortRule& rule, int dbus_fd);
   bool RemoveForwardingRule(const PortRuleKey& key);
+  bool RevokePortRule(const PortRuleKey& key);
 
   // epoll(7) helper functions.
   virtual bool InitializeEpollOnce();
@@ -110,29 +106,25 @@ class PortTracker {
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
   int epfd_;
 
-  // For each fd (process), keep track of which hole (protocol, port, interface)
-  // it requested.
-  std::map<int, PortRuleKey> open_port_rules_;
-
   // For each hole (protocol, port, interface), keep track of which fd
   // requested it.  We need this for Release{Tcp|Udp}Port(), to avoid
-  // traversing |open_port_rules_| each time.
+  // traversing |lifeline_fds_| each time.
   std::unordered_map<PortRuleKey, int, PortRuleKeyHasher> open_port_fds_;
-
-  // For each fd (process), keep track of which loopback port it requested.
-  std::map<int, PortRuleKey> tcp_loopback_ports_;
 
   // For each loopback port, keep track of which fd requested it.
   // We need this for ReleaseLoopbackTcpPort() to avoid traversing
-  // |tcp_loopback_ports_| each time.
+  // |lifeline_fds_| each time.
   std::unordered_map<PortRuleKey, int, PortRuleKeyHasher> tcp_loopback_fds_;
 
   // Keeps track of each forwarding rule (protocol, port, interface) and which
-  // process requested it. The bidirectional maps avoid any traversal for
-  // removal or for checking duplicates during insertion.
+  // process requested it.
   std::unordered_map<PortRuleKey, PortRule, PortRuleKeyHasher>
       forwarding_rules_fds_;
-  std::map<int, PortRuleKey> forwarding_rules_;
+
+  // For each fd (process), keep track of which hole (protocol, port, interface)
+  // it requested.
+  // For each fd (process), keep track of which loopback port it requested.
+  std::map<int, PortRuleKey> lifeline_fds_;
 
   // |firewall_| is owned by the PermissionBroker object owning this instance
   // of PortTracker.

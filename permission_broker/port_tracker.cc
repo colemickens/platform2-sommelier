@@ -76,9 +76,7 @@ PortTracker::PortTracker(scoped_refptr<base::SequencedTaskRunner> task_runner,
     : task_runner_{task_runner}, epfd_{kInvalidHandle}, firewall_{firewall} {}
 
 PortTracker::~PortTracker() {
-  RevokeAllPortAccess();
-  UnblockLoopbackPorts();
-  RevokeAllForwardingRules();
+  RevokeAllPortRules();
 
   if (epfd_ >= 0) {
     close(epfd_);
@@ -160,7 +158,7 @@ bool PortTracker::OpenPort(const PortRuleKey& key, int dbus_fd) {
   }
 
   // Track the port rule.
-  open_port_rules_[lifeline_fd] = key;
+  lifeline_fds_[lifeline_fd] = key;
   open_port_fds_[key] = lifeline_fd;
 
   bool success = firewall_->AddAcceptRules(key.proto, key.input_dst_port,
@@ -170,7 +168,7 @@ bool PortTracker::OpenPort(const PortRuleKey& key, int dbus_fd) {
     // of the process.
     LOG(ERROR) << "Failed to punch hole for port " << key;
     DeleteLifelineFd(lifeline_fd);
-    open_port_rules_.erase(lifeline_fd);
+    lifeline_fds_.erase(lifeline_fd);
     open_port_fds_.erase(key);
     return false;
   }
@@ -188,7 +186,7 @@ bool PortTracker::ClosePort(const PortRuleKey& key) {
   bool plugged = firewall_->DeleteAcceptRules(key.proto, key.input_dst_port,
                                               key.input_ifname);
   bool deleted = DeleteLifelineFd(fd);
-  open_port_rules_.erase(fd);
+  lifeline_fds_.erase(fd);
   open_port_fds_.erase(key);
   if (!plugged) {
     LOG(ERROR) << "Failed to close open port " << key;
@@ -200,52 +198,20 @@ bool PortTracker::ClosePort(const PortRuleKey& key) {
   return plugged && deleted;
 }
 
-void PortTracker::RevokeAllPortAccess() {
-  VLOG(1) << "Revoking all port access";
+void PortTracker::RevokeAllPortRules() {
+  VLOG(1) << "Revoking all port rules";
 
   // Copy the container so that we can remove elements from the original.
   std::vector<PortRuleKey> all_rules;
-  all_rules.reserve(open_port_rules_.size());
-  for (const auto& kv : open_port_rules_) {
+  all_rules.reserve(lifeline_fds_.size());
+  for (const auto& kv : lifeline_fds_) {
     all_rules.push_back(kv.second);
   }
   for (const PortRuleKey& key : all_rules) {
-    ClosePort(key);
+    RevokePortRule(key);
   }
 
-  CHECK(open_port_rules_.size() == 0) << "Failed to plug all open ports";
-  CHECK(open_port_fds_.size() == 0) << "Failed to plug all open ports";
-}
-
-void PortTracker::UnblockLoopbackPorts() {
-  VLOG(1) << "Unblocking all loopback ports";
-
-  // Copy the containers so that we can remove elements from the originals.
-  auto ports = tcp_loopback_ports_;
-  for (const auto& pair : ports) {
-    DeleteLifelineFd(pair.first);
-    ReleaseLoopbackTcpPortInternal(pair.second);
-  }
-
-  CHECK(tcp_loopback_ports_.size() == 0)
-      << "Failed to unblock all TCP loopback ports";
-}
-
-void PortTracker::RevokeAllForwardingRules() {
-  VLOG(1) << "Revoking all forwarding rules";
-
-  // Copy the container so that we can remove elements from the originals.
-  std::vector<PortRuleKey> all_rules;
-  all_rules.reserve(forwarding_rules_fds_.size());
-  for (const auto& kv : forwarding_rules_fds_) {
-    all_rules.push_back(kv.first);
-  }
-  for (const PortRuleKey& key : all_rules) {
-    RemoveForwardingRule(key);
-  }
-
-  CHECK(forwarding_rules_fds_.size() == 0)
-      << "Failed to revoke all port forwarding rules";
+  CHECK(lifeline_fds_.empty()) << "Failed to revoke all port rules";
 }
 
 bool PortTracker::LockDownLoopbackTcpPort(uint16_t port, int dbus_fd) {
@@ -277,7 +243,7 @@ bool PortTracker::LockDownLoopbackTcpPort(uint16_t port, int dbus_fd) {
   }
 
   // Track the port.
-  tcp_loopback_ports_[lifeline_fd] = key;
+  lifeline_fds_[lifeline_fd] = key;
   tcp_loopback_fds_[key] = lifeline_fd;
 
   bool success =
@@ -287,7 +253,7 @@ bool PortTracker::LockDownLoopbackTcpPort(uint16_t port, int dbus_fd) {
     // lifetime of the process.
     LOG(ERROR) << "Failed to lock down port " << key;
     DeleteLifelineFd(lifeline_fd);
-    tcp_loopback_ports_.erase(lifeline_fd);
+    lifeline_fds_.erase(lifeline_fd);
     tcp_loopback_fds_.erase(key);
     return false;
   }
@@ -314,7 +280,7 @@ bool PortTracker::ReleaseLoopbackTcpPortInternal(const PortRuleKey& key) {
   bool plugged =
       firewall_->DeleteLoopbackLockdownRules(key.proto, key.input_dst_port);
   bool deleted = DeleteLifelineFd(fd);
-  tcp_loopback_ports_.erase(fd);
+  lifeline_fds_.erase(fd);
   tcp_loopback_fds_.erase(key);
   if (!plugged) {
     LOG(ERROR) << "Failed to delete loopback lockdown rule for port " << key;
@@ -461,7 +427,7 @@ bool PortTracker::AddForwardingRule(const PortRule& rule, int dbus_fd) {
 
   forwarding_rules_fds_[key] = rule;
   forwarding_rules_fds_[key].lifeline_fd = lifeline_fd;
-  forwarding_rules_[lifeline_fd] = key;
+  lifeline_fds_[lifeline_fd] = key;
 
   bool success = firewall_->DeleteIpv4ForwardRule(
       rule.proto, rule.input_dst_port, rule.input_ifname, rule.dst_ip,
@@ -470,7 +436,7 @@ bool PortTracker::AddForwardingRule(const PortRule& rule, int dbus_fd) {
     LOG(ERROR) << "Failed to delete forwarding rule " << rule;
     DeleteLifelineFd(lifeline_fd);
     forwarding_rules_fds_.erase(key);
-    forwarding_rules_.erase(lifeline_fd);
+    lifeline_fds_.erase(lifeline_fd);
     return false;
   }
 
@@ -493,7 +459,7 @@ bool PortTracker::RemoveForwardingRule(const PortRuleKey& key) {
 
   DeleteLifelineFd(rule.lifeline_fd);
   forwarding_rules_fds_.erase(key);
-  forwarding_rules_.erase(rule.lifeline_fd);
+  lifeline_fds_.erase(rule.lifeline_fd);
 
   bool success = firewall_->DeleteIpv4ForwardRule(
       rule.proto, rule.input_dst_port, rule.input_ifname, rule.dst_ip,
@@ -574,8 +540,14 @@ void PortTracker::CheckLifelineFds(bool reschedule_check) {
     if ((events & (EPOLLHUP | EPOLLERR))) {
       // The process that requested this port has died/exited,
       // so we need to plug the hole.
-      PlugFirewallHole(fd);
-      DeleteLifelineFd(fd);
+      if (lifeline_fds_.find(fd) == lifeline_fds_.end()) {
+        LOG(ERROR) << "File descriptor " << fd << " was not being tracked";
+        DeleteLifelineFd(fd);
+        continue;
+      }
+      if (!RevokePortRule(lifeline_fds_[fd])) {
+        DeleteLifelineFd(fd);
+      }
     }
   }
 
@@ -597,22 +569,21 @@ void PortTracker::ScheduleLifelineCheck() {
 }
 
 bool PortTracker::HasActiveRules() {
-  return !open_port_rules_.empty() || !tcp_loopback_ports_.empty() ||
-         !forwarding_rules_.empty();
+  return !lifeline_fds_.empty();
 }
 
-bool PortTracker::PlugFirewallHole(int fd) {
-  if (open_port_rules_.find(fd) != open_port_rules_.end()) {
+bool PortTracker::RevokePortRule(const PortRuleKey& key) {
+  if (open_port_fds_.find(key) != open_port_fds_.end()) {
     // It was a port accept rule.
-    return ClosePort(open_port_rules_[fd]);
-  } else if (tcp_loopback_ports_.find(fd) != tcp_loopback_ports_.end()) {
+    return ClosePort(key);
+  } else if (tcp_loopback_fds_.find(key) != tcp_loopback_fds_.end()) {
     // It was a blocked TCP loopback port.
-    return ReleaseLoopbackTcpPortInternal(tcp_loopback_ports_[fd]);
-  } else if (forwarding_rules_.find(fd) != forwarding_rules_.end()) {
+    return ReleaseLoopbackTcpPortInternal(key);
+  } else if (forwarding_rules_fds_.find(key) != forwarding_rules_fds_.end()) {
     // It was a forwarding rule.
-    return RemoveForwardingRule(forwarding_rules_[fd]);
+    return RemoveForwardingRule(key);
   } else {
-    LOG(ERROR) << "File descriptor " << fd << " was not being tracked";
+    LOG(ERROR) << "Unknown port rule entry " << key;
     return false;
   }
 }
