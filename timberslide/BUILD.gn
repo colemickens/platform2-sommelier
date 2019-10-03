@@ -8,6 +8,9 @@ group("all") {
   deps = [
     ":timberslide",
   ]
+  if (use.test) {
+    deps += [ ":timberslide_test_runner" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -32,4 +35,25 @@ executable("timberslide") {
   deps = [
     ":libtimberslide",
   ]
+}
+
+if (use.test) {
+  pkg_config("timberslide_test_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+  executable("timberslide_test_runner") {
+    configs += [
+      "//common-mk:test",
+      ":timberslide_test_config",
+      ":target_defaults",
+    ]
+    sources = [
+      "timberslide_test.cc",
+      "timberslide_testrunner.cc",
+    ]
+    deps = [
+      ":libtimberslide",
+      "//common-mk/testrunner",
+    ]
+  }
 }

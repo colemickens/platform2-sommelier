@@ -5,9 +5,12 @@
 #ifndef TIMBERSLIDE_TIMBERSLIDE_H_
 #define TIMBERSLIDE_TIMBERSLIDE_H_
 
+#include <memory>
 #include <string>
+#include <utility>
 
 #include <base/files/file_util.h>
+#include "base/time/time.h"
 #include <brillo/daemons/daemon.h>
 
 namespace timberslide {
@@ -20,13 +23,19 @@ class TimberSlide : public brillo::Daemon,
               base::File uptime_file,
               const base::FilePath& log_dir);
 
+  std::string ProcessLogBuffer(const char* buffer, const base::Time& now);
+
+ protected:
+  // For testing
+  explicit TimberSlide();
+
  private:
   int OnInit() override;
 
   void OnFileCanWriteWithoutBlocking(int fd) override;
   void OnFileCanReadWithoutBlocking(int fd) override;
 
-  bool GetEcUptime(int64_t* ec_uptime_ms);
+  virtual bool GetEcUptime(int64_t* ec_uptime_ms);
 
   void RotateLogs(const base::FilePath& previous_log,
                   const base::FilePath& current_log);

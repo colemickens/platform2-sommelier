@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <sstream>
 #include <string>
-#include <utility>
 
 #include <sysexits.h>
 #include <sys/types.h>
@@ -49,8 +48,8 @@ class LineExtractor {
 //
 class StringTransformer {
  public:
-  explicit StringTransformer(int64_t ec_uptime_ms)
-      : ec_current_uptime_ms_(ec_uptime_ms), timestamp_(base::Time::Now()) {}
+  explicit StringTransformer(int64_t ec_uptime_ms, const base::Time& now)
+      : ec_current_uptime_ms_(ec_uptime_ms), timestamp_(now) {}
 
   // Matching lines look like: [1234.5678 EC message goes here] .
   std::string add_host_ts(const std::string& s) {
@@ -111,6 +110,8 @@ TimberSlide::TimberSlide(const std::string& ec_type,
   previous_log_ = log_dir.Append(ec_type + kPreviousLogExt);
 }
 
+TimberSlide::TimberSlide() : fd_watcher_(FROM_HERE) {}
+
 int TimberSlide::OnInit() {
   LOG(INFO) << "Starting timberslide daemon";
   int ret = brillo::Daemon::OnInit();
@@ -164,10 +165,36 @@ bool TimberSlide::GetEcUptime(int64_t* ec_uptime_ms) {
   return (*ec_uptime_ms > 0);
 }
 
+std::string TimberSlide::ProcessLogBuffer(const char* buffer,
+                                          const base::Time& now) {
+  int64_t ec_current_uptime_ms = 0;
+  std::istringstream iss(buffer);
+
+  bool have_ec_uptime = GetEcUptime(&ec_current_uptime_ms);
+
+  auto fn_xfrm = [ec_current_uptime_ms, have_ec_uptime,
+                  now](const std::string& line) {
+    if (!have_ec_uptime) {
+      return line;
+    }
+    StringTransformer xfrm(ec_current_uptime_ms, now);
+    return xfrm.add_host_ts(line);
+  };
+
+  // Iterate over each line and prepend the corresponding host timestamp if we
+  // have it
+  std::ostringstream oss;
+  std::transform(std::istream_iterator<LineExtractor>(iss),
+                 std::istream_iterator<LineExtractor>(),
+                 std::ostream_iterator<std::string>(oss, "\n"), fn_xfrm);
+
+  return oss.str();
+}
+
+
 void TimberSlide::OnFileCanReadWithoutBlocking(int fd) {
   char buffer[4096];
   int ret;
-  int64_t ec_current_uptime_ms = 0;
 
   CHECK_EQ(fd, device_file_.GetPlatformFile());
   memset(buffer, 0, sizeof(buffer));
@@ -183,25 +210,8 @@ void TimberSlide::OnFileCanReadWithoutBlocking(int fd) {
     return;
   }
 
-  std::string str;
-  if (GetEcUptime(&ec_current_uptime_ms)) {
-    StringTransformer xfrm(ec_current_uptime_ms);
-    auto fn_xfrm = std::bind(&StringTransformer::add_host_ts, &xfrm,
-                             std::placeholders::_1);
-    std::istringstream iss(buffer);
-    std::ostringstream oss;
 
-    // Iterate over each line and prepend the corresponding host timestamp
-    std::transform(std::istream_iterator<LineExtractor>(iss),
-                   std::istream_iterator<LineExtractor>(),
-                   std::ostream_iterator<std::string>(oss, "\n"), fn_xfrm);
-
-    str = oss.str();
-  } else {
-    // ret is the number of characters read from the device_file_
-    str = std::string(buffer, ret);
-  }
-
+  std::string str = ProcessLogBuffer(buffer, base::Time::Now());
   ret = str.size();
 
   if (!base::AppendToFile(current_log_, str.c_str(), ret)) {
