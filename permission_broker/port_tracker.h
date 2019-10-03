@@ -32,6 +32,7 @@ class PortTracker {
     }
   };
 
+  // Helper for using PortRuleKey as key entries in std::unordered_maps.
   struct PortRuleKeyHasher {
     std::size_t operator()(const PortRuleKey& k) const {
       return ((std::hash<int>()(k.proto) ^
@@ -41,16 +42,28 @@ class PortTracker {
     }
   };
 
+  // The different types of port rules supported.
+  enum PortRuleType : uint8_t {
+    // Forces default PortRuleType zero values to be different from any valid
+    // port rule type.
+    kUnknownRule = 0,
+    // Rule for opening ingress traffic on a destination port.
+    kAccessRule = 1,
+    // Rule for closing a destination port to locally originated traffic.
+    kLockdownRule = 2,
+    // Rule for forwarding ingress traffic on a destination port.
+    kForwardingRule = 3
+  };
+
   struct PortRule {
     int lifeline_fd;
+    PortRuleType type;
     ProtocolEnum proto;
     uint16_t input_dst_port;
     std::string input_ifname;
     std::string dst_ip;
     uint16_t dst_port;
   };
-
-  typedef std::pair<uint16_t, std::string> Hole;
 
   explicit PortTracker(Firewall* firewall);
   virtual ~PortTracker();
@@ -81,7 +94,6 @@ class PortTracker {
   // unblock all loopback ports.
   void RevokeAllPortRules();
 
-
  protected:
   PortTracker(scoped_refptr<base::SequencedTaskRunner> task_runner,
               Firewall* firewall);
@@ -93,11 +105,8 @@ class PortTracker {
   virtual void CheckLifelineFds(bool reschedule_check);
   virtual void ScheduleLifelineCheck();
 
-  bool ReleaseLoopbackTcpPortInternal(const PortRuleKey& key);
-  bool OpenPort(const PortRuleKey& key, int dbus_fd);
-  bool ClosePort(const PortRuleKey& key);
-  bool AddForwardingRule(const PortRule& rule, int dbus_fd);
-  bool RemoveForwardingRule(const PortRuleKey& key);
+  bool AddPortRule(const PortRule& rule, int dbus_fd);
+  bool ValidatePortRule(const PortRule& rule);
   bool RevokePortRule(const PortRuleKey& key);
 
   // epoll(7) helper functions.
@@ -106,24 +115,13 @@ class PortTracker {
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
   int epfd_;
 
-  // For each hole (protocol, port, interface), keep track of which fd
+  // For each port rule (protocol, port, interface), keep track of which fd
   // requested it.  We need this for Release{Tcp|Udp}Port(), to avoid
   // traversing |lifeline_fds_| each time.
-  std::unordered_map<PortRuleKey, int, PortRuleKeyHasher> open_port_fds_;
+  std::unordered_map<PortRuleKey, PortRule, PortRuleKeyHasher> port_rules_;
 
-  // For each loopback port, keep track of which fd requested it.
-  // We need this for ReleaseLoopbackTcpPort() to avoid traversing
-  // |lifeline_fds_| each time.
-  std::unordered_map<PortRuleKey, int, PortRuleKeyHasher> tcp_loopback_fds_;
-
-  // Keeps track of each forwarding rule (protocol, port, interface) and which
-  // process requested it.
-  std::unordered_map<PortRuleKey, PortRule, PortRuleKeyHasher>
-      forwarding_rules_fds_;
-
-  // For each fd (process), keep track of which hole (protocol, port, interface)
+  // For each fd (process), keep track of which rule (protocol, port, interface)
   // it requested.
-  // For each fd (process), keep track of which loopback port it requested.
   std::map<int, PortRuleKey> lifeline_fds_;
 
   // |firewall_| is owned by the PermissionBroker object owning this instance

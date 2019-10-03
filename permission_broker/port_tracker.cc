@@ -48,6 +48,22 @@ constexpr const struct in_addr kGuestBaseAddr = {.s_addr =
 constexpr const struct in_addr kGuestNetmask = {.s_addr =
                                                     Ipv4Addr(255, 255, 255, 0)};
 
+std::string RuleTypeName(PortTracker::PortRuleType type) {
+  switch (type) {
+    case PortTracker::kUnknownRule:
+      return "UnknownRule";
+    case PortTracker::kAccessRule:
+      return "AccessRule";
+    case PortTracker::kLockdownRule:
+      return "LockdownRule";
+    case PortTracker::kForwardingRule:
+      return "ForwardingRule";
+    default:
+      NOTREACHED() << "Unknown rule type " << type;
+      return std::to_string(type);
+  }
+}
+
 std::ostream& operator<<(std::ostream& stream,
                          const PortTracker::PortRuleKey key) {
   stream << "{ " << ProtocolName(key.proto) << " :"
@@ -58,9 +74,10 @@ std::ostream& operator<<(std::ostream& stream,
 
 std::ostream& operator<<(std::ostream& stream,
                          const PortTracker::PortRule rule) {
-  stream << "{ " << ProtocolName(rule.proto) << " :"
-         << std::to_string(rule.input_dst_port) << "/" << rule.input_ifname
-         << " -> " << rule.dst_ip << ":" << rule.dst_port << " }";
+  stream << "{ " << RuleTypeName(rule.type) << " " << ProtocolName(rule.proto)
+         << " :" << std::to_string(rule.input_dst_port) << "/"
+         << rule.input_ifname << " -> " << rule.dst_ip << ":" << rule.dst_port
+         << " }";
   return stream;
 }
 }  // namespace
@@ -86,23 +103,25 @@ PortTracker::~PortTracker() {
 bool PortTracker::AllowTcpPortAccess(uint16_t port,
                                      const std::string& iface,
                                      int dbus_fd) {
-  PortRuleKey key = {
+  PortRule rule = {
+      .type = kAccessRule,
       .proto = kProtocolTcp,
       .input_dst_port = port,
       .input_ifname = iface,
   };
-  return OpenPort(key, dbus_fd);
+  return AddPortRule(rule, dbus_fd);
 }
 
 bool PortTracker::AllowUdpPortAccess(uint16_t port,
                                      const std::string& iface,
                                      int dbus_fd) {
-  PortRuleKey key = {
+  PortRule rule = {
+      .type = kAccessRule,
       .proto = kProtocolUdp,
       .input_dst_port = port,
       .input_ifname = iface,
   };
-  return OpenPort(key, dbus_fd);
+  return AddPortRule(rule, dbus_fd);
 }
 
 bool PortTracker::RevokeTcpPortAccess(uint16_t port, const std::string& iface) {
@@ -111,7 +130,7 @@ bool PortTracker::RevokeTcpPortAccess(uint16_t port, const std::string& iface) {
       .input_dst_port = port,
       .input_ifname = iface,
   };
-  return ClosePort(key);
+  return RevokePortRule(key);
 }
 
 bool PortTracker::RevokeUdpPortAccess(uint16_t port, const std::string& iface) {
@@ -120,11 +139,22 @@ bool PortTracker::RevokeUdpPortAccess(uint16_t port, const std::string& iface) {
       .input_dst_port = port,
       .input_ifname = iface,
   };
-  return ClosePort(key);
+  return RevokePortRule(key);
 }
 
-bool PortTracker::OpenPort(const PortRuleKey& key, int dbus_fd) {
-  if (open_port_fds_.find(key) != open_port_fds_.end()) {
+bool PortTracker::AddPortRule(const PortRule& rule, int dbus_fd) {
+  if (!ValidatePortRule(rule)) {
+    return false;
+  }
+
+  PortRuleKey key = {
+      .proto = rule.proto,
+      .input_dst_port = rule.input_dst_port,
+      .input_ifname = rule.input_ifname,
+  };
+
+  // Check if the port is not already being forwarded or allowed for access.
+  if (port_rules_.find(key) != port_rules_.end()) {
     // This can happen when a requesting process has just been restarted but
     // the scheduled lifeline FD check hasn't yet been performed, so we might
     // have stale file descriptors around.
@@ -132,19 +162,9 @@ bool PortTracker::OpenPort(const PortRuleKey& key, int dbus_fd) {
     CheckLifelineFds(false /* reschedule_check */);
 
     // Then try again. If this still fails, we know it's an invalid request.
-    if (open_port_fds_.find(key) != open_port_fds_.end()) {
-      LOG(ERROR) << "Hole already punched for " << key;
-      return false;
-    }
-  }
-
-  // Check if the port is not already being forwarded.
-  if (forwarding_rules_fds_.find(key) != forwarding_rules_fds_.end()) {
-    // Remove stale lifeline fds and recheck.
-    CheckLifelineFds(false /* reschedule_check */);
-
-    if (forwarding_rules_fds_.find(key) != forwarding_rules_fds_.end()) {
-      LOG(ERROR) << "Already forwarding " << key;
+    if (port_rules_.find(key) != port_rules_.end()) {
+      LOG(ERROR) << "Tried to add rule " << rule << " but rule "
+                 << port_rules_[key] << " already existed";
       return false;
     }
   }
@@ -153,49 +173,45 @@ bool PortTracker::OpenPort(const PortRuleKey& key, int dbus_fd) {
   // port access.
   int lifeline_fd = AddLifelineFd(dbus_fd);
   if (lifeline_fd < 0) {
-    LOG(ERROR) << "Tracking lifeline fd for port " << key << " failed";
+    LOG(ERROR) << "Tracking lifeline fd for rule " << rule << " failed";
     return false;
   }
 
   // Track the port rule.
+  port_rules_[key] = rule;
+  port_rules_[key].lifeline_fd = lifeline_fd;
   lifeline_fds_[lifeline_fd] = key;
-  open_port_fds_[key] = lifeline_fd;
 
-  bool success = firewall_->AddAcceptRules(key.proto, key.input_dst_port,
-                                           key.input_ifname);
+  bool success = false;
+  switch (rule.type) {
+    case kAccessRule:
+      success = firewall_->AddAcceptRules(rule.proto, rule.input_dst_port,
+                                          rule.input_ifname);
+      break;
+    case kLockdownRule:
+      success =
+          firewall_->AddLoopbackLockdownRules(rule.proto, rule.input_dst_port);
+      break;
+    case kForwardingRule:
+      success = firewall_->DeleteIpv4ForwardRule(
+          rule.proto, rule.input_dst_port, rule.input_ifname, rule.dst_ip,
+          rule.dst_port);
+      break;
+    default:
+      LOG(ERROR) << "Unknown port rule type " << rule.type;
+      break;
+  }
+
   if (!success) {
     // If we fail to punch the hole in the firewall, stop tracking the lifetime
     // of the process.
-    LOG(ERROR) << "Failed to punch hole for port " << key;
+    LOG(ERROR) << "Failed to create rule " << rule;
     DeleteLifelineFd(lifeline_fd);
     lifeline_fds_.erase(lifeline_fd);
-    open_port_fds_.erase(key);
+    port_rules_.erase(key);
     return false;
   }
   return true;
-}
-
-bool PortTracker::ClosePort(const PortRuleKey& key) {
-  auto p = open_port_fds_.find(key);
-  if (p == open_port_fds_.end()) {
-    LOG(ERROR) << "Not tracking port " << key;
-    return false;
-  }
-
-  int fd = p->second;
-  bool plugged = firewall_->DeleteAcceptRules(key.proto, key.input_dst_port,
-                                              key.input_ifname);
-  bool deleted = DeleteLifelineFd(fd);
-  lifeline_fds_.erase(fd);
-  open_port_fds_.erase(key);
-  if (!plugged) {
-    LOG(ERROR) << "Failed to close open port " << key;
-  }
-  if (!deleted) {
-    LOG(ERROR) << "Failed to delete file descriptor " << fd
-               << " from epoll instance";
-  }
-  return plugged && deleted;
 }
 
 void PortTracker::RevokeAllPortRules() {
@@ -211,53 +227,17 @@ void PortTracker::RevokeAllPortRules() {
     RevokePortRule(key);
   }
 
-  CHECK(lifeline_fds_.empty()) << "Failed to revoke all port rules";
+  CHECK(!HasActiveRules()) << "Failed to revoke all port rules";
 }
 
 bool PortTracker::LockDownLoopbackTcpPort(uint16_t port, int dbus_fd) {
-  PortRuleKey key = {
+  PortRule rule = {
+      .type = kLockdownRule,
       .proto = kProtocolTcp,
       .input_dst_port = port,
       .input_ifname = kLocalhost,
   };
-  if (tcp_loopback_fds_.find(key) != tcp_loopback_fds_.end()) {
-    // This can happen when a requesting process has just been restarted but
-    // the scheduled lifeline FD check hasn't yet been performed, so we might
-    // have stale file descriptors around.
-    // Force the FD check to see if they will be removed now.
-    CheckLifelineFds(false /* reschedule_check */);
-
-    // Then try again. If this still fails, we know it's an invalid request.
-    if (tcp_loopback_fds_.find(key) != tcp_loopback_fds_.end()) {
-      LOG(ERROR) << "Port " << key << " already locked down";
-      return false;
-    }
-  }
-
-  // We use |lifeline_fd| to track the lifetime of the process requesting
-  // port access.
-  int lifeline_fd = AddLifelineFd(dbus_fd);
-  if (lifeline_fd < 0) {
-    LOG(ERROR) << "Tracking lifeline fd for port " << key << " failed";
-    return false;
-  }
-
-  // Track the port.
-  lifeline_fds_[lifeline_fd] = key;
-  tcp_loopback_fds_[key] = lifeline_fd;
-
-  bool success =
-      firewall_->AddLoopbackLockdownRules(key.proto, key.input_dst_port);
-  if (!success) {
-    // If we fail to lock down the port in the firewall, stop tracking the
-    // lifetime of the process.
-    LOG(ERROR) << "Failed to lock down port " << key;
-    DeleteLifelineFd(lifeline_fd);
-    lifeline_fds_.erase(lifeline_fd);
-    tcp_loopback_fds_.erase(key);
-    return false;
-  }
-  return true;
+  return AddPortRule(rule, dbus_fd);
 }
 
 bool PortTracker::ReleaseLoopbackTcpPort(uint16_t port) {
@@ -266,30 +246,7 @@ bool PortTracker::ReleaseLoopbackTcpPort(uint16_t port) {
       .input_dst_port = port,
       .input_ifname = kLocalhost,
   };
-  return ReleaseLoopbackTcpPortInternal(key);
-}
-
-bool PortTracker::ReleaseLoopbackTcpPortInternal(const PortRuleKey& key) {
-  auto p = tcp_loopback_fds_.find(key);
-  if (p == tcp_loopback_fds_.end()) {
-    LOG(ERROR) << "Not tracking port " << key;
-    return false;
-  }
-
-  int fd = p->second;
-  bool plugged =
-      firewall_->DeleteLoopbackLockdownRules(key.proto, key.input_dst_port);
-  bool deleted = DeleteLifelineFd(fd);
-  lifeline_fds_.erase(fd);
-  tcp_loopback_fds_.erase(key);
-  if (!plugged) {
-    LOG(ERROR) << "Failed to delete loopback lockdown rule for port " << key;
-  }
-  if (!deleted) {
-    LOG(ERROR) << "Failed to delete file descriptor " << fd
-               << " from epoll instance";
-  }
-  return plugged && deleted;
+  return RevokePortRule(key);
 }
 
 bool PortTracker::StartTcpPortForwarding(uint16_t input_dst_port,
@@ -298,13 +255,14 @@ bool PortTracker::StartTcpPortForwarding(uint16_t input_dst_port,
                                          uint16_t dst_port,
                                          int dbus_fd) {
   PortRule rule = {
+      .type = kForwardingRule,
       .proto = kProtocolTcp,
       .input_dst_port = input_dst_port,
       .input_ifname = input_ifname,
       .dst_ip = dst_ip,
       .dst_port = dst_port,
   };
-  return AddForwardingRule(rule, dbus_fd);
+  return AddPortRule(rule, dbus_fd);
 }
 
 bool PortTracker::StartUdpPortForwarding(uint16_t input_dst_port,
@@ -313,13 +271,14 @@ bool PortTracker::StartUdpPortForwarding(uint16_t input_dst_port,
                                          uint16_t dst_port,
                                          int dbus_fd) {
   PortRule rule = {
+      .type = kForwardingRule,
       .proto = kProtocolUdp,
       .input_dst_port = input_dst_port,
       .input_ifname = input_ifname,
       .dst_ip = dst_ip,
       .dst_port = dst_port,
   };
-  return AddForwardingRule(rule, dbus_fd);
+  return AddPortRule(rule, dbus_fd);
 }
 
 bool PortTracker::StopTcpPortForwarding(uint16_t input_dst_port,
@@ -329,7 +288,7 @@ bool PortTracker::StopTcpPortForwarding(uint16_t input_dst_port,
       .input_dst_port = input_dst_port,
       .input_ifname = input_ifname,
   };
-  return RemoveForwardingRule(key);
+  return RevokePortRule(key);
 }
 
 bool PortTracker::StopUdpPortForwarding(uint16_t input_dst_port,
@@ -339,17 +298,33 @@ bool PortTracker::StopUdpPortForwarding(uint16_t input_dst_port,
       .input_dst_port = input_dst_port,
       .input_ifname = input_ifname,
   };
-  return RemoveForwardingRule(key);
+  return RevokePortRule(key);
 }
 
-bool PortTracker::AddForwardingRule(const PortRule& rule, int dbus_fd) {
+bool PortTracker::ValidatePortRule(const PortRule& rule) {
+  switch (rule.type) {
+    case kAccessRule:
+    case kLockdownRule:
+    case kForwardingRule:
+      break;
+    default:
+      CHECK(false) << "Unknown port rule type value " << rule.type;
+      return false;
+  }
+
   switch (rule.proto) {
     case kProtocolTcp:
     case kProtocolUdp:
       break;
     default:
-      CHECK(false) << "Unexpected L4 protocol value " << rule.proto;
+      CHECK(false) << "Unknown L4 protocol value " << rule.proto;
       return false;
+  }
+
+  // TODO(hugobenichi): add some validation for port access and port lockdown
+  // rules as well.
+  if (rule.type != kForwardingRule) {
+    return true;
   }
 
   // Redirecting a reserved port is not allowed.
@@ -390,86 +365,6 @@ bool PortTracker::AddForwardingRule(const PortRule& rule, int dbus_fd) {
     return false;
   }
 
-  PortRuleKey key = {
-      .proto = rule.proto,
-      .input_dst_port = rule.input_dst_port,
-      .input_ifname = rule.input_ifname,
-  };
-
-  // Check if the port is not already open for ingress traffic.
-  if (open_port_fds_.find(key) != open_port_fds_.end()) {
-    // Remove stale lifeline fds and recheck.
-    CheckLifelineFds(false /* reschedule_check */);
-    if (open_port_fds_.find(key) != open_port_fds_.end()) {
-      LOG(ERROR) << "Cannot apply forwarding rule " << rule
-                 << ": port is already open for ingress traffic";
-      return false;
-    }
-  }
-
-  // Check if the port is not already forwarded.
-  if (forwarding_rules_fds_.find(key) != forwarding_rules_fds_.end()) {
-    // Remove stale lifeline fds and recheck.
-     /* reschedule_check */CheckLifelineFds(false /* reschedule_check */);
-
-    if (forwarding_rules_fds_.find(key) != forwarding_rules_fds_.end()) {
-      LOG(ERROR) << "Forwarding rule already exist for " << key;
-      return false;
-    }
-  }
-
-  int lifeline_fd = AddLifelineFd(dbus_fd);
-  if (lifeline_fd < 0) {
-    LOG(ERROR) << "Tracking lifeline fd for forwarding rule " << rule
-               << " failed";
-    return false;
-  }
-
-  forwarding_rules_fds_[key] = rule;
-  forwarding_rules_fds_[key].lifeline_fd = lifeline_fd;
-  lifeline_fds_[lifeline_fd] = key;
-
-  bool success = firewall_->DeleteIpv4ForwardRule(
-      rule.proto, rule.input_dst_port, rule.input_ifname, rule.dst_ip,
-      rule.dst_port);
-  if (!success) {
-    LOG(ERROR) << "Failed to delete forwarding rule " << rule;
-    DeleteLifelineFd(lifeline_fd);
-    forwarding_rules_fds_.erase(key);
-    lifeline_fds_.erase(lifeline_fd);
-    return false;
-  }
-
-  VLOG(1) << "Added port forwarding rule " << rule;
-  return true;
-}
-
-bool PortTracker::RemoveForwardingRule(const PortRuleKey& key) {
-  if (forwarding_rules_fds_.find(key) == forwarding_rules_fds_.end()) {
-    LOG(ERROR) << "No forwarding rule found for " << key;
-    return false;
-  }
-
-  if (forwarding_rules_fds_.find(key) == forwarding_rules_fds_.end()) {
-    LOG(ERROR) << "No file descriptor associated with forwarding rule " << key;
-    return false;
-  }
-
-  PortRule rule = forwarding_rules_fds_[key];
-
-  DeleteLifelineFd(rule.lifeline_fd);
-  forwarding_rules_fds_.erase(key);
-  lifeline_fds_.erase(rule.lifeline_fd);
-
-  bool success = firewall_->DeleteIpv4ForwardRule(
-      rule.proto, rule.input_dst_port, rule.input_ifname, rule.dst_ip,
-      rule.dst_port);
-  if (!success) {
-    LOG(ERROR) << "Failed to remove forwarding rule " << rule;
-    return false;
-  }
-
-  VLOG(1) << "Removed port forwarding rule " << rule;
   return true;
 }
 
@@ -573,18 +468,33 @@ bool PortTracker::HasActiveRules() {
 }
 
 bool PortTracker::RevokePortRule(const PortRuleKey& key) {
-  if (open_port_fds_.find(key) != open_port_fds_.end()) {
-    // It was a port accept rule.
-    return ClosePort(key);
-  } else if (tcp_loopback_fds_.find(key) != tcp_loopback_fds_.end()) {
-    // It was a blocked TCP loopback port.
-    return ReleaseLoopbackTcpPortInternal(key);
-  } else if (forwarding_rules_fds_.find(key) != forwarding_rules_fds_.end()) {
-    // It was a forwarding rule.
-    return RemoveForwardingRule(key);
-  } else {
-    LOG(ERROR) << "Unknown port rule entry " << key;
+  if (port_rules_.find(key) == port_rules_.end()) {
+    LOG(ERROR) << "No port rule found for " << key;
     return false;
+  }
+
+  PortRule rule = port_rules_[key];
+  bool deleted = DeleteLifelineFd(rule.lifeline_fd);
+  if (!deleted) {
+    LOG(ERROR) << "Failed to delete file descriptor " << rule.lifeline_fd
+               << " from epoll instance";
+  }
+  port_rules_.erase(key);
+  lifeline_fds_.erase(rule.lifeline_fd);
+  switch (rule.type) {
+    case kAccessRule:
+      return deleted && firewall_->DeleteAcceptRules(
+                            key.proto, key.input_dst_port, key.input_ifname);
+    case kLockdownRule:
+      return deleted && firewall_->DeleteLoopbackLockdownRules(
+                            key.proto, key.input_dst_port);
+    case kForwardingRule:
+      return deleted && firewall_->DeleteIpv4ForwardRule(
+                            rule.proto, rule.input_dst_port, rule.input_ifname,
+                            rule.dst_ip, rule.dst_port);
+    default:
+      LOG(ERROR) << "Unknown port rule entry type " << rule.type;
+      return false;
   }
 }
 
