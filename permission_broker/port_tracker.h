@@ -98,6 +98,7 @@ class PortTracker {
   virtual void ScheduleLifelineCheck();
 
   bool PlugFirewallHole(int fd);
+  bool ReleaseLoopbackTcpPortInternal(const PortRuleKey& key);
   bool OpenPort(const PortRuleKey& key, int dbus_fd);
   bool ClosePort(const PortRuleKey& key);
   bool AddForwardingRule(const PortRule& rule, int dbus_fd);
@@ -119,12 +120,12 @@ class PortTracker {
   std::unordered_map<PortRuleKey, int, PortRuleKeyHasher> open_port_fds_;
 
   // For each fd (process), keep track of which loopback port it requested.
-  std::map<int, uint16_t> tcp_loopback_ports_;
+  std::map<int, PortRuleKey> tcp_loopback_ports_;
 
   // For each loopback port, keep track of which fd requested it.
   // We need this for ReleaseLoopbackTcpPort() to avoid traversing
   // |tcp_loopback_ports_| each time.
-  std::map<uint16_t, int> tcp_loopback_fds_;
+  std::unordered_map<PortRuleKey, int, PortRuleKeyHasher> tcp_loopback_fds_;
 
   // Keeps track of each forwarding rule (protocol, port, interface) and which
   // process requested it. The bidirectional maps avoid any traversal for

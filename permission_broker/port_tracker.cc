@@ -30,6 +30,7 @@ constexpr const uint16_t kLastSystemPort = 1023;
 // tethering, and WiFi.
 constexpr std::array<const char*, 4> kAllowedInterfacePrefixes{
     {"eth", "usb", "wlan", "mlan"}};
+constexpr const char kLocalhost[] = "lo";
 
 // Returns the network-byte order int32 representation of the IPv4 address given
 // byte per byte, most significant bytes first.
@@ -222,9 +223,8 @@ void PortTracker::UnblockLoopbackPorts() {
   // Copy the containers so that we can remove elements from the originals.
   auto ports = tcp_loopback_ports_;
   for (const auto& pair : ports) {
-    int fd = pair.first;
-    PlugFirewallHole(fd);
-    DeleteLifelineFd(fd);
+    DeleteLifelineFd(pair.first);
+    ReleaseLoopbackTcpPortInternal(pair.second);
   }
 
   CHECK(tcp_loopback_ports_.size() == 0)
@@ -249,7 +249,12 @@ void PortTracker::RevokeAllForwardingRules() {
 }
 
 bool PortTracker::LockDownLoopbackTcpPort(uint16_t port, int dbus_fd) {
-  if (tcp_loopback_fds_.find(port) != tcp_loopback_fds_.end()) {
+  PortRuleKey key = {
+      .proto = kProtocolTcp,
+      .input_dst_port = port,
+      .input_ifname = kLocalhost,
+  };
+  if (tcp_loopback_fds_.find(key) != tcp_loopback_fds_.end()) {
     // This can happen when a requesting process has just been restarted but
     // the scheduled lifeline FD check hasn't yet been performed, so we might
     // have stale file descriptors around.
@@ -257,8 +262,8 @@ bool PortTracker::LockDownLoopbackTcpPort(uint16_t port, int dbus_fd) {
     CheckLifelineFds(false /* reschedule_check */);
 
     // Then try again. If this still fails, we know it's an invalid request.
-    if (tcp_loopback_fds_.find(port) != tcp_loopback_fds_.end()) {
-      LOG(ERROR) << "Loopback TCP port " << port << " already locked down";
+    if (tcp_loopback_fds_.find(key) != tcp_loopback_fds_.end()) {
+      LOG(ERROR) << "Port " << key << " already locked down";
       return false;
     }
   }
@@ -267,41 +272,53 @@ bool PortTracker::LockDownLoopbackTcpPort(uint16_t port, int dbus_fd) {
   // port access.
   int lifeline_fd = AddLifelineFd(dbus_fd);
   if (lifeline_fd < 0) {
-    LOG(ERROR) << "Tracking lifeline fd for loopback TCP port " << port
-               << " failed";
+    LOG(ERROR) << "Tracking lifeline fd for port " << key << " failed";
     return false;
   }
 
   // Track the port.
-  tcp_loopback_ports_[lifeline_fd] = port;
-  tcp_loopback_fds_[port] = lifeline_fd;
+  tcp_loopback_ports_[lifeline_fd] = key;
+  tcp_loopback_fds_[key] = lifeline_fd;
 
-  bool success = firewall_->AddLoopbackLockdownRules(kProtocolTcp, port);
+  bool success =
+      firewall_->AddLoopbackLockdownRules(key.proto, key.input_dst_port);
   if (!success) {
     // If we fail to lock down the port in the firewall, stop tracking the
     // lifetime of the process.
-    LOG(ERROR) << "Failed to lock down loopback TCP port " << port;
+    LOG(ERROR) << "Failed to lock down port " << key;
     DeleteLifelineFd(lifeline_fd);
     tcp_loopback_ports_.erase(lifeline_fd);
-    tcp_loopback_fds_.erase(port);
+    tcp_loopback_fds_.erase(key);
     return false;
   }
   return true;
 }
 
 bool PortTracker::ReleaseLoopbackTcpPort(uint16_t port) {
-  auto p = tcp_loopback_fds_.find(port);
+  PortRuleKey key = {
+      .proto = kProtocolTcp,
+      .input_dst_port = port,
+      .input_ifname = kLocalhost,
+  };
+  return ReleaseLoopbackTcpPortInternal(key);
+}
+
+bool PortTracker::ReleaseLoopbackTcpPortInternal(const PortRuleKey& key) {
+  auto p = tcp_loopback_fds_.find(key);
   if (p == tcp_loopback_fds_.end()) {
-    LOG(ERROR) << "Not tracking loopback TCP port " << port;
+    LOG(ERROR) << "Not tracking port " << key;
     return false;
   }
 
   int fd = p->second;
-  bool plugged = PlugFirewallHole(fd);
+  bool plugged =
+      firewall_->DeleteLoopbackLockdownRules(key.proto, key.input_dst_port);
   bool deleted = DeleteLifelineFd(fd);
-  // PlugFirewallHole() prints an error message on failure,
-  // but DeleteLifelineFd() does not, and even if it did,
-  // we mock it out in tests.
+  tcp_loopback_ports_.erase(fd);
+  tcp_loopback_fds_.erase(key);
+  if (!plugged) {
+    LOG(ERROR) << "Failed to delete loopback lockdown rule for port " << key;
+  }
   if (!deleted) {
     LOG(ERROR) << "Failed to delete file descriptor " << fd
                << " from epoll instance";
@@ -590,15 +607,7 @@ bool PortTracker::PlugFirewallHole(int fd) {
     return ClosePort(open_port_rules_[fd]);
   } else if (tcp_loopback_ports_.find(fd) != tcp_loopback_ports_.end()) {
     // It was a blocked TCP loopback port.
-    uint16_t port = tcp_loopback_ports_[fd];
-    bool success = firewall_->DeleteLoopbackLockdownRules(kProtocolTcp, port);
-    tcp_loopback_ports_.erase(fd);
-    tcp_loopback_fds_.erase(port);
-    if (!success) {
-      LOG(ERROR) << "Failed to delete loopback lockdown rule for TCP port "
-                 << port;
-      return false;
-    }
+    return ReleaseLoopbackTcpPortInternal(tcp_loopback_ports_[fd]);
   } else if (forwarding_rules_.find(fd) != forwarding_rules_.end()) {
     // It was a forwarding rule.
     return RemoveForwardingRule(forwarding_rules_[fd]);
@@ -606,7 +615,6 @@ bool PortTracker::PlugFirewallHole(int fd) {
     LOG(ERROR) << "File descriptor " << fd << " was not being tracked";
     return false;
   }
-  return true;
 }
 
 bool PortTracker::InitializeEpollOnce() {
