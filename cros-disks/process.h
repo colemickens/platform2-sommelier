@@ -40,9 +40,11 @@ class Process {
   // Checks if the process finished.
   bool IsFinished();
 
-  // Starts and waits for the process to finish. Returns the same exit status
-  // as Wait() does.
-  int Run(std::vector<std::string>* output = nullptr);
+  // Starts a process, captures its output and waits for it to finish. Returns
+  // the same exit status as Wait().
+  //
+  // Precondition: output is non-null
+  int Run(std::vector<std::string>* output);
 
   pid_t pid() const { return pid_; }
 

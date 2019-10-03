@@ -178,22 +178,18 @@ bool Process::IsFinished() {
 }
 
 int Process::Run(std::vector<std::string>* output) {
+  DCHECK(output);
+
   if (!Start()) {
     return -1;
   }
 
-  if (output) {
-    Communicate(output);
-  } else {
-    in_fd_.reset();
-    out_fd_.reset();
-    err_fd_.reset();
-  }
+  Communicate(output);
 
   const int result = Wait();
 
   LOG(INFO) << "Process finished with return code " << result;
-  if (LOG_IS_ON(INFO) && output && !output->empty()) {
+  if (LOG_IS_ON(INFO) && !output->empty()) {
     LOG(INFO) << "Process outputted " << output->size() << " lines:";
     for (const std::string& line : *output) {
       LOG(INFO) << line;

@@ -33,6 +33,7 @@ namespace {
 using testing::_;
 using testing::Contains;
 using testing::ElementsAre;
+using testing::IsEmpty;
 using testing::PrintToStringParamName;
 using testing::Return;
 using testing::SizeIs;
@@ -161,9 +162,11 @@ TEST_F(ProcessTest, GetArgumentsWithNoArgumentsAdded) {
 TEST_F(ProcessTest, Run_Success) {
   process_.AddArgument("foo");
   EXPECT_CALL(process_, StartImpl(_, _, _)).WillOnce(Return(123));
-  EXPECT_CALL(process_, WaitImpl()).WillOnce(Return(42));
-  EXPECT_CALL(process_, WaitNonBlockingImpl()).Times(0);
-  EXPECT_EQ(42, process_.Run());
+  EXPECT_CALL(process_, WaitImpl()).Times(0);
+  EXPECT_CALL(process_, WaitNonBlockingImpl()).WillOnce(Return(42));
+  std::vector<std::string> output;
+  EXPECT_EQ(process_.Run(&output), 42);
+  EXPECT_THAT(output, IsEmpty());
 }
 
 TEST_F(ProcessTest, Run_Fail) {
@@ -171,7 +174,9 @@ TEST_F(ProcessTest, Run_Fail) {
   EXPECT_CALL(process_, StartImpl(_, _, _)).WillOnce(Return(-1));
   EXPECT_CALL(process_, WaitImpl()).Times(0);
   EXPECT_CALL(process_, WaitNonBlockingImpl()).Times(0);
-  EXPECT_EQ(-1, process_.Run());
+  std::vector<std::string> output;
+  EXPECT_EQ(process_.Run(&output), -1);
+  EXPECT_THAT(output, IsEmpty());
 }
 
 class ProcessRunTest : public ::testing::TestWithParam<ProcessFactory> {
@@ -189,13 +194,17 @@ class ProcessRunTest : public ::testing::TestWithParam<ProcessFactory> {
 TEST_P(ProcessRunTest, ReturnsZero) {
   Process& process = *process_;
   process.AddArgument("/bin/true");
-  EXPECT_EQ(process.Run(), 0);
+  std::vector<std::string> output;
+  EXPECT_EQ(process.Run(&output), 0);
+  EXPECT_THAT(output, IsEmpty());
 }
 
 TEST_P(ProcessRunTest, ReturnsNonZero) {
   Process& process = *process_;
   process.AddArgument("/bin/false");
-  EXPECT_EQ(process.Run(), 1);
+  std::vector<std::string> output;
+  EXPECT_EQ(process.Run(&output), 1);
+  EXPECT_THAT(output, IsEmpty());
 }
 
 TEST_P(ProcessRunTest, KilledBySigKill) {
@@ -203,7 +212,9 @@ TEST_P(ProcessRunTest, KilledBySigKill) {
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
   process.AddArgument("kill -KILL $$; sleep 1000");
-  EXPECT_EQ(process.Run(), 128 + SIGKILL);
+  std::vector<std::string> output;
+  EXPECT_EQ(process.Run(&output), 128 + SIGKILL);
+  EXPECT_THAT(output, IsEmpty());
 }
 
 TEST_P(ProcessRunTest, KilledBySigSys) {
@@ -211,14 +222,17 @@ TEST_P(ProcessRunTest, KilledBySigSys) {
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
   process.AddArgument("kill -SYS $$; sleep 1000");
-  EXPECT_EQ(process.Run(), MINIJAIL_ERR_JAIL);
+  std::vector<std::string> output;
+  EXPECT_EQ(process.Run(&output), MINIJAIL_ERR_JAIL);
+  EXPECT_THAT(output, IsEmpty());
 }
 
 TEST_P(ProcessRunTest, CannotExec) {
   Process& process = *process_;
   process.AddArgument("non_existing_exe_foo_bar");
   // SandboxedProcess returns 255, but it isn't explicitly specified.
-  EXPECT_GT(process.Run(), 0);
+  std::vector<std::string> output;
+  EXPECT_GT(process.Run(&output), 0);
 }
 
 TEST_P(ProcessRunTest, CapturesInterleavedOutputs) {
@@ -257,14 +271,13 @@ TEST_P(ProcessRunTest, DISABLED_CapturesLotsOfOutputData) {
   EXPECT_THAT(output, SizeIs(2000));
 }
 
-TEST_P(ProcessRunTest, DoesNotBlockWhenNotCapturingOutput) {
+// TODO(crbug.com/1005642) Enable test once bug 1005642 is fixed.
+TEST_P(ProcessRunTest, DISABLED_DoesNotBlockWhenNotCapturingOutput) {
   Process& process = *process_;
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
 
-  // TODO(crbug.com/1005642) Remove the trap for SIGPIPE.
   process.AddArgument(R"(
-      trap '' PIPE
       printf '%01000i\n' $(seq 1 100) >&1;
       printf '%01000i\n' $(seq 1 100) >&2;
       exit 42;
@@ -272,10 +285,12 @@ TEST_P(ProcessRunTest, DoesNotBlockWhenNotCapturingOutput) {
 
   // This process generates lots of output on stdout and stderr, ie more than
   // what a pipe can hold without blocking. If the pipes connected to stdout and
-  // stderr were left open by Process::Run(), they would fill, the process would
-  // stall and Process::Run() would block forever. With closed pipes, the
-  // process should finish normally and its return code should be visible.
-  EXPECT_EQ(process.Run(), 42);
+  // stderr were not drained, they would fill, the process would stall and
+  // process.Wait() would block forever. If the pipes were closed, the process
+  // would be killed by a SIGPIPE. With drained pipes, the process finishes
+  // normally and its return code should be visible.
+  EXPECT_TRUE(process.Start());
+  EXPECT_EQ(process.Wait(), 42);
 }
 
 TEST_P(ProcessRunTest, DoesNotBlockWhenReadingFromStdIn) {
@@ -284,7 +299,9 @@ TEST_P(ProcessRunTest, DoesNotBlockWhenReadingFromStdIn) {
 
   // By default, /bin/cat reads from stdin. If the pipe connected to stdin was
   // left open, the process would block indefinitely while reading from it.
-  EXPECT_EQ(process.Run(), 0);
+  std::vector<std::string> output;
+  EXPECT_EQ(process.Run(&output), 0);
+  EXPECT_THAT(output, IsEmpty());
 }
 
 TEST_P(ProcessRunTest, DoesNotWaitForBackgroundProcessToFinish) {
