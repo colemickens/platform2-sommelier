@@ -257,10 +257,7 @@ void Process::Communicate(std::vector<std::string>* output) {
   for (size_t i = 0; i < fds.size(); ++i) {
     auto& f = fds[i];
     if (f.fd != kInvalidFD) {
-      if (ReadFD(f.fd, &data) == ReadResult::kFailure) {
-        // Failure.
-        f.fd = kInvalidFD;
-      } else {
+      while (ReadFD(f.fd, &data) != ReadResult::kFailure && !data.empty()) {
         merger.Append(i, data);
       }
     }
