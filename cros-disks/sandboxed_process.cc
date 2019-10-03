@@ -204,14 +204,15 @@ int SandboxedProcess::WaitImpl() {
 }
 
 int SandboxedProcess::WaitNonBlockingImpl() {
-  int wstatus;
+  int exit_code;
 
   if (run_custom_init_ &&
-      SandboxedInit::PollLauncherStatus(&custom_init_control_fd_, &wstatus)) {
-    return SandboxedInit::WStatusToStatus(wstatus);
+      SandboxedInit::PollLauncherStatus(&custom_init_control_fd_, &exit_code)) {
+    return exit_code;
   }
 
   // TODO(chromium:971667) Use Minijail's non-blocking wait once it exists.
+  int wstatus;
   const pid_t child_pid = pid();
   const int ret = waitpid(child_pid, &wstatus, WNOHANG);
   if (ret < 0) {

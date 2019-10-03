@@ -95,12 +95,6 @@ base::ScopedFD SandboxedInit::TakeInitControlFD(base::ScopedFD* in_fd,
   pid_t root_pid = StartLauncher(std::move(launcher));
   CHECK_LT(0, root_pid);
 
-  // By now it's unlikely something to go wrong here, so disconnect
-  // from in/out.
-  HANDLE_EINTR(close(STDIN_FILENO));
-  HANDLE_EINTR(close(STDOUT_FILENO));
-  HANDLE_EINTR(close(STDERR_FILENO));
-
   _exit(RunInitLoop(root_pid, std::move(ctrl_.write_fd)));
   NOTREACHED();
 }
@@ -116,6 +110,12 @@ int SandboxedInit::RunInitLoop(pid_t root_pid, base::ScopedFD ctrl_fd) {
     PLOG(FATAL) << "Can't install signal handler";
   }
 
+  // By now it's unlikely something to go wrong here, so disconnect
+  // from in/out.
+  HANDLE_EINTR(close(STDIN_FILENO));
+  HANDLE_EINTR(close(STDOUT_FILENO));
+  HANDLE_EINTR(close(STDERR_FILENO));
+
   // This loop will only end when either there are no processes left inside
   // our PID namespace or we get a signal.
   int last_failure_code = 0;
@@ -128,39 +128,35 @@ int SandboxedInit::RunInitLoop(pid_t root_pid, base::ScopedFD ctrl_fd) {
     if (pid < 0) {
       if (errno == ECHILD) {
         // No more child
-        break;
+        CHECK(!ctrl_fd.is_valid());
+        return last_failure_code;
       }
 
       PLOG(FATAL) << "Cannot wait for child processes";
     }
 
-    if (WIFEXITED(wstatus) || WIFSIGNALED(wstatus)) {
-      // Something quit.
-      const int exit_code = WStatusToStatus(wstatus);
+    // Convert wait status to exit code.
+    const int exit_code = WStatusToStatus(wstatus);
+    if (exit_code >= 0) {
+      // A child process finished.
       if (exit_code) {
         last_failure_code = exit_code;
       }
 
-      // Check if that's the launcher.
+      // Was it the launcher?
       if (pid == root_pid) {
-        ssize_t written =
-            HANDLE_EINTR(write(ctrl_fd.get(), &wstatus, sizeof(wstatus)));
-        if (written != sizeof(wstatus)) {
-          PLOG(ERROR) << "Failed to write exit code";
+        // Write the launcher's exit code to the control pipe.
+        const ssize_t written =
+            HANDLE_EINTR(write(ctrl_fd.get(), &exit_code, sizeof(exit_code)));
+        if (written != sizeof(exit_code)) {
+          PLOG(ERROR) << "Cannot write exit code";
           return MINIJAIL_ERR_INIT;
         }
-        ctrl_fd.reset();
 
-        // Mark launcher finished.
-        root_pid = -1;
+        ctrl_fd.reset();
       }
     }
   }
-
-  if (root_pid != -1) {
-    return MINIJAIL_ERR_INIT;
-  }
-  return last_failure_code;
 }
 
 pid_t SandboxedInit::StartLauncher(base::OnceCallback<int()> launcher) {
@@ -181,11 +177,12 @@ pid_t SandboxedInit::StartLauncher(base::OnceCallback<int()> launcher) {
   return exec_child;
 }
 
-bool SandboxedInit::PollLauncherStatus(base::ScopedFD* ctrl_fd, int* wstatus) {
+bool SandboxedInit::PollLauncherStatus(base::ScopedFD* ctrl_fd,
+                                       int* exit_code) {
   CHECK(ctrl_fd->is_valid());
   ssize_t read_bytes =
-      HANDLE_EINTR(read(ctrl_fd->get(), wstatus, sizeof(*wstatus)));
-  if (read_bytes != sizeof(*wstatus)) {
+      HANDLE_EINTR(read(ctrl_fd->get(), exit_code, sizeof(*exit_code)));
+  if (read_bytes != sizeof(*exit_code)) {
     return false;
   }
 

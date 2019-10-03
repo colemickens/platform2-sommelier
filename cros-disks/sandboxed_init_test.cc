@@ -198,7 +198,7 @@ TEST_F(SandboxedInitTest, RunInitNoDaemon_ReadLauncherCode) {
   int status;
   ASSERT_TRUE(PollForExitStatus(kTimeout, &status));
   ASSERT_FALSE(ctrl_.is_valid());
-  EXPECT_EQ(12, WEXITSTATUS(status));
+  EXPECT_EQ(12, status);
 
   ASSERT_TRUE(Wait(&status, false));
   ASSERT_EQ(12, WEXITSTATUS(status));
@@ -218,7 +218,7 @@ TEST_F(SandboxedInitTest, RunInitWithDaemon) {
 
   int status;
   ASSERT_TRUE(PollForExitStatus(kTimeout, &status));
-  EXPECT_EQ(0, WEXITSTATUS(status));
+  EXPECT_EQ(0, status);
 
   EXPECT_FALSE(Wait(&status, true));
 
@@ -267,7 +267,7 @@ TEST_F(SandboxedInitTest, RunInitWithDaemon_NonBlockingWait) {
 
   int status;
   ASSERT_TRUE(PollForExitStatus(kTimeout, &status));
-  EXPECT_EQ(0, WEXITSTATUS(status));
+  EXPECT_EQ(0, status);
 
   EXPECT_FALSE(Wait(&status, true));
 

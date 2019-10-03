@@ -44,7 +44,7 @@ class SandboxedInit {
                                    base::ScopedFD* out_fd,
                                    base::ScopedFD* err_fd);
 
-  static bool PollLauncherStatus(base::ScopedFD* ctrl_fd, int* wstatus);
+  static bool PollLauncherStatus(base::ScopedFD* ctrl_fd, int* exit_code);
 
   static int WStatusToStatus(int wstatus);
 
