@@ -254,7 +254,9 @@ TEST_P(ProcessRunTest, CapturesInterleavedOutputs) {
                                            "ERR: Line 5", "ERR: Line 6"));
 }
 
-TEST_P(ProcessRunTest, CapturesLotsOfOutputData) {
+// TODO(crbug.com/1010945): Disabled due to flakiness on ToT. This test should
+// be re-enabled when it works consistently.
+TEST_P(ProcessRunTest, DISABLED_CapturesLotsOfOutputData) {
   Process& process = *process_;
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
