@@ -61,7 +61,7 @@ base::ScopedFD SandboxedInit::TakeInitControlFD(base::ScopedFD* in_fd,
   return std::move(fds_[kCtrlFileIndex][kReadEnd]);
 }
 
-void SandboxedInit::RunInsideSandboxNoReturn(
+[[noreturn]] void SandboxedInit::RunInsideSandboxNoReturn(
     base::OnceCallback<int()> launcher) {
   // To run our custom init that handles daemonized processes inside the
   // sandbox we have to set up fork/exec ourselves. We do error-handling
@@ -176,7 +176,7 @@ pid_t SandboxedInit::StartLauncher(base::OnceCallback<int()> launcher) {
 
   if (exec_child == 0) {
     // Launch the invoked program.
-    exit(std::move(launcher).Run());
+    _exit(std::move(launcher).Run());
     NOTREACHED();
   }
 

@@ -28,7 +28,8 @@ class SandboxedInit {
   ~SandboxedInit();
 
   // To be run inside the jail. Never returns.
-  void RunInsideSandboxNoReturn(base::OnceCallback<int()> launcher);
+  [[noreturn]] void RunInsideSandboxNoReturn(
+      base::OnceCallback<int()> launcher);
 
   // Returns side channel for reading the exit status of the launcher.
   base::ScopedFD TakeInitControlFD(base::ScopedFD* in_fd,
