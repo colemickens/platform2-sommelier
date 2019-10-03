@@ -18,6 +18,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/optional.h>
 #include <base/run_loop.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -270,6 +271,7 @@ std::vector<std::string> GenerateKernelCmdline(
 
 vm_tools::concierge::StartArcVmRequest CreateStartArcVmRequest(
     const std::string& user_id_hash,
+    const std::string& cpus,
     const std::string& disk_path,
     std::vector<std::string> kernel_cmdline) {
   vm_tools::concierge::StartArcVmRequest request;
@@ -309,6 +311,11 @@ vm_tools::concierge::StartArcVmRequest CreateStartArcVmRequest(
   // Add Android fstab
   request.set_fstab(SelectDlcOrBuiltin(base::FilePath(kFstab)).value());
 
+  // Add cpus.
+  int num_cpus = 0;
+  CHECK(base::StringToInt(cpus, &num_cpus));
+  request.set_cpus(num_cpus);
+
   return request;
 }
 
@@ -317,6 +324,7 @@ struct EnvParameters {
     auto env = base::Environment::Create();
     CHECK(env->GetVar("ARC_LCD_DENSITY", &lcd_density));
     CHECK(env->GetVar("USER_ID_HASH", &user_id_hash));
+    CHECK(env->GetVar("CPUS", &cpus));
     if (env->HasVar("PLAY_STORE_AUTO_UPDATE")) {
       play_store_auto_update.emplace();
       CHECK(env->GetVar("PLAY_STORE_AUTO_UPDATE", &*play_store_auto_update));
@@ -324,6 +332,7 @@ struct EnvParameters {
   }
   std::string lcd_density;
   std::string user_id_hash;
+  std::string cpus;
   base::Optional<std::string> play_store_auto_update;
 };
 
@@ -349,8 +358,9 @@ int main(int argc, char** argv) {
   auto disk_path = concierge_client.CreateDiskImage(disk_request);
   auto kernel_cmdline =
       GenerateKernelCmdline(bus, env.lcd_density, env.play_store_auto_update);
-  auto start_request = CreateStartArcVmRequest(
-      env.user_id_hash, std::move(disk_path), std::move(kernel_cmdline));
+  auto start_request =
+      CreateStartArcVmRequest(env.user_id_hash, env.cpus, std::move(disk_path),
+                              std::move(kernel_cmdline));
   concierge_client.StartArcVm(start_request);
 
   return 0;
