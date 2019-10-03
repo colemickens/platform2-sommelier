@@ -54,8 +54,8 @@ const int kBatteryDischargeRateIntervalSec = 30;
 const char kBatteryDischargeRateWhileSuspendedName[] =
     "Power.BatteryDischargeRateWhileSuspended";  // mW
 const int kBatteryDischargeRateWhileSuspendedMin = 1;
-const int kBatteryDischargeRateWhileSuspendedMax = 30000;
-const int kBatteryDischargeRateWhileSuspendedMinSuspendSec = 60;
+const int kBatteryDischargeRateWhileSuspendedMax = 5000;
+const int kBatteryDischargeRateWhileSuspendedMinSuspendSec = 600;
 
 const char kBatteryRemainingWhenChargeStartsName[] =
     "Power.BatteryRemainingWhenChargeStarts";  // %
