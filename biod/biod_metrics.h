@@ -32,10 +32,9 @@ extern const char kUpdaterDurationUpdate[];
 
 }  // namespace metrics
 
-class BiodMetrics {
+class BiodMetricsInterface {
  public:
-  BiodMetrics();
-  ~BiodMetrics() = default;
+  virtual ~BiodMetricsInterface() = default;
 
   // This is the tools/bio_fw_updater overall status,
   // which encapsulates an UpdateStatus.
@@ -56,27 +55,45 @@ class BiodMetrics {
     kMaxValue = kFailureUpdateRW,
   };
 
+  virtual bool SendEnrolledFingerCount(int finger_count) = 0;
+  virtual bool SendFpUnlockEnabled(bool enabled) = 0;
+  virtual bool SendFpLatencyStats(bool matched,
+                                  int capture_ms,
+                                  int match_ms,
+                                  int overall_ms) = 0;
+  virtual bool SendFwUpdaterStatus(FwUpdaterStatus status,
+                                   updater::UpdateReason reason,
+                                   int overall_ms) = 0;
+  virtual bool SendIgnoreMatchEventOnPowerButtonPress(bool is_ignored) = 0;
+  virtual bool SendResetContextMode(const FpMode& mode) = 0;
+};
+
+class BiodMetrics : public BiodMetricsInterface {
+ public:
+  BiodMetrics();
+  ~BiodMetrics() override = default;
+
   // Send number of fingers enrolled.
-  bool SendEnrolledFingerCount(int finger_count);
+  bool SendEnrolledFingerCount(int finger_count) override;
 
   // Is unlocking with FP enabled or not?
-  bool SendFpUnlockEnabled(bool enabled);
+  bool SendFpUnlockEnabled(bool enabled) override;
 
   // Send matching/capture latency metrics.
   bool SendFpLatencyStats(bool matched,
                           int capture_ms,
                           int match_ms,
-                          int overall_ms);
+                          int overall_ms) override;
 
   bool SendFwUpdaterStatus(FwUpdaterStatus status,
                            updater::UpdateReason reason,
-                           int overall_ms);
+                           int overall_ms) override;
 
   // Is fingerprint ignored due to parallel power button press?
-  bool SendIgnoreMatchEventOnPowerButtonPress(bool is_ignored);
+  bool SendIgnoreMatchEventOnPowerButtonPress(bool is_ignored) override;
 
   // Was CrosFpDevice::ResetContext called while the FPMCU was in correct mode?
-  bool SendResetContextMode(const FpMode& mode);
+  bool SendResetContextMode(const FpMode& mode) override;
 
   void SetMetricsLibraryForTesting(
       std::unique_ptr<MetricsLibraryInterface> metrics_lib);

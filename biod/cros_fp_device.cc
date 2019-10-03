@@ -528,7 +528,7 @@ bool CrosFpDevice::UploadTemplate(const VendorTemplate& tmpl) {
 }
 
 bool CrosFpDevice::SetContext(std::string user_hex) {
-  auto fp_context_cmd = FpContextCommandFactory::Create(this, user_hex);
+  auto fp_context_cmd = ec_command_factory_->FpContextCommand(this, user_hex);
 
   if (!fp_context_cmd) {
     LOG(ERROR) << "Unable to create FP context command";
@@ -552,6 +552,7 @@ bool CrosFpDevice::ResetContext() {
     LOG(ERROR) << "Attempting to reset context with mode: " << cur_mode;
   }
 
+  CHECK(biod_metrics_);
   biod_metrics_->SendResetContextMode(cur_mode);
 
   return SetContext(std::string());

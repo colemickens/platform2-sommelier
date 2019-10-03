@@ -7,6 +7,7 @@
 #include <bitset>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_descriptor_watcher_posix.h>
@@ -14,6 +15,7 @@
 
 #include "biod/biod_metrics.h"
 #include "biod/cros_fp_device_interface.h"
+#include "biod/ec_command_factory.h"
 #include "biod/fp_mode.h"
 #include "biod/uinput_device.h"
 
@@ -22,9 +24,12 @@ namespace biod {
 class CrosFpDevice : public CrosFpDeviceInterface {
  public:
   using MkbpCallback = base::Callback<void(const uint32_t event)>;
-  explicit CrosFpDevice(const MkbpCallback& mkbp_event,
-                        BiodMetrics* biod_metrics)
-      : mkbp_event_(mkbp_event),
+  // Use the CrosFpDeviceFactory instead of this constructor unless testing.
+  CrosFpDevice(const MkbpCallback& mkbp_event,
+               BiodMetricsInterface* biod_metrics,
+               std::unique_ptr<EcCommandFactoryInterface> ec_command_factory)
+      : ec_command_factory_(std::move(ec_command_factory)),
+        mkbp_event_(mkbp_event),
         biod_metrics_(biod_metrics) {}
 
   bool Init();
@@ -92,10 +97,11 @@ class CrosFpDevice : public CrosFpDeviceInterface {
   ssize_t max_write_size_ = 0;
   struct ec_response_fp_info info_ = {};
 
+  std::unique_ptr<EcCommandFactoryInterface> ec_command_factory_;
   MkbpCallback mkbp_event_;
   UinputDevice input_device_;
 
-  BiodMetrics* biod_metrics_ = nullptr;  // Not owned.
+  BiodMetricsInterface* biod_metrics_ = nullptr;  // Not owned.
 };
 
 }  // namespace biod
