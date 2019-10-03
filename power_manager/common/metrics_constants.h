@@ -19,6 +19,10 @@ extern const int kMaxPercent;
 // Default number of buckets to use for numeric histogram metrics.
 extern const int kDefaultBuckets;
 
+// Default number of buckets to use for numeric histogram metrics covering power
+// discharge.
+extern const int kDefaultDischargeBuckets;
+
 extern const char kSuspendAttemptsBeforeSuccessName[];
 extern const char kSuspendAttemptsBeforeCancelName[];
 extern const int kSuspendAttemptsMin;

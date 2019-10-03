@@ -460,7 +460,7 @@ void MetricsCollector::GenerateBatteryDischargeRateMetric() {
   }
 
   if (SendMetric(kBatteryDischargeRateName, rate, kBatteryDischargeRateMin,
-                 kBatteryDischargeRateMax, kDefaultBuckets))
+                 kBatteryDischargeRateMax, kDefaultDischargeBuckets))
     last_battery_discharge_rate_metric_timestamp_ = clock_.GetCurrentTime();
 }
 
@@ -493,7 +493,7 @@ void MetricsCollector::GenerateBatteryDischargeRateWhileSuspendedMetric() {
   SendMetric(kBatteryDischargeRateWhileSuspendedName,
              static_cast<int>(round(discharge_rate_watts * 1000)),
              kBatteryDischargeRateWhileSuspendedMin,
-             kBatteryDischargeRateWhileSuspendedMax, kDefaultBuckets);
+             kBatteryDischargeRateWhileSuspendedMax, kDefaultDischargeBuckets);
 }
 
 void MetricsCollector::IncrementNumOfSessionsPerChargeMetric() {

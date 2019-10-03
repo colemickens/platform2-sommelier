@@ -12,6 +12,7 @@ const char kBatterySuffix[] = "OnBattery";
 
 const int kMaxPercent = 101;
 const int kDefaultBuckets = 50;
+const int kDefaultDischargeBuckets = 100;
 
 const char kSuspendAttemptsBeforeSuccessName[] =
     "Power.SuspendAttemptsBeforeSuccess";
@@ -46,8 +47,8 @@ const char kBatteryChargeHealthName[] = "Power.BatteryChargeHealth";  // %
 const int kBatteryChargeHealthMax = 111;
 
 const char kBatteryDischargeRateName[] = "Power.BatteryDischargeRate";  // mW
-const int kBatteryDischargeRateMin = 1000;
-const int kBatteryDischargeRateMax = 30000;
+const int kBatteryDischargeRateMin = 1;
+const int kBatteryDischargeRateMax = 20000;
 const int kBatteryDischargeRateIntervalSec = 30;
 
 const char kBatteryDischargeRateWhileSuspendedName[] =

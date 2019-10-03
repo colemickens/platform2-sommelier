@@ -159,7 +159,7 @@ class MetricsCollectorTest : public Test {
 
   void ExpectBatteryDischargeRateMetric(int sample) {
     ExpectMetric(kBatteryDischargeRateName, sample, kBatteryDischargeRateMin,
-                 kBatteryDischargeRateMax, kDefaultBuckets);
+                 kBatteryDischargeRateMax, kDefaultDischargeBuckets);
   }
 
   void ExpectNumOfSessionsPerChargeMetric(int sample) {
@@ -622,7 +622,8 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
             (kSuspendDuration.InSecondsF() / 3600)));
   ExpectMetric(kBatteryDischargeRateWhileSuspendedName, rate_mw,
                kBatteryDischargeRateWhileSuspendedMin,
-               kBatteryDischargeRateWhileSuspendedMax, kDefaultBuckets);
+               kBatteryDischargeRateWhileSuspendedMax,
+               kDefaultDischargeBuckets);
   collector_.HandlePowerStatusUpdate(power_status_);
 }
 
