@@ -37,6 +37,9 @@ pkg_config("sealed_storage_dependent_config") {
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
     "openssl",
+
+    # per tpm_manager/BUILD.gn, system_api should go before protobuf
+    "system_api",
     "protobuf",
   ]
 }
