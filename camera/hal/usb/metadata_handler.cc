@@ -307,32 +307,34 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
     }
 
     for (const auto& format : hal_formats) {
-      if (supported_format.width > max_hal_width_by_format[format]) {
-        LOGF(INFO) << "Filter Format: 0x" << std::hex << format << std::dec
-                   << "-width " << supported_format.width << ". max is "
-                   << max_hal_width_by_format[format];
-        continue;
+      if (!is_external) {
+        if (supported_format.width > max_hal_width_by_format[format]) {
+          LOGF(INFO) << "Filter Format: 0x" << std::hex << format << std::dec
+                     << "-width " << supported_format.width << ". max is "
+                     << max_hal_width_by_format[format];
+          continue;
+        }
+        if (supported_format.height > max_hal_height_by_format[format]) {
+          LOGF(INFO) << "Filter Format: 0x" << std::hex << format << std::dec
+                     << "-height " << supported_format.height << ". max is "
+                     << max_hal_height_by_format[format];
+          continue;
+        }
+        if (format != HAL_PIXEL_FORMAT_BLOB && per_format_max_fps < 30) {
+          continue;
+        }
       }
-      if (supported_format.height > max_hal_height_by_format[format]) {
-        LOGF(INFO) << "Filter Format: 0x" << std::hex << format << std::dec
-                   << "-height " << supported_format.height << ". max is "
-                   << max_hal_height_by_format[format];
-        continue;
-      }
-      // We filter the resolution which cannot support 30 fps out.
-      if (format == HAL_PIXEL_FORMAT_BLOB || per_format_max_fps == 30 ||
-          is_external) {
-        stream_configurations.push_back(format);
-        stream_configurations.push_back(supported_format.width);
-        stream_configurations.push_back(supported_format.height);
-        stream_configurations.push_back(
-            ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT);
 
-        min_frame_durations.push_back(format);
-        min_frame_durations.push_back(supported_format.width);
-        min_frame_durations.push_back(supported_format.height);
-        min_frame_durations.push_back(min_frame_duration);
-      }
+      stream_configurations.push_back(format);
+      stream_configurations.push_back(supported_format.width);
+      stream_configurations.push_back(supported_format.height);
+      stream_configurations.push_back(
+          ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT);
+
+      min_frame_durations.push_back(format);
+      min_frame_durations.push_back(supported_format.width);
+      min_frame_durations.push_back(supported_format.height);
+      min_frame_durations.push_back(min_frame_duration);
     }
 
     // The stall duration is 0 for non-jpeg formats. For JPEG format, stall
