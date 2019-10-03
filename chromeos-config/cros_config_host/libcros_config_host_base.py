@@ -12,14 +12,14 @@ import os
 
 from cros_config_schema import GetValidSchemaProperties
 
-# Represents a single touch firmware file which needs to be installed:
+# Represents a single symbolic link firmware file which needs to be installed:
 #   source: source filename of firmware file. This is installed in a
 #       directory in the root filesystem
 #   dest: destination filename of firmware file in the root filesystem. This is
 #       in /opt/google/touch/firmware
-#   symlink: name of symbolic link to put in LIB_FIRMWARE to point to the touch
+#   symlink: name of symbolic link to put in LIB_FIRMWARE to point to the target
 #       firmware. This is where Linux finds the firmware at runtime.
-TouchFile = namedtuple('TouchFile', ['source', 'dest', 'symlink'])
+SymlinkedFile = namedtuple('SymlinkedFile', ['source', 'dest', 'symlink'])
 
 # Represents a single file which needs to be installed:
 #   source: Source filename within ${FILESDIR}
@@ -195,8 +195,17 @@ class DeviceConfig(object):
     """Get a list of unique touch firmware files
 
     Returns:
-      List of TouchFile objects representing the touch firmware referenced
+      List of SymlinkedFile objects representing the touch firmware referenced
         by this model
+    """
+    pass
+
+  def GetDetachableBaseFirmwareFiles(self):
+    """Get a list of unique detachable base firmware files
+
+    Returns:
+      List of SymlinkedFile objects representing the detachable base firmware
+        referenced by this model
     """
     pass
 
@@ -304,6 +313,8 @@ class CrosConfigBaseImpl(object):
     result['ListModels'] = self.GetModelList()
     result['GetFirmwareUris'] = self.GetFirmwareUris()
     result['GetTouchFirmwareFiles'] = self.GetTouchFirmwareFiles()
+    result['GetDetachableBaseFirmwareFiles'] = \
+      self.GetDetachableBaseFirmwareFiles()
     result['GetArcFiles'] = self.GetArcFiles()
     result['GetAudioFiles'] = self.GetAudioFiles()
     bluetooth_files = self.GetBluetoothFiles()
@@ -346,21 +357,44 @@ class CrosConfigBaseImpl(object):
       uris.update(set(device.GetFirmwareUris()))
     return sorted(list(uris))
 
+  def _GetSymlinkedFiles(self, func_name):
+    """Get a list of Symbolic linked files for all devices
+
+    These files may come from ${FILESDIR} or from a tar file in BCS.
+
+    Returns:
+      List of SymlinkedFile objects representing all the firmware referenced
+      by all devices
+    """
+    file_set = set()
+    for device in self.GetDeviceConfigs():
+      GetFirmwareFiles = getattr(device, func_name)
+      for files in GetFirmwareFiles():
+        file_set.add(files)
+
+    return sorted(file_set, key=lambda files: files.source)
+
   def GetTouchFirmwareFiles(self):
     """Get a list of unique touch firmware files for all devices
 
     These files may come from ${FILESDIR} or from a tar file in BCS.
 
     Returns:
-      List of TouchFile objects representing all the touch firmware referenced
-      by all devices
+      List of SymlinkedFile objects representing all the touch firmware
+      referenced by all devices
     """
-    file_set = set()
-    for device in self.GetDeviceConfigs():
-      for files in device.GetTouchFirmwareFiles():
-        file_set.add(files)
+    return self._GetSymlinkedFiles('GetTouchFirmwareFiles')
 
-    return sorted(file_set, key=lambda files: files.source)
+  def GetDetachableBaseFirmwareFiles(self):
+    """Get a list of unique detachable base firmware files for all devices
+
+    These files may come from ${FILESDIR} or from a tar file in BCS.
+
+    Returns:
+      List of SymlinkedFile objects representing all the detachable base
+      firmware referenced by all devices
+    """
+    return self._GetSymlinkedFiles('GetDetachableBaseFirmwareFiles')
 
   def GetBcsUri(self, overlay, path):
     """Form a valid BCS URI for downloading files.

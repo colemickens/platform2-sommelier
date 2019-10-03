@@ -19,7 +19,7 @@ import sys
 import unittest
 
 from libcros_config_host import CrosConfig
-from libcros_config_host_base import BaseFile, TouchFile, FirmwareInfo
+from libcros_config_host_base import BaseFile, SymlinkedFile, FirmwareInfo
 from libcros_config_host_base import FirmwareImage, DeviceSignerInfo
 
 YAML_FILE = '../libcros_config/test.yaml'
@@ -210,53 +210,53 @@ class CrosConfigHostTest(unittest.TestCase):
 
   def testGetTouchFirmwareFiles(self):
     def _GetFile(source, symlink):
-      """Helper to return a suitable TouchFile"""
-      return TouchFile(source, TOUCH_FIRMWARE + source,
-                       LIB_FIRMWARE + symlink)
+      """Helper to return a suitable SymlinkedFile"""
+      return SymlinkedFile(source, TOUCH_FIRMWARE + source,
+                           LIB_FIRMWARE + symlink)
 
     config = CrosConfig(self.filepath)
     touch_files = config.GetConfig('another').GetTouchFirmwareFiles()
     # pylint: disable=line-too-long
     self.assertEqual(
         touch_files,
-        [TouchFile(source='some_stylus_vendor/another-version.hex',
-                   dest='/opt/google/touch/firmware/some_stylus_vendor/another-version.hex',
-                   symlink='/lib/firmware/some_stylus_vendor_firmware_ANOTHER.bin'),
-         TouchFile(source='some_touch_vendor/some-pid_some-version.bin',
-                   dest='/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin',
-                   symlink='/lib/firmware/some_touch_vendorts_i2c_some-pid.bin')])
+        [SymlinkedFile(source='some_stylus_vendor/another-version.hex',
+                       dest='/opt/google/touch/firmware/some_stylus_vendor/another-version.hex',
+                       symlink='/lib/firmware/some_stylus_vendor_firmware_ANOTHER.bin'),
+         SymlinkedFile(source='some_touch_vendor/some-pid_some-version.bin',
+                       dest='/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin',
+                       symlink='/lib/firmware/some_touch_vendorts_i2c_some-pid.bin')])
     touch_files = config.GetConfig('some').GetTouchFirmwareFiles()
 
     # This checks that duplicate processing works correct, since both models
     # have the same wacom firmware
     self.assertEqual(
         touch_files,
-        [TouchFile(source='some_stylus_vendor/some-version.hex',
-                   dest='/opt/google/touch/firmware/some_stylus_vendor/some-version.hex',
-                   symlink='/lib/firmware/some_stylus_vendor_firmware_SOME.bin'),
-         TouchFile(source='some_touch_vendor/some-pid_some-version.bin',
-                   dest='/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin',
-                   symlink='/lib/firmware/some_touch_vendorts_i2c_some-pid.bin'),
-         TouchFile(source='some_touch_vendor/some-other-pid_some-other-version.bin',
-                   dest='/opt/google/touch/firmware/some_touch_vendor/some-other-pid_some-other-version.bin',
-                   symlink='/lib/firmware/some_touch_vendorts_i2c_some-other-pid.bin')])
+        [SymlinkedFile(source='some_stylus_vendor/some-version.hex',
+                       dest='/opt/google/touch/firmware/some_stylus_vendor/some-version.hex',
+                       symlink='/lib/firmware/some_stylus_vendor_firmware_SOME.bin'),
+         SymlinkedFile(source='some_touch_vendor/some-pid_some-version.bin',
+                       dest='/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin',
+                       symlink='/lib/firmware/some_touch_vendorts_i2c_some-pid.bin'),
+         SymlinkedFile(source='some_touch_vendor/some-other-pid_some-other-version.bin',
+                       dest='/opt/google/touch/firmware/some_touch_vendor/some-other-pid_some-other-version.bin',
+                       symlink='/lib/firmware/some_touch_vendorts_i2c_some-other-pid.bin')])
     touch_files = config.GetTouchFirmwareFiles()
     expected = set(
-        [TouchFile(source='some_stylus_vendor/another-version.hex',
-                   dest='/opt/google/touch/firmware/some_stylus_vendor/another-version.hex',
-                   symlink='/lib/firmware/some_stylus_vendor_firmware_ANOTHER.bin'),
-         TouchFile(source='some_stylus_vendor/some-version.hex',
-                   dest='/opt/google/touch/firmware/some_stylus_vendor/some-version.hex',
-                   symlink='/lib/firmware/some_stylus_vendor_firmware_SOME.bin'),
-         TouchFile(source='some_touch_vendor/some-pid_some-version.bin',
-                   dest='/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin',
-                   symlink='/lib/firmware/some_touch_vendorts_i2c_some-pid.bin'),
-         TouchFile(source='some_touch_vendor/some-other-pid_some-other-version.bin',
-                   dest='/opt/google/touch/firmware/some_touch_vendor/some-other-pid_some-other-version.bin',
-                   symlink='/lib/firmware/some_touch_vendorts_i2c_some-other-pid.bin'),
-         TouchFile(source='some_touch_vendor/some-pid_some-version.bin',
-                   dest='/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin',
-                   symlink='/lib/firmware/some_touch_vendorts_i2c_some-pid.bin')])
+        [SymlinkedFile(source='some_stylus_vendor/another-version.hex',
+                       dest='/opt/google/touch/firmware/some_stylus_vendor/another-version.hex',
+                       symlink='/lib/firmware/some_stylus_vendor_firmware_ANOTHER.bin'),
+         SymlinkedFile(source='some_stylus_vendor/some-version.hex',
+                       dest='/opt/google/touch/firmware/some_stylus_vendor/some-version.hex',
+                       symlink='/lib/firmware/some_stylus_vendor_firmware_SOME.bin'),
+         SymlinkedFile(source='some_touch_vendor/some-pid_some-version.bin',
+                       dest='/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin',
+                       symlink='/lib/firmware/some_touch_vendorts_i2c_some-pid.bin'),
+         SymlinkedFile(source='some_touch_vendor/some-other-pid_some-other-version.bin',
+                       dest='/opt/google/touch/firmware/some_touch_vendor/some-other-pid_some-other-version.bin',
+                       symlink='/lib/firmware/some_touch_vendorts_i2c_some-other-pid.bin'),
+         SymlinkedFile(source='some_touch_vendor/some-pid_some-version.bin',
+                       dest='/opt/google/touch/firmware/some_touch_vendor/some-pid_some-version.bin',
+                       symlink='/lib/firmware/some_touch_vendorts_i2c_some-pid.bin')])
     self.assertEqual(set(touch_files), expected)
 
   def testGetAudioFiles(self):

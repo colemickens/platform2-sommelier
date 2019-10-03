@@ -74,6 +74,23 @@ def GetTouchFirmwareFiles(config):
     print(files.dest)
     print(files.symlink)
 
+def GetDetachableBaseFirmwareFiles(config):
+  """Prints a list of detachable base firmware files across all models.
+
+  The output is one line for the firmware file and one line for the symlink,
+  e.g.:
+     ${FILESDIR}/detachable_base/firmware/masterball.fw
+     /opt/google/detachable_base/firmware/masterball.fw
+     /lib/firmware/masterball.fw
+
+  Args:
+    config: A CrosConfig instance
+  """
+  for files in config.GetDetachableBaseFirmwareFiles():
+    print(files.source)
+    print(files.dest)
+    print(files.symlink)
+
 def GetArcFiles(config):
   """Print a list of arc++ files across all models
 
@@ -224,6 +241,12 @@ def GetParser(description):
       'get-touch-firmware-files',
       help='Lists groups of touch firmware files in sequence: first line is '
       'firmware file, second line is symlink name for /lib/firmware')
+  # Parser: get-detachable-base-firmware-files
+  subparsers.add_parser(
+      'get-detachable-base-firmware-files',
+      help='Lists groups of detachable base firmware files in sequence: '
+      'first line is firmware file, second line is symlink name for '
+      '/lib/firmware')
   subparsers.add_parser(
       'get-firmware-uris',
       help='Lists AP firmware URIs for models. These URIs can be used to '
@@ -324,6 +347,8 @@ def main(argv=None):
     GetProperty(model, opts.path, opts.prop)
   elif opts.subcommand == 'get-touch-firmware-files':
     GetTouchFirmwareFiles(config)
+  elif opts.subcommand == 'get-detachable-base-firmware-files':
+    GetDetachableBaseFirmwareFiles(config)
   elif opts.subcommand == 'get-firmware-uris':
     GetFirmwareUris(config)
   elif opts.subcommand == 'get-arc-files':

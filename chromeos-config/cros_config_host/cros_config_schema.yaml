@@ -416,6 +416,10 @@ properties:
                     '/sys/bus/usb/devices/1-1.1'
                     The usb-path is '1-1.1'."
                   type: string
+                files:
+                  type: array
+                  build-only-element: true
+                  items: *firmware_file
               additionalProperties: false
             identity:
               type: object

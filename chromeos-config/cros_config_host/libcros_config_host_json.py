@@ -18,7 +18,7 @@ import json
 from cros_config_schema import TransformConfig
 from cros_config_schema import GetValidSchemaProperties
 from libcros_config_host_base import BaseFile, CrosConfigBaseImpl, DeviceConfig
-from libcros_config_host_base import FirmwareInfo, TouchFile
+from libcros_config_host_base import FirmwareInfo, SymlinkedFile
 from libcros_config_host_base import FirmwareImage, DeviceSignerInfo
 
 UNIBOARD_JSON_INSTALL_PATH = 'usr/share/chromeos-config/config.json'
@@ -77,6 +77,16 @@ class DeviceConfigJson(DeviceConfig):
           result.append(BaseFile(item['source'], item['destination']))
     return result
 
+  def _GetSymlinkedFiles(self, path):
+    result = []
+    items = self.GetProperties(path)
+    if items and 'files' in items:
+      for item in items['files']:
+        result.append(
+            SymlinkedFile(item['source'], item['destination'], item['symlink']))
+
+    return result
+
   def GetFirmwareConfig(self):
     firmware = self.GetProperties('/firmware')
     if not firmware or self.GetValue(firmware, 'no-firmware'):
@@ -87,14 +97,10 @@ class DeviceConfigJson(DeviceConfig):
     return self.firmware_info
 
   def GetTouchFirmwareFiles(self):
-    result = []
-    touch = self.GetProperties('/touch')
-    if touch and 'files' in touch:
-      for item in touch['files']:
-        result.append(
-            TouchFile(item['source'], item['destination'], item['symlink']))
+    return self._GetSymlinkedFiles('/touch')
 
-    return result
+  def GetDetachableBaseFirmwareFiles(self):
+    return self._GetSymlinkedFiles('/detachable-base')
 
   def GetArcFiles(self):
     return self._GetFiles('/arc')
