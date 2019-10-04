@@ -386,6 +386,7 @@ int main(int argc, char* argv[]) {
   DEFINE_string(arc_device, "", "Metadata for --arc_java_crash");
   DEFINE_string(arc_board, "", "Metadata for --arc_java_crash");
   DEFINE_string(arc_cpu_abi, "", "Metadata for --arc_java_crash");
+  DEFINE_string(arc_fingerprint, "", "Metadata for --arc_java_crash");
 #endif
 
   OpenStandardFileDescriptors();
@@ -563,9 +564,11 @@ int main(int argc, char* argv[]) {
 
 #if USE_CHEETS
   if (!FLAGS_arc_java_crash.empty()) {
-    ArcCollector::BuildProperty build_property = {.device = FLAGS_arc_device,
-                                                  .board = FLAGS_arc_board,
-                                                  .cpu_abi = FLAGS_arc_cpu_abi};
+    ArcCollector::BuildProperty build_property = {
+        .device = FLAGS_arc_device,
+        .board = FLAGS_arc_board,
+        .cpu_abi = FLAGS_arc_cpu_abi,
+        .fingerprint = FLAGS_arc_fingerprint};
     return HandleArcJavaCrash(&arc_collector, FLAGS_arc_java_crash,
                               build_property);
   }

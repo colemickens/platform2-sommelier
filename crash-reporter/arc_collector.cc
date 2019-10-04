@@ -383,8 +383,11 @@ bool ArcCollector::CreateReportForJavaCrash(const std::string& crash_type,
   }
 
   AddArcMetaData(process, crash_type, false);
+  // TODO(kansho): Just use build_property after merging crrev.com/c/1833036
   const std::string fingerprint =
-      arc_util::GetCrashLogHeader(map, arc_util::kBuildKey);
+      (build_property.fingerprint == "")
+          ? arc_util::GetCrashLogHeader(map, arc_util::kBuildKey)
+          : build_property.fingerprint;
   AddCrashMetaUploadData(arc_util::kArcVersionField, fingerprint);
   AddCrashMetaUploadData(
       arc_util::kAndroidVersionField,
