@@ -27,8 +27,10 @@ namespace {
 int Exec(char* const args[]) {
   const char* const path = args[0];
   execv(path, args);
-  PLOG(FATAL) << "Cannot exec " << quote(path);
-  return EXIT_FAILURE;
+  const int ret =
+      (errno == ENOENT ? MINIJAIL_ERR_NO_COMMAND : MINIJAIL_ERR_NO_ACCESS);
+  PLOG(ERROR) << "Cannot exec " << quote(path);
+  return ret;
 }
 
 }  // namespace

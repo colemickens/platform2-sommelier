@@ -267,34 +267,28 @@ TEST_P(ProcessRunTest, RunCannotFindCommand) {
   Process& process = *process_;
   process.AddArgument("non existing command");
   std::vector<std::string> output;
-  // TODO(crbug.com/1010791) EXPECT_EQ(process.Run(&output),
-  // MINIJAIL_ERR_NO_COMMAND);
-  EXPECT_GT(process.Run(&output), 0);
+  EXPECT_EQ(process.Run(&output), MINIJAIL_ERR_NO_COMMAND);
 }
 
 TEST_P(ProcessRunTest, WaitCannotFindCommand) {
   Process& process = *process_;
   process.AddArgument("non existing command");
   EXPECT_TRUE(process.Start());
-  // TODO(crbug.com/1010791) EXPECT_EQ(process.Wait(), MINIJAIL_ERR_NO_COMMAND);
-  EXPECT_GT(process.Wait(), 0);
+  EXPECT_EQ(process.Wait(), MINIJAIL_ERR_NO_COMMAND);
 }
 
 TEST_P(ProcessRunTest, RunCannotRunCommand) {
   Process& process = *process_;
   process.AddArgument("/dev/null");
   std::vector<std::string> output;
-  // TODO(crbug.com/1010791) EXPECT_EQ(process.Run(&output),
-  // MINIJAIL_ERR_NO_ACCESS);
-  EXPECT_GT(process.Run(&output), 0);
+  EXPECT_EQ(process.Run(&output), MINIJAIL_ERR_NO_ACCESS);
 }
 
 TEST_P(ProcessRunTest, WaitCannotRunCommand) {
   Process& process = *process_;
   process.AddArgument("/dev/null");
   EXPECT_TRUE(process.Start());
-  // TODO(crbug.com/1010791) EXPECT_EQ(process.Wait(), MINIJAIL_ERR_NO_ACCESS);
-  EXPECT_GT(process.Wait(), 0);
+  EXPECT_EQ(process.Wait(), MINIJAIL_ERR_NO_ACCESS);
 }
 
 TEST_P(ProcessRunTest, CapturesInterleavedOutputs) {

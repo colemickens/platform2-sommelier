@@ -199,7 +199,8 @@ int SandboxedInit::WStatusToStatus(int wstatus) {
   if (WIFSIGNALED(wstatus)) {
     // Mirrors behavior of minijail_wait().
     const int signum = WTERMSIG(wstatus);
-    return signum == SIGSYS ? MINIJAIL_ERR_JAIL : 128 + signum;
+    return signum == SIGSYS ? MINIJAIL_ERR_JAIL
+                            : MINIJAIL_ERR_SIG_BASE + signum;
   }
 
   return -1;
