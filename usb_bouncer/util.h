@@ -20,6 +20,7 @@
 #include <brillo/files/safe_fd.h>
 #include <google/protobuf/repeated_field.h>
 #include <google/protobuf/timestamp.pb.h>
+#include <metrics/metrics_library.h>
 
 #include "usb_bouncer/usb_bouncer.pb.h"
 
@@ -41,6 +42,18 @@ constexpr uid_t kRootUid = 0;
 std::string Hash(const std::string& content);
 std::string Hash(const google::protobuf::RepeatedPtrField<std::string>& rules);
 
+enum class UMADeviceRecognized {
+  kRecognized,
+  kUnrecognized,
+};
+
+enum class UMAEventTiming {
+  kLoggedOut = 0,
+  kLoggedIn = 1,
+  kLocked = 2,
+  kMaxValue = kLocked,
+};
+
 // Set USB devices to be authorized by default and authorize any devices that
 // were left unauthorized. This is performed on unlock when USBGuard is
 // disabled. If an error occurs, false is returned.
@@ -60,6 +73,12 @@ bool IncludeRuleAtLockscreen(const std::string& rule);
 
 // Returns false if rule is not a valid rule.
 bool ValidateRule(const std::string& rule);
+
+// Log device attach events to inform future changes in policy.
+void UMALogDeviceAttached(MetricsLibrary* metrics,
+                          const std::string& rule,
+                          UMADeviceRecognized recognized,
+                          UMAEventTiming timing);
 
 // Returns the path where the user DB should be written if there is a user
 // signed in and CrOS is unlocked. Otherwise, returns an empty path. In the

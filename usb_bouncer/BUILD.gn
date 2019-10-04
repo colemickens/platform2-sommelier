@@ -22,6 +22,7 @@ pkg_config("target_defaults") {
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
     "libcrypto",
+    "libmetrics-${libbase_ver}",
     "libminijail",
     "libsession_manager-client",
     "libusbguard",

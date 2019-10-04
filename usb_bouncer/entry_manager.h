@@ -15,6 +15,7 @@
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
+#include <metrics/metrics_library.h>
 
 #include "usb_bouncer/rule_db_storage.h"
 #include "usb_bouncer/usb_bouncer.pb.h"
@@ -98,6 +99,8 @@ class EntryManager {
 
   RuleDBStorage global_db_;
   RuleDBStorage user_db_;
+
+  MetricsLibrary metrics_;
 
   DISALLOW_COPY_AND_ASSIGN(EntryManager);
 };

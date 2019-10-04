@@ -13,6 +13,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
+#include <metrics/metrics_library.h>
 
 #include "usb_bouncer/util.h"
 
@@ -164,8 +165,21 @@ bool EntryManager::HandleUdev(UdevAction action, const std::string& devpath) {
       }
 
       *entry.mutable_rules()->Add() = rule;
-      if (user_db_.Valid() && !user_db_read_only_) {
-        (*user_db_.Get().mutable_entries())[Hash(entry.rules())] = entry;
+      if (user_db_.Valid()) {
+        const std::string user_key = Hash(entry.rules());
+        const EntryMap& user_entries = user_db_.Get().entries();
+        const UMADeviceRecognized new_entry =
+            user_entries.find(user_key) == user_entries.end()
+                ? UMADeviceRecognized::kUnrecognized
+                : UMADeviceRecognized::kRecognized;
+        if (user_db_read_only_) {
+          UMALogDeviceAttached(&metrics_, rule, new_entry,
+                               UMAEventTiming::kLocked);
+        } else {
+          UMALogDeviceAttached(&metrics_, rule, new_entry,
+                               UMAEventTiming::kLoggedIn);
+          (*user_db_.Get().mutable_entries())[user_key] = entry;
+        }
       }
       return PersistChanges();
     }
@@ -198,7 +212,16 @@ bool EntryManager::HandleUserLogin() {
 
   for (const auto& entry : global_db_.Get().entries()) {
     if (!entry.second.rules().empty()) {
-      (*user_entries)[Hash(entry.second.rules())] = entry.second;
+      const std::string user_key = Hash(entry.second.rules());
+      const UMADeviceRecognized new_entry =
+          user_entries->find(user_key) == user_entries->end()
+              ? UMADeviceRecognized::kUnrecognized
+              : UMADeviceRecognized::kRecognized;
+      for (const auto& rule : entry.second.rules()) {
+        UMALogDeviceAttached(&metrics_, rule, new_entry,
+                             UMAEventTiming::kLoggedOut);
+      }
+      (*user_entries)[user_key] = entry.second;
     }
   }
   return PersistChanges();

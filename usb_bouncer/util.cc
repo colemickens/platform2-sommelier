@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "usb_bouncer/util.h"
+#include "usb_bouncer/util_internal.h"
 
 #include <fcntl.h>
 #include <sys/file.h>
@@ -31,7 +32,6 @@
 #include <usbguard/Device.hpp>
 #include <usbguard/DeviceManager.hpp>
 #include <usbguard/DeviceManagerHooks.hpp>
-#include <usbguard/Rule.hpp>
 
 using brillo::GetFDPath;
 using brillo::SafeFD;
@@ -49,6 +49,8 @@ constexpr int kDbDirPermissions = S_IRUSR | S_IWUSR | S_IXUSR;
 constexpr char kSysFSAuthorizedDefault[] = "authorized_default";
 constexpr char kSysFSAuthorized[] = "authorized";
 constexpr char kSysFSEnabled[] = "1";
+
+constexpr char kUmaDeviceAttachedHistogram[] = "ChromeOS.USB.DeviceAttached";
 
 constexpr int kMaxWriteAttempts = 10;
 constexpr int kAttemptDelayMicroseconds = 10000;
@@ -264,6 +266,58 @@ bool AuthorizeAllImpl(SafeFD* dir,
   return success;
 }
 
+UMADeviceClass GetClassEnumFromValue(
+    const usbguard::USBInterfaceType& interface) {
+  const struct {
+    uint8_t raw;
+    UMADeviceClass typed;
+  } mapping[] = {
+      // clang-format off
+      {0x01, UMADeviceClass::kAudio},
+      {0x03, UMADeviceClass::kHID},
+      {0x02, UMADeviceClass::kComm},
+      {0x05, UMADeviceClass::kPhys},
+      {0x06, UMADeviceClass::kImage},
+      {0x07, UMADeviceClass::kPrint},
+      {0x08, UMADeviceClass::kStorage},
+      {0x09, UMADeviceClass::kHub},
+      {0x0A, UMADeviceClass::kComm},
+      {0x0B, UMADeviceClass::kCard},
+      {0x0D, UMADeviceClass::kSec},
+      {0x0E, UMADeviceClass::kVideo},
+      {0x0F, UMADeviceClass::kHealth},
+      {0x10, UMADeviceClass::kAV},
+      {0xE0, UMADeviceClass::kWireless},
+      {0xEF, UMADeviceClass::kMisc},
+      {0xFE, UMADeviceClass::kApp},
+      {0xFF, UMADeviceClass::kVendor},
+      // clang-format on
+  };
+  for (const auto& m : mapping) {
+    if (usbguard::USBInterfaceType(m.raw, 0, 0,
+                                   usbguard::USBInterfaceType::MatchClass)
+            .appliesTo(interface)) {
+      return m.typed;
+    }
+  }
+  return UMADeviceClass::kOther;
+}
+
+UMADeviceClass MergeClasses(UMADeviceClass a, UMADeviceClass b) {
+  if (a == b) {
+    return a;
+  }
+
+  if ((a == UMADeviceClass::kAV || a == UMADeviceClass::kAudio ||
+       a == UMADeviceClass::kVideo) &&
+      (b == UMADeviceClass::kAV || b == UMADeviceClass::kAudio ||
+       b == UMADeviceClass::kVideo)) {
+    return UMADeviceClass::kAV;
+  }
+
+  return UMADeviceClass::kOther;
+}
+
 }  // namespace
 
 std::string Hash(const std::string& content) {
@@ -326,20 +380,9 @@ std::string GetRuleFromDevPath(const std::string& devpath) {
 }
 
 bool IncludeRuleAtLockscreen(const std::string& rule) {
-  if (rule.empty()) {
-    return false;
-  }
-
   const usbguard::Rule filter_rule = usbguard::Rule::fromString(
       "block with-interface one-of { 05:*:* 06:*:* 07:*:* 08:*:* }");
-  usbguard::Rule parsed_rule;
-  try {
-    parsed_rule = usbguard::Rule::fromString(rule);
-  } catch (std::exception ex) {
-    // RuleParseException isn't exported by libusbguard.
-    return false;
-  }
-
+  usbguard::Rule parsed_rule = GetRuleFromString(rule);
   if (!parsed_rule) {
     return false;
   }
@@ -352,6 +395,22 @@ bool ValidateRule(const std::string& rule) {
     return false;
   }
   return usbguard::Rule::fromString(rule);
+}
+
+void UMALogDeviceAttached(MetricsLibrary* metrics,
+                          const std::string& rule,
+                          UMADeviceRecognized recognized,
+                          UMAEventTiming timing) {
+  usbguard::Rule parsed_rule = GetRuleFromString(rule);
+  if (!parsed_rule) {
+    return;
+  }
+
+  metrics->SendEnumToUMA(
+      base::StringPrintf("%s.%s.%s", kUmaDeviceAttachedHistogram,
+                         to_string(recognized).c_str(),
+                         to_string(GetClassFromRule(parsed_rule)).c_str()),
+      static_cast<int>(timing), static_cast<int>(UMAEventTiming::kMaxValue));
 }
 
 base::FilePath GetUserDBDir() {
@@ -494,6 +553,83 @@ size_t RemoveEntriesOlderThan(base::TimeDelta cutoff, EntryMap* map) {
     }
   }
   return num_removed;
+}
+
+#define TO_STRING_HELPER(x)  \
+  case UMADeviceClass::k##x: \
+    return #x
+const std::string to_string(UMADeviceClass device_class) {
+  switch (device_class) {
+    TO_STRING_HELPER(App);
+    TO_STRING_HELPER(Audio);
+    TO_STRING_HELPER(AV);
+    TO_STRING_HELPER(Card);
+    TO_STRING_HELPER(Comm);
+    TO_STRING_HELPER(Health);
+    TO_STRING_HELPER(HID);
+    TO_STRING_HELPER(Hub);
+    TO_STRING_HELPER(Image);
+    TO_STRING_HELPER(Misc);
+    TO_STRING_HELPER(Other);
+    TO_STRING_HELPER(Phys);
+    TO_STRING_HELPER(Print);
+    TO_STRING_HELPER(Sec);
+    TO_STRING_HELPER(Storage);
+    TO_STRING_HELPER(Vendor);
+    TO_STRING_HELPER(Video);
+    TO_STRING_HELPER(Wireless);
+  }
+}
+#undef TO_STRING_HELPER
+
+#define TO_STRING_HELPER(x)       \
+  case UMADeviceRecognized::k##x: \
+    return #x
+const std::string to_string(UMADeviceRecognized recognized) {
+  switch (recognized) {
+    TO_STRING_HELPER(Recognized);
+    TO_STRING_HELPER(Unrecognized);
+  }
+}
+#undef TO_STRING_HELPER
+
+std::ostream& operator<<(std::ostream& out, UMADeviceClass device_class) {
+  out << to_string(device_class);
+  return out;
+}
+
+std::ostream& operator<<(std::ostream& out, UMADeviceRecognized recognized) {
+  out << to_string(recognized);
+  return out;
+}
+
+usbguard::Rule GetRuleFromString(const std::string& to_parse) {
+  usbguard::Rule parsed_rule;
+  parsed_rule.setTarget(usbguard::Rule::Target::Invalid);
+  if (to_parse.empty()) {
+    return parsed_rule;
+  }
+  try {
+    parsed_rule = usbguard::Rule::fromString(to_parse);
+  } catch (std::exception ex) {
+    // RuleParseException isn't exported by libusbguard.
+    LOG(ERROR) << "Failed parse (exception) '" << to_parse << "'.";
+  }
+  return parsed_rule;
+}
+
+UMADeviceClass GetClassFromRule(const usbguard::Rule& rule) {
+  const auto& interfaces = rule.attributeWithInterface();
+  if (interfaces.empty()) {
+    return UMADeviceClass::kOther;
+  }
+
+  UMADeviceClass device_class = GetClassEnumFromValue(interfaces.get(0));
+  for (int x = 1; x < interfaces.count(); ++x) {
+    device_class =
+        MergeClasses(device_class, GetClassEnumFromValue(interfaces.get(x)));
+  }
+  return device_class;
 }
 
 }  // namespace usb_bouncer

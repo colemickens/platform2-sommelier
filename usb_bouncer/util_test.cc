@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include "usb_bouncer/util.h"
+#include "usb_bouncer/util_internal.h"
 
 namespace usb_bouncer {
 
@@ -105,6 +106,50 @@ TEST(UtilTest, AuthorizeAll_Failure) {
   EXPECT_FALSE(AuthorizeAll(temp_dir_.GetPath().value()));
   EXPECT_FALSE(CheckDeviceNodeAuthorized(subdir));
   EXPECT_TRUE(CheckDeviceNodeAuthorized(deepdir));
+}
+
+TEST(UtilTest, GetRuleFromString_Success) {
+  EXPECT_TRUE(GetRuleFromString("allow id 0000:0000"));
+}
+
+TEST(UtilTest, GetRuleFromString_Failure) {
+  EXPECT_FALSE(GetRuleFromString("aaff44"));
+}
+
+TEST(UtilTest, GetClassFromRule_EmptyInterfaces) {
+  auto rule = GetRuleFromString("allow id 0000:0000");
+  ASSERT_TRUE(rule);
+  ASSERT_TRUE(rule.attributeWithInterface().empty());
+  EXPECT_EQ(GetClassFromRule(rule), UMADeviceClass::kOther);
+}
+
+TEST(UtilTest, GetClassFromRule_SingleInterface) {
+  auto rule = GetRuleFromString("allow with-interface 03:00:01");
+  ASSERT_TRUE(rule);
+  ASSERT_EQ(rule.attributeWithInterface().count(), 1);
+  EXPECT_EQ(GetClassFromRule(rule), UMADeviceClass::kHID);
+}
+
+TEST(UtilTest, GetClassFromRule_MatchingInterfaces) {
+  auto rule = GetRuleFromString("allow with-interface { 03:00:00 03:00:01 }");
+  ASSERT_TRUE(rule);
+  ASSERT_EQ(rule.attributeWithInterface().count(), 2);
+  EXPECT_EQ(GetClassFromRule(rule), UMADeviceClass::kHID);
+}
+
+TEST(UtilTest, GetClassFromRule_DifferentInterfaces) {
+  auto rule = GetRuleFromString("allow with-interface { 03:00:00 09:00:00 }");
+  ASSERT_TRUE(rule);
+  ASSERT_EQ(rule.attributeWithInterface().count(), 2);
+  EXPECT_EQ(GetClassFromRule(rule), UMADeviceClass::kOther);
+}
+
+TEST(UtilTest, GetClassFromRule_AV) {
+  auto rule =
+      GetRuleFromString("allow with-interface { 01:00:00 0E:00:00 10:00:00 }");
+  ASSERT_TRUE(rule);
+  ASSERT_EQ(rule.attributeWithInterface().count(), 3);
+  EXPECT_EQ(GetClassFromRule(rule), UMADeviceClass::kAV);
 }
 
 }  // namespace usb_bouncer

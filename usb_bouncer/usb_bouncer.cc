@@ -33,6 +33,7 @@ enum class SeccompEnforcement {
 };
 
 static constexpr char kLogPath[] = "/dev/log";
+static constexpr char kUMAEventsPath[] = "/var/lib/metrics/uma-events";
 
 void DropPrivileges(SeccompEnforcement seccomp) {
   ScopedMinijail j(minijail_new());
@@ -54,11 +55,10 @@ void DropPrivileges(SeccompEnforcement seccomp) {
   if (minijail_enter_pivot_root(j.get(), "/mnt/empty") != 0) {
     PLOG(FATAL) << "minijail_enter_pivot_root() failed";
   }
-  if (minijail_bind(j.get(), "/", "/", 0 /*writable*/)) {
-    PLOG(FATAL) << "minijail_bind('/') failed";
-  }
-  if (minijail_bind(j.get(), "/proc", "/proc", 0 /*writable*/)) {
-    PLOG(FATAL) << "minijail_bind('/proc') failed";
+  for (const char* path : {"/", "/proc", "/sys"}) {
+    if (minijail_bind(j.get(), path, path, 0 /*writable*/)) {
+      PLOG(FATAL) << "minijail_bind('" << path << "') failed";
+    }
   }
   if (!base::PathExists(base::FilePath(kLogPath))) {
     LOG(WARNING) << "Path '" << kLogPath << "' doesn't exist; "
@@ -72,13 +72,12 @@ void DropPrivileges(SeccompEnforcement seccomp) {
 
   minijail_mount_dev(j.get());
   minijail_mount_tmp(j.get());
-  if (minijail_bind(j.get(), "/sys", "/sys", 0 /*writable*/) != 0) {
-    PLOG(FATAL) << "minijail_bind('/sys') failed";
-  }
-  if (minijail_mount_with_data(j.get(), "tmpfs", "/run", "tmpfs",
-                               MS_NOSUID | MS_NOEXEC | MS_NODEV,
-                               "mode=0755,size=10M") != 0) {
-    PLOG(FATAL) << "minijail_mount_with_data('/run') failed";
+  for (const char* path : {"/run", "/var"}) {
+    if (minijail_mount_with_data(j.get(), "tmpfs", path, "tmpfs",
+                                 MS_NOSUID | MS_NOEXEC | MS_NODEV,
+                                 "mode=0755,size=10M") != 0) {
+      PLOG(FATAL) << "minijail_mount_with_data('" << path << "') failed";
+    }
   }
   std::string global_db_path("/");
   global_db_path.append(usb_bouncer::kDefaultGlobalDir);
@@ -93,6 +92,11 @@ void DropPrivileges(SeccompEnforcement seccomp) {
   } else if (minijail_bind(j.get(), usb_bouncer::kDBusPath,
                            usb_bouncer::kDBusPath, 0 /*writable*/) != 0) {
     PLOG(FATAL) << "minijail_bind('" << usb_bouncer::kDBusPath << "') failed";
+  }
+  if (base::PathExists(base::FilePath(kUMAEventsPath)) &&
+      minijail_bind(j.get(), kUMAEventsPath, kUMAEventsPath, 1 /*writable*/) !=
+          0) {
+    PLOG(FATAL) << "minijail_bind('" << kUMAEventsPath << "') failed";
   }
 
   minijail_remount_mode(j.get(), MS_SLAVE);
