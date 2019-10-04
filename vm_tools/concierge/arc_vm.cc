@@ -47,18 +47,6 @@ constexpr size_t kGuestAddressOffset = 1;
 // The CPU cgroup where all the ARCVM's crosvm processes should belong to.
 constexpr char kArcvmCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/arc";
 
-// Returns the maximum number of logical CPU cores crosvm can use.
-// TODO(yusukes): Move the logic to Chromium. See b/139752657#comment3
-int NumberOfProcessorsAvailable() {
-#if defined(__x86_64__)
-  long res = sysconf(_SC_NPROCESSORS_ONLN);  // NOLINT(runtime/int)
-  CHECK_NE(-1L, res);
-  return static_cast<int>(res);
-#else
-  return base::SysInfo::NumberOfProcessors();
-#endif
-}
-
 }  // namespace
 
 ArcVm::ArcVm(arc_networkd::MacAddress mac_addr,
@@ -125,10 +113,6 @@ bool ArcVm::Start(base::FilePath kernel,
     LOG(ERROR) << "Unable to build and configure TAP device";
     return false;
   }
-
-  // TODO(yusukes): Remove this fallback once Chrome is updated.
-  if (cpus == 0)
-    cpus = NumberOfProcessorsAvailable();
 
   // Build up the process arguments.
   // clang-format off

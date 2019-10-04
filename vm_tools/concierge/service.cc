@@ -1554,8 +1554,8 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   }
 
   // Check the CPU count.
-  // TODO(yusukes): Return an error when cpus() == 0.
-  if (request.cpus() > base::SysInfo::NumberOfProcessors()) {
+  if (request.cpus() == 0 ||
+      request.cpus() > base::SysInfo::NumberOfProcessors()) {
     LOG(ERROR) << "Invalid number of CPUs: " << request.cpus();
     response.set_failure_reason("Invalid CPU count");
     writer.AppendProtoAsArrayOfBytes(response);
