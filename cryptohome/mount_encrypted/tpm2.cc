@@ -76,7 +76,8 @@ class Tpm2SystemKeyLoader : public SystemKeyLoader {
   explicit Tpm2SystemKeyLoader(Tpm* tpm) : tpm_(tpm) {}
 
   result_code Load(brillo::SecureBlob* key) override;
-  brillo::SecureBlob Generate() override;
+  result_code Initialize(const brillo::SecureBlob& key_material,
+                         brillo::SecureBlob* derived_system_key) override;
   result_code Persist() override;
   void Lock() override;
   result_code SetupTpm() override;
@@ -155,16 +156,28 @@ result_code Tpm2SystemKeyLoader::Load(brillo::SecureBlob* system_key) {
   return RESULT_SUCCESS;
 }
 
-brillo::SecureBlob Tpm2SystemKeyLoader::Generate() {
+result_code Tpm2SystemKeyLoader::Initialize(
+    const brillo::SecureBlob& key_material,
+    brillo::SecureBlob* derived_system_key) {
   provisional_contents_ =
       std::make_unique<brillo::SecureBlob>(sizeof(nvram_area_tpm2));
   struct nvram_area_tpm2* area =
       reinterpret_cast<struct nvram_area_tpm2*>(provisional_contents_->data());
   area->magic = kNvramAreaTpm2Magic;
   area->ver_flags = kNvramAreaTpm2CurrentVersion;
-  cryptohome::CryptoLib::GetSecureRandom(area->key_material,
-                                         sizeof(area->key_material));
-  return DeriveSystemKey(area);
+
+  size_t key_material_size = key_material.size();
+  if (key_material_size != sizeof(area->key_material)) {
+    LOG(ERROR) << "Invalid key material size " << key_material_size;
+    return RESULT_FAIL_FATAL;
+  }
+  memcpy(area->key_material, key_material.data(), key_material_size);
+
+  if (derived_system_key) {
+    *derived_system_key = DeriveSystemKey(area);
+  }
+
+  return RESULT_SUCCESS;
 }
 
 result_code Tpm2SystemKeyLoader::Persist() {

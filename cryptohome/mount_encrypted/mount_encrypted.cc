@@ -11,8 +11,6 @@
 
 #include <fcntl.h>
 #include <sys/time.h>
-#include <vboot/crossystem.h>
-#include <vboot/tlcl.h>
 
 #include <memory>
 #include <string>
@@ -21,14 +19,16 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-
-#include <metrics/metrics_library.h>
-
+#include <brillo/secure_blob.h>
 #include <cryptohome/cryptolib.h>
 #include <cryptohome/mount_encrypted/encrypted_fs.h>
 #include <cryptohome/mount_encrypted/encryption_key.h>
 #include <cryptohome/mount_encrypted/mount_encrypted.h>
 #include <cryptohome/mount_encrypted/tpm.h>
+#include <cryptohome/platform.h>
+#include <metrics/metrics_library.h>
+#include <vboot/crossystem.h>
+#include <vboot/tlcl.h>
 
 #define PROP_SIZE 64
 
@@ -159,6 +159,53 @@ static result_code report_info(const mount_encrypted::EncryptedFs& encrypted_fs,
   return RESULT_SUCCESS;
 }
 
+// Reads key material from the file |key_material_file|, creates a system key
+// using the material, and persists the system key in NVRAM.
+//
+// This function only supports TPM 2.0 and should be called ONLY for testing
+// purposes.
+//
+// Doesn't take ownership of |platform|.
+// Return code indicates if every thing is successful.
+static result_code set_system_key(const base::FilePath& rootdir,
+                                  const char* key_material_file,
+                                  cryptohome::Platform* platform) {
+  if (!key_material_file) {
+    LOG(ERROR) << "Key material file not provided.";
+    return RESULT_FAIL_FATAL;
+  }
+
+  mount_encrypted::Tpm tpm;
+  if (!tpm.is_tpm2()) {
+    LOG(WARNING) << "Custom system key is not supported in TPM 1.2.";
+    return RESULT_FAIL_FATAL;
+  }
+
+  brillo::SecureBlob key_material;
+  if (!platform->ReadFileToSecureBlob(base::FilePath(key_material_file),
+                                      &key_material)) {
+    LOG(ERROR) << "Failed to read custom system key material from file "
+               << key_material_file;
+    return RESULT_FAIL_FATAL;
+  }
+
+  auto loader = mount_encrypted::SystemKeyLoader::Create(&tpm, rootdir);
+
+  result_code rc = loader->Initialize(key_material, nullptr);
+  if (rc != RESULT_SUCCESS) {
+    LOG(ERROR) << "Failed to initialize system key NV space contents.";
+    return rc;
+  }
+
+  rc = loader->Persist();
+  if (rc != RESULT_SUCCESS) {
+    LOG(ERROR) << "Failed to persist custom system key material in NVRAM.";
+    return rc;
+  }
+
+  return RESULT_SUCCESS;
+}
+
 /* Exports NVRAM contents to tmpfs for use by install attributes */
 void nvram_export(const brillo::SecureBlob& contents) {
   int fd;
@@ -251,8 +298,12 @@ int main(int argc, char* argv[]) {
     } else if (!strcmp(argv[1], "finalize")) {
       return finalize_from_cmdline(encrypted_fs, rootdir,
                                    argc > 2 ? argv[2] : NULL);
+    } else if (!strcmp(argv[1], "set")) {
+      return set_system_key(rootdir,
+                            argc > 2 ? argv[2] : NULL,
+                            &platform);
     } else {
-      fprintf(stderr, "Usage: %s [info|finalize|umount]\n", argv[0]);
+      fprintf(stderr, "Usage: %s [info|finalize|umount|set]\n", argv[0]);
       return RESULT_FAIL_FATAL;
     }
   }

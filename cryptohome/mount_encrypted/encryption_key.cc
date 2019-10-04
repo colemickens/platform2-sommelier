@@ -262,7 +262,20 @@ result_code EncryptionKey::LoadChromeOSSystemKey() {
     // TODO(mnissler): Gather data on how costly it is to take TPM 1.2 ownership
     // in practice and decide whether we can just take ownership to create the
     // NVRAM space if it isn't valid by calling SetupTpm here.
-    system_key_ = loader_->Generate();
+
+    // TODO(b/142769655): create a wrapper to generate a random secure blob with
+    // a given size and call the wrapper with DIGEST_LENGTH instead from here.
+    brillo::SecureBlob key_material;
+    key_material.resize(DIGEST_LENGTH);
+    cryptohome::CryptoLib::GetSecureRandom(
+        key_material.data(), key_material.size());
+
+    result_code rc = loader_->Initialize(key_material, &system_key_);
+    if (rc != RESULT_SUCCESS) {
+      LOG(ERROR) << "Failed to initialize system key NV space contents.";
+      return rc;
+    }
+
     if (!system_key_.empty() && loader_->Persist() != RESULT_SUCCESS) {
       system_key_.clear();
     }

@@ -15,10 +15,8 @@
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-
-#include <vboot/tlcl.h>
-
 #include <brillo/secure_blob.h>
+#include <vboot/tlcl.h>
 
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
 
@@ -223,8 +221,15 @@ class SystemKeyLoader {
   // fills in key, false if the key is not available or there is an error.
   virtual result_code Load(brillo::SecureBlob* key) = 0;
 
-  // Generate a fresh system key but do not store it in NVRAM yet.
-  virtual brillo::SecureBlob Generate() = 0;
+  // Initializes system key NV space contents using |key_material|.
+  // The size of |key_material| must equal DIGEST_LENGTH. If
+  // |derived_system_key| is not null, stores the derived system key into it.
+  //
+  // This function does not store the contents in NVRAM yet.
+  //
+  // Returns RESULT_SUCCESS if successful or RESULT_FAIL_FATAL otherwise.
+  virtual result_code Initialize(const brillo::SecureBlob& key_material,
+                                 brillo::SecureBlob* derived_system_key) = 0;
 
   // Persist a previously generated system key in NVRAM. This may not be
   // possible in case the TPM is not in a state where the NVRAM spaces can be
@@ -264,7 +269,10 @@ class FixedSystemKeyLoader : public SystemKeyLoader {
     *key = key_;
     return RESULT_SUCCESS;
   }
-  brillo::SecureBlob Generate() override { return brillo::SecureBlob(); }
+  result_code Initialize(const brillo::SecureBlob& key_material,
+                         brillo::SecureBlob* derived_system_key) override {
+    return RESULT_FAIL_FATAL;
+  }
   result_code Persist() override { return RESULT_FAIL_FATAL; }
   void Lock() override {}
   result_code SetupTpm() override { return RESULT_FAIL_FATAL; }

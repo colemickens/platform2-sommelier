@@ -97,11 +97,19 @@ struct EncStatefulArea {
     ver_flags &= ~flag_value(flag);
   }
 
-  void Init() {
+  result_code Init(const brillo::SecureBlob& new_key_material) {
     magic = kMagic;
     ver_flags = kCurrentVersion;
-    cryptohome::CryptoLib::GetSecureRandom(key_material, sizeof(key_material));
+
+    size_t key_material_size = new_key_material.size();
+    if (key_material_size != sizeof(key_material)) {
+      LOG(ERROR) << "Invalid key material size " << key_material_size;
+      return RESULT_FAIL_FATAL;
+    }
+    memcpy(key_material, new_key_material.data(), key_material_size);
+
     memset(lockbox_mac, 0, sizeof(lockbox_mac));
+    return RESULT_SUCCESS;
   }
 
   brillo::SecureBlob DeriveKey(const std::string& label) const {
@@ -135,7 +143,8 @@ class Tpm1SystemKeyLoader : public SystemKeyLoader {
       : tpm_(tpm), rootdir_(rootdir) {}
 
   result_code Load(brillo::SecureBlob* key) override;
-  brillo::SecureBlob Generate() override;
+  result_code Initialize(const brillo::SecureBlob& key_material,
+                         brillo::SecureBlob* derived_system_key) override;
   result_code Persist() override;
   void Lock() override;
   result_code SetupTpm() override;
@@ -250,13 +259,24 @@ result_code Tpm1SystemKeyLoader::Load(brillo::SecureBlob* system_key) {
   return RESULT_FAIL_FATAL;
 }
 
-brillo::SecureBlob Tpm1SystemKeyLoader::Generate() {
+result_code Tpm1SystemKeyLoader::Initialize(
+    const brillo::SecureBlob& key_material,
+    brillo::SecureBlob* derived_system_key) {
   provisional_contents_ =
       std::make_unique<brillo::SecureBlob>(sizeof(EncStatefulArea));
   EncStatefulArea* area =
       reinterpret_cast<EncStatefulArea*>(provisional_contents_->data());
-  area->Init();
-  return area->DeriveKey(kLabelSystemKey);
+
+  result_code rc = area->Init(key_material);
+  if (rc != RESULT_SUCCESS) {
+    return rc;
+  }
+
+  if (derived_system_key) {
+    *derived_system_key = area->DeriveKey(kLabelSystemKey);
+  }
+
+  return RESULT_SUCCESS;
 }
 
 result_code Tpm1SystemKeyLoader::Persist() {
@@ -397,7 +417,15 @@ result_code Tpm1SystemKeyLoader::GenerateForPreservation(
       std::make_unique<brillo::SecureBlob>(sizeof(EncStatefulArea));
   EncStatefulArea* provisional_area =
       reinterpret_cast<EncStatefulArea*>(provisional_contents_->data());
-  provisional_area->Init();
+
+  brillo::SecureBlob key_material;
+  key_material.resize(DIGEST_LENGTH);
+  cryptohome::CryptoLib::GetSecureRandom(
+      key_material.data(), key_material.size());
+  rc = provisional_area->Init(key_material);
+  if (rc != RESULT_SUCCESS) {
+    return rc;
+  }
 
   // Set the flag to anticipate another TPM clear for the case where we're
   // preserving for the installation of a TPM firmware update.
