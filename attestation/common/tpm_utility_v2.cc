@@ -57,13 +57,12 @@ inline std::string BytesToString(
   return BytesToString(maybe_bytes.value_or(std::vector<uint8_t>()));
 }
 
-BIGNUM* StringToBignum(const std::string& big_integer) {
-  if (big_integer.empty())
-    return nullptr;
+bool StringToBignum(const std::string& big_integer, BIGNUM* b) {
+  if (big_integer.empty() || !b)
+    return false;
 
-  BIGNUM* b = BN_bin2bn(StringToByteBuffer(big_integer.data()),
-                        big_integer.length(), nullptr);
-  return b;
+  return BN_bin2bn(StringToByteBuffer(big_integer.data()),
+                   big_integer.length(), b);
 }
 
 crypto::ScopedRSA CreateRSAFromRawModulus(const uint8_t* modulus_buffer,
@@ -133,8 +132,16 @@ crypto::ScopedEC_KEY GetEccPublicKeyFromTpmPublicArea(
   std::string xs = StringFrom_TPM2B_ECC_PARAMETER(public_area.unique.ecc.x);
   std::string ys = StringFrom_TPM2B_ECC_PARAMETER(public_area.unique.ecc.y);
 
-  crypto::ScopedBIGNUM x(StringToBignum(xs));
-  crypto::ScopedBIGNUM y(StringToBignum(ys));
+  crypto::ScopedBIGNUM x(BN_new()), y(BN_new());
+  if (!x || !y) {
+    LOG(ERROR) << __func__ << ": Failed to allocate BIGNUMs for ECC parameters";
+    return nullptr;
+  }
+
+  if (!StringToBignum(xs, x.get()) || !StringToBignum(ys, y.get())) {
+    LOG(ERROR) << __func__ << ": Failed to parse ECC parameters";
+    return nullptr;
+  }
 
   // EC_KEY_set_public_key_affine_coordinates will check the pointers are valid
   if (!EC_KEY_set_public_key_affine_coordinates(key.get(), x.get(), y.get())) {
@@ -187,6 +194,16 @@ std::string EccSubjectPublicKeyInfoToString(const crypto::ScopedEC_KEY& key) {
 
 crypto::ScopedECDSA_SIG CreateEcdsaSigFromRS(std::string r, std::string s) {
   crypto::ScopedECDSA_SIG sig(ECDSA_SIG_new());
+  crypto::ScopedBIGNUM r_bn(BN_new()), s_bn(BN_new());
+  if (!sig || !r_bn || !s_bn) {
+    LOG(ERROR) << __func__ << ": Failed to allocate RSA or BIGNUM";
+    return nullptr;
+  }
+
+  if (!StringToBignum(r, r_bn.get()) || !StringToBignum(s, s_bn.get())) {
+    LOG(ERROR) << __func__ << ": Failed to parse ECDSA SIG parameters";
+    return nullptr;
+  }
 
   // ECDSA_SIG_new populates ECDSA_SIG with two newly allocated BIGNUMs. We
   // need to free them before replacing them with new ones created by
@@ -194,8 +211,8 @@ crypto::ScopedECDSA_SIG CreateEcdsaSigFromRS(std::string r, std::string s) {
   // TODO(menghuan): use ECDSA_SIG_set0() after upgrading to OpenSSL 1.1.0
   BN_free(sig->r);
   BN_free(sig->s);
-  sig->r = StringToBignum(r);
-  sig->s = StringToBignum(s);
+  sig->r = r_bn.release();
+  sig->s = s_bn.release();
   return sig;
 }
 
