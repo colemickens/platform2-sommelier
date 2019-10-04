@@ -120,6 +120,35 @@ template("generate_mojom_bindings_gen") {
     ]
   }
 
+  mojo_parse_action_name = "${target_name}_parse"
+  action(mojo_parse_action_name) {
+    inputs = [
+      mojom_bindings_generator,
+    ]
+    sources = invoker.sources
+    outputs = []
+    filelist = []
+    foreach(source, invoker.sources) {
+      filename = get_path_info("$source", "name")
+      dirname = get_path_info("$source", "gen_dir")
+      outputs += [ "$dirname/$filename.p" ]
+      filelist += [ rebase_path("$source", root_build_dir) ]
+    }
+
+    response_file_contents = filelist
+
+    script = mojom_bindings_generator
+    args = [
+      "--use_bundled_pylibs",
+      "parse",
+      "--filelist={{response_file_name}}",
+      "--output_dir",
+      _mojo_output_base,
+      "-d",
+      mojo_root,  # Mojo depth.
+    ]
+  }
+
   action_foreach(target_name) {
     forward_variables_from(invoker, [ "sources" ])
     inputs = [
@@ -140,9 +169,15 @@ template("generate_mojom_bindings_gen") {
       "${mojo_output_dir}/{{source_target_relative}}.cc",
       "${mojo_output_dir}/{{source_target_relative}}.h",
     ]
+    if ("${libbase_ver}" == "576279") {
+      outputs += [
+        "${mojo_output_dir}/{{source_target_relative}}-shared-message-ids.h",
+      ]
+    }
     print("Generating mojo C++ bindings")
     script = _mojom_bindings_generator_wrapper
     args = [
+             "${libbase_ver}",
              mojom_bindings_generator,
              "--use_bundled_pylibs",
              "generate",
@@ -158,9 +193,20 @@ template("generate_mojom_bindings_gen") {
              "--generators",
              "c++",
            ] + mojo_extra_args
+    if (defined(invoker.disallow_native_types) &&
+        invoker.disallow_native_types) {
+      args += [ "--disallow_native_types" ]
+    }
+
+    if (defined(invoker.disallow_interfaces) && invoker.disallow_interfaces) {
+      args += [ "--disallow_interfaces" ]
+    }
     deps = [
       ":${mojo_templates_action_name}",
     ]
+    if ("${libbase_ver}" == "576279") {
+      deps += [ ":${mojo_parse_action_name}" ]
+    }
   }
 }
 
@@ -174,6 +220,8 @@ template("generate_mojom_bindings") {
                              "mojo_root",
                              "mojom_bindings_generator",
                              "sources",
+                             "disallow_native_types",
+                             "disallow_interfaces",
                            ])
   }
 
