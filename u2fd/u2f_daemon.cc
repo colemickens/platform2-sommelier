@@ -138,7 +138,8 @@ U2fDaemon::U2fDaemon(bool force_u2f,
                      bool legacy_kh_fallback,
                      uint32_t vendor_id,
                      uint32_t product_id)
-    : force_u2f_(force_u2f),
+    : brillo::DBusServiceDaemon(u2f::kU2FServiceName),
+      force_u2f_(force_u2f),
       force_g2f_(force_g2f),
       g2f_allowlist_data_(g2f_allowlist_data),
       legacy_kh_fallback_(legacy_kh_fallback),
@@ -146,23 +147,13 @@ U2fDaemon::U2fDaemon(bool force_u2f,
       product_id_(product_id) {}
 
 int U2fDaemon::OnInit() {
-  brillo::Daemon::OnInit();
-
-  if (bus_) {
-    LOG(ERROR) << "OnInit unexpectedly called twice";
-    return EX_SOFTWARE;
-  }
-
-  if (!InitializeDBus()) {
-    LOG(ERROR) << "Failed to initialize DBus Connection";
-    return EX_IOERR;
-  }
+  int rc = brillo::DBusServiceDaemon::OnInit();
+  if (rc != EX_OK)
+    return rc;
 
   if (!InitializeDBusProxies()) {
     return EX_IOERR;
   }
-
-  RegisterDBusU2fInterface();
 
   sm_proxy_->RegisterPropertyChangeCompleteSignalHandler(
       base::Bind(&U2fDaemon::TryStartService, base::Unretained(this)),
@@ -227,24 +218,6 @@ int U2fDaemon::StartService() {
   return u2fhid_->Init() ? EX_OK : EX_PROTOCOL;
 }
 
-bool U2fDaemon::InitializeDBus() {
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  bus_ = new dbus::Bus(options);
-  if (!bus_->Connect()) {
-    LOG(ERROR) << "Cannot connect to D-Bus.";
-    return false;
-  }
-
-  if (!bus_->RequestOwnershipAndBlock(u2f::kU2FServiceName,
-                                      dbus::Bus::REQUIRE_PRIMARY)) {
-    LOG(ERROR) << "Cannot acquire dbus ownership for " << u2f::kU2FServiceName;
-    return EX_IOERR;
-  }
-
-  return true;
-}
-
 bool U2fDaemon::InitializeDBusProxies() {
   if (!tpm_proxy_.Init()) {
     LOG(ERROR) << "Failed to initialize trunksd DBus proxy";
@@ -267,7 +240,8 @@ bool U2fDaemon::InitializeDBusProxies() {
   return true;
 }
 
-void U2fDaemon::RegisterDBusU2fInterface() {
+void U2fDaemon::RegisterDBusObjectsAsync(
+    brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   dbus_object_.reset(new brillo::dbus_utils::DBusObject(
       nullptr, bus_, dbus::ObjectPath(u2f::kU2FServicePath)));
 
@@ -276,7 +250,8 @@ void U2fDaemon::RegisterDBusU2fInterface() {
   wink_signal_ = u2f_interface->RegisterSignal<u2f::UserNotification>(
       u2f::kU2FUserNotificationSignal);
 
-  dbus_object_->RegisterAndBlock();
+  dbus_object_->RegisterAsync(
+      sequencer->GetHandler("Failed to register DBus Interface.", true));
 }
 
 void U2fDaemon::CreateU2fMsgHandler(bool allow_g2f_attestation,

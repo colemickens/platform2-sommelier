@@ -12,7 +12,7 @@
 #include <attestation/proto_bindings/interface.pb.h>
 #include <attestation-client/attestation/dbus-proxies.h>
 #include <base/optional.h>
-#include <brillo/daemons/daemon.h>
+#include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/dbus_signal.h>
 #include <metrics/metrics_library.h>
@@ -30,7 +30,7 @@ enum class U2fMode : uint8_t;
 
 // U2F Daemon; starts/runs the virtual USB HID U2F device, and implements the
 // U2F DBus interface.
-class U2fDaemon : public brillo::Daemon {
+class U2fDaemon : public brillo::DBusServiceDaemon {
  public:
   U2fDaemon(bool force_u2f,
             bool force_g2f,
@@ -39,9 +39,14 @@ class U2fDaemon : public brillo::Daemon {
             uint32_t vendor_id,
             uint32_t product_id);
 
- private:
+ protected:
   int OnInit() override;
 
+  // Registers the U2F interface.
+  void RegisterDBusObjectsAsync(
+      brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
+
+ private:
   // Checks if the device policy is available, and if so, starts the U2F
   // service.
   void TryStartService(const std::string& /* unused dbus signal status */);
@@ -54,14 +59,8 @@ class U2fDaemon : public brillo::Daemon {
   //   cannot be initialized EX_IOERR if DBus cannot be initialized
   int StartService();
 
-  // Creates DBus connection and takes ownership of the U2F DBus service.
-  bool InitializeDBus();
-
   // Initializes DBus proxies for PowerManager, SessionManager, and Trunks.
   bool InitializeDBusProxies();
-
-  // Registers the U2F interface.
-  void RegisterDBusU2fInterface();
 
   // Helpers to create these members.
   void CreateU2fMsgHandler(bool allow_g2f_attestation,
@@ -97,7 +96,6 @@ class U2fDaemon : public brillo::Daemon {
   uint32_t product_id_;
 
   // DBus
-  scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
   // Signal sent by this daemon
