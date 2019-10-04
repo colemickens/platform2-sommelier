@@ -165,12 +165,9 @@ int HandleArcCrash(ArcCollector* arc_collector, const std::string& user) {
 
 int HandleArcJavaCrash(ArcCollector* arc_collector,
                        const std::string& crash_type,
-                       const std::string& device,
-                       const std::string& board,
-                       const std::string& cpu_abi) {
+                       const ArcCollector::BuildProperty& build_property) {
   brillo::LogToString(true);
-  bool handled =
-      arc_collector->HandleJavaCrash(crash_type, device, board, cpu_abi);
+  bool handled = arc_collector->HandleJavaCrash(crash_type, build_property);
   brillo::LogToString(false);
   if (!handled)
     return 1;
@@ -541,10 +538,13 @@ int main(int argc, char* argv[]) {
   }
 
 #if USE_CHEETS
-  if (!FLAGS_arc_java_crash.empty())
+  if (!FLAGS_arc_java_crash.empty()) {
+    ArcCollector::BuildProperty build_property = {.device = FLAGS_arc_device,
+                                                  .board = FLAGS_arc_board,
+                                                  .cpu_abi = FLAGS_arc_cpu_abi};
     return HandleArcJavaCrash(&arc_collector, FLAGS_arc_java_crash,
-                              FLAGS_arc_device, FLAGS_arc_board,
-                              FLAGS_arc_cpu_abi);
+                              build_property);
+  }
 #endif
 
   int exit_code = HandleUserCrash(&user_collector, FLAGS_user, FLAGS_crash_test,

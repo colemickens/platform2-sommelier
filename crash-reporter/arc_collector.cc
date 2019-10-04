@@ -111,10 +111,7 @@ const char* GetSubjectTag(const std::string& type);
 bool GetChromeVersion(std::string* version);
 
 bool GetArcRoot(FilePath* root);
-bool GetArcProperties(std::string* version,
-                      std::string* device,
-                      std::string* board,
-                      std::string* cpu_abi);
+bool GetArcProperties(ArcCollector::BuildProperty* build_property);
 
 std::string FormatDuration(uint64_t seconds);
 
@@ -146,9 +143,7 @@ bool ArcCollector::IsArcProcess(pid_t pid) const {
 }
 
 bool ArcCollector::HandleJavaCrash(const std::string& crash_type,
-                                   const std::string& device,
-                                   const std::string& board,
-                                   const std::string& cpu_abi) {
+                                   const BuildProperty& build_property) {
   std::string reason;
   const bool should_dump = UserCollectorBase::ShouldDump(
       is_feedback_allowed_function_(), util::IsDeveloperImage(), &reason);
@@ -180,9 +175,8 @@ bool ArcCollector::HandleJavaCrash(const std::string& crash_type,
   LogCrash(message.str(), reason);
 
   bool out_of_capacity = false;
-  if (!CreateReportForJavaCrash(crash_type, device, board, cpu_abi, map,
-                                exception_info, stream.str(),
-                                &out_of_capacity)) {
+  if (!CreateReportForJavaCrash(crash_type, build_property, map, exception_info,
+                                stream.str(), &out_of_capacity)) {
     if (!out_of_capacity)
       EnqueueCollectionErrorLog(0, kErrorSystemIssue, exec);
 
@@ -407,16 +401,16 @@ void ArcCollector::AddArcMetaData(const std::string& process,
   AddCrashMetaUploadData(kCrashTypeField, crash_type);
   AddCrashMetaUploadData(kChromeOsVersionField, CrashCollector::GetOsVersion());
 
-  std::string fingerprint, device, board, cpu_abi;
+  BuildProperty build_property;
 
-  if (add_arc_properties &&
-      GetArcProperties(&fingerprint, &device, &board, &cpu_abi)) {
-    AddCrashMetaUploadData(kArcVersionField, fingerprint);
-    AddCrashMetaUploadData(kDeviceField, device);
-    AddCrashMetaUploadData(kBoardField, board);
-    AddCrashMetaUploadData(kCpuAbiField, cpu_abi);
-    AddCrashMetaUploadData(kAndroidVersionField,
-                           GetVersionFromFingerprint(fingerprint));
+  if (add_arc_properties && GetArcProperties(&build_property)) {
+    AddCrashMetaUploadData(kArcVersionField, build_property.fingerprint);
+    AddCrashMetaUploadData(kDeviceField, build_property.device);
+    AddCrashMetaUploadData(kBoardField, build_property.board);
+    AddCrashMetaUploadData(kCpuAbiField, build_property.cpu_abi);
+    AddCrashMetaUploadData(
+        kAndroidVersionField,
+        GetVersionFromFingerprint(build_property.fingerprint));
   }
 
   int64_t start_time;
@@ -482,9 +476,7 @@ bool ArcCollector::ParseCrashLog(const std::string& type,
 }
 
 bool ArcCollector::CreateReportForJavaCrash(const std::string& crash_type,
-                                            const std::string& device,
-                                            const std::string& board,
-                                            const std::string& cpu_abi,
+                                            const BuildProperty& build_property,
                                             const CrashLogHeaderMap& map,
                                             const std::string& exception_info,
                                             const std::string& log,
@@ -520,9 +512,9 @@ bool ArcCollector::CreateReportForJavaCrash(const std::string& crash_type,
   AddCrashMetaUploadData(kArcVersionField, fingerprint);
   AddCrashMetaUploadData(kAndroidVersionField,
                          GetVersionFromFingerprint(fingerprint));
-  AddCrashMetaUploadData(kDeviceField, device);
-  AddCrashMetaUploadData(kBoardField, board);
-  AddCrashMetaUploadData(kCpuAbiField, cpu_abi);
+  AddCrashMetaUploadData(kDeviceField, build_property.device);
+  AddCrashMetaUploadData(kBoardField, build_property.board);
+  AddCrashMetaUploadData(kCpuAbiField, build_property.cpu_abi);
 
   for (const auto& mapping : kHeaderToFieldMapping) {
     if (map.count(mapping.first)) {
@@ -680,17 +672,14 @@ bool GetArcRoot(FilePath* root) {
   return false;
 }
 
-bool GetArcProperties(std::string* fingerprint,
-                      std::string* device,
-                      std::string* board,
-                      std::string* cpu_abi) {
+bool GetArcProperties(ArcCollector::BuildProperty* build_property) {
   FilePath root;
   brillo::KeyValueStore store;
   if (GetArcRoot(&root) && store.Load(root.Append(kArcBuildProp)) &&
-      store.GetString(kFingerprintProperty, fingerprint) &&
-      store.GetString(kDeviceProperty, device) &&
-      store.GetString(kBoardProperty, board) &&
-      store.GetString(kCpuAbiProperty, cpu_abi))
+      store.GetString(kFingerprintProperty, &(build_property->fingerprint)) &&
+      store.GetString(kDeviceProperty, &(build_property->device)) &&
+      store.GetString(kBoardProperty, &(build_property->board)) &&
+      store.GetString(kCpuAbiProperty, &(build_property->cpu_abi)))
     return true;
 
   LOG(ERROR) << "Failed to get ARC properties";
