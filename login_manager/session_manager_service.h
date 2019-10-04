@@ -40,6 +40,7 @@ namespace login_manager {
 
 class BrowserJobInterface;
 class ChildExitDispatcher;
+class ChromeFeaturesServiceClient;
 class LoginMetrics;
 class NssUtil;
 class SystemUtils;
@@ -168,14 +169,6 @@ class SessionManagerService
   static void RevertHandlers();
 
  private:
-  // When Chrome is configured to write core files (which only happens during
-  // testing), give it extra time to exit. Note that this must be less than the
-  // 20-second kill timeout granted to session_manager in ui.conf.
-  static constexpr base::TimeDelta kKillTimeoutCollectChrome =
-      base::TimeDelta::FromSeconds(12);
-  static constexpr char kCollectChromeFile[] =
-      "/mnt/stateful_partition/etc/collect_chrome_crashes";
-
   // |data| is a SessionManagerService*.
   static DBusHandlerResult FilterMessage(DBusConnection* conn,
                                          DBusMessage* message,
@@ -231,6 +224,10 @@ class SessionManagerService
   // preparation for the killing the browser.
   void WriteAbortedBrowserPidFile();
 
+  // Invoked to update |use_long_kill_timeout_| after checking
+  // 'SessionManagerUseLongKillTimeout' feature.
+  void OnLongKillTimeoutEnabled(base::Optional<bool> enabled);
+
   std::unique_ptr<BrowserJobInterface> browser_;
   base::TimeTicks last_browser_restart_time_;
   bool exit_on_child_done_ = false;
@@ -272,6 +269,13 @@ class SessionManagerService
   std::unique_ptr<ChildExitDispatcher> child_exit_dispatcher_;
   bool shutting_down_ = false;
   ExitCode exit_code_ = SUCCESS;
+
+  std::unique_ptr<ChromeFeaturesServiceClient> chrome_features_service_client_;
+
+  // Whether to use long kill timeout for child jobs. This is updated when
+  // chrome starts and check the 'SessionManaagerLongKillTimeout' feature
+  // enabled state via ChromeFeaturesService.
+  bool use_long_kill_timeout_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerService);
 };

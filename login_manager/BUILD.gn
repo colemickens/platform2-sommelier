@@ -64,6 +64,7 @@ static_library("libsession_manager") {
     "child_exit_dispatcher.cc",
     "child_exit_handler.cc",
     "child_job.cc",
+    "chrome_features_service_client.cc",
     "chrome_setup.cc",
     "container_manager_interface.cc",
     "crossystem.cc",

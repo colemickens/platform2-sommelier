@@ -22,6 +22,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
@@ -36,6 +37,7 @@
 
 #include "login_manager/browser_job.h"
 #include "login_manager/child_exit_dispatcher.h"
+#include "login_manager/chrome_features_service_client.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker_impl.h"
 #include "login_manager/login_metrics.h"
@@ -73,6 +75,18 @@ const char kAbortedBrowserPidPath[] = "/run/chrome/aborted_browser_pid";
 // cleanly shut down.
 constexpr int kStopAllVmsTimeoutMs = 120000;
 
+// Long kill time out. Used instead of the default one when chrome feature
+// 'SessionManagerLongKillTimeout' is enabled. Note that this must be less than
+// the 20-second kill timeout granted to session_manager in ui.conf.
+constexpr base::TimeDelta kLongKillTimeout = base::TimeDelta::FromSeconds(12);
+
+// A flag file of whether to dump chrome crashes on dev/test image.
+constexpr char kCollectChromeFile[] =
+    "/mnt/stateful_partition/etc/collect_chrome_crashes";
+
+constexpr char kFeatureNamelSessionManagerLongKillTimeout[] =
+    "SessionManagerLongKillTimeout";
+
 // I need a do-nothing action for SIGALRM, or using alarm() will kill me.
 void DoNothing(int signal) {}
 
@@ -96,9 +110,6 @@ const char* ExitCodeToString(SessionManagerService::ExitCode code) {
 }
 
 }  // anonymous namespace
-
-constexpr base::TimeDelta SessionManagerService::kKillTimeoutCollectChrome;
-constexpr char SessionManagerService::kCollectChromeFile[];
 
 void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
   siginfo_t info;
@@ -199,6 +210,11 @@ bool SessionManagerService::Initialize() {
   ArcSideloadStatusInterface* arc_sideload_status = new ArcSideloadStatusStub();
 #endif
 
+  chrome_features_service_client_ =
+      std::make_unique<ChromeFeaturesServiceClient>(bus_->GetObjectProxy(
+          chromeos::kChromeFeaturesServiceName,
+          dbus::ObjectPath(chromeos::kChromeFeaturesServicePath)));
+
   // Initially store in derived-type pointer, so that we can initialize
   // appropriately below.
   impl_ = std::make_unique<SessionManagerImpl>(
@@ -252,6 +268,15 @@ void SessionManagerService::RunBrowser() {
   browser_->RunInBackground();
   DLOG(INFO) << "Browser is " << browser_->CurrentPid();
   liveness_checker_->Start();
+
+  // |chrome_features_service_client_| is null in test.
+  if (chrome_features_service_client_) {
+    chrome_features_service_client_->IsFeatureEnabled(
+        kFeatureNamelSessionManagerLongKillTimeout,
+        base::Bind(&SessionManagerService::OnLongKillTimeoutEnabled,
+                   base::Unretained(this)));
+  }
+
   // Note that |child_exit_handler_| will catch browser process termination and
   // call HandleExit().
 }
@@ -425,10 +450,15 @@ void SessionManagerService::RevertHandlers() {
 }
 
 base::TimeDelta SessionManagerService::GetKillTimeout() {
+  // When Chrome is configured to write core files (which only happens during
+  // testing), give it extra time to exit.
   if (base::PathExists(base::FilePath(kCollectChromeFile)))
-    return kKillTimeoutCollectChrome;
-  else
-    return kill_timeout_;
+    return kLongKillTimeout;
+
+  if (use_long_kill_timeout_)
+    return kLongKillTimeout;
+
+  return kill_timeout_;
 }
 
 bool SessionManagerService::InitializeImpl() {
@@ -597,6 +627,17 @@ void SessionManagerService::WriteAbortedBrowserPidFile() {
   if (fchown(aborted_browser_pid_fd.get(), sbuf.st_uid, sbuf.st_gid) < 0) {
     PLOG(ERROR) << "Could not chown: " << aborted_browser_pid_path_.value();
   }
+}
+
+void SessionManagerService::OnLongKillTimeoutEnabled(
+    base::Optional<bool> enabled) {
+  if (!enabled.has_value()) {
+    LOG(ERROR) << "Failed to check kSessionManagerLongKillTimeout feature.";
+    use_long_kill_timeout_ = false;
+    return;
+  }
+
+  use_long_kill_timeout_ = enabled.value();
 }
 
 }  // namespace login_manager
