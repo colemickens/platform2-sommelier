@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "usb_bouncer/rule_db_storage.h"
+
 #include <unistd.h>
 
 #include <string>

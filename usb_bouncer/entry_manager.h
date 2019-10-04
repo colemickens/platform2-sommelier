@@ -5,16 +5,16 @@
 #ifndef USB_BOUNCER_ENTRY_MANAGER_H_
 #define USB_BOUNCER_ENTRY_MANAGER_H_
 
+#include <functional>
+#include <map>
+#include <memory>
+#include <string>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-
-#include <functional>
-#include <map>
-#include <memory>
-#include <string>
 
 #include "usb_bouncer/rule_db_storage.h"
 #include "usb_bouncer/usb_bouncer.pb.h"

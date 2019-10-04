@@ -5,11 +5,11 @@
 #ifndef USB_BOUNCER_ENTRY_MANAGER_TEST_UTIL_H_
 #define USB_BOUNCER_ENTRY_MANAGER_TEST_UTIL_H_
 
-#include <base/files/file_path.h>
-#include <base/files/scoped_temp_dir.h>
-
 #include <memory>
 #include <string>
+
+#include <base/files/file_path.h>
+#include <base/files/scoped_temp_dir.h>
 
 #include "usb_bouncer/entry_manager.h"
 

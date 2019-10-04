@@ -55,16 +55,16 @@ void DropPrivileges(SeccompEnforcement seccomp) {
     PLOG(FATAL) << "minijail_enter_pivot_root() failed";
   }
   if (minijail_bind(j.get(), "/", "/", 0 /*writable*/)) {
-    PLOG(FATAL) << "minijail_bind(\"/\") failed";
+    PLOG(FATAL) << "minijail_bind('/') failed";
   }
   if (minijail_bind(j.get(), "/proc", "/proc", 0 /*writable*/)) {
-    PLOG(FATAL) << "minijail_bind(\"/\") failed";
+    PLOG(FATAL) << "minijail_bind('/proc') failed";
   }
   if (!base::PathExists(base::FilePath(kLogPath))) {
-    LOG(WARNING) << "Path \"" << kLogPath << "\" doesn't exist; "
+    LOG(WARNING) << "Path '" << kLogPath << "' doesn't exist; "
                  << "logging via syslog won't work for this run.";
   } else if (minijail_bind(j.get(), kLogPath, kLogPath, 0 /*writable*/)) {
-    PLOG(FATAL) << "minijail_bind(\"" << kLogPath << "\") failed";
+    PLOG(FATAL) << "minijail_bind('" << kLogPath << "') failed";
   }
 
   // "usb_bouncer genrules" writes to stdout.
@@ -73,38 +73,38 @@ void DropPrivileges(SeccompEnforcement seccomp) {
   minijail_mount_dev(j.get());
   minijail_mount_tmp(j.get());
   if (minijail_bind(j.get(), "/sys", "/sys", 0 /*writable*/) != 0) {
-    PLOG(FATAL) << "minijail_bind(\"/sys\") failed";
+    PLOG(FATAL) << "minijail_bind('/sys') failed";
   }
   if (minijail_mount_with_data(j.get(), "tmpfs", "/run", "tmpfs",
                                MS_NOSUID | MS_NOEXEC | MS_NODEV,
                                "mode=0755,size=10M") != 0) {
-    PLOG(FATAL) << "minijail_mount_with_data(\"/run\") failed";
+    PLOG(FATAL) << "minijail_mount_with_data('/run') failed";
   }
   std::string global_db_path("/");
   global_db_path.append(usb_bouncer::kDefaultGlobalDir);
   if (minijail_bind(j.get(), global_db_path.c_str(), global_db_path.c_str(),
                     1 /*writable*/) != 0) {
-    PLOG(FATAL) << "minijail_bind(\"" << global_db_path << "\") failed";
+    PLOG(FATAL) << "minijail_bind('" << global_db_path << "') failed";
   }
 
   if (!base::PathExists(base::FilePath(usb_bouncer::kDBusPath))) {
-    LOG(WARNING) << "Path \"" << usb_bouncer::kDBusPath << "\" doesn't exist; "
+    LOG(WARNING) << "Path '" << usb_bouncer::kDBusPath << "' doesn't exist; "
                  << "assuming user is not yet logged in to the system.";
   } else if (minijail_bind(j.get(), usb_bouncer::kDBusPath,
                            usb_bouncer::kDBusPath, 0 /*writable*/) != 0) {
-    PLOG(FATAL) << "minijail_bind(\"" << usb_bouncer::kDBusPath << "\") failed";
+    PLOG(FATAL) << "minijail_bind('" << usb_bouncer::kDBusPath << "') failed";
   }
 
   minijail_remount_mode(j.get(), MS_SLAVE);
   // minijail_bind was not used because the MS_REC flag is needed.
   if (!base::DirectoryExists(base::FilePath(usb_bouncer::kUserDbParentDir))) {
-    LOG(WARNING) << "Path \"" << usb_bouncer::kUserDbParentDir
-                 << "\" doesn't exist; userdb will be inaccessible this run.";
+    LOG(WARNING) << "Path '" << usb_bouncer::kUserDbParentDir
+                 << "' doesn't exist; userdb will be inaccessible this run.";
   } else if (minijail_mount(j.get(), usb_bouncer::kUserDbParentDir,
                             usb_bouncer::kUserDbParentDir, "none",
                             MS_BIND | MS_REC) != 0) {
-    PLOG(FATAL) << "minijail_mount(\"/" << usb_bouncer::kUserDbParentDir
-                << "\") failed";
+    PLOG(FATAL) << "minijail_mount('/" << usb_bouncer::kUserDbParentDir
+                << "') failed";
   }
 
   minijail_forward_signals(j.get());

@@ -4,6 +4,16 @@
 
 #include "usb_bouncer/util.h"
 
+#include <fcntl.h>
+#include <sys/file.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include <algorithm>
+#include <cstring>
+#include <utility>
+#include <vector>
+
 #include <base/base64.h>
 #include <base/files/file_util.h>
 #include <base/process/launch.h>
@@ -16,18 +26,8 @@
 #include <brillo/files/file_util.h>
 #include <brillo/files/scoped_dir.h>
 #include <brillo/userdb_utils.h>
-#include <fcntl.h>
 #include <openssl/sha.h>
 #include <session_manager/dbus-proxies.h>
-#include <sys/file.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
-#include <algorithm>
-#include <cstring>
-#include <utility>
-#include <vector>
-
 #include <usbguard/Device.hpp>
 #include <usbguard/DeviceManager.hpp>
 #include <usbguard/DeviceManagerHooks.hpp>
@@ -470,10 +470,6 @@ SafeFD OpenStateFile(const base::FilePath& base_path,
 
   return fd;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-// Time related helper functions.
-////////////////////////////////////////////////////////////////////////////////
 
 void UpdateTimestamp(Timestamp* timestamp) {
   auto time = (base::Time::Now() - base::Time::UnixEpoch()).ToTimeSpec();

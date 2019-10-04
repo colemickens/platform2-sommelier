@@ -4,15 +4,15 @@
 
 #include "usb_bouncer/entry_manager.h"
 
-#include <base/files/file_enumerator.h>
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/string_util.h>
-#include <base/time/time.h>
-
 #include <algorithm>
 #include <cstdint>
 #include <unordered_set>
 #include <vector>
+
+#include <base/files/file_enumerator.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+#include <base/time/time.h>
 
 #include "usb_bouncer/util.h"
 

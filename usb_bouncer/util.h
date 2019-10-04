@@ -5,12 +5,6 @@
 #ifndef USB_BOUNCER_UTIL_H_
 #define USB_BOUNCER_UTIL_H_
 
-#include <base/files/file_path.h>
-#include <base/files/scoped_file.h>
-#include <base/time/time.h>
-#include <brillo/files/safe_fd.h>
-#include <google/protobuf/repeated_field.h>
-#include <google/protobuf/timestamp.pb.h>
 #include <unistd.h>
 
 #include <cstdint>
@@ -19,6 +13,13 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+
+#include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
+#include <base/time/time.h>
+#include <brillo/files/safe_fd.h>
+#include <google/protobuf/repeated_field.h>
+#include <google/protobuf/timestamp.pb.h>
 
 #include "usb_bouncer/usb_bouncer.pb.h"
 
@@ -91,9 +92,6 @@ brillo::SafeFD OpenStateFile(const base::FilePath& base_path,
                              const std::string& state_file_name,
                              bool lock);
 
-////////////////////////////////////////////////////////////////////////////////
-// Time related helper functions.
-////////////////////////////////////////////////////////////////////////////////
 void UpdateTimestamp(Timestamp* timestamp);
 size_t RemoveEntriesOlderThan(base::TimeDelta cutoff, EntryMap* map);
 
