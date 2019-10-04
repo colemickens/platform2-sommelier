@@ -1724,6 +1724,8 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   writer.AppendProtoAsArrayOfBytes(response);
 
   VmId vm_id(request.owner_id(), request.name());
+  SendVmStartedSignal(vm_id, *vm_info, response.status());
+
   vms_[vm_id] = std::move(vm);
   return dbus_response;
 }
