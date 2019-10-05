@@ -60,6 +60,7 @@ static_library("libu2fd") {
     "uhid_device.cc",
     "user_state.cc",
     "util.cc",
+    "webauthn_handler.cc",
   ]
   libs = [ "policy-${libbase_ver}" ]
   deps = [

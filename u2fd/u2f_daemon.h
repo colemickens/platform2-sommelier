@@ -23,6 +23,7 @@
 #include "u2fd/tpm_vendor_cmd.h"
 #include "u2fd/u2f_msg_handler.h"
 #include "u2fd/u2fhid.h"
+#include "u2fd/webauthn_handler.h"
 
 namespace u2f {
 
@@ -111,6 +112,9 @@ class U2fDaemon : public brillo::DBusServiceDaemon {
   // Virtual USB Device
   std::unique_ptr<u2f::U2fHid> u2fhid_;
   std::unique_ptr<u2f::U2fMessageHandler> u2f_msg_handler_;
+
+  // WebAuthn DBus Interface Implementation
+  WebAuthnHandler webauthn_handler_;
 
   // UMA, used by Virtual USB Device
   MetricsLibrary metrics_library_;
