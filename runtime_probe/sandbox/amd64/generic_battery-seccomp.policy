@@ -11,6 +11,7 @@ exit: 1
 exit_group: 1
 fstat: 1
 getdents: 1
+gettid: 1
 lseek: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
