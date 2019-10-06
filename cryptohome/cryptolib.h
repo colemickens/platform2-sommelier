@@ -192,7 +192,7 @@ class CryptoLib {
   // Checks an RSA key modulus for the ROCA fingerprint (i.e. whether the RSA
   // modulus has a discrete logarithm modulus small primes). See research paper
   // for details: https://crocs.fi.muni.cz/public/papers/rsa_ccs17
-  static bool TestRocaVulnerable(BIGNUM* rsa_modulus);
+  static bool TestRocaVulnerable(const BIGNUM* rsa_modulus);
 };
 
 }  // namespace cryptohome
