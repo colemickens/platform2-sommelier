@@ -26,9 +26,10 @@ using hammerd::UpdateExtraCommand;
 using hammerd::UsbEndpoint;
 
 BRILLO_EXPORT FirmwareUpdater* FirmwareUpdater_New(
-    uint16_t vendor_id, uint16_t product_id, int bus, int port) {
-  return new FirmwareUpdater(
-      std::make_unique<UsbEndpoint>(vendor_id, product_id, bus, port));
+    uint16_t vendor_id, uint16_t product_id, int bus,
+    const char* port) {
+  return new FirmwareUpdater(std::make_unique<UsbEndpoint>(
+      vendor_id, product_id, bus, std::string(port)));
 }
 BRILLO_EXPORT bool FirmwareUpdater_LoadEcImage(
     FirmwareUpdater* updater, const ByteString* ec_image) {

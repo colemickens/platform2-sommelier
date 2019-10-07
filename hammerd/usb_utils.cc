@@ -26,12 +26,13 @@ constexpr int kError = -1;
 constexpr unsigned int kTimeoutMs = 1000;  // Default timeout value.
 }  // namespace
 
-const base::FilePath GetUsbSysfsPath(uint16_t bus, uint16_t port) {
-  return base::FilePath(base::StringPrintf("/sys/bus/usb/devices/%d-%d",
-                                           bus, port));
+const base::FilePath GetUsbSysfsPath(uint16_t bus, const std::string& port) {
+  return base::FilePath(base::StringPrintf("/sys/bus/usb/devices/%d-%s",
+                                           bus, port.c_str()));
 }
 
-static bool GetUsbDevicePath(uint16_t bus, uint16_t port, base::FilePath* out) {
+static bool GetUsbDevicePath(uint16_t bus, const std::string& port,
+                             base::FilePath* out) {
   // Find the line in the uevent that starts with "DEVNAME=", and replace it
   // with "/dev/".
   const std::string devname_prefix = "DEVNAME=";
@@ -70,7 +71,7 @@ static bool CheckFileIntValue(const base::FilePath& path, int value) {
 }
 
 UsbEndpoint::UsbEndpoint(uint16_t vendor_id, uint16_t product_id,
-                         uint16_t bus, uint16_t port)
+                         uint16_t bus, std::string port)
     : vendor_id_(vendor_id), product_id_(product_id), bus_(bus), port_(port),
       fd_(-1), iface_num_(-1), ep_num_(-1), chunk_len_(-1) {}
 
@@ -125,7 +126,7 @@ UsbConnectStatus UsbEndpoint::Connect() {
   base::FileEnumerator iface_paths(
       usb_path, false,
       base::FileEnumerator::FileType::DIRECTORIES,
-      base::StringPrintf("%d-%d:*", bus_, port_));
+      base::StringPrintf("%d-%s:*", bus_, port_.c_str()));
   for (base::FilePath iface_path = iface_paths.Next();
        !iface_path.empty();
        iface_path = iface_paths.Next()) {

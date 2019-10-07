@@ -1,8 +1,9 @@
+# -*- coding: utf-8 -*-
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-'''Common constant and device related information.'''
+"""Common constant and device related information."""
 
 from __future__ import print_function
 
@@ -17,9 +18,9 @@ ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
 IMAGE_DIR = os.path.join(ROOT_DIR, 'images')
 
 BASE_TABLE = {
-  'poppy': 'hammer',
-  'soraka': 'staff',
-  'nocturne': 'whiskers'
+    'poppy': 'hammer',
+    'soraka': 'staff',
+    'nocturne': 'whiskers'
 }
 
 board_name_cmd = 'grep CHROMEOS_RELEASE_BOARD /etc/lsb-release | cut -d = -f 2'
@@ -31,19 +32,19 @@ if BASE_NAME == 'staff':
   BASE_VENDOR_ID = 0x18d1
   BASE_PRODUCT_ID = 0x502b
   BASE_BUS = 1
-  BASE_PORT = 2
+  BASE_PORT = '2'
   BASE_CONN_GPIO = 'PP3300_DX_BASE'
 elif BASE_NAME == 'whiskers':
   BASE_VENDOR_ID = 0x18d1
   BASE_PRODUCT_ID = 0x5030
   BASE_BUS = 1
-  BASE_PORT = 7
+  BASE_PORT = '7'
   BASE_CONN_GPIO = 'BASE_PWR_EN'
 elif BASE_NAME == 'hammer':
   BASE_VENDOR_ID = 0x18d1
   BASE_PRODUCT_ID = 0x5022
   BASE_BUS = 1
-  BASE_PORT = 3
+  BASE_PORT = '3'
   BASE_CONN_GPIO = 'PP3300_DX_BASE'
 else:
   print('Error: unknown board: %s' % BASE_NAME)

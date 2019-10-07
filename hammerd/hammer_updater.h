@@ -74,7 +74,7 @@ class HammerUpdater {
                 uint16_t vendor_id,
                 uint16_t product_id,
                 int bus,
-                int port,
+                const std::string& port,
                 bool at_boot,
                 UpdateCondition update_condition);
   virtual ~HammerUpdater() = default;

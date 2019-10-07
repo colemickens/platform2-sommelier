@@ -38,7 +38,7 @@ constexpr uint8_t kUsbSubclassGoogleUpdate = 0x53;
 constexpr uint8_t kUsbProtocolGoogleUpdate = 0xff;
 
 // Get the path of the USB device root sysfs.
-const base::FilePath GetUsbSysfsPath(uint16_t bus, uint16_t port);
+const base::FilePath GetUsbSysfsPath(uint16_t bus, const std::string& port);
 
 enum class UsbConnectStatus {
   kSuccess,  // USB device is connected successfully.
@@ -90,7 +90,7 @@ class UsbEndpointInterface {
 class UsbEndpoint : public UsbEndpointInterface {
  public:
   UsbEndpoint(uint16_t vendor_id, uint16_t product_id,
-              uint16_t bus, uint16_t port);
+              uint16_t bus, std::string port);
 
   // UsbEndpointInterface:
   ~UsbEndpoint() override;
@@ -127,7 +127,7 @@ class UsbEndpoint : public UsbEndpointInterface {
   uint16_t vendor_id_;
   uint16_t product_id_;
   uint16_t bus_;
-  uint16_t port_;
+  std::string port_;
   int fd_;
   std::string configuration_string_;
   int iface_num_;

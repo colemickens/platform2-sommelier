@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -26,7 +27,7 @@ class Enum(object):
         continue
       if val == enum_value:
         return name
-    return "unknown(%d)" % val
+    return 'unknown(%d)' % val
 
 
 class UpdateExtraCommand(Enum):
@@ -59,15 +60,15 @@ class ChallengeStatus(Enum):
 class FirstResponsePdu(ctypes.Structure):
   """Struct of response of first PDU from src/platform/ec/include/update_fw.h"""
   _pack_ = 1
-  _fields_ = [("return_value", ctypes.c_uint32),
-              ("header_type", ctypes.c_uint16),
-              ("protocol_version", ctypes.c_uint16),
-              ("maximum_pdu_size", ctypes.c_uint32),
-              ("flash_protection", ctypes.c_uint32),
-              ("offset", ctypes.c_uint32),
-              ("version", ctypes.c_ubyte * 32),
-              ("min_rollback", ctypes.c_int32),
-              ("key_version", ctypes.c_uint32)]
+  _fields_ = [('return_value', ctypes.c_uint32),
+              ('header_type', ctypes.c_uint16),
+              ('protocol_version', ctypes.c_uint16),
+              ('maximum_pdu_size', ctypes.c_uint32),
+              ('flash_protection', ctypes.c_uint32),
+              ('offset', ctypes.c_uint32),
+              ('version', ctypes.c_ubyte * 32),
+              ('min_rollback', ctypes.c_int32),
+              ('key_version', ctypes.c_uint32)]
 
   def __str__(self):
     ret = ''
@@ -79,15 +80,15 @@ class FirstResponsePdu(ctypes.Structure):
 class TouchpadInfo(ctypes.Structure):
   """touchpad_info struct from src/platform/ec/include/update_fw.h"""
   _pack_ = 1
-  _fields_ = [("status", ctypes.c_ubyte),
-              ("reserved", ctypes.c_ubyte),
-              ("vendor", ctypes.c_ushort),
-              ("fw_address", ctypes.c_uint),
-              ("fw_size", ctypes.c_uint),
-              ("allowed_fw_hash", ctypes.c_ubyte * SHA256_DIGEST_LENGTH),
-              ("id", ctypes.c_ushort),
-              ("fw_version", ctypes.c_ushort),
-              ("fw_checksum", ctypes.c_ushort)]
+  _fields_ = [('status', ctypes.c_ubyte),
+              ('reserved', ctypes.c_ubyte),
+              ('vendor', ctypes.c_ushort),
+              ('fw_address', ctypes.c_uint),
+              ('fw_size', ctypes.c_uint),
+              ('allowed_fw_hash', ctypes.c_ubyte * SHA256_DIGEST_LENGTH),
+              ('id', ctypes.c_ushort),
+              ('fw_version', ctypes.c_ushort),
+              ('fw_checksum', ctypes.c_ushort)]
 
 
 class ByteString(ctypes.Structure):
@@ -188,10 +189,10 @@ class FirmwareUpdater(object):
       ('GetSectionVersion', [ctypes.c_voidp, ctypes.c_int], ctypes.c_char_p),
   ]
 
-  def __init__(self, vendor_id, product_id, bus=-1, port=-1):
+  def __init__(self, vendor_id, product_id, bus=-1, port=None):
     func = _DLL.FirmwareUpdater_New
     func.argtypes = [ctypes.c_uint16, ctypes.c_uint16,
-                     ctypes.c_int, ctypes.c_int]
+                     ctypes.c_int, ctypes.c_char_p]
     func.restype = ctypes.c_void_p
     self.object = func(vendor_id, product_id, bus, port)
 

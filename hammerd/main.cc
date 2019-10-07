@@ -48,7 +48,7 @@ int main(int argc, const char* argv[]) {
   DEFINE_int32(vendor_id, -1, "USB vendor ID of the device");
   DEFINE_int32(product_id, -1, "USB product ID of the device");
   DEFINE_int32(usb_bus, -1, "USB bus to search");
-  DEFINE_int32(usb_port, -1, "USB port to search");
+  DEFINE_string(usb_port, "", "USB port to search");
   DEFINE_int32(autosuspend_delay_ms, -1, "USB autosuspend delay time (ms)");
   DEFINE_bool(at_boot, false,
               "Invoke process at boot time. "
@@ -73,7 +73,7 @@ int main(int argc, const char* argv[]) {
   }
 
   if (FLAGS_vendor_id < 0 || FLAGS_product_id < 0 ||
-      FLAGS_usb_bus < 0 || FLAGS_usb_port < 0) {
+      FLAGS_usb_bus < 0 || FLAGS_usb_port.empty()) {
     LOG(ERROR) << "Must specify USB vendor/product ID and bus/port number.";
     return static_cast<int>(ExitStatus::kNeedUsbInfo);
   }

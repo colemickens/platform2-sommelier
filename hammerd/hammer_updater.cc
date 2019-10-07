@@ -50,7 +50,7 @@ HammerUpdater::HammerUpdater(const std::string& ec_image,
                              const std::string& touchpad_product_id,
                              const std::string& touchpad_fw_ver,
                              uint16_t vendor_id, uint16_t product_id,
-                             int bus, int port, bool at_boot,
+                             int bus, const std::string& port, bool at_boot,
                              UpdateCondition update_condition)
     : HammerUpdater(
         ec_image,
