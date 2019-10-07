@@ -113,6 +113,8 @@ TEST_F(AsynchronousSignalHandlerTest, CheckMultipleSignal) {
   }
 }
 
+// TODO(crbug/1011829): This test is flaky.
+#if 0
 TEST_F(AsynchronousSignalHandlerTest, CheckChld) {
   handler_.RegisterHandler(
       SIGCHLD,
@@ -134,5 +136,6 @@ TEST_F(AsynchronousSignalHandlerTest, CheckChld) {
   EXPECT_EQ(static_cast<int>(CLD_EXITED), infos_[0].ssi_code);
   EXPECT_EQ(EXIT_SUCCESS, infos_[0].ssi_status);
 }
+#endif
 
 }  // namespace brillo
