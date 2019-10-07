@@ -6,27 +6,25 @@
 # The script provides utility for detecting whether a base is currently
 # connected.
 
-# base_connected will block for at most 10 * 0.01 = ~100ms.
+# base_connected will block for at most 5 * 0.01 = ~50ms, and some
+# ectool overhead (total ~80ms, experimentally)
 base_connected() {
   local logger_name="$1"
-  # If the cros_ec_buttons driver hasn't been loaded yet, retry.
-  local event_path=""
-  local retries=10
+  local retries=5
+
+  # Detect if the base is connected:
+  #  - Tablet mode is used on Soraka-like devices
+  #  - Base attached on Nocturne-like devices with CBAS/hammer driver.
+  # The EC driver may not be immediately available, so retry 5 times
   while true; do
     : $((retries -= 1))
-    event_path=$(grep cros_ec_buttons /sys/class/input/event*/device/name \
-        | sed -nE 's|.*(/input/event[0-9]*)/.*|/dev\1|p' | head -n 1)
-    if [ -n "${event_path}" ]; then
+    if ectool mkbpget switches 2>/dev/null; then
       break
     fi
     if [ "${retries}" -lt 1 ]; then
-      logger -t "${logger_name}" \
-          "Error: cros_ec_buttons driver could not be found."
+      logger -t "${logger_name}" "Error: ectool cannot talk to the EC."
       return 1
     fi
     sleep 0.01
-  done
-
-  # Return code is 0 on base connected, 10 on disconnected.
-  evtest --query "${event_path}" EV_SW SW_TABLET_MODE
+  done | grep -qE "(Tablet mode: OFF|Base attached: ON)"
 }
