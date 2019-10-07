@@ -109,6 +109,9 @@ class U2fDaemon : public brillo::DBusServiceDaemon {
   std::unique_ptr<org::chromium::PowerManagerProxy> pm_proxy_;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxy> sm_proxy_;
 
+  // User state; uses sm_proxy_.
+  std::unique_ptr<UserState> user_state_;
+
   // Virtual USB Device
   std::unique_ptr<u2f::U2fHid> u2fhid_;
   std::unique_ptr<u2f::U2fMessageHandler> u2f_msg_handler_;

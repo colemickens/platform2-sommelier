@@ -93,45 +93,44 @@ class U2fMessageHandlerTest : public ::testing::Test {
 
  protected:
   void CreateHandler(bool allow_legacy_kh, bool allow_g2f_attestation) {
-    mock_user_state_ = new StrictMock<MockUserState>();
     mock_allowlisting_util_ = new StrictMock<MockAllowlistingUtil>();
 
     handler_.reset(new U2fMessageHandler(
-        std::unique_ptr<UserState>(mock_user_state_),
         std::unique_ptr<AllowlistingUtil>(mock_allowlisting_util_),
-        [this]() { presence_requested_count_++; }, &mock_tpm_proxy_,
-        &mock_metrics_, allow_legacy_kh, allow_g2f_attestation));
+        [this]() { presence_requested_count_++; }, &mock_user_state_,
+        &mock_tpm_proxy_, &mock_metrics_, allow_legacy_kh,
+        allow_g2f_attestation));
   }
 
   void ExpectGetUserSecret() { ExpectGetUserSecretForTimes(1); }
 
   void ExpectGetUserSecretForTimes(int times) {
-    EXPECT_CALL(*mock_user_state_, GetUserSecret())
+    EXPECT_CALL(mock_user_state_, GetUserSecret())
         .Times(times)
         .WillRepeatedly(Return(ArrayToSecureBlob(kUserSecret)));
   }
 
   void ExpectGetUserSecretFails() {
-    EXPECT_CALL(*mock_user_state_, GetUserSecret())
+    EXPECT_CALL(mock_user_state_, GetUserSecret())
         .WillOnce(Return(base::Optional<brillo::SecureBlob>()));
   }
 
   void ExpectGetCounter() {
-    EXPECT_CALL(*mock_user_state_, GetCounter())
+    EXPECT_CALL(mock_user_state_, GetCounter())
         .WillOnce(Return(base::Optional<std::vector<uint8_t>>({kCounter})));
   }
 
   void ExpectGetCounterFails() {
-    EXPECT_CALL(*mock_user_state_, GetCounter())
+    EXPECT_CALL(mock_user_state_, GetCounter())
         .WillOnce(Return(base::Optional<std::vector<uint8_t>>()));
   }
 
   void ExpectIncrementCounter() {
-    EXPECT_CALL(*mock_user_state_, IncrementCounter()).WillOnce(Return(true));
+    EXPECT_CALL(mock_user_state_, IncrementCounter()).WillOnce(Return(true));
   }
 
   void ExpectIncrementCounterFails() {
-    EXPECT_CALL(*mock_user_state_, IncrementCounter()).WillOnce(Return(false));
+    EXPECT_CALL(mock_user_state_, IncrementCounter()).WillOnce(Return(false));
   }
 
   U2fResponseAdpu ProcessMsg(const std::string& hex) {
@@ -164,7 +163,7 @@ class U2fMessageHandlerTest : public ::testing::Test {
 
   StrictMock<MockAllowlistingUtil>* mock_allowlisting_util_;  // Not Owned.
   StrictMock<MockTpmVendorCommandProxy> mock_tpm_proxy_;
-  StrictMock<MockUserState>* mock_user_state_;  // Not Owned.
+  StrictMock<MockUserState> mock_user_state_;
   NiceMock<MetricsLibraryMock> mock_metrics_;
 
   std::unique_ptr<U2fMessageHandler> handler_;
@@ -433,7 +432,7 @@ TEST_F(U2fMessageHandlerTest, RegisterG2fAttestSecretNotAvailable) {
 
   // Called first to create the key, succeed.
   // Called again for attestation, fail.
-  EXPECT_CALL(*mock_user_state_, GetUserSecret())
+  EXPECT_CALL(mock_user_state_, GetUserSecret())
       .WillOnce(Return(ArrayToSecureBlob(kUserSecret)))
       .WillOnce(Return(base::Optional<brillo::SecureBlob>()));
 

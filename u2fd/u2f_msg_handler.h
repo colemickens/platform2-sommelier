@@ -26,9 +26,9 @@ class U2fMessageHandler {
  public:
   // Constructs a new message handler. Does not take ownership of proxy or
   // metrics, both of which must outlive this instance.
-  U2fMessageHandler(std::unique_ptr<UserState> user_state,
-                    std::unique_ptr<AllowlistingUtil> allowlisting_util,
+  U2fMessageHandler(std::unique_ptr<AllowlistingUtil> allowlisting_util,
                     std::function<void()> request_user_presence,
+                    UserState* user_state,
                     TpmVendorCommandProxy* proxy,
                     MetricsLibraryInterface* metrics,
                     bool allow_legacy_kh_sign,
@@ -88,9 +88,9 @@ class U2fMessageHandler {
   // specified cr50 status.
   U2fResponseAdpu BuildErrorResponse(Cr50CmdStatus status);
 
-  std::unique_ptr<UserState> user_state_;
   std::unique_ptr<AllowlistingUtil> allowlisting_util_;
   std::function<void()> request_user_presence_;
+  UserState* user_state_;
   TpmVendorCommandProxy* proxy_;
   MetricsLibraryInterface* metrics_;
 

@@ -28,16 +28,17 @@ constexpr char kU2fCommand[] = "Platform.U2F.Command";
 }  // namespace
 
 U2fMessageHandler::U2fMessageHandler(
-    std::unique_ptr<UserState> user_state,
     std::unique_ptr<AllowlistingUtil> allowlisting_util,
     std::function<void()> request_user_presence,
+    UserState* user_state,
     TpmVendorCommandProxy* proxy,
     MetricsLibraryInterface* metrics,
     bool allow_legacy_kh_sign,
     bool allow_g2f_attestation)
-    : user_state_(std::move(user_state)),
-      allowlisting_util_(std::move(allowlisting_util)),
+    : allowlisting_util_(std::move(allowlisting_util)),
       request_user_presence_(request_user_presence),
+
+      user_state_(user_state),
       proxy_(proxy),
       metrics_(metrics),
       allow_legacy_kh_sign_(allow_legacy_kh_sign),

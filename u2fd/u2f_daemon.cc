@@ -210,9 +210,13 @@ int U2fDaemon::StartService() {
   bool include_g2f_allowlist_data =
       g2f_allowlist_data_ || (ReadU2fPolicy() == U2fMode::kU2fExtended);
 
+  user_state_ = std::make_unique<u2f::UserState>(
+      sm_proxy_.get(), legacy_kh_fallback_ ? kLegacyKhCounterMin : 0);
+
   CreateU2fMsgHandler(
       u2f_mode == U2fMode::kU2fExtended /* Allow G2F Attestation */,
       include_g2f_allowlist_data);
+
   CreateU2fHid();
 
   return u2fhid_->Init() ? EX_OK : EX_PROTOCOL;
@@ -294,7 +298,7 @@ void U2fDaemon::CreateU2fMsgHandler(bool allow_g2f_attestation,
           : std::unique_ptr<u2f::AllowlistingUtil>(nullptr);
 
   u2f_msg_handler_ = std::make_unique<u2f::U2fMessageHandler>(
-      std::move(user_state), std::move(allowlisting_util), request_presence,
+      std::move(allowlisting_util), request_presence, user_state_.get(),
       &tpm_proxy_, &metrics_library_, allow_g2f_attestation,
       legacy_kh_fallback_);
 }
