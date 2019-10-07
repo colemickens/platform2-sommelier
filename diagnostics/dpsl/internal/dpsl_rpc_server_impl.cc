@@ -157,9 +157,9 @@ std::unique_ptr<DpslRpcServer> DpslRpcServer::Create(
     DpslThreadContext* thread_context,
     DpslRpcHandler* rpc_handler,
     GrpcServerUri grpc_server_uri) {
-  CHECK(thread_context);
-  CHECK(rpc_handler);
-  CHECK(thread_context->BelongsToCurrentThread());
+  CHECK(thread_context) << "Thread context is nullptr";
+  CHECK(rpc_handler) << "Rpc handler is nullptr";
+  CHECK(thread_context->BelongsToCurrentThread()) << "Called from wrong thread";
 
   auto dpsl_rpc_server_impl = std::make_unique<DpslRpcServerImpl>(
       rpc_handler, grpc_server_uri, GetWilcoDtcGrpcUri(grpc_server_uri));
