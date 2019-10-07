@@ -838,6 +838,30 @@ int UninstallApplication(dbus::ObjectProxy* proxy,
   }
 }
 
+void OnPlaybookAppliedCallback(
+    base::RunLoop* run_loop,
+    vm_tools::cicerone::ApplyAnsiblePlaybookProgressSignal::Status*
+        final_status,
+    std::string* failure_details,
+    dbus::Signal* signal) {
+  dbus::MessageReader reader(signal);
+  vm_tools::cicerone::ApplyAnsiblePlaybookProgressSignal progress_signal;
+  if (!reader.PopArrayOfBytesAsProto(&progress_signal)) {
+    LOG(ERROR) << "Failed parsing ApplyAnsiblePlaybookProgressSignal proto";
+    return;
+  }
+
+  if (progress_signal.status() ==
+      vm_tools::cicerone::ApplyAnsiblePlaybookProgressSignal::IN_PROGRESS) {
+    LOG(INFO) << "Applying playbook...";
+    return;
+  }
+
+  *final_status = progress_signal.status();
+  *failure_details = progress_signal.failure_details();
+  run_loop->Quit();
+}
+
 int ApplyAnsiblePlaybook(dbus::ObjectProxy* proxy,
                          const string& vm_name,
                          const string& container_name,
@@ -864,6 +888,19 @@ int ApplyAnsiblePlaybook(dbus::ObjectProxy* proxy,
     return -1;
   }
 
+  // RunLoop so we can monitor the D-Bus signals coming back to determine when
+  // playbook application has actually finished.
+  base::RunLoop run_loop;
+  vm_tools::cicerone::ApplyAnsiblePlaybookProgressSignal::Status final_status =
+      vm_tools::cicerone::ApplyAnsiblePlaybookProgressSignal::FAILED;
+  std::string failure_details = "Timed out waiting for reply";
+  proxy->ConnectToSignal(
+      vm_tools::cicerone::kVmCiceroneInterface,
+      vm_tools::cicerone::kApplyAnsiblePlaybookProgressSignal,
+      base::Bind(&OnPlaybookAppliedCallback, base::Unretained(&run_loop),
+                 &final_status, &failure_details),
+      base::Bind(&OnSignalConnected));
+
   std::unique_ptr<dbus::Response> dbus_response =
       proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
   if (!dbus_response) {
@@ -880,7 +917,20 @@ int ApplyAnsiblePlaybook(dbus::ObjectProxy* proxy,
   switch (response.status()) {
     case vm_tools::cicerone::ApplyAnsiblePlaybookResponse::STARTED:
       LOG(INFO) << "Successfully started the playbook application";
-      return 0;
+      // Start the RunLoop which'll get the D-Bus signal callbacks and set the
+      // final result for us.
+      LOG(INFO) << "Waiting for D-Bus signal for playbook application status";
+      base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+          FROM_HERE, run_loop.QuitClosure(), base::TimeDelta::FromMinutes(10));
+      run_loop.Run();
+
+      if (final_status ==
+          vm_tools::cicerone::ApplyAnsiblePlaybookProgressSignal::SUCCEEDED) {
+        LOG(INFO) << "Finished playbook application successfully";
+        return 0;
+      }
+      LOG(ERROR) << "Failed to apply playbook: " << failure_details;
+      return -1;
     case vm_tools::cicerone::ApplyAnsiblePlaybookResponse::FAILED:
       LOG(ERROR) << "Failed starting the playbook application, reason: "
                  << response.failure_reason();

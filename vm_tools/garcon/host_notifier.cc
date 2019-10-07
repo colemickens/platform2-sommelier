@@ -103,6 +103,21 @@ void SendUninstallStatusToHost(
                  << grpc_status.error_code() << ")";
   }
 }
+
+void SendApplyAnsiblePlaybookStatusToHost(
+    vm_tools::container::ContainerListener::Stub* stub,
+    vm_tools::container::ApplyAnsiblePlaybookProgressInfo info) {
+  grpc::ClientContext ctx;
+  vm_tools::EmptyMessage empty;
+  grpc::Status grpc_status =
+      stub->ApplyAnsiblePlaybookProgress(&ctx, info, &empty);
+  if (!grpc_status.ok()) {
+    LOG(WARNING) << "Failed to notify host system about ansible playbook "
+                 << "application status: " << grpc_status.error_message()
+                 << " (code " << grpc_status.error_code() << ")";
+  }
+}
+
 }  // namespace
 
 namespace vm_tools {
@@ -256,6 +271,25 @@ void HostNotifier::OnUninstallProgress(uint32_t percent_progress) {
   info.set_progress_percent(percent_progress);
   task_runner_->PostTask(
       FROM_HERE, base::Bind(&SendUninstallStatusToHost,
+                            base::Unretained(stub_.get()), std::move(info)));
+}
+
+void HostNotifier::OnApplyAnsiblePlaybookCompletion(
+    bool success, const std::string& failure_reason) {
+  LOG(INFO) << "Got HostNotifier::OnApplyAnsiblePlaybookCompletion(" << success
+            << ", " << failure_reason << ")";
+  vm_tools::container::ApplyAnsiblePlaybookProgressInfo info;
+  info.set_token(token_);
+  if (success) {
+    info.set_status(
+        vm_tools::container::ApplyAnsiblePlaybookProgressInfo::SUCCEEDED);
+  } else {
+    info.set_status(
+        vm_tools::container::ApplyAnsiblePlaybookProgressInfo::FAILED);
+    info.set_failure_details(failure_reason);
+  }
+  task_runner_->PostTask(
+      FROM_HERE, base::Bind(&SendApplyAnsiblePlaybookStatusToHost,
                             base::Unretained(stub_.get()), std::move(info)));
 }
 

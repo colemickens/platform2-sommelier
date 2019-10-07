@@ -83,7 +83,9 @@ bool LogToSyslog(logging::LogSeverity severity,
 void RunGarconService(vm_tools::garcon::PackageKitProxy* pk_proxy,
                       base::WaitableEvent* event,
                       std::shared_ptr<grpc::Server>* server_copy,
-                      int* vsock_listen_port) {
+                      int* vsock_listen_port,
+                      scoped_refptr<base::TaskRunner> task_runner,
+                      vm_tools::garcon::HostNotifier* host_notifier) {
   // We don't want to receive SIGTERM on this thread.
   sigset_t mask;
   sigemptyset(&mask);
@@ -107,7 +109,8 @@ void RunGarconService(vm_tools::garcon::PackageKitProxy* pk_proxy,
         base::StringPrintf("vsock:%u:%d", VMADDR_CID_ANY, *vsock_listen_port),
         grpc::InsecureServerCredentials(), nullptr);
 
-    vm_tools::garcon::ServiceImpl garcon_service(pk_proxy);
+    vm_tools::garcon::ServiceImpl garcon_service(pk_proxy, task_runner.get(),
+                                                 host_notifier);
     builder.RegisterService(&garcon_service);
 
     std::shared_ptr<grpc::Server> server(builder.BuildAndStart().release());
@@ -204,7 +207,7 @@ int main(int argc, char** argv) {
   openlog(kLogPrefix, LOG_PID, LOG_DAEMON);
   logging::SetLogMessageHandler(LogToSyslog);
 
-  // Note on threading model. There are 3 threads used in garcon. One is for the
+  // Note on threading model. There are 4 threads used in garcon. One is for the
   // incoming gRPC requests. One is for the D-Bus communication with the
   // PackageKit daemon. The third is the main thread which is for gRPC requests
   // to the host as well as for monitoring filesystem changes (which result in a
@@ -212,7 +215,8 @@ int main(int argc, char** argv) {
   // careful of is that the gRPC thread for incoming requests is never blocking
   // on the gRPC thread for outgoing requests (since they are both talking to
   // cicerone, and both of those operations in cicerone are likely going to use
-  // the same D-Bus thread for communication within cicerone).
+  // the same D-Bus thread for communication within cicerone). The fourth thread
+  // is for running tasks initiated by garcon service.
 
   // Thread that the gRPC server is running on.
   base::Thread grpc_thread{"gRPC Server Thread"};
@@ -226,6 +230,15 @@ int main(int argc, char** argv) {
   if (!dbus_thread.StartWithOptions(
           base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
     LOG(ERROR) << "Failed starting the D-Bus thread";
+    return -1;
+  }
+
+  // Thread that tasks started from garcon service run on.
+  // Specifically, Ansible playbook application runs on
+  // |garcon_service_tasks_thread|.
+  base::Thread garcon_service_tasks_thread{"Garcon Service Tasks Thread"};
+  if (!garcon_service_tasks_thread.Start()) {
+    LOG(ERROR) << "Failed starting the garcon service tasks thread";
     return -1;
   }
 
@@ -266,8 +279,10 @@ int main(int argc, char** argv) {
   std::shared_ptr<grpc::Server> server_copy;
   int vsock_listen_port = 0;
   ret = grpc_thread.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&RunGarconService, pk_proxy.get(), &event,
-                            &server_copy, &vsock_listen_port));
+      FROM_HERE,
+      base::Bind(&RunGarconService, pk_proxy.get(), &event, &server_copy,
+                 &vsock_listen_port, garcon_service_tasks_thread.task_runner(),
+                 host_notifier.get()));
   if (!ret) {
     LOG(ERROR) << "Failed to post server startup task to grpc thread";
     return -1;
@@ -302,5 +317,6 @@ int main(int argc, char** argv) {
   // any weak pointers.
   server_copy->Shutdown();
   dbus_thread.Stop();
+  garcon_service_tasks_thread.Stop();
   return 0;
 }

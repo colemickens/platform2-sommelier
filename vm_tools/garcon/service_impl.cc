@@ -44,65 +44,14 @@ constexpr char kXCursorSizeEnv[] = "XCURSOR_SIZE";
 constexpr char kLowDensityXCursorSizeEnv[] = "XCURSOR_SIZE_LOW_DENSITY";
 constexpr size_t kMaxIconSize = 1048576;  // 1MB, very large for an icon
 
-bool ExecuteAnsiblePlaybook(const base::FilePath& ansible_playbook_file_path,
-                            std::string* error_msg) {
-  std::vector<std::string> argv{
-      "ansible-playbook", "--become",   "--connection=local",
-      "--inventory",      "127.0.0.1,", ansible_playbook_file_path.value()};
-
-  // TODO(okalitova): Pipe stderr/stdout from child process and report progress.
-  // Discard child's process stdio,
-  int stdio_fd[] = {-1, -1, -1};
-
-  if (!Spawn(std::move(argv), {}, "", stdio_fd)) {
-    *error_msg = "Failed to spawn ansible-playbook";
-    return false;
-  }
-  return true;
-}
-
-base::FilePath CreateAnsiblePlaybookFile(const std::string& playbook,
-                                         std::string* error_msg) {
-  const base::FilePath ansible_dir = base::GetHomeDir().Append(".ansible");
-  if (!base::PathExists(ansible_dir)) {
-    LOG(ERROR) << "Directory " << ansible_dir.value() << " does not exist, "
-               << "maybe Ansible should be installed?";
-    *error_msg = "Directory " + ansible_dir.value() + " does not exist";
-    return base::FilePath();
-  }
-
-  const base::FilePath ansible_playbook_file_path =
-      ansible_dir.Append("playbook.yaml");
-  base::File ansible_playbook_file(
-      ansible_playbook_file_path,
-      base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
-
-  LOG(INFO) << "Starting creating file for Ansible playbook";
-
-  if (!ansible_playbook_file.created()) {
-    *error_msg = "Failed to create file for Ansible playbook";
-    return base::FilePath();
-  }
-  if (!ansible_playbook_file.IsValid()) {
-    *error_msg = "Failed to create valid file for Ansible playbook";
-    return base::FilePath();
-  }
-
-  int bytes = ansible_playbook_file.WriteAtCurrentPos(playbook.c_str(),
-                                                      playbook.length());
-
-  if (bytes != playbook.length()) {
-    *error_msg = "Failed to write Ansible playbook content to file";
-    return base::FilePath();
-  }
-
-  return ansible_playbook_file_path;
-}
-
 }  // namespace
 
-ServiceImpl::ServiceImpl(PackageKitProxy* package_kit_proxy)
-    : package_kit_proxy_(package_kit_proxy) {
+ServiceImpl::ServiceImpl(PackageKitProxy* package_kit_proxy,
+                         base::TaskRunner* task_runner,
+                         AnsiblePlaybookApplicationObserver* observer)
+    : package_kit_proxy_(package_kit_proxy),
+      task_runner_(task_runner),
+      ansible_playbook_application_observer_(observer) {
   CHECK(package_kit_proxy_);
 }
 
@@ -445,19 +394,35 @@ grpc::Status ServiceImpl::ApplyAnsiblePlaybook(
   LOG(INFO) << "Ansible playbook file created at "
             << ansible_playbook_file_path.value();
 
-  LOG(INFO) << "Starting applying Ansible playbook...";
-  bool success = ExecuteAnsiblePlaybook(ansible_playbook_file_path, &error_msg);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+
+  bool success = task_runner_->PostTask(
+      FROM_HERE, base::Bind(&ExecuteAnsiblePlaybook,
+                            ansible_playbook_application_observer_, &event,
+                            ansible_playbook_file_path, &error_msg));
 
   if (!success) {
-    LOG(ERROR) << "Failed to create valid file with Ansible playbook, "
-               << "error: " << error_msg;
+    LOG(ERROR) << "Failed to post Ansible playbook application task";
+    response->set_status(
+        vm_tools::container::ApplyAnsiblePlaybookResponse::FAILED);
+    response->set_failure_reason(
+        "Failed to post Ansible playbook application task");
+    return grpc::Status::OK;
+  }
+
+  // Waits until ansible-playbook process is successfully spawned.
+  event.Wait();
+
+  if (!error_msg.empty()) {
+    LOG(ERROR) << "Failed to start Ansible playbook application: " << error_msg;
     response->set_status(
         vm_tools::container::ApplyAnsiblePlaybookResponse::FAILED);
     response->set_failure_reason(error_msg);
     return grpc::Status::OK;
   }
 
-  LOG(INFO) << "Started Ansible playbook application";
+  LOG(INFO) << "Ansible playbook application started";
   response->set_status(
       vm_tools::container::ApplyAnsiblePlaybookResponse::STARTED);
   return grpc::Status::OK;

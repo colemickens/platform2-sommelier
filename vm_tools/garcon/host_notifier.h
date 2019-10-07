@@ -16,13 +16,15 @@
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/container_host.grpc.pb.h>
 
+#include "vm_tools/garcon/ansible_playbook_application.h"
 #include "vm_tools/garcon/package_kit_proxy.h"
 
 namespace vm_tools {
 namespace garcon {
 
 // Handles making calls to cicerone running in the host.
-class HostNotifier : public PackageKitProxy::PackageKitObserver {
+class HostNotifier : public PackageKitProxy::PackageKitObserver,
+                     public AnsiblePlaybookApplicationObserver {
  public:
   // Creates and inits the HostNotifier for running on the current sequence.
   // Returns null if there was any failure.
@@ -55,6 +57,10 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver {
   void OnUninstallCompletion(bool success,
                              const std::string& failure_reason) override;
   void OnUninstallProgress(uint32_t percent_progress) override;
+
+  // vm_tools::garcon::AnsiblePlaybookApplicationObserver overrides.
+  void OnApplyAnsiblePlaybookCompletion(
+      bool success, const std::string& failure_reason) override;
 
  private:
   // Callback structure for SendAppListToHost callback chain.
