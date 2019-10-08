@@ -306,6 +306,10 @@ sanity_check_clock
 # to dev mode.
 DEV_MODE_FILE="/mnt/stateful_partition/.developer_mode"
 
+# Flag file indicating that encrypted stateful should be preserved across TPM
+# clear. If the file is present, it's expected that TPM is not owned.
+PRESERVATION_REQUEST_FILE="/mnt/stateful_partition/preservation_request"
+
 # This file is created after the TPM is initialized and the device is owned.
 INSTALL_ATTRIBUTES_FILE=\
 "/mnt/stateful_partition/home/.shadow/install_attributes.pb"
@@ -318,6 +322,13 @@ dev_check_block_dev_mode "${DEV_MODE_FILE}"
 # some use cases operate by creating this file with the necessary
 # arguments and then rebooting.
 RESET_FILE="/mnt/stateful_partition/factory_install_reset"
+
+# Returns if device needs to clobber even though there's no devmode file present
+# and boot is in verified mode.
+needs_clobber_without_devmode_file() {
+  ! is_tpm_owned && [ ! -O "${PRESERVATION_REQUEST_FILE}" ] &&
+  [ -O "${INSTALL_ATTRIBUTES_FILE}" ]
+}
 
 # Check for whether we need a stateful wipe, and alert the user as
 # necessary.  We can wipe for several different reasons:
@@ -350,8 +361,7 @@ elif [ -z "${STATE_DEV}" ] || dev_is_debug_build; then
   # debug build image. Do not wipe.
   :
 elif crossystem 'devsw_boot?0' && ! crossystem 'mainfw_type?recovery'; then
-  if [ -O "${DEV_MODE_FILE}" ] ||
-     ( ! is_tpm_owned && [ -O "${INSTALL_ATTRIBUTES_FILE}" ]); then
+  if [ -O "${DEV_MODE_FILE}" ] || needs_clobber_without_devmode_file; then
     # We're transitioning from dev mode to verified boot.
     # When coming back from developer mode, we don't need to
     # clobber as aggressively.  Fast will do the trick.
