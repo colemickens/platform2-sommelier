@@ -209,8 +209,8 @@ TEST_F(DlcServiceDBusAdaptorTest, UninstallTest) {
   EXPECT_FALSE(base::PathExists(content_path_.Append(kFirstDlc)));
 }
 
-TEST_F(DlcServiceDBusAdaptorTest, UninstallFailureTest) {
-  EXPECT_FALSE(dlc_service_dbus_adaptor_->Uninstall(nullptr, kSecondDlc));
+TEST_F(DlcServiceDBusAdaptorTest, UninstallNotInstalledIsValidTest) {
+  EXPECT_TRUE(dlc_service_dbus_adaptor_->Uninstall(nullptr, kSecondDlc));
 }
 
 TEST_F(DlcServiceDBusAdaptorTest, UninstallUnmountFailureTest) {

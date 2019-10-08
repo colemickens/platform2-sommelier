@@ -277,9 +277,8 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
 bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
                                       const string& id_in) {
   if (installed_dlc_modules_.find(id_in) == installed_dlc_modules_.end()) {
-    LogAndSetError(err, kErrorInvalidDlc,
-                   "The DLC ID provided is not installed");
-    return false;
+    LOG(INFO) << "Uninstalling DLC id that's not installed: " << id_in;
+    return true;
   }
 
   Operation update_engine_operation;
