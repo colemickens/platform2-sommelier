@@ -10,6 +10,7 @@
 #include <base/files/important_file_writer.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/scoped_umask.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -17,7 +18,6 @@
 
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
-#include "shill/scoped_umask.h"
 
 using std::set;
 using std::string;
@@ -108,7 +108,7 @@ bool KeyFileStore::Flush() {
     success = false;
   }
   if (success) {
-    ScopedUmask owner_only_umask(~(S_IRUSR | S_IWUSR) & 0777);
+    brillo::ScopedUmask owner_only_umask(~(S_IRUSR | S_IWUSR) & 0777);
     success = base::ImportantFileWriter::WriteFileAtomically(path_, data);
     if (!success) {
       LOG(ERROR) << "Failed to store key file: " << path_.value();

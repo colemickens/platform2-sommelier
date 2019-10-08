@@ -368,7 +368,6 @@ static_library("libshill") {
     "routing_table_entry.cc",
     "rpc_task.cc",
     "scope_logger.cc",
-    "scoped_umask.cc",
     "service.cc",
     "shill_ares.cc",
     "shill_config.cc",
