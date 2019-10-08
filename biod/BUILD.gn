@@ -67,7 +67,6 @@ static_library("libbiod") {
     "fp_mode.cc",
     "power_button_filter.cc",
     "power_manager_client.cc",
-    "scoped_umask.cc",
     "uinput_device.cc",
   ]
   configs += [ ":target_defaults" ]

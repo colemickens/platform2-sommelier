@@ -13,9 +13,9 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/values.h>
+#include <brillo/scoped_umask.h>
 
 #include "biod/biometrics_manager.h"
-#include "biod/scoped_umask.h"
 
 namespace biod {
 

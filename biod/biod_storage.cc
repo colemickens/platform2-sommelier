@@ -91,7 +91,7 @@ bool BiodStorage::WriteRecord(const BiometricsManager::Record& record,
                                          .Append(kRecordFileName + record_id);
 
   {
-    ScopedUmask owner_only_umask(~(0700));
+    brillo::ScopedUmask owner_only_umask(~(0700));
 
     if (!base::CreateDirectory(record_storage_filename.DirName())) {
       PLOG(ERROR) << "Cannot create directory: "
@@ -101,7 +101,7 @@ bool BiodStorage::WriteRecord(const BiometricsManager::Record& record,
   }
 
   {
-    ScopedUmask owner_only_umask(~(0600));
+    brillo::ScopedUmask owner_only_umask(~(0600));
 
     if (!base::ImportantFileWriter::WriteFileAtomically(record_storage_filename,
                                                         json_string)) {
