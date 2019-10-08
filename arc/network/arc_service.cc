@@ -213,15 +213,16 @@ void ArcService::OnStop() {
 }
 
 void ArcService::OnDeviceAdded(Device* device) {
-  if (!ShouldProcessDevice(*device))
+  // ARC N uses legacy single networking and only requires the arcbr0/arc0
+  // configuration. Any other device can be safely ignored.
+  if (guest_ == GuestMessage::ARC_LEGACY && !device->IsLegacyAndroid())
     return;
 
   const auto& config = device->config();
 
   LOG(INFO) << "Adding device " << device->ifname()
             << " bridge: " << config.host_ifname()
-            << " guest_iface: " << config.guest_ifname()
-            << " for container pid " << pid_;
+            << " guest_iface: " << config.guest_ifname();
 
   // Create the bridge.
   if (!datapath_->AddBridge(config.host_ifname(),
@@ -254,7 +255,8 @@ void ArcService::OnDeviceAdded(Device* device) {
 }
 
 void ArcService::StartDevice(Device* device) {
-  if (!ShouldProcessDevice(*device))
+  // This can happen if OnDeviceAdded is invoked when the container is down.
+  if (pid_ == kInvalidPID)
     return;
 
   // If there is no context, then this is a new device and it needs to run
@@ -303,9 +305,12 @@ void ArcService::StartDevice(Device* device) {
 }
 
 void ArcService::OnDeviceRemoved(Device* device) {
-  if (!ShouldProcessDevice(*device))
+  // ARC N uses legacy single networking and only requires the arcbr0/arc0
+  // configuration. Any other device can be safely ignored.
+  if (guest_ == GuestMessage::ARC_LEGACY && !device->IsLegacyAndroid())
     return;
 
+  // If the container is down, this call does nothing.
   StopDevice(device);
 
   const auto& config = device->config();
@@ -330,7 +335,9 @@ void ArcService::OnDeviceRemoved(Device* device) {
 }
 
 void ArcService::StopDevice(Device* device) {
-  if (!ShouldProcessDevice(*device))
+  // This can happen if the device if OnDeviceRemoved is invoked when the
+  // container is down.
+  if (pid_ == kInvalidPID)
     return;
 
   Context* ctx = dynamic_cast<Context*>(device->context(guest_));
@@ -348,7 +355,8 @@ void ArcService::StopDevice(Device* device) {
 
   LOG(INFO) << "Stopping device " << device->ifname()
             << " bridge: " << config.host_ifname()
-            << " guest_iface: " << config.guest_ifname();
+            << " guest_iface: " << config.guest_ifname()
+            << " for container pid " << pid_;
 
   device->Disable();
   if (!device->IsAndroid()) {
@@ -356,18 +364,6 @@ void ArcService::StopDevice(Device* device) {
   }
 
   ctx->Stop();
-}
-
-bool ArcService::ShouldProcessDevice(const Device& device) const {
-  // ARC N uses legacy single networking and only requires the arcbr0/arc0
-  // configuration. Any other device can be safely ignored.
-  if (guest_ == GuestMessage::ARC_LEGACY && !device.IsLegacyAndroid())
-    return false;
-
-  // If ARC isn't running, there is nothing to do. This call must have been
-  // triggered by a device hot-plug event or something similar in DeviceManager.
-  // It's OK to ignore because if the container is gone there is nothing to do.
-  return pid_ != kInvalidPID;
 }
 
 void ArcService::OnDefaultInterfaceChanged(const std::string& ifname) {

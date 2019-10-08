@@ -82,8 +82,6 @@ class ArcService : public GuestService {
   void StartDevice(Device* device);
   void StopDevice(Device* device);
 
-  bool ShouldProcessDevice(const Device& device) const;
-
   std::unique_ptr<MinijailedProcessRunner> runner_;
   std::unique_ptr<Datapath> datapath_;
 
