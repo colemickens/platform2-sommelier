@@ -502,10 +502,6 @@ bool Platform::SetGroupAccessible(const FilePath& path, gid_t group_id,
   return true;
 }
 
-int Platform::SetMask(int new_mask) const {
-  return umask(new_mask);
-}
-
 bool Platform::GetUserId(const std::string& user, uid_t* user_id,
                          gid_t* group_id) const {
   // Load the passwd entry

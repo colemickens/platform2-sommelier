@@ -149,7 +149,6 @@ class MockPlatform : public Platform {
               SetGroupAccessible,
               (const base::FilePath&, gid_t group_id, mode_t group_mode),
               (const, override));
-  MOCK_METHOD(int, SetMask, (int), (const, override));
   MOCK_METHOD(bool,
               GetUserId,
               (const std::string&, uid_t*, gid_t*),

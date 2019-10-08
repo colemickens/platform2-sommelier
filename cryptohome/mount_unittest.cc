@@ -687,8 +687,6 @@ TEST_P(MountTest, BadDecryptTest) {
 TEST_P(MountTest, MountCryptohomeNoPrivileges) {
   // Check that Mount only works if the mount permission is given.
   InsertTestUsers(&kDefaultUsers[10], 1);
-  EXPECT_CALL(platform_, SetMask(_))
-    .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, DirectoryExists(kImageDir))
     .WillRepeatedly(Return(true));
   EXPECT_TRUE(DoMountInit());
@@ -731,8 +729,6 @@ TEST_P(MountTest, MountCryptohomeNoPrivileges) {
 TEST_P(MountTest, MountCryptohomeHasPrivileges) {
   // Check that Mount only works if the mount permission is given.
   InsertTestUsers(&kDefaultUsers[10], 1);
-  EXPECT_CALL(platform_, SetMask(_))
-    .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, DirectoryExists(kImageDir))
     .WillRepeatedly(Return(true));
   EXPECT_TRUE(DoMountInit());

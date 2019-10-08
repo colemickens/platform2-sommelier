@@ -279,12 +279,6 @@ class Platform {
       const Permissions& default_dir_info,
       const std::map<base::FilePath, Permissions>& special_cases);
 
-  // Sets the current umask, returning the old mask
-  //
-  // Parameters
-  //   new_mask - The mask to set
-  virtual int SetMask(int new_mask) const;
-
   // Returns the user and group ids for a user
   //
   // Parameters

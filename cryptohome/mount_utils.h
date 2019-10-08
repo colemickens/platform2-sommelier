@@ -11,18 +11,6 @@
 
 namespace cryptohome {
 
-// A helper class for scoping umask changes.
-class ScopedUmask {
- public:
-  ScopedUmask(Platform* platform, int mask)
-      : platform_(platform),
-        old_mask_(platform_->SetMask(mask)) {}
-  ~ScopedUmask() {platform_->SetMask(old_mask_);}
- private:
-  Platform* platform_;
-  int old_mask_;
-};
-
 // Cryptohome uses protobufs to communicate with the out-of-process mount
 // helper.
 bool ReadProtobuf(int fd, google::protobuf::MessageLite* message);

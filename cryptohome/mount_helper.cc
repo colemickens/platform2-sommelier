@@ -16,11 +16,11 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/cryptohome.h>
+#include <brillo/scoped_umask.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/homedirs.h"
-#include "cryptohome/mount_utils.h"
 #include "cryptohome/obfuscated_username.h"
 
 using base::FilePath;
@@ -605,7 +605,7 @@ bool MountHelper::MountHomesAndDaemonStores(
 bool MountHelper::CreateTrackedSubdirectories(const Credentials& credentials,
                                               const MountType& mount_type,
                                               bool is_pristine) const {
-  ScopedUmask scoped_umask(platform_, kDefaultUmask);
+  brillo::ScopedUmask scoped_umask(kDefaultUmask);
 
   // Add the subdirectories if they do not exist.
   const std::string obfuscated_username =

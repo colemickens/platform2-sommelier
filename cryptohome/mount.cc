@@ -29,6 +29,7 @@
 #include <chaps/token_manager_client.h>
 #include <brillo/cryptohome.h>
 #include <brillo/process.h>
+#include <brillo/scoped_umask.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/bootlockbox/boot_lockbox.h"
@@ -40,7 +41,6 @@
 #include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 #include "cryptohome/dircrypto_util.h"
 #include "cryptohome/homedirs.h"
-#include "cryptohome/mount_utils.h"
 #include "cryptohome/obfuscated_username.h"
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/platform.h"
@@ -164,28 +164,29 @@ bool Mount::Init(Platform* platform, Crypto* crypto,
     result = false;
   }
 
-  int original_mask = platform_->SetMask(kDefaultUmask);
-  // Create the shadow root if it doesn't exist
-  if (!platform_->DirectoryExists(shadow_root_)) {
-    platform_->CreateDirectory(shadow_root_);
-  }
+  {
+    brillo::ScopedUmask scoped_umask(kDefaultUmask);
+    // Create the shadow root if it doesn't exist
+    if (!platform_->DirectoryExists(shadow_root_)) {
+      platform_->CreateDirectory(shadow_root_);
+    }
 
-  if (use_tpm_ && !boot_lockbox_) {
-    default_boot_lockbox_.reset(
-        new BootLockbox(Tpm::GetSingleton(), platform_, crypto_));
-    boot_lockbox_ = default_boot_lockbox_.get();
-  }
+    if (use_tpm_ && !boot_lockbox_) {
+      default_boot_lockbox_.reset(
+          new BootLockbox(Tpm::GetSingleton(), platform_, crypto_));
+      boot_lockbox_ = default_boot_lockbox_.get();
+    }
 
-  // One-time load of the global system salt (used in generating username
-  // hashes)
-  FilePath system_salt_file = shadow_root_.Append(kSystemSaltFile);
-  if (!crypto_->GetOrCreateSalt(system_salt_file,
-                                CRYPTOHOME_DEFAULT_SALT_LENGTH, false,
-                                &system_salt_)) {
-    LOG(ERROR) << "Failed to load or create the system salt";
-    result = false;
+    // One-time load of the global system salt (used in generating username
+    // hashes)
+    FilePath system_salt_file = shadow_root_.Append(kSystemSaltFile);
+    if (!crypto_->GetOrCreateSalt(system_salt_file,
+                                  CRYPTOHOME_DEFAULT_SALT_LENGTH, false,
+                                  &system_salt_)) {
+      LOG(ERROR) << "Failed to load or create the system salt";
+      result = false;
+    }
   }
-  platform_->SetMask(original_mask);
 
   current_user_->Init(system_salt_);
 
@@ -719,7 +720,7 @@ bool Mount::OwnsMountPoint(const FilePath& path) const {
 }
 
 bool Mount::CreateCryptohome(const Credentials& credentials) const {
-  int original_mask = platform_->SetMask(kDefaultUmask);
+  brillo::ScopedUmask scoped_umask(kDefaultUmask);
 
   // Create the user's entry in the shadow root
   FilePath user_dir(GetUserDirectory(credentials));
@@ -731,7 +732,6 @@ bool Mount::CreateCryptohome(const Credentials& credentials) const {
   vault_keyset.CreateRandom();
   SerializedVaultKeyset serialized;
   if (!AddVaultKeyset(credentials, &vault_keyset, &serialized)) {
-    platform_->SetMask(original_mask);
     LOG(ERROR) << "Failed to add vault keyset to new user";
     return false;
   }
@@ -751,7 +751,6 @@ bool Mount::CreateCryptohome(const Credentials& credentials) const {
        credentials.GetObfuscatedUsername(system_salt_),
        0,  // first key
        serialized)) {
-    platform_->SetMask(original_mask);
     LOG(ERROR) << "Failed to store vault keyset for new user";
     return false;
   }
@@ -762,13 +761,10 @@ bool Mount::CreateCryptohome(const Credentials& credentials) const {
         credentials.GetObfuscatedUsername(system_salt_));
     if (!platform_->CreateDirectory(vault_path)) {
       LOG(ERROR) << "Couldn't create vault path: " << vault_path.value();
-      platform_->SetMask(original_mask);
       return false;
     }
   }
 
-  // Restore the umask
-  platform_->SetMask(original_mask);
   return true;
 }
 
@@ -1165,7 +1161,7 @@ bool Mount::InsertPkcs11Token() {
   if (!CheckChapsDirectory(token_dir, legacy_token_dir))
     return false;
   // We may create a salt file and, if so, we want to restrict access to it.
-  ScopedUmask scoped_umask(platform_, kDefaultUmask);
+  brillo::ScopedUmask scoped_umask(kDefaultUmask);
 
   // Derive authorization data for the token from the passkey.
   FilePath salt_file = homedirs_->GetChapsTokenSaltPath(username);
