@@ -198,6 +198,7 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
       camera_device_->ops->configure_streams(camera_device_, &stream_list);
   if (!result) {
     *updated_config = mojom::Camera3StreamConfiguration::New();
+    (*updated_config)->operation_mode = config->operation_mode;
     for (const auto& s : streams_) {
       mojom::Camera3StreamPtr ptr = mojom::Camera3Stream::New();
       ptr->id = s.first;
@@ -210,6 +211,9 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
       // HAL should only change usage and max_buffers.
       ptr->usage = s.second->usage;
       ptr->max_buffers = s.second->max_buffers;
+      ptr->crop_rotate_scale_info = mojom::CropRotateScaleInfo::New(
+          static_cast<mojom::Camera3StreamRotation>(
+              s.second->crop_rotate_scale_degrees));
       (*updated_config)->streams.push_back(std::move(ptr));
     }
   }
