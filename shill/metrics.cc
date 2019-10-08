@@ -15,6 +15,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/bootstat.h>
 
+#include "shill/active_link_monitor.h"
 #include "shill/connection_diagnostics.h"
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
@@ -289,7 +290,7 @@ const char Metrics::kMetricLinkMonitorResponseTimeSampleSuffix[] =
     "LinkMonitorResponseTimeSample";
 const int Metrics::kMetricLinkMonitorResponseTimeSampleMin = 1;
 const int Metrics::kMetricLinkMonitorResponseTimeSampleMax =
-    LinkMonitor::kDefaultTestPeriodMilliseconds;
+    ActiveLinkMonitor::kDefaultTestPeriodMilliseconds;
 const int Metrics::kMetricLinkMonitorResponseTimeSampleNumBuckets = 50;
 const char Metrics::kMetricLinkMonitorSecondsToFailureSuffix[] =
     "LinkMonitorSecondsToFailure";

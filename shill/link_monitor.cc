@@ -27,8 +27,6 @@ static std::string ObjectID(Connection* c) {
 }
 }  // namespace Logging
 
-const int LinkMonitor::kDefaultTestPeriodMilliseconds =
-    ActiveLinkMonitor::kDefaultTestPeriodMilliseconds;
 const int LinkMonitor::kFailureThreshold = ActiveLinkMonitor::kFailureThreshold;
 const char LinkMonitor::kDefaultLinkMonitorTechnologies[] = "wifi";
 

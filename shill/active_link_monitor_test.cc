@@ -439,7 +439,7 @@ TEST_F(ActiveLinkMonitorTest, TimeoutBroadcast) {
       .Times(GetFailureThreshold());
   StartMonitor();
   // This value doesn't match real life (the timer in this scenario
-  // should advance by LinkMonitor::kDefaultTestPeriodMilliseconds),
+  // should advance by ActiveLinkMonitor::kDefaultTestPeriodMilliseconds),
   // but this demonstrates the LinkMonitorSecondsToFailure independent
   // from the response-time figures.
   const int kTimeIncrement = 1000;

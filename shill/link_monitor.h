@@ -29,10 +29,6 @@ class LinkMonitor {
   using FailureCallback = base::Closure;
   using GatewayChangeCallback = base::Closure;
 
-  // The default number of milliseconds between ARP requests used by
-  // ActiveLinkMonitor. Needed by Metrics.
-  static const int kDefaultTestPeriodMilliseconds;
-
   // The default list of technologies for which link monitoring is enabled.
   // Needed by DefaultProfile.
   static const char kDefaultLinkMonitorTechnologies[];
