@@ -260,6 +260,8 @@ void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
     proto->set_battery_charge_full_design(status.battery_charge_full_design);
     proto->set_battery_charge_full(status.battery_charge_full);
     proto->set_battery_voltage_min_design(status.battery_voltage_min_design);
+    proto->set_battery_charge(status.battery_charge);
+    proto->set_battery_model_name(status.battery_model_name);
   }
 
   for (auto port : status.ports) {
