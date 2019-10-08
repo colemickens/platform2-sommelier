@@ -244,6 +244,7 @@ class Cellular : public Device,
   // - the last APN that resulted in a successful connection attempt on the
   //   current network (if any)
   // - the APN, if any, that was set by the user
+  // - APNs that the modem reports as provisioned profiles
   // - the list of APNs found in the mobile broadband provider DB for the
   //   home provider associated with the current SIM
   std::deque<Stringmap> BuildApnTryList() const;

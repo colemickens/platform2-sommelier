@@ -62,6 +62,42 @@ static string ObjectID(Cellular* c) {
 }
 }  // namespace Logging
 
+namespace {
+
+void AddApns(
+    const std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>>& apns,
+    Stringmaps* apn_list_dict) {
+  for (const auto& mobile_apn : apns) {
+    Stringmap props;
+    if (!mobile_apn->apn.empty()) {
+      props[kApnProperty] = mobile_apn->apn;
+    }
+    if (!mobile_apn->username.empty()) {
+      props[kApnUsernameProperty] = mobile_apn->username;
+    }
+    if (!mobile_apn->password.empty()) {
+      props[kApnPasswordProperty] = mobile_apn->password;
+    }
+    if (!mobile_apn->authentication.empty()) {
+      props[kApnAuthenticationProperty] = mobile_apn->authentication;
+    }
+
+    // Find the first localized and non-localized name, if any.
+    if (!mobile_apn->operator_name_list.empty()) {
+      props[kApnNameProperty] = mobile_apn->operator_name_list[0].name;
+    }
+    for (const auto& lname : mobile_apn->operator_name_list) {
+      if (!lname.language.empty()) {
+        props[kApnLocalizedNameProperty] = lname.name;
+      }
+    }
+
+    apn_list_dict->push_back(props);
+  }
+}
+
+}  // namespace
+
 // static
 const char Cellular::kAllowRoaming[] = "AllowRoaming";
 const int64_t Cellular::kDefaultScanningTimeoutMilliseconds = 60000;
@@ -1522,33 +1558,8 @@ void Cellular::UpdateHomeProvider(const MobileOperatorInfo* operator_info) {
   set_home_provider(home_provider);
 
   Stringmaps apn_list_dict;
-  for (const auto& mobile_apn : operator_info->apn_list()) {
-    Stringmap props;
-    if (!mobile_apn->apn.empty()) {
-      props[kApnProperty] = mobile_apn->apn;
-    }
-    if (!mobile_apn->username.empty()) {
-      props[kApnUsernameProperty] = mobile_apn->username;
-    }
-    if (!mobile_apn->password.empty()) {
-      props[kApnPasswordProperty] = mobile_apn->password;
-    }
-    if (!mobile_apn->authentication.empty()) {
-      props[kApnAuthenticationProperty] = mobile_apn->authentication;
-    }
-
-    // Find the first localized and non-localized name, if any.
-    if (!mobile_apn->operator_name_list.empty()) {
-      props[kApnNameProperty] = mobile_apn->operator_name_list[0].name;
-    }
-    for (const auto& lname : mobile_apn->operator_name_list) {
-      if (!lname.language.empty()) {
-        props[kApnLocalizedNameProperty] = lname.name;
-      }
-    }
-
-    apn_list_dict.push_back(props);
-  }
+  AddApns(capability_->GetProfiles(), &apn_list_dict);
+  AddApns(operator_info->apn_list(), &apn_list_dict);
   set_apn_list(apn_list_dict);
 
   set_provider_requires_roaming(operator_info->requires_roaming());

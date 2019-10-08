@@ -45,6 +45,7 @@ class CellularCapability3gpp : public CellularCapability {
   using ModesData = std::tuple<uint32_t, uint32_t>;
   using SupportedModes = std::vector<ModesData>;
   using PcoList = std::vector<std::tuple<uint32_t, bool, std::vector<uint8_t>>>;
+  using Profiles = std::vector<brillo::VariantDictionary>;
 
   // Constants used in connect method call.  Make available to test matchers.
   // TODO(jglasgow): Generate from modem manager into
@@ -91,6 +92,8 @@ class CellularCapability3gpp : public CellularCapability {
                const ResultCallback& callback) override;
   void Disconnect(Error* error, const ResultCallback& callback) override;
   CellularBearer* GetActiveBearer() const override;
+  const std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>>&
+  GetProfiles() const override;
   void RequirePin(const std::string& pin,
                   bool require,
                   Error* error,
@@ -296,6 +299,7 @@ class CellularCapability3gpp : public CellularCapability {
   void OnSubscriptionStateChanged(SubscriptionState updated_subscription_state);
   void OnFacilityLocksChanged(uint32_t locks);
   void OnPcoChanged(const PcoList& pco_list);
+  void OnProfilesChanged(const Profiles& profiles);
 
   // SIM property change handlers
   // TODO(armansito): Put these methods in a 3GPP-only subclass.
@@ -368,6 +372,7 @@ class CellularCapability3gpp : public CellularCapability {
   std::unique_ptr<CellularBearer> active_bearer_;
   RpcIdentifiers bearer_paths_;
   bool reset_done_;
+  std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>> profiles_;
 
   // If the modem is not in a state to be enabled when StartModem is called,
   // enabling is deferred using this callback.

@@ -74,6 +74,12 @@ const char kTelitMMPlugin[] = "Telit";
 const char kVzwIdentifier[] = "c83d6597-dc91-4d48-a3a7-d86b80123751";
 const size_t kVzwMdnLength = 10;
 
+// Keys for the entries of Profiles.
+const char kProfileApn[] = "apn";
+const char kProfileUsername[] = "username";
+const char kProfilePassword[] = "password";
+const char kProfileAuthType[] = "auth-type";
+
 string AccessTechnologyToString(uint32_t access_technologies) {
   // Order is important. Return the highest radio access technology.
   if (access_technologies & MM_MODEM_ACCESS_TECHNOLOGY_LTE)
@@ -126,6 +132,18 @@ MMBearerAllowedAuth ApnAuthenticationToMMBearerAllowedAuth(
     return MM_BEARER_ALLOWED_AUTH_CHAP;
   }
   return MM_BEARER_ALLOWED_AUTH_UNKNOWN;
+}
+
+std::string MMBearerAllowedAuthToApnAuthentication(
+    MMBearerAllowedAuth authentication) {
+  switch (authentication) {
+    case MM_BEARER_ALLOWED_AUTH_PAP:
+      return kApnAuthenticationPap;
+    case MM_BEARER_ALLOWED_AUTH_CHAP:
+      return kApnAuthenticationChap;
+    default:
+      return "";
+  }
 }
 
 bool IsRegisteredState(MMModem3gppRegistrationState state) {
@@ -1037,6 +1055,11 @@ CellularBearer* CellularCapability3gpp::GetActiveBearer() const {
   return active_bearer_.get();
 }
 
+const std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>>&
+CellularCapability3gpp::GetProfiles() const {
+  return profiles_;
+}
+
 string CellularCapability3gpp::GetNetworkTechnologyString() const {
   return AccessTechnologyToString(access_technologies_);
 }
@@ -1392,6 +1415,29 @@ void CellularCapability3gpp::OnModem3gppPropertiesChanged(
   if (properties.Contains(MM_MODEM_MODEM3GPP_PROPERTY_PCO)) {
     OnPcoChanged(
         properties.Get(MM_MODEM_MODEM3GPP_PROPERTY_PCO).Get<PcoList>());
+  }
+
+  if (properties.Contains(MM_MODEM_MODEM3GPP_PROPERTY_PROFILES)) {
+    OnProfilesChanged(
+        properties.Get(MM_MODEM_MODEM3GPP_PROPERTY_PROFILES).Get<Profiles>());
+  }
+}
+
+void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
+  profiles_.clear();
+  for (const auto& profile : profiles) {
+    auto apn_info = std::make_unique<MobileOperatorInfo::MobileAPN>();
+    apn_info->apn =
+        brillo::GetVariantValueOrDefault<string>(profile, kProfileApn);
+    apn_info->username =
+        brillo::GetVariantValueOrDefault<string>(profile, kProfileUsername);
+    apn_info->password =
+        brillo::GetVariantValueOrDefault<string>(profile, kProfilePassword);
+    apn_info->authentication =
+        MMBearerAllowedAuthToApnAuthentication(static_cast<MMBearerAllowedAuth>(
+            brillo::GetVariantValueOrDefault<uint32_t>(profile,
+                                                       kProfileAuthType)));
+    profiles_.push_back(std::move(apn_info));
   }
 }
 

@@ -182,6 +182,9 @@ class CellularCapability {
   // capability object.
   virtual CellularBearer* GetActiveBearer() const = 0;
 
+  virtual const std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>>&
+  GetProfiles() const = 0;
+
   // -------------------------------------------------------------------------
   // SIM PIN management
   // -------------------------------------------------------------------------
