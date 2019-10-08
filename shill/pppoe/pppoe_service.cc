@@ -29,9 +29,13 @@ using std::string;
 
 namespace shill {
 
-const int PPPoEService::kDefaultLCPEchoInterval = 30;
-const int PPPoEService::kDefaultLCPEchoFailure = 3;
-const int PPPoEService::kDefaultMaxAuthFailure = 3;
+namespace {
+
+constexpr int kDefaultLCPEchoInterval = 30;
+constexpr int kDefaultLCPEchoFailure = 3;
+constexpr int kDefaultMaxAuthFailure = 3;
+
+}  // namespace
 
 PPPoEService::PPPoEService(Manager* manager, base::WeakPtr<Ethernet> ethernet)
     : EthernetService(manager, Technology::kPPPoE, Properties(ethernet)),
@@ -164,14 +168,10 @@ void PPPoEService::Notify(const string& reason,
   } else if (reason == kPPPReasonConnect) {
     OnPPPConnected(dict);
   } else if (reason == kPPPReasonDisconnect) {
-    OnPPPDisconnected();
+    // Ignore; we get disconnect information when pppd exits.
   } else {
     NOTREACHED();
   }
-}
-
-void PPPoEService::OnPPPDied(pid_t pid, int exit) {
-  OnPPPDisconnected();
 }
 
 void PPPoEService::OnPPPAuthenticating() {
@@ -221,16 +221,14 @@ void PPPoEService::OnPPPConnected(const map<string, string>& params) {
   manager()->OnInnerDevicesChanged();
 }
 
-void PPPoEService::OnPPPDisconnected() {
-  pppd_.release()->DestroyLater(dispatcher());
-
+void PPPoEService::OnPPPDied(pid_t pid, int exit) {
   Error unused_error;
   Disconnect(&unused_error, __func__);
 
   if (authenticating_) {
     SetFailure(Service::kFailurePPPAuth);
   } else {
-    SetFailure(Service::kFailureUnknown);
+    SetFailure(PPPDevice::ExitStatusToFailure(exit));
   }
 }
 

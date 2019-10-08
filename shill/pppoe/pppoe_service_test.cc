@@ -63,6 +63,12 @@ class PPPoEServiceTest : public testing::Test {
     service_->SetState(Service::kStateConnected);
   }
 
+  bool IsAuthenticating() { return service_->authenticating_; }
+
+  void OnPPPDied(pid_t pid, int exit) { service_->OnPPPDied(pid, exit); }
+
+  int max_auth_failure() { return service_->max_auth_failure_; }
+
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockControl control_interface_;
@@ -86,7 +92,21 @@ TEST_F(PPPoEServiceTest, AuthenticationFailure) {
   FakeConnectionSuccess();
   map<string, string> empty_dict;
   service_->Notify(kPPPReasonAuthenticating, empty_dict);
+
+  auto previous_state = service_->state();
   service_->Notify(kPPPReasonDisconnect, empty_dict);
+
+  // First max_auth_failure - 1 failures should not do anything; pppd will retry
+  // the authentication.
+  for (int i = 1; i < max_auth_failure(); ++i) {
+    EXPECT_EQ(service_->state(), previous_state);
+    service_->Notify(kPPPReasonDisconnect, empty_dict);
+  }
+
+  // Last auth failure should lead to the connection failing after pppd
+  // terminates itself.
+  OnPPPDied(0, 0);
+  EXPECT_NE(service_->state(), previous_state);
   EXPECT_EQ(service_->state(), Service::kStateFailure);
   EXPECT_EQ(service_->failure(), Service::kFailurePPPAuth);
 }
@@ -97,9 +117,12 @@ TEST_F(PPPoEServiceTest, DisconnectBeforeConnect) {
   map<string, string> empty_dict;
   service_->Notify(kPPPReasonAuthenticating, empty_dict);
   service_->Notify(kPPPReasonAuthenticated, empty_dict);
+
+  constexpr int kExitCode = 10;
   service_->Notify(kPPPReasonDisconnect, empty_dict);
+  OnPPPDied(0, kExitCode);
   EXPECT_EQ(service_->state(), Service::kStateFailure);
-  EXPECT_EQ(service_->failure(), Service::kFailureUnknown);
+  EXPECT_EQ(service_->failure(), PPPDevice::ExitStatusToFailure(kExitCode));
 }
 
 TEST_F(PPPoEServiceTest, ConnectFailsWhenEthernetLinkDown) {

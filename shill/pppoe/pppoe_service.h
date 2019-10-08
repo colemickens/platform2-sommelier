@@ -57,14 +57,9 @@ class PPPoEService : public EthernetService, public RpcTaskDelegate {
   FRIEND_TEST(PPPoEServiceTest, Disconnect);
   FRIEND_TEST(PPPoEServiceTest, OnPPPConnected);
 
-  static const int kDefaultLCPEchoInterval;
-  static const int kDefaultLCPEchoFailure;
-  static const int kDefaultMaxAuthFailure;
-
   void OnPPPAuthenticating();
   void OnPPPAuthenticated();
   void OnPPPConnected(const std::map<std::string, std::string>& params);
-  void OnPPPDisconnected();
   void OnPPPDied(pid_t pid, int exit);
 
   PPPDeviceFactory* ppp_device_factory_;
@@ -72,6 +67,8 @@ class PPPoEService : public EthernetService, public RpcTaskDelegate {
 
   std::string username_;
   std::string password_;
+
+  // Properties for PPPDaemon::Options.
   int lcp_echo_interval_;
   int lcp_echo_failure_;
   int max_auth_failure_;
