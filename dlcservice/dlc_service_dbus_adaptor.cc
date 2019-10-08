@@ -84,7 +84,8 @@ void LogAndSetError(brillo::ErrorPtr* err,
                     const string& code,
                     const string& msg) {
   if (err)
-    *err = brillo::Error::Create(FROM_HERE, "dlcservice", code, msg);
+    *err = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain, code,
+                                 msg);
   LOG(ERROR) << msg;
 }
 

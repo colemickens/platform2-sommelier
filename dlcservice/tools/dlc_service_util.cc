@@ -49,9 +49,9 @@ void EnterMinijail() {
 
 string ErrorPtrStr(const brillo::ErrorPtr& err) {
   std::ostringstream err_stream;
-  err_stream << "Domain:" << err->GetDomain() << " "
-             << "Error Code:" << err->GetCode() << " "
-             << "Error Message: " << err->GetMessage();
+  err_stream << "Domain=" << err->GetDomain() << " "
+             << "Error Code=" << err->GetCode() << " "
+             << "Error Message=" << err->GetMessage();
   // TODO(crbug.com/999284): No inner error support, err->GetInnerError().
   return err_stream.str();
 }
