@@ -6,7 +6,7 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = []
-  if (use.kvm_host || use.fuzzer) {
+  if (use.kvm_host) {
     deps += [ "//vm_tools/host" ]
   }
   if (!use.kvm_host) {
@@ -15,9 +15,6 @@ group("all") {
       "//vm_tools/sommelier:all",
     ]
   }
-  if (use.fuzzer) {
-    deps += [ ":cicerone_container_listener_fuzzer" ]
-  }
 }
 
 static_library("libvsh") {
@@ -25,30 +22,4 @@ static_library("libvsh") {
     "vsh/utils.cc",
   ]
   pkg_deps = [ "libchrome-${libbase_ver}" ]
-}
-
-if (use.fuzzer) {
-  executable("cicerone_container_listener_fuzzer") {
-    sources = [
-      "cicerone/container_listener_impl_fuzzer.cc",
-    ]
-
-    # //common-mk:test should be on the top.
-    # TODO(crbug.com/887845): Remove this comment after library ordering issue is fixed.
-    configs += [
-      "//common-mk:test",
-      "//common-mk/common_fuzzer:common_fuzzer",
-    ]
-    pkg_deps = [
-      "grpc++",
-      "libchrome-test-${libbase_ver}",  # For FuzzedDataProvider
-      "libprotobuf-mutator",
-      "protobuf",
-      "vm_protos",
-    ]
-    deps = [
-      "//vm_tools/host:libcicerone",
-      "//vm_tools/host:service_testing_helper_lib",
-    ]
-  }
 }

@@ -23,6 +23,9 @@ group("host") {
       ":syslog_forwarder_test",
     ]
   }
+  if (use.fuzzer) {
+    deps += [ ":cicerone_container_listener_fuzzer" ]
+  }
 }
 
 pkg_config("host_target_defaults_pkgs") {
@@ -283,6 +286,32 @@ if (use.test) {
     deps = [
       ":libconcierge",
       "//common-mk/testrunner:testrunner",
+    ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("cicerone_container_listener_fuzzer") {
+    sources = [
+      "../cicerone/container_listener_impl_fuzzer.cc",
+    ]
+
+    # //common-mk:test should be on the top.
+    # TODO(crbug.com/887845): Remove this comment after library ordering issue is fixed.
+    configs += [
+      "//common-mk:test",
+      "//common-mk/common_fuzzer:common_fuzzer",
+    ]
+    pkg_deps = [
+      "grpc++",
+      "libchrome-test-${libbase_ver}",  # For FuzzedDataProvider
+      "libprotobuf-mutator",
+      "protobuf",
+      "vm_protos",
+    ]
+    deps = [
+      ":libcicerone",
+      ":service_testing_helper_lib",
     ]
   }
 }
