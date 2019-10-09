@@ -91,8 +91,9 @@ bool ServerProxy::Initialize() {
 
   vsock.reset();
   LOG(INFO) << "Initial socket connection comes";
-  vsock_proxy_ = std::make_unique<VSockProxy>(
-      VSockProxy::Type::SERVER, proxy_file_system_, std::move(accepted));
+  vsock_proxy_ =
+      std::make_unique<VSockProxy>(VSockProxy::Type::SERVER, proxy_file_system_,
+                                   std::move(accepted), base::ScopedFD());
   LOG(INFO) << "ServerProxy has started to work.";
   return true;
 }

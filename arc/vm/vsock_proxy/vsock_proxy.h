@@ -42,7 +42,8 @@ class VSockProxy {
 
   VSockProxy(Type type,
              ProxyFileSystem* proxy_file_system,
-             base::ScopedFD vsock);
+             base::ScopedFD vsock,
+             base::ScopedFD render_node);
   ~VSockProxy();
 
   // Registers the |fd| whose type is |fd_type| to watch.
@@ -121,6 +122,8 @@ class VSockProxy {
 
   VSockStream vsock_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> vsock_controller_;
+
+  base::ScopedFD render_node_;
 
   // Map from a |handle| (see message.proto for details) to a stream
   // instance wrapping the file descriptor and its watcher.

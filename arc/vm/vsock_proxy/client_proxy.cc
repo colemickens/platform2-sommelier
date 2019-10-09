@@ -4,6 +4,7 @@
 
 #include "arc/vm/vsock_proxy/client_proxy.h"
 
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -30,6 +31,9 @@ constexpr char kGuestSocketPath[] = "/var/run/chrome/arc_bridge.sock";
 
 // Path to the socket file for ArcBridgeService in host.
 constexpr char kHostSocketPath[] = "/run/chrome/arc_bridge.sock";
+
+// Path to the render node.
+constexpr char kRenderNodePath[] = "/dev/dri/renderD128";
 
 // Port for VSOCK.
 constexpr unsigned int kVSockPort = 9900;
@@ -72,10 +76,17 @@ ClientProxy::ClientProxy() = default;
 ClientProxy::~ClientProxy() = default;
 
 bool ClientProxy::Initialize() {
+  base::ScopedFD render_node(HANDLE_EINTR(open(kRenderNodePath, O_RDWR)));
+  if (!render_node.is_valid()) {
+    PLOG(ERROR) << "Failed to open render node";
+    return false;
+  }
+
   // For the details of connection procedure, please find the comment in
   // ServerProxy::Initialize().
-  vsock_proxy_ = std::make_unique<VSockProxy>(VSockProxy::Type::CLIENT, nullptr,
-                                              ConnectVSock());
+  vsock_proxy_ =
+      std::make_unique<VSockProxy>(VSockProxy::Type::CLIENT, nullptr,
+                                   ConnectVSock(), std::move(render_node));
 
   arc_bridge_socket_ = CreateUnixDomainSocket(base::FilePath(kGuestSocketPath));
   if (!arc_bridge_socket_.is_valid())

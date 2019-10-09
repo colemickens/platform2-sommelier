@@ -53,7 +53,7 @@ class FakeProxy : public ProxyBase {
             ProxyFileSystem* proxy_file_system,
             base::ScopedFD socket)
       : vsock_proxy_(std::make_unique<VSockProxy>(
-            type, proxy_file_system, std::move(socket))) {}
+            type, proxy_file_system, std::move(socket), base::ScopedFD())) {}
 
   ~FakeProxy() override = default;
 

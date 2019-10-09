@@ -4,8 +4,10 @@
 
 #include "arc/vm/vsock_proxy/vsock_proxy.h"
 
+#include <drm/virtgpu_drm.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -37,6 +39,8 @@ std::unique_ptr<StreamBase> CreateStream(
       return std::make_unique<PipeStream>(std::move(fd));
     case arc_proxy::FileDescriptor::REGULAR_FILE:
       return std::make_unique<FileStream>(std::move(fd));
+    case arc_proxy::FileDescriptor::DMABUF:
+      return nullptr;
     default:
       LOG(ERROR) << "Unknown FileDescriptor::Type: " << fd_type;
       return nullptr;
@@ -47,14 +51,16 @@ std::unique_ptr<StreamBase> CreateStream(
 
 VSockProxy::VSockProxy(Type type,
                        ProxyFileSystem* proxy_file_system,
-                       base::ScopedFD vsock)
+                       base::ScopedFD vsock,
+                       base::ScopedFD render_node)
     : type_(type),
       proxy_file_system_(proxy_file_system),
       vsock_(std::move(vsock)),
+      render_node_(std::move(render_node)),
       next_handle_(type == Type::SERVER ? 1 : -1),
       next_cookie_(type == Type::SERVER ? 1 : -1) {
-  // Note: this needs to be initialized after mWeakFxactory, which is
-  // declared after mVSockController in order to destroy it at first.
+  // Note: this needs to be initialized after mWeakFactory, which is
+  // declared after mVSockController in order to destroy it first.
   vsock_controller_ = base::FileDescriptorWatcher::WatchReadable(
       vsock_.Get(), base::BindRepeating(&VSockProxy::OnVSockReadReady,
                                         weak_factory_.GetWeakPtr()));
@@ -82,7 +88,8 @@ int64_t VSockProxy::RegisterFileDescriptor(
 
   auto stream = CreateStream(std::move(fd), fd_type);
   std::unique_ptr<base::FileDescriptorWatcher::Controller> controller;
-  if (fd_type != arc_proxy::FileDescriptor::REGULAR_FILE) {
+  if (fd_type != arc_proxy::FileDescriptor::REGULAR_FILE &&
+      fd_type != arc_proxy::FileDescriptor::DMABUF) {
     controller = base::FileDescriptorWatcher::WatchReadable(
         raw_fd, base::BindRepeating(&VSockProxy::OnLocalFileDesciptorReadReady,
                                     weak_factory_.GetWeakPtr(), handle));
@@ -452,6 +459,7 @@ bool VSockProxy::ConvertDataToVSockMessage(std::string blob,
   struct FileDescriptorAttr {
     arc_proxy::FileDescriptor::Type type;
     uint64_t size;
+    uint32_t drm_virtgpu_res_handle = 0;
   };
   std::vector<FileDescriptorAttr> fd_attrs;
   fd_attrs.reserve(fds.size());
@@ -494,7 +502,30 @@ bool VSockProxy::ConvertDataToVSockMessage(std::string blob,
                              static_cast<uint64_t>(st.st_size)});
       continue;
     }
-
+    // DMABUF sharing is enabled only for the guest->host direction.
+    if (type_ == Type::CLIENT) {
+      struct drm_prime_handle prime = {};
+      prime.fd = fd.get();
+      if (ioctl(render_node_.get(), DRM_IOCTL_PRIME_FD_TO_HANDLE, &prime) ==
+          0) {
+        // This FD is a dmabuf.
+        struct drm_virtgpu_resource_info info = {};
+        info.bo_handle = prime.handle;
+        if (ioctl(render_node_.get(), DRM_IOCTL_VIRTGPU_RESOURCE_INFO, &info)) {
+          PLOG(ERROR) << "Failed to get resource info";
+          return false;
+        }
+        fd_attrs.emplace_back(FileDescriptorAttr{
+            arc_proxy::FileDescriptor::DMABUF, /*size=*/0, info.res_handle});
+        continue;
+      } else if (errno != ENOTTY) {
+        // Getting ENOTTY here means that the FD doesn't support the specified
+        // ioctl operation (i.e. not a dmabuf). Otherwise, it's an unexpected
+        // error.
+        PLOG(ERROR) << "DRM_IOCTL_PRIME_FD_TO_HANDLE failed";
+        return false;
+      }
+    }
     LOG(ERROR) << "Unsupported FD type: " << st.st_mode;
     return false;
   }
@@ -511,6 +542,9 @@ bool VSockProxy::ConvertDataToVSockMessage(std::string blob,
     transferred_fd->set_type(fd_attrs[i].type);
     if (fd_attrs[i].type == arc_proxy::FileDescriptor::REGULAR_FILE)
       transferred_fd->set_file_size(fd_attrs[i].size);
+    if (fd_attrs[i].type == arc_proxy::FileDescriptor::DMABUF)
+      transferred_fd->set_drm_virtgpu_res_handle(
+          fd_attrs[i].drm_virtgpu_res_handle);
   }
   return true;
 }
