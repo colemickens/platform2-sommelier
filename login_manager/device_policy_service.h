@@ -39,6 +39,13 @@ class OwnerKeyLossMitigator;
 // Forward declaration.
 typedef struct PK11SlotInfoStr PK11SlotInfo;
 
+enum class InstallAttributesFileData {
+  CONSUMER_OWNED = 0,
+  ENROLLED = 1,
+  FAILED_TO_READ = 2,
+  FAILED_TO_PARSE = 3
+};
+
 // A policy service specifically for device policy, adding in a few helpers for
 // generating a new key for the device owner, handling key loss mitigation,
 // storing owner properties etc.
@@ -98,7 +105,7 @@ class DevicePolicyService : public PolicyService {
 
   // Returns whether the device is enrolled by checking enterprise mode in
   // install attributes from disk.
-  virtual bool InstallAttributesEnterpriseMode();
+  virtual InstallAttributesFileData InstallAttributesEnterpriseMode();
 
   // Returns whether system settings can be updated by checking that PolicyKey
   // is populated and the device is running on Chrome OS firmware.

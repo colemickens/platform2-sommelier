@@ -1941,7 +1941,7 @@ TEST_F(SessionManagerImplTest, StartDeviceWipe_AlreadyLoggedIn) {
 
 TEST_F(SessionManagerImplTest, StartDeviceWipe_Enterprise) {
   EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
-      .WillRepeatedly(Return(true));
+      .WillRepeatedly(Return(InstallAttributesFileData::ENROLLED));
   brillo::ErrorPtr error;
   EXPECT_FALSE(impl_->StartDeviceWipe(&error));
   ASSERT_TRUE(error.get());
@@ -2825,7 +2825,7 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
         .WillByDefault(
             Invoke(this, &StartTPMFirmwareUpdateTest::AtomicWriteFile));
     ON_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
-        .WillByDefault(Return(false));
+        .WillByDefault(Return(InstallAttributesFileData::CONSUMER_OWNED));
 
     SetFileContents(SessionManagerImpl::kTPMFirmwareUpdateLocationFile,
                     "/lib/firmware/tpm/dummy.bin");
@@ -2910,13 +2910,13 @@ TEST_F(StartTPMFirmwareUpdateTest, BadUpdateMode) {
 
 TEST_F(StartTPMFirmwareUpdateTest, EnterpriseFirstBootNotSet) {
   EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
-      .WillRepeatedly(Return(true));
+      .WillRepeatedly(Return(InstallAttributesFileData::ENROLLED));
   ExpectError(dbus_error::kNotAvailable);
 }
 
 TEST_F(StartTPMFirmwareUpdateTest, EnterpriseFirstBootAllowed) {
   EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
-      .WillRepeatedly(Return(true));
+      .WillRepeatedly(Return(InstallAttributesFileData::ENROLLED));
   em::ChromeDeviceSettingsProto settings;
   settings.mutable_tpm_firmware_update_settings()
       ->set_allow_user_initiated_powerwash(true);
@@ -2927,14 +2927,14 @@ TEST_F(StartTPMFirmwareUpdateTest, EnterpriseFirstBootAllowed) {
 TEST_F(StartTPMFirmwareUpdateTest, EnterprisePreserveStatefulNotSet) {
   SetUpdateMode("preserve_stateful");
   EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
-      .WillRepeatedly(Return(true));
+      .WillRepeatedly(Return(InstallAttributesFileData::ENROLLED));
   ExpectError(dbus_error::kNotAvailable);
 }
 
 TEST_F(StartTPMFirmwareUpdateTest, EnterprisePreserveStatefulAllowed) {
   SetUpdateMode("preserve_stateful");
   EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
-      .WillRepeatedly(Return(true));
+      .WillRepeatedly(Return(InstallAttributesFileData::ENROLLED));
   em::ChromeDeviceSettingsProto settings;
   settings.mutable_tpm_firmware_update_settings()
       ->set_allow_user_initiated_preserve_device_state(true);
@@ -2946,7 +2946,7 @@ TEST_F(StartTPMFirmwareUpdateTest, EnterpriseCleanupDisallowed) {
   SetUpdateMode("cleanup");
   SetFileContents(SessionManagerImpl::kTPMFirmwareUpdateLocationFile, "");
   EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
-      .WillRepeatedly(Return(true));
+      .WillRepeatedly(Return(InstallAttributesFileData::ENROLLED));
   ExpectError(dbus_error::kNotAvailable);
 }
 

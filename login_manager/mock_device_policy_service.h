@@ -60,7 +60,10 @@ class MockDevicePolicyService : public DevicePolicyService {
   MOCK_METHOD(bool, Mitigating, (), (override));
   MOCK_METHOD(bool, Initialize, (), (override));
   MOCK_METHOD(void, ReportPolicyFileMetrics, (bool, bool), (override));
-  MOCK_METHOD(bool, InstallAttributesEnterpriseMode, (), (override));
+  MOCK_METHOD(InstallAttributesFileData,
+              InstallAttributesEnterpriseMode,
+              (),
+              (override));
   MOCK_METHOD(void,
               ClearForcedReEnrollmentFlags,
               (const Completion&),
