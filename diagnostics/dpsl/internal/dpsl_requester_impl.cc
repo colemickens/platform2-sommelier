@@ -198,8 +198,9 @@ void DpslRequesterImpl::CallGrpcClientMethod(
 // static
 std::unique_ptr<DpslRequester> DpslRequester::Create(
     DpslThreadContext* thread_context, GrpcClientUri grpc_client_uri) {
-  CHECK(thread_context);
-  CHECK(thread_context->BelongsToCurrentThread());
+  CHECK(thread_context) << "Thread context is nullptr";
+  CHECK(thread_context->BelongsToCurrentThread())
+      << "Thread context does not belong to the current thread";
 
   return std::make_unique<DpslRequesterImpl>(
       GetWilcoDtcSupportdGrpcUri(grpc_client_uri));

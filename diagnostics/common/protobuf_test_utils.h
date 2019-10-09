@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_PROTOBUF_TEST_UTILS_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_PROTOBUF_TEST_UTILS_H_
+#ifndef DIAGNOSTICS_COMMON_PROTOBUF_TEST_UTILS_H_
+#define DIAGNOSTICS_COMMON_PROTOBUF_TEST_UTILS_H_
 
 #include <string>
 #include <vector>
@@ -35,4 +35,4 @@ inline std::string GetProtosRangeDebugString(Iterator protos_begin,
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_PROTOBUF_TEST_UTILS_H_
+#endif  // DIAGNOSTICS_COMMON_PROTOBUF_TEST_UTILS_H_
