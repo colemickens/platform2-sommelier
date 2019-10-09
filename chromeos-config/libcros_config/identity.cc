@@ -13,6 +13,7 @@
 #include <base/logging.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/strings/string_util.h>
 #include <base/sys_info.h>
 #include "chromeos-config/libcros_config/cros_config_interface.h"
 #include "chromeos-config/libcros_config/identity_arm.h"
@@ -33,8 +34,8 @@ SystemArchitecture CrosConfigIdentity::CurrentSystemArchitecture(
     const std::string& arch) {
   if (arch == "x86" || arch == "x86_64")
     return SystemArchitecture::kX86;
-  if (arch == "arm" || arch == "aarch64" || arch == "aarch64_be" ||
-      arch == "armv8b" || arch == "armv8l")
+  if (base::StartsWith(arch, "arm", base::CompareCase::SENSITIVE) ||
+      base::StartsWith(arch, "aarch64", base::CompareCase::SENSITIVE))
     return SystemArchitecture::kArm;
   return SystemArchitecture::kUnknown;
 }
