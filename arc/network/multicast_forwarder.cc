@@ -61,6 +61,13 @@ MulticastForwarder::Socket::Socket(base::ScopedFD fd,
       Socket::fd.get(), base::BindRepeating(callback, Socket::fd.get()));
 }
 
+MulticastForwarder::MulticastForwarder(const std::string& lan_ifname,
+                                       uint32_t mcast_addr,
+                                       uint16_t port)
+    : lan_ifname_(lan_ifname), port_(port) {
+  mcast_addr_.s_addr = mcast_addr;
+}
+
 base::ScopedFD MulticastForwarder::Bind(const std::string& ifname,
                                         const struct in_addr& mcast_addr,
                                         uint16_t port) {
@@ -108,9 +115,9 @@ base::ScopedFD MulticastForwarder::Bind(const std::string& ifname,
 
   int off = 0;
   if (setsockopt(fd.get(), IPPROTO_IP, IP_MULTICAST_LOOP, &off, sizeof(off))) {
-    PLOG(ERROR)
-        << "setsockopt(IP_MULTICAST_LOOP) failed for multicast forwarder on "
-        << ifname << " for " << mcast_addr << ":" << port;
+    PLOG(ERROR) << "setsockopt(IP_MULTICAST_LOOP) failed for multicast "
+                   "forwarder on "
+                << ifname << " for " << mcast_addr << ":" << port;
     return base::ScopedFD();
   }
 
@@ -134,48 +141,48 @@ base::ScopedFD MulticastForwarder::Bind(const std::string& ifname,
   return fd;
 }
 
-bool MulticastForwarder::Start(const std::string& int_ifname,
-                               const std::string& lan_ifname,
-                               uint32_t mdns_ipaddr,
-                               uint32_t mcast_addr,
-                               uint16_t port) {
-  int_ifname_ = int_ifname;
-  lan_ifname_ = lan_ifname;
-  mcast_addr_.s_addr = mcast_addr;
-  mdns_ip_.s_addr = mdns_ipaddr;
-  port_ = port;
-
-  base::ScopedFD int_fd(Bind(int_ifname_, mcast_addr_, port_));
+bool MulticastForwarder::AddGuest(const std::string& int_ifname,
+                                  uint32_t guest_addr) {
+  base::ScopedFD int_fd(Bind(int_ifname, mcast_addr_, port_));
   if (!int_fd.is_valid()) {
-    LOG(WARNING) << "Could not bind socket on " << int_ifname_ << " for "
+    LOG(WARNING) << "Could not bind socket on " << int_ifname << " for "
                  << mcast_addr_ << ":" << port_;
     return false;
   }
-  int_socket_.reset(new Socket(
+
+  struct in_addr guest_ip = {0};
+  guest_ip.s_addr = guest_addr;
+  int_ips_.emplace(std::make_pair(int_fd.get(), guest_ip));
+
+  std::unique_ptr<Socket> int_socket = std::make_unique<Socket>(
       std::move(int_fd),
       base::BindRepeating(&MulticastForwarder::OnFileCanReadWithoutBlocking,
-                          base::Unretained(this))));
+                          base::Unretained(this)));
 
-  base::ScopedFD lan_fd(Bind(lan_ifname_, mcast_addr_, port_));
-  if (!lan_fd.is_valid()) {
-    LOG(WARNING) << "Could not bind socket on " << lan_ifname_ << " for "
-                 << mcast_addr_ << ":" << port_;
-    int_socket_.reset();
-    return false;
+  int_sockets_.emplace(std::make_pair(int_ifname, std::move(int_socket)));
+
+  // Multicast forwarder is not started yet.
+  if (lan_socket_ == nullptr) {
+    base::ScopedFD lan_fd(Bind(lan_ifname_, mcast_addr_, port_));
+    if (!lan_fd.is_valid()) {
+      LOG(WARNING) << "Could not bind socket on " << lan_ifname_ << " for "
+                   << mcast_addr_ << ":" << port_;
+      int_ips_.clear();
+      int_sockets_.clear();
+      return false;
+    }
+    lan_socket_.reset(new Socket(
+        std::move(lan_fd),
+        base::BindRepeating(&MulticastForwarder::OnFileCanReadWithoutBlocking,
+                            base::Unretained(this))));
   }
-  lan_socket_.reset(new Socket(
-      std::move(lan_fd),
-      base::BindRepeating(&MulticastForwarder::OnFileCanReadWithoutBlocking,
-                          base::Unretained(this))));
 
   LOG(INFO) << "Started forwarding between " << lan_ifname_ << " and "
-            << int_ifname_ << " for " << mcast_addr_ << ":" << port_;
+            << int_ifname << " for " << mcast_addr_ << ":" << port_;
 
   return true;
 }
 
-// This callback is registered as part of MulticastSocket::Bind().
-// All of our sockets use this function as a common callback.
 void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd) {
   char data[kBufSize];
   struct sockaddr_in fromaddr;
@@ -200,27 +207,27 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd) {
   dst.sin_port = htons(port_);
   dst.sin_addr = mcast_addr_;
 
-  // Forward ingress traffic to guest.
+  // Forward ingress traffic to all guests.
   if (fd == lan_socket_->fd.get()) {
-    if (sendto(int_socket_->fd.get(), data, len, 0,
-               reinterpret_cast<const struct sockaddr*>(&dst),
-               sizeof(struct sockaddr_in)) < 0) {
-      PLOG(WARNING) << "sendto failed";
-    }
+    SendToGuests(data, len, dst);
     return;
   }
 
-  // Forward egress traffic from guest.
-  if (fd != int_socket_->fd.get())
+  const auto& int_ip = int_ips_.find(fd);
+  if (int_ip == int_ips_.end())
     return;
 
-  // Forward mDNS egress multicast traffic from the guest to the physical
-  // network. This requires translating any IPv4 address specific to the guest
-  // and not visible to the physical network.
+  // Forward egress traffic from one guest to all other guests.
+  // No IP translation is required as other guests can route to each other
+  // behind the SNAT setup.
+  SendToGuests(data, len, dst, fd);
+
+  // On mDNS, sending to physical network requires translating any IPv4
+  // address specific to the guest and not visible to the physical network.
   if (port_ == kMdnsPort) {
     // TODO(b/132574450) The replacement address should instead be specified
-    // as an input argument, based on the properties of the network currently
-    // connected on |lan_ifname_|.
+    // as an input argument, based on the properties of the network
+    // currently connected on |lan_ifname_|.
     const struct in_addr lan_ip =
         GetInterfaceIp(lan_socket_->fd.get(), lan_ifname_);
     if (lan_ip.s_addr == htonl(INADDR_ANY)) {
@@ -229,9 +236,10 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd) {
       // either direction.
       return;
     }
-    TranslateMdnsIp(lan_ip, mdns_ip_, data, len);
+    TranslateMdnsIp(lan_ip, int_ip->second, data, len);
   }
 
+  // Forward egress traffic from one guest to outside network.
   SendTo(src_port, data, len, dst);
 }
 
@@ -281,6 +289,26 @@ bool MulticastForwarder::SendTo(uint16_t src_port,
                             sizeof(struct sockaddr_in));
 }
 
+bool MulticastForwarder::SendToGuests(const void* data,
+                                      ssize_t len,
+                                      const struct sockaddr_in& dst,
+                                      int ignore_fd) {
+  bool success = true;
+  for (const auto& socket : int_sockets_) {
+    int fd = socket.second->fd.get();
+    if (fd == ignore_fd)
+      continue;
+
+    // Use already created multicast fd.
+    if (sendto(fd, data, len, 0, reinterpret_cast<const struct sockaddr*>(&dst),
+               sizeof(struct sockaddr_in)) < 0) {
+      PLOG(WARNING) << "sendto failed to " << socket.first;
+      success = false;
+    }
+  }
+  return success;
+}
+
 // static
 void MulticastForwarder::TranslateMdnsIp(const struct in_addr& lan_ip,
                                          const struct in_addr& guest_ip,
@@ -290,7 +318,8 @@ void MulticastForwarder::TranslateMdnsIp(const struct in_addr& lan_ip,
     return;
   }
 
-  // Make sure this is a valid, successful DNS response from the Android host.
+  // Make sure this is a valid, successful DNS response from the Android
+  // host.
   if (len > net::dns_protocol::kMaxUDPSize || len <= 0) {
     return;
   }
@@ -319,9 +348,9 @@ void MulticastForwarder::TranslateMdnsIp(const struct in_addr& lan_ip,
       if (guest_ip.s_addr ==
           reinterpret_cast<const struct in_addr*>(rr_ip)->s_addr) {
         // HACK: This is able to calculate the (variable) offset of the IPv4
-        // address inside the resource record by assuming that the StringPiece
-        // returns a pointer inside the io_buffer.  It works today, but
-        // future libchrome changes might break it.
+        // address inside the resource record by assuming that the
+        // StringPiece returns a pointer inside the io_buffer.  It works
+        // today, but future libchrome changes might break it.
         size_t ip_offset = rr_ip - resp.io_buffer()->data();
         CHECK(ip_offset <= len - ipv4_addr_len);
         memcpy(&data[ip_offset], &lan_ip.s_addr, ipv4_addr_len);

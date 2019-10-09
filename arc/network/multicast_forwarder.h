@@ -8,6 +8,7 @@
 #include <netinet/ip.h>
 #include <sys/socket.h>
 
+#include <map>
 #include <memory>
 #include <string>
 
@@ -28,21 +29,19 @@ constexpr uint16_t kSsdpPort = 1900;
 // network interfaces.  Handles mDNS, legacy mDNS, and SSDP messages.
 class MulticastForwarder {
  public:
-  MulticastForwarder() = default;
+  MulticastForwarder(const std::string& lan_ifname,
+                     uint32_t mcast_addr,
+                     uint16_t port);
   virtual ~MulticastForwarder() = default;
 
-  // Start forwarding multicast packets between the container's P2P link
+  // Start forwarding multicast packets between the guest's interface
   // |int_ifname| and the external LAN interface |lan_ifname|.  This
   // only forwards traffic on multicast address |mcast_addr| and UDP
   // port |port|.
   //
-  // |mdns_ipaddr|, if != INADDR_ANY, will be used to rewrite mDNS A records
+  // |guest_addr|, if != INADDR_ANY, will be used to rewrite mDNS A records
   // to use the IP address from |lan_ifname|.
-  bool Start(const std::string& int_ifname,
-             const std::string& lan_ifname,
-             uint32_t mdns_ipaddr,
-             uint32_t mcast_addr,
-             uint16_t port);
+  bool AddGuest(const std::string& int_ifname, uint32_t guest_addr);
 
  protected:
   // Socket is used to keep track of an fd and its watcher.
@@ -75,15 +74,27 @@ class MulticastForwarder {
               ssize_t len,
               const struct sockaddr_in& dst);
 
-  std::string int_ifname_;
-  struct in_addr mdns_ip_;
+  // SendToGuests will forward packet to all Chrome OS guests' (ARC++,
+  // Crostini, etc) internal fd using |port|.
+  // However, if ignore_fd is not 0, it will skip guest with fd = ignore_fd.
+  bool SendToGuests(const void* data,
+                    ssize_t len,
+                    const struct sockaddr_in& dst,
+                    int ignore_fd = -1);
+
   std::string lan_ifname_;
 
   struct in_addr mcast_addr_;
   unsigned int port_;
 
-  std::unique_ptr<Socket> int_socket_;
   std::unique_ptr<Socket> lan_socket_;
+
+  // Mapping from internal interface name to internal sockets.
+  std::map<std::string, std::unique_ptr<Socket>> int_sockets_;
+
+  // A map of internal file descriptors (guest facing sockets) to its guest
+  // IP address.
+  std::map<int, struct in_addr> int_ips_;
 
  private:
   void OnFileCanReadWithoutBlocking(int fd);

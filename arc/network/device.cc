@@ -126,10 +126,10 @@ void Device::Enable(const std::string& ifname) {
   if (options_.fwd_multicast) {
     if (!mdns_forwarder_) {
       LOG(INFO) << "Enabling mDNS forwarding for device " << ifname_;
-      auto mdns_fwd = std::make_unique<MulticastForwarder>();
-      if (mdns_fwd->Start(config_->host_ifname(), ifname,
-                          config_->guest_ipv4_addr(), kMdnsMcastAddress,
-                          kMdnsPort)) {
+      auto mdns_fwd = std::make_unique<MulticastForwarder>(
+          ifname, kMdnsMcastAddress, kMdnsPort);
+      if (mdns_fwd->AddGuest(config_->host_ifname(),
+                             config_->guest_ipv4_addr())) {
         mdns_forwarder_ = std::move(mdns_fwd);
       } else {
         LOG(WARNING) << "mDNS forwarder could not be started on " << ifname_;
@@ -138,9 +138,9 @@ void Device::Enable(const std::string& ifname) {
 
     if (!ssdp_forwarder_) {
       LOG(INFO) << "Enabling SSDP forwarding for device " << ifname_;
-      auto ssdp_fwd = std::make_unique<MulticastForwarder>();
-      if (ssdp_fwd->Start(config_->host_ifname(), ifname, htonl(INADDR_ANY),
-                          kSsdpMcastAddress, kSsdpPort)) {
+      auto ssdp_fwd = std::make_unique<MulticastForwarder>(
+          ifname, kSsdpMcastAddress, kSsdpPort);
+      if (ssdp_fwd->AddGuest(config_->host_ifname(), htonl(INADDR_ANY))) {
         ssdp_forwarder_ = std::move(ssdp_fwd);
       } else {
         LOG(WARNING) << "SSDP forwarder could not be started on " << ifname_;
