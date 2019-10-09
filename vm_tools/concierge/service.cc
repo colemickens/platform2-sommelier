@@ -1172,6 +1172,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   VmFeatures features{
       .gpu = request.enable_gpu(),
       .software_tpm = request.software_tpm(),
+      .audio_capture = request.enable_audio_capture(),
   };
   auto vm =
       TerminaVm::Create(std::move(kernel), std::move(rootfs), std::move(disks),

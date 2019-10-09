@@ -156,6 +156,9 @@ bool TerminaVm::Start(base::FilePath kernel,
   if (features_.software_tpm)
     args.emplace_back("--software-tpm");
 
+  if (features_.audio_capture)
+    args.emplace_back("--cras-capture");
+
   // Add any extra disks.
   for (const auto& disk : disks) {
     if (disk.writable) {
@@ -617,6 +620,7 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
   VmFeatures features{
       .gpu = false,
       .software_tpm = false,
+      .audio_capture = false,
   };
   auto vm = base::WrapUnique(new TerminaVm(
       std::move(mac_addr), std::move(subnet), vsock_cid, nullptr,

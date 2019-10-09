@@ -36,6 +36,7 @@ impl Error for UnimplementedError {}
 pub struct VmFeatures {
     pub gpu: bool,
     pub software_tpm: bool,
+    pub audio_capture: bool,
 }
 
 // The input for this macro is an ordinary trait declaration, with some restrictions. Each method

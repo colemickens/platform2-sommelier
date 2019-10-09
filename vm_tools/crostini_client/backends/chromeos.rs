@@ -812,6 +812,7 @@ impl ChromeOS {
         request.owner_id = user_id_hash.to_owned();
         request.enable_gpu = features.gpu;
         request.software_tpm = features.software_tpm;
+        request.enable_audio_capture = features.audio_capture;
         request.name = vm_name.to_owned();
         {
             let disk_image = request.mut_disks().push_default();

@@ -36,6 +36,9 @@ struct VmFeatures {
 
   // Provide software-based virtual Trusted Platform Module to the VM.
   bool software_tpm;
+
+  // Enable audio capture function in the started VM.
+  bool audio_capture;
 };
 
 // Represents a single instance of a running termina VM.

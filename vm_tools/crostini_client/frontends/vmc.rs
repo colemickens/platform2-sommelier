@@ -125,6 +125,11 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "software-tpm",
             "provide software-based virtual Trusted Platform Module",
         );
+        opts.optflag(
+            "",
+            "enable-audio-capture",
+            "when starting the vm, enable audio capture support",
+        );
         let matches = opts.parse(self.args)?;
 
         if matches.free.len() != 1 {
@@ -139,6 +144,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         let features = VmFeatures {
             gpu: matches.opt_present("enable-gpu"),
             software_tpm: matches.opt_present("software-tpm"),
+            audio_capture: matches.opt_present("enable-audio-capture"),
         };
 
         self.metrics_send_sample("Vm.VmcStart");
@@ -486,7 +492,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 }
 
 const USAGE: &str = r#"
-   [ start [--enable-gpu] <name> |
+   [ start [--enable-gpu] [--enable-audio-capture] <name> |
      stop <name> |
      create [-p] <name> [<source media> [<removable storage name>]] [-- additional parameters]
      destroy <name> |
@@ -573,6 +579,21 @@ mod tests {
             &["vmc", "start", "termina", "--enable-gpu"],
             &["vmc", "start", "termina", "--software-tpm"],
             &["vmc", "start", "termina", "--enable-gpu", "--software-tpm"],
+            &["vmc", "start", "termina", "--enable-audio-capture"],
+            &[
+                "vmc",
+                "start",
+                "termina",
+                "--enable-audio-capture",
+                "--enable-gpu",
+            ],
+            &[
+                "vmc",
+                "start",
+                "termina",
+                "--enable-gpu",
+                "--enable-audio-capture",
+            ],
             &["vmc", "stop", "termina"],
             &["vmc", "create", "termina"],
             &["vmc", "create", "-p", "termina"],
