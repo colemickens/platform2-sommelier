@@ -82,8 +82,8 @@ sanity_check_clock() {
   # the system where this image was built/modified, and on the runtime image
   # (in case a dev modified random paths while the clock was out of sync).
   # Calculated using: date -d"01 Jan $(date +%Y) UTC" +%s
-  local year="2017"
-  local base_secs="1483228800"
+  local year="2019"
+  local base_secs="1546300800"
 
   # See if the current time is older than our sanity time.  If so, pull up.
   if [ "$(date -u +%s)" -lt "${base_secs}" ]; then
@@ -200,6 +200,9 @@ allow_fifo() {
 . /usr/share/cros/config_process_mgmt_utils.sh
 configure_process_mgmt_security
 
+# Make sure our clock is somewhat up-to-date.
+sanity_check_clock
+
 # Check if we are booted on physical media. rootdev will fail if we are in
 # an initramfs or tmpfs rootfs (ex, factory installer images. Note recovery
 # image also uses initramfs but it never reach here). When using initrd+tftpboot
@@ -297,10 +300,6 @@ if [ "$ROOTDEV_RET_CODE" = "0" ] && [ "$ROOTDEV_TYPE" != "/dev/ram" ]; then
   fi
   mount -n -t "${FS_FORMAT_OEM}" -o "${OEM_FLAGS}" "${OEM_DEV}" /usr/share/oem
 fi
-
-# Make sure our clock is somewhat up-to-date.
-# TODO: See if we can move this before the stateful initialization above.
-sanity_check_clock
 
 # This file is created by clobber-state after the transition
 # to dev mode.
