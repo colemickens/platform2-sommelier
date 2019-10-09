@@ -7,23 +7,24 @@
 
 #include <netinet/ip.h>
 #include <sys/socket.h>
-#include <time.h>
 
-#include <deque>
 #include <memory>
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/weak_ptr.h>
 
 #include "arc/network/multicast_socket.h"
+#include "arc/network/net_util.h"
 
 namespace arc_networkd {
 
+constexpr uint32_t kMdnsMcastAddress = Ipv4Addr(224, 0, 0, 251);
+constexpr uint16_t kMdnsPort = 5353;
+constexpr uint32_t kSsdpMcastAddress = Ipv4Addr(239, 255, 255, 250);
+constexpr uint16_t kSsdpPort = 1900;
+
 // Listens on a well-known port and forwards multicast messages between
-// network interfaces.  Handles stateless mDNS messages (src port and
-// dst port are both 5353) and stateful mDNS/SSDP messages (src port
-// is random, so the forwarder needs to keep a table of open sessions).
+// network interfaces.  Handles mDNS, legacy mDNS, and SSDP messages.
 class MulticastForwarder {
  public:
   MulticastForwarder() = default;
@@ -32,12 +33,7 @@ class MulticastForwarder {
   // Start forwarding multicast packets between the container's P2P link
   // |int_ifname| and the external LAN interface |lan_ifname|.  This
   // only forwards traffic on multicast address |mcast_addr| and UDP
-  // port |port|.  If |allow_stateless| is true, packets with
-  // src_port == dst_port == |port| are always passed to the other
-  // interface without creating a state table entry.  If it is false,
-  // sessions must be initiated from |int_ifname| and will always
-  // create a state table entry; "unsolicited" traffic from
-  // |lan_ifname| will be silently discarded.
+  // port |port|.
   //
   // |mdns_ipaddr|, if != INADDR_ANY, will be used to rewrite mDNS A records
   // to use the IP address from |lan_ifname|.
@@ -45,8 +41,7 @@ class MulticastForwarder {
              const std::string& lan_ifname,
              uint32_t mdns_ipaddr,
              uint32_t mcast_addr,
-             unsigned short port,
-             bool allow_stateless);
+             uint16_t port);
 
   // Rewrite mDNS A records pointing to |guest_ip| so that they point to
   // the IPv4 |lan_ip| assigned to physical interface instead, so that Android
@@ -56,10 +51,17 @@ class MulticastForwarder {
   static void TranslateMdnsIp(const struct in_addr& lan_ip,
                               const struct in_addr& guest_ip,
                               char* data,
-                              ssize_t bytes);
+                              ssize_t len);
 
- protected:
-  void CleanupTask();
+  void TranslateMdnsIp(const struct in_addr& lan_ip, char* data, ssize_t len);
+
+  // SendTo sends |data| using a socket bound to |src_port| and |lan_ifname_|.
+  // If |src_port| is equal to |port_|, we will use |lan_socket_|. Otherwise,
+  // create a temporary socket.
+  bool SendTo(uint16_t src_port,
+              const void* data,
+              ssize_t len,
+              const struct sockaddr_in& dst);
 
   std::string int_ifname_;
   struct in_addr mdns_ip_;
@@ -67,13 +69,9 @@ class MulticastForwarder {
 
   struct in_addr mcast_addr_;
   unsigned int port_;
-  bool allow_stateless_;
 
   std::unique_ptr<MulticastSocket> int_socket_;
   std::unique_ptr<MulticastSocket> lan_socket_;
-  std::deque<std::unique_ptr<MulticastSocket>> temp_sockets_;
-
-  base::WeakPtrFactory<MulticastForwarder> weak_factory_{this};
 
  private:
   void OnFileCanReadWithoutBlocking(int fd);

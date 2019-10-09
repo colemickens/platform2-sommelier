@@ -17,10 +17,6 @@
 
 namespace arc_networkd {
 
-MulticastSocket::MulticastSocket() = default;
-
-MulticastSocket::~MulticastSocket() = default;
-
 bool MulticastSocket::Bind(const std::string& ifname,
                            const struct in_addr& mcast_addr,
                            unsigned short port,
@@ -122,7 +118,6 @@ bool MulticastSocket::SendTo(const void* data,
     PLOG(WARNING) << "sendto failed";
     return false;
   }
-  last_used_ = time(nullptr);
   return true;
 }
 }  // namespace arc_networkd

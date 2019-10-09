@@ -15,6 +15,7 @@
 #include <base/lazy_instance.h>
 #include <base/logging.h>
 
+#include "arc/network/multicast_forwarder.h"
 #include "arc/network/net_util.h"
 
 namespace arc_networkd {
@@ -25,10 +26,6 @@ const char kAndroidDevice[] = "arc0";
 const char kAndroidLegacyDevice[] = "android";
 
 namespace {
-constexpr uint32_t kMdnsMcastAddress = Ipv4Addr(224, 0, 0, 251);
-constexpr uint16_t kMdnsPort = 5353;
-constexpr uint32_t kSsdpMcastAddress = Ipv4Addr(239, 255, 255, 250);
-constexpr uint16_t kSsdpPort = 1900;
 constexpr int kMaxRandomAddressTries = 3;
 }  // namespace
 
@@ -132,8 +129,7 @@ void Device::Enable(const std::string& ifname) {
       auto mdns_fwd = std::make_unique<MulticastForwarder>();
       if (mdns_fwd->Start(config_->host_ifname(), ifname,
                           config_->guest_ipv4_addr(), kMdnsMcastAddress,
-                          kMdnsPort,
-                          /* allow_stateless */ true)) {
+                          kMdnsPort)) {
         mdns_forwarder_ = std::move(mdns_fwd);
       } else {
         LOG(WARNING) << "mDNS forwarder could not be started on " << ifname_;
@@ -144,8 +140,7 @@ void Device::Enable(const std::string& ifname) {
       LOG(INFO) << "Enabling SSDP forwarding for device " << ifname_;
       auto ssdp_fwd = std::make_unique<MulticastForwarder>();
       if (ssdp_fwd->Start(config_->host_ifname(), ifname, htonl(INADDR_ANY),
-                          kSsdpMcastAddress, kSsdpPort,
-                          /* allow_stateless */ false)) {
+                          kSsdpMcastAddress, kSsdpPort)) {
         ssdp_forwarder_ = std::move(ssdp_fwd);
       } else {
         LOG(WARNING) << "SSDP forwarder could not be started on " << ifname_;

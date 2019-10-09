@@ -8,7 +8,6 @@
 #include <netinet/ip.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <time.h>
 
 #include <memory>
 #include <string>
@@ -22,8 +21,8 @@ namespace arc_networkd {
 // Wrapper around various syscalls used for multicast socket communications.
 class MulticastSocket {
  public:
-  MulticastSocket();
-  virtual ~MulticastSocket();
+  MulticastSocket() = default;
+  virtual ~MulticastSocket() = default;
 
   bool Bind(const std::string& ifname,
             const struct in_addr& mcast_addr,
@@ -32,13 +31,9 @@ class MulticastSocket {
   bool SendTo(const void* data, size_t len, const struct sockaddr_in& addr);
 
   int fd() const { return fd_.get(); }
-  time_t last_used() const { return last_used_; }
-
-  struct sockaddr_in int_addr;
 
  protected:
   base::ScopedFD fd_;
-  time_t last_used_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
 };
 
