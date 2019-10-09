@@ -319,6 +319,13 @@ class CrashSenderUtilTest : public testing::Test {
     if (!CreateFile(absolute_log_, "", now))
       return false;
 
+    // This should be ignored as corrupt. Payload can't be /.
+    root_payload_meta_ = crash_directory.Append("root_payload.meta");
+    if (!test_util::CreateFile(root_payload_meta_,
+                               "payload=/\n"
+                               "done=1\n"))
+      return false;
+
     // These should be ignored, if uploading of device coredumps is not allowed.
     devcore_meta_ = crash_directory.Append("devcore.meta");
     devcore_devcore_ = crash_directory.Append("devcore.devcore");
@@ -439,6 +446,7 @@ class CrashSenderUtilTest : public testing::Test {
   base::FilePath good_log_;
   base::FilePath absolute_meta_;
   base::FilePath absolute_log_;
+  base::FilePath root_payload_meta_;
   base::FilePath devcore_meta_;
   base::FilePath devcore_devcore_;
   base::FilePath empty_meta_;
@@ -728,6 +736,10 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
   EXPECT_EQ(Sender::kRemove, sender.ChooseAction(old_os_meta_, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Old OS version"));
 
+  EXPECT_EQ(Sender::kRemove,
+            sender.ChooseAction(root_payload_meta_, &reason, &info));
+  EXPECT_THAT(reason, HasSubstr("payload path is absolute"));
+
   ASSERT_TRUE(SetConditions(kUnofficialBuild, kSignInMode, kMetricsEnabled,
                             raw_metrics_lib));
   EXPECT_EQ(Sender::kRemove, sender.ChooseAction(good_meta_, &reason, &info));
@@ -805,6 +817,7 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   EXPECT_FALSE(base::PathExists(unknown_xxx_));
   EXPECT_FALSE(base::PathExists(old_incomplete_meta_));
   EXPECT_FALSE(base::PathExists(old_os_meta_));
+  EXPECT_FALSE(base::PathExists(root_payload_meta_));
   // Check what files were picked for sending.
   EXPECT_EQ(3, to_send.size());
   EXPECT_EQ(good_meta_.value(), to_send[0].first.value());

@@ -598,6 +598,13 @@ Sender::Action Sender::ChooseAction(const base::FilePath& meta_file,
     return kRemove;
   }
 
+  // Check for absolute path, or Append will CHECK-fail.
+  if (info->payload_file.IsAbsolute()) {
+    *reason =
+        "Corrupt meta: payload path is absolute: " + info->payload_file.value();
+    return kRemove;
+  }
+
   // Make it an absolute path.
   info->payload_file = meta_file.DirName().Append(info->payload_file);
 
