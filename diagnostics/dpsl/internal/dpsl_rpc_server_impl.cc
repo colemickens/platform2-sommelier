@@ -62,6 +62,10 @@ DpslRpcServerImpl::DpslRpcServerImpl(DpslRpcHandler* rpc_handler,
       base::Bind(&DpslRpcServerImpl::HandleEcNotification,
                  base::Unretained(this)));
   async_grpc_server_.RegisterHandler(
+      &grpc_api::WilcoDtc::AsyncService::RequestHandlePowerNotification,
+      base::Bind(&DpslRpcServerImpl::HandlePowerNotification,
+                 base::Unretained(this)));
+  async_grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtc::AsyncService::RequestHandleConfigurationDataChanged,
       base::Bind(&DpslRpcServerImpl::HandleConfigurationDataChanged,
                  base::Unretained(this)));
@@ -106,6 +110,17 @@ void DpslRpcServerImpl::HandleEcNotification(
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
   rpc_handler_->HandleEcNotification(
+      std::move(request),
+      MakeStdFunctionFromCallback(
+          MakeOriginTaskRunnerPostingCallback(FROM_HERE, callback)));
+}
+
+void DpslRpcServerImpl::HandlePowerNotification(
+    std::unique_ptr<grpc_api::HandlePowerNotificationRequest> request,
+    const HandlePowerNotificationCallback& callback) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+
+  rpc_handler_->HandlePowerNotification(
       std::move(request),
       MakeStdFunctionFromCallback(
           MakeOriginTaskRunnerPostingCallback(FROM_HERE, callback)));

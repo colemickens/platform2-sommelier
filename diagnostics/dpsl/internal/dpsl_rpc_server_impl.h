@@ -38,6 +38,8 @@ class DpslRpcServerImpl final : public DpslRpcServer {
       std::unique_ptr<grpc_api::HandleMessageFromUiResponse>)>;
   using HandleEcNotificationCallback = base::Callback<void(
       std::unique_ptr<grpc_api::HandleEcNotificationResponse>)>;
+  using HandlePowerNotificationCallback = base::Callback<void(
+      std::unique_ptr<grpc_api::HandlePowerNotificationResponse>)>;
   using HandleConfigurationDataChangedCallback = base::Callback<void(
       std::unique_ptr<grpc_api::HandleConfigurationDataChangedResponse>)>;
 
@@ -49,6 +51,9 @@ class DpslRpcServerImpl final : public DpslRpcServer {
   void HandleEcNotification(
       std::unique_ptr<grpc_api::HandleEcNotificationRequest> request,
       const HandleEcNotificationCallback& callback);
+  void HandlePowerNotification(
+      std::unique_ptr<grpc_api::HandlePowerNotificationRequest> request,
+      const HandlePowerNotificationCallback& callback);
   void HandleConfigurationDataChanged(
       std::unique_ptr<grpc_api::HandleConfigurationDataChangedRequest> request,
       const HandleConfigurationDataChangedCallback& callback);
