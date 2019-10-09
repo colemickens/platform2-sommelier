@@ -474,7 +474,6 @@ class IImageBufferHeap {
    * Graphic buffer from grallocImageBufferHeap.
    */
   virtual void* getHWBuffer() = 0;
-
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   //  Buffer Operations.
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -556,6 +555,11 @@ class IImageBufferHeap {
   virtual std::vector<std::shared_ptr<IImageBuffer> >
   createImageBuffers_FromBlobHeap(const ImageBufferInfo& info,
                                   const char* callerName) = 0;
+
+  /**
+   * Gbm buffer handle from gbmImageBufferHeap.
+   */
+  virtual buffer_handle_t getBufferHandle() const = 0;
 };
 
 /******************************************************************************

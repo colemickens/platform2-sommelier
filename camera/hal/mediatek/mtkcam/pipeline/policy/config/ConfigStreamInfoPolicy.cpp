@@ -541,7 +541,7 @@ makePolicy_Configuration_StreamInfo_NonP1_Default() {
       {
         MSize const& size =
             pParsedAppImageStreamInfo->pAppImage_Jpeg->getImgSize();
-        MINT const format = eImgFmt_YUY2;
+        MINT const format = eImgFmt_NV12;
         MUINT const usage = 0;
         pOut->pHalImage_Jpeg_YUV = createImageStreamInfo(
             "Hal:Image:YuvJpeg", eSTREAMID_IMAGE_PIPE_YUV_JPEG_00,

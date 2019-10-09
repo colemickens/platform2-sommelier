@@ -52,6 +52,7 @@ class VISIBILITY_PUBLIC IGbmImageBufferHeap : public virtual IImageBufferHeap {
   static char const* magicName() { return "GbmHeap"; }
 
   virtual void* getHWBuffer() = 0;
+  virtual buffer_handle_t getBufferHandle() const = 0;
 };
 
 /******************************************************************************

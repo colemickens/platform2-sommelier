@@ -88,6 +88,7 @@ class BaseImageBufferHeap
    */
   virtual size_t getBufCustomSizeInBytes(size_t /*index*/) const { return 0; }
   virtual void* getHWBuffer() { return NULL; }
+  virtual buffer_handle_t getBufferHandle() const { return nullptr; }
 
  public:  ////                    Buffer Operations.
   virtual MBOOL lockBuf(char const* szCallerName, MINT usage);

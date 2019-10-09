@@ -287,8 +287,6 @@ class JpegNodeImp : public NSCam::v3::BaseNode, public NSCam::v3::JpegNode {
 
   MBOOL isInImageStream(NSCam::v3::StreamId_T const streamId) const;
 
-  MBOOL isHwEncodeSupported(int const format) const;
-
   bool convertToP411(std::shared_ptr<IImageBuffer> srcBuf, void* dst);
   // P411's Y, U, V are seperated. But the YUY2's Y, U and V are interleaved.
   void YUY2ToP411(int width, int height, int stride, void* src, void* dst);
@@ -347,8 +345,10 @@ class JpegNodeImp : public NSCam::v3::BaseNode, public NSCam::v3::JpegNode {
     StdExif exif;
     std::shared_ptr<NSCam::v3::IImageStreamBuffer> mpOutImgStreamBuffer;
     std::shared_ptr<IImageBufferHeap> mpOutImgBufferHeap;
+    std::shared_ptr<IImageBufferHeap> mpExifBufferHeap;
 
     size_t thumbnailMaxSize;
+    size_t exifSize;
     //
     encode_frame(std::shared_ptr<NSCam::v3::IPipelineFrame> const pFrame,
                  MBOOL const hasThumbnail)
@@ -361,7 +361,9 @@ class JpegNodeImp : public NSCam::v3::BaseNode, public NSCam::v3::JpegNode {
           mpJpeg_Thumbnail(nullptr),
           mpOutImgStreamBuffer(nullptr),
           mpOutImgBufferHeap(NULL),
-          thumbnailMaxSize(0) {}
+          mpExifBufferHeap(NULL),
+          thumbnailMaxSize(0),
+          exifSize(0) {}
   };
   MVOID encodeThumbnail(std::shared_ptr<encode_frame>* pEncodeFrame);
 
@@ -476,6 +478,7 @@ class JpegNodeImp : public NSCam::v3::BaseNode, public NSCam::v3::JpegNode {
  private:
   mutable std::mutex mEncodeLock;
   std::condition_variable mEncodeCond;
+  mutable std::mutex mJpegCompressorLock;
   std::shared_ptr<encode_frame> mpCurEncFrame;
   MUINT32 muDumpBuffer;
   MINT32 mFlip;
@@ -876,14 +879,18 @@ JpegNodeImp::encodeThumbnail(std::shared_ptr<encode_frame>* pEncodeFrame) {
       params.pDst->setBitstreamSize(bitstream_thumbsize);
     } else {
       do {
-        MY_LOGW("Encoding thumbnail with quality %d", params.quality);
-        bool ret = mJpegCompressor->GenerateThumbnail(
-            thumbsrc_buf, params.pSrc->getImgSize().w,
-            params.pSrc->getImgSize().h, params.pSrc->getImgSize().w,
-            params.pSrc->getImgSize().h, quality,
-            params.pDst->getBitstreamSize(),
-            reinterpret_cast<void*>(params.pDst->getBufVA(0)),
-            &bitstream_thumbsize);
+        MY_LOGI("Encoding thumbnail with quality %d", params.quality);
+        bool ret = false;
+        {
+          std::lock_guard<std::mutex> _l(mJpegCompressorLock);
+          ret = mJpegCompressor->GenerateThumbnail(
+              thumbsrc_buf, params.pSrc->getImgSize().w,
+              params.pSrc->getImgSize().h, params.pSrc->getImgSize().w,
+              params.pSrc->getImgSize().h, quality,
+              mpEncodeFrame->thumbnailMaxSize,
+              reinterpret_cast<void*>(params.pDst->getBufVA(0)),
+              &bitstream_thumbsize);
+        }
         if (ret != true) {
           MY_LOGE("thumb encode fail src %p, fmt 0x%x, dst %zx, fmt 0x%x",
                   params.pSrc.get(), params.pSrc->getImgFormat(),
@@ -1202,8 +1209,12 @@ JpegNodeImp::onProcessFrame(
       if (headerSize % EXIFHEADER_ALIGN != 0) {
         MY_LOGW("not aligned header size %zu", headerSize);
       }
-
+      mpEncodeFrame->exifSize = headerSize;
       mpEncodeFrame->exif.setMaxThumbnail(thumbMaxSize);
+
+      NSCam::IImageBufferAllocator::ImgParam imgParam(headerSize, 0);
+      mpEncodeFrame->mpExifBufferHeap =
+          NSCam::IGbmImageBufferHeap::create("EXIF", imgParam);
     }
     // get out main imagebuffer
     {
@@ -1231,11 +1242,10 @@ JpegNodeImp::onProcessFrame(
     if (mpEncodeFrame->mbHasThumbnail) {
       NSCam::v3::StreamId_T const stream_in = mpOutJpeg->getStreamId();
       std::shared_ptr<IImageBuffer> pOutImageBuffer = nullptr;
-      std::shared_ptr<IImageBufferHeap>& pImageBufferHeap =
-          mpEncodeFrame->mpOutImgBufferHeap;
 
       MERROR const err = getThumbImageBufferAndLock(
-          pFrame, stream_in, mpEncodeFrame, pImageBufferHeap, &pOutImageBuffer);
+          pFrame, stream_in, mpEncodeFrame, mpEncodeFrame->mpExifBufferHeap,
+          &pOutImageBuffer);
 
       if (err != OK) {
         MY_LOGE("getImageBufferAndLock err = %d", err);
@@ -1245,14 +1255,6 @@ JpegNodeImp::onProcessFrame(
       }
       // remember main&thumb buffer
       mpEncodeFrame->mpJpeg_Thumbnail = pOutImageBuffer;
-      // check thumb image buffer offset
-      MY_LOGD(
-          "[out]frame(%d) heapVA:0x%zx, main/thum imgbufferVA: 0x%zx/0x%zx, "
-          "heap size: %zu",
-          pFrame->getFrameNo(), pImageBufferHeap->getBufVA(0),
-          mpEncodeFrame->mpJpeg_Main->getBufVA(0),
-          mpEncodeFrame->mpJpeg_Thumbnail->getBufVA(0),
-          pImageBufferHeap->getBufSizeInBytes(0));
       mThumbDoneFlag = MFALSE;
       //
       mpEncodeThumbThread = std::make_shared<EncodeThumbThread>(this);
@@ -1286,6 +1288,7 @@ JpegNodeImp::onProcessFrame(
     }
     // do encode
     {
+      uint32_t outSize = 0;
       my_encode_params params;
       params.pSrc = pInImageBuffer;
       params.pDst = mpEncodeFrame->mpJpeg_Main;
@@ -1294,37 +1297,31 @@ JpegNodeImp::onProcessFrame(
       params.isSOI = 0;
       params.quality = mpEncodeFrame->mParams.quality;
 
-      int jpeg_size =
-          ((params.pSrc->getImgSize().w) * (params.pSrc->getImgSize().h) * 3) /
-          2;
-      char* jpeg_buf = new char[jpeg_size];
-
-      if (!convertToP411(params.pSrc, reinterpret_cast<void*>(jpeg_buf))) {
-        MY_LOGE("JPEG main convertToP411 fail!");
+      bool ret = false;
+      {
+        std::lock_guard<std::mutex> _l(mJpegCompressorLock);
+        ret = mJpegCompressor->CompressImageFromHandle(
+            params.pSrc->getImageBufferHeap()->getBufferHandle(),
+            params.pDst->getImageBufferHeap()->getBufferHandle(),
+            params.pSrc->getImgSize().w, params.pSrc->getImgSize().h,
+            params.quality, nullptr, 0, &outSize,
+            cros::JpegCompressor::Mode::kSwOnly);
+      }
+      if (ret != true) {
+        MY_LOGE("encode main jpeg fail!");
         mpEncodeFrame->mbSuccess = MFALSE;
       } else {
-        uint32_t outSize = 0;
-        bool fgRet = mJpegCompressor->CompressImage(
-            jpeg_buf, params.pSrc->getImgSize().w, params.pSrc->getImgSize().h,
-            params.quality, nullptr, 0, params.pDst->getBitstreamSize(),
-            reinterpret_cast<void*>(params.pDst->getBufVA(0)), &outSize,
-            cros::JpegCompressor::Mode::kSwOnly);
-        if (fgRet != true) {
-          MY_LOGE("encode main jpeg fail!");
-          mpEncodeFrame->mbSuccess = MFALSE;
-        } else {
-          MY_LOGD("encode main jpeg suc, out size is %d", outSize);
-          params.pDst->setBitstreamSize(outSize);
-          mpEncodeFrame->mbSuccess = MTRUE;
-        }
-        memmove(reinterpret_cast<void*>(
-                    mpEncodeFrame->mpJpeg_Main.get()->getBufVA(0)),
-                reinterpret_cast<void*>(
-                    (mpEncodeFrame->mpJpeg_Main.get()->getBufVA(0) + 2)),
-                outSize - 2);
+        MY_LOGE("encode main jpeg success, out size is %u", outSize);
+        params.pDst->setBitstreamSize(outSize);
+        mpEncodeFrame->mbSuccess = MTRUE;
       }
 
-      delete[] jpeg_buf;
+      memmove(reinterpret_cast<void*>(
+                  (mpEncodeFrame->mpJpeg_Main.get()->getBufVA(0) +
+                   mpEncodeFrame->exifSize)),
+              reinterpret_cast<void*>(
+                  (mpEncodeFrame->mpJpeg_Main.get()->getBufVA(0) + 2)),
+              outSize - 2);
     }
     //
     pInImageBuffer->unlockBuf(getNodeName());
@@ -1379,6 +1376,7 @@ JpegNodeImp::onProcessFrame(
     //
     mpEncodeFrame = nullptr;
   }
+
   FUNC_END;
   return;
 }
@@ -1640,7 +1638,7 @@ JpegNodeImp::finalizeEncodeFrame(std::shared_ptr<encode_frame>* rpEncodeFrame) {
     std::shared_ptr<IImageBuffer> pOutImageBuffer = nullptr;
 
     pOutImageBuffer = (*rpEncodeFrame)
-                          ->mpOutImgBufferHeap->createImageBuffer_FromBlobHeap(
+                          ->mpExifBufferHeap->createImageBuffer_FromBlobHeap(
                               0, (*rpEncodeFrame)->exif.getHeaderSize());
 
     if (!pOutImageBuffer) {
@@ -1660,12 +1658,15 @@ JpegNodeImp::finalizeEncodeFrame(std::shared_ptr<encode_frame>* rpEncodeFrame) {
       MY_LOGE("frame %u make exif header failed: buf %p, size %zu",
               (*rpEncodeFrame)->mpFrame->getFrameNo(), pExifBuf, exifSize);
     }
-    pExifBuf = nullptr;
 
-    //
+    (*rpEncodeFrame)->mpOutImgBufferHeap->lockBuf(getNodeName(), groupUsage);
+    memmove(reinterpret_cast<void*>(
+                (*rpEncodeFrame)->mpOutImgBufferHeap->getBufVA(0)),
+            reinterpret_cast<void*>(pExifBuf), mpEncodeFrame->exifSize);
+    pExifBuf = nullptr;
+    (*rpEncodeFrame)->mpOutImgBufferHeap->unlockBuf(getNodeName());
+
     pOutImageBuffer->unlockBuf(getNodeName());
-    pOutImgStreamBuffer->unlock(getNodeName(),
-                                pOutImageBuffer->getImageBufferHeap().get());
     pOutImgStreamBuffer->markStatus(
         (*rpEncodeFrame)->mbSuccess
             ? NSCam::v3::STREAM_BUFFER_STATUS::WRITE_OK
@@ -1738,7 +1739,7 @@ JpegNodeImp::getJpegParams(IMetadata* pMetadata_request,
 #define getParam(meta, tag, type, param)            \
   do {                                              \
     if (!tryGetMetadata<type>(meta, tag, &param)) { \
-      MY_LOGW("no tag: %s", #tag);                  \
+      MY_LOGI("no tag: %s", #tag);                  \
     }                                               \
   } while (0)
 #define getAppParam(tag, type, param) \
@@ -2189,7 +2190,15 @@ JpegNodeImp::getThumbImageBufferAndLock(
       pFrame->getStreamInfoSet().getImageInfoFor(streamId);
 
   if (rpImageBufferHeap == nullptr) {
-    MY_LOGE("heap not exist");
+    MY_LOGE("exif heap not exist");
+    return BAD_VALUE;
+  }
+
+  MUINT const groupUsage =
+      rpEncodeFrame->mpOutImgStreamBuffer->queryGroupUsage(getNodeId());
+
+  MBOOL ret = rpImageBufferHeap->lockBuf("EXIF", groupUsage);
+  if (!ret) {
     return BAD_VALUE;
   }
 
@@ -2200,6 +2209,7 @@ JpegNodeImp::getThumbImageBufferAndLock(
   size_t const bufStridesInBytes[3] = {thumbnailMaxSize, 0, 0};
   size_t bufBoundaryInBytes[] = {0, 0, 0};
   // ref v1 prepare heap & imagebuffer
+
   NSCam::IImageBufferAllocator::ImgParam imgParam =
       NSCam::IImageBufferAllocator::ImgParam(
           rpImageBufferHeap->getImgFormat(),  // blob
@@ -2223,9 +2233,8 @@ JpegNodeImp::getThumbImageBufferAndLock(
   *rpImageBuffer = pHeap->createImageBuffer_FromBlobHeap(
       0, eImgFmt_JPEG, rpEncodeFrame->mParams.size_thumbnail,
       bufStridesInBytes);
-  MUINT const groupUsage =
-      eBUFFER_USAGE_SW_WRITE_OFTEN | eBUFFER_USAGE_HW_CAMERA_READ;
-  MBOOL ret = (*rpImageBuffer)->lockBuf(getNodeName(), groupUsage);
+
+  ret = (*rpImageBuffer)->lockBuf(getNodeName(), groupUsage);
   if (!ret) {
     return BAD_VALUE;
   }
@@ -2235,13 +2244,15 @@ JpegNodeImp::getThumbImageBufferAndLock(
     return BAD_VALUE;
   }
 
-  MY_LOGD_IF(
-      mLogLevel,
+  MY_LOGD(
       "thumb stream buffer(%#" PRIx64
       "), heap(0x%x): %p, buffer: %p, usage: %x, heapVA: %zx, bufferVA: %zx",
       streamId, rpImageBufferHeap->getImgFormat(), rpImageBufferHeap.get(),
       (*rpImageBuffer).get(), groupUsage, rpImageBufferHeap->getBufVA(0),
       (*rpImageBuffer)->getBufVA(0));
+
+  rpImageBufferHeap->unlockBuf("EXIF");
+
   return OK;
 }
 
@@ -2335,10 +2346,10 @@ JpegNodeImp::getImageBufferAndLock(
         MSize(pYUVStreamInfo->getImgSize().w, pYUVStreamInfo->getImgSize().h);
 
     size_t const bufStridesInBytes[3] = {mainMaxSize, 0, 0};
-    *rpImageBuffer =
-        (*rpImageBufferHeap)
-            ->createImageBuffer_FromBlobHeap(mainOffset, eImgFmt_JPEG,
-                                             imageSize, bufStridesInBytes);
+    *rpImageBuffer = (*rpImageBufferHeap)
+                         ->createImageBuffer_FromBlobHeap(
+                             0, eImgFmt_JPEG, imageSize, bufStridesInBytes);
+
     if (!(*rpImageBuffer)) {
       (*rpStreamBuffer)->unlock(getNodeName(), (*rpImageBufferHeap).get());
       MY_LOGE("rpImageMainBuffer is NULL");
@@ -2361,18 +2372,6 @@ JpegNodeImp::getImageBufferAndLock(
             (*rpImageBufferHeap)->getBufVA(0), (*rpImageBuffer)->getBufVA(0));
   }
   return OK;
-}
-
-/******************************************************************************
- *
- ******************************************************************************/
-MBOOL
-JpegNodeImp::isHwEncodeSupported(int const format) const {
-  if (format == eImgFmt_YUY2 || format == eImgFmt_NV12 ||
-      format == eImgFmt_NV21) {
-    return MTRUE;
-  }
-  return MFALSE;
 }
 
 /******************************************************************************

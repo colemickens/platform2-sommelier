@@ -541,7 +541,7 @@ NSCam::MERROR StdExif::make(MUINTPTR const outputExifBuf,
         app2, pAddr, reinterpret_cast<unsigned char*>(&icc_profile_display_p3),
         size, &app2ReturnSize, 0);
   } else {
-    MY_LOGE("not support ICC profile %d", mICCIdx);
+    MY_LOGI("not support ICC profile %d", mICCIdx);
   }
   // return app2ReturnSize is mICCSize + 2 +2 (Data(n bytes) + Data size(2
   // bytes) + Data tag(2 bytes)) (3) Append debug exif
