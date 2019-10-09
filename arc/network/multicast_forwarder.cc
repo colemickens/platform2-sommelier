@@ -54,6 +54,86 @@ struct in_addr GetInterfaceIp(int fd, const std::string& ifname) {
 
 namespace arc_networkd {
 
+MulticastForwarder::Socket::Socket(base::ScopedFD fd,
+                                   const base::Callback<void(int)>& callback)
+    : fd(std::move(fd)) {
+  watcher = base::FileDescriptorWatcher::WatchReadable(
+      Socket::fd.get(), base::BindRepeating(callback, Socket::fd.get()));
+}
+
+base::ScopedFD MulticastForwarder::Bind(const std::string& ifname,
+                                        const struct in_addr& mcast_addr,
+                                        uint16_t port) {
+  base::ScopedFD fd(socket(AF_INET, SOCK_DGRAM, 0));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << "socket() failed for multicast forwarder on " << ifname
+                << " for " << mcast_addr << ":" << port;
+    return base::ScopedFD();
+  }
+
+  // The socket needs to be bound to INADDR_ANY rather than a specific
+  // interface, or it will not receive multicast traffic.  Therefore
+  // we use SO_BINDTODEVICE to force TX from this interface, and
+  // specify the interface address in IP_ADD_MEMBERSHIP to control RX.
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ);
+  if (setsockopt(fd.get(), SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr))) {
+    PLOG(ERROR) << "setsockopt(SOL_SOCKET) failed for multicast forwarder on "
+                << ifname << " for " << mcast_addr << ":" << port;
+    return base::ScopedFD();
+  }
+
+  struct sockaddr_in bind_addr;
+  memset(&bind_addr, 0, sizeof(bind_addr));
+
+  int ifindex = if_nametoindex(ifname.c_str());
+  if (ifindex == 0) {
+    PLOG(ERROR)
+        << "Could not obtain interface index for multicast forwarder on "
+        << ifname << " for " << mcast_addr << ":" << port;
+    return base::ScopedFD();
+  }
+  struct ip_mreqn mreqn;
+  memset(&mreqn, 0, sizeof(mreqn));
+  mreqn.imr_multiaddr = mcast_addr;
+  mreqn.imr_address.s_addr = htonl(INADDR_ANY);
+  mreqn.imr_ifindex = ifindex;
+  if (setsockopt(fd.get(), IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreqn,
+                 sizeof(mreqn)) < 0) {
+    PLOG(ERROR) << "Can't add multicast membership for multicast forwarder on "
+                << ifname << " for " << mcast_addr << ":" << port;
+    return base::ScopedFD();
+  }
+
+  int off = 0;
+  if (setsockopt(fd.get(), IPPROTO_IP, IP_MULTICAST_LOOP, &off, sizeof(off))) {
+    PLOG(ERROR)
+        << "setsockopt(IP_MULTICAST_LOOP) failed for multicast forwarder on "
+        << ifname << " for " << mcast_addr << ":" << port;
+    return base::ScopedFD();
+  }
+
+  int on = 1;
+  if (setsockopt(fd.get(), SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+    PLOG(ERROR) << "setsockopt(SO_REUSEADDR) failed for multicast forwarder on "
+                << ifname << " for " << mcast_addr << ":" << port;
+    return base::ScopedFD();
+  }
+
+  bind_addr.sin_family = AF_INET;
+  bind_addr.sin_port = htons(port);
+
+  if (bind(fd.get(), (const struct sockaddr*)&bind_addr, sizeof(bind_addr)) <
+      0) {
+    PLOG(ERROR) << "bind(" << port << ") failed for multicast forwarder on "
+                << ifname << " for " << mcast_addr << ":" << port;
+    return base::ScopedFD();
+  }
+
+  return fd;
+}
+
 bool MulticastForwarder::Start(const std::string& int_ifname,
                                const std::string& lan_ifname,
                                uint32_t mdns_ipaddr,
@@ -65,25 +145,28 @@ bool MulticastForwarder::Start(const std::string& int_ifname,
   mdns_ip_.s_addr = mdns_ipaddr;
   port_ = port;
 
-  int_socket_.reset(new MulticastSocket());
-  if (!int_socket_->Bind(
-          int_ifname_, mcast_addr_, port_,
-          base::BindRepeating(&MulticastForwarder::OnFileCanReadWithoutBlocking,
-                              base::Unretained(this)))) {
+  base::ScopedFD int_fd(Bind(int_ifname_, mcast_addr_, port_));
+  if (!int_fd.is_valid()) {
     LOG(WARNING) << "Could not bind socket on " << int_ifname_ << " for "
                  << mcast_addr_ << ":" << port_;
     return false;
   }
+  int_socket_.reset(new Socket(
+      std::move(int_fd),
+      base::BindRepeating(&MulticastForwarder::OnFileCanReadWithoutBlocking,
+                          base::Unretained(this))));
 
-  lan_socket_.reset(new MulticastSocket());
-  if (!lan_socket_->Bind(
-          lan_ifname_, mcast_addr_, port_,
-          base::BindRepeating(&MulticastForwarder::OnFileCanReadWithoutBlocking,
-                              base::Unretained(this)))) {
+  base::ScopedFD lan_fd(Bind(lan_ifname_, mcast_addr_, port_));
+  if (!lan_fd.is_valid()) {
     LOG(WARNING) << "Could not bind socket on " << lan_ifname_ << " for "
                  << mcast_addr_ << ":" << port_;
+    int_socket_.reset();
     return false;
   }
+  lan_socket_.reset(new Socket(
+      std::move(lan_fd),
+      base::BindRepeating(&MulticastForwarder::OnFileCanReadWithoutBlocking,
+                          base::Unretained(this))));
 
   LOG(INFO) << "Started forwarding between " << lan_ifname_ << " and "
             << int_ifname_ << " for " << mcast_addr_ << ":" << port_;
@@ -118,13 +201,17 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd) {
   dst.sin_addr = mcast_addr_;
 
   // Forward ingress traffic to guest.
-  if (fd == lan_socket_->fd()) {
-    int_socket_->SendTo(data, len, dst);
+  if (fd == lan_socket_->fd.get()) {
+    if (sendto(int_socket_->fd.get(), data, len, 0,
+               reinterpret_cast<const struct sockaddr*>(&dst),
+               sizeof(struct sockaddr_in)) < 0) {
+      PLOG(WARNING) << "sendto failed";
+    }
     return;
   }
 
   // Forward egress traffic from guest.
-  if (fd != int_socket_->fd())
+  if (fd != int_socket_->fd.get())
     return;
 
   // Forward mDNS egress multicast traffic from the guest to the physical
@@ -135,7 +222,7 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd) {
     // as an input argument, based on the properties of the network currently
     // connected on |lan_ifname_|.
     const struct in_addr lan_ip =
-        GetInterfaceIp(lan_socket_->fd(), lan_ifname_);
+        GetInterfaceIp(lan_socket_->fd.get(), lan_ifname_);
     if (lan_ip.s_addr == htonl(INADDR_ANY)) {
       // When the physical interface has no IPv4 address, IPv4 is not
       // provisioned and there is no point in trying to forward traffic in
@@ -153,10 +240,16 @@ bool MulticastForwarder::SendTo(uint16_t src_port,
                                 ssize_t len,
                                 const struct sockaddr_in& dst) {
   if (src_port == port_) {
-    return lan_socket_->SendTo(data, len, dst);
+    if (sendto(lan_socket_->fd.get(), data, len, 0,
+               reinterpret_cast<const struct sockaddr*>(&dst),
+               sizeof(struct sockaddr_in)) < 0) {
+      PLOG(WARNING) << "sendto failed";
+      return false;
+    }
+    return true;
   }
 
-  Socket temp_socket(AF_INET, SOCK_DGRAM);
+  arc_networkd::Socket temp_socket(AF_INET, SOCK_DGRAM);
 
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(ifr));

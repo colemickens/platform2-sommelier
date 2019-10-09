@@ -11,9 +11,10 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_descriptor_watcher_posix.h>
+#include <base/files/scoped_file.h>
 #include <base/macros.h>
 
-#include "arc/network/multicast_socket.h"
 #include "arc/network/net_util.h"
 
 namespace arc_networkd {
@@ -43,17 +44,28 @@ class MulticastForwarder {
              uint32_t mcast_addr,
              uint16_t port);
 
+ protected:
+  // Socket is used to keep track of an fd and its watcher.
+  struct Socket {
+    base::ScopedFD fd;
+    std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher;
+    Socket(base::ScopedFD fd, const base::Callback<void(int)>& callback);
+  };
+
+  // Bind will create a multicast socket and return its fd.
+  static base::ScopedFD Bind(const std::string& ifname,
+                             const struct in_addr& mcast_addr,
+                             uint16_t port);
+
   // Rewrite mDNS A records pointing to |guest_ip| so that they point to
   // the IPv4 |lan_ip| assigned to physical interface instead, so that Android
   // can advertise services to devices on the LAN.  This modifies |data|, an
-  // incoming packet that is |bytes| long.
+  // incoming packet that is |len| long.
   // TODO(b/134717598) Support IPv6 translation.
   static void TranslateMdnsIp(const struct in_addr& lan_ip,
                               const struct in_addr& guest_ip,
                               char* data,
                               ssize_t len);
-
-  void TranslateMdnsIp(const struct in_addr& lan_ip, char* data, ssize_t len);
 
   // SendTo sends |data| using a socket bound to |src_port| and |lan_ifname_|.
   // If |src_port| is equal to |port_|, we will use |lan_socket_|. Otherwise,
@@ -70,8 +82,8 @@ class MulticastForwarder {
   struct in_addr mcast_addr_;
   unsigned int port_;
 
-  std::unique_ptr<MulticastSocket> int_socket_;
-  std::unique_ptr<MulticastSocket> lan_socket_;
+  std::unique_ptr<Socket> int_socket_;
+  std::unique_ptr<Socket> lan_socket_;
 
  private:
   void OnFileCanReadWithoutBlocking(int fd);
