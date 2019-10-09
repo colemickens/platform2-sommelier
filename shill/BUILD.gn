@@ -145,7 +145,6 @@ protoc_text_to_bin("mobile_operator_db-test-db") {
 
 static_library("mobile_operator_db") {
   configs += [ ":target_defaults" ]
-  configs -= [ "//common-mk:no_exceptions" ]
   deps = [
     ":mobile_operator_db-db",
     ":mobile_operator_db-protos",
@@ -202,7 +201,6 @@ net_sources = [
 
 shared_library("libshill-net-${libbase_ver}") {
   configs += [ ":target_defaults" ]
-  configs -= [ "//common-mk:no_exceptions" ]
   defines = [ "SLOG_MEANS_VLOG=1" ]
   sources = net_sources
   cflags_cc = [
@@ -291,7 +289,6 @@ static_library("libshill") {
     ":libshill_config",
     ":target_defaults",
   ]
-  configs -= [ "//common-mk:no_exceptions" ]
   all_dependent_configs = [ ":libshill_all_dependent_config" ]
   sources = [
     "active_link_monitor.cc",
@@ -508,7 +505,6 @@ executable("shill") {
     ":shill_config",
     ":target_defaults",
   ]
-  configs -= [ "//common-mk:no_exceptions" ]
   sources = [
     "shill_main.cc",
   ]
@@ -529,7 +525,6 @@ executable("netfilter-queue-helper") {
     ":netfilter-queue-helper_config",
     ":target_defaults",
   ]
-  configs -= [ "//common-mk:no_exceptions" ]
   sources = [
     "shims/netfilter_queue_helper.cc",
     "shims/netfilter_queue_processor.cc",
@@ -545,7 +540,6 @@ executable("openvpn-script") {
     ":openvpn-script_config",
     ":target_defaults",
   ]
-  configs -= [ "//common-mk:no_exceptions" ]
   sources = [
     "shims/environment.cc",
     "shims/openvpn_script.cc",
@@ -563,7 +557,6 @@ if (use.cellular) {
       ":set-apn-helper_config",
       ":target_defaults",
     ]
-    configs -= [ "//common-mk:no_exceptions" ]
     sources = [
       "shims/set_apn_helper.c",
     ]
@@ -576,7 +569,6 @@ if (use.cellular || use.vpn || use.pppoe) {
       ":openvpn-script_config",
       ":target_defaults",
     ]
-    configs -= [ "//common-mk:no_exceptions" ]
     sources = [
       "shims/c_ppp.cc",
       "shims/environment.cc",
@@ -598,7 +590,6 @@ if (use.fuzzer) {
       ":fuzzed_data_config",
       ":target_defaults",
     ]
-    configs -= [ "//common-mk:no_exceptions" ]
     sources = [
       "net/arp_client_fuzzer.cc",
     ]
@@ -612,7 +603,6 @@ if (use.fuzzer) {
       ":fuzzed_data_config",
       ":target_defaults",
     ]
-    configs -= [ "//common-mk:no_exceptions" ]
     sources = [
       "cellular/cellular_pco_fuzzer.cc",
     ]
@@ -625,7 +615,6 @@ if (use.fuzzer) {
       "//common-mk/common_fuzzer",
       ":target_defaults",
     ]
-    configs -= [ "//common-mk:no_exceptions" ]
     sources = [
       "net/nl80211_message_fuzzer.cc",
     ]
@@ -638,7 +627,6 @@ if (use.fuzzer) {
       "//common-mk/common_fuzzer",
       ":target_defaults",
     ]
-    configs -= [ "//common-mk:no_exceptions" ]
     sources = [
       "net/rtnl_handler_fuzzer.cc",
     ]
@@ -651,7 +639,6 @@ if (use.fuzzer) {
       "//common-mk/common_fuzzer",
       ":target_defaults",
     ]
-    configs -= [ "//common-mk:no_exceptions" ]
     sources = [
       "cellular/verizon_subscription_state_fuzzer.cc",
     ]
@@ -665,7 +652,6 @@ if (use.fuzzer) {
       ":target_defaults",
       ":shill_config",
     ]
-    configs -= [ "//common-mk:no_exceptions" ]
     sources = [
       "wifi/wifi_ies_fuzzer.cc",
     ]
@@ -695,7 +681,6 @@ if (use.test) {
       ":shill_unittest_config",
       ":target_defaults",
     ]
-    configs -= [ "//common-mk:no_exceptions" ]
     sources = [
       "active_link_monitor_test.cc",
       "certificate_file_test.cc",
@@ -956,7 +941,6 @@ if (use.test) {
       ":openvpn-script_config",
       ":target_defaults",
     ]
-    configs -= [ "//common-mk:no_exceptions" ]
     sources = [
       "setup_wifi/main.cc",
     ]
