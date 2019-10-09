@@ -163,7 +163,7 @@ bool DesktopFile::LoadFromFile(const base::FilePath& file_path) {
       std::pair<std::string, std::string> key_value =
           ExtractKeyValuePair(curr_line);
       if (key_value.second.empty()) {
-        // Invalid key/value pair since there was no delimiter, skip ths line.
+        // Invalid key/value pair since there was no delimiter, skip this line.
         continue;
       }
       // Check for matching names against all the keys. For the ones that can

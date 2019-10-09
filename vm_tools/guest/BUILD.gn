@@ -26,6 +26,9 @@ group("guest") {
       ":notificationd_test",
     ]
   }
+  if (use.fuzzer) {
+    deps += [ ":garcon_desktop_file_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -298,6 +301,22 @@ if (use.test) {
       ":libnotificationd",
       ":notification-protocol",
       "../../common-mk/testrunner:testrunner",
+    ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("garcon_desktop_file_fuzzer") {
+    sources = [
+      "../garcon/desktop_file_fuzzer.cc",
+    ]
+
+    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
+
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+
+    deps = [
+      "//vm_tools/guest:libgarcon",
     ]
   }
 }
