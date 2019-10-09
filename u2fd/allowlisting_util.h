@@ -6,6 +6,7 @@
 #define U2FD_ALLOWLISTING_UTIL_H_
 
 #include <functional>
+#include <string>
 #include <vector>
 
 #include <attestation/proto_bindings/interface.pb.h>
@@ -29,6 +30,16 @@ class AllowlistingUtil {
   virtual bool AppendDataToCert(std::vector<uint8_t>* cert);
 
  private:
+  // Retrieves the 'certified' attestation data from attestationd, and writes
+  // the relevant allowlisting data to |cert_prefix| and |signature|. Returns
+  // true on success.
+  bool GetCertifiedAttestationCert(int orig_cert_size,
+                                   std::vector<uint8_t>* cert_prefix,
+                                   std::vector<uint8_t>* signature);
+
+  // Returns the device 'Directory API ID', or nullopt on failure.
+  base::Optional<std::string> GetDeviceId();
+
   std::function<base::Optional<attestation::GetCertifiedNvIndexReply>(int)>
       get_certified_g2f_cert_;
 };
