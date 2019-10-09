@@ -1,5 +1,5 @@
-#!/usr/bin/python
-
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2014 The Android Open Source Project
 #
@@ -20,7 +20,7 @@
 
 from __future__ import print_function
 
-import StringIO
+import io
 import unittest
 
 import generator
@@ -34,7 +34,7 @@ class TestGenerators(unittest.TestCase):
     typedef = generator.Typedef('int', 'INT')
     defined_types = set(['int'])
     typemap = {}
-    out_file = StringIO.StringIO()
+    out_file = io.StringIO()
     # Expect this to just write the typedef.
     typedef.OutputForward(out_file, defined_types, typemap)
     # Expect this to know it has already been written.
@@ -44,11 +44,11 @@ class TestGenerators(unittest.TestCase):
     typedef2 = generator.Typedef('TYPE1', 'TYPE2')
     typemap = {'TYPE1': generator.Structure('TYPE1', False)}
     defined_types = set([])
-    out_file2 = StringIO.StringIO()
+    out_file2 = io.StringIO()
     # Expect this to write first TYPE1 forward then TYPE2 typedef.
     typedef2.Output(out_file2, defined_types, typemap)
     output_re = r'struct TYPE1;\s+typedef TYPE1 TYPE2;\s+'
-    self.assertRegexpMatches(out_file2.getvalue(), output_re)
+    self.assertRegex(out_file2.getvalue(), output_re)
     self.assertIn('TYPE2', defined_types)
     out_file.close()
     out_file2.close()
@@ -59,7 +59,7 @@ class TestGenerators(unittest.TestCase):
     typedef = generator.Typedef('int', 'INT')
     typedef2 = generator.Typedef('INT', 'INT2')
     typemap = {'INT': typedef}
-    out_file = StringIO.StringIO()
+    out_file = io.StringIO()
     typedef2.OutputSerialize(out_file, serialized_types, typemap)
     self.assertIn('INT', serialized_types)
     self.assertIn('INT2', serialized_types)
@@ -70,10 +70,10 @@ class TestGenerators(unittest.TestCase):
     constant = generator.Constant('INT', 'test', '1')
     typemap = {'INT': generator.Structure('INT', False)}
     defined_types = set([])
-    out_file = StringIO.StringIO()
+    out_file = io.StringIO()
     constant.Output(out_file, defined_types, typemap)
     output_re = r'struct INT;\s+constexpr INT test = 1;\s+'
-    self.assertRegexpMatches(out_file.getvalue(), output_re)
+    self.assertRegex(out_file.getvalue(), output_re)
     out_file.close()
 
   def testStructure(self):
@@ -85,7 +85,7 @@ class TestGenerators(unittest.TestCase):
     union.AddField('STRUCT', 'inner')
     depend = generator.Structure('DEPEND', False)
     defined_types = set(['int'])
-    out_file = StringIO.StringIO()
+    out_file = io.StringIO()
     typemap = {'STRUCT': struct, 'DEPEND': depend}
     # Only output |union|, this will test the dependency logic.
     union.OutputForward(out_file, defined_types, typemap)
@@ -94,7 +94,7 @@ class TestGenerators(unittest.TestCase):
     output_re = r'union UNION;\s+struct DEPEND {\s+};\s+'
     output_re += r'struct STRUCT {\s+int i;\s+};\s+'
     output_re += r'union UNION {\s+STRUCT inner;\s+};\s+'
-    self.assertRegexpMatches(out_file.getvalue(), output_re)
+    self.assertRegex(out_file.getvalue(), output_re)
     for t in ('STRUCT', 'DEPEND', 'UNION'):
       self.assertIn(t, defined_types)
     # Test serialize / parse code generation.
@@ -113,7 +113,7 @@ class TestGenerators(unittest.TestCase):
     union = generator.Structure('TPMU_SYM_MODE', True)
     union.fields = [('FOO', 'aes'), ('BAR', 'sm4')]
     typemap = {'TPMU_SYM_MODE': union}
-    out_file = StringIO.StringIO()
+    out_file = io.StringIO()
     struct.OutputSerialize(out_file, serialized_types, typemap)
     self.assertIn('TPMU_SYM_MODE', serialized_types)
     self.assertIn('TEST_STRUCT', serialized_types)
@@ -122,10 +122,10 @@ class TestGenerators(unittest.TestCase):
   def testDefine(self):
     """Test generation of preprocessor defines."""
     define = generator.Define('name', 'value')
-    out_file = StringIO.StringIO()
+    out_file = io.StringIO()
     define.Output(out_file)
     output_re = r'#if !defined\(name\)\s+#define name value\s+#endif\s+'
-    self.assertRegexpMatches(out_file.getvalue(), output_re)
+    self.assertRegex(out_file.getvalue(), output_re)
     out_file.close()
 
   def _MakeArg(self, arg_type, arg_name):
@@ -139,7 +139,7 @@ class TestGenerators(unittest.TestCase):
     command = generator.Command('TPM2_Test')
     command.request_args = [self._MakeArg('int', 'input')]
     command.response_args = [self._MakeArg('char', 'output')]
-    out_file = StringIO.StringIO()
+    out_file = io.StringIO()
     command.OutputDeclarations(out_file)
     expected_callback = """typedef base::Callback<void(
       TPM_RC response_code,
@@ -188,7 +188,7 @@ class TestParsers(unittest.TestCase):
   def testStructureParserWithBadData(self):
     """Test the structure parser with invalid data."""
     input_data = 'bad_data'
-    in_file = StringIO.StringIO(input_data)
+    in_file = io.StringIO(input_data)
     parser = generator.StructureParser(in_file)
     types, constants, structs, defines, typemap = parser.Parse()
     self.assertIsNotNone(types)
@@ -201,7 +201,7 @@ class TestParsers(unittest.TestCase):
     """Test the structure parser with valid data."""
     input_data = (self.FAKE_TYPEDEF + self.FAKE_CONSTANT + self.FAKE_STRUCTURE +
                   self.FAKE_DEFINE)
-    in_file = StringIO.StringIO(input_data)
+    in_file = io.StringIO(input_data)
     parser = generator.StructureParser(in_file)
     types, constants, structs, defines, typemap = parser.Parse()
     # Be flexible on these counts because the parser may add special cases.
@@ -230,7 +230,7 @@ class TestParsers(unittest.TestCase):
   def testCommandParserWithBadData(self):
     """Test the command parser with invalid data."""
     input_data = 'bad_data'
-    in_file = StringIO.StringIO(input_data)
+    in_file = io.StringIO(input_data)
     parser = generator.CommandParser(in_file)
     commands = parser.Parse()
     self.assertIsNotNone(commands)
@@ -238,7 +238,7 @@ class TestParsers(unittest.TestCase):
   def testCommandParser(self):
     """Test the command parser with valid data."""
     input_data = self.FAKE_COMMAND
-    in_file = StringIO.StringIO(input_data)
+    in_file = io.StringIO(input_data)
     parser = generator.CommandParser(in_file)
     commands = parser.Parse()
     self.assertEqual(len(commands), 1)

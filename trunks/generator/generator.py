@@ -1,5 +1,5 @@
-#!/usr/bin/python2
-
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2014 The Android Open Source Project
 #
@@ -791,7 +791,8 @@ std::string StringFrom_%(type)s(
         if self._ARRAY_FIELD_RE.search(field[1]):
           self._OutputArrayField(out_file, field, self._PARSE_FIELD_ARRAY)
         elif self._UNION_TYPE_RE.search(field[0]):
-          self._OutputUnionField(out_file, field, self._PARSE_FIELD_WITH_SELECTOR)
+          self._OutputUnionField(out_file, field,
+                                 self._PARSE_FIELD_WITH_SELECTOR)
         else:
           out_file.write(self._PARSE_FIELD % {'type': field[0],
                                               'name': field[1]})
@@ -965,9 +966,9 @@ class StructureParser(object):
   The parser also creates 'typemap' dict which maps every type to its generator
   object.  This typemap helps manage type dependencies.
 
-  Example usage:
-  parser = StructureParser(open('myfile'))
-  types, constants, structs, defines, typemap = parser.Parse()
+  Examples:
+    parser = StructureParser(open('myfile'))
+    types, constants, structs, defines, typemap = parser.Parse()
   """
 
   # Compile regular expressions.
@@ -1002,10 +1003,7 @@ class StructureParser(object):
     Returns:
       The next input line if another line is available, None otherwise.
     """
-    try:
-      self._line = self._in_file.next()
-    except StopIteration:
-      self._line = None
+    self._line = next(self._in_file, None)
 
   def Parse(self):
     """Parse everything in a structures file.
@@ -1892,10 +1890,7 @@ class CommandParser(object):
     Returns:
       The next input line if another line is available, None otherwise.
     """
-    try:
-      self._line = self._in_file.next()
-    except StopIteration:
-      self._line = None
+    self._line = next(self._in_file, None)
 
   def Parse(self):
     """Parses everything in a commands file.
@@ -2104,7 +2099,7 @@ def GenerateImplementation(types, structs, typemap, commands):
 
 
 def FormatFile(filename):
-    subprocess.call(['clang-format', '-i', '-style=file', filename])
+  subprocess.call(['clang-format', '-i', '-style=file', filename])
 
 
 def main():
