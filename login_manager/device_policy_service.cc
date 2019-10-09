@@ -504,23 +504,28 @@ void DevicePolicyService::PersistPolicy(const PolicyNamespace& ns,
   }
 }
 
-bool DevicePolicyService::InstallAttributesEnterpriseMode() {
+InstallAttributesFileData
+DevicePolicyService::InstallAttributesEnterpriseMode() {
   std::string contents;
-  base::ReadFileToString(install_attributes_file_, &contents);
+  if (!base::ReadFileToString(install_attributes_file_, &contents)) {
+    LOG(ERROR) << "Failed to read install attributes file";
+    return InstallAttributesFileData::FAILED_TO_READ;
+  }
   cryptohome::SerializedInstallAttributes install_attributes;
-  if (install_attributes.ParseFromString(contents)) {
-    for (int i = 0; i < install_attributes.attributes_size(); ++i) {
-      const cryptohome::SerializedInstallAttributes_Attribute& attribute =
-          install_attributes.attributes(i);
-      // Cast value to C string and back to remove trailing zero.
-      if (attribute.name() == kAttrEnterpriseMode &&
-          std::string(attribute.value().c_str()) == kEnterpriseDeviceMode) {
-        return true;
-      }
+  if (!install_attributes.ParseFromString(contents)) {
+    LOG(ERROR) << "Failed to parse install attributes file";
+    return InstallAttributesFileData::FAILED_TO_PARSE;
+  }
+  for (int i = 0; i < install_attributes.attributes_size(); ++i) {
+    const cryptohome::SerializedInstallAttributes_Attribute& attribute =
+        install_attributes.attributes(i);
+    // Cast value to C string and back to remove trailing zero.
+    if (attribute.name() == kAttrEnterpriseMode &&
+        std::string(attribute.value().c_str()) == kEnterpriseDeviceMode) {
+      return InstallAttributesFileData::ENROLLED;
     }
   }
-
-  return false;
+  return InstallAttributesFileData::CONSUMER_OWNED;
 }
 
 bool DevicePolicyService::MayUpdateSystemSettings() {
@@ -584,7 +589,25 @@ bool DevicePolicyService::UpdateSystemSettings(const Completion& completion) {
   // Check if device is enrolled. The flag for enrolled device is written to VPD
   // but will never get deleted. Existence of the flag is one of the triggers
   // for FRE check during OOBE.
-  int is_enrolled = InstallAttributesEnterpriseMode();
+  InstallAttributesFileData file_data = InstallAttributesEnterpriseMode();
+  if (file_data != InstallAttributesFileData::ENROLLED &&
+      file_data != InstallAttributesFileData::CONSUMER_OWNED) {
+    // Probably the first sign in, install attributes file is not created yet.
+    return true;
+  }
+  bool is_enrolled = (file_data == InstallAttributesFileData::ENROLLED);
+
+  // It's impossible for block_devmode to be true and the device to not be
+  // enrolled. If we end up in this situation, log the error and don't update
+  // anything in VPD. The exception is if the device is in devmode.
+  if (block_devmode_setting && !is_enrolled &&
+      crossystem_->VbGetSystemPropertyInt(Crossystem::kDeviceInDevmode) != 1) {
+    LOG(ERROR) << "Can't store contradictory values in VPD";
+    // Return true to be on the safe side here since not allowing to continue
+    // would make the device unusable.
+    return true;
+  }
+
   updates.push_back(std::make_pair(Crossystem::kCheckEnrollment,
                                    std::to_string(is_enrolled)));
 
@@ -596,6 +619,7 @@ bool DevicePolicyService::UpdateSystemSettings(const Completion& completion) {
 
 void DevicePolicyService::ClearForcedReEnrollmentFlags(
     const Completion& completion) {
+  LOG(WARNING) << "Clear enrollment requested";
   // The block_devmode system property needs to be set to 0 as well to unblock
   // dev mode. It is stored independently from VPD and firmware management
   // parameters.
