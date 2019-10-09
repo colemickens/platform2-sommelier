@@ -11,12 +11,13 @@
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/run_loop.h>
-#include <base/threading/simple_thread.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/common/bind_utils.h"
 #include "diagnostics/dpsl/internal/dpsl_global_context_impl.h"
 #include "diagnostics/dpsl/internal/dpsl_thread_context_impl.h"
+#include "diagnostics/dpsl/internal/test_dpsl_background_thread.h"
 #include "diagnostics/dpsl/public/dpsl_global_context.h"
 #include "diagnostics/dpsl/public/dpsl_thread_context.h"
 
@@ -193,44 +194,6 @@ TEST_F(DpslThreadContextImplDeathTest, RunLoopTwice) {
                "Called from already running message loop");
 }
 
-namespace {
-
-class BackgroundThread : public base::SimpleThread {
- public:
-  BackgroundThread(const std::string& name,
-                   const base::Closure& on_thread_context_ready,
-                   DpslGlobalContext* global_context)
-      : base::SimpleThread(name),
-        on_thread_context_ready_(on_thread_context_ready),
-        global_context_(global_context) {
-    DCHECK(global_context);
-    DCHECK(!on_thread_context_ready.is_null());
-  }
-
-  void Run() override {
-    thread_context_ = DpslThreadContext::Create(global_context_);
-    ASSERT_TRUE(thread_context_);
-    on_thread_context_ready_.Run();
-
-    thread_context_->RunEventLoop();
-
-    thread_context_.reset();
-  }
-
-  DpslThreadContext* thread_context() { return thread_context_.get(); }
-
- private:
-  base::Closure on_thread_context_ready_;
-
-  DpslGlobalContext* const global_context_;
-
-  std::unique_ptr<DpslThreadContext> thread_context_;
-
-  DISALLOW_COPY_AND_ASSIGN(BackgroundThread);
-};
-
-}  // namespace
-
 class DpslThreadContextImplMultiThreadTest
     : public DpslThreadContextImplMainThreadTest {
  public:
@@ -239,41 +202,14 @@ class DpslThreadContextImplMultiThreadTest
     ::testing::FLAGS_gtest_death_test_style = "threadsafe";
   }
 
-  ~DpslThreadContextImplMultiThreadTest() override {
-    background_thread_->Join();
-  }
+  ~DpslThreadContextImplMultiThreadTest() override = default;
 
   void SetUp() override {
     DpslThreadContextImplMainThreadTest::SetUp();
-    SetUpBackgroundThread();
-  }
 
-  void SetUpBackgroundThread() {
-    base::RunLoop run_loop;
-
-    base::Closure on_thread_context_ready = base::Bind(
-        [](const base::Closure& main_thread_callback,
-           DpslThreadContext* main_thread_context) {
-          ASSERT_TRUE(main_thread_context);
-          main_thread_context->PostTask(std::function<void()>(
-              [main_thread_callback]() { main_thread_callback.Run(); }));
-        },
-        run_loop.QuitClosure(), main_thread_context_.get());
-    background_thread_ = std::make_unique<BackgroundThread>(
-        "background", on_thread_context_ready, global_context_.get());
-    background_thread_->Start();
-
-    run_loop.Run();
-
-    ASSERT_TRUE(background_thread_context());
-  }
-
-  base::Closure CreateBackgroundEventLoopQuitClosure() const {
-    return base::Bind(
-        [](DpslThreadContext* background_thread_context) {
-          background_thread_context->QuitEventLoop();
-        },
-        background_thread_context());
+    background_thread_ = std::make_unique<TestDpslBackgroundThread>(
+        "background" /* name */, global_context_.get(),
+        main_thread_context_.get());
   }
 
   DpslThreadContext* background_thread_context() const {
@@ -283,89 +219,95 @@ class DpslThreadContextImplMultiThreadTest
     return thread_context;
   }
 
-  std::function<void()> CreateFunctionForSyncRunInBackground(
-      const base::Closure& main_thread_callback,
-      const base::Closure& background_callback) {
-    return [background_callback, main_thread_callback,
-            main_thread_context = main_thread_context_.get()]() {
-      if (!background_callback.is_null()) {
-        background_callback.Run();
-      }
-      ASSERT_TRUE(main_thread_context);
-      main_thread_context->PostTask(std::function<void()>(
-          [main_thread_callback]() { main_thread_callback.Run(); }));
-    };
+  std::function<void()> CreateAddToQueueTaskForBackground(
+      int task_id, const base::Closure& main_thread_callback) {
+    base::Closure main_thread_add_to_queue_task = base::Bind(
+        [](const base::Closure& task,
+           const base::Closure& main_thread_callback) {
+          task.Run();
+          main_thread_callback.Run();
+        },
+        base::Bind(&DpslThreadContextImplMultiThreadTest::AddToQueueTask,
+                   base::Unretained(this), task_id),
+        main_thread_callback);
+
+    return background_thread_->WrapTaskToReplyOnMainThread(
+        base::Closure(), main_thread_context_.get(),
+        main_thread_add_to_queue_task);
   }
 
  protected:
-  std::unique_ptr<BackgroundThread> background_thread_;
+  std::unique_ptr<TestDpslBackgroundThread> background_thread_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DpslThreadContextImplMultiThreadTest);
 };
 
 TEST_F(DpslThreadContextImplMultiThreadTest, PostTask) {
-  base::RunLoop run_loop;
-  background_thread_context()->PostTask(CreateFunctionForSyncRunInBackground(
-      run_loop.QuitClosure(), CreateBackgroundEventLoopQuitClosure()));
-  run_loop.Run();
+  base::Closure quit_closure =
+      BarrierClosure(3, base::Bind(
+                            [](DpslThreadContext* main_thread_context) {
+                              main_thread_context->QuitEventLoop();
+                            },
+                            main_thread_context_.get()));
+
+  background_thread_context()->PostTask(
+      CreateAddToQueueTaskForBackground(1, quit_closure));
+  background_thread_context()->PostTask(
+      CreateAddToQueueTaskForBackground(2, quit_closure));
+  background_thread_context()->PostTask(
+      CreateAddToQueueTaskForBackground(3, quit_closure));
+
+  background_thread_->StartEventLoop();
+  main_thread_context_->RunEventLoop();
+
+  EXPECT_THAT(task_id_queue_, testing::ElementsAreArray({1, 2, 3}));
 }
 
 TEST_F(DpslThreadContextImplMultiThreadTest, PostDelayedTask) {
-  base::RunLoop run_loop;
+  base::Closure quit_closure =
+      BarrierClosure(3, base::Bind(
+                            [](DpslThreadContext* main_thread_context) {
+                              main_thread_context->QuitEventLoop();
+                            },
+                            main_thread_context_.get()));
+
   background_thread_context()->PostDelayedTask(
-      CreateFunctionForSyncRunInBackground(
-          run_loop.QuitClosure(), CreateBackgroundEventLoopQuitClosure()),
-      100);
-  run_loop.Run();
+      CreateAddToQueueTaskForBackground(3, quit_closure), 200);
+  background_thread_context()->PostDelayedTask(
+      CreateAddToQueueTaskForBackground(2, quit_closure), 100);
+  background_thread_context()->PostDelayedTask(
+      CreateAddToQueueTaskForBackground(1, quit_closure), 0);
+
+  background_thread_->StartEventLoop();
+  main_thread_context_->RunEventLoop();
+
+  EXPECT_THAT(task_id_queue_, testing::ElementsAreArray({1, 2, 3}));
 }
 
-class DpslThreadContextImplBackgroundEventLoopAutoStopTest
-    : public DpslThreadContextImplMultiThreadTest {
- public:
-  DpslThreadContextImplBackgroundEventLoopAutoStopTest() = default;
-
-  void TearDown() override {
-    DpslThreadContextImplMultiThreadTest::TearDown();
-    base::RunLoop run_loop;
-    background_thread_context()->PostTask(CreateFunctionForSyncRunInBackground(
-        run_loop.QuitClosure(), CreateBackgroundEventLoopQuitClosure()));
-    run_loop.Run();
-  }
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(
-      DpslThreadContextImplBackgroundEventLoopAutoStopTest);
-};
-
-TEST_F(DpslThreadContextImplBackgroundEventLoopAutoStopTest,
-       BelongsToCurrentThread) {
+TEST_F(DpslThreadContextImplMultiThreadTest, BelongsToCurrentThread) {
   EXPECT_FALSE(background_thread_context()->BelongsToCurrentThread());
 }
 
-using DpslThreadContextImplBackgroundEventLoopAutoStopDeathTest =
-    DpslThreadContextImplBackgroundEventLoopAutoStopTest;
+using DpslThreadContextImplMultiThreadDeathTest =
+    DpslThreadContextImplMultiThreadTest;
 
-TEST_F(DpslThreadContextImplBackgroundEventLoopAutoStopDeathTest,
-       RunEventLoopCrash) {
+TEST_F(DpslThreadContextImplMultiThreadDeathTest, RunEventLoopCrash) {
   ASSERT_DEATH(background_thread_context()->RunEventLoop(),
                "Called from wrong thread");
 }
 
-TEST_F(DpslThreadContextImplBackgroundEventLoopAutoStopDeathTest,
-       IsEventLoopRunningCrash) {
+TEST_F(DpslThreadContextImplMultiThreadDeathTest, IsEventLoopRunningCrash) {
   ASSERT_DEATH(background_thread_context()->IsEventLoopRunning(),
                "Called from wrong thread");
 }
 
-TEST_F(DpslThreadContextImplBackgroundEventLoopAutoStopDeathTest,
-       QuitEventLoopCrash) {
+TEST_F(DpslThreadContextImplMultiThreadDeathTest, QuitEventLoopCrash) {
   ASSERT_DEATH(background_thread_context()->QuitEventLoop(),
                "Called from wrong thread");
 }
 
-TEST_F(DpslThreadContextImplBackgroundEventLoopAutoStopDeathTest,
-       DestructorCrash) {
+TEST_F(DpslThreadContextImplMultiThreadDeathTest, DestructorCrash) {
   ASSERT_DEATH(delete background_thread_context(), "Called from wrong thread");
 }
 
