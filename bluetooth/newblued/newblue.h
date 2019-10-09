@@ -147,9 +147,11 @@ class PairingAgent {
  public:
   virtual void DisplayPasskey(const std::string& device_address,
                               uint32_t passkey) = 0;
+  // Get the user's authorization to continue the pairing process.
+  virtual void RequestAuthorization(const std::string& device_address) = 0;
   // TODO(sonnysasaka): Add other methods:
   // RequestPinCode, DisplayPinCode, RequestPasskey, RequestConfirmation,
-  // RequestAuthorization, AuthorizeService.
+  // AuthorizeService.
 };
 
 // Structure representing a known device.

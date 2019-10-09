@@ -42,6 +42,9 @@ class TestPairingAgent : public PairingAgent {
                       uint32_t passkey) override {
     displayed_passkeys.push_back({device_address, passkey});
   }
+
+  void RequestAuthorization(const std::string& device_address) override {}
+
   std::vector<std::pair<std::string, uint32_t>> displayed_passkeys;
 };
 

@@ -36,6 +36,8 @@ class AgentManagerInterfaceHandler : public PairingAgent {
   void DisplayPasskey(const std::string& device_address,
                       uint32_t passkey) override;
 
+  void RequestAuthorization(const std::string& device_address) override;
+
  private:
   scoped_refptr<dbus::Bus> bus_;
 
@@ -47,6 +49,10 @@ class AgentManagerInterfaceHandler : public PairingAgent {
   ExportedObjectManagerWrapper* exported_object_manager_wrapper_;
 
   void OnDisplayPasskeySent(dbus::Response* response);
+
+  void OnRequestAuthorizationResponse(dbus::Response* response);
+
+  void OnRequestAuthorizationError(dbus::ErrorResponse* response);
 
   // D-Bus method handlers for agent manager.
   // Right now we only support 1 agent path per client, since that's how Chrome

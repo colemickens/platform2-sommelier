@@ -111,6 +111,45 @@ class AgentManagerInterfaceHandlerTest : public ::testing::Test {
     return exported_agent_manager_object;
   }
 
+  void RegisterAgent(
+      dbus::ExportedObject::MethodCallCallback register_agent_method_handler) {
+    dbus::MethodCall register_agent_method_call(
+        bluetooth_agent_manager::kBluetoothAgentManagerInterface,
+        bluetooth_agent_manager::kRegisterAgent);
+    register_agent_method_call.SetPath(dbus::ObjectPath(
+        bluetooth_agent_manager::kBluetoothAgentManagerServicePath));
+    register_agent_method_call.SetSender(kTestSender);
+    register_agent_method_call.SetSerial(kTestSerial);
+    dbus::MessageWriter register_agent_writer(&register_agent_method_call);
+    register_agent_writer.AppendObjectPath(dbus::ObjectPath(kTestAgentPath));
+    register_agent_writer.AppendString(kTestCapability);
+    std::unique_ptr<dbus::Response> register_agent_response;
+    register_agent_method_handler.Run(
+        &register_agent_method_call,
+        base::Bind(&SaveResponse, &register_agent_response));
+    EXPECT_EQ("", register_agent_response->GetErrorName());
+  }
+
+  void SetDefaultAgent(dbus::ExportedObject::MethodCallCallback
+                           request_default_agent_method_handler) {
+    dbus::MethodCall request_default_agent_method_call(
+        bluetooth_agent_manager::kBluetoothAgentManagerInterface,
+        bluetooth_agent_manager::kRequestDefaultAgent);
+    request_default_agent_method_call.SetPath(dbus::ObjectPath(
+        bluetooth_agent_manager::kBluetoothAgentManagerServicePath));
+    request_default_agent_method_call.SetSender(kTestSender);
+    request_default_agent_method_call.SetSerial(kTestSerial);
+    dbus::MessageWriter request_default_agent_writer(
+        &request_default_agent_method_call);
+    request_default_agent_writer.AppendObjectPath(
+        dbus::ObjectPath(kTestAgentPath));
+    std::unique_ptr<dbus::Response> request_default_agent_response;
+    request_default_agent_method_handler.Run(
+        &request_default_agent_method_call,
+        base::Bind(&SaveResponse, &request_default_agent_response));
+    EXPECT_EQ("", request_default_agent_response->GetErrorName());
+  }
+
   scoped_refptr<dbus::MockBus> bus_;
 
   // A raw pointer of this is kept by exported_object_manager_wrapper_, so
@@ -142,47 +181,14 @@ TEST_F(AgentManagerInterfaceHandlerTest, DisplayPasskey) {
   EXPECT_CALL(*agent_object_proxy, CallMethod(_, _, _)).Times(0);
   agent_manager_interface_handler_->DisplayPasskey(kTestDeviceAddress,
                                                    kTestPasskey);
-
-  // Test org.bluez.AgentManager1.RegisterAgent.
-  dbus::MethodCall register_agent_method_call(
-      bluetooth_agent_manager::kBluetoothAgentManagerInterface,
-      bluetooth_agent_manager::kRegisterAgent);
-  register_agent_method_call.SetPath(dbus::ObjectPath(
-      bluetooth_agent_manager::kBluetoothAgentManagerServicePath));
-  register_agent_method_call.SetSender(kTestSender);
-  register_agent_method_call.SetSerial(kTestSerial);
-  dbus::MessageWriter register_agent_writer(&register_agent_method_call);
-  register_agent_writer.AppendObjectPath(dbus::ObjectPath(kTestAgentPath));
-  register_agent_writer.AppendString(kTestCapability);
-  std::unique_ptr<dbus::Response> register_agent_response;
-  register_agent_method_handler.Run(
-      &register_agent_method_call,
-      base::Bind(&SaveResponse, &register_agent_response));
-  EXPECT_EQ("", register_agent_response->GetErrorName());
+  RegisterAgent(register_agent_method_handler);
 
   // A client has registered as an agent but has not requested to become the
   // default agent. So DisplayPasskey should still not call any agent.
   EXPECT_CALL(*agent_object_proxy, CallMethod(_, _, _)).Times(0);
   agent_manager_interface_handler_->DisplayPasskey(kTestDeviceAddress,
                                                    kTestPasskey);
-
-  // Test org.bluez.AgentManager1.RequestDefaultAgent.
-  dbus::MethodCall request_default_agent_method_call(
-      bluetooth_agent_manager::kBluetoothAgentManagerInterface,
-      bluetooth_agent_manager::kRequestDefaultAgent);
-  request_default_agent_method_call.SetPath(dbus::ObjectPath(
-      bluetooth_agent_manager::kBluetoothAgentManagerServicePath));
-  request_default_agent_method_call.SetSender(kTestSender);
-  request_default_agent_method_call.SetSerial(kTestSerial);
-  dbus::MessageWriter request_default_agent_writer(
-      &request_default_agent_method_call);
-  request_default_agent_writer.AppendObjectPath(
-      dbus::ObjectPath(kTestAgentPath));
-  std::unique_ptr<dbus::Response> request_default_agent_response;
-  request_default_agent_method_handler.Run(
-      &request_default_agent_method_call,
-      base::Bind(&SaveResponse, &request_default_agent_response));
-  EXPECT_EQ("", request_default_agent_response->GetErrorName());
+  SetDefaultAgent(request_default_agent_method_handler);
 
   // Now that a client has requested to become the default agent, check that
   // DisplayPasskey correctly handles this based on the current default agent.
@@ -219,6 +225,56 @@ TEST_F(AgentManagerInterfaceHandlerTest, DisplayPasskey) {
   EXPECT_CALL(*agent_object_proxy, CallMethod(_, _, _)).Times(0);
   agent_manager_interface_handler_->DisplayPasskey(kTestDeviceAddress,
                                                    kTestPasskey);
+}
+
+TEST_F(AgentManagerInterfaceHandlerTest, RequestAuthorization) {
+  dbus::ExportedObject::MethodCallCallback register_agent_method_handler;
+  dbus::ExportedObject::MethodCallCallback unregister_agent_method_handler;
+  dbus::ExportedObject::MethodCallCallback request_default_agent_method_handler;
+  ExpectAgentManagerMethodsExported(&register_agent_method_handler,
+                                    &unregister_agent_method_handler,
+                                    &request_default_agent_method_handler);
+  agent_manager_interface_handler_->Init();
+
+  scoped_refptr<dbus::MockObjectProxy> agent_object_proxy =
+      new dbus::MockObjectProxy(
+          bus_.get(), bluetooth_agent_manager::kBluetoothAgentManagerInterface,
+          dbus::ObjectPath(kTestAgentPath));
+
+  // Before any client registers as an agent, RequestAuthorization won't call
+  // any agent.
+  EXPECT_CALL(*agent_object_proxy, CallMethodWithErrorCallback(_, _, _, _))
+      .Times(0);
+  agent_manager_interface_handler_->RequestAuthorization(kTestDeviceAddress);
+
+  RegisterAgent(register_agent_method_handler);
+
+  // A client has registered as an agent but has not requested to become the
+  // default agent. So RequestAuthorization should still not call any agent.
+  EXPECT_CALL(*agent_object_proxy, CallMethodWithErrorCallback(_, _, _, _))
+      .Times(0);
+  agent_manager_interface_handler_->RequestAuthorization(kTestDeviceAddress);
+
+  SetDefaultAgent(request_default_agent_method_handler);
+
+  // Now that a client has requested to become the default agent, check that
+  // RequestAuthorization correctly handles this based on the current default
+  // agent.
+  dbus::ObjectProxy::ResponseCallback callback;
+  dbus::ObjectProxy::ErrorCallback error_callback;
+  EXPECT_CALL(*bus_,
+              GetObjectProxy(kTestSender, dbus::ObjectPath(kTestAgentPath)))
+      .WillOnce(Return(agent_object_proxy.get()));
+  dbus::MethodCall expected_method_call(
+      bluetooth_agent::kBluetoothAgentInterface,
+      bluetooth_agent::kRequestAuthorization);
+  EXPECT_CALL(
+      *agent_object_proxy,
+      CallMethodWithErrorCallback(MethodCallEq(&expected_method_call), _, _, _))
+      .Times(1)
+      .WillOnce(DoAll(SaveArg<2>(&callback), SaveArg<3>(&error_callback)));
+  // TODO(yudiliu): verify the two callbacks once they are implemented.
+  agent_manager_interface_handler_->RequestAuthorization(kTestDeviceAddress);
 }
 
 }  // namespace bluetooth

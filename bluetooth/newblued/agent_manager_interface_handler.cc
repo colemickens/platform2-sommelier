@@ -83,6 +83,45 @@ void AgentManagerInterfaceHandler::OnDisplayPasskeySent(
   VLOG(1) << __func__;
 }
 
+void AgentManagerInterfaceHandler::RequestAuthorization(
+    const std::string& device_address) {
+  LOG(INFO) << "Request authorization on the device";
+
+  if (default_agent_client_.empty() ||
+      !base::ContainsKey(agent_object_paths_, default_agent_client_)) {
+    LOG(WARNING) << "No agent available to request authorization";
+    return;
+  }
+
+  dbus::MethodCall method_call(bluetooth_agent::kBluetoothAgentInterface,
+                               bluetooth_agent::kRequestAuthorization);
+
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendObjectPath(
+      dbus::ObjectPath(ConvertDeviceAddressToObjectPath(device_address)));
+
+  dbus::ObjectProxy* agent_object_proxy = bus_->GetObjectProxy(
+      default_agent_client_, agent_object_paths_[default_agent_client_]);
+  agent_object_proxy->CallMethodWithErrorCallback(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+      base::Bind(&AgentManagerInterfaceHandler::OnRequestAuthorizationResponse,
+                 weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&AgentManagerInterfaceHandler::OnRequestAuthorizationError,
+                 weak_ptr_factory_.GetWeakPtr()));
+}
+
+void AgentManagerInterfaceHandler::OnRequestAuthorizationResponse(
+    dbus::Response* response) {
+  VLOG(1) << __func__;
+  // TODO(yudiliu): feed the response back to libnewblue
+}
+
+void AgentManagerInterfaceHandler::OnRequestAuthorizationError(
+    dbus::ErrorResponse* response) {
+  VLOG(1) << __func__;
+  // TODO(yudiliu): feed the response back to libnewblue
+}
+
 bool AgentManagerInterfaceHandler::HandleRegisterAgent(
     brillo::ErrorPtr* error,
     dbus::Message* message,
