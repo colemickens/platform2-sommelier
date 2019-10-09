@@ -29,6 +29,7 @@ group("all") {
   }
   if (use.fuzzer) {
     deps += [
+      ":arp_client_fuzzer",
       ":cellular_pco_fuzzer",
       ":nl80211_message_fuzzer",
       ":rtnl_handler_fuzzer",
@@ -589,6 +590,21 @@ if (use.cellular || use.vpn || use.pppoe) {
 if (use.fuzzer) {
   pkg_config("fuzzed_data_config") {
     pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+  executable("arp_client_fuzzer") {
+    configs += [
+      "//common-mk:test",
+      "//common-mk/common_fuzzer",
+      ":fuzzed_data_config",
+      ":target_defaults",
+    ]
+    configs -= [ "//common-mk:no_exceptions" ]
+    sources = [
+      "net/arp_client_fuzzer.cc",
+    ]
+    deps = [
+      ":libshill",
+    ]
   }
   executable("cellular_pco_fuzzer") {
     configs += [

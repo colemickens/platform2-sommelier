@@ -52,6 +52,7 @@ class SHILL_EXPORT ArpClient {
   bool IsStarted() { return socket_closer_.get(); }
 
  private:
+  friend class ArpClientFuzz;
   friend class ArpClientTest;
 
   // Offset of the ARP OpCode within a captured ARP packet.
