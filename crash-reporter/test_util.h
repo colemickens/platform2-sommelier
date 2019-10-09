@@ -10,11 +10,29 @@
 
 #include <base/files/file_path.h>
 #include <base/strings/string_piece.h>
+#include <base/time/clock.h>
 #include <base/time/time.h>
 
 #include <session_manager/dbus-proxy-mocks.h>
 
 namespace test_util {
+
+// A Clock that advances 10 seconds on each call, used in tests and fuzzers.
+// Unlike a MockClock, it will not fail the test regardless of how many times it
+// is or isn't called, and it always eventually reaches the desired time. In
+// particular, having an advancing clock in the crash sender code is useful
+// because if AcquireLockFileOrDie can't get the lock, the test will eventually
+// fail instead of going into an infinite loop.
+class AdvancingClock : public base::Clock {
+ public:
+  // Start clock at GetDefaultTime()
+  AdvancingClock();
+
+  base::Time Now() override;
+
+ private:
+  base::Time time_;
+};
 
 // Get an assumed "now" for things that mocks out the current time. Always
 // returns 2018-04-20 13:53.

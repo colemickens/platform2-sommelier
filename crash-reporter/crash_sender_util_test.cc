@@ -69,23 +69,6 @@ class MockClock : public base::Clock {
   MOCK_METHOD(base::Time, Now, (), (override));
 };
 
-// A Clock that advances 10 seconds on each call. It will not fail the test
-// regardless of how many times it is or isn't called. Having an advancing clock
-// is useful because if AcquireLockFileOrDie can't get the lock, the unit
-// test will eventually fail instead of going into an infinite loop.
-class AdvancingClock : public base::Clock {
- public:
-  AdvancingClock() : time_(test_util::GetDefaultTime()) {}
-
-  base::Time Now() override {
-    time_ += base::TimeDelta::FromSeconds(10);
-    return time_;
-  }
-
- private:
-  base::Time time_;
-};
-
 // Parses the Chrome uploads.log file from Sender to a vector of items per line.
 // Example:
 //
@@ -691,8 +674,8 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
   MetricsLibraryMock* raw_metrics_lib = metrics_lib_.get();
 
   Sender::Options options;
-  Sender sender(std::move(metrics_lib_), std::make_unique<AdvancingClock>(),
-                options);
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
   ASSERT_TRUE(sender.Init());
 
   std::string reason;
@@ -772,8 +755,8 @@ TEST_F(CrashSenderUtilTest, ChooseActionDevMode) {
 
   Sender::Options options;
   options.allow_dev_sending = true;
-  Sender sender(std::move(metrics_lib_), std::make_unique<AdvancingClock>(),
-                options);
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
   ASSERT_TRUE(sender.Init());
 
   std::string reason;
@@ -792,8 +775,8 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
 
   Sender::Options options;
   options.session_manager_proxy = mock.release();
-  Sender sender(std::move(metrics_lib_), std::make_unique<AdvancingClock>(),
-                options);
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
   ASSERT_TRUE(sender.Init());
 
   ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled,
@@ -1196,8 +1179,8 @@ TEST_F(CrashSenderUtilTest, GetUserCrashDirectories) {
                                {{"user1", "hash1"}, {"user2", "hash2"}});
   Sender::Options options;
   options.session_manager_proxy = mock.release();
-  Sender sender(std::move(metrics_lib_), std::make_unique<AdvancingClock>(),
-                options);
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
   ASSERT_TRUE(sender.Init());
 
   EXPECT_THAT(sender.GetUserCrashDirectories(),
@@ -1269,7 +1252,8 @@ void CreateCrashFormDataTest::TestCreateCrashFormData(bool absolute_paths) {
   Sender::Options options;
   options.form_data_boundary = "boundary";
 
-  Sender sender(nullptr, std::make_unique<AdvancingClock>(), options);
+  Sender sender(nullptr, std::make_unique<test_util::AdvancingClock>(),
+                options);
 
   std::unique_ptr<brillo::http::FormData> form_data =
       sender.CreateCrashFormData(details, nullptr);
@@ -1448,8 +1432,8 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   options.max_crash_bytes = 0;
   options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
   options.always_write_uploads_log = true;
-  Sender sender(std::move(metrics_lib_), std::make_unique<AdvancingClock>(),
-                options);
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
   ASSERT_TRUE(sender.Init());
 
   // Send crashes.
@@ -1539,8 +1523,8 @@ TEST_F(CrashSenderUtilTest, SendCrashes_Fail) {
   options.max_crash_rate = 2;
   options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
   options.always_write_uploads_log = true;
-  Sender sender(std::move(metrics_lib_), std::make_unique<AdvancingClock>(),
-                options);
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
   ASSERT_TRUE(sender.Init());
 
   sender.SendCrashes(crashes_to_send);
@@ -1644,8 +1628,8 @@ TEST_F(CrashSenderUtilDeathTest, LockFileDiesIfFileIsLocked) {
   std::vector<base::TimeDelta> sleep_times;
   Sender::Options options;
   options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
-  Sender sender(std::move(metrics_lib_), std::make_unique<AdvancingClock>(),
-                options);
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
   ASSERT_TRUE(sender.Init());
   EXPECT_EXIT(sender.AcquireLockFileOrDie(), ExitedWithCode(EXIT_FAILURE),
               "Failed to acquire a lock");
@@ -1682,8 +1666,8 @@ void IsNetworkOnlineTest::TestIsNetworkOnline(std::string connection_state,
 
   Sender::Options options;
   options.shill_proxy = mock.release();
-  Sender sender(std::move(metrics_lib_), std::make_unique<AdvancingClock>(),
-                options);
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
   ASSERT_TRUE(sender.Init());
   EXPECT_EQ(sender.IsNetworkOnline(), expected_result);
 }

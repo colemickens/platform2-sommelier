@@ -39,6 +39,9 @@
 
 namespace util {
 
+bool g_force_is_mock = false;
+bool g_force_is_mock_successful = false;
+
 namespace {
 
 // URL to send official build crash reports to.
@@ -143,11 +146,17 @@ void RecordCrashDone() {
 }
 
 bool IsMock() {
+  if (g_force_is_mock) {
+    return true;
+  }
   return base::PathExists(
       paths::GetAt(paths::kSystemRunStateDirectory, paths::kMockCrashSending));
 }
 
 bool IsMockSuccessful() {
+  if (g_force_is_mock_successful) {
+    return true;
+  }
   int64_t file_size;
   return base::GetFileSize(paths::GetAt(paths::kSystemRunStateDirectory,
                                         paths::kMockCrashSending),

@@ -22,6 +22,9 @@ group("all") {
       ":crash_reporter_test",
     ]
   }
+  if (use.fuzzer) {
+    deps += [ ":crash_sender_fuzzer" ]
+  }
 }
 
 pkg_config("libcrash_config") {
@@ -193,7 +196,7 @@ if (use.cheets) {
   }
 }
 
-if (use.test) {
+if (use.test || use.fuzzer) {
   pkg_config("crash_reporter_test_config") {
     pkg_deps = [
       "libchrome-test-${libbase_ver}",
@@ -204,6 +207,19 @@ if (use.test) {
     ]
   }
 
+  static_library("libcrash_test_util") {
+    all_dependent_configs = [ ":crash_reporter_test_config" ]
+    configs += [
+      "//common-mk:test",
+      ":libcrash_reporter_config",
+    ]
+    sources = [
+      "test_util.cc",
+    ]
+  }
+}
+
+if (use.test) {
   pkg_config("test_helper_config") {
     pkg_deps = [
       "libbrillo-${libbase_ver}",
@@ -255,7 +271,6 @@ if (use.test) {
       "paths_test.cc",
       "selinux_violation_collector_test.cc",
       "service_failure_collector_test.cc",
-      "test_util.cc",
       "testrunner.cc",
       "udev_collector_test.cc",
       "unclean_shutdown_collector_test.cc",
@@ -268,6 +283,7 @@ if (use.test) {
       ":libcrash",
       ":libcrash_reporter",
       ":libcrash_sender",
+      ":libcrash_test_util",
       ":lock_file_tester",
     ]
 
@@ -290,6 +306,20 @@ if (use.test) {
     deps = [
       ":libcrash",
       "//common-mk/testrunner:testrunner",
+    ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("crash_sender_fuzzer") {
+    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
+    deps = [
+      ":libcrash",
+      ":libcrash_sender",
+      ":libcrash_test_util",
+    ]
+    sources = [
+      "crash_sender_fuzzer.cc",
     ]
   }
 }

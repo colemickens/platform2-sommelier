@@ -75,6 +75,14 @@ struct CrashDetails {
 // Represents a metadata file name, and its parsed metadata.
 typedef std::pair<base::FilePath, CrashInfo> MetaFile;
 
+// Testing hook. Set to true to force IsMock() to always return true. Easier
+// than creating the mock file in internal tests (such as fuzz tests).
+extern bool g_force_is_mock;
+
+// Testing hook. Set to true to force IsMockSuccessful() to always return true.
+// Easier than creating the mock file in internal tests (such as fuzz tests).
+extern bool g_force_is_mock_successful;
+
 // Parses the command line, and handles the command line flags.
 //
 // On error, the process exits as a failure with an error message for the

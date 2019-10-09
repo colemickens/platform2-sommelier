@@ -30,6 +30,13 @@ bool RetrieveActiveSessionsImpl(
 
 }  // namespace
 
+AdvancingClock::AdvancingClock() : time_(GetDefaultTime()) {}
+
+base::Time AdvancingClock::Now() {
+  time_ += base::TimeDelta::FromSeconds(10);
+  return time_;
+}
+
 base::Time GetDefaultTime() {
   base::Time time;
   // Date is basically arbitrary, but far enough back that

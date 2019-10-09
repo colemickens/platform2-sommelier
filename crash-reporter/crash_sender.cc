@@ -101,6 +101,9 @@ int RunChildMain(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
+  // If you add sigificant code past this point, consider updating
+  // crash_sender_fuzzer.cc as well.
+
   // Get all reports we might want to send, and then choose the more important
   // report out of all the directories to send first.
   std::vector<base::FilePath> crash_directories;
