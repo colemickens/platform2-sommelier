@@ -67,8 +67,11 @@ class DlcServiceDBusAdaptorTest : public testing::Test {
     CHECK(scoped_temp_dir_.CreateUniqueTempDir());
     manifest_path_ = scoped_temp_dir_.GetPath().Append("rootfs");
     content_path_ = scoped_temp_dir_.GetPath().Append("stateful");
+    mount_path_ = scoped_temp_dir_.GetPath().Append("mount");
+    base::FilePath mount_root_path = mount_path_.Append("root");
     base::CreateDirectory(manifest_path_);
     base::CreateDirectory(content_path_);
+    base::CreateDirectory(mount_root_path);
     base::FilePath testdata_dir =
         base::FilePath(getenv("SRC")).Append("testdata");
 
@@ -105,7 +108,7 @@ class DlcServiceDBusAdaptorTest : public testing::Test {
     mock_image_loader_proxy_ptr_ = mock_image_loader_proxy_.get();
     ON_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
         .WillByDefault(
-            DoAll(SetArgPointee<3>("/good/mount/path"), Return(true)));
+            DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
     ON_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
         .WillByDefault(DoAll(SetArgPointee<2>(true), Return(true)));
 
@@ -139,6 +142,7 @@ class DlcServiceDBusAdaptorTest : public testing::Test {
 
   base::FilePath manifest_path_;
   base::FilePath content_path_;
+  base::FilePath mount_path_;
 
   std::unique_ptr<MockBootDevice> mock_boot_device_;
   std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyMock>
@@ -259,7 +263,7 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
   DlcModuleList dlc_module_list =
       CreateDlcModuleList({kSecondDlc}, omaha_url_default);
 
-  SetMountPath("/run/imageloader/dlc-id/package");
+  SetMountPath(mount_path_.value());
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               AttemptInstall(ProtoHasUrl(omaha_url_default), _, _))
       .Times(1);
@@ -287,7 +291,7 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallAlreadyInstalledValid) {
   DlcModuleList dlc_module_list =
       CreateDlcModuleList({kFirstDlc}, omaha_url_default);
 
-  SetMountPath("/run/imageloader/dlc-id/package");
+  SetMountPath(mount_path_.value());
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               AttemptInstall(ProtoHasUrl(omaha_url_default), _, _))
       .Times(0);
@@ -301,7 +305,7 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallDuplicatesFail) {
   DlcModuleList dlc_module_list =
       CreateDlcModuleList({kSecondDlc, kSecondDlc}, omaha_url_default);
 
-  SetMountPath("/run/imageloader/dlc-id/package");
+  SetMountPath(mount_path_.value());
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               AttemptInstall(ProtoHasUrl(omaha_url_default), _, _))
       .Times(0);
@@ -317,7 +321,7 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallAlreadyInstalledAndDuplicatesFail) {
   DlcModuleList dlc_module_list = CreateDlcModuleList(
       {kFirstDlc, kSecondDlc, kSecondDlc}, omaha_url_default);
 
-  SetMountPath("/run/imageloader/dlc-id/package");
+  SetMountPath(mount_path_.value());
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               AttemptInstall(ProtoHasUrl(omaha_url_default), _, _))
       .Times(0);
@@ -333,7 +337,7 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallFailureCleansUp) {
   DlcModuleList dlc_module_list =
       CreateDlcModuleList({kSecondDlc, kThirdDlc}, omaha_url_default);
 
-  SetMountPath("/run/imageloader/dlc-id/package");
+  SetMountPath(mount_path_.value());
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               AttemptInstall(ProtoHasUrl(omaha_url_default), _, _))
       .WillOnce(Return(false));
@@ -364,9 +368,6 @@ TEST_F(DlcServiceDBusAdaptorTest, OnStatusUpdateAdvancedSignalDlcRootTest) {
 
   EXPECT_TRUE(dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list));
 
-  EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>("/some/mount"), Return(true)))
-      .WillOnce(DoAll(SetArgPointee<3>("/some/mount"), Return(true)));
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
       .Times(0);
 

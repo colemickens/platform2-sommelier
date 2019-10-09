@@ -142,8 +142,10 @@ void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
     const string& installed_dlc_module_id = installed_dlc_module_itr->first;
     string& installed_dlc_module_root = installed_dlc_module_itr->second;
 
-    // TODO(crbug.com/990449): Support restart of dlcservice to handle
-    // remounting or getting old mount point back to get into a valid state.
+    if (base::PathExists(FilePath(installed_dlc_module_root))) {
+      ++installed_dlc_module_itr;
+      continue;
+    }
 
     string mount_point;
     if (!MountDlc(nullptr, installed_dlc_module_id, &mount_point)) {
@@ -182,6 +184,8 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
                    "Must not pass in duplicate DLC(s) to install");
     return false;
   }
+
+  LoadDlcModuleImages();
 
   // Go through already installed DLC(s) and set the roots if found.
   for (const auto& unique_dlc : unique_dlcs) {
@@ -277,6 +281,7 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
 
 bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
                                       const string& id_in) {
+  LoadDlcModuleImages();
   if (installed_dlc_modules_.find(id_in) == installed_dlc_modules_.end()) {
     LOG(INFO) << "Uninstalling DLC id that's not installed: " << id_in;
     return true;
@@ -310,6 +315,7 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
 
 bool DlcServiceDBusAdaptor::GetInstalled(brillo::ErrorPtr* err,
                                          DlcModuleList* dlc_module_list_out) {
+  LoadDlcModuleImages();
   *dlc_module_list_out = utils::ToDlcModuleList(
       installed_dlc_modules_, [](DlcId, DlcRoot) { return true; });
   return true;
