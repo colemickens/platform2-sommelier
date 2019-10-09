@@ -27,7 +27,10 @@ group("guest") {
     ]
   }
   if (use.fuzzer) {
-    deps += [ ":garcon_desktop_file_fuzzer" ]
+    deps += [
+      ":garcon_desktop_file_fuzzer",
+      ":garcon_ini_parse_util_fuzzer",
+    ]
   }
 }
 
@@ -309,6 +312,20 @@ if (use.fuzzer) {
   executable("garcon_desktop_file_fuzzer") {
     sources = [
       "../garcon/desktop_file_fuzzer.cc",
+    ]
+
+    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
+
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+
+    deps = [
+      "//vm_tools/guest:libgarcon",
+    ]
+  }
+
+  executable("garcon_ini_parse_util_fuzzer") {
+    sources = [
+      "../garcon/ini_parse_util_fuzzer.cc",
     ]
 
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
