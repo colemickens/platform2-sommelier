@@ -36,7 +36,10 @@ group("all") {
     }
   }
   if (use.fuzzer) {
-    deps += [ ":chaps_attributes_fuzzer" ]
+    deps += [
+      ":chaps_attributes_fuzzer",
+      ":chaps_object_store_fuzzer",
+    ]
   }
 }
 
@@ -492,6 +495,28 @@ if (use.fuzzer) {
 
     deps = [
       ":chaps-protos",
+      ":libchaps_static",
+    ]
+  }
+
+  executable("chaps_object_store_fuzzer") {
+    sources = [
+      "object_store_fuzzer.cc",
+      "object_store_impl.cc",
+    ]
+
+    libs = [
+      "leveldb",
+      "memenv",
+    ]
+
+    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
+
+    defines = [ "NO_METRICS" ]
+
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+
+    deps = [
       ":libchaps_static",
     ]
   }
