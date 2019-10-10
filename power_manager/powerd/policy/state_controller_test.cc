@@ -1072,10 +1072,15 @@ TEST_F(StateControllerTest, FactoryMode) {
   Init();
   controller_.HandleSessionStateChange(SessionState::STARTED);
 
+  // Turn on the smartdim request.
+  controller_.set_request_smart_dim_decision_for_testing(true);
+  dbus_wrapper_.NotifyServiceAvailable(ml_decision_proxy_, true);
+
   // With the factory-mode pref set, the system shouldn't have any actions
-  // scheduled.
+  // scheduled, and powerd shouldn't request smartdim decision.
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(kNoActions, delegate_.GetActions());
+  EXPECT_EQ("", GetDBusMethodCalls());
 
   // Closing the lid shouldn't do anything.
   controller_.HandleLidStateChange(LidState::CLOSED);

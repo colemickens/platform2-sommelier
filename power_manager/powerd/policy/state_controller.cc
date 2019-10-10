@@ -1116,6 +1116,7 @@ void StateController::UpdateState() {
       now - GetLastActivityTimeForScreenLock(now);
 
   if (request_smart_dim_decision_ && ml_decision_service_available_ &&
+      delays_.screen_dim_imminent > base::TimeDelta() &&
       request_smart_dim_decision_duration >= delays_.screen_dim_imminent &&
       !waiting_for_smart_dim_decision_ && !screen_dimmed_) {
     RequestSmartDimDecision();
