@@ -41,6 +41,10 @@ const char kLabel3[] = "record3";
 const std::vector<uint8_t> kValidationVal3 = {0x00, 0x03};
 const char kData3[] = "Hello, world3!";
 
+constexpr int kPermissions600 =
+    base::FILE_PERMISSION_READ_BY_USER | base::FILE_PERMISSION_WRITE_BY_USER;
+constexpr int kPermissions700 = base::FILE_PERMISSION_USER_MASK;
+
 // Flag to control whether to run tests with positive match secret support.
 // This can't be a member of the test fixture because it's accessed in the
 // TestRecord class in anonymous namespace.
@@ -180,6 +184,34 @@ TEST_P(BiodStorageTest, WriteAndReadRecords) {
   EXPECT_TRUE(biod_storage_->ReadRecords(user_ids));
   EXPECT_TRUE(
       std::is_permutation(kRecords.begin(), kRecords.end(), records_.begin()));
+}
+
+TEST_F(BiodStorageBaseTest, WriteRecord_CheckUmask) {
+  auto record =
+      TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1);
+
+  const base::FilePath kRecordStorageFilename =
+      root_path_.Append("biod")
+          .Append(record.GetUserId())
+          .Append(kBiometricsManagerName)
+          .Append("Record" + record.GetId());
+
+  ASSERT_FALSE(base::PathExists(kRecordStorageFilename));
+  ASSERT_FALSE(base::PathExists(kRecordStorageFilename.DirName()));
+
+  EXPECT_TRUE(biod_storage_->WriteRecord(
+      record, std::make_unique<base::Value>(record.GetData())));
+
+  // Check permissions of directory
+  int actual_permissions;
+  EXPECT_TRUE(base::GetPosixFilePermissions(kRecordStorageFilename.DirName(),
+                                            &actual_permissions));
+  EXPECT_EQ(kPermissions700, actual_permissions);
+
+  // Check permissions of record
+  EXPECT_TRUE(base::GetPosixFilePermissions(kRecordStorageFilename,
+                                            &actual_permissions));
+  EXPECT_EQ(kPermissions600, actual_permissions);
 }
 
 TEST_P(BiodStorageTest, DeleteRecord) {

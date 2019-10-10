@@ -85,26 +85,32 @@ bool BiodStorage::WriteRecord(const BiometricsManager::Record& record,
     return false;
   }
 
-  std::unique_ptr<ScopedUmask> owner_only_umask(new ScopedUmask(~(0700)));
-
   FilePath record_storage_filename = root_path_.Append(kBiod)
                                          .Append(record.GetUserId())
                                          .Append(biometrics_manager_name_)
                                          .Append(kRecordFileName + record_id);
-  if (!base::CreateDirectory(record_storage_filename.DirName())) {
-    PLOG(ERROR) << "Cannot create directory: "
-                << record_storage_filename.DirName().value() << ".";
-    return false;
+
+  {
+    ScopedUmask owner_only_umask(~(0700));
+
+    if (!base::CreateDirectory(record_storage_filename.DirName())) {
+      PLOG(ERROR) << "Cannot create directory: "
+                  << record_storage_filename.DirName().value() << ".";
+      return false;
+    }
   }
 
-  owner_only_umask.reset(new ScopedUmask(~(0600)));
+  {
+    ScopedUmask owner_only_umask(~(0600));
 
-  if (!base::ImportantFileWriter::WriteFileAtomically(record_storage_filename,
-                                                      json_string)) {
-    LOG(ERROR) << "Failed to write JSON file: "
-               << record_storage_filename.value() << ".";
-    return false;
+    if (!base::ImportantFileWriter::WriteFileAtomically(record_storage_filename,
+                                                        json_string)) {
+      LOG(ERROR) << "Failed to write JSON file: "
+                 << record_storage_filename.value() << ".";
+      return false;
+    }
   }
+
   LOG(INFO) << "Done writing record with id " << record_id
             << " to file successfully. ";
   return true;
