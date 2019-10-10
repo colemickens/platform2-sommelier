@@ -36,7 +36,10 @@ group("all") {
     ]
   }
   if (use.fuzzer) {
-    deps += [ ":cryptohome_cryptolib_rsa_oaep_decrypt_fuzzer" ]
+    deps += [
+      ":cryptohome_cryptolib_blob_to_hex_fuzzer",
+      ":cryptohome_cryptolib_rsa_oaep_decrypt_fuzzer",
+    ]
   }
   if (use.tpm2) {
     deps += [
@@ -637,6 +640,16 @@ if (use.fuzzer) {
       "libbrillo-${libbase_ver}",
       "libchrome-${libbase_ver}",
       "openssl",
+    ]
+  }
+
+  executable("cryptohome_cryptolib_blob_to_hex_fuzzer") {
+    configs += [ "//common-mk/common_fuzzer" ]
+    sources = [
+      "fuzzers/cryptolib_blob_to_hex_fuzzer.cc",
+    ]
+    deps = [
+      "libs:libcrosplatform",
     ]
   }
 }
