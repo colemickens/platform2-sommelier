@@ -75,9 +75,7 @@ class MockClock : public base::Clock {
 // test will eventually fail instead of going into an infinite loop.
 class AdvancingClock : public base::Clock {
  public:
-  AdvancingClock() {
-    CHECK(base::Time::FromUTCString("2019-04-20 13:53", &time_));
-  }
+  AdvancingClock() : time_(test_util::GetDefaultTime()) {}
 
   base::Time Now() override {
     time_ += base::TimeDelta::FromSeconds(10);
@@ -293,117 +291,130 @@ class CrashSenderUtilTest : public testing::Test {
     return lock_process;
   }
 
+  // Creates a file at |file_path| with contents |content| and sets its access
+  // and modification time to |timestamp|.
+  bool CreateFile(const base::FilePath& file_path,
+                  base::StringPiece content,
+                  base::Time timestamp) {
+    if (!test_util::CreateFile(file_path, content))
+      return false;
+
+    if (!TouchFileHelper(file_path, timestamp))
+      return false;
+
+    return true;
+  }
+
   // Creates test crash files in |crash_directory|. Returns true on success.
   bool CreateTestCrashFiles(const base::FilePath& crash_directory) {
+    const base::Time now = test_util::GetDefaultTime();
+    const base::TimeDelta hour = base::TimeDelta::FromHours(1);
+
+    // Choose timestamps so that the return value of GetMetaFiles() is sorted
+    // per timestamps correctly.
+    const base::Time good_meta_time = now - hour * 3;
+    const base::Time absolute_meta_time = now - hour * 2;
+    const base::Time recent_os_meta_time = now - hour;
+    const base::Time devcore_meta_time = now;
+
     // These should be kept, since the payload is a known kind and exists.
     good_meta_ = crash_directory.Append("good.meta");
     good_log_ = crash_directory.Append("good.log");
-    if (!test_util::CreateFile(good_meta_, "payload=good.log\ndone=1\n"))
+    if (!CreateFile(good_meta_, "payload=good.log\ndone=1\n", good_meta_time))
       return false;
-    if (!test_util::CreateFile(good_log_, ""))
+    if (!CreateFile(good_log_, "", now))
       return false;
 
     // These should be kept, the payload path is absolute but should be handled
     // properly.
     absolute_meta_ = crash_directory.Append("absolute.meta");
     absolute_log_ = crash_directory.Append("absolute.log");
-    if (!test_util::CreateFile(
-            absolute_meta_,
-            "payload=" + absolute_log_.value() + "\n" + "done=1\n"))
+    if (!CreateFile(absolute_meta_,
+                    "payload=" + absolute_log_.value() + "\n" + "done=1\n",
+                    absolute_meta_time))
       return false;
-    if (!test_util::CreateFile(absolute_log_, ""))
+    if (!CreateFile(absolute_log_, "", now))
       return false;
 
     // These should be ignored, if uploading of device coredumps is not allowed.
     devcore_meta_ = crash_directory.Append("devcore.meta");
     devcore_devcore_ = crash_directory.Append("devcore.devcore");
-    if (!test_util::CreateFile(devcore_meta_,
-                               "payload=devcore.devcore\n"
-                               "done=1\n"))
+    if (!CreateFile(devcore_meta_,
+                    "payload=devcore.devcore\n"
+                    "done=1\n",
+                    devcore_meta_time))
       return false;
-    if (!test_util::CreateFile(devcore_devcore_, ""))
+    if (!CreateFile(devcore_devcore_, "", now))
       return false;
 
     // This should be removed, since metadata is corrupted.
     corrupted_meta_ = crash_directory.Append("corrupted.meta");
-    if (!test_util::CreateFile(corrupted_meta_, "!@#$%^&*\ndone=1\n"))
+    if (!CreateFile(corrupted_meta_, "!@#$%^&*\ndone=1\n", now))
       return false;
 
     // This should be removed, since no payload info is recorded.
     empty_meta_ = crash_directory.Append("empty.meta");
-    if (!test_util::CreateFile(empty_meta_, "done=1\n"))
+    if (!CreateFile(empty_meta_, "done=1\n", now))
       return false;
 
     // This should be removed, since the payload file does not exist.
     nonexistent_meta_ = crash_directory.Append("nonexistent.meta");
-    if (!test_util::CreateFile(nonexistent_meta_,
-                               "payload=nonexistent.log\n"
-                               "done=1\n"))
+    if (!CreateFile(nonexistent_meta_,
+                    "payload=nonexistent.log\n"
+                    "done=1\n",
+                    now))
       return false;
 
     // These should be removed, since the payload is an unknown kind.
     unknown_meta_ = crash_directory.Append("unknown.meta");
     unknown_xxx_ = crash_directory.Append("unknown.xxx");
-    if (!test_util::CreateFile(unknown_meta_,
-                               "payload=unknown.xxx\n"
-                               "done=1\n"))
+    if (!CreateFile(unknown_meta_,
+                    "payload=unknown.xxx\n"
+                    "done=1\n",
+                    now))
       return false;
-    if (!test_util::CreateFile(unknown_xxx_, ""))
+    if (!CreateFile(unknown_xxx_, "", now))
       return false;
-
-    const base::Time now = base::Time::Now();
-    const base::TimeDelta hour = base::TimeDelta::FromHours(1);
 
     // This should be removed, since the meta file is old.
     old_incomplete_meta_ = crash_directory.Append("old_incomplete.meta");
-    if (!test_util::CreateFile(old_incomplete_meta_, "payload=good.log\n"))
+    if (!CreateFile(old_incomplete_meta_, "payload=good.log\n", now))
       return false;
     if (!TouchFileHelper(old_incomplete_meta_, now - hour * 24))
       return false;
 
     // This should be removed, since the meta file is new.
     new_incomplete_meta_ = crash_directory.Append("new_incomplete.meta");
-    if (!test_util::CreateFile(new_incomplete_meta_, "payload=good.log\n"))
+    if (!CreateFile(new_incomplete_meta_, "payload=good.log\n", now))
       return false;
 
     // This should be kept since the OS timestamp is recent.
     recent_os_meta_ = crash_directory.Append("recent_os.meta");
-    if (!test_util::CreateFile(
-            recent_os_meta_,
-            base::StringPrintf("payload=recent_os.log\n"
-                               "os_millis=%" PRId64 "\n"
-                               "done=1\n",
-                               (base::Time::Now() - base::Time::UnixEpoch())
-                                   .InMilliseconds()))) {
+    if (!CreateFile(recent_os_meta_,
+                    base::StringPrintf(
+                        "payload=recent_os.log\n"
+                        "os_millis=%" PRId64 "\n"
+                        "done=1\n",
+                        (now - base::Time::UnixEpoch()).InMilliseconds()),
+                    recent_os_meta_time)) {
       return false;
     }
     recent_os_log_ = crash_directory.Append("recent_os.log");
-    if (!test_util::CreateFile(recent_os_log_, ""))
+    if (!CreateFile(recent_os_log_, "", now))
       return false;
 
     // This should be removed since the OS timestamp is old.
     old_os_meta_ = crash_directory.Append("old_os.meta");
-    if (!test_util::CreateFile(
-            old_os_meta_,
-            base::StringPrintf("payload=good.log\n"
-                               "os_millis=%" PRId64 "\n"
-                               "done=1\n",
-                               ((base::Time::Now() - base::Time::UnixEpoch()) -
-                                base::TimeDelta::FromDays(200))
-                                   .InMilliseconds()))) {
+    if (!CreateFile(old_os_meta_,
+                    base::StringPrintf("payload=good.log\n"
+                                       "os_millis=%" PRId64 "\n"
+                                       "done=1\n",
+                                       ((now - base::Time::UnixEpoch()) -
+                                        base::TimeDelta::FromDays(200))
+                                           .InMilliseconds()),
+                    now)) {
       return false;
     }
-
-    // Update timestamps, so that the return value of GetMetaFiles() is sorted
-    // per timestamps correctly.
-    if (!TouchFileHelper(good_meta_, now - hour * 3))
-      return false;
-    if (!TouchFileHelper(absolute_meta_, now - hour * 2))
-      return false;
-    if (!TouchFileHelper(recent_os_meta_, now - hour))
-      return false;
-    if (!TouchFileHelper(devcore_meta_, now))
-      return false;
 
     return true;
   }
@@ -677,18 +688,20 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
       paths::Get(paths::kSystemCrashDirectory);
   ASSERT_TRUE(CreateDirectory(crash_directory));
   ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
+  MetricsLibraryMock* raw_metrics_lib = metrics_lib_.get();
+
+  Sender::Options options;
+  Sender sender(std::move(metrics_lib_), std::make_unique<AdvancingClock>(),
+                options);
+  ASSERT_TRUE(sender.Init());
 
   std::string reason;
-  bool allow_dev_sending = false;
-
   CrashInfo info;
   // The following files should be sent.
-  EXPECT_EQ(kSend, ChooseAction(good_meta_, metrics_lib_.get(),
-                                allow_dev_sending, &reason, &info));
-  EXPECT_EQ(kSend, ChooseAction(recent_os_meta_, metrics_lib_.get(),
-                                allow_dev_sending, &reason, &info));
-  EXPECT_EQ(kSend, ChooseAction(absolute_meta_, metrics_lib_.get(),
-                                allow_dev_sending, &reason, &info));
+  EXPECT_EQ(Sender::kSend, sender.ChooseAction(good_meta_, &reason, &info));
+  EXPECT_EQ(Sender::kSend,
+            sender.ChooseAction(recent_os_meta_, &reason, &info));
+  EXPECT_EQ(Sender::kSend, sender.ChooseAction(absolute_meta_, &reason, &info));
   // Sanity check that the valid crash info is returned.
   std::string value;
   EXPECT_EQ(absolute_log_.value(), info.payload_file.value());
@@ -696,67 +709,78 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
   EXPECT_TRUE(info.metadata.GetString("payload", &value));
 
   // The following files should be ignored.
-  EXPECT_EQ(kIgnore, ChooseAction(new_incomplete_meta_, metrics_lib_.get(),
-                                  allow_dev_sending, &reason, &info));
+  EXPECT_EQ(Sender::kIgnore,
+            sender.ChooseAction(new_incomplete_meta_, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Recent incomplete metadata"));
 
   // Device coredump should be ignored by default.
-  EXPECT_EQ(kIgnore, ChooseAction(devcore_meta_, metrics_lib_.get(),
-                                  allow_dev_sending, &reason, &info));
+  EXPECT_EQ(Sender::kIgnore,
+            sender.ChooseAction(devcore_meta_, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Device coredump upload not allowed"));
 
   // Device coredump should be sent, if uploading is allowed.
   CreateDeviceCoredumpUploadAllowedFile();
-  EXPECT_EQ(kSend, ChooseAction(devcore_meta_, metrics_lib_.get(),
-                                allow_dev_sending, &reason, &info));
+  EXPECT_EQ(Sender::kSend, sender.ChooseAction(devcore_meta_, &reason, &info));
 
   // The following files should be removed.
-  EXPECT_EQ(kRemove, ChooseAction(empty_meta_, metrics_lib_.get(),
-                                  allow_dev_sending, &reason, &info));
+  EXPECT_EQ(Sender::kRemove, sender.ChooseAction(empty_meta_, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Payload is not found"));
 
-  EXPECT_EQ(kRemove, ChooseAction(corrupted_meta_, metrics_lib_.get(),
-                                  allow_dev_sending, &reason, &info));
+  EXPECT_EQ(Sender::kRemove,
+            sender.ChooseAction(corrupted_meta_, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Corrupted metadata"));
 
-  EXPECT_EQ(kRemove, ChooseAction(nonexistent_meta_, metrics_lib_.get(),
-                                  allow_dev_sending, &reason, &info));
+  EXPECT_EQ(Sender::kRemove,
+            sender.ChooseAction(nonexistent_meta_, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Missing payload"));
 
-  EXPECT_EQ(kRemove, ChooseAction(unknown_meta_, metrics_lib_.get(),
-                                  allow_dev_sending, &reason, &info));
+  EXPECT_EQ(Sender::kRemove,
+            sender.ChooseAction(unknown_meta_, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Unknown kind"));
 
-  EXPECT_EQ(kRemove, ChooseAction(old_incomplete_meta_, metrics_lib_.get(),
-                                  allow_dev_sending, &reason, &info));
+  EXPECT_EQ(Sender::kRemove,
+            sender.ChooseAction(old_incomplete_meta_, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Removing old incomplete metadata"));
 
-  EXPECT_EQ(kRemove, ChooseAction(old_os_meta_, metrics_lib_.get(),
-                                  allow_dev_sending, &reason, &info));
+  EXPECT_EQ(Sender::kRemove, sender.ChooseAction(old_os_meta_, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Old OS version"));
 
-  ASSERT_TRUE(SetConditions(kUnofficialBuild, kSignInMode, kMetricsEnabled));
-  EXPECT_EQ(kRemove, ChooseAction(good_meta_, metrics_lib_.get(),
-                                  allow_dev_sending, &reason, &info));
+  ASSERT_TRUE(SetConditions(kUnofficialBuild, kSignInMode, kMetricsEnabled,
+                            raw_metrics_lib));
+  EXPECT_EQ(Sender::kRemove, sender.ChooseAction(good_meta_, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Not an official OS version"));
 
-  // If we set allow_dev_sending, then the OS check will be skipped.
-  allow_dev_sending = true;
-  EXPECT_EQ(kSend, ChooseAction(good_meta_, metrics_lib_.get(),
-                                allow_dev_sending, &reason, &info));
-  EXPECT_EQ(kSend, ChooseAction(old_os_meta_, metrics_lib_.get(),
-                                allow_dev_sending, &reason, &info));
-  allow_dev_sending = false;
-
-  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsDisabled));
-  EXPECT_EQ(kRemove, ChooseAction(good_meta_, metrics_lib_.get(),
-                                  allow_dev_sending, &reason, &info));
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsDisabled,
+                            raw_metrics_lib));
+  EXPECT_EQ(Sender::kRemove, sender.ChooseAction(good_meta_, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("Crash reporting is disabled"));
 
   // Valid crash files should be kept in the guest mode.
-  ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsDisabled));
-  EXPECT_EQ(kIgnore, ChooseAction(good_meta_, metrics_lib_.get(),
-                                  allow_dev_sending, &reason, &info));
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsDisabled,
+                            raw_metrics_lib));
+  EXPECT_EQ(Sender::kIgnore, sender.ChooseAction(good_meta_, &reason, &info));
+}
+
+TEST_F(CrashSenderUtilTest, ChooseActionDevMode) {
+  // If we set allow_dev_sending, then the OS check will be skipped.
+  ASSERT_TRUE(SetConditions(kUnofficialBuild, kSignInMode, kMetricsEnabled));
+
+  const base::FilePath crash_directory =
+      paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(CreateDirectory(crash_directory));
+  ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
+
+  Sender::Options options;
+  options.allow_dev_sending = true;
+  Sender sender(std::move(metrics_lib_), std::make_unique<AdvancingClock>(),
+                options);
+  ASSERT_TRUE(sender.Init());
+
+  std::string reason;
+  CrashInfo info;
+
+  EXPECT_EQ(Sender::kSend, sender.ChooseAction(good_meta_, &reason, &info));
+  EXPECT_EQ(Sender::kSend, sender.ChooseAction(old_os_meta_, &reason, &info));
 }
 
 TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {

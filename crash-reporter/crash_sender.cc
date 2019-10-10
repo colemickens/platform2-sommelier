@@ -62,6 +62,8 @@ int RunChildMain(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
+  auto clock = std::make_unique<base::DefaultClock>();
+
   if (flags.test_mode) {
     LOG(INFO) << "--test_mode present; will not actually upload to server.";
   } else if (flags.allow_dev_sending) {
@@ -74,7 +76,8 @@ int RunChildMain(int argc, char* argv[]) {
       return EXIT_FAILURE;
     }
 
-    if (util::IsOsTimestampTooOldForUploads(util::GetOsTimestamp())) {
+    if (util::IsOsTimestampTooOldForUploads(util::GetOsTimestamp(),
+                                            clock.get())) {
       LOG(INFO) << "Version is too old, will not upload crash reports";
       return EXIT_FAILURE;
     }
@@ -92,8 +95,7 @@ int RunChildMain(int argc, char* argv[]) {
   }
   options.allow_dev_sending = flags.allow_dev_sending;
   options.test_mode = flags.test_mode;
-  util::Sender sender(std::move(metrics_lib),
-                      std::make_unique<base::DefaultClock>(), options);
+  util::Sender sender(std::move(metrics_lib), std::move(clock), options);
   if (!sender.Init()) {
     LOG(ERROR) << "Failed to initialize util::Sender";
     return EXIT_FAILURE;

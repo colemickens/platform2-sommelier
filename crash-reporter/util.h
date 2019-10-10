@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/time/clock.h>
 #include <base/time/time.h>
 #include <brillo/process.h>
 #include <brillo/streams/stream.h>
@@ -42,7 +43,7 @@ base::Time GetOsTimestamp();
 // Returns true if this version is old enough that we do not want to upload the
 // crash reports anymore. This just checks if |timestamp| is more than 180
 // days old. If |timestamp| is null (zero-valued) then this will return false.
-bool IsOsTimestampTooOldForUploads(base::Time timestamp);
+bool IsOsTimestampTooOldForUploads(base::Time timestamp, base::Clock* clock);
 
 // Gets a string describing the hardware class of the device. Returns
 // "undefined" if this cannot be determined.

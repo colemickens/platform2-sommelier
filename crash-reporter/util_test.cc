@@ -12,6 +12,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/rand_util.h>
+#include <base/test/simple_test_clock.h>
 #include <brillo/process.h>
 #include <brillo/streams/memory_stream.h>
 #include <gtest/gtest.h>
@@ -210,11 +211,15 @@ TEST_F(CrashCommonUtilTest, GetOsTimestamp) {
 }
 
 TEST_F(CrashCommonUtilTest, IsOsTimestampTooOldForUploads) {
-  EXPECT_FALSE(util::IsOsTimestampTooOldForUploads(base::Time()));
+  base::SimpleTestClock clock;
+  const base::Time now = test_util::GetDefaultTime();
+  clock.SetNow(now);
+
+  EXPECT_FALSE(util::IsOsTimestampTooOldForUploads(base::Time(), &clock));
   EXPECT_FALSE(util::IsOsTimestampTooOldForUploads(
-      base::Time::Now() - base::TimeDelta::FromDays(179)));
+      now - base::TimeDelta::FromDays(179), &clock));
   EXPECT_TRUE(util::IsOsTimestampTooOldForUploads(
-      base::Time::Now() - base::TimeDelta::FromDays(181)));
+      now - base::TimeDelta::FromDays(181), &clock));
 }
 
 TEST_F(CrashCommonUtilTest, GetHardwareClass) {

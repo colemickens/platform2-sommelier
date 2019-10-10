@@ -213,110 +213,6 @@ void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir) {
   }
 }
 
-Action ChooseAction(const base::FilePath& meta_file,
-                    MetricsLibraryInterface* metrics_lib,
-                    bool allow_dev_sending,
-                    std::string* reason,
-                    CrashInfo* info) {
-  if (!IsMock() && !IsOfficialImage() && !allow_dev_sending) {
-    *reason = "Not an official OS version";
-    return kRemove;
-  }
-
-  // AreMetricsEnabled() returns false in guest mode, thus IsGuestMode() should
-  // be checked first (otherwise, all crash files are deleted in guest mode).
-  //
-  // Note that this check is slightly racey, but should be rare enough for us
-  // not to care:
-  //
-  // - crash_sender checks IsGuestMode() and it returns false
-  // - User logs in to guest mode
-  // - crash_sender checks AreMetricsEnabled() and it's now false
-  // - Reports are deleted
-  if (metrics_lib->IsGuestMode()) {
-    *reason = "Crash sending delayed due to guest mode";
-    return kIgnore;
-  }
-  if (!metrics_lib->AreMetricsEnabled()) {
-    *reason = "Crash reporting is disabled";
-    return kRemove;
-  }
-
-  std::string raw_metadata;
-  if (!base::ReadFileToString(meta_file, &raw_metadata)) {
-    PLOG(WARNING) << "Igonoring: metadata file is inaccessible";
-    return kIgnore;
-  }
-
-  if (!ParseMetadata(raw_metadata, &info->metadata)) {
-    *reason = "Corrupted metadata: " + raw_metadata;
-    return kRemove;
-  }
-
-  MetadataToCrashInfo(info->metadata, info);
-
-  if (info->payload_file.empty()) {
-    *reason = "Payload is not found in the meta data: " + raw_metadata;
-    return kRemove;
-  }
-
-  // Make it an absolute path.
-  info->payload_file = meta_file.DirName().Append(info->payload_file);
-
-  if (!base::PathExists(info->payload_file)) {
-    *reason = "Missing payload: " + info->payload_file.value();
-    return kRemove;
-  }
-
-  if (!IsKnownKind(info->payload_kind)) {
-    *reason = "Unknown kind: " + info->payload_kind;
-    return kRemove;
-  }
-
-  // If we have an OS timestamp in the metadata and it's too old to upload then
-  // remove the report. We wouldn't have gotten here if the current OS version
-  // is too old, so this is an old report from before an OS update.
-  std::string os_timestamp_str;
-  int64_t os_millis;
-  if (!allow_dev_sending &&
-      info->metadata.GetString(kOsTimestamp, &os_timestamp_str) &&
-      base::StringToInt64(os_timestamp_str, &os_millis) &&
-      util::IsOsTimestampTooOldForUploads(
-          base::Time::UnixEpoch() +
-          base::TimeDelta::FromMilliseconds(os_millis))) {
-    *reason = "Old OS version";
-    return kRemove;
-  }
-
-  base::File::Info file_info;
-  if (!base::GetFileInfo(meta_file, &file_info)) {
-    // Should not happen since it succeeded to read the file.
-    *reason = "Failed to get file info";
-    return kIgnore;
-  }
-
-  info->last_modified = file_info.last_modified;
-  if (!IsCompleteMetadata(info->metadata)) {
-    const base::TimeDelta delta = base::Time::Now() - file_info.last_modified;
-    if (delta.InHours() >= 24) {
-      // TODO(satorux): logging_CrashSender.py expects the following string as
-      // error message. Revise the autotest once the rewrite to C++ is complete.
-      *reason = "Removing old incomplete metadata";
-      return kRemove;
-    } else {
-      *reason = "Recent incomplete metadata";
-      return kIgnore;
-    }
-  }
-
-  if (info->payload_kind == "devcore" && !IsDeviceCoredumpUploadAllowed()) {
-    *reason = "Device coredump upload not allowed";
-    return kIgnore;
-  }
-
-  return kSend;
-}
-
 void SortReports(std::vector<MetaFile>* reports) {
   std::sort(reports->begin(), reports->end(),
             [](const MetaFile& m1, const MetaFile& m2) {
@@ -648,6 +544,109 @@ base::File Sender::AcquireLockFileOrDie() {
   return lock_file;
 }
 
+Sender::Action Sender::ChooseAction(const base::FilePath& meta_file,
+                                    std::string* reason,
+                                    CrashInfo* info) {
+  if (!IsMock() && !IsOfficialImage() && !allow_dev_sending_ && !test_mode_) {
+    *reason = "Not an official OS version";
+    return kRemove;
+  }
+
+  // AreMetricsEnabled() returns false in guest mode, thus IsGuestMode() should
+  // be checked first (otherwise, all crash files are deleted in guest mode).
+  //
+  // Note that this check is slightly racey, but should be rare enough for us
+  // not to care:
+  //
+  // - crash_sender checks IsGuestMode() and it returns false
+  // - User logs in to guest mode
+  // - crash_sender checks AreMetricsEnabled() and it's now false
+  // - Reports are deleted
+  if (metrics_lib_->IsGuestMode()) {
+    *reason = "Crash sending delayed due to guest mode";
+    return kIgnore;
+  }
+  if (!metrics_lib_->AreMetricsEnabled()) {
+    *reason = "Crash reporting is disabled";
+    return kRemove;
+  }
+
+  std::string raw_metadata;
+  if (!base::ReadFileToString(meta_file, &raw_metadata)) {
+    PLOG(WARNING) << "Igonoring: metadata file is inaccessible";
+    return kIgnore;
+  }
+
+  if (!ParseMetadata(raw_metadata, &info->metadata)) {
+    *reason = "Corrupted metadata: " + raw_metadata;
+    return kRemove;
+  }
+
+  MetadataToCrashInfo(info->metadata, info);
+
+  if (info->payload_file.empty()) {
+    *reason = "Payload is not found in the meta data: " + raw_metadata;
+    return kRemove;
+  }
+
+  // Make it an absolute path.
+  info->payload_file = meta_file.DirName().Append(info->payload_file);
+
+  if (!base::PathExists(info->payload_file)) {
+    *reason = "Missing payload: " + info->payload_file.value();
+    return kRemove;
+  }
+
+  if (!IsKnownKind(info->payload_kind)) {
+    *reason = "Unknown kind: " + info->payload_kind;
+    return kRemove;
+  }
+
+  // If we have an OS timestamp in the metadata and it's too old to upload then
+  // remove the report. We wouldn't have gotten here if the current OS version
+  // is too old, so this is an old report from before an OS update.
+  std::string os_timestamp_str;
+  int64_t os_millis;
+  if (!allow_dev_sending_ && !test_mode_ &&
+      info->metadata.GetString(kOsTimestamp, &os_timestamp_str) &&
+      base::StringToInt64(os_timestamp_str, &os_millis) &&
+      util::IsOsTimestampTooOldForUploads(
+          base::Time::UnixEpoch() +
+              base::TimeDelta::FromMilliseconds(os_millis),
+          clock_.get())) {
+    *reason = "Old OS version";
+    return kRemove;
+  }
+
+  base::File::Info file_info;
+  if (!base::GetFileInfo(meta_file, &file_info)) {
+    // Should not happen since it succeeded to read the file.
+    *reason = "Failed to get file info";
+    return kIgnore;
+  }
+
+  info->last_modified = file_info.last_modified;
+  if (!IsCompleteMetadata(info->metadata)) {
+    const base::TimeDelta delta = clock_->Now() - file_info.last_modified;
+    if (delta.InHours() >= 24) {
+      // TODO(satorux): logging_CrashSender.py expects the following string as
+      // error message. Revise the autotest once the rewrite to C++ is complete.
+      *reason = "Removing old incomplete metadata";
+      return kRemove;
+    } else {
+      *reason = "Recent incomplete metadata";
+      return kIgnore;
+    }
+  }
+
+  if (info->payload_kind == "devcore" && !IsDeviceCoredumpUploadAllowed()) {
+    *reason = "Device coredump upload not allowed";
+    return kIgnore;
+  }
+
+  return kSend;
+}
+
 void Sender::RemoveAndPickCrashFiles(const base::FilePath& crash_dir,
                                      std::vector<MetaFile>* to_send) {
   std::vector<base::FilePath> meta_files = GetMetaFiles(crash_dir);
@@ -657,8 +656,7 @@ void Sender::RemoveAndPickCrashFiles(const base::FilePath& crash_dir,
 
     std::string reason;
     CrashInfo info;
-    switch (ChooseAction(meta_file, metrics_lib_.get(),
-                         allow_dev_sending_ || test_mode_, &reason, &info)) {
+    switch (ChooseAction(meta_file, &reason, &info)) {
       case kRemove:
         LOG(INFO) << "Removing: " << reason;
         RemoveReportFiles(meta_file);

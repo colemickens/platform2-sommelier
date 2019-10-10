@@ -75,13 +75,6 @@ struct CrashDetails {
 // Represents a metadata file name, and its parsed metadata.
 typedef std::pair<base::FilePath, CrashInfo> MetaFile;
 
-// Actions returned by ChooseAction().
-enum Action {
-  kRemove,  // Should remove the crash report.
-  kIgnore,  // Should ignore (keep) the crash report.
-  kSend,    // Should send the crash report.
-};
-
 // Parses the command line, and handles the command line flags.
 //
 // On error, the process exits as a failure with an error message for the
@@ -116,17 +109,6 @@ base::FilePath GetBasePartOfCrashFile(const base::FilePath& file_name);
 // Removes orphaned files in |crash_dir|, that are files 24 hours old or older,
 // without corresponding meta file.
 void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir);
-
-// Chooses an action to take for the crash report associated with the given meta
-// file, and reports the reason. |metrics_lib| is used to check if metrics are
-// enabled, etc. The crash information will be stored in |info| for reuse.
-// Setting |allow_dev_sending| to true allows sending of crash reports even for
-// non-official builds.
-Action ChooseAction(const base::FilePath& meta_file,
-                    MetricsLibraryInterface* metrics_lib,
-                    bool allow_dev_sending,
-                    std::string* reason,
-                    CrashInfo* info);
 
 // Sort the vector of crash reports so that the report we want to send first
 // is at the front of the vector.
@@ -196,6 +178,13 @@ std::string GetClientId();
 // connection (see crbug.com/185110 for discussion).
 class Sender {
  public:
+  // Actions returned by ChooseAction().
+  enum Action {
+    kRemove,  // Should remove the crash report.
+    kIgnore,  // Should ignore (keep) the crash report.
+    kSend,    // Should send the crash report.
+  };
+
   struct Options {
     // Session manager client for locating the user-specific crash directories.
     org::chromium::SessionManagerInterfaceProxyInterface*
@@ -251,6 +240,13 @@ class Sender {
   //
   // Returns the File object holding the lock.
   base::File AcquireLockFileOrDie();
+
+  // Chooses an action to take for the crash report associated with the given
+  // meta file, and reports the reason. The crash information will be stored in
+  // |info| for reuse.
+  Action ChooseAction(const base::FilePath& meta_file,
+                      std::string* reason,
+                      CrashInfo* info);
 
   // Removes invalid files in |crash_dir|, that are unknown, corrupted, or
   // invalid in other ways, and picks crash reports that should be sent to the

@@ -94,9 +94,8 @@ base::Time GetOsTimestamp() {
   return info.last_modified;
 }
 
-bool IsOsTimestampTooOldForUploads(base::Time timestamp) {
-  return !timestamp.is_null() &&
-         (base::Time::Now() - timestamp) > kAgeForNoUploads;
+bool IsOsTimestampTooOldForUploads(base::Time timestamp, base::Clock* clock) {
+  return !timestamp.is_null() && (clock->Now() - timestamp) > kAgeForNoUploads;
 }
 
 std::string GetHardwareClass() {

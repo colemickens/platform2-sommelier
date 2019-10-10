@@ -10,10 +10,15 @@
 
 #include <base/files/file_path.h>
 #include <base/strings/string_piece.h>
+#include <base/time/time.h>
 
 #include <session_manager/dbus-proxy-mocks.h>
 
 namespace test_util {
+
+// Get an assumed "now" for things that mocks out the current time. Always
+// returns 2018-04-20 13:53.
+base::Time GetDefaultTime();
 
 // Creates a file at |file_path| with |content|, with parent directories.
 // Returns true on success. If you want the test function to stop when the file

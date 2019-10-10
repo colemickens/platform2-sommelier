@@ -30,6 +30,17 @@ bool RetrieveActiveSessionsImpl(
 
 }  // namespace
 
+base::Time GetDefaultTime() {
+  base::Time time;
+  // Date is basically arbitrary, but far enough back that
+  // IsOsTimestampTooOldForUploads (the function with the longest duration in
+  // it) would return true for this date. This avoids any possibility of unit
+  // tests suddenly failing if someone is (incorrectly) comparing this to the
+  // real base::Time::Now().
+  CHECK(base::Time::FromUTCString("2018-04-20 13:53", &time));
+  return time;
+}
+
 bool CreateFile(const base::FilePath& file_path, base::StringPiece content) {
   if (!base::CreateDirectory(file_path.DirName()))
     return false;
