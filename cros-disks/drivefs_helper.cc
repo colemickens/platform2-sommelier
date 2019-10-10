@@ -23,6 +23,7 @@ namespace {
 const char kDataDirOptionPrefix[] = "datadir=";
 const char kIdentityOptionPrefix[] = "identity=";
 const char kMyFilesOptionPrefix[] = "myfiles=";
+const char kPathPrefixOptionPrefix[] = "prefix=";
 
 const char kOldUser[] = "fuse-drivefs";
 const char kHelperTool[] = "/opt/google/drive-file-stream/drivefs";
@@ -147,6 +148,7 @@ std::unique_ptr<FUSEMounter> DrivefsHelper::CreateMounter(
   MountOptions mount_options;
   mount_options.EnforceOption(kDataDirOptionPrefix + data_dir.value());
   mount_options.EnforceOption(kIdentityOptionPrefix + identity);
+  mount_options.EnforceOption(kPathPrefixOptionPrefix + target_path.value());
   if (!my_files_path.empty()) {
     mount_options.EnforceOption(kMyFilesOptionPrefix + my_files_path.value());
   }

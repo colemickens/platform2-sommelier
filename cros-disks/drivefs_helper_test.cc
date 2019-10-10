@@ -206,6 +206,7 @@ TEST_F(DrivefsHelperTest, CreateMounter) {
   EXPECT_THAT(options_string, HasSubstr("rw"));
   EXPECT_THAT(options_string, HasSubstr("uid=700"));
   EXPECT_THAT(options_string, HasSubstr("gid=1501"));
+  EXPECT_THAT(options_string, HasSubstr("prefix=/media/fuse/drivefs/id"));
 }
 
 TEST_F(DrivefsHelperTest, CreateMounterWithMyFiles) {
