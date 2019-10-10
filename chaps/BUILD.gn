@@ -35,6 +35,9 @@ group("all") {
       deps += [ ":tpm2_utility_test" ]
     }
   }
+  if (use.fuzzer) {
+    deps += [ ":chaps_attributes_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -45,11 +48,16 @@ pkg_config("target_defaults") {
     # before protobuf here or the linker flags won't be in the right
     # order.
     "system_api",
-    "protobuf-lite",
     "openssl",
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
   ]
+
+  if (use.fuzzer) {
+    pkg_deps += [ "protobuf" ]
+  } else {
+    pkg_deps += [ "protobuf-lite" ]
+  }
 }
 
 proto_library("chaps-protos") {
@@ -58,6 +66,10 @@ proto_library("chaps-protos") {
   sources = [
     "${proto_in_dir}/attributes.proto",
   ]
+  if (use.fuzzer) {
+    # Override optimize_for option in proto file.
+    gen_cpp_mode = "speed"
+  }
 
   # libchaps-protos.a is used by a shared_libary
   # object, so we need to build it with '-fPIC' instead of '-fPIE'.
@@ -461,5 +473,26 @@ if (use.test) {
         "//common-mk/testrunner",
       ]
     }
+  }
+}
+
+if (use.fuzzer) {
+  executable("chaps_attributes_fuzzer") {
+    sources = [
+      "attributes_fuzzer.cc",
+    ]
+
+    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
+
+    pkg_deps = [
+      "libchrome-test-${libbase_ver}",
+      "libprotobuf-mutator",
+      "protobuf",
+    ]
+
+    deps = [
+      ":chaps-protos",
+      ":libchaps_static",
+    ]
   }
 }
