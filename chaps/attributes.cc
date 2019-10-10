@@ -141,7 +141,7 @@ bool Attributes::ParseInternal(const string& serialized,
     }
     if (!IsAttributeNested(attribute_array[i].type)) {
       attribute_array[i].ulValueLen = attribute.value().length();
-      attribute_array[i].pValue = new CK_BYTE[attribute.length()];
+      attribute_array[i].pValue = new CK_BYTE[attribute.value().length()];
       CHECK(attribute_array[i].pValue);
       memcpy(attribute_array[i].pValue, attribute.value().data(),
              attribute.value().length());
