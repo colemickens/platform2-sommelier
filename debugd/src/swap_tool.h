@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <brillo/errors/error.h>
 #include <base/macros.h>
 
 namespace debugd {
@@ -22,7 +23,8 @@ class SwapTool {
   std::string SwapStatus() const;
   std::string SwapSetParameter(const std::string& parameter_name,
                                int32_t parameter_value) const;
-
+  // Kstaled swap configuration.
+  bool KstaledSetRatio(brillo::ErrorPtr* error, uint8_t kstaled_ratio) const;
  private:
   DISALLOW_COPY_AND_ASSIGN(SwapTool);
 };

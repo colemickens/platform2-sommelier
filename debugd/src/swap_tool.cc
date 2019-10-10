@@ -6,8 +6,11 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
 
+#include "debugd/src/error_utils.h"
 #include "debugd/src/process_with_output.h"
 
 namespace debugd {
@@ -16,6 +19,9 @@ namespace {
 
 // This script holds the bulk of the real logic.
 const char kSwapHelperScript[] = "/usr/share/cros/init/swap.sh";
+// The path of the kstaled ratio file.
+const char kKstaledRatioPath[] = "/sys/kernel/mm/kstaled/ratio";
+const char kSwapToolErrorString[] = "org.chromium.debugd.error.Swap";
 
 std::string RunSwapHelper(const ProcessWithOutput::ArgList& arguments,
                           int* result) {
@@ -84,6 +90,21 @@ std::string SwapTool::SwapSetParameter(const std::string& parameter_name,
 
   buf = base::StringPrintf("%d", parameter_value);
   return RunSwapHelper({"set_parameter", parameter_name, buf}, &result);
+}
+
+bool SwapTool::KstaledSetRatio(brillo::ErrorPtr* error,
+                               uint8_t kstaled_ratio) const {
+  std::string buf = std::to_string(kstaled_ratio);
+
+  errno = 0;
+  size_t res = base::WriteFile(base::FilePath(kKstaledRatioPath),
+                               buf.c_str(), buf.size());
+  if (res != buf.size()) {
+    DEBUGD_ADD_ERROR(error, kSwapToolErrorString, strerror(errno));
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace debugd

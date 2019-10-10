@@ -381,6 +381,12 @@ bool DebugdDBusAdaptor::DisableDevCoredumpUpload(brillo::ErrorPtr* error) {
   return true;
 }
 
+bool DebugdDBusAdaptor::KstaledSetRatio(brillo::ErrorPtr* error,
+    uint8_t kstaled_ratio, bool* out_result) {
+  *out_result = swap_tool_->KstaledSetRatio(error, kstaled_ratio);
+  return *out_result;
+}
+
 std::string DebugdDBusAdaptor::SwapEnable(int32_t size, bool change_now) {
   return swap_tool_->SwapEnable(size, change_now);
 }

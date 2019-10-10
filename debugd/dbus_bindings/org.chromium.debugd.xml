@@ -807,6 +807,21 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="KstaledSetRatio">
+      <tp:docstring>
+       Sets the ratio to use for kstaled, 0 will disable the feature.
+       The kstaled ratio is a control of how aggressively kstaled will
+       attempt to swap, higher values are more aggressive and consume
+       more CPU.
+      </tp:docstring>
+      <arg name="result" type="b" direction="out" />
+      <arg name="ratio" type="y" direction="in">
+        <tp:docstring>
+          The kstaled ratio to use.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
     <method name="SwapStartStop">
       <tp:docstring>
         Turn swap usage on/off (leaves config files alone).
