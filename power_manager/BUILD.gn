@@ -43,6 +43,9 @@ group("all") {
   if (use.amd64) {
     deps += [ ":dump_intel_rapl_consumption" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":ambient_light_handler_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -484,6 +487,22 @@ if (use.amd64) {
     ]
     deps = [
       ":libutil",
+    ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("ambient_light_handler_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "powerd/policy/ambient_light_handler_fuzzer.cc",
+    ]
+    deps = [
+      ":libpowerd",
+      ":libsystem_stub",
     ]
   }
 }
