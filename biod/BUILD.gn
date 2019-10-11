@@ -17,7 +17,10 @@ group("all") {
     deps += [ ":biod_test_runner" ]
   }
   if (use.fuzzer) {
-    deps += [ ":biod_storage_fuzzer" ]
+    deps += [
+      ":biod_crypto_validation_value_fuzzer",
+      ":biod_storage_fuzzer",
+    ]
   }
 }
 
@@ -47,6 +50,7 @@ pkg_config("target_defaults") {
 static_library("libbiod") {
   configs += [ ":target_defaults" ]
   sources = [
+    "biod_crypto.cc",
     "biod_metrics.cc",
     "biod_storage.cc",
     "biometrics_daemon.cc",
@@ -130,6 +134,7 @@ if (use.test) {
       ":target_defaults",
     ]
     sources = [
+      "biod_crypto_test.cc",
       "biod_metrics_test.cc",
       "biod_storage_test.cc",
       "cros_fp_biometrics_manager_test.cc",
@@ -165,6 +170,19 @@ if (use.fuzzer) {
     ]
     sources = [
       "biod_storage_fuzzer.cc",
+    ]
+    deps = [
+      ":libbiod",
+    ]
+  }
+  executable("biod_crypto_validation_value_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":libchrome_test_config",
+      ":target_defaults",
+    ]
+    sources = [
+      "biod_crypto_validation_value_fuzzer.cc",
     ]
     deps = [
       ":libbiod",

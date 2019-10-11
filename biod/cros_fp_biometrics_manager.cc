@@ -20,9 +20,8 @@
 #include <base/time/time.h>
 #include <crypto/random.h>
 #include <metrics/metrics_library.h>
-#include <openssl/hmac.h>
-#include <openssl/sha.h>
 
+#include "biod/biod_crypto.h"
 #include "biod/biod_metrics.h"
 #include "biod/cros_fp_device_factory_impl.h"
 #include "biod/power_button_filter.h"
@@ -435,23 +434,6 @@ bool CrosFpBiometricsManager::RequestMatchFingerUp() {
   return true;
 }
 
-bool CrosFpBiometricsManager::ComputeValidationValue(
-    const brillo::SecureBlob& secret,
-    const std::string& user_id,
-    std::vector<uint8_t>* out) {
-  std::vector<uint8_t> user_id_bytes;
-
-  if (!base::HexStringToBytes(user_id, &user_id_bytes))
-    return false;
-  // Pad user_id so that we have exactly the same user_id as FPMCU has.
-  // Otherwise the user_id length is different and validation value is wrong.
-  user_id_bytes.resize(FP_CONTEXT_USERID_WORDS * sizeof(uint32_t));
-  out->resize(SHA256_DIGEST_LENGTH);
-
-  return HMAC(EVP_sha256(), secret.data(), secret.size(), user_id_bytes.data(),
-              user_id_bytes.size(), out->data(), nullptr) != nullptr;
-}
-
 void CrosFpBiometricsManager::DoEnrollImageEvent(InternalRecord record,
                                                  uint32_t event) {
   if (!(event & EC_MKBP_FP_ENROLL)) {
@@ -518,7 +500,8 @@ void CrosFpBiometricsManager::DoEnrollImageEvent(InternalRecord record,
     }
 
     std::vector<uint8_t> validation_val;
-    if (!ComputeValidationValue(secret, record.user_id, &validation_val)) {
+    if (!BiodCrypto::ComputeValidationValue(secret, record.user_id,
+                                            &validation_val)) {
       LOG(ERROR) << "Failed to compute validation value.";
       OnSessionFailed();
       return;
@@ -574,8 +557,8 @@ bool CrosFpBiometricsManager::ValidationValueIsCorrect(uint32_t match_idx) {
   }
 
   std::vector<uint8_t> validation_value;
-  if (!ComputeValidationValue(secret, records_[match_idx].user_id,
-                              &validation_value)) {
+  if (!BiodCrypto::ComputeValidationValue(secret, records_[match_idx].user_id,
+                                          &validation_value)) {
     LOG(ERROR) << "Got positive match secret but failed to compute validation "
                   "value for finger "
                << match_idx << ".";
@@ -625,8 +608,9 @@ CrosFpBiometricsManager::MigrateToValidationValue(int match_idx) {
     return MigrationStatus::kError;
   }
 
-  if (!ComputeValidationValue(secret, records_[match_idx].user_id,
-                              &records_[match_idx].validation_val)) {
+  if (!BiodCrypto::ComputeValidationValue(
+          secret, records_[match_idx].user_id,
+          &records_[match_idx].validation_val)) {
     LOG(ERROR) << "In migration to validation value: failed to compute "
                   "validation value from secret on match for finger "
                << match_idx << ".";

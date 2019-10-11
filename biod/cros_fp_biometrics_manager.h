@@ -128,9 +128,6 @@ class CrosFpBiometricsManager : public BiometricsManager {
   void DoEnrollFingerUpEvent(InternalRecord record, uint32_t event);
   void DoMatchEvent(int attempt, uint32_t event);
   void DoMatchFingerUpEvent(uint32_t event);
-  bool ComputeValidationValue(const brillo::SecureBlob& secret,
-                              const std::string& user_id,
-                              std::vector<uint8_t>* out);
   bool ValidationValueIsCorrect(uint32_t match_idx);
   BiometricsManager::AttemptMatches CalculateMatches(int match_idx,
                                                      bool matched);
