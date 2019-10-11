@@ -21,6 +21,9 @@ group("all") {
       ":libpolicy-${libbase_ver}_tests",
     ]
   }
+  if (use.fuzzer) {
+    deps += [ ":libbrillo_http_form_data_fuzzer" ]
+  }
 }
 
 default_pkg_deps = [ "libchrome-${libbase_ver}" ]
@@ -542,6 +545,25 @@ if (use.test) {
       "policy/tests/libpolicy_test.cc",
       "policy/tests/policy_util_test.cc",
       "policy/tests/resilient_policy_util_test.cc",
+    ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("libbrillo_http_form_data_fuzzer") {
+    sources = [
+      "brillo/http/http_form_data_fuzzer.cc",
+    ]
+
+    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
+
+    pkg_deps = [ "libchrome-${libbase_ver}" ]
+
+    include_dirs = [ "../libbrillo" ]
+
+    deps = [
+      ":libbrillo-http-${libbase_ver}",
+      ":libbrillo-streams-${libbase_ver}",
     ]
   }
 }
