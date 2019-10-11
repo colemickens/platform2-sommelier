@@ -21,6 +21,7 @@ group("all") {
       ":trunks_creation_blob_fuzzer",
       ":trunks_key_blob_fuzzer",
       ":trunks_resource_manager_fuzzer",
+      ":trunks_tpm_pinweaver_fuzzer",
     ]
   }
 }
@@ -290,6 +291,20 @@ if (use.fuzzer) {
       ":trunks",
       ":trunks_test",
       ":trunksd_lib",
+    ]
+  }
+
+  executable("trunks_tpm_pinweaver_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "tpm_pinweaver_fuzzer.cc",
+    ]
+    deps = [
+      ":pinweaver_proto",
+      ":trunks",
     ]
   }
 }
