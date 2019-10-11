@@ -8845,6 +8845,7 @@ mno {
       name : "Movistar"
     }
     mccmnc : "33403"
+    mccmnc : "334030"
     mobile_apn {
       apn : "internet.movistar.mx"
       username : "movistar"
