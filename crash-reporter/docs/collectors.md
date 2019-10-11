@@ -256,9 +256,6 @@ See sections below for more details on each collector and signal.
 The anomaly detector runs one collector at a time, and waits for it to
 finish running fully before processing more syslog entries.
 
-The anomaly detector rescans `/var/log/messages` from the beginning at
-reboot (or restart).  Thus the same anomaly may be reported more than once.
-
 As a special case, only the first instance of each kernel warning is collected
 during a session (from boot to shutdown or crash).  A count of each warning is
 reported separately via a sparse UMA histogram.
