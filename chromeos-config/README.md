@@ -316,6 +316,7 @@ In the tables below,
 | touch | [touch](#touch) |  | False |  | False |  |
 | ui | [ui](#ui) |  | False |  | False |  |
 | wallpaper | string |  | False |  | False | Base filename of the default wallpaper to show on this device. |
+| wifi | [wifi](#wifi) |  | False |  | False |  |
 
 ### arc
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -511,6 +512,30 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | region | string |  | False |  | False |  |
 | side | string |  | False |  | False |  |
+
+### wifi
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| non-tablet-mode-power-table | [non-tablet-mode-power-table](#non-tablet-mode-power-table) |  | False |  | False | WiFi power chain |
+| tablet-mode-power-table | [tablet-mode-power-table](#tablet-mode-power-table) |  | False |  | False | WiFi power chain |
+
+### non-tablet-mode-power-table
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| limit-2g | integer |  | False |  | False | 2G band power limit (dBm) Minimum value: -0x1. Maximum value: 0x7fffffff. |
+| limit-5g-1 | integer |  | False |  | False | 5G band 1 power limit (dBm) Minimum value: -0x1. Maximum value: 0x7fffffff. |
+| limit-5g-2 | integer |  | False |  | False | 5G band 2 power limit (dBm) Minimum value: -0x1. Maximum value: 0x7fffffff. |
+| limit-5g-3 | integer |  | False |  | False | 5G band 3 power limit (dBm) Minimum value: -0x1. Maximum value: 0x7fffffff. |
+| limit-5g-4 | integer |  | False |  | False | 5G band 4 power limit (dBm) Minimum value: -0x1. Maximum value: 0x7fffffff. |
+
+### tablet-mode-power-table
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| limit-2g | integer |  | False |  | False | 2G band power limit (dBm) Minimum value: -0x1. Maximum value: 0x7fffffff. |
+| limit-5g-1 | integer |  | False |  | False | 5G band 1 power limit (dBm) Minimum value: -0x1. Maximum value: 0x7fffffff. |
+| limit-5g-2 | integer |  | False |  | False | 5G band 2 power limit (dBm) Minimum value: -0x1. Maximum value: 0x7fffffff. |
+| limit-5g-3 | integer |  | False |  | False | 5G band 3 power limit (dBm) Minimum value: -0x1. Maximum value: 0x7fffffff. |
+| limit-5g-4 | integer |  | False |  | False | 5G band 4 power limit (dBm) Minimum value: -0x1. Maximum value: 0x7fffffff. |
 
 
 [](end_definitions)
