@@ -21,6 +21,7 @@
 
 #include <systemd/sd-journal.h>
 
+#include "crash-reporter/paths.h"
 #include "metrics_event/proto_bindings/metrics_event.pb.h"
 
 // work around https://crbug.com/849450: the LOG_WARNING macro from
@@ -46,9 +47,6 @@ class Journal {
     // anomalies, but so be it---it's too hard to keep track reliably of the
     // last parsed position in the syslog.
     SeekToEnd();
-    // NOTE: This message is consumed by tast tests to determine when the
-    // anomaly detector has started. Don't change it without changing them.
-    LOG(INFO) << "Opened journal and sought to end";
   }
 
   JournalEntry GetNextEntry() {
@@ -169,6 +167,14 @@ int main(int argc, char* argv[]) {
   std::bernoulli_distribution drop_report(0.999);
 
   Journal j;
+
+  base::FilePath path = base::FilePath(paths::kSystemRunStateDirectory)
+                            .Append(paths::kAnomalyDetectorReady);
+  if (base::WriteFile(path, "", 0) == -1) {
+    // Log but don't prevent anomaly detector from starting because this file
+    // is not essential to its operation.
+    PLOG(ERROR) << "Couldn't write " << path.value() << " (tests may fail)";
+  }
 
   std::map<std::string, std::unique_ptr<anomaly::Parser>> parsers;
   parsers["audit"] = std::make_unique<anomaly::SELinuxParser>();

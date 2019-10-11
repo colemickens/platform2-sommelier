@@ -53,7 +53,14 @@ constexpr char kLeaveCoreFile[] = "/root/.leave_core";
 
 // Base name of file whose existence indicates a crash test is currently
 // running.
+// This is used in integration tests, including tast.platform.KernelWarning and
+// tast.platform.ServiceFailure. (see local/crash/crash.go in the tast-tests
+// repo)
 constexpr char kCrashTestInProgress[] = "crash-test-in-progress";
+
+// Base name of file whose existence indicates that the anomaly detector is
+// ready for anomalies.
+constexpr char kAnomalyDetectorReady[] = "anomaly-detector-ready";
 
 // Base name of file whose existence indicates uploading of device coredumps is
 // allowed.
