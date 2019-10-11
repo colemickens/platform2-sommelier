@@ -5,4 +5,20 @@
 
 # Upgrades a Crostini container from Debian Stretch to Buster.
 
-echo "I'm a placeholder :)"
+set -ex
+
+# Use defaults for everything, we don't support answering prompts.
+export DEBIAN_FRONTEND=noninteractive
+
+# No longer need to backport GPU support packages.
+sudo rm -f /etc/apt/sources.list.d/cros-gpu.list \
+           /etc/apt/preferences.d/cros-gpu.pref
+
+# The actual flip to buster.
+sudo sed -i 's/stretch/buster/g' /etc/apt/sources.list \
+    /etc/apt/sources.list.d/cros.list
+
+# Upgrade everything to Buster versions.
+sudo apt-get update -y
+sudo apt-get upgrade -y
+sudo apt-get dist-upgrade -y
