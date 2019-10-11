@@ -20,6 +20,7 @@ group("all") {
     deps += [
       ":trunks_creation_blob_fuzzer",
       ":trunks_key_blob_fuzzer",
+      ":trunks_password_authorization_delegate_fuzzer",
       ":trunks_resource_manager_fuzzer",
       ":trunks_tpm_pinweaver_fuzzer",
     ]
@@ -291,6 +292,19 @@ if (use.fuzzer) {
       ":trunks",
       ":trunks_test",
       ":trunksd_lib",
+    ]
+  }
+
+  executable("trunks_password_authorization_delegate_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "password_authorization_delegate_fuzzer.cc",
+    ]
+    deps = [
+      ":trunks",
     ]
   }
 
