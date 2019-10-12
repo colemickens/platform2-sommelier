@@ -36,12 +36,12 @@
 #include "mtkcam/drv/sensor/MyUtils.h"
 #include <mtkcam/utils/TuningUtils/TuningPlatformInfo.h>
 
+#include <base/files/file_enumerator.h>
 #include <sys/ioctl.h>
 #include <linux/media.h>
 #include <linux/v4l2-subdev.h>
 
 #define MTK_SUB_IMGSENSOR
-#define MAX_FD_PER_PROCESS 255
 #define MAX_ENTITY_CNT 255
 
 #define MAIN_SENSOR_I2C_NUM 2
@@ -192,14 +192,12 @@ int findsensor(std::string entity_name, int* id) {
 }
 
 int HalSensorList::findSubdev(void) {
-  unsigned int media_device_id = 0;
   struct media_device_info mdev_info;
   int findsensorif = 0;
   int findcamio = 0;
   std::string seninf_name("seninf");
   std::string p1_node_name("mtk-cam-p1");
   std::string entity_name;
-  char dev_name[32];
   char subdev_name[32];
   int rc = 0;
   int dev_fd = 0;
@@ -209,40 +207,30 @@ int HalSensorList::findSubdev(void) {
 
   CAM_LOGI("[%s] start \n", __FUNCTION__);
 
-  while (media_device_id < 3) {
+  const base::FilePath path("/dev/media?");
+  base::FileEnumerator enumerator(path.DirName(), false,
+                                  base::FileEnumerator::FILES,
+                                  path.BaseName().value());
+
+  while (!enumerator.Next().empty()) {
     int num_entities = 1;
-    int retry_cnt = 10;
-    snprintf(dev_name, sizeof(dev_name), "/dev/media%d", media_device_id);
-    CAM_LOGI("[%s] media dev name [%s] \n", __FUNCTION__, dev_name);
-    do {
-      dev_fd = open(dev_name, O_RDWR | O_NONBLOCK);
-      if (dev_fd < 0) {
-        CAM_LOGE("[%s] Open %s error, %d %s\n", __FUNCTION__, dev_name, errno,
-                 strerror(errno));
-        retry_cnt--;
-        rc = -1;
-        for (int i = 0; i < 1000; i++)
-          usleep(100);  // wait 100ms to retry
-      } else {
-        break;
-      }
-    } while (retry_cnt > 0);
 
-    CAM_LOGI("media%d retry cnt %d\n", media_device_id, retry_cnt);
-
-    if (dev_fd >= MAX_FD_PER_PROCESS) {
-      CAM_LOGD("dev_fd >= MAX_FD_PER_PROCESS\n");
-      dev_fd = -1;
-      rc = -1;
+    if (findsensorif && (sensor_nums == 2) && findcamio)
       break;
-    }
 
+    const base::FileEnumerator::FileInfo info = enumerator.GetInfo();
+    const std::string name = info.GetName().value();
+    const base::FilePath target_path = path.DirName().Append(name);
+
+    CAM_LOGI("[%s] media dev name [%s] \n", __FUNCTION__,
+             target_path.value().c_str());
+    dev_fd = open(target_path.value().c_str(), O_RDWR | O_NONBLOCK);
     if (dev_fd < 0) {
-      media_device_id++;
+      CAM_LOGE("[%s] Open %s error, %d %s\n", __FUNCTION__,
+               target_path.value().c_str(), errno, strerror(errno));
       rc = -1;
       continue;
     }
-    media_device_id++;
 
     rc = ioctl(dev_fd, MEDIA_IOC_DEVICE_INFO, &mdev_info);
     if (rc < 0) {
@@ -299,7 +287,7 @@ int HalSensorList::findSubdev(void) {
         seninfSubdevName = subdev_name;
         CAM_LOGI("seninf subdevname[%s]-(%d)\n", seninfSubdevName.c_str(),
                  entity.id);
-        devName = dev_name;
+        devName = target_path.value();
         CAM_LOGI("devName %s", devName.c_str());
         seninfEntId = entity.id;
         findsensorif = 1;
@@ -311,6 +299,8 @@ int HalSensorList::findSubdev(void) {
     }
   }
 
+  CAM_LOGI("[%s] end \n", __FUNCTION__);
+
   return rc;
 }
 
@@ -321,6 +311,9 @@ HalSensorList::searchSensors() {
   CAM_LOGI("searchSensors");
   findSubdev();
   CAM_LOGI("sensor_nums %d\n", sensor_nums);
+
+  if (sensor_nums == 0)
+    return 0;
 
 #ifdef MTK_SUB_IMGSENSOR
   CAM_LOGD("impSearchSensor search to sub\n");
@@ -778,8 +771,14 @@ MVOID HalSensorList::querySensorInfo(IMGSENSOR_SENSOR_IDX idx) {
   }
   pSensorStaticInfo = &sensorStaticInfo[idx];
 
-  struct imgsensor_info_struct* pImgsensorInfo = getSensorInfo(idx);
   CUSTOM_CFG* pCustomCfg = NSCamCustomSensor::getCustomConfig(idx);
+
+  struct imgsensor_info_struct* pImgsensorInfo = getSensorInfo(idx);
+  if (pImgsensorInfo == NULL) {
+    CAM_LOGE("querySensorInfo fail, cannot get sensor info\n");
+    return;
+  }
+
   pSensorStaticInfo->sensorDevID = pImgsensorInfo->sensor_id;
   pSensorStaticInfo->orientationAngle = pCustomCfg->orientation;
   pSensorStaticInfo->facingDirection = pCustomCfg->dir;

@@ -368,7 +368,8 @@ HalSensor::powerOff(char const* szCallerName,
   int sensor_fd = HalSensorList::singleton()->querySensorFd(sensorIdx);
   int seninf_fd = HalSensorList::singleton()->querySeninfFd();
 
-  CAM_LOGI("powerOff\n");
+  CAM_LOGI("powerOff %d %d\n", *pArrayOfIndex, sensorIdx);
+
   if (sensor_fd >= 0) {
     close(sensor_fd);
   }
@@ -424,8 +425,6 @@ MBOOL HalSensor::configure(MUINT const uCountOfParam,
   int sensor_fd = HalSensorList::singleton()->querySensorFd(sensorIdx);
   int seninf_fd = HalSensorList::singleton()->querySeninfFd();
 
-  struct imgsensor_info_struct* pImgsensorInfo =
-      HalSensorList::singleton()->getSensorInfo(sensorIdx);
   struct v4l2_subdev_format aFormat;
   SensorDynamicInfo* pSensorDynamicInfo = &mSensorDynamicInfo;
   unsigned int width = 0;
@@ -438,6 +437,13 @@ MBOOL HalSensor::configure(MUINT const uCountOfParam,
   std::unique_lock<std::mutex> lk(mMutex);
 
   CAM_LOGI("configure sensorIdx (%d)\n", sensorIdx);
+
+  struct imgsensor_info_struct* pImgsensorInfo =
+      HalSensorList::singleton()->getSensorInfo(sensorIdx);
+  if (pImgsensorInfo == NULL) {
+    CAM_LOGE("configure fail, cannot get sensor info\n");
+    return MFALSE;
+  }
 
   if (mSensorIdx == IMGSENSOR_SENSOR_IDX_NONE || mSensorIdx != sensorIdx) {
     CAM_LOGE("configure fail. mSensorIdx = %d, sensorIdx = %d\n", mSensorIdx,
@@ -595,8 +601,10 @@ MINT HalSensor::sendCommand(MUINT indexDual,
         SENSOR_WINSIZE_INFO_STRUCT* ptr;
         ptr = HalSensorList::singleton()->getWinSizeInfo(
             sensorIdx, *reinterpret_cast<MUINT32*>(arg1));
-        memcpy(reinterpret_cast<void*>(arg2), reinterpret_cast<void*>(ptr),
-               sizeof(SENSOR_WINSIZE_INFO_STRUCT));
+        if (ptr) {
+          memcpy(reinterpret_cast<void*>(arg2), reinterpret_cast<void*>(ptr),
+                 sizeof(SENSOR_WINSIZE_INFO_STRUCT));
+        }
       } else {
         CAM_LOGE("%s(0x%x) wrong input params\n", __FUNCTION__, cmd);
         ret = MFALSE;

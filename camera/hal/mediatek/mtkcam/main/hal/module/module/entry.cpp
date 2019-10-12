@@ -72,6 +72,13 @@ static int open_legacy(const struct hw_module_t* module,
   return NSCam::getCamDeviceManager()->open(device, module, id, halVersion);
 }
 
+static int hal_init(void) {
+  if (NSCam::getCamDeviceManager()->getNumberOfDevices() == 0)
+    return -ENODEV;
+  else
+    return 0;
+}
+
 static camera_module get_camera_module() {
   camera_module module = {
       .common =
@@ -93,7 +100,7 @@ static camera_module get_camera_module() {
           NULL,  // TODO(MTK): https://issuetracker.google.com/138623788
       .open_legacy = open_legacy,
       .set_torch_mode = NULL,
-      .init = NULL,
+      .init = hal_init,
       .reserved = {0},
   };
   return module;
