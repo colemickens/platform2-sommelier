@@ -581,7 +581,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     ON_CALL(*supplicant_interface_proxy_, RemoveNetwork(_))
         .WillByDefault(Return(true));
     ON_CALL(*supplicant_interface_proxy_, Scan(_)).WillByDefault(Return(true));
-    ON_CALL(*supplicant_interface_proxy_, EnableMacAddressRandomization(_))
+    ON_CALL(*supplicant_interface_proxy_, EnableMacAddressRandomization(_, _))
         .WillByDefault(Return(true));
     ON_CALL(*supplicant_interface_proxy_, DisableMacAddressRandomization())
         .WillByDefault(Return(true));
@@ -4200,7 +4200,8 @@ TEST_F(WiFiMainTest, ParseFeatureFlags_RandomMacSupport) {
 TEST_F(WiFiMainTest, RandomMacProperty_Unsupported) {
   StartWiFi();
   SetRandomMacSupported(false);
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), EnableMacAddressRandomization(_))
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              EnableMacAddressRandomization(_, _))
       .Times(0);
   SetRandomMacEnabled(true);
   EXPECT_FALSE(GetRandomMacEnabled());
@@ -4212,7 +4213,7 @@ TEST_F(WiFiMainTest, RandomMacProperty_Supported) {
 
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(),
-              EnableMacAddressRandomization(GetRandomMacMask()))
+              EnableMacAddressRandomization(GetRandomMacMask(), _))
       .Times(1);
   SetRandomMacEnabled(true);
   EXPECT_TRUE(GetRandomMacEnabled());
@@ -4231,7 +4232,7 @@ TEST_F(WiFiMainTest, RandomMacProperty_SupplicantFailed) {
   // Test wpa_supplicant failing to enable random MAC.
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(),
-              EnableMacAddressRandomization(GetRandomMacMask()))
+              EnableMacAddressRandomization(GetRandomMacMask(), _))
       .WillOnce(Return(false));
   SetRandomMacEnabled(true);
   EXPECT_FALSE(GetRandomMacEnabled());

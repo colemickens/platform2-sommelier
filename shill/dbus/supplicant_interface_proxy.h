@@ -53,8 +53,8 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   bool TDLSStatus(const std::string& peer, std::string* status) override;
   bool TDLSTeardown(const std::string& peer) override;
   bool SetHT40Enable(const RpcIdentifier& network, bool enable) override;
-  bool EnableMacAddressRandomization(
-      const std::vector<unsigned char>& mask) override;
+  bool EnableMacAddressRandomization(const std::vector<unsigned char>& mask,
+                                     bool sched_scan) override;
   bool DisableMacAddressRandomization() override;
   // The below set functions will always return true, since PropertySet::Set
   // is an async method. Any failures will be logged in the callback.

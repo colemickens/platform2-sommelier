@@ -304,7 +304,7 @@ bool SupplicantInterfaceProxy::SetHT40Enable(const RpcIdentifier& network,
 }
 
 bool SupplicantInterfaceProxy::EnableMacAddressRandomization(
-    const std::vector<unsigned char>& mask) {
+    const std::vector<unsigned char>& mask, bool sched_scan) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   brillo::ErrorPtr error;
   // The MACRandomizationMask property is a map(type_string, ipmask_array)
@@ -313,8 +313,9 @@ bool SupplicantInterfaceProxy::EnableMacAddressRandomization(
   std::map<std::string, std::vector<uint8_t>> mac_randomization_args;
   mac_randomization_args.insert(
       std::pair<std::string, std::vector<uint8_t>>("scan", mask));
-  mac_randomization_args.insert(
-      std::pair<std::string, std::vector<uint8_t>>("sched_scan", mask));
+  if (sched_scan)
+    mac_randomization_args.insert(
+        std::pair<std::string, std::vector<uint8_t>>("sched_scan", mask));
 
   // First try setting the MACRandomizationMask property
   // (wpa_supplicant-2.8 interface).

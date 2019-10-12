@@ -51,7 +51,7 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   MOCK_METHOD(bool, SetHT40Enable, (const RpcIdentifier&, bool), (override));
   MOCK_METHOD(bool,
               EnableMacAddressRandomization,
-              (const std::vector<unsigned char>&),
+              (const std::vector<unsigned char>&, bool),
               (override));
   MOCK_METHOD(bool, DisableMacAddressRandomization, (), (override));
 

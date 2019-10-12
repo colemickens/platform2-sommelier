@@ -699,6 +699,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   bool random_mac_supported_;
   bool random_mac_enabled_;
+  bool sched_scan_supported_;
 
   // Holds the list of scan results waiting to be processed and a cancelable
   // closure for processing the pending tasks in PendingScanResultsHandler().

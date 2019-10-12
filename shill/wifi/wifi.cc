@@ -150,6 +150,7 @@ WiFi::WiFi(Manager* manager,
       netlink_manager_(NetlinkManager::GetInstance()),
       random_mac_supported_(false),
       random_mac_enabled_(false),
+      sched_scan_supported_(false),
       scan_state_(kScanIdle),
       scan_method_(kScanMethodNone),
       receive_byte_count_at_connect_(0),
@@ -746,7 +747,7 @@ bool WiFi::SetRandomMacEnabled(const bool& enabled, Error* error) {
     return false;
   }
   if ((enabled && supplicant_interface_proxy_->EnableMacAddressRandomization(
-                      kRandomMacMask)) ||
+                      kRandomMacMask, sched_scan_supported_)) ||
       (!enabled &&
        supplicant_interface_proxy_->DisableMacAddressRandomization())) {
     random_mac_enabled_ = enabled;
@@ -1320,7 +1321,6 @@ void WiFi::ParseFeatureFlags(const Nl80211Message& nl80211_message) {
   }
 
   // Look for scheduled scan support.
-  bool supports_sched_scan = false;
   AttributeListConstRefPtr cmds;
   if (!nl80211_message.const_attributes()->ConstGetNestedAttributeList(
           NL80211_ATTR_SUPPORTED_COMMANDS, &cmds)) {
@@ -1337,7 +1337,7 @@ void WiFi::ParseFeatureFlags(const Nl80211Message& nl80211_message) {
       return;
     }
     if (cmd == NL80211_CMD_START_SCHED_SCAN)
-      supports_sched_scan = true;
+      sched_scan_supported_ = true;
   }
 
   // There are two flags for MAC randomization: one for regular scans and one
@@ -1345,7 +1345,7 @@ void WiFi::ParseFeatureFlags(const Nl80211Message& nl80211_message) {
   // supported.
   random_mac_supported_ =
       (flags & NL80211_FEATURE_SCAN_RANDOM_MAC_ADDR) &&
-      (!supports_sched_scan ||
+      (!sched_scan_supported_ ||
        (flags & NL80211_FEATURE_SCHED_SCAN_RANDOM_MAC_ADDR));
 
   SLOG(this, 7) << __func__ << ": "
@@ -2653,7 +2653,7 @@ void WiFi::ConnectToSupplicant() {
 
   if (random_mac_enabled_ &&
       !supplicant_interface_proxy_->EnableMacAddressRandomization(
-          kRandomMacMask)) {
+          kRandomMacMask, sched_scan_supported_)) {
     LOG(ERROR) << "Failed to enable MAC address randomization. "
                << "May be running an older version of wpa_supplicant.";
   }
