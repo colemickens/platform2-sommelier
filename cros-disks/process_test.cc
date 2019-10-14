@@ -381,12 +381,10 @@ TEST_P(ProcessRunTest, RunDoesNotWaitForBackgroundProcessToFinish) {
   process.AddArgument("-c");
 
   // Pipe to unblock the background process and allow it to finish.
-  Pipe to_continue;
-  ASSERT_TRUE(base::SetCloseOnExec(to_continue.write_fd.get()));
+  SubprocessPipe to_continue(SubprocessPipe::kParentToChild);
 
   // Pipe to monitor the background process and wait for it to finish.
-  Pipe to_wait;
-  ASSERT_TRUE(base::SetCloseOnExec(to_wait.read_fd.get()));
+  SubprocessPipe to_wait(SubprocessPipe::kChildToParent);
 
   process.AddArgument(base::StringPrintf(R"(
       (
@@ -401,9 +399,9 @@ TEST_P(ProcessRunTest, RunDoesNotWaitForBackgroundProcessToFinish) {
       printf 'Started background process %%i\n' $!
       exit 5;
     )",
-                                         to_wait.write_fd.get(),
-                                         to_continue.read_fd.get(),
-                                         to_wait.write_fd.get()));
+                                         to_wait.child_fd.get(),
+                                         to_continue.child_fd.get(),
+                                         to_wait.child_fd.get()));
 
   LOG(INFO) << "Running launcher process";
   std::vector<std::string> output;
@@ -412,18 +410,18 @@ TEST_P(ProcessRunTest, RunDoesNotWaitForBackgroundProcessToFinish) {
               ElementsAre(StartsWith("OUT: Started background process")));
 
   LOG(INFO) << "Closing unused fds";
-  to_continue.read_fd.reset();
-  to_wait.write_fd.reset();
+  to_continue.child_fd.reset();
+  to_wait.child_fd.reset();
 
   LOG(INFO) << "Waiting for background process to confirm starting";
-  EXPECT_EQ(Read(to_wait.read_fd.get()), "Begin\n");
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "Begin\n");
 
   LOG(INFO) << "Unblocking background process";
-  Write(to_continue.write_fd.get(), "Continue\n");
+  Write(to_continue.parent_fd.get(), "Continue\n");
 
   LOG(INFO) << "Waiting for background process to finish";
-  EXPECT_EQ(Read(to_wait.read_fd.get()), "Continue and End\n");
-  EXPECT_EQ(Read(to_wait.read_fd.get()), "");
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "Continue and End\n");
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "");
 
   LOG(INFO) << "Background process finished";
 }
@@ -435,12 +433,10 @@ TEST_P(ProcessRunTest, DISABLED_WaitDoesNotWaitForBackgroundProcessToFinish) {
   process.AddArgument("-c");
 
   // Pipe to unblock the background process and allow it to finish.
-  Pipe to_continue;
-  ASSERT_TRUE(base::SetCloseOnExec(to_continue.write_fd.get()));
+  SubprocessPipe to_continue(SubprocessPipe::kParentToChild);
 
   // Pipe to monitor the background process and wait for it to finish.
-  Pipe to_wait;
-  ASSERT_TRUE(base::SetCloseOnExec(to_wait.read_fd.get()));
+  SubprocessPipe to_wait(SubprocessPipe::kChildToParent);
 
   process.AddArgument(base::StringPrintf(R"(
       (
@@ -454,9 +450,9 @@ TEST_P(ProcessRunTest, DISABLED_WaitDoesNotWaitForBackgroundProcessToFinish) {
       )&
       exit 5;
     )",
-                                         to_wait.write_fd.get(),
-                                         to_continue.read_fd.get(),
-                                         to_wait.write_fd.get()));
+                                         to_wait.child_fd.get(),
+                                         to_continue.child_fd.get(),
+                                         to_wait.child_fd.get()));
 
   LOG(INFO) << "Starting launcher process";
   EXPECT_TRUE(process.Start());
@@ -465,18 +461,18 @@ TEST_P(ProcessRunTest, DISABLED_WaitDoesNotWaitForBackgroundProcessToFinish) {
   EXPECT_EQ(process.Wait(), 5);
 
   LOG(INFO) << "Closing unused fds";
-  to_continue.read_fd.reset();
-  to_wait.write_fd.reset();
+  to_continue.child_fd.reset();
+  to_wait.child_fd.reset();
 
   LOG(INFO) << "Waiting for background process to confirm starting";
-  EXPECT_EQ(Read(to_wait.read_fd.get()), "Begin\n");
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "Begin\n");
 
   LOG(INFO) << "Unblocking background process";
-  Write(to_continue.write_fd.get(), "Continue\n");
+  Write(to_continue.parent_fd.get(), "Continue\n");
 
   LOG(INFO) << "Waiting for background process to finish";
-  EXPECT_EQ(Read(to_wait.read_fd.get()), "Continue and End\n");
-  EXPECT_EQ(Read(to_wait.read_fd.get()), "");
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "Continue and End\n");
+  EXPECT_EQ(Read(to_wait.parent_fd.get()), "");
 
   LOG(INFO) << "Background process finished";
 }

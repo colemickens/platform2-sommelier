@@ -27,35 +27,37 @@ void SigTerm(int sig) {
 
 }  // namespace
 
-Pipe::Pipe() {
+SubprocessPipe::SubprocessPipe(const Direction direction) {
   int fds[2];
-  if (pipe(fds) < 0) {
-    PLOG(FATAL) << "Cannot create pipe ";
-  }
-
-  read_fd.reset(fds[0]);
-  write_fd.reset(fds[1]);
+  PCHECK(pipe(fds) >= 0);
+  child_fd.reset(fds[1 - direction]);
+  parent_fd.reset(fds[direction]);
+  PCHECK(base::SetCloseOnExec(parent_fd.get()));
 }
 
-SandboxedInit::SandboxedInit() = default;
+SandboxedInit::SandboxedInit()
+    : in_(SubprocessPipe::kParentToChild),
+      out_(SubprocessPipe::kChildToParent),
+      err_(SubprocessPipe::kChildToParent),
+      ctrl_(SubprocessPipe::kChildToParent) {}
 
 SandboxedInit::~SandboxedInit() = default;
 
 base::ScopedFD SandboxedInit::TakeInitControlFD(base::ScopedFD* in_fd,
                                                 base::ScopedFD* out_fd,
                                                 base::ScopedFD* err_fd) {
-  // Close "other" sides of the pipes. For the outside of sandbox
+  // Close "child" sides of the pipes. For the outside of sandbox
   // "their" stdin is for writing and all other are for reading.
-  in_.read_fd.reset();
-  out_.write_fd.reset();
-  err_.write_fd.reset();
-  ctrl_.write_fd.reset();
+  in_.child_fd.reset();
+  out_.child_fd.reset();
+  err_.child_fd.reset();
+  ctrl_.child_fd.reset();
 
-  *in_fd = std::move(in_.write_fd);
-  *out_fd = std::move(out_.read_fd);
-  *err_fd = std::move(err_.read_fd);
+  *in_fd = std::move(in_.parent_fd);
+  *out_fd = std::move(out_.parent_fd);
+  *err_fd = std::move(err_.parent_fd);
 
-  return std::move(ctrl_.read_fd);
+  return std::move(ctrl_.parent_fd);
 }
 
 [[noreturn]] void SandboxedInit::RunInsideSandboxNoReturn(
@@ -68,13 +70,13 @@ base::ScopedFD SandboxedInit::TakeInitControlFD(base::ScopedFD* in_fd,
   // Redirect in/out so logging can communicate assertions and children
   // to inherit right FDs.
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
-  if (dup2(err_.write_fd.get(), STDERR_FILENO) < 0) {
+  if (dup2(err_.child_fd.get(), STDERR_FILENO) < 0) {
     PLOG(FATAL) << "Can't dup2 " << STDERR_FILENO;
   }
-  if (dup2(out_.write_fd.get(), STDOUT_FILENO) < 0) {
+  if (dup2(out_.child_fd.get(), STDOUT_FILENO) < 0) {
     PLOG(FATAL) << "Can't dup2 " << STDOUT_FILENO;
   }
-  if (dup2(in_.read_fd.get(), STDIN_FILENO) < 0) {
+  if (dup2(in_.child_fd.get(), STDIN_FILENO) < 0) {
     PLOG(FATAL) << "Can't dup2 " << STDIN_FILENO;
   }
 
@@ -84,18 +86,21 @@ base::ScopedFD SandboxedInit::TakeInitControlFD(base::ScopedFD* in_fd,
   }
 
   // Close unused sides of the pipes.
-  for (Pipe* const p : {&in_, &out_, &err_}) {
-    p->read_fd.reset();
-    p->write_fd.reset();
+  for (SubprocessPipe* const p : {&in_, &out_, &err_}) {
+    p->child_fd.reset();
+    p->parent_fd.reset();
   }
 
-  ctrl_.read_fd.reset();
+  ctrl_.parent_fd.reset();
+
+  // Avoid leaking file descriptor into launcher process.
+  PCHECK(base::SetCloseOnExec(ctrl_.child_fd.get()));
 
   // PID of the launcher process inside the jail PID namespace (e.g. PID 2).
   pid_t root_pid = StartLauncher(std::move(launcher));
   CHECK_LT(0, root_pid);
 
-  _exit(RunInitLoop(root_pid, std::move(ctrl_.write_fd)));
+  _exit(RunInitLoop(root_pid, std::move(ctrl_.child_fd)));
   NOTREACHED();
 }
 

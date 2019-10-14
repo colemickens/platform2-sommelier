@@ -17,12 +17,16 @@
 
 namespace cros_disks {
 
-// Anonymous pipe.
-struct Pipe {
-  base::ScopedFD read_fd, write_fd;
+// Anonymous pipe to establish communication between a parent process and a
+// child process.
+struct SubprocessPipe {
+  base::ScopedFD child_fd, parent_fd;
 
-  // Creates an open pipe.
-  Pipe();
+  // Direction of communication.
+  enum Direction { kChildToParent, kParentToChild };
+
+  // Creates an open pipe. Sets FD_CLOEXEC on parent_fd. Dies in case of error.
+  explicit SubprocessPipe(Direction direction);
 };
 
 // To run daemons in a PID namespace under minijail we need to provide
@@ -52,7 +56,7 @@ class SandboxedInit {
   int RunInitLoop(pid_t root_pid, base::ScopedFD ctrl_fd);
   pid_t StartLauncher(base::OnceCallback<int()> launcher);
 
-  Pipe in_, out_, err_, ctrl_;
+  SubprocessPipe in_, out_, err_, ctrl_;
 
   DISALLOW_COPY_AND_ASSIGN(SandboxedInit);
 };
