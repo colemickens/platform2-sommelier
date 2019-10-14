@@ -28,32 +28,4 @@ const char kEcEventFilePath[] = "dev/wilco_event0";
 // this constant holds the specific flag for use with poll().
 const int16_t kEcEventFilePollEvents = POLLIN;
 
-// Please keep in sync list of properties with
-// "//third_party/kernel/drivers/platform/chrome/wilco_ec_properties.h"
-
-// EC property |global_mic_mute_led|.
-const char kEcPropertyGlobalMicMuteLed[] = "global_mic_mute_led";
-
-// EC property |fn_lock|.
-const char kEcPropertyFnLock[] = "fn_lock";
-
-// EC property |nic|.
-const char kEcPropertyNic[] = "nic";
-
-// EC property |ext_usb_port_en|.
-const char kEcPropertyExtUsbPortEn[] = "ext_usb_port_en";
-
-// EC property |wireless_sw_wlan|.
-const char kEcPropertyWirelessSwWlan[] = "wireless_sw_wlan";
-
-// EC property |auto_boot_on_trinity_dock_attach|.
-const char kEcPropertyAutoBootOnTrinityDockAttach[] =
-    "auto_boot_on_trinity_dock_attach";
-
-// EC property |ich_azalia_en|.
-const char kEcPropertyIchAzaliaEn[] = "ich_azalia_en";
-
-// EC property |sign_of_life_kbbl|.
-const char kEcPropertySignOfLifeKbbl[] = "sign_of_life_kbbl";
-
 }  // namespace diagnostics

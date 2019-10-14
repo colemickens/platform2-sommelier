@@ -741,33 +741,6 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetEcTelemetryGrpcCall) {
       << "Actual: {" << response->ShortDebugString() << "}";
 }
 
-// Test that the GetEcProperty() method exposed by the daemon's gRPC server
-// returns a dump of the corresponding file from the disk.
-TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetEcPropertyGrpcCall) {
-  const base::FilePath file_path = temp_dir_path()
-                                       .Append(kEcDriverSysfsPath)
-                                       .Append(kEcDriverSysfsPropertiesPath)
-                                       .Append(kEcPropertyGlobalMicMuteLed);
-  const std::string kFakeFileContents = "1";
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(file_path, kFakeFileContents));
-
-  grpc_api::GetEcPropertyRequest request;
-  request.set_property(
-      grpc_api::GetEcPropertyRequest::PROPERTY_GLOBAL_MIC_MUTE_LED);
-  std::unique_ptr<grpc_api::GetEcPropertyResponse> response;
-  base::RunLoop run_loop;
-  fake_wilco_dtc()->GetEcProperty(
-      request, MakeAsyncResponseWriter(&response, &run_loop));
-  run_loop.Run();
-
-  ASSERT_TRUE(response);
-  grpc_api::GetEcPropertyResponse expected_response;
-  expected_response.set_status(grpc_api::GetEcPropertyResponse::STATUS_OK);
-  expected_response.set_payload(kFakeFileContents);
-  EXPECT_THAT(*response, ProtobufEquals(expected_response))
-      << "Actual: {" << response->ShortDebugString() << "}";
-}
-
 // Test that PerformWebRequest() method exposed by the daemon's gRPC returns a
 // Web request response from the browser.
 TEST_F(BootstrappedWilcoDtcSupportdCoreTest, PerformWebRequestToBrowser) {

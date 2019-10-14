@@ -67,12 +67,6 @@ void FakeWilcoDtc::GetEcTelemetry(
       callback);
 }
 
-void FakeWilcoDtc::GetEcProperty(const grpc_api::GetEcPropertyRequest& request,
-                                 GetEcPropertyCallback callback) {
-  wilco_dtc_supportd_grp_client_.CallRpc(
-      &grpc_api::WilcoDtcSupportd::Stub::AsyncGetEcProperty, request, callback);
-}
-
 void FakeWilcoDtc::PerformWebRequest(
     const grpc_api::PerformWebRequestParameter& parameter,
     const PerformWebRequestResponseCallback& callback) {

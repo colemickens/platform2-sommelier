@@ -21,22 +21,6 @@ extern const char kEcEventFilePath[];
 
 extern const int16_t kEcEventFilePollEvents;
 
-extern const char kEcPropertyGlobalMicMuteLed[];
-
-extern const char kEcPropertyFnLock[];
-
-extern const char kEcPropertyNic[];
-
-extern const char kEcPropertyExtUsbPortEn[];
-
-extern const char kEcPropertyWirelessSwWlan[];
-
-extern const char kEcPropertyAutoBootOnTrinityDockAttach[];
-
-extern const char kEcPropertyIchAzaliaEn[];
-
-extern const char kEcPropertySignOfLifeKbbl[];
-
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_EC_CONSTANTS_H_

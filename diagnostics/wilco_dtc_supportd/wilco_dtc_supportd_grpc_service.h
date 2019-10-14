@@ -154,8 +154,6 @@ class WilcoDtcSupportdGrpcService final {
       base::Callback<void(std::unique_ptr<grpc_api::GetSysfsDataResponse>)>;
   using GetEcTelemetryCallback =
       base::Callback<void(std::unique_ptr<grpc_api::GetEcTelemetryResponse>)>;
-  using GetEcPropertyCallback =
-      base::Callback<void(std::unique_ptr<grpc_api::GetEcPropertyResponse>)>;
   using PerformWebRequestResponseCallback = base::Callback<void(
       std::unique_ptr<grpc_api::PerformWebRequestResponse>)>;
   using GetAvailableRoutinesCallback = base::Callback<void(
@@ -193,8 +191,6 @@ class WilcoDtcSupportdGrpcService final {
                     const GetSysfsDataCallback& callback);
   void GetEcTelemetry(std::unique_ptr<grpc_api::GetEcTelemetryRequest> request,
                       const GetEcTelemetryCallback& callback);
-  void GetEcProperty(std::unique_ptr<grpc_api::GetEcPropertyRequest> request,
-                     const GetEcPropertyCallback& callback);
   void PerformWebRequest(
       std::unique_ptr<grpc_api::PerformWebRequestParameter> parameter,
       const PerformWebRequestResponseCallback& callback);

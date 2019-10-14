@@ -135,10 +135,6 @@ bool WilcoDtcSupportdCore::Start() {
       base::Bind(&WilcoDtcSupportdGrpcService::GetEcTelemetry,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
-      &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetEcProperty,
-      base::Bind(&WilcoDtcSupportdGrpcService::GetEcProperty,
-                 base::Unretained(&grpc_service_)));
-  grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestPerformWebRequest,
       base::Bind(&WilcoDtcSupportdGrpcService::PerformWebRequest,
                  base::Unretained(&grpc_service_)));

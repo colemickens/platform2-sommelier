@@ -109,15 +109,6 @@ std::unique_ptr<grpc_api::GetEcTelemetryResponse> MakeGetEcTelemetryResponse(
   return response;
 }
 
-std::unique_ptr<grpc_api::GetEcPropertyResponse> MakeEcPropertyResponse(
-    grpc_api::GetEcPropertyResponse::Status status,
-    const std::string& payload) {
-  auto response = std::make_unique<grpc_api::GetEcPropertyResponse>();
-  response->set_status(status);
-  response->set_payload(payload);
-  return response;
-}
-
 std::unique_ptr<grpc_api::PerformWebRequestResponse>
 MakePerformWebRequestResponse(
     grpc_api::PerformWebRequestResponse::Status status,
@@ -287,17 +278,6 @@ class WilcoDtcSupportdGrpcServiceTest : public testing::Test {
 
     service()->GetEcTelemetry(std::move(request),
                               GrpcCallbackResponseSaver(response));
-    ASSERT_TRUE(*response);
-  }
-
-  void ExecuteGetEcProperty(
-      grpc_api::GetEcPropertyRequest::Property request_property,
-      std::unique_ptr<grpc_api::GetEcPropertyResponse>* response) {
-    auto request = std::make_unique<grpc_api::GetEcPropertyRequest>();
-    request->set_property(request_property);
-
-    service()->GetEcProperty(std::move(request),
-                             GrpcCallbackResponseSaver(response));
     ASSERT_TRUE(*response);
   }
 
@@ -503,19 +483,6 @@ TEST_F(WilcoDtcSupportdGrpcServiceTest, GetEcTelemetryErrorAccessingDriver) {
   ASSERT_TRUE(response);
   auto expected_response = MakeGetEcTelemetryResponse(
       grpc_api::GetEcTelemetryResponse::STATUS_ERROR_ACCESSING_DRIVER, "");
-  EXPECT_THAT(*response, ProtobufEquals(*expected_response))
-      << "Actual response: {" << response->ShortDebugString() << "}";
-}
-
-// Test that GetEcProperty() returns invalid property error status when
-// property is unset or invalid.
-TEST_F(WilcoDtcSupportdGrpcServiceTest, GetEcPropertyInputPropertyIsUnset) {
-  std::unique_ptr<grpc_api::GetEcPropertyResponse> response;
-  ExecuteGetEcProperty(grpc_api::GetEcPropertyRequest::PROPERTY_UNSET,
-                       &response);
-  auto expected_response = MakeEcPropertyResponse(
-      grpc_api::GetEcPropertyResponse::STATUS_ERROR_REQUIRED_FIELD_MISSING,
-      std::string());
   EXPECT_THAT(*response, ProtobufEquals(*expected_response))
       << "Actual response: {" << response->ShortDebugString() << "}";
 }
@@ -1019,82 +986,6 @@ INSTANTIATE_TEST_CASE_P(
                         grpc_api::GetEcTelemetryResponse::
                             STATUS_ERROR_INPUT_PAYLOAD_MAX_SIZE_EXCEEDED,
                         "")));
-
-// Tests for the GetEcProperty() method of WilcoDtcSupportdGrpcServiceTest.
-//
-// This is a parameterized test with the following parameters:
-// * |ec_property| - property of the GetEcProperty() request to be executed
-//   (see GetEcPropertyRequest::Property);
-// * |sysfs_file_name| - sysfs file in |kEcDriverSysfsPropertiesPath|
-//   properties folder which is expected to be read by the executed
-//   GetEcProperty() request.
-class GetEcPropertyWilcoDtcSupportdGrpcServiceTest
-    : public WilcoDtcSupportdGrpcServiceTest,
-      public testing::WithParamInterface<
-          std::tuple<grpc_api::GetEcPropertyRequest::Property /* ec_property */,
-                     std::string /* sysfs_file_name */>> {
- protected:
-  grpc_api::GetEcPropertyRequest::Property ec_property() {
-    return std::get<0>(GetParam());
-  }
-
-  std::string sysfs_file_name() const { return std::get<1>(GetParam()); }
-
-  base::FilePath sysfs_file_path() const {
-    return temp_dir_path()
-        .Append(kEcDriverSysfsPath)
-        .Append(kEcDriverSysfsPropertiesPath)
-        .Append(sysfs_file_name());
-  }
-};
-
-// Test that GetEcProperty() returns EC property value when appropriate
-// sysfs file exists.
-TEST_P(GetEcPropertyWilcoDtcSupportdGrpcServiceTest, SysfsFileExists) {
-  EXPECT_TRUE(
-      WriteFileAndCreateParentDirs(sysfs_file_path(), FakeFileContents()));
-  std::unique_ptr<grpc_api::GetEcPropertyResponse> response;
-  ExecuteGetEcProperty(ec_property(), &response);
-  ASSERT_TRUE(response);
-  auto expected_response = MakeEcPropertyResponse(
-      grpc_api::GetEcPropertyResponse::STATUS_OK, FakeFileContents());
-  EXPECT_THAT(*response, ProtobufEquals(*expected_response))
-      << "Actual response: {" << response->ShortDebugString() << "}";
-}
-
-// Test that GetEcProperty() returns accessing driver error status when
-// appropriate sysfs file does not exist.
-TEST_P(GetEcPropertyWilcoDtcSupportdGrpcServiceTest, SysfsFileDoesNotExist) {
-  std::unique_ptr<grpc_api::GetEcPropertyResponse> response;
-  ExecuteGetEcProperty(ec_property(), &response);
-  ASSERT_TRUE(response);
-  auto expected_response = MakeEcPropertyResponse(
-      grpc_api::GetEcPropertyResponse::STATUS_ERROR_ACCESSING_DRIVER,
-      std::string());
-  EXPECT_THAT(*response, ProtobufEquals(*expected_response))
-      << "Actual response: {" << response->ShortDebugString() << "}";
-}
-
-INSTANTIATE_TEST_CASE_P(
-    ,
-    GetEcPropertyWilcoDtcSupportdGrpcServiceTest,
-    testing::Values(
-        std::tie(grpc_api::GetEcPropertyRequest::PROPERTY_GLOBAL_MIC_MUTE_LED,
-                 kEcPropertyGlobalMicMuteLed),
-        std::tie(grpc_api::GetEcPropertyRequest::PROPERTY_FN_LOCK,
-                 kEcPropertyFnLock),
-        std::tie(grpc_api::GetEcPropertyRequest::PROPERTY_NIC, kEcPropertyNic),
-        std::tie(grpc_api::GetEcPropertyRequest::PROPERTY_EXT_USB_PORT_EN,
-                 kEcPropertyExtUsbPortEn),
-        std::tie(grpc_api::GetEcPropertyRequest::PROPERTY_WIRELESS_SW_WLAN,
-                 kEcPropertyWirelessSwWlan),
-        std::tie(grpc_api::GetEcPropertyRequest::
-                     PROPERTY_AUTO_BOOT_ON_TRINITY_DOCK_ATTACH,
-                 kEcPropertyAutoBootOnTrinityDockAttach),
-        std::tie(grpc_api::GetEcPropertyRequest::PROPERTY_ICH_AZALIA_EN,
-                 kEcPropertyIchAzaliaEn),
-        std::tie(grpc_api::GetEcPropertyRequest::PROPERTY_SIGN_OF_LIFE_KBBL,
-                 kEcPropertySignOfLifeKbbl)));
 
 // Tests for the PerformWebRequest() method of WilcoDtcSupportdGrpcService.
 //

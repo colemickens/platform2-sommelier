@@ -218,34 +218,6 @@ void ForwardGetDriveSystemDataResponse(
   callback.Run(std::move(reply));
 }
 
-// Converts gRPC GetEcPropertyRequest::Property to property path.
-//
-// Returns |nullptr| if |property| is invlid or unset.
-const char* GetEcPropertyPath(
-    grpc_api::GetEcPropertyRequest::Property property) {
-  switch (property) {
-    case grpc_api::GetEcPropertyRequest::PROPERTY_GLOBAL_MIC_MUTE_LED:
-      return kEcPropertyGlobalMicMuteLed;
-    case grpc_api::GetEcPropertyRequest::PROPERTY_FN_LOCK:
-      return kEcPropertyFnLock;
-    case grpc_api::GetEcPropertyRequest::PROPERTY_NIC:
-      return kEcPropertyNic;
-    case grpc_api::GetEcPropertyRequest::PROPERTY_EXT_USB_PORT_EN:
-      return kEcPropertyExtUsbPortEn;
-    case grpc_api::GetEcPropertyRequest::PROPERTY_WIRELESS_SW_WLAN:
-      return kEcPropertyWirelessSwWlan;
-    case grpc_api::GetEcPropertyRequest::
-        PROPERTY_AUTO_BOOT_ON_TRINITY_DOCK_ATTACH:
-      return kEcPropertyAutoBootOnTrinityDockAttach;
-    case grpc_api::GetEcPropertyRequest::PROPERTY_ICH_AZALIA_EN:
-      return kEcPropertyIchAzaliaEn;
-    case grpc_api::GetEcPropertyRequest::PROPERTY_SIGN_OF_LIFE_KBBL:
-      return kEcPropertySignOfLifeKbbl;
-    default:
-      return nullptr;
-  }
-}
-
 // While dumping files in a directory, determines if we should follow a symlink
 // or not. Currently, we only follow symlinks one level down from /sys/class/*/.
 // For example, we would follow a symlink from /sys/class/hwmon/hwmon0, but we
@@ -428,41 +400,6 @@ void WilcoDtcSupportdGrpcService::GetEcTelemetry(
              << "response from telemetry node: " << telemetry_file_path.value();
     reply->set_status(
         grpc_api::GetEcTelemetryResponse::STATUS_ERROR_ACCESSING_DRIVER);
-  }
-  callback.Run(std::move(reply));
-}
-
-void WilcoDtcSupportdGrpcService::GetEcProperty(
-    std::unique_ptr<grpc_api::GetEcPropertyRequest> request,
-    const GetEcPropertyCallback& callback) {
-  DCHECK(request);
-
-  auto reply = std::make_unique<grpc_api::GetEcPropertyResponse>();
-
-  const char* property_file_path = GetEcPropertyPath(request->property());
-  if (!property_file_path) {
-    LOG(ERROR) << "GetEcProperty gRPC request property is invalid or unset: "
-               << request->property();
-    reply->set_status(
-        grpc_api::GetEcPropertyResponse::STATUS_ERROR_REQUIRED_FIELD_MISSING);
-    callback.Run(std::move(reply));
-    return;
-  }
-
-  DCHECK(!base::FilePath(property_file_path).empty());
-  base::FilePath sysfs_file_path =
-      root_dir_.Append(kEcDriverSysfsPath)
-          .Append(kEcDriverSysfsPropertiesPath)
-          .Append(base::FilePath(property_file_path));
-  // Reply payload must be empty in case of any failure.
-  std::string file_content;
-  if (base::ReadFileToString(sysfs_file_path, &file_content)) {
-    reply->set_status(grpc_api::GetEcPropertyResponse::STATUS_OK);
-    reply->set_payload(std::move(file_content));
-  } else {
-    VPLOG(2) << "Sysfs file " << sysfs_file_path.value() << " read error";
-    reply->set_status(
-        grpc_api::GetEcPropertyResponse::STATUS_ERROR_ACCESSING_DRIVER);
   }
   callback.Run(std::move(reply));
 }
