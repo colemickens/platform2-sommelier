@@ -12,6 +12,8 @@
 #include <attestation/proto_bindings/interface.pb.h>
 #include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
+#include <policy/device_policy.h>
+#include <policy/libpolicy.h>
 
 #include "u2fd/util.h"
 
@@ -206,8 +208,21 @@ bool AllowlistingUtil::GetCertifiedAttestationCert(
 }
 
 base::Optional<std::string> AllowlistingUtil::GetDeviceId() {
-  // TODO(louiscollard): Implement.
-  return {"ffffffff-ffff-ffff-ffff-ffffffffffff"};
+  policy::PolicyProvider policy_provider;
+
+  if (!policy_provider.Reload()) {
+    LOG(ERROR) << "Failed to load device policy";
+    return base::nullopt;
+  }
+
+  std::string id;
+
+  if (!policy_provider.GetDevicePolicy().GetDeviceDirectoryApiId(&id)) {
+    LOG(ERROR) << "Failed to read directory API ID";
+    return base::nullopt;
+  }
+
+  return id;
 }
 
 }  // namespace u2f
