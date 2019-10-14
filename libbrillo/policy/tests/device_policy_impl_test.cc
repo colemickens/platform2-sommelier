@@ -22,8 +22,8 @@ class DevicePolicyImplTest : public testing::Test, public DevicePolicyImpl {
                         const em::ChromeDeviceSettingsProto& proto) {
     device_policy_.set_policy_for_testing(proto);
     device_policy_.set_install_attributes_for_testing(
-        std::make_unique<MockInstallAttributesReader>(
-            device_mode, true /* initialized */));
+        std::make_unique<MockInstallAttributesReader>(device_mode,
+                                                      true /* initialized */));
   }
 
   DevicePolicyImpl device_policy_;
@@ -183,7 +183,7 @@ TEST_F(DevicePolicyImplTest, GetRollbackAllowedMilestones_SetTooSmall) {
 // Update staging schedule has no values
 TEST_F(DevicePolicyImplTest, GetDeviceUpdateStagingSchedule_NoValues) {
   em::ChromeDeviceSettingsProto device_policy_proto;
-  em::AutoUpdateSettingsProto *auto_update_settings =
+  em::AutoUpdateSettingsProto* auto_update_settings =
       device_policy_proto.mutable_auto_update_settings();
   auto_update_settings->set_staging_schedule("[]");
   InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
@@ -197,7 +197,7 @@ TEST_F(DevicePolicyImplTest, GetDeviceUpdateStagingSchedule_NoValues) {
 // Update staging schedule has valid values
 TEST_F(DevicePolicyImplTest, GetDeviceUpdateStagingSchedule_Valid) {
   em::ChromeDeviceSettingsProto device_policy_proto;
-  em::AutoUpdateSettingsProto *auto_update_settings =
+  em::AutoUpdateSettingsProto* auto_update_settings =
       device_policy_proto.mutable_auto_update_settings();
   auto_update_settings->set_staging_schedule(
       "[{\"days\": 4, \"percentage\": 40}, {\"days\": 10, \"percentage\": "
@@ -214,7 +214,7 @@ TEST_F(DevicePolicyImplTest, GetDeviceUpdateStagingSchedule_Valid) {
 // Update staging schedule has valid values, set using AD.
 TEST_F(DevicePolicyImplTest, GetDeviceUpdateStagingSchedule_Valid_AD) {
   em::ChromeDeviceSettingsProto device_policy_proto;
-  em::AutoUpdateSettingsProto *auto_update_settings =
+  em::AutoUpdateSettingsProto* auto_update_settings =
       device_policy_proto.mutable_auto_update_settings();
   auto_update_settings->set_staging_schedule(
       "[{\"days\": 4, \"percentage\": 40}, {\"days\": 10, \"percentage\": "
@@ -233,7 +233,7 @@ TEST_F(DevicePolicyImplTest, GetDeviceUpdateStagingSchedule_Valid_AD) {
 TEST_F(DevicePolicyImplTest,
        GetDeviceUpdateStagingSchedule_SetOutsideAllowable) {
   em::ChromeDeviceSettingsProto device_policy_proto;
-  em::AutoUpdateSettingsProto *auto_update_settings =
+  em::AutoUpdateSettingsProto* auto_update_settings =
       device_policy_proto.mutable_auto_update_settings();
   auto_update_settings->set_staging_schedule(
       "[{\"days\": -1, \"percentage\": -10}, {\"days\": 30, \"percentage\": "
@@ -243,8 +243,8 @@ TEST_F(DevicePolicyImplTest,
 
   std::vector<DayPercentagePair> staging_schedule;
   ASSERT_TRUE(device_policy_.GetDeviceUpdateStagingSchedule(&staging_schedule));
-  EXPECT_THAT(staging_schedule, ElementsAre(DayPercentagePair{1, 0},
-                                            DayPercentagePair{28, 100}));
+  EXPECT_THAT(staging_schedule,
+              ElementsAre(DayPercentagePair{1, 0}, DayPercentagePair{28, 100}));
 }
 
 // Updates should only be disabled for enterprise managed devices.
@@ -332,6 +332,29 @@ TEST_F(DevicePolicyImplTest, GetDeviceQuickFixBuildToken_NotSet) {
   std::string value;
   EXPECT_FALSE(device_policy_.GetDeviceQuickFixBuildToken(&value));
   EXPECT_TRUE(value.empty());
+}
+
+// Should only write a value and return true if the ID is present.
+TEST_F(DevicePolicyImplTest, GetDeviceDirectoryApiId_Set) {
+  constexpr char kDummyDeviceId[] = "aa-bb-cc-dd";
+
+  em::PolicyData policy_data;
+  policy_data.set_directory_api_id(kDummyDeviceId);
+
+  device_policy_.set_policy_data_for_testing(policy_data);
+
+  std::string id;
+  EXPECT_TRUE(device_policy_.GetDeviceDirectoryApiId(&id));
+  EXPECT_EQ(kDummyDeviceId, id);
+}
+
+TEST_F(DevicePolicyImplTest, GetDeviceDirectoryApiId_NotSet) {
+  em::PolicyData policy_data;
+  device_policy_.set_policy_data_for_testing(policy_data);
+
+  std::string id;
+  EXPECT_FALSE(device_policy_.GetDeviceDirectoryApiId(&id));
+  EXPECT_TRUE(id.empty());
 }
 
 }  // namespace policy

@@ -117,6 +117,7 @@ class MockDevicePolicy : public DevicePolicy {
               GetDeviceQuickFixBuildToken,
               (std::string*),
               (const, override));
+  MOCK_METHOD(bool, GetDeviceDirectoryApiId, (std::string*), (const, override));
   MOCK_METHOD(bool, VerifyPolicySignature, (), (override));
 };
 }  // namespace policy

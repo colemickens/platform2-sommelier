@@ -690,6 +690,15 @@ bool DevicePolicyImpl::GetDeviceQuickFixBuildToken(
   return true;
 }
 
+bool DevicePolicyImpl::GetDeviceDirectoryApiId(
+    std::string* directory_api_id_out) const {
+  if (!policy_data_.has_directory_api_id())
+    return false;
+
+  *directory_api_id_out = policy_data_.directory_api_id();
+  return true;
+}
+
 bool DevicePolicyImpl::VerifyPolicyFile(const base::FilePath& policy_path) {
   if (!verify_root_ownership_) {
     return true;

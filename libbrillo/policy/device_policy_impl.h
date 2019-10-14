@@ -86,6 +86,8 @@ class DevicePolicyImpl : public DevicePolicy {
       std::vector<DayPercentagePair> *staging_schedule_out) const override;
   bool GetDeviceQuickFixBuildToken(
       std::string* device_quick_fix_build_token) const override;
+  bool GetDeviceDirectoryApiId(
+      std::string* device_directory_api_out) const override;
 
   // Methods that can be used only for testing.
   void set_policy_data_for_testing(
