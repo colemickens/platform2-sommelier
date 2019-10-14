@@ -267,6 +267,12 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
     return false;
   }
 
+  // This means update_engine was restarted/crashed during install and
+  // dlcservice requires cleanup of DLC(s) that were previously being thought to
+  // have been being installed.
+  if (!dlc_modules_being_installed_.dlc_module_infos().empty())
+    SendFailedSignalAndCleanup();
+
   dlc_modules_being_installed_ = unique_dlc_module_list;
   // Note: Do NOT add to installed indication. Let
   // |OnStatusUpdateAdvancedSignal()| handle since hat's truly when the DLC(s)
@@ -302,6 +308,11 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
       return false;
   }
 
+  // This means update_engine was restarted and requires cleanup of DlC(s) that
+  // were previously being thought to have been being installed.
+  if (!dlc_modules_being_installed_.dlc_module_infos().empty())
+    SendFailedSignalAndCleanup();
+
   if (!UnmountDlc(err, id_in))
     return false;
 
@@ -321,26 +332,49 @@ bool DlcServiceDBusAdaptor::GetInstalled(brillo::ErrorPtr* err,
   return true;
 }
 
+void DlcServiceDBusAdaptor::SendFailedSignalAndCleanup() {
+  SendOnInstallStatusSignal(
+      utils::CreateInstallStatus(Status::FAILED, kErrorInternal, {}, 0.));
+  for (const auto& dlc_module :
+       dlc_modules_being_installed_.dlc_module_infos()) {
+    const string& dlc_id = dlc_module.dlc_id();
+    if (!DeleteDlc(nullptr, dlc_id))
+      LOG(ERROR) << "Failed to delete DLC(" << dlc_id << ") during cleanup.";
+  }
+  dlc_modules_being_installed_.clear_dlc_module_infos();
+}
+
 bool DlcServiceDBusAdaptor::HandleStatusResult(
     const StatusResult& status_result) {
-  if (!status_result.is_install()) {
-    LOG(INFO) << "Signal from update_engine, not for install.";
+  // If we are not installing any DLC(s), no need to even handle status result.
+  if (dlc_modules_being_installed_.dlc_module_infos().empty())
     return false;
-  }
 
   if (status_result.current_operation() == Operation::REPORTING_ERROR_EVENT) {
-    InstallStatus install_status =
-        utils::CreateInstallStatus(Status::FAILED, kErrorInternal, {}, 0.);
-    SendOnInstallStatusSignal(install_status);
-    dlc_modules_being_installed_.clear_dlc_module_infos();
+    LOG(ERROR) << "Signal from update_engine indicates reporting failure.";
+    SendFailedSignalAndCleanup();
     return false;
   }
 
+  // This situation is reached if update_engine crashes during an install and
+  // dlcservice still believes that it is waiting for an install to complete.
+  // TODO(kimjae): Need to handle checking preiodically if an install is started
+  // and dlcservice hasn't gotten an install progress in a certain period of
+  // time, try to explicity check update_engine's status and act accordingly.
+  if (!status_result.is_install()) {
+    int last_attempt_error;
+    update_engine_proxy_->GetLastAttemptError(&last_attempt_error, nullptr);
+    LOG(ERROR) << "Signal from update_engine indicates non-install, so install "
+               << " failed and update_engine error code is: "
+               << "(" << last_attempt_error << ")";
+    SendFailedSignalAndCleanup();
+    return false;
+  }
+
+  // When update_engine is still installing, we got a progress update here.
   if (status_result.current_operation() != Operation::IDLE) {
-    LOG(INFO) << "Signal from update_engine, but install not complete.";
-    InstallStatus install_status = utils::CreateInstallStatus(
-        Status::RUNNING, kErrorNone, {}, status_result.progress());
-    SendOnInstallStatusSignal(install_status);
+    SendOnInstallStatusSignal(utils::CreateInstallStatus(
+        Status::RUNNING, kErrorNone, {}, status_result.progress()));
     return false;
   }
 

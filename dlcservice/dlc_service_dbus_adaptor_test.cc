@@ -439,4 +439,42 @@ TEST_F(DlcServiceDBusAdaptorTest, OnStatusUpdateAdvancedSignalTest) {
     EXPECT_FALSE(base::PathExists(content_path_.Append(dlc_id)));
 }
 
+TEST_F(DlcServiceDBusAdaptorTest, ReportingFailureCleanupTest) {
+  const vector<string>& dlc_ids = {kSecondDlc, kThirdDlc};
+  DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
+
+  EXPECT_TRUE(dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list));
+
+  for (const string& dlc_id : dlc_ids)
+    EXPECT_TRUE(base::PathExists(content_path_.Append(dlc_id)));
+
+  StatusResult status_result;
+  status_result.set_current_operation(Operation::REPORTING_ERROR_EVENT);
+  status_result.set_is_install(true);
+  dlc_service_dbus_adaptor_->OnStatusUpdateAdvancedSignal(status_result);
+
+  EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
+  for (const string& dlc_id : dlc_ids)
+    EXPECT_FALSE(base::PathExists(content_path_.Append(dlc_id)));
+}
+
+TEST_F(DlcServiceDBusAdaptorTest, ProbableUpdateEngineRestartCleanupTest) {
+  const vector<string>& dlc_ids = {kSecondDlc, kThirdDlc};
+  DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
+
+  EXPECT_TRUE(dlc_service_dbus_adaptor_->Install(nullptr, dlc_module_list));
+
+  for (const string& dlc_id : dlc_ids)
+    EXPECT_TRUE(base::PathExists(content_path_.Append(dlc_id)));
+
+  StatusResult status_result;
+  status_result.set_current_operation(Operation::IDLE);
+  status_result.set_is_install(false);
+  dlc_service_dbus_adaptor_->OnStatusUpdateAdvancedSignal(status_result);
+
+  EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
+  for (const string& dlc_id : dlc_ids)
+    EXPECT_FALSE(base::PathExists(content_path_.Append(dlc_id)));
+}
+
 }  // namespace dlcservice

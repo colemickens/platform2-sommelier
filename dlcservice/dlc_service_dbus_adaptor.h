@@ -56,6 +56,9 @@ class DlcServiceDBusAdaptor
       const update_engine::StatusResult& status_result);
 
  private:
+  // Sends a signal indicating failure to install and cleans up prepped DLC(s).
+  void SendFailedSignalAndCleanup();
+
   // Handles necessary actions prior to update_engine's install completion, but
   // when update_engine's install is complete it will return true.
   bool HandleStatusResult(const update_engine::StatusResult& status_result);
