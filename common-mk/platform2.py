@@ -14,6 +14,8 @@ from __future__ import print_function
 import glob
 import os
 
+import six
+
 from chromite.lib import commandline
 from chromite.lib import cros_build_lib
 from chromite.lib import osutils
@@ -337,7 +339,7 @@ class Platform2(object):
           v = str(v).lower()
         elif isinstance(v, list):
           v = to_gn_list(v)
-        elif isinstance(v, str):
+        elif isinstance(v, six.string_types):
           v = to_gn_string(v)
         else:
           raise AssertionError('Unexpected value type %s' % str(type(v)))
