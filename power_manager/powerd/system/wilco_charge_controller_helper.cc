@@ -36,7 +36,7 @@ constexpr const char kAdvancedChargingEnablePath[] = "enable";
 constexpr const char kBootOnAcEnablePath[] = "boot_on_ac";
 
 // Relative path to |kEcDriverSysfsDirectory|.
-constexpr const char kUsbPowerShareEnablePath[] = "usb_power_share";
+constexpr const char kUsbPowerShareEnablePath[] = "usb_charge";
 
 constexpr const char kPowerSupplyDirectory[] =
     "/sys/class/power_supply/wilco-charger/";
