@@ -579,37 +579,63 @@ void WilcoDtcSupportdGrpcService::GetVpdField(
     std::unique_ptr<grpc_api::GetVpdFieldRequest> request,
     const GetVpdFieldCallback& callback) {
   DCHECK(request);
+  base::FilePath file_path;
 
   auto reply = std::make_unique<grpc_api::GetVpdFieldResponse>();
   switch (request->vpd_field()) {
-    case grpc_api::GetVpdFieldRequest::FIELD_SERIAL_NUMBER: {
-      std::string vpd_field_value;
-      if (!base::ReadFileToString(
-              root_dir_.Append(kVpdFieldSerialNumberFilePath),
-              &vpd_field_value)) {
-        VLOG(2) << "Failed to read VPD field serial number";
-        reply->set_status(grpc_api::GetVpdFieldResponse::STATUS_ERROR_INTERNAL);
-        break;
-      }
-      base::TrimString(vpd_field_value, base::kWhitespaceASCII,
-                       &vpd_field_value);
-      if (vpd_field_value.empty() || !base::IsStringASCII(vpd_field_value)) {
-        VLOG(2) << "Serial number is not non-empty ASCII string";
-        reply->set_status(grpc_api::GetVpdFieldResponse::STATUS_ERROR_INTERNAL);
-        break;
-      }
-
-      reply->set_status(grpc_api::GetVpdFieldResponse::STATUS_OK);
-      reply->set_vpd_field_value(vpd_field_value);
+    case grpc_api::GetVpdFieldRequest::FIELD_SERIAL_NUMBER:
+      file_path = root_dir_.Append(kVpdFieldSerialNumberFilePath);
       break;
-    }
+    case grpc_api::GetVpdFieldRequest::FIELD_MODEL_NAME:
+      file_path = root_dir_.Append(kVpdFieldModelNameFilePath);
+      break;
+    case grpc_api::GetVpdFieldRequest::FIELD_ASSET_TAG:
+      file_path = root_dir_.Append(kVpdFieldAssetIdFilePath);
+      break;
+    case grpc_api::GetVpdFieldRequest::FIELD_SKU_NUMBER:
+      file_path = root_dir_.Append(kVpdFieldSkuNumberFilePath);
+      break;
+    case grpc_api::GetVpdFieldRequest::FIELD_UUID:
+      file_path = root_dir_.Append(kVpdFieldUuidFilePath);
+      break;
+    case grpc_api::GetVpdFieldRequest::FIELD_MANUFACTURE_DATE:
+      file_path = root_dir_.Append(kVpdFieldManufacturerDateFilePath);
+      break;
+    case grpc_api::GetVpdFieldRequest::FIELD_ACTIVATE_DATE:
+      file_path = root_dir_.Append(kVpdFieldActivateDateFilePath);
+      break;
+    case grpc_api::GetVpdFieldRequest::FIELD_SYSTEM_ID:
+      file_path = root_dir_.Append(kVpdFieldSystemIdFilePath);
+      break;
     case grpc_api::GetVpdFieldRequest::FIELD_UNSET:
     default:
       VLOG(1) << "The VPD field is unspecified or invalid";
       reply->set_status(
           grpc_api::GetVpdFieldResponse::STATUS_ERROR_VPD_FIELD_UNKNOWN);
-      break;
+      callback.Run(std::move(reply));
+      return;
   }
+
+  std::string vpd_field_value;
+  if (!base::ReadFileToString(file_path, &vpd_field_value)) {
+    VPLOG(2) << "Failed to read VPD field " << file_path.value();
+    reply->set_status(grpc_api::GetVpdFieldResponse::STATUS_ERROR_INTERNAL);
+    callback.Run(std::move(reply));
+    return;
+  }
+
+  base::TrimString(vpd_field_value, base::kWhitespaceASCII, &vpd_field_value);
+  if (vpd_field_value.empty() || !base::IsStringASCII(vpd_field_value)) {
+    VLOG(2) << "VPD field " << file_path.value()
+            << " is not non-empty ASCII string";
+    reply->set_status(grpc_api::GetVpdFieldResponse::STATUS_ERROR_INTERNAL);
+    callback.Run(std::move(reply));
+    return;
+  }
+
+  reply->set_status(grpc_api::GetVpdFieldResponse::STATUS_OK);
+  reply->set_vpd_field_value(vpd_field_value);
+
   callback.Run(std::move(reply));
 }
 

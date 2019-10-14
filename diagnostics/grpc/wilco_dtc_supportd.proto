@@ -452,6 +452,27 @@ message GetVpdFieldRequest {
     // The |vpd_field_value| for the serial number field should be a non-empty
     // pure ASCII string (NOT UTF-8 or UTF-16).
     FIELD_SERIAL_NUMBER = 1;
+    // The |vpd_field_value| for the model name field should be a non-empty pure
+    // ASCII string (NOT UTF-8 or UTF-16).
+    FIELD_MODEL_NAME = 2;
+    // The |vpd_field_value| for the asset tag field should be a non-empty pure
+    // ASCII string (NOT UTF-8 or UTF-16).
+    FIELD_ASSET_TAG = 3;
+    // The |vpd_field_value| for the SKU number field should be a non-empty pure
+    // ASCII string (NOT UTF-8 or UTF-16).
+    FIELD_SKU_NUMBER = 4;
+    // The |vpd_field_value| for the UUID field should be a non-empty pure ASCII
+    // string (NOT UTF-8 or UTF-16).
+    FIELD_UUID = 5;
+    // The |vpd_field_value| for the manufacture date field should be a
+    // non-empty pure ASCII string (NOT UTF-8 or UTF-16).
+    FIELD_MANUFACTURE_DATE = 6;
+    // The |vpd_field_value| for the activate date field should be a non-empty
+    // pure ASCII string (NOT UTF-8 or UTF-16).
+    FIELD_ACTIVATE_DATE = 7;
+    // The |vpd_field_value| for the system ID field should be a non-empty pure
+    // ASCII string (NOT UTF-8 or UTF-16).
+    FIELD_SYSTEM_ID = 8;
   }
 
   // Must be distinct from |FIELD_UNSET|.

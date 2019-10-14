@@ -9,6 +9,20 @@ namespace diagnostics {
 
 extern const char kVpdFieldSerialNumberFilePath[];
 
+extern const char kVpdFieldModelNameFilePath[];
+
+extern const char kVpdFieldAssetIdFilePath[];
+
+extern const char kVpdFieldSkuNumberFilePath[];
+
+extern const char kVpdFieldUuidFilePath[];
+
+extern const char kVpdFieldManufacturerDateFilePath[];
+
+extern const char kVpdFieldActivateDateFilePath[];
+
+extern const char kVpdFieldSystemIdFilePath[];
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_VPD_CONSTANTS_H_

@@ -10,4 +10,27 @@ namespace diagnostics {
 const char kVpdFieldSerialNumberFilePath[] =
     "run/wilco_dtc/vpd_fields/serial_number";
 
+// VPD field model name file path.
+const char kVpdFieldModelNameFilePath[] = "run/wilco_dtc/vpd_fields/model_name";
+
+// VPD field asset ID file path.
+const char kVpdFieldAssetIdFilePath[] = "run/wilco_dtc/vpd_fields/asset_id";
+
+// VPD field SKU number file path.
+const char kVpdFieldSkuNumberFilePath[] = "run/wilco_dtc/vpd_fields/sku_number";
+
+// VPD field UUID file path.
+const char kVpdFieldUuidFilePath[] = "run/wilco_dtc/vpd_fields/uuid_id";
+
+// VPD field manufacturer date file path.
+const char kVpdFieldManufacturerDateFilePath[] =
+    "run/wilco_dtc/vpd_fields/mfg_date";
+
+// VPD field activate date file path.
+const char kVpdFieldActivateDateFilePath[] =
+    "run/wilco_dtc/vpd_fields/ActivateData";
+
+// VPD field system ID file path.
+const char kVpdFieldSystemIdFilePath[] = "run/wilco_dtc/vpd_fields/system_id";
+
 }  // namespace diagnostics
