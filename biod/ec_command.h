@@ -105,6 +105,12 @@ class EcCommand : public EcCommandInterface {
         return true;
       }
 
+      // If we just want to check the supported version of a command, and the
+      // command does not exist, do not emit error in the log and do not retry.
+      if (data_.cmd.command == EC_CMD_GET_CMD_VERSIONS &&
+          data_.cmd.result == EC_RES_INVALID_PARAM)
+        return false;
+
       if (errno != ETIMEDOUT) {
         LOG(ERROR) << "FPMCU ioctl command 0x" << std::hex << data_.cmd.command
                    << std::dec << " failed on attempt " << retry + 1 << "/"
