@@ -19,6 +19,7 @@ group("all") {
   if (use.fuzzer) {
     deps += [
       ":trunks_creation_blob_fuzzer",
+      ":trunks_hmac_authorization_delegate_fuzzer",
       ":trunks_key_blob_fuzzer",
       ":trunks_password_authorization_delegate_fuzzer",
       ":trunks_resource_manager_fuzzer",
@@ -267,6 +268,19 @@ if (use.fuzzer) {
     ]
     sources = [
       "creation_blob_fuzzer.cc",
+    ]
+    deps = [
+      ":trunks",
+    ]
+  }
+
+  executable("trunks_hmac_authorization_delegate_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "hmac_authorization_delegate_fuzzer.cc",
     ]
     deps = [
       ":trunks",
