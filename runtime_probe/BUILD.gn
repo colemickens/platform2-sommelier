@@ -13,6 +13,9 @@ group("all") {
   if (use.test) {
     deps += [ ":unittest_runner" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":runtime_probe_resultchecker_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -97,5 +100,18 @@ if (use.test) {
       "testdata/probe_config.json",
       "testdata/test.txt",
     ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("runtime_probe_resultchecker_fuzzer") {
+    configs += [ "//common-mk/common_fuzzer" ]
+    sources = [
+      "runtime_probe_resultchecker_fuzzer.cc",
+    ]
+    deps = [
+      ":libruntime_probe",
+    ]
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
 }
