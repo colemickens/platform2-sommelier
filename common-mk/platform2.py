@@ -342,7 +342,7 @@ class Platform2(object):
         elif isinstance(v, six.string_types):
           v = to_gn_string(v)
         else:
-          raise AssertionError('Unexpected value type %s' % str(type(v)))
+          raise AssertionError('Unexpected %s, %r=%r' % (type(v), k, v))
         yield '%s=%s' % (k.replace('-', '_'), v)
 
     buildenv = self.get_build_environment()
