@@ -112,7 +112,7 @@ class VirtualMachine {
   enum class CancelUpgradeContainerStatus {
     UNKNOWN,
     NOT_RUNNING,
-    CANCELED,
+    CANCELLED,
     FAILED,
   };
 

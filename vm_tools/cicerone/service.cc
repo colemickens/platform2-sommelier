@@ -956,6 +956,35 @@ void Service::ContainerImportProgress(
   event->Signal();
 }
 
+void Service::ContainerUpgradeProgress(
+    const uint32_t cid,
+    UpgradeContainerProgressSignal* progress_signal,
+    bool* result,
+    base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  CHECK(progress_signal);
+  CHECK(result);
+  CHECK(event);
+  *result = false;
+  VirtualMachine* vm;
+  std::string owner_id;
+  std::string vm_name;
+
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
+    event->Signal();
+    return;
+  }
+
+  // Send the D-Bus signal out updating progress/completion for the import.
+  dbus::Signal signal(kVmCiceroneInterface, kUpgradeContainerProgressSignal);
+  progress_signal->set_vm_name(vm_name);
+  progress_signal->set_owner_id(owner_id);
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(*progress_signal);
+  exported_object_->SendSignal(&signal);
+  *result = true;
+  event->Signal();
+}
+
 void Service::PendingUpdateApplicationListCalls(
     const std::string& container_token,
     const uint32_t cid,
@@ -1345,6 +1374,8 @@ bool Service::Init(
       {kConnectChunnelMethod, &Service::ConnectChunnel},
       {kGetDebugInformationMethod, &Service::GetDebugInformation},
       {kApplyAnsiblePlaybookMethod, &Service::ApplyAnsiblePlaybook},
+      {kUpgradeContainerMethod, &Service::UpgradeContainer},
+      {kCancelUpgradeContainerMethod, &Service::CancelUpgradeContainer},
   };
 
   for (const auto& iter : kServiceMethods) {

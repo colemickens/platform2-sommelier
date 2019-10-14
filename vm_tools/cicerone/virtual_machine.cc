@@ -728,6 +728,20 @@ UpgradeContainerRequest::Version VersionFromOsRelease(
   }
   return UpgradeContainerRequest::UNKNOWN;
 }
+
+vm_tools::tremplin::UpgradeContainerRequest::Version ConvertVersion(
+    UpgradeContainerRequest::Version version) {
+  switch (version) {
+    case UpgradeContainerRequest::UNKNOWN:
+      return vm_tools::tremplin::UpgradeContainerRequest::UNKNOWN;
+    case UpgradeContainerRequest::DEBIAN_STRETCH:
+      return vm_tools::tremplin::UpgradeContainerRequest::DEBIAN_STRETCH;
+    case UpgradeContainerRequest::DEBIAN_BUSTER:
+      return vm_tools::tremplin::UpgradeContainerRequest::DEBIAN_BUSTER;
+    default:
+      return vm_tools::tremplin::UpgradeContainerRequest::UNKNOWN;
+  }
+}
 }  // namespace
 
 VirtualMachine::UpgradeContainerStatus VirtualMachine::UpgradeContainer(
@@ -751,16 +765,82 @@ VirtualMachine::UpgradeContainerStatus VirtualMachine::UpgradeContainer(
   if (current_version == target_version) {
     return VirtualMachine::UpgradeContainerStatus::ALREADY_UPGRADED;
   }
-  // TODO(crbug:930901) Call tremplin to start the upgrade.
 
-  return VirtualMachine::UpgradeContainerStatus::UNKNOWN;
+  vm_tools::tremplin::UpgradeContainerRequest request;
+  vm_tools::tremplin::UpgradeContainerResponse response;
+
+  request.set_container_name(container->name());
+  request.set_source_version(ConvertVersion(source_version));
+  request.set_target_version(ConvertVersion(target_version));
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status =
+      tremplin_stub_->UpgradeContainer(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "UpgradeLxdContainer RPC failed: " << status.error_message()
+               << " " << status.error_code();
+    out_error->assign(status.error_message());
+    return VirtualMachine::UpgradeContainerStatus::FAILED;
+  }
+  out_error->assign(response.failure_reason());
+  switch (response.status()) {
+    case tremplin::UpgradeContainerResponse::UNKNOWN:
+      return VirtualMachine::UpgradeContainerStatus::UNKNOWN;
+    case tremplin::UpgradeContainerResponse::STARTED:
+      return VirtualMachine::UpgradeContainerStatus::STARTED;
+    case tremplin::UpgradeContainerResponse::ALREADY_RUNNING:
+      return VirtualMachine::UpgradeContainerStatus::ALREADY_RUNNING;
+    case tremplin::UpgradeContainerResponse::NOT_SUPPORTED:
+      return VirtualMachine::UpgradeContainerStatus::NOT_SUPPORTED;
+    case tremplin::UpgradeContainerResponse::ALREADY_UPGRADED:
+      return VirtualMachine::UpgradeContainerStatus::ALREADY_UPGRADED;
+    case tremplin::UpgradeContainerResponse::FAILED:
+      return VirtualMachine::UpgradeContainerStatus::FAILED;
+    default:
+      return VirtualMachine::UpgradeContainerStatus::UNKNOWN;
+  }
 }
 
 VirtualMachine::CancelUpgradeContainerStatus
 VirtualMachine::CancelUpgradeContainer(Container* container,
                                        std::string* out_error) {
-  NOTREACHED();
-  return VirtualMachine::CancelUpgradeContainerStatus::UNKNOWN;
+  DCHECK(container);
+  DCHECK(out_error);
+  vm_tools::tremplin::CancelUpgradeContainerRequest request;
+  vm_tools::tremplin::CancelUpgradeContainerResponse response;
+
+  request.set_container(container->name());
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status =
+      tremplin_stub_->CancelUpgradeContainer(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "CancelUpgradeLxdContainer RPC failed: "
+               << status.error_message() << " " << status.error_code();
+    out_error->assign(status.error_message());
+    return VirtualMachine::CancelUpgradeContainerStatus::FAILED;
+  }
+  out_error->assign(response.failure_reason());
+  switch (response.status()) {
+    case tremplin::CancelUpgradeContainerResponse::UNKNOWN:
+      return VirtualMachine::CancelUpgradeContainerStatus::UNKNOWN;
+    case tremplin::CancelUpgradeContainerResponse::NOT_RUNNING:
+      return VirtualMachine::CancelUpgradeContainerStatus::NOT_RUNNING;
+    case tremplin::CancelUpgradeContainerResponse::CANCELLED:
+      return VirtualMachine::CancelUpgradeContainerStatus::CANCELLED;
+    case tremplin::CancelUpgradeContainerResponse::FAILED:
+      return VirtualMachine::CancelUpgradeContainerStatus::FAILED;
+    default:
+      return VirtualMachine::CancelUpgradeContainerStatus::UNKNOWN;
+  }
 }
 
 }  // namespace cicerone

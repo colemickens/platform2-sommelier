@@ -40,6 +40,7 @@ message ContainerListenerFuzzerSingleAction {
     vm_tools.tremplin.ContainerImportProgress container_import_progress = 105;
     vm_tools.tremplin.ContainerShutdownInfo tremplin_container_shutdown_info =
         106;
+    vm_tools.tremplin.UpgradeContainerProgress upgrade_container_progress = 107;
   }
 
   // Claim all gRPC messages come from this address (overrides
@@ -73,6 +74,12 @@ message ContainerListenerFuzzerSingleAction {
   int32 tremplin_import_container_status = 25;
   vm_tools.tremplin.ImportContainerResponse tremplin_import_container_response =
       26;
+  int32 tremplin_upgrade_container_status = 29;
+  vm_tools.tremplin.UpgradeContainerResponse
+      tremplin_upgrade_container_response = 30;
+  int32 tremplin_cancel_upgrade_container_status = 31;
+  vm_tools.tremplin.CancelUpgradeContainerResponse
+      tremplin_cancel_upgrade_container_response = 32;
 }
 
 // A list of fuzzer actions. This is the actual input to the fuzzer.

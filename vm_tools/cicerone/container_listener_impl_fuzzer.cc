@@ -20,7 +20,6 @@
 #include "vm_tools/cicerone/service_testing_helper.h"
 #include "vm_tools/cicerone/tremplin_listener_impl.h"
 
-
 namespace {
 
 using ::testing::_;
@@ -280,6 +279,12 @@ DEFINE_PROTO_FUZZER(
         container_listener->ApplyAnsiblePlaybookProgress(
             &context, &action.apply_ansible_playbook_progress_info(),
             &response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kUpgradeContainerProgress:
+        tremplin_listener->UpgradeContainerStatus(
+            &context, &action.upgrade_container_progress(), &tremplin_response);
         break;
 
       default:
