@@ -23,6 +23,7 @@ group("all") {
   }
   if (use.fuzzer) {
     deps += [
+      ":libbrillo_data_encoding_fuzzer",
       ":libbrillo_dbus_data_serialization_fuzzer",
       ":libbrillo_http_form_data_fuzzer",
     ]
@@ -554,6 +555,20 @@ if (use.test) {
 }
 
 if (use.fuzzer) {
+  executable("libbrillo_data_encoding_fuzzer") {
+    sources = [
+      "brillo/data_encoding_fuzzer.cc",
+    ]
+
+    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
+
+    pkg_deps = [ "libchrome-${libbase_ver}" ]
+
+    deps = [
+      ":libbrillo-core-${libbase_ver}",
+    ]
+  }
+
   executable("libbrillo_dbus_data_serialization_fuzzer") {
     sources = [
       "brillo/dbus/data_serialization_fuzzer.cc",
