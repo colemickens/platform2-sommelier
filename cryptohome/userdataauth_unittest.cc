@@ -17,6 +17,7 @@
 #include <metrics/metrics_library_mock.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
+#include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mock_arc_disk_quota.h"
@@ -903,6 +904,17 @@ TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceForArcGid) {
   EXPECT_CALL(arc_disk_quota_, GetCurrentSpaceForGid(kGID))
       .WillOnce(Return(kSpaceUsage));
   EXPECT_EQ(kSpaceUsage, userdataauth_->GetCurrentSpaceForArcGid(kGID));
+}
+
+TEST_F(UserDataAuthTestNotInitialized, SeedUrandomInitialize) {
+  // Should Get Random from TPM
+  EXPECT_CALL(tpm_, GetRandomDataBlob(kDefaultRandomSeedLength, _))
+      .WillOnce(Return(true));
+
+  EXPECT_CALL(platform_, WriteFile(FilePath(kDefaultEntropySourcePath), _))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(userdataauth_->Initialize());
 }
 
 TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootSanity20) {

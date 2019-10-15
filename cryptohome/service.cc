@@ -128,15 +128,12 @@ void AddTaskObserverToThread(base::Thread* thread,
 
 }  // anonymous namespace
 
-const int kDefaultRandomSeedLength = 64;
 const int kDefaultDataRestoreKeyLength = 32;
 const char kMountThreadName[] = "MountThread";
 const char kTpmInitStatusEventType[] = "TpmInitStatus";
 const char kDircryptoMigrationProgressEventType[] =
                                                "DircryptoMigrationProgress";
 const char kDataRestoreKeyLabel[] = "DataRestoreKey";
-// The default entropy source to seed with random data from the TPM on startup.
-const FilePath kDefaultEntropySource("/dev/urandom");
 
 const char kAttestationMode[] = "attestation_mode";
 
@@ -824,8 +821,8 @@ bool Service::SeedUrandom() {
     LOG(ERROR) << "Could not get random data from the TPM";
     return false;
   }
-  if (!platform_->WriteFile(kDefaultEntropySource, random)) {
-    LOG(ERROR) << "Error writing data to " << kDefaultEntropySource.value();
+  if (!platform_->WriteFile(FilePath(kDefaultEntropySourcePath), random)) {
+    LOG(ERROR) << "Error writing data to " << kDefaultEntropySourcePath;
     return false;
   }
   return true;

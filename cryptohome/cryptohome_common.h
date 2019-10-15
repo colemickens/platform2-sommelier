@@ -17,6 +17,10 @@ static constexpr int kUpdateUserActivityPeriodHours = 24;           // daily
 static constexpr int kLowDiskNotificationPeriodMS = 1000 * 60 * 1;  // 1 minute
 static constexpr int64_t kNotifyDiskSpaceThreshold = 1 << 30;       // 1GB
 
+static constexpr int kDefaultRandomSeedLength = 64;
+// The default entropy source to seed with random data from the TPM on startup.
+static constexpr char kDefaultEntropySourcePath[] = "/dev/urandom";
+
 // The default symmetric key size for cryptohome is the ecryptfs default
 #define CRYPTOHOME_DEFAULT_KEY_SIZE 64           // ECRYPTFS_MAX_KEY_BYTES
 #define CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE 8  // ECRYPTFS_SIG_SIZE

@@ -214,6 +214,9 @@ bool UserDataAuth::Initialize() {
   tpm_init_->Init(
       base::Bind(&UserDataAuth::OwnershipCallback, base::Unretained(this)));
 
+  // Seed /dev/urandom
+  SeedUrandom();
+
   // Initialize the state used by LowDiskCallback(), both variables are set to
   // the current time.
   last_auto_cleanup_time_ = platform_->GetCurrentTime();
@@ -2352,6 +2355,16 @@ void UserDataAuth::UploadAlertsDataCallback() {
     // TODO(b/141294469): Change the code to retry even when it fails.
     LOG(INFO) << "The TPM chip does not support GetAlertsData. Stop "
                  "UploadAlertsData task.";
+  }
+}
+
+void UserDataAuth::SeedUrandom() {
+  brillo::Blob random;
+  if (!tpm_->GetRandomDataBlob(kDefaultRandomSeedLength, &random)) {
+    LOG(ERROR) << "Could not get random data from the TPM";
+  }
+  if (!platform_->WriteFile(FilePath(kDefaultEntropySourcePath), random)) {
+    LOG(ERROR) << "Error writing data to " << kDefaultEntropySourcePath;
   }
 }
 

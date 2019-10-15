@@ -638,6 +638,9 @@ class UserDataAuth {
   // This method uploads the TPM Alerts data UMA.
   void UploadAlertsDataCallback();
 
+  // This method takes entropy from the TPM and seeds it to /dev/urandom.
+  void SeedUrandom();
+
   // =============== PKCS#11 Related Utilities ===============
 
   // This is called when TPM is enabled and owned, so that we can continue
