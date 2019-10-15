@@ -23,6 +23,12 @@ impl<'a> FuzzRng<'a> {
     pub fn new(buf: &'a [u8]) -> FuzzRng<'a> {
         FuzzRng { buf: buf }
     }
+
+    /// Consumes `self` and returns the inner slice.
+    pub fn into_inner(self) -> &'a [u8] {
+        let FuzzRng { buf } = self;
+        buf
+    }
 }
 
 impl<'a> RngCore for FuzzRng<'a> {
