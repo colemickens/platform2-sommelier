@@ -46,7 +46,10 @@ For background on YAML, see: [Learn YAML in 10
 minutes](https://learnxinyminutes.com/docs/yaml/)
 
 The source is generally located at:
-overlay-${BOARD}/chromeos-base/chromeos-config-bsp/files/model.yaml
+
+```bash
+ls src/overlay-${BOARD}/chromeos-base/chromeos-config-bsp/files/model.yaml
+```
 
 Beyond the normal features of YAML, there are a few custom features supported
 that allow for even better re-use and expressiveness in the YAML config.
@@ -242,11 +245,25 @@ When modifying a `model.yaml` file there are few steps that need to be taken to
  remerged after the input YAML has been modified.
 
 
-1. Start cros_workon on the ebuild where your source model.yaml lives: `cros_workon start chromeos-base/chrome-config-bsp-{BOARD}`
-1. Make and install your incremental changes: `cros_workon_make chromeos-base/chrome-config-bsp-{BOARD} --install`
-1. Remerge the chromeos-config ebuild: `emerge-$BORAD chromeos-config`
+1. Start cros_workon on the ebuild where your source model.yaml lives:
+
+```bash
+(chroot) $ cros_workon start chromeos-base/chrome-config-bsp-{BOARD}
+```
+
+1. Make and install your incremental changes:
+
+```bash
+(chroot) $ cros_workon_make chromeos-base/chrome-config-bsp-{BOARD} --install
+```
+
+1. Remerge the chromeos-config ebuild:
 
 Note: The config-bsp overlay path may be slightly different depending on the board and if it is public or private.
+
+```bash
+(chroot) $ emerge-$BOARD chromeos-config
+```
 
 ### Schema Validation
 
