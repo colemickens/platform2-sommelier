@@ -23,19 +23,24 @@
 #include <mojo/public/cpp/system/platform_handle.h>
 
 #include "cros-camera/common.h"
-
 #include "cros-camera/constants.h"
+
 namespace cros {
 
 // static
-std::unique_ptr<CameraAlgorithmBridge> CameraAlgorithmBridge::CreateInstance() {
+std::unique_ptr<CameraAlgorithmBridge>
+CameraAlgorithmBridge::CreateVendorAlgoInstance() {
   VLOGF_ENTER();
   return std::unique_ptr<CameraAlgorithmBridgeImpl>(
-      new CameraAlgorithmBridgeImpl);
+      new CameraAlgorithmBridgeImpl(
+          cros::constants::kCrosCameraAlgoSocketPathString));
 }
 
-CameraAlgorithmBridgeImpl::CameraAlgorithmBridgeImpl()
-    : callback_ops_(nullptr), ipc_thread_("IPC thread") {
+CameraAlgorithmBridgeImpl::CameraAlgorithmBridgeImpl(
+    const std::string& socket_path)
+    : socket_path_(socket_path),
+      callback_ops_(nullptr),
+      ipc_thread_("IPC thread") {
   mojo_channel_manager_ = CameraMojoChannelManager::CreateInstance();
 }
 
@@ -145,7 +150,8 @@ void CameraAlgorithmBridgeImpl::InitializeOnIpcThread(
     DestroyOnIpcThread();
   }
 
-  interface_ptr_ = mojo_channel_manager_->CreateCameraAlgorithmOpsPtr();
+  interface_ptr_ =
+      mojo_channel_manager_->CreateCameraAlgorithmOpsPtr(socket_path_);
   if (!interface_ptr_) {
     LOGF(ERROR) << "Failed to connect to the server";
     cb.Run(-EAGAIN);

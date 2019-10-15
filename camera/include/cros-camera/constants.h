@@ -11,6 +11,8 @@ namespace cros {
 namespace constants {
 
 const char kCrosCameraAlgoSocketPathString[] = "/run/camera/camera-algo.sock";
+const char kCrosCameraGPUAlgoSocketPathString[] =
+    "/run/camera/camera-gpu-algo.sock";
 const char kCrosCameraSocketPathString[] = "/run/camera/camera3.sock";
 const char kCrosCameraTestConfigPathString[] =
     "/var/cache/camera/test_config.json";

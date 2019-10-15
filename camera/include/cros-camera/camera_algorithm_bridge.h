@@ -9,6 +9,7 @@
 
 #include <cinttypes>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "cros-camera/camera_algorithm.h"
@@ -23,12 +24,12 @@ namespace cros {
 // Example usage:
 //
 //  #include <cros-camera/camera_algorithm_bridge.h>
-//  auto algo = CameraAlgorithmBridge::CreateInstance();
+//  auto algo = CameraAlgorithmBridge::CreateVendorAlgoInstance();
 //  algo->Initialize(this);
-//  std::vector<int32_t> handles[2];
+//  std::vector<int32_t> handles(2);
 //  handles[0] = algo->RegisterBuffer(buffer_fd0);
 //  handles[1] = algo->RegisterBuffer(buffer_fd1);
-//  std::vector<uint8_t> req_headers[2];
+//  std::vector<uint8_t> req_headers(2);
 //  algo->Request(req_headers[0], handles[0]);
 //  algo->Request(req_headers[1], handles[1]);
 //  /* |return_callback_fn| is called to return buffer */
@@ -36,11 +37,12 @@ namespace cros {
 
 class CROS_CAMERA_EXPORT CameraAlgorithmBridge {
  public:
-  // This method creates and returns the CameraAlgorithmBridge instance.
+  // This method creates and returns the CameraAlgorithmBridge instance of
+  // vendor algorithms.
   //
   // Returns:
   //    Unique pointer to instance on success; nullptr on failure.
-  static std::unique_ptr<CameraAlgorithmBridge> CreateInstance();
+  static std::unique_ptr<CameraAlgorithmBridge> CreateVendorAlgoInstance();
 
   virtual ~CameraAlgorithmBridge() {}
 

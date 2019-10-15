@@ -28,11 +28,13 @@ class CameraAlgorithmAdapter {
   // Build up IPC and load the camera algorithm library. This method returns
   // when the IPC connection is lost.
   void Run(std::string mojo_token,
-           mojo::edk::ScopedPlatformHandle channel_handle);
+           mojo::edk::ScopedPlatformHandle channel_handle,
+           const std::string& algo_lib_name);
 
  private:
   void InitializeOnIpcThread(std::string mojo_token,
-                             mojo::edk::ScopedPlatformHandle channel_handle);
+                             mojo::edk::ScopedPlatformHandle channel_handle,
+                             const std::string& algo_lib_name);
 
   void DestroyOnIpcThread();
 

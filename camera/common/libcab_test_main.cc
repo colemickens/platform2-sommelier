@@ -30,7 +30,7 @@ class CameraAlgorithmBridgeFixture : public testing::Test,
   CameraAlgorithmBridgeFixture() : req_id_(0) {
     CameraAlgorithmBridgeFixture::return_callback =
         CameraAlgorithmBridgeFixture::ReturnCallbackForwarder;
-    bridge_ = cros::CameraAlgorithmBridge::CreateInstance();
+    bridge_ = cros::CameraAlgorithmBridge::CreateVendorAlgoInstance();
     if (!bridge_ || bridge_->Initialize(this) != 0) {
       ADD_FAILURE() << "Failed to initialize camera algorithm bridge";
       return;
@@ -175,7 +175,7 @@ TEST_F(CameraAlgorithmBridgeFixture, DeadLockRecovery) {
   timeout.tv_sec += 1;
   ASSERT_NE(0, sem_timedwait(&return_sem_, &timeout));
   // Reconnect the bridge.
-  bridge_ = cros::CameraAlgorithmBridge::CreateInstance();
+  bridge_ = cros::CameraAlgorithmBridge::CreateVendorAlgoInstance();
   ASSERT_NE(nullptr, bridge_);
   ASSERT_EQ(0, bridge_->Initialize(this));
   base::SharedMemory shm;

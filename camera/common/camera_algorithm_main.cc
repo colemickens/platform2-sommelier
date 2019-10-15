@@ -11,11 +11,11 @@
 #include <sys/types.h>
 
 #include <base/at_exit.h>
-#include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <mojo/edk/embedder/platform_channel_utils_posix.h>
 
@@ -27,9 +27,14 @@
 int main(int argc, char** argv) {
   static base::AtExitManager exit_manager;
   int kCameraProcessPriority = 0;
+  DEFINE_string(type, "vendor", "Algorithm type, e.g. vendor or gpu");
+  brillo::FlagHelper::Init(argc, argv, "Camera algorithm service.");
+  if (FLAGS_type != "vendor" && FLAGS_type != "gpu") {
+    LOGF(ERROR) << "Invalid type";
+    return EXIT_FAILURE;
+  }
 
   // Set up logging so we can enable VLOGs with -v / --vmodule.
-  base::CommandLine::Init(argc, argv);
   logging::LoggingSettings settings;
   settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
   LOG_ASSERT(logging::InitLogging(settings));
@@ -41,10 +46,13 @@ int main(int argc, char** argv) {
     LOGF(WARNING) << "Failed to set process priority";
   }
 
-  base::FilePath socket_path(cros::constants::kCrosCameraAlgoSocketPathString);
+  base::FilePath socket_file_path(
+      (FLAGS_type == "vendor")
+          ? cros::constants::kCrosCameraAlgoSocketPathString
+          : cros::constants::kCrosCameraGPUAlgoSocketPathString);
   // Creat unix socket to receive the adapter token and connection handle
   int fd = -1;
-  if (!cros::CreateServerUnixDomainSocket(socket_path, &fd)) {
+  if (!cros::CreateServerUnixDomainSocket(socket_file_path, &fd)) {
     LOGF(ERROR) << "CreateSreverUnixDomainSocket failed";
     return EXIT_FAILURE;
   }
@@ -62,7 +70,8 @@ int main(int argc, char** argv) {
 
   pid_t pid = 0;
   while (1) {
-    VLOGF(1) << "Waiting for incoming connection for " << socket_path.value();
+    VLOGF(1) << "Waiting for incoming connection for "
+             << socket_file_path.value();
     base::ScopedFD connection_fd(accept(socket_fd.get(), NULL, 0));
     if (!connection_fd.is_valid()) {
       LOGF(ERROR) << "Failed to accept client connect request";
@@ -89,8 +98,10 @@ int main(int argc, char** argv) {
     pid = fork();
     if (pid == 0) {
       cros::CameraAlgorithmAdapter adapter;
-      adapter.Run(std::string(recv_buf),
-                  mojo::edk::ScopedPlatformHandle(platform_handles.front()));
+      adapter.Run(
+          std::string(recv_buf),
+          mojo::edk::ScopedPlatformHandle(platform_handles.front()),
+          (FLAGS_type == "vendor") ? "libcam_algo.so" : "libcam_gpu_algo.so");
       exit(0);
     } else if (pid < 0) {
       LOGF(ERROR) << "Fork failed";

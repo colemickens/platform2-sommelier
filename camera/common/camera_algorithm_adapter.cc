@@ -25,8 +25,9 @@ CameraAlgorithmAdapter::CameraAlgorithmAdapter()
       algo_dll_handle_(nullptr),
       ipc_thread_("IPC thread") {}
 
-void CameraAlgorithmAdapter::Run(
-    std::string mojo_token, mojo::edk::ScopedPlatformHandle channel_handle) {
+void CameraAlgorithmAdapter::Run(std::string mojo_token,
+                                 mojo::edk::ScopedPlatformHandle channel_handle,
+                                 const std::string& algo_lib_name) {
   VLOGF_ENTER();
   auto future = cros::Future<void>::Create(&relay_);
   ipc_lost_cb_ = cros::GetFutureCallback(future);
@@ -35,14 +36,16 @@ void CameraAlgorithmAdapter::Run(
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE, base::Bind(&CameraAlgorithmAdapter::InitializeOnIpcThread,
                             base::Unretained(this), mojo_token,
-                            base::Passed(&channel_handle)));
+                            base::Passed(&channel_handle), algo_lib_name));
   future->Wait(-1);
   ipc_thread_.Stop();
   VLOGF_EXIT();
 }
 
 void CameraAlgorithmAdapter::InitializeOnIpcThread(
-    std::string mojo_token, mojo::edk::ScopedPlatformHandle channel_handle) {
+    std::string mojo_token,
+    mojo::edk::ScopedPlatformHandle channel_handle,
+    const std::string& algo_lib_name) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   VLOGF(1) << "Setting up message pipe";
   mojo::edk::Init();
@@ -53,9 +56,8 @@ void CameraAlgorithmAdapter::InitializeOnIpcThread(
   mojom::CameraAlgorithmOpsRequest request;
   request.Bind(std::move(child_pipe));
 
-  const char kCameraAlgorithmDllName[] = "libcam_algo.so";
   VLOGF_ENTER();
-  algo_dll_handle_ = dlopen(kCameraAlgorithmDllName, RTLD_NOW);
+  algo_dll_handle_ = dlopen(algo_lib_name.c_str(), RTLD_NOW);
   if (!algo_dll_handle_) {
     LOGF(ERROR) << "Failed to dlopen: " << dlerror();
     DestroyOnIpcThread();

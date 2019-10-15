@@ -7,6 +7,8 @@
 #ifndef CAMERA_COMMON_CAMERA_MOJO_CHANNEL_MANAGER_IMPL_H_
 #define CAMERA_COMMON_CAMERA_MOJO_CHANNEL_MANAGER_IMPL_H_
 
+#include <string>
+
 #include <base/no_destructor.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
@@ -43,7 +45,8 @@ class CameraMojoChannelManagerImpl final : public CameraMojoChannelManager {
   // Create a new CameraAlgorithmOpsPtr.
   // This API uses domain socket to connect to the Algo adapter as a parent to
   // create Mojo channel, and then return mojom::CameraAlgorithmOpsPtr.
-  mojom::CameraAlgorithmOpsPtr CreateCameraAlgorithmOpsPtr() final;
+  mojom::CameraAlgorithmOpsPtr CreateCameraAlgorithmOpsPtr(
+      const std::string& socket_path) final;
 
  protected:
   friend class CameraMojoChannelManager;

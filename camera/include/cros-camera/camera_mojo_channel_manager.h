@@ -8,6 +8,7 @@
 #define CAMERA_INCLUDE_CROS_CAMERA_CAMERA_MOJO_CHANNEL_MANAGER_H_
 
 #include <memory>
+#include <string>
 
 #include <base/callback_forward.h>
 #include <base/memory/ref_counted.h>
@@ -53,7 +54,8 @@ class CROS_CAMERA_EXPORT CameraMojoChannelManager {
       mojom::JpegEncodeAcceleratorRequest request) = 0;
 
   // Create a new CameraAlgorithmOpsPtr.
-  virtual mojom::CameraAlgorithmOpsPtr CreateCameraAlgorithmOpsPtr() = 0;
+  virtual mojom::CameraAlgorithmOpsPtr CreateCameraAlgorithmOpsPtr(
+      const std::string& socket_path) = 0;
 };
 
 }  // namespace cros

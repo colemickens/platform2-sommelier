@@ -7,6 +7,7 @@
 #include "common/camera_mojo_channel_manager_impl.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/bind.h>
@@ -86,17 +87,19 @@ void CameraMojoChannelManagerImpl::CreateJpegEncodeAccelerator(
 }
 
 mojom::CameraAlgorithmOpsPtr
-CameraMojoChannelManagerImpl::CreateCameraAlgorithmOpsPtr() {
+CameraMojoChannelManagerImpl::CreateCameraAlgorithmOpsPtr(
+    const std::string& socket_path) {
   VLOGF_ENTER();
 
   mojo::ScopedMessagePipeHandle parent_pipe;
   mojom::CameraAlgorithmOpsPtr algorithm_ops;
 
-  base::FilePath socket_path(constants::kCrosCameraAlgoSocketPathString);
+  base::FilePath socket_file_path(socket_path);
   MojoResult result = cros::CreateMojoChannelToChildByUnixDomainSocket(
-      socket_path, &parent_pipe);
+      socket_file_path, &parent_pipe);
   if (result != MOJO_RESULT_OK) {
-    LOGF(WARNING) << "Failed to create Mojo Channel to" << socket_path.value();
+    LOGF(WARNING) << "Failed to create Mojo Channel to "
+                  << socket_file_path.value();
     return nullptr;
   }
 
@@ -146,7 +149,7 @@ void CameraMojoChannelManagerImpl::EnsureDispatcherConnectedOnIpcThread() {
   MojoResult result = cros::CreateMojoChannelToParentByUnixDomainSocket(
       socket_path, &child_pipe);
   if (result != MOJO_RESULT_OK) {
-    LOGF(WARNING) << "Failed to create Mojo Channel to" << socket_path.value();
+    LOGF(WARNING) << "Failed to create Mojo Channel to " << socket_path.value();
     return;
   }
 
