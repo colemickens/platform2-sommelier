@@ -1,0 +1,122 @@
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include <base/json/json_reader.h>
+#include <fuzzer/FuzzedDataProvider.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#include <string>
+
+#include "runtime_probe/probe_function.h"
+#include "runtime_probe/probe_statement.h"
+#include "runtime_probe/runtime_probe_fuzzer_helper.h"
+
+#define rand_str(a) fuzz_data->ConsumeRandomLengthString((a))
+#define rand_int() std::to_string(fuzz_data->ConsumeIntegral<int>())
+
+using std::string;
+
+namespace runtime_probe {
+
+struct Environment {
+  Environment() {
+    logging::SetMinLogLevel(logging::LOG_FATAL);  // Disable logging.
+  }
+};
+
+inline string GetSysfsDictionary(FuzzedDataProvider* fuzz_data) {
+  return R"({
+    "sysfs": {
+      "dir_path": ")" +
+         JsonSafe(rand_str(30)) + R"(",
+      "keys": [")" +
+         JsonSafe(rand_str(30)) + R"("]
+    }
+  })";
+}
+
+inline string GetShellDictionary(FuzzedDataProvider* fuzz_data) {
+  return R"({
+    "shell": {
+      "command": ")" +
+         JsonSafe(rand_str(30)) + R"(",
+      "key": ")" +
+         JsonSafe(rand_str(30)) + R"("
+    }
+  })";
+}
+
+inline string GetEctoolDictionary(FuzzedDataProvider* fuzz_data) {
+  return R"({
+    "ectool_i2cread": {
+      "size": )" +
+         rand_int() + R"(,
+      "port": )" +
+         rand_int() + R"(,
+      "addr": )" +
+         rand_int() + R"(,
+      "offset": )" +
+         rand_int() + R"(,
+      "key": ")" +
+         JsonSafe(rand_str(30)) + R"("
+    }
+  })";
+}
+
+inline string GetVPDCachedDictionary(FuzzedDataProvider* fuzz_data) {
+  return R"({
+    "vpd_cached": {
+      "vpd_name": ")" +
+         JsonSafe(rand_str(30)) + R"("
+    }
+  })";
+}
+
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+  static Environment env;
+
+  FuzzedDataProvider fuzz_data(data, size);
+
+  int op = fuzz_data.ConsumeIntegralInRange<int8_t>(0, 3);
+  string eval_str;
+
+  switch (op) {
+    case 0:
+      eval_str = R"({
+        "eval":)" +
+                 GetSysfsDictionary(&fuzz_data) + R"(
+      })";
+      break;
+    case 1:
+      eval_str = R"({
+        "eval":)" +
+                 GetShellDictionary(&fuzz_data) + R"(
+      })";
+      break;
+    case 2:
+      eval_str = R"({
+        "eval":)" +
+                 GetEctoolDictionary(&fuzz_data) + R"(
+      })";
+      break;
+    case 3:
+      eval_str = R"({
+        "eval":)" +
+                 GetVPDCachedDictionary(&fuzz_data) + R"(
+      })";
+      break;
+    default:
+      return 0;
+  }
+
+  auto probe_statement = ProbeStatement::FromDictionaryValue(
+      "nop", *base::DictionaryValue::From(base::JSONReader::Read(eval_str)));
+
+  if (probe_statement != nullptr)
+    auto results = probe_statement->Eval();
+  return 0;
+}
+
+}  // namespace runtime_probe

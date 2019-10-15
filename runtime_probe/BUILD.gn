@@ -14,7 +14,10 @@ group("all") {
     deps += [ ":unittest_runner" ]
   }
   if (use.fuzzer) {
-    deps += [ ":runtime_probe_resultchecker_fuzzer" ]
+    deps += [
+      ":runtime_probe_probestatement_fuzzer",
+      ":runtime_probe_resultchecker_fuzzer",
+    ]
   }
 }
 
@@ -108,6 +111,16 @@ if (use.fuzzer) {
     configs += [ "//common-mk/common_fuzzer" ]
     sources = [
       "runtime_probe_resultchecker_fuzzer.cc",
+    ]
+    deps = [
+      ":libruntime_probe",
+    ]
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+  executable("runtime_probe_probestatement_fuzzer") {
+    configs += [ "//common-mk/common_fuzzer" ]
+    sources = [
+      "runtime_probe_probestatement_fuzzer.cc",
     ]
     deps = [
       ":libruntime_probe",
