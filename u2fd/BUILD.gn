@@ -16,6 +16,9 @@ group("all") {
       ":u2fd_test_runner",
     ]
   }
+  if (use.fuzzer) {
+    deps += [ ":u2f_adpu_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -142,6 +145,25 @@ if (use.test) {
     deps = [
       ":libu2fd",
       "//common-mk/testrunner",
+    ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("u2f_adpu_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":target_defaults",
+    ]
+    pkg_deps = [
+      "libtrunks",
+      "openssl",
+    ]
+    sources = [
+      "tpm_vendor_cmd.cc",
+      "u2f_adpu.cc",
+      "u2f_adpu_fuzzer.cc",
+      "util.cc",
     ]
   }
 }
