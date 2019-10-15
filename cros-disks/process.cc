@@ -117,6 +117,7 @@ Process::Process() = default;
 Process::~Process() = default;
 
 void Process::AddArgument(const std::string& argument) {
+  DCHECK(arguments_array_.empty());
   arguments_.push_back(argument);
 }
 
@@ -127,32 +128,13 @@ char* const* Process::GetArguments() {
   return arguments_array_.data();
 }
 
-bool Process::BuildArgumentsArray() {
-  // The following code creates a writable copy of argument strings.
-  size_t num_arguments = arguments_.size();
-  if (num_arguments == 0)
-    return false;
-
-  size_t arguments_buffer_size = 0;
-  for (const auto& argument : arguments_) {
-    arguments_buffer_size += argument.size() + 1;
+void Process::BuildArgumentsArray() {
+  for (std::string& argument : arguments_) {
+    // TODO(fdegros) Remove const_cast when using C++17
+    arguments_array_.push_back(const_cast<char*>(argument.data()));
   }
 
-  arguments_buffer_.resize(arguments_buffer_size);
-  arguments_array_.resize(num_arguments + 1);
-
-  char** array_pointer = arguments_array_.data();
-  char* buffer_pointer = arguments_buffer_.data();
-  for (const auto& argument : arguments_) {
-    *array_pointer = buffer_pointer;
-    size_t argument_size = argument.size();
-    argument.copy(buffer_pointer, argument_size);
-    buffer_pointer[argument_size] = '\0';
-    buffer_pointer += argument_size + 1;
-    ++array_pointer;
-  }
-  *array_pointer = nullptr;
-  return true;
+  arguments_array_.push_back(nullptr);
 }
 
 bool Process::Start(base::ScopedFD in_fd,

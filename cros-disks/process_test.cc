@@ -152,7 +152,9 @@ TEST_F(ProcessTest, GetArguments) {
 }
 
 TEST_F(ProcessTest, GetArgumentsWithNoArgumentsAdded) {
-  EXPECT_EQ(nullptr, process_.GetArguments());
+  char* const* arguments = process_.GetArguments();
+  EXPECT_NE(nullptr, arguments);
+  EXPECT_EQ(nullptr, *arguments);
 }
 
 TEST_F(ProcessTest, Run_Success) {

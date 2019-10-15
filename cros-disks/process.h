@@ -55,13 +55,11 @@ class Process {
  protected:
   Process();
 
-  // Returns the array of arguments used to start the process, or NULL if
-  // no arguments is added using AddArgument(). This method calls
-  // BuildArgumentsArray() to build |arguments_array_| only once (i.e.
-  // when |arguments_array_| is null). Once |arguments_array_| is built,
-  // subsequent calls to AddArgument() do not change the return value of
-  // this method. The returned array of arguments is managed by the base
-  // class.
+  // Gets the arguments used to start the process. This method calls
+  // BuildArgumentsArray() to build |arguments_array_| only once (i.e. when
+  // |arguments_array_| is empty). Once |arguments_array_| is built, subsequent
+  // calls to AddArgument() are not allowed. The returned array of arguments is
+  // owned by this Process object.
   char* const* GetArguments();
 
   // Starts a process, and connects to its stdin, stdout and stderr the given
@@ -95,17 +93,15 @@ class Process {
                    base::ScopedFD out_fd,
                    base::ScopedFD err_fd);
 
-  // Builds |arguments_array_| and |arguments_buffer_| from |arguments_|.
-  // Existing values of |arguments_array_| and |arguments_buffer_| are
-  // overridden. Return false if |arguments_| is empty.
-  bool BuildArgumentsArray();
+  // Builds |arguments_array_| from |arguments_|. Existing values of
+  // |arguments_array_| are overridden.
+  void BuildArgumentsArray();
 
   bool finished() const { return status_ >= 0; }
 
   // Process arguments.
   std::vector<std::string> arguments_;
   std::vector<char*> arguments_array_;
-  std::vector<char> arguments_buffer_;
 
   // Process ID (default to kInvalidProcessId when the process has not started).
   pid_t pid_ = kInvalidProcessId;
