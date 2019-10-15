@@ -85,17 +85,17 @@ std::map<uint16_t, std::vector<uint8_t>> ParseDataIntoManufacturer(
 // UUID16_INCOMPLETE, UUID16_COMPLETE, UUID32_INCOMPLETE, UUID32_COMPLETE,
 // UUID128_INCOMPLETE and UUID128_COMPLETE.
 void ParseDataIntoUuids(std::set<Uuid>* service_uuids,
-                        uint8_t uuid_size,
+                        const uint8_t uuid_size,
                         const uint8_t* data,
-                        uint8_t data_len);
+                        const uint8_t data_len);
 
 // Updates the service data based on data of EirTypes including SVC_DATA16,
 // SVC_DATA32 and SVC_DATA128.
 void ParseDataIntoServiceData(
     std::map<Uuid, std::vector<uint8_t>>* service_data,
-    uint8_t uuid_size,
+    const uint8_t uuid_size,
     const uint8_t* data,
-    uint8_t data_len);
+    const uint8_t data_len);
 
 ////////////////////////////////////////////////////////////////////////////////
 // D-Bus object path helpers and export helpers.

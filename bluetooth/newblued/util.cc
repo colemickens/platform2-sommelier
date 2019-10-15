@@ -172,11 +172,23 @@ std::map<uint16_t, std::vector<uint8_t>> ParseDataIntoManufacturer(
   return manufacturer;
 }
 
+static bool IsUuidSizeValid(const uint8_t uuid_size) {
+  static constexpr uint8_t validUuidSizes[] = {kUuid16Size, kUuid32Size,
+                                               kUuid128Size};
+
+  for (const auto& validUuidSize : validUuidSizes) {
+    if (validUuidSize == uuid_size)
+      return true;
+  }
+
+  return false;
+}
+
 void ParseDataIntoUuids(std::set<Uuid>* service_uuids,
-                        uint8_t uuid_size,
+                        const uint8_t uuid_size,
                         const uint8_t* data,
-                        uint8_t data_len) {
-  CHECK(service_uuids && data);
+                        const uint8_t data_len) {
+  CHECK(service_uuids && data && IsUuidSizeValid(uuid_size));
 
   if (!data_len || data_len % uuid_size != 0) {
     LOG(WARNING) << "Failed to parse EIR service UUIDs";
@@ -193,10 +205,10 @@ void ParseDataIntoUuids(std::set<Uuid>* service_uuids,
 
 void ParseDataIntoServiceData(
     std::map<Uuid, std::vector<uint8_t>>* service_data,
-    uint8_t uuid_size,
+    const uint8_t uuid_size,
     const uint8_t* data,
-    uint8_t data_len) {
-  CHECK(service_data && data);
+    const uint8_t data_len) {
+  CHECK(service_data && data && IsUuidSizeValid(uuid_size));
 
   if (!data_len || data_len <= uuid_size) {
     LOG(WARNING) << "Failed to parse EIR service data";

@@ -15,6 +15,9 @@ group("all") {
   if (use.test) {
     deps += [ ":bluetooth_test" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":newblued_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -145,6 +148,23 @@ if (use.test) {
       ":libdispatcher",
       ":libnewblued",
       "//common-mk/testrunner",
+    ]
+  }
+}
+
+# Fuzzer targets
+if (use.fuzzer) {
+  executable("newblued_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "newblued/util_fuzzer.cc",
+    ]
+    deps = [
+      ":libcommon",
+      ":libnewblued",
     ]
   }
 }
