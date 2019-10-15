@@ -8,6 +8,10 @@ group("all") {
   deps = [
     ":arc-adbd",
   ]
+
+  if (use.fuzzer) {
+    deps += [ ":arc-adbd-setup-config-fs-fuzzer" ]
+  }
 }
 
 pkg_config("config") {
@@ -17,10 +21,45 @@ pkg_config("config") {
   ]
 }
 
-executable("arc-adbd") {
+static_library("libarcadbd") {
   configs += [ ":config" ]
 
   sources = [
     "adbd.cc",
+    "adbd.h",
   ]
+}
+
+executable("arc-adbd") {
+  configs += [ ":config" ]
+
+  sources = [
+    "adbd_main.cc",
+  ]
+
+  deps = [
+    ":libarcadbd",
+  ]
+}
+
+# Fuzzer only.
+if (use.fuzzer) {
+  pkg_config("arc_adbd_fuzzer_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+
+  executable("arc-adbd-setup-config-fs-fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":arc_adbd_fuzzer_config",
+    ]
+
+    sources = [
+      "fuzzers/adbd_setup_config_fs_fuzzer.cc",
+    ]
+
+    deps = [
+      ":libarcadbd",
+    ]
+  }
 }
