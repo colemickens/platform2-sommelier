@@ -15,6 +15,9 @@ group("all") {
   if (use.test) {
     deps += [ ":unittest_runner" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":hammerd_load_ec_image_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -90,6 +93,21 @@ if (use.test) {
     deps = [
       ":libhammerd",
       "//common-mk/testrunner",
+    ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("hammerd_load_ec_image_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "update_fw_load_ec_image_fuzzer.cc",
+    ]
+    deps = [
+      ":libhammerd",
     ]
   }
 }
