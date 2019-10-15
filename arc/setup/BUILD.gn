@@ -12,6 +12,13 @@ group("all") {
   if (use.test) {
     deps += [ ":arc-setup_testrunner" ]
   }
+  if (use.fuzzer) {
+    deps += [
+      ":arc_setup_util_expand_property_contents_fuzzer",
+      ":arc_setup_util_find_all_properties_fuzzer",
+      ":arc_setup_util_find_fingerprint_and_sdk_version_fuzzer",
+    ]
+  }
 }
 
 pkg_config("target_defaults_pkg_deps") {
@@ -151,6 +158,47 @@ if (use.test) {
       "boot_lockbox_client.cc",
       "config_test.cc",
       "priv_code_verifier.cc",
+    ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("arc_setup_util_find_all_properties_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "arc_setup_util_find_all_properties_fuzzer.cc",
+    ]
+    deps = [
+      ":libarc_setup",
+    ]
+  }
+
+  executable("arc_setup_util_find_fingerprint_and_sdk_version_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "arc_setup_util_find_fingerprint_and_sdk_version_fuzzer.cc",
+    ]
+    deps = [
+      ":libarc_setup",
+    ]
+  }
+
+  executable("arc_setup_util_expand_property_contents_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "arc_setup_util_expand_property_contents_fuzzer.cc",
+    ]
+    deps = [
+      ":libarc_setup",
     ]
   }
 }

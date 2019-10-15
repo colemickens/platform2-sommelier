@@ -303,6 +303,23 @@ bool SetXattr(const base::FilePath& path,
 bool ShouldDeleteAndroidData(AndroidSdkVersion system_sdk_version,
                              AndroidSdkVersion data_sdk_version);
 
+// A callback function that parses all lines and put key/value pair into the
+// |out_properties|. Returns true in case line cannot be parsed in order to stop
+// processing next lines.
+bool FindAllProperties(std::map<std::string, std::string>* out_properties,
+                       const std::string& line);
+
+// A callback function for GetFingerprintAndSdkVersionFromPackagesXml.
+// This checks if the |line| is like
+//    <version sdkVersion="25" databaseVersion="3" fingerprint="..." />
+// and store the fingerprint part in |out_fingerprint| and the sdkVersion part
+// in |out_sdk_version| if it is. Ignore a line with a volumeUuid attribute
+// which means that the line is for an external storage.
+// What we need is a fingerprint and a sdk version for an internal storage.
+bool FindFingerprintAndSdkVersion(std::string* out_fingerprint,
+                                  std::string* out_sdk_version,
+                                  const std::string& line);
+
 }  // namespace arc
 
 #endif  // ARC_SETUP_ARC_SETUP_UTIL_H_

@@ -170,76 +170,6 @@ StringPiece GetAttributeValue(const StringPiece& line, const StringPiece& key) {
   return line.substr(value_begin_pos, value_end_pos - value_begin_pos);
 }
 
-// A callback function for GetFingerprintAndSdkVersionFromPackagesXml.
-// This checks if the |line| is like
-//    <version sdkVersion="25" databaseVersion="3" fingerprint="..." />
-// and store the fingerprint part in |out_fingerprint| and the sdkVersion part
-// in |out_sdk_version| if it is. Ignore a line with a volumeUuid attribute
-// which means that the line is for an external storage.
-// What we need is a fingerprint and a sdk version for an internal storage.
-bool FindFingerprintAndSdkVersion(std::string* out_fingerprint,
-                                  std::string* out_sdk_version,
-                                  const std::string& line) {
-  constexpr char kAttributeVolumeUuid[] = " volumeUuid=\"";
-  constexpr char kAttributeSdkVersion[] = " sdkVersion=\"";
-  constexpr char kAttributeDatabaseVersion[] = " databaseVersion=\"";
-
-  // Parsing an XML this way is not very clean but in this case, it works (and
-  // fast.) Android's packages.xml is written in com.android.server.pm.Settings'
-  // writeLPr(), and the write function always uses Android's FastXmlSerializer.
-  // The serializer does not try to pretty-print the XML, and inserts '\n' only
-  // to certain places like endTag.
-  StringPiece trimmed = base::TrimWhitespaceASCII(line, base::TRIM_ALL);
-  if (!base::StartsWith(trimmed, kElementVersion, base::CompareCase::SENSITIVE))
-    return false;  // Not a <version> element. Ignoring.
-
-  if (trimmed.find(kAttributeVolumeUuid) != std::string::npos)
-    return false;  // This is for an external storage. Ignoring.
-
-  StringPiece fingerprint = GetAttributeValue(trimmed, kAttributeFingerprint);
-  if (fingerprint.empty()) {
-    LOG(WARNING) << "<version> doesn't have a valid fingerprint: " << trimmed;
-    return false;
-  }
-  StringPiece sdk_version = GetAttributeValue(trimmed, kAttributeSdkVersion);
-  if (sdk_version.empty()) {
-    LOG(WARNING) << "<version> doesn't have a valid sdkVersion: " << trimmed;
-    return false;
-  }
-  // Also checks existence of databaseVersion.
-  if (GetAttributeValue(trimmed, kAttributeDatabaseVersion).empty()) {
-    LOG(WARNING) << "<version> doesn't have a databaseVersion: " << trimmed;
-    return false;
-  }
-
-  fingerprint.CopyToString(out_fingerprint);
-  sdk_version.CopyToString(out_sdk_version);
-  return true;
-}
-
-// A callback function that parses all lines and put key/value pair into the
-// |out_properties|. Returns true in case line cannot be parsed in order to stop
-// processing next lines.
-bool FindAllProperties(std::map<std::string, std::string>* out_properties,
-                       const std::string& line) {
-  // Ignore empty lines and comments.
-  if (line.empty() || line.at(0) == '#') {
-    // Continue reading next lines.
-    return false;
-  }
-
-  std::string::size_type separator = line.find('=');
-  if (separator == std::string::npos) {
-    LOG(WARNING) << "Failed to parse: " << line;
-    // Stop reading next lines on error.
-    return true;
-  }
-
-  (*out_properties)[line.substr(0, separator)] = line.substr(separator + 1);
-  // Continue reading next lines.
-  return false;
-}
-
 // Sets the permission of the given |fd|.
 bool SetPermissions(base::PlatformFile fd, mode_t mode) {
   struct stat st;
@@ -1273,6 +1203,66 @@ bool ShouldDeleteAndroidData(AndroidSdkVersion system_sdk_version,
     return true;
   }
   return false;
+}
+
+bool FindAllProperties(std::map<std::string, std::string>* out_properties,
+                       const std::string& line) {
+  // Ignore empty lines and comments.
+  if (line.empty() || line.at(0) == '#') {
+    // Continue reading next lines.
+    return false;
+  }
+
+  std::string::size_type separator = line.find('=');
+  if (separator == std::string::npos) {
+    LOG(WARNING) << "Failed to parse: " << line;
+    // Stop reading next lines on error.
+    return true;
+  }
+
+  (*out_properties)[line.substr(0, separator)] = line.substr(separator + 1);
+  // Continue reading next lines.
+  return false;
+}
+
+bool FindFingerprintAndSdkVersion(std::string* out_fingerprint,
+                                  std::string* out_sdk_version,
+                                  const std::string& line) {
+  constexpr char kAttributeVolumeUuid[] = " volumeUuid=\"";
+  constexpr char kAttributeSdkVersion[] = " sdkVersion=\"";
+  constexpr char kAttributeDatabaseVersion[] = " databaseVersion=\"";
+
+  // Parsing an XML this way is not very clean but in this case, it works (and
+  // fast.) Android's packages.xml is written in com.android.server.pm.Settings'
+  // writeLPr(), and the write function always uses Android's FastXmlSerializer.
+  // The serializer does not try to pretty-print the XML, and inserts '\n' only
+  // to certain places like endTag.
+  StringPiece trimmed = base::TrimWhitespaceASCII(line, base::TRIM_ALL);
+  if (!base::StartsWith(trimmed, kElementVersion, base::CompareCase::SENSITIVE))
+    return false;  // Not a <version> element. Ignoring.
+
+  if (trimmed.find(kAttributeVolumeUuid) != std::string::npos)
+    return false;  // This is for an external storage. Ignoring.
+
+  StringPiece fingerprint = GetAttributeValue(trimmed, kAttributeFingerprint);
+  if (fingerprint.empty()) {
+    LOG(WARNING) << "<version> doesn't have a valid fingerprint: " << trimmed;
+    return false;
+  }
+  StringPiece sdk_version = GetAttributeValue(trimmed, kAttributeSdkVersion);
+  if (sdk_version.empty()) {
+    LOG(WARNING) << "<version> doesn't have a valid sdkVersion: " << trimmed;
+    return false;
+  }
+  // Also checks existence of databaseVersion.
+  if (GetAttributeValue(trimmed, kAttributeDatabaseVersion).empty()) {
+    LOG(WARNING) << "<version> doesn't have a databaseVersion: " << trimmed;
+    return false;
+  }
+
+  fingerprint.CopyToString(out_fingerprint);
+  sdk_version.CopyToString(out_sdk_version);
+  return true;
 }
 
 }  // namespace arc
