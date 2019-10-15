@@ -9,12 +9,16 @@ group("guest") {
   deps = [
     ":garcon",
     ":maitred",
-    ":notificationd",
     ":upgrade_container",
     ":virtwl_guest_proxy",
     ":vm_syslog",
     ":vshd",
   ]
+  if (!use.fuzzer) {
+    # Exclude notificationd from fuzzer builds since it pulls in wayland which
+    # causes build problems.
+    deps += [ ":notificationd" ]
+  }
   if (use.test) {
     deps += [
       ":garcon_desktop_file_test",
@@ -142,52 +146,54 @@ executable("vshd") {
   ]
 }
 
-wayland_protocol_library("notification-protocol") {
-  sources = [
-    "../notificationd/protocol/notification-shell-unstable-v1.xml",
-  ]
-  configs = [ ":target_defaults" ]
-  out_dir = "include"
-}
+if (!use.fuzzer) {
+  wayland_protocol_library("notification-protocol") {
+    sources = [
+      "../notificationd/protocol/notification-shell-unstable-v1.xml",
+    ]
+    configs = [ ":target_defaults" ]
+    out_dir = "include"
+  }
 
-static_library("libnotificationd") {
-  sources = [
-    "../notificationd/dbus_service.cc",
-    "../notificationd/notification_daemon.cc",
-    "../notificationd/notification_shell_client.cc",
-  ]
-  include_dirs = [ ".." ]
-  defines = [ "WL_HIDE_DEPRECATED" ]
-  public_pkg_deps = [
-    "wayland-client",
-    "wayland-server",
-  ]
-  pkg_deps = [
-    "dbus-1",
-    "libbrillo-${libbase_ver}",
-  ]
-  deps = [
-    ":notification-protocol",
-  ]
-}
+  static_library("libnotificationd") {
+    sources = [
+      "../notificationd/dbus_service.cc",
+      "../notificationd/notification_daemon.cc",
+      "../notificationd/notification_shell_client.cc",
+    ]
+    include_dirs = [ ".." ]
+    defines = [ "WL_HIDE_DEPRECATED" ]
+    public_pkg_deps = [
+      "wayland-client",
+      "wayland-server",
+    ]
+    pkg_deps = [
+      "dbus-1",
+      "libbrillo-${libbase_ver}",
+    ]
+    deps = [
+      ":notification-protocol",
+    ]
+  }
 
-executable("notificationd") {
-  sources = [
-    "../notificationd/notificationd.cc",
-  ]
-  include_dirs = [ ".." ]
-  public_pkg_deps = [
-    "wayland-client",
-    "wayland-server",
-  ]
-  pkg_deps = [
-    "dbus-1",
-    "libbrillo-${libbase_ver}",
-  ]
-  deps = [
-    ":libnotificationd",
-    ":notification-protocol",
-  ]
+  executable("notificationd") {
+    sources = [
+      "../notificationd/notificationd.cc",
+    ]
+    include_dirs = [ ".." ]
+    public_pkg_deps = [
+      "wayland-client",
+      "wayland-server",
+    ]
+    pkg_deps = [
+      "dbus-1",
+      "libbrillo-${libbase_ver}",
+    ]
+    deps = [
+      ":libnotificationd",
+      ":notification-protocol",
+    ]
+  }
 }
 
 copy("upgrade_container") {
