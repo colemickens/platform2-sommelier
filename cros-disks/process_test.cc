@@ -87,25 +87,21 @@ class AlarmGuard {
 int AlarmGuard::count_ = 0;
 AlarmGuard::SigHandler AlarmGuard::old_handler_ = nullptr;
 
-std::string Read(const base::ScopedFD fd) {
+std::string Read(const int fd) {
   char buffer[PIPE_BUF];
 
-  LOG(INFO) << "Reading up to " << PIPE_BUF << " bytes from fd " << fd.get()
-            << "...";
-  const ssize_t bytes_read = HANDLE_EINTR(read(fd.get(), buffer, PIPE_BUF));
-  PLOG_IF(FATAL, bytes_read < 0)
-      << "Cannot read from file descriptor " << fd.get();
+  LOG(INFO) << "Reading up to " << PIPE_BUF << " bytes from fd " << fd << "...";
+  const ssize_t bytes_read = HANDLE_EINTR(read(fd, buffer, PIPE_BUF));
+  PLOG_IF(FATAL, bytes_read < 0) << "Cannot read from fd " << fd;
 
-  LOG(INFO) << "Read " << bytes_read << " bytes from fd " << fd.get();
+  LOG(INFO) << "Read " << bytes_read << " bytes from fd " << fd;
   return std::string(buffer, bytes_read);
 }
 
-void WriteAndClose(const base::ScopedFD fd, base::StringPiece s) {
+void Write(const int fd, base::StringPiece s) {
   while (!s.empty()) {
-    const ssize_t bytes_written =
-        HANDLE_EINTR(write(fd.get(), s.data(), s.size()));
-    PLOG_IF(FATAL, bytes_written < 0)
-        << "Cannot write to file descriptor " << fd.get();
+    const ssize_t bytes_written = HANDLE_EINTR(write(fd, s.data(), s.size()));
+    PLOG_IF(FATAL, bytes_written < 0) << "Cannot write to fd " << fd;
 
     s.remove_prefix(bytes_written);
   }
@@ -191,33 +187,64 @@ class ProcessRunTest : public ::testing::TestWithParam<ProcessFactory> {
   const std::unique_ptr<Process> process_ = GetParam().make_process();
 };
 
-TEST_P(ProcessRunTest, ReturnsZero) {
+TEST_P(ProcessRunTest, RunReturnsZero) {
   Process& process = *process_;
-  process.AddArgument("/bin/true");
+  process.AddArgument("/bin/sh");
+  process.AddArgument("-c");
+  process.AddArgument("exit 0");
   std::vector<std::string> output;
   EXPECT_EQ(process.Run(&output), 0);
   EXPECT_THAT(output, IsEmpty());
 }
 
-TEST_P(ProcessRunTest, ReturnsNonZero) {
+TEST_P(ProcessRunTest, WaitReturnsZero) {
   Process& process = *process_;
-  process.AddArgument("/bin/false");
+  process.AddArgument("/bin/sh");
+  process.AddArgument("-c");
+  process.AddArgument("exit 0");
+  EXPECT_TRUE(process.Start());
+  EXPECT_EQ(process.Wait(), 0);
+}
+
+TEST_P(ProcessRunTest, RunReturnsNonZero) {
+  Process& process = *process_;
+  process.AddArgument("/bin/sh");
+  process.AddArgument("-c");
+  process.AddArgument("exit 42");
   std::vector<std::string> output;
-  EXPECT_EQ(process.Run(&output), 1);
+  EXPECT_EQ(process.Run(&output), 42);
   EXPECT_THAT(output, IsEmpty());
 }
 
-TEST_P(ProcessRunTest, KilledBySigKill) {
+TEST_P(ProcessRunTest, WaitReturnsNonZero) {
+  Process& process = *process_;
+  process.AddArgument("/bin/sh");
+  process.AddArgument("-c");
+  process.AddArgument("exit 42");
+  EXPECT_TRUE(process.Start());
+  EXPECT_EQ(process.Wait(), 42);
+}
+
+TEST_P(ProcessRunTest, RunKilledBySigKill) {
   Process& process = *process_;
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
   process.AddArgument("kill -KILL $$; sleep 1000");
   std::vector<std::string> output;
-  EXPECT_EQ(process.Run(&output), 128 + SIGKILL);
+  EXPECT_EQ(process.Run(&output), MINIJAIL_ERR_SIG_BASE + SIGKILL);
   EXPECT_THAT(output, IsEmpty());
 }
 
-TEST_P(ProcessRunTest, KilledBySigSys) {
+TEST_P(ProcessRunTest, WaitKilledBySigKill) {
+  Process& process = *process_;
+  process.AddArgument("/bin/sh");
+  process.AddArgument("-c");
+  process.AddArgument("kill -KILL $$; sleep 1000");
+  EXPECT_TRUE(process.Start());
+  EXPECT_EQ(process.Wait(), MINIJAIL_ERR_SIG_BASE + SIGKILL);
+}
+
+TEST_P(ProcessRunTest, RunKilledBySigSys) {
   Process& process = *process_;
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
@@ -227,12 +254,47 @@ TEST_P(ProcessRunTest, KilledBySigSys) {
   EXPECT_THAT(output, IsEmpty());
 }
 
-TEST_P(ProcessRunTest, CannotExec) {
+TEST_P(ProcessRunTest, WaitKilledBySigSys) {
   Process& process = *process_;
-  process.AddArgument("non_existing_exe_foo_bar");
-  // SandboxedProcess returns 255, but it isn't explicitly specified.
+  process.AddArgument("/bin/sh");
+  process.AddArgument("-c");
+  process.AddArgument("kill -SYS $$; sleep 1000");
+  EXPECT_TRUE(process.Start());
+  EXPECT_EQ(process.Wait(), MINIJAIL_ERR_JAIL);
+}
+
+TEST_P(ProcessRunTest, RunCannotFindCommand) {
+  Process& process = *process_;
+  process.AddArgument("non existing command");
   std::vector<std::string> output;
+  // TODO(crbug.com/1010791) EXPECT_EQ(process.Run(&output),
+  // MINIJAIL_ERR_NO_COMMAND);
   EXPECT_GT(process.Run(&output), 0);
+}
+
+TEST_P(ProcessRunTest, WaitCannotFindCommand) {
+  Process& process = *process_;
+  process.AddArgument("non existing command");
+  EXPECT_TRUE(process.Start());
+  // TODO(crbug.com/1010791) EXPECT_EQ(process.Wait(), MINIJAIL_ERR_NO_COMMAND);
+  EXPECT_GT(process.Wait(), 0);
+}
+
+TEST_P(ProcessRunTest, RunCannotRunCommand) {
+  Process& process = *process_;
+  process.AddArgument("/dev/null");
+  std::vector<std::string> output;
+  // TODO(crbug.com/1010791) EXPECT_EQ(process.Run(&output),
+  // MINIJAIL_ERR_NO_ACCESS);
+  EXPECT_GT(process.Run(&output), 0);
+}
+
+TEST_P(ProcessRunTest, WaitCannotRunCommand) {
+  Process& process = *process_;
+  process.AddArgument("/dev/null");
+  EXPECT_TRUE(process.Start());
+  // TODO(crbug.com/1010791) EXPECT_EQ(process.Wait(), MINIJAIL_ERR_NO_ACCESS);
+  EXPECT_GT(process.Wait(), 0);
 }
 
 TEST_P(ProcessRunTest, CapturesInterleavedOutputs) {
@@ -253,9 +315,7 @@ TEST_P(ProcessRunTest, CapturesInterleavedOutputs) {
                                            "ERR: Line 5", "ERR: Line 6"));
 }
 
-// TODO(crbug.com/1010945): Disabled due to flakiness on ToT. This test should
-// be re-enabled when it works consistently.
-TEST_P(ProcessRunTest, DISABLED_CapturesLotsOfOutputData) {
+TEST_P(ProcessRunTest, CapturesLotsOfOutputData) {
   Process& process = *process_;
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
@@ -293,7 +353,7 @@ TEST_P(ProcessRunTest, DISABLED_DoesNotBlockWhenNotCapturingOutput) {
   EXPECT_EQ(process.Wait(), 42);
 }
 
-TEST_P(ProcessRunTest, DoesNotBlockWhenReadingFromStdIn) {
+TEST_P(ProcessRunTest, RunDoesNotBlockWhenReadingFromStdIn) {
   Process& process = *process_;
   process.AddArgument("/bin/cat");
 
@@ -304,52 +364,124 @@ TEST_P(ProcessRunTest, DoesNotBlockWhenReadingFromStdIn) {
   EXPECT_THAT(output, IsEmpty());
 }
 
-TEST_P(ProcessRunTest, DoesNotWaitForBackgroundProcessToFinish) {
+// TODO(crbug.com/1005642) Enable test one bug is fixed.
+TEST_P(ProcessRunTest, DISABLED_WaitDoesNotBlockWhenReadingFromStdIn) {
+  Process& process = *process_;
+  process.AddArgument("/bin/cat");
+
+  // By default, /bin/cat reads from stdin. If the pipe connected to stdin was
+  // left open, the process would block indefinitely while reading from it.
+  EXPECT_TRUE(process.Start());
+  EXPECT_EQ(process.Wait(), 0);
+}
+
+TEST_P(ProcessRunTest, RunDoesNotWaitForBackgroundProcessToFinish) {
   Process& process = *process_;
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
 
   // Pipe to unblock the background process and allow it to finish.
-  Pipe p1;
-  ASSERT_EQ(fcntl(p1.write_fd.get(), F_SETFD, FD_CLOEXEC), 0);
+  Pipe to_continue;
+  ASSERT_TRUE(base::SetCloseOnExec(to_continue.write_fd.get()));
+
   // Pipe to monitor the background process and wait for it to finish.
-  Pipe p2;
-  ASSERT_EQ(fcntl(p2.read_fd.get(), F_SETFD, FD_CLOEXEC), 0);
+  Pipe to_wait;
+  ASSERT_TRUE(base::SetCloseOnExec(to_wait.read_fd.get()));
 
   process.AddArgument(base::StringPrintf(R"(
-      printf 'Begin\n';
       (
         exec 0<&-;
         exec 1>&-;
         exec 2>&-;
+        printf 'Begin\n' >&%d;
         read line <&%d;
-        printf '%%s and End' "$line" >&%d;
+        printf '%%s and End\n' "$line" >&%d;
         exit 42;
       )&
       printf 'Started background process %%i\n' $!
       exit 5;
     )",
-                                         p1.read_fd.get(), p2.write_fd.get()));
+                                         to_wait.write_fd.get(),
+                                         to_continue.read_fd.get(),
+                                         to_wait.write_fd.get()));
 
+  LOG(INFO) << "Running launcher process";
   std::vector<std::string> output;
   EXPECT_EQ(process.Run(&output), 5);
-  EXPECT_THAT(
-      output,
-      ElementsAre("OUT: Begin", StartsWith("OUT: Started background process")));
+  EXPECT_THAT(output,
+              ElementsAre(StartsWith("OUT: Started background process")));
 
-  // Unblock the orphaned background process.
+  LOG(INFO) << "Closing unused fds";
+  to_continue.read_fd.reset();
+  to_wait.write_fd.reset();
+
+  LOG(INFO) << "Waiting for background process to confirm starting";
+  EXPECT_EQ(Read(to_wait.read_fd.get()), "Begin\n");
+
   LOG(INFO) << "Unblocking background process";
-  WriteAndClose(std::move(p1.write_fd), "Continue\n");
+  Write(to_continue.write_fd.get(), "Continue\n");
 
-  // Wait for the orphaned background processes to finish. If the main test
-  // program finishes before these background processes, the test framework
-  // complains about leaked processes.
-  p2.write_fd.reset();
   LOG(INFO) << "Waiting for background process to finish";
-  EXPECT_EQ(Read(std::move(p2.read_fd)), "Continue and End");
+  EXPECT_EQ(Read(to_wait.read_fd.get()), "Continue and End\n");
+  EXPECT_EQ(Read(to_wait.read_fd.get()), "");
+
+  LOG(INFO) << "Background process finished";
 }
 
-TEST_P(ProcessRunTest, UndisturbedBySignalsWhenCapturingOutput) {
+// TODO(crbug.com/1007613) Enable test once bug is fixed.
+TEST_P(ProcessRunTest, DISABLED_WaitDoesNotWaitForBackgroundProcessToFinish) {
+  Process& process = *process_;
+  process.AddArgument("/bin/sh");
+  process.AddArgument("-c");
+
+  // Pipe to unblock the background process and allow it to finish.
+  Pipe to_continue;
+  ASSERT_TRUE(base::SetCloseOnExec(to_continue.write_fd.get()));
+
+  // Pipe to monitor the background process and wait for it to finish.
+  Pipe to_wait;
+  ASSERT_TRUE(base::SetCloseOnExec(to_wait.read_fd.get()));
+
+  process.AddArgument(base::StringPrintf(R"(
+      (
+        exec 0<&-;
+        exec 1>&-;
+        exec 2>&-;
+        printf 'Begin\n' >&%d;
+        read line <&%d;
+        printf '%%s and End\n' "$line" >&%d;
+        exit 42;
+      )&
+      exit 5;
+    )",
+                                         to_wait.write_fd.get(),
+                                         to_continue.read_fd.get(),
+                                         to_wait.write_fd.get()));
+
+  LOG(INFO) << "Starting launcher process";
+  EXPECT_TRUE(process.Start());
+
+  LOG(INFO) << "Waiting for launcher process to finish";
+  EXPECT_EQ(process.Wait(), 5);
+
+  LOG(INFO) << "Closing unused fds";
+  to_continue.read_fd.reset();
+  to_wait.write_fd.reset();
+
+  LOG(INFO) << "Waiting for background process to confirm starting";
+  EXPECT_EQ(Read(to_wait.read_fd.get()), "Begin\n");
+
+  LOG(INFO) << "Unblocking background process";
+  Write(to_continue.write_fd.get(), "Continue\n");
+
+  LOG(INFO) << "Waiting for background process to finish";
+  EXPECT_EQ(Read(to_wait.read_fd.get()), "Continue and End\n");
+  EXPECT_EQ(Read(to_wait.read_fd.get()), "");
+
+  LOG(INFO) << "Background process finished";
+}
+
+TEST_P(ProcessRunTest, RunUndisturbedBySignals) {
   Process& process = *process_;
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
@@ -371,7 +503,7 @@ TEST_P(ProcessRunTest, UndisturbedBySignalsWhenCapturingOutput) {
   EXPECT_THAT(output, SizeIs(100));
 }
 
-TEST_P(ProcessRunTest, UndisturbedBySignalsWhenWaiting) {
+TEST_P(ProcessRunTest, WaitUndisturbedBySignals) {
   Process& process = *process_;
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
