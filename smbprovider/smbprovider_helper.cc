@@ -52,10 +52,7 @@ ErrorType GetErrorFromErrno(int32_t error_code) {
     case EPERM:
     case EACCES:
       return ERROR_ACCESS_DENIED;
-    case EBADF:
-    case ENODEV:
     case ENOENT:
-    case ETIMEDOUT:
       return ERROR_NOT_FOUND;
     case EMFILE:
     case ENFILE:
@@ -72,6 +69,10 @@ ErrorType GetErrorFromErrno(int32_t error_code) {
       return ERROR_INVALID_OPERATION;
     case ECONNABORTED:
       return ERROR_SMB1_UNSUPPORTED;
+    case EBADF:
+    case ENODEV:
+    case ETIMEDOUT:
+      return ERROR_OPERATION_FAILED;
     default:
       LOG(WARNING) << "Unexpected error code " << error_code << ": "
                    << strerror(error_code);

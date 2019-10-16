@@ -1398,7 +1398,7 @@ TEST_F(SmbProviderTest, CloseFileFailsWhenFileIsNotOpen) {
   CloseFileHelper(file_id);
 
   ProtoBlob close_file_blob = CreateCloseFileOptionsBlob(mount_id, file_id);
-  EXPECT_EQ(ERROR_NOT_FOUND, smbprovider_->CloseFile(close_file_blob));
+  EXPECT_EQ(ERROR_OPERATION_FAILED, smbprovider_->CloseFile(close_file_blob));
 }
 
 // CloseFile fails when called with a non-existent file handler.
@@ -2107,7 +2107,7 @@ TEST_F(SmbProviderTest, WriteFileFailsWithDirectoryId) {
   ProtoBlob write_blob = CreateWriteFileOptionsBlob(
       mount_id, dir_id, 0 /* offset */, 0 /* length */);
 
-  EXPECT_EQ(ERROR_NOT_FOUND,
+  EXPECT_EQ(ERROR_OPERATION_FAILED,
             CastError(smbprovider_->WriteFile(write_blob, fd)));
 }
 
@@ -3551,7 +3551,7 @@ TEST_F(SmbProviderTest, StartReadDirectoryCacheEnabledPurgesBeforeRead) {
   EXPECT_TRUE(cache->IsEmpty());
 }
 
-TEST_F(SmbProviderTest, TestETIMEDOUTGetsMappedToERRORNOTFOUND) {
+TEST_F(SmbProviderTest, TestETIMEDOUTGetsMappedToERROROPERATIONFAILED) {
   const int32_t mount_id = PrepareMount();
   const int32_t get_directory_error = ETIMEDOUT;
   fake_samba_->SetGetDirectoryError(get_directory_error);
@@ -3565,7 +3565,7 @@ TEST_F(SmbProviderTest, TestETIMEDOUTGetsMappedToERRORNOTFOUND) {
   smbprovider_->StartReadDirectory(read_dir_blob, &error_code, &results,
                                    &read_dir_token);
 
-  EXPECT_EQ(ERROR_NOT_FOUND, error_code);
+  EXPECT_EQ(ERROR_OPERATION_FAILED, error_code);
 }
 
 TEST_F(SmbProviderTest, TestMountConfigEnableNTLM) {

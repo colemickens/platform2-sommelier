@@ -84,10 +84,7 @@ TEST_F(SmbProviderHelperTest, GetErrorFromErrno) {
   EXPECT_EQ(ERROR_ACCESS_DENIED, GetErrorFromErrno(EPERM));
   EXPECT_EQ(ERROR_ACCESS_DENIED, GetErrorFromErrno(EACCES));
 
-  EXPECT_EQ(ERROR_NOT_FOUND, GetErrorFromErrno(EBADF));
-  EXPECT_EQ(ERROR_NOT_FOUND, GetErrorFromErrno(ENODEV));
   EXPECT_EQ(ERROR_NOT_FOUND, GetErrorFromErrno(ENOENT));
-  EXPECT_EQ(ERROR_NOT_FOUND, GetErrorFromErrno(ETIMEDOUT));
 
   EXPECT_EQ(ERROR_TOO_MANY_OPENED, GetErrorFromErrno(EMFILE));
   EXPECT_EQ(ERROR_TOO_MANY_OPENED, GetErrorFromErrno(ENFILE));
@@ -104,6 +101,10 @@ TEST_F(SmbProviderHelperTest, GetErrorFromErrno) {
 
   EXPECT_EQ(ERROR_SMB1_UNSUPPORTED, GetErrorFromErrno(ECONNABORTED));
 
+  EXPECT_EQ(ERROR_OPERATION_FAILED, GetErrorFromErrno(EBADF));
+  EXPECT_EQ(ERROR_OPERATION_FAILED, GetErrorFromErrno(ENODEV));
+  EXPECT_EQ(ERROR_OPERATION_FAILED, GetErrorFromErrno(ETIMEDOUT));
+
   // Errors without an explicit mapping get mapped
   // to ERROR_FAILED.
   EXPECT_EQ(ERROR_FAILED, GetErrorFromErrno(ENOSPC));
@@ -115,10 +116,7 @@ TEST_F(SmbProviderHelperTest, GetErrorFromErrnoForReadDir) {
   EXPECT_EQ(ERROR_ACCESS_DENIED, GetErrorFromErrnoForReadDir(EPERM));
   EXPECT_EQ(ERROR_ACCESS_DENIED, GetErrorFromErrnoForReadDir(EACCES));
 
-  EXPECT_EQ(ERROR_NOT_FOUND, GetErrorFromErrnoForReadDir(EBADF));
-  EXPECT_EQ(ERROR_NOT_FOUND, GetErrorFromErrnoForReadDir(ENODEV));
   EXPECT_EQ(ERROR_NOT_FOUND, GetErrorFromErrnoForReadDir(ENOENT));
-  EXPECT_EQ(ERROR_NOT_FOUND, GetErrorFromErrnoForReadDir(ETIMEDOUT));
   // EINVAL is returned when Samba attempts to parse a hostname
   // (eg. \\qnap\testshare).
   EXPECT_EQ(ERROR_NOT_FOUND, GetErrorFromErrnoForReadDir(EINVAL));
@@ -135,6 +133,10 @@ TEST_F(SmbProviderHelperTest, GetErrorFromErrnoForReadDir) {
   EXPECT_EQ(ERROR_EXISTS, GetErrorFromErrnoForReadDir(EEXIST));
 
   EXPECT_EQ(ERROR_SMB1_UNSUPPORTED, GetErrorFromErrnoForReadDir(ECONNABORTED));
+
+  EXPECT_EQ(ERROR_OPERATION_FAILED, GetErrorFromErrno(EBADF));
+  EXPECT_EQ(ERROR_OPERATION_FAILED, GetErrorFromErrno(ENODEV));
+  EXPECT_EQ(ERROR_OPERATION_FAILED, GetErrorFromErrno(ETIMEDOUT));
 
   // Errors without an explicit mapping get mapped
   // to ERROR_FAILED.
