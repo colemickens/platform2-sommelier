@@ -230,7 +230,24 @@ int32_t SambaInterfaceImpl::Unlink(const std::string& file_path) {
 }
 
 int32_t SambaInterfaceImpl::RemoveDirectory(const std::string& dir_path) {
-  return smbc_rmdir_ctx_(context_, dir_path.c_str()) < 0 ? errno : 0;
+  int result = smbc_rmdir_ctx_(context_, dir_path.c_str());
+  if (result < 0) {
+    return errno;
+  }
+
+  // smbc_rmdir() is meant to return ENOTEMPTY if the directory is not empty.
+  // However, due to a samba bug
+  // (https://bugzilla.samba.org/show_bug.cgi?id=13204), it returns success. As
+  // a workaround, stat() the directory and if it exists, assume the removal
+  // failed. This is racy, because the directory could be re-created immediately
+  // after it is deleted, but a good enough heuristic.
+  // TODO(crbug.com/892289): Remove when Samba is upreved to 4.10 or later.
+  struct stat stat = {0};
+  result = smbc_stat_ctx_(context_, dir_path.c_str(), &stat);
+  if (result == 0) {
+    return ENOTEMPTY;
+  }
+  return 0;
 }
 
 int32_t SambaInterfaceImpl::CreateFile(const std::string& file_path,
