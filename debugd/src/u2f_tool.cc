@@ -30,6 +30,7 @@ constexpr const char* kKnownFlags[] = {
   u2f_flags::kG2f,
   u2f_flags::kVerbose,
   u2f_flags::kUserKeys,
+  u2f_flags::kAllowlistData,
 };
 
 int ControlU2fd(bool start) {
