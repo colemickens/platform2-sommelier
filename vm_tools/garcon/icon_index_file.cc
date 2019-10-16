@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 
+#include <limits>
 #include <memory>
 #include <utility>
 
@@ -52,9 +53,13 @@ int IconIndexFile::Distance(const DirectoryEntry& directory_entry,
   int directory_scaled_size = directory_entry.size * directory_entry.scale;
   int search_scaled_size = search_size * search_scale;
   if (directory_scaled_size >= search_scaled_size) {
+    if (search_scaled_size <= 0)
+      return std::numeric_limits<int>::max();
     return (directory_scaled_size - search_scaled_size) * 100 /
            search_scaled_size;
   } else {
+    if (directory_scaled_size <= 0)
+      return std::numeric_limits<int>::max();
     return (search_scaled_size - directory_scaled_size) * 100 /
            directory_scaled_size;
   }
