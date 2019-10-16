@@ -53,6 +53,12 @@ class LoginMetrics {
     STATE_KEY_STATUS_HMAC_SIGN_FAILURE = 5,
     STATE_KEY_STATUS_COUNT  // must be last.
   };
+  enum InvalidDevicePolicyFilesStatus {
+    ALL_VALID = 0,
+    SOME_INVALID = 1,
+    ALL_INVALID = 2,
+    NUM_VALUES = 3
+  };
   // Holds the state of several policy-related files on disk.
   // We leave an extra bit for future state-space expansion.
   // Treat as, essentially, a base-4 number that we encode in decimal before
@@ -116,8 +122,9 @@ class LoginMetrics {
   // container is stopped.
   virtual void StopTrackingArcUseTime();
 
-  // Submits to UMA the number of invalid policy files detected.
-  virtual void SendNumberOfInvalidPolicyFiles(int invalid_files);
+  // Submits to UMA the result of invalid policy checks.
+  virtual void SendInvalidPolicyFilesStatus(
+      InvalidDevicePolicyFilesStatus result);
 
   // Submits to UMA whether or not the session exited due to a login crash loop.
   virtual void SendSessionExitType(SessionExitType session_exit_type);

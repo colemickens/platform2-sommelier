@@ -88,7 +88,10 @@ bool ResilientPolicyStore::LoadOrCreate() {
     // the data in a good file saved in a previous session.
     base::DeleteFile(GetCleanupDoneFilePath(policy_path_), false);
   }
-  metrics_->SendNumberOfInvalidPolicyFiles(number_of_invalid_files);
+
+  ReportInvalidDevicePolicyFilesStatus(
+      sorted_policy_file_paths.size() - number_of_invalid_files,
+      number_of_invalid_files);
 
   return policy_loaded;
 }
@@ -156,7 +159,23 @@ void ResilientPolicyStore::CleanupPolicyFiles(
         break;
     }
   }
-  metrics_->SendNumberOfInvalidPolicyFiles(number_of_invalid_files);
+
+  ReportInvalidDevicePolicyFilesStatus(number_of_good_files,
+                                       number_of_invalid_files);
+}
+
+void ResilientPolicyStore::ReportInvalidDevicePolicyFilesStatus(
+    int number_of_good_files, int number_of_invalid_files) {
+  if (number_of_invalid_files == 0) {
+    metrics_->SendInvalidPolicyFilesStatus(
+        LoginMetrics::InvalidDevicePolicyFilesStatus::ALL_VALID);
+  } else if (number_of_good_files > 0) {
+    metrics_->SendInvalidPolicyFilesStatus(
+        LoginMetrics::InvalidDevicePolicyFilesStatus::SOME_INVALID);
+  } else {
+    metrics_->SendInvalidPolicyFilesStatus(
+        LoginMetrics::InvalidDevicePolicyFilesStatus::ALL_INVALID);
+  }
 }
 
 }  // namespace login_manager

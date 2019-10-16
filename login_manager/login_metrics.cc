@@ -34,8 +34,8 @@ const char kLoginPolicyFilesMetric[] = "Login.PolicyFilesStatePerBoot";
 const char kLoginUserTypeMetric[] = "Login.UserType";
 const char kLoginStateKeyGenerationStatus[] = "Login.StateKeyGenerationStatus";
 const char kSessionExitTypeMetric[] = "Login.SessionExitType";
-const char kInvalidDevicePolicyFilesDetected[] =
-    "Enterprise.InvalidDevicePolicyFiles";
+const char kInvalidDevicePolicyFilesStatus[] =
+    "Enterprise.InvalidDevicePolicyFilesStatus";
 const int kMaxPolicyFilesValue = 64;
 const char kLoginMetricsFlagFile[] = "per_boot_flag";
 const char kMetricsDir[] = "/var/lib/metrics";
@@ -114,12 +114,11 @@ void LoginMetrics::StopTrackingArcUseTime() {
     arc_cumulative_use_time_->Stop();
 }
 
-void LoginMetrics::SendNumberOfInvalidPolicyFiles(int invalid_files) {
-  // The third parameter, value 1 is the min value and it has to be > 0
-  // according to method docs. Yet it's okay to pass even value
-  // invalid_files = 0 as that is the implicit underflow bucket.
-  metrics_lib_.SendToUMA(kInvalidDevicePolicyFilesDetected, invalid_files, 1,
-                         10, 10);
+void LoginMetrics::SendInvalidPolicyFilesStatus(
+    InvalidDevicePolicyFilesStatus result) {
+  metrics_lib_.SendEnumToUMA(
+      kInvalidDevicePolicyFilesStatus, static_cast<int>(result),
+      static_cast<int>(InvalidDevicePolicyFilesStatus::NUM_VALUES));
 }
 
 void LoginMetrics::SendSessionExitType(SessionExitType session_exit_type) {

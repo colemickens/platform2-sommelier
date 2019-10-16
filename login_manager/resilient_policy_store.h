@@ -53,6 +53,9 @@ class ResilientPolicyStore : public PolicyStore {
   void CleanupPolicyFiles(
       const std::map<int, base::FilePath>& sorted_policy_file_paths);
 
+  void ReportInvalidDevicePolicyFilesStatus(int number_of_good_files,
+                                            int number_of_invalid_files);
+
   LoginMetrics* metrics_ = nullptr;  //  Not owned.
 
   DISALLOW_COPY_AND_ASSIGN(ResilientPolicyStore);
