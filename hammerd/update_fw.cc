@@ -106,9 +106,8 @@ bool operator!=(const SectionInfo& lhs, const SectionInfo& rhs) {
   return !(lhs == rhs);
 }
 
-FirmwareUpdater::FirmwareUpdater(std::unique_ptr<UsbEndpoint> endpoint)
-    : FirmwareUpdater(std::move(endpoint),
-                      std::make_unique<Fmap>()) {}
+FirmwareUpdater::FirmwareUpdater(std::unique_ptr<UsbEndpointInterface> endpoint)
+    : FirmwareUpdater(std::move(endpoint), std::make_unique<Fmap>()) {}
 
 FirmwareUpdater::FirmwareUpdater(std::unique_ptr<UsbEndpointInterface> endpoint,
                                  std::unique_ptr<FmapInterface> fmap)

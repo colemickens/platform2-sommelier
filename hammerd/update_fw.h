@@ -76,6 +76,7 @@ enum class UpdateExtraCommand : uint16_t {
   kInjectEntropy = 5,
   kPairChallenge = 6,
   kTouchpadInfo = 7,
+  kMaxValue = kTouchpadInfo
 };
 const char* ToString(UpdateExtraCommand subcommand);
 
@@ -323,7 +324,7 @@ class FirmwareUpdaterInterface {
 // It contains the data of the original transfer_descriptor.
 class FirmwareUpdater : public FirmwareUpdaterInterface {
  public:
-  explicit FirmwareUpdater(std::unique_ptr<UsbEndpoint> endpoint);
+  explicit FirmwareUpdater(std::unique_ptr<UsbEndpointInterface> endpoint);
 
   // FirmwareUpdaterInterface implementation:
   bool LoadEcImage(const std::string& ec_image) override;
