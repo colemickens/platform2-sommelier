@@ -25,6 +25,12 @@ group("all") {
       "//diagnostics/grpc_async_adapter:libgrpc_async_adapter_test",
     ]
   }
+  if (use.fuzzer) {
+    deps += [
+      ":fetch_block_device_fuzzer",
+      ":fetch_cached_vpd_fuzzer",
+    ]
+  }
 }
 
 # Library with generated Mojo API definitions.
@@ -465,6 +471,28 @@ if (use.test) {
       "routines/smartctl_check/smartctl_check_utils.cc",
       "routines/smartctl_check/smartctl_check_utils_test.cc",
       "routines/subproc_routine_test.cc",
+    ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("fetch_block_device_fuzzer") {
+    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
+    deps = [
+      ":libcros_healthd_utils",
+    ]
+    sources = [
+      "cros_healthd/utils/fetch_block_device_fuzzer.cc",
+    ]
+  }
+
+  executable("fetch_cached_vpd_fuzzer") {
+    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
+    deps = [
+      ":libcros_healthd_utils",
+    ]
+    sources = [
+      "cros_healthd/utils/fetch_cached_vpd_fuzzer.cc",
     ]
   }
 }
