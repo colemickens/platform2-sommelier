@@ -16,6 +16,7 @@
 #include <brillo/asynchronous_signal_handler.h>
 #include <brillo/message_loops/message_loop.h>
 #include <google/protobuf/message_lite.h>
+#include <vm_protos/proto_bindings/vsh.pb.h>
 
 #include "vm_tools/vsh/scoped_termios.h"
 
@@ -26,15 +27,26 @@ namespace vsh {
 class VshClient {
  public:
   static std::unique_ptr<VshClient> Create(base::ScopedFD sock_fd,
+                                           base::ScopedFD stdout_fd,
+                                           base::ScopedFD stderr_fd,
                                            const std::string& user,
                                            const std::string& container,
                                            bool interactive);
+
+  static std::unique_ptr<VshClient> CreateForTesting(base::ScopedFD sock_fd,
+                                                     base::ScopedFD stdout_fd,
+                                                     base::ScopedFD stderr_fd);
   ~VshClient() = default;
 
   int exit_code();
 
+  // Helper function defined in vsh_client_fuzzer.cc.
+  friend void vsh_client_fuzzer_run(const HostMessage& msg);
+
  private:
-  explicit VshClient(base::ScopedFD sock_fd);
+  explicit VshClient(base::ScopedFD sock_fd,
+                     base::ScopedFD stdout_fd,
+                     base::ScopedFD stderr_fd);
 
   bool Init(const std::string& user,
             const std::string& container,
@@ -43,6 +55,7 @@ class VshClient {
   bool HandleTermSignal(const struct signalfd_siginfo& siginfo);
   bool HandleWindowResizeSignal(const struct signalfd_siginfo& siginfo);
   void HandleVsockReadable();
+  void HandleHostMessage(const HostMessage& msg);
   void HandleStdinReadable();
   bool SendCurrentWindowSize();
   bool GetCurrentWindowSize(struct winsize* ws);
@@ -51,6 +64,13 @@ class VshClient {
   base::ScopedFD sock_fd_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> sock_watcher_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> stdin_watcher_;
+
+  // VshClient expects to take ownership of stdout and stderr file descriptors,
+  // since it will close them once the guest has indicated EOF.
+  //
+  // These fds should be overridden for testing.
+  base::ScopedFD stdout_fd_;
+  base::ScopedFD stderr_fd_;
 
   brillo::AsynchronousSignalHandler signal_handler_;
 

@@ -24,7 +24,10 @@ group("host") {
     ]
   }
   if (use.fuzzer) {
-    deps += [ ":cicerone_container_listener_fuzzer" ]
+    deps += [
+      ":cicerone_container_listener_fuzzer",
+      ":vsh_client_fuzzer",
+    ]
   }
 }
 
@@ -77,20 +80,38 @@ executable("vmlog_forwarder") {
   ]
 }
 
-executable("vsh") {
+static_library("libvsh-client") {
   sources = [
     "../vsh/scoped_termios.cc",
-    "../vsh/vsh.cc",
     "../vsh/vsh_client.cc",
   ]
   configs += [ ":host_target_defaults" ]
   pkg_deps = [
-    "protobuf",
     "system_api",
     "vm_protos",
   ]
   deps = [
     "//vm_tools:libvsh",
+  ]
+  all_dependent_pkg_deps = [ "vm_protos" ]
+  if (use.fuzzer) {
+    all_dependent_pkg_deps += [ "protobuf" ]
+  } else {
+    all_dependent_pkg_deps += [ "protobuf-lite" ]
+  }
+}
+
+executable("vsh") {
+  sources = [
+    "../vsh/vsh.cc",
+  ]
+  configs += [ ":host_target_defaults" ]
+  pkg_deps = [
+    "system_api",
+    "vm_protos",
+  ]
+  deps = [
+    ":libvsh-client",
   ]
 }
 
@@ -291,6 +312,13 @@ if (use.test) {
 }
 
 if (use.fuzzer) {
+  pkg_config("vm_host_tools_fuzzer_pkg_deps") {
+    pkg_deps = [
+      "libprotobuf-mutator",
+      "protobuf",
+      "vm_protos",
+    ]
+  }
   executable("cicerone_container_listener_fuzzer") {
     sources = [
       "../cicerone/container_listener_impl_fuzzer.cc",
@@ -301,17 +329,29 @@ if (use.fuzzer) {
     configs += [
       "//common-mk:test",
       "//common-mk/common_fuzzer:common_fuzzer",
+      ":vm_host_tools_fuzzer_pkg_deps",
     ]
     pkg_deps = [
       "grpc++",
       "libchrome-test-${libbase_ver}",  # For FuzzedDataProvider
-      "libprotobuf-mutator",
-      "protobuf",
-      "vm_protos",
     ]
     deps = [
       ":libcicerone",
       ":service_testing_helper_lib",
+    ]
+  }
+
+  executable("vsh_client_fuzzer") {
+    sources = [
+      "../vsh/vsh_client_fuzzer.cc",
+    ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":host_target_defaults",
+      ":vm_host_tools_fuzzer_pkg_deps",
+    ]
+    deps = [
+      ":libvsh-client",
     ]
   }
 }

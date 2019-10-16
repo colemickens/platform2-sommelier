@@ -50,10 +50,13 @@ namespace vsh {
 constexpr int kDefaultExitCode = 123;
 
 std::unique_ptr<VshClient> VshClient::Create(base::ScopedFD sock_fd,
+                                             base::ScopedFD stdout_fd,
+                                             base::ScopedFD stderr_fd,
                                              const std::string& user,
                                              const std::string& container,
                                              bool interactive) {
-  auto client = std::unique_ptr<VshClient>(new VshClient(std::move(sock_fd)));
+  auto client = std::unique_ptr<VshClient>(new VshClient(
+      std::move(sock_fd), std::move(stdout_fd), std::move(stderr_fd)));
 
   if (!client->Init(user, container, interactive)) {
     return nullptr;
@@ -62,8 +65,22 @@ std::unique_ptr<VshClient> VshClient::Create(base::ScopedFD sock_fd,
   return client;
 }
 
-VshClient::VshClient(base::ScopedFD sock_fd)
+std::unique_ptr<VshClient> VshClient::CreateForTesting(
+    base::ScopedFD sock_fd,
+    base::ScopedFD stdout_fd,
+    base::ScopedFD stderr_fd) {
+  auto client = std::unique_ptr<VshClient>(new VshClient(
+      std::move(sock_fd), std::move(stdout_fd), std::move(stderr_fd)));
+
+  return client;
+}
+
+VshClient::VshClient(base::ScopedFD sock_fd,
+                     base::ScopedFD stdout_fd,
+                     base::ScopedFD stderr_fd)
     : sock_fd_(std::move(sock_fd)),
+      stdout_fd_(std::move(stdout_fd)),
+      stderr_fd_(std::move(stderr_fd)),
       exit_code_(kDefaultExitCode) {}
 
 bool VshClient::Init(const std::string& user,
@@ -194,17 +211,21 @@ void VshClient::HandleVsockReadable() {
     return;
   }
 
-  switch (host_message.msg_case()) {
+  HandleHostMessage(host_message);
+}
+
+void VshClient::HandleHostMessage(const HostMessage& msg) {
+  switch (msg.msg_case()) {
     case HostMessage::kDataMessage: {
       // Data messages from the guest should go to stdout/stderr.
-      DataMessage data_message = host_message.data_message();
+      DataMessage data_message = msg.data_message();
       int target_fd = -1;
       switch (data_message.stream()) {
         case STDOUT_STREAM:
-          target_fd = STDOUT_FILENO;
+          target_fd = stdout_fd_.get();
           break;
         case STDERR_STREAM:
-          target_fd = STDERR_FILENO;
+          target_fd = stderr_fd_.get();
           break;
         default:
           LOG(ERROR) << "Invalid stream type from guest: "
@@ -214,7 +235,11 @@ void VshClient::HandleVsockReadable() {
 
       if (data_message.data().size() == 0) {
         // On EOF from guest, close the host-side fd.
-        close(target_fd);
+        if (data_message.stream() == STDOUT_STREAM) {
+          stdout_fd_.reset();
+        } else {
+          stderr_fd_.reset();
+        }
       }
 
       if (!base::WriteFileDescriptor(target_fd, data_message.data().data(),
@@ -227,7 +252,7 @@ void VshClient::HandleVsockReadable() {
     case HostMessage::kStatusMessage: {
       // The remote side has an updated connection status, which likely means
       // it's time to Shutdown().
-      ConnectionStatusMessage status_message = host_message.status_message();
+      ConnectionStatusMessage status_message = msg.status_message();
       ConnectionStatus status = status_message.status();
 
       if (status == EXITED) {
@@ -241,8 +266,7 @@ void VshClient::HandleVsockReadable() {
       break;
     }
     default:
-      LOG(ERROR) << "Received unknown host message of type: "
-                 << host_message.msg_case();
+      LOG(ERROR) << "Received unknown host message of type: " << msg.msg_case();
   }
 }
 

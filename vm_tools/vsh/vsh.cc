@@ -253,6 +253,28 @@ int main(int argc, char** argv) {
 
   bool interactive = isatty(STDIN_FILENO) && isatty(STDOUT_FILENO);
 
+  base::ScopedFD stdout_fd;
+  base::ScopedFD stderr_fd;
+  if (interactive) {
+    // Duplicate the stdout and stderr fds. Otherwise, VshClient will close
+    // them and prevent logging after connection shutdown.
+    stdout_fd.reset(dup(STDOUT_FILENO));
+    if (!stdout_fd.is_valid()) {
+      PLOG(ERROR) << "Failed to dup stdout file descriptor";
+      return EXIT_FAILURE;
+    }
+    stderr_fd.reset(dup(STDERR_FILENO));
+    if (!stderr_fd.is_valid()) {
+      PLOG(ERROR) << "Failed to dup stderr file descriptor";
+      return EXIT_FAILURE;
+    }
+  } else {
+    // Take ownership of stdout and stderr, which are likely pipes. These will
+    // be closed during the connection shutdown process.
+    stdout_fd = base::ScopedFD(STDOUT_FILENO);
+    stderr_fd = base::ScopedFD(STDERR_FILENO);
+  }
+
   if (FLAGS_listen_port != VMADDR_PORT_ANY || !FLAGS_target_container.empty()) {
     unsigned int port = 0;
     if (FLAGS_listen_port != 0) {
@@ -276,7 +298,8 @@ int main(int argc, char** argv) {
       return EXIT_FAILURE;
     }
 
-    client = VshClient::Create(std::move(sock_fd), FLAGS_user,
+    client = VshClient::Create(std::move(sock_fd), std::move(stdout_fd),
+                               std::move(stderr_fd), FLAGS_user,
                                FLAGS_target_container, interactive);
 
     if (!client) {
@@ -328,8 +351,9 @@ int main(int argc, char** argv) {
 
     string user =
         FLAGS_user.empty() ? string("chronos") : std::move(FLAGS_user);
-    client = VshClient::Create(std::move(sock_fd), user, FLAGS_target_container,
-                               interactive);
+    client = VshClient::Create(std::move(sock_fd), std::move(stdout_fd),
+                               std::move(stderr_fd), user,
+                               FLAGS_target_container, interactive);
   }
 
   if (!client) {
