@@ -4,6 +4,8 @@
 
 #include "cros-disks/archive_manager.h"
 
+#include <sys/mount.h>
+
 #include <memory>
 
 #include <base/files/file_path.h>
@@ -168,13 +170,10 @@ MountErrorType ArchiveManager::DoUnmount(
     const std::string& path, const std::vector<std::string>& options) {
   CHECK(!path.empty()) << "Invalid path argument";
 
-  int unmount_flags;
-  if (!ExtractUnmountOptions(options, &unmount_flags)) {
-    LOG(ERROR) << "Invalid unmount options";
-    return MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS;
-  }
+  LOG_IF(WARNING, !options.empty()) << "Ignoring non-empty unmount options";
 
-  const MountErrorType error = platform()->Unmount(path, unmount_flags);
+  // Since all archives are read-only, always use lazy unmount.
+  const MountErrorType error = platform()->Unmount(path, MNT_DETACH);
   if (error != MOUNT_ERROR_NONE) {
     return error;
   }
