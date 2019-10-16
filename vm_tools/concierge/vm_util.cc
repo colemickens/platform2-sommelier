@@ -141,11 +141,14 @@ bool CallUsbControl(brillo::ProcessImpl crosvm, UsbControlResponse* response) {
 }  // namespace
 
 std::string GetVmMemoryMiB() {
-  int64_t vm_memory_mb = base::SysInfo::AmountOfPhysicalMemoryMB();
-  vm_memory_mb /= 4;
-  vm_memory_mb *= 3;
-
-  return std::to_string(vm_memory_mb);
+  int64_t sys_memory_mb = base::SysInfo::AmountOfPhysicalMemoryMB();
+  if (sys_memory_mb >= 4096) {
+    int64_t vm_memory_mb = sys_memory_mb - 1024;
+    return std::to_string(vm_memory_mb);
+  } else {
+    int64_t vm_memory_mb = sys_memory_mb / 4 * 3;
+    return std::to_string(vm_memory_mb);
+  }
 }
 
 bool SetUpCrosvmProcess(const base::FilePath& cpu_cgroup) {
