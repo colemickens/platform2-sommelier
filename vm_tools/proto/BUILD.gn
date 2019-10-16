@@ -115,13 +115,15 @@ goproto_library("vm-gorpcs") {
 proto_library("vsh-protos") {
   proto_in_dir = "./"
   proto_out_dir = "include/vm_protos/proto_bindings"
-  gen_grpc = true
   sources = [
     "${proto_in_dir}/vsh.proto",
   ]
-  all_dependent_pkg_deps = [
-    "grpc++",
-    "protobuf",
-  ]
   standalone = true
+  if (use.fuzzer) {
+    # Override optimize_for option in proto file.
+    gen_cpp_mode = "speed"
+    all_dependent_pkg_deps = [ "protobuf" ]
+  } else {
+    all_dependent_pkg_deps = [ "protobuf-lite" ]
+  }
 }
