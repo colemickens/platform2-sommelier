@@ -506,3 +506,28 @@ if (use.fuzzer) {
     ]
   }
 }
+
+# Fuzzer target.
+if (use.fuzzer) {
+  pkg_config("fuzzer_config") {
+    pkg_deps = [
+      "libbrillo-test-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+  executable("powerd_als_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      "//common-mk:test",
+      ":fuzzer_config",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libsystem",
+      ":libutil",
+    ]
+    sources = [
+      "powerd/system/fuzzers/powerd_als_fuzzer.cc",
+    ]
+  }
+}
