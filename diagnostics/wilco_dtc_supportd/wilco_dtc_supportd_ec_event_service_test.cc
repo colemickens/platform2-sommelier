@@ -17,7 +17,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/wilco_dtc_supportd/bind_utils.h"
+#include "diagnostics/common/bind_utils.h"
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_ec_event_service.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"

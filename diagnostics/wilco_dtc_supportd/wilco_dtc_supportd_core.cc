@@ -18,7 +18,7 @@
 #include <dbus/object_path.h>
 #include <mojo/public/cpp/system/message_pipe.h>
 
-#include "diagnostics/wilco_dtc_supportd/bind_utils.h"
+#include "diagnostics/common/bind_utils.h"
 #include "diagnostics/wilco_dtc_supportd/json_utils.h"
 
 namespace diagnostics {

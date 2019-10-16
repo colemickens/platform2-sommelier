@@ -13,8 +13,8 @@
 #include <dbus/wilco_dtc_supportd/dbus-constants.h>
 #include <mojo/edk/embedder/embedder.h>
 
+#include "diagnostics/common/bind_utils.h"
 #include "diagnostics/constants/grpc_constants.h"
-#include "diagnostics/wilco_dtc_supportd/bind_utils.h"
 
 namespace diagnostics {
 

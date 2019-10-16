@@ -9,7 +9,7 @@
 #include <base/run_loop.h>
 #include <base/threading/thread_task_runner_handle.h>
 
-#include "diagnostics/wilco_dtc_supportd/bind_utils.h"
+#include "diagnostics/common/bind_utils.h"
 
 namespace diagnostics {
 

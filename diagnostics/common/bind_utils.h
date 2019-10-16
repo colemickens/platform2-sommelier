@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_BIND_UTILS_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_BIND_UTILS_H_
+#ifndef DIAGNOSTICS_COMMON_BIND_UTILS_H_
+#define DIAGNOSTICS_COMMON_BIND_UTILS_H_
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -27,4 +27,4 @@ inline base::Closure BarrierClosure(int num_closures,
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_BIND_UTILS_H_
+#endif  // DIAGNOSTICS_COMMON_BIND_UTILS_H_
