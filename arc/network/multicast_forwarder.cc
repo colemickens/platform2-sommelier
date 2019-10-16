@@ -155,7 +155,7 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd) {
         // either direction.
         return;
       }
-      TranslateMdnsIp(lan_ip, data, bytes);
+      TranslateMdnsIp(lan_ip, mdns_ip_, data, bytes);
       lan_socket_->SendTo(data, bytes, dst);
       return;
       // Otherwise forward ingress multicast traffic towards the guest.
@@ -192,10 +192,12 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd) {
   temp_sockets_.push_front(std::move(new_sock));
 }
 
+// static
 void MulticastForwarder::TranslateMdnsIp(const struct in_addr& lan_ip,
+                                         const struct in_addr& guest_ip,
                                          char* data,
                                          ssize_t bytes) {
-  if (mdns_ip_.s_addr == htonl(INADDR_ANY)) {
+  if (guest_ip.s_addr == htonl(INADDR_ANY)) {
     return;
   }
 
@@ -225,7 +227,7 @@ void MulticastForwarder::TranslateMdnsIp(const struct in_addr& lan_ip,
     if (record.type == net::dns_protocol::kTypeA &&
         record.rdata.size() == ipv4_addr_len) {
       const char* rr_ip = record.rdata.data();
-      if (mdns_ip_.s_addr ==
+      if (guest_ip.s_addr ==
           reinterpret_cast<const struct in_addr*>(rr_ip)->s_addr) {
         // HACK: This is able to calculate the (variable) offset of the IPv4
         // address inside the resource record by assuming that the StringPiece

@@ -48,14 +48,17 @@ class MulticastForwarder {
              unsigned short port,
              bool allow_stateless);
 
- protected:
-  // Rewrite mDNS A records pointing to |arc_ip_| so that they point to
-  // the IPv4 assigned to physical interface instead, so that Android can
-  // advertise services to devices on the LAN.  This modifies |data|, an
+  // Rewrite mDNS A records pointing to |guest_ip| so that they point to
+  // the IPv4 |lan_ip| assigned to physical interface instead, so that Android
+  // can advertise services to devices on the LAN.  This modifies |data|, an
   // incoming packet that is |bytes| long.
   // TODO(b/134717598) Support IPv6 translation.
-  void TranslateMdnsIp(const struct in_addr& lan_ip, char* data, ssize_t bytes);
+  static void TranslateMdnsIp(const struct in_addr& lan_ip,
+                              const struct in_addr& guest_ip,
+                              char* data,
+                              ssize_t bytes);
 
+ protected:
   void CleanupTask();
 
   std::string int_ifname_;

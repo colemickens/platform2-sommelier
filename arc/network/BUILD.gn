@@ -11,6 +11,9 @@ group("all") {
     ":libarcnetwork",
     ":libarcnetwork-util",
   ]
+  if (use.fuzzer) {
+    deps += [ ":multicast_forwarder_fuzzer" ]
+  }
   if (use.test) {
     deps += [ ":arc_network_testrunner" ]
   }
@@ -95,6 +98,26 @@ executable("arc-networkd") {
   deps = [
     ":libarcnetwork",
   ]
+}
+
+if (use.fuzzer) {
+  pkg_config("fuzzing_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+
+  executable("multicast_forwarder_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+      ":fuzzing_config",
+    ]
+    sources = [
+      "multicast_forwarder_fuzzer.cc",
+    ]
+    deps = [
+      ":libarcnetwork",
+    ]
+  }
 }
 
 if (use.test) {
