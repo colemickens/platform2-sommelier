@@ -76,6 +76,8 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   // Note that kStringList can't be constexpr, so we put them all here.
   const bool kBool = true;
   const int kInt = 123;
+  const int kScreenMagnifierTypeInRangeInt = 1;
+  const int kScreenMagnifierTypeOutOfRangeInt = 10;
   const std::string kString = "val1";
   const std::vector<std::string> kStringList = {"val1", "val2", "val3"};
 
@@ -287,6 +289,17 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(
       kBool,
       policy.accessibility_settings().login_screen_virtual_keyboard_enabled());
+
+  EncodeInteger(&policy, key::kDeviceLoginScreenScreenMagnifierType,
+                kScreenMagnifierTypeOutOfRangeInt);
+  EXPECT_FALSE(
+      policy.accessibility_settings().has_login_screen_screen_magnifier_type());
+
+  EncodeInteger(&policy, key::kDeviceLoginScreenScreenMagnifierType,
+                kScreenMagnifierTypeInRangeInt);
+  EXPECT_EQ(
+      kScreenMagnifierTypeInRangeInt,
+      policy.accessibility_settings().login_screen_screen_magnifier_type());
 
   EncodeBoolean(&policy, key::kDeviceLoginScreenDefaultSpokenFeedbackEnabled,
                 kBool);

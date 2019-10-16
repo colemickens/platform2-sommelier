@@ -4,6 +4,7 @@
 
 #include "authpolicy/policy/device_policy_encoder.h"
 
+#include <limits>
 #include <memory>
 #include <utility>
 
@@ -43,6 +44,10 @@ constexpr std::pair<const char*, int> kConnectionTypes[] = {
         em::AutoUpdateSettingsProto_ConnectionType_CONNECTION_TYPE_CELLULAR)};
 
 constexpr size_t kConnectionTypesSize = arraysize(kConnectionTypes);
+
+// Integer range for DeviceLoginScreenScreenMagnifierType policy.
+const int kScreenMagnifierTypeRangeMin = 0;
+const int kScreenMagnifierTypeRangeMax = 2;
 
 static_assert(em::AutoUpdateSettingsProto_ConnectionType_ConnectionType_MAX ==
                   kConnectionTypes[kConnectionTypesSize - 1].second,
@@ -398,6 +403,12 @@ void DevicePolicyEncoder::EncodeAccessibilityPolicies(
                   policy->mutable_accessibility_settings()
                       ->set_login_screen_virtual_keyboard_enabled(value);
                 });
+  EncodeIntegerInRange(key::kDeviceLoginScreenScreenMagnifierType,
+                       kScreenMagnifierTypeRangeMin,
+                       kScreenMagnifierTypeRangeMax, [policy](int value) {
+                         policy->mutable_accessibility_settings()
+                             ->set_login_screen_screen_magnifier_type(value);
+                       });
   EncodeBoolean(key::kDeviceLoginScreenDefaultSpokenFeedbackEnabled,
                 [policy](bool value) {
                   policy->mutable_accessibility_settings()
@@ -758,6 +769,15 @@ void DevicePolicyEncoder::EncodeBoolean(
 
 void DevicePolicyEncoder::EncodeInteger(
     const char* policy_name, const IntegerPolicyCallback& set_policy) const {
+  EncodeIntegerInRange(policy_name, std::numeric_limits<int>::min(),
+                       std::numeric_limits<int>::max(), set_policy);
+}
+
+void DevicePolicyEncoder::EncodeIntegerInRange(
+    const char* policy_name,
+    int range_min,
+    int range_max,
+    const IntegerPolicyCallback& set_policy) const {
   // Try to get policy value from dict.
   const base::Value* value = dict_->GetValue(policy_name);
   if (!value)
@@ -765,8 +785,8 @@ void DevicePolicyEncoder::EncodeInteger(
 
   // Get actual value, doing type conversion if necessary.
   int int_value;
-  if (!GetAsInteger(value, &int_value)) {
-    PrintConversionError(value, "integer", policy_name);
+  if (!GetAsIntegerInRangeAndPrintError(value, range_min, range_max,
+                                        policy_name, &int_value)) {
     return;
   }
 

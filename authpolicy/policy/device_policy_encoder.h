@@ -66,6 +66,11 @@ class DevicePolicyEncoder {
   // Integer policies.
   void EncodeInteger(const char* policy_name,
                      const IntegerPolicyCallback& set_policy) const;
+  // Integer in range policies.
+  void EncodeIntegerInRange(const char* policy_name,
+                            int range_min,
+                            int range_max,
+                            const IntegerPolicyCallback& set_policy) const;
   // String policies.
   void EncodeString(const char* policy_name,
                     const StringPolicyCallback& set_policy) const;
