@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "bluetooth/newblued/gatt.h"
+#include "bluetooth/newblued/util.h"
 
 #include <string>
 #include <utility>

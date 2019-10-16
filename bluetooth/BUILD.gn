@@ -16,7 +16,15 @@ group("all") {
     deps += [ ":bluetooth_test" ]
   }
   if (use.fuzzer) {
-    deps += [ ":newblued_fuzzer" ]
+    deps += [ ":bluetooth_parsedataintouuids_fuzzer" ]
+    deps += [ ":bluetooth_parsedataintoservicedata_fuzzer" ]
+    deps += [ ":bluetooth_parseeir_fuzzer" ]
+    deps += [ ":bluetooth_parsereportdescriptor_fuzzer" ]
+    deps += [ ":bluetooth_trimadapterfromobjectpath_fuzzer" ]
+    deps += [ ":bluetooth_trimdevicefromobjectpath_fuzzer" ]
+    deps += [ ":bluetooth_trimservicefromobjectpath_fuzzer" ]
+    deps += [ ":bluetooth_trimcharacteristicfromobjectpath_fuzzer" ]
+    deps += [ ":bluetooth_trimdescriptorfromobjectpath_fuzzer" ]
   }
 }
 
@@ -138,7 +146,6 @@ if (use.test) {
       "newblued/newblue_daemon_test.cc",
       "newblued/newblue_test.cc",
       "newblued/property_test.cc",
-      "newblued/scan_manager_test.cc",
       "newblued/stack_sync_monitor_test.cc",
       "newblued/util_test.cc",
       "newblued/uuid_test.cc",
@@ -154,13 +161,117 @@ if (use.test) {
 
 # Fuzzer targets
 if (use.fuzzer) {
-  executable("newblued_fuzzer") {
+  executable("bluetooth_parsedataintouuids_fuzzer") {
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
     ]
     sources = [
-      "newblued/util_fuzzer.cc",
+      "newblued/fuzzers/parsedataintouuids_fuzzer.cc",
+    ]
+    deps = [
+      ":libcommon",
+      ":libnewblued",
+    ]
+  }
+  executable("bluetooth_parsedataintoservicedata_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "newblued/fuzzers/parsedataintoservicedata_fuzzer.cc",
+    ]
+    deps = [
+      ":libcommon",
+      ":libnewblued",
+    ]
+  }
+  executable("bluetooth_parseeir_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "newblued/fuzzers/parseeir_fuzzer.cc",
+    ]
+    deps = [
+      ":libcommon",
+      ":libnewblued",
+    ]
+  }
+  executable("bluetooth_parsereportdescriptor_fuzzer") {
+    configs += [
+      ":target_defaults",
+      "//common-mk/common_fuzzer",
+    ]
+    sources = [
+      "newblued/fuzzers/parsereportdescriptor_fuzzer.cc",
+    ]
+    deps = [
+      ":libcommon",
+      ":libnewblued",
+    ]
+  }
+  executable("bluetooth_trimadapterfromobjectpath_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "newblued/fuzzers/trimadapterfromobjectpath_fuzzer.cc",
+    ]
+    deps = [
+      ":libcommon",
+      ":libnewblued",
+    ]
+  }
+  executable("bluetooth_trimdevicefromobjectpath_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "newblued/fuzzers/trimdevicefromobjectpath_fuzzer.cc",
+    ]
+    deps = [
+      ":libcommon",
+      ":libnewblued",
+    ]
+  }
+  executable("bluetooth_trimservicefromobjectpath_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "newblued/fuzzers/trimservicefromobjectpath_fuzzer.cc",
+    ]
+    deps = [
+      ":libcommon",
+      ":libnewblued",
+    ]
+  }
+  executable("bluetooth_trimcharacteristicfromobjectpath_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "newblued/fuzzers/trimcharacteristicfromobjectpath_fuzzer.cc",
+    ]
+    deps = [
+      ":libcommon",
+      ":libnewblued",
+    ]
+  }
+  executable("bluetooth_trimdescriptorfromobjectpath_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "newblued/fuzzers/trimdescriptorfromobjectpath_fuzzer.cc",
     ]
     deps = [
       ":libcommon",

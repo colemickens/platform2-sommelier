@@ -18,17 +18,13 @@
 #include <newblue/uuid.h>
 
 #include "bluetooth/common/exported_object_manager_wrapper.h"
+#include "bluetooth/newblued/device_interface_handler.h"
 #include "bluetooth/newblued/gatt_attributes.h"
+#include "bluetooth/newblued/newblue.h"
 #include "bluetooth/newblued/property.h"
 #include "bluetooth/newblued/uuid.h"
 
 namespace bluetooth {
-
-using UniqueId = uint64_t;
-
-constexpr UniqueId kInvalidUniqueId = 0;
-
-constexpr char kAdapterObjectPath[] = "/org/bluez/hci0";
 
 constexpr int16_t kInvalidServiceHandle = -1;
 constexpr int32_t kInvalidCharacteristicHandle = -1;
@@ -226,6 +222,8 @@ std::unique_ptr<GattService> ConvertToGattService(
 // Extracts bytes from |data| without changing the endianess. This does not take
 // the ownership of |data|.
 std::vector<uint8_t> GetBytesFromSg(const sg data);
+
+void ParseEir(DeviceInfo* device_info, const std::vector<uint8_t>& eir);
 
 }  // namespace bluetooth
 

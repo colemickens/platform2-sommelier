@@ -18,13 +18,19 @@
 #include <base/memory/weak_ptr.h>
 #include <base/single_thread_task_runner.h>
 #include <newblue/att.h>
+#include <newblue/gatt.h>
 
+#include "bluetooth/newblued/gatt_attributes.h"
 #include "bluetooth/newblued/libnewblue.h"
 #include "bluetooth/newblued/property.h"
-#include "bluetooth/newblued/util.h"
 #include "bluetooth/newblued/uuid.h"
 
 namespace bluetooth {
+
+using UniqueId = uint64_t;
+constexpr UniqueId kInvalidUniqueId = 0;
+
+constexpr char kAdapterObjectPath[] = "/org/bluez/hci0";
 
 // The value(s) is/are based on libnewblue API.
 constexpr gatt_client_conn_t kInvalidGattConnectionId = 0;
