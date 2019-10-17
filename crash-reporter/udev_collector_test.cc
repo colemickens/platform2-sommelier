@@ -12,6 +12,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
 
 using base::FilePath;
@@ -157,8 +158,10 @@ TEST_F(UdevCollectorTest, TestMatches) {
 TEST_F(UdevCollectorTest, TestDevCoredump) {
   GenerateDevCoredump("devcd0");
   HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  // IsDeveloperImage() returns false while running this test so devcoredumps
+  // will not be added to the crash directory.
   EXPECT_EQ(
-      1, GetNumFiles(temp_dir_generator_.GetPath(), kDevCoredumpFilePattern));
+      0, GetNumFiles(temp_dir_generator_.GetPath(), kDevCoredumpFilePattern));
   GenerateDevCoredump("devcd1");
   // Each collector is only allowed to handle one crash, so create a second
   // collector for the second crash.
@@ -167,7 +170,7 @@ TEST_F(UdevCollectorTest, TestDevCoredump) {
   second_collector.HandleCrash(
       "ACTION=add:KERNEL_NUMBER=1:SUBSYSTEM=devcoredump");
   EXPECT_EQ(
-      2, GetNumFiles(temp_dir_generator_.GetPath(), kDevCoredumpFilePattern));
+      0, GetNumFiles(temp_dir_generator_.GetPath(), kDevCoredumpFilePattern));
 }
 
 // TODO(sque, crosbug.com/32238) - test wildcard cases, multiple identical udev

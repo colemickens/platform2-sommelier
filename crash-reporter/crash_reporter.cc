@@ -79,8 +79,6 @@ int Initialize(UserCollector* user_collector,
 
   if (!user_collector->Enable(early))
     ret = 1;
-  if (!udev_collector->Enable())
-    ret = 1;
   return ret;
 }
 

@@ -29,7 +29,6 @@ const char kUdevSignatureKey[] = "sig";
 const char kUdevSubsystemDevCoredump[] = "devcoredump";
 const char kDefaultDevCoredumpDirectory[] = "/sys/class/devcoredump";
 const char kDevCoredumpFilePrefixFormat[] = "devcoredump_%s";
-const char kDevCoredumpDisabledPath[] = "/sys/class/devcoredump/disabled";
 
 }  // namespace
 
@@ -40,15 +39,6 @@ UdevCollector::UdevCollector()
 UdevCollector::~UdevCollector() {}
 
 bool UdevCollector::HandleCrash(const std::string& udev_event) {
-  if (util::IsDeveloperImage()) {
-    LOG(INFO) << "developer image - collect udev crash info.";
-  } else if (is_feedback_allowed_function_()) {
-    LOG(INFO) << "Consent given - collect udev crash info.";
-  } else {
-    LOG(INFO) << "Ignoring - Non-developer image and no consent given.";
-    return false;
-  }
-
   // Process the udev event string.
   // First get all the key-value pairs.
   std::vector<std::pair<std::string, std::string>> udev_event_keyval;
@@ -56,6 +46,23 @@ bool UdevCollector::HandleCrash(const std::string& udev_event) {
   std::map<std::string, std::string> udev_event_map;
   for (const auto& key_value : udev_event_keyval) {
     udev_event_map[key_value.first] = key_value.second;
+  }
+
+  if (util::IsDeveloperImage()) {
+    LOG(INFO) << "developer image - collect udev crash info.";
+  } else if (udev_event_map["SUBSYSTEM"] == kUdevSubsystemDevCoredump) {
+    LOG(INFO) << "Device coredumps are not processed on non-developer images.";
+    FilePath coredump_path = FilePath(
+        base::StringPrintf("%s/devcd%s/data", dev_coredump_directory_.c_str(),
+                           udev_event_map["KERNEL_NUMBER"].c_str()));
+    // Clear devcoredump memory before returning.
+    ClearDevCoredump(coredump_path);
+    return false;
+  } else if (is_feedback_allowed_function_()) {
+    LOG(INFO) << "Consent given - collect udev crash info.";
+  } else {
+    LOG(INFO) << "Ignoring - Non-developer image and no consent given.";
+    return false;
   }
 
   // Make sure the crash directory exists, or create it if it doesn't.
@@ -78,11 +85,6 @@ bool UdevCollector::HandleCrash(const std::string& udev_event) {
   return ProcessUdevCrashLogs(crash_directory, udev_event_map["ACTION"],
                               udev_event_map["KERNEL"],
                               udev_event_map["SUBSYSTEM"]);
-}
-
-bool UdevCollector::Enable() {
-  return base::WriteFile(FilePath(kDevCoredumpDisabledPath),
-                         util::IsDeveloperImage() ? "0" : "1", 1);
 }
 
 bool UdevCollector::ProcessUdevCrashLogs(const FilePath& crash_directory,

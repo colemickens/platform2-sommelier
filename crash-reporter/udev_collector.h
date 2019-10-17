@@ -25,10 +25,6 @@ class UdevCollector : public CrashCollector {
   // could be omitted, in which case it would be treated as a wildcard (*).
   bool HandleCrash(const std::string& udev_event);
 
-  // Enables or disables devcoredump collection in kernel depending on whether
-  // this is a developer image.
-  bool Enable();
-
  protected:
   std::string dev_coredump_directory_;
 
