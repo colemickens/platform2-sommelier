@@ -10,7 +10,10 @@ group("all") {
   ]
 
   if (use.fuzzer) {
-    deps += [ ":arc-adbd-setup-config-fs-fuzzer" ]
+    deps += [
+      ":arc-adbd-setup-config-fs-fuzzer",
+      ":arc-adbd-setup-function-fs-fuzzer",
+    ]
   }
 }
 
@@ -56,6 +59,21 @@ if (use.fuzzer) {
 
     sources = [
       "fuzzers/adbd_setup_config_fs_fuzzer.cc",
+    ]
+
+    deps = [
+      ":libarcadbd",
+    ]
+  }
+
+  executable("arc-adbd-setup-function-fs-fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":arc_adbd_fuzzer_config",
+    ]
+
+    sources = [
+      "fuzzers/adbd_setup_function_fs_fuzzer.cc",
     ]
 
     deps = [
