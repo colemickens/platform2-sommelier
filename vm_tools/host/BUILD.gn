@@ -49,7 +49,7 @@ executable("maitred_client") {
     "../maitred/client.cc",
   ]
   configs += [ ":host_target_defaults" ]
-  libs = [ "gpr" ]
+  libs = [ "grpc" ]
   pkg_deps = [
     "grpc++",
     "protobuf",
@@ -135,7 +135,7 @@ static_library("libconcierge") {
     "../concierge/vsock_cid_pool.cc",
   ]
   configs += [ ":host_target_defaults" ]
-  libs = [ "gpr" ]
+  libs = [ "grpc" ]
   all_dependent_pkg_deps = [
     "grpc++",
     "libarchive",
@@ -180,7 +180,7 @@ static_library("libcicerone") {
     "../cicerone/virtual_machine.cc",
   ]
   configs += [ ":host_target_defaults" ]
-  libs = [ "gpr" ]
+  libs = [ "grpc" ]
   all_dependent_pkg_deps = [
     "grpc++",
     "protobuf",
