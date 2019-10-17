@@ -1611,7 +1611,8 @@ bool Tpm2Impl::ClearStoredPassword() {
     LOG(WARNING) << "Failed to clear stored owner password.";
     return false;
   }
-  return UpdateTpmStatus(RefreshType::FORCE_REFRESH);
+  tpm_status_.mutable_local_data()->clear_owner_password();
+  return true;
 }
 
 bool Tpm2Impl::GetVersionInfo(TpmVersionInfo* version_info) {

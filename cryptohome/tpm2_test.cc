@@ -1406,8 +1406,6 @@ TEST_F(Tpm2Test, RemoveOwnerDependencyUnknown) {
 TEST_F(Tpm2Test, ClearStoredPasswordSuccess) {
   EXPECT_CALL(mock_tpm_owner_, ClearStoredOwnerPassword(_, _))
       .Times(1);
-  EXPECT_CALL(mock_tpm_owner_, GetTpmStatus(_, _))
-      .Times(1);
   EXPECT_TRUE(tpm_->ClearStoredPassword());
 }
 
@@ -1416,8 +1414,6 @@ TEST_F(Tpm2Test, ClearStoredPasswordFailure) {
       tpm_manager::STATUS_DEVICE_ERROR);
   EXPECT_CALL(mock_tpm_owner_, ClearStoredOwnerPassword(_, _))
       .Times(1);
-  EXPECT_CALL(mock_tpm_owner_, GetTpmStatus(_, _))
-      .Times(0);
   EXPECT_FALSE(tpm_->ClearStoredPassword());
 }
 
