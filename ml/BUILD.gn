@@ -13,7 +13,10 @@ group("all") {
     deps += [ ":ml_service_test" ]
   }
   if (use.fuzzer) {
-    deps += [ ":ml_service_impl_fuzzer" ]
+    deps += [
+      ":ml_service_impl_fuzzer",
+      ":ml_service_load_flatbuffer_fuzzer",
+    ]
   }
 }
 
@@ -98,6 +101,15 @@ if (use.fuzzer) {
     ]
     sources = [
       "fuzzers/ml_service_impl_fuzzer.cc",
+    ]
+  }
+  executable("ml_service_load_flatbuffer_fuzzer") {
+    configs += [ "//common-mk/common_fuzzer" ]
+    deps = [
+      ":ml_common",
+    ]
+    sources = [
+      "fuzzers/ml_service_load_flatbuffer_fuzzer.cc",
     ]
   }
 }
