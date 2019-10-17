@@ -55,36 +55,34 @@ bool ReadPublicKeyFromFile(const base::FilePath& key_file,
 bool VerifySignature(const std::string& signed_data,
                      const std::string& signature,
                      const std::string& public_key) {
-  EVP_MD_CTX ctx;
-  EVP_MD_CTX_init(&ctx);
+  std::unique_ptr<EVP_MD_CTX, void (*)(EVP_MD_CTX *)> ctx(EVP_MD_CTX_create(),
+                                                          EVP_MD_CTX_destroy);
+  if (!ctx)
+    return false;
 
   const EVP_MD* digest = EVP_sha1();
 
   char* key = const_cast<char*>(public_key.data());
   BIO* bio = BIO_new_mem_buf(key, public_key.length());
-  if (!bio) {
-    EVP_MD_CTX_cleanup(&ctx);
+  if (!bio)
     return false;
-  }
 
   EVP_PKEY* public_key_ssl = d2i_PUBKEY_bio(bio, nullptr);
   if (!public_key_ssl) {
     BIO_free_all(bio);
-    EVP_MD_CTX_cleanup(&ctx);
     return false;
   }
 
   const unsigned char* sig =
       reinterpret_cast<const unsigned char*>(signature.data());
-  int rv = EVP_VerifyInit_ex(&ctx, digest, nullptr);
+  int rv = EVP_VerifyInit_ex(ctx.get(), digest, nullptr);
   if (rv == 1) {
-    EVP_VerifyUpdate(&ctx, signed_data.data(), signed_data.length());
-    rv = EVP_VerifyFinal(&ctx, sig, signature.length(), public_key_ssl);
+    EVP_VerifyUpdate(ctx.get(), signed_data.data(), signed_data.length());
+    rv = EVP_VerifyFinal(ctx.get(), sig, signature.length(), public_key_ssl);
   }
 
   EVP_PKEY_free(public_key_ssl);
   BIO_free_all(bio);
-  EVP_MD_CTX_cleanup(&ctx);
 
   return rv == 1;
 }
