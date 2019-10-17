@@ -18,9 +18,9 @@
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <base/posix/unix_domain_socket.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/minijail/minijail.h>
 
 #include "arc/network/guest_events.h"
@@ -35,7 +35,10 @@ Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy, bool enable_multinet)
           AddressManager::Guest::ARC_NET,
       }),
       enable_multinet_(enable_multinet),
-      gsock_(AF_UNIX, SOCK_DGRAM) {}
+      gsock_(AF_UNIX, SOCK_DGRAM) {
+  runner_ = std::make_unique<MinijailedProcessRunner>();
+  datapath_ = std::make_unique<Datapath>(runner_.get());
+}
 
 int Manager::OnInit() {
   prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
@@ -83,7 +86,8 @@ void Manager::InitialSetup() {
       std::make_unique<ShillClient>(std::move(bus_)), &addr_mgr_,
       !enable_multinet_);
 
-  arc_svc_ = std::make_unique<ArcService>(device_mgr_.get(), !enable_multinet_);
+  arc_svc_ = std::make_unique<ArcService>(device_mgr_.get(), datapath_.get(),
+                                          !enable_multinet_);
   arc_svc_->RegisterMessageHandler(
       base::Bind(&Manager::OnGuestMessage, weak_factory_.GetWeakPtr()));
 }

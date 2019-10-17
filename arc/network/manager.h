@@ -69,6 +69,9 @@ class Manager final : public brillo::DBusDaemon {
   Socket gsock_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> gsock_watcher_;
 
+  std::unique_ptr<MinijailedProcessRunner> runner_;
+  std::unique_ptr<Datapath> datapath_;
+
   base::WeakPtrFactory<Manager> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };

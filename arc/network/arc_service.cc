@@ -93,17 +93,13 @@ int GetContainerPID() {
 }  // namespace
 
 ArcService::ArcService(DeviceManagerBase* dev_mgr,
-                       bool is_legacy,
-                       std::unique_ptr<Datapath> datapath)
+                       Datapath* datapath,
+                       bool is_legacy)
     : GuestService(is_legacy ? GuestMessage::ARC_LEGACY : GuestMessage::ARC,
                    dev_mgr),
+      datapath_(datapath),
       pid_(kInvalidPID) {
-  if (!datapath) {
-    runner_ = std::make_unique<MinijailedProcessRunner>();
-    datapath = std::make_unique<Datapath>(runner_.get());
-  }
-
-  datapath_ = std::move(datapath);
+  DCHECK(datapath_);
   dev_mgr_->RegisterDeviceIPv6AddressFoundHandler(
       base::Bind(&ArcService::SetupIPv6, weak_factory_.GetWeakPtr()));
 

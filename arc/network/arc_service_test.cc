@@ -59,17 +59,15 @@ class ArcServiceTest : public testing::Test {
 
  protected:
   void SetUp() override {
-    fpr_ = std::make_unique<FakeProcessRunner>();
-    runner_ = fpr_.get();
+    runner_ = std::make_unique<FakeProcessRunner>();
     runner_->Capture(false);
-    dp_ = std::make_unique<MockDatapath>(runner_);
-    datapath_ = dp_.get();
+    datapath_ = std::make_unique<MockDatapath>(runner_.get());
   }
 
   std::unique_ptr<ArcService> NewService(bool arc_legacy = false,
                                          bool valid_pid = true) {
     auto svc =
-        std::make_unique<ArcService>(&dev_mgr_, arc_legacy, std::move(dp_));
+        std::make_unique<ArcService>(&dev_mgr_, datapath_.get(), arc_legacy);
     if (valid_pid)
       svc->SetPIDForTestingOnly();
 
@@ -94,12 +92,8 @@ class ArcServiceTest : public testing::Test {
 
   AddressManager addr_mgr_;
   MockDeviceManager dev_mgr_;
-  FakeProcessRunner* runner_;  // Owned by |fpr_|
-  MockDatapath* datapath_;     // Owned by |dp_|
-  std::unique_ptr<MockDatapath> dp_;
-
- private:
-  std::unique_ptr<FakeProcessRunner> fpr_;
+  std::unique_ptr<MockDatapath> datapath_;
+  std::unique_ptr<FakeProcessRunner> runner_;
 };
 
 TEST_F(ArcServiceTest, VerifyOnDeviceAddedDatapathForLegacyAndroid) {

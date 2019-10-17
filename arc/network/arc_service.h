@@ -54,10 +54,8 @@ class ArcService : public GuestService {
     int routing_table_attempts_;
   };
 
-  // |dev_mgr| cannot be null.
-  ArcService(DeviceManagerBase* dev_mgr,
-             bool is_legacy,
-             std::unique_ptr<Datapath> datapath = nullptr);
+  // |dev_mgr| and |datapath| cannot be null.
+  ArcService(DeviceManagerBase* dev_mgr, Datapath* datapath, bool is_legacy);
   ~ArcService() = default;
 
   void OnStart() override;
@@ -82,8 +80,7 @@ class ArcService : public GuestService {
   void StartDevice(Device* device);
   void StopDevice(Device* device);
 
-  std::unique_ptr<MinijailedProcessRunner> runner_;
-  std::unique_ptr<Datapath> datapath_;
+  Datapath* datapath_;
 
   pid_t pid_;
   std::unique_ptr<shill::RTNLHandler> rtnl_handler_;
