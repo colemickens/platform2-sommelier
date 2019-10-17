@@ -10,15 +10,13 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <media/NdkMediaFormat.h>
 #include <utils/Log.h>
 
 namespace android {
 namespace {
-// The component name of ArcVideoEncoder.
-constexpr char kArcVideoEncoderName[] = "OMX.arc.h264.encode";
-
 // The values are defined at
 // <android_root>/frameworks/base/media/java/android/media/MediaCodecInfo.java.
 constexpr int32_t COLOR_FormatYUV420Planar = 19;
@@ -36,6 +34,16 @@ constexpr int kTimeoutUs = 1000;  // 1ms.
 // and the period between submitting EOS input buffer to receiving the EOS
 // output buffer.
 constexpr int kBufferPeriodTimeoutUs = 1000000;  // 1 sec
+
+// Helper function to get possible encoder names from |type|.
+std::vector<const char*> GetArcVideoEncoderNames(VideoCodecType type) {
+  switch (type) {
+    case VideoCodecType::H264:
+      return {"c2.vea.avc.encoder", "OMX.arc.h264.encode"};
+    default:  // unsupported type: VP8, VP9, or unknown
+      return {};
+  }
+}
 
 }  // namespace
 
@@ -61,7 +69,16 @@ std::unique_ptr<MediaCodecEncoder> MediaCodecEncoder::Create(
     return nullptr;
   }
 
-  AMediaCodec* codec = AMediaCodec_createCodecByName(kArcVideoEncoderName);
+  AMediaCodec* codec = nullptr;
+  // Only H264 is supported now.
+  auto encoder_names = GetArcVideoEncoderNames(VideoCodecType::H264);
+  for (const auto& encoder_name : encoder_names) {
+    codec = AMediaCodec_createCodecByName(encoder_name);
+    if (codec) {
+      ALOGD("Created mediacodec encoder by name: %s", encoder_name);
+      break;
+    }
+  }
   if (!codec) {
     ALOGE("Failed to create mediacodec encoder.");
     return nullptr;
