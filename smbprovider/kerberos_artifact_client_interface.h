@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include <authpolicy/proto_bindings/active_directory_info.pb.h>
 #include <dbus/object_proxy.h>
 
 namespace smbprovider {
@@ -15,15 +14,18 @@ namespace smbprovider {
 class KerberosArtifactClientInterface {
  public:
   using GetUserKerberosFilesCallback =
-      base::Callback<void(authpolicy::ErrorType error,
-                          const authpolicy::KerberosFiles& kerberos_files)>;
+      base::Callback<void(bool success,
+                          const std::string& krb5_ccache,
+                          const std::string& krb5_conf)>;
 
   virtual ~KerberosArtifactClientInterface() = default;
 
-  // Calls GetUserKerberosFiles. If authpolicyd has Kerberos files for the user
-  // specified by |object_guid| it sends them in response: credential cache and
-  // krb5 config files.
-  virtual void GetUserKerberosFiles(const std::string& object_guid,
+  // Gets Kerberos files for the user determined by |account_identifier|.
+  // If authpolicyd or kerberosd has Kerberos files for the user specified by
+  // |account_identifier| it sends them in response: credential cache and krb5
+  // config files. For authpolicyd expected |account_identifier| is object guid,
+  // while for kerberosd it is principal name.
+  virtual void GetUserKerberosFiles(const std::string& account_identifier,
                                     GetUserKerberosFilesCallback callback) = 0;
 
   // Connects callbacks to OnKerberosFilesChanged D-Bus signal sent by

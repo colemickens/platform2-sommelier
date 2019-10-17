@@ -1,31 +1,30 @@
-// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SMBPROVIDER_KERBEROS_ARTIFACT_CLIENT_H_
-#define SMBPROVIDER_KERBEROS_ARTIFACT_CLIENT_H_
+#ifndef SMBPROVIDER_KERBEROS_KERBEROS_ARTIFACT_CLIENT_H_
+#define SMBPROVIDER_KERBEROS_KERBEROS_ARTIFACT_CLIENT_H_
 
 #include <memory>
 #include <string>
 
-#include <authpolicy/proto_bindings/active_directory_info.pb.h>
 #include <base/callback.h>
 #include <base/memory/weak_ptr.h>
-#include <brillo/dbus/dbus_object.h>
+#include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 
 #include "smbprovider/kerberos_artifact_client_interface.h"
 
 namespace smbprovider {
 
-// KerberosArtifactClient is used to communicate with the
-// org.chromium.AuthPolicy service.
-class KerberosArtifactClient : public KerberosArtifactClientInterface {
+// KerberosKerberosArtifactClient is used to communicate with the
+// org.chromium.Kerberos service.
+class KerberosKerberosArtifactClient : public KerberosArtifactClientInterface {
  public:
-  explicit KerberosArtifactClient(brillo::dbus_utils::DBusObject* dbus_object);
+  explicit KerberosKerberosArtifactClient(scoped_refptr<dbus::Bus> bus);
 
   // KerberosArtifactClientInterface overrides.
-  void GetUserKerberosFiles(const std::string& object_guid,
+  void GetUserKerberosFiles(const std::string& principal_name,
                             GetUserKerberosFilesCallback callback) override;
   void ConnectToKerberosFilesChangedSignal(
       dbus::ObjectProxy::SignalCallback signal_callback,
@@ -35,12 +34,12 @@ class KerberosArtifactClient : public KerberosArtifactClientInterface {
   void HandleGetUserKeberosFiles(GetUserKerberosFilesCallback callback,
                                  dbus::Response* response);
 
-  dbus::ObjectProxy* authpolicy_object_proxy_ = nullptr;
-  base::WeakPtrFactory<KerberosArtifactClient> weak_ptr_factory_;
+  dbus::ObjectProxy* kerberos_object_proxy_ = nullptr;
+  base::WeakPtrFactory<KerberosKerberosArtifactClient> weak_ptr_factory_{this};
 
-  DISALLOW_COPY_AND_ASSIGN(KerberosArtifactClient);
+  DISALLOW_COPY_AND_ASSIGN(KerberosKerberosArtifactClient);
 };
 
 }  // namespace smbprovider
 
-#endif  // SMBPROVIDER_KERBEROS_ARTIFACT_CLIENT_H_
+#endif  // SMBPROVIDER_KERBEROS_KERBEROS_ARTIFACT_CLIENT_H_

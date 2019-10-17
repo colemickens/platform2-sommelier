@@ -11,10 +11,12 @@
 #include <base/time/default_tick_clock.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
+#include <install_attributes/libinstallattributes.h>
 
+#include "smbprovider/authpolicy_kerberos_artifact_client.h"
 #include "smbprovider/constants.h"
-#include "smbprovider/kerberos_artifact_client.h"
 #include "smbprovider/kerberos_artifact_synchronizer.h"
+#include "smbprovider/kerberos_kerberos_artifact_client.h"
 #include "smbprovider/mount_manager.h"
 #include "smbprovider/samba_interface_impl.h"
 #include "smbprovider/smbprovider.h"
@@ -150,13 +152,28 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
     auto dbus_object = std::make_unique<brillo::dbus_utils::DBusObject>(
         nullptr, bus_, org::chromium::SmbProviderAdaptor::GetObjectPath());
 
-    auto kerberos_artifact_client =
-        std::make_unique<KerberosArtifactClient>(dbus_object.get());
+    // Check if this is Active Directory managed devices.
+    const bool is_active_directory =
+        InstallAttributesReader().GetAttribute(
+            InstallAttributesReader::kAttrMode) ==
+        InstallAttributesReader::kDeviceModeEnterpriseAD;
 
+    // If this is Active Directory managed devices, Kerberos artifact
+    // synchronizing happens between SmbProvider and AuthPolicy daemeon using
+    // AuthPolicyKerberosArtifactClient, otherwise with Kerberos daemon using
+    // KerberosKerberosArtifactClient.
+    // Note that, we allow to update credentials for Kerberos daemon if
+    // !is_active_directory.
+    auto kerberos_artifact_client =
+        is_active_directory
+            ? std::unique_ptr<KerberosArtifactClientInterface>(
+                  std::make_unique<AuthPolicyKerberosArtifactClient>(bus_))
+            : std::unique_ptr<KerberosArtifactClientInterface>(
+                  std::make_unique<KerberosKerberosArtifactClient>(bus_));
     auto kerberos_artifact_synchronizer =
         std::make_unique<KerberosArtifactSynchronizer>(
             GetKrb5ConfPath(), GetCCachePath(),
-            std::move(kerberos_artifact_client));
+            std::move(kerberos_artifact_client), !is_active_directory);
 
     auto tick_clock = std::make_unique<base::DefaultTickClock>();
 

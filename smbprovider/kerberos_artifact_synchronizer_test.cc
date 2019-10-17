@@ -9,7 +9,6 @@
 #include <gtest/gtest.h>
 
 #include "smbprovider/fake_kerberos_artifact_client.h"
-#include "smbprovider/kerberos_artifact_client.h"
 #include "smbprovider/kerberos_artifact_synchronizer.h"
 #include "smbprovider/smbprovider_test_helper.h"
 
@@ -35,19 +34,24 @@ void IncrementInt(int* count, bool expected_success, bool success) {
 class KerberosArtifactSynchronizerTest : public testing::Test {
  public:
   KerberosArtifactSynchronizerTest() {
-    auto fake_ptr = std::make_unique<FakeKerberosArtifactClient>();
-    fake_artifact_client_ = fake_ptr.get();
-
     EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
 
     krb5_conf_path_ = CreateKrb5ConfPath(temp_dir_.GetPath());
     krb5_ccache_path_ = CreateKrb5CCachePath(temp_dir_.GetPath());
 
-    synchronizer_ = std::make_unique<KerberosArtifactSynchronizer>(
-        krb5_conf_path_, krb5_ccache_path_, std::move(fake_ptr));
+    Initialize(false /* allow_credentials_update */);
   }
 
   ~KerberosArtifactSynchronizerTest() override = default;
+
+  void Initialize(bool allow_credentials_update) {
+    auto fake_ptr = std::make_unique<FakeKerberosArtifactClient>();
+    fake_artifact_client_ = fake_ptr.get();
+
+    synchronizer_ = std::make_unique<KerberosArtifactSynchronizer>(
+        krb5_conf_path_, krb5_ccache_path_, std::move(fake_ptr),
+        allow_credentials_update);
+  }
 
  protected:
   base::ScopedTempDir temp_dir_;
@@ -215,10 +219,32 @@ TEST_F(KerberosArtifactSynchronizerTest,
   authpolicy::KerberosFiles kerberos_files =
       CreateKerberosFilesProto(krb5cc, krb5conf);
   fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
+  fake_artifact_client_->AddKerberosFiles(user2, kerberos_files);
 
   synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
   synchronizer_->SetupKerberos(user2, base::Bind(&ExpectSetupFailure));
   EXPECT_EQ(1, fake_artifact_client_->GetFilesMethodCallCount());
+}
+
+// SetupKerberos is called twice for different users with credentials update
+// allowed.
+TEST_F(KerberosArtifactSynchronizerTest,
+       SetupKerberosCalledTwiceDifferentUsersUpdateAllowed) {
+  Initialize(true /* allow_credentials_update */);
+
+  const std::string user = "test user";
+  const std::string user2 = "test user 2";
+  const std::string krb5cc = "test creds";
+  const std::string krb5conf = "test conf";
+
+  authpolicy::KerberosFiles kerberos_files =
+      CreateKerberosFilesProto(krb5cc, krb5conf);
+  fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
+  fake_artifact_client_->AddKerberosFiles(user2, kerberos_files);
+
+  synchronizer_->SetupKerberos(user, base::Bind(&ExpectSetupSuccess));
+  synchronizer_->SetupKerberos(user2, base::Bind(&ExpectSetupSuccess));
+  EXPECT_EQ(2, fake_artifact_client_->GetFilesMethodCallCount());
 }
 
 }  // namespace smbprovider

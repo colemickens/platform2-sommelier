@@ -8,7 +8,6 @@
 #include <memory>
 #include <string>
 
-#include <authpolicy/proto_bindings/active_directory_info.pb.h>
 #include <base/callback.h>
 
 #include "smbprovider/kerberos_artifact_client_interface.h"
@@ -23,9 +22,9 @@ namespace smbprovider {
 
 // KerberosArtifactSynchronizer manages a Kerberos user's kr5conf and krb5ccache
 // files. It takes ownership of a KerberosArtifactClientInterface on
-// construction. SetupKerberos fetches a users Kerberos files from AuthPolicy
-// and writes a copy to the tempfs. The Kerberos files are kept
-// up-to-date by connecting to AuthPolicy's D-Bus signal.
+// construction. SetupKerberos fetches a users Kerberos files from AuthPolicy or
+// Kerberos daemons and writes a copy to the tempfs. The Kerberos files are kept
+// up-to-date by connecting to AuthPolicy's or Kerberos's D-Bus signal.
 class KerberosArtifactSynchronizer {
  public:
   using SetupKerberosCallback = base::Callback<void(bool setup_success)>;
@@ -33,11 +32,13 @@ class KerberosArtifactSynchronizer {
   KerberosArtifactSynchronizer(
       const std::string& krb5_conf_path,
       const std::string& krb5_ccache_path,
-      std::unique_ptr<KerberosArtifactClientInterface> client);
+      std::unique_ptr<KerberosArtifactClientInterface> client,
+      bool allow_credentials_update);
 
-  // Sets up Keberos for user with |object_guid|. User must be ChromAD.
-  // |callback| is run with the result. May only be called once per instance.
-  void SetupKerberos(const std::string& object_guid,
+  // Sets up Keberos for user with |account_identifier|.
+  // |account_identifier| is run with the result. If |allow_credentials_update|
+  // is false it may only be called once per instance.
+  void SetupKerberos(const std::string& account_identifier,
                      SetupKerberosCallback callback);
 
  private:
@@ -46,13 +47,15 @@ class KerberosArtifactSynchronizer {
 
   // Response handler for GetUserKerberosFiles.
   void OnGetFilesResponse(SetupKerberosCallback callback,
-                          authpolicy::ErrorType error,
-                          const authpolicy::KerberosFiles& kerberos_files);
+                          bool success,
+                          const std::string& krb5_ccache,
+                          const std::string& krb5_conf);
 
   // Writes |kerberos_files| to |krb5_conf_path_| and |krb5_ccache_path_|
   // respectively. If Kerberos is not yet fully setup, calls
   // ConnectToKerberosFilesChangedSignal.
-  void WriteFiles(const authpolicy::KerberosFiles& kerberos_files,
+  void WriteFiles(const std::string& krb5_ccache,
+                  const std::string& krb5_conf,
                   SetupKerberosCallback callback);
 
   // Writes |kerberos_file| to |path|. First writes into a temporary file
@@ -77,9 +80,11 @@ class KerberosArtifactSynchronizer {
   bool is_kerberos_setup_ = false;
   const std::string krb5_conf_path_;
   const std::string krb5_ccache_path_;
-  std::string object_guid_;
+  std::string account_identifier_;
 
   std::unique_ptr<KerberosArtifactClientInterface> client_;
+
+  const bool allow_credentials_update_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(KerberosArtifactSynchronizer);
 };

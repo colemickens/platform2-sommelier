@@ -112,12 +112,14 @@ bool GetShareEntries(const GetSharesOptionsProto& options,
 SmbProvider::SmbProvider(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
     std::unique_ptr<MountManager> mount_manager,
-    std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer,
+    std::unique_ptr<KerberosArtifactSynchronizer>
+        kerberos_artifact_synchronizer,
     const base::FilePath& daemon_store_directory)
     : org::chromium::SmbProviderAdaptor(this),
       dbus_object_(std::move(dbus_object)),
       mount_manager_(std::move(mount_manager)),
-      kerberos_synchronizer_(std::move(kerberos_synchronizer)),
+      kerberos_artifact_synchronizer_(
+          std::move(kerberos_artifact_synchronizer)),
       copy_tracker_(kInitialCopyProgressTrackerId),
       read_dir_tracker_(kInitialReadDirProgressTrackerId),
       daemon_store_directory_(daemon_store_directory) {}
@@ -525,9 +527,9 @@ void SmbProvider::GetShares(const ProtoBlob& options_blob,
 }
 
 void SmbProvider::SetupKerberos(SetupKerberosCallback callback,
-                                const std::string& account_id) {
-  kerberos_synchronizer_->SetupKerberos(
-      account_id,
+                                const std::string& account_identifier) {
+  kerberos_artifact_synchronizer_->SetupKerberos(
+      account_identifier,
       base::Bind(&SmbProvider::HandleSetupKerberosResponse,
                  base::Unretained(this), base::Passed(std::move(callback))));
 }

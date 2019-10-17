@@ -276,8 +276,8 @@ class SmbProviderTest : public testing::Test {
 
     auto kerberos_artifact_synchronizer =
         std::make_unique<KerberosArtifactSynchronizer>(
-            krb5_conf_path_, krb5_ccache_path_,
-            std::move(fake_artifact_client));
+            krb5_conf_path_, krb5_ccache_path_, std::move(fake_artifact_client),
+            false /* allow_credentials_update */);
     kerberos_synchronizer_ = kerberos_artifact_synchronizer.get();
 
     const dbus::ObjectPath object_path("/object/path");

@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//common-mk/pkg_config.gni")
 import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
@@ -51,6 +51,8 @@ static_library("libsmbprovider") {
     ":smbproviderd_adaptors",
   ]
   sources = [
+    "authpolicy_kerberos_artifact_client.cc",
+    "authpolicy_kerberos_artifact_client.h",
     "constants.cc",
     "constants.h",
     "copy_progress_interface.h",
@@ -67,11 +69,11 @@ static_library("libsmbprovider") {
     "iterator/pre_depth_first_iterator.cc",
     "iterator/pre_depth_first_iterator.h",
     "iterator/share_iterator.h",
-    "kerberos_artifact_client.cc",
-    "kerberos_artifact_client.h",
     "kerberos_artifact_client_interface.h",
     "kerberos_artifact_synchronizer.cc",
     "kerberos_artifact_synchronizer.h",
+    "kerberos_kerberos_artifact_client.cc",
+    "kerberos_kerberos_artifact_client.h",
     "metadata_cache.cc",
     "metadata_cache.h",
     "mount_manager.cc",
@@ -106,6 +108,7 @@ executable("smbproviderd") {
   sources = [
     "smbprovider_main.cc",
   ]
+  libs = [ "installattributes-${libbase_ver}" ]
 }
 
 # Unit tests.

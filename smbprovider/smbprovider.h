@@ -59,11 +59,11 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   using SetupKerberosCallback =
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>>;
 
-  SmbProvider(
-      std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-      std::unique_ptr<MountManager> mount_manager,
-      std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer,
-      const base::FilePath& daemon_store_directory);
+  SmbProvider(std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
+              std::unique_ptr<MountManager> mount_manager,
+              std::unique_ptr<KerberosArtifactSynchronizer>
+                  kerberos_artifact_synchronizer,
+              const base::FilePath& daemon_store_directory);
 
   // org::chromium::SmbProviderInterface: (see org.chromium.SmbProvider.xml).
   void Mount(const ProtoBlob& options_blob,
@@ -116,7 +116,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                  ProtoBlob* shares) override;
 
   void SetupKerberos(SetupKerberosCallback callback,
-                     const std::string& account_id) override;
+                     const std::string& account_identifier) override;
 
   ProtoBlob ParseNetBiosPacket(const std::vector<uint8_t>& packet,
                                uint16_t transaction_id) override;
@@ -487,7 +487,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   std::vector<uint8_t> content_buffer_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<MountManager> mount_manager_;
-  std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer_;
+  std::unique_ptr<KerberosArtifactSynchronizer> kerberos_artifact_synchronizer_;
   TempFileManager temp_file_manager_;
   // TODO(baileyberro): Add metrics for |copy_tracker_| and |read_dir_tracker_|
   // https://crbug.com/887606.
