@@ -12,6 +12,9 @@ group("all") {
   if (use.test) {
     deps += [ ":ml_service_test" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":ml_service_impl_fuzzer" ]
+  }
 }
 
 generate_mojom_bindings("ml_mojo_bindings") {
@@ -82,6 +85,19 @@ if (use.test) {
       "test_utils.cc",
       "testrunner.cc",
       "util_test.cc",
+    ]
+  }
+}
+
+# Fuzzer target.
+if (use.fuzzer) {
+  executable("ml_service_impl_fuzzer") {
+    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
+    deps = [
+      ":ml_common",
+    ]
+    sources = [
+      "fuzzers/ml_service_impl_fuzzer.cc",
     ]
   }
 }
