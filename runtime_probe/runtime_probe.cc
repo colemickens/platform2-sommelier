@@ -39,6 +39,7 @@ int main(int argc, char* argv[]) {
   DEFINE_string(config_file_path, "",
                 "File path to probe config, empty to use default one");
   DEFINE_bool(dbus, false, "Run in the mode to respond D-Bus call");
+  DEFINE_bool(to_stdout, false, "Output probe result to stdout");
   DEFINE_int32(verbosity_level, 0, "Set verbosity level. Allowed value: 0 to 3")
       brillo::FlagHelper::Init(argc, argv, "ChromeOS runtime probe tool");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
@@ -73,7 +74,13 @@ int main(int argc, char* argv[]) {
     LOG(ERROR) << "Failed to parse from argument from ProbeConfig\n";
     return ExitStatus::kFailToParseProbeArgFromConfig;
   }
-  LOG(INFO) << *(probe_config->Eval());
+  const auto probe_result = probe_config->Eval();
+  if (FLAGS_to_stdout) {
+    LOG(INFO) << "Dumping probe results to stdout";
+    std::cout << *probe_result;
+  } else {
+    LOG(INFO) << *probe_result;
+  }
 
   return ExitStatus::kSuccess;
 }
