@@ -6,11 +6,13 @@
 #define U2FD_ALLOWLISTING_UTIL_H_
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <attestation/proto_bindings/interface.pb.h>
 #include <base/optional.h>
+#include <policy/libpolicy.h>
 
 namespace u2f {
 
@@ -29,6 +31,10 @@ class AllowlistingUtil {
   // success. On failure, returns false, and does not modify |cert|.
   virtual bool AppendDataToCert(std::vector<uint8_t>* cert);
 
+  // To use a mock policy provider in tests.
+  void SetPolicyProviderForTest(
+      std::unique_ptr<policy::PolicyProvider> provider);
+
  private:
   // Retrieves the 'certified' attestation data from attestationd, and writes
   // the relevant allowlisting data to |cert_prefix| and |signature|. Returns
@@ -42,6 +48,8 @@ class AllowlistingUtil {
 
   std::function<base::Optional<attestation::GetCertifiedNvIndexReply>(int)>
       get_certified_g2f_cert_;
+
+  std::unique_ptr<policy::PolicyProvider> policy_provider_;
 };
 
 }  // namespace u2f

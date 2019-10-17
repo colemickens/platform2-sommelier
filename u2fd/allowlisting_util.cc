@@ -6,7 +6,9 @@
 
 #include <functional>
 #include <limits>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <attestation/proto_bindings/interface.pb.h>
@@ -22,7 +24,8 @@ namespace u2f {
 AllowlistingUtil::AllowlistingUtil(
     std::function<base::Optional<attestation::GetCertifiedNvIndexReply>(int)>
         get_certified_g2f_cert)
-    : get_certified_g2f_cert_(get_certified_g2f_cert) {}
+    : get_certified_g2f_cert_(get_certified_g2f_cert),
+      policy_provider_(std::make_unique<policy::PolicyProvider>()) {}
 
 namespace {
 
@@ -119,7 +122,7 @@ constexpr uint8_t kPrintableString = 0x13;
 
 bool AllowlistingUtil::AppendDataToCert(std::vector<uint8_t>* cert) {
   if (cert == nullptr) {
-    LOG(DFATAL) << "Attempting to append to null certificate";
+    LOG(ERROR) << "Attempting to append to null certificate";
     return false;
   }
 
@@ -198,7 +201,10 @@ bool AllowlistingUtil::GetCertifiedAttestationCert(
   int cert_prefix_length = reply->certified_data().size() - orig_cert_size;
 
   // If this fails, cr50 and/or attestationd are not behaving as expected.
-  DCHECK_EQ(kExpectedTpmMetadataLength, cert_prefix_length);
+  if (kExpectedTpmMetadataLength != cert_prefix_length) {
+    LOG(ERROR) << "Unexpected TPM metadata length";
+    return false;
+  }
 
   util::AppendToVector(reply->certified_data().substr(0, cert_prefix_length),
                        cert_prefix);
@@ -208,21 +214,24 @@ bool AllowlistingUtil::GetCertifiedAttestationCert(
 }
 
 base::Optional<std::string> AllowlistingUtil::GetDeviceId() {
-  policy::PolicyProvider policy_provider;
-
-  if (!policy_provider.Reload()) {
+  if (!policy_provider_->Reload()) {
     LOG(ERROR) << "Failed to load device policy";
     return base::nullopt;
   }
 
   std::string id;
 
-  if (!policy_provider.GetDevicePolicy().GetDeviceDirectoryApiId(&id)) {
+  if (!policy_provider_->GetDevicePolicy().GetDeviceDirectoryApiId(&id)) {
     LOG(ERROR) << "Failed to read directory API ID";
     return base::nullopt;
   }
 
   return id;
+}
+
+void AllowlistingUtil::SetPolicyProviderForTest(
+    std::unique_ptr<policy::PolicyProvider> provider) {
+  policy_provider_ = std::move(provider);
 }
 
 }  // namespace u2f

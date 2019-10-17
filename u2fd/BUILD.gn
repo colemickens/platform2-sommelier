@@ -140,6 +140,7 @@ if (use.test) {
       ":u2fd_test_config",
     ]
     sources = [
+      "allowlisting_util_test.cc",
       "u2f_msg_handler_test.cc",
     ]
     deps = [
