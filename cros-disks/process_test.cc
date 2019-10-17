@@ -396,20 +396,4 @@ INSTANTIATE_TEST_SUITE_P(ProcessRun,
                              }}),
                          PrintToStringParamName());
 
-INSTANTIATE_TEST_SUITE_P(ProcessRunAsRoot,
-                         ProcessRunTest,
-                         Values(ProcessFactory{
-                             "WithPidNamespace",
-                             []() -> std::unique_ptr<Process> {
-                               auto process =
-                                   std::make_unique<SandboxedProcess>();
-                               process->NewPidNamespace();
-                               // TODO(crbug.com/1008262) Remove the following
-                               // line or this comment depending on how this bug
-                               // is resolved.
-                               process->SkipRemountPrivate();
-                               return process;
-                             }}),
-                         PrintToStringParamName());
-
 }  // namespace cros_disks
