@@ -8,6 +8,7 @@
 #include <string>
 
 #include <openssl/bn.h>
+#include <openssl/evp.h>
 #include <openssl/rsa.h>
 
 #include <base/files/file_path.h>
@@ -21,6 +22,9 @@ namespace cryptohome {
 extern const unsigned int kDefaultPasswordRounds;
 extern const unsigned int kWellKnownExponent;
 extern const unsigned int kAesBlockSize;
+extern const unsigned int kAesGcmTagSize;
+extern const unsigned int kAesGcmIVSize;
+extern const unsigned int kAesGcm256KeySize;
 
 class CryptoLib {
  public:
@@ -105,6 +109,37 @@ class CryptoLib {
                          const brillo::SecureBlob& key,
                          const brillo::SecureBlob& iv,
                          brillo::SecureBlob* ciphertext);
+
+  // AES-GCM decrypts the |ciphertext| using the |key| and |iv|. |key| must be
+  // 256-bits and |iv| must be 96-bits.
+  //
+  // Parameters:
+  //   ciphertext - The encrypted data.
+  //   tag - The integrity check of the data.
+  //   key - The key to decrypt with.
+  //   iv - The IV to decrypt with.
+  //   plaintext - On success, the decrypted data.
+  static bool AesGcmDecrypt(const brillo::SecureBlob& ciphertext,
+                            const brillo::SecureBlob& tag,
+                            const brillo::SecureBlob& key,
+                            const brillo::SecureBlob& iv,
+                            brillo::SecureBlob* plaintext);
+
+  // AES-GCM encrypts the |plaintext| using the |key|. A random initialization
+  // vector is created and retuned in |iv|. The encrypted data can be decrypted
+  // with AesGcmDecrypt. |key| must be 256-bits.
+  //
+  // Parameters:
+  //   plaintext - The plain text data to encrypt.
+  //   key - The AES key to use.
+  //   iv - The initialization vector generated randomly.
+  //   tag - On success, the integrity tag of the data.
+  //   ciphertext - On success, the encrypted data.
+  static bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
+                            const brillo::SecureBlob& key,
+                            brillo::SecureBlob* iv,
+                            brillo::SecureBlob* tag,
+                            brillo::SecureBlob* ciphertext);
 
   // Same as AesDecrypt, but allows using either CBC or ECB
   static bool AesDecryptSpecifyBlockMode(const brillo::SecureBlob& ciphertext,

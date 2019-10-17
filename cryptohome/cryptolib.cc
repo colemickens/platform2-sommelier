@@ -114,6 +114,13 @@ const unsigned int kDefaultPasswordRounds = 1337;
 // AES block size in bytes.
 const unsigned int  kAesBlockSize = 16;
 
+// The size of the AES-GCM IV (96-bits).
+constexpr unsigned int kAesGcmIVSize = 96 / sizeof(uint8_t);
+// The size of an AES-GCM key in cryptohome code (256-bits).
+constexpr unsigned int kAesGcm256KeySize = 256 / sizeof(uint8_t);
+// The size of the AES-GCM tag.
+constexpr unsigned int kAesGcmTagSize = 16;
+
 void CryptoLib::GetSecureRandom(unsigned char* buf, size_t length) {
   // OpenSSL takes a signed integer.  On the off chance that the user requests
   // something too large, truncate it.
@@ -325,6 +332,128 @@ bool CryptoLib::PasskeyToAesKey(const brillo::SecureBlob& passkey,
   key->swap(aes_key);
   if (iv) {
     iv->swap(local_iv);
+  }
+
+  return true;
+}
+
+bool CryptoLib::AesGcmDecrypt(const brillo::SecureBlob& ciphertext,
+                              const brillo::SecureBlob& tag,
+                              const brillo::SecureBlob& key,
+                              const brillo::SecureBlob& iv,
+                              brillo::SecureBlob* plaintext) {
+  CHECK_EQ(key.size(), kAesGcm256KeySize);
+  CHECK_EQ(iv.size(), kAesGcmIVSize);
+  CHECK_EQ(tag.size(), kAesGcmTagSize);
+
+  crypto::ScopedEVP_CIPHER_CTX ctx(EVP_CIPHER_CTX_new());
+  if (ctx.get() == nullptr) {
+    LOG(ERROR) << "Failed to create cipher ctx.";
+    return false;
+  }
+
+  if (EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_gcm(), nullptr, nullptr,
+                         nullptr) != 1) {
+    LOG(ERROR) << "Failed to init decrypt.";
+    return false;
+  }
+
+  if (EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_IVLEN, kAesGcmIVSize,
+                          nullptr) != 1) {
+    LOG(ERROR) << "Failed to set iv size.";
+    return false;
+  }
+
+  if (EVP_DecryptInit_ex(ctx.get(), nullptr, nullptr, key.data(), iv.data()) !=
+      1) {
+    LOG(ERROR) << "Failed to add key and iv to decrypt operation.";
+    return false;
+  }
+
+  plaintext->resize(ciphertext.size());
+  int output_size = 0;
+  if (EVP_DecryptUpdate(ctx.get(), plaintext->data(), &output_size,
+                        ciphertext.data(), ciphertext.size()) != 1) {
+    LOG(ERROR) << "Failed to decrypt the plaintext.";
+    return false;
+  }
+
+  if (output_size != ciphertext.size()) {
+    LOG(ERROR) << "Failed to process entire ciphertext.";
+    return false;
+  }
+
+  uint8_t* tag_ptr = const_cast<uint8_t*>(tag.data());
+  if (EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, tag.size(),
+                          tag_ptr) != 1) {
+    LOG(ERROR) << "Failed to set the tag.";
+    return false;
+  }
+
+  output_size = 0;
+  int ret_val = EVP_DecryptFinal_ex(ctx.get(), nullptr, &output_size);
+
+  return output_size == 0 && ret_val > 0;
+}
+
+bool CryptoLib::AesGcmEncrypt(const brillo::SecureBlob& plaintext,
+                              const brillo::SecureBlob& key,
+                              brillo::SecureBlob* iv,
+                              brillo::SecureBlob* tag,
+                              brillo::SecureBlob* ciphertext) {
+  CHECK_EQ(key.size(), kAesGcm256KeySize);
+
+  iv->resize(kAesGcmIVSize);
+  GetSecureRandom(iv->data(), kAesGcmIVSize);
+
+  crypto::ScopedEVP_CIPHER_CTX ctx(EVP_CIPHER_CTX_new());
+  if (ctx.get() == nullptr) {
+    LOG(ERROR) << "Failed to create context.";
+    return false;
+  }
+
+  if (EVP_EncryptInit_ex(ctx.get(), EVP_aes_256_gcm(), nullptr, nullptr,
+                         nullptr) != 1) {
+    LOG(ERROR) << "Failed to init aes-gcm-256.";
+    return false;
+  }
+
+  if (EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_IVLEN, kAesGcmIVSize,
+                          nullptr) != 1) {
+    LOG(ERROR) << "Failed to set IV length.";
+    return false;
+  }
+
+  if (EVP_EncryptInit_ex(ctx.get(), nullptr, nullptr, key.data(), iv->data()) !=
+      1) {
+    LOG(ERROR) << "Failed to init key and iv.";
+    return false;
+  }
+
+  ciphertext->resize(plaintext.size());
+  int processed_bytes = 0;
+  if (EVP_EncryptUpdate(ctx.get(), ciphertext->data(), &processed_bytes,
+                        plaintext.data(), plaintext.size()) != 1) {
+    LOG(ERROR) << "Failed to encrypt plaintext.";
+    return false;
+  }
+
+  if (plaintext.size() != processed_bytes) {
+    LOG(ERROR) << "Did not process the entire plaintext.";
+    return false;
+  }
+
+  int unused_output_length;
+  if (EVP_EncryptFinal_ex(ctx.get(), nullptr, &unused_output_length) != 1) {
+    LOG(ERROR) << "Failed to finalize encryption.";
+    return false;
+  }
+
+  tag->resize(kAesGcmTagSize);
+  if (EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, kAesGcmTagSize,
+                          tag->data()) != 1) {
+    LOG(ERROR) << "Failed to retrieve tag.";
+    return false;
   }
 
   return true;

@@ -113,4 +113,141 @@ TEST(CryptoLibTest, TestRocaVulnerable) {
   EXPECT_FALSE(CryptoLib::TestRocaVulnerable(good_modulus_bn.get()));
 }
 
+// This is not a known vector but a very simple test against the API.
+TEST(CryptoLibTest, AesGcmTestSimple) {
+  brillo::SecureBlob key(kAesGcm256KeySize);
+  brillo::SecureBlob iv(kAesGcmIVSize);
+  brillo::SecureBlob tag(kAesGcmTagSize);
+
+  brillo::SecureBlob ciphertext(4096, '\0');
+
+  std::string message = "I am encrypting this message.";
+  brillo::SecureBlob plaintext(message.begin(), message.end());
+
+  CryptoLib::GetSecureRandom(key.data(), key.size());
+
+  EXPECT_TRUE(CryptoLib::AesGcmEncrypt(plaintext, key, &iv, &tag, &ciphertext));
+
+  // Sanity check that the encryption actually did something.
+  EXPECT_NE(ciphertext, plaintext);
+  EXPECT_EQ(ciphertext.size(), plaintext.size());
+
+  brillo::SecureBlob decrypted_plaintext(4096);
+  EXPECT_TRUE(
+      CryptoLib::AesGcmDecrypt(ciphertext, tag, key, iv, &decrypted_plaintext));
+
+  EXPECT_EQ(plaintext, decrypted_plaintext);
+}
+
+TEST(CryptoLibTest, AesGcmTestWrongKey) {
+  brillo::SecureBlob key(kAesGcm256KeySize);
+  brillo::SecureBlob iv(kAesGcmIVSize);
+  brillo::SecureBlob tag(kAesGcmTagSize);
+
+  brillo::SecureBlob ciphertext(4096, '\0');
+
+  std::string message = "I am encrypting this message.";
+  brillo::SecureBlob plaintext(message.begin(), message.end());
+
+  CryptoLib::GetSecureRandom(key.data(), key.size());
+
+  EXPECT_TRUE(CryptoLib::AesGcmEncrypt(plaintext, key, &iv, &tag, &ciphertext));
+
+  // Sanity check that the encryption actually did something.
+  EXPECT_NE(ciphertext, plaintext);
+  EXPECT_EQ(ciphertext.size(), plaintext.size());
+
+  brillo::SecureBlob wrong_key(kAesGcm256KeySize);
+  CryptoLib::GetSecureRandom(wrong_key.data(), wrong_key.size());
+
+  brillo::SecureBlob decrypted_plaintext(4096);
+  EXPECT_FALSE(CryptoLib::AesGcmDecrypt(ciphertext, tag, wrong_key, iv,
+                                        &decrypted_plaintext));
+  EXPECT_NE(plaintext, decrypted_plaintext);
+}
+
+TEST(CryptoLibTest, AesGcmTestWrongIV) {
+  brillo::SecureBlob key(kAesGcm256KeySize);
+  brillo::SecureBlob iv(kAesGcmIVSize);
+  brillo::SecureBlob tag(kAesGcmTagSize);
+
+  brillo::SecureBlob ciphertext(4096, '\0');
+
+  std::string message = "I am encrypting this message.";
+  brillo::SecureBlob plaintext(message.begin(), message.end());
+
+  CryptoLib::GetSecureRandom(key.data(), key.size());
+
+  EXPECT_TRUE(CryptoLib::AesGcmEncrypt(plaintext, key, &iv, &tag, &ciphertext));
+
+  // Sanity check that the encryption actually did something.
+  EXPECT_NE(ciphertext, plaintext);
+  EXPECT_EQ(ciphertext.size(), plaintext.size());
+
+  brillo::SecureBlob wrong_iv(kAesGcmIVSize);
+  CryptoLib::GetSecureRandom(wrong_iv.data(), wrong_iv.size());
+
+  brillo::SecureBlob decrypted_plaintext(4096);
+  EXPECT_FALSE(CryptoLib::AesGcmDecrypt(ciphertext, tag, key, wrong_iv,
+                                        &decrypted_plaintext));
+  EXPECT_NE(plaintext, decrypted_plaintext);
+}
+
+TEST(CryptoLibTest, AesGcmTestWrongTag) {
+  brillo::SecureBlob key(kAesGcm256KeySize);
+  brillo::SecureBlob iv(kAesGcmIVSize);
+  brillo::SecureBlob tag(kAesGcmTagSize);
+
+  brillo::SecureBlob ciphertext(4096, '\0');
+
+  std::string message = "I am encrypting this message.";
+  brillo::SecureBlob plaintext(message.begin(), message.end());
+
+  CryptoLib::GetSecureRandom(key.data(), key.size());
+
+  EXPECT_TRUE(CryptoLib::AesGcmEncrypt(plaintext, key, &iv, &tag, &ciphertext));
+
+  // Sanity check that the encryption actually did something.
+  EXPECT_NE(ciphertext, plaintext);
+  EXPECT_EQ(ciphertext.size(), plaintext.size());
+
+  brillo::SecureBlob wrong_tag(kAesGcmTagSize);
+  CryptoLib::GetSecureRandom(wrong_tag.data(), wrong_tag.size());
+
+  brillo::SecureBlob decrypted_plaintext(4096);
+  EXPECT_FALSE(CryptoLib::AesGcmDecrypt(ciphertext, wrong_tag, key, iv,
+                                        &decrypted_plaintext));
+}
+
+// This tests that AesGcmEncrypt produces a different IV on subsequent runs.
+// Note that this is in no way a mathematical test of secure randomness. It
+// makes sure nobody in the future, for some reason, changes AesGcmEncrypt to
+// use a fixed IV without tests failing, at which point they will find this
+// test, and see that AesGcmEncrypt *must* return random IVs.
+TEST(CryptoLibTest, AesGcmTestUniqueIVs) {
+  brillo::SecureBlob key(kAesGcm256KeySize);
+  brillo::SecureBlob tag(kAesGcmTagSize);
+
+  brillo::SecureBlob ciphertext(4096, '\0');
+
+  std::string message = "I am encrypting this message.";
+  brillo::SecureBlob plaintext(message.begin(), message.end());
+
+  CryptoLib::GetSecureRandom(key.data(), key.size());
+
+  brillo::SecureBlob iv(kAesGcmIVSize);
+  EXPECT_TRUE(CryptoLib::AesGcmEncrypt(plaintext, key, &iv, &tag, &ciphertext));
+
+  brillo::SecureBlob iv2(kAesGcmIVSize);
+  EXPECT_TRUE(
+      CryptoLib::AesGcmEncrypt(plaintext, key, &iv2, &tag, &ciphertext));
+
+  brillo::SecureBlob iv3(kAesGcmIVSize);
+  EXPECT_TRUE(
+      CryptoLib::AesGcmEncrypt(plaintext, key, &iv3, &tag, &ciphertext));
+
+  EXPECT_NE(iv, iv2);
+  EXPECT_NE(iv, iv3);
+}
+
 }  // namespace cryptohome
