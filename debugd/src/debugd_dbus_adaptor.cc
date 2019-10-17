@@ -569,9 +569,12 @@ bool DebugdDBusAdaptor::EvaluateProbeFunction(
           error, sandbox_info, probe_statement, outfd);
 }
 
-bool DebugdDBusAdaptor::GetManufactureDate(
-    brillo::ErrorPtr* error, brillo::dbus_utils::FileDescriptor* outfd) {
-  return cros_healthd_tool_->GetManufactureDate(error, outfd);
+bool DebugdDBusAdaptor::CollectSmartBatteryMetric(
+    brillo::ErrorPtr* error,
+    const std::string& metric_name,
+    brillo::dbus_utils::FileDescriptor* outfd) {
+  return cros_healthd_tool_->CollectSmartBatteryMetric(error, metric_name,
+                                                       outfd);
 }
 
 }  // namespace debugd

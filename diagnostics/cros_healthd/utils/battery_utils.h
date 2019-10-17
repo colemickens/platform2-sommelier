@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_UTILS_BATTERY_UTILS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_UTILS_BATTERY_UTILS_H_
 
+#include <string>
 #include <vector>
 
 #include <base/macros.h>
@@ -30,10 +31,18 @@ class BatteryFetcher {
   std::vector<BatteryInfoPtr> FetchBatteryInfo();
 
  private:
-  // This is a temporary hack enabling the battery_prober to provide smart
-  // battery metrics on Sona devices. The proper way to do this will take some
-  // planning. Details will be tracked here: https://crbug.com/978615.
-  bool FetchManufactureDateSmart(int64_t* manufacture_date_smart);
+  // Currently, the battery_prober provides the manufacture_date_smart and
+  // temperature_smart property on Sona and Careena devices. Eventualy, this
+  // property will be reported for all devices. Details will be tracked here:
+  // https://crbug.com/978615. The |metric_name| identifies the smart battery
+  // metric cros_healthd wants to request from debugd. Once debugd retrieves
+  // this value via ectool, it populates |smart_metric|.
+  template <typename T>
+  bool FetchSmartBatteryMetric(
+      const std::string& metric_name,
+      T* smart_metric,
+      base::OnceCallback<bool(const base::StringPiece& input, T* output)>
+          convert_string_to_num);
 
   // Make a D-Bus call to get the PowerSupplyProperties proto, which contains
   // the battery metrics.

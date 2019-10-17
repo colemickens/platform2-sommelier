@@ -205,8 +205,10 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
       const std::string& sandbox_info,
       const std::string& probe_statement,
       brillo::dbus_utils::FileDescriptor* outfd) override;
-  bool GetManufactureDate(brillo::ErrorPtr* error,
-                          brillo::dbus_utils::FileDescriptor* outfd) override;
+  bool CollectSmartBatteryMetric(
+      brillo::ErrorPtr* error,
+      const std::string& metric_name,
+      brillo::dbus_utils::FileDescriptor* outfd) override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;

@@ -6,6 +6,7 @@
 
 #include <fcntl.h>
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -17,9 +18,11 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
+#include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/values.h>
 #include <brillo/errors/error_codes.h>
 #include <build/build_config.h>
@@ -30,7 +33,6 @@
 #include "debugd/src/error_utils.h"
 #include "debugd/src/sandboxed_process.h"
 
-#include <base/process/launch.h>
 #include <re2/re2.h>
 using base::ListValue;
 
@@ -42,6 +44,24 @@ constexpr char kSandboxDirPath[] = "/usr/share/policy/";
 constexpr char kBinary[] = "/usr/libexec/diagnostics/cros_healthd_helper";
 constexpr char kRunAs[] = "healthd_ec";
 constexpr char kCrosHealthdSeccompPolicy[] = "ectool_i2cread-seccomp.policy";
+// The ectool command below follows the format:
+// ectool i2cread <num_bits> <port> <addr8> <offset>
+// Note that <num_bits> can either be 8 or 16.
+
+typedef std::map<std::string, std::vector<std::string>> MetricToEctoolArgs;
+typedef std::map<std::string, MetricToEctoolArgs> ModelNameToMetric;
+const ModelNameToMetric kModelToEctoolArgs = {
+    {"sona",
+     {{"temperature_smart",
+       {"/usr/sbin/ectool", "i2cread", "16", "2", "0x16", "0x08"}},
+      {"manufacture_date_smart",
+       {"/usr/sbin/ectool", "i2cread", "16", "2", "0x16", "0x1b"}}}},
+    {"careena",
+     {{"temperature_smart",
+       {"/usr/sbin/ectool", "i2cread", "16", "0", "0x16", "0x08"}},
+      {"manufacture_date_smart",
+       {"/usr/sbin/ectool", "i2cread", "16", "0", "0x16", "0x1b"}}}}};
+
 bool CreateNonblockingPipe(base::ScopedFD* read_fd, base::ScopedFD* write_fd) {
   int pipe_fd[2];
   int ret = pipe2(pipe_fd, O_CLOEXEC | O_NONBLOCK);
@@ -54,10 +74,20 @@ bool CreateNonblockingPipe(base::ScopedFD* read_fd, base::ScopedFD* write_fd) {
   return true;
 }
 
+bool GetModelName(std::string* model_name) {
+  if (!base::GetAppOutputAndError({"cros_config", "/", "name"}, model_name)) {
+    LOG(ERROR) << "Failed to run cros_config: " << model_name->c_str();
+    return false;
+  }
+  return true;
+}
+
 }  // namespace
 
-bool CrosHealthdTool::GetManufactureDate(
-    brillo::ErrorPtr* error, brillo::dbus_utils::FileDescriptor* outfd) {
+bool CrosHealthdTool::CollectSmartBatteryMetric(
+    brillo::ErrorPtr* error,
+    const std::string& metric_name,
+    brillo::dbus_utils::FileDescriptor* outfd) {
   std::unique_ptr<brillo::Process> process;
 
   std::unique_ptr<SandboxedProcess> sandboxed_process{new SandboxedProcess()};
@@ -98,7 +128,36 @@ bool CrosHealthdTool::GetManufactureDate(
     return false;
   }
 
+  std::string model_name;
+  if (!GetModelName(&model_name))
+    return false;
+  if (model_name != "sona" && model_name != "careena") {
+    LOG(ERROR) << "Failed to access smart battery properties for "
+               << model_name;
+    return false;
+  }
+
+  std::string ectool_command;
+  auto it = kModelToEctoolArgs.find(model_name);
+  if (it != kModelToEctoolArgs.end()) {
+    const MetricToEctoolArgs& metric_to_ectool_args = it->second;
+    auto inner_it = metric_to_ectool_args.find(metric_name);
+    if (inner_it != metric_to_ectool_args.end()) {
+      const std::vector<std::string>& ectool_args = inner_it->second;
+      ectool_command = base::JoinString(ectool_args, " ");
+    } else {
+      LOG(ERROR) << "Failed to find ectool command for model: " << model_name
+                 << " and metric: " << metric_name;
+      return false;
+    }
+  } else {
+    LOG(ERROR) << "Failed to find information about metric: " << metric_name
+               << " for model: " << model_name;
+    return false;
+  }
+
   process->AddArg(kBinary);
+  process->AddArg(ectool_command);
   process->BindFd(write_fd.get(), STDOUT_FILENO);
   process->Start();
   process->Release();

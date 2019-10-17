@@ -18,8 +18,9 @@ class CrosHealthdTool {
   CrosHealthdTool() = default;
   ~CrosHealthdTool() = default;
 
-  bool GetManufactureDate(brillo::ErrorPtr* error,
-                          brillo::dbus_utils::FileDescriptor* outfd);
+  bool CollectSmartBatteryMetric(brillo::ErrorPtr* error,
+                                 const std::string& metric_name,
+                                 brillo::dbus_utils::FileDescriptor* outfd);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CrosHealthdTool);

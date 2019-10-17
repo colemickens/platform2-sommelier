@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/process/launch.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
@@ -32,6 +33,8 @@ BatteryFetcher::BatteryFetcher(org::chromium::debugdProxyInterface* proxy)
 BatteryFetcher::~BatteryFetcher() = default;
 
 namespace {
+constexpr char kManufactureDateSmart[] = "manufacture_date_smart";
+constexpr char kTemperatureSmart[] = "temperature_smart";
 enum class PipeState {
   PENDING,  // Bytes are currently being written to the destination string
   ERROR,    // Failed to succesfully read bytes from source file descriptor
@@ -95,15 +98,18 @@ bool ReadNonblockingPipeToString(int fd, std::string* out) {
 
 }  // namespace
 
-// Currently, the battery_prober provides the manufacture_date_smart property
-// only on Sona devices. Eventually, this property will be reported for all
-// devices. Details will be tracked here: https://crbug.com/978615.
-bool BatteryFetcher::FetchManufactureDateSmart(
-    int64_t* manufacture_date_smart) {
-  constexpr auto kDebugdEcToolFunction = "GetManufactureDate";
-  dbus::MethodCall method_call(debugd::kDebugdInterface, kDebugdEcToolFunction);
+template <typename T>
+bool BatteryFetcher::FetchSmartBatteryMetric(
+    const std::string& metric_name,
+    T* smart_metric,
+    base::OnceCallback<bool(const base::StringPiece& input, T* output)>
+        convert_string_to_num) {
+  constexpr auto kDebugdSmartBatteryFunction = "CollectSmartBatteryMetric";
+  dbus::MethodCall method_call(debugd::kDebugdInterface,
+                               kDebugdSmartBatteryFunction);
 
   dbus::MessageWriter writer(&method_call);
+  writer.AppendString(metric_name);
 
   // In milliseconds, the time to wait for a debugd call.
   constexpr base::TimeDelta kDebugdTimeOut =
@@ -114,7 +120,7 @@ bool BatteryFetcher::FetchManufactureDateSmart(
 
   if (!response) {
     LOG(ERROR) << "Failed to issue D-Bus call to method "
-               << kDebugdEcToolFunction << " of debugd D-Bus interface";
+               << kDebugdSmartBatteryFunction << " of debugd D-Bus interface";
     return false;
   }
 
@@ -132,7 +138,7 @@ bool BatteryFetcher::FetchManufactureDateSmart(
     return false;
   }
 
-  base::StringToInt64(debugd_result, manufacture_date_smart);
+  std::move(convert_string_to_num).Run(debugd_result, smart_metric);
   return true;
 }
 
@@ -174,10 +180,34 @@ bool BatteryFetcher::ExtractBatteryMetrics(dbus::Response* response,
       power_supply_proto.has_battery_voltage_min_design()
           ? power_supply_proto.battery_voltage_min_design()
           : 0.0;
+  info.model_name = power_supply_proto.has_battery_model_name()
+                        ? power_supply_proto.battery_model_name()
+                        : "";
+  info.charge_now = power_supply_proto.has_battery_charge()
+                        ? power_supply_proto.battery_charge()
+                        : 0;
   int64_t manufacture_date_smart;
+  base::OnceCallback<bool(const base::StringPiece& input, int64_t* output)>
+      convert_string_to_int =
+          base::BindOnce([](const base::StringPiece& input, int64_t* output) {
+            return base::StringToInt64(input, output);
+          });
   info.manufacture_date_smart =
-      FetchManufactureDateSmart(&manufacture_date_smart)
+      FetchSmartBatteryMetric<int64_t>(kManufactureDateSmart,
+                                       &manufacture_date_smart,
+                                       std::move(convert_string_to_int))
           ? manufacture_date_smart
+          : 0;
+  uint64_t temperature_smart;
+  base::OnceCallback<bool(const base::StringPiece& input, uint64_t* output)>
+      convert_string_to_uint =
+          base::BindOnce([](const base::StringPiece& input, uint64_t* output) {
+            return base::StringToUint64(input, output);
+          });
+  info.temperature_smart =
+      FetchSmartBatteryMetric<uint64_t>(kTemperatureSmart, &temperature_smart,
+                                        std::move(convert_string_to_uint))
+          ? temperature_smart
           : 0;
 
   *output_info = info.Clone();
