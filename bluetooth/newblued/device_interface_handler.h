@@ -271,7 +271,8 @@ class DeviceInterfaceHandler {
       dbus::Message* message);
   void HandleSetLEConnectionParameters(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-      dbus::Message* message);
+      dbus::Message* message,
+      const brillo::VariantDictionary& parameters);
 
   // TODO(mcchou): Handle the rest of the D-Bus methods of the device interface.
   // ConnectProfile() - No op, but we may need dummy implementation later.
@@ -333,6 +334,10 @@ class DeviceInterfaceHandler {
                           PairError pair_error,
                           const std::string& identity_address);
 
+  bool ParseAndSaveConnectionParameters(
+      const std::string& device_address,
+      const struct GattConnectParameters parameters);
+
   scoped_refptr<dbus::Bus> bus_;
   Newblue* newblue_;
   ExportedObjectManagerWrapper* exported_object_manager_wrapper_;
@@ -355,6 +360,8 @@ class DeviceInterfaceHandler {
   std::map<std::string, struct Connection> connections_;
   // Contains pairs of <device address, connection attempt>.
   std::map<std::string, gatt_client_conn_t> connection_attempts_;
+  // Contains pairs of <device address, connection parameters>.
+  std::map<std::string, struct GattConnectParameters> connection_parameters_;
 
   base::ObserverList<DeviceObserver> observers_;
 
