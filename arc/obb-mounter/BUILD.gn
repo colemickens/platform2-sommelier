@@ -13,6 +13,9 @@ group("all") {
   if (use.test) {
     deps += [ ":arc-obb-mounter_testrunner" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":mount-obb_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults_pkg_config") {
@@ -32,6 +35,7 @@ config("target_defaults") {
 static_library("libmount_obb") {
   configs += [ ":target_defaults" ]
   sources = [
+    "mount_obb_lib.cc",
     "util.cc",
     "volume.cc",
   ]
@@ -49,7 +53,7 @@ executable("arc-obb-mounter") {
 executable("mount-obb") {
   configs += [ ":target_defaults" ]
   sources = [
-    "mount_obb.cc",
+    "mount_obb_commandline.cc",
   ]
   deps = [
     ":libmount_obb",
@@ -135,6 +139,21 @@ if (use.test) {
     ]
     sources = [
       "util_test.cc",
+    ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("mount-obb_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "mount_obb_fuzzer.cc",
+    ]
+    deps = [
+      ":libmount_obb",
     ]
   }
 }
