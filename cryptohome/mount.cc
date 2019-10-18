@@ -74,16 +74,19 @@ const int kKeyFileMax = 100;  // master.0 ... master.99
 const mode_t kKeyFilePermissions = 0600;
 const char kKeyLegacyPrefix[] = "legacy-";
 
-void StartUserFileAttrsCleanerService(const std::string& username) {
-  brillo::ProcessImpl file_attrs;
-  file_attrs.AddArg("/sbin/initctl");
-  file_attrs.AddArg("start");
-  file_attrs.AddArg("--no-wait");
-  file_attrs.AddArg("file_attrs_cleaner_tool");
-  file_attrs.AddArg(
+void StartUserFileAttrsCleanerService(cryptohome::Platform* platform,
+                                      const std::string& username) {
+  std::unique_ptr<brillo::Process> file_attrs =
+      platform->CreateProcessInstance();
+
+  file_attrs->AddArg("/sbin/initctl");
+  file_attrs->AddArg("start");
+  file_attrs->AddArg("--no-wait");
+  file_attrs->AddArg("file_attrs_cleaner_tool");
+  file_attrs->AddArg(
       base::StringPrintf("OBFUSCATED_USERNAME=%s", username.c_str()));
 
-  if (file_attrs.Run() != 0)
+  if (file_attrs->Run() != 0)
     PLOG(WARNING) << "Error while running file_attrs_cleaner_tool";
 }
 
@@ -616,7 +619,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   }
 
   // Start file attribute cleaner service.
-  StartUserFileAttrsCleanerService(obfuscated_username);
+  StartUserFileAttrsCleanerService(platform_, obfuscated_username);
 
   // TODO(fqj,b/116072767) Ignore errors since unlabeled files are currently
   // still okay during current development progress.

@@ -15,6 +15,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/time/time.h>
+#include <brillo/process_mock.h>
 #include <gmock/gmock.h>
 
 #include "cryptohome/platform.h"
@@ -120,6 +121,10 @@ class MockPlatform : public Platform {
                (std::multimap<const base::FilePath, const base::FilePath>*)),
               (override));
   MOCK_METHOD(bool, IsDirectoryMounted, (const base::FilePath&), (override));
+  MOCK_METHOD(std::unique_ptr<brillo::Process>,
+              CreateProcessInstance,
+              (),
+              (override));
   MOCK_METHOD(void,
               GetProcessesWithOpenFiles,
               (const base::FilePath&, std::vector<ProcessInformation>*),
@@ -389,8 +394,16 @@ class MockPlatform : public Platform {
               (override));
 
   MockFileEnumerator* mock_enumerator() { return mock_enumerator_.get(); }
+  brillo::ProcessMock* mock_process() { return mock_process_.get(); }
 
  private:
+  std::unique_ptr<brillo::Process> MockCreateProcessInstance() {
+    auto res = std::move(mock_process_);
+    mock_process_ =
+        std::make_unique<::testing::NiceMock<brillo::ProcessMock>>();
+    return res;
+  }
+
   bool MockGetOwnership(const base::FilePath& path,
                         uid_t* user_id,
                         gid_t* group_id,
@@ -424,7 +437,9 @@ class MockPlatform : public Platform {
     mock_enumerator_->entries_.assign(e->entries_.begin(), e->entries_.end());
     return e;
   }
+
   std::unique_ptr<MockFileEnumerator> mock_enumerator_;
+  std::unique_ptr<brillo::ProcessMock> mock_process_;
 };
 
 }  // namespace cryptohome

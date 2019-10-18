@@ -22,6 +22,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
+#include <brillo/process.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
 
@@ -198,14 +199,18 @@ class Platform {
   //   directory - The directory to check
   virtual bool IsDirectoryMounted(const base::FilePath& directory);
 
+  // Returns an instance of class brillo::Process that can be mocked out in
+  // tests.
+  virtual std::unique_ptr<brillo::Process> CreateProcessInstance();
 
   // GetProcessesWithOpenFiles
   //
   // Parameters
   //   path - The path to check if the process has open files on
   //   pids (OUT) - The PIDs found
-  virtual void GetProcessesWithOpenFiles(const base::FilePath& path_in,
-                                 std::vector<ProcessInformation>* processes);
+  virtual void GetProcessesWithOpenFiles(
+      const base::FilePath& path_in,
+      std::vector<ProcessInformation>* processes);
 
   // Calls the platform stat() or lstat() function to obtain the ownership of
   // a given path. The path may be a directory or a file.

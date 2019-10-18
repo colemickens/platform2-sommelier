@@ -47,6 +47,7 @@
 #include <base/files/file_util.h>
 #include <base/location.h>
 #include <base/logging.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -294,6 +295,10 @@ void Platform::LazyUnmount(const FilePath& path) {
       PLOG(ERROR) << "Lazy unmount failed";
     }
   }
+}
+
+std::unique_ptr<brillo::Process> Platform::CreateProcessInstance() {
+  return std::make_unique<brillo::ProcessImpl>();
 }
 
 void Platform::GetProcessesWithOpenFiles(
@@ -1268,12 +1273,16 @@ bool Platform::FormatExt4(const base::FilePath& file,
   if (blocks != 0)
     format_process.AddArg(std::to_string(blocks));
 
+  // No need to emit output.
+  format_process.AddArg("-q");
+
   // Close unused file descriptors in child process.
   format_process.SetCloseUnusedFileDescriptors(true);
 
   int rc = format_process.Run();
   if (rc != 0) {
-    LOG(ERROR) << "Can't format ext4: " << file.value() << ", error: " << rc;
+    LOG(ERROR) << "Can't format '" << file.value()
+               << "' as ext4, exit status: " << rc;
     return false;
   }
 

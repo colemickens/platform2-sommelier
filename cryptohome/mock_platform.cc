@@ -12,7 +12,8 @@ using testing::Return;
 namespace cryptohome {
 
 MockPlatform::MockPlatform()
-    : mock_enumerator_(new NiceMock<MockFileEnumerator>()) {
+    : mock_enumerator_(new NiceMock<MockFileEnumerator>()),
+      mock_process_(new NiceMock<brillo::ProcessMock>()) {
   ON_CALL(*this, GetOwnership(_, _, _, _))
       .WillByDefault(Invoke(this, &MockPlatform::MockGetOwnership));
   ON_CALL(*this, SetOwnership(_, _, _, _)).WillByDefault(Return(true));
@@ -62,6 +63,8 @@ MockPlatform::MockPlatform()
       .WillByDefault(Return(true));
   ON_CALL(*this, GetDirCryptoKeyState(_))
       .WillByDefault(Return(dircrypto::KeyState::NO_KEY));
+  ON_CALL(*this, CreateProcessInstance())
+      .WillByDefault(Invoke(this, &MockPlatform::MockCreateProcessInstance));
 }
 
 MockPlatform::~MockPlatform() {}
