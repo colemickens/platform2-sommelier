@@ -108,11 +108,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   if (!form_stream)
     return 0;
 
-  uint8_t buffer[512];
-  size_t size_read;
+  // We need to use a decent sized buffer and call ReadAllBlocking to avoid
+  // excess overhead with reading here that can make the fuzzer timeout.
+  uint8_t buffer[32768];
   while (form_stream->GetRemainingSize() > 0) {
-    if (!form_stream->ReadBlocking(buffer, sizeof(buffer), &size_read,
-                                   nullptr)) {
+    if (!form_stream->ReadAllBlocking(buffer, sizeof(buffer), nullptr)) {
       // If there's an error reading from the stream, then bail since we'd
       // likely just see repeated errors and never exit.
       break;
