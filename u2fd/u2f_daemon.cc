@@ -215,8 +215,13 @@ int U2fDaemon::StartService() {
     return EX_PROTOCOL;
   }
 
-  CreateU2fMsgHandler(u2f_mode ==
-                      U2fMode::kU2fExtended /* Allow G2F Attestation */);
+  // If g2f is enabled by policy, we always include allowlisting data.
+  bool include_g2f_allowlist_data =
+      g2f_allowlist_data_ || (ReadU2fPolicy() == U2fMode::kU2fExtended);
+
+  CreateU2fMsgHandler(
+      u2f_mode == U2fMode::kU2fExtended /* Allow G2F Attestation */,
+      include_g2f_allowlist_data);
   CreateU2fHid();
 
   return u2fhid_->Init() ? EX_OK : EX_PROTOCOL;
@@ -274,7 +279,8 @@ void U2fDaemon::RegisterDBusU2fInterface() {
   dbus_object_->RegisterAndBlock();
 }
 
-void U2fDaemon::CreateU2fMsgHandler(bool allow_g2f_attestation) {
+void U2fDaemon::CreateU2fMsgHandler(bool allow_g2f_attestation,
+                                    bool include_g2f_allowlisting_data) {
   auto user_state = std::make_unique<u2f::UserState>(
       sm_proxy_.get(), legacy_kh_fallback_ ? kLegacyKhCounterMin : 0);
 
@@ -284,7 +290,7 @@ void U2fDaemon::CreateU2fMsgHandler(bool allow_g2f_attestation) {
   };
 
   auto allowlisting_util =
-      g2f_allowlist_data_
+      include_g2f_allowlisting_data
           ? std::make_unique<u2f::AllowlistingUtil>([this](int cert_size) {
               return GetCertifiedG2fCert(cert_size);
             })

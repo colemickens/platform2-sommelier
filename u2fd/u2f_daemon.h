@@ -64,7 +64,8 @@ class U2fDaemon : public brillo::Daemon {
   void RegisterDBusU2fInterface();
 
   // Helpers to create these members.
-  void CreateU2fMsgHandler(bool allow_g2f_attestation);
+  void CreateU2fMsgHandler(bool allow_g2f_attestation,
+                           bool include_g2f_allowlisting_data);
   void CreateU2fHid();
 
   // Sets the vendor mode in cr50, if applicable, based on U2F mode.
