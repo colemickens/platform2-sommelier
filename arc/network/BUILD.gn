@@ -12,7 +12,10 @@ group("all") {
     ":libarcnetwork-util",
   ]
   if (use.fuzzer) {
-    deps += [ ":multicast_forwarder_fuzzer" ]
+    deps += [
+      ":multicast_forwarder_fuzzer",
+      ":ndproxy_fuzzer",
+    ]
   }
   if (use.test) {
     deps += [ ":arc_network_testrunner" ]
@@ -113,6 +116,20 @@ if (use.fuzzer) {
     ]
     sources = [
       "multicast_forwarder_fuzzer.cc",
+    ]
+    deps = [
+      ":libarcnetwork",
+    ]
+  }
+
+  executable("ndproxy_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+      ":fuzzing_config",
+    ]
+    sources = [
+      "ndproxy_fuzzer.cc",
     ]
     deps = [
       ":libarcnetwork",
