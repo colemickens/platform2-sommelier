@@ -44,7 +44,10 @@ group("all") {
     deps += [ ":dump_intel_rapl_consumption" ]
   }
   if (use.fuzzer) {
-    deps += [ ":ambient_light_handler_fuzzer" ]
+    deps += [
+      ":ambient_light_handler_fuzzer",
+      ":internal_backlight_controller_fuzzer",
+    ]
   }
 }
 
@@ -351,7 +354,7 @@ if (use.buffet) {
   }
 }
 
-if (use.test) {
+if (use.fuzzer || use.test) {
   static_library("libutil_test") {
     configs += [ ":target_defaults" ]
     sources = [
@@ -362,7 +365,9 @@ if (use.test) {
       "common/test_main_loop_runner.cc",
     ]
   }
+}
 
+if (use.test) {
   executable("power_manager_util_test") {
     configs += [
       "//common-mk:test",
@@ -492,6 +497,12 @@ if (use.amd64) {
 }
 
 if (use.fuzzer) {
+  static_library("libpolicy_test") {
+    configs += [ ":target_defaults" ]
+    sources = [
+      "powerd/policy/ambient_light_pref_fuzz_util.cc",
+    ]
+  }
   executable("ambient_light_handler_fuzzer") {
     configs += [
       "//common-mk/common_fuzzer",
@@ -501,8 +512,24 @@ if (use.fuzzer) {
       "powerd/policy/ambient_light_handler_fuzzer.cc",
     ]
     deps = [
+      ":libpolicy_test",
       ":libpowerd",
       ":libsystem_stub",
+    ]
+  }
+  executable("internal_backlight_controller_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "powerd/policy/internal_backlight_controller_fuzzer.cc",
+    ]
+    deps = [
+      ":libpolicy_test",
+      ":libpowerd",
+      ":libsystem_stub",
+      ":libutil_test",
     ]
   }
 }

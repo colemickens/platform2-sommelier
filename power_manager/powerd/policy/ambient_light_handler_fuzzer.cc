@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "power_manager/powerd/policy/ambient_light_handler.h"
+#include "power_manager/powerd/policy/ambient_light_pref_fuzz_util.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 
 class Environment {
@@ -58,43 +59,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   constexpr int kLuxMax = 20000;
 
-  // Generate ambient light steps pref
-
-  int num_step = data_provider.ConsumeIntegralInRange<int>(1, 10);
-
-  std::vector<double> ac;     // AC brightness in percent
-  std::vector<double> dc;     // DC brightness in percent
-  std::vector<int> lux;       // lux to use in lux_up / lux_down
-  std::vector<int> lux_up;    // lux to step up
-  std::vector<int> lux_down;  // lux to step down
-
-  for (int i = 0; i < num_step; i++) {
-    ac.push_back(data_provider.ConsumeFloatingPointInRange<double>(0.01, 100));
-    dc.push_back(data_provider.ConsumeFloatingPointInRange<double>(0.01, 100));
-  }
-  std::sort(ac.begin(), ac.end());
-  std::sort(dc.begin(), dc.end());
-
-  for (int i = 1; i < num_step; i++) {
-    lux.push_back(data_provider.ConsumeIntegralInRange<int>(0, kLuxMax));
-    lux.push_back(data_provider.ConsumeIntegralInRange<int>(0, kLuxMax));
-  }
-  std::sort(lux.begin(), lux.end());
-
-  lux_down.push_back(-1);  // Can't step down at lowest level
-  for (int i = 0; i < num_step - 1; i++) {
-    // lux_downdown[i+1] should be less than or equal to lux_up[i]
-    lux_down.push_back(lux[i * 2]);
-    lux_up.push_back(lux[i * 2 + 1]);
-  }
-  lux_up.push_back(-1);  // Can't step up at highest level
-
-  std::string pref;
-  for (int i = 0; i < num_step; i++) {
-    base::StringAppendF(&pref, "%0.2f %0.2f %d %d\n", ac[i], dc[i], lux_down[i],
-                        lux_up[i]);
-  }
-  pref.erase(pref.length() - 1);  // remove trailing new line
+  std::string pref =
+      power_manager::policy::test::GenerateAmbientLightPref(&data_provider);
 
   double initial_brightness_percent =
       data_provider.ConsumeFloatingPointInRange<double>(0, 100);
