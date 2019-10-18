@@ -47,8 +47,9 @@ bool ParseMimeTypes(const std::string& file_name, MimeTypeMap* out_mime_types) {
         base::SPLIT_WANT_NONEMPTY);
     if (tokens.size() < 2)
       continue;
+    std::string base_token = tokens[0].as_string();
     for (int i = 1; i < tokens.size(); ++i) {
-      (*out_mime_types)[tokens[i].as_string()] = tokens[0].as_string();
+      (*out_mime_types)[tokens[i].as_string()] = base_token;
     }
   }
 
