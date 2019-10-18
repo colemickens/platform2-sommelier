@@ -46,12 +46,15 @@ const int kSyslogCritical = LOG_CRIT;
 #include "vm_tools/garcon/service_impl.h"
 
 constexpr char kLogPrefix[] = "garcon: ";
+constexpr char kAllowAnyUserSwitch[] = "allow_any_user";
 constexpr char kServerSwitch[] = "server";
 constexpr char kClientSwitch[] = "client";
 constexpr char kUrlSwitch[] = "url";
 constexpr char kTerminalSwitch[] = "terminal";
 constexpr uint32_t kVsockPortStart = 10000;
 constexpr uint32_t kVsockPortEnd = 20000;
+
+constexpr uid_t kCrostiniDefaultUid = 1000;
 
 bool LogToSyslog(logging::LogSeverity severity,
                  const char* /* file */,
@@ -152,7 +155,9 @@ void PrintUsage() {
             << "  --server: run in background as daemon\n"
             << "  --client: run as client and send message to host\n"
             << "Client Switches (only with --client):\n"
-            << "  --url: opens all arguments as URLs in host browser\n";
+            << "  --url: opens all arguments as URLs in host browser\n"
+            << "Server Switches (only with --server):\n"
+            << "  --allow_any_user: allow running as non-default uid\n";
 }
 
 int main(int argc, char** argv) {
@@ -206,6 +211,13 @@ int main(int argc, char** argv) {
   // Set up logging to syslog for server mode.
   openlog(kLogPrefix, LOG_PID, LOG_DAEMON);
   logging::SetLogMessageHandler(LogToSyslog);
+
+  // Exit if not running as the container default user.
+  if (getuid() != kCrostiniDefaultUid && !cl->HasSwitch(kAllowAnyUserSwitch)) {
+    LOG(ERROR) << "garcon normally runs only as uid(" << kCrostiniDefaultUid
+               << "). Use --allow_any_user to override";
+    return -1;
+  }
 
   // Note on threading model. There are 4 threads used in garcon. One is for the
   // incoming gRPC requests. One is for the D-Bus communication with the
