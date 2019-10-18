@@ -23,7 +23,10 @@ group("all") {
     ]
   }
   if (use.fuzzer) {
-    deps += [ ":crash_sender_fuzzer" ]
+    deps += [
+      ":anomaly_detector_fuzzer",
+      ":crash_sender_fuzzer",
+    ]
   }
 }
 
@@ -320,6 +323,17 @@ if (use.fuzzer) {
     ]
     sources = [
       "crash_sender_fuzzer.cc",
+    ]
+  }
+
+  executable("anomaly_detector_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":anomaly_detector_config",
+    ]
+    sources = [
+      "anomaly_detector.cc",
+      "anomaly_detector_fuzzer.cc",
     ]
   }
 }

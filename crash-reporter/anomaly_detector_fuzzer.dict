@@ -1,0 +1,23 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Parser hotwords
+"scontext="
+"tcontext="
+"comm="
+"name="
+"avc:"
+"(crash_reporter)"
+"WARNING:"
+"process ("
+") terminated with status"
+"arc-"
+"granted"
+"------------[ cut here"
+"---[ end trace"
+"has RLIMIT_CORE set to"
+"CPU: "
+"PID:"
+"at"
+"Error writing to /sys/power/state:"
