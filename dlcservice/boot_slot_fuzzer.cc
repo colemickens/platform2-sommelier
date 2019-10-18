@@ -4,10 +4,10 @@
 
 #include <fuzzer/FuzzedDataProvider.h>
 
+#include <base/logging.h>
+
 #include "dlcservice/boot_device.h"
 #include "dlcservice/boot_slot.h"
-
-#include <base/logging.h>
 
 namespace dlcservice {
 
