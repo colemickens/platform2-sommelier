@@ -12,6 +12,9 @@ group("all") {
   if (use.test) {
     deps += [ ":vpn_manager_test" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":vpn_manager_service_manager_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -65,6 +68,19 @@ if (use.test) {
     ]
     deps = [
       ":libl2tpipsec_vpn",
+    ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("vpn_manager_service_manager_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "service_manager.cc",
+      "service_manager_fuzzer.cc",
     ]
   }
 }
