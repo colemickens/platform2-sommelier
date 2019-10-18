@@ -280,8 +280,10 @@ class Newblue {
   bool RegisterGattClientConnectCallback(GattClientConnectCallback callback);
   void UnregisterGattClientConnectCallback();
   // Connects as a GATT client to a peer device.
-  gatt_client_conn_t GattClientConnect(const std::string& device_address,
-                                       bool is_random_address);
+  gatt_client_conn_t GattClientConnect(
+      const std::string& device_address,
+      bool is_random_address,
+      const struct GattConnectParameters* connection_parameters);
   // Disconnects from a peer device.
   GattClientOperationStatus GattClientDisconnect(gatt_client_conn_t conn_id);
 

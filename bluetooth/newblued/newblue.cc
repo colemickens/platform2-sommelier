@@ -212,13 +212,14 @@ void Newblue::UnregisterGattClientConnectCallback() {
   gatt_client_connect_callback_.Reset();
 }
 
-gatt_client_conn_t Newblue::GattClientConnect(const std::string& device_address,
-                                              bool is_random_address) {
+gatt_client_conn_t Newblue::GattClientConnect(
+    const std::string& device_address,
+    bool is_random_address,
+    const struct GattConnectParameters* connection_parameters) {
   struct bt_addr address;
   CHECK(ConvertToBtAddr(is_random_address, device_address, &address));
-  gatt_client_conn_t conn_id = libnewblue_->GattClientConnect(
-      this, &address, nullptr, &Newblue::GattConnectCallbackThunk);
-  return conn_id;
+  return libnewblue_->GattClientConnect(this, &address, connection_parameters,
+                                        &Newblue::GattConnectCallbackThunk);
 }
 
 GattClientOperationStatus Newblue::GattClientDisconnect(

@@ -761,8 +761,12 @@ void DeviceInterfaceHandler::ConnectInternal(
     return;
   }
 
-  gatt_client_conn_t conn_id = newblue_->GattClientConnect(
-      device->advertised_address.value(), device->is_random_address);
+  const auto conn_id = newblue_->GattClientConnect(
+      device->advertised_address.value(), device->is_random_address,
+      base::ContainsKey(connection_parameters_, device_address)
+          ? &connection_parameters_[device_address]
+          : nullptr);
+
   if (conn_id == kInvalidGattConnectionId) {
     LOG(WARNING) << "Failed GATT client connect";
     ConnectReply(device_address, false, bluetooth_device::kErrorFailed);
