@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/files/file_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 
 #include "dlcservice/boot_device.h"
@@ -77,55 +78,51 @@ bool BootSlot::GetCurrentSlot(string* boot_disk_name_out,
   return true;
 }
 
-bool BootSlot::SplitPartitionName(const string& partition_name,
+bool BootSlot::SplitPartitionName(string partition_name,
                                   string* disk_name_out,
                                   int* partition_num_out) {
+  CHECK(disk_name_out);
+  CHECK(partition_num_out);
   if (!base::StartsWith(partition_name, "/dev/",
                         base::CompareCase::SENSITIVE)) {
     LOG(ERROR) << "Invalid partition device name: " << partition_name;
     return false;
   }
 
-  size_t last_nondigit_pos = partition_name.find_last_not_of("0123456789");
-  if (last_nondigit_pos == string::npos ||
-      (last_nondigit_pos + 1) == partition_name.size()) {
-    LOG(ERROR) << "Unable to parse partition device name: " << partition_name;
-    return false;
-  }
-
-  size_t partition_name_len = string::npos;
-  if (partition_name[last_nondigit_pos] == '_') {
-    // NAND block devices have weird naming which could be something
-    // like "/dev/ubiblock2_0". We discard "_0" in such a case.
-    size_t prev_nondigit_pos =
-        partition_name.find_last_not_of("0123456789", last_nondigit_pos - 1);
-    if (prev_nondigit_pos == string::npos ||
-        (prev_nondigit_pos + 1) == last_nondigit_pos) {
+  // Loop twice if we hit the '_' case to handle NAND block devices.
+  for (int i = 0; i <= 1; ++i) {
+    auto nondigit_pos = partition_name.find_last_not_of("0123456789");
+    if (!isdigit(partition_name.back()) || nondigit_pos == string::npos) {
       LOG(ERROR) << "Unable to parse partition device name: " << partition_name;
       return false;
     }
 
-    partition_name_len = last_nondigit_pos - prev_nondigit_pos;
-    last_nondigit_pos = prev_nondigit_pos;
-  }
-
-  if (disk_name_out) {
-    // Special case for MMC devices which have the following naming scheme:
-    // mmcblk0p2
-    size_t disk_name_len = last_nondigit_pos;
-    if (partition_name[last_nondigit_pos] != 'p' || last_nondigit_pos == 0 ||
-        !isdigit(partition_name[last_nondigit_pos - 1])) {
-      disk_name_len++;
+    switch (partition_name[nondigit_pos]) {
+      // NAND block devices have weird naming which could be something like
+      // "/dev/ubiblock2_0". We discard "_0" in such a case.
+      case '_':
+        LOG(INFO) << "Shortening partition_name: " << partition_name;
+        partition_name = partition_name.substr(0, nondigit_pos);
+        break;
+      // Special case for MMC devices which have the following naming scheme:
+      //   mmcblk0p2
+      case 'p':
+        if (nondigit_pos != 0 && isdigit(partition_name[nondigit_pos - 1])) {
+          *disk_name_out = partition_name.substr(0, nondigit_pos);
+          base::StringToInt(partition_name.substr(nondigit_pos + 1),
+                            partition_num_out);
+          return true;
+        }
+        FALLTHROUGH;
+      default:
+        *disk_name_out = partition_name.substr(0, nondigit_pos + 1);
+        base::StringToInt(partition_name.substr(nondigit_pos + 1),
+                          partition_num_out);
+        return true;
     }
-    *disk_name_out = partition_name.substr(0, disk_name_len);
   }
-
-  if (partition_num_out) {
-    string partition_str =
-        partition_name.substr(last_nondigit_pos + 1, partition_name_len);
-    *partition_num_out = atoi(partition_str.c_str());
-  }
-  return true;
+  LOG(ERROR) << "Unable to parse partition device name: " << partition_name;
+  return false;
 }
 
 int BootSlot::GetPartitionNumber(const string& partition_name,

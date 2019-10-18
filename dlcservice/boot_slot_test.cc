@@ -67,6 +67,10 @@ TEST_F(BootSlotTest, SplitPartitionNameTest) {
   EXPECT_EQ("/dev/loop28", disk);
   EXPECT_EQ(11, part_num);
 
+  EXPECT_TRUE(boot_slot_->SplitPartitionName("/dev/123", &disk, &part_num));
+  EXPECT_EQ("/dev/", disk);
+  EXPECT_EQ(123, part_num);
+
   EXPECT_FALSE(
       boot_slot_->SplitPartitionName("/dev/mmcblk0p", &disk, &part_num));
   EXPECT_FALSE(boot_slot_->SplitPartitionName("/dev/sda", &disk, &part_num));
@@ -74,6 +78,7 @@ TEST_F(BootSlotTest, SplitPartitionNameTest) {
       boot_slot_->SplitPartitionName("/dev/foo/bar", &disk, &part_num));
   EXPECT_FALSE(boot_slot_->SplitPartitionName("/", &disk, &part_num));
   EXPECT_FALSE(boot_slot_->SplitPartitionName("", &disk, &part_num));
+  EXPECT_FALSE(boot_slot_->SplitPartitionName("/dev/_100", &disk, &part_num));
 }
 
 TEST_F(BootSlotTest, GetPartitionNumberTest) {

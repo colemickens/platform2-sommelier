@@ -42,7 +42,7 @@ class BootSlot {
   // just to test the validity of the device name. Note that the function
   // simply checks if the device name looks like a valid device, no other
   // checks are performed (i.e. it doesn't check if the device actually exists).
-  bool SplitPartitionName(const std::string& partition_name,
+  bool SplitPartitionName(std::string partition_name,
                           std::string* disk_name_out,
                           int* partition_num_out);
 
