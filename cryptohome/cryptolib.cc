@@ -197,11 +197,8 @@ bool CryptoLib::FillRsaPrivateKeyFromSecretPrime(
     LOG(ERROR) << "Failed to allocate BIGNUM structure";
     return false;
   }
-  const BIGNUM* rsa_p;
-  const BIGNUM* rsa_q;
-  RSA_get0_factors(rsa, &rsa_p, &rsa_q);
-  if (!BN_sub(decremented_p.get(), rsa_p, BN_value_one()) ||
-      !BN_sub(decremented_q.get(), rsa_q, BN_value_one()) ||
+  if (!BN_sub(decremented_p.get(), p.get(), BN_value_one()) ||
+      !BN_sub(decremented_q.get(), q.get(), BN_value_one()) ||
       !BN_mul(totient.get(), decremented_p.get(), decremented_q.get(),
               bn_context.get())) {
     LOG(ERROR) << "Failed to calculate totient function";
@@ -219,15 +216,13 @@ bool CryptoLib::FillRsaPrivateKeyFromSecretPrime(
     LOG(ERROR) << "Failed to allocate BIGNUM structure";
     return false;
   }
-  const BIGNUM* rsa_d;
-  RSA_get0_key(rsa, nullptr, nullptr, &rsa_d);
-  if (!BN_mod(dmp1.get(), rsa_d, decremented_p.get(), bn_context.get()) ||
-      !BN_mod(dmq1.get(), rsa_d, decremented_q.get(), bn_context.get())) {
+  if (!BN_mod(dmp1.get(), d.get(), decremented_p.get(), bn_context.get()) ||
+      !BN_mod(dmq1.get(), d.get(), decremented_q.get(), bn_context.get())) {
     LOG(ERROR) << "Failed to calculate the private exponent over the modulo";
     return false;
   }
   // Calculate the inverse of the second prime modulo the first prime.
-  if (!BN_mod_inverse(iqmp.get(), rsa_q, rsa_p, bn_context.get())) {
+  if (!BN_mod_inverse(iqmp.get(), q.get(), p.get(), bn_context.get())) {
     LOG(ERROR) << "Failed to calculate the inverse of the prime module the "
                   "other prime";
     return false;
