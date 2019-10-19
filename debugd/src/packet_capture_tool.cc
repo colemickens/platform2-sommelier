@@ -87,6 +87,9 @@ bool PacketCaptureTool::Start(
       p, options, "ht_location", "--ht-location", error))
     return false;
   if (!AddValidatedStringOption(
+      p, options, "vht_width", "--vht-width", error))
+    return false;
+  if (!AddValidatedStringOption(
       p, options, "monitor_connection_on", "--monitor-connection-on", error))
     return false;
 

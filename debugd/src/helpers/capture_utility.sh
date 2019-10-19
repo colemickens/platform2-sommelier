@@ -41,6 +41,23 @@ get_device_list ()
 }
 
 
+# get_center_freq returns the center frequency of a channel with a 160 MHz
+# width.
+#
+# @param control_freq the control frequency for the channel being used
+# @return the center freq corresponding to the channel, or an empty string
+#     if the frequency is not within one of the 160 MHz channels
+get_center_freq ()
+{
+  local control_freq="${1}"
+  if [ "${control_freq}" -gt 5179 ] && [ "${control_freq}" -lt 5321 ]; then
+    echo "5250"
+  elif [ "${control_freq}" -gt 5499 ] && [ "${control_freq}" -lt 5641 ]; then
+    echo "5570"
+  fi
+}
+
+
 # get_phy_info gets the WiFi interface type and wiphy identifier for |device|.
 #
 # @param device, the device we want information about
@@ -91,7 +108,7 @@ get_monitor_phy_list ()
 }
 
 
-# get_phy_info gets the WiFi interface link information -- SSID and frequency.
+# get_link_info gets the WiFi interface link information -- SSID and frequency.
 #
 # @param device, the device we want information about
 # @return "<BSSID> <frequency>" if connected, otherwise an empty string.
@@ -103,7 +120,7 @@ get_link_info ()
 }
 
 
-# get_ht_info gets HT inforomation for a |bssid| on a given |frequency|.
+# get_ht_info gets HT information for a |bssid| on a given |frequency|.
 # We depend on the scan cache to get this information since this function
 # is only called for a connected AP.
 #
@@ -124,6 +141,25 @@ get_ht_info ()
                if (bssid == search_bssid && frequency == search_frequency)
                    print $5
            }'
+}
+
+
+# get_width returns the channel width for a |bssid| on a given |frequency|.
+# We use the command iw dev info because this is only called for a
+# connected AP, and the info command will give information about the channel to
+# which the device is connected.
+#
+# @param device, the device on which to perform the scan
+# @return "<20|40|80|160>", or empty string if the device is not connected
+get_width ()
+{
+  local device="${1}"
+  iw dev "${device}" info 2>/dev/null |
+      awk '/type/ { type=$2 };
+          /channel/ {
+            if (type == "managed")
+              print $6
+          }'
 }
 
 
@@ -151,23 +187,36 @@ create_monitor ()
 
 
 # configure_monitor configures a monitor |device| to listen to |frequency|
-# and uses an HT location of |ht_location|.
+# and uses an HT location of |ht_location|, or a VHT width of |vht_width|.
 #
 # @param device, the monitor device to be configured
 # @param frequency, the frequency to listen to
 # @param ht_location, "above", "below" or an empty string, indicating that
 #     HT40 should not be used.
+# @param vht_width, "80" or "160" indicating the size of the VHT band, or an
+#     empty string, if we are not using VHT.
 # @status_code 0 if successful, 1 or the return code for iw.
 configure_monitor ()
 {
   local device="${1}"
   local frequency="${2}"
   local ht_location="${3}"
-  if [ -z "${ht_location}" ] ; then
+  local vht_width="${4}"
+
+  if [ "${vht_width}" = "80" ] || [ "${vht_width}" = "80MHz" ]; then
+    iw dev "${device}" set freq "${frequency}" 80MHz
+  elif [ "${vht_width}" = "160" ]; then
+    local center_freq="$(get_center_freq "${frequency}")"
+    if [ -z "${center_freq}" ]; then
+      error "frequency \"${frequency}\" not part of a valid 160 MHz channel"
+      return 1
+    fi
+    iw dev "${device}" set freq "${frequency}" 160 "${center_freq}"
+  elif [ -z "${ht_location}" ]; then
     iw dev "${device}" set freq "${frequency}"
-  elif [ "${ht_location}" = "above" ] ; then
+  elif [ "${ht_location}" = "above" ]; then
     iw dev "${device}" set freq "${frequency}" HT40+
-  elif [ "${ht_location}" = "below" ] ; then
+  elif [ "${ht_location}" = "below" ]; then
     iw dev "${device}" set freq "${frequency}" HT40-
   else
     error "ht_location should be \"above\" or \"below\", not \"${ht_location}\""
@@ -182,6 +231,7 @@ configure_monitor ()
 # @param frequency, the frequency on which we should monitor
 # @param ht_location, the location of the additional 20MHz of bandwidth for
 #     HT40, relative to |frequency|.  Can be empty to signify "not HT40".
+# @param vht_width, the width of the channel if we are using VHT, or nothing.
 # @param wiphy, the phy we would rather NOT use for this capture.
 # @return "<device>", the discovered or created device, or an empty string
 #     indicating failure.
@@ -189,7 +239,8 @@ get_monitor_device ()
 {
   local frequency="${1}"
   local ht_location="${2}"
-  local wiphy="${3}"
+  local vht_width="${3}"
+  local wiphy="${4}"
   local connected_monitor_device
   local connected_monitor_phy
 
@@ -209,7 +260,8 @@ get_monitor_device ()
     fi
     # If we fail to configure this device, move on to the next device.  The
     # configuration could fail, for example, if the phy is in use.
-    if ! configure_monitor "${device}" "${frequency}" "${ht_location}" ; then
+    if ! configure_monitor \
+        "${device}" "${frequency}" "${ht_location}" "${vht_width}"; then
       continue
     fi
     echo $device
@@ -255,7 +307,8 @@ get_monitor_device ()
       continue
     fi
 
-    if ! configure_monitor "${device}" "${frequency}" "${ht_location}" ; then
+    if ! configure_monitor \
+        "${device}" "${frequency}" "${ht_location}" "${vht_width}"; then
       iw dev "${device}" del
       continue
     fi
@@ -269,7 +322,8 @@ get_monitor_device ()
   # the connected phy.
   if [ -n "$connected_monitor_device" ] ; then
     device="${connected_monitor_device}"
-    if ! configure_monitor "${device}" "${frequency}" "${ht_location}" ; then
+    if ! configure_monitor \
+        "${device}" "${frequency}" "${ht_location}" "${vht_width}"; then
       return 1
     fi
   elif [ -n "${connected_monitor_phy}" ] ; then
@@ -278,7 +332,8 @@ get_monitor_device ()
       return 1
     fi
 
-    if ! configure_monitor "${device}" "${frequency}" "${ht_location}" ; then
+    if ! configure_monitor \
+        "${device}" "${frequency}" "${ht_location}" "${vht_width}"; then
       iw dev "${device}" del
       return 1
     fi
@@ -357,13 +412,18 @@ get_monitor_for_link ()
 
   local bssid="$(get_array_element 1 $link_info)"
   local frequency="$(get_array_element 2 $link_info)"
-  local ht_info="$(get_ht_info "${monitored_device}" "${bssid}" "${frequency}")"
+  local width="$(get_width "${monitored_device}")"
+  local ht_info
+  if [ "${width}" = "40" ]; then
+    ht_info="$(get_ht_info "${monitored_device}" "${bssid}" "${frequency}")"
+  fi
   if [ -z "${device}" ] ; then
     local phy="$(get_array_element 2 $phy_info)"
     device=$(
-      get_monitor_device "${frequency}" "${ht_info}" "${phy}" ||
+      get_monitor_device "${frequency}" "${ht_info}" "${width}" "${phy}" ||
       get_monitor_on_phy "${phy}")
-  elif ! configure_monitor "${device}" "${frequency}" "${ht_info}" ; then
+  elif ! configure_monitor "${device}" "${frequency}" "${ht_info}" "${width}"
+  then
     error "Cannot monitor ${monitored_device}: ${device} did not configure."
     return
   fi
@@ -398,7 +458,8 @@ usage ()
 {
   echo "Usage: $0 [ --device <device> ] [ --frequency <frequency> ] "
   echo "        [ --ht-location <above|below> ] "
-  echo "        [ --monitor-connection-on <monitored_device> ]"
+  echo "        [ --vht-width <80|160> ] "
+  echo "        [ --monitor-connection-on <monitored_device> ] "
   echo "        [ --help ]"
   echo "        --output-file <pcap_output_file>"
   echo
@@ -441,8 +502,8 @@ fatal_error ()
 }
 
 
-# fatal_error sends a |message|, prints helpful hints about command line usage,
-# then exits.
+# command_line_error sends a |message|, prints helpful hints about command
+# line usage, then exits.
 #
 # @param message to send before exiting
 command_line_error ()
@@ -460,6 +521,8 @@ main ()
   local device
   local frequency
   local ht_location
+  local vht_chan_width
+  local center_freq
   local monitor_connection_on
   local output_file
   while [ $# -gt 0 ] ; do
@@ -478,6 +541,13 @@ main ()
         ht_location="${1}"
         if [ "${ht_location}" != "above" -a "${ht_location}" != "below" ] ; then
           command_line_error "HT location must be either \"above\" or \"below\""
+        fi
+        shift
+        ;;
+      --vht-width)
+        vht_width="${1}"
+        if [ "${vht_width}" != "80" -a "${vht_width}" != "160" ]; then
+          command_line_error "VHT width must be either 80 or 160"
         fi
         shift
         ;;
@@ -503,6 +573,10 @@ main ()
     command_line_error "The --output-file argument is mandatory"
   fi
 
+  if [ -n "${ht_location}" ] && [ -n "${vht_width}" ]; then
+    command_line_error "Cannot specify both ht-location and vht-width"
+  fi
+
   # WP2 does not permit us to set parameters like power-save and
   # beacon filtering via the monitor device. So stash away the
   # user specified device here.
@@ -516,7 +590,8 @@ main ()
     fi
   elif [ -z "${device}" ] ; then
     if [ -n "${frequency}" ] ; then
-      device=$(get_monitor_device "${frequency}" "${ht_location}")
+      device=$(get_monitor_device \
+          "${frequency}" "${ht_location}" "${vht_width}")
       if [ -z "${device}" ] ; then
         fatal_error "No devices found to capture channel ${frequency}"
       fi
@@ -524,7 +599,8 @@ main ()
       command_line_error "I don't know what you want me to capture!"
     fi
   elif [ -n "${frequency}" ] ; then
-    if ! configure_monitor "${device}" "${frequency}" "${ht_location}" ; then
+    if ! configure_monitor \
+        "${device}" "${frequency}" "${ht_location}" "${vht_width}"; then
       fatal_error "Unable to set frequency on device ${device}."
     fi
   elif [ -n "${ht_location}" ] ; then

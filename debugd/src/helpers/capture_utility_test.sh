@@ -37,6 +37,22 @@ test_configure_monitor ()
     fi
   }
   $(configure_monitor int2 3000 below)
+  iw () {
+    if [[ "$#" != 6 || "${*}" != "dev int2 set freq 5000 80MHz" ]]; then
+      fatal_error "Unexpected arguments to iw: $*"
+    fi
+  }
+  $(configure_monitor int2 5000 "" 80)
+  iw () {
+    if [[ "$#" != 7 || "${*}" != "dev int2 set freq 5252 160 5250" ]]; then
+      fatal_error "Unexpected arguments to iw: $*"
+    fi
+  }
+  $(configure_monitor int2 5252 "" 160)
+  iw () {
+    fatal_error "Unexpected iw execution"
+  }
+  expect_eq "bad 160 channel" "" "$(configure_monitor int2 5160 "" 160)"
 }
 
 test_create_monitor ()
@@ -152,7 +168,7 @@ test_get_monitor_device ()
   }
 
   # Only available device is also on the phy we are looking for.
-  expect_eq "Only device" "int0" "$(get_monitor_device 1000 "" 0)"
+  expect_eq "Only device" "int0" "$(get_monitor_device 1000 "" "" 0)"
 
   create_monitor () {
     echo "${1}_mon"
@@ -162,7 +178,8 @@ test_get_monitor_device ()
   }
 
   # Create a monitor device on the shared phy.
-  expect_eq "Created monitor dev" "phy0_mon" "$(get_monitor_device 1000 "" 0)"
+  expect_eq \
+      "Created monitor dev" "phy0_mon" "$(get_monitor_device 1000 "" "" 0)"
 
   get_monitor_phy_list () {
     echo phy0 phy1
@@ -180,7 +197,7 @@ test_get_monitor_device ()
   }
 
   # Presented with another phy, we try that first but fail.
-  expect_eq "Created monitor #2" "phy0_mon" "$(get_monitor_device 1000 "" 0)"
+  expect_eq "Created monitor #2" "phy0_mon" "$(get_monitor_device 1000 "" "" 0)"
 }
 
 test_get_monitor_on_phy()
@@ -244,6 +261,9 @@ test_get_monitor_for_link ()
   get_link_info () {
     echo "00:11:22 1000"
   }
+  get_width () {
+    echo "40"
+  }
   get_ht_info () {
     echo "above"
   }
@@ -254,7 +274,7 @@ test_get_monitor_for_link ()
 
   # Success: get_monitor_device gives us a device.
   get_monitor_device () {
-    expect_eq "get_monitor_device args" "1000 above 0" "$*"
+    expect_eq "get_monitor_device args" "1000 above 40 0" "${*}"
     echo "mon0"
   }
   expect_eq "get_monitor_device succeeded" "mon0" "$(get_monitor_for_link int0)"
@@ -326,6 +346,33 @@ test_get_array_element ()
   expect_eq "third element" "c" "$(get_array_element 3 $list)"
 }
 
+test_get_center_freq ()
+{
+  expect_eq "Nothing" "" "$(get_center_freq "5170")"
+  expect_eq "channel 50 (5250)" "5250" "$(get_center_freq "5180")"
+  expect_eq "Nothing" "" "$(get_center_freq "5340")"
+  expect_eq "channel 114 (5570)" "5570" "$(get_center_freq "5580")"
+  expect_eq "Nothing" "" "$(get_center_freq "7000")"
+}
+
+test_get_width ()
+{
+  local device=dev0
+  local statype=monitor
+  iw () {
+    if [[ "$#" != 3 || "${1}" != "dev" || "${2}" != "${device}" ||
+          "${3}" != "info" ]]; then
+      fatal_error "Unexpected arguments to iw: $*"
+    fi
+    printf "\ttype ${statype}\n"
+    echo "channel 36 (5180 MHz), width: 160 MHz, center1: 5250 MHz"
+  }
+  statype=monitor
+  expect_eq "Monitor mode" "" "$(get_width "${device}")"
+  statype=managed
+  expect_eq "Managed mode" "160" "$(get_width "${device}")"
+}
+
 main ()
 {
   # Load the capture utility functions.  Set the command line to something
@@ -349,7 +396,9 @@ main ()
       get_monitor_phy_list \
       get_phy_info \
       get_array_size \
-      get_array_element; do
+      get_array_element \
+      get_center_freq \
+      get_width; do
     if (test_${test}) ; then
       echo "Passed: $test"
     else
