@@ -564,6 +564,8 @@ if (use.fuzzer) {
 
     pkg_deps = [ "libchrome-${libbase_ver}" ]
 
+    include_dirs = [ "../libbrillo" ]
+
     deps = [
       ":libbrillo-core-${libbase_ver}",
     ]
