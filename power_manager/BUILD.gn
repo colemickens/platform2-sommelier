@@ -47,6 +47,7 @@ group("all") {
     deps += [
       ":ambient_light_handler_fuzzer",
       ":internal_backlight_controller_fuzzer",
+      ":powerd_als_fuzzer",
     ]
   }
 }
