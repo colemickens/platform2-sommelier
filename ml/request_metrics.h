@@ -101,9 +101,9 @@ template <class RequestEventEnum>
 void RequestMetrics<RequestEventEnum>::StartRecordingPerformanceMetrics() {
   DCHECK(process_metrics_ == nullptr);
   process_metrics_ = base::ProcessMetrics::CreateCurrentProcessMetrics();
-  // Call GetCPUUsage in order to set the "zero" point of the CPU usage counter
-  // of process_metrics_.
-  process_metrics_->GetCPUUsage();
+  // Call GetPlatformIndependentCPUUsage in order to set the "zero" point of the
+  // CPU usage counter of process_metrics_.
+  process_metrics_->GetPlatformIndependentCPUUsage();
   timer_.Start();
   // Query memory usage.
   size_t usage = 0;
@@ -127,7 +127,8 @@ void RequestMetrics<RequestEventEnum>::FinishRecordingPerformanceMetrics() {
   // That's to say it can exceed 100 when there're multi CPUs.
   // For example, if the device has 4 CPUs and the process fully uses 2 of
   // them, the percent will be 200%.
-  const double cpu_usage_percent = process_metrics_->GetCPUUsage();
+  const double cpu_usage_percent =
+      process_metrics_->GetPlatformIndependentCPUUsage();
 
   // CPU time, as mentioned above, "100 microseconds" means "1 CPU core fully
   // utilized for 100 microseconds".

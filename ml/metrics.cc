@@ -68,7 +68,7 @@ void Metrics::StartCollectingProcessMetrics() {
   }
 
   // Baseline the CPU usage counter in |process_metrics_| to be zero as of now.
-  process_metrics_->GetCPUUsage();
+  process_metrics_->GetPlatformIndependentCPUUsage();
 
   cumulative_metrics_ = std::make_unique<chromeos_metrics::CumulativeMetrics>(
       base::FilePath(kCumulativeMetricsBackingDir),
@@ -105,7 +105,8 @@ void Metrics::UpdateAndRecordMetrics(
   if (record_current_metrics) {
     // Record CPU usage (units = milli-percent i.e. 0.001%):
     const int cpu_usage_milli_percent =
-        static_cast<int>(1000. * process_metrics_->GetCPUUsage() /
+        static_cast<int>(1000. *
+                         process_metrics_->GetPlatformIndependentCPUUsage() /
                          base::SysInfo::NumberOfProcessors());
     metrics_library_.SendToUMA(kCpuUsageMetricName, cpu_usage_milli_percent,
                                kCpuUsageMinMilliPercent,
