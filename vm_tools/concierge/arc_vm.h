@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include <arc/network/client.h>
 #include <arc/network/mac_address_generator.h>
 #include <arc/network/subnet.h>
 #include <base/files/file_path.h>
@@ -55,9 +56,8 @@ class ArcVm final : public VmInterface {
       base::FilePath fstab,
       uint32_t cpus,
       std::vector<Disk> disks,
-      arc_networkd::MacAddress mac_addr,
-      std::unique_ptr<arc_networkd::Subnet> subnet,
       uint32_t vsock_cid,
+      std::unique_ptr<patchpanel::Client> network_client,
       std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
       base::FilePath runtime_dir,
       ArcVmFeatures features,
@@ -81,14 +81,8 @@ class ArcVm final : public VmInterface {
     return seneschal_server_proxy_ ? seneschal_server_proxy_->handle() : 0;
   }
 
-  // The IPv4 address of the VM's gateway in network byte order.
-  uint32_t GatewayAddress() const;
-
   // The IPv4 address of the VM in network byte order.
   uint32_t IPv4Address() const;
-
-  // The netmask of the VM's subnet in network byte order.
-  uint32_t Netmask() const;
 
   // VmInterface overrides.
   bool Shutdown() override;
@@ -120,9 +114,8 @@ class ArcVm final : public VmInterface {
   static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state);
 
  private:
-  ArcVm(arc_networkd::MacAddress mac_addr,
-        std::unique_ptr<arc_networkd::Subnet> subnet,
-        uint32_t vsock_cid,
+  ArcVm(int32_t vsock_cid,
+        std::unique_ptr<patchpanel::Client> network_client,
         std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
         base::FilePath runtime_dir,
         ArcVmFeatures features);
@@ -138,14 +131,13 @@ class ArcVm final : public VmInterface {
              std::vector<Disk> disks,
              std::vector<std::string> params);
 
-  // EUI-48 mac address for the VM's network interface.
-  arc_networkd::MacAddress mac_addr_;
-
-  // The /30 subnet assigned to the VM.
-  std::unique_ptr<arc_networkd::Subnet> subnet_;
-
   // Virtual socket context id to be used when communicating with this VM.
   uint32_t vsock_cid_;
+
+  std::vector<patchpanel::Device> network_devices_;
+
+  // DBus client for the networking service.
+  std::unique_ptr<patchpanel::Client> network_client_;
 
   // Proxy to the server providing shared directory access for this VM.
   std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy_;

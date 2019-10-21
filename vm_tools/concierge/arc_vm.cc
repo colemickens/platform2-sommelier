@@ -14,7 +14,6 @@
 
 #include <utility>
 
-#include <arc/network/guest_events.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -46,12 +45,6 @@ constexpr char kWaylandSocket[] = "/run/chrome/wayland-0";
 
 // How long to wait before timing out on child process exits.
 constexpr base::TimeDelta kChildExitTimeout = base::TimeDelta::FromSeconds(10);
-
-// Offset in a subnet of the gateway/host.
-constexpr size_t kHostAddressOffset = 0;
-
-// Offset in a subnet of the client/guest.
-constexpr size_t kGuestAddressOffset = 1;
 
 // The CPU cgroup where all the ARCVM's crosvm processes should belong to.
 constexpr char kArcvmCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/arc";
@@ -110,18 +103,15 @@ bool ShutdownArcVm(int cid) {
 
 }  // namespace
 
-ArcVm::ArcVm(arc_networkd::MacAddress mac_addr,
-             std::unique_ptr<arc_networkd::Subnet> subnet,
-             uint32_t vsock_cid,
+ArcVm::ArcVm(int32_t vsock_cid,
+             std::unique_ptr<patchpanel::Client> network_client,
              std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
              base::FilePath runtime_dir,
              ArcVmFeatures features)
-    : mac_addr_(std::move(mac_addr)),
-      subnet_(std::move(subnet)),
-      vsock_cid_(vsock_cid),
+    : vsock_cid_(vsock_cid),
+      network_client_(std::move(network_client)),
       seneschal_server_proxy_(std::move(seneschal_server_proxy)),
       features_(features) {
-  CHECK(subnet_);
   CHECK(base::DirectoryExists(runtime_dir));
 
   // Take ownership of the runtime directory.
@@ -138,15 +128,13 @@ std::unique_ptr<ArcVm> ArcVm::Create(
     base::FilePath fstab,
     uint32_t cpus,
     std::vector<ArcVm::Disk> disks,
-    arc_networkd::MacAddress mac_addr,
-    std::unique_ptr<arc_networkd::Subnet> subnet,
     uint32_t vsock_cid,
+    std::unique_ptr<patchpanel::Client> network_client,
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
     base::FilePath runtime_dir,
     ArcVmFeatures features,
     std::vector<string> params) {
-  auto vm = base::WrapUnique(new ArcVm(
-      std::move(mac_addr), std::move(subnet), vsock_cid,
+  auto vm = base::WrapUnique(new ArcVm(vsock_cid, std::move(network_client),
       std::move(seneschal_server_proxy), std::move(runtime_dir), features));
 
   if (!vm->Start(std::move(kernel), std::move(rootfs), std::move(fstab), cpus,
@@ -167,11 +155,26 @@ bool ArcVm::Start(base::FilePath kernel,
                   uint32_t cpus,
                   std::vector<ArcVm::Disk> disks,
                   std::vector<string> params) {
-  // Set up the tap device.
-  base::ScopedFD tap_fd =
-      BuildTapDevice(mac_addr_, GatewayAddress(), Netmask(), true /*vnet_hdr*/);
-  if (!tap_fd.is_valid()) {
-    LOG(ERROR) << "Unable to build and configure TAP device";
+  // Get the available network interfaces.
+  network_devices_ = network_client_->NotifyArcVmStartup(vsock_cid_);
+  if (network_devices_.empty()) {
+    LOG(ERROR) << "No network devices available";
+    return false;
+  }
+
+  // Open the tap device(s).
+  std::vector<base::ScopedFD> tap_fds;
+  for (const auto& dev : network_devices_) {
+    auto fd = OpenTapDevice(dev.ifname(), true /*vnet_hdr*/,
+                            nullptr /*ifname_out*/);
+    if (!fd.is_valid()) {
+      LOG(ERROR) << "Unable to open and configure TAP device " << dev.ifname();
+    } else {
+      tap_fds.emplace_back(std::move(fd));
+    }
+  }
+  if (tap_fds.empty()) {
+    LOG(ERROR) << "No TAP devices available";
     return false;
   }
 
@@ -184,7 +187,6 @@ bool ArcVm::Start(base::FilePath kernel,
     { "--cpus",           std::to_string(cpus) },
     { "--mem",            GetVmMemoryMiB() },
     { rootfs_flag,        rootfs.value() },
-    { "--tap-fd",         std::to_string(tap_fd.get()) },
     { "--cid",            std::to_string(vsock_cid_) },
     { "--socket",         GetVmSocketPath() },
     { "--wayland-sock",   kWaylandSocket },
@@ -197,6 +199,9 @@ bool ArcVm::Start(base::FilePath kernel,
     { "--params",         base::JoinString(params, " ") },
   };
   // clang-format on
+  for (const auto& fd : tap_fds) {
+    args.emplace_back("--tap-fd", std::to_string(fd.get()));
+  }
 
   if (features_.gpu)
     args.emplace_back("--gpu", "");
@@ -239,20 +244,10 @@ bool ArcVm::Start(base::FilePath kernel,
     return false;
   }
 
-  // Notify arc-networkd that ARCVM is up.
-  if (!arc_networkd::NotifyArcVmStart(vsock_cid_)) {
-    LOG(WARNING) << "Unable to notify networking services";
-  }
-
   return true;
 }
 
 bool ArcVm::Shutdown() {
-  // Notify arc-networkd that ARCVM is down.
-  if (!arc_networkd::NotifyArcVmStop()) {
-    LOG(WARNING) << "Unable to notify networking services";
-  }
-
   // Do a sanity check here to make sure the process is still around.  It may
   // have crashed and we don't want to be waiting around for an RPC response
   // that's never going to come.  kill with a signal value of 0 is explicitly
@@ -263,10 +258,16 @@ bool ArcVm::Shutdown() {
     return true;
   }
 
+  LOG(INFO) << "Shutting down ARCVM";
+
+  // Notify arc-networkd that ARCVM is down.
+  if (!network_client_->NotifyArcVmShutdown(vsock_cid_)) {
+    LOG(WARNING) << "Unable to notify networking services";
+  }
+
   // Ask arc-powerctl running on the guest to power off the VM.
   // TODO(yusukes): We should call ShutdownArcVm() only after the guest side
   // service is fully started. b/143711798
-  LOG(INFO) << "Shutting down ARCVM";
   if (ShutdownArcVm(vsock_cid_) &&
       WaitForChild(process_.pid(), kChildExitTimeout)) {
     LOG(INFO) << "ARCVM is shut down";
@@ -347,16 +348,12 @@ bool ArcVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state) {
   return UpdateCpuShares(base::FilePath(kArcvmCpuCgroup), cpu_shares);
 }
 
-uint32_t ArcVm::GatewayAddress() const {
-  return subnet_->AddressAtOffset(kHostAddressOffset);
-}
-
 uint32_t ArcVm::IPv4Address() const {
-  return subnet_->AddressAtOffset(kGuestAddressOffset);
-}
-
-uint32_t ArcVm::Netmask() const {
-  return subnet_->Netmask();
+  for (const auto& dev : network_devices_) {
+    if (dev.ifname() == "arc0")
+      return dev.ipv4_addr();
+  }
+  return 0;
 }
 
 VmInterface::Info ArcVm::GetInfo() {

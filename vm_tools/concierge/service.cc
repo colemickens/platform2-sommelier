@@ -29,7 +29,7 @@
 #include <utility>
 #include <vector>
 
-#include <arc/network/subnet.h>
+#include <arc/network/client.h>
 #include <base/base64url.h>
 #include <base/bind.h>
 #include <base/bind_helpers.h>
@@ -156,10 +156,6 @@ constexpr uint64_t kDefaultIoLimit = 1024 * 1024;  // 1 Mib
 // How often we should broadcast state of a disk operation (import or export).
 constexpr base::TimeDelta kDiskOpReportInterval =
     base::TimeDelta::FromSeconds(15);
-
-// Mac address to assign to ARCVM.
-constexpr arc_networkd::MacAddress kArcVmMacAddress{0xd2, 0x47, 0xf7,
-                                                    0xc5, 0x9e, 0x53};
 
 // The minimum kernel version of the host which supports untrusted VMs or a
 // trusted VM with nested VM support.
@@ -1679,16 +1675,6 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   }
 
   // Allocate resources for the VM.
-  std::unique_ptr<arc_networkd::Subnet> subnet =
-      network_address_manager_.AllocateIPv4Subnet(
-          arc_networkd::AddressManager::Guest::VM_ARC);
-  if (!subnet) {
-    LOG(ERROR) << "No available subnets; unable to start VM";
-
-    response.set_failure_reason("No available subnets");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
   uint32_t vsock_cid = vsock_cid_pool_.Allocate();
   if (vsock_cid == 0) {
     LOG(ERROR) << "Unable to allocate vsock context id";
@@ -1697,6 +1683,17 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
+
+  std::unique_ptr<patchpanel::Client> network_client =
+      patchpanel::Client::New();
+  if (!network_client) {
+    LOG(ERROR) << "Unable to open networking service client";
+
+    response.set_failure_reason("Unable to open network service client");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
   uint32_t seneschal_server_port = next_seneschal_server_port_++;
   std::unique_ptr<SeneschalServerProxy> server_proxy =
       SeneschalServerProxy::CreateVsockProxy(seneschal_service_proxy_,
@@ -1724,8 +1721,8 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
 
   auto vm =
       ArcVm::Create(std::move(kernel), std::move(rootfs), std::move(fstab),
-                    request.cpus(), std::move(disks), kArcVmMacAddress,
-                    std::move(subnet), vsock_cid, std::move(server_proxy),
+                    request.cpus(), std::move(disks), vsock_cid,
+                    std::move(network_client), std::move(server_proxy),
                     std::move(runtime_dir), features, std::move(params));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";

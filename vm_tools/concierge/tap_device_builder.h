@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 
+#include <string>
+
 #include <arc/network/mac_address_generator.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
@@ -20,6 +22,14 @@ base::ScopedFD BuildTapDevice(const arc_networkd::MacAddress& mac_addr,
                               uint32_t ipv4_addr,
                               uint32_t ipv4_netmask,
                               bool vnet_hdr);
+
+// Opens and configures a tap device.  If the returned ScopedFD is valid then
+// the device has been properly configured.
+// If |ifname_out| is non-null, it is populated with the final interface name.
+base::ScopedFD OpenTapDevice(const std::string& ifname_in,
+                             bool vnet_hdr,
+                             std::string* ifname_out);
+
 
 }  //  namespace concierge
 }  //  namespace vm_tools

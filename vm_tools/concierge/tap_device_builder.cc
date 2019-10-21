@@ -39,40 +39,23 @@ base::ScopedFD BuildTapDevice(const arc_networkd::MacAddress& mac_addr,
                               uint32_t ipv4_addr,
                               uint32_t ipv4_netmask,
                               bool vnet_hdr) {
-  // Explicitly not opened with close-on-exec because we want this fd to be
-  // inherited by the child process.
-  base::ScopedFD dev(open(kTunDev, O_RDWR | O_NONBLOCK));
-
-  if (!dev.is_valid()) {
-    PLOG(ERROR) << "Failed to open " << kTunDev;
+  std::string ifname;
+  base::ScopedFD dev = OpenTapDevice(kInterfaceNameFormat, vnet_hdr, &ifname);
+  if (!dev.is_valid())
     return dev;
-  }
-
-  // Create the interface.
-  struct ifreq ifr;
-  memset(&ifr, 0, sizeof(ifr));
-  strncpy(ifr.ifr_name, kInterfaceNameFormat, sizeof(ifr.ifr_name));
-  ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
-
-  if (vnet_hdr) {
-    ifr.ifr_flags |= IFF_VNET_HDR;
-  }
-
-  // This will overwrite the ifr_name field with the actual name of the
-  // interface.
-  if (ioctl(dev.get(), TUNSETIFF, &ifr) != 0) {
-    PLOG(ERROR) << "Failed to create tun interface";
-    return base::ScopedFD();
-  }
 
   // Create the socket for configuring the interface.
   base::ScopedFD sock(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
   if (!sock.is_valid()) {
     PLOG(ERROR)
         << "Unable to create datagram socket for configuring the interface "
-        << ifr.ifr_name;
+        << ifname;
     return base::ScopedFD();
   }
+
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  strncpy(ifr.ifr_name, ifname.c_str(), sizeof(ifr.ifr_name));
 
   // Set the ip address.
   struct sockaddr_in* addr =
@@ -105,26 +88,6 @@ base::ScopedFD BuildTapDevice(const arc_networkd::MacAddress& mac_addr,
     return base::ScopedFD();
   }
 
-  // The vnet header size and offloading flags only need to be set if we are
-  // actually using the vnet_hdr feature.
-  if (vnet_hdr) {
-    // Set the vnet header size.
-    if (ioctl(dev.get(), TUNSETVNETHDRSZ, &kVnetHeaderSize) != 0) {
-      PLOG(ERROR) << "Failed to set vnet header size for vmtap interface "
-                  << ifr.ifr_name;
-      return base::ScopedFD();
-    }
-
-    // Set the offload flags.  These must match the virtio features advertised
-    // by the net device in crosvm.
-    if (ioctl(dev.get(), TUNSETOFFLOAD,
-              TUN_F_CSUM | TUN_F_UFO | TUN_F_TSO4 | TUN_F_TSO6) != 0) {
-      PLOG(ERROR) << "Failed to set offload for vmtap interface "
-                  << ifr.ifr_name;
-      return base::ScopedFD();
-    }
-  }
-
   // Set crosvm as interface owner.
   uid_t owner_uid = -1;
   if (!brillo::userdb::GetUserInfo(kCrosVmUser, &owner_uid, nullptr)) {
@@ -146,6 +109,64 @@ base::ScopedFD BuildTapDevice(const arc_networkd::MacAddress& mac_addr,
     PLOG(ERROR) << "Failed to enable vmtap interface " << ifr.ifr_name;
     return base::ScopedFD();
   }
+
+  return dev;
+}
+
+base::ScopedFD OpenTapDevice(const std::string& ifname_in,
+                             bool vnet_hdr,
+                             std::string* ifname_out) {
+  if (ifname_in.empty()) {
+    LOG(ERROR) << "An interface name must be provided";
+    return base::ScopedFD();
+  }
+
+  // Explicitly not opened with close-on-exec because we want this fd to be
+  // inherited by the child process.
+  base::ScopedFD dev(open(kTunDev, O_RDWR | O_NONBLOCK));
+  if (!dev.is_valid()) {
+    PLOG(ERROR) << "Failed to open " << kTunDev;
+    return dev;
+  }
+
+  // Open the interface.
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  strncpy(ifr.ifr_name, ifname_in.c_str(), sizeof(ifr.ifr_name));
+  ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
+  if (vnet_hdr) {
+    ifr.ifr_flags |= IFF_VNET_HDR;
+  }
+
+  // This will overwrite the ifr_name field with the actual name of the
+  // interface, if necessary.
+  if (ioctl(dev.get(), TUNSETIFF, &ifr) != 0) {
+    PLOG(ERROR) << "Failed to open tun interface " << ifname_in;
+    return base::ScopedFD();
+  }
+
+  // The vnet header size and offloading flags only need to be set if we are
+  // actually using the vnet_hdr feature.
+  if (vnet_hdr) {
+    // Set the vnet header size.
+    if (ioctl(dev.get(), TUNSETVNETHDRSZ, &kVnetHeaderSize) != 0) {
+      PLOG(ERROR) << "Failed to set vnet header size for vmtap interface "
+                  << ifr.ifr_name;
+      return base::ScopedFD();
+    }
+
+    // Set the offload flags.  These must match the virtio features advertised
+    // by the net device in crosvm.
+    if (ioctl(dev.get(), TUNSETOFFLOAD,
+              TUN_F_CSUM | TUN_F_UFO | TUN_F_TSO4 | TUN_F_TSO6) != 0) {
+      PLOG(ERROR) << "Failed to set offload for vmtap interface "
+                  << ifr.ifr_name;
+      return base::ScopedFD();
+    }
+  }
+
+  if (ifname_out)
+    ifname_out->assign(ifr.ifr_name);
 
   return dev;
 }

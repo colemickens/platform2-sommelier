@@ -143,6 +143,7 @@ static_library("libconcierge") {
     "grpc++",
     "libarchive",
     "libminijail",
+    "libpatchpanel-client",
     "libqcow_utils",
     "libshill-client",
     "protobuf",
