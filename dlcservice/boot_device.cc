@@ -28,7 +28,7 @@ bool BootDevice::IsRemovableDevice(const string& device) {
 }
 
 string BootDevice::GetBootDevice() {
-  char boot_path[PATH_MAX];
+  char boot_path[PATH_MAX] = "";
   // Resolve the boot device path fully, including dereferencing through
   // dm-verity.
   int ret = rootdev(boot_path, sizeof(boot_path), true, /*full resolution*/
