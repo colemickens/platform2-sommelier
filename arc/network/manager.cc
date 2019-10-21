@@ -17,13 +17,11 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
-#include <base/posix/unix_domain_socket.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/minijail/minijail.h>
 
-#include "arc/network/guest_events.h"
 #include "arc/network/ipc.pb.h"
 
 namespace arc_networkd {
@@ -54,8 +52,7 @@ Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy,
           AddressManager::Guest::ARC,
           AddressManager::Guest::ARC_NET,
           AddressManager::Guest::VM_ARC,
-      }),
-      gsock_(AF_UNIX, SOCK_DGRAM) {
+      }) {
   runner_ = std::make_unique<MinijailedProcessRunner>();
   datapath_ = std::make_unique<Datapath>(runner_.get());
 }
@@ -82,26 +79,12 @@ int Manager::OnInit() {
                  nd_proxy_->pid())))
       << "Failed to watch nd-proxy child process";
 
-  // Setup the socket for guests to connect and notify certain events.
-  // TODO(garrick): Remove once DBus API available.
-  struct sockaddr_un addr = {0};
-  socklen_t addrlen = 0;
-  FillGuestSocketAddr(&addr, &addrlen);
-  if (!gsock_.Bind((const struct sockaddr*)&addr, addrlen)) {
-    LOG(ERROR) << "Cannot bind guest socket @" << kGuestSocketPath
-               << "; exiting";
-    return -1;
-  }
-
   // TODO(garrick): Remove this workaround ASAP.
   // Handle signals for ARC lifecycle.
   RegisterHandler(SIGUSR1,
                   base::Bind(&Manager::OnSignal, base::Unretained(this)));
   RegisterHandler(SIGUSR2,
                   base::Bind(&Manager::OnSignal, base::Unretained(this)));
-  gsock_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      gsock_.fd(), base::BindRepeating(&Manager::OnFileCanReadWithoutBlocking,
-                                       base::Unretained(this)));
 
   // Run after Daemon::OnInit().
   base::MessageLoopForIO::current()->task_runner()->PostTask(
@@ -152,31 +135,6 @@ void Manager::InitialSetup() {
   arc_svc_ = std::make_unique<ArcService>(device_mgr_.get(), datapath_.get());
 
   nd_proxy_->Listen();
-}
-
-void Manager::OnFileCanReadWithoutBlocking() {
-  char buf[128] = {0};
-  std::vector<base::ScopedFD> fds{};
-  ssize_t len =
-      base::UnixDomainSocket::RecvMsg(gsock_.fd(), buf, sizeof(buf), &fds);
-
-  if (len <= 0) {
-    PLOG(WARNING) << "Read failed";
-    return;
-  }
-
-  // Only expecting ARCVM start/stop events from Concierge here.
-  auto event = ArcGuestEvent::Parse(buf);
-  if (!event || !event->isVm()) {
-    LOG(WARNING) << "Unexpected message received: " << buf;
-    return;
-  }
-
-  GuestMessage msg;
-  msg.set_type(GuestMessage::ARC_VM);
-  msg.set_arcvm_vsock_cid(event->id());
-  msg.set_event(event->isStarting() ? GuestMessage::START : GuestMessage::STOP);
-  SendGuestMessage(msg);
 }
 
 // TODO(garrick): Remove this workaround ASAP.

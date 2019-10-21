@@ -52,7 +52,6 @@ proto_library("protos") {
 
 util_sources = [
   "address_manager.cc",
-  "guest_events.cc",
   "mac_address_generator.cc",
   "net_util.cc",
   "socket.cc",

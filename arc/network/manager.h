@@ -10,7 +10,6 @@
 #include <set>
 #include <string>
 
-#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/process_reaper.h>
@@ -20,7 +19,6 @@
 #include "arc/network/address_manager.h"
 #include "arc/network/arc_service.h"
 #include "arc/network/device_manager.h"
-#include "arc/network/guest_events.h"
 #include "arc/network/helper_process.h"
 #include "arc/network/shill_client.h"
 #include "arc/network/socket.h"
@@ -72,7 +70,6 @@ class Manager final : public brillo::DBusDaemon {
 
   // TODO(garrick): Remove this workaround ASAP.
   bool OnSignal(const struct signalfd_siginfo& info);
-  void OnFileCanReadWithoutBlocking();
 
   friend std::ostream& operator<<(std::ostream& stream, const Manager& manager);
 
@@ -90,9 +87,6 @@ class Manager final : public brillo::DBusDaemon {
 
   AddressManager addr_mgr_;
   std::unique_ptr<DeviceManager> device_mgr_;
-
-  Socket gsock_;
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> gsock_watcher_;
 
   std::unique_ptr<MinijailedProcessRunner> runner_;
   std::unique_ptr<Datapath> datapath_;
