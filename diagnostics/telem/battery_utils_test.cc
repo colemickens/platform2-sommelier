@@ -30,6 +30,8 @@ const double kBatteryVoltage = 127.45;
 const int kBatteryCycleCount = 2;
 const char kBatteryCycleCountStr[] = "2";
 
+}  // namespace
+
 // Test the expected path of extracting battery metrics from a dbus response.
 TEST(BatteryUtils, TestExtractingBatteryMetrics) {
   // Create PowerSupplyProperties response protobuf.
@@ -79,7 +81,5 @@ TEST(BatteryUtils, TestBadDbusResponse) {
                         &battery_voltage);
   test_cache.CheckParsedDataIsNull(TelemetryItemEnum::kBatteryVoltage);
 }
-
-}  // namespace
 
 }  // namespace diagnostics

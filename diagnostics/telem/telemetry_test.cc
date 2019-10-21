@@ -19,8 +19,12 @@
 
 namespace diagnostics {
 
+namespace {
+
 constexpr base::TimeDelta kImpossiblyLongTimeDelta =
     base::TimeDelta::FromSeconds(86400 * 365);
+
+}  // namespace
 
 // Test that retrieving the memory group works end-to-end.
 TEST(TelemetryIntegration, TestCacheForMemoryGroup) {

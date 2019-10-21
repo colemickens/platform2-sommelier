@@ -25,8 +25,6 @@ using testing::StrictMock;
 namespace diagnostics {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
-namespace {
-
 // Tests for the CrosHealthddMojoService class.
 class CrosHealthdMojoServiceTest : public testing::Test {
  protected:
@@ -41,7 +39,5 @@ class CrosHealthdMojoServiceTest : public testing::Test {
   mojo_ipc::CrosHealthdServicePtr service_ptr_;
   std::unique_ptr<CrosHealthdMojoService> service_;
 };
-
-}  // namespace
 
 }  // namespace diagnostics

@@ -18,6 +18,8 @@ namespace {
 const char kRelativeSKUNumberPath[] = "sys/firmware/vpd/ro/sku_number";
 const char kFakeSKUNumber[] = "ABCD&^A";
 
+}  // namespace
+
 // Test that we can read the cached VPD info, when it exists.
 TEST(DiskUtils, TestFetchCachedVpdInfo) {
   base::ScopedTempDir temp_dir;
@@ -37,5 +39,4 @@ TEST(DiskUtils, TestFetchCachedVpdInfoNoFile) {
   EXPECT_EQ(vpd_info->sku_number, "");
 }
 
-}  // namespace
 }  // namespace diagnostics

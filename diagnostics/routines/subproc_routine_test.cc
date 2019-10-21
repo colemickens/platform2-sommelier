@@ -36,6 +36,8 @@ class MockDiagProcessAdapter : public DiagProcessAdapter {
   MOCK_METHOD1(KillProcess, bool(const base::ProcessHandle&));
 };
 
+}  // namespace
+
 class SubprocRoutineTest : public Test {
  protected:
   SubprocRoutineTest() {
@@ -195,5 +197,4 @@ TEST_F(SubprocRoutineTest, TestHalfProgressThenCancel) {
   EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_CANCELLED);
 }
 
-}  // namespace
 }  // namespace diagnostics

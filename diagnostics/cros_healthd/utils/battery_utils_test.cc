@@ -35,6 +35,8 @@ const double kBatteryChargeFull = 4.3;
 const double kBatteryChargeFullDesign = 3.92;
 const int kBatteryManufactureDateSmart = 0;
 
+}  // namespace
+
 // Test the expected path of extracting battery metrics from a D-bus response.
 TEST(BatteryUtils, TestExtractingBatteryMetrics) {
   // Create PowerSupplyProperties response protobuf.
@@ -79,7 +81,5 @@ TEST(BatteryUtils, TestBadDbusResponse) {
 
   ASSERT_FALSE(ExtractBatteryMetrics(response.get(), &info));
 }
-
-}  // namespace
 
 }  // namespace diagnostics

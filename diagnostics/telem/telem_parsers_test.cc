@@ -19,6 +19,8 @@ using ::testing::_;
 
 namespace diagnostics {
 
+namespace {
+
 char const* kFakePerCPUIdleTimes[] = {"653435243543", "235435413"};
 constexpr char kFakeBadLoadavgFileContents[] = "0.82 0.61 0.52 2 370 30707\n";
 constexpr char kFakeBadMeminfoFileContents[] =
@@ -37,6 +39,8 @@ constexpr int kFakeNumRunnableEntities = 2;
 constexpr char kFakeStatFileContents[] =
     "cpu  0 0 0 165432156432413546\ncpu0 0 0 0 653435243543\ncpu1 0 0 0 "
     "235435413\nctxt 5345634354";
+
+}  // namespace
 
 // Test that we can retrieve kMemTotalMebibytes and kMemFreeMebibytes.
 TEST(TelemParsers, GetMemTotal) {

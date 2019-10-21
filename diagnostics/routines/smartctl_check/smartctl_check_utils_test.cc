@@ -14,6 +14,8 @@ namespace {
 constexpr char kSmartctlOutputFormat[] =
     "%sAvailable Spare: %s\nAvailable Spare Threshold: %s";
 
+}  // namespace
+
 TEST(SmartctlCheckUtilsTest, GoodParseSimple) {
   int available_spare_pct, available_spare_threshold_pct;
   EXPECT_TRUE(ScrapeAvailableSparePercents(
@@ -90,5 +92,4 @@ TEST(SmartctlCheckUtilsTest, BadParseOnlyBadSpareThreshold) {
                                             &available_spare_threshold_pct));
 }
 
-}  // namespace
 }  // namespace diagnostics
