@@ -14,8 +14,10 @@
 #include <brillo/cryptohome.h>
 #include <chaps/token_manager_client_mock.h>
 #include <dbus/mock_bus.h>
+#include <metrics/metrics_library_mock.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mock_arc_disk_quota.h"
 #include "cryptohome/mock_crypto.h"
@@ -32,6 +34,7 @@
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/obfuscated_username.h"
 #include "cryptohome/protobuf_test_utils.h"
+#include "cryptohome/tpm.h"
 
 using base::FilePath;
 using brillo::SecureBlob;
@@ -2714,6 +2717,48 @@ TEST_F(UserDataAuthTestThreaded, CheckLowDiskCallbackFreeDiskSpaceOnce) {
   InitializeUserDataAuth();
 
   base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
+}
+
+TEST_F(UserDataAuthTestThreaded, UploadAlertsCallback) {
+  MetricsLibraryMock metrics;
+  OverrideMetricsLibraryForTesting(&metrics);
+
+  Tpm::AlertsData alert_data;
+  for (int i = 0; i < Tpm::kAlertsNumber; i++)
+    alert_data.counters[i] = 1;
+
+  // Checks that LowDiskCallback is called during/after initialization.
+  EXPECT_CALL(tpm_, GetAlertsData(_))
+      .WillOnce(DoAll(SetArgPointee<0>(alert_data), Return(true)));
+
+  // Checks that the metrics are reported.
+  constexpr char kTpmAlertsHistogram[] = "Platform.TPM.HardwareAlerts";
+  EXPECT_CALL(metrics, SendEnumToUMA(kTpmAlertsHistogram, _, _))
+      .Times(Tpm::kAlertsNumber);
+
+  InitializeUserDataAuth();
+
+  base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
+
+  ClearMetricsLibraryForTesting();
+}
+
+TEST_F(UserDataAuthTestThreaded, UploadAlertsCallbackPeriodical) {
+  // Set the callback to run once every 2ms.
+  userdataauth_->set_upload_alerts_period_ms(2);
+
+  // Checks that GetAlertsData is called periodically.
+  EXPECT_CALL(tpm_, GetAlertsData(_)).Times(AtLeast(5));
+
+  InitializeUserDataAuth();
+
+  // Should be long enough.
+  base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
+
+  // Set it back to a long time so we don't have a race condition when cleaning
+  // up.
+  userdataauth_->set_upload_alerts_period_ms(100 * 1000);
+  base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(20));
 }
 
 }  // namespace cryptohome

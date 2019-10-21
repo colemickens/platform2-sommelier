@@ -115,6 +115,7 @@ UserDataAuth::UserDataAuth()
       default_tpm_ownership_proxy_(),
       tpm_ownership_proxy_(nullptr),
       attestation_proxy_(nullptr),
+      upload_alerts_period_ms_(kUploadAlertsPeriodMS),
       default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
       install_attrs_(default_install_attrs_.get()),
       enterprise_owned_(false),
@@ -227,6 +228,12 @@ bool UserDataAuth::Initialize() {
     // Subsequent events are scheduled by the callback itself.
     PostTaskToMountThread(FROM_HERE, base::Bind(&UserDataAuth::LowDiskCallback,
                                                 base::Unretained(this)));
+
+    // Start scheduling periodic TPM alerts upload to UMA. Subsequent events are
+    // scheduled by the callback itself.
+    PostTaskToOriginThread(FROM_HERE,
+                           base::Bind(&UserDataAuth::UploadAlertsDataCallback,
+                                      base::Unretained(this)));
   }
 
   return true;
@@ -2324,6 +2331,28 @@ void UserDataAuth::LowDiskCallback() {
       FROM_HERE,
       base::Bind(&UserDataAuth::LowDiskCallback, base::Unretained(this)),
       base::TimeDelta::FromMilliseconds(low_disk_notification_period_ms_));
+}
+
+void UserDataAuth::UploadAlertsDataCallback() {
+  AssertOnOriginThread();
+  CHECK(!disable_threading_);
+
+  Tpm::AlertsData alerts;
+
+  CHECK(tpm_);
+  if (tpm_->GetAlertsData(&alerts)) {
+    ReportAlertsData(alerts);
+
+    PostTaskToOriginThread(
+        FROM_HERE,
+        base::Bind(&UserDataAuth::UploadAlertsDataCallback,
+                   base::Unretained(this)),
+        base::TimeDelta::FromMilliseconds(upload_alerts_period_ms_));
+  } else {
+    // TODO(b/141294469): Change the code to retry even when it fails.
+    LOG(INFO) << "The TPM chip does not support GetAlertsData. Stop "
+                 "UploadAlertsData task.";
+  }
 }
 
 }  // namespace cryptohome

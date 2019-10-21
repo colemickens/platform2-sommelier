@@ -108,7 +108,7 @@ const TimerHistogramParams kTimerHistogramParams[cryptohome::kNumTimerTypes] = {
 constexpr char kCryptohomeDeprecatedApiHistogramName[] =
     "Cryptohome.DeprecatedApiCalled";
 
-MetricsLibrary* g_metrics = NULL;
+MetricsLibraryInterface* g_metrics = NULL;
 chromeos_metrics::TimerReporter* g_timers[cryptohome::kNumTimerTypes] = {NULL};
 
 chromeos_metrics::TimerReporter* GetTimer(cryptohome::TimerType timer_type) {
@@ -142,6 +142,14 @@ void TearDownMetrics() {
       delete g_timers[i];
     }
   }
+}
+
+void OverrideMetricsLibraryForTesting(MetricsLibraryInterface* lib) {
+  g_metrics = lib;
+}
+
+void ClearMetricsLibraryForTesting() {
+  g_metrics = nullptr;
 }
 
 void ReportCryptohomeError(CryptohomeError error) {

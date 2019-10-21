@@ -487,6 +487,12 @@ class UserDataAuth {
     low_disk_notification_period_ms_ = value;
   }
 
+  // Override the time between each run of UploadAlertsDataCallback() for
+  // testing. This is so that we can finish the unit test in a shorter time.
+  void set_upload_alerts_period_ms(int value) {
+    upload_alerts_period_ms_ = value;
+  }
+
   // Set |disable_threading_|, so that we can disable threading in this class
   // for testing purpose. See comment of |disable_threading_| for more
   // information.
@@ -615,7 +621,7 @@ class UserDataAuth {
       const Mount::MountArgs& mount_args,
       base::OnceCallback<void(const user_data_auth::MountReply&)> on_done);
 
-  // =============== Low Disk Space/Cleanup Related Methods ===============
+  // =============== Periodic Maintenance Related Methods ===============
 
   // Called periodically on Mount thread to detect low disk space and emit a
   // signal if detected. This also does various cleanup task.
@@ -628,6 +634,9 @@ class UserDataAuth {
 
   // Does what its name suggests. Usually called by DoAutoCleanup().
   void ResetDictionaryAttackMitigation();
+
+  // This method uploads the TPM Alerts data UMA.
+  void UploadAlertsDataCallback();
 
   // =============== PKCS#11 Related Utilities ===============
 
@@ -786,6 +795,9 @@ class UserDataAuth {
   // The actual D-Bus proxy for invoking methods in attestation, but can be
   // overridden for testing.
   org::chromium::AttestationProxyInterface* attestation_proxy_;
+
+  // The amount of time in between each run of UploadAlertsDataCallback()
+  int upload_alerts_period_ms_;
 
   // =============== Install Attributes Related Variables ===============
 

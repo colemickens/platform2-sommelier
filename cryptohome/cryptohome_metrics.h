@@ -9,6 +9,7 @@
 
 #include <base/files/file.h>
 #include <base/profiler/tracked_time.h>
+#include <metrics/metrics_library.h>
 
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/migration_type.h"
@@ -269,6 +270,13 @@ void InitializeMetrics();
 
 // Cleans up and returns cryptohome metrics to an uninitialized state.
 void TearDownMetrics();
+
+// Override the internally used MetricsLibrary for testing purpose.
+void OverrideMetricsLibraryForTesting(MetricsLibraryInterface* lib);
+
+// Reset the internally used MetricsLibrary for testing purpose. This is usually
+// used with OverrideMetricsLibraryForTesting().
+void ClearMetricsLibraryForTesting();
 
 // The |error| value is reported to the "Cryptohome.Errors" enum histogram.
 void ReportCryptohomeError(CryptohomeError error);

@@ -128,7 +128,6 @@ void AddTaskObserverToThread(base::Thread* thread,
 
 }  // anonymous namespace
 
-const int kUploadAlertsPeriodMS = 1000 * 60 * 60 * 6;    // 6 hours
 const int kDefaultRandomSeedLength = 64;
 const int kDefaultDataRestoreKeyLength = 32;
 const char kMountThreadName[] = "MountThread";
