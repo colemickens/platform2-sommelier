@@ -29,8 +29,7 @@ int main(int argc, char** argv) {
 
   if (FLAGS_probe_block_devices) {
     base::FilePath root_dir{"/"};
-    auto devices =
-        diagnostics::disk_utils::FetchNonRemovableBlockDevicesInfo(root_dir);
+    auto devices = diagnostics::FetchNonRemovableBlockDevicesInfo(root_dir);
     VLOG(1) << "Found " << devices.size() << " non-removable block device(s)."
             << std::endl;
     printf("path,size,type,manfid,name,serial\n");
@@ -57,8 +56,7 @@ int main(int argc, char** argv) {
              battery->manufacture_date_smart);
     }
   } else if (FLAGS_probe_cached_vpd) {
-    auto vpd_info =
-        diagnostics::disk_utils::FetchCachedVpdInfo(base::FilePath("/"));
+    auto vpd_info = diagnostics::FetchCachedVpdInfo(base::FilePath("/"));
     std::string sku_number = vpd_info->sku_number;
     if (sku_number == "") {
       LOG(ERROR) << "Unable to read sku_number.";

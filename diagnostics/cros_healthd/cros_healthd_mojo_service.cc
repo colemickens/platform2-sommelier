@@ -45,14 +45,14 @@ void CrosHealthdMojoService::ProbeTelemetryInfo(
         break;
       }
       case ProbeCategoryEnum::kCachedVpdData: {
-        auto vpd_info = disk_utils::FetchCachedVpdInfo(base::FilePath("/"));
+        auto vpd_info = FetchCachedVpdInfo(base::FilePath("/"));
         telemetry_info.vpd_info.Swap(&vpd_info);
         break;
       }
       case ProbeCategoryEnum::kNonRemovableBlockDevices: {
         telemetry_info.block_device_info = base::Optional<std::vector<
             chromeos::cros_healthd::mojom::NonRemovableBlockDeviceInfoPtr>>(
-            disk_utils::FetchNonRemovableBlockDevicesInfo(base::FilePath("/")));
+            FetchNonRemovableBlockDevicesInfo(base::FilePath("/")));
         break;
       }
     }

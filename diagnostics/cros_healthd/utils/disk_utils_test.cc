@@ -13,7 +13,6 @@
 #include "diagnostics/cros_healthd/utils/disk_utils.h"
 
 namespace diagnostics {
-namespace disk_utils {
 namespace {
 
 const char kRelativeSKUNumberPath[] = "sys/firmware/vpd/ro/sku_number";
@@ -39,5 +38,4 @@ TEST(DiskUtils, TestFetchCachedVpdInfoNoFile) {
 }
 
 }  // namespace
-}  // namespace disk_utils
 }  // namespace diagnostics

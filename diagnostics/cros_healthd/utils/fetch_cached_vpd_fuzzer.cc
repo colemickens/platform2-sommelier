@@ -12,7 +12,6 @@
 #include "diagnostics/cros_healthd/utils/disk_utils.h"
 
 namespace diagnostics {
-namespace disk_utils {
 
 class Environment {
  public:
@@ -32,5 +31,4 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   return 0;
 }
 
-}  // namespace disk_utils
 }  // namespace diagnostics

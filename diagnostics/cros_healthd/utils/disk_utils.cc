@@ -22,8 +22,6 @@
 
 namespace diagnostics {
 
-namespace disk_utils {
-
 using NonRemovableBlockDeviceInfo =
     ::chromeos::cros_healthd::mojom::NonRemovableBlockDeviceInfo;
 using NonRemovableBlockDeviceInfoPtr =
@@ -281,7 +279,5 @@ CachedVpdInfoPtr FetchCachedVpdInfo(const base::FilePath& root_dir) {
                     &vpd_info.sku_number);
   return vpd_info.Clone();
 }
-
-}  // namespace disk_utils
 
 }  // namespace diagnostics
