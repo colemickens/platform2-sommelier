@@ -14,6 +14,9 @@ group("all") {
   if (use.test) {
     deps += [ ":arc-keymasterd_testrunner" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":arc_keymasterd_fuzzer" ]
+  }
 }
 
 # Binary
@@ -159,6 +162,28 @@ if (use.test) {
       "conversion.cc",
       "conversion_test.cc",
       "keymaster_logger_test.cc",
+    ]
+  }
+}
+
+# Fuzzer target.
+if (use.fuzzer) {
+  pkg_config("arc_keymasterd_fuzzer_config") {
+    pkg_deps = [ "libchrome-${libbase_ver}" ]
+  }
+  executable("arc_keymasterd_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":arc_keymasterd_fuzzer_config",
+    ]
+    sources = [
+      "conversion.cc",
+      "conversion_fuzzer.cc",
+    ]
+    deps = [
+      ":keymaster_mojo_bindings",
+      ":libarckeymaster_context",
+      ":libkeymaster",
     ]
   }
 }

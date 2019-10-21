@@ -33,36 +33,59 @@ class KmParamSet {
       switch (keymaster_tag_get_type(tag)) {
         case KM_ENUM:
         case KM_ENUM_REP:
-          param_set_.params[i] =
-              keymaster_param_enum(tag, data[i]->param->get_integer());
+          if (data[i]->param->is_integer()) {
+            param_set_.params[i] =
+                keymaster_param_enum(tag, data[i]->param->get_integer());
+          } else {
+            param_set_.params[i].tag = KM_TAG_INVALID;
+          }
           break;
         case KM_UINT:
         case KM_UINT_REP:
-          param_set_.params[i] =
-              keymaster_param_int(tag, data[i]->param->get_integer());
+          if (data[i]->param->is_integer()) {
+            param_set_.params[i] =
+                keymaster_param_int(tag, data[i]->param->get_integer());
+          } else {
+            param_set_.params[i].tag = KM_TAG_INVALID;
+          }
           break;
         case KM_ULONG:
         case KM_ULONG_REP:
-          param_set_.params[i] =
-              keymaster_param_long(tag, data[i]->param->get_long_integer());
+          if (data[i]->param->is_long_integer()) {
+            param_set_.params[i] =
+                keymaster_param_long(tag, data[i]->param->get_long_integer());
+          } else {
+            param_set_.params[i].tag = KM_TAG_INVALID;
+          }
           break;
         case KM_DATE:
-          param_set_.params[i] =
-              keymaster_param_date(tag, data[i]->param->get_date_time());
+          if (data[i]->param->is_date_time()) {
+            param_set_.params[i] =
+                keymaster_param_date(tag, data[i]->param->get_date_time());
+          } else {
+            param_set_.params[i].tag = KM_TAG_INVALID;
+          }
           break;
         case KM_BOOL:
-          if (data[i]->param->get_boolean_value())
+          if (data[i]->param->is_boolean_value() &&
+              data[i]->param->get_boolean_value()) {
             param_set_.params[i] = keymaster_param_bool(tag);
-          else
+          } else {
             param_set_.params[i].tag = KM_TAG_INVALID;
+          }
           break;
         case KM_BIGNUM:
         case KM_BYTES:
-          param_set_.params[i] =
-              keymaster_param_blob(tag, &data[i]->param->get_blob()[0],
-                                   data[i]->param->get_blob().size());
+          if (data[i]->param->is_blob()) {
+            param_set_.params[i] =
+                keymaster_param_blob(tag, data[i]->param->get_blob().data(),
+                                     data[i]->param->get_blob().size());
+          } else {
+            param_set_.params[i].tag = KM_TAG_INVALID;
+          }
           break;
         case KM_INVALID:
+        default:
           param_set_.params[i].tag = KM_TAG_INVALID;
           /* just skip */
           break;
