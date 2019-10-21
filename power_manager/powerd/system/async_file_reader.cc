@@ -149,6 +149,7 @@ void AsyncFileReader::Reset() {
 
 bool AsyncFileReader::AsyncRead(int size, int offset) {
   aio_buffer_.reset(new char[size]);
+  memset(&aio_buffer_[0], 0, size);
 
   memset(&aio_control_, 0, sizeof(aio_control_));
   aio_control_.aio_nbytes = size;
