@@ -76,7 +76,8 @@ int main(int argc, char** argv) {
                 "GetRoutineUpdate,"
                 "GetSysfsData,"
                 "PerformWebRequest,"
-                "RunRoutine");
+                "RunRoutine,"
+                "GetAvailableRoutines");
   DEFINE_string(message_body, "",
                 "JSON-formatted body of proto to send as argument of request");
   constexpr char kUsageMessage[] =
@@ -155,6 +156,10 @@ EXAMPLE USAGE
   } else if (FLAGS_message_name == "RunRoutine") {
     request_succeeded = diagnostics::MakeRequest(
         requester.get(), &diagnostics::DpslRequester::RunRoutine,
+        FLAGS_message_body, callback);
+  } else if (FLAGS_message_name == "GetAvailableRoutines") {
+    request_succeeded = diagnostics::MakeRequest(
+        requester.get(), &diagnostics::DpslRequester::GetAvailableRoutines,
         FLAGS_message_body, callback);
   } else {
     std::cerr
