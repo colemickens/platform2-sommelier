@@ -17,6 +17,9 @@ namespace concierge {
 namespace pvm {
 namespace helper {
 
+// TODO(kimjae): Once fully transitioned to DLC based PluginVM, this check needs
+// to be a precondition that's required.
+bool IsDlcVm();
 bool CreateVm(const VmId& vm_id, std::vector<std::string> params);
 bool DeleteVm(const VmId& vm_id);
 bool AttachIso(const VmId& vm_id, const std::string& iso_name);

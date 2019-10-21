@@ -27,7 +27,12 @@ namespace pvm {
 namespace helper {
 namespace {
 
+constexpr char kDlcPath[] = "/run/imageloader/pita/package/root";
+
 constexpr char kVmHelperCommand[] = "/opt/pita/pvm_helper";
+
+constexpr char kVmHelperDlcCommand[] =
+    "/run/imageloader/pita/package/root/opt/pita/pvm_helper";
 
 constexpr char kVmHelperPolicyPath[] = "/usr/share/policy/pvm_helper.policy";
 
@@ -124,7 +129,7 @@ bool ExecutePvmHelper(const std::string& owner_id,
     return false;
 
   std::vector<std::string> args;
-  args.emplace_back(kVmHelperCommand);
+  args.emplace_back(IsDlcVm() ? kVmHelperDlcCommand : kVmHelperCommand);
   for (auto& param : params)
     args.emplace_back(std::move(param));
   args.emplace_back("--socket-path");
@@ -231,6 +236,10 @@ bool DisconnectDevice(const VmId& vm_id, const std::string& device_name) {
 }
 
 }  // namespace
+
+bool IsDlcVm() {
+  return base::PathExists(base::FilePath(kDlcPath));
+}
 
 bool CreateVm(const VmId& vm_id, std::vector<std::string> params) {
   std::vector<std::string> args = {

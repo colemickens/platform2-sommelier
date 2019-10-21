@@ -39,6 +39,8 @@ constexpr char kDispatcherSocket[] = "vmplugin_dispatcher.socket";
 
 // Path to the plugin binaries and other assets.
 constexpr char kPluginBinDir[] = "/opt/pita/";
+constexpr char kDlcPluginBinDir[] =
+    "/run/imageloader/pita/package/root/opt/pita";
 
 // Name of the plugin VM binary.
 constexpr char kPluginBinName[] = "pvm";
@@ -596,13 +598,14 @@ bool PluginVm::Start(uint32_t cpus,
     return false;
   }
 
+  auto bin_dir = pvm::helper::IsDlcVm() ? kDlcPluginBinDir : kPluginBinDir;
   // Build up the process arguments.
   // clang-format off
   std::vector<string> args = {
     kCrosvmBin,       "run",
     "--cpus",         std::to_string(cpus),
     "--tap-fd",       std::to_string(tap_fd.get()),
-    "--plugin",       base::FilePath(kPluginBinDir)
+    "--plugin",       base::FilePath(bin_dir)
                           .Append(kPluginBinName)
                           .value(),
   };
@@ -615,7 +618,7 @@ bool PluginVm::Start(uint32_t cpus,
       "/run/cups_proxy:/run/cups:true",
       // TODO(b:127478233) replace with CRAS proxy socket directory when ready.
       "/run/cras:/run/cras:true",
-      base::StringPrintf("%s:%s:false", kPluginBinDir, kPluginBinDir),
+      base::StringPrintf("%s:%s:false", bin_dir, kPluginBinDir),
       // This is directory where the VM image resides.
       base::StringPrintf("%s:%s:true", stateful_dir.value().c_str(),
                          kStatefulDir),
