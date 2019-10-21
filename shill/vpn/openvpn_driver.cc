@@ -435,7 +435,7 @@ void OpenVPNDriver::ParseIPConfiguration(
     } else if (base::LowerCaseEqualsASCII(key, kOpenVPNTrustedIP)) {
       size_t prefix = IPAddress::GetMaxPrefixLength(properties->address_family);
       properties->exclusion_list.push_back(value + "/" +
-                                           base::SizeTToString(prefix));
+                                           base::NumberToString(prefix));
     } else if (base::LowerCaseEqualsASCII(key, kOpenVPNTunMTU)) {
       int mtu = 0;
       if (base::StringToInt(value, &mtu) && mtu >= IPConfig::kMinIPv4MTU) {

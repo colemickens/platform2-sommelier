@@ -198,7 +198,8 @@ void StaticIPParameters::ApplyRoutes(const string& property,
                                      vector<IPConfig::Route>* value_out) {
   vector<string> saved_routes;
   for (const auto& route : *value_out) {
-    saved_routes.push_back(route.host + "/" + base::IntToString(route.prefix));
+    saved_routes.push_back(route.host + "/" +
+                           base::NumberToString(route.prefix));
   }
   saved_args_.SetStrings(property, saved_routes);
 

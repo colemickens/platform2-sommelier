@@ -81,15 +81,15 @@ std::unique_ptr<ExternalTask> PPPDaemon::Start(
   }
   if (options.lcp_echo_interval != kUnspecifiedValue) {
     arguments.push_back("lcp-echo-interval");
-    arguments.push_back(base::UintToString(options.lcp_echo_interval));
+    arguments.push_back(base::NumberToString(options.lcp_echo_interval));
   }
   if (options.lcp_echo_failure != kUnspecifiedValue) {
     arguments.push_back("lcp-echo-failure");
-    arguments.push_back(base::UintToString(options.lcp_echo_failure));
+    arguments.push_back(base::NumberToString(options.lcp_echo_failure));
   }
   if (options.max_fail != kUnspecifiedValue) {
     arguments.push_back("maxfail");
-    arguments.push_back(base::UintToString(options.max_fail));
+    arguments.push_back(base::NumberToString(options.max_fail));
   }
   if (options.use_ipv6) {
     arguments.push_back("+ipv6");

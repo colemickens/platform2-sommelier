@@ -152,7 +152,7 @@ Service::Service(Manager* manager, Technology technology)
       store_(PropertyStore::PropertyChangeCallback(base::Bind(
           &Service::OnPropertyChanged, weak_ptr_factory_.GetWeakPtr()))),
       serial_number_(next_serial_number_++),
-      unique_name_(base::UintToString(serial_number_)),
+      unique_name_(base::NumberToString(serial_number_)),
       friendly_name_(unique_name_),
       adaptor_(manager->control_interface()->CreateServiceAdaptor(this)),
       manager_(manager),

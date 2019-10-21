@@ -725,12 +725,12 @@ void WiFiProvider::FrequencyMapToStringList(time_t start_week,
                                   static_cast<uint64_t>(start_week)));
 
   for (const auto& freq_conn : numbers) {
-    // Use base::Int64ToString() instead of using something like "%llu"
+    // Use base::NumberToString() instead of using something like "%llu"
     // (not correct for native 64 bit architectures) or PRId64 (does not
     // work correctly using cros_workon_make due to include intricacies).
     strings->push_back(
         StringPrintf("%u%c%s", freq_conn.first, kFrequencyDelimiter,
-                     base::Int64ToString(freq_conn.second).c_str()));
+                     base::NumberToString(freq_conn.second).c_str()));
   }
 }
 

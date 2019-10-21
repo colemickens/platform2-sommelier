@@ -483,8 +483,8 @@ void CellularCapabilityCdma::OnCdmaRegistrationChanged(
   cdma_evdo_registration_state_ = state_evdo;
   sid_ = sid;
   nid_ = nid;
-  cellular()->serving_operator_info()->UpdateSID(base::UintToString(sid));
-  cellular()->serving_operator_info()->UpdateNID(base::UintToString(nid));
+  cellular()->serving_operator_info()->UpdateSID(base::NumberToString(sid));
+  cellular()->serving_operator_info()->UpdateNID(base::NumberToString(nid));
   cellular()->HandleNewRegistrationState();
 }
 

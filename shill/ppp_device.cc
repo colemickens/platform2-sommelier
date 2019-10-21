@@ -88,7 +88,7 @@ IPConfig::Properties PPPDevice::ParseIPConfiguration(
       // our PPP plugin.
       size_t prefix = IPAddress::GetMaxPrefixLength(properties.address_family);
       properties.exclusion_list.push_back(value + "/" +
-                                          base::SizeTToString(prefix));
+                                          base::NumberToString(prefix));
     } else if (key == kPPPMRU) {
       int mru;
       if (!base::StringToInt(value, &mru)) {

@@ -226,9 +226,9 @@ TEST_F(CellularCapabilityCdmaMainTest, OnCdmaRegistrationChanged) {
   const unsigned kNid = 1;
   SetMockMobileOperatorInfoObjects();
   EXPECT_CALL(*mock_serving_operator_info_,
-              UpdateSID(base::UintToString(kSid)));
+              UpdateSID(base::NumberToString(kSid)));
   EXPECT_CALL(*mock_serving_operator_info_,
-              UpdateNID(base::UintToString(kNid)));
+              UpdateNID(base::NumberToString(kNid)));
   capability_->OnCdmaRegistrationChanged(
       MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
       MM_MODEM_CDMA_REGISTRATION_STATE_HOME, kSid, kNid);

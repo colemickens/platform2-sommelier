@@ -443,14 +443,14 @@ TEST_F(KeyFileStoreTest, GetUint64) {
   static const char kKeyBad[] = "bad";
   const uint64_t kValueGood = 0xFEDCBA9876543210LL;
   static const char kValueBad[] = "nan";
-  // Use base::Uint64ToString() instead of using something like "%llu"
+  // Use base::NumberToString() instead of using something like "%llu"
   // (not correct for native 64 bit architectures) or PRIu64 (does not
   // work correctly using cros_workon_make due to include intricacies).
   WriteKeyFile(base::StringPrintf(
       "[%s]\n"
       "%s=%s\n"
       "%s=%s\n",
-      kGroup, kKeyGood, base::Uint64ToString(kValueGood).c_str(), kKeyBad,
+      kGroup, kKeyGood, base::NumberToString(kValueGood).c_str(), kKeyBad,
       kValueBad));
   ASSERT_TRUE(store_->Open());
   {
@@ -478,7 +478,7 @@ TEST_F(KeyFileStoreTest, SetUint64) {
   EXPECT_EQ(
       base::StringPrintf("[%s]\n"
                          "%s=%s\n",
-                         kGroup, kKey, base::Uint64ToString(kValue).c_str()),
+                         kGroup, kKey, base::NumberToString(kValue).c_str()),
       ReadKeyFile());
 }
 

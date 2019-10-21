@@ -573,7 +573,7 @@ MATCHER_P(WEPSecurityArgsKeyIndex, index, "") {
   uint32_t index_u32 = index;
   return arg.ContainsString(WPASupplicant::kPropertyAuthAlg) &&
          arg.ContainsUint8s(WPASupplicant::kPropertyWEPKey +
-                            base::IntToString(index)) &&
+                            base::NumberToString(index)) &&
          arg.ContainsUint(WPASupplicant::kPropertyWEPTxKeyIndex) &&
          (arg.GetUint(WPASupplicant::kPropertyWEPTxKeyIndex) == index_u32);
 }

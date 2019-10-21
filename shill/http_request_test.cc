@@ -32,7 +32,7 @@
 
 using base::Bind;
 using base::Callback;
-using base::IntToString;
+using base::NumberToString;
 using base::Unretained;
 using std::string;
 using std::vector;
@@ -224,7 +224,7 @@ class HttpRequestTest : public Test {
       const brillo::http::ErrorCallback& error_callback) {
     brillo::ErrorPtr error;
     brillo::Error::AddTo(&error, FROM_HERE, "curl_easy_error",
-                         IntToString(CURLE_COULDNT_CONNECT), "");
+                         NumberToString(CURLE_COULDNT_CONNECT), "");
     // request_id_ has not yet been set. Pass -1 to match default value.
     error_callback.Run(-1, error.get());
   }

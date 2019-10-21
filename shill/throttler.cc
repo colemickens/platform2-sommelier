@@ -173,7 +173,7 @@ bool Throttler::Throttle(const ResultCallback& callback,
   // and filters
   if (upload_rate_kbits) {
     for (std::string command : kTCThrottleUplinkCmds) {
-      std::string ulrate(base::UintToString(upload_rate_kbits) + "kbit");
+      std::string ulrate(base::NumberToString(upload_rate_kbits) + "kbit");
       base::ReplaceSubstringsAfterOffset(&command, 0, kTemplateInterface,
                                          interface_name);
       base::ReplaceSubstringsAfterOffset(&command, 0, kTemplateULRate, ulrate);
@@ -185,8 +185,8 @@ bool Throttler::Throttle(const ResultCallback& callback,
   // and filters
   if (download_rate_kbits) {
     for (std::string command : kTCThrottleDownlinkCmds) {
-      std::string dlrate(base::UintToString(download_rate_kbits) + "kbit");
-      std::string to_burst(base::UintToString(download_rate_kbits * 2));
+      std::string dlrate(base::NumberToString(download_rate_kbits) + "kbit");
+      std::string to_burst(base::NumberToString(download_rate_kbits * 2));
       base::ReplaceSubstringsAfterOffset(&command, 0, kTemplateInterface,
                                          interface_name);
       base::ReplaceSubstringsAfterOffset(&command, 0, kTemplateDLRate, dlrate);
@@ -299,7 +299,7 @@ void Throttler::OnProcessExited(int exit_status) {
       ((desired_throttling_enabled_) ? "throttling " : "disabling throttle ") +
       ((exit_status == EXIT_SUCCESS)
            ? std::string("succeeded")
-           : (std::string("failed: ") + base::IntToString(exit_status)));
+           : (std::string("failed: ") + base::NumberToString(exit_status)));
 
   Error error;
   Error::PopulateAndLog(FROM_HERE, &error, error_type, message);

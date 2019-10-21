@@ -321,7 +321,7 @@ bool KeyFileStore::SetUint64(const string& group,
   // Convert the value to a string first, then save the value because glib's
   // g_key_file_get_uint64 appears not to work on 32-bit platforms in our
   // unit tests.
-  return SetString(group, key, base::Uint64ToString(value));
+  return SetString(group, key, base::NumberToString(value));
 }
 
 bool KeyFileStore::GetStringList(const string& group,

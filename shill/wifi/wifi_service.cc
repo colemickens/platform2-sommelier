@@ -604,7 +604,7 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
     std::vector<uint8_t> password_bytes;
     ParseWEPPassphrase(passphrase_, &key_index, &password_bytes, &unused_error);
     params.SetUint8s(
-        WPASupplicant::kPropertyWEPKey + base::IntToString(key_index),
+        WPASupplicant::kPropertyWEPKey + base::NumberToString(key_index),
         password_bytes);
     params.SetUint(WPASupplicant::kPropertyWEPTxKeyIndex, key_index);
   } else if (security_ == kSecurityNone) {

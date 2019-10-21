@@ -174,18 +174,19 @@ TEST_F(DHCPv6ConfigTest, ParseConfiguration) {
       {kDhcpv6AddressProperty, kConfigIPAddress},
       {kDhcpv6LengthProperty, "128"},
       {kDhcpv6LeaseDurationSecondsProperty,
-       base::UintToString(kConfigIPAddressLeaseTime)},
+       base::NumberToString(kConfigIPAddressLeaseTime)},
       {kDhcpv6PreferredLeaseDurationSecondsProperty,
-       base::UintToString(kConfigIPAddressPreferredLeaseTime)},
+       base::NumberToString(kConfigIPAddressPreferredLeaseTime)},
   }};
   EXPECT_EQ(kAddresses, config_->properties_.dhcpv6_addresses);
   const Stringmaps kDelegatedPrefixes = {{
       {kDhcpv6AddressProperty, kConfigDelegatedPrefix},
-      {kDhcpv6LengthProperty, base::UintToString(kConfigDelegatedPrefixLength)},
+      {kDhcpv6LengthProperty,
+       base::NumberToString(kConfigDelegatedPrefixLength)},
       {kDhcpv6LeaseDurationSecondsProperty,
-       base::UintToString(kConfigDelegatedPrefixLeaseTime)},
+       base::NumberToString(kConfigDelegatedPrefixLeaseTime)},
       {kDhcpv6PreferredLeaseDurationSecondsProperty,
-       base::UintToString(kConfigDelegatedPrefixPreferredLeaseTime)},
+       base::NumberToString(kConfigDelegatedPrefixPreferredLeaseTime)},
   }};
   EXPECT_EQ(kDelegatedPrefixes, config_->properties_.dhcpv6_delegated_prefixes);
   ASSERT_EQ(1, config_->properties_.dns_servers.size());

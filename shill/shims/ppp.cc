@@ -116,7 +116,7 @@ void PPP::OnConnect(const string& ifname) {
     dict[kPPPDNS2] = ConvertIPToText(&ipcp_gotoptions[0].dnsaddr[1]);
   }
   if (lcp_gotoptions[0].mru) {
-    dict[kPPPMRU] = base::IntToString(lcp_gotoptions[0].mru);
+    dict[kPPPMRU] = base::NumberToString(lcp_gotoptions[0].mru);
   }
   string lns_address;
   if (Environment::GetInstance()->GetVariable("LNS_ADDRESS", &lns_address)) {

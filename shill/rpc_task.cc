@@ -20,7 +20,7 @@ unsigned int RpcTask::serial_number_ = 0;
 
 RpcTask::RpcTask(ControlInterface* control_interface, RpcTaskDelegate* delegate)
     : delegate_(delegate),
-      unique_name_(base::UintToString(serial_number_++)),
+      unique_name_(base::NumberToString(serial_number_++)),
       adaptor_(control_interface->CreateRpcTaskAdaptor(this)) {
   CHECK(delegate);
   LOG(INFO) << "RpcTask " + unique_name_ + " created.";

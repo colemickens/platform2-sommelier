@@ -22,7 +22,7 @@
 #include "shill/vpn/openvpn_driver.h"
 
 using base::Bind;
-using base::IntToString;
+using base::NumberToString;
 using base::SplitString;
 using base::StringPrintf;
 using base::Unretained;
@@ -97,7 +97,7 @@ bool OpenVPNManagementServer::Start(Sockets* sockets,
 
   // Append openvpn management API options.
   driver_->AppendOption("management", inet_ntoa(addr.sin_addr),
-                        IntToString(ntohs(addr.sin_port)), options);
+                        NumberToString(ntohs(addr.sin_port)), options);
   driver_->AppendOption("management-client", options);
   driver_->AppendOption("management-hold", options);
   hold_release_ = false;

@@ -168,10 +168,11 @@ bool DHCPv6Config::ParseConfiguration(const KeyValueStore& configuration) {
       properties_.dhcpv6_delegated_prefixes.push_back({
           {kDhcpv6AddressProperty, configuration.GetString(prefix_key)},
           {kDhcpv6LengthProperty,
-           base::UintToString(configuration.GetUint(prefix_length_key))},
-          {kDhcpv6LeaseDurationSecondsProperty, base::UintToString(lease_time)},
+           base::NumberToString(configuration.GetUint(prefix_length_key))},
+          {kDhcpv6LeaseDurationSecondsProperty,
+           base::NumberToString(lease_time)},
           {kDhcpv6PreferredLeaseDurationSecondsProperty,
-           base::UintToString(preferred_lease_time)},
+           base::NumberToString(preferred_lease_time)},
       });
       UpdateLeaseTime(lease_time);
     }
@@ -192,9 +193,10 @@ bool DHCPv6Config::ParseConfiguration(const KeyValueStore& configuration) {
       properties_.dhcpv6_addresses.push_back({
           {kDhcpv6AddressProperty, configuration.GetString(address_key)},
           {kDhcpv6LengthProperty, "128"},  // IPv6 addresses are 128 bits long.
-          {kDhcpv6LeaseDurationSecondsProperty, base::UintToString(lease_time)},
+          {kDhcpv6LeaseDurationSecondsProperty,
+           base::NumberToString(lease_time)},
           {kDhcpv6PreferredLeaseDurationSecondsProperty,
-           base::UintToString(preferred_lease_time)},
+           base::NumberToString(preferred_lease_time)},
       });
       UpdateLeaseTime(lease_time);
     }

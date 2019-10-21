@@ -126,7 +126,7 @@ bool DnsClient::Start(const string& hostname, Error* error) {
     if (status != ARES_SUCCESS) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                             "ARES initialization returns error code: " +
-                                base::IntToString(status));
+                                base::NumberToString(status));
       resolver_state_ = nullptr;
       return false;
     }
@@ -142,7 +142,7 @@ bool DnsClient::Start(const string& hostname, Error* error) {
     if (status != ARES_SUCCESS) {
       Error::PopulateAndLog(
           FROM_HERE, error, Error::kOperationFailed,
-          "ARES set DNS servers error code: " + base::IntToString(status));
+          "ARES set DNS servers error code: " + base::NumberToString(status));
       resolver_state_ = nullptr;
       return false;
     }

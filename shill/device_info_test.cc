@@ -1382,17 +1382,17 @@ TEST_F(DeviceInfoTechnologyTest, IgnoredArcMultinetBridgeDevice) {
 }
 
 TEST_F(DeviceInfoTechnologyTest, Loopback) {
-  CreateInfoFile("type", base::IntToString(ARPHRD_LOOPBACK));
+  CreateInfoFile("type", base::NumberToString(ARPHRD_LOOPBACK));
   EXPECT_EQ(Technology::kLoopback, GetDeviceTechnology());
 }
 
 TEST_F(DeviceInfoTechnologyTest, PPP) {
-  CreateInfoFile("type", base::IntToString(ARPHRD_PPP));
+  CreateInfoFile("type", base::NumberToString(ARPHRD_PPP));
   EXPECT_EQ(Technology::kPPP, GetDeviceTechnology());
 }
 
 TEST_F(DeviceInfoTechnologyTest, Tunnel) {
-  CreateInfoFile("tun_flags", base::IntToString(IFF_TUN));
+  CreateInfoFile("tun_flags", base::NumberToString(IFF_TUN));
   EXPECT_EQ(Technology::kTunnel, GetDeviceTechnology());
 }
 
@@ -1401,7 +1401,7 @@ TEST_F(DeviceInfoTechnologyTest, WiFi) {
   EXPECT_EQ(Technology::kWifi, GetDeviceTechnology());
   CreateInfoFile("uevent", "foo\nDEVTYPE=wlan");
   EXPECT_EQ(Technology::kWifi, GetDeviceTechnology());
-  CreateInfoFile("type", base::IntToString(ARPHRD_IEEE80211_RADIOTAP));
+  CreateInfoFile("type", base::NumberToString(ARPHRD_IEEE80211_RADIOTAP));
   EXPECT_EQ(Technology::kWiFiMonitor, GetDeviceTechnology());
 }
 
@@ -1710,7 +1710,7 @@ TEST_F(DeviceInfoMockedGetUserId, AddRemoveAllowedInterface) {
   SetVPNProvider(vpn_provider);
   SetDeviceName(kVmTapTestDeviceName);
   test_device_info_.device_info_root_ = device_info_root_;
-  CreateInfoFile("owner", base::IntToString(kCrosvmUid));
+  CreateInfoFile("owner", base::NumberToString(kCrosvmUid));
 
   EXPECT_CALL(test_device_info_, GetUserId("crosvm", _))
       .WillOnce(DoAll(SetArgPointee<1>(kCrosvmUid), Return(true)));
