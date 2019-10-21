@@ -12,7 +12,10 @@ group("all") {
     ":libdisks-adaptors",
   ]
   if (use.fuzzer) {
-    deps += [ ":cros-disks_mount_options_fuzzer" ]
+    deps += [
+      ":cros-disks_filesystem_label_fuzzer",
+      ":cros-disks_mount_options_fuzzer",
+    ]
   }
   if (use.test) {
     deps += [ ":disks_testrunner" ]
@@ -114,6 +117,19 @@ if (use.fuzzer) {
     ]
     deps = [
       ":libdisks",
+    ]
+  }
+
+  executable("cros-disks_filesystem_label_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libdisks",
+    ]
+    sources = [
+      "fuzzers/filesystem_label_fuzzer.cc",
     ]
   }
 }
