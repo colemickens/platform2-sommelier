@@ -131,7 +131,7 @@ ssize_t NDProxy::TranslateNDFrame(const uint8_t* in_frame,
                                   ssize_t frame_len,
                                   const uint8_t* local_mac_addr,
                                   uint8_t* out_frame) {
-  if (frame_len < ETHER_HDR_LEN + sizeof(ip6_hdr)) {
+  if (frame_len < ETHER_HDR_LEN + sizeof(ip6_hdr) + sizeof(icmp6_hdr)) {
     return kTranslateErrorInsufficientLength;
   }
   if (reinterpret_cast<const ethhdr*>(in_frame)->h_proto != htons(ETH_P_IPV6) ||
