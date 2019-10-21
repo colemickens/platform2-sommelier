@@ -16,6 +16,9 @@ group("all") {
   if (use.test) {
     deps += [ ":session_manager_test" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":login_manager_validator_utils_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -212,4 +215,19 @@ proto_library("login_manager-login_screen_storage-protos") {
     "${proto_in_dir}/login_screen_storage_index.proto",
   ]
   standalone = true
+}
+
+if (use.fuzzer) {
+  executable("login_manager_validator_utils_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libsession_manager",
+    ]
+    sources = [
+      "fuzzers/validator_utils_fuzzer.cc",
+    ]
+  }
 }
