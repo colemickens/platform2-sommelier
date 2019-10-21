@@ -60,6 +60,7 @@ static_library("libcab") {
     "//common-mk:pic",
   ]
   deps = [
-    "//camera/common/libcamera_ipc",
+    "//camera/common/libcamera_ipc:libcamera_ipc",
+    "//camera/common/libcamera_ipc:libcamera_ipc_mojom",
   ]
 }

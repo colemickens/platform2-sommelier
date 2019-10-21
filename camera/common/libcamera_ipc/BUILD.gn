@@ -28,25 +28,17 @@ generate_mojom_bindings("libcamera_ipc_mojom") {
   standalone = true
 }
 
-static_library("libcamera_ipc") {
+shared_library("libcamera_ipc") {
   sources = [
     "//camera/common/camera_mojo_channel_manager_impl.cc",
     "//camera/common/ipc_util.cc",
   ]
-  output_name = "libcamera_ipc.pic"
+  output_name = "libcamera_ipc"
   include_dirs = [
     "//camera",
     "//camera/include",
   ]
-  configs -= [
-    "//common-mk:pie",
-    "//common-mk:use_thin_archive",
-  ]
-  configs += [
-    "//camera/build:cros_camera_common",
-    "//common-mk:nouse_thin_archive",
-    "//common-mk:pic",
-  ]
+  configs += [ "//camera/build:cros_camera_common" ]
   pkg_deps = [
     "libcamera_common",
     "libcamera_metadata",

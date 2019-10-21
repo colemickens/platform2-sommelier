@@ -12,6 +12,7 @@
 #include <base/callback_forward.h>
 #include <base/memory/ref_counted.h>
 
+#include "cros-camera/export.h"
 #include "mojo/algorithm/camera_algorithm.mojom.h"
 #include "mojo/cros_camera_service.mojom.h"
 #include "mojo/gpu/jpeg_encode_accelerator.mojom.h"
@@ -25,7 +26,7 @@ namespace cros {
 
 // There are many places that need to initialize Mojo and use related channels.
 // This class is used to manage them together.
-class CameraMojoChannelManager {
+class CROS_CAMERA_EXPORT CameraMojoChannelManager {
  public:
   static std::unique_ptr<CameraMojoChannelManager> CreateInstance();
 

@@ -98,9 +98,10 @@ void CameraHalServerImpl::OnSocketFileStatusChange(
     return;
   }
 
-  if (binding_.is_bound()) {
+  if (camera_hal_loaded_) {
     return;
   }
+  LoadCameraHal();
 
   camera_mojo_channel_manager_->ConnectToDispatcher(
       base::Bind(&CameraHalServerImpl::RegisterCameraHal,
@@ -109,9 +110,12 @@ void CameraHalServerImpl::OnSocketFileStatusChange(
                  base::Unretained(this)));
 }
 
-void CameraHalServerImpl::RegisterCameraHal() {
+void CameraHalServerImpl::LoadCameraHal() {
   VLOGF_ENTER();
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  // We can't load and initialize the camera HALs on |ipc_task_runner_| since it
+  // will cause dead-lock if any of the camera HAL initiates any Mojo connection
+  // during initialization.
+  DCHECK(main_task_runner_->BelongsToCurrentThread());
 
   std::vector<camera_module_t*> camera_modules;
   std::unique_ptr<CameraConfig> config =
@@ -163,8 +167,14 @@ void CameraHalServerImpl::RegisterCameraHal() {
     main_task_runner_->PostTask(
         FROM_HERE, base::Bind(&CameraHalServerImpl::ExitOnMainThread,
                               base::Unretained(this), ENODEV));
-    return;
   }
+
+  camera_hal_loaded_ = true;
+}
+
+void CameraHalServerImpl::RegisterCameraHal() {
+  VLOGF_ENTER();
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
   camera_mojo_channel_manager_->RegisterServer(
       binding_.CreateInterfacePtrAndBind());

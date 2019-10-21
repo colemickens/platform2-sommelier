@@ -48,6 +48,9 @@ class CameraHalServerImpl final : public mojom::CameraHalServer {
   // started by Chrome.
   void OnSocketFileStatusChange(const base::FilePath& socket_path, bool error);
 
+  // Loads all the camera HAL implementations.
+  void LoadCameraHal();
+
   // Registers with the CameraHalDispatcher Mojo proxy.  After registration the
   // CameraHalDispatcher proxy will call CreateChannel for each connected
   // service clients to create a Mojo channel handle to the HAL adapter.  This
@@ -59,6 +62,8 @@ class CameraHalServerImpl final : public mojom::CameraHalServer {
   void OnServiceMojoChannelError();
 
   void ExitOnMainThread(int exit_status);
+
+  bool camera_hal_loaded_ = false;
 
   // Watches for change events on the unix domain socket file created by Chrome.
   // Upon file change OnScoketFileStatusChange will be called to initiate

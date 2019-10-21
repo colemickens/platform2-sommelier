@@ -26,6 +26,6 @@ static_library("libjea") {
     "libmojo-${libbase_ver}",
   ]
   deps = [
-    "../libcamera_ipc",
+    "//camera/common/libcamera_ipc",
   ]
 }
