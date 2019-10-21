@@ -81,6 +81,11 @@ bool ParseRoutingTableMessage(const RTNLMessage& message,
     return false;
   }
 
+  if (route_status.table == RT_TABLE_LOCAL) {
+    // Shill does not modify local routes, which are managed by the kernel.
+    return false;
+  }
+
   uint32_t interface_index_u32 = 0;
   if (!message.GetAttribute(RTA_OIF).ConvertToCPUUInt32(&interface_index_u32)) {
     return false;
@@ -191,7 +196,7 @@ void RoutingTable::RegisterDevice(int interface_index,
   uint32_t table_id = GetInterfaceTableId(interface_index);
   // Move existing entries for this interface to the per-Device table.
   for (auto& nent : tables_[interface_index]) {
-    if (nent.table == RT_TABLE_LOCAL || nent.table == table_id) {
+    if (nent.table == table_id) {
       continue;
     }
     RoutingTableEntry new_entry = nent;
