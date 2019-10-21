@@ -42,6 +42,11 @@ class MockLECredentialBackend : public LECredentialBackend {
 
   MOCK_METHOD(bool, NeedsPCRBinding, (const std::vector<uint8_t>&), (override));
 
+  MOCK_METHOD(int,
+              GetWrongAuthAttempts,
+              (const std::vector<uint8_t>&),
+              (override));
+
   MOCK_METHOD(bool,
               CheckCredential,
               (const uint64_t,
