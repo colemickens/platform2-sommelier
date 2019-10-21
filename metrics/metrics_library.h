@@ -28,6 +28,8 @@ class MetricsLibraryInterface {
   virtual bool SendBoolToUMA(const std::string& name, bool sample) = 0;
   virtual bool SendSparseToUMA(const std::string& name, int sample) = 0;
   virtual bool SendUserActionToUMA(const std::string& action) = 0;
+  virtual bool SendCrashToUMA(const char* crash_kind) = 0;
+  virtual bool SendCrosEventToUMA(const std::string& event) = 0;
 #if USE_METRICS_UPLOADER
   virtual bool SendRepeatedToUMA(const std::string& name,
                                  int sample,
@@ -149,13 +151,13 @@ class MetricsLibrary : public MetricsLibraryInterface {
 
   // Sends a signal to UMA that a crash of the given |crash_kind|
   // has occurred.  Used by UMA to generate stability statistics.
-  bool SendCrashToUMA(const char* crash_kind);
+  bool SendCrashToUMA(const char* crash_kind) override;
 
   // Sends a "generic Chrome OS event" to UMA.  This is an event name
   // that is translated into an enumerated histogram entry.  Event names
   // must first be registered in metrics_library.cc.  See that file for
   // more details.
-  bool SendCrosEventToUMA(const std::string& event);
+  bool SendCrosEventToUMA(const std::string& event) override;
 
 #if USE_METRICS_UPLOADER
   // Sends |num_samples| samples with the same value to chrome.

@@ -23,6 +23,8 @@ class MetricsLibraryMock : public MetricsLibraryInterface {
   MOCK_METHOD(bool, SendBoolToUMA, (const std::string&, bool), (override));
   MOCK_METHOD(bool, SendSparseToUMA, (const std::string&, int), (override));
   MOCK_METHOD(bool, SendUserActionToUMA, (const std::string&), (override));
+  MOCK_METHOD(bool, SendCrashToUMA, (const char* crash_kind), (override));
+  MOCK_METHOD(bool, SendCrosEventToUMA, (const std::string& event), (override));
 #if USE_METRICS_UPLOADER
   MOCK_METHOD(bool,
               SendRepeatedToUMA,

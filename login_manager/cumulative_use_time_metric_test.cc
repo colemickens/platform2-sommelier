@@ -199,6 +199,16 @@ class TestMetricsLibrary : public MetricsLibraryInterface {
     return false;
   }
 
+  bool SendCrashToUMA(const char* crash_kind) override {
+    ADD_FAILURE() << "Should not be reached";
+    return false;
+  }
+
+  bool SendCrosEventToUMA(const std::string& event) override {
+    ADD_FAILURE() << "Should not be reached";
+    return false;
+  }
+
   bool SendToUMA(const std::string& name,
                  int sample,
                  int min,
