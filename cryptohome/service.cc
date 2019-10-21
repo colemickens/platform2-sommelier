@@ -47,6 +47,7 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_event_source.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
@@ -127,12 +128,7 @@ void AddTaskObserverToThread(base::Thread* thread,
 
 }  // anonymous namespace
 
-const char kPublicMountSaltFilePath[] = "/var/lib/public_mount_salt";
-const int kAutoCleanupPeriodMS = 1000 * 60 * 60;         // 1 hour
-const int kUpdateUserActivityPeriodHours = 24;           // daily
-const int kLowDiskNotificationPeriodMS = 1000 * 60 * 1;  // 1 minute
 const int kUploadAlertsPeriodMS = 1000 * 60 * 60 * 6;    // 6 hours
-const int64_t kNotifyDiskSpaceThreshold = 1 << 30;       // 1GB
 const int kDefaultRandomSeedLength = 64;
 const int kDefaultDataRestoreKeyLength = 32;
 const char kMountThreadName[] = "MountThread";

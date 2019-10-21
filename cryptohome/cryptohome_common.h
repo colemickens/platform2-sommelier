@@ -5,7 +5,16 @@
 #ifndef CRYPTOHOME_CRYPTOHOME_COMMON_H_
 #define CRYPTOHOME_CRYPTOHOME_COMMON_H_
 
+#include <stdint.h>
+
 namespace cryptohome {
+
+// Constants used in both service.cc and userdataauth.cc
+static constexpr char kPublicMountSaltFilePath[] = "/var/lib/public_mount_salt";
+static constexpr int kAutoCleanupPeriodMS = 1000 * 60 * 60;         // 1 hour
+static constexpr int kUpdateUserActivityPeriodHours = 24;           // daily
+static constexpr int kLowDiskNotificationPeriodMS = 1000 * 60 * 1;  // 1 minute
+static constexpr int64_t kNotifyDiskSpaceThreshold = 1 << 30;       // 1GB
 
 // The default symmetric key size for cryptohome is the ecryptfs default
 #define CRYPTOHOME_DEFAULT_KEY_SIZE 64           // ECRYPTFS_MAX_KEY_BYTES

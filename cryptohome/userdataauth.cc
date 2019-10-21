@@ -15,6 +15,7 @@
 
 #include "cryptohome/bootlockbox/boot_lockbox_client.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
+#include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/key_challenge_service.h"
@@ -31,7 +32,6 @@ using brillo::SecureBlob;
 namespace cryptohome {
 
 const char kMountThreadName[] = "MountThread";
-const char kPublicMountSaltFilePath[] = "/var/lib/public_mount_salt";
 
 namespace {
 // Some utility functions and constants used by UserDataAuth.
