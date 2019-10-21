@@ -4,6 +4,7 @@
 
 #include "vpn-manager/service_manager.h"
 
+#include <cstring>
 #include <vector>
 
 #include <arpa/inet.h>  // for inet_ntop and inet_pton
@@ -102,37 +103,37 @@ void ServiceManager::WriteFdToSyslog(int fd,
 }
 
 bool ServiceManager::ResolveNameToSockAddr(const std::string& name,
-                                           struct sockaddr* address) {
-  struct addrinfo* address_info;
+                                           sockaddr_storage* address) {
+  addrinfo* address_info;
   int s = getaddrinfo(name.c_str(), nullptr, nullptr, &address_info);
   if (s != 0) {
     LOG(ERROR) << "getaddrinfo failed: " << gai_strerror(s);
     return false;
   }
-  *address = *address_info->ai_addr;
+  memcpy(address, address_info->ai_addr, address_info->ai_addrlen);
   freeaddrinfo(address_info);
   return true;
 }
 
 bool ServiceManager::ConvertIPStringToSockAddr(const std::string& address_text,
-                                               struct sockaddr* address) {
-  struct addrinfo hint_info = {};
-  struct addrinfo* address_info;
+                                               sockaddr_storage* address) {
+  addrinfo hint_info = {};
+  addrinfo* address_info;
   hint_info.ai_flags = AI_NUMERICHOST;
   int s = getaddrinfo(address_text.c_str(), nullptr, &hint_info, &address_info);
   if (s != 0) {
     LOG(ERROR) << "getaddrinfo failed: " << gai_strerror(s);
     return false;
   }
-  *address = *address_info->ai_addr;
+  memcpy(address, address_info->ai_addr, address_info->ai_addrlen);
   freeaddrinfo(address_info);
   return true;
 }
 
-bool ServiceManager::ConvertSockAddrToIPString(const struct sockaddr& address,
+bool ServiceManager::ConvertSockAddrToIPString(const sockaddr_storage& address,
                                                std::string* address_text) {
   char str[INET6_ADDRSTRLEN] = {0};
-  switch (address.sa_family) {
+  switch (address.ss_family) {
     case AF_INET:
       if (!inet_ntop(
               AF_INET,
@@ -152,7 +153,7 @@ bool ServiceManager::ConvertSockAddrToIPString(const struct sockaddr& address,
       }
       break;
     default:
-      LOG(ERROR) << "Unknown address family";
+      LOG(ERROR) << "Unknown address family: " << address.ss_family;
       return false;
   }
   *address_text = str;
@@ -160,19 +161,21 @@ bool ServiceManager::ConvertSockAddrToIPString(const struct sockaddr& address,
 }
 
 bool ServiceManager::GetLocalAddressFromRemote(
-    const struct sockaddr& remote_address, struct sockaddr* local_address) {
-  base::ScopedFD socket_fd(socket(AF_INET, SOCK_DGRAM, 0));
+    const sockaddr_storage& remote_address, sockaddr_storage* local_address) {
+  base::ScopedFD socket_fd(socket(remote_address.ss_family, SOCK_DGRAM, 0));
   if (!socket_fd.is_valid()) {
     PLOG(ERROR) << "Unable to create socket";
     return false;
   }
-  if (HANDLE_EINTR(connect(socket_fd.get(), &remote_address,
-                           sizeof(struct sockaddr))) != 0) {
+  socklen_t addr_len = sizeof(sockaddr_storage);
+  if (HANDLE_EINTR(connect(socket_fd.get(),
+                           reinterpret_cast<const sockaddr*>(&remote_address),
+                           addr_len)) != 0) {
     PLOG(ERROR) << "Unable to connect";
     return false;
   }
-  socklen_t addr_len = sizeof(*local_address);
-  if (getsockname(socket_fd.get(), local_address, &addr_len) != 0) {
+  if (getsockname(socket_fd.get(), reinterpret_cast<sockaddr*>(local_address),
+                  &addr_len) != 0) {
     PLOG(ERROR) << "getsockname failed on socket";
     return false;
   }

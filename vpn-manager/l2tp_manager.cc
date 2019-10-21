@@ -102,7 +102,7 @@ void L2tpManager::SetSystemConfigForTesting(bool system_config) {
   system_config_ = system_config;
 }
 
-bool L2tpManager::Initialize(const struct sockaddr& remote_address) {
+bool L2tpManager::Initialize(const sockaddr_storage& remote_address) {
   if (!ConvertSockAddrToIPString(remote_address, &remote_address_text_)) {
     LOG(ERROR) << "Unable to convert sockaddr to name for remote host";
     RegisterError(kServiceErrorInternal);

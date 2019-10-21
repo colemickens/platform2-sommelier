@@ -62,7 +62,7 @@ class L2tpManager : public ServiceManager {
   // Initialize the object using |remote_host|.  Returns false if
   // an illegal set of parameters has been given.  Has no side effects
   // other than setting up the object.
-  bool Initialize(const sockaddr& remote_address);
+  bool Initialize(const sockaddr_storage& remote_address);
 
   bool Start() override;
   void Stop() override;
@@ -122,7 +122,7 @@ class L2tpManager : public ServiceManager {
   // Start time of the l2tp daemon.
   base::TimeTicks start_ticks_;
   // Remote address for L2TP connection.
-  struct sockaddr remote_address_;
+  sockaddr_storage remote_address_;
   // Remote address for L2TP connection (as a string).
   std::string remote_address_text_;
   // Last partial line read from output_fd_.

@@ -118,7 +118,7 @@ IpsecManager::IpsecManager(const std::string& esp,
       charon_daemon_(new Daemon(kCharonPidFile)) {}
 
 bool IpsecManager::Initialize(int ike_version,
-                              const struct sockaddr& remote_address,
+                              const sockaddr_storage& remote_address,
                               const std::string& psk_file,
                               const std::string& xauth_credentials_file,
                               const std::string& server_ca_file,
@@ -271,7 +271,7 @@ bool IpsecManager::FormatIpsecSecret(std::string* formatted) {
   if (force_local_address_ != nullptr) {
     local_address_text = force_local_address_;
   } else {
-    struct sockaddr local_address;
+    sockaddr_storage local_address;
     if (!GetLocalAddressFromRemote(remote_address_, &local_address)) {
       LOG(ERROR) << "Local IP address could not be determined for PSK mode";
       return false;

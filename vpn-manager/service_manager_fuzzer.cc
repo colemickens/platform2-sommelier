@@ -21,7 +21,7 @@ namespace {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
   FuzzedDataProvider data_provider(data, size);
-  struct sockaddr addr;
+  struct sockaddr_storage addr;
   const int max_ipstring_len =
       40;  // ipv6 is 4 hex * 8 groups, 7 colons = 39 + 1 random byte so that
            // it's sometimes beyond max size

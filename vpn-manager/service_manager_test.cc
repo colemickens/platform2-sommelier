@@ -160,8 +160,8 @@ TEST_F(ServiceManagerTest, WriteFdToSyslog) {
 }
 
 TEST_F(ServiceManagerTest, GetLocalAddressFromRemote) {
-  struct sockaddr remote_address;
-  struct sockaddr local_address;
+  sockaddr_storage remote_address;
+  sockaddr_storage local_address;
   std::string local_address_text;
   EXPECT_TRUE(
       ServiceManager::ConvertIPStringToSockAddr("127.0.0.1", &remote_address));

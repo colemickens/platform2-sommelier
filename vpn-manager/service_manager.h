@@ -104,21 +104,21 @@ class ServiceManager {
   // Resolve given |name| into an IP address |socket_address| or return
   // false if an error occurs.
   static bool ResolveNameToSockAddr(const std::string& name,
-                                    struct sockaddr* socket_address);
+                                    sockaddr_storage* socket_address);
 
   // Convert given |address| into a string representation |address_text|.
-  static bool ConvertSockAddrToIPString(const struct sockaddr& address,
+  static bool ConvertSockAddrToIPString(const sockaddr_storage& address,
                                         std::string* address_text);
 
   // Convert given |address_text| in string representaton to |address|
   // or return false if unable.
   static bool ConvertIPStringToSockAddr(const std::string& address_text,
-                                        struct sockaddr* address);
+                                        sockaddr_storage* address);
 
   // Find the |local_address| when making a connection to the given
   // |remote_address| or return false on error.
-  static bool GetLocalAddressFromRemote(const struct sockaddr& remote_address,
-                                        struct sockaddr* local_address);
+  static bool GetLocalAddressFromRemote(const sockaddr_storage& remote_address,
+                                        sockaddr_storage* local_address);
 
  protected:
   friend class IpsecManagerTest;

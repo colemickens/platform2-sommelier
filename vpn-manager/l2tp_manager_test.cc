@@ -59,7 +59,7 @@ class L2tpManagerTest : public ::testing::Test {
   std::string GetExpectedConfig(std::string remote_address_text, bool debug);
 
   std::string remote_address_text_;
-  struct sockaddr remote_address_;
+  sockaddr_storage remote_address_;
   FilePath test_path_;
   FilePath control_path_;
   FilePath pppd_config_path_;

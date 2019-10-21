@@ -43,7 +43,7 @@ class IpsecManager : public ServiceManager {
   // |server_ca_file|, client key file |client_key_file|, and client
   // certificate file |client_cert_file|.
   bool Initialize(int ike_version,
-                  const struct sockaddr& remote_address,
+                  const sockaddr_storage& remote_address,
                   const std::string& psk_file,
                   const std::string& xauth_credentials_file,
                   const std::string& server_ca_file,
@@ -130,7 +130,7 @@ class IpsecManager : public ServiceManager {
   // String with which to prefix ipsec output log lines.
   std::string ipsec_prefix_;
   // Remote address of IPsec connection.
-  struct sockaddr remote_address_;
+  sockaddr_storage remote_address_;
   // Remote address of IPsec connection (as a string).
   std::string remote_address_text_;
   // File containing the IPsec pre-shared key.

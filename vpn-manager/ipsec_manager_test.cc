@@ -118,7 +118,7 @@ class IpsecManagerTest : public ::testing::Test {
   FilePath persistent_path_;
   FilePath test_path_;
   std::string remote_address_text_;
-  struct sockaddr remote_address_;
+  sockaddr_storage remote_address_;
   std::string psk_file_;
   std::string server_ca_file_;
   std::string xauth_credentials_file_;

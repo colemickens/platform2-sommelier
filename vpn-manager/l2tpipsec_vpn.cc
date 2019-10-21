@@ -241,7 +241,7 @@ int main(int argc, char* argv[]) {
 
   LockDownUmask();
 
-  struct sockaddr remote_address;
+  sockaddr_storage remote_address;
   if (!ServiceManager::ResolveNameToSockAddr(FLAGS_remote_host,
                                              &remote_address)) {
     LOG(ERROR) << "Unable to resolve hostname " << FLAGS_remote_host;
