@@ -17,7 +17,10 @@ group("all") {
     deps += [ ":session_manager_test" ]
   }
   if (use.fuzzer) {
-    deps += [ ":login_manager_validator_utils_fuzzer" ]
+    deps += [
+      ":login_manager_validator_utils_fuzzer",
+      ":login_manager_validator_utils_policy_desc_fuzzer",
+    ]
   }
 }
 
@@ -38,9 +41,16 @@ pkg_config("target_defaults") {
     # before protobuf here or the linker flags won't be in the right
     # order.
     "system_api",
-    "protobuf-lite",
     "vboot_host",
   ]
+
+  if (use.fuzzer) {
+    # Link against protobuf for fuzzers so we can use libprotobuf-mutator.
+    pkg_deps += [ "protobuf" ]
+  } else {
+    pkg_deps += [ "protobuf-lite" ]
+  }
+
   defines = [
     "OS_CHROMEOS",
     "USE_CHEETS=${use.cheets}",
@@ -218,6 +228,24 @@ proto_library("login_manager-login_screen_storage-protos") {
 }
 
 if (use.fuzzer) {
+  pkg_config("run_fuzzer_config") {
+    pkg_deps = [ "libprotobuf-mutator" ]
+  }
+
+  executable("login_manager_validator_utils_policy_desc_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":run_fuzzer_config",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libsession_manager",
+    ]
+    sources = [
+      "fuzzers/validator_utils_policy_desc_fuzzer.cc",
+    ]
+  }
+
   executable("login_manager_validator_utils_fuzzer") {
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
