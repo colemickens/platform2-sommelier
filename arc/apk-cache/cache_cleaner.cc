@@ -5,8 +5,10 @@
 #include "arc/apk-cache/cache_cleaner.h"
 
 #include <fnmatch.h>
+
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include <base/files/file.h>
@@ -18,14 +20,17 @@
 #include <base/time/time.h>
 #include <base/values.h>
 
+#include "arc/apk-cache/cache_cleaner_db.h"
+#include "arc/apk-cache/cache_cleaner_utils.h"
+
 namespace apk_cache {
 
-const char kAttrJson[] = "attr.json";
-const char kApkExtension[] = ".apk";
-const char kObbExtension[] = ".obb";
-const char kMainObbPrefix[] = "main.";
-const char kPatchObbPrefix[] = "patch.";
-const base::TimeDelta kValidityPeriod = base::TimeDelta::FromDays(30);
+constexpr char kAttrJson[] = "attr.json";
+constexpr char kApkExtension[] = ".apk";
+constexpr char kObbExtension[] = ".obb";
+constexpr char kMainObbPrefix[] = "main.";
+constexpr char kPatchObbPrefix[] = "patch.";
+constexpr base::TimeDelta kValidityPeriod = base::TimeDelta::FromDays(30);
 
 namespace {
 
@@ -34,22 +39,13 @@ constexpr char kKeyAttributesAtime[] = "attributes.atime";
 // Removes all the files (if any) from cache root. Does not remove
 // directories. Returns true if all the intended files were deleted.
 bool RemoveUnexpectedFilesFromCacheRoot(const base::FilePath& cache_root) {
-  bool success = true;
-  base::FileEnumerator unexpected_files(
-      cache_root, false /* recursive */,
-      base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS);
-
-  for (base::FilePath unexpected_file_path = unexpected_files.Next();
-       !unexpected_file_path.empty();
-       unexpected_file_path = unexpected_files.Next()) {
-    LOG(INFO) << "Deleting file " << unexpected_file_path.value();
-    if (!base::DeleteFile(unexpected_file_path, false /* recursive */)) {
-      LOG(ERROR) << "Could not delete file " << unexpected_file_path.value();
-      success = false;
-    }
-  }
-
-  return success;
+  std::unordered_set<std::string> database_files(kDatabaseFiles.begin(),
+                                                 kDatabaseFiles.end());
+  return RemoveUnexpectedItemsFromDir(
+      cache_root,
+      base::FileEnumerator::FileType::FILES |
+          base::FileEnumerator::FileType::SHOW_SYM_LINKS,
+      database_files);
 }
 
 // Returns if |file_name| matches the |pattern|.
@@ -191,6 +187,10 @@ bool Clean(const base::FilePath& cache_path) {
 
   for (base::FilePath package_path = packages.Next(); !package_path.empty();
        package_path = packages.Next()) {
+    // Skip |files| directory which should be managed by database cleaner.
+    if (package_path.BaseName().MaybeAsASCII() == std::string(kFilesBase))
+      continue;
+
     if (!IsPackageValid(package_path)) {
       if (!base::DeleteFile(package_path, true /* recursive */)) {
         LOG(ERROR) << "Error deletion path " << package_path.value();

@@ -19,7 +19,10 @@ pkg_config("libapk-cache-cleaner_config") {
 
 static_library("libapk-cache-cleaner") {
   sources = [
+    "apk_cache_database.cc",
     "cache_cleaner.cc",
+    "cache_cleaner_db.cc",
+    "cache_cleaner_utils.cc",
   ]
   configs += [ ":libapk-cache-cleaner_config" ]
 }
@@ -28,6 +31,7 @@ pkg_config("apk-cache-cleaner_config") {
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "sqlite3",
   ]
 }
 
@@ -46,11 +50,16 @@ if (use.test) {
     pkg_deps = [
       "libchrome-${libbase_ver}",
       "libchrome-test-${libbase_ver}",
+      "sqlite3",
     ]
   }
   executable("apk-cache-cleaner_testrunner") {
     sources = [
+      "apk_cache_database_test.cc",
+      "apk_cache_database_test_utils.cc",
+      "cache_cleaner_db_test.cc",
       "cache_cleaner_test.cc",
+      "cache_cleaner_utils_test.cc",
     ]
     configs += [
       "//common-mk:test",

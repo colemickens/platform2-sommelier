@@ -2,12 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "arc/apk-cache/cache_cleaner.h"
-
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+
+#include "arc/apk-cache/cache_cleaner.h"
+#include "arc/apk-cache/cache_cleaner_db.h"
 
 namespace {
 
@@ -35,7 +37,12 @@ int main(int argc, char** argv) {
   brillo::FlagHelper::Init(argc, argv, kHelpText);
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  if (!apk_cache::Clean(base::FilePath(kApkCacheDir))) {
+  base::FilePath cache_root(kApkCacheDir);
+  if (!apk_cache::Clean(cache_root)) {
+    LOG(ERROR) << "APK Cache cleaner experienced problem while cleaning.";
+    return 1;
+  }
+  if (!apk_cache::CleanOpaqueFiles(cache_root)) {
     LOG(ERROR) << "APK Cache cleaner experienced problem while cleaning.";
     return 1;
   }

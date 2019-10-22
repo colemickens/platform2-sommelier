@@ -121,9 +121,13 @@ void VerifyCache(const base::FilePath& cache_root_path,
 
 class CacheCleanerTest : public testing::Test {
  public:
-  CacheCleanerTest() { EXPECT_TRUE(temp_dir_.CreateUniqueTempDir()); }
-  ~CacheCleanerTest() { EXPECT_TRUE(temp_dir_.Delete()); }
   const base::FilePath& temp_path() const { return temp_dir_.GetPath(); }
+
+ protected:
+  CacheCleanerTest() = default;
+
+  void SetUp() override { ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()); }
+  void TearDown() override { ASSERT_TRUE(temp_dir_.Delete()); }
 
  private:
   base::ScopedTempDir temp_dir_;
