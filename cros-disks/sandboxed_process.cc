@@ -76,6 +76,8 @@ bool SandboxedProcess::SetUpMinimalMounts() {
 
   // Create a minimal /dev with a very restricted set of device nodes.
   minijail_mount_dev(jail_);
+  if (minijail_bind(jail_, "/dev/log", "/dev/log", 0))
+    return false;
   return true;
 }
 
