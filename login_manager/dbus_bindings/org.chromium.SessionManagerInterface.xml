@@ -164,6 +164,8 @@
     </method>
 
     <!--
+        @deprecated Use StopSessionWithReason instead.
+
         StopSession:
         @unique_identifier: Unused.
 
@@ -172,6 +174,18 @@
     -->
     <method name="StopSession">
       <arg type="s" name="unique_identifier" direction="in" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+    </method>
+
+    <!--
+        StopSessionWithReason:
+        @reason: The reason of stopping the session.
+
+        Terminates all active user sessions, announces this over upstart
+        ("stop-user-session") and DBus (SessionStateChanges:stopped).
+    -->
+    <method name="StopSessionWithReason">
+      <arg type="u" name="reason" direction="in" />
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
     </method>
 

@@ -209,6 +209,7 @@ class SessionManagerImpl
                     const std::string& in_account_id,
                     const std::string& in_unique_identifier) override;
   void StopSession(const std::string& in_unique_identifier) override;
+  void StopSessionWithReason(uint32_t reason) override;
 
   // Interface for storing and retrieving policy.
   // TODO(crbug.com/765644): Remove 'Ex', see bug description.

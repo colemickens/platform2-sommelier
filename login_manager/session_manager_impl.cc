@@ -746,7 +746,12 @@ bool SessionManagerImpl::LoginScreenStorageRetrieve(
 }
 
 void SessionManagerImpl::StopSession(const std::string& in_unique_identifier) {
-  LOG(INFO) << "Stopping all sessions";
+  StopSessionWithReason(
+      static_cast<uint32_t>(SessionStopReason::REQUEST_FROM_SESSION_MANAGER));
+}
+
+void SessionManagerImpl::StopSessionWithReason(uint32_t reason) {
+  LOG(INFO) << "Stopping all sessions reason = " << reason;
   // Most calls to StopSession() will log the reason for the call.
   // If you don't see a log message saying the reason for the call, it is
   // likely a D-Bus message.
@@ -1106,7 +1111,8 @@ void SessionManagerImpl::OnSuspendImminent(dbus::Signal* signal) {
   if (!start_time.is_null() &&
       tick_clock_->NowTicks() - start_time <= kCrashBeforeSuspendInterval) {
     LOG(INFO) << "Stopping session for suspend after recent browser restart";
-    StopSession("" /* deprecated argument */);
+    StopSessionWithReason(
+        static_cast<uint32_t>(SessionStopReason::SUSPEND_AFTER_RESTART));
   }
 }
 

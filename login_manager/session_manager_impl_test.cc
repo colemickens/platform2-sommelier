@@ -1105,13 +1105,15 @@ TEST_F(SessionManagerImplTest, SaveLoginPassword) {
 }
 
 TEST_F(SessionManagerImplTest, DiscardPasswordOnStopSession) {
-  impl_->StopSession("");
+  impl_->StopSessionWithReason(
+      static_cast<uint32_t>(SessionStopReason::RESTORE_ACTIVE_SESSIONS));
   EXPECT_TRUE(password_provider_->password_discarded());
 }
 
 TEST_F(SessionManagerImplTest, StopSession) {
   EXPECT_CALL(manager_, ScheduleShutdown()).Times(1);
-  impl_->StopSession("");
+  impl_->StopSessionWithReason(
+      static_cast<uint32_t>(SessionStopReason::RESTORE_ACTIVE_SESSIONS));
 }
 
 TEST_F(SessionManagerImplTest, LoginScreenStorage_StoreFailsInSession) {
