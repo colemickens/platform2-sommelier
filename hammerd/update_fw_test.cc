@@ -96,6 +96,7 @@ TEST_F(FirmwareUpdaterTest, LoadEcImage) {
   std::string ec_image("12345");
   int64_t mock_offset = ec_image.size();
   fmap mock_fmap;
+  mock_fmap.nareas = 0;
   mock_fmap.size = 5 + sizeof(fmap) + 32 + 32 + 4 + sizeof(vb21_packed_key);
   ec_image.append(reinterpret_cast<char*>(&mock_fmap), sizeof(mock_fmap));
 
@@ -126,7 +127,7 @@ TEST_F(FirmwareUpdaterTest, LoadEcImage) {
   // Find RO section.
   fmap_area ro_section_area;
   ro_section_area.offset = 0x0;
-  ro_section_area.size = 0x10000;
+  ro_section_area.size = 0x10;
   EXPECT_CALL(*fmap_, FindArea(mock_fmap_ptr, "EC_RO"))
       .WillOnce(Return(&ro_section_area));
   // Find RO version.
@@ -138,12 +139,13 @@ TEST_F(FirmwareUpdaterTest, LoadEcImage) {
   // Find RO key.
   fmap_area ro_key_area;
   ro_key_area.offset = ro_key_offset;
+  ro_key_area.size = sizeof(ro_key);
   EXPECT_CALL(*fmap_, FindArea(mock_fmap_ptr, "KEY_RO"))
       .WillOnce(Return(&ro_key_area));
   // Find RW section.
   fmap_area rw_section_area;
-  rw_section_area.offset = 0x11000;
-  rw_section_area.size = 0xA0;
+  rw_section_area.offset = 0x10;
+  rw_section_area.size = 0x10;
   EXPECT_CALL(*fmap_, FindArea(mock_fmap_ptr, "EC_RW"))
       .WillOnce(Return(&rw_section_area));
   // Find RW version.
@@ -163,10 +165,74 @@ TEST_F(FirmwareUpdaterTest, LoadEcImage) {
   ASSERT_EQ(fw_updater_->ec_image_, ec_image);
   ASSERT_EQ(
       fw_updater_->sections_[0],
-      SectionInfo(SectionName::RO, 0x0, 0x10000, "RO MOCK VERSION", -1, -1));
+      SectionInfo(SectionName::RO, 0x0, 0x10, "RO MOCK VERSION", -1, -1));
   ASSERT_EQ(
       fw_updater_->sections_[1],
-      SectionInfo(SectionName::RW, 0x11000, 0xA0, "RW MOCK VERSION", 35, 1));
+      SectionInfo(SectionName::RW, 0x10, 0x10, "RW MOCK VERSION", 35, 1));
+}
+
+// Load a fake EC image that we expect to fail
+// - Fake header: 8 bytes
+// - mock fmap: sizeof(fmap) bytes - 1
+TEST_F(FirmwareUpdaterTest, LoadEcImage_ShortFmap) {
+  // Build a fake EC image but don't pass it all.
+  std::string ec_image("12345678");
+  int64_t mock_offset = ec_image.size();
+  fmap mock_fmap;
+  mock_fmap.nareas = 0;
+  mock_fmap.size = 8 + sizeof(fmap);
+  ec_image.append(reinterpret_cast<char*>(&mock_fmap), sizeof(mock_fmap) - 1);
+
+  size_t ec_image_len = ec_image.size();
+
+  EXPECT_CALL(*fmap_, Find(_, ec_image_len)).WillOnce(Return(mock_offset));
+  ASSERT_EQ(fw_updater_->LoadEcImage(ec_image), false);
+}
+
+// Load a fake EC image that we expect to fail
+// - Fake header: 8 bytes
+// - mock fmap: sizeof(fmap) bytes
+TEST_F(FirmwareUpdaterTest, LoadEcImage_TooManyFmapAreas) {
+  // Build a fake EC image with one too many fmap areas
+  std::string ec_image("12345678");
+  int64_t mock_offset = ec_image.size();
+  fmap mock_fmap;
+  mock_fmap.nareas = 1;
+  mock_fmap.size = 8 + sizeof(fmap);
+  ec_image.append(reinterpret_cast<char*>(&mock_fmap), sizeof(mock_fmap));
+
+  size_t ec_image_len = ec_image.size();
+
+  EXPECT_CALL(*fmap_, Find(_, ec_image_len)).WillOnce(Return(mock_offset));
+  ASSERT_EQ(fw_updater_->LoadEcImage(ec_image), false);
+}
+
+// Load a fake EC image that we expect to fail
+// - Fake header: 8 bytes
+// - mock fmap: sizeof(fmap) bytes
+TEST_F(FirmwareUpdaterTest, LoadEcImage_BadROVersion) {
+  // Build a fake EC image
+  std::string ec_image("12345678");
+  int64_t mock_offset = ec_image.size();
+  fmap mock_fmap;
+  mock_fmap.nareas = 0;
+  mock_fmap.size = 8 + sizeof(fmap);
+  ec_image.append(reinterpret_cast<char*>(&mock_fmap), sizeof(mock_fmap));
+
+  size_t ec_image_len = ec_image.size();
+
+  const fmap* mock_fmap_ptr = reinterpret_cast<const fmap*>(
+      reinterpret_cast<const uint8_t*>(ec_image.data()) + mock_offset);
+
+  EXPECT_CALL(*fmap_, Find(_, ec_image_len)).WillOnce(Return(mock_offset));
+  // Find RO section that is too large.
+  fmap_area ro_section_area;
+  ro_section_area.offset = 0;
+  ro_section_area.size = ec_image_len + 1;
+  EXPECT_CALL(*fmap_, FindArea(mock_fmap_ptr, "EC_RO"))
+      .WillOnce(Return(&ro_section_area));
+
+  ASSERT_EQ(fw_updater_->LoadEcImage(ec_image), false);
 }
 
 // Returns a helper function that returns |before| or |after| depending on

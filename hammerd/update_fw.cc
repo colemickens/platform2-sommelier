@@ -202,10 +202,17 @@ bool FirmwareUpdater::LoadEcImage(const std::string& ec_image) {
     return false;
   }
 
-  // TODO(akahuang): validate fmap struct more than this?
   fmap* fmap = reinterpret_cast<struct fmap*>(image_ptr + offset);
+  if (offset + sizeof(*fmap) > len) {
+    LOG(ERROR) << "FMAP beyond ec_image size.";
+    return false;
+  }
   if (fmap->size != len) {
     LOG(ERROR) << "Mismatch between FMAP size and ec_image size.";
+    return false;
+  }
+  if (offset + sizeof(*fmap) + (sizeof(fmap_area) * fmap->nareas) > len) {
+    LOG(ERROR) << "FMAP areas beyond ec_image size.";
     return false;
   }
 
@@ -235,6 +242,10 @@ bool FirmwareUpdater::LoadEcImage(const std::string& ec_image) {
       LOG(ERROR) << "Cannot find FMAP area: " << fmap_name;
       return false;
     }
+    if (fmaparea->offset + fmaparea->size > len) {
+      LOG(ERROR) << "FMAP area " << fmap_name << " beyond ec_image size.";
+      return false;
+    }
     section.offset = fmaparea->offset;
     section.size = fmaparea->size;
 
@@ -247,10 +258,19 @@ bool FirmwareUpdater::LoadEcImage(const std::string& ec_image) {
       LOG(ERROR) << "Invalid fwid size\n";
       return false;
     }
+    if (fmaparea->offset + fmaparea->size > len) {
+      LOG(ERROR) << "FMAP area " << fmap_fwid_name << " beyond ec_image size.";
+      return false;
+    }
     memcpy(section.version, image_ptr + fmaparea->offset, fmaparea->size);
 
     if (fmap_rollback_name &&
         (fmaparea = fmap_->FindArea(fmap, fmap_rollback_name))) {
+      if (fmaparea->offset + fmaparea->size > len) {
+        LOG(ERROR) << "FMAP area " << fmap_rollback_name
+                   << " beyond ec_image size.";
+        return false;
+      }
       section.rollback =
           *(reinterpret_cast<const int32_t*>(image_ptr + fmaparea->offset));
     } else {
@@ -258,6 +278,10 @@ bool FirmwareUpdater::LoadEcImage(const std::string& ec_image) {
     }
 
     if (fmap_key_name && (fmaparea = fmap_->FindArea(fmap, fmap_key_name))) {
+      if (fmaparea->offset + fmaparea->size > len) {
+        LOG(ERROR) << "FMAP area " << fmap_key_name << " beyond ec_image size.";
+        return false;
+      }
       auto key = reinterpret_cast<const vb21_packed_key*>(image_ptr +
                                                           fmaparea->offset);
       section.key_version = key->key_version;
