@@ -6,14 +6,15 @@
 # dev-mode functionality for crosh
 
 USAGE_packet_capture="[--device <device>] [--frequency <frequency>] \
-[--ht-location <above|below>] [--monitor-connection-on <monitored_device>]"
+[--ht-location <above|below>] [--vht-width <80|160>] \
+[--monitor-connection-on <monitored_device>]"
 HELP_packet_capture='
   Start packet capture.  Start a device-based capture on <device>,
   or do an over-the-air capture on <frequency> with an optionally
-  provided HT channel location.  An over-the-air capture can also
-  be initiated using the channel parameters of a currently connected
-  <monitored_device>.  Note that over-the-air captures are not available
-  with all 802.11 devices.
+  provided HT channel location or VHT channel width.  An over-the-air
+  capture can also be initiated using the channel parameters of a
+  currently connected <monitored_device>.  Note that over-the-air
+  captures are not available with all 802.11 devices.
 '
 cmd_packet_capture() (
   local option="dict:string:variant:"
@@ -28,8 +29,13 @@ cmd_packet_capture() (
       shift; option="${option}frequency,int32:$1," ;;
     --ht-location)
       shift; option="${option}ht_location,string:$1," ;;
+    --vht-width)
+      shift; option="${option}vht_width,string:$1," ;;
     --monitor-connection-on)
       shift; option="${option}monitor_connection_on,string:$1," ;;
+    --output-file)
+      help "crosh will determine the output file, please do not use $1"
+      return 1 ;;
     *)
       help "unknown option: $1"
       return 1
