@@ -312,6 +312,9 @@ class Cellular : public Device,
   // Takes ownership.
   void set_serving_operator_info(MobileOperatorInfo* serving_operator_info);
 
+  // Implements MobileOperatorInfo::Observer:
+  void OnOperatorChanged() override;
+
  private:
   friend class CellularTest;
   friend class CellularCapability3gppTest;
@@ -458,9 +461,6 @@ class Cellular : public Device,
                            const Error& error);
 
   void PollLocationTask();
-
-  // Implements MobileOperatorInfo::Observer:
-  void OnOperatorChanged() override;
 
   State state_;
   ModemState modem_state_;

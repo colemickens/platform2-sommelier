@@ -1439,6 +1439,9 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
                                                        kProfileAuthType)));
     profiles_.push_back(std::move(apn_info));
   }
+
+  // The cellular object may need to update the APN list now.
+  cellular()->OnOperatorChanged();
 }
 
 void CellularCapability3gpp::On3gppRegistrationChanged(
