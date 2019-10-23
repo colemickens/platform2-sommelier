@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <cstdlib>
+#include <limits>
 #include <string>
 
 #include <base/strings/string_number_conversions.h>
@@ -21,8 +22,12 @@ bool StringToDouble(const std::string& input, double* output) {
   }
   char* endptr;
   *output = strtod(trimmed_input.c_str(), &endptr);
-  // Assume the conversion success iff the entire string is consumed.
-  return *endptr == '\0';
+
+  // Assume the conversion success iff the entire string is consumed and output
+  // is not inf or -inf.
+  return *endptr == '\0' &&
+         *output != std::numeric_limits<double>::infinity() &&
+         *output != -std::numeric_limits<double>::infinity();
 }
 
 bool StringToInt(const std::string& input, int* output) {
