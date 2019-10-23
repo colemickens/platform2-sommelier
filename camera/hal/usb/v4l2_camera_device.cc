@@ -8,6 +8,7 @@
 
 #include <fcntl.h>
 #include <linux/videodev2.h>
+#include <poll.h>
 #include <sys/ioctl.h>
 
 #include <algorithm>
@@ -24,6 +25,7 @@
 
 #include "cros-camera/common.h"
 #include "hal/usb/camera_characteristics.h"
+#include "hal/usb/quirks.h"
 
 namespace cros {
 
@@ -297,6 +299,29 @@ int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
   if (!stream_on_) {
     LOGF(ERROR) << "Streaming is not started";
     return -EIO;
+  }
+
+  if (device_info_.quirks & kQuirkRestartOnTimeout) {
+    pollfd device_pfd = {};
+    device_pfd.fd = device_fd_.get();
+    device_pfd.events = POLLIN;
+
+    constexpr int kCaptureTimeoutMs = 1000;
+    const int result =
+        TEMP_FAILURE_RETRY(poll(&device_pfd, 1, kCaptureTimeoutMs));
+
+    if (result < 0) {
+      PLOGF(ERROR) << "Polling fails";
+      return -errno;
+    } else if (result == 0) {
+      LOGF(ERROR) << "Timed out waiting for captured frame";
+      return -ETIMEDOUT;
+    }
+
+    if (!(device_pfd.revents & POLLIN)) {
+      LOGF(ERROR) << "Unexpected event occurred while polling";
+      return -EIO;
+    }
   }
 
   v4l2_buffer buffer;

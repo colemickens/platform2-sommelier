@@ -20,6 +20,8 @@ const QuirksMap& GetQuirksMap() {
   static const QuirksMap kQuirksMap = {
       // Logitech Webcam Pro 9000 (b/138159048)
       {{"046d", "0809"}, kQuirkPreferMjpeg},
+      // Huddly GO (crbug.com/1010557)
+      {{"2bd9", "0011"}, kQuirkRestartOnTimeout},
   };
   return kQuirksMap;
 }
