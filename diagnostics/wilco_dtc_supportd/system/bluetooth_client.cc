@@ -1,0 +1,44 @@
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "diagnostics/wilco_dtc_supportd/system/bluetooth_client.h"
+
+#include <base/logging.h>
+#include <dbus/bluetooth/dbus-constants.h>
+
+namespace diagnostics {
+
+BluetoothClient::AdapterProperties::AdapterProperties(
+    dbus::ObjectProxy* object_proxy,
+    const dbus::PropertySet::PropertyChangedCallback& callback)
+    : dbus::PropertySet(object_proxy,
+                        bluetooth_adapter::kBluetoothAdapterInterface,
+                        callback) {
+  RegisterProperty(bluetooth_adapter::kNameProperty, &name);
+  RegisterProperty(bluetooth_adapter::kAddressProperty, &address);
+  RegisterProperty(bluetooth_adapter::kPoweredProperty, &powered);
+}
+
+BluetoothClient::DeviceProperties::DeviceProperties(
+    dbus::ObjectProxy* object_proxy,
+    const dbus::PropertySet::PropertyChangedCallback& callback)
+    : dbus::PropertySet(
+          object_proxy, bluetooth_device::kBluetoothDeviceInterface, callback) {
+  RegisterProperty(bluetooth_device::kNameProperty, &name);
+  RegisterProperty(bluetooth_device::kAddressProperty, &address);
+  RegisterProperty(bluetooth_device::kConnectedProperty, &connected);
+  RegisterProperty(bluetooth_device::kAdapterProperty, &adapter);
+}
+
+void BluetoothClient::AddObserver(Observer* observer) {
+  DCHECK(observer);
+  observers_.AddObserver(observer);
+}
+
+void BluetoothClient::RemoveObserver(Observer* observer) {
+  DCHECK(observer);
+  observers_.RemoveObserver(observer);
+}
+
+}  // namespace diagnostics
