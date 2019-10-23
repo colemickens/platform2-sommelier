@@ -5,6 +5,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
@@ -431,17 +432,23 @@ std::unique_ptr<ProbeResultChecker> ProbeResultChecker::FromDictionaryValue(
     if (list_value->GetSize() == 3 && !list_value->GetString(2, &validate_rule))
       return print_error_and_return();
 
+    std::unique_ptr<FieldConverter> converter = nullptr;
     if (expect_type == "str") {
-      (*target)[key] = StringFieldConverter::Build(validate_rule);
+      converter = StringFieldConverter::Build(validate_rule);
     } else if (expect_type == "int") {
-      (*target)[key] = IntegerFieldConverter::Build(validate_rule);
+      converter = IntegerFieldConverter::Build(validate_rule);
     } else if (expect_type == "double") {
-      (*target)[key] = DoubleFieldConverter::Build(validate_rule);
+      converter = DoubleFieldConverter::Build(validate_rule);
     } else if (expect_type == "hex") {
-      (*target)[key] = HexFieldConverter::Build(validate_rule);
-    } else {
-      LOG(ERROR) << "Unknown 'expect_type': " << expect_type;
+      converter = HexFieldConverter::Build(validate_rule);
+    }
+
+    if (converter == nullptr) {
+      LOG(ERROR) << "Cannot build converter, 'expect_type': " << expect_type
+                 << ", 'validate_rule': " << validate_rule;
       return nullptr;
+    } else {
+      (*target)[key] = std::move(converter);
     }
   }
 
