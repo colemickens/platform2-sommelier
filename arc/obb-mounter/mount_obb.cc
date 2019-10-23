@@ -7,17 +7,16 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/command_line.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/optional.h>
 #include <base/strings/string_util.h>
 #include <base/strings/utf_string_conversions.h>
 #include <base/synchronization/lock.h>
 #include <brillo/syslog_logging.h>
 
-#include "arc/obb-mounter/mount_obb.h"
 #include "arc/obb-mounter/volume.h"
 
 namespace {
@@ -35,8 +34,8 @@ class FileReaderThreadSafe {
   FileReaderThreadSafe(fat::Volume* volume,
                        int64_t start_cluster,
                        int64_t file_size)
-    : reader_(volume, start_cluster, file_size) {}
-  ~FileReaderThreadSafe() = default;
+      : reader_(volume, start_cluster, file_size) {}
+  ~FileReaderThreadSafe() {}
 
   int64_t Read(char* buf, int64_t size, int64_t offset) {
     base::AutoLock auto_lock(lock_);
@@ -52,7 +51,7 @@ class FileReaderThreadSafe {
 
 // Converts DirectoryEntry to stat.
 void ConvertDirectoryEntryToStat(const DirectoryEntry& entry,
-                                        struct stat* stat) {
+                                 struct stat* stat) {
   if (entry.is_directory) {
     stat->st_mode = kDirMode;
     stat->st_nlink = 2;
@@ -65,8 +64,7 @@ void ConvertDirectoryEntryToStat(const DirectoryEntry& entry,
 }
 
 // Gets a DirectoryEntry with the given path.
-bool GetDirectoryEntry(const base::StringPiece16& path,
-                              DirectoryEntry* out) {
+bool GetDirectoryEntry(const base::StringPiece16& path, DirectoryEntry* out) {
   if (path.empty() || path[0] != '/') {
     return false;
   }
@@ -201,11 +199,23 @@ int fat_readdir(const char* path,
 
 }  // namespace
 
-extern int mount_obb(const char* file_system_name,
-                     const char* obb_filename,
-                     const char* mount_path,
-                     const std::string& owner_uid,
-                     const std::string& owner_gid) {
+int main(int argc, char** argv) {
+  base::CommandLine::Init(argc, argv);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
+
+  auto program = base::CommandLine::ForCurrentProcess()->GetProgram();
+  auto args = base::CommandLine::ForCurrentProcess()->GetArgs();
+  if (args.size() != 4) {
+    LOG(ERROR) << "Usage: " << program.value()
+               << " obb_filename mount_path owner_uid owner_gid";
+    return 1;
+  }
+  const char* file_system_name = program.value().c_str();
+  const char* obb_filename = args[0].c_str();
+  const char* mount_path = args[1].c_str();
+  const std::string& owner_uid = args[2];
+  const std::string& owner_gid = args[3];
+
   base::File file(base::FilePath(obb_filename),
                   base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!file.IsValid()) {
@@ -218,7 +228,6 @@ extern int mount_obb(const char* file_system_name,
     LOG(ERROR) << "Failed to initialize volume: " << obb_filename;
     return 1;
   }
-
   g_volume = &volume;
 
   const std::string mount_options =
