@@ -18,6 +18,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "cros-camera-android-headers",
     "libbrillo-${libbase_ver}",
+    "libcab",
     "libcamera_client",
     "libcamera_common",
     "libcamera_metadata",
@@ -49,6 +50,7 @@ executable("cros_camera_service") {
     "camera_trace_event.cc",
     "cros_camera_main.cc",
     "cros_camera_mojo_utils.cc",
+    "reprocess_effect/gpu_algo_manager.cc",
     "reprocess_effect/portrait_mode_effect.cc",
     "reprocess_effect/reprocess_effect_manager.cc",
     "scoped_yuv_buffer_handle.cc",

@@ -11,14 +11,21 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
+#include <base/callback_helpers.h>
+#include <base/synchronization/condition_variable.h>
+#include <base/synchronization/lock.h>
 #include <base/process/process.h>
 
 #include "cros-camera/camera_buffer_manager.h"
+#include "hal_adapter/reprocess_effect/gpu_algo_manager.h"
 #include "hal_adapter/reprocess_effect/reprocess_effect.h"
 
 namespace cros {
 
-class PortraitModeEffect final : public ReprocessEffect {
+class PortraitModeEffect final
+    : public ReprocessEffect,
+      public base::SupportsWeakPtr<PortraitModeEffect> {
  public:
   PortraitModeEffect();
 
@@ -43,6 +50,9 @@ class PortraitModeEffect final : public ReprocessEffect {
                            ScopedYUVBufferHandle* output_buffer);
 
  private:
+  void UpdateResultMetadata(android::CameraMetadata* result_metadata,
+                            const int* result);
+
   base::Process LaunchPortraitProcessor(int input_rgb_buf_fd,
                                         int output_rgb_buf_fd,
                                         int result_report_fd,
@@ -64,6 +74,10 @@ class PortraitModeEffect final : public ReprocessEffect {
                       uint32_t width,
                       uint32_t height);
 
+  void ReturnCallback(uint32_t status, int32_t buffer_handle);
+
+  bool use_portrait_processor_binary_;
+
   uint32_t enable_vendor_tag_;
 
   enum class SegmentationResult : uint8_t { kSuccess, kFailure, kTimeout };
@@ -71,6 +85,14 @@ class PortraitModeEffect final : public ReprocessEffect {
   uint32_t result_vendor_tag_;
 
   CameraBufferManager* buffer_manager_;
+
+  GPUAlgoManager* gpu_algo_manager_;
+
+  base::Lock lock_;
+
+  base::ConditionVariable condvar_;
+
+  int32_t return_status_;
 
   DISALLOW_COPY_AND_ASSIGN(PortraitModeEffect);
 };

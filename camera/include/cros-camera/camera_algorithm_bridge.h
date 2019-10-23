@@ -44,6 +44,13 @@ class CROS_CAMERA_EXPORT CameraAlgorithmBridge {
   //    Unique pointer to instance on success; nullptr on failure.
   static std::unique_ptr<CameraAlgorithmBridge> CreateVendorAlgoInstance();
 
+  // This method creates and returns the CameraAlgorithmBridge instance of
+  // algorithms using GPU.
+  //
+  // Returns:
+  //    Unique pointer to instance on success; nullptr on failure.
+  static std::unique_ptr<CameraAlgorithmBridge> CreateGPUAlgoInstance();
+
   virtual ~CameraAlgorithmBridge() {}
 
   // This method is one-time initialization that registers a callback function

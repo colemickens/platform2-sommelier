@@ -31,9 +31,16 @@ namespace cros {
 std::unique_ptr<CameraAlgorithmBridge>
 CameraAlgorithmBridge::CreateVendorAlgoInstance() {
   VLOGF_ENTER();
-  return std::unique_ptr<CameraAlgorithmBridgeImpl>(
-      new CameraAlgorithmBridgeImpl(
-          cros::constants::kCrosCameraAlgoSocketPathString));
+  return std::make_unique<CameraAlgorithmBridgeImpl>(
+      cros::constants::kCrosCameraAlgoSocketPathString);
+}
+
+// static
+std::unique_ptr<CameraAlgorithmBridge>
+CameraAlgorithmBridge::CreateGPUAlgoInstance() {
+  VLOGF_ENTER();
+  return std::make_unique<CameraAlgorithmBridgeImpl>(
+      cros::constants::kCrosCameraGPUAlgoSocketPathString);
 }
 
 CameraAlgorithmBridgeImpl::CameraAlgorithmBridgeImpl(
