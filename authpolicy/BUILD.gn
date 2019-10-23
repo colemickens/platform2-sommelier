@@ -154,8 +154,13 @@ pkg_config("authpolicy_parser_config") {
     # appear before protobuf or the linker flags won't be in the right
     # order.
     "system_api",
-    "protobuf-lite",
   ]
+
+  if (use.fuzzer) {
+    pkg_deps += [ "protobuf" ]
+  } else {
+    pkg_deps += [ "protobuf-lite" ]
+  }
 }
 
 # Parser tool.
@@ -203,8 +208,13 @@ if (use.test) {
       # appear before protobuf or the linker flags won't be in the right
       # order.
       "system_api",
-      "protobuf-lite",
     ]
+
+    if (use.fuzzer) {
+      pkg_deps += [ "protobuf" ]
+    } else {
+      pkg_deps += [ "protobuf-lite" ]
+    }
   }
 
   executable("authpolicy_test") {
