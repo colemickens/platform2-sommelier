@@ -637,6 +637,8 @@ class Camera3FlushRequestsTest : public Camera3FrameFixture,
   sem_t flush_result_sem_;
 
  private:
+  void CheckAllResultReceived(uint32_t frame_number);
+
   // Number of configured streams
   static const int32_t kNumberOfConfiguredStreams;
 
@@ -649,7 +651,7 @@ class Camera3FlushRequestsTest : public Camera3FrameFixture,
 
   // Store the frames numbers that had been notified with
   // CAMERA3_MSG_ERROR_REQUEST.
-  std::unordered_set<uint32_t> notified_error_requests_;
+  std::unordered_set<uint32_t> notified_error_frames_;
 };
 
 const int32_t Camera3FlushRequestsTest::kNumberOfConfiguredStreams = 1;
@@ -661,6 +663,17 @@ void Camera3FlushRequestsTest::SetUp() {
   cam_device_.RegisterNotifyCallback(
       base::Bind(&Camera3FlushRequestsTest::Notify, base::Unretained(this)));
   sem_init(&flush_result_sem_, 0, 0);
+}
+
+void Camera3FlushRequestsTest::CheckAllResultReceived(uint32_t frame_number) {
+  if (num_capture_result_buffers_[frame_number] == kNumberOfConfiguredStreams &&
+      (notified_error_frames_.find(frame_number) !=
+           notified_error_frames_.end() ||
+       metadata_complete_frame_numbers_.find(frame_number) !=
+           metadata_complete_frame_numbers_.end())) {
+    num_capture_results_++;
+    sem_post(&flush_result_sem_);
+  }
 }
 
 void Camera3FlushRequestsTest::ProcessCaptureResult(
@@ -680,15 +693,7 @@ void Camera3FlushRequestsTest::ProcessCaptureResult(
   num_capture_result_buffers_[result->frame_number] +=
       result->num_output_buffers;
 
-  if (num_capture_result_buffers_[result->frame_number] ==
-          kNumberOfConfiguredStreams &&
-      (notified_error_requests_.find(result->frame_number) !=
-           notified_error_requests_.end() ||
-       metadata_complete_frame_numbers_.find(result->frame_number) !=
-           metadata_complete_frame_numbers_.end())) {
-    num_capture_results_++;
-    sem_post(&flush_result_sem_);
-  }
+  CheckAllResultReceived(result->frame_number);
 }
 
 void Camera3FlushRequestsTest::Notify(const camera3_notify_msg* msg) {
@@ -697,9 +702,11 @@ void Camera3FlushRequestsTest::Notify(const camera3_notify_msg* msg) {
   VLOGF_ENTER();
   if (msg->type == CAMERA3_MSG_ERROR) {
     const camera3_error_msg_t& error = msg->message.error;
-    if (error.error_code == CAMERA3_MSG_ERROR_REQUEST) {
-      notified_error_requests_.insert(error.frame_number);
+    if (error.error_code == CAMERA3_MSG_ERROR_REQUEST ||
+        error.error_code == CAMERA3_MSG_ERROR_RESULT) {
+      notified_error_frames_.insert(error.frame_number);
     }
+    CheckAllResultReceived(error.frame_number);
   }
 }
 
