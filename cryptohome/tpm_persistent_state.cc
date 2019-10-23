@@ -216,8 +216,7 @@ bool TpmPersistentState::StoreTpmStatus() {
     // Shred old status file, not very useful on SSD. :(
     int64_t file_size;
     if (platform_->GetFileSize(kTpmStatusFile, &file_size)) {
-      SecureBlob random(file_size);
-      CryptoLib::GetSecureRandom(random.data(), random.size());
+      const auto random = CryptoLib::CreateSecureRandomBlob(file_size);
       platform_->WriteSecureBlobToFile(kTpmStatusFile, random);
       platform_->DataSyncFile(kTpmStatusFile);
     }

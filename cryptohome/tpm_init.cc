@@ -322,8 +322,8 @@ bool TpmInit::TakeOwnership(bool* OUT_took_ownership) {
 void TpmInit::CreateOwnerPassword(SecureBlob* password) {
   // Generate a random owner password.  The default is a 12-character,
   // hex-encoded password created from 6 bytes of random data.
-  SecureBlob random(kOwnerPasswordLength / 2);
-  CryptoLib::GetSecureRandom(random.data(), random.size());
+  const auto random =
+      CryptoLib::CreateSecureRandomBlob(kOwnerPasswordLength / 2);
   SecureBlob tpm_password(kOwnerPasswordLength);
   CryptoLib::SecureBlobToHexToBuffer(random,
                                      tpm_password.data(),

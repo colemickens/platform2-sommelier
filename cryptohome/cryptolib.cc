@@ -117,10 +117,19 @@ const unsigned int  kAesBlockSize = 16;
 void CryptoLib::GetSecureRandom(unsigned char* buf, size_t length) {
   // OpenSSL takes a signed integer.  On the off chance that the user requests
   // something too large, truncate it.
+  //
+  // TODO(b/143445674): correctly handle the 2 corner cases: 1) length exceeds
+  // limit and 2) RAND_bytes() fails and make relevant changes.
   if (length > static_cast<size_t>(std::numeric_limits<int>::max())) {
     length = std::numeric_limits<int>::max();
   }
   RAND_bytes(buf, length);
+}
+
+SecureBlob CryptoLib::CreateSecureRandomBlob(size_t length) {
+  SecureBlob blob(length);
+  GetSecureRandom(reinterpret_cast<unsigned char*>(blob.data()), length);
+  return blob;
 }
 
 bool CryptoLib::CreateRsaKey(size_t key_bits, SecureBlob* n, SecureBlob* p) {

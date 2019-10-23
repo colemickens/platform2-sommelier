@@ -41,6 +41,8 @@ class CryptoLib {
   };
 
   static void GetSecureRandom(unsigned char *bytes, size_t len);
+  static brillo::SecureBlob CreateSecureRandomBlob(size_t length);
+
   static bool CreateRsaKey(size_t bits, brillo::SecureBlob* n,
                            brillo::SecureBlob* p);
 

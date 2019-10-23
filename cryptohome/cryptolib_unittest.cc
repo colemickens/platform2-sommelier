@@ -25,8 +25,7 @@ TEST(CryptoLibTest, RsaOaepDecrypt) {
   CHECK(e);
   EXPECT_TRUE(BN_set_word(e.get(), kWellKnownExponent));
   EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), kKeySizeBits, e.get(), nullptr));
-  SecureBlob plaintext(kPlaintextSize);
-  CryptoLib::GetSecureRandom(plaintext.data(), plaintext.size());
+  const auto plaintext = CryptoLib::CreateSecureRandomBlob(kPlaintextSize);
   // Test decryption when a non-empty label is used.
   const SecureBlob kFirstOaepLabel("foo");
   SecureBlob first_padded_data(kKeySizeBytes);

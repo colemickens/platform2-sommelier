@@ -128,36 +128,26 @@ bool VaultKeyset::ToKeysBlob(SecureBlob* keys_blob) const {
 }
 
 void VaultKeyset::CreateRandomChapsKey() {
-  chaps_key_.clear();
-  chaps_key_.resize(CRYPTOHOME_CHAPS_KEY_LENGTH);
-  CryptoLib::GetSecureRandom(chaps_key_.data(), chaps_key_.size());
+  chaps_key_ = CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_CHAPS_KEY_LENGTH);
 }
 
 void VaultKeyset::CreateRandomResetSeed() {
-  reset_seed_.clear();
-  reset_seed_.resize(CRYPTOHOME_RESET_SEED_LENGTH);
-  CryptoLib::GetSecureRandom(reset_seed_.data(), reset_seed_.size());
+  reset_seed_ = CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_RESET_SEED_LENGTH);
 }
 
 void VaultKeyset::CreateRandom() {
   CHECK(crypto_);
-  fek_.resize(CRYPTOHOME_DEFAULT_KEY_SIZE);
-  CryptoLib::GetSecureRandom(fek_.data(), fek_.size());
 
-  fek_sig_.resize(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE);
-  CryptoLib::GetSecureRandom(fek_sig_.data(), fek_sig_.size());
-
-  fek_salt_.resize(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
-  CryptoLib::GetSecureRandom(fek_salt_.data(), fek_salt_.size());
-
-  fnek_.resize(CRYPTOHOME_DEFAULT_KEY_SIZE);
-  CryptoLib::GetSecureRandom(fnek_.data(), fnek_.size());
-
-  fnek_sig_.resize(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE);
-  CryptoLib::GetSecureRandom(fnek_sig_.data(), fnek_sig_.size());
-
-  fnek_salt_.resize(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
-  CryptoLib::GetSecureRandom(fnek_salt_.data(), fnek_salt_.size());
+  fek_ = CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIZE);
+  fek_sig_ =
+      CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE);
+  fek_salt_ =
+      CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
+  fnek_ = CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIZE);
+  fnek_sig_ =
+      CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE);
+  fnek_salt_ =
+      CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
 
   CreateRandomChapsKey();
   CreateRandomResetSeed();
@@ -280,8 +270,8 @@ bool VaultKeyset::Decrypt(const SecureBlob& key,
 bool VaultKeyset::Encrypt(const SecureBlob& key,
                           const std::string& obfuscated_username) {
   CHECK(crypto_);
-  SecureBlob salt(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
-  CryptoLib::GetSecureRandom(salt.data(), salt.size());
+  const auto salt =
+      CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
   encrypted_ = crypto_->EncryptVaultKeyset(*this, key, salt,
                                            obfuscated_username, &serialized_);
   return encrypted_;

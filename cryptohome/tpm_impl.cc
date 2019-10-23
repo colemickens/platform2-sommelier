@@ -530,9 +530,8 @@ bool TpmImpl::CreatePolicyWithRandomPassword(TSS_HCONTEXT context_handle,
     TPM_LOG(ERROR, result) << "Error creating policy object";
     return false;
   }
-  SecureBlob migration_password(kDefaultDiscardableWrapPasswordLength);
-  CryptoLib::GetSecureRandom(migration_password.data(),
-                             migration_password.size());
+  auto migration_password =
+      CryptoLib::CreateSecureRandomBlob(kDefaultDiscardableWrapPasswordLength);
   if (TPM_ERROR(result = Tspi_Policy_SetSecret(
                     local_policy, TSS_SECRET_MODE_PLAIN,
                     migration_password.size(), migration_password.data()))) {

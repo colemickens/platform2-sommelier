@@ -333,8 +333,7 @@ bool Crypto::GetOrCreateSalt(const FilePath& path,
     LOG(ERROR) << "Creating new salt at " << path.value()
                << " (" << force << ", " << file_len << ")";
     // If this salt doesn't exist, automatically create it.
-    local_salt.resize(length);
-    CryptoLib::GetSecureRandom(local_salt.data(), local_salt.size());
+    local_salt = CryptoLib::CreateSecureRandomBlob(length);
     if (!platform_->WriteSecureBlobToFileAtomicDurable(
             path, local_salt, kSaltFilePermissions)) {
       LOG(ERROR) << "Could not write user salt";
@@ -923,9 +922,8 @@ bool Crypto::GenerateAndWrapKeys(const VaultKeyset& vault_keyset,
 
   // If a reset seed is present, encrypt and store it, else clear the field.
   if (store_reset_seed && vault_keyset.reset_seed().size() != 0) {
-    SecureBlob reset_iv(kAesBlockSize);
-    CryptoLib::GetSecureRandom(reset_iv.data(), reset_iv.size());
-
+    const auto reset_iv =
+        CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
     SecureBlob wrapped_reset_seed;
     if (!CryptoLib::AesEncrypt(vault_keyset.reset_seed(), blobs.vkk_key,
                                reset_iv, &wrapped_reset_seed)) {
@@ -955,11 +953,9 @@ bool Crypto::EncryptTPM(const VaultKeyset& vault_keyset,
   if (!is_cryptohome_key_loaded())
     return false;
 
-  brillo::SecureBlob vkk_key(kDefaultAesKeySize);
-  CryptoLib::GetSecureRandom(vkk_key.data(), vkk_key.size());
-
-  brillo::SecureBlob pass_blob(kDefaultPassBlobSize);
-  brillo::SecureBlob vkk_iv(kAesBlockSize);
+  const auto vkk_key = CryptoLib::CreateSecureRandomBlob(kDefaultAesKeySize);
+  SecureBlob pass_blob(kDefaultPassBlobSize);
+  SecureBlob vkk_iv(kAesBlockSize);
   if (!DeriveSecretsSCrypt(key, salt, {&pass_blob, &vkk_iv}))
     return false;
 
@@ -1023,8 +1019,7 @@ bool Crypto::EncryptTPMNotBoundToPcr(const VaultKeyset& vault_keyset,
   EnsureTpm(false);
   if (!is_cryptohome_key_loaded())
     return false;
-  SecureBlob local_blob(kDefaultAesKeySize);
-  CryptoLib::GetSecureRandom(local_blob.data(), local_blob.size());
+  const auto local_blob = CryptoLib::CreateSecureRandomBlob(kDefaultAesKeySize);
   SecureBlob tpm_key;
   SecureBlob aes_skey(kDefaultAesKeySize);
   SecureBlob kdf_skey(kDefaultAesKeySize);
@@ -1054,9 +1049,7 @@ bool Crypto::EncryptTPMNotBoundToPcr(const VaultKeyset& vault_keyset,
 
   // If a reset seed is present, encrypt and store it, else clear the field.
   if (vault_keyset.reset_seed().size() != 0) {
-    SecureBlob reset_iv(kAesBlockSize);
-    CryptoLib::GetSecureRandom(reset_iv.data(), reset_iv.size());
-
+    const auto reset_iv = CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
     SecureBlob wrapped_reset_seed;
     if (!CryptoLib::AesEncrypt(vault_keyset.reset_seed(), vkk_key, reset_iv,
                                &wrapped_reset_seed)) {
@@ -1211,10 +1204,9 @@ bool Crypto::EncryptLECredential(const VaultKeyset& vault_keyset,
 
   // Generate and store random new IVs for file-encryption keys and
   // chaps key encryption.
-  SecureBlob fek_iv(kAesBlockSize);
-  SecureBlob chaps_iv(kAesBlockSize);
-  CryptoLib::GetSecureRandom(fek_iv.data(), fek_iv.size());
-  CryptoLib::GetSecureRandom(chaps_iv.data(), chaps_iv.size());
+  const auto fek_iv = CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
+  const auto chaps_iv = CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
+
   serialized->set_le_fek_iv(fek_iv.data(), fek_iv.size());
   serialized->set_le_chaps_iv(chaps_iv.data(), chaps_iv.size());
 
@@ -1240,8 +1232,7 @@ bool Crypto::EncryptLECredential(const VaultKeyset& vault_keyset,
   if (!vault_keyset.reset_seed().empty()) {
     SecureBlob local_reset_seed(vault_keyset.reset_seed().begin(),
                                 vault_keyset.reset_seed().end());
-    SecureBlob reset_salt(kAesBlockSize);
-    CryptoLib::GetSecureRandom(reset_salt.data(), reset_salt.size());
+    const auto reset_salt = CryptoLib::CreateSecureRandomBlob(kAesBlockSize);
     serialized->set_reset_salt(reset_salt.data(), reset_salt.size());
     reset_secret = CryptoLib::HmacSha256(reset_salt, local_reset_seed);
   } else if (!vault_keyset.reset_secret().empty()) {

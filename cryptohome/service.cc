@@ -1602,9 +1602,9 @@ void Service::DoAddDataRestoreKey(AccountIdentifier* identifier,
     return;
   }
   KeyData new_key_data;
-  SecureBlob data_restore_key(kDefaultDataRestoreKeyLength);
   BaseReply reply;
-  CryptoLib::GetSecureRandom(data_restore_key.data(), data_restore_key.size());
+  const auto data_restore_key =
+      CryptoLib::CreateSecureRandomBlob(kDefaultDataRestoreKeyLength);
   new_key_data.set_label(kDataRestoreKeyLabel);
   Credentials credentials(GetAccountId(*identifier).c_str(),
                           SecureBlob(authorization->key().secret().begin(),

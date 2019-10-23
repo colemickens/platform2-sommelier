@@ -971,9 +971,8 @@ bool Mount::AddVaultKeyset(const Credentials& credentials,
   }
 
   // Encrypt the vault keyset
-  SecureBlob salt(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
-  CryptoLib::GetSecureRandom(salt.data(), salt.size());
-
+  const auto salt =
+      CryptoLib::CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
   if (!crypto_->EncryptVaultKeyset(*vault_keyset, passkey, salt,
                                    obfuscated_username, serialized)) {
     LOG(ERROR) << "Encrypting vault keyset failed";

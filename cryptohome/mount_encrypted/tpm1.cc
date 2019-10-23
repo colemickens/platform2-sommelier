@@ -418,10 +418,8 @@ result_code Tpm1SystemKeyLoader::GenerateForPreservation(
   EncStatefulArea* provisional_area =
       reinterpret_cast<EncStatefulArea*>(provisional_contents_->data());
 
-  brillo::SecureBlob key_material;
-  key_material.resize(DIGEST_LENGTH);
-  cryptohome::CryptoLib::GetSecureRandom(
-      key_material.data(), key_material.size());
+  const auto key_material =
+      cryptohome::CryptoLib::CreateSecureRandomBlob(DIGEST_LENGTH);
   rc = provisional_area->Init(key_material);
   if (rc != RESULT_SUCCESS) {
     return rc;

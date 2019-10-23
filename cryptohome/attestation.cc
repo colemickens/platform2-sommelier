@@ -1015,8 +1015,7 @@ bool Attestation::CreateCertRequest(PCAType pca_type,
   AttestationCertificateRequest request_pb;
   request_pb.set_identity_credential(
       identity_certificate.identity_credential());
-  SecureBlob message_id(kNonceSize);
-  CryptoLib::GetSecureRandom(message_id.data(), message_id.size());
+  const auto message_id = CryptoLib::CreateSecureRandomBlob(kNonceSize);
   request_pb.set_message_id(message_id.to_string());
   request_pb.set_profile(profile);
   if (!origin.empty() &&
@@ -2016,8 +2015,7 @@ bool Attestation::VerifyActivateIdentity(const brillo::Blob& delegate_blob,
   const uint8_t kSymContentHeader[12] = {0};
 
   // Generate an AES key and encrypt the credential.
-  SecureBlob aes_key(kCipherKeySize);
-  CryptoLib::GetSecureRandom(aes_key.data(), aes_key.size());
+  const auto aes_key = CryptoLib::CreateSecureRandomBlob(kCipherKeySize);
   SecureBlob credential(kTestCredential,
                         kTestCredential + strlen(kTestCredential));
   SecureBlob encrypted_credential;
@@ -2519,9 +2517,8 @@ bool Attestation::TssCompatibleEncrypt(const SecureBlob& key,
     LOG(ERROR) << "Wrong key size!";
     return false;
   }
-  SecureBlob iv(AES_BLOCK_SIZE);
-  CryptoLib::GetSecureRandom(reinterpret_cast<unsigned char*>(iv.data()),
-                             AES_BLOCK_SIZE);
+
+  const auto iv = CryptoLib::CreateSecureRandomBlob(AES_BLOCK_SIZE);
   SecureBlob encrypted_input;
   if (!AesEncrypt(input, key, iv, &encrypted_input)) {
     LOG(ERROR) << "Error encrypting input.";
@@ -2737,9 +2734,8 @@ bool Attestation::CreatePCRQuote(
     uint32_t pcr_index,
     const SecureBlob& identity_key_blob,
     Quote* output) {
-  SecureBlob external_data(kQuoteExternalDataSize);
-  CryptoLib::GetSecureRandom(external_data.data(), kQuoteExternalDataSize);
-
+  const auto external_data =
+      CryptoLib::CreateSecureRandomBlob(kQuoteExternalDataSize);
   Blob quoted_pcr_value;
   SecureBlob quoted_data;
   SecureBlob quote;
