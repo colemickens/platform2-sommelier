@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 
+#include <fcntl.h>
 #include <memory>
 #include <sys/mman.h>
 
@@ -13,6 +14,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/rand_util.h>
 #include <base/test/simple_test_clock.h>
+#include <base/time/time.h>
 #include <brillo/process.h>
 #include <brillo/streams/memory_stream.h>
 #include <gtest/gtest.h>
@@ -46,6 +48,8 @@ constexpr char kSemiRandomData[] =
     "ABJCI239AJSDLKJ;kalkjkjsd98723;KJHASD87;kqw3p088ad;lKJASDP823;KJ";
 constexpr int kRandomDataMinLength = 32768;   // 32kB
 constexpr int kRandomDataMaxLength = 262144;  // 256kB
+
+constexpr char kReadFdToStreamContents[] = "1234567890";
 
 // Verifies that |raw_file| corresponds to the gzip'd version of
 // |compressed_file| by decompressing it and comparing the contents. Returns
@@ -119,12 +123,16 @@ class CrashCommonUtilTest : public testing::Test {
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
     test_dir_ = scoped_temp_dir_.GetPath();
     paths::SetPrefixForTesting(test_dir_);
+    base::FilePath file = scoped_temp_dir_.GetPath().Append("tmpfile");
+    ASSERT_TRUE(test_util::CreateFile(file, kReadFdToStreamContents));
+    fd_ = open(file.value().c_str(), O_RDONLY);
   }
 
   void TearDown() override { paths::SetPrefixForTesting(base::FilePath()); }
 
   base::FilePath test_dir_;
   base::ScopedTempDir scoped_temp_dir_;
+  unsigned int fd_;
 };
 
 TEST_F(CrashCommonUtilTest, IsCrashTestInProgress) {
@@ -371,6 +379,12 @@ TEST_F(CrashCommonUtilTest,
   std::string read_outs;
   EXPECT_TRUE(ReadMemfdToString(memfd, &read_outs));
   EXPECT_EQ(read_outs, write_ins);
+}
+
+TEST_F(CrashCommonUtilTest, ReadFdToStream) {
+  std::stringstream stream;
+  EXPECT_TRUE(ReadFdToStream(fd_, &stream));
+  EXPECT_EQ(kReadFdToStreamContents, stream.str());
 }
 
 }  // namespace util

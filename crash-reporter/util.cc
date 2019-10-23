@@ -326,4 +326,20 @@ int GetServiceFailureWeight() {
   return 50;
 }
 
+bool ReadFdToStream(unsigned int fd, std::stringstream* stream) {
+  base::File src(fd);
+  char buffer[kBufferSize];
+
+  while (true) {
+    const int count = src.ReadAtCurrentPosNoBestEffort(buffer, kBufferSize);
+    if (count < 0)
+      return false;
+
+    if (count == 0)
+      return stream->tellp() > 0;  // Crash log should not be empty.
+
+    stream->write(buffer, count);
+  }
+}
+
 }  // namespace util

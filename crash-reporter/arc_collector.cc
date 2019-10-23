@@ -23,6 +23,7 @@
 #include <brillo/key_value_store.h>
 #include <brillo/process.h>
 
+#include "crash-reporter/arc_util.h"
 #include "crash-reporter/util.h"
 
 using base::File;
@@ -48,38 +49,6 @@ const char kCoreCollector32Path[] = "/usr/bin/core_collector32";
 
 const char kChromePath[] = "/opt/google/chrome/chrome";
 
-const char kArcProduct[] = "ChromeOS_ARC";
-
-// Metadata fields included in reports.
-const char kAndroidVersionField[] = "android_version";
-const char kArcVersionField[] = "arc_version";
-const char kBoardField[] = "board";
-const char kChromeOsVersionField[] = "chrome_os_version";
-const char kCpuAbiField[] = "cpu_abi";
-const char kCrashTypeField[] = "crash_type";
-const char kDeviceField[] = "device";
-const char kExceptionInfoField[] = "exception_info";
-const char kProcessField[] = "process";
-const char kProductField[] = "prod";
-const char kSignatureField[] = "sig";
-const char kUptimeField[] = "uptime";
-
-// If this metadata key is set to "true", the report is uploaded silently, i.e.
-// it does not appear in chrome://crashes.
-const char kSilentKey[] = "silent";
-
-// Keys for crash log headers.
-const char kBuildKey[] = "Build";
-const char kProcessKey[] = "Process";
-const char kSubjectKey[] = "Subject";
-
-const std::pair<const char*, const char*> kHeaderToFieldMapping[] = {
-    {"Crash-Tag", "crash_tag"},
-    {"NDK-Execution", "ndk_execution"},
-    {"Package", "package"},
-    {"Target-SDK", "target_sdk"},
-};
-
 // Keys for build properties.
 const char kBoardProperty[] = "ro.product.board";
 const char kCpuAbiProperty[] = "ro.product.cpu.abi";
@@ -92,21 +61,7 @@ inline bool IsAppProcess(const std::string& name) {
   return name == "app_process32" || name == "app_process64";
 }
 
-inline bool IsSilentReport(const std::string& type) {
-  return type == "system_app_wtf" || type == "system_server_wtf";
-}
-
-inline TimeTicks ToSeconds(const TimeTicks& time) {
-  return TimeTicks::FromInternalValue(
-      TimeDelta::FromSeconds(
-          TimeDelta::FromInternalValue(time.ToInternalValue()).InSeconds())
-          .ToInternalValue());
-}
-
 bool ReadCrashLogFromStdin(std::stringstream* stream);
-
-bool HasExceptionInfo(const std::string& type);
-const char* GetSubjectTag(const std::string& type);
 
 bool GetChromeVersion(std::string* version);
 
@@ -164,19 +119,20 @@ bool ArcCollector::HandleJavaCrash(const std::string& crash_type,
   }
 
   CrashLogHeaderMap map;
-  std::string exception_info;
-  if (!ParseCrashLog(crash_type, &stream, &map, &exception_info)) {
+  std::string exception_info, log;
+  if (!arc_util::ParseCrashLog(crash_type, &stream, &map, &exception_info,
+                               &log)) {
     LOG(ERROR) << "Failed to parse crash log";
     return false;
   }
 
-  const auto exec = GetCrashLogHeader(map, kProcessKey);
+  const auto exec = arc_util::GetCrashLogHeader(map, arc_util::kProcessKey);
   message << " for " << exec;
   LogCrash(message.str(), reason);
 
   bool out_of_capacity = false;
   if (!CreateReportForJavaCrash(crash_type, build_property, map, exception_info,
-                                stream.str(), &out_of_capacity)) {
+                                log, &out_of_capacity)) {
     if (!out_of_capacity)
       EnqueueCollectionErrorLog(0, kErrorSystemIssue, exec);
 
@@ -217,36 +173,6 @@ bool ArcCollector::GetArcPid(pid_t* arc_pid) {
   }
 
   return false;
-}
-
-// static
-std::string ArcCollector::GetVersionFromFingerprint(
-    const std::string& fingerprint) {
-  // fingerprint has the following format:
-  //   $(PRODUCT_BRAND)/$(TARGET_PRODUCT)/$(TARGET_DEVICE):$(PLATFORM_VERSION)/
-  //     ..$(BUILD_ID)/$(BF_BUILD_NUMBER):$(TARGET_BUILD_VARIANT)/
-  //     ..$(BUILD_VERSION_TAGS)
-  // eg:
-  //   google/caroline/caroline_cheets:7.1.1/R65-10317.0.9999/
-  //     ..4548207:user/release-keys
-  // we want to get the $(PLATFORM_VERSION). eg: 7.1.1
-
-  std::string android_version;
-  // Assuming the fingerprint format won't change. Everything between ':' and
-  // '/R' is the version.
-  auto begin = fingerprint.find(':');
-  if (begin == std::string::npos)
-    return kUnknownValue;
-
-  // Make begin point to the start of the "version".
-  begin++;
-
-  // Version must have at least one digit.
-  const auto end = fingerprint.find("/R", begin + 1);
-  if (end == std::string::npos)
-    return kUnknownValue;
-
-  return fingerprint.substr(begin, end - begin);
 }
 
 bool ArcCollector::ArcContext::GetArcPid(pid_t* pid) const {
@@ -396,21 +322,24 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
 void ArcCollector::AddArcMetaData(const std::string& process,
                                   const std::string& crash_type,
                                   bool add_arc_properties) {
-  AddCrashMetaUploadData(kProductField, kArcProduct);
-  AddCrashMetaUploadData(kProcessField, process);
-  AddCrashMetaUploadData(kCrashTypeField, crash_type);
-  AddCrashMetaUploadData(kChromeOsVersionField, CrashCollector::GetOsVersion());
+  AddCrashMetaUploadData(arc_util::kProductField, arc_util::kArcProduct);
+  AddCrashMetaUploadData(arc_util::kProcessField, process);
+  AddCrashMetaUploadData(arc_util::kCrashTypeField, crash_type);
+  AddCrashMetaUploadData(arc_util::kChromeOsVersionField,
+                         CrashCollector::GetOsVersion());
 
   BuildProperty build_property;
 
   if (add_arc_properties && GetArcProperties(&build_property)) {
-    AddCrashMetaUploadData(kArcVersionField, build_property.fingerprint);
-    AddCrashMetaUploadData(kDeviceField, build_property.device);
-    AddCrashMetaUploadData(kBoardField, build_property.board);
-    AddCrashMetaUploadData(kCpuAbiField, build_property.cpu_abi);
+    AddCrashMetaUploadData(arc_util::kArcVersionField,
+                           build_property.fingerprint);
+    AddCrashMetaUploadData(arc_util::kDeviceField, build_property.device);
+    AddCrashMetaUploadData(arc_util::kBoardField, build_property.board);
+    AddCrashMetaUploadData(arc_util::kCpuAbiField, build_property.cpu_abi);
     AddCrashMetaUploadData(
-        kAndroidVersionField,
-        GetVersionFromFingerprint(build_property.fingerprint));
+        arc_util::kAndroidVersionField,
+        arc_util::GetVersionFromFingerprint(build_property.fingerprint)
+            .value_or(kUnknownValue));
   }
 
   int64_t start_time;
@@ -420,59 +349,13 @@ void ArcCollector::AddArcMetaData(const std::string& process,
     const uint64_t delta = static_cast<uint64_t>(
         (TimeTicks::Now() - TimeTicks::FromInternalValue(start_time))
             .InSeconds());
-    AddCrashMetaUploadData(kUptimeField, FormatDuration(delta));
+    AddCrashMetaUploadData(arc_util::kUptimeField, FormatDuration(delta));
   } else {
     LOG(ERROR) << "Failed to get ARC uptime: " << error->GetMessage();
   }
 
-  if (IsSilentReport(crash_type))
-    AddCrashMetaData(kSilentKey, "true");
-}
-
-// static
-std::string ArcCollector::GetCrashLogHeader(const CrashLogHeaderMap& map,
-                                            const char* key) {
-  const auto it = map.find(key);
-  return it == map.end() ? "unknown" : it->second;
-}
-
-// static
-bool ArcCollector::ParseCrashLog(const std::string& type,
-                                 std::stringstream* stream,
-                                 CrashLogHeaderMap* map,
-                                 std::string* exception_info) {
-  std::string line;
-
-  // The last header is followed by an empty line.
-  while (std::getline(*stream, line) && !line.empty()) {
-    const auto end = line.find(':');
-
-    if (end != std::string::npos) {
-      const auto begin = line.find_first_not_of(' ', end + 1);
-
-      if (begin != std::string::npos) {
-        // TODO(domlaskowski): Use multimap to allow multiple "Package" headers.
-        if (!map->emplace(line.substr(0, end), line.substr(begin)).second)
-          LOG(WARNING) << "Duplicate header: " << line;
-        continue;
-      }
-    }
-
-    // Ignore malformed headers. The report is still created, but the associated
-    // metadata fields are set to "unknown".
-    LOG(WARNING) << "Header has unexpected format: " << line;
-  }
-
-  if (stream->fail())
-    return false;
-
-  if (HasExceptionInfo(type)) {
-    std::ostringstream out;
-    out << stream->rdbuf();
-    *exception_info = out.str();
-  }
-
-  return true;
+  if (arc_util::IsSilentReport(crash_type))
+    AddCrashMetaData(arc_util::kSilentKey, "true");
 }
 
 bool ArcCollector::CreateReportForJavaCrash(const std::string& crash_type,
@@ -487,17 +370,8 @@ bool ArcCollector::CreateReportForJavaCrash(const std::string& crash_type,
     return false;
   }
 
-  const auto process = GetCrashLogHeader(map, kProcessKey);
-
-  // FormatDumpBasename relies on the assumption that the combination of process
-  // name, timestamp, and PID is unique. This does not hold if a process crashes
-  // more than once in the span of a second. While this is improbable for native
-  // crashes, Java crashes are not always fatal and may happen in bursts. Hence,
-  // ensure uniqueness by replacing the PID with the number of microseconds
-  // since the current second.
-  const auto now = TimeTicks::Now();
-  const pid_t dt = static_cast<pid_t>((now - ToSeconds(now)).InMicroseconds());
-
+  const auto process = arc_util::GetCrashLogHeader(map, arc_util::kProcessKey);
+  pid_t dt = arc_util::CreateRandomPID();
   const auto basename = FormatDumpBasename(process, std::time(nullptr), dt);
   const FilePath log_path = GetCrashPath(crash_dir, basename, "log");
 
@@ -508,30 +382,32 @@ bool ArcCollector::CreateReportForJavaCrash(const std::string& crash_type,
   }
 
   AddArcMetaData(process, crash_type, false);
-  const std::string fingerprint = GetCrashLogHeader(map, kBuildKey);
-  AddCrashMetaUploadData(kArcVersionField, fingerprint);
-  AddCrashMetaUploadData(kAndroidVersionField,
-                         GetVersionFromFingerprint(fingerprint));
-  AddCrashMetaUploadData(kDeviceField, build_property.device);
-  AddCrashMetaUploadData(kBoardField, build_property.board);
-  AddCrashMetaUploadData(kCpuAbiField, build_property.cpu_abi);
+  const std::string fingerprint =
+      arc_util::GetCrashLogHeader(map, arc_util::kBuildKey);
+  AddCrashMetaUploadData(arc_util::kArcVersionField, fingerprint);
+  AddCrashMetaUploadData(
+      arc_util::kAndroidVersionField,
+      arc_util::GetVersionFromFingerprint(fingerprint).value_or(kUnknownValue));
+  AddCrashMetaUploadData(arc_util::kDeviceField, build_property.device);
+  AddCrashMetaUploadData(arc_util::kBoardField, build_property.board);
+  AddCrashMetaUploadData(arc_util::kCpuAbiField, build_property.cpu_abi);
 
-  for (const auto& mapping : kHeaderToFieldMapping) {
+  for (const auto& mapping : arc_util::kHeaderToFieldMapping) {
     if (map.count(mapping.first)) {
       AddCrashMetaUploadData(mapping.second,
-                             GetCrashLogHeader(map, mapping.first));
+                             arc_util::GetCrashLogHeader(map, mapping.first));
     }
   }
 
   if (exception_info.empty()) {
-    if (const char* const tag = GetSubjectTag(crash_type)) {
+    if (const char* const tag = arc_util::GetSubjectTag(crash_type)) {
       std::ostringstream out;
       out << '[' << tag << ']';
-      const auto it = map.find(kSubjectKey);
+      const auto it = map.find(arc_util::kSubjectKey);
       if (it != map.end())
         out << ' ' << it->second;
 
-      AddCrashMetaData(kSignatureField, out.str());
+      AddCrashMetaData(arc_util::kSignatureField, out.str());
     } else {
       LOG(ERROR) << "Invalid crash type: " << crash_type;
       return false;
@@ -545,7 +421,8 @@ bool ArcCollector::CreateReportForJavaCrash(const std::string& crash_type,
       return false;
     }
 
-    AddCrashMetaUploadText(kExceptionInfoField, info_path.BaseName().value());
+    AddCrashMetaUploadText(arc_util::kExceptionInfoField,
+                           info_path.BaseName().value());
   }
 
   const FilePath meta_path = GetCrashPath(crash_dir, basename, "meta");
@@ -621,24 +498,6 @@ bool ReadCrashLogFromStdin(std::stringstream* stream) {
 
     stream->write(buffer, count);
   }
-}
-
-bool HasExceptionInfo(const std::string& type) {
-  static const std::unordered_set<std::string> kTypes = {
-      "data_app_crash", "system_app_crash", "system_app_wtf",
-      "system_server_crash", "system_server_wtf"};
-  return kTypes.count(type);
-}
-
-const char* GetSubjectTag(const std::string& type) {
-  static const std::unordered_map<std::string, const char*> kTags = {
-      {"data_app_native_crash", "native app crash"},
-      {"system_app_anr", "ANR"},
-      {"data_app_anr", "app ANR"},
-      {"system_server_watchdog", "system server watchdog"}};
-
-  const auto it = kTags.find(type);
-  return it == kTags.cend() ? nullptr : it->second;
 }
 
 bool GetChromeVersion(std::string* version) {

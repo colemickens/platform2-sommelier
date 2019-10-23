@@ -80,7 +80,10 @@ static_library("libcrash_reporter") {
   defines = [ "USE_DIRENCRYPTION=${use.direncryption}" ]
 
   if (use.cheets) {
-    sources += [ "arc_collector.cc" ]
+    sources += [
+      "arc_collector.cc",
+      "arc_util.cc"
+    ]
   }
 
   if (use.direncryption) {
@@ -301,7 +304,10 @@ if (use.test) {
     ]
 
     if (use.cheets) {
-      sources += [ "arc_collector_test.cc" ]
+      sources += [
+        "arc_collector_test.cc",
+        "arc_util_test.cc",
+      ]
     }
   }
 

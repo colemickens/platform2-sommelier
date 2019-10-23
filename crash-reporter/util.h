@@ -99,6 +99,9 @@ int GetSelinuxWeight();
 // 1.0/GetServiceFailureWeight() of the failures.
 int GetServiceFailureWeight();
 
+// Read the content binding to fd to stream.
+bool ReadFdToStream(unsigned int fd, std::stringstream* stream);
+
 }  // namespace util
 
 #endif  // CRASH_REPORTER_UTIL_H_
