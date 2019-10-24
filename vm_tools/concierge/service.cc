@@ -878,7 +878,7 @@ void Service::HandleChildExit() {
 
     if (iter != vms_.end()) {
       // Notify that the VM has exited.
-      NotifyVmStopped(iter->first);
+      NotifyVmStopped(iter->first, iter->second->GetInfo().cid);
 
       // Now remove it from the vm list.
       vms_.erase(iter);
@@ -1770,7 +1770,7 @@ std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
   }
 
   // Notify that we have stopped a VM.
-  NotifyVmStopped(iter->first);
+  NotifyVmStopped(iter->first, iter->second->GetInfo().cid);
 
   vms_.erase(iter);
   response.set_success(true);
@@ -1787,7 +1787,7 @@ std::unique_ptr<dbus::Response> Service::StopAllVms(
   // Spawn a thread for each VM to shut it down.
   for (auto& iter : vms_) {
     // Notify that we have stopped a VM.
-    NotifyVmStopped(iter.first);
+    NotifyVmStopped(iter.first, iter.second->GetInfo().cid);
 
     // Resetting the unique_ptr will call the destructor for that VM,
     // which will try stopping it normally (and then forcibly) it if
@@ -2250,7 +2250,7 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
     }
 
     // Notify that we have stopped a VM.
-    NotifyVmStopped(iter->first);
+    NotifyVmStopped(iter->first, iter->second->GetInfo().cid);
     vms_.erase(iter);
   }
 
@@ -3007,7 +3007,7 @@ void Service::SendVmStartedSignal(const VmId& vm_id,
   exported_object_->SendSignal(&signal);
 }
 
-void Service::NotifyVmStopped(const VmId& vm_id) {
+void Service::NotifyVmStopped(const VmId& vm_id, int64_t cid) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   // Notify cicerone.
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
@@ -3029,6 +3029,7 @@ void Service::NotifyVmStopped(const VmId& vm_id) {
   vm_tools::concierge::VmStoppedSignal proto;
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
+  proto.set_cid(cid);
   dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
   exported_object_->SendSignal(&signal);
 }
