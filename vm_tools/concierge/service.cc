@@ -55,6 +55,7 @@
 #include <dbus/object_proxy.h>
 #include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
 #include <vm_concierge/proto_bindings/service.pb.h>
+#include <vm_protos/proto_bindings/vm_guest.pb.h>
 
 #include "vm_tools/common/constants.h"
 #include "vm_tools/concierge/arc_vm.h"
@@ -1975,10 +1976,16 @@ bool Service::StartTermina(TerminaVm* vm, string* failure_reason) {
       base::StringPrintf("%s/%zu", dst_addr.c_str(), prefix_length);
 
   string error;
+  vm_tools::StartTerminaResponse response;
   if (!vm->StartTermina(std::move(container_subnet_cidr), vm->StatefulDevice(),
-                        &error)) {
+                        &error, &response)) {
     failure_reason->assign(error);
     return false;
+  }
+
+  if (response.mount_result() ==
+      vm_tools::StartTerminaResponse::PARTIAL_DATA_LOSS) {
+    LOG(ERROR) << "Possible data loss from filesystem corruption detected";
   }
 
   return true;

@@ -134,22 +134,24 @@ message StartTerminaRequest {
 }
 
 message StartTerminaResponse {
-  enum Status {
-    // The result of StartTermina is unknown.
+  enum MountResult {
+    // The mountability of the disk is unknown, typically because the
+    // call failed before trying to mount the disk.
     UNKNOWN = 0;
 
-    // Termina services were started successfully.
+    // The disk mount succeeded completely.
     SUCCESS = 1;
 
-    // Termina services didn't start successfully. Check failure_reason.
-    FAILED = 2;
+    // The disk mount succeeded, but some data loss is
+    // likely. Currently this occurrs when the initial mount fails,
+    // but succeeds on a retry with -o usebackuproots.
+    PARTIAL_DATA_LOSS = 2;
+
+    // The disk is unmountable.
+    FAILURE = 3;
   }
 
-  // The status of starting Termina services.
-  Status status = 1;
-
-  // If status is FAILED, the reason why StartTermina failed.
-  string failure_reason = 2;
+  MountResult mount_result = 1;
 }
 
 message SetResolvConfigRequest {

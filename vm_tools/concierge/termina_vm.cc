@@ -359,13 +359,16 @@ bool TerminaVm::Mount(string source,
 
 bool TerminaVm::StartTermina(std::string lxd_subnet,
                              std::string stateful_device,
-                             std::string* out_error) {
+                             std::string* out_error,
+                             vm_tools::StartTerminaResponse* response) {
+  DCHECK(out_error);
+  DCHECK(response);
+
   // We record the kernel version early to ensure that no container has
   // been started and the VM can still be trusted.
   RecordKernelVersionForEnterpriseReporting();
 
   vm_tools::StartTerminaRequest request;
-  vm_tools::StartTerminaResponse response;
 
   request.set_tremplin_ipv4_address(GatewayAddress());
   request.mutable_lxd_ipv4_subnet()->swap(lxd_subnet);
@@ -376,7 +379,8 @@ bool TerminaVm::StartTermina(std::string lxd_subnet,
       gpr_now(GPR_CLOCK_MONOTONIC),
       gpr_time_from_seconds(kStartTerminaTimeoutSeconds, GPR_TIMESPAN)));
 
-  grpc::Status status = stub_->StartTermina(&ctx, request, &response);
+  grpc::Status status = stub_->StartTermina(&ctx, request, response);
+
   if (!status.ok()) {
     LOG(ERROR) << "Failed to start Termina: " << status.error_message();
     out_error->assign(status.error_message());

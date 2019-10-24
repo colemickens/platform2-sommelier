@@ -442,6 +442,9 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
                                        const StartTerminaRequest* request,
                                        StartTerminaResponse* response) {
   LOG(INFO) << "Received StartTermina request";
+
+  response->set_mount_result(StartTerminaResponse::UNKNOWN);
+
   if (!init_) {
     return grpc::Status(grpc::FAILED_PRECONDITION, "not running as init");
   }
@@ -466,8 +469,21 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
   if (ret != 0) {
     int saved_errno = errno;
     PLOG(ERROR) << "Failed to mount stateful disk";
-    return grpc::Status(grpc::INTERNAL, string("failed to mount stateful: ") +
-                                            strerror(saved_errno));
+
+    ret = mount(stateful_device, "/mnt/stateful", "btrfs", 0,
+                "user_subvol_rm_allowed,discard,usebackuproot");
+
+    if (ret != 0) {
+      int saved_errno_retry = errno;
+      response->set_mount_result(StartTerminaResponse::FAILURE);
+      return grpc::Status(grpc::INTERNAL, string("failed to mount stateful: ") +
+                                              strerror(saved_errno) + ", " +
+                                              strerror(saved_errno_retry));
+    } else {
+      response->set_mount_result(StartTerminaResponse::PARTIAL_DATA_LOSS);
+    }
+  } else {
+    response->set_mount_result(StartTerminaResponse::SUCCESS);
   }
 
   // Resize the stateful filesystem to fill the block device in case
