@@ -48,14 +48,33 @@ Introducing a DLC module into Chrome OS involves adding an ebuild. The ebuild
 file should inherits [dlc.eclass]. Within the ebuild file the following
 variables should be set:
 
-| Variable              | Description |
-|-----------------------|-------------|
-| `DLC_NAME`            | Name of the DLC. It is for description/info purpose only and can be empty (but not encouraged). |
-| `DLC_VERSION`         | Version of the DLC module. It is for decription/info purpose only and can be empty. By default you can set it to `${PV}`. |
-| `DLC_PREALLOC_BLOCKS` | The storage space (in the unit of number of blocks, block size is 4 KB) the system reserves for a copy of the DLC module image. Note that on device we reserve 2 copies of the image so the actual space consumption doubles. It is necessary to set this value more than the minimum required at the launch time to accommodate future size growth (recommendation is 130% of the DLC module size). |
-| `DLC_ID`              | Unique ID of the DLC module (among all DLC modules). Format of an ID has a few restrictions - it can not be empty, does not start with a non-alphanumeric character, has a maximum length of 40 characters and can only contain alphanumeric characters and `-` (check out [imageloader_impl.cc] for the actual implementation). |
-| `DLC_PACKAGE`         | Its format restrictions are the same as `DLC_ID`. Note: This variable is here to help enable multiple packages support for DLC in the future (allow downloading selectively a set of packages within one DLC). When multiple packages are supported, each package should have a unique name among all packages in a DLC module. |
-| `DLC_ARTIFACT_DIR`    | The path to directory which contains all the content to be packed into the DLC image. See the ebuild example below for more about it. |
+*   `DLC_NAME` - Name of the DLC. It is for description/info purpose only and
+    can be empty (but not encouraged).
+*   `DLC_VERSION` - Version of the DLC module. It is for decription/info purpose
+    only and can be empty. By default you can set it to `${PV}`.
+*   `DLC_PREALLOC_BLOCKS` - The storage space (in the unit of number of blocks,
+    block size is 4 KB) the system reserves for a copy of the DLC module
+    image. Note that on device we reserve 2 copies of the image so the actual
+    space consumption doubles. It is necessary to set this value more than the
+    minimum required at the launch time to accommodate future size growth
+    (recommendation is 130% of the DLC module size).
+*    `DLC_ID` - Unique ID of the DLC module (among all DLC modules). Format of
+     an ID has a few restrictions:
+	 *    It should not be empty.
+	 *    It should only contain alphanumeric characters (a-zA-Z0-9) and `-`
+          (dash).
+	 *    The first letter cannot be dash.
+	 *    No underscore.
+	 *    It has a maximum length of 40 characters.
+	 (check out [imageloader_impl.cc] for the actual implementation).
+*    `DLC_PACKAGE` - Its format restrictions are the same as `DLC_ID`. Note:
+     This variable is here to help enable multiple packages support for DLC in
+     the future (allow downloading selectively a set of packages within one
+     DLC). When multiple packages are supported, each package should have a
+     unique name among all packages in a DLC module.
+*    `DLC_ARTIFACT_DIR` - The path to directory which contains all the content
+     to be packed into the DLC image. See the ebuild example below for more
+     about it.
 
 Within the build file, the implementation should include at least `src_install`
 function. Within `src_install`, all the DLC content should be copied to
