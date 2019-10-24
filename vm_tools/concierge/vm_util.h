@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/strings/string_split.h>
 #include <base/time/time.h>
 #include <vm_tools/concierge/usb_control.h>
 
@@ -70,6 +71,18 @@ bool ListUsbDevice(std::string socket_path, std::vector<UsbDevice>* devices);
 
 // Updates |cpu_cgroup|'s cpu.shares to |cpu_shares|.
 bool UpdateCpuShares(const base::FilePath& cpu_cgroup, int cpu_shares);
+
+// Loads custom parameters from a string. The result is appended to parameter
+// |args| as a vector of string pairs. Please check vm_tools/init/arcvm_dev.conf
+// for the list of supported directives.
+void LoadCustomParameters(const std::string& data, base::StringPairs* args);
+
+// Removes all parameters with |key| from |args|. If it exists, the value of its
+// last occurence in |args| will be returned. Otherwise, |default_value| will be
+// returned.
+std::string RemoveParametersWithKey(const std::string& key,
+                                    const std::string& default_value,
+                                    base::StringPairs* args);
 
 }  // namespace concierge
 }  // namespace vm_tools

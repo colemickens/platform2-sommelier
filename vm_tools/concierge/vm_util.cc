@@ -19,9 +19,9 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/stl_util.h>
 #include <base/strings/safe_sprintf.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #include <base/sys_info.h>
 #include <brillo/process.h>
@@ -306,6 +306,53 @@ bool UpdateCpuShares(const base::FilePath& cpu_cgroup, int cpu_shares) {
   return base::WriteFile(cpu_cgroup.Append("cpu.shares"),
                          cpu_shares_str.c_str(),
                          cpu_shares_str.size()) == cpu_shares_str.size();
+}
+
+void LoadCustomParameters(const std::string& data, base::StringPairs* args) {
+  std::vector<base::StringPiece> lines = base::SplitStringPiece(
+      data, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+
+  for (auto& line : lines) {
+    if (line.empty() || line[0] == '#')
+      continue;
+
+    // Line contains a prefix key. Remove all args with this prefix.
+    if (line[0] == '!' && line.size() > 1) {
+      const base::StringPiece prefix = line.substr(1, line.size() - 1);
+      base::EraseIf(*args, [&prefix](const auto& pair) {
+        return base::StringPiece(pair.first).starts_with(prefix);
+      });
+      continue;
+    }
+
+    // Line contains a key only. Append the whole line.
+    base::StringPairs pairs;
+    if (!base::SplitStringIntoKeyValuePairs(line, '=', '\n', &pairs)) {
+      args->emplace_back(std::move(line), "");
+      continue;
+    }
+
+    // Line contains a key-value pair.
+    base::TrimWhitespaceASCII(pairs[0].first, base::TRIM_ALL, &pairs[0].first);
+    base::TrimWhitespaceASCII(pairs[0].second, base::TRIM_ALL,
+                              &pairs[0].second);
+    args->emplace_back(std::move(pairs[0].first), std::move(pairs[0].second));
+  }
+}
+
+std::string RemoveParametersWithKey(const std::string& key,
+                                    const std::string& default_value,
+                                    base::StringPairs* args) {
+  std::string target_value(default_value);
+  base::StringPairs::reverse_iterator result =
+      std::find_if(args->rbegin(), args->rend(),
+                   [&key](const auto& pair) { return pair.first == key; });
+  if (result != args->rend()) {
+    target_value = result->second;
+    base::EraseIf(*args,
+                  [&key](const auto& pair) { return pair.first == key; });
+  }
+  return target_value;
 }
 
 }  // namespace concierge

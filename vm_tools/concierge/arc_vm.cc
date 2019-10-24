@@ -24,6 +24,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
+#include <base/strings/string_split.h>
 #include <base/sys_info.h>
 #include <base/time/time.h>
 
@@ -57,6 +58,12 @@ constexpr char kArcvmCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/arc";
 
 // Port for arc-powerctl running on the guest side.
 constexpr unsigned int kVSockPort = 4242;
+
+// Path to the custom parameter file.
+constexpr char kCustomParameterFilePath[] = "/etc/arcvm_dev.conf";
+
+// Custom parameter key to override the kernel path
+constexpr char kKeyToOverrideKernelPath[] = "KERNEL_PATH";
 
 base::ScopedFD ConnectVSock(int cid) {
   DLOG(INFO) << "Creating VSOCK...";
@@ -170,45 +177,53 @@ bool ArcVm::Start(base::FilePath kernel,
 
   // Build up the process arguments.
   // clang-format off
-  std::vector<string> args = {
-    kCrosvmBin,       "run",
-    "--cpus",         std::to_string(cpus),
-    "--mem",          GetVmMemoryMiB(),
-    "--disk",         rootfs.value(),
-    "--tap-fd",       std::to_string(tap_fd.get()),
-    "--cid",          std::to_string(vsock_cid_),
-    "--socket",       GetVmSocketPath(),
-    "--wayland-sock", kWaylandSocket,
-    "--wayland-dmabuf",
-    "--serial",       "type=syslog,num=1",
-    "--syslog-tag",   base::StringPrintf("ARCVM(%u)", vsock_cid_),
-    "--cras-audio",
-    "--cras-capture",
-    "--android-fstab", fstab.value(),
-    "--params",       base::JoinString(params, " "),
+  base::StringPairs args = {
+    { kCrosvmBin,         "run" },
+    { "--cpus",           std::to_string(cpus) },
+    { "--mem",            GetVmMemoryMiB() },
+    { "--disk",           rootfs.value() },
+    { "--tap-fd",         std::to_string(tap_fd.get()) },
+    { "--cid",            std::to_string(vsock_cid_) },
+    { "--socket",         GetVmSocketPath() },
+    { "--wayland-sock",   kWaylandSocket },
+    { "--wayland-dmabuf", "" },
+    { "--serial",         "type=syslog,num=1" },
+    { "--syslog-tag",     base::StringPrintf("ARCVM(%u)", vsock_cid_) },
+    { "--cras-audio",     "" },
+    { "--cras-capture",   "" },
+    { "--android-fstab",  fstab.value() },
+    { "--params",         base::JoinString(params, " ") },
   };
   // clang-format on
 
   if (features_.gpu)
-    args.emplace_back("--gpu");
+    args.emplace_back("--gpu", "");
 
   // Add any extra disks.
   for (const auto& disk : disks) {
     if (disk.writable) {
-      args.emplace_back("--rwdisk");
+      args.emplace_back("--rwdisk", disk.path.value());
     } else {
-      args.emplace_back("--disk");
+      args.emplace_back("--disk", disk.path.value());
     }
-
-    args.emplace_back(disk.path.value());
   }
 
+  // Add any custom parameters from file.
+  base::FilePath file_path(kCustomParameterFilePath);
+  std::string data;
+  if (base::ReadFileToString(file_path, &data))
+    LoadCustomParameters(data, &args);
+
   // Finally list the path to the kernel.
-  args.emplace_back(kernel.value());
+  const std::string kernel_path =
+      RemoveParametersWithKey(kKeyToOverrideKernelPath, kernel.value(), &args);
+  args.emplace_back(kernel_path, "");
 
   // Put everything into the brillo::ProcessImpl.
-  for (string& arg : args) {
-    process_.AddArg(std::move(arg));
+  for (std::pair<std::string, std::string>& arg : args) {
+    process_.AddArg(std::move(arg.first));
+    if (!arg.second.empty())
+      process_.AddArg(std::move(arg.second));
   }
 
   // Change the process group before exec so that crosvm sending SIGKILL to the

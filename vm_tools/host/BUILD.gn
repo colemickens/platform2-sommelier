@@ -298,6 +298,7 @@ if (use.test) {
       "../concierge/power_manager_client_test.cc",
       "../concierge/termina_vm_test.cc",
       "../concierge/untrusted_vm_utils_test.cc",
+      "../concierge/vm_util_test.cc",
     ]
     configs += [
       "//common-mk:test",
