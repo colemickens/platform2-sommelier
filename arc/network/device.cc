@@ -15,7 +15,6 @@
 #include <base/lazy_instance.h>
 #include <base/logging.h>
 
-#include "arc/network/multicast_forwarder.h"
 #include "arc/network/net_util.h"
 
 namespace arc_networkd {
@@ -123,31 +122,6 @@ void Device::Enable(const std::string& ifname) {
   if (!IsFullyUp())
     return;
 
-  if (options_.fwd_multicast) {
-    if (!mdns_forwarder_) {
-      LOG(INFO) << "Enabling mDNS forwarding for device " << ifname_;
-      auto mdns_fwd = std::make_unique<MulticastForwarder>(
-          ifname, kMdnsMcastAddress, kMdnsPort);
-      if (mdns_fwd->AddGuest(config_->host_ifname(),
-                             config_->guest_ipv4_addr())) {
-        mdns_forwarder_ = std::move(mdns_fwd);
-      } else {
-        LOG(WARNING) << "mDNS forwarder could not be started on " << ifname_;
-      }
-    }
-
-    if (!ssdp_forwarder_) {
-      LOG(INFO) << "Enabling SSDP forwarding for device " << ifname_;
-      auto ssdp_fwd = std::make_unique<MulticastForwarder>(
-          ifname, kSsdpMcastAddress, kSsdpPort);
-      if (ssdp_fwd->AddGuest(config_->host_ifname(), htonl(INADDR_ANY))) {
-        ssdp_forwarder_ = std::move(ssdp_fwd);
-      } else {
-        LOG(WARNING) << "SSDP forwarder could not be started on " << ifname_;
-      }
-    }
-  }
-
   if (options_.ipv6_enabled && options_.find_ipv6_routes_legacy)
     StartIPv6RoutingLegacy(ifname);
 }
@@ -171,14 +145,6 @@ void Device::StartIPv6RoutingLegacy(const std::string& ifname) {
 }
 
 void Device::Disable() {
-  if (ssdp_forwarder_) {
-    LOG(INFO) << "Disabling SSDP forwarding for device " << ifname_;
-    ssdp_forwarder_.reset();
-  }
-  if (mdns_forwarder_) {
-    LOG(INFO) << "Disabling mDNS forwarding for device " << ifname_;
-    mdns_forwarder_.reset();
-  }
   if (options_.ipv6_enabled && options_.find_ipv6_routes_legacy)
     StopIPv6RoutingLegacy();
 }

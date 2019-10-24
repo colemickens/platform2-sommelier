@@ -19,6 +19,11 @@ const char kIpPath[] = "/bin/ip";
 const char kIpTablesPath[] = "/sbin/iptables";
 const char kIp6TablesPath[] = "/sbin/ip6tables";
 
+// Runs the current process with minimal privileges. This function is expected
+// to be used by child processes that need only CAP_NET_RAW and to run as the
+// arc-networkd user.
+void EnterChildProcessJail();
+
 // Enforces the expected processes are run with the correct privileges.
 class MinijailedProcessRunner {
  public:

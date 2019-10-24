@@ -13,8 +13,8 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/minijail/minijail.h>
 
+#include "arc/network/minijailed_process_runner.h"
 #include "arc/network/net_util.h"
 
 namespace arc_networkd {
@@ -27,8 +27,6 @@ constexpr uint16_t kTcpListenPort = 5550;
 constexpr uint16_t kTcpConnectPort = 5555;
 constexpr uint32_t kTcpAddr = Ipv4Addr(100, 115, 92, 2);
 constexpr uint32_t kVsockPort = 5555;
-constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_RAW);
-constexpr char kUnprivilegedUser[] = "arc-networkd";
 constexpr int kMaxConn = 16;
 
 }  // namespace
@@ -53,18 +51,7 @@ int AdbProxy::OnInit() {
     return -1;
   }
 
-  // Run with minimal privileges.
-  brillo::Minijail* m = brillo::Minijail::GetInstance();
-  struct minijail* jail = m->New();
-
-  // Most of these return void, but DropRoot() can fail if the user/group
-  // does not exist.
-  CHECK(m->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser))
-      << "Could not drop root privileges";
-  m->UseCapabilities(jail, kCapMask);
-  m->Enter(jail);
-  m->Destroy(jail);
-
+  EnterChildProcessJail();
   return Daemon::OnInit();
 }
 

@@ -69,6 +69,7 @@ class DeviceManager : public DeviceManagerBase {
                 AddressManager* addr_mgr,
                 Datapath* datapath,
                 bool is_arc_legacy,
+                HelperProcess* mcast_proxy,
                 HelperProcess* nd_proxy = nullptr);
   virtual ~DeviceManager();
 
@@ -146,6 +147,7 @@ class DeviceManager : public DeviceManagerBase {
   std::map<std::string, std::unique_ptr<Device>> devices_;
 
   Datapath* datapath_;
+  HelperProcess* mcast_proxy_;
   HelperProcess* nd_proxy_;
 
   const bool is_arc_legacy_;

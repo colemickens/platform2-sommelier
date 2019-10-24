@@ -9,9 +9,6 @@
 #include <random>
 
 #include <base/logging.h>
-
-#include <base/strings/stringprintf.h>
-
 #include <base/strings/stringprintf.h>
 
 namespace arc_networkd {

@@ -19,6 +19,7 @@
 #include "arc/network/adb_proxy.h"
 #include "arc/network/helper_process.h"
 #include "arc/network/manager.h"
+#include "arc/network/multicast_forwarder.h"
 #include "arc/network/ndproxy.h"
 #include "arc/network/socket.h"
 
@@ -65,6 +66,9 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(
       adb_proxy_fd, -1,
       "Control socket for starting the ADB proxy subprocess. Used internally.");
+  DEFINE_int32(mcast_proxy_fd, -1,
+               "Control socket for starting the multicast proxy "
+               "subprocess. Used internally.");
   DEFINE_int32(
       nd_proxy_fd, -1,
       "Control socket for starting the ND proxy subprocess. Used internally.");
@@ -92,8 +96,18 @@ int main(int argc, char* argv[]) {
     return nd_proxy.Run();
   }
 
+  if (FLAGS_mcast_proxy_fd >= 0) {
+    LOG(INFO) << "Spawning multicast proxy";
+    base::ScopedFD fd(FLAGS_mcast_proxy_fd);
+    arc_networkd::MulticastProxy mcast_proxy(std::move(fd));
+    return mcast_proxy.Run();
+  }
+
   auto adb_proxy = std::make_unique<arc_networkd::HelperProcess>();
   adb_proxy->Start(argc, argv, "--adb_proxy_fd");
+
+  auto mcast_proxy = std::make_unique<arc_networkd::HelperProcess>();
+  mcast_proxy->Start(argc, argv, "--mcast_proxy_fd");
 
   auto nd_proxy = std::make_unique<arc_networkd::HelperProcess>();
   nd_proxy->Start(argc, argv, "--nd_proxy_fd");
@@ -102,7 +116,7 @@ int main(int argc, char* argv[]) {
       (FLAGS_force_multinet == "on") ||
       ((FLAGS_force_multinet != "off") && ShouldEnableMultinet());
   LOG(INFO) << "Starting arc-networkd manager";
-  arc_networkd::Manager manager(std::move(adb_proxy), std::move(nd_proxy),
-                                enable_mnet);
+  arc_networkd::Manager manager(std::move(adb_proxy), std::move(mcast_proxy),
+                                std::move(nd_proxy), enable_mnet);
   return manager.Run();
 }

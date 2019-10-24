@@ -14,14 +14,16 @@ namespace arc_networkd {
 
 namespace {
 
-const char kUnprivilegedUser[] = "nobody";
-const uint64_t kIpTablesCapMask =
+constexpr char kUnprivilegedUser[] = "nobody";
+constexpr char kNetworkUnprivilegedUser[] = "arc-networkd";
+constexpr uint64_t kIpTablesCapMask =
     CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
-const uint64_t kModprobeCapMask = CAP_TO_MASK(CAP_SYS_MODULE);
-const char kModprobePath[] = "/sbin/modprobe";
-const char kNsEnterPath[] = "/usr/bin/nsenter";
-const char kTouchPath[] = "/system/bin/touch";
-const char kSentinelFile[] = "/dev/.arc_network_ready";
+constexpr uint64_t kModprobeCapMask = CAP_TO_MASK(CAP_SYS_MODULE);
+constexpr uint64_t kRawCapMask = CAP_TO_MASK(CAP_NET_RAW);
+constexpr char kModprobePath[] = "/sbin/modprobe";
+constexpr char kNsEnterPath[] = "/usr/bin/nsenter";
+constexpr char kTouchPath[] = "/system/bin/touch";
+constexpr char kSentinelFile[] = "/dev/.arc_network_ready";
 
 int RunSyncDestroy(const std::vector<std::string>& argv,
                    brillo::Minijail* mj,
@@ -59,6 +61,19 @@ int RunSync(const std::vector<std::string>& argv,
 }
 
 }  // namespace
+
+void EnterChildProcessJail() {
+  brillo::Minijail* m = brillo::Minijail::GetInstance();
+  struct minijail* jail = m->New();
+
+  // Most of these return void, but DropRoot() can fail if the user/group
+  // does not exist.
+  CHECK(m->DropRoot(jail, kNetworkUnprivilegedUser, kNetworkUnprivilegedUser))
+      << "Could not drop root privileges";
+  m->UseCapabilities(jail, kRawCapMask);
+  m->Enter(jail);
+  m->Destroy(jail);
+}
 
 MinijailedProcessRunner::MinijailedProcessRunner(brillo::Minijail* mj) {
   mj_ = mj ? mj : brillo::Minijail::GetInstance();

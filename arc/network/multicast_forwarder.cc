@@ -20,6 +20,7 @@
 
 #include "arc/network/dns/dns_protocol.h"
 #include "arc/network/dns/dns_response.h"
+#include "arc/network/minijailed_process_runner.h"
 #include "arc/network/net_util.h"
 #include "arc/network/socket.h"
 
@@ -152,14 +153,14 @@ bool MulticastForwarder::AddGuest(const std::string& int_ifname,
 
   struct in_addr guest_ip = {0};
   guest_ip.s_addr = guest_addr;
-  int_ips_.emplace(std::make_pair(int_fd.get(), guest_ip));
+  int_ips_.emplace(int_fd.get(), guest_ip);
 
   std::unique_ptr<Socket> int_socket = std::make_unique<Socket>(
       std::move(int_fd),
       base::BindRepeating(&MulticastForwarder::OnFileCanReadWithoutBlocking,
                           base::Unretained(this)));
 
-  int_sockets_.emplace(std::make_pair(int_ifname, std::move(int_socket)));
+  int_sockets_.emplace(int_ifname, std::move(int_socket));
 
   // Multicast forwarder is not started yet.
   if (lan_socket_ == nullptr) {
@@ -181,6 +182,17 @@ bool MulticastForwarder::AddGuest(const std::string& int_ifname,
             << int_ifname << " for " << mcast_addr_ << ":" << port_;
 
   return true;
+}
+
+void MulticastForwarder::RemoveGuest(const std::string& int_ifname) {
+  const auto& socket = int_sockets_.find(int_ifname);
+  if (socket == int_sockets_.end()) {
+    LOG(WARNING) << "Failed to remove guest interface " << int_ifname;
+    return;
+  }
+
+  int_ips_.erase(socket->second->fd.get());
+  int_sockets_.erase(socket);
 }
 
 void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd) {
@@ -356,6 +368,107 @@ void MulticastForwarder::TranslateMdnsIp(const struct in_addr& lan_ip,
         memcpy(&data[ip_offset], &lan_ip.s_addr, ipv4_addr_len);
       }
     }
+  }
+}
+
+MulticastProxy::MulticastProxy(base::ScopedFD control_fd)
+    : msg_dispatcher_(std::move(control_fd)) {
+  msg_dispatcher_.RegisterFailureHandler(base::Bind(
+      &MulticastProxy::OnParentProcessExit, weak_factory_.GetWeakPtr()));
+
+  msg_dispatcher_.RegisterDeviceMessageHandler(
+      base::Bind(&MulticastProxy::OnDeviceMessage, weak_factory_.GetWeakPtr()));
+}
+
+int MulticastProxy::OnInit() {
+  // Prevent the main process from sending us any signals.
+  if (setsid() < 0) {
+    PLOG(ERROR) << "Failed to created a new session with setsid; exiting";
+    return -1;
+  }
+
+  EnterChildProcessJail();
+  return Daemon::OnInit();
+}
+
+void MulticastProxy::Reset() {
+  mdns_fwds_.clear();
+  ssdp_fwds_.clear();
+}
+
+void MulticastProxy::OnParentProcessExit() {
+  LOG(ERROR) << "Quitting because the parent process died";
+  Reset();
+  Quit();
+}
+
+void MulticastProxy::OnDeviceMessage(const DeviceMessage& msg) {
+  const std::string& dev_ifname = msg.dev_ifname();
+  if (dev_ifname.empty()) {
+    LOG(DFATAL) << "Received DeviceMessage w/ empty dev_ifname";
+    return;
+  }
+  uint32_t guest_ip = msg.guest_ip4addr();
+
+  auto mdns_fwd = mdns_fwds_.find(dev_ifname);
+  auto ssdp_fwd = ssdp_fwds_.find(dev_ifname);
+
+  if (!msg.has_teardown()) {
+    // Start multicast forwarders.
+    if (mdns_fwd == mdns_fwds_.end()) {
+      LOG(INFO) << "Enabling mDNS forwarding for device " << dev_ifname;
+      auto fwd = std::make_unique<MulticastForwarder>(
+          dev_ifname, kMdnsMcastAddress, kMdnsPort);
+      mdns_fwd = mdns_fwds_.emplace(dev_ifname, std::move(fwd)).first;
+    }
+
+    LOG(INFO) << "Starting mDNS forwarding for guest interface "
+              << msg.br_ifname();
+    if (!mdns_fwd->second->AddGuest(msg.br_ifname(), guest_ip)) {
+      LOG(WARNING) << "mDNS forwarder could not be started on " << dev_ifname;
+    }
+
+    if (ssdp_fwd == ssdp_fwds_.end()) {
+      LOG(INFO) << "Enabling SSDP forwarding for device " << dev_ifname;
+      auto fwd = std::make_unique<MulticastForwarder>(
+          dev_ifname, kSsdpMcastAddress, kSsdpPort);
+      ssdp_fwd = ssdp_fwds_.emplace(dev_ifname, std::move(fwd)).first;
+    }
+
+    LOG(INFO) << "Starting SSDP forwarding for guest interface "
+              << msg.br_ifname();
+    if (!ssdp_fwd->second->AddGuest(msg.br_ifname(), htonl(INADDR_ANY))) {
+      LOG(WARNING) << "SSDP forwarder could not be started on " << dev_ifname;
+    }
+
+    return;
+  }
+
+  if (msg.has_br_ifname()) {
+    // A bridge interface is removed.
+    if (mdns_fwd != mdns_fwds_.end()) {
+      LOG(INFO) << "Disabling mDNS forwarding for guest interface "
+                << msg.br_ifname();
+      mdns_fwd->second->RemoveGuest(msg.br_ifname());
+    }
+    if (ssdp_fwd != ssdp_fwds_.end()) {
+      LOG(INFO) << "Disabling SSDP forwarding for guest interface "
+                << msg.br_ifname();
+      ssdp_fwd->second->RemoveGuest(msg.br_ifname());
+    }
+    return;
+  }
+
+  // A physical interface is removed.
+  if (mdns_fwd != mdns_fwds_.end()) {
+    LOG(INFO) << "Disabling mDNS forwarding for physical interface "
+              << dev_ifname;
+    mdns_fwds_.erase(mdns_fwd);
+  }
+  if (ssdp_fwd != ssdp_fwds_.end()) {
+    LOG(INFO) << "Disabling SSDP forwarding for physical interface "
+              << dev_ifname;
+    ssdp_fwds_.erase(ssdp_fwd);
   }
 }
 

@@ -25,6 +25,8 @@
 
 #include <base/bind.h>
 
+#include "arc/network/minijailed_process_runner.h"
+
 namespace arc_networkd {
 namespace {
 const unsigned char kBroadcastMacAddress[] = {0xff, 0xff, 0xff,
@@ -294,6 +296,8 @@ int NDProxy::OnInit() {
     return EX_OSERR;
   }
 
+  EnterChildProcessJail();
+
   // Register control fd callbacks
   if (msg_dispatcher_) {
     msg_dispatcher_->RegisterFailureHandler(
@@ -386,10 +390,10 @@ void NDProxy::OnDeviceMessage(const DeviceMessage& msg) {
   const std::string& dev_ifname = msg.dev_ifname();
   LOG_IF(DFATAL, dev_ifname.empty())
       << "Received DeviceMessage w/ empty dev_ifname";
-  if (msg.has_br_ifname()) {
-    AddRouterInterfacePair(dev_ifname, msg.br_ifname());
-  } else if (msg.has_teardown()) {
+  if (msg.has_teardown()) {
     RemoveInterface(dev_ifname);
+  } else if (msg.has_br_ifname()) {
+    AddRouterInterfacePair(dev_ifname, msg.br_ifname());
   }
 }
 

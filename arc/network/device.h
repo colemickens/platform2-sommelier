@@ -20,7 +20,6 @@
 
 #include "arc/network/ipc.pb.h"
 #include "arc/network/mac_address_generator.h"
-#include "arc/network/multicast_forwarder.h"
 #include "arc/network/neighbor_finder.h"
 #include "arc/network/router_finder.h"
 #include "arc/network/subnet.h"
@@ -160,8 +159,6 @@ class Device {
   DeviceHandler ipv6_up_handler_;
   DeviceHandler ipv6_down_handler_;
 
-  std::unique_ptr<MulticastForwarder> mdns_forwarder_;
-  std::unique_ptr<MulticastForwarder> ssdp_forwarder_;
   std::unique_ptr<RouterFinder> router_finder_;
   std::unique_ptr<NeighborFinder> neighbor_finder_;
 

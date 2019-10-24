@@ -29,9 +29,11 @@
 namespace arc_networkd {
 
 Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy,
+                 std::unique_ptr<HelperProcess> mcast_proxy,
                  std::unique_ptr<HelperProcess> nd_proxy,
                  bool enable_multinet)
     : adb_proxy_(std::move(adb_proxy)),
+      mcast_proxy_(std::move(mcast_proxy)),
       nd_proxy_(std::move(nd_proxy)),
       addr_mgr_({
           AddressManager::Guest::ARC,
@@ -55,10 +57,15 @@ int Manager::OnInit() {
                  adb_proxy_->pid())))
       << "Failed to watch adb-proxy child process";
   CHECK(process_reaper_.WatchForChild(
+      FROM_HERE, mcast_proxy_->pid(),
+      base::Bind(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),
+                 nd_proxy_->pid())))
+      << "Failed to watch multicast-proxy child process";
+  CHECK(process_reaper_.WatchForChild(
       FROM_HERE, nd_proxy_->pid(),
       base::Bind(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),
                  nd_proxy_->pid())))
-      << "Failed to watch adb-proxy child process";
+      << "Failed to watch nd-proxy child process";
 
   // Setup the socket for guests to connect and notify certain events.
   // TODO(garrick): Remove once DBus API available.
@@ -92,7 +99,7 @@ int Manager::OnInit() {
 void Manager::InitialSetup() {
   device_mgr_ = std::make_unique<DeviceManager>(
       std::make_unique<ShillClient>(std::move(bus_)), &addr_mgr_,
-      datapath_.get(), !enable_multinet_, nd_proxy_.get());
+      datapath_.get(), !enable_multinet_, mcast_proxy_.get(), nd_proxy_.get());
 
   arc_svc_ = std::make_unique<ArcService>(device_mgr_.get(), datapath_.get(),
                                           !enable_multinet_);

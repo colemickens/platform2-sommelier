@@ -15,7 +15,9 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
+#include <brillo/daemons/daemon.h>
 
+#include "arc/network/message_dispatcher.h"
 #include "arc/network/net_util.h"
 
 namespace arc_networkd {
@@ -27,6 +29,8 @@ constexpr uint16_t kSsdpPort = 1900;
 
 // Listens on a well-known port and forwards multicast messages between
 // network interfaces.  Handles mDNS, legacy mDNS, and SSDP messages.
+// MulticastForwarder forwards multicast between 1 physical interface and
+// many guest interfaces.
 class MulticastForwarder {
  public:
   MulticastForwarder(const std::string& lan_ifname,
@@ -42,6 +46,10 @@ class MulticastForwarder {
   // |guest_addr|, if != INADDR_ANY, will be used to rewrite mDNS A records
   // to use the IP address from |lan_ifname|.
   bool AddGuest(const std::string& int_ifname, uint32_t guest_addr);
+
+  // Stop forwarding multicast packets between |int_ifname| and
+  // |lan_ifname_|.
+  void RemoveGuest(const std::string& int_ifname);
 
  protected:
   // Socket is used to keep track of an fd and its watcher.
@@ -100,6 +108,30 @@ class MulticastForwarder {
   void OnFileCanReadWithoutBlocking(int fd);
 
   DISALLOW_COPY_AND_ASSIGN(MulticastForwarder);
+};
+
+// MulticastProxy manages multiple MulticastForwarder instances to forward
+// multicast for multiple physical interfaces.
+class MulticastProxy : public brillo::Daemon {
+ public:
+  explicit MulticastProxy(base::ScopedFD control_fd);
+  virtual ~MulticastProxy() = default;
+
+ protected:
+  int OnInit() override;
+
+  void OnParentProcessExit();
+  void OnDeviceMessage(const DeviceMessage& msg);
+
+ private:
+  void Reset();
+
+  MessageDispatcher msg_dispatcher_;
+  std::map<std::string, std::unique_ptr<MulticastForwarder>> mdns_fwds_;
+  std::map<std::string, std::unique_ptr<MulticastForwarder>> ssdp_fwds_;
+
+  base::WeakPtrFactory<MulticastProxy> weak_factory_{this};
+  DISALLOW_COPY_AND_ASSIGN(MulticastProxy);
 };
 
 }  // namespace arc_networkd

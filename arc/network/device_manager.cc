@@ -92,15 +92,18 @@ DeviceManager::DeviceManager(std::unique_ptr<ShillClient> shill_client,
                              AddressManager* addr_mgr,
                              Datapath* datapath,
                              bool is_arc_legacy,
+                             HelperProcess* mcast_proxy,
                              HelperProcess* nd_proxy)
     : shill_client_(std::move(shill_client)),
       addr_mgr_(addr_mgr),
       datapath_(datapath),
+      mcast_proxy_(mcast_proxy),
       nd_proxy_(nd_proxy),
       is_arc_legacy_(is_arc_legacy) {
   DCHECK(shill_client_);
   DCHECK(addr_mgr_);
   DCHECK(datapath_);
+  CHECK(mcast_proxy_);
 
   link_listener_ = std::make_unique<shill::RTNLListener>(
       shill::RTNLHandler::kRequestLink,
@@ -214,6 +217,15 @@ bool DeviceManager::Remove(const std::string& name) {
                                     it->second->config().host_ifname());
   }
 
+  if (it->second->options().fwd_multicast) {
+    DeviceMessage msg;
+    msg.set_dev_ifname(it->second->ifname());
+    msg.set_teardown(true);
+    IpHelperMessage ipm;
+    *ipm.mutable_device_message() = msg;
+    mcast_proxy_->SendMessage(ipm);
+  }
+
   for (auto& h : rm_handlers_) {
     h.Run(it->second.get());
   }
@@ -271,14 +283,20 @@ void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
   if (!link_up) {
     LOG(INFO) << ifname << " is now down";
     device->Disable();
-    if (nd_proxy_ && device->options().ipv6_enabled &&
-        !device->options().find_ipv6_routes_legacy) {
+    if ((nd_proxy_ && device->options().ipv6_enabled &&
+         !device->options().find_ipv6_routes_legacy) ||
+        device->options().fwd_multicast) {
       DeviceMessage msg;
       msg.set_dev_ifname(device->ifname());
+      msg.set_br_ifname(device->config().host_ifname());
       msg.set_teardown(true);
       IpHelperMessage ipm;
       *ipm.mutable_device_message() = msg;
-      nd_proxy_->SendMessage(ipm);
+      if (nd_proxy_ && device->options().ipv6_enabled &&
+          !device->options().find_ipv6_routes_legacy)
+        nd_proxy_->SendMessage(ipm);
+      if (device->options().fwd_multicast)
+        mcast_proxy_->SendMessage(ipm);
     }
     return;
   }
@@ -291,14 +309,20 @@ void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
   else if (!device->IsAndroid())
     device->Enable(device->config().guest_ifname());
 
-  if (nd_proxy_ != nullptr && device->options().ipv6_enabled &&
-      !device->options().find_ipv6_routes_legacy) {
+  if ((nd_proxy_ != nullptr && device->options().ipv6_enabled &&
+       !device->options().find_ipv6_routes_legacy) ||
+      device->options().fwd_multicast) {
     DeviceMessage msg;
     msg.set_dev_ifname(device->ifname());
+    msg.set_guest_ip4addr(device->config().guest_ipv4_addr());
     msg.set_br_ifname(device->config().host_ifname());
     IpHelperMessage ipm;
     *ipm.mutable_device_message() = msg;
-    nd_proxy_->SendMessage(ipm);
+    if (nd_proxy_ != nullptr && device->options().ipv6_enabled &&
+        !device->options().find_ipv6_routes_legacy)
+      nd_proxy_->SendMessage(ipm);
+    if (device->options().fwd_multicast)
+      mcast_proxy_->SendMessage(ipm);
   }
 }
 

@@ -55,7 +55,8 @@ class DeviceManagerTest : public testing::Test {
     shill_client_ = shill_client.get();
 
     auto mgr = std::make_unique<DeviceManager>(
-        std::move(shill_client), &addr_mgr_, datapath_.get(), is_arc_legacy);
+        std::move(shill_client), &addr_mgr_, datapath_.get(), is_arc_legacy,
+        new arc_networkd::HelperProcess() /* mcast_proxy */);
     return mgr;
   }
 

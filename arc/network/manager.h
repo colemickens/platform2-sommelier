@@ -29,6 +29,7 @@ namespace arc_networkd {
 class Manager final : public brillo::DBusDaemon {
  public:
   Manager(std::unique_ptr<HelperProcess> adb_proxy,
+          std::unique_ptr<HelperProcess> mcast_proxy,
           std::unique_ptr<HelperProcess> nd_proxy,
           bool enable_multinet);
   ~Manager() = default;
@@ -62,6 +63,7 @@ class Manager final : public brillo::DBusDaemon {
   // Other services.
   brillo::ProcessReaper process_reaper_;
   std::unique_ptr<HelperProcess> adb_proxy_;
+  std::unique_ptr<HelperProcess> mcast_proxy_;
   std::unique_ptr<HelperProcess> nd_proxy_;
 
   AddressManager addr_mgr_;
