@@ -886,7 +886,12 @@ bool ExpandPropertyContents(const std::string& content,
       line = expanded;
     } while (inserted);
 
-    new_properties += TruncateAndroidProperty(line) + "\n";
+    std::string truncated;
+    if (!TruncateAndroidProperty(line, &truncated)) {
+      LOG(ERROR) << "Unable to truncate property: " << line;
+      return false;
+    }
+    new_properties += truncated + "\n";
 
     // Special-case ro.product.board to compute ro.oem.key1 at runtime, as it
     // can depend upon the device region.
@@ -974,32 +979,44 @@ void SetFingerprintsForPackagesCache(const std::string& content,
   CHECK_EQ(2, update_count) << content;
 }
 
-std::string TruncateAndroidProperty(const std::string& line) {
+bool TruncateAndroidProperty(const std::string& line, std::string* truncated) {
   // If line looks like key=value, cut value down to the max length of an
   // Android property.  Build fingerprint needs special handling to preserve the
   // trailing dev-keys indicator, but other properties can just be truncated.
   size_t eq_pos = line.find('=');
-  if (eq_pos == std::string::npos)
-    return line;
+  if (eq_pos == std::string::npos) {
+    *truncated = line;
+    return true;
+  }
 
   std::string val = line.substr(eq_pos + 1);
   base::TrimWhitespaceASCII(val, base::TRIM_ALL, &val);
-  if (val.length() <= kAndroidMaxPropertyLength)
-    return line;
+  if (val.length() <= kAndroidMaxPropertyLength) {
+    *truncated = line;
+    return true;
+  }
 
   const std::string key = line.substr(0, eq_pos);
   LOG(WARNING) << "Truncating property " << key << " value: " << val;
   if (key == "ro.bootimage.build.fingerprint" &&
       base::EndsWith(val, "/dev-keys", base::CompareCase::SENSITIVE)) {
-    // Typical format is brand/product/device/....  We want to remove
+    // Typical format is brand/product/device/.../dev-keys.  We want to remove
     // characters from product and device to get below the length limit.
     // Assume device has the format {product}_cheets.
     std::vector<std::string> fields =
         base::SplitString(val, "/", base::WhitespaceHandling::KEEP_WHITESPACE,
                           base::SplitResult::SPLIT_WANT_ALL);
+    if (fields.size() < 5) {
+      LOG(ERROR) << "Invalid build fingerprint: " << val;
+      return false;
+    }
 
     int remove_chars = (val.length() - kAndroidMaxPropertyLength + 1) / 2;
-    CHECK_GT(fields[1].length(), remove_chars) << fields[1];
+    if (fields[1].length() <= remove_chars) {
+      LOG(ERROR) << "Unable to remove " << remove_chars << " characters from "
+                 << fields[1];
+      return false;
+    }
     fields[1] = fields[1].substr(0, fields[1].length() - remove_chars);
     fields[2] = fields[1] + "_cheets";
     val = base::JoinString(fields, "/");
@@ -1007,7 +1024,8 @@ std::string TruncateAndroidProperty(const std::string& line) {
     val = val.substr(0, kAndroidMaxPropertyLength);
   }
 
-  return key + "=" + val;
+  *truncated = key + "=" + val;
+  return true;
 }
 
 bool CopyWithAttributes(const base::FilePath& from_readonly_path,

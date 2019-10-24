@@ -272,7 +272,7 @@ void SetFingerprintsForPackagesCache(const std::string& content,
 
 // Truncates the value side of an Android key=val property line, including
 // handling the special case of build fingerprint.
-std::string TruncateAndroidProperty(const std::string& line);
+bool TruncateAndroidProperty(const std::string& line, std::string* truncated);
 
 // Performs deep resource copying. Resource means directory, regular file or
 // symbolic link. |from_readonly_path| must point to a read-only filesystem like
