@@ -98,6 +98,8 @@ USB_IDS += [
     '04ca:3016',
     # LiteOn (scarlet)
     '04ca:301a',
+    # Realtek (blooglet)
+    '0bda:b00c',
     # Atheros (stumpy, stout)
     '0cf3:3004',
     # Atheros (AR3011) (mario, alex, zgb)
