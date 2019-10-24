@@ -40,16 +40,6 @@ class UserCollectorBase : public CrashCollector {
     kIdMax
   };
 
-  enum ErrorType {
-    kErrorNone,
-    kErrorSystemIssue,
-    kErrorReadCoreData,
-    kErrorUnusableProcFiles,
-    kErrorInvalidCoreFile,
-    kErrorUnsupported32BitCoreFile,
-    kErrorCore2MinidumpConversion,
-  };
-
   bool ParseCrashAttributes(const std::string& crash_attributes,
                             pid_t* pid,
                             int* signal,
@@ -87,10 +77,6 @@ class UserCollectorBase : public CrashCollector {
 
   bool ClobberContainerDirectory(const base::FilePath& container_dir);
 
-  void EnqueueCollectionErrorLog(pid_t pid,
-                                 ErrorType error_type,
-                                 const std::string& exec_name);
-
   // Returns the command and arguments for process |pid|. Returns an empty list
   // on failure or if the process is a zombie. Virtual for testing.
   virtual std::vector<std::string> GetCommandLine(pid_t pid) const;
@@ -124,11 +110,6 @@ class UserCollectorBase : public CrashCollector {
                                    gid_t supplied_rgid,
                                    const base::TimeDelta& crash_time,
                                    bool* out_of_capacity);
-
-  // Returns an error type signature for a given |error_type| value,
-  // which is reported to the crash server along with the
-  // crash_reporter-user-collection signature.
-  std::string GetErrorTypeSignature(ErrorType error_type) const;
 
   // Determines the crash directory for given pid based on pid's owner,
   // and creates the directory if necessary with appropriate permissions.

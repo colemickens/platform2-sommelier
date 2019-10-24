@@ -36,6 +36,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/key_value_store.h>
 #include <brillo/process.h>
+#include <brillo/syslog_logging.h>
 #include <brillo/userdb_utils.h>
 #include <debugd/dbus-constants.h>
 #include <zlib.h>
@@ -89,6 +90,8 @@ constexpr size_t kMaxLogSize = 1024 * 1024;
 // Limit how many processes we walk back up.  This avoids any possible races
 // and loops, and we probably don't need that many in the first place.
 constexpr size_t kMaxParentProcessLogs = 8;
+
+const char kCollectionErrorSignature[] = "crash_reporter-user-collection";
 
 }  // namespace
 
@@ -1312,4 +1315,58 @@ bool CrashCollector::ParseProcessTicksFromStat(base::StringPiece stat,
   constexpr size_t kStartTimePos = 19;
   return fields.size() > kStartTimePos &&
          base::StringToUint64(fields[kStartTimePos], ticks);
+}
+
+void CrashCollector::EnqueueCollectionErrorLog(ErrorType error_type,
+                                               const std::string& exec,
+                                               const std::string& basename) {
+  FilePath crash_path;
+  LOG(INFO) << "Writing conversion problems as separate crash report.";
+  if (!GetCreatedCrashDirectoryByEuid(0, &crash_path, nullptr)) {
+    LOG(ERROR) << "Could not even get log directory; out of space?";
+    return;
+  }
+  AddCrashMetaData("sig", kCollectionErrorSignature);
+  AddCrashMetaData("error_type", GetErrorTypeSignature(error_type));
+  std::string error_log = brillo::GetLog();
+  FilePath diag_log_path = GetCrashPath(crash_path, basename, "diaglog");
+  if (GetLogContents(FilePath(log_config_path_), kCollectionErrorSignature,
+                     diag_log_path)) {
+    // We load the contents of diag_log into memory and append it to
+    // the error log.  We cannot just append to files because we need
+    // to always create new files to prevent attack.
+    std::string diag_log_contents;
+    base::ReadFileToString(diag_log_path, &diag_log_contents);
+    error_log.append(diag_log_contents);
+    base::DeleteFile(diag_log_path, false);
+  }
+  FilePath log_path = GetCrashPath(crash_path, basename, "log");
+  FilePath meta_path = GetCrashPath(crash_path, basename, "meta");
+  // We must use WriteNewFile instead of base::WriteFile as we do
+  // not want to write with root access to a symlink that an attacker
+  // might have created.
+  if (WriteNewFile(log_path, error_log.data(), error_log.length()) < 0) {
+    PLOG(ERROR) << "Error writing new file " << log_path.value();
+    return;
+  }
+  FinishCrash(meta_path, exec, log_path.BaseName().value());
+}
+
+std::string CrashCollector::GetErrorTypeSignature(ErrorType error_type) const {
+  switch (error_type) {
+    case kErrorSystemIssue:
+      return "system-issue";
+    case kErrorReadCoreData:
+      return "read-core-data";
+    case kErrorUnusableProcFiles:
+      return "unusable-proc-files";
+    case kErrorInvalidCoreFile:
+      return "invalid-core-file";
+    case kErrorUnsupported32BitCoreFile:
+      return "unsupported-32bit-core-file";
+    case kErrorCore2MinidumpConversion:
+      return "core2md-conversion";
+    default:
+      return "";
+  }
 }

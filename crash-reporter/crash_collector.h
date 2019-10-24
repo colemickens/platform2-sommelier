@@ -55,6 +55,16 @@ class CrashCollector {
     kCrashLoopSendingMode
   };
 
+  enum ErrorType {
+    kErrorNone,
+    kErrorSystemIssue,
+    kErrorReadCoreData,
+    kErrorUnusableProcFiles,
+    kErrorInvalidCoreFile,
+    kErrorUnsupported32BitCoreFile,
+    kErrorCore2MinidumpConversion,
+  };
+
   explicit CrashCollector(const std::string& collector_name);
   explicit CrashCollector(
       const std::string& collector_name,
@@ -377,6 +387,10 @@ class CrashCollector {
   // be dependent on a C++ library that might change.
   static unsigned HashString(base::StringPiece input);
 
+  void EnqueueCollectionErrorLog(ErrorType error_type,
+                                 const std::string& exec,
+                                 const std::string& basename);
+
  private:
   static bool ParseProcessTicksFromStat(base::StringPiece stat,
                                         uint64_t* ticks);
@@ -407,6 +421,11 @@ class CrashCollector {
   // Returns true if there is already a file in in_memory_files_ with
   // filename.BaseName().
   bool InMemoryFileExists(const base::FilePath& filename) const;
+
+  // Returns an error type signature for a given |error_type| value,
+  // which is reported to the crash server along with the
+  // crash_reporter-user-collection signature.
+  std::string GetErrorTypeSignature(ErrorType error_type) const;
 
   DISALLOW_COPY_AND_ASSIGN(CrashCollector);
 };

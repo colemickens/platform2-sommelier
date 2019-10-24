@@ -14,7 +14,6 @@
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/process.h>
-#include <brillo/syslog_logging.h>
 
 #include "crash-reporter/util.h"
 
@@ -24,7 +23,6 @@ using base::StringPrintf;
 
 namespace {
 
-const char kCollectionErrorSignature[] = "crash_reporter-user-collection";
 const char kStatePrefix[] = "State:\t";
 const char kUptimeField[] = "ptime";
 const char kUserCrashSignal[] = "org.chromium.CrashReporter.UserCrash";
@@ -145,8 +143,11 @@ bool UserCollectorBase::HandleCrash(const std::string& crash_attributes,
           ConvertAndEnqueueCrash(pid, exec, supplied_ruid, supplied_rgid,
                                  crash_time, &out_of_capacity);
       if (error_type != kErrorNone) {
-        if (!out_of_capacity)
-          EnqueueCollectionErrorLog(pid, error_type, exec);
+        if (!out_of_capacity) {
+          const std::string basename =
+              FormatDumpBasename(exec, time(nullptr), pid);
+          EnqueueCollectionErrorLog(error_type, exec, basename);
+        }
         return false;
       }
     }
@@ -342,26 +343,6 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
   return kErrorNone;
 }
 
-std::string UserCollectorBase::GetErrorTypeSignature(
-    ErrorType error_type) const {
-  switch (error_type) {
-    case kErrorSystemIssue:
-      return "system-issue";
-    case kErrorReadCoreData:
-      return "read-core-data";
-    case kErrorUnusableProcFiles:
-      return "unusable-proc-files";
-    case kErrorInvalidCoreFile:
-      return "invalid-core-file";
-    case kErrorUnsupported32BitCoreFile:
-      return "unsupported-32bit-core-file";
-    case kErrorCore2MinidumpConversion:
-      return "core2md-conversion";
-    default:
-      return "";
-  }
-}
-
 bool UserCollectorBase::GetCreatedCrashDirectory(pid_t pid,
                                                  uid_t supplied_ruid,
                                                  FilePath* crash_file_path,
@@ -404,42 +385,6 @@ bool UserCollectorBase::GetCreatedCrashDirectory(pid_t pid,
     return false;
   }
   return true;
-}
-
-void UserCollectorBase::EnqueueCollectionErrorLog(pid_t pid,
-                                                  ErrorType error_type,
-                                                  const std::string& exec) {
-  FilePath crash_path;
-  LOG(INFO) << "Writing conversion problems as separate crash report.";
-  if (!GetCreatedCrashDirectoryByEuid(0, &crash_path, nullptr)) {
-    LOG(ERROR) << "Could not even get log directory; out of space?";
-    return;
-  }
-  AddCrashMetaData("sig", kCollectionErrorSignature);
-  AddCrashMetaData("error_type", GetErrorTypeSignature(error_type));
-  std::string dump_basename = FormatDumpBasename(exec, time(nullptr), pid);
-  std::string error_log = brillo::GetLog();
-  FilePath diag_log_path = GetCrashPath(crash_path, dump_basename, "diaglog");
-  if (GetLogContents(FilePath(log_config_path_), kCollectionErrorSignature,
-                     diag_log_path)) {
-    // We load the contents of diag_log into memory and append it to
-    // the error log.  We cannot just append to files because we need
-    // to always create new files to prevent attack.
-    std::string diag_log_contents;
-    base::ReadFileToString(diag_log_path, &diag_log_contents);
-    error_log.append(diag_log_contents);
-    base::DeleteFile(diag_log_path, false);
-  }
-  FilePath log_path = GetCrashPath(crash_path, dump_basename, "log");
-  FilePath meta_path = GetCrashPath(crash_path, dump_basename, "meta");
-  // We must use WriteNewFile instead of base::WriteFile as we do
-  // not want to write with root access to a symlink that an attacker
-  // might have created.
-  if (WriteNewFile(log_path, error_log.data(), error_log.length()) < 0) {
-    PLOG(ERROR) << "Error writing new file " << log_path.value();
-    return;
-  }
-  FinishCrash(meta_path, exec, log_path.BaseName().value());
 }
 
 std::vector<std::string> UserCollectorBase::GetCommandLine(pid_t pid) const {
