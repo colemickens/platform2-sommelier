@@ -77,6 +77,8 @@ template("proto_library") {
     }
     if (defined(gen_cpp_mode)) {
       gen_cpp_mode = "${gen_cpp_mode}:"
+    } else if (use.fuzzer) {
+      gen_cpp_mode = "speed:"
     } else {
       gen_cpp_mode = ""
     }
