@@ -268,10 +268,6 @@ static struct imgsensor_info_struct gImgsensor_info[] = {
                 /*     following for GetDefaultFramerateByScenario()    */
                 .max_framerate = 300,
             },
-        .margin = 10,     /* sensor framelength & shutter margin */
-        .min_shutter = 1, /* min shutter */
-        .max_frame_length =
-            0xffff, /* max framelength by sensor register's limitation */
         .ae_shut_delay_frame = 0,
         /* shutter delay frame for AE cycle, 2 frame with
            ispGain_delay-shut_delay=2-0=2 */
@@ -290,6 +286,11 @@ static struct imgsensor_info_struct gImgsensor_info[] = {
         .hs_video_delay_frame = 3, /* enter high speed video  delay frame num */
         .slim_video_delay_frame = 3, /* enter slim video delay frame num */
 
+        .margin = 10,     /* sensor framelength & shutter margin */
+        .min_shutter = 1, /* min shutter */
+        .max_frame_length =
+            0xffff, /* max framelength by sensor register's limitation */
+
         .isp_driving_current = ISP_DRIVING_4MA, /* mclk driving current */
         .sensor_interface_type =
             SENSOR_INTERFACE_TYPE_MIPI, /* sensor_interface_type */
@@ -300,10 +301,10 @@ static struct imgsensor_info_struct gImgsensor_info[] = {
         .sensor_output_dataformat =
             SENSOR_OUTPUT_FORMAT_RAW_B, /* sensor output first pixel color */
         .mclk = 24, /* mclk value, suggest 24 or 26 for 24Mhz or 26Mhz */
-        .mipi_lane_num = SENSOR_MIPI_4_LANE, /* mipi lane num */
         /* record sensor support all write id addr, only supprt 4must end with
            0xff */
         .i2c_speed = 400, /* i2c read/write speed */
+        .mipi_lane_num = SENSOR_MIPI_4_LANE, /* mipi lane num */
 
         .SensorClockPolarity = SENSOR_CLOCK_POLARITY_LOW,
         .SensorClockFallingPolarity = SENSOR_CLOCK_POLARITY_LOW,
@@ -519,10 +520,6 @@ static struct imgsensor_info_struct gImgsensor_info[] = {
                 /*     following for GetDefaultFramerateByScenario()    */
                 .max_framerate = 300,
             },
-        .margin = 10,     /* sensor framelength & shutter margin */
-        .min_shutter = 1, /* min shutter */
-        .max_frame_length =
-            0xffff, /* max framelength by sensor register's limitation */
         .ae_shut_delay_frame = 0,
         /* shutter delay frame for AE cycle, 2 frame with
            ispGain_delay-shut_delay=2-0=2 */
@@ -541,6 +538,11 @@ static struct imgsensor_info_struct gImgsensor_info[] = {
         .hs_video_delay_frame = 3, /* enter high speed video  delay frame num */
         .slim_video_delay_frame = 3, /* enter slim video delay frame num */
 
+        .margin = 10,     /* sensor framelength & shutter margin */
+        .min_shutter = 1, /* min shutter */
+        .max_frame_length =
+            0xffff, /* max framelength by sensor register's limitation */
+
         .isp_driving_current = ISP_DRIVING_4MA, /* mclk driving current */
         .sensor_interface_type =
             SENSOR_INTERFACE_TYPE_MIPI, /* sensor_interface_type */
@@ -551,10 +553,10 @@ static struct imgsensor_info_struct gImgsensor_info[] = {
         .sensor_output_dataformat =
             SENSOR_OUTPUT_FORMAT_RAW_B, /* sensor output first pixel color */
         .mclk = 24, /* mclk value, suggest 24 or 26 for 24Mhz or 26Mhz */
-        .mipi_lane_num = SENSOR_MIPI_4_LANE, /* mipi lane num */
         /* record sensor support all write id addr, only supprt 4must end with
            0xff */
         .i2c_speed = 400, /* i2c read/write speed */
+        .mipi_lane_num = SENSOR_MIPI_4_LANE, /* mipi lane num */
 
         .SensorClockPolarity = SENSOR_CLOCK_POLARITY_LOW,
         .SensorClockFallingPolarity = SENSOR_CLOCK_POLARITY_LOW,
@@ -753,12 +755,6 @@ static struct imgsensor_info_struct gImgsensor_info[] = {
                 /*     following for GetDefaultFramerateByScenario()    */
                 .max_framerate = 300,
             },
-        .margin = 6,      /*sensor framelength & shutter margin*/
-        .min_shutter = 6, /*min shutter*/
-
-        /*max framelength by sensor register's limitation*/
-        .max_frame_length = 0x90f7,
-
         .ae_shut_delay_frame = 0,
         .ae_sensor_gain_delay_frame = 0,
         .ae_ispGain_delay_frame = 2, /*isp gain delay frame for AE cycle*/
@@ -772,6 +768,13 @@ static struct imgsensor_info_struct gImgsensor_info[] = {
         .video_delay_frame = 3,      /*enter video delay frame num*/
         .hs_video_delay_frame = 3,   /*enter high speed video  delay frame num*/
         .slim_video_delay_frame = 3, /*enter slim video delay frame num*/
+
+        .margin = 6,      /*sensor framelength & shutter margin*/
+        .min_shutter = 6, /*min shutter*/
+
+        /*max framelength by sensor register's limitation*/
+        .max_frame_length = 0x90f7,
+
         .isp_driving_current = ISP_DRIVING_6MA, /*mclk driving current*/
 
         /*Sensor_interface_type*/
@@ -787,8 +790,8 @@ static struct imgsensor_info_struct gImgsensor_info[] = {
         .sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_B,
 
         .mclk = 24, /*mclk value, suggest 24 or 26 for 24Mhz or 26Mhz*/
-        .mipi_lane_num = SENSOR_MIPI_4_LANE, /*mipi lane num*/
         .i2c_speed = 400,                    /* i2c read/write speed */
+        .mipi_lane_num = SENSOR_MIPI_4_LANE, /*mipi lane num*/
 
         .SensorClockPolarity = SENSOR_CLOCK_POLARITY_LOW,
         .SensorClockFallingPolarity = SENSOR_CLOCK_POLARITY_LOW,
@@ -1002,10 +1005,6 @@ static struct imgsensor_info_struct gImgsensor_info[] = {
                 /*     following for GetDefaultFramerateByScenario()    */
                 .max_framerate = 300,
             },
-        .margin = 10,     /* sensor framelength & shutter margin */
-        .min_shutter = 1, /* min shutter */
-        .max_frame_length =
-            0xffff, /* max framelength by sensor register's limitation */
         .ae_shut_delay_frame = 0,
         /* shutter delay frame for AE cycle, 2 frame with
            ispGain_delay-shut_delay=2-0=2 */
@@ -1024,6 +1023,11 @@ static struct imgsensor_info_struct gImgsensor_info[] = {
         .hs_video_delay_frame = 3, /* enter high speed video  delay frame num */
         .slim_video_delay_frame = 3, /* enter slim video delay frame num */
 
+        .margin = 10,     /* sensor framelength & shutter margin */
+        .min_shutter = 1, /* min shutter */
+        .max_frame_length =
+            0xffff, /* max framelength by sensor register's limitation */
+
         .isp_driving_current = ISP_DRIVING_4MA, /* mclk driving current */
         .sensor_interface_type =
             SENSOR_INTERFACE_TYPE_MIPI, /* sensor_interface_type */
@@ -1034,10 +1038,10 @@ static struct imgsensor_info_struct gImgsensor_info[] = {
         .sensor_output_dataformat =
             SENSOR_OUTPUT_FORMAT_RAW_R, /* sensor output first pixel color */
         .mclk = 24, /* mclk value, suggest 24 or 26 for 24Mhz or 26Mhz */
-        .mipi_lane_num = SENSOR_MIPI_4_LANE, /* mipi lane num */
         /* record sensor support all write id addr, only supprt 4must end with
            0xff */
         .i2c_speed = 400, /* i2c read/write speed */
+        .mipi_lane_num = SENSOR_MIPI_4_LANE, /* mipi lane num */
 
         .SensorClockPolarity = SENSOR_CLOCK_POLARITY_LOW,
         .SensorClockFallingPolarity = SENSOR_CLOCK_POLARITY_LOW,
