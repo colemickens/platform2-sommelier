@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
+#include <brillo/flag_helper.h>
 #include <brillo/process.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
@@ -22,6 +23,7 @@
 #include <systemd/sd-journal.h>
 
 #include "crash-reporter/paths.h"
+#include "crash-reporter/util.h"
 #include "metrics_event/proto_bindings/metrics_event.pb.h"
 
 // work around https://crbug.com/849450: the LOG_WARNING macro from
@@ -145,6 +147,10 @@ std::unique_ptr<dbus::Signal> MakeOomSignal(const int64_t oom_timestamp_ms) {
 }
 
 int main(int argc, char* argv[]) {
+  DEFINE_bool(testonly_send_all, false,
+              "True iff the anomaly detector should send all reports. "
+              "Only use for testing.");
+  brillo::FlagHelper::Init(argc, argv, "Chromium OS Anomaly Detector");
   // Sim sala bim!  These are needed to send D-Bus signals.  Even though they
   // are not used directly, they set up some global state needed by the D-Bus
   // library.
@@ -164,7 +170,13 @@ int main(int argc, char* argv[]) {
   // We only want to report 0.1% of selinux violations. Set up the random
   // distribution.
   std::default_random_engine gen((std::random_device())());
-  std::bernoulli_distribution drop_report(0.999);
+  std::bernoulli_distribution drop_audit_report(1.0 -
+                                                1.0 / util::GetSelinuxWeight());
+  // Only report 2% of service failures due to noise.
+  // TODO(https://crbug.com/1017491): Remove this once the rate of service
+  // failures is acceptably low.
+  std::bernoulli_distribution drop_service_failure_report(
+      1.0 - 1.0 / util::GetServiceFailureWeight());
 
   Journal j;
 
@@ -187,8 +199,15 @@ int main(int argc, char* argv[]) {
     if (parsers.count(entry.tag) > 0) {
       auto crash_report = parsers[entry.tag]->ParseLogEntry(entry.message);
       if (crash_report) {
-        if (entry.tag == "audit" && drop_report(gen))
-          continue;
+        if (!FLAGS_testonly_send_all) {
+          if (entry.tag == "audit" && drop_audit_report(gen)) {
+            continue;
+          } else if (entry.tag == "init" && drop_service_failure_report(gen)) {
+            LOG(INFO) << "Dropping service failure report: "
+                      << crash_report->text;
+            continue;
+          }
+        }
         RunCrashReporter(crash_report->flag, crash_report->text);
       }
     }

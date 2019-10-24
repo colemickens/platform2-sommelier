@@ -91,6 +91,14 @@ void LogMultilineError(const std::string& error);
 // Read the memfd file contents. Return false on failure.
 bool ReadMemfdToString(int mem_fd, std::string* contents);
 
+// Return the weight for SELinux failures. We'll only collect
+// 1.0/GetSelinuxWeight() of the failures.
+int GetSelinuxWeight();
+
+// Return the weight for service failures. We'll only collect
+// 1.0/GetServiceFailureWeight() of the failures.
+int GetServiceFailureWeight();
+
 }  // namespace util
 
 #endif  // CRASH_REPORTER_UTIL_H_

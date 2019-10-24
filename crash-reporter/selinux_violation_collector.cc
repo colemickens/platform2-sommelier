@@ -17,6 +17,7 @@ constexpr char kSignatureKey[] = "sig";
 }  // namespace
 
 using base::FilePath;
+using base::StringPrintf;
 
 SELinuxViolationCollector::SELinuxViolationCollector()
     : CrashCollector("selinux"), violation_report_path_("/dev/stdin") {}
@@ -94,6 +95,9 @@ bool SELinuxViolationCollector::Collect() {
     PLOG(WARNING) << "Failed to write audit message to " << log_path.value();
     return true;
   }
+
+  AddCrashMetaUploadData("weight",
+                         StringPrintf("%d", util::GetSelinuxWeight()));
 
   AddCrashMetaData(kSignatureKey, violation_signature);
 

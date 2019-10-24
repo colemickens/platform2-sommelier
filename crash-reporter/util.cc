@@ -318,4 +318,12 @@ bool ReadMemfdToString(int mem_fd, std::string* contents) {
   return true;
 }
 
+int GetSelinuxWeight() {
+  return 1000;
+}
+
+int GetServiceFailureWeight() {
+  return 50;
+}
+
 }  // namespace util

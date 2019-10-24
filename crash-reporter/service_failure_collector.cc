@@ -14,6 +14,7 @@ const char kSignatureKey[] = "sig";
 }  // namespace
 
 using base::FilePath;
+using base::StringPrintf;
 
 ServiceFailureCollector::ServiceFailureCollector()
     : CrashCollector("service_failure"),
@@ -70,6 +71,8 @@ bool ServiceFailureCollector::Collect() {
   FilePath log_path = GetCrashPath(crash_directory, dump_basename, "log");
   FilePath meta_path = GetCrashPath(crash_directory, dump_basename, "meta");
 
+  AddCrashMetaUploadData("weight",
+                         StringPrintf("%d", util::GetServiceFailureWeight()));
   AddCrashMetaData(kSignatureKey, failure_signature);
 
   bool result = GetLogContents(log_config_path_, exec_name_, log_path);
