@@ -107,8 +107,8 @@ bool Spawn(std::vector<std::string> argv,
 
     // execvp never returns except in case of an error.
     struct ChildErrorInfo info = {
-        .reason = ChildErrorInfo::Reason::EXEC,
         .err = errno,
+        .reason = ChildErrorInfo::Reason::EXEC,
     };
 
     send(info_fds[1], &info, sizeof(info), MSG_NOSIGNAL);
@@ -156,8 +156,8 @@ void DoChildSetup(const std::map<std::string, std::string>& env,
   // Create a new session and process group.
   if (setsid() == -1) {
     struct ChildErrorInfo info = {
-        .reason = ChildErrorInfo::Reason::SESSION_ID,
         .err = errno,
+        .reason = ChildErrorInfo::Reason::SESSION_ID,
     };
 
     send(error_fd, &info, sizeof(info), MSG_NOSIGNAL);
@@ -168,8 +168,8 @@ void DoChildSetup(const std::map<std::string, std::string>& env,
   int null_fd = open(kForkedProcessConsole, O_RDWR | O_NOCTTY);
   if (null_fd < 0) {
     struct ChildErrorInfo info = {
-        .reason = ChildErrorInfo::Reason::CONSOLE,
         .err = errno,
+        .reason = ChildErrorInfo::Reason::CONSOLE,
     };
 
     send(error_fd, &info, sizeof(info), MSG_NOSIGNAL);
@@ -187,9 +187,9 @@ void DoChildSetup(const std::map<std::string, std::string>& env,
 
     if (dup2(fd, newfd) < 0) {
       struct ChildErrorInfo info = {
-          .reason = ChildErrorInfo::Reason::STDIO_FD,
-          .err = errno,
           .details = {.fd = newfd},
+          .err = errno,
+          .reason = ChildErrorInfo::Reason::STDIO_FD,
       };
 
       send(error_fd, &info, sizeof(info), MSG_NOSIGNAL);
@@ -220,9 +220,9 @@ void DoChildSetup(const std::map<std::string, std::string>& env,
           static_cast<uint16_t>(pair.first.size() + pair.second.size() + 2);
     }
     struct ChildErrorInfo info = {
-        .reason = ChildErrorInfo::Reason::SETENV,
-        .err = errno,
         .details = {.env_length = env_length},
+        .err = errno,
+        .reason = ChildErrorInfo::Reason::SETENV,
     };
     send(error_fd, &info, sizeof(info), MSG_NOSIGNAL);
 
@@ -261,8 +261,8 @@ void DoChildSetup(const std::map<std::string, std::string>& env,
       // If we failed, then send a failure message back to the parent process
       // and terminate the child process.
       struct ChildErrorInfo info = {
-          .reason = ChildErrorInfo::Reason::WORKING_DIR,
           .err = errno,
+          .reason = ChildErrorInfo::Reason::WORKING_DIR,
       };
       send(error_fd, &info, sizeof(info), MSG_NOSIGNAL);
       _exit(errno);
@@ -273,9 +273,9 @@ void DoChildSetup(const std::map<std::string, std::string>& env,
   int signo = ResetSignalHandlers();
   if (signo != 0) {
     struct ChildErrorInfo info = {
-        .reason = ChildErrorInfo::Reason::SIGNAL_RESET,
-        .err = errno,
         .details = {.signo = signo},
+        .err = errno,
+        .reason = ChildErrorInfo::Reason::SIGNAL_RESET,
     };
 
     send(error_fd, &info, sizeof(info), MSG_NOSIGNAL);

@@ -232,40 +232,40 @@ TEST_F(IconIndexFileTest, NotPerfectMatch) {
 // This test verifies a threshold type within limit case works correctly.
 TEST_F(IconIndexFileTest, ThresholdWithinLimit) {
   IconIndexFile::DirectoryEntry directory_entry = {
-      .type = "Threshold", .size = 48, .scale = 2};
+      .size = 48, .scale = 2, .type = "Threshold"};
   EXPECT_TRUE(IconIndexFile::WithinLimit(directory_entry, 96 * 1));
 }
 
 // This test verifies a threshold type not with limit case works correctly.
 TEST_F(IconIndexFileTest, ThresholdNotWithinLimit) {
   IconIndexFile::DirectoryEntry directory_entry = {
-      .type = "Threshold", .size = 48, .scale = 2};
+      .size = 48, .scale = 2, .type = "Threshold"};
   EXPECT_FALSE(IconIndexFile::WithinLimit(directory_entry, 97 * 1));
 }
 
 // This test verifies a scalable type within limit case works correctly.
 TEST_F(IconIndexFileTest, ScalableWithinLimit) {
   IconIndexFile::DirectoryEntry directory_entry = {
-      .type = "Scalable", .min_size = 48, .max_size = 96};
+      .type = "Scalable", .max_size = 96, .min_size = 48};
   EXPECT_TRUE(IconIndexFile::WithinLimit(directory_entry, 64 * 1));
 }
 
 // This test verifies a scalable type not with limit case works correctly.
 TEST_F(IconIndexFileTest, ScalableNotWithinLimit) {
   IconIndexFile::DirectoryEntry directory_entry = {
-      .type = "Scalable", .min_size = 48, .max_size = 96};
+      .type = "Scalable", .max_size = 96, .min_size = 48};
   EXPECT_FALSE(IconIndexFile::WithinLimit(directory_entry, 97 * 1));
 }
 
 // This test verifies a fixed type within limit case works correctly.
 TEST_F(IconIndexFileTest, FixedWithinLimit) {
-  IconIndexFile::DirectoryEntry directory_entry = {.type = "Fixed", .size = 48};
+  IconIndexFile::DirectoryEntry directory_entry = {.size = 48, .type = "Fixed"};
   EXPECT_TRUE(IconIndexFile::WithinLimit(directory_entry, 48 * 1));
 }
 
 // This test verifies a fixed type not with limit case works correctly.
 TEST_F(IconIndexFileTest, FixedNotWithinLimit) {
-  IconIndexFile::DirectoryEntry directory_entry = {.type = "Fixed", .size = 48};
+  IconIndexFile::DirectoryEntry directory_entry = {.size = 48, .type = "Fixed"};
   EXPECT_FALSE(IconIndexFile::WithinLimit(directory_entry, 48 * 2));
 }
 

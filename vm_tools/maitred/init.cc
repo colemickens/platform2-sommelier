@@ -466,8 +466,8 @@ void DoChildSetup(const char* console,
   // Create a new session and process group.
   if (setsid() == -1) {
     struct ChildErrorInfo info = {
-        .reason = ChildErrorInfo::Reason::SESSION_ID,
         .err = errno,
+        .reason = ChildErrorInfo::Reason::SESSION_ID,
     };
 
     send(error_fd, &info, sizeof(info), MSG_NOSIGNAL);
@@ -478,8 +478,8 @@ void DoChildSetup(const char* console,
   int fd = open(console, O_RDWR | O_NOCTTY);
   if (fd < 0) {
     struct ChildErrorInfo info = {
-        .reason = ChildErrorInfo::Reason::CONSOLE,
         .err = errno,
+        .reason = ChildErrorInfo::Reason::CONSOLE,
     };
 
     send(error_fd, &info, sizeof(info), MSG_NOSIGNAL);
@@ -490,9 +490,9 @@ void DoChildSetup(const char* console,
   for (int newfd = 0; newfd < 3; ++newfd) {
     if (dup2(fd, newfd) < 0) {
       struct ChildErrorInfo info = {
-          .reason = ChildErrorInfo::Reason::STDIO_FD,
-          .err = errno,
           .details = {.fd = newfd},
+          .err = errno,
+          .reason = ChildErrorInfo::Reason::STDIO_FD,
       };
 
       send(error_fd, &info, sizeof(info), MSG_NOSIGNAL);
@@ -523,9 +523,9 @@ void DoChildSetup(const char* console,
           static_cast<uint16_t>(pair.first.size() + pair.second.size() + 2);
     }
     struct ChildErrorInfo info = {
-        .reason = ChildErrorInfo::Reason::SETENV,
-        .err = errno,
         .details = {.env_length = env_length},
+        .err = errno,
+        .reason = ChildErrorInfo::Reason::SETENV,
     };
     send(error_fd, &info, sizeof(info), MSG_NOSIGNAL);
 
@@ -562,9 +562,9 @@ void DoChildSetup(const char* console,
   int signo = ResetSignalHandlers();
   if (signo != 0) {
     struct ChildErrorInfo info = {
-        .reason = ChildErrorInfo::Reason::SIGNAL_RESET,
-        .err = errno,
         .details = {.signo = signo},
+        .err = errno,
+        .reason = ChildErrorInfo::Reason::SIGNAL_RESET,
     };
 
     send(error_fd, &info, sizeof(info), MSG_NOSIGNAL);
@@ -1092,8 +1092,8 @@ void Init::Worker::Spawn(struct ChildInfo info,
 
     // execvp never returns except in case of an error.
     struct ChildErrorInfo info = {
-        .reason = ChildErrorInfo::Reason::EXEC,
         .err = errno,
+        .reason = ChildErrorInfo::Reason::EXEC,
     };
 
     send(info_fds[1], &info, sizeof(info), MSG_NOSIGNAL);

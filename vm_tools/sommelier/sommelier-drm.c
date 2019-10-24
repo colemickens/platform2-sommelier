@@ -191,6 +191,7 @@ static void sl_drm_format(void* data,
     case WL_DRM_FORMAT_XRGB8888:
     case WL_DRM_FORMAT_XBGR8888:
       wl_drm_send_format(host->resource, format);
+      break;
     default:
       break;
   }

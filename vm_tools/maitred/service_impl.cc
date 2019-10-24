@@ -531,8 +531,8 @@ grpc::Status ServiceImpl::Mount9P(grpc::ServerContext* ctx,
 
   struct sockaddr_vm svm = {
       .svm_family = AF_VSOCK,
-      .svm_cid = VMADDR_CID_HOST,
       .svm_port = static_cast<unsigned int>(request->port()),
+      .svm_cid = VMADDR_CID_HOST,
   };
   if (connect(server.get(), reinterpret_cast<struct sockaddr*>(&svm),
               sizeof(svm)) != 0) {

@@ -229,6 +229,7 @@ static void sl_shm_format(void* data, struct wl_shm* shm, uint32_t format) {
     case WL_SHM_FORMAT_XRGB8888:
     case WL_SHM_FORMAT_XBGR8888:
       wl_shm_send_format(host->resource, format);
+      break;
     default:
       break;
   }
