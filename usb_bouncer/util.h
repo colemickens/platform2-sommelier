@@ -14,6 +14,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include <base/bind.h>
+#include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/time/time.h>
@@ -39,8 +41,7 @@ constexpr char kDBusPath[] = "/run/dbus/system_bus_socket";
 
 constexpr uid_t kRootUid = 0;
 
-std::string Hash(const std::string& content);
-std::string Hash(const google::protobuf::RepeatedPtrField<std::string>& rules);
+constexpr int kDefaultWaitTimeoutInSeconds = 5;
 
 enum class UMADeviceRecognized {
   kRecognized,
@@ -53,6 +54,9 @@ enum class UMAEventTiming {
   kLocked = 2,
   kMaxValue = kLocked,
 };
+
+std::string Hash(const std::string& content);
+std::string Hash(const google::protobuf::RepeatedPtrField<std::string>& rules);
 
 // Set USB devices to be authorized by default and authorize any devices that
 // were left unauthorized. This is performed on unlock when USBGuard is
@@ -110,6 +114,19 @@ brillo::SafeFD OpenStateFile(const base::FilePath& base_path,
                              const std::string& parent_dir,
                              const std::string& state_file_name,
                              bool lock);
+
+// Returns true if |watched_path| exists. If it is available immediately,
+// no further action is taken. Otherwise, the process is forked and the parent
+// exits immediately. The child will wait until |watched_path| exists or the
+// |timeout| is reached.
+//
+// This is used to avoid blocking udev while waiting on journald to finish
+// setting up logging. |fork_func| is provided for testability (note that if
+// fork_func returns non-zero, exit(0) is called).
+bool ForkAndWaitIfDoesNotExist(
+    const base::FilePath& watched_path,
+    const base::TimeDelta& timeout = base::TimeDelta::FromSeconds(5),
+    base::Callback<pid_t()> fork_func = base::Bind(&fork));
 
 void UpdateTimestamp(Timestamp* timestamp);
 size_t RemoveEntriesOlderThan(base::TimeDelta cutoff, EntryMap* map);

@@ -51,6 +51,21 @@ bool CheckDeviceNodeAuthorized(const base::FilePath& dir) {
          CheckEnabledFlag(dir.Append(kSysFSAuthorizedDefault));
 }
 
+// Mock for testing ForkAndWaitIfDoesNotExist(...). It sets the |taken| to true,
+// and always returns 0. If |to_create| isn't empty, it creates a directory at
+// that path to make it possible to test the case the path is created after the
+// fork.
+int ForkMock(bool* taken, const base::FilePath& to_create) {
+  *taken = true;
+
+  if (!to_create.empty()) {
+    base::CreateDirectory(to_create);
+  }
+
+  // Always take the child path, because the parent path exits.
+  return 0;
+}
+
 }  // namespace
 
 TEST(UtilTest, IncludeRuleAtLockscreen) {
@@ -106,6 +121,44 @@ TEST(UtilTest, AuthorizeAll_Failure) {
   EXPECT_FALSE(AuthorizeAll(temp_dir_.GetPath().value()));
   EXPECT_FALSE(CheckDeviceNodeAuthorized(subdir));
   EXPECT_TRUE(CheckDeviceNodeAuthorized(deepdir));
+}
+
+TEST(UtilTest, ForkAndWaitIfPathUnavailable_PathExists) {
+  base::FilePath empty_path;
+  base::ScopedTempDir temp_dir_;
+  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()) << strerror(errno);
+
+  bool fork_taken = false;
+  EXPECT_TRUE(ForkAndWaitIfDoesNotExist(
+      temp_dir_.GetPath(), base::TimeDelta::FromSeconds(0),
+      base::Bind(&ForkMock, base::Unretained(&fork_taken), empty_path)));
+  EXPECT_FALSE(fork_taken);
+}
+
+TEST(UtilTest, ForkAndWaitIfPathUnavailable_PathDoesntExistTimeout) {
+  base::FilePath empty_path;
+  base::ScopedTempDir temp_dir_;
+  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()) << strerror(errno);
+  base::FilePath sub_dir_ = temp_dir_.GetPath().Append("DoesNotExist");
+  LOG(INFO) << "PATH: " << sub_dir_.value();
+
+  bool fork_taken = false;
+  EXPECT_FALSE(ForkAndWaitIfDoesNotExist(
+      sub_dir_, base::TimeDelta::FromSeconds(0),
+      base::Bind(&ForkMock, base::Unretained(&fork_taken), empty_path)));
+  EXPECT_TRUE(fork_taken);
+}
+
+TEST(UtilTest, ForkAndWaitIfPathUnavailable_PathDoesntExistSucceed) {
+  base::ScopedTempDir temp_dir_;
+  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()) << strerror(errno);
+  base::FilePath sub_dir_ = temp_dir_.GetPath().Append("ExistsAfterFork");
+
+  bool fork_taken = false;
+  EXPECT_TRUE(ForkAndWaitIfDoesNotExist(
+      sub_dir_, base::TimeDelta::FromSeconds(1),
+      base::Bind(&ForkMock, base::Unretained(&fork_taken), sub_dir_)));
+  EXPECT_TRUE(fork_taken);
 }
 
 TEST(UtilTest, GetRuleFromString_Success) {

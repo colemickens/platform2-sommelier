@@ -17,6 +17,7 @@
 #include "usb_bouncer/util.h"
 
 using usb_bouncer::EntryManager;
+using usb_bouncer::ForkAndWaitIfDoesNotExist;
 
 namespace {
 
@@ -194,6 +195,10 @@ int HandleUdev(SeccompEnforcement seccomp,
     LOG(ERROR) << "Invalid options!";
     return EXIT_FAILURE;
   }
+
+  // The return code isn't checked because LOG statements are already present in
+  // the function. The return value allows tests to validate the behavior.
+  ForkAndWaitIfDoesNotExist(base::FilePath(kLogPath));
 
   EntryManager* entry_manager = GetEntryManagerOrDie(seccomp);
   if (!entry_manager->HandleUdev(action, argv[1])) {

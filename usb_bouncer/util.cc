@@ -555,6 +555,42 @@ size_t RemoveEntriesOlderThan(base::TimeDelta cutoff, EntryMap* map) {
   return num_removed;
 }
 
+bool ForkAndWaitIfDoesNotExist(const base::FilePath& watched_path,
+                               const base::TimeDelta& timeout,
+                               base::Callback<pid_t()> fork_func) {
+  if (base::PathExists(watched_path)) {
+    return true;
+  }
+
+  // Exit success for the parent to allow udev to continue but fork so the event
+  // can be handled once logging is available.
+  if (fork_func.Run() != 0) {
+    exit(0);
+  }
+
+  if (base::PathExists(watched_path)) {
+    LOG(INFO) << "Forked because '" << watched_path.value()
+              << "' was unavailable.";
+    return true;
+  }
+
+  const base::Time deadline = base::Time::Now() + timeout;
+  const base::TimeDelta check_interval = base::TimeDelta::FromMilliseconds(250);
+
+  while (base::Time::Now() < deadline) {
+    base::PlatformThread::Sleep(check_interval);
+    if (base::PathExists(watched_path)) {
+      LOG(INFO) << "Forked because '" << watched_path.value()
+                << "' was unavailable.";
+      return true;
+    }
+  }
+
+  LOG(ERROR) << "Timed out after fork waiting for '" << watched_path.value()
+             << "' to be available.";
+  return false;
+}
+
 #define TO_STRING_HELPER(x)  \
   case UMADeviceClass::k##x: \
     return #x
