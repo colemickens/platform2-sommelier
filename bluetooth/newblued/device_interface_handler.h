@@ -244,6 +244,9 @@ class DeviceInterfaceHandler {
 
   // Installs org.bluez.Device1 method handlers.
   void AddDeviceMethodHandlers(ExportedInterface* device_interface);
+  // Installs org.chromium.BluetoothDevice method handlers.
+  void AddDevicePluginMethodHandlers(
+      ExportedInterface* device_plugin_interface);
 
   // D-Bus method handlers for device objects.
   void HandlePair(
@@ -261,6 +264,15 @@ class DeviceInterfaceHandler {
   void HandleExecuteWrite(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
       dbus::Message* message);
+  // D-Bus method handlers for device objects on org.chromium.BluetoothDevice
+  // interface.
+  void HandleGetConnInfo(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      dbus::Message* message);
+  void HandleSetLEConnectionParameters(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      dbus::Message* message);
+
   // TODO(mcchou): Handle the rest of the D-Bus methods of the device interface.
   // ConnectProfile() - No op, but we may need dummy implementation later.
   // DisconnectPorfile() - No op, but we may need dummy implementation later.
