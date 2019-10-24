@@ -357,7 +357,6 @@
 			"type": "sysfs",
 			"source": "none",
 			"options": [
-				"mode=755",
 				"nosuid",
 				"noexec",
 				"nodev"
