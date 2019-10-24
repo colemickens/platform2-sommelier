@@ -123,10 +123,12 @@ static_library("libupload_service") {
     ":libmetrics-${libbase_ver}",
     ":metrics_proto",
   ]
-  all_dependent_pkg_deps = [
-    "protobuf-lite",
-    "vboot_host",
-  ]
+  all_dependent_pkg_deps = [ "vboot_host" ]
+  if (use.fuzzer) {
+    all_dependent_pkg_deps += [ "protobuf" ]
+  } else {
+    all_dependent_pkg_deps += [ "protobuf-lite" ]
+  }
   sources = [
     "uploader/metrics_hashes.cc",
     "uploader/metrics_log.cc",
