@@ -108,7 +108,7 @@ mount -n -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 
 # Mount configfs, if present.
 if [ -d /sys/kernel/config ]; then
-  mount -n -t configfs -o nodev,nosuid,noexec,mode=0750 configfs \
+  mount -n -t configfs -o nodev,nosuid,noexec configfs \
     /sys/kernel/config
 fi
 
