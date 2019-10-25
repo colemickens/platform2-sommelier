@@ -70,14 +70,19 @@ bool MakeRequest(
 int main(int argc, char** argv) {
   DEFINE_string(message_name, "",
                 "Name of gRPC request to make. Options are:"
+                "GetAvailableRoutines,"
+                "GetBluetoothData,"
+                "GetConfigurationData,"
+                "GetDriveSystemData,"
                 "GetEcTelemetry,"
                 "GetOsVersion,"
                 "GetProcData,"
                 "GetRoutineUpdate,"
                 "GetSysfsData,"
+                "GetVpdField,"
                 "PerformWebRequest,"
                 "RunRoutine,"
-                "GetAvailableRoutines");
+                "SendMessageToUi");
   DEFINE_string(message_body, "",
                 "JSON-formatted body of proto to send as argument of request");
   constexpr char kUsageMessage[] =
@@ -129,7 +134,23 @@ EXAMPLE USAGE
   };
 
   bool request_succeeded = false;
-  if (FLAGS_message_name == "GetEcTelemetry") {
+  if (FLAGS_message_name == "GetAvailableRoutines") {
+    request_succeeded = diagnostics::MakeRequest(
+        requester.get(), &diagnostics::DpslRequester::GetAvailableRoutines,
+        FLAGS_message_body, callback);
+  } else if (FLAGS_message_name == "GetBluetoothData") {
+    request_succeeded = diagnostics::MakeRequest(
+        requester.get(), &diagnostics::DpslRequester::GetBluetoothData,
+        FLAGS_message_body, callback);
+  } else if (FLAGS_message_name == "GetConfigurationData") {
+    request_succeeded = diagnostics::MakeRequest(
+        requester.get(), &diagnostics::DpslRequester::GetConfigurationData,
+        FLAGS_message_body, callback);
+  } else if (FLAGS_message_name == "GetDriveSystemData") {
+    request_succeeded = diagnostics::MakeRequest(
+        requester.get(), &diagnostics::DpslRequester::GetDriveSystemData,
+        FLAGS_message_body, callback);
+  } else if (FLAGS_message_name == "GetEcTelemetry") {
     request_succeeded = diagnostics::MakeRequest(
         requester.get(), &diagnostics::DpslRequester::GetEcTelemetry,
         FLAGS_message_body, callback);
@@ -149,6 +170,10 @@ EXAMPLE USAGE
     request_succeeded = diagnostics::MakeRequest(
         requester.get(), &diagnostics::DpslRequester::GetSysfsData,
         FLAGS_message_body, callback);
+  } else if (FLAGS_message_name == "GetVpdField") {
+    request_succeeded = diagnostics::MakeRequest(
+        requester.get(), &diagnostics::DpslRequester::GetVpdField,
+        FLAGS_message_body, callback);
   } else if (FLAGS_message_name == "PerformWebRequest") {
     request_succeeded = diagnostics::MakeRequest(
         requester.get(), &diagnostics::DpslRequester::PerformWebRequest,
@@ -157,9 +182,9 @@ EXAMPLE USAGE
     request_succeeded = diagnostics::MakeRequest(
         requester.get(), &diagnostics::DpslRequester::RunRoutine,
         FLAGS_message_body, callback);
-  } else if (FLAGS_message_name == "GetAvailableRoutines") {
+  } else if (FLAGS_message_name == "SendMessageToUi") {
     request_succeeded = diagnostics::MakeRequest(
-        requester.get(), &diagnostics::DpslRequester::GetAvailableRoutines,
+        requester.get(), &diagnostics::DpslRequester::SendMessageToUi,
         FLAGS_message_body, callback);
   } else {
     std::cerr
