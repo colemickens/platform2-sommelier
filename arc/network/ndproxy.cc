@@ -15,6 +15,8 @@
 #include <linux/filter.h>
 #include <linux/if_packet.h>
 #include <linux/in6.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
 #include <net/ethernet.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
@@ -149,9 +151,13 @@ ssize_t NDProxy::TranslateNDFrame(const uint8_t* in_frame,
       reinterpret_cast<icmp6_hdr*>(out_frame + ETHER_HDR_LEN + sizeof(ip6_hdr));
 
   // If destination MAC is unicast (Individual/Group bit in MAC address == 0),
-  // it needs to be modified into broadcast so guest OS L3 stack can see it.
+  // it needs to be modified so guest OS L3 stack can see it.
   if (!(eth->h_dest[0] & 0x1)) {
-    memcpy(eth->h_dest, kBroadcastMacAddress, ETHER_ADDR_LEN);
+    if (!QueryNeighborTable(&ip6->ip6_dst, eth->h_dest)) {
+      // If we can't resolve the destination IP into MAC from kernel neighbor
+      // table, fill destination MAC with broadcast MAC instead.
+      memcpy(eth->h_dest, kBroadcastMacAddress, ETHER_ADDR_LEN);
+    }
   }
 
   switch (icmp6->icmp6_type) {
@@ -194,6 +200,121 @@ ssize_t NDProxy::TranslateNDFrame(const uint8_t* in_frame,
 
   memcpy(eth->h_source, local_mac_addr, ETHER_ADDR_LEN);
   return frame_len;
+}
+
+bool NDProxy::QueryNeighborTable(const in6_addr* ipv6_addr, uint8_t* mac_addr) {
+  base::ScopedFD rtnl_fd = base::ScopedFD(
+      socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_ROUTE));
+  if (!rtnl_fd.is_valid()) {
+    PLOG(ERROR) << "socket() failed for rtnetlink socket";
+    return false;
+  }
+  sockaddr_nl local = {
+      .nl_family = AF_NETLINK,
+      .nl_groups = 0,
+  };
+  if (bind(rtnl_fd.get(), reinterpret_cast<sockaddr*>(&local), sizeof(local)) <
+      0) {
+    PLOG(ERROR) << "bind() failed on rtnetlink socket";
+    return false;
+  }
+
+  sockaddr_nl kernel = {
+      .nl_family = AF_NETLINK,
+      .nl_groups = 0,
+  };
+  struct nl_req {
+    nlmsghdr hdr;
+    rtgenmsg gen;
+  } req = {
+      .hdr =
+          {
+              .nlmsg_len = NLMSG_LENGTH(sizeof(rtgenmsg)),
+              .nlmsg_type = RTM_GETNEIGH,
+              .nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP,
+              .nlmsg_seq = 1,
+          },
+      .gen =
+          {
+              .rtgen_family = AF_INET6,
+          },
+  };
+  iovec io_req = {
+      .iov_base = &req,
+      .iov_len = req.hdr.nlmsg_len,
+  };
+  msghdr rtnl_req = {
+      .msg_name = &kernel,
+      .msg_namelen = sizeof(kernel),
+      .msg_iov = &io_req,
+      .msg_iovlen = 1,
+  };
+  if (sendmsg(rtnl_fd.get(), &rtnl_req, 0) < 0) {
+    PLOG(ERROR) << "sendmsg() failed on rtnetlink socket";
+    return false;
+  }
+
+  static constexpr size_t kRtnlReplyBufferSize = 32768;
+  char reply_buffer[kRtnlReplyBufferSize];
+  iovec io_reply = {
+      .iov_base = reply_buffer,
+      .iov_len = kRtnlReplyBufferSize,
+  };
+  msghdr rtnl_reply = {
+      .msg_name = &kernel,
+      .msg_namelen = sizeof(kernel),
+      .msg_iov = &io_reply,
+      .msg_iovlen = 1,
+  };
+
+  bool any_entry_matched = false;
+  bool done = false;
+  while (!done) {
+    ssize_t len;
+    if ((len = recvmsg(rtnl_fd.get(), &rtnl_reply, 0)) < 0) {
+      PLOG(ERROR) << "recvmsg() failed on rtnetlink socket";
+      return false;
+    }
+    for (nlmsghdr* msg_ptr = reinterpret_cast<nlmsghdr*>(reply_buffer);
+         NLMSG_OK(msg_ptr, len); msg_ptr = NLMSG_NEXT(msg_ptr, len)) {
+      switch (msg_ptr->nlmsg_type) {
+        case NLMSG_DONE: {
+          done = true;
+          break;
+        }
+        case RTM_NEWNEIGH: {
+          // Bitmap - 0x1: Found IP match; 0x2: found MAC address;
+          uint8_t current_entry_status = 0x0;
+          uint8_t current_mac[ETHER_ADDR_LEN];
+          ndmsg* nd_msg = reinterpret_cast<ndmsg*>(NLMSG_DATA(msg_ptr));
+          rtattr* rt_attr = reinterpret_cast<rtattr*>(RTM_RTA(nd_msg));
+          size_t rt_attr_len = RTM_PAYLOAD(msg_ptr);
+          for (; RTA_OK(rt_attr, rt_attr_len);
+               rt_attr = RTA_NEXT(rt_attr, rt_attr_len)) {
+            if (rt_attr->rta_type == NDA_DST &&
+                memcmp(ipv6_addr, RTA_DATA(rt_attr), sizeof(in6_addr)) == 0) {
+              current_entry_status |= 0x1;
+            } else if (rt_attr->rta_type == NDA_LLADDR) {
+              current_entry_status |= 0x2;
+              memcpy(current_mac, RTA_DATA(rt_attr), ETHER_ADDR_LEN);
+            }
+          }
+          if (current_entry_status == 0x3) {
+            memcpy(mac_addr, current_mac, ETHER_ADDR_LEN);
+            any_entry_matched = true;
+          }
+          break;
+        }
+        default: {
+          LOG(WARNING) << "received unexpected rtnetlink message type "
+                       << msg_ptr->nlmsg_type << ", length "
+                       << msg_ptr->nlmsg_len;
+          break;
+        }
+      }
+    }
+  }
+  return any_entry_matched;
 }
 
 NDProxy::interface_mapping* NDProxy::MapForType(uint8_t type) {

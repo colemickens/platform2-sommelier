@@ -92,6 +92,11 @@ class NDProxy : public brillo::Daemon {
 
   void ProxyNDFrame(int target_if, ssize_t frame_len);
 
+  // Query kernel NDP table and get the MAC address of a certain IPv6 neighbor.
+  // |mac_addr| need to be at least ETHER_ADDR_LEN long. Returns false when
+  // neighbor entry is not found.
+  static bool QueryNeighborTable(const in6_addr* ipv6_addr, uint8_t* mac_addr);
+
   // Utilize MessageDispatcher to watch control fd
   std::unique_ptr<MessageDispatcher> msg_dispatcher_;
   // Data fd and its watcher
