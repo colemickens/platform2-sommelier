@@ -19,6 +19,8 @@ INVALID="-1"
 # Report disk health from SMART (S.M.A.R.T.) parameters.
 # usage:
 #   report_smart_metrics <uncorrectable-errors> <transfer-errors>
+#     <percentage-used> <available-reserved-space> <sectors-written>
+#     <sectors-read>
 report_smart_metrics() {
   if [ -n "$1" ]; then
     if [ "$1" -ne "${INVALID}" ]; then
@@ -30,19 +32,49 @@ report_smart_metrics() {
       metrics_client Platform.SmartTransferErrors "$2" 1 1000000 20
     fi
   fi
+  if [ -n "$3" ]; then
+    if [ "$3" -ne "${INVALID}" ]; then
+      metrics_client Platform.SATA.PercentageUsed "$3" 0 255 50
+    fi
+  fi
+  if [ -n "$4" ]; then
+    if [ "$4" -ne "${INVALID}" ]; then
+      metrics_client Platform.SATA.AvailableReservedSpace "$4" 0 100 50
+    fi
+  fi
+  if [ -n "$5" ]; then
+    if [ "$5" -ne "${INVALID}" ]; then
+      # Logical Sectors Written is the total number of 512-byte sectors written.
+      # The maximum value set here equates to 100 TiB.
+      metrics_client Platform.SATA.LogicalSectorsWritten "$5" 0 214748364800 50
+    fi
+  fi
+  if [ -n "$6" ]; then
+    if [ "$6" -ne "${INVALID}" ]; then
+      # Logical Sectors Read is the total number of 512-byte sectors read.
+      # The maximum value set here equates to 100 TiB.
+      metrics_client Platform.SATA.LogicalSectorsRead "$6" 0 214748364800 50
+    fi
+  fi
 }
 
 # Sata information.
-GET_SMART_ERRORS='
+GET_SMART_INFO='
   $2 == "Reported_Uncorrect" { uncorr = $8 }
   $2 == "UDMA_CRC_Error_Count" { txfer = $8 }
-  END { print uncorr, txfer }
+  $6 == "Percentage" && $7 == "Used" { life = $4 }
+  $2 == "Available_Reservd_Space" { rsrved = $8 }
+  $6 == "Logical" && $7 == "Sectors" && $8 == "Written" { written = $4 }
+  $6 == "Logical" && $7 == "Sectors" && $8 == "Read" { read = $4 }
+  END { print uncorr, txfer, life, rsrved, written, read }
 '
 
 sata_disk_metrics() {
   # Extract revelevant SMART information from this file, if any.
   report_smart_metrics $(awk -v uncorr="${INVALID}" -v txfer="${INVALID}" \
-                         "${GET_SMART_ERRORS}" "${STORAGE_INFO_FILE}")
+                         -v life="${INVALID}" -v rsrved="${INVALID}" \
+                         -v written="${INVALID}" -v read="${INVALID}" \
+                         "${GET_SMART_INFO}" "${STORAGE_INFO_FILE}")
 }
 
 emmc_disk_metrics() {
