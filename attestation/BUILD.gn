@@ -50,11 +50,7 @@ proto_library("proto_library_proto") {
   standalone = true
 }
 
-static_library("proto_library") {
-  configs -= [
-    "//common-mk:pie",
-    "//common-mk:use_thin_archive",
-  ]
+source_set("proto_library") {
   configs += [
     "//common-mk:nouse_thin_archive",
     "//common-mk:pic",
@@ -76,6 +72,7 @@ pkg_config("common_library_config") {
     "openssl",
     "vboot_host",
   ]
+  libs = [ "tpm_manager" ]
 }
 
 config("common_library_with_tpm2_config") {
@@ -86,13 +83,12 @@ config("common_library_without_tpm2_config") {
   libs = [ "tspi" ]
 }
 
-static_library("common_library") {
+source_set("common_library") {
   sources = [
     "common/crypto_utility_impl.cc",
     "common/tpm_utility_factory.cc",
   ]
   all_dependent_configs = [ ":common_library_config" ]
-  configs -= [ "//common-mk:use_thin_archive" ]
   configs += [
     "//common-mk:nouse_thin_archive",
     ":target_defaults",
@@ -115,12 +111,7 @@ static_library("common_library") {
 }
 
 # A library for client code.
-static_library("client_library") {
-  # Use -fPIC so this code can be linked into a shared library.
-  configs -= [
-    "//common-mk:pie",
-    "//common-mk:use_thin_archive",
-  ]
+source_set("client_library") {
   configs += [
     "//common-mk:pic",
     ":target_defaults",
@@ -185,7 +176,7 @@ config("server_library_config") {
   libs = [ "chaps" ]
 }
 
-static_library("server_library") {
+source_set("server_library") {
   sources = [
     "server/attestation_service.cc",
     "server/database_impl.cc",
@@ -203,10 +194,6 @@ static_library("server_library") {
   ]
 }
 
-config("server_library_link_config") {
-  libs = [ "tpm_manager" ]
-}
-
 # The attestation daemon.
 pkg_config("attestationd_config") {
   pkg_deps = [ "libminijail" ]
@@ -219,7 +206,6 @@ executable("attestationd") {
   configs += [
     ":attestationd_config",
     ":local_proto_include",
-    ":server_library_link_config",
     ":target_defaults",
   ]
   deps = [
@@ -249,7 +235,6 @@ if (use.test) {
       "//common-mk:test",
       ":attestation_testrunner_config",
       ":local_proto_include",
-      ":server_library_link_config",
       ":target_defaults",
     ]
     sources = [
