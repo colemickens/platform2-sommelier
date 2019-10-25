@@ -13,7 +13,10 @@ group("all") {
     deps += [ ":permission_broker_test" ]
   }
   if (use.fuzzer) {
-    deps += [ ":firewall_fuzzer" ]
+    deps += [
+      ":firewall_fuzzer",
+      ":port_tracker_fuzzer"
+    ]
   }
 }
 
@@ -125,13 +128,13 @@ if (use.test) {
 
 # Fuzzer target.
 if (use.fuzzer) {
-  pkg_config("firewall_fuzzer_config") {
+  pkg_config("permission_broker_fuzzer_config") {
     pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
   executable("firewall_fuzzer") {
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
-      ":firewall_fuzzer_config",
+      ":permission_broker_fuzzer_config",
       ":target_defaults",
     ]
     deps = [
@@ -139,6 +142,19 @@ if (use.fuzzer) {
     ]
     sources = [
       "firewall_fuzzer.cc",
+    ]
+  }
+  executable("port_tracker_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":permission_broker_fuzzer_config",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libpermission_broker",
+    ]
+    sources = [
+      "port_tracker_fuzzer.cc",
     ]
   }
 }

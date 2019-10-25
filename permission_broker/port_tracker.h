@@ -52,7 +52,9 @@ class PortTracker {
     // Rule for closing a destination port to locally originated traffic.
     kLockdownRule = 2,
     // Rule for forwarding ingress traffic on a destination port.
-    kForwardingRule = 3
+    kForwardingRule = 3,
+    // Guard value used by FuzzedDataProvider. The name must remain unchanged.
+    kMaxValue = kForwardingRule
   };
 
   struct PortRule {
