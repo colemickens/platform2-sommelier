@@ -117,7 +117,7 @@ std::string Datapath::AddTAP(const std::string& name,
     return "";
   }
 
-  // Create control socket for configuing the interface.
+  // Create control socket for configuring the interface.
   base::ScopedFD sock(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
   if (!sock.is_valid()) {
     PLOG(ERROR) << "Failed to create control socket for tap interface "
