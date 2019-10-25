@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <arpa/inet.h>
+#include <net/if.h>
+
 #include <fuzzer/FuzzedDataProvider.h>
 #include <set>
 
@@ -33,51 +36,76 @@ struct Environment {
   }
 };
 
+void FuzzAcceptRules(permission_broker::FakeFirewall& fake_firewall,
+                     const uint8_t* data,
+                     size_t size) {
+  FuzzedDataProvider data_provider(data, size);
+  while (data_provider.remaining_bytes() > 0) {
+    permission_broker::ProtocolEnum proto =
+        data_provider.ConsumeBool() ? permission_broker::kProtocolTcp
+                                    : permission_broker::kProtocolUdp;
+    uint16_t port = data_provider.ConsumeIntegral<uint16_t>();
+    std::string iface = data_provider.ConsumeRandomLengthString(IFNAMSIZ - 1);
+    if (data_provider.ConsumeBool()) {
+      fake_firewall.AddAcceptRules(proto, port, iface);
+    } else {
+      fake_firewall.DeleteAcceptRules(proto, port, iface);
+    }
+  }
+}
+
+void FuzzForwardRules(permission_broker::FakeFirewall& fake_firewall,
+                      const uint8_t* data,
+                      size_t size) {
+  FuzzedDataProvider data_provider(data, size);
+  while (data_provider.remaining_bytes() > 0) {
+    permission_broker::ProtocolEnum proto =
+        data_provider.ConsumeBool() ? permission_broker::kProtocolTcp
+                                    : permission_broker::kProtocolUdp;
+    uint16_t forwarded_port = data_provider.ConsumeIntegral<uint16_t>();
+    uint16_t dst_port = data_provider.ConsumeIntegral<uint16_t>();
+    struct in_addr ip_addr = {.s_addr =
+                                  data_provider.ConsumeIntegral<uint32_t>()};
+    char buffer[INET_ADDRSTRLEN];
+    memset(buffer, 0, INET_ADDRSTRLEN);
+    inet_ntop(AF_INET, &ip_addr, buffer, INET_ADDRSTRLEN);
+    std::string dst_ip = buffer;
+    std::string iface = data_provider.ConsumeRandomLengthString(IFNAMSIZ - 1);
+    if (data_provider.ConsumeBool()) {
+      fake_firewall.AddIpv4ForwardRule(proto, forwarded_port, iface, dst_ip,
+                                       dst_port);
+    } else {
+      fake_firewall.DeleteIpv4ForwardRule(proto, forwarded_port, iface, dst_ip,
+                                          dst_port);
+    }
+  }
+}
+
+void FuzzLoopbackLockdownRules(permission_broker::FakeFirewall& fake_firewall,
+                               const uint8_t* data,
+                               size_t size) {
+  FuzzedDataProvider data_provider(data, size);
+  while (data_provider.remaining_bytes() > 0) {
+    permission_broker::ProtocolEnum proto =
+        data_provider.ConsumeBool() ? permission_broker::kProtocolTcp
+                                    : permission_broker::kProtocolUdp;
+    uint16_t port = data_provider.ConsumeIntegral<uint16_t>();
+    if (data_provider.ConsumeBool()) {
+      fake_firewall.AddLoopbackLockdownRules(proto, port);
+    } else {
+      fake_firewall.DeleteLoopbackLockdownRules(proto, port);
+    }
+  }
+}
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
 
   permission_broker::FakeFirewall fake_firewall;
-  FuzzedDataProvider data_provider(data, size);
 
-  std::set<uint16_t> tcp_ports;
-  std::set<uint16_t> udp_ports;
+  FuzzAcceptRules(fake_firewall, data, size);
+  FuzzForwardRules(fake_firewall, data, size);
+  FuzzLoopbackLockdownRules(fake_firewall, data, size);
 
-  // How many ports should we try?
-  uint8_t num_ports = data_provider.ConsumeIntegral<uint8_t>();
-  for (size_t i = 0; i < num_ports; i++) {
-    bool is_tcp = data_provider.ConsumeBool();
-    uint16_t port = data_provider.ConsumeIntegral<uint16_t>();
-
-    if (!is_tcp && port == 0) {
-      // Did we run out of data? Consume another bool to check.
-      if (!data_provider.ConsumeBool())
-        break;
-    }
-
-    bool do_add = true;
-
-    if ((is_tcp && tcp_ports.count(port) == 0) ||
-        (!is_tcp && udp_ports.count(port) == 0)) {
-      // Port does not exist.
-      // With small probability, hit the error case: delete a port that doesn't
-      // exist.
-      do_add = data_provider.ConsumeIntegral<uint8_t>() < 0xFF;
-    } else {
-      // Port exists.
-      // With small probability, hit the error case: add a port that already
-      // exists.
-      do_add = data_provider.ConsumeIntegral<uint8_t>() == 0xFF;
-    }
-
-    if (do_add) {
-      fake_firewall.AddAcceptRules(is_tcp ? permission_broker::kProtocolTcp
-                                          : permission_broker::kProtocolUdp,
-                                   port, "iface");
-    } else {
-      fake_firewall.DeleteAcceptRules(is_tcp ? permission_broker::kProtocolTcp
-                                             : permission_broker::kProtocolUdp,
-                                      port, "iface");
-    }
-  }
   return 0;
 }
