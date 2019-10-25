@@ -588,6 +588,11 @@ GpuVdaImpl* GpuVdaImpl::Create() {
 
 GpuVdaImpl::GpuVdaImpl() : ipc_thread_("MojoIpcThread") {
   CHECK_EQ(active_impl, nullptr);
+
+  // TODO(alexlau): Use DETACH_FROM_THREAD macro after libchrome uprev
+  // (crbug.com/909719).
+  ipc_thread_checker_.DetachFromThread();
+
   active_impl = this;
 
   mojo::edk::Init();
@@ -634,9 +639,6 @@ void GpuVdaImpl::InitializeOnIpcThread(bool* init_success) {
   // Since ipc_thread_checker_ binds to whichever thread it's created on, check
   // that we're on the correct thread first using BelongsToCurrentThread.
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  // TODO(alexlau): Use DETACH_FROM_THREAD macro after libchrome uprev
-  // (crbug.com/909719).
-  ipc_thread_checker_.DetachFromThread();
   // TODO(alexlau): Use DCHECK_CALLED_ON_VALID_THREAD macro after libchrome
   // uprev (crbug.com/909719).
   DCHECK(ipc_thread_checker_.CalledOnValidThread());

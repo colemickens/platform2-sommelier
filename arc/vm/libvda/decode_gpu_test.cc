@@ -87,13 +87,14 @@ class LibvdaGpuTest : public ::testing::Test {
 // Test that the gpu implementation initializes and deinitializes successfully.
 TEST_F(LibvdaGpuTest, InitializeGpu) {
   ImplPtr impl = SetupImpl(GAVDA);
-  EXPECT_NE(impl, nullptr);
+  ASSERT_NE(impl, nullptr);
 }
 
 // Test that the GPU implementation creates and closes a decode session
 // successfully.
 TEST_F(LibvdaGpuTest, InitDecodeSessionGpu) {
   ImplPtr impl = SetupImpl(GAVDA);
+  ASSERT_NE(impl, nullptr);
   SessionPtr session = SetupSession(impl, H264PROFILE_MAIN);
   ASSERT_NE(session, nullptr);
   EXPECT_NE(session->ctx, nullptr);
@@ -103,6 +104,7 @@ TEST_F(LibvdaGpuTest, InitDecodeSessionGpu) {
 // Test that the gpu implementation has valid input and output capabilities.
 TEST_F(LibvdaGpuTest, GetCapabilitiesGpu) {
   ImplPtr impl = SetupImpl(GAVDA);
+  ASSERT_NE(impl, nullptr);
   const vda_capabilities_t* capabilities = get_vda_capabilities(impl.get());
   EXPECT_GT(capabilities->num_input_formats, 0);
   EXPECT_NE(capabilities->input_formats, nullptr);
@@ -142,6 +144,7 @@ TEST_F(LibvdaGpuTest, DecodeFileGpu) {
       file_size);
 
   ImplPtr impl = SetupImpl(GAVDA);
+  ASSERT_NE(impl, nullptr);
   SessionPtr session = SetupSession(impl, file_profile);
   ASSERT_NE(session, nullptr);
 
