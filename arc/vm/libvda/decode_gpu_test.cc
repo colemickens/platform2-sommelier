@@ -169,11 +169,11 @@ TEST_F(LibvdaGpuTest, DecodeFileGpu) {
     memcpy(shm.memory(), data.data(), data_size);
 
     base::SharedMemoryHandle handle(shm.TakeHandle());
-    ASSERT_GT(handle.fd, 0);
+    ASSERT_GT(handle.GetHandle(), 0);
 
     int32_t bitstream_id = next_bitstream_id;
     next_bitstream_id = (next_bitstream_id + 1) & 0x3FFFFFFF;
-    vda_decode(session->ctx, bitstream_id, handle.fd, 0 /* offset */,
+    vda_decode(session->ctx, bitstream_id, handle.GetHandle(), 0 /* offset */,
                data_size /* bytes_used */);
     waiting_decodes++;
 
