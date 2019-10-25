@@ -6,7 +6,6 @@
 #define DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_GRPC_SERVICE_H_
 
 #include <memory>
-#include <set>
 #include <string>
 #include <vector>
 
@@ -15,6 +14,8 @@
 #include <base/strings/string_piece.h>
 #include <base/macros.h>
 #include <google/protobuf/repeated_field.h>
+
+#include "diagnostics/wilco_dtc_supportd/telemetry/system_files_service.h"
 
 #include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
@@ -177,9 +178,11 @@ class WilcoDtcSupportdGrpcService final {
   ~WilcoDtcSupportdGrpcService();
 
   // Overrides the file system root directory for file operations in tests.
-  void set_root_dir_for_testing(const base::FilePath& root_dir) {
-    root_dir_ = root_dir;
-  }
+  void set_root_dir_for_testing(const base::FilePath& root_dir);
+
+  // Overrides the system files service for operations in tests.
+  void set_system_files_service_for_testing(
+      std::unique_ptr<SystemFilesService> service);
 
   // Implementation of the "WilcoDtcSupportd" gRPC interface:
   void SendMessageToUi(
@@ -217,27 +220,17 @@ class WilcoDtcSupportdGrpcService final {
       const GetDriveSystemDataCallback& callback);
 
  private:
-  // Constructs and, if successful, appends the dump of the specified file (with
-  // the path given relative to |root_dir_|) to the given protobuf repeated
-  // field.
   void AddFileDump(
-      const base::FilePath& relative_file_path,
+      SystemFilesService::File location,
       google::protobuf::RepeatedPtrField<grpc_api::FileDump>* file_dumps);
-  // Constructs and, if successful, appends the dump of every file in the
-  // specified directory (with the path given relative to |root_dir_|) to the
-  // given protobuf repeated field. This will follow allowable symlinks - see
-  // ShouldFollowSymlink() for details.
   void AddDirectoryDump(
-      const base::FilePath& relative_file_path,
+      SystemFilesService::Directory location,
       google::protobuf::RepeatedPtrField<grpc_api::FileDump>* file_dumps);
-  void SearchDirectory(
-      const base::FilePath& root_dir,
-      std::set<std::string>* visited_paths,
-      google::protobuf::RepeatedPtrField<diagnostics::grpc_api::FileDump>*
-          file_dumps);
 
   // Unowned. The delegate should outlive this instance.
   Delegate* const delegate_;
+
+  std::unique_ptr<SystemFilesService> system_files_service_;
 
   // The file system root directory. Can be overridden in tests.
   base::FilePath root_dir_{"/"};

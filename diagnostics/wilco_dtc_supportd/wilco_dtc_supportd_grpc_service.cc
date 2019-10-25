@@ -11,7 +11,6 @@
 #include <utility>
 
 #include <base/bind.h>
-#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
@@ -21,6 +20,7 @@
 #include <base/sys_info.h>
 
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
+#include "diagnostics/wilco_dtc_supportd/telemetry/system_files_service_impl.h"
 #include "diagnostics/wilco_dtc_supportd/vpd_constants.h"
 
 namespace diagnostics {
@@ -54,29 +54,6 @@ using GetDriveSystemDataCallback =
 
 // Https prefix expected to be a prefix of URL in PerformWebRequestParameter.
 constexpr char kHttpsPrefix[] = "https://";
-
-// Makes a dump of the specified file. Returns whether the dumping succeeded.
-bool MakeFileDump(const base::FilePath& file_path,
-                  grpc_api::FileDump* file_dump) {
-  std::string file_contents;
-  if (!base::ReadFileToString(file_path, &file_contents)) {
-    VPLOG(2) << "Failed to read from " << file_path.value();
-    return false;
-  }
-  const base::FilePath canonical_file_path =
-      base::MakeAbsoluteFilePath(file_path);
-  if (canonical_file_path.empty()) {
-    PLOG(ERROR) << "Failed to obtain canonical path for " << file_path.value();
-    return false;
-  }
-  VLOG(2) << "Read " << file_contents.size() << " bytes from "
-          << file_path.value() << " with canonical path "
-          << canonical_file_path.value();
-  file_dump->set_path(file_path.value());
-  file_dump->set_canonical_path(canonical_file_path.value());
-  file_dump->set_contents(std::move(file_contents));
-  return true;
-}
 
 // Calculates the size of all "string" and "bytes" fields in the request.
 // Must be updated if grpc_api::PerformWebRequestParameter proto is updated.
@@ -218,25 +195,33 @@ void ForwardGetDriveSystemDataResponse(
   callback.Run(std::move(reply));
 }
 
-// While dumping files in a directory, determines if we should follow a symlink
-// or not. Currently, we only follow symlinks one level down from /sys/class/*/.
-// For example, we would follow a symlink from /sys/class/hwmon/hwmon0, but we
-// would not follow a symlink from /sys/class/hwmon/hwmon0/device.
-bool ShouldFollowSymlink(const base::FilePath& link, base::FilePath root_dir) {
-  // Path relative to the root directory where we will follow symlinks.
-  constexpr char kAllowableSymlinkParentDir[] = "sys/class";
-  return base::FilePath(root_dir.Append(kAllowableSymlinkParentDir)) ==
-         link.DirName().DirName();
-}
-
 }  // namespace
 
 WilcoDtcSupportdGrpcService::WilcoDtcSupportdGrpcService(Delegate* delegate)
     : delegate_(delegate) {
   DCHECK(delegate_);
+
+  system_files_service_ = std::make_unique<SystemFilesServiceImpl>();
 }
 
 WilcoDtcSupportdGrpcService::~WilcoDtcSupportdGrpcService() = default;
+
+// Overrides the file system root directory for file operations in tests.
+void WilcoDtcSupportdGrpcService::set_root_dir_for_testing(
+    const base::FilePath& root_dir) {
+  root_dir_ = root_dir;
+
+  auto system_files_service = std::make_unique<SystemFilesServiceImpl>();
+  system_files_service->set_root_dir_for_testing(root_dir);
+
+  set_system_files_service_for_testing(std::move(system_files_service));
+}
+
+// Overrides the system files service for operations in tests.
+void WilcoDtcSupportdGrpcService::set_system_files_service_for_testing(
+    std::unique_ptr<SystemFilesService> service) {
+  system_files_service_ = std::move(service);
+}
 
 void WilcoDtcSupportdGrpcService::SendMessageToUi(
     std::unique_ptr<grpc_api::SendMessageToUiRequest> request,
@@ -253,32 +238,40 @@ void WilcoDtcSupportdGrpcService::GetProcData(
   auto reply = std::make_unique<grpc_api::GetProcDataResponse>();
   switch (request->type()) {
     case grpc_api::GetProcDataRequest::FILE_UPTIME:
-      AddFileDump(base::FilePath("proc/uptime"), reply->mutable_file_dump());
+      AddFileDump(SystemFilesService::File::kProcUptime,
+                  reply->mutable_file_dump());
       break;
     case grpc_api::GetProcDataRequest::FILE_MEMINFO:
-      AddFileDump(base::FilePath("proc/meminfo"), reply->mutable_file_dump());
+      AddFileDump(SystemFilesService::File::kProcMeminfo,
+                  reply->mutable_file_dump());
       break;
     case grpc_api::GetProcDataRequest::FILE_LOADAVG:
-      AddFileDump(base::FilePath("proc/loadavg"), reply->mutable_file_dump());
+      AddFileDump(SystemFilesService::File::kProcLoadavg,
+                  reply->mutable_file_dump());
       break;
     case grpc_api::GetProcDataRequest::FILE_STAT:
-      AddFileDump(base::FilePath("proc/stat"), reply->mutable_file_dump());
+      AddFileDump(SystemFilesService::File::kProcStat,
+                  reply->mutable_file_dump());
       break;
     case grpc_api::GetProcDataRequest::FILE_NET_NETSTAT:
-      AddFileDump(base::FilePath("proc/net/netstat"),
+      AddFileDump(SystemFilesService::File::kProcNetNetstat,
                   reply->mutable_file_dump());
       break;
     case grpc_api::GetProcDataRequest::FILE_NET_DEV:
-      AddFileDump(base::FilePath("proc/net/dev"), reply->mutable_file_dump());
+      AddFileDump(SystemFilesService::File::kProcNetDev,
+                  reply->mutable_file_dump());
       break;
     case grpc_api::GetProcDataRequest::FILE_DISKSTATS:
-      AddFileDump(base::FilePath("proc/diskstats"), reply->mutable_file_dump());
+      AddFileDump(SystemFilesService::File::kProcDiskstats,
+                  reply->mutable_file_dump());
       break;
     case grpc_api::GetProcDataRequest::FILE_CPUINFO:
-      AddFileDump(base::FilePath("proc/cpuinfo"), reply->mutable_file_dump());
+      AddFileDump(SystemFilesService::File::kProcCpuinfo,
+                  reply->mutable_file_dump());
       break;
     case grpc_api::GetProcDataRequest::FILE_VMSTAT:
-      AddFileDump(base::FilePath("proc/vmstat"), reply->mutable_file_dump());
+      AddFileDump(SystemFilesService::File::kProcVmstat,
+                  reply->mutable_file_dump());
       break;
     default:
       LOG(ERROR) << "GetProcData gRPC request type unset or invalid: "
@@ -299,31 +292,31 @@ void WilcoDtcSupportdGrpcService::GetSysfsData(
   auto reply = std::make_unique<grpc_api::GetSysfsDataResponse>();
   switch (request->type()) {
     case grpc_api::GetSysfsDataRequest::CLASS_HWMON:
-      AddDirectoryDump(base::FilePath("sys/class/hwmon/"),
+      AddDirectoryDump(SystemFilesService::Directory::kSysClassHwmon,
                        reply->mutable_file_dump());
       break;
     case grpc_api::GetSysfsDataRequest::CLASS_THERMAL:
-      AddDirectoryDump(base::FilePath("sys/class/thermal/"),
+      AddDirectoryDump(SystemFilesService::Directory::kSysClassThermal,
                        reply->mutable_file_dump());
       break;
     case grpc_api::GetSysfsDataRequest::FIRMWARE_DMI_TABLES:
-      AddDirectoryDump(base::FilePath("sys/firmware/dmi/tables/"),
+      AddDirectoryDump(SystemFilesService::Directory::kSysFirmwareDmiTables,
                        reply->mutable_file_dump());
       break;
     case grpc_api::GetSysfsDataRequest::CLASS_POWER_SUPPLY:
-      AddDirectoryDump(base::FilePath("sys/class/power_supply/"),
+      AddDirectoryDump(SystemFilesService::Directory::kSysClassPowerSupply,
                        reply->mutable_file_dump());
       break;
     case grpc_api::GetSysfsDataRequest::CLASS_BACKLIGHT:
-      AddDirectoryDump(base::FilePath("sys/class/backlight/"),
+      AddDirectoryDump(SystemFilesService::Directory::kSysClassBacklight,
                        reply->mutable_file_dump());
       break;
     case grpc_api::GetSysfsDataRequest::CLASS_NETWORK:
-      AddDirectoryDump(base::FilePath("sys/class/net/"),
+      AddDirectoryDump(SystemFilesService::Directory::kSysClassNetwork,
                        reply->mutable_file_dump());
       break;
     case grpc_api::GetSysfsDataRequest::DEVICES_SYSTEM_CPU:
-      AddDirectoryDump(base::FilePath("sys/devices/system/cpu/"),
+      AddDirectoryDump(SystemFilesService::Directory::kSysDevicesSystemCpu,
                        reply->mutable_file_dump());
       break;
     default:
@@ -673,69 +666,36 @@ void WilcoDtcSupportdGrpcService::GetDriveSystemData(
 }
 
 void WilcoDtcSupportdGrpcService::AddFileDump(
-    const base::FilePath& relative_file_path,
+    SystemFilesService::File location,
     google::protobuf::RepeatedPtrField<grpc_api::FileDump>* file_dumps) {
-  DCHECK(!relative_file_path.IsAbsolute());
-  grpc_api::FileDump file_dump;
-  if (!MakeFileDump(root_dir_.Append(relative_file_path), &file_dump)) {
-    // When a file is failed to be dumped, it's just omitted from the returned
-    // list of entries.
+  SystemFilesService::FileDump file_dump;
+
+  if (!system_files_service_->GetFileDump(location, &file_dump))
     return;
-  }
-  file_dumps->Add()->Swap(&file_dump);
+
+  grpc_api::FileDump grpc_dump;
+  grpc_dump.set_path(file_dump.path.value());
+  grpc_dump.set_canonical_path(file_dump.canonical_path.value());
+  grpc_dump.set_contents(std::move(file_dump.contents));
+
+  file_dumps->Add()->Swap(&grpc_dump);
 }
 
 void WilcoDtcSupportdGrpcService::AddDirectoryDump(
-    const base::FilePath& relative_file_path,
-    google::protobuf::RepeatedPtrField<grpc_api::FileDump>* file_dumps) {
-  DCHECK(!relative_file_path.IsAbsolute());
-  std::set<std::string> visited_paths;
-  SearchDirectory(root_dir_.Append(relative_file_path), &visited_paths,
-                  file_dumps);
-}
+    SystemFilesService::Directory location,
+    google::protobuf::RepeatedPtrField<grpc_api::FileDump>* grpc_dumps) {
+  std::vector<std::unique_ptr<SystemFilesService::FileDump>> dumps;
 
-void WilcoDtcSupportdGrpcService::SearchDirectory(
-    const base::FilePath& root_dir,
-    std::set<std::string>* visited_paths,
-    google::protobuf::RepeatedPtrField<diagnostics::grpc_api::FileDump>*
-        file_dumps) {
-  visited_paths->insert(base::MakeAbsoluteFilePath(root_dir).value());
-  base::FileEnumerator file_enum(
-      base::FilePath(root_dir), false,
-      base::FileEnumerator::FileType::FILES |
-          base::FileEnumerator::FileType::DIRECTORIES |
-          base::FileEnumerator::FileType::SHOW_SYM_LINKS);
-  for (base::FilePath path = file_enum.Next(); !path.empty();
-       path = file_enum.Next()) {
-    // Only certain symlinks are followed - see the comments for
-    // ShouldFollowSymlink for a full description of the behavior.
-    if (base::IsLink(path) && !ShouldFollowSymlink(path, root_dir_))
-      continue;
+  if (!system_files_service_->GetDirectoryDump(location, &dumps))
+    return;
 
-    base::FilePath canonical_path = base::MakeAbsoluteFilePath(path);
-    if (canonical_path.empty()) {
-      VPLOG(2) << "Failed to resolve path.";
-      continue;
-    }
+  for (auto& dump : dumps) {
+    grpc_api::FileDump grpc_dump;
+    grpc_dump.set_path(dump->path.value());
+    grpc_dump.set_canonical_path(dump->canonical_path.value());
+    grpc_dump.set_contents(std::move(dump->contents));
 
-    // Prevent visiting duplicate paths, which could happen due to following
-    // symlinks.
-    if (visited_paths->find(canonical_path.value()) != visited_paths->end())
-      continue;
-
-    visited_paths->insert(canonical_path.value());
-
-    if (base::DirectoryExists(path)) {
-      SearchDirectory(path, visited_paths, file_dumps);
-    } else {
-      grpc_api::FileDump file_dump;
-      if (!MakeFileDump(path, &file_dump)) {
-        // When a file is failed to be dumped, it's just omitted from the
-        // returned list of entries.
-        continue;
-      }
-      file_dumps->Add()->Swap(&file_dump);
-    }
+    grpc_dumps->Add()->Swap(&grpc_dump);
   }
 }
 
