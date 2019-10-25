@@ -340,7 +340,7 @@ void JpegDecodeAcceleratorImpl::DecodeOnIpcThreadLegacy(
   memcpy(input_shm->memory(), mmap_buf, input_buffer_size);
   munmap(mmap_buf, input_buffer_size);
 
-  int dup_input_fd = dup(input_shm->handle().fd);
+  int dup_input_fd = dup(input_shm->handle().GetHandle());
   int dup_output_fd = dup(output_fd);
   mojo::ScopedHandle input_handle = cros::WrapPlatformHandle(dup_input_fd);
   mojo::ScopedHandle output_handle = cros::WrapPlatformHandle(dup_output_fd);

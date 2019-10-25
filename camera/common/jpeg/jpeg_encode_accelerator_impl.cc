@@ -261,8 +261,8 @@ void JpegEncodeAcceleratorImpl::EncodeOnIpcThreadLegacy(
     memcpy(exif_shm->memory(), exif_buffer, exif_buffer_size);
   }
 
-  int dup_input_fd = dup(input_shm->handle().fd);
-  int dup_exif_fd = dup(exif_shm->handle().fd);
+  int dup_input_fd = dup(input_shm->handle().GetHandle());
+  int dup_exif_fd = dup(exif_shm->handle().GetHandle());
   int dup_output_fd = dup(output_fd);
 
   mojo::ScopedHandle input_handle = WrapPlatformHandle(dup_input_fd);
@@ -312,7 +312,7 @@ void JpegEncodeAcceleratorImpl::EncodeOnIpcThread(
     memcpy(exif_shm->memory(), exif_buffer, exif_buffer_size);
   }
 
-  int dup_exif_fd = dup(exif_shm->handle().fd);
+  int dup_exif_fd = dup(exif_shm->handle().GetHandle());
   mojo::ScopedHandle exif_handle = WrapPlatformHandle(dup_exif_fd);
 
   auto WrapToMojoPlanes =

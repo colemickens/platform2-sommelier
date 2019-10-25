@@ -147,11 +147,11 @@ int32_t PortraitModeEffect::ReprocessRequest(
     // the call of execve(). Duplicated descriptors do not share the
     // close-on-exec flag.
     base::ScopedFD dup_input_rgb_buf_fd(
-        HANDLE_EINTR(dup(input_rgb_shm.handle().fd)));
+        HANDLE_EINTR(dup(input_rgb_shm.handle().GetHandle())));
     base::ScopedFD dup_output_rgb_buf_fd(
-        HANDLE_EINTR(dup(output_rgb_shm.handle().fd)));
+        HANDLE_EINTR(dup(output_rgb_shm.handle().GetHandle())));
     base::ScopedFD dup_result_report_fd(
-        HANDLE_EINTR(dup(result_report_shm.handle().fd)));
+        HANDLE_EINTR(dup(result_report_shm.handle().GetHandle())));
     base::Process process = LaunchPortraitProcessor(
         dup_input_rgb_buf_fd.get(), dup_output_rgb_buf_fd.get(),
         dup_result_report_fd.get(), width, height, orientation);
@@ -174,10 +174,8 @@ int32_t PortraitModeEffect::ReprocessRequest(
     LOGF(INFO) << "Portrait processing finished";
 
     SegmentationResult segmentation_result = SegmentationResult::kFailure;
-    size_t size = 0;
-    if (!base::SharedMemory::GetSizeFromSharedMemoryHandle(
-            result_report_shm.handle(), &size) ||
-        size == 0) {
+    size_t size = result_report_shm.handle().GetSize();
+    if (size == 0) {
       LOGF(ERROR) << "Failed to get report or the report is empty";
       return -EINVAL;
     }

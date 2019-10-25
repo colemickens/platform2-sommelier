@@ -337,7 +337,7 @@ bool JpegCompressorImpl::EncodeHwLegacy(const uint8_t* input_buffer,
   int status = hw_encoder_->EncodeSync(
       -1, input_buffer, input_buffer_size, static_cast<int32_t>(width),
       static_cast<int32_t>(height), app1_buffer, app1_buffer_size,
-      output_shm->handle().fd, static_cast<uint32_t>(out_buffer_size),
+      output_shm->handle().GetHandle(), static_cast<uint32_t>(out_buffer_size),
       out_data_size);
   if (status == cros::JpegEncodeAccelerator::TRY_START_AGAIN) {
     // There might be some mojo errors. We will give a second try.
@@ -347,8 +347,8 @@ bool JpegCompressorImpl::EncodeHwLegacy(const uint8_t* input_buffer,
       status = hw_encoder_->EncodeSync(
           -1, input_buffer, input_buffer_size, static_cast<int32_t>(width),
           static_cast<int32_t>(height), app1_buffer, app1_buffer_size,
-          output_shm->handle().fd, static_cast<uint32_t>(out_buffer_size),
-          out_data_size);
+          output_shm->handle().GetHandle(),
+          static_cast<uint32_t>(out_buffer_size), out_data_size);
     } else {
       LOGF(ERROR) << "JPEG encode accelerator can't be started.";
     }
