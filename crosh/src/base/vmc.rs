@@ -4,6 +4,7 @@
 
 // Provides the command "vmc" for crosh which manages containers inside the vm.
 
+use std::io::{copy, Write};
 use std::process;
 
 use crate::dispatcher::{self, wait_for_result, Arguments, Command, Dispatcher};
@@ -12,8 +13,21 @@ use crate::util::is_chrome_feature_enabled;
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
         Command::new("vmc".to_string(), "".to_string(), "".to_string())
-            .set_command_callback(Some(execute_vmc)),
+            .set_command_callback(Some(execute_vmc))
+            .set_help_callback(vmc_help),
     );
+}
+
+fn vmc_help(_cmd: &Command, w: &mut dyn Write, _level: usize) {
+    let mut sub = process::Command::new("vmc").arg("--help").spawn().unwrap();
+
+    if copy(&mut sub.stdout.take().unwrap(), w).is_err() {
+        panic!();
+    }
+
+    if sub.wait().is_err() {
+        panic!();
+    }
 }
 
 fn execute_vmc(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Error> {
