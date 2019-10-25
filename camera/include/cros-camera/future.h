@@ -12,6 +12,7 @@
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/memory/ref_counted.h>
 
 #include "cros-camera/common.h"
@@ -53,7 +54,7 @@ template <typename T>
 class Future : public base::RefCountedThreadSafe<Future<T>> {
  public:
   static scoped_refptr<Future<T>> Create(CancellationRelay* relay) {
-    return make_scoped_refptr(new Future<T>(relay));
+    return base::WrapRefCounted(new Future<T>(relay));
   }
 
   /* Waits until the value to be ready and then return the value through
@@ -97,7 +98,7 @@ template <>
 class Future<void> : public base::RefCountedThreadSafe<Future<void>> {
  public:
   static scoped_refptr<Future<void>> Create(CancellationRelay* relay) {
-    return make_scoped_refptr(new Future<void>(relay));
+    return base::WrapRefCounted(new Future<void>(relay));
   }
 
   /* Wakes up the waiter. */
