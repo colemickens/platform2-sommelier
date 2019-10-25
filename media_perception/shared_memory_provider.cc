@@ -9,8 +9,8 @@ namespace mri {
 SharedMemoryProvider::SharedMemoryProvider(
     bool read_only, mojo::edk::ScopedPlatformHandle* scoped_handle,
     uint32_t memory_size_in_bytes) {
-  base::SharedMemoryHandle memory_handle(
-      base::FileDescriptor(scoped_handle->release().handle, true));
+  // TODO(fqj): migrate to new SharedMemoryHandle(fd, size, guid);
+  base::SharedMemoryHandle memory_handle(scoped_handle->release().handle, true);
   mapped_size_ = memory_size_in_bytes;
   shared_memory_.reset(new base::SharedMemory(memory_handle, read_only));
 }
