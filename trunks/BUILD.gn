@@ -33,8 +33,12 @@ pkg_config("target_default_pkg_deps") {
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
     "openssl",
-    "protobuf-lite",
   ]
+  if (use.fuzzer) {
+    pkg_deps += [ "protobuf" ]
+  } else {
+    pkg_deps += [ "protobuf-lite" ]
+  }
 }
 
 config("target_defaults") {
