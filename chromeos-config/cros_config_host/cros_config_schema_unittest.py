@@ -12,7 +12,6 @@ from itertools import izip_longest
 import json
 import jsonschema
 import os
-import unittest
 import re
 import yaml
 
@@ -655,5 +654,6 @@ class MainTests(cros_test_lib.TempDirTestCase):
     self.assertFileEqual(h_expected, h_actual)
     self.assertFileEqual(c_expected, c_actual)
 
+
 if __name__ == '__main__':
-  unittest.main()
+  cros_test_lib.main(module=__name__)

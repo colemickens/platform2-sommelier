@@ -35,3 +35,7 @@ class GetNamedTupleTests(cros_test_lib.TestCase):
 # TODO(crbug.com/897753): Add explicit tests for FindImports and ApplyIports.
 # This functionality is already tested in larger, more specific tests in
 # cros_config_schema_unittest and cros_config_test_schema_unittest.
+
+
+if __name__ == '__main__':
+  cros_test_lib.main(module=__name__)

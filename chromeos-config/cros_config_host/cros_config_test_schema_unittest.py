@@ -151,3 +151,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
     device = json_obj.chromeos.devices[0]
     self.assertEqual('nautiluslte', device.device_name)
     self.assertEqual(5, len(device.command_groups))
+
+
+if __name__ == '__main__':
+  cros_test_lib.main(module=__name__)
