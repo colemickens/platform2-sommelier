@@ -112,8 +112,8 @@ class PathComponent(object):
       status = os.stat(fname).st_size
     else:
       status = 'missing'
-    print('%-10s%s%s%s' % (status, '   ' * indent, str(self.name),
-                           self.children and '/' or ''))
+    print(u'%-10s%s%s%s' % (status, '   ' * indent, str(self.name),
+                            self.children and '/' or ''))
     for child in sorted(self.children.keys()):
       self.children[child].ShowTree(base_path, path, indent + 1)
 
@@ -542,7 +542,7 @@ class CrosConfigBaseImpl(object):
     return sorted(file_set, key=lambda files: files.source)
 
   def ShowTree(self, base_path, tree):
-    print('%-10s%s' % ('Size', 'Path'))
+    print(u'%-10s%s' % ('Size', 'Path'))
     tree.ShowTree(base_path)
 
   def GetFileTree(self):

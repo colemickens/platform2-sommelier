@@ -11,7 +11,7 @@ from __future__ import print_function
 
 from collections import OrderedDict
 from contextlib import contextmanager
-from io import BytesIO
+from io import StringIO
 import copy
 import json
 import os
@@ -44,7 +44,7 @@ TOUCH_FIRMWARE = '/opt/google/touch/firmware/'
 #   ...do something...
 @contextmanager
 def capture_sys_output():
-  capture_out, capture_err = BytesIO(), BytesIO()
+  capture_out, capture_err = StringIO(), StringIO()
   old_out, old_err = sys.stdout, sys.stderr
   try:
     sys.stdout, sys.stderr = capture_out, capture_err
