@@ -83,7 +83,7 @@ def PopulateTypeDef(
         'This type allows additional properties not governed by the schema. '
         'See the type description for details on these additional properties.|')
 
-  for attr_group_name, attrs in attrs_by_group.iteritems():
+  for attr_group_name, attrs in attrs_by_group.items():
     for attr in attrs:
       attr_name = attr
       type_attrs = attrs[attr]

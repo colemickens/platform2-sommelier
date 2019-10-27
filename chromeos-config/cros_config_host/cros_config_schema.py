@@ -117,7 +117,7 @@ def _SetTemplateVars(template_input, template_vars):
     template_vars: A mapping object built up while walking the template_input.
   """
   to_add = {}
-  for key, val in template_input.iteritems():
+  for key, val in template_input.items():
     if isinstance(val, collections.Mapping):
       _SetTemplateVars(val, template_vars)
     elif not isinstance(val, list):
@@ -450,7 +450,7 @@ def GenerateEcCBindings(config, schema_yaml):
 
   hwprops = list(hwprop_set)
   hwprops.sort()
-  for ec_build_target in device_properties.iterkeys():
+  for ec_build_target in device_properties:
     # Order struct definitions by sku.
     device_properties[ec_build_target] = \
         sorted(device_properties[ec_build_target].items())
@@ -627,7 +627,7 @@ def _ValidateWhitelabelBrandChangesOnly(json_config):
 
     # whitelabels now contains a map by device name with all whitelabel
     # configs that have had their branding data stripped.
-    for device_name, configs in whitelabels.iteritems():
+    for device_name, configs in whitelabels.items():
       base_config = configs[0]
       compare_index = 1
       while compare_index < len(configs):
@@ -659,7 +659,7 @@ def _ValidateHardwarePropertiesAreValidType(json_config):
   for config in json_config['chromeos']['configs']:
     hardware_properties = config.get('hardware-properties', None)
     if hardware_properties:
-      for key, value in hardware_properties.iteritems():
+      for key, value in hardware_properties.items():
         valid_type = isinstance(value, bool) or isinstance(value, unicode)
         if not valid_type:
           raise ValidationError(
@@ -712,7 +712,7 @@ def MergeConfigs(configs):
         if to_merge_identity:
           source_identity = source_config['identity']
           identity_match = True
-          for identity_key, identity_value in to_merge_identity.iteritems():
+          for identity_key, identity_value in to_merge_identity.items():
             if (identity_key not in source_identity or
                 source_identity[identity_key] != identity_value):
               identity_match = False

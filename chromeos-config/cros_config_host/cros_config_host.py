@@ -182,7 +182,7 @@ def GetFirmwareBuildCombinations(config, targets):
     targets: List of names of the build targets to get combinations for
   """
   d = config.GetFirmwareBuildCombinations(targets)
-  for name, target_values in d.iteritems():
+  for name, target_values in d.items():
     print(name)
     for value in target_values:
       print(value)

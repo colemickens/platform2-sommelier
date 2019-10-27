@@ -29,7 +29,7 @@ def GetNamedTuple(mapping):
   if not isinstance(mapping, collections.Mapping):
     return mapping
   new_mapping = {}
-  for k, v in mapping.iteritems():
+  for k, v in mapping.items():
     if isinstance(v, list):
       new_list = []
       for val in v:
@@ -37,7 +37,7 @@ def GetNamedTuple(mapping):
       new_mapping[k.replace('-', '_').replace('@', '_')] = new_list
     else:
       new_mapping[k.replace('-', '_').replace('@', '_')] = GetNamedTuple(v)
-  return collections.namedtuple('Config', new_mapping.iterkeys())(**new_mapping)
+  return collections.namedtuple('Config', new_mapping.keys())(**new_mapping)
 
 
 def FormatJson(config):

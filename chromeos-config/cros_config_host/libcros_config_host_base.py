@@ -178,7 +178,7 @@ class DeviceConfig(object):
     # Strip "overlay-" from bcs_overlay
     bcs_overlay = firmware['bcs-overlay'][8:]
     ebuild_name = bcs_overlay.split('-')[0]
-    valid_images = [p for n, p in firmware.iteritems()
+    valid_images = [p for n, p in firmware.items()
                     if n.endswith('-image') and p.startswith('bcs://')]
     # Strip "bcs://" from bcs_from images (to get the file names only)
     file_names = [p[6:] for p in valid_images]
@@ -525,7 +525,7 @@ class CrosConfigBaseImpl(object):
         raise ValueError('Colliding firmware combinations found for key %s: '
                          '%s, %s' % (key, targets, combos[key]))
       combos[key] = targets
-    return OrderedDict(sorted(combos.iteritems()))
+    return OrderedDict(sorted(combos.items()))
 
   def GetThermalFiles(self):
     """Get a list of unique thermal files for all models
