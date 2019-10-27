@@ -41,5 +41,9 @@ def CrosConfig(fname=None, model_filter_regex=None):
   else:
     infile = open(fname)
 
-  return libcros_config_host_json.CrosConfigJson(
-      infile, model_filter_regex=model_filter_regex)
+  try:
+    return libcros_config_host_json.CrosConfigJson(
+        infile, model_filter_regex=model_filter_regex)
+  finally:
+    if fname != '-':
+      infile.close()

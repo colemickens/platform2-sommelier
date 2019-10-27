@@ -19,6 +19,7 @@ import cros_config_schema
 import libcros_schema
 
 from chromite.lib import cros_test_lib
+from chromite.lib import osutils
 
 BASIC_CONFIG = """
 reef-9042-fw: &reef-9042-fw
@@ -596,8 +597,8 @@ class MainTests(cros_test_lib.TempDirTestCase):
     """
     h_expected_path = os.path.join(this_dir, '../libcros_config/ec_test_many.h')
     c_expected_path = os.path.join(this_dir, '../libcros_config/ec_test_many.c')
-    h_expected = open(h_expected_path).read()
-    c_expected = open(c_expected_path).read()
+    h_expected = osutils.ReadFile(h_expected_path)
+    c_expected = osutils.ReadFile(c_expected_path)
 
     h_actual, c_actual = cros_config_schema.GenerateEcCBindings(
         input_json, self._GetSchemaYaml())
@@ -607,12 +608,12 @@ class MainTests(cros_test_lib.TempDirTestCase):
   def testEcCodegenWithOneBoard(self):
     input_json_path = os.path.join(this_dir,
                                    '../libcros_config/test_build.json')
-    input_json = open(input_json_path).read()
+    input_json = osutils.ReadFile(input_json_path)
 
     h_expected_path = os.path.join(this_dir, '../libcros_config/ec_test_one.h')
     c_expected_path = os.path.join(this_dir, '../libcros_config/ec_test_one.c')
-    h_expected = open(h_expected_path).read()
-    c_expected = open(c_expected_path).read()
+    h_expected = osutils.ReadFile(h_expected_path)
+    c_expected = osutils.ReadFile(c_expected_path)
 
     h_actual, c_actual = cros_config_schema.GenerateEcCBindings(
         input_json, self._GetSchemaYaml())
@@ -629,8 +630,8 @@ class MainTests(cros_test_lib.TempDirTestCase):
     """
     h_expected_path = os.path.join(this_dir, '../libcros_config/ec_test_none.h')
     c_expected_path = os.path.join(this_dir, '../libcros_config/ec_test_none.c')
-    h_expected = open(h_expected_path).read()
-    c_expected = open(c_expected_path).read()
+    h_expected = osutils.ReadFile(h_expected_path)
+    c_expected = osutils.ReadFile(c_expected_path)
 
     h_actual, c_actual = cros_config_schema.GenerateEcCBindings(
         input_json, self._GetSchemaYaml())
