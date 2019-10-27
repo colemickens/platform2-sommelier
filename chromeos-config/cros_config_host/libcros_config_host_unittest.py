@@ -202,11 +202,11 @@ class CrosConfigHostTest(unittest.TestCase):
     """Test that we can access the wallpaper information"""
     config = CrosConfig(self.filepath)
     wallpaper = config.GetWallpaperFiles()
-    self.assertEquals(['default',
-                       'some',
-                       'wallpaper-wl1',
-                       'wallpaper-wl2'],
-                      wallpaper)
+    self.assertEqual(['default',
+                      'some',
+                      'wallpaper-wl1',
+                      'wallpaper-wl2'],
+                     wallpaper)
 
   def testGetTouchFirmwareFiles(self):
     def _GetFile(source, symlink):
@@ -404,7 +404,7 @@ class CrosConfigHostTest(unittest.TestCase):
     }
 
     result = CrosConfig(self.filepath).GetFirmwareConfigsByDevice()
-    self.assertEquals(result, expected)
+    self.assertEqual(result, expected)
 
   def testSignerInfoByDevice(self):
     """Test access to device signer info."""
@@ -425,7 +425,7 @@ class CrosConfigHostTest(unittest.TestCase):
     }
 
     result = CrosConfig(self.filepath).GetDeviceSignerInfo()
-    self.assertEquals(result, expected)
+    self.assertEqual(result, expected)
 
 
 if __name__ == '__main__':
