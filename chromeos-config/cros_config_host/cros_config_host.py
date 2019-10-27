@@ -18,7 +18,12 @@ import json
 import os
 import sys
 
+# pylint: disable=wrong-import-position
+this_dir = os.path.dirname(__file__)
+sys.path.insert(0, this_dir)
 from libcros_config_host import CrosConfig
+sys.path.pop(0)
+
 
 def DumpConfig(config):
   """Dumps all of the config to stdout

@@ -14,14 +14,21 @@ from __future__ import print_function
 from collections import OrderedDict
 import copy
 import json
+import os
+import sys
 
 import six
 
+# pylint: disable=wrong-import-position
+this_dir = os.path.dirname(__file__)
+sys.path.insert(0, this_dir)
 from cros_config_schema import TransformConfig
 from cros_config_schema import GetValidSchemaProperties
 from libcros_config_host_base import BaseFile, CrosConfigBaseImpl, DeviceConfig
 from libcros_config_host_base import FirmwareInfo, SymlinkedFile
 from libcros_config_host_base import FirmwareImage, DeviceSignerInfo
+sys.path.pop(0)
+
 
 UNIBOARD_JSON_INSTALL_PATH = 'usr/share/chromeos-config/config.json'
 

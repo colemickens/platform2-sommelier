@@ -14,9 +14,12 @@ import os
 import sys
 import yaml
 
-import  libcros_schema
-
+# pylint: disable=wrong-import-position
 this_dir = os.path.dirname(__file__)
+sys.path.insert(0, this_dir)
+import libcros_schema
+sys.path.pop(0)
+
 default_test_schema = os.path.join(this_dir, 'cros_config_test_schema.yaml')
 
 CHROMEOS = 'chromeos'

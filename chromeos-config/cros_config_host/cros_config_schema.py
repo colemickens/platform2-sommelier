@@ -20,9 +20,11 @@ import sys
 import six
 import yaml
 
-import  libcros_schema
-
+# pylint: disable=wrong-import-position
 this_dir = os.path.dirname(__file__)
+sys.path.insert(0, this_dir)
+import libcros_schema
+sys.path.pop(0)
 
 CHROMEOS = 'chromeos'
 CONFIGS = 'configs'

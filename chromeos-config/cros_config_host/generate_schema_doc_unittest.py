@@ -9,12 +9,15 @@
 from __future__ import print_function
 
 import os
-import unittest
+import sys
 import tempfile
+import unittest
 
-import generate_schema_doc
-
+# pylint: disable=wrong-import-position
 this_dir = os.path.dirname(__file__)
+sys.path.insert(0, this_dir)
+import generate_schema_doc
+sys.path.pop(0)
 
 
 class SchemaTests(unittest.TestCase):

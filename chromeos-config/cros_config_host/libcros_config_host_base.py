@@ -9,8 +9,13 @@ from __future__ import print_function
 from collections import namedtuple, OrderedDict
 
 import os
+import sys
 
+# pylint: disable=wrong-import-position
+this_dir = os.path.dirname(__file__)
+sys.path.insert(0, this_dir)
 from cros_config_schema import GetValidSchemaProperties
+sys.path.pop(0)
 
 # Represents a single symbolic link firmware file which needs to be installed:
 #   source: source filename of firmware file. This is installed in a
