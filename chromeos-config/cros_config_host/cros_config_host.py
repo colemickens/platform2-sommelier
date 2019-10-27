@@ -237,7 +237,7 @@ def GetParser(description):
       help='Gets a model property at the given path, with the given name.')
   get_parser.add_argument(
       'path',
-      help='Relative path (within the model) to the property\'s parent node')
+      help="Relative path (within the model) to the property's parent node")
   get_parser.add_argument(
       'prop',
       help='The name of the property to get within the node at <path>.')

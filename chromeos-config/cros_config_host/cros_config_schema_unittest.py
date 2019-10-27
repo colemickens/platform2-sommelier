@@ -13,9 +13,9 @@ import os
 import re
 import sys
 
-import jsonschema
+import jsonschema  # pylint: disable=import-error
 from six.moves import zip_longest
-import yaml
+import yaml  # pylint: disable=import-error
 
 # pylint: disable=wrong-import-position
 this_dir = os.path.dirname(__file__)
@@ -424,11 +424,11 @@ class MainTests(cros_test_lib.TempDirTestCase):
 
   def assertFileEqual(self, file_expected, file_actual, regen_cmd=''):
     self.assertTrue(os.path.isfile(file_expected),
-                    "Expected file does not exist at path: {}" \
+                    'Expected file does not exist at path: {}'
                     .format(file_expected))
 
     self.assertTrue(os.path.isfile(file_actual),
-                    "Actual file does not exist at path: {}" \
+                    'Actual file does not exist at path: {}'
                     .format(file_actual))
 
     with open(file_expected, 'r') as expected, open(file_actual, 'r') as actual:
@@ -444,8 +444,8 @@ class MainTests(cros_test_lib.TempDirTestCase):
                           file_expected, file_actual, regen_cmd))
 
   def assertMultilineStringEqual(self, str_expected, str_actual):
-    expected = str_expected.strip().split("\n")
-    actual = str_actual.strip().split("\n")
+    expected = str_expected.strip().split('\n')
+    actual = str_actual.strip().split('\n')
     for line_num, (line_expected, line_actual) in \
         enumerate(zip_longest(expected, actual)):
       self.assertEqual(line_expected, line_actual, \
@@ -653,8 +653,8 @@ class MainTests(cros_test_lib.TempDirTestCase):
     h_expected = os.path.join(this_dir, '../libcros_config/ec_test_one.h')
     c_expected = os.path.join(this_dir, '../libcros_config/ec_test_one.c')
 
-    h_actual = os.path.join(self.tempdir, "ec_config.h")
-    c_actual = os.path.join(self.tempdir, "ec_config.c")
+    h_actual = os.path.join(self.tempdir, 'ec_config.h')
+    c_actual = os.path.join(self.tempdir, 'ec_config.c')
 
     self.assertFileEqual(h_expected, h_actual)
     self.assertFileEqual(c_expected, c_actual)

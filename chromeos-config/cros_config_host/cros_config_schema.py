@@ -16,9 +16,9 @@ import os
 import re
 import sys
 
-import jinja2
+import jinja2  # pylint: disable=import-error
 import six
-import yaml
+import yaml  # pylint: disable=import-error
 
 # pylint: disable=wrong-import-position
 this_dir = os.path.dirname(__file__)
@@ -245,8 +245,7 @@ def _HasTemplateVariables(template_vars):
     True if they are still unevaluated template variables.
   """
   for val in template_vars.values():
-    if (isinstance(val, six.string_types) and
-        len(TEMPLATE_PATTERN.findall(val)) > 0):
+    if isinstance(val, six.string_types) and TEMPLATE_PATTERN.findall(val):
       return True
 
 
@@ -320,7 +319,7 @@ def GenerateMosysCBindings(config):
   Args:
     config: Config (transformed) that is the transform basis.
   """
-  struct_format = '''
+  struct_format = """
     {.platform_name = "%s",
      .firmware_name_match = "%s",
      .sku_id = %s,
@@ -329,7 +328,7 @@ def GenerateMosysCBindings(config):
      .info = {.brand = "%s",
               .model = "%s",
               .customization = "%s",
-              .signature_id = "%s"}}'''
+              .signature_id = "%s"}}"""
   structs = []
   json_config = json.loads(config)
   for config in json_config[CHROMEOS][CONFIGS]:
@@ -367,7 +366,7 @@ def GenerateMosysCBindings(config):
                          customization,
                          signature_id))
 
-  file_format = '''\
+  file_format = """\
 #include "lib/cros_config_struct.h"
 
 static struct config_map all_configs[] = {%s
@@ -376,7 +375,7 @@ static struct config_map all_configs[] = {%s
 const struct config_map *cros_config_get_config_map(int *num_entries) {
   *num_entries = %s;
   return &all_configs[0];
-}'''
+}"""
 
   return file_format % (',\n'.join(structs), len(structs))
 
@@ -493,10 +492,10 @@ def _GetElementToIntMap(schema_yaml, hwprop):
   schema_json = json.loads(schema_json_from_yaml)
   if hwprop not in schema_json['typeDefs']:
     raise ValidationError('Hardware property not found: %s' % str(hwprop))
-  if "enum" not in schema_json["typeDefs"][hwprop]:
+  if 'enum' not in schema_json['typeDefs'][hwprop]:
     raise ValidationError('Hardware property is not an enum: %s' % str(hwprop))
   return dict((element, i) for (i, element) in enumerate(
-      schema_json["typeDefs"][hwprop]["enum"]))
+      schema_json['typeDefs'][hwprop]['enum']))
 
 def FilterBuildElements(config, build_only_elements):
   """Removes build only elements from the schema.
@@ -597,7 +596,7 @@ def _ValidateUniqueIdentities(json_config):
     if 'identity' not in config and 'name' not in config:
       raise ValidationError(
           'Missing identity for config: %s' % str(config))
-    identity_str = "%s-%s" % (
+    identity_str = '%s-%s' % (
         config.get('name', ''), str(config.get('identity', {})))
     if identity_str in identities:
       duplicate_identities.add(identity_str)
@@ -670,7 +669,7 @@ def _ValidateHardwarePropertiesAreValidType(json_config):
           raise ValidationError(
               ('All configs under hardware-properties must be '
                'boolean or an enum\n'
-               'However, key \'{}\' has value \'{}\'.').format(key, value))
+               "However, key '{}' has value '{}'.").format(key, value))
 
 
 def ValidateConfig(config):
@@ -794,10 +793,10 @@ def Main(schema,
       print(GenerateMosysCBindings(full_json_transform), file=output_stream)
     h_output, c_output = GenerateEcCBindings(
         full_json_transform, schema_yaml=yaml.load(schema_contents))
-    with open(os.path.join(gen_c_output_dir, EC_OUTPUT_NAME + ".h"), 'w') \
+    with open(os.path.join(gen_c_output_dir, EC_OUTPUT_NAME + '.h'), 'w') \
     as output_stream:
       output_stream.write(h_output)
-    with open(os.path.join(gen_c_output_dir, EC_OUTPUT_NAME + ".c"), 'w') \
+    with open(os.path.join(gen_c_output_dir, EC_OUTPUT_NAME + '.c'), 'w') \
     as output_stream:
       output_stream.write(c_output)
 

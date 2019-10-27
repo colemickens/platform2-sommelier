@@ -12,7 +12,8 @@ import argparse
 import json
 import os
 import sys
-import yaml
+
+import yaml  # pylint: disable=import-error
 
 # pylint: disable=wrong-import-position
 this_dir = os.path.dirname(__file__)

@@ -12,7 +12,8 @@ import collections
 import os.path
 import re
 import sys
-import yaml
+
+import yaml  # pylint: disable=import-error
 
 
 def ParseArgs(argv):
@@ -70,7 +71,7 @@ def PopulateTypeDef(
         sorted(group.get('properties', {}).items()))
     group_name = 'GROUP(%s)' % group_index
     for group_attr in group_attrs.values():
-      match = re.match(r"\[(.*)\] .*", group_attr.get('description', ''))
+      match = re.match(r'\[(.*)\] .*', group_attr.get('description', ''))
       if match:
         group_name = match.group(1)
     attrs_by_group[group_name] = group_attrs

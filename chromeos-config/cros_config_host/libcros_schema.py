@@ -13,9 +13,10 @@ import collections
 import json
 import os
 import re
-import yaml
 
-from jsonschema import validate
+from jsonschema import validate  # pylint: disable=import-error
+import yaml  # pylint: disable=import-error
+
 
 def GetNamedTuple(mapping):
   """Converts a mapping into Named Tuple recursively.

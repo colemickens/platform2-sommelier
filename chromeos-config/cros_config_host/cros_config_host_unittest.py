@@ -51,7 +51,7 @@ class CrosConfigHostTest(unittest.TestCase):
     call_args = '{} -c {} --model=another list-models'.format(
         CLI_FILE, self.conf_file).split()
     output = subprocess.check_output(call_args).decode('utf-8')
-    self.assertEqual("another\n", output)
+    self.assertEqual('another\n', output)
 
   def testListModelsWithEnvFilter(self):
     call_args = '{} -c {} list-models'.format(
@@ -59,7 +59,7 @@ class CrosConfigHostTest(unittest.TestCase):
     os.environ['CROS_CONFIG_MODEL'] = 'another'
     output = subprocess.check_output(call_args).decode('utf-8')
     del os.environ['CROS_CONFIG_MODEL']
-    self.assertEqual("another\n", output)
+    self.assertEqual('another\n', output)
 
   def testGetPropSingle(self):
     call_args = '{} -c {} --model=another get / wallpaper'.format(
