@@ -234,8 +234,7 @@ class CrosConfigJson(CrosConfigBaseImpl):
 
   def GetFirmwareConfigs(self):
     result = dict()
-    firmware_info_values = self.GetFirmwareInfo().values()
-    for value in firmware_info_values:
+    for value in self.GetFirmwareInfo().values():
       fw_images = []
       ap_build_target = value.bios_build_target
       ec_build_target = value.ec_build_target
@@ -269,13 +268,14 @@ class CrosConfigJson(CrosConfigBaseImpl):
     return result
 
   def GetFirmwareConfigsByDevice(self):
-    fw_info = self.GetFirmwareInfo().values()
-    return {value.model: value.shared_model or value.model for value in fw_info}
+    return {
+        value.model: value.shared_model or value.model
+        for value in self.GetFirmwareInfo().values()
+    }
 
   def GetDeviceSignerInfo(self):
-    fw_info = self.GetFirmwareInfo().values()
     return {
         value.model: DeviceSignerInfo(key_id=value.key_id, sig_id=value.sig_id)
-        for value in fw_info
+        for value in self.GetFirmwareInfo().values()
         if value.key_id
     }
