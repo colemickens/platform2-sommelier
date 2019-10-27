@@ -64,7 +64,7 @@ def _FormatListNamedTuplesDict(value):
   for key, values in result.items():
     result[key] = [value._asdict() for value in values]
 
-  return json.dumps(result, indent=2)
+  return json.dumps(result, indent=2, sort_keys=True)
 
 
 class CrosConfigHostTest(unittest.TestCase):

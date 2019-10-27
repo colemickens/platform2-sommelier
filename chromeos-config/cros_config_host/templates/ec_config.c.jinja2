@@ -6,7 +6,7 @@
 
 #include "compile_time_macros.h"
 
-{% for ec_build_target, skus in device_properties.iteritems() -%}
+{% for ec_build_target, skus in device_properties|dictsort -%}
   {%- if device_properties | length > 1 -%}
     {% if loop.first %}
 #if defined(BOARD_{{ ec_build_target | upper }})
