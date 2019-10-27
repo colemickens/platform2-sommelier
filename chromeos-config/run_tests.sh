@@ -6,3 +6,4 @@
 # Script to run all Python unit tests in cros_config.
 
 python2 -m unittest discover -p '*test.py'
+python3 -m unittest discover -p '*test.py'
