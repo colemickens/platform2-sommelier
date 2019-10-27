@@ -8,13 +8,13 @@
 
 from __future__ import print_function
 
-from itertools import izip_longest
 import json
 import os
 import re
 import sys
 
 import jsonschema
+from six.moves import zip_longest
 import yaml
 
 # pylint: disable=wrong-import-position
@@ -67,8 +67,6 @@ chromeos:
             powerd-prefs: 'reef'
             test-label: 'reef'
 """
-
-this_dir = os.path.dirname(__file__)
 
 
 class MergeDictionaries(cros_test_lib.TestCase):
@@ -435,7 +433,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
 
     with open(file_expected, 'r') as expected, open(file_actual, 'r') as actual:
       for line_num, (line_expected, line_actual) in \
-          enumerate(izip_longest(expected, actual)):
+          enumerate(zip_longest(expected, actual)):
         self.assertEqual(line_expected, line_actual, \
            ('Files differ at line {0}\n'
             'Expected: {1}\n'
@@ -449,7 +447,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
     expected = str_expected.strip().split("\n")
     actual = str_actual.strip().split("\n")
     for line_num, (line_expected, line_actual) in \
-        enumerate(izip_longest(expected, actual)):
+        enumerate(zip_longest(expected, actual)):
       self.assertEqual(line_expected, line_actual, \
          ('Strings differ at line {0}\n'
           'Expected: {1}\n'
