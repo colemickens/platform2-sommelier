@@ -44,34 +44,35 @@ class CrosConfigHostTest(unittest.TestCase):
   def testListModels(self):
     call_args = '{} -c {} list-models'.format(
         CLI_FILE, self.conf_file).split()
-    output = subprocess.check_output(call_args)
+    output = subprocess.check_output(call_args).decode('utf-8')
     self.CheckManyLinesWithoutSpaces(output, lines=2)
 
   def testListModelsWithFilter(self):
     call_args = '{} -c {} --model=another list-models'.format(
         CLI_FILE, self.conf_file).split()
-    output = subprocess.check_output(call_args)
+    output = subprocess.check_output(call_args).decode('utf-8')
     self.assertEqual("another\n", output)
 
   def testListModelsWithEnvFilter(self):
     call_args = '{} -c {} list-models'.format(
         CLI_FILE, self.conf_file).split()
     os.environ['CROS_CONFIG_MODEL'] = 'another'
-    output = subprocess.check_output(call_args)
+    output = subprocess.check_output(call_args).decode('utf-8')
     del os.environ['CROS_CONFIG_MODEL']
     self.assertEqual("another\n", output)
 
   def testGetPropSingle(self):
     call_args = '{} -c {} --model=another get / wallpaper'.format(
         CLI_FILE, self.conf_file).split()
-    output = subprocess.check_output(call_args)
+    output = subprocess.check_output(call_args).decode('utf-8')
     self.assertEqual(output, 'default' + os.linesep)
 
   def testGetPropSingleWrongModel(self):
     call_args = '{} -c {} --model=dne get / wallpaper'.format(
         CLI_FILE, self.conf_file).split()
     # Ensure that the expected error output does not appear.
-    output = subprocess.check_output(call_args, stderr=subprocess.PIPE)
+    output = subprocess.check_output(
+        call_args, stderr=subprocess.PIPE).decode('utf-8')
     self.assertEqual(output, '')
 
   def testGetPropSingleWrongPath(self):
@@ -89,37 +90,37 @@ class CrosConfigHostTest(unittest.TestCase):
   def testGetFirmwareUris(self):
     call_args = '{} -c {} get-firmware-uris'.format(
         CLI_FILE, self.conf_file).split()
-    output = subprocess.check_output(call_args)
+    output = subprocess.check_output(call_args).decode('utf-8')
     self.CheckManyLines(output)
 
   def testGetTouchFirmwareFiles(self):
     call_args = '{} -c {} get-touch-firmware-files'.format(
         CLI_FILE, self.conf_file).split()
-    output = subprocess.check_output(call_args)
+    output = subprocess.check_output(call_args).decode('utf-8')
     self.CheckManyLines(output, 10)
 
   def testGetAudioFiles(self):
     call_args = '{} -c {} get-audio-files'.format(
         CLI_FILE, self.conf_file).split()
-    output = subprocess.check_output(call_args)
+    output = subprocess.check_output(call_args).decode('utf-8')
     self.CheckManyLines(output, 10)
 
   def testGetBluetoothFiles(self):
     call_args = '{} -c {} get-bluetooth-files'.format(
         CLI_FILE, self.conf_file).split()
-    output = subprocess.check_output(call_args)
+    output = subprocess.check_output(call_args).decode('utf-8')
     self.CheckManyLines(output, 1)
 
   def testGetFirmwareBuildTargets(self):
     call_args = '{} -c {} get-firmware-build-targets coreboot'.format(
         CLI_FILE, self.conf_file).split()
-    output = subprocess.check_output(call_args)
+    output = subprocess.check_output(call_args).decode('utf-8')
     self.CheckManyLines(output, 1)
 
   def testGetWallpaperFiles(self):
     call_args = '{} -c {} get-wallpaper-files'.format(
         CLI_FILE, self.conf_file).split()
-    output = subprocess.check_output(call_args)
+    output = subprocess.check_output(call_args).decode('utf-8')
     self.CheckManyLines(output, 1)
 
 
