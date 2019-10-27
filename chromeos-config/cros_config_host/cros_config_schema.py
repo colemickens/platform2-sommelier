@@ -10,13 +10,13 @@ from __future__ import print_function
 import argparse
 import collections
 import copy
-from jinja2 import Template
 import json
 import math
 import os
 import re
 import sys
 
+import jinja2
 import six
 import yaml
 
@@ -460,13 +460,14 @@ def GenerateEcCBindings(config, schema_yaml):
     device_properties[ec_build_target] = \
         sorted(device_properties[ec_build_target].items())
 
-  h_template_path = os.path.join(
-      this_dir, TEMPLATE_DIR, (EC_OUTPUT_NAME + '.h' + TEMPLATE_SUFFIX))
-  h_template = Template(open(h_template_path).read())
+  loader = jinja2.FileSystemLoader(os.path.join(this_dir, TEMPLATE_DIR))
+  env = jinja2.Environment(loader=loader, keep_trailing_newline=True)
 
-  c_template_path = os.path.join(
-      this_dir, TEMPLATE_DIR, (EC_OUTPUT_NAME + '.c' + TEMPLATE_SUFFIX))
-  c_template = Template(open(c_template_path).read())
+  h_template_path = EC_OUTPUT_NAME + '.h' + TEMPLATE_SUFFIX
+  h_template = env.get_template(h_template_path)
+
+  c_template_path = EC_OUTPUT_NAME + '.c' + TEMPLATE_SUFFIX
+  c_template = env.get_template(c_template_path)
 
   h_output = h_template.render(
       hwprops=hwprops,
@@ -795,10 +796,10 @@ def Main(schema,
         full_json_transform, schema_yaml=yaml.load(schema_contents))
     with open(os.path.join(gen_c_output_dir, EC_OUTPUT_NAME + ".h"), 'w') \
     as output_stream:
-      print(h_output, file=output_stream)
+      output_stream.write(h_output)
     with open(os.path.join(gen_c_output_dir, EC_OUTPUT_NAME + ".c"), 'w') \
     as output_stream:
-      print(c_output, file=output_stream)
+      output_stream.write(c_output)
 
 # The distutils generated command line wrappers will not pass us argv.
 def main(argv=None):
