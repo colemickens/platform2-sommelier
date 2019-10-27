@@ -15,6 +15,8 @@ from collections import OrderedDict
 import copy
 import json
 
+import six
+
 from cros_config_schema import TransformConfig
 from cros_config_schema import GetValidSchemaProperties
 from libcros_config_host_base import BaseFile, CrosConfigBaseImpl, DeviceConfig
@@ -61,8 +63,8 @@ class DeviceConfigJson(DeviceConfig):
   def GetValue(self, source, name):
     if name in source:
       val = source[name]
-      if isinstance(val, basestring):
-        return str(val)
+      if isinstance(val, six.string_types):
+        return val
       return source[name]
     return None
 

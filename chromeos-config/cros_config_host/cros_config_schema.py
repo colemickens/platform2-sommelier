@@ -16,6 +16,8 @@ import math
 import os
 import re
 import sys
+
+import six
 import yaml
 
 import  libcros_schema
@@ -188,11 +190,11 @@ def _ApplyTemplateVars(template_input, template_vars):
       for list_val in val:
         if isinstance(list_val, collections.Mapping):
           lists.append(list_val)
-        elif isinstance(list_val, basestring):
+        elif isinstance(list_val, six.string_types):
           val[index] = _GetVarTemplateValue(list_val, template_input,
                                             template_vars)
         index += 1
-    elif isinstance(val, basestring):
+    elif isinstance(val, six.string_types):
       template_input[key] = _GetVarTemplateValue(val, template_input,
                                                  template_vars)
 
@@ -241,7 +243,8 @@ def _HasTemplateVariables(template_vars):
     True if they are still unevaluated template variables.
   """
   for val in template_vars.values():
-    if isinstance(val, basestring) and len(TEMPLATE_PATTERN.findall(val)) > 0:
+    if (isinstance(val, six.string_types) and
+        len(TEMPLATE_PATTERN.findall(val)) > 0):
       return True
 
 
@@ -430,7 +433,7 @@ def GenerateEcCBindings(config, schema_yaml):
           if isinstance(value, bool):
             hwprop_values_count[clean_hwprop] = 1
             hwprop_values[clean_hwprop] = value
-          elif isinstance(value, unicode):
+          elif isinstance(value, six.string_types):
             # Calculate the number of bits by taking the log_2 of the number
             # of possible enumerations. Use math.ceil to round up.
             # For example, if an enum has 7 possible values (elements, we will
@@ -660,8 +663,7 @@ def _ValidateHardwarePropertiesAreValidType(json_config):
     hardware_properties = config.get('hardware-properties', None)
     if hardware_properties:
       for key, value in hardware_properties.items():
-        valid_type = isinstance(value, bool) or isinstance(value, unicode)
-        if not valid_type:
+        if not isinstance(value, (bool, six.string_types)):
           raise ValidationError(
               ('All configs under hardware-properties must be '
                'boolean or an enum\n'
