@@ -2,10 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/generate-dbus-proxies.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":dbus_bindings",
     ":smbfs",
   ]
   if (use.test) {
@@ -44,6 +46,17 @@ static_library("libsmbfs") {
     "util.h",
   ]
   configs += [ ":target_defaults" ]
+  deps = [
+    ":dbus_bindings",
+  ]
+}
+
+generate_dbus_proxies("dbus_bindings") {
+  sources = [
+    "dbus_bindings/org.chromium.SmbFs.xml",
+  ]
+  proxy_output_file = "include/smbfs/dbus-proxies.h"
+  mock_output_file = "include/smbfs/dbus-proxy-mocks.h"
 }
 
 executable("smbfs") {
