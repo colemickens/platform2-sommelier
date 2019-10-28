@@ -2672,6 +2672,9 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
   MountError error;
   ASSERT_TRUE(mount_->MountCryptohome(credentials, mount_args, &error));
 
+  // Unmount succeeds.
+  ON_CALL(platform_, Unmount(_, _, _)).WillByDefault(Return(true));
+
   // Unmount triggers setting user type to non-owner.
   testing::Mock::VerifyAndClearExpectations(&tpm_);
   EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
@@ -2755,6 +2758,9 @@ TEST_P(EphemeralNoUserSystemTest, MountSetUserTypeFailTest) {
     }
   }
 
+  // Unmount succeeds.
+  ON_CALL(platform_, Unmount(_, _, _)).WillByDefault(Return(true));
+
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   MountError error;
@@ -2791,6 +2797,9 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
   MountError error;
   Credentials credentials(user->username, user->passkey);
   ASSERT_TRUE(mount_->MountCryptohome(credentials, mount_args, &error));
+
+  // Detach succeeds.
+  ON_CALL(platform_, DetachLoop(_)).WillByDefault(Return(true));
 
   // Implicit unmount triggers setting user type to non-owner.
   testing::Mock::VerifyAndClearExpectations(&tpm_);
@@ -3046,6 +3055,10 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountEnsureUserMountFailure) {
   mount_args.is_ephemeral = true;
   MountError error;
   Credentials credentials(user->username, user->passkey);
+
+  // Detach succeeds.
+  ON_CALL(platform_, DetachLoop(_)).WillByDefault(Return(true));
+
   ASSERT_FALSE(mount_->MountCryptohome(credentials, mount_args, &error));
 }
 
@@ -3124,6 +3137,9 @@ TEST_P(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
 
   ExpectDownloadsUnmounts(*user);
 
+  // Detach succeeds.
+  ON_CALL(platform_, DetachLoop(_)).WillByDefault(Return(true));
+
   // Unmount triggers setting user type to non-owner.
   testing::Mock::VerifyAndClearExpectations(&tpm_);
   EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
@@ -3161,6 +3177,9 @@ TEST_P(EphemeralOwnerOnlySystemTest, NonOwnerMountIsEphemeralTest) {
   mount_args.is_ephemeral = true;
   MountError error;
   ASSERT_TRUE(mount_->MountCryptohome(credentials, mount_args, &error));
+
+  // Detach succeeds.
+  ON_CALL(platform_, DetachLoop(_)).WillByDefault(Return(true));
 
   // Implicit unmount triggers setting user type to non-owner.
   testing::Mock::VerifyAndClearExpectations(&tpm_);
@@ -3398,6 +3417,8 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
   EXPECT_CALL(platform_, ClearUserKeyring())
       .WillRepeatedly(Return(true));
   ExpectDownloadsUnmounts(*user);
+  // Detach succeeds.
+  ON_CALL(platform_, DetachLoop(_)).WillByDefault(Return(true));
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
@@ -3515,6 +3536,8 @@ TEST_P(EphemeralExistingUserSystemTest, MountRemoveTest) {
   EXPECT_CALL(platform_, ClearUserKeyring())
     .WillRepeatedly(Return(true));
   ExpectDownloadsUnmounts(*user);
+  // Detach succeeds.
+  ON_CALL(platform_, DetachLoop(_)).WillByDefault(Return(true));
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
@@ -3662,6 +3685,9 @@ TEST_P(EphemeralExistingUserSystemTest, NonOwnerMountIsEphemeralTest) {
     .WillRepeatedly(Return(true));
   ExpectEphemeralCryptohomeMount(*user);
 
+  // Detach succeeds.
+  ON_CALL(platform_, DetachLoop(_)).WillByDefault(Return(true));
+
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   mount_args.is_ephemeral = true;
@@ -3687,7 +3713,7 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountIsEphemeralTest) {
   // Let Mount know how many vaults there are.
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kImageDir, false, _))
     .WillRepeatedly(DoAll(SetArgPointee<2>(vaults_), Return(true)));
-  // Don't say any cryptohomes are mounted
+  // Don't say any cryptohomes are mounted.
   EXPECT_CALL(platform_, IsDirectoryMounted(_))
     .WillRepeatedly(Return(false));
   std::vector<FilePath> empty;
@@ -3740,6 +3766,9 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountIsEphemeralTest) {
   EXPECT_CALL(platform_, Unmount(_, _, _))
     .WillRepeatedly(Return(true));
   ExpectEphemeralCryptohomeMount(*user);
+
+  // Detach succeeds.
+  ON_CALL(platform_, DetachLoop(_)).WillByDefault(Return(true));
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
@@ -3860,6 +3889,11 @@ TEST_P(EphemeralNoUserSystemTest, MountGuestUserDir) {
 
   ASSERT_TRUE(mount_->MountGuestCryptohome());
 
+  // Unmount succeeds.
+  ON_CALL(platform_, Unmount(_, _, _)).WillByDefault(Return(true));
+  // Detach succeeds.
+  ON_CALL(platform_, DetachLoop(_)).WillByDefault(Return(true));
+
   // Implicit unmount triggers setting user type to non-owner.
   testing::Mock::VerifyAndClearExpectations(&tpm_);
   EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
@@ -3923,6 +3957,11 @@ TEST_P(EphemeralNoUserSystemTest, MountGuestUserFailSetUserType) {
 
   EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
       .WillOnce(Return(false));
+
+  // Unmount succeeds.
+  ON_CALL(platform_, Unmount(_, _, _)).WillByDefault(Return(true));
+  // Detach succeeds.
+  ON_CALL(platform_, DetachLoop(_)).WillByDefault(Return(true));
 
   ASSERT_FALSE(mount_->MountGuestCryptohome());
 }
