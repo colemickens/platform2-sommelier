@@ -947,9 +947,7 @@ bool SessionManagerImpl::StartDeviceWipe(brillo::ErrorPtr* error) {
   }
 
   // Powerwash is not allowed for enterprise devices.
-  InstallAttributesFileData install_attributes_data =
-      device_policy_->InstallAttributesEnterpriseMode();
-  if (install_attributes_data == InstallAttributesFileData::ENROLLED) {
+  if (device_policy_->InstallAttributesEnterpriseMode()) {
     constexpr char kMessage[] = "Powerwash not available on enterprise devices";
     LOG(ERROR) << kMessage;
     *error = CreateError(dbus_error::kNotAvailable, kMessage);
@@ -999,9 +997,7 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
 
   // For remotely managed devices, make sure the requested update mode matches
   // the admin-configured one in device policy.
-  InstallAttributesFileData install_attributes_data =
-      device_policy_->InstallAttributesEnterpriseMode();
-  if (install_attributes_data == InstallAttributesFileData::ENROLLED) {
+  if (device_policy_->InstallAttributesEnterpriseMode()) {
     const enterprise_management::TPMFirmwareUpdateSettingsProto& settings =
         device_policy_->GetSettings().tpm_firmware_update_settings();
     std::set<std::string> allowed_modes;

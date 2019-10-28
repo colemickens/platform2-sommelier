@@ -101,8 +101,6 @@ class DevicePolicyServiceTest : public ::testing::Test {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     install_attributes_file_ =
         tmpdir_.GetPath().AppendASCII("install_attributes.pb");
-    base::CreateTemporaryFileInDir(tmpdir_.GetPath(),
-                                   &install_attributes_file_);
   }
 
   void InitPolicy(const em::ChromeDeviceSettingsProto& settings,
@@ -138,21 +136,6 @@ class DevicePolicyServiceTest : public ::testing::Test {
 
     // Allow the key to be read any time.
     EXPECT_CALL(key_, public_key_der()).WillRepeatedly(ReturnRef(fake_key_));
-  }
-
-  void SetDataInInstallAttributes(
-      const base::StringPiece& enterpriseDeviceMode) {
-    if (enterpriseDeviceMode.empty()) {
-      base::DeleteFile(install_attributes_file_, false /* recursively */);
-      return;
-    }
-    cryptohome::SerializedInstallAttributes install_attributes;
-    cryptohome::SerializedInstallAttributes::Attribute* attr =
-        install_attributes.add_attributes();
-    attr->set_name(DevicePolicyService::kAttrEnterpriseMode);
-    attr->set_value(enterpriseDeviceMode.data(), enterpriseDeviceMode.size());
-    std::string str = install_attributes.SerializeAsString();
-    base::WriteFile(install_attributes_file_, str.data(), str.size());
   }
 
   void SetDefaultSettings() {
@@ -663,7 +646,6 @@ TEST_F(DevicePolicyServiceTest, SetBlockDevModeInNvram) {
   EXPECT_CALL(vpd_process_, RunInBackground(_, false, _))
       .WillOnce(Return(true));
 
-  SetDataInInstallAttributes(base::StringPiece("enterprise"));
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));
 
   EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(Crossystem::kNvramCleared));
@@ -716,7 +698,7 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
   EXPECT_CALL(key, IsPopulated()).WillRepeatedly(Return(true));
   EXPECT_CALL(*store, Persist()).WillRepeatedly(Return(true));
   EXPECT_CALL(service, InstallAttributesEnterpriseMode())
-      .WillRepeatedly(Return(InstallAttributesFileData::CONSUMER_OWNED));
+      .WillRepeatedly(Return(false));
 
   VpdProcess::KeyValuePairs updates{
       {Crossystem::kBlockDevmode, "0"},
@@ -753,7 +735,7 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
   EXPECT_CALL(key, IsPopulated()).WillRepeatedly(Return(true));
   EXPECT_CALL(*store, Persist()).WillRepeatedly(Return(true));
   EXPECT_CALL(service, InstallAttributesEnterpriseMode())
-      .WillRepeatedly(Return(InstallAttributesFileData::ENROLLED));
+      .WillRepeatedly(Return(true));
 
   VpdProcess::KeyValuePairs updates{
       {Crossystem::kBlockDevmode, "0"},
@@ -785,7 +767,7 @@ TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
 
   EXPECT_CALL(key, IsPopulated()).WillRepeatedly(Return(true));
   EXPECT_CALL(service, InstallAttributesEnterpriseMode())
-      .WillRepeatedly(Return(InstallAttributesFileData::ENROLLED));
+      .WillRepeatedly(Return(true));
   VpdProcess::KeyValuePairs updates{
       {Crossystem::kBlockDevmode, "0"},
       {Crossystem::kCheckEnrollment, "1"},
@@ -795,46 +777,6 @@ TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
       .WillOnce(Return(false));
 
   EXPECT_FALSE(UpdateSystemSettings(&service));
-}
-
-// Check the behavior when install attributes file is missing.
-TEST_F(DevicePolicyServiceTest, CheckMissingInstallAttributes) {
-  MockNssUtil nss;
-  InitService(&nss, true);
-
-  crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
-  crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 0);
-  crossystem_.VbSetSystemPropertyInt(Crossystem::kNvramCleared, 1);
-
-  auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
-  proto->mutable_system_settings()->set_block_devmode(true);
-  SetSettings(service_.get(), std::move(proto));
-
-  SetDataInInstallAttributes(base::StringPiece());
-
-  EXPECT_CALL(vpd_process_, RunInBackground(_, _, _)).Times(0);
-  EXPECT_TRUE(UpdateSystemSettings(service_.get()));
-}
-
-// Check the behavior when devmode is blocked for consumer owned device.
-TEST_F(DevicePolicyServiceTest, CheckWeirdInstallAttributes) {
-  MockNssUtil nss;
-  InitService(&nss, true);
-
-  crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
-  crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 0);
-  crossystem_.VbSetSystemPropertyInt(Crossystem::kNvramCleared, 1);
-
-  auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
-  proto->mutable_system_settings()->set_block_devmode(true);
-  SetSettings(service_.get(), std::move(proto));
-
-  SetDataInInstallAttributes(base::StringPiece("consumer"));
-  EXPECT_EQ(InstallAttributesFileData::CONSUMER_OWNED,
-            service_.get()->InstallAttributesEnterpriseMode());
-
-  EXPECT_CALL(vpd_process_, RunInBackground(_, _, _)).Times(0);
-  EXPECT_TRUE(UpdateSystemSettings(service_.get()));
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NoPrivateKey) {

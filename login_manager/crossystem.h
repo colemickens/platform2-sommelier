@@ -38,9 +38,6 @@ class Crossystem {
   // reboot.
   static const char kClearTpmOwnerRequest[];
 
-  // Name of the flag that specifies that device boot in devmode.
-  static const char kDeviceInDevmode[];
-
   // Reads a system property integer.
   //
   // Returns the property value, or -1 if error.

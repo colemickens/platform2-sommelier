@@ -15,7 +15,6 @@
 #include <base/gtest_prod_util.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-#include <base/optional.h>
 #include <crypto/scoped_nss_types.h>
 
 #include "login_manager/crossystem.h"
@@ -39,13 +38,6 @@ class NssUtil;
 class OwnerKeyLossMitigator;
 // Forward declaration.
 typedef struct PK11SlotInfoStr PK11SlotInfo;
-
-enum class InstallAttributesFileData {
-  CONSUMER_OWNED = 0,
-  ENROLLED = 1,
-  FAILED_TO_READ = 2,
-  FAILED_TO_PARSE = 3
-};
 
 // A policy service specifically for device policy, adding in a few helpers for
 // generating a new key for the device owner, handling key loss mitigation,
@@ -106,7 +98,7 @@ class DevicePolicyService : public PolicyService {
 
   // Returns whether the device is enrolled by checking enterprise mode in
   // install attributes from disk.
-  virtual InstallAttributesFileData InstallAttributesEnterpriseMode();
+  virtual bool InstallAttributesEnterpriseMode();
 
   // Returns whether system settings can be updated by checking that PolicyKey
   // is populated and the device is running on Chrome OS firmware.
