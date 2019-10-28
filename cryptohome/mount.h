@@ -513,7 +513,13 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Mounts and populates an ephemeral cryptohome backed by tmpfs for the given
   // user.
-  bool MountEphemeralCryptohome(const std::string& username);
+  //
+  // Parameters
+  //   username - Username for the user
+  //   cleanup - Closure to use in UnmountCryptohome(), and to clean up in case
+  //             of failure
+  bool MountEphemeralCryptohome(const std::string& username,
+                                base::Closure cleanup);
 
   // Returns the user's salt
   //
@@ -652,6 +658,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   base::ConditionVariable dircrypto_migration_stopped_condition_;
 
   std::unique_ptr<MountHelper> mounter_;
+  // This closure will be run in UnmountCryptohome().
+  base::Closure mount_cleanup_;
 
   FRIEND_TEST(MountTest, RememberMountOrderingTest);
   FRIEND_TEST(MountTest, MountCryptohomeChapsKey);

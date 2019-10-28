@@ -366,7 +366,16 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
       return false;
     }
 
-    if (!MountEphemeralCryptohome(credentials.username())) {
+    // This callback will be executed in the destructor at the latest so |this|
+    // will always be valid.
+    base::Closure cleanup = base::Bind(
+        [](Mount* m) {
+          m->UnmountAndDropKeys();
+          m->CleanUpEphemeral();
+        },
+        base::Unretained(this));
+
+    if (!MountEphemeralCryptohome(credentials.username(), std::move(cleanup))) {
       homedirs_->Remove(credentials.username());
       *mount_error = MOUNT_ERROR_FATAL;
       return false;
@@ -495,9 +504,9 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   }
 
   // Ensure we don't leave any mounts hanging on intermediate errors.
-  // The closure won't outlive the function so |this| will always be valid.
+  // The closure won't outlive the class so |this| will always be valid.
   base::ScopedClosureRunner unmount_and_drop_keys_runner(
-      base::Bind(&Mount::UnmountAndDropKeys, this));
+      base::Bind(&Mount::UnmountAndDropKeys, base::Unretained(this)));
 
   std::string key_signature, fnek_signature;
   if (should_mount_ecryptfs) {
@@ -594,9 +603,9 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
-  // At this point we're done mounting so release the closure without running
-  // it.
-  ignore_result(unmount_and_drop_keys_runner.Release());
+  // At this point we're done mounting so move the clean-up closure to the
+  // instance variable.
+  mount_cleanup_ = unmount_and_drop_keys_runner.Release();
 
   *mount_error = MOUNT_ERROR_NONE;
 
@@ -637,15 +646,12 @@ void Mount::CleanUpEphemeral() {
   }
 }
 
-bool Mount::MountEphemeralCryptohome(const std::string& username) {
+bool Mount::MountEphemeralCryptohome(const std::string& username,
+                                     base::Closure cleanup) {
   // Ephemeral cryptohome can't be mounted twice.
   CHECK(mounter_->CanPerformEphemeralMount());
 
-  base::ScopedClosureRunner clean_up_ephemeral_runner(
-      base::Bind(&Mount::CleanUpEphemeral, this));
-
-  base::ScopedClosureRunner unmount_and_drop_keys_runner(
-      base::Bind(&Mount::UnmountAndDropKeys, this));
+  base::ScopedClosureRunner cleanup_runner(cleanup);
 
   if (!mounter_->PerformEphemeralMount(username)) {
     LOG(ERROR) << "MountHelper::PerformEphemeralMount failed, aborting"
@@ -658,9 +664,8 @@ bool Mount::MountEphemeralCryptohome(const std::string& username) {
     return false;
   }
 
-  // Mount succeeded, release closures without running them.
-  ignore_result(clean_up_ephemeral_runner.Release());
-  ignore_result(unmount_and_drop_keys_runner.Release());
+  // Mount succeeded, move the clean-up closure to the instance variable.
+  mount_cleanup_ = cleanup_runner.Release();
 
   mount_type_ = MountType::EPHEMERAL;
   return true;
@@ -685,8 +690,10 @@ bool Mount::UnmountCryptohome() {
   // Stop dircrypto migration if in progress.
   MaybeCancelActiveDircryptoMigrationAndWait();
 
-  UnmountAndDropKeys();
-  CleanUpEphemeral();
+  if (!mount_cleanup_.is_null()) {
+    std::move(mount_cleanup_).Run();
+  }
+
   if (homedirs_->AreEphemeralUsersEnabled())
     homedirs_->RemoveNonOwnerCryptohomes();
   else
@@ -1036,7 +1043,16 @@ bool Mount::MountGuestCryptohome() {
   }
 
   current_user_->Reset();
-  return MountEphemeralCryptohome(kGuestUserName);
+
+  // This callback will be executed in the destructor at the latest so
+  // |this| will always be valid.
+  base::Closure cleanup = base::Bind(
+      [](Mount* m) {
+        m->UnmountAndDropKeys();
+        m->CleanUpEphemeral();
+      },
+      base::Unretained(this));
+  return MountEphemeralCryptohome(kGuestUserName, std::move(cleanup));
 }
 
 FilePath Mount::GetUserDirectory(
