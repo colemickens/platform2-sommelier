@@ -96,26 +96,31 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       })";
       break;
     case 2:
-      eval_str = R"({
-        "eval":)" +
-                 GetEctoolDictionary(&fuzz_data) + R"(
-      })";
+      eval_str = GetEctoolDictionary(&fuzz_data);
       break;
     case 3:
-      eval_str = R"({
-        "eval":)" +
-                 GetVPDCachedDictionary(&fuzz_data) + R"(
-      })";
+      eval_str = GetVPDCachedDictionary(&fuzz_data);
       break;
     default:
       return 0;
   }
 
-  auto probe_statement = ProbeStatement::FromDictionaryValue(
-      "nop", *base::DictionaryValue::From(base::JSONReader::Read(eval_str)));
+  if (op == 0 || op == 1) {  // Fuzz Eval
+    auto probe_statement = ProbeStatement::FromDictionaryValue(
+        "nop", *base::DictionaryValue::From(base::JSONReader::Read(eval_str)));
 
-  if (probe_statement != nullptr)
-    auto results = probe_statement->Eval();
+    if (probe_statement != nullptr)
+      auto results = probe_statement->Eval();
+  } else {  // Fuzz EvalInHelper
+    auto probe_function = runtime_probe::ProbeFunction::FromValue(
+        *base::DictionaryValue::From(base::JSONReader::Read(eval_str)));
+
+    if (probe_function != nullptr) {
+      string output;
+      probe_function->EvalInHelper(&output);
+    }
+  }
+
   return 0;
 }
 
