@@ -8,6 +8,7 @@
 #include <base/cancelable_callback.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 
 #include "shill/callbacks.h"
 #include "shill/error.h"
@@ -41,8 +42,8 @@ class EventDispatcher;
 // result_aggregator goes out of scope. For example:
 //
 // void Manager::Foo() {
-//   auto result_aggregator(make_scoped_refptr(new ResultAggregator(
-//       Bind(&Manager::Func, AsWeakPtr()), dispatcher_, 1000)));
+//   auto result_aggregator(base::MakeRefCounted<ResultAggregator>(
+//       Bind(&Manager::Func, AsWeakPtr()), dispatcher_, 1000));
 //   if (condition) {
 //     LOG(ERROR) << "Failed!"
 //     return;

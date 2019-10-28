@@ -1066,7 +1066,7 @@ void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
     return;
   }
   bool deferred = false;
-  auto result_aggregator(make_scoped_refptr(new ResultAggregator(callback)));
+  auto result_aggregator(base::MakeRefCounted<ResultAggregator>(callback));
   for (auto& device : devices_) {
     if (device->technology() != id)
       continue;
@@ -1607,9 +1607,9 @@ void Manager::OnSuspendImminent() {
     OnSuspendActionsComplete(Error(Error::kSuccess));
     return;
   }
-  auto result_aggregator(make_scoped_refptr(new ResultAggregator(
+  auto result_aggregator(base::MakeRefCounted<ResultAggregator>(
       Bind(&Manager::OnSuspendActionsComplete, AsWeakPtr()), dispatcher_,
-      kTerminationActionsTimeoutMilliseconds)));
+      kTerminationActionsTimeoutMilliseconds));
   for (const auto& service : services_) {
     ResultCallback aggregator_callback(
         Bind(&ResultAggregator::ReportResult, result_aggregator));
@@ -1644,9 +1644,9 @@ void Manager::OnDarkSuspendImminent() {
     OnDarkResumeActionsComplete(Error(Error::kSuccess));
     return;
   }
-  auto result_aggregator(make_scoped_refptr(new ResultAggregator(
+  auto result_aggregator(base::MakeRefCounted<ResultAggregator>(
       Bind(&Manager::OnDarkResumeActionsComplete, AsWeakPtr()), dispatcher_,
-      kTerminationActionsTimeoutMilliseconds)));
+      kTerminationActionsTimeoutMilliseconds));
   for (const auto& device : devices_) {
     ResultCallback aggregator_callback(
         Bind(&ResultAggregator::ReportResult, result_aggregator));

@@ -13,6 +13,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -295,8 +296,8 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   void FakeUpConnectedPPP() {
     const char kInterfaceName[] = "fake-ppp-device";
     const int kInterfaceIndex = -1;
-    auto mock_ppp_device = make_scoped_refptr(new MockPPPDevice(
-        modem_info_.manager(), kInterfaceName, kInterfaceIndex));
+    auto mock_ppp_device = base::MakeRefCounted<MockPPPDevice>(
+        modem_info_.manager(), kInterfaceName, kInterfaceIndex);
     device_->ppp_device_ = mock_ppp_device;
     device_->state_ = Cellular::kStateConnected;
   }

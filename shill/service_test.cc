@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/memory/scoped_refptr.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
@@ -1950,7 +1951,7 @@ class ServiceWithMockOnPropertyChanged : public ServiceUnderTest {
 
 TEST_F(ServiceTest, ConfigureServiceTriggersOnPropertyChanged) {
   auto service(
-      make_scoped_refptr(new ServiceWithMockOnPropertyChanged(&mock_manager_)));
+      base::MakeRefCounted<ServiceWithMockOnPropertyChanged>(&mock_manager_));
   KeyValueStore args;
   args.SetString(kUIDataProperty, "terpsichorean ejectamenta");
   args.SetBool(kSaveCredentialsProperty, false);

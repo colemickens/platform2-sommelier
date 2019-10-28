@@ -12,6 +12,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -3459,20 +3460,20 @@ TEST_F(ManagerTest, ConnectToBestServices) {
 TEST_F(ManagerTest, CreateConnectivityReport) {
   // Add devices
   // WiFi
-  auto wifi_device = make_scoped_refptr(
-      new NiceMock<MockDevice>(manager(), "null", "addr", 0));
+  auto wifi_device =
+      base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "null", "addr", 0);
   manager()->RegisterDevice(wifi_device);
   // Cell
-  auto cell_device = make_scoped_refptr(
-      new NiceMock<MockDevice>(manager(), "null", "addr", 1));
+  auto cell_device =
+      base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "null", "addr", 1);
   manager()->RegisterDevice(cell_device);
   // Ethernet
-  auto eth_device = make_scoped_refptr(
-      new NiceMock<MockDevice>(manager(), "null", "addr", 3));
+  auto eth_device =
+      base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "null", "addr", 3);
   manager()->RegisterDevice(eth_device);
   // VPN Device -- base device for a service that will not be connected
-  auto vpn_device = make_scoped_refptr(
-      new NiceMock<MockDevice>(manager(), "null", "addr", 4));
+  auto vpn_device =
+      base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "null", "addr", 4);
   manager()->RegisterDevice(vpn_device);
 
   // Add service for multiple devices
@@ -3759,8 +3760,8 @@ TEST_F(ManagerTest, CustomSetterNoopChange) {
 TEST_F(ManagerTest, GeoLocation) {
   EXPECT_TRUE(manager()->GetNetworksForGeolocation().empty());
 
-  auto device = make_scoped_refptr(
-      new NiceMock<MockDevice>(manager(), "device", "addr_1", 0));
+  auto device = base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "device",
+                                                           "addr_1", 0);
 
   // Manager should ignore gelocation info from technologies it does not know.
   EXPECT_CALL(*device, technology())
@@ -3781,8 +3782,8 @@ TEST_F(ManagerTest, GeoLocation) {
   EXPECT_EQ(1, location_infos.size());
   EXPECT_TRUE(base::ContainsKey(location_infos, kGeoWifiAccessPointsProperty));
 
-  auto cellular_device = make_scoped_refptr(
-      new NiceMock<MockDevice>(manager(), "modem", "addr_2", 1));
+  auto cellular_device = base::MakeRefCounted<NiceMock<MockDevice>>(
+      manager(), "modem", "addr_2", 1);
 
   // Manager should inclusively add cellular info.
   EXPECT_CALL(*cellular_device, technology())
@@ -3800,13 +3801,13 @@ TEST_F(ManagerTest, GeoLocation) {
 TEST_F(ManagerTest, GeoLocation_MultipleDevicesOneTechnology) {
   EXPECT_TRUE(manager()->GetNetworksForGeolocation().empty());
 
-  auto device_1 = make_scoped_refptr(
-      new NiceMock<MockDevice>(manager(), "device_1", "addr_1", 0));
+  auto device_1 = base::MakeRefCounted<NiceMock<MockDevice>>(
+      manager(), "device_1", "addr_1", 0);
   GeolocationInfo info_1;
   info_1["location"] = "abc";
 
-  auto device_2 = make_scoped_refptr(
-      new NiceMock<MockDevice>(manager(), "device_2", "addr_2", 1));
+  auto device_2 = base::MakeRefCounted<NiceMock<MockDevice>>(
+      manager(), "device_2", "addr_2", 1);
   GeolocationInfo info_2;
   info_2["location"] = "def";
 
@@ -3834,8 +3835,8 @@ TEST_F(ManagerTest, GeoLocation_MultipleDevicesOneTechnology) {
 TEST_F(ManagerTest, GeoLocation_DeregisterDevice) {
   EXPECT_TRUE(manager()->GetNetworksForGeolocation().empty());
 
-  auto device = make_scoped_refptr(
-      new NiceMock<MockDevice>(manager(), "device", "addr_1", 0));
+  auto device = base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "device",
+                                                           "addr_1", 0);
   manager()->RegisterDevice(device);
 
   EXPECT_CALL(*device, technology()).WillRepeatedly(Return(Technology::kWifi));
