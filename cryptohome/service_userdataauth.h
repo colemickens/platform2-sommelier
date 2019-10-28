@@ -29,9 +29,8 @@ class UserDataAuthAdaptor
       : org::chromium::UserDataAuthInterfaceAdaptor(this),
         dbus_object_(dbus_object),
         service_(service) {
-    // This is to silence the compiler's warning about unused fields. It will be
-    // removed once we start to use it.
-    (void)service_;
+    service_->SetLowDiskSpaceCallback(base::Bind(
+        &UserDataAuthAdaptor::LowDiskSpaceCallback, base::Unretained(this)));
   }
 
   void RegisterAsync() { RegisterWithDBusObject(dbus_object_); }
@@ -154,6 +153,10 @@ class UserDataAuthAdaptor
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::GetAccountDiskUsageReply>> response,
       const user_data_auth::GetAccountDiskUsageRequest& in_request);
+
+  // This is called by UserDataAuth when it detects that it's running low on
+  // disk space. All we do here is send the signal.
+  void LowDiskSpaceCallback(uint64_t free_disk_space);
 
  private:
   brillo::dbus_utils::DBusObject* dbus_object_;

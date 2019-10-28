@@ -130,7 +130,10 @@ UserDataAuth::UserDataAuth()
       legacy_mount_(true),
       default_arc_disk_quota_(new cryptohome::ArcDiskQuota(
           homedirs_, platform_, base::FilePath(kArcDiskHome))),
-      arc_disk_quota_(default_arc_disk_quota_.get()) {}
+      arc_disk_quota_(default_arc_disk_quota_.get()),
+      low_disk_notification_period_ms_(kLowDiskNotificationPeriodMS),
+      low_disk_space_signal_was_emitted_(false),
+      low_disk_space_callback_(base::Bind([](uint64_t free_disk_space) {})) {}
 
 UserDataAuth::~UserDataAuth() {
   mount_thread_.Stop();
@@ -209,6 +212,22 @@ bool UserDataAuth::Initialize() {
 
   tpm_init_->Init(
       base::Bind(&UserDataAuth::OwnershipCallback, base::Unretained(this)));
+
+  // Initialize the state used by LowDiskCallback(), both variables are set to
+  // the current time.
+  last_auto_cleanup_time_ = platform_->GetCurrentTime();
+  last_user_activity_timestamp_time_ = last_auto_cleanup_time_;
+
+  if (!disable_threading_) {
+    // Clean up space on start (once).
+    PostTaskToMountThread(FROM_HERE, base::Bind(&UserDataAuth::DoAutoCleanup,
+                                                base::Unretained(this)));
+
+    // Start scheduling periodic check for low-disk space and cleanup events.
+    // Subsequent events are scheduled by the callback itself.
+    PostTaskToMountThread(FROM_HERE, base::Bind(&UserDataAuth::LowDiskCallback,
+                                                base::Unretained(this)));
+  }
 
   return true;
 }
@@ -2255,6 +2274,56 @@ void UserDataAuth::DoAutoCleanup() {
   homedirs_->FreeDiskSpace();
   // Reset the dictionary attack counter if possible and necessary.
   ResetDictionaryAttackMitigation();
+}
+
+void UserDataAuth::LowDiskCallback() {
+  AssertOnMountThread();
+  DCHECK(!disable_threading_);
+
+  bool low_disk_space_signal_emitted = false;
+  int64_t free_disk_space = homedirs_->AmountOfFreeDiskSpace();
+  if (free_disk_space < 0) {
+    LOG(ERROR) << "Error getting free disk space, got: " << free_disk_space;
+  } else if (free_disk_space < kNotifyDiskSpaceThreshold) {
+    low_disk_space_callback_.Run(static_cast<uint64_t>(free_disk_space));
+    low_disk_space_signal_emitted = true;
+  }
+
+  const base::Time current_time = platform_->GetCurrentTime();
+
+  const bool time_for_auto_cleanup =
+      current_time - last_auto_cleanup_time_ >
+      base::TimeDelta::FromMilliseconds(kAutoCleanupPeriodMS);
+
+  // We shouldn't repeat cleanups on every minute if the disk space
+  // stays below the threshold. Trigger it only if there was no notification
+  // previously.
+  const bool early_cleanup_needed =
+      low_disk_space_signal_emitted && !low_disk_space_signal_was_emitted_;
+
+  if (time_for_auto_cleanup || early_cleanup_needed) {
+    last_auto_cleanup_time_ = current_time;
+    DoAutoCleanup();
+  }
+
+  const bool time_for_user_activity_period_update =
+      current_time - last_user_activity_timestamp_time_ >
+      base::TimeDelta::FromHours(kUpdateUserActivityPeriodHours);
+
+  if (time_for_user_activity_period_update) {
+    last_user_activity_timestamp_time_ = current_time;
+    UpdateCurrentUserActivityTimestamp(0);
+  }
+
+  low_disk_space_signal_was_emitted_ = low_disk_space_signal_emitted;
+
+  // Schedule our next call. If the thread is terminating, we would
+  // not be called. We use base::Unretained here because the Service object is
+  // never destroyed.
+  PostTaskToMountThread(
+      FROM_HERE,
+      base::Bind(&UserDataAuth::LowDiskCallback, base::Unretained(this)),
+      base::TimeDelta::FromMilliseconds(low_disk_notification_period_ms_));
 }
 
 }  // namespace cryptohome

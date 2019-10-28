@@ -242,6 +242,17 @@ do.
                     value="user_data_auth::GetAccountDiskUsageReply" />
       </arg>
     </method>
+
+    <!-- LowDiskSpace: Emitted when the system is running low on disk space
+                       for home directories. -->
+    <signal name="LowDiskSpace">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="status" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::LowDiskSpace" />
+      </arg>
+    </signal>
   </interface>
 
   <interface name="org.chromium.ArcQuota">

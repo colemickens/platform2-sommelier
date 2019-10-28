@@ -512,6 +512,14 @@ class LegacyCryptohomeInterfaceAdaptor
     OnDircryptoMigrationProgressSignal(progress);
   }
 
+  // This is a public version of OnLowDiskSpaceSignal() that simply calls the
+  // protected version. This is only used for testing because the unit test
+  // cannot call the real protected version.
+  void OnLowDiskSpaceSignalForTestingOnly(
+      const user_data_auth::LowDiskSpace& payload) {
+    OnLowDiskSpaceSignal(payload);
+  }
+
  protected:
   // This constructor is reserved only for testing.
   LegacyCryptohomeInterfaceAdaptor(
@@ -561,11 +569,19 @@ class LegacyCryptohomeInterfaceAdaptor
                                          in_total_bytes);
   }
 
+  // This is used in testing to be able to mock SendLowDiskSpaceSignal
+  virtual void VirtualSendLowDiskSpaceSignal(uint64_t disk_free_bytes) {
+    SendLowDiskSpaceSignal(disk_free_bytes);
+  }
+
   // Signal forwarders
 
   // Forwards DircryptoMigrationProgress Signal
   void OnDircryptoMigrationProgressSignal(
       const user_data_auth::DircryptoMigrationProgress& progress);
+
+  // Forwards LowDiskSpace Signal
+  void OnLowDiskSpaceSignal(const user_data_auth::LowDiskSpace& payload);
 
   // Handles signal registration failure
   void OnSignalConnectedHandler(const std::string& interface,

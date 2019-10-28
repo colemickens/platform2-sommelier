@@ -26,6 +26,11 @@ void LegacyCryptohomeInterfaceAdaptor::RegisterAsync() {
           base::Unretained(this)),
       base::Bind(&LegacyCryptohomeInterfaceAdaptor::OnSignalConnectedHandler,
                  base::Unretained(this)));
+  userdataauth_proxy_->RegisterLowDiskSpaceSignalHandler(
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::OnLowDiskSpaceSignal,
+                 base::Unretained(this)),
+      base::Bind(&LegacyCryptohomeInterfaceAdaptor::OnSignalConnectedHandler,
+                 base::Unretained(this)));
 }
 
 void LegacyCryptohomeInterfaceAdaptor::IsMounted(
@@ -2629,6 +2634,11 @@ void LegacyCryptohomeInterfaceAdaptor::OnDircryptoMigrationProgressSignal(
       dircrypto_data_migrator::MigrationHelper::ConvertDircryptoMigrationStatus(
           progress.status()),
       progress.current_bytes(), progress.total_bytes());
+}
+
+void LegacyCryptohomeInterfaceAdaptor::OnLowDiskSpaceSignal(
+    const user_data_auth::LowDiskSpace& payload) {
+  VirtualSendLowDiskSpaceSignal(payload.disk_free_bytes());
 }
 
 void LegacyCryptohomeInterfaceAdaptor::OnSignalConnectedHandler(

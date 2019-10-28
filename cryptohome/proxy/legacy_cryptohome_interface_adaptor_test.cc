@@ -98,6 +98,7 @@ class LegacyCryptohomeInterfaceAdaptorForTesting
               VirtualSendDircryptoMigrationProgressSignal,
               (int32_t, uint64_t, uint64_t),
               (override));
+  MOCK_METHOD(void, VirtualSendLowDiskSpaceSignal, (uint64_t), (override));
 };
 
 // Some common constants used for testing.
@@ -847,6 +848,19 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest,
       .WillOnce(Return());
 
   adaptor_->OnDircryptoMigrationProgressSignalForTestingOnly(progress);
+}
+
+// -------------------- LowDiskSpace Signal Related Tests --------------------
+TEST_F(LegacyCryptohomeInterfaceAdaptorTest, LowDiskSpaceSignalSanity) {
+  constexpr uint64_t kFreeDiskSpace = 998877665544ULL;
+
+  user_data_auth::LowDiskSpace payload;
+  payload.set_disk_free_bytes(kFreeDiskSpace);
+
+  EXPECT_CALL(*adaptor_, VirtualSendLowDiskSpaceSignal(kFreeDiskSpace))
+      .WillOnce(Return());
+
+  adaptor_->OnLowDiskSpaceSignalForTestingOnly(payload);
 }
 
 // This class holds the various extra setups to facilitate testing GetTpmStatus

@@ -105,6 +105,8 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
     homedirs_.set_crypto(&crypto_);
     homedirs_.set_platform(&platform_);
     ON_CALL(homedirs_, Init(_, _, _)).WillByDefault(Return(true));
+    ON_CALL(homedirs_, AmountOfFreeDiskSpace())
+        .WillByDefault(Return(kNotifyDiskSpaceThreshold));
     // Empty token list by default.  The effect is that there are no attempts
     // to unload tokens unless a test explicitly sets up the token list.
     ON_CALL(chaps_client_, GetTokenList(_, _)).WillByDefault(Return(true));
@@ -2529,6 +2531,189 @@ TEST_F(UserDataAuthTestThreaded, SetSystemSaltRetryOnUnsuccessful) {
       base::Unretained(userdataauth_.get())));
 
   EXPECT_TRUE(done.TimedWait(base::TimeDelta::FromSeconds(10)));
+}
+
+TEST_F(UserDataAuthTestThreaded,
+       CheckUpdateCurrentUserActivityTimestampCalledDaily) {
+  SetupMount("some-user-to-clean-up");
+
+  // Check that UpdateCurrentUserActivityTimestamp happens daily.
+  EXPECT_CALL(*mount_, UpdateCurrentUserActivityTimestamp(0)).Times(AtLeast(1));
+
+  // These are shared between threads, so guard by the lock.
+  base::Time current_time;
+  base::Lock lock;
+
+  // These will be invoked from the mount thread.
+  EXPECT_CALL(platform_, GetCurrentTime())
+      .WillRepeatedly(Invoke([&lock, &current_time]() {
+        base::AutoLock scoped_lock(lock);
+        return current_time;
+      }));
+  const int period_ms = 1;
+
+  // This will cause the low disk space callback to be called every ms
+  userdataauth_->set_low_disk_notification_period_ms(period_ms);
+
+  InitializeUserDataAuth();
+
+  // Move the time forward for slightly more than a day, this guarantees that
+  // the UpdateCurrentUserActivityTimestamp() should fire at least once.
+  {
+    base::AutoLock scoped_lock(lock);
+    current_time +=
+        base::TimeDelta::FromHours(kUpdateUserActivityPeriodHours + 1);
+  }
+  // Wait for the call back to trigger at least once.
+  base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(period_ms * 2));
+
+  // Currently low disk space callback runs every 1 ms. If that test callback
+  // runs before we finish test teardown but after platform_ object is cleared,
+  // then we'll get error. Therefore, we need to set test callback interval
+  // back to 1 minute, so we will not have any race condition.
+  userdataauth_->set_low_disk_notification_period_ms(
+      kLowDiskNotificationPeriodMS);
+  // Wait for the change to take effect.
+  base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(period_ms * 5));
+
+  // Cleanup invokable lambdas so they don't capture this test variables
+  // anymore. If this is not done then the periodic callbacks might call
+  // platform_.GetCurrentTime() between the time local variables here gets
+  // destructed and the time |platform_| object gets destructed in test fixture
+  // destructor, thus accessing the already destructed local variable
+  // |current_time|.
+  Mock::VerifyAndClear(&homedirs_);
+  Mock::VerifyAndClear(&platform_);
+}
+
+TEST_F(UserDataAuthTestThreaded, CheckAutoCleanupCallback) {
+  // Checks that DoAutoCleanup() is called periodically.
+  // Service will schedule periodic clean-ups.
+  SetupMount("some-user-to-clean-up");
+
+  // These are shared between threads, so guard by the lock.
+  int free_disk_space_count = 0;
+  base::Time current_time;
+  base::Lock lock;
+
+  // Used to signal that the test is done.
+  base::WaitableEvent done(base::WaitableEvent::ResetPolicy::MANUAL,
+                           base::WaitableEvent::InitialState::NOT_SIGNALED);
+
+  // These will be invoked from the mount thread.
+  EXPECT_CALL(homedirs_, FreeDiskSpace())
+      .Times(AtLeast(3))
+      .WillRepeatedly(
+          Invoke([&lock, &current_time, &free_disk_space_count, &done] {
+            // The time will move forward enough to trigger the next call every
+            // time it's called.
+            base::AutoLock scoped_lock(lock);
+            current_time +=
+                base::TimeDelta::FromMilliseconds(kAutoCleanupPeriodMS + 1000);
+            free_disk_space_count++;
+            if (free_disk_space_count == 3) {
+              done.Signal();
+            }
+          }));
+
+  EXPECT_CALL(platform_, GetCurrentTime())
+      .WillRepeatedly(Invoke([&lock, &current_time]() {
+        base::AutoLock scoped_lock(lock);
+        return current_time;
+      }));
+  const int period_ms = 1;
+
+  // This will cause the low disk space callback to be called every ms
+  userdataauth_->set_low_disk_notification_period_ms(period_ms);
+
+  InitializeUserDataAuth();
+
+  // Advance time once so that the first call gets triggered.
+  {
+    base::AutoLock scoped_lock(lock);
+    current_time += base::TimeDelta::FromMilliseconds(kAutoCleanupPeriodMS);
+  }
+
+  // Wait for at most 5 seconds. 5 seconds is most likely enough, a period this
+  // long is to avoid flakiness.
+  done.TimedWait(base::TimeDelta::FromSeconds(5));
+
+  // Currently low disk space callback runs every 1 ms. If that test callback
+  // runs before we finish test teardown but after platform_ object is cleared,
+  // then we'll get error. Therefore, we need to set test callback interval
+  // back to 1 minute, so we will not have any race condition.
+  userdataauth_->set_low_disk_notification_period_ms(
+      kLowDiskNotificationPeriodMS);
+  // Wait for the change to take effect.
+  base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(period_ms * 5));
+
+  // Cleanup invokable lambdas so they don't capture this test variables
+  // anymore. If this is not done then the periodic callbacks might call
+  // platform_.GetCurrentTime() between the time local variables here gets
+  // destructed and the time |platform_| object gets destructed in test fixture
+  // destructor, thus accessing the already destructed local variable
+  // |current_time|.
+  Mock::VerifyAndClear(&homedirs_);
+  Mock::VerifyAndClear(&platform_);
+}
+
+TEST_F(UserDataAuthTestThreaded, CheckAutoCleanupCallbackFirst) {
+  // Checks that DoAutoCleanup() is called first right after init.
+  // Service will schedule first cleanup right after its init.
+  EXPECT_CALL(homedirs_, FreeDiskSpace()).Times(1);
+
+  InitializeUserDataAuth();
+
+  // short delay to see the first invocation. Note that the usual schedule is
+  // once per hour, but we only wait for 10ms here, so a regular schedule can't
+  // be mistaken as the first call by Initialize().
+  base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(10));
+}
+
+TEST_F(UserDataAuthTestThreaded, CheckLowDiskCallback) {
+  // Checks that LowDiskCallback is called periodically.
+  EXPECT_CALL(homedirs_, AmountOfFreeDiskSpace())
+      .Times(AtLeast(3))
+      .WillOnce(Return(kNotifyDiskSpaceThreshold + 1))
+      .WillOnce(Return(kNotifyDiskSpaceThreshold - 1))
+      .WillRepeatedly(Return(kNotifyDiskSpaceThreshold + 1));
+
+  // DoAutoCleanup gets called once upon initialization, as verified by
+  // CheckAutoCleanupCallbackFirst test. Here we check that it's called a second
+  // time, and ahead of schedule (which is 1 hour, and this test is much
+  // shorter), if disk space goes below threshold and recovers back to normal.
+  EXPECT_CALL(homedirs_, FreeDiskSpace()).Times(2);
+
+  userdataauth_->set_low_disk_notification_period_ms(2);
+
+  int count_signals = 0;
+  userdataauth_->SetLowDiskSpaceCallback(
+      base::Bind([](int* count_signals_ptr,
+                    uint64_t free_space) { (*count_signals_ptr)++; },
+                 &count_signals));
+
+  InitializeUserDataAuth();
+
+  base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
+  EXPECT_EQ(1, count_signals);
+}
+
+TEST_F(UserDataAuthTestThreaded, CheckLowDiskCallbackFreeDiskSpaceOnce) {
+  EXPECT_CALL(homedirs_, AmountOfFreeDiskSpace())
+      .Times(AtLeast(4))
+      .WillOnce(Return(kNotifyDiskSpaceThreshold + 1))
+      .WillRepeatedly(Return(kNotifyDiskSpaceThreshold - 1));
+  // Checks that DoAutoCleanup is called only once ahead of schedule if disk
+  // space goes below threshold and stays below forever. Note that it's 2 times
+  // here because it gets called once during Initialize(), see note in
+  // CheckLowDiskCallback test.
+  EXPECT_CALL(homedirs_, FreeDiskSpace()).Times(2);
+
+  userdataauth_->set_low_disk_notification_period_ms(2);
+
+  InitializeUserDataAuth();
+
+  base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
 }
 
 }  // namespace cryptohome

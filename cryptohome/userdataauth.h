@@ -143,6 +143,12 @@ class UserDataAuth {
   // main() because there's a command line switch for selecting this.
   void set_legacy_mount(bool legacy) { legacy_mount_ = legacy; }
 
+  // Set the |low_disk_space_callback_| variable. This is usually called by the
+  // DBus adaptor.
+  void SetLowDiskSpaceCallback(const base::Callback<void(uint64_t)>& callback) {
+    low_disk_space_callback_ = callback;
+  }
+
   // =============== Key Related Public Utilities ===============
   // Add the key specified in the request, and return a CryptohomeErrorCode to
   // indicate the status of adding the key. If CryptohomeErrorCode is
@@ -475,6 +481,12 @@ class UserDataAuth {
     mounts_[username] = mount;
   }
 
+  // Override the time between each LowDiskCallback() for testing. This is so
+  // that we can finish the unit test in a shorter time.
+  void set_low_disk_notification_period_ms(int value) {
+    low_disk_notification_period_ms_ = value;
+  }
+
   // Set |disable_threading_|, so that we can disable threading in this class
   // for testing purpose. See comment of |disable_threading_| for more
   // information.
@@ -604,6 +616,10 @@ class UserDataAuth {
       base::OnceCallback<void(const user_data_auth::MountReply&)> on_done);
 
   // =============== Low Disk Space/Cleanup Related Methods ===============
+
+  // Called periodically on Mount thread to detect low disk space and emit a
+  // signal if detected. This also does various cleanup task.
+  void LowDiskCallback();
 
   // This is called periodically, and does some routine cleanups. Currently this
   // free disk space consumed by unused cryptohomes and reset the dictionary
@@ -856,6 +872,29 @@ class UserDataAuth {
   // The actual ARC Disk Quota object used by this class. Usually set to
   // default_arc_disk_quota_, but can be overridden for testing.
   ArcDiskQuota* arc_disk_quota_;
+
+  // =============== Low Disk Space/Cleanup Related Variables ===============
+
+  // The amount of time (in milliseconds) between each subsequent run of
+  // LowDiskCallback(). This is usually set to a constant value that is
+  // reasonably long, but will be overriden during testing.
+  int low_disk_notification_period_ms_;
+
+  // Records whether low_disk_space_callback_ was called (i.e. the signal was
+  // emitted by the DBus adaptor) when LowDiskCallback() last run.
+  bool low_disk_space_signal_was_emitted_;
+
+  // The last time when DoAutoCleanup() is called by LowDiskCallback().
+  base::Time last_auto_cleanup_time_;
+
+  // The last time when LowDiskCallback() called
+  // UpdateCurrentUserActivityTimestamp().
+  base::Time last_user_activity_timestamp_time_;
+
+  // The callback to call when we are running low on disk space. This is usually
+  // connected to the DBus signal emitter, so calling this will emit the DBus
+  // signal to notify various other services that we are low on disk space.
+  base::Callback<void(uint64_t)> low_disk_space_callback_;
 };
 
 }  // namespace cryptohome
