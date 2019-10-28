@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cmath>
 #include <cstdlib>
 #include <limits>
 #include <string>
@@ -25,7 +26,7 @@ bool StringToDouble(const std::string& input, double* output) {
 
   // Assume the conversion success iff the entire string is consumed and output
   // is not inf or -inf.
-  return *endptr == '\0' &&
+  return *endptr == '\0' && !std::isnan(*output) &&
          *output != std::numeric_limits<double>::infinity() &&
          *output != -std::numeric_limits<double>::infinity();
 }
