@@ -25,7 +25,8 @@ SmbFsDaemon::SmbFsDaemon(fuse_chan* chan, const Options& options)
       use_test_fs_(options.use_test),
       share_path_(options.share_path),
       uid_(options.uid ? options.uid : getuid()),
-      gid_(options.gid ? options.gid : getgid()) {
+      gid_(options.gid ? options.gid : getgid()),
+      mojo_id_(options.mojo_id ? options.mojo_id : "") {
   DCHECK(chan_);
 }
 

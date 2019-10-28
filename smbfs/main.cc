@@ -27,6 +27,7 @@ void PrintUsage(const char* self) {
       "File-system specific options:\n"
       "    -o uid=<n>          UID of the files owner.\n"
       "    -o gid=<n>          GID of the files owner.\n"
+      "    -o mojo_id=<s>      Token used to establish Mojo IPC to Chrome.\n"
       "    -t   --test         Use a fake/test backend.\n"
       "    --log-level=<l>     Log level - 0: LOG(INFO), 1: LOG(WARNING),\n"
       "                        2: LOG(ERROR), -1: VLOG(1), -2: VLOG(2), ...\n"
@@ -44,6 +45,7 @@ const struct fuse_opt options_definition[] = {
     OPT_DEF("--version", show_version, 1),
     OPT_DEF("uid=%u", uid, 0),
     OPT_DEF("gid=%u", gid, 0),
+    OPT_DEF("mojo_id=%s", mojo_id, 0),
     OPT_DEF("-t", use_test, 1),
     OPT_DEF("--test", use_test, 1),
     OPT_DEF("--log-level=%d", log_level, 0),
@@ -108,8 +110,8 @@ int main(int argc, char** argv) {
     return EX_USAGE;
   }
 
-  if (!options.use_test && options.share_path.empty()) {
-    LOG(ERROR) << "Either --test or [share_path] must be specified";
+  if (!options.use_test && options.share_path.empty() && !options.mojo_id) {
+    LOG(ERROR) << "Either --test, [share_path], or mojo_id must be specified";
     return EX_USAGE;
   } else if (!options.share_path.empty() &&
              !base::StartsWith(options.share_path, "smb://",

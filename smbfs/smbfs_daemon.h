@@ -36,6 +36,7 @@ class SmbFsDaemon : public brillo::DBusDaemon {
   const std::string share_path_;
   const uid_t uid_;
   const gid_t gid_;
+  const std::string mojo_id_;
   std::unique_ptr<FuseSession> session_;
   std::unique_ptr<Filesystem> fs_;
 

@@ -18,6 +18,7 @@ struct Options {
   int show_version = 0;
   uid_t uid = 0;
   gid_t gid = 0;
+  char* mojo_id = nullptr;
   int use_test = 0;
   int log_level = 1;
   int foreground = 0;
