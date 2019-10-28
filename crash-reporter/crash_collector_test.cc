@@ -15,6 +15,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -1192,10 +1193,10 @@ void CrashCollectorTest::TestFinishCrashInCrashLoopMode(
       CrashCollector::kUseNormalCrashDirectorySelectionMethod,
       CrashCollector::kCrashLoopSendingMode);
   dbus::Bus::Options bus_options;
-  auto mock_bus = make_scoped_refptr(new dbus::MockBus(bus_options));
-  auto mock_object_proxy = make_scoped_refptr(
-      new dbus::MockObjectProxy(mock_bus.get(), "org.chromium.debugd",
-                                dbus::ObjectPath("/org/chromium/debugd")));
+  auto mock_bus = base::MakeRefCounted<dbus::MockBus>(bus_options);
+  auto mock_object_proxy = base::MakeRefCounted<dbus::MockObjectProxy>(
+      mock_bus.get(), "org.chromium.debugd",
+      dbus::ObjectPath("/org/chromium/debugd"));
   EXPECT_CALL(collector, SetUpDBus())
       .WillOnce(Invoke([&collector, &mock_bus]() {
         collector.bus_ = mock_bus;
