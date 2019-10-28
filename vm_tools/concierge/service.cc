@@ -1259,11 +1259,16 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   NotifyCiceroneOfVmStarted(vm_id, vm->cid(), "");
 
   string failure_reason;
-  if (request.start_termina() && !StartTermina(vm.get(), &failure_reason)) {
+  vm_tools::StartTerminaResponse::MountResult mount_result =
+      vm_tools::StartTerminaResponse::UNKNOWN;
+  if (request.start_termina() &&
+      !StartTermina(vm.get(), &failure_reason, &mount_result)) {
     response.set_failure_reason(std::move(failure_reason));
+    response.set_mount_result((StartVmResponse::MountResult)mount_result);
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
+  response.set_mount_result((StartVmResponse::MountResult)mount_result);
 
   LOG(INFO) << "Started VM with pid " << vm->pid();
 
@@ -1915,8 +1920,12 @@ std::unique_ptr<dbus::Response> Service::SyncVmTimes(
   return dbus_response;
 }
 
-bool Service::StartTermina(TerminaVm* vm, string* failure_reason) {
+bool Service::StartTermina(
+    TerminaVm* vm,
+    string* failure_reason,
+    vm_tools::StartTerminaResponse::MountResult* result) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK(result);
   LOG(INFO) << "Starting lxd";
 
   // Allocate the subnet for lxd's bridge to use.
@@ -1987,6 +1996,8 @@ bool Service::StartTermina(TerminaVm* vm, string* failure_reason) {
       vm_tools::StartTerminaResponse::PARTIAL_DATA_LOSS) {
     LOG(ERROR) << "Possible data loss from filesystem corruption detected";
   }
+
+  *result = response.mount_result();
 
   return true;
 }

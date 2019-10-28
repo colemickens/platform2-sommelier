@@ -151,7 +151,9 @@ class Service final {
                              std::vector<std::string> search_domains);
 
   // Helper for starting termina VMs, e.g. starting lxd.
-  bool StartTermina(TerminaVm* vm, std::string* failure_reason);
+  bool StartTermina(TerminaVm* vm,
+                    std::string* failure_reason,
+                    vm_tools::StartTerminaResponse::MountResult* result);
 
   // Helpers for notifying cicerone and sending signals of VM started/stopped
   // events, and generating container tokens.
