@@ -10,6 +10,7 @@
 
 #include <base/bind.h>
 #include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/run_loop.h>
 #include <base/values.h>
 #include <dbus/mock_bus.h>
@@ -274,7 +275,7 @@ TEST_F(DBusServiceTest, NotificationClosedSignal) {
   // Prepare mock exported object
   const dbus::ObjectPath kObjectPath("/org/example/TestService");
   auto mock_exported_object =
-      make_scoped_refptr(new dbus::MockExportedObject(nullptr, kObjectPath));
+      base::MakeRefCounted<dbus::MockExportedObject>(nullptr, kObjectPath);
   dbus_service.exported_object_ = mock_exported_object.get();
 
   // Expected data
@@ -307,7 +308,7 @@ TEST_F(DBusServiceTest, ActionInvokedSignal) {
   // Prepare mock exported object
   const dbus::ObjectPath kObjectPath("/org/example/TestService");
   auto mock_exported_object =
-      make_scoped_refptr(new dbus::MockExportedObject(nullptr, kObjectPath));
+      base::MakeRefCounted<dbus::MockExportedObject>(nullptr, kObjectPath);
   dbus_service.exported_object_ = mock_exported_object.get();
 
   // Expected data
