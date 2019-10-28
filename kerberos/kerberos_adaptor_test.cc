@@ -9,6 +9,7 @@
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/run_loop.h>
 #include <brillo/asan.h>
 #include <dbus/login_manager/dbus-constants.h>
@@ -127,12 +128,12 @@ class KerberosAdaptorTest : public ::testing::Test {
   void SetUp() override {
     ::testing::Test::SetUp();
 
-    mock_bus_ = make_scoped_refptr(new MockBus(dbus::Bus::Options()));
+    mock_bus_ = base::MakeRefCounted<MockBus>(dbus::Bus::Options());
 
     // Mock out D-Bus initialization.
     const ObjectPath object_path(kObjectPath);
-    mock_exported_object_ = make_scoped_refptr(
-        new MockExportedObject(mock_bus_.get(), object_path));
+    mock_exported_object_ =
+        base::MakeRefCounted<MockExportedObject>(mock_bus_.get(), object_path);
     EXPECT_CALL(*mock_bus_, GetExportedObject(object_path))
         .WillRepeatedly(Return(mock_exported_object_.get()));
     EXPECT_CALL(*mock_exported_object_, Unregister()).Times(AnyNumber());
@@ -260,9 +261,9 @@ class KerberosAdaptorTest : public ::testing::Test {
 // dir is NOT overwritten by KerberosAdaptor::set_storage_dir_for_testing().
 TEST_F(KerberosAdaptorTest, RetrievesPrimarySession) {
   // Stub out Session Manager's RetrievePrimarySession D-Bus method.
-  auto mock_session_manager_proxy = make_scoped_refptr(new MockObjectProxy(
+  auto mock_session_manager_proxy = base::MakeRefCounted<MockObjectProxy>(
       mock_bus_.get(), login_manager::kSessionManagerServiceName,
-      dbus::ObjectPath(login_manager::kSessionManagerServicePath)));
+      dbus::ObjectPath(login_manager::kSessionManagerServicePath));
   EXPECT_CALL(*mock_bus_,
               GetObjectProxy(login_manager::kSessionManagerServiceName, _))
       .WillOnce(Return(mock_session_manager_proxy.get()));
