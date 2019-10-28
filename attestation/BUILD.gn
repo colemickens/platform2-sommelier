@@ -31,8 +31,12 @@ pkg_config("target_defaults") {
     # This is a list of pkg-config dependencies
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
-    "protobuf-lite",
   ]
+  if (use.fuzzer) {
+    pkg_deps += [ "protobuf" ]
+  } else {
+    pkg_deps += [ "protobuf-lite" ]
+  }
   defines = [ "USE_TPM2=${use.tpm2}" ]
 }
 
