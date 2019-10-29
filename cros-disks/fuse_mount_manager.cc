@@ -17,6 +17,7 @@
 #include "cros-disks/fuse_mounter.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
+#include "cros-disks/smbfs_helper.h"
 #include "cros-disks/sshfs_helper.h"
 #include "cros-disks/uri.h"
 
@@ -52,6 +53,7 @@ bool FUSEMountManager::Initialize() {
   // Register specific FUSE mount helpers here.
   RegisterHelper(std::make_unique<DrivefsHelper>(platform(), process_reaper()));
   RegisterHelper(std::make_unique<SshfsHelper>(platform(), process_reaper()));
+  RegisterHelper(std::make_unique<SmbfsHelper>(platform(), process_reaper()));
 
   return true;
 }
