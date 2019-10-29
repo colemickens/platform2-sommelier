@@ -58,6 +58,13 @@ const int kSetCurrentUserOldOffsetInDays = 92;
 
 // Five minutes is enough to wait for any TPM operations, sync() calls, etc.
 const int kDefaultTimeoutMs = 300000;
+
+// We've 100 seconds to wait for TakeOwnership(), should be rather generous.
+constexpr int kWaitOwnershipTimeoutInSeconds = 100;
+
+// Poll once every 0.2s.
+constexpr int kWaitOwnershipPollIntervalInMs = 200;
+
 }  // namespace
 
 namespace switches {
@@ -80,6 +87,7 @@ namespace switches {
     { "test",     cryptohome::Attestation::kTestVA },
     { nullptr,    cryptohome::Attestation::kMaxVAType }
   };
+  static const char kWaitOwnershipTimeoutSwitch[] = "wait-ownership-timeout";
   static const char kActionSwitch[] = "action";
   static const char* kActions[] = {"mount_ex",
                                    "mount_guest",
@@ -590,67 +598,6 @@ class ClientLoop {
   std::string return_data_;
   cryptohome::BaseReply reply_;
 };
-
-class TpmWaitLoop {
- public:
-  TpmWaitLoop()
-      : loop_(NULL) { }
-
-  virtual ~TpmWaitLoop() {
-    if (loop_) {
-      g_main_loop_unref(loop_);
-    }
-  }
-
-  void Initialize(brillo::dbus::Proxy* proxy) {
-    dbus_g_object_register_marshaller(g_cclosure_marshal_generic,
-                                      G_TYPE_NONE,
-                                      G_TYPE_BOOLEAN,
-                                      G_TYPE_BOOLEAN,
-                                      G_TYPE_BOOLEAN,
-                                      G_TYPE_INVALID);
-    dbus_g_proxy_add_signal(proxy->gproxy(), "TpmInitStatus",
-                            G_TYPE_BOOLEAN, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN,
-                            G_TYPE_INVALID);
-    dbus_g_proxy_connect_signal(proxy->gproxy(), "TpmInitStatus",
-                                G_CALLBACK(TpmWaitLoop::CallbackThunk),
-                                this, NULL);
-    loop_ = g_main_loop_new(NULL, TRUE);
-  }
-
-  void Run() {
-    g_main_loop_run(loop_);
-  }
-
- private:
-  static void CallbackThunk(DBusGProxy* proxy, bool ready, bool is_owned,
-                            bool took_ownership, gpointer userdata) {
-    printf("TPM ready: %s\n", (ready ? "true" : "false"));
-    printf("TPM owned: %s\n", (is_owned ? "true" : "false"));
-    printf("TPM took_ownership: %s\n", (took_ownership ? "true" : "false"));
-    g_main_loop_quit(reinterpret_cast<TpmWaitLoop*>(userdata)->loop_);
-  }
-
-  GMainLoop *loop_;
-};
-
-bool WaitForTPMOwnership(brillo::dbus::Proxy* proxy) {
-  TpmWaitLoop client_loop;
-  client_loop.Initialize(proxy);
-  gboolean result;
-  brillo::glib::ScopedError error;
-  if (!org_chromium_CryptohomeInterface_tpm_is_being_owned(
-          proxy->gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
-    printf("TpmIsBeingOwned call failed: %s.\n", error->message);
-  }
-  if (result) {
-    printf("Waiting for TPM to be owned...\n");
-    client_loop.Run();
-  } else {
-    printf("TPM is not currently being owned.\n");
-  }
-  return result;
-}
 
 bool MakeProtoDBusCall(const std::string& name,
                        ProtoDBusMethod method,
@@ -1857,7 +1804,39 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_WAIT_OWNERSHIP],
       action.c_str())) {
-    return !WaitForTPMOwnership(&proxy);
+    // Note that this is a rather hackish implementation that will be replaced
+    // once the refactor to distributed mode is over. It'll be replaced with an
+    // implementation that does one synchronous call to tpm_manager's
+    // TakeOwnership(), then check if it's owned.
+    int timeout = kWaitOwnershipTimeoutInSeconds;
+    int timeout_in_switch;
+    if (cl->HasSwitch(switches::kWaitOwnershipTimeoutSwitch) &&
+        base::StringToInt(
+            cl->GetSwitchValueASCII(switches::kWaitOwnershipTimeoutSwitch),
+            &timeout_in_switch)) {
+      timeout = timeout_in_switch;
+    }
+
+    brillo::glib::ScopedError error;
+    auto deadline = base::Time::Now() + base::TimeDelta::FromSeconds(
+                                            kWaitOwnershipTimeoutInSeconds);
+    while (base::Time::Now() < deadline) {
+      base::PlatformThread::Sleep(
+          base::TimeDelta::FromMilliseconds(kWaitOwnershipPollIntervalInMs));
+      gboolean is_owned = false;
+      if (!org_chromium_CryptohomeInterface_tpm_is_owned(
+              proxy.gproxy(), &is_owned, &brillo::Resetter(&error).lvalue())) {
+        printf("TpmIsOwned call failed: %s.\n", error->message);
+        return 1;
+      }
+      if (is_owned) {
+        // This is the condition we are waiting for.
+        printf("TPM is now owned.\n");
+        return 0;
+      }
+    }
+    printf("Fail to own TPM.\n");
+    return 1;
   } else if (!strcmp(
       switches::kActions[switches::ACTION_PKCS11_TOKEN_STATUS],
       action.c_str())) {
