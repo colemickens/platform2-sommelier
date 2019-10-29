@@ -23,35 +23,19 @@ namespace shill {
 
 class ControlInterface;
 class Error;
-class EventDispatcher;
 class ProcessManager;
 
 class ExternalTask : public RpcTaskDelegate {
  public:
+  // |death_callback| will be called when the corresponding task is
+  // terminated. By the time it is called, this ExternalTask will already be
+  // Stop()'d. Clients are free to destruct the ExternalTask within the death
+  // callback.
   ExternalTask(ControlInterface* control,
                ProcessManager* process_manager,
                const base::WeakPtr<RpcTaskDelegate>& task_delegate,
                const base::Callback<void(pid_t, int)>& death_callback);
-  ~ExternalTask() override;  // But consider DestroyLater...
-
-  // Schedule later deletion of the ExternalTask. Useful when in the
-  // middle of an ExternalTask callback. Note that the caller _must_
-  // release ownership of |this|. For example:
-  //
-  //   class Foo : public SupportsWeakPtr<Foo>, public RpcTaskDelegate {
-  //    public:
-  //      Foo() {
-  //        task_.reset(new ExternalTask(...));
-  //      }
-  //
-  //      void Notify(...) {
-  //        task_.release()->DestroyLater(...);  // Passes ownership.
-  //      }
-  //
-  //    private:
-  //      std::unique_ptr<ExternalTask> task_;
-  //   }
-  void DestroyLater(EventDispatcher* dispatcher);
+  ~ExternalTask() override;
 
   // Forks off a process to run |program|, with the command-line
   // arguments |arguments|, and the environment variables specified in
@@ -113,8 +97,6 @@ class ExternalTask : public RpcTaskDelegate {
 
   // Called when the external process exits.
   void OnTaskDied(int exit_status);
-
-  static void Destroy(ExternalTask* task);
 
   ControlInterface* control_;
   ProcessManager* process_manager_;

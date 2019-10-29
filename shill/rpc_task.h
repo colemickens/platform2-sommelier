@@ -22,8 +22,6 @@ static const char kRpcTaskPathVariable[] = "SHILL_TASK_PATH";
 class ControlInterface;
 class RpcTaskAdaptorInterface;
 
-// TODO(petkov): Switch from delegate interface to registered callbacks
-// (crbug.com/212273).
 class RpcTaskDelegate {
  public:
   virtual ~RpcTaskDelegate() = default;

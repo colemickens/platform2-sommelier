@@ -11,7 +11,6 @@
 #include <base/bind_helpers.h>
 
 #include "shill/error.h"
-#include "shill/event_dispatcher.h"
 #include "shill/process_manager.h"
 
 namespace shill {
@@ -36,11 +35,6 @@ ExternalTask::ExternalTask(
 
 ExternalTask::~ExternalTask() {
   ExternalTask::Stop();
-}
-
-void ExternalTask::DestroyLater(EventDispatcher* dispatcher) {
-  // Passes ownership of |this| to Destroy.
-  dispatcher->PostTask(FROM_HERE, base::Bind(&Destroy, this));
 }
 
 bool ExternalTask::Start(const FilePath& program,
@@ -141,14 +135,12 @@ void ExternalTask::Notify(const string& event,
 void ExternalTask::OnTaskDied(int exit_status) {
   CHECK(pid_);
   LOG(INFO) << __func__ << "(" << pid_ << ", " << exit_status << ")";
-  death_callback_.Run(pid_, exit_status);
+  pid_t old_pid = pid_;
   pid_ = 0;
   rpc_task_.reset();
-}
-
-// static
-void ExternalTask::Destroy(ExternalTask* task) {
-  delete task;
+  // Since this method has no more non-static member accesses below this call,
+  // the death callback is free to destruct this instance.
+  death_callback_.Run(old_pid, exit_status);
 }
 
 }  // namespace shill

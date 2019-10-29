@@ -720,16 +720,10 @@ TEST_F(L2TPIPSecDriverTest, NotifyDisconnected) {
   driver_->external_task_.reset(local_external_task);  // passes ownership
   EXPECT_CALL(*device_, DropConnection());
   EXPECT_CALL(*device_, SetEnabled(false));
-  EXPECT_CALL(*local_external_task, OnDelete())
-      .Times(0);  // Not until event loop.
+  EXPECT_CALL(*local_external_task, OnDelete());
   driver_->Notify(kPPPReasonDisconnect, dict);
   EXPECT_FALSE(driver_->device_);
   EXPECT_EQ(nullptr, driver_->external_task_);
-  Mock::VerifyAndClearExpectations(local_external_task);
-
-  EXPECT_CALL(*local_external_task, OnDelete());
-  dispatcher_.PostTask(FROM_HERE, base::MessageLoop::QuitWhenIdleClosure());
-  dispatcher_.DispatchForever();
 }
 
 }  // namespace shill

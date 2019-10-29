@@ -201,9 +201,7 @@ void L2TPIPSecDriver::Cleanup(Service::ConnectState state,
                 << ", " << Service::ConnectFailureToString(failure) << ")";
   StopConnectTimeout();
   DeleteTemporaryFiles();
-  if (external_task_) {
-    external_task_.release()->DestroyLater(dispatcher());
-  }
+  external_task_.reset();
   if (device_) {
     device_->DropConnection();
     device_->SetEnabled(false);
@@ -443,8 +441,11 @@ void L2TPIPSecDriver::Notify(const string& reason,
 
   if (reason != kPPPReasonConnect) {
     DCHECK_EQ(kPPPReasonDisconnect, reason);
-    // DestroyLater, rather than while on stack.
-    external_task_.release()->DestroyLater(dispatcher());
+    // TODO(crbug.com/989361) We should move into a disconnecting state, stop
+    // this task if it exists, and wait for the task to fully shut down before
+    // completing the disconnection. This should wait for the VPNDriver code to
+    // be refactored, as the disconnect flow is a mess as it stands.
+    external_task_.reset();
     FailService(Service::kFailureUnknown);
     return;
   }

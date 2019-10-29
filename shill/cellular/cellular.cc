@@ -1156,8 +1156,7 @@ void Cellular::OnPPPConnected(const map<string, string>& params) {
 
 void Cellular::OnPPPDied(pid_t pid, int exit) {
   LOG(INFO) << __func__ << " on " << link_name();
-  // DestroyLater, rather than while on stack.
-  ppp_task_.release()->DestroyLater(dispatcher());
+  ppp_task_.reset();
   if (is_ppp_authenticating_) {
     SetServiceFailure(Service::kFailurePPPAuth);
   } else {

@@ -132,16 +132,6 @@ TEST_F(ExternalTaskTest, Destructor) {
   VerifyStop();
 }
 
-TEST_F(ExternalTaskTest, DestroyLater) {
-  const unsigned int kTag = 123;
-  const int kPID = 123456;
-  FakeUpRunningProcess(kTag, kPID);
-  ExpectStop(kTag, kPID);
-  external_task_.release()->DestroyLater(&dispatcher_);
-  dispatcher_.DispatchPendingEvents();
-  VerifyStop();
-}
-
 TEST_F(ExternalTaskTest, Start) {
   const string kCommand = "/run/me";
   const vector<string> kCommandOptions{"arg1", "arg2"};
