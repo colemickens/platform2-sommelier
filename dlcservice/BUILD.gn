@@ -58,16 +58,10 @@ static_library("libdlcservice") {
   libs = [ "rootdev" ]
   sources = [
     "boot_device.cc",
-    "boot_device.h",
     "boot_slot.cc",
-    "boot_slot.h",
     "dlc_service.cc",
-    "dlc_service.h",
     "dlc_service_dbus_adaptor.cc",
-    "dlc_service_dbus_adaptor.h",
-    "types.h",
     "utils.cc",
-    "utils.h",
   ]
   deps = [
     ":dlcservice_adaptors",
