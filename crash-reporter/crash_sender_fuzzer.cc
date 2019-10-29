@@ -16,6 +16,7 @@
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
+#include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/crash_sender_util.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
@@ -63,6 +64,17 @@ void CreateRandomFile(base::StringPiece suffix,
   base::WriteFile(file_path, content.c_str(), content.length());
 }
 
+// Make the lock file. If we don't make the lock file's directory,
+// AcquireLockFileOrDie() will fatal-error. If a fuzzer turns the lock file into
+// a directory, we'll also die. Get in ahead of the fuzzer and make sure it's a
+// normal file.
+void MakeLockFile() {
+  base::FilePath lock_file_path = paths::Get(paths::kLockFile);
+  base::FilePath lock_file_dir = lock_file_path.DirName();
+  CHECK(base::CreateDirectory(lock_file_dir));
+  CHECK_GE(base::WriteFile(lock_file_path, "", 0), 0);
+}
+
 }  // namespace
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
@@ -72,10 +84,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   CHECK(temp_dir.CreateUniqueTempDir());
   base::FilePath test_dir = temp_dir.GetPath();
   paths::SetPrefixForTesting(test_dir);
+  MakeLockFile();
 
   FuzzedDataProvider provider(data, size);
 
   auto metrics_lib = std::make_unique<MetricsLibraryMock>();
+  bool always_write_uploads_log = provider.ConsumeBool();
   metrics_lib->set_metrics_enabled(provider.ConsumeBool());
   metrics_lib->set_guest_mode(provider.ConsumeBool());
   bool allow_dev_sending = provider.ConsumeBool();
@@ -95,6 +109,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   options.max_spread_time = base::TimeDelta();
   options.hold_off_time = base::TimeDelta();
   options.allow_dev_sending = allow_dev_sending;
+  options.always_write_uploads_log = always_write_uploads_log;
   options.sleep_function = base::Bind(&IgnoreSleep);
 
   // The remaining lines are basically a condensed version of crash_sender.cc's
