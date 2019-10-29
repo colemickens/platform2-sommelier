@@ -16,6 +16,8 @@
 
 #include "trunks/error_codes.h"
 
+#define IS_TPM_CC_VENDOR_CMD(c)    (((c) == TPM_CC_VENDOR_SPECIFIC_MASK) || \
+                                    ((c) == TPM_CC_CR50_EXTENSION_COMMAND))
 namespace {
 
 const int kMaxSuspendDurationSec = 10;
@@ -540,15 +542,16 @@ TPM_RC ResourceManager::ParseCommand(const std::string& command,
     return MakeError(result, FROM_HERE);
   }
 
-  if (command_info->code & TPM_CC_VENDOR_SPECIFIC_MASK &&
-      !command_info->has_sessions) {
+  if (IS_TPM_CC_VENDOR_CMD(command_info->code)) {
     // Vendor-specific commands must have no sessions & no handles.
     // All remaining data is parameter data.
-    command_info->parameter_data = buffer;
-    return TPM_RC_SUCCESS;
+    if (!command_info->has_sessions) {
+      command_info->parameter_data = buffer;
+      return TPM_RC_SUCCESS;
+    }
   }
 
-  if (command_info->code < TPM_CC_FIRST || command_info->code > TPM_CC_LAST) {
+  if (!IS_TPM2_CMD(command_info->code)) {
     return MakeError(TPM_RC_COMMAND_CODE, FROM_HERE);
   }
 
@@ -637,7 +640,7 @@ TPM_RC ResourceManager::ParseResponse(const MessageInfo& command_info,
     return MakeError(result, FROM_HERE);
   }
 
-  if (command_info.code & TPM_CC_VENDOR_SPECIFIC_MASK) {
+  if (IS_TPM_CC_VENDOR_CMD(command_info.code)) {
     // Vendor-specific commands should have no sessions & no handles.
     // All remaining data is parameter data.
     response_info->parameter_data = buffer;

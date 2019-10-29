@@ -358,6 +358,12 @@ class CommandTransceiver;
 #if !defined(MAX_CAP_CC)
 #define MAX_CAP_CC ((trunks::TPM_CC_LAST - trunks::TPM_CC_FIRST) + 1)
 #endif
+#if !defined(MAX_CAP_CCE)
+#define MAX_CAP_CCE ((trunks::TPM_CCE_LAST - trunks::TPM_CCE_FIRST) + 1)
+#endif
+#if !defined(MAX_CAP_CC_ALL)
+#define MAX_CAP_CC_ALL (MAX_CAP_CC + MAX_CAP_CCE)
+#endif
 #if !defined(MAX_TPM_PROPERTIES)
 #define MAX_TPM_PROPERTIES (MAX_CAP_DATA / sizeof(trunks::TPMS_TAGGED_PROPERTY))
 #endif
@@ -371,6 +377,12 @@ class CommandTransceiver;
 #if !defined(HASH_COUNT)
 #define HASH_COUNT 5
 #endif
+
+#define IS_TPM2_STD_CMD(x)    ((x) >= trunks::TPM_CC_FIRST && \
+                               (x) <= trunks::TPM_CC_LAST)
+#define IS_TPM2_EXT_CMD(x)    ((x) >= trunks::TPM_CCE_FIRST && \
+                               (x) <= trunks::TPM_CCE_LAST)
+#define IS_TPM2_CMD(x)        (IS_TPM2_STD_CMD(x) || IS_TPM2_EXT_CMD(x))
 
 typedef uint8_t UINT8;
 typedef uint8_t BYTE;
@@ -633,6 +645,8 @@ constexpr TPM_CC TPM_CC_ZGen_2Phase = 0x0000018D;
 constexpr TPM_CC TPM_CC_EC_Ephemeral = 0x0000018E;
 constexpr TPM_CC TPM_CC_PolicyNvWritten = 0x0000018F;
 constexpr TPM_CC TPM_CC_LAST = 0x0000018F;
+constexpr TPM_CC TPM_CCE_FIRST = 0x20008001;
+constexpr TPM_CC TPM_CCE_LAST = 0x20008001;
 constexpr TPM_RC TPM_RC_SUCCESS = 0x000;
 constexpr TPM_RC TPM_RC_BAD_TAG = 0x01E;
 constexpr TPM_RC RC_VER1 = 0x100;
@@ -1081,12 +1095,12 @@ struct TPMS_TAGGED_PCR_SELECT {
 
 struct TPML_CC {
   UINT32 count;
-  TPM_CC command_codes[MAX_CAP_CC];
+  TPM_CC command_codes[MAX_CAP_CC_ALL];
 };
 
 struct TPML_CCA {
   UINT32 count;
-  TPMA_CC command_attributes[MAX_CAP_CC];
+  TPMA_CC command_attributes[MAX_CAP_CC_ALL];
 };
 
 struct TPML_ALG {
