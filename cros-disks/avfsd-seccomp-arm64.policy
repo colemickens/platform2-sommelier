@@ -22,6 +22,7 @@ umask: 1
 dup: 1
 dup3: 1
 setsid: 1
+gettid: 1
 gettimeofday: 1
 munmap: 1
 wait4: 1

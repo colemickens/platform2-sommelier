@@ -47,6 +47,7 @@ rmdir: 1
 unlink: 1
 umask: 1
 clock_gettime: 1
+gettid: 1
 gettimeofday: 1
 getrlimit: 1
 getuid: 1

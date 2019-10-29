@@ -30,6 +30,7 @@ dup2: 1
 dup: 1
 setsid: 1
 getrlimit: 1
+gettid: 1
 gettimeofday: 1
 munmap: 1
 # Allow only these sub-calls: socketpair, sendmsg, recvmsg
