@@ -105,7 +105,7 @@ impl Dispatcher {
     // Execute the command handler represented by |tokens|. Flags will be parsed and flag handling
     // callbacks will be invoked.
     pub fn handle_command(&self, tokens: Vec<String>) -> Result<(), Error> {
-        if tokens.len() < 1 {
+        if tokens.is_empty() {
             return Err(Error::CommandNotFound(tokens.join(" ")));
         }
 
@@ -165,7 +165,7 @@ impl Dispatcher {
             }
         }
 
-        if duplicates.len() > 0 {
+        if !duplicates.is_empty() {
             return Err(Error::DuplicateCommand(duplicates));
         }
         Ok(())
@@ -195,7 +195,7 @@ impl Dispatcher {
     fn get_command_list(&self, tokens: Vec<String>) -> (Vec<&Command>, Arguments) {
         let mut list: Vec<&Command> = Vec::new();
         let mut entry = Arguments::new();
-        if tokens.len() < 1 {
+        if tokens.is_empty() {
             return (list, entry);
         }
         entry.tokens = tokens;
@@ -319,17 +319,11 @@ impl Command {
                 return result;
             }
 
-            let mut parts = token.splitn(2, "=");
+            let mut parts = token.splitn(2, '=');
             let name = parts.next().unwrap().to_string();
-            let flag = self.find_flag(&name);
-            if flag.is_none() {
-                return None;
-            }
+            let flag = self.find_flag(&name)?;
 
-            let value = flag
-                .unwrap()
-                .get_default_value()
-                .parse(parts.next().unwrap_or(""));
+            let value = flag.get_default_value().parse(parts.next().unwrap_or(""));
             if value.is_none() {
                 panic!();
             }
