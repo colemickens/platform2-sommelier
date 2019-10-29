@@ -12,6 +12,9 @@
 #include <base/optional.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/mock_bus.h>
+#include <dbus/mock_exported_object.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -21,13 +24,17 @@ namespace {
 
 using std::string_literals::operator""s;
 
+using ::testing::_;
+using ::testing::Eq;
 using ::testing::HasSubstr;
 using ::testing::IsEmpty;
+using ::testing::Return;
 using ::testing::SizeIs;
 
 using anomaly::KernelParser;
 using anomaly::SELinuxParser;
 using anomaly::ServiceParser;
+using anomaly::TerminaParser;
 
 std::vector<std::string> GetTestLogMessages(base::FilePath input_file) {
   std::string contents;
@@ -170,4 +177,57 @@ TEST(AnomalyDetectorTest, SELinuxViolation) {
           "-selinux-u:r:init:s0-u:r:kernel:s0-module_request-init-"s,
       .expected_flag = "--selinux_violation"s};
   ParserTest<SELinuxParser>("TEST_SELINUX", {selinux_violation});
+}
+
+MATCHER_P2(SignalEq, interface, member, "") {
+  return (arg->GetInterface() == interface && arg->GetMember() == member);
+}
+
+TEST(AnomalyDetectorTest, BTRFSExtentCorruption) {
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::MockBus> bus = new dbus::MockBus(options);
+
+  auto obj_path = dbus::ObjectPath(anomaly_detector::kAnomalyEventServicePath);
+  scoped_refptr<dbus::MockExportedObject> exported_object =
+      new dbus::MockExportedObject(bus.get(), obj_path);
+
+  EXPECT_CALL(*bus, GetExportedObject(Eq(obj_path)))
+      .WillOnce(Return(exported_object.get()));
+  EXPECT_CALL(*exported_object,
+              SendSignal(SignalEq(
+                  anomaly_detector::kAnomalyEventServiceInterface,
+                  anomaly_detector::kAnomalyGuestFileCorruptionSignalName)))
+      .Times(1);
+
+  TerminaParser parser(bus);
+
+  parser.ParseLogEntry(
+      "VM(3)",
+      "BTRFS warning (device vdb): csum failed root 5 ino 257 off 409600 csum "
+      "0x76ad9387 expected csum 0xd8d34542 mirror 1");
+}
+
+TEST(AnomalyDetectorTest, BTRFSTreeCorruption) {
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::MockBus> bus = new dbus::MockBus(options);
+
+  auto obj_path = dbus::ObjectPath(anomaly_detector::kAnomalyEventServicePath);
+  scoped_refptr<dbus::MockExportedObject> exported_object =
+      new dbus::MockExportedObject(bus.get(), obj_path);
+
+  EXPECT_CALL(*bus, GetExportedObject(Eq(obj_path)))
+      .WillOnce(Return(exported_object.get()));
+  EXPECT_CALL(*exported_object,
+              SendSignal(SignalEq(
+                  anomaly_detector::kAnomalyEventServiceInterface,
+                  anomaly_detector::kAnomalyGuestFileCorruptionSignalName)))
+      .Times(1);
+
+  TerminaParser parser(bus);
+
+  parser.ParseLogEntry("VM(3)",
+                       "BTRFS warning (device vdb): vdb checksum verify failed "
+                       "on 122798080 wanted 4E5B4C99 found 5F261FEB level 0");
 }

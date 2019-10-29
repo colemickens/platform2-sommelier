@@ -82,7 +82,7 @@ static_library("libcrash_reporter") {
   if (use.cheets) {
     sources += [
       "arc_collector.cc",
-      "arc_util.cc"
+      "arc_util.cc",
     ]
   }
 
@@ -187,7 +187,10 @@ executable("anomaly_detector") {
   deps = [
     ":libcrash",
   ]
-  libs = [ "system_api-metrics_event-protos" ]
+  libs = [
+    "system_api-metrics_event-protos",
+    "system_api-anomaly_detector-protos",
+  ]
 }
 
 if (use.cheets) {
@@ -326,6 +329,7 @@ if (use.test) {
       ":libcrash",
       "//common-mk/testrunner:testrunner",
     ]
+    libs = [ "system_api-anomaly_detector-protos" ]
   }
 }
 
@@ -351,5 +355,6 @@ if (use.fuzzer) {
       "anomaly_detector.cc",
       "anomaly_detector_fuzzer.cc",
     ]
+    libs = [ "system_api-anomaly_detector-protos" ]
   }
 }

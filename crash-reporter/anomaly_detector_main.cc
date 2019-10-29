@@ -193,23 +193,28 @@ int main(int argc, char* argv[]) {
   parsers["init"] = std::make_unique<anomaly::ServiceParser>();
   parsers["kernel"] = std::make_unique<anomaly::KernelParser>();
   parsers["powerd_suspend"] = std::make_unique<anomaly::SuspendParser>();
+  auto termina_parser = std::make_unique<anomaly::TerminaParser>(dbus);
 
   while (true) {
     JournalEntry entry = j.GetNextEntry();
+    anomaly::MaybeCrashReport crash_report;
     if (parsers.count(entry.tag) > 0) {
-      auto crash_report = parsers[entry.tag]->ParseLogEntry(entry.message);
-      if (crash_report) {
-        if (!FLAGS_testonly_send_all) {
-          if (entry.tag == "audit" && drop_audit_report(gen)) {
-            continue;
-          } else if (entry.tag == "init" && drop_service_failure_report(gen)) {
-            LOG(INFO) << "Dropping service failure report: "
-                      << crash_report->text;
-            continue;
-          }
+      crash_report = parsers[entry.tag]->ParseLogEntry(entry.message);
+    } else if (entry.tag.compare(0, 3, "VM(") == 0) {
+      crash_report = termina_parser->ParseLogEntry(entry.tag, entry.message);
+    }
+
+    if (crash_report) {
+      if (!FLAGS_testonly_send_all) {
+        if (entry.tag == "audit" && drop_audit_report(gen)) {
+          continue;
+        } else if (entry.tag == "init" && drop_service_failure_report(gen)) {
+          LOG(INFO) << "Dropping service failure report: "
+                    << crash_report->text;
+          continue;
         }
-        RunCrashReporter(crash_report->flag, crash_report->text);
       }
+      RunCrashReporter(crash_report->flag, crash_report->text);
     }
 
     // Handle OOM messages.

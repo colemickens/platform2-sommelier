@@ -7,6 +7,7 @@
 
 #include <base/optional.h>
 #include <base/time/time.h>
+#include <dbus/bus.h>
 
 #include <string>
 
@@ -75,6 +76,16 @@ class SuspendParser : public Parser {
   std::string dev_str_;
   std::string errno_str_;
   std::string step_str_;
+};
+
+class TerminaParser {
+ public:
+  explicit TerminaParser(scoped_refptr<dbus::Bus> dbus);
+  MaybeCrashReport ParseLogEntry(const std::string& tag,
+                                 const std::string& line);
+
+ private:
+  scoped_refptr<dbus::Bus> dbus_;
 };
 
 }  // namespace anomaly

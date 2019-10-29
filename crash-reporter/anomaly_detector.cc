@@ -6,8 +6,13 @@
 
 #include <utility>
 
+#include <anomaly_detector/proto_bindings/service.pb.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/bus.h>
+#include <dbus/exported_object.h>
+#include <dbus/message.h>
 #include <re2/re2.h>
 
 namespace {
@@ -234,6 +239,48 @@ MaybeCrashReport SuspendParser::ParseLogEntry(const std::string& line) {
       "%08x-suspend failure: device: %s step: %s errno: %s\n", hash,
       dev_str_.c_str(), step_str_.c_str(), errno_str_.c_str());
   return {{std::move(text), "--suspend_failure"}};
+}
+
+TerminaParser::TerminaParser(scoped_refptr<dbus::Bus> dbus) : dbus_(dbus) {}
+
+constexpr LazyRE2 btrfs_extent_corruption = {
+    R"(BTRFS warning \(device .*\): csum failed root [[:digit:]]+ )"
+    R"(ino [[:digit:]]+ off [[:digit:]]+ csum 0x[[:xdigit:]]+ expected )"
+    R"(csum 0x[[:xdigit:]]+ mirror [[:digit:]]+)"};
+constexpr LazyRE2 btrfs_tree_node_corruption = {
+    R"(BTRFS warning \(device .*\): .* checksum verify failed on )"
+    R"([[:digit:]]+ wanted [[:xdigit:]]+ found [[:xdigit:]]+ level )"
+    R"([[:digit:]]+)"};
+constexpr LazyRE2 vsock_cid = {R"(VM\(([[:digit:]]+)\))"};
+
+MaybeCrashReport TerminaParser::ParseLogEntry(const std::string& tag,
+                                              const std::string& line) {
+  if (!RE2::PartialMatch(line, *btrfs_extent_corruption) &&
+      !RE2::PartialMatch(line, *btrfs_tree_node_corruption)) {
+    return base::nullopt;
+  }
+
+  int cid;
+  anomaly_detector::GuestFileCorruptionSignal message;
+  if (!RE2::PartialMatch(tag, *vsock_cid, &cid)) {
+    LOG(ERROR) << "Was unable to parse vsock cid out of tag";
+  } else {
+    message.set_vsock_cid(cid);
+  }
+
+  dbus::Signal signal(anomaly_detector::kAnomalyEventServiceInterface,
+                      anomaly_detector::kAnomalyGuestFileCorruptionSignalName);
+
+  dbus::MessageWriter writer(&signal);
+  writer.AppendProtoAsArrayOfBytes(message);
+
+  dbus::ExportedObject* exported_object = dbus_->GetExportedObject(
+      dbus::ObjectPath(anomaly_detector::kAnomalyEventServicePath));
+  exported_object->SendSignal(&signal);
+
+  // Don't send a crash report here, because the gap between when the
+  // corruption occurs and when we detect it can be arbitrarily large.
+  return base::nullopt;
 }
 
 }  // namespace anomaly
