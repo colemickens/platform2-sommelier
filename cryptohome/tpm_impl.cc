@@ -411,7 +411,10 @@ base::Optional<bool> TpmImpl::IsSrkRocaVulnerable() {
       public_srk_bytes.value(), public_srk_bytes.value() + public_srk_size));
   if (!public_srk)
     return base::nullopt;
-  return CryptoLib::TestRocaVulnerable(public_srk->n);
+
+  const BIGNUM* n = nullptr;
+  RSA_get0_key(public_srk.get(), &n, nullptr, nullptr);
+  return CryptoLib::TestRocaVulnerable(n);
 }
 
 bool TpmImpl::GetDictionaryAttackInfo(int* counter,
