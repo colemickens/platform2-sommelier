@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DLCSERVICE_DLC_SERVICE_H_
-#define DLCSERVICE_DLC_SERVICE_H_
+#ifndef DLCSERVICE_DAEMON_H_
+#define DLCSERVICE_DAEMON_H_
 
 #include <memory>
 #include <string>
@@ -16,28 +16,28 @@
 
 namespace dlcservice {
 
-// DlcService is a D-Bus service daemon.
-class DlcService : public brillo::DBusServiceDaemon {
+// |Daemon| is a D-Bus service daemon.
+class Daemon : public brillo::DBusServiceDaemon {
  public:
-  DlcService();
-  ~DlcService() override = default;
+  Daemon();
+  ~Daemon() override = default;
 
  private:
-  // brillo::Daemon overrides:
+  // |brillo::Daemon| overrides:
   int OnInit() override;
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<dlcservice::DlcServiceDBusAdaptor> dbus_adaptor_;
-  // Use a separate bus (D-Bus connection) for proxies to avoid missing signal
-  // messages. See https://crbug.com/965232
+  // TODO(crbug/965232): Use a separate bus (D-Bus connection) for proxies to
+  // avoid missing signal messages.
   scoped_refptr<dbus::Bus> bus_for_proxies_;
   brillo::DBusConnection dbus_connection_for_proxies_;
 
-  DISALLOW_COPY_AND_ASSIGN(DlcService);
+  DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
 
 }  // namespace dlcservice
 
-#endif  // DLCSERVICE_DLC_SERVICE_H_
+#endif  // DLCSERVICE_DAEMON_H_

@@ -4,11 +4,11 @@
 
 #include <brillo/syslog_logging.h>
 
-#include "dlcservice/dlc_service.h"
+#include "dlcservice/daemon.h"
 
 int main(int argc, char** argv) {
   brillo::OpenLog("dlcservice", true);
   brillo::InitLog(brillo::kLogToSyslog);
 
-  return dlcservice::DlcService().Run();
+  return dlcservice::Daemon().Run();
 }

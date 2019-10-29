@@ -59,7 +59,7 @@ static_library("libdlcservice") {
   sources = [
     "boot_device.cc",
     "boot_slot.cc",
-    "dlc_service.cc",
+    "daemon.cc",
     "dlc_service_dbus_adaptor.cc",
     "utils.cc",
   ]

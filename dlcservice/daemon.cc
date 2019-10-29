@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "dlcservice/dlc_service.h"
+#include "dlcservice/daemon.h"
 
 #include <string>
 
@@ -17,9 +17,9 @@ namespace dlcservice {
 
 // kDlcServiceServiceName is defined in
 // chromeos/dbus/dlcservice/dbus-constants.h
-DlcService::DlcService() : DBusServiceDaemon(kDlcServiceServiceName) {}
+Daemon::Daemon() : DBusServiceDaemon(kDlcServiceServiceName) {}
 
-int DlcService::OnInit() {
+int Daemon::OnInit() {
   int return_code = brillo::DBusServiceDaemon::OnInit();
   if (return_code != EX_OK)
     return return_code;
@@ -28,7 +28,7 @@ int DlcService::OnInit() {
   return EX_OK;
 }
 
-void DlcService::RegisterDBusObjectsAsync(
+void Daemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
       nullptr, bus_,
