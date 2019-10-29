@@ -29,6 +29,9 @@ class ChromeSetupTest : public ::testing::Test {
   const std::vector<std::string> kSizes{"small", "large"};
   const std::string kNotPresent = "<not present>";
   const std::string kModel = "reef";
+  const std::string kDefaultDisplay = "default";
+  const std::string kOldDisplay = "old";
+  const std::string kShelfFlag = "--enable-dim-shelf";
   const base::Callback<bool(const base::FilePath&)> kPathInSetCallback =
       base::Bind(&ChromeSetupTest::PathInSet, base::Unretained(this));
 
@@ -188,4 +191,29 @@ TEST_F(ChromeSetupTest, TestRegulatoryLabel) {
   argv = builder_.arguments();
   EXPECT_EQ(kModel, GetFlag(argv, "--regulatory-label-dir"));
 }
+
+TEST_F(ChromeSetupTest, TestAutoDimNewDisplay) {
+  login_manager::SetUpRegulatoryLabelFlag(&builder_, &cros_config_);
+  std::vector<std::string> argv = builder_.arguments();
+  EXPECT_EQ(kNotPresent, GetFlag(argv, kShelfFlag));
+
+  cros_config_.SetString(login_manager::kHardwarePropertiesPath,
+                         login_manager::kDisplayCategoryField, kDefaultDisplay);
+  login_manager::SetUpAutoDimFlag(&builder_, &cros_config_);
+  argv = builder_.arguments();
+  EXPECT_EQ(kNotPresent, GetFlag(argv, kShelfFlag));
+}
+
+TEST_F(ChromeSetupTest, TestAutoDimOldDisplay) {
+  login_manager::SetUpRegulatoryLabelFlag(&builder_, &cros_config_);
+  std::vector<std::string> argv = builder_.arguments();
+  EXPECT_EQ(kNotPresent, GetFlag(argv, kShelfFlag));
+
+  cros_config_.SetString(login_manager::kHardwarePropertiesPath,
+                         login_manager::kDisplayCategoryField, kOldDisplay);
+  login_manager::SetUpAutoDimFlag(&builder_, &cros_config_);
+  argv = builder_.arguments();
+  EXPECT_EQ("", GetFlag(argv, kShelfFlag));
+}
+
 }  // namespace login_manager

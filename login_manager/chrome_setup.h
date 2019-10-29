@@ -44,6 +44,12 @@ extern const char kPowerButtonEdgeField[];
 // Position property in power button position info.
 extern const char kPowerButtonPositionField[];
 
+// Property name of the display setting in CrosConfig.
+extern const char kDisplayCategoryField[];
+
+// Path to hardware properties in CrosConfig.
+extern const char kHardwarePropertiesPath[];
+
 // Initializes a ChromiumCommandBuilder and performs additional Chrome-specific
 // setup. Returns environment variables that the caller should export for Chrome
 // and arguments that it should pass to the Chrome binary, along with the UID
@@ -100,6 +106,11 @@ void SetUpInternalStylusFlag(chromeos::ui::ChromiumCommandBuilder* builder,
 void SetUpFingerprintSensorLocationFlag(
     chromeos::ui::ChromiumCommandBuilder* builder,
     brillo::CrosConfigInterface* cros_config);
+
+// Flips feature flag for shelf auto-dimming if cros config indicates shelf
+// auto-dimming should be enabled.
+void SetUpAutoDimFlag(chromeos::ui::ChromiumCommandBuilder* builder,
+                      brillo::CrosConfigInterface* cros_config);
 
 }  // namespace login_manager
 

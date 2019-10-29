@@ -48,8 +48,9 @@ const char kSideVolumeButtonPath[] = "/ui/side-volume-button";
 const char kSideVolumeButtonRegion[] = "region";
 const char kSideVolumeButtonSide[] = "side";
 
-const char kStylusCategoryPath[] = "/hardware-properties";
+const char kHardwarePropertiesPath[] = "/hardware-properties";
 const char kStylusCategoryField[] = "stylus-category";
+const char kDisplayCategoryField[] = "display-type";
 
 constexpr char kFingerprintPath[] = "/fingerprint";
 constexpr char kFingerprintSensorLocationField[] = "sensor-location";
@@ -444,6 +445,8 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("background_blur"))
     builder->AddFeatureEnableOverride("EnableBackgroundBlur");
 
+  SetUpAutoDimFlag(builder, cros_config);
+
   SetUpWallpaperFlags(builder, cros_config, base::Bind(base::PathExists));
 
   // TODO(yongjaek): Remove the following flag when the kiosk mode app is ready
@@ -564,7 +567,7 @@ void SetUpInternalStylusFlag(ChromiumCommandBuilder* builder,
                              brillo::CrosConfigInterface* cros_config) {
   std::string stylus_category;
   if (cros_config &&
-      cros_config->GetString(kStylusCategoryPath, kStylusCategoryField,
+      cros_config->GetString(kHardwarePropertiesPath, kStylusCategoryField,
                              &stylus_category) &&
       stylus_category == "internal") {
     builder->AddArg("--has-internal-stylus");
@@ -588,6 +591,17 @@ void SetUpFingerprintSensorLocationFlag(
   if (fingerprint_sensor_location != "none") {
     builder->AddArg(base::StringPrintf("--fingerprint-sensor-location=%s",
                                        fingerprint_sensor_location.c_str()));
+  }
+}
+
+void SetUpAutoDimFlag(ChromiumCommandBuilder* builder,
+                      brillo::CrosConfigInterface* cros_config) {
+  std::string display_type;
+  if (cros_config &&
+      cros_config->GetString(kHardwarePropertiesPath, kDisplayCategoryField,
+                             &display_type) &&
+      display_type == "old") {
+    builder->AddArg("--enable-dim-shelf");
   }
 }
 
