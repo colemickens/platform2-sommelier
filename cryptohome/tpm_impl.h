@@ -58,7 +58,16 @@ class TpmImpl : public Tpm {
   bool GetOwnerPassword(brillo::SecureBlob* owner_password) override;
   bool IsEnabled() override { return !is_disabled_; }
   void SetIsEnabled(bool enabled) override { is_disabled_ = !enabled; }
-  bool IsOwned() override { return is_owned_; }
+  bool IsOwned() override {
+    // Note that this is one hack to align the behaviour of TPM 1.2 monolithic
+    // mode and distributed mode (tpm_manager). In distributed mode, IsOwned()
+    // will return false when the device is pre-owned, as in owned with the
+    // default password. However, TPM 1.2 monolithic mode will return true if we
+    // just return is_owned_. The addition of && !is_being_owned_ here is to
+    // ensure that it return false when it is in preowned state, in alignment
+    // with distributed mode.
+    return is_owned_ && !is_being_owned_;
+  }
   void SetIsOwned(bool owned) override { is_owned_ = owned; }
   bool PerformEnabledOwnedCheck(bool* enabled, bool* owned) override;
   bool IsInitialized() override { return initialized_; }
