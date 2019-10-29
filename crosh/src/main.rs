@@ -9,8 +9,10 @@ mod history;
 mod legacy;
 mod util;
 
+use std::env::var;
 use std::io::{stdin, stdout, Write};
 use std::mem;
+use std::path::PathBuf;
 use std::ptr::null_mut;
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::thread::sleep;
@@ -28,6 +30,8 @@ use termion::terminal_size;
 
 use crate::dispatcher::{CompletionResult, Dispatcher};
 use crate::history::History;
+
+const HISTORY_FILENAME: &str = ".crosh_history";
 
 fn usage(error: bool) {
     let usage_msg = r#"Usage: crosh [options] [-- [args]]
@@ -360,6 +364,22 @@ fn next_command(dispatcher: &Dispatcher, history: &mut History) -> String {
 // Loop for getting each command from the user and dispatching it to the handler.
 fn input_loop(dispatcher: Dispatcher) {
     let mut history = History::new();
+    let history_path = match var("HOME") {
+        Ok(h) => {
+            if h.is_empty() {
+                None
+            } else {
+                Some(PathBuf::from(h).join(HISTORY_FILENAME))
+            }
+        }
+        _ => None,
+    };
+    if let Some(h) = history_path.as_ref() {
+        if let Err(e) = history.load_from_file(h.as_path()) {
+            eprintln!("Error loading history: {}", e);
+        }
+    }
+
     loop {
         let line = next_command(&dispatcher, &mut history);
         let command = line.trim();
@@ -368,6 +388,11 @@ fn input_loop(dispatcher: Dispatcher) {
             break;
         } else if !command.is_empty() {
             let _ = handle_cmd(&dispatcher, parse_command(&command));
+            if let Some(h) = history_path.as_ref() {
+                if let Err(e) = history.persist_to_file(h.as_path()) {
+                    eprintln!("Error persisting history: {}", e);
+                }
+            }
         }
     }
 }

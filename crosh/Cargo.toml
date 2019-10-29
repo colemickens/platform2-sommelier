@@ -17,3 +17,6 @@ sys_util = { path = "../../platform/crosvm/sys_util" } # provided by ebuild
 system_api = { path = "../system_api" } # provided by ebuild
 termion = "1.5.1"
 tlsdate_dbus = { path = "../../third_party/tlsdate" } # provided by ebuild
+
+[dev-dependencies]
+tempfile = { path = "../../platform/crosvm/tempfile" } # provided by ebuild
