@@ -96,12 +96,21 @@ class CumulativeMetrics {
                     base::TimeDelta accumulation_period,
                     Callback cycle_end_callback);
   virtual ~CumulativeMetrics() {}
-  // Returns the time delta (in active time, not elapsed wall clock time) since
-  // the last update to the accumulated quantities, or the daemon start.  This
-  // is just a convenience function, because it can be easily maintained by the
-  // user of this class.  Note that this could be a lot smaller than the
-  // elapsed time.
+
+  // Calls |update_callback_|.
+  // This is automatically called every |update_period_seconds_| of active time,
+  // but also can be manually called when a relevant change has occurred. Manual
+  // calls to this method do not cause the timing of automatic invocations to
+  // change.
   //
+  // Note that clients who choose to manually call this method must ensure that
+  // the update callback implementation can properly handle being invoked at a
+  // variable frequency.
+  void Update();
+
+  // Returns the time delta (in active time, not elapsed wall clock time) since
+  // the last invocation of Update, or the daemon start.  Note that this could
+  // be a lot smaller than the elapsed time.
   // This method is virtual so it can be mocked for testing.
   virtual base::TimeDelta ActiveTimeSinceLastUpdate() const;
   // Sets the value of |name| to |value|.
@@ -116,9 +125,6 @@ class CumulativeMetrics {
   int64_t GetAndClear(const std::string& name);
 
  private:
-  // Called every update_period_seconds_ of active time, or slightly longer.
-  // Calls the callback supplied in the constructor.
-  void Update();
   // Checks if the current cycle has expired and takes appropriate actions.
   // Returns true if the current cycle has expired, false otherwise.
   bool ProcessCycleEnd();
