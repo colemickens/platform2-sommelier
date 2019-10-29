@@ -21,6 +21,7 @@
 #include <base/timer/elapsed_timer.h>
 #include <mojo/public/c/system/buffer.h>
 #include <mojo/public/cpp/system/buffer.h>
+#include <mojo/public/cpp/system/platform_handle.h>
 
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/common.h"
@@ -277,7 +278,7 @@ void JpegDecodeAcceleratorImpl::DecodeOnIpcThread(int32_t buffer_id,
   std::vector<mojom::DmaBufPlanePtr> planes(num_planes);
   for (uint32_t i = 0; i < num_planes; ++i) {
     mojo::ScopedHandle fd_handle =
-        cros::WrapPlatformHandle(HANDLE_EINTR(dup(output_buffer->data[i])));
+        mojo::WrapPlatformFile(HANDLE_EINTR(dup(output_buffer->data[i])));
     const int32_t stride = base::checked_cast<int32_t>(
         buffer_manager->GetPlaneStride(output_buffer, i));
     const uint32_t offset = base::checked_cast<uint32_t>(
@@ -292,7 +293,7 @@ void JpegDecodeAcceleratorImpl::DecodeOnIpcThread(int32_t buffer_id,
       buffer_manager->GetHeight(output_buffer), std::move(planes));
 
   mojo::ScopedHandle input_handle =
-      cros::WrapPlatformHandle(HANDLE_EINTR(dup(input_fd)));
+      mojo::WrapPlatformFile(HANDLE_EINTR(dup(input_fd)));
 
   inflight_buffer_ids_.insert(buffer_id);
   jda_ptr_->DecodeWithDmaBuf(
@@ -342,8 +343,8 @@ void JpegDecodeAcceleratorImpl::DecodeOnIpcThreadLegacy(
 
   int dup_input_fd = dup(input_shm->handle().GetHandle());
   int dup_output_fd = dup(output_fd);
-  mojo::ScopedHandle input_handle = cros::WrapPlatformHandle(dup_input_fd);
-  mojo::ScopedHandle output_handle = cros::WrapPlatformHandle(dup_output_fd);
+  mojo::ScopedHandle input_handle = mojo::WrapPlatformFile(dup_input_fd);
+  mojo::ScopedHandle output_handle = mojo::WrapPlatformFile(dup_output_fd);
 
   input_shm_map_[buffer_id] = std::move(input_shm);
   jda_ptr_->DecodeWithFD(

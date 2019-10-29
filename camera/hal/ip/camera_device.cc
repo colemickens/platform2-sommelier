@@ -342,7 +342,7 @@ void CameraDevice::OnFrameCaptured(mojo::ScopedHandle shm_handle,
     return;
   }
 
-  int fd = UnwrapPlatformHandle(std::move(shm_handle));
+  int fd = mojo::UnwrapPlatformHandle(std::move(shm_handle)).ReleaseFD();
   base::SharedMemory shm(base::FileDescriptor(fd, true), true);
   if (!shm.Map(size)) {
     LOGFID(ERROR, id_) << "Error mapping shm, unable to handle captured frame";

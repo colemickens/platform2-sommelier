@@ -8,9 +8,7 @@
 
 #include <vector>
 
-#include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/scoped_platform_handle.h>
-#include <mojo/edk/system/handle_signals_state.h>
+#include <mojo/public/cpp/system/platform_handle.h>
 
 #include "cros-camera/ipc_util.h"
 
@@ -59,7 +57,7 @@ cros::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
   ret->status = static_cast<cros::mojom::Camera3BufferStatus>(buffer->status);
 
   if (buffer->acquire_fence != -1) {
-    ret->acquire_fence = cros::WrapPlatformHandle(buffer->acquire_fence);
+    ret->acquire_fence = mojo::WrapPlatformFile(buffer->acquire_fence);
     if (!ret->acquire_fence.is_valid()) {
       LOGF(ERROR) << "Failed to wrap acquire_fence";
       ret.reset();
@@ -68,7 +66,7 @@ cros::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
   }
 
   if (buffer->release_fence != -1) {
-    ret->release_fence = cros::WrapPlatformHandle(buffer->release_fence);
+    ret->release_fence = mojo::WrapPlatformFile(buffer->release_fence);
     if (!ret->release_fence.is_valid()) {
       LOGF(ERROR) << "Failed to wrap release_fence";
       ret.reset();
@@ -103,7 +101,7 @@ int DeserializeStreamBuffer(
 
   if (ptr->acquire_fence.is_valid()) {
     out_buffer->acquire_fence =
-        cros::UnwrapPlatformHandle(std::move(ptr->acquire_fence));
+        mojo::UnwrapPlatformHandle(std::move(ptr->acquire_fence)).ReleaseFD();
     if (out_buffer->acquire_fence == -EINVAL) {
       LOGF(ERROR) << "Failed to get acquire_fence";
       return -EINVAL;
@@ -114,7 +112,7 @@ int DeserializeStreamBuffer(
 
   if (ptr->release_fence.is_valid()) {
     out_buffer->release_fence =
-        cros::UnwrapPlatformHandle(std::move(ptr->release_fence));
+        mojo::UnwrapPlatformHandle(std::move(ptr->release_fence)).ReleaseFD();
     if (out_buffer->release_fence == -EINVAL) {
       LOGF(ERROR) << "Failed to get release_fence";
       close(out_buffer->acquire_fence);

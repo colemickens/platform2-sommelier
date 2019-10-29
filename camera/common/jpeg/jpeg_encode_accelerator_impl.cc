@@ -19,6 +19,7 @@
 #include <base/run_loop.h>
 #include <mojo/public/c/system/buffer.h>
 #include <mojo/public/cpp/system/buffer.h>
+#include <mojo/public/cpp/system/platform_handle.h>
 
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
@@ -261,13 +262,13 @@ void JpegEncodeAcceleratorImpl::EncodeOnIpcThreadLegacy(
     memcpy(exif_shm->memory(), exif_buffer, exif_buffer_size);
   }
 
-  int dup_input_fd = dup(input_shm->handle().GetHandle());
-  int dup_exif_fd = dup(exif_shm->handle().GetHandle());
-  int dup_output_fd = dup(output_fd);
+  int dup_input_fd = HANDLE_EINTR(dup(input_shm->handle().GetHandle()));
+  int dup_exif_fd = HANDLE_EINTR(dup(exif_shm->handle().GetHandle()));
+  int dup_output_fd = HANDLE_EINTR(dup(output_fd));
 
-  mojo::ScopedHandle input_handle = WrapPlatformHandle(dup_input_fd);
-  mojo::ScopedHandle exif_handle = WrapPlatformHandle(dup_exif_fd);
-  mojo::ScopedHandle output_handle = WrapPlatformHandle(dup_output_fd);
+  mojo::ScopedHandle input_handle = mojo::WrapPlatformFile(dup_input_fd);
+  mojo::ScopedHandle exif_handle = mojo::WrapPlatformFile(dup_exif_fd);
+  mojo::ScopedHandle output_handle = mojo::WrapPlatformFile(dup_output_fd);
 
   input_shm_map_[task_id] = std::move(input_shm);
   exif_shm_map_[task_id] = std::move(exif_shm);
@@ -312,15 +313,16 @@ void JpegEncodeAcceleratorImpl::EncodeOnIpcThread(
     memcpy(exif_shm->memory(), exif_buffer, exif_buffer_size);
   }
 
-  int dup_exif_fd = dup(exif_shm->handle().GetHandle());
-  mojo::ScopedHandle exif_handle = WrapPlatformHandle(dup_exif_fd);
+  int dup_exif_fd = HANDLE_EINTR(dup(exif_shm->handle().GetHandle()));
+  mojo::ScopedHandle exif_handle = mojo::WrapPlatformFile(dup_exif_fd);
 
   auto WrapToMojoPlanes =
       [](const std::vector<JpegCompressor::DmaBufPlane>& planes) {
         std::vector<cros::mojom::DmaBufPlanePtr> mojo_planes;
         for (auto plane : planes) {
           auto mojo_plane = cros::mojom::DmaBufPlane::New();
-          mojo_plane->fd_handle = WrapPlatformHandle(dup(plane.fd));
+          mojo_plane->fd_handle =
+              mojo::WrapPlatformFile(HANDLE_EINTR(dup(plane.fd)));
           mojo_plane->stride = plane.stride;
           mojo_plane->offset = plane.offset;
           mojo_plane->size = plane.size;

@@ -19,6 +19,7 @@
 #include <base/timer/elapsed_timer.h>
 #include <drm_fourcc.h>
 #include <libyuv.h>
+#include <mojo/public/cpp/system/platform_handle.h>
 #include <sync/sync.h>
 #include <system/camera_metadata.h>
 
@@ -316,7 +317,7 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
 
 void CameraDeviceAdapter::Dump(mojo::ScopedHandle fd) {
   VLOGF_ENTER();
-  base::ScopedFD dump_fd(UnwrapPlatformHandle(std::move(fd)));
+  base::ScopedFD dump_fd(mojo::UnwrapPlatformHandle(std::move(fd)).TakeFD());
   camera_device_->ops->dump(camera_device_, dump_fd.get());
 }
 
@@ -537,7 +538,7 @@ bool CameraDeviceAdapter::AllocateBuffersForStreams(
       mojo_buffer_handle->sizes = std::vector<uint32_t>();
       for (size_t plane = 0; plane < num_planes; plane++) {
         mojo_buffer_handle->fds.push_back(
-            WrapPlatformHandle(buffer_handle->data[plane]));
+            mojo::WrapPlatformFile(buffer_handle->data[plane]));
         mojo_buffer_handle->strides.push_back(
             CameraBufferManager::GetPlaneStride(buffer_handle, plane));
         mojo_buffer_handle->offsets.push_back(
@@ -609,7 +610,8 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
   buffer_handle->width = width;
   buffer_handle->height = height;
   for (size_t i = 0; i < num_planes; ++i) {
-    buffer_handle->fds[i] = UnwrapPlatformHandle(std::move(fds[i]));
+    buffer_handle->fds[i] =
+        mojo::UnwrapPlatformHandle(std::move(fds[i])).ReleaseFD();
     buffer_handle->strides[i] = strides[i];
     buffer_handle->offsets[i] = offsets[i];
   }

@@ -20,6 +20,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <mojo/edk/embedder/embedder.h>
+#include <mojo/public/cpp/system/platform_handle.h>
 
 #include "cros-camera/common.h"
 
@@ -196,16 +197,7 @@ void CameraAlgorithmBridgeImpl::RegisterBufferOnIpcThread(
     cb.Run(-errno);
     return;
   }
-  MojoHandle wrapped_handle;
-  MojoResult wrap_result = mojo::edk::CreatePlatformHandleWrapper(
-      mojo::edk::ScopedPlatformHandle(mojo::edk::PlatformHandle(dup_fd)),
-      &wrapped_handle);
-  if (wrap_result != MOJO_RESULT_OK) {
-    cb.Run(-EBADF);
-    return;
-  }
-  interface_ptr_->RegisterBuffer(
-      mojo::ScopedHandle(mojo::Handle(wrapped_handle)), cb);
+  interface_ptr_->RegisterBuffer(mojo::WrapPlatformFile(dup_fd), cb);
 }
 
 void CameraAlgorithmBridgeImpl::RequestOnIpcThread(

@@ -249,28 +249,4 @@ MojoResult CreateMojoChannelToChildByUnixDomainSocket(
   return MOJO_RESULT_OK;
 }
 
-mojo::ScopedHandle WrapPlatformHandle(int handle) {
-  MojoHandle wrapped_handle;
-  MojoResult wrap_result = mojo::edk::CreatePlatformHandleWrapper(
-      mojo::edk::ScopedPlatformHandle(mojo::edk::PlatformHandle(handle)),
-      &wrapped_handle);
-  if (wrap_result != MOJO_RESULT_OK) {
-    LOGF(ERROR) << "Failed to wrap platform handle: " << wrap_result;
-    return mojo::ScopedHandle(mojo::Handle());
-  }
-  return mojo::ScopedHandle(mojo::Handle(wrapped_handle));
-}
-
-// Transfers ownership of the handle.
-int UnwrapPlatformHandle(mojo::ScopedHandle handle) {
-  mojo::edk::ScopedPlatformHandle scoped_platform_handle;
-  MojoResult mojo_result = mojo::edk::PassWrappedPlatformHandle(
-      handle.release().value(), &scoped_platform_handle);
-  if (mojo_result != MOJO_RESULT_OK) {
-    LOGF(ERROR) << "Failed to unwrap handle: " << mojo_result;
-    return -EINVAL;
-  }
-  return scoped_platform_handle.release().handle;
-}
-
 }  // namespace cros

@@ -37,9 +37,6 @@ CROS_CAMERA_EXPORT MojoResult CreateMojoChannelToChildByUnixDomainSocket(
     const base::FilePath& socket_path,
     mojo::ScopedMessagePipeHandle* parent_pipe);
 
-CROS_CAMERA_EXPORT mojo::ScopedHandle WrapPlatformHandle(int handle);
-CROS_CAMERA_EXPORT int UnwrapPlatformHandle(mojo::ScopedHandle handle);
-
 }  // namespace cros
 
 #endif  // CAMERA_INCLUDE_CROS_CAMERA_IPC_UTIL_H_
