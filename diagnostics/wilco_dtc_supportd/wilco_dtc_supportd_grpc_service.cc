@@ -253,6 +253,10 @@ void WilcoDtcSupportdGrpcService::GetProcData(
       AddFileDump(SystemFilesService::File::kProcStat,
                   reply->mutable_file_dump());
       break;
+    case grpc_api::GetProcDataRequest::DIRECTORY_ACPI_BUTTON:
+      AddDirectoryDump(SystemFilesService::Directory::kProcAcpiButton,
+                       reply->mutable_file_dump());
+      break;
     case grpc_api::GetProcDataRequest::FILE_NET_NETSTAT:
       AddFileDump(SystemFilesService::File::kProcNetNetstat,
                   reply->mutable_file_dump());
