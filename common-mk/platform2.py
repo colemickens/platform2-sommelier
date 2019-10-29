@@ -12,6 +12,7 @@ Takes care of running GN/ninja/etc... with all the right values.
 from __future__ import print_function
 
 import glob
+import json
 import os
 
 import six
@@ -284,7 +285,7 @@ class Platform2(object):
     }
     return args
 
-  def configure_gn(self):
+  def configure_gn_args(self):
     """Configure with GN.
 
     Generates flags to run GN with, and then runs GN.
@@ -330,6 +331,15 @@ class Platform2(object):
     use_args = ['%s=%s' % (x, str(uses[x]).lower()) for x in uses]
     gn_args_args += ['use={%s}' % (' '.join(use_args))]
 
+    return gn_args_args
+
+  def configure_gn(self):
+    """Configure with GN.
+
+    Runs gn gen with generated flags.
+    """
+    gn_args_args = self.configure_gn_args()
+
     gn_args = ['gn', 'gen']
     if self.verbose:
       gn_args += ['-v']
@@ -338,7 +348,29 @@ class Platform2(object):
         '--args=%s' % ' '.join(gn_args_args),
         self.get_products_path(),
     ]
-    cros_build_lib.run(gn_args, env=buildenv, cwd=self.get_platform2_root())
+    cros_build_lib.run(gn_args, env=self.get_build_environment(),
+                       cwd=self.get_platform2_root())
+
+  def gn_desc(self, *desc_args):
+    """Describe BUILD.gn.
+
+    Runs gn desc with generated flags.
+    """
+    gn_args_args = self.configure_gn_args()
+
+    cmd = [
+        'gn', 'desc',
+        self.get_products_path(),
+        '//%s/*' % self.platform_subdir,
+        '--root=%s' % self.get_platform2_root(),
+        '--args=%s' % ' '.join(gn_args_args),
+        '--format=json',
+    ]
+    cmd += desc_args
+    result = cros_build_lib.run(cmd, env=self.get_build_environment(),
+                                cwd=self.get_platform2_root(),
+                                stdout=True, encoding='utf-8')
+    return json.loads(result.output)
 
   def compile(self, args):
     """Runs the compile step of the Platform2 build.
@@ -373,10 +405,74 @@ class Platform2(object):
     self.configure([])
     self.compile(args)
 
+  def configure_test(self):
+    """Generates test options from GN."""
+
+    def to_options(options):
+      """Convert dict to shell string."""
+      result = []
+      for key, value in options.items():
+        if isinstance(value, bool):
+          if value:
+            result.append('--%s' % key)
+          continue
+        if key == 'raw':
+          result.append(value)
+          continue
+        result.append('--%s=%s' % (key, value))
+      return result
+
+    conf = self.gn_desc('--all', '--type=executable')
+    group_all = conf.get('//%s:all' % self.platform_subdir, {})
+    group_all_deps = group_all.get('deps', [])
+    options_list = []
+    for target_name in group_all_deps:
+      test_target = conf.get(target_name)
+      outputs = test_target.get('outputs', [])
+      if len(outputs) != 1:
+        continue
+      output = outputs[0]
+      metadata = test_target.get('metadata', {})
+      run_test = unwrap_value(metadata, '_run_test', False)
+      if not run_test:
+        continue
+      test_config = unwrap_value(metadata, '_test_config', {})
+
+      p2_test_py = os.path.join(self.get_src_dir(), 'platform2_test.py')
+      options = [
+          p2_test_py,
+          '--action=run',
+          '--sysroot=%s' % self.sysroot,
+      ]
+      if self.host:
+        options += ['--host']
+      p2_test_filter = os.environ.get('P2_TEST_FILTER')
+      if p2_test_filter:
+        options += ['--user_gtest_filter=%s' % p2_test_filter]
+      options += to_options(test_config)
+      options += ['--', output]
+
+      options_list.append(options)
+    return options_list
+
+  def test_all(self, _args):
+    """Runs all tests described from GN."""
+    test_options_list = self.configure_test()
+    for test_options in test_options_list:
+      cros_build_lib.run(test_options, encoding='utf-8')
+
+
+def unwrap_value(metadata, attr, default=None):
+  """Gets a value like dict.get() with unwrapping it."""
+  data = metadata.get(attr)
+  if data is None:
+    return default
+  return data[0]
+
 
 def GetParser():
   """Return a command line parser."""
-  actions = ['configure', 'compile', 'deviterate']
+  actions = ['configure', 'compile', 'deviterate', 'test_all']
 
   parser = commandline.ArgumentParser(description=__doc__)
   parser.add_argument('--action', default='deviterate',

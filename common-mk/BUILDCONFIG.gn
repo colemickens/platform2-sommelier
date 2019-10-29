@@ -126,6 +126,7 @@ set_default_toolchain("//common-mk/toolchain")
 # It is not natively supported by GN. Instead, here a few special fields are
 # injected to the executable, shared_library and static_library targets
 # to support pkg-config.
+# src_install and src_test settings are also written in the same way.
 #
 # Args:
 #   pkg_deps(optional): A list of package names to be depend.
@@ -134,6 +135,10 @@ set_default_toolchain("//common-mk/toolchain")
 #     |public_configs| instead.
 #   all_dependent_pkg_deps(optional): Similar to pkg_deps, but injected to
 #     |all_dependent_pkg_deps|.
+#   run_test(optional): A boolean if this is a unittest program that should be
+#     automatically run. A corresponding metadata is injected to itself.
+#   test_config(optional): A scope of configs for tests.
+#     A corresponding metadata is injected to itself.
 
 import("//common-mk/pkg_config.gni")
 
@@ -164,9 +169,12 @@ template("_generate_config_rule") {
                            "*",
                            [
                              "all_dependent_pkg_deps",
+                             "metadata",
                              "pkg_deps",
                              "public_pkg_deps",
+                             "run_test",
                              "target_type",
+                             "test_config",
                            ])
     if (defined(_pkg_deps_name)) {
       if (!defined(configs)) {
@@ -185,6 +193,20 @@ template("_generate_config_rule") {
         all_dependent_configs = []
       }
       all_dependent_configs += [ ":${_all_dependent_pkg_deps_name}" ]
+    }
+    _run_test = defined(invoker.run_test) && invoker.run_test
+    if (defined(invoker.metadata) || _run_test) {
+      metadata = {
+        if (defined(invoker.metadata)) {
+          forward_variables_from(invoker.metadata, "*")
+        }
+        if (_run_test) {
+          _run_test = [ true ]
+          if (defined(invoker.test_config)) {
+            _test_config = [ invoker.test_config ]
+          }
+        }
+      }
     }
   }
 }
