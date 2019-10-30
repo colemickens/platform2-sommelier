@@ -5,6 +5,7 @@
 #include <base/at_exit.h>
 #include <base/command_line.h>
 #include <brillo/syslog_logging.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "shill/logging.h"
@@ -31,10 +32,13 @@ int main(int argc, char** argv) {
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   brillo::InitLog(brillo::kLogToStderr);
   shill::SetLogLevelFromCommandLine(cl);
+
   ::testing::InitGoogleTest(&argc, argv);
+  ::testing::GTEST_FLAG(throw_on_failure) = true;
+  ::testing::InitGoogleMock(&argc, argv);
 
   if (cl->HasSwitch(switches::kHelp)) {
-    std::cerr << switches::kHelpMessage;
+    fputs(switches::kHelpMessage, stderr);
   }
 
   return RUN_ALL_TESTS();
