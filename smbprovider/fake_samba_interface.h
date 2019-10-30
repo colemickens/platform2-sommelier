@@ -111,6 +111,7 @@ class FakeSambaInterface : public SambaInterface {
   void AddFile(const std::string& path,
                time_t date,
                std::vector<uint8_t> file_data);
+  void AddFile(const std::string& dir_path, const std::string& name);
 
   // Adds a file at the specified path with |locked| set to true. All parents
   // must exist. Operations on a locked file will fail.
@@ -170,16 +171,11 @@ class FakeSambaInterface : public SambaInterface {
     // Indicates whether the entry should be inacessable by the user.
     bool locked = false;
 
-    FakeEntry(const std::string& full_path,
+    FakeEntry(const std::string& base_name,
               uint32_t smbc_type,
               size_t size,
               time_t date,
               bool locked);
-
-    FakeEntry(const std::string& full_path,
-              uint32_t smbc_type,
-              size_t size,
-              time_t date);
 
     virtual ~FakeEntry() = default;
 
@@ -202,17 +198,17 @@ class FakeSambaInterface : public SambaInterface {
     using Entries = std::vector<std::unique_ptr<FakeEntry>>;
     using EntriesIterator = Entries::iterator;
 
-    FakeDirectory(const std::string& full_path,
+    FakeDirectory(const std::string& base_name,
                   bool locked,
                   uint32_t smbc_type,
                   time_t date)
-        : FakeEntry(full_path, smbc_type, 0 /* size */, date, locked) {}
+        : FakeEntry(base_name, smbc_type, 0 /* size */, date, locked) {}
 
-    FakeDirectory(const std::string& full_path, bool locked)
-        : FakeDirectory(full_path, locked, SMBC_DIR, 0) {}
+    FakeDirectory(const std::string& base_name, bool locked)
+        : FakeDirectory(base_name, locked, SMBC_DIR, 0) {}
 
-    explicit FakeDirectory(const std::string& full_path)
-        : FakeDirectory(full_path, false /* locked */) {}
+    explicit FakeDirectory(const std::string& base_name)
+        : FakeDirectory(base_name, false /* locked */) {}
 
     // Returns entries.empty().
     bool IsEmpty() const;
@@ -235,18 +231,18 @@ class FakeSambaInterface : public SambaInterface {
   };
 
   struct FakeFile : FakeEntry {
-    FakeFile(const std::string& full_path,
+    FakeFile(const std::string& base_name,
              size_t size,
              time_t date,
              bool locked)
-        : FakeEntry(full_path, SMBC_FILE, size, date, locked),
+        : FakeEntry(base_name, SMBC_FILE, size, date, locked),
           has_data(false) {}
 
-    FakeFile(const std::string& full_path,
+    FakeFile(const std::string& base_name,
              time_t date,
              std::vector<uint8_t> file_data)
         : FakeEntry(
-              full_path, SMBC_FILE, file_data.size(), date, false /* locked */),
+              base_name, SMBC_FILE, file_data.size(), date, false /* locked */),
           has_data(true),
           data(std::move(file_data)) {}
 

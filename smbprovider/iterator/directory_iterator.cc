@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <base/stl_util.h>
 
 #include "smbprovider/constants.h"
 #include "smbprovider/smbprovider_helper.h"
@@ -205,7 +206,8 @@ void BaseDirectoryIterator::AddEntryIfValid(const smbc_dirent& dirent) {
   const std::string name(dirent.name);
   // Ignore "." and ".." entries.
   // TODO(allenvic): Handle SMBC_LINK
-  if (IsSelfOrParentDir(name) || !ShouldIncludeEntryType(dirent.smbc_type)) {
+  if (IsSelfOrParentDir(name) || !ShouldIncludeEntryType(dirent.smbc_type) ||
+      base::ContainsValue(name, '/') || base::ContainsValue(name, '\\')) {
     return;
   }
 
@@ -221,7 +223,8 @@ void BaseDirectoryIterator::AddEntryIfValid(
   // Ignore "." and ".." entries as well as symlinks.
   // TODO(zentaro): Investigate how this API deals with directories that are
   // file shares.
-  if (IsSelfOrParentDir(name) || IsSymlink(file_info.attrs)) {
+  if (IsSelfOrParentDir(name) || IsSymlink(file_info.attrs) ||
+      base::ContainsValue(name, '/') || base::ContainsValue(name, '\\')) {
     return;
   }
 

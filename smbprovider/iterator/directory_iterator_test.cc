@@ -256,6 +256,26 @@ TEST_F(DirectoryIteratorTest, DirItOmitsSelfAndParentEntries) {
   EXPECT_TRUE(it.IsDone());
 }
 
+// DirectoryIterator does not iterate over entries containing '/' or '\'
+// in the name.
+TEST_F(DirectoryIteratorTest, DirItOmitsRelativeEntries) {
+  CreateDefaultMountRoot();
+
+  fake_samba_.AddDirectory(GetAddedFullDirectoryPath());
+  fake_samba_.AddFile(GetAddedFullFilePath());
+  fake_samba_.AddFile(GetAddedFullDirectoryPath(), "foo/bar");
+  fake_samba_.AddFile(GetAddedFullDirectoryPath(), "bar\\foo");
+
+  DirectoryIterator it(GetAddedFullDirectoryPath(), &fake_samba_);
+
+  EXPECT_EQ(0, it.Init());
+  EXPECT_FALSE(it.IsDone());
+  EXPECT_EQ("dog.jpg", it.Get().name);
+
+  EXPECT_EQ(0, it.Next());
+  EXPECT_TRUE(it.IsDone());
+}
+
 // DirectoryIterator succeeds with multiple entries when the batch size is
 // large enough for just one entry at a time.
 TEST_F(DirectoryIteratorTest, DirItSucceedsWithMultipleUsesOfSmallBatch) {
