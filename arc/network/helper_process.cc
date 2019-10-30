@@ -41,7 +41,8 @@ void HelperProcess::Start(int argc, char* argv[], const std::string& fd_arg) {
   fd_mapping.push_back({subprocess_fd, subprocess_fd});
 
   base::LaunchOptions options;
-  options.fds_to_remap = &fd_mapping;
+  // TODO(fqj): change to std::move(fd_mapping)
+  options.fds_to_remap = FDS_TO_REMAP(fd_mapping);
 
   base::Process p = base::LaunchProcess(child_argv, options);
   CHECK(p.IsValid());
