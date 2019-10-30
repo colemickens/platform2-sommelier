@@ -5,6 +5,7 @@
 #include "power_manager/powerd/system/dbus_wrapper.h"
 
 #include <memory>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/logging.h>
@@ -89,7 +90,7 @@ void DBusWrapper::RegisterForServiceAvailability(
     dbus::ObjectProxy* proxy,
     dbus::ObjectProxy::WaitForServiceToBeAvailableCallback callback) {
   DCHECK(proxy);
-  proxy->WaitForServiceToBeAvailable(callback);
+  proxy->WaitForServiceToBeAvailable(std::move(callback));
 }
 
 void DBusWrapper::RegisterForSignal(
@@ -151,7 +152,7 @@ void DBusWrapper::CallMethodAsync(
     dbus::ObjectProxy::ResponseCallback callback) {
   DCHECK(proxy);
   DCHECK(method_call);
-  proxy->CallMethod(method_call, timeout.InMilliseconds(), callback);
+  proxy->CallMethod(method_call, timeout.InMilliseconds(), std::move(callback));
 }
 
 void DBusWrapper::HandleNameOwnerChangedSignal(dbus::Signal* signal) {

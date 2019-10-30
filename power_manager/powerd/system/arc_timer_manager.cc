@@ -15,7 +15,7 @@
 #include <base/bind.h>
 #include <base/files/file.h>
 #include <base/memory/ptr_util.h>
-#include <base/posix/unix_domain_socket_linux.h>
+#include <base/posix/unix_domain_socket.h>
 #include <brillo/daemons/daemon.h>
 #include <components/timers/alarm_timer_chromeos.h>
 #include <chromeos/dbus/service_constants.h>

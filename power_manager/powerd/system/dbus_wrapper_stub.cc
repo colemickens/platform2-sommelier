@@ -21,8 +21,7 @@ namespace {
 
 // Returns a copy of |signal|.
 std::unique_ptr<dbus::Signal> DuplicateSignal(dbus::Signal* signal) {
-  return base::WrapUnique(
-      dbus::Signal::FromRawMessage(dbus_message_copy(signal->raw_message())));
+  return dbus::Signal::FromRawMessage(dbus_message_copy(signal->raw_message()));
 }
 
 // Transfers |src_response| to |dest_response|. Passed as a response callback to
@@ -35,7 +34,7 @@ void MoveResponse(std::unique_ptr<dbus::Response>* dest_response,
 // Callback for CallMethodAsync() to pass |response| to |callback|.
 void RunResponseCallback(dbus::ObjectProxy::ResponseCallback callback,
                          std::unique_ptr<dbus::Response> response) {
-  callback.Run(response.get());
+  std::move(callback).Run(response.get());
 }
 
 }  // namespace
@@ -151,7 +150,7 @@ void DBusWrapperStub::NotifyServiceAvailable(dbus::ObjectProxy* proxy,
     return;
 
   for (auto cb : it->second)
-    cb.Run(available);
+    std::move(cb).Run(available);
   service_availability_callbacks_.erase(it);
 }
 
@@ -197,7 +196,7 @@ void DBusWrapperStub::RegisterForServiceAvailability(
     dbus::ObjectProxy* proxy,
     dbus::ObjectProxy::WaitForServiceToBeAvailableCallback callback) {
   DCHECK(proxy);
-  service_availability_callbacks_[proxy].push_back(callback);
+  service_availability_callbacks_[proxy].push_back(std::move(callback));
 }
 
 void DBusWrapperStub::RegisterForSignal(
@@ -270,9 +269,8 @@ void DBusWrapperStub::CallMethodAsync(
     dbus::ObjectProxy::ResponseCallback callback) {
   // Call the method handler now and post |callback| to run later.
   base::MessageLoop::current()->task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&RunResponseCallback, callback,
-                 base::Passed(CallMethodSync(proxy, method_call, timeout))));
+      FROM_HERE, base::BindOnce(&RunResponseCallback, std::move(callback),
+                                CallMethodSync(proxy, method_call, timeout)));
 }
 
 }  // namespace system
