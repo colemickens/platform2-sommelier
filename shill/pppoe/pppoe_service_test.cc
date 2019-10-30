@@ -67,7 +67,7 @@ class PPPoEServiceTest : public testing::Test {
 
   void OnPPPDied(pid_t pid, int exit) { service_->OnPPPDied(pid, exit); }
 
-  int max_auth_failure() { return service_->max_auth_failure_; }
+  int max_failure() { return service_->max_failure_; }
 
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
@@ -96,9 +96,9 @@ TEST_F(PPPoEServiceTest, AuthenticationFailure) {
   auto previous_state = service_->state();
   service_->Notify(kPPPReasonDisconnect, empty_dict);
 
-  // First max_auth_failure - 1 failures should not do anything; pppd will retry
-  // the authentication.
-  for (int i = 1; i < max_auth_failure(); ++i) {
+  // First max_failure - 1 failures should not do anything; pppd will retry
+  // the connection.
+  for (int i = 1; i < max_failure(); ++i) {
     EXPECT_EQ(service_->state(), previous_state);
     service_->Notify(kPPPReasonDisconnect, empty_dict);
   }

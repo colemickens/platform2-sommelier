@@ -33,7 +33,7 @@ namespace {
 
 constexpr int kDefaultLCPEchoInterval = 30;
 constexpr int kDefaultLCPEchoFailure = 3;
-constexpr int kDefaultMaxAuthFailure = 3;
+constexpr int kDefaultMaxFailure = 3;
 
 }  // namespace
 
@@ -43,7 +43,7 @@ PPPoEService::PPPoEService(Manager* manager, base::WeakPtr<Ethernet> ethernet)
       process_manager_(ProcessManager::GetInstance()),
       lcp_echo_interval_(kDefaultLCPEchoInterval),
       lcp_echo_failure_(kDefaultLCPEchoFailure),
-      max_auth_failure_(kDefaultMaxAuthFailure),
+      max_failure_(kDefaultMaxFailure),
       authenticating_(false),
       weak_ptr_factory_(this) {
   PropertyStore* store = this->mutable_store();
@@ -51,7 +51,7 @@ PPPoEService::PPPoEService(Manager* manager, base::WeakPtr<Ethernet> ethernet)
   store->RegisterString(kPPPoEPasswordProperty, &password_);
   store->RegisterInt32(kPPPoELCPEchoIntervalProperty, &lcp_echo_interval_);
   store->RegisterInt32(kPPPoELCPEchoFailureProperty, &lcp_echo_failure_);
-  store->RegisterInt32(kPPPoEMaxAuthFailureProperty, &max_auth_failure_);
+  store->RegisterInt32(kPPPoEMaxAuthFailureProperty, &max_failure_);
 
   set_friendly_name("PPPoE");
   SetConnectable(true);
@@ -82,7 +82,7 @@ void PPPoEService::OnConnect(Error* error) {
   options.use_pppoe_plugin = true;
   options.lcp_echo_interval = lcp_echo_interval_;
   options.lcp_echo_failure = lcp_echo_failure_;
-  options.max_fail = max_auth_failure_;
+  options.max_fail = max_failure_;
   options.use_ipv6 = true;
 
   pppd_ = PPPDaemon::Start(control_interface(), process_manager_,
@@ -123,7 +123,7 @@ bool PPPoEService::Load(StoreInterface* storage) {
   storage->GetString(id, kPPPoEPasswordProperty, &password_);
   storage->GetInt(id, kPPPoELCPEchoIntervalProperty, &lcp_echo_interval_);
   storage->GetInt(id, kPPPoELCPEchoFailureProperty, &lcp_echo_failure_);
-  storage->GetInt(id, kPPPoEMaxAuthFailureProperty, &max_auth_failure_);
+  storage->GetInt(id, kPPPoEMaxAuthFailureProperty, &max_failure_);
 
   return true;
 }
@@ -138,7 +138,7 @@ bool PPPoEService::Save(StoreInterface* storage) {
   storage->SetString(id, kPPPoEPasswordProperty, password_);
   storage->SetInt(id, kPPPoELCPEchoIntervalProperty, lcp_echo_interval_);
   storage->SetInt(id, kPPPoELCPEchoFailureProperty, lcp_echo_failure_);
-  storage->SetInt(id, kPPPoEMaxAuthFailureProperty, max_auth_failure_);
+  storage->SetInt(id, kPPPoEMaxAuthFailureProperty, max_failure_);
 
   return true;
 }

@@ -71,7 +71,7 @@ class PPPoEService : public EthernetService, public RpcTaskDelegate {
   // Properties for PPPDaemon::Options.
   int lcp_echo_interval_;
   int lcp_echo_failure_;
-  int max_auth_failure_;
+  int max_failure_;
 
   bool authenticating_;
   std::unique_ptr<ExternalTask> pppd_;
