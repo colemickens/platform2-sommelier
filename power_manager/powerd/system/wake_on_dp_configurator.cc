@@ -73,9 +73,9 @@ void ConfigureWakeOnDp(bool enable) {
     return;
 
   if (enable)
-    wake_mask |= EC_MKBP_EVENT_DP_ALT_MODE_ENTERED;
+    wake_mask |= (1 << EC_MKBP_EVENT_DP_ALT_MODE_ENTERED);
   else
-    wake_mask &= ~EC_MKBP_EVENT_DP_ALT_MODE_ENTERED;
+    wake_mask &= ~(1 << EC_MKBP_EVENT_DP_ALT_MODE_ENTERED);
 
   if (SetMkbpWakeMask(cros_ec_fd, wake_mask))
     LOG(INFO) << "Wake on dp is " << (enable ? "enabled" : "disabled");
