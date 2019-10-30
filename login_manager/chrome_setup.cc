@@ -146,6 +146,9 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--force-remote-shell-scale=2");
   if (builder->UseFlagIsSet("arcvm"))
     builder->AddArg("--enable-arcvm");
+  // Devices of tablet form factor will have special app behaviour.
+  if (builder->UseFlagIsSet("tablet_form_factor"))
+    builder->AddArg("--enable-tablet-form-factor");
 }
 
 void AddCrostiniFlags(ChromiumCommandBuilder* builder) {
