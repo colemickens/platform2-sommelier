@@ -232,9 +232,10 @@ void ImpersonationObjectManagerInterface::RemoveImpersonatedServiceForObject(
 
 bool ImpersonationObjectManagerInterface::HasImpersonatedServiceForObject(
     const std::string& object_path, const std::string& service_name) {
-  return base::ContainsKey(impersonated_services_, object_path) &&
-         base::ContainsValue(impersonated_services_.at(object_path),
-                             service_name);
+  auto iter = impersonated_services_.find(object_path);
+  if (iter == impersonated_services_.end())
+    return false;
+  return base::ContainsKey(iter->second, service_name);
 }
 
 dbus::ObjectManager* ImpersonationObjectManagerInterface::GetObjectManager(
