@@ -14,7 +14,7 @@ namespace {
 
 void OnServiceAvailable(chaps::OnObjectProxyConstructedCallback callback,
                         chaps::ScopedBus bus,
-                        dbus::ObjectProxy* proxy,
+                        scoped_refptr<dbus::ObjectProxy> proxy,
                         bool service_is_available) {
   if (!service_is_available) {
     LOG(ERROR) << "Failed to wait for chaps service to become available";
@@ -33,7 +33,7 @@ void OnServiceAvailable(chaps::OnObjectProxyConstructedCallback callback,
       default_isolate_credential_blob.end());
 
   if (!brillo::dbus_utils::CallMethodAndBlockWithTimeout(
-          chaps::DBusProxyWrapper::kDBusTimeoutMs, proxy,
+          chaps::DBusProxyWrapper::kDBusTimeoutMs, proxy.get(),
           chaps::kChapsInterface, chaps::kGetSlotListMethod, &error,
           default_isolate_credential, false)) {
     LOG(ERROR) << "Chaps service is up but unresponsive: "
@@ -58,8 +58,9 @@ void CreateObjectProxyOnTaskRunner(
     return;
   }
 
-  proxy->WaitForServiceToBeAvailable(base::Bind(
-      &OnServiceAvailable, callback, base::Passed(std::move(bus)), proxy));
+  proxy->WaitForServiceToBeAvailable(base::Bind(&OnServiceAvailable, callback,
+                                                base::Passed(std::move(bus)),
+                                                base::WrapRefCounted(proxy)));
 }
 
 }  // namespace
@@ -99,7 +100,9 @@ ProxyWrapperConstructionTask::ConstructProxyWrapper(
 }
 
 void ProxyWrapperConstructionTask::SetObjectProxyCallback(
-    bool success, ScopedBus bus, dbus::ObjectProxy* object_proxy) {
+    bool success,
+    ScopedBus bus,
+    scoped_refptr<dbus::ObjectProxy> object_proxy) {
   success_ = success;
   bus_ = std::move(bus);
   object_proxy_ = object_proxy;

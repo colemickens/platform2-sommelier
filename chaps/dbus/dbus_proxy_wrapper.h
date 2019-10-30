@@ -13,6 +13,7 @@
 #include <base/callback.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/single_thread_task_runner.h>
 #include <base/synchronization/waitable_event.h>
 #include <brillo/dbus/dbus_method_invoker.h>
@@ -33,8 +34,8 @@ namespace chaps {
 // This stuff below is tooling to try and hide this thread-jumping as much
 // as possible.
 
-using OnObjectProxyConstructedCallback =
-    base::Callback<void(bool, chaps::ScopedBus, dbus::ObjectProxy*)>;
+using OnObjectProxyConstructedCallback = base::Callback<void(
+    bool, chaps::ScopedBus, scoped_refptr<dbus::ObjectProxy>)>;
 
 // Wrapper around the dbus::ObjectProxy which sets up a default
 // method timeout and runs D-Bus calls on the given |task_runner|.
@@ -45,7 +46,7 @@ class DBusProxyWrapper : public base::RefCountedThreadSafe<DBusProxyWrapper> {
 
   DBusProxyWrapper(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
                    ScopedBus bus,
-                   dbus::ObjectProxy* dbus_proxy)
+                   scoped_refptr<dbus::ObjectProxy> dbus_proxy)
       : task_runner_(task_runner),
         bus_(std::move(bus)),
         dbus_proxy_(dbus_proxy) {}
@@ -81,15 +82,15 @@ class DBusProxyWrapper : public base::RefCountedThreadSafe<DBusProxyWrapper> {
     DCHECK(task_runner_->BelongsToCurrentThread());
 
     *out_resp = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
-        kDBusTimeoutMs, dbus_proxy_, kChapsInterface, method_name, nullptr,
-        args...);
+        kDBusTimeoutMs, dbus_proxy_.get(), kChapsInterface, method_name,
+        nullptr, args...);
     completion_event->Signal();
   }
 
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 
   ScopedBus bus_;
-  dbus::ObjectProxy* dbus_proxy_;  // weak, owned by |bus_|
+  scoped_refptr<dbus::ObjectProxy> dbus_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusProxyWrapper);
 };
@@ -117,7 +118,7 @@ class ProxyWrapperConstructionTask
 
   void SetObjectProxyCallback(bool success,
                               ScopedBus bus,
-                              dbus::ObjectProxy* object_proxy);
+                              scoped_refptr<dbus::ObjectProxy> object_proxy);
 
   // Posted to a task runner to get an ObjectProxy.
   base::Callback<void(const OnObjectProxyConstructedCallback&)>
@@ -128,7 +129,7 @@ class ProxyWrapperConstructionTask
   // Bus and object proxy passed back from |construction_callback_|.
   bool success_;
   ScopedBus bus_;
-  dbus::ObjectProxy* object_proxy_;
+  scoped_refptr<dbus::ObjectProxy> object_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyWrapperConstructionTask);
 };
