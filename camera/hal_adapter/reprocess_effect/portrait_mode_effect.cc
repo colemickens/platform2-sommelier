@@ -287,7 +287,7 @@ base::Process PortraitModeEffect::LaunchPortraitProcessor(
   fds_to_remap.emplace_back(output_rgb_buf_fd, output_rgb_buf_fd);
   fds_to_remap.emplace_back(result_report_fd, result_report_fd);
   base::LaunchOptions options;
-  options.fds_to_remap = &fds_to_remap;
+  options.fds_to_remap = FDS_TO_REMAP(fds_to_remap);
   return base::LaunchProcess(cmdline, options);
 }
 
