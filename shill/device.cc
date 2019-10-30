@@ -142,7 +142,6 @@ Device::Device(Manager* manager,
       running_(false),
       link_name_(link_name),
       manager_(manager),
-      weak_ptr_factory_(this),
       adaptor_(manager->control_interface()->CreateDeviceAdaptor(this)),
       technology_(technology),
       portal_check_interval_seconds_(0),
@@ -155,7 +154,8 @@ Device::Device(Manager* manager,
       last_link_monitor_failed_time_(0),
       is_loose_routing_(false),
       is_multi_homed_(false),
-      fixed_ip_params_(false) {
+      fixed_ip_params_(false),
+      weak_ptr_factory_(this) {
   store_.RegisterConstString(kAddressProperty, &mac_address_);
 
   // kBgscanMethodProperty: Registered in WiFi
@@ -786,15 +786,15 @@ bool Device::AcquireIPConfigWithLeaseName(const string& lease_name) {
 
   ipconfig_ = dhcp_config;
   ipconfig_->RegisterUpdateCallback(
-      Bind(&Device::OnIPConfigUpdated, weak_ptr_factory_.GetWeakPtr()));
+      Bind(&Device::OnIPConfigUpdated, AsWeakPtr()));
   ipconfig_->RegisterFailureCallback(
-      Bind(&Device::OnIPConfigFailed, weak_ptr_factory_.GetWeakPtr()));
+      Bind(&Device::OnIPConfigFailed, AsWeakPtr()));
   ipconfig_->RegisterRefreshCallback(
-      Bind(&Device::OnIPConfigRefreshed, weak_ptr_factory_.GetWeakPtr()));
+      Bind(&Device::OnIPConfigRefreshed, AsWeakPtr()));
   ipconfig_->RegisterExpireCallback(
-      Bind(&Device::OnIPConfigExpired, weak_ptr_factory_.GetWeakPtr()));
-  dispatcher()->PostTask(FROM_HERE, Bind(&Device::ConfigureStaticIPTask,
-                                         weak_ptr_factory_.GetWeakPtr()));
+      Bind(&Device::OnIPConfigExpired, AsWeakPtr()));
+  dispatcher()->PostTask(FROM_HERE,
+                         Bind(&Device::ConfigureStaticIPTask, AsWeakPtr()));
   if (!ipconfig_->RequestIP()) {
     return false;
   }
@@ -814,11 +814,11 @@ bool Device::AcquireIPv6ConfigWithLeaseName(const string& lease_name) {
   auto dhcpv6_config = dhcp_provider_->CreateIPv6Config(link_name_, lease_name);
   dhcpv6_config_ = dhcpv6_config;
   dhcpv6_config_->RegisterUpdateCallback(
-      Bind(&Device::OnDHCPv6ConfigUpdated, weak_ptr_factory_.GetWeakPtr()));
+      Bind(&Device::OnDHCPv6ConfigUpdated, AsWeakPtr()));
   dhcpv6_config_->RegisterFailureCallback(
-      Bind(&Device::OnDHCPv6ConfigFailed, weak_ptr_factory_.GetWeakPtr()));
+      Bind(&Device::OnDHCPv6ConfigFailed, AsWeakPtr()));
   dhcpv6_config_->RegisterExpireCallback(
-      Bind(&Device::OnDHCPv6ConfigExpired, weak_ptr_factory_.GetWeakPtr()));
+      Bind(&Device::OnDHCPv6ConfigExpired, AsWeakPtr()));
   if (!dhcpv6_config_->RequestIP()) {
     return false;
   }
@@ -846,9 +846,8 @@ void Device::AssignIPConfig(const IPConfig::Properties& properties) {
   EnableIPv6();
   ipconfig_ = new IPConfig(control_interface(), link_name_);
   ipconfig_->set_properties(properties);
-  dispatcher()->PostTask(FROM_HERE,
-                         Bind(&Device::OnIPConfigUpdated,
-                              weak_ptr_factory_.GetWeakPtr(), ipconfig_, true));
+  dispatcher()->PostTask(FROM_HERE, Bind(&Device::OnIPConfigUpdated,
+                                         AsWeakPtr(), ipconfig_, true));
 }
 
 void Device::DestroyIPConfigLease(const string& name) {
@@ -1125,8 +1124,8 @@ void Device::OnIPConfigRefreshed(const IPConfigRefPtr& ipconfig) {
   ipconfig->RestoreSavedIPParameters(
       selected_service_->mutable_static_ip_parameters());
 
-  dispatcher()->PostTask(FROM_HERE, Bind(&Device::ConfigureStaticIPTask,
-                                         weak_ptr_factory_.GetWeakPtr()));
+  dispatcher()->PostTask(FROM_HERE,
+                         Bind(&Device::ConfigureStaticIPTask, AsWeakPtr()));
 }
 
 void Device::OnIPConfigFailure() {
@@ -1364,9 +1363,9 @@ bool Device::StartPortalDetection() {
     return false;
   }
 
-  portal_detector_.reset(new PortalDetector(
-      connection_, dispatcher(), metrics(),
-      Bind(&Device::PortalDetectorCallback, weak_ptr_factory_.GetWeakPtr())));
+  portal_detector_.reset(
+      new PortalDetector(connection_, dispatcher(), metrics(),
+                         Bind(&Device::PortalDetectorCallback, AsWeakPtr())));
   PortalDetector::Properties props = manager_->GetPortalCheckProperties();
   if (!StartPortalDetectionTrial(portal_detector_.get(), props, 0)) {
     LOG(ERROR) << "Device " << link_name()
@@ -1394,8 +1393,7 @@ bool Device::StartConnectionDiagnosticsAfterPortalDetection(
     const PortalDetector::Result& https_result) {
   connection_diagnostics_.reset(new ConnectionDiagnostics(
       connection_, dispatcher(), metrics(), manager_->device_info(),
-      Bind(&Device::ConnectionDiagnosticsCallback,
-           weak_ptr_factory_.GetWeakPtr())));
+      Bind(&Device::ConnectionDiagnosticsCallback, AsWeakPtr())));
   if (!connection_diagnostics_->StartAfterPortalDetection(
           manager_->GetPortalCheckHttpUrl(), http_result, https_result)) {
     LOG(ERROR) << "Device " << link_name()
@@ -1419,9 +1417,9 @@ void Device::StopConnectionDiagnostics() {
 bool Device::StartConnectivityTest() {
   LOG(INFO) << "Device " << link_name() << " starting connectivity test.";
 
-  connection_tester_.reset(new PortalDetector(
-      connection_, dispatcher(), metrics(),
-      Bind(&Device::ConnectionTesterCallback, weak_ptr_factory_.GetWeakPtr())));
+  connection_tester_.reset(
+      new PortalDetector(connection_, dispatcher(), metrics(),
+                         Bind(&Device::ConnectionTesterCallback, AsWeakPtr())));
   StartPortalDetectionTrial(connection_tester_.get(),
                             PortalDetector::Properties(), 0);
   return true;
@@ -1457,9 +1455,8 @@ bool Device::StartLinkMonitor() {
   if (!link_monitor()) {
     set_link_monitor(new LinkMonitor(
         connection_, dispatcher(), metrics(), manager_->device_info(),
-        Bind(&Device::OnLinkMonitorFailure, weak_ptr_factory_.GetWeakPtr()),
-        Bind(&Device::OnLinkMonitorGatewayChange,
-             weak_ptr_factory_.GetWeakPtr())));
+        Bind(&Device::OnLinkMonitorFailure, AsWeakPtr()),
+        Bind(&Device::OnLinkMonitorGatewayChange, AsWeakPtr())));
   }
 
   SLOG(this, 2) << "Device " << link_name() << ": Link Monitor starting.";
@@ -1551,8 +1548,7 @@ void Device::FallbackDNSResultCallback(const DnsServerTester::Status status) {
                                       std::end(kFallbackDnsServers)));
       // Start DNS test for configured DNS servers.
       StartDNSTest(config_dns_servers_, true,
-                   Bind(&Device::ConfigDNSResultCallback,
-                        weak_ptr_factory_.GetWeakPtr()));
+                   Bind(&Device::ConfigDNSResultCallback, AsWeakPtr()));
     }
   }
   metrics()->NotifyFallbackDNSTestResult(technology_, result);
@@ -1620,8 +1616,7 @@ void Device::StartTrafficMonitor() {
   if (!traffic_monitor_) {
     traffic_monitor_ = std::make_unique<TrafficMonitor>(
         this, dispatcher(),
-        Bind(&Device::OnEncounterNetworkProblem,
-             weak_ptr_factory_.GetWeakPtr()));
+        Bind(&Device::OnEncounterNetworkProblem, AsWeakPtr()));
   }
   traffic_monitor_->Start();
 }
@@ -1768,8 +1763,7 @@ void Device::PortalDetectorCallback(
       StartDNSTest(vector<string>(std::begin(kFallbackDnsServers),
                                   std::end(kFallbackDnsServers)),
                    false,
-                   Bind(&Device::FallbackDNSResultCallback,
-                        weak_ptr_factory_.GetWeakPtr()));
+                   Bind(&Device::FallbackDNSResultCallback, AsWeakPtr()));
     }
   }
 }
@@ -1925,8 +1919,7 @@ void Device::SetEnabledUnchecked(bool enable,
                                  const ResultCallback& on_enable_complete) {
   enabled_pending_ = enable;
   EnabledStateChangedCallback chained_callback =
-      Bind(&Device::OnEnabledStateChanged, weak_ptr_factory_.GetWeakPtr(),
-           on_enable_complete);
+      Bind(&Device::OnEnabledStateChanged, AsWeakPtr(), on_enable_complete);
   if (enable) {
     running_ = true;
     Start(error, chained_callback);

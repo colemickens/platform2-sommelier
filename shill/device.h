@@ -230,6 +230,9 @@ class Device : public base::RefCounted<Device> {
   // instance.
   const std::string& UniqueName() const;
 
+  // Returns a WeakPtr of the Device.
+  base::WeakPtr<Device> AsWeakPtr() { return weak_ptr_factory_.GetWeakPtr(); }
+
   PropertyStore* mutable_store() { return &store_; }
   const PropertyStore& store() const { return store_; }
   RTNLHandler* rtnl_handler() { return rtnl_handler_; }
@@ -820,7 +823,6 @@ class Device : public base::RefCounted<Device> {
   IPConfigRefPtr ip6config_;
   IPConfigRefPtr dhcpv6_config_;
   ConnectionRefPtr connection_;
-  base::WeakPtrFactory<Device> weak_ptr_factory_;
   std::unique_ptr<DeviceAdaptorInterface> adaptor_;
   std::unique_ptr<PortalDetector> portal_detector_;
   std::unique_ptr<LinkMonitor> link_monitor_;
@@ -872,6 +874,8 @@ class Device : public base::RefCounted<Device> {
   std::set<std::string> written_flags_;
 
   std::unique_ptr<ConnectionDiagnostics> connection_diagnostics_;
+
+  base::WeakPtrFactory<Device> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };
