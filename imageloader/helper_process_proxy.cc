@@ -42,7 +42,8 @@ void HelperProcessProxy::Start(int argc,
   fd_mapping.push_back({subprocess_fd, subprocess_fd});
 
   base::LaunchOptions options;
-  options.fds_to_remap = &fd_mapping;
+  // TODO(fqj): use std::move(fd_mapping) after migration.
+  options.fds_to_remap = FDS_TO_REMAP(fd_mapping);
 
   base::Process p = base::LaunchProcess(child_argv, options);
   CHECK(p.IsValid());
