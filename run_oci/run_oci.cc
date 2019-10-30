@@ -408,7 +408,8 @@ bool RunOneHook(const OciHook& hook,
   }
   base::FileHandleMappingVector fds_to_remap{
       {write_pipe_read_fd.get(), STDIN_FILENO}, {STDERR_FILENO, STDERR_FILENO}};
-  options.fds_to_remap = &fds_to_remap;
+  // TODO(fqj): use std::move(fd_mapping) after migration.
+  options.fds_to_remap = FDS_TO_REMAP(fds_to_remap);
 
   std::vector<std::string> args;
   if (hook.args.empty()) {
