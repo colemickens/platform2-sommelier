@@ -4,6 +4,14 @@
 
 #include "vm_tools/concierge/arc_vm.h"
 
+#include <fcntl.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+// Needs to be included after sys/socket.h
+#include <linux/vm_sockets.h>
+
 #include <utility>
 
 #include <arc/network/guest_events.h>
@@ -46,6 +54,52 @@ constexpr size_t kGuestAddressOffset = 1;
 
 // The CPU cgroup where all the ARCVM's crosvm processes should belong to.
 constexpr char kArcvmCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/arc";
+
+// Port for arc-powerctl running on the guest side.
+constexpr unsigned int kVSockPort = 4242;
+
+base::ScopedFD ConnectVSock(int cid) {
+  DLOG(INFO) << "Creating VSOCK...";
+  struct sockaddr_vm sa = {};
+  sa.svm_family = AF_VSOCK;
+  sa.svm_cid = cid;
+  sa.svm_port = kVSockPort;
+
+  base::ScopedFD fd(
+      socket(AF_VSOCK, SOCK_STREAM | SOCK_CLOEXEC, 0 /* protocol */));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << "Failed to create VSOCK";
+    return {};
+  }
+
+  DLOG(INFO) << "Connecting VSOCK";
+  if (HANDLE_EINTR(connect(fd.get(),
+                           reinterpret_cast<const struct sockaddr*>(&sa),
+                           sizeof(sa))) == -1) {
+    fd.reset();
+    PLOG(ERROR) << "Failed to connect.";
+    return {};
+  }
+
+  DLOG(INFO) << "VSOCK connected.";
+  return fd;
+}
+
+bool ShutdownArcVm(int cid) {
+  base::ScopedFD vsock(ConnectVSock(cid));
+  if (!vsock.is_valid())
+    return false;
+
+  const std::string command("poweroff");
+  if (HANDLE_EINTR(write(vsock.get(), command.c_str(), command.size()) !=
+                   command.size())) {
+    PLOG(WARNING) << "Failed to write to ARCVM VSOCK";
+    return false;
+  }
+
+  DLOG(INFO) << "Started shutting down ARCVM";
+  return true;
+}
 
 }  // namespace
 
@@ -173,8 +227,6 @@ bool ArcVm::Start(base::FilePath kernel,
     LOG(WARNING) << "Unable to notify networking services";
   }
 
-  // TODO(yusukes|cmtm): Create a stub for talking to Android init inside the
-  // VM.
   return true;
 }
 
@@ -189,15 +241,24 @@ bool ArcVm::Shutdown() {
   // that's never going to come.  kill with a signal value of 0 is explicitly
   // documented as a way to check for the existence of a process.
   if (!CheckProcessExists(process_.pid())) {
-    // The process is already gone.
+    LOG(INFO) << "ARCVM process is already gone. Do nothing";
     process_.Release();
     return true;
   }
 
-  // TODO(yusukes|cmtm): Send SIGTERM to Android init so it gracefully shuts
-  // down the OS.
+  // Ask arc-powerctl running on the guest to power off the VM.
+  // TODO(yusukes): We should call ShutdownArcVm() only after the guest side
+  // service is fully started. b/143711798
+  LOG(INFO) << "Shutting down ARCVM";
+  if (ShutdownArcVm(vsock_cid_) &&
+      WaitForChild(process_.pid(), kChildExitTimeout)) {
+    LOG(INFO) << "ARCVM is shut down";
+    process_.Release();
+    return true;
+  }
 
-  // Try to shut it down via the crosvm socket.
+  LOG(WARNING) << "Failed to shut down ARCVM gracefully. Trying to turn it "
+               << "down via the crosvm socket.";
   RunCrosvmCommand("stop", GetVmSocketPath());
 
   // We can't actually trust the exit codes that crosvm gives us so just see if
@@ -211,6 +272,7 @@ bool ArcVm::Shutdown() {
 
   // Kill the process with SIGTERM.
   if (process_.Kill(SIGTERM, kChildExitTimeout.InSeconds())) {
+    process_.Release();
     return true;
   }
 
@@ -218,6 +280,7 @@ bool ArcVm::Shutdown() {
 
   // Kill it with fire.
   if (process_.Kill(SIGKILL, kChildExitTimeout.InSeconds())) {
+    process_.Release();
     return true;
   }
 
