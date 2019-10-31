@@ -25,10 +25,10 @@ class ModemInfo;
 // Cellular devices instantiate subclasses of CellularCapability that
 // handle the specific modem technologies and capabilities.
 //
-// The CellularCapability is directly subclassed by:
-// *  CelllularCapability3gpp which handles all modems managed by
-//    a modem manager using the the org.freedesktop.ModemManager1 DBUS
-//    interface.
+// The CellularCapability is directly subclassed by
+// CellularCapability3gpp which handles all modems managed by
+// a modem manager using the the org.freedesktop.ModemManager1 D-Bus
+// interface.
 //
 // Pictorially:
 //
@@ -37,11 +37,6 @@ class ModemInfo;
 //       |-- CellularCapability3gpp
 //                    |
 //                    |-- CellularCapabilityCdma
-//
-// TODO(armansito): Currently, 3GPP logic is handled by
-// CellularCapability3gpp. Eventually CellularCapability3gpp will
-// only serve as the abstract base class for ModemManager1 3GPP and CDMA
-// capabilities.
 class CellularCapability {
  public:
   static const int kTimeoutActivate;
