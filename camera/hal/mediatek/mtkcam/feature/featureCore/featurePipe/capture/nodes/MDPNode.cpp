@@ -259,11 +259,7 @@ int MDPNode::displayFormat(struct v4l2_format* fmt) {
   return 0;
 }
 
-int MDPNode::createInputBuffers(int w,
-                                int h,
-                                MUINT32 format_fourcc,
-                                MRect crop) {
-  unsigned int nplanes = mV4l2MdpInfo.inBufferInfo.planes_num;
+int MDPNode::createInputBuffers(IImageBuffer* buffer, MRect crop) {
   struct v4l2_plane planes[VIDEO_MAX_PLANES];
   struct v4l2_plane_pix_format plane_fmt[VIDEO_MAX_PLANES];
   struct v4l2_format format;
@@ -272,15 +268,23 @@ int MDPNode::createInputBuffers(int w,
 
   MY_LOGD("Create input buffers start");
 
+  MUINT32 width = buffer->getImgSize().w;
+  MUINT32 height = buffer->getImgSize().h;
+  MUINT32 pixelformat = formatTrans(buffer->getImgFormat());
+  Format2PlaneFmt(pixelformat, &mV4l2MdpInfo.inBufferInfo.planes_num);
+  unsigned int nplanes = mV4l2MdpInfo.inBufferInfo.planes_num;
+
   memset(plane_fmt, 0, sizeof(plane_fmt));
   memset(&format, 0, sizeof(format));
   format.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-  format.fmt.pix_mp.width = w;
-  format.fmt.pix_mp.height = h;
-  format.fmt.pix_mp.pixelformat = format_fourcc;
+  format.fmt.pix_mp.width = width;
+  format.fmt.pix_mp.height = height;
+  format.fmt.pix_mp.pixelformat = pixelformat;
   format.fmt.pix_mp.num_planes = nplanes;
   for (int i = 0; i < nplanes; ++i) {
-    format.fmt.pix_mp.plane_fmt[i].sizeimage = plane_fmt[i].sizeimage;
+    format.fmt.pix_mp.plane_fmt[i].sizeimage = buffer->getBufSizeInBytes(i);
+    format.fmt.pix_mp.plane_fmt[i].bytesperline =
+        buffer->getBufStridesInBytes(i);
   }
   displayFormat(&format);
 
@@ -327,9 +331,7 @@ int MDPNode::createInputBuffers(int w,
   return OK;
 }
 
-int MDPNode::createOutputBuffers(
-    int w, int h, unsigned int format_fourcc, int rotate, MRect crop) {
-  unsigned int nplanes = mV4l2MdpInfo.outBufferInfo.planes_num;
+int MDPNode::createOutputBuffers(IImageBuffer* buffer, int rotate, MRect crop) {
   struct v4l2_plane_pix_format plane_fmt[VIDEO_MAX_PLANES];
   struct v4l2_control control;
   struct v4l2_format format;
@@ -339,16 +341,23 @@ int MDPNode::createOutputBuffers(
 
   MY_LOGD("Create output buffers start");
 
+  MUINT32 width = buffer->getImgSize().w;
+  MUINT32 height = buffer->getImgSize().h;
+  MUINT32 pixelformat = formatTrans(buffer->getImgFormat());
+  Format2PlaneFmt(pixelformat, &mV4l2MdpInfo.outBufferInfo.planes_num);
+  unsigned int nplanes = mV4l2MdpInfo.outBufferInfo.planes_num;
+
   memset(plane_fmt, 0, sizeof(plane_fmt));
   memset(&format, 0, sizeof(format));
   format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-  format.fmt.pix_mp.width = w;
-  format.fmt.pix_mp.height = h;
-  format.fmt.pix_mp.pixelformat = format_fourcc;
+  format.fmt.pix_mp.width = width;
+  format.fmt.pix_mp.height = height;
+  format.fmt.pix_mp.pixelformat = pixelformat;
   format.fmt.pix_mp.num_planes = nplanes;
   for (int i = 0; i < nplanes; ++i) {
-    format.fmt.pix_mp.plane_fmt[i].sizeimage = plane_fmt[i].sizeimage;
-    format.fmt.pix_mp.plane_fmt[i].bytesperline = plane_fmt[i].bytesperline;
+    format.fmt.pix_mp.plane_fmt[i].sizeimage = buffer->getBufSizeInBytes(i);
+    format.fmt.pix_mp.plane_fmt[i].bytesperline =
+        buffer->getBufStridesInBytes(i);
   }
 
   displayFormat(&format);
@@ -362,8 +371,8 @@ int MDPNode::createOutputBuffers(
   sel.target = V4L2_SEL_TGT_COMPOSE;
   sel.r.left = 0;
   sel.r.top = 0;
-  sel.r.width = w;
-  sel.r.height = h;
+  sel.r.width = width;
+  sel.r.height = height;
   if (xioctl(mV4l2MdpInfo.fd, VIDIOC_S_SELECTION, &sel) < 0) {
     MY_LOGE("ioctl set input VIDIOC_S_SELECTION fail");
   }
@@ -552,22 +561,14 @@ MBOOL MDPNode::onRequestProcess(RequestPtr& pRequest) {
     MRect& crop = item.mCrop;
     mpCropCalculator->evaluate(pFactor, dstSize, &crop);
 
-    MUINT32 width = pSrcBuffer->getImgSize().w;
-    MUINT32 height = pSrcBuffer->getImgSize().h;
-    MUINT32 pixelformat = formatTrans(pSrcBuffer->getImgFormat());
-    Format2PlaneFmt(pixelformat, &mV4l2MdpInfo.inBufferInfo.planes_num);
-    createInputBuffers(width, height, pixelformat, crop);
+    createInputBuffers(pSrcBuffer, crop);
 
     int type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
     if (xioctl(mV4l2MdpInfo.fd, VIDIOC_STREAMON, &type) < 0) {
       MY_LOGE("ioctl stream on V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE fail");
     }
 
-    width = pDstBuffer->getImgSize().w;
-    height = pDstBuffer->getImgSize().h;
-    pixelformat = formatTrans(pDstBuffer->getImgFormat());
-    Format2PlaneFmt(pixelformat, &mV4l2MdpInfo.outBufferInfo.planes_num);
-    createOutputBuffers(width, height, pixelformat, rotate, crop);
+    createOutputBuffers(pDstBuffer, rotate, crop);
 
     type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
     if (xioctl(mV4l2MdpInfo.fd, VIDIOC_STREAMON, &type) < 0) {

@@ -94,9 +94,8 @@ class MDPNode : public CaptureFeatureNode {
   virtual MVOID onRequestFinish(RequestPtr&);
   MUINT32 formatTrans(MUINT32 format);
   MUINT32 calBytesUsed(int w, int h, MUINT32 format);
-  int createInputBuffers(int w, int h, MUINT32 format_fourcc, MRect crop);
-  int createOutputBuffers(
-      int w, int h, unsigned int format_fourcc, int rotate, MRect crop);
+  int createInputBuffers(IImageBuffer* buffer, MRect crop);
+  int createOutputBuffers(IImageBuffer* buffer, int rotate, MRect crop);
   void displayPlaneInfo(struct v4l2_plane_pix_format* plane_fmt,
                         unsigned int planes);
   int displayFormat(struct v4l2_format* fmt);
