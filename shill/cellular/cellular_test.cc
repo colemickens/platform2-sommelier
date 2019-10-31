@@ -952,12 +952,7 @@ TEST_P(CellularTest, HomeProviderServingOperator) {
                     kServingOperatorName, kServingOperatorCountry);
 }
 
-#if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 TEST_P(CellularTest, StorageIdentifier) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCdma})) {
-    return;
-  }
-
   // Test that the storage identifier name used by the service is sensible under
   // different scenarios w.r.t. information about the mobile network operator.
   SetMockMobileOperatorInfoObjects();
@@ -991,6 +986,8 @@ TEST_P(CellularTest, StorageIdentifier) {
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
   device_->DestroyService();
 
+  PopulateProxies();
+
   // Common expectation for following tests:
   EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(false));
@@ -1004,6 +1001,8 @@ TEST_P(CellularTest, StorageIdentifier) {
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
   device_->DestroyService();
 
+  PopulateProxies();
+
   // (3) Service created, serving operator known, uuid known.
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
@@ -1014,6 +1013,8 @@ TEST_P(CellularTest, StorageIdentifier) {
             device_->service()->GetStorageIdentifier());
   Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
   device_->DestroyService();
+
+  PopulateProxies();
 
   // (4) Service created, serving operator known, uuid not known, iccid known.
   EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
@@ -1026,6 +1027,7 @@ TEST_P(CellularTest, StorageIdentifier) {
   device_->DestroyService();
 }
 
+#if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 namespace {
 
 MATCHER(ContainsPhoneNumber, "") {
