@@ -377,8 +377,5 @@ ext4_dir_encryption_supported() {
   local direncryption_enabled=false
 
   # Return true if kernel support ext4 directory encryption.
-  "${direncryption_enabled}" && \
-  ! LC_LANG=C e4crypt get_policy / | grep -qF \
-    -e "Operation not supported" \
-    -e "Inappropriate ioctl for device"
+  "${direncryption_enabled}" && [ -e /sys/fs/ext4/features/encryption ]
 }
