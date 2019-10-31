@@ -10,7 +10,7 @@ mod legacy;
 mod util;
 
 use std::env::var;
-use std::io::{stdin, stdout, Write};
+use std::io::{self, stdin, stdout, Write};
 use std::mem;
 use std::path::PathBuf;
 use std::ptr::null_mut;
@@ -74,7 +74,15 @@ static COMMAND_RUNNING_PID: AtomicI32 = AtomicI32::new(-1);
 
 // Print a slice of strings in columns of equal width. This is used to display command completion
 // results when there is more than one match.
-fn print_in_columns(list: &[String]) {
+fn write_in_columns(
+    w: &mut dyn Write,
+    list: &[String],
+    width_opt: Option<usize>,
+) -> Result<(), io::Error> {
+    if list.is_empty() {
+        return writeln!(w, "\r");
+    }
+
     let mut max_len: usize = 0;
     for entry in list {
         if entry.len() > max_len {
@@ -82,40 +90,28 @@ fn print_in_columns(list: &[String]) {
         }
     }
 
-    let ignore_width = |list: &[String]| {
-        for entry in list {
-            print!("{}  ", entry);
-        }
-        println!("\r");
-    };
-
-    match terminal_size() {
-        Ok((w, _height)) => {
-            let width: usize = w as usize;
-            if max_len > width {
-                ignore_width(list);
-                return;
-            }
-
+    if let Some(width) = width_opt {
+        if max_len < width {
             let columns = (width + 2) / (max_len + 2);
             let mut col_x = 0;
 
-            for entry in list {
-                print!("{}{}", entry, " ".repeat(max_len - entry.len()));
+            for entry in &list[..list.len() - 1] {
+                col_x += 1;
                 if col_x == columns {
-                    println!("\r");
+                    writeln!(w, "{}\r", entry)?;
                     col_x = 0
                 } else {
-                    print!("  ");
-                    col_x += 1;
+                    write!(w, "{}{}  ", entry, " ".repeat(max_len - entry.len()))?;
                 }
             }
-            if col_x != 0 {
-                println!("\r");
-            }
+            return writeln!(w, "{}\r", list[list.len() - 1]);
         }
-        _ => ignore_width(list),
-    };
+    }
+
+    for entry in &list[..list.len() - 1] {
+        write!(w, "{}  ", entry)?;
+    }
+    writeln!(w, "{}\r", list[list.len() - 1])
 }
 
 // Forks off a child process which executes the command handler and waits for it to return.
@@ -302,7 +298,15 @@ fn next_command(dispatcher: &Dispatcher, history: &mut History) -> String {
                         }
                         CompletionResult::WholeTokenList(matches) => {
                             println!("\r");
-                            print_in_columns(&matches);
+                            write_in_columns(
+                                &mut stdout,
+                                &matches,
+                                match terminal_size() {
+                                    Ok((w, _height)) => Some(w as usize),
+                                    _ => None,
+                                },
+                            )
+                            .unwrap_or(());
                             new_prompt();
                             print!("{}", command);
                         }
@@ -489,10 +493,37 @@ fn main() -> Result<(), ()> {
 mod tests {
     use super::*;
 
+    use std::io::Cursor;
+    use std::str::from_utf8;
+
     #[test]
     fn test_validate_registered_commands() {
         util::set_dev_commands_included(true);
         util::set_usb_commands_included(true);
         setup_dispatcher();
+    }
+
+    #[test]
+    fn test_write_in_columns_no_width() {
+        let mut output = Cursor::new(Vec::new());
+        assert!(write_in_columns(
+            &mut output,
+            &["a".to_string(), "bb".to_string(), "ccc".to_string()],
+            None
+        )
+        .is_ok());
+        assert_eq!(from_utf8(output.get_ref()).unwrap(), "a  bb  ccc\r\n");
+    }
+
+    #[test]
+    fn test_write_in_columns_width() {
+        let mut output = Cursor::new(Vec::new());
+        assert!(write_in_columns(
+            &mut output,
+            &["a".to_string(), "bb".to_string(), "ccc".to_string()],
+            Some(10)
+        )
+        .is_ok());
+        assert_eq!(from_utf8(output.get_ref()).unwrap(), "a    bb\r\nccc\r\n");
     }
 }
