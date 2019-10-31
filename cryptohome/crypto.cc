@@ -1634,6 +1634,7 @@ bool Crypto::CanUnsealWithUserAuth() const {
   if (is_pcr_bound.has_value() && !is_pcr_bound.value())
     return true;
   // TODO(igorcov): Add the check if the board has a double PCR extend issue.
+  // Specifically "#if defined(USE_DOUBLE_EXTEND_PCR_ISSUE)"
   return false;
 }
 
