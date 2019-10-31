@@ -20,9 +20,8 @@
 
 namespace diagnostics {
 
-namespace {
-
-std::string GetWilcoDtcSupportdGrpcUri(
+// static
+std::string DpslRequesterImpl::GetWilcoDtcSupportdGrpcUri(
     DpslRequester::GrpcClientUri grpc_client_uri) {
   switch (grpc_client_uri) {
     case DpslRequester::GrpcClientUri::kLocalDomainSocket:
@@ -34,8 +33,6 @@ std::string GetWilcoDtcSupportdGrpcUri(
                << static_cast<int>(grpc_client_uri);
   return "";
 }
-
-}  // namespace
 
 DpslRequesterImpl::DpslRequesterImpl(
     const std::string& wilco_dtc_supportd_grpc_uri)
@@ -203,7 +200,7 @@ std::unique_ptr<DpslRequester> DpslRequester::Create(
       << "Thread context does not belong to the current thread";
 
   return std::make_unique<DpslRequesterImpl>(
-      GetWilcoDtcSupportdGrpcUri(grpc_client_uri));
+      DpslRequesterImpl::GetWilcoDtcSupportdGrpcUri(grpc_client_uri));
 }
 
 }  // namespace diagnostics

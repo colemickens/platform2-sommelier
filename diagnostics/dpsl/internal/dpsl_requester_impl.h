@@ -25,6 +25,9 @@ namespace diagnostics {
 // Real implementation of the DpslRequester interface.
 class DpslRequesterImpl final : public DpslRequester {
  public:
+  static std::string GetWilcoDtcSupportdGrpcUri(
+      DpslRequester::GrpcClientUri grpc_client_uri);
+
   explicit DpslRequesterImpl(const std::string& wilco_dtc_supportd_grpc_uri);
   ~DpslRequesterImpl() override;
 

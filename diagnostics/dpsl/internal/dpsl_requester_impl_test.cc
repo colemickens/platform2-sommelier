@@ -30,6 +30,26 @@
 
 namespace diagnostics {
 
+TEST(GetWilcoDtcSupportdGrpcUriTestDeathTest, InvalidValue) {
+  ASSERT_DEATH(DpslRequesterImpl::GetWilcoDtcSupportdGrpcUri(
+                   static_cast<DpslRequester::GrpcClientUri>(
+                       std::numeric_limits<std::underlying_type<
+                           DpslRequester::GrpcClientUri>::type>::max())),
+               "Unexpected GrpcClientUri");
+}
+
+TEST(GetWilcoDtcSupportdGrpcUriTest, Unix) {
+  EXPECT_EQ(DpslRequesterImpl::GetWilcoDtcSupportdGrpcUri(
+                DpslRequester::GrpcClientUri::kLocalDomainSocket),
+            "unix:/run/wilco_dtc/grpc_sockets/wilco_dtc_supportd_socket");
+}
+
+TEST(GetWilcoDtcSupportdGrpcUriTest, Vsock) {
+  EXPECT_EQ(DpslRequesterImpl::GetWilcoDtcSupportdGrpcUri(
+                DpslRequester::GrpcClientUri::kVmVsock),
+            "vsock:2:6666");  // VMADDR_CID_HOST:kWilcoDtcSupportdPort
+}
+
 class DpslRequesterImplTest : public testing::Test {
  public:
   DpslRequesterImplTest() = default;
