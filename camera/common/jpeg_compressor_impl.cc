@@ -141,7 +141,6 @@ bool JpegCompressorImpl::CompressImageFromHandle(buffer_handle_t input,
 
     if (mode != JpegCompressor::Mode::kHwOnly) {
       struct android_ycbcr mapped_input;
-      void* input_ptr;
       void* output_ptr;
       auto status =
           buffer_manager->LockYCbCr(input, 0, 0, 0, 0, 0, &mapped_input);
@@ -149,7 +148,6 @@ bool JpegCompressorImpl::CompressImageFromHandle(buffer_handle_t input,
         LOGF(INFO) << "Failed to lock input buffer handle for sw encode.";
         return nullptr;
       }
-      input_ptr = static_cast<uint8_t*>(mapped_input.y);
       status = buffer_manager->Lock(output, 0, 0, 0, 0, 0, &output_ptr);
       if (status != 0) {
         LOGF(INFO) << "Failed to lock output buffer handle for sw encode.";
@@ -159,7 +157,7 @@ bool JpegCompressorImpl::CompressImageFromHandle(buffer_handle_t input,
       auto input_format = buffer_manager->GetV4L2PixelFormat(input);
       auto output_buffer_size = buffer_manager->GetPlaneSize(output, 0);
       // Try SW encode.
-      if (EncodeSw(input_ptr, input_format, output_ptr, output_buffer_size,
+      if (EncodeSw(mapped_input, input_format, output_ptr, output_buffer_size,
                    width, height, quality, app1_ptr, app1_size,
                    out_data_size)) {
         return "software";
@@ -203,9 +201,22 @@ bool JpegCompressorImpl::CompressImageFromMemory(void* input,
     return false;
   }
 
+  // Only supports NV12 packed format.
+  if (input_format != V4L2_PIX_FMT_NV12) {
+    LOGF(ERROR) << "Unsupported input format: " << FormatToString(input_format);
+    return false;
+  }
+  android_ycbcr input_ycbcr{};
+  input_ycbcr.y = input;
+  input_ycbcr.cb = static_cast<uint8_t*>(input) + width * height;
+  input_ycbcr.cr = static_cast<uint8_t*>(input) + width * height + 1;
+  input_ycbcr.ystride = width;
+  input_ycbcr.cstride = width;
+  input_ycbcr.chroma_step = 2;
+
   auto isSuccess =
-      EncodeSw(input, input_format, output, output_buffer_size, width, height,
-               quality, app1_ptr, app1_size, out_data_size);
+      EncodeSw(input_ycbcr, input_format, output, output_buffer_size, width,
+               height, quality, app1_ptr, app1_size, out_data_size);
   if (isSuccess) {
     VLOGF(1) << "Compressed JPEG with software : " << (width * height * 12) / 8
              << "[" << width << "x" << height << "] -> " << *out_data_size
@@ -440,8 +451,8 @@ bool JpegCompressorImpl::EncodeHw(buffer_handle_t input_handle,
 
   uint32_t input_format =
       cros::CameraBufferManager::GetV4L2PixelFormat(input_handle);
-  // TODO(wtlee): Handles other formats.
-  DCHECK(input_format == V4L2_PIX_FMT_NV12);
+  DCHECK(input_format == V4L2_PIX_FMT_NV12 ||
+         input_format == V4L2_PIX_FMT_NV12M);
 
   std::vector<JpegCompressor::DmaBufPlane> input_planes;
   uint32_t input_num_planes =
@@ -519,7 +530,7 @@ bool JpegCompressorImpl::EncodeHw(buffer_handle_t input_handle,
   return false;
 }
 
-bool JpegCompressorImpl::EncodeSw(void* input_ptr,
+bool JpegCompressorImpl::EncodeSw(const android_ycbcr& input_ycbcr,
                                   uint32_t input_format,
                                   void* output_ptr,
                                   int output_buffer_size,
@@ -530,7 +541,7 @@ bool JpegCompressorImpl::EncodeSw(void* input_ptr,
                                   unsigned int app1_size,
                                   uint32_t* out_data_size) {
   base::ElapsedTimer timer;
-  if (input_ptr == nullptr) {
+  if (!input_ycbcr.y || !input_ycbcr.cb || !input_ycbcr.cr) {
     LOGF(INFO) << "Input ptr is null.";
     return false;
   }
@@ -539,8 +550,8 @@ bool JpegCompressorImpl::EncodeSw(void* input_ptr,
     return false;
   }
 
-  // TODO(wtlee): Handles other formats.
-  DCHECK(input_format == V4L2_PIX_FMT_NV12);
+  DCHECK(input_format == V4L2_PIX_FMT_NV12 ||
+         input_format == V4L2_PIX_FMT_NV12M);
 
   size_t y_plane_size = width * height;
 
@@ -551,11 +562,13 @@ bool JpegCompressorImpl::EncodeSw(void* input_ptr,
   uint8_t* i420_v_plane = i420_u_plane + y_plane_size / 4;
 
   int result = libyuv::NV12ToI420(
-      static_cast<uint8_t*>(input_ptr), width,
-      static_cast<uint8_t*>(input_ptr) + y_plane_size, width, i420_y_plane,
-      width, i420_u_plane, width / 2, i420_v_plane, width / 2, width, height);
+      static_cast<const uint8_t*>(input_ycbcr.y), input_ycbcr.ystride,
+      static_cast<const uint8_t*>(input_ycbcr.cb), input_ycbcr.cstride,
+      i420_y_plane, width, i420_u_plane, width / 2, i420_v_plane, width / 2,
+      width, height);
   if (result != 0) {
-    LOGF(INFO) << "Failed to convert image format when do SW encoding.";
+    LOGF(INFO) << "Failed to convert image format when doing SW encoding: "
+               << result;
     return false;
   }
 

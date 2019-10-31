@@ -9,6 +9,8 @@
 
 #include "cros-camera/jpeg_compressor.h"
 
+#include <system/graphics.h>
+
 // We must include cstdio before jpeglib.h. It is a requirement of libjpeg.
 #include <cstdio>
 #include <memory>
@@ -116,7 +118,7 @@ class JpegCompressorImpl : public JpegCompressor {
                 uint32_t app1_size,
                 uint32_t* out_data_size);
 
-  bool EncodeSw(void* input_ptr,
+  bool EncodeSw(const android_ycbcr& input_ycbcr,
                 uint32_t input_format,
                 void* output_ptr,
                 int output_buffer_size,
