@@ -169,7 +169,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
 
   // TODO(benchan): Instead of conditionally enabling many tests for specific
   // capability types via IsCellularTypeUnderTestOneOf, migrate more tests to
-  // work under all capability types and proboably migrate those tests for
+  // work under all capability types and probably migrate those tests for
   // specific capability types into their own test fixture subclasses.
   bool IsCellularTypeUnderTestOneOf(
       const std::set<Cellular::Type>& valid_types) const {
