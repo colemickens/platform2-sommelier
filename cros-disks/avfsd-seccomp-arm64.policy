@@ -62,3 +62,5 @@ pipe2: 1
 getpid: 1
 prctl: arg0 == PR_SET_NAME
 kill: arg1 == SIGTERM
+restart_syscall: 1
+clock_gettime: 1

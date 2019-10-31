@@ -71,3 +71,6 @@ getpid: 1
 prlimit64: arg2 == 0 && arg3 != 0
 prctl: arg0 == PR_SET_NAME
 kill: arg1 == SIGTERM
+restart_syscall: 1
+rt_sigreturn: 1
+clock_gettime: 1
