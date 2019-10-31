@@ -16,7 +16,6 @@
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
-#include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/crash_sender_util.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
@@ -69,7 +68,7 @@ void CreateRandomFile(base::StringPiece suffix,
 // a directory, we'll also die. Get in ahead of the fuzzer and make sure it's a
 // normal file.
 void MakeLockFile() {
-  base::FilePath lock_file_path = paths::Get(paths::kLockFile);
+  base::FilePath lock_file_path = paths::Get(paths::kCrashSenderLockFile);
   base::FilePath lock_file_dir = lock_file_path.DirName();
   CHECK(base::CreateDirectory(lock_file_dir));
   CHECK_GE(base::WriteFile(lock_file_path, "", 0), 0);

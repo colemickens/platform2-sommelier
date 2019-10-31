@@ -60,6 +60,11 @@ bool TouchFile(const FilePath& file_path) {
 int Initialize(UserCollector* user_collector,
                UdevCollector* udev_collector,
                bool early) {
+  // Try to create the lock file for crash_sender. Creating this early ensures
+  // that no one else can make a directory or such with this name. If the lock
+  // file isn't a normal file, crash_sender will never work correctly.
+  TouchFile(paths::Get(paths::kCrashSenderLockFile));
+
   // Set up all the common crash state directories first.  If we can't guarantee
   // these basic paths, just give up & don't turn on anything else.
   if (!CrashCollector::InitializeSystemCrashDirectories(early))

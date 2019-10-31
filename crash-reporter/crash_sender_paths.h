@@ -11,9 +11,6 @@ namespace paths {
 // crash sending was successful, otherwise unsuccessful.
 constexpr char kMockCrashSending[] = "mock-crash-sending";
 
-// Crash sender lock in case the sender is already running.
-constexpr char kLockFile[] = "/run/lock/crash_sender";
-
 // File whose existence causes crash sending to be delayed (for testing).
 // Must be stateful to enable testing kernel crashes.
 constexpr char kPauseCrashSending[] = "/var/lib/crash_sender_paused";

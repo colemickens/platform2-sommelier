@@ -508,7 +508,7 @@ bool Sender::Init() {
 }
 
 base::File Sender::AcquireLockFileOrDie() {
-  base::FilePath lock_file_path = paths::Get(paths::kLockFile);
+  base::FilePath lock_file_path = paths::Get(paths::kCrashSenderLockFile);
   base::File lock_file(lock_file_path, base::File::FLAG_OPEN_ALWAYS |
                                            base::File::FLAG_READ |
                                            base::File::FLAG_WRITE);

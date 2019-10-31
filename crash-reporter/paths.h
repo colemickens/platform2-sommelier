@@ -73,6 +73,9 @@ constexpr char kLsbRelease[] = "lsb-release";
 // Basename of file in the state directory that has the client ID.
 constexpr char kClientId[] = "client_id";
 
+// Crash sender lock in case the sender is already running.
+constexpr char kCrashSenderLockFile[] = "/run/lock/crash_sender";
+
 // Gets a FilePath from the given path. A prefix will be added if the prefix is
 // set with SetPrefixForTesting().
 base::FilePath Get(base::StringPiece file_path);

@@ -178,7 +178,8 @@ class CrashSenderUtilTest : public testing::Test {
     paths::SetPrefixForTesting(test_dir_);
 
     // Make sure the directory for the lock file exists.
-    const base::FilePath lock_file_path = paths::Get(paths::kLockFile);
+    const base::FilePath lock_file_path =
+        paths::Get(paths::kCrashSenderLockFile);
     const base::FilePath lock_file_directory = lock_file_path.DirName();
     ASSERT_TRUE(base::CreateDirectory(lock_file_directory));
 
@@ -1564,15 +1565,15 @@ TEST_F(CrashSenderUtilTest, LockFile) {
   Sender sender(std::move(metrics_lib_), std::move(clock), options);
   ASSERT_TRUE(sender.Init());
 
-  EXPECT_FALSE(IsFileLocked(paths::Get(paths::kLockFile)));
+  EXPECT_FALSE(IsFileLocked(paths::Get(paths::kCrashSenderLockFile)));
   base::File lock(sender.AcquireLockFileOrDie());
-  EXPECT_TRUE(IsFileLocked(paths::Get(paths::kLockFile)));
+  EXPECT_TRUE(IsFileLocked(paths::Get(paths::kCrashSenderLockFile)));
   // Should not have slept acquiring lock since the file was unlocked.
   EXPECT_THAT(sleep_times, IsEmpty());
 }
 
 TEST_F(CrashSenderUtilTest, LockFileTriesAgainIfFirstAttemptFails) {
-  base::FilePath lock_file_path = paths::Get(paths::kLockFile);
+  base::FilePath lock_file_path = paths::Get(paths::kCrashSenderLockFile);
   auto lock_process = LockFile(lock_file_path);
 
   auto clock = std::make_unique<MockClock>();
@@ -1603,7 +1604,7 @@ TEST_F(CrashSenderUtilTest, LockFileTriesAgainIfFirstAttemptFails) {
 }
 
 TEST_F(CrashSenderUtilTest, LockFileTriesOneLastTimeAfterTimeout) {
-  base::FilePath lock_file_path = paths::Get(paths::kLockFile);
+  base::FilePath lock_file_path = paths::Get(paths::kCrashSenderLockFile);
   auto lock_process = LockFile(lock_file_path);
 
   auto clock = std::make_unique<MockClock>();
@@ -1636,7 +1637,7 @@ TEST_F(CrashSenderUtilTest, LockFileTriesOneLastTimeAfterTimeout) {
 }
 
 TEST_F(CrashSenderUtilDeathTest, LockFileDiesIfFileIsLocked) {
-  base::FilePath lock_file_path = paths::Get(paths::kLockFile);
+  base::FilePath lock_file_path = paths::Get(paths::kCrashSenderLockFile);
   auto lock_process = LockFile(lock_file_path);
   std::vector<base::TimeDelta> sleep_times;
   Sender::Options options;
