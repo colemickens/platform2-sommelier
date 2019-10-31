@@ -111,6 +111,7 @@ class WPASupplicant {
   static const char kNetworkPropertyEapPin[];
   static const char kNetworkPropertyEapProactiveKeyCaching[];
   static const char kNetworkPropertyEapSubjectMatch[];
+  static const char kNetworkPropertyEapSubjectAlternativeNameMatch[];
   static const char kNetworkPropertyEapolFlags[];
   static const char kNetworkPropertyEngine[];
   static const char kNetworkPropertyEngineId[];

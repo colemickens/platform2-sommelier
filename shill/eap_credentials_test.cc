@@ -6,6 +6,7 @@
 
 #include "shill/eap_credentials.h"
 
+#include <base/optional.h>
 #include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -65,6 +66,9 @@ class EapCredentialsTest : public testing::Test {
   void SetUseProactiveKeyCaching(bool use_proactive_key_caching) {
     eap_.use_proactive_key_caching_ = use_proactive_key_caching;
   }
+  void SetSubjectAlternativeNameMatch(vector<string> altsubject_match_list) {
+    eap_.subject_alternative_name_match_list_ = altsubject_match_list;
+  }
   void SetUseSystemCAs(bool use_system_cas) {
     eap_.use_system_cas_ = use_system_cas;
   }
@@ -78,6 +82,7 @@ class EapCredentialsTest : public testing::Test {
            eap_.ca_cert_id_.empty() && eap_.ca_cert_pem_.empty() &&
            eap_.eap_.empty() && eap_.inner_eap_.empty() &&
            eap_.tls_version_max_.empty() && eap_.subject_match_.empty() &&
+           eap_.subject_alternative_name_match_list_.empty() &&
            eap_.use_system_cas_ == true &&
            eap_.use_proactive_key_caching_ == false &&
            eap_.use_login_password_ == false;
@@ -447,6 +452,7 @@ TEST_F(EapCredentialsTest, Reset) {
   SetUseSystemCAs(false);
   SetUseProactiveKeyCaching(true);
   SetUseLoginPassword(false);
+  SetSubjectAlternativeNameMatch(vector<string>{"foo"});
   eap_.SetKeyManagement("foo", nullptr);
   EXPECT_FALSE(IsReset());
   EXPECT_FALSE(GetKeyManagement().empty());
@@ -520,6 +526,31 @@ TEST_F(EapCredentialsTest, TestDontUseLoginPassword) {
 
   EXPECT_FALSE(
       params_.ContainsString(WPASupplicant::kNetworkPropertyEapCaPassword));
+}
+
+TEST_F(EapCredentialsTest, TestSubjectAlternativeNameMatchTranslation) {
+  const vector<string> subject_alternative_name_match_list(
+      {"{\"Type\":\"EMAIL\",\"Value\":\"my_email_1\"}",
+       "{\"Type\":\"EMAIL\",\"Value\":\"my_email_2\"}",
+       "{\"Type\":\"EMAIL\",\"Value\":\"my;email\"}",
+       "{\"Type\":\"DNS\",\"Value\":\"my_dns\"}",
+       "{\"Type\":\"URI\",\"Value\":\"my_uri\"}"});
+  string expected_translated =
+      "EMAIL:my_email_1;EMAIL:my_email_2;EMAIL:my;email;DNS:my_dns;URI:my_uri";
+  base::Optional<string> altsubject_match =
+      EapCredentials::TranslateSubjectAlternativeNameMatch(
+          subject_alternative_name_match_list);
+  EXPECT_TRUE(altsubject_match.has_value());
+  EXPECT_EQ(altsubject_match.value(), expected_translated);
+}
+
+TEST_F(EapCredentialsTest, TestSubjectAlternativeNameMatchTranslationFailure) {
+  const vector<string> subject_alternative_name_match_list(
+      {"{\"TYPE\":\"EMAIL\",\"Value\":\"my;email\"}"});
+  base::Optional<string> altsubject_match =
+      EapCredentials::TranslateSubjectAlternativeNameMatch(
+          subject_alternative_name_match_list);
+  EXPECT_FALSE(altsubject_match.has_value());
 }
 
 }  // namespace shill

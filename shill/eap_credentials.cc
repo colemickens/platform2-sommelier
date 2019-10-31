@@ -9,6 +9,10 @@
 #include <utility>
 #include <vector>
 
+#include <base/strings/string_tokenizer.h>
+#include <base/strings/string_util.h>
+#include <base/json/json_string_value_serializer.h>
+
 #include <chromeos/dbus/service_constants.h>
 #include <libpasswordprovider/password.h>
 #include <libpasswordprovider/password_provider.h>
@@ -26,8 +30,6 @@
 using base::FilePath;
 using std::string;
 using std::vector;
-
-using std::string;
 
 namespace shill {
 
@@ -57,6 +59,8 @@ const char EapCredentials::kStorageEapUseProactiveKeyCaching[] =
 const char EapCredentials::kStorageEapUseSystemCAs[] = "EAP.UseSystemCAs";
 const char EapCredentials::kStorageEapUseLoginPassword[] =
     "EAP.UseLoginPassword";
+constexpr char kStorageEapSubjectAlternativeNameMatch[] =
+    "EAP.SubjectAlternativeNameMatch";
 
 EapCredentials::EapCredentials()
     : use_system_cas_(true),
@@ -95,6 +99,14 @@ void EapCredentials::PopulateSupplicantProperties(
       KeyVal(WPASupplicant::kNetworkPropertyEapSubjectMatch,
              subject_match_.c_str()),
   };
+  base::Optional<string> altsubject_match =
+      TranslateSubjectAlternativeNameMatch(
+          subject_alternative_name_match_list_);
+  if (altsubject_match.has_value()) {
+    propertyvals.push_back(
+        KeyVal(WPASupplicant::kNetworkPropertyEapSubjectAlternativeNameMatch,
+               altsubject_match.value().c_str()));
+  }
   if (use_system_cas_) {
     propertyvals.push_back(
         KeyVal(WPASupplicant::kNetworkPropertyCaPath, WPASupplicant::kCaPath));
@@ -184,6 +196,8 @@ void EapCredentials::InitPropertyStore(PropertyStore* store) {
   store->RegisterString(kEapPhase2AuthProperty, &inner_eap_);
   store->RegisterString(kEapTLSVersionMaxProperty, &tls_version_max_);
   store->RegisterString(kEapSubjectMatchProperty, &subject_match_);
+  store->RegisterStrings(kEapSubjectAlternativeNameMatchProperty,
+                         &subject_alternative_name_match_list_);
   store->RegisterBool(kEapUseProactiveKeyCachingProperty,
                       &use_proactive_key_caching_);
   store->RegisterBool(kEapUseSystemCasProperty, &use_system_cas_);
@@ -267,6 +281,8 @@ void EapCredentials::Load(StoreInterface* storage, const string& id) {
   storage->GetString(id, kStorageEapInnerEap, &inner_eap_);
   storage->GetString(id, kStorageEapTLSVersionMax, &tls_version_max_);
   storage->GetString(id, kStorageEapSubjectMatch, &subject_match_);
+  storage->GetStringList(id, kStorageEapSubjectAlternativeNameMatch,
+                         &subject_alternative_name_match_list_);
   storage->GetBool(id, kStorageEapUseProactiveKeyCaching,
                    &use_proactive_key_caching_);
   storage->GetBool(id, kStorageEapUseSystemCAs, &use_system_cas_);
@@ -324,6 +340,8 @@ void EapCredentials::Save(StoreInterface* storage,
                       false, true);
   Service::SaveString(storage, id, kStorageEapSubjectMatch, subject_match_,
                       false, true);
+  storage->SetStringList(id, kStorageEapSubjectAlternativeNameMatch,
+                         subject_alternative_name_match_list_);
   storage->SetBool(id, kStorageEapUseProactiveKeyCaching,
                    use_proactive_key_caching_);
   storage->SetBool(id, kStorageEapUseSystemCAs, use_system_cas_);
@@ -346,6 +364,7 @@ void EapCredentials::Reset() {
   eap_ = "";
   inner_eap_ = "";
   subject_match_ = "";
+  subject_alternative_name_match_list_.clear();
   use_system_cas_ = true;
   use_proactive_key_caching_ = false;
 }
@@ -405,6 +424,59 @@ void EapCredentials::HelpRegisterWriteOnlyDerivedString(
   store->RegisterDerivedString(
       name, StringAccessor(new CustomWriteOnlyAccessor<EapCredentials, string>(
                 this, set, clear, default_value)));
+}
+
+// static
+bool EapCredentials::ValidSubjectAlternativeNameMatchType(
+    const std::string& type) {
+  return type == kEapSubjectAlternativeNameMatchTypeEmail ||
+         type == kEapSubjectAlternativeNameMatchTypeDNS ||
+         type == kEapSubjectAlternativeNameMatchTypeURI;
+}
+
+// static
+base::Optional<string> EapCredentials::TranslateSubjectAlternativeNameMatch(
+    const vector<string>& subject_alternative_name_match_list) {
+  vector<string> entries;
+  for (const auto& subject_alternative_name_match :
+       subject_alternative_name_match_list) {
+    JSONStringValueDeserializer deserializer(subject_alternative_name_match);
+    int error_code;
+    string error_message;
+    std::unique_ptr<base::Value> deserialized_value =
+        deserializer.Deserialize(&error_code, &error_message);
+
+    base::DictionaryValue* dict = nullptr;
+    if (!deserialized_value || !deserialized_value->GetAsDictionary(&dict)) {
+      LOG(ERROR)
+          << "Could not deserialize a subject alternative name match. Error "
+          << error_code << ": " << error_message;
+      return base::nullopt;
+    }
+    string type;
+    if (!dict->GetString(kEapSubjectAlternativeNameMatchTypeProperty, &type)) {
+      LOG(ERROR) << "Could not find "
+                 << kEapSubjectAlternativeNameMatchTypeProperty
+                 << " of a subject alternative name match.";
+      return base::nullopt;
+    }
+    if (!ValidSubjectAlternativeNameMatchType(type)) {
+      LOG(ERROR) << "Subject alternative name match type: \"" << type
+                 << "\" is not supported.";
+      return base::nullopt;
+    }
+    string value;
+    if (!dict->GetString(kEapSubjectAlternativeNameMatchValueProperty,
+                         &value)) {
+      LOG(ERROR) << "Could not find "
+                 << kEapSubjectAlternativeNameMatchValueProperty
+                 << " of a subject alternative name match.";
+      return base::nullopt;
+    }
+    string translated_entry = type + ":" + value;
+    entries.push_back(translated_entry);
+  }
+  return base::JoinString(entries, ";");
 }
 
 }  // namespace shill

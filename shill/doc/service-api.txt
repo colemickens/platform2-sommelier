@@ -566,6 +566,21 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			contain.  If the subject does not contain this
 			substring, abort 802.1x negotiation.
 
+		array{string} EAP.SubjectAlternativeNameMatch [readonly]
+
+			(WiFi only) A list of serialized subject alternative
+			names (SANs). Each SAN is defined by a type and a
+			value. SAN type can be "EMAIL", "DNS" or "URI"
+			according to the types supported by wpa_supplicant.
+			For more information about specifying SANs please
+			refer to:
+			https://w1.fi/cgit/hostap/plain/wpa_supplicant/wpa_supplicant.conf
+			SANs are JSON strings, with "Type" and "Value" keys.
+			SANs are used by wpa_supplicant to be matched against
+			the SAN of an authentication server certificate. The
+			server certificate is only accepted if it contains one
+			of these alternative subject names.
+
 		string Error [readonly]
 
 			The service error status details.

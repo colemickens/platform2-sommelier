@@ -10,9 +10,11 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <base/optional.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <libpasswordprovider/password_provider.h>
 
+#include "shill/data_types.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -71,6 +73,15 @@ class EapCredentials {
   // Setter that guards against emptying the "Key Management" value.
   virtual bool SetKeyManagement(const std::string& key_management,
                                 Error* error);
+
+  // Returns true if |type| is one of the subject alternative name types
+  // supported by wpa_supplicant.
+  static bool ValidSubjectAlternativeNameMatchType(const std::string& type);
+
+  // Returns subject alternative name match in the format used by
+  // wpa_supplicant by translating |subject_alternative_name_match_list|.
+  static base::Optional<std::string> TranslateSubjectAlternativeNameMatch(
+      const std::vector<std::string>& subject_alternative_name_match_list);
 
   // Getters and setters.
   virtual const std::string& identity() const { return identity_; }
@@ -175,6 +186,7 @@ class EapCredentials {
   std::string tls_version_max_;
   // If non-empty, string to match remote subject against before connecting.
   std::string subject_match_;
+  std::vector<std::string> subject_alternative_name_match_list_;
   // If true, use the system-wide CA database to authenticate the remote.
   bool use_system_cas_;
   // If true, use per network proactive key caching.
