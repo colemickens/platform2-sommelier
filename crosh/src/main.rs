@@ -324,7 +324,7 @@ fn next_command(dispatcher: &Dispatcher, history: &mut History) -> String {
                     print!("{}", value);
                     command.push(value);
                 }
-                Key::Backspace => {
+                Key::Ctrl('h') | Key::Backspace => {
                     if !command.is_empty() {
                         command.pop();
                         // Move cursor back one and clear rest of line.
