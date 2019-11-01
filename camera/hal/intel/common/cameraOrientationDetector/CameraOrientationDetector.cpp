@@ -59,7 +59,7 @@ void CameraOrientationDetector::prepare()
     std::string gSensorDevPath;
 
     DIR *dp = opendir(dirPath.c_str());
-    CheckError((dp == nullptr), VOID_VALUE, "@%s, open %s failed. err:%s", __FUNCTION__, dirPath.c_str(), strerror(errno));
+    CheckWarning((dp == nullptr), VOID_VALUE, "@%s, open %s failed. err:%s", __FUNCTION__, dirPath.c_str(), strerror(errno));
 
     struct dirent *dirp = nullptr;
     while ((dirp = readdir(dp)) != nullptr) {
