@@ -385,9 +385,6 @@ status_t V4L2StreamNode::setTransformLocked(BufInfo const& buf) {
   v4l2_queryctrl queryctrl = {};
   int transform = buf.mTransform;
 
-  if (mTransform == transform)
-    return NO_ERROR;
-
   switch (transform) {
 #define TransCase(iTrans, iRot, iFlip) \
   case (iTrans):                       \
@@ -411,16 +408,16 @@ status_t V4L2StreamNode::setTransformLocked(BufInfo const& buf) {
 
   status_t ret = mNode->QueryControl(&queryctrl);
   if (ret != NO_ERROR || queryctrl.flags & V4L2_CTRL_FLAG_DISABLED) {
-    LOGE("@%s QueryControl failed", __FUNCTION__);
-    return ret;
+    LOGI("@%s QueryControl failed", __FUNCTION__);
+  } else {
+    ret = mNode->GetControl(V4L2_CID_ROTATE, &mTransform);
+    if (ret == NO_ERROR && mTransform != rotation) {
+      ret = mNode->SetControl(V4L2_CID_ROTATE, rotation);
+      CheckError(ret != NO_ERROR, ret, "@%s SetControl:Rotate failed",
+                 __FUNCTION__);
+      mTransform = transform;
+    }
   }
-
-  ret = mNode->SetControl(V4L2_CID_ROTATE, rotation);
-  CheckError(ret != NO_ERROR, ret, "@%s SetControl:Rotate failed",
-             __FUNCTION__);
-
-  mTransform = transform;
-
   return NO_ERROR;
 }
 
@@ -750,8 +747,7 @@ status_t V4L2StreamNode::enque(BufInfo const& buf,
   }
 
   // set rotation
-  if ((buf.mPortID.index == NSImageio::NSIspio::EPortIndex_WROTO) ||
-      (buf.mPortID.index == NSImageio::NSIspio::EPortIndex_WDMAO))
+  if (strstr(mName.c_str(), "MDP0"))
     if (setTransformLocked(buf) != NO_ERROR)
       LOGW("Set buffer rotation by setTtraensform() failed. (%d -> %d)",
            mTransform, buf.mTransform);

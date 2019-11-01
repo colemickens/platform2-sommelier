@@ -709,8 +709,12 @@ MINT HalSensor::sendCommand(MUINT indexDual,
       if ((reinterpret_cast<MUINT32*>(arg1) != NULL) &&
           (arg1_size == sizeof(MUINT32))) {
         u32temp = *reinterpret_cast<MUINT32*>(arg1);
-        // api color bar arg is 2, but sensor driver color bar index is 1
-        control.value = u32temp - 1;
+        if (u32temp) {
+          // api color bar arg is 2, but sensor driver color bar index is 1
+          control.value = u32temp - 1;
+        } else {
+          control.value = u32temp;
+        }
         if (control.value < 0) {
           CAM_LOGE("[%s] invalid pattern mode %d\n", __FUNCTION__,
                    control.value);

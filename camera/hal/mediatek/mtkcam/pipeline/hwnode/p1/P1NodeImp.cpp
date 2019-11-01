@@ -5434,7 +5434,7 @@ P1NodeImp::hardwareOps_enque(P1QueJob* job, ENQ_TYPE type, MINT64 data) {
                      "P1:DRV-enque|"
                      "Mnum:%d SofIdx:%d Fnum:%d Rnum:%d",
                      act->magicNum, act->sofIdx, numF, numR);
-    if (mMeta_PatMode != 0) {
+    {
       IHalSensorList* pHalSensorList = GET_HalSensorList();
       IHalSensor* pHalSensor =
           pHalSensorList->createSensor(LOG_TAG, getOpenId());
@@ -6616,8 +6616,7 @@ P1NodeImp::createAction(P1QueAct* rAct,
       MINT32 patternMode = 0;
       if (tryGetMetadata<MINT32>(pAppMeta, MTK_SENSOR_TEST_PATTERN_MODE,
                                  &patternMode)) {
-        // TODO(MTK): should fix metadata first
-        // mMeta_PatMode = patternMode;
+        mMeta_PatMode = patternMode;
         MY_LOGD("p1 createAction pattern mode %d", mMeta_PatMode);
       }
       MUINT8 cap_intent = MTK_CONTROL_CAPTURE_INTENT_CUSTOM;
