@@ -73,6 +73,12 @@ using testing::SetArgPointee;
 
 namespace shill {
 
+namespace {
+
+constexpr char kTestBearerPath[] = "/org/freedesktop/ModemManager1/Bearer/0";
+
+}  // namespace
+
 class CellularPropertyTest : public PropertyStoreTest {
  public:
   CellularPropertyTest()
@@ -216,12 +222,12 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     props.SetString("unknown-property", "irrelevant-value");
     callback.Run(props, Error());
   }
-  void InvokeConnect(KeyValueStore props,
+  void InvokeConnect(const KeyValueStore& props,
                      Error* error,
-                     const ResultCallback& callback,
+                     const RpcIdentifierCallback& callback,
                      int timeout) {
     EXPECT_EQ(Service::kStateAssociating, device_->service_->state());
-    callback.Run(Error());
+    callback.Run(kTestBearerPath, Error());
   }
   void InvokeConnectFail(KeyValueStore props,
                          Error* error,
@@ -1027,22 +1033,7 @@ TEST_P(CellularTest, StorageIdentifier) {
   device_->DestroyService();
 }
 
-#if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
-namespace {
-
-MATCHER(ContainsPhoneNumber, "") {
-  return arg.ContainsString(
-      CellularCapabilityClassic::kConnectPropertyPhoneNumber);
-}
-
-}  // namespace
-
 TEST_P(CellularTest, Connect) {
-  if (!IsCellularTypeUnderTestOneOf(
-          {Cellular::kTypeGsm, Cellular::kTypeCdma})) {
-    return;
-  }
-
   Error error;
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
       .Times(2)
@@ -1074,11 +1065,11 @@ TEST_P(CellularTest, Connect) {
   EXPECT_EQ(Error::kNotOnHomeNetwork, error.type());
 
   error.Populate(Error::kSuccess);
-  EXPECT_CALL(*simple_proxy_, Connect(ContainsPhoneNumber(), _, _,
-                                      CellularCapability::kTimeoutConnect))
+  EXPECT_CALL(*mm1_simple_proxy_,
+              Connect(_, _, _, CellularCapability::kTimeoutConnect))
       .Times(2)
       .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
-  GetCapabilityClassic()->simple_proxy_ = std::move(simple_proxy_);
+  GetCapability3gpp()->modem_simple_proxy_ = std::move(mm1_simple_proxy_);
   device_->service_->roaming_state_ = kRoamingStateHome;
   device_->state_ = Cellular::kStateRegistered;
   device_->Connect(&error);
@@ -1095,6 +1086,7 @@ TEST_P(CellularTest, Connect) {
   EXPECT_EQ(Cellular::kStateConnected, device_->state_);
 }
 
+#if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 TEST_P(CellularTest, Disconnect) {
   if (!IsCellularTypeUnderTestOneOf(
           {Cellular::kTypeGsm, Cellular::kTypeCdma})) {
