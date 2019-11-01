@@ -250,7 +250,8 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     device_->service_ = nullptr;
     callback.Run(Error());
   }
-  void InvokeDisconnect(Error* error,
+  void InvokeDisconnect(const RpcIdentifier& bearer,
+                        Error* error,
                         const ResultCallback& callback,
                         int timeout) {
     if (!callback.is_null())
@@ -1086,13 +1087,7 @@ TEST_P(CellularTest, Connect) {
   EXPECT_EQ(Cellular::kStateConnected, device_->state_);
 }
 
-#if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 TEST_P(CellularTest, Disconnect) {
-  if (!IsCellularTypeUnderTestOneOf(
-          {Cellular::kTypeGsm, Cellular::kTypeCdma})) {
-    return;
-  }
-
   Error error;
   device_->state_ = Cellular::kStateRegistered;
   device_->Disconnect(&error, "in test");
@@ -1100,14 +1095,16 @@ TEST_P(CellularTest, Disconnect) {
   error.Reset();
 
   device_->state_ = Cellular::kStateConnected;
-  EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
+  EXPECT_CALL(*mm1_simple_proxy_,
+              Disconnect(_, _, _, CellularCapability::kTimeoutDisconnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
-  GetCapabilityClassic()->proxy_ = std::move(proxy_);
+  GetCapability3gpp()->modem_simple_proxy_ = std::move(mm1_simple_proxy_);
   device_->Disconnect(&error, "in test");
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
 }
 
+#if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 TEST_P(CellularTest, DisconnectFailure) {
   if (!IsCellularTypeUnderTestOneOf(
           {Cellular::kTypeGsm, Cellular::kTypeCdma})) {
