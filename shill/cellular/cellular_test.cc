@@ -236,12 +236,12 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     EXPECT_EQ(Service::kStateAssociating, device_->service_->state());
     callback.Run("", Error(Error::kNotOnHomeNetwork));
   }
-  void InvokeConnectFailNoService(KeyValueStore props,
+  void InvokeConnectFailNoService(const KeyValueStore& props,
                                   Error* error,
-                                  const ResultCallback& callback,
+                                  const RpcIdentifierCallback& callback,
                                   int timeout) {
     device_->service_ = nullptr;
-    callback.Run(Error(Error::kNotOnHomeNetwork));
+    callback.Run("", Error(Error::kNotOnHomeNetwork));
   }
   void InvokeConnectSuccessNoService(KeyValueStore props,
                                      Error* error,
@@ -1139,27 +1139,22 @@ TEST_P(CellularTest, ConnectFailure) {
   EXPECT_EQ(Service::kStateFailure, device_->service_->state());
 }
 
-#if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 TEST_P(CellularTest, ConnectFailureNoService) {
-  if (!IsCellularTypeUnderTestOneOf(
-          {Cellular::kTypeGsm, Cellular::kTypeCdma})) {
-    return;
-  }
-
   // Make sure we don't crash if the connect failed and there is no
   // CellularService object.  This can happen if the modem is enabled and
   // then quick disabled.
   device_->state_ = Cellular::kStateRegistered;
   SetService();
-  EXPECT_CALL(*simple_proxy_,
+  EXPECT_CALL(*mm1_simple_proxy_,
               Connect(_, _, _, CellularCapability::kTimeoutConnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeConnectFailNoService));
   EXPECT_CALL(*modem_info_.mock_manager(), UpdateService(_));
-  GetCapabilityClassic()->simple_proxy_ = std::move(simple_proxy_);
+  GetCapability3gpp()->modem_simple_proxy_ = std::move(mm1_simple_proxy_);
   Error error;
   device_->Connect(&error);
 }
 
+#if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 TEST_P(CellularTest, ConnectSuccessNoService) {
   if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCdma})) {
     return;

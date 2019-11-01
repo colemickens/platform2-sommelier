@@ -201,6 +201,7 @@ class CellularCapability3gpp : public CellularCapability {
   FRIEND_TEST(CellularCapability3gppTimerTest, CompleteActivation);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, ConnectFailure);
+  FRIEND_TEST(CellularTest, ConnectFailureNoService);
   FRIEND_TEST(CellularTest, Disconnect);
   FRIEND_TEST(CellularTest, DisconnectFailure);
   FRIEND_TEST(CellularTest, ModemStateChangeLostRegistration);
