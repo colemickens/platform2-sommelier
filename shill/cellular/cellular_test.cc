@@ -243,12 +243,12 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     device_->service_ = nullptr;
     callback.Run("", Error(Error::kNotOnHomeNetwork));
   }
-  void InvokeConnectSuccessNoService(KeyValueStore props,
+  void InvokeConnectSuccessNoService(const KeyValueStore& props,
                                      Error* error,
-                                     const ResultCallback& callback,
+                                     const RpcIdentifierCallback& callback,
                                      int timeout) {
     device_->service_ = nullptr;
-    callback.Run(Error());
+    callback.Run(kTestBearerPath, Error());
   }
   void InvokeDisconnect(const RpcIdentifier& bearer,
                         Error* error,
@@ -1154,25 +1154,21 @@ TEST_P(CellularTest, ConnectFailureNoService) {
   device_->Connect(&error);
 }
 
-#if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 TEST_P(CellularTest, ConnectSuccessNoService) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCdma})) {
-    return;
-  }
-
   // Make sure we don't crash if the connect succeeds but the service was
   // destroyed before the connect request completes.
   device_->state_ = Cellular::kStateRegistered;
   SetService();
-  EXPECT_CALL(*simple_proxy_,
+  EXPECT_CALL(*mm1_simple_proxy_,
               Connect(_, _, _, CellularCapability::kTimeoutConnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeConnectSuccessNoService));
   EXPECT_CALL(*modem_info_.mock_manager(), UpdateService(_));
-  GetCapabilityClassic()->simple_proxy_ = std::move(simple_proxy_);
+  GetCapability3gpp()->modem_simple_proxy_ = std::move(mm1_simple_proxy_);
   Error error;
   device_->Connect(&error);
 }
 
+#if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 TEST_P(CellularTest, LinkEventWontDestroyService) {
   // If the network interface goes down, Cellular::LinkEvent should
   // drop the connection but the service object should persist.
