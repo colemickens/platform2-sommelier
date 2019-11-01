@@ -58,6 +58,8 @@ bool CameraHalServerImpl::Start() {
   camera_mojo_channel_manager_ = CameraMojoChannelManager::CreateInstance();
   ipc_task_runner_ = camera_mojo_channel_manager_->GetIpcTaskRunner();
 
+  LoadCameraHal();
+
   base::FilePath socket_path(constants::kCrosCameraSocketPathString);
   if (!watcher_.Watch(socket_path, false,
                       base::Bind(&CameraHalServerImpl::OnSocketFileStatusChange,
@@ -97,11 +99,6 @@ void CameraHalServerImpl::OnSocketFileStatusChange(
     }
     return;
   }
-
-  if (camera_hal_loaded_) {
-    return;
-  }
-  LoadCameraHal();
 
   camera_mojo_channel_manager_->ConnectToDispatcher(
       base::Bind(&CameraHalServerImpl::RegisterCameraHal,
@@ -168,8 +165,6 @@ void CameraHalServerImpl::LoadCameraHal() {
         FROM_HERE, base::Bind(&CameraHalServerImpl::ExitOnMainThread,
                               base::Unretained(this), ENODEV));
   }
-
-  camera_hal_loaded_ = true;
 }
 
 void CameraHalServerImpl::RegisterCameraHal() {

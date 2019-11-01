@@ -63,8 +63,6 @@ class CameraHalServerImpl final : public mojom::CameraHalServer {
 
   void ExitOnMainThread(int exit_status);
 
-  bool camera_hal_loaded_ = false;
-
   // Watches for change events on the unix domain socket file created by Chrome.
   // Upon file change OnScoketFileStatusChange will be called to initiate
   // connection to CameraHalDispatcher.
