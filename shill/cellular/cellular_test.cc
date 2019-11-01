@@ -257,7 +257,8 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     if (!callback.is_null())
       callback.Run(Error());
   }
-  void InvokeDisconnectFail(Error* error,
+  void InvokeDisconnectFail(const RpcIdentifier& bearer,
+                            Error* error,
                             const ResultCallback& callback,
                             int timeout) {
     error->Populate(Error::kOperationFailed);
@@ -1104,21 +1105,16 @@ TEST_P(CellularTest, Disconnect) {
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
 }
 
-#if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 TEST_P(CellularTest, DisconnectFailure) {
-  if (!IsCellularTypeUnderTestOneOf(
-          {Cellular::kTypeGsm, Cellular::kTypeCdma})) {
-    return;
-  }
-
   // Test the case where the underlying modem state is set
   // to disconnecting, but shill thinks it's still connected
   Error error;
   device_->state_ = Cellular::kStateConnected;
-  EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
+  EXPECT_CALL(*mm1_simple_proxy_,
+              Disconnect(_, _, _, CellularCapability::kTimeoutDisconnect))
       .Times(2)
       .WillRepeatedly(Invoke(this, &CellularTest::InvokeDisconnectFail));
-  GetCapabilityClassic()->proxy_ = std::move(proxy_);
+  GetCapability3gpp()->modem_simple_proxy_ = std::move(mm1_simple_proxy_);
   device_->modem_state_ = Cellular::kModemStateDisconnecting;
   device_->Disconnect(&error, "in test");
   EXPECT_TRUE(error.IsFailure());
@@ -1130,6 +1126,7 @@ TEST_P(CellularTest, DisconnectFailure) {
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
 }
 
+#if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 TEST_P(CellularTest, ConnectFailure) {
   if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCdma})) {
     return;
