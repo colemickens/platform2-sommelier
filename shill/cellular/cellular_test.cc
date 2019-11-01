@@ -33,6 +33,7 @@ extern "C" {
 #include "shill/cellular/mock_cellular_service.h"
 #include "shill/cellular/mock_mm1_modem_location_proxy.h"
 #include "shill/cellular/mock_mm1_modem_modem3gpp_proxy.h"
+#include "shill/cellular/mock_mm1_modem_modemcdma_proxy.h"
 #include "shill/cellular/mock_mm1_modem_proxy.h"
 #include "shill/cellular/mock_mm1_modem_simple_proxy.h"
 #include "shill/cellular/mock_mobile_operator_info.h"
@@ -186,6 +187,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     dbus_properties_proxy_.reset(new MockDBusPropertiesProxy());
     mm1_modem_location_proxy_.reset(new mm1::MockModemLocationProxy());
     mm1_modem_3gpp_proxy_.reset(new mm1::MockModemModem3gppProxy());
+    mm1_modem_cdma_proxy_.reset(new mm1::MockModemModemCdmaProxy());
     mm1_proxy_.reset(new mm1::MockModemProxy());
     mm1_simple_proxy_.reset(new mm1::MockModemSimpleProxy());
   }
@@ -418,6 +420,13 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
       return std::move(test_->mm1_modem_3gpp_proxy_);
     }
 
+    std::unique_ptr<mm1::ModemModemCdmaProxyInterface>
+    CreateMM1ModemModemCdmaProxy(const RpcIdentifier& path,
+                                 const std::string& service) override {
+      CHECK(test_->mm1_modem_cdma_proxy_);
+      return std::move(test_->mm1_modem_cdma_proxy_);
+    }
+
     std::unique_ptr<mm1::ModemProxyInterface> CreateMM1ModemProxy(
         const RpcIdentifier& path, const std::string& service) override {
       CHECK(test_->mm1_proxy_);
@@ -475,6 +484,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   bool create_gsm_card_proxy_from_factory_;
   unique_ptr<MockDBusPropertiesProxy> dbus_properties_proxy_;
   unique_ptr<mm1::MockModemModem3gppProxy> mm1_modem_3gpp_proxy_;
+  unique_ptr<mm1::MockModemModemCdmaProxy> mm1_modem_cdma_proxy_;
   unique_ptr<mm1::MockModemLocationProxy> mm1_modem_location_proxy_;
   unique_ptr<mm1::MockModemProxy> mm1_proxy_;
   unique_ptr<mm1::MockModemSimpleProxy> mm1_simple_proxy_;
@@ -1239,25 +1249,19 @@ TEST_P(CellularTest, ModemStateChangeDisable) {
   EXPECT_EQ(Cellular::kStateDisabled, device_->state());
   EXPECT_FALSE(device_->enabled());
 }
+#endif  // !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 
 TEST_P(CellularTest, ModemStateChangeStaleConnected) {
-  if (!IsCellularTypeUnderTestOneOf(
-          {Cellular::kTypeGsm, Cellular::kTypeCdma})) {
-    return;
-  }
-
   // Test to make sure that we ignore stale modem Connected state transitions.
   // When a modem is asked to connect and before the connect completes, the
   // modem is disabled, it may send a stale Connected state transition after
   // it has been disabled.
-  AllowCreateGsmCardProxyFromFactory();
   device_->state_ = Cellular::kStateDisabled;
   device_->modem_state_ = Cellular::kModemStateEnabling;
   device_->OnModemStateChanged(Cellular::kModemStateConnected);
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::kStateDisabled, device_->state());
 }
-#endif  // !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 
 TEST_P(CellularTest, ModemStateChangeValidConnected) {
   device_->state_ = Cellular::kStateEnabled;
