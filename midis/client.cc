@@ -10,7 +10,7 @@
 
 #include <base/bind.h>
 #include <base/posix/eintr_wrapper.h>
-#include <mojo/edk/embedder/embedder.h>
+#include <mojo/public/cpp/system/platform_handle.h>
 #include <mojo/public/cpp/system/handle.h>
 
 #include "midis/constants.h"
@@ -102,20 +102,7 @@ mojo::ScopedHandle Client::CreateRequestPortFD(uint32_t card,
     return mojo::ScopedHandle();
   }
 
-  mojo::edk::ScopedPlatformHandle platform_handle{
-      mojo::edk::PlatformHandle(clientfd.release())};
-  MojoHandle wrapped_handle;
-  MojoResult wrap_result = mojo::edk::CreatePlatformHandleWrapper(
-      std::move(platform_handle), &wrapped_handle);
-  if (wrap_result != MOJO_RESULT_OK) {
-    LOG(ERROR) << "Failed to wrap port FD in a Mojo Handle for device: "
-               << device;
-    return mojo::ScopedHandle();
-  }
-
-  mojo::ScopedHandle scoped_handle{mojo::Handle(wrapped_handle)};
-  DVLOG(1) << "Converted port into Mojo scoped handle successfully.";
-  return scoped_handle;
+  return mojo::WrapPlatformFile(clientfd.release());
 }
 
 }  // namespace midis
