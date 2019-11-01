@@ -54,7 +54,6 @@ def CheckSubdirs():
       'libmems',
       'policy_proto',
       'policy_utils',
-      'portier',
       'rendernodehost',
       'screenshot',
       'sepolicy',
