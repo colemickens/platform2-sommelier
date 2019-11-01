@@ -51,10 +51,6 @@ class UserCollectorBase : public CrashCollector {
                   bool is_developer,
                   std::string* reason) const;
 
-  // Logs a |message| detailing a crash, along with the |reason| for which the
-  // collector handled or ignored it.
-  void LogCrash(const std::string& message, const std::string& reason) const;
-
   // Returns, via |line|, the first line in |lines| that starts with |prefix|.
   // Returns true if a line is found, or false otherwise.
   bool GetFirstLineWithPrefix(const std::vector<std::string>& lines,
@@ -124,9 +120,6 @@ class UserCollectorBase : public CrashCollector {
   // Joins the session keyring to get the directory encryption keys.
   void JoinSessionKeyring();
 #endif  // USE_DIRENCRYPTION
-
-  // Prepended to log messages to differentiate between collectors.
-  std::string tag_;
 
   bool generate_diagnostics_ = false;
   bool directory_failure_ = false;

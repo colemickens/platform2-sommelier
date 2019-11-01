@@ -65,11 +65,13 @@ class CrashCollector {
     kErrorCore2MinidumpConversion,
   };
 
-  explicit CrashCollector(const std::string& collector_name);
+  explicit CrashCollector(const std::string& collector_name,
+                          const std::string& tag = "");
   explicit CrashCollector(
       const std::string& collector_name,
       CrashDirectorySelectionMethod crash_directory_selection_method,
-      CrashSendingMode crash_sending_mode);
+      CrashSendingMode crash_sending_mode,
+      const std::string& tag = "");
 
   virtual ~CrashCollector();
 
@@ -391,6 +393,10 @@ class CrashCollector {
                                  const std::string& exec,
                                  const std::string& basename);
 
+  // Logs a |message| detailing a crash, along with the |reason| for which the
+  // collector handled or ignored it.
+  void LogCrash(const std::string& message, const std::string& reason) const;
+
  private:
   static bool ParseProcessTicksFromStat(base::StringPiece stat,
                                         uint64_t* ticks);
@@ -426,6 +432,9 @@ class CrashCollector {
   // which is reported to the crash server along with the
   // crash_reporter-user-collection signature.
   std::string GetErrorTypeSignature(ErrorType error_type) const;
+
+  // Prepended to log messages to differentiate between collectors.
+  const std::string tag_;
 
   DISALLOW_COPY_AND_ASSIGN(CrashCollector);
 };

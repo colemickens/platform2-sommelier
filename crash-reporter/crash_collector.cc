@@ -292,15 +292,18 @@ bool CrashCollector::CreateDirectoryWithSettings(const FilePath& dir,
   return true;
 }
 
-CrashCollector::CrashCollector(const std::string& collector_name)
+CrashCollector::CrashCollector(const std::string& collector_name,
+                               const std::string& tag)
     : CrashCollector(collector_name,
                      kUseNormalCrashDirectorySelectionMethod,
-                     kNormalCrashSendMode) {}
+                     kNormalCrashSendMode,
+                     tag) {}
 
 CrashCollector::CrashCollector(
     const std::string& collector_name,
     CrashDirectorySelectionMethod crash_directory_selection_method,
-    CrashSendingMode crash_sending_mode)
+    CrashSendingMode crash_sending_mode,
+    const std::string& tag)
 
     : lsb_release_(FilePath(paths::kEtcDirectory).Append(paths::kLsbRelease)),
       system_crash_path_(paths::kSystemCrashDirectory),
@@ -310,7 +313,8 @@ CrashCollector::CrashCollector(
       crash_sending_mode_(crash_sending_mode),
       crash_directory_selection_method_(crash_directory_selection_method),
       is_finished_(false),
-      bytes_written_(0) {
+      bytes_written_(0),
+      tag_(tag) {
   AddCrashMetaUploadData(kCollectorNameKey, collector_name);
   if (crash_sending_mode_ == kCrashLoopSendingMode) {
     AddCrashMetaUploadData(kCrashLoopModeKey, "true");
@@ -1350,6 +1354,11 @@ void CrashCollector::EnqueueCollectionErrorLog(ErrorType error_type,
     return;
   }
   FinishCrash(meta_path, exec, log_path.BaseName().value());
+}
+
+void CrashCollector::LogCrash(const std::string& message,
+                              const std::string& reason) const {
+  LOG(WARNING) << '[' << tag_ << "] " << message << " (" << reason << ')';
 }
 
 std::string CrashCollector::GetErrorTypeSignature(ErrorType error_type) const {

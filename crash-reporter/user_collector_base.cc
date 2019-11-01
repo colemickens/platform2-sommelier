@@ -68,8 +68,8 @@ UserCollectorBase::UserCollectorBase(
     CrashDirectorySelectionMethod crash_directory_selection_method)
     : CrashCollector(collector_name,
                      crash_directory_selection_method,
-                     kNormalCrashSendMode),
-      tag_(collector_name) {}
+                     kNormalCrashSendMode,
+                     collector_name) {}
 
 void UserCollectorBase::Initialize(
     IsFeedbackAllowedFunction is_feedback_allowed_function,
@@ -185,11 +185,6 @@ bool UserCollectorBase::ShouldDump(bool has_owner_consent,
 
   *reason = "handling";
   return true;
-}
-
-void UserCollectorBase::LogCrash(const std::string& message,
-                                 const std::string& reason) const {
-  LOG(WARNING) << '[' << tag_ << "] " << message << " (" << reason << ')';
 }
 
 bool UserCollectorBase::GetFirstLineWithPrefix(
