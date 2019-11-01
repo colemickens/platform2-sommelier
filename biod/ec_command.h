@@ -54,9 +54,9 @@ class EcCommand : public EcCommandInterface {
       : data_({
             .cmd = {.version = ver,
                     .command = cmd,
-                    .result = kEcCommandUninitializedResult,
                     .outsize = realsizeof<O>(),
-                    .insize = realsizeof<I>()},
+                    .insize = realsizeof<I>(),
+                    .result = kEcCommandUninitializedResult},
             .req = req,
         }) {}
   ~EcCommand() override = default;
