@@ -35,6 +35,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /sbin/setfiles                  u:object_r:cros_restorecon_exec:s0
 /sbin/udevd                     u:object_r:cros_udevd_exec:s0
 /sbin/upstart-socket-bridge     u:object_r:upstart_socket_bridge_exec:s0
+/sbin/ureadahead                u:object_r:cros_ureadahead_exec:s0
 # SBIN_END_HERE
 
 /bin/bash                       u:object_r:sh_exec:s0
