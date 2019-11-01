@@ -4,6 +4,8 @@
 
 #include "mist/event_dispatcher.h"
 
+#include <utility>
+
 #include <base/location.h>
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
@@ -17,13 +19,13 @@ EventDispatcher::EventDispatcher()
 EventDispatcher::~EventDispatcher() = default;
 
 void EventDispatcher::DispatchForever() {
-  base::RunLoop().Run();
+  base::RunLoop run_loop;
+  quit_closure_ = run_loop.QuitWhenIdleClosure();
+  run_loop.Run();
 }
 
 void EventDispatcher::Stop() {
-  // TODO(ejcaruso): move to RunLoop::QuitWhenIdleClosure after libchrome uprev
-  base::MessageLoop::current()->task_runner()->PostTask(
-      FROM_HERE, base::MessageLoop::QuitWhenIdleClosure());
+  task_runner_->PostTask(FROM_HERE, std::move(quit_closure_));
 }
 
 bool EventDispatcher::PostTask(const base::Closure& task) {
