@@ -191,19 +191,48 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
   return base::nullopt;
 }
 
-constexpr LazyRE2 suspend_failure = {
-    R"(^Error writing to /sys/power/state: (.+))"};
+constexpr char begin_suspend_stats[] =
+    "--- begin /sys/kernel/debug/suspend_stats ---";
+constexpr char end_suspend_stats[] =
+    "--- end /sys/kernel/debug/suspend_stats ---";
+constexpr LazyRE2 last_failed_dev = {
+    R"(\w*last_failed_dev: (.+)\n)"};
+constexpr LazyRE2 last_failed_errno = {
+    R"(\w*last_failed_errno: (.+)\n)"};
+constexpr LazyRE2 last_failed_step = {
+    R"(\w*last_failed_step: (.+)\n)"};
 
 MaybeCrashReport SuspendParser::ParseLogEntry(const std::string& line) {
-  std::string exit_status;
-
-  if (!RE2::FullMatch(line, *suspend_failure, &exit_status))
+  if (last_line_ == LineType::None && line.find(begin_suspend_stats) == 0) {
+    last_line_ = LineType::Start;
+    dev_str_ = "none";
+    errno_str_ = "unknown";
+    step_str_ = "unknown";
     return base::nullopt;
+  }
 
-  uint32_t hash = StringHash(exit_status.c_str());
-  std::string text = base::StringPrintf("%08x-suspend failure: %s\n", hash,
-                                        exit_status.c_str());
+  if (last_line_ != LineType::Start && last_line_ != LineType::Body) {
+    return base::nullopt;
+  }
 
+  if (line.find(end_suspend_stats) != 0) {
+    std::string info;
+    if (RE2::FullMatch(line, *last_failed_dev, &info)) {
+      dev_str_ = info;
+    } else if (RE2::FullMatch(line, *last_failed_errno, &info)) {
+      errno_str_ = info;
+    } else if (RE2::FullMatch(line, *last_failed_step, &info)) {
+      step_str_ = info;
+    }
+
+    last_line_ = LineType::Body;
+    return base::nullopt;
+  }
+
+  uint32_t hash = StringHash((dev_str_ + errno_str_ + step_str_).c_str());
+  std::string text = base::StringPrintf(
+      "%08x-suspend failure: device: %s step: %s errno: %s\n", hash,
+      dev_str_.c_str(), step_str_.c_str(), errno_str_.c_str());
   return {{std::move(text), "--suspend_failure"}};
 }
 

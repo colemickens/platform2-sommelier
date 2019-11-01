@@ -31,6 +31,14 @@ class Parser {
 
   virtual bool WasAlreadySeen(uint32_t hash);
 
+ protected:
+  enum class LineType {
+    None,
+    Header,
+    Start,
+    Body,
+  };
+
  private:
   std::bitset<HASH_BITMAP_SIZE> hash_bitmap_;
 };
@@ -50,13 +58,6 @@ class KernelParser : public Parser {
   MaybeCrashReport ParseLogEntry(const std::string& line) override;
 
  private:
-  enum class LineType {
-    None,
-    Header,
-    Start,
-    Body,
-  };
-
   LineType last_line_ = LineType::None;
   std::string text_;
   std::string flag_;
@@ -68,6 +69,12 @@ class KernelParser : public Parser {
 class SuspendParser : public Parser {
  public:
   MaybeCrashReport ParseLogEntry(const std::string& line) override;
+
+ private:
+  LineType last_line_ = LineType::None;
+  std::string dev_str_;
+  std::string errno_str_;
+  std::string step_str_;
 };
 
 }  // namespace anomaly
