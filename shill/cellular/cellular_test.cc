@@ -229,12 +229,12 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     EXPECT_EQ(Service::kStateAssociating, device_->service_->state());
     callback.Run(kTestBearerPath, Error());
   }
-  void InvokeConnectFail(KeyValueStore props,
+  void InvokeConnectFail(const KeyValueStore& props,
                          Error* error,
-                         const ResultCallback& callback,
+                         const RpcIdentifierCallback& callback,
                          int timeout) {
     EXPECT_EQ(Service::kStateAssociating, device_->service_->state());
-    callback.Run(Error(Error::kNotOnHomeNetwork));
+    callback.Run("", Error(Error::kNotOnHomeNetwork));
   }
   void InvokeConnectFailNoService(KeyValueStore props,
                                   Error* error,
@@ -1126,24 +1126,20 @@ TEST_P(CellularTest, DisconnectFailure) {
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
 }
 
-#if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 TEST_P(CellularTest, ConnectFailure) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCdma})) {
-    return;
-  }
-
   device_->state_ = Cellular::kStateRegistered;
   SetService();
   ASSERT_EQ(Service::kStateIdle, device_->service_->state());
-  EXPECT_CALL(*simple_proxy_,
+  EXPECT_CALL(*mm1_simple_proxy_,
               Connect(_, _, _, CellularCapability::kTimeoutConnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeConnectFail));
-  GetCapabilityClassic()->simple_proxy_ = std::move(simple_proxy_);
+  GetCapability3gpp()->modem_simple_proxy_ = std::move(mm1_simple_proxy_);
   Error error;
   device_->Connect(&error);
   EXPECT_EQ(Service::kStateFailure, device_->service_->state());
 }
 
+#if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 TEST_P(CellularTest, ConnectFailureNoService) {
   if (!IsCellularTypeUnderTestOneOf(
           {Cellular::kTypeGsm, Cellular::kTypeCdma})) {
