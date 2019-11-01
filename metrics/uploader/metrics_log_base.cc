@@ -119,12 +119,12 @@ void MetricsLogBase::RecordHistogramDelta(const std::string& histogram_name,
        !it->Done();
        it->Next()) {
     HistogramBase::Sample min;
-    HistogramBase::Sample max;
+    int64_t max;
     HistogramBase::Count count;
     it->Get(&min, &max, &count);
     HistogramEventProto::Bucket* bucket = histogram_proto->add_bucket();
     bucket->set_min(min);
-    bucket->set_max(max);
+    bucket->set_max(static_cast<HistogramBase::Sample>(max));
     bucket->set_count(count);
   }
 

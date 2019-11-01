@@ -233,13 +233,10 @@ void UploadService::AddCrash(const std::string& crash_name) {
 }
 
 void UploadService::GatherHistograms() {
-  base::StatisticsRecorder::Histograms histograms;
-  base::StatisticsRecorder::GetHistograms(&histograms);
+  auto histograms = base::StatisticsRecorder::GetHistograms();
 
   histogram_snapshot_manager_.PrepareDeltas(
-      histograms.begin(),
-      histograms.end(),
-      base::Histogram::kNoFlags,
+      histograms, base::Histogram::kNoFlags,
       base::Histogram::kUmaTargetedHistogramFlag);
 }
 

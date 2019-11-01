@@ -78,6 +78,7 @@ class UploadService : public base::HistogramFlattener {
   // Sends the staged log.
   void SendStagedLog();
 
+#if BASE_VER < 576279
   // Implements inconsistency detection to match HistogramFlattener's
   // interface.
   void InconsistencyDetected(
@@ -85,6 +86,7 @@ class UploadService : public base::HistogramFlattener {
   void UniqueInconsistencyDetected(
       base::HistogramBase::Inconsistency problem) override {}
   void InconsistencyDetectedInLoggedCount(int amount) override {}
+#endif  // BASE_VER < 576279
 
  private:
   friend class UploadServiceTest;
