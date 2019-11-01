@@ -276,13 +276,13 @@ MBOOL StreamingProcessor::prepareOutputs(
   for (auto& partialPayload : payload->mPartialPayloads) {
     auto& reqPack = partialPayload->mRequestPack;
     auto& inputs = reqPack->mInputs;
-    float zoomRatio;
+    float zoomRatio, mapping_ratio;
+    MRect cropRect_control;
     MSize inRRZOSize;
     for (auto& in : inputs) {
       if (in.isResized()) {
         std::shared_ptr<P2Request>& request = in.mRequest;
         P2MetaSet metaSet = request->getMetaSet();
-        MRect cropRect_control;
         MSize sensorSize;
         inRRZOSize = in.mIMGI->getIImageBufferPtr()->getImgSize();
         MY_LOGD("in rrzo size %dx%d", inRRZOSize.w, inRRZOSize.h);
@@ -294,6 +294,7 @@ MBOOL StreamingProcessor::prepareOutputs(
                                    &sensorSize)) {
           MY_LOGE("p2 can't get sensor size");
         }
+        mapping_ratio = static_cast<float>(sensorSize.w / inRRZOSize.w);
         zoomRatio = static_cast<float>(sensorSize.w / cropRect_control.s.w);
         if (zoomRatio > 1.0) {
           MY_LOGW("p2 zoomRatio %f", zoomRatio);
@@ -339,24 +340,13 @@ MBOOL StreamingProcessor::prepareOutputs(
                 payload->mLog, out.mImg->getTransformSize(), cropFlag,
                 cropRatio, dmaConstrainFlag);
           } else {
-            MRectF inRectF;
-            inRectF.s.w = static_cast<float>(inRRZOSize.w);
-            inRectF.s.h = static_cast<float>(inRRZOSize.h);
-            inRectF.p.x = 0;
-            inRectF.p.y = 0;
-            cropF = cropper->applyViewRatio(payload->mLog, inRectF,
-                                            out.mImg->getTransformSize());
-            MY_LOGD("src(%dx%d), dst(%dx%d), crop info: p(%f_%f), s(%fx%f)",
-                    inRRZOSize.w, inRRZOSize.h, out.mImg->getTransformSize().w,
-                    out.mImg->getTransformSize().h, cropF.p.x, cropF.p.y,
-                    cropF.s.w, cropF.s.h);
-            MRectF cropFOrigin = cropF;
-            cropF.s.w = cropF.s.w / zoomRatio;
-            cropF.s.h = cropF.s.h / zoomRatio;
-            cropF.p.x = cropF.p.x + (cropFOrigin.s.w - cropF.s.w) / 2;
-            cropF.p.y = cropF.p.y + (cropFOrigin.s.h - cropF.s.h) / 2;
-            MY_LOGW("zoomRatio %f, crop info: p(%f_%f), s(%fx%f)", zoomRatio,
-                    cropF.p.x, cropF.p.y, cropF.s.w, cropF.s.h);
+            MRectF mapping_cropRect_control;
+            mapping_cropRect_control.p.x = cropRect_control.p.x / mapping_ratio;
+            mapping_cropRect_control.p.y = cropRect_control.p.y / mapping_ratio;
+            mapping_cropRect_control.s.w = cropRect_control.s.w / mapping_ratio;
+            mapping_cropRect_control.s.h = cropRect_control.s.h / mapping_ratio;
+            cropF = cropper->applyViewRatio(payload->mLog,
+                mapping_cropRect_control, out.mImg->getTransformSize());
           }
         }
         out.mCrop = cropF;
