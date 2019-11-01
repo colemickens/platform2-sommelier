@@ -26,10 +26,9 @@ class AmbientLightSensorFuzzer {
     CHECK(base::DeleteFile(temp_dir_.GetPath(), true));
   }
 
-  void SetUp(const uint8_t* data, size_t size) {
+  void SetUp(FuzzedDataProvider& data_provider, bool is_color) {
     base::FilePath device0_dir = temp_dir_.GetPath().Append("device0");
     CHECK(base::CreateDirectory(device0_dir));
-    FuzzedDataProvider data_provider(data, size);
 
     base::FilePath data0_file_ = device0_dir.Append("illuminance0_input");
     CHECK(brillo::WriteStringToFile(
@@ -37,18 +36,20 @@ class AmbientLightSensorFuzzer {
         base::NumberToString(data_provider.ConsumeIntegral<uint32_t>())));
 
     // Add Color channels.
-    base::FilePath color_file = device0_dir.Append("in_illuminance_red_raw");
-    CHECK(brillo::WriteStringToFile(
-        color_file,
-        base::NumberToString(data_provider.ConsumeIntegral<uint32_t>())));
-    color_file = device0_dir.Append("in_illuminance_green_raw");
-    CHECK(brillo::WriteStringToFile(
-        color_file,
-        base::NumberToString(data_provider.ConsumeIntegral<uint32_t>())));
-    color_file = device0_dir.Append("in_illuminance_blue_raw");
-    CHECK(brillo::WriteStringToFile(
-        color_file,
-        base::NumberToString(data_provider.ConsumeIntegral<uint32_t>())));
+    if (is_color) {
+      base::FilePath color_file = device0_dir.Append("in_illuminance_red_raw");
+      CHECK(brillo::WriteStringToFile(
+          color_file,
+          base::NumberToString(data_provider.ConsumeIntegral<uint32_t>())));
+      color_file = device0_dir.Append("in_illuminance_green_raw");
+      CHECK(brillo::WriteStringToFile(
+          color_file,
+          base::NumberToString(data_provider.ConsumeIntegral<uint32_t>())));
+      color_file = device0_dir.Append("in_illuminance_blue_raw");
+      CHECK(brillo::WriteStringToFile(
+          color_file,
+          base::NumberToString(data_provider.ConsumeIntegral<uint32_t>())));
+    }
 
     base::FilePath loc0_file_ = device0_dir.Append("location");
     CHECK(brillo::WriteStringToFile(loc0_file_, "lid"));
@@ -74,6 +75,21 @@ struct Environment {
   Environment() { logging::SetMinLogLevel(logging::LOG_FATAL); }
 };
 
+static void InitAndRunAls(
+    bool is_color,
+    FuzzedDataProvider& fuzz_dp,
+    scoped_refptr<base::TestMockTimeTaskRunner> task_runner) {
+  auto als_fuzzer =
+      std::make_unique<power_manager::system::AmbientLightSensorFuzzer>();
+
+  base::TestMockTimeTaskRunner::ScopedContext scoped_context(task_runner.get());
+  als_fuzzer->SetUp(fuzz_dp, is_color);
+  als_fuzzer->sensor_->Init(false /* read immediately */);
+
+  // Move time ahead enough so that async file reads occur.
+  task_runner->FastForwardBy(base::TimeDelta::FromMilliseconds(4000));
+}
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
 
@@ -87,17 +103,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       new base::TestMockTimeTaskRunner();
   message_loop.SetTaskRunner(task_runner);
 
-  auto als_fuzzer =
-      std::make_unique<power_manager::system::AmbientLightSensorFuzzer>();
-  {
-    base::TestMockTimeTaskRunner::ScopedContext scoped_context(
-        task_runner.get());
-    als_fuzzer->SetUp(data, size);
-    als_fuzzer->sensor_->Init(false /* read immediately */);
-
-    // Move time ahead enough so that async file reads occur.
-    task_runner->FastForwardBy(base::TimeDelta::FromMilliseconds(4000));
-  }
+  auto fuzz_dp = std::make_unique<FuzzedDataProvider>(data, size);
+  // Test with color channels.
+  InitAndRunAls(true, *fuzz_dp, task_runner);
+  // Test without color channels.
+  InitAndRunAls(false, *fuzz_dp, task_runner);
 
   return 0;
 }
