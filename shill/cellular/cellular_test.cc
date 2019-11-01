@@ -1168,7 +1168,6 @@ TEST_P(CellularTest, ConnectSuccessNoService) {
   device_->Connect(&error);
 }
 
-#if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 TEST_P(CellularTest, LinkEventWontDestroyService) {
   // If the network interface goes down, Cellular::LinkEvent should
   // drop the connection but the service object should persist.
@@ -1185,6 +1184,7 @@ TEST_P(CellularTest, UseNoArpGateway) {
   device_->AcquireIPConfig();
 }
 
+#if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)
 TEST_P(CellularTest, ModemStateChangeEnable) {
   if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeCdma})) {
     return;
