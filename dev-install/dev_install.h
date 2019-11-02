@@ -57,11 +57,17 @@ class DevInstall {
   // Initialize binhost_ setting from other settings.
   void InitializeBinhost();
 
+  // Download & manually install the bootstrap packages.
+  virtual bool DownloadAndInstallBootstrapPackage(const std::string& package);
+  virtual bool DownloadAndInstallBootstrapPackages(
+      const base::FilePath& listing);
+
   // Unittest helpers.
   void SetReinstallForTest(bool reinstall) { reinstall_ = reinstall; }
   void SetUninstallForTest(bool uninstall) { uninstall_ = uninstall; }
   void SetYesForTest(bool yes) { yes_ = yes; }
   void SetStateDirForTest(const base::FilePath& dir) { state_dir_ = dir; }
+  void SetBootstrapForTest(bool bootstrap) { only_bootstrap_ = bootstrap; }
   std::string GetDevserverUrlForTest() { return devserver_url_; }
   std::string GetBoardForTest() { return board_; }
   std::string GetBinhostVersionForTest() { return binhost_version_; }

@@ -17,7 +17,9 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_split.h>
 #include <brillo/key_value_store.h>
+#include <brillo/process.h>
 #include <vboot/crossystem.h>
 
 namespace dev_install {
@@ -32,6 +34,13 @@ constexpr char kUsrLocal[] = "/usr/local";
 
 // The Portage config path as a subdir under the various roots.
 constexpr char kPortageConfigSubdir[] = "etc/portage";
+
+// Where binpkgs are saved as a subdir under the various roots.
+constexpr char kBinpkgSubdir[] = "portage/packages";
+
+// File listing of packages we need for bootstrapping.
+constexpr char kBootstrapListing[] =
+    "/usr/share/dev-install/bootstrap.packages";
 
 // Path to lsb-release file.
 constexpr char kLsbReleasePath[] = "/etc/lsb-release";
@@ -260,6 +269,90 @@ void DevInstall::InitializeBinhost() {
              binhost_version_ + "/packages";
 }
 
+bool DevInstall::DownloadAndInstallBootstrapPackage(
+    const std::string& package) {
+  const std::string url(binhost_ + "/" + package + ".tbz2");
+  const base::FilePath binpkg_dir = state_dir_.Append(kBinpkgSubdir);
+  const base::FilePath pkg = binpkg_dir.Append(package + ".tbz2");
+  const base::FilePath pkgdir = pkg.DirName();
+
+  if (!CreateMissingDirectory(pkgdir))
+    return false;
+
+  LOG(INFO) << "Downloading " + url;
+  brillo::ProcessImpl curl;
+  curl.SetSearchPath(true);
+  curl.AddArg("curl");
+  curl.AddArg("--fail");
+  curl.AddStringOption("-o", pkg.value());
+  curl.AddArg(url);
+  if (curl.Run() != 0) {
+    LOG(ERROR) << "Could not download package";
+    return false;
+  }
+
+  LOG(INFO) << "Unpacking " + pkg.value();
+  brillo::ProcessImpl tar;
+  tar.SetSearchPath(true);
+  tar.AddArg("tar");
+  tar.AddStringOption("-C", state_dir_.value());
+  tar.AddArg("-xjkf");
+  tar.AddArg(pkg.value());
+  if (tar.Run() != 0) {
+    LOG(ERROR) << "Could not extract package";
+    return false;
+  }
+
+  return true;
+}
+
+bool DevInstall::DownloadAndInstallBootstrapPackages(
+    const base::FilePath& listing) {
+  std::string data;
+  if (!base::ReadFileToString(listing, &data)) {
+    PLOG(ERROR) << "Unable to read " << listing.value();
+    return false;
+  }
+
+  std::vector<std::string> lines = base::SplitString(
+      data, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  if (lines.empty()) {
+    LOG(ERROR) << "Bootstrap package set is empty!";
+    return false;
+  }
+  for (const std::string& line : lines) {
+    if (!DownloadAndInstallBootstrapPackage(line))
+      return false;
+  }
+
+  // The python ebuilds set up symlinks in pkg_postinst, but we don't run those
+  // phases (we just run untar above).  Plus that logic depends on eselect that
+  // we currently stub out.  Hand create the symlinks https://crbug.com/955147.
+  const base::FilePath python = state_dir_.Append("usr/bin/python");
+  if (!base::PathExists(python)) {
+    if (!base::CreateSymbolicLink(base::FilePath("python-wrapper"), python)) {
+      PLOG(ERROR) << "Creating " << python.value() << " failed";
+      return false;
+    }
+  }
+  const base::FilePath python2 = state_dir_.Append("usr/bin/python2");
+  if (!base::PathExists(python2)) {
+    if (!base::CreateSymbolicLink(base::FilePath("python2.7"), python2)) {
+      PLOG(ERROR) << "Creating " << python2.value() << " failed";
+      return false;
+    }
+  }
+  const base::FilePath python3 = state_dir_.Append("usr/bin/python3");
+  if (!base::PathExists(python3)) {
+    if (!base::CreateSymbolicLink(base::FilePath("python3.6"), python3)) {
+      PLOG(ERROR) << "Creating " << python3.value() << " failed";
+      return false;
+    }
+  }
+
+  return true;
+}
+
 int DevInstall::Exec(const std::vector<const char*>& argv) {
   execv(kDevInstallScript, const_cast<char* const*>(argv.data()));
   PLOG(ERROR) << kDevInstallScript << " failed";
@@ -304,6 +397,17 @@ int DevInstall::Run() {
   InitializeBinhost();
   LOG(INFO) << "Using binhost: " << binhost_;
 
+  // Bootstrap the setup.
+  LOG(INFO) << "Starting installation of developer packages.";
+  LOG(INFO) << "First, we download the necessary files.";
+  if (!DownloadAndInstallBootstrapPackages(base::FilePath(kBootstrapListing)))
+    return 7;
+
+  if (only_bootstrap_) {
+    LOG(INFO) << "Done installing bootstrap packages. Enjoy!";
+    return 0;
+  }
+
   std::vector<const char*> argv{kDevInstallScript};
 
   if (!binhost_.empty()) {
@@ -313,9 +417,6 @@ int DevInstall::Run() {
 
   if (yes_)
     argv.push_back("--yes");
-
-  if (only_bootstrap_)
-    argv.push_back("--only_bootstrap");
 
   argv.push_back(nullptr);
   return Exec(argv);

@@ -36,6 +36,10 @@ class DevInstallMock : public DevInstall {
               InitializeStateDir,
               (const base::FilePath& dir),
               (override));
+  MOCK_METHOD(bool,
+              DownloadAndInstallBootstrapPackages,
+              (const base::FilePath&),
+              (override));
 };
 
 class DevInstallTest : public ::testing::Test {
@@ -46,6 +50,10 @@ class DevInstallTest : public ::testing::Test {
 
     // Ignore stateful setup for most tests.
     ON_CALL(dev_install_, InitializeStateDir(_)).WillByDefault(Return(true));
+
+    // Ignore bootstrap for most tests.
+    ON_CALL(dev_install_, DownloadAndInstallBootstrapPackages(_))
+        .WillByDefault(Return(true));
 
     // Most tests should run with a path that doesn't exist.
     dev_install_.SetStateDirForTest(base::FilePath("/.path-does-not-exist"));
@@ -107,6 +115,21 @@ TEST_F(DevInstallTest, StatefulSetupFailure) {
   EXPECT_CALL(dev_install_, InitializeStateDir(_)).WillOnce(Return(false));
   EXPECT_CALL(dev_install_, Exec(_)).Times(0);
   ASSERT_EQ(5, dev_install_.Run());
+}
+
+// We only bootstrap before exiting.
+TEST_F(DevInstallTest, BootstrapOnly) {
+  dev_install_.SetBootstrapForTest(true);
+  EXPECT_CALL(dev_install_, Exec(_)).Times(0);
+  ASSERT_EQ(0, dev_install_.Run());
+}
+
+// Bootstrap failures.
+TEST_F(DevInstallTest, BootstrapFailure) {
+  EXPECT_CALL(dev_install_, DownloadAndInstallBootstrapPackages(_))
+      .WillOnce(Return(false));
+  EXPECT_CALL(dev_install_, Exec(_)).Times(0);
+  ASSERT_EQ(7, dev_install_.Run());
 }
 
 namespace {
@@ -388,6 +411,89 @@ TEST_F(LoadRuntimeSettingsTest, Empty) {
 // Check loading state doesn't abort with missing file.
 TEST_F(LoadRuntimeSettingsTest, Missing) {
   ASSERT_TRUE(dev_install_.LoadRuntimeSettings(test_dir_.Append("asdf")));
+}
+
+namespace {
+
+class BootstrapPackagesMock : public DevInstall {
+ public:
+  MOCK_METHOD(bool,
+              DownloadAndInstallBootstrapPackage,
+              (const std::string&),
+              (override));
+};
+
+class BootstrapPackagesTest : public ::testing::Test {
+ public:
+  void SetUp() {
+    // Have the install step pass by default.
+    ON_CALL(dev_install_, DownloadAndInstallBootstrapPackage(_))
+        .WillByDefault(Return(true));
+
+    ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
+    test_dir_ = scoped_temp_dir_.GetPath();
+    dev_install_.SetStateDirForTest(test_dir_);
+  }
+
+ protected:
+  BootstrapPackagesMock dev_install_;
+  base::FilePath test_dir_;
+  base::ScopedTempDir scoped_temp_dir_;
+};
+
+}  // namespace
+
+// Check bootstrap works in general.
+TEST_F(BootstrapPackagesTest, Works) {
+  const base::FilePath listing = test_dir_.Append("bootstrap.packages");
+  std::string data{
+      "foo/bar-123\n"
+      "cat/pkg-1.0\n"};
+  ASSERT_EQ(base::WriteFile(listing, data.c_str(), data.size()), data.size());
+
+  ON_CALL(dev_install_, DownloadAndInstallBootstrapPackage(_))
+      .WillByDefault(Return(false));
+  EXPECT_CALL(dev_install_, DownloadAndInstallBootstrapPackage("foo/bar-123"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(dev_install_, DownloadAndInstallBootstrapPackage("cat/pkg-1.0"))
+      .WillOnce(Return(true));
+
+  const base::FilePath bindir = test_dir_.Append("usr/bin");
+  ASSERT_TRUE(base::CreateDirectory(bindir));
+  ASSERT_TRUE(dev_install_.DownloadAndInstallBootstrapPackages(listing));
+
+  // We assert the symlinks exist.  We assume the targets are valid for now.
+  base::FilePath target;
+  ASSERT_TRUE(base::ReadSymbolicLink(bindir.Append("python"), &target));
+  ASSERT_TRUE(base::ReadSymbolicLink(bindir.Append("python2"), &target));
+  ASSERT_TRUE(base::ReadSymbolicLink(bindir.Append("python3"), &target));
+}
+
+// Check missing bootstrap list fails.
+TEST_F(BootstrapPackagesTest, Missing) {
+  const base::FilePath listing = test_dir_.Append("bootstrap.packages");
+  ASSERT_FALSE(dev_install_.DownloadAndInstallBootstrapPackages(listing));
+}
+
+// Check empty bootstrap list fails.
+TEST_F(BootstrapPackagesTest, Empty) {
+  const base::FilePath listing = test_dir_.Append("bootstrap.packages");
+  ASSERT_EQ(base::WriteFile(listing, "", 0), 0);
+  ASSERT_FALSE(dev_install_.DownloadAndInstallBootstrapPackages(listing));
+}
+
+// Check mid-bootstrap failure behavior.
+TEST_F(BootstrapPackagesTest, PackageFailed) {
+  const base::FilePath listing = test_dir_.Append("bootstrap.packages");
+  std::string data{"cat/pkg-3"};
+  ASSERT_EQ(base::WriteFile(listing, data.c_str(), data.size()), data.size());
+
+  EXPECT_CALL(dev_install_, DownloadAndInstallBootstrapPackage("cat/pkg-3"))
+      .WillOnce(Return(false));
+
+  const base::FilePath bindir = test_dir_.Append("usr/bin");
+  ASSERT_TRUE(base::CreateDirectory(bindir));
+  ASSERT_FALSE(dev_install_.DownloadAndInstallBootstrapPackages(listing));
 }
 
 }  // namespace dev_install
