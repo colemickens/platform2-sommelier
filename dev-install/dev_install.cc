@@ -30,8 +30,8 @@ constexpr char kDevInstallScript[] = "/usr/share/dev-install/main.sh";
 // The root path that we install our dev packages into.
 constexpr char kUsrLocal[] = "/usr/local";
 
-// The Portage profile path as a subdir under the various roots.
-constexpr char kPortageProfileSubdir[] = "etc/portage";
+// The Portage config path as a subdir under the various roots.
+constexpr char kPortageConfigSubdir[] = "etc/portage";
 
 // Path to lsb-release file.
 constexpr char kLsbReleasePath[] = "/etc/lsb-release";
@@ -277,10 +277,9 @@ int DevInstall::Run() {
   }
 
   // See if the system has been initialized already.
-  const base::FilePath state_dir(state_dir_);
-  const base::FilePath profile = state_dir.Append(kPortageProfileSubdir);
-  if (base::DirectoryExists(profile)) {
-    LOG(ERROR) << "Directory " << profile.value() << " exists.";
+  const base::FilePath portage_dir = state_dir_.Append(kPortageConfigSubdir);
+  if (base::DirectoryExists(portage_dir)) {
+    LOG(ERROR) << "Directory " << portage_dir.value() << " exists.";
     LOG(ERROR) << "Did you mean dev_install --reinstall?";
     return 4;
   }
