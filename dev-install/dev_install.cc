@@ -130,6 +130,18 @@ bool DevInstall::DeletePath(const struct stat& base_stat,
   return true;
 }
 
+bool DevInstall::CreateMissingDirectory(const base::FilePath& dir) {
+  if (!base::PathExists(dir)) {
+    if (!base::CreateDirectory(dir) ||
+        !base::SetPosixFilePermissions(dir, 0755)) {
+      PLOG(ERROR) << "Creating " << dir.value() << " failed";
+      return false;
+    }
+  }
+
+  return true;
+}
+
 bool DevInstall::ClearStateDir(const base::FilePath& dir) {
   LOG(INFO) << "To clean up, we will run:\n  rm -rf /usr/local/\n"
             << "Any content you have stored in there will be deleted.";
@@ -182,13 +194,8 @@ bool DevInstall::InitializeStateDir(const base::FilePath& dir) {
   // Set up symlinks for etc/{group,passwd}, so that packages can look up users
   // and groups correctly.
   const base::FilePath etc = usr.Append("etc");
-  if (!base::PathExists(etc)) {
-    if (!base::CreateDirectory(etc) ||
-        !base::SetPosixFilePermissions(etc, 0755)) {
-      PLOG(ERROR) << "Creating " << etc.value() << " failed";
-      return false;
-    }
-  }
+  if (!CreateMissingDirectory(etc))
+    return false;
 
   // Create /usr/local/etc/group -> /etc/group symlink.
   const base::FilePath group = etc.Append("group");

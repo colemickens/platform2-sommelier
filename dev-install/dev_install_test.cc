@@ -213,6 +213,39 @@ TEST_F(DeletePathTest, Works) {
 
 namespace {
 
+class CreateMissingDirectoryTest : public ::testing::Test {
+ public:
+  void SetUp() {
+    ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
+    test_dir_ = scoped_temp_dir_.GetPath();
+  }
+
+ protected:
+  DevInstall dev_install_;
+  base::FilePath test_dir_;
+  base::ScopedTempDir scoped_temp_dir_;
+};
+
+}  // namespace
+
+// Create dirs that don't yet exist.
+TEST_F(CreateMissingDirectoryTest, Works) {
+  const base::FilePath dir = test_dir_.Append("test");
+  ASSERT_TRUE(dev_install_.CreateMissingDirectory(dir));
+  int mode;
+  ASSERT_TRUE(base::GetPosixFilePermissions(dir, &mode));
+  ASSERT_EQ(0755, mode);
+  ASSERT_TRUE(dev_install_.CreateMissingDirectory(dir));
+}
+
+// If a dir already exists, should do nothing.
+TEST_F(CreateMissingDirectoryTest, Existing) {
+  ASSERT_TRUE(dev_install_.CreateMissingDirectory(test_dir_));
+  ASSERT_TRUE(dev_install_.CreateMissingDirectory(test_dir_));
+}
+
+namespace {
+
 // We could mock out DeletePath, but it's easy to lightly validate it.
 class ClearStateDirMock : public DevInstall {
  public:

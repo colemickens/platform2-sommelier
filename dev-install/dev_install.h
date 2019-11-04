@@ -42,6 +42,9 @@ class DevInstall {
   virtual bool DeletePath(const struct stat& base_stat,
                           const base::FilePath& dir);
 
+  // Create a directory if it doesn't yet exist, and chmod it to 0755.
+  bool CreateMissingDirectory(const base::FilePath& dir);
+
   // Clear the /usr/local state.
   virtual bool ClearStateDir(const base::FilePath& dir);
 
