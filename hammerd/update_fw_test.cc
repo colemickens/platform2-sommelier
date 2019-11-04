@@ -85,7 +85,7 @@ class FirmwareUpdaterTest : public testing::Test {
 };
 
 // Load a fake EC image with each value. The EC image contains:
-// - Fake header: 5 bytes
+// - Fake header: 5 bytes + 3 bytes padding to word align mock_fmap (ASAN)
 // - mock fmap: sizeof(fmap) bytes
 // - RO version string: 32 bytes
 // - RW version string: 32 bytes
@@ -93,11 +93,11 @@ class FirmwareUpdaterTest : public testing::Test {
 // - RO key: sizeof(vb21_packed_key) bytes
 TEST_F(FirmwareUpdaterTest, LoadEcImage) {
   // Build a fake EC image.
-  std::string ec_image("12345");
+  std::string ec_image("12345678");
   int64_t mock_offset = ec_image.size();
   fmap mock_fmap;
   mock_fmap.nareas = 0;
-  mock_fmap.size = 5 + sizeof(fmap) + 32 + 32 + 4 + sizeof(vb21_packed_key);
+  mock_fmap.size = 8 + sizeof(fmap) + 32 + 32 + 4 + sizeof(vb21_packed_key);
   ec_image.append(reinterpret_cast<char*>(&mock_fmap), sizeof(mock_fmap));
 
   int64_t ro_version_offset = ec_image.size();
@@ -118,7 +118,8 @@ TEST_F(FirmwareUpdaterTest, LoadEcImage) {
   ec_image.append(reinterpret_cast<char*>(&ro_key), sizeof(ro_key));
 
   size_t ec_image_len = ec_image.size();
-  ASSERT_EQ(ec_image_len, mock_fmap.size);
+  size_t fmap_size = mock_fmap.size;
+  ASSERT_EQ(ec_image_len, fmap_size);
 
   const fmap* mock_fmap_ptr = reinterpret_cast<const fmap*>(
       reinterpret_cast<const uint8_t*>(ec_image.data()) + mock_offset);
