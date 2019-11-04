@@ -61,33 +61,33 @@ class BluetoothClient {
    public:
     virtual ~Observer() = default;
 
-    // Called when the adapter with object path |object_path| is added to the
+    // Called when the adapter with object path |adapter_path| is added to the
     // system.
-    virtual void AdapterAdded(const dbus::ObjectPath& object_path,
+    virtual void AdapterAdded(const dbus::ObjectPath& adapter_path,
                               const AdapterProperties& properties) = 0;
 
-    // Called when the adapter with object path |object_path| is removed from
+    // Called when the adapter with object path |adapter_path| is removed from
     // the system.
-    virtual void AdapterRemoved(const dbus::ObjectPath& object_path) = 0;
+    virtual void AdapterRemoved(const dbus::ObjectPath& adapter_path) = 0;
 
-    // Called when the adapter with object path |object_path| has a change in
+    // Called when the adapter with object path |adapter_path| has a change in
     // value of the property.
     virtual void AdapterPropertyChanged(
-        const dbus::ObjectPath& object_path,
+        const dbus::ObjectPath& adapter_path,
         const AdapterProperties& properties) = 0;
 
-    // Called when the device with object path |object_path| is added to the
+    // Called when the device with object path |device_path| is added to the
     // system.
-    virtual void DeviceAdded(const dbus::ObjectPath& object_path,
+    virtual void DeviceAdded(const dbus::ObjectPath& device_path,
                              const DeviceProperties& properties) = 0;
 
-    // Called when the device with object path |object_path| is removed from
+    // Called when the device with object path |device_path| is removed from
     // the system.
-    virtual void DeviceRemoved(const dbus::ObjectPath& object_path) = 0;
+    virtual void DeviceRemoved(const dbus::ObjectPath& device_path) = 0;
 
-    // Called when the device with object path |object_path| has a
+    // Called when the device with object path |device_path| has a
     // change in value of the property.
-    virtual void DevicePropertyChanged(const dbus::ObjectPath& object_path,
+    virtual void DevicePropertyChanged(const dbus::ObjectPath& device_path,
                                        const DeviceProperties& properties) = 0;
   };
 
