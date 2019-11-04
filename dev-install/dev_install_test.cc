@@ -40,6 +40,7 @@ class DevInstallMock : public DevInstall {
               DownloadAndInstallBootstrapPackages,
               (const base::FilePath&),
               (override));
+  MOCK_METHOD(bool, ConfigurePortage, (), (override));
 };
 
 class DevInstallTest : public ::testing::Test {
@@ -54,6 +55,9 @@ class DevInstallTest : public ::testing::Test {
     // Ignore bootstrap for most tests.
     ON_CALL(dev_install_, DownloadAndInstallBootstrapPackages(_))
         .WillByDefault(Return(true));
+
+    // Ignore portage setup for most tests.
+    ON_CALL(dev_install_, ConfigurePortage()).WillByDefault(Return(true));
 
     // Most tests should run with a path that doesn't exist.
     dev_install_.SetStateDirForTest(base::FilePath("/.path-does-not-exist"));
@@ -130,6 +134,13 @@ TEST_F(DevInstallTest, BootstrapFailure) {
       .WillOnce(Return(false));
   EXPECT_CALL(dev_install_, Exec(_)).Times(0);
   ASSERT_EQ(7, dev_install_.Run());
+}
+
+// Portage setup failures.
+TEST_F(DevInstallTest, PortageFailure) {
+  EXPECT_CALL(dev_install_, ConfigurePortage()).WillOnce(Return(false));
+  EXPECT_CALL(dev_install_, Exec(_)).Times(0);
+  ASSERT_EQ(8, dev_install_.Run());
 }
 
 namespace {
@@ -353,6 +364,12 @@ TEST_F(InitializeStateDirTest, Works) {
   ASSERT_TRUE(base::PathExists(etc));
   ASSERT_TRUE(base::IsLink(etc.Append("passwd")));
   ASSERT_TRUE(base::IsLink(etc.Append("group")));
+  const base::FilePath tmp = test_dir_.Append("tmp");
+  ASSERT_TRUE(base::PathExists(tmp));
+  // Can't use base::GetPosixFilePermissions as that blocks +t mode.
+  struct stat st;
+  ASSERT_EQ(0, stat(tmp.value().c_str(), &st));
+  ASSERT_EQ(01777, st.st_mode & 07777);
 
   // Calling a second time should be fine.
   ASSERT_TRUE(dev_install_.InitializeStateDir(test_dir_));
@@ -494,6 +511,31 @@ TEST_F(BootstrapPackagesTest, PackageFailed) {
   const base::FilePath bindir = test_dir_.Append("usr/bin");
   ASSERT_TRUE(base::CreateDirectory(bindir));
   ASSERT_FALSE(dev_install_.DownloadAndInstallBootstrapPackages(listing));
+}
+
+namespace {
+
+class ConfigurePortageTest : public ::testing::Test {
+ public:
+  void SetUp() {
+    ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
+    test_dir_ = scoped_temp_dir_.GetPath();
+    dev_install_.SetStateDirForTest(test_dir_);
+  }
+
+ protected:
+  BootstrapPackagesMock dev_install_;
+  base::FilePath test_dir_;
+  base::ScopedTempDir scoped_temp_dir_;
+};
+
+}  // namespace
+
+// Check setup works in general.
+TEST_F(ConfigurePortageTest, Works) {
+  EXPECT_TRUE(dev_install_.ConfigurePortage());
+  const base::FilePath portage_dir = test_dir_.Append("etc/portage");
+  EXPECT_TRUE(base::PathExists(portage_dir));
 }
 
 }  // namespace dev_install

@@ -45,6 +45,9 @@ class DevInstall {
   // Create a directory if it doesn't yet exist, and chmod it to 0755.
   bool CreateMissingDirectory(const base::FilePath& dir);
 
+  // Write the data to the file.
+  bool WriteFile(const base::FilePath& file, const std::string& data);
+
   // Clear the /usr/local state.
   virtual bool ClearStateDir(const base::FilePath& dir);
 
@@ -61,6 +64,9 @@ class DevInstall {
   virtual bool DownloadAndInstallBootstrapPackage(const std::string& package);
   virtual bool DownloadAndInstallBootstrapPackages(
       const base::FilePath& listing);
+
+  // Configure the portage tooling state.
+  virtual bool ConfigurePortage();
 
   // Unittest helpers.
   void SetReinstallForTest(bool reinstall) { reinstall_ = reinstall; }

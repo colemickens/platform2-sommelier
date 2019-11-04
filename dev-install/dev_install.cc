@@ -42,6 +42,9 @@ constexpr char kBinpkgSubdir[] = "portage/packages";
 constexpr char kBootstrapListing[] =
     "/usr/share/dev-install/bootstrap.packages";
 
+// Directory of rootfs provided packages.
+constexpr char kRootfsProvidedDir[] = "/usr/share/dev-install/rootfs.provided";
+
 // Path to lsb-release file.
 constexpr char kLsbReleasePath[] = "/etc/lsb-release";
 
@@ -151,6 +154,16 @@ bool DevInstall::CreateMissingDirectory(const base::FilePath& dir) {
   return true;
 }
 
+bool DevInstall::WriteFile(const base::FilePath& file,
+                           const std::string& data) {
+  if (base::WriteFile(file, data.c_str(), data.size()) != data.size()) {
+    PLOG(ERROR) << "Could not write " << file.value();
+    return false;
+  }
+
+  return true;
+}
+
 bool DevInstall::ClearStateDir(const base::FilePath& dir) {
   LOG(INFO) << "To clean up, we will run:\n  rm -rf /usr/local/\n"
             << "Any content you have stored in there will be deleted.";
@@ -187,6 +200,16 @@ bool DevInstall::InitializeStateDir(const base::FilePath& dir) {
     // Create /usr/local/usr -> . symlink.
     if (!base::CreateSymbolicLink(base::FilePath("."), usr)) {
       PLOG(ERROR) << "Creating " << usr.value() << " failed";
+      return false;
+    }
+  }
+
+  // Setup a /tmp space for random scripts to rely on.
+  const base::FilePath tmp = dir.Append("tmp");
+  if (!base::PathExists(tmp)) {
+    // Can't use base::SetPosixFilePermissions as that blocks +t mode.
+    if (!base::CreateDirectory(tmp) || chmod(tmp.value().c_str(), 01777)) {
+      PLOG(ERROR) << "Creating " << tmp.value() << " failed";
       return false;
     }
   }
@@ -353,6 +376,47 @@ bool DevInstall::DownloadAndInstallBootstrapPackages(
   return true;
 }
 
+bool DevInstall::ConfigurePortage() {
+  const base::FilePath portage_dir = state_dir_.Append(kPortageConfigSubdir);
+  const base::FilePath profile_dir = portage_dir.Append("make.profile");
+
+  // Copy emerge configuration to /usr/local.
+  if (!CreateMissingDirectory(profile_dir))
+    return false;
+
+  // Point our local profile to the rootfs one.  This allows us to stack.
+  const base::FilePath parent_path = profile_dir.Append("parent");
+  const std::string parent_data{"/etc/portage/make.profile\n"};
+  if (!WriteFile(parent_path, parent_data))
+    return false;
+
+  // Install the package.provided entries for the rootfs.
+  const base::FilePath provided_path = profile_dir.Append("package.provided");
+  if (!CreateMissingDirectory(provided_path))
+    return false;
+  const base::FilePath rootfs_provided{kRootfsProvidedDir};
+  base::FileEnumerator iter(rootfs_provided, false,
+                            base::FileEnumerator::FILES);
+  for (base::FilePath current = iter.Next(); !current.empty();
+       current = iter.Next()) {
+    const base::FilePath sym = provided_path.Append(current.BaseName());
+    if (!base::CreateSymbolicLink(current, sym)) {
+      PLOG(ERROR) << "Creating " << sym.value() << " failed";
+      return false;
+    }
+  }
+
+  // Create the directories defined in the portage config files. Permissions are
+  // consistent with the other directories in /usr/local, which is a bind mount
+  // for /mnt/stateful_partition/dev_image.
+  const base::FilePath make_conf_path = portage_dir.Append("make.conf");
+  const std::string make_conf_data{"PORTAGE_BINHOST=\"" + binhost_ + "\"\n"};
+  if (!WriteFile(make_conf_path, make_conf_data))
+    return false;
+
+  return true;
+}
+
 int DevInstall::Exec(const std::vector<const char*>& argv) {
   execv(kDevInstallScript, const_cast<char* const*>(argv.data()));
   PLOG(ERROR) << kDevInstallScript << " failed";
@@ -408,12 +472,12 @@ int DevInstall::Run() {
     return 0;
   }
 
-  std::vector<const char*> argv{kDevInstallScript};
+  LOG(INFO) << "Developer packages initialized; configuring portage.";
+  if (!ConfigurePortage())
+    return 8;
 
-  if (!binhost_.empty()) {
-    argv.push_back("--binhost");
-    argv.push_back(binhost_.c_str());
-  }
+  LOG(INFO) << "Installing additional optional packages.";
+  std::vector<const char*> argv{kDevInstallScript};
 
   if (yes_)
     argv.push_back("--yes");
