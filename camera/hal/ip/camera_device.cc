@@ -6,6 +6,7 @@
 #include <base/memory/shared_memory.h>
 #include <memory>
 #include <mojo/edk/embedder/embedder.h>
+#include <mojo/public/cpp/system/platform_handle.h>
 #include <utility>
 
 #include "cros-camera/common.h"
@@ -343,7 +344,7 @@ void CameraDevice::OnFrameCaptured(mojo::ScopedHandle shm_handle,
   }
 
   int fd = mojo::UnwrapPlatformHandle(std::move(shm_handle)).ReleaseFD();
-  base::SharedMemory shm(base::FileDescriptor(fd, true), true);
+  base::SharedMemory shm(base::SharedMemoryHandle(fd, true), true);
   if (!shm.Map(size)) {
     LOGFID(ERROR, id_) << "Error mapping shm, unable to handle captured frame";
     return;
