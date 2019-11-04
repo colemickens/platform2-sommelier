@@ -1151,11 +1151,8 @@ void ServiceDistributed::ConnectOwnershipTakenSignal() {
       G_TYPE_INVALID);
 
   dbus_g_proxy_connect_signal(
-      tpm_manager_gproxy,
-      tpm_manager::kOwnershipTakenSignal,
-      G_CALLBACK(ServiceDistributed::OwnershipTakenSignalCallback),
-      tpm_,
-      NULL);
+      tpm_manager_gproxy, tpm_manager::kOwnershipTakenSignal,
+      G_CALLBACK(ServiceDistributed::OwnershipTakenSignalCallback), this, NULL);
 }
 
 void ServiceDistributed::OwnershipTakenSignalCallback(
@@ -1171,7 +1168,8 @@ void ServiceDistributed::OwnershipTakenSignalCallback(
   // TODO(garryxiao): extract owner password from signal_payload and pass it to
   // the signal handler when later optimizing tpm status fetching/caching in
   // Tpm2Impl.
-  reinterpret_cast<Tpm*>(data)->HandleOwnershipTakenSignal();
+  auto service_distributed = reinterpret_cast<ServiceDistributed*>(data);
+  service_distributed->OwnershipCallback(true, true);
 }
 
 }  // namespace cryptohome

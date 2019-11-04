@@ -225,7 +225,7 @@ class Tpm2Impl : public Tpm {
                              trunks::AuthorizationDelegate* session_delegate,
                              ScopedKeyHandle* key_handle);
 
-  void HandleOwnershipTakenSignal() override;
+  void HandleOwnershipTakenEvent() override;
 
   bool DoesUseTpmManager() override;
 

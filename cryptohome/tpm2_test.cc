@@ -1439,7 +1439,7 @@ TEST_F(Tpm2Test, ClearStoredPasswordFailure) {
   EXPECT_FALSE(tpm_->ClearStoredPassword());
 }
 
-TEST_F(Tpm2Test, HandleOwnershipTakenSignal) {
+TEST_F(Tpm2Test, HandleOwnershipTakenEvent) {
   tpm_status_.set_owned(false);
 
   EXPECT_CALL(mock_tpm_owner_, GetTpmStatus(_, _)).Times(1);
@@ -1447,7 +1447,7 @@ TEST_F(Tpm2Test, HandleOwnershipTakenSignal) {
   EXPECT_FALSE(tpm_->IsOwned());
   EXPECT_FALSE(tpm_->IsOwned());
 
-  tpm_->HandleOwnershipTakenSignal();
+  tpm_->HandleOwnershipTakenEvent();
   EXPECT_TRUE(tpm_->IsOwned());
   EXPECT_TRUE(tpm_->IsOwned());
 }

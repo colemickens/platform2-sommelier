@@ -3473,7 +3473,7 @@ SignatureSealingBackend* TpmImpl::GetSignatureSealingBackend() {
   return &signature_sealing_backend_;
 }
 
-void TpmImpl::HandleOwnershipTakenSignal() {
+void TpmImpl::HandleOwnershipTakenEvent() {
   SetIsOwned(true);
 }
 

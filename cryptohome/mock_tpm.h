@@ -230,7 +230,7 @@ class MockTpm : public Tpm {
               GetSignatureSealingBackend,
               (),
               (override));
-  MOCK_METHOD(void, HandleOwnershipTakenSignal, (), (override));
+  MOCK_METHOD(void, HandleOwnershipTakenEvent, (), (override));
   MOCK_METHOD(bool,
               GetDelegate,
               (brillo::Blob*, brillo::Blob*, bool*),

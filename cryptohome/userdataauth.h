@@ -802,6 +802,9 @@ class UserDataAuth {
   // The amount of time in between each run of UploadAlertsDataCallback()
   int upload_alerts_period_ms_;
 
+  // This is set to true iff OwnershipCallback has run.
+  bool ownership_callback_has_run_;
+
   // =============== Install Attributes Related Variables ===============
 
   // The default install attributes object, for accessing install attributes

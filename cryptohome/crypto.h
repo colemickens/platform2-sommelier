@@ -152,7 +152,7 @@ class Crypto {
                                 brillo::SecureBlob* passkey);
 
   // Ensures that the TPM is connected
-  CryptoError EnsureTpm(bool reload_key) const;
+  virtual CryptoError EnsureTpm(bool reload_key) const;
 
   // Seals arbitrary-length data to the TPM's PCR0.
   // Parameters

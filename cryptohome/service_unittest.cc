@@ -2191,4 +2191,40 @@ TEST_F(ServiceTest, InstallAttributesStatusQueries) {
   EXPECT_FALSE(GetInstallAttributesIsFirstInstall(&service_));
 }
 
+TEST_F(ServiceTestNotInitialized, OwnershipCallbackRepeated) {
+  // We need the TPM object, so set it up here.
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockTpmInit> tpm_init;
+  tpm_init.set_tpm(&tpm);
+
+  service_.set_use_tpm(true);
+  service_.set_tpm(&tpm);
+  service_.set_tpm_init(&tpm_init);
+  service_.set_initialize_tpm(true);
+
+  service_.Initialize();
+
+  SetupMount("foo@gmail.com");
+
+  // Called by OwnershipCallback().
+  EXPECT_CALL(tpm, HandleOwnershipTakenEvent).WillOnce(Return());
+  // Called by ResetAllTPMContext().
+  mount_->set_crypto(&crypto_);
+  EXPECT_CALL(crypto_, EnsureTpm(true))
+      .WillOnce(Return(Crypto::CryptoError::CE_NONE));
+  // Called by InitializeInstallAttributes()
+  EXPECT_CALL(attrs_, Init(_)).WillOnce(Return(true));
+
+  // Call OwnershipCallback twice and see if any of the above gets called more
+  // than once.
+  service_.OwnershipCallback(true, true);
+  service_.OwnershipCallback(true, true);
+
+  // Prevent tpm and tpm_init from being used after going out of scope.
+  service_.set_use_tpm(false);
+  service_.set_tpm(nullptr);
+  service_.set_initialize_tpm(false);
+  service_.set_tpm_init(nullptr);
+}
+
 }  // namespace cryptohome

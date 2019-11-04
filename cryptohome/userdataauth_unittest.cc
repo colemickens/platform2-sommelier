@@ -1153,6 +1153,39 @@ TEST_F(UserDataAuthTestNotInitialized, GetSystemSaltUninitialized) {
                "Cannot call GetSystemSalt before initialization");
 }
 
+TEST_F(UserDataAuthTest, OwnershipCallbackSanity) {
+  SetupMount("foo@gmail.com");
+
+  // Called by OwnershipCallback().
+  EXPECT_CALL(tpm_, HandleOwnershipTakenEvent).WillOnce(Return());
+  // Called by ResetAllTPMContext().
+  mount_->set_crypto(&crypto_);
+  EXPECT_CALL(crypto_, EnsureTpm(true))
+      .WillOnce(Return(Crypto::CryptoError::CE_NONE));
+  // Called by InitializeInstallAttributes()
+  EXPECT_CALL(attrs_, Init(_)).WillOnce(Return(true));
+
+  userdataauth_->OwnershipCallback(true, true);
+}
+
+TEST_F(UserDataAuthTest, OwnershipCallbackRepeated) {
+  SetupMount("foo@gmail.com");
+
+  // Called by OwnershipCallback().
+  EXPECT_CALL(tpm_, HandleOwnershipTakenEvent).WillOnce(Return());
+  // Called by ResetAllTPMContext().
+  mount_->set_crypto(&crypto_);
+  EXPECT_CALL(crypto_, EnsureTpm(true))
+      .WillOnce(Return(Crypto::CryptoError::CE_NONE));
+  // Called by InitializeInstallAttributes()
+  EXPECT_CALL(attrs_, Init(_)).WillOnce(Return(true));
+
+  // Call OwnershipCallback twice and see if any of the above gets called more
+  // than once.
+  userdataauth_->OwnershipCallback(true, true);
+  userdataauth_->OwnershipCallback(true, true);
+}
+
 TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {
   constexpr int kTimeshift = 5;
 

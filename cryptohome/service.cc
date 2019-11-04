@@ -275,7 +275,8 @@ Service::Service()
       boot_attributes_(nullptr),
       firmware_management_parameters_(nullptr),
       low_disk_notification_period_ms_(kLowDiskNotificationPeriodMS),
-      upload_alerts_period_ms_(kUploadAlertsPeriodMS) {}
+      upload_alerts_period_ms_(kUploadAlertsPeriodMS),
+      ownership_callback_has_run_(false) {}
 
 Service::~Service() {
   mount_thread_.Stop();
@@ -974,8 +975,22 @@ void Service::DoResetTPMContext(cryptohome::Mount* mount) {
 }
 
 void Service::OwnershipCallback(bool status, bool took_ownership) {
+  // Note that this function should only be called once during the lifetime of
+  // this process, extra calls will be dropped.
+  if (ownership_callback_has_run_) {
+    LOG(WARNING) << "Duplicated call to OwnershipCallback.";
+    return;
+  }
+  ownership_callback_has_run_ = true;
+
   if (took_ownership) {
     ReportTimerStop(kTpmTakeOwnershipTimer);
+
+    // Let the |tpm_| object know about the ownership status
+    if (tpm_) {
+      tpm_->HandleOwnershipTakenEvent();
+    }
+
     // When TPM initialization finishes, we need to tell every Mount to
     // reinitialize its TPM context, since the TPM is now useable, and we might
     // need to kick off their PKCS11 initialization if they were blocked before.

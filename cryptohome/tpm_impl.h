@@ -184,7 +184,7 @@ class TpmImpl : public Tpm {
   bool GetDelegate(brillo::Blob* blob,
                    brillo::Blob* secret,
                    bool* has_reset_lock_permissions) override;
-  void HandleOwnershipTakenSignal() override;
+  void HandleOwnershipTakenEvent() override;
   bool DoesUseTpmManager() override;
   bool CanResetDictionaryAttackWithCurrentPCR0() override;
   void SetDelegateData(const std::string& delegate_blob,

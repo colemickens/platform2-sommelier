@@ -1012,6 +1012,9 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
   // The signal callback to make GMainLoop quit gracefully.
   static gboolean ShutdownService(gpointer user_data);
 
+  // This is set to true iff OwnershipCallback has run.
+  bool ownership_callback_has_run_;
+
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
 

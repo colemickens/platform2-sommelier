@@ -761,9 +761,10 @@ class Tpm {
   // implementation does not support signature-sealing operations.
   virtual SignatureSealingBackend* GetSignatureSealingBackend() = 0;
 
-  // Callback function that is called after receiving the ownership taken signal
-  // from tpm_managerd.
-  virtual void HandleOwnershipTakenSignal() = 0;
+  // Callback function that is called after ownership is taken, regardless of
+  // how we know that ownership is taken. (i.e. signal from tpm_managerd,
+  // ownership taken in cryptohomed.)
+  virtual void HandleOwnershipTakenEvent() = 0;
 
   // Gets owner auth delegate. Returns |true| iff the operation succeeds. Once
   // returning |true|, |blob| and |secret| are set to the blob and secret of

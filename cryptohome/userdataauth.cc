@@ -116,6 +116,7 @@ UserDataAuth::UserDataAuth()
       tpm_ownership_proxy_(nullptr),
       attestation_proxy_(nullptr),
       upload_alerts_period_ms_(kUploadAlertsPeriodMS),
+      ownership_callback_has_run_(false),
       default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
       install_attrs_(default_install_attrs_.get()),
       enterprise_owned_(false),
@@ -337,8 +338,8 @@ void UserDataAuth::OnTpmManagerSignalConnected(const std::string& interface,
 
 void UserDataAuth::OnOwnershipTakenSignal(
     const tpm_manager::OwnershipTakenSignal& signal) {
-  // Notify the tpm_ object of the OwnershipTaken signal.
-  tpm_->HandleOwnershipTakenSignal();
+  // Use the same code path as when ownership is taken through tpm_init_.
+  OwnershipCallback(true, true);
 }
 
 bool UserDataAuth::PostTaskToOriginThread(const base::Location& from_here,
@@ -771,7 +772,24 @@ void UserDataAuth::ResetAllTPMContext() {
 }
 
 void UserDataAuth::OwnershipCallback(bool status, bool took_ownership) {
+  // Note that this function should only be called once during the lifetime of
+  // this process, extra calls will be dropped.
+  if (ownership_callback_has_run_) {
+    LOG(WARNING) << "Duplicated call to OwnershipCallback.";
+    return;
+  }
+  ownership_callback_has_run_ = true;
+
   if (took_ownership) {
+    // Let the |tpm_| object know as well.
+    PostTaskToOriginThread(
+        FROM_HERE, base::BindOnce(
+                       [](UserDataAuth* userdataauth) {
+                         if (userdataauth->tpm_)
+                           userdataauth->tpm_->HandleOwnershipTakenEvent();
+                       },
+                       base::Unretained(this)));
+
     // Reset the TPM context of all mounts, that is, force a reload of
     // cryptohome keys, and make sure it is loaded and ready for every mount.
     PostTaskToMountThread(FROM_HERE,

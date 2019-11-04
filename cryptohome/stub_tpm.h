@@ -206,7 +206,7 @@ class StubTpm : public Tpm {
   SignatureSealingBackend* GetSignatureSealingBackend() override {
     return nullptr;
   }
-  void HandleOwnershipTakenSignal() override {}
+  void HandleOwnershipTakenEvent() override {}
   bool CanResetDictionaryAttackWithCurrentPCR0() override { return true; }
   void SetDelegateData(const std::string& delegate_blob,
                        bool has_reset_lock_permissions) override {}

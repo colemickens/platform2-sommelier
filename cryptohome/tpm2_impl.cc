@@ -1427,7 +1427,7 @@ bool Tpm2Impl::LoadPublicKeyFromSpki(
   return true;
 }
 
-void Tpm2Impl::HandleOwnershipTakenSignal() {
+void Tpm2Impl::HandleOwnershipTakenEvent() {
   is_owned_ = true;
   has_checked_owned_ = true;
 }

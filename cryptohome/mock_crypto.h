@@ -35,6 +35,8 @@ class MockCrypto : public Crypto {
               DecryptWithTpm,
               (const std::string&, brillo::SecureBlob*),
               (const, override));
+
+  MOCK_METHOD(CryptoError, EnsureTpm, (bool), (const, override));
 };
 
 }  // namespace cryptohome
