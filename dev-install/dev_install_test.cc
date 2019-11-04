@@ -25,7 +25,6 @@ namespace {
 
 class DevInstallMock : public DevInstall {
  public:
-  MOCK_METHOD(int, Exec, (const std::vector<const char*>&), (override));
   MOCK_METHOD(bool, IsDevMode, (), (const, override));
   MOCK_METHOD(bool,
               PromptUser,
@@ -41,6 +40,7 @@ class DevInstallMock : public DevInstall {
               (const base::FilePath&),
               (override));
   MOCK_METHOD(bool, ConfigurePortage, (), (override));
+  MOCK_METHOD(bool, InstallExtraPackages, (), (override));
 };
 
 class DevInstallTest : public ::testing::Test {
@@ -59,6 +59,9 @@ class DevInstallTest : public ::testing::Test {
     // Ignore portage setup for most tests.
     ON_CALL(dev_install_, ConfigurePortage()).WillByDefault(Return(true));
 
+    // Ignore extra setup for most tests.
+    ON_CALL(dev_install_, InstallExtraPackages()).WillByDefault(Return(true));
+
     // Most tests should run with a path that doesn't exist.
     dev_install_.SetStateDirForTest(base::FilePath("/.path-does-not-exist"));
   }
@@ -71,22 +74,19 @@ class DevInstallTest : public ::testing::Test {
 
 // Check default run through.
 TEST_F(DevInstallTest, Run) {
-  EXPECT_CALL(dev_install_, Exec(_)).WillOnce(Return(1234));
-  EXPECT_EQ(1234, dev_install_.Run());
+  EXPECT_EQ(0, dev_install_.Run());
 }
 
 // Systems not in dev mode should abort.
 TEST_F(DevInstallTest, NonDevMode) {
   EXPECT_CALL(dev_install_, IsDevMode()).WillOnce(Return(false));
   EXPECT_CALL(dev_install_, ClearStateDir(_)).Times(0);
-  EXPECT_CALL(dev_install_, Exec(_)).Times(0);
   EXPECT_EQ(2, dev_install_.Run());
 }
 
 // Check system has been initialized.
 TEST_F(DevInstallTest, AlreadyInitialized) {
   dev_install_.SetStateDirForTest(base::FilePath("/"));
-  EXPECT_CALL(dev_install_, Exec(_)).Times(0);
   ASSERT_EQ(4, dev_install_.Run());
 }
 
@@ -94,15 +94,13 @@ TEST_F(DevInstallTest, AlreadyInitialized) {
 TEST_F(DevInstallTest, RunReinstallWorked) {
   dev_install_.SetReinstallForTest(true);
   EXPECT_CALL(dev_install_, ClearStateDir(_)).WillOnce(Return(true));
-  EXPECT_CALL(dev_install_, Exec(_)).WillOnce(Return(1234));
-  ASSERT_EQ(1234, dev_install_.Run());
+  ASSERT_EQ(0, dev_install_.Run());
 }
 
 // Check when --reinstall is requested but clearing fails.
 TEST_F(DevInstallTest, RunReinstallFails) {
   dev_install_.SetReinstallForTest(true);
   EXPECT_CALL(dev_install_, ClearStateDir(_)).WillOnce(Return(false));
-  EXPECT_CALL(dev_install_, Exec(_)).Times(0);
   ASSERT_EQ(1, dev_install_.Run());
 }
 
@@ -110,21 +108,18 @@ TEST_F(DevInstallTest, RunReinstallFails) {
 TEST_F(DevInstallTest, RunUninstall) {
   dev_install_.SetUninstallForTest(true);
   EXPECT_CALL(dev_install_, ClearStateDir(_)).WillOnce(Return(true));
-  EXPECT_CALL(dev_install_, Exec(_)).Times(0);
   ASSERT_EQ(0, dev_install_.Run());
 }
 
 // Stateful setup failures.
 TEST_F(DevInstallTest, StatefulSetupFailure) {
   EXPECT_CALL(dev_install_, InitializeStateDir(_)).WillOnce(Return(false));
-  EXPECT_CALL(dev_install_, Exec(_)).Times(0);
   ASSERT_EQ(5, dev_install_.Run());
 }
 
 // We only bootstrap before exiting.
 TEST_F(DevInstallTest, BootstrapOnly) {
   dev_install_.SetBootstrapForTest(true);
-  EXPECT_CALL(dev_install_, Exec(_)).Times(0);
   ASSERT_EQ(0, dev_install_.Run());
 }
 
@@ -132,15 +127,19 @@ TEST_F(DevInstallTest, BootstrapOnly) {
 TEST_F(DevInstallTest, BootstrapFailure) {
   EXPECT_CALL(dev_install_, DownloadAndInstallBootstrapPackages(_))
       .WillOnce(Return(false));
-  EXPECT_CALL(dev_install_, Exec(_)).Times(0);
   ASSERT_EQ(7, dev_install_.Run());
 }
 
 // Portage setup failures.
 TEST_F(DevInstallTest, PortageFailure) {
   EXPECT_CALL(dev_install_, ConfigurePortage()).WillOnce(Return(false));
-  EXPECT_CALL(dev_install_, Exec(_)).Times(0);
   ASSERT_EQ(8, dev_install_.Run());
+}
+
+// Extra package failures.
+TEST_F(DevInstallTest, ExtraPackagesFailure) {
+  EXPECT_CALL(dev_install_, InstallExtraPackages()).WillOnce(Return(false));
+  ASSERT_EQ(9, dev_install_.Run());
 }
 
 namespace {

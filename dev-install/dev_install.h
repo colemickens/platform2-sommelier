@@ -29,9 +29,6 @@ class DevInstall {
   // Run the dev_install routine.
   int Run();
 
-  // Exec the helper script.  Mostly for mocking.
-  virtual int Exec(const std::vector<const char*>& argv);
-
   // Whether the system is currently in dev mode.
   virtual bool IsDevMode() const;
 
@@ -67,6 +64,9 @@ class DevInstall {
 
   // Configure the portage tooling state.
   virtual bool ConfigurePortage();
+
+  // Install the extra set of packages.
+  virtual bool InstallExtraPackages();
 
   // Unittest helpers.
   void SetReinstallForTest(bool reinstall) { reinstall_ = reinstall; }

@@ -26,9 +26,6 @@ namespace dev_install {
 
 namespace {
 
-// The legacy dev_install shell script to be migrated here.
-constexpr char kDevInstallScript[] = "/usr/share/dev-install/main.sh";
-
 // The root path that we install our dev packages into.
 constexpr char kUsrLocal[] = "/usr/local";
 
@@ -417,10 +414,23 @@ bool DevInstall::ConfigurePortage() {
   return true;
 }
 
-int DevInstall::Exec(const std::vector<const char*>& argv) {
-  execv(kDevInstallScript, const_cast<char* const*>(argv.data()));
-  PLOG(ERROR) << kDevInstallScript << " failed";
-  return EXIT_FAILURE;
+bool DevInstall::InstallExtraPackages() {
+  if (!PromptUser(std::cin, "Install virtual/target-os-dev package now")) {
+    LOG(INFO) << "You can install virtual/target-os-dev later by running:\n"
+              << "emerge virtual/target-os-dev";
+    return true;
+  }
+
+  brillo::ProcessImpl emerge;
+  emerge.SetSearchPath(true);
+  emerge.AddArg("emerge");
+  emerge.AddArg("virtual/target-os-dev");
+  if (emerge.Run() != 0) {
+    LOG(ERROR) << "Could not install virtual/target-os-dev";
+    return false;
+  }
+
+  return true;
 }
 
 int DevInstall::Run() {
@@ -477,13 +487,11 @@ int DevInstall::Run() {
     return 8;
 
   LOG(INFO) << "Installing additional optional packages.";
-  std::vector<const char*> argv{kDevInstallScript};
+  if (!InstallExtraPackages())
+    return 9;
 
-  if (yes_)
-    argv.push_back("--yes");
-
-  argv.push_back(nullptr);
-  return Exec(argv);
+  LOG(INFO) << "Done! Enjoy! Or not, you choose!";
+  return 0;
 }
 
 }  // namespace dev_install
