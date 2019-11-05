@@ -14,6 +14,7 @@ unlinkat: 1
 execve: 1
 chdir: 1
 mount: 1
+faccessat: 1
 mkdirat: 1
 brk: 1
 # Allow ioctl(cmd==TCGETS) for isatty check in unrar code.
@@ -60,7 +61,9 @@ recvmsg: 1
 set_robust_list: 1
 pipe2: 1
 getpid: 1
+prlimit64: arg2 == 0 && arg3 != 0
 prctl: arg0 == PR_SET_NAME
 kill: arg1 == SIGTERM
 restart_syscall: 1
 clock_gettime: 1
+newfstatat: 1
