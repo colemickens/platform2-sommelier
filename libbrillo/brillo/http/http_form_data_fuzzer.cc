@@ -15,6 +15,7 @@
 
 namespace {
 constexpr int kRandomDataMaxLength = 64;
+constexpr int kMaxRecursionDepth = 256;
 
 std::unique_ptr<brillo::http::TextFormField> CreateTextFormField(
     FuzzedDataProvider* data_provider) {
@@ -39,7 +40,7 @@ std::unique_ptr<brillo::http::FileFormField> CreateFileFormField(
 }
 
 std::unique_ptr<brillo::http::MultiPartFormField> CreateMultipartFormField(
-    FuzzedDataProvider* data_provider) {
+    FuzzedDataProvider* data_provider, int depth) {
   std::unique_ptr<brillo::http::MultiPartFormField> multipart_field =
       std::make_unique<brillo::http::MultiPartFormField>(
           data_provider->ConsumeRandomLengthString(kRandomDataMaxLength),
@@ -57,9 +58,13 @@ std::unique_ptr<brillo::http::MultiPartFormField> CreateMultipartFormField(
       // Add a random file field to the form.
       multipart_field->AddCustomField(CreateFileFormField(data_provider));
     }
-    if (data_provider->ConsumeBool()) {
+    // Limit our recursion depth. We could make this part of our code iterative,
+    // but that won't help because in libbrillo we use recursion to generate the
+    // stream so we would hit a stack depth limit there as well.
+    if (depth < kMaxRecursionDepth && data_provider->ConsumeBool()) {
       // Add a random multipart form field to the form.
-      multipart_field->AddCustomField(CreateMultipartFormField(data_provider));
+      multipart_field->AddCustomField(
+          CreateMultipartFormField(data_provider, depth + 1));
     }
   }
 
@@ -100,7 +105,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     }
     if (data_provider.ConsumeBool()) {
       // Add a random multipart form field to the form.
-      form_data.AddCustomField(CreateMultipartFormField(&data_provider));
+      form_data.AddCustomField(CreateMultipartFormField(&data_provider, 0));
     }
   }
 
