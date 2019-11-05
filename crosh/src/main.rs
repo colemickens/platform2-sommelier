@@ -5,31 +5,31 @@
 mod base;
 mod dev;
 mod dispatcher;
-mod history;
 mod legacy;
 mod util;
 
 use std::env::var;
-use std::io::{self, stdin, stdout, Write};
+use std::io::{stdout, Write};
 use std::mem;
 use std::path::PathBuf;
 use std::ptr::null_mut;
 use std::sync::atomic::{AtomicI32, Ordering};
-use std::thread::sleep;
-use std::time::Duration;
 
 use libc::{
     c_int, fork, kill, pid_t, sigaction, waitpid, SA_RESTART, SIGHUP, SIGINT, SIGKILL, SIG_DFL,
     WIFSTOPPED,
 };
+
+use rustyline::completion::Completer;
+use rustyline::config::Configurer;
+use rustyline::error::ReadlineError;
+use rustyline::highlight::Highlighter;
+use rustyline::hint::Hinter;
+use rustyline::{CompletionType, Config, Context, Editor, Helper};
+
 use sys_util::error;
-use termion::event::Key;
-use termion::input::TermRead;
-use termion::raw::IntoRawMode;
-use termion::terminal_size;
 
 use crate::dispatcher::{CompletionResult, Dispatcher};
-use crate::history::History;
 
 const HISTORY_FILENAME: &str = ".crosh_history";
 
@@ -72,47 +72,40 @@ fn new_prompt() {
 
 static COMMAND_RUNNING_PID: AtomicI32 = AtomicI32::new(-1);
 
-// Print a slice of strings in columns of equal width. This is used to display command completion
-// results when there is more than one match.
-fn write_in_columns(
-    w: &mut dyn Write,
-    list: &[String],
-    width_opt: Option<usize>,
-) -> Result<(), io::Error> {
-    if list.is_empty() {
-        return writeln!(w, "\r");
-    }
-
-    let mut max_len: usize = 0;
-    for entry in list {
-        if entry.len() > max_len {
-            max_len = entry.len()
-        }
-    }
-
-    if let Some(width) = width_opt {
-        if max_len < width {
-            let columns = (width + 2) / (max_len + 2);
-            let mut col_x = 0;
-
-            for entry in &list[..list.len() - 1] {
-                col_x += 1;
-                if col_x == columns {
-                    writeln!(w, "{}\r", entry)?;
-                    col_x = 0
-                } else {
-                    write!(w, "{}{}  ", entry, " ".repeat(max_len - entry.len()))?;
-                }
-            }
-            return writeln!(w, "{}\r", list[list.len() - 1]);
-        }
-    }
-
-    for entry in &list[..list.len() - 1] {
-        write!(w, "{}  ", entry)?;
-    }
-    writeln!(w, "{}\r", list[list.len() - 1])
+// Provides integration with rustyline.
+struct ReadLineHelper {
+    dispatcher: Dispatcher,
 }
+
+impl ReadLineHelper {
+    fn dispatcher(&self) -> &Dispatcher {
+        &self.dispatcher
+    }
+}
+
+impl Helper for ReadLineHelper {}
+
+impl Completer for ReadLineHelper {
+    type Candidate = String;
+
+    fn complete(
+        &self,
+        line: &str,
+        _pos: usize,
+        _ctx: &Context<'_>,
+    ) -> Result<(usize, Vec<String>), ReadlineError> {
+        let tokens: Vec<String> = parse_command(&line);
+        match self.dispatcher.complete_command(tokens) {
+            CompletionResult::NoMatches => Ok((0, vec![line.to_string(); 1])),
+            CompletionResult::SingleDiff(diff) => Ok((line.len(), vec![diff; 1])),
+            CompletionResult::WholeTokenList(matches) => Ok((0, matches)),
+        }
+    }
+}
+
+impl Hinter for ReadLineHelper {}
+
+impl Highlighter for ReadLineHelper {}
 
 // Forks off a child process which executes the command handler and waits for it to return.
 // COMMAND_RUNNING_PID is updated to have the child process id so SIGINT can be sent.
@@ -265,109 +258,8 @@ fn parse_command(command: &str) -> Vec<String> {
     command.split_whitespace().map(|s| s.to_string()).collect()
 }
 
-// Handle user input to obtain a signal command. This includes handling cases like history lookups
-// and command completion.
-fn next_command(dispatcher: &Dispatcher, history: &mut History) -> String {
-    let mut stdin_keys = stdin().keys();
-    new_prompt();
-    let mut command = String::new();
-
-    // Reprint the command.
-    fn refresh_command(command: &str) {
-        print!("\r\x1b[K");
-        new_prompt();
-        print!("{}", command);
-    };
-
-    // Use the function scope to return stdout to normal mode before executing a command.
-    let mut stdout = stdout().into_raw_mode().unwrap();
-    loop {
-        if let Some(Ok(key)) = stdin_keys.next() {
-            match key {
-                Key::Char('\t') => {
-                    let tokens: Vec<String> = parse_command(&command);
-                    match dispatcher.complete_command(tokens) {
-                        CompletionResult::NoMatches => {
-                            println!("\r");
-                            new_prompt();
-                            print!("{}", command);
-                        }
-                        CompletionResult::SingleDiff(diff) => {
-                            command.push_str(&diff);
-                            print!("{}", diff);
-                        }
-                        CompletionResult::WholeTokenList(matches) => {
-                            println!("\r");
-                            write_in_columns(
-                                &mut stdout,
-                                &matches,
-                                match terminal_size() {
-                                    Ok((w, _height)) => Some(w as usize),
-                                    _ => None,
-                                },
-                            )
-                            .unwrap_or(());
-                            new_prompt();
-                            print!("{}", command);
-                        }
-                    }
-                }
-                Key::Char('\n') => {
-                    print!("\n\r");
-                    if !command.is_empty() {
-                        break;
-                    } else {
-                        new_prompt();
-                    }
-                }
-                Key::Char(value) => {
-                    print!("{}", value);
-                    command.push(value);
-                }
-                Key::Ctrl('h') | Key::Backspace => {
-                    if !command.is_empty() {
-                        command.pop();
-                        // Move cursor back one and clear rest of line.
-                        print!("\x1b[D\x1b[K");
-                    }
-                }
-                Key::Ctrl('d') => {
-                    if command.is_empty() {
-                        command = "exit".to_owned();
-                        println!("\n\r");
-                        break;
-                    }
-                }
-                Key::Up => {
-                    if let Some(prev) = history.previous(&command) {
-                        command = prev.to_string();
-                        refresh_command(prev);
-                    }
-                }
-                Key::Down => {
-                    if let Some(next) = history.next() {
-                        command = next.to_string();
-                        refresh_command(next);
-                    }
-                }
-                _ => {
-                    // Ignore
-                }
-            }
-            let _ = stdout.flush();
-        } else {
-            // If no input was returned, don't busy wait because stdin_keys.next() doesn't block.
-            sleep(Duration::from_millis(25));
-        }
-    }
-    let _ = stdout.flush();
-    history.new_entry(command.to_string());
-    command
-}
-
 // Loop for getting each command from the user and dispatching it to the handler.
 fn input_loop(dispatcher: Dispatcher) {
-    let mut history = History::new();
     let history_path = match var("HOME") {
         Ok(h) => {
             if h.is_empty() {
@@ -378,24 +270,53 @@ fn input_loop(dispatcher: Dispatcher) {
         }
         _ => None,
     };
+
+    let helper = ReadLineHelper { dispatcher };
+
+    let mut builder = Config::builder()
+        .auto_add_history(true)
+        .history_ignore_dups(true)
+        .history_ignore_space(true)
+        .completion_type(CompletionType::List);
+    builder.set_max_history_size(4096);
+
+    let config = builder.build();
+    let mut editor = Editor::<ReadLineHelper>::with_config(config);
+    editor.set_helper(Some(helper));
+
     if let Some(h) = history_path.as_ref() {
-        if let Err(e) = history.load_from_file(h.as_path()) {
+        if let Err(e) = editor.load_history(h) {
             eprintln!("Error loading history: {}", e);
         }
     }
 
     loop {
-        let line = next_command(&dispatcher, &mut history);
-        let command = line.trim();
-
-        if command == "exit" || command == "quit" {
-            break;
-        } else if !command.is_empty() {
-            let _ = handle_cmd(&dispatcher, parse_command(&command));
-            if let Some(h) = history_path.as_ref() {
-                if let Err(e) = history.persist_to_file(h.as_path()) {
-                    eprintln!("Error persisting history: {}", e);
+        match editor.readline("\x1b[1;33mcrosh>\x1b[0m ") {
+            Ok(line) => {
+                let command = line.trim();
+                if command == "exit" || command == "quit" {
+                    break;
+                } else if !command.is_empty() {
+                    let _ = handle_cmd(
+                        editor.helper().unwrap().dispatcher(),
+                        parse_command(&command),
+                    );
+                    if let Some(h) = history_path.as_ref() {
+                        if let Err(e) = editor.save_history(h) {
+                            eprintln!("Error persisting history: {}", e);
+                        }
+                    }
                 }
+            }
+            Err(ReadlineError::Interrupted) => {
+                // Ignore.
+            }
+            Err(ReadlineError::Eof) => {
+                break;
+            }
+            Err(err) => {
+                eprintln!("ReadLine error: {}", err);
+                break;
             }
         }
     }
@@ -493,37 +414,10 @@ fn main() -> Result<(), ()> {
 mod tests {
     use super::*;
 
-    use std::io::Cursor;
-    use std::str::from_utf8;
-
     #[test]
     fn test_validate_registered_commands() {
         util::set_dev_commands_included(true);
         util::set_usb_commands_included(true);
         setup_dispatcher();
-    }
-
-    #[test]
-    fn test_write_in_columns_no_width() {
-        let mut output = Cursor::new(Vec::new());
-        assert!(write_in_columns(
-            &mut output,
-            &["a".to_string(), "bb".to_string(), "ccc".to_string()],
-            None
-        )
-        .is_ok());
-        assert_eq!(from_utf8(output.get_ref()).unwrap(), "a  bb  ccc\r\n");
-    }
-
-    #[test]
-    fn test_write_in_columns_width() {
-        let mut output = Cursor::new(Vec::new());
-        assert!(write_in_columns(
-            &mut output,
-            &["a".to_string(), "bb".to_string(), "ccc".to_string()],
-            Some(10)
-        )
-        .is_ok());
-        assert_eq!(from_utf8(output.get_ref()).unwrap(), "a    bb\r\nccc\r\n");
     }
 }
