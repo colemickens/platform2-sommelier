@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <brillo/dbus/dbus_param_reader.h>
@@ -58,10 +59,9 @@ void ConnectToSignal(
 
   // Register our stub handler with D-Bus ObjectProxy.
   object_proxy->ConnectToSignal(
-      interface_name,
-      signal_name,
+      interface_name, signal_name,
       base::Bind(dbus_signal_callback, signal_callback_wrapper),
-      on_connected_callback);
+      std::move(on_connected_callback));
 }
 
 }  // namespace dbus_utils

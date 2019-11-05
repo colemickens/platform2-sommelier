@@ -263,14 +263,14 @@ class AsyncDBusMethodInvokerTest : public testing::Test {
           auto response = Response::CreateEmpty();
           MessageWriter writer(response.get());
           writer.AppendString(std::to_string(v1 + v2));
-          success_callback.Run(response.get());
+          std::move(success_callback).Run(response.get());
         }
         return;
       } else if (method_call->GetMember() == kTestMethod2) {
         method_call->SetSerial(123);
         auto error_response = dbus::ErrorResponse::FromMethodCall(
             method_call, "org.MyError", "My error message");
-        error_callback.Run(error_response.get());
+        std::move(error_callback).Run(error_response.get());
         return;
       }
     }

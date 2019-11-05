@@ -226,7 +226,8 @@ void BaseMessageLoop::BreakLoop() {
 
 Closure BaseMessageLoop::QuitClosure() const {
   if (base_run_loop_ == nullptr)
-    return base::Bind(&base::DoNothing);
+    // TODO(crbug.com/909719): Replace by base::DoNothing.
+    return base::Bind([]() {});
   return base_run_loop_->QuitClosure();
 }
 

@@ -299,8 +299,9 @@ inline void CallMethodWithTimeout(
   ::dbus::ObjectProxy::ResponseCallback dbus_success_callback = base::Bind(
       &TranslateSuccessResponse<OutArgs...>, success_callback, error_callback);
 
-  object->CallMethodWithErrorCallback(
-      &method_call, timeout_ms, dbus_success_callback, dbus_error_callback);
+  object->CallMethodWithErrorCallback(&method_call, timeout_ms,
+                                      std::move(dbus_success_callback),
+                                      std::move(dbus_error_callback));
 }
 
 // Same as CallMethodWithTimeout() but uses a default timeout value.

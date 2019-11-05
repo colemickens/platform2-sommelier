@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -33,10 +34,10 @@ class HttpProxyTest : public testing::Test {
                                 int timeout_msec,
                                 dbus::ObjectProxy::ResponseCallback callback) {
     if (null_dbus_response_) {
-      callback.Run(nullptr);
+      std::move(callback).Run(nullptr);
       return;
     }
-    callback.Run(CreateDBusResponse(method_call).get());
+    std::move(callback).Run(CreateDBusResponse(method_call).get());
   }
 
   dbus::Response* ResolveProxyHandler(dbus::MethodCall* method_call,

@@ -116,7 +116,8 @@ TYPED_TEST(MessageLoopTest, PostDelayedTaskRunsEventuallyTest) {
 // MessageLoop. This is important because only one of the two methods is
 // virtual, so you need to unhide the other when overriding the virtual one.
 TYPED_TEST(MessageLoopTest, PostDelayedTaskWithoutLocation) {
-  this->loop_->PostDelayedTask(Bind(&base::DoNothing), TimeDelta());
+  // TODO(crbug.com/909719): Replace by base::DoNothing.
+  this->loop_->PostDelayedTask(Bind([]() {}), TimeDelta());
   EXPECT_EQ(1, MessageLoopRunMaxIterations(this->loop_.get(), 100));
 }
 

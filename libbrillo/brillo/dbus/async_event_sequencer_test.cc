@@ -4,6 +4,7 @@
 
 #include <brillo/dbus/async_event_sequencer.h>
 
+#include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
