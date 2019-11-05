@@ -202,12 +202,6 @@ class CellularCapability3gppTest : public testing::TestWithParam<string> {
                                 int timeout) {
     callback.Run(Error(Error::kWrongState));
   }
-  void InvokeRegister(const string& operator_id,
-                      Error* error,
-                      const ResultCallback& callback,
-                      int timeout) {
-    callback.Run(Error());
-  }
   void InvokeSetPowerState(const uint32_t& power_state,
                            Error* error,
                            const ResultCallback& callback,
