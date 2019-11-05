@@ -134,29 +134,9 @@ Methods		dict GetProperties()
 
 		void ActivateCellularModem(string carrier)
 
-			Activate a cellular modem on the provided carrier.
+			Deprecated, do not use.
 
-			This method returns immediately.  The caller
-			can either poll the Cellular.ActivationState
-			property, or monitor the PropertyChanged
-			signal to know when and if the
-			ActivateCellularModem call succeeded.
-
-			The correct carrier specific modem firmware
-			must already be loaded before this method is
-			called.
-
-			If this method is called for a non-cellular
-			service or on a service associated with a
-			non-CDMA device, it will return a NotSupported
-			error.
-
-			If the device is already activated nothing is returned.
-			but if the device needs to be activated an InProgress
-			error is returned.
-
-			Expected Result: [service].Error.InProgress
-			Possible Errors: [service].Error.NotSupported
+			Expected Result: [service].Error.NotSupported
 
 		void CompleteCellularActivation()
 

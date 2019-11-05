@@ -67,7 +67,7 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::ServiceAdaptor,
   bool Connect(brillo::ErrorPtr* error) override;
   bool Disconnect(brillo::ErrorPtr* error) override;
   bool Remove(brillo::ErrorPtr* error) override;
-  void ActivateCellularModem(DBusMethodResponsePtr<> response,
+  bool ActivateCellularModem(brillo::ErrorPtr* error,
                              const std::string& carrier) override;
   bool CompleteCellularActivation(brillo::ErrorPtr* error) override;
   bool GetLoadableProfileEntries(
