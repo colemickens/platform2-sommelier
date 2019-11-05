@@ -272,11 +272,8 @@ MountErrorType DiskManager::DoMount(const std::string& source_path,
   return MOUNT_ERROR_NONE;
 }
 
-MountErrorType DiskManager::DoUnmount(const std::string& path,
-                                      const std::vector<std::string>& options) {
+MountErrorType DiskManager::DoUnmount(const std::string& path) {
   CHECK(!path.empty()) << "Invalid path argument";
-
-  LOG_IF(WARNING, !options.empty()) << "Ignoring non-empty unmount options";
 
   // The USB or SD drive on some system may be powered off after the system
   // goes into the S3 suspend state. To avoid leaving a mount point in a stale

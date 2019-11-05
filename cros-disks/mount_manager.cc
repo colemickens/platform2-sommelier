@@ -36,8 +36,6 @@ const mode_t kMountDirectoryPermissions = S_IRWXU | S_IRWXG;
 const char kMountOptionMountLabelPrefix[] = "mountlabel=";
 // Literal for mount option: "remount".
 const char kMountOptionRemount[] = "remount";
-// Literal for unmount option: "lazy".
-const char kUnmountOptionLazy[] = "lazy";
 // Maximum number of trials on creating a mount directory using
 // Platform::CreateOrReuseEmptyDirectoryWithFallback().
 // A value of 100 seems reasonable and enough to handle directory name
@@ -241,8 +239,7 @@ MountErrorType MountManager::MountNewSource(
   return error_type;
 }
 
-MountErrorType MountManager::Unmount(const std::string& path,
-                                     const std::vector<std::string>& options) {
+MountErrorType MountManager::Unmount(const std::string& path) {
   if (path.empty()) {
     LOG(ERROR) << "Failed to unmount an empty path";
     return MOUNT_ERROR_INVALID_ARGUMENT;
@@ -264,7 +261,7 @@ MountErrorType MountManager::Unmount(const std::string& path,
               << "' from the reserved list";
     UnreserveMountPath(mount_path);
   } else {
-    error_type = DoUnmount(mount_path, options);
+    error_type = DoUnmount(mount_path);
 
     if (error_type != MOUNT_ERROR_NONE &&
         error_type != MOUNT_ERROR_PATH_NOT_MOUNTED) {
@@ -287,12 +284,11 @@ MountErrorType MountManager::Unmount(const std::string& path,
 
 bool MountManager::UnmountAll() {
   bool all_umounted = true;
-  std::vector<std::string> options;
   // Make a copy of the mount path cache before iterating through it
   // as Unmount modifies the cache.
   MountStateMap mount_states_copy = mount_states_;
   for (const auto& mount_state : mount_states_copy) {
-    if (Unmount(mount_state.first, options) != MOUNT_ERROR_NONE) {
+    if (Unmount(mount_state.first) != MOUNT_ERROR_NONE) {
       all_umounted = false;
     }
   }
@@ -419,22 +415,6 @@ bool MountManager::ExtractMountLabelFromOptions(
     option_iterator = options->erase(option_iterator);
   }
   return found_mount_label;
-}
-
-bool MountManager::ExtractUnmountOptions(
-    const std::vector<std::string>& options, int* unmount_flags) const {
-  CHECK(unmount_flags) << "Invalid unmount flags argument";
-
-  *unmount_flags = 0;
-  for (const auto& option : options) {
-    if (option == kUnmountOptionLazy) {
-      *unmount_flags |= MNT_DETACH;
-    } else {
-      LOG(ERROR) << "Got unsupported unmount option: " << option;
-      return false;
-    }
-  }
-  return true;
 }
 
 bool MountManager::ShouldReserveMountPathOnError(

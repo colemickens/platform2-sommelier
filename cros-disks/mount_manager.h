@@ -116,11 +116,10 @@ class MountManager {
                        const std::vector<std::string>& options,
                        std::string* mount_path);
 
-  // Unmounts |path|, which can be a source path or a mount path,
-  // with |options|. If the mount path is reserved during Mount(),
-  // this method releases the reserved mount path.
-  MountErrorType Unmount(const std::string& path,
-                         const std::vector<std::string>& options);
+  // Unmounts |path|, which can be a source path or a mount path. If the mount
+  // path is reserved during Mount(), this method releases the reserved mount
+  // path.
+  MountErrorType Unmount(const std::string& path);
 
   // Unmounts all mounted paths.
   virtual bool UnmountAll();
@@ -202,9 +201,8 @@ class MountManager {
                                  const std::string& mount_path,
                                  MountOptions* applied_options) = 0;
 
-  // Implemented by a derived class to unmount |path| with |options|.
-  virtual MountErrorType DoUnmount(const std::string& path,
-                                   const std::vector<std::string>& options) = 0;
+  // Implemented by a derived class to unmount |path|.
+  virtual MountErrorType DoUnmount(const std::string& path) = 0;
 
   // Returns a suggested mount path for |source_path|.
   virtual std::string SuggestMountPath(
@@ -217,10 +215,6 @@ class MountManager {
   // is set to the last mount label value.
   bool ExtractMountLabelFromOptions(std::vector<std::string>* options,
                                     std::string* mount_label) const;
-
-  // Extracts unmount flags for umount() from an array of options.
-  virtual bool ExtractUnmountOptions(const std::vector<std::string>& options,
-                                     int* unmount_flags) const;
 
   // Returns true if the manager should reserve a mount path if the mount
   // operation returns a particular type of error. The default implementation
@@ -277,8 +271,6 @@ class MountManager {
   FRIEND_TEST(MountManagerTest, ExtractMountLabelFromOptions);
   FRIEND_TEST(MountManagerTest, ExtractMountLabelFromOptionsWithNoMountLabel);
   FRIEND_TEST(MountManagerTest, ExtractMountLabelFromOptionsWithTwoMountLabels);
-  FRIEND_TEST(MountManagerTest, ExtractSupportedUnmountOptions);
-  FRIEND_TEST(MountManagerTest, ExtractUnsupportedUnmountOptions);
   FRIEND_TEST(MountManagerTest, IsPathImmediateChildOfParent);
   FRIEND_TEST(MountManagerTest, IsValidMountPath);
 

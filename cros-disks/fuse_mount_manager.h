@@ -57,10 +57,8 @@ class FUSEMountManager : public MountManager {
                          const std::string& mount_path,
                          MountOptions* applied_options) override;
 
-  // Unmounts |path| with |options|. Returns true if |path| is unmounted
-  // successfully.
-  MountErrorType DoUnmount(const std::string& path,
-                           const std::vector<std::string>& options) override;
+  // Unmounts |path|. Returns true if |path| is unmounted successfully.
+  MountErrorType DoUnmount(const std::string& path) override;
 
   // Returns a suggested mount path for a source.
   std::string SuggestMountPath(const std::string& source) const override;

@@ -166,11 +166,8 @@ MountErrorType ArchiveManager::DoMount(const std::string& source_path,
   return MOUNT_ERROR_NONE;
 }
 
-MountErrorType ArchiveManager::DoUnmount(
-    const std::string& path, const std::vector<std::string>& options) {
+MountErrorType ArchiveManager::DoUnmount(const std::string& path) {
   CHECK(!path.empty()) << "Invalid path argument";
-
-  LOG_IF(WARNING, !options.empty()) << "Ignoring non-empty unmount options";
 
   // Since all archives are read-only, always use lazy unmount.
   const MountErrorType error = platform()->Unmount(path, MNT_DETACH);

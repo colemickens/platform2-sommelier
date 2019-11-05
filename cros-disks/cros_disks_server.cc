@@ -125,10 +125,12 @@ void CrosDisksServer::Mount(const std::string& source,
 
 uint32_t CrosDisksServer::Unmount(const std::string& path,
                                   const std::vector<std::string>& options) {
+  LOG_IF(WARNING, !options.empty()) << "Ignoring non-empty unmount options";
+
   MountErrorType error_type = MOUNT_ERROR_INVALID_PATH;
   for (const auto& manager : mount_managers_) {
     if (manager->CanUnmount(path)) {
-      error_type = manager->Unmount(path, options);
+      error_type = manager->Unmount(path);
       break;
     }
   }

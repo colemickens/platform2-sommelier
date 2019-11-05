@@ -272,23 +272,13 @@ TEST_F(DiskManagerTest, DoMountDiskWithNonexistentSourcePath) {
                              &applied_options));
 }
 
-TEST_F(DiskManagerTest, DoUnmountDiskWithInvalidUnmountOptions) {
-  std::string source_path = "/dev/nonexistent-path";
-  EXPECT_CALL(platform_, Unmount(source_path, 0))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
-
-  // Unmount options are ignored.
-  EXPECT_EQ(MOUNT_ERROR_NONE,
-            manager_.DoUnmount(source_path, {"invalid-unmount-option"}));
-}
-
 TEST_F(DiskManagerTest, DoUnmountDiskWithBusyRetry) {
   std::string source_path = "/dev/mount-path";
   EXPECT_CALL(platform_, Unmount(source_path, 0))
       .WillOnce(Return(MOUNT_ERROR_PATH_ALREADY_MOUNTED));
   EXPECT_CALL(platform_, Unmount(source_path, MNT_DETACH))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-  EXPECT_EQ(MOUNT_ERROR_NONE, manager_.DoUnmount(source_path, {}));
+  EXPECT_EQ(MOUNT_ERROR_NONE, manager_.DoUnmount(source_path));
 }
 
 TEST_F(DiskManagerTest, ScheduleEjectOnUnmount) {

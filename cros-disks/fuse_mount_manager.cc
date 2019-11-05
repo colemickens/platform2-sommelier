@@ -104,12 +104,9 @@ MountErrorType FUSEMountManager::DoMount(
   return mounter->Mount();
 }
 
-MountErrorType FUSEMountManager::DoUnmount(
-    const std::string& path, const std::vector<std::string>& options) {
+MountErrorType FUSEMountManager::DoUnmount(const std::string& path) {
   // DoUnmount() is always called with |path| being the mount path.
   CHECK(!path.empty()) << "Invalid path argument";
-
-  LOG_IF(WARNING, !options.empty()) << "Ignoring non-empty unmount options";
 
   // We take a 2-step approach to unmounting network FUSE filesystems. First,
   // try a normal unmount. This lets the VFS flush any pending data and lets the

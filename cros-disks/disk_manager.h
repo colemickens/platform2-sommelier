@@ -73,9 +73,8 @@ class DiskManager : public MountManager {
                          const std::string& mount_path,
                          MountOptions* applied_options) override;
 
-  // Unmounts |path| with |options|.
-  MountErrorType DoUnmount(const std::string& path,
-                           const std::vector<std::string>& options) override;
+  // Unmounts |path|.
+  MountErrorType DoUnmount(const std::string& path) override;
 
   // Returns a suggested mount path for a source path.
   std::string SuggestMountPath(const std::string& source_path) const override;
@@ -127,7 +126,6 @@ class DiskManager : public MountManager {
   FRIEND_TEST(DiskManagerTest, GetFilesystem);
   FRIEND_TEST(DiskManagerTest, RegisterFilesystem);
   FRIEND_TEST(DiskManagerTest, DoMountDiskWithNonexistentSourcePath);
-  FRIEND_TEST(DiskManagerTest, DoUnmountDiskWithInvalidUnmountOptions);
   FRIEND_TEST(DiskManagerTest, DoUnmountDiskWithBusyRetry);
   FRIEND_TEST(DiskManagerTest, ScheduleEjectOnUnmount);
   FRIEND_TEST(DiskManagerTest, EjectDeviceOfMountPath);
