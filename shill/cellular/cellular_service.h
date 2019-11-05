@@ -39,9 +39,6 @@ class CellularService : public Service {
 
   // Inherited from Service.
   void AutoConnect() override;
-  void ActivateCellularModem(const std::string& carrier,
-                             Error* error,
-                             const ResultCallback& callback) override;
   void CompleteCellularActivation(Error* error) override;
 
   std::string GetStorageIdentifier() const override;

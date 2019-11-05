@@ -104,13 +104,6 @@ class CellularCapability {
   // Returns true if the modem is being activated.
   virtual bool IsActivating() const = 0;
 
-  // Activates the modem.
-  //
-  // The default implementation fails by returning kNotSupported via |error|.
-  virtual void Activate(const std::string& carrier,
-                        Error* error,
-                        const ResultCallback& callback);
-
   // Initiates the necessary to steps to verify that the cellular service has
   // been activated. Once these steps have been completed, the service should
   // be marked as activated.

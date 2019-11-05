@@ -114,11 +114,6 @@ class Cellular : public Device,
   // |error| on failure, leaves it unchanged otherwise.
   virtual void Disconnect(Error* error, const char* reason);
 
-  // Asynchronously activates the modem. Returns an error on failure.
-  void Activate(const std::string& carrier,
-                Error* error,
-                const ResultCallback& callback);
-
   // Performs the necessary steps to bring the service to the activated state,
   // once an online payment has been done.
   void CompleteActivation(Error* error);

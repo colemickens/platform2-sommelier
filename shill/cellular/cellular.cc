@@ -386,12 +386,6 @@ void Cellular::StopModemCallback(const EnabledStateChangedCallback& callback,
   manager()->RemoveTerminationAction(link_name());
 }
 
-void Cellular::Activate(const string& carrier,
-                        Error* error,
-                        const ResultCallback& callback) {
-  capability_->Activate(carrier, error, callback);
-}
-
 void Cellular::CompleteActivation(Error* error) {
   capability_->CompleteActivation(error);
 }

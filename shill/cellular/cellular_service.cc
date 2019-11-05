@@ -354,12 +354,6 @@ void CellularService::OnDisconnect(Error* error, const char* reason) {
   cellular_->Disconnect(error, reason);
 }
 
-void CellularService::ActivateCellularModem(const string& carrier,
-                                            Error* error,
-                                            const ResultCallback& callback) {
-  cellular_->Activate(carrier, error, callback);
-}
-
 void CellularService::CompleteCellularActivation(Error* error) {
   cellular_->CompleteActivation(error);
 }

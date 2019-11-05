@@ -177,10 +177,6 @@ class Service : public base::RefCounted<Service> {
   // for auto-connect until a subsequent call to Connect, or Load.
   mockable void UserInitiatedDisconnect(const char* reason, Error* error);
 
-  // The default implementation returns the error kInvalidArguments.
-  virtual void ActivateCellularModem(const std::string& carrier,
-                                     Error* error,
-                                     const ResultCallback& callback);
   // The default implementation returns the error kNotSupported.
   virtual void CompleteCellularActivation(Error* error);
 

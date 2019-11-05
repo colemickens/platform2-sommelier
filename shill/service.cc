@@ -387,13 +387,6 @@ void Service::UserInitiatedDisconnect(const char* reason, Error* error) {
   Disconnect(error, reason);
 }
 
-void Service::ActivateCellularModem(const string& /*carrier*/,
-                                    Error* error,
-                                    const ResultCallback& /*callback*/) {
-  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                        "Service doesn't support cellular modem activation.");
-}
-
 void Service::CompleteCellularActivation(Error* error) {
   Error::PopulateAndLog(
       FROM_HERE, error, Error::kNotSupported,

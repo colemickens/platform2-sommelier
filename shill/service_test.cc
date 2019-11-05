@@ -841,14 +841,6 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
   Mock::VerifyAndClearExpectations(metrics());
 }
 
-TEST_F(ServiceTest, ActivateCellularModem) {
-  ResultCallback callback = Bind(&ServiceTest::TestCallback, Unretained(this));
-  EXPECT_CALL(*this, TestCallback(_)).Times(0);
-  Error error;
-  service_->ActivateCellularModem("Carrier", &error, callback);
-  EXPECT_TRUE(error.IsFailure());
-}
-
 TEST_F(ServiceTest, CompleteCellularActivation) {
   Error error;
   service_->CompleteCellularActivation(&error);
