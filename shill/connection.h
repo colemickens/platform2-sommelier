@@ -140,6 +140,14 @@ class Connection : public base::RefCounted<Connection> {
                            const IPAddress& gateway);
   void SetMTU(int32_t mtu);
 
+  // Allow for traffic corresponding to this Connection to match with
+  // |table_id|. Note that this does *not* necessarily imply that the traffic
+  // will actually be routed through a route in |table_id|. For example, if the
+  // traffic matches one of the excluded destination addresses set up in
+  // SetupExcludedRoutes, then no routes in the per-Device table for this
+  // Connection will be used for that traffic.
+  void AllowTrafficThrough(uint32_t table_id, uint32_t base_priority);
+
   // Send our DNS configuration to the resolver.
   void PushDNSConfig();
 

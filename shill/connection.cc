@@ -288,10 +288,37 @@ void Connection::UpdateRoutingPolicy() {
     }
   }
 
+  AllowTrafficThrough(table_id_, metric_ + blackhole_offset);
+
+  if (use_if_addrs_ && is_primary_physical_) {
+    // Main routing table contains kernel-added routes for source address
+    // selection. Sending traffic there before all other rules for physical
+    // interfaces (but after any VPN rules) ensures that physical interface
+    // rules are not inadvertently too aggressive.
+    auto main_table_rule =
+        RoutingPolicyEntry::CreateFromSrc(IPAddress(IPAddress::kFamilyIPv4))
+            .SetPriority(metric_ + blackhole_offset - 1)
+            .SetTable(RT_TABLE_MAIN);
+    routing_table_->AddRule(interface_index_, main_table_rule);
+    routing_table_->AddRule(interface_index_, main_table_rule.FlipFamily());
+    // Add a default routing rule to use the primary interface if there is
+    // nothing better.
+    // TODO(crbug.com/999589) Remove this rule.
+    auto catch_all_rule =
+        RoutingPolicyEntry::CreateFromSrc(IPAddress(IPAddress::kFamilyIPv4))
+            .SetTable(table_id_)
+            .SetPriority(RoutingTable::kRulePriorityMain - 1);
+    routing_table_->AddRule(interface_index_, catch_all_rule);
+    routing_table_->AddRule(interface_index_, catch_all_rule.FlipFamily());
+  }
+}
+
+void Connection::AllowTrafficThrough(uint32_t table_id,
+                                     uint32_t base_priority) {
   for (const auto& uid : allowed_uids_) {
     auto entry = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
-                     .SetPriority(metric_ + blackhole_offset)
-                     .SetTable(table_id_)
+                     .SetPriority(base_priority)
+                     .SetTable(table_id)
                      .SetUid(uid);
     routing_table_->AddRule(interface_index_, entry);
     routing_table_->AddRule(interface_index_, entry.FlipFamily());
@@ -299,8 +326,8 @@ void Connection::UpdateRoutingPolicy() {
 
   for (const auto& interface_name : allowed_iifs_) {
     auto entry = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
-                     .SetPriority(metric_ + blackhole_offset)
-                     .SetTable(table_id_)
+                     .SetPriority(base_priority)
+                     .SetTable(table_id)
                      .SetIif(interface_name);
     routing_table_->AddRule(interface_index_, entry);
     routing_table_->AddRule(interface_index_, entry.FlipFamily());
@@ -309,45 +336,23 @@ void Connection::UpdateRoutingPolicy() {
   for (const auto& source_address : allowed_addrs_) {
     routing_table_->AddRule(interface_index_,
                             RoutingPolicyEntry::CreateFromSrc(source_address)
-                                .SetPriority(metric_ + blackhole_offset)
-                                .SetTable(table_id_));
+                                .SetPriority(base_priority)
+                                .SetTable(table_id));
   }
 
   // Add output interface rule for all interfaces, such that SO_BINDTODEVICE can
   // be used without explicitly binding the socket.
   auto oif_rule =
       RoutingPolicyEntry::CreateFromSrc(IPAddress(IPAddress::kFamilyIPv4))
-          .SetTable(table_id_)
-          .SetPriority(metric_ + blackhole_offset)
+          .SetTable(table_id)
+          .SetPriority(base_priority)
           .SetOif(interface_name_);
   routing_table_->AddRule(interface_index_, oif_rule);
   routing_table_->AddRule(interface_index_, oif_rule.FlipFamily());
 
   if (use_if_addrs_) {
-    if (is_primary_physical_) {
-      // Main routing table contains kernel-added routes for source address
-      // selection. Sending traffic there before all other rules for physical
-      // interfaces (but after any VPN rules) ensures that physical interface
-      // rules are not inadvertently too aggressive.
-      auto main_table_rule =
-          RoutingPolicyEntry::CreateFromSrc(IPAddress(IPAddress::kFamilyIPv4))
-              .SetPriority(metric_ + blackhole_offset - 1)
-              .SetTable(RT_TABLE_MAIN);
-      routing_table_->AddRule(interface_index_, main_table_rule);
-      routing_table_->AddRule(interface_index_, main_table_rule.FlipFamily());
-      // Add a default routing rule to use the primary interface if there is
-      // nothing better.
-      auto catch_all_rule =
-          RoutingPolicyEntry::CreateFromSrc(IPAddress(IPAddress::kFamilyIPv4))
-              .SetTable(table_id_)
-              .SetPriority(RoutingTable::kRulePriorityMain - 1);
-      routing_table_->AddRule(interface_index_, catch_all_rule);
-      routing_table_->AddRule(interface_index_, catch_all_rule.FlipFamily());
-    }
-
-    // Otherwise, only select the per-device table if the outgoing packet's
-    // src address matches the interface's addresses or the input interface is
-    // this interface.
+    // Select the per-device table if the outgoing packet's src address matches
+    // the interface's addresses or the input interface is this interface.
     //
     // TODO(crbug.com/941597) This may need to change when NDProxy allows guests
     // to provision IPv6 addresses.
@@ -357,13 +362,13 @@ void Connection::UpdateRoutingPolicy() {
     for (const auto& data : addr_data) {
       routing_table_->AddRule(interface_index_,
                               RoutingPolicyEntry::CreateFromSrc(data.address)
-                                  .SetTable(table_id_)
-                                  .SetPriority(metric_ + blackhole_offset));
+                                  .SetTable(table_id)
+                                  .SetPriority(base_priority));
     }
     auto iif_rule =
         RoutingPolicyEntry::CreateFromSrc(IPAddress(IPAddress::kFamilyIPv4))
-            .SetTable(table_id_)
-            .SetPriority(metric_ + blackhole_offset)
+            .SetTable(table_id)
+            .SetPriority(base_priority)
             .SetIif(interface_name_);
     routing_table_->AddRule(interface_index_, iif_rule);
     routing_table_->AddRule(interface_index_, iif_rule.FlipFamily());
