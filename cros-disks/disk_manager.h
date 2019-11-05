@@ -128,6 +128,7 @@ class DiskManager : public MountManager {
   FRIEND_TEST(DiskManagerTest, RegisterFilesystem);
   FRIEND_TEST(DiskManagerTest, DoMountDiskWithNonexistentSourcePath);
   FRIEND_TEST(DiskManagerTest, DoUnmountDiskWithInvalidUnmountOptions);
+  FRIEND_TEST(DiskManagerTest, DoUnmountDiskWithBusyRetry);
   FRIEND_TEST(DiskManagerTest, ScheduleEjectOnUnmount);
   FRIEND_TEST(DiskManagerTest, EjectDeviceOfMountPath);
   FRIEND_TEST(DiskManagerTest, EjectDeviceOfMountPathWhenEjectFailed);

@@ -36,8 +36,6 @@ namespace {
 
 const char kMountRootDirectory[] = "/media/removable";
 
-}  // namespace
-
 class MockDeviceEjector : public DeviceEjector {
  public:
   MockDeviceEjector() : DeviceEjector(nullptr) {}
@@ -58,6 +56,18 @@ class MockDiskMonitor : public DiskMonitor {
               (const, override));
 };
 
+class MockPlatform : public Platform {
+ public:
+  MockPlatform() = default;
+
+  MOCK_METHOD(MountErrorType,
+              Unmount,
+              (const std::string&, int),
+              (const, override));
+};
+
+}  // namespace
+
 class DiskManagerTest : public ::testing::Test {
  public:
   DiskManagerTest()
@@ -70,7 +80,7 @@ class DiskManagerTest : public ::testing::Test {
 
  protected:
   Metrics metrics_;
-  Platform platform_;
+  MockPlatform platform_;
   brillo::ProcessReaper process_reaper_;
   MockDeviceEjector ejector_;
   MockDiskMonitor monitor_;
@@ -264,9 +274,21 @@ TEST_F(DiskManagerTest, DoMountDiskWithNonexistentSourcePath) {
 
 TEST_F(DiskManagerTest, DoUnmountDiskWithInvalidUnmountOptions) {
   std::string source_path = "/dev/nonexistent-path";
-  std::vector<std::string> options = {"invalid-unmount-option"};
-  EXPECT_EQ(MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS,
-            manager_.DoUnmount(source_path, options));
+  EXPECT_CALL(platform_, Unmount(source_path, 0))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+
+  // Unmount options are ignored.
+  EXPECT_EQ(MOUNT_ERROR_NONE,
+            manager_.DoUnmount(source_path, {"invalid-unmount-option"}));
+}
+
+TEST_F(DiskManagerTest, DoUnmountDiskWithBusyRetry) {
+  std::string source_path = "/dev/mount-path";
+  EXPECT_CALL(platform_, Unmount(source_path, 0))
+      .WillOnce(Return(MOUNT_ERROR_PATH_ALREADY_MOUNTED));
+  EXPECT_CALL(platform_, Unmount(source_path, MNT_DETACH))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_EQ(MOUNT_ERROR_NONE, manager_.DoUnmount(source_path, {}));
 }
 
 TEST_F(DiskManagerTest, ScheduleEjectOnUnmount) {

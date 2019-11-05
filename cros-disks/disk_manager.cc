@@ -276,11 +276,7 @@ MountErrorType DiskManager::DoUnmount(const std::string& path,
                                       const std::vector<std::string>& options) {
   CHECK(!path.empty()) << "Invalid path argument";
 
-  int unmount_flags;
-  if (!ExtractUnmountOptions(options, &unmount_flags)) {
-    LOG(ERROR) << "Invalid unmount options";
-    return MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS;
-  }
+  LOG_IF(WARNING, !options.empty()) << "Ignoring non-empty unmount options";
 
   // The USB or SD drive on some system may be powered off after the system
   // goes into the S3 suspend state. To avoid leaving a mount point in a stale
@@ -297,22 +293,18 @@ MountErrorType DiskManager::DoUnmount(const std::string& path,
   // off). To better handle this kind of situation, we first try performing a
   // normal unmount. If that fails with errno == EBUSY, we retry with a lazy
   // unmount before giving up and reporting an error.
-  bool unmount_failed = (umount2(path.c_str(), unmount_flags) != 0);
-  if (unmount_failed && errno == EBUSY) {
-    LOG(ERROR) << "Cannot unmount " << quote(path)
-               << ": It is busy; retry with lazy unmount";
-    unmount_flags |= MNT_DETACH;
-    unmount_failed = (umount2(path.c_str(), unmount_flags) != 0);
-  }
-  if (unmount_failed) {
-    PLOG(ERROR) << "Cannot unmount " << quote(path);
-    // TODO(benchan): Extract error from low-level unmount operation.
-    return MOUNT_ERROR_UNKNOWN;
+  MountErrorType error = platform()->Unmount(path, 0 /* flags */);
+  if (error == MOUNT_ERROR_PATH_ALREADY_MOUNTED) {
+    // MOUNT_ERROR_PATH_ALREADY_MOUNTED is returned on EBUSY.
+    LOG(WARNING) << "Mount point " << quote(path)
+                 << " is busy, retrying with lazy unmount";
+    error = platform()->Unmount(path, MNT_DETACH);
   }
 
-  EjectDeviceOfMountPath(path);
-
-  return MOUNT_ERROR_NONE;
+  if (error == MOUNT_ERROR_NONE) {
+    EjectDeviceOfMountPath(path);
+  }
+  return error;
 }
 
 std::string DiskManager::SuggestMountPath(
