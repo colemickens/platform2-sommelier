@@ -66,7 +66,8 @@ class MessageLoopTest : public ::testing::Test {
 template <>
 void MessageLoopTest<BaseMessageLoop>::MessageLoopSetUp() {
   base_loop_.reset(new base::MessageLoopForIO());
-  loop_.reset(new BaseMessageLoop(base::MessageLoopForIO::current()));
+  loop_.reset(new BaseMessageLoop(base_loop_.get()));
+  loop_->SetAsCurrent();
 }
 
 // This setups gtest to run each one of the following TYPED_TEST test cases on

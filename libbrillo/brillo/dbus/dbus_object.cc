@@ -39,8 +39,10 @@ void SetupDefaultPropertyHandlers(DBusInterface* prop_interface,
 
 DBusInterface::DBusInterface(DBusObject* dbus_object,
                              const std::string& interface_name)
-    : dbus_object_(dbus_object), interface_name_(interface_name) {
-}
+    : dbus_object_(dbus_object),
+      interface_name_(interface_name),
+      // TODO(crbug.com/909719): Use base::DoNothing()
+      release_interface_cb_(base::Bind([]() {})) {}
 
 void DBusInterface::AddProperty(const std::string& property_name,
                                 ExportedPropertyBase* prop_base) {

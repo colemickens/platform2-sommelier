@@ -49,7 +49,8 @@ class DBusSignalHandlerTest : public testing::Test {
   template<typename SignalHandlerSink, typename... Args>
   void CallSignal(SignalHandlerSink* sink, Args... args) {
     dbus::ObjectProxy::SignalCallback signal_callback;
-    EXPECT_CALL(*mock_object_proxy_, ConnectToSignal(kInterface, kSignal, _, _))
+    EXPECT_CALL(*mock_object_proxy_,
+                MIGRATE_ConnectToSignal(kInterface, kSignal, _, _))
         .WillOnce(SaveArg<2>(&signal_callback));
 
     brillo::dbus_utils::ConnectToSignal(
@@ -70,7 +71,8 @@ class DBusSignalHandlerTest : public testing::Test {
 };
 
 TEST_F(DBusSignalHandlerTest, ConnectToSignal) {
-  EXPECT_CALL(*mock_object_proxy_, ConnectToSignal(kInterface, kSignal, _, _))
+  EXPECT_CALL(*mock_object_proxy_,
+              MIGRATE_ConnectToSignal(kInterface, kSignal, _, _))
       .Times(1);
 
   brillo::dbus_utils::ConnectToSignal(

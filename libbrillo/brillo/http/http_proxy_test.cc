@@ -32,22 +32,23 @@ class HttpProxyTest : public testing::Test {
  public:
   void ResolveProxyHandlerAsync(dbus::MethodCall* method_call,
                                 int timeout_msec,
-                                dbus::ObjectProxy::ResponseCallback callback) {
+                                dbus::ObjectProxy::ResponseCallback
+                                    MIGRATE_WrapObjectProxyCallback(callback)) {
     if (null_dbus_response_) {
-      std::move(callback).Run(nullptr);
+      std::move(MIGRATE_WrapObjectProxyCallback(callback)).Run(nullptr);
       return;
     }
-    std::move(callback).Run(CreateDBusResponse(method_call).get());
+    std::move(MIGRATE_WrapObjectProxyCallback(callback))
+        .Run(CreateDBusResponse(method_call).get());
   }
 
-  dbus::Response* ResolveProxyHandler(dbus::MethodCall* method_call,
-                                      int timeout_msec) {
+  MIGRATE_WrapObjectProxyResponseType(dbus::Response)
+      ResolveProxyHandler(dbus::MethodCall* method_call, int timeout_msec) {
     if (null_dbus_response_) {
-      return nullptr;
+      return MIGRATE_WrapObjectProxyResponseEmpty;
     }
-    // The mock wraps this back into a std::unique_ptr in the function calling
-    // us.
-    return CreateDBusResponse(method_call).release();
+    return MIGRATE_WrapObjectProxyResponseConversion(
+        CreateDBusResponse(method_call));
   }
 
   MOCK_METHOD(void,
@@ -101,7 +102,7 @@ class HttpProxyTest : public testing::Test {
 TEST_F(HttpProxyTest, DBusNullResponseFails) {
   std::vector<std::string> proxies;
   null_dbus_response_ = true;
-  EXPECT_CALL(*object_proxy_, MockCallMethodAndBlock(_, _))
+  EXPECT_CALL(*object_proxy_, MIGRATE_MockCallMethodAndBlock(_, _))
       .WillOnce(Invoke(this, &HttpProxyTest::ResolveProxyHandler));
   EXPECT_FALSE(GetChromeProxyServers(bus_, kTestUrl, &proxies));
 }
@@ -109,14 +110,14 @@ TEST_F(HttpProxyTest, DBusNullResponseFails) {
 TEST_F(HttpProxyTest, DBusInvalidResponseFails) {
   std::vector<std::string> proxies;
   invalid_dbus_response_ = true;
-  EXPECT_CALL(*object_proxy_, MockCallMethodAndBlock(_, _))
+  EXPECT_CALL(*object_proxy_, MIGRATE_MockCallMethodAndBlock(_, _))
       .WillOnce(Invoke(this, &HttpProxyTest::ResolveProxyHandler));
   EXPECT_FALSE(GetChromeProxyServers(bus_, kTestUrl, &proxies));
 }
 
 TEST_F(HttpProxyTest, NoProxies) {
   std::vector<std::string> proxies;
-  EXPECT_CALL(*object_proxy_, MockCallMethodAndBlock(_, _))
+  EXPECT_CALL(*object_proxy_, MIGRATE_MockCallMethodAndBlock(_, _))
       .WillOnce(Invoke(this, &HttpProxyTest::ResolveProxyHandler));
   EXPECT_TRUE(GetChromeProxyServers(bus_, kTestUrl, &proxies));
   EXPECT_THAT(proxies, ElementsAre(kDirectProxy));
@@ -125,7 +126,7 @@ TEST_F(HttpProxyTest, NoProxies) {
 TEST_F(HttpProxyTest, MultipleProxiesWithoutDirect) {
   proxy_info_ = "proxy example.com; socks5 foo.com;";
   std::vector<std::string> proxies;
-  EXPECT_CALL(*object_proxy_, MockCallMethodAndBlock(_, _))
+  EXPECT_CALL(*object_proxy_, MIGRATE_MockCallMethodAndBlock(_, _))
       .WillOnce(Invoke(this, &HttpProxyTest::ResolveProxyHandler));
   EXPECT_TRUE(GetChromeProxyServers(bus_, kTestUrl, &proxies));
   EXPECT_THAT(proxies, ElementsAre("http://example.com", "socks5://foo.com",
@@ -136,7 +137,7 @@ TEST_F(HttpProxyTest, MultipleProxiesWithDirect) {
   proxy_info_ = "socks foo.com; Https example.com ; badproxy example2.com ; "
                 "socks5 test.com  ; proxy foobar.com; DIRECT ";
   std::vector<std::string> proxies;
-  EXPECT_CALL(*object_proxy_, MockCallMethodAndBlock(_, _))
+  EXPECT_CALL(*object_proxy_, MIGRATE_MockCallMethodAndBlock(_, _))
       .WillOnce(Invoke(this, &HttpProxyTest::ResolveProxyHandler));
   EXPECT_TRUE(GetChromeProxyServers(bus_, kTestUrl, &proxies));
   EXPECT_THAT(proxies, ElementsAre("socks4://foo.com", "https://example.com",
@@ -146,7 +147,7 @@ TEST_F(HttpProxyTest, MultipleProxiesWithDirect) {
 
 TEST_F(HttpProxyTest, DBusNullResponseFailsAsync) {
   null_dbus_response_ = true;
-  EXPECT_CALL(*object_proxy_, CallMethod(_, _, _))
+  EXPECT_CALL(*object_proxy_, MIGRATE_CallMethod(_, _, _))
       .WillOnce(Invoke(this, &HttpProxyTest::ResolveProxyHandlerAsync));
   EXPECT_CALL(*this, GetProxiesCallback(false, _));
   GetChromeProxyServersAsync(
@@ -156,7 +157,7 @@ TEST_F(HttpProxyTest, DBusNullResponseFailsAsync) {
 
 TEST_F(HttpProxyTest, DBusInvalidResponseFailsAsync) {
   invalid_dbus_response_ = true;
-  EXPECT_CALL(*object_proxy_, CallMethod(_, _, _))
+  EXPECT_CALL(*object_proxy_, MIGRATE_CallMethod(_, _, _))
       .WillOnce(Invoke(this, &HttpProxyTest::ResolveProxyHandlerAsync));
   EXPECT_CALL(*this, GetProxiesCallback(false, _));
   GetChromeProxyServersAsync(
@@ -172,7 +173,7 @@ TEST_F(HttpProxyTest, MultipleProxiesWithDirectAsync) {
   std::vector<std::string> expected = {
       "socks4://foo.com", "https://example.com", "socks5://test.com",
       "http://foobar.com", kDirectProxy};
-  EXPECT_CALL(*object_proxy_, CallMethod(_, _, _))
+  EXPECT_CALL(*object_proxy_, MIGRATE_CallMethod(_, _, _))
       .WillOnce(Invoke(this, &HttpProxyTest::ResolveProxyHandlerAsync));
   EXPECT_CALL(*this, GetProxiesCallback(true, expected));
   GetChromeProxyServersAsync(

@@ -21,9 +21,11 @@ inline void LogError(const base::Location& location,
   // the current error location with the location passed in to the Error object.
   // This way the log will contain the actual location of the error, and not
   // as if it always comes from brillo/errors/error.cc(22).
-  logging::LogMessage(
-      location.file_name(), location.line_number(), logging::LOG_ERROR).stream()
-      << location.function_name() << "(...): "
+  logging::LogMessage(location.file_name(), location.line_number(),
+                      logging::LOG_ERROR)
+          .stream()
+      << (location.function_name() ? location.function_name() : "unknown")
+      << "(...): "
       << "Domain=" << domain << ", Code=" << code << ", Message=" << message;
 }
 }  // anonymous namespace

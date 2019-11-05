@@ -83,16 +83,18 @@ class DBusMethodInvokerTest : public testing::Test {
                 GetObjectProxy(kTestServiceName, dbus::ObjectPath(kTestPath)))
         .WillRepeatedly(Return(mock_object_proxy_.get()));
     int def_timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
-    EXPECT_CALL(*mock_object_proxy_,
-                MockCallMethodAndBlockWithErrorDetails(_, def_timeout_ms, _))
+    EXPECT_CALL(
+        *mock_object_proxy_,
+        MIGRATE_MockCallMethodAndBlockWithErrorDetails(_, def_timeout_ms, _))
         .WillRepeatedly(Invoke(this, &DBusMethodInvokerTest::CreateResponse));
   }
 
   void TearDown() override { bus_ = nullptr; }
 
-  Response* CreateResponse(dbus::MethodCall* method_call,
-                           int /* timeout_ms */,
-                           dbus::ScopedDBusError* dbus_error) {
+  MIGRATE_WrapObjectProxyResponseType(Response)
+      CreateResponse(dbus::MethodCall* method_call,
+                     int /* timeout_ms */,
+                     dbus::ScopedDBusError* dbus_error) {
     if (method_call->GetInterface() == kTestInterface) {
       if (method_call->GetMember() == kTestMethod1) {
         MessageReader reader(method_call);
@@ -103,12 +105,12 @@ class DBusMethodInvokerTest : public testing::Test {
           auto response = Response::CreateEmpty();
           MessageWriter writer(response.get());
           writer.AppendString(std::to_string(v1 + v2));
-          return response.release();
+          return MIGRATE_WrapObjectProxyResponseConversion(response);
         }
       } else if (method_call->GetMember() == kTestMethod2) {
         method_call->SetSerial(123);
         dbus_set_error(dbus_error->get(), "org.MyError", "My error message");
-        return nullptr;
+        return MIGRATE_WrapObjectProxyResponseEmpty;
       } else if (method_call->GetMember() == kTestMethod3) {
         MessageReader reader(method_call);
         dbus_utils_test::TestMessage msg;
@@ -116,7 +118,7 @@ class DBusMethodInvokerTest : public testing::Test {
           auto response = Response::CreateEmpty();
           MessageWriter writer(response.get());
           AppendValueToWriter(&writer, msg);
-          return response.release();
+          return MIGRATE_WrapObjectProxyResponseConversion(response);
         }
       } else if (method_call->GetMember() == kTestMethod4) {
         method_call->SetSerial(123);
@@ -126,13 +128,13 @@ class DBusMethodInvokerTest : public testing::Test {
           auto response = Response::CreateEmpty();
           MessageWriter writer(response.get());
           writer.AppendFileDescriptor(fd.get());
-          return response.release();
+          return MIGRATE_WrapObjectProxyResponseConversion(response);
         }
       }
     }
 
     LOG(ERROR) << "Unexpected method call: " << method_call->ToString();
-    return nullptr;
+    return MIGRATE_WrapObjectProxyResponseEmpty;
   }
 
   std::string CallTestMethod(int v1, int v2) {
@@ -243,7 +245,7 @@ class AsyncDBusMethodInvokerTest : public testing::Test {
         .WillRepeatedly(Return(mock_object_proxy_.get()));
     int def_timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
     EXPECT_CALL(*mock_object_proxy_,
-                CallMethodWithErrorCallback(_, def_timeout_ms, _, _))
+                MIGRATE_CallMethodWithErrorCallback(_, def_timeout_ms, _, _))
         .WillRepeatedly(Invoke(this, &AsyncDBusMethodInvokerTest::HandleCall));
   }
 
@@ -251,8 +253,10 @@ class AsyncDBusMethodInvokerTest : public testing::Test {
 
   void HandleCall(dbus::MethodCall* method_call,
                   int /* timeout_ms */,
-                  dbus::ObjectProxy::ResponseCallback success_callback,
-                  dbus::ObjectProxy::ErrorCallback error_callback) {
+                  dbus::ObjectProxy::ResponseCallback
+                      MIGRATE_WrapObjectProxyCallback(success_callback),
+                  dbus::ObjectProxy::ErrorCallback
+                      MIGRATE_WrapObjectProxyCallback(error_callback)) {
     if (method_call->GetInterface() == kTestInterface) {
       if (method_call->GetMember() == kTestMethod1) {
         MessageReader reader(method_call);
@@ -263,14 +267,16 @@ class AsyncDBusMethodInvokerTest : public testing::Test {
           auto response = Response::CreateEmpty();
           MessageWriter writer(response.get());
           writer.AppendString(std::to_string(v1 + v2));
-          std::move(success_callback).Run(response.get());
+          std::move(MIGRATE_WrapObjectProxyCallback(success_callback))
+              .Run(response.get());
         }
         return;
       } else if (method_call->GetMember() == kTestMethod2) {
         method_call->SetSerial(123);
         auto error_response = dbus::ErrorResponse::FromMethodCall(
             method_call, "org.MyError", "My error message");
-        std::move(error_callback).Run(error_response.get());
+        std::move(MIGRATE_WrapObjectProxyCallback(error_callback))
+            .Run(error_response.get());
         return;
       }
     }
