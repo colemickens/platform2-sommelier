@@ -44,7 +44,7 @@ bool PrintProto(const google::protobuf::Message& message) {
   std::string message_json;
   base::JSONWriter::WriteWithOptions(dv, base::JSONWriter::OPTIONS_PRETTY_PRINT,
                                      &message_json);
-  std::cout << message_json;
+  std::cout << message_json << std::endl;
 
   return true;
 }
