@@ -93,6 +93,10 @@ void SocketForwarder::Poll() {
   while (poll_) {
     int n = epoll_wait(cfd.get(), events, kMaxEvents, kWaitTimeoutMs);
     if (n == -1) {
+      if (errno == EINTR) {
+        LOG(INFO) << "Resume epoll_wait from interruption.";
+        continue;
+      }
       PLOG(ERROR) << "epoll_wait failed";
       return;
     }
