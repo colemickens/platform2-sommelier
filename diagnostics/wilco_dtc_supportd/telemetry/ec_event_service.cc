@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_ec_event_service.h"
+#include "diagnostics/wilco_dtc_supportd/telemetry/ec_event_service.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -29,15 +29,15 @@ using MojoEvent = chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
 namespace internal {
 
 // This is the background ("monitoring") thread delegate used by
-// |WilcoDtcSupportdEcEventService|.
+// |EcEventService|.
 class EcEventMonitoringThreadDelegate final
     : public base::DelegateSimpleThread::Delegate {
  public:
-  using OnEventAvailableCallback = base::RepeatingCallback<void(
-      const WilcoDtcSupportdEcEventService::EcEvent&)>;
+  using OnEventAvailableCallback =
+      base::RepeatingCallback<void(const EcEventService::EcEvent&)>;
 
-  // |WilcoDtcSupportdEcEventService| guarantees that the unowned pointer and
-  // file descriptors outlive this delegate. This delegate will post
+  // |EcEventService| guarantees that the unowned pointer and file descriptors
+  // outlive this delegate. This delegate will post
   // |on_event_available_callback| on the |foreground_task_runner| when an EC
   // event is available and it will post |on_shutdown_callback| on the
   // |foreground_task_runner| when it is shutting down.
@@ -82,7 +82,7 @@ class EcEventMonitoringThreadDelegate final
         continue;
       }
 
-      WilcoDtcSupportdEcEventService::EcEvent ec_event;
+      EcEventService::EcEvent ec_event;
       ssize_t bytes_read =
           HANDLE_EINTR(read(fds[0].fd, &ec_event, sizeof(ec_event)));
       if (bytes_read < 0) {
@@ -116,25 +116,24 @@ class EcEventMonitoringThreadDelegate final
 
 }  // namespace internal
 
-size_t WilcoDtcSupportdEcEventService::EcEvent::PayloadSizeInBytes() const {
+size_t EcEventService::EcEvent::PayloadSizeInBytes() const {
   // Guard against the case when |size| == 0.
   uint16_t sanitized_size = std::max(size, static_cast<uint16_t>(1));
   return (sanitized_size - 1) * sizeof(uint16_t);
 }
 
-WilcoDtcSupportdEcEventService::WilcoDtcSupportdEcEventService(
-    Delegate* delegate)
+EcEventService::EcEventService(Delegate* delegate)
     : message_loop_(base::MessageLoop::current()), delegate_(delegate) {
   DCHECK(message_loop_);
   DCHECK(delegate_);
 }
 
-WilcoDtcSupportdEcEventService::~WilcoDtcSupportdEcEventService() {
+EcEventService::~EcEventService() {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   DCHECK(!monitoring_thread_);
 }
 
-bool WilcoDtcSupportdEcEventService::Start() {
+bool EcEventService::Start() {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   DCHECK(!monitoring_thread_);
 
@@ -157,10 +156,9 @@ bool WilcoDtcSupportdEcEventService::Start() {
       std::make_unique<internal::EcEventMonitoringThreadDelegate>(
           event_fd_.get(), event_fd_events_, shutdown_fd_.get(),
           message_loop_->task_runner(),
-          base::BindRepeating(&WilcoDtcSupportdEcEventService::OnEventAvailable,
+          base::BindRepeating(&EcEventService::OnEventAvailable,
                               base::Unretained(this)),
-          base::BindOnce(&WilcoDtcSupportdEcEventService::OnShutdown,
-                         base::Unretained(this)));
+          base::BindOnce(&EcEventService::OnShutdown, base::Unretained(this)));
   monitoring_thread_ = std::make_unique<base::DelegateSimpleThread>(
       monitoring_thread_delegate_.get(),
       "WilcoDtcSupportdEcEventMonitoring" /* name_prefix */);
@@ -168,8 +166,7 @@ bool WilcoDtcSupportdEcEventService::Start() {
   return true;
 }
 
-void WilcoDtcSupportdEcEventService::Shutdown(
-    base::Closure on_shutdown_callback) {
+void EcEventService::Shutdown(base::Closure on_shutdown_callback) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   DCHECK(on_shutdown_callback_.is_null());
   DCHECK(!on_shutdown_callback.is_null());
@@ -184,7 +181,7 @@ void WilcoDtcSupportdEcEventService::Shutdown(
   ShutdownMonitoringThread();
 }
 
-void WilcoDtcSupportdEcEventService::ShutdownMonitoringThread() {
+void EcEventService::ShutdownMonitoringThread() {
   // Due to |eventfd| documentation to invoke |poll()| on |shutdown_fd_| file
   // descriptor we must write any 8-byte value greater than 0 except
   // |0xffffffffffffffff|.
@@ -196,7 +193,7 @@ void WilcoDtcSupportdEcEventService::ShutdownMonitoringThread() {
   }
 }
 
-void WilcoDtcSupportdEcEventService::OnEventAvailable(const EcEvent& ec_event) {
+void EcEventService::OnEventAvailable(const EcEvent& ec_event) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   delegate_->SendGrpcEcEventToWilcoDtc(ec_event);
 
@@ -242,7 +239,7 @@ void WilcoDtcSupportdEcEventService::OnEventAvailable(const EcEvent& ec_event) {
   }
 }
 
-void WilcoDtcSupportdEcEventService::OnShutdown() {
+void EcEventService::OnShutdown() {
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
   monitoring_thread_->Join();

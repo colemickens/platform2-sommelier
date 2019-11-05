@@ -52,6 +52,7 @@
 #include "diagnostics/wilco_dtc_supportd/mojo_utils.h"
 #include "diagnostics/wilco_dtc_supportd/system/fake_powerd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/system/mock_debugd_adapter.h"
+#include "diagnostics/wilco_dtc_supportd/telemetry/ec_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/fake_powerd_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"
@@ -75,7 +76,7 @@ const char kWilcoDtcGrpcUriTemplate[] = "unix:%s/test_wilco_dtc_socket";
 const char kUiMessageReceiverWilcoDtcGrpcUriTemplate[] =
     "unix:%s/test_ui_message_receiver_wilco_dtc_socket";
 
-using EcEvent = WilcoDtcSupportdEcEventService::EcEvent;
+using EcEvent = EcEventService::EcEvent;
 using MojomWilcoDtcSupportdService =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService;
 using MojomWilcoDtcSupportdServiceFactory =

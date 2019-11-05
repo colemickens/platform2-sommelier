@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_EC_EVENT_SERVICE_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_EC_EVENT_SERVICE_H_
+#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_EC_EVENT_SERVICE_H_
+#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_EC_EVENT_SERVICE_H_
 
 #include <algorithm>
 #include <cstdint>
@@ -28,7 +28,7 @@ class EcEventMonitoringThreadDelegate;
 }  // namespace internal
 
 // Subscribes on EC events and redirects EC events to wilco_dtc.
-class WilcoDtcSupportdEcEventService final {
+class EcEventService final {
  public:
   // A packet of data sent by the EC when it notices certain events have
   // occured, such as the battery, AC adapter, or USB-C state changing.
@@ -159,8 +159,8 @@ class WilcoDtcSupportdEcEventService final {
             mojo_event) = 0;
   };
 
-  explicit WilcoDtcSupportdEcEventService(Delegate* delegate);
-  ~WilcoDtcSupportdEcEventService();
+  explicit EcEventService(Delegate* delegate);
+  ~EcEventService();
 
   // Starts service.
   bool Start();
@@ -221,9 +221,9 @@ class WilcoDtcSupportdEcEventService final {
 
   base::SequenceCheckerImpl sequence_checker_;
 
-  DISALLOW_COPY_AND_ASSIGN(WilcoDtcSupportdEcEventService);
+  DISALLOW_COPY_AND_ASSIGN(EcEventService);
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_EC_EVENT_SERVICE_H_
+#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_EC_EVENT_SERVICE_H_

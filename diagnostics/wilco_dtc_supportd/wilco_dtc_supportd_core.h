@@ -24,9 +24,9 @@
 #include "diagnostics/grpc_async_adapter/async_grpc_server.h"
 #include "diagnostics/wilco_dtc_supportd/system/debugd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/system/powerd_adapter.h"
+#include "diagnostics/wilco_dtc_supportd/telemetry/ec_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_dbus_service.h"
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_ec_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_grpc_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_mojo_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_routine_service.h"
@@ -39,14 +39,13 @@ namespace diagnostics {
 
 // Integrates together all pieces which implement separate IPC services exposed
 // by the wilco_dtc_supportd daemon and IPC clients.
-class WilcoDtcSupportdCore final
-    : public WilcoDtcSupportdDBusService::Delegate,
-      public WilcoDtcSupportdEcEventService::Delegate,
-      public WilcoDtcSupportdGrpcService::Delegate,
-      public WilcoDtcSupportdMojoService::Delegate,
-      public chromeos::wilco_dtc_supportd::mojom::
-          WilcoDtcSupportdServiceFactory,
-      public PowerdEventService::Observer {
+class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
+                                   public EcEventService::Delegate,
+                                   public WilcoDtcSupportdGrpcService::Delegate,
+                                   public WilcoDtcSupportdMojoService::Delegate,
+                                   public chromeos::wilco_dtc_supportd::mojom::
+                                       WilcoDtcSupportdServiceFactory,
+                                   public PowerdEventService::Observer {
  public:
   class Delegate {
    public:
@@ -146,9 +145,9 @@ class WilcoDtcSupportdCore final
   // Shuts down the self instance after a Mojo fatal error happens.
   void ShutDownDueToMojoError(const std::string& debug_reason);
 
-  // WilcoDtcSupportdEcEventService::Delegate overrides:
+  // EcEventService::Delegate overrides:
   void SendGrpcEcEventToWilcoDtc(
-      const WilcoDtcSupportdEcEventService::EcEvent& ec_event) override;
+      const EcEventService::EcEvent& ec_event) override;
   void HandleMojoEvent(const MojoEvent& mojo_event) override;
 
   // WilcoDtcSupportdGrpcService::Delegate overrides:
@@ -251,7 +250,7 @@ class WilcoDtcSupportdCore final
   bool mojo_service_bind_attempted_ = false;
 
   // EcEvent-related members:
-  WilcoDtcSupportdEcEventService ec_event_service_{this /* delegate */};
+  EcEventService ec_event_service_{this /* delegate */};
 
   // D-Bus adapters for system daemons.
   std::unique_ptr<DebugdAdapter> debugd_adapter_;

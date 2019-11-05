@@ -19,7 +19,7 @@
 
 #include "diagnostics/common/bind_utils.h"
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_ec_event_service.h"
+#include "diagnostics/wilco_dtc_supportd/telemetry/ec_event_service.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"
 
 namespace diagnostics {
@@ -30,19 +30,18 @@ using testing::_;
 using testing::Invoke;
 using testing::StrictMock;
 
-using EcEvent = WilcoDtcSupportdEcEventService::EcEvent;
+using EcEvent = EcEventService::EcEvent;
 using MojoEvent = chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
 
-class MockWilcoDtcSupportdEcEventServiceDelegate
-    : public WilcoDtcSupportdEcEventService::Delegate {
+class MockEcEventServiceDelegate : public EcEventService::Delegate {
  public:
   MOCK_METHOD(void, SendGrpcEcEventToWilcoDtc, (const EcEvent&), (override));
   MOCK_METHOD(void, HandleMojoEvent, (const MojoEvent&), (override));
 };
 
-class WilcoDtcSupportdEcEventServiceTest : public testing::Test {
+class EcEventServiceTest : public testing::Test {
  protected:
-  WilcoDtcSupportdEcEventServiceTest() : service_(&delegate_) {}
+  EcEventServiceTest() : service_(&delegate_) {}
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -84,42 +83,41 @@ class WilcoDtcSupportdEcEventServiceTest : public testing::Test {
             Invoke([callback](const EcEvent& ec_event) { callback.Run(); }));
   }
 
-  MockWilcoDtcSupportdEcEventServiceDelegate* delegate() { return &delegate_; }
+  MockEcEventServiceDelegate* delegate() { return &delegate_; }
 
-  WilcoDtcSupportdEcEventService* service() { return &service_; }
+  EcEventService* service() { return &service_; }
 
  private:
   base::MessageLoop message_loop_;
-  StrictMock<MockWilcoDtcSupportdEcEventServiceDelegate> delegate_;
-  WilcoDtcSupportdEcEventService service_;
+  StrictMock<MockEcEventServiceDelegate> delegate_;
+  EcEventService service_;
 
   base::ScopedTempDir temp_dir_;
 
   base::ScopedFD fifo_write_end_;
 };
 
-TEST_F(WilcoDtcSupportdEcEventServiceTest, Start) {
+TEST_F(EcEventServiceTest, Start) {
   CreateEcEventFile();
   ASSERT_TRUE(service()->Start());
 }
 
-TEST_F(WilcoDtcSupportdEcEventServiceTest, StartFailure) {
+TEST_F(EcEventServiceTest, StartFailure) {
   ASSERT_FALSE(service()->Start());
 }
 
-// Tests for the WilcoDtcSupportdEcEventService class that started successfully.
-class StartedWilcoDtcSupportdEcEventServiceTest
-    : public WilcoDtcSupportdEcEventServiceTest {
+// Tests for the EcEventService class that started successfully.
+class StartedEcEventServiceTest : public EcEventServiceTest {
  protected:
   void SetUp() override {
-    ASSERT_NO_FATAL_FAILURE(WilcoDtcSupportdEcEventServiceTest::SetUp());
+    ASSERT_NO_FATAL_FAILURE(EcEventServiceTest::SetUp());
     CreateEcEventFile();
     ASSERT_TRUE(service()->Start());
     InitFifoWriteEnd();
   }
 };
 
-TEST_F(StartedWilcoDtcSupportdEcEventServiceTest, ReadEvent) {
+TEST_F(StartedEcEventServiceTest, ReadEvent) {
   base::RunLoop run_loop;
   const uint16_t data[] = {0xaaaa, 0xbbbb, 0xcccc, 0xdddd, 0xeeee, 0xffff};
   WriteEventToEcEventFile(
@@ -128,7 +126,7 @@ TEST_F(StartedWilcoDtcSupportdEcEventServiceTest, ReadEvent) {
   run_loop.Run();
 }
 
-TEST_F(StartedWilcoDtcSupportdEcEventServiceTest, ReadManyEvent) {
+TEST_F(StartedEcEventServiceTest, ReadManyEvent) {
   base::RunLoop run_loop;
   base::RepeatingClosure callback = BarrierClosure(
       2 /* num_closures */, run_loop.QuitClosure() /* done closure */);
@@ -147,7 +145,7 @@ struct EcEventToMojoEventTestParams {
 };
 
 class EcEventToMojoEventTest
-    : public StartedWilcoDtcSupportdEcEventServiceTest,
+    : public StartedEcEventServiceTest,
       public testing::WithParamInterface<EcEventToMojoEventTestParams> {};
 
 // Tests that HandleEvent() correctly interprets EC events, sometimes

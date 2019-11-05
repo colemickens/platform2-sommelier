@@ -25,7 +25,7 @@ namespace diagnostics {
 
 namespace {
 
-using EcEvent = WilcoDtcSupportdEcEventService::EcEvent;
+using EcEvent = EcEventService::EcEvent;
 using MojomWilcoDtcSupportdWebRequestStatus =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestStatus;
 using MojomWilcoDtcSupportdWebRequestHttpMethod =
