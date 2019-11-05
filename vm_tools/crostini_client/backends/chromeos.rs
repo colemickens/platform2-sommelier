@@ -410,7 +410,7 @@ impl ChromeOS {
     }
 
     /// Request debugd to start vmplugin_dispatcher.
-    fn start_vm_plugin_dispather(&mut self) -> Result<(), Box<Error>> {
+    fn start_vm_plugin_dispather(&mut self, user_id_hash: &str) -> Result<(), Box<Error>> {
         // TODO(dtor): download the component before trying to start it.
 
         let method = Message::new_method_call(
@@ -418,7 +418,8 @@ impl ChromeOS {
             DEBUGD_SERVICE_PATH,
             DEBUGD_INTERFACE,
             START_VM_PLUGIN_DISPATCHER,
-        )?;
+        )?
+        .append(user_id_hash);
 
         let message = self
             .connection
@@ -433,7 +434,7 @@ impl ChromeOS {
     fn start_vm_infrastructure(&mut self, user_id_hash: &str) -> Result<(), Box<Error>> {
         if self.is_plugin_vm_enabled(user_id_hash)? {
             // Starting the dispatcher will also start concierge.
-            self.start_vm_plugin_dispather()
+            self.start_vm_plugin_dispather(user_id_hash)
         } else if self.is_crostini_enabled(user_id_hash)? {
             self.start_concierge()
         } else {
