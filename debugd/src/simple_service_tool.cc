@@ -34,13 +34,14 @@ SimpleServiceTool::SimpleServiceTool(const std::string& name,
     : name_(name), bus_(bus), running_(false) {
   CHECK(bus_);
 
-  proxy_ = bus_->GetObjectProxy(
-      dbus_service_name, dbus::ObjectPath(dbus_service_path));
+  proxy_ = bus_->GetObjectProxy(dbus_service_name,
+                                dbus::ObjectPath(dbus_service_path));
   proxy_->SetNameOwnerChangedCallback(base::Bind(
       &SimpleServiceTool::HandleNameOwnerChanged, weak_factory_.GetWeakPtr()));
 }
 
 void SimpleServiceTool::StartService(
+    std::map<std::string, std::string> args,
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
   if (running_) {
     response->Return(true);
@@ -51,7 +52,10 @@ void SimpleServiceTool::StartService(
   brillo::ProcessImpl service;
   service.AddArg("/sbin/start");
   service.AddArg(name_);
-
+  for (const auto& arg : args) {
+    service.AddArg(
+        base::StringPrintf("%s=%s", arg.first.c_str(), arg.second.c_str()));
+  }
   service.Run();
 
   // dbus::ObjectProxy keeps a list of WaitForServiceToBeAvailable

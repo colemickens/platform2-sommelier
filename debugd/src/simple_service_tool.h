@@ -5,6 +5,7 @@
 #ifndef DEBUGD_SRC_SIMPLE_SERVICE_TOOL_H_
 #define DEBUGD_SRC_SIMPLE_SERVICE_TOOL_H_
 
+#include <map>
 #include <memory>
 #include <string>
 
@@ -27,6 +28,7 @@ class SimpleServiceTool {
   ~SimpleServiceTool() = default;
 
   void StartService(
+      std::map<std::string, std::string> args,
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response);
   void StopService();
 

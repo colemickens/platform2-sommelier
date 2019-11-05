@@ -454,7 +454,7 @@ bool DebugdDBusAdaptor::RunShillScriptStop(brillo::ErrorPtr* error,
 
 void DebugdDBusAdaptor::StartVmConcierge(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  vm_concierge_tool_->StartService(std::move(response));
+  vm_concierge_tool_->StartService({}, std::move(response));
 }
 
 void DebugdDBusAdaptor::StopVmConcierge() {
@@ -463,7 +463,7 @@ void DebugdDBusAdaptor::StopVmConcierge() {
 
 void DebugdDBusAdaptor::StartVmPluginDispatcher(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  vm_plugin_dispatcher_tool_->StartService(std::move(response));
+  vm_plugin_dispatcher_tool_->StartService({}, std::move(response));
 }
 
 void DebugdDBusAdaptor::StopVmPluginDispatcher() {
