@@ -31,14 +31,15 @@ class RoutingTable;
 // the IP address, routing table and DNS table entries.
 class Connection : public base::RefCounted<Connection> {
  public:
-  // The routing metric used for the default service, whether physical or VPN.
-  static const uint32_t kDefaultMetric;
-  // The lowest piority metric value that is still valid.
-  static const uint32_t kLowestPriorityMetric;
-  // Space between the metrics of services. The Nth highest priority service
-  // (starting from N=0) will have a metric of
-  // |kDefaultMetric| + N*|kMetricIncrement|.
-  static const uint32_t kMetricIncrement;
+  // The routing rule priority used for the default service, whether physical or
+  // VPN.
+  static const uint32_t kDefaultPriority;
+  // The lowest priority value that is still valid.
+  static const uint32_t kLeastPriority;
+  // Space between the priorities of services. The Nth highest priority service
+  // (starting from N=0) will have a rule priority of
+  // |kDefaultPriority| + N*|kPriorityStep|.
+  static const uint32_t kPriorityStep;
 
   Connection(int interface_index,
              const std::string& interface_name,
@@ -65,16 +66,17 @@ class Connection : public base::RefCounted<Connection> {
   virtual void RemoveInputInterfaceFromRoutingTable(
       const std::string& interface_name);
 
-  // The interface metric is a positive integer used by the kernel to
-  // determine which interface to use for outbound packets if there are
-  // multiple overlapping routes.  The lowest metric wins; the connection
-  // with the lowest metric is referred to as the "default connection."
-
-  // Updates the kernel's routing table so that routes associated with
-  // this connection will use |metric|, updates the systemwide DNS
-  // configuration if necessary, and triggers captive portal detection
-  // if the connection has transitioned from non-default to default.
-  virtual void SetMetric(uint32_t metric, bool is_primary_physical);
+  // Routing policy rules have priorities, which establishes the order in which
+  // policy rules will be matched against the current traffic. The higher the
+  // priority value, the lower the priority of the rule. 0 is the highest rule
+  // priority and is generally reserved for the kernel.
+  //
+  // Updates the kernel's routing policy rule database such that policy rules
+  // corresponding to this Connection will use |priority| as the "base
+  // priority". This call also updates the systemwide DNS configuration if
+  // necessary, and triggers captive portal detection if the connection has
+  // transitioned from non-default to default.
+  virtual void SetPriority(uint32_t priority, bool is_primary_physical);
 
   // Returns true if this connection is currently the systemwide default.
   virtual bool IsDefault() const;
@@ -101,7 +103,7 @@ class Connection : public base::RefCounted<Connection> {
   // |allowed_uids_| or |allowed_iifs_| is set, rules will be created
   // to restrict traffic to the whitelisted UIDs or input interfaces.
   // Otherwise, all system traffic will be allowed to use the connection.
-  // The rule priority will be set to |metric_| so that Manager's service
+  // The rule priority will be set to |priority_| so that Manager's service
   // sort ranking is respected.
   virtual void UpdateRoutingPolicy();
 
@@ -154,7 +156,13 @@ class Connection : public base::RefCounted<Connection> {
   base::WeakPtrFactory<Connection> weak_ptr_factory_;
 
   bool use_dns_;
-  uint32_t metric_;
+  // The base priority for rules corresponding to this Connection. Set by
+  // Manager through SetPriority. Note that this value is occasionally used as a
+  // route metric value (e.g., SetPriority passes the priority value to
+  // RoutingTable::SetDefaultMetric). This is simply done for convenience, such
+  // that one could do something like `ip route show table 0 0/0` be able to
+  // tell the rule priorities corresponding to the displayed default routes.
+  uint32_t priority_;
   bool is_primary_physical_;
   bool has_broadcast_domain_;
   int interface_index_;

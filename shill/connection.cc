@@ -38,15 +38,15 @@ static string ObjectID(Connection* c) {
 }  // namespace Logging
 
 // static
-const uint32_t Connection::kDefaultMetric = 10;
+const uint32_t Connection::kDefaultPriority = 10;
 // static
 //
-// UINT_MAX is also a valid priority metric, but we reserve this as a sentinel
+// UINT_MAX is also a valid priority, but we reserve this as a sentinel
 // value, as in RoutingTable::GetDefaultRouteInternal.
-const uint32_t Connection::kLowestPriorityMetric =
+const uint32_t Connection::kLeastPriority =
     std::numeric_limits<uint32_t>::max() - 1;
 // static
-const uint32_t Connection::kMetricIncrement = 10;
+const uint32_t Connection::kPriorityStep = 10;
 
 Connection::Connection(int interface_index,
                        const std::string& interface_name,
@@ -56,7 +56,7 @@ Connection::Connection(int interface_index,
                        ControlInterface* control_interface)
     : weak_ptr_factory_(this),
       use_dns_(false),
-      metric_(kLowestPriorityMetric),
+      priority_(kLeastPriority),
       is_primary_physical_(false),
       has_broadcast_domain_(false),
       interface_index_(interface_index),
@@ -188,7 +188,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   }
 
   if (gateway.IsValid() && properties.default_route) {
-    routing_table_->SetDefaultRoute(interface_index_, gateway, metric_,
+    routing_table_->SetDefaultRoute(interface_index_, gateway, priority_,
                                     table_id_);
   }
 
@@ -213,8 +213,8 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
 
   UpdateRoutingPolicy();
 
-  // Install any explicitly configured routes at the default metric.
-  routing_table_->ConfigureRoutes(interface_index_, config, kDefaultMetric,
+  // Install any explicitly configured routes at the default priority.
+  routing_table_->ConfigureRoutes(interface_index_, config, kDefaultPriority,
                                   table_id_);
 
   if (properties.blackhole_ipv6) {
@@ -253,7 +253,7 @@ void Connection::UpdateGatewayMetric(const IPConfigRefPtr& config) {
     return;
   }
   if (gateway.IsValid() && properties.default_route) {
-    routing_table_->SetDefaultRoute(interface_index_, gateway, metric_,
+    routing_table_->SetDefaultRoute(interface_index_, gateway, priority_,
                                     table_id_);
     routing_table_->FlushCache();
   }
@@ -267,7 +267,7 @@ void Connection::UpdateRoutingPolicy() {
     blackhole_offset = 1;
     for (const auto& uid : blackholed_uids_) {
       auto entry = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
-                       .SetPriority(metric_)
+                       .SetPriority(priority_)
                        .SetTable(blackhole_table_id_)
                        .SetUidRange({uid, uid});
       routing_table_->AddRule(interface_index_, entry);
@@ -279,7 +279,7 @@ void Connection::UpdateRoutingPolicy() {
           [](Connection* connection, const IPAddress& addr) {
             // Add |addr| to blackhole table.
             auto entry = RoutingPolicyEntry::CreateFromSrc(addr)
-                             .SetPriority(connection->metric_)
+                             .SetPriority(connection->priority_)
                              .SetTable(connection->blackhole_table_id_);
             connection->routing_table_->AddRule(connection->interface_index_,
                                                 entry);
@@ -288,7 +288,7 @@ void Connection::UpdateRoutingPolicy() {
     }
   }
 
-  AllowTrafficThrough(table_id_, metric_ + blackhole_offset);
+  AllowTrafficThrough(table_id_, priority_ + blackhole_offset);
 
   if (use_if_addrs_ && is_primary_physical_) {
     // Main routing table contains kernel-added routes for source address
@@ -297,7 +297,7 @@ void Connection::UpdateRoutingPolicy() {
     // rules are not inadvertently too aggressive.
     auto main_table_rule =
         RoutingPolicyEntry::CreateFromSrc(IPAddress(IPAddress::kFamilyIPv4))
-            .SetPriority(metric_ + blackhole_offset - 1)
+            .SetPriority(priority_ + blackhole_offset - 1)
             .SetTable(RT_TABLE_MAIN);
     routing_table_->AddRule(interface_index_, main_table_rule);
     routing_table_->AddRule(interface_index_, main_table_rule.FlipFamily());
@@ -395,20 +395,20 @@ void Connection::RemoveInputInterfaceFromRoutingTable(
   routing_table_->FlushCache();
 }
 
-void Connection::SetMetric(uint32_t metric, bool is_primary_physical) {
+void Connection::SetPriority(uint32_t priority, bool is_primary_physical) {
   SLOG(this, 2) << __func__ << " " << interface_name_ << " (index "
-                << interface_index_ << ")" << metric_ << " -> " << metric;
-  if (metric == metric_) {
+                << interface_index_ << ")" << priority_ << " -> " << priority;
+  if (priority == priority_) {
     return;
   }
 
-  metric_ = metric;
+  priority_ = priority;
   is_primary_physical_ = is_primary_physical;
-  routing_table_->SetDefaultMetric(interface_index_, metric);
+  routing_table_->SetDefaultMetric(interface_index_, priority);
   UpdateRoutingPolicy();
 
   PushDNSConfig();
-  if (metric == kDefaultMetric) {
+  if (priority == kDefaultPriority) {
     DeviceRefPtr device = device_info_->GetDevice(interface_index_);
     if (device) {
       device->RequestPortalDetection();
@@ -418,7 +418,7 @@ void Connection::SetMetric(uint32_t metric, bool is_primary_physical) {
 }
 
 bool Connection::IsDefault() const {
-  return metric_ == kDefaultMetric;
+  return priority_ == kDefaultPriority;
 }
 
 void Connection::SetUseDNS(bool enable) {

@@ -1750,10 +1750,10 @@ void Manager::SortServicesTask() {
     }
   }
 
-  int metric = Connection::kDefaultMetric;
+  uint32_t priority = Connection::kDefaultPriority;
   bool found_dns = false;
   ServiceRefPtr old_logical;
-  int old_logical_metric;
+  int old_logical_priority;
   ServiceRefPtr new_logical;
   ServiceRefPtr new_physical;
   for (const auto& service : services_) {
@@ -1776,22 +1776,22 @@ void Manager::SortServicesTask() {
 
       new_logical = new_logical ? new_logical : service;
 
-      metric += Connection::kMetricIncrement;
+      priority += Connection::kPriorityStep;
       if (conn->IsDefault()) {
         old_logical = service;
-        old_logical_metric = metric;
+        old_logical_priority = priority;
       } else {
-        conn->SetMetric(metric, new_physical == service);
+        conn->SetPriority(priority, new_physical == service);
       }
     }
   }
 
   if (old_logical && old_logical != new_logical)
-    old_logical->connection()->SetMetric(old_logical_metric,
-                                         old_logical == new_physical);
+    old_logical->connection()->SetPriority(old_logical_priority,
+                                           old_logical == new_physical);
   if (new_logical)
-    new_logical->connection()->SetMetric(Connection::kDefaultMetric,
-                                         new_logical == new_physical);
+    new_logical->connection()->SetPriority(Connection::kDefaultPriority,
+                                           new_logical == new_physical);
 
   Error error;
   adaptor_->EmitRpcIdentifierArrayChanged(kServiceCompleteListProperty,
