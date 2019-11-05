@@ -981,6 +981,10 @@
         Starts the VM Plugin Dispatcher service.  Returns true if the service was
         successfully started and is available over dbus, false otherwise.
       </tp:docstring>
+      <arg name="user_id_hash" type="s" direction="in">
+        Cryptohome ID of the user owning the session that will own this
+        dispatcher instance.
+      </arg>
       <arg name="status" type="b" direction="out">
         Whether the VM Plugin dispather service is ready to handle requests.
       </arg>

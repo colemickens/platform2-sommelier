@@ -11,6 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
+#include <base/strings/string_util.h>
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_path.h>
@@ -462,8 +463,25 @@ void DebugdDBusAdaptor::StopVmConcierge() {
 }
 
 void DebugdDBusAdaptor::StartVmPluginDispatcher(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  vm_plugin_dispatcher_tool_->StartService({}, std::move(response));
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
+    const std::string& in_user_id_hash) {
+  // Perform basic validation of user ID hash.
+  if (in_user_id_hash.length() != 40) {
+    LOG(ERROR) << "Incorrect length of the user_id_hash (" << in_user_id_hash
+               << ")";
+    response->Return(false);
+    return;
+  }
+
+  if (!base::ContainsOnlyChars(in_user_id_hash, "abcdef0123456789")) {
+    LOG(ERROR) << "user_id_hash should only contain lower case hex digits ("
+               << in_user_id_hash << ")";
+    response->Return(false);
+    return;
+  }
+
+  vm_plugin_dispatcher_tool_->StartService(
+      {{"CROS_USER_ID_HASH", in_user_id_hash}}, std::move(response));
 }
 
 void DebugdDBusAdaptor::StopVmPluginDispatcher() {
