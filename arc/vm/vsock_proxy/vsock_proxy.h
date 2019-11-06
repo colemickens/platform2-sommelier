@@ -40,10 +40,20 @@ class VSockProxy {
     CLIENT = 2,
   };
 
-  VSockProxy(Type type,
-             ProxyFileSystem* proxy_file_system,
-             base::ScopedFD vsock,
-             base::ScopedFD render_node);
+  class Delegate {
+   public:
+    virtual ~Delegate() = default;
+
+    // Returns the type of this proxy.
+    virtual Type GetType() const = 0;
+
+    // Override these methods to provide non-common FD handling.
+    virtual bool ConvertFileDescriptorToProto(
+        int fd, arc_proxy::FileDescriptor* proto) = 0;
+    virtual base::ScopedFD ConvertProtoToFileDescriptor(
+        const arc_proxy::FileDescriptor& proto) = 0;
+  };
+  VSockProxy(Delegate* delegate, base::ScopedFD vsock);
   ~VSockProxy();
 
   // Registers the |fd| whose type is |fd_type| to watch.
@@ -117,13 +127,9 @@ class VSockProxy {
   // Returns a bland new cookie to start a sequence of operations.
   int64_t GenerateCookie();
 
-  const Type type_;
-  ProxyFileSystem* const proxy_file_system_;
-
+  Delegate* delegate_;
   VSockStream vsock_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> vsock_controller_;
-
-  base::ScopedFD render_node_;
 
   // Map from a |handle| (see message.proto for details) to a stream
   // instance wrapping the file descriptor and its watcher.
