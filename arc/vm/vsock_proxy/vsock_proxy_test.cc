@@ -39,7 +39,7 @@ class VSockProxyTest : public testing::Test {
 
   void SetUp() override {
     // Use socket pair instead of VSOCK for testing.
-    auto vsock_pair = CreateSocketPair();
+    auto vsock_pair = CreateSocketPair(SocketType::BLOCKING);
     ASSERT_TRUE(vsock_pair.has_value());
     server_ = std::make_unique<VSockProxy>(VSockProxy::Type::SERVER, nullptr,
                                            std::move(vsock_pair->first),
@@ -49,9 +49,9 @@ class VSockProxyTest : public testing::Test {
                                            base::ScopedFD());
 
     // Register initial socket pairs.
-    auto server_socket_pair = CreateSocketPair();
+    auto server_socket_pair = CreateSocketPair(SocketType::BLOCKING);
     ASSERT_TRUE(server_socket_pair.has_value());
-    auto client_socket_pair = CreateSocketPair();
+    auto client_socket_pair = CreateSocketPair(SocketType::BLOCKING);
     ASSERT_TRUE(client_socket_pair.has_value());
 
     int64_t handle = server_->RegisterFileDescriptor(
@@ -142,7 +142,7 @@ TEST_F(VSockProxyTest, CloseClient) {
 }
 
 TEST_F(VSockProxyTest, PassSocketFromServer) {
-  auto sockpair = CreateSocketPair();
+  auto sockpair = CreateSocketPair(SocketType::BLOCKING);
   ASSERT_TRUE(sockpair.has_value());
   constexpr char kData[] = "testdata";
   if (!base::UnixDomainSocket::SendMsg(server_fd(), kData, sizeof(kData),
@@ -170,7 +170,7 @@ TEST_F(VSockProxyTest, PassSocketFromServer) {
 }
 
 TEST_F(VSockProxyTest, PassSocketFromClient) {
-  auto sockpair = CreateSocketPair();
+  auto sockpair = CreateSocketPair(SocketType::BLOCKING);
   ASSERT_TRUE(sockpair.has_value());
   constexpr char kData[] = "testdata";
   if (!base::UnixDomainSocket::SendMsg(client_fd(), kData, sizeof(kData),
@@ -227,7 +227,7 @@ TEST_F(VSockProxyTest, Connect) {
   ASSERT_TRUE(handle != static_cast<int64_t>(0));
 
   // Register client side socket.
-  auto client_sock_pair = CreateSocketPair();
+  auto client_sock_pair = CreateSocketPair(SocketType::BLOCKING);
   ASSERT_TRUE(client_sock_pair.has_value());
   client()->RegisterFileDescriptor(std::move(client_sock_pair->first),
                                    arc_proxy::FileDescriptor::SOCKET,
@@ -310,7 +310,7 @@ TEST_F(VSockProxyTest, Fstat) {
 }
 
 TEST_F(VSockProxyTest, Fstat_Unsupported) {
-  auto sockpair = CreateSocketPair();
+  auto sockpair = CreateSocketPair(SocketType::BLOCKING);
   ASSERT_TRUE(sockpair.has_value());
   ASSERT_TRUE(sockpair->first.is_valid());
   const int64_t handle = client()->RegisterFileDescriptor(

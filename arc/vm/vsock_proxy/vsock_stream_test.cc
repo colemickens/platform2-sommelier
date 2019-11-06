@@ -18,7 +18,7 @@ namespace arc {
 namespace {
 
 TEST(VSockStreamTest, ReadWrite) {
-  auto sockpair = CreateSocketPair();
+  auto sockpair = CreateSocketPair(SocketType::BLOCKING);
   ASSERT_TRUE(sockpair.has_value());
   base::ScopedFD fd1;
   base::ScopedFD fd2;
