@@ -11,6 +11,7 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 # Load functions and constants for chromeos-install.
+# shellcheck disable=SC1091
 . /usr/share/misc/chromeos-common.sh || exit 1
 
 get_dev_by_part_uuid() {
@@ -72,9 +73,9 @@ if [ "${base_dev}" = "/dev/mtd" ]; then
 fi
 
 # Mark the kernel as successfully booted (success=1, tries=0).
-cgpt add "${base_dev}" -i $kern_num -S1 -T0
+cgpt add "${base_dev}" -i "${kern_num}" -S1 -T0
 # Mark the kernel as highest priority
-cgpt prioritize "${base_dev}" -i $kern_num
+cgpt prioritize "${base_dev}" -i "${kern_num}"
 
 # Collect any startup time firmware updater logs (see chromeos_startup)
 FIRMWARE_UPDATE_LOG='/mnt/stateful_partition/update_firmware.log'
