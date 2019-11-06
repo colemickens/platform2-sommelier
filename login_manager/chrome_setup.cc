@@ -451,10 +451,9 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // Turn on basic logging for Ozone platform implementations.
   builder->AddVmodulePattern("*/ui/ozone/*=1");
 
-  // Needed for investigating auto-enrollment issues.
-  // TODO(tnagel): Remove after switching to device_event_log:
-  // http://crbug.com/636184
-  builder->AddVmodulePattern("auto_enrollment_controller=1");
+  // Turn on basic logging for enrollment flow.
+  builder->AddVmodulePattern("*/browser/chromeos/login/enrollment/*=1");
+  builder->AddVmodulePattern("enrollment_screen_handler=1");
 
   // TODO(https://crbug.com/907158): Needed for investigating issues with tablet
   // mode detection and internal input device event blocking logic.
