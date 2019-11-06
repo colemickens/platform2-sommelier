@@ -458,7 +458,6 @@ bool VSockProxy::ConvertDataToVSockMessage(std::string blob,
   // Validate file descriptor type before registering.
   struct FileDescriptorAttr {
     arc_proxy::FileDescriptor::Type type;
-    uint64_t size;
     uint32_t drm_virtgpu_res_handle = 0;
   };
   std::vector<FileDescriptorAttr> fd_attrs;
@@ -479,11 +478,11 @@ bool VSockProxy::ConvertDataToVSockMessage(std::string blob,
       switch (flags & O_ACCMODE) {
         case O_RDONLY:
           fd_attrs.emplace_back(
-              FileDescriptorAttr{arc_proxy::FileDescriptor::FIFO_READ, 0});
+              FileDescriptorAttr{arc_proxy::FileDescriptor::FIFO_READ});
           break;
         case O_WRONLY:
           fd_attrs.emplace_back(
-              FileDescriptorAttr{arc_proxy::FileDescriptor::FIFO_WRITE, 0});
+              FileDescriptorAttr{arc_proxy::FileDescriptor::FIFO_WRITE});
           break;
         default:
           LOG(ERROR) << "Unsupported access mode: " << (flags & O_ACCMODE);
@@ -493,13 +492,12 @@ bool VSockProxy::ConvertDataToVSockMessage(std::string blob,
     }
     if (S_ISSOCK(st.st_mode)) {
       fd_attrs.emplace_back(
-          FileDescriptorAttr{arc_proxy::FileDescriptor::SOCKET, 0});
+          FileDescriptorAttr{arc_proxy::FileDescriptor::SOCKET});
       continue;
     }
     if (S_ISREG(st.st_mode)) {
       fd_attrs.emplace_back(
-          FileDescriptorAttr{arc_proxy::FileDescriptor::REGULAR_FILE,
-                             static_cast<uint64_t>(st.st_size)});
+          FileDescriptorAttr{arc_proxy::FileDescriptor::REGULAR_FILE});
       continue;
     }
     // DMABUF sharing is enabled only for the guest->host direction.
@@ -516,7 +514,7 @@ bool VSockProxy::ConvertDataToVSockMessage(std::string blob,
           return false;
         }
         fd_attrs.emplace_back(FileDescriptorAttr{
-            arc_proxy::FileDescriptor::DMABUF, /*size=*/0, info.res_handle});
+            arc_proxy::FileDescriptor::DMABUF, info.res_handle});
         continue;
       } else if (errno != ENOTTY) {
         // Getting ENOTTY here means that the FD doesn't support the specified
@@ -540,8 +538,6 @@ bool VSockProxy::ConvertDataToVSockMessage(std::string blob,
     auto* transferred_fd = data->add_transferred_fd();
     transferred_fd->set_handle(handle);
     transferred_fd->set_type(fd_attrs[i].type);
-    if (fd_attrs[i].type == arc_proxy::FileDescriptor::REGULAR_FILE)
-      transferred_fd->set_file_size(fd_attrs[i].size);
     if (fd_attrs[i].type == arc_proxy::FileDescriptor::DMABUF)
       transferred_fd->set_drm_virtgpu_res_handle(
           fd_attrs[i].drm_virtgpu_res_handle);

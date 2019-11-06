@@ -61,10 +61,7 @@ message FileDescriptor {
   Type type = 1;
   int64 handle = 2;
 
-  // Size of the corresponding file. Available only if the type is
-  // REGULAR_FILE. DEPRECATED.
-  // TODO(hidehiko): remove this later.
-  uint64 file_size = 3;
+  reserved 3;  // uint64 file_size = 3 [deprecated=true];
 
   // Virtgpu resource handle of a dmabuf.
   uint32 drm_virtgpu_res_handle = 4;
