@@ -13,6 +13,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "boot_lockbox_rpc.pb.h"  // NOLINT(build/include)
+
 namespace {
 const char kTestFilePath[] = "test_file_path.pb";
 }
@@ -49,16 +51,19 @@ TEST_F(NVRamBootLockboxTest, DefineSpace) {
 TEST_F(NVRamBootLockboxTest, StoreFail) {
   std::string key = "test_key";
   std::string value ="test_value";
+  BootLockboxErrorCode error;
   EXPECT_TRUE(nvram_boot_lockbox_->Finalize());
-  EXPECT_FALSE(nvram_boot_lockbox_->Store(key, value));
+  EXPECT_FALSE(nvram_boot_lockbox_->Store(key, value, &error));
+  EXPECT_EQ(error, BootLockboxErrorCode::BOOTLOCKBOX_ERROR_WRITE_LOCKED);
 }
 
 TEST_F(NVRamBootLockboxTest, LoadFailDigestMisMatch) {
   std::string key = "test_key";
   std::string value = "test_value";
+  BootLockboxErrorCode error;
   // avoid early failure.
   nvram_boot_lockbox_->SetState(NVSpaceState::kNVSpaceNormal);
-  EXPECT_TRUE(nvram_boot_lockbox_->Store(key, value));
+  EXPECT_TRUE(nvram_boot_lockbox_->Store(key, value, &error));
   // modify the proto file.
   std::string invalid_proto = "aaa";
   base::WriteFile(file_path_, invalid_proto.c_str(),
@@ -69,13 +74,15 @@ TEST_F(NVRamBootLockboxTest, LoadFailDigestMisMatch) {
 TEST_F(NVRamBootLockboxTest, StoreLoadReadSuccess) {
   std::string key = "test_key";
   std::string value = "test_value_digest";
+  BootLockboxErrorCode error;
   nvram_boot_lockbox_->SetState(NVSpaceState::kNVSpaceNormal);
-  EXPECT_TRUE(nvram_boot_lockbox_->Store(key, value));
+  EXPECT_TRUE(nvram_boot_lockbox_->Store(key, value, &error));
   EXPECT_TRUE(nvram_boot_lockbox_->Load());
   std::string stored_value;
-  EXPECT_TRUE(nvram_boot_lockbox_->Read(key, &stored_value));
+  EXPECT_TRUE(nvram_boot_lockbox_->Read(key, &stored_value, &error));
   EXPECT_EQ(value, stored_value);
-  EXPECT_FALSE(nvram_boot_lockbox_->Read("non-exist-key", &stored_value));
+  EXPECT_FALSE(nvram_boot_lockbox_->Read("non-exist-key",
+                                         &stored_value, &error));
 }
 
 }  // namespace cryptohome

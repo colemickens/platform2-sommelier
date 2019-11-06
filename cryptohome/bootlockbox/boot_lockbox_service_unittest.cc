@@ -102,7 +102,7 @@ TEST_F(BootLockboxDBusAdaptorTest, StoreBootLockbox) {
   store_request.set_key("test_key");
   store_request.set_data("test_data");
 
-  EXPECT_CALL(boot_lockbox_, Store("test_key", "test_data"))
+  EXPECT_CALL(boot_lockbox_, Store("test_key", "test_data", _))
       .WillOnce(Return(true));
   ResponseCapturer capturer;
   boot_lockbox_dbus_adaptor_->StoreBootLockbox(
@@ -115,7 +115,7 @@ TEST_F(BootLockboxDBusAdaptorTest, ReadBootLockbox) {
   cryptohome::ReadBootLockboxRequest read_request;
   read_request.set_key("test_key");
 
-  EXPECT_CALL(boot_lockbox_, Read("test_key", _))
+  EXPECT_CALL(boot_lockbox_, Read("test_key", _, _))
       .WillOnce(Return(true));
   ResponseCapturer capturer;
   boot_lockbox_dbus_adaptor_->ReadBootLockbox(

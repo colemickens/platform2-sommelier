@@ -303,7 +303,7 @@ TEST_F(ArcSideloadStatusTest, EnableAdbSideload_BootLockboxError) {
 
   // Setup
   auto bootlockbox_response = CreateResponseWithBootLockboxError(
-      cryptohome::BootLockboxErrorCode::BOOTLOCKBOX_ERROR_TPM_COMM_ERROR);
+      cryptohome::BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NVSPACE_OTHER);
   EXPECT_DBUS_CALL_THEN_CALLBACK(&bootlockbox_store_method_call_,
                                  bootlockbox_response.get());
 
@@ -323,9 +323,9 @@ TEST_F(ArcSideloadStatusTest, EnableAdbSideload_AlreadyLogin) {
 
   // Setup
   // When bootlockbox is finalized (after any user login), store operation will
-  // fail with BOOTLOCKBOX_ERROR_CANNOT_STORE.
+  // fail with BOOTLOCKBOX_ERROR_WRITE_LOCKED.
   auto bootlockbox_response = CreateResponseWithBootLockboxError(
-      cryptohome::BootLockboxErrorCode::BOOTLOCKBOX_ERROR_CANNOT_STORE);
+      cryptohome::BootLockboxErrorCode::BOOTLOCKBOX_ERROR_WRITE_LOCKED);
   EXPECT_DBUS_CALL_THEN_CALLBACK(&bootlockbox_store_method_call_,
                                  bootlockbox_response.get());
 

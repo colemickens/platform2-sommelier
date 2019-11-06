@@ -12,6 +12,8 @@
 
 #include <gmock/gmock.h>
 
+#include "boot_lockbox_rpc.pb.h"   // NOLINT(build/include)
+
 namespace cryptohome {
 
 class MockNVRamBootLockbox : public NVRamBootLockbox {
@@ -21,9 +23,11 @@ class MockNVRamBootLockbox : public NVRamBootLockbox {
 
   MOCK_METHOD(bool,
               Store,
-              (const std::string&, const std::string&),
+              (const std::string&, const std::string&, BootLockboxErrorCode*),
               (override));
-  MOCK_METHOD(bool, Read, (const std::string&, std::string*), (override));
+  MOCK_METHOD(bool, Read,
+              (const std::string&, std::string*, BootLockboxErrorCode*),
+              (override));
   MOCK_METHOD(bool, Finalize, (), (override));
   MOCK_METHOD(NVSpaceState, GetState, (), (override));
   MOCK_METHOD(bool, DefineSpace, (), (override));

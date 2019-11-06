@@ -14,6 +14,8 @@
 #include <brillo/secure_blob.h>
 #include <dbus/dbus-protocol.h>
 
+#include "cryptohome/bootlockbox/tpm_nvspace_interface.h"
+
 #include "boot_lockbox_rpc.pb.h"  // NOLINT(build/include)
 
 namespace {
@@ -56,8 +58,10 @@ void BootLockboxDBusAdaptor::StoreBootLockbox(
   }
 
   cryptohome::BootLockboxBaseReply reply;
-  if (!boot_lockbox_->Store(in_request.key(), in_request.data())) {
-    reply.set_error(cryptohome::BOOTLOCKBOX_ERROR_CANNOT_STORE);
+  cryptohome::BootLockboxErrorCode boot_lockbox_error;
+  if (!boot_lockbox_->Store(in_request.key(), in_request.data(),
+                            &boot_lockbox_error)) {
+    reply.set_error(boot_lockbox_error);
   }
   response->Return(reply);
 }
@@ -75,8 +79,9 @@ void BootLockboxDBusAdaptor::ReadBootLockbox(
   }
   cryptohome::BootLockboxBaseReply reply;
   std::string data;
-  if (!boot_lockbox_->Read(in_request.key(), &data)) {
-    reply.set_error(cryptohome::BOOTLOCKBOX_ERROR_MISSING_KEY);
+  cryptohome::BootLockboxErrorCode boot_lockbox_error;
+  if (!boot_lockbox_->Read(in_request.key(), &data, &boot_lockbox_error)) {
+    reply.set_error(boot_lockbox_error);
   } else {
     reply.MutableExtension(cryptohome::ReadBootLockboxReply::reply)
         ->set_data(data);
@@ -90,7 +95,8 @@ void BootLockboxDBusAdaptor::FinalizeBootLockbox(
     const cryptohome::FinalizeNVRamBootLockboxRequest& in_request) {
   cryptohome::BootLockboxBaseReply reply;
   if (!boot_lockbox_->Finalize()) {
-    reply.set_error(cryptohome::BOOTLOCKBOX_ERROR_TPM_COMM_ERROR);
+    // Failed to finalize, could be communication error or other error.
+    reply.set_error(cryptohome::BOOTLOCKBOX_ERROR_NVSPACE_OTHER);
   }
   response->Return(reply);
 }

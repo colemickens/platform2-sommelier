@@ -14,6 +14,7 @@
 
 #include "cryptohome/bootlockbox/tpm_nvspace_interface.h"
 
+#include "boot_lockbox_rpc.pb.h"  // NOLINT(build/include)
 #include "key_value_map.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
@@ -42,22 +43,24 @@ class NVRamBootLockbox {
   virtual ~NVRamBootLockbox();
 
   // Stores |digest| in bootlockbox.
-  virtual bool Store(const std::string& key, const std::string& digest);
+  virtual bool Store(const std::string& key, const std::string& digest,
+                     BootLockboxErrorCode* error);
 
   // Reads digest identified by key.
-  virtual bool Read(const std::string& key, std::string* digest);
+  virtual bool Read(const std::string& key, std::string* digest,
+                    BootLockboxErrorCode* error);
 
-  // Locks bootlockbox.
+  // Locks bootlockbox. This function may change nvspace_state_.
   virtual bool Finalize();
 
   // Gets BootLockbox state.
   virtual NVSpaceState GetState();
 
-  // Defines NVRAM space.
+  // Defines NVRAM space. This function may change nvspace_state_.
   virtual bool DefineSpace();
 
   // Reads the key value map from disk and verifies the digest against the
-  // digest stored in NVRAM space.
+  // digest stored in NVRAM space. This function may update nvspace_state_.
   virtual bool Load();
 
  protected:
@@ -79,6 +82,8 @@ class NVRamBootLockbox {
   std::string root_digest_;
 
   TPMNVSpaceUtilityInterface* tpm_nvspace_utility_;
+
+  // The state of nvspace. This is not the state of the service.
   NVSpaceState nvspace_state_{NVSpaceState::kNVSpaceError};
 
   FRIEND_TEST(NVRamBootLockboxTest, LoadFailDigestMisMatch);

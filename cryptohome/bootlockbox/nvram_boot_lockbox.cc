@@ -36,27 +36,55 @@ NVRamBootLockbox::NVRamBootLockbox(
 NVRamBootLockbox::~NVRamBootLockbox() {}
 
 bool NVRamBootLockbox::Store(const std::string& key,
-                             const std::string& digest) {
-  if (nvspace_state_ == NVSpaceState::kNVSpaceWriteLocked ||
-      nvspace_state_ == NVSpaceState::kNVSpaceUndefined) {
-    LOG(WARNING) << "NVRamBootLockbox is not ready.";
+                             const std::string& digest,
+                             BootLockboxErrorCode* error) {
+  // Returns nvspace state to client.
+  *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NOT_SET;
+  if (nvspace_state_ == NVSpaceState::kNVSpaceWriteLocked) {
+    *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_WRITE_LOCKED;
+    return false;
+  }
+  if (nvspace_state_ == NVSpaceState::kNVSpaceUndefined) {
+    *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NVSPACE_UNDEFINED;
+    return false;
+  }
+  if (nvspace_state_ == NVSpaceState::kNVSpaceError) {
+    *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NVSPACE_OTHER;
     return false;
   }
 
-  // A temporaray key value map for wirtting.
+  // A temporaray key value map for writing.
   KeyValueMap updated_key_value_map = key_value_store_;
   updated_key_value_map[key] = digest;
-
   if (!FlushAndUpdate(updated_key_value_map)) {
     LOG(ERROR) << "Store Failed: Cannot flush to file.";
+    *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_WRITE_FAILED;
     return false;
   }
   return true;
 }
 
-bool NVRamBootLockbox::Read(const std::string& key, std::string* digest) {
+bool NVRamBootLockbox::Read(const std::string& key,
+                            std::string* digest,
+                            BootLockboxErrorCode* error) {
+  // Returns nvspace state to client.
+  *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NOT_SET;
+  if (nvspace_state_ == NVSpaceState::kNVSpaceUndefined) {
+    *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NVSPACE_UNDEFINED;
+    return false;
+  }
+  if (nvspace_state_ == NVSpaceState::kNVSpaceUninitialized) {
+    *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NVSPACE_UNINITIALIZED;
+    return false;
+  }
+  if (nvspace_state_ == NVSpaceState::kNVSpaceError) {
+    *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NVSPACE_OTHER;
+    return false;
+  }
+
   KeyValueMap::const_iterator it = key_value_store_.find(key);
   if (it == key_value_store_.end()) {
+    *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_MISSING_KEY;
     return false;
   }
   *digest = it->second;
@@ -64,6 +92,9 @@ bool NVRamBootLockbox::Read(const std::string& key, std::string* digest) {
 }
 
 bool NVRamBootLockbox::Finalize() {
+  if (nvspace_state_ == NVSpaceState::kNVSpaceUndefined) {
+    return false;
+  }
   if (tpm_nvspace_utility_->LockNVSpace()) {
     nvspace_state_ = NVSpaceState::kNVSpaceWriteLocked;
     return true;
@@ -77,7 +108,7 @@ bool NVRamBootLockbox::DefineSpace() {
     nvspace_state_ = NVSpaceState::kNVSpaceUninitialized;
     return true;
   }
-  nvspace_state_ = NVSpaceState::kNVSpaceError;
+  nvspace_state_ = NVSpaceState::kNVSpaceUndefined;
   return false;
 }
 

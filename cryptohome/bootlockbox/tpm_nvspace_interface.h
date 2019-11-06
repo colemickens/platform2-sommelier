@@ -11,10 +11,10 @@ namespace cryptohome {
 
 enum class NVSpaceState {
   kNVSpaceNormal = 0,
-  kNVSpaceUninitialized = 1,
-  kNVSpaceUndefined = 2,
-  kNVSpaceWriteLocked = 3,
-  kNVSpaceError = 4
+  kNVSpaceError = 1,   // General TPM errors.
+  kNVSpaceUninitialized = 2,
+  kNVSpaceUndefined = 3,  // TPM is not defined, need powerwash to define.
+  kNVSpaceWriteLocked = 4
 };
 
 class TPMNVSpaceUtilityInterface {
