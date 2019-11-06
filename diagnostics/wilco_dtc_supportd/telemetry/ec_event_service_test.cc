@@ -31,25 +31,29 @@ using testing::Invoke;
 using testing::StrictMock;
 
 using EcEvent = EcEventService::EcEvent;
+using EcEventType = EcEventService::Observer::EcEventType;
 using MojoEvent = chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
 
-class MockEcEventServiceDelegate : public EcEventService::Delegate {
+class MockEcEventServiceObserver : public EcEventService::Observer {
  public:
-  MOCK_METHOD(void, SendGrpcEcEventToWilcoDtc, (const EcEvent&), (override));
-  MOCK_METHOD(void, HandleMojoEvent, (const MojoEvent&), (override));
+  MOCK_METHOD(void, OnEcEvent, (const EcEvent&, EcEventType), (override));
 };
 
 class EcEventServiceTest : public testing::Test {
  protected:
-  EcEventServiceTest() : service_(&delegate_) {}
+  EcEventServiceTest() = default;
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     service()->set_root_dir_for_testing(temp_dir_.GetPath());
     service()->set_event_fd_events_for_testing(POLLIN);
+    service()->AddObserver(&observer_);
+    EXPECT_TRUE(service()->HasObserver(&observer_));
   }
 
   void TearDown() override {
+    service()->RemoveObserver(&observer_);
+    EXPECT_FALSE(service()->HasObserver(&observer_));
     base::RunLoop run_loop;
     service_.Shutdown(run_loop.QuitClosure());
     run_loop.Run();
@@ -65,7 +69,7 @@ class EcEventServiceTest : public testing::Test {
     return temp_dir_.GetPath().Append(kEcEventFilePath);
   }
 
-  // Must be open only after |service_->Start()| call. Otherwise, it will
+  // Must be open only after |service_.Start()| call. Otherwise, it will
   // block thread.
   void InitFifoWriteEnd() {
     ASSERT_EQ(fifo_write_end_.get(), -1);
@@ -73,23 +77,24 @@ class EcEventServiceTest : public testing::Test {
     ASSERT_NE(fifo_write_end_.get(), -1);
   }
 
-  void WriteEventToEcEventFile(const EcEvent& ec_event,
-                               const base::RepeatingClosure& callback) {
+  void EmitEcEventAndSetObserverExpectations(
+      const EcEvent& ec_event,
+      EcEventType type,
+      const base::RepeatingClosure& callback) {
     ASSERT_EQ(write(fifo_write_end_.get(), &ec_event, sizeof(ec_event)),
               sizeof(ec_event));
 
-    EXPECT_CALL(delegate_, SendGrpcEcEventToWilcoDtc(ec_event))
-        .WillOnce(
-            Invoke([callback](const EcEvent& ec_event) { callback.Run(); }));
+    EXPECT_CALL(observer_, OnEcEvent(ec_event, type))
+        .WillOnce(Invoke([callback](const EcEvent& ec_event, EcEventType type) {
+          callback.Run();
+        }));
   }
-
-  MockEcEventServiceDelegate* delegate() { return &delegate_; }
 
   EcEventService* service() { return &service_; }
 
  private:
   base::MessageLoop message_loop_;
-  StrictMock<MockEcEventServiceDelegate> delegate_;
+  StrictMock<MockEcEventServiceObserver> observer_;
   EcEventService service_;
 
   base::ScopedTempDir temp_dir_;
@@ -120,9 +125,9 @@ class StartedEcEventServiceTest : public EcEventServiceTest {
 TEST_F(StartedEcEventServiceTest, ReadEvent) {
   base::RunLoop run_loop;
   const uint16_t data[] = {0xaaaa, 0xbbbb, 0xcccc, 0xdddd, 0xeeee, 0xffff};
-  WriteEventToEcEventFile(
+  EmitEcEventAndSetObserverExpectations(
       EcEvent(0x8888, static_cast<EcEvent::Type>(0x9999), data),
-      run_loop.QuitClosure());
+      EcEventType::kNonSysNotification, run_loop.QuitClosure());
   run_loop.Run();
 }
 
@@ -131,33 +136,33 @@ TEST_F(StartedEcEventServiceTest, ReadManyEvent) {
   base::RepeatingClosure callback = BarrierClosure(
       2 /* num_closures */, run_loop.QuitClosure() /* done closure */);
   const uint16_t data1[] = {0xaaaa, 0xbbbb, 0xcccc, 0xdddd, 0xeeee, 0xffff};
-  WriteEventToEcEventFile(
-      EcEvent(0x8888, static_cast<EcEvent::Type>(0x9999), data1), callback);
+  EmitEcEventAndSetObserverExpectations(
+      EcEvent(0x8888, static_cast<EcEvent::Type>(0x9999), data1),
+      EcEventType::kNonSysNotification, callback);
   const uint16_t data2[] = {0x0000, 0x1111, 0x2222, 0x3333, 0x4444, 0x5555};
-  WriteEventToEcEventFile(
-      EcEvent(0x6666, static_cast<EcEvent::Type>(0x7777), data2), callback);
+  EmitEcEventAndSetObserverExpectations(
+      EcEvent(0x6666, static_cast<EcEvent::Type>(0x7777), data2),
+      EcEventType::kNonSysNotification, callback);
   run_loop.Run();
 }
 
-struct EcEventToMojoEventTestParams {
+struct EcEventToEcEventTypeTestParams {
   EcEvent source_ec_event;
-  base::Optional<MojoEvent> expected_mojo_event;
+  EcEventType expected_event_type;
 };
 
-class EcEventToMojoEventTest
+class ParsedEcEventStartedEcEventServiceTest
     : public StartedEcEventServiceTest,
-      public testing::WithParamInterface<EcEventToMojoEventTestParams> {};
+      public testing::WithParamInterface<EcEventToEcEventTypeTestParams> {};
 
-// Tests that HandleEvent() correctly interprets EC events, sometimes
-// translating them to Mojo events and forwarding them to |delegate_|.
-TEST_P(EcEventToMojoEventTest, SingleEvents) {
-  EcEventToMojoEventTestParams test_params = GetParam();
+// Tests that OnEventAvailable() correctly parses the EC events into the
+// corresponding EcEventTypes and are received by the |observers_.OnEcEvent()|
+TEST_P(ParsedEcEventStartedEcEventServiceTest, SingleEvents) {
+  EcEventToEcEventTypeTestParams test_params = GetParam();
   base::RunLoop run_loop;
-  WriteEventToEcEventFile(test_params.source_ec_event, run_loop.QuitClosure());
-  if (test_params.expected_mojo_event.has_value()) {
-    EXPECT_CALL(*delegate(),
-                HandleMojoEvent(test_params.expected_mojo_event.value()));
-  }
+  EmitEcEventAndSetObserverExpectations(test_params.source_ec_event,
+                                        test_params.expected_event_type,
+                                        run_loop.QuitClosure());
   run_loop.Run();
 }
 
@@ -165,7 +170,6 @@ TEST_P(EcEventToMojoEventTest, SingleEvents) {
 constexpr auto kGarbageType = static_cast<EcEvent::Type>(0xabcd);
 constexpr auto kSystemNotifyType = static_cast<EcEvent::Type>(0x0012);
 
-// Payloads for EcEvents that should trigger a Mojo event.
 constexpr uint16_t kEcEventPayloadNonWilcoCharger[]{0x0000, 0x0000, 0x0001,
                                                     0x0000, 0x0000, 0x0000};
 constexpr uint16_t kEcEventPayloadBatteryAuth[]{0x0003, 0x0000, 0x0001,
@@ -177,46 +181,42 @@ constexpr uint16_t kEcEventPayloadIncompatibleDock[]{0x0008, 0x0000, 0x0000,
                                                      0x1000};
 constexpr uint16_t kEcEventPayloadDockError[]{0x0008, 0x0000, 0x0000, 0x8000};
 
-// These contain the right EcEvent::SystemNotifySubType to trigger a Mojo event,
-// but none of the flags are set, so these should not cause a Mojo event.
 constexpr uint16_t kEcEventPayloadAcAdapterNoFlags[]{0x0000, 0x0000, 0x0000,
                                                      0x0000, 0x0000, 0x0000};
 constexpr uint16_t kEcEventPayloadChargerNoFlags[]{0x0003, 0x0000, 0x0000,
                                                    0x0000, 0x0000, 0x0000};
 constexpr uint16_t kEcEventPayloadUsbCNoFlags[]{0x0008, 0x0000, 0x0000, 0x0000};
 
-// Contains the right flags to trigger MojoEvent::kNonWilcoCharger, but the
-// EcEvent::SystemNotifySubType is wrong.
 constexpr uint16_t kEcEventPayloadNonWilcoChargerBadSubType[]{
     0xffff, 0x0000, 0x0001, 0x0000, 0x0000, 0x0000};
 
-const EcEventToMojoEventTestParams kEcEventToMojoEventTestParams[] = {
-    // Each of these EcEvents should trigger a Mojo event.
+const EcEventToEcEventTypeTestParams kEcEventToMojoEventTestParams[] = {
     {EcEvent(6, kSystemNotifyType, kEcEventPayloadNonWilcoCharger),
-     MojoEvent::kNonWilcoCharger},
+     EcEventType::kNonWilcoCharger},
     {EcEvent(6, kSystemNotifyType, kEcEventPayloadBatteryAuth),
-     MojoEvent::kBatteryAuth},
+     EcEventType::kBatteryAuth},
     {EcEvent(4, kSystemNotifyType, kEcEventPayloadDockDisplay),
-     MojoEvent::kDockDisplay},
+     EcEventType::kDockDisplay},
     {EcEvent(4, kSystemNotifyType, kEcEventPayloadDockThunderbolt),
-     MojoEvent::kDockThunderbolt},
+     EcEventType::kDockThunderbolt},
     {EcEvent(4, kSystemNotifyType, kEcEventPayloadIncompatibleDock),
-     MojoEvent::kIncompatibleDock},
+     EcEventType::kIncompatibleDock},
     {EcEvent(4, kSystemNotifyType, kEcEventPayloadDockError),
-     MojoEvent::kDockError},
-    // These EcEvents should not trigger any mojo events.
-    {EcEvent(6, kGarbageType, kEcEventPayloadNonWilcoCharger), base::nullopt},
+     EcEventType::kDockError},
+    {EcEvent(6, kGarbageType, kEcEventPayloadNonWilcoCharger),
+     EcEventType::kNonSysNotification},
     {EcEvent(4, kSystemNotifyType, kEcEventPayloadAcAdapterNoFlags),
-     base::nullopt},
+     EcEventType::kSysNotification},
     {EcEvent(4, kSystemNotifyType, kEcEventPayloadChargerNoFlags),
-     base::nullopt},
-    {EcEvent(4, kSystemNotifyType, kEcEventPayloadUsbCNoFlags), base::nullopt},
+     EcEventType::kSysNotification},
+    {EcEvent(4, kSystemNotifyType, kEcEventPayloadUsbCNoFlags),
+     EcEventType::kSysNotification},
     {EcEvent(6, kSystemNotifyType, kEcEventPayloadNonWilcoChargerBadSubType),
-     base::nullopt},
+     EcEventType::kSysNotification},
 };
 
-INSTANTIATE_TEST_CASE_P(AllRealAndSomeAlmostMojoEvents,
-                        EcEventToMojoEventTest,
+INSTANTIATE_TEST_CASE_P(AllRealAndSomeAlmostEcEvents,
+                        ParsedEcEventStartedEcEventServiceTest,
                         testing::ValuesIn(kEcEventToMojoEventTestParams));
 
 }  // namespace

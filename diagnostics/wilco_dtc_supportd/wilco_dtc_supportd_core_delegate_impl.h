@@ -14,6 +14,7 @@
 #include "diagnostics/wilco_dtc_supportd/system/debugd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/system/powerd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/bluetooth_event_service.h"
+#include "diagnostics/wilco_dtc_supportd/telemetry/ec_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core.h"
 
@@ -40,6 +41,7 @@ class WilcoDtcSupportdCoreDelegateImpl final
       const scoped_refptr<dbus::Bus>& bus) override;
   std::unique_ptr<BluetoothEventService> CreateBluetoothEventService(
       BluetoothClient* bluetooth_client) override;
+  std::unique_ptr<EcEventService> CreateEcEventService() override;
   std::unique_ptr<PowerdEventService> CreatePowerdEventService(
       PowerdAdapter* powerd_adapter) override;
 

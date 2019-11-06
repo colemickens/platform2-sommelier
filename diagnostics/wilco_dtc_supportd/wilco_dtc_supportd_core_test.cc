@@ -29,12 +29,12 @@
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/dbus/async_event_sequencer.h>
-#include <dbus/wilco_dtc_supportd/dbus-constants.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <dbus/mock_object_proxy.h>
 #include <dbus/property.h>
+#include <dbus/wilco_dtc_supportd/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
@@ -55,6 +55,7 @@
 #include "diagnostics/wilco_dtc_supportd/system/mock_debugd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/ec_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/fake_bluetooth_event_service.h"
+#include "diagnostics/wilco_dtc_supportd/telemetry/fake_ec_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/fake_powerd_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"
@@ -79,6 +80,8 @@ const char kUiMessageReceiverWilcoDtcGrpcUriTemplate[] =
     "unix:%s/test_ui_message_receiver_wilco_dtc_socket";
 
 using EcEvent = EcEventService::EcEvent;
+using EcEventType = EcEventService::Observer::EcEventType;
+using MojoEvent = chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
 using MojomWilcoDtcSupportdService =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService;
 using MojomWilcoDtcSupportdServiceFactory =
@@ -111,12 +114,14 @@ class FakeWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
         passed_powerd_adapter_(std::make_unique<FakePowerdAdapter>()),
         passed_bluetooth_event_service_(
             std::make_unique<FakeBluetoothEventService>()),
+        passed_ec_event_service_(std::make_unique<FakeEcEventService>()),
         passed_powerd_event_service_(
             std::make_unique<FakePowerdEventService>()),
         bluetooth_client_(passed_bluetooth_client_.get()),
         debugd_adapter_(passed_debugd_adapter_.get()),
         powerd_adapter_(passed_powerd_adapter_.get()),
         bluetooth_event_service_(passed_bluetooth_event_service_.get()),
+        ec_event_service_(passed_ec_event_service_.get()),
         powerd_event_service_(passed_powerd_event_service_.get()) {}
 
   std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>
@@ -164,6 +169,12 @@ class FakeWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
   }
 
   // Must be called no more than once.
+  std::unique_ptr<EcEventService> CreateEcEventService() override {
+    DCHECK(passed_ec_event_service_);
+    return std::move(passed_ec_event_service_);
+  }
+
+  // Must be called no more than once.
   std::unique_ptr<PowerdEventService> CreatePowerdEventService(
       PowerdAdapter* powerd_adapter) override {
     DCHECK(powerd_adapter);
@@ -179,6 +190,8 @@ class FakeWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
   FakeBluetoothEventService* bluetooth_event_service() const {
     return bluetooth_event_service_;
   }
+
+  FakeEcEventService* ec_event_service() const { return ec_event_service_; }
 
   FakePowerdEventService* powerd_event_service() const {
     return powerd_event_service_;
@@ -196,6 +209,7 @@ class FakeWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
   std::unique_ptr<FakePowerdAdapter> passed_powerd_adapter_;
 
   std::unique_ptr<FakeBluetoothEventService> passed_bluetooth_event_service_;
+  std::unique_ptr<FakeEcEventService> passed_ec_event_service_;
   std::unique_ptr<FakePowerdEventService> passed_powerd_event_service_;
 
   // Pointers to objects originally stored in |passed_*| members. These allow
@@ -206,6 +220,7 @@ class FakeWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
   FakePowerdAdapter* powerd_adapter_;
 
   FakeBluetoothEventService* bluetooth_event_service_;
+  FakeEcEventService* ec_event_service_;
   FakePowerdEventService* powerd_event_service_;
 };
 
@@ -335,11 +350,6 @@ class StartedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
             }));
   }
 
-  void WriteEcEventToEcEventFile(const EcEvent& ec_event) const {
-    ASSERT_EQ(write(ec_event_service_fd_.get(), &ec_event, sizeof(ec_event)),
-              sizeof(ec_event));
-  }
-
   dbus::ExportedObject::MethodCallCallback
   bootstrap_mojo_connection_dbus_method() {
     return bootstrap_mojo_connection_dbus_method_;
@@ -358,6 +368,13 @@ class StartedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
   const std::string& wilco_dtc_grpc_uri() const {
     DCHECK(!wilco_dtc_grpc_uri_.empty());
     return wilco_dtc_grpc_uri_;
+  }
+
+  void BootstrapMojoConnection(FakeMojoFdGenerator* fake_mojo_fd_generator) {
+    base::RunLoop run_loop;
+    ASSERT_TRUE(fake_browser()->BootstrapMojoConnection(
+        fake_mojo_fd_generator, run_loop.QuitClosure()));
+    run_loop.Run();
   }
 
  private:
@@ -469,8 +486,7 @@ TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapSuccess) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
   SetSuccessMockBindWilcoDtcSupportdMojoService(&fake_mojo_fd_generator);
 
-  EXPECT_TRUE(fake_browser()->BootstrapMojoConnection(&fake_mojo_fd_generator));
-
+  BootstrapMojoConnection(&fake_mojo_fd_generator);
   EXPECT_TRUE(*mojo_service_factory_interface_ptr());
 }
 
@@ -483,8 +499,10 @@ TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapErrorToBind) {
       .WillOnce(Return(nullptr));
   EXPECT_CALL(*core_delegate(), BeginDaemonShutdown());
 
-  EXPECT_FALSE(
-      fake_browser()->BootstrapMojoConnection(&fake_mojo_fd_generator));
+  base::RunLoop run_loop;
+  EXPECT_FALSE(fake_browser()->BootstrapMojoConnection(&fake_mojo_fd_generator,
+                                                       run_loop.QuitClosure()));
+  run_loop.Run();
 
   Mock::VerifyAndClearExpectations(core_delegate());
 }
@@ -495,16 +513,16 @@ TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapErrorRepeated) {
   FakeMojoFdGenerator first_fake_mojo_fd_generator;
   SetSuccessMockBindWilcoDtcSupportdMojoService(&first_fake_mojo_fd_generator);
 
-  EXPECT_TRUE(
-      fake_browser()->BootstrapMojoConnection(&first_fake_mojo_fd_generator));
+  BootstrapMojoConnection(&first_fake_mojo_fd_generator);
   Mock::VerifyAndClearExpectations(core_delegate());
 
   FakeMojoFdGenerator second_fake_mojo_fd_generator;
   EXPECT_CALL(*core_delegate(), BeginDaemonShutdown());
 
-  EXPECT_FALSE(
-      fake_browser()->BootstrapMojoConnection(&second_fake_mojo_fd_generator));
-
+  base::RunLoop run_loop;
+  EXPECT_FALSE(fake_browser()->BootstrapMojoConnection(
+      &second_fake_mojo_fd_generator, run_loop.QuitClosure()));
+  run_loop.Run();
   Mock::VerifyAndClearExpectations(core_delegate());
 }
 
@@ -514,8 +532,7 @@ TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapSuccessThenAbort) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
   SetSuccessMockBindWilcoDtcSupportdMojoService(&fake_mojo_fd_generator);
 
-  EXPECT_TRUE(fake_browser()->BootstrapMojoConnection(&fake_mojo_fd_generator));
-
+  BootstrapMojoConnection(&fake_mojo_fd_generator);
   Mock::VerifyAndClearExpectations(core_delegate());
 
   EXPECT_CALL(*core_delegate(), BeginDaemonShutdown());
@@ -537,8 +554,8 @@ class BootstrappedWilcoDtcSupportdCoreTest
 
     FakeMojoFdGenerator fake_mojo_fd_generator;
     SetSuccessMockBindWilcoDtcSupportdMojoService(&fake_mojo_fd_generator);
-    ASSERT_TRUE(
-        fake_browser()->BootstrapMojoConnection(&fake_mojo_fd_generator));
+    BootstrapMojoConnection(&fake_mojo_fd_generator);
+
     ASSERT_TRUE(*mojo_service_factory_interface_ptr());
 
     fake_wilco_dtc_ = std::make_unique<FakeWilcoDtc>(
@@ -694,7 +711,7 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, NotifyConfigurationDataChanged) {
   run_loop.Run();
 }
 
-// Test that message can be send from wilco_dtc to browser and
+// Test that a message can be sent from wilco_dtc to browser and
 // returns an expected response
 TEST_F(BootstrappedWilcoDtcSupportdCoreTest, SendWilcoDtcMessageToUi) {
   const std::string kFakeMessageToUi =
@@ -933,8 +950,16 @@ const uint16_t kFakeEcEventType1 = 0xabcd;
 const uint16_t kFakeEcEventType2 = 0x1234;
 
 // Tests for EC event service.
+//
+// This is a parametrized test with the following parameters:
+// * |size_in_words| - the payload size of the EcEvent
+// * |ec_event_type| - the type of the ec event
+// * |expected_mojo_event| - the expected mojo event passed to the
+// |wilco_dtc_supportd_client| over mojo
 class EcEventServiceBootstrappedWilcoDtcSupportdCoreTest
-    : public BootstrappedWilcoDtcSupportdCoreTest {
+    : public BootstrappedWilcoDtcSupportdCoreTest,
+      public testing::WithParamInterface<
+          std::tuple<uint16_t, EcEventType, base::Optional<MojoEvent>>> {
  protected:
   // Holds EC event type and payload of |grpc_api::HandleEcNotificationResponse|
   using GrpcEvent = std::pair<uint16_t, std::string>;
@@ -944,8 +969,11 @@ class EcEventServiceBootstrappedWilcoDtcSupportdCoreTest
                        expected_size_in_bytes);
   }
 
-  void EmulateEcEvent(uint16_t size_in_words, uint16_t type) const {
-    WriteEcEventToEcEventFile(GetEcEvent(size_in_words, type));
+  void EmulateEcEvent(uint16_t size_in_words,
+                      uint16_t type,
+                      EcEventType ec_event_type) {
+    core_delegate()->ec_event_service()->EmitEcEvent(
+        GetEcEvent(size_in_words, type), ec_event_type);
   }
 
   void ExpectAllFakeWilcoDtcReceivedEcEvents(
@@ -966,6 +994,14 @@ class EcEventServiceBootstrappedWilcoDtcSupportdCoreTest
 
     EXPECT_EQ(fake_wilco_dtc_ec_events, expected_ec_events);
     EXPECT_EQ(fake_ui_message_receiver_wilco_dtc_ec_events, expected_ec_events);
+  }
+
+  uint16_t size_in_words() const { return std::get<0>(GetParam()); }
+
+  EcEventType ec_event_type() const { return std::get<1>(GetParam()); }
+
+  base::Optional<MojoEvent> expected_mojo_event() const {
+    return std::get<2>(GetParam());
   }
 
  private:
@@ -995,37 +1031,13 @@ class EcEventServiceBootstrappedWilcoDtcSupportdCoreTest
 };
 
 // Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
-// called by wilco_dtc support daemon.
-TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
-       SendGrpcEventToWilcoDtcSize0) {
-  EmulateEcEvent(0, kFakeEcEventType1);
-  ExpectAllFakeWilcoDtcReceivedEcEvents({{kFakeEcEventType1, GetPayload(0)}});
-}
-
-// Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
-// called by wilco_dtc support daemon.
-TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
-       SendGrpcEventToWilcoDtcSize5) {
-  EmulateEcEvent(5, kFakeEcEventType1);
-  ExpectAllFakeWilcoDtcReceivedEcEvents({{kFakeEcEventType1, GetPayload(10)}});
-}
-
-// Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
-// called by wilco_dtc support daemon.
-TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
-       SendGrpcEventToWilcoDtcSize6) {
-  EmulateEcEvent(6, kFakeEcEventType1);
-  ExpectAllFakeWilcoDtcReceivedEcEvents({{kFakeEcEventType1, GetPayload(12)}});
-}
-
-// Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
-// called by wilco_dtc support daemon multiple times.
-TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
-       SendGrpcEventToWilcoDtcMultipleEvents) {
-  EmulateEcEvent(3, kFakeEcEventType1);
-  EmulateEcEvent(4, kFakeEcEventType2);
+// called by wilco_dtc support daemon on EcEvent with valid payload size
+TEST_P(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
+       SendGrpcEventToWilcoDtcValidSize) {
+  EmulateEcEvent(size_in_words(), kFakeEcEventType1,
+                 EcEventType::kNonSysNotification);
   ExpectAllFakeWilcoDtcReceivedEcEvents(
-      {{kFakeEcEventType1, GetPayload(6)}, {kFakeEcEventType2, GetPayload(8)}});
+      {{kFakeEcEventType1, GetPayload(2 * size_in_words())}});
 }
 
 // Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
@@ -1033,11 +1045,67 @@ TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
 // allocated data array.
 TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
        SendGrpcEventToWilcoDtcInvalidSize) {
-  EmulateEcEvent(3, kFakeEcEventType1);
-  EmulateEcEvent(7, kFakeEcEventType2);
+  EmulateEcEvent(3, kFakeEcEventType1, EcEventType::kNonSysNotification);
+  EmulateEcEvent(7, kFakeEcEventType2, EcEventType::kNonSysNotification);
   // Expect only EC event with valid size.
   ExpectAllFakeWilcoDtcReceivedEcEvents({{kFakeEcEventType1, GetPayload(6)}});
 }
+
+// Test that the method |HandleEvent| exposed by mojo_client is called by the
+// wilco_dtc support daemon
+TEST_P(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest, TriggerMojoEvent) {
+  if (expected_mojo_event().has_value()) {
+    // Set HandleEvent expectations for the triggered mojo events
+    EXPECT_CALL(*wilco_dtc_supportd_client(),
+                HandleEvent(expected_mojo_event().value()));
+  }
+  EmulateEcEvent(7, kFakeEcEventType1, ec_event_type());
+}
+
+// Test that both methods |HandleEcNotification()| and |HandleEvent()| exposed
+// by wilco_dtc gRPC and mojo_client, respectively, are called
+// by wilco_dtc support daemon multiple times.
+TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
+       TriggerMultipleMojoEvents) {
+  // Set HandleEvent expectations for the triggered mojo events
+  EXPECT_CALL(*wilco_dtc_supportd_client(),
+              HandleEvent(MojoEvent::kBatteryAuth))
+      .Times(2);
+  EmulateEcEvent(3, kFakeEcEventType1, EcEventType::kBatteryAuth);
+  EmulateEcEvent(4, kFakeEcEventType2, EcEventType::kBatteryAuth);
+  ExpectAllFakeWilcoDtcReceivedEcEvents(
+      {{kFakeEcEventType1, GetPayload(6)}, {kFakeEcEventType2, GetPayload(8)}});
+}
+
+INSTANTIATE_TEST_CASE_P(
+    AllRealAndSomeAlmostMojoEvents,
+    EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
+    testing::Values(
+        std::make_tuple(
+            0,
+            EcEventType::kNonWilcoCharger,
+            base::make_optional<MojoEvent>(MojoEvent::kNonWilcoCharger)),
+        std::make_tuple(
+            1,
+            EcEventType::kBatteryAuth,
+            base::make_optional<MojoEvent>(MojoEvent::kBatteryAuth)),
+        std::make_tuple(
+            2,
+            EcEventType::kDockDisplay,
+            base::make_optional<MojoEvent>(MojoEvent::kDockDisplay)),
+        std::make_tuple(
+            3,
+            EcEventType::kDockThunderbolt,
+            base::make_optional<MojoEvent>(MojoEvent::kDockThunderbolt)),
+        std::make_tuple(
+            4,
+            EcEventType::kIncompatibleDock,
+            base::make_optional<MojoEvent>(MojoEvent::kIncompatibleDock)),
+        std::make_tuple(5,
+                        EcEventType::kDockError,
+                        base::make_optional<MojoEvent>(MojoEvent::kDockError)),
+        std::make_tuple(6, EcEventType::kNonSysNotification, base::nullopt),
+        std::make_tuple(0, EcEventType::kSysNotification, base::nullopt)));
 
 // Tests for powerd event service.
 //

@@ -42,12 +42,12 @@ namespace diagnostics {
 // Integrates together all pieces which implement separate IPC services exposed
 // by the wilco_dtc_supportd daemon and IPC clients.
 class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
-                                   public EcEventService::Delegate,
                                    public WilcoDtcSupportdGrpcService::Delegate,
                                    public WilcoDtcSupportdMojoService::Delegate,
                                    public chromeos::wilco_dtc_supportd::mojom::
                                        WilcoDtcSupportdServiceFactory,
                                    public BluetoothEventService::Observer,
+                                   public EcEventService::Observer,
                                    public PowerdEventService::Observer {
  public:
   class Delegate {
@@ -92,6 +92,10 @@ class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
     virtual std::unique_ptr<BluetoothEventService> CreateBluetoothEventService(
         BluetoothClient* bluetooth_client) = 0;
 
+    // Creates EcEventService. For performance reason, must be called no
+    // more than once.
+    virtual std::unique_ptr<EcEventService> CreateEcEventService() = 0;
+
     // Creates PowerdEventService. For performance reason, must be called no
     // more than once.
     virtual std::unique_ptr<PowerdEventService> CreatePowerdEventService(
@@ -118,14 +122,14 @@ class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
 
   // Overrides the file system root directory for file operations in tests.
   void set_root_dir_for_testing(const base::FilePath& root_dir) {
-    ec_event_service_.set_root_dir_for_testing(root_dir);
+    ec_event_service_->set_root_dir_for_testing(root_dir);
     grpc_service_.set_root_dir_for_testing(root_dir);
   }
 
   // Overrides EC event fd events for |poll()| function in |ec_event_service_|
   // service in tests.
   void set_ec_event_service_fd_events_for_testing(int16_t events) {
-    ec_event_service_.set_event_fd_events_for_testing(events);
+    ec_event_service_->set_event_fd_events_for_testing(events);
   }
 
   // Starts gRPC servers, gRPC clients and EC event service.
@@ -157,11 +161,6 @@ class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
 
   // Shuts down the self instance after a Mojo fatal error happens.
   void ShutDownDueToMojoError(const std::string& debug_reason);
-
-  // EcEventService::Delegate overrides:
-  void SendGrpcEcEventToWilcoDtc(
-      const EcEventService::EcEvent& ec_event) override;
-  void HandleMojoEvent(const MojoEvent& mojo_event) override;
 
   // WilcoDtcSupportdGrpcService::Delegate overrides:
   void SendWilcoDtcMessageToUi(
@@ -204,8 +203,16 @@ class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
   void BluetoothAdapterDataChanged(
       const std::vector<BluetoothEventService::AdapterData>& adapters) override;
 
+  // EcEventService::Observer overrides:
+  void OnEcEvent(const EcEventService::EcEvent& ec_event,
+                 EcEventService::Observer::EcEventType type) override;
+
   // PowerdEventService::Observer overrides:
   void OnPowerdEvent(PowerEventType type) override;
+
+  // OnEcEvent should trigger the following:
+  void SendGrpcEcEventToWilcoDtc(const EcEventService::EcEvent& ec_event);
+  void SendMojoEcEventToBrowser(const MojoEvent& mojo_event);
 
   // Unowned. The delegate should outlive this instance.
   Delegate* const delegate_;
@@ -266,9 +273,6 @@ class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
   // unreliable during shutdown).
   bool mojo_service_bind_attempted_ = false;
 
-  // EcEvent-related members:
-  EcEventService ec_event_service_{this /* delegate */};
-
   // D-Bus adapters for system daemons.
   std::unique_ptr<BluetoothClient> bluetooth_client_;
   std::unique_ptr<DebugdAdapter> debugd_adapter_;
@@ -276,6 +280,7 @@ class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
 
   // Telemetry services:
   std::unique_ptr<BluetoothEventService> bluetooth_event_service_;
+  std::unique_ptr<EcEventService> ec_event_service_;
   std::unique_ptr<PowerdEventService> powerd_event_service_;
 
   // Diagnostic routine-related members:

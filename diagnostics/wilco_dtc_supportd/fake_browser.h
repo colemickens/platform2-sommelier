@@ -36,8 +36,8 @@ class FakeBrowser final {
 
   // |wilco_dtc_supportd_service_factory_ptr| is a pointer to the tested
   // WilcoDtcSupportdServiceFactory instance.
-  // |bootstrap_mojo_connection_dbus_method| is a fake substitute for the
-  // BootstrapMojoConnection() D-Bus method.
+  // |bootstrap_mojo_connection_dbus_method| is the callback that the tested
+  // code exposed as the BootstrapMojoConnection D-Bus method.
   FakeBrowser(MojomWilcoDtcSupportdServiceFactoryPtr*
                   wilco_dtc_supportd_service_factory_ptr,
               DBusMethodCallCallback bootstrap_mojo_connection_dbus_method);
@@ -52,12 +52,14 @@ class FakeBrowser final {
 
   // Call the BootstrapMojoConnection D-Bus method. Returns whether the D-Bus
   // call returned success.
-  // |mojo_fd| is the fake file descriptor.
-  // |bootstrap_mojo_connection_dbus_method| is the callback that the tested
-  // code exposed as the BootstrapMojoConnection D-Bus method.
+  // |fake_mojo_fd_generator| is the fake file descriptor generator.
+  // |bootstrap_mojo_connection_callback| is called when the boostrapping of the
+  // mojo connection succeeds or fails.
   //
   // It's not allowed to call this method again after a successful completion.
-  bool BootstrapMojoConnection(FakeMojoFdGenerator* fake_mojo_fd_generator);
+  bool BootstrapMojoConnection(
+      FakeMojoFdGenerator* fake_mojo_fd_generator,
+      const base::Closure& bootstrap_mojo_connection_callback);
 
   // Call the |SendUiMessageToWilcoDtc| Mojo method
   // on wilco_dtc_supportd daemon, which will call the |HandleMessageFromUi|
@@ -89,11 +91,15 @@ class FakeBrowser final {
   // synchronously).
   bool CallBootstrapMojoConnectionDBusMethod(
       FakeMojoFdGenerator* fake_mojo_fd_generator);
+
   // Calls GetService() Mojo method on
   // |wilco_dtc_supportd_service_factory_ptr_|, initializes
   // |wilco_dtc_supportd_service_ptr_| so that it points to the tested service,
   // registers |wilco_dtc_supportd_client_| to handle incoming Mojo requests.
-  void CallGetServiceMojoMethod();
+  // |get_service_mojo_method_callback| is called when the full-duplex Mojo
+  // communication with the tested Mojo service is established.
+  void CallGetServiceMojoMethod(
+      const base::Closure& get_service_mojo_method_callback);
 
   // Unowned. Points to the tested WilcoDtcSupportdServiceFactory instance.
   MojomWilcoDtcSupportdServiceFactoryPtr* const

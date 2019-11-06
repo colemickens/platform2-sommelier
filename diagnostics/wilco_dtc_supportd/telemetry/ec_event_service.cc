@@ -24,6 +24,7 @@ namespace diagnostics {
 
 namespace {
 using MojoEvent = chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
+using EcEventType = EcEventService::Observer::EcEventType;
 }  // namespace
 
 namespace internal {
@@ -122,10 +123,8 @@ size_t EcEventService::EcEvent::PayloadSizeInBytes() const {
   return (sanitized_size - 1) * sizeof(uint16_t);
 }
 
-EcEventService::EcEventService(Delegate* delegate)
-    : message_loop_(base::MessageLoop::current()), delegate_(delegate) {
+EcEventService::EcEventService() : message_loop_(base::MessageLoop::current()) {
   DCHECK(message_loop_);
-  DCHECK(delegate_);
 }
 
 EcEventService::~EcEventService() {
@@ -181,6 +180,21 @@ void EcEventService::Shutdown(base::Closure on_shutdown_callback) {
   ShutdownMonitoringThread();
 }
 
+void EcEventService::AddObserver(EcEventService::Observer* observer) {
+  DCHECK(observer);
+  observers_.AddObserver(observer);
+}
+
+void EcEventService::RemoveObserver(EcEventService::Observer* observer) {
+  DCHECK(observer);
+  observers_.RemoveObserver(observer);
+}
+
+bool EcEventService::HasObserver(EcEventService::Observer* observer) {
+  DCHECK(observer);
+  return observers_.HasObserver(observer);
+}
+
 void EcEventService::ShutdownMonitoringThread() {
   // Due to |eventfd| documentation to invoke |poll()| on |shutdown_fd_| file
   // descriptor we must write any 8-byte value greater than 0 except
@@ -195,48 +209,55 @@ void EcEventService::ShutdownMonitoringThread() {
 
 void EcEventService::OnEventAvailable(const EcEvent& ec_event) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  delegate_->SendGrpcEcEventToWilcoDtc(ec_event);
 
-  // Parse EcEvent into a MojoEvent and forward to the delegate.
+  // Determine the type of the EcEvent.
   // We only will forward certain events. If they aren't relevant, ignore.
   if (ec_event.type != EcEvent::Type::SYSTEM_NOTIFY) {
+    NotifyObservers(ec_event, EcEventType::kNonSysNotification);
     return;
   }
-  EcEvent::SystemNotifyPayload payload = ec_event.payload.system_notify;
+
+  const EcEvent::SystemNotifyPayload& payload = ec_event.payload.system_notify;
+  EcEventType type = EcEventType::kSysNotification;
+
   switch (payload.sub_type) {
     case EcEvent::SystemNotifySubType::AC_ADAPTER:
       if (payload.flags.ac_adapter.cause &
           EcEvent::AcAdapterFlags::Cause::NON_WILCO_CHARGER) {
-        delegate_->HandleMojoEvent(MojoEvent::kNonWilcoCharger);
+        type = EcEventType::kNonWilcoCharger;
       }
       break;
     case EcEvent::SystemNotifySubType::BATTERY:
       if (payload.flags.battery.cause &
           EcEvent::BatteryFlags::Cause::BATTERY_AUTH) {
-        delegate_->HandleMojoEvent(MojoEvent::kBatteryAuth);
+        type = EcEventType::kBatteryAuth;
       }
       break;
     case EcEvent::SystemNotifySubType::USB_C:
       if (payload.flags.usb_c.billboard &
           EcEvent::UsbCFlags::Billboard::HDMI_USBC_CONFLICT) {
-        delegate_->HandleMojoEvent(MojoEvent::kDockDisplay);
+        type = EcEventType::kDockDisplay;
       }
       if (payload.flags.usb_c.dock &
           EcEvent::UsbCFlags::Dock::THUNDERBOLT_UNSUPPORTED_USING_USBC) {
-        delegate_->HandleMojoEvent(MojoEvent::kDockThunderbolt);
+        type = EcEventType::kDockThunderbolt;
       }
       if (payload.flags.usb_c.dock &
           EcEvent::UsbCFlags::Dock::INCOMPATIBLE_DOCK) {
-        delegate_->HandleMojoEvent(MojoEvent::kIncompatibleDock);
+        type = EcEventType::kIncompatibleDock;
       }
       if (payload.flags.usb_c.dock & EcEvent::UsbCFlags::Dock::OVERTEMP_ERROR) {
-        delegate_->HandleMojoEvent(MojoEvent::kDockError);
+        type = EcEventType::kDockError;
       }
       break;
-    default:
-      // Ignore EC events that aren't relevant.
-      break;
   }
+  NotifyObservers(ec_event, type);
+}
+
+void EcEventService::NotifyObservers(const EcEvent& ec_event,
+                                     EcEventType type) {
+  for (auto& observer : observers_)
+    observer.OnEcEvent(ec_event, type);
 }
 
 void EcEventService::OnShutdown() {

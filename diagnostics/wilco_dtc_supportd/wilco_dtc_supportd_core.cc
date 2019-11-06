@@ -15,8 +15,8 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/thread_task_runner_handle.h>
-#include <dbus/wilco_dtc_supportd/dbus-constants.h>
 #include <dbus/object_path.h>
+#include <dbus/wilco_dtc_supportd/dbus-constants.h>
 #include <mojo/public/cpp/system/message_pipe.h>
 
 #include "diagnostics/common/bind_utils.h"
@@ -27,6 +27,7 @@ namespace diagnostics {
 namespace {
 
 using EcEvent = EcEventService::EcEvent;
+using EcEventType = EcEventService::Observer::EcEventType;
 using MojomWilcoDtcSupportdWebRequestStatus =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestStatus;
 using MojomWilcoDtcSupportdWebRequestHttpMethod =
@@ -108,6 +109,9 @@ WilcoDtcSupportdCore::WilcoDtcSupportdCore(
       wilco_dtc_grpc_uris_(wilco_dtc_grpc_uris),
       grpc_server_(base::ThreadTaskRunnerHandle::Get(), grpc_service_uris_) {
   DCHECK(delegate);
+  ec_event_service_ = delegate_->CreateEcEventService();
+  DCHECK(ec_event_service_);
+  ec_event_service_->AddObserver(this);
 }
 
 WilcoDtcSupportdCore::~WilcoDtcSupportdCore() {
@@ -117,6 +121,7 @@ WilcoDtcSupportdCore::~WilcoDtcSupportdCore() {
   if (powerd_event_service_) {
     powerd_event_service_->RemoveObserver(this);
   }
+  ec_event_service_->RemoveObserver(this);
 }
 
 bool WilcoDtcSupportdCore::Start() {
@@ -202,7 +207,7 @@ bool WilcoDtcSupportdCore::Start() {
       wilco_dtc_grpc_clients_.back().get();
 
   // Start EC event service.
-  if (!ec_event_service_.Start()) {
+  if (!ec_event_service_->Start()) {
     LOG(WARNING)
         << "Failed to start EC event service. EC events will be ignored.";
   }
@@ -215,7 +220,7 @@ void WilcoDtcSupportdCore::ShutDown(const base::Closure& on_shutdown) {
              "EC event service and D-Bus server";
   const base::Closure barrier_closure =
       BarrierClosure(wilco_dtc_grpc_clients_.size() + 2, on_shutdown);
-  ec_event_service_.Shutdown(barrier_closure);
+  ec_event_service_->Shutdown(barrier_closure);
   grpc_server_.Shutdown(barrier_closure);
   for (const auto& client : wilco_dtc_grpc_clients_) {
     client->Shutdown(barrier_closure);
@@ -394,48 +399,6 @@ void WilcoDtcSupportdCore::PerformWebRequestToBrowser(
             callback.Run(status, http_status, response_body);
           },
           callback));
-}
-
-void WilcoDtcSupportdCore::SendGrpcEcEventToWilcoDtc(const EcEvent& ec_event) {
-  VLOG(1) << "WilcoDtcSupportdCore::SendGrpcEcEventToWilcoDtc";
-
-  size_t payload_size = ec_event.PayloadSizeInBytes();
-  if (payload_size > sizeof(ec_event.payload)) {
-    VLOG(2) << "Received EC event with invalid payload size: " << payload_size;
-    return;
-  }
-
-  grpc_api::HandleEcNotificationRequest request;
-  request.set_type(ec_event.type);
-  request.set_payload(&ec_event.payload, payload_size);
-
-  for (auto& client : wilco_dtc_grpc_clients_) {
-    client->CallRpc(
-        &grpc_api::WilcoDtc::Stub::AsyncHandleEcNotification, request,
-        base::Bind([](std::unique_ptr<grpc_api::HandleEcNotificationResponse>
-                          response) {
-          if (!response) {
-            VLOG(1)
-                << "Failed to call HandleEcNotificationRequest gRPC method on "
-                   "wilco_dtc: response message is nullptr";
-            return;
-          }
-          VLOG(1) << "gRPC method HandleEcNotificationRequest was successfully"
-                     "called on wilco_dtc";
-        }));
-  }
-}
-
-void WilcoDtcSupportdCore::HandleMojoEvent(const MojoEvent& mojo_event) {
-  VLOG(1) << "WilcoDtcSupportdCore::HandleEvent";
-
-  if (!mojo_service_) {
-    LOG(WARNING) << "HandleEvent happens before Mojo "
-                 << "connection is established.";
-    return;
-  }
-
-  mojo_service_->HandleEvent(mojo_event);
 }
 
 void WilcoDtcSupportdCore::GetAvailableRoutinesToService(
@@ -638,6 +601,85 @@ void WilcoDtcSupportdCore::OnPowerdEvent(PowerEventType type) {
                      "successfully called on wilco_dtc";
         }));
   }
+}
+
+void WilcoDtcSupportdCore::OnEcEvent(const EcEvent& ec_event,
+                                     EcEventType type) {
+  VLOG(1) << "WilcoDtcSupportdCore::OnEcEvent: " << static_cast<int>(type);
+
+  SendGrpcEcEventToWilcoDtc(ec_event);
+
+  // Parse EcEventType into a MojoEvent and forward to the delegate.
+  // We only will forward certain events. If they aren't relevant, ignore.
+  switch (type) {
+    case EcEventType::kNonWilcoCharger:
+      SendMojoEcEventToBrowser(MojoEvent::kNonWilcoCharger);
+      break;
+    case EcEventType::kBatteryAuth:
+      SendMojoEcEventToBrowser(MojoEvent::kBatteryAuth);
+      break;
+    case EcEventType::kDockDisplay:
+      SendMojoEcEventToBrowser(MojoEvent::kDockDisplay);
+      break;
+    case EcEventType::kDockThunderbolt:
+      SendMojoEcEventToBrowser(MojoEvent::kDockThunderbolt);
+      break;
+    case EcEventType::kIncompatibleDock:
+      SendMojoEcEventToBrowser(MojoEvent::kIncompatibleDock);
+      break;
+    case EcEventType::kDockError:
+      SendMojoEcEventToBrowser(MojoEvent::kDockError);
+      break;
+    case EcEventType::kSysNotification:
+      VLOG(2) << "Received EC event that doesn't trigger a mojo event";
+      break;
+    case EcEventType::kNonSysNotification:
+      VLOG(2) << "Received a non-system notification EC event";
+      break;
+  }
+}
+
+void WilcoDtcSupportdCore::SendGrpcEcEventToWilcoDtc(const EcEvent& ec_event) {
+  VLOG(1) << "WilcoDtcSupportdCore::SendGrpcEcEventToWilcoDtc";
+
+  size_t payload_size = ec_event.PayloadSizeInBytes();
+  if (payload_size > sizeof(ec_event.payload)) {
+    VLOG(2) << "Received EC event with invalid payload size: " << payload_size;
+    return;
+  }
+
+  grpc_api::HandleEcNotificationRequest request;
+  request.set_type(ec_event.type);
+  request.set_payload(&ec_event.payload, payload_size);
+
+  for (auto& client : wilco_dtc_grpc_clients_) {
+    client->CallRpc(
+        &grpc_api::WilcoDtc::Stub::AsyncHandleEcNotification, request,
+        base::Bind([](std::unique_ptr<grpc_api::HandleEcNotificationResponse>
+                          response) {
+          if (!response) {
+            VLOG(1)
+                << "Failed to call HandleEcNotificationRequest gRPC method on "
+                   "wilco_dtc: response message is nullptr";
+            return;
+          }
+          VLOG(1) << "gRPC method HandleEcNotificationRequest was successfully"
+                     "called on wilco_dtc";
+        }));
+  }
+}
+
+void WilcoDtcSupportdCore::SendMojoEcEventToBrowser(
+    const MojoEvent& mojo_event) {
+  VLOG(1) << "WilcoDtcSupportdCore::HandleEvent";
+
+  if (!mojo_service_) {
+    LOG(WARNING) << "HandleEvent happens before Mojo "
+                 << "connection is established.";
+    return;
+  }
+
+  mojo_service_->HandleEvent(mojo_event);
 }
 
 }  // namespace diagnostics

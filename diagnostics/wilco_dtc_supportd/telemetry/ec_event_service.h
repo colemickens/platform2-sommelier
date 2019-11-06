@@ -15,6 +15,7 @@
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
+#include <base/observer_list.h>
 #include <base/sequence_checker_impl.h>
 #include <base/threading/simple_thread.h>
 
@@ -28,7 +29,7 @@ class EcEventMonitoringThreadDelegate;
 }  // namespace internal
 
 // Subscribes on EC events and redirects EC events to wilco_dtc.
-class EcEventService final {
+class EcEventService {
  public:
   // A packet of data sent by the EC when it notices certain events have
   // occured, such as the battery, AC adapter, or USB-C state changing.
@@ -143,24 +144,37 @@ class EcEventService final {
     } payload = {};
   };
 
-  class Delegate {
+  class Observer {
    public:
-    virtual ~Delegate() = default;
+    enum class EcEventType {
+      // An unauthorized battery is connected.
+      kBatteryAuth,
+      // Charger is unauthorized, and battery will not charge.
+      kNonWilcoCharger,
+      // Attached dock is incompatible.
+      kIncompatibleDock,
+      // Attached dock presents hardware failures.
+      kDockError,
+      // HDMI and USB Type-C cannot be used for displays at the same time
+      // with the attached dock.
+      kDockDisplay,
+      // Attached dock will operate in USB Type-C compatible mode.
+      kDockThunderbolt,
+
+      // System notification but non relevant events
+      kSysNotification,
+      // Non system notification events
+      kNonSysNotification,
+    };
+
+    virtual ~Observer() = default;
 
     // Called when event from EC was received.
-    //
-    // Calls wilco_dtc |HandleEcNotification| gRPC function with |payload| in
-    // request.
-    virtual void SendGrpcEcEventToWilcoDtc(const EcEvent& ec_event) = 0;
-    // Forwards Mojo event to browser's HandleEvent Mojo function in order
-    // to display relevant system notifications.
-    virtual void HandleMojoEvent(
-        const chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent&
-            mojo_event) = 0;
+    virtual void OnEcEvent(const EcEvent& ec_event, EcEventType type) = 0;
   };
 
-  explicit EcEventService(Delegate* delegate);
-  ~EcEventService();
+  EcEventService();
+  virtual ~EcEventService();
 
   // Starts service.
   bool Start();
@@ -178,6 +192,13 @@ class EcEventService final {
     event_fd_events_ = events;
   }
 
+  void AddObserver(Observer* observer);
+  void RemoveObserver(Observer* observer);
+  bool HasObserver(Observer* observer);
+
+ protected:
+  base::ObserverList<Observer> observers_;
+
  private:
   // Signal via writing to the |shutdown_fd_| that the monitoring thread should
   // shut down. Once the monitoring thread handles this event and gets ready
@@ -189,6 +210,9 @@ class EcEventService final {
   // was received by background monitoring thread.
   void OnEventAvailable(const EcEvent& ec_event);
 
+  // Notify the observers with the parsed event and event type
+  void NotifyObservers(const EcEvent& ec_event, Observer::EcEventType type);
+
   // This is called on the |message_loop_->task_runner()| when the background
   // monitoring thread is shutting down.
   void OnShutdown();
@@ -197,9 +221,6 @@ class EcEventService final {
 
   // This callback will be invoked after current service shutdown.
   base::Closure on_shutdown_callback_;
-
-  // Unowned. The delegate should outlive this instance.
-  Delegate* const delegate_;
 
   // The file system root directory. Can be overridden in tests.
   base::FilePath root_dir_{"/"};
