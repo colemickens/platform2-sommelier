@@ -225,8 +225,7 @@ void ManagerDBusAdaptor::EnableTechnology(DBusMethodResponsePtr<> response,
   ResultCallback callback = GetMethodReplyCallback(std::move(response));
   const bool kPersistentSave = true;
   manager_->SetEnabledStateForTechnology(technology_name, true, kPersistentSave,
-                                         &e, callback);
-  ReturnResultOrDefer(callback, e);
+                                         callback);
 }
 
 void ManagerDBusAdaptor::DisableTechnology(DBusMethodResponsePtr<> response,
@@ -236,8 +235,7 @@ void ManagerDBusAdaptor::DisableTechnology(DBusMethodResponsePtr<> response,
   ResultCallback callback = GetMethodReplyCallback(std::move(response));
   const bool kPersistentSave = true;
   manager_->SetEnabledStateForTechnology(technology_name, false,
-                                         kPersistentSave, &e, callback);
-  ReturnResultOrDefer(callback, e);
+                                         kPersistentSave, callback);
 }
 
 // Called, e.g., to get WiFiService handle for a hidden SSID.

@@ -290,7 +290,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void SetEnabledStateForTechnology(const std::string& technology_name,
                                     bool enabled_state,
                                     bool persist,
-                                    Error* error,
                                     const ResultCallback& callback);
   // Return whether a technology is marked as enabled for portal detection.
   virtual bool IsPortalDetectionEnabled(Technology tech);

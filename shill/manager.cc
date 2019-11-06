@@ -1053,51 +1053,39 @@ void Manager::SetProfileForService(const ServiceRefPtr& to_set,
 void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
                                            bool enabled_state,
                                            bool persist,
-                                           Error* error,
                                            const ResultCallback& callback) {
-  CHECK(error);
-  DCHECK(error->IsOngoing());
+  Error error;
   Technology id = Technology::CreateFromName(technology_name);
   if (id == Technology::kUnknown) {
-    error->Populate(Error::kInvalidArguments, "Unknown technology");
+    error.Populate(Error::kInvalidArguments, "Unknown technology");
+    callback.Run(error);
     return;
   }
   if (enabled_state && IsTechnologyProhibited(id)) {
-    error->Populate(Error::kPermissionDenied,
-                    "The " + technology_name + " technology is prohibited");
+    error.Populate(Error::kPermissionDenied,
+                   "The " + technology_name + " technology is prohibited");
+    callback.Run(error);
     return;
   }
-  bool deferred = false;
+
   auto result_aggregator(base::MakeRefCounted<ResultAggregator>(callback));
   for (auto& device : devices_) {
     if (device->technology() != id)
       continue;
 
-    Error device_error(Error::kOperationInitiated);
+    error.Populate(Error::kOperationInitiated);
     ResultCallback aggregator_callback(
         Bind(&ResultAggregator::ReportResult, result_aggregator));
+
     if (persist) {
-      device->SetEnabledPersistent(enabled_state, &device_error,
-                                   aggregator_callback);
+      device->SetEnabledPersistent(enabled_state, &error, aggregator_callback);
     } else {
-      device->SetEnabledNonPersistent(enabled_state, &device_error,
+      device->SetEnabledNonPersistent(enabled_state, &error,
                                       aggregator_callback);
     }
-    if (device_error.IsOngoing()) {
-      deferred = true;
-    } else if (!error->IsFailure()) {  // Report first failure.
-      error->CopyFrom(device_error);
-    }
-  }
-  if (deferred) {
-    // Some device is handling this change asynchronously. Clobber any error
-    // from another device, so that we can indicate the operation is still in
-    // progress.
-    error->Populate(Error::kOperationInitiated);
-  } else if (error->IsOngoing()) {
-    // |error| IsOngoing at entry to this method, but no device
-    // |deferred|. Reset |error|, to indicate we're done.
-    error->Reset();
+
+    if (!error.IsOngoing())
+      result_aggregator->ReportResult(error);
   }
 }
 
@@ -1327,12 +1315,11 @@ bool Manager::SetProhibitedTechnologies(const string& prohibited_technologies,
     return false;
   }
   for (const auto& technology : technology_vector) {
-    Error unused_error(Error::kOperationInitiated);
     ResultCallback result_callback(
         Bind(&Manager::OnTechnologyProhibited, Unretained(this), technology));
     const bool kPersistentSave = false;
     SetEnabledStateForTechnology(technology.GetName(), false, kPersistentSave,
-                                 &unused_error, result_callback);
+                                 result_callback);
   }
   props_.prohibited_technologies = prohibited_technologies;
 

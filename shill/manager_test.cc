@@ -89,6 +89,7 @@ using ::testing::StrEq;
 using ::testing::StrictMock;
 using ::testing::Test;
 using ::testing::WithArg;
+using ::testing::WithParamInterface;
 
 class ManagerTest : public PropertyStoreTest {
  public:
@@ -3145,126 +3146,115 @@ TEST_F(ManagerTest, IsTechnologyAutoConnectDisabled) {
 }
 
 TEST_F(ManagerTest, SetEnabledStateForTechnologyPersistentCheck) {
-  Error error(Error::kOperationInitiated);
   DisableTechnologyReplyHandler disable_technology_reply_handler;
   ResultCallback disable_technology_callback(
       Bind(&DisableTechnologyReplyHandler::ReportResult,
            disable_technology_reply_handler.AsWeakPtr()));
-  EXPECT_CALL(disable_technology_reply_handler, ReportResult(_)).Times(0);
-  EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(false, _, _));
-
+  EXPECT_CALL(disable_technology_reply_handler, ReportResult(_)).Times(2);
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
   manager()->RegisterDevice(mock_devices_[0]);
-  manager()->SetEnabledStateForTechnology(kTypeEthernet, false, true, &error,
+
+  EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(false, _, _))
+      .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
+  manager()->SetEnabledStateForTechnology(kTypeEthernet, false, true,
                                           disable_technology_callback);
 
-  EXPECT_CALL(*mock_devices_[0], SetEnabledNonPersistent(false, _, _));
-  manager()->SetEnabledStateForTechnology(kTypeEthernet, false, false, &error,
+  EXPECT_CALL(*mock_devices_[0], SetEnabledNonPersistent(false, _, _))
+      .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
+  manager()->SetEnabledStateForTechnology(kTypeEthernet, false, false,
                                           disable_technology_callback);
 }
 
 TEST_F(ManagerTest, SetEnabledStateForTechnology) {
-  Error error(Error::kOperationInitiated);
   DisableTechnologyReplyHandler disable_technology_reply_handler;
   ResultCallback disable_technology_callback(
       Bind(&DisableTechnologyReplyHandler::ReportResult,
            disable_technology_reply_handler.AsWeakPtr()));
-  EXPECT_CALL(disable_technology_reply_handler, ReportResult(_)).Times(0);
-
-  manager()->SetEnabledStateForTechnology(kTypeEthernet, false, true, &error,
-                                          disable_technology_callback);
-  EXPECT_TRUE(error.IsSuccess());
 
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
   ON_CALL(*mock_devices_[1], technology())
       .WillByDefault(Return(Technology::kCellular));
   ON_CALL(*mock_devices_[2], technology())
-      .WillByDefault(Return(Technology::kCellular));
+      .WillByDefault(Return(Technology::kWifi));
+  manager()->RegisterDevice(mock_devices_[0]);
+  manager()->RegisterDevice(mock_devices_[1]);
+  manager()->RegisterDevice(mock_devices_[2]);
 
+  auto setup_expectations = [](vector<scoped_refptr<MockDevice>>& mock_devices,
+                               Technology::Type type, bool enable,
+                               bool persistent) {
+    for (int i = 0; i < 3; i++) {
+      if (mock_devices[i]->technology() == type) {
+        if (persistent) {
+          EXPECT_CALL(*mock_devices[i], SetEnabledPersistent(enable, _, _))
+              .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
+          EXPECT_CALL(*mock_devices[i], SetEnabledNonPersistent(enable, _, _))
+              .Times(0);
+        } else {
+          EXPECT_CALL(*mock_devices[i], SetEnabledPersistent(enable, _, _))
+              .Times(0);
+          EXPECT_CALL(*mock_devices[i], SetEnabledNonPersistent(enable, _, _))
+              .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
+        }
+      } else {
+        EXPECT_CALL(*mock_devices[i], SetEnabledPersistent(enable, _, _))
+            .Times(0);
+        EXPECT_CALL(*mock_devices[i], SetEnabledNonPersistent(enable, _, _))
+            .Times(0);
+      }
+    }
+  };
+  auto clear_expectations =
+      [](vector<scoped_refptr<MockDevice>>& mock_devices) {
+        for (int i = 0; i < 3; i++) {
+          Mock::VerifyAndClearExpectations(mock_devices[i].get());
+        }
+      };
+
+  // We have to do this annoying stuff because use of WithParamsInterface is
+  // precluded by ManagerTest being a subclass of PropertyStoreTest, which
+  // is a TestWithParam.
+  std::vector<bool> bool_vals = {true, false};
+  std::vector<Technology::Type> techs = {
+      Technology::kEthernet, Technology::kCellular, Technology::kWifi};
+  for (Technology::Type type : techs) {
+    for (bool enable : bool_vals) {
+      for (bool persistent : bool_vals) {
+        EXPECT_CALL(disable_technology_reply_handler,
+                    ReportResult(IsSuccess()));
+        setup_expectations(mock_devices_, type, enable, persistent);
+        manager()->SetEnabledStateForTechnology(Technology(type).GetName(),
+                                                enable, persistent,
+                                                disable_technology_callback);
+        Mock::VerifyAndClearExpectations(&disable_technology_reply_handler);
+        clear_expectations(mock_devices_);
+      }
+    }
+  }
+}
+
+TEST_F(ManagerTest, SetEnabledStatePropagatesError) {
+  DisableTechnologyReplyHandler disable_technology_reply_handler;
+  ResultCallback disable_technology_callback(
+      Bind(&DisableTechnologyReplyHandler::ReportResult,
+           disable_technology_reply_handler.AsWeakPtr()));
+  ON_CALL(*mock_devices_[0], technology())
+      .WillByDefault(Return(Technology::kEthernet));
+  ON_CALL(*mock_devices_[1], technology())
+      .WillByDefault(Return(Technology::kEthernet));
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
 
-  // Ethernet Device is disabled, so disable succeeds immediately.
-  EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(false, _, _))
+  EXPECT_CALL(*mock_devices_[0], SetEnabledNonPersistent(true, _, _))
       .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
-  error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(kTypeEthernet, false, true, &error,
-                                          disable_technology_callback);
-  EXPECT_TRUE(error.IsSuccess());
-
-  // Ethernet Device is enabled, and mock doesn't change error from
-  // kOperationInitiated, so expect disable to say operation in progress.
-  EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(false, _, _));
-  mock_devices_[0]->enabled_ = true;
-  error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(kTypeEthernet, false, true, &error,
-                                          disable_technology_callback);
-  EXPECT_TRUE(error.IsOngoing());
-
-  // Ethernet Device is disabled, and mock doesn't change error from
-  // kOperationInitiated, so expect enable to say operation in progress.
-  EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(true, _, _));
-  mock_devices_[0]->enabled_ = false;
-  error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(kTypeEthernet, true, true, &error,
-                                          disable_technology_callback);
-  EXPECT_TRUE(error.IsOngoing());
-
-  // Cellular Device is enabled, but disable failed.
-  EXPECT_CALL(*mock_devices_[1], SetEnabledPersistent(false, _, _))
+  EXPECT_CALL(*mock_devices_[1], SetEnabledNonPersistent(true, _, _))
       .WillOnce(WithArg<1>(Invoke(SetErrorPermissionDenied)));
-  mock_devices_[1]->enabled_ = true;
-  error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(kTypeCellular, false, true, &error,
-                                          disable_technology_callback);
-  EXPECT_EQ(Error::kPermissionDenied, error.type());
 
-  // Multiple Cellular Devices in enabled state. Should indicate IsOngoing
-  // if one is in progress (even if the other completed immediately).
-  manager()->RegisterDevice(mock_devices_[2]);
-  EXPECT_CALL(*mock_devices_[1], SetEnabledPersistent(false, _, _))
-      .WillOnce(WithArg<1>(Invoke(SetErrorPermissionDenied)));
-  EXPECT_CALL(*mock_devices_[2], SetEnabledPersistent(false, _, _));
-  mock_devices_[1]->enabled_ = true;
-  mock_devices_[2]->enabled_ = true;
-  error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(kTypeCellular, false, true, &error,
+  EXPECT_CALL(disable_technology_reply_handler, ReportResult(IsFailure()));
+  manager()->SetEnabledStateForTechnology(kTypeEthernet, true, false,
                                           disable_technology_callback);
-  EXPECT_TRUE(error.IsOngoing());
-
-  // ...and order doesn't matter.
-  EXPECT_CALL(*mock_devices_[1], SetEnabledPersistent(false, _, _));
-  EXPECT_CALL(*mock_devices_[2], SetEnabledPersistent(false, _, _))
-      .WillOnce(WithArg<1>(Invoke(SetErrorPermissionDenied)));
-  mock_devices_[1]->enabled_ = true;
-  mock_devices_[2]->enabled_ = true;
-  error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(kTypeCellular, false, true, &error,
-                                          disable_technology_callback);
-  EXPECT_TRUE(error.IsOngoing());
-  Mock::VerifyAndClearExpectations(&disable_technology_reply_handler);
-
-  // Multiple Cellular Devices in enabled state. Even if all disable
-  // operations complete asynchronously, we only get one call to the
-  // DisableTechnologyReplyHandler::ReportResult.
-  ResultCallback device1_result_callback;
-  ResultCallback device2_result_callback;
-  EXPECT_CALL(*mock_devices_[1], SetEnabledPersistent(false, _, _))
-      .WillOnce(SaveArg<2>(&device1_result_callback));
-  EXPECT_CALL(*mock_devices_[2], SetEnabledPersistent(false, _, _))
-      .WillOnce(DoAll(WithArg<1>(Invoke(SetErrorPermissionDenied)),
-                      SaveArg<2>(&device2_result_callback)));
-  EXPECT_CALL(disable_technology_reply_handler, ReportResult(_));
-  mock_devices_[1]->enabled_ = true;
-  mock_devices_[2]->enabled_ = true;
-  error.Populate(Error::kOperationInitiated);
-  manager()->SetEnabledStateForTechnology(kTypeCellular, false, true, &error,
-                                          disable_technology_callback);
-  EXPECT_TRUE(error.IsOngoing());
-  device1_result_callback.Run(Error(Error::kSuccess));
-  device2_result_callback.Run(Error(Error::kSuccess));
 }
 
 TEST_F(ManagerTest, IgnoredSearchList) {
@@ -4032,24 +4022,26 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   Mock::VerifyAndClearExpectations(mock_devices_[5].get());
 
   // Calls to enable a non-prohibited technology should succeed.
-  Error enable_error(Error::kOperationInitiated);
   DisableTechnologyReplyHandler technology_reply_handler;
   ResultCallback enable_technology_callback(
       Bind(&DisableTechnologyReplyHandler::ReportResult,
            technology_reply_handler.AsWeakPtr()));
-  EXPECT_CALL(*mock_devices_[2], SetEnabledPersistent(true, _, _));
-  EXPECT_CALL(*mock_devices_[5], SetEnabledPersistent(true, _, _));
-  manager()->SetEnabledStateForTechnology("wifi", true, true, &enable_error,
+  EXPECT_CALL(*mock_devices_[2], SetEnabledPersistent(true, _, _))
+      .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
+  EXPECT_CALL(*mock_devices_[5], SetEnabledPersistent(true, _, _))
+      .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
+  EXPECT_CALL(technology_reply_handler, ReportResult(IsSuccess()));
+  manager()->SetEnabledStateForTechnology("wifi", true, true,
                                           enable_technology_callback);
-  EXPECT_EQ(Error::kOperationInitiated, enable_error.type());
+  Mock::VerifyAndClearExpectations(&technology_reply_handler);
 
   // Calls to enable a prohibited technology should fail.
-  Error enable_prohibited_error(Error::kOperationInitiated);
   EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(true, _, _)).Times(0);
   EXPECT_CALL(*mock_devices_[3], SetEnabledPersistent(true, _, _)).Times(0);
-  manager()->SetEnabledStateForTechnology(
-      "vpn", true, true, &enable_prohibited_error, enable_technology_callback);
-  EXPECT_EQ(Error::kPermissionDenied, enable_prohibited_error.type());
+  EXPECT_CALL(technology_reply_handler,
+              ReportResult(ErrorTypeIs(Error::kPermissionDenied)));
+  manager()->SetEnabledStateForTechnology("vpn", true, true,
+                                          enable_technology_callback);
 }
 
 TEST_F(ManagerTest, ClaimBlacklistedDevice) {
