@@ -24,7 +24,7 @@
 #include <mtkcam/v4l2/IPCIHalSensor.h>
 #include <libcamera_feature/libfdft_lib/include/faces.h>
 
-#define MAX_APP_META_SIZE 4096
+#define MAX_APP_META_SIZE 8192
 #define MAX_SET_HAL_META_SIZE 51200
 #define MAX_CONFIG_HAL_META_SIZE 51200
 #define MAX_SETISP_HAL_META_SIZE 151200

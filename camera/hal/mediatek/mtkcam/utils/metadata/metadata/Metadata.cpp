@@ -1117,7 +1117,7 @@ void IMetadata::Implementor::dump(int layer) {
 struct metadata_buffer_entry_info {
   MUINT32 tag;
   MUINT8 type;
-  MUINT8 count;
+  MUINT32 count;
 };
 
 struct metadata_buffer_handle {
@@ -1200,7 +1200,7 @@ static MERROR write_to_buffer(metadata_buffer_handle* handle,
     return NO_MEMORY;
   }
 
-  for (MUINT8 i = 0; i < entry.count(); i++) {
+  for (MUINT32 i = 0; i < entry.count(); i++) {
     const T t = entry.itemAt(i, Type2Type<T>());
     *(reinterpret_cast<T*>(handle->current())) = t;
     handle->move(sizeof(T));
@@ -1220,7 +1220,7 @@ static MERROR read_from_buffer(metadata_buffer_handle* handle,
   entry->setCapacity(count);
 
   T* p;
-  for (MUINT8 i = 0; i < count; i++) {
+  for (MUINT32 i = 0; i < count; i++) {
     p = reinterpret_cast<T*>(handle->current());
     entry->push_back(*p, Type2Type<T>());
     handle->move(sizeof(T));
@@ -1258,7 +1258,7 @@ MERROR read_from_buffer<IMetadata::Memory>(metadata_buffer_handle* handle,
                                            IMetadata::IEntry* entry,
                                            MINT32 count) {
   MUINT32 s;
-  for (MUINT8 i = 0; i < count; i++) {
+  for (MUINT32 i = 0; i < count; i++) {
     if (i) {
       handle->align(sizeof(MUINT32));
     }
@@ -1301,7 +1301,7 @@ template <>
 MERROR read_from_buffer<IMetadata>(metadata_buffer_handle* handle,
                                    IMetadata::IEntry* entry,
                                    MINT32 count) {
-  for (MUINT8 i = 0; i < count; i++) {
+  for (MUINT32 i = 0; i < count; i++) {
     IMetadata meta;
     handle->offset += meta.unflatten(handle->buffer + handle->offset,
                                      handle->size - handle->offset);
