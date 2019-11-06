@@ -47,20 +47,33 @@ void WaitUntilReadable(int fd) {
   run_loop.Run();
 }
 
-class FakeProxy : public ProxyBase {
+class FakeProxy : public VSockProxy::Delegate, public ProxyBase {
  public:
   FakeProxy(VSockProxy::Type type,
             ProxyFileSystem* proxy_file_system,
             base::ScopedFD socket)
-      : vsock_proxy_(std::make_unique<VSockProxy>(
-            type, proxy_file_system, std::move(socket), base::ScopedFD())) {}
+      : type_(type),
+        proxy_file_system_(proxy_file_system),
+        vsock_proxy_(std::make_unique<VSockProxy>(this, std::move(socket))) {}
 
   ~FakeProxy() override = default;
 
   bool Initialize() override { return true; }
+  VSockProxy::Type GetType() const override { return type_; }
+  bool ConvertFileDescriptorToProto(int fd,
+                                    arc_proxy::FileDescriptor* proto) override {
+    NOTREACHED();
+    return false;
+  }
+  base::ScopedFD ConvertProtoToFileDescriptor(
+      const arc_proxy::FileDescriptor& proto) override {
+    return proxy_file_system_->RegisterHandle(proto.handle());
+  }
   VSockProxy* GetVSockProxy() override { return vsock_proxy_.get(); }
 
  private:
+  const VSockProxy::Type type_;
+  ProxyFileSystem* proxy_file_system_;
   std::unique_ptr<VSockProxy> vsock_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeProxy);
