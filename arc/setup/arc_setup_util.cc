@@ -1011,7 +1011,7 @@ bool TruncateAndroidProperty(const std::string& line, std::string* truncated) {
       return false;
     }
 
-    int remove_chars = (val.length() - kAndroidMaxPropertyLength + 1) / 2;
+    size_t remove_chars = (val.length() - kAndroidMaxPropertyLength + 1) / 2;
     if (fields[1].length() <= remove_chars) {
       LOG(ERROR) << "Unable to remove " << remove_chars << " characters from "
                  << fields[1];
