@@ -1207,54 +1207,69 @@ TEST_F(MountManagerTest, ExtractMountLabelFromOptionsWithTwoMountLabels) {
 // Verifies that MountManager::IsPathImmediateChildOfParent() correctly
 // determines if a path is an immediate child of another path.
 TEST_F(MountManagerTest, IsPathImmediateChildOfParent) {
-  EXPECT_TRUE(manager_.IsPathImmediateChildOfParent("/media/archive/test.zip",
-                                                    "/media/archive"));
-  EXPECT_TRUE(manager_.IsPathImmediateChildOfParent("/media/archive/test.zip/",
-                                                    "/media/archive"));
-  EXPECT_TRUE(manager_.IsPathImmediateChildOfParent("/media/archive/test.zip",
-                                                    "/media/archive/"));
-  EXPECT_TRUE(manager_.IsPathImmediateChildOfParent("/media/archive/test.zip/",
-                                                    "/media/archive/"));
+  EXPECT_TRUE(manager_.IsPathImmediateChildOfParent(
+      base::FilePath("/media/archive/test.zip"),
+      base::FilePath("/media/archive")));
+  EXPECT_TRUE(manager_.IsPathImmediateChildOfParent(
+      base::FilePath("/media/archive/test.zip/"),
+      base::FilePath("/media/archive")));
+  EXPECT_TRUE(manager_.IsPathImmediateChildOfParent(
+      base::FilePath("/media/archive/test.zip"),
+      base::FilePath("/media/archive/")));
+  EXPECT_TRUE(manager_.IsPathImmediateChildOfParent(
+      base::FilePath("/media/archive/test.zip/"),
+      base::FilePath("/media/archive/")));
   EXPECT_FALSE(manager_.IsPathImmediateChildOfParent(
-      "/media/archive/test.zip/doc.zip", "/media/archive/"));
-  EXPECT_FALSE(manager_.IsPathImmediateChildOfParent("/media/archive/test.zip",
-                                                     "/media/removable"));
-  EXPECT_FALSE(manager_.IsPathImmediateChildOfParent("/tmp/archive/test.zip",
-                                                     "/media/removable"));
-  EXPECT_FALSE(
-      manager_.IsPathImmediateChildOfParent("/media", "/media/removable"));
-  EXPECT_FALSE(manager_.IsPathImmediateChildOfParent("/media/removable",
-                                                     "/media/removable"));
-  EXPECT_FALSE(manager_.IsPathImmediateChildOfParent("/media/removable/",
-                                                     "/media/removable"));
-  EXPECT_FALSE(manager_.IsPathImmediateChildOfParent("/media/removable/.",
-                                                     "/media/removable"));
-  EXPECT_FALSE(manager_.IsPathImmediateChildOfParent("/media/removable/..",
-                                                     "/media/removable"));
+      base::FilePath("/media/archive/test.zip/doc.zip"),
+      base::FilePath("/media/archive/")));
+  EXPECT_FALSE(manager_.IsPathImmediateChildOfParent(
+      base::FilePath("/media/archive/test.zip"),
+      base::FilePath("/media/removable")));
+  EXPECT_FALSE(manager_.IsPathImmediateChildOfParent(
+      base::FilePath("/tmp/archive/test.zip"),
+      base::FilePath("/media/removable")));
+  EXPECT_FALSE(manager_.IsPathImmediateChildOfParent(
+      base::FilePath("/media"), base::FilePath("/media/removable")));
+  EXPECT_FALSE(manager_.IsPathImmediateChildOfParent(
+      base::FilePath("/media/removable"), base::FilePath("/media/removable")));
+  EXPECT_FALSE(manager_.IsPathImmediateChildOfParent(
+      base::FilePath("/media/removable/"), base::FilePath("/media/removable")));
+  EXPECT_FALSE(manager_.IsPathImmediateChildOfParent(
+      base::FilePath("/media/removable/."),
+      base::FilePath("/media/removable")));
+  EXPECT_FALSE(manager_.IsPathImmediateChildOfParent(
+      base::FilePath("/media/removable/.."),
+      base::FilePath("/media/removable")));
 }
 
 // Verifies that MountManager::IsValidMountPath() correctly determines if a
 // mount path is an immediate child of the mount root.
 TEST_F(MountManagerTest, IsValidMountPath) {
-  manager_.mount_root_ = "/media/removable";
-  EXPECT_TRUE(manager_.IsValidMountPath("/media/removable/test"));
-  EXPECT_TRUE(manager_.IsValidMountPath("/media/removable/test/"));
-  EXPECT_TRUE(manager_.IsValidMountPath("/media/removable/test/"));
-  EXPECT_TRUE(manager_.IsValidMountPath("/media/removable//test"));
-  EXPECT_FALSE(manager_.IsValidMountPath("/media/archive/test"));
-  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable"));
-  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/"));
-  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/."));
-  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/.."));
-  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/test/doc"));
-  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/../test"));
-  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/../test/"));
-  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/test/.."));
-  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/test/../"));
-
-  manager_.mount_root_ = "/media/archive";
-  EXPECT_TRUE(manager_.IsValidMountPath("/media/archive/test"));
-  EXPECT_FALSE(manager_.IsValidMountPath("/media/removable/test"));
+  EXPECT_TRUE(
+      manager_.IsValidMountPath(base::FilePath("/media/removable/test")));
+  EXPECT_TRUE(
+      manager_.IsValidMountPath(base::FilePath("/media/removable/test/")));
+  EXPECT_TRUE(
+      manager_.IsValidMountPath(base::FilePath("/media/removable/test/")));
+  EXPECT_TRUE(
+      manager_.IsValidMountPath(base::FilePath("/media/removable//test")));
+  EXPECT_FALSE(
+      manager_.IsValidMountPath(base::FilePath("/media/archive/test")));
+  EXPECT_FALSE(manager_.IsValidMountPath(base::FilePath("/media/removable")));
+  EXPECT_FALSE(manager_.IsValidMountPath(base::FilePath("/media/removable/")));
+  EXPECT_FALSE(manager_.IsValidMountPath(base::FilePath("/media/removable/.")));
+  EXPECT_FALSE(
+      manager_.IsValidMountPath(base::FilePath("/media/removable/..")));
+  EXPECT_FALSE(
+      manager_.IsValidMountPath(base::FilePath("/media/removable/test/doc")));
+  EXPECT_FALSE(
+      manager_.IsValidMountPath(base::FilePath("/media/removable/../test")));
+  EXPECT_FALSE(
+      manager_.IsValidMountPath(base::FilePath("/media/removable/../test/")));
+  EXPECT_FALSE(
+      manager_.IsValidMountPath(base::FilePath("/media/removable/test/..")));
+  EXPECT_FALSE(
+      manager_.IsValidMountPath(base::FilePath("/media/removable/test/../")));
 }
 
 // Verifies that MountManager::Mount() returns an error when the source is

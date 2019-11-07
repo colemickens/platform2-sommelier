@@ -310,7 +310,7 @@ std::string DiskManager::SuggestMountPath(
   disk_monitor_->GetDiskByDevicePath(base::FilePath(source_path), &disk);
   // If GetDiskByDevicePath fails, disk.GetPresentationName() returns
   // the fallback presentation name.
-  return std::string(mount_root()) + "/" + disk.GetPresentationName();
+  return mount_root().Append(disk.GetPresentationName()).value();
 }
 
 bool DiskManager::ShouldReserveMountPathOnError(

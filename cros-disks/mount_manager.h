@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
@@ -224,8 +225,8 @@ class MountManager {
 
   // Returns true if |path| is an immediate child of |parent|, i.e.
   // |path| is an immediate file or directory under |parent|.
-  bool IsPathImmediateChildOfParent(const std::string& path,
-                                    const std::string& parent) const;
+  bool IsPathImmediateChildOfParent(const base::FilePath& path,
+                                    const base::FilePath& parent) const;
 
   // Returns true if |mount_path| is a valid mount path, which should be an
   // immediate child of the mount root specified by |mount_root_|. The check
@@ -233,10 +234,10 @@ class MountManager {
   // to canonicalize |mount_path|, resolve symlinks or determine the absolute
   // path of |mount_path|, so a legitimate mount path may be deemed as invalid.
   // But we don't consider these cases as part of the use cases of cros-disks.
-  bool IsValidMountPath(const std::string& mount_path) const;
+  bool IsValidMountPath(const base::FilePath& mount_path) const;
 
   // Returns the root directory under which mount directories are created.
-  const std::string& mount_root() const { return mount_root_; }
+  const base::FilePath& mount_root() const { return mount_root_; }
 
   // Returns an object that provides platform service.
   Platform* platform() const { return platform_; }
@@ -249,7 +250,7 @@ class MountManager {
 
  private:
   // The root directory under which mount directories are created.
-  std::string mount_root_;
+  const base::FilePath mount_root_;
 
   // An object that provides platform service.
   Platform* const platform_;

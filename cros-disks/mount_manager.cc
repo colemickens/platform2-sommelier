@@ -48,11 +48,12 @@ MountManager::MountManager(const std::string& mount_root,
                            Platform* platform,
                            Metrics* metrics,
                            brillo::ProcessReaper* process_reaper)
-    : mount_root_(mount_root),
+    : mount_root_(base::FilePath(mount_root)),
       platform_(platform),
       metrics_(metrics),
       process_reaper_(process_reaper) {
   CHECK(!mount_root_.empty()) << "Invalid mount root directory";
+  CHECK(mount_root_.IsAbsolute()) << "Mount root not absolute path";
   CHECK(platform_) << "Invalid platform object";
   CHECK(metrics_) << "Invalid metrics object";
 }
@@ -64,9 +65,10 @@ MountManager::~MountManager() {
 }
 
 bool MountManager::Initialize() {
-  return platform_->CreateDirectory(mount_root_) &&
-         platform_->SetOwnership(mount_root_, getuid(), getgid()) &&
-         platform_->SetPermissions(mount_root_, kMountRootDirectoryPermissions);
+  return platform_->CreateDirectory(mount_root_.value()) &&
+         platform_->SetOwnership(mount_root_.value(), getuid(), getgid()) &&
+         platform_->SetPermissions(mount_root_.value(),
+                                   kMountRootDirectoryPermissions);
 }
 
 bool MountManager::StartSession() {
@@ -78,7 +80,8 @@ bool MountManager::StopSession() {
 }
 
 bool MountManager::CanUnmount(const std::string& path) const {
-  return CanMount(path) || IsPathImmediateChildOfParent(path, mount_root_);
+  return CanMount(path) ||
+         IsPathImmediateChildOfParent(base::FilePath(path), mount_root_);
 }
 
 MountErrorType MountManager::Mount(const std::string& source_path,
@@ -182,7 +185,7 @@ MountErrorType MountManager::MountNewSource(
     actual_mount_path = *mount_path;
   }
 
-  if (!IsValidMountPath(actual_mount_path)) {
+  if (!IsValidMountPath(base::FilePath(actual_mount_path))) {
     LOG(ERROR) << "Mount path " << quote(actual_mount_path) << " is invalid";
     return MOUNT_ERROR_INVALID_PATH;
   }
@@ -423,12 +426,10 @@ bool MountManager::ShouldReserveMountPathOnError(
 }
 
 bool MountManager::IsPathImmediateChildOfParent(
-    const std::string& path, const std::string& parent) const {
+    const base::FilePath& path, const base::FilePath& parent) const {
   std::vector<std::string> path_components, parent_components;
-  base::FilePath(path).StripTrailingSeparators().GetComponents(
-      &path_components);
-  base::FilePath(parent).StripTrailingSeparators().GetComponents(
-      &parent_components);
+  path.StripTrailingSeparators().GetComponents(&path_components);
+  parent.StripTrailingSeparators().GetComponents(&parent_components);
   if (path_components.size() != parent_components.size() + 1)
     return false;
 
@@ -441,7 +442,7 @@ bool MountManager::IsPathImmediateChildOfParent(
                     path_components.begin());
 }
 
-bool MountManager::IsValidMountPath(const std::string& mount_path) const {
+bool MountManager::IsValidMountPath(const base::FilePath& mount_path) const {
   return IsPathImmediateChildOfParent(mount_path, mount_root_);
 }
 
