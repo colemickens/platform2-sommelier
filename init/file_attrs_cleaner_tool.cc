@@ -37,22 +37,26 @@ int main(int argc, char* argv[]) {
 
   auto args = base::CommandLine::ForCurrentProcess()->GetArgs();
   bool ret = true;
-  int url_xattrs_count = 0;
+  int total_url_xattrs_count = 0;
   for (const auto& arg : args) {
     if (base::DirectoryExists(base::FilePath(arg))) {
+      int url_xattrs_count = 0;
       ret &= ScanDir(arg, skip_recurse, &url_xattrs_count);
+      total_url_xattrs_count += url_xattrs_count;
     } else {
       LOG(ERROR) << "Directory '" << arg << "' does not exist.";
       ret = false;
     }
   }
 
+  VLOG(1) << "total_url_xattrs_count is " << total_url_xattrs_count;
+
   if (FLAGS_enable_metrics) {
     constexpr int min = 1;
     constexpr int max = 1000;
     constexpr int nbuckets = 10;
-    if (!metrics.SendToUMA("ChromeOS.UrlXattrsCount", url_xattrs_count, min,
-                           max, nbuckets)) {
+    if (!metrics.SendToUMA("ChromeOS.UrlXattrsCount", total_url_xattrs_count,
+                           min, max, nbuckets)) {
       LOG(ERROR) << "Failed to send |url_xattrs_count| to UMA.";
     }
   }

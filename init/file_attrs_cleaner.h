@@ -44,10 +44,10 @@ AttributeCheckStatus RemoveURLExtendedAttributes(const base::FilePath& path);
 // Recursively scan the file attributes of paths under |dir|.
 // Don't recurse into any subdirectories that exactly match any string in
 // |skip_recurse|.
-// Populate |num_url_xattrs| if files with those attributes were found.
+// Populate |url_xattrs_count| if files with those attributes were found.
 bool ScanDir(const base::FilePath& dir,
              const std::vector<std::string>& skip_recurse,
-             int32_t* url_xattrs_count);
+             int* url_xattrs_count);
 
 // Convenience function.
 static inline bool ScanDir(const std::string& dir,
