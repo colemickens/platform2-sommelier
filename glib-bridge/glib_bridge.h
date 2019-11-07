@@ -16,17 +16,15 @@
 
 #include <base/bind.h>
 #include <base/cancelable_callback.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/message_loop/message_loop.h>
 
 namespace glib_bridge {
 
-struct GlibBridge : public base::MessageLoopForIO::Watcher {
+struct GlibBridge {
  public:
-  explicit GlibBridge(base::MessageLoopForIO* message_loop);
-
-  // base::MessageLoopForIO::Watcher overrides.
-  void OnFileCanWriteWithoutBlocking(int fd);
-  void OnFileCanReadWithoutBlocking(int fd);
+  GlibBridge();
+  virtual ~GlibBridge();
 
  private:
   enum class State {
@@ -35,7 +33,13 @@ struct GlibBridge : public base::MessageLoopForIO::Watcher {
     kReadyForDispatch,
   };
 
+  struct Watcher {
+    std::unique_ptr<base::FileDescriptorWatcher::Controller> reader;
+    std::unique_ptr<base::FileDescriptorWatcher::Controller> writer;
+  };
+
   void PrepareIteration();
+  void Timeout();
   void Dispatch();
 
   void OnEvent(int fd, int flag);
@@ -51,9 +55,7 @@ struct GlibBridge : public base::MessageLoopForIO::Watcher {
   std::map<int, std::vector<GPollFD*>> fd_map_;
 
   // libchrome message loop bits.
-  base::MessageLoopForIO* message_loop_;
-  std::map<int, std::unique_ptr<base::MessageLoopForIO::FileDescriptorWatcher>>
-      watchers_;
+  std::map<int, Watcher> watchers_;
   base::CancelableClosure timeout_closure_;
 
   State state_;

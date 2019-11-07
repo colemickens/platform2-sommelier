@@ -19,12 +19,33 @@
 namespace glib_bridge {
 
 namespace {
+
 constexpr base::TimeDelta kTestTimeout = base::TimeDelta::FromSeconds(1);
+
+// Use instead of g_idle_add, which implicitly uses the global default context.
+void ScheduleIdleCallback(GSourceFunc func, gpointer data) {
+  GSource* idle_source = g_idle_source_new();
+  g_source_set_callback(idle_source, func, data, nullptr);
+  g_source_set_priority(idle_source, G_PRIORITY_DEFAULT);
+  g_source_attach(idle_source, g_main_context_get_thread_default());
+  g_source_unref(idle_source);
+}
+
+// Use instead of g_timeout_add, which implicitly uses the global default
+// context.
+void ScheduleTimeoutCallback(int timeout_ms, GSourceFunc func, gpointer data) {
+  GSource* timeout_source = g_timeout_source_new(timeout_ms);
+  g_source_set_callback(timeout_source, func, data, nullptr);
+  g_source_set_priority(timeout_source, G_PRIORITY_DEFAULT);
+  g_source_attach(timeout_source, g_main_context_get_thread_default());
+  g_source_unref(timeout_source);
+}
+
 }  // namespace
 
 class GlibBridgeTest : public ::testing::Test {
  public:
-  GlibBridgeTest() : glib_bridge_(new GlibBridge(&message_loop_)) {}
+  GlibBridgeTest() : glib_bridge_(new GlibBridge()) {}
   ~GlibBridgeTest() override {}
 
   void Finish() { run_loop_.Quit(); }
@@ -40,6 +61,7 @@ class GlibBridgeTest : public ::testing::Test {
  private:
   base::MessageLoopForIO message_loop_;
   base::RunLoop run_loop_;
+  base::FileDescriptorWatcher watcher_{&message_loop_};
   std::unique_ptr<GlibBridge> glib_bridge_;
 
   DISALLOW_COPY_AND_ASSIGN(GlibBridgeTest);
@@ -128,7 +150,7 @@ TEST_F(GlibBridgeTest, IdleCallback) {
     return G_SOURCE_REMOVE;
   };
 
-  g_idle_add(static_cast<GSourceFunc>(idle_callback), &user_data);
+  ScheduleIdleCallback(static_cast<GSourceFunc>(idle_callback), &user_data);
   Start();
 
   ASSERT_TRUE(user_data.called);
@@ -149,8 +171,8 @@ TEST_F(GlibBridgeTest, TimeoutOnceCallback) {
   };
 
   constexpr uint kTimeoutIntervalMs = 200;
-  g_timeout_add(kTimeoutIntervalMs, static_cast<GSourceFunc>(timer_callback),
-                &user_data);
+  ScheduleTimeoutCallback(kTimeoutIntervalMs,
+                          static_cast<GSourceFunc>(timer_callback), &user_data);
   Start();
 
   ASSERT_TRUE(user_data.called);
@@ -175,8 +197,8 @@ TEST_F(GlibBridgeTest, TimeoutMultiCallback) {
   };
 
   constexpr uint kTimeoutIntervalMs = 100;
-  g_timeout_add(kTimeoutIntervalMs, static_cast<GSourceFunc>(timer_callback),
-                &user_data);
+  ScheduleTimeoutCallback(kTimeoutIntervalMs,
+                          static_cast<GSourceFunc>(timer_callback), &user_data);
   Start();
 
   ASSERT_EQ(user_data.counter, kTarget);
@@ -202,8 +224,9 @@ TEST_F(GlibBridgeTest, MultipleTimeouts) {
 
   constexpr uint kTimeoutIntervalMs = 100;
   for (int i = 0; i < kNumFlags; i++) {
-    g_timeout_add(kTimeoutIntervalMs * (i + 1),
-                  static_cast<GSourceFunc>(timer_callback), &user_data);
+    ScheduleTimeoutCallback(kTimeoutIntervalMs * (i + 1),
+                            static_cast<GSourceFunc>(timer_callback),
+                            &user_data);
   }
   Start();
 
@@ -247,7 +270,8 @@ void ReadResultsReady(GObject* source, GAsyncResult* res, gpointer user_data) {
   job->complete =
       g_input_stream_read_finish(reinterpret_cast<GInputStream*>(source), res,
                                  nullptr) >= 0;
-  g_idle_add(static_cast<GSourceFunc>(&AllCompleteCheck), job->user_data);
+  ScheduleIdleCallback(static_cast<GSourceFunc>(&AllCompleteCheck),
+                       job->user_data);
 }
 
 TEST_F(GlibBridgeTest, MultipleReadAndIdleCallbacks) {
