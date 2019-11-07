@@ -337,13 +337,16 @@ TEST_F(TpmUtilityTest, CreateCertifiedKeyWithEccCertified) {
           DoAll(SetArgPointee<8>("fake_key_blob"), Return(TPM_RC_SUCCESS)));
 
   // make sure LoadKey(created key) return RSA, but ECC for AIK
-  EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
-      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  constexpr trunks::TPM_HANDLE kFakeKeyHandle = 0x87654321;
+  EXPECT_CALL(mock_tpm_utility_, LoadKey("fake_key_blob", _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(kFakeKeyHandle), Return(TPM_RC_SUCCESS)));
+
   constexpr trunks::TPM_HANDLE kFakeIdentityHandle = 0x12345678;
   EXPECT_CALL(mock_tpm_utility_, LoadKey("fake_identity_blob", _, _))
       .WillOnce(
           DoAll(SetArgPointee<2>(kFakeIdentityHandle), Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(DoAll(SetArgPointee<1>(GetValidRsaPublicKey(nullptr)),
                       Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(kFakeIdentityHandle, _))
