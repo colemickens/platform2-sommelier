@@ -101,7 +101,7 @@ ArcService::ArcService(DeviceManagerBase* dev_mgr,
       pid_(kInvalidPID) {
   DCHECK(datapath_);
   dev_mgr_->RegisterDeviceIPv6AddressFoundHandler(
-      base::Bind(&ArcService::SetupIPv6, weak_factory_.GetWeakPtr()));
+      guest_, base::Bind(&ArcService::SetupIPv6, weak_factory_.GetWeakPtr()));
 
   // Load networking modules needed by Android that are not compiled in the
   // kernel. Android does not allow auto-loading of kernel modules.

@@ -9,6 +9,7 @@
 #include <sys/ioctl.h>
 
 #include <utility>
+#include <vector>
 
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -128,22 +129,21 @@ DeviceManager::~DeviceManager() {
   shill_client_->UnregisterDefaultInterfaceChangedHandler();
 }
 
-void DeviceManager::RegisterDeviceAddedHandler(const DeviceHandler& handler) {
-  add_handlers_.emplace_back(handler);
+void DeviceManager::RegisterDeviceAddedHandler(GuestMessage::GuestType guest,
+                                               const DeviceHandler& handler) {
+  add_handlers_[guest] = handler;
 }
-
-void DeviceManager::RegisterDeviceRemovedHandler(const DeviceHandler& handler) {
-  rm_handlers_.emplace_back(handler);
+void DeviceManager::RegisterDeviceRemovedHandler(GuestMessage::GuestType guest,
+                                                 const DeviceHandler& handler) {
+  rm_handlers_[guest] = handler;
 }
-
 void DeviceManager::RegisterDeviceIPv6AddressFoundHandler(
-    const DeviceHandler& handler) {
-  ipv6_handlers_.emplace_back(handler);
+    GuestMessage::GuestType guest, const DeviceHandler& handler) {
+  ipv6_handlers_[guest] = handler;
 }
-
 void DeviceManager::RegisterDefaultInterfaceChangedHandler(
-    const NameHandler& handler) {
-  default_iface_handlers_.emplace_back(handler);
+    GuestMessage::GuestType guest, const NameHandler& handler) {
+  default_iface_handlers_[guest] = handler;
 }
 
 void DeviceManager::ProcessDevices(const DeviceHandler& handler) {
@@ -162,6 +162,11 @@ void DeviceManager::OnGuestStop(GuestMessage::GuestType guest) {
   for (auto& d : devices_) {
     d.second->OnGuestStop(guest);
   }
+
+  default_iface_handlers_.erase(guest);
+  ipv6_handlers_.erase(guest);
+  rm_handlers_.erase(guest);
+  add_handlers_.erase(guest);
 }
 
 void DeviceManager::OnDeviceMessageFromNDProxy(const DeviceMessage& msg) {
@@ -198,7 +203,7 @@ bool DeviceManager::Add(const std::string& name) {
     }
   }
   for (auto& h : add_handlers_) {
-    h.Run(device.get());
+    h.second.Run(device.get());
   }
 
   devices_.emplace(name, std::move(device));
@@ -233,7 +238,7 @@ bool DeviceManager::Remove(const std::string& name) {
   }
 
   for (auto& h : rm_handlers_) {
-    h.Run(it->second.get());
+    h.second.Run(it->second.get());
   }
 
   devices_.erase(it);
@@ -447,7 +452,7 @@ void DeviceManager::OnDefaultInterfaceChanged(const std::string& ifname) {
 
   default_ifname_ = ifname;
   for (const auto& h : default_iface_handlers_) {
-    h.Run(default_ifname_);
+    h.second.Run(default_ifname_);
   }
 }
 
@@ -469,7 +474,7 @@ void DeviceManager::OnDevicesChanged(const std::set<std::string>& devices) {
 
 void DeviceManager::OnIPv6AddressFound(Device* device) {
   for (const auto& h : ipv6_handlers_) {
-    h.Run(device);
+    h.second.Run(device);
   }
 }
 

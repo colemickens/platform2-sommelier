@@ -9,7 +9,6 @@
 #include <memory>
 #include <set>
 #include <string>
-#include <vector>
 
 #include <base/memory/weak_ptr.h>
 #include <shill/net/rtnl_listener.h>
@@ -33,12 +32,14 @@ class DeviceManagerBase {
 
   // Used by guest service implementations to be notified when tracked devices
   // are updated.
-  virtual void RegisterDeviceAddedHandler(const DeviceHandler& handler) = 0;
-  virtual void RegisterDeviceRemovedHandler(const DeviceHandler& handler) = 0;
+  virtual void RegisterDeviceAddedHandler(GuestMessage::GuestType guest,
+                                          const DeviceHandler& handler) = 0;
+  virtual void RegisterDeviceRemovedHandler(GuestMessage::GuestType guest,
+                                            const DeviceHandler& handler) = 0;
   virtual void RegisterDefaultInterfaceChangedHandler(
-      const NameHandler& handler) = 0;
+      GuestMessage::GuestType guest, const NameHandler& handler) = 0;
   virtual void RegisterDeviceIPv6AddressFoundHandler(
-      const DeviceHandler& handler) = 0;
+      GuestMessage::GuestType guest, const DeviceHandler& handler) = 0;
 
   // Invoked when a guest starts or stops.
   virtual void OnGuestStart(GuestMessage::GuestType guest) = 0;
@@ -75,12 +76,14 @@ class DeviceManager : public DeviceManagerBase {
 
   // Used by guest service implementations to be notified when tracked devices
   // are updated.
-  void RegisterDeviceAddedHandler(const DeviceHandler& handler) override;
-  void RegisterDeviceRemovedHandler(const DeviceHandler& handler) override;
+  void RegisterDeviceAddedHandler(GuestMessage::GuestType guest,
+                                  const DeviceHandler& handler) override;
+  void RegisterDeviceRemovedHandler(GuestMessage::GuestType guest,
+                                    const DeviceHandler& handler) override;
   void RegisterDefaultInterfaceChangedHandler(
-      const NameHandler& handler) override;
+      GuestMessage::GuestType guest, const NameHandler& handler) override;
   void RegisterDeviceIPv6AddressFoundHandler(
-      const DeviceHandler& handler) override;
+      GuestMessage::GuestType guest, const DeviceHandler& handler) override;
 
   // Invoked when a guest starts or stops.
   void OnGuestStart(GuestMessage::GuestType guest) override;
@@ -137,10 +140,10 @@ class DeviceManager : public DeviceManagerBase {
 
   // Callbacks for notifying clients when devices are added or removed from
   // |devices_|.
-  std::vector<DeviceHandler> add_handlers_;
-  std::vector<DeviceHandler> rm_handlers_;
-  std::vector<DeviceHandler> ipv6_handlers_;
-  std::vector<NameHandler> default_iface_handlers_;
+  std::map<GuestMessage::GuestType, DeviceHandler> add_handlers_;
+  std::map<GuestMessage::GuestType, DeviceHandler> rm_handlers_;
+  std::map<GuestMessage::GuestType, DeviceHandler> ipv6_handlers_;
+  std::map<GuestMessage::GuestType, NameHandler> default_iface_handlers_;
 
   // Connected devices keyed by the interface name.
   // The legacy device is mapped to the Android interface name.

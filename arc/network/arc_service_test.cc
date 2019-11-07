@@ -29,12 +29,14 @@ class MockDeviceManager : public DeviceManagerBase {
   MockDeviceManager() = default;
   ~MockDeviceManager() = default;
 
-  MOCK_METHOD1(RegisterDeviceAddedHandler, void(const DeviceHandler&));
-  MOCK_METHOD1(RegisterDeviceRemovedHandler, void(const DeviceHandler&));
-  MOCK_METHOD1(RegisterDefaultInterfaceChangedHandler,
-               void(const NameHandler&));
-  MOCK_METHOD1(RegisterDeviceIPv6AddressFoundHandler,
-               void(const DeviceHandler&));
+  MOCK_METHOD2(RegisterDeviceAddedHandler,
+               void(GuestMessage::GuestType, const DeviceHandler&));
+  MOCK_METHOD2(RegisterDeviceRemovedHandler,
+               void(GuestMessage::GuestType, const DeviceHandler&));
+  MOCK_METHOD2(RegisterDefaultInterfaceChangedHandler,
+               void(GuestMessage::GuestType, const NameHandler&));
+  MOCK_METHOD2(RegisterDeviceIPv6AddressFoundHandler,
+               void(GuestMessage::GuestType, const DeviceHandler&));
   MOCK_METHOD1(OnGuestStart, void(GuestMessage::GuestType));
   MOCK_METHOD1(OnGuestStop, void(GuestMessage::GuestType));
   MOCK_METHOD1(ProcessDevices, void(const DeviceHandler&));
