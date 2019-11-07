@@ -2979,6 +2979,11 @@ std::unique_ptr<dbus::Response> Service::SetVmCpuRestriction(
 
 void Service::OnResolvConfigChanged(std::vector<string> nameservers,
                                     std::vector<string> search_domains) {
+  if (nameservers_ == nameservers && search_domains_ == search_domains) {
+    // Only update guests if the nameservers and search domains changed.
+    return;
+  }
+
   nameservers_ = std::move(nameservers);
   search_domains_ = std::move(search_domains);
 
