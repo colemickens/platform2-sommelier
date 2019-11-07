@@ -137,8 +137,6 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
 
   if (builder->UseFlagIsSet("arc_adb_sideloading"))
     builder->AddFeatureEnableOverride("ArcAdbSideloading");
-  if (builder->UseFlagIsSet("arc_oobe_optin"))
-    builder->AddArg("--enable-arc-oobe-optin");
   if (builder->UseFlagIsSet("arc_oobe_optin_no_skip"))
     builder->AddArg("--enable-arc-oobe-optin-no-skip");
   if (builder->UseFlagIsSet("arc_transition_m_to_n"))
@@ -155,7 +153,6 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
 void AddCrostiniFlags(ChromiumCommandBuilder* builder) {
   if (builder->UseFlagIsSet("kvm_host")) {
     builder->AddFeatureEnableOverride("Crostini");
-    builder->AddFeatureEnableOverride("ExperimentalCrostiniUI");
   }
   if (builder->UseFlagIsSet("virtio_gpu")) {
     builder->AddFeatureEnableOverride("CrostiniGpuSupport");
@@ -169,34 +166,6 @@ void AddPluginVmFlags(ChromiumCommandBuilder* builder) {
   if (builder->UseFlagIsSet("pita")) {
     builder->AddFeatureEnableOverride("PluginVm");
   }
-}
-
-// Blatantly copied from //components/crx_file/id_util.cc.
-// TODO(rkc): Remove when crbug.com/706523 is fixed.
-std::string HashedIdInHex(const std::string& id) {
-  const std::string id_hash = base::SHA1HashString(id);
-  DCHECK_EQ(base::kSHA1Length, id_hash.length());
-  return base::HexEncode(id_hash.c_str(), id_hash.length());
-}
-
-// Returns true if the ID matches any of the IDs of the kiosk apps run on
-// Chromebox for Meetings.
-bool IsChromeboxForMeetingsAppId(const std::string& id) {
-  const std::string hash = HashedIdInHex(id);
-  const char** end = kChromeboxForMeetingAppIdHashes +
-                     arraysize(kChromeboxForMeetingAppIdHashes);
-  return std::find(kChromeboxForMeetingAppIdHashes, end, hash) != end;
-}
-
-// Returns true if current device is enrolled as a Chromebox for Meetings.
-bool IsEnrolledChromeboxForMeetings() {
-  policy::PolicyProvider provider;
-  if (!provider.Reload())
-    return false;
-  const policy::DevicePolicy& policy = provider.GetDevicePolicy();
-  std::string kiosk_app_id;
-  return policy.GetAutoLaunchedKioskAppId(&kiosk_app_id) &&
-         IsChromeboxForMeetingsAppId(kiosk_app_id);
 }
 
 // Ensures that necessary directory exist with the correct permissions and sets
@@ -388,25 +357,12 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   if (builder->is_test_build())
     builder->AddArg("--disable-logging-redirect");
 
-  if (builder->UseFlagIsSet("cfm_enabled_device")) {
-    if (IsEnrolledChromeboxForMeetings()) {
-      // Chromebox For Meetings devices need to start with this flag till
-      // crbug.com/653531 gets fixed. TODO(pbos): Remove this once this feature
-      // is enabled by default.
-      builder->AddBlinkFeatureEnableOverride("MediaStreamTrackContentHint");
-      // Chromebox For Meetings devices need to start with MojoVideoCapture
-      // enabled until it is the default for video capture on CrOS.
-      // See crbug.com/820608 for roll out.
-      builder->AddFeatureEnableOverride("MojoVideoCapture");
-    }
-    if (builder->UseFlagIsSet("screenshare_sw_codec")) {
-      builder->AddFeatureEnableOverride("WebRtcScreenshareSwEncoding");
-    }
+  if (builder->UseFlagIsSet("cfm_enabled_device") &&
+      builder->UseFlagIsSet("screenshare_sw_codec")) {
+    builder->AddFeatureEnableOverride("WebRtcScreenshareSwEncoding");
   }
 
   if (builder->UseFlagIsSet("touch_centric_device")) {
-    // Force-enable the Touch-Optimized UI feature for touch-centric devices.
-    builder->AddFeatureEnableOverride("TouchOptimizedUi");
     // Tapping the power button should turn the screen off in laptop mode.
     builder->AddArg("--force-tablet-power-button");
   }
@@ -438,9 +394,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--oobe-skip-to-login");
   if (builder->UseFlagIsSet("oobe_skip_postlogin"))
     builder->AddArg("--oobe-skip-postlogin");
-
-  if (builder->UseFlagIsSet("native_assistant"))
-    builder->AddFeatureEnableOverride("ChromeOSAssistant");
 
   if (builder->UseFlagIsSet("background_blur"))
     builder->AddFeatureEnableOverride("EnableBackgroundBlur");
