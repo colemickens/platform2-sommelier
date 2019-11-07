@@ -130,11 +130,6 @@ class MountManager {
                                   const std::string& mount_path,
                                   bool is_read_only);
 
-  // Gets the corresponding |source_path| of |mount_path| from the cache.
-  // Returns false if |mount_path| is not found in the cache.
-  bool GetSourcePathFromCache(const std::string& mount_path,
-                              std::string* source_path) const;
-
   // Gets the corresponding |mount_path| of |source_path| from the cache.
   // Returns false if |source_path| is not found in the cache.
   bool GetMountPathFromCache(const std::string& source_path,

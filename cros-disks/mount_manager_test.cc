@@ -1032,20 +1032,6 @@ TEST_F(MountManagerTest, AddOrUpdateMountStateCache) {
   EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_2));
 }
 
-// Verifies that MountManager::GetSourcePathFromCache() works as expected.
-TEST_F(MountManagerTest, GetSourcePathFromCache) {
-  std::string result;
-  source_path_ = kTestSourcePath;
-  mount_path_ = kTestMountPath;
-
-  EXPECT_FALSE(manager_.GetSourcePathFromCache(mount_path_, &result));
-  manager_.AddOrUpdateMountStateCache(source_path_, mount_path_, false);
-  EXPECT_TRUE(manager_.GetSourcePathFromCache(mount_path_, &result));
-  EXPECT_EQ(source_path_, result);
-  EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_));
-  EXPECT_FALSE(manager_.GetSourcePathFromCache(mount_path_, &result));
-}
-
 // Verifies that MountManager::GetMountPathFromCache() works as expected.
 TEST_F(MountManagerTest, GetMountPathFromCache) {
   std::string result;

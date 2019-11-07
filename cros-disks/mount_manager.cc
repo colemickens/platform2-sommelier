@@ -308,19 +308,6 @@ void MountManager::AddOrUpdateMountStateCache(const std::string& source_path,
   mount_states_[source_path] = mount_state;
 }
 
-bool MountManager::GetSourcePathFromCache(const std::string& mount_path,
-                                          std::string* source_path) const {
-  CHECK(source_path) << "Invalid source path argument";
-
-  for (const auto& path_pair : mount_states_) {
-    if (path_pair.second.mount_path == mount_path) {
-      *source_path = path_pair.first;
-      return true;
-    }
-  }
-  return false;
-}
-
 bool MountManager::GetMountPathFromCache(const std::string& source_path,
                                          std::string* mount_path) const {
   CHECK(mount_path) << "Invalid mount path argument";
