@@ -145,7 +145,7 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--arc-transition-migration-required");
   if (builder->UseFlagIsSet("arc_force_2x_scaling"))
     builder->AddArg("--force-remote-shell-scale=2");
-  if (builder->UseFlagIsSet("arcvm"))
+  if (builder->UseFlagIsSet("arcvm") && !builder->UseFlagIsSet("arcpp"))
     builder->AddArg("--enable-arcvm");
   // Devices of tablet form factor will have special app behaviour.
   if (builder->UseFlagIsSet("tablet_form_factor"))
