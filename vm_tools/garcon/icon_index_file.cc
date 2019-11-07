@@ -77,10 +77,13 @@ bool IconIndexFile::PerfectMatch(const DirectoryEntry& directory_entry,
 bool IconIndexFile::WithinLimit(const DirectoryEntry& directory_entry,
                                 int search_size) {
   if (directory_entry.type == kDirectoryTypeThreshold) {
+    // Force 64 bit conversions so we don't overflow on 32 bit multiplies.
     if (search_size >= directory_entry.size) {
-      return directory_entry.size * directory_entry.threshold >= search_size;
+      return ((int64_t)directory_entry.size) * directory_entry.threshold >=
+             search_size;
     } else {
-      return search_size * directory_entry.threshold >= directory_entry.size;
+      return ((int64_t)search_size) * directory_entry.threshold >=
+             directory_entry.size;
     }
   } else if (directory_entry.type == kDirectoryTypeScalable) {
     return search_size >= directory_entry.min_size &&
