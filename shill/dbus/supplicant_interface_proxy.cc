@@ -62,7 +62,7 @@ SupplicantInterfaceProxy::SupplicantInterfaceProxy(
                                  weak_factory_.GetWeakPtr())));
 
   // Register signal handlers.
-  dbus::ObjectProxy::OnConnectedCallback on_connected_callback = base::Bind(
+  auto on_connected_callback = base::Bind(
       &SupplicantInterfaceProxy::OnSignalConnected, weak_factory_.GetWeakPtr());
   interface_proxy_->RegisterScanDoneSignalHandler(
       base::Bind(&SupplicantInterfaceProxy::ScanDone,
@@ -119,7 +119,8 @@ SupplicantInterfaceProxy::SupplicantInterfaceProxy(
 }
 
 SupplicantInterfaceProxy::~SupplicantInterfaceProxy() {
-  interface_proxy_->ReleaseObjectProxy(base::Bind(&base::DoNothing));
+  // TODO(crbug.com/909719): Use base::DoNothing after libchrome uprev.
+  interface_proxy_->ReleaseObjectProxy(base::Bind([]() {}));
 }
 
 bool SupplicantInterfaceProxy::AddNetwork(const KeyValueStore& args,

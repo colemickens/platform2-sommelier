@@ -60,7 +60,7 @@ SupplicantProcessProxy::SupplicantProcessProxy(
                                  weak_factory_.GetWeakPtr())));
 
   // Register signal handlers.
-  dbus::ObjectProxy::OnConnectedCallback on_connected_callback = base::Bind(
+  auto on_connected_callback = base::Bind(
       &SupplicantProcessProxy::OnSignalConnected, weak_factory_.GetWeakPtr());
   supplicant_proxy_->RegisterInterfaceAddedSignalHandler(
       base::Bind(&SupplicantProcessProxy::InterfaceAdded,

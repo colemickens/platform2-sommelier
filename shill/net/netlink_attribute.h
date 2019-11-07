@@ -10,6 +10,7 @@
 #include <string>
 #include <utility>
 
+#include <base/callback.h>
 #include <base/macros.h>
 
 #include "shill/net/attribute_list.h"

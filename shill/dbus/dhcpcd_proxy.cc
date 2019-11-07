@@ -25,7 +25,8 @@ DHCPCDProxy::DHCPCDProxy(const scoped_refptr<dbus::Bus>& bus,
 }
 
 DHCPCDProxy::~DHCPCDProxy() {
-  dhcpcd_proxy_->ReleaseObjectProxy(base::Bind(&base::DoNothing));
+  // TODO(crbug.com/909719): Replace by base::DoNothing when uprevved.
+  dhcpcd_proxy_->ReleaseObjectProxy(base::Bind([]() {}));
 }
 
 void DHCPCDProxy::Rebind(const string& interface) {

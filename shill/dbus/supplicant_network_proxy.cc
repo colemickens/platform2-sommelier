@@ -60,7 +60,8 @@ SupplicantNetworkProxy::SupplicantNetworkProxy(
 }
 
 SupplicantNetworkProxy::~SupplicantNetworkProxy() {
-  network_proxy_->ReleaseObjectProxy(base::Bind(&base::DoNothing));
+  // TODO(crbug.com/909719): Use base::DoNothing after uprev.
+  network_proxy_->ReleaseObjectProxy(base::Bind([]() {}));
 }
 
 bool SupplicantNetworkProxy::SetEnabled(bool enabled) {

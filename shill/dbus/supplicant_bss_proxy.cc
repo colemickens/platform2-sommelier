@@ -38,7 +38,8 @@ SupplicantBSSProxy::SupplicantBSSProxy(const scoped_refptr<dbus::Bus>& bus,
 }
 
 SupplicantBSSProxy::~SupplicantBSSProxy() {
-  bss_proxy_->ReleaseObjectProxy(base::Bind(&base::DoNothing));
+  // TODO(crbug.com/909719): Use base::DoNothing after libchrome uprev.
+  bss_proxy_->ReleaseObjectProxy(base::Bind([]() {}));
 }
 
 void SupplicantBSSProxy::PropertiesChanged(
