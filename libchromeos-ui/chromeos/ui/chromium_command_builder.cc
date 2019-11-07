@@ -226,9 +226,6 @@ bool ChromiumCommandBuilder::SetUpChromium() {
   SetUpPepperPlugins();
   AddUiFlags();
 
-  if (UseFlagIsSet("pointer_events"))
-    AddFeatureEnableOverride("PointerEvent");
-
   if (UseFlagIsSet("passive_event_listeners"))
     AddArg("--passive-listeners-default=true");
 
@@ -492,8 +489,6 @@ void ChromiumCommandBuilder::SetUpPepperPlugins() {
         flash_args.push_back("enable_hw_video_decode=0");
         flash_args.push_back("enable_hw_video_decode_ave=0");
       }
-      if (UseFlagIsSet("disable_low_latency_audio"))
-        flash_args.push_back("enable_low_latency_audio=0");
       if (!flash_args.empty())
         AddArg("--ppapi-flash-args=" + base::JoinString(flash_args, ","));
     } else {
@@ -532,17 +527,8 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("neon"))
     AddEnvVar("VPX_SIMD_CAPS", "0xf");
 
-  if (UseFlagIsSet("link")) {
-    // This is the link board (aka Pixel).
-    AddArg("--touch-calibration=0,0,0,50");
-    AddArg("--touch-noise-filtering");
-  }
-
   if (UseFlagIsSet("edge_touch_filtering"))
     AddArg("--edge-touch-filtering");
-
-  if (UseFlagIsSet("low_pressure_touch_filtering"))
-    AddArg("--low-pressure-touch-filtering");
 
   if (UseFlagIsSet("native_gpu_memory_buffers"))
     AddArg("--enable-native-gpu-memory-buffers");
