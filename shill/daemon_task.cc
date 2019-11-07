@@ -54,7 +54,6 @@ DaemonTask::~DaemonTask() = default;
 void DaemonTask::ApplySettings() {
   manager_->SetBlacklistedDevices(settings_.device_blacklist);
   manager_->SetWhitelistedDevices(settings_.device_whitelist);
-  manager_->SetArcDevice(settings_.arc_device);
   Error error;
   manager_->SetTechnologyOrder(settings_.default_technology_order, &error);
   CHECK(error.IsSuccess());  // Command line should have been validated.

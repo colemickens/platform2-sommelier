@@ -137,6 +137,9 @@ const char* const kIgnoredDeviceNamePrefixes[] = {
 // Modem drivers that we support.
 const char* const kModemDrivers[] = {"cdc_mbim", "qmi_wwan"};
 
+// Name of the ARC bridge.
+constexpr char kArcBridge[] = "arcbr0";
+
 // Path to the tun device.
 constexpr char kTunDeviceName[] = "/dev/net/tun";
 
@@ -548,8 +551,8 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string& link_name,
       GetWiFiInterfaceInfo(interface_index);
       break;
 #endif  // DISABLE_WIFI
-    case Technology::kArc:
-      // shill doesn't touch the IP configuration for kArc devices.
+    case Technology::kArcBridge:
+      // Shill doesn't touch the IP configuration for the ARC bridge.
       flush = false;
       FALLTHROUGH;
     case Technology::kPPP:
@@ -688,8 +691,8 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
     indices_[link_name] = dev_index;
 
     if (!link_name.empty()) {
-      if (link_name == manager_->arc_device()) {
-        technology = Technology::kArc;
+      if (link_name == kArcBridge) {
+        technology = Technology::kArcBridge;
       } else if (IsDeviceBlackListed(link_name)) {
         technology = Technology::kBlacklisted;
       } else if (!manager_->DeviceManagementAllowed(link_name)) {

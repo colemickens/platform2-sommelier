@@ -37,8 +37,6 @@ const char kForeground[] = "foreground";
 const char kDeviceBlackList[] = "device-black-list";
 // Manage only these devices.
 const char kDeviceWhiteList[] = "device-white-list";
-// ARC network device.
-const char kArcDevice[] = "arc-device";
 // Ignore Ethernet-like devices that don't have any driver information.
 const char kIgnoreUnknownEthernet[] = "ignore-unknown-ethernet";
 // Technologies to enable for portal check at startup.
@@ -191,10 +189,6 @@ int main(int argc, char** argv) {
     settings.device_whitelist =
         base::SplitString(cl->GetSwitchValueASCII(switches::kDeviceWhiteList),
                           ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-  }
-
-  if (cl->HasSwitch(switches::kArcDevice)) {
-    settings.arc_device = cl->GetSwitchValueASCII(switches::kArcDevice);
   }
 
   settings.ignore_unknown_ethernet =

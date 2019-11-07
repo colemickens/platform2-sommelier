@@ -204,7 +204,7 @@ TEST_F(VPNProviderTest, ArcDeviceFound) {
 
   EXPECT_EQ(provider_.allowed_iifs_.size(), 0);
   EXPECT_TRUE(provider_.OnDeviceInfoAvailable(kInterfaceName, kInterfaceIndex,
-                                              Technology::kArc));
+                                              Technology::kArcBridge));
   EXPECT_EQ(provider_.allowed_iifs_.size(), 1);
   EXPECT_EQ(provider_.allowed_iifs_[0], kInterfaceName);
 }

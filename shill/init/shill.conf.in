@@ -29,13 +29,11 @@ env SHILL_ACCEPT_HOSTNAME_FROM=
 env SHILL_MINIMUM_MTU=
 env BLACKLISTED_DEVICES=
 env DHCPV6_ENABLED_DEVICES=
-env ARC_DEVICE=arcbr0
 
 # Hook for mod_for_test_scripts/100setupTestingInterface.
 env SHILL_TEST_DEVICES=""
 
 # Allow the parameters to be overridden by upstart commands and events.
-import ARC_DEVICE
 import BLACKLISTED_DEVICES
 import DHCPV6_ENABLED_DEVICES
 import SHILL_ACCEPT_HOSTNAME_FROM

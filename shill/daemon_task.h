@@ -50,7 +50,6 @@ class DaemonTask {
     std::vector<std::string> device_blacklist;
     std::vector<std::string> device_whitelist;
     std::vector<std::string> dhcpv6_enabled_devices;
-    std::string arc_device;
     bool ignore_unknown_ethernet;
     int minimum_mtu;
     bool passive_mode;

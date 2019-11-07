@@ -40,7 +40,7 @@ class Technology {
     kNoDeviceSymlink,  // Only for internal use in DeviceInfo.
     kPPP,
     kPPPoE,
-    kArc,
+    kArcBridge,
     // Virtual tap devices used by guest OS and clients getting Internet via
     // Chrome OS host kernel.
     kGuestInterface,

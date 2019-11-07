@@ -195,9 +195,9 @@ ServiceRefPtr VPNProvider::FindSimilarService(const KeyValueStore& args,
 bool VPNProvider::OnDeviceInfoAvailable(const string& link_name,
                                         int interface_index,
                                         Technology technology) {
-  if (technology == Technology::kArc) {
+  if (technology == Technology::kArcBridge) {
     arc_device_ = new VirtualDevice(manager_, link_name, interface_index,
-                                    Technology::kArc);
+                                    Technology::kArcBridge);
     arc_device_->SetFixedIpParams(true);
     // Forward ARC->internet traffic over third-party VPN services.
     allowed_iifs_.push_back(link_name);

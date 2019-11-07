@@ -37,10 +37,6 @@ if [ -n "${DHCPV6_ENABLED_DEVICES}" ]; then
   ARGS="${ARGS} --dhcpv6-enabled-devices=${DHCPV6_ENABLED_DEVICES}"
 fi
 
-if [ -n "${ARC_DEVICE}" ]; then
-  ARGS="${ARGS} --arc-device=${ARC_DEVICE}"
-fi
-
 ARGS="${ARGS} ${SHILL_TEST_ARGS}"
 
 # If OOBE has not completed (i.e. EULA not agreed to), do not run

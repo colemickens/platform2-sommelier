@@ -114,8 +114,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
       const std::vector<std::string>& blacklisted_devices);
   virtual void SetWhitelistedDevices(
       const std::vector<std::string>& whitelisted_devices);
-  virtual void SetArcDevice(const std::string& arc_device);
-  const std::string& arc_device() const { return arc_device_; }
 
   // Returns true if |device_name| is either not in the blacklist, or in the
   // whitelist, depending on which list was supplied in startup settings.
@@ -850,9 +848,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // List of DHCPv6 enabled devices.
   std::vector<std::string> dhcpv6_enabled_devices_;
-
-  // ARC network device.
-  std::string arc_device_;
 
   // DhcpProperties stored for the default profile.
   std::unique_ptr<DhcpProperties> dhcp_properties_;
