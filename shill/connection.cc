@@ -63,7 +63,6 @@ Connection::Connection(int interface_index,
       interface_name_(interface_name),
       technology_(technology),
       use_if_addrs_(false),
-      blackholed_addrs_(nullptr),
       fixed_ip_params_(fixed_ip_params),
       table_id_(RoutingTable::GetInterfaceTableId(interface_index)),
       blackhole_table_id_(RT_TABLE_UNSPEC),
@@ -198,11 +197,8 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   }
 
   blackholed_uids_ = properties.blackholed_uids;
-  blackholed_addrs_ = properties.blackholed_addrs;
-  bool has_blackholed_addrs =
-      blackholed_addrs_ && !blackholed_addrs_->IsEmpty();
 
-  if (!blackholed_uids_.empty() || has_blackholed_addrs) {
+  if (!blackholed_uids_.empty()) {
     blackhole_table_id_ = routing_table_->RequestAdditionalTableId();
     CHECK(blackhole_table_id_);
     routing_table_->CreateBlackholeRoute(
@@ -272,19 +268,6 @@ void Connection::UpdateRoutingPolicy() {
                        .SetUidRange({uid, uid});
       routing_table_->AddRule(interface_index_, entry);
       routing_table_->AddRule(interface_index_, entry.FlipFamily());
-    }
-
-    if (blackholed_addrs_) {
-      blackholed_addrs_->Apply(base::Bind(
-          [](Connection* connection, const IPAddress& addr) {
-            // Add |addr| to blackhole table.
-            auto entry = RoutingPolicyEntry::CreateFromSrc(addr)
-                             .SetPriority(connection->priority_)
-                             .SetTable(connection->blackhole_table_id_);
-            connection->routing_table_->AddRule(connection->interface_index_,
-                                                entry);
-          },
-          base::Unretained(this)));
     }
   }
 

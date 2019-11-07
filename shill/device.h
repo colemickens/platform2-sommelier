@@ -199,10 +199,6 @@ class Device : public base::RefCounted<Device> {
   // during portal detection.
   mockable void SetLooseRouting(bool is_loose_routing);
 
-  // Blackhole outgoing traffic using the specified source address for a certain
-  // amount of time.
-  void BlackholeAddress(IPAddress address, base::TimeDelta lifetime);
-
   // Enable or disable same-net multi-home support for this interface.  When
   // enabled, ARP filtering is enabled in order to avoid the "ARP Flux"
   // effect where peers may end up with inaccurate IP address mappings due to
@@ -852,8 +848,6 @@ class Device : public base::RefCounted<Device> {
   DHCPProvider* dhcp_provider_;
   RoutingTable* routing_table_;
   RTNLHandler* rtnl_handler_;
-
-  TimeoutSet<IPAddress> blackhole_addrs_;
 
   // Time when link monitor last failed.
   Time* time_;

@@ -151,7 +151,6 @@ Device::Device(Manager* manager,
       dhcp_provider_(DHCPProvider::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
-      blackhole_addrs_(manager->dispatcher()),
       time_(Time::GetInstance()),
       last_link_monitor_failed_time_(0),
       is_loose_routing_(false),
@@ -332,11 +331,6 @@ void Device::SetLooseRouting(bool is_loose_routing) {
   } else {
     EnableReversePathFilter();
   }
-}
-
-void Device::BlackholeAddress(IPAddress address, base::TimeDelta lifetime) {
-  SLOG(this, 2) << __func__ << " blacklisting address: " << address;
-  blackhole_addrs_.Insert(std::move(address), std::move(lifetime));
 }
 
 void Device::DisableReversePathFilter() {
@@ -935,12 +929,8 @@ bool Device::IPConfigCompleted(const IPConfigRefPtr& ipconfig) {
 }
 
 void Device::OnIPv6ConfigUpdated() {
-  if (ip6config_) {
-    ip6config_->SetBlackholedAddrs(&blackhole_addrs_);
-
-    if (connection_) {
-      connection_->UpdateGatewayMetric(ip6config_);
-    }
+  if (ip6config_ && connection_) {
+    connection_->UpdateGatewayMetric(ip6config_);
   }
 
   // Setup connection using IPv6 configuration only if the IPv6 configuration
@@ -1075,7 +1065,6 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig,
     PrependDNSServersIntoIPConfig(ipconfig);
   }
 
-  ipconfig->SetBlackholedAddrs(&blackhole_addrs_);
   SetupConnection(ipconfig);
   UpdateIPConfigsProperty();
 }

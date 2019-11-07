@@ -186,7 +186,6 @@ class Connection : public base::RefCounted<Connection> {
   std::vector<std::string> allowed_iifs_;
   std::vector<IPAddress> allowed_addrs_;
   std::vector<uint32_t> blackholed_uids_;
-  TimeoutSet<IPAddress>* blackholed_addrs_;
 
   // Do not reconfigure the IP addresses, subnet mask, broadcast, etc.
   bool fixed_ip_params_;
