@@ -490,6 +490,11 @@ class SessionManagerImplTest : public ::testing::Test,
       return *this;
     }
 
+    UpgradeContainerExpectationsBuilder& SetEnableAdbSideload(int v) {
+      enable_adb_sideload_ = v;
+      return *this;
+    }
+
     UpgradeContainerExpectationsBuilder& SetSupervisionTransition(int v) {
       supervision_transition_ = v;
       return *this;
@@ -2426,6 +2431,60 @@ TEST_F(SessionManagerImplTest,
 
   EXPECT_TRUE(impl_->StopArcInstance(&error));
   EXPECT_FALSE(android_container_.running());
+}
+
+TEST_F(SessionManagerImplTest, UpgradeArcContainer_AdbSideloadingEnabled) {
+  ExpectAndRunStartSession(kSaneEmail);
+  SetUpArcMiniContainer();
+
+  // Expect continue-arc-boot and start-arc-network impulses.
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
+                             UpgradeContainerExpectationsBuilder()
+                                 .SetEnableAdbSideload(true)
+                                 .Build(),
+                             InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
+
+  // Pretend ADB sideloading is already enabled.
+  EXPECT_CALL(*arc_sideload_status_, IsAdbSideloadAllowed())
+      .WillRepeatedly(Return(true));
+
+  auto upgrade_request = CreateUpgradeArcContainerRequest();
+
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(
+      impl_->UpgradeArcContainer(&error, SerializeAsBlob(upgrade_request)));
+  EXPECT_FALSE(error.get());
+  EXPECT_TRUE(android_container_.running());
+}
+
+TEST_F(SessionManagerImplTest,
+       UpgradeArcContainer_AdbSideloadingEnabled_ManagedAccount) {
+  ExpectAndRunStartSession(kSaneEmail);
+  SetUpArcMiniContainer();
+
+  // Expect continue-arc-boot and start-arc-network impulses.
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
+                             UpgradeContainerExpectationsBuilder()
+                                 .SetEnableAdbSideload(false)
+                                 .Build(),
+                             InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
+
+  // Pretend ADB sideloading is already enabled.
+  EXPECT_CALL(*arc_sideload_status_, IsAdbSideloadAllowed())
+      .WillRepeatedly(Return(true));
+
+  auto upgrade_request = CreateUpgradeArcContainerRequest();
+  upgrade_request.set_is_account_managed(true);
+
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(
+      impl_->UpgradeArcContainer(&error, SerializeAsBlob(upgrade_request)));
+  EXPECT_FALSE(error.get());
+  EXPECT_TRUE(android_container_.running());
 }
 
 TEST_F(SessionManagerImplTest, ArcNativeBridgeExperiment) {
