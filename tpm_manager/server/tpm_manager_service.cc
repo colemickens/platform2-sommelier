@@ -198,8 +198,23 @@ void TpmManagerService::GetTpmStatusTask(
     *reply->mutable_local_data() = local_data;
   }
 
-  if (!request.include_version_info()) {
-    reply->set_status(STATUS_SUCCESS);
+  reply->set_status(STATUS_SUCCESS);
+}
+
+void TpmManagerService::GetVersionInfo(const GetVersionInfoRequest& request,
+                                       const GetVersionInfoCallback& callback) {
+  PostTaskToWorkerThread<GetVersionInfoReply>(
+      request, callback, &TpmManagerService::GetVersionInfoTask);
+}
+
+void TpmManagerService::GetVersionInfoTask(
+    const GetVersionInfoRequest& request,
+    const std::shared_ptr<GetVersionInfoReply>& reply) {
+  VLOG(1) << __func__;
+
+  if (!tpm_status_) {
+    LOG(ERROR) << __func__ << ": tpm status is uninitialized.";
+    reply->set_status(STATUS_NOT_AVAILABLE);
     return;
   }
 
@@ -209,21 +224,21 @@ void TpmManagerService::GetTpmStatusTask(
   uint32_t tpm_model;
   uint64_t firmware_version;
   std::vector<uint8_t> vendor_specific;
-  if (tpm_status_->GetVersionInfo(&family, &spec_level, &manufacturer,
-                                  &tpm_model, &firmware_version,
-                                  &vendor_specific)) {
-    GetTpmStatusReply::TpmVersionInfo* version_info =
-        reply->mutable_version_info();
-    version_info->set_family(family);
-    version_info->set_spec_level(spec_level);
-    version_info->set_manufacturer(manufacturer);
-    version_info->set_tpm_model(tpm_model);
-    version_info->set_firmware_version(firmware_version);
-    version_info->set_vendor_specific(
-        reinterpret_cast<char*>(vendor_specific.data()),
-        vendor_specific.size());
+  if (!tpm_status_->GetVersionInfo(&family, &spec_level, &manufacturer,
+                                   &tpm_model, &firmware_version,
+                                   &vendor_specific)) {
+    LOG(ERROR) << __func__ << ": failed to get version info from tpm status.";
+    reply->set_status(STATUS_DEVICE_ERROR);
+    return;
   }
 
+  reply->set_family(family);
+  reply->set_spec_level(spec_level);
+  reply->set_manufacturer(manufacturer);
+  reply->set_tpm_model(tpm_model);
+  reply->set_firmware_version(firmware_version);
+  reply->set_vendor_specific(reinterpret_cast<char*>(vendor_specific.data()),
+                             vendor_specific.size());
   reply->set_status(STATUS_SUCCESS);
 }
 

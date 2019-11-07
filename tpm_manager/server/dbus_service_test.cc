@@ -132,6 +132,33 @@ TEST_F(DBusServiceTest, GetTpmStatus) {
   EXPECT_TRUE(reply.owned());
 }
 
+TEST_F(DBusServiceTest, GetVersionInfo) {
+  RegisterDBusObjectsAsync();
+
+  GetVersionInfoReply expected_version_info;
+  expected_version_info.set_status(STATUS_SUCCESS);
+  expected_version_info.set_family(1);
+  expected_version_info.set_spec_level(2);
+  expected_version_info.set_manufacturer(3);
+  expected_version_info.set_tpm_model(4);
+  expected_version_info.set_firmware_version(5);
+  expected_version_info.set_vendor_specific("ab");
+
+  GetVersionInfoRequest request;
+  EXPECT_CALL(mock_ownership_service_, GetVersionInfo(_, _))
+      .WillOnce(Invoke([&expected_version_info](
+          const GetVersionInfoRequest& request,
+          const TpmOwnershipInterface::GetVersionInfoCallback& callback) {
+            callback.Run(expected_version_info);
+          }));
+
+  GetVersionInfoReply actual_version_info;
+  ExecuteMethod(
+      kGetVersionInfo, request, &actual_version_info, kTpmOwnershipInterface);
+  EXPECT_EQ(actual_version_info.SerializeAsString(),
+            expected_version_info.SerializeAsString());
+}
+
 TEST_F(DBusServiceTest, GetDictionaryAttackInfo) {
   RegisterDBusObjectsAsync();
 

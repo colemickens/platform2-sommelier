@@ -745,66 +745,6 @@ std::string GetProtoDebugStringWithIndent(const GetTpmStatusRequest& value,
   std::string output =
       base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
 
-  if (value.has_include_version_info()) {
-    output += indent + "  include_version_info: ";
-    base::StringAppendF(&output, "%s",
-                        value.include_version_info() ? "true" : "false");
-    output += "\n";
-  }
-  output += indent + "}\n";
-  return output;
-}
-
-std::string GetProtoDebugString(
-    const GetTpmStatusReply::TpmVersionInfo& value) {
-  return GetProtoDebugStringWithIndent(value, 0);
-}
-
-std::string GetProtoDebugStringWithIndent(
-    const GetTpmStatusReply::TpmVersionInfo& value,
-    int indent_size) {
-  std::string indent(indent_size, ' ');
-  std::string output =
-      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
-
-  if (value.has_family()) {
-    output += indent + "  family: ";
-    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")",
-                        value.family(), value.family());
-    output += "\n";
-  }
-  if (value.has_spec_level()) {
-    output += indent + "  spec_level: ";
-    base::StringAppendF(&output, "%" PRIu64 " (0x%016" PRIX64 ")",
-                        value.spec_level(), value.spec_level());
-    output += "\n";
-  }
-  if (value.has_manufacturer()) {
-    output += indent + "  manufacturer: ";
-    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")",
-                        value.manufacturer(), value.manufacturer());
-    output += "\n";
-  }
-  if (value.has_tpm_model()) {
-    output += indent + "  tpm_model: ";
-    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")",
-                        value.tpm_model(), value.tpm_model());
-    output += "\n";
-  }
-  if (value.has_firmware_version()) {
-    output += indent + "  firmware_version: ";
-    base::StringAppendF(&output, "%" PRIu64 " (0x%016" PRIX64 ")",
-                        value.firmware_version(), value.firmware_version());
-    output += "\n";
-  }
-  if (value.has_vendor_specific()) {
-    output += indent + "  vendor_specific: ";
-    base::StringAppendF(&output, "%s",
-                        base::HexEncode(value.vendor_specific().data(),
-                                        value.vendor_specific().size())
-                            .c_str());
-    output += "\n";
-  }
   output += indent + "}\n";
   return output;
 }
@@ -844,12 +784,77 @@ std::string GetProtoDebugStringWithIndent(const GetTpmStatusReply& value,
             .c_str());
     output += "\n";
   }
-  if (value.has_version_info()) {
-    output += indent + "  version_info: ";
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const GetVersionInfoRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const GetVersionInfoRequest& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const GetVersionInfoReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(const GetVersionInfoReply& value,
+                                          int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
     base::StringAppendF(
         &output, "%s",
-        GetProtoDebugStringWithIndent(value.version_info(), indent_size + 2)
-            .c_str());
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  if (value.has_family()) {
+    output += indent + "  family: ";
+    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")",
+                        value.family(), value.family());
+    output += "\n";
+  }
+  if (value.has_spec_level()) {
+    output += indent + "  spec_level: ";
+    base::StringAppendF(&output, "%" PRIu64 " (0x%016" PRIX64 ")",
+                        value.spec_level(), value.spec_level());
+    output += "\n";
+  }
+  if (value.has_manufacturer()) {
+    output += indent + "  manufacturer: ";
+    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")",
+                        value.manufacturer(), value.manufacturer());
+    output += "\n";
+  }
+  if (value.has_tpm_model()) {
+    output += indent + "  tpm_model: ";
+    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")",
+                        value.tpm_model(), value.tpm_model());
+    output += "\n";
+  }
+  if (value.has_firmware_version()) {
+    output += indent + "  firmware_version: ";
+    base::StringAppendF(&output, "%" PRIu64 " (0x%016" PRIX64 ")",
+                        value.firmware_version(), value.firmware_version());
+    output += "\n";
+  }
+  if (value.has_vendor_specific()) {
+    output += indent + "  vendor_specific: ";
+    base::StringAppendF(&output, "%s",
+                        base::HexEncode(value.vendor_specific().data(),
+                                        value.vendor_specific().size())
+                            .c_str());
     output += "\n";
   }
   output += indent + "}\n";

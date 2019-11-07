@@ -101,6 +101,8 @@ class TpmManagerService : public TpmNvramInterface,
   // TpmOwnershipInterface methods.
   void GetTpmStatus(const GetTpmStatusRequest& request,
                     const GetTpmStatusCallback& callback) override;
+  void GetVersionInfo(const GetVersionInfoRequest& request,
+                      const GetVersionInfoCallback& callback) override;
   void GetDictionaryAttackInfo(
       const GetDictionaryAttackInfoRequest& request,
       const GetDictionaryAttackInfoCallback& callback) override;
@@ -165,6 +167,11 @@ class TpmManagerService : public TpmNvramInterface,
   // background worker thread.
   void GetTpmStatusTask(const GetTpmStatusRequest& request,
                         const std::shared_ptr<GetTpmStatusReply>& result);
+
+  // Blocking implementation of GetVersionInfo that can be executed on the
+  // background worker thread.
+  void GetVersionInfoTask(const GetVersionInfoRequest& request,
+                          const std::shared_ptr<GetVersionInfoReply>& result);
 
   // Blocking implementation of GetDictionaryAttackInfo that can be executed on
   // the background worker thread.

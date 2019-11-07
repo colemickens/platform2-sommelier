@@ -707,7 +707,7 @@ class LegacyCryptohomeInterfaceAdaptor
                                                uint32_t,
                                                uint64_t,
                                                std::string>> response,
-      const tpm_manager::GetTpmStatusReply& reply);
+      const tpm_manager::GetVersionInfoReply& reply);
   void Pkcs11IsTpmTokenReadyOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<bool>> response,
       const user_data_auth::Pkcs11IsTpmTokenReadyReply& reply);

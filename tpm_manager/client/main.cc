@@ -42,6 +42,7 @@
 namespace tpm_manager {
 
 constexpr char kGetTpmStatusCommand[] = "status";
+constexpr char kGetVersionInfoCommand[] = "get_version_info";
 constexpr char kGetDictionaryAttackInfoCommand[] = "get_da_info";
 constexpr char kResetDictionaryAttackLockCommand[] = "reset_da_lock";
 constexpr char kTakeOwnershipCommand[] = "take_ownership";
@@ -55,7 +56,6 @@ constexpr char kLockSpaceCommand[] = "lock_space";
 constexpr char kListSpacesCommand[] = "list_spaces";
 constexpr char kGetSpaceInfoCommand[] = "get_space_info";
 
-constexpr char kIncludeVersionInfoSwitch[] = "include_version_info";
 constexpr char kDependencySwitch[] = "dependency";
 constexpr char kIndexSwitch[] = "index";
 constexpr char kSizeSwitch[] = "size";
@@ -70,9 +70,10 @@ constexpr char kLockWrite[] = "lock_write";
 constexpr char kUsage[] = R"(
 Usage: tpm_manager_client <command> [<arguments>]
 Commands:
-  status [--include_version_info]
-      Prints TPM status information. Includes TPM version info in the output if
-      the option --include_version_info is provided.
+  status
+      Prints TPM status information.
+  get_version_info
+      Prints TPM version information.
   get_da_info
       Prints TPM dictionary attack information.
   reset_da_lock
@@ -225,11 +226,11 @@ class ClientLoop : public ClientLoopBase {
     }
     std::string command = command_line->GetArgs()[0];
     if (command == kGetTpmStatusCommand) {
-      bool include_version_info =
-          command_line->HasSwitch(kIncludeVersionInfoSwitch);
       task = base::Bind(&ClientLoop::HandleGetTpmStatus,
-                        weak_factory_.GetWeakPtr(),
-                        include_version_info);
+                        weak_factory_.GetWeakPtr());
+    } else if (command == kGetVersionInfoCommand) {
+      task = base::Bind(&ClientLoop::HandleGetVersionInfo,
+                        weak_factory_.GetWeakPtr());
     } else if (command == kGetDictionaryAttackInfoCommand) {
       task = base::Bind(&ClientLoop::HandleGetDictionaryAttackInfo,
                         weak_factory_.GetWeakPtr());
@@ -326,11 +327,17 @@ class ClientLoop : public ClientLoopBase {
     Quit();
   }
 
-  void HandleGetTpmStatus(bool include_version_info) {
+  void HandleGetTpmStatus() {
     GetTpmStatusRequest request;
-    request.set_include_version_info(include_version_info);
     tpm_ownership_->GetTpmStatus(
         request, base::Bind(&ClientLoop::PrintReplyAndQuit<GetTpmStatusReply>,
+                            weak_factory_.GetWeakPtr()));
+  }
+
+  void HandleGetVersionInfo() {
+    GetVersionInfoRequest request;
+    tpm_ownership_->GetVersionInfo(
+        request, base::Bind(&ClientLoop::PrintReplyAndQuit<GetVersionInfoReply>,
                             weak_factory_.GetWeakPtr()));
   }
 

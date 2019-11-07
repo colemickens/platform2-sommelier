@@ -9,6 +9,7 @@
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <chromeos/constants/cryptohome.h>
 
 #include "cryptohome/dircrypto_data_migrator/migration_helper.h"
@@ -1639,9 +1640,8 @@ void LegacyCryptohomeInterfaceAdaptor::TpmGetVersionStructured(
       uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, std::string>>(
       std::move(response));
 
-  tpm_manager::GetTpmStatusRequest request;
-  request.set_include_version_info(true);
-  tpm_ownership_proxy_->GetTpmStatusAsync(
+  tpm_manager::GetVersionInfoRequest request;
+  tpm_ownership_proxy_->GetVersionInfoAsync(
       request,
       base::Bind(
           &LegacyCryptohomeInterfaceAdaptor::TpmGetVersionStructuredOnSuccess,
@@ -1659,12 +1659,16 @@ void LegacyCryptohomeInterfaceAdaptor::TpmGetVersionStructuredOnSuccess(
                                              uint32_t,
                                              uint64_t,
                                              std::string>> response,
-    const tpm_manager::GetTpmStatusReply& reply) {
-  response->Return(
-      reply.version_info().family(), reply.version_info().spec_level(),
-      reply.version_info().manufacturer(), reply.version_info().tpm_model(),
-      reply.version_info().firmware_version(),
-      reply.version_info().vendor_specific());
+    const tpm_manager::GetVersionInfoReply& reply) {
+  // Note that the TpmGetVersionSuccessStructured method in CryptohomeInterface
+  // doesn't return any error, so we don't check reply.status() here.
+  response->Return(reply.family(),
+                   reply.spec_level(),
+                   reply.manufacturer(),
+                   reply.tpm_model(),
+                   reply.firmware_version(),
+                   base::HexEncode(reply.vendor_specific().data(),
+                                   reply.vendor_specific().size()));
 }
 
 void LegacyCryptohomeInterfaceAdaptor::Pkcs11IsTpmTokenReady(

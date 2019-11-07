@@ -6,6 +6,7 @@
 
 #include <attestation-client-test/attestation/dbus-proxy-mocks.h>
 #include <base/files/file_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <chromeos/constants/cryptohome.h>
 #include <chromeos/libhwsec/mock_dbus_method_response.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
@@ -861,6 +862,59 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest, LowDiskSpaceSignalSanity) {
       .WillOnce(Return());
 
   adaptor_->OnLowDiskSpaceSignalForTestingOnly(payload);
+}
+
+// --------------- TPM Ownership Interface Related Tests ---------------------
+TEST_F(LegacyCryptohomeInterfaceAdaptorTest, GetVersionInfo) {
+  EXPECT_CALL(
+      ownership_,
+      GetVersionInfoAsync(_, _, _, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT))
+      .WillOnce(Invoke(
+          [](const tpm_manager::GetVersionInfoRequest& in_request,
+                  const base::Callback<void(
+                      const tpm_manager::GetVersionInfoReply& /*reply*/)>&
+                      success_callback,
+                  const base::Callback<void(brillo::Error*)>&
+                      /* error_callback */,
+                  int /* timeout_ms */) {
+            tpm_manager::GetVersionInfoReply info;
+            info.set_family(1);
+            info.set_spec_level(2);
+            info.set_manufacturer(3);
+            info.set_tpm_model(4);
+            info.set_firmware_version(5);
+            info.set_vendor_specific("ab");
+            success_callback.Run(info);
+          }));
+
+  using VersionInfoResponse = MockDBusMethodResponse<
+      uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, std::string>;
+  std::unique_ptr<VersionInfoResponse> response =
+      std::make_unique<VersionInfoResponse>(nullptr);
+
+  base::Optional<uint32_t> family;
+  base::Optional<uint64_t> spec_level;
+  base::Optional<uint32_t> manufacture;
+  base::Optional<uint32_t> tpm_model;
+  base::Optional<uint64_t> firmware_version;
+  base::Optional<std::string> vendor_specific;
+  response->save_return_args(&family, &spec_level, &manufacture, &tpm_model,
+                             &firmware_version, &vendor_specific);
+
+  adaptor_->TpmGetVersionStructured(std::move(response));
+
+  EXPECT_TRUE(family.has_value());
+  EXPECT_EQ(*family, 1);
+  EXPECT_TRUE(spec_level.has_value());
+  EXPECT_EQ(*spec_level, 2);
+  EXPECT_TRUE(manufacture.has_value());
+  EXPECT_EQ(*manufacture, 3);
+  EXPECT_TRUE(tpm_model.has_value());
+  EXPECT_EQ(*tpm_model, 4);
+  EXPECT_TRUE(firmware_version.has_value());
+  EXPECT_EQ(*firmware_version, 5);
+  EXPECT_TRUE(vendor_specific.has_value());
+  EXPECT_EQ(*vendor_specific, base::HexEncode("ab", 2));
 }
 
 // This class holds the various extra setups to facilitate testing GetTpmStatus

@@ -291,6 +291,9 @@ class Tpm2Impl : public Tpm {
   // The most recent status from tpm_managerd.
   tpm_manager::GetTpmStatusReply tpm_status_;
 
+  // Cached version info.
+  std::unique_ptr<TpmVersionInfo> version_info_;
+
   // True, if the tpm firmware has been already successfully declared stable.
   bool fw_declared_stable_ = false;
 

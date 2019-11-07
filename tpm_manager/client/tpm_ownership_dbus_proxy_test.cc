@@ -114,6 +114,47 @@ TEST_F(TpmOwnershipDBusProxyTest, GetTpmStatus) {
   EXPECT_EQ(1, callback_count);
 }
 
+TEST_F(TpmOwnershipDBusProxyTest, GetVersionInfo) {
+  GetVersionInfoReply expected_version_info;
+  expected_version_info.set_status(STATUS_SUCCESS);
+  expected_version_info.set_family(1);
+  expected_version_info.set_spec_level(2);
+  expected_version_info.set_manufacturer(3);
+  expected_version_info.set_tpm_model(4);
+  expected_version_info.set_firmware_version(5);
+  expected_version_info.set_vendor_specific("ab");
+
+  auto fake_dbus_call = [&expected_version_info](
+      dbus::MethodCall* method_call,
+      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
+    // Verify request protobuf.
+    dbus::MessageReader reader(method_call);
+    GetVersionInfoRequest request;
+    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request));
+    // Create reply protobuf.
+    auto response = dbus::Response::CreateEmpty();
+    dbus::MessageWriter writer(response.get());
+    writer.AppendProtoAsArrayOfBytes(expected_version_info);
+    response_callback.Run(response.get());
+  };
+  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
+
+  // Set expectations on the outputs.
+  int callback_count = 0;
+  auto callback = [](const GetVersionInfoReply& expected_version_info,
+                     int* callback_count,
+                     const GetVersionInfoReply& actual_version_info) {
+        (*callback_count)++;
+        EXPECT_EQ(actual_version_info.SerializeAsString(),
+                  expected_version_info.SerializeAsString());
+      };
+  GetVersionInfoRequest request;
+  proxy_.GetVersionInfo(
+      request, base::Bind(callback, expected_version_info, &callback_count));
+  EXPECT_EQ(1, callback_count);
+}
+
 TEST_F(TpmOwnershipDBusProxyTest, GetDictionaryAttackInfo) {
   auto fake_dbus_call = [](
       dbus::MethodCall* method_call,

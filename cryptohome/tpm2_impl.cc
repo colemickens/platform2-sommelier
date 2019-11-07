@@ -1569,7 +1569,6 @@ bool Tpm2Impl::UpdateTpmStatus(RefreshType refresh_type) {
   }
 
   tpm_manager::GetTpmStatusRequest request;
-  request.set_include_version_info(true);
   auto method = base::Bind(&tpm_manager::TpmOwnershipInterface::GetTpmStatus,
                            base::Unretained(tpm_owner_),
                            request);
@@ -1616,21 +1615,38 @@ bool Tpm2Impl::ClearStoredPassword() {
 }
 
 bool Tpm2Impl::GetVersionInfo(TpmVersionInfo* version_info) {
-  if (!UpdateTpmStatus(RefreshType::REFRESH_IF_NEEDED)) {
+  if (version_info_) {
+    *version_info = *version_info_;
+    return true;
+  }
+
+  // This is the first time we request for version info.
+  if (!InitializeTpmManagerClients()) {
     return false;
   }
 
-  if (!tpm_status_.has_version_info()) {
+  tpm_manager::GetVersionInfoRequest request;
+  tpm_manager::GetVersionInfoReply reply;
+  auto method = base::Bind(
+      &tpm_manager::TpmOwnershipInterface::GetVersionInfo,
+      base::Unretained(tpm_owner_),
+      request);
+  SendTpmManagerRequestAndWait(method, &reply);
+
+  if (reply.status() != tpm_manager::STATUS_SUCCESS) {
+    LOG(ERROR) << "Failed to get version info from tpm_manager.";
     return false;
   }
 
-  version_info->family = tpm_status_.version_info().family();
-  version_info->spec_level = tpm_status_.version_info().spec_level();
-  version_info->manufacturer = tpm_status_.version_info().manufacturer();
-  version_info->tpm_model = tpm_status_.version_info().tpm_model();
-  version_info->firmware_version =
-      tpm_status_.version_info().firmware_version();
-  version_info->vendor_specific = tpm_status_.version_info().vendor_specific();
+  version_info_ = std::make_unique<TpmVersionInfo>();
+  version_info_->family = reply.family();
+  version_info_->spec_level = reply.spec_level();
+  version_info_->manufacturer = reply.manufacturer();
+  version_info_->tpm_model = reply.tpm_model();
+  version_info_->firmware_version = reply.firmware_version();
+  version_info_->vendor_specific = reply.vendor_specific();
+
+  *version_info = *version_info_;
   return true;
 }
 

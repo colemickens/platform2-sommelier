@@ -105,6 +105,8 @@ class Tpm2Test : public testing::Test {
     tpm_status_.mutable_local_data()->set_owner_password(kDefaultPassword);
     ON_CALL(mock_tpm_owner_, GetTpmStatus(_, _))
         .WillByDefault(WithArg<1>(Invoke(this, &Tpm2Test::FakeGetTpmStatus)));
+    ON_CALL(mock_tpm_owner_, GetVersionInfo(_, _))
+        .WillByDefault(WithArg<1>(Invoke(this, &Tpm2Test::FakeGetVersionInfo)));
     ON_CALL(mock_tpm_owner_, GetDictionaryAttackInfo(_, _))
         .WillByDefault(
             WithArg<1>(Invoke(this, &Tpm2Test::FakeGetDictionaryAttackInfo)));
@@ -120,6 +122,7 @@ class Tpm2Test : public testing::Test {
 
  protected:
   tpm_manager::GetTpmStatusReply tpm_status_;
+  tpm_manager::GetVersionInfoReply version_info_;
   tpm_manager::GetDictionaryAttackInfoReply da_info_;
   tpm_manager::DefineSpaceRequest last_define_space_request;
   tpm_manager::DestroySpaceRequest last_destroy_space_request;
@@ -175,6 +178,12 @@ class Tpm2Test : public testing::Test {
       const tpm_manager::TpmOwnershipInterface::GetTpmStatusCallback&
           callback) {
     callback.Run(tpm_status_);
+  }
+
+  void FakeGetVersionInfo(
+      const tpm_manager::TpmOwnershipInterface::GetVersionInfoCallback&
+      callback) {
+    callback.Run(version_info_);
   }
 
   void FakeGetDictionaryAttackInfo(
@@ -280,22 +289,31 @@ TEST_F(Tpm2Test, EnabledOwnedCheckStateError) {
 }
 
 TEST_F(Tpm2Test, GetVersionInfo) {
-  tpm_manager::GetTpmStatusRequest expected_request;
-  expected_request.set_include_version_info(true);
+  tpm_manager::GetVersionInfoRequest expected_request;
   EXPECT_CALL(mock_tpm_owner_,
-              GetTpmStatus(ProtobufEquals(expected_request), _))
+              GetVersionInfo(ProtobufEquals(expected_request), _))
       .Times(1);
 
-  tpm_manager::GetTpmStatusReply::TpmVersionInfo* expected_info =
-      tpm_status_.mutable_version_info();
-  expected_info->set_family(11);
-  expected_info->set_spec_level(22);
-  expected_info->set_manufacturer(33);
-  expected_info->set_tpm_model(44);
-  expected_info->set_firmware_version(55);
-  expected_info->set_vendor_specific("abc");
+  version_info_.set_status(tpm_manager::STATUS_SUCCESS);
+  version_info_.set_family(11);
+  version_info_.set_spec_level(22);
+  version_info_.set_manufacturer(33);
+  version_info_.set_tpm_model(44);
+  version_info_.set_firmware_version(55);
+  version_info_.set_vendor_specific("abc");
 
   Tpm::TpmVersionInfo actual_info;
+
+  // First call fetches version info from tpm manager.
+  EXPECT_TRUE(tpm_->GetVersionInfo(&actual_info));
+  EXPECT_EQ(11, actual_info.family);
+  EXPECT_EQ(22, actual_info.spec_level);
+  EXPECT_EQ(33, actual_info.manufacturer);
+  EXPECT_EQ(44, actual_info.tpm_model);
+  EXPECT_EQ(55, actual_info.firmware_version);
+  EXPECT_EQ("abc", actual_info.vendor_specific);
+
+  // Second call returns from cache directly.
   EXPECT_TRUE(tpm_->GetVersionInfo(&actual_info));
   EXPECT_EQ(11, actual_info.family);
   EXPECT_EQ(22, actual_info.spec_level);
@@ -306,6 +324,8 @@ TEST_F(Tpm2Test, GetVersionInfo) {
 }
 
 TEST_F(Tpm2Test, GetVersionInfoError) {
+  version_info_.set_status(tpm_manager::STATUS_DEVICE_ERROR);
+
   Tpm::TpmVersionInfo info;
   EXPECT_FALSE(tpm_->GetVersionInfo(&info));
 }

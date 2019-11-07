@@ -120,29 +120,24 @@ bool GetVersionInfo(cryptohome::Tpm::TpmVersionInfo* version_info) {
     LOG(ERROR) << "Failed to start tpm ownership proxy";
     return false;
   }
-  ::tpm_manager::GetTpmStatusRequest request;
-  request.set_include_version_info(true);
-  auto method = base::Bind(&::tpm_manager::TpmOwnershipDBusProxy::GetTpmStatus,
-                           base::Unretained(&proxy), request);
-  ::tpm_manager::GetTpmStatusReply reply;
+  ::tpm_manager::GetVersionInfoRequest request;
+  auto method = base::Bind(
+      &::tpm_manager::TpmOwnershipDBusProxy::GetVersionInfo,
+      base::Unretained(&proxy), request);
+  ::tpm_manager::GetVersionInfoReply reply;
   SendAndWait(method, &reply);
   if (reply.status() != ::tpm_manager::STATUS_SUCCESS) {
-    LOG(ERROR) << "Failed to get tpm status.";
+    LOG(ERROR) << "Failed to get version info.";
     puts(GetProtoDebugString(reply).c_str());
     return false;
   }
 
-  if (!reply.has_version_info()) {
-    LOG(ERROR) << "tpm status reply is missing version info.";
-    return false;
-  }
-
-  version_info->family = reply.version_info().family();
-  version_info->spec_level = reply.version_info().spec_level();
-  version_info->manufacturer = reply.version_info().manufacturer();
-  version_info->tpm_model = reply.version_info().tpm_model();
-  version_info->firmware_version = reply.version_info().firmware_version();
-  version_info->vendor_specific = reply.version_info().vendor_specific();
+  version_info->family = reply.family();
+  version_info->spec_level = reply.spec_level();
+  version_info->manufacturer = reply.manufacturer();
+  version_info->tpm_model = reply.tpm_model();
+  version_info->firmware_version = reply.firmware_version();
+  version_info->vendor_specific = reply.vendor_specific();
   return true;
 }
 
