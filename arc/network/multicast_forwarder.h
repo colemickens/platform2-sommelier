@@ -51,6 +51,15 @@ class MulticastForwarder {
   // |lan_ifname_|.
   void RemoveGuest(const std::string& int_ifname);
 
+  // Rewrite mDNS A records pointing to |guest_ip| so that they point to
+  // the IPv4 |lan_ip| assigned to physical interface instead, so that Android
+  // can advertise services to devices on the LAN.  This modifies |data|, an
+  // incoming packet that is |len| long.
+  static void TranslateMdnsIp(const struct in_addr& lan_ip,
+                              const struct in_addr& guest_ip,
+                              char* data,
+                              ssize_t len);
+
  protected:
   // Socket is used to keep track of an fd and its watcher.
   struct Socket {
@@ -63,16 +72,6 @@ class MulticastForwarder {
   static base::ScopedFD Bind(const std::string& ifname,
                              const struct in_addr& mcast_addr,
                              uint16_t port);
-
-  // Rewrite mDNS A records pointing to |guest_ip| so that they point to
-  // the IPv4 |lan_ip| assigned to physical interface instead, so that Android
-  // can advertise services to devices on the LAN.  This modifies |data|, an
-  // incoming packet that is |len| long.
-  // TODO(b/134717598) Support IPv6 translation.
-  static void TranslateMdnsIp(const struct in_addr& lan_ip,
-                              const struct in_addr& guest_ip,
-                              char* data,
-                              ssize_t len);
 
   // SendTo sends |data| using a socket bound to |src_port| and |lan_ifname_|.
   // If |src_port| is equal to |port_|, we will use |lan_socket_|. Otherwise,
