@@ -11,17 +11,20 @@
 #define CROS_DISKS_MOUNT_MANAGER_H_
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
+#include <base/optional.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 
 #include "cros-disks/mount_entry.h"
 #include "cros-disks/mount_options.h"
+#include "cros-disks/mount_point.h"
 
 namespace brillo {
 class ProcessReaper;
@@ -41,7 +44,7 @@ class MountManager {
  public:
   // Represents status of a mounted volume.
   struct MountState {
-    std::string mount_path;
+    std::unique_ptr<MountPoint> mount_point;
     bool is_read_only;
   };
 
@@ -127,18 +130,13 @@ class MountManager {
 
   // Adds or updates a mapping |source_path| to its mount state in the cache.
   void AddOrUpdateMountStateCache(const std::string& source_path,
-                                  const std::string& mount_path,
+                                  std::unique_ptr<MountPoint> mount_point,
                                   bool is_read_only);
 
   // Gets the corresponding |mount_path| of |source_path| from the cache.
   // Returns false if |source_path| is not found in the cache.
   bool GetMountPathFromCache(const std::string& source_path,
                              std::string* mount_path) const;
-
-  // Gets the corresponding mount state of |source_path| from the cache.
-  // Returns false if |source_path| is not found in the cache.
-  bool GetMountStateFromCache(const std::string& source_path,
-                              MountState* mount_state) const;
 
   // Returns true if |mount_path| is found in the cache.
   bool IsMountPathInCache(const std::string& mount_path) const;
@@ -170,6 +168,11 @@ class MountManager {
 
   // Returns the mount entries managed by this mount manager.
   std::vector<MountEntry> GetMountEntries() const;
+
+  // Returns a mount entry for |source_path|, or the empty Optional<> if
+  // |source_path| is not found.
+  base::Optional<MountEntry> GetMountEntryForTest(
+      const std::string& source_path) const;
 
  protected:
   // Type definition of a cache mapping a source path to its mount state of
@@ -249,6 +252,9 @@ class MountManager {
   brillo::ProcessReaper* process_reaper() const { return process_reaper_; }
 
  private:
+  // Unmounter subclass that forwards Unmount() calls to DoUnmount().
+  class LegacyUnmounter;
+
   // The root directory under which mount directories are created.
   const base::FilePath mount_root_;
 
