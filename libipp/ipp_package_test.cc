@@ -14,21 +14,37 @@ namespace ipp {
 namespace {
 
 struct TestSubcollection : public Collection {
-  SingleValue<int> attr{AttrName::auth_info, AttrType::integer};
+  SingleValue<int> attr{this, AttrName::auth_info};
   std::vector<Attribute*> GetKnownAttributes() override { return {&attr}; }
+  static const std::map<AttrName, AttrDef> defs_;
+  TestSubcollection() : Collection(&defs_) {}
 };
+const std::map<AttrName, AttrDef> TestSubcollection::defs_ = {
+    {AttrName::auth_info, {AttrType::integer, InternalType::kInteger, false}}};
 
 struct TestCollection : public Collection {
-  SingleValue<int> attr_single_val{AttrName::job_id, AttrType::integer};
-  SetOfValues<int> attr_set_of_val{AttrName::job_name, AttrType::integer};
-  SingleCollection<TestSubcollection> attr_single_coll{AttrName::printer_info};
+  SingleValue<int> attr_single_val{this, AttrName::job_id};
+  SetOfValues<int> attr_set_of_val{this, AttrName::job_name};
+  SingleCollection<TestSubcollection> attr_single_coll{this,
+                                                       AttrName::printer_info};
   SetOfCollections<TestSubcollection> attr_set_of_coll{
-      AttrName::printer_supply};
+      this, AttrName::printer_supply};
   std::vector<Attribute*> GetKnownAttributes() override {
     return {&attr_single_val, &attr_set_of_val, &attr_single_coll,
             &attr_set_of_coll};
   }
+  static const std::map<AttrName, AttrDef> defs_;
+  TestCollection() : Collection(&defs_) {}
 };
+const std::map<AttrName, AttrDef> TestCollection::defs_ = {
+    {AttrName::job_id, {AttrType::integer, InternalType::kInteger, false}},
+    {AttrName::job_name, {AttrType::integer, InternalType::kInteger, true}},
+    {AttrName::printer_info,
+     {AttrType::collection, InternalType::kCollection, false,
+      []() -> Collection* { return new TestSubcollection(); }}},
+    {AttrName::printer_supply,
+     {AttrType::collection, InternalType::kCollection, true,
+      []() -> Collection* { return new TestSubcollection(); }}}};
 
 struct TestPackage : public Package {
   SingleGroup<TestCollection> grp_single{GroupTag::operation_attributes};
@@ -67,23 +83,6 @@ TEST(package, Collection) {
   EXPECT_EQ(coll.GetAttribute(AttrName::job_name), &(coll.attr_set_of_val));
   EXPECT_EQ(coll.GetAttribute("other-name"), new_attr);
   EXPECT_EQ(coll.GetAttribute("adasad"), nullptr);
-  // reset all attributes
-  coll.attr_single_val.Set(1234);
-  coll.attr_set_of_val.Set({1, 2, 123});
-  coll.attr_single_coll.attr.Set(324);
-  coll.attr_set_of_coll[2].attr.Set(44);
-  coll.attr_set_of_coll[0].attr.SetState(AttrState::unsupported);
-  new_attr->SetValue(true, 4);
-  coll.ResetAllAttributes();
-  EXPECT_EQ(coll.attr_single_val.GetState(), AttrState::unset);
-  EXPECT_EQ(coll.attr_set_of_val.GetState(), AttrState::unset);
-  EXPECT_EQ(coll.attr_single_coll.GetState(), AttrState::unset);
-  EXPECT_EQ(coll.attr_single_coll.attr.GetState(), AttrState::unset);
-  EXPECT_EQ(coll.attr_set_of_coll.GetState(), AttrState::unset);
-  EXPECT_EQ(new_attr->GetState(), AttrState::unset);
-  EXPECT_EQ(coll.attr_set_of_val.GetSize(), 0);
-  EXPECT_EQ(coll.attr_set_of_coll.GetSize(), 0);
-  EXPECT_EQ(new_attr->GetSize(), 0);
 }
 
 TEST(package, Package) {

@@ -216,21 +216,26 @@ void FrameBuilder::SaveCollection(Collection* coll,
     tnv.name.clear();
     SaveOctetString(attr->GetName(), &tnv.value);
     data_chunks->push_back(tnv);
-    for (size_t val_index = 0; val_index < attr->GetSize(); ++val_index) {
-      if (attr->GetState() != AttrState::set) {
-        tnv.tag = static_cast<uint8_t>(attr->GetState());
-        tnv.value.clear();
-      } else if (attr->GetType() == AttrType::collection) {
-        tnv.tag = begCollection_value_tag;
-        tnv.value.clear();
-        data_chunks->push_back(tnv);
-        SaveCollection(attr->GetCollection(val_index), data_chunks);
-        tnv.tag = endCollection_value_tag;
-        tnv.value.clear();
-      } else {
-        SaveAttrValue(attr, val_index, &tnv.tag, &tnv.value);
-      }
+    if (attr->GetState() != AttrState::set) {
+      // out-of-band value (tag)
+      tnv.tag = static_cast<uint8_t>(attr->GetState());
+      tnv.value.clear();
       data_chunks->push_back(tnv);
+    } else {
+      // standard values (one or more)
+      for (size_t val_index = 0; val_index < attr->GetSize(); ++val_index) {
+        if (attr->GetType() == AttrType::collection) {
+          tnv.tag = begCollection_value_tag;
+          tnv.value.clear();
+          data_chunks->push_back(tnv);
+          SaveCollection(attr->GetCollection(val_index), data_chunks);
+          tnv.tag = endCollection_value_tag;
+          tnv.value.clear();
+        } else {
+          SaveAttrValue(attr, val_index, &tnv.tag, &tnv.value);
+        }
+        data_chunks->push_back(tnv);
+      }
     }
   }
 }

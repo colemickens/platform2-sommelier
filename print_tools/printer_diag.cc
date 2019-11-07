@@ -149,7 +149,7 @@ int main(int argc, char** argv) {
 
   // Send IPP request and get a response.
   ipp::Request_Get_Printer_Attributes request;
-  request.operation_attributes.printer_uri.Set(FLAGS_url);
+  request.operation_attributes->printer_uri.Set(FLAGS_url);
   ipp::Client client(version);
   client.BuildRequestFrom(&request);
   std::vector<uint8_t> data;

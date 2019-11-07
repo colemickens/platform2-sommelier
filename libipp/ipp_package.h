@@ -5,8 +5,9 @@
 #ifndef LIBIPP_IPP_PACKAGE_H_
 #define LIBIPP_IPP_PACKAGE_H_
 
-#include "ipp_enums.h"   // NOLINT(build/include)
-#include "ipp_export.h"  // NOLINT(build/include)
+#include "ipp_attribute.h"  // NOLINT(build/include)
+#include "ipp_enums.h"      // NOLINT(build/include)
+#include "ipp_export.h"     // NOLINT(build/include)
 
 #include <cstdint>
 #include <map>
@@ -24,9 +25,6 @@ class IPP_EXPORT Package {
  public:
   // destructor
   virtual ~Package();
-
-  // Returns vector with groups in the schema, all pointers are != nullptr.
-  virtual std::vector<Group*> GetKnownGroups() { return {}; }
 
   // Returns vector of all groups in the package, all pointers are != nullptr.
   // Returned vector = GetKnownGroups() + vector with unknown groups.
@@ -54,6 +52,10 @@ class IPP_EXPORT Package {
   Package& operator=(const Package&) = delete;
   Package& operator=(Package&&) = delete;
 
+  // Returns vector with groups in the schema, all pointers are != nullptr.
+  // This method must be overloaded in derived classes with schema.
+  virtual std::vector<Group*> GetKnownGroups() { return {}; }
+
   std::vector<Group*> unknown_groups_;
   std::vector<uint8_t> data_;
 };
@@ -66,7 +68,7 @@ class Collection;
 // represented by Collection object.
 class IPP_EXPORT Group {
  public:
-  virtual ~Group() = default;
+  virtual ~Group() { Resize(0); }
 
   // Returns tag of the group.
   GroupTag GetName() const { return name_; }
@@ -77,39 +79,61 @@ class IPP_EXPORT Group {
 
   // Returns the current number of elements (IPP groups) in the Group.
   // (IsASet() == false) => always returns 1.
-  virtual size_t GetSize() const = 0;
+  size_t GetSize() const { return groups_.size(); }
 
-  // Resizes a sequence of IPP groups. Does nothing if (IsASet() == false).
-  virtual void Resize(size_t) = 0;
+  // Resizes a sequence of IPP groups.
+  // Does nothing if (IsASet() == false) and (|new_size| > 0).
+  void Resize(size_t new_size) {
+    if (!is_a_set_ && new_size > 1)
+      return;
+    while (new_size < groups_.size()) {
+      delete groups_.back();
+      groups_.pop_back();
+    }
+    while (new_size > groups_.size()) {
+      groups_.push_back(CreateCollection());
+    }
+  }
 
   // Returns a pointer to underlying collection, representing one of the IPP
   // groups. Returns nullptr <=> (index >= GetSize()).
-  virtual Collection* GetCollection(size_t index = 0) = 0;
+  Collection* GetCollection(size_t index = 0) {
+    if (index >= groups_.size())
+      return nullptr;
+    return groups_[index];
+  }
+  const Collection* GetCollection(size_t index = 0) const {
+    if (index >= groups_.size())
+      return nullptr;
+    return groups_.at(index);
+  }
 
  protected:
   Group(GroupTag name, bool is_a_set) : name_(name), is_a_set_(is_a_set) {}
 
  private:
+  virtual Collection* CreateCollection() = 0;
   GroupTag name_;
   bool is_a_set_;
+  std::vector<Collection*> groups_;
 };
 
 // Final class for Groups, represents Group with single IPP attribute group
 // defined in the schema. Template parameter TCollection must be a class
 // derived from Collection and defines the structure of the group.
 template <class TCollection>
-class SingleGroup : public Group, public TCollection {
+class SingleGroup : public Group {
  public:
   explicit SingleGroup(GroupTag name) : Group(name, false) {}
-
-  // Implementation of Group API
-  size_t GetSize() const override { return 1; }
-  void Resize(size_t) override {}
-  Collection* GetCollection(size_t index = 0) override {
-    if (index == 0)
-      return this;
-    return nullptr;
+  // Allows to refer to fields in the underlying collection.
+  // Creates the collection if it not exists.
+  TCollection* operator->() {
+    Resize(1);
+    return dynamic_cast<TCollection*>(GetCollection());
   }
+
+ private:
+  Collection* CreateCollection() override { return new TCollection; }
 };
 
 // Final class for Group, represents sequence of IPP attribute groups with
@@ -119,109 +143,24 @@ template <class TCollection>
 class SetOfGroups : public Group {
  public:
   explicit SetOfGroups(GroupTag name) : Group(name, true) {}
-  virtual ~SetOfGroups() {
-    for (auto g : groups_)
-      delete g;
-  }
-
-  // Implementation of Group API.
-  size_t GetSize() const override { return groups_.size(); }
-  void Resize(size_t new_size) override {
-    while (groups_.size() < new_size)
-      groups_.push_back(new TCollection);
-    while (groups_.size() > new_size) {
-      delete groups_.back();
-      groups_.pop_back();
-    }
-  }
-  Collection* GetCollection(size_t index = 0) override {
-    if (index >= groups_.size())
-      return nullptr;
-    return groups_[index];
-  }
-
-  // Operator [] in specialized API, returns one of TCollection from the
-  // sequence. If index is out of range, the vector is resized to (index+1).
+  // If |index| is out of range, the vector is resized to (index+1).
   TCollection& operator[](size_t index) {
-    if (index >= groups_.size())
+    if (GetSize() <= index)
       Resize(index + 1);
-    return *(groups_[index]);
+    return *(dynamic_cast<TCollection*>(GetCollection(index)));
   }
 
  private:
-  std::vector<TCollection*> groups_;
+  Collection* CreateCollection() override { return new TCollection; }
 };
 
 // Final class for Group, represents Group not defined in the schema.
 class UnknownGroup : public Group {
  public:
-  UnknownGroup(GroupTag name, bool is_a_set);
-  virtual ~UnknownGroup();
-
-  // Implementation of Group API.
-  size_t GetSize() const override { return groups_.size(); }
-  void Resize(size_t new_size) override;
-  Collection* GetCollection(size_t index = 0) override {
-    if (index >= groups_.size())
-      return nullptr;
-    return groups_[index];
-  }
+  UnknownGroup(GroupTag name, bool is_a_set) : Group(name, is_a_set) {}
 
  private:
-  std::vector<Collection*> groups_;
-};
-
-// These are defined in ipp_attribute.h.
-class Attribute;
-enum class AttrType : uint8_t;
-
-// Base class for all IPP collections. Collections is like struct filled with
-// Attributes. Each attribute in Collection must have unique name.
-class IPP_EXPORT Collection {
- public:
-  Collection() = default;
-  virtual ~Collection();
-
-  // Method to implement in derived class, returns attributes from schema.
-  // There is no nullptrs in the returned vector.
-  virtual std::vector<Attribute*> GetKnownAttributes() { return {}; }
-
-  // Returns all attributes in the collection.
-  // Returned vector = GetKnownAttributes() + unknown attributes.
-  // Unknown attributes are in the order they were added to the collection.
-  // There is no nullptrs in the returned vector.
-  std::vector<Attribute*> GetAllAttributes();
-
-  // Methods return attribute by name. Methods return nullptr <=> the collection
-  // has no attribute with this name.
-  Attribute* GetAttribute(AttrName);
-  Attribute* GetAttribute(const std::string& name);
-
-  // Adds new attribute to the collection. Returns nullptr <=> an attribute
-  // with this name already exists in the collection or given name/type are
-  // incorrect.
-  Attribute* AddUnknownAttribute(const std::string& name,
-                                 bool is_a_set,
-                                 AttrType type);
-
-  // Clears values and states of all attributes.
-  // Calls the following methods for member attributes:
-  // * Resize(0) for all member attributes being a set (IsASet() == true).
-  // * SetState(unset) for all member attributes.
-  // * Recursively ResetAllAttributes() for all Collections stored in member
-  //   attributes.
-  // Note: Does NOT remove Unknown Attributes from Collection.
-  void ResetAllAttributes();
-
- private:
-  // Copy/move/assign constructors/operators are forbidden.
-  Collection(const Collection&) = delete;
-  Collection(Collection&&) = delete;
-  Collection& operator=(const Collection&) = delete;
-  Collection& operator=(Collection&&) = delete;
-
-  std::vector<std::string> unknown_attrs_names_;
-  std::map<std::string, Attribute*> unknown_attrs_;
+  Collection* CreateCollection() override { return new EmptyCollection; }
 };
 
 }  // namespace ipp

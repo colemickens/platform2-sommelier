@@ -270,12 +270,12 @@ TEST(rfc8010, example1) {
   c.s("%!PDF...");                // <PDF Document>       data
 
   ipp::Request_Print_Job r;
-  r.operation_attributes.printer_uri.Set(
+  r.operation_attributes->printer_uri.Set(
       "ipp://printer.example.com/ipp/print/pinetree");
-  r.operation_attributes.job_name.Set("foobar");
-  r.operation_attributes.ipp_attribute_fidelity.Set(1);
-  r.job_attributes.copies.Set(20);
-  r.job_attributes.sides.Set(ipp::E_sides::two_sided_long_edge);
+  r.operation_attributes->job_name.Set("foobar");
+  r.operation_attributes->ipp_attribute_fidelity.Set(1);
+  r.job_attributes->copies.Set(20);
+  r.job_attributes->sides.Set(ipp::E_sides::two_sided_long_edge);
   for (char c : std::string("%!PDF..."))
     r.Data().push_back(static_cast<uint8_t>(c));
 
@@ -335,10 +335,10 @@ TEST(rfc8010, example2) {
                                             // attributes-tag
 
   ipp::Response_Print_Job r;
-  r.job_attributes.job_id.Set(147);
-  r.job_attributes.job_uri.Set(
+  r.job_attributes->job_id.Set(147);
+  r.job_attributes->job_uri.Set(
       "ipp://printer.example.com/ipp/print/pinetree/147");
-  r.job_attributes.job_state.Set(ipp::E_job_state::pending);
+  r.job_attributes->job_state.Set(ipp::E_job_state::pending);
 
   CheckResponse(c, &r);
 }
@@ -398,11 +398,11 @@ TEST(rfc8010, example3) {
   ipp::Response_Print_Job r;
   r.StatusCode() =
       ipp::E_status_code::client_error_attributes_or_values_not_supported;
-  ipp::Attribute* a = r.unsupported_attributes.AddUnknownAttribute(
+  ipp::Attribute* a = r.unsupported_attributes->AddUnknownAttribute(
       "copies", true, ipp::AttrType::integer);
   a->SetValue(20);
-  a = r.unsupported_attributes.AddUnknownAttribute("sides", true,
-                                                   ipp::AttrType::integer);
+  a = r.unsupported_attributes->AddUnknownAttribute("sides", true,
+                                                    ipp::AttrType::integer);
   a->SetState(ipp::AttrState::unsupported);
 
   CheckResponse(c, &r);
@@ -481,16 +481,16 @@ TEST(rfc8010, example4) {
   ipp::Response_Print_Job r;
   r.StatusCode() =
       ipp::E_status_code::successful_ok_ignored_or_substituted_attributes;
-  ipp::Attribute* a = r.unsupported_attributes.AddUnknownAttribute(
+  ipp::Attribute* a = r.unsupported_attributes->AddUnknownAttribute(
       "copies", true, ipp::AttrType::integer);
   a->SetValue(20);
-  a = r.unsupported_attributes.AddUnknownAttribute("sides", true,
-                                                   ipp::AttrType::integer);
+  a = r.unsupported_attributes->AddUnknownAttribute("sides", true,
+                                                    ipp::AttrType::integer);
   a->SetState(ipp::AttrState::unsupported);
-  r.job_attributes.job_id.Set(147);
-  r.job_attributes.job_uri.Set(
+  r.job_attributes->job_id.Set(147);
+  r.job_attributes->job_uri.Set(
       "ipp://printer.example.com/ipp/print/pinetree/147");
-  r.job_attributes.job_state.Set(ipp::E_job_state::pending);
+  r.job_attributes->job_state.Set(ipp::E_job_state::pending);
 
   CheckResponse(c, &r);
 }
@@ -547,11 +547,11 @@ TEST(rfc8010, example5) {
                                      // attributes-tag
 
   ipp::Request_Print_URI r;
-  r.operation_attributes.printer_uri.Set(
+  r.operation_attributes->printer_uri.Set(
       "ipp://printer.example.com/ipp/print/pinetree");
-  r.operation_attributes.document_uri.Set("ftp://foo.example.com/foo");
-  r.operation_attributes.job_name.Set("foobar");
-  r.job_attributes.copies.Set(1);
+  r.operation_attributes->document_uri.Set("ftp://foo.example.com/foo");
+  r.operation_attributes->job_name.Set("foobar");
+  r.job_attributes->copies.Set(1);
 
   CheckRequest(c, &r);
 }
@@ -589,7 +589,7 @@ TEST(rfc8010, example6) {
                 // attributes-tag
 
   ipp::Request_Create_Job r;
-  r.operation_attributes.printer_uri.Set(
+  r.operation_attributes->printer_uri.Set(
       "ipp://printer.example.com/ipp/print/pinetree");
 
   CheckRequest(c, &r);
@@ -679,11 +679,11 @@ TEST(rfc8010, example7) {
                        // attributes-tag
 
   ipp::Request_Create_Job r;
-  r.operation_attributes.printer_uri.Set(
+  r.operation_attributes->printer_uri.Set(
       "ipp://printer.example.com/ipp/print/pinetree");
-  r.job_attributes.media_col.media_size.x_dimension.Set(21000);
-  r.job_attributes.media_col.media_size.y_dimension.Set(29700);
-  r.job_attributes.media_col.media_type.Set(ipp::E_media_type::stationery);
+  r.job_attributes->media_col->media_size->x_dimension.Set(21000);
+  r.job_attributes->media_col->media_size->y_dimension.Set(29700);
+  r.job_attributes->media_col->media_type.Set(ipp::E_media_type::stationery);
 
   CheckRequest(c, &r);
 }
@@ -739,10 +739,10 @@ TEST(rfc8010, example8) {
                                 // attributes-tag
 
   ipp::Request_Get_Jobs r;
-  r.operation_attributes.printer_uri.Set(
+  r.operation_attributes->printer_uri.Set(
       "ipp://printer.example.com/ipp/print/pinetree");
-  r.operation_attributes.limit.Set(50);
-  r.operation_attributes.requested_attributes.Set(
+  r.operation_attributes->limit.Set(50);
+  r.operation_attributes->requested_attributes.Set(
       {"job-id", "job-name", "document-format"});
 
   CheckRequest(c, &r, 123);
@@ -820,54 +820,6 @@ TEST(rfc8010, example9) {
       ipp::StringWithLanguage("isch guet", "de-CH"));
 
   CheckResponse(c, &r, 123);
-}
-
-TEST(limits, nestedCollections) {
-  // No more than 16 recursively nested collections are allowed.
-  BinaryContent c;
-  // Octets                                Symbolic Value       Protocol field
-  c.u2(0x0101u);      // 1.1                  version-number
-  c.u2(0x0005u);      // Create-Job           operation-id
-  c.u4(0x00000001u);  // 1                    request-id
-
-  c.u1(static_cast<int>(ipp::GroupTag::job_attributes));  // start group
-  c.u1(0x34u);       // begCollection        value-tag
-  c.u2(0x0009u);     // 9                    name-length
-  c.s("media-col");  // media-col            name
-  c.u2(0x0000u);     // 0                    value-length
-  for (int i = 0; i < 16; ++i) {
-    c.u1(0x4au);        // memberAttrName       value-tag
-    c.u2(0x0000u);      // 0                    name-length
-    c.u2(0x000au);      // 10                   value-length
-    c.s("media-size");  // media-size           value (member-name)
-    c.u1(0x34u);        // begCollection        member-value-tag
-    c.u2(0x0000u);      // 0                    name-length
-    c.u2(0x0000u);      // 0                    member-value-length
-  }
-  c.u1(0x4au);         // memberAttrName       value-tag
-  c.u2(0x0000u);       // 0                    name-length
-  c.u2(0x000bu);       // 11                   value-length
-  c.s("x-dimension");  // x-dimension          value (member-name)
-  c.u1(0x21u);         // integer              member-value-tag
-  c.u2(0x0000u);       // 0                    name-length
-  c.u2(0x0004u);       // 4                    member-value-length
-  c.u4(0x00005208u);   // 21000                member-value
-  for (int i = 0; i < 16; ++i) {
-    c.u1(0x37u);    // endCollection        end-value-tag
-    c.u2(0x0000u);  // 0                    end-name-length
-    c.u2(0x0000u);  // 0                    end-value-length
-  }
-  c.u1(0x37u);    // endCollection        end-value-tag
-  c.u2(0x0000u);  // 0                    end-name-length
-  c.u2(0x0000u);  // 0                    end-value-length
-  c.u1(0x03u);    // end-of-attributes    end-of-attributes-tag
-
-  ipp::Response_Get_Jobs response;
-  ipp::Client client;
-  const bool result = client.ReadResponseFrameFrom(c.data) &&
-                      client.ParseResponseAndSaveTo(&response);
-  // It was supposed to fail, since there are 17 nested collections.
-  EXPECT_FALSE(result);
 }
 
 }  // namespace

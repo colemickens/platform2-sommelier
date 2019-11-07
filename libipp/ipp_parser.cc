@@ -16,6 +16,9 @@ namespace {
 // sub-collection belonging directly to it has level 2 etc..
 constexpr int kMaxCollectionLevel = 16;
 
+// This parameters defines maximum number of attribute groups in single package.
+constexpr int kMaxCountOfAttributeGroups = 20 * 1024;
+
 // Converts the least significant 4 bits to hexadecimal digit (ASCII char).
 char ToHexDigit(uint8_t v) {
   v &= 0x0f;
@@ -398,6 +401,7 @@ bool Parser::SaveFrameToPackage(bool log_unknown_values, Package* package) {
     } else {
       // single group - save it <=> it is the first occurrence
       if (processed_single_groups.insert(gn).second) {
+        grp->Resize(1);
         coll = grp->GetCollection();
       } else {
         LogParserError("Duplicated group " + grp_name + " was found",
@@ -440,6 +444,14 @@ bool Parser::ReadFrameFromBuffer(const uint8_t* ptr,
   if (error_in_header)
     return false;
   while (*ptr != end_of_attributes_tag) {
+    if (frame_->groups_tags_.size() >= kMaxCountOfAttributeGroups) {
+      LogScannerError(
+          "The package has too many attribute groups; the maximum allowed "
+          "number is " +
+              ToString(kMaxCountOfAttributeGroups),
+          ptr);
+      return false;
+    }
     frame_->groups_tags_.push_back(*ptr);
     frame_->groups_content_.resize(frame_->groups_tags_.size());
     ++ptr;
@@ -781,15 +793,12 @@ bool Parser::DecodeCollection(RawCollection* raw_coll, Collection* coll) {
       continue;
     }
     // Parses all values.
-    if (attr->IsASet()) {
-      attr->Resize(raw_attr.values.size());
-    } else {
-      if (raw_attr.values.size() > 1) {
-        LogParserError("An attribute is not a set and has more than one value",
-                       "Only the first value was parsed");
-        raw_attr.values.resize(1);
-      }
+    if (!attr->IsASet() && raw_attr.values.size() > 1) {
+      LogParserError("An attribute is not a set and has more than one value",
+                     "Only the first value was parsed");
+      raw_attr.values.resize(1);
     }
+    attr->Resize(raw_attr.values.size());
     for (size_t i = 0; i < attr->GetSize(); ++i)
       if (attr->GetType() == AttrType::collection) {
         if (!DecodeCollection(raw_attr.values[i].collection.get(),

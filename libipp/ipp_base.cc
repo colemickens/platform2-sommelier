@@ -15,9 +15,10 @@ namespace {
 // Sets attributes-charset and attributes-natural-language.
 void SetDefaultPackageAttributes(Package* package) {
   Group* oper_grp = package->GetGroup(GroupTag::operation_attributes);
-  Collection* coll_grp = nullptr;
-  if (oper_grp != nullptr &&
-      (coll_grp = oper_grp->GetCollection()) != nullptr) {
+  if (oper_grp != nullptr) {
+    if (oper_grp->GetSize() == 0)
+      oper_grp->Resize(1);
+    Collection* coll_grp = oper_grp->GetCollection();
     Attribute* attr_charset =
         coll_grp->GetAttribute(AttrName::attributes_charset);
     Attribute* attr_language =
@@ -33,9 +34,10 @@ void SetDefaultPackageAttributes(Package* package) {
 // Sets status-message basing on status-code.
 void SetDefaultResponseAttributes(Response* package) {
   Group* oper_grp = package->GetGroup(GroupTag::operation_attributes);
-  Collection* coll_grp = nullptr;
-  if (oper_grp != nullptr &&
-      (coll_grp = oper_grp->GetCollection()) != nullptr) {
+  if (oper_grp != nullptr) {
+    if (oper_grp->GetSize() == 0)
+      oper_grp->Resize(1);
+    Collection* coll_grp = oper_grp->GetCollection();
     Attribute* attr = coll_grp->GetAttribute(AttrName::status_message);
     if (attr != nullptr && attr->GetState() == AttrState::unset)
       attr->SetValue(ipp::ToString(package->StatusCode()));
@@ -45,13 +47,8 @@ void SetDefaultResponseAttributes(Response* package) {
 // Clear all values in the package.
 void ClearPackage(Package* package) {
   const std::vector<Group*> groups = package->GetAllGroups();
-  for (auto g : groups) {
-    if (g->IsASet()) {
-      g->Resize(0);
-    } else {
-      g->GetCollection()->ResetAllAttributes();
-    }
-  }
+  for (auto g : groups)
+    g->Resize(0);
 }
 
 Version GetVersion(const Frame* frame) {
