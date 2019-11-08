@@ -203,6 +203,15 @@ bool DeviceManager::AddWithContext(const std::string& name,
                    << device->ifname() << " to "
                    << device->config().host_ifname();
       }
+      if (!datapath_->SetInterfaceFlag(device->ifname(), IFF_ALLMULTI)) {
+        LOG(WARNING) << "Failed to setup all multicast mode for interface "
+                     << device->ifname();
+      }
+      if (!datapath_->SetInterfaceFlag(device->config().host_ifname(),
+                                       IFF_ALLMULTI)) {
+        LOG(WARNING) << "Failed to setup all multicast mode for interface "
+                     << device->config().host_ifname();
+      }
     }
   }
 
