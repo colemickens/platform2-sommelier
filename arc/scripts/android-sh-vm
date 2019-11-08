@@ -14,6 +14,21 @@ is_connected() {
   [ -n "$(adb devices 2>/dev/null | grep "${target}\sdevice")" ]
 }
 
+try_connect() {
+  # It is necessary to wait a little bit after a successful 'adb connect'
+  # before running 'adb shell', else a 'device offline' error occurs and
+  # the command fails.
+  # The loop below will wait for ~5 seconds at most incase the VM is
+  # booting, and will wait for 500ms even after a successful connection
+  # instead of immediately breaking.
+  local attempts=0
+  while [ "${attempts}" -le 10 ] && ! is_connected; do
+    adb connect ${target} >/dev/null
+    sleep 0.5
+    : $(( attempts += 1 ))
+  done
+}
+
 # The user might still be logging in.
 # The loop below will wait for ~15 seconds at most.
 attempts=0
@@ -39,24 +54,20 @@ export HOME="${tmpdir}"
 # Try to start the server first if it's not started.
 adb start-server 2>/dev/null
 
-# It is necessary to wait a little bit after a successful 'adb connect'
-# before running 'adb shell', else a 'device offline' error occurs and
-# the command fails.
-# The loop below will wait for ~5 seconds at most incase the VM is
-# booting, and will wait for 500ms even after a successful connection
-# instead of immediately breaking.
-attempts=0
-while [ "${attempts}" -le 10 ] && ! is_connected; do
-  adb connect ${target} >/dev/null
-  sleep 0.5
-  : $(( attempts += 1 ))
-done
+try_connect
 
 if ! is_connected; then
   echo "$0: Could not connect, is the VM running?" >&2
   rm -rf "${tmpdir}"
   exit 1
 fi
+
+# ANDROID_DEBUGGABLE in /usr/share/arcvm/config.json has to be true for this to
+# work.
+adb root >/dev/null
+
+# Same as above, need to check if the device is still connected after adb root.
+try_connect
 
 if [ $# -eq 0 ]; then
   adb shell
