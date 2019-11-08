@@ -69,7 +69,6 @@ class DeviceManager : public DeviceManagerBase {
   DeviceManager(std::unique_ptr<ShillClient> shill_client,
                 AddressManager* addr_mgr,
                 Datapath* datapath,
-                bool is_arc_legacy,
                 HelperProcess* mcast_proxy,
                 HelperProcess* nd_proxy = nullptr);
   virtual ~DeviceManager();
@@ -153,7 +152,6 @@ class DeviceManager : public DeviceManagerBase {
   HelperProcess* mcast_proxy_;
   HelperProcess* nd_proxy_;
 
-  const bool is_arc_legacy_;
   std::string default_ifname_;
 
   base::WeakPtrFactory<DeviceManager> weak_factory_{this};

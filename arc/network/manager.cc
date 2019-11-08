@@ -46,8 +46,7 @@ void HandleSynchronousDBusMethodCall(
 
 Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy,
                  std::unique_ptr<HelperProcess> mcast_proxy,
-                 std::unique_ptr<HelperProcess> nd_proxy,
-                 bool enable_multinet)
+                 std::unique_ptr<HelperProcess> nd_proxy)
     : adb_proxy_(std::move(adb_proxy)),
       mcast_proxy_(std::move(mcast_proxy)),
       nd_proxy_(std::move(nd_proxy)),
@@ -55,7 +54,6 @@ Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy,
           AddressManager::Guest::ARC,
           AddressManager::Guest::ARC_NET,
       }),
-      enable_multinet_(enable_multinet),
       gsock_(AF_UNIX, SOCK_DGRAM) {
   runner_ = std::make_unique<MinijailedProcessRunner>();
   datapath_ = std::make_unique<Datapath>(runner_.get());
@@ -146,13 +144,11 @@ void Manager::InitialSetup() {
   }
   LOG(INFO) << "DBus service interface ready";
 
-  const bool is_legacy = !enable_multinet_;
   device_mgr_ = std::make_unique<DeviceManager>(
       std::make_unique<ShillClient>(bus_), &addr_mgr_, datapath_.get(),
-      is_legacy, mcast_proxy_.get(), nd_proxy_.get());
+      mcast_proxy_.get(), nd_proxy_.get());
 
-  arc_svc_ = std::make_unique<ArcService>(device_mgr_.get(), datapath_.get(),
-                                          is_legacy);
+  arc_svc_ = std::make_unique<ArcService>(device_mgr_.get(), datapath_.get());
   arc_svc_->RegisterMessageHandler(
       base::Bind(&Manager::OnGuestMessage, weak_factory_.GetWeakPtr()));
 

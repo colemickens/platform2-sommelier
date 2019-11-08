@@ -8,12 +8,9 @@
 #include <memory>
 #include <utility>
 
-#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
-#include <base/strings/string_number_conversions.h>
 #include <brillo/flag_helper.h>
-#include <brillo/key_value_store.h>
 #include <brillo/syslog_logging.h>
 
 #include "arc/network/adb_proxy.h"
@@ -22,44 +19,6 @@
 #include "arc/network/multicast_forwarder.h"
 #include "arc/network/ndproxy.h"
 #include "arc/network/socket.h"
-
-bool ShouldEnableMultinet() {
-  static const char kLsbReleasePath[] = "/etc/lsb-release";
-  static int kMinAndroidSdkVersion = 28;  // P
-  static int kMinChromeMilestone = 76;
-
-  brillo::KeyValueStore store;
-  if (!store.Load(base::FilePath(kLsbReleasePath))) {
-    LOG(ERROR) << "Could not read lsb-release";
-    return false;
-  }
-
-  std::string value;
-  if (!store.GetString("CHROMEOS_ARC_ANDROID_SDK_VERSION", &value)) {
-    LOG(ERROR) << "ARC multi-networking disabled - cannot determine Android "
-                  "SDK version";
-    return false;
-  }
-  int ver = 0;
-  if (!base::StringToInt(value.c_str(), &ver)) {
-    LOG(ERROR) << "ARC multi-networking disabled - invalid Android SDK version";
-    return false;
-  }
-  if (ver < kMinAndroidSdkVersion) {
-    LOG(INFO) << "ARC multi-networking disabled for Android SDK " << value;
-    return false;
-  }
-  if (!store.GetString("CHROMEOS_RELEASE_CHROME_MILESTONE", &value)) {
-    LOG(ERROR)
-        << "ARC multi-networking disabled - cannot determine Chrome milestone";
-    return false;
-  }
-  if (atoi(value.c_str()) < kMinChromeMilestone) {
-    LOG(INFO) << "ARC multi-networking disabled for Chrome M" << value;
-    return false;
-  }
-  return true;
-}
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(log_to_stderr, false, "Log to both syslog and stderr");
@@ -72,8 +31,6 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(
       nd_proxy_fd, -1,
       "Control socket for starting the ND proxy subprocess. Used internally.");
-  DEFINE_string(force_multinet, "",
-                "Override auto-detection and toggle multi-networking support.");
 
   brillo::FlagHelper::Init(argc, argv, "ARC network daemon");
 
@@ -112,11 +69,8 @@ int main(int argc, char* argv[]) {
   auto nd_proxy = std::make_unique<arc_networkd::HelperProcess>();
   nd_proxy->Start(argc, argv, "--nd_proxy_fd");
 
-  bool enable_mnet =
-      (FLAGS_force_multinet == "on") ||
-      ((FLAGS_force_multinet != "off") && ShouldEnableMultinet());
   LOG(INFO) << "Starting arc-networkd manager";
   arc_networkd::Manager manager(std::move(adb_proxy), std::move(mcast_proxy),
-                                std::move(nd_proxy), enable_mnet);
+                                std::move(nd_proxy));
   return manager.Run();
 }

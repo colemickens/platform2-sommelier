@@ -32,8 +32,7 @@ class Manager final : public brillo::DBusDaemon {
  public:
   Manager(std::unique_ptr<HelperProcess> adb_proxy,
           std::unique_ptr<HelperProcess> mcast_proxy,
-          std::unique_ptr<HelperProcess> nd_proxy,
-          bool enable_multinet);
+          std::unique_ptr<HelperProcess> nd_proxy);
   ~Manager() = default;
 
  protected:
@@ -86,8 +85,6 @@ class Manager final : public brillo::DBusDaemon {
 
   AddressManager addr_mgr_;
   std::unique_ptr<DeviceManager> device_mgr_;
-
-  bool enable_multinet_;
 
   Socket gsock_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> gsock_watcher_;

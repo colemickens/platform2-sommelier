@@ -92,15 +92,13 @@ bool IsMulticastInterface(const std::string& ifname) {
 DeviceManager::DeviceManager(std::unique_ptr<ShillClient> shill_client,
                              AddressManager* addr_mgr,
                              Datapath* datapath,
-                             bool is_arc_legacy,
                              HelperProcess* mcast_proxy,
                              HelperProcess* nd_proxy)
     : shill_client_(std::move(shill_client)),
       addr_mgr_(addr_mgr),
       datapath_(datapath),
       mcast_proxy_(mcast_proxy),
-      nd_proxy_(nd_proxy),
-      is_arc_legacy_(is_arc_legacy) {
+      nd_proxy_(nd_proxy) {
   DCHECK(shill_client_);
   DCHECK(addr_mgr_);
   DCHECK(datapath_);
@@ -180,8 +178,7 @@ void DeviceManager::OnDeviceMessageFromNDProxy(const DeviceMessage& msg) {
 }
 
 bool DeviceManager::Add(const std::string& name) {
-  if (name.empty() || Exists(name) ||
-      (is_arc_legacy_ && name != kAndroidLegacyDevice))
+  if (name.empty() || Exists(name))
     return false;
 
   auto device = MakeDevice(name);

@@ -69,7 +69,7 @@ class ArcServiceTest : public testing::Test {
   std::unique_ptr<ArcService> NewService(bool arc_legacy = false,
                                          bool valid_pid = true) {
     auto svc =
-        std::make_unique<ArcService>(&dev_mgr_, datapath_.get(), arc_legacy);
+        std::make_unique<ArcService>(&dev_mgr_, datapath_.get(), &arc_legacy);
     if (valid_pid)
       svc->SetPIDForTestingOnly();
 
@@ -139,7 +139,7 @@ TEST_F(ArcServiceTest, VerifyOnDeviceRemovedDatapathForLegacyAndroid) {
 
   auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
-  NewService(true)->OnDeviceRemoved(dev.get());
+  NewService(false)->OnDeviceRemoved(dev.get());
 }
 
 TEST_F(ArcServiceTest, VerifyOnDeviceAddedDatapathForAndroid) {

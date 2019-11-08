@@ -16,6 +16,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/key_value_store.h>
 #include <shill/net/rtnl_message.h>
 
 #include "arc/network/datapath.h"
@@ -72,6 +73,44 @@ int GetAndroidRoutingTableId(const std::string& ifname, pid_t pid) {
   return table_id;
 }
 
+bool ShouldEnableMultinet() {
+  static const char kLsbReleasePath[] = "/etc/lsb-release";
+  static int kMinAndroidSdkVersion = 28;  // P
+  static int kMinChromeMilestone = 76;
+
+  brillo::KeyValueStore store;
+  if (!store.Load(base::FilePath(kLsbReleasePath))) {
+    LOG(ERROR) << "Could not read lsb-release";
+    return false;
+  }
+
+  std::string value;
+  if (!store.GetString("CHROMEOS_ARC_ANDROID_SDK_VERSION", &value)) {
+    LOG(ERROR) << "ARC multi-networking disabled - cannot determine Android "
+                  "SDK version";
+    return false;
+  }
+  int ver = 0;
+  if (!base::StringToInt(value.c_str(), &ver)) {
+    LOG(ERROR) << "ARC multi-networking disabled - invalid Android SDK version";
+    return false;
+  }
+  if (ver < kMinAndroidSdkVersion) {
+    LOG(INFO) << "ARC multi-networking disabled for Android SDK " << value;
+    return false;
+  }
+  if (!store.GetString("CHROMEOS_RELEASE_CHROME_MILESTONE", &value)) {
+    LOG(ERROR)
+        << "ARC multi-networking disabled - cannot determine Chrome milestone";
+    return false;
+  }
+  if (atoi(value.c_str()) < kMinChromeMilestone) {
+    LOG(INFO) << "ARC multi-networking disabled for Chrome M" << value;
+    return false;
+  }
+  return true;
+}
+
 // TODO(garrick): Remove this workaround ASAP.
 int GetContainerPID() {
   const base::FilePath path("/run/containers/android-run_oci/container.pid");
@@ -94,8 +133,10 @@ int GetContainerPID() {
 
 ArcService::ArcService(DeviceManagerBase* dev_mgr,
                        Datapath* datapath,
-                       bool is_legacy)
-    : GuestService(is_legacy ? GuestMessage::ARC_LEGACY : GuestMessage::ARC,
+                       bool* is_legacy)
+    : GuestService((is_legacy ? !*is_legacy : ShouldEnableMultinet())
+                       ? GuestMessage::ARC
+                       : GuestMessage::ARC_LEGACY,
                    dev_mgr),
       datapath_(datapath),
       pid_(kInvalidPID) {

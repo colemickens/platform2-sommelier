@@ -59,14 +59,14 @@ class DeviceManagerTest : public testing::Test {
     base::RunLoop().RunUntilIdle();
   }
 
-  std::unique_ptr<DeviceManager> NewManager(bool is_arc_legacy = false) {
+  std::unique_ptr<DeviceManager> NewManager() {
     shill_helper_ = std::make_unique<FakeShillClientHelper>();
     auto shill_client = shill_helper_->FakeClient();
     shill_client_ = shill_client.get();
 
-    auto mgr = std::make_unique<DeviceManager>(
-        std::move(shill_client), &addr_mgr_, datapath_.get(), is_arc_legacy,
-        dummy_mcast_proxy_.get());
+    auto mgr = std::make_unique<DeviceManager>(std::move(shill_client),
+                                               &addr_mgr_, datapath_.get(),
+                                               dummy_mcast_proxy_.get());
     return mgr;
   }
 
@@ -148,7 +148,7 @@ TEST_F(DeviceManagerTest, MakeDevice_Android) {
 }
 
 TEST_F(DeviceManagerTest, MakeDevice_LegacyAndroid) {
-  auto mgr = NewManager(true /* is_arc_legacy */);
+  auto mgr = NewManager();
   auto arc0 = mgr->MakeDevice(kAndroidLegacyDevice);
   const auto& cfg = arc0->config();
   EXPECT_EQ(cfg.host_ifname(), "arcbr0");
@@ -189,17 +189,6 @@ TEST_F(DeviceManagerTest, AddNewDevices) {
   shill_client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
   EXPECT_TRUE(mgr->Exists("eth0"));
   EXPECT_TRUE(mgr->Exists("wlan0"));
-}
-
-TEST_F(DeviceManagerTest, NoDevicesAddedWhenMultinetDisabled) {
-  auto mgr = NewManager(true /* is_arc_legacy */);
-  mgr->OnGuestStart(GuestMessage::ARC_LEGACY);
-  std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("eth0"),
-                                           dbus::ObjectPath("wlan0")};
-  auto value = brillo::Any(devices);
-  shill_client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
-  EXPECT_FALSE(mgr->Exists("eth0"));
-  EXPECT_FALSE(mgr->Exists("wlan0"));
 }
 
 TEST_F(DeviceManagerTest, PreviousDevicesRemoved) {

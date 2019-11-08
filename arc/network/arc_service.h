@@ -55,7 +55,10 @@ class ArcService : public GuestService {
   };
 
   // |dev_mgr| and |datapath| cannot be null.
-  ArcService(DeviceManagerBase* dev_mgr, Datapath* datapath, bool is_legacy);
+  // |is_legacy| is temporary and intended to be used for testing only.
+  ArcService(DeviceManagerBase* dev_mgr,
+             Datapath* datapath,
+             bool* is_legacy = nullptr);
   ~ArcService() = default;
 
   void OnStart() override;
