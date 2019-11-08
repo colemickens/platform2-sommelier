@@ -118,7 +118,7 @@ HammerUpdater::RunStatus HammerUpdater::UpdateRW() {
 }
 
 HammerUpdater::RunStatus HammerUpdater::RunLoop() {
-  constexpr unsigned int kMaximumRunCount = 10;
+  constexpr unsigned int kMaximumRunCount = 20;
   // Time it takes hammer to reset or jump to RW, before being
   // available for the next USB connection.
   constexpr unsigned int kResetTimeMs = 100;
