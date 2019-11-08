@@ -36,45 +36,6 @@ const std::vector<uint8_t> kDefaultFlags({0});
 
 constexpr char kDeviceTypeLe[] = "LE";
 
-// Connection parameter ranges per spec Version 5.1 | Vol2, Part E, 7.8.12
-// Time = N * 0.625 ms = 10.24 s.
-constexpr uint16_t kConnectScanIntervalMax = 0x4000;
-// Time = N * 0.625 ms = 2.5 ms.
-constexpr uint16_t kConnectScanWindowMin = 0x0004;
-// Time = N * 1.25 ms = 7.5 ms.
-constexpr uint16_t kConnectIntervalMin = 0x0006;
-// Time = N * 1.25 ms = 4 s.
-constexpr uint16_t kConnectIntervalMax = 0x0C80;
-// In number of connection events.
-constexpr uint16_t kConnectLatencyMax = 0x01F3;
-// Time = N * 10 ms = 100 ms.
-constexpr uint16_t kConnectTimeoutMin = 0x000A;
-// Time = N * 10 ms = 32 s.
-constexpr uint16_t kConnectTimeoutMax = 0x0C80;
-
-// Connections parameters supported by NewBlue.
-enum class ConnectionParameterKeys {
-  SCAN_INTERVAL,
-  SCAN_WINDOW,
-  CONNECT_INTERVAL_MIN,
-  CONNECT_INTERVAL_MAX,
-  LATENCY,
-  TIMEOUT
-};
-
-// A string to ConnectionParameterKeys mapping table, used to convert keys of
-// connection parameters into NewBlue standardized enum.
-const std::map<std::string, ConnectionParameterKeys>
-    kConnectionParameterKeyTable = {
-        {"ScanInterval", ConnectionParameterKeys::SCAN_INTERVAL},
-        {"ScanWindow", ConnectionParameterKeys::SCAN_WINDOW},
-        {"MinimumConnectionInterval",
-         ConnectionParameterKeys::CONNECT_INTERVAL_MIN},
-        {"MaximumConnectionInterval",
-         ConnectionParameterKeys::CONNECT_INTERVAL_MAX},
-        {"Latency", ConnectionParameterKeys::LATENCY},
-        {"Timeout", ConnectionParameterKeys::TIMEOUT}};
-
 // Updates device alias based on its name or address.
 void UpdateDeviceAlias(Device* device) {
   // In BlueZ, if alias is never provided or is set to empty for a device, the
@@ -366,7 +327,6 @@ bool DeviceInterfaceHandler::RemoveDevice(const std::string& address,
   exported_object_manager_wrapper_->RemoveExportedInterface(
       device_path, bluetooth_plugin_device::kBluetoothPluginInterface);
   discovered_devices_.erase(address);
-  connection_parameters_.erase(address);
   return true;
 }
 
@@ -659,70 +619,11 @@ void DeviceInterfaceHandler::HandleGetConnInfo(
 
 void DeviceInterfaceHandler::HandleSetLEConnectionParameters(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-    dbus::Message* message,
-    const brillo::VariantDictionary& parameters) {
+    dbus::Message* message) {
   CHECK(message);
 
-  std::string device_address =
-      ConvertDeviceObjectPathToAddress(message->GetPath().value());
-
-  VLOG(1) << "Handling Set Connection Parameters for device " << device_address;
-
-  if (parameters.empty()) {
-    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                             bluetooth_device::kErrorInvalidArguments,
-                             "Error validating connection parameters");
-    return;
-  }
-
-  Device* device = FindDevice(device_address);
-  if (!device) {
-    response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                             bluetooth_device::kErrorDoesNotExist,
-                             "Device does not exist");
-    return;
-  }
-
-  // The following parsing allow the client to specify more connection
-  // parameters than what BlueZ offers (CONNECT_INTERVAL_MIN and
-  // CONNECT_INTERVAL_MAX). Upon refactoring of D-Bus and core logic, all other
-  // supported parameter types should be parsed in core logic instead.
-  struct GattConnectParameters connection_parameters;
-  for (const auto& pair : parameters) {
-    auto it = kConnectionParameterKeyTable.find(pair.first);
-    if (it == kConnectionParameterKeyTable.end())
-      continue;
-
-    switch (it->second) {
-      case ConnectionParameterKeys::SCAN_INTERVAL:
-        connection_parameters.scan_interval = pair.second.TryGet<uint16_t>();
-        break;
-      case ConnectionParameterKeys::SCAN_WINDOW:
-        connection_parameters.scan_window = pair.second.TryGet<uint16_t>();
-        break;
-      case ConnectionParameterKeys::CONNECT_INTERVAL_MIN:
-        connection_parameters.connect_interval_min =
-            pair.second.TryGet<uint16_t>();
-        break;
-      case ConnectionParameterKeys::CONNECT_INTERVAL_MAX:
-        connection_parameters.connect_interval_max =
-            pair.second.TryGet<uint16_t>();
-        break;
-      case ConnectionParameterKeys::LATENCY:
-        connection_parameters.latency = pair.second.TryGet<uint16_t>();
-        break;
-      case ConnectionParameterKeys::TIMEOUT:
-        connection_parameters.timeout = pair.second.TryGet<uint16_t>();
-        break;
-    }
-  }
-
-  if (ParseAndSaveConnectionParameters(device_address, connection_parameters))
-    return;
-
   response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           bluetooth_device::kErrorInvalidArguments,
-                           "Error validating connection parameters");
+                           bluetooth_device::kErrorFailed, "Not implemented");
 }
 
 void DeviceInterfaceHandler::ConnectInternal(
@@ -1303,56 +1204,6 @@ void DeviceInterfaceHandler::OnPairStateChanged(
   ongoing_pairing_.cancel_pair_response.reset();
 
   ExportOrUpdateDevice(device);
-}
-
-bool DeviceInterfaceHandler::ParseAndSaveConnectionParameters(
-    const std::string& device_address,
-    const struct GattConnectParameters parameters) {
-  if (parameters.scan_interval < parameters.scan_window ||
-      parameters.scan_interval > kConnectScanIntervalMax ||
-      parameters.scan_window < kConnectScanWindowMin) {
-    VLOG(2) << "Invalid connection parameters: Scan Interval = "
-            << parameters.scan_interval
-            << " Scan Window = " << parameters.scan_window;
-    return false;
-  }
-
-  if (parameters.connect_interval_max < parameters.connect_interval_min ||
-      parameters.connect_interval_max > kConnectIntervalMax ||
-      parameters.connect_interval_min < kConnectIntervalMin) {
-    VLOG(2) << "Invalid connection parameters: Connect Interval Min = "
-            << parameters.connect_interval_max
-            << " Connect Interval Max = " << parameters.connect_interval_min;
-    return false;
-  }
-
-  if (parameters.timeout < kConnectTimeoutMin ||
-      parameters.timeout > kConnectTimeoutMax) {
-    VLOG(2) << "Invalid connection parameters: Timeout = "
-            << parameters.timeout;
-    return false;
-  }
-
-  // Derived from spec requirement Supervision_Timeout > (1 + Conn_Latency) *
-  // Conn_Interval_Max * 2.
-  uint16_t max_latency =
-      (parameters.timeout * 4 / parameters.connect_interval_max) - 1;
-  if (parameters.latency > kConnectLatencyMax ||
-      parameters.latency > max_latency) {
-    VLOG(2) << "Invalid connection parameters: Latency = "
-            << parameters.latency;
-    return false;
-  }
-
-  VLOG(2) << "Connection parameters updated for device " << device_address
-          << " |Scan Interval = " << parameters.scan_interval
-          << " |Scan Window = " << parameters.scan_window
-          << " |Connect Interval Max = " << parameters.connect_interval_max
-          << " |Connect Interval Min = " << parameters.connect_interval_min
-          << " |Timeout = " << parameters.timeout
-          << " |Latency = " << parameters.latency << " |";
-  connection_parameters_[device_address] = parameters;
-  return true;
 }
 
 }  // namespace bluetooth
