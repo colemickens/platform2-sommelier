@@ -809,7 +809,7 @@ class NewblueDaemonTest : public ::testing::Test {
     // Unknown device path
     std::unique_ptr<dbus::Response> failed_connect_response;
     connect_method_call.SetPath(dbus::ObjectPath(kUnknownDeviceObjectPath));
-    EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _, _)).Times(0);
+    EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _)).Times(0);
     connect_handler.Run(&connect_method_call,
                         base::Bind(&SaveResponse, &failed_connect_response));
     base::RunLoop().RunUntilIdle();
@@ -818,8 +818,7 @@ class NewblueDaemonTest : public ::testing::Test {
 
     // GattClientConnect() fails.
     connect_method_call.SetPath(dbus::ObjectPath(kTestDeviceObjectPath));
-    EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _, _))
-        .WillOnce(Return(0));
+    EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _)).WillOnce(Return(0));
     connect_handler.Run(&connect_method_call,
                         base::Bind(&SaveResponse, &failed_connect_response));
     base::RunLoop().RunUntilIdle();
@@ -830,9 +829,9 @@ class NewblueDaemonTest : public ::testing::Test {
     void* data;
     struct bt_addr addr;
     gattCliConnectResultCbk gatt_client_connect_callback;
-    EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _, _))
+    EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _))
         .WillOnce(DoAll(SaveArg<0>(&data), SaveArgPointee<1>(&addr),
-                        SaveArg<3>(&gatt_client_connect_callback),
+                        SaveArg<2>(&gatt_client_connect_callback),
                         Return(kTestGattClientConnectionId)));
     std::unique_ptr<dbus::Response> success_connect_response;
     connect_handler.Run(&connect_method_call,
@@ -1201,9 +1200,9 @@ TEST_F(NewblueDaemonTest, BackgroundScan) {
   void* data;
   struct bt_addr addr;
   gattCliConnectResultCbk gatt_client_connect_callback;
-  EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _, _))
+  EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _))
       .WillOnce(DoAll(SaveArg<0>(&data), SaveArgPointee<1>(&addr),
-                      SaveArg<3>(&gatt_client_connect_callback),
+                      SaveArg<2>(&gatt_client_connect_callback),
                       Return(kTestGattClientConnectionId)));
   ConvertToBtAddr(false, kTestDeviceAddress, &address);
   (*inquiry_response_callback)(inquiry_response_callback_data, &address,
@@ -1277,9 +1276,9 @@ TEST_F(NewblueDaemonTest, BackgroundScanWithRandomResolvableDevice) {
   struct bt_addr latest_address;
   ConvertToBtAddr(false, kLatestAddress, &latest_address);
   gattCliConnectResultCbk gatt_client_connect_callback;
-  EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _, _))
+  EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _))
       .WillOnce(DoAll(SaveArg<0>(&data), SaveArgPointee<1>(&addr),
-                      SaveArg<3>(&gatt_client_connect_callback),
+                      SaveArg<2>(&gatt_client_connect_callback),
                       Return(kTestGattClientConnectionId)));
   ConvertToBtAddr(false, kTestDeviceAddress, &address);
   (*inquiry_response_callback)(inquiry_response_callback_data, &latest_address,
@@ -1415,9 +1414,9 @@ TEST_F(NewblueDaemonTest, ScanState) {
   // initiated.
   void* data;
   gattCliConnectResultCbk gatt_client_connect_callback;
-  EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _, _))
+  EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _))
       .WillOnce(DoAll(SaveArg<0>(&data),
-                      SaveArg<3>(&gatt_client_connect_callback),
+                      SaveArg<2>(&gatt_client_connect_callback),
                       Return(kTestGattClientConnectionId)));
   ConvertToBtAddr(false, kTestDeviceAddress, &address);
   (*inquiry_response_callback)(inquiry_response_callback_data, &address,

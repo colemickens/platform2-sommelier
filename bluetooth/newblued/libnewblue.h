@@ -36,11 +36,10 @@ class LibNewblue {
   // gatt.h
   LIBNEWBLUE_METHOD0(GattProfileInit, gattProfileInit, bool());
   LIBNEWBLUE_METHOD0(GattProfileDeinit, gattProfileDeinit, void());
-  LIBNEWBLUE_METHOD4(GattClientConnect,
+  LIBNEWBLUE_METHOD3(GattClientConnect,
                      gattClientConnect,
                      gatt_client_conn_t(void* userData,
                                         const struct bt_addr*,
-                                        const GattConnectParameters*,
                                         gattCliConnectResultCbk));
   LIBNEWBLUE_METHOD1(GattClientDisconnect,
                      gattClientDisconnect,
