@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <array>
 #include <set>
 
 #include <base/bind.h>
@@ -54,6 +55,12 @@ const char kDisplayCategoryField[] = "display-type";
 
 constexpr char kFingerprintPath[] = "/fingerprint";
 constexpr char kFingerprintSensorLocationField[] = "sensor-location";
+
+constexpr char kArcBuildPropertiesPath[] = "/arc/build-properties";
+constexpr std::array<const char*, 2> kArcBuildProperties = {"device",
+                                                            "product"};
+constexpr std::array<const char*, 4> kArcOptionalBuildProperties = {
+    "first-api-level", "marketing-name", "metrics-tag", "pai-regions"};
 
 // These hashes are only being used temporarily till we can determine if a
 // device is a Chromebox for Meetings or not from the Install Time attributes.
@@ -421,6 +428,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   SetUpRegulatoryLabelFlag(builder, cros_config);
   SetUpInternalStylusFlag(builder, cros_config);
   SetUpFingerprintSensorLocationFlag(builder, cros_config);
+  SetUpArcBuildPropertiesFlag(builder, cros_config);
 }
 
 // Adds enterprise-related flags to the command line.
@@ -618,6 +626,33 @@ void SetUpSideVolumeButtonPositionFlag(
     return;
   }
   builder->AddArg("--ash-side-volume-button-position=" + json_position_info);
+}
+
+void SetUpArcBuildPropertiesFlag(ChromiumCommandBuilder* builder,
+                                 brillo::CrosConfigInterface* cros_config) {
+  base::DictionaryValue info;
+  if (cros_config) {
+    std::string value;
+    for (const char* property : kArcBuildProperties) {
+      if (cros_config->GetString(kArcBuildPropertiesPath, property, &value)) {
+        info.SetString(property, value);
+        continue;
+      }
+      LOG(ERROR) << property << " is not found in cros config";
+    }
+    for (const char* property : kArcOptionalBuildProperties) {
+      if (cros_config->GetString(kArcBuildPropertiesPath, property, &value))
+        info.SetString(property, value);
+    }
+  }
+
+  std::string json_info;
+  if (!base::JSONWriter::Write(info, &json_info)) {
+    LOG(ERROR)
+        << "JSONWriter::Write failed in writing ARC build properties info";
+    return;
+  }
+  builder->AddArg("--arc-build-properties=" + json_info);
 }
 
 void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,

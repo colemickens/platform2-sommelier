@@ -112,6 +112,10 @@ void SetUpFingerprintSensorLocationFlag(
 void SetUpAutoDimFlag(chromeos::ui::ChromiumCommandBuilder* builder,
                       brillo::CrosConfigInterface* cros_config);
 
+// Add "--arc-build-properties" flag with value read from |cros_config|.
+void SetUpArcBuildPropertiesFlag(chromeos::ui::ChromiumCommandBuilder* builder,
+                                 brillo::CrosConfigInterface* cros_config);
+
 }  // namespace login_manager
 
 #endif  // LOGIN_MANAGER_CHROME_SETUP_H_
