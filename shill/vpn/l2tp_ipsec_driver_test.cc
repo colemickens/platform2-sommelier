@@ -68,7 +68,7 @@ class L2TPIPSecDriverTest : public testing::Test, public RpcTaskDelegate {
 
   void TearDown() override {
     driver_->device_ = nullptr;
-    driver_->service_ = nullptr;
+    SetService(nullptr);
     ASSERT_TRUE(temp_dir_.Delete());
 
     // The ExternalTask instance initially held by |driver_->external_task_|
@@ -102,10 +102,10 @@ class L2TPIPSecDriverTest : public testing::Test, public RpcTaskDelegate {
   void SetDevice(const PPPDeviceRefPtr& device) { driver_->device_ = device; }
 
   void SetService(const VPNServiceRefPtr& service) {
-    driver_->service_ = service;
+    driver_->set_service(service);
   }
 
-  VPNServiceRefPtr GetService() { return driver_->service_; }
+  VPNServiceRefPtr GetService() { return driver_->service(); }
 
   void OnConnectTimeout() { driver_->OnConnectTimeout(); }
 
@@ -251,14 +251,14 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
   EXPECT_TRUE(IsPSKFileCleared(psk_file));
   EXPECT_TRUE(IsXauthCredentialsFileCleared(xauth_credentials_file));
   EXPECT_FALSE(driver_->device_);
-  EXPECT_FALSE(driver_->service_);
+  EXPECT_FALSE(GetService());
   EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
   EXPECT_FALSE(driver_->external_task_);
 
-  driver_->service_ = service_;
+  SetService(service_);
   EXPECT_CALL(*service_, SetState(Service::kStateIdle));
   driver_->IdleService();
-  EXPECT_FALSE(driver_->service_);
+  EXPECT_FALSE(GetService());
 }
 
 TEST_F(L2TPIPSecDriverTest, DeleteTemporaryFiles) {
@@ -502,11 +502,11 @@ TEST_F(L2TPIPSecDriverTest, GetLogin) {
 
 TEST_F(L2TPIPSecDriverTest, OnL2TPIPSecVPNDied) {
   const int kPID = 123456;
-  driver_->service_ = service_;
+  SetService(service_);
   EXPECT_CALL(*service_, SetFailure(Service::kFailureDNSLookup));
   driver_->OnL2TPIPSecVPNDied(kPID,
                               vpn_manager::kServiceErrorResolveHostnameFailed);
-  EXPECT_FALSE(driver_->service_);
+  EXPECT_FALSE(GetService());
 }
 
 TEST_F(L2TPIPSecDriverTest, SpawnL2TPIPSecVPN) {
@@ -588,20 +588,20 @@ TEST_F(L2TPIPSecDriverTest, Connect) {
 
 TEST_F(L2TPIPSecDriverTest, Disconnect) {
   driver_->device_ = device_;
-  driver_->service_ = service_;
+  SetService(service_);
   EXPECT_CALL(*device_, DropConnection());
   EXPECT_CALL(*device_, SetEnabled(false));
   EXPECT_CALL(*service_, SetState(Service::kStateIdle));
   driver_->Disconnect();
   EXPECT_FALSE(driver_->device_);
-  EXPECT_FALSE(driver_->service_);
+  EXPECT_FALSE(GetService());
 }
 
 TEST_F(L2TPIPSecDriverTest, OnConnectionDisconnected) {
-  driver_->service_ = service_;
+  SetService(service_);
   EXPECT_CALL(*service_, SetState(Service::kStateIdle));
   driver_->OnConnectionDisconnected();
-  EXPECT_FALSE(driver_->service_);
+  EXPECT_FALSE(GetService());
 }
 
 TEST_F(L2TPIPSecDriverTest, OnConnectTimeout) {
@@ -675,11 +675,11 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
 
   // Make sure that a notification of an intermediate state doesn't cause
   // the driver to fail the connection.
-  ASSERT_NE(nullptr, driver_->service_);
-  VPNServiceConstRefPtr service = driver_->service_;
+  ASSERT_NE(nullptr, GetService());
+  VPNServiceConstRefPtr service = GetService();
   InvokeNotify(kPPPReasonAuthenticating, config);
   InvokeNotify(kPPPReasonAuthenticated, config);
-  EXPECT_NE(nullptr, driver_->service_);
+  EXPECT_NE(nullptr, GetService());
   EXPECT_FALSE(service->IsFailed());
 
   ExpectDeviceConnected(config);

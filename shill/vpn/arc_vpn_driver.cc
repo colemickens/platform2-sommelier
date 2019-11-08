@@ -58,9 +58,9 @@ void ArcVpnDriver::Cleanup() {
     device_ = nullptr;
   }
 
-  if (service_) {
-    service_->SetState(Service::kStateIdle);
-    service_ = nullptr;
+  if (service()) {
+    service()->SetState(Service::kStateIdle);
+    set_service(nullptr);
   }
 }
 
@@ -74,9 +74,9 @@ void ArcVpnDriver::Connect(const VPNServiceRefPtr& service, Error* error) {
     return;
   }
 
-  service_ = service;
+  set_service(service);
   // This sets the has_ever_connected flag.
-  service_->SetState(Service::kStateConnected);
+  service->SetState(Service::kStateConnected);
 
   IPConfig::Properties ip_properties;
   if (args()->LookupString(kArcVpnTunnelChromeProperty, "false") != "true") {
@@ -89,7 +89,7 @@ void ArcVpnDriver::Connect(const VPNServiceRefPtr& service, Error* error) {
     Error error;
     std::string prefix(StaticIPParameters::kConfigKeyPrefix);
     for (const auto& property : kDnsAndRoutingProperties) {
-      service_->mutable_store()->ClearProperty(prefix + property, &error);
+      service->mutable_store()->ClearProperty(prefix + property, &error);
     }
     if (!error.IsSuccess()) {
       LOG(ERROR) << "Unable to clear VPN IP properties: " << error.message();
@@ -114,13 +114,13 @@ void ArcVpnDriver::Connect(const VPNServiceRefPtr& service, Error* error) {
   ip_properties.default_route = false;
 
   device_->SetEnabled(true);
-  device_->SelectService(service_);
+  device_->SelectService(service);
 
   // Device::OnIPConfigUpdated() will apply the StaticIPConfig properties.
   device_->UpdateIPConfig(ip_properties);
   device_->SetLooseRouting(true);
 
-  service_->SetState(Service::kStateOnline);
+  service->SetState(Service::kStateOnline);
 
   metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver, Metrics::kVpnDriverArc,
                            Metrics::kMetricVpnDriverMax);

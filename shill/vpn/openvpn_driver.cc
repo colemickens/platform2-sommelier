@@ -219,14 +219,14 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state,
     device_info_->DeleteInterface(interface_index);
   }
   tunnel_interface_.clear();
-  if (service_) {
+  if (service()) {
     if (state == Service::kStateFailure) {
-      service_->SetErrorDetails(error_details);
-      service_->SetFailure(failure);
+      service()->SetErrorDetails(error_details);
+      service()->SetFailure(failure);
     } else {
-      service_->SetState(state);
+      service()->SetState(state);
     }
-    service_ = nullptr;
+    set_service(nullptr);
   }
   ip_properties_ = IPConfig::Properties();
 }
@@ -384,7 +384,7 @@ void OpenVPNDriver::Notify(const string& reason,
   }
   // On restart/reconnect, update the existing IP configuration.
   ParseIPConfiguration(dict, &ip_properties_);
-  device_->SelectService(service_);
+  device_->SelectService(service());
   device_->UpdateIPConfig(ip_properties_);
   ReportConnectionMetrics();
   StopConnectTimeout();
@@ -637,8 +637,8 @@ bool OpenVPNDriver::SplitPortFromHost(const string& host,
 
 void OpenVPNDriver::Connect(const VPNServiceRefPtr& service, Error* error) {
   StartConnectTimeout(kDefaultConnectTimeoutSeconds);
-  service_ = service;
-  service_->SetState(Service::kStateConfiguring);
+  set_service(service);
+  service->SetState(Service::kStateConfiguring);
   if (!device_info_->CreateTunnelInterface(&tunnel_interface_)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                           "Could not create tunnel interface.");
@@ -972,9 +972,9 @@ bool OpenVPNDriver::AppendFlag(const string& property,
 }
 
 RpcIdentifier OpenVPNDriver::GetServiceRpcIdentifier() const {
-  if (service_ == nullptr)
+  if (service() == nullptr)
     return RpcIdentifier("(openvpn_driver)");
-  return service_->GetRpcIdentifier();
+  return service()->GetRpcIdentifier();
 }
 
 void OpenVPNDriver::Disconnect() {

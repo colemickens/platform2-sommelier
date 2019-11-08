@@ -43,7 +43,6 @@ class ArcVpnDriver : public VPNDriver {
 
   DeviceInfo* device_info_;
 
-  VPNServiceRefPtr service_;
   VirtualDeviceRefPtr device_;
 
   DISALLOW_COPY_AND_ASSIGN(ArcVpnDriver);

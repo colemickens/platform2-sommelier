@@ -130,7 +130,6 @@ class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
   ProcessManager* process_manager_;
   PPPDeviceFactory* ppp_device_factory_;
 
-  VPNServiceRefPtr service_;
   std::unique_ptr<ExternalTask> external_task_;
   base::FilePath psk_file_;
   base::FilePath xauth_credentials_file_;

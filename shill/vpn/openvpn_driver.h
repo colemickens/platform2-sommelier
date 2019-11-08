@@ -253,7 +253,6 @@ class OpenVPNDriver : public VPNDriver,
   std::unique_ptr<CertificateFile> extra_certificates_file_;
   base::FilePath lsb_release_file_;
 
-  VPNServiceRefPtr service_;
   std::unique_ptr<RpcTask> rpc_task_;
   std::string tunnel_interface_;
   VirtualDeviceRefPtr device_;

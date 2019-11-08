@@ -17,6 +17,7 @@
 #include "shill/key_value_store.h"
 #include "shill/mockable.h"
 #include "shill/refptr_types.h"
+#include "shill/vpn/vpn_service.h"
 
 namespace shill {
 
@@ -101,6 +102,9 @@ class VPNDriver {
 
   int connect_timeout_seconds() const { return connect_timeout_seconds_; }
 
+  VPNServiceRefPtr service() const { return service_; }
+  void set_service(const VPNServiceRefPtr& service) { service_ = service; }
+
  private:
   friend class VPNDriverTest;
 
@@ -115,6 +119,8 @@ class VPNDriver {
   bool SetMappedStringsProperty(const size_t& index,
                                 const std::vector<std::string>& value,
                                 Error* error);
+
+  VPNServiceRefPtr service_;
 
   base::WeakPtrFactory<VPNDriver> weak_ptr_factory_;
   Manager* manager_;

@@ -147,9 +147,9 @@ L2TPIPSecDriver::~L2TPIPSecDriver() {
 }
 
 RpcIdentifier L2TPIPSecDriver::GetServiceRpcIdentifier() {
-  if (service_ == nullptr)
+  if (service() == nullptr)
     return RpcIdentifier("(l2tp_ipsec_driver)");
-  return service_->GetRpcIdentifier();
+  return service()->GetRpcIdentifier();
 }
 
 bool L2TPIPSecDriver::ClaimInterface(const string& link_name,
@@ -161,8 +161,8 @@ bool L2TPIPSecDriver::ClaimInterface(const string& link_name,
 
 void L2TPIPSecDriver::Connect(const VPNServiceRefPtr& service, Error* error) {
   StartConnectTimeout(kDefaultConnectTimeoutSeconds);
-  service_ = service;
-  service_->SetState(Service::kStateConfiguring);
+  set_service(service);
+  service->SetState(Service::kStateConfiguring);
   if (!SpawnL2TPIPSecVPN(error)) {
     FailService(Service::kFailureInternal);
   }
@@ -207,13 +207,13 @@ void L2TPIPSecDriver::Cleanup(Service::ConnectState state,
     device_->SetEnabled(false);
     device_ = nullptr;
   }
-  if (service_) {
+  if (service()) {
     if (state == Service::kStateFailure) {
-      service_->SetFailure(failure);
+      service()->SetFailure(failure);
     } else {
-      service_->SetState(state);
+      service()->SetState(state);
     }
-    service_ = nullptr;
+    set_service(nullptr);
   }
 }
 
@@ -468,7 +468,7 @@ void L2TPIPSecDriver::Notify(const string& reason,
                                                    interface_index);
   }
   device_->SetEnabled(true);
-  device_->SelectService(service_);
+  device_->SelectService(service());
 
   IPConfig::Properties properties = device_->ParseIPConfiguration(dict);
 

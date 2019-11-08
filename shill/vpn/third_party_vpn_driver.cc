@@ -139,11 +139,11 @@ void ThirdPartyVpnDriver::UpdateConnectionState(
     error_message->append("Unexpected call");
     return;
   }
-  if (service_ && connection_state == Service::kStateFailure) {
-    service_->SetState(connection_state);
+  if (service() && connection_state == Service::kStateFailure) {
+    service()->SetState(connection_state);
     Cleanup(Service::kStateFailure, Service::kFailureNone,
             Service::kErrorDetailsNone);
-  } else if (!service_ || connection_state != Service::kStateOnline) {
+  } else if (!service() || connection_state != Service::kStateOnline) {
     // We expect "failure" and "connected" messages from the client, but we
     // only set state for these "failure" messages. "connected" message (which
     // is corresponding to kStateOnline here) will simply be ignored.
@@ -411,7 +411,7 @@ void ThirdPartyVpnDriver::SetParameters(
     manager()->vpn_provider()->SetDefaultRoutingPolicy(&ip_properties_);
     ip_properties_.default_route = false;
     ip_properties_.blackhole_ipv6 = true;
-    device_->SelectService(service_);
+    device_->SelectService(service());
     device_->UpdateIPConfig(ip_properties_);
     device_->SetLooseRouting(true);
     StopConnectTimeout();
@@ -458,14 +458,14 @@ void ThirdPartyVpnDriver::Cleanup(Service::ConnectState state,
     device_info_->DeleteInterface(interface_index);
   }
   tunnel_interface_.clear();
-  if (service_) {
+  if (service()) {
     if (state == Service::kStateFailure) {
-      service_->SetErrorDetails(error_details);
-      service_->SetFailure(failure);
+      service()->SetErrorDetails(error_details);
+      service()->SetFailure(failure);
     } else {
-      service_->SetState(state);
+      service()->SetState(state);
     }
-    service_ = nullptr;
+    set_service(nullptr);
   }
   if (tun_fd_ > 0) {
     file_io_->Close(tun_fd_);
@@ -490,8 +490,8 @@ void ThirdPartyVpnDriver::Connect(const VPNServiceRefPtr& service,
   StartConnectTimeout(kConnectTimeoutSeconds);
   ip_properties_ = IPConfig::Properties();
   ip_properties_set_ = false;
-  service_ = service;
-  service_->SetState(Service::kStateConfiguring);
+  set_service(service);
+  service->SetState(Service::kStateConfiguring);
   if (!device_info_->CreateTunnelInterface(&tunnel_interface_)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                           "Could not create tunnel interface.");
@@ -570,7 +570,7 @@ void ThirdPartyVpnDriver::OnDefaultServiceChanged(
     bool /*logical_service_changed*/,
     const ServiceRefPtr& physical_service,
     bool physical_service_changed) {
-  if (!service_ || !device_ || !physical_service_changed)
+  if (!service() || !device_ || !physical_service_changed)
     return;
 
   if (!reconnect_supported_) {
@@ -607,7 +607,7 @@ void ThirdPartyVpnDriver::OnDefaultServiceStateChanged(
 }
 
 void ThirdPartyVpnDriver::OnBeforeSuspend(const ResultCallback& callback) {
-  if (service_ && reconnect_supported_) {
+  if (service() && reconnect_supported_) {
     // FIXME: Currently the VPN app receives this message at the same time
     // as the resume message, even if shill adds a delay to hold off the
     // suspend sequence.
@@ -618,7 +618,7 @@ void ThirdPartyVpnDriver::OnBeforeSuspend(const ResultCallback& callback) {
 }
 
 void ThirdPartyVpnDriver::OnAfterResume() {
-  if (service_ && reconnect_supported_) {
+  if (service() && reconnect_supported_) {
     // Transition back to Configuring state so that the app can perform
     // DNS lookups and reconnect.
     device_->SetServiceState(Service::kStateConfiguring);

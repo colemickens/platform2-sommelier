@@ -53,7 +53,7 @@ class ThirdPartyVpnDriverTest : public testing::Test {
 
   void TearDown() override {
     driver_->device_ = nullptr;
-    driver_->service_ = nullptr;
+    driver_->set_service(nullptr);
     driver_->file_io_ = nullptr;
   }
 
@@ -257,7 +257,7 @@ TEST_F(ThirdPartyVpnDriverTest, UpdateConnectionState) {
   EXPECT_EQ(error, "Invalid argument");
 
   error.clear();
-  driver_->service_ = service_;
+  driver_->set_service(service_);
   EXPECT_CALL(*service_, SetState(_)).Times(0);
   driver_->UpdateConnectionState(Service::kStateOnline, &error);
   EXPECT_TRUE(error.empty());

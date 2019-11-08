@@ -115,7 +115,7 @@ class OpenVPNDriverTest
   void TearDown() override {
     driver_->pid_ = 0;
     driver_->device_ = nullptr;
-    driver_->service_ = nullptr;
+    SetService(nullptr);
     if (!lsb_release_file_.empty()) {
       EXPECT_TRUE(base::DeleteFile(lsb_release_file_, false));
       lsb_release_file_.clear();
@@ -177,10 +177,10 @@ class OpenVPNDriverTest
   }
 
   void SetService(const VPNServiceRefPtr& service) {
-    driver_->service_ = service;
+    driver_->set_service(service);
   }
 
-  VPNServiceRefPtr GetService() { return driver_->service_; }
+  VPNServiceRefPtr GetService() { return driver_->service(); }
 
   void OnConnectionDisconnected() { driver_->OnConnectionDisconnected(); }
 
@@ -340,7 +340,7 @@ TEST_F(OpenVPNDriverTest, ConnectTunnelFailure) {
 
 TEST_F(OpenVPNDriverTest, Notify) {
   map<string, string> config;
-  driver_->service_ = service_;
+  SetService(service_);
   driver_->device_ = device_;
   StartConnectTimeout(0);
   EXPECT_CALL(*device_,
@@ -358,7 +358,7 @@ TEST_F(OpenVPNDriverTest, Notify) {
 
 TEST_P(OpenVPNDriverTest, NotifyUMA) {
   map<string, string> config;
-  driver_->service_ = service_;
+  SetService(service_);
   driver_->device_ = device_;
 
   // Check that UMA metrics are emitted on Notify.
@@ -1142,7 +1142,7 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   driver_->rpc_task_.reset(new RpcTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
   driver_->device_ = device_;
-  driver_->service_ = service_;
+  SetService(service_);
   driver_->ip_properties_.address = "1.2.3.4";
   StartConnectTimeout(0);
   FilePath tls_auth_file;
@@ -1165,7 +1165,7 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   EXPECT_FALSE(IsObservingDefaultServiceChanges());
   EXPECT_TRUE(driver_->tunnel_interface_.empty());
   EXPECT_FALSE(driver_->device_);
-  EXPECT_FALSE(driver_->service_);
+  EXPECT_FALSE(GetService());
   EXPECT_EQ(kErrorDetails, service_->error_details());
   EXPECT_FALSE(base::PathExists(tls_auth_file));
   EXPECT_TRUE(driver_->tls_auth_file_.empty());
@@ -1243,14 +1243,14 @@ TEST_F(OpenVPNDriverTest, OnOpenVPNDied) {
 
 TEST_F(OpenVPNDriverTest, Disconnect) {
   driver_->device_ = device_;
-  driver_->service_ = service_;
+  SetService(service_);
   EXPECT_CALL(*device_, DropConnection());
   EXPECT_CALL(*device_, SetEnabled(false));
   EXPECT_CALL(device_info_, DeleteInterface(kInterfaceIndex));
   EXPECT_CALL(*service_, SetState(Service::kStateIdle));
   driver_->Disconnect();
   EXPECT_FALSE(driver_->device_);
-  EXPECT_FALSE(driver_->service_);
+  EXPECT_FALSE(GetService());
 }
 
 TEST_F(OpenVPNDriverTest, OnConnectTimeout) {
@@ -1360,7 +1360,7 @@ TEST_F(OpenVPNDriverTest, GetCommandLineArgs) {
 }
 
 TEST_F(OpenVPNDriverTest, OnDefaultServiceChanged) {
-  driver_->service_ = service_;
+  SetService(service_);
   driver_->device_ = device_;
 
   // Switch from Online service -> no service.  VPN should be put on hold.

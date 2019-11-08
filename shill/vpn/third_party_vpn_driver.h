@@ -232,9 +232,6 @@ class ThirdPartyVpnDriver : public VPNDriver, public DefaultServiceObserver {
   // File descriptor for the tun device.
   int tun_fd_;
 
-  // A pointer to the VPN service.
-  VPNServiceRefPtr service_;
-
   // Name of the tunnel interface clone.
   std::string tunnel_interface_;
 

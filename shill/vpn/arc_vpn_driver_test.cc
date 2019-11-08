@@ -74,7 +74,7 @@ class ArcVpnDriverTest : public testing::Test {
     manager_.vpn_provider_->arc_device_ = nullptr;
     manager_.vpn_provider_.reset();
     driver_->device_ = nullptr;
-    driver_->service_ = nullptr;
+    driver_->set_service(nullptr);
     device_ = nullptr;
   }
 
