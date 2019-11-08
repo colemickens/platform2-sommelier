@@ -114,35 +114,6 @@ constexpr uint8_t eir[] = {
     // Manufacturer data
     5, static_cast<uint8_t>(EirType::MANUFACTURER_DATA), 0x0E, 0x00, 0x55,
     0x66};
-
-constexpr uint16_t kTestConnectionParameterLatency = 9;
-constexpr uint16_t kTestConnectionParameterLatencyInvalid = 15;
-constexpr uint16_t kTestConnectionParameterTimeoutValid = 82;
-const std::map<std::string, brillo::VariantDictionary>
-    kTestConnectionParameters = {
-        {"empty", {}},
-        {"valid",
-         {{"ScanInterval", uint16_t{27}},
-          {"ScanWindow", uint16_t{19}},
-          {"MinimumConnectionInterval", uint16_t{11}},
-          {"MaximumConnectionInterval", uint16_t{22}},
-          {"Latency", uint16_t{kTestConnectionParameterLatency}},
-          {"Timeout", uint16_t{83}}}},
-        {"valid2",
-         {{"ScanInterval", uint16_t{27}},
-          {"ScanWindow", uint16_t{19}},
-          {"MinimumConnectionInterval", uint16_t{11}},
-          {"MaximumConnectionInterval", uint16_t{22}},
-          {"Latency", uint16_t{kTestConnectionParameterLatency}},
-          {"Timeout", uint16_t{kTestConnectionParameterTimeoutValid}}}},
-        {"invalid",
-         {{"ScanInterval", uint16_t{27}},
-          {"ScanWindow", uint16_t{19}},
-          {"MinimumConnectionInterval", uint16_t{11}},
-          {"MaximumConnectionInterval", uint16_t{22}},
-          {"Latency", uint16_t{kTestConnectionParameterLatencyInvalid}},
-          {"Timeout", uint16_t{83}}}}};
-
 void SaveResponse(std::unique_ptr<dbus::Response>* saved_response,
                   std::unique_ptr<dbus::Response> response) {
   *saved_response = std::move(response);
@@ -717,27 +688,6 @@ class NewblueDaemonTest : public ::testing::Test {
         base::Bind(&SaveResponse, &set_discovery_filter_response));
   }
 
-  void CallSetLEConnectionParametersMethod(
-      dbus::ExportedObject::MethodCallCallback
-          set_le_connection_parameters_handler,
-      std::unique_ptr<dbus::Response>* set_le_connection_parameters_response,
-      std::string object_path,
-      std::string filter_type) {
-    dbus::MethodCall set_le_connection_parameters_method_call(
-        bluetooth_plugin_device::kBluetoothPluginInterface,
-        bluetooth_plugin_device::kSetLEConnectionParameters);
-    set_le_connection_parameters_method_call.SetPath(
-        dbus::ObjectPath(object_path));
-    set_le_connection_parameters_method_call.SetSender(kTestSender);
-    set_le_connection_parameters_method_call.SetSerial(kTestSerial);
-    dbus::MessageWriter writer(&set_le_connection_parameters_method_call);
-    brillo::dbus_utils::AppendValueToWriter(
-        &writer, kTestConnectionParameters.find(filter_type)->second);
-    set_le_connection_parameters_handler.Run(
-        &set_le_connection_parameters_method_call,
-        base::Bind(&SaveResponse, set_le_connection_parameters_response));
-  }
-
   // Tests org.bluez.Adapter1.StartDiscovery
   void TestStartDiscovery(
       dbus::ExportedObject::MethodCallCallback start_discovery_handler,
@@ -868,7 +818,7 @@ class NewblueDaemonTest : public ::testing::Test {
 
     // GattClientConnect() fails.
     connect_method_call.SetPath(dbus::ObjectPath(kTestDeviceObjectPath));
-    EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, nullptr, _))
+    EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _, _))
         .WillOnce(Return(0));
     connect_handler.Run(&connect_method_call,
                         base::Bind(&SaveResponse, &failed_connect_response));
@@ -880,7 +830,7 @@ class NewblueDaemonTest : public ::testing::Test {
     void* data;
     struct bt_addr addr;
     gattCliConnectResultCbk gatt_client_connect_callback;
-    EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, nullptr, _))
+    EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _, _))
         .WillOnce(DoAll(SaveArg<0>(&data), SaveArgPointee<1>(&addr),
                         SaveArg<3>(&gatt_client_connect_callback),
                         Return(kTestGattClientConnectionId)));
@@ -1201,174 +1151,6 @@ TEST_F(NewblueDaemonTest, Connection) {
   TestDeinit();
 }
 
-TEST_F(NewblueDaemonTest, SetConnectionParameters) {
-  dbus::ExportedObject::MethodCallCallback start_discovery_handler;
-  dbus::ExportedObject::MethodCallCallback connect_handler;
-  dbus::ExportedObject::MethodCallCallback disconnect_handler;
-  dbus::ExportedObject::MethodCallCallback remove_device_handler;
-  dbus::ExportedObject::MethodCallCallback set_le_connection_parameters_handler;
-  MethodHandlerMap method_handlers = {
-      {bluetooth_adapter::kStartDiscovery, &start_discovery_handler},
-      {bluetooth_device::kConnect, &connect_handler},
-      {bluetooth_device::kDisconnect, &disconnect_handler},
-      {bluetooth_adapter::kRemoveDevice, &remove_device_handler},
-      {bluetooth_plugin_device::kSetLEConnectionParameters,
-       &set_le_connection_parameters_handler},
-  };
-
-  TestInit(method_handlers);
-  TestAdapterBringUp(exported_adapter_object_, method_handlers,
-                     /* with_saved_devices */ true);
-
-  hciDeviceDiscoveredLeCbk inquiry_response_callback;
-  void* inquiry_response_callback_data;
-  TestStartDiscovery(start_discovery_handler, &inquiry_response_callback,
-                     &inquiry_response_callback_data);
-
-  // Device discovered.
-  ExpectDeviceObjectExported(dbus::ObjectPath(kTestDeviceObjectPath),
-                             method_handlers);
-  struct bt_addr address;
-  struct bt_addr latest_address;
-  ConvertToBtAddr(false, kTestDeviceAddress, &address);
-  ConvertToBtAddr(false, kLatestAddress, &latest_address);
-  (*inquiry_response_callback)(inquiry_response_callback_data, &latest_address,
-                               &address,
-                               /* rssi */ -101, HCI_ADV_TYPE_SCAN_RSP,
-                               /* eir */ {},
-                               /* eir_len*/ 0);
-  base::RunLoop().RunUntilIdle();
-
-  std::unique_ptr<dbus::Response> set_le_connection_parameters_response;
-  // Update the connection parameters to an empty set. Verify the
-  // response error.
-  CallSetLEConnectionParametersMethod(set_le_connection_parameters_handler,
-                                      &set_le_connection_parameters_response,
-                                      kTestDeviceObjectPath, "empty");
-  EXPECT_EQ(bluetooth_device::kErrorInvalidArguments,
-            set_le_connection_parameters_response->GetErrorName());
-
-  // Update the connection parameters for an unknown device. Verify the
-  // response error.
-  CallSetLEConnectionParametersMethod(set_le_connection_parameters_handler,
-                                      &set_le_connection_parameters_response,
-                                      kUnknownDeviceObjectPath, "valid");
-  EXPECT_EQ(bluetooth_device::kErrorDoesNotExist,
-            set_le_connection_parameters_response->GetErrorName());
-
-  // Update the connection parameters to a set of invalid values. Verify
-  // the response error.
-  CallSetLEConnectionParametersMethod(set_le_connection_parameters_handler,
-                                      &set_le_connection_parameters_response,
-                                      kTestDeviceObjectPath, "invalid");
-  EXPECT_EQ(bluetooth_device::kErrorInvalidArguments,
-            set_le_connection_parameters_response->GetErrorName());
-
-  // Initialization for connect method.
-  void* data;
-  gattCliConnectResultCbk gatt_client_connect_callback;
-  struct GattConnectParameters parameters;
-  std::unique_ptr<dbus::Response> success_connect_response;
-  dbus::MethodCall connect_method_call(
-      bluetooth_device::kBluetoothDeviceInterface, bluetooth_device::kConnect);
-  connect_method_call.SetSender(kTestSender);
-  connect_method_call.SetSerial(kTestSerial);
-  connect_method_call.SetPath(dbus::ObjectPath(kTestDeviceObjectPath));
-
-  // Update the connection parameters to a valid set and connect to the
-  // device. Expect libnewblue function call and verify the parameter.
-  CallSetLEConnectionParametersMethod(set_le_connection_parameters_handler,
-                                      &set_le_connection_parameters_response,
-                                      kTestDeviceObjectPath, "valid");
-  EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _, _))
-      .WillOnce(DoAll(SaveArg<0>(&data), SaveArgPointee<2>(&parameters),
-                      SaveArg<3>(&gatt_client_connect_callback),
-                      Return(kTestGattClientConnectionId)));
-  connect_handler.Run(&connect_method_call,
-                      base::Bind(&SaveResponse, &success_connect_response));
-  gatt_client_connect_callback(data, kTestGattClientConnectionId,
-                               static_cast<uint8_t>(ConnectState::CONNECTED));
-  base::RunLoop().RunUntilIdle();
-  EXPECT_EQ(kTestConnectionParameterLatency, parameters.latency);
-
-  // Update the connection parameters for the connected device.
-  CallSetLEConnectionParametersMethod(set_le_connection_parameters_handler,
-                                      &set_le_connection_parameters_response,
-                                      kTestDeviceObjectPath, "valid2");
-
-  // Initialization for disconnect method.
-  std::unique_ptr<dbus::Response> success_disconnect_by_client_response;
-  dbus::MethodCall disconnect_method_call(
-      bluetooth_device::kBluetoothDeviceInterface,
-      bluetooth_device::kDisconnect);
-  disconnect_method_call.SetSender(kTestSender);
-  disconnect_method_call.SetSerial(kTestSerial);
-  disconnect_method_call.SetPath(dbus::ObjectPath(kTestDeviceObjectPath));
-
-  // Disconnect the device.
-  disconnect_handler.Run(
-      &disconnect_method_call,
-      base::Bind(&SaveResponse, &success_disconnect_by_client_response));
-  gatt_client_connect_callback(
-      data, kTestGattClientConnectionId,
-      static_cast<uint8_t>(ConnectState::DISCONNECTED_BY_US));
-  base::RunLoop().RunUntilIdle();
-
-  // Reconnect to the device, expect establish connection with new parameter set
-  // "valid2"
-  EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _, _))
-      .WillOnce(DoAll(SaveArg<0>(&data), SaveArgPointee<2>(&parameters),
-                      SaveArg<3>(&gatt_client_connect_callback),
-                      Return(kTestGattClientConnectionId)));
-  connect_handler.Run(&connect_method_call,
-                      base::Bind(&SaveResponse, &success_connect_response));
-  gatt_client_connect_callback(data, kTestGattClientConnectionId,
-                               static_cast<uint8_t>(ConnectState::CONNECTED));
-  base::RunLoop().RunUntilIdle();
-  EXPECT_EQ(kTestConnectionParameterTimeoutValid, parameters.timeout);
-
-  // Disconnect the device.
-  disconnect_handler.Run(
-      &disconnect_method_call,
-      base::Bind(&SaveResponse, &success_disconnect_by_client_response));
-  gatt_client_connect_callback(
-      data, kTestGattClientConnectionId,
-      static_cast<uint8_t>(ConnectState::DISCONNECTED_BY_US));
-  base::RunLoop().RunUntilIdle();
-
-  // Initialization for remove device method.
-  std::unique_ptr<dbus::Response> remove_device_response;
-  dbus::MethodCall remove_device_method_call(
-      bluetooth_adapter::kBluetoothAdapterInterface,
-      bluetooth_adapter::kRemoveDevice);
-  ConstructRemoveDeviceMethodCall(&remove_device_method_call,
-                                  kTestDeviceObjectPath);
-  // Remove the device
-  ExpectDeviceObjectUnexported(dbus::ObjectPath(kTestDeviceObjectPath));
-  remove_device_handler.Run(&remove_device_method_call,
-                            base::Bind(&SaveResponse, &remove_device_response));
-  RemoveMockExportedObject(dbus::ObjectPath(kTestDeviceObjectPath));
-
-  // Re discovered the device again.
-  ExpectDeviceObjectExported(dbus::ObjectPath(kTestDeviceObjectPath),
-                             method_handlers);
-  (*inquiry_response_callback)(inquiry_response_callback_data, &latest_address,
-                               &address,
-                               /* rssi */ -101, HCI_ADV_TYPE_SCAN_RSP,
-                               /* eir */ {},
-                               /* eir_len*/ 0);
-  base::RunLoop().RunUntilIdle();
-
-  // Connect to the device. Expect libnewblue function call and verify the
-  // previous parameters are erased.
-  EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, nullptr, _)).Times(1);
-  connect_handler.Run(&connect_method_call,
-                      base::Bind(&SaveResponse, &success_connect_response));
-  base::RunLoop().RunUntilIdle();
-
-  TestDeinit();
-}
-
 TEST_F(NewblueDaemonTest, BackgroundScan) {
   dbus::ExportedObject::MethodCallCallback start_discovery_handler;
   dbus::ExportedObject::MethodCallCallback stop_discovery_handler;
@@ -1419,7 +1201,7 @@ TEST_F(NewblueDaemonTest, BackgroundScan) {
   void* data;
   struct bt_addr addr;
   gattCliConnectResultCbk gatt_client_connect_callback;
-  EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, nullptr, _))
+  EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _, _))
       .WillOnce(DoAll(SaveArg<0>(&data), SaveArgPointee<1>(&addr),
                       SaveArg<3>(&gatt_client_connect_callback),
                       Return(kTestGattClientConnectionId)));
@@ -1495,7 +1277,7 @@ TEST_F(NewblueDaemonTest, BackgroundScanWithRandomResolvableDevice) {
   struct bt_addr latest_address;
   ConvertToBtAddr(false, kLatestAddress, &latest_address);
   gattCliConnectResultCbk gatt_client_connect_callback;
-  EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, nullptr, _))
+  EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _, _))
       .WillOnce(DoAll(SaveArg<0>(&data), SaveArgPointee<1>(&addr),
                       SaveArg<3>(&gatt_client_connect_callback),
                       Return(kTestGattClientConnectionId)));
@@ -1633,7 +1415,7 @@ TEST_F(NewblueDaemonTest, ScanState) {
   // initiated.
   void* data;
   gattCliConnectResultCbk gatt_client_connect_callback;
-  EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, nullptr, _))
+  EXPECT_CALL(*libnewblue_, GattClientConnect(_, _, _, _))
       .WillOnce(DoAll(SaveArg<0>(&data),
                       SaveArg<3>(&gatt_client_connect_callback),
                       Return(kTestGattClientConnectionId)));
