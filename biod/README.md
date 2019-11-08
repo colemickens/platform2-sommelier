@@ -97,6 +97,36 @@ is used in biod D-bus object paths, which do not allow `-`.
 Each record file is stored in JSON format, and contains one record and its
 record id and label.
 
+## Firmware Updates
+
+The [`bio_fw_updater`] tool is responsible for updating the [FPMCU firmware]
+[automatically on boot]. To disable the automatic update, you can create the
+`.disable_fp_updater` file:
+
+```bash
+(dut) $ touch /opt/google/biod/fw/.disable_fp_updater
+```
+
+When hardware and [software write protect] for the FPMCU are enabled,
+[`bio_fw_updater`] will only update the RW portion of the firmware.
+
+When devices are still under development, they will generally have
+[hardware write protect enabled], but not software write protect. In this mode,
+[`bio_fw_updater`] will update both RO and RW.
+
+You can learn more about write protection and how to enable/disable in the
+[Firmware Write Protection] documentation.
+
+### Logs
+
+[`bio_fw_updater`]'s logs are written to:
+
+*   `/var/log/biod/bio_fw_updater.LATEST`
+*   `/var/log/biod/bio_fw_updater.PREVIOUS`
+*   `/var/log/biod/bio_fw_updater.<TIMESTAMP>`
+*   `/var/log/bio_fw_updater.out`
+
+
 ## Hardware
 
 ### CrosFpBiometric
@@ -402,3 +432,9 @@ The symbol **`->`** is either a response or a signal from
 
 [Chromium OS Developer Guide]: https://chromium.googlesource.com/chromiumos/docs/+/master/developer_guide.md#Making-changes-to-packages-whose-source-code-is-checked-into-Chromium-OS-git-repositories
 [SanitizeUserName]: ../libbrillo/brillo/cryptohome.h
+[`bio_fw_updater`]: ./tools/bio_fw_updater.cc
+[FPMCU firmware]: https://chromium.googlesource.com/chromiumos/platform/ec/+/master/docs/fingerprint/fingerprint.md
+[hardware write protect]: https://chromium.googlesource.com/chromiumos/platform/ec/+/master/docs/write_protection.md#hw_wp
+[software write protect]: https://chromium.googlesource.com/chromiumos/platform/ec/+/master/docs/write_protection.md#software-write-protect
+[automatically on boot]: ../init/upstart/boot-update-firmware.conf
+[Firmware Write Protection]: https://chromium.googlesource.com/chromiumos/platform/ec/+/master/docs/write_protection.md
