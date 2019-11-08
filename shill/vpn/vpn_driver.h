@@ -15,6 +15,7 @@
 
 #include "shill/callbacks.h"
 #include "shill/key_value_store.h"
+#include "shill/mockable.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
@@ -46,14 +47,14 @@ class VPNDriver {
   virtual bool Save(StoreInterface* storage,
                     const std::string& storage_id,
                     bool save_credentials);
-  virtual void UnloadCredentials();
+  mockable void UnloadCredentials();
 
   // Power management events.
   virtual void OnBeforeSuspend(const ResultCallback& callback);
   virtual void OnAfterResume();
   virtual void OnDefaultServiceStateChanged(const ServiceRefPtr& service);
 
-  virtual std::string GetHost() const;
+  mockable std::string GetHost() const;
 
   KeyValueStore* args() { return &args_; }
   const KeyValueStore* const_args() const { return &args_; }
