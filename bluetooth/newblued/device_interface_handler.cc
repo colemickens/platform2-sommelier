@@ -324,8 +324,6 @@ bool DeviceInterfaceHandler::RemoveDevice(const std::string& address,
   dbus::ObjectPath device_path(ConvertDeviceAddressToObjectPath(address));
   exported_object_manager_wrapper_->RemoveExportedInterface(
       device_path, bluetooth_device::kBluetoothDeviceInterface);
-  exported_object_manager_wrapper_->RemoveExportedInterface(
-      device_path, bluetooth_plugin_device::kBluetoothPluginInterface);
   discovered_devices_.erase(address);
   return true;
 }
@@ -394,16 +392,12 @@ void DeviceInterfaceHandler::ExportOrUpdateDevice(Device* device) {
   dbus::ObjectPath device_path(
       ConvertDeviceAddressToObjectPath(device->address.c_str()));
 
-  auto device_interface =
+  ExportedInterface* device_interface =
       exported_object_manager_wrapper_->GetExportedInterface(
           device_path, bluetooth_device::kBluetoothDeviceInterface);
-  auto device_plugin_interface =
-      exported_object_manager_wrapper_->GetExportedInterface(
-          device_path, bluetooth_plugin_device::kBluetoothPluginInterface);
   // The first time a device of this address is discovered, create the D-Bus
-  // object representing that device. device_plugin_interface and
-  // device_interface have to go hand in hand.
-  if (!device_interface) {
+  // object representing that device.
+  if (device_interface == nullptr) {
     VLOG(1) << base::StringPrintf(
         "Discovered a new device with %s address %s, rssi %d",
         device->is_random_address ? "random" : "public",
@@ -414,19 +408,11 @@ void DeviceInterfaceHandler::ExportOrUpdateDevice(Device* device) {
         device_path, bluetooth_device::kBluetoothDeviceInterface,
         base::Bind(
             &ExportedObjectManagerWrapper::SetupStandardPropertyHandlers));
-    exported_object_manager_wrapper_->AddExportedInterface(
-        device_path, bluetooth_plugin_device::kBluetoothPluginInterface,
-        base::Bind(
-            &ExportedObjectManagerWrapper::SetupStandardPropertyHandlers));
 
     device_interface = exported_object_manager_wrapper_->GetExportedInterface(
         device_path, bluetooth_device::kBluetoothDeviceInterface);
-    device_plugin_interface =
-        exported_object_manager_wrapper_->GetExportedInterface(
-            device_path, bluetooth_plugin_device::kBluetoothPluginInterface);
 
     AddDeviceMethodHandlers(device_interface);
-    AddDevicePluginMethodHandlers(device_plugin_interface);
 
     device_interface
         ->EnsureExportedPropertyRegistered<dbus::ObjectPath>(
@@ -444,10 +430,8 @@ void DeviceInterfaceHandler::ExportOrUpdateDevice(Device* device) {
   // The property updates above have to be done before ExportAndBlock() to make
   // sure that client receives the newly added object complete with its
   // populated properties.
-  if (is_new_device) {
+  if (is_new_device)
     device_interface->ExportAndBlock();
-    device_plugin_interface->ExportAndBlock();
-  }
 
   ClearPropertiesUpdated(device);
 }
@@ -474,20 +458,6 @@ void DeviceInterfaceHandler::AddDeviceMethodHandlers(
   device_interface->AddMethodHandlerWithMessage(
       bluetooth_device::kExecuteWrite,
       base::Bind(&DeviceInterfaceHandler::HandleExecuteWrite,
-                 base::Unretained(this)));
-}
-
-void DeviceInterfaceHandler::AddDevicePluginMethodHandlers(
-    ExportedInterface* device_plugin_interface) {
-  CHECK(device_plugin_interface);
-
-  device_plugin_interface->AddMethodHandlerWithMessage(
-      bluetooth_plugin_device::kGetConnInfo,
-      base::Bind(&DeviceInterfaceHandler::HandleGetConnInfo,
-                 base::Unretained(this)));
-  device_plugin_interface->AddMethodHandlerWithMessage(
-      bluetooth_plugin_device::kSetLEConnectionParameters,
-      base::Bind(&DeviceInterfaceHandler::HandleSetLEConnectionParameters,
                  base::Unretained(this)));
 }
 
@@ -600,24 +570,6 @@ void DeviceInterfaceHandler::HandleDisconnect(
 }
 
 void DeviceInterfaceHandler::HandleExecuteWrite(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-    dbus::Message* message) {
-  CHECK(message);
-
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           bluetooth_device::kErrorFailed, "Not implemented");
-}
-
-void DeviceInterfaceHandler::HandleGetConnInfo(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-    dbus::Message* message) {
-  CHECK(message);
-
-  response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
-                           bluetooth_device::kErrorFailed, "Not implemented");
-}
-
-void DeviceInterfaceHandler::HandleSetLEConnectionParameters(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     dbus::Message* message) {
   CHECK(message);

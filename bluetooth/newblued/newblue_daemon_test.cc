@@ -200,30 +200,6 @@ class NewblueDaemonTest : public ::testing::Test {
                         Return(true)));
   }
 
-  // Expects that the methods on org.chromium.BluetoothDevice interface are
-  // exported.
-  void ExpectDevicePluginMethodsExported(
-      scoped_refptr<dbus::MockExportedObject> exported_object,
-      MethodHandlerMap method_handlers) {
-    EXPECT_CALL(
-        *exported_object,
-        ExportMethodAndBlock(bluetooth_plugin_device::kBluetoothPluginInterface,
-                             bluetooth_plugin_device::kGetConnInfo, _))
-        .WillOnce(
-            DoAll(SaveArg<2>(GetMethodHandler(
-                      method_handlers, bluetooth_plugin_device::kGetConnInfo)),
-                  Return(true)));
-    EXPECT_CALL(*exported_object,
-                ExportMethodAndBlock(
-                    bluetooth_plugin_device::kBluetoothPluginInterface,
-                    bluetooth_plugin_device::kSetLEConnectionParameters, _))
-        .WillOnce(
-            DoAll(SaveArg<2>(GetMethodHandler(
-                      method_handlers,
-                      bluetooth_plugin_device::kSetLEConnectionParameters)),
-                  Return(true)));
-  }
-
   // Expects that the methods on org.bluez.Device1 interface are exported.
   void ExpectDeviceMethodsExported(
       scoped_refptr<dbus::MockExportedObject> exported_object,
@@ -265,22 +241,6 @@ class NewblueDaemonTest : public ::testing::Test {
         .WillOnce(DoAll(SaveArg<2>(GetMethodHandler(
                             method_handlers, bluetooth_device::kExecuteWrite)),
                         Return(true)));
-  }
-
-  // Expects that the methods on org.chromium.BluetoothDevice interface are
-  // unexported.
-  void ExpectDevicePluginMethodsUnExported(
-      scoped_refptr<dbus::MockExportedObject> exported_object) {
-    EXPECT_CALL(*exported_object,
-                UnexportMethodAndBlock(
-                    bluetooth_plugin_device::kBluetoothPluginInterface,
-                    bluetooth_plugin_device::kGetConnInfo))
-        .WillOnce(Return(true));
-    EXPECT_CALL(*exported_object,
-                UnexportMethodAndBlock(
-                    bluetooth_plugin_device::kBluetoothPluginInterface,
-                    bluetooth_plugin_device::kSetLEConnectionParameters))
-        .WillOnce(Return(true));
   }
 
   // Expects that the methods on org.bluez.Device1 interface are unexported.
@@ -372,7 +332,6 @@ class NewblueDaemonTest : public ::testing::Test {
                                   MethodHandlerMap method_handlers) {
     scoped_refptr<dbus::MockExportedObject> exported_dev_object =
         AddOrGetMockExportedObject(device_object_path);
-    ExpectDevicePluginMethodsExported(exported_dev_object, method_handlers);
     ExpectDeviceMethodsExported(exported_dev_object, method_handlers);
     ExpectPropertiesMethodsExported(exported_dev_object, method_handlers);
     EXPECT_CALL(*bus_, GetExportedObject(device_object_path))
@@ -384,7 +343,6 @@ class NewblueDaemonTest : public ::testing::Test {
       const dbus::ObjectPath& device_object_path) {
     scoped_refptr<dbus::MockExportedObject> exported_dev_object =
         AddOrGetMockExportedObject(device_object_path);
-    ExpectDevicePluginMethodsUnExported(exported_dev_object);
     ExpectDeviceMethodsUnexported(exported_dev_object);
     EXPECT_CALL(*exported_dev_object, Unregister()).Times(1);
   }
