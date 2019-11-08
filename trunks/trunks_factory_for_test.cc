@@ -205,6 +205,17 @@ class TpmUtilityForwarder : public TpmUtility {
                                       delegate, plaintext);
   }
 
+  TPM_RC RawSign(TPM_HANDLE key_handle,
+                 TPM_ALG_ID scheme,
+                 TPM_ALG_ID hash_alg,
+                 const std::string& plaintext,
+                 bool generate_hash,
+                 AuthorizationDelegate* delegate,
+                 TPMT_SIGNATURE* auth) override {
+    return target_->RawSign(key_handle, scheme, hash_alg, plaintext,
+                            generate_hash, delegate, auth);
+  }
+
   TPM_RC Sign(TPM_HANDLE key_handle,
               TPM_ALG_ID scheme,
               TPM_ALG_ID hash_alg,

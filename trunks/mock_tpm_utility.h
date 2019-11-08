@@ -52,6 +52,14 @@ class MockTpmUtility : public TpmUtility {
                       const std::string&,
                       AuthorizationDelegate*,
                       std::string*));
+  MOCK_METHOD7(RawSign,
+               TPM_RC(TPM_HANDLE,
+                      TPM_ALG_ID,
+                      TPM_ALG_ID,
+                      const std::string&,
+                      bool,
+                      AuthorizationDelegate*,
+                      TPMT_SIGNATURE*));
   MOCK_METHOD7(Sign,
                TPM_RC(TPM_HANDLE,
                       TPM_ALG_ID,

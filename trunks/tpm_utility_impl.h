@@ -65,6 +65,13 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                            const std::string& ciphertext,
                            AuthorizationDelegate* delegate,
                            std::string* plaintext) override;
+  TPM_RC RawSign(TPM_HANDLE key_handle,
+                 TPM_ALG_ID scheme,
+                 TPM_ALG_ID hash_alg,
+                 const std::string& plaintext,
+                 bool generate_hash,
+                 AuthorizationDelegate* delegate,
+                 TPMT_SIGNATURE* auth) override;
   TPM_RC Sign(TPM_HANDLE key_handle,
               TPM_ALG_ID scheme,
               TPM_ALG_ID hash_alg,

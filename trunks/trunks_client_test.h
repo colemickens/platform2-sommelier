@@ -99,6 +99,10 @@ class TrunksClientTest {
   // Tests the creation of an identity key.
   bool IdentityKeyTest();
 
+  // This test verifies that we can seal a secret to the TPM and access
+  // it later through PolicyFidoSigned.
+  bool PolicyFidoSignedTest(TPM_ALG_ID signing_algo);
+
  private:
   // This method verifies that plaintext == decrypt(encrypt(plaintext)) using
   // a given key.

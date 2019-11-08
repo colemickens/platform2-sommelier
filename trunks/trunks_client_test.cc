@@ -1308,4 +1308,293 @@ bool TrunksClientTest::GetRSAPublicKeyFromHandle(
   return true;
 }
 
+bool TrunksClientTest::PolicyFidoSignedTest(TPM_ALG_ID signing_algo) {
+  std::unique_ptr<TpmUtility> utility = factory_.GetTpmUtility();
+  std::unique_ptr<HmacSession> session = factory_.GetHmacSession();
+
+  TPM_RC result;
+
+  // 1. Prepare a key to sign.
+  // 1-a) Create a key pair
+  if (utility->StartSession(session.get()) != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session.";
+    return false;
+  }
+
+  std::string key_blob;
+
+  switch (signing_algo) {
+    case TPM_ALG_RSASSA:
+    case TPM_ALG_RSAPSS:
+      result = utility->CreateRSAKeyPair(
+          TpmUtility::AsymmetricKeyUsage::kSignKey, 2048, 0x10001, "", "",
+          false, std::vector<uint32_t>(), session->GetDelegate(), &key_blob,
+          nullptr);
+      break;
+
+    case TPM_ALG_ECDSA:
+    case TPM_ALG_ECDAA:
+    case TPM_ALG_SM2:
+    case TPM_ALG_ECSCHNORR:
+      result = utility->CreateECCKeyPair(
+          TpmUtility::AsymmetricKeyUsage::kSignKey, TPM_ECC_NIST_P256, "", "",
+          false, std::vector<uint32_t>(), session->GetDelegate(), &key_blob,
+          nullptr);
+      break;
+
+    default:
+      result = TPM_RC_SCHEME;
+      LOG(ERROR) << "Unknown hash algorithm: " << GetErrorString(result);
+      return result;
+  }
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error creating signing key: " << GetErrorString(result);
+    return false;
+  }
+
+  // 1-b) Load the key
+  TPM_HANDLE signing_key_handle;
+  result =
+      utility->LoadKey(key_blob, session->GetDelegate(), &signing_key_handle);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error loading signing key: " << GetErrorString(result);
+    return false;
+  }
+
+  // 2. PolicyFidoSigned in trial session
+  // 2-a) Start Auth session
+  std::unique_ptr<PolicySession> trial_session = factory_.GetTrialSession();
+
+  result = trial_session->StartUnboundSession(true, true);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
+    return false;
+  }
+
+  // 2-b) Sign the authenticatorData and session nonce
+  const std::string auth_data_fixed =
+      crypto::SHA256HashString("chromeos:login:nobody");
+  const std::string auth_data =
+      std::string("ghijklmn", 8) + auth_data_fixed + std::string("opqrstuv", 8);
+
+  const std::vector<trunks::FIDO_DATA_RANGE> auth_data_descr = {
+      {.offset = 0x0008, .size = 0x0010}, {.offset = 0x0018, .size = 0x0010}};
+
+  std::string nonce;
+  trial_session->GetDelegate()->GetTpmNonce(&nonce);
+
+  TPM_ALG_ID hash_algo = TPM_ALG_SHA256;
+
+  TPMT_SIGNATURE auth;
+  result = utility->RawSign(signing_key_handle, signing_algo, hash_algo,
+                            auth_data + nonce,
+                            true,  // generate_hash
+                            session->GetDelegate(), &auth);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error using key to sign: " << GetErrorString(result);
+    return false;
+  }
+
+  // 2-c) Policy Fido Signed (with loaded pub key from 1-b)
+  std::string signing_key_name;
+
+  result = utility->GetKeyName(signing_key_handle, &signing_key_name);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error in getting key name: " << GetErrorString(result);
+    return false;
+  }
+
+  result = trial_session->PolicyFidoSigned(signing_key_handle, signing_key_name,
+                                           auth_data, auth_data_descr, auth,
+                                           nullptr);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error with PolicyFidoSigned in trial session: "
+               << GetErrorString(result);
+    return false;
+  }
+
+  // 2-d) Get Policy digest
+  std::string policy_digest;
+  result = trial_session->GetDigest(&policy_digest);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
+    return false;
+  }
+
+  // Now that we have the digest, we can close the trial session and use hmac.
+  trial_session.reset();
+
+  // 3. Seal an secret object.
+  const std::string data_to_seal("sealed_data_for_PolicyFidoSigned");
+  std::string sealed_data;
+
+  result = utility->SealData(data_to_seal, policy_digest, "",
+                             session->GetDelegate(), &sealed_data);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error creating Sealed Object: " << GetErrorString(result);
+    return false;
+  }
+
+  // 4. Test failing cases
+  // 4-1. Start Auth Session ((TPM_SE_POLICY = 0x01))
+  std::unique_ptr<PolicySession> policy_session = factory_.GetPolicySession();
+
+  result = policy_session->StartUnboundSession(true, false);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
+    return false;
+  }
+
+  const std::string auth_data2 =
+      std::string("XXXXXXXX", 8) + auth_data_fixed + std::string("ZZZZZZZZ", 8);
+
+  // 4-2. Check PolicyFidoSigned fail with the wrong data auth
+  result = policy_session->PolicyFidoSigned(
+      signing_key_handle, signing_key_name, auth_data2, auth_data_descr,
+      TPMT_SIGNATURE(), session->GetDelegate());
+  if (result == TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Unexpected success with PolicyFidoSigned "
+               << "with the empty auth: " << GetErrorString(result);
+    return false;
+  }
+
+  // 4-3. Check PolicyFidoSigned fail with the wrong auth data
+  // 4-3-1. Sign the command parameters
+  policy_session->GetDelegate()->GetTpmNonce(&nonce);
+  result = utility->RawSign(signing_key_handle, signing_algo, hash_algo,
+                            std::string(64, '0') + nonce,  // <- wrong authData
+                            true,                          // generate_hash
+                            session->GetDelegate(), &auth);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error using key to sign: " << GetErrorString(result);
+    return false;
+  }
+
+  // 4-3-2. Call PolicyFidoSigned with the wrong authData
+  result = policy_session->PolicyFidoSigned(
+      signing_key_handle, signing_key_name,
+      std::string(64, '0'),  // <- wrong authData
+      auth_data_descr, auth, session->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error with PolicyFidoSigned in policy session: "
+               << GetErrorString(result);
+    return false;
+  }
+
+  // 4-3-3. check UnsealData fail
+  std::string unsealed_data;
+  result = utility->UnsealData(sealed_data, policy_session->GetDelegate(),
+                               &unsealed_data);
+  if (result == TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Unexpected success in unsealing object: "
+               << GetErrorString(result);
+    return false;
+  }
+
+  // 4-4. Check PolicyFidoSigned fail with the wrong auth_data_descr.
+  policy_session->GetDelegate()->GetTpmNonce(&nonce);
+  result = utility->RawSign(signing_key_handle, signing_algo, hash_algo,
+                            auth_data2 + nonce,
+                            true,  // generate_hash
+                            session->GetDelegate(), &auth);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error using key to sign: " << GetErrorString(result);
+    return false;
+  }
+
+  const std::vector<trunks::FIDO_DATA_RANGE> auth_data_descr2 = {
+      {.offset = 0x0008, .size = 0x0010},
+      {.offset = 0x0018, .size = 0x00f0}};  // <-- out of range
+
+  result = policy_session->PolicyFidoSigned(
+      signing_key_handle, signing_key_name, auth_data2, auth_data_descr2, auth,
+      session->GetDelegate());
+  if (result == TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Unexpected success with PolicyFidoSigned in policy session: "
+               << GetErrorString(result);
+    return false;
+  }
+
+  // 4-5. Check PolicyFidoSigned fail with a different auth_data_descr
+  const std::vector<trunks::FIDO_DATA_RANGE> auth_data_descr3 = {
+      {.offset = 0x0008, .size = 0x0020}};
+
+  policy_session->GetDelegate()->GetTpmNonce(&nonce);
+  result = utility->RawSign(signing_key_handle, signing_algo, hash_algo,
+                            auth_data + nonce,
+                            true,  // generate_hash
+                            session->GetDelegate(), &auth);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error using key to sign: " << GetErrorString(result);
+    return false;
+  }
+
+  result = policy_session->PolicyFidoSigned(
+      signing_key_handle, signing_key_name, auth_data, auth_data_descr3, auth,
+      session->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error with PolicyFidoSigned in policy session: "
+               << GetErrorString(result);
+    return false;
+  }
+
+  result = utility->UnsealData(sealed_data, policy_session->GetDelegate(),
+                               &unsealed_data);
+  if (result == TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Unexpected success in unsealing object: "
+               << GetErrorString(result);
+    return false;
+  }
+
+  policy_session.reset();
+
+  // 5. Test success cases
+  // 5-1. Check PolicyFidoSigned success
+  policy_session = factory_.GetPolicySession();
+
+  result = policy_session->StartUnboundSession(true, false);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
+    return false;
+  }
+
+  // 5-1-1. Sign the command
+  policy_session->GetDelegate()->GetTpmNonce(&nonce);
+  result = utility->RawSign(signing_key_handle, signing_algo, hash_algo,
+                            auth_data2 + nonce,
+                            true,  // generate_hash
+                            session->GetDelegate(), &auth);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error using key to sign: " << GetErrorString(result);
+    return false;
+  }
+
+  // 5-1-2. PolicyFidoSigned
+  result = policy_session->PolicyFidoSigned(
+      signing_key_handle, signing_key_name, auth_data2, auth_data_descr, auth,
+      session->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error with PolicyFidoSigned in policy session: "
+               << GetErrorString(result);
+    return false;
+  }
+
+  // 5-1-3. Unseal
+  std::string unsealed_data2;
+  result = utility->UnsealData(sealed_data, policy_session->GetDelegate(),
+                               &unsealed_data2);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error unsealing object: " << GetErrorString(result);
+    return false;
+  }
+  if (data_to_seal != unsealed_data2) {
+    LOG(ERROR) << "Error unsealed data from TPM does not match original data.";
+    return false;
+  }
+
+  policy_session.reset();
+
+  return true;
+}
+
 }  // namespace trunks

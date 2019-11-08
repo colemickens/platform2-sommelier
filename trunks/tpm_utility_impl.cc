@@ -612,13 +612,13 @@ TPM_RC TpmUtilityImpl::AsymmetricDecrypt(TPM_HANDLE key_handle,
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
-                            TPM_ALG_ID scheme,
-                            TPM_ALG_ID hash_alg,
-                            const std::string& plaintext,
-                            bool generate_hash,
-                            AuthorizationDelegate* delegate,
-                            std::string* signature) {
+TPM_RC TpmUtilityImpl::RawSign(TPM_HANDLE key_handle,
+                               TPM_ALG_ID scheme,
+                               TPM_ALG_ID hash_alg,
+                               const std::string& plaintext,
+                               bool generate_hash,
+                               AuthorizationDelegate* delegate,
+                               TPMT_SIGNATURE* auth) {
   TPM_RC result;
   if (delegate == nullptr) {
     result = SAPI_RC_INVALID_SESSIONS;
@@ -660,32 +660,15 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
     hash_alg = TPM_ALG_SHA256;
   }
 
-  // Simply check key type and scheme and select the unpack helper for parsing
-  // the output from TPM.
+  // Check key type and scheme.
   std::function<std::string(const TPMT_SIGNATURE&)> unpack_helper;
   if (public_area.type == TPM_ALG_RSA) {
-    if (scheme == TPM_ALG_RSAPSS) {
-      unpack_helper = [](const TPMT_SIGNATURE& signature_out) {
-        return StringFrom_TPM2B_PUBLIC_KEY_RSA(
-            signature_out.signature.rsapss.sig);
-      };
-    } else if (scheme == TPM_ALG_RSASSA) {
-      unpack_helper = [](const TPMT_SIGNATURE& signature_out) {
-        return StringFrom_TPM2B_PUBLIC_KEY_RSA(
-            signature_out.signature.rsassa.sig);
-      };
-    } else {
+    if (scheme != TPM_ALG_RSAPSS && scheme != TPM_ALG_RSASSA) {
       LOG(ERROR) << __func__ << ": Invalid signing scheme used for RSA key.";
       return SAPI_RC_BAD_PARAMETER;
     }
   } else if (public_area.type == TPM_ALG_ECC) {
-    if (scheme == TPM_ALG_ECDSA) {
-      unpack_helper = [](const TPMT_SIGNATURE& signature_out) {
-        std::string output;
-        Serialize_TPMT_SIGNATURE(signature_out, &output);
-        return output;
-      };
-    } else {
+    if (scheme != TPM_ALG_ECDSA) {
       LOG(ERROR) << __func__ << ": Invalid signing scheme used for ECC key.";
       return SAPI_RC_BAD_PARAMETER;
     }
@@ -716,21 +699,61 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
   }
 
   TPM2B_DIGEST tpm_digest = Make_TPM2B_DIGEST(digest);
-  TPMT_SIGNATURE signature_out;
   TPMT_TK_HASHCHECK validation;
   validation.tag = TPM_ST_HASHCHECK;
   validation.hierarchy = TPM_RH_NULL;
   validation.digest.size = 0;
-  result =
-      factory_.GetTpm()->SignSync(key_handle, key_name, tpm_digest, in_scheme,
-                                  validation, &signature_out, delegate);
+  result = factory_.GetTpm()->SignSync(key_handle, key_name, tpm_digest,
+                                       in_scheme, validation, auth, delegate);
   if (result) {
     LOG(ERROR) << __func__
                << ": Error signing digest: " << GetErrorString(result);
     return result;
   }
 
-  *signature = unpack_helper(signature_out);
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
+                            TPM_ALG_ID scheme,
+                            TPM_ALG_ID hash_alg,
+                            const std::string& plaintext,
+                            bool generate_hash,
+                            AuthorizationDelegate* delegate,
+                            std::string* signature) {
+  TPM_RC result;
+  TPMT_SIGNATURE signature_out;
+
+  // Default scheme is TPM_ALG_RSASSA
+  if (scheme == TPM_ALG_NULL)
+    scheme = TPM_ALG_RSASSA;
+
+  result = RawSign(key_handle, scheme, hash_alg, plaintext, generate_hash,
+    delegate, &signature_out);
+  if (result) {
+    LOG(ERROR) << __func__
+               << ": Error from RawSign(): " << GetErrorString(result);
+    return result;
+  }
+
+  // Simply check scheme and parse the output from TPM.
+  switch (scheme) {
+    case TPM_ALG_RSAPSS:
+      *signature =
+          StringFrom_TPM2B_PUBLIC_KEY_RSA(signature_out.signature.rsapss.sig);
+      break;
+    case TPM_ALG_RSASSA:
+      *signature =
+          StringFrom_TPM2B_PUBLIC_KEY_RSA(signature_out.signature.rsassa.sig);
+      break;
+    case TPM_ALG_ECDSA:
+      Serialize_TPMT_SIGNATURE(signature_out, signature);
+      break;
+    default:
+      LOG(ERROR) << __func__ << ": Invalid signing scheme used for the key.";
+      return SAPI_RC_BAD_PARAMETER;
+  }
+
   return TPM_RC_SUCCESS;
 }
 

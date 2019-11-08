@@ -153,8 +153,6 @@ class TRUNKS_EXPORT TpmUtility {
   // |hash_alg| is the algorithm used in the signing operation. It is by default
   // TPM_ALG_SHA256. |delegate| is an AuthorizationDelegate used to authorize
   // this command.
-  // TODO(menghuan): return TPMT_SIGNATURE instead of string* signature
-  //    ex. just like GetKeyPublicArea()
   virtual TPM_RC Sign(TPM_HANDLE key_handle,
                       TPM_ALG_ID scheme,
                       TPM_ALG_ID hash_alg,
@@ -162,6 +160,15 @@ class TRUNKS_EXPORT TpmUtility {
                       bool generate_hash,
                       AuthorizationDelegate* delegate,
                       std::string* signature) = 0;
+  // This method is identical to Sign() above except it returns the result
+  // in TPMT_SIGNATURE type, not in string type.
+  virtual TPM_RC RawSign(TPM_HANDLE key_handle,
+                         TPM_ALG_ID scheme,
+                         TPM_ALG_ID hash_alg,
+                         const std::string& plaintext,
+                         bool generate_hash,
+                         AuthorizationDelegate* delegate,
+                         TPMT_SIGNATURE* auth) = 0;
 
   // Dead code removed at CL:1366670 (https://crrev.com/c/1366670)
   // It's because we doesn't use Verify() in the reality.

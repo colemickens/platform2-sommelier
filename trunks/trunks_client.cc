@@ -69,6 +69,7 @@ void PrintUsage() {
   puts("  --sess_* - group of options providing parameters for auth session:");
   puts("      --sess_salted");
   puts("      --sess_encrypted");
+  puts("  --ext_command_test - Runs regression tests on extended commands.");
 }
 
 std::string HexEncode(const std::string& bytes) {
@@ -451,6 +452,20 @@ int main(int argc, char** argv) {
           return -1;
         }
       }
+    }
+    LOG(INFO) << "All tests were run successfully.";
+    return 0;
+  }
+  if (cl->HasSwitch("ext_command_test")) {
+    trunks::TrunksClientTest test(factory);
+    LOG(INFO) << "Running PolicyFidoSigned test.";
+    if (!test.PolicyFidoSignedTest(trunks::TPM_ALG_RSASSA)) {
+      LOG(ERROR) << "Error running PolicyFidoSigned with RSASSA scheme.";
+      return -1;
+    }
+    if (!test.PolicyFidoSignedTest(trunks::TPM_ALG_ECDSA)) {
+      LOG(ERROR) << "Error running PolicyFidoSigned with ECDSA scheme.";
+      return -1;
     }
     LOG(INFO) << "All tests were run successfully.";
     return 0;
