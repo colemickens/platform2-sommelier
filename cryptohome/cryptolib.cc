@@ -115,9 +115,11 @@ const unsigned int kDefaultPasswordRounds = 1337;
 const unsigned int  kAesBlockSize = 16;
 
 // The size of the AES-GCM IV (96-bits).
-constexpr unsigned int kAesGcmIVSize = 96 / sizeof(uint8_t);
+constexpr unsigned int kAesGcmIVSize = 96 / (sizeof(uint8_t) * CHAR_BIT);
+
 // The size of an AES-GCM key in cryptohome code (256-bits).
-constexpr unsigned int kAesGcm256KeySize = 256 / sizeof(uint8_t);
+constexpr unsigned int kAesGcm256KeySize = 256 / (sizeof(uint8_t) * CHAR_BIT);
+
 // The size of the AES-GCM tag.
 constexpr unsigned int kAesGcmTagSize = 16;
 
