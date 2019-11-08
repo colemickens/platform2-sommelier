@@ -8,7 +8,7 @@ namespace arc_networkd {
 
 namespace {
 
-constexpr const uint8_t guest_if_mac[] = "\xd2\x47\xf7\xc5\x9e\x53";
+constexpr MacAddress guest_if_mac({0xd2, 0x47, 0xf7, 0xc5, 0x9e, 0x53});
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Turn off logging.
@@ -16,7 +16,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   uint8_t* out_buffer_extended = new uint8_t[size + 4];
   uint8_t* out_buffer = NDProxy::AlignFrameBuffer(out_buffer_extended);
-  NDProxy::TranslateNDFrame(data, size, guest_if_mac, out_buffer);
+  NDProxy ndproxy;
+  ndproxy.Init();
+  ndproxy.TranslateNDFrame(data, size, guest_if_mac, out_buffer);
   delete[] out_buffer_extended;
 
   return 0;

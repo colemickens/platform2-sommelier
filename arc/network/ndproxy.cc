@@ -65,10 +65,39 @@ const sock_fprog kNDFrameBpfProgram = {
 
 }  // namespace
 
-const ssize_t NDProxy::kTranslateErrorNotICMPv6Frame = -1;
-const ssize_t NDProxy::kTranslateErrorNotNDFrame = -2;
-const ssize_t NDProxy::kTranslateErrorInsufficientLength = -3;
-const ssize_t NDProxy::kTranslateErrorBufferMisaligned = -4;
+constexpr ssize_t NDProxy::kTranslateErrorNotICMPv6Frame;
+constexpr ssize_t NDProxy::kTranslateErrorNotNDFrame;
+constexpr ssize_t NDProxy::kTranslateErrorInsufficientLength;
+constexpr ssize_t NDProxy::kTranslateErrorBufferMisaligned;
+
+NDProxy::NDProxy()
+    : in_frame_buffer_(AlignFrameBuffer(in_frame_buffer_extended_)),
+      out_frame_buffer_(AlignFrameBuffer(out_frame_buffer_extended_)) {}
+
+bool NDProxy::Init() {
+  rtnl_fd_ = base::ScopedFD(
+      socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_ROUTE));
+  if (!rtnl_fd_.is_valid()) {
+    PLOG(ERROR) << "socket() failed for rtnetlink socket";
+    return false;
+  }
+  sockaddr_nl local = {
+      .nl_family = AF_NETLINK,
+      .nl_groups = 0,
+  };
+  if (bind(rtnl_fd_.get(), reinterpret_cast<sockaddr*>(&local), sizeof(local)) <
+      0) {
+    PLOG(ERROR) << "bind() failed on rtnetlink socket";
+    return false;
+  }
+
+  dummy_fd_ = base::ScopedFD(socket(AF_INET6, SOCK_DGRAM, 0));
+  if (!dummy_fd_.is_valid()) {
+    PLOG(ERROR) << "socket() failed for dummy socket";
+    return false;
+  }
+  return true;
+}
 
 // RFC 1071 and RFC 8200 Section 8.1
 // We are doing calculation directly in network order. Note this algorithm works
@@ -107,7 +136,7 @@ void NDProxy::ReplaceMacInIcmpOption(uint8_t* frame,
                                      ssize_t frame_len,
                                      size_t nd_hdr_len,
                                      uint8_t opt_type,
-                                     const uint8_t* target_mac) {
+                                     const MacAddress& target_mac) {
   nd_opt_hdr* opt;
   nd_opt_hdr* end = reinterpret_cast<nd_opt_hdr*>(&frame[frame_len]);
   for (opt = reinterpret_cast<nd_opt_hdr*>(frame + ETHER_HDR_LEN +
@@ -118,7 +147,7 @@ void NDProxy::ReplaceMacInIcmpOption(uint8_t* frame,
     if (opt->nd_opt_type == opt_type) {
       uint8_t* mac_in_opt =
           reinterpret_cast<uint8_t*>(opt) + sizeof(nd_opt_hdr);
-      memcpy(mac_in_opt, target_mac, ETHER_ADDR_LEN);
+      memcpy(mac_in_opt, target_mac.data(), ETHER_ADDR_LEN);
     }
   }
 }
@@ -136,7 +165,7 @@ void NDProxy::ReplaceMacInIcmpOption(uint8_t* frame,
 //            needs special alignment so that IP header is 4-bytes aligned.
 ssize_t NDProxy::TranslateNDFrame(const uint8_t* in_frame,
                                   ssize_t frame_len,
-                                  const uint8_t* local_mac_addr,
+                                  const MacAddress& local_mac_addr,
                                   uint8_t* out_frame) {
   if ((reinterpret_cast<uintptr_t>(in_frame + ETHER_HDR_LEN) & 0x3) != 0 ||
       (reinterpret_cast<uintptr_t>(out_frame + ETHER_HDR_LEN) & 0x3) != 0) {
@@ -160,7 +189,10 @@ ssize_t NDProxy::TranslateNDFrame(const uint8_t* in_frame,
   // If destination MAC is unicast (Individual/Group bit in MAC address == 0),
   // it needs to be modified so guest OS L3 stack can see it.
   if (!(eth->h_dest[0] & 0x1)) {
-    if (!QueryNeighborTable(&ip6->ip6_dst, eth->h_dest)) {
+    MacAddress neighbor_mac;
+    if (GetNeighborMac(ip6->ip6_dst, &neighbor_mac)) {
+      memcpy(eth->h_dest, neighbor_mac.data(), ETHER_ADDR_LEN);
+    } else {
       // If we can't resolve the destination IP into MAC from kernel neighbor
       // table, fill destination MAC with broadcast MAC instead.
       memcpy(eth->h_dest, kBroadcastMacAddress, ETHER_ADDR_LEN);
@@ -205,27 +237,131 @@ ssize_t NDProxy::TranslateNDFrame(const uint8_t* in_frame,
   icmp6->icmp6_cksum = 0;
   icmp6->icmp6_cksum = Icmpv6Checksum(ip6, icmp6);
 
-  memcpy(eth->h_source, local_mac_addr, ETHER_ADDR_LEN);
+  memcpy(eth->h_source, local_mac_addr.data(), ETHER_ADDR_LEN);
   return frame_len;
 }
 
-bool NDProxy::QueryNeighborTable(const in6_addr* ipv6_addr, uint8_t* mac_addr) {
-  base::ScopedFD rtnl_fd = base::ScopedFD(
-      socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_ROUTE));
-  if (!rtnl_fd.is_valid()) {
-    PLOG(ERROR) << "socket() failed for rtnetlink socket";
-    return false;
-  }
-  sockaddr_nl local = {
-      .nl_family = AF_NETLINK,
-      .nl_groups = 0,
+void NDProxy::ReadAndProcessOneFrame(int fd) {
+  sockaddr_ll dst_addr;
+  struct iovec iov = {
+      .iov_base = in_frame_buffer_,
+      .iov_len = IP_MAXPACKET,
   };
-  if (bind(rtnl_fd.get(), reinterpret_cast<sockaddr*>(&local), sizeof(local)) <
-      0) {
-    PLOG(ERROR) << "bind() failed on rtnetlink socket";
-    return false;
+  msghdr hdr = {
+      .msg_name = &dst_addr,
+      .msg_namelen = sizeof(dst_addr),
+      .msg_iov = &iov,
+      .msg_iovlen = 1,
+      .msg_control = nullptr,
+      .msg_controllen = 0,
+      .msg_flags = 0,
+  };
+
+  ssize_t len;
+  if ((len = recvmsg(fd, &hdr, 0)) < 0) {
+    PLOG(ERROR) << "recvmsg() failed";
+    return;
+  }
+  ip6_hdr* ip6 = reinterpret_cast<ip6_hdr*>(in_frame_buffer_ + ETH_HLEN);
+  icmp6_hdr* icmp6 = reinterpret_cast<icmp6_hdr*>(
+      in_frame_buffer_ + ETHER_HDR_LEN + sizeof(ip6_hdr));
+
+  if (ip6->ip6_nxt != IPPROTO_ICMPV6 || icmp6->icmp6_type < ND_ROUTER_SOLICIT ||
+      icmp6->icmp6_type > ND_NEIGHBOR_ADVERT)
+    return;
+
+  // Notify DeviceManager on receiving guest NA with unicast IPv6 address so
+  // a /128 route to the guest can be added on the host
+  if ((ip6->ip6_src.s6_addr[0] & 0xe0) == 0x20  // Global Unicast
+      && icmp6->icmp6_type == ND_NEIGHBOR_ADVERT &&
+      IsGuestInterface(dst_addr.sll_ifindex) &&
+      !guest_discovery_handler_.is_null()) {
+    char ifname[IFNAMSIZ];
+    if_indextoname(dst_addr.sll_ifindex, ifname);
+    char ipv6_addr_str[INET6_ADDRSTRLEN];
+    inet_ntop(AF_INET6, &(ip6->ip6_src.s6_addr), ipv6_addr_str,
+              INET6_ADDRSTRLEN);
+    guest_discovery_handler_.Run(std::string(ifname),
+                                 std::string(ipv6_addr_str));
   }
 
+  auto map_entry = MapForType(icmp6->icmp6_type)->find(dst_addr.sll_ifindex);
+  if (map_entry == MapForType(icmp6->icmp6_type)->end())
+    return;
+  const auto& target_ifs = map_entry->second;
+  for (int target_if : target_ifs) {
+    MacAddress local_mac;
+    if (!GetLocalMac(target_if, &local_mac))
+      continue;
+    int result =
+        TranslateNDFrame(in_frame_buffer_, len, local_mac, out_frame_buffer_);
+    if (result < 0) {
+      switch (result) {
+        case kTranslateErrorNotICMPv6Frame:
+          LOG(DFATAL) << "Attempt to TranslateNDFrame on a non-ICMPv6 frame";
+          return;
+        case kTranslateErrorNotNDFrame:
+          LOG(DFATAL) << "Attempt to TranslateNDFrame on a non-NDP frame, "
+                         "icmpv6 type = "
+                      << static_cast<int>(reinterpret_cast<icmp6_hdr*>(
+                                              in_frame_buffer_ + ETHER_HDR_LEN +
+                                              sizeof(ip6_hdr))
+                                              ->icmp6_type);
+          return;
+        case kTranslateErrorInsufficientLength:
+          LOG(DFATAL) << "TranslateNDFrame failed: frame_len = " << len
+                      << " is too small";
+          return;
+        default:
+          LOG(DFATAL) << "Unknown error in TranslateNDFrame";
+          return;
+      }
+    }
+
+    struct iovec iov_out = {
+        .iov_base = out_frame_buffer_,
+        .iov_len = static_cast<size_t>(len),
+    };
+    sockaddr_ll addr = {
+        .sll_family = AF_PACKET,
+        .sll_protocol = htons(ETH_P_IPV6),
+        .sll_ifindex = target_if,
+        .sll_halen = ETHER_ADDR_LEN,
+    };
+    memcpy(addr.sll_addr, reinterpret_cast<ethhdr*>(out_frame_buffer_)->h_dest,
+           ETHER_ADDR_LEN);
+    msghdr hdr = {
+        .msg_name = &addr,
+        .msg_namelen = sizeof(addr),
+        .msg_iov = &iov_out,
+        .msg_iovlen = 1,
+        .msg_control = nullptr,
+        .msg_controllen = 0,
+    };
+    if (sendmsg(fd, &hdr, 0) < 0) {
+      PLOG(ERROR) << "sendmsg() failed on interface " << target_if;
+    }
+  }
+}
+
+bool NDProxy::GetLocalMac(int if_id, MacAddress* mac_addr) {
+  ifreq ifr = {
+      .ifr_ifindex = if_id,
+  };
+  if (ioctl(dummy_fd_.get(), SIOCGIFNAME, &ifr) < 0) {
+    PLOG(ERROR) << "ioctl() failed to get interface name on interface "
+                << if_id;
+    return false;
+  }
+  if (ioctl(dummy_fd_.get(), SIOCGIFHWADDR, &ifr) < 0) {
+    PLOG(ERROR) << "ioctl() failed to get MAC address on interface " << if_id;
+    return false;
+  }
+  memcpy(mac_addr->data(), ifr.ifr_addr.sa_data, ETHER_ADDR_LEN);
+  return true;
+}
+
+bool NDProxy::GetNeighborMac(const in6_addr& ipv6_addr, MacAddress* mac_addr) {
   sockaddr_nl kernel = {
       .nl_family = AF_NETLINK,
       .nl_groups = 0,
@@ -256,7 +392,7 @@ bool NDProxy::QueryNeighborTable(const in6_addr* ipv6_addr, uint8_t* mac_addr) {
       .msg_iov = &io_req,
       .msg_iovlen = 1,
   };
-  if (sendmsg(rtnl_fd.get(), &rtnl_req, 0) < 0) {
+  if (sendmsg(rtnl_fd_.get(), &rtnl_req, 0) < 0) {
     PLOG(ERROR) << "sendmsg() failed on rtnetlink socket";
     return false;
   }
@@ -278,7 +414,7 @@ bool NDProxy::QueryNeighborTable(const in6_addr* ipv6_addr, uint8_t* mac_addr) {
   bool done = false;
   while (!done) {
     ssize_t len;
-    if ((len = recvmsg(rtnl_fd.get(), &rtnl_reply, 0)) < 0) {
+    if ((len = recvmsg(rtnl_fd_.get(), &rtnl_reply, 0)) < 0) {
       PLOG(ERROR) << "recvmsg() failed on rtnetlink socket";
       return false;
     }
@@ -299,7 +435,7 @@ bool NDProxy::QueryNeighborTable(const in6_addr* ipv6_addr, uint8_t* mac_addr) {
           for (; RTA_OK(rt_attr, rt_attr_len);
                rt_attr = RTA_NEXT(rt_attr, rt_attr_len)) {
             if (rt_attr->rta_type == NDA_DST &&
-                memcmp(ipv6_addr, RTA_DATA(rt_attr), sizeof(in6_addr)) == 0) {
+                memcmp(&ipv6_addr, RTA_DATA(rt_attr), sizeof(in6_addr)) == 0) {
               current_entry_status |= 0x1;
             } else if (rt_attr->rta_type == NDA_LLADDR) {
               current_entry_status |= 0x2;
@@ -307,7 +443,7 @@ bool NDProxy::QueryNeighborTable(const in6_addr* ipv6_addr, uint8_t* mac_addr) {
             }
           }
           if (current_entry_status == 0x3) {
-            memcpy(mac_addr, current_mac, ETHER_ADDR_LEN);
+            memcpy(mac_addr->data(), current_mac, ETHER_ADDR_LEN);
             any_entry_matched = true;
           }
           break;
@@ -322,6 +458,26 @@ bool NDProxy::QueryNeighborTable(const in6_addr* ipv6_addr, uint8_t* mac_addr) {
     }
   }
   return any_entry_matched;
+}
+
+void NDProxy::RegisterOnGuestIpDiscoveryHandler(
+    const base::Callback<void(const std::string&, const std::string&)>&
+        handler) {
+  guest_discovery_handler_ = handler;
+}
+
+bool NDProxy::AddRouterInterfacePair(const std::string& ifname_physical,
+                                     const std::string& ifname_guest) {
+  LOG(INFO) << "Adding interface pair between physical: " << ifname_physical
+            << ", guest: " << ifname_guest;
+  return AddInterfacePairInternal(ifname_physical, ifname_guest, true);
+}
+
+bool NDProxy::AddPeeringInterfacePair(const std::string& ifname1,
+                                      const std::string& ifname2) {
+  LOG(INFO) << "Adding peering interface pair between " << ifname1 << " and "
+            << ifname2;
+  return AddInterfacePairInternal(ifname1, ifname2, false);
 }
 
 NDProxy::interface_mapping* NDProxy::MapForType(uint8_t type) {
@@ -339,208 +495,6 @@ NDProxy::interface_mapping* NDProxy::MapForType(uint8_t type) {
                   << static_cast<int>(type);
       return nullptr;
   }
-}
-
-void NDProxy::ProxyNDFrame(int target_if, ssize_t frame_len) {
-  ifreq ifr = {
-      .ifr_ifindex = target_if,
-  };
-  if (ioctl(fd_.get(), SIOCGIFNAME, &ifr) < 0) {
-    PLOG(ERROR) << "ioctl() failed to get interface name on interface "
-                << target_if;
-    return;
-  }
-  if (ioctl(fd_.get(), SIOCGIFHWADDR, &ifr) < 0) {
-    PLOG(ERROR) << "ioctl() failed to get MAC address on interface "
-                << target_if;
-    return;
-  }
-
-  int result =
-      TranslateNDFrame(in_frame_buffer_, frame_len,
-                       reinterpret_cast<const uint8_t*>(ifr.ifr_addr.sa_data),
-                       out_frame_buffer_);
-  if (result < 0) {
-    switch (result) {
-      case kTranslateErrorNotICMPv6Frame:
-        LOG(DFATAL) << "Attempt to TranslateNDFrame on a non-ICMPv6 frame";
-        return;
-      case kTranslateErrorNotNDFrame:
-        LOG(DFATAL)
-            << "Attempt to TranslateNDFrame on a non-NDP frame, icmpv6 type = "
-            << static_cast<int>(reinterpret_cast<icmp6_hdr*>(in_frame_buffer_ +
-                                                             ETHER_HDR_LEN +
-                                                             sizeof(ip6_hdr))
-                                    ->icmp6_type);
-        return;
-      case kTranslateErrorInsufficientLength:
-        LOG(DFATAL) << "TranslateNDFrame failed: frame_len = " << frame_len
-                    << " is too small";
-        return;
-      default:
-        LOG(DFATAL) << "Unknown error in TranslateNDFrame";
-        return;
-    }
-  }
-
-  struct iovec iov = {
-      .iov_base = out_frame_buffer_,
-      .iov_len = static_cast<size_t>(frame_len),
-  };
-  sockaddr_ll addr = {
-      .sll_family = AF_PACKET,
-      .sll_protocol = htons(ETH_P_IPV6),
-      .sll_ifindex = target_if,
-      .sll_halen = ETHER_ADDR_LEN,
-  };
-  memcpy(addr.sll_addr, reinterpret_cast<ethhdr*>(out_frame_buffer_)->h_dest,
-         ETHER_ADDR_LEN);
-  msghdr hdr = {
-      .msg_name = &addr,
-      .msg_namelen = sizeof(addr),
-      .msg_iov = &iov,
-      .msg_iovlen = 1,
-      .msg_control = nullptr,
-      .msg_controllen = 0,
-  };
-
-  if (sendmsg(fd_.get(), &hdr, 0) < 0) {
-    PLOG(ERROR) << "sendmsg() failed on interface " << target_if;
-  }
-}
-
-NDProxy::NDProxy()
-    : in_frame_buffer_(AlignFrameBuffer(in_frame_buffer_extended_)),
-      out_frame_buffer_(AlignFrameBuffer(out_frame_buffer_extended_)) {}
-
-NDProxy::NDProxy(base::ScopedFD control_fd)
-    : in_frame_buffer_(AlignFrameBuffer(in_frame_buffer_extended_)),
-      out_frame_buffer_(AlignFrameBuffer(out_frame_buffer_extended_)),
-      msg_dispatcher_(
-          std::make_unique<MessageDispatcher>(std::move(control_fd))) {}
-
-NDProxy::~NDProxy() {}
-
-int NDProxy::OnInit() {
-  // Prevent the main process from sending us any signals.
-  if (setsid() < 0) {
-    PLOG(ERROR) << "Failed to created a new session with setsid: exiting";
-    return EX_OSERR;
-  }
-
-  EnterChildProcessJail();
-
-  // Register control fd callbacks
-  if (msg_dispatcher_) {
-    msg_dispatcher_->RegisterFailureHandler(
-        base::Bind(&NDProxy::OnParentProcessExit, weak_factory_.GetWeakPtr()));
-    msg_dispatcher_->RegisterDeviceMessageHandler(
-        base::Bind(&NDProxy::OnDeviceMessage, weak_factory_.GetWeakPtr()));
-  }
-
-  // Initialize data fd
-  fd_ = base::ScopedFD(socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IPV6)));
-  if (!fd_.is_valid()) {
-    PLOG(ERROR) << "socket() failed";
-    return EX_OSERR;
-  }
-  if (setsockopt(fd_.get(), SOL_SOCKET, SO_ATTACH_FILTER, &kNDFrameBpfProgram,
-                 sizeof(kNDFrameBpfProgram))) {
-    PLOG(ERROR) << "setsockopt(SO_ATTACH_FILTER) failed";
-    return EX_OSERR;
-  }
-
-  // Start watching on data fd
-  watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      fd_.get(),
-      base::Bind(&NDProxy::OnDataSocketReadReady, weak_factory_.GetWeakPtr()));
-  LOG(INFO) << "Started watching on packet fd...";
-
-  return Daemon::OnInit();
-}
-
-void NDProxy::OnDataSocketReadReady() {
-  sockaddr_ll dst_addr;
-  struct iovec iov = {
-      .iov_base = in_frame_buffer_,
-      .iov_len = IP_MAXPACKET,
-  };
-  msghdr hdr = {
-      .msg_name = &dst_addr,
-      .msg_namelen = sizeof(dst_addr),
-      .msg_iov = &iov,
-      .msg_iovlen = 1,
-      .msg_control = nullptr,
-      .msg_controllen = 0,
-      .msg_flags = 0,
-  };
-
-  ssize_t len;
-  if ((len = recvmsg(fd_.get(), &hdr, 0)) < 0) {
-    PLOG(ERROR) << "recvmsg() failed";
-    return;
-  }
-  ip6_hdr* ip6 = reinterpret_cast<ip6_hdr*>(in_frame_buffer_ + ETH_HLEN);
-  icmp6_hdr* icmp6 = reinterpret_cast<icmp6_hdr*>(
-      in_frame_buffer_ + ETHER_HDR_LEN + sizeof(ip6_hdr));
-
-  if (ip6->ip6_nxt != IPPROTO_ICMPV6 || icmp6->icmp6_type < ND_ROUTER_SOLICIT ||
-      icmp6->icmp6_type > ND_NEIGHBOR_ADVERT)
-    return;
-  auto map_entry = MapForType(icmp6->icmp6_type)->find(dst_addr.sll_ifindex);
-  if (map_entry != MapForType(icmp6->icmp6_type)->end()) {
-    const auto& target_ifs = map_entry->second;
-    for (int target_if : target_ifs) {
-      ProxyNDFrame(target_if, len);
-    }
-  }
-  // Notify DeviceManager on receiving guest NA with unicast IPv6 address so
-  // a /128 route to the guest can be added on the host
-  if ((ip6->ip6_src.s6_addr[0] & 0xe0) == 0x20  // Global Unicast
-      && icmp6->icmp6_type == ND_NEIGHBOR_ADVERT &&
-      IsGuestInterface(dst_addr.sll_ifindex)) {
-    char ifname[IFNAMSIZ];
-    if_indextoname(dst_addr.sll_ifindex, ifname);
-    char ipv6_addr_str[INET6_ADDRSTRLEN];
-    inet_ntop(AF_INET6, &(ip6->ip6_src.s6_addr), ipv6_addr_str,
-              INET6_ADDRSTRLEN);
-    DeviceMessage msg;
-    msg.set_dev_ifname(ifname);
-    msg.set_guest_ip6addr(ipv6_addr_str);
-    IpHelperMessage ipm;
-    *ipm.mutable_device_message() = msg;
-    msg_dispatcher_->SendMessage(ipm);
-  }
-}
-
-void NDProxy::OnParentProcessExit() {
-  LOG(ERROR) << "Quitting because the parent process died";
-  Quit();
-}
-
-void NDProxy::OnDeviceMessage(const DeviceMessage& msg) {
-  const std::string& dev_ifname = msg.dev_ifname();
-  LOG_IF(DFATAL, dev_ifname.empty())
-      << "Received DeviceMessage w/ empty dev_ifname";
-  if (msg.has_teardown()) {
-    RemoveInterface(dev_ifname);
-  } else if (msg.has_br_ifname()) {
-    AddRouterInterfacePair(dev_ifname, msg.br_ifname());
-  }
-}
-
-bool NDProxy::AddRouterInterfacePair(const std::string& ifname_physical,
-                                     const std::string& ifname_guest) {
-  LOG(INFO) << "Adding interface pair between physical: " << ifname_physical
-            << ", guest: " << ifname_guest;
-  return AddInterfacePairInternal(ifname_physical, ifname_guest, true);
-}
-
-bool NDProxy::AddPeeringInterfacePair(const std::string& ifname1,
-                                      const std::string& ifname2) {
-  LOG(INFO) << "Adding peering interface pair between " << ifname1 << " and "
-            << ifname2;
-  return AddInterfacePairInternal(ifname1, ifname2, false);
 }
 
 bool NDProxy::AddInterfacePairInternal(const std::string& ifname1,
@@ -591,6 +545,92 @@ bool NDProxy::RemoveInterface(const std::string& ifname) {
 
 bool NDProxy::IsGuestInterface(int ifindex) {
   return if_map_rs_.find(ifindex) != if_map_rs_.end();
+}
+
+NDProxyDaemon::NDProxyDaemon(base::ScopedFD control_fd)
+    : msg_dispatcher_(
+          std::make_unique<MessageDispatcher>(std::move(control_fd))) {}
+
+NDProxyDaemon::~NDProxyDaemon() {}
+
+int NDProxyDaemon::OnInit() {
+  // Prevent the main process from sending us any signals.
+  if (setsid() < 0) {
+    PLOG(ERROR) << "Failed to created a new session with setsid: exiting";
+    return EX_OSERR;
+  }
+
+  EnterChildProcessJail();
+
+  // Register control fd callbacks
+  if (msg_dispatcher_) {
+    msg_dispatcher_->RegisterFailureHandler(base::Bind(
+        &NDProxyDaemon::OnParentProcessExit, weak_factory_.GetWeakPtr()));
+    msg_dispatcher_->RegisterDeviceMessageHandler(base::Bind(
+        &NDProxyDaemon::OnDeviceMessage, weak_factory_.GetWeakPtr()));
+  }
+
+  // Initialize NDProxy and register guest IP discovery callback
+  if (!proxy_.Init()) {
+    PLOG(ERROR) << "Failed to initialize NDProxy internal state";
+    return EX_OSERR;
+  }
+  proxy_.RegisterOnGuestIpDiscoveryHandler(base::Bind(
+      &NDProxyDaemon::OnGuestIpDiscovery, weak_factory_.GetWeakPtr()));
+
+  // Initialize data fd
+  fd_ = base::ScopedFD(
+      socket(AF_PACKET, SOCK_RAW | SOCK_CLOEXEC, htons(ETH_P_IPV6)));
+  if (!fd_.is_valid()) {
+    PLOG(ERROR) << "socket() failed";
+    return EX_OSERR;
+  }
+  if (setsockopt(fd_.get(), SOL_SOCKET, SO_ATTACH_FILTER, &kNDFrameBpfProgram,
+                 sizeof(kNDFrameBpfProgram))) {
+    PLOG(ERROR) << "setsockopt(SO_ATTACH_FILTER) failed";
+    return EX_OSERR;
+  }
+
+  // Start watching on data fd
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      fd_.get(), base::Bind(&NDProxyDaemon::OnDataSocketReadReady,
+                            weak_factory_.GetWeakPtr()));
+  LOG(INFO) << "Started watching on packet fd...";
+
+  return Daemon::OnInit();
+}
+
+void NDProxyDaemon::OnDataSocketReadReady() {
+  proxy_.ReadAndProcessOneFrame(fd_.get());
+}
+
+void NDProxyDaemon::OnParentProcessExit() {
+  LOG(ERROR) << "Quitting because the parent process died";
+  Quit();
+}
+
+void NDProxyDaemon::OnDeviceMessage(const DeviceMessage& msg) {
+  const std::string& dev_ifname = msg.dev_ifname();
+  LOG_IF(DFATAL, dev_ifname.empty())
+      << "Received DeviceMessage w/ empty dev_ifname";
+  if (msg.has_teardown()) {
+    proxy_.RemoveInterface(dev_ifname);
+  } else if (msg.has_br_ifname()) {
+    proxy_.AddRouterInterfacePair(dev_ifname, msg.br_ifname());
+  }
+}
+
+void NDProxyDaemon::OnGuestIpDiscovery(const std::string& ifname,
+                                       const std::string& ip6addr) {
+  // Send information back to DeviceManager
+  if (!msg_dispatcher_)
+    return;
+  DeviceMessage msg;
+  msg.set_dev_ifname(ifname);
+  msg.set_guest_ip6addr(ip6addr);
+  IpHelperMessage ipm;
+  *ipm.mutable_device_message() = msg;
+  msg_dispatcher_->SendMessage(ipm);
 }
 
 }  // namespace arc_networkd

@@ -12,8 +12,8 @@
 
 namespace arc_networkd {
 
-const uint8_t physical_if_mac[] = "\xa0\xce\xc8\xc6\x91\x0a";
-const uint8_t guest_if_mac[] = "\xd2\x47\xf7\xc5\x9e\x53";
+const MacAddress physical_if_mac({0xa0, 0xce, 0xc8, 0xc6, 0x91, 0x0a});
+const MacAddress guest_if_mac({0xd2, 0x47, 0xf7, 0xc5, 0x9e, 0x53});
 
 const uint8_t ping_frame[] =
     "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x86\xdd\x60\x0b"
@@ -117,7 +117,7 @@ const uint8_t tcp_frame[] =
     "\xa5\x6c\x80\x10\x01\x54\x04\xb9\x00\x00\x01\x01\x08\x0a\x00\x5a"
     "\x59\xc0\x32\x53\x14\x3a";
 
-TEST(NDProxy, Icmpv6Checksum) {
+TEST(NDProxyTest, Icmpv6Checksum) {
   uint8_t buffer_extended[IP_MAXPACKET + ETHER_HDR_LEN + 4];
   uint8_t* buffer = NDProxy::AlignFrameBuffer(buffer_extended);
 
@@ -136,52 +136,54 @@ TEST(NDProxy, Icmpv6Checksum) {
   EXPECT_EQ(ori_cksum, NDProxy::Icmpv6Checksum(ip6, icmp6));
 }
 
-TEST(NDProxy, TranslateFrame) {
+TEST(NDProxyTest, TranslateFrame) {
   uint8_t in_buffer_extended[IP_MAXPACKET + ETHER_HDR_LEN + 4];
   uint8_t out_buffer_extended[IP_MAXPACKET + ETHER_HDR_LEN + 4];
   uint8_t* in_buffer = NDProxy::AlignFrameBuffer(in_buffer_extended);
   uint8_t* out_buffer = NDProxy::AlignFrameBuffer(out_buffer_extended);
   int result;
 
+  NDProxy ndproxy;
+  ndproxy.Init();
   memcpy(in_buffer, tcp_frame, sizeof(tcp_frame));
-  result = NDProxy::TranslateNDFrame(in_buffer, sizeof(tcp_frame),
-                                     physical_if_mac, out_buffer);
+  result = ndproxy.TranslateNDFrame(in_buffer, sizeof(tcp_frame),
+                                    physical_if_mac, out_buffer);
   EXPECT_EQ(NDProxy::kTranslateErrorNotICMPv6Frame, result);
 
   memcpy(in_buffer, ping_frame, sizeof(ping_frame));
-  result = NDProxy::TranslateNDFrame(in_buffer, sizeof(ping_frame),
-                                     physical_if_mac, out_buffer);
+  result = ndproxy.TranslateNDFrame(in_buffer, sizeof(ping_frame),
+                                    physical_if_mac, out_buffer);
   EXPECT_EQ(NDProxy::kTranslateErrorNotNDFrame, result);
 
   memcpy(in_buffer, rs_frame, sizeof(rs_frame));
-  result = NDProxy::TranslateNDFrame(in_buffer, sizeof(rs_frame),
-                                     physical_if_mac, out_buffer);
+  result = ndproxy.TranslateNDFrame(in_buffer, sizeof(rs_frame),
+                                    physical_if_mac, out_buffer);
   EXPECT_EQ(sizeof(rs_frame_translated), result);
   EXPECT_EQ(0, memcmp(rs_frame_translated, out_buffer, sizeof(rs_frame)));
 
   memcpy(in_buffer, ra_frame, sizeof(ra_frame));
-  result = NDProxy::TranslateNDFrame(in_buffer, sizeof(ra_frame), guest_if_mac,
-                                     out_buffer);
+  result = ndproxy.TranslateNDFrame(in_buffer, sizeof(ra_frame), guest_if_mac,
+                                    out_buffer);
   EXPECT_EQ(sizeof(ra_frame_translated), result);
   EXPECT_EQ(0, memcmp(ra_frame_translated, out_buffer, sizeof(ra_frame)));
 
   memcpy(in_buffer, ra_frame_option_reordered,
          sizeof(ra_frame_option_reordered));
-  result = NDProxy::TranslateNDFrame(
+  result = ndproxy.TranslateNDFrame(
       in_buffer, sizeof(ra_frame_option_reordered), guest_if_mac, out_buffer);
   EXPECT_EQ(sizeof(ra_frame_option_reordered_translated), result);
   EXPECT_EQ(0, memcmp(ra_frame_option_reordered_translated, out_buffer,
                       sizeof(ra_frame_option_reordered)));
 
   memcpy(in_buffer, ns_frame, sizeof(ns_frame));
-  result = NDProxy::TranslateNDFrame(in_buffer, sizeof(ns_frame),
-                                     physical_if_mac, out_buffer);
+  result = ndproxy.TranslateNDFrame(in_buffer, sizeof(ns_frame),
+                                    physical_if_mac, out_buffer);
   EXPECT_EQ(sizeof(ns_frame_translated), result);
   EXPECT_EQ(0, memcmp(ns_frame_translated, out_buffer, sizeof(ns_frame)));
 
   memcpy(in_buffer, na_frame, sizeof(na_frame));
-  result = NDProxy::TranslateNDFrame(in_buffer, sizeof(na_frame), guest_if_mac,
-                                     out_buffer);
+  result = ndproxy.TranslateNDFrame(in_buffer, sizeof(na_frame), guest_if_mac,
+                                    out_buffer);
   EXPECT_EQ(sizeof(na_frame_translated), result);
   EXPECT_EQ(0, memcmp(na_frame_translated, out_buffer, sizeof(na_frame)));
 }

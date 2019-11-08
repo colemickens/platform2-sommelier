@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
   if (FLAGS_nd_proxy_fd >= 0) {
     LOG(INFO) << "Spawning nd proxy";
     base::ScopedFD fd(FLAGS_nd_proxy_fd);
-    arc_networkd::NDProxy nd_proxy(std::move(fd));
+    arc_networkd::NDProxyDaemon nd_proxy(std::move(fd));
     return nd_proxy.Run();
   }
 
