@@ -100,6 +100,32 @@ TEST_F(IconIndexFileTest, OneDirectoryOnly) {
       48, 1, {icon_theme_dir().Append("48x48").Append("apps")});
 }
 
+// This test verifies that directory sections with unreasonable values are
+// ignored.
+TEST_F(IconIndexFileTest, UnreasonableValueSectionsIgnored) {
+  ValidateIndexThemeFile(
+      "[Icon Theme]\n"
+      "Name=Hicolor\n"
+      "Comment=Fallback icon theme\n"
+      "Hidden=true\n"
+      "Directories=48x48@2/apps,96x96/apps,128x128/apps\n"
+      "\n\n"
+      "[48x48@2/apps]\n"
+      "Size=48\n"
+      "Scale=50000\n"
+      "Context=Applications\n"
+      "Type=Threshold\n\n"
+      "[96x96/apps]\n"
+      "Size=96\n"
+      "Context=Applications\n"
+      "Type=Threshold\n\n"
+      "[128x128/apps]\n"
+      "Size=-234\n"
+      "Context=Applications\n"
+      "Type=Threshold\n",
+      96, 1, {icon_theme_dir().Append("96x96").Append("apps")});
+}
+
 // This test verifies that the perfect matched directory is in front.
 TEST_F(IconIndexFileTest, PerfectMatchInFront) {
   ValidateIndexThemeFile(

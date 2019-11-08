@@ -41,6 +41,16 @@ constexpr char kDirectoryTypeScalable[] = "Scalable";
 // Valid types of directory entries in index files.
 const char* const kValidDirectoryContexts[] = {"Applications", "MimeTypes"};
 const char* const kValidDirectorySuffixes[] = {"apps", "mimetypes"};
+
+// Max value for any integer in the file. Nothing should be large values outside
+// of any reasonable pixel size/scale/threshold, nor should they be
+// non-positive. This would be higher but we want to ensure squaring this number
+// doesn't violate the 32-bit max.
+constexpr size_t kMaxReasonableValue = 32768;  // 32K
+bool IsValueReasonable(int x) {
+  return x > 0 && x < kMaxReasonableValue;
+}
+
 }  // namespace
 
 namespace vm_tools {
@@ -53,13 +63,9 @@ int IconIndexFile::Distance(const DirectoryEntry& directory_entry,
   int directory_scaled_size = directory_entry.size * directory_entry.scale;
   int search_scaled_size = search_size * search_scale;
   if (directory_scaled_size >= search_scaled_size) {
-    if (search_scaled_size <= 0)
-      return std::numeric_limits<int>::max();
     return (directory_scaled_size - search_scaled_size) * 100 /
            search_scaled_size;
   } else {
-    if (directory_scaled_size <= 0)
-      return std::numeric_limits<int>::max();
     return (search_scaled_size - directory_scaled_size) * 100 /
            directory_scaled_size;
   }
@@ -77,13 +83,10 @@ bool IconIndexFile::PerfectMatch(const DirectoryEntry& directory_entry,
 bool IconIndexFile::WithinLimit(const DirectoryEntry& directory_entry,
                                 int search_size) {
   if (directory_entry.type == kDirectoryTypeThreshold) {
-    // Force 64 bit conversions so we don't overflow on 32 bit multiplies.
     if (search_size >= directory_entry.size) {
-      return ((int64_t)directory_entry.size) * directory_entry.threshold >=
-             search_size;
+      return directory_entry.size * directory_entry.threshold >= search_size;
     } else {
-      return ((int64_t)search_size) * directory_entry.threshold >=
-             directory_entry.size;
+      return search_size * directory_entry.threshold >= directory_entry.size;
     }
   } else if (directory_entry.type == kDirectoryTypeScalable) {
     return search_size >= directory_entry.min_size &&
@@ -164,6 +167,18 @@ bool IconIndexFile::CloseDirectorySection(
                << " not appearing in icon theme section directories";
     return false;
   }
+
+  // Make sure the values in this directory section are reasonable.
+  if (!IsValueReasonable(directory_entry->scale) ||
+      !IsValueReasonable(directory_entry->size) ||
+      !IsValueReasonable(directory_entry->threshold)) {
+    // Don't fail parsing the whole file, just don't add this directory.
+    LOG(ERROR) << "Ignoring directory section \"" << directory
+               << "\" in icon index file due to unreasonable value for scale, "
+                  "size or threshold";
+    return true;
+  }
+
   bool valid_dir = false;
   for (const char* dir_context : kValidDirectoryContexts) {
     if (directory_entry->context == dir_context) {
