@@ -122,7 +122,6 @@ class VPNDriver {
 
   VPNServiceRefPtr service_;
 
-  base::WeakPtrFactory<VPNDriver> weak_ptr_factory_;
   Manager* manager_;
   const Property* const properties_;
   const size_t property_count_;
@@ -130,6 +129,8 @@ class VPNDriver {
 
   base::CancelableClosure connect_timeout_callback_;
   int connect_timeout_seconds_;
+
+  base::WeakPtrFactory<VPNDriver> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(VPNDriver);
 };

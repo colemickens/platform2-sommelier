@@ -37,11 +37,11 @@ const int VPNDriver::kDefaultConnectTimeoutSeconds = 60;
 VPNDriver::VPNDriver(Manager* manager,
                      const Property* properties,
                      size_t property_count)
-    : weak_ptr_factory_(this),
-      manager_(manager),
+    : manager_(manager),
       properties_(properties),
       property_count_(property_count),
-      connect_timeout_seconds_(0) {}
+      connect_timeout_seconds_(0),
+      weak_ptr_factory_(this) {}
 
 VPNDriver::~VPNDriver() = default;
 
