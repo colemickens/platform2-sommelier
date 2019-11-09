@@ -522,6 +522,9 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // Account Manager is stable. https://crbug.com/952570
   builder->AddVmodulePattern("*/chromeos/components/account_manager/*=1");
   builder->AddVmodulePattern("*/chrome/browser/chromeos/account_manager/*=1");
+
+  // TODO(afakhry|yjliu): Remove after https://crbug.com/1015474 is fixed.
+  builder->AddVmodulePattern("*night_light*=1");
 }
 
 }  // namespace
