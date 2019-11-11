@@ -50,9 +50,11 @@
 #include "diagnostics/wilco_dtc_supportd/fake_wilco_dtc.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_utils.h"
+#include "diagnostics/wilco_dtc_supportd/system/fake_bluetooth_client.h"
 #include "diagnostics/wilco_dtc_supportd/system/fake_powerd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/system/mock_debugd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/ec_event_service.h"
+#include "diagnostics/wilco_dtc_supportd/telemetry/fake_bluetooth_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/fake_powerd_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"
@@ -103,13 +105,18 @@ base::Callback<void(std::unique_ptr<ValueType>)> MakeAsyncResponseWriter(
 class FakeWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
  public:
   FakeWilcoDtcSupportdCoreDelegate()
-      : passed_debugd_adapter_(
+      : passed_bluetooth_client_(std::make_unique<FakeBluetoothClient>()),
+        passed_debugd_adapter_(
             std::make_unique<StrictMock<MockDebugdAdapter>>()),
         passed_powerd_adapter_(std::make_unique<FakePowerdAdapter>()),
+        passed_bluetooth_event_service_(
+            std::make_unique<FakeBluetoothEventService>()),
         passed_powerd_event_service_(
             std::make_unique<FakePowerdEventService>()),
+        bluetooth_client_(passed_bluetooth_client_.get()),
         debugd_adapter_(passed_debugd_adapter_.get()),
         powerd_adapter_(passed_powerd_adapter_.get()),
+        bluetooth_event_service_(passed_bluetooth_event_service_.get()),
         powerd_event_service_(passed_powerd_event_service_.get()) {}
 
   std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>
@@ -121,6 +128,14 @@ class FakeWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
     return std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>(
         BindWilcoDtcSupportdMojoServiceFactoryImpl(mojo_service_factory,
                                                    mojo_pipe_fd.get()));
+  }
+
+  // Must be called no more than once.
+  std::unique_ptr<BluetoothClient> CreateBluetoothClient(
+      const scoped_refptr<dbus::Bus>& bus) override {
+    DCHECK(bus);
+    DCHECK(passed_bluetooth_client_);
+    return std::move(passed_bluetooth_client_);
   }
 
   // Must be called no more than once.
@@ -140,15 +155,29 @@ class FakeWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
   }
 
   // Must be called no more than once.
+  std::unique_ptr<BluetoothEventService> CreateBluetoothEventService(
+      BluetoothClient* bluetooth_client) override {
+    DCHECK(bluetooth_client);
+    DCHECK(passed_bluetooth_event_service_);
+    DCHECK_EQ(bluetooth_client, bluetooth_client_);
+    return std::move(passed_bluetooth_event_service_);
+  }
+
+  // Must be called no more than once.
   std::unique_ptr<PowerdEventService> CreatePowerdEventService(
       PowerdAdapter* powerd_adapter) override {
     DCHECK(powerd_adapter);
     DCHECK(passed_powerd_event_service_);
+    DCHECK_EQ(powerd_adapter, powerd_adapter_);
     return std::move(passed_powerd_event_service_);
   }
 
   StrictMock<MockDebugdAdapter>* debugd_adapter() const {
     return debugd_adapter_;
+  }
+
+  FakeBluetoothEventService* bluetooth_event_service() const {
+    return bluetooth_event_service_;
   }
 
   FakePowerdEventService* powerd_event_service() const {
@@ -162,15 +191,21 @@ class FakeWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
 
  private:
   // Mock objects to be transferred by Create* methods.
+  std::unique_ptr<FakeBluetoothClient> passed_bluetooth_client_;
   std::unique_ptr<StrictMock<MockDebugdAdapter>> passed_debugd_adapter_;
   std::unique_ptr<FakePowerdAdapter> passed_powerd_adapter_;
+
+  std::unique_ptr<FakeBluetoothEventService> passed_bluetooth_event_service_;
   std::unique_ptr<FakePowerdEventService> passed_powerd_event_service_;
 
   // Pointers to objects originally stored in |passed_*| members. These allow
   // continued access by tests even after the corresponding Create* method has
   // been called and ownership has been transferred to |core_|.
+  FakeBluetoothClient* bluetooth_client_;
   StrictMock<MockDebugdAdapter>* debugd_adapter_;
   FakePowerdAdapter* powerd_adapter_;
+
+  FakeBluetoothEventService* bluetooth_event_service_;
   FakePowerdEventService* powerd_event_service_;
 };
 
@@ -822,6 +857,75 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetDriveSystemData) {
   expected_response.set_payload(kFakeSmartctlData);
   EXPECT_THAT(*response, ProtobufEquals(expected_response))
       << "Actual: {" << response->ShortDebugString() << "}";
+}
+
+// Matches gRPC Bluetooth AdapterData and BluetoothEventService AdapterData.
+MATCHER_P(BluetoothAdaptersEquals, expected_adapters, "") {
+  if (arg.adapters_size() != expected_adapters.size()) {
+    return false;
+  }
+  for (int i = 0; i < arg.adapters_size(); i++) {
+    auto expected_carrier_status =
+        (expected_adapters[i].powered)
+            ? grpc_api::HandleBluetoothDataChangedRequest::AdapterData::
+                  STATUS_UP
+            : grpc_api::HandleBluetoothDataChangedRequest::AdapterData::
+                  STATUS_DOWN;
+
+    const auto& adapter = arg.adapters(i);
+
+    if (adapter.adapter_name() != expected_adapters[i].name ||
+        adapter.adapter_mac_address() != expected_adapters[i].address ||
+        adapter.carrier_status() != expected_carrier_status ||
+        adapter.connected_devices_count() !=
+            expected_adapters[i].connected_devices_count) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Test that the method |HandleBluetoothDataChanged()| exposed by wilco_dtc gRPC
+// is called by wilco_dtc support daemon.
+TEST_F(BootstrappedWilcoDtcSupportdCoreTest, HandleBluetoothDataChanged) {
+  const std::vector<BluetoothEventService::AdapterData> kAdapters{
+      {"sarien-laptop", "aa:bb:cc:dd:ee:ff", true, 0},
+      {"usb-bluetooth", "00:11:22:33:44:55", false, 2}};
+
+  auto bluetooth_callback =
+      [](const base::Closure& callback,
+         grpc_api::HandleBluetoothDataChangedRequest* request_out,
+         const grpc_api::HandleBluetoothDataChangedRequest& request) {
+        DCHECK(request_out);
+        *request_out = request;
+        callback.Run();
+      };
+
+  base::RunLoop run_loop;
+  auto barrier_closure = BarrierClosure(2, run_loop.QuitClosure());
+
+  grpc_api::HandleBluetoothDataChangedRequest
+      fake_wilco_dtc_bluetooth_grpc_request;
+  grpc_api::HandleBluetoothDataChangedRequest
+      fake_ui_message_receiver_wilco_dtc_bluetooth_grpc_request;
+
+  fake_wilco_dtc()->set_bluetooth_data_changed_callback(
+      base::BindRepeating(bluetooth_callback, barrier_closure,
+                          &fake_wilco_dtc_bluetooth_grpc_request));
+  fake_ui_message_receiver_wilco_dtc()->set_bluetooth_data_changed_callback(
+      base::BindRepeating(
+          bluetooth_callback, barrier_closure,
+          &fake_ui_message_receiver_wilco_dtc_bluetooth_grpc_request));
+
+  core_delegate()->bluetooth_event_service()->EmitBluetoothAdapterDataChanged(
+      kAdapters);
+
+  run_loop.Run();
+
+  EXPECT_THAT(fake_wilco_dtc_bluetooth_grpc_request,
+              BluetoothAdaptersEquals(kAdapters));
+  EXPECT_THAT(fake_ui_message_receiver_wilco_dtc_bluetooth_grpc_request,
+              BluetoothAdaptersEquals(kAdapters));
 }
 
 // Fake types to be used to emulate EC events.

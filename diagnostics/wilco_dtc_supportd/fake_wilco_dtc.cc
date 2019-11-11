@@ -4,8 +4,6 @@
 
 #include "diagnostics/wilco_dtc_supportd/fake_wilco_dtc.h"
 
-#include <utility>
-
 #include <base/run_loop.h>
 #include <base/threading/thread_task_runner_handle.h>
 
@@ -32,6 +30,11 @@ FakeWilcoDtc::FakeWilcoDtc(const std::string& grpc_server_uri,
       &grpc_api::WilcoDtc::AsyncService::RequestHandleConfigurationDataChanged,
       base::Bind(&FakeWilcoDtc::HandleConfigurationDataChanged,
                  base::Unretained(this)));
+  grpc_server_.RegisterHandler(
+      &grpc_api::WilcoDtc::AsyncService::RequestHandleBluetoothDataChanged,
+      base::Bind(&FakeWilcoDtc::HandleBluetoothDataChanged,
+                 base::Unretained(this)));
+
   grpc_server_.Start();
 }
 
@@ -91,27 +94,6 @@ void FakeWilcoDtc::GetDriveSystemData(
       callback);
 }
 
-void FakeWilcoDtc::set_handle_message_from_ui_callback(
-    base::Closure handle_message_from_ui_callback) {
-  handle_message_from_ui_callback_.emplace(
-      std::move(handle_message_from_ui_callback));
-}
-
-void FakeWilcoDtc::set_handle_message_from_ui_json_message_response(
-    const std::string& json_message_response) {
-  handle_message_from_ui_json_message_response_.emplace(json_message_response);
-}
-
-const base::Optional<std::string>&
-FakeWilcoDtc::handle_message_from_ui_actual_json_message() const {
-  return handle_message_from_ui_actual_json_message_;
-}
-
-void FakeWilcoDtc::set_configuration_data_changed_callback(
-    base::RepeatingClosure callback) {
-  configuration_data_changed_callback_.emplace(std::move(callback));
-}
-
 void FakeWilcoDtc::HandleMessageFromUi(
     std::unique_ptr<grpc_api::HandleMessageFromUiRequest> request,
     const HandleMessageFromUiCallback& callback) {
@@ -160,6 +142,18 @@ void FakeWilcoDtc::HandleConfigurationDataChanged(
   callback.Run(std::move(response));
 
   configuration_data_changed_callback_->Run();
+}
+
+void FakeWilcoDtc::HandleBluetoothDataChanged(
+    std::unique_ptr<grpc_api::HandleBluetoothDataChangedRequest> request,
+    const HandleBluetoothDataChangedCallback& callback) {
+  DCHECK(bluetooth_data_changed_request_callback_);
+
+  auto response =
+      std::make_unique<grpc_api::HandleBluetoothDataChangedResponse>();
+  callback.Run(std::move(response));
+
+  bluetooth_data_changed_request_callback_->Run(*request);
 }
 
 }  // namespace diagnostics

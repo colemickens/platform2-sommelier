@@ -13,8 +13,10 @@
 #include <mojo/edk/embedder/scoped_platform_handle.h>
 
 #include "debugd/dbus-proxies.h"
+#include "diagnostics/wilco_dtc_supportd/system/bluetooth_client_impl.h"
 #include "diagnostics/wilco_dtc_supportd/system/debugd_adapter_impl.h"
 #include "diagnostics/wilco_dtc_supportd/system/powerd_adapter_impl.h"
+#include "diagnostics/wilco_dtc_supportd/telemetry/bluetooth_event_service_impl.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service_impl.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"
 
@@ -56,6 +58,13 @@ void WilcoDtcSupportdCoreDelegateImpl::BeginDaemonShutdown() {
   daemon_->Quit();
 }
 
+std::unique_ptr<BluetoothClient>
+WilcoDtcSupportdCoreDelegateImpl::CreateBluetoothClient(
+    const scoped_refptr<dbus::Bus>& bus) {
+  DCHECK(bus);
+  return std::make_unique<BluetoothClientImpl>(bus);
+}
+
 std::unique_ptr<DebugdAdapter>
 WilcoDtcSupportdCoreDelegateImpl::CreateDebugdAdapter(
     const scoped_refptr<dbus::Bus>& bus) {
@@ -69,6 +78,13 @@ WilcoDtcSupportdCoreDelegateImpl::CreatePowerdAdapter(
     const scoped_refptr<dbus::Bus>& bus) {
   DCHECK(bus);
   return std::make_unique<PowerdAdapterImpl>(bus);
+}
+
+std::unique_ptr<BluetoothEventService>
+WilcoDtcSupportdCoreDelegateImpl::CreateBluetoothEventService(
+    BluetoothClient* bluetooth_client) {
+  DCHECK(bluetooth_client);
+  return std::make_unique<BluetoothEventServiceImpl>(bluetooth_client);
 }
 
 std::unique_ptr<PowerdEventService>

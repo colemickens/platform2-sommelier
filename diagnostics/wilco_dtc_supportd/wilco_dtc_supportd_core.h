@@ -22,8 +22,10 @@
 
 #include "diagnostics/grpc_async_adapter/async_grpc_client.h"
 #include "diagnostics/grpc_async_adapter/async_grpc_server.h"
+#include "diagnostics/wilco_dtc_supportd/system/bluetooth_client.h"
 #include "diagnostics/wilco_dtc_supportd/system/debugd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/system/powerd_adapter.h"
+#include "diagnostics/wilco_dtc_supportd/telemetry/bluetooth_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/ec_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_dbus_service.h"
@@ -45,6 +47,7 @@ class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
                                    public WilcoDtcSupportdMojoService::Delegate,
                                    public chromeos::wilco_dtc_supportd::mojom::
                                        WilcoDtcSupportdServiceFactory,
+                                   public BluetoothEventService::Observer,
                                    public PowerdEventService::Observer {
  public:
   class Delegate {
@@ -69,6 +72,11 @@ class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
     // Begins the graceful shutdown of the wilco_dtc_supportd daemon.
     virtual void BeginDaemonShutdown() = 0;
 
+    // Creates BluetoothClient. For performance reason, must be called no more
+    // than once.
+    virtual std::unique_ptr<BluetoothClient> CreateBluetoothClient(
+        const scoped_refptr<dbus::Bus>& bus) = 0;
+
     // Creates DebugdAdapter. For performance reason, must be called no more
     // than once.
     virtual std::unique_ptr<DebugdAdapter> CreateDebugdAdapter(
@@ -78,6 +86,11 @@ class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
     // than once.
     virtual std::unique_ptr<PowerdAdapter> CreatePowerdAdapter(
         const scoped_refptr<dbus::Bus>& bus) = 0;
+
+    // Creates BluetoothEventService. For performance reason, must be called no
+    // more than once.
+    virtual std::unique_ptr<BluetoothEventService> CreateBluetoothEventService(
+        BluetoothClient* bluetooth_client) = 0;
 
     // Creates PowerdEventService. For performance reason, must be called no
     // more than once.
@@ -187,6 +200,10 @@ class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
                   MojomWilcoDtcSupportdClientPtr client,
                   const GetServiceCallback& callback) override;
 
+  // BluetoothEventService::Observer overrides:
+  void BluetoothAdapterDataChanged(
+      const std::vector<BluetoothEventService::AdapterData>& adapters) override;
+
   // PowerdEventService::Observer overrides:
   void OnPowerdEvent(PowerEventType type) override;
 
@@ -253,12 +270,12 @@ class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
   EcEventService ec_event_service_{this /* delegate */};
 
   // D-Bus adapters for system daemons.
+  std::unique_ptr<BluetoothClient> bluetooth_client_;
   std::unique_ptr<DebugdAdapter> debugd_adapter_;
   std::unique_ptr<PowerdAdapter> powerd_adapter_;
 
   // Telemetry services:
-
-  // Observes Power Events emitted by the powerd
+  std::unique_ptr<BluetoothEventService> bluetooth_event_service_;
   std::unique_ptr<PowerdEventService> powerd_event_service_;
 
   // Diagnostic routine-related members:

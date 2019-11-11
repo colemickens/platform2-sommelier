@@ -10,8 +10,10 @@
 #include <base/macros.h>
 #include <brillo/daemons/daemon.h>
 
+#include "diagnostics/wilco_dtc_supportd/system/bluetooth_client.h"
 #include "diagnostics/wilco_dtc_supportd/system/debugd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/system/powerd_adapter.h"
+#include "diagnostics/wilco_dtc_supportd/telemetry/bluetooth_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core.h"
 
@@ -30,10 +32,14 @@ class WilcoDtcSupportdCoreDelegateImpl final
       MojomWilcoDtcSupportdServiceFactory* mojo_service_factory,
       base::ScopedFD mojo_pipe_fd) override;
   void BeginDaemonShutdown() override;
+  std::unique_ptr<BluetoothClient> CreateBluetoothClient(
+      const scoped_refptr<dbus::Bus>& bus) override;
   std::unique_ptr<DebugdAdapter> CreateDebugdAdapter(
       const scoped_refptr<dbus::Bus>& bus) override;
   std::unique_ptr<PowerdAdapter> CreatePowerdAdapter(
       const scoped_refptr<dbus::Bus>& bus) override;
+  std::unique_ptr<BluetoothEventService> CreateBluetoothEventService(
+      BluetoothClient* bluetooth_client) override;
   std::unique_ptr<PowerdEventService> CreatePowerdEventService(
       PowerdAdapter* powerd_adapter) override;
 

@@ -34,6 +34,11 @@ service WilcoDtc {
   // recommended to retrieve the up-to-date configuration data.
   rpc HandleConfigurationDataChanged(HandleConfigurationDataChangedRequest)
       returns (HandleConfigurationDataChangedResponse) {}
+
+  // Called when the wilco_dtc_supportd daemon received D-Bus signal from
+  // bluetooth daemon that bluetooth data has changed.
+  rpc HandleBluetoothDataChanged(HandleBluetoothDataChangedRequest)
+      returns (HandleBluetoothDataChangedResponse) {}
 }
 
 // Parameters for the HandleMessageFromUi RPC.
@@ -97,3 +102,33 @@ message HandleConfigurationDataChangedRequest {}
 
 // Return value of the HandleConfigurationDataChanged RPC.
 message HandleConfigurationDataChangedResponse {}
+
+// Parameters for the HandleBluetoothDataChanged RPC.
+message HandleBluetoothDataChangedRequest {
+  // Telemetry data of the bluetooth adapter installed in the system.
+  message AdapterData {
+    // Non-empty bluetooth adapter name (e.g. hci0).
+    string adapter_name = 1;
+    // Non-empty bluetooth adapter MAC address.
+    string adapter_mac_address = 2;
+
+    enum CarrierStatus {
+      STATUS_UNSET = 0;
+      STATUS_UP = 1;
+      STATUS_DOWN = 2;
+    }
+
+    // STATUS_UP/STATUS_DOWN carrier status of the device. Must be distinct from
+    // |STATUS_UNSET|.
+    CarrierStatus carrier_status = 3;
+
+    // Number of connected devices.
+    uint32 connected_devices_count = 4;
+  }
+
+  // The data for all bluetooth adapters installed in the system.
+  repeated AdapterData adapters = 1;
+}
+
+// Return value for the HandleBluetoothDataChanged RPC.
+message HandleBluetoothDataChangedResponse {}

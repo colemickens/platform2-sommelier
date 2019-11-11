@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/callback.h>
 #include <base/macros.h>
@@ -48,11 +49,16 @@ class FakeWilcoDtc final {
       std::unique_ptr<grpc_api::GetDriveSystemDataResponse>)>;
   using HandleConfigurationDataChangedCallback = base::Callback<void(
       std::unique_ptr<grpc_api::HandleConfigurationDataChangedResponse>)>;
+  using HandleBluetoothDataChangedCallback = base::Callback<void(
+      std::unique_ptr<grpc_api::HandleBluetoothDataChangedResponse>)>;
 
   using HandleEcNotificationRequestCallback =
       base::RepeatingCallback<void(int32_t, const std::string&)>;
   using HandlePowerNotificationRequestCallback = base::RepeatingCallback<void(
       grpc_api::HandlePowerNotificationRequest::PowerEvent)>;
+  using HandleBluetoothDataChangedRequestCallback =
+      base::RepeatingCallback<void(
+          const grpc_api::HandleBluetoothDataChangedRequest&)>;
 
   FakeWilcoDtc(const std::string& grpc_server_uri,
                const std::string& wilco_dtc_supportd_grpc_uri);
@@ -77,12 +83,18 @@ class FakeWilcoDtc final {
   // Sets up the passed callback to be used for subsequent
   // |HandleMessageFromUi| gRPC calls.
   void set_handle_message_from_ui_callback(
-      base::Closure handle_message_from_ui_callback);
+      base::Closure handle_message_from_ui_callback) {
+    handle_message_from_ui_callback_.emplace(
+        std::move(handle_message_from_ui_callback));
+  }
 
   // Sets up the passed json message to be used as a response for subsequent
   // |HandleMessageFromUi| gRPC calls.
   void set_handle_message_from_ui_json_message_response(
-      const std::string& json_message_response);
+      const std::string& json_message_response) {
+    handle_message_from_ui_json_message_response_.emplace(
+        json_message_response);
+  }
 
   // Sets up the passed callback to be used for subsequent
   // |HandleEcNotification| gRPC calls.
@@ -100,11 +112,23 @@ class FakeWilcoDtc final {
   }
 
   const base::Optional<std::string>&
-  handle_message_from_ui_actual_json_message() const;
+  handle_message_from_ui_actual_json_message() const {
+    return handle_message_from_ui_actual_json_message_;
+  }
 
   // Sets up the passed callback to be used for subsequent
   // |HandleConfigurationDataChanged| gRPC calls.
-  void set_configuration_data_changed_callback(base::RepeatingClosure callback);
+  void set_configuration_data_changed_callback(
+      base::RepeatingClosure callback) {
+    configuration_data_changed_callback_.emplace(std::move(callback));
+  }
+
+  // Sets up the passed callback to be used for subsequent
+  // |HandleBluetoothDataChanged| gRPC calls.
+  void set_bluetooth_data_changed_callback(
+      HandleBluetoothDataChangedRequestCallback callback) {
+    bluetooth_data_changed_request_callback_.emplace(std::move(callback));
+  }
 
  private:
   using AsyncGrpcWilcoDtcServer =
@@ -139,6 +163,12 @@ class FakeWilcoDtc final {
       std::unique_ptr<grpc_api::HandleConfigurationDataChangedRequest> request,
       const HandleConfigurationDataChangedCallback& callback);
 
+  // Receives gRPC request and invokes the given |callback| with gRPC response.
+  // Calls the callback |bluetooth_data_changed_callback_| after all.
+  void HandleBluetoothDataChanged(
+      std::unique_ptr<grpc_api::HandleBluetoothDataChangedRequest> request,
+      const HandleBluetoothDataChangedCallback& callback);
+
   AsyncGrpcWilcoDtcServer grpc_server_;
   AsyncGrpcWilcoDtcSupportdClient wilco_dtc_supportd_grp_client_;
 
@@ -153,6 +183,9 @@ class FakeWilcoDtc final {
       handle_power_event_request_callback_;
 
   base::Optional<base::RepeatingClosure> configuration_data_changed_callback_;
+
+  base::Optional<HandleBluetoothDataChangedRequestCallback>
+      bluetooth_data_changed_request_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeWilcoDtc);
 };
