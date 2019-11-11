@@ -135,7 +135,7 @@ int vea_encode(void* ctx,
                size_t num_planes,
                video_frame_plane_t* planes,
                int64_t timestamp,
-               bool force_keyframe) {
+               uint8_t force_keyframe) {
   return static_cast<arc::VeaContext*>(ctx)->Encode(
       input_buffer_id, base::ScopedFD(fd), num_planes, planes, timestamp,
       force_keyframe);

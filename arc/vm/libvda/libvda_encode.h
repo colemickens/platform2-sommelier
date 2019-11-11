@@ -48,12 +48,12 @@ typedef struct vea_config {
   video_pixel_format_t input_format;
   uint32_t input_visible_width;
   uint32_t input_visible_height;
-  vea_profile_t output_profile;
+  video_codec_profile_t output_profile;
   uint32_t initial_bitrate;
   uint32_t initial_framerate;
-  bool has_initial_framerate;
+  uint8_t has_initial_framerate;
   uint8_t h264_output_level;
-  bool has_h264_output_level;
+  uint8_t has_h264_output_level;
 } vea_config_t;
 
 // Adapted from VideoEncodeAccelerator::Error.
@@ -106,7 +106,7 @@ typedef struct vea_require_input_buffers_event_data {
 typedef struct vea_processed_output_buffer_event_data {
   vea_output_buffer_id_t output_buffer_id;
   uint32_t payload_size;
-  bool key_frame;
+  uint8_t key_frame;
   int64_t timestamp;
 } vea_processed_output_buffer_event_data_t;
 
@@ -119,7 +119,7 @@ typedef union vea_event_data {
   // Event data for event type PROCESSED_OUTPUT_BUFFER.
   vea_processed_output_buffer_event_data_t processed_output_buffer;
   // Event data for event type FLUSH_RESPONSE.
-  bool flush_done;
+  uint8_t flush_done;
   // Event data for event type NOTIFY_ERROR.
   vea_error_t error;
 } vea_event_data_t;
@@ -193,7 +193,7 @@ int LIBVDA_EXPORT vea_encode(void* ctx,
                              size_t num_planes,
                              video_frame_plane_t* planes,
                              int64_t timestamp,
-                             bool force_keyframe);
+                             uint8_t force_keyframe);
 
 // Provide a buffer for storing encoded output.
 //

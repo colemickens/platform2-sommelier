@@ -16,11 +16,7 @@ std::unique_ptr<vea_config_t> CreateVeaConfig() {
   config->input_format = YV12;
   config->input_visible_height = 800;
   config->input_visible_width = 600;
-  config->output_profile.profile = H264PROFILE_MAIN;
-  config->output_profile.max_width = 800;
-  config->output_profile.max_height = 600;
-  config->output_profile.max_framerate_numerator = 30;
-  config->output_profile.max_framerate_denominator = 1;
+  config->output_profile = H264PROFILE_MAIN;
   return config;
 }
 }  // namespace
