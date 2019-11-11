@@ -9,6 +9,7 @@
 #include "base/at_exit.h"
 #include "base/bind.h"
 #include "base/command_line.h"
+#include "base/containers/ring_buffer.h"
 #include "base/guid.h"
 #include "base/logging.h"
 #include "base/message_loop/message_loop.h"
@@ -33,6 +34,53 @@ static const char kSwitchPageUrl[] = "page_url";  // string
 static const char kSwitchRawFiles[] = "raw_files";  // colon-separated strings
 
 const char kListSeparator[] = ":";
+
+// Buffer size for feedback attachment files in bytes. Given that maximum
+// feedback report size is ~7M and that majority of log files are under 1M, we
+// set a per-file limit of 1MiB.
+const int64_t kMaxFileSize = 1024 * 1024;
+const int64_t kChunkSize = 64 * 1024;
+
+bool ReadFileFromBack(const base::FilePath path,
+                      std::string* contents) {
+  if (!contents) {
+    LOG(ERROR) << "contents buffer is null.";
+    return false;
+  }
+
+  if (path.ReferencesParent()) {
+    LOG(ERROR) << "ReadFileFromBack can't be called on file paths with parent "
+                  "references.";
+    return false;
+  }
+
+  base::ScopedFILE fp(base::OpenFile(path, "r"));
+  if (!fp) {
+    PLOG(ERROR) << "Failed to open file " << path.value();
+    return false;
+  }
+
+  std::unique_ptr<char[]> chunk(new char[kChunkSize]);
+  base::RingBuffer<std::string, kMaxFileSize / kChunkSize> buf;
+  size_t bytes_read = 0;
+
+  // Since most logs are not seekable, read until the end with a circular
+  // buffer. Note that logs will not always be kMaxFileSize even if the file
+  // exceeds kMaxFileSize, depending on kChunkSize and the size of the file. It
+  // could vary anywhere from (kMaxFileSize - kChunkSize + 1) to kMaxFileSize.
+  while ((bytes_read = fread(chunk.get(), 1, kChunkSize, fp.get())) != 0) {
+    if (bytes_read < kChunkSize) {
+      chunk[bytes_read] = '\0';
+    }
+    buf.SaveToBuffer(std::string(chunk.get()));
+  }
+
+  contents->clear();
+  for (auto it = buf.Begin(); it == buf.End(); ++it)
+    contents->append(**it);
+
+  return true;
+}
 
 void CommandlineReportStatus(base::WaitableEvent* event, bool* status,
                              bool result) {
@@ -68,20 +116,29 @@ bool FillReportFromCommandline(FeedbackCommon* report) {
       base::SplitString(args->GetSwitchValueNative(kSwitchRawFiles),
                         kListSeparator, base::KEEP_WHITESPACE,
                         base::SPLIT_WANT_NONEMPTY);
+
   for (const std::string& path : raw_files) {
     auto content = std::make_unique<std::string>();
-    if (base::ReadFileToString(base::FilePath(path), content.get())) {
-      report->AddFile(path, std::move(content));
-    } else {
-      LOG(ERROR) << "Could not read raw file: " << path;
-      return false;
+
+    if (!base::ReadFileToStringWithMaxSize(base::FilePath(path), content.get(),
+                                           kMaxFileSize)) {
+      if (content->empty()) {
+        LOG(ERROR) << "Could not read raw file: " << path;
+        return false;
+      }
+      // Skip files that are too large as it doesn't make sense to send partial
+      // raw/binary files.
+      LOG(WARNING) << "Skipping raw file. Exceeds max file size: " << path;
+      continue;
     }
+
+    report->AddFile(path, std::move(content));
   }
 
   std::vector<std::string> log_files = args->GetArgs();
   for (const std::string& path : log_files) {
     std::string content;
-    if (base::ReadFileToString(base::FilePath(path), &content)) {
+    if (ReadFileFromBack(base::FilePath(path), &content)) {
       report->AddLog(path, content);
     } else {
       LOG(ERROR) << "Could not read log file: " << path;
