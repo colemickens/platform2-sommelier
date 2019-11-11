@@ -349,10 +349,6 @@ class FlimFlam(object):
         return [self.GetObjectInterface(kind, path)
             for path in properties[FlimFlam._GetContainerName(kind)]]
 
-    def GetActiveProfile(self):
-        properties = self.manager.GetProperties(utf8_strings = True)
-        return self.GetObjectInterface("Profile", properties["ActiveProfile"])
-
     def CreateProfile(self, ident):
         path = self.manager.CreateProfile(ident)
         return self.GetObjectInterface("Profile", path)
@@ -415,20 +411,8 @@ class FlimFlam(object):
     def RequestScan(self, technology):
         self.manager.RequestScan(technology)
 
-    def GetCheckPortalList(self):
-        properties = self.manager.GetProperties(utf8_strings = True)
-        return properties["CheckPortalList"]
-
     def SetCheckPortalList(self, tech_list):
         self.manager.SetProperty("CheckPortalList", tech_list)
-
-    def GetPortalURL(self):
-        properties = self.manager.GetProperties(utf8_strings = True)
-        return properties["PortalURL"]
-
-    def GetArpGateway(self):
-        properties = self.manager.GetProperties()
-        return properties["ArpGateway"]
 
     def SetArpGateway(self, do_arp_gateway):
         self.manager.SetProperty("ArpGateway", do_arp_gateway)
