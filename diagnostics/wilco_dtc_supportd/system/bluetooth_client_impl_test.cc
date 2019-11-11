@@ -43,6 +43,9 @@ std::unique_ptr<BluetoothClient::AdapterProperties> GetAdapterProperties() {
   properties->address.ReplaceValue("aa:bb:cc:dd:ee:ff");
   properties->name.ReplaceValue("sarien-laptop");
   properties->powered.ReplaceValue(true);
+  properties->address.set_valid(true);
+  properties->name.set_valid(true);
+  properties->powered.set_valid(true);
   return properties;
 }
 
@@ -52,6 +55,9 @@ std::unique_ptr<BluetoothClient::DeviceProperties> GetDeviceProperties() {
   properties->address.ReplaceValue("70:88:6B:92:34:70");
   properties->name.ReplaceValue("GID6B");
   properties->connected.ReplaceValue(true);
+  properties->address.set_valid(true);
+  properties->name.set_valid(true);
+  properties->connected.set_valid(true);
   return properties;
 }
 
@@ -155,6 +161,8 @@ class BluetoothClientImplTest : public ::testing::Test {
 
     ASSERT_TRUE(Mock::VerifyAndClearExpectations(dbus_bus_.get()));
     ASSERT_TRUE(Mock::VerifyAndClearExpectations(dbus_object_manager_.get()));
+
+    bluetooth_client_->AddObserver(&observer_);
   }
 
   MockBluetoothClientObserver* observer() { return &observer_; }
@@ -190,18 +198,41 @@ class BluetoothClientImplTest : public ::testing::Test {
   dbus::ObjectManager::Interface* device_manager_interface_;
 
   DISALLOW_COPY_AND_ASSIGN(BluetoothClientImplTest);
-};  // namespace diagnostics
+};
 
 TEST_F(BluetoothClientImplTest, AdapterAddedNullProperties) {
-  bluetooth_client()->AddObserver(observer());
-  EXPECT_CALL(*object_manager(), GetProperties(_, _)).WillOnce(Return(nullptr));
+  EXPECT_CALL(*object_manager(), GetProperties(kAdapterPath, _))
+      .WillOnce(Return(nullptr));
   adapter_manager_interface()->ObjectAdded(
       kAdapterPath, bluetooth_adapter::kBluetoothAdapterInterface);
 }
 
+TEST_F(BluetoothClientImplTest, AdapterAddedWithInvalidProperties) {
+  auto adapter_properties = GetAdapterProperties();
+  EXPECT_CALL(*object_manager(),
+              GetProperties(kAdapterPath,
+                            bluetooth_adapter::kBluetoothAdapterInterface))
+      .Times(3)
+      .WillRepeatedly(Return(adapter_properties.get()));
+
+  adapter_properties->address.set_valid(false);
+  adapter_manager_interface()->ObjectAdded(
+      kAdapterPath, bluetooth_adapter::kBluetoothAdapterInterface);
+  adapter_properties->address.set_valid(true);
+
+  adapter_properties->name.set_valid(false);
+  adapter_manager_interface()->ObjectAdded(
+      kAdapterPath, bluetooth_adapter::kBluetoothAdapterInterface);
+  adapter_properties->name.set_valid(true);
+
+  adapter_properties->powered.set_valid(false);
+  adapter_manager_interface()->ObjectAdded(
+      kAdapterPath, bluetooth_adapter::kBluetoothAdapterInterface);
+  adapter_properties->powered.set_valid(true);
+}
+
 TEST_F(BluetoothClientImplTest, AdapterAdded) {
   const auto kProperties = GetAdapterProperties();
-  bluetooth_client()->AddObserver(observer());
   EXPECT_CALL(*object_manager(),
               GetProperties(kAdapterPath,
                             bluetooth_adapter::kBluetoothAdapterInterface))
@@ -214,8 +245,6 @@ TEST_F(BluetoothClientImplTest, AdapterAdded) {
 }
 
 TEST_F(BluetoothClientImplTest, AdapterRemoved) {
-  const auto kProperties = GetAdapterProperties();
-  bluetooth_client()->AddObserver(observer());
   EXPECT_CALL(*observer(), AdapterRemoved(kAdapterPath));
   adapter_manager_interface()->ObjectRemoved(
       kAdapterPath, bluetooth_adapter::kBluetoothAdapterInterface);
@@ -234,7 +263,6 @@ TEST_F(BluetoothClientImplTest, AdapterPropertyChangedNullProperties) {
               GetProperties(kAdapterPath,
                             bluetooth_adapter::kBluetoothAdapterInterface))
       .WillOnce(Return(nullptr));
-  bluetooth_client()->AddObserver(observer());
   properties->powered.ReplaceValue(true);
 }
 
@@ -246,28 +274,70 @@ TEST_F(BluetoothClientImplTest, AdapterPropertyChanged) {
 
   std::unique_ptr<BluetoothClient::AdapterProperties> properties(
       static_cast<BluetoothClient::AdapterProperties*>(properties_base_ptr));
+  properties->address.set_valid(true);
+  properties->name.set_valid(true);
+  properties->powered.set_valid(true);
 
   EXPECT_CALL(*object_manager(),
               GetProperties(kAdapterPath,
                             bluetooth_adapter::kBluetoothAdapterInterface))
-      .WillOnce(Return(properties.get()));
+      .Times(4)
+      .WillRepeatedly(Return(properties_base_ptr));
+
+  properties->address.set_valid(false);
+  properties->address.ReplaceValue("aa:aa:aa:ff:ff:ff");
+  properties->address.set_valid(true);
+  Mock::VerifyAndClearExpectations(observer());
+
+  properties->name.set_valid(false);
+  properties->name.ReplaceValue("sarien-laptop");
+  properties->name.set_valid(true);
+  Mock::VerifyAndClearExpectations(observer());
+
+  properties->powered.set_valid(false);
+  properties->powered.ReplaceValue(true);
+  properties->powered.set_valid(true);
+  Mock::VerifyAndClearExpectations(observer());
+
   EXPECT_CALL(*observer(),
               AdapterPropertyChanged(
                   kAdapterPath, AdapterPropertiesEquals(properties.get())));
-  bluetooth_client()->AddObserver(observer());
   properties->address.ReplaceValue("ff:ff:ff:aa:aa:aa");
 }
 
 TEST_F(BluetoothClientImplTest, DeviceAddedNullProperties) {
-  bluetooth_client()->AddObserver(observer());
-  EXPECT_CALL(*object_manager(), GetProperties(_, _)).WillOnce(Return(nullptr));
+  EXPECT_CALL(*object_manager(), GetProperties(kDevicePath, _))
+      .WillOnce(Return(nullptr));
   device_manager_interface()->ObjectAdded(
       kDevicePath, bluetooth_device::kBluetoothDeviceInterface);
 }
 
+TEST_F(BluetoothClientImplTest, DeviceAddedWithInvalidProperties) {
+  auto device_properties = GetDeviceProperties();
+  EXPECT_CALL(
+      *object_manager(),
+      GetProperties(kDevicePath, bluetooth_device::kBluetoothDeviceInterface))
+      .Times(3)
+      .WillRepeatedly(Return(device_properties.get()));
+
+  device_properties->address.set_valid(false);
+  device_manager_interface()->ObjectAdded(
+      kDevicePath, bluetooth_device::kBluetoothDeviceInterface);
+  device_properties->address.set_valid(true);
+
+  device_properties->name.set_valid(false);
+  device_manager_interface()->ObjectAdded(
+      kDevicePath, bluetooth_device::kBluetoothDeviceInterface);
+  device_properties->name.set_valid(true);
+
+  device_properties->connected.set_valid(false);
+  device_manager_interface()->ObjectAdded(
+      kDevicePath, bluetooth_device::kBluetoothDeviceInterface);
+  device_properties->connected.set_valid(true);
+}
+
 TEST_F(BluetoothClientImplTest, DeviceAdded) {
   const auto kProperties = GetDeviceProperties();
-  bluetooth_client()->AddObserver(observer());
   EXPECT_CALL(
       *object_manager(),
       GetProperties(kDevicePath, bluetooth_device::kBluetoothDeviceInterface))
@@ -281,7 +351,6 @@ TEST_F(BluetoothClientImplTest, DeviceAdded) {
 
 TEST_F(BluetoothClientImplTest, DeviceRemoved) {
   const auto kProperties = GetDeviceProperties();
-  bluetooth_client()->AddObserver(observer());
   EXPECT_CALL(*observer(), DeviceRemoved(kDevicePath));
   device_manager_interface()->ObjectRemoved(
       kDevicePath, bluetooth_device::kBluetoothDeviceInterface);
@@ -300,7 +369,6 @@ TEST_F(BluetoothClientImplTest, DevicePropertyChangedNullProperties) {
       *object_manager(),
       GetProperties(kDevicePath, bluetooth_device::kBluetoothDeviceInterface))
       .WillOnce(Return(nullptr));
-  bluetooth_client()->AddObserver(observer());
   properties->connected.ReplaceValue(true);
 }
 
@@ -312,22 +380,40 @@ TEST_F(BluetoothClientImplTest, DevicePropertyChanged) {
 
   std::unique_ptr<BluetoothClient::DeviceProperties> properties(
       static_cast<BluetoothClient::DeviceProperties*>(properties_base_ptr));
+  properties->address.set_valid(true);
+  properties->name.set_valid(true);
+  properties->connected.set_valid(true);
 
   EXPECT_CALL(
       *object_manager(),
       GetProperties(kDevicePath, bluetooth_device::kBluetoothDeviceInterface))
-      .WillOnce(Return(properties.get()));
+      .Times(4)
+      .WillRepeatedly(Return(properties_base_ptr));
+
+  properties->address.set_valid(false);
+  properties->address.ReplaceValue("ff:ff:ff:aa:aa:aa");
+  properties->address.set_valid(true);
+  Mock::VerifyAndClearExpectations(observer());
+
+  properties->name.set_valid(false);
+  properties->name.ReplaceValue("GID6");
+  properties->name.set_valid(true);
+  Mock::VerifyAndClearExpectations(observer());
+
+  properties->connected.set_valid(false);
+  properties->connected.ReplaceValue(true);
+  properties->connected.set_valid(true);
+  Mock::VerifyAndClearExpectations(observer());
+
   EXPECT_CALL(*observer(),
               DevicePropertyChanged(kDevicePath,
                                     DevicePropertiesEquals(properties.get())));
-  bluetooth_client()->AddObserver(observer());
   properties->address.ReplaceValue("aa:aa:aa:ff:ff:ff");
 }
 
 TEST_F(BluetoothClientImplTest, AddAndRemoveObserver) {
   const auto kProperties = GetAdapterProperties();
 
-  bluetooth_client()->AddObserver(observer());
   EXPECT_CALL(*object_manager(),
               GetProperties(kAdapterPath,
                             bluetooth_adapter::kBluetoothAdapterInterface))

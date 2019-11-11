@@ -10,6 +10,24 @@
 
 namespace diagnostics {
 
+namespace {
+
+bool AreAdapterPropertiesValid(
+    const BluetoothClient::AdapterProperties& adapter_properties) {
+  return adapter_properties.name.is_valid() &&
+         adapter_properties.address.is_valid() &&
+         adapter_properties.powered.is_valid();
+}
+
+bool AreDevicePropertiesValid(
+    const BluetoothClient::DeviceProperties& device_properties) {
+  return device_properties.name.is_valid() &&
+         device_properties.address.is_valid() &&
+         device_properties.connected.is_valid();
+}
+
+}  // namespace
+
 BluetoothClientImpl::BluetoothClientImpl(const scoped_refptr<dbus::Bus>& bus)
     : object_manager_(bus->GetObjectManager(
           bluetooth_object_manager::kBluetoothObjectManagerServiceName,
@@ -62,12 +80,18 @@ void BluetoothClientImpl::ObjectAdded(const dbus::ObjectPath& object_path,
 
   if (interface_name == bluetooth_adapter::kBluetoothAdapterInterface) {
     auto adapter_properties = static_cast<AdapterProperties*>(properties);
+    if (!AreAdapterPropertiesValid(*adapter_properties)) {
+      return;
+    }
     for (auto& observer : observers_)
       observer.AdapterAdded(object_path, *adapter_properties);
     return;
   }
   if (interface_name == bluetooth_device::kBluetoothDeviceInterface) {
     auto device_properties = static_cast<DeviceProperties*>(properties);
+    if (!AreDevicePropertiesValid(*device_properties)) {
+      return;
+    }
     for (auto& observer : observers_)
       observer.DeviceAdded(object_path, *device_properties);
     return;
@@ -107,12 +131,18 @@ void BluetoothClientImpl::PropertyChanged(const dbus::ObjectPath& object_path,
 
   if (interface_name == bluetooth_adapter::kBluetoothAdapterInterface) {
     auto adapter_properties = static_cast<AdapterProperties*>(properties);
+    if (!AreAdapterPropertiesValid(*adapter_properties)) {
+      return;
+    }
     for (auto& observer : observers_)
       observer.AdapterPropertyChanged(object_path, *adapter_properties);
     return;
   }
   if (interface_name == bluetooth_device::kBluetoothDeviceInterface) {
     auto device_properties = static_cast<DeviceProperties*>(properties);
+    if (!AreDevicePropertiesValid(*device_properties)) {
+      return;
+    }
     for (auto& observer : observers_)
       observer.DevicePropertyChanged(object_path, *device_properties);
     return;
