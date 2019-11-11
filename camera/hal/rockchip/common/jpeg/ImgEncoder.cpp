@@ -35,39 +35,21 @@ ImgEncoder::~ImgEncoder()
     LOG1("@%s", __FUNCTION__);
 }
 
-std::shared_ptr<CommonBuffer> ImgEncoder::createCommonBuffer(std::shared_ptr<CameraBuffer> cBuffer)
-{
-    std::shared_ptr<CommonBuffer> jBuffer = nullptr;
-    if (cBuffer.get()) {
-        BufferProps props;
-        props.width  = cBuffer->width();
-        props.height = cBuffer->height();
-        props.stride = cBuffer->stride();
-        props.format = cBuffer->v4l2Fmt();
-        props.type   = BMT_HEAP;
-        props.size   = cBuffer->size();
-
-        jBuffer = std::make_shared<CommonBuffer>(props, cBuffer->data());
-    }
-
-    return jBuffer;
-}
-
 /**
  * convertEncodePackage
  *
- * method for converting CameraBuffer based EncodePackage to CommonBuffer
+ * method for converting EncodePackage to ImgEncoderCore::EncodePackage
  * based EncodePackage.
  */
 void ImgEncoder::convertEncodePackage(EncodePackage& src, ImgEncoderCore::EncodePackage& dst)
 {
-    dst.main        = createCommonBuffer(src.main);
-    dst.thumb       = createCommonBuffer(src.thumb);
-    dst.jpegOut     = createCommonBuffer(src.jpegOut);
+    dst.main        = src.main;
+    dst.thumb       = src.thumb;
+    dst.jpegOut     = src.jpegOut;
     dst.jpegSize    = src.jpegSize;
-    dst.encodedData = createCommonBuffer(src.encodedData);
+    dst.encodedData = src.encodedData;
     dst.encodedDataSize = src.encodedDataSize;
-    dst.thumbOut    = createCommonBuffer(src.thumbOut);
+    dst.thumbOut    = src.thumbOut;
     dst.thumbSize   = src.thumbSize;
     dst.settings    = src.settings;
     dst.jpegDQTAddr = src.jpegDQTAddr;
@@ -89,7 +71,7 @@ void ImgEncoder::allocateOutputCameraBuffers(EncodePackage &pkg, ExifMetaData& m
 
         LOG1("Allocating jpeg data buffer with %dx%d, stride:%d", pkg.jpegOut->width(),
                 pkg.jpegOut->height(), pkg.jpegOut->stride());
-        mJpegDataBuf = MemoryUtils::allocateHeapBuffer(pkg.jpegOut->width(),
+        mJpegDataBuf = CameraBuffer::allocateHeapBuffer(pkg.jpegOut->width(),
                 pkg.jpegOut->height(), pkg.jpegOut->stride(),
                 pkg.jpegOut->v4l2Fmt(), mCameraId);
     }
@@ -113,7 +95,7 @@ void ImgEncoder::allocateOutputCameraBuffers(EncodePackage &pkg, ExifMetaData& m
             LOG1("Allocating thumb data buffer with %dx%d", thumbwidth, thumbheight);
             // Use thumbwidth as stride for the heap buffer and a larger size
             // for high compression quality
-            mThumbOutBuf = MemoryUtils::allocateHeapBuffer(thumbwidth, thumbheight,
+            mThumbOutBuf = CameraBuffer::allocateHeapBuffer(thumbwidth, thumbheight,
                     thumbwidth, pkg.thumb->v4l2Fmt(), mCameraId,
                     thumbwidth * thumbheight * 2);
         }
@@ -124,7 +106,6 @@ void ImgEncoder::allocateOutputCameraBuffers(EncodePackage &pkg, ExifMetaData& m
 /**
  * encodeSync
  *
- * Convert CameraBuffer to CommonBuffer
  * Call ImgEncoderCore to finish the job
  */
 status_t ImgEncoder::encodeSync(EncodePackage& package, ExifMetaData& metaData)

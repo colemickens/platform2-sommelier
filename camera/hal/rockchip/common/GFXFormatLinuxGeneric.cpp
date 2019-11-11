@@ -88,9 +88,11 @@ int v4L2Fmt2GFXFmt(int v4l2Fmt)
         gfxFmt = HAL_PIXEL_FORMAT_RAW_OPAQUE;
         break;
     case V4L2_PIX_FMT_NV21:
+    case V4L2_PIX_FMT_NV21M:
         gfxFmt = HAL_PIXEL_FORMAT_YCrCb_420_SP;
         break;
     case V4L2_PIX_FMT_NV12:
+    case V4L2_PIX_FMT_NV12M:
         gfxFmt = HAL_PIXEL_FORMAT_NV12_LINEAR_CAMERA_RK;
         break;
     case V4L2_PIX_FMT_YUYV:
@@ -116,7 +118,9 @@ int widthToStride(int fourcc, int width)
         return ALIGN128(width);
     switch (fourcc) {
     case V4L2_PIX_FMT_NV12:
+    case V4L2_PIX_FMT_NV12M:
     case V4L2_PIX_FMT_NV21:
+    case V4L2_PIX_FMT_NV21M:
     case V4L2_PIX_FMT_YVU420:
         stride =  ALIGN64(width);
         break;

@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+#include "Camera3V4l2Format.h"
 #define LOG_TAG "FrameWorker"
 
 #include "FrameWorker.h"
@@ -90,8 +91,18 @@ status_t FrameWorker::setWorkerDeviceBuffers(int memType, size_t extraBufferCoun
 status_t FrameWorker::allocateWorkerBuffers()
 {
     int memType = mNode->getMemoryType();
-    int dmaBufFd;
-    unsigned long userptr;
+    int lengthY = 0;
+    int lengthUV = 0;
+    int offsetY = 0;
+    int offsetUV = 0;
+    int numPlanes = numOfNonContiguousPlanes(mFormat.pixelformat());
+    // Number of non contiguous planes can only be
+    // 1 for NV12, NV21 and meta frame
+    // 2 for NV12M and NV21M
+    if (numPlanes > 2) {
+        LOGE("@%s Unsupported pixelformat %s", __func__,
+             v4l2Fmt2Str(mFormat.pixelformat()));
+    }
     std::shared_ptr<CameraBuffer> buf = nullptr;
     for (unsigned int i = 0; i < mPipelineDepth; i++) {
         LOG2("@%s allocate format: %s size: %d %dx%d bytesperline: %d", __func__, v4l2Fmt2Str(mFormat.pixelformat()),
@@ -100,30 +111,21 @@ status_t FrameWorker::allocateWorkerBuffers()
                 mFormat.height(),
                 mFormat.bytesperline());
         switch (memType) {
-        case V4L2_MEMORY_USERPTR:
-            buf = MemoryUtils::allocateHeapBuffer(mFormat.width(),
-                mFormat.height(),
-                mFormat.bytesperline(),
-                mFormat.pixelformat(),
-                mCameraId,
-                PAGE_ALIGN(mFormat.sizeimage()));
-            if (buf.get() == nullptr)
-                return NO_MEMORY;
-            userptr = reinterpret_cast<unsigned long>(buf->data());
-            mBuffers[i].setUserptr(userptr);
-            memset(buf->data(), 0, buf->size());
-            LOG2("mBuffers[%d].userptr: 0x%lx", i , mBuffers[i].userptr());
-            break;
         case V4L2_MEMORY_MMAP:
-            dmaBufFd = mNode->exportFrame(i);
-            buf = std::make_shared<CameraBuffer>(mFormat.width(),
-                mFormat.height(),
-                mFormat.bytesperline(),
-                mNode->getFd(),
-                dmaBufFd,
-                mBuffers[i].length(),
-                mFormat.pixelformat(),
-                mBuffers[i].offset(), PROT_READ | PROT_WRITE, MAP_SHARED);
+            lengthY = mBuffers[i].length(0);
+            offsetY = mBuffers[i].offset(0);
+            if (numPlanes > 1) {
+                lengthUV = mBuffers[i].length(1);
+                offsetUV = mBuffers[i].offset(1);
+            }
+            buf = CameraBuffer::createMMapBuffer(mFormat.width(),
+                    mFormat.height(),
+                    mFormat.bytesperline(),
+                    mNode->getFd(),
+                    lengthY, lengthUV,
+                    mFormat.pixelformat(),
+                    offsetY, offsetUV,
+                    PROT_READ | PROT_WRITE, MAP_SHARED);
             if (buf.get() == nullptr)
                 return BAD_VALUE;
             break;

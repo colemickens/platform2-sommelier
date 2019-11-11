@@ -29,6 +29,11 @@ const struct CameraFormatBridge sV4L2PixelFormatBridge[] = {
         .planar = true,
         .bayer = false
     }, {
+        .pixelformat = V4L2_PIX_FMT_NV12M,
+        .depth = 12,
+        .planar = true,
+        .bayer = false
+    }, {
         .pixelformat = V4L2_PIX_FMT_YUV420,
         .depth = 12,
         .planar = true,
@@ -57,6 +62,11 @@ const struct CameraFormatBridge sV4L2PixelFormatBridge[] = {
 #endif
     }, {
         .pixelformat = V4L2_PIX_FMT_NV21,
+        .depth = 12,
+        .planar = true,
+        .bayer = false
+    }, {
+        .pixelformat = V4L2_PIX_FMT_NV21M,
         .depth = 12,
         .planar = true,
         .bayer = false
@@ -209,6 +219,32 @@ const struct CameraFormatBridge sV4L2PixelFormatBridge[] = {
         .bayer = false
     },
 };
+
+/**
+ * returns number of non contiguous planes for given V4L2 pixelformat (fourcc)
+ */
+int numOfNonContiguousPlanes(unsigned int fourcc)
+{
+    switch(fourcc) {
+        case V4L2_PIX_FMT_NV12M:
+        case V4L2_PIX_FMT_NV21M:
+        case V4L2_PIX_FMT_NV16M:
+        case V4L2_PIX_FMT_NV61M:
+        case V4L2_PIX_FMT_NV12MT:
+        case V4L2_PIX_FMT_NV12MT_16X16:
+            return 2;
+        case V4L2_PIX_FMT_YUV420M:
+        case V4L2_PIX_FMT_YVU420M:
+        case V4L2_PIX_FMT_YUV422M:
+        case V4L2_PIX_FMT_YVU422M:
+        case V4L2_PIX_FMT_YUV444M:
+        case V4L2_PIX_FMT_YVU444M:
+            return 3;
+        default:
+            return 1;
+    }
+    return 1;
+}
 
 /**
  * returns sCameraFormatBrige* for given V4L2 pixelformat (fourcc)

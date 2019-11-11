@@ -38,6 +38,11 @@ extern const struct CameraFormatBridge sV4l2PixelFormatBridge[];
 const struct CameraFormatBridge* getCameraFormatBridge(unsigned int fourcc);
 
 /**
+ * returns number of non contiguous planes for given V4L2 pixelformat (fourcc)
+ * commonly used to determine planes number for buffer.
+ */
+int numOfNonContiguousPlanes(unsigned int fourcc);
+/**
  * return pixels based on bytes
  *
  * commonly used to calculate bytes-per-line as per pixel width

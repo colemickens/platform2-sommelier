@@ -32,7 +32,6 @@ shared_library("libcamera_hal") {
     "common/3a/RkAWBStateMachine.cpp",
     "common/Camera3V4l2Format.cpp",
     "common/CameraWindow.cpp",
-    "common/CommonBuffer.cpp",
     "common/GFXFormatLinuxGeneric.cpp",
     "common/IaAtrace.cpp",
     "common/LogHelper.cpp",

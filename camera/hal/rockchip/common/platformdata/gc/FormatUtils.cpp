@@ -94,6 +94,9 @@ static const FormatInfo gFormatMapping[] = {
 
     { V4L2_PIX_FMT_NV16, get_fourcc('N', 'V', '1', '6'), "V4L2_PIX_FMT_NV16", "NV16", 16, FORMAT_YUV },
     { V4L2_PIX_FMT_NV12, get_fourcc('N', 'V', '1', '2'), "V4L2_PIX_FMT_NV12", "NV12", 12, FORMAT_YUV },
+    { V4L2_PIX_FMT_NV12M, get_fourcc('N', 'M', '1', '2'), "V4L2_PIX_FMT_NV12M", "NM12", 12, FORMAT_YUV },
+    { V4L2_PIX_FMT_NV12, get_fourcc('N', 'V', '2', '1'), "V4L2_PIX_FMT_NV12", "NV12", 12, FORMAT_YUV },
+    { V4L2_PIX_FMT_NV12M, get_fourcc('N', 'M', '2', '1'), "V4L2_PIX_FMT_NV12M", "NM12", 12, FORMAT_YUV },
     { V4L2_PIX_FMT_YUYV, get_fourcc('Y', 'U', 'Y', 'V'), "V4L2_PIX_FMT_YUYV", "YUYV", 16, FORMAT_YUV },
 
     { V4L2_PIX_FMT_YUV420, 0, "V4L2_PIX_FMT_YUV420", "YUV420", 12, FORMAT_YUV },

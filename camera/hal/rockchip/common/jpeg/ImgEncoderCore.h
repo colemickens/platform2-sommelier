@@ -20,7 +20,7 @@
 
 #include <memory>
 #include <mutex>
-#include "CommonBuffer.h"
+#include "CameraBuffer.h"
 #include "EXIFMaker.h"
 
 #include "cros-camera/jpeg_compressor.h"
@@ -51,13 +51,13 @@ public:  /* types */
                 padExif(false),
                 encodeAll(true) {}
 
-        std::shared_ptr<CommonBuffer> main;        // for input
-        std::shared_ptr<CommonBuffer> thumb;       // for input, can be nullptr
-        std::shared_ptr<CommonBuffer> jpegOut;     // for final JPEG output
+        std::shared_ptr<CameraBuffer> main;        // for input
+        std::shared_ptr<CameraBuffer> thumb;       // for input, can be nullptr
+        std::shared_ptr<CameraBuffer> jpegOut;     // for final JPEG output
         int                           jpegSize;    // Jpeg output size
-        std::shared_ptr<CommonBuffer> encodedData;    // encoder output for main image
+        std::shared_ptr<CameraBuffer> encodedData;    // encoder output for main image
         int                           encodedDataSize;// main image encoded data size
-        std::shared_ptr<CommonBuffer> thumbOut;    // for thumbnail output
+        std::shared_ptr<CameraBuffer> thumbOut;    // for thumbnail output
         int                           thumbSize;   // Thumb ouptut size
         const CameraMetadata         *settings;    // settings from request
         unsigned char                *jpegDQTAddr; // pointer to DQT marker inside jpeg, for in-place exif creation
@@ -108,18 +108,18 @@ private:  /* Methods */
     status_t allocateBufferAndDownScale(EncodePackage & pkg);
     void thumbBufferDownScale(EncodePackage & pkg);
     void mainBufferDownScale(EncodePackage & pkg);
-    int doSwEncode(std::shared_ptr<CommonBuffer> srcBuf,
+    int doSwEncode(std::shared_ptr<CameraBuffer> srcBuf,
                    int quality,
-                   std::shared_ptr<CommonBuffer> destBuf,
+                   std::shared_ptr<CameraBuffer> destBuf,
                    unsigned int destOffset = 0);
     status_t getJpegSettings(EncodePackage & pkg, ExifMetaData& metaData);
 
 private:  /* Members */
 
-    std::shared_ptr<CommonBuffer> mThumbOutBuf;
-    std::shared_ptr<CommonBuffer> mJpegDataBuf;
-    std::shared_ptr<CommonBuffer> mMainScaled;
-    std::shared_ptr<CommonBuffer> mThumbScaled;
+    std::shared_ptr<CameraBuffer> mThumbOutBuf;
+    std::shared_ptr<CameraBuffer> mJpegDataBuf;
+    std::shared_ptr<CameraBuffer> mMainScaled;
+    std::shared_ptr<CameraBuffer> mThumbScaled;
 
     ExifMetaData::JpegSetting *mJpegSetting;
 

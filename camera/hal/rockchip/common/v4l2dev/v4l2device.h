@@ -120,6 +120,8 @@ public:
     V4L2Format(const struct v4l2_format &fmt) {vfmt = fmt;}
     uint32_t type() {return vfmt.type;}
     void setType(uint32_t type);
+    uint32_t numPlanes();
+    void setNumPlanes(int numPlanes);
     uint32_t width();
     void setWidth(uint32_t width);
     uint32_t height();
@@ -252,7 +254,7 @@ public:
     virtual int grabFrame(V4L2BufferInfo *buf);
     virtual int putFrame(const V4L2Buffer &buf);
     virtual int putFrame(unsigned int index);
-    virtual int exportFrame(unsigned int index);
+    virtual int exportFrame(unsigned int index, int plane = 0);
 
     // Convenience accessors
     virtual bool isStarted() const { return mState == DEVICE_STARTED; }

@@ -50,12 +50,7 @@ void V4L2Buffer::setType(uint32_t type)
 {
     CheckError(!V4L2_TYPE_IS_VALID(type), VOID_VALUE, \
                "@%s: invalid buffer type: %d.", __FUNCTION__, type);
-
     vbuf.type = type;
-    if (V4L2_TYPE_IS_MULTIPLANAR(vbuf.type)) {
-        /* Init fields required by multi-planar buffers */
-        setNumPlanes(1);
-    }
 }
 
 uint32_t V4L2Buffer::offset(int plane)
@@ -236,8 +231,31 @@ void V4L2Format::setType(uint32_t type)
                "@%s: invalid buffer type: %d.", __FUNCTION__, type);
 
     vfmt.type = type;
-    if (V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
-        vfmt.fmt.pix_mp.num_planes = 1;
+}
+
+uint32_t V4L2Format::numPlanes()
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), BAD_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
+
+    if (!V4L2_TYPE_IS_MULTIPLANAR(vfmt.type))
+        LOGE("@%s: reading number of planes non multi-plane format is not allowed.", __FUNCTION__);
+        return 0;
+
+    return vfmt.fmt.pix_mp.num_planes;
+}
+
+void V4L2Format::setNumPlanes(int numPlanes)
+{
+    CheckError(!V4L2_TYPE_IS_VALID(vfmt.type), VOID_VALUE, \
+               "@%s: invalid buffer type: %d.", __FUNCTION__, vfmt.type);
+
+    if (!V4L2_TYPE_IS_MULTIPLANAR(vfmt.type)) {
+        LOGE("@%s: setting number of planes for non multi-plane format is not allowed.", __FUNCTION__);
+        return;
+    }
+
+    vfmt.fmt.pix_mp.num_planes = numPlanes;
 }
 
 uint32_t V4L2Format::width()
@@ -820,6 +838,11 @@ status_t V4L2VideoNode::setPixFormat(V4L2Format &aFormat)
     }
 
     aFormat.setType(mBufType);
+    if (V4L2_TYPE_IS_MULTIPLANAR(mBufType)) {
+        int num_planes = numOfNonContiguousPlanes(aFormat.pixelformat());
+        aFormat.setNumPlanes(num_planes);
+    }
+
     LOG1("VIDIOC_S_FMT: %s width: %d, height: %d, bpl: %d, fourcc: %s, field: %d",
          mName.c_str(),
          aFormat.width(),
@@ -986,7 +1009,7 @@ int V4L2VideoNode::putFrame(unsigned int index)
     return ret;
 }
 
-int V4L2VideoNode::exportFrame(unsigned int index)
+int V4L2VideoNode::exportFrame(unsigned int index, int plane)
 {
     int ret(0);
 
@@ -1006,6 +1029,7 @@ int V4L2VideoNode::exportFrame(unsigned int index)
     CLEAR(ebuf);
     ebuf.type = vbuf.vbuffer.type();
     ebuf.index = index;
+    ebuf.plane = plane;
     ret = pioctl(mFd, VIDIOC_EXPBUF, &ebuf, mName.c_str());
     if (ret < 0) {
         LOGE("@%s %s VIDIOC_EXPBUF failed ret %d : %s",
@@ -1485,10 +1509,18 @@ int V4L2VideoNode::dqbuf(V4L2BufferInfo *buf)
     v4l2_buf.setMemory(mMemoryType);
     v4l2_buf.setType(mBufType);
 
+    if (V4L2_TYPE_IS_MULTIPLANAR(mBufType)) {
+        int num_planes = numOfNonContiguousPlanes(mConfig.format);
+        v4l2_buf.setNumPlanes(num_planes);
+    }
+
     ret = pioctl(mFd, VIDIOC_DQBUF, v4l2_buf.get(), mName.c_str());
 
     if (ret < 0) {
-        LOG2("VIDIOC_DQBUF failed: %s", strerror(errno));
+        if (errno != EAGAIN)
+            LOGE("VIDIOC_DQBUF failed: %s on %s for mBufType %d mMemoryType %d", strerror(errno), mName.c_str(), mBufType, mMemoryType);
+        else
+            LOG1("VIDIOC_DQBUF failed: %s on %s for mBufType %d mMemoryType %d", strerror(errno), mName.c_str(), mBufType, mMemoryType);
         return ret;
     }
     mBuffersInDevice--;
@@ -1562,6 +1594,10 @@ int V4L2VideoNode::newBuffer(int index, V4L2BufferInfo &buf, int memType)
     vbuf.setMemory(memType);
     vbuf.setType(mBufType);
     vbuf.setIndex(index);
+    if (V4L2_TYPE_IS_MULTIPLANAR(mBufType)) {
+        int num_planes = numOfNonContiguousPlanes(mConfig.format);
+        vbuf.setNumPlanes(num_planes);
+    }
     ret = pioctl(mFd , VIDIOC_QUERYBUF, vbuf.get(), mName.c_str());
 
     if (ret < 0) {

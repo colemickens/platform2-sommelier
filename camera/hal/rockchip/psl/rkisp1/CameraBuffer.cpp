@@ -18,20 +18,36 @@
 #define LOG_TAG "CameraBuffer"
 #include "LogHelper.h"
 #include <sys/mman.h>
+#include "linux/videodev2.h"
 #include "PlatformData.h"
 #include "CameraBuffer.h"
 #include "CameraStream.h"
 #include "Camera3GFXFormat.h"
+#include "Camera3V4l2Format.h"
 #include <unistd.h>
 #include <sync/sync.h>
 
 #include <sys/types.h>
 #include <dirent.h>
 #include <algorithm>
+#include <libyuv.h>
 
 NAMESPACE_DECLARATION {
 extern int32_t gDumpInterval;
 extern int32_t gDumpCount;
+
+static bool SupportedFormat(int fmt) {
+    if (fmt == V4L2_PIX_FMT_NV12 ||
+        fmt == V4L2_PIX_FMT_NV12M ||
+        fmt == V4L2_PIX_FMT_NV21 ||
+        fmt == V4L2_PIX_FMT_NV21M ||
+        fmt == V4L2_META_FMT_RK_ISP1_PARAMS ||
+        fmt == V4L2_META_FMT_RK_ISP1_STAT_3A ||
+        fmt == V4L2_PIX_FMT_JPEG) {  // Used for JPEG Encoder.
+        return true;
+    }
+    return false;
+}
 
 ////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
@@ -49,6 +65,8 @@ extern int32_t gDumpCount;
 CameraBuffer::CameraBuffer() :  mWidth(0),
                                 mHeight(0),
                                 mSize(0),
+                                mSizeY(0),
+                                mSizeUV(0),
                                 mFormat(0),
                                 mV4L2Fmt(0),
                                 mStride(0),
@@ -62,16 +80,16 @@ CameraBuffer::CameraBuffer() :  mWidth(0),
                                 mHandlePtr(nullptr),
                                 mOwner(nullptr),
                                 mDataPtr(nullptr),
+                                mDataPtrUV(nullptr),
                                 mRequestID(0),
                                 mCameraId(0),
-                                mDmaBufFd(-1)
+                                mNonContiguousYandUV(false)
 {
     LOG1("%s default constructor for buf %p", __FUNCTION__, this);
     CLEAR(mUserBuffer);
     CLEAR(mTimestamp);
     mUserBuffer.release_fence = -1;
     mUserBuffer.acquire_fence = -1;
-
 }
 
 /**
@@ -98,6 +116,8 @@ CameraBuffer::CameraBuffer(int w,
         mWidth(w),
         mHeight(h),
         mSize(0),
+        mSizeY(0),
+        mSizeUV(0),
         mFormat(0),
         mV4L2Fmt(v4l2fmt),
         mStride(s),
@@ -111,19 +131,30 @@ CameraBuffer::CameraBuffer(int w,
         mHandlePtr(nullptr),
         mOwner(nullptr),
         mDataPtr(nullptr),
+        mDataPtrUV(nullptr),
         mRequestID(0),
-        mCameraId(cameraId),
-        mDmaBufFd(-1)
+        mCameraId(cameraId)
 {
     LOG1("%s create malloc camera buffer %p", __FUNCTION__, this);
-    if (usrPtr != nullptr) {
-        mDataPtr = usrPtr;
-        mInit = true;
-        mSize = dataSizeOverride ? dataSizeOverride : frameSize(mV4L2Fmt, mStride, mHeight);
-        mFormat = v4L2Fmt2GFXFmt(v4l2fmt);
-    } else {
+    if (usrPtr == nullptr) {
         LOGE("Tried to initialize a buffer with nullptr ptr!!");
+        return;
     }
+
+    mInit = true;
+    mDataPtr = usrPtr;
+    mSize = dataSizeOverride ? dataSizeOverride : frameSize(mV4L2Fmt, mStride, mHeight);
+    mFormat = v4L2Fmt2GFXFmt(v4l2fmt);
+
+    mDataPtrUV = static_cast<uint8_t*>(usrPtr) + mHeight * mStride;
+    mSizeY = mHeight * mStride;
+    mSizeUV = mHeight * mStride / 2;
+
+    mNonContiguousYandUV = false;
+    if (v4l2fmt == V4L2_PIX_FMT_NV12M || v4l2fmt == V4L2_PIX_FMT_NV21M) {
+        mNonContiguousYandUV = true;
+    }
+
     CLEAR(mUserBuffer);
     CLEAR(mTimestamp);
     mUserBuffer.release_fence = -1;
@@ -133,27 +164,29 @@ CameraBuffer::CameraBuffer(int w,
 /**
  * CameraBuffer
  *
- * Constructor for buffers allocated using mmap
+ * Constructor for buffers allocated using mmap with two non-contiguous planes.
  *
  * \param w [IN] width
  * \param h [IN] height
  * \param s [IN] stride
  * \param fd [IN] File descriptor to map
- * \param dmaBufFd [IN] File descriptor for dmabuf
- * \param length [IN] amount of data to map
+ * \param length [vector<int>] amount of data to map for Y and UV plane
  * \param v4l2fmt [IN] Pixel format in V4L2 enum
- * \param offset [IN] offset from the begining of the file (mmap param)
+ * \param offset [vector<int>] offsetY from the beginning of the file (mmap param) for Y and UV
  * \param prot [IN] memory protection (mmap param)
  * \param flags [IN] flags (mmap param)
  *
  * Success of the mmap can be queried by checking the size of the resulting
  * buffer
  */
-CameraBuffer::CameraBuffer(int w, int h, int s, int fd, int dmaBufFd, int length,
-                           int v4l2fmt, int offset, int prot, int flags):
+CameraBuffer::CameraBuffer(int w, int h, int s, int fd, int v4l2fmt,
+                           std::vector<int> length, std::vector<int> offset,
+                           int prot, int flags):
         mWidth(w),
         mHeight(h),
-        mSize(length),
+        mSize(0),
+        mSizeY(0),
+        mSizeUV(0),
         mFormat(0),
         mV4L2Fmt(v4l2fmt),
         mStride(s),
@@ -167,11 +200,13 @@ CameraBuffer::CameraBuffer(int w, int h, int s, int fd, int dmaBufFd, int length
         mHandlePtr(nullptr),
         mOwner(nullptr),
         mDataPtr(nullptr),
+        mDataPtrUV(nullptr),
         mRequestID(0),
         mCameraId(-1),
-        mDmaBufFd(dmaBufFd)
+        mNonContiguousYandUV(false)
 {
     LOG1("%s create mmap camera buffer %p", __FUNCTION__, this);
+
     mLocked = true;
     mInit = true;
     CLEAR(mUserBuffer);
@@ -180,13 +215,34 @@ CameraBuffer::CameraBuffer(int w, int h, int s, int fd, int dmaBufFd, int length
     mUserBuffer.release_fence = -1;
     mUserBuffer.acquire_fence = -1;
 
-    mDataPtr = mmap(nullptr, length, prot, flags, fd, offset);
+    mDataPtr = mmap(nullptr, length[0], prot, flags, fd, offset[0]);
     if (CC_UNLIKELY(mDataPtr == MAP_FAILED)) {
         LOGE("Failed to MMAP the buffer %s", strerror(errno));
         mDataPtr = nullptr;
         return;
     }
-    LOG1("mmaped address for %p length %d", mDataPtr, mSize);
+    mSizeY = length[0];
+    LOG1("mmaped Y address for %p length %d", mDataPtr, mSizeY);
+
+    if (length.size() == 1) {
+        mDataPtrUV = static_cast<uint8_t*>(mDataPtr) + mHeight * mStride;
+        mSize = length[0];
+        mSizeUV = mHeight * mStride / 2;
+        mNonContiguousYandUV = false;
+    } else {
+        mDataPtrUV = mmap(nullptr, length[1], prot, flags, fd, offset[1]);
+        if (CC_UNLIKELY(mDataPtrUV == MAP_FAILED)) {
+            LOGE("Failed to MMAP the buffer %s", strerror(errno));
+            mDataPtrUV = nullptr;
+            munmap(mDataPtr, length[0]);
+            mDataPtr = nullptr;
+            return;
+        }
+        mSize = length[0] + length[1];
+        mSizeUV = length[1];
+        mNonContiguousYandUV = true;
+        LOG1("mmaped UV address for %p length %d", mDataPtrUV, mSizeUV);
+    }
 }
 
 /**
@@ -198,22 +254,32 @@ CameraBuffer::CameraBuffer(int w, int h, int s, int fd, int dmaBufFd, int length
  */
 status_t CameraBuffer::init(const camera3_stream_buffer *aBuffer, int cameraId)
 {
+    mHandle = *aBuffer->buffer;
+    mV4L2Fmt = mGbmBufferManager->GetV4L2PixelFormat(mHandle);
+    if (!SupportedFormat(mV4L2Fmt)) {
+        LOGE("Failed to init unsupported handle camera buffer with format %s",
+             v4l2Fmt2Str(mV4L2Fmt));
+        return BAD_VALUE;
+    }
+
     mType = BUF_TYPE_HANDLE;
     mGbmBufferManager = cros::CameraBufferManager::GetInstance();
-    mHandle = *aBuffer->buffer;
     mHandlePtr = aBuffer->buffer;
     mWidth = aBuffer->stream->width;
     mHeight = aBuffer->stream->height;
     mFormat = aBuffer->stream->format;
-    mV4L2Fmt = mGbmBufferManager->GetV4L2PixelFormat(mHandle);
     // Use actual width from platform native handle for stride
     mStride = mGbmBufferManager->GetPlaneStride(*aBuffer->buffer, 0);
+    mNonContiguousYandUV = (mGbmBufferManager->GetNumPlanes(mHandle) > 1);
     mSize = 0;
+    mSizeY = 0,
+    mSizeUV = 0;
     mLocked = false;
     mOwner = static_cast<CameraStream*>(aBuffer->stream->priv);
     mUsage = mOwner->usage();
     mInit = true;
     mDataPtr = nullptr;
+    mDataPtrUV = nullptr;
     mUserBuffer = *aBuffer;
     mUserBuffer.release_fence = -1;
     mCameraId = cameraId;
@@ -240,21 +306,31 @@ status_t CameraBuffer::init(const camera3_stream_t* stream,
                             buffer_handle_t handle,
                             int cameraId)
 {
+    mV4L2Fmt = mGbmBufferManager->GetV4L2PixelFormat(handle);
+    if (!SupportedFormat(mV4L2Fmt)) {
+        LOGE("Failed to init unsupported handle camera buffer with format %s",
+             v4l2Fmt2Str(mV4L2Fmt));
+        return BAD_VALUE;
+    }
+
     mType = BUF_TYPE_HANDLE;
     mGbmBufferManager = cros::CameraBufferManager::GetInstance();
     mHandle = handle;
     mWidth = stream->width;
     mHeight = stream->height;
     mFormat = stream->format;
-    mV4L2Fmt = mGbmBufferManager->GetV4L2PixelFormat(mHandle);
     // Use actual width from platform native handle for stride
     mStride = mGbmBufferManager->GetPlaneStride(handle, 0);
+    mNonContiguousYandUV = (mGbmBufferManager->GetNumPlanes(mHandle) > 1);
     mSize = 0;
+    mSizeY = 0;
+    mSizeUV = 0;
     mLocked = false;
     mOwner = nullptr;
     mUsage = stream->usage;
     mInit = true;
     mDataPtr = nullptr;
+    mDataPtrUV = nullptr;
     CLEAR(mUserBuffer);
     mUserBuffer.acquire_fence = -1;
     mUserBuffer.release_fence = -1;
@@ -282,10 +358,9 @@ CameraBuffer::~CameraBuffer()
             break;
         case BUF_TYPE_MMAP:
             if (mDataPtr != nullptr)
-                munmap(mDataPtr, mSize);
-            mDataPtr = nullptr;
-            mSize = 0;
-            close(mDmaBufFd);
+                munmap(mDataPtr, mSizeY);
+            if (mDataPtrUV != nullptr)
+                munmap(mDataPtrUV, mSizeUV);
             break;
         case BUF_TYPE_HANDLE:
             // Allocated by the HAL
@@ -340,6 +415,35 @@ status_t CameraBuffer::getFence(camera3_stream_buffer* buf)
     return NO_ERROR;
 }
 
+int CameraBuffer::dmaBufFd(int plane)
+{
+    if (mType != BUF_TYPE_HANDLE) {
+        LOGE("@%s: Try to get dmaBuffer for plane %d > 0 from a non HANDLE type buffer:", __FUNCTION__, plane);
+        return -1;
+    }
+
+    if (0 > plane || mHandle->numFds <= plane) {
+        LOGE("@%s: Invalide plane number, mHandle:%p, plane:%d", __FUNCTION__, mHandle, plane);
+        return mHandle->data[0];
+    }
+
+    return mHandle->data[plane];
+}
+
+int CameraBuffer::dmaBufFdOffset(int plane)
+{
+    if (mType != BUF_TYPE_HANDLE) {
+            LOGE("@%s: Try to get offset for plane %d > 0 from a non HANDLE type buffer:", __FUNCTION__, plane);
+        return 0;
+    }
+    int ret = mGbmBufferManager->GetPlaneOffset(mHandle, plane);
+    if (ret < 0) {
+        LOGE("@%s: failed to get offset for plane, mHandle:%p, plane:%d", __FUNCTION__, mHandle, plane);
+        return 0;
+    }
+    return ret;
+}
+
 status_t CameraBuffer::registerBuffer()
 {
     int ret = mGbmBufferManager->Register(mHandle);
@@ -377,7 +481,11 @@ status_t CameraBuffer::lock(int flags)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     mDataPtr = nullptr;
+    mDataPtrUV = nullptr;
+
     mSize = 0;
+    mSizeY = 0;
+    mSizeUV = 0;
     int ret = 0;
     uint32_t planeNum = mGbmBufferManager->GetNumPlanes(mHandle);
     LOG2("@%s, planeNum:%d, mHandle:%p, mFormat:%d", __FUNCTION__, planeNum, mHandle, mFormat);
@@ -391,8 +499,9 @@ status_t CameraBuffer::lock(int flags)
             LOGE("@%s: call Lock fail, mHandle:%p", __FUNCTION__, mHandle);
             return UNKNOWN_ERROR;
         }
+        mSize = mGbmBufferManager->GetPlaneSize(mHandle, 0);
         mDataPtr = data;
-    } else if (planeNum > 1) {
+    } else if (planeNum == 2) {
         struct android_ycbcr ycbrData;
         ret = mGbmBufferManager->LockYCbCr(mHandle, 0, 0, 0, mWidth, mHeight, &ycbrData);
         if (ret) {
@@ -400,8 +509,12 @@ status_t CameraBuffer::lock(int flags)
             return UNKNOWN_ERROR;
         }
         mDataPtr = ycbrData.y;
+        mDataPtrUV = ycbrData.cb;
+        mSizeY = mGbmBufferManager->GetPlaneSize(mHandle, 0);
+        mSizeUV = mGbmBufferManager->GetPlaneSize(mHandle, 1);
+        mSize = mSizeY + mSizeUV;
     } else {
-        LOGE("ERROR @%s: planeNum is 0", __FUNCTION__);
+        LOGE("ERROR @%s: Invalid planeNum %d", __FUNCTION__, planeNum);
         return UNKNOWN_ERROR;
     }
     if (ret) {
@@ -409,9 +522,6 @@ status_t CameraBuffer::lock(int flags)
         return UNKNOWN_ERROR;
     }
 
-    for (int i = 0; i < planeNum; i++) {
-        mSize += mGbmBufferManager->GetPlaneSize(mHandle, i);
-    }
     LOG2("@%s, mDataPtr:%p, mSize:%d", __FUNCTION__, mDataPtr, mSize);
     if (!mSize) {
         LOGE("ERROR @%s: Failed to GetPlaneSize, it's 0", __FUNCTION__);
@@ -506,14 +616,19 @@ void CameraBuffer::dumpImage(const char *name)
     status_t status = lock();
     CheckError((status != OK), VOID_VALUE, "failed to lock dump buffer");
 
-    dumpImage(mDataPtr, mSize, mWidth, mHeight, name);
+    if (!nonContiguousYandUV()) {
+        dumpImage(mDataPtr, nullptr, mSize, 0, mWidth, mHeight, name);
+    } else {
+        dumpImage(mDataPtr, mDataPtrUV, mSizeY, mSizeUV, mWidth, mHeight, name);
+    }
 
     unlock();
 #endif
 }
 
-void CameraBuffer::dumpImage(const void *data, const int size, int width, int height,
-                                 const char *name)
+void CameraBuffer::dumpImage(const void *data, const void* dataUV,
+                             const int size, int sizeUV, int width, int height,
+                             const char *name)
 {
 #ifdef DUMP_IMAGE
     static unsigned int count = 0;
@@ -544,8 +659,13 @@ void CameraBuffer::dumpImage(const void *data, const int size, int width, int he
 
     if ((fwrite(data, size, 1, fp)) != 1)
         LOGW("Error or short count writing %d bytes to %s", size, fileName.data());
-    fclose (fp);
 
+    if (dataUV) {
+        if ((fwrite(dataUV, sizeUV, 1, fp)) != 1)
+            LOGW("Error or short count writing %d bytes to %s", size, fileName.data());
+    }
+
+    fclose (fp);
     // always leave the latest gDumpCount "dump_xxx" files
     if (gDumpCount <= 0) {
         return;
@@ -575,16 +695,63 @@ void CameraBuffer::dumpImage(const void *data, const int size, int width, int he
 }
 
 /**
- * Utility methods to allocate CameraBuffers from HEAP or Gfx memory
+ * Convert NV12M/NV21M buffer to NV12/NV21 of heap buffer. Debug only.
  */
-namespace MemoryUtils {
+std::shared_ptr<CameraBuffer>
+CameraBuffer::ConvertNVXXMToNVXXAsHeapBuffer(std::shared_ptr<CameraBuffer> input)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    if (input->v4l2Fmt() != V4L2_PIX_FMT_NV12M &&
+        input->v4l2Fmt() != V4L2_PIX_FMT_NV21M
+        ) {
+        LOGE("%s unsupported format %s",
+             __FUNCTION__, v4l2Fmt2Str(input->v4l2Fmt()));
+        return nullptr;
+    }
+
+    int targetFormat = (input->v4l2Fmt() == V4L2_PIX_FMT_NV12M) ?
+        V4L2_PIX_FMT_NV12 : V4L2_PIX_FMT_NV21;
+
+    uint32_t width = input->width();
+    uint32_t height = input->height();
+
+    if (input->lock() != NO_ERROR) {
+        LOGE("Failed to lock CameraBuffer, buffer type %d", input->type());
+        return nullptr;
+    }
+
+    auto output = allocateHeapBuffer(
+             width,
+             height,
+             width,
+             targetFormat,
+             input->cameraId(),
+             PAGE_ALIGN(input->size()));
+
+    // Copy y plane.
+    uint8_t* output_y = static_cast<uint8_t*>(output->data());
+    libyuv::CopyPlane(static_cast<const uint8_t*>(input->dataY()),
+                      input->stride(),
+                      output_y,
+                      output->stride(), width, height);
+
+    // Copy uv plane after y.
+    uint8_t* output_c = output_y + (height * output->stride());
+    libyuv::CopyPlane(static_cast<const uint8_t*>(input->dataUV()),
+                      input->stride(),
+                      output_c,
+                      output->stride(), width, height/2);
+
+    input->unlock();
+    return output;
+}
 
 /**
  * Allocates the memory needed to store the image described by the parameters
  * passed during construction
  */
 std::shared_ptr<CameraBuffer>
-allocateHeapBuffer(int w,
+CameraBuffer::allocateHeapBuffer(int w,
                    int h,
                    int s,
                    int v4l2Fmt,
@@ -592,8 +759,13 @@ allocateHeapBuffer(int w,
                    int dataSizeOverride)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    void *dataPtr;
+    if (!SupportedFormat(v4l2Fmt)) {
+        LOGE("Could not allocate unsupported heap camera buffer of format %s",
+             v4l2Fmt2Str(v4l2Fmt));
+        return nullptr;
+    }
 
+    void *dataPtr;
     int dataSize = dataSizeOverride ? dataSizeOverride : frameSize(v4l2Fmt, s, h);
     LOG1("@%s, dataSize:%d", __FUNCTION__, dataSize);
 
@@ -610,7 +782,7 @@ allocateHeapBuffer(int w,
  * Allocates internal GBM buffer
  */
 std::shared_ptr<CameraBuffer>
-allocateHandleBuffer(int w,
+CameraBuffer::allocateHandleBuffer(int w,
                      int h,
                      int gfxFmt,
                      int usage,
@@ -638,13 +810,43 @@ allocateHandleBuffer(int w,
     stream.usage = usage;
     ret = buffer->init(&stream, handle, cameraId);
     if (ret != NO_ERROR) {
-        // buffer handle will free in CameraBuffer destructure function
+        // buffer handle will free in CameraBuffer destructor.
         return nullptr;
     }
 
     return buffer;
 }
 
-} // namespace MemoryUtils
+/**
+ * Create the MMAP camera buffer to store the image described by the parameters
+ * passed during construction
+ */
+std::shared_ptr<CameraBuffer>
+CameraBuffer::createMMapBuffer(int w, int h, int s, int fd,
+                               int lengthY, int lengthUV,
+                               int v4l2Fmt, int offsetY,
+                               int offsetUV, int prot, int flags)
+{
+    if (!SupportedFormat(v4l2Fmt)) {
+        LOGE("Could not create unsupported mmap camera buffer of format %s",
+             v4l2Fmt2Str(v4l2Fmt));
+        return nullptr;
+    }
+
+    std::vector<int> length;
+    std::vector<int> offset;
+
+    length.push_back(lengthY);
+    offset.push_back(offsetY);
+
+    if (numOfNonContiguousPlanes(v4l2Fmt) > 1) {
+        length.push_back(lengthUV);
+        offset.push_back(offsetUV);
+    }
+
+    return std::shared_ptr<CameraBuffer>(new CameraBuffer(
+            w, h, s, fd, v4l2Fmt, length,
+            offset, prot, flags));
+}
 
 } NAMESPACE_DECLARATION_END

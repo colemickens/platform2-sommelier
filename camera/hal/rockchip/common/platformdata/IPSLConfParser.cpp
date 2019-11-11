@@ -167,12 +167,16 @@ int IPSLConfParser::getPixelFormatAsValue(const char* format)
     /* for stream formats */
     } else if (!strcmp(format, "V4L2_PIX_FMT_NV12")) {
         return V4L2_PIX_FMT_NV12;
+    } else if (!strcmp(format, "V4L2_PIX_FMT_NV12M")) {
+        return V4L2_PIX_FMT_NV12M;
     } else if (!strcmp(format, "V4L2_PIX_FMT_JPEG")) {
         return V4L2_PIX_FMT_JPEG;
     } else if (!strcmp(format, "V4L2_PIX_FMT_YUV420")) {
         return V4L2_PIX_FMT_YUV420;
     } else if (!strcmp(format, "V4L2_PIX_FMT_NV21")) {
         return V4L2_PIX_FMT_NV21;
+    } else if (!strcmp(format, "V4L2_PIX_FMT_NV21M")) {
+        return V4L2_PIX_FMT_NV21M;
     } else if (!strcmp(format, "V4L2_PIX_FMT_YUV422P")) {
         return V4L2_PIX_FMT_YUV422P;
     } else if (!strcmp(format, "V4L2_PIX_FMT_YVU420")) {

@@ -69,12 +69,6 @@ private:
 
     private:
         int getRotationDegrees(camera3_stream_t* stream) const;
-        status_t scaleFrame(std::shared_ptr<CameraBuffer> input,
-                            std::shared_ptr<CameraBuffer> output);
-        status_t cropRotateScaleFrame(
-                             std::shared_ptr<CameraBuffer> input,
-                             std::shared_ptr<CameraBuffer> output,
-                             int angle);
         status_t convertJpeg(std::shared_ptr<CameraBuffer> buffer,
                              std::shared_ptr<CameraBuffer> jpegBuffer,
                              Camera3Request *request);

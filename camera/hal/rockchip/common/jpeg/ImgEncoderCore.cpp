@@ -22,6 +22,7 @@
 #include "LogHelper.h"
 #include <Utils.h>
 #include "Camera3V4l2Format.h"
+#include "CameraBuffer.h"
 #include "ImageScalerCore.h"
 #include "Exif.h"
 
@@ -98,24 +99,16 @@ void ImgEncoderCore::thumbBufferDownScale(EncodePackage & pkg)
                 mThumbScaled.reset();
             }
             if (!mThumbScaled) {
-                BufferProps props;
-                props.width  = thumbwidth;
-                props.height = thumbheight;
-                props.stride = thumbwidth;
-                props.format = pkg.thumb->v4l2Fmt();
-                props.type   = BMT_HEAP;
                 // Using thumbwidth as stride for heap buffer
-                mThumbScaled = std::make_shared<CommonBuffer>(props);
+                mThumbScaled = CameraBuffer::allocateHeapBuffer(
+                    thumbwidth, thumbheight, thumbwidth,
+                    pkg.thumb->v4l2Fmt(), pkg.thumb->cameraId());
                 if (!mThumbScaled) {
                     LOGE("Error in creating shared_ptr mThumbScaled");
                     return;
                 }
-                if (mThumbScaled->allocMemory()) {
-                    LOGE("Error in allocating buffer with size:%d", mThumbScaled->size());
-                    return;
-                }
             }
-            ImageScalerCore::downScaleImage(pkg.thumb, mThumbScaled);
+            ImageScalerCore::scaleFrame(pkg.thumb, mThumbScaled);
             pkg.thumb = mThumbScaled;
         }
     }
@@ -144,24 +137,16 @@ void ImgEncoderCore::mainBufferDownScale(EncodePackage & pkg)
             mMainScaled.reset();
         }
         if (!mMainScaled) {
-            BufferProps props;
-            props.width  = pkg.jpegOut->width();
-            props.height = pkg.jpegOut->height();
-            props.stride = pkg.jpegOut->width();
-            props.format = pkg.main->v4l2Fmt();
-            props.type   = BMT_HEAP;
             // Use pkg.jpegOut->width() as stride for the heap buffer
-            mMainScaled = std::make_shared<CommonBuffer>(props);
+            mMainScaled = CameraBuffer::allocateHeapBuffer(
+                pkg.jpegOut->width(), pkg.jpegOut->height(),
+                pkg.jpegOut->width(), pkg.main->v4l2Fmt(), pkg.main->cameraId());
             if (!mMainScaled) {
                 LOGE("Error in creating shared_ptr mMainScaled");
                 return;
             }
-            if (mMainScaled->allocMemory()) {
-                LOGE("Error in allocating buffer with size:%d", mMainScaled->size());
-                return;
-            }
         }
-        ImageScalerCore::downScaleImage(pkg.main, mMainScaled);
+        ImageScalerCore::scaleFrame(pkg.main, mMainScaled);
         pkg.main = mMainScaled;
     }
 }
@@ -200,20 +185,12 @@ status_t ImgEncoderCore::allocateBufferAndDownScale(EncodePackage & pkg)
             LOG1("Allocating jpeg data buffer with %dx%d, stride:%d", pkg.jpegOut->width(),
                     pkg.jpegOut->height(), pkg.jpegOut->stride());
 
-            BufferProps props;
-            props.width  = pkg.jpegOut->width();
-            props.height = pkg.jpegOut->height();
-            props.stride = pkg.jpegOut->stride();
-            props.format = pkg.jpegOut->v4l2Fmt();
-            props.size   = pkg.jpegOut->size();
-            props.type   = BMT_HEAP;
-            mJpegDataBuf = std::make_shared<CommonBuffer>(props);
+            mJpegDataBuf = CameraBuffer::allocateHeapBuffer(
+                pkg.jpegOut->width(), pkg.jpegOut->height(),
+                pkg.jpegOut->width(), pkg.jpegOut->v4l2Fmt(),
+                pkg.jpegOut->cameraId(), pkg.jpegOut->size());
             if (!mJpegDataBuf) {
                 LOGE("Error in creating shared_ptr mJpegDataBuf");
-                return NO_MEMORY;
-            }
-            if (mJpegDataBuf->allocMemory()) {
-                LOGE("Error in allocating buffer with size:%d", mJpegDataBuf->size());
                 return NO_MEMORY;
             }
         }
@@ -243,21 +220,13 @@ status_t ImgEncoderCore::allocateBufferAndDownScale(EncodePackage & pkg)
                 return UNKNOWN_ERROR;
             }
 
-            BufferProps props;
-            props.width  = thumbwidth;
-            props.height = thumbheight;
-            props.stride = thumbwidth;
-            props.format = pkg.thumb->v4l2Fmt();
-            props.type   = BMT_HEAP;
-            props.size   = minThumbBufSize;
-            // Use thumbwidth as stride for the heap buffer
-            mThumbOutBuf = std::make_shared<CommonBuffer>(props);
+            mThumbOutBuf = CameraBuffer::allocateHeapBuffer(
+                thumbwidth, thumbheight,
+                thumbwidth, pkg.thumb->v4l2Fmt(),
+                pkg.thumb->cameraId(), minThumbBufSize);
+
             if (!mThumbOutBuf) {
                 LOGE("Error in creating shared_ptr mThumbOutBuf");
-                return NO_MEMORY;
-            }
-            if (mThumbOutBuf->allocMemory()) {
-                LOGE("Error in allocating buffer with size:%d", mThumbOutBuf->size());
                 return NO_MEMORY;
             }
         }
@@ -296,18 +265,33 @@ status_t ImgEncoderCore::getJpegSettings(EncodePackage & pkg, ExifMetaData& meta
     return status;
 }
 
-int ImgEncoderCore::doSwEncode(std::shared_ptr<CommonBuffer> srcBuf,
+int ImgEncoderCore::doSwEncode(std::shared_ptr<CameraBuffer> srcBuf,
                                int quality,
-                               std::shared_ptr<CommonBuffer> destBuf,
+                               std::shared_ptr<CameraBuffer> destBuf,
                                unsigned int destOffset)
 {
     LOG2("@%s", __FUNCTION__);
+    if (srcBuf->v4l2Fmt() != V4L2_PIX_FMT_NV12 &&
+        srcBuf->v4l2Fmt() != V4L2_PIX_FMT_NV12M &&
+        srcBuf->v4l2Fmt() != V4L2_PIX_FMT_NV21 &&
+        srcBuf->v4l2Fmt() != V4L2_PIX_FMT_NV21M) {
+        LOGE("%s Unsupported format %d", __FUNCTION__, srcBuf->v4l2Fmt());
+        return 0;
+    }
+
+    if (NO_ERROR != srcBuf->lock()) {
+        LOGE("%s Failed to lock buffer %d", __FUNCTION__, srcBuf->v4l2Fmt());
+        return 0;
+    }
 
     int width = srcBuf->width();
     int height = srcBuf->height();
     int stride = srcBuf->stride();
     void* srcY = srcBuf->data();
     void* srcUV = static_cast<unsigned char*>(srcBuf->data()) + stride * height;
+    if (srcBuf->nonContiguousYandUV()) {
+        srcUV = static_cast<unsigned char*>(srcBuf->dataUV());
+    }
 
     if (width * height * 3 / 2 > mInternalYU12Size) {
         mInternalYU12Size = width * height * 3 / 2;
@@ -315,19 +299,12 @@ int ImgEncoderCore::doSwEncode(std::shared_ptr<CommonBuffer> srcBuf,
     }
     void* tempBuf = mInternalYU12.get();
 
-    switch (srcBuf->v4l2Fmt()) {
-    case V4L2_PIX_FMT_YUYV:
-        YUY2ToP411(width, height, stride, srcY, tempBuf);
-        break;
-    case V4L2_PIX_FMT_NV12:
+    if (srcBuf->v4l2Fmt() == V4L2_PIX_FMT_NV12 ||
+        srcBuf->v4l2Fmt() == V4L2_PIX_FMT_NV12M) {
         NV12ToP411Separate(width, height, stride, srcY, srcUV, tempBuf);
-        break;
-    case V4L2_PIX_FMT_NV21:
+    } else {
+        // NV21 and NV21M
         NV21ToP411Separate(width, height, stride, srcY, srcUV, tempBuf);
-        break;
-    default:
-        LOGE("%s Unsupported format %d", __FUNCTION__, srcBuf->v4l2Fmt());
-        return 0;
     }
 
     uint32_t outSize = 0;
@@ -347,6 +324,7 @@ int ImgEncoderCore::doSwEncode(std::shared_ptr<CommonBuffer> srcBuf,
     CheckError(ret == false, 0, "@%s, mJpegCompressor->CompressImage() fails",
                __FUNCTION__);
 
+    srcBuf->unlock();
     return outSize;
 }
 

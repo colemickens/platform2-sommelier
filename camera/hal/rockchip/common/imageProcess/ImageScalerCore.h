@@ -18,7 +18,8 @@
 #ifndef _IMAGESCALER_CORE_H_
 #define _IMAGESCALER_CORE_H_
 #include <memory>
-#include "CommonBuffer.h"
+#include <vector>
+#include "CameraBuffer.h"
 
 NAMESPACE_DECLARATION {
 /**
@@ -27,39 +28,14 @@ NAMESPACE_DECLARATION {
  */
 class ImageScalerCore {
 public:
-    static void downScaleImage(std::shared_ptr<CommonBuffer> srcBuf,
-            std::shared_ptr<CommonBuffer> dstBuf);
-    static void downScaleImage(void *src, void *dest,
-            int dest_w, int dest_h, int dest_stride,
-            int src_w, int src_h, int src_stride,
-            int format, int src_skip_lines_top = 0,
-            int src_skip_lines_bottom = 0);
+    static status_t scaleFrame(std::shared_ptr<CameraBuffer> input,
+                               std::shared_ptr<CameraBuffer> output);
 
-protected:
-    static void downScaleYUY2Image(unsigned char *dest, const unsigned char *src,
-        const int dest_w, const int dest_h, const int dest_stride,
-        const int src_w, const int src_h, const int src_stride);
-
-    static void downScaleAndCropNv12Image(
-        unsigned char *dest, const unsigned char *src,
-        const int dest_w, const int dest_h, const int dest_stride,
-        const int src_w, const int src_h, const int src_stride,
-        const int src_skip_lines_top = 0,
-        const int src_skip_lines_bottom = 0);
-
-private:
-    static const int MFP = 16;            // Fractional bits for fixed point calculations
-
-private:
-    static void cropComposeCopy(void *src, void *dst, unsigned int size);
-    static void cropComposeUpscaleNV12_bl(
-        void *src, unsigned int srcH, unsigned int srcStride,
-        unsigned int srcCropLeft, unsigned int srcCropTop,
-        unsigned int srcCropW, unsigned int srcCropH,
-        void *dst, unsigned int dstH, unsigned int dstStride,
-        unsigned int dstCropLeft, unsigned int dstCropTop,
-        unsigned int dstCropW, unsigned int dstCropH);
-
+    static status_t cropRotateScaleFrame(std::shared_ptr<CameraBuffer> input,
+                                         std::shared_ptr<CameraBuffer> output,
+                                         int angle,
+                                         std::vector<uint8_t>& tempRotationBuffer,
+                                         std::vector<uint8_t>& tempScaleBuffer);
 };
 
 } NAMESPACE_DECLARATION_END

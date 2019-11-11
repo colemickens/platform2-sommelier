@@ -20,9 +20,11 @@
 
 #include <utils/Errors.h>
 #include <hardware/camera3.h>
+#include "Camera3V4l2Format.h"
 #include "UtilityMacros.h"
 #include <camera_buffer_manager.h>
 #include <memory>
+#include <vector>
 
 NAMESPACE_DECLARATION {
 
@@ -46,6 +48,31 @@ public:
     };
 
 public:
+    /* Convert NV12M/NV21M buffer to NV12/NV21 of heap buffer. Debug only. */
+    static std::shared_ptr<CameraBuffer>
+    ConvertNVXXMToNVXXAsHeapBuffer(std::shared_ptr<CameraBuffer> input);
+
+    static std::shared_ptr<CameraBuffer>
+    allocateHeapBuffer(int w,
+                       int h,
+                       int s,
+                       int v4l2Fmt,
+                       int cameraId,
+                       int dataSizeOverride = 0);
+
+    static std::shared_ptr<CameraBuffer>
+    allocateHandleBuffer(int w,
+                         int h,
+                         int gfxFmt,
+                         int usage,
+                         int cameraId);
+
+    static std::shared_ptr<CameraBuffer>
+    createMMapBuffer(int w, int h, int s, int fd,
+                     int lengthY, int lengthUV, int v4l2fmt, int offsetY,
+                     int offsetUV, int prot, int flags);
+
+public:
     /**
      * default constructor
      * Used for buffers coming from the framework. The wrapper is initialized
@@ -53,19 +80,6 @@ public:
      */
     CameraBuffer();
 
-    /**
-     * no need to delete a buffer since it is RefBase'd. Buffer will be deleted
-     * when no reference to it exist.
-     */
-    ~CameraBuffer();
-
-    /**
-     * constructor for the HAL-allocated buffer
-     * These are used via the utility methods in the MemoryUtils namespace
-     */
-    CameraBuffer(int w, int h, int s, int v4l2fmt, void* usrPtr, int cameraId, int dataSizeOverride = 0);
-    CameraBuffer(int w, int h, int s, int fd, int dmaBufFd, int length, int v4l2fmt,
-                 int offset, int prot, int flags);
     /**
      * initialization for the wrapper around the framework buffers
      */
@@ -82,7 +96,16 @@ public:
      */
     status_t deinit();
 
+    /**
+     * no need to delete a buffer since it is RefBase'd. Buffer will be deleted
+     * when no reference to it exist.
+     */
+    ~CameraBuffer();
+
+
     void* data() { return mDataPtr; };
+    void* dataY() { return mDataPtr; };
+    void* dataUV() { return mDataPtrUV; };
 
     status_t lock();
     status_t lock(int flags);
@@ -96,13 +119,16 @@ public:
     void dump();
     void dumpImage(const int type, const char *name);
     void dumpImage(const char *name);
-    void dumpImage(const void *data, const int size, int width, int height,
-                    const char *name);
+    void dumpImage(const void *data, const void* dataUV,
+                             const int size, int sizeUV, int width, int height,
+                             const char *name);
     CameraStream * getOwner() const { return mOwner; }
     int width() {return mWidth; }
     int height() {return mHeight; }
     int stride() {return mStride; }
     unsigned int size() {return mSize; }
+    unsigned int sizeY() {return mSizeY; }
+    unsigned int sizeUV() {return mSizeUV; }
     int format() {return mFormat; }
     int v4l2Fmt() {return mV4L2Fmt; }
     struct timeval timeStamp() {return mTimestamp; }
@@ -111,8 +137,22 @@ public:
     void setRequestId(int requestId) {mRequestID = requestId; }
     int requestId() {return mRequestID; }
     status_t getFence(camera3_stream_buffer* buf);
-    int dmaBufFd() {return mType == BUF_TYPE_HANDLE ? mHandle->data[0] : mDmaBufFd;}
+    int dmaBufFd(int plane = 0);
+    int dmaBufFdOffset(int plane = 0);
     int status() { return mUserBuffer.status; }
+    int cameraId() { return mCameraId; }
+    BufferType type() { return mType; }
+    bool nonContiguousYandUV() { return mNonContiguousYandUV; }
+
+protected:
+    /**
+     * constructor for the HAL-allocated buffer
+     * These are used via the utility methods.
+     */
+    CameraBuffer(int w, int h, int s, int v4l2fmt, void* usrPtr, int cameraId, int dataSizeOverride = 0);
+    CameraBuffer(int w, int h, int s, int fd, int v4l2fmt,
+                               std::vector<int> length, std::vector<int> offset,
+                               int prot, int flags);
 
 private:
     status_t registerBuffer();
@@ -123,6 +163,10 @@ private:
     int             mWidth;
     int             mHeight;
     unsigned int    mSize;           /*!< size in bytes, this is filled when we
+                                           lock the buffer */
+    unsigned int    mSizeY;           /*!< size Y plane in bytes, this is filled when we
+                                           lock the buffer */
+    unsigned int    mSizeUV;           /*!< size UV plane in bytes, this is filled when we
                                            lock the buffer */
     int             mFormat;         /*!<  HAL PIXEL fmt */
     int             mV4L2Fmt;        /*!< V4L2 fourcc format code */
@@ -139,29 +183,12 @@ private:
     buffer_handle_t mHandle;
     buffer_handle_t* mHandlePtr;
     CameraStream *mOwner;             /*!< Stream this buffer belongs to */
-    void*         mDataPtr;           /*!< if locked, here is the vaddr */
+    void*         mDataPtr;           /*!< if locked, here is the vaddr of Y */
+    void*         mDataPtrUV;           /*!< if locked, here is the vaddr of UV */
     int           mRequestID;         /*!< this is filled by hw streams after
                                           calling putframe */
     int mCameraId;
-    int mDmaBufFd;                    /*!< file descriptor for dmabuf */
-};
-
-namespace MemoryUtils {
-
-std::shared_ptr<CameraBuffer>
-allocateHeapBuffer(int w,
-                   int h,
-                   int s,
-                   int v4l2Fmt,
-                   int cameraId,
-                   int dataSizeOverride = 0);
-
-std::shared_ptr<CameraBuffer>
-allocateHandleBuffer(int w,
-                     int h,
-                     int gfxFmt,
-                     int usage,
-                     int cameraId);
+    bool mNonContiguousYandUV;     /*!< Whether Y and UV are non contiguous planes */
 };
 
 

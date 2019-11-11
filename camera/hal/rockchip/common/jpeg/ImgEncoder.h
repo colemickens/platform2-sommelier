@@ -85,11 +85,6 @@ private:  /* Methods */
             std::shared_ptr<ExifMetaData> metaData, status_t status);
 
     /**
-     * The conversion between CameraBuffer and CommonBuffer based EncodePackages
-     */
-    static std::shared_ptr<CommonBuffer> createCommonBuffer(std::shared_ptr<CameraBuffer> cBuffer);
-
-    /**
      * For client that are using this old interface, The better way is to
      * allocate needed output CameraBuffers here and pass the pointer to
      * ImgEncoderCore to avoid extra memory allocation and memory copy

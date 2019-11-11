@@ -22,6 +22,8 @@
 #include "OutputFrameWorker.h"
 #include "ColorConverter.h"
 #include "NodeTypes.h"
+#include "Camera3V4l2Format.h"
+#include "ImageScalerCore.h"
 #include <libyuv.h>
 #include <sys/mman.h>
 
@@ -93,7 +95,6 @@ void OutputFrameWorker::clearListeners()
     mPostProcFramePool.deInit();
 }
 
-
 status_t OutputFrameWorker::allocListenerProcessBuffers()
 {
     mPostProcFramePool.init(mPipelineDepth);
@@ -105,7 +106,7 @@ status_t OutputFrameWorker::allocListenerProcessBuffers()
             LOGE("postproc task busy, no idle postproc frame!");
             return UNKNOWN_ERROR;
         }
-        frame->processBuffer = MemoryUtils::allocateHeapBuffer(mFormat.width(),
+        frame->processBuffer = CameraBuffer::allocateHeapBuffer(mFormat.width(),
                                               mFormat.height(),
                                               mFormat.bytesperline(),
                                               mFormat.pixelformat(),
@@ -121,7 +122,7 @@ status_t OutputFrameWorker::allocListenerProcessBuffers()
 
 status_t OutputFrameWorker::allocDummyBuffer()
 {
-    auto buffer = MemoryUtils::allocateHandleBuffer(
+    auto buffer = CameraBuffer::allocateHandleBuffer(
             mFormat.width(), mFormat.height(),
             HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
             GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_HW_CAMERA_WRITE,
@@ -148,7 +149,7 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
             mFormat.height());
 
     ret = mProcessor.configure(mStream, mFormat.width(),
-                               mFormat.height());
+                               mFormat.height(), mFormat.pixelformat());
     CheckError((ret != OK), ret, "@%s mProcessor.configure failed %d",
                __FUNCTION__, ret);
     mNeedPostProcess = mProcessor.needPostProcess();
@@ -207,6 +208,10 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     Camera3Request* request = mMsg->cbMetadataMsg.request;
     request->setSequenceId(-1);
 
+    FrameInfo config;
+    mNode->getConfig(config);
+    int numPlanes = numOfNonContiguousPlanes(config.format);
+
     std::shared_ptr<CameraBuffer> buffer = findBuffer(request, mStream);
     if (buffer.get()) {
         // Work for mStream
@@ -246,7 +251,11 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     if (bufIndex >= mPipelineDepth) {
         switch (mNode->getMemoryType()) {
         case V4L2_MEMORY_DMABUF:
-            mBuffers[bufIndex].setFd(mDummyBuffer->dmaBufFd(), 0);
+            mBuffers[bufIndex].setNumPlanes(numPlanes);
+            for (int plane = 0; plane < numPlanes; plane++) {
+                mBuffers[bufIndex].setFd(mDummyBuffer->dmaBufFd(plane), plane);
+                mBuffers[bufIndex].get()->m.planes[plane].data_offset = mDummyBuffer->dmaBufFdOffset(plane);
+            }
             LOG2("%s mBuffers[%d].fd: %d", __FUNCTION__, bufIndex, mBuffers[bufIndex].fd());
             break;
         case V4L2_MEMORY_MMAP:
@@ -260,21 +269,18 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
         }
     } else if (!mNeedPostProcess) {
         // Use stream buffer for zero-copy
-        unsigned long userptr;
         if (buffer.get() == nullptr) {
             buffer = getOutputBufferForListener();
             CheckError((buffer.get() == nullptr), UNKNOWN_ERROR,
                        "failed to allocate listener buffer");
         }
         switch (mNode->getMemoryType()) {
-        case V4L2_MEMORY_USERPTR:
-            userptr = reinterpret_cast<unsigned long>(buffer->data());
-            mBuffers[bufIndex].userptr(userptr);
-            LOG2("%s mBuffers[%d].userptr: 0x%lx",
-                __FUNCTION__, bufIndex, mBuffers[bufIndex].userptr());
-            break;
         case V4L2_MEMORY_DMABUF:
-            mBuffers[bufIndex].setFd(buffer->dmaBufFd(), 0);
+            mBuffers[bufIndex].setNumPlanes(numPlanes);
+            for (int plane = 0; plane < numPlanes; plane++) {
+                mBuffers[bufIndex].setFd(buffer->dmaBufFd(plane), plane);
+                mBuffers[bufIndex].get()->m.planes[plane].data_offset = buffer->dmaBufFdOffset(plane);
+            }
             LOG2("%s mBuffers[%d].fd: %d", __FUNCTION__, bufIndex, mBuffers[bufIndex].fd());
             break;
         case V4L2_MEMORY_MMAP:
@@ -563,23 +569,31 @@ OutputFrameWorker::getOutputBufferForListener()
     if (mOutputForListener.get() == nullptr) {
         // Allocate buffer for listeners
         if (mNode->getMemoryType() == V4L2_MEMORY_DMABUF) {
-            mOutputForListener = MemoryUtils::allocateHandleBuffer(
+            mOutputForListener = CameraBuffer::allocateHandleBuffer(
                     mFormat.width(),
                     mFormat.height(),
                     HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
                     GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_HW_CAMERA_WRITE,
                     mCameraId);
         } else if (mNode->getMemoryType() == V4L2_MEMORY_MMAP) {
-            mOutputForListener = std::make_shared<CameraBuffer>(
+            int lengthY = mBuffers[0].length();
+            int offsetY = mBuffers[0].offset();
+            int lengthUV = 0;
+            int offsetUV = 0;
+            if (numOfNonContiguousPlanes(mFormat.pixelformat()) > 1) {
+                lengthUV = mBuffers[0].length(1);
+                offsetUV = mBuffers[0].length(1);
+            }
+            mOutputForListener = CameraBuffer::createMMapBuffer(
                     mFormat.width(),
                     mFormat.height(),
                     mFormat.bytesperline(),
-                    mNode->getFd(), -1, // dmabuf fd is not required.
-                    mBuffers[0].length(),
+                    mNode->getFd(),
+                    lengthY, lengthUV,
                     mFormat.pixelformat(),
-                    mBuffers[0].offset(), PROT_READ | PROT_WRITE, MAP_SHARED);
+                    offsetY, offsetUV, PROT_READ | PROT_WRITE, MAP_SHARED);
         } else if (mNode->getMemoryType() == V4L2_MEMORY_USERPTR) {
-            mOutputForListener = MemoryUtils::allocateHeapBuffer(
+            mOutputForListener = CameraBuffer::allocateHeapBuffer(
                     mFormat.width(),
                     mFormat.height(),
                     mFormat.bytesperline(),
@@ -625,9 +639,11 @@ status_t OutputFrameWorker::SWPostProcessor::configure(
         LOG1("%s, stream is nullptr", __FUNCTION__);
         return OK;
     }
-    // Support NV12 only
-    CheckError((inputFmt != V4L2_PIX_FMT_NV12), BAD_VALUE,
-            "Don't support format 0x%x", inputFmt);
+    // Only support NV12 and NV12M
+    CheckError((inputFmt != V4L2_PIX_FMT_NV12 &&
+                (inputFmt != V4L2_PIX_FMT_NV12M)),
+               BAD_VALUE, "Don't support format 0x%x, %s",
+               inputFmt, v4l2Fmt2Str(inputFmt));
 
     int type = PROCESS_NONE;
     if (getRotationDegrees(outStream) > 0) {
@@ -689,10 +705,10 @@ status_t OutputFrameWorker::SWPostProcessor::processFrame(
                 mPostProcessBufs.clear();
                 // Create rotate output working buffer
                 std::shared_ptr<CameraBuffer> buf;
-                buf = MemoryUtils::allocateHeapBuffer(
+                buf = CameraBuffer::allocateHeapBuffer(
                          input->width(),
                          input->height(),
-                         input ->width(),
+                         input->width(),
                          input->v4l2Fmt(),
                          mCameraId,
                          PAGE_ALIGN(input->size()));
@@ -701,10 +717,12 @@ status_t OutputFrameWorker::SWPostProcessor::processFrame(
                 mPostProcessBufs.push_back(buf);
             }
             // Rotate to internal post-processing buffer
-            status = cropRotateScaleFrame(input, mPostProcessBufs[0], angle);
+            status = ImageScalerCore::cropRotateScaleFrame(
+                    input, mPostProcessBufs[0], angle, mRotateBuffer, mScaleBuffer);
         } else {
             // Rotate to internal post-processing buffer
-            status = cropRotateScaleFrame(input, output, angle);
+            status = ImageScalerCore::cropRotateScaleFrame(
+                    input, output, angle, mRotateBuffer, mScaleBuffer);
         }
         CheckError((status != OK), status, "@%s, Scale frame failed! [%d]!",
                    __FUNCTION__, status);
@@ -724,7 +742,7 @@ status_t OutputFrameWorker::SWPostProcessor::processFrame(
                 || mPostProcessBufs.back()->height() != mStream->height) {
                 // Create scale output working buffer
                 std::shared_ptr<CameraBuffer> buf;
-                buf = MemoryUtils::allocateHeapBuffer(
+                buf = CameraBuffer::allocateHeapBuffer(
                          mStream->width,
                          mStream->height,
                          mStream->width,
@@ -736,10 +754,10 @@ status_t OutputFrameWorker::SWPostProcessor::processFrame(
                 mPostProcessBufs.push_back(buf);
             }
             // Scale to internal post-processing buffer
-            status = scaleFrame(mPostProcessBufs[0], mPostProcessBufs[1]);
+            status = ImageScalerCore::scaleFrame(mPostProcessBufs[0], mPostProcessBufs[1]);
         } else {
             // Scale to output dst buffer
-            status = scaleFrame(mPostProcessBufs[0], output);
+            status = ImageScalerCore::scaleFrame(mPostProcessBufs[0], output);
         }
         CheckError((status != OK), status, "@%s, Scale frame failed! [%d]!",
                    __FUNCTION__, status);
@@ -803,128 +821,6 @@ status_t OutputFrameWorker::SWPostProcessor::convertJpeg(
     }
 
     return status;
-}
-
-status_t OutputFrameWorker::SWPostProcessor::cropRotateScaleFrame(
-                               std::shared_ptr<CameraBuffer> input,
-                               std::shared_ptr<CameraBuffer> output,
-                               int angle)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-
-    // Check the output buffer resolution with device config resolution
-    CheckError(
-        (output->width() != input->width()
-         || output->height() != input->height()),
-        UNKNOWN_ERROR, "output resolution mis-match [%d x %d] -> [%d x %d]",
-        input->width(), input->height(),
-        output->width(), output->height());
-
-    int width = input->width();
-    int height = input->height();
-    int inStride = input->stride();
-    const uint8_t* inBuffer = (uint8_t*)(input->data());
-    int cropped_width = height * height / width;
-    if (cropped_width % 2 == 1) {
-      // Make cropped_width to the closest even number.
-      cropped_width++;
-    }
-    int cropped_height = height;
-    int margin = (width - cropped_width) / 2;
-
-    int rotated_height = cropped_width;
-    int rotated_width = cropped_height;
-
-    libyuv::RotationMode rotation_mode = libyuv::RotationMode::kRotate90;
-    switch (angle) {
-      case 90:
-        rotation_mode = libyuv::RotationMode::kRotate90;
-        break;
-      case 270:
-        rotation_mode = libyuv::RotationMode::kRotate270;
-        break;
-      default:
-        LOGE("error rotation degree %d", angle);
-        return -EINVAL;
-    }
-    // This libyuv method first crops the frame and then rotates it 90 degrees
-    // clockwise or counterclockwise.
-    if (mRotateBuffer.size() < input->size()) {
-        mRotateBuffer.resize(input->size());
-    }
-
-    uint8_t* I420RotateBuffer = mRotateBuffer.data();
-    int ret = libyuv::ConvertToI420(
-        inBuffer, inStride,
-        I420RotateBuffer, rotated_width,
-        I420RotateBuffer + rotated_width * rotated_height, rotated_width / 2,
-        I420RotateBuffer + rotated_width * rotated_height * 5 / 4, rotated_width / 2, margin,
-        0, width, height, cropped_width, cropped_height, rotation_mode,
-        libyuv::FourCC::FOURCC_I420);
-    if (ret) {
-      LOGE("ConvertToI420 failed: %d", ret);
-      return ret;
-    }
-
-    if (mScaleBuffer.size() < input->size()) {
-        mScaleBuffer.resize(input->size());
-    }
-
-    uint8_t* I420ScaleBuffer = mScaleBuffer.data();
-    ret = libyuv::I420Scale(
-        I420RotateBuffer, rotated_width,
-        I420RotateBuffer + rotated_width * rotated_height, rotated_width / 2,
-        I420RotateBuffer + rotated_width * rotated_height * 5 / 4, rotated_width / 2,
-        rotated_width, rotated_height,
-        I420ScaleBuffer, width,
-        I420ScaleBuffer + width * height, width / 2,
-        I420ScaleBuffer + width * height * 5 / 4, width / 2,
-        width, height,
-        libyuv::FilterMode::kFilterNone);
-    if (ret) {
-      LOGE("I420Scale failed: %d", ret);
-    }
-    //convert to NV12
-    uint8_t* outBuffer = (uint8_t*)(output->data());
-    int outStride = output->stride();
-    ret = libyuv::I420ToNV12(I420ScaleBuffer, width,
-                             I420ScaleBuffer + width * height, width / 2,
-                             I420ScaleBuffer + width * height * 5 / 4, width / 2,
-                             outBuffer, outStride,
-                             outBuffer +  outStride * height, outStride,
-                             width, height);
-    return ret;
-}
-
-status_t OutputFrameWorker::SWPostProcessor::scaleFrame(
-                               std::shared_ptr<CameraBuffer> input,
-                               std::shared_ptr<CameraBuffer> output)
-{
-    // Y plane
-    libyuv::ScalePlane((uint8_t*)input->data(),
-                input->stride(),
-                input->width(),
-                input->height(),
-                (uint8_t*)output->data(),
-                output->stride(),
-                output->width(),
-                output->height(),
-                libyuv::kFilterNone);
-
-    // UV plane
-    // TODO: should get bpl to calculate offset
-    int inUVOffsetByte = input->stride() * input->height();
-    int outUVOffsetByte = output->stride() * output->height();
-    libyuv::ScalePlane_16((uint16_t*)input->data() + inUVOffsetByte / 2,
-                input->stride() / 2,
-                input->width() / 2,
-                input->height() / 2,
-                (uint16_t*)output->data() + outUVOffsetByte / 2,
-                output->stride() / 2,
-                output->width() / 2,
-                output->height() / 2,
-                libyuv::kFilterNone);
-    return OK;
 }
 
 } /* namespace camera2 */
