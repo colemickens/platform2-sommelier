@@ -26,7 +26,6 @@
 #include "kerberos/krb5_interface_impl.h"
 #include "kerberos/krb5_jail_wrapper.h"
 #include "kerberos/platform_helper.h"
-#include "kerberos/proto_bindings/kerberos_service.pb.h"
 
 namespace kerberos {
 
@@ -171,12 +170,14 @@ ByteArray KerberosAdaptor::RemoveAccount(const ByteArray& request_blob) {
   RemoveAccountRequest request;
   ErrorType error = ParseProto(&request, request_blob);
 
-  if (error == ERROR_NONE)
+  RemoveAccountResponse response;
+  if (error == ERROR_NONE) {
     error = manager_->RemoveAccount(request.principal_name());
+    GetAccountsList(response.mutable_accounts());
+  }
 
   PrintResult(__FUNCTION__, error);
   metrics_->ReportDBusCallResult(__FUNCTION__, error);
-  RemoveAccountResponse response;
   response.set_error(error);
   return SerializeProto(response);
 }
@@ -186,6 +187,7 @@ ByteArray KerberosAdaptor::ClearAccounts(const ByteArray& request_blob) {
   ClearAccountsRequest request;
   ErrorType error = ParseProto(&request, request_blob);
 
+  ClearAccountsResponse response;
   if (error == ERROR_NONE) {
     std::unordered_set<std::string> keep_list(
         request.principal_names_to_ignore_size());
@@ -193,11 +195,11 @@ ByteArray KerberosAdaptor::ClearAccounts(const ByteArray& request_blob) {
       keep_list.insert(request.principal_names_to_ignore(n));
 
     error = manager_->ClearAccounts(request.mode(), std::move(keep_list));
+    GetAccountsList(response.mutable_accounts());
   }
 
   PrintResult(__FUNCTION__, error);
   metrics_->ReportDBusCallResult(__FUNCTION__, error);
-  ClearAccountsResponse response;
   response.set_error(error);
   return SerializeProto(response);
 }
@@ -209,15 +211,13 @@ ByteArray KerberosAdaptor::ListAccounts(const ByteArray& request_blob) {
 
   // Note: request is empty right now, but keeping it for future changes.
   std::vector<Account> accounts;
+  ListAccountsResponse response;
   if (error == ERROR_NONE)
-    error = manager_->ListAccounts(&accounts);
+    GetAccountsList(response.mutable_accounts());
 
   PrintResult(__FUNCTION__, error);
   metrics_->ReportDBusCallResult(__FUNCTION__, error);
-  ListAccountsResponse response;
   response.set_error(error);
-  for (const auto& account : accounts)
-    *response.add_accounts() = account;
   return SerializeProto(response);
 }
 
@@ -333,6 +333,12 @@ void KerberosAdaptor::OnKerberosTicketExpiring(
     const std::string& principal_name) {
   LOG(INFO) << "Firing signal KerberosTicketExpiring";
   SendKerberosTicketExpiringSignal(principal_name);
+}
+
+void KerberosAdaptor::GetAccountsList(RepeatedAccountField* repeated_accounts) {
+  std::vector<Account> accounts = manager_->ListAccounts();
+  for (const auto& account : accounts)
+    *repeated_accounts->Add() = account;
 }
 
 }  // namespace kerberos

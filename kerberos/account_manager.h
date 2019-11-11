@@ -86,8 +86,7 @@ class AccountManager : public TgtRenewalScheduler::Delegate {
   // Returns a list of all existing accounts, including current status like
   // remaining Kerberos ticket lifetime. Does a best effort returning results.
   // See documentation of |Account| for more details.
-  ErrorType ListAccounts(std::vector<Account>* accounts) const
-      WARN_UNUSED_RESULT;
+  std::vector<Account> ListAccounts() const;
 
   // Sets the Kerberos configuration (krb5.conf) used for the given
   // |principal_name|. Validates the config before setting it.

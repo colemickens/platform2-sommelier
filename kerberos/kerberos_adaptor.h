@@ -16,6 +16,7 @@
 #include <brillo/dbus/async_event_sequencer.h>
 
 #include "kerberos/org.chromium.Kerberos.h"
+#include "kerberos/proto_bindings/kerberos_service.pb.h"
 
 namespace brillo {
 namespace dbus_utils {
@@ -70,6 +71,8 @@ class KerberosAdaptor : public org::chromium::KerberosAdaptor,
   void set_metrics_for_testing(std::unique_ptr<KerberosMetrics> metrics);
 
  private:
+  using RepeatedAccountField = google::protobuf::RepeatedPtrField<Account>;
+
   // Calls |manager_|->StartObservingTickets().
   void StartObservingTickets();
 
@@ -78,10 +81,14 @@ class KerberosAdaptor : public org::chromium::KerberosAdaptor,
   // signal.
   void OnKerberosFilesChanged(const std::string& principal_name);
 
-  // Gets called when the a Kerberos ticket is about to expire in the next
-  // coupld of minutes or if it already expired. Triggers the
-  // KerberosTicketExpiring signal.
+  // Gets called when a Kerberos ticket is about to expire in the next couple of
+  // minutes or if it already expired. Triggers the KerberosTicketExpiring
+  // signal.
   void OnKerberosTicketExpiring(const std::string& principal_name);
+
+  // Populates the proto repeated field with the list of all existing accounts.
+  // This list is retrieved from |manager_->ListAccounts()|.
+  void GetAccountsList(RepeatedAccountField* repeated_accounts);
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 

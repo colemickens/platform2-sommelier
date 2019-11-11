@@ -255,7 +255,9 @@ ErrorType AccountManager::ClearAccounts(
   return ERROR_NONE;
 }
 
-ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) const {
+std::vector<Account> AccountManager::ListAccounts() const {
+  std::vector<Account> accounts;
+
   for (const auto& it : accounts_) {
     Account account;
     account.set_principal_name(it.data.principal_name());
@@ -288,10 +290,10 @@ ErrorType AccountManager::ListAccounts(std::vector<Account>* accounts) const {
       account.set_tgt_renewal_seconds(tgt_status.renewal_seconds);
     }
 
-    accounts->push_back(std::move(account));
+    accounts.push_back(std::move(account));
   }
 
-  return ERROR_NONE;
+  return accounts;
 }
 
 ErrorType AccountManager::SetConfig(const std::string& principal_name,

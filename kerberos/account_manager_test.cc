@@ -114,8 +114,7 @@ class AccountManagerTest : public ::testing::Test {
     // manager instance. This catches cases where AccountManager forgets to save
     // accounts on some change.
     if (base::PathExists(accounts_path_)) {
-      std::vector<Account> accounts;
-      EXPECT_EQ(ERROR_NONE, manager_->ListAccounts(&accounts));
+      std::vector<Account> accounts = manager_->ListAccounts();
 
       AccountManager other_manager(
           storage_dir_.GetPath(), kerberos_files_changed_,
@@ -123,8 +122,7 @@ class AccountManagerTest : public ::testing::Test {
           std::make_unique<password_provider::FakePasswordProvider>(),
           metrics_.get());
       other_manager.LoadAccounts();
-      std::vector<Account> other_accounts;
-      EXPECT_EQ(ERROR_NONE, other_manager.ListAccounts(&other_accounts));
+      std::vector<Account> other_accounts = other_manager.ListAccounts();
 
       ASSERT_NO_FATAL_FAILURE(ExpectAccountsEqual(accounts, other_accounts));
     }
@@ -243,8 +241,7 @@ TEST_F(AccountManagerTest, ManagedOverridesUnmanaged) {
             manager_->AddAccount(kUser, kManaged));
   EXPECT_FALSE(base::PathExists(krb5cc_path_));
 
-  std::vector<Account> accounts;
-  EXPECT_EQ(ERROR_NONE, manager_->ListAccounts(&accounts));
+  std::vector<Account> accounts = manager_->ListAccounts();
   ASSERT_EQ(1u, accounts.size());
   EXPECT_TRUE(accounts[0].is_managed());
 }
@@ -255,8 +252,7 @@ TEST_F(AccountManagerTest, UnmanagedDoesNotOverrideManaged) {
 
   EXPECT_EQ(ERROR_DUPLICATE_PRINCIPAL_NAME,
             manager_->AddAccount(kUser, kUnmanaged));
-  std::vector<Account> accounts;
-  EXPECT_EQ(ERROR_NONE, manager_->ListAccounts(&accounts));
+  std::vector<Account> accounts = manager_->ListAccounts();
   ASSERT_EQ(1u, accounts.size());
   EXPECT_TRUE(accounts[0].is_managed());
 }
@@ -311,8 +307,7 @@ TEST_F(AccountManagerTest, ClearAccountsSuccess) {
   ignore_result(manager_->AddAccount(kUser2, kManaged));
 
   EXPECT_EQ(ERROR_NONE, manager_->ClearAccounts(CLEAR_ALL, {}));
-  std::vector<Account> accounts;
-  EXPECT_EQ(ERROR_NONE, manager_->ListAccounts(&accounts));
+  std::vector<Account> accounts = manager_->ListAccounts();
   EXPECT_EQ(0u, accounts.size());
 }
 
@@ -356,8 +351,7 @@ TEST_F(AccountManagerTest, ClearUnmanagedAccountsSuccess) {
 
   EXPECT_EQ(ERROR_NONE,
             manager_->ClearAccounts(CLEAR_ONLY_UNMANAGED_ACCOUNTS, {}));
-  std::vector<Account> accounts;
-  EXPECT_EQ(ERROR_NONE, manager_->ListAccounts(&accounts));
+  std::vector<Account> accounts = manager_->ListAccounts();
   ASSERT_EQ(1u, accounts.size());
   EXPECT_EQ(kUser2, accounts[0].principal_name());
 }
@@ -382,8 +376,7 @@ TEST_F(AccountManagerTest, ClearUnmanagedPasswordsSuccess) {
 
   EXPECT_EQ(ERROR_NONE, manager_->ClearAccounts(
                             CLEAR_ONLY_UNMANAGED_REMEMBERED_PASSWORDS, {}));
-  std::vector<Account> accounts;
-  EXPECT_EQ(ERROR_NONE, manager_->ListAccounts(&accounts));
+  std::vector<Account> accounts = manager_->ListAccounts();
   ASSERT_EQ(2u, accounts.size());
   EXPECT_FALSE(base::PathExists(password_path_));
   EXPECT_TRUE(base::PathExists(password_path_2));
@@ -399,8 +392,7 @@ TEST_F(AccountManagerTest, ClearManagedPasswordsWithKeepListSuccess) {
   // Keep the managed kUser-account.
   EXPECT_EQ(ERROR_NONE,
             manager_->ClearAccounts(CLEAR_ONLY_MANAGED_ACCOUNTS, {kUser}));
-  std::vector<Account> accounts;
-  EXPECT_EQ(ERROR_NONE, manager_->ListAccounts(&accounts));
+  std::vector<Account> accounts = manager_->ListAccounts();
   ASSERT_EQ(2u, accounts.size());
   EXPECT_EQ(kUser, accounts[0].principal_name());
   EXPECT_EQ(kUser3, accounts[1].principal_name());
@@ -641,8 +633,7 @@ TEST_F(AccountManagerTest, ListAccountsSuccess) {
       Krb5Interface::TgtStatus(kValiditySeconds, kRenewalSeconds));
 
   // Verify that ListAccounts returns the expected account.
-  std::vector<Account> accounts;
-  EXPECT_EQ(ERROR_NONE, manager_->ListAccounts(&accounts));
+  std::vector<Account> accounts = manager_->ListAccounts();
   ASSERT_EQ(2u, accounts.size());
 
   EXPECT_EQ(kUser, accounts[0].principal_name());
@@ -671,8 +662,7 @@ TEST_F(AccountManagerTest, ListAccountsIgnoresFailures) {
   krb5_->set_get_tgt_status_error(ERROR_UNKNOWN);
 
   // ListAccounts() should still work, despite the errors.
-  std::vector<Account> accounts;
-  EXPECT_EQ(ERROR_NONE, manager_->ListAccounts(&accounts));
+  std::vector<Account> accounts = manager_->ListAccounts();
   ASSERT_EQ(1u, accounts.size());
   EXPECT_EQ(kUser, accounts[0].principal_name());
 
@@ -736,8 +726,7 @@ TEST_F(AccountManagerTest, SerializationSuccess) {
       std::make_unique<password_provider::FakePasswordProvider>(),
       metrics_.get());
   other_manager.LoadAccounts();
-  std::vector<Account> accounts;
-  EXPECT_EQ(ERROR_NONE, other_manager.ListAccounts(&accounts));
+  std::vector<Account> accounts = other_manager.ListAccounts();
   ASSERT_EQ(2u, accounts.size());
 
   EXPECT_EQ(kUser, accounts[0].principal_name());

@@ -50,6 +50,9 @@ const int kDBusSerial = 123;
 constexpr char kUser[] = "user";
 constexpr char kUserHash[] = "user-hash";
 constexpr char kPrincipalName[] = "user@REALM.COM";
+constexpr char kOtherPrincipalName[] = "other_user@REALM.COM";
+constexpr bool kManaged = true;
+constexpr bool kUnmanaged = false;
 constexpr char kPassword[] = "hello123";
 
 // Stub D-Bus object path for the mock daemon.
@@ -176,28 +179,29 @@ class KerberosAdaptorTest : public ::testing::Test {
     EXPECT_EQ(kPrincipalName, principal_name);
   }
 
-  // Adds a default account.
-  ErrorType AddAccount() {
+  // Adds an account with given |principal_name| and |is_managed| parameters.
+  ErrorType AddAccount(const std::string& principal_name, bool is_managed) {
     AddAccountRequest request;
-    request.set_principal_name(kPrincipalName);
-    request.set_is_managed(false);
+    request.set_principal_name(principal_name);
+    request.set_is_managed(is_managed);
     ByteArray response_blob = adaptor_->AddAccount(SerializeAsBlob(request));
     return ParseResponse<AddAccountResponse>(response_blob).error();
   }
 
-  // Removes the default account.
-  ErrorType RemoveAccount() {
+  // Removes the account with |principal_name|.
+  RemoveAccountResponse RemoveAccount(const std::string& principal_name) {
     RemoveAccountRequest request;
-    request.set_principal_name(kPrincipalName);
+    request.set_principal_name(principal_name);
     ByteArray response_blob = adaptor_->RemoveAccount(SerializeAsBlob(request));
-    return ParseResponse<RemoveAccountResponse>(response_blob).error();
+    return ParseResponse<RemoveAccountResponse>(response_blob);
   }
 
   // Removes all accounts.
-  ErrorType ClearAccounts() {
+  ClearAccountsResponse ClearAccounts(ClearMode mode) {
     ClearAccountsRequest request;
+    request.set_mode(mode);
     ByteArray response_blob = adaptor_->ClearAccounts(SerializeAsBlob(request));
-    return ParseResponse<ClearAccountsResponse>(response_blob).error();
+    return ParseResponse<ClearAccountsResponse>(response_blob);
   }
 
   // Lists accounts.
@@ -207,10 +211,10 @@ class KerberosAdaptorTest : public ::testing::Test {
     return ParseResponse<ListAccountsResponse>(response_blob).error();
   }
 
-  // Sets a default config.
-  ErrorType SetConfig() {
+  // Sets a default config for |principal_name|.
+  ErrorType SetConfig(const std::string& principal_name) {
     SetConfigRequest request;
-    request.set_principal_name(kPrincipalName);
+    request.set_principal_name(principal_name);
     request.set_krb5conf(kEmptyConfig);
     ByteArray response_blob = adaptor_->SetConfig(SerializeAsBlob(request));
     return ParseResponse<SetConfigResponse>(response_blob).error();
@@ -225,19 +229,20 @@ class KerberosAdaptorTest : public ::testing::Test {
     return ParseResponse<ValidateConfigResponse>(response_blob).error();
   }
 
-  // Acquires a default Kerberos ticket.
-  ErrorType AcquireKerberosTgt() {
+  // Acquires a default Kerberos ticket for |principal_name| with default
+  // password.
+  ErrorType AcquireKerberosTgt(const std::string& principal_name) {
     AcquireKerberosTgtRequest request;
-    request.set_principal_name(kPrincipalName);
+    request.set_principal_name(principal_name);
     ByteArray response_blob = adaptor_->AcquireKerberosTgt(
         SerializeAsBlob(request), WriteStringToPipe(kPassword));
     return ParseResponse<AcquireKerberosTgtResponse>(response_blob).error();
   }
 
-  // Acquires a default Kerberos ticket.
-  ErrorType GetKerberosFiles() {
+  // Acquires a default Kerberos ticket for |principal_name|.
+  ErrorType GetKerberosFiles(const std::string& principal_name) {
     GetKerberosFilesRequest request;
-    request.set_principal_name(kPrincipalName);
+    request.set_principal_name(principal_name);
     ByteArray response_blob =
         adaptor_->GetKerberosFiles(SerializeAsBlob(request));
     return ParseResponse<GetKerberosFilesResponse>(response_blob).error();
@@ -283,9 +288,89 @@ TEST_F(KerberosAdaptorTest, RetrievesPrimarySession) {
 }
 
 // AddAccount and RemoveAccount succeed when a new account is added and removed.
-TEST_F(KerberosAdaptorTest, AddRemoveAccountSucceess) {
-  EXPECT_EQ(ERROR_NONE, AddAccount());
-  EXPECT_EQ(ERROR_NONE, RemoveAccount());
+TEST_F(KerberosAdaptorTest, AddRemoveAccountSuccess) {
+  EXPECT_EQ(ERROR_NONE, AddAccount(kPrincipalName, kUnmanaged));
+  EXPECT_EQ(ERROR_NONE, RemoveAccount(kPrincipalName).error());
+}
+
+// RemoveAccount succeeds and returns the list of remaining accounts.
+TEST_F(KerberosAdaptorTest, RemoveAccountSuccess) {
+  EXPECT_EQ(ERROR_NONE, AddAccount(kPrincipalName, kUnmanaged));
+  EXPECT_EQ(ERROR_NONE, AddAccount(kOtherPrincipalName, kUnmanaged));
+
+  RemoveAccountResponse response = RemoveAccount(kPrincipalName);
+  EXPECT_EQ(ERROR_NONE, response.error());
+  ASSERT_EQ(1, response.accounts_size());
+  EXPECT_EQ(kOtherPrincipalName, response.accounts(0).principal_name());
+  response = RemoveAccount(kOtherPrincipalName);
+  EXPECT_EQ(ERROR_NONE, response.error());
+  EXPECT_EQ(0, response.accounts_size());
+}
+
+// RemoveAccount fails if the account doesn't exist, and returns the list of
+// remaining accounts.
+TEST_F(KerberosAdaptorTest, RemoveAccountFails) {
+  EXPECT_EQ(ERROR_NONE, AddAccount(kPrincipalName, kUnmanaged));
+
+  RemoveAccountResponse response = RemoveAccount(kOtherPrincipalName);
+  EXPECT_EQ(ERROR_UNKNOWN_PRINCIPAL_NAME, response.error());
+  ASSERT_EQ(1, response.accounts_size());
+  EXPECT_EQ(kPrincipalName, response.accounts(0).principal_name());
+}
+
+// AddAccount and ClearAccounts succeed when a new account is added and cleared.
+TEST_F(KerberosAdaptorTest, AddClearAccountsSuccess) {
+  EXPECT_EQ(ERROR_NONE, AddAccount(kPrincipalName, kUnmanaged));
+  EXPECT_EQ(ERROR_NONE, ClearAccounts(CLEAR_ALL).error());
+}
+
+// ClearAccounts succeeds to clear all accounts and returns the list of
+// remaining accounts.
+TEST_F(KerberosAdaptorTest, ClearAccountsSuccessClearAll) {
+  EXPECT_EQ(ERROR_NONE, AddAccount(kPrincipalName, kUnmanaged));
+  EXPECT_EQ(ERROR_NONE, AddAccount(kOtherPrincipalName, kUnmanaged));
+
+  ClearAccountsResponse response = ClearAccounts(CLEAR_ALL);
+  EXPECT_EQ(ERROR_NONE, response.error());
+  EXPECT_EQ(0, response.accounts_size());
+}
+
+// ClearAccounts succeeds to clear managed accounts and returns the list of
+// remaining accounts.
+TEST_F(KerberosAdaptorTest, ClearAccountsSuccessClearManaged) {
+  EXPECT_EQ(ERROR_NONE, AddAccount(kPrincipalName, kUnmanaged));
+  EXPECT_EQ(ERROR_NONE, AddAccount(kOtherPrincipalName, kManaged));
+
+  ClearAccountsResponse response = ClearAccounts(CLEAR_ONLY_MANAGED_ACCOUNTS);
+  EXPECT_EQ(ERROR_NONE, response.error());
+  ASSERT_EQ(1, response.accounts_size());
+  EXPECT_EQ(kPrincipalName, response.accounts(0).principal_name());
+}
+
+// ClearAccounts succeeds to clear unmanaged accounts and returns the list of
+// remaining accounts.
+TEST_F(KerberosAdaptorTest, ClearAccountsSuccessClearUnmanaged) {
+  EXPECT_EQ(ERROR_NONE, AddAccount(kPrincipalName, kUnmanaged));
+  EXPECT_EQ(ERROR_NONE, AddAccount(kOtherPrincipalName, kManaged));
+
+  ClearAccountsResponse response = ClearAccounts(CLEAR_ONLY_UNMANAGED_ACCOUNTS);
+  EXPECT_EQ(ERROR_NONE, response.error());
+  ASSERT_EQ(1, response.accounts_size());
+  EXPECT_EQ(kOtherPrincipalName, response.accounts(0).principal_name());
+}
+
+// ClearAccounts succeeds to clear unmanaged remembered passwords and returns
+// the list of remaining accounts.
+TEST_F(KerberosAdaptorTest, ClearAccountsSuccessClearUnmanagedPasswords) {
+  EXPECT_EQ(ERROR_NONE, AddAccount(kPrincipalName, kUnmanaged));
+  EXPECT_EQ(ERROR_NONE, AddAccount(kOtherPrincipalName, kManaged));
+
+  ClearAccountsResponse response =
+      ClearAccounts(CLEAR_ONLY_UNMANAGED_REMEMBERED_PASSWORDS);
+  EXPECT_EQ(ERROR_NONE, response.error());
+  ASSERT_EQ(2, response.accounts_size());
+  EXPECT_EQ(kPrincipalName, response.accounts(0).principal_name());
+  EXPECT_EQ(kOtherPrincipalName, response.accounts(1).principal_name());
 }
 
 // Checks that metrics are reported for all D-Bus calls.
@@ -300,27 +385,27 @@ TEST_F(KerberosAdaptorTest, Metrics_ReportDBusCallResult) {
   EXPECT_CALL(*metrics_, ReportDBusCallResult("RemoveAccount", ERROR_NONE));
   EXPECT_CALL(*metrics_, ReportDBusCallResult("ClearAccounts", ERROR_NONE));
 
-  EXPECT_EQ(ERROR_NONE, AddAccount());
+  EXPECT_EQ(ERROR_NONE, AddAccount(kPrincipalName, kUnmanaged));
   EXPECT_EQ(ERROR_NONE, ListAccounts());
-  EXPECT_EQ(ERROR_NONE, SetConfig());
+  EXPECT_EQ(ERROR_NONE, SetConfig(kPrincipalName));
   EXPECT_EQ(ERROR_NONE, ValidateConfig());
-  EXPECT_EQ(ERROR_NONE, AcquireKerberosTgt());
-  EXPECT_EQ(ERROR_NONE, GetKerberosFiles());
-  EXPECT_EQ(ERROR_NONE, RemoveAccount());
-  EXPECT_EQ(ERROR_NONE, ClearAccounts());
+  EXPECT_EQ(ERROR_NONE, AcquireKerberosTgt(kPrincipalName));
+  EXPECT_EQ(ERROR_NONE, GetKerberosFiles(kPrincipalName));
+  EXPECT_EQ(ERROR_NONE, RemoveAccount(kPrincipalName).error());
+  EXPECT_EQ(ERROR_NONE, ClearAccounts(CLEAR_ALL).error());
 }
 
 // AcquireKerberosTgt should trigger timing events.
 TEST_F(KerberosAdaptorTest, Metrics_AcquireTgtTimer) {
   EXPECT_CALL(*metrics_, StartAcquireTgtTimer());
   EXPECT_CALL(*metrics_, StopAcquireTgtTimerAndReport());
-  EXPECT_EQ(ERROR_UNKNOWN_PRINCIPAL_NAME, AcquireKerberosTgt());
+  EXPECT_EQ(ERROR_UNKNOWN_PRINCIPAL_NAME, AcquireKerberosTgt(kPrincipalName));
 }
 
-// AcquireKerberosTgt should trigger timing events.
+// ValidateConfig should trigger timing events.
 TEST_F(KerberosAdaptorTest, Metrics_ValidateConfigErrorCode) {
   EXPECT_CALL(*metrics_, ReportValidateConfigErrorCode(CONFIG_ERROR_NONE));
-  EXPECT_EQ(ERROR_NONE, AddAccount());
+  EXPECT_EQ(ERROR_NONE, AddAccount(kPrincipalName, kUnmanaged));
   EXPECT_EQ(ERROR_NONE, ValidateConfig());
 }
 
