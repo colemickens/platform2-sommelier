@@ -2088,7 +2088,7 @@ TEST_F(ServiceTest, Compare) {
   // Connected-but-portalled preferred over unconnected.
   EXPECT_CALL(*service2, state())
       .WillRepeatedly(Return(Service::kStateNoConnectivity));
-  EXPECT_CALL(*service2, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*service2, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
 
   // Connected preferred over connected-but-portalled.
@@ -2096,7 +2096,7 @@ TEST_F(ServiceTest, Compare) {
   service2->SetConnectable(true);
   EXPECT_CALL(*service10, state())
       .WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*service10, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*service10, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
 
   // Online preferred over just connected.

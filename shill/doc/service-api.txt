@@ -612,10 +612,13 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			(for example during DHCP renewals), although the
 			actual value may not have changed.
 
-		boolean IsActive [readonly]
+		boolean IsConnected [readonly]
 
-			Will be true if this service has a default route;
-			i.e.  network traffic is being sent through it.
+			Will be true if this service is in some connected state
+			(i.e. configured to the point where network traffic can be
+			sent through it). Note that this can be true before portal
+			detection has completed, or if a previous portal detection
+			attempt failed.
 
 		boolean LinkMonitorDisable [readwrite]
 

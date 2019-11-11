@@ -198,8 +198,10 @@ Service::Service(Manager* manager, Technology technology)
   store_.RegisterConstString(kErrorDetailsProperty, &error_details_);
   HelpRegisterConstDerivedRpcIdentifier(kIPConfigProperty,
                                         &Service::GetIPConfigRpcIdentifier);
-  HelpRegisterDerivedBool(kIsActiveProperty, &Service::IsActive, nullptr,
-                          nullptr);
+  store_.RegisterDerivedBool(
+      kIsConnectedProperty,
+      BoolAccessor(new CustomReadOnlyAccessor<Service, bool>(
+          this, &Service::IsConnected)));
   // kModeProperty: Registered in WiFiService
 
   HelpRegisterDerivedString(kNameProperty, &Service::GetNameProperty,
@@ -419,7 +421,7 @@ bool Service::IsPortalledState(ConnectState state) {
          state == kStatePortalSuspected;
 }
 
-bool Service::IsConnected() const {
+bool Service::IsConnected(Error* /*error*/) const {
   return IsConnectedState(state());
 }
 

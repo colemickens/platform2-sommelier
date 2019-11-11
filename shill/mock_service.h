@@ -38,7 +38,7 @@ class MockService : public Service {
               SetPortalDetectionFailure,
               (const std::string&, const std::string&),
               (override));
-  MOCK_METHOD(bool, IsConnected, (), (const, override));
+  MOCK_METHOD(bool, IsConnected, (Error*), (const, override));
   MOCK_METHOD(bool, IsConnecting, (), (const, override));
   MOCK_METHOD(bool, IsFailed, (), (const, override));
   MOCK_METHOD(bool, IsOnline, (), (const, override));

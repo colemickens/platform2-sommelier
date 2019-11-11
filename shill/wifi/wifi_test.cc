@@ -2231,7 +2231,7 @@ TEST_F(WiFiMainTest, ReconnectTimer) {
   StartWiFi();
   MockWiFiServiceRefPtr service(
       SetupConnectedService(RpcIdentifier(""), nullptr, nullptr));
-  EXPECT_CALL(*service, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*service, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_TRUE(GetReconnectTimeoutCallback().IsCancelled());
   ReportStateChanged(WPASupplicant::kInterfaceStateDisconnected);
   EXPECT_FALSE(GetReconnectTimeoutCallback().IsCancelled());
@@ -2449,7 +2449,7 @@ TEST_F(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint) {
   scoped_refptr<MockIPConfig> ipconfig(
       new MockIPConfig(control_interface(), kDeviceName));
   SetIPConfig(ipconfig);
-  EXPECT_CALL(*service, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*service, IsConnected(nullptr)).WillOnce(Return(true));
   EXPECT_CALL(*ipconfig, RenewIP());
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
   Mock::VerifyAndClearExpectations(ipconfig.get());
@@ -2663,7 +2663,7 @@ TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
   // configuration.  However, we treat all transitions to completed as potential
   // reassociations, so we will reenable high rates again here.
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-  EXPECT_CALL(*service, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*service, IsConnected(nullptr)).WillOnce(Return(true));
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
 }
 
@@ -3168,13 +3168,13 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   RequestStationInfo();
 
   // current_service_ is not connected.
-  EXPECT_CALL(*service, IsConnected()).WillOnce(Return(false));
+  EXPECT_CALL(*service, IsConnected(nullptr)).WillOnce(Return(false));
   SetCurrentService(service);
   EXPECT_CALL(log, Log(_, _, HasSubstr("we are not connected")));
   RequestStationInfo();
 
   // Endpoint does not exist in endpoint_by_rpcid_.
-  EXPECT_CALL(*service, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*service, IsConnected(nullptr)).WillRepeatedly(Return(true));
   SetSupplicantBSS(
       RpcIdentifier("/some/path/that/does/not/exist/in/endpoint_by_rpcid"));
   EXPECT_CALL(
@@ -3956,7 +3956,7 @@ TEST_F(WiFiMainTest, OnIPConfigUpdated_InvokesOnConnectedAndReachable) {
   // If we are actually connected to a service when our IPv6 configuration is
   // updated, we should call WakeOnWiFi::OnConnectedAndReachable.
   MockWiFiServiceRefPtr service = MakeMockService(kSecurity8021x);
-  EXPECT_CALL(*service, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*service, IsConnected(nullptr)).WillOnce(Return(true));
   SetCurrentService(service);
   EXPECT_CALL(log, Log(_, _, HasSubstr("IPv6 configuration obtained")));
   EXPECT_CALL(*wake_on_wifi_, OnConnectedAndReachable(_, _));

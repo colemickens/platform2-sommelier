@@ -1,5 +1,9 @@
 #!/usr/bin/python
 
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 import sys
 import dbus
 import flimflam
@@ -132,17 +136,17 @@ def print_services(services):
 
         identifier = object_path[object_path.rfind("/") + 1:]
 
-        if properties["IsActive"] == dbus.Boolean(1):
-            active = "*"
+        if properties["IsConnected"] == dbus.Boolean(1):
+            connected = "*"
         else:
-            active = " "
+            connected = " "
 
         if "Name" in properties.keys():
             name = properties["Name"]
         else:
             name = "{" + properties["Type"] + "}"
 
-        print "%s %-26s { %s }" % (active, name, identifier)
+        print "%s %-26s { %s }" % (connected, name, identifier)
 
 def main():
     if sys.argv[1] == "state":

@@ -53,7 +53,7 @@ class MockWiFiService : public WiFiService {
               (ConnectFailure, Error*, const char*),
               (override));
   MOCK_METHOD(bool, IsActive, (Error*), (override));
-  MOCK_METHOD(bool, IsConnected, (), (const, override));
+  MOCK_METHOD(bool, IsConnected, (Error*), (const, override));
   MOCK_METHOD(bool, IsConnecting, (), (const, override));
   MOCK_METHOD(int, GetEndpointCount, (), (const, override));
   MOCK_METHOD(bool, HasEndpoints, (), (const, override));

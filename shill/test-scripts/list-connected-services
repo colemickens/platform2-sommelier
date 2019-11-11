@@ -1,15 +1,15 @@
 #!/usr/bin/python
 
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 # usage:
-# list-active-service [[service-type [[service-prop1] ... [service-propN]]]]
+# list-connected-services [[service-type [[service-prop1] ... [service-propN]]]]
 #     service-type: shill service type: wifi, ethernet, etc
 #     service-propX: shill service property: Connectable, Name, etc
 #
-# Queries the currently active services from shill, optionally filtering
+# Queries the currently connected services from shill, optionally filtering
 # for specific service types and properties
 
 import dbus, flimflam, sys
@@ -27,7 +27,7 @@ def main():
 
     for service in flim.GetObjectList('Service'):
         properties = service.GetProperties(utf8_strings = True)
-        if not bool(properties['IsActive']):
+        if not bool(properties['IsConnected']):
             continue
 
         if len(sys.argv) > 1 and str(properties['Type']) != sys.argv[1]:

@@ -206,7 +206,7 @@ class Service : public base::RefCounted<Service> {
   static bool IsConnectingState(ConnectState state);
   static bool IsPortalledState(ConnectState state);
 
-  mockable bool IsConnected() const;
+  mockable bool IsConnected(Error* error = nullptr) const;
   mockable bool IsConnecting() const;
   bool IsDisconnecting() const;
   mockable bool IsPortalled() const;
