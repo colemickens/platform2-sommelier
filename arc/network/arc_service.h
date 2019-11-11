@@ -83,6 +83,14 @@ class ArcService : public GuestService {
   void StartDevice(Device* device);
   void StopDevice(Device* device);
 
+  // ARC++ specific functiona.
+
+  bool OnStartContainer();
+  void OnStopContainer();
+  bool OnStartContainerDevice(Device* device);
+  void OnStopContainerDevice(Device* device);
+  void OnContainerDefaultInterfaceChanged(const std::string& ifname);
+
   Datapath* datapath_;
 
   pid_t pid_;

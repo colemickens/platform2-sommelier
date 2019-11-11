@@ -180,11 +180,32 @@ ArcService::ArcService(DeviceManagerBase* dev_mgr,
 }
 
 void ArcService::OnStart() {
-  LOG(INFO) << "ARC++ network service starting";
+  if (!OnStartContainer()) {
+    LOG(ERROR) << "Failed to start ARC++ network service";
+    return;
+  }
+
+  // Start known host devices, any new ones will be setup in the process.
+  dev_mgr_->ProcessDevices(
+      base::Bind(&ArcService::StartDevice, weak_factory_.GetWeakPtr()));
+
+  // If this is the first time the service is starting this will create the
+  // Android bridge device; otherwise it does nothing (this is a workaround for
+  // the bug in Shill that casues a Bus crash when it sees the ARC bridge a
+  // second time). Do this after processing the existing devices so it doesn't
+  // get started twice.
+  dev_mgr_->Add(guest_ == GuestMessage::ARC_LEGACY ? kAndroidLegacyDevice
+                                                   : kAndroidDevice);
+
+  // Finally, call the base implementation.
+  GuestService::OnStart();
+}
+
+bool ArcService::OnStartContainer() {
   pid_ = GetContainerPID();
   if (pid_ == kInvalidPID) {
     LOG(ERROR) << "Cannot start service - invalid container PID";
-    return;
+    return false;
   }
 
   // Start listening for RTNetlink messages in the container's net namespace
@@ -203,25 +224,15 @@ void ArcService::OnStart() {
       // brings up an interface.
       LOG(ERROR)
           << "Cannot start netlink listener - invalid container namespace?";
+      return false;
     }
   }
 
-  // Start known host devices, any new ones will be setup in the process.
-  dev_mgr_->ProcessDevices(
-      base::Bind(&ArcService::StartDevice, weak_factory_.GetWeakPtr()));
-
-  // If this is the first time the service is starting this will create the
-  // Android bridge device; otherwise it does nothing. Do this after processing
-  // the existing devices so it doesn't get started twice.
-  dev_mgr_->Add(guest_ == GuestMessage::ARC_LEGACY ? kAndroidLegacyDevice
-                                                   : kAndroidDevice);
-
-  // Finally, call the base implementation.
-  GuestService::OnStart();
+  LOG(INFO) << "ARC++ network service started {pid: " << pid_ << "}";
+  return true;
 }
 
 void ArcService::OnStop() {
-  LOG(INFO) << "ARC++ network service stopping";
   // Call the base implementation.
   GuestService::OnStop();
 
@@ -230,10 +241,15 @@ void ArcService::OnStop() {
   dev_mgr_->ProcessDevices(
       base::Bind(&ArcService::StopDevice, weak_factory_.GetWeakPtr()));
 
+  OnStopContainer();
+}
+
+void ArcService::OnStopContainer() {
   rtnl_handler_->RemoveListener(link_listener_.get());
   link_listener_.reset();
   rtnl_handler_.reset();
 
+  LOG(INFO) << "ARC++ network service stopped {pid: " << pid_ << "}";
   pid_ = kInvalidPID;
 }
 
@@ -295,6 +311,21 @@ void ArcService::StartDevice(Device* device) {
     return;
   }
 
+  if (!OnStartContainerDevice(device)) {
+    LOG(ERROR) << "Failed to start device " << device->ifname();
+    return;
+  }
+
+  // Signal the container that the network device is ready.
+  // This is only applicable for the containe the ARC++ container.
+  if (device->IsAndroid() || device->IsLegacyAndroid()) {
+    datapath_->runner().WriteSentinelToContainer(base::IntToString(pid_));
+  }
+
+  ctx->Start();
+}
+
+bool ArcService::OnStartContainerDevice(Device* device) {
   const auto& config = device->config();
 
   LOG(INFO) << "Starting device " << device->ifname()
@@ -307,7 +338,7 @@ void ArcService::StartDevice(Device* device) {
       config.host_ifname());
   if (veth_ifname.empty()) {
     LOG(ERROR) << "Failed to create virtual interface for container";
-    return;
+    return false;
   }
 
   if (!datapath_->AddInterfaceToContainer(
@@ -317,16 +348,9 @@ void ArcService::StartDevice(Device* device) {
     LOG(ERROR) << "Failed to create container interface.";
     datapath_->RemoveInterface(veth_ifname);
     datapath_->RemoveBridge(config.host_ifname());
-    return;
+    return false;
   }
-
-  // Signal the container that the network device is ready.
-  // This is only applicable for arc0.
-  if (device->IsAndroid() || device->IsLegacyAndroid()) {
-    datapath_->runner().WriteSentinelToContainer(base::IntToString(pid_));
-  }
-
-  ctx->Start();
+  return true;
 }
 
 void ArcService::OnDeviceRemoved(Device* device) {
@@ -376,6 +400,12 @@ void ArcService::StopDevice(Device* device) {
     return;
   }
 
+  OnStopContainerDevice(device);
+
+  ctx->Stop();
+}
+
+void ArcService::OnStopContainerDevice(Device* device) {
   const auto& config = device->config();
 
   LOG(INFO) << "Stopping device " << device->ifname()
@@ -387,11 +417,13 @@ void ArcService::StopDevice(Device* device) {
   if (!device->IsAndroid()) {
     datapath_->RemoveInterface(ArcVethHostName(device->ifname()));
   }
-
-  ctx->Stop();
 }
 
 void ArcService::OnDefaultInterfaceChanged(const std::string& ifname) {
+  OnContainerDefaultInterfaceChanged(ifname);
+}
+
+void ArcService::OnContainerDefaultInterfaceChanged(const std::string& ifname) {
   if (pid_ == kInvalidPID)
     return;
 
