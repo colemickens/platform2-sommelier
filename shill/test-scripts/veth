@@ -1,4 +1,8 @@
 #!/bin/sh
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 # Virtual ethernet interface control script
 # Sometimes, we need a virtual interface of arbitrary name and configuration
 # that we can do dhcp on. This script is for those times.

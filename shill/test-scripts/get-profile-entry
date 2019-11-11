@@ -1,13 +1,17 @@
-#!/usr/bin/python
-
+#!/usr/bin/env python2
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, flimflam, sys
+from __future__ import print_function
 
-if (len(sys.argv) < 3):
-    print "Usage: %s <profile_name> <entry_name>" % (sys.argv[0])
+import sys
+
+import dbus
+import flimflam
+
+if len(sys.argv) < 3:
+    print('Usage: %s <profile_name> <entry_name>' % (sys.argv[0]))
     sys.exit(1)
 
 (_, profile_name, entry_name) = sys.argv
@@ -20,12 +24,12 @@ if profile is None:
                                                  'Interface',
                                                  profile_name)
 
-print "Found profile %s" % (profile.object_path)
+print('Found profile %s' % (profile.object_path))
 
 try:
     properties = profile.GetEntry(entry_name)
     for key in properties.keys():
-        print "    %s = %s" % \
-            (key, flimflam.convert_dbus_value(properties[key], 4))
+        print('    %s = %s' %
+              (key, flimflam.convert_dbus_value(properties[key], 4)))
 except dbus.DBusException, error:
-    print "Entry %s not found" % (entry_name)
+    print('Entry %s not found' % (entry_name))

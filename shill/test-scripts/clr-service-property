@@ -1,9 +1,16 @@
-#!/usr/bin/python
+#!/usr/bin/env python2
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
 
-import flimflam, sys
+from __future__ import print_function
 
-if (len(sys.argv) < 3):
-    print "Usage: %s <service-name> <property>" % (sys.argv[0])
+import sys
+
+import flimflam
+
+if len(sys.argv) < 3:
+    print('Usage: %s <service-name> <property>' % (sys.argv[0]))
     sys.exit(1)
 
 (_, name, service_property) = sys.argv

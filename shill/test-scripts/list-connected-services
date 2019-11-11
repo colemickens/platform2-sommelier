@@ -1,5 +1,4 @@
-#!/usr/bin/python
-
+#!/usr/bin/env python2
 # Copyright 2019 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -12,12 +11,17 @@
 # Queries the currently connected services from shill, optionally filtering
 # for specific service types and properties
 
-import dbus, flimflam, sys
+from __future__ import print_function
+
+import sys
+
+import dbus
+import flimflam
 
 def main():
-    if len(sys.argv) > 1 and str(sys.argv[1]) in ['-h','-?','--help','-help']:
+    if len(sys.argv) > 1 and str(sys.argv[1]) in ['-h', '-?', '--help']:
         print('usage: %s [[service-type [[service-prop1] ... [service-propN]]]]'
-            % str(sys.argv[0]))
+              % str(sys.argv[0]))
         return
 
     flim = flimflam.FlimFlam(dbus.SystemBus())
@@ -26,7 +30,7 @@ def main():
     retval = 1
 
     for service in flim.GetObjectList('Service'):
-        properties = service.GetProperties(utf8_strings = True)
+        properties = service.GetProperties(utf8_strings=True)
         if not bool(properties['IsConnected']):
             continue
 
@@ -42,9 +46,10 @@ def main():
         for key in requested_keys:
             retval = 0
             print('    %s = %s' % (
-                    key, flimflam.convert_dbus_value(properties[key], 4)))
+                key, flimflam.convert_dbus_value(properties[key], 4)))
 
     return retval
+
 
 if __name__ == '__main__':
     sys.exit(main())

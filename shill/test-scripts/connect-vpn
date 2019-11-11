@@ -1,156 +1,156 @@
-#!/usr/bin/python
-
+#!/usr/bin/env python2
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from __future__ import print_function
+
 import optparse
-import pprint, sys
-import dbus, flimflam
+import pprint
+import sys
+
+import dbus
+import flimflam
+
 
 def show_usage(parser, vpn_type):
-    parser.error("Incorrect number of parameters provided for %s" % vpn_type)
+    parser.error('Incorrect number of parameters provided for %s' % vpn_type)
+
 
 def main(argv):
     parser = optparse.OptionParser(
-        "%prog [options]... (OpenVPN | L2TPIPSEC)\n"
-        "\n"
-        "   OpenVPN            := openvpn NetworkID Certificates\n"
-        "\n"
-        "   L2TPIPSEC          := (L2PSK | L2Cert)\n"
-        "     L2Cert           := l2tpipsec-cert NetworkID "
-        "CertificatesPkcs11 L2TPInfo\n"
-        "     L2PSK            := l2tpipsec-psk NetworkID PSKInfo L2TPInfo\n"
-        "\n"
-        "   NetworkID          := <vpn-name> <remote-host-ip> <vpn-domain>\n"
-        "   Certificates       := <ca-cert> <client-cert> <client-key>\n"
-        "   CertificatesPkcs11 := <ca-nickname> <client-cert-slot> "
-        "<client-cert-id> <user-PIN>\n"
-        "   PSKInfo            := <psk>\n"
-        "   L2TPInfo           := <chap-username> <chap-password>\n"
-        )
-    parser.add_option("--verbose",
-                      dest    = "verbose",
-                      action  = "store_true",
-                      default = False,
-                      help    = "Output diagnostic information during run.")
-    parser.add_option("--complzo",
-                      dest    = "complzo",
-                      action  = "store_true",
-                      default = True,
-                      help    = ("Enables the OpenVPN option 'complzo' "
-                                 "(default).  "
-                                 "Ignored when not 'OpenVPN'."))
-    parser.add_option("--no-complzo",
-                      dest    = "complzo",
-                      action  = "store_false",
-                      help    = ("Disables the OpenVPN option 'complzo'.  "
-                                 "Ignored when not 'OpenVPN'."))
-    parser.add_option("--mgmtena",
-                      dest    = "mgmtena",
-                      action  = "store_true",
-                      default = False,
-                      help    = ("Enable the OpenVPN management ctl channel "
-                                 "(default false).  "
-                                 "Ignored when not 'OpenVPN'."))
-    parser.add_option("--remote-cert-tls",
-                      dest    = "remote_cert_tls",
-                      action  = "store",
-                      default = "server",
-                      type    = "string",
-                      metavar = "(server | client | none)",
-                      help    = ("This is passed through to OpenVPN when "
-                                 "not 'none'.  "
-                                 "Ignored when not 'OpenVPN'."))
-    parser.add_option("--tunnel-group",
-                      dest    = "tunnel_group",
-                      action  = "store",
-                      default = "",
-                      help    = ("Provide a tunnel group parameter to "
-                                 "l2tpipsec links.  "
-                                 "Ignored when not 'L2TPIPSec'."))
+        '%prog [options]... (OpenVPN | L2TPIPSEC)\n'
+        '\n'
+        '   OpenVPN            := openvpn NetworkID Certificates\n'
+        '\n'
+        '   L2TPIPSEC          := (L2PSK | L2Cert)\n'
+        '     L2Cert           := l2tpipsec-cert NetworkID '
+        'CertificatesPkcs11 L2TPInfo\n'
+        '     L2PSK            := l2tpipsec-psk NetworkID PSKInfo L2TPInfo\n'
+        '\n'
+        '   NetworkID          := <vpn-name> <remote-host-ip> <vpn-domain>\n'
+        '   Certificates       := <ca-cert> <client-cert> <client-key>\n'
+        '   CertificatesPkcs11 := <ca-nickname> <client-cert-slot> '
+        '<client-cert-id> <user-PIN>\n'
+        '   PSKInfo            := <psk>\n'
+        '   L2TPInfo           := <chap-username> <chap-password>\n'
+    )
+    parser.add_option('--verbose',
+                      action='store_true',
+                      default=False,
+                      help='Output diagnostic information during run.')
+    parser.add_option('--complzo',
+                      action='store_true',
+                      default=True,
+                      help="Enables the OpenVPN option 'complzo' (default).  "
+                           "Ignored when not 'OpenVPN'.")
+    parser.add_option('--no-complzo',
+                      dest='complzo',
+                      action='store_false',
+                      help="Disables the OpenVPN option 'complzo'.  "
+                           "Ignored when not 'OpenVPN'.")
+    parser.add_option('--mgmtena',
+                      action='store_true',
+                      default=False,
+                      help='Enable the OpenVPN management ctl channel '
+                           '(default false).  '
+                           "Ignored when not 'OpenVPN'.")
+    parser.add_option('--remote-cert-tls',
+                      action='store',
+                      default='server',
+                      type='string',
+                      metavar='(server | client | none)',
+                      help='This is passed through to OpenVPN when '
+                           "not 'none'.  "
+                           "Ignored when not 'OpenVPN'.")
+    parser.add_option('--tunnel-group',
+                      action='store',
+                      default='',
+                      help='Provide a tunnel group parameter to '
+                            'l2tpipsec links.  '
+                            "Ignored when not 'L2TPIPSec'.")
 
     (options, args) = parser.parse_args(argv[1:])
 
-    if (len(args) > 1):
+    if len(args) > 1:
         vpn_type = args[0]
-        params = { "Type" : "vpn" }
+        params = {'Type': 'vpn'}
 
-        if vpn_type == "openvpn":
-            if (len(args) == 7):
-                params["Provider.Type"]  = "openvpn"
-                params["Name"]  = args[1]
-                params["Provider.Host"]  = args[2]
-                params["VPN.Domain"]     = args[3]
-                params["OpenVPN.CACert"] = args[4]
-                params["OpenVPN.Cert"]   = args[5]
-                params["OpenVPN.Key"]    = args[6]
+        if vpn_type == 'openvpn':
+            if len(args) == 7:
+                params['Provider.Type'] = 'openvpn'
+                params['Name'] = args[1]
+                params['Provider.Host'] = args[2]
+                params['VPN.Domain'] = args[3]
+                params['OpenVPN.CACert'] = args[4]
+                params['OpenVPN.Cert'] = args[5]
+                params['OpenVPN.Key'] = args[6]
 
-                if options.complzo: # "complzo" can only be enabled.
-                    params["OpenVPN.CompLZO"] = "true"
+                if options.complzo:  # "complzo" can only be enabled.
+                    params['OpenVPN.CompLZO'] = 'true'
 
-                if options.mgmtena: # enable management control channel
-                    params["OpenVPN.Mgmt.Enable"] = "true"
+                if options.mgmtena:  # enable management control channel
+                    params['OpenVPN.Mgmt.Enable'] = 'true'
 
-                if (options.remote_cert_tls != "server" and
-                    options.remote_cert_tls != "client" and
-                    options.remote_cert_tls != "none"):
+                if (options.remote_cert_tls != 'server' and
+                    options.remote_cert_tls != 'client' and
+                        options.remote_cert_tls != 'none'):
                     print("\n--remote-cert-tls argument ('%s') "
-                          "is invalid.\n" % options.remote_cert_tls)
+                          'is invalid.\n' % options.remote_cert_tls)
                     sys.exit(1)
 
-                params["OpenVPN.RemoteCertTLS"] = options.remote_cert_tls
+                params['OpenVPN.RemoteCertTLS'] = options.remote_cert_tls
             else:
                 show_usage(parser, vpn_type)
-        elif (vpn_type == "l2tpipsec-cert" or
-              vpn_type == "l2tpipsec-psk"):
+        elif (vpn_type == 'l2tpipsec-cert' or
+              vpn_type == 'l2tpipsec-psk'):
             if len(args) > 4:
-                params["Provider.Type"] = "l2tpipsec"
-                params["Name"] = args[1]
-                params["Provider.Host"] = args[2]
-                params["VPN.Domain"] = args[3]
-                if vpn_type == "l2tpipsec-cert" and len(args) == 10:
-                    params["L2TPIPsec.CACertPEM"] = [ args[4] ]
-                    params["L2TPIPsec.ClientCertSlot"] = args[5]
-                    params["L2TPIPsec.ClientCertID"] = args[6]
-                    params["L2TPIPsec.PIN"] = args[7]
-                    params["L2TPIPsec.PSK"] = ""
-                    params["L2TPIPsec.User"] = args[8]
-                    params["L2TPIPsec.Password"] = args[9]
-                elif vpn_type == "l2tpipsec-psk" and len(args) == 7:
-                    params["L2TPIPsec.CACertPEM"] = []
-                    params["L2TPIPsec.ClientCertSlot"] = ""
-                    params["L2TPIPsec.ClientCertID"] = ""
-                    params["L2TPIPsec.PIN"] = ""
-                    params["L2TPIPsec.PSK"] = args[4]
-                    params["L2TPIPsec.User"] = args[5]
-                    params["L2TPIPsec.Password"] = args[6]
+                params['Provider.Type'] = 'l2tpipsec'
+                params['Name'] = args[1]
+                params['Provider.Host'] = args[2]
+                params['VPN.Domain'] = args[3]
+                if vpn_type == 'l2tpipsec-cert' and len(args) == 10:
+                    params['L2TPIPsec.CACertPEM'] = [args[4]]
+                    params['L2TPIPsec.ClientCertSlot'] = args[5]
+                    params['L2TPIPsec.ClientCertID'] = args[6]
+                    params['L2TPIPsec.PIN'] = args[7]
+                    params['L2TPIPsec.PSK'] = ''
+                    params['L2TPIPsec.User'] = args[8]
+                    params['L2TPIPsec.Password'] = args[9]
+                elif vpn_type == 'l2tpipsec-psk' and len(args) == 7:
+                    params['L2TPIPsec.CACertPEM'] = []
+                    params['L2TPIPsec.ClientCertSlot'] = ''
+                    params['L2TPIPsec.ClientCertID'] = ''
+                    params['L2TPIPsec.PIN'] = ''
+                    params['L2TPIPsec.PSK'] = args[4]
+                    params['L2TPIPsec.User'] = args[5]
+                    params['L2TPIPsec.Password'] = args[6]
                 else:
                     show_usage(parser, vpn_type)
-                params["L2TPIPsec.TunnelGroup"] = options.tunnel_group
+                params['L2TPIPsec.TunnelGroup'] = options.tunnel_group
             else:
                 show_usage(parser, vpn_type)
         else:
-            print "Unknown VPN type: '%s'" % vpn_type
+            print("Unknown VPN type: '%s'" % vpn_type)
             sys.exit(1)
 
         if options.verbose:
-            print "\nVPN Startup Parameters:\n"
+            print('\nVPN Startup Parameters:\n')
             for k, v in params.iteritems():
-                print "  %25s: '%s'" % (k, v)
-            print ""
+                print("  %25s: '%s'" % (k, v))
+            print('')
 
-        flim    = flimflam.FlimFlam(dbus.SystemBus())
+        flim = flimflam.FlimFlam(dbus.SystemBus())
         service = flim.GetService(params)
 
-        if options.verbose == "true":
-            print "VPN is %s, connecting..." % service.object_path
+        if options.verbose == 'true':
+            print('VPN is %s, connecting...' % service.object_path)
 
-        (success, diagnostics) = flim.ConnectService(service_type = "vpn",
-                                                     service = service,
-                                                     assoc_timeout = 60)
+        (success, diagnostics) = flim.ConnectService(service_type='vpn',
+                                                     service=service,
+                                                     assoc_timeout=60)
         if not success or options.verbose:
-            print "Success:", success
+            print('Success:', success)
             pprint.pprint(diagnostics)
 
         if not success:
@@ -158,6 +158,7 @@ def main(argv):
     else:
         parser.print_help()
         sys.exit(1)
+
 
 if __name__ == '__main__':
     main(sys.argv)

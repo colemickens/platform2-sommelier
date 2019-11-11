@@ -1,9 +1,17 @@
-#!/usr/bin/python
+#!/usr/bin/env python2
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
 
-import dbus, flimflam, sys
+from __future__ import print_function
 
-if (len(sys.argv) < 4):
-    print "Usage: %s <service-name> <property> <value>" % (sys.argv[0])
+import sys
+
+import dbus
+import flimflam
+
+if len(sys.argv) < 4:
+    print('Usage: %s <service-name> <property> <value>' % (sys.argv[0]))
     sys.exit(1)
 
 (_, name, property_key, value) = sys.argv
@@ -12,14 +20,15 @@ flim = flimflam.FlimFlam()
 service = flim.FindElementByProperty('Service', 'Name', name)
 
 if not service:
-    print "Could not find service: %s" % (sys.argv[1])
+    print('Could not find service: %s' % (sys.argv[1]))
     sys.exit(1)
 
-if property_key in ["Priority"]:
+if property_key in ['Priority']:
     service.SetProperty(property_key, int(value))
-elif property_key in ["AutoConnect", "WiFi.HiddenSSID", "EAP.UseSystemCAs",
-  "SaveCredentials", "LinkMonitorDisable", "ManagedCredentials"]:
+elif property_key in ['AutoConnect', 'WiFi.HiddenSSID', 'EAP.UseSystemCAs',
+                      'SaveCredentials', 'LinkMonitorDisable',
+                      'ManagedCredentials']:
     service.SetProperty(property_key,
-                        dbus.Boolean(value.lower() in ("true", "1")))
+                        dbus.Boolean(value.lower() in ('true', '1')))
 else:
     service.SetProperty(property_key, value)

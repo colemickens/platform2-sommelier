@@ -1,8 +1,9 @@
-#!/usr/bin/python
-
+#!/usr/bin/env python2
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+from __future__ import print_function
 
 import logging
 import logging.handlers
@@ -79,7 +80,6 @@ def main():
     parser.add_option('--limit', default=0, type='int',
                       help='Number of iterations to run (0 for infinite)')
 
-
     global options
     (options, remaining) = parser.parse_args()
 
@@ -107,7 +107,7 @@ def main():
             # Not really a warning, but we want to get this into syslog
             logging.warning(message)
         else:
-            print message
+            print(message)
 
         if not rc:
             if options.keep_going:
@@ -118,7 +118,7 @@ def main():
             else:
                 logging.error('Exiting on failure')
                 sys.exit(1)
-    print 'connect-disconnect: Success'
+    print('connect-disconnect: Success')
 
 
 if __name__ == '__main__':

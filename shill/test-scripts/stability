@@ -1,8 +1,9 @@
 #!/usr/bin/env python
-
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+from __future__ import print_function
 
 import math
 import optparse
@@ -33,6 +34,7 @@ def hms(seconds):
 
 class PeriodicExperiment(object):
     """Uses the scheduler to run the specified function repeatedly."""
+
     def __init__(self,
                  scheduler=None,
                  total_duration=8 * 60 * 60,
@@ -59,6 +61,7 @@ class PeriodicExperiment(object):
 
 class ManualExperiment(object):
     """Runs the experiment repeatedly, prompting for input each time."""
+
     def __init__(self, test_function):
         self._test_function = test_function
 
@@ -70,6 +73,7 @@ class ManualExperiment(object):
                               'Control-c to exit.')
         except KeyboardInterrupt:
             return
+
 
 class IperfTest(object):
     def __init__(self, filename, servername, individual_length):
@@ -83,18 +87,19 @@ class IperfTest(object):
                  '--client', self._servername,
                  # Transfer time in seconds.
                  '--time', str(self._individual_length),
-                 '--reportstyle', 'c' # CSV output
+                 '--reportstyle', 'c'  # CSV output
                  ]
-        print '%s remaining.  Running %s' % (hms(remaining), ' '.join(iperf))
+        print('%s remaining.  Running %s' % (hms(remaining), ' '.join(iperf)))
         result = subprocess.Popen(iperf,
                                   stdout=subprocess.PIPE).communicate()[0]
-        print result.rstrip()
+        print(result.rstrip())
         sys.stdout.flush()
         self._file.write(result)
         self._file.flush()
 
     def teardown(self):
         self._file.close()
+
 
 def main():
     default_output = 'stability-' + time.strftime('%Y-%m-%d-%H-%M-%S')
@@ -116,12 +121,12 @@ def main():
     (options, _) = parser.parse_args()
 
     if not options.server:
-        print 'No server specified.  Specify a server with --server=SERVER.'
+        print('No server specified.  Specify a server with --server=SERVER.')
         exit(2)
 
     if options.individual_length > options.test_interval:
-        print ('The length of a given bandwidth test must be lower than the '
-               'interval between tests')
+        print('The length of a given bandwidth test must be lower than the '
+              'interval between tests')
         exit(2)
 
     s = sched.scheduler(time.time, time.sleep)
@@ -139,6 +144,7 @@ def main():
                                test_function=iperf.Run)
     e.Run()
     iperf.teardown()
+
 
 if __name__ == '__main__':
     main()

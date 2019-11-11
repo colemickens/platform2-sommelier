@@ -1,19 +1,21 @@
-#!/usr/bin/python
-
+#!/usr/bin/env python2
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import dbus, flimflam
+from __future__ import print_function
+
+import dbus
+import flimflam
 
 flim = flimflam.FlimFlam(dbus.SystemBus())
 
-for obj in flim.GetObjectList("Profile"):
-    obj_properties = obj.GetProperties(utf8_strings = True)
+for obj in flim.GetObjectList('Profile'):
+    obj_properties = obj.GetProperties(utf8_strings=True)
 
-    print "[ %s ]" % (obj.object_path)
+    print('[ %s ]' % (obj.object_path))
     for key in obj_properties.keys():
-        print "    %s = %s" % \
-            (key, flimflam.convert_dbus_value(obj_properties[key], 4))
+        print('    %s = %s' %
+              (key, flimflam.convert_dbus_value(obj_properties[key], 4)))
 
-print
+print('')

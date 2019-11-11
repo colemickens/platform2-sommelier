@@ -6,17 +6,21 @@
 # Do not use flimflam.py in future development.
 # Extend / migrate to shill_proxy suite of scripts instead.
 
-import logging, time
+from __future__ import print_function
+
+import logging
+import time
 
 import dbus
 
 DEFAULT_CELLULAR_TIMEOUT = 60
 
+
 def make_dbus_boolean(value):
     value = value.upper()
-    if value in ["ON", "TRUE"]:
+    if value in ['ON', 'TRUE']:
         return dbus.Boolean(1)
-    elif value in ["OFF", "FALSE"]:
+    elif value in ['OFF', 'FALSE']:
         return dbus.Boolean(0)
     else:
         return dbus.Boolean(int(value))
@@ -25,6 +29,8 @@ def make_dbus_boolean(value):
 # Convert a DBus value to a printable value; used
 # to print properties returned via DBus
 #
+
+
 def convert_dbus_value(value, indent=0):
     # DEPRECATED
     spacer = ' ' * indent
@@ -33,26 +39,27 @@ def convert_dbus_value(value, indent=0):
     elif value.__class__ == dbus.Boolean:
         return bool(value)
     elif value.__class__ == dbus.Dictionary:
-        valstr = "{"
+        valstr = '{'
         for key in value:
-            valstr += "\n" + spacer + "    " + \
-                key + ": " + str(convert_dbus_value(value[key], indent + 4))
-        valstr += "\n" + spacer + "}"
+            valstr += '\n' + spacer + '    ' + \
+                key + ': ' + str(convert_dbus_value(value[key], indent + 4))
+        valstr += '\n' + spacer + '}'
         return valstr
     elif value.__class__ == dbus.Array:
-        valstr = "["
+        valstr = '['
         for val in value:
-            valstr += "\n" + spacer + "    " + \
+            valstr += '\n' + spacer + '    ' + \
                 str(convert_dbus_value(val, indent + 4))
-        valstr += "\n" + spacer + "]"
+        valstr += '\n' + spacer + ']'
         return valstr
     else:
         return str(value)
 
+
 class FlimFlam(object):
     # DEPRECATED
 
-    SHILL_DBUS_INTERFACE = "org.chromium.flimflam"
+    SHILL_DBUS_INTERFACE = 'org.chromium.flimflam'
     UNKNOWN_METHOD = 'org.freedesktop.DBus.Error.UnknownMethod'
     UNKNOWN_OBJECT = 'org.freedesktop.DBus.Error.UnknownObject'
 
@@ -64,11 +71,11 @@ class FlimFlam(object):
         # For example, Device - > Devices.
         # Just pulling this out so we can use a map if we start
         # caring about "AvailableTechnologies"
-        return kind + "s"
+        return kind + 's'
 
     @staticmethod
     def WaitForServiceState(service, expected_states, timeout,
-                            ignore_failure=False, property_name="State"):
+                            ignore_failure=False, property_name='State'):
         """Wait until service enters a state in expected_states or times out.
         Args:
           service: service to watch
@@ -87,10 +94,10 @@ class FlimFlam(object):
         start_time = time.time()
         timeout = start_time + timeout
         while time.time() < timeout:
-            properties = service.GetProperties(utf8_strings = True)
+            properties = service.GetProperties(utf8_strings=True)
             state = properties.get(property_name, None)
-            if ((state == "failure" and not ignore_failure) or
-                state in expected_states):
+            if ((state == 'failure' and not ignore_failure) or
+                    state in expected_states):
                 break
             time.sleep(.5)
 
@@ -104,8 +111,8 @@ class FlimFlam(object):
             service.Disconnect()
         except dbus.exceptions.DBusException, error:
             if error.get_dbus_name() not in [
-                    FlimFlam.SHILL_DBUS_INTERFACE + ".Error.InProgress",
-                    FlimFlam.SHILL_DBUS_INTERFACE + ".Error.NotConnected", ]:
+                    FlimFlam.SHILL_DBUS_INTERFACE + '.Error.InProgress',
+                    FlimFlam.SHILL_DBUS_INTERFACE + '.Error.NotConnected', ]:
                 raise error
         return FlimFlam.WaitForServiceState(service, ['idle'], wait_timeout)
 
@@ -113,10 +120,10 @@ class FlimFlam(object):
         if not bus:
             bus = dbus.SystemBus()
         self.bus = bus
-        shill = bus.get_object(FlimFlam.SHILL_DBUS_INTERFACE, "/")
+        shill = bus.get_object(FlimFlam.SHILL_DBUS_INTERFACE, '/')
         self.manager = dbus.Interface(
-                shill,
-                FlimFlam.SHILL_DBUS_INTERFACE + ".Manager")
+            shill,
+            FlimFlam.SHILL_DBUS_INTERFACE + '.Manager')
 
     def GetManager(self):
         return self.manager
@@ -173,10 +180,10 @@ class FlimFlam(object):
 
     def GetService(self, params):
         path = self.manager.GetService(params)
-        return self.GetObjectInterface("Service", path)
+        return self.GetObjectInterface('Service', path)
 
     def GetNetworksForGeolocation(self):
-      return self.manager.GetNetworksForGeolocation()
+        return self.manager.GetNetworksForGeolocation()
 
     def ConnectService(self, assoc_timeout=15, config_timeout=15,
                        async=False, service=None, service_type='',
@@ -195,16 +202,16 @@ class FlimFlam(object):
           kwargs:  Additional args for type-specific code
 
         Returns:
-          (success, dictionary), where dictionary contains stats and diagnostics.
+          (success, dict), where dict contains stats and diagnostics.
         """
         output = {}
-        connected_states = ["ready", "portal", "online"]
+        connected_states = ['ready', 'portal', 'online']
 
         # Retry connections on failure. Need to call GetService again as some
         # Connect failure states are unrecoverable.
         connect_success = False
         while not connect_success:
-            if service_type == "wifi":
+            if service_type == 'wifi':
                 try:
                     # Sanity check to make sure the caller hasn't provided
                     # both a service and a service type. At which point its
@@ -213,32 +220,32 @@ class FlimFlam(object):
                     if service:
                         raise Exception('supplied service and service type')
                     params = {
-                        "Type": service_type,
-                        "Mode": kwargs["mode"],
-                        "SSID": kwargs["ssid"],
-                        "Security": kwargs.get("security", "none"),
-                        "SaveCredentials": save_creds }
+                        'Type': service_type,
+                        'Mode': kwargs['mode'],
+                        'SSID': kwargs['ssid'],
+                        'Security': kwargs.get('security', 'none'),
+                        'SaveCredentials': save_creds}
                     # Supply a passphrase only if it is non-empty.
-                    passphrase = kwargs.get("passphrase", "")
+                    passphrase = kwargs.get('passphrase', '')
                     if passphrase:
-                        params["Passphrase"] = passphrase
+                        params['Passphrase'] = passphrase
                     path = self.manager.GetService(params)
-                    service = self.GetObjectInterface("Service", path)
+                    service = self.GetObjectInterface('Service', path)
                 except Exception, e:
-                    output["reason"] = "FAIL(GetService): exception %s" % e
+                    output['reason'] = 'FAIL(GetService): exception %s' % e
                     return (False, output)
 
-            output["service"] = service
+            output['service'] = service
 
             try:
                 service.Connect()
                 connect_success = True
             except Exception, e:
                 if not retry or retries == 0:
-                    output["reason"] = "FAIL(Connect): exception %s" % e
+                    output['reason'] = 'FAIL(Connect): exception %s' % e
                     return (False, output)
                 else:
-                    logging.info("INFO(Connect): connect failed. Retrying...")
+                    logging.info('INFO(Connect): connect failed. Retrying...')
                     retries -= 1
 
             if not connect_success:
@@ -248,10 +255,10 @@ class FlimFlam(object):
                 # waiting for retry, keep checking the service state to see if
                 # it actually succeeded in connecting.
                 state = FlimFlam.WaitForServiceState(
-                        service=service,
-                        expected_states=connected_states,
-                        timeout=retry_sleep,
-                        ignore_failure=True)[0]
+                    service=service,
+                    expected_states=connected_states,
+                    timeout=retry_sleep,
+                    ignore_failure=True)[0]
 
                 if state in connected_states:
                     return (True, output)
@@ -266,57 +273,56 @@ class FlimFlam(object):
         if async:
             return (True, output)
 
-        logging.info("Associating...")
+        logging.info('Associating...')
         (state, assoc_time) = (
             FlimFlam.WaitForServiceState(service,
-                                         ["configuration"] + connected_states,
+                                         ['configuration'] + connected_states,
                                          assoc_timeout))
-        output["state"] = state
-        if state == "failure":
-            output["reason"] = "FAIL(assoc)"
+        output['state'] = state
+        if state == 'failure':
+            output['reason'] = 'FAIL(assoc)'
         if assoc_time > assoc_timeout:
-            output["reason"] = "TIMEOUT(assoc)"
-        output["assoc_time"] = assoc_time
-        if "reason" in output:
+            output['reason'] = 'TIMEOUT(assoc)'
+        output['assoc_time'] = assoc_time
+        if 'reason' in output:
             return (False, output)
-
 
         (state, config_time) = (
             FlimFlam.WaitForServiceState(service,
                                          connected_states, config_timeout))
-        output["state"] = state
-        if state == "failure":
-            output["reason"] = "FAIL(config)"
+        output['state'] = state
+        if state == 'failure':
+            output['reason'] = 'FAIL(config)'
         if config_time > config_timeout:
-            output["reason"] = "TIMEOUT(config)"
-        output["config_time"] = config_time
+            output['reason'] = 'TIMEOUT(config)'
+        output['config_time'] = config_time
 
-        if "reason" in output:
+        if 'reason' in output:
             return (False, output)
 
         return (True, output)
 
     def GetObjectInterface(self, kind, path):
         return dbus.Interface(
-                self.bus.get_object(FlimFlam.SHILL_DBUS_INTERFACE, path),
-                FlimFlam.SHILL_DBUS_INTERFACE + "." + kind)
+            self.bus.get_object(FlimFlam.SHILL_DBUS_INTERFACE, path),
+            FlimFlam.SHILL_DBUS_INTERFACE + '.' + kind)
 
     def FindElementByNameSubstring(self, kind, substring):
-        properties = self.manager.GetProperties(utf8_strings = True)
+        properties = self.manager.GetProperties(utf8_strings=True)
         for path in properties[FlimFlam._GetContainerName(kind)]:
             if path.find(substring) >= 0:
                 return self.GetObjectInterface(kind, path)
         return None
 
     def FindElementByProperty(self, kind, prop, val):
-        properties = self.manager.GetProperties(utf8_strings = True)
+        properties = self.manager.GetProperties(utf8_strings=True)
         for path in properties[FlimFlam._GetContainerName(kind)]:
             obj = self.GetObjectInterface(kind, path)
             try:
-                obj_properties = obj.GetProperties(utf8_strings = True)
+                obj_properties = obj.GetProperties(utf8_strings=True)
             except dbus.exceptions.DBusException, error:
                 if (error.get_dbus_name() == self.UNKNOWN_METHOD or
-                    error.get_dbus_name() == self.UNKNOWN_OBJECT):
+                        error.get_dbus_name() == self.UNKNOWN_OBJECT):
                     # object disappeared; ignore and keep looking
                     continue
                 else:
@@ -326,39 +332,39 @@ class FlimFlam(object):
         return None
 
     def FindElementByPropertySubstring(self, kind, prop, substring):
-        properties = self.manager.GetProperties(utf8_strings = True)
+        properties = self.manager.GetProperties(utf8_strings=True)
         for path in properties[FlimFlam._GetContainerName(kind)]:
             obj = self.GetObjectInterface(kind, path)
             try:
-                obj_properties = obj.GetProperties(utf8_strings = True)
+                obj_properties = obj.GetProperties(utf8_strings=True)
             except dbus.exceptions.DBusException, error:
                 if (error.get_dbus_name() == self.UNKNOWN_METHOD or
-                    error.get_dbus_name() == self.UNKNOWN_OBJECT):
+                        error.get_dbus_name() == self.UNKNOWN_OBJECT):
                     # object disappeared; ignore and keep looking
                     continue
                 else:
                     raise error
             if (prop in obj_properties and
-                obj_properties[prop].find(substring) >= 0):
+                    obj_properties[prop].find(substring) >= 0):
                 return obj
         return None
 
     def GetObjectList(self, kind, properties=None):
         if properties is None:
-            properties = self.manager.GetProperties(utf8_strings = True)
+            properties = self.manager.GetProperties(utf8_strings=True)
         return [self.GetObjectInterface(kind, path)
-            for path in properties[FlimFlam._GetContainerName(kind)]]
+                for path in properties[FlimFlam._GetContainerName(kind)]]
 
     def CreateProfile(self, ident):
         path = self.manager.CreateProfile(ident)
-        return self.GetObjectInterface("Profile", path)
+        return self.GetObjectInterface('Profile', path)
 
     def RemoveProfile(self, ident):
         self.manager.RemoveProfile(ident)
 
     def PushProfile(self, ident):
         path = self.manager.PushProfile(ident)
-        return self.GetObjectInterface("Profile", path)
+        return self.GetObjectInterface('Profile', path)
 
     def PopProfile(self, ident):
         self.manager.PopProfile(ident)
@@ -367,8 +373,8 @@ class FlimFlam(object):
         self.manager.PopAnyProfile()
 
     def GetSystemState(self):
-        properties = self.manager.GetProperties(utf8_strings = True)
-        return properties["State"]
+        properties = self.manager.GetProperties(utf8_strings=True)
+        return properties['State']
 
     def GetDebugTags(self):
         return self.manager.GetDebugTags()
@@ -382,7 +388,7 @@ class FlimFlam(object):
             self.SetDebugLevel(-4)
         except dbus.exceptions.DBusException, error:
             if error.get_dbus_name() not in [
-              "org.freedesktop.DBus.Error.UnknownMethod" ]:
+                    'org.freedesktop.DBus.Error.UnknownMethod']:
                 raise error
 
     def SetDebugLevel(self, level):
@@ -401,8 +407,8 @@ class FlimFlam(object):
             self.manager.EnableTechnology(tech)
         except dbus.exceptions.DBusException, error:
             if error.get_dbus_name() not in [
-                    FlimFlam.SHILL_DBUS_INTERFACE + ".Error.AlreadyEnabled",
-                    FlimFlam.SHILL_DBUS_INTERFACE + ".Error.InProgress" ]:
+                    FlimFlam.SHILL_DBUS_INTERFACE + '.Error.AlreadyEnabled',
+                    FlimFlam.SHILL_DBUS_INTERFACE + '.Error.InProgress']:
                 raise error
 
     def DisableTechnology(self, tech):
@@ -412,10 +418,10 @@ class FlimFlam(object):
         self.manager.RequestScan(technology)
 
     def SetCheckPortalList(self, tech_list):
-        self.manager.SetProperty("CheckPortalList", tech_list)
+        self.manager.SetProperty('CheckPortalList', tech_list)
 
     def SetArpGateway(self, do_arp_gateway):
-        self.manager.SetProperty("ArpGateway", do_arp_gateway)
+        self.manager.SetProperty('ArpGateway', do_arp_gateway)
 
 
 class DeviceManager(object):
@@ -456,10 +462,10 @@ class DeviceManager(object):
     def ShutdownAllExcept(self, device_type):
         """Shutdown all devices except device_type ones."""
         for device in self.flim_.GetObjectList('Device'):
-            device_properties = device.GetProperties(utf8_strings = True)
-            if (device_properties["Type"] != device_type):
-                logging.info("Powering off %s device %s",
-                             device_properties["Type"],
+            device_properties = device.GetProperties(utf8_strings=True)
+            if device_properties['Type'] != device_type:
+                logging.info('Powering off %s device %s',
+                             device_properties['Type'],
                              device.object_path)
                 self.devices_to_restore_.append(device.object_path)
                 DeviceManager._EnableDevice(device, False)
@@ -467,11 +473,11 @@ class DeviceManager(object):
     def RestoreDevices(self):
         """Restore devices powered down in ShutdownAllExcept."""
         should_raise = False
-        to_raise = Exception("Nothing to raise")
+        to_raise = Exception('Nothing to raise')
         for device_path in self.devices_to_restore_:
             try:
-                logging.info("Attempting to power on device %s", device_path)
-                device = self.flim_.GetObjectInterface("Device", device_path)
+                logging.info('Attempting to power on device %s', device_path)
+                device = self.flim_.GetObjectInterface('Device', device_path)
                 DeviceManager._EnableDevice(device, True)
             except Exception, e:
                 # We want to keep on trying to power things on, so save an

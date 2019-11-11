@@ -1,9 +1,17 @@
-#!/usr/bin/python
+#!/usr/bin/env python2
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
 
-import dbus, flimflam, sys
+from __future__ import print_function
 
-if (len(sys.argv) < 2):
-    print "Usage: %s <device | interface>" % (sys.argv[0])
+import sys
+
+import dbus
+import flimflam
+
+if len(sys.argv) < 2:
+    print('Usage: %s <device | interface>' % (sys.argv[0]))
     sys.exit(1)
 
 (_, name) = sys.argv
@@ -14,18 +22,18 @@ device = flim.FindElementByNameSubstring('Device', name)
 if device is None:
     device = flim.FindElementByPropertySubstring('Device', 'Interface', name)
 if device is None:
-    print "No such device or interface %s" % name
+    print('No such device or interface %s' % name)
     sys.exit(1)
 
-properties = device.GetProperties(utf8_strings = True)
-for path in properties["IPConfigs"]:
-    ipconfig = flim.GetObjectInterface("IPConfig", path)
-    ipconfig_properties = ipconfig.GetProperties(utf8_strings = True)
+properties = device.GetProperties(utf8_strings=True)
+for path in properties['IPConfigs']:
+    ipconfig = flim.GetObjectInterface('IPConfig', path)
+    ipconfig_properties = ipconfig.GetProperties(utf8_strings=True)
 
-    print "[ %s ]" % (ipconfig.object_path)
+    print('[ %s ]' % (ipconfig.object_path))
 
     for key in ipconfig_properties.keys():
-        print "        %s = %s" % \
-            (key, flimflam.convert_dbus_value(ipconfig_properties[key], 8))
+        print('        %s = %s' %
+              (key, flimflam.convert_dbus_value(ipconfig_properties[key], 8)))
 
-print
+print('')
