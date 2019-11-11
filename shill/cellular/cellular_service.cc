@@ -208,6 +208,16 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
   }
   apn_info_ = new_apn_info;
   adaptor()->EmitStringmapChanged(kCellularApnProperty, apn_info_);
+
+  if (IsConnected()) {
+    Disconnect(error, __func__);
+    if (!error->IsSuccess()) {
+      return false;
+    }
+    Connect(error, __func__);
+    return error->IsSuccess();
+  }
+
   return true;
 }
 
