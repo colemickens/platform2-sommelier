@@ -24,15 +24,11 @@ class ProxyBase;
 // ServerProxy) on a dedicated thread with MessageLoop.
 class ProxyService {
  public:
-  // Factory interface to create a Proxy instance.
-  class ProxyFactory {
-   public:
-    virtual ~ProxyFactory() = default;
-    virtual std::unique_ptr<ProxyBase> Create() = 0;
-  };
-
-  explicit ProxyService(std::unique_ptr<ProxyFactory> factory);
+  explicit ProxyService(std::unique_ptr<ProxyBase> proxy);
   ~ProxyService();
+
+  ProxyService(const ProxyService&) = delete;
+  ProxyService& operator=(const ProxyService&) = delete;
 
   // Starts a Proxy on a dedicated thread. This is blocked until the Proxy's
   // initialization is completed. Returns true on success, otherwise false.
@@ -52,13 +48,10 @@ class ProxyService {
   void Initialize(base::WaitableEvent* event, bool* out);
   void ShutDown();
 
-  std::unique_ptr<ProxyFactory> factory_;
   std::unique_ptr<base::Thread> thread_;
 
   // Proxy instance, which should be touched only on |thread_|.
   std::unique_ptr<ProxyBase> proxy_;
-
-  DISALLOW_COPY_AND_ASSIGN(ProxyService);
 };
 
 }  // namespace arc

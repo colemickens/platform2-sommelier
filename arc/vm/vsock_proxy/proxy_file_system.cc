@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "arc/vm/vsock_proxy/server_proxy_file_system.h"
+#include "arc/vm/vsock_proxy/proxy_file_system.h"
 
 #include <errno.h>
 
@@ -19,7 +19,6 @@
 #include <base/task_runner.h>
 
 #include "arc/vm/vsock_proxy/proxy_base.h"
-#include "arc/vm/vsock_proxy/server_proxy.h"
 #include "arc/vm/vsock_proxy/vsock_proxy.h"
 
 namespace arc {
@@ -27,9 +26,9 @@ namespace {
 
 constexpr char kFileSystemName[] = "arcvm-serverproxy";
 
-// Returns ServerProxyFileSystem assigned to the FUSE's private_data.
-ServerProxyFileSystem* GetFileSystem() {
-  return static_cast<ServerProxyFileSystem*>(fuse_get_context()->private_data);
+// Returns ProxyFileSystem assigned to the FUSE's private_data.
+ProxyFileSystem* GetFileSystem() {
+  return static_cast<ProxyFileSystem*>(fuse_get_context()->private_data);
 }
 
 int GetAttr(const char* path, struct stat* stat) {
@@ -68,8 +67,7 @@ void* Init(struct fuse_conn_info* conn) {
   return file_system;
 }
 
-int FuseMain(const base::FilePath& mount_path,
-             ServerProxyFileSystem* private_data) {
+int FuseMain(const base::FilePath& mount_path, ProxyFileSystem* private_data) {
   const std::string path_str = mount_path.value();
   const char* fuse_argv[] = {
       kFileSystemName,
@@ -118,26 +116,25 @@ base::Optional<int64_t> ParseHandle(const char* path) {
 
 }  // namespace
 
-ServerProxyFileSystem::ServerProxyFileSystem(const base::FilePath& mount_path)
+ProxyFileSystem::ProxyFileSystem(const base::FilePath& mount_path)
     : mount_path_(mount_path) {}
 
-ServerProxyFileSystem::~ServerProxyFileSystem() = default;
+ProxyFileSystem::~ProxyFileSystem() = default;
 
-void ServerProxyFileSystem::AddObserver(Observer* observer) {
+void ProxyFileSystem::AddObserver(Observer* observer) {
   observer_list_.AddObserver(observer);
 }
 
-void ServerProxyFileSystem::RemoveObserver(Observer* observer) {
+void ProxyFileSystem::RemoveObserver(Observer* observer) {
   observer_list_.RemoveObserver(observer);
 }
 
-int ServerProxyFileSystem::Run(
-    std::unique_ptr<ProxyService::ProxyFactory> factory) {
-  factory_ = std::move(factory);
+int ProxyFileSystem::Run(std::unique_ptr<ProxyService> proxy_service) {
+  proxy_service_ = std::move(proxy_service);
   return FuseMain(mount_path_, this);
 }
 
-int ServerProxyFileSystem::GetAttr(const char* path, struct stat* stat) {
+int ProxyFileSystem::GetAttr(const char* path, struct stat* stat) {
   if (path == base::StringPiece("/")) {
     stat->st_mode = S_IFDIR;
     stat->st_nlink = 2;
@@ -172,17 +169,17 @@ int ServerProxyFileSystem::GetAttr(const char* path, struct stat* stat) {
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   int return_value = -EIO;
   task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&ServerProxyFileSystem::GetAttrInternal,
-                                base::Unretained(this), &event, handle.value(),
-                                &return_value, &stat->st_size));
+      FROM_HERE,
+      base::BindOnce(&ProxyFileSystem::GetAttrInternal, base::Unretained(this),
+                     &event, handle.value(), &return_value, &stat->st_size));
   event.Wait();
   return return_value;
 }
 
-void ServerProxyFileSystem::GetAttrInternal(base::WaitableEvent* event,
-                                            int64_t handle,
-                                            int* return_value,
-                                            off_t* size) {
+void ProxyFileSystem::GetAttrInternal(base::WaitableEvent* event,
+                                      int64_t handle,
+                                      int* return_value,
+                                      off_t* size) {
   proxy_service_->proxy()->GetVSockProxy()->Fstat(
       handle, base::BindOnce(
                   [](base::WaitableEvent* event, int* return_value,
@@ -195,7 +192,7 @@ void ServerProxyFileSystem::GetAttrInternal(base::WaitableEvent* event,
                   event, return_value, size));
 }
 
-int ServerProxyFileSystem::Open(const char* path, struct fuse_file_info* fi) {
+int ProxyFileSystem::Open(const char* path, struct fuse_file_info* fi) {
   auto handle = ParseHandle(path);
   if (!handle.has_value()) {
     LOG(ERROR) << "Invalid path: " << path;
@@ -215,11 +212,11 @@ int ServerProxyFileSystem::Open(const char* path, struct fuse_file_info* fi) {
   return 0;
 }
 
-int ServerProxyFileSystem::Read(const char* path,
-                                char* buf,
-                                size_t size,
-                                off_t off,
-                                struct fuse_file_info* fi) {
+int ProxyFileSystem::Read(const char* path,
+                          char* buf,
+                          size_t size,
+                          off_t off,
+                          struct fuse_file_info* fi) {
   auto handle = ParseHandle(path);
   if (!handle.has_value()) {
     LOG(ERROR) << "Invalid path: " << path;
@@ -235,19 +232,19 @@ int ServerProxyFileSystem::Read(const char* path,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   int return_value = -EIO;
   task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&ServerProxyFileSystem::ReadInternal,
-                                base::Unretained(this), &event, handle.value(),
-                                buf, size, off, &return_value));
+      FROM_HERE,
+      base::BindOnce(&ProxyFileSystem::ReadInternal, base::Unretained(this),
+                     &event, handle.value(), buf, size, off, &return_value));
   event.Wait();
   return return_value;
 }
 
-void ServerProxyFileSystem::ReadInternal(base::WaitableEvent* event,
-                                         int64_t handle,
-                                         char* buf,
-                                         size_t size,
-                                         off_t off,
-                                         int* return_value) {
+void ProxyFileSystem::ReadInternal(base::WaitableEvent* event,
+                                   int64_t handle,
+                                   char* buf,
+                                   size_t size,
+                                   off_t off,
+                                   int* return_value) {
   proxy_service_->proxy()->GetVSockProxy()->Pread(
       handle, size, off,
       base::BindOnce(
@@ -264,8 +261,7 @@ void ServerProxyFileSystem::ReadInternal(base::WaitableEvent* event,
           event, buf, return_value));
 }
 
-int ServerProxyFileSystem::Release(const char* path,
-                                   struct fuse_file_info* fi) {
+int ProxyFileSystem::Release(const char* path, struct fuse_file_info* fi) {
   auto handle = ParseHandle(path);
   if (!handle.has_value()) {
     LOG(ERROR) << "Invalid path: " << path;
@@ -285,28 +281,27 @@ int ServerProxyFileSystem::Release(const char* path,
   task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(
-          [](ServerProxyFileSystem* self, int64_t handle) {
+          [](ProxyFileSystem* self, int64_t handle) {
             self->proxy_service_->proxy()->GetVSockProxy()->Close(handle);
           },
           this, handle.value()));
   return 0;
 }
 
-int ServerProxyFileSystem::ReadDir(const char* path,
-                                   void* buf,
-                                   fuse_fill_dir_t filler,
-                                   off_t offset,
-                                   struct fuse_file_info* fi) {
+int ProxyFileSystem::ReadDir(const char* path,
+                             void* buf,
+                             fuse_fill_dir_t filler,
+                             off_t offset,
+                             struct fuse_file_info* fi) {
   // Just returns as if it is empty directory.
   filler(buf, ".", nullptr, 0);
   filler(buf, "..", nullptr, 0);
   return 0;
 }
 
-void ServerProxyFileSystem::Init(struct fuse_conn_info* conn) {
+void ProxyFileSystem::Init(struct fuse_conn_info* conn) {
   // TODO(hidehiko): Drop CAPS_SYS_ADMIN with minijail setup.
   LOG(INFO) << "Starting ServerProxy.";
-  proxy_service_ = std::make_unique<ProxyService>(std::move(factory_));
 
   // Must succeed, otherwise ServerProxy wouldn't run. Unfortunately,
   // there's no way to return an error in case of failure, terminate the
@@ -319,7 +314,7 @@ void ServerProxyFileSystem::Init(struct fuse_conn_info* conn) {
     observer.OnInit();
 }
 
-base::ScopedFD ServerProxyFileSystem::RegisterHandle(int64_t handle) {
+base::ScopedFD ProxyFileSystem::RegisterHandle(int64_t handle) {
   {
     base::AutoLock lock(handle_map_lock_);
     if (!handle_map_.emplace(handle, State::NOT_OPENED).second) {
@@ -334,13 +329,13 @@ base::ScopedFD ServerProxyFileSystem::RegisterHandle(int64_t handle) {
            O_RDONLY | O_CLOEXEC)));
 }
 
-void ServerProxyFileSystem::RunWithVSockProxyInSyncForTesting(
+void ProxyFileSystem::RunWithVSockProxyInSyncForTesting(
     base::OnceCallback<void(VSockProxy*)> callback) {
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   task_runner_->PostTask(
       FROM_HERE, base::BindOnce(
-                     [](ServerProxyFileSystem* self, base::WaitableEvent* event,
+                     [](ProxyFileSystem* self, base::WaitableEvent* event,
                         base::OnceCallback<void(VSockProxy*)> callback) {
                        std::move(callback).Run(
                            self->proxy_service_->proxy()->GetVSockProxy());
@@ -350,7 +345,7 @@ void ServerProxyFileSystem::RunWithVSockProxyInSyncForTesting(
   event.Wait();
 }
 
-base::Optional<ServerProxyFileSystem::State> ServerProxyFileSystem::GetState(
+base::Optional<ProxyFileSystem::State> ProxyFileSystem::GetState(
     int64_t handle) {
   base::AutoLock lock_(handle_map_lock_);
   auto iter = handle_map_.find(handle);

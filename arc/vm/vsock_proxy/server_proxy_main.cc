@@ -11,34 +11,9 @@
 #include <base/logging.h>
 #include <base/macros.h>
 
-#include "arc/vm/vsock_proxy/proxy_base.h"
 #include "arc/vm/vsock_proxy/proxy_file_system.h"
 #include "arc/vm/vsock_proxy/proxy_service.h"
 #include "arc/vm/vsock_proxy/server_proxy.h"
-#include "arc/vm/vsock_proxy/server_proxy_file_system.h"
-
-namespace arc {
-namespace {
-
-// Adaper to inject ServerProxy creation to ProxyService.
-class ServerProxyFactory : public ProxyService::ProxyFactory {
- public:
-  explicit ServerProxyFactory(ProxyFileSystem* file_system)
-      : file_system_(file_system) {}
-  ~ServerProxyFactory() override = default;
-
-  std::unique_ptr<ProxyBase> Create() override {
-    return std::make_unique<ServerProxy>(file_system_);
-  }
-
- private:
-  ProxyFileSystem* const file_system_;
-
-  DISALLOW_COPY_AND_ASSIGN(ServerProxyFactory);
-};
-
-}  // namespace
-}  // namespace arc
 
 int main(int argc, char** argv) {
   // Initialize CommandLine for VLOG before InitLog.
@@ -50,10 +25,9 @@ int main(int argc, char** argv) {
     LOG(ERROR) << "Mount path is not specified.";
     return 1;
   }
-
   // ProxyService for ServerProxy will be started after FUSE initialization is
-  // done. See also ServerProxyFileSystem::Init().
-  arc::ServerProxyFileSystem file_system{base::FilePath(argv[1])};
-  return file_system.Run(
-      std::make_unique<arc::ServerProxyFactory>(&file_system));
+  // done. See also ProxyFileSystem::Init().
+  arc::ProxyFileSystem file_system{base::FilePath(argv[1])};
+  return file_system.Run(std::make_unique<arc::ProxyService>(
+      std::make_unique<arc::ServerProxy>(&file_system)));
 }

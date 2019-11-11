@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "arc/vm/vsock_proxy/server_proxy_file_system.h"
+#include "arc/vm/vsock_proxy/proxy_file_system.h"
 
 #include <fcntl.h>
 #include <sys/mount.h>
@@ -32,7 +32,6 @@
 
 #include "arc/vm/vsock_proxy/file_descriptor_util.h"
 #include "arc/vm/vsock_proxy/proxy_base.h"
-#include "arc/vm/vsock_proxy/proxy_file_system.h"
 #include "arc/vm/vsock_proxy/proxy_service.h"
 #include "arc/vm/vsock_proxy/vsock_proxy.h"
 
@@ -54,11 +53,16 @@ class FakeProxy : public VSockProxy::Delegate, public ProxyBase {
             base::ScopedFD socket)
       : type_(type),
         proxy_file_system_(proxy_file_system),
-        vsock_proxy_(std::make_unique<VSockProxy>(this, std::move(socket))) {}
+        socket_(std::move(socket)) {}
 
   ~FakeProxy() override = default;
+  FakeProxy(const FakeProxy&) = delete;
+  FakeProxy& operator=(const FakeProxy&) = delete;
 
-  bool Initialize() override { return true; }
+  bool Initialize() override {
+    vsock_proxy_ = std::make_unique<VSockProxy>(this, std::move(socket_));
+    return true;
+  }
   VSockProxy::Type GetType() const override { return type_; }
   bool ConvertFileDescriptorToProto(int fd,
                                     arc_proxy::FileDescriptor* proto) override {
@@ -74,59 +78,42 @@ class FakeProxy : public VSockProxy::Delegate, public ProxyBase {
  private:
   const VSockProxy::Type type_;
   ProxyFileSystem* proxy_file_system_;
-  std::unique_ptr<VSockProxy> vsock_proxy_;
-
-  DISALLOW_COPY_AND_ASSIGN(FakeProxy);
-};
-
-class FakeFactory : public ProxyService::ProxyFactory {
- public:
-  FakeFactory(VSockProxy::Type type,
-              ProxyFileSystem* file_system,
-              base::ScopedFD socket)
-      : type_(type), file_system_(file_system), socket_(std::move(socket)) {}
-  ~FakeFactory() override = default;
-
-  std::unique_ptr<ProxyBase> Create() override {
-    return std::make_unique<FakeProxy>(type_, file_system_, std::move(socket_));
-  }
-
- private:
-  const VSockProxy::Type type_;
-  ProxyFileSystem* const file_system_;
   base::ScopedFD socket_;
-  DISALLOW_COPY_AND_ASSIGN(FakeFactory);
+  std::unique_ptr<VSockProxy> vsock_proxy_;
 };
 
-class ServerProxyFileSystemInitWaiter : public ServerProxyFileSystem::Observer {
+class ProxyFileSystemInitWaiter : public ProxyFileSystem::Observer {
  public:
-  explicit ServerProxyFileSystemInitWaiter(
-      ServerProxyFileSystem* proxy_file_system)
+  explicit ProxyFileSystemInitWaiter(ProxyFileSystem* proxy_file_system)
       : proxy_file_system_(proxy_file_system),
         event_(base::WaitableEvent::ResetPolicy::MANUAL,
                base::WaitableEvent::InitialState::NOT_SIGNALED) {
     proxy_file_system_->AddObserver(this);
   }
 
-  ~ServerProxyFileSystemInitWaiter() override {
+  ~ProxyFileSystemInitWaiter() override {
     proxy_file_system_->RemoveObserver(this);
   }
+
+  ProxyFileSystemInitWaiter(const ProxyFileSystemInitWaiter&) = delete;
+  ProxyFileSystemInitWaiter& operator=(const ProxyFileSystemInitWaiter&) =
+      delete;
 
   void Wait() { event_.Wait(); }
 
   void OnInit() override { event_.Signal(); }
 
  private:
-  ServerProxyFileSystem* const proxy_file_system_;
+  ProxyFileSystem* const proxy_file_system_;
   base::WaitableEvent event_;
-
-  DISALLOW_COPY_AND_ASSIGN(ServerProxyFileSystemInitWaiter);
 };
 
-class ServerProxyFileSystemTest : public testing::Test {
+class ProxyFileSystemTest : public testing::Test {
  public:
-  ServerProxyFileSystemTest() = default;
-  ~ServerProxyFileSystemTest() override = default;
+  ProxyFileSystemTest() = default;
+  ~ProxyFileSystemTest() override = default;
+  ProxyFileSystemTest(const ProxyFileSystemTest&) = delete;
+  ProxyFileSystemTest& operator=(const ProxyFileSystemTest&) = delete;
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -137,30 +124,30 @@ class ServerProxyFileSystemTest : public testing::Test {
     auto fake_vsock_pair = CreateSocketPair();
     ASSERT_TRUE(fake_vsock_pair.has_value());
 
-    file_system_ =
-        std::make_unique<ServerProxyFileSystem>(mount_dir_.GetPath());
+    file_system_ = std::make_unique<ProxyFileSystem>(mount_dir_.GetPath());
 
     base::Thread::Options options;
     options.message_loop_type = base::MessageLoop::TYPE_IO;
     file_system_thread_ = std::make_unique<base::Thread>("Fuse thread");
     ASSERT_TRUE(file_system_thread_->StartWithOptions(options));
     {
-      ServerProxyFileSystemInitWaiter waiter(file_system_.get());
+      ProxyFileSystemInitWaiter waiter(file_system_.get());
       file_system_thread_->task_runner()->PostTask(
           FROM_HERE,
-          base::BindOnce(base::IgnoreResult(&ServerProxyFileSystem::Run),
-                         base::Unretained(file_system_.get()),
-                         std::make_unique<FakeFactory>(
-                             VSockProxy::Type::SERVER, file_system_.get(),
-                             std::move(fake_vsock_pair->first))));
+          base::BindOnce(
+              base::IgnoreResult(&ProxyFileSystem::Run),
+              base::Unretained(file_system_.get()),
+              std::make_unique<ProxyService>(std::make_unique<FakeProxy>(
+                  VSockProxy::Type::SERVER, file_system_.get(),
+                  std::move(fake_vsock_pair->first)))));
       waiter.Wait();
     }
 
     // Start client VSockProxy.
     client_vsock_fd_ = fake_vsock_pair->second.get();
     client_proxy_service_ = std::make_unique<ProxyService>(
-        std::make_unique<FakeFactory>(VSockProxy::Type::CLIENT, nullptr,
-                                      std::move(fake_vsock_pair->second)));
+        std::make_unique<FakeProxy>(VSockProxy::Type::CLIENT, nullptr,
+                                    std::move(fake_vsock_pair->second)));
     client_proxy_service_->Start();
 
     // Register initial socket pairs.
@@ -229,11 +216,11 @@ class ServerProxyFileSystemTest : public testing::Test {
 
   base::ScopedTempDir temp_dir_;
 
-  // Mount point for ServerProxyFileSystem.
+  // Mount point for ProxyFileSystem.
   base::ScopedTempDir mount_dir_;
 
-  // ServerProxyFileSystem to be tested.
-  std::unique_ptr<ServerProxyFileSystem> file_system_;
+  // ProxyFileSystem to be tested.
+  std::unique_ptr<ProxyFileSystem> file_system_;
 
   std::unique_ptr<base::Thread> file_system_thread_;
 
@@ -250,11 +237,9 @@ class ServerProxyFileSystemTest : public testing::Test {
 
   // Socket file descriptor, which is connected to |server_fd_| via VSockProxy.
   base::ScopedFD client_fd_;
-
-  DISALLOW_COPY_AND_ASSIGN(ServerProxyFileSystemTest);
 };
 
-TEST_F(ServerProxyFileSystemTest, DISABLED_RegularFileReadTest) {
+TEST_F(ProxyFileSystemTest, DISABLED_RegularFileReadTest) {
   constexpr char kContentData[] = "abcdefghijklmnopqrstuvwxyz";
   // Remove trailing '\0'.
   constexpr size_t kContentSize = sizeof(kContentData) - 1;

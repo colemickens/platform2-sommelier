@@ -11,22 +11,13 @@
 namespace arc {
 namespace {
 
-class FakeProxy;
-// Track the instance.
-FakeProxy* instance = nullptr;
-
 // Fake implementation of ProxyBase to track the state.
 class FakeProxy : public ProxyBase {
  public:
-  FakeProxy() {
-    EXPECT_FALSE(instance);
-    instance = this;
-  }
-
-  ~FakeProxy() override {
-    EXPECT_EQ(instance, this);
-    instance = nullptr;
-  }
+  FakeProxy() = default;
+  ~FakeProxy() override = default;
+  FakeProxy(const FakeProxy&) = delete;
+  FakeProxy& operator=(const FakeProxy&) = delete;
 
   bool Initialize() override {
     initialized_ = true;
@@ -39,34 +30,13 @@ class FakeProxy : public ProxyBase {
 
  private:
   bool initialized_ = false;
-
-  DISALLOW_COPY_AND_ASSIGN(FakeProxy);
-};
-
-// Fake implementation of ProxyFactory to inject FakeProxy.
-class FakeProxyFactory : public ProxyService::ProxyFactory {
- public:
-  FakeProxyFactory() = default;
-  ~FakeProxyFactory() override = default;
-
-  std::unique_ptr<ProxyBase> Create() override {
-    return std::make_unique<FakeProxy>();
-  }
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(FakeProxyFactory);
 };
 
 TEST(ProxyServiceTest, Run) {
-  {
-    ProxyService service(std::make_unique<FakeProxyFactory>());
-    ASSERT_TRUE(service.Start());
-    ASSERT_TRUE(instance);
-    EXPECT_TRUE(instance->is_initialized());
-  }
-  // Destroying the |service| should destroy the proxy and stop the dedicated
-  // thread. Then unblocked.
-  EXPECT_FALSE(instance);
+  auto instance = new FakeProxy;
+  ProxyService service{std::unique_ptr<FakeProxy>(instance)};
+  ASSERT_TRUE(service.Start());
+  EXPECT_TRUE(instance->is_initialized());
 }
 
 }  // namespace

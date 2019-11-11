@@ -15,8 +15,8 @@
 
 namespace arc {
 
-ProxyService::ProxyService(std::unique_ptr<ProxyFactory> factory)
-    : factory_(std::move(factory)) {}
+ProxyService::ProxyService(std::unique_ptr<ProxyBase> proxy)
+    : proxy_(std::move(proxy)) {}
 
 ProxyService::~ProxyService() {
   // This is safe, although base::Unretained(this) is used in the method,
@@ -67,7 +67,6 @@ scoped_refptr<base::TaskRunner> ProxyService::GetTaskRunner() {
 }
 
 void ProxyService::Initialize(base::WaitableEvent* event, bool* out) {
-  proxy_ = factory_->Create();
   *out = proxy_->Initialize();
   event->Signal();
 }
