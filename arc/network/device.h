@@ -121,6 +121,8 @@ class Device {
   // Returns true if the link status changed.
   bool HostLinkUp(bool link_up);
 
+  bool IsFullyUp() const;
+
   void Enable(const std::string& ifname);
   void Disable();
 
@@ -133,8 +135,6 @@ class Device {
   friend std::ostream& operator<<(std::ostream& stream, const Device& device);
 
  private:
-  bool IsFullyUp() const;
-
   // Callback from RouterFinder.  May be triggered multiple times, e.g.
   // if the route disappears or changes.
   void OnRouteFound(const struct in6_addr& prefix,

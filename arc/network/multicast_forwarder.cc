@@ -144,6 +144,12 @@ base::ScopedFD MulticastForwarder::Bind(const std::string& ifname,
 
 bool MulticastForwarder::AddGuest(const std::string& int_ifname,
                                   uint32_t guest_addr) {
+  if (int_sockets_.find(int_ifname) != int_sockets_.end()) {
+    LOG(WARNING) << "Forwarding is already started between " << lan_ifname_
+                 << " and " << int_ifname;
+    return false;
+  }
+
   base::ScopedFD int_fd(Bind(int_ifname, mcast_addr_, port_));
   if (!int_fd.is_valid()) {
     LOG(WARNING) << "Could not bind socket on " << int_ifname << " for "
@@ -187,7 +193,8 @@ bool MulticastForwarder::AddGuest(const std::string& int_ifname,
 void MulticastForwarder::RemoveGuest(const std::string& int_ifname) {
   const auto& socket = int_sockets_.find(int_ifname);
   if (socket == int_sockets_.end()) {
-    LOG(WARNING) << "Failed to remove guest interface " << int_ifname;
+    LOG(WARNING) << "Forwarding is not started between " << lan_ifname_
+                 << " and " << int_ifname;
     return;
   }
 
@@ -422,7 +429,7 @@ void MulticastProxy::OnDeviceMessage(const DeviceMessage& msg) {
       mdns_fwd = mdns_fwds_.emplace(dev_ifname, std::move(fwd)).first;
     }
 
-    LOG(INFO) << "Starting mDNS forwarding for guest interface "
+    LOG(INFO) << "Starting mDNS forwarding between " << dev_ifname << " and "
               << msg.br_ifname();
     if (!mdns_fwd->second->AddGuest(msg.br_ifname(), guest_ip)) {
       LOG(WARNING) << "mDNS forwarder could not be started on " << dev_ifname;
@@ -435,7 +442,7 @@ void MulticastProxy::OnDeviceMessage(const DeviceMessage& msg) {
       ssdp_fwd = ssdp_fwds_.emplace(dev_ifname, std::move(fwd)).first;
     }
 
-    LOG(INFO) << "Starting SSDP forwarding for guest interface "
+    LOG(INFO) << "Starting SSDP forwarding between " << dev_ifname << " and "
               << msg.br_ifname();
     if (!ssdp_fwd->second->AddGuest(msg.br_ifname(), htonl(INADDR_ANY))) {
       LOG(WARNING) << "SSDP forwarder could not be started on " << dev_ifname;
@@ -447,12 +454,12 @@ void MulticastProxy::OnDeviceMessage(const DeviceMessage& msg) {
   if (msg.has_br_ifname()) {
     // A bridge interface is removed.
     if (mdns_fwd != mdns_fwds_.end()) {
-      LOG(INFO) << "Disabling mDNS forwarding for guest interface "
+      LOG(INFO) << "Disabling mDNS forwarding between " << dev_ifname << " and "
                 << msg.br_ifname();
       mdns_fwd->second->RemoveGuest(msg.br_ifname());
     }
     if (ssdp_fwd != ssdp_fwds_.end()) {
-      LOG(INFO) << "Disabling SSDP forwarding for guest interface "
+      LOG(INFO) << "Disabling SSDP forwarding between " << dev_ifname << " and "
                 << msg.br_ifname();
       ssdp_fwd->second->RemoveGuest(msg.br_ifname());
     }

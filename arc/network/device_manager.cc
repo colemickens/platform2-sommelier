@@ -217,13 +217,19 @@ bool DeviceManager::Remove(const std::string& name) {
                                     it->second->config().host_ifname());
   }
 
-  if (it->second->options().fwd_multicast) {
+  if ((nd_proxy_ && it->second->options().ipv6_enabled &&
+       !it->second->options().find_ipv6_routes_legacy) ||
+      it->second->options().fwd_multicast) {
     DeviceMessage msg;
     msg.set_dev_ifname(it->second->ifname());
     msg.set_teardown(true);
     IpHelperMessage ipm;
     *ipm.mutable_device_message() = msg;
-    mcast_proxy_->SendMessage(ipm);
+    if (nd_proxy_ && it->second->options().ipv6_enabled &&
+        !it->second->options().find_ipv6_routes_legacy)
+      nd_proxy_->SendMessage(ipm);
+    if (it->second->options().fwd_multicast)
+      mcast_proxy_->SendMessage(ipm);
   }
 
   for (auto& h : rm_handlers_) {
@@ -283,11 +289,15 @@ void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
   if (!link_up) {
     LOG(INFO) << ifname << " is now down";
     device->Disable();
+
     if ((nd_proxy_ && device->options().ipv6_enabled &&
          !device->options().find_ipv6_routes_legacy) ||
         device->options().fwd_multicast) {
       DeviceMessage msg;
-      msg.set_dev_ifname(device->ifname());
+      if (device->IsLegacyAndroid())
+        msg.set_dev_ifname(default_ifname_);
+      else
+        msg.set_dev_ifname(device->ifname());
       msg.set_br_ifname(device->config().host_ifname());
       msg.set_teardown(true);
       IpHelperMessage ipm;
@@ -313,7 +323,10 @@ void DeviceManager::LinkMsgHandler(const shill::RTNLMessage& msg) {
        !device->options().find_ipv6_routes_legacy) ||
       device->options().fwd_multicast) {
     DeviceMessage msg;
-    msg.set_dev_ifname(device->ifname());
+    if (device->IsLegacyAndroid())
+      msg.set_dev_ifname(default_ifname_);
+    else
+      msg.set_dev_ifname(device->ifname());
     msg.set_guest_ip4addr(device->config().guest_ipv4_addr());
     msg.set_br_ifname(device->config().host_ifname());
     IpHelperMessage ipm;
@@ -401,6 +414,36 @@ void DeviceManager::OnDefaultInterfaceChanged(const std::string& ifname) {
 
   LOG(INFO) << "Default interface changed from [" << default_ifname_ << "] to ["
             << ifname << "]";
+
+  // On ARC N, we only forward multicast packets between default interface and
+  // the bridge interface "arcbr0".
+  // ND proxy will not be started here as it will not be shipped to ARC N.
+  Device* device = FindByHostInterface("arcbr0");
+  if (device && device->IsLegacyAndroid() && device->IsFullyUp()) {
+    IpHelperMessage ipm;
+
+    // Stop multicast forwarder on the old default interface.
+    if (default_ifname_ != "") {
+      // TODO(jasongustaman): When more guests are introduced, teardown the
+      // bridge instead.
+      DeviceMessage stop_msg;
+      stop_msg.set_dev_ifname(default_ifname_);
+      stop_msg.set_teardown(true);
+      *ipm.mutable_device_message() = stop_msg;
+      mcast_proxy_->SendMessage(ipm);
+      mcast_proxy_->SendMessage(ipm);
+    }
+
+    // Start multicast forwarder on the new default interface.
+    if (ifname != "") {
+      DeviceMessage start_msg;
+      start_msg.set_dev_ifname(ifname);
+      start_msg.set_guest_ip4addr(device->config().guest_ipv4_addr());
+      start_msg.set_br_ifname(device->config().host_ifname());
+      *ipm.mutable_device_message() = start_msg;
+      mcast_proxy_->SendMessage(ipm);
+    }
+  }
 
   default_ifname_ = ifname;
   for (const auto& h : default_iface_handlers_) {

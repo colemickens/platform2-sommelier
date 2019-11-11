@@ -11,6 +11,10 @@ package arc_networkd;
 // are always in sync, these messages use required fields to save on
 // validation.
 
+// If |br_ifname| exists in the message, a creation or deletion event
+// occurred for the bridge interface.
+// Otherwise, the event is occurred for the physical interface
+// |dev_ifname|.
 message DeviceMessage {
   required string dev_ifname = 1;
   optional string br_ifname = 2;
