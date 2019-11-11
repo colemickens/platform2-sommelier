@@ -100,7 +100,13 @@ record id and label.
 ## Firmware Updates
 
 The [`bio_fw_updater`] tool is responsible for updating the [FPMCU firmware]
-[automatically on boot]. To disable the automatic update, you can create the
+[automatically on boot]. The updater checks to see if the firmware binary in
+`/opt/google/biod/fw` matches the firmware that is flashed on the FPMCU and
+performs an update if the two do not match. Note that it does not consider
+whether the version of the firmware is semantically "newer"; it's strictly
+checking for an exact version match.
+
+To disable the automatic update, you can create the
 `.disable_fp_updater` file:
 
 ```bash
@@ -111,7 +117,7 @@ When hardware and [software write protect] for the FPMCU are enabled,
 [`bio_fw_updater`] will only update the RW portion of the firmware.
 
 When devices are still under development, they will generally have
-[hardware write protect enabled], but not software write protect. In this mode,
+[hardware write protect] enabled, but not software write protect. In this mode,
 [`bio_fw_updater`] will update both RO and RW.
 
 You can learn more about write protection and how to enable/disable in the
