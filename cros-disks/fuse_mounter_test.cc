@@ -71,6 +71,7 @@ class MockFUSEPlatform : public Platform {
               (const std::string&, int),
               (const, override));
   MOCK_METHOD(bool, PathExists, (const std::string&), (const, override));
+  MOCK_METHOD(bool, DirectoryExists, (const std::string&), (const, override));
   MOCK_METHOD(bool,
               RemoveEmptyDirectory,
               (const std::string&),
@@ -197,8 +198,24 @@ TEST(FUSEMounterTest, AppFailed) {
 
   EXPECT_CALL(platform, Mount(kSomeSource, kMountDir, _, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform, DirectoryExists(_)).WillOnce(Return(true));
   EXPECT_CALL(platform, Unmount(_, _)).WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform, RemoveEmptyDirectory(_)).WillOnce(Return(true));
+  EXPECT_CALL(mounter, InvokeMountTool(_)).WillOnce(Return(1));
+
+  EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mounter.Mount());
+}
+
+TEST(FUSEMounterTest, AppFailed_NoMountDirectory) {
+  MockFUSEPlatform platform;
+  brillo::ProcessReaper process_reaper;
+  FUSEMounterForTesting mounter(&platform, &process_reaper);
+
+  EXPECT_CALL(platform, Mount(kSomeSource, kMountDir, _, _, _))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(platform, DirectoryExists(_)).WillOnce(Return(false));
+  EXPECT_CALL(platform, Unmount(_, _)).Times(0);
+  EXPECT_CALL(platform, RemoveEmptyDirectory(_)).Times(0);
   EXPECT_CALL(mounter, InvokeMountTool(_)).WillOnce(Return(1));
 
   EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mounter.Mount());

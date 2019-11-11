@@ -285,6 +285,14 @@ MountErrorType FUSEMounter::MountImpl() const {
   // TODO(crbug.com/993857): Use base::BindOnce().
   base::ScopedClosureRunner fuse_cleanup_runner(base::Bind(
       [](const Platform* platform, const std::string& target_path) {
+        if (!platform->DirectoryExists(target_path)) {
+          // If the mount directory doesn't exist, don't try to unmount and
+          // remove it. This will happen when the browser requests to unmount
+          // the filesystem. In this case, both the following operations are
+          // unnecessary and will fail, resulting in log spam.
+          return;
+        }
+
         MountErrorType unmount_error = platform->Unmount(target_path, 0);
         LOG_IF(ERROR, unmount_error != MOUNT_ERROR_NONE)
             << "Cannot unmount FUSE mount point " << quote(target_path) << ": "
