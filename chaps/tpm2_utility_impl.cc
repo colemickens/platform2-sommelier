@@ -692,38 +692,58 @@ void TPM2UtilityImpl::UnloadKeysForSlot(int slot) {
   slot_handles_.erase(slot);
 }
 
-bool TPM2UtilityImpl::Bind(int key_handle,
-                           const std::string& input,
-                           std::string* output) {
-  CHECK(output);
+crypto::ScopedRSA TPM2UtilityImpl::KeyToScopedRsa(int key_handle) {
+  crypto::ScopedRSA rsa(RSA_new());
+  if (!rsa) {
+    LOG(ERROR) << "Failed to allocate RSA.";
+    return nullptr;
+  }
+
   std::string modulus;
   std::string exponent;
   if (!GetRSAPublicKey(key_handle, &exponent, &modulus)) {
-    return false;
+    return nullptr;
   }
-  if (input.size() > modulus.size() - 11) {
-    LOG(ERROR) << "Encryption plaintext is longer than RSA modulus.";
-    return false;
-  }
-  crypto::ScopedRSA rsa(RSA_new());
   crypto::ScopedBIGNUM n(BN_new()), e(BN_new());
-  if (!rsa || !n || !e) {
-    LOG(ERROR) << "Failed to allocate RSA or BIGNUM.";
-    return false;
+  if (!n || !e) {
+    LOG(ERROR) << "Failed to allocate BIGNUM.";
+    return nullptr;
   }
+
   if (!BN_bin2bn(reinterpret_cast<const unsigned char*>(modulus.data()),
                  modulus.size(), n.get()) ||
       !BN_bin2bn(reinterpret_cast<const unsigned char*>(exponent.data()),
                  exponent.size(), e.get())) {
     LOG(ERROR) << "Failed to convert modulus or exponent for RSA.";
-    return false;
+    return nullptr;
   }
+
   if (!RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr)) {
     LOG(ERROR) << "Failed to set modulus or exponent for RSA.";
+    return nullptr;
+  }
+
+  return rsa;
+}
+
+bool TPM2UtilityImpl::Bind(int key_handle,
+                           const std::string& input,
+                           std::string* output) {
+  CHECK(output);
+
+  crypto::ScopedRSA rsa = KeyToScopedRsa(key_handle);
+  if (!rsa) {
+    LOG(ERROR) << "Failed to convert TPM key to Public RSA object.";
     return false;
   }
+
+  if (input.size() > RSA_size(rsa.get()) - 11) {
+    LOG(ERROR) << "Encryption plaintext is longer than RSA modulus.";
+    return false;
+  }
+
   // RSA encrypt output should be size of the modulus.
-  output->resize(modulus.size());
+  output->resize(RSA_size(rsa.get()));
   int rsa_result = RSA_public_encrypt(
       input.size(), reinterpret_cast<const unsigned char*>(input.data()),
       reinterpret_cast<unsigned char*>(base::data(*output)), rsa.get(),

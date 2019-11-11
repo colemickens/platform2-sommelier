@@ -125,6 +125,10 @@ class TPM2UtilityImpl : public TPMUtility {
                       const std::string& input,
                       std::string* output);
 
+  // Load the public key of the key specified in |key_handle| to the openssl RSA
+  // object, and return it if successful, otherwise, nullptr is returned.
+  crypto::ScopedRSA KeyToScopedRsa(int key_handle);
+
   // This method flushes the provided |key_handle| from internal structures. If
   // |key_handle| is not tracked, this method does nothing.
   void FlushHandle(int key_handle);
