@@ -41,6 +41,11 @@ class Manager final : public brillo::DBusDaemon {
  private:
   void InitialSetup();
 
+  bool StartArc(pid_t pid);
+  void StopArc();
+  bool StartArcVm(int cid);
+  void StopArcVm();
+
   // Callback from ProcessReaper to notify Manager that one of the
   // subprocesses died.
   void OnSubprocessExited(pid_t pid, const siginfo_t& info);
@@ -62,8 +67,8 @@ class Manager final : public brillo::DBusDaemon {
   std::unique_ptr<dbus::Response> OnArcVmShutdown(
       dbus::MethodCall* method_call);
 
-  // Processes notification messages received from guests.
-  void OnGuestMessage(const GuestMessage& msg);
+  // Dispatch |msg| to child processes.
+  void SendGuestMessage(const GuestMessage& msg);
 
   // TODO(garrick): Remove this workaround ASAP.
   bool OnSignal(const struct signalfd_siginfo& info);

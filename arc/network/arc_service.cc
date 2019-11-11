@@ -216,12 +216,6 @@ void ArcService::OnStart() {
   dev_mgr_->Add(guest_ == GuestMessage::ARC_LEGACY ? kAndroidLegacyDevice
                                                    : kAndroidDevice);
 
-  GuestMessage msg;
-  msg.set_event(GuestMessage::START);
-  msg.set_arc_pid(pid_);
-  msg.set_type(guest_);
-  DispatchMessage(msg);
-
   // Finally, call the base implementation.
   GuestService::OnStart();
 }
@@ -239,11 +233,6 @@ void ArcService::OnStop() {
   rtnl_handler_->RemoveListener(link_listener_.get());
   link_listener_.reset();
   rtnl_handler_.reset();
-
-  GuestMessage msg;
-  msg.set_event(GuestMessage::STOP);
-  msg.set_type(guest_);
-  DispatchMessage(msg);
 
   pid_ = kInvalidPID;
 }

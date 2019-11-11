@@ -20,8 +20,6 @@ class GuestService {
 
   virtual ~GuestService() = default;
 
-  void RegisterMessageHandler(const MessageHandler& handler);
-
  protected:
   // |dev_mgr| cannot be null and must outlive this object.
   GuestService(GuestMessage::GuestType guest, DeviceManagerBase* dev_mgr);
@@ -33,14 +31,10 @@ class GuestService {
   virtual void OnDeviceRemoved(Device* device) {}
   virtual void OnDefaultInterfaceChanged(const std::string& ifname) {}
 
-  void DispatchMessage(const GuestMessage& msg);
-
   const GuestMessage::GuestType guest_;
   DeviceManagerBase* dev_mgr_;
 
  private:
-  MessageHandler handler_;
-
   DISALLOW_COPY_AND_ASSIGN(GuestService);
 };
 

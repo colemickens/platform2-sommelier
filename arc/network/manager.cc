@@ -149,8 +149,6 @@ void Manager::InitialSetup() {
       mcast_proxy_.get(), nd_proxy_.get());
 
   arc_svc_ = std::make_unique<ArcService>(device_mgr_.get(), datapath_.get());
-  arc_svc_->RegisterMessageHandler(
-      base::Bind(&Manager::OnGuestMessage, weak_factory_.GetWeakPtr()));
 
   nd_proxy_->Listen();
 }
@@ -177,13 +175,21 @@ void Manager::OnFileCanReadWithoutBlocking() {
   msg.set_type(GuestMessage::ARC_VM);
   msg.set_arcvm_vsock_cid(event->id());
   msg.set_event(event->isStarting() ? GuestMessage::START : GuestMessage::STOP);
-  OnGuestMessage(msg);
+  SendGuestMessage(msg);
 }
 
 // TODO(garrick): Remove this workaround ASAP.
 bool Manager::OnSignal(const struct signalfd_siginfo& info) {
   // Only ARC++ scripts send signals so nothing to do for VM.
-  (info.ssi_signo == SIGUSR1) ? arc_svc_->OnStart() : arc_svc_->OnStop();
+  if (info.ssi_signo == SIGUSR1) {
+    // For now this value is ignored and the service discovers the
+    // container pid on its own. Later, this is arrive via DBus message.
+    StartArc(0 /*pid*/);
+  } else {
+    StopArc();
+  }
+
+  // Stay registered.
   return false;
 }
 
@@ -194,6 +200,49 @@ void Manager::OnShutdown(int* exit_code) {
 void Manager::OnSubprocessExited(pid_t pid, const siginfo_t& info) {
   LOG(ERROR) << "Subprocess " << pid << " exited unexpectedly";
   Quit();
+}
+
+bool Manager::StartArc(pid_t pid) {
+  // TOSO(garrick): Use pid.
+  arc_svc_->OnStart();
+
+  GuestMessage msg;
+  msg.set_event(GuestMessage::START);
+  msg.set_type(GuestMessage::ARC);
+  msg.set_arc_pid(pid);
+  SendGuestMessage(msg);
+
+  return true;
+}
+
+void Manager::StopArc() {
+  GuestMessage msg;
+  msg.set_event(GuestMessage::STOP);
+  msg.set_type(GuestMessage::ARC);
+  SendGuestMessage(msg);
+
+  arc_svc_->OnStop();
+}
+
+bool Manager::StartArcVm(int cid) {
+  // TODO(garrick0: Start ARCVM
+
+  GuestMessage msg;
+  msg.set_event(GuestMessage::START);
+  msg.set_type(GuestMessage::ARC_VM);
+  msg.set_arcvm_vsock_cid(cid);
+  SendGuestMessage(msg);
+
+  return true;
+}
+
+void Manager::StopArcVm() {
+  GuestMessage msg;
+  msg.set_event(GuestMessage::STOP);
+  msg.set_type(GuestMessage::ARC_VM);
+  SendGuestMessage(msg);
+
+  // TODO(garrick): Stop ARCVM
 }
 
 std::unique_ptr<dbus::Response> Manager::OnArcStartup(
@@ -215,7 +264,8 @@ std::unique_ptr<dbus::Response> Manager::OnArcStartup(
     return dbus_response;
   }
 
-  // Nothing to do yet.
+  StartArc(request.pid());
+
   // TODO(garrick): create and start ArcService.
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
@@ -240,7 +290,8 @@ std::unique_ptr<dbus::Response> Manager::OnArcShutdown(
     return dbus_response;
   }
 
-  // Nothing to do yet.
+  StopArc();
+
   // TODO(garrick): delete ArcService.
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
@@ -265,7 +316,8 @@ std::unique_ptr<dbus::Response> Manager::OnArcVmStartup(
     return dbus_response;
   }
 
-  // Nothing to do yet.
+  StartArcVm(request.cid());
+
   // TODO(garrick): create and start ArcVmService.
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
@@ -290,16 +342,18 @@ std::unique_ptr<dbus::Response> Manager::OnArcVmShutdown(
     return dbus_response;
   }
 
-  // Nothing to do yet.
-  // TODO(garrick): delete ArcVmService.
+  StopArcVm();
+
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
 
-void Manager::OnGuestMessage(const GuestMessage& msg) {
+void Manager::SendGuestMessage(const GuestMessage& msg) {
   IpHelperMessage ipm;
   *ipm.mutable_guest_message() = msg;
   adb_proxy_->SendMessage(ipm);
+  mcast_proxy_->SendMessage(ipm);
+  nd_proxy_->SendMessage(ipm);
 }
 
 }  // namespace arc_networkd
