@@ -247,23 +247,24 @@ When modifying a `model.yaml` file there are few steps that need to be taken to
 
 1. Start cros_workon on the ebuild where your source model.yaml lives:
 
-```bash
-(chroot) $ cros_workon start chromeos-base/chrome-config-bsp-{BOARD}
-```
+   ```bash
+   (chroot) $ cros_workon start chromeos-base/chromeos-config-bsp-${BOARD}
+   ```
 
 1. Make and install your incremental changes:
 
-```bash
-(chroot) $ cros_workon_make chromeos-base/chrome-config-bsp-{BOARD} --install
-```
+   ```bash
+   (chroot) $ cros_workon_make chromeos-base/chromeos-config-bsp-${BOARD} --install
+   ```
 
 1. Remerge the chromeos-config ebuild:
 
-Note: The config-bsp overlay path may be slightly different depending on the board and if it is public or private.
+   Note: The config-bsp overlay path may be slightly different depending on the
+   board and if it is public or private.
 
-```bash
-(chroot) $ emerge-$BOARD chromeos-config
-```
+   ```bash
+   (chroot) $ emerge-$BOARD chromeos-config
+   ```
 
 ### Schema Validation
 
