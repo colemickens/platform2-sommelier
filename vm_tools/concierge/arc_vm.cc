@@ -58,6 +58,10 @@ constexpr char kCustomParameterFilePath[] = "/etc/arcvm_dev.conf";
 // Custom parameter key to override the kernel path
 constexpr char kKeyToOverrideKernelPath[] = "KERNEL_PATH";
 
+// Shared directories and their tags
+constexpr char kHostGeneratedSharedDir[] = "/run/arcvm/host_generated";
+constexpr char kHostGeneratedSharedDirTag[] = "host_generated";
+
 base::ScopedFD ConnectVSock(int cid) {
   DLOG(INFO) << "Creating VSOCK...";
   struct sockaddr_vm sa = {};
@@ -196,6 +200,9 @@ bool ArcVm::Start(base::FilePath kernel,
     { "--cras-audio",     "" },
     { "--cras-capture",   "" },
     { "--android-fstab",  fstab.value() },
+    // TODO(yusukes): Switch from 9p to virtio-fs.
+    { "--shared-dir",     base::StringPrintf("%s:%s", kHostGeneratedSharedDir,
+                                             kHostGeneratedSharedDirTag) },
     { "--params",         base::JoinString(params, " ") },
   };
   // clang-format on
