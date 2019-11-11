@@ -118,6 +118,9 @@ class FlimFlam(object):
                 shill,
                 FlimFlam.SHILL_DBUS_INTERFACE + ".Manager")
 
+    def GetManager(self):
+        return self.manager
+
     def _FindDevice(self, device_type, timeout):
         """ Return the first device object that matches a given device type.
 
