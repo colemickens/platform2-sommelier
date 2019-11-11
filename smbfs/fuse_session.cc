@@ -375,10 +375,9 @@ bool FuseSession::Start(base::OnceClosure stop_callback) {
 void FuseSession::OnChannelReadable() {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   VLOG(2) << "FuseSession::OnChannelReadable";
-  fuse_buf buf = {
-      .mem = read_buffer_.data(),
-      .size = read_buffer_.size(),
-  };
+  fuse_buf buf = {0};
+  buf.mem = read_buffer_.data();
+  buf.size = read_buffer_.size();
   fuse_chan* temp_chan = chan_;
   int read_size = fuse_session_receive_buf(session_, &buf, &temp_chan);
   if (read_size == 0) {
