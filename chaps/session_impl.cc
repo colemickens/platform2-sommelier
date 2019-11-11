@@ -264,53 +264,8 @@ const EVP_CIPHER* GetOpenSSLCipher(CK_MECHANISM_TYPE mechanism,
   return nullptr;
 }
 
-chaps::DigestAlgorithm GetDigestAlgorithm(CK_MECHANISM_TYPE mechanism) {
-  switch (mechanism) {
-    case CKM_MD5:
-    case CKM_MD5_HMAC:
-    case CKM_MD5_RSA_PKCS:
-      return chaps::DigestAlgorithm::MD5;
-    case CKM_SHA_1:
-    case CKM_SHA_1_HMAC:
-    case CKM_SHA1_RSA_PKCS:
-    case CKM_ECDSA_SHA1:
-      return chaps::DigestAlgorithm::SHA1;
-    case CKM_SHA256:
-    case CKM_SHA256_HMAC:
-    case CKM_SHA256_RSA_PKCS:
-      return chaps::DigestAlgorithm::SHA256;
-    case CKM_SHA384:
-    case CKM_SHA384_HMAC:
-    case CKM_SHA384_RSA_PKCS:
-      return chaps::DigestAlgorithm::SHA384;
-    case CKM_SHA512:
-    case CKM_SHA512_HMAC:
-    case CKM_SHA512_RSA_PKCS:
-      return chaps::DigestAlgorithm::SHA512;
-    default:
-      return chaps::DigestAlgorithm::NoDigest;
-  }
-}
-
-const EVP_MD* GetOpenSSLDigest(CK_MECHANISM_TYPE mechanism) {
-  switch (GetDigestAlgorithm(mechanism)) {
-    case chaps::DigestAlgorithm::MD5:
-      return EVP_md5();
-    case chaps::DigestAlgorithm::SHA1:
-      return EVP_sha1();
-    case chaps::DigestAlgorithm::SHA256:
-      return EVP_sha256();
-    case chaps::DigestAlgorithm::SHA384:
-      return EVP_sha384();
-    case chaps::DigestAlgorithm::SHA512:
-      return EVP_sha512();
-    case chaps::DigestAlgorithm::NoDigest:
-      return nullptr;
-  }
-}
-
 string GetDERDigestInfo(CK_MECHANISM_TYPE mechanism) {
-  return GetDigestAlgorithmEncoding(GetDigestAlgorithm(mechanism));
+  return GetDigestAlgorithmEncoding(chaps::GetDigestAlgorithm(mechanism));
 }
 
 // TODO(menghuan): Move Create*KeyFromObject to the member function of object.

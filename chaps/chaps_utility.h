@@ -335,6 +335,12 @@ static inline int i2o_ECPublicKey_nc(EC_KEY* key, unsigned char** buf) {
   return i2o_ECPublicKey(key, buf);
 }
 
+// Get the chaps internal digest algorithm type from PKCS#11 mechanism type.
+chaps::DigestAlgorithm GetDigestAlgorithm(CK_MECHANISM_TYPE mechanism);
+
+// Return the OpenSSL Digest associated with the given PKCS#11 Mechanism.
+const EVP_MD* GetOpenSSLDigest(CK_MECHANISM_TYPE mechanism);
+
 }  // namespace chaps
 
 #endif  // CHAPS_CHAPS_UTILITY_H_
