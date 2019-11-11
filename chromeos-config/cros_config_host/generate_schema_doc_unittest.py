@@ -27,10 +27,10 @@ class SchemaTests(unittest.TestCase):
     generate_schema_doc.Main(
         os.path.join(this_dir, 'cros_config_schema.yaml'),
         output)
-    with open(output, 'r') as output_stream:
-      output_lines = output_stream.readlines()
-      with open(os.path.join(this_dir, '../README.md')) as readme_stream:
-        readme_lines = readme_stream.readlines()
+    with open(output, 'rb') as output_stream:
+      output_lines = output_stream.read().decode('utf-8').splitlines()
+      with open(os.path.join(this_dir, '../README.md'), 'rb') as readme_stream:
+        readme_lines = readme_stream.read().decode('utf-8').splitlines()
         readme_schema_lines = []
         in_section = False
         for line in readme_lines:
