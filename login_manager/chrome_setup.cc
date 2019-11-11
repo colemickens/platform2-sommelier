@@ -486,6 +486,10 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
 
   // TODO(afakhry|yjliu): Remove after https://crbug.com/1015474 is fixed.
   builder->AddVmodulePattern("*night_light*=1");
+
+  // TODO(https://crbug.com/1011221): Remove after bug in launcher zero-state
+  // search results has been fixed.
+  builder->AddVmodulePattern("*/search_result_ranker/*=1");
 }
 
 }  // namespace
