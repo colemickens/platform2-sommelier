@@ -29,16 +29,17 @@ ACTION_TEMPLATE(RunCallback,
               CallMethod(DBusMethodCallEq(method_call), _, _)) \
       .WillOnce(RunCallback<2>(response));
 
-void EnableCallbackAdaptor(bool* succeeded,
+void EnableCallbackAdaptor(ArcSideloadStatusInterface::Status* status,
                            char** error,
-                           bool s,
+                           ArcSideloadStatusInterface::Status s,
                            const char* e) {
-  *succeeded = s;
+  *status = s;
   *error = const_cast<char*>(e);
 }
 
-void QueryCallbackAdaptor(bool* enabled, bool e) {
-  *enabled = e;
+void QueryCallbackAdaptor(ArcSideloadStatusInterface::Status* status,
+                          ArcSideloadStatusInterface::Status s) {
+  *status = s;
 }
 
 class ArcSideloadStatusTest : public ::testing::Test {
@@ -100,14 +101,15 @@ class ArcSideloadStatusTest : public ::testing::Test {
     return bootlockbox_response;
   }
 
-  static ArcSideloadStatus::QueryAdbSideloadCallback CaptureQueryCallback(
-      bool* enabled) {
-    return base::Bind(&QueryCallbackAdaptor, enabled);
+  static ArcSideloadStatusInterface::QueryAdbSideloadCallback
+  CaptureQueryCallback(ArcSideloadStatusInterface::Status* status) {
+    return base::Bind(&QueryCallbackAdaptor, status);
   }
 
-  static ArcSideloadStatus::EnableAdbSideloadCallback CaptureEnableCallback(
-      bool* enabled, char** error) {
-    return base::Bind(&EnableCallbackAdaptor, enabled, error);
+  static ArcSideloadStatusInterface::EnableAdbSideloadCallback
+  CaptureEnableCallback(ArcSideloadStatusInterface::Status* sideload_status,
+                        char** error) {
+    return base::Bind(&EnableCallbackAdaptor, sideload_status, error);
   }
 
   scoped_refptr<dbus::MockObjectProxy> boot_lockbox_proxy_;
@@ -135,12 +137,12 @@ TEST_F(ArcSideloadStatusTest, InitializeThenQueryAdbSideload) {
                                  bootlockbox_response.get());
 
   // Action
-  bool enabled;
+  ArcSideloadStatusInterface::Status status;
   arc_sideload_status_->Initialize();
-  arc_sideload_status_->QueryAdbSideload(CaptureQueryCallback(&enabled));
+  arc_sideload_status_->QueryAdbSideload(CaptureQueryCallback(&status));
 
   // Verify
-  EXPECT_TRUE(enabled);
+  EXPECT_EQ(status, ArcSideloadStatusInterface::Status::ENABLED);
   EXPECT_TRUE(arc_sideload_status_->IsAdbSideloadAllowed());
 }
 
@@ -152,13 +154,36 @@ TEST_F(ArcSideloadStatusTest, QueryAdbSideloadThenInitialize) {
                                  bootlockbox_response.get());
 
   // Action
-  bool enabled;
-  arc_sideload_status_->QueryAdbSideload(CaptureQueryCallback(&enabled));
+  ArcSideloadStatusInterface::Status status;
+  arc_sideload_status_->QueryAdbSideload(CaptureQueryCallback(&status));
   arc_sideload_status_->Initialize();
 
   // Verify
-  EXPECT_TRUE(enabled);
+  EXPECT_EQ(status, ArcSideloadStatusInterface::Status::ENABLED);
   EXPECT_TRUE(arc_sideload_status_->IsAdbSideloadAllowed());
+}
+
+TEST_F(ArcSideloadStatusTest, QueryAdbSideload_NeedPowerwash) {
+  // Setup
+  ExpectBootLockboxServiceToBeAvailable(true);
+  auto bootlockbox_response = dbus::Response::CreateEmpty();
+  {
+    dbus::MessageWriter writer(bootlockbox_response.get());
+    cryptohome::BootLockboxBaseReply reply;
+    reply.set_error(cryptohome::BOOTLOCKBOX_ERROR_NVSPACE_UNDEFINED);
+    EXPECT_TRUE(writer.AppendProtoAsArrayOfBytes(reply));
+  }
+  EXPECT_DBUS_CALL_THEN_CALLBACK(&bootlockbox_read_method_call_,
+                                 bootlockbox_response.get());
+
+  // Action
+  ArcSideloadStatusInterface::Status status;
+  arc_sideload_status_->Initialize();
+  arc_sideload_status_->QueryAdbSideload(CaptureQueryCallback(&status));
+
+  // Verify
+  EXPECT_EQ(status, ArcSideloadStatusInterface::Status::NEED_POWERWASH);
+  EXPECT_FALSE(arc_sideload_status_->IsAdbSideloadAllowed());
 }
 
 TEST_F(ArcSideloadStatusTest, QueryAdbSideloadThenBadInitialize) {
@@ -166,13 +191,12 @@ TEST_F(ArcSideloadStatusTest, QueryAdbSideloadThenBadInitialize) {
   ExpectBootLockboxServiceToBeAvailable(false);
 
   // Action
-  bool enabled;
-  arc_sideload_status_->QueryAdbSideload(
-      base::Bind(&QueryCallbackAdaptor, &enabled));
+  ArcSideloadStatusInterface::Status status;
+  arc_sideload_status_->QueryAdbSideload(CaptureQueryCallback(&status));
   arc_sideload_status_->Initialize();
 
   // Verify
-  EXPECT_FALSE(enabled);
+  EXPECT_EQ(status, ArcSideloadStatusInterface::Status::DISABLED);
   EXPECT_FALSE(arc_sideload_status_->IsAdbSideloadAllowed());
 }
 
@@ -184,15 +208,15 @@ TEST_F(ArcSideloadStatusTest, MultipleQueryAdbSideloadThenInitialize) {
                                  bootlockbox_response.get());
 
   // Action
-  bool enabled1;
-  bool enabled2;
-  arc_sideload_status_->QueryAdbSideload(CaptureQueryCallback(&enabled1));
-  arc_sideload_status_->QueryAdbSideload(CaptureQueryCallback(&enabled2));
+  ArcSideloadStatusInterface::Status status1;
+  ArcSideloadStatusInterface::Status status2;
+  arc_sideload_status_->QueryAdbSideload(CaptureQueryCallback(&status1));
+  arc_sideload_status_->QueryAdbSideload(CaptureQueryCallback(&status2));
   arc_sideload_status_->Initialize();
 
   // Verify
-  EXPECT_TRUE(enabled1);
-  EXPECT_TRUE(enabled2);
+  EXPECT_EQ(status1, ArcSideloadStatusInterface::Status::ENABLED);
+  EXPECT_EQ(status2, ArcSideloadStatusInterface::Status::ENABLED);
   EXPECT_TRUE(arc_sideload_status_->IsAdbSideloadAllowed());
 }
 
@@ -202,12 +226,12 @@ TEST_F(ArcSideloadStatusTest, InitializeThenQueryAdbSideload_NullResponse) {
   EXPECT_DBUS_CALL_THEN_CALLBACK(&bootlockbox_read_method_call_, nullptr);
 
   // Action
-  bool enabled;
+  ArcSideloadStatusInterface::Status status;
   arc_sideload_status_->Initialize();
-  arc_sideload_status_->QueryAdbSideload(CaptureQueryCallback(&enabled));
+  arc_sideload_status_->QueryAdbSideload(CaptureQueryCallback(&status));
 
   // Verify
-  EXPECT_FALSE(enabled);
+  EXPECT_EQ(status, ArcSideloadStatusInterface::Status::DISABLED);
   EXPECT_FALSE(arc_sideload_status_->IsAdbSideloadAllowed());
 }
 
@@ -221,12 +245,12 @@ TEST_F(ArcSideloadStatusTest, InitializeThenQueryAdbSideload_BadFormat) {
                                  bootlockbox_response.get());
 
   // Action
-  bool enabled;
+  ArcSideloadStatusInterface::Status status;
   arc_sideload_status_->Initialize();
-  arc_sideload_status_->QueryAdbSideload(CaptureQueryCallback(&enabled));
+  arc_sideload_status_->QueryAdbSideload(CaptureQueryCallback(&status));
 
   // Verify
-  EXPECT_FALSE(enabled);
+  EXPECT_EQ(status, ArcSideloadStatusInterface::Status::DISABLED);
   EXPECT_FALSE(arc_sideload_status_->IsAdbSideloadAllowed());
 }
 
@@ -239,24 +263,24 @@ TEST_F(ArcSideloadStatusTest, InitializeThenQueryAdbSideload_MissingKey) {
                                  bootlockbox_response.get());
 
   // Action
-  bool enabled;
+  ArcSideloadStatusInterface::Status status;
   arc_sideload_status_->Initialize();
-  arc_sideload_status_->QueryAdbSideload(CaptureQueryCallback(&enabled));
+  arc_sideload_status_->QueryAdbSideload(CaptureQueryCallback(&status));
 
   // Verify
-  EXPECT_FALSE(enabled);
+  EXPECT_EQ(status, ArcSideloadStatusInterface::Status::DISABLED);
   EXPECT_FALSE(arc_sideload_status_->IsAdbSideloadAllowed());
 }
 
 TEST_F(ArcSideloadStatusTest, EnableAdbSideload_Uninitialized) {
   // Action
-  bool succeeded = false;
+  auto sideload_status = ArcSideloadStatusInterface::Status::UNDEFINED;
   char* error;
   arc_sideload_status_->EnableAdbSideload(
-      CaptureEnableCallback(&succeeded, &error));
+      CaptureEnableCallback(&sideload_status, &error));
 
   // Verify
-  EXPECT_FALSE(succeeded);
+  EXPECT_EQ(sideload_status, ArcSideloadStatusInterface::Status::DISABLED);
   EXPECT_NE(error, nullptr);
 }
 
@@ -267,13 +291,13 @@ TEST_F(ArcSideloadStatusTest, EnableAdbSideload_NullResponse) {
   EXPECT_DBUS_CALL_THEN_CALLBACK(&bootlockbox_store_method_call_, nullptr);
 
   // Action
-  bool succeeded = false;
+  auto sideload_status = ArcSideloadStatusInterface::Status::UNDEFINED;
   char* error;
   arc_sideload_status_->EnableAdbSideload(
-      CaptureEnableCallback(&succeeded, &error));
+      CaptureEnableCallback(&sideload_status, &error));
 
   // Verify
-  EXPECT_FALSE(succeeded);
+  EXPECT_EQ(sideload_status, ArcSideloadStatusInterface::Status::DISABLED);
   EXPECT_NE(error, nullptr);
 }
 
@@ -288,14 +312,35 @@ TEST_F(ArcSideloadStatusTest, EnableAdbSideload_BadFormat) {
                                  bootlockbox_response.get());
 
   // Action
-  bool succeeded = false;
+  auto sideload_status = ArcSideloadStatusInterface::Status::UNDEFINED;
   char* error;
   arc_sideload_status_->EnableAdbSideload(
-      CaptureEnableCallback(&succeeded, &error));
+      CaptureEnableCallback(&sideload_status, &error));
 
   // Verify
-  EXPECT_FALSE(succeeded);
+  EXPECT_EQ(sideload_status, ArcSideloadStatusInterface::Status::DISABLED);
   EXPECT_NE(error, nullptr);
+}
+
+TEST_F(ArcSideloadStatusTest, EnableAdbSideload_RequirePowerwash) {
+  PretendInitialized();
+
+  // Setup
+  auto bootlockbox_response = CreateResponseWithBootLockboxError(
+      cryptohome::BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NVSPACE_UNDEFINED);
+  EXPECT_DBUS_CALL_THEN_CALLBACK(&bootlockbox_store_method_call_,
+                                 bootlockbox_response.get());
+
+  // Action
+  auto sideload_status = ArcSideloadStatusInterface::Status::UNDEFINED;
+  char* error;
+  arc_sideload_status_->EnableAdbSideload(
+      CaptureEnableCallback(&sideload_status, &error));
+
+  // Verify
+  EXPECT_EQ(sideload_status,
+            ArcSideloadStatusInterface::Status::NEED_POWERWASH);
+  EXPECT_EQ(error, nullptr);
 }
 
 TEST_F(ArcSideloadStatusTest, EnableAdbSideload_BootLockboxError) {
@@ -308,13 +353,13 @@ TEST_F(ArcSideloadStatusTest, EnableAdbSideload_BootLockboxError) {
                                  bootlockbox_response.get());
 
   // Action
-  bool succeeded = false;
+  auto sideload_status = ArcSideloadStatusInterface::Status::UNDEFINED;
   char* error;
   arc_sideload_status_->EnableAdbSideload(
-      CaptureEnableCallback(&succeeded, &error));
+      CaptureEnableCallback(&sideload_status, &error));
 
   // Verify
-  EXPECT_FALSE(succeeded);
+  EXPECT_EQ(sideload_status, ArcSideloadStatusInterface::Status::DISABLED);
   EXPECT_EQ(error, nullptr);
 }
 
@@ -330,13 +375,13 @@ TEST_F(ArcSideloadStatusTest, EnableAdbSideload_AlreadyLogin) {
                                  bootlockbox_response.get());
 
   // Action
-  bool succeeded = false;
+  auto sideload_status = ArcSideloadStatusInterface::Status::UNDEFINED;
   char* error;
   arc_sideload_status_->EnableAdbSideload(
-      CaptureEnableCallback(&succeeded, &error));
+      CaptureEnableCallback(&sideload_status, &error));
 
   // Verify
-  EXPECT_FALSE(succeeded);
+  EXPECT_EQ(sideload_status, ArcSideloadStatusInterface::Status::DISABLED);
   EXPECT_EQ(error, nullptr);
 }
 
@@ -359,13 +404,13 @@ TEST_F(ArcSideloadStatusTest, EnableAdbSideload_Success) {
                                  bootlockbox_query_response.get());
 
   // Action
-  bool succeeded = false;
+  auto sideload_status = ArcSideloadStatusInterface::Status::UNDEFINED;
   char* error;
   arc_sideload_status_->EnableAdbSideload(
-      CaptureEnableCallback(&succeeded, &error));
+      CaptureEnableCallback(&sideload_status, &error));
 
   // Verify
-  EXPECT_TRUE(succeeded);
+  EXPECT_EQ(sideload_status, ArcSideloadStatusInterface::Status::ENABLED);
   EXPECT_EQ(error, nullptr);
 }
 

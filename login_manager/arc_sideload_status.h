@@ -43,13 +43,6 @@ class ArcSideloadStatus : public ArcSideloadStatusInterface {
   void GetAdbSideloadAllowed();
 
  private:
-  // Status enums for ADB Sideload status. Test only.
-  enum SideloadStatus {
-    ADB_SIDELOAD_UNKNOWN = 0,
-    ADB_SIDELOAD_ALLOWED = 1,
-    ADB_SIDELOAD_DISALLOWED = 2
-  };
-
   // Called when the boot lockbox service becomes initially available.
   void OnBootLockboxServiceAvailable(bool service_available);
 
@@ -62,18 +55,19 @@ class ArcSideloadStatus : public ArcSideloadStatusInterface {
 
   // Parse response of ReadBootLockbox. Return true if sideload means to be
   // enabled.
-  bool ParseResponseFromRead(dbus::Response* response);
+  ArcSideloadStatusInterface::Status ParseResponseFromRead(
+      dbus::Response* response);
 
   // Update the ADB sideload status based on information from cryptohome, and
   // run any pending query responses.
-  void SetAdbSideloadStatusAndNotify(SideloadStatus status);
+  void SetAdbSideloadStatusAndNotify(ArcSideloadStatusInterface::Status status);
 
   // Issues respone for ARC sideload status requests via DBus.
   void SendQueryAdbSideloadResponse(QueryAdbSideloadCallback callback);
 
   dbus::ObjectProxy* boot_lockbox_proxy_;  // Owned by the caller.
 
-  SideloadStatus sideload_status_;
+  ArcSideloadStatusInterface::Status sideload_status_;
   std::queue<QueryAdbSideloadCallback> query_arc_sideload_callback_queue_;
 
   base::WeakPtrFactory<ArcSideloadStatus> weak_ptr_factory_;

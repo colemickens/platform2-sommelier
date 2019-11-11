@@ -14,12 +14,13 @@ bool ArcSideloadStatusStub::IsAdbSideloadAllowed() {
 
 void ArcSideloadStatusStub::EnableAdbSideload(
     EnableAdbSideloadCallback callback) {
-  callback.Run(false, "ARC is not supported");
+  callback.Run(ArcSideloadStatusInterface::Status::DISABLED,
+               "ARC is not supported");
 }
 
 void ArcSideloadStatusStub::QueryAdbSideload(
     QueryAdbSideloadCallback callback) {
-  callback.Run(false);
+  callback.Run(ArcSideloadStatusInterface::Status::DISABLED);
 }
 
 }  // namespace login_manager

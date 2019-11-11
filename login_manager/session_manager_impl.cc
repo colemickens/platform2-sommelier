@@ -1401,14 +1401,21 @@ bool SessionManagerImpl::GetArcStartTimeTicks(brillo::ErrorPtr* error,
 
 void SessionManagerImpl::EnableAdbSideloadCallbackAdaptor(
     brillo::dbus_utils::DBusMethodResponse<bool>* response,
-    bool result,
+    ArcSideloadStatusInterface::Status status,
     const char* error) {
   if (error != nullptr) {
     brillo::ErrorPtr dbus_error = CreateError(DBUS_ERROR_FAILED, error);
     response->ReplyWithError(dbus_error.get());
-  } else {
-    response->Return(result);
+    return;
   }
+
+  if (status == ArcSideloadStatusInterface::Status::NEED_POWERWASH) {
+    brillo::ErrorPtr dbus_error = CreateError(DBUS_ERROR_NOT_SUPPORTED, error);
+    response->ReplyWithError(dbus_error.get());
+    return;
+  }
+
+  response->Return(status == ArcSideloadStatusInterface::Status::ENABLED);
 }
 
 void SessionManagerImpl::EnableAdbSideload(
@@ -1427,8 +1434,15 @@ void SessionManagerImpl::EnableAdbSideload(
 }
 
 void SessionManagerImpl::QueryAdbSideloadCallbackAdaptor(
-    brillo::dbus_utils::DBusMethodResponse<bool>* response, bool result) {
-  response->Return(result);
+    brillo::dbus_utils::DBusMethodResponse<bool>* response,
+    ArcSideloadStatusInterface::Status status) {
+  if (status == ArcSideloadStatusInterface::Status::NEED_POWERWASH) {
+    brillo::ErrorPtr dbus_error =
+        CreateError(DBUS_ERROR_NOT_SUPPORTED, "Need powerwash");
+    response->ReplyWithError(dbus_error.get());
+    return;
+  }
+  response->Return(status == ArcSideloadStatusInterface::Status::ENABLED);
 }
 
 void SessionManagerImpl::QueryAdbSideload(

@@ -32,7 +32,7 @@ constexpr char kSideloadingAllowedBootAttribute[] = "arc_sideloading_allowed";
 
 ArcSideloadStatus::ArcSideloadStatus(dbus::ObjectProxy* boot_lockbox_proxy)
     : boot_lockbox_proxy_(boot_lockbox_proxy),
-      sideload_status_(ADB_SIDELOAD_UNKNOWN),
+      sideload_status_(ArcSideloadStatusInterface::Status::UNDEFINED),
       weak_ptr_factory_(this) {}
 
 ArcSideloadStatus::~ArcSideloadStatus() {}
@@ -44,13 +44,14 @@ void ArcSideloadStatus::Initialize() {
 }
 
 bool ArcSideloadStatus::IsAdbSideloadAllowed() {
-  return sideload_status_ == ADB_SIDELOAD_ALLOWED;
+  return sideload_status_ == ArcSideloadStatusInterface::Status::ENABLED;
 }
 
 void ArcSideloadStatus::EnableAdbSideload(EnableAdbSideloadCallback callback) {
   // Must be called after initialized.
-  if (sideload_status_ == ADB_SIDELOAD_UNKNOWN) {
-    std::move(callback).Run(false, "D-Bus service not connected");
+  if (sideload_status_ == ArcSideloadStatusInterface::Status::UNDEFINED) {
+    std::move(callback).Run(ArcSideloadStatusInterface::Status::DISABLED,
+                            "D-Bus service not connected");
     return;
   }
 
@@ -70,7 +71,7 @@ void ArcSideloadStatus::EnableAdbSideload(EnableAdbSideloadCallback callback) {
 }
 
 void ArcSideloadStatus::QueryAdbSideload(QueryAdbSideloadCallback callback) {
-  if (sideload_status_ != ADB_SIDELOAD_UNKNOWN) {
+  if (sideload_status_ != ArcSideloadStatusInterface::Status::UNDEFINED) {
     // If we know the status, just return it immediately.
     SendQueryAdbSideloadResponse(std::move(callback));
   } else {
@@ -84,7 +85,7 @@ void ArcSideloadStatus::OnBootLockboxServiceAvailable(bool service_available) {
   if (!service_available) {
     LOG(ERROR) << "Failed to listen for cryptohome service start. Continue as "
                << "sideloading is disallowed.";
-    SetAdbSideloadStatusAndNotify(ADB_SIDELOAD_DISALLOWED);
+    SetAdbSideloadStatusAndNotify(ArcSideloadStatusInterface::Status::DISABLED);
     return;
   }
 
@@ -106,11 +107,12 @@ void ArcSideloadStatus::GetAdbSideloadAllowed() {
                  weak_ptr_factory_.GetWeakPtr()));
 }
 
-bool ArcSideloadStatus::ParseResponseFromRead(dbus::Response* response) {
+ArcSideloadStatusInterface::Status ArcSideloadStatus::ParseResponseFromRead(
+    dbus::Response* response) {
   if (!response) {
     LOG(ERROR) << cryptohome::kBootLockboxInterface << "."
                << cryptohome::kBootLockboxReadBootLockbox << " request failed.";
-    return false;
+    return ArcSideloadStatusInterface::Status::DISABLED;
   }
 
   dbus::MessageReader reader(response);
@@ -119,26 +121,29 @@ bool ArcSideloadStatus::ParseResponseFromRead(dbus::Response* response) {
     LOG(ERROR) << cryptohome::kBootLockboxInterface << "."
                << cryptohome::kBootLockboxReadBootLockbox
                << " unable to pop ReadBootLockboxReply proto.";
-    return false;
+    return ArcSideloadStatusInterface::Status::DISABLED;
   }
 
   if (base_reply.has_error()) {
     // When the attribute is unset, defaults to no sideloading.
     if (base_reply.error() == cryptohome::BOOTLOCKBOX_ERROR_MISSING_KEY) {
-      return false;
+      return ArcSideloadStatusInterface::Status::DISABLED;
+    } else if (base_reply.error() ==
+               cryptohome::BOOTLOCKBOX_ERROR_NVSPACE_UNDEFINED) {
+      return ArcSideloadStatusInterface::Status::NEED_POWERWASH;
     }
 
     LOG(ERROR) << cryptohome::kBootLockboxInterface << "."
                << cryptohome::kBootLockboxReadBootLockbox
                << " returned error: " << base_reply.error();
-    return false;
+    return ArcSideloadStatusInterface::Status::DISABLED;
   }
 
   if (!base_reply.HasExtension(cryptohome::ReadBootLockboxReply::reply)) {
     LOG(ERROR) << cryptohome::kBootLockboxInterface << "."
                << cryptohome::kBootLockboxReadBootLockbox
                << " missing reply field in ReadBootLockboxReply.";
-    return false;
+    return ArcSideloadStatusInterface::Status::DISABLED;
   }
 
   cryptohome::ReadBootLockboxReply readbootlockbox_reply =
@@ -147,51 +152,58 @@ bool ArcSideloadStatus::ParseResponseFromRead(dbus::Response* response) {
     LOG(ERROR) << cryptohome::kBootLockboxInterface << "."
                << cryptohome::kBootLockboxReadBootLockbox
                << " missing data field in ReadBootLockboxReply.";
-    return false;
+    return ArcSideloadStatusInterface::Status::DISABLED;
   }
 
   std::string arc_sideload_allowed = readbootlockbox_reply.data();
-  return arc_sideload_allowed == "1";
+  return arc_sideload_allowed == "1"
+             ? ArcSideloadStatusInterface::Status::ENABLED
+             : ArcSideloadStatusInterface::Status::DISABLED;
 }
 
 void ArcSideloadStatus::OnGotAdbSideloadAllowed(dbus::Response* response) {
-  bool allowed = ParseResponseFromRead(response);
-  if (allowed) {
-    SetAdbSideloadStatusAndNotify(ADB_SIDELOAD_ALLOWED);
-  } else {
-    SetAdbSideloadStatusAndNotify(ADB_SIDELOAD_DISALLOWED);
-  }
+  SetAdbSideloadStatusAndNotify(ParseResponseFromRead(response));
 }
 
 void ArcSideloadStatus::OnEnableAdbSideloadSet(
     EnableAdbSideloadCallback callback, dbus::Response* result) {
   if (!result) {
-    std::move(callback).Run(false, "result is null");
+    std::move(callback).Run(ArcSideloadStatusInterface::Status::DISABLED,
+                            "result is null");
     return;
   }
 
   dbus::MessageReader reader(result);
   cryptohome::BootLockboxBaseReply base_reply;
   if (!reader.PopArrayOfBytesAsProto(&base_reply)) {
-    std::move(callback).Run(false, "response is not a BootLockboxBaseReply");
+    std::move(callback).Run(ArcSideloadStatusInterface::Status::DISABLED,
+                            "response is not a BootLockboxBaseReply");
     return;
   }
 
   if (base_reply.has_error()) {
-    std::move(callback).Run(false, nullptr);
+    if (base_reply.error() == cryptohome::BOOTLOCKBOX_ERROR_NVSPACE_UNDEFINED) {
+      std::move(callback).Run(
+          ArcSideloadStatusInterface::Status::NEED_POWERWASH, nullptr);
+    } else {
+      std::move(callback).Run(ArcSideloadStatusInterface::Status::DISABLED,
+                              nullptr);
+    }
     return;
   }
 
   // Re-read setting from bootlockbox now that it has been stored.
   GetAdbSideloadAllowed();
-  std::move(callback).Run(true, nullptr);
+  std::move(callback).Run(ArcSideloadStatusInterface::Status::ENABLED, nullptr);
 }
 
 void ArcSideloadStatus::OverrideAdbSideloadStatusTestOnly(bool allowed) {
-  sideload_status_ = allowed ? ADB_SIDELOAD_ALLOWED : ADB_SIDELOAD_DISALLOWED;
+  sideload_status_ = allowed ? ArcSideloadStatusInterface::Status::ENABLED
+                             : ArcSideloadStatusInterface::Status::DISABLED;
 }
 
-void ArcSideloadStatus::SetAdbSideloadStatusAndNotify(SideloadStatus status) {
+void ArcSideloadStatus::SetAdbSideloadStatusAndNotify(
+    ArcSideloadStatusInterface::Status status) {
   sideload_status_ = status;
 
   while (!query_arc_sideload_callback_queue_.empty()) {
@@ -203,7 +215,7 @@ void ArcSideloadStatus::SetAdbSideloadStatusAndNotify(SideloadStatus status) {
 
 void ArcSideloadStatus::SendQueryAdbSideloadResponse(
     QueryAdbSideloadCallback callback) {
-  callback.Run(sideload_status_ == ADB_SIDELOAD_ALLOWED);
+  callback.Run(sideload_status_);
 }
 
 }  // namespace login_manager

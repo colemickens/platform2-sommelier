@@ -13,6 +13,13 @@ namespace login_manager {
 
 class ArcSideloadStatusInterface {
  public:
+  enum class Status {
+    UNDEFINED = 0,
+    ENABLED = 1,
+    DISABLED = 2,
+    NEED_POWERWASH = 3,
+  };
+
   virtual ~ArcSideloadStatusInterface() {}
 
   virtual void Initialize() = 0;
@@ -28,7 +35,7 @@ class ArcSideloadStatusInterface {
   // TODO(victorhsieh): Consider making convert all the Callbacks to
   // OnceCallback. It will be easier or possible once the next libchrome uprev
   // (crbug.com/909719) is done.
-  using EnableAdbSideloadCallback = base::Callback<void(bool, const char*)>;
+  using EnableAdbSideloadCallback = base::Callback<void(Status, const char*)>;
 
   // Handles request to allow ARC Sideload via DBus. This can only success
   // before the first user login after boot. Currently must be called after
@@ -37,7 +44,7 @@ class ArcSideloadStatusInterface {
 
   // Callback of EnableAdbSideload. The first argument indicates whether
   // sideloading is allowed on the current device.
-  using QueryAdbSideloadCallback = base::Callback<void(bool)>;
+  using QueryAdbSideloadCallback = base::Callback<void(Status)>;
 
   // Handles query of the ARC Sideload status via DBus. The response will be
   // sent immediately if the status is already known - otherwise the response

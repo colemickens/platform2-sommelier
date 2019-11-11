@@ -23,6 +23,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <libpasswordprovider/password_provider.h>
 
+#include "login_manager/arc_sideload_status_interface.h"
 #include "login_manager/container_manager_interface.h"
 #include "login_manager/dbus_adaptors/org.chromium.SessionManagerInterface.h"
 #include "login_manager/device_local_account_manager.h"
@@ -43,7 +44,6 @@ class Response;
 }  // namespace dbus
 
 namespace login_manager {
-class ArcSideloadStatusInterface;
 class DeviceLocalAccountManager;
 class InitDaemonController;
 class KeyGenerator;
@@ -375,10 +375,11 @@ class SessionManagerImpl
 
   void EnableAdbSideloadCallbackAdaptor(
       brillo::dbus_utils::DBusMethodResponse<bool>* response,
-      bool result,
+      ArcSideloadStatusInterface::Status status,
       const char* error);
   void QueryAdbSideloadCallbackAdaptor(
-      brillo::dbus_utils::DBusMethodResponse<bool>* response, bool result);
+      brillo::dbus_utils::DBusMethodResponse<bool>* response,
+      ArcSideloadStatusInterface::Status status);
 
 #if USE_CHEETS
   // Starts the Android container for ARC. If an error occurs, brillo::Error
