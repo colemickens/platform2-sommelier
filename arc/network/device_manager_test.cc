@@ -47,6 +47,7 @@ class DeviceManagerTest : public testing::Test {
     fpr_ = std::make_unique<FakeProcessRunner>();
     fpr_->Capture(false);
     datapath_ = std::make_unique<MockDatapath>(fpr_.get());
+    dummy_mcast_proxy_ = std::make_unique<HelperProcess>();
   }
 
   std::unique_ptr<DeviceManager> NewManager(bool is_arc_legacy = false) {
@@ -56,7 +57,7 @@ class DeviceManagerTest : public testing::Test {
 
     auto mgr = std::make_unique<DeviceManager>(
         std::move(shill_client), &addr_mgr_, datapath_.get(), is_arc_legacy,
-        new arc_networkd::HelperProcess() /* mcast_proxy */);
+        dummy_mcast_proxy_.get());
     return mgr;
   }
 
@@ -68,6 +69,7 @@ class DeviceManagerTest : public testing::Test {
 
   std::unique_ptr<MockDatapath> datapath_;
   std::unique_ptr<FakeProcessRunner> fpr_;
+  std::unique_ptr<HelperProcess> dummy_mcast_proxy_;
 
   // This is required because of the RT netlink handler.
   base::MessageLoopForIO msg_loop_;
