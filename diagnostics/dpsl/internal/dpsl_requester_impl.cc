@@ -144,14 +144,6 @@ void DpslRequesterImpl::GetVpdField(
       std::move(request), std::move(callback));
 }
 
-void DpslRequesterImpl::GetBluetoothData(
-    std::unique_ptr<grpc_api::GetBluetoothDataRequest> request,
-    GetBluetoothDataCallback callback) {
-  ScheduleGrpcClientMethodCall(
-      FROM_HERE, &grpc_api::WilcoDtcSupportd::Stub::AsyncGetBluetoothData,
-      std::move(request), std::move(callback));
-}
-
 void DpslRequesterImpl::GetDriveSystemData(
     std::unique_ptr<grpc_api::GetDriveSystemDataRequest> request,
     GetDriveSystemDataCallback callback) {

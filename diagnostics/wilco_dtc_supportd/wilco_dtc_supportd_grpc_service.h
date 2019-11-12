@@ -169,8 +169,6 @@ class WilcoDtcSupportdGrpcService final {
       std::unique_ptr<grpc_api::GetConfigurationDataResponse>)>;
   using GetVpdFieldCallback =
       base::Callback<void(std::unique_ptr<grpc_api::GetVpdFieldResponse>)>;
-  using GetBluetoothDataCallback =
-      base::Callback<void(std::unique_ptr<grpc_api::GetBluetoothDataResponse>)>;
   using GetDriveSystemDataCallback = base::Callback<void(
       std::unique_ptr<grpc_api::GetDriveSystemDataResponse>)>;
 
@@ -212,9 +210,6 @@ class WilcoDtcSupportdGrpcService final {
       const GetConfigurationDataCallback& callback);
   void GetVpdField(std::unique_ptr<grpc_api::GetVpdFieldRequest> request,
                    const GetVpdFieldCallback& callback);
-  void GetBluetoothData(
-      std::unique_ptr<grpc_api::GetBluetoothDataRequest> request,
-      const GetBluetoothDataCallback& callback);
   void GetDriveSystemData(
       std::unique_ptr<grpc_api::GetDriveSystemDataRequest> request,
       const GetDriveSystemDataCallback& callback);

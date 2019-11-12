@@ -332,29 +332,6 @@ using GetVpdFieldTestParam = DpslRequesterImplServerTestParam<
     decltype(&grpc_api::WilcoDtcSupportd::AsyncService::RequestGetVpdField),
     &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetVpdField>;
 
-void FillProtobufForTest(grpc_api::GetBluetoothDataRequest* req) {
-  // No data
-}
-
-void FillProtobufForTest(grpc_api::GetBluetoothDataResponse* res) {
-  auto* device = res->mutable_devices()->Add();
-
-  device->set_device_name("blue");
-  device->set_device_mac_address("11:22:33:44:55:66");
-  device->set_carrier_status(
-      grpc_api::GetBluetoothDataResponse_BluetoothData_CarrierStatus_STATUS_UP);
-  device->set_rx_bytes(100);
-  device->set_tx_bytes(200);
-}
-
-using GetBluetoothDataTestParam = DpslRequesterImplServerTestParam<
-    grpc_api::GetBluetoothDataRequest,
-    grpc_api::GetBluetoothDataResponse,
-    &DpslRequesterImpl::GetBluetoothData,
-    decltype(
-        &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetBluetoothData),
-    &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetBluetoothData>;
-
 void FillProtobufForTest(grpc_api::GetDriveSystemDataRequest* req) {
   req->set_type(grpc_api::GetDriveSystemDataRequest_Type_SMART_ATTRIBUTES);
 }
@@ -657,7 +634,6 @@ using DpslRequesterImplServerTestTypes =
                      GetOsVersionTestParam,
                      GetConfigurationDataTestParam,
                      GetVpdFieldTestParam,
-                     GetBluetoothDataTestParam,
                      GetDriveSystemDataTestParam>;
 TYPED_TEST_CASE(DpslRequesterImplServerTest, DpslRequesterImplServerTestTypes);
 

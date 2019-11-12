@@ -167,10 +167,6 @@ bool WilcoDtcSupportdCore::Start() {
       base::Bind(&WilcoDtcSupportdGrpcService::GetConfigurationData,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
-      &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetBluetoothData,
-      base::Bind(&WilcoDtcSupportdGrpcService::GetBluetoothData,
-                 base::Unretained(&grpc_service_)));
-  grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetDriveSystemData,
       base::Bind(&WilcoDtcSupportdGrpcService::GetDriveSystemData,
                  base::Unretained(&grpc_service_)));

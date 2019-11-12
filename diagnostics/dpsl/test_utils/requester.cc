@@ -71,7 +71,6 @@ int main(int argc, char** argv) {
   DEFINE_string(message_name, "",
                 "Name of gRPC request to make. Options are:"
                 "GetAvailableRoutines,"
-                "GetBluetoothData,"
                 "GetConfigurationData,"
                 "GetDriveSystemData,"
                 "GetEcTelemetry,"
@@ -137,10 +136,6 @@ EXAMPLE USAGE
   if (FLAGS_message_name == "GetAvailableRoutines") {
     request_succeeded = diagnostics::MakeRequest(
         requester.get(), &diagnostics::DpslRequester::GetAvailableRoutines,
-        FLAGS_message_body, callback);
-  } else if (FLAGS_message_name == "GetBluetoothData") {
-    request_succeeded = diagnostics::MakeRequest(
-        requester.get(), &diagnostics::DpslRequester::GetBluetoothData,
         FLAGS_message_body, callback);
   } else if (FLAGS_message_name == "GetConfigurationData") {
     request_succeeded = diagnostics::MakeRequest(
