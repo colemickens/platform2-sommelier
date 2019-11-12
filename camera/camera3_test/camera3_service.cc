@@ -7,14 +7,46 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include <base/bind.h>
+#include <base/command_line.h>
+#include <base/strings/string_number_conversions.h>
 
 #include "camera3_test/camera3_perf_log.h"
 
 namespace camera3_test {
+
+namespace {
+
+constexpr int kWaitForStopPreviewTimeoutMs = 3000;
+constexpr int kWaitForStopRecordingTimeoutMs = 3000;
+
+double Get3ATimeoutMultiplier() {
+  static double multiplier = [] {
+    constexpr char kSwitch[] = "3a_timeout_multiplier";
+    const auto* cl = base::CommandLine::ForCurrentProcess();
+    std::string val = cl->GetSwitchValueASCII(kSwitch);
+    double out;
+    if (val.empty() || !base::StringToDouble(val, &out)) {
+      return 1.0;
+    }
+    return out;
+  }();
+  return multiplier;
+}
+
+int GetWaitForFocusDoneTimeoutMs() {
+  return static_cast<int>(6000 * Get3ATimeoutMultiplier());
+}
+
+int GetWaitForAWBConvergedTimeoutMs() {
+  return static_cast<int>(3000 * Get3ATimeoutMultiplier());
+}
+
+}  // namespace
 
 Camera3Service::~Camera3Service() {}
 
@@ -255,7 +287,7 @@ int Camera3Service::Camera3DeviceService::WaitForAutoFocusDone() {
                                 {ANDROID_CONTROL_AF_STATE_FOCUSED_LOCKED,
                                  ANDROID_CONTROL_AF_STATE_NOT_FOCUSED_LOCKED}),
                             cros::GetFutureCallback(future), &result));
-  if (!future->Wait(kWaitForFocusDoneTimeoutMs)) {
+  if (!future->Wait(GetWaitForFocusDoneTimeoutMs())) {
     service_thread_.PostTaskSync(
         FROM_HERE,
         base::Bind(&Camera3Service::Camera3DeviceService::
@@ -282,7 +314,7 @@ int Camera3Service::Camera3DeviceService::WaitForAWBConvergedAndLock() {
                             std::unordered_set<int32_t>(
                                 {ANDROID_CONTROL_AWB_STATE_CONVERGED}),
                             cros::GetFutureCallback(future), nullptr));
-  if (!future->Wait(kWaitForAWBConvergedTimeoutMs)) {
+  if (!future->Wait(GetWaitForAWBConvergedTimeoutMs())) {
     service_thread_.PostTaskSync(
         FROM_HERE, base::Bind(&Camera3Service::Camera3DeviceService::
                                   DeleteMetadataListenerOnServiceThread,
@@ -322,7 +354,7 @@ int Camera3Service::Camera3DeviceService::WaitForAEStable() {
                                 {ANDROID_CONTROL_AE_STATE_CONVERGED,
                                  ANDROID_CONTROL_AE_STATE_FLASH_REQUIRED}),
                             cros::GetFutureCallback(future), &result));
-  if (!future->Wait(kWaitForFocusDoneTimeoutMs)) {
+  if (!future->Wait(GetWaitForFocusDoneTimeoutMs())) {
     service_thread_.PostTaskSync(
         FROM_HERE, base::Bind(&Camera3Service::Camera3DeviceService::
                                   DeleteMetadataListenerOnServiceThread,

@@ -23,10 +23,6 @@ const int32_t kPreviewOutputStreamIdx = 0;
 const int32_t kRecordingOutputStreamIdx = 1;
 // The still capture output stream can be at index 1 or 2, depending on whether
 // there is video recording.
-const int32_t kWaitForStopPreviewTimeoutMs = 3000;
-const int32_t kWaitForFocusDoneTimeoutMs = 6000;
-const int32_t kWaitForAWBConvergedTimeoutMs = 3000;
-const int32_t kWaitForStopRecordingTimeoutMs = 3000;
 enum { PREVIEW_STOPPED, PREVIEW_STARTING, PREVIEW_STARTED, PREVIEW_STOPPING };
 #define INCREASE_INDEX(idx) \
   (idx) = (idx == number_of_capture_requests_ - 1) ? 0 : (idx) + 1
