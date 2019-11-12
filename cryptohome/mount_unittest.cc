@@ -3553,6 +3553,8 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseUnmountRemoveTest) {
   set_policy(false, "", true);
   mount_->set_enterprise_owned(true);
 
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
+
   std::vector<int> expect_deletion;
   expect_deletion.push_back(0);
   expect_deletion.push_back(1);
@@ -3585,6 +3587,9 @@ TEST_P(EphemeralExistingUserSystemTest, UnmountRemoveTest) {
   // all stale cryptohomes are removed while unmounting.
   TestUser* owner = &helper_.users[3];
   set_policy(true, owner->username, true);
+
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
+
   // All users but the owner.
   std::vector<int> expect_deletion;
   expect_deletion.push_back(0);
@@ -3622,6 +3627,8 @@ TEST_P(EphemeralExistingUserSystemTest, NonOwnerMountIsEphemeralTest) {
   set_policy(true, owner->username, false);
   TestUser* user = &helper_.users[0];
   Credentials credentials(user->username, user->passkey);
+
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
 
   PrepareHomedirs(true, NULL, NULL);
 

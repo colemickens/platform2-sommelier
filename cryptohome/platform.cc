@@ -236,14 +236,34 @@ bool Platform::IsDirectoryMounted(const FilePath& directory) {
   // Trivial string match from /etc/mtab to see if the cryptohome mount point is
   // listed.  This works because Chrome OS is a controlled environment and the
   // only way /home/chronos/user should be mounted is if cryptohome mounted it.
+  auto ret = AreDirectoriesMounted({directory});
+
+  if (!ret)
+    return false;
+
+  return ret.value()[0];
+}
+
+base::Optional<std::vector<bool>> Platform::AreDirectoriesMounted(
+    const std::vector<base::FilePath>& directories) {
+
   std::string contents;
-  if (base::ReadFileToString(mount_info_path_, &contents)) {
-    if (contents.find(StringPrintf(" %s ", directory.value().c_str())) !=
-        std::string::npos) {
-      return true;
-    }
+  if (!base::ReadFileToString(mount_info_path_, &contents)) {
+    return base::nullopt;
   }
-  return false;
+
+  std::vector<bool> ret;
+  ret.reserve(directories.size());
+
+  for (auto& directory : directories) {
+    bool is_mounted =
+        contents.find(StringPrintf(" %s ", directory.value().c_str())) !=
+        std::string::npos;
+
+    ret.push_back(is_mounted);
+  }
+
+  return ret;
 }
 
 bool Platform::Mount(const FilePath& from, const FilePath& to,

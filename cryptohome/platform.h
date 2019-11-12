@@ -22,6 +22,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
+#include <base/optional.h>
 #include <brillo/process.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
@@ -198,6 +199,14 @@ class Platform {
   // Parameters
   //   directory - The directory to check
   virtual bool IsDirectoryMounted(const base::FilePath& directory);
+
+  // Returns true for each directory that is in the mount_info
+  // On error returns an empty vector
+  //
+  // Parameters
+  //   directories - The directories to check
+  virtual base::Optional<std::vector<bool>> AreDirectoriesMounted(
+      const std::vector<base::FilePath>& directories);
 
   // Returns an instance of class brillo::Process that can be mocked out in
   // tests.

@@ -371,77 +371,27 @@ TEST_P(HomeDirsTest, GetTrackedDirectoryForDirCrypto) {
       temp_dir.GetPath(), FilePath("aaa/zzz"), &result));
 }
 
-TEST_P(HomeDirsTest, CountUnmountedCryptohomes) {
-  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
-      .WillOnce(DoAll(SetArgPointee<2>(homedir_paths_), Return(true)));
-
-  int count = 0;
-
-  for (int i = 0; i < homedir_paths_.size(); i++) {
-    FilePath homedir =
-        FilePath("/home/user/").Append(homedir_paths_[i].BaseName().value());
-
-    EXPECT_CALL(platform_, DirectoryExists(homedir)).WillOnce(Return(true));
-
-    if (i % 2 == 0) {
-      EXPECT_CALL(platform_, IsDirectoryMounted(homedir))
-          .WillOnce(Return(false));
-      count++;
-    } else {
-      EXPECT_CALL(platform_, IsDirectoryMounted(homedir))
-          .WillOnce(Return(true));
-    }
-  }
-
-  EXPECT_EQ(count, homedirs_.CountUnmountedCryptohomes());
-}
-
-TEST_P(HomeDirsTest, CountMountedCryptohomes) {
-  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
-      .WillOnce(DoAll(SetArgPointee<2>(homedir_paths_), Return(true)));
-
-  int count = 0;
-
-  for (int i = 0; i < homedir_paths_.size(); i++) {
-    FilePath homedir =
-        FilePath("/home/user/").Append(homedir_paths_[i].BaseName().value());
-
-    EXPECT_CALL(platform_, DirectoryExists(homedir)).WillOnce(Return(true));
-
-    if (i % 2 == 0) {
-      EXPECT_CALL(platform_, IsDirectoryMounted(homedir))
-          .WillOnce(Return(true));
-      count++;
-    } else {
-      EXPECT_CALL(platform_, IsDirectoryMounted(homedir))
-          .WillOnce(Return(false));
-    }
-  }
-
-  EXPECT_EQ(count, homedirs_.CountMountedCryptohomes());
-}
-
 TEST_P(HomeDirsTest, IsFreableDiskSpaceAvaible) {
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(homedir_paths_), Return(true)));
 
+  std::vector<base::FilePath> home_paths(homedir_paths_.size());
+  std::vector<bool> is_mounted1(homedir_paths_.size());
+  std::vector<bool> is_mounted2(homedir_paths_.size(), true);
+
   for (int i = 0; i < homedir_paths_.size(); i++) {
-    FilePath homedir =
+    home_paths[i] =
         FilePath("/home/user/").Append(homedir_paths_[i].BaseName().value());
 
-    EXPECT_CALL(platform_, DirectoryExists(homedir))
+    EXPECT_CALL(platform_, DirectoryExists(home_paths[i]))
         .WillRepeatedly(Return(true));
 
-    if (i % 2 == 0) {
-      EXPECT_CALL(platform_, IsDirectoryMounted(homedir))
-          .WillOnce(Return(true))
-          .WillOnce(Return(true));
-    } else {
-      EXPECT_CALL(platform_, IsDirectoryMounted(homedir))
-          .WillOnce(Return(false))
-          .WillOnce(Return(true));
-    }
+    is_mounted1[i] = i % 2;
   }
+
+  EXPECT_CALL(platform_, AreDirectoriesMounted(home_paths))
+      .WillOnce(Return(is_mounted1))
+      .WillOnce(Return(is_mounted2));
 
   homedirs_.set_enterprise_owned(true);
   EXPECT_TRUE(homedirs_.IsFreableDiskSpaceAvaible());
@@ -454,49 +404,24 @@ TEST_P(HomeDirsTest, IsFreableDiskSpaceAvaible) {
   EXPECT_FALSE(homedirs_.IsFreableDiskSpaceAvaible());
 }
 
-TEST_P(HomeDirsTest, CanFreeSpace) {
-  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
-      .WillOnce(DoAll(SetArgPointee<2>(homedir_paths_), Return(true)));
-
-  for (int i = 0; i < homedir_paths_.size(); i++) {
-    FilePath homedir =
-        FilePath("/home/user/").Append(homedir_paths_[i].BaseName().value());
-
-    EXPECT_CALL(platform_, DirectoryExists(homedir)).WillOnce(Return(true));
-
-    if (i == 0)
-      EXPECT_CALL(platform_, IsDirectoryMounted(homedir))
-          .WillOnce(Return(false));
-    else
-      EXPECT_CALL(platform_, IsDirectoryMounted(homedir))
-          .WillOnce(Return(true));
-  }
-
-  EXPECT_EQ(true, homedirs_.CountUnmountedCryptohomes() > 0);
-
-  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
-      .WillOnce(DoAll(SetArgPointee<2>(homedir_paths_), Return(true)));
-
-  for (int i = 0; i < homedir_paths_.size(); i++) {
-    FilePath homedir =
-        FilePath("/home/user/").Append(homedir_paths_[i].BaseName().value());
-
-    EXPECT_CALL(platform_, DirectoryExists(homedir)).WillOnce(Return(true));
-    EXPECT_CALL(platform_, IsDirectoryMounted(homedir)).WillOnce(Return(true));
-  }
-
-  EXPECT_EQ(false, homedirs_.CountUnmountedCryptohomes() > 0);
-}
-
 TEST_P(HomeDirsTest, GetUnmountedAndroidDataCount) {
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
       .WillOnce(DoAll(SetArgPointee<2>(homedir_paths_), Return(true)));
+
+  for (const auto& path : homedir_paths_) {
+    auto homedir_path =
+        FilePath("/home/user/").Append(path.BaseName().value());
+
+    EXPECT_CALL(platform_, DirectoryExists(homedir_path))
+        .WillRepeatedly(Return(true));
+  }
+
   if (ShouldTestEcryptfs()) {
     // We don't support Ecryptfs.
     for (int i = 0; i < homedir_paths_.size(); i++) {
       FilePath vault_path = homedir_paths_[i].Append(kEcryptfsVaultDir);
       EXPECT_CALL(platform_, DirectoryExists(vault_path))
-          .WillOnce(Return(true));
+          .WillRepeatedly(Return(true));
     }
     EXPECT_EQ(0, homedirs_.GetUnmountedAndroidDataCount());
     return;
@@ -652,8 +577,6 @@ TEST_P(FreeDiskSpaceTest, InitializeTimeCacheWithNoTime) {
   EXPECT_CALL(platform_, DirectoryExists(Property(&FilePath::value,
                                                   EndsWith(kEcryptfsVaultDir))))
       .WillRepeatedly(Return(ShouldTestEcryptfs()));
-  EXPECT_CALL(platform_, IsDirectoryMounted(_))
-    .WillRepeatedly(Return(false));
 
   // The master.* enumerators (wildcard matcher first)
   EXPECT_CALL(platform_, GetFileEnumerator(_, false, _))
@@ -1275,9 +1198,6 @@ TEST_P(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_LoginScreen) {
   // Most-recent user isn't deleted.
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[3], true)).Times(0);
 
-  EXPECT_CALL(platform_,
-              IsDirectoryMounted(_)).WillRepeatedly(Return(false));
-
   ExpectCacheDirCleanupCalls(4);
   ExpectDeletedLECredentialEnumeration(homedir_paths_[0]);
   ExpectDeletedLECredentialEnumeration(homedir_paths_[1]);
@@ -1319,14 +1239,18 @@ TEST_P(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_UserLoggedIn) {
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[3], true))
     .WillOnce(Return(true));
 
-  EXPECT_CALL(platform_,
-      IsDirectoryMounted(_))
-    .WillRepeatedly(Return(false));
   // Catch /home/usr/<uid> mount.
-  EXPECT_CALL(platform_,
-      IsDirectoryMounted(
-        Property(&FilePath::value, StrEq(user_paths_[2].value()))))
-    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, AreDirectoriesMounted(_))
+      .WillRepeatedly([&](const std::vector<base::FilePath>& directories) {
+        std::vector<bool> ret(directories.size(), false);
+
+        // Catch /home/usr/<uid> mount.
+        for (int i = 0; i < directories.size(); i++)
+          if (directories[i] == user_paths_[2])
+            ret[i] = true;
+
+        return ret;
+      });
 
   ExpectCacheDirCleanupCalls(3);
 
@@ -1556,17 +1480,23 @@ TEST_P(FreeDiskSpaceTest, DontCleanUpMountedUser) {
 
   ExpectTrackedDirectoriesEnumeration();
 
+  // For DeleteUserProfiles
   EXPECT_CALL(platform_, IsDirectoryMounted(Property(
                              &FilePath::value, StrEq(user_paths_[0].value()))))
-      .Times(6)  // count, Cache, GCache, android, count, user removal
       .WillRepeatedly(Return(true));
-  for (size_t i = 1; i < arraysize(kHomedirs); ++i) {
-    EXPECT_CALL(platform_,
-                IsDirectoryMounted(
-                    Property(&FilePath::value, StrEq(user_paths_[i].value()))))
-        .Times(5)  // count, Cache, GCache, android, count
-        .WillRepeatedly(Return(false));
-  }
+
+  EXPECT_CALL(platform_, AreDirectoriesMounted(_))
+      .WillRepeatedly([&](const std::vector<base::FilePath>& directories) {
+        std::vector<bool> ret(directories.size(), false);
+
+        for (int i = 0; i < directories.size(); i++)
+          if (directories[i] == user_paths_[0])
+            ret[i] = true;
+
+        EXPECT_TRUE(std::find(ret.begin(), ret.end(), true) != ret.end());
+
+        return ret;
+      });
 
   homedirs_.FreeDiskSpace();
 

@@ -130,7 +130,16 @@ bool HomeDirs::Init(Platform* platform, Crypto* crypto,
 }
 
 bool HomeDirs::IsFreableDiskSpaceAvaible() {
-  return enterprise_owned_ && CountUnmountedCryptohomes() > 0;
+  if (!enterprise_owned_)
+    return false;
+
+  const auto homedirs = GetHomeDirs();
+
+  int unmounted_cryptohomes =
+      std::count_if(homedirs.begin(), homedirs.end(),
+                    [](auto& dir) { return !dir.is_mounted; });
+
+  return unmounted_cryptohomes > 0;
 }
 
 void HomeDirs::FreeDiskSpace() {
@@ -151,24 +160,24 @@ void HomeDirs::FreeDiskSpace() {
 }
 
 void HomeDirs::FreeDiskSpaceInternal() {
-  // Count unmounted cryptohomes before we delete any.
-  int unmounted_count = 0;
-  DoForEveryUnmountedCryptohome(base::Bind(
-      [](int* count, const base::FilePath&) { ++(*count); }, &unmounted_count));
+  auto homedirs = GetHomeDirs();
+  auto unmounted_homedirs = homedirs;
+  FilterMountedHomedirs(&unmounted_homedirs);
 
   // If ephemeral users are enabled, remove all cryptohomes except those
   // currently mounted or belonging to the owner.
   // |AreEphemeralUsers| will reload the policy to guarantee freshness.
   if (AreEphemeralUsersEnabled()) {
-    RemoveNonOwnerCryptohomes();
+    RemoveNonOwnerCryptohomesInternal(homedirs);
     ReportDiskCleanupProgress(
         DiskCleanupProgress::kEphemeralUserProfilesCleaned);
     return;
   }
 
   // Clean Cache directories for every user (except current one).
-  DoForEveryUnmountedCryptohome(base::Bind(&HomeDirs::DeleteCacheCallback,
-                                           base::Unretained(this)));
+  for (const auto& dir : unmounted_homedirs) {
+    HomeDirs::DeleteCacheCallback(dir.shadow);
+  }
 
   int64_t freeDiskSpace = platform_->AmountOfFreeDiskSpace(shadow_root_);
   if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup) {
@@ -178,8 +187,9 @@ void HomeDirs::FreeDiskSpaceInternal() {
   }
 
   // Clean GCache directories for every user (except current one).
-  DoForEveryUnmountedCryptohome(base::Bind(&HomeDirs::DeleteGCacheTmpCallback,
-                                           base::Unretained(this)));
+  for (const auto& dir : unmounted_homedirs) {
+    HomeDirs::DeleteGCacheTmpCallback(dir.shadow);
+  }
 
   const int64_t old_free_disk_space = freeDiskSpace;
   freeDiskSpace = platform_->AmountOfFreeDiskSpace(shadow_root_);
@@ -204,9 +214,9 @@ void HomeDirs::FreeDiskSpaceInternal() {
   }
 
   // Clean Android cache directories for every user (except current one).
-  DoForEveryUnmountedCryptohome(base::Bind(
-      &HomeDirs::DeleteAndroidCacheCallback,
-      base::Unretained(this)));
+  for (const auto& dir : unmounted_homedirs) {
+    HomeDirs::DeleteAndroidCacheCallback(dir.shadow);
+  }
 
   freeDiskSpace = platform_->AmountOfFreeDiskSpace(shadow_root_);
   if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup) {
@@ -223,13 +233,13 @@ void HomeDirs::FreeDiskSpaceInternal() {
     return;
   }
 
-  const int deleted_users_count = DeleteUserProfiles();
+  const int deleted_users_count = DeleteUserProfiles(homedirs);
   if (deleted_users_count > 0) {
     ReportDeletedUserProfiles(deleted_users_count);
   }
 
   // We had a chance to delete a user only if any unmounted homes existed.
-  if (unmounted_count > 0) {
+  if (unmounted_homedirs.size() > 0) {
     freeDiskSpace = platform_->AmountOfFreeDiskSpace(shadow_root_);
     ReportDiskCleanupProgress(
         freeDiskSpace >= kTargetFreeSpaceAfterCleanup
@@ -240,7 +250,7 @@ void HomeDirs::FreeDiskSpaceInternal() {
   }
 }
 
-int HomeDirs::DeleteUserProfiles() {
+int HomeDirs::DeleteUserProfiles(const std::vector<HomeDir>& homedirs) {
   int deleted_users_count = 0;
 
   // Initialize user timestamp cache if it has not been yet. This reads the
@@ -251,9 +261,9 @@ int HomeDirs::DeleteUserProfiles() {
   // Mount::UpdateCurrentUserActivityTimestamp()).
   if (!timestamp_cache_->initialized()) {
     timestamp_cache_->Initialize();
-    DoForEveryUnmountedCryptohome(base::Bind(
-        &HomeDirs::AddUserTimestampToCacheCallback,
-        base::Unretained(this)));
+    for (const auto& dir : homedirs) {
+      HomeDirs::AddUserTimestampToCacheCallback(dir.shadow);
+    }
   }
 
   // Delete old users using timestamp_cache_, the oldest first.
@@ -262,7 +272,9 @@ int HomeDirs::DeleteUserProfiles() {
   // devices have no owner, so don't delete the last user.
   std::string owner;
   if (enterprise_owned_ || GetOwner(&owner)) {
-    int mounted_cryptohomes = CountMountedCryptohomes();
+    int mounted_cryptohomes =
+        std::count_if(homedirs.begin(), homedirs.end(),
+                      [](auto& dir) { return dir.is_mounted; });
     while (!timestamp_cache_->empty()) {
       base::Time deleted_timestamp = timestamp_cache_->oldest_known_timestamp();
       FilePath deleted_user_dir = timestamp_cache_->RemoveOldestUser();
@@ -997,80 +1009,78 @@ void HomeDirs::RemoveNonOwnerCryptohomes() {
   if (!enterprise_owned_ && !GetOwner(&owner))
     return;
 
-  DoForEveryUnmountedCryptohome(base::Bind(
-      &HomeDirs::RemoveNonOwnerCryptohomesCallback,
-      base::Unretained(this)));
+  auto homedirs = GetHomeDirs();
+  FilterMountedHomedirs(&homedirs);
+
+  RemoveNonOwnerCryptohomesInternal(homedirs);
+}
+
+void HomeDirs::RemoveNonOwnerCryptohomesInternal(
+    const std::vector<HomeDir>& homedirs) {
+  std::string owner;
+  if (!enterprise_owned_ && !GetOwner(&owner))
+    return;
+
+  for (const auto& dir : homedirs) {
+    HomeDirs::RemoveNonOwnerCryptohomesCallback(dir.shadow);
+  }
+
   // TODO(ellyjones): is this valuable? These two directories should just be
   // mountpoints.
   RemoveNonOwnerDirectories(brillo::cryptohome::home::GetUserPathPrefix());
   RemoveNonOwnerDirectories(brillo::cryptohome::home::GetRootPathPrefix());
 }
 
-void HomeDirs::DoForEveryUnmountedCryptohome(
-    const CryptohomeCallback& cryptohome_cb) {
+std::vector<HomeDirs::HomeDir> HomeDirs::GetHomeDirs() {
+  std::vector<HomeDirs::HomeDir> ret;
   std::vector<FilePath> entries;
   if (!platform_->EnumerateDirectoryEntries(shadow_root_, false, &entries)) {
-    return;
+    return ret;
   }
+
   for (const auto& entry : entries) {
+    HomeDirs::HomeDir dir;
+
+    dir.shadow = entry;
+
     const std::string obfuscated = entry.BaseName().value();
-    if (!brillo::cryptohome::home::IsSanitizedUserName(obfuscated)) {
+
+    if (!brillo::cryptohome::home::IsSanitizedUserName(obfuscated))
       continue;
-    }
-    if (platform_->IsDirectoryMounted(
-          brillo::cryptohome::home::GetHashedUserPath(obfuscated))) {
+
+    dir.user = brillo::cryptohome::home::GetHashedUserPath(obfuscated);
+
+    if (!platform_->DirectoryExists(dir.user))
       continue;
-    }
-    cryptohome_cb.Run(entry);
+
+    ret.push_back(dir);
   }
+
+  std::vector<FilePath> user_paths;
+  std::transform(ret.begin(), ret.end(), std::back_inserter(user_paths),
+    [] (const HomeDirs::HomeDir& homedir) {
+      return homedir.user;
+    });
+
+  auto is_mounted = platform_->AreDirectoriesMounted(user_paths);
+
+  if (!is_mounted)
+    return ret;  // assume all are unmounted
+
+  int i = 0;
+  for (const bool& m : is_mounted.value()) {
+    ret[i++].is_mounted = m;
+  }
+
+  return ret;
 }
 
-int HomeDirs::CountMountedCryptohomes() const {
-  std::vector<FilePath> entries;
-  int mounts = 0;
-  if (!platform_->EnumerateDirectoryEntries(shadow_root_, false, &entries)) {
-    return 0;
-  }
-  for (const auto& entry : entries) {
-    const std::string obfuscated = entry.BaseName().value();
-    if (!brillo::cryptohome::home::IsSanitizedUserName(obfuscated)) {
-      continue;
-    }
-    FilePath user_path = brillo::cryptohome::home::GetHashedUserPath(
-        obfuscated);
-    if (!platform_->DirectoryExists(user_path)) {
-      continue;
-    }
-    if (!platform_->IsDirectoryMounted(user_path)) {
-      continue;
-    }
-    mounts++;
-  }
-  return mounts;
-}
-
-int HomeDirs::CountUnmountedCryptohomes() const {
-  std::vector<FilePath> entries;
-  int mounts = 0;
-  if (!platform_->EnumerateDirectoryEntries(shadow_root_, false, &entries)) {
-    return 0;
-  }
-  for (const auto& entry : entries) {
-    const std::string obfuscated = entry.BaseName().value();
-    if (!brillo::cryptohome::home::IsSanitizedUserName(obfuscated)) {
-      continue;
-    }
-    FilePath user_path =
-        brillo::cryptohome::home::GetHashedUserPath(obfuscated);
-    if (!platform_->DirectoryExists(user_path)) {
-      continue;
-    }
-    if (platform_->IsDirectoryMounted(user_path)) {
-      continue;
-    }
-    mounts++;
-  }
-  return mounts;
+void HomeDirs::FilterMountedHomedirs(std::vector<HomeDirs::HomeDir>* homedirs) {
+  homedirs->erase(
+      std::remove_if(
+          homedirs->begin(), homedirs->end(),
+          [](const HomeDirs::HomeDir& dir) { return dir.is_mounted; }),
+      homedirs->end());
 }
 
 void HomeDirs::DeleteDirectoryContents(const FilePath& dir) {
@@ -1708,34 +1718,23 @@ void HomeDirs::RemoveLECredentials(const std::string& obfuscated_username) {
 }
 
 int32_t HomeDirs::GetUnmountedAndroidDataCount() {
-  int32_t unmounted_android_data_count = 0;
-  DoForEveryUnmountedCryptohome(
-      base::Bind(&HomeDirs::IncreaseCountIfAndroidUser,
-                 base::Unretained(this), &unmounted_android_data_count));
-  return unmounted_android_data_count;
-}
+  const auto homedirs = GetHomeDirs();
 
-void HomeDirs::IncreaseCountIfAndroidUser(int32_t* count,
-                                          const base::FilePath& user_dir) {
-  const std::string obfuscated = user_dir.BaseName().value();
+  return std::count_if(
+      homedirs.begin(), homedirs.end(), [&](const HomeDirs::HomeDir& dir) {
+        if (dir.is_mounted)
+          return false;
 
-  if (!brillo::cryptohome::home::IsSanitizedUserName(obfuscated)) {
-    LOG(ERROR) << "Not sanitized username: " << obfuscated;
-    return;
-  }
+        const std::string obfuscated = dir.shadow.BaseName().value();
 
-  if (EcryptfsCryptohomeExists(obfuscated)) {
-    LOG(WARNING) << "Ignoring Ecryptfs cryptohome: " << obfuscated;
-    return;
-  }
+        if (EcryptfsCryptohomeExists(obfuscated))
+          return false;
 
-  FilePath root_home_dir;
-  // Check if the tracked android-data exists.
-  if (GetTrackedDirectory(user_dir, FilePath(kRootHomeSuffix),
-                          &root_home_dir) &&
-      MayContainAndroidData(root_home_dir)) {
-    (*count)++;
-  }
+        FilePath root_home_dir;
+        return GetTrackedDirectory(dir.shadow, FilePath(kRootHomeSuffix),
+                                   &root_home_dir) &&
+               MayContainAndroidData(root_home_dir);
+      });
 }
 
 bool HomeDirs::MayContainAndroidData(

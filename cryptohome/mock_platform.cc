@@ -65,6 +65,10 @@ MockPlatform::MockPlatform()
       .WillByDefault(Return(dircrypto::KeyState::NO_KEY));
   ON_CALL(*this, CreateProcessInstance())
       .WillByDefault(Invoke(this, &MockPlatform::MockCreateProcessInstance));
+  ON_CALL(*this, AreDirectoriesMounted(_))
+      .WillByDefault([](const std::vector<base::FilePath>& directories) {
+        return std::vector<bool>(directories.size(), false);
+      });
 }
 
 MockPlatform::~MockPlatform() {}

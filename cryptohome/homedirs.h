@@ -300,12 +300,16 @@ class HomeDirs {
   // amount of free disk space or false otherwise.
   bool HasTargetFreeSpace() const;
 
-  // Returns the number of currently-mounted cryptohomes.
-  int CountMountedCryptohomes() const;
-  // Returns the number of currently-unmounted cryptohomes.
-  int CountUnmountedCryptohomes() const;
 
  private:
+  struct HomeDir {
+    // Path in /home/.shadow/
+    base::FilePath shadow;
+    // Path in /home/user/
+    base::FilePath user;
+    bool is_mounted = false;
+  };
+
   base::TimeDelta GetUserInactivityThresholdForRemoval();
   // Loads the device policy, either by initializing it or reloading the
   // existing one.
@@ -320,10 +324,14 @@ class HomeDirs {
       const base::FilePath& mount_dir,
       const base::FilePath& tracked_dir_name,
       base::FilePath* out);
-  typedef base::Callback<void(const base::FilePath&)> CryptohomeCallback;
-  // Runs the supplied callback for every unmounted cryptohome with the user dir
-  // path.
-  void DoForEveryUnmountedCryptohome(const CryptohomeCallback& cryptohome_cb);
+
+  // Get the list of cryptohomes on the system
+  std::vector<HomeDir> GetHomeDirs();
+  // Removes all mounted homedirs from the vector
+  void FilterMountedHomedirs(std::vector<HomeDir>* homedirs);
+  // Used by RemoveNonOwnerCryptohomes and FreeDiskSpace to perform the actual
+  // cleanup.
+  void RemoveNonOwnerCryptohomesInternal(const std::vector<HomeDir>& homedirs);
   // Callback used during RemoveNonOwnerCryptohomes()
   void RemoveNonOwnerCryptohomesCallback(const base::FilePath& user_dir);
   // Callback used during FreeDiskSpace().
@@ -348,14 +356,9 @@ class HomeDirs {
                               VaultKeyset* keyset) const;
   // Deletes old user profiles, the oldest first.
   // Returns a number, how many profiles were deleted.
-  int DeleteUserProfiles();
+  int DeleteUserProfiles(const std::vector<HomeDir>& homedirs);
   // An implementation function for public FreeDiskSpace interface.
   void FreeDiskSpaceInternal();
-
-  // Increase the out parameter count if the give user_dir contains
-  // android-data directory.
-  void IncreaseCountIfAndroidUser(int32_t* count,
-                                  const base::FilePath& uesr_dir);
 
   // Helper function to check if the directory contains subdirectory that looks
   // like encrypted android-data (see definition of looks-like-android-data in

@@ -121,6 +121,10 @@ class MockPlatform : public Platform {
                (std::multimap<const base::FilePath, const base::FilePath>*)),
               (override));
   MOCK_METHOD(bool, IsDirectoryMounted, (const base::FilePath&), (override));
+  MOCK_METHOD(base::Optional<std::vector<bool>>,
+              AreDirectoriesMounted,
+              (const std::vector<base::FilePath>&),
+              (override));
   MOCK_METHOD(std::unique_ptr<brillo::Process>,
               CreateProcessInstance,
               (),
