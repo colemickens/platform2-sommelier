@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,6 +13,7 @@
 #include <base/optional.h>
 #include <dbus/cros_healthd/dbus-constants.h>
 #include <mojo/edk/embedder/embedder.h>
+#include <mojo/public/cpp/bindings/interface_request.h>
 
 #include "diagnostics/cros_healthd/utils/battery_utils.h"
 #include "diagnostics/cros_healthd/utils/disk_utils.h"
@@ -20,21 +21,12 @@
 namespace diagnostics {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
-CrosHealthdMojoService::CrosHealthdMojoService(
-    mojo::ScopedMessagePipeHandle mojo_pipe_handle,
-    BatteryFetcher* battery_fetcher)
-    : self_binding_(this /* impl */, std::move(mojo_pipe_handle)),
-      battery_fetcher_(battery_fetcher) {
-  DCHECK(self_binding_.is_bound());
+CrosHealthdMojoService::CrosHealthdMojoService(BatteryFetcher* battery_fetcher)
+    : battery_fetcher_(battery_fetcher) {
   DCHECK(battery_fetcher_);
 }
 
 CrosHealthdMojoService::~CrosHealthdMojoService() = default;
-
-void CrosHealthdMojoService::set_connection_error_handler(
-    const base::Closure& error_handler) {
-  self_binding_.set_connection_error_handler(error_handler);
-}
 
 void CrosHealthdMojoService::ProbeTelemetryInfo(
     const std::vector<ProbeCategoryEnum>& categories,
@@ -62,6 +54,11 @@ void CrosHealthdMojoService::ProbeTelemetryInfo(
   }
 
   callback.Run(telemetry_info.Clone());
+}
+
+void CrosHealthdMojoService::AddBinding(
+    chromeos::cros_healthd::mojom::CrosHealthdServiceRequest request) {
+  binding_set_.AddBinding(this /* impl */, std::move(request));
 }
 
 }  // namespace diagnostics

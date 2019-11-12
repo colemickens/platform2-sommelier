@@ -12,7 +12,6 @@
 #include <base/macros.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/dbus_object.h>
-#include <brillo/errors/error.h>
 
 #include "debugd/dbus-proxies.h"
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
@@ -36,16 +35,17 @@ class CrosHealthd final : public brillo::DBusServiceDaemon {
 
   // Implementation of the "org.chromium.CrosHealthdInterface" D-Bus interface
   // exposed by the cros_healthd daemon (see constants for the API methods at
-  // src/platform2/system_api/dbus/cros_healthd/dbus-constants.h).
-  bool BootstrapMojoConnection(brillo::ErrorPtr* error,
-                               const base::ScopedFD& mojo_fd);
+  // src/platform2/system_api/dbus/cros_healthd/dbus-constants.h). When
+  // |is_chrome| = false, this method will return a unique token that can be
+  // used to connect to cros_healthd via mojo. When |is_chrome| = true, the
+  // returned string has no meaning.
+  std::string BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
+                                      bool is_chrome);
 
   void ShutDownDueToMojoError(const std::string& debug_reason);
 
   std::unique_ptr<org::chromium::debugdProxy> proxy_;
   std::unique_ptr<BatteryFetcher> battery_fetcher_;
-
-  bool mojo_service_bind_attempted_ = false;
   std::unique_ptr<CrosHealthdMojoService> mojo_service_;
 
   // Connects BootstrapMojoConnection with the methods of the D-Bus object

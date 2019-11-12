@@ -34,9 +34,7 @@ class CrosHealthdMojoServiceTest : public testing::Test {
     mojo::edk::Init();
     mock_proxy_ = std::make_unique<org::chromium::debugdProxyMock>();
     battery_fetcher_ = std::make_unique<BatteryFetcher>(mock_proxy_.get());
-    service_ = std::make_unique<CrosHealthdMojoService>(
-        mojo::MakeRequest(&service_ptr_).PassMessagePipe(),
-        battery_fetcher_.get());
+    service_ = std::make_unique<CrosHealthdMojoService>(battery_fetcher_.get());
   }
 
  private:

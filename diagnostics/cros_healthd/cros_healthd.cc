@@ -14,13 +14,16 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <dbus/cros_healthd/dbus-constants.h>
 #include <mojo/edk/embedder/embedder.h>
+#include <mojo/edk/embedder/pending_process_connection.h>
 
 namespace diagnostics {
 
 CrosHealthd::CrosHealthd(std::unique_ptr<org::chromium::debugdProxy> proxy)
     : DBusServiceDaemon(kCrosHealthdServiceName /* service_name */),
       proxy_(std::move(proxy)),
-      battery_fetcher_(std::make_unique<BatteryFetcher>(proxy_.get())) {}
+      battery_fetcher_(std::make_unique<BatteryFetcher>(proxy_.get())),
+      mojo_service_(
+          std::make_unique<CrosHealthdMojoService>(battery_fetcher_.get())) {}
 
 CrosHealthd::~CrosHealthd() = default;
 
@@ -48,7 +51,7 @@ void CrosHealthd::RegisterDBusObjectsAsync(
   brillo::dbus_utils::DBusInterface* dbus_interface =
       dbus_object_->AddOrGetInterface(kCrosHealthdServiceInterface);
   DCHECK(dbus_interface);
-  dbus_interface->AddSimpleMethodHandlerWithError(
+  dbus_interface->AddSimpleMethodHandler(
       kCrosHealthdBootstrapMojoConnectionMethod, base::Unretained(this),
       &CrosHealthd::BootstrapMojoConnection);
   dbus_object_->RegisterAsync(sequencer->GetHandler(
@@ -69,34 +72,15 @@ void CrosHealthd::OnShutdown(int* error_code) {
   DBusServiceDaemon::OnShutdown(error_code);
 }
 
-bool CrosHealthd::BootstrapMojoConnection(brillo::ErrorPtr* error,
-                                          const base::ScopedFD& mojo_fd) {
+std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
+                                                 bool is_chrome) {
   VLOG(1) << "Received BootstrapMojoConnection D-Bus request";
 
   if (!mojo_fd.is_valid()) {
     constexpr char kInvalidFileDescriptorError[] =
         "Invalid Mojo file descriptor";
     LOG(ERROR) << kInvalidFileDescriptorError;
-    *error =
-        brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
-                              DBUS_ERROR_FAILED, kInvalidFileDescriptorError);
-    return false;
-  }
-
-  if (mojo_service_bind_attempted_) {
-    // This should not normally be triggered, since the other endpoint - the
-    // browser process - should bootstrap the Mojo connection only once, and
-    // when that process is killed the Mojo shutdown notification should have
-    // been received earlier, but handle this case to be on the safe side. After
-    // our restart the browser process is expected to invoke the bootstrapping
-    // again.
-    constexpr char kRepeatedBootstrapRequest[] =
-        "Repeated Mojo bootstrap request received";
-    *error =
-        brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
-                              DBUS_ERROR_FAILED, kRepeatedBootstrapRequest);
-    ShutDownDueToMojoError(kRepeatedBootstrapRequest /* debug_reason */);
-    return false;
+    return kInvalidFileDescriptorError;
   }
 
   // We need a file descriptor that stays alive after the current method
@@ -107,40 +91,46 @@ bool CrosHealthd::BootstrapMojoConnection(brillo::ErrorPtr* error,
     constexpr char kFailedDuplicationError[] =
         "Failed to duplicate the Mojo file descriptor";
     PLOG(ERROR) << kFailedDuplicationError;
-    *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
-                                   DBUS_ERROR_FAILED, kFailedDuplicationError);
-    return false;
+    return kFailedDuplicationError;
   }
 
   if (!base::SetCloseOnExec(mojo_fd_copy.get())) {
     constexpr char kFailedSettingFdCloexec[] =
         "Failed to set FD_CLOEXEC on Mojo file descriptor";
     PLOG(ERROR) << kFailedSettingFdCloexec;
-    *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
-                                   DBUS_ERROR_FAILED, kFailedSettingFdCloexec);
-    return false;
+    return kFailedSettingFdCloexec;
   }
 
-  // Connect to mojo in the requesting process.
-  mojo::edk::SetParentPipeHandle(mojo::edk::ScopedPlatformHandle(
-      mojo::edk::PlatformHandle(mojo_fd_copy.release())));
+  std::string token;
 
-  mojo_service_bind_attempted_ = true;
-  mojo_service_ = std::make_unique<CrosHealthdMojoService>(
-      mojo::edk::CreateChildMessagePipe(kCrosHealthdMojoConnectionChannelToken),
-      battery_fetcher_.get());
-  if (!mojo_service_) {
-    constexpr char kBootstrapFailed[] = "Mojo bootstrap failed";
-    *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
-                                   DBUS_ERROR_FAILED, kBootstrapFailed);
-    ShutDownDueToMojoError(kBootstrapFailed /* debug_reason */);
-    return false;
+  chromeos::cros_healthd::mojom::CrosHealthdServiceRequest request;
+  if (is_chrome) {
+    // Connect to mojo in the requesting process.
+    mojo::edk::SetParentPipeHandle(mojo::edk::ScopedPlatformHandle(
+        mojo::edk::PlatformHandle(mojo_fd_copy.release())));
+    request =
+        mojo::MakeRequest<chromeos::cros_healthd::mojom::CrosHealthdService>(
+            mojo::edk::CreateChildMessagePipe(
+                kCrosHealthdMojoConnectionChannelToken));
+  } else {
+    // Create a unique token which will allow the requesting process to connect
+    // to us via mojo.
+    mojo::edk::PendingProcessConnection pending_connection;
+    mojo::ScopedMessagePipeHandle pipe =
+        pending_connection.CreateMessagePipe(&token);
+
+    pending_connection.Connect(
+        base::kNullProcessHandle,
+        mojo::edk::ConnectionParams(mojo::edk::ScopedPlatformHandle(
+            mojo::edk::PlatformHandle(mojo_fd_copy.release()))));
+    request =
+        mojo::MakeRequest<chromeos::cros_healthd::mojom::CrosHealthdService>(
+            std::move(pipe));
   }
-  mojo_service_->set_connection_error_handler(
-      base::Bind(&CrosHealthd::ShutDownDueToMojoError, base::Unretained(this),
-                 "Mojo connection error" /* debug_reason */));
+  mojo_service_->AddBinding(std::move(request));
+
   VLOG(1) << "Successfully bootstrapped Mojo connection";
-  return true;
+  return token;
 }
 
 void CrosHealthd::ShutDownDueToMojoError(const std::string& debug_reason) {

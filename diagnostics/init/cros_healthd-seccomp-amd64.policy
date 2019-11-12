@@ -48,3 +48,4 @@ exit: 1
 exit_group: 1
 rt_sigreturn: 1
 select: 1
+socketpair: 1

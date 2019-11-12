@@ -10,7 +10,7 @@
 
 #include <base/callback.h>
 #include <base/macros.h>
-#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/binding_set.h>
 
 #include "diagnostics/cros_healthd/utils/battery_utils.h"
 #include "mojo/cros_healthd.mojom.h"
@@ -24,25 +24,23 @@ class CrosHealthdMojoService final
  public:
   using ProbeCategoryEnum = chromeos::cros_healthd::mojom::ProbeCategoryEnum;
 
-  // |mojo_pipe_handle| - Pipe to bind this instance to.
-  explicit CrosHealthdMojoService(
-      mojo::ScopedMessagePipeHandle mojo_pipe_handle,
-      BatteryFetcher* battery_fetcher);
+  // |battery_fetcher| - BatteryFetcher implementation.
+  explicit CrosHealthdMojoService(BatteryFetcher* battery_fetcher);
   ~CrosHealthdMojoService() override;
 
   // chromeos::cros_healthd::mojom::CrosHealthdService overrides:
   void ProbeTelemetryInfo(const std::vector<ProbeCategoryEnum>& categories,
                           const ProbeTelemetryInfoCallback& callback) override;
 
-  // Set the function that will be called if the binding encounters a connection
-  // error.
-  void set_connection_error_handler(const base::Closure& error_handler);
+  // Adds a new binding to the internal binding set.
+  void AddBinding(
+      chromeos::cros_healthd::mojom::CrosHealthdServiceRequest request);
 
  private:
-  // Mojo binding that connects |this| with the message pipe, allowing the
-  // remote end to call our methods.
-  mojo::Binding<chromeos::cros_healthd::mojom::CrosHealthdService>
-      self_binding_;
+  // Mojo binding set that connects |this| with message pipes, allowing the
+  // remote ends to call our methods.
+  mojo::BindingSet<chromeos::cros_healthd::mojom::CrosHealthdService>
+      binding_set_;
 
   // Unowned pointer that should outlive this CrosHealthdMojoService
   // instance.
