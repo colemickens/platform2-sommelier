@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/memory/weak_ptr.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <shill/net/rtnl_handler.h>
 #include <shill/net/rtnl_listener.h>
 
@@ -54,6 +55,46 @@ class ArcService : public GuestService {
     int routing_table_attempts_;
   };
 
+  // Encapsulates all ARC++ container-specific logic.
+  class ContainerImpl {
+   public:
+    ContainerImpl(DeviceManagerBase* dev_mgr,
+                  Datapath* datapath,
+                  GuestMessage::GuestType guest);
+    ~ContainerImpl() = default;
+
+    bool OnStart();
+    void OnStop();
+    bool IsStarted() const;
+    bool OnStartDevice(Device* device);
+    void OnStopDevice(Device* device);
+    void OnDefaultInterfaceChanged(const std::string& ifname);
+
+   private:
+    // Handles RT netlink messages in the container net namespace and if it
+    // determines the link status has changed, toggles the device services
+    // accordingly.
+    void LinkMsgHandler(const shill::RTNLMessage& msg);
+
+    void SetupIPv6(Device* device);
+    void TeardownIPv6(Device* device);
+
+    pid_t pid_;
+    DeviceManagerBase* dev_mgr_;
+    Datapath* datapath_;
+    GuestMessage::GuestType guest_;
+
+    std::unique_ptr<shill::RTNLHandler> rtnl_handler_;
+    std::unique_ptr<shill::RTNLListener> link_listener_;
+
+    FRIEND_TEST(ArcServiceTest, VerifyOnDeviceAddedDatapathForLegacyAndroid);
+    FRIEND_TEST(ArcServiceTest, VerifyOnDeviceAddedDatapathForAndroid);
+    FRIEND_TEST(ArcServiceTest, VerifyOnDeviceAddedDatapath);
+
+    base::WeakPtrFactory<ContainerImpl> weak_factory_{this};
+    DISALLOW_COPY_AND_ASSIGN(ContainerImpl);
+  };
+
   // |dev_mgr| and |datapath| cannot be null.
   // |is_legacy| is temporary and intended to be used for testing only.
   ArcService(DeviceManagerBase* dev_mgr,
@@ -68,34 +109,16 @@ class ArcService : public GuestService {
   void OnDeviceRemoved(Device* device) override;
   void OnDefaultInterfaceChanged(const std::string& ifname) override;
 
-  // Handles RT netlink messages in the container net namespace and if it
-  // determines the link status has changed, toggles the device services
-  // accordingly.
-  void LinkMsgHandler(const shill::RTNLMessage& msg);
-
-  void SetupIPv6(Device* device);
-  void TeardownIPv6(Device* device);
-
-  // Do not use. Only for testing.
-  void SetPIDForTestingOnly();
-
  private:
   void StartDevice(Device* device);
   void StopDevice(Device* device);
 
-  // ARC++ specific functiona.
-
-  bool OnStartContainer();
-  void OnStopContainer();
-  bool OnStartContainerDevice(Device* device);
-  void OnStopContainerDevice(Device* device);
-  void OnContainerDefaultInterfaceChanged(const std::string& ifname);
-
   Datapath* datapath_;
+  std::unique_ptr<ContainerImpl> impl_;
 
-  pid_t pid_;
-  std::unique_ptr<shill::RTNLHandler> rtnl_handler_;
-  std::unique_ptr<shill::RTNLListener> link_listener_;
+  FRIEND_TEST(ArcServiceTest, VerifyOnDeviceAddedDatapathForLegacyAndroid);
+  FRIEND_TEST(ArcServiceTest, VerifyOnDeviceAddedDatapathForAndroid);
+  FRIEND_TEST(ArcServiceTest, VerifyOnDeviceAddedDatapath);
 
   base::WeakPtrFactory<ArcService> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(ArcService);

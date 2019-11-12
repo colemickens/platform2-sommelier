@@ -29,7 +29,6 @@
 namespace arc_networkd {
 namespace {
 constexpr pid_t kInvalidPID = -1;
-constexpr pid_t kTestPID = -2;
 constexpr int kInvalidTableID = -1;
 constexpr int kMaxTableRetries = 10;  // Based on 1 second delay.
 constexpr base::TimeDelta kTableRetryDelay = base::TimeDelta::FromSeconds(1);
@@ -139,10 +138,8 @@ ArcService::ArcService(DeviceManagerBase* dev_mgr,
                        : GuestMessage::ARC_LEGACY,
                    dev_mgr),
       datapath_(datapath),
-      pid_(kInvalidPID) {
+      impl_(std::make_unique<ContainerImpl>(dev_mgr, datapath, guest_)) {
   DCHECK(datapath_);
-  dev_mgr_->RegisterDeviceIPv6AddressFoundHandler(
-      guest_, base::Bind(&ArcService::SetupIPv6, weak_factory_.GetWeakPtr()));
 
   // Load networking modules needed by Android that are not compiled in the
   // kernel. Android does not allow auto-loading of kernel modules.
@@ -180,7 +177,7 @@ ArcService::ArcService(DeviceManagerBase* dev_mgr,
 }
 
 void ArcService::OnStart() {
-  if (!OnStartContainer()) {
+  if (!impl_->OnStart()) {
     LOG(ERROR) << "Failed to start ARC++ network service";
     return;
   }
@@ -201,37 +198,6 @@ void ArcService::OnStart() {
   GuestService::OnStart();
 }
 
-bool ArcService::OnStartContainer() {
-  pid_ = GetContainerPID();
-  if (pid_ == kInvalidPID) {
-    LOG(ERROR) << "Cannot start service - invalid container PID";
-    return false;
-  }
-
-  // Start listening for RTNetlink messages in the container's net namespace
-  // to be notified whenever it brings up an interface.
-  {
-    ScopedNS ns(pid_);
-    if (ns.IsValid()) {
-      rtnl_handler_ = std::make_unique<RTNetlinkHandler>();
-      rtnl_handler_->Start(RTMGRP_LINK);
-      link_listener_ = std::make_unique<shill::RTNLListener>(
-          shill::RTNLHandler::kRequestLink,
-          Bind(&ArcService::LinkMsgHandler, weak_factory_.GetWeakPtr()),
-          rtnl_handler_.get());
-    } else {
-      // This is bad - it means we won't ever be able to tell when the container
-      // brings up an interface.
-      LOG(ERROR)
-          << "Cannot start netlink listener - invalid container namespace?";
-      return false;
-    }
-  }
-
-  LOG(INFO) << "ARC++ network service started {pid: " << pid_ << "}";
-  return true;
-}
-
 void ArcService::OnStop() {
   // Call the base implementation.
   GuestService::OnStop();
@@ -241,16 +207,7 @@ void ArcService::OnStop() {
   dev_mgr_->ProcessDevices(
       base::Bind(&ArcService::StopDevice, weak_factory_.GetWeakPtr()));
 
-  OnStopContainer();
-}
-
-void ArcService::OnStopContainer() {
-  rtnl_handler_->RemoveListener(link_listener_.get());
-  link_listener_.reset();
-  rtnl_handler_.reset();
-
-  LOG(INFO) << "ARC++ network service stopped {pid: " << pid_ << "}";
-  pid_ = kInvalidPID;
+  impl_->OnStop();
 }
 
 void ArcService::OnDeviceAdded(Device* device) {
@@ -297,7 +254,7 @@ void ArcService::OnDeviceAdded(Device* device) {
 
 void ArcService::StartDevice(Device* device) {
   // This can happen if OnDeviceAdded is invoked when the container is down.
-  if (pid_ == kInvalidPID)
+  if (!impl_->IsStarted())
     return;
 
   // If there is no context, then this is a new device and it needs to run
@@ -311,46 +268,12 @@ void ArcService::StartDevice(Device* device) {
     return;
   }
 
-  if (!OnStartContainerDevice(device)) {
+  if (!impl_->OnStartDevice(device)) {
     LOG(ERROR) << "Failed to start device " << device->ifname();
     return;
   }
 
-  // Signal the container that the network device is ready.
-  // This is only applicable for the containe the ARC++ container.
-  if (device->IsAndroid() || device->IsLegacyAndroid()) {
-    datapath_->runner().WriteSentinelToContainer(base::IntToString(pid_));
-  }
-
-  ctx->Start();
-}
-
-bool ArcService::OnStartContainerDevice(Device* device) {
-  const auto& config = device->config();
-
-  LOG(INFO) << "Starting device " << device->ifname()
-            << " bridge: " << config.host_ifname()
-            << " guest_iface: " << config.guest_ifname()
-            << " for container pid " << pid_;
-
-  std::string veth_ifname = datapath_->AddVirtualBridgedInterface(
-      device->ifname(), MacAddressToString(config.guest_mac_addr()),
-      config.host_ifname());
-  if (veth_ifname.empty()) {
-    LOG(ERROR) << "Failed to create virtual interface for container";
-    return false;
-  }
-
-  if (!datapath_->AddInterfaceToContainer(
-          pid_, veth_ifname, config.guest_ifname(),
-          IPv4AddressToString(config.guest_ipv4_addr()),
-          device->options().fwd_multicast)) {
-    LOG(ERROR) << "Failed to create container interface.";
-    datapath_->RemoveInterface(veth_ifname);
-    datapath_->RemoveBridge(config.host_ifname());
-    return false;
-  }
-  return true;
+ ctx->Start();
 }
 
 void ArcService::OnDeviceRemoved(Device* device) {
@@ -386,7 +309,7 @@ void ArcService::OnDeviceRemoved(Device* device) {
 void ArcService::StopDevice(Device* device) {
   // This can happen if the device if OnDeviceRemoved is invoked when the
   // container is down.
-  if (pid_ == kInvalidPID)
+  if (!impl_->IsStarted())
     return;
 
   Context* ctx = dynamic_cast<Context*>(device->context(guest_));
@@ -400,231 +323,13 @@ void ArcService::StopDevice(Device* device) {
     return;
   }
 
-  OnStopContainerDevice(device);
+  impl_->OnStopDevice(device);
 
   ctx->Stop();
 }
 
-void ArcService::OnStopContainerDevice(Device* device) {
-  const auto& config = device->config();
-
-  LOG(INFO) << "Stopping device " << device->ifname()
-            << " bridge: " << config.host_ifname()
-            << " guest_iface: " << config.guest_ifname()
-            << " for container pid " << pid_;
-
-  device->Disable();
-  if (!device->IsAndroid()) {
-    datapath_->RemoveInterface(ArcVethHostName(device->ifname()));
-  }
-}
-
 void ArcService::OnDefaultInterfaceChanged(const std::string& ifname) {
-  OnContainerDefaultInterfaceChanged(ifname);
-}
-
-void ArcService::OnContainerDefaultInterfaceChanged(const std::string& ifname) {
-  if (pid_ == kInvalidPID)
-    return;
-
-  // For ARC N, we must always be able to find the arc0 device and, at a
-  // minimum, disable it.
-  if (guest_ == GuestMessage::ARC_LEGACY) {
-    datapath_->RemoveLegacyIPv4InboundDNAT();
-    auto* device = dev_mgr_->FindByGuestInterface("arc0");
-    if (!device) {
-      LOG(DFATAL) << "Expected legacy Android device missing";
-      return;
-    }
-    device->Disable();
-
-    // If a new default interface was given, then re-enable with that.
-    if (!ifname.empty()) {
-      datapath_->AddLegacyIPv4InboundDNAT(ifname);
-      device->Enable(ifname);
-    }
-    return;
-  }
-
-  // For ARC P and later, we're only concerned with resetting the device when it
-  // becomes the default (again) in order to ensure any previous configuration.
-  // is cleared.
-  if (ifname.empty())
-    return;
-
-  auto* device = dev_mgr_->FindByGuestInterface(ifname);
-  if (!device) {
-    LOG(ERROR) << "Expected default device missing: " << ifname;
-    return;
-  }
-  device->StopIPv6RoutingLegacy();
-  device->StartIPv6RoutingLegacy(ifname);
-}
-
-void ArcService::LinkMsgHandler(const shill::RTNLMessage& msg) {
-  if (!msg.HasAttribute(IFLA_IFNAME)) {
-    LOG(ERROR) << "Link event message does not have IFLA_IFNAME";
-    return;
-  }
-  bool link_up = msg.link_status().flags & IFF_UP;
-  shill::ByteString b(msg.GetAttribute(IFLA_IFNAME));
-  std::string ifname(reinterpret_cast<const char*>(
-      b.GetSubstring(0, IFNAMSIZ).GetConstData()));
-
-  auto* device = dev_mgr_->FindByGuestInterface(ifname);
-  if (!device)
-    return;
-
-  Context* ctx = dynamic_cast<Context*>(device->context(guest_));
-  if (!ctx) {
-    LOG(DFATAL) << "Context missing";
-    return;
-  }
-
-  // If the link status is unchanged, there is nothing to do.
-  if (!ctx->SetLinkUp(link_up))
-    return;
-
-  if (!link_up) {
-    LOG(INFO) << ifname << " is now down";
-    return;
-  }
-  LOG(INFO) << ifname << " is now up";
-
-  if (device->IsAndroid())
-    return;
-
-  if (device->IsLegacyAndroid()) {
-    OnDefaultInterfaceChanged(dev_mgr_->DefaultInterface());
-    return;
-  }
-
-  device->Enable(ifname);
-}
-
-void ArcService::SetupIPv6(Device* device) {
-  device->RegisterIPv6TeardownHandler(
-      base::Bind(&ArcService::TeardownIPv6, weak_factory_.GetWeakPtr()));
-
-  auto& ipv6_config = device->ipv6_config();
-  if (ipv6_config.ifname.empty())
-    return;
-
-  Context* ctx = dynamic_cast<Context*>(device->context(guest_));
-  if (!ctx) {
-    LOG(DFATAL) << "Context missing";
-    return;
-  }
-  if (ctx->HasIPv6())
-    return;
-
-  LOG(INFO) << "Setting up IPv6 for " << ipv6_config.ifname;
-
-  int table_id =
-      GetAndroidRoutingTableId(device->config().guest_ifname(), pid_);
-  if (table_id == kInvalidTableID) {
-    if (ctx->RoutingTableAttempts() < kMaxTableRetries) {
-      LOG(INFO) << "Could not look up routing table ID for container interface "
-                << device->config().guest_ifname() << " - trying again...";
-      base::MessageLoop::current()->task_runner()->PostDelayedTask(
-          FROM_HERE,
-          base::Bind(&ArcService::SetupIPv6, weak_factory_.GetWeakPtr(),
-                     device),
-          kTableRetryDelay);
-    } else {
-      LOG(DFATAL)
-          << "Could not look up routing table ID for container interface "
-          << device->config().guest_ifname();
-    }
-    return;
-  }
-
-  LOG(INFO) << "Setting IPv6 address " << ipv6_config.addr
-            << "/128, gateway=" << ipv6_config.router << " on "
-            << ipv6_config.ifname;
-
-  char buf[INET6_ADDRSTRLEN] = {0};
-  if (!inet_ntop(AF_INET6, &ipv6_config.addr, buf, sizeof(buf))) {
-    LOG(DFATAL) << "Invalid address: " << ipv6_config.addr;
-    return;
-  }
-  std::string addr = buf;
-
-  if (!inet_ntop(AF_INET6, &ipv6_config.router, buf, sizeof(buf))) {
-    LOG(DFATAL) << "Invalid router address: " << ipv6_config.router;
-    return;
-  }
-  std::string router = buf;
-
-  const auto& config = device->config();
-  {
-    ScopedNS ns(pid_);
-    if (!ns.IsValid()) {
-      LOG(ERROR) << "Invalid container namespace (" << pid_
-                 << ") - cannot configure IPv6.";
-      return;
-    }
-    if (!datapath_->AddIPv6GatewayRoutes(config.guest_ifname(), addr, router,
-                                         ipv6_config.prefix_len, table_id)) {
-      LOG(ERROR) << "Failed to setup IPv6 routes in the container";
-      return;
-    }
-  }
-
-  if (!datapath_->AddIPv6HostRoute(config.host_ifname(), addr,
-                                   ipv6_config.prefix_len)) {
-    LOG(ERROR) << "Failed to setup the IPv6 route for interface "
-               << config.host_ifname();
-    return;
-  }
-
-  if (!datapath_->AddIPv6Neighbor(ipv6_config.ifname, addr)) {
-    LOG(ERROR) << "Failed to setup the IPv6 neighbor proxy";
-    datapath_->RemoveIPv6HostRoute(config.host_ifname(), addr,
-                                   ipv6_config.prefix_len);
-    return;
-  }
-
-  ctx->SetHasIPv6(table_id);
-}
-
-void ArcService::TeardownIPv6(Device* device) {
-  Context* ctx = dynamic_cast<Context*>(device->context(guest_));
-  if (!ctx || !ctx->HasIPv6())
-    return;
-
-  auto& ipv6_config = device->ipv6_config();
-  LOG(INFO) << "Clearing IPv6 for " << ipv6_config.ifname;
-  int table_id = ctx->RoutingTableID();
-  ctx->ClearIPv6();
-
-  char buf[INET6_ADDRSTRLEN] = {0};
-  if (!inet_ntop(AF_INET6, &ipv6_config.addr, buf, sizeof(buf))) {
-    LOG(DFATAL) << "Invalid address: " << ipv6_config.addr;
-    return;
-  }
-  std::string addr = buf;
-
-  if (!inet_ntop(AF_INET6, &ipv6_config.router, buf, sizeof(buf))) {
-    LOG(DFATAL) << "Invalid router address: " << ipv6_config.router;
-    return;
-  }
-  std::string router = buf;
-
-  const auto& config = device->config();
-  datapath_->RemoveIPv6Neighbor(ipv6_config.ifname, addr);
-  datapath_->RemoveIPv6HostRoute(config.host_ifname(), addr,
-                                 ipv6_config.prefix_len);
-
-  ScopedNS ns(pid_);
-  if (ns.IsValid()) {
-    datapath_->RemoveIPv6GatewayRoutes(config.guest_ifname(), addr, router,
-                                       ipv6_config.prefix_len, table_id);
-  }
-}
-
-void ArcService::SetPIDForTestingOnly() {
-  pid_ = kTestPID;
+  impl_->OnDefaultInterfaceChanged(ifname);
 }
 
 // Context
@@ -684,6 +389,315 @@ int ArcService::Context::RoutingTableID() const {
 
 int ArcService::Context::RoutingTableAttempts() {
   return routing_table_attempts_++;
+}
+
+// ARC++ specific functions.
+
+ArcService::ContainerImpl::ContainerImpl(DeviceManagerBase* dev_mgr,
+                                         Datapath* datapath,
+                                         GuestMessage::GuestType guest)
+    : pid_(kInvalidPID),
+      dev_mgr_(dev_mgr),
+      datapath_(datapath),
+      guest_(guest) {}
+
+bool ArcService::ContainerImpl::OnStart() {
+  pid_ = GetContainerPID();
+  if (pid_ == kInvalidPID) {
+    LOG(ERROR) << "Cannot start service - invalid container PID";
+    return false;
+  }
+
+  // Start listening for RTNetlink messages in the container's net namespace
+  // to be notified whenever it brings up an interface.
+  {
+    ScopedNS ns(pid_);
+    if (ns.IsValid()) {
+      rtnl_handler_ = std::make_unique<RTNetlinkHandler>();
+      rtnl_handler_->Start(RTMGRP_LINK);
+      link_listener_ = std::make_unique<shill::RTNLListener>(
+          shill::RTNLHandler::kRequestLink,
+          Bind(&ArcService::ContainerImpl::LinkMsgHandler,
+               weak_factory_.GetWeakPtr()),
+          rtnl_handler_.get());
+    } else {
+      // This is bad - it means we won't ever be able to tell when the container
+      // brings up an interface.
+      LOG(ERROR)
+          << "Cannot start netlink listener - invalid container namespace?";
+      return false;
+    }
+  }
+
+  dev_mgr_->RegisterDeviceIPv6AddressFoundHandler(
+      guest_, base::Bind(&ArcService::ContainerImpl::SetupIPv6,
+                         weak_factory_.GetWeakPtr()));
+
+  LOG(INFO) << "ARC++ network service started {pid: " << pid_ << "}";
+  return true;
+}
+
+void ArcService::ContainerImpl::OnStop() {
+  rtnl_handler_->RemoveListener(link_listener_.get());
+  link_listener_.reset();
+  rtnl_handler_.reset();
+
+  LOG(INFO) << "ARC++ network service stopped {pid: " << pid_ << "}";
+  pid_ = kInvalidPID;
+}
+
+bool ArcService::ContainerImpl::IsStarted() const {
+  return pid_ != kInvalidPID;
+}
+
+bool ArcService::ContainerImpl::OnStartDevice(Device* device) {
+  const auto& config = device->config();
+
+  LOG(INFO) << "Starting device " << device->ifname()
+            << " bridge: " << config.host_ifname()
+            << " guest_iface: " << config.guest_ifname()
+            << " for container pid " << pid_;
+
+  std::string veth_ifname = datapath_->AddVirtualBridgedInterface(
+      device->ifname(), MacAddressToString(config.guest_mac_addr()),
+      config.host_ifname());
+  if (veth_ifname.empty()) {
+    LOG(ERROR) << "Failed to create virtual interface for container";
+    return false;
+  }
+
+  if (!datapath_->AddInterfaceToContainer(
+          pid_, veth_ifname, config.guest_ifname(),
+          IPv4AddressToString(config.guest_ipv4_addr()),
+          device->options().fwd_multicast)) {
+    LOG(ERROR) << "Failed to create container interface.";
+    datapath_->RemoveInterface(veth_ifname);
+    datapath_->RemoveBridge(config.host_ifname());
+    return false;
+  }
+
+  // Signal the container that the network device is ready.
+  // This is only applicable for arc0.
+  if (device->IsAndroid() || device->IsLegacyAndroid()) {
+    datapath_->runner().WriteSentinelToContainer(base::IntToString(pid_));
+  }
+
+  return true;
+}
+
+void ArcService::ContainerImpl::OnStopDevice(Device* device) {
+  const auto& config = device->config();
+
+  LOG(INFO) << "Stopping device " << device->ifname()
+            << " bridge: " << config.host_ifname()
+            << " guest_iface: " << config.guest_ifname()
+            << " for container pid " << pid_;
+
+  device->Disable();
+  if (!device->IsAndroid()) {
+    datapath_->RemoveInterface(ArcVethHostName(device->ifname()));
+  }
+}
+
+void ArcService::ContainerImpl::OnDefaultInterfaceChanged(
+    const std::string& ifname) {
+  if (!IsStarted())
+    return;
+
+  // For ARC N, we must always be able to find the arc0 device and, at a
+  // minimum, disable it.
+  if (guest_ == GuestMessage::ARC_LEGACY) {
+    datapath_->RemoveLegacyIPv4InboundDNAT();
+    auto* device = dev_mgr_->FindByGuestInterface("arc0");
+    if (!device) {
+      LOG(DFATAL) << "Expected legacy Android device missing";
+      return;
+    }
+    device->Disable();
+
+    // If a new default interface was given, then re-enable with that.
+    if (!ifname.empty()) {
+      datapath_->AddLegacyIPv4InboundDNAT(ifname);
+      device->Enable(ifname);
+    }
+    return;
+  }
+
+  // For ARC P and later, we're only concerned with resetting the device when it
+  // becomes the default (again) in order to ensure any previous configuration.
+  // is cleared.
+  if (ifname.empty())
+    return;
+
+  auto* device = dev_mgr_->FindByGuestInterface(ifname);
+  if (!device) {
+    LOG(ERROR) << "Expected default device missing: " << ifname;
+    return;
+  }
+  device->StopIPv6RoutingLegacy();
+  device->StartIPv6RoutingLegacy(ifname);
+}
+
+void ArcService::ContainerImpl::LinkMsgHandler(const shill::RTNLMessage& msg) {
+  if (!msg.HasAttribute(IFLA_IFNAME)) {
+    LOG(ERROR) << "Link event message does not have IFLA_IFNAME";
+    return;
+  }
+  bool link_up = msg.link_status().flags & IFF_UP;
+  shill::ByteString b(msg.GetAttribute(IFLA_IFNAME));
+  std::string ifname(reinterpret_cast<const char*>(
+      b.GetSubstring(0, IFNAMSIZ).GetConstData()));
+
+  auto* device = dev_mgr_->FindByGuestInterface(ifname);
+  if (!device)
+    return;
+
+  Context* ctx = dynamic_cast<Context*>(device->context(guest_));
+  if (!ctx) {
+    LOG(DFATAL) << "Context missing";
+    return;
+  }
+
+  // If the link status is unchanged, there is nothing to do.
+  if (!ctx->SetLinkUp(link_up))
+    return;
+
+  if (!link_up) {
+    LOG(INFO) << ifname << " is now down";
+    return;
+  }
+  LOG(INFO) << ifname << " is now up";
+
+  if (device->IsAndroid())
+    return;
+
+  if (device->IsLegacyAndroid()) {
+    OnDefaultInterfaceChanged(dev_mgr_->DefaultInterface());
+    return;
+  }
+
+  device->Enable(ifname);
+}
+
+void ArcService::ContainerImpl::SetupIPv6(Device* device) {
+  device->RegisterIPv6TeardownHandler(base::Bind(
+      &ArcService::ContainerImpl::TeardownIPv6, weak_factory_.GetWeakPtr()));
+
+  auto& ipv6_config = device->ipv6_config();
+  if (ipv6_config.ifname.empty())
+    return;
+
+  Context* ctx = dynamic_cast<Context*>(device->context(guest_));
+  if (!ctx) {
+    LOG(DFATAL) << "Context missing";
+    return;
+  }
+  if (ctx->HasIPv6())
+    return;
+
+  LOG(INFO) << "Setting up IPv6 for " << ipv6_config.ifname;
+
+  int table_id =
+      GetAndroidRoutingTableId(device->config().guest_ifname(), pid_);
+  if (table_id == kInvalidTableID) {
+    if (ctx->RoutingTableAttempts() < kMaxTableRetries) {
+      LOG(INFO) << "Could not look up routing table ID for container interface "
+                << device->config().guest_ifname() << " - trying again...";
+      base::MessageLoop::current()->task_runner()->PostDelayedTask(
+          FROM_HERE,
+          base::Bind(&ArcService::ContainerImpl::SetupIPv6,
+                     weak_factory_.GetWeakPtr(), device),
+          kTableRetryDelay);
+    } else {
+      LOG(DFATAL)
+          << "Could not look up routing table ID for container interface "
+          << device->config().guest_ifname();
+    }
+    return;
+  }
+
+  LOG(INFO) << "Setting IPv6 address " << ipv6_config.addr
+            << "/128, gateway=" << ipv6_config.router << " on "
+            << ipv6_config.ifname;
+
+  char buf[INET6_ADDRSTRLEN] = {0};
+  if (!inet_ntop(AF_INET6, &ipv6_config.addr, buf, sizeof(buf))) {
+    LOG(DFATAL) << "Invalid address: " << ipv6_config.addr;
+    return;
+  }
+  std::string addr = buf;
+
+  if (!inet_ntop(AF_INET6, &ipv6_config.router, buf, sizeof(buf))) {
+    LOG(DFATAL) << "Invalid router address: " << ipv6_config.router;
+    return;
+  }
+  std::string router = buf;
+
+  const auto& config = device->config();
+  {
+    ScopedNS ns(pid_);
+    if (!ns.IsValid()) {
+      LOG(ERROR) << "Invalid container namespace (" << pid_
+                 << ") - cannot configure IPv6.";
+      return;
+    }
+    if (!datapath_->AddIPv6GatewayRoutes(config.guest_ifname(), addr, router,
+                                         ipv6_config.prefix_len, table_id)) {
+      LOG(ERROR) << "Failed to setup IPv6 routes in the container";
+      return;
+    }
+  }
+
+  if (!datapath_->AddIPv6HostRoute(config.host_ifname(), addr,
+                                   ipv6_config.prefix_len)) {
+    LOG(ERROR) << "Failed to setup the IPv6 route for interface "
+               << config.host_ifname();
+    return;
+  }
+
+  if (!datapath_->AddIPv6Neighbor(ipv6_config.ifname, addr)) {
+    LOG(ERROR) << "Failed to setup the IPv6 neighbor proxy";
+    datapath_->RemoveIPv6HostRoute(config.host_ifname(), addr,
+                                   ipv6_config.prefix_len);
+    return;
+  }
+
+  ctx->SetHasIPv6(table_id);
+}
+
+void ArcService::ContainerImpl::TeardownIPv6(Device* device) {
+  Context* ctx = dynamic_cast<Context*>(device->context(guest_));
+  if (!ctx || !ctx->HasIPv6())
+    return;
+
+  auto& ipv6_config = device->ipv6_config();
+  LOG(INFO) << "Clearing IPv6 for " << ipv6_config.ifname;
+  int table_id = ctx->RoutingTableID();
+  ctx->ClearIPv6();
+
+  char buf[INET6_ADDRSTRLEN] = {0};
+  if (!inet_ntop(AF_INET6, &ipv6_config.addr, buf, sizeof(buf))) {
+    LOG(DFATAL) << "Invalid address: " << ipv6_config.addr;
+    return;
+  }
+  std::string addr = buf;
+
+  if (!inet_ntop(AF_INET6, &ipv6_config.router, buf, sizeof(buf))) {
+    LOG(DFATAL) << "Invalid router address: " << ipv6_config.router;
+    return;
+  }
+  std::string router = buf;
+
+  const auto& config = device->config();
+  datapath_->RemoveIPv6Neighbor(ipv6_config.ifname, addr);
+  datapath_->RemoveIPv6HostRoute(config.host_ifname(), addr,
+                                 ipv6_config.prefix_len);
+
+  ScopedNS ns(pid_);
+  if (ns.IsValid()) {
+    datapath_->RemoveIPv6GatewayRoutes(config.guest_ifname(), addr, router,
+                                       ipv6_config.prefix_len, table_id);
+  }
 }
 
 }  // namespace arc_networkd

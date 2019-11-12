@@ -22,7 +22,6 @@ using testing::StrEq;
 
 namespace arc_networkd {
 namespace {
-constexpr char kTestPID[] = "-2";
 
 class MockDeviceManager : public DeviceManagerBase {
  public:
@@ -66,14 +65,9 @@ class ArcServiceTest : public testing::Test {
     datapath_ = std::make_unique<MockDatapath>(runner_.get());
   }
 
-  std::unique_ptr<ArcService> NewService(bool arc_legacy = false,
-                                         bool valid_pid = true) {
-    auto svc =
-        std::make_unique<ArcService>(&dev_mgr_, datapath_.get(), &arc_legacy);
-    if (valid_pid)
-      svc->SetPIDForTestingOnly();
-
-    return svc;
+  std::unique_ptr<ArcService> NewService(bool arc_legacy = false) {
+    return std::make_unique<ArcService>(&dev_mgr_, datapath_.get(),
+                                        &arc_legacy);
   }
 
   std::unique_ptr<Device> MakeDevice(const std::string& name,
@@ -115,15 +109,17 @@ TEST_F(ArcServiceTest, VerifyOnDeviceAddedDatapathForLegacyAndroid) {
 
   auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
-  NewService(true)->OnDeviceAdded(dev.get());
-  runner_->VerifyWriteSentinel(kTestPID);
+  auto svc = NewService(true);
+  svc->impl_->pid_ = 123;
+  svc->OnDeviceAdded(dev.get());
+  runner_->VerifyWriteSentinel("123");
 }
 
 TEST_F(ArcServiceTest, VerifyOnDeviceAddedDoesNothingLegacyAndroidNoARC) {
   // If ARC N hasn't started yet, nothing should happen.
   auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
-  NewService(false, false)->OnDeviceAdded(dev.get());
+  NewService(true)->OnDeviceAdded(dev.get());
 }
 
 TEST_F(ArcServiceTest,
@@ -139,7 +135,7 @@ TEST_F(ArcServiceTest, VerifyOnDeviceRemovedDatapathForLegacyAndroid) {
 
   auto dev = MakeDevice(kAndroidLegacyDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
-  NewService(false)->OnDeviceRemoved(dev.get());
+  NewService()->OnDeviceRemoved(dev.get());
 }
 
 TEST_F(ArcServiceTest, VerifyOnDeviceAddedDatapathForAndroid) {
@@ -155,8 +151,10 @@ TEST_F(ArcServiceTest, VerifyOnDeviceAddedDatapathForAndroid) {
 
   auto dev = MakeDevice(kAndroidDevice, "arcbr0", "arc0");
   ASSERT_TRUE(dev);
-  NewService()->OnDeviceAdded(dev.get());
-  runner_->VerifyWriteSentinel(kTestPID);
+  auto svc = NewService();
+  svc->impl_->pid_ = 123;
+  svc->OnDeviceAdded(dev.get());
+  runner_->VerifyWriteSentinel("123");
 }
 
 TEST_F(ArcServiceTest, VerifyOnDeviceRemovedDatapathForAndroid) {
@@ -185,7 +183,9 @@ TEST_F(ArcServiceTest, VerifyOnDeviceAddedDatapath) {
 
   auto dev = MakeDevice("eth0", "arc_eth0", "eth0");
   ASSERT_TRUE(dev);
-  NewService()->OnDeviceAdded(dev.get());
+  auto svc = NewService();
+  svc->impl_->pid_ = 123;
+  svc->OnDeviceAdded(dev.get());
 }
 
 TEST_F(ArcServiceTest, VerifyOnDeviceRemovedDatapath) {
