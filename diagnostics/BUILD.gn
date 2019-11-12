@@ -83,6 +83,27 @@ static_library("libdiag_routine") {
   ]
 }
 
+# Library that provides a mojo connection to cros_healthd.
+pkg_config("libcros_healthd_mojo_adapter_pkg_deps") {
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libmojo-${libbase_ver}",
+    "system_api",
+  ]
+}
+
+static_library("libcros_healthd_mojo_adapter") {
+  deps = [
+    ":diagnostics_mojo_bindings",
+  ]
+  all_dependent_configs = [ ":libcros_healthd_mojo_adapter_pkg_deps" ]
+  sources = [
+    "cros_healthd_mojo_adapter/cros_healthd_mojo_adapter.cc",
+  ]
+}
+
 # Library that provides utilities used by cros_healthd.
 pkg_config("libcros_healthd_utils_pkg_deps") {
   pkg_deps = [
