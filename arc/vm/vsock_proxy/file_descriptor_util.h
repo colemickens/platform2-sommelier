@@ -17,19 +17,13 @@ class FilePath;
 
 namespace arc {
 
-enum class SocketType {
-  BLOCKING,  // Mainly for testing.
-  NONBLOCKING,
-};
-
 // Creates a pair of pipe file descriptors, and returns it.
 // Returns nullopt if failed.
 base::Optional<std::pair<base::ScopedFD, base::ScopedFD>> CreatePipe();
 
 // Creates a pair of socketpair file desciprotrs, and returns it.
 // Returns nullopt if failed.
-base::Optional<std::pair<base::ScopedFD, base::ScopedFD>> CreateSocketPair(
-    SocketType type);
+base::Optional<std::pair<base::ScopedFD, base::ScopedFD>> CreateSocketPair();
 
 // Creates a socket at |path|, and starts listening.
 base::ScopedFD CreateUnixDomainSocket(const base::FilePath& path);

@@ -38,7 +38,7 @@ class SocketStreamTest : public testing::Test {
   ~SocketStreamTest() override = default;
 
   void SetUp() override {
-    auto sockets = CreateSocketPair(SocketType::NONBLOCKING);
+    auto sockets = CreateSocketPair();
     ASSERT_TRUE(sockets.has_value());
     stream_ = std::make_unique<SocketStream>(std::move(sockets.value().first));
     socket_ = std::move(sockets.value().second);

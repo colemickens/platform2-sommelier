@@ -247,7 +247,7 @@ void VSockProxy::OnData(arc_proxy::Data* data) {
         break;
       }
       case arc_proxy::FileDescriptor::SOCKET: {
-        auto created = CreateSocketPair(SocketType::NONBLOCKING);
+        auto created = CreateSocketPair();
         if (!created)
           return;
         std::tie(local_fd, remote_fd) = std::move(*created);

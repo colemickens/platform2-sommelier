@@ -49,17 +49,14 @@ base::Optional<std::pair<base::ScopedFD, base::ScopedFD>> CreatePipe() {
       std::make_pair(base::ScopedFD(fds[0]), base::ScopedFD(fds[1])));
 }
 
-base::Optional<std::pair<base::ScopedFD, base::ScopedFD>> CreateSocketPair(
-    SocketType type) {
-  int type_value = SOCK_STREAM | SOCK_CLOEXEC;
-  if (type == SocketType::NONBLOCKING)
-    type_value |= SOCK_NONBLOCK;
-
+base::Optional<std::pair<base::ScopedFD, base::ScopedFD>> CreateSocketPair() {
   int fds[2];
-  if (socketpair(AF_UNIX, type_value, 0 /* protocol */, fds) == -1) {
+  if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK,
+                 0 /* protocol */, fds) == -1) {
     PLOG(ERROR) << "Failed to create socketpair";
     return base::nullopt;
   }
+
   return base::make_optional(
       std::make_pair(base::ScopedFD(fds[0]), base::ScopedFD(fds[1])));
 }
