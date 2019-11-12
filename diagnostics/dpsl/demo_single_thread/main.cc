@@ -48,6 +48,10 @@ class DemoRpcHandler final : public diagnostics::DpslRpcHandler {
       std::unique_ptr<
           diagnostics::grpc_api::HandleConfigurationDataChangedRequest> request,
       HandleConfigurationDataChangedCallback callback) override;
+  void HandleBluetoothDataChanged(
+      std::unique_ptr<diagnostics::grpc_api::HandleBluetoothDataChangedRequest>
+          request,
+      HandleBluetoothDataChangedCallback callback) override;
 
   void FetchSystemUptime();
 
@@ -108,6 +112,17 @@ void DemoRpcHandler::HandleConfigurationDataChanged(
   // Note: every incoming RPC must be answered.
   callback(std::make_unique<
            diagnostics::grpc_api::HandleConfigurationDataChangedResponse>());
+  FetchSystemUptime();
+}
+
+void DemoRpcHandler::HandleBluetoothDataChanged(
+    std::unique_ptr<diagnostics::grpc_api::HandleBluetoothDataChangedRequest>
+        request,
+    HandleBluetoothDataChangedCallback callback) {
+  std::cerr << "Received HandleBluetoothDataChanged request" << std::endl;
+  // Note: every incoming RPC must be answered.
+  callback(std::make_unique<
+           diagnostics::grpc_api::HandleBluetoothDataChangedResponse>());
   FetchSystemUptime();
 }
 

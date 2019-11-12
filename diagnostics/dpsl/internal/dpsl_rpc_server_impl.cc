@@ -69,6 +69,10 @@ DpslRpcServerImpl::DpslRpcServerImpl(DpslRpcHandler* rpc_handler,
       &grpc_api::WilcoDtc::AsyncService::RequestHandleConfigurationDataChanged,
       base::Bind(&DpslRpcServerImpl::HandleConfigurationDataChanged,
                  base::Unretained(this)));
+  async_grpc_server_.RegisterHandler(
+      &grpc_api::WilcoDtc::AsyncService::RequestHandleBluetoothDataChanged,
+      base::Bind(&DpslRpcServerImpl::HandleBluetoothDataChanged,
+                 base::Unretained(this)));
 }
 
 DpslRpcServerImpl::~DpslRpcServerImpl() {
@@ -132,6 +136,17 @@ void DpslRpcServerImpl::HandleConfigurationDataChanged(
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
   rpc_handler_->HandleConfigurationDataChanged(
+      std::move(request),
+      MakeStdFunctionFromCallback(
+          MakeOriginTaskRunnerPostingCallback(FROM_HERE, callback)));
+}
+
+void DpslRpcServerImpl::HandleBluetoothDataChanged(
+    std::unique_ptr<grpc_api::HandleBluetoothDataChangedRequest> request,
+    const HandleBluetoothDataChangedCallback& callback) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+
+  rpc_handler_->HandleBluetoothDataChanged(
       std::move(request),
       MakeStdFunctionFromCallback(
           MakeOriginTaskRunnerPostingCallback(FROM_HERE, callback)));

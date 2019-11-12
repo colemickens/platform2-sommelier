@@ -66,6 +66,8 @@ class DpslRpcHandler {
   using HandleConfigurationDataChangedCallback = std::function<void(
       std::unique_ptr<grpc_api::HandleConfigurationDataChangedResponse>
           response)>;
+  using HandleBluetoothDataChangedCallback = std::function<void(
+      std::unique_ptr<grpc_api::HandleBluetoothDataChangedResponse> response)>;
 
   virtual ~DpslRpcHandler() = default;
 
@@ -88,6 +90,9 @@ class DpslRpcHandler {
   virtual void HandleConfigurationDataChanged(
       std::unique_ptr<grpc_api::HandleConfigurationDataChangedRequest> request,
       HandleConfigurationDataChangedCallback callback) = 0;
+  virtual void HandleBluetoothDataChanged(
+      std::unique_ptr<grpc_api::HandleBluetoothDataChangedRequest> request,
+      HandleBluetoothDataChangedCallback callback) = 0;
 };
 
 }  // namespace diagnostics

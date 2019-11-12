@@ -57,6 +57,14 @@ class DpslTestListener final : public DpslRpcHandler {
     callback(
         std::make_unique<grpc_api::HandleConfigurationDataChangedResponse>());
   };
+
+  void HandleBluetoothDataChanged(
+      std::unique_ptr<grpc_api::HandleBluetoothDataChangedRequest> request,
+      HandleBluetoothDataChangedCallback callback) override {
+    test_utils::PrintProto(*request);
+    // Note: every incoming RPC must be answered.
+    callback(std::make_unique<grpc_api::HandleBluetoothDataChangedResponse>());
+  };
 };
 
 }  // namespace
