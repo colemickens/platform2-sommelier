@@ -132,7 +132,7 @@ MechanismInfo::MechanismInfoData MechanismInfo::GetSupportedMechanismInfo(
     case CKM_AES_CBC_PAD:
       return {true, {kEncrypt, kDecrypt}, CKK_AES};
 
-    // RSA
+    // RSA PKCS v1.5
     case CKM_RSA_PKCS:
       return {true, {kEncrypt, kDecrypt, kSign, kVerify}, CKK_RSA};
     case CKM_MD5_RSA_PKCS:
@@ -140,6 +140,15 @@ MechanismInfo::MechanismInfoData MechanismInfo::GetSupportedMechanismInfo(
     case CKM_SHA256_RSA_PKCS:
     case CKM_SHA384_RSA_PKCS:
     case CKM_SHA512_RSA_PKCS:
+      return {true, {kSign, kVerify}, CKK_RSA};
+
+    // RSA RSS
+    case CKM_RSA_PKCS_PSS:
+    case CKM_SHA1_RSA_PKCS_PSS:
+    case CKM_SHA256_RSA_PKCS_PSS:
+    case CKM_SHA384_RSA_PKCS_PSS:
+    case CKM_SHA512_RSA_PKCS_PSS:
+    case CKM_SHA224_RSA_PKCS_PSS:
       return {true, {kSign, kVerify}, CKK_RSA};
 
     // ECC
