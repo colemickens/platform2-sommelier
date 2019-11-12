@@ -20,7 +20,6 @@
 
 #include "arc/vm/vsock_proxy/file_descriptor_util.h"
 #include "arc/vm/vsock_proxy/message.pb.h"
-#include "arc/vm/vsock_proxy/proxy_file_system.h"
 #include "arc/vm/vsock_proxy/vsock_proxy.h"
 
 namespace arc {
@@ -92,28 +91,11 @@ bool ServerProxy::Initialize() {
 
   vsock.reset();
   LOG(INFO) << "Initial socket connection comes";
-  vsock_proxy_ = std::make_unique<VSockProxy>(this, std::move(accepted));
+  vsock_proxy_ =
+      std::make_unique<VSockProxy>(VSockProxy::Type::SERVER, proxy_file_system_,
+                                   std::move(accepted), base::ScopedFD());
   LOG(INFO) << "ServerProxy has started to work.";
   return true;
-}
-
-bool ServerProxy::ConvertFileDescriptorToProto(
-    int fd, arc_proxy::FileDescriptor* proto) {
-  LOG(ERROR) << "Unsupported FD type.";
-  return false;
-}
-
-base::ScopedFD ServerProxy::ConvertProtoToFileDescriptor(
-    const arc_proxy::FileDescriptor& proto) {
-  switch (proto.type()) {
-    case arc_proxy::FileDescriptor::REGULAR_FILE: {
-      // Create a file descriptor which is handled by |proxy_file_system_|.
-      return proxy_file_system_->RegisterHandle(proto.handle());
-    }
-    default:
-      LOG(ERROR) << "Unsupported FD type: " << proto.type();
-      return {};
-  }
 }
 
 }  // namespace arc

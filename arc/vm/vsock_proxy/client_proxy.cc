@@ -4,9 +4,7 @@
 
 #include "arc/vm/vsock_proxy/client_proxy.h"
 
-#include <drm/virtgpu_drm.h>
 #include <fcntl.h>
-#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -78,15 +76,17 @@ ClientProxy::ClientProxy() = default;
 ClientProxy::~ClientProxy() = default;
 
 bool ClientProxy::Initialize() {
-  render_node_.reset(HANDLE_EINTR(open(kRenderNodePath, O_RDWR)));
-  if (!render_node_.is_valid()) {
+  base::ScopedFD render_node(HANDLE_EINTR(open(kRenderNodePath, O_RDWR)));
+  if (!render_node.is_valid()) {
     PLOG(ERROR) << "Failed to open render node";
     return false;
   }
 
   // For the details of connection procedure, please find the comment in
   // ServerProxy::Initialize().
-  vsock_proxy_ = std::make_unique<VSockProxy>(this, ConnectVSock());
+  vsock_proxy_ =
+      std::make_unique<VSockProxy>(VSockProxy::Type::CLIENT, nullptr,
+                                   ConnectVSock(), std::move(render_node));
 
   arc_bridge_socket_ = CreateUnixDomainSocket(base::FilePath(kGuestSocketPath));
   if (!arc_bridge_socket_.is_valid())
@@ -98,38 +98,6 @@ bool ClientProxy::Initialize() {
       base::BindRepeating(&ClientProxy::OnLocalSocketReadReady,
                           weak_factory_.GetWeakPtr()));
   return true;
-}
-
-bool ClientProxy::ConvertFileDescriptorToProto(
-    int fd, arc_proxy::FileDescriptor* proto) {
-  struct drm_prime_handle prime = {};
-  prime.fd = fd;
-  if (ioctl(render_node_.get(), DRM_IOCTL_PRIME_FD_TO_HANDLE, &prime) == 0) {
-    // This FD is a dmabuf.
-    struct drm_virtgpu_resource_info info = {};
-    info.bo_handle = prime.handle;
-    if (ioctl(render_node_.get(), DRM_IOCTL_VIRTGPU_RESOURCE_INFO, &info)) {
-      PLOG(ERROR) << "Failed to get resource info";
-      return false;
-    }
-    proto->set_type(arc_proxy::FileDescriptor::DMABUF);
-    proto->set_drm_virtgpu_res_handle(info.res_handle);
-    return true;
-  } else if (errno != ENOTTY) {
-    // Getting ENOTTY here means that the FD doesn't support the specified
-    // ioctl operation (i.e. not a dmabuf). Otherwise, it's an unexpected
-    // error.
-    PLOG(ERROR) << "DRM_IOCTL_PRIME_FD_TO_HANDLE failed";
-    return false;
-  }
-  LOG(ERROR) << "Unsupported FD type.";
-  return false;
-}
-
-base::ScopedFD ClientProxy::ConvertProtoToFileDescriptor(
-    const arc_proxy::FileDescriptor& proto) {
-  LOG(ERROR) << "Unsupported FD type: " << proto.type();
-  return {};
 }
 
 void ClientProxy::OnLocalSocketReadReady() {

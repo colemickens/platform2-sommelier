@@ -4,8 +4,10 @@
 
 #include "arc/vm/vsock_proxy/vsock_proxy.h"
 
+#include <drm/virtgpu_drm.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -21,6 +23,7 @@
 #include "arc/vm/vsock_proxy/file_descriptor_util.h"
 #include "arc/vm/vsock_proxy/file_stream.h"
 #include "arc/vm/vsock_proxy/pipe_stream.h"
+#include "arc/vm/vsock_proxy/proxy_file_system.h"
 #include "arc/vm/vsock_proxy/socket_stream.h"
 
 namespace arc {
@@ -46,11 +49,16 @@ std::unique_ptr<StreamBase> CreateStream(
 
 }  // namespace
 
-VSockProxy::VSockProxy(Delegate* delegate, base::ScopedFD vsock)
-    : delegate_(delegate),
+VSockProxy::VSockProxy(Type type,
+                       ProxyFileSystem* proxy_file_system,
+                       base::ScopedFD vsock,
+                       base::ScopedFD render_node)
+    : type_(type),
+      proxy_file_system_(proxy_file_system),
       vsock_(std::move(vsock)),
-      next_handle_(delegate_->GetType() == Type::SERVER ? 1 : -1),
-      next_cookie_(delegate_->GetType() == Type::SERVER ? 1 : -1) {
+      render_node_(std::move(render_node)),
+      next_handle_(type == Type::SERVER ? 1 : -1),
+      next_cookie_(type == Type::SERVER ? 1 : -1) {
   // Note: this needs to be initialized after mWeakFactory, which is
   // declared after mVSockController in order to destroy it first.
   vsock_controller_ = base::FileDescriptorWatcher::WatchReadable(
@@ -72,7 +80,7 @@ int64_t VSockProxy::RegisterFileDescriptor(
   const int raw_fd = fd.get();
   if (handle == 0) {
     // TODO(hidehiko): Ensure handle is unique in case of overflow.
-    if (delegate_->GetType() == Type::SERVER)
+    if (type_ == Type::SERVER)
       handle = next_handle_++;
     else
       handle = next_handle_--;
@@ -245,11 +253,18 @@ void VSockProxy::OnData(arc_proxy::Data* data) {
         std::tie(local_fd, remote_fd) = std::move(*created);
         break;
       }
-      default: {
-        remote_fd = delegate_->ConvertProtoToFileDescriptor(transferred_fd);
+      case arc_proxy::FileDescriptor::REGULAR_FILE: {
+        if (!proxy_file_system_)
+          return;
+        // Create a file descriptor which is handled by |proxy_file_system_|.
+        remote_fd = proxy_file_system_->RegisterHandle(transferred_fd.handle());
         if (!remote_fd.is_valid())
           return;
+        break;
       }
+      default:
+        LOG(ERROR) << "Unsupported FD type: " << transferred_fd.type();
+        return;
     }
 
     // |local_fd| is set iff the descriptor's read readiness needs to be
@@ -440,13 +455,14 @@ bool VSockProxy::ConvertDataToVSockMessage(std::string blob,
                                            std::vector<base::ScopedFD> fds,
                                            arc_proxy::VSockMessage* message) {
   DCHECK(!blob.empty() || !fds.empty());
-
-  // Build returning message.
-  auto* data = message->mutable_data();
-  *data->mutable_blob() = std::move(blob);
-  for (auto& fd : fds) {
-    auto* transferred_fd = data->add_transferred_fd();
-
+  // Validate file descriptor type before registering.
+  struct FileDescriptorAttr {
+    arc_proxy::FileDescriptor::Type type;
+    uint32_t drm_virtgpu_res_handle = 0;
+  };
+  std::vector<FileDescriptorAttr> fd_attrs;
+  fd_attrs.reserve(fds.size());
+  for (const auto& fd : fds) {
     struct stat st;
     if (fstat(fd.get(), &st) == -1) {
       PLOG(ERROR) << "Failed to fstat";
@@ -461,32 +477,77 @@ bool VSockProxy::ConvertDataToVSockMessage(std::string blob,
       }
       switch (flags & O_ACCMODE) {
         case O_RDONLY:
-          transferred_fd->set_type(arc_proxy::FileDescriptor::FIFO_READ);
+          fd_attrs.emplace_back(
+              FileDescriptorAttr{arc_proxy::FileDescriptor::FIFO_READ});
           break;
         case O_WRONLY:
-          transferred_fd->set_type(arc_proxy::FileDescriptor::FIFO_WRITE);
+          fd_attrs.emplace_back(
+              FileDescriptorAttr{arc_proxy::FileDescriptor::FIFO_WRITE});
           break;
         default:
           LOG(ERROR) << "Unsupported access mode: " << (flags & O_ACCMODE);
           return false;
       }
-    } else if (S_ISSOCK(st.st_mode)) {
-      transferred_fd->set_type(arc_proxy::FileDescriptor::SOCKET);
-    } else if (S_ISREG(st.st_mode)) {
-      transferred_fd->set_type(arc_proxy::FileDescriptor::REGULAR_FILE);
-    } else if (!delegate_->ConvertFileDescriptorToProto(fd.get(),
-                                                        transferred_fd)) {
-      return false;
+      continue;
     }
-    transferred_fd->set_handle(RegisterFileDescriptor(
-        std::move(fd), transferred_fd->type(), 0 /* generate handle */));
+    if (S_ISSOCK(st.st_mode)) {
+      fd_attrs.emplace_back(
+          FileDescriptorAttr{arc_proxy::FileDescriptor::SOCKET});
+      continue;
+    }
+    if (S_ISREG(st.st_mode)) {
+      fd_attrs.emplace_back(
+          FileDescriptorAttr{arc_proxy::FileDescriptor::REGULAR_FILE});
+      continue;
+    }
+    // DMABUF sharing is enabled only for the guest->host direction.
+    if (type_ == Type::CLIENT) {
+      struct drm_prime_handle prime = {};
+      prime.fd = fd.get();
+      if (ioctl(render_node_.get(), DRM_IOCTL_PRIME_FD_TO_HANDLE, &prime) ==
+          0) {
+        // This FD is a dmabuf.
+        struct drm_virtgpu_resource_info info = {};
+        info.bo_handle = prime.handle;
+        if (ioctl(render_node_.get(), DRM_IOCTL_VIRTGPU_RESOURCE_INFO, &info)) {
+          PLOG(ERROR) << "Failed to get resource info";
+          return false;
+        }
+        fd_attrs.emplace_back(FileDescriptorAttr{
+            arc_proxy::FileDescriptor::DMABUF, info.res_handle});
+        continue;
+      } else if (errno != ENOTTY) {
+        // Getting ENOTTY here means that the FD doesn't support the specified
+        // ioctl operation (i.e. not a dmabuf). Otherwise, it's an unexpected
+        // error.
+        PLOG(ERROR) << "DRM_IOCTL_PRIME_FD_TO_HANDLE failed";
+        return false;
+      }
+    }
+    LOG(ERROR) << "Unsupported FD type: " << st.st_mode;
+    return false;
+  }
+  DCHECK_EQ(fds.size(), fd_attrs.size());
+
+  // Build returning message.
+  auto* data = message->mutable_data();
+  *data->mutable_blob() = std::move(blob);
+  for (size_t i = 0; i < fds.size(); ++i) {
+    int64_t handle = RegisterFileDescriptor(std::move(fds[i]), fd_attrs[i].type,
+                                            0 /* generate handle */);
+    auto* transferred_fd = data->add_transferred_fd();
+    transferred_fd->set_handle(handle);
+    transferred_fd->set_type(fd_attrs[i].type);
+    if (fd_attrs[i].type == arc_proxy::FileDescriptor::DMABUF)
+      transferred_fd->set_drm_virtgpu_res_handle(
+          fd_attrs[i].drm_virtgpu_res_handle);
   }
   return true;
 }
 
 int64_t VSockProxy::GenerateCookie() {
   // TODO(hidehiko): Ensure cookie is unique in case of overflow.
-  return delegate_->GetType() == Type::SERVER ? next_cookie_++ : next_cookie_--;
+  return type_ == Type::SERVER ? next_cookie_++ : next_cookie_--;
 }
 
 }  // namespace arc

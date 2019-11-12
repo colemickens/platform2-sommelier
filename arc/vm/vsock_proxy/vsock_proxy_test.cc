@@ -32,38 +32,6 @@
 namespace arc {
 namespace {
 
-class ServerDelegate : public VSockProxy::Delegate {
- public:
-  ~ServerDelegate() override = default;
-  VSockProxy::Type GetType() const override { return VSockProxy::Type::SERVER; }
-  bool ConvertFileDescriptorToProto(int fd,
-                                    arc_proxy::FileDescriptor* proto) override {
-    NOTREACHED();
-    return false;
-  }
-  base::ScopedFD ConvertProtoToFileDescriptor(
-      const arc_proxy::FileDescriptor& proto) override {
-    NOTREACHED();
-    return {};
-  }
-};
-
-class ClientDelegate : public VSockProxy::Delegate {
- public:
-  ~ClientDelegate() override = default;
-  VSockProxy::Type GetType() const override { return VSockProxy::Type::CLIENT; }
-  bool ConvertFileDescriptorToProto(int fd,
-                                    arc_proxy::FileDescriptor* proto) override {
-    NOTREACHED();
-    return false;
-  }
-  base::ScopedFD ConvertProtoToFileDescriptor(
-      const arc_proxy::FileDescriptor& proto) override {
-    NOTREACHED();
-    return {};
-  }
-};
-
 class VSockProxyTest : public testing::Test {
  public:
   VSockProxyTest() = default;
@@ -73,10 +41,12 @@ class VSockProxyTest : public testing::Test {
     // Use socket pair instead of VSOCK for testing.
     auto vsock_pair = CreateSocketPair(SocketType::BLOCKING);
     ASSERT_TRUE(vsock_pair.has_value());
-    server_ = std::make_unique<VSockProxy>(&server_delegate_,
-                                           std::move(vsock_pair->first));
-    client_ = std::make_unique<VSockProxy>(&client_delegate_,
-                                           std::move(vsock_pair->second));
+    server_ = std::make_unique<VSockProxy>(VSockProxy::Type::SERVER, nullptr,
+                                           std::move(vsock_pair->first),
+                                           base::ScopedFD());
+    client_ = std::make_unique<VSockProxy>(VSockProxy::Type::CLIENT, nullptr,
+                                           std::move(vsock_pair->second),
+                                           base::ScopedFD());
 
     // Register initial socket pairs.
     auto server_socket_pair = CreateSocketPair(SocketType::BLOCKING);
@@ -106,9 +76,6 @@ class VSockProxyTest : public testing::Test {
  private:
   base::MessageLoopForIO message_loop_;
   base::FileDescriptorWatcher watcher_{&message_loop_};
-
-  ServerDelegate server_delegate_;
-  ClientDelegate client_delegate_;
 
   std::unique_ptr<VSockProxy> server_;
   std::unique_ptr<VSockProxy> client_;
