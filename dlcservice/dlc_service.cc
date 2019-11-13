@@ -12,7 +12,6 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/message_loop/message_loop.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
 #include <chromeos/dbus/service_constants.h>
@@ -26,6 +25,7 @@ using base::Callback;
 using base::File;
 using base::FilePath;
 using base::ScopedTempDir;
+using brillo::MessageLoop;
 using std::pair;
 using std::string;
 using std::unique_ptr;
@@ -104,6 +104,7 @@ DlcService::DlcService(
       boot_slot_(std::move(boot_slot)),
       manifest_dir_(manifest_dir),
       content_dir_(content_dir),
+      scheduled_period_ue_check_id_(MessageLoop::kTaskIdNull),
       weak_ptr_factory_(this) {
   // Get current boot slot.
   string boot_disk_name;
@@ -129,6 +130,14 @@ DlcService::DlcService(
 
   // Initialize supported DLC modules.
   supported_dlc_modules_ = utils::ScanDirectory(manifest_dir_);
+}
+
+DlcService::~DlcService() {
+  if (scheduled_period_ue_check_id_ != MessageLoop::kTaskIdNull &&
+      !brillo::MessageLoop::current()->CancelTask(
+          scheduled_period_ue_check_id_))
+    LOG(ERROR)
+        << "Failed to cancel delayed update_engine check during cleanup.";
 }
 
 void DlcService::LoadDlcModuleImages() {
@@ -279,6 +288,15 @@ bool DlcService::Install(const DlcModuleList& dlc_module_list_in,
   for (const auto& scoped_path : scoped_paths)
     scoped_path->Take();
 
+  // Schedule a update_engine check during an install to verify that
+  // update_engine is installing the DLC(s).
+  scheduled_period_ue_check_id_ =
+      brillo::MessageLoop::current()->PostDelayedTask(
+          FROM_HERE,
+          base::Bind(&DlcService::PeriodicUECheckDuringInstall,
+                     weak_ptr_factory_.GetWeakPtr()),
+          base::TimeDelta::FromSeconds(kUECheckTimeout));
+
   return true;
 }
 
@@ -338,6 +356,48 @@ void DlcService::SendFailedSignalAndCleanup() {
       LOG(ERROR) << "Failed to delete DLC(" << dlc_id << ") during cleanup.";
   }
   dlc_modules_being_installed_.clear_dlc_module_infos();
+}
+
+bool DlcService::IsInstalling() {
+  return !dlc_modules_being_installed_.dlc_module_infos().empty();
+}
+
+void DlcService::PeriodicUECheckDuringInstall() {
+  if (scheduled_period_ue_check_id_ == MessageLoop::kTaskIdNull) {
+    LOG(ERROR) << "Should not have been called unless scheduled.";
+    return;
+  }
+
+  scheduled_period_ue_check_id_ = MessageLoop::kTaskIdNull;
+
+  if (!IsInstalling()) {
+    LOG(ERROR) << "Should not have to check update_engine status while not "
+                  "performing an install.";
+    return;
+  }
+
+  Operation update_engine_operation;
+  if (!GetUpdateEngineStatus(&update_engine_operation)) {
+    LOG(ERROR)
+        << "Failed to get the status of update_engine, most likely down.";
+    SendFailedSignalAndCleanup();
+    return;
+  }
+  switch (update_engine_operation) {
+    case update_engine::UPDATED_NEED_REBOOT:
+    case update_engine::IDLE:
+      LOG(ERROR) << "Thought to be installing DLC(s), but update_engine is not "
+                    "installing.";
+      SendFailedSignalAndCleanup();
+      break;
+    default:
+      scheduled_period_ue_check_id_ =
+          brillo::MessageLoop::current()->PostDelayedTask(
+              FROM_HERE,
+              base::Bind(&DlcService::PeriodicUECheckDuringInstall,
+                         weak_ptr_factory_.GetWeakPtr()),
+              base::TimeDelta::FromSeconds(kUECheckTimeout));
+  }
 }
 
 bool DlcService::HandleStatusResult(const StatusResult& status_result) {
@@ -515,6 +575,19 @@ void DlcService::OnStatusUpdateAdvancedSignal(
     const StatusResult& status_result) {
   if (!HandleStatusResult(status_result))
     return;
+
+  if (!brillo::MessageLoop::current()->CancelTask(
+          scheduled_period_ue_check_id_)) {
+    LOG(ERROR) << "Failed to cancel delayed update_engine check when signal "
+                  "was received from update_engine, so letting it run.";
+  } else {
+    scheduled_period_ue_check_id_ =
+        brillo::MessageLoop::current()->PostDelayedTask(
+            FROM_HERE,
+            base::Bind(&DlcService::PeriodicUECheckDuringInstall,
+                       weak_ptr_factory_.GetWeakPtr()),
+            base::TimeDelta::FromSeconds(kUECheckTimeout));
+  }
 
   // At this point, update_engine finished installation of the requested DLC(s).
   DlcModuleList dlc_module_list, dlc_module_list_post_mount;

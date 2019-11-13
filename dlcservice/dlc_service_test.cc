@@ -9,6 +9,8 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/run_loop.h>
+#include <brillo/message_loops/base_message_loop.h>
+#include <brillo/message_loops/message_loop_utils.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <update_engine/proto_bindings/update_engine.pb.h>
 #include <gtest/gtest.h>
@@ -63,6 +65,8 @@ DlcModuleList CreateDlcModuleList(const vector<string>& ids,
 class DlcServiceTest : public testing::Test {
  public:
   DlcServiceTest() {
+    loop_.SetAsCurrent();
+
     // Initialize DLC path.
     CHECK(scoped_temp_dir_.CreateUniqueTempDir());
     manifest_path_ = scoped_temp_dir_.GetPath().Append("rootfs");
@@ -138,6 +142,9 @@ class DlcServiceTest : public testing::Test {
   }
 
  protected:
+  base::MessageLoopForIO base_loop_;
+  brillo::BaseMessageLoop loop_{&base_loop_};
+
   base::ScopedTempDir scoped_temp_dir_;
 
   base::FilePath manifest_path_;
@@ -471,6 +478,49 @@ TEST_F(DlcServiceTest, ProbableUpdateEngineRestartCleanupTest) {
   dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
 
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
+  for (const string& dlc_id : dlc_ids)
+    EXPECT_FALSE(base::PathExists(content_path_.Append(dlc_id)));
+}
+
+TEST_F(DlcServiceTest, UpdateEngineFailSafeTest) {
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillOnce(Return(true))
+      .WillOnce(Return(false));
+
+  const vector<string>& dlc_ids = {kSecondDlc};
+  DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
+
+  EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
+  for (const string& dlc_id : dlc_ids)
+    EXPECT_TRUE(base::PathExists(content_path_.Append(dlc_id)));
+
+  MessageLoopRunUntil(&loop_, base::TimeDelta::FromSeconds(kUECheckTimeout * 2),
+                      base::Bind([]() { return false; }));
+
+  for (const string& dlc_id : dlc_ids)
+    EXPECT_FALSE(base::PathExists(content_path_.Append(dlc_id)));
+}
+
+TEST_F(DlcServiceTest, UpdateEngineFailAfterSignalsSafeTest) {
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .WillOnce(Return(true))
+      .WillOnce(Return(false));
+
+  const vector<string>& dlc_ids = {kSecondDlc};
+  DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
+
+  EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
+  for (const string& dlc_id : dlc_ids)
+    EXPECT_TRUE(base::PathExists(content_path_.Append(dlc_id)));
+
+  StatusResult status_result;
+  status_result.set_current_operation(Operation::DOWNLOADING);
+  status_result.set_is_install(true);
+  dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+
+  MessageLoopRunUntil(&loop_, base::TimeDelta::FromSeconds(kUECheckTimeout * 2),
+                      base::Bind([]() { return false; }));
+
   for (const string& dlc_id : dlc_ids)
     EXPECT_FALSE(base::PathExists(content_path_.Append(dlc_id)));
 }

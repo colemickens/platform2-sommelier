@@ -12,6 +12,7 @@
 
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
+#include <brillo/message_loops/message_loop.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <imageloader/dbus-proxies.h>
 #include <update_engine/proto_bindings/update_engine.pb.h>
@@ -21,6 +22,8 @@
 #include "dlcservice/types.h"
 
 namespace dlcservice {
+
+constexpr size_t kUECheckTimeout = 5;
 
 // DlcService manages life-cycles of DLCs (Downloadable Content) and provides an
 // API for the rest of the system to install/uninstall DLCs.
@@ -42,7 +45,7 @@ class DlcService {
              std::unique_ptr<BootSlot> boot_slot,
              const base::FilePath& manifest_dir,
              const base::FilePath& content_dir);
-  ~DlcService() = default;
+  ~DlcService();
 
   // Loads installed DLC module images.
   void LoadDlcModuleImages();
@@ -58,12 +61,19 @@ class DlcService {
       const update_engine::StatusResult& status_result);
 
  private:
+  // Indicates whether DLC(s) are currently being installed.
+  bool IsInstalling();
+
   // Sends a signal indicating failure to install and cleans up prepped DLC(s).
   void SendFailedSignalAndCleanup();
 
   // Handles necessary actions prior to update_engine's install completion, but
   // when update_engine's install is complete it will return true.
   bool HandleStatusResult(const update_engine::StatusResult& status_result);
+
+  // The period checker that runs as a delayed task that checks update_engine
+  // status during an install to make sure update_engine is active.
+  void PeriodicUECheckDuringInstall();
 
   // Creates the necessary directories and images for DLC installation. Will set
   // |path| to the top DLC directory for cleanup scoping.
@@ -107,6 +117,8 @@ class DlcService {
 
   base::FilePath manifest_dir_;
   base::FilePath content_dir_;
+
+  brillo::MessageLoop::TaskId scheduled_period_ue_check_id_;
 
   // DLC modules being installed. An empty module infos signifies no install.
   DlcModuleList dlc_modules_being_installed_;
