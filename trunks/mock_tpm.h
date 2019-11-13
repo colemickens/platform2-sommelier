@@ -6,6 +6,7 @@
 #define TRUNKS_MOCK_TPM_H_
 
 #include <string>
+#include <vector>
 
 #include <base/callback.h>
 #include <gmock/gmock.h>
@@ -877,6 +878,25 @@ class MockTpm : public Tpm {
                        TPM2B_TIMEOUT* timeout,
                        TPMT_TK_AUTH* policy_ticket,
                        AuthorizationDelegate* authorization_delegate));
+  MOCK_METHOD9(PolicyFidoSigned,
+               void(const TPMI_DH_OBJECT& auth_object,
+                    const std::string& auth_object_name,
+                    const TPMI_SH_POLICY& policy_session,
+                    const std::string& policy_session_name,
+                    const std::string& auth_data,
+                    const std::vector<FIDO_DATA_RANGE>& auth_data_descr,
+                    const TPMT_SIGNATURE& auth,
+                    AuthorizationDelegate* authorization_delegate,
+                    const PolicyFidoSignedResponse& callback));
+  MOCK_METHOD8(PolicyFidoSignedSync,
+               TPM_RC(const TPMI_DH_OBJECT& auth_object,
+                      const std::string& auth_object_name,
+                      const TPMI_SH_POLICY& policy_session,
+                      const std::string& policy_session_name,
+                      const std::string& auth_data,
+                      const std::vector<FIDO_DATA_RANGE>& auth_data_descr,
+                      const TPMT_SIGNATURE& auth,
+                      AuthorizationDelegate* authorization_delegate));
   MOCK_METHOD10(PolicySecret,
                 void(const TPMI_DH_ENTITY& auth_handle,
                      const std::string& auth_handle_name,

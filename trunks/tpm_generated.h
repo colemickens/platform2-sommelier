@@ -378,11 +378,11 @@ class CommandTransceiver;
 #define HASH_COUNT 5
 #endif
 
-#define IS_TPM2_STD_CMD(x)    ((x) >= trunks::TPM_CC_FIRST && \
-                               (x) <= trunks::TPM_CC_LAST)
-#define IS_TPM2_EXT_CMD(x)    ((x) >= trunks::TPM_CCE_FIRST && \
-                               (x) <= trunks::TPM_CCE_LAST)
-#define IS_TPM2_CMD(x)        (IS_TPM2_STD_CMD(x) || IS_TPM2_EXT_CMD(x))
+#define IS_TPM2_STD_CMD(x) \
+  ((x) >= trunks::TPM_CC_FIRST && (x) <= trunks::TPM_CC_LAST)
+#define IS_TPM2_EXT_CMD(x) \
+  ((x) >= trunks::TPM_CCE_FIRST && (x) <= trunks::TPM_CCE_LAST)
+#define IS_TPM2_CMD(x) (IS_TPM2_STD_CMD(x) || IS_TPM2_EXT_CMD(x))
 
 typedef uint8_t UINT8;
 typedef uint8_t BYTE;
@@ -646,6 +646,7 @@ constexpr TPM_CC TPM_CC_EC_Ephemeral = 0x0000018E;
 constexpr TPM_CC TPM_CC_PolicyNvWritten = 0x0000018F;
 constexpr TPM_CC TPM_CC_LAST = 0x0000018F;
 constexpr TPM_CC TPM_CCE_FIRST = 0x20008001;
+constexpr TPM_CC TPM_CCE_PolicyFidoSigned = 0x20008001;
 constexpr TPM_CC TPM_CCE_LAST = 0x20008001;
 constexpr TPM_RC TPM_RC_SUCCESS = 0x000;
 constexpr TPM_RC TPM_RC_BAD_TAG = 0x01E;
@@ -1653,6 +1654,11 @@ struct TPMS_CREATION_DATA {
 struct TPM2B_CREATION_DATA {
   UINT16 size;
   TPMS_CREATION_DATA creation_data;
+};
+
+struct FIDO_DATA_RANGE {
+  UINT16 offset;
+  UINT16 size;
 };
 
 TRUNKS_EXPORT size_t GetNumberOfRequestHandles(TPM_CC command_code);
@@ -6047,6 +6053,40 @@ class TRUNKS_EXPORT Tpm {
                                 TPM2B_ATTEST* certify_info,
                                 TPMT_SIGNATURE* signature,
                                 AuthorizationDelegate* authorization_delegate);
+
+  typedef base::Callback<void(TPM_RC response_code)> PolicyFidoSignedResponse;
+  static TPM_RC SerializeCommand_PolicyFidoSigned(
+      const TPMI_DH_OBJECT& auth_object,
+      const std::string& auth_object_name,
+      const TPMI_SH_POLICY& policy_session,
+      const std::string& policy_session_name,
+      const std::string& auth_data,
+      const std::vector<FIDO_DATA_RANGE>& auth_data_descr,
+      const TPMT_SIGNATURE& auth,
+      std::string* serialized_command,
+      AuthorizationDelegate* authorization_delegate);
+  static TPM_RC ParseResponse_PolicyFidoSigned(
+      const std::string& response,
+      AuthorizationDelegate* authorization_delegate);
+  virtual void PolicyFidoSigned(
+      const TPMI_DH_OBJECT& auth_object,
+      const std::string& auth_object_name,
+      const TPMI_SH_POLICY& policy_session,
+      const std::string& policy_session_name,
+      const std::string& auth_data,
+      const std::vector<FIDO_DATA_RANGE>& auth_data_descr,
+      const TPMT_SIGNATURE& auth,
+      AuthorizationDelegate* authorization_delegate,
+      const PolicyFidoSignedResponse& callback);
+  virtual TPM_RC PolicyFidoSignedSync(
+      const TPMI_DH_OBJECT& auth_object,
+      const std::string& auth_object_name,
+      const TPMI_SH_POLICY& policy_session,
+      const std::string& policy_session_name,
+      const std::string& auth_data,
+      const std::vector<FIDO_DATA_RANGE>& auth_data_descr,
+      const TPMT_SIGNATURE& auth,
+      AuthorizationDelegate* authorization_delegate);
 
  private:
   CommandTransceiver* transceiver_;

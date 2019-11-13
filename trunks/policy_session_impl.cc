@@ -141,8 +141,8 @@ TPM_RC PolicySessionImpl::PolicyPCR(
       LOG(ERROR) << "PCR map must not have both empty and non-empty values.";
       return SAPI_RC_BAD_PARAMETER;
     }
-    pcr_digest = Make_TPM2B_DIGEST(
-          crypto::SHA256HashString(concatenated_pcr_values));
+    pcr_digest =
+        Make_TPM2B_DIGEST(crypto::SHA256HashString(concatenated_pcr_values));
   }
 
   TPM_RC result = factory_.GetTpm()->PolicyPCRSync(
@@ -183,14 +183,9 @@ TPM_RC PolicySessionImpl::PolicySecret(TPMI_DH_ENTITY auth_entity,
   trunks::Serialize_TPM_HANDLE(policy_session_handle, &policy_session_name);
 
   TPM_RC result = factory_.GetTpm()->PolicySecretSync(
-      auth_entity, auth_entity_name,
-      policy_session_handle, policy_session_name,
-      Make_TPM2B_DIGEST(nonce),
-      Make_TPM2B_DIGEST(cp_hash),
-      Make_TPM2B_DIGEST(policy_ref),
-      expiration,
-      &timeout,
-      &policy_ticket,
+      auth_entity, auth_entity_name, policy_session_handle, policy_session_name,
+      Make_TPM2B_DIGEST(nonce), Make_TPM2B_DIGEST(cp_hash),
+      Make_TPM2B_DIGEST(policy_ref), expiration, &timeout, &policy_ticket,
       delegate);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error performing PolicySecret: " << GetErrorString(result);
@@ -253,6 +248,28 @@ TPM_RC PolicySessionImpl::PolicyRestart() {
 
 void PolicySessionImpl::SetEntityAuthorizationValue(const std::string& value) {
   hmac_delegate_.set_entity_authorization_value(value);
+}
+
+TPM_RC PolicySessionImpl::PolicyFidoSigned(
+    TPMI_DH_ENTITY auth_entity,
+    const std::string& auth_entity_name,
+    const std::string& auth_data,
+    const std::vector<FIDO_DATA_RANGE>& auth_data_descr,
+    const TPMT_SIGNATURE& signature,
+    AuthorizationDelegate* delegate) {
+  TPM_HANDLE policy_session_handle = session_manager_->GetSessionHandle();
+  std::string policy_session_name;
+  Serialize_TPM_HANDLE(policy_session_handle, &policy_session_name);
+
+  TPM_RC result = factory_.GetTpm()->PolicyFidoSignedSync(
+      auth_entity, auth_entity_name, policy_session_handle, policy_session_name,
+      auth_data, auth_data_descr, signature, delegate);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error performing PolicyFidoSigned: "
+               << GetErrorString(result);
+    return result;
+  }
+  return TPM_RC_SUCCESS;
 }
 
 }  // namespace trunks

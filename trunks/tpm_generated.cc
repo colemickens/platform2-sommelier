@@ -242,6 +242,8 @@ size_t GetNumberOfRequestHandles(TPM_CC command_code) {
       return 1;
     case TPM_CC_NV_Certify:
       return 3;
+    case TPM_CCE_PolicyFidoSigned:
+      return 2;
     default:
       LOG(WARNING) << "Unknown command code: " << command_code;
   }
@@ -465,6 +467,8 @@ size_t GetNumberOfResponseHandles(TPM_CC command_code) {
     case TPM_CC_NV_ChangeAuth:
       return 0;
     case TPM_CC_NV_Certify:
+      return 0;
+    case TPM_CCE_PolicyFidoSigned:
       return 0;
     default:
       LOG(WARNING) << "Unknown command code: " << command_code;

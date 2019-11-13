@@ -682,6 +682,16 @@ class PolicySessionForwarder : public PolicySession {
                                  policy_ref, expiration, signature, delegate);
   }
 
+  TPM_RC PolicyFidoSigned(TPMI_DH_ENTITY auth_entity,
+                          const std::string& auth_entity_name,
+                          const std::string& auth_data,
+                          const std::vector<FIDO_DATA_RANGE>& auth_data_descr,
+                          const TPMT_SIGNATURE& signature,
+                          AuthorizationDelegate* delegate) override {
+    return target_->PolicyFidoSigned(auth_entity, auth_entity_name, auth_data,
+                                     auth_data_descr, signature, delegate);
+  }
+
   TPM_RC PolicyAuthValue() override { return target_->PolicyAuthValue(); }
 
   TPM_RC PolicyRestart() override { return target_->PolicyRestart(); }

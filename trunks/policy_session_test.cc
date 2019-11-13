@@ -254,6 +254,15 @@ TEST_F(PolicySessionTest, PolicySigned) {
                                  GetHmacDelegate(&session)));
 }
 
+TEST_F(PolicySessionTest, PolicyFidoSigned) {
+  PolicySessionImpl session(factory_);
+  EXPECT_CALL(mock_tpm_, PolicyFidoSignedSync(_, _, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            session.PolicyFidoSigned(1, "", "", {}, TPMT_SIGNATURE(),
+                                     GetHmacDelegate(&session)));
+}
+
 TEST_F(PolicySessionTest, PolicyAuthValueSuccess) {
   PolicySessionImpl session(factory_);
   EXPECT_CALL(mock_tpm_, PolicyAuthValueSync(_, _, _))

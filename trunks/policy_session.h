@@ -117,6 +117,26 @@ class PolicySession {
   // while the session is active and subsequent commands will use the value.
   virtual void SetEntityAuthorizationValue(const std::string& value) = 0;
 
+  // This method includes a signature-based authorization to the PolicySession
+  // with the following parameters:
+  // |auth_entity| - handle of the entity providing authorization (that is, of
+  //                 the public key entity).
+  // |auth_entity_name| - name of the entity providing authorization.
+  // |auth_data| - Authenticator Data
+  // |auth_data_descr| - Descriptors of auth_data.
+  //                     It is an array of (UINT16 offset, UINT16 size) tuples,
+  //                     which points the part of auth_data for auth hash.
+  // |signature| - signature object that specifies signing algorithm parameters
+  //               and (for non-trial sessions) the contents of the signature.
+  // |delegate| - authorization delegate for |auth_entity|.
+  virtual TPM_RC PolicyFidoSigned(
+      TPMI_DH_ENTITY auth_entity,
+      const std::string& auth_entity_name,
+      const std::string& auth_data,
+      const std::vector<FIDO_DATA_RANGE>& auth_data_descr,
+      const TPMT_SIGNATURE& signature,
+      AuthorizationDelegate* delegate) = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(PolicySession);
 };

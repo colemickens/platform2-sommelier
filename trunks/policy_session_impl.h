@@ -68,6 +68,13 @@ class TRUNKS_EXPORT PolicySessionImpl : public PolicySession {
   TPM_RC PolicyRestart() override;
   void SetEntityAuthorizationValue(const std::string& value) override;
 
+  TPM_RC PolicyFidoSigned(TPMI_DH_ENTITY auth_entity,
+                          const std::string& auth_entity_name,
+                          const std::string& auth_data,
+                          const std::vector<FIDO_DATA_RANGE>& auth_data_descr,
+                          const TPMT_SIGNATURE& signature,
+                          AuthorizationDelegate* delegate) override;
+
  private:
   // This factory is only set in the constructor and is used to instantiate
   // the TPM class to forward commands to the TPM chip.

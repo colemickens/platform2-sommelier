@@ -83,6 +83,7 @@ shared_library("trunks") {
     "policy_session_impl.cc",
     "scoped_key_handle.cc",
     "session_manager_impl.cc",
+    "tpm_extended.cc",
     "tpm_generated.cc",
     "tpm_pinweaver.cc",
     "tpm_state_impl.cc",
