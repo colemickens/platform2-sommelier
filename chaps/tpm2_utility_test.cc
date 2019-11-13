@@ -642,7 +642,7 @@ TEST_F(TPM2UtilityTest, SignRsaSuccess) {
   EXPECT_CALL(mock_tpm_utility_, Sign(key_handle, trunks::TPM_ALG_RSASSA,
                                       trunks::TPM_ALG_SHA1, input, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_TRUE(utility.Sign(key_handle, DigestAlgorithm::SHA1, input, &output));
+  EXPECT_TRUE(utility.Sign(key_handle, CKM_SHA1_RSA_PKCS, "", input, &output));
 }
 
 TEST_F(TPM2UtilityTest, SignEccSuccess) {
@@ -667,7 +667,7 @@ TEST_F(TPM2UtilityTest, SignEccSuccess) {
                                       trunks::TPM_ALG_SHA1, input, _, _, _))
       .WillOnce(
           DoAll(SetArgPointee<6>(tpm_signature_str), Return(TPM_RC_SUCCESS)));
-  EXPECT_TRUE(utility.Sign(key_handle, DigestAlgorithm::SHA1, input, &output));
+  EXPECT_TRUE(utility.Sign(key_handle, CKM_ECDSA_SHA1, "", input, &output));
 
   EXPECT_EQ(output, "1234");
 }
@@ -689,7 +689,7 @@ TEST_F(TPM2UtilityTest, SignSuccessWithDecrypt) {
               AsymmetricDecrypt(key_handle, trunks::TPM_ALG_NULL,
                                 trunks::TPM_ALG_NULL, _, _, _))
       .WillOnce(DoAll(SaveArg<3>(&padded_input), Return(TPM_RC_SUCCESS)));
-  EXPECT_TRUE(utility.Sign(key_handle, DigestAlgorithm::SHA1, input, &output));
+  EXPECT_TRUE(utility.Sign(key_handle, CKM_SHA1_RSA_PKCS, "", input, &output));
 
   // Check the input is PKCS1 padded.
   EXPECT_EQ(padded_input.size(), public_data.unique.rsa.size);
@@ -714,7 +714,7 @@ TEST_F(TPM2UtilityTest, SignFailure) {
       .WillOnce(DoAll(SetArgPointee<1>(public_data), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_, Sign(key_handle, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(utility.Sign(key_handle, DigestAlgorithm::SHA1, input, &output));
+  EXPECT_FALSE(utility.Sign(key_handle, CKM_SHA1_RSA_PKCS, "", input, &output));
 }
 
 TEST_F(TPM2UtilityTest, SignFailureWithDecrypt) {
@@ -731,7 +731,7 @@ TEST_F(TPM2UtilityTest, SignFailureWithDecrypt) {
       .WillOnce(DoAll(SetArgPointee<1>(public_data), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_, AsymmetricDecrypt(key_handle, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(utility.Sign(key_handle, DigestAlgorithm::SHA1, input, &output));
+  EXPECT_FALSE(utility.Sign(key_handle, CKM_SHA1_RSA_PKCS, "", input, &output));
 }
 
 TEST_F(TPM2UtilityTest, SignFailureBadKeySize) {
@@ -747,7 +747,7 @@ TEST_F(TPM2UtilityTest, SignFailureBadKeySize) {
   EXPECT_CALL(mock_tpm_utility_, Sign(key_handle, _, _, _, _, _, _)).Times(0);
   EXPECT_CALL(mock_tpm_utility_, AsymmetricDecrypt(key_handle, _, _, _, _, _))
       .Times(0);
-  EXPECT_FALSE(utility.Sign(key_handle, DigestAlgorithm::SHA1, input, &output));
+  EXPECT_FALSE(utility.Sign(key_handle, CKM_SHA1_RSA_PKCS, "", input, &output));
 }
 
 TEST_F(TPM2UtilityTest, SignFailurePublicArea) {
@@ -760,7 +760,7 @@ TEST_F(TPM2UtilityTest, SignFailurePublicArea) {
   EXPECT_CALL(mock_tpm_utility_, Sign(key_handle, _, _, _, _, _, _)).Times(0);
   EXPECT_CALL(mock_tpm_utility_, AsymmetricDecrypt(key_handle, _, _, _, _, _))
       .Times(0);
-  EXPECT_FALSE(utility.Sign(key_handle, DigestAlgorithm::SHA1, input, &output));
+  EXPECT_FALSE(utility.Sign(key_handle, CKM_SHA1_RSA_PKCS, "", input, &output));
 }
 
 TEST_F(TPM2UtilityTest, SignSuccessWithUnknownAlgorithm) {
@@ -780,8 +780,7 @@ TEST_F(TPM2UtilityTest, SignSuccessWithUnknownAlgorithm) {
   EXPECT_CALL(mock_tpm_utility_, Sign(key_handle, trunks::TPM_ALG_RSASSA,
                                       trunks::TPM_ALG_NULL, input, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_TRUE(
-      utility.Sign(key_handle, DigestAlgorithm::NoDigest, input, &output));
+  EXPECT_TRUE(utility.Sign(key_handle, CKM_RSA_PKCS, "", input, &output));
 
   // For the digest algorithms which are not supported by TPM, we will prepend
   // DigestInfo and use Sign with NULL scheme
@@ -791,7 +790,7 @@ TEST_F(TPM2UtilityTest, SignSuccessWithUnknownAlgorithm) {
               Sign(key_handle, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_NULL,
                    kInputWithMd5DigestInfo, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_TRUE(utility.Sign(key_handle, DigestAlgorithm::MD5, input, &output));
+  EXPECT_TRUE(utility.Sign(key_handle, CKM_MD5_RSA_PKCS, "", input, &output));
 }
 
 TEST_F(TPM2UtilityTest, SignSuccessWithPrependDigestForKnownAlgorithm) {
@@ -817,7 +816,7 @@ TEST_F(TPM2UtilityTest, SignSuccessWithPrependDigestForKnownAlgorithm) {
               Sign(key_handle, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA1,
                    kDigestOfSHA1, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_TRUE(utility.Sign(key_handle, DigestAlgorithm::NoDigest,
+  EXPECT_TRUE(utility.Sign(key_handle, CKM_RSA_PKCS, "",
                            kInputWithSHA1DigestInfo, &output));
 
   const std::string kDigestOfSHA256 = std::string(SHA256_DIGEST_SIZE, 'b');
@@ -827,7 +826,7 @@ TEST_F(TPM2UtilityTest, SignSuccessWithPrependDigestForKnownAlgorithm) {
               Sign(key_handle, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA256,
                    kDigestOfSHA256, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_TRUE(utility.Sign(key_handle, DigestAlgorithm::NoDigest,
+  EXPECT_TRUE(utility.Sign(key_handle, CKM_RSA_PKCS, "",
                            kInputWithSHA256DigestInfo, &output));
 
   const std::string kDigestOfSHA384 = std::string(SHA384_DIGEST_SIZE, 'c');
@@ -837,7 +836,7 @@ TEST_F(TPM2UtilityTest, SignSuccessWithPrependDigestForKnownAlgorithm) {
               Sign(key_handle, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA384,
                    kDigestOfSHA384, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_TRUE(utility.Sign(key_handle, DigestAlgorithm::NoDigest,
+  EXPECT_TRUE(utility.Sign(key_handle, CKM_RSA_PKCS, "",
                            kInputWithSHA384DigestInfo, &output));
 
   const std::string kDigestOfSHA512 = std::string(SHA512_DIGEST_SIZE, 'd');
@@ -847,7 +846,7 @@ TEST_F(TPM2UtilityTest, SignSuccessWithPrependDigestForKnownAlgorithm) {
               Sign(key_handle, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA512,
                    kDigestOfSHA512, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_TRUE(utility.Sign(key_handle, DigestAlgorithm::NoDigest,
+  EXPECT_TRUE(utility.Sign(key_handle, CKM_RSA_PKCS, "",
                            kInputWithSHA512DigestInfo, &output));
 }
 

@@ -223,8 +223,11 @@ class TPMUtility {
   // Generates a digital signature.
   //   key_handle - The key handle, as provided by LoadKey, WrapRSAKey or
   //                GenerateKey.
-  //   digest_algorithm - The digest algorithm type of |input|. For padding only
-  //                      scheme (ex. CKM_RSA_PKCS), use NoDigest.
+  //   signing_mechanism - The mechanism (i.e. asymmetric cipher type and
+  //                       padding scheme, if applicable) that is used for
+  //                       signing.
+  //   mechanism_parameter - The parameter to the signing mechanism, if any is
+  //                         required, such as in RSA PSS.
   //   input - The raw data we want to sign. For RSASSA, the DER encoding of the
   //           DigestInfo value (see PKCS #1 v.2.1: 9.2) will be added
   //           internally according to |digest_algorithm|.
@@ -234,7 +237,8 @@ class TPMUtility {
   //               always match the length of the RSA key modulus.
   // Returns true on success.
   virtual bool Sign(int key_handle,
-                    DigestAlgorithm digest_algorithm,
+                    CK_MECHANISM_TYPE signing_mechanism,
+                    const std::string& mechanism_parameter,
                     const std::string& input,
                     std::string* signature) = 0;
 

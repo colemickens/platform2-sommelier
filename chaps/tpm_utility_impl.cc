@@ -644,11 +644,14 @@ bool TPMUtilityImpl::Unbind(int key_handle,
 }
 
 bool TPMUtilityImpl::Sign(int key_handle,
-                          DigestAlgorithm digest_algorithm,
+                          CK_MECHANISM_TYPE signing_mechanism,
+                          const std::string& mechanism_parameter,
                           const string& input,
                           string* signature) {
   VLOG(1) << "TPMUtilityImpl::Sign enter";
   AutoLock lock(lock_);
+  DigestAlgorithm digest_algorithm = GetDigestAlgorithm(signing_mechanism);
+
   // Using the TSS_SS_RSASSAPKCS1V15_DER scheme, we need to manually
   // insert the hash OID.
   std::string data_to_sign =
@@ -658,6 +661,14 @@ bool TPMUtilityImpl::Sign(int key_handle,
   TSSHash hash(tsp_context_);
   if (!hash.Create(data_to_sign))
     return false;
+
+  // Tspi_Hash_Sign only do PKCS#1 v1.5, and only the mechanisms below match.
+  if (GetSigningSchemeForMechanism(signing_mechanism) ==
+      RsaPaddingScheme::RSASSA_PKCS1_V1_5) {
+    LOG(ERROR) << "Unsupported mechanism for tpm1.2 key " << signing_mechanism;
+    return false;
+  }
+
   UINT32 length = 0;
   BYTE* buffer = NULL;
   TSS_RESULT result =

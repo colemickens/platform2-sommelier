@@ -199,7 +199,7 @@ class SessionImpl : public Session {
   // ECC operations
   bool ECCSign(OperationContext* context);
   bool ECCSignTPM(const std::string& input,
-                  DigestAlgorithm digest_algorithm,
+                  CK_MECHANISM_TYPE signing_mechanism,
                   const Object* key_object,
                   std::string* signature);
   bool ECCSignSoftware(const std::string& input,

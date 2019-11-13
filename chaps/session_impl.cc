@@ -1566,9 +1566,8 @@ bool SessionImpl::RSASign(OperationContext* context) {
     int tpm_key_handle = 0;
     if (!GetTPMKeyHandle(context->key_, &tpm_key_handle))
       return false;
-    if (!tpm_utility_->Sign(tpm_key_handle,
-                            GetDigestAlgorithm(context->mechanism_),
-                            context->data_, &signature))
+    if (!tpm_utility_->Sign(tpm_key_handle, context->mechanism_,
+                            context->parameter_, context->data_, &signature))
       return false;
   } else {
     crypto::ScopedRSA rsa = CreateRSAKeyFromObject(context->key_);
@@ -1626,8 +1625,8 @@ bool SessionImpl::ECCSign(OperationContext* context) {
   string signature;
   if (context->key_->IsTokenObject() &&
       context->key_->IsAttributePresent(kKeyBlobAttribute)) {
-    if (!ECCSignTPM(context->data_, GetDigestAlgorithm(context->mechanism_),
-                    context->key_, &signature))
+    if (!ECCSignTPM(context->data_, context->mechanism_, context->key_,
+                    &signature))
       return false;
   } else {
     if (!ECCSignSoftware(context->data_, context->key_, &signature))
@@ -1638,13 +1637,23 @@ bool SessionImpl::ECCSign(OperationContext* context) {
 }
 
 bool SessionImpl::ECCSignTPM(const std::string& input,
-                             DigestAlgorithm digest_algorithm,
+                             CK_MECHANISM_TYPE signing_mechanism,
                              const Object* key_object,
                              std::string* signature) {
+  if (!(signing_mechanism == CKM_ECDSA ||
+        signing_mechanism == CKM_ECDSA_SHA1)) {
+    LOG(ERROR)
+        << "Failed to sign with ECCSignTPM because mechanism is unsupported: "
+        << signing_mechanism;
+    return false;
+  }
+
   int tpm_key_handle = 0;
   if (!GetTPMKeyHandle(key_object, &tpm_key_handle))
     return false;
-  if (!tpm_utility_->Sign(tpm_key_handle, digest_algorithm, input, signature))
+  // Note that ECC doesn't require any signing parameters.
+  if (!tpm_utility_->Sign(tpm_key_handle, signing_mechanism, "", input,
+                          signature))
     return false;
   return true;
 }

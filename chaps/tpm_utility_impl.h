@@ -90,7 +90,8 @@ class TPMUtilityImpl : public TPMUtility {
               const std::string& input,
               std::string* output) override;
   bool Sign(int key_handle,
-            DigestAlgorithm digest_algorithm,
+            CK_MECHANISM_TYPE signing_mechanism,
+            const std::string& mechanism_parameter,
             const std::string& input,
             std::string* signature) override;
   bool IsSRKReady() override;

@@ -876,4 +876,30 @@ const EVP_MD* GetOpenSSLDigest(CK_MECHANISM_TYPE mechanism) {
   }
 }
 
+RsaPaddingScheme GetSigningSchemeForMechanism(
+    const CK_MECHANISM_TYPE mechanism) {
+  switch (mechanism) {
+    case CKM_RSA_PKCS:
+    case CKM_MD2_RSA_PKCS:
+    case CKM_MD5_RSA_PKCS:
+    case CKM_SHA1_RSA_PKCS:
+    case CKM_RIPEMD128_RSA_PKCS:
+    case CKM_RIPEMD160_RSA_PKCS:
+    case CKM_SHA256_RSA_PKCS:
+    case CKM_SHA384_RSA_PKCS:
+    case CKM_SHA512_RSA_PKCS:
+    case CKM_SHA224_RSA_PKCS:
+      return RsaPaddingScheme::RSASSA_PKCS1_V1_5;
+    case CKM_RSA_PKCS_PSS:
+    case CKM_SHA1_RSA_PKCS_PSS:
+    case CKM_SHA256_RSA_PKCS_PSS:
+    case CKM_SHA384_RSA_PKCS_PSS:
+    case CKM_SHA512_RSA_PKCS_PSS:
+    case CKM_SHA224_RSA_PKCS_PSS:
+      return RsaPaddingScheme::RSASSA_PSS;
+    default:
+      return RsaPaddingScheme::UNKNOWN_PADDING_SCHEME;
+  }
+}
+
 }  // namespace chaps

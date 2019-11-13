@@ -760,10 +760,13 @@ bool TPM2UtilityImpl::Unbind(int key_handle,
 }
 
 bool TPM2UtilityImpl::Sign(int key_handle,
-                           DigestAlgorithm digest_algorithm,
+                           CK_MECHANISM_TYPE signing_mechanism,
+                           const std::string& mechanism_parameter,
                            const std::string& input,
                            std::string* signature) {
   AutoLock Lock(lock_);
+  DigestAlgorithm digest_algorithm = GetDigestAlgorithm(signing_mechanism);
+
   std::string auth_data = handle_auth_data_[key_handle].to_string();
   ScopedSession session_scope(factory_, &session_);
   if (!session_) {
@@ -831,6 +834,14 @@ bool TPM2UtilityImpl::Sign(int key_handle,
         data_to_sign = input;
       }
 
+      // We are using TPM_ALG_RSASSA, and only the mechanisms below match.
+      if (GetSigningSchemeForMechanism(signing_mechanism) !=
+          RsaPaddingScheme::RSASSA_PKCS1_V1_5) {
+        LOG(ERROR) << "Unsupported signing mechanism for tpm2 rsa key "
+                   << signing_mechanism;
+        return false;
+      }
+
       result = trunks_tpm_utility_->Sign(
           key_handle, trunks::TPM_ALG_RSASSA, digest_alg_id, data_to_sign,
           false /* don't generate hash */, session_->GetDelegate(), signature);
@@ -841,6 +852,14 @@ bool TPM2UtilityImpl::Sign(int key_handle,
       return false;
     }
   } else if (public_area.type == trunks::TPM_ALG_ECC) {
+    // We are using TPM_ALG_ECDSA, and only the mechanisms below match.
+    if (!(signing_mechanism == CKM_ECDSA ||
+          signing_mechanism == CKM_ECDSA_SHA1)) {
+      LOG(ERROR) << "Unsupported signing mechanism for tpm2 ecc key "
+                 << signing_mechanism;
+      return false;
+    }
+
     result = trunks_tpm_utility_->Sign(
         key_handle, trunks::TPM_ALG_ECDSA, digest_alg_id, input,
         false /* don't generate hash */, session_->GetDelegate(), signature);

@@ -74,8 +74,12 @@ class TPMUtilityMock : public TPMUtility {
   MOCK_METHOD1(UnloadKeysForSlot, void(int));
   MOCK_METHOD3(Bind, bool(int, const std::string&, std::string*));
   MOCK_METHOD3(Unbind, bool(int, const std::string&, std::string*));
-  MOCK_METHOD4(Sign,
-               bool(int, DigestAlgorithm, const std::string&, std::string*));
+  MOCK_METHOD5(Sign,
+               bool(int,
+                    CK_MECHANISM_TYPE,
+                    const std::string&,
+                    const std::string&,
+                    std::string*));
   MOCK_METHOD0(IsSRKReady, bool());
 
  private:

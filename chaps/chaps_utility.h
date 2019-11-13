@@ -31,6 +31,12 @@ enum class DigestAlgorithm {
   NoDigest
 };
 
+enum class RsaPaddingScheme {
+  UNKNOWN_PADDING_SCHEME = 0,
+  RSASSA_PKCS1_V1_5,
+  RSASSA_PSS,
+};
+
 // These strings are the DER encodings of the DigestInfo values for the
 // supported digest algorithms.  See PKCS #1 v2.1: 9.2.
 const struct {
@@ -345,6 +351,10 @@ chaps::DigestAlgorithm GetDigestAlgorithm(CK_MECHANISM_TYPE mechanism);
 
 // Return the OpenSSL Digest associated with the given PKCS#11 Mechanism.
 const EVP_MD* GetOpenSSLDigest(CK_MECHANISM_TYPE mechanism);
+
+// Return the RSA padding scheme for the given |mechanism|.
+RsaPaddingScheme GetSigningSchemeForMechanism(
+    const CK_MECHANISM_TYPE mechanism);
 
 }  // namespace chaps
 

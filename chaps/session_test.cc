@@ -950,7 +950,7 @@ TEST_F(TestSession, EcdsaSignWithTPM) {
   EXPECT_CALL(tpm_, GetECCPublicKey(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, LoadKey(_, _, _, _)).WillRepeatedly(Return(true));
 
-  EXPECT_CALL(tpm_, Sign(_, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(tpm_, Sign(_, _, _, _, _)).WillOnce(Return(true));
 
   const Object* pub = NULL;
   const Object* priv = NULL;
