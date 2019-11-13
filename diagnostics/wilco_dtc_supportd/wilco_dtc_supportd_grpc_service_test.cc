@@ -24,7 +24,7 @@
 #include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/common/protobuf_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
-#include "diagnostics/wilco_dtc_supportd/telemetry/mock_system_files_service.h"
+#include "diagnostics/wilco_dtc_supportd/telemetry/fake_system_files_service.h"
 #include "diagnostics/wilco_dtc_supportd/vpd_constants.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_grpc_service.h"
 
@@ -677,23 +677,23 @@ TEST_F(WilcoDtcSupportdGrpcServiceTest, GetDriveSystemDataInternalError) {
       << "Actual response: {" << response->ShortDebugString() << "}";
 }
 
-class WilcoDtcSupportdGrpcServiceWithMockSystemFilesServiceTest
+class WilcoDtcSupportdGrpcServiceWithFakeSystemFilesServiceTest
     : public WilcoDtcSupportdGrpcServiceTest {
  public:
   void SetUp() override {
     WilcoDtcSupportdGrpcServiceTest::SetUp();
 
-    auto mock = std::make_unique<StrictMock<MockSystemFilesService>>();
-    system_files_service_mock_ = mock.get();
-    service()->set_system_files_service_for_testing(std::move(mock));
+    auto fake = std::make_unique<FakeSystemFilesService>();
+    system_files_service_fake_ = fake.get();
+    service()->set_system_files_service_for_testing(std::move(fake));
   }
 
  protected:
   // Owned by |service_| from WilcoDtcSupportdGrpcServiceTest
-  StrictMock<MockSystemFilesService>* system_files_service_mock_ = nullptr;
+  FakeSystemFilesService* system_files_service_fake_ = nullptr;
 };
 
-TEST_F(WilcoDtcSupportdGrpcServiceWithMockSystemFilesServiceTest,
+TEST_F(WilcoDtcSupportdGrpcServiceWithFakeSystemFilesServiceTest,
        DirectoryAcpiButtonSingleFile) {
   std::vector<std::unique_ptr<SystemFilesService::FileDump>> directory_dump;
   auto single_dump = std::make_unique<SystemFilesService::FileDump>();
@@ -702,12 +702,8 @@ TEST_F(WilcoDtcSupportdGrpcServiceWithMockSystemFilesServiceTest,
   single_dump->canonical_path = base::FilePath(kTestCanonicalFilePath);
   directory_dump.push_back(std::move(single_dump));
 
-  system_files_service_mock_->set_directory_dump(directory_dump);
-
-  EXPECT_CALL(
-      *system_files_service_mock_,
-      GetDirectoryDumpImpl(SystemFilesService::Directory::kProcAcpiButton))
-      .WillOnce(Return(true));
+  system_files_service_fake_->set_directory_dump(
+      SystemFilesService::Directory::kProcAcpiButton, directory_dump);
 
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetProcData(grpc_api::GetProcDataRequest::DIRECTORY_ACPI_BUTTON,
@@ -715,9 +711,15 @@ TEST_F(WilcoDtcSupportdGrpcServiceWithMockSystemFilesServiceTest,
 
   EXPECT_THAT(file_dumps,
               GrpcDumpsEquivalentWithInternal(ByRef(directory_dump)));
+
+  EXPECT_EQ(system_files_service_fake_->get_dumped_files().size(), 0);
+
+  ASSERT_EQ(system_files_service_fake_->get_dumped_directories().size(), 1);
+  EXPECT_EQ(system_files_service_fake_->get_dumped_directories()[0],
+            SystemFilesService::Directory::kProcAcpiButton);
 }
 
-TEST_F(WilcoDtcSupportdGrpcServiceWithMockSystemFilesServiceTest,
+TEST_F(WilcoDtcSupportdGrpcServiceWithFakeSystemFilesServiceTest,
        DirectoryAcpiButtonMultiFile) {
   std::vector<std::unique_ptr<SystemFilesService::FileDump>> directory_dump;
   auto first_dump = std::make_unique<SystemFilesService::FileDump>();
@@ -733,12 +735,8 @@ TEST_F(WilcoDtcSupportdGrpcServiceWithMockSystemFilesServiceTest,
       base::FilePath(kTestCanonicalFilePath).Append("3");
   directory_dump.push_back(std::move(second_dump));
 
-  system_files_service_mock_->set_directory_dump(directory_dump);
-
-  EXPECT_CALL(
-      *system_files_service_mock_,
-      GetDirectoryDumpImpl(SystemFilesService::Directory::kProcAcpiButton))
-      .WillOnce(Return(true));
+  system_files_service_fake_->set_directory_dump(
+      SystemFilesService::Directory::kProcAcpiButton, directory_dump);
 
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetProcData(grpc_api::GetProcDataRequest::DIRECTORY_ACPI_BUTTON,
@@ -746,37 +744,46 @@ TEST_F(WilcoDtcSupportdGrpcServiceWithMockSystemFilesServiceTest,
 
   EXPECT_THAT(file_dumps,
               GrpcDumpsEquivalentWithInternal(ByRef(directory_dump)));
+
+  EXPECT_EQ(system_files_service_fake_->get_dumped_files().size(), 0);
+
+  ASSERT_EQ(system_files_service_fake_->get_dumped_directories().size(), 1);
+  EXPECT_EQ(system_files_service_fake_->get_dumped_directories()[0],
+            SystemFilesService::Directory::kProcAcpiButton);
 }
 
-TEST_F(WilcoDtcSupportdGrpcServiceWithMockSystemFilesServiceTest,
+TEST_F(WilcoDtcSupportdGrpcServiceWithFakeSystemFilesServiceTest,
        DirectoryAcpiButtonEmpty) {
-  system_files_service_mock_->set_directory_dump(
+  system_files_service_fake_->set_directory_dump(
+      SystemFilesService::Directory::kProcAcpiButton,
       std::vector<std::unique_ptr<SystemFilesService::FileDump>>());
 
-  EXPECT_CALL(
-      *system_files_service_mock_,
-      GetDirectoryDumpImpl(SystemFilesService::Directory::kProcAcpiButton))
-      .WillOnce(Return(true));
-
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetProcData(grpc_api::GetProcDataRequest::DIRECTORY_ACPI_BUTTON,
                      &file_dumps);
 
   EXPECT_EQ(file_dumps.size(), 0);
+
+  EXPECT_EQ(system_files_service_fake_->get_dumped_files().size(), 0);
+
+  ASSERT_EQ(system_files_service_fake_->get_dumped_directories().size(), 1);
+  EXPECT_EQ(system_files_service_fake_->get_dumped_directories()[0],
+            SystemFilesService::Directory::kProcAcpiButton);
 }
 
-TEST_F(WilcoDtcSupportdGrpcServiceWithMockSystemFilesServiceTest,
+TEST_F(WilcoDtcSupportdGrpcServiceWithFakeSystemFilesServiceTest,
        DirectoryAcpiButtonMissing) {
-  EXPECT_CALL(
-      *system_files_service_mock_,
-      GetDirectoryDumpImpl(SystemFilesService::Directory::kProcAcpiButton))
-      .WillOnce(Return(false));
-
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetProcData(grpc_api::GetProcDataRequest::DIRECTORY_ACPI_BUTTON,
                      &file_dumps);
 
   EXPECT_EQ(file_dumps.size(), 0);
+
+  EXPECT_EQ(system_files_service_fake_->get_dumped_files().size(), 0);
+
+  ASSERT_EQ(system_files_service_fake_->get_dumped_directories().size(), 1);
+  EXPECT_EQ(system_files_service_fake_->get_dumped_directories()[0],
+            SystemFilesService::Directory::kProcAcpiButton);
 }
 
 // Tests for the GetProcData() method of WilcoDtcSupportdGrpcServiceTest when a
@@ -787,7 +794,7 @@ TEST_F(WilcoDtcSupportdGrpcServiceWithMockSystemFilesServiceTest,
 //   (see GetProcDataRequest::Type);
 // * |expected_location| - SystemFilesService::File that should be requested
 class SingleProcFileWilcoDtcSupportdGrpcServiceTest
-    : public WilcoDtcSupportdGrpcServiceWithMockSystemFilesServiceTest,
+    : public WilcoDtcSupportdGrpcServiceWithFakeSystemFilesServiceTest,
       public testing::WithParamInterface<
           std::tuple<grpc_api::GetProcDataRequest::Type,
                      SystemFilesService::File>> {
@@ -807,35 +814,41 @@ class SingleProcFileWilcoDtcSupportdGrpcServiceTest
 // Test that GetProcData() returns a single item with the requested file data
 // when the file exists.
 TEST_P(SingleProcFileWilcoDtcSupportdGrpcServiceTest, Success) {
-  auto file_dump = std::make_unique<SystemFilesService::FileDump>();
-  file_dump->contents = FakeFileContents();
-  file_dump->path = base::FilePath(kTestFilePath);
-  file_dump->canonical_path = base::FilePath(kTestCanonicalFilePath);
+  SystemFilesService::FileDump file_dump;
+  file_dump.contents = FakeFileContents();
+  file_dump.path = base::FilePath(kTestFilePath);
+  file_dump.canonical_path = base::FilePath(kTestCanonicalFilePath);
 
-  system_files_service_mock_->set_file_dump(file_dump);
-
-  EXPECT_CALL(*system_files_service_mock_, GetFileDumpImpl(expected_location()))
-      .WillOnce(Return(true));
+  system_files_service_fake_->set_file_dump(expected_location(), file_dump);
 
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetProcData(proc_data_request_type(), &file_dumps);
 
   ASSERT_EQ(file_dumps.size(), 1);
 
-  EXPECT_EQ(file_dumps[0].contents(), file_dump->contents);
-  EXPECT_EQ(file_dumps[0].path(), file_dump->path.value());
-  EXPECT_EQ(file_dumps[0].canonical_path(), file_dump->canonical_path.value());
+  EXPECT_EQ(file_dumps[0].contents(), file_dump.contents);
+  EXPECT_EQ(file_dumps[0].path(), file_dump.path.value());
+  EXPECT_EQ(file_dumps[0].canonical_path(), file_dump.canonical_path.value());
+
+  ASSERT_EQ(system_files_service_fake_->get_dumped_files().size(), 1);
+  EXPECT_EQ(system_files_service_fake_->get_dumped_files()[0],
+            expected_location());
+
+  EXPECT_EQ(system_files_service_fake_->get_dumped_directories().size(), 0);
 }
 
 // Test that GetProcData() returns empty result when the file doesn't exist.
 TEST_P(SingleProcFileWilcoDtcSupportdGrpcServiceTest, NonExisting) {
-  EXPECT_CALL(*system_files_service_mock_, GetFileDumpImpl(expected_location()))
-      .WillOnce(Return(false));
-
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetProcData(proc_data_request_type(), &file_dumps);
 
   EXPECT_EQ(file_dumps.size(), 0);
+
+  ASSERT_EQ(system_files_service_fake_->get_dumped_files().size(), 1);
+  EXPECT_EQ(system_files_service_fake_->get_dumped_files()[0],
+            expected_location());
+
+  EXPECT_EQ(system_files_service_fake_->get_dumped_directories().size(), 0);
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -870,7 +883,7 @@ INSTANTIATE_TEST_CASE_P(
 // * |expected_location| - SystemFilesService::Directory that should be
 //    requested
 class SysfsDirectoryWilcoDtcSupportdGrpcServiceTest
-    : public WilcoDtcSupportdGrpcServiceWithMockSystemFilesServiceTest,
+    : public WilcoDtcSupportdGrpcServiceWithFakeSystemFilesServiceTest,
       public testing::WithParamInterface<
           std::tuple<grpc_api::GetSysfsDataRequest::Type,
                      SystemFilesService::Directory>> {
@@ -896,17 +909,20 @@ TEST_P(SysfsDirectoryWilcoDtcSupportdGrpcServiceTest, SingleFile) {
   single_dump->canonical_path = base::FilePath(kTestCanonicalFilePath);
   directory_dump.push_back(std::move(single_dump));
 
-  system_files_service_mock_->set_directory_dump(directory_dump);
-
-  EXPECT_CALL(*system_files_service_mock_,
-              GetDirectoryDumpImpl(expected_location()))
-      .WillOnce(Return(true));
+  system_files_service_fake_->set_directory_dump(expected_location(),
+                                                 directory_dump);
 
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetSysfsData(sysfs_data_request_type(), &file_dumps);
 
   EXPECT_THAT(file_dumps,
               GrpcDumpsEquivalentWithInternal(ByRef(directory_dump)));
+
+  EXPECT_EQ(system_files_service_fake_->get_dumped_files().size(), 0);
+
+  ASSERT_EQ(system_files_service_fake_->get_dumped_directories().size(), 1);
+  EXPECT_EQ(system_files_service_fake_->get_dumped_directories()[0],
+            expected_location());
 }
 
 // Test that GetSysfsData() returns a multiple files when called on a directory
@@ -926,46 +942,54 @@ TEST_P(SysfsDirectoryWilcoDtcSupportdGrpcServiceTest, MultiFile) {
       base::FilePath(kTestCanonicalFilePath).Append("3");
   directory_dump.push_back(std::move(second_dump));
 
-  system_files_service_mock_->set_directory_dump(directory_dump);
-
-  EXPECT_CALL(*system_files_service_mock_,
-              GetDirectoryDumpImpl(expected_location()))
-      .WillOnce(Return(true));
+  system_files_service_fake_->set_directory_dump(expected_location(),
+                                                 directory_dump);
 
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetSysfsData(sysfs_data_request_type(), &file_dumps);
 
   EXPECT_THAT(file_dumps,
               GrpcDumpsEquivalentWithInternal(ByRef(directory_dump)));
+
+  EXPECT_EQ(system_files_service_fake_->get_dumped_files().size(), 0);
+
+  ASSERT_EQ(system_files_service_fake_->get_dumped_directories().size(), 1);
+  EXPECT_EQ(system_files_service_fake_->get_dumped_directories()[0],
+            expected_location());
 }
 
 // Test that GetSysfsData() returns an empty result when the directory doesn't
 // exist.
 TEST_P(SysfsDirectoryWilcoDtcSupportdGrpcServiceTest, NonExisting) {
-  EXPECT_CALL(*system_files_service_mock_,
-              GetDirectoryDumpImpl(expected_location()))
-      .WillOnce(Return(false));
-
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetSysfsData(sysfs_data_request_type(), &file_dumps);
 
   EXPECT_EQ(file_dumps.size(), 0);
+
+  EXPECT_EQ(system_files_service_fake_->get_dumped_files().size(), 0);
+
+  ASSERT_EQ(system_files_service_fake_->get_dumped_directories().size(), 1);
+  EXPECT_EQ(system_files_service_fake_->get_dumped_directories()[0],
+            expected_location());
 }
 
 // Test that GetSysfsData() returns an empty result when the directory is
 // empty.
 TEST_P(SysfsDirectoryWilcoDtcSupportdGrpcServiceTest, Empty) {
-  system_files_service_mock_->set_directory_dump(
+  system_files_service_fake_->set_directory_dump(
+      expected_location(),
       std::vector<std::unique_ptr<SystemFilesService::FileDump>>());
-
-  EXPECT_CALL(*system_files_service_mock_,
-              GetDirectoryDumpImpl(expected_location()))
-      .WillOnce(Return(true));
 
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetSysfsData(sysfs_data_request_type(), &file_dumps);
 
   EXPECT_EQ(file_dumps.size(), 0);
+
+  EXPECT_EQ(system_files_service_fake_->get_dumped_files().size(), 0);
+
+  ASSERT_EQ(system_files_service_fake_->get_dumped_directories().size(), 1);
+  EXPECT_EQ(system_files_service_fake_->get_dumped_directories()[0],
+            expected_location());
 }
 
 INSTANTIATE_TEST_CASE_P(
