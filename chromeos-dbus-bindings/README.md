@@ -20,43 +20,32 @@ file. If you were using dbus-c++ before, you are probably using `xml2cpp`
 to generate C++ bindings from the XML specification. If not, you may need to
 write an XML specification.
 
-After that, you will need to set up some actions in the `gyp` file for your
+After that, you will need to set up some actions in the `BUILD.gn` file for your
 service and its users. That will look something like this in your service:
 
-```python
-{
-  'target_name': 'frobinator-adaptors',
-  'type': 'none',
-  'variables': {
-    'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
-    'dbus_adaptors_out_dir': 'include/frobinator/dbus_adaptors',
-  },
-  'sources': [
-    'dbus_bindings/service.name.of.Frobinator.xml',
-  ],
-  'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
-},
+```
+import("//common-mk/generate-dbus-adaptors.gni")
+
+generate_dbus_adaptors("frobinator-adaptors") {
+  sources = [
+    "dbus_bindings/service.name.of.Frobinator.xml",
+  ]
+  dbus_adaptors_out_dir = "include/frobinator/dbus_adaptors"
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+}
 ```
 
 and this in users of your service (or for a client library target):
 
-```python
-{
-  'target_name': 'frobinator-proxies',
-  'type': 'none',
-  'actions': [
-    {
-      'action_name': 'generate-frobinator-proxies',
-      'variables': {
-        'proxy_output_file': 'include/frobinator/dbus-proxies.h',
-      },
-      'sources': [
-        'path/to/frobinator/dbus_bindings/service.name.of.Frobinator.xml',
-      ],
-      'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-    },
-  ],
-},
+```
+import("//common-mk/generate-dbus-proxies.gni")
+
+generate_dbus_proxies("frobinator-proxies") {
+  sources = [
+    "path/to/frobinator/dbus_bindings/service.name.of.Frobinator.xml",
+  ]
+  proxy_output_file = "include/frobinator/dbus-proxies.h"
+}
 ```
 
 The JSON service configuration file will look like this:
