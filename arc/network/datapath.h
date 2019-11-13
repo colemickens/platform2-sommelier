@@ -38,14 +38,20 @@ class Datapath {
                          const std::string& ipv4_addr);
   virtual void RemoveBridge(const std::string& ifname);
 
+  virtual bool AddToBridge(const std::string& br_ifname,
+                           const std::string& ifname);
+
   // Adds a new TAP device.
   // |name| may be empty, in which case a default device name will be used;
   // it may be a template (e.g. vmtap%d), in which case the kernel will
   // generate the name; or it may be fully defined. In all cases, upon success,
   // the function returns the actual name of the interface.
+  // |mac_addr| and |ipv4_addr| should be null if this interface will be later
+  // bridged.
+  // If |user_id| is -1, no owner will be set
   virtual std::string AddTAP(const std::string& name,
-                             const MacAddress& mac_addr,
-                             const SubnetAddress& ipv4_addr,
+                             const MacAddress* mac_addr,
+                             const SubnetAddress* ipv4_addr,
                              uid_t user_id);
 
   // |ifname| must be the actual name of the interface.
@@ -55,7 +61,7 @@ class Datapath {
   // When specified, |ipv4_addr| is always singlar dotted-form (a.b.c.d)
   // IPv4 address (not a CIDR representation).
 
-  // Creates a virtual interface and adds one side to bridge |br_ifname} and
+  // Creates a virtual interface and adds one side to bridge |br_ifname| and
   // returns the name of the other side.
   virtual std::string AddVirtualBridgedInterface(const std::string& ifname,
                                                  const std::string& mac_addr,
