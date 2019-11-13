@@ -53,6 +53,7 @@ Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy,
       addr_mgr_({
           AddressManager::Guest::ARC,
           AddressManager::Guest::ARC_NET,
+          AddressManager::Guest::VM_ARC,
       }),
       gsock_(AF_UNIX, SOCK_DGRAM) {
   runner_ = std::make_unique<MinijailedProcessRunner>();
@@ -203,8 +204,8 @@ void Manager::OnSubprocessExited(pid_t pid, const siginfo_t& info) {
 }
 
 bool Manager::StartArc(pid_t pid) {
-  // TOSO(garrick): Use pid.
-  arc_svc_->OnStart();
+  if (!arc_svc_->Start(pid))
+    return false;
 
   GuestMessage msg;
   msg.set_event(GuestMessage::START);
@@ -221,11 +222,12 @@ void Manager::StopArc() {
   msg.set_type(GuestMessage::ARC);
   SendGuestMessage(msg);
 
-  arc_svc_->OnStop();
+  arc_svc_->Stop();
 }
 
 bool Manager::StartArcVm(int cid) {
-  // TODO(garrick0: Start ARCVM
+  if (!arc_svc_->Start(cid))
+    return false;
 
   GuestMessage msg;
   msg.set_event(GuestMessage::START);
@@ -242,7 +244,7 @@ void Manager::StopArcVm() {
   msg.set_type(GuestMessage::ARC_VM);
   SendGuestMessage(msg);
 
-  // TODO(garrick): Stop ARCVM
+  arc_svc_->Stop();
 }
 
 std::unique_ptr<dbus::Response> Manager::OnArcStartup(
@@ -266,7 +268,6 @@ std::unique_ptr<dbus::Response> Manager::OnArcStartup(
 
   StartArc(request.pid());
 
-  // TODO(garrick): create and start ArcService.
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
@@ -292,7 +293,6 @@ std::unique_ptr<dbus::Response> Manager::OnArcShutdown(
 
   StopArc();
 
-  // TODO(garrick): delete ArcService.
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
@@ -318,7 +318,6 @@ std::unique_ptr<dbus::Response> Manager::OnArcVmStartup(
 
   StartArcVm(request.cid());
 
-  // TODO(garrick): create and start ArcVmService.
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }

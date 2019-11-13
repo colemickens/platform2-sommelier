@@ -193,7 +193,7 @@ class ContainerImplTest : public testing::Test {
     auto impl = std::make_unique<ArcService::ContainerImpl>(
         &dev_mgr_, datapath_.get(),
         arc_legacy ? GuestMessage::ARC_LEGACY : GuestMessage::ARC);
-    impl->OnStart(kTestPID);
+    impl->Start(kTestPID);
     return impl;
   }
 
@@ -341,7 +341,7 @@ class VmImplTest : public testing::Test {
   std::unique_ptr<ArcService::VmImpl> Impl() {
     auto impl =
         std::make_unique<ArcService::VmImpl>(&dev_mgr_, datapath_.get());
-    impl->OnStart(kTestCID);
+    impl->Start(kTestCID);
     return impl;
   }
 

@@ -131,18 +131,37 @@ int GetContainerPID() {
   return pid;
 }
 
+bool IsArcVm() {
+  const base::FilePath path("/run/chrome/is_arcvm");
+  std::string contents;
+  if (!base::ReadFileToString(path, &contents)) {
+    PLOG(ERROR) << "Could not read " << path.value();
+  }
+  return contents == "1";
+}
+
+GuestMessage::GuestType ArcGuest(bool* is_legacy_override_for_testing) {
+  if (is_legacy_override_for_testing)
+    return *is_legacy_override_for_testing ? GuestMessage::ARC_LEGACY
+                                           : GuestMessage::ARC;
+
+  return IsArcVm() ? GuestMessage::ARC_VM
+                   : ShouldEnableMultinet() ? GuestMessage::ARC
+                                            : GuestMessage::ARC_LEGACY;
+}
+
 }  // namespace
 
 ArcService::ArcService(DeviceManagerBase* dev_mgr,
                        Datapath* datapath,
                        bool* is_legacy)
-    : GuestService((is_legacy ? !*is_legacy : ShouldEnableMultinet())
-                       ? GuestMessage::ARC
-                       : GuestMessage::ARC_LEGACY,
-                   dev_mgr),
-      datapath_(datapath),
-      impl_(std::make_unique<ContainerImpl>(dev_mgr, datapath, guest_)) {
+    : GuestService(ArcGuest(is_legacy), dev_mgr), datapath_(datapath) {
   DCHECK(datapath_);
+
+  if (guest_ == GuestMessage::ARC_VM)
+    impl_ = std::make_unique<VmImpl>(dev_mgr, datapath);
+  else
+    impl_ = std::make_unique<ContainerImpl>(dev_mgr, datapath, guest_);
 
   // Load networking modules needed by Android that are not compiled in the
   // kernel. Android does not allow auto-loading of kernel modules.
@@ -179,13 +198,15 @@ ArcService::ArcService(DeviceManagerBase* dev_mgr,
   }
 }
 
-void ArcService::OnStart() {
-  // TODO(garrick): Plumb PID from DBus message into here.
-  if (!impl_->OnStart(0 /* unused */)) {
-    LOG(ERROR) << "Failed to start ARC++ network service";
-    return;
-  }
+bool ArcService::Start(int32_t id) {
+  if (!impl_->Start(id))
+    return false;
 
+  OnStart();
+  return true;
+}
+
+void ArcService::OnStart() {
   // Start known host devices, any new ones will be setup in the process.
   dev_mgr_->ProcessDevices(
       base::Bind(&ArcService::StartDevice, weak_factory_.GetWeakPtr()));
@@ -202,6 +223,11 @@ void ArcService::OnStart() {
   GuestService::OnStart();
 }
 
+void ArcService::Stop() {
+  OnStop();
+  impl_->Stop();
+}
+
 void ArcService::OnStop() {
   // Call the base implementation.
   GuestService::OnStop();
@@ -210,8 +236,6 @@ void ArcService::OnStop() {
   // devices.
   dev_mgr_->ProcessDevices(
       base::Bind(&ArcService::StopDevice, weak_factory_.GetWeakPtr()));
-
-  impl_->OnStop();
 }
 
 void ArcService::OnDeviceAdded(Device* device) {
@@ -417,7 +441,7 @@ GuestMessage::GuestType ArcService::ContainerImpl::guest() const {
   return guest_;
 }
 
-bool ArcService::ContainerImpl::OnStart(int32_t pid) {
+bool ArcService::ContainerImpl::Start(int32_t pid) {
   // TODO(garrick): Remove this workaround.
   pid_ = (pid == kTestPID) ? pid : GetContainerPID();
   if (pid_ == kInvalidPID) {
@@ -454,7 +478,7 @@ bool ArcService::ContainerImpl::OnStart(int32_t pid) {
   return true;
 }
 
-void ArcService::ContainerImpl::OnStop() {
+void ArcService::ContainerImpl::Stop() {
   rtnl_handler_->RemoveListener(link_listener_.get());
   link_listener_.reset();
   rtnl_handler_.reset();
@@ -734,7 +758,7 @@ GuestMessage::GuestType ArcService::VmImpl::guest() const {
   return GuestMessage::ARC_VM;
 }
 
-bool ArcService::VmImpl::OnStart(int32_t cid) {
+bool ArcService::VmImpl::Start(int32_t cid) {
   if (cid <= kInvalidCID) {
     LOG(ERROR) << "Invalid VM cid " << cid;
     return false;
@@ -746,7 +770,7 @@ bool ArcService::VmImpl::OnStart(int32_t cid) {
   return true;
 }
 
-void ArcService::VmImpl::OnStop() {
+void ArcService::VmImpl::Stop() {
   LOG(INFO) << "ARCVM network service stopped {cid: " << cid_ << "}";
   cid_ = kInvalidCID;
 }
