@@ -37,9 +37,6 @@ class ClientProxy : public VSockProxy::Delegate, public ProxyBase {
   base::ScopedFD ConvertProtoToFileDescriptor(
       const arc_proxy::FileDescriptor& proto) override;
 
-  // ProxyBase overrides:
-  VSockProxy* GetVSockProxy() override { return vsock_proxy_.get(); }
-
  private:
   // Called when /var/run/chrome/arc_bridge.sock gets ready to read.
   // Then, accept()s and registers it to mVSockProxy as an initial socket

@@ -16,9 +16,6 @@ class ProxyBase {
 
   // Initializes the instance. Returns true on success.
   virtual bool Initialize() = 0;
-
-  // Returns VSockProxy instance.
-  virtual VSockProxy* GetVSockProxy() = 0;
 };
 
 }  // namespace arc

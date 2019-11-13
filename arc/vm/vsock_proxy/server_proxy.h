@@ -34,8 +34,7 @@ class ServerProxy : public VSockProxy::Delegate, public ProxyBase {
   base::ScopedFD ConvertProtoToFileDescriptor(
       const arc_proxy::FileDescriptor& proto) override;
 
-  // ProxyBase overrides:
-  VSockProxy* GetVSockProxy() override { return vsock_proxy_.get(); }
+  VSockProxy* vsock_proxy() { return vsock_proxy_.get(); }
 
  private:
   ProxyFileSystem* const proxy_file_system_;

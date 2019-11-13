@@ -18,11 +18,11 @@
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-#include <base/observer_list.h>
 #include <base/optional.h>
 #include <base/synchronization/lock.h>
 
 #include "arc/vm/vsock_proxy/proxy_service.h"
+#include "arc/vm/vsock_proxy/vsock_proxy.h"
 
 namespace base {
 class TaskRunner;
@@ -31,32 +31,31 @@ class WaitableEvent;
 
 namespace arc {
 
-class VSockProxy;
-
 // FUSE implementation to support regular file descriptor passing over VSOCK.
 // This is designed to be used only in the host side.
 class ProxyFileSystem {
  public:
-  class Observer {
+  class Delegate {
    public:
-    virtual ~Observer() = default;
+    virtual ~Delegate() = default;
 
-    // Called when initialization is completed.
-    virtual void OnInit() {}
+    using PreadCallback = VSockProxy::PreadCallback;
+    using FstatCallback = VSockProxy::FstatCallback;
+
+    // Implement these methods to handle file operation requests.
+    virtual void Pread(int64_t handle,
+                       uint64_t count,
+                       uint64_t offset,
+                       PreadCallback callback) = 0;
+    virtual void Close(int64_t handle) = 0;
+    virtual void Fstat(int64_t handle, FstatCallback callback) = 0;
   };
-
   // |mount_path| is the path to the mount point.
-  explicit ProxyFileSystem(const base::FilePath& mount_path);
+  ProxyFileSystem(Delegate* delegate, const base::FilePath& mount_path);
   ~ProxyFileSystem();
 
   ProxyFileSystem(const ProxyFileSystem&) = delete;
   ProxyFileSystem& operator=(const ProxyFileSystem&) = delete;
-
-  // Adds the |observer| to be notified on events.
-  void AddObserver(Observer* observer);
-
-  // Removes the |observer|.
-  void RemoveObserver(Observer* observer);
 
   // Starts the fuse file system in foreground. Returns on fuse termination
   // such as unmount of the file system.
@@ -84,12 +83,6 @@ class ProxyFileSystem {
   // fuse operation implementation declared above.
   base::ScopedFD RegisterHandle(int64_t handle);
 
-  // Runs an operation interacting with VSockProxy instance on the dedicated
-  // thread. This is a blocking operation, so wait for the |callback|
-  // completion.
-  void RunWithVSockProxyInSyncForTesting(
-      base::OnceCallback<void(VSockProxy* proxy)> callback);
-
  private:
   // Helper to operate GetAtt(). Called on the |task_runner_|.
   void GetAttrInternal(base::WaitableEvent* event,
@@ -113,6 +106,7 @@ class ProxyFileSystem {
   };
   base::Optional<State> GetState(int64_t handle);
 
+  Delegate* const delegate_;
   const base::FilePath mount_path_;
 
   // ProxyService serving ServerProxy. Initialized in Init() callback.
@@ -129,8 +123,6 @@ class ProxyFileSystem {
   // from multiple threads.
   std::map<int64_t, State> handle_map_;
   base::Lock handle_map_lock_;
-
-  base::ObserverList<Observer> observer_list_;
 };
 
 }  // namespace arc

@@ -37,9 +37,6 @@ class ProxyService {
   // Stops ClientProxy, and joins the dedicated thread.
   void Stop();
 
-  // Must be called on the TaskRunner returned by GetTaskRunner().
-  ProxyBase* proxy() { return proxy_.get(); }
-
   // Returns the TaskRunner for the dedicated thread.
   // Must be called on the thread where this instance is created.
   scoped_refptr<base::TaskRunner> GetTaskRunner();

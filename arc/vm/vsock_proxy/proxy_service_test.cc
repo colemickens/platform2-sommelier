@@ -26,8 +26,6 @@ class FakeProxy : public ProxyBase {
 
   bool is_initialized() const { return initialized_; }
 
-  VSockProxy* GetVSockProxy() override { return nullptr; }
-
  private:
   bool initialized_ = false;
 };

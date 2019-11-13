@@ -18,9 +18,6 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/task_runner.h>
 
-#include "arc/vm/vsock_proxy/proxy_base.h"
-#include "arc/vm/vsock_proxy/vsock_proxy.h"
-
 namespace arc {
 namespace {
 
@@ -116,18 +113,11 @@ base::Optional<int64_t> ParseHandle(const char* path) {
 
 }  // namespace
 
-ProxyFileSystem::ProxyFileSystem(const base::FilePath& mount_path)
-    : mount_path_(mount_path) {}
+ProxyFileSystem::ProxyFileSystem(Delegate* delegate,
+                                 const base::FilePath& mount_path)
+    : delegate_(delegate), mount_path_(mount_path) {}
 
 ProxyFileSystem::~ProxyFileSystem() = default;
-
-void ProxyFileSystem::AddObserver(Observer* observer) {
-  observer_list_.AddObserver(observer);
-}
-
-void ProxyFileSystem::RemoveObserver(Observer* observer) {
-  observer_list_.RemoveObserver(observer);
-}
 
 int ProxyFileSystem::Run(std::unique_ptr<ProxyService> proxy_service) {
   proxy_service_ = std::move(proxy_service);
@@ -180,16 +170,16 @@ void ProxyFileSystem::GetAttrInternal(base::WaitableEvent* event,
                                       int64_t handle,
                                       int* return_value,
                                       off_t* size) {
-  proxy_service_->proxy()->GetVSockProxy()->Fstat(
-      handle, base::BindOnce(
-                  [](base::WaitableEvent* event, int* return_value,
-                     off_t* out_size, int error_code, int64_t size) {
-                    *return_value = -error_code;
-                    if (error_code == 0)
-                      *out_size = static_cast<off_t>(size);
-                    event->Signal();
-                  },
-                  event, return_value, size));
+  delegate_->Fstat(handle,
+                   base::BindOnce(
+                       [](base::WaitableEvent* event, int* return_value,
+                          off_t* out_size, int error_code, int64_t size) {
+                         *return_value = -error_code;
+                         if (error_code == 0)
+                           *out_size = static_cast<off_t>(size);
+                         event->Signal();
+                       },
+                       event, return_value, size));
 }
 
 int ProxyFileSystem::Open(const char* path, struct fuse_file_info* fi) {
@@ -245,7 +235,7 @@ void ProxyFileSystem::ReadInternal(base::WaitableEvent* event,
                                    size_t size,
                                    off_t off,
                                    int* return_value) {
-  proxy_service_->proxy()->GetVSockProxy()->Pread(
+  delegate_->Pread(
       handle, size, off,
       base::BindOnce(
           [](base::WaitableEvent* event, char* buf, int* return_value,
@@ -280,11 +270,9 @@ int ProxyFileSystem::Release(const char* path, struct fuse_file_info* fi) {
   // safe.
   task_runner_->PostTask(
       FROM_HERE,
-      base::BindOnce(
-          [](ProxyFileSystem* self, int64_t handle) {
-            self->proxy_service_->proxy()->GetVSockProxy()->Close(handle);
-          },
-          this, handle.value()));
+      base::BindOnce([](ProxyFileSystem* self,
+                        int64_t handle) { self->delegate_->Close(handle); },
+                     this, handle.value()));
   return 0;
 }
 
@@ -309,9 +297,6 @@ void ProxyFileSystem::Init(struct fuse_conn_info* conn) {
   CHECK(proxy_service_->Start()) << "Failed to start ServerProxy.";
   LOG(INFO) << "ServerProxy has been started successfully.";
   task_runner_ = proxy_service_->GetTaskRunner();
-
-  for (auto& observer : observer_list_)
-    observer.OnInit();
 }
 
 base::ScopedFD ProxyFileSystem::RegisterHandle(int64_t handle) {
@@ -327,22 +312,6 @@ base::ScopedFD ProxyFileSystem::RegisterHandle(int64_t handle) {
   return base::ScopedFD(HANDLE_EINTR(
       open(mount_path_.Append(base::Int64ToString(handle)).value().c_str(),
            O_RDONLY | O_CLOEXEC)));
-}
-
-void ProxyFileSystem::RunWithVSockProxyInSyncForTesting(
-    base::OnceCallback<void(VSockProxy*)> callback) {
-  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
-                            base::WaitableEvent::InitialState::NOT_SIGNALED);
-  task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(
-                     [](ProxyFileSystem* self, base::WaitableEvent* event,
-                        base::OnceCallback<void(VSockProxy*)> callback) {
-                       std::move(callback).Run(
-                           self->proxy_service_->proxy()->GetVSockProxy());
-                       event->Signal();
-                     },
-                     this, &event, std::move(callback)));
-  event.Wait();
 }
 
 base::Optional<ProxyFileSystem::State> ProxyFileSystem::GetState(
