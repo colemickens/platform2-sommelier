@@ -9,7 +9,6 @@
 #include <string>
 
 #include <base/memory/weak_ptr.h>
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <shill/net/rtnl_handler.h>
 #include <shill/net/rtnl_listener.h>
 
@@ -44,6 +43,10 @@ class ArcService : public GuestService {
     // Returns the current value and increments the counter.
     int RoutingTableAttempts();
 
+    // For ARCVM only.
+    const std::string& TAP() const;
+    void SetTAP(const std::string& tap);
+
    private:
     // Indicates the device was started.
     bool started_;
@@ -53,22 +56,43 @@ class ArcService : public GuestService {
     int routing_table_id_;
     // The number of times table ID lookup was attempted.
     int routing_table_attempts_;
+    // For ARCVM, the name of the bound TAP device.
+    std::string tap_;
+  };
+
+  class Impl {
+   public:
+    virtual ~Impl() = default;
+
+    virtual GuestMessage::GuestType guest() const = 0;
+
+    virtual bool OnStart(int32_t id) = 0;
+    virtual void OnStop() = 0;
+    virtual bool IsStarted() const = 0;
+    virtual bool OnStartDevice(Device* device) = 0;
+    virtual void OnStopDevice(Device* device) = 0;
+    virtual void OnDefaultInterfaceChanged(const std::string& ifname) = 0;
+
+   protected:
+    Impl() = default;
   };
 
   // Encapsulates all ARC++ container-specific logic.
-  class ContainerImpl {
+  class ContainerImpl : public Impl {
    public:
     ContainerImpl(DeviceManagerBase* dev_mgr,
                   Datapath* datapath,
                   GuestMessage::GuestType guest);
     ~ContainerImpl() = default;
 
-    bool OnStart();
-    void OnStop();
-    bool IsStarted() const;
-    bool OnStartDevice(Device* device);
-    void OnStopDevice(Device* device);
-    void OnDefaultInterfaceChanged(const std::string& ifname);
+    GuestMessage::GuestType guest() const override;
+
+    bool OnStart(int32_t pid) override;
+    void OnStop() override;
+    bool IsStarted() const override;
+    bool OnStartDevice(Device* device) override;
+    void OnStopDevice(Device* device) override;
+    void OnDefaultInterfaceChanged(const std::string& ifname) override;
 
    private:
     // Handles RT netlink messages in the container net namespace and if it
@@ -87,12 +111,31 @@ class ArcService : public GuestService {
     std::unique_ptr<shill::RTNLHandler> rtnl_handler_;
     std::unique_ptr<shill::RTNLListener> link_listener_;
 
-    FRIEND_TEST(ArcServiceTest, VerifyOnDeviceAddedDatapathForLegacyAndroid);
-    FRIEND_TEST(ArcServiceTest, VerifyOnDeviceAddedDatapathForAndroid);
-    FRIEND_TEST(ArcServiceTest, VerifyOnDeviceAddedDatapath);
-
     base::WeakPtrFactory<ContainerImpl> weak_factory_{this};
     DISALLOW_COPY_AND_ASSIGN(ContainerImpl);
+  };
+
+  // Encapsulates all ARC VM-specific logic.
+  class VmImpl : public Impl {
+   public:
+    VmImpl(DeviceManagerBase* dev_mgr, Datapath* datapath);
+    ~VmImpl() = default;
+
+    GuestMessage::GuestType guest() const override;
+
+    bool OnStart(int32_t cid) override;
+    void OnStop() override;
+    bool IsStarted() const override;
+    bool OnStartDevice(Device* device) override;
+    void OnStopDevice(Device* device) override;
+    void OnDefaultInterfaceChanged(const std::string& ifname) override;
+
+   private:
+    int32_t cid_;
+    DeviceManagerBase* dev_mgr_;
+    Datapath* datapath_;
+
+    DISALLOW_COPY_AND_ASSIGN(VmImpl);
   };
 
   // |dev_mgr| and |datapath| cannot be null.
@@ -114,11 +157,7 @@ class ArcService : public GuestService {
   void StopDevice(Device* device);
 
   Datapath* datapath_;
-  std::unique_ptr<ContainerImpl> impl_;
-
-  FRIEND_TEST(ArcServiceTest, VerifyOnDeviceAddedDatapathForLegacyAndroid);
-  FRIEND_TEST(ArcServiceTest, VerifyOnDeviceAddedDatapathForAndroid);
-  FRIEND_TEST(ArcServiceTest, VerifyOnDeviceAddedDatapath);
+  std::unique_ptr<Impl> impl_;
 
   base::WeakPtrFactory<ArcService> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(ArcService);

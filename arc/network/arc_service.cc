@@ -17,6 +17,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/key_value_store.h>
+#include <chromeos/constants/vm_tools.h>
 #include <shill/net/rtnl_message.h>
 
 #include "arc/network/datapath.h"
@@ -29,6 +30,8 @@
 namespace arc_networkd {
 namespace {
 constexpr pid_t kInvalidPID = -1;
+constexpr pid_t kTestPID = -2;
+constexpr int32_t kInvalidCID = -1;
 constexpr int kInvalidTableID = -1;
 constexpr int kMaxTableRetries = 10;  // Based on 1 second delay.
 constexpr base::TimeDelta kTableRetryDelay = base::TimeDelta::FromSeconds(1);
@@ -177,7 +180,8 @@ ArcService::ArcService(DeviceManagerBase* dev_mgr,
 }
 
 void ArcService::OnStart() {
-  if (!impl_->OnStart()) {
+  // TODO(garrick): Plumb PID from DBus message into here.
+  if (!impl_->OnStart(0 /* unused */)) {
     LOG(ERROR) << "Failed to start ARC++ network service";
     return;
   }
@@ -273,7 +277,7 @@ void ArcService::StartDevice(Device* device) {
     return;
   }
 
- ctx->Start();
+  ctx->Start();
 }
 
 void ArcService::OnDeviceRemoved(Device* device) {
@@ -391,6 +395,14 @@ int ArcService::Context::RoutingTableAttempts() {
   return routing_table_attempts_++;
 }
 
+const std::string& ArcService::Context::TAP() const {
+  return tap_;
+}
+
+void ArcService::Context::SetTAP(const std::string& tap) {
+  tap_ = tap;
+}
+
 // ARC++ specific functions.
 
 ArcService::ContainerImpl::ContainerImpl(DeviceManagerBase* dev_mgr,
@@ -401,8 +413,13 @@ ArcService::ContainerImpl::ContainerImpl(DeviceManagerBase* dev_mgr,
       datapath_(datapath),
       guest_(guest) {}
 
-bool ArcService::ContainerImpl::OnStart() {
-  pid_ = GetContainerPID();
+GuestMessage::GuestType ArcService::ContainerImpl::guest() const {
+  return guest_;
+}
+
+bool ArcService::ContainerImpl::OnStart(int32_t pid) {
+  // TODO(garrick): Remove this workaround.
+  pid_ = (pid == kTestPID) ? pid : GetContainerPID();
   if (pid_ == kInvalidPID) {
     LOG(ERROR) << "Cannot start service - invalid container PID";
     return false;
@@ -430,8 +447,8 @@ bool ArcService::ContainerImpl::OnStart() {
   }
 
   dev_mgr_->RegisterDeviceIPv6AddressFoundHandler(
-      guest_, base::Bind(&ArcService::ContainerImpl::SetupIPv6,
-                         weak_factory_.GetWeakPtr()));
+      guest(), base::Bind(&ArcService::ContainerImpl::SetupIPv6,
+                          weak_factory_.GetWeakPtr()));
 
   LOG(INFO) << "ARC++ network service started {pid: " << pid_ << "}";
   return true;
@@ -455,8 +472,7 @@ bool ArcService::ContainerImpl::OnStartDevice(Device* device) {
 
   LOG(INFO) << "Starting device " << device->ifname()
             << " bridge: " << config.host_ifname()
-            << " guest_iface: " << config.guest_ifname()
-            << " for container pid " << pid_;
+            << " guest_iface: " << config.guest_ifname() << " pid: " << pid_;
 
   std::string veth_ifname = datapath_->AddVirtualBridgedInterface(
       device->ifname(), MacAddressToString(config.guest_mac_addr()),
@@ -490,8 +506,7 @@ void ArcService::ContainerImpl::OnStopDevice(Device* device) {
 
   LOG(INFO) << "Stopping device " << device->ifname()
             << " bridge: " << config.host_ifname()
-            << " guest_iface: " << config.guest_ifname()
-            << " for container pid " << pid_;
+            << " guest_iface: " << config.guest_ifname() << " pid: " << pid_;
 
   device->Disable();
   if (!device->IsAndroid()) {
@@ -506,7 +521,7 @@ void ArcService::ContainerImpl::OnDefaultInterfaceChanged(
 
   // For ARC N, we must always be able to find the arc0 device and, at a
   // minimum, disable it.
-  if (guest_ == GuestMessage::ARC_LEGACY) {
+  if (guest() == GuestMessage::ARC_LEGACY) {
     datapath_->RemoveLegacyIPv4InboundDNAT();
     auto* device = dev_mgr_->FindByGuestInterface("arc0");
     if (!device) {
@@ -552,7 +567,7 @@ void ArcService::ContainerImpl::LinkMsgHandler(const shill::RTNLMessage& msg) {
   if (!device)
     return;
 
-  Context* ctx = dynamic_cast<Context*>(device->context(guest_));
+  Context* ctx = dynamic_cast<Context*>(device->context(guest()));
   if (!ctx) {
     LOG(DFATAL) << "Context missing";
     return;
@@ -587,7 +602,7 @@ void ArcService::ContainerImpl::SetupIPv6(Device* device) {
   if (ipv6_config.ifname.empty())
     return;
 
-  Context* ctx = dynamic_cast<Context*>(device->context(guest_));
+  Context* ctx = dynamic_cast<Context*>(device->context(guest()));
   if (!ctx) {
     LOG(DFATAL) << "Context missing";
     return;
@@ -675,7 +690,7 @@ void ArcService::ContainerImpl::SetupIPv6(Device* device) {
 }
 
 void ArcService::ContainerImpl::TeardownIPv6(Device* device) {
-  Context* ctx = dynamic_cast<Context*>(device->context(guest_));
+  Context* ctx = dynamic_cast<Context*>(device->context(guest()));
   if (!ctx || !ctx->HasIPv6())
     return;
 
@@ -707,6 +722,120 @@ void ArcService::ContainerImpl::TeardownIPv6(Device* device) {
   if (ns.IsValid()) {
     datapath_->RemoveIPv6GatewayRoutes(config.guest_ifname(), addr, router,
                                        ipv6_config.prefix_len, table_id);
+  }
+}
+
+// VM specific functions
+
+ArcService::VmImpl::VmImpl(DeviceManagerBase* dev_mgr, Datapath* datapath)
+    : cid_(kInvalidCID), dev_mgr_(dev_mgr), datapath_(datapath) {}
+
+GuestMessage::GuestType ArcService::VmImpl::guest() const {
+  return GuestMessage::ARC_VM;
+}
+
+bool ArcService::VmImpl::OnStart(int32_t cid) {
+  if (cid <= kInvalidCID) {
+    LOG(ERROR) << "Invalid VM cid " << cid;
+    return false;
+  }
+
+  cid_ = cid;
+  LOG(INFO) << "ARCVM network service started {cid: " << cid_ << "}";
+
+  return true;
+}
+
+void ArcService::VmImpl::OnStop() {
+  LOG(INFO) << "ARCVM network service stopped {cid: " << cid_ << "}";
+  cid_ = kInvalidCID;
+}
+
+bool ArcService::VmImpl::IsStarted() const {
+  return cid_ > kInvalidCID;
+}
+
+bool ArcService::VmImpl::OnStartDevice(Device* device) {
+  // TODO(garrick): Remove this once ARCVM supports ad hoc interface
+  // configurations; but for now ARCVM needs to be treated like ARC++ N.
+  if (!device->IsLegacyAndroid())
+    return false;
+
+  const auto& config = device->config();
+
+  LOG(INFO) << "Starting device " << device->ifname()
+            << " bridge: " << config.host_ifname()
+            << " guest_iface: " << config.guest_ifname() << " cid: " << cid_;
+
+  Context* ctx = dynamic_cast<Context*>(device->context(guest()));
+  if (!ctx) {
+    LOG(ERROR) << "Context missing";
+    return false;
+  }
+
+  // Since the interface will be added to the bridge, no address configuration
+  // should be provided here.
+  std::string tap =
+      datapath_->AddTAP("" /* auto-generate name */, nullptr /* no mac addr */,
+                        nullptr /* no ipv4 subnet */, vm_tools::kCrosVmUser);
+  if (tap.empty()) {
+    LOG(ERROR) << "Failed to create TAP device for VM";
+    return false;
+  }
+
+  if (!datapath_->AddToBridge(config.host_ifname(), tap)) {
+    LOG(ERROR) << "Failed to bridge TAP device " << tap;
+    datapath_->RemoveInterface(tap);
+    return false;
+  }
+
+  ctx->SetTAP(tap);
+  // TODO(garrick): Remove this once ARCVM supports ad hoc interface
+  // configurations; but for now ARCVM needs to be treated like ARC++ N.
+  OnDefaultInterfaceChanged(dev_mgr_->DefaultInterface());
+  return true;
+}
+
+void ArcService::VmImpl::OnStopDevice(Device* device) {
+  // TODO(garrick): Remove this once ARCVM supports ad hoc interface
+  // configurations; but for now ARCVM needs to be treated like ARC++ N.
+  if (!device->IsLegacyAndroid())
+    return;
+
+  const auto& config = device->config();
+
+  LOG(INFO) << "Stopping " << device->ifname()
+            << " bridge: " << config.host_ifname()
+            << " guest_iface: " << config.guest_ifname() << " cid: " << cid_;
+
+  Context* ctx = dynamic_cast<Context*>(device->context(guest()));
+  if (!ctx) {
+    LOG(ERROR) << "Context missing";
+    return;
+  }
+
+  device->Disable();
+  datapath_->RemoveInterface(ctx->TAP());
+}
+
+void ArcService::VmImpl::OnDefaultInterfaceChanged(const std::string& ifname) {
+  if (!IsStarted())
+    return;
+
+  // TODO(garrick): Remove this once ARCVM supports ad hoc interface
+  // configurations; but for now ARCVM needs to be treated like ARC++ N.
+  datapath_->RemoveLegacyIPv4InboundDNAT();
+  auto* device = dev_mgr_->FindByGuestInterface("arc0");
+  if (!device) {
+    LOG(DFATAL) << "Expected Android device missing";
+    return;
+  }
+  device->Disable();
+
+  // If a new default interface was given, then re-enable with that.
+  if (!ifname.empty()) {
+    datapath_->AddLegacyIPv4InboundDNAT(ifname);
+    device->Enable(ifname);
   }
 }
 

@@ -9,6 +9,7 @@
 
 #include <base/macros.h>
 
+#include "arc/network/datapath.h"
 #include "arc/network/minijailed_process_runner.h"
 
 namespace arc_networkd {
@@ -22,6 +23,13 @@ class MockDatapath : public Datapath {
   MOCK_METHOD2(AddBridge,
                bool(const std::string& ifname, const std::string& ipv4_addr));
   MOCK_METHOD1(RemoveBridge, void(const std::string& ifname));
+  MOCK_METHOD2(AddToBridge,
+               bool(const std::string& br_ifname, const std::string& ifname));
+  MOCK_METHOD4(AddTAP,
+               std::string(const std::string& name,
+                           const MacAddress* mac_addr,
+                           const SubnetAddress* ipv4_addr,
+                           const std::string& user));
   MOCK_METHOD3(AddVirtualBridgedInterface,
                std::string(const std::string& ifname,
                            const std::string& mac_addr,
@@ -35,6 +43,8 @@ class MockDatapath : public Datapath {
                     bool fwd_multicast));
   MOCK_METHOD1(AddLegacyIPv4DNAT, bool(const std::string& ipv4_addr));
   MOCK_METHOD0(RemoveLegacyIPv4DNAT, void());
+  MOCK_METHOD1(AddLegacyIPv4InboundDNAT, bool(const std::string& ifname));
+  MOCK_METHOD0(RemoveLegacyIPv4InboundDNAT, void());
   MOCK_METHOD2(AddInboundIPv4DNAT,
                bool(const std::string& ifname, const std::string& ipv4_addr));
   MOCK_METHOD2(RemoveInboundIPv4DNAT,
