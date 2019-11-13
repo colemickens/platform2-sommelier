@@ -356,6 +356,10 @@ const EVP_MD* GetOpenSSLDigest(CK_MECHANISM_TYPE mechanism);
 RsaPaddingScheme GetSigningSchemeForMechanism(
     const CK_MECHANISM_TYPE mechanism);
 
+// Return the OpenSSL Digest associated with the given PKCS#11 MGF function
+// identifier.
+const EVP_MD* GetOpenSSLDigestForMGF(const CK_RSA_PKCS_MGF_TYPE mgf);
+
 }  // namespace chaps
 
 #endif  // CHAPS_CHAPS_UTILITY_H_

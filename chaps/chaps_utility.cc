@@ -840,19 +840,23 @@ chaps::DigestAlgorithm GetDigestAlgorithm(CK_MECHANISM_TYPE mechanism) {
     case CKM_SHA_1:
     case CKM_SHA_1_HMAC:
     case CKM_SHA1_RSA_PKCS:
+    case CKM_SHA1_RSA_PKCS_PSS:
     case CKM_ECDSA_SHA1:
       return chaps::DigestAlgorithm::SHA1;
     case CKM_SHA256:
     case CKM_SHA256_HMAC:
     case CKM_SHA256_RSA_PKCS:
+    case CKM_SHA256_RSA_PKCS_PSS:
       return chaps::DigestAlgorithm::SHA256;
     case CKM_SHA384:
     case CKM_SHA384_HMAC:
     case CKM_SHA384_RSA_PKCS:
+    case CKM_SHA384_RSA_PKCS_PSS:
       return chaps::DigestAlgorithm::SHA384;
     case CKM_SHA512:
     case CKM_SHA512_HMAC:
     case CKM_SHA512_RSA_PKCS:
+    case CKM_SHA512_RSA_PKCS_PSS:
       return chaps::DigestAlgorithm::SHA512;
     default:
       return chaps::DigestAlgorithm::NoDigest;
@@ -899,6 +903,23 @@ RsaPaddingScheme GetSigningSchemeForMechanism(
       return RsaPaddingScheme::RSASSA_PSS;
     default:
       return RsaPaddingScheme::UNKNOWN_PADDING_SCHEME;
+  }
+}
+
+const EVP_MD* GetOpenSSLDigestForMGF(const CK_RSA_PKCS_MGF_TYPE mgf) {
+  switch (mgf) {
+    case CKG_MGF1_SHA1:
+      return EVP_sha1();
+    case CKG_MGF1_SHA256:
+      return EVP_sha256();
+    case CKG_MGF1_SHA384:
+      return EVP_sha384();
+    case CKG_MGF1_SHA512:
+      return EVP_sha512();
+    case CKG_MGF1_SHA224:
+      return EVP_sha224();
+    default:
+      return nullptr;
   }
 }
 

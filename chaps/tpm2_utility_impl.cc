@@ -765,8 +765,36 @@ bool TPM2UtilityImpl::Sign(int key_handle,
                            const std::string& input,
                            std::string* signature) {
   AutoLock Lock(lock_);
-  DigestAlgorithm digest_algorithm = GetDigestAlgorithm(signing_mechanism);
 
+  // Parse the various parameters for this method.
+  DigestAlgorithm digest_algorithm = GetDigestAlgorithm(signing_mechanism);
+  // Parse RSA PSS Parameters if applicable.
+  const CK_RSA_PKCS_PSS_PARAMS* pss_params = nullptr;
+  const EVP_MD* mgf1_hash = nullptr;
+  if (GetSigningSchemeForMechanism(signing_mechanism) ==
+      RsaPaddingScheme::RSASSA_PSS) {
+    // Check the parameters
+    if (sizeof(CK_RSA_PKCS_PSS_PARAMS) != mechanism_parameter.size()) {
+      LOG(ERROR) << "Invalid parameter size in TPM2 Sign() for RSA PSS.";
+      return false;
+    }
+    pss_params = reinterpret_cast<const CK_RSA_PKCS_PSS_PARAMS*>(
+        mechanism_parameter.data());
+    mgf1_hash = GetOpenSSLDigestForMGF(pss_params->mgf);
+    if (mgf1_hash == nullptr) {
+      LOG(ERROR) << "Invalid MGF Hash specified for TPM2 Sign() with RSA PSS.";
+      return false;
+    }
+    if (pss_params->sLen == 0) {
+      LOG(WARNING) << "Attempting to sign using RSA PSS padding with no salt. "
+                      "This may result in deterministic padding.";
+    }
+  }
+
+  trunks::TPM_ALG_ID digest_alg_id =
+      DigestAlgorithmToTrunksAlgId(digest_algorithm);
+
+  // Setup the TPM Session.
   std::string auth_data = handle_auth_data_[key_handle].to_string();
   ScopedSession session_scope(factory_, &session_);
   if (!session_) {
@@ -782,8 +810,6 @@ bool TPM2UtilityImpl::Sign(int key_handle,
     return false;
   }
 
-  trunks::TPM_ALG_ID digest_alg_id =
-      DigestAlgorithmToTrunksAlgId(digest_algorithm);
   if (public_area.type == trunks::TPM_ALG_RSA) {
     // In PKCS1.5 of RSASSA, the signed data will be
     //    <DigestInfo encoding><input><padding>
@@ -797,54 +823,87 @@ bool TPM2UtilityImpl::Sign(int key_handle,
     // This is done to work with TPMs that don't support all required hashing
     // algorithms, and for which the Decrypt attribute is set for signing keys.
     if (public_area.object_attributes & trunks::kDecrypt) {
+      // We can handle the padding here in software.
       std::string padded_data;
-      if (!AddPKCS1Padding(GetDigestAlgorithmEncoding(digest_algorithm) + input,
-                           public_area.unique.rsa.size, &padded_data)) {
-        return false;
+      if (GetSigningSchemeForMechanism(signing_mechanism) ==
+          RsaPaddingScheme::RSASSA_PKCS1_V1_5) {
+        if (!AddPKCS1Padding(
+                GetDigestAlgorithmEncoding(digest_algorithm) + input,
+                public_area.unique.rsa.size, &padded_data)) {
+          return false;
+        }
+      } else if (GetSigningSchemeForMechanism(signing_mechanism) ==
+                 RsaPaddingScheme::RSASSA_PSS) {
+        // Add padding with openssl
+        DCHECK(pss_params);
+        DCHECK(mgf1_hash);
+        crypto::ScopedRSA rsa = PublicAreaToScopedRsa(public_area);
+        if (!rsa) {
+          LOG(ERROR) << "Failed to get public key for TPM2 RSA PSS Sign().";
+          return false;
+        }
+        padded_data.resize(RSA_size(rsa.get()));
+        if (RSA_padding_add_PKCS1_PSS_mgf1(
+                rsa.get(),
+                reinterpret_cast<unsigned char*>(base::data(padded_data)),
+                reinterpret_cast<const unsigned char*>(base::data(input)),
+                GetOpenSSLDigest(signing_mechanism), mgf1_hash,
+                pss_params->sLen) != 1) {
+          LOG(ERROR)
+              << "Failed to produce the PSA PSS paddings in TPM2 Sign().";
+          return false;
+        }
       }
+
       result = trunks_tpm_utility_->AsymmetricDecrypt(
           key_handle, trunks::TPM_ALG_NULL, trunks::TPM_ALG_NULL, padded_data,
           session_->GetDelegate(), signature);
     } else {
       std::string data_to_sign;
 
-      if (digest_algorithm == DigestAlgorithm::NoDigest) {
-        // 2-1. For CKM_RSA_PKCS, digest type is NoDigest, but PKCS11 API caller
-        //      may pass the input with prepended DigestInfo. If it can be
-        //      recognized as TPM supported algorithm, strip off the prepended
-        //      DigestInfo and consider it as 2-3. If not, keep pass the raw
-        //      input.
-        base::Optional<ParsedDigestInfo> parsed = ParseDigestInfo(input);
-        if (parsed != base::nullopt) {
-          digest_alg_id = parsed.value().first;
-          data_to_sign = parsed.value().second;
+      // We are using TPM_ALG_RSASSA, and only the mechanisms below match.
+      if (GetSigningSchemeForMechanism(signing_mechanism) ==
+          RsaPaddingScheme::RSASSA_PKCS1_V1_5) {
+        if (digest_algorithm == DigestAlgorithm::NoDigest) {
+          // 2-1. For CKM_RSA_PKCS, digest type is NoDigest, but PKCS11 API
+          //      caller may pass the input with prepended DigestInfo. If it
+          //      can be recognized as TPM supported algorithm, strip off the
+          //      prepended DigestInfo and consider it as 2-3. If not, keep
+          //      pass the raw input.
+          base::Optional<ParsedDigestInfo> parsed = ParseDigestInfo(input);
+          if (parsed != base::nullopt) {
+            digest_alg_id = parsed.value().first;
+            data_to_sign = parsed.value().second;
+          } else {
+            digest_alg_id = trunks::TPM_ALG_NULL;
+            data_to_sign = input;
+          }
+        } else if (digest_alg_id == trunks::TPM_ALG_NULL) {
+          // 2-2. If TPM doesn't support the digest type (ex. MD5), we need to
+          //      prepend DigestInfo and then call TPM Sign with NULL scheme
+          //      to sign and pad.
+          data_to_sign = GetDigestAlgorithmEncoding(digest_algorithm) + input;
         } else {
-          digest_alg_id = trunks::TPM_ALG_NULL;
+          // 2-3. If TPM supported the digest type, we will send the digest
+          //      |input| to TPM. TPM will do both prepending DigestInfo and
+          //      PKCS1 padding.
           data_to_sign = input;
         }
-      } else if (digest_alg_id == trunks::TPM_ALG_NULL) {
-        // 2-2. If TPM doesn't support the digest type (ex. MD5), we need to
-        //      prepend DigestInfo and then call TPM Sign with NULL scheme to
-        //      sign and pad.
-        data_to_sign = GetDigestAlgorithmEncoding(digest_algorithm) + input;
-      } else {
-        // 2-3. If TPM supported the digest type, we will send the digest
-        //      |input| to TPM. TPM will do both prepending DigestInfo and PKCS1
-        //      padding.
-        data_to_sign = input;
-      }
 
-      // We are using TPM_ALG_RSASSA, and only the mechanisms below match.
-      if (GetSigningSchemeForMechanism(signing_mechanism) !=
-          RsaPaddingScheme::RSASSA_PKCS1_V1_5) {
+        result = trunks_tpm_utility_->Sign(key_handle, trunks::TPM_ALG_RSASSA,
+                                           digest_alg_id, data_to_sign,
+                                           false /* don't generate hash */,
+                                           session_->GetDelegate(), signature);
+      } else if (GetSigningSchemeForMechanism(signing_mechanism) ==
+                 RsaPaddingScheme::RSASSA_PSS) {
+        LOG(ERROR)
+            << "RSA PSS Sign() for sign only TPMv2 Key is not implemented";
+        return false;
+      } else {
         LOG(ERROR) << "Unsupported signing mechanism for tpm2 rsa key "
                    << signing_mechanism;
         return false;
       }
-
-      result = trunks_tpm_utility_->Sign(
-          key_handle, trunks::TPM_ALG_RSASSA, digest_alg_id, data_to_sign,
-          false /* don't generate hash */, session_->GetDelegate(), signature);
     }
     if (result != TPM_RC_SUCCESS) {
       LOG(ERROR) << "Error performing sign operation: "
