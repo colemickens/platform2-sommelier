@@ -112,6 +112,11 @@ class TPM2UtilityImpl : public TPMUtility {
             std::string* signature) override;
   bool IsSRKReady() override;
 
+  // Convert the RSA Key in the specified in |public_data| to the openssl RSA
+  // object and return it if successful, otherwise, nullptr is returned.
+  static crypto::ScopedRSA PublicAreaToScopedRsa(
+      const trunks::TPMT_PUBLIC& public_data);
+
  private:
   // These internal methods implement the LoadKeyWithParent and Unbind methods.
   // They are implemented with no locking to allow the public methods above to

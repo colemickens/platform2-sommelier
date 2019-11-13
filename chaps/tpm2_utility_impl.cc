@@ -692,38 +692,35 @@ void TPM2UtilityImpl::UnloadKeysForSlot(int slot) {
   slot_handles_.erase(slot);
 }
 
-crypto::ScopedRSA TPM2UtilityImpl::KeyToScopedRsa(int key_handle) {
-  crypto::ScopedRSA rsa(RSA_new());
-  if (!rsa) {
-    LOG(ERROR) << "Failed to allocate RSA.";
+crypto::ScopedRSA TPM2UtilityImpl::PublicAreaToScopedRsa(
+    const trunks::TPMT_PUBLIC& public_data) {
+  if (public_data.type != trunks::TPM_ALG_RSA) {
+    LOG(ERROR)
+        << "Fail to convert public area of non RSA key to ScopedRSA object.";
     return nullptr;
   }
 
+  // Extract modulus and exponent from public_data.
+  std::string modulus;
+  std::string exponent;
+  modulus.assign(StringFrom_TPM2B_PUBLIC_KEY_RSA(public_data.unique.rsa));
+  TPM_RC result = trunks::Serialize_UINT32(
+      public_data.parameters.rsa_detail.exponent, &exponent);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error serializing public exponent: " << result;
+    return nullptr;
+  }
+
+  return NumberToScopedRsa(modulus, exponent);
+}
+
+crypto::ScopedRSA TPM2UtilityImpl::KeyToScopedRsa(int key_handle) {
   std::string modulus;
   std::string exponent;
   if (!GetRSAPublicKey(key_handle, &exponent, &modulus)) {
     return nullptr;
   }
-  crypto::ScopedBIGNUM n(BN_new()), e(BN_new());
-  if (!n || !e) {
-    LOG(ERROR) << "Failed to allocate BIGNUM.";
-    return nullptr;
-  }
-
-  if (!BN_bin2bn(reinterpret_cast<const unsigned char*>(modulus.data()),
-                 modulus.size(), n.get()) ||
-      !BN_bin2bn(reinterpret_cast<const unsigned char*>(exponent.data()),
-                 exponent.size(), e.get())) {
-    LOG(ERROR) << "Failed to convert modulus or exponent for RSA.";
-    return nullptr;
-  }
-
-  if (!RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr)) {
-    LOG(ERROR) << "Failed to set modulus or exponent for RSA.";
-    return nullptr;
-  }
-
-  return rsa;
+  return NumberToScopedRsa(modulus, exponent);
 }
 
 bool TPM2UtilityImpl::Bind(int key_handle,

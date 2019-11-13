@@ -311,6 +311,11 @@ std::string ConvertFromBIGNUM(const BIGNUM* bignum, int pad_to_length = 0);
 // Returns false if big_integer is empty, b is nullptr, or conversion fails.
 bool ConvertToBIGNUM(const std::string& big_integer, BIGNUM* b);
 
+// Convert the public key consisting of |modulus| and |exponent| to an RSA
+// object and return it on success, otherwise, return nullptr.
+crypto::ScopedRSA NumberToScopedRsa(const std::string& modulus,
+                                    const std::string& exponent);
+
 //
 // OpenSSL type <--> DER-encoded string
 //

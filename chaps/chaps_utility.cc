@@ -746,6 +746,36 @@ bool ConvertToBIGNUM(const string& big_integer, BIGNUM* b) {
                    big_integer.length(), b);
 }
 
+crypto::ScopedRSA NumberToScopedRsa(const std::string& modulus,
+                                    const std::string& exponent) {
+  crypto::ScopedRSA rsa(RSA_new());
+  if (!rsa) {
+    LOG(ERROR) << "Failed to allocate RSA.";
+    return nullptr;
+  }
+
+  crypto::ScopedBIGNUM n(BN_new()), e(BN_new());
+  if (!n || !e) {
+    LOG(ERROR) << "Failed to allocate BIGNUM.";
+    return nullptr;
+  }
+
+  if (!BN_bin2bn(reinterpret_cast<const unsigned char*>(modulus.data()),
+                 modulus.size(), n.get()) ||
+      !BN_bin2bn(reinterpret_cast<const unsigned char*>(exponent.data()),
+                 exponent.size(), e.get())) {
+    LOG(ERROR) << "Failed to convert modulus or exponent for RSA.";
+    return nullptr;
+  }
+
+  if (!RSA_set0_key(rsa.get(), n.release(), e.release(), nullptr)) {
+    LOG(ERROR) << "Failed to set modulus or exponent for RSA.";
+    return nullptr;
+  }
+
+  return rsa;
+}
+
 string GetECParametersAsString(const EC_KEY* key) {
   return ConvertOpenSSLObjectToString<EC_KEY, i2d_ECParameters>(
       const_cast<EC_KEY*>(key));
