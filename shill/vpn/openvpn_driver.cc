@@ -151,12 +151,8 @@ const char OpenVPNDriver::kDefaultOpenVPNConfigurationDirectory[] =
 const int OpenVPNDriver::kReconnectOfflineTimeoutSeconds = 2 * 60;
 const int OpenVPNDriver::kReconnectTLSErrorTimeoutSeconds = 20;
 
-OpenVPNDriver::OpenVPNDriver(Manager* manager,
-                             DeviceInfo* device_info,
-                             ProcessManager* process_manager)
-    : VPNDriver(manager, kProperties, arraysize(kProperties)),
-      device_info_(device_info),
-      process_manager_(process_manager),
+OpenVPNDriver::OpenVPNDriver(Manager* manager, ProcessManager* process_manager)
+    : VPNDriver(manager, process_manager, kProperties, arraysize(kProperties)),
       management_server_(new OpenVPNManagementServer(this)),
       certificate_file_(new CertificateFile()),
       extra_certificates_file_(new CertificateFile()),
@@ -190,8 +186,8 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state,
   // the callback for OnOpenVPNDied, and then terminating and reaping
   // the process with StopProcess().
   if (pid_) {
-    process_manager_->UpdateExitCallback(pid_,
-                                         base::Bind(DoNothingWithExitStatus));
+    process_manager()->UpdateExitCallback(pid_,
+                                          base::Bind(DoNothingWithExitStatus));
   }
   management_server_->Stop();
   if (!tls_auth_file_.empty()) {
@@ -212,11 +208,11 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state,
     device_ = nullptr;
   }
   if (pid_) {
-    process_manager_->StopProcessAndBlock(pid_);
+    process_manager()->StopProcessAndBlock(pid_);
     pid_ = 0;
   }
   if (interface_index >= 0) {
-    device_info_->DeleteInterface(interface_index);
+    manager()->device_info()->DeleteInterface(interface_index);
   }
   tunnel_interface_.clear();
   if (service()) {
@@ -319,7 +315,7 @@ bool OpenVPNDriver::SpawnOpenVPN() {
   if (manager()->GetJailVpnClients()) {
     uint64_t capmask = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW) |
                        CAP_TO_MASK(CAP_SETUID) | CAP_TO_MASK(CAP_SETGID);
-    openvpn_pid = process_manager_->StartProcessInMinijail(
+    openvpn_pid = process_manager()->StartProcessInMinijail(
         FROM_HERE, base::FilePath(kOpenVPNPath), args, "shill", "shill",
         capmask, true, true,
         base::Bind(&OpenVPNDriver::OnOpenVPNDied, base::Unretained(this)));
@@ -328,7 +324,7 @@ bool OpenVPNDriver::SpawnOpenVPN() {
       return false;
     }
   } else {
-    openvpn_pid = process_manager_->StartProcess(
+    openvpn_pid = process_manager()->StartProcess(
         FROM_HERE, FilePath(kOpenVPNPath), args,
         map<string, string>(),  // No env vars passed.
         false,                  // Do not terminate with parent.
@@ -639,7 +635,7 @@ void OpenVPNDriver::Connect(const VPNServiceRefPtr& service, Error* error) {
   StartConnectTimeout(kDefaultConnectTimeoutSeconds);
   set_service(service);
   service->SetState(Service::kStateConfiguring);
-  if (!device_info_->CreateTunnelInterface(&tunnel_interface_)) {
+  if (!manager()->device_info()->CreateTunnelInterface(&tunnel_interface_)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                           "Could not create tunnel interface.");
     FailService(Service::kFailureInternal, Service::kErrorDetailsNone);

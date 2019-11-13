@@ -23,15 +23,12 @@
 namespace shill {
 
 class CertificateFile;
-class DeviceInfo;
 class ExternalTask;
 class PPPDeviceFactory;
-class ProcessManager;
 
 class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
  public:
   L2TPIPSecDriver(Manager* manager,
-                  DeviceInfo* device_info,
                   ProcessManager* process_manager);
   ~L2TPIPSecDriver() override;
 
@@ -126,8 +123,6 @@ class L2TPIPSecDriver : public VPNDriver, public RpcTaskDelegate {
 
   void ReportConnectionMetrics();
 
-  DeviceInfo* device_info_;
-  ProcessManager* process_manager_;
   PPPDeviceFactory* ppp_device_factory_;
 
   std::unique_ptr<ExternalTask> external_task_;

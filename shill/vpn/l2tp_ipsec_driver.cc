@@ -133,11 +133,8 @@ const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
 };
 
 L2TPIPSecDriver::L2TPIPSecDriver(Manager* manager,
-                                 DeviceInfo* device_info,
                                  ProcessManager* process_manager)
-    : VPNDriver(manager, kProperties, arraysize(kProperties)),
-      device_info_(device_info),
-      process_manager_(process_manager),
+    : VPNDriver(manager, process_manager, kProperties, arraysize(kProperties)),
       ppp_device_factory_(PPPDeviceFactory::GetInstance()),
       certificate_file_(new CertificateFile()),
       weak_ptr_factory_(this) {}
@@ -232,7 +229,7 @@ void L2TPIPSecDriver::DeleteTemporaryFiles() {
 bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error* error) {
   SLOG(this, 2) << __func__;
   auto external_task_local = std::make_unique<ExternalTask>(
-      control_interface(), process_manager_, weak_ptr_factory_.GetWeakPtr(),
+      control_interface(), process_manager(), weak_ptr_factory_.GetWeakPtr(),
       Bind(&L2TPIPSecDriver::OnL2TPIPSecVPNDied,
            weak_ptr_factory_.GetWeakPtr()));
 
@@ -453,7 +450,7 @@ void L2TPIPSecDriver::Notify(const string& reason,
   DeleteTemporaryFiles();
 
   string interface_name = PPPDevice::GetInterfaceName(dict);
-  int interface_index = device_info_->GetIndex(interface_name);
+  int interface_index = manager()->device_info()->GetIndex(interface_name);
   if (interface_index < 0) {
     // TODO(petkov): Consider handling the race when the RTNL notification about
     // the new PPP device has not been received yet. We can keep the IP

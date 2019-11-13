@@ -46,12 +46,12 @@ class L2TPIPSecDriverTest : public testing::Test, public RpcTaskDelegate {
   L2TPIPSecDriverTest()
       : manager_(&control_, &dispatcher_, &metrics_),
         device_info_(&manager_),
-        driver_(
-            new L2TPIPSecDriver(&manager_, &device_info_, &process_manager_)),
+        driver_(new L2TPIPSecDriver(&manager_, &process_manager_)),
         service_(new MockVPNService(&manager_, base::WrapUnique(driver_))),
         device_(new MockPPPDevice(&manager_, kInterfaceName, kInterfaceIndex)),
         certificate_file_(new MockCertificateFile()),
         weak_ptr_factory_(this) {
+    manager_.set_mock_device_info(&device_info_);
     driver_->certificate_file_.reset(certificate_file_);  // Passes ownership.
   }
 

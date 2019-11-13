@@ -87,13 +87,14 @@ class OpenVPNDriverTest
   OpenVPNDriverTest()
       : manager_(&control_, &dispatcher_, &metrics_),
         device_info_(&manager_),
-        driver_(new OpenVPNDriver(&manager_, &device_info_, &process_manager_)),
+        driver_(new OpenVPNDriver(&manager_, &process_manager_)),
         service_(new MockVPNService(&manager_, base::WrapUnique(driver_))),
         device_(new MockVirtualDevice(
             &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN)),
         certificate_file_(new MockCertificateFile()),
         extra_certificates_file_(new MockCertificateFile()),
         management_server_(new NiceMock<MockOpenVPNManagementServer>()) {
+    manager_.set_mock_device_info(&device_info_);
     driver_->management_server_.reset(management_server_);
     driver_->certificate_file_.reset(certificate_file_);  // Passes ownership.
     driver_->extra_certificates_file_.reset(

@@ -40,7 +40,7 @@ class OpenVPNManagementServerTest : public testing::Test {
  public:
   OpenVPNManagementServerTest()
       : manager_(&control_, &dispatcher_, &metrics_, "", "", ""),
-        driver_(&manager_, manager_.device_info(), &process_manager_),
+        driver_(&manager_, &process_manager_),
         server_(&driver_) {
     server_.io_handler_factory_ = &io_handler_factory_;
   }

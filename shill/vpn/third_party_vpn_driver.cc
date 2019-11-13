@@ -70,9 +70,8 @@ const VPNDriver::Property ThirdPartyVpnDriver::kProperties[] = {
 ThirdPartyVpnDriver* ThirdPartyVpnDriver::active_client_ = nullptr;
 
 ThirdPartyVpnDriver::ThirdPartyVpnDriver(Manager* manager,
-                                         DeviceInfo* device_info)
-    : VPNDriver(manager, kProperties, arraysize(kProperties)),
-      device_info_(device_info),
+                                         ProcessManager* process_manager)
+    : VPNDriver(manager, process_manager, kProperties, arraysize(kProperties)),
       tun_fd_(-1),
       ip_properties_set_(false),
       io_handler_factory_(IOHandlerFactory::GetInstance()),
@@ -455,7 +454,7 @@ void ThirdPartyVpnDriver::Cleanup(Service::ConnectState state,
     device_ = nullptr;
   }
   if (interface_index >= 0) {
-    device_info_->DeleteInterface(interface_index);
+    manager()->device_info()->DeleteInterface(interface_index);
   }
   tunnel_interface_.clear();
   if (service()) {
@@ -492,7 +491,7 @@ void ThirdPartyVpnDriver::Connect(const VPNServiceRefPtr& service,
   ip_properties_set_ = false;
   set_service(service);
   service->SetState(Service::kStateConfiguring);
-  if (!device_info_->CreateTunnelInterface(&tunnel_interface_)) {
+  if (!manager()->device_info()->CreateTunnelInterface(&tunnel_interface_)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                           "Could not create tunnel interface.");
     Cleanup(Service::kStateFailure, Service::kFailureInternal,
@@ -515,7 +514,7 @@ bool ThirdPartyVpnDriver::ClaimInterface(const std::string& link_name,
                               Technology::kVPN);
   device_->SetEnabled(true);
 
-  tun_fd_ = device_info_->OpenTunnelInterface(tunnel_interface_);
+  tun_fd_ = manager()->device_info()->OpenTunnelInterface(tunnel_interface_);
   if (tun_fd_ < 0) {
     Cleanup(Service::kStateFailure, Service::kFailureInternal,
             "Unable to open tun interface");

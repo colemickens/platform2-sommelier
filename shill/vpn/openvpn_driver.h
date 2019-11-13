@@ -26,9 +26,7 @@ namespace shill {
 class CertificateFile;
 class DeviceInfo;
 class Error;
-class Manager;
 class OpenVPNManagementServer;
-class ProcessManager;
 
 class OpenVPNDriver : public VPNDriver,
                       public RpcTaskDelegate,
@@ -41,7 +39,6 @@ class OpenVPNDriver : public VPNDriver,
   };
 
   OpenVPNDriver(Manager* manager,
-                DeviceInfo* device_info,
                 ProcessManager* process_manager);
   ~OpenVPNDriver() override;
 
@@ -245,8 +242,6 @@ class OpenVPNDriver : public VPNDriver,
 
   void ReportConnectionMetrics();
 
-  DeviceInfo* device_info_;
-  ProcessManager* process_manager_;
   Sockets sockets_;
   std::unique_ptr<OpenVPNManagementServer> management_server_;
   std::unique_ptr<CertificateFile> certificate_file_;

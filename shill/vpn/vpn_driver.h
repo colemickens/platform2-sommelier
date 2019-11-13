@@ -26,6 +26,7 @@ class Error;
 class EventDispatcher;
 class Manager;
 class Metrics;
+class ProcessManager;
 class PropertyStore;
 class StoreInterface;
 
@@ -76,6 +77,7 @@ class VPNDriver {
   static const int kDefaultConnectTimeoutSeconds;
 
   VPNDriver(Manager* manager,
+            ProcessManager* process_manager,
             const Property* properties,
             size_t property_count);
 
@@ -83,6 +85,7 @@ class VPNDriver {
   EventDispatcher* dispatcher() const;
   Metrics* metrics() const;
   Manager* manager() const { return manager_; }
+  ProcessManager* process_manager() const { return process_manager_; }
 
   virtual KeyValueStore GetProvider(Error* error);
 
@@ -120,9 +123,11 @@ class VPNDriver {
                                 const std::vector<std::string>& value,
                                 Error* error);
 
+  Manager* manager_;
+  ProcessManager* process_manager_;
+
   VPNServiceRefPtr service_;
 
-  Manager* manager_;
   const Property* const properties_;
   const size_t property_count_;
   KeyValueStore args_;

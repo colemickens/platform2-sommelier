@@ -43,9 +43,9 @@ const VPNDriver::Property ArcVpnDriver::kProperties[] = {
     {kProviderTypeProperty, 0},
     {kArcVpnTunnelChromeProperty, 0}};
 
-ArcVpnDriver::ArcVpnDriver(Manager* manager, DeviceInfo* device_info)
-    : VPNDriver(manager, kProperties, arraysize(kProperties)),
-      device_info_(device_info) {}
+ArcVpnDriver::ArcVpnDriver(Manager* manager, ProcessManager* process_manager)
+    : VPNDriver(manager, process_manager, kProperties, arraysize(kProperties)) {
+}
 
 ArcVpnDriver::~ArcVpnDriver() {
   Cleanup();

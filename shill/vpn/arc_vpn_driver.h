@@ -22,7 +22,7 @@ namespace shill {
 
 class ArcVpnDriver : public VPNDriver {
  public:
-  ArcVpnDriver(Manager* manager, DeviceInfo* device_info);
+  ArcVpnDriver(Manager* manager, ProcessManager* process_manager);
   ~ArcVpnDriver() override;
 
   // Implementation of VPNDriver
@@ -40,8 +40,6 @@ class ArcVpnDriver : public VPNDriver {
   void Cleanup();
 
   static const Property kProperties[];
-
-  DeviceInfo* device_info_;
 
   VirtualDeviceRefPtr device_;
 

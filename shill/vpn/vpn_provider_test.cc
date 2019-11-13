@@ -37,7 +37,9 @@ class VPNProviderTest : public testing::Test {
   VPNProviderTest()
       : manager_(&control_, nullptr, &metrics_),
         device_info_(&manager_),
-        provider_(&manager_) {}
+        provider_(&manager_) {
+    manager_.set_mock_device_info(&device_info_);
+  }
 
   ~VPNProviderTest() override = default;
 
@@ -112,7 +114,6 @@ TEST_F(VPNProviderTest, GetService) {
   ServiceRefPtr service;
   {
     Error error;
-    EXPECT_CALL(manager_, device_info()).WillOnce(Return(&device_info_));
     EXPECT_CALL(manager_, RegisterService(_));
     service = provider_.GetService(args, &error);
     EXPECT_TRUE(error.IsSuccess());
@@ -259,7 +260,6 @@ TEST_F(VPNProviderTest, CreateServicesFromProfile) {
   scoped_refptr<MockProfile> profile(new NiceMock<MockProfile>(&manager_, ""));
   EXPECT_CALL(*profile, GetConstStorage()).WillRepeatedly(Return(&storage));
 
-  EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(nullptr));
   EXPECT_CALL(manager_, RegisterService(ServiceWithStorageId("vpn_complete")));
   EXPECT_CALL(*profile, ConfigureService(ServiceWithStorageId("vpn_complete")))
       .WillOnce(Return(true));
@@ -279,9 +279,6 @@ TEST_F(VPNProviderTest, CreateService) {
   static const char* const kTypes[] = {kProviderOpenVpn, kProviderL2tpIpsec,
                                        kProviderThirdPartyVpn};
   const size_t kTypesCount = arraysize(kTypes);
-  EXPECT_CALL(manager_, device_info())
-      .Times(kTypesCount)
-      .WillRepeatedly(Return(&device_info_));
   EXPECT_CALL(manager_, RegisterService(_)).Times(kTypesCount);
   for (auto type : kTypes) {
     Error error;
@@ -306,7 +303,6 @@ TEST_F(VPNProviderTest, CreateArcService) {
   static const char kName[] = "test-vpn-service";
   static const char kStorageID[] = "test_vpn_storage_id";
   static const char kHost[] = "com.example.test.vpn";
-  EXPECT_CALL(manager_, device_info()).WillOnce(Return(&device_info_));
   EXPECT_CALL(manager_, RegisterService(_));
   Error error;
   VPNServiceRefPtr service =

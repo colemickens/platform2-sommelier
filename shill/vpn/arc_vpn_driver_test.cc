@@ -57,7 +57,7 @@ class ArcVpnDriverTest : public testing::Test {
         device_(new MockVirtualDevice(
             &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN)),
         store_(),
-        driver_(new ArcVpnDriver(&manager_, &device_info_)),
+        driver_(new ArcVpnDriver(&manager_, nullptr)),
         service_(new MockVPNService(&manager_, base::WrapUnique(driver_))) {}
 
   ~ArcVpnDriverTest() override = default;

@@ -81,7 +81,7 @@ const VPNDriverUnderTest::Property VPNDriverUnderTest::kProperties[] = {
 };
 
 VPNDriverUnderTest::VPNDriverUnderTest(Manager* manager)
-    : VPNDriver(manager, kProperties, arraysize(kProperties)) {}
+    : VPNDriver(manager, nullptr, kProperties, arraysize(kProperties)) {}
 
 class VPNDriverTest : public Test {
  public:

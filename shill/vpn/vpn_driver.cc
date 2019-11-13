@@ -35,9 +35,11 @@ static string ObjectID(VPNDriver* v) {
 const int VPNDriver::kDefaultConnectTimeoutSeconds = 60;
 
 VPNDriver::VPNDriver(Manager* manager,
+                     ProcessManager* process_manager,
                      const Property* properties,
                      size_t property_count)
     : manager_(manager),
+      process_manager_(process_manager),
       properties_(properties),
       property_count_(property_count),
       connect_timeout_seconds_(0),

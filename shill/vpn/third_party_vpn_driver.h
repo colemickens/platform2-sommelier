@@ -23,11 +23,9 @@
 
 namespace shill {
 
-class DeviceInfo;
 class Error;
 class FileIO;
 class IOHandlerFactory;
-class Manager;
 class ThirdPartyVpnAdaptorInterface;
 
 class ThirdPartyVpnDriver : public VPNDriver, public DefaultServiceObserver {
@@ -43,7 +41,7 @@ class ThirdPartyVpnDriver : public VPNDriver, public DefaultServiceObserver {
     kResume
   };
 
-  ThirdPartyVpnDriver(Manager* manager, DeviceInfo* device_info);
+  ThirdPartyVpnDriver(Manager* manager, ProcessManager* process_manager);
   ~ThirdPartyVpnDriver() override;
 
   // UpdateConnectionState is called by DBus adaptor when
@@ -218,8 +216,6 @@ class ThirdPartyVpnDriver : public VPNDriver, public DefaultServiceObserver {
   // instance of this class at a time but only one would be active that can
   // communicate with the VPN client over DBUS.
   static ThirdPartyVpnDriver* active_client_;
-
-  DeviceInfo* device_info_;
 
   // ThirdPartyVpnAdaptorInterface manages the DBus communication and provides
   // an unique identifier for the ThirdPartyVpnDriver.

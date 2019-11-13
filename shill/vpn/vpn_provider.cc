@@ -273,16 +273,15 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const string& type,
 
   std::unique_ptr<VPNDriver> driver;
   if (type == kProviderOpenVpn) {
-    driver.reset(new OpenVPNDriver(manager_, manager_->device_info(),
-                                   ProcessManager::GetInstance()));
+    driver.reset(new OpenVPNDriver(manager_, ProcessManager::GetInstance()));
   } else if (type == kProviderL2tpIpsec) {
-    driver.reset(new L2TPIPSecDriver(manager_, manager_->device_info(),
-                                     ProcessManager::GetInstance()));
+    driver.reset(new L2TPIPSecDriver(manager_, ProcessManager::GetInstance()));
   } else if (type == kProviderThirdPartyVpn) {
     // For third party VPN host contains extension ID
-    driver.reset(new ThirdPartyVpnDriver(manager_, manager_->device_info()));
+    driver.reset(
+        new ThirdPartyVpnDriver(manager_, ProcessManager::GetInstance()));
   } else if (type == kProviderArcVpn) {
-    driver.reset(new ArcVpnDriver(manager_, manager_->device_info()));
+    driver.reset(new ArcVpnDriver(manager_, ProcessManager::GetInstance()));
   } else {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           "Unsupported VPN type: " + type);
