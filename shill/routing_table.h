@@ -57,10 +57,12 @@ class RoutingTable {
 
   // Causes RoutingTable to stop managing a particular interface index. This
   // method does not perform clean up that would allow corresponding interface
-  // to be used as an unmanaged Device. Instead, the assumption is that an
-  // unmanaged Device will never be registered with RoutingTable, and so
-  // deregister calls are exclusively for "normal" interface down events.
-  void DeregisterDevice(int interface_index);
+  // to be used as an unmanaged Device *unless* routes for that interface are
+  // re-added. For example, changing accept_ra_rt_table for an interface from -N
+  // to 0 will not cause the routes to move back to the main routing table, and
+  // in many cases (like a regular link down event for a managed interface), we
+  // would not want shill to manually move those routes back.
+  void DeregisterDevice(int interface_index, const std::string& link_name);
 
   // Add an entry to the routing table.
   virtual bool AddRoute(int interface_index, const RoutingTableEntry& entry);

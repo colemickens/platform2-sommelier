@@ -269,6 +269,8 @@ void DeviceInfo::DeregisterDevice(const DeviceRefPtr& device) {
   if (iter != infos_.end()) {
     SLOG(this, 2) << "Removing device from info for index: " << interface_index;
     manager_->DeregisterDevice(device);
+    routing_table_->DeregisterDevice(device->interface_index(),
+                                     device->link_name());
     // Release the reference to the device, but maintain the mapping
     // for the index.  That will be cleaned up by an RTNL message.
     iter->second.device = nullptr;
@@ -1077,6 +1079,8 @@ void DeviceInfo::RemoveInfo(int interface_index) {
     if (iter->second.device.get()) {
       manager_->DeregisterDevice(iter->second.device);
       metrics()->DeregisterDevice(interface_index);
+      routing_table_->DeregisterDevice(iter->second.device->interface_index(),
+                                       iter->second.device->link_name());
     }
     indices_.erase(iter->second.name);
     infos_.erase(iter);

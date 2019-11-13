@@ -213,14 +213,29 @@ void RoutingTable::RegisterDevice(int interface_index,
       FilePath(kIpv6ProcPath).Append(link_name).Append("accept_ra_rt_table");
   int str_size = static_cast<int>(ra_rt_table.size());
   if (base::WriteFile(path, ra_rt_table.c_str(), str_size) != str_size) {
-    LOG(ERROR) << base::StringPrintf("Cannot write to %s",
-                                     path.MaybeAsASCII().c_str());
+    LOG(ERROR) << "Cannot write to " << path.MaybeAsASCII();
   }
   FlushCache();
 }
 
-void RoutingTable::DeregisterDevice(int interface_index) {
+void RoutingTable::DeregisterDevice(int interface_index,
+                                    const std::string& link_name) {
+  LOG(INFO) << "Device " << link_name << " deregistered.";
   managed_interfaces_.erase(interface_index);
+  // Set accept_ra_rt_table to 0. Note that this will *not* cause routes to be
+  // moved back from the per-Device table to the main routing table.
+  auto path =
+      FilePath(kIpv6ProcPath).Append(link_name).Append("accept_ra_rt_table");
+  if (!base::PathExists(path)) {
+    SLOG(this, 2) << "Cannot write to " << path.MaybeAsASCII()
+                  << ", likely because the interface has already went down.";
+  } else if (base::WriteFile(path, "0", 1) != 1) {
+    // Note that there is a potential race condition in which the file exists in
+    // the check above but is removed by the time we call WriteFile. In this
+    // case, the following error log will be spurious.
+    LOG(ERROR) << "Cannot write to " << path.MaybeAsASCII();
+  }
+  FlushCache();
 }
 
 bool RoutingTable::AddRoute(int interface_index,
