@@ -179,6 +179,9 @@ class FakeMaitredService final : public vm_tools::Maitred::Service {
   grpc::Status SetTime(grpc::ServerContext* ctx,
                        const vm_tools::SetTimeRequest* request,
                        vm_tools::EmptyMessage* response) override;
+  grpc::Status SetResolvConfig(grpc::ServerContext* ctx,
+                               const vm_tools::SetResolvConfigRequest* request,
+                               vm_tools::EmptyMessage* response) override;
 
  private:
   // Populated the first time this class receives a LaunchProcess RPC.
@@ -317,6 +320,13 @@ grpc::Status FakeMaitredService::Shutdown(grpc::ServerContext* ctx,
 grpc::Status FakeMaitredService::SetTime(
     grpc::ServerContext* ctx,
     const vm_tools::SetTimeRequest* request,
+    vm_tools::EmptyMessage* response) {
+  return grpc::Status::OK;
+}
+
+grpc::Status FakeMaitredService::SetResolvConfig(
+    grpc::ServerContext* ctx,
+    const vm_tools::SetResolvConfigRequest* request,
     vm_tools::EmptyMessage* response) {
   return grpc::Status::OK;
 }

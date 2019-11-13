@@ -324,11 +324,7 @@ bool TerminaVm::ConfigureNetwork(const std::vector<string>& nameservers,
     return false;
   }
 
-  // TODO(smbarber): check return value here once all VMs have SetResolvConfig.
-  // Ignore the return value here for now. If the guest VM doesn't yet
-  // implement the SetResolvConfig RPC, it's not a failure.
-  SetResolvConfig(nameservers, search_domains);
-  return true;
+  return SetResolvConfig(nameservers, search_domains);
 }
 
 void TerminaVm::RunCrosvmCommand(string command) {
