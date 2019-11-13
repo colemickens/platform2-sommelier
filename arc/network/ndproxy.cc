@@ -68,6 +68,7 @@ const sock_fprog kNDFrameBpfProgram = {
 const ssize_t NDProxy::kTranslateErrorNotICMPv6Frame = -1;
 const ssize_t NDProxy::kTranslateErrorNotNDFrame = -2;
 const ssize_t NDProxy::kTranslateErrorInsufficientLength = -3;
+const ssize_t NDProxy::kTranslateErrorBufferMisaligned = -4;
 
 // RFC 1071 and RFC 8200 Section 8.1
 // We are doing calculation directly in network order. Note this algorithm works
@@ -127,14 +128,20 @@ void NDProxy::ReplaceMacInIcmpOption(uint8_t* frame,
 // so, fill out_frame buffer with proxied frame and return the length of proxied
 // frame (usually same with input frame length). Return a negative value if
 // proxy is not needed or error occured.
-// in_frame: buffer containing input ethernet frame;
+// in_frame: buffer containing input ethernet frame; needs special alignment
+//           so that IP header is 4-bytes aligned;
 // frame_len: the length of input frame;
 // local_mac_addr: MAC address of interface that will be used to send frame;
-// out_frame: buffer for output frame; should have at least space of frame_len.
+// out_frame: buffer for output frame; should have at least space of frame_len;
+//            needs special alignment so that IP header is 4-bytes aligned.
 ssize_t NDProxy::TranslateNDFrame(const uint8_t* in_frame,
                                   ssize_t frame_len,
                                   const uint8_t* local_mac_addr,
                                   uint8_t* out_frame) {
+  if ((reinterpret_cast<uintptr_t>(in_frame + ETHER_HDR_LEN) & 0x3) != 0 ||
+      (reinterpret_cast<uintptr_t>(out_frame + ETHER_HDR_LEN) & 0x3) != 0) {
+    return kTranslateErrorBufferMisaligned;
+  }
   if (frame_len < ETHER_HDR_LEN + sizeof(ip6_hdr) + sizeof(icmp6_hdr)) {
     return kTranslateErrorInsufficientLength;
   }
@@ -402,7 +409,10 @@ void NDProxy::ProxyNDFrame(int target_if, ssize_t frame_len) {
   }
 }
 
-NDProxy::NDProxy() {}
+NDProxy::NDProxy() {
+  in_frame_buffer_ = AlignFrameBuffer(in_frame_buffer_extended_);
+  out_frame_buffer_ = AlignFrameBuffer(out_frame_buffer_extended_);
+}
 
 NDProxy::NDProxy(base::ScopedFD control_fd)
     : msg_dispatcher_(

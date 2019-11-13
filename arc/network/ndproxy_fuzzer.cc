@@ -14,9 +14,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Turn off logging.
   logging::SetMinLogLevel(logging::LOG_FATAL);
 
-  uint8_t* out_buffer = new uint8_t[size];
+  uint8_t* out_buffer_extended = new uint8_t[size + 4];
+  uint8_t* out_buffer = NDProxy::AlignFrameBuffer(out_buffer_extended);
   NDProxy::TranslateNDFrame(data, size, guest_if_mac, out_buffer);
-  delete[] out_buffer;
+  delete[] out_buffer_extended;
 
   return 0;
 }

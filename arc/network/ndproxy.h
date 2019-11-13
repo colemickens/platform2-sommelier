@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <net/ethernet.h>
 #include <netinet/icmp6.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
@@ -45,6 +46,19 @@ class NDProxy : public brillo::Daemon {
   static const ssize_t kTranslateErrorNotICMPv6Frame;
   static const ssize_t kTranslateErrorNotNDFrame;
   static const ssize_t kTranslateErrorInsufficientLength;
+  static const ssize_t kTranslateErrorBufferMisaligned;
+
+  // Given an extended |buffer|, find a proper frame buffer pointer so that
+  // pt > buffer, and start of IP header (pt + ETH_H_LEN) is 4-bytes aligned.
+  // In the worst case the size of usable buffer will be original size minus 3.
+  // 4x => 4x+2; 4x+1 => 4x+2; 4x+2 => 4x+2; 4x+3 => 4x+6
+  static const uint8_t* AlignFrameBuffer(const uint8_t* buffer) {
+    return buffer + 3 - (reinterpret_cast<uintptr_t>(buffer + 1) & 0x3);
+  }
+
+  static uint8_t* AlignFrameBuffer(uint8_t* buffer) {
+    return buffer + 3 - (reinterpret_cast<uintptr_t>(buffer + 1) & 0x3);
+  }
 
   // To proxy between upstream interface and guest OS interface (eth0-arc_eth0)
   // Outbound RS, inbound RA, and bidirectional NS/NA will be proxied.
@@ -102,8 +116,13 @@ class NDProxy : public brillo::Daemon {
   // Data fd and its watcher
   base::ScopedFD fd_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
-  uint8_t in_frame_buffer_[IP_MAXPACKET];
-  uint8_t out_frame_buffer_[IP_MAXPACKET];
+
+  // Allocate slightly more space and adjust the buffer start location to
+  // make sure IP header is 4-bytes aligned.
+  uint8_t in_frame_buffer_extended_[IP_MAXPACKET + ETH_HLEN + 4];
+  uint8_t out_frame_buffer_extended_[IP_MAXPACKET + ETH_HLEN + 4];
+  uint8_t* in_frame_buffer_;
+  uint8_t* out_frame_buffer_;
 
   interface_mapping if_map_rs_;
   interface_mapping if_map_ra_;
