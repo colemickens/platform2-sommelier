@@ -30,6 +30,9 @@ namespace concierge {
 struct ArcVmFeatures {
   // Enable GPU in the started VM.
   bool gpu;
+
+  // Whether the guest kernel root file system is writable.
+  bool rootfs_writable;
 };
 
 // Represents a single instance of a running termina VM.
@@ -68,6 +71,8 @@ class ArcVm final : public VmInterface {
   uint32_t cid() const { return vsock_cid_; }
 
   bool enable_gpu() const { return features_.gpu; }
+
+  bool rootfs_writable() const { return features_.rootfs_writable; }
 
   // The 9p server managed by seneschal that provides access to shared files for
   // this VM.  Returns 0 if there is no seneschal server associated with this

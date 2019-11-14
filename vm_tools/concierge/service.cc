@@ -1720,6 +1720,7 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   ArcVmFeatures features;
   // TODO(lepton): Enable GPU on non-x86_64 platforms.
   features.gpu = base::SysInfo::OperatingSystemArchitecture() == "x86_64";
+  features.rootfs_writable = request.rootfs_writable();
 
   auto vm =
       ArcVm::Create(std::move(kernel), std::move(rootfs), std::move(fstab),

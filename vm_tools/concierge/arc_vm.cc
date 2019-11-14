@@ -175,13 +175,15 @@ bool ArcVm::Start(base::FilePath kernel,
     return false;
   }
 
+  const std::string rootfs_flag = rootfs_writable() ? "--rwdisk" : "--disk";
+
   // Build up the process arguments.
   // clang-format off
   base::StringPairs args = {
     { kCrosvmBin,         "run" },
     { "--cpus",           std::to_string(cpus) },
     { "--mem",            GetVmMemoryMiB() },
-    { "--disk",           rootfs.value() },
+    { rootfs_flag,        rootfs.value() },
     { "--tap-fd",         std::to_string(tap_fd.get()) },
     { "--cid",            std::to_string(vsock_cid_) },
     { "--socket",         GetVmSocketPath() },
