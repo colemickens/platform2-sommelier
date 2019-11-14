@@ -13,7 +13,6 @@
 #include <sys/un.h>
 
 #include <utility>
-#include <vector>
 
 #include <base/bind.h>
 #include <base/logging.h>
@@ -31,58 +30,9 @@ namespace arc_networkd {
 namespace {
 constexpr int kSubprocessRestartDelayMs = 900;
 
-bool ShouldEnableNDProxyForArc() {
-  static const char kLsbReleasePath[] = "/etc/lsb-release";
-  static int kMinAndroidSdkVersion = 28;  // P
-  static int kMinChromeMilestone = 80;
-
-  static bool checked = false;
-  static bool result = false;
-
-  if (checked)
-    return result;
-
-  checked = true;
-
-  brillo::KeyValueStore store;
-  if (!store.Load(base::FilePath(kLsbReleasePath))) {
-    LOG(ERROR) << "Could not read lsb-release";
-    return false;
-  }
-
-  std::string value;
-  if (!store.GetString("CHROMEOS_ARC_ANDROID_SDK_VERSION", &value)) {
-    LOG(ERROR) << "NDProxy disabled for ARC - cannot determine Android version";
-    return false;
-  }
-  int ver = 0;
-  if (!base::StringToInt(value.c_str(), &ver)) {
-    LOG(ERROR) << "NDProxy disabled for ARC - invalid Android version";
-    return false;
-  }
-  if (ver < kMinAndroidSdkVersion) {
-    LOG(INFO) << "NDProxy disabled for ARC version " << value;
-    return false;
-  }
-
-  if (!store.GetString("CHROMEOS_RELEASE_CHROME_MILESTONE", &value)) {
-    LOG(ERROR)
-        << "NDProxy disabled for ARC - cannot determine ChromeOS milestone";
-    return false;
-  }
-  if (!base::StringToInt(value.c_str(), &ver)) {
-    LOG(ERROR) << "NDProxy disabled for ARC - invalid ChromeOS milestone";
-    return false;
-  }
-  if (ver < kMinChromeMilestone) {
-    LOG(INFO) << "NDProxy disabled for ARC on ChromeOS milestone " << value;
-    return false;
-  }
-
-  LOG(INFO) << "NDProxy enabled for ARC";
-  result = true;
-  return true;
-}
+constexpr char kNDProxyFeatureName[] = "ARC NDProxy";
+constexpr int kNDProxyMinAndroidSdkVersion = 28;  // P
+constexpr int kNDProxyMinChromeMilestone = 80;
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns nullptr, an empty response is
@@ -118,6 +68,75 @@ Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy,
 
 Manager::~Manager() {
   OnShutdown(nullptr);
+}
+
+std::map<const std::string, bool> Manager::cached_feature_enabled_ = {};
+
+bool Manager::ShouldEnableFeature(
+    int min_android_sdk_version,
+    int min_chrome_milestone,
+    const std::vector<std::string>& supported_boards,
+    const std::string& feature_name) {
+  static const char kLsbReleasePath[] = "/etc/lsb-release";
+
+  const auto& cached_result = cached_feature_enabled_.find(feature_name);
+  if (cached_result != cached_feature_enabled_.end())
+    return cached_result->second;
+
+  auto check = [min_android_sdk_version, min_chrome_milestone,
+                &supported_boards, &feature_name]() {
+    brillo::KeyValueStore store;
+    if (!store.Load(base::FilePath(kLsbReleasePath))) {
+      LOG(ERROR) << "Could not read lsb-release";
+      return false;
+    }
+
+    std::string value;
+    if (!store.GetString("CHROMEOS_ARC_ANDROID_SDK_VERSION", &value)) {
+      LOG(ERROR) << feature_name
+                 << " disabled - cannot determine Android SDK version";
+      return false;
+    }
+    int ver = 0;
+    if (!base::StringToInt(value.c_str(), &ver)) {
+      LOG(ERROR) << feature_name << " disabled - invalid Android SDK version";
+      return false;
+    }
+    if (ver < min_android_sdk_version) {
+      LOG(INFO) << feature_name << " disabled for Android SDK " << value;
+      return false;
+    }
+
+    if (!store.GetString("CHROMEOS_RELEASE_CHROME_MILESTONE", &value)) {
+      LOG(ERROR) << feature_name
+                 << " disabled - cannot determine ChromeOS milestone";
+      return false;
+    }
+    if (!base::StringToInt(value.c_str(), &ver)) {
+      LOG(ERROR) << feature_name << " disabled - invalid ChromeOS milestone";
+      return false;
+    }
+    if (ver < min_chrome_milestone) {
+      LOG(INFO) << feature_name << " disabled for ChromeOS milestone " << value;
+      return false;
+    }
+
+    if (!store.GetString("CHROMEOS_RELEASE_BOARD", &value)) {
+      LOG(ERROR) << feature_name << " disabled - cannot determine board";
+      return false;
+    }
+    if (!supported_boards.empty() &&
+        std::find(supported_boards.begin(), supported_boards.end(), value) ==
+            supported_boards.end()) {
+      LOG(INFO) << feature_name << " disabled for board " << value;
+      return false;
+    }
+    return true;
+  };
+
+  bool result = check();
+  cached_feature_enabled_.emplace(feature_name, result);
+  return result;
 }
 
 int Manager::OnInit() {
@@ -200,7 +219,9 @@ void Manager::InitialSetup() {
                << " IPv6 functionality may be broken.";
   }
   // Kernel proxy_ndp is only needed for legacy IPv6 configuration
-  if (!ShouldEnableNDProxyForArc() &&
+  if (!ShouldEnableFeature(kNDProxyMinAndroidSdkVersion,
+                           kNDProxyMinChromeMilestone,
+                           std::vector<std::string>(), kNDProxyFeatureName) &&
       runner.sysctl_w("net.ipv6.conf.all.proxy_ndp", "1") != 0) {
     LOG(ERROR) << "Failed to update net.ipv6.conf.all.proxy_ndp."
                << " IPv6 functionality may be broken.";
@@ -619,7 +640,9 @@ void Manager::StopForwarding(const std::string& ifname_physical,
 }
 
 bool Manager::ForwardsLegacyIPv6() const {
-  return !ShouldEnableNDProxyForArc();
+  return !ShouldEnableFeature(kNDProxyMinAndroidSdkVersion,
+                              kNDProxyMinChromeMilestone,
+                              std::vector<std::string>(), kNDProxyFeatureName);
 }
 
 void Manager::OnDeviceMessageFromNDProxy(const DeviceMessage& msg) {

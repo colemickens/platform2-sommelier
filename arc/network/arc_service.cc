@@ -8,6 +8,7 @@
 #include <net/if.h>
 
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
@@ -22,6 +23,7 @@
 
 #include "arc/network/datapath.h"
 #include "arc/network/mac_address_generator.h"
+#include "arc/network/manager.h"
 #include "arc/network/minijailed_process_runner.h"
 #include "arc/network/net_util.h"
 #include "arc/network/scoped_ns.h"
@@ -42,6 +44,8 @@ constexpr base::TimeDelta kTableRetryDelay = base::TimeDelta::FromSeconds(1);
 // Android adds a constant to the interface index to derive the table id.
 // This is defined in system/netd/server/RouteController.h
 constexpr int kRouteControllerRouteTableOffsetFromIndex = 1000;
+constexpr int kMultinetMinAndroidSdkVersion = 28;
+constexpr char kMultinetFeatureName[] = "ARC multi-networking";
 
 // This wrapper is required since the base class is a singleton that hides its
 // constructor. It is necessary here because the message loop thread has to be
@@ -77,34 +81,6 @@ int GetAndroidRoutingTableId(const std::string& ifname, pid_t pid) {
   LOG(INFO) << "Found table id " << table_id << " for container interface "
             << ifname;
   return table_id;
-}
-
-bool ShouldEnableMultinet() {
-  static const char kLsbReleasePath[] = "/etc/lsb-release";
-  static int kMinAndroidSdkVersion = 28;  // P
-
-  brillo::KeyValueStore store;
-  if (!store.Load(base::FilePath(kLsbReleasePath))) {
-    LOG(ERROR) << "Could not read lsb-release";
-    return false;
-  }
-
-  std::string value;
-  if (!store.GetString("CHROMEOS_ARC_ANDROID_SDK_VERSION", &value)) {
-    LOG(ERROR) << "ARC multi-networking disabled - cannot determine Android "
-                  "SDK version";
-    return false;
-  }
-  int ver = 0;
-  if (!base::StringToInt(value.c_str(), &ver)) {
-    LOG(ERROR) << "ARC multi-networking disabled - invalid Android SDK version";
-    return false;
-  }
-  if (ver < kMinAndroidSdkVersion) {
-    LOG(INFO) << "ARC multi-networking disabled for Android SDK " << value;
-    return false;
-  }
-  return true;
 }
 
 void OneTimeSetup(const Datapath& datapath) {
@@ -172,8 +148,11 @@ GuestMessage::GuestType ArcGuest() {
     return test::guest;
 
   return IsArcVm() ? GuestMessage::ARC_VM
-                   : ShouldEnableMultinet() ? GuestMessage::ARC
-                                            : GuestMessage::ARC_LEGACY;
+                   : Manager::ShouldEnableFeature(kMultinetMinAndroidSdkVersion,
+                                                  0, std::vector<std::string>(),
+                                                  kMultinetFeatureName)
+                         ? GuestMessage::ARC
+                         : GuestMessage::ARC_LEGACY;
 }
 
 constexpr const char kArcDevicePrefix[] = "arc";

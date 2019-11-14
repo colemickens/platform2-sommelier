@@ -7,15 +7,21 @@
 #include <linux/vm_sockets.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/un.h>
 #include <sysexits.h>
 
 #include <set>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/key_value_store.h>
 
+#include "arc/network/manager.h"
 #include "arc/network/minijailed_process_runner.h"
 #include "arc/network/net_util.h"
 
@@ -30,8 +36,17 @@ constexpr uint16_t kTcpConnectPort = 5555;
 constexpr uint32_t kTcpAddr = Ipv4Addr(100, 115, 92, 2);
 constexpr uint32_t kVsockPort = 5555;
 constexpr int kMaxConn = 16;
+// Reference: "device/google/cheets2/init.usb.rc".
+constexpr char kUnixConnectAddr[] = "/run/arc/adb/adb.sock";
+
 const std::set<GuestMessage::GuestType> kArcGuestTypes{
     GuestMessage::ARC, GuestMessage::ARC_LEGACY, GuestMessage::ARC_VM};
+
+// TODO(b/133378083): Remove once ADB over AF_UNIX is stable.
+constexpr char kAdbUnixDomainSocketFeatureName[] =
+    "ADB over UNIX domain socket";
+constexpr int kUnixDomainSocketMinAndroidSdkVersion = 28;  // P
+const std::vector<std::string> kUnixDomainSocketSupportedBoards = {"atlas"};
 
 }  // namespace
 
@@ -55,6 +70,9 @@ int AdbProxy::OnInit() {
     return EX_OSERR;
   }
 
+  enable_unix_domain_socket_ = Manager::ShouldEnableFeature(
+      kUnixDomainSocketMinAndroidSdkVersion, 0,
+      kUnixDomainSocketSupportedBoards, kAdbUnixDomainSocketFeatureName);
   EnterChildProcessJail();
   return Daemon::OnInit();
 }
@@ -96,7 +114,23 @@ void AdbProxy::OnFileCanReadWithoutBlocking() {
 
 std::unique_ptr<Socket> AdbProxy::Connect() const {
   switch (arc_type_) {
-    case GuestMessage::ARC:
+    case GuestMessage::ARC: {
+      if (enable_unix_domain_socket_) {
+        struct sockaddr_un addr_un = {0};
+        addr_un.sun_family = AF_UNIX;
+        snprintf(addr_un.sun_path, sizeof(addr_un.sun_path), "%s",
+                 kUnixConnectAddr);
+        auto dst = std::make_unique<Socket>(AF_UNIX, SOCK_STREAM);
+        if (dst->Connect((const struct sockaddr*)&addr_un, sizeof(addr_un)))
+          return dst;
+        LOG(WARNING) << "Failed to connect to UNIX domain socket: "
+                     << kUnixConnectAddr;
+      }
+      // We need to be able to fallback on TCP while doing UNIX domain socket
+      // migration to prevent unwanted failures.
+      LOG(INFO) << "Fallback to TCP";
+      FALLTHROUGH;
+    }
     case GuestMessage::ARC_LEGACY: {
       struct sockaddr_in addr_in = {0};
       addr_in.sin_family = AF_INET;

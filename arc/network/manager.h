@@ -9,6 +9,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <vector>
 
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
@@ -48,6 +49,16 @@ class Manager final : public brillo::DBusDaemon, private TrafficForwarder {
                       bool multicast) override;
 
   bool ForwardsLegacyIPv6() const override;
+
+  // This function is used to enable specific features only on selected
+  // combination of Android version, Chrome version, and boards.
+  // Empty |supportedBoards| means that the feature should be enabled on all
+  // board.
+  static bool ShouldEnableFeature(
+      int min_android_sdk_version,
+      int min_chrome_milestone,
+      const std::vector<std::string>& supported_boards,
+      const std::string& feature_name);
 
  protected:
   int OnInit() override;
@@ -115,6 +126,10 @@ class Manager final : public brillo::DBusDaemon, private TrafficForwarder {
 
   AddressManager addr_mgr_;
   std::unique_ptr<DeviceManager> device_mgr_;
+
+  // |cached_feature_enabled| stores the cached result of if a feature should be
+  // enabled.
+  static std::map<const std::string, bool> cached_feature_enabled_;
 
   std::unique_ptr<MinijailedProcessRunner> runner_;
   std::unique_ptr<Datapath> datapath_;
