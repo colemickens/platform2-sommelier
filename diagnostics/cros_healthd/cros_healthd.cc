@@ -20,6 +20,7 @@
 #include <mojo/edk/embedder/pending_process_connection.h>
 
 #include "debugd/dbus-proxies.h"
+#include "diagnostics/cros_healthd/cros_healthd_routine_service_impl.h"
 
 namespace diagnostics {
 
@@ -39,8 +40,10 @@ CrosHealthd::CrosHealthd()
   battery_fetcher_ = std::make_unique<BatteryFetcher>(debugd_proxy_.get(),
                                                       power_manager_proxy_);
 
-  mojo_service_ =
-      std::make_unique<CrosHealthdMojoService>(battery_fetcher_.get());
+  routine_service_ = std::make_unique<CrosHealthdRoutineServiceImpl>();
+
+  mojo_service_ = std::make_unique<CrosHealthdMojoService>(
+      battery_fetcher_.get(), routine_service_.get());
 }
 
 CrosHealthd::~CrosHealthd() = default;

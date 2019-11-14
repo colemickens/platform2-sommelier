@@ -50,3 +50,18 @@ rt_sigreturn: 1
 select: 1
 socketpair: 1
 uname: 1
+clone: 1
+unlink: 1
+ftruncate: 1
+wait4: 1
+set_robust_list: 1
+pread64: 1
+mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+munmap: 1
+getdents64: 1
+dup2: 1
+prctl: arg0 == PR_SET_NO_NEW_PRIVS
+execve: 1
+arch_prctl: 1
+set_tid_address: 1

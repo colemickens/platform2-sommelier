@@ -20,6 +20,7 @@
 
 #include "debugd/dbus-proxies.h"
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
+#include "diagnostics/cros_healthd/cros_healthd_routine_service.h"
 #include "diagnostics/cros_healthd/utils/battery_utils.h"
 #include "mojo/cros_healthd.mojom.h"
 
@@ -67,6 +68,9 @@ class CrosHealthd final : public brillo::DBusServiceDaemon {
   // |battery_fetcher_| is responsible for collecting all battery metrics (smart
   // and regular) by using the available D-Bus proxies.
   std::unique_ptr<BatteryFetcher> battery_fetcher_;
+
+  // Creates new diagnostic routines and controls existing diagnostic routines.
+  std::unique_ptr<CrosHealthdRoutineService> routine_service_;
   // Maintains the Mojo connection with cros_healthd clients.
   std::unique_ptr<CrosHealthdMojoService> mojo_service_;
 

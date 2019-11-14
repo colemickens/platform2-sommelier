@@ -23,12 +23,69 @@
 namespace diagnostics {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
-CrosHealthdMojoService::CrosHealthdMojoService(BatteryFetcher* battery_fetcher)
-    : battery_fetcher_(battery_fetcher) {
+CrosHealthdMojoService::CrosHealthdMojoService(
+    BatteryFetcher* battery_fetcher, CrosHealthdRoutineService* routine_service)
+    : battery_fetcher_(battery_fetcher), routine_service_(routine_service) {
   DCHECK(battery_fetcher_);
+  DCHECK(routine_service_);
 }
 
 CrosHealthdMojoService::~CrosHealthdMojoService() = default;
+
+void CrosHealthdMojoService::GetAvailableRoutines(
+    const GetAvailableRoutinesCallback& callback) {
+  callback.Run(routine_service_->GetAvailableRoutines());
+}
+
+void CrosHealthdMojoService::GetRoutineUpdate(
+    int32_t id,
+    chromeos::cros_healthd::mojom::DiagnosticRoutineCommandEnum command,
+    bool include_output,
+    const GetRoutineUpdateCallback& callback) {
+  chromeos::cros_healthd::mojom::RoutineUpdate response{
+      0, mojo::ScopedHandle(),
+      chromeos::cros_healthd::mojom::RoutineUpdateUnion::New()};
+  routine_service_->GetRoutineUpdate(id, command, include_output, &response);
+  callback.Run(chromeos::cros_healthd::mojom::RoutineUpdate::New(
+      response.progress_percent, std::move(response.output),
+      std::move(response.routine_update_union)));
+}
+
+void CrosHealthdMojoService::RunUrandomRoutine(
+    uint32_t length_seconds, const RunUrandomRoutineCallback& callback) {
+  RunRoutineResponse response;
+  routine_service_->RunUrandomRoutine(length_seconds, &response.id,
+                                      &response.status);
+  callback.Run(response.Clone());
+}
+
+void CrosHealthdMojoService::RunBatteryCapacityRoutine(
+    uint32_t low_mah,
+    uint32_t high_mah,
+    const RunBatteryCapacityRoutineCallback& callback) {
+  RunRoutineResponse response;
+  routine_service_->RunBatteryCapacityRoutine(low_mah, high_mah, &response.id,
+                                              &response.status);
+  callback.Run(response.Clone());
+}
+
+void CrosHealthdMojoService::RunBatteryHealthRoutine(
+    uint32_t maximum_cycle_count,
+    uint32_t percent_battery_wear_allowed,
+    const RunBatteryHealthRoutineCallback& callback) {
+  RunRoutineResponse response;
+  routine_service_->RunBatteryHealthRoutine(maximum_cycle_count,
+                                            percent_battery_wear_allowed,
+                                            &response.id, &response.status);
+  callback.Run(response.Clone());
+}
+
+void CrosHealthdMojoService::RunSmartctlCheckRoutine(
+    const RunSmartctlCheckRoutineCallback& callback) {
+  RunRoutineResponse response;
+  routine_service_->RunSmartctlCheckRoutine(&response.id, &response.status);
+  callback.Run(response.Clone());
+}
 
 void CrosHealthdMojoService::ProbeTelemetryInfo(
     const std::vector<ProbeCategoryEnum>& categories,

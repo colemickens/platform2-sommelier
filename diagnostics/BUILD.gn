@@ -47,6 +47,7 @@ generate_mojom_bindings("diagnostics_mojo_bindings") {
   public_configs = [ ":diagnostics_mojo_bindings_pkg_deps" ]
   sources = [
     "mojo/cros_healthd.mojom",
+    "mojo/cros_healthd_diagnostics.mojom",
     "mojo/cros_healthd_probe.mojom",
     "mojo/wilco_dtc_supportd.mojom",
   ]
@@ -117,11 +118,13 @@ source_set("libcros_healthd") {
   deps = [
     ":diagnostics_mojo_bindings",
     ":libcros_healthd_utils",
+    "//diagnostics/routines:libdiag_routine",
   ]
   all_dependent_configs = [ ":libcros_healthd_pkg_deps" ]
   sources = [
     "cros_healthd/cros_healthd.cc",
     "cros_healthd/cros_healthd_mojo_service.cc",
+    "cros_healthd/cros_healthd_routine_service_impl.cc",
   ]
 }
 
