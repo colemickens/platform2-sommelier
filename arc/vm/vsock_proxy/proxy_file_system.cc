@@ -18,6 +18,8 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/task_runner.h>
 
+#include "arc/vm/vsock_proxy/fuse_mount.h"
+
 namespace arc {
 namespace {
 
@@ -56,47 +58,6 @@ int ReadDir(const char* path,
   return GetFileSystem()->ReadDir(path, buf, filler, offset, fi);
 }
 
-void* Init(struct fuse_conn_info* conn) {
-  auto* file_system = GetFileSystem();
-  file_system->Init(conn);
-  // The libfuse overwrites its private_data by using the return value of the
-  // init method.
-  return file_system;
-}
-
-int FuseMain(const base::FilePath& mount_path, ProxyFileSystem* private_data) {
-  const std::string path_str = mount_path.value();
-  const char* fuse_argv[] = {
-      kFileSystemName,
-      path_str.c_str(),
-      "-f",  // "-f" for foreground.
-
-      // Never cache attr/dentry since our backend storage is not exclusive to
-      // this process.
-      "-o",
-      "attr_timeout=0",
-      "-o",
-      "entry_timeout=0",
-      "-o",
-      "negative_timeout=0",
-      "-o",
-      "ac_attr_timeout=0",
-      "-o",
-      "direct_io",
-  };
-
-  constexpr struct fuse_operations operations = {
-      .getattr = GetAttr,
-      .open = Open,
-      .read = Read,
-      .release = Release,
-      .readdir = ReadDir,
-      .init = Init,
-  };
-  return fuse_main(arraysize(fuse_argv), const_cast<char**>(fuse_argv),
-                   &operations, private_data);
-}
-
 // Parses the given path to a handle. The path should be formatted in
 // "/<handle>", where <handle> is int64_t. Returns nullopt on error.
 base::Optional<int64_t> ParseHandle(const char* path) {
@@ -119,9 +80,51 @@ ProxyFileSystem::ProxyFileSystem(Delegate* delegate,
 
 ProxyFileSystem::~ProxyFileSystem() = default;
 
-int ProxyFileSystem::Run(std::unique_ptr<ProxyService> proxy_service) {
+bool ProxyFileSystem::Init(std::unique_ptr<ProxyService> proxy_service) {
   proxy_service_ = std::move(proxy_service);
-  return FuseMain(mount_path_, this);
+
+  const std::string path_str = mount_path_.value();
+  const char* fuse_argv[] = {
+      "",  // Dummy argv[0].
+      // Never cache attr/dentry since our backend storage is not exclusive to
+      // this process.
+      "-o",
+      "attr_timeout=0",
+      "-o",
+      "entry_timeout=0",
+      "-o",
+      "negative_timeout=0",
+      "-o",
+      "ac_attr_timeout=0",
+      "-o",
+      "direct_io",
+  };
+
+  constexpr struct fuse_operations operations = {
+      .getattr = arc::GetAttr,
+      .open = arc::Open,
+      .read = arc::Read,
+      .release = arc::Release,
+      .readdir = arc::ReadDir,
+  };
+  fuse_mount_ = std::make_unique<FuseMount>(mount_path_, kFileSystemName);
+  if (!fuse_mount_->Init(arraysize(fuse_argv), const_cast<char**>(fuse_argv),
+                         operations, this)) {
+    return false;
+  }
+  // TODO(hidehiko): Drop CAPS_SYS_ADMIN with minijail setup.
+  LOG(INFO) << "Starting ServerProxy.";
+
+  // Must succeed, otherwise ServerProxy wouldn't run. Unfortunately,
+  // there's no way to return an error in case of failure, terminate the
+  // process instead.
+  if (!proxy_service_->Start()) {
+    LOG(ERROR) << "Failed to start ServerProxy.";
+    return false;
+  }
+  LOG(INFO) << "ServerProxy has been started successfully.";
+  task_runner_ = proxy_service_->GetTaskRunner();
+  return true;
 }
 
 int ProxyFileSystem::GetAttr(const char* path, struct stat* stat) {
@@ -285,18 +288,6 @@ int ProxyFileSystem::ReadDir(const char* path,
   filler(buf, ".", nullptr, 0);
   filler(buf, "..", nullptr, 0);
   return 0;
-}
-
-void ProxyFileSystem::Init(struct fuse_conn_info* conn) {
-  // TODO(hidehiko): Drop CAPS_SYS_ADMIN with minijail setup.
-  LOG(INFO) << "Starting ServerProxy.";
-
-  // Must succeed, otherwise ServerProxy wouldn't run. Unfortunately,
-  // there's no way to return an error in case of failure, terminate the
-  // process instead.
-  CHECK(proxy_service_->Start()) << "Failed to start ServerProxy.";
-  LOG(INFO) << "ServerProxy has been started successfully.";
-  task_runner_ = proxy_service_->GetTaskRunner();
 }
 
 base::ScopedFD ProxyFileSystem::RegisterHandle(int64_t handle) {

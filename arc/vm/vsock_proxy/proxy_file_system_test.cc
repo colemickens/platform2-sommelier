@@ -20,7 +20,6 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/thread.h>
-#include <brillo/process.h>
 #include <gtest/gtest.h>
 
 #include "arc/vm/vsock_proxy/proxy_base.h"
@@ -39,17 +38,7 @@ class FakeProxy : public ProxyBase {
   FakeProxy(const FakeProxy&) = delete;
   FakeProxy& operator=(const FakeProxy&) = delete;
 
-  bool Initialize() override {
-    initialized_.Signal();
-    return true;
-  }
-
-  void WaitUntilInitialized() { initialized_.Wait(); }
-
- private:
-  base::WaitableEvent initialized_{
-      base::WaitableEvent::ResetPolicy::MANUAL,
-      base::WaitableEvent::InitialState::NOT_SIGNALED};
+  bool Initialize() override { return true; }
 };
 
 class ProxyFileSystemTest : public testing::Test,
@@ -68,28 +57,19 @@ class ProxyFileSystemTest : public testing::Test,
     file_system_thread_ = std::make_unique<base::Thread>("Fuse thread");
     ASSERT_TRUE(file_system_thread_->StartWithOptions(options));
 
-    auto fake_proxy = std::make_unique<FakeProxy>();
-    FakeProxy* fake_proxy_ptr = fake_proxy.get();
     file_system_ =
         std::make_unique<ProxyFileSystem>(this, mount_dir_.GetPath());
+    bool result = false;
     file_system_thread_->task_runner()->PostTask(
-        FROM_HERE,
-        base::BindOnce(base::IgnoreResult(&ProxyFileSystem::Run),
-                       base::Unretained(file_system_.get()),
-                       std::make_unique<ProxyService>(std::move(fake_proxy))));
-    fake_proxy_ptr->WaitUntilInitialized();
-  }
-
-  void TearDown() override {
-    // Unmount the fuse file system, which lets fuse main loop exit.
-    brillo::ProcessImpl process;
-    process.AddArg("/usr/bin/fusermount");
-    process.AddArg("-u");
-    process.AddArg(mount_dir_.GetPath().value());
-    ASSERT_EQ(0, process.Run());
-
-    // Wait for the file system shutdown.
-    file_system_thread_.reset();
+        FROM_HERE, base::BindOnce(
+                       [](ProxyFileSystem* file_system, bool* result) {
+                         *result =
+                             file_system->Init(std::make_unique<ProxyService>(
+                                 std::make_unique<FakeProxy>()));
+                       },
+                       file_system_.get(), &result));
+    file_system_thread_->FlushForTesting();
+    ASSERT_TRUE(result);
   }
 
   // ProxyFileSystem::Delegate overridess:

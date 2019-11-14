@@ -10,6 +10,8 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/macros.h>
+#include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 
 #include "arc/vm/vsock_proxy/proxy_file_system.h"
 #include "arc/vm/vsock_proxy/proxy_service.h"
@@ -28,8 +30,13 @@ class ProxyFileSystemDelegate : public arc::ProxyFileSystem::Delegate {
   int Run() {
     auto server_proxy = std::make_unique<arc::ServerProxy>(&file_system_);
     server_proxy_ = server_proxy.get();
-    return file_system_.Run(
-        std::make_unique<arc::ProxyService>(std::move(server_proxy)));
+    if (!file_system_.Init(
+            std::make_unique<arc::ProxyService>(std::move(server_proxy)))) {
+      LOG(ERROR) << "Failed to initialize ProxyFileSystem.";
+      return 1;
+    }
+    base::RunLoop().Run();
+    return 0;
   }
 
   // ProxyFileSystem::Delegate overrides:
@@ -64,6 +71,8 @@ int main(int argc, char** argv) {
     LOG(ERROR) << "Mount path is not specified.";
     return 1;
   }
+  base::MessageLoopForIO message_loop_;
+  base::FileDescriptorWatcher watcher_{&message_loop_};
   // ProxyService for ServerProxy will be started after FUSE initialization is
   // done. See also ProxyFileSystem::Init().
   ProxyFileSystemDelegate file_system_delegate{base::FilePath(argv[1])};

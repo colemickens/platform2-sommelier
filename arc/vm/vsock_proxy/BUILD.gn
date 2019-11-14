@@ -37,6 +37,7 @@ static_library("vsock_proxy_lib") {
   sources = [
     "file_descriptor_util.cc",
     "file_stream.cc",
+    "fuse_mount.cc",
     "pipe_stream.cc",
     "proxy_file_system.cc",
     "proxy_service.cc",

@@ -31,6 +31,8 @@ class WaitableEvent;
 
 namespace arc {
 
+class FuseMount;
+
 // FUSE implementation to support regular file descriptor passing over VSOCK.
 // This is designed to be used only in the host side.
 class ProxyFileSystem {
@@ -57,9 +59,8 @@ class ProxyFileSystem {
   ProxyFileSystem(const ProxyFileSystem&) = delete;
   ProxyFileSystem& operator=(const ProxyFileSystem&) = delete;
 
-  // Starts the fuse file system in foreground. Returns on fuse termination
-  // such as unmount of the file system.
-  int Run(std::unique_ptr<ProxyService> proxy_service);
+  // Initializes this object.
+  bool Init(std::unique_ptr<ProxyService> proxy_service);
 
   // Implementation of the fuse operation callbacks.
   int GetAttr(const char* path, struct stat* stat);
@@ -75,7 +76,6 @@ class ProxyFileSystem {
               fuse_fill_dir_t filler,
               off_t offset,
               struct fuse_file_info* fi);
-  void Init(struct fuse_conn_info* conn);
 
   // Registers the given |handle| to the file system, then returns the file
   // descriptor corresponding to the registered file.
@@ -112,6 +112,8 @@ class ProxyFileSystem {
   // ProxyService serving ServerProxy. Initialized in Init() callback.
   // Should be touched on the initialization thread, or on |task_runner_|.
   std::unique_ptr<ProxyService> proxy_service_;
+
+  std::unique_ptr<FuseMount> fuse_mount_;
 
   // TaskRunner to run a task interract with ServerProxy.
   // Initialized with |proxy_service_|.
