@@ -61,7 +61,9 @@ class VISIBILITY_PUBLIC P1ConnectLMV {
 
   MBOOL init(std::shared_ptr<IImageBuffer>* rEISOBuf,
              MUINT32 eisMode,
-             const MUINT32 eisFactor);
+             const MUINT32 eisFactor,
+             MSize sensorSize,
+             MSize rrzoSize);
 
   MBOOL uninit(void);
 

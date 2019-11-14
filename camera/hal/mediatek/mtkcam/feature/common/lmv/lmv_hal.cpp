@@ -90,7 +90,9 @@ LMVHalImp::LMVHalImp(const MUINT32& aSensorIdx)
   mUsers = 0;
 }
 
-MINT32 LMVHalImp::Init(const MUINT32 eisFactor) {
+MINT32 LMVHalImp::Init(const MUINT32 eisFactor,
+                       NSCam::MSize sensorSize,
+                       NSCam::MSize rrzoSize) {
   DP_TRACE_CALL();
 
   std::lock_guard<std::mutex> _l(mLock);
@@ -120,7 +122,7 @@ MINT32 LMVHalImp::Init(const MUINT32 eisFactor) {
     CAM_LOGE("LMVDrv::createInstance fail");
     goto create_fail_exit;
   }
-  if (m_pLMVDrv->Init() != LMV_RETURN_NO_ERROR) {
+  if (m_pLMVDrv->Init(sensorSize, rrzoSize) != LMV_RETURN_NO_ERROR) {
     CAM_LOGE("LMVDrv::Init fail");
     goto create_fail_exit;
   }

@@ -120,7 +120,9 @@ class VISIBILITY_PUBLIC LMVHal : public std::enable_shared_from_this<LMVHal> {
    *@return
    *-LMV_RETURN_NO_ERROR indicates success, otherwise indicates fail
    */
-  virtual MINT32 Init(const MUINT32 eisFactor) = 0;
+  virtual MINT32 Init(const MUINT32 eisFactor,
+                      NSCam::MSize sensorSize,
+                      NSCam::MSize rrzoSize) = 0;
 
   /**
    *@brief Unitialization function

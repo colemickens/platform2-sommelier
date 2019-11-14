@@ -62,7 +62,9 @@ P1ConnectLMV::getOpenId(void) {
 MBOOL
 P1ConnectLMV::init(std::shared_ptr<IImageBuffer>* rEISOBuf,
                    MUINT32 eisMode,
-                   const MUINT32 eisFactor) {
+                   const MUINT32 eisFactor,
+                   MSize sensorSize,
+                   MSize rrzoSize) {
   uninit();
   //
   std::lock_guard<std::mutex> autoLock(mLock);
@@ -76,7 +78,7 @@ P1ConnectLMV::init(std::shared_ptr<IImageBuffer>* rEISOBuf,
     MY_LOGE("LMVHal::CreateInstance fail");
     return MFALSE;
   }
-  mpLMV->Init(eisFactor);
+  mpLMV->Init(eisFactor, sensorSize, rrzoSize);
   IHalSensorList* sensorList = GET_HalSensorList();
   if (sensorList == NULL) {
     MY_LOGE("Get-SensorList fail");

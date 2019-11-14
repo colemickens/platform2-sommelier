@@ -83,7 +83,9 @@ class LMVHalImp : public LMVHal {
    *@return
    *-LMV_RETURN_NO_ERROR indicates success, otherwise indicates fail
    */
-  virtual MINT32 Init(const MUINT32 eisFactor);
+  virtual MINT32 Init(const MUINT32 eisFactor,
+                      NSCam::MSize sensorSize,
+                      NSCam::MSize rrzoSize);
 
   /**
    *@brief Unitialization function

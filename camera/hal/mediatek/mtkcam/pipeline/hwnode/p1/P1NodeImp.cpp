@@ -3793,7 +3793,9 @@ P1NodeImp::hardwareOps_start() {
   }
 #endif
   std::shared_ptr<IImageBuffer> pEISOBuf = NULL;
-  err = lmvInit(&pEISOBuf);
+  MSize sensorSize = mSensorParams.size;
+  MSize rrzoSize = mvStreamImg[STREAM_IMG_OUT_RESIZE]->getImgSize();
+  err = lmvInit(&pEISOBuf, sensorSize, rrzoSize);
   if (err != OK) {
     MY_LOGE("lmvInit fail");
     return err;
@@ -6474,7 +6476,9 @@ QInitParam P1NodeImp::prepareQInitParam(
   return halCamIOinitParam;
 }
 
-MERROR P1NodeImp::lmvInit(std::shared_ptr<IImageBuffer>* pEISOBuf) {
+MERROR P1NodeImp::lmvInit(std::shared_ptr<IImageBuffer>* pEISOBuf,
+                          MSize sensorSize,
+                          MSize rrzoSize) {
   if (mEnableEISO) {
     P1_TIMING_CHECK("P1:LMV-init", 20, TC_W);
     P1_TRACE_S_BEGIN(SLG_S, "P1:LMV-init");
@@ -6482,7 +6486,8 @@ MERROR P1NodeImp::lmvInit(std::shared_ptr<IImageBuffer>* pEISOBuf) {
       MINT32 mode = EIS::EisInfo::getMode(mPackedEisInfo);
       MINT32 factor = EIS::EisInfo::getFactor(mPackedEisInfo);
       MY_LOGD("mpConnectLMV->init+");
-      if (MFALSE == mpConnectLMV->init(pEISOBuf, mode, factor)) {
+      if (MFALSE ==
+          mpConnectLMV->init(pEISOBuf, mode, factor, sensorSize, rrzoSize)) {
         MY_LOGE("ConnectLMV create fail");
         return BAD_VALUE;
       }

@@ -25,8 +25,17 @@
 #define CAMERA_HAL_MEDIATEK_MTKCAM_FEATURE_COMMON_LMV_LMV_DRV_H_
 
 #include <mtkcam/feature/lmv/lmv_type.h>
+#include <mtkcam/drv/def/ICam_type.h>
 #include <atomic>
 #include <memory>
+
+typedef struct _LMV_INPUT_MSG {
+  NSCam::MSize sRMXOut;
+  NSCam::MSize sHBINOut;
+  NSCam::MSize sTGOut;
+  MBOOL bYUVFmt;
+  MUINT32 pixMode;
+} LMV_INPUT_MSG;
 
 /**
  *@brief LMV driver class used by LMV_Hal
@@ -56,7 +65,7 @@ class LMVDrv : public std::enable_shared_from_this<LMVDrv> {
    *@return
    *-LMV_RETURN_NO_ERROR indicates success, otherwise indicates fail
    */
-  virtual MINT32 Init() = 0;
+  virtual MINT32 Init(NSCam::MSize sensorSize, NSCam::MSize rrzoSize) = 0;
 
   /**
    *@brief Uninitial function
@@ -64,6 +73,8 @@ class LMVDrv : public std::enable_shared_from_this<LMVDrv> {
    *-LMV_RETURN_NO_ERROR indicates success, otherwise indicates fail
    */
   virtual MINT32 Uninit() = 0;
+
+  virtual void LmvParasInit(LMV_INPUT_MSG input) = 0;
 
   /**
    *@brief Configure LMV and related register value

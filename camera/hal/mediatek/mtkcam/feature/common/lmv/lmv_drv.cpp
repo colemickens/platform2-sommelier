@@ -75,11 +75,19 @@ LMVDrvImp::LMVDrvImp(const MUINT32& aSensorIdx) : LMVDrv() {
 
 LMVDrvImp::~LMVDrvImp() {}
 
-MINT32 LMVDrvImp::Init() {
+MINT32 LMVDrvImp::Init(NSCam::MSize sensorSize, NSCam::MSize rrzoSize) {
   MINT32 err = LMV_RETURN_NO_ERROR;
 
   std::lock_guard<std::mutex> _l(mLock);
-
+  CAM_LOGD("sensorSize %dx%d, rrzoSize %dx%d", sensorSize.w, sensorSize.h,
+           rrzoSize.w, rrzoSize.h);
+  LMV_INPUT_MSG lmvInputParams;
+  lmvInputParams.sRMXOut = rrzoSize;
+  lmvInputParams.sHBINOut = rrzoSize;
+  lmvInputParams.sTGOut = sensorSize;
+  lmvInputParams.bYUVFmt = false;
+  lmvInputParams.pixMode = 0;
+  LmvParasInit(lmvInputParams);
   if (mUsers > 0) {
     std::atomic_fetch_add_explicit(&mUsers, 1, std::memory_order_release);
     CAM_LOGD("mSensorIdx(%u) has one more users", mSensorIdx);
@@ -161,6 +169,116 @@ MINT32 LMVDrvImp::Uninit() {
   mTsForAlgoDebug = 0;
 
   return err;
+}
+
+void LMVDrvImp::LmvParasInit(LMV_INPUT_MSG input) {
+  CAM_LOGD("TG(%u,%u),RMX(%u,%u),HBIN(%u,%u),pixelMode(%d),YUV(%d)",
+           input.sTGOut.w, input.sTGOut.h, input.sRMXOut.w, input.sRMXOut.h,
+           input.sHBINOut.w, input.sHBINOut.h, input.pixMode, input.bYUVFmt);
+
+  if (input.bYUVFmt == MFALSE) {  // RAW sensor specific register
+    MUINT32 tempW = 0, tempH = 0;
+
+    tempW = input.sRMXOut.w;
+    tempH = input.sRMXOut.h;
+
+    //> imgo only
+    if (input.sRMXOut.w == 0 && input.sRMXOut.h == 0) {
+      if (mIsFirst == 1) {
+        CAM_LOGD("imgo only");
+      }
+      tempW = input.sHBINOut.w;
+      tempH = input.sHBINOut.h;
+    }
+
+    //> pixel mode: 0(None) or 1(2-Pixel mode) or 2(Quad-Pixel)
+    if ((input.pixMode > ePixMode_NONE) && (input.pixMode < ePixMode_4)) {
+      if (mIsFirst == 1) {
+        CAM_LOGD("pixel mode: %d", input.pixMode);
+      }
+
+      tempW = tempW >> input.pixMode;
+      if (tempW != (MUINT32)input.sHBINOut.w) {
+        CAM_LOGW("RRZ shift HDS(%d) is different to HBIN(%d)", tempW,
+                 input.sHBINOut.w);
+        tempW = input.sHBINOut.w;
+      }
+      mIs2Pixel = input.pixMode;
+    } else {
+      mIs2Pixel = 0;
+    }
+
+    if (mImgWidth != tempW || mImgHeight != tempH) {
+      CAM_LOGD("(1)first:new(%u,%u),old(%u,%u)", tempW, tempH, mImgWidth,
+               mImgHeight);
+      mIsFirst = 1;
+    } else {
+      mIsFirst = 0;
+    }
+
+    mImgWidth = tempW;
+    mImgHeight = tempH;
+    mSensorType = LMV_RAW_SENSOR;
+  } else if (input.bYUVFmt == MTRUE) {  // YUV sensor specific register
+    //> get TG size
+    if (mImgWidth != (MUINT32)input.sTGOut.w ||
+        mImgHeight != (MUINT32)input.sTGOut.h) {
+      CAM_LOGD("(2)first:new(%u,%u),old(%u,%u)", input.sTGOut.w, input.sTGOut.h,
+               mImgWidth, mImgHeight);
+      mIsFirst = 1;
+    } else {
+      mIsFirst = 0;
+    }
+
+    mImgWidth = input.sTGOut.w;
+    mImgHeight = input.sTGOut.h;
+    mSensorType = LMV_YUV_SENSOR;
+  }
+
+  //====== Setting Depend on Image Size ======
+
+  MUINT32 win_numV = 3, win_numH = 2;
+  MUINT32 max_range = 0;
+
+  if (mImgWidth > HD_8M_WIDTH) {
+    mLmvDivH = 4;
+  } else if (mImgWidth > HD_720P_WIDTH) {
+    mLmvDivH = 2;
+  } else {
+    mLmvDivH = 1;
+  }
+
+  if (mImgWidth > D1_WIDTH) {
+    win_numH = 4;
+  } else if (mImgWidth > CIF_WIDTH) {
+    win_numH = 4;
+  } else {
+    win_numH = 2;
+  }
+
+  // vertical
+  if (mImgHeight > HD_8M_HEIGHT) {
+    mLmvDivV = 4;
+  } else if (mImgHeight > HD_720P_HEIGHT) {
+    mLmvDivV = 2;
+  } else {
+    mLmvDivV = 1;
+  }
+
+  if (mImgHeight > D1_HEIGHT) {
+    win_numV = 8;
+  } else if (mImgHeight > CIF_HEIGHT) {
+    win_numV = 4;
+  } else {
+    win_numV = 3;
+  }
+  mMaxGmv = max_range;
+  mTotalMBNum = win_numH * win_numV;
+  CAM_LOGD(
+      "org (w,h)=(%d,%d), (DivH, DivV)=(%d,%d), (winH, winV)=(%d,%d), "
+      "MaxGmv(%d), TotalMBNum(%d)",
+      mImgWidth, mImgHeight, mLmvDivH, mLmvDivV, win_numH, win_numV, max_range,
+      mTotalMBNum);
 }
 
 MINT32 LMVDrvImp::ConfigLMVReg(const MUINT32& aSensorTg) {

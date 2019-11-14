@@ -697,7 +697,9 @@ class P1NodeImp : public BaseNode,
   MVOID addConfigPort(std::vector<PortInfo>* vPortInfo,
                       std::shared_ptr<IImageBuffer> const& pEISOBuf,
                       EImageFormat* resizer_fmt);
-  MERROR lmvInit(std::shared_ptr<IImageBuffer>* pEISOBuf);
+  MERROR lmvInit(std::shared_ptr<IImageBuffer>* pEISOBuf,
+                 MSize sensorSize,
+                 MSize rrzoSize);
   QInitParam prepareQInitParam(IHalSensor::ConfigParam* sensorCfg,
                                NS3Av3::AEInitExpoSetting_T initExpoSetting,
                                std::vector<PortInfo> vPortInfo);

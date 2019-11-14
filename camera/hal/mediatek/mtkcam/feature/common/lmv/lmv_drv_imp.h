@@ -75,7 +75,7 @@ class LMVDrvImp : public LMVDrv {
    *@return
    *-LMV_RETURN_NO_ERROR indicates success, otherwise indicates fail
    */
-  virtual MINT32 Init();
+  virtual MINT32 Init(NSCam::MSize sensorSize, NSCam::MSize rrzoSize);
 
   /**
    *@brief Uninitial function
@@ -83,6 +83,8 @@ class LMVDrvImp : public LMVDrv {
    *-LMV_RETURN_NO_ERROR indicates success, otherwise indicates fail
    */
   virtual MINT32 Uninit();
+
+  virtual void LmvParasInit(LMV_INPUT_MSG input);
 
   /**
    *@brief Configure LMV and related register value
