@@ -5,6 +5,7 @@
 #include "dlcservice/daemon.h"
 
 #include <string>
+#include <utility>
 
 #include <chromeos/constants/imageloader.h>
 #include <chromeos/dbus/dlcservice/dbus-constants.h>
@@ -12,6 +13,7 @@
 
 #include "dlcservice/boot_device.h"
 #include "dlcservice/boot_slot.h"
+#include "dlcservice/dlc_service.h"
 
 namespace dlcservice {
 
@@ -24,7 +26,7 @@ int Daemon::OnInit() {
   if (return_code != EX_OK)
     return return_code;
 
-  dbus_adaptor_->LoadDlcModuleImages();
+  dlc_service_->LoadDlcModuleImages();
   return EX_OK;
 }
 
@@ -36,7 +38,7 @@ void Daemon::RegisterDBusObjectsAsync(
 
   bus_for_proxies_ = dbus_connection_for_proxies_.Connect();
   CHECK(bus_for_proxies_);
-  dbus_adaptor_ = std::make_unique<dlcservice::DlcServiceDBusAdaptor>(
+  dlc_service_ = std::make_unique<dlcservice::DlcService>(
       std::make_unique<org::chromium::ImageLoaderInterfaceProxy>(
           bus_for_proxies_),
       std::make_unique<org::chromium::UpdateEngineInterfaceProxy>(
@@ -44,6 +46,10 @@ void Daemon::RegisterDBusObjectsAsync(
       std::make_unique<BootSlot>(std::make_unique<BootDevice>()),
       base::FilePath(imageloader::kDlcManifestRootpath),
       base::FilePath(imageloader::kDlcImageRootpath));
+
+  auto dbus_service = std::make_unique<DBusService>(dlc_service_.get());
+  dbus_adaptor_ = std::make_unique<DBusAdaptor>(std::move(dbus_service));
+  dlc_service_->AddObserver(dbus_adaptor_.get());
 
   dbus_adaptor_->RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(

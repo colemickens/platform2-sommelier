@@ -60,7 +60,8 @@ static_library("libdlcservice") {
     "boot_device.cc",
     "boot_slot.cc",
     "daemon.cc",
-    "dlc_service_dbus_adaptor.cc",
+    "dbus_adaptor.cc",
+    "dlc_service.cc",
     "utils.cc",
   ]
   deps = [
@@ -136,7 +137,7 @@ if (use.test) {
     sources = [
       "boot_device_test.cc",
       "boot_slot_test.cc",
-      "dlc_service_dbus_adaptor_test.cc",
+      "dlc_service_test.cc",
       "utils_test.cc",
     ]
     deps = [

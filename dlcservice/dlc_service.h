@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DLCSERVICE_DLC_SERVICE_DBUS_ADAPTOR_H_
-#define DLCSERVICE_DLC_SERVICE_DBUS_ADAPTOR_H_
+#ifndef DLCSERVICE_DLC_SERVICE_H_
+#define DLCSERVICE_DLC_SERVICE_H_
 
 #include <memory>
 #include <set>
@@ -17,40 +17,42 @@
 #include <update_engine/proto_bindings/update_engine.pb.h>
 #include <update_engine/dbus-proxies.h>
 
-#include "dlcservice/dbus_adaptors/org.chromium.DlcServiceInterface.h"
+#include "dlcservice/boot_slot.h"
 #include "dlcservice/types.h"
 
 namespace dlcservice {
 
-class BootSlot;
-
-// DlcServiceDBusAdaptor is a D-Bus adaptor that manages life-cycles of DLCs
-// (Downloadable Content) and provides an API for the rest of the system to
-// install/uninstall DLCs.
-class DlcServiceDBusAdaptor
-    : public org::chromium::DlcServiceInterfaceInterface,
-      public org::chromium::DlcServiceInterfaceAdaptor {
+// DlcService manages life-cycles of DLCs (Downloadable Content) and provides an
+// API for the rest of the system to install/uninstall DLCs.
+class DlcService {
  public:
-  DlcServiceDBusAdaptor(
-      std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
-          image_loader_proxy,
-      std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
-          update_engine_proxy,
-      std::unique_ptr<BootSlot> boot_slot,
-      const base::FilePath& manifest_dir,
-      const base::FilePath& content_dir);
-  ~DlcServiceDBusAdaptor();
+  // |DlcService| calls the registered implementation of this class when a
+  // |StatusResult| signal needs to be propagated.
+  class Observer {
+   public:
+    virtual ~Observer() = default;
+
+    virtual void SendInstallStatus(const InstallStatus& status) = 0;
+  };
+
+  DlcService(std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
+                 image_loader_proxy,
+             std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
+                 update_engine_proxy,
+             std::unique_ptr<BootSlot> boot_slot,
+             const base::FilePath& manifest_dir,
+             const base::FilePath& content_dir);
+  ~DlcService() = default;
 
   // Loads installed DLC module images.
   void LoadDlcModuleImages();
 
-  // org::chromium::DlServiceInterfaceInterface overrides:
-  bool Install(brillo::ErrorPtr* err,
-               const DlcModuleList& dlc_module_list_in) override;
-  bool Uninstall(brillo::ErrorPtr* err, const std::string& id_in) override;
-  bool GetInstalled(brillo::ErrorPtr* err,
-                    DlcModuleList* dlc_module_list_out) override;
+  bool Install(const DlcModuleList& dlc_module_list_in, brillo::ErrorPtr* err);
+  bool Uninstall(const std::string& id_in, brillo::ErrorPtr* err);
+  bool GetInstalled(DlcModuleList* dlc_module_list_out, brillo::ErrorPtr* err);
 
+  // Adds a new observer to report install result status changes.
+  void AddObserver(Observer* observer);
   // Called on receiving update_engine's |StatusUpdate| signal.
   void OnStatusUpdateAdvancedSignal(
       const update_engine::StatusResult& status_result);
@@ -65,20 +67,20 @@ class DlcServiceDBusAdaptor
 
   // Creates the necessary directories and images for DLC installation. Will set
   // |path| to the top DLC directory for cleanup scoping.
-  bool CreateDlc(brillo::ErrorPtr* err,
-                 const std::string& id,
-                 base::FilePath* path);
+  bool CreateDlc(const std::string& id,
+                 base::FilePath* path,
+                 brillo::ErrorPtr* err);
 
   // Deletes the DLC installation.
-  bool DeleteDlc(brillo::ErrorPtr* err, const std::string& id);
+  bool DeleteDlc(const std::string& id, brillo::ErrorPtr* err);
 
   // Tries to mount DLC images.
-  bool MountDlc(brillo::ErrorPtr* err,
-                const std::string& id,
-                std::string* mount_point);
+  bool MountDlc(const std::string& id,
+                std::string* mount_point,
+                brillo::ErrorPtr* err);
 
   // Tries to unmount DLC images.
-  bool UnmountDlc(brillo::ErrorPtr* err, const std::string& id);
+  bool UnmountDlc(const std::string& id, brillo::ErrorPtr* err);
 
   // Scans a specific DLC |id| to discover all its packages. Currently, we only
   // support one package per DLC. If at some point in the future we decided to
@@ -118,11 +120,14 @@ class DlcServiceDBusAdaptor
   // repeats implicitly.
   std::set<DlcId> supported_dlc_modules_;
 
-  base::WeakPtrFactory<DlcServiceDBusAdaptor> weak_ptr_factory_;
+  // The list of observers that will be called when a new status is ready.
+  std::vector<Observer*> observers_;
 
-  DISALLOW_COPY_AND_ASSIGN(DlcServiceDBusAdaptor);
+  base::WeakPtrFactory<DlcService> weak_ptr_factory_;
+
+  DISALLOW_COPY_AND_ASSIGN(DlcService);
 };
 
 }  // namespace dlcservice
 
-#endif  // DLCSERVICE_DLC_SERVICE_DBUS_ADAPTOR_H_
+#endif  // DLCSERVICE_DLC_SERVICE_H_

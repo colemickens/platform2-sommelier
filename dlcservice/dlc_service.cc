@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "dlcservice/dlc_service_dbus_adaptor.h"
+#include "dlcservice/dlc_service.h"
 
 #include <algorithm>
 #include <memory>
@@ -91,7 +91,7 @@ void LogAndSetError(brillo::ErrorPtr* err,
 
 }  // namespace
 
-DlcServiceDBusAdaptor::DlcServiceDBusAdaptor(
+DlcService::DlcService(
     unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
         image_loader_proxy,
     unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
@@ -99,8 +99,7 @@ DlcServiceDBusAdaptor::DlcServiceDBusAdaptor(
     unique_ptr<BootSlot> boot_slot,
     const FilePath& manifest_dir,
     const FilePath& content_dir)
-    : org::chromium::DlcServiceInterfaceAdaptor(this),
-      image_loader_proxy_(std::move(image_loader_proxy)),
+    : image_loader_proxy_(std::move(image_loader_proxy)),
       update_engine_proxy_(std::move(update_engine_proxy)),
       boot_slot_(std::move(boot_slot)),
       manifest_dir_(manifest_dir),
@@ -119,9 +118,9 @@ DlcServiceDBusAdaptor::DlcServiceDBusAdaptor(
 
   // Register D-Bus signal callbacks.
   update_engine_proxy_->RegisterStatusUpdateAdvancedSignalHandler(
-      base::Bind(&DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignal,
+      base::Bind(&DlcService::OnStatusUpdateAdvancedSignal,
                  weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignalConnected,
+      base::Bind(&DlcService::OnStatusUpdateAdvancedSignalConnected,
                  weak_ptr_factory_.GetWeakPtr()));
 
   // Initalize installed DLC modules.
@@ -132,9 +131,7 @@ DlcServiceDBusAdaptor::DlcServiceDBusAdaptor(
   supported_dlc_modules_ = utils::ScanDirectory(manifest_dir_);
 }
 
-DlcServiceDBusAdaptor::~DlcServiceDBusAdaptor() {}
-
-void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
+void DlcService::LoadDlcModuleImages() {
   // Load all installed DLC modules.
   for (auto installed_dlc_module_itr = installed_dlc_modules_.begin();
        installed_dlc_module_itr != installed_dlc_modules_.end();
@@ -148,10 +145,10 @@ void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
     }
 
     string mount_point;
-    if (!MountDlc(nullptr, installed_dlc_module_id, &mount_point)) {
+    if (!MountDlc(installed_dlc_module_id, &mount_point, nullptr)) {
       LOG(ERROR) << "Failed to mount DLC module during load: "
                  << installed_dlc_module_id;
-      if (!DeleteDlc(nullptr, installed_dlc_module_id)) {
+      if (!DeleteDlc(installed_dlc_module_id, nullptr)) {
         LOG(ERROR) << "Failed to delete an unmountable DLC module: "
                    << installed_dlc_module_id;
       }
@@ -164,8 +161,8 @@ void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
   }
 }
 
-bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
-                                    const DlcModuleList& dlc_module_list_in) {
+bool DlcService::Install(const DlcModuleList& dlc_module_list_in,
+                         brillo::ErrorPtr* err) {
   if (dlc_module_list_in.dlc_module_infos().empty()) {
     LogAndSetError(err, kErrorInvalidDlc,
                    "Must provide at least one DLC to install");
@@ -240,7 +237,7 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
     const string& id = dlc_module.dlc_id();
     auto scoped_path = std::make_unique<ScopedTempDir>();
 
-    if (!CreateDlc(err, id, &path))
+    if (!CreateDlc(id, &path, err))
       return false;
 
     if (!scoped_path->Set(path)) {
@@ -285,8 +282,7 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
   return true;
 }
 
-bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
-                                      const string& id_in) {
+bool DlcService::Uninstall(const string& id_in, brillo::ErrorPtr* err) {
   LoadDlcModuleImages();
   if (installed_dlc_modules_.find(id_in) == installed_dlc_modules_.end()) {
     LOG(INFO) << "Uninstalling DLC id that's not installed: " << id_in;
@@ -313,10 +309,10 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
   if (!dlc_modules_being_installed_.dlc_module_infos().empty())
     SendFailedSignalAndCleanup();
 
-  if (!UnmountDlc(err, id_in))
+  if (!UnmountDlc(id_in, err))
     return false;
 
-  if (!DeleteDlc(err, id_in))
+  if (!DeleteDlc(id_in, err))
     return false;
 
   LOG(INFO) << "Uninstalling DLC id:" << id_in;
@@ -324,28 +320,27 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
   return true;
 }
 
-bool DlcServiceDBusAdaptor::GetInstalled(brillo::ErrorPtr* err,
-                                         DlcModuleList* dlc_module_list_out) {
+bool DlcService::GetInstalled(DlcModuleList* dlc_module_list_out,
+                              brillo::ErrorPtr* err) {
   LoadDlcModuleImages();
   *dlc_module_list_out = utils::ToDlcModuleList(
       installed_dlc_modules_, [](DlcId, DlcRoot) { return true; });
   return true;
 }
 
-void DlcServiceDBusAdaptor::SendFailedSignalAndCleanup() {
+void DlcService::SendFailedSignalAndCleanup() {
   SendOnInstallStatusSignal(
       utils::CreateInstallStatus(Status::FAILED, kErrorInternal, {}, 0.));
   for (const auto& dlc_module :
        dlc_modules_being_installed_.dlc_module_infos()) {
     const string& dlc_id = dlc_module.dlc_id();
-    if (!DeleteDlc(nullptr, dlc_id))
+    if (!DeleteDlc(dlc_id, nullptr))
       LOG(ERROR) << "Failed to delete DLC(" << dlc_id << ") during cleanup.";
   }
   dlc_modules_being_installed_.clear_dlc_module_infos();
 }
 
-bool DlcServiceDBusAdaptor::HandleStatusResult(
-    const StatusResult& status_result) {
+bool DlcService::HandleStatusResult(const StatusResult& status_result) {
   // If we are not installing any DLC(s), no need to even handle status result.
   if (dlc_modules_being_installed_.dlc_module_infos().empty())
     return false;
@@ -383,9 +378,9 @@ bool DlcServiceDBusAdaptor::HandleStatusResult(
   return true;
 }
 
-bool DlcServiceDBusAdaptor::CreateDlc(brillo::ErrorPtr* err,
-                                      const string& id,
-                                      FilePath* path) {
+bool DlcService::CreateDlc(const string& id,
+                           FilePath* path,
+                           brillo::ErrorPtr* err) {
   path->clear();
   if (supported_dlc_modules_.find(id) == supported_dlc_modules_.end()) {
     LogAndSetError(err, kErrorInvalidDlc,
@@ -452,8 +447,7 @@ bool DlcServiceDBusAdaptor::CreateDlc(brillo::ErrorPtr* err,
   return true;
 }
 
-bool DlcServiceDBusAdaptor::DeleteDlc(brillo::ErrorPtr* err,
-                                      const std::string& id) {
+bool DlcService::DeleteDlc(const std::string& id, brillo::ErrorPtr* err) {
   FilePath dlc_module_path = utils::GetDlcModulePath(content_dir_, id);
   if (!DeleteFile(dlc_module_path, true)) {
     LogAndSetError(err, kErrorInternal,
@@ -463,9 +457,9 @@ bool DlcServiceDBusAdaptor::DeleteDlc(brillo::ErrorPtr* err,
   return true;
 }
 
-bool DlcServiceDBusAdaptor::MountDlc(brillo::ErrorPtr* err,
-                                     const string& id,
-                                     string* mount_point) {
+bool DlcService::MountDlc(const string& id,
+                          string* mount_point,
+                          brillo::ErrorPtr* err) {
   if (!image_loader_proxy_->LoadDlcImage(id, ScanDlcModulePackage(id),
                                          current_boot_slot_name_, mount_point,
                                          nullptr)) {
@@ -479,8 +473,7 @@ bool DlcServiceDBusAdaptor::MountDlc(brillo::ErrorPtr* err,
   return true;
 }
 
-bool DlcServiceDBusAdaptor::UnmountDlc(brillo::ErrorPtr* err,
-                                       const string& id) {
+bool DlcService::UnmountDlc(const string& id, brillo::ErrorPtr* err) {
   bool success = false;
   if (!image_loader_proxy_->UnloadDlcImage(id, ScanDlcModulePackage(id),
                                            &success, nullptr)) {
@@ -494,11 +487,11 @@ bool DlcServiceDBusAdaptor::UnmountDlc(brillo::ErrorPtr* err,
   return true;
 }
 
-string DlcServiceDBusAdaptor::ScanDlcModulePackage(const string& id) {
+string DlcService::ScanDlcModulePackage(const string& id) {
   return *(utils::ScanDirectory(manifest_dir_.Append(id)).begin());
 }
 
-bool DlcServiceDBusAdaptor::GetUpdateEngineStatus(Operation* operation) {
+bool DlcService::GetUpdateEngineStatus(Operation* operation) {
   StatusResult status_result;
   if (!update_engine_proxy_->GetStatusAdvanced(&status_result, nullptr)) {
     return false;
@@ -507,13 +500,18 @@ bool DlcServiceDBusAdaptor::GetUpdateEngineStatus(Operation* operation) {
   return true;
 }
 
-void DlcServiceDBusAdaptor::SendOnInstallStatusSignal(
-    const InstallStatus& install_status) {
-  org::chromium::DlcServiceInterfaceAdaptor::SendOnInstallStatusSignal(
-      install_status);
+void DlcService::AddObserver(DlcService::Observer* observer) {
+  observers_.push_back(observer);
 }
 
-void DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignal(
+void DlcService::SendOnInstallStatusSignal(
+    const InstallStatus& install_status) {
+  for (const auto& observer : observers_) {
+    observer->SendInstallStatus(install_status);
+  }
+}
+
+void DlcService::OnStatusUpdateAdvancedSignal(
     const StatusResult& status_result) {
   if (!HandleStatusResult(status_result))
     return;
@@ -536,10 +534,10 @@ void DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignal(
           unmounter.Run();
           deleter.Run();
         },
-        base::Bind(&DlcServiceDBusAdaptor::UnmountDlc, base::Unretained(this),
-                   nullptr, dlc_id),
-        base::Bind(&DlcServiceDBusAdaptor::DeleteDlc, base::Unretained(this),
-                   nullptr, dlc_id));
+        base::Bind(&DlcService::UnmountDlc, base::Unretained(this), dlc_id,
+                   nullptr),
+        base::Bind(&DlcService::DeleteDlc, base::Unretained(this), dlc_id,
+                   nullptr));
     scoped_cleanups.Insert(cleanup);
   }
 
@@ -551,7 +549,7 @@ void DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignal(
       continue;
     const string& dlc_module_id = dlc_module.dlc_id();
     string mount_point;
-    if (!MountDlc(nullptr, dlc_module_id, &mount_point)) {
+    if (!MountDlc(dlc_module_id, &mount_point, nullptr)) {
       InstallStatus install_status = utils::CreateInstallStatus(
           Status::FAILED, kErrorInternal, dlc_module_list, 0.);
       SendOnInstallStatusSignal(install_status);
@@ -575,7 +573,7 @@ void DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignal(
   SendOnInstallStatusSignal(install_status);
 }
 
-void DlcServiceDBusAdaptor::OnStatusUpdateAdvancedSignalConnected(
+void DlcService::OnStatusUpdateAdvancedSignalConnected(
     const string& interface_name, const string& signal_name, bool success) {
   if (!success) {
     LOG(ERROR) << "Failed to connect to update_engine's StatusUpdate signal.";

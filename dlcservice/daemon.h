@@ -12,7 +12,7 @@
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/dbus_connection.h>
 
-#include "dlcservice/dlc_service_dbus_adaptor.h"
+#include "dlcservice/dbus_adaptor.h"
 
 namespace dlcservice {
 
@@ -29,7 +29,8 @@ class Daemon : public brillo::DBusServiceDaemon {
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
-  std::unique_ptr<dlcservice::DlcServiceDBusAdaptor> dbus_adaptor_;
+  std::unique_ptr<DlcService> dlc_service_;
+  std::unique_ptr<DBusAdaptor> dbus_adaptor_;
   // TODO(crbug/965232): Use a separate bus (D-Bus connection) for proxies to
   // avoid missing signal messages.
   scoped_refptr<dbus::Bus> bus_for_proxies_;
