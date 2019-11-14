@@ -39,6 +39,16 @@ do_mount_var_and_home_chronos() {
     # call is no-op.
     create_system_key
 
-    mount_var_and_home_chronos
+    if ! mount_var_and_home_chronos; then
+      # Try to re-construct encrypted folders, otherwise such failure will lead
+      # to wiping whole stateful partition (including all helpful programs in
+      # /usr/local/bin and sshd).
+      clobber-log -- "Failed mounting var and home/chronos; re-created."
+      local backup_dir="/mnt/stateful_partition/corrupted_encryption"
+      rm -rf "${backup_dir}"
+      mkdir -p "${backup_dir}"
+      mv /mnt/stateful_partition/encrypted.* "${backup_dir}"
+      mount_var_and_home_chronos
+    fi
   fi
 }
