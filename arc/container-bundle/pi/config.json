@@ -441,6 +441,14 @@
 			]
 		},
 		{
+			"destination": "/var/run/arc/adb",
+			"type": "bind",
+			"source": "/run/arc/adb",
+			"options": [
+				"bind"
+			]
+		},
+		{
 			"destination": "/var/run/arc/bugreport",
 			"type": "bind",
 			"source": "/run/arc/bugreport",

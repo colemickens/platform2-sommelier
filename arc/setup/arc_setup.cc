@@ -81,6 +81,7 @@ namespace {
 // Lexicographically sorted. Usually you don't have to use these constants
 // directly. Prefer base::FilePath variables in ArcPaths instead.
 constexpr char kAdbdMountDirectory[] = "/run/arc/adbd";
+constexpr char kAdbdUnixSocketMountDirectory[] = "/run/arc/adb";
 constexpr char kAndroidCmdline[] = "/run/arc/cmdline.android";
 constexpr char kAndroidGeneratedPropertiesDirectory[] = "/run/arc/properties";
 constexpr char kAndroidKmsgFifo[] = "/run/arc/android.kmsg.fifo";
@@ -496,6 +497,8 @@ struct ArcPaths {
 
   // Lexicographically sorted.
   const base::FilePath adbd_mount_directory{kAdbdMountDirectory};
+  const base::FilePath adbd_unix_socket_mount_directory{
+      kAdbdUnixSocketMountDirectory};
   const base::FilePath android_cmdline{kAndroidCmdline};
   const base::FilePath android_generated_properties_directory{
       kAndroidGeneratedPropertiesDirectory};
@@ -1383,6 +1386,24 @@ void ArcSetup::SetUpMountPointForAdbd() {
   EXIT_IF(!arc_mounter_->SharedMount(arc_paths_->adbd_mount_directory));
 }
 
+// Setup mount point for ADB over Unix sockets. This is used to enforce
+// permission of the Unix sockets through SELinux. The mount is needed for
+// ARC++ container whenever ADB debugging is enabled.
+void ArcSetup::SetUpMountPointForAdbdUnixSocket() {
+  EXIT_IF(!arc_mounter_->UmountIfExists(
+      arc_paths_->adbd_unix_socket_mount_directory));
+  EXIT_IF(!InstallDirectory(0775, kShellUid, kShellGid,
+                            arc_paths_->adbd_unix_socket_mount_directory));
+  const std::string adbd_unix_socket_mount_options =
+      base::StringPrintf("mode=0775,uid=%u,gid=%u", kShellUid, kShellGid);
+  EXIT_IF(!arc_mounter_->Mount("tmpfs",
+                               arc_paths_->adbd_unix_socket_mount_directory,
+                               "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC,
+                               adbd_unix_socket_mount_options.c_str()));
+  EXIT_IF(
+      !arc_mounter_->SharedMount(arc_paths_->adbd_unix_socket_mount_directory));
+}
+
 void ArcSetup::CleanUpStaleMountPoints() {
   EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->media_myfiles_directory));
   EXIT_IF(!arc_mounter_->UmountIfExists(
@@ -2087,7 +2108,7 @@ void ArcSetup::RestoreContextOnPreChroot(const base::FilePath& rootfs) {
     // some of entries in the directory are on a read-only filesystem.
     // Note: The array is for directories. Do no add files to the array. Add
     // them to |kPaths| below instead.
-    constexpr std::array<const char*, 8> kDirectories{
+    std::vector<const char*> directories{
         "dev",
         "oem/etc",
         "var/run/arc/apkcache",
@@ -2097,11 +2118,15 @@ void ArcSetup::RestoreContextOnPreChroot(const base::FilePath& rootfs) {
         "var/run/chrome",
         "var/run/cras"};
 
+    // var/run/arc/adb only exists on P, skip it otherwise.
+    if (GetSdkVersion() == AndroidSdkVersion::ANDROID_P)
+      directories.push_back("var/run/arc/adb");
+
     // Transform |kDirectories| because the mount points are visible only in
     // |rootfs|. Note that Chrome OS' file_contexts does recognize paths with
     // the |rootfs| prefix.
     EXIT_IF(!RestoreconRecursively(
-        PrependPath(kDirectories.cbegin(), kDirectories.cend(), rootfs)));
+        PrependPath(directories.cbegin(), directories.cend(), rootfs)));
   }
 
   {
@@ -2181,6 +2206,8 @@ void ArcSetup::OnSetup() {
   SetUpMountPointForDebugFilesystem(is_dev_mode);
   SetUpMountPointsForMedia();
   SetUpMountPointForAdbd();
+  if (GetSdkVersion() == AndroidSdkVersion::ANDROID_P)
+    SetUpMountPointForAdbdUnixSocket();
   CleanUpStaleMountPoints();
   RestoreContext();
   SetUpGraphicsSysfsContext();

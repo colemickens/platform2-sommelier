@@ -201,6 +201,9 @@ class ArcSetup {
   // Sets up a mount point for arc-adbd.
   void SetUpMountPointForAdbd();
 
+  // Sets up a mount point for arc-adbd UNIX domain sockets.
+  void SetUpMountPointForAdbdUnixSocket();
+
   // Cleans up mount points for arc-removable-media if any.
   void CleanUpStaleMountPoints();
 
