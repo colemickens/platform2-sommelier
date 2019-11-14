@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include <vm_concierge/proto_bindings/service.pb.h>
+#include <vm_concierge/proto_bindings/concierge_service.pb.h>
 
 #include "vm_tools/concierge/usb_control.h"
 

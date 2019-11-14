@@ -18,7 +18,7 @@
 #include <dbus/exported_object.h>
 #include <dbus/object_proxy.h>
 
-#include <vm_concierge/proto_bindings/service.pb.h>
+#include <vm_concierge/proto_bindings/concierge_service.pb.h>
 
 #include "vm_tools/common/vm_id.h"
 

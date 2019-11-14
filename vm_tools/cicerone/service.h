@@ -28,7 +28,7 @@
 #include <grpcpp/grpcpp.h>
 #include <vm_applications/proto_bindings/apps.pb.h>
 #include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
-#include <vm_concierge/proto_bindings/service.pb.h>
+#include <vm_concierge/proto_bindings/concierge_service.pb.h>
 
 #include "vm_tools/cicerone/container.h"
 #include "vm_tools/cicerone/container_listener_impl.h"

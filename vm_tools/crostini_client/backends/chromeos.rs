@@ -19,8 +19,8 @@ use protobuf::Message as ProtoMessage;
 use backends::{Backend, VmFeatures};
 use lsb_release::{LsbRelease, ReleaseChannel};
 use proto::system_api::cicerone_service::{self, *};
+use proto::system_api::concierge_service::*;
 use proto::system_api::seneschal_service::*;
-use proto::system_api::service::*;
 use proto::system_api::vm_plugin_dispatcher;
 use proto::system_api::vm_plugin_dispatcher::VmErrorCode;
 

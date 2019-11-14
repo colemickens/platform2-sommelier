@@ -41,7 +41,7 @@
 #include <dbus/message.h>
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
-#include <vm_concierge/proto_bindings/service.pb.h>
+#include <vm_concierge/proto_bindings/concierge_service.pb.h>
 
 using std::string;
 using vm_tools::concierge::StorageLocation;

@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include <anomaly_detector/proto_bindings/service.pb.h>
+#include <anomaly_detector/proto_bindings/anomaly_detector.pb.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>

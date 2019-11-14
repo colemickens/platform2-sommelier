@@ -20,7 +20,7 @@
 #include <base/macros.h>
 #include <base/time/time.h>
 #include <brillo/process.h>
-#include <vm_concierge/proto_bindings/service.pb.h>
+#include <vm_concierge/proto_bindings/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
 #include "vm_tools/concierge/seneschal_server_proxy.h"

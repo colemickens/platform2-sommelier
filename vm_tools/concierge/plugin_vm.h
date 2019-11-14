@@ -25,7 +25,7 @@
 #include <base/macros.h>
 #include <brillo/process.h>
 #include <dbus/exported_object.h>
-#include <vm_concierge/proto_bindings/service.pb.h>
+#include <vm_concierge/proto_bindings/concierge_service.pb.h>
 
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/plugin_vm_usb.h"

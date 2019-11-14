@@ -55,7 +55,7 @@
 #include <crosvm/qcow_utils.h>
 #include <dbus/object_proxy.h>
 #include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
-#include <vm_concierge/proto_bindings/service.pb.h>
+#include <vm_concierge/proto_bindings/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.pb.h>
 
 #include "vm_tools/common/constants.h"

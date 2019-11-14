@@ -27,7 +27,7 @@
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
 #include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
-#include <vm_concierge/proto_bindings/service.pb.h>
+#include <vm_concierge/proto_bindings/concierge_service.pb.h>
 
 #include "vm_tools/common/constants.h"
 #include "vm_tools/vsh/scoped_termios.h"

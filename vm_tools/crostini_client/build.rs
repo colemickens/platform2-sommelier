@@ -29,7 +29,7 @@ fn main() {
     let seneschal_dir = proto_root.join("dbus/seneschal");
     let vmplugin_dispatcher_dir = proto_root.join("dbus/vm_plugin_dispatcher");
     let input_files = [
-        concierge_dir.join("service.proto"),
+        concierge_dir.join("concierge_service.proto"),
         cicerone_dir.join("cicerone_service.proto"),
         seneschal_dir.join("seneschal_service.proto"),
         vmplugin_dispatcher_dir.join("vm_plugin_dispatcher.proto"),
