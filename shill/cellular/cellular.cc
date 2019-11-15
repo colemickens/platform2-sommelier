@@ -1074,6 +1074,8 @@ void Cellular::StartPPP(const string& serial_device) {
 
 void Cellular::StopPPP() {
   SLOG(PPP, this, 2) << __func__;
+  if (!ppp_device_)
+    return;
   DropConnection();
   ppp_task_.reset();
   ppp_device_ = nullptr;
