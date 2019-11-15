@@ -260,6 +260,8 @@ class ManagerTest : public PropertyStoreTest {
     return !manager()->sort_services_task_.IsCancelled();
   }
 
+  const vector<ServiceRefPtr>& GetServices() { return manager()->services_; }
+
   void RefreshConnectionState() { manager()->RefreshConnectionState(); }
 
   RpcIdentifier GetDefaultServiceRpcIdentifier() {
@@ -2526,9 +2528,20 @@ TEST_F(ManagerTest, DefaultTechnology) {
 TEST_F(ManagerTest, Stop) {
   scoped_refptr<MockProfile> profile(new NiceMock<MockProfile>(manager(), ""));
   AdoptProfile(manager(), profile);
-  MockServiceRefPtr service(new NiceMock<MockService>(manager()));
-  manager()->RegisterService(service);
   manager()->RegisterDevice(mock_devices_[0]);
+
+  // Register inactive Service.
+  {
+    MockServiceRefPtr service(new NiceMock<MockService>(manager()));
+    manager()->RegisterService(service);
+  }
+  // Register active Service.
+  {
+    MockServiceRefPtr service(new NiceMock<MockService>(manager()));
+    service->SetState(Service::kStateAssociating);
+    manager()->RegisterService(service);
+  }
+
   SetPowerManager();
   EXPECT_TRUE(manager()->power_manager());
   EXPECT_CALL(*profile, UpdateDevice(DeviceRefPtr(mock_devices_[0].get())))
@@ -2538,7 +2551,11 @@ TEST_F(ManagerTest, Stop) {
   EXPECT_CALL(*profile, UpdateWiFiProvider(_)).WillOnce(Return(true));
 #endif  // DISABLE_WIFI
   EXPECT_CALL(*profile, Save()).WillOnce(Return(true));
-  EXPECT_CALL(*service, Disconnect(_, HasSubstr("Stop"))).Times(1);
+
+  for (const auto& service : GetServices()) {
+    EXPECT_FALSE(service->IsActive(nullptr));
+  }
+
   manager()->Stop();
   EXPECT_FALSE(manager()->power_manager());
 }

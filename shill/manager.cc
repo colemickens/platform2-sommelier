@@ -341,7 +341,9 @@ void Manager::Stop() {
 
   Error e;
   for (const auto& service : services_) {
-    service->Disconnect(&e, __func__);
+    if (service->IsActive(nullptr)) {
+      service->Disconnect(&e, __func__);
+    }
   }
 
   for (const auto& device : devices_) {
