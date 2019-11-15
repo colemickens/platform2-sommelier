@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # Copyright 2019 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -7,7 +7,7 @@ import dbus
 import flimflam
 
 flim = flimflam.FlimFlam(dbus.SystemBus())
-manager_properties = flim.GetManager().GetProperties(utf8_strings=True)
+manager_properties = flim.GetManager().GetProperties()
 
 for key in sorted(manager_properties.keys()):
     print('%s = %s' %

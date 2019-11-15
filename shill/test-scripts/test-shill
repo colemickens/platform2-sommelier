@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # Copyright 2019 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -66,7 +66,7 @@ def print_networks(networks):
             bus.get_object('org.chromium.flimflam', object_path),
             'org.chromium.flimflam.Network')
 
-        properties = network.GetProperties(utf8_strings=True)
+        properties = network.GetProperties()
 
         if properties['Connected'] == dbus.Boolean(1):
             connected = '*'
@@ -83,11 +83,11 @@ def print_networks(networks):
         details = ''
         try:
             details += '{' + properties['WiFi.Mode'] + '} '
-        except Exception, _:
+        except Exception:
             pass
         try:
             details += '{' + properties['WiFi.Security'] + '} '
-        except Exception, _:
+        except Exception:
             pass
         if 'WiFi.Passphrase' in properties.keys():
             if properties['WiFi.Passphrase'] != '':
@@ -102,7 +102,7 @@ def select_network(networks, name):
             bus.get_object('org.chromium.flimflam', object_path),
             'org.chromium.flimflam.Network')
 
-        properties = network.GetProperties(utf8_strings=True)
+        properties = network.GetProperties()
 
         if properties['Name'] != name:
             continue
@@ -122,7 +122,7 @@ def disconnect_network(networks, name):
             bus.get_object('org.chromium.flimflam', object_path),
             'org.chromium.flimflam.Network')
 
-        properties = network.GetProperties(utf8_strings=True)
+        properties = network.GetProperties()
 
         if name != '' and properties['Name'] != name:
             continue
@@ -139,7 +139,7 @@ def print_services(services):
             bus.get_object('org.chromium.flimflam', object_path),
             'org.chromium.flimflam.Service')
 
-        properties = service.GetProperties(utf8_strings=True)
+        properties = service.GetProperties()
 
         identifier = object_path[object_path.rfind('/') + 1:]
 
@@ -158,7 +158,7 @@ def print_services(services):
 
 def main():
     if sys.argv[1] == 'state':
-        properties = manager.GetProperties(utf8_strings=True)
+        properties = manager.GetProperties()
 
         print('System is %s' % (properties['State']))
 
@@ -167,7 +167,7 @@ def main():
         print('Rechecking portal state')
 
     elif sys.argv[1] in ['services', 'list', 'show']:
-        properties = manager.GetProperties(utf8_strings=True)
+        properties = manager.GetProperties()
 
         print_services(properties['Services'])
 
@@ -188,7 +188,7 @@ def main():
 
             print('Passphrase %s set for %s' % (passphrase, sys.argv[2]))
         else:
-            properties = service.GetProperties(utf8_strings=True)
+            properties = service.GetProperties()
 
             if 'Name' in properties.keys():
                 name = properties['Name']
@@ -219,7 +219,7 @@ def main():
 
             print('Auto connect %s for %s' % (autoconnect, sys.argv[2]))
         else:
-            properties = service.GetProperties(utf8_strings=True)
+            properties = service.GetProperties()
 
             if 'Name' in properties.keys():
                 name = properties['Name']
@@ -245,7 +245,7 @@ def main():
 
         try:
             service.Connect(timeout=60000)
-        except dbus.DBusException, error:
+        except dbus.DBusException as error:
             print('%s: %s' % (error.get_dbus_name(), error.message))
 
     elif sys.argv[1] in ['disconnect', 'disc']:
@@ -260,7 +260,7 @@ def main():
 
         try:
             service.Disconnect()
-        except dbus.DBusException, error:
+        except dbus.DBusException as error:
             print('%s: %s' % (error.get_dbus_name(), error.message))
 
     elif sys.argv[1] in ['remove']:
@@ -273,11 +273,11 @@ def main():
         service = dbus.Interface(bus.get_object('org.chromium.flimflam', path),
                                  'org.chromium.flimflam.Service')
 
-        properties = service.GetProperties(utf8_strings=True)
+        properties = service.GetProperties()
 
         try:
             service.Remove()
-        except dbus.DBusException, error:
+        except dbus.DBusException as error:
             print('%s: %s' % (error.get_dbus_name(), error.message))
 
     elif sys.argv[1] == 'scan':
@@ -303,11 +303,11 @@ def main():
             active = flimflam.make_dbus_boolean(sys.argv[2])
             manager.SetProperty('OfflineMode', active)
         else:
-            properties = manager.GetProperties(utf8_strings=True)
+            properties = manager.GetProperties()
             print('Offline mode is %s' % (properties['OfflineMode']))
 
     elif sys.argv[1] == 'dev':
-        properties = manager.GetProperties(utf8_strings=True)
+        properties = manager.GetProperties()
 
         interface = ''
         command = ''
@@ -325,7 +325,7 @@ def main():
                 bus.get_object('org.chromium.flimflam', path),
                 'org.chromium.flimflam.Device')
 
-            properties = device.GetProperties(utf8_strings=True)
+            properties = device.GetProperties()
 
             if (interface != '' and
                 properties.get('Interface', '') != interface and

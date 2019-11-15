@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # Copyright 2019 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -19,7 +19,7 @@ if len(sys.argv) < 2:
 flim = flimflam.FlimFlam(dbus.SystemBus())
 
 for device in flim.GetObjectList('Device'):
-    device_properties = device.GetProperties(utf8_strings=True)
+    device_properties = device.GetProperties()
 
     for path in device_properties['IPConfigs']:
         ipconfig = flim.GetObjectInterface('IPConfig', path)
