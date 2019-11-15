@@ -248,8 +248,9 @@ const std::vector<Log> kCommandLogs {
     kRoot, kRoot},
   {kCommand, "threads", "/bin/ps -T axo pid,ppid,spid,pcpu,ni,stat,time,comm"},
   {kFile, "tlsdate", "/var/log/tlsdate.log"},
-  {kCommand, "top thread", "/usr/bin/top -Hb -n 1 | head -n 40"},
-  {kCommand, "top memory", "/usr/bin/top -o \"+%MEM\" -bn 1 | head -n 57"},
+  {kCommand, "top thread", "/usr/bin/top -Hbc -w128 -n 1 | head -n 40"},
+  {kCommand, "top memory",
+    "/usr/bin/top -o \"+%MEM\" -w128 -bcn 1 | head -n 57"},
   {kCommand, "touch_fw_version",
     "grep -E"
     " -e 'synaptics: Touchpad model'"
