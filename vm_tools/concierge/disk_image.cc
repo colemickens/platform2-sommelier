@@ -164,8 +164,14 @@ void PluginVmCreateOperation::Finalize() {
     return;
   }
 
-  if (!pvm::helper::AttachIso(vm_id_, "install.iso")) {
-    MarkFailed("Failed to attach ISO to Plugin VM", 0);
+  if (!pvm::helper::AttachIso(vm_id_, "/iso/install.iso")) {
+    MarkFailed("Failed to attach install ISO to Plugin VM", 0);
+    pvm::helper::DeleteVm(vm_id_);
+    return;
+  }
+
+  if (!pvm::helper::AttachIso(vm_id_, "/opt/pita/tools/tools.iso")) {
+    MarkFailed("Failed to attach tools ISO to Plugin VM", 0);
     pvm::helper::DeleteVm(vm_id_);
     return;
   }

@@ -243,10 +243,8 @@ bool CreateVm(const VmId& vm_id, std::vector<std::string> params) {
 
 bool AttachIso(const VmId& vm_id, const std::string& iso_name) {
   std::vector<std::string> args = {
-      "set",          vm_id.name(),
-      "--device-add", "cdrom",
-      "--image",      base::FilePath("/iso").Append(iso_name).value(),
-      "--connect",
+      "set",     vm_id.name(), "--device-add", "cdrom",
+      "--image", iso_name,     "--connect",
   };
   return ExecutePvmHelper(vm_id.owner_id(), std::move(args));
 }
@@ -286,7 +284,8 @@ void CleanUpAfterInstall(const VmId& vm_id, const base::FilePath& iso_path) {
 
     LOG(INFO) << "CDROM image: " << image_name;
 
-    if (image_name != "/iso/install.iso")
+    if (image_name != "/iso/install.iso" &&
+        image_name != "/opt/pita/tools/tools.iso")
       continue;
 
     std::string state;
@@ -297,10 +296,12 @@ void CleanUpAfterInstall(const VmId& vm_id, const base::FilePath& iso_path) {
       }
     }
 
-    base::FilePath image_path = iso_path.Append("install.iso");
-    if (base::PathExists(image_path) &&
-        !DeleteFile(image_path, false /* recursive */)) {
-      LOG(WARNING) << "Failed to delete " << image_path.value();
+    if (image_name == "/iso/install.iso") {
+      base::FilePath image_path = iso_path.Append("install.iso");
+      if (base::PathExists(image_path) &&
+          !DeleteFile(image_path, false /* recursive */)) {
+        LOG(WARNING) << "Failed to delete " << image_path.value();
+      }
     }
   }
 }
