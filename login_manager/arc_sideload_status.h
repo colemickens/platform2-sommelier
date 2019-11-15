@@ -40,14 +40,15 @@ class ArcSideloadStatus : public ArcSideloadStatusInterface {
   void OverrideAdbSideloadStatusTestOnly(bool allowed);
 
   // Requests boot attribute from bootlockbox. Public for test.
-  void GetAdbSideloadAllowed();
+  void GetAdbSideloadAllowed(EnableAdbSideloadCallback callback);
 
  private:
   // Called when the boot lockbox service becomes initially available.
   void OnBootLockboxServiceAvailable(bool service_available);
 
   // The response to GetBootAttribute is processed here.
-  void OnGotAdbSideloadAllowed(dbus::Response* response);
+  void OnGotAdbSideloadAllowed(EnableAdbSideloadCallback callback,
+                               dbus::Response* response);
 
   // The response to SetBootAttribute is processed here.
   void OnEnableAdbSideloadSet(EnableAdbSideloadCallback callback,

@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/callback.h>
 #include <base/callback_helpers.h>
 #include <base/files/file_util.h>
 #include <brillo/cryptohome.h>
@@ -27,6 +28,9 @@ namespace {
 // Boot attribute used to track if the user has allowed sideloading on the
 // device.
 constexpr char kSideloadingAllowedBootAttribute[] = "arc_sideloading_allowed";
+
+// TODO(victorhsieh): switch to base::DoNothing() once libchrome is upreved.
+void DoNothing(ArcSideloadStatusInterface::Status, const char*) {}
 
 }  // namespace
 
@@ -54,6 +58,11 @@ void ArcSideloadStatus::EnableAdbSideload(EnableAdbSideloadCallback callback) {
                             "D-Bus service not connected");
     return;
   }
+
+  // TODO(crbug.com/1026460): Move the flow into a new transition state, such
+  // that an interleaved call will be queued and handled when the transition is
+  // finished. Otherwise, a QueryAdbSideload call (potentially from another
+  // client) can return with a outdated cached result.
 
   dbus::MethodCall method_call(cryptohome::kBootLockboxInterface,
                                cryptohome::kBootLockboxStoreBootLockbox);
@@ -89,10 +98,11 @@ void ArcSideloadStatus::OnBootLockboxServiceAvailable(bool service_available) {
     return;
   }
 
-  GetAdbSideloadAllowed();
+  GetAdbSideloadAllowed(base::Bind(&DoNothing));
 }
 
-void ArcSideloadStatus::GetAdbSideloadAllowed() {
+void ArcSideloadStatus::GetAdbSideloadAllowed(
+    EnableAdbSideloadCallback callback) {
   dbus::MethodCall method_call(cryptohome::kBootLockboxInterface,
                                cryptohome::kBootLockboxReadBootLockbox);
 
@@ -104,7 +114,7 @@ void ArcSideloadStatus::GetAdbSideloadAllowed() {
   boot_lockbox_proxy_->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
       base::Bind(&ArcSideloadStatus::OnGotAdbSideloadAllowed,
-                 weak_ptr_factory_.GetWeakPtr()));
+                 weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
 ArcSideloadStatusInterface::Status ArcSideloadStatus::ParseResponseFromRead(
@@ -161,8 +171,11 @@ ArcSideloadStatusInterface::Status ArcSideloadStatus::ParseResponseFromRead(
              : ArcSideloadStatusInterface::Status::DISABLED;
 }
 
-void ArcSideloadStatus::OnGotAdbSideloadAllowed(dbus::Response* response) {
-  SetAdbSideloadStatusAndNotify(ParseResponseFromRead(response));
+void ArcSideloadStatus::OnGotAdbSideloadAllowed(
+    EnableAdbSideloadCallback callback, dbus::Response* response) {
+  ArcSideloadStatusInterface::Status status = ParseResponseFromRead(response);
+  SetAdbSideloadStatusAndNotify(status);
+  std::move(callback).Run(status, nullptr);
 }
 
 void ArcSideloadStatus::OnEnableAdbSideloadSet(
@@ -192,9 +205,9 @@ void ArcSideloadStatus::OnEnableAdbSideloadSet(
     return;
   }
 
-  // Re-read setting from bootlockbox now that it has been stored.
-  GetAdbSideloadAllowed();
-  std::move(callback).Run(ArcSideloadStatusInterface::Status::ENABLED, nullptr);
+  // Callback later. Re-read setting from bootlockbox now that it has been
+  // stored.
+  GetAdbSideloadAllowed(std::move(callback));
 }
 
 void ArcSideloadStatus::OverrideAdbSideloadStatusTestOnly(bool allowed) {
