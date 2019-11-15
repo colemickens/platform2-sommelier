@@ -298,7 +298,7 @@ void CleanUpAfterInstall(const VmId& vm_id, const base::FilePath& iso_path) {
       continue;
 
     std::string state;
-    if (cdrom->GetString("state", &state) && state == "connected") {
+    if (!cdrom->GetString("state", &state) || state != "disconnected") {
       if (!DisconnectDevice(vm_id, it.key())) {
         LOG(ERROR) << "Failed to disconnect " << it.key() << " from " << vm_id;
         continue;
