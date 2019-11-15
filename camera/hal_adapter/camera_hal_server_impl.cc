@@ -93,9 +93,7 @@ void CameraHalServerImpl::OnSocketFileStatusChange(
 
   if (!PathExists(socket_path)) {
     if (binding_.is_bound()) {
-      main_task_runner_->PostTask(
-          FROM_HERE, base::Bind(&CameraHalServerImpl::ExitOnMainThread,
-                                base::Unretained(this), ECONNRESET));
+      ExitOnMainThread(ECONNRESET);
     }
     return;
   }
@@ -130,10 +128,7 @@ void CameraHalServerImpl::LoadCameraHal() {
     void* handle = dlopen(dll.value().c_str(), RTLD_NOW | RTLD_LOCAL);
     if (!handle) {
       LOGF(INFO) << "Failed to dlopen: " << dlerror();
-      main_task_runner_->PostTask(
-          FROM_HERE, base::Bind(&CameraHalServerImpl::ExitOnMainThread,
-                                base::Unretained(this), ENOENT));
-      return;
+      ExitOnMainThread(ENOENT);
     }
 
     auto* module = static_cast<camera_module_t*>(
@@ -141,10 +136,7 @@ void CameraHalServerImpl::LoadCameraHal() {
     if (!module) {
       LOGF(ERROR) << "Failed to get camera_module_t pointer with symbol name "
                   << HAL_MODULE_INFO_SYM_AS_STR << " from " << dll.value();
-      main_task_runner_->PostTask(
-          FROM_HERE, base::Bind(&CameraHalServerImpl::ExitOnMainThread,
-                                base::Unretained(this), ELIBBAD));
-      return;
+      ExitOnMainThread(ELIBBAD);
     }
 
     camera_modules.push_back(module);
@@ -161,9 +153,7 @@ void CameraHalServerImpl::LoadCameraHal() {
 
   if (!camera_hal_adapter_->Start()) {
     LOGF(ERROR) << "Failed to start camera HAL adapter";
-    main_task_runner_->PostTask(
-        FROM_HERE, base::Bind(&CameraHalServerImpl::ExitOnMainThread,
-                              base::Unretained(this), ENODEV));
+    ExitOnMainThread(ENODEV);
   }
 }
 
