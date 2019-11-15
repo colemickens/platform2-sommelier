@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 # TODO(crbug.com/932128): Fix the visibility on the shared lib.
-# gnlint: disable=GypLintVisibilityFlags
+# gnlint: disable=GnLintVisibilityFlags
 
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
