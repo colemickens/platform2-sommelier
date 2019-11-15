@@ -652,8 +652,10 @@ bool Service::Unload() {
   }
   ClearEAPCertification();
 #endif          // DISABLE_WIFI || DISABLE_WIRED_8021X
-  Error error;  // Ignored.
-  Disconnect(&error, __func__);
+  if (IsActive(nullptr)) {
+    Error error;  // Ignored.
+    Disconnect(&error, __func__);
+  }
   return false;
 }
 

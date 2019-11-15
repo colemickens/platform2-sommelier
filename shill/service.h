@@ -163,9 +163,10 @@ class Service : public base::RefCounted<Service> {
   // Queue up a connection attempt. Child-specific behavior is implemented in
   // OnConnect.
   mockable void Connect(Error* error, const char* reason);
-  // Disconnect this service.
+  // Disconnect this Service. If the Service is not active, this call will be a
+  // no-op aside from logging an error.
   mockable void Disconnect(Error* error, const char* reason);
-  // Disconnect this service via Disconnect(). Marks the service as having
+  // Disconnect this Service via Disconnect(). Marks the Service as having
   // failed with |failure|.
   mockable void DisconnectWithFailure(ConnectFailure failure,
                                      Error* error,
