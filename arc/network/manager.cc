@@ -266,7 +266,8 @@ std::unique_ptr<dbus::Response> Manager::OnArcStartup(
     return dbus_response;
   }
 
-  StartArc(request.pid());
+  if (!StartArc(request.pid()))
+    LOG(ERROR) << "Failed to start ARC++ network service";
 
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
@@ -316,7 +317,26 @@ std::unique_ptr<dbus::Response> Manager::OnArcVmStartup(
     return dbus_response;
   }
 
-  StartArcVm(request.cid());
+  if (StartArcVm(request.cid())) {
+    // Populate the response with the known devices.
+    auto build_resp = [](patchpanel::ArcVmStartupResponse* resp,
+                         Device* device) {
+      auto* ctx = dynamic_cast<ArcService::Context*>(
+          device->context(GuestMessage::ARC_VM));
+      if (!ctx || ctx->TAP().empty())
+        return;
+
+      const auto& config = device->config();
+      auto* dev = resp->add_devices();
+      dev->set_ifname(ctx->TAP());
+      dev->set_ipv4_addr(config.guest_ipv4_addr());
+    };
+
+    device_mgr_->ProcessDevices(
+        base::Bind(build_resp, base::Unretained(&response)));
+  } else {
+    LOG(ERROR) << "Failed to start ARCVM network service";
+  }
 
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
