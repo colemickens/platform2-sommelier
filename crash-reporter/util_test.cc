@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include <fcntl.h>
+#include <limits>
 #include <memory>
 #include <sys/mman.h>
 
@@ -228,6 +229,12 @@ TEST_F(CrashCommonUtilTest, IsOsTimestampTooOldForUploads) {
       now - base::TimeDelta::FromDays(179), &clock));
   EXPECT_TRUE(util::IsOsTimestampTooOldForUploads(
       now - base::TimeDelta::FromDays(181), &clock));
+
+  // Crashes with invalid timestamps should upload.
+  EXPECT_FALSE(util::IsOsTimestampTooOldForUploads(
+      now + base::TimeDelta::FromDays(1), &clock));
+  EXPECT_FALSE(util::IsOsTimestampTooOldForUploads(
+      base::Time::FromTimeT(std::numeric_limits<time_t>::min()), &clock));
 }
 
 TEST_F(CrashCommonUtilTest, GetHardwareClass) {

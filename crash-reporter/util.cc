@@ -95,7 +95,20 @@ base::Time GetOsTimestamp() {
 }
 
 bool IsOsTimestampTooOldForUploads(base::Time timestamp, base::Clock* clock) {
-  return !timestamp.is_null() && (clock->Now() - timestamp) > kAgeForNoUploads;
+  if (timestamp.is_null()) {
+    return false;
+  }
+  base::Time now = clock->Now();
+  // In case of invalid timestamps, always upload a crash -- something strange
+  // is happening.
+  if (timestamp > now) {
+    LOG(ERROR) << "OS timestamp is in the future: " << timestamp;
+    return false;
+  } else if (timestamp < base::Time::UnixEpoch()) {
+    LOG(ERROR) << "OS timestamp is negative: " << timestamp;
+    return false;
+  }
+  return (now - timestamp) > kAgeForNoUploads;
 }
 
 std::string GetHardwareClass() {
