@@ -283,24 +283,25 @@ void Service::Connect(Error* error, const char* reason) {
   if (!connectable()) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed,
-        base::StringPrintf("%s service %s is not connectable.",
-                           technology().GetName().c_str(),
-                           unique_name().c_str()));
+        base::StringPrintf(
+            "Connect attempted but %s Service %s is not connectable: %s",
+            technology().GetName().c_str(), unique_name().c_str(), reason));
     return;
   }
 
   if (IsConnected()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kAlreadyConnected,
-                          base::StringPrintf("%s service %s already connected.",
-                                             technology().GetName().c_str(),
-                                             unique_name().c_str()));
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kAlreadyConnected,
+        base::StringPrintf(
+            "Connect attempted but %s Service %s is already connected: %s",
+            technology().GetName().c_str(), unique_name().c_str(), reason));
     return;
   } else if (IsConnecting()) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kInProgress,
-        base::StringPrintf("%s service %s already connecting.",
-                           technology().GetName().c_str(),
-                           unique_name().c_str()));
+        base::StringPrintf(
+            "Connect attempted but %s Service %s already connecting: %s",
+            technology().GetName().c_str(), unique_name().c_str(), reason));
     return;
   } else if (IsDisconnecting()) {
     // SetState will re-trigger a connection after this disconnection has
@@ -318,7 +319,8 @@ void Service::Connect(Error* error, const char* reason) {
   // Clear any failure state from a previous connect attempt.
   if (IsInFailState())
     SetState(kStateIdle);
-  LOG(INFO) << "Connect to service " << unique_name() << ": " << reason;
+  LOG(INFO) << "Connecting to " << technology() << " Service " << unique_name()
+            << ": " << reason;
   // Perform connection logic defined by children. This logic will
   // drive the state from kStateIdle.
   OnConnect(error);
@@ -326,21 +328,23 @@ void Service::Connect(Error* error, const char* reason) {
 
 void Service::Disconnect(Error* error, const char* reason) {
   if (!IsActive(nullptr)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotConnected,
-                          base::StringPrintf("%s service %s not active.",
-                                             technology().GetName().c_str(),
-                                             unique_name().c_str()));
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kNotConnected,
+        base::StringPrintf(
+            "Disconnect attempted but %s Service %s is not active: %s",
+            technology().GetName().c_str(), unique_name().c_str(), reason));
     return;
   }
 
   if (!IsDisconnectable(error)) {
-    LOG(WARNING)
-        << "Service " << unique_name()
-        << " Disconnect attempted but the Service is not Disconnectable";
+    LOG(WARNING) << "Disconnect attempted but " << technology() << " Service "
+                 << unique_name() << " is not Disconnectable"
+                 << ": " << reason;
     return;
   }
 
-  LOG(INFO) << "Disconnecting from service " << unique_name() << ": " << reason;
+  LOG(INFO) << "Disconnecting from " << technology() << " Service "
+            << unique_name() << ": " << reason;
   SetState(kStateDisconnecting);
   // Perform connection logic defined by children. This logic will
   // drive the state to kStateIdle.
