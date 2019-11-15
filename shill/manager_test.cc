@@ -1286,7 +1286,7 @@ TEST_F(ManagerTest, HandleProfileEntryDeletionWithUnload) {
   CompleteServiceSort();
 
   // One for each service added above.
-  ASSERT_EQ(4, manager()->services_.size());
+  ASSERT_EQ(4, GetServices().size());
 
   scoped_refptr<MockProfile> profile(
       new StrictMock<MockProfile>(manager(), ""));
@@ -1322,9 +1322,9 @@ TEST_F(ManagerTest, HandleProfileEntryDeletionWithUnload) {
 
   // 2 of the 4 services added above should have been unregistered and
   // removed, leaving 2.
-  EXPECT_EQ(2, manager()->services_.size());
-  EXPECT_EQ(s_will_not_remove0, manager()->services_[0]);
-  EXPECT_EQ(s_will_not_remove1, manager()->services_[1]);
+  EXPECT_EQ(2, GetServices().size());
+  EXPECT_EQ(s_will_not_remove0, GetServices()[0]);
+  EXPECT_EQ(s_will_not_remove1, GetServices()[1]);
 }
 
 TEST_F(ManagerTest, PopProfileWithUnload) {
@@ -1343,7 +1343,7 @@ TEST_F(ManagerTest, PopProfileWithUnload) {
   CompleteServiceSort();
 
   // One for each service added above.
-  ASSERT_EQ(4, manager()->services_.size());
+  ASSERT_EQ(4, GetServices().size());
 
   scoped_refptr<MockProfile> profile0(
       new StrictMock<MockProfile>(manager(), ""));
@@ -1372,14 +1372,16 @@ TEST_F(ManagerTest, PopProfileWithUnload) {
   EXPECT_CALL(*profile1, GetRpcIdentifier()).Times(AnyNumber());
 
   // This will pop profile1, which should cause all our profiles to unload.
-  manager()->PopProfileInternal();
+  Error error;
+  manager()->PopAnyProfile(&error);
+  EXPECT_TRUE(error.IsSuccess());
   CompleteServiceSort();
 
   // 2 of the 4 services added above should have been unregistered and
   // removed, leaving 2.
-  EXPECT_EQ(2, manager()->services_.size());
-  EXPECT_EQ(s_will_not_remove0, manager()->services_[0]);
-  EXPECT_EQ(s_will_not_remove1, manager()->services_[1]);
+  EXPECT_EQ(2, GetServices().size());
+  EXPECT_EQ(s_will_not_remove0, GetServices()[0]);
+  EXPECT_EQ(s_will_not_remove1, GetServices()[1]);
 
   // Expect the unloaded services to lose their profile reference.
   EXPECT_FALSE(s_will_remove0->profile());

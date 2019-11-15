@@ -558,7 +558,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, DeviceRegistrationTriggersThrottler);
   FRIEND_TEST(ManagerTest, EnumerateProfiles);
   FRIEND_TEST(ManagerTest, EnumerateServiceInnerDevices);
-  FRIEND_TEST(ManagerTest, HandleProfileEntryDeletionWithUnload);
   FRIEND_TEST(ManagerTest, InitializeProfilesInformsProviders);
   FRIEND_TEST(ManagerTest, InitializeProfilesHandlesDefaults);
   FRIEND_TEST(ManagerTest, IsTechnologyAutoConnectDisabled);
@@ -569,7 +568,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, UpdateDefaultServices);
   FRIEND_TEST(ManagerTest,
               UpdateDefaultServicesWithDefaultServiceCallbacksRemoved);
-  FRIEND_TEST(ManagerTest, PopProfileWithUnload);
   FRIEND_TEST(ManagerTest, UpdateBlackholeUserTraffic);
   FRIEND_TEST(ManagerTest, RegisterKnownService);
   FRIEND_TEST(ManagerTest, RegisterUnknownService);
