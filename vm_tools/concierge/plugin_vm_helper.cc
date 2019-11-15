@@ -250,7 +250,17 @@ bool CreateVm(const VmId& vm_id, std::vector<std::string> params) {
   return ExecutePvmHelper(vm_id.owner_id(), std::move(args));
 }
 
-bool AttachIso(const VmId& vm_id, const std::string& iso_name) {
+bool AttachIso(const VmId& vm_id,
+               const std::string& cdrom_name,
+               const std::string& iso_name) {
+  std::vector<std::string> args = {
+      "set",     vm_id.name(), "--device-set", cdrom_name,
+      "--image", iso_name,     "--connect",
+  };
+  return ExecutePvmHelper(vm_id.owner_id(), std::move(args));
+}
+
+bool CreateCdromDevice(const VmId& vm_id, const std::string& iso_name) {
   std::vector<std::string> args = {
       "set",     vm_id.name(), "--device-add", "cdrom",
       "--image", iso_name,     "--connect",

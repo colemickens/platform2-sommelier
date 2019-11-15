@@ -22,7 +22,10 @@ namespace helper {
 bool IsDlcVm();
 bool CreateVm(const VmId& vm_id, std::vector<std::string> params);
 bool DeleteVm(const VmId& vm_id);
-bool AttachIso(const VmId& vm_id, const std::string& iso_name);
+bool AttachIso(const VmId& vm_id,
+               const std::string& cdrom_name,
+               const std::string& iso_name);
+bool CreateCdromDevice(const VmId& vm_id, const std::string& iso_name);
 
 void CleanUpAfterInstall(const VmId& vm_id, const base::FilePath& iso_path);
 
