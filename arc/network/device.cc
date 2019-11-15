@@ -23,6 +23,7 @@ namespace arc_networkd {
 // up the Android device.
 const char kAndroidDevice[] = "arc0";
 const char kAndroidLegacyDevice[] = "android";
+const char kAndroidVmDevice[] = "arcvm";
 
 namespace {
 constexpr int kMaxRandomAddressTries = 3;
@@ -93,7 +94,9 @@ bool Device::IsAndroid() const {
 }
 
 bool Device::IsLegacyAndroid() const {
-  return ifname_ == kAndroidLegacyDevice;
+  // TODO(garrick): Remove ARCVM check once it can support dynamic interface
+  // configuration.
+  return ifname_ == kAndroidLegacyDevice || ifname_ == kAndroidVmDevice;
 }
 
 bool Device::HostLinkUp(bool link_up) {

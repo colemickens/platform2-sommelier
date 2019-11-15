@@ -32,6 +32,7 @@ class FakeAddressManager : public AddressManager {
       : AddressManager({
             AddressManager::Guest::ARC,
             AddressManager::Guest::ARC_NET,
+            AddressManager::Guest::VM_ARC,
         }) {}
 
   MacAddress GenerateMacAddress() override {
@@ -155,6 +156,17 @@ TEST_F(DeviceManagerTest, MakeDevice_LegacyAndroid) {
   EXPECT_EQ(cfg.guest_ifname(), "arc0");
   EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 1));
   EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 2));
+  EXPECT_TRUE(arc0->options().ipv6_enabled);
+}
+
+TEST_F(DeviceManagerTest, MakeDevice_AndroidVm) {
+  auto mgr = NewManager();
+  auto arc0 = mgr->MakeDevice(kAndroidVmDevice);
+  const auto& cfg = arc0->config();
+  EXPECT_EQ(cfg.host_ifname(), "arcbr0");
+  EXPECT_EQ(cfg.guest_ifname(), "arc0");
+  EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 5));
+  EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 6));
   EXPECT_TRUE(arc0->options().ipv6_enabled);
 }
 

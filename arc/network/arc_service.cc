@@ -150,6 +150,10 @@ GuestMessage::GuestType ArcGuest(bool* is_legacy_override_for_testing) {
                                             : GuestMessage::ARC_LEGACY;
 }
 
+bool IsLegacy(GuestMessage::GuestType guest) {
+  return guest == GuestMessage::ARC_LEGACY || guest == GuestMessage::ARC_VM;
+}
+
 }  // namespace
 
 ArcService::ArcService(DeviceManagerBase* dev_mgr,
@@ -216,8 +220,22 @@ void ArcService::OnStart() {
   // the bug in Shill that casues a Bus crash when it sees the ARC bridge a
   // second time). Do this after processing the existing devices so it doesn't
   // get started twice.
-  dev_mgr_->Add(guest_ == GuestMessage::ARC_LEGACY ? kAndroidLegacyDevice
-                                                   : kAndroidDevice);
+  std::string arc;
+  switch (const auto guest = impl_->guest()) {
+    case GuestMessage::ARC:
+      arc = kAndroidDevice;
+      break;
+    case GuestMessage::ARC_LEGACY:
+      arc = kAndroidLegacyDevice;
+      break;
+    case GuestMessage::ARC_VM:
+      arc = kAndroidVmDevice;
+      break;
+    default:
+      LOG(DFATAL) << "Unexpected guest: " << guest;
+      return;
+  }
+  dev_mgr_->Add(arc);
 
   // Finally, call the base implementation.
   GuestService::OnStart();
@@ -241,7 +259,7 @@ void ArcService::OnStop() {
 void ArcService::OnDeviceAdded(Device* device) {
   // ARC N uses legacy single networking and only requires the arcbr0/arc0
   // configuration. Any other device can be safely ignored.
-  if (guest_ == GuestMessage::ARC_LEGACY && !device->IsLegacyAndroid())
+  if (IsLegacy(guest_) && !device->IsLegacyAndroid())
     return;
 
   const auto& config = device->config();
@@ -281,6 +299,11 @@ void ArcService::OnDeviceAdded(Device* device) {
 }
 
 void ArcService::StartDevice(Device* device) {
+  // ARC N uses legacy single networking and only requires the arcbr0/arc0
+  // configuration. Any other device can be safely ignored.
+  if (IsLegacy(guest_) && !device->IsLegacyAndroid())
+    return;
+
   // This can happen if OnDeviceAdded is invoked when the container is down.
   if (!impl_->IsStarted())
     return;
@@ -307,7 +330,7 @@ void ArcService::StartDevice(Device* device) {
 void ArcService::OnDeviceRemoved(Device* device) {
   // ARC N uses legacy single networking and only requires the arcbr0/arc0
   // configuration. Any other device can be safely ignored.
-  if (guest_ == GuestMessage::ARC_LEGACY && !device->IsLegacyAndroid())
+  if (IsLegacy(guest_) && !device->IsLegacyAndroid())
     return;
 
   // If the container is down, this call does nothing.
@@ -335,6 +358,11 @@ void ArcService::OnDeviceRemoved(Device* device) {
 }
 
 void ArcService::StopDevice(Device* device) {
+  // ARC N uses legacy single networking and only requires the arcbr0/arc0
+  // configuration. Any other device can be safely ignored.
+  if (IsLegacy(guest_) && !device->IsLegacyAndroid())
+    return;
+
   // This can happen if the device if OnDeviceRemoved is invoked when the
   // container is down.
   if (!impl_->IsStarted())

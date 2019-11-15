@@ -181,11 +181,13 @@ bool DeviceManager::Add(const std::string& name) {
   if (name.empty() || Exists(name))
     return false;
 
-  auto device = MakeDevice(name);
-  if (!device)
+  auto dev = MakeDevice(name);
+  if (!dev)
     return false;
 
-  LOG(INFO) << "Adding device " << *device;
+  LOG(INFO) << "Adding device " << *dev;
+  auto* device = dev.get();
+  devices_.emplace(name, std::move(dev));
 
   if (device->options().ipv6_enabled) {
     if (device->options().find_ipv6_routes_legacy) {
@@ -200,11 +202,11 @@ bool DeviceManager::Add(const std::string& name) {
       }
     }
   }
+
   for (auto& h : add_handlers_) {
-    h.second.Run(device.get());
+    h.second.Run(device);
   }
 
-  devices_.emplace(name, std::move(device));
   return true;
 }
 
@@ -351,7 +353,10 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
   std::string host_ifname, guest_ifname;
   AddressManager::Guest guest = AddressManager::Guest::ARC;
 
-  if (name == kAndroidLegacyDevice) {
+  if (name == kAndroidLegacyDevice || name == kAndroidVmDevice) {
+    if (name == kAndroidVmDevice)
+      guest = AddressManager::Guest::VM_ARC;
+
     host_ifname = "arcbr0";
     guest_ifname = "arc0";
     opts.ipv6_enabled = true;
