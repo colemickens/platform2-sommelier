@@ -260,10 +260,6 @@ class DlcServiceUtil : public brillo::Daemon {
     string package = *(packages.begin());
 
     imageloader::Manifest manifest;
-    // TODO(ahassani): We have imported the entire dlcservice library just to
-    // use this function. A better way to do this is to create a utility library
-    // that is shared between dlcservice_util and dlcservice and use the
-    // functions from there.
     if (!dlcservice::utils::GetDlcManifest(manifest_root, dlc_id, package,
                                            &manifest)) {
       LOG(ERROR) << "Failed to get DLC module manifest.";

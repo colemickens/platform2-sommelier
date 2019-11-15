@@ -93,9 +93,7 @@ executable("dlcservice_util") {
   ]
   sources = [
     "tools/dlc_service_util.cc",
-  ]
-  deps = [
-    ":libdlcservice",
+    "utils.cc",
   ]
 }
 
