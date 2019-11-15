@@ -10,6 +10,7 @@
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_bus.h>
@@ -48,6 +49,14 @@ class DeviceManagerTest : public testing::Test {
     fpr_->Capture(false);
     datapath_ = std::make_unique<MockDatapath>(fpr_.get());
     dummy_mcast_proxy_ = std::make_unique<HelperProcess>();
+  }
+
+  void TearDown() override {
+    // dtor of base::FileDescriptorWatcher::Controller in ShillClient will
+    // transfer the ownership of watcher_ to a delete task on MessageLoop.
+    // Therefore we need to wait for MessageLoop to finish all the tasks to
+    // fully release memory.
+    base::RunLoop().RunUntilIdle();
   }
 
   std::unique_ptr<DeviceManager> NewManager(bool is_arc_legacy = false) {
