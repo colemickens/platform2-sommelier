@@ -5,6 +5,8 @@
 213:1000
 # fuse-exfat
 213:302
+# fuse-rar2fs
+213:308
 # fuse-sshfs
 213:305
 # nobody
