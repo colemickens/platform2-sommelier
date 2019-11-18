@@ -56,6 +56,17 @@ class VaultKeyset;
 
 class HomeDirs {
  public:
+  // Entries are sorted by the severity of the lack of free space. See
+  // FreeDiskSpaceState for thresholds.
+  enum class FreeSpaceState {
+    kError,                  // error while determining the amount of free disk
+                             // space
+    kAboveTarget,            // above target free disk space for cleanup result
+    kAboveThreshold,         // above cleanup threshold but below cleanup target
+    kNeedNormalCleanup,      // below threshold for normal cleanup
+    kNeedAggressiveCleanup,  // below threshold for aggressive cleanup
+  };
+
   HomeDirs();
   virtual ~HomeDirs();
 
@@ -85,6 +96,20 @@ class HomeDirs {
   // Return the available disk space in bytes for home directories, or -1 on
   // failure.
   virtual int64_t AmountOfFreeDiskSpace() const;
+
+  // Determines the state of the free disk space based on the following
+  // thresholds:
+  //   kAboveTarget: free_disk_space >= kTargetFreeSpaceAfterCleanup
+  //   kAboveThreshold: kTargetFreeSpaceAfterCleanup > free_disk_space =>
+  //                      kFreeSpaceThresholdToTriggerCleanup
+  //   kNeedNormalCleanup: kFreeSpaceThresholdToTriggerCleanup >
+  //                      free_disk_space => kMinFreeSpaceInBytes
+  //   kNeedAggressiveCleanup: kMinFreeSpaceInBytes > free_disk_space
+  virtual FreeSpaceState GetFreeDiskSpaceState(int64_t free_disk_space) const;
+
+  // Uses AmountOfFreeDiskSpace to get the current amount of free disk space and
+  // to determine the state of the free disk space.
+  virtual FreeSpaceState GetFreeDiskSpaceState() const;
 
   // Removes all cryptohomes owned by anyone other than the owner user (if set),
   // regardless of free disk space.

@@ -181,7 +181,7 @@ class ServiceTestNotInitialized : public ::testing::Test {
     homedirs_.set_platform(&platform_);
     ON_CALL(homedirs_, Init(_, _, _)).WillByDefault(Return(true));
     ON_CALL(homedirs_, AmountOfFreeDiskSpace()).WillByDefault(
-        Return(kNotifyDiskSpaceThreshold));
+        Return(kFreeSpaceThresholdToTriggerCleanup));
     ON_CALL(boot_attributes_, Load()).WillByDefault(Return(true));
     // Empty token list by default.  The effect is that there are no attempts
     // to unload tokens unless a test explicitly sets up the token list.
@@ -471,11 +471,11 @@ TEST_F(ServiceTestNotInitialized, CheckLowDiskCallback) {
   // Checks that LowDiskCallback is called periodically.
   EXPECT_CALL(homedirs_, AmountOfFreeDiskSpace())
       .Times(AtLeast(5))
-      .WillOnce(Return(kNotifyDiskSpaceThreshold + 1))
-      .WillOnce(Return(kNotifyDiskSpaceThreshold + 1))
-      .WillOnce(Return(kNotifyDiskSpaceThreshold + 1))
-      .WillOnce(Return(kNotifyDiskSpaceThreshold - 1))
-      .WillRepeatedly(Return(kNotifyDiskSpaceThreshold + 1));
+      .WillOnce(Return(kFreeSpaceThresholdToTriggerCleanup + 1))
+      .WillOnce(Return(kFreeSpaceThresholdToTriggerCleanup + 1))
+      .WillOnce(Return(kFreeSpaceThresholdToTriggerCleanup + 1))
+      .WillOnce(Return(kFreeSpaceThresholdToTriggerCleanup - 1))
+      .WillRepeatedly(Return(kFreeSpaceThresholdToTriggerCleanup + 1));
   // Checks that DoAutoCleanup is called second time ahead of schedule
   // if disk space goes below threshold and recovers back to normal.
   EXPECT_CALL(homedirs_, FreeDiskSpace()).Times(2);
@@ -503,10 +503,10 @@ TEST_F(ServiceTestNotInitialized, CheckLowDiskCallback) {
 TEST_F(ServiceTestNotInitialized, CheckLowDiskCallbackFreeDiskSpaceOnce) {
   EXPECT_CALL(homedirs_, AmountOfFreeDiskSpace())
       .Times(AtLeast(5))
-      .WillOnce(Return(kNotifyDiskSpaceThreshold + 1))
-      .WillOnce(Return(kNotifyDiskSpaceThreshold + 1))
-      .WillOnce(Return(kNotifyDiskSpaceThreshold + 1))
-      .WillRepeatedly(Return(kNotifyDiskSpaceThreshold - 1));
+      .WillOnce(Return(kFreeSpaceThresholdToTriggerCleanup + 1))
+      .WillOnce(Return(kFreeSpaceThresholdToTriggerCleanup + 1))
+      .WillOnce(Return(kFreeSpaceThresholdToTriggerCleanup + 1))
+      .WillRepeatedly(Return(kFreeSpaceThresholdToTriggerCleanup - 1));
   // Checks that DoAutoCleanup is called second time ahead of schedule
   // if disk space goes below threshold and stays below forever.
   EXPECT_CALL(homedirs_, FreeDiskSpace()).Times(2);

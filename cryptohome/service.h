@@ -58,8 +58,6 @@ class Credentials;
 // Wrapper for all timers used by the cryptohome daemon.
 class TimerCollection;
 
-extern const int64_t kNotifyDiskSpaceThreshold;
-
 // Bridges between the MountTaskObserver callback model and the
 // CryptohomeEventSource callback model. This class forwards MountTaskObserver
 // events to a CryptohomeEventSource. An instance of this class is single-use

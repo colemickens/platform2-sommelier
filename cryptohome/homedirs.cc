@@ -143,11 +143,23 @@ bool HomeDirs::IsFreableDiskSpaceAvaible() {
 }
 
 void HomeDirs::FreeDiskSpace() {
-  const int64_t free_disk_space =
-      platform_->AmountOfFreeDiskSpace(shadow_root_);
-  if (free_disk_space >= kFreeSpaceThresholdToTriggerCleanup) {
-    // Already have enough space. No need to cleanup.
-    return;
+  switch (GetFreeDiskSpaceState()) {
+    case HomeDirs::FreeSpaceState::kAboveTarget:
+    case HomeDirs::FreeSpaceState::kAboveThreshold:
+      // Already have enough space. No need to clean up.
+      return;
+
+    case HomeDirs::FreeSpaceState::kNeedNormalCleanup:
+    case HomeDirs::FreeSpaceState::kNeedAggressiveCleanup:
+      // trigger cleanup
+      break;
+
+    case HomeDirs::FreeSpaceState::kError:
+      LOG(ERROR) << "Failed to get the amount of free space";
+      return;
+    default:
+      LOG(ERROR) << "Unhandled free disk state";
+      return;
   }
 
   base::ElapsedTimer total_timer;
@@ -179,8 +191,14 @@ void HomeDirs::FreeDiskSpaceInternal() {
     HomeDirs::DeleteCacheCallback(dir.shadow);
   }
 
-  int64_t freeDiskSpace = platform_->AmountOfFreeDiskSpace(shadow_root_);
-  if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup) {
+  int64_t freeDiskSpace = AmountOfFreeDiskSpace();
+  if (freeDiskSpace < 0) {
+    LOG(ERROR) << "Failed to get the amount of free space";
+    return;
+  }
+
+  if (GetFreeDiskSpaceState(freeDiskSpace)
+        == HomeDirs::FreeSpaceState::kAboveTarget) {
     ReportDiskCleanupProgress(
         DiskCleanupProgress::kBrowserCacheCleanedAboveTarget);
     return;
@@ -192,25 +210,33 @@ void HomeDirs::FreeDiskSpaceInternal() {
   }
 
   const int64_t old_free_disk_space = freeDiskSpace;
-  freeDiskSpace = platform_->AmountOfFreeDiskSpace(shadow_root_);
+  freeDiskSpace = AmountOfFreeDiskSpace();
+
   const int64_t freed_gcache_space = freeDiskSpace - old_free_disk_space;
   // Report only if something was deleted.
   if (freed_gcache_space > 0) {
     ReportFreedGCacheDiskSpaceInMb(freed_gcache_space / 1024 / 1024);
   }
 
-  if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup) {
-    ReportDiskCleanupProgress(
+  switch (GetFreeDiskSpaceState(freeDiskSpace)) {
+    case HomeDirs::FreeSpaceState::kAboveTarget:
+      ReportDiskCleanupProgress(
         DiskCleanupProgress::kGoogleDriveCacheCleanedAboveTarget);
-    return;
-  }
-
-  if (freeDiskSpace >= kMinFreeSpaceInBytes) {
-    // Disk space is still less than |kTargetFreeSpaceAfterCleanup|, but more
-    // than the threshold to do more aggressive cleanups.
-    ReportDiskCleanupProgress(
+      return;
+    case HomeDirs::FreeSpaceState::kAboveThreshold:
+    case HomeDirs::FreeSpaceState::kNeedNormalCleanup:
+      ReportDiskCleanupProgress(
         DiskCleanupProgress::kGoogleDriveCacheCleanedAboveMinimum);
-    return;
+      return;
+    case HomeDirs::FreeSpaceState::kNeedAggressiveCleanup:
+      // continue cleanup
+      break;
+    case HomeDirs::FreeSpaceState::kError:
+      LOG(ERROR) << "Failed to get the amount of free space";
+      return;
+    default:
+      LOG(ERROR) << "Unhandled free disk state";
+      return;
   }
 
   // Clean Android cache directories for every user (except current one).
@@ -218,19 +244,27 @@ void HomeDirs::FreeDiskSpaceInternal() {
     HomeDirs::DeleteAndroidCacheCallback(dir.shadow);
   }
 
-  freeDiskSpace = platform_->AmountOfFreeDiskSpace(shadow_root_);
-  if (freeDiskSpace >= kTargetFreeSpaceAfterCleanup) {
-    ReportDiskCleanupProgress(
-        DiskCleanupProgress::kAndroidCacheCleanedAboveTarget);
-    return;
-  }
+  freeDiskSpace = AmountOfFreeDiskSpace();
 
-  if (freeDiskSpace >= kMinFreeSpaceInBytes) {
-    // Disk space is still less than |kTargetFreeSpaceAfterCleanup|, but more
-    // than the threshold to do more aggressive cleanup by removing users.
-    ReportDiskCleanupProgress(
+  switch (GetFreeDiskSpaceState(freeDiskSpace)) {
+    case HomeDirs::FreeSpaceState::kAboveTarget:
+      ReportDiskCleanupProgress(
+        DiskCleanupProgress::kAndroidCacheCleanedAboveTarget);
+      return;
+    case HomeDirs::FreeSpaceState::kAboveThreshold:
+    case HomeDirs::FreeSpaceState::kNeedNormalCleanup:
+      ReportDiskCleanupProgress(
         DiskCleanupProgress::kAndroidCacheCleanedAboveMinimum);
-    return;
+      return;
+    case HomeDirs::FreeSpaceState::kNeedAggressiveCleanup:
+      // continue cleanup
+      break;
+    case HomeDirs::FreeSpaceState::kError:
+      LOG(ERROR) << "Failed to get the amount of free space";
+      return;
+    default:
+      LOG(ERROR) << "Unhandled free disk state";
+      return;
   }
 
   const int deleted_users_count = DeleteUserProfiles(homedirs);
@@ -240,9 +274,8 @@ void HomeDirs::FreeDiskSpaceInternal() {
 
   // We had a chance to delete a user only if any unmounted homes existed.
   if (unmounted_homedirs.size() > 0) {
-    freeDiskSpace = platform_->AmountOfFreeDiskSpace(shadow_root_);
     ReportDiskCleanupProgress(
-        freeDiskSpace >= kTargetFreeSpaceAfterCleanup
+        HasTargetFreeSpace()
             ? DiskCleanupProgress::kWholeUserProfilesCleanedAboveTarget
             : DiskCleanupProgress::kWholeUserProfilesCleaned);
   } else {
@@ -312,8 +345,7 @@ int HomeDirs::DeleteUserProfiles(const std::vector<HomeDir>& homedirs) {
         RemoveLECredentials(deleted_user_dir.BaseName().value());
         platform_->DeleteFile(deleted_user_dir, true);
         ++deleted_users_count;
-        if (platform_->AmountOfFreeDiskSpace(shadow_root_) >=
-            kTargetFreeSpaceAfterCleanup)
+        if (HasTargetFreeSpace())
           break;
       }
     }
@@ -322,12 +354,34 @@ int HomeDirs::DeleteUserProfiles(const std::vector<HomeDir>& homedirs) {
   return deleted_users_count;
 }
 
-bool HomeDirs::HasTargetFreeSpace() const {
-  return AmountOfFreeDiskSpace() >= kTargetFreeSpaceAfterCleanup;
-}
-
 int64_t HomeDirs::AmountOfFreeDiskSpace() const {
   return platform_->AmountOfFreeDiskSpace(shadow_root_);
+}
+
+HomeDirs::FreeSpaceState HomeDirs::GetFreeDiskSpaceState() const {
+  return GetFreeDiskSpaceState(AmountOfFreeDiskSpace());
+}
+
+HomeDirs::FreeSpaceState HomeDirs::GetFreeDiskSpaceState(
+    int64_t free_disk_space) const {
+
+  if (free_disk_space < 0) {
+    return HomeDirs::FreeSpaceState::kError;
+  }
+
+  if (free_disk_space >= kTargetFreeSpaceAfterCleanup) {
+    return HomeDirs::FreeSpaceState::kAboveTarget;
+  } else if (free_disk_space >= kFreeSpaceThresholdToTriggerCleanup) {
+    return HomeDirs::FreeSpaceState::kAboveThreshold;
+  } else if (free_disk_space >= kMinFreeSpaceInBytes) {
+    return HomeDirs::FreeSpaceState::kNeedNormalCleanup;
+  } else {
+    return HomeDirs::FreeSpaceState::kNeedAggressiveCleanup;
+  }
+}
+
+bool HomeDirs::HasTargetFreeSpace() const {
+  return GetFreeDiskSpaceState() == HomeDirs::FreeSpaceState::kAboveTarget;
 }
 
 void HomeDirs::LoadDevicePolicy() {

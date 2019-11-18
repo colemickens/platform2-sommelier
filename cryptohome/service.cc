@@ -3435,9 +3435,11 @@ void Service::UpdateCurrentUserActivityTimestamp() {
 void Service::LowDiskCallback() {
   bool low_disk_space_signal_emitted = false;
   int64_t free_disk_space = homedirs_->AmountOfFreeDiskSpace();
-  if (free_disk_space < 0) {
-    LOG(ERROR) << "Error getting free disk space, got: " << free_disk_space;
-  } else if (free_disk_space < kNotifyDiskSpaceThreshold) {
+  auto free_space_state = homedirs_->GetFreeDiskSpaceState(free_disk_space);
+  if (free_space_state == HomeDirs::FreeSpaceState::kError) {
+    LOG(ERROR) << "Error getting free disk space";
+  } else if (free_space_state == HomeDirs::FreeSpaceState::kNeedNormalCleanup ||
+        free_space_state == HomeDirs::FreeSpaceState::kNeedAggressiveCleanup) {
     g_signal_emit(cryptohome_, low_disk_space_signal_,
                   0 /* signal detail (not used) */,
                   static_cast<uint64_t>(free_disk_space));

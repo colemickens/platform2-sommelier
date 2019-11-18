@@ -110,7 +110,7 @@ class UserDataAuthTestNotInitialized : public ::testing::Test {
     homedirs_.set_platform(&platform_);
     ON_CALL(homedirs_, Init(_, _, _)).WillByDefault(Return(true));
     ON_CALL(homedirs_, AmountOfFreeDiskSpace())
-        .WillByDefault(Return(kNotifyDiskSpaceThreshold));
+        .WillByDefault(Return(kFreeSpaceThresholdToTriggerCleanup));
     // Empty token list by default.  The effect is that there are no attempts
     // to unload tokens unless a test explicitly sets up the token list.
     ON_CALL(chaps_client_, GetTokenList(_, _)).WillByDefault(Return(true));
@@ -2722,9 +2722,9 @@ TEST_F(UserDataAuthTestThreaded, CheckLowDiskCallback) {
   // Checks that LowDiskCallback is called periodically.
   EXPECT_CALL(homedirs_, AmountOfFreeDiskSpace())
       .Times(AtLeast(3))
-      .WillOnce(Return(kNotifyDiskSpaceThreshold + 1))
-      .WillOnce(Return(kNotifyDiskSpaceThreshold - 1))
-      .WillRepeatedly(Return(kNotifyDiskSpaceThreshold + 1));
+      .WillOnce(Return(kFreeSpaceThresholdToTriggerCleanup + 1))
+      .WillOnce(Return(kFreeSpaceThresholdToTriggerCleanup - 1))
+      .WillRepeatedly(Return(kFreeSpaceThresholdToTriggerCleanup + 1));
 
   // DoAutoCleanup gets called once upon initialization, as verified by
   // CheckAutoCleanupCallbackFirst test. Here we check that it's called a second
@@ -2749,8 +2749,8 @@ TEST_F(UserDataAuthTestThreaded, CheckLowDiskCallback) {
 TEST_F(UserDataAuthTestThreaded, CheckLowDiskCallbackFreeDiskSpaceOnce) {
   EXPECT_CALL(homedirs_, AmountOfFreeDiskSpace())
       .Times(AtLeast(4))
-      .WillOnce(Return(kNotifyDiskSpaceThreshold + 1))
-      .WillRepeatedly(Return(kNotifyDiskSpaceThreshold - 1));
+      .WillOnce(Return(kFreeSpaceThresholdToTriggerCleanup + 1))
+      .WillRepeatedly(Return(kFreeSpaceThresholdToTriggerCleanup - 1));
   // Checks that DoAutoCleanup is called only once ahead of schedule if disk
   // space goes below threshold and stays below forever. Note that it's 2 times
   // here because it gets called once during Initialize(), see note in

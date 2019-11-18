@@ -15,7 +15,6 @@ static constexpr int kUploadAlertsPeriodMS = 1000 * 60 * 60 * 6;    // 6 hours
 static constexpr int kAutoCleanupPeriodMS = 1000 * 60 * 60;         // 1 hour
 static constexpr int kUpdateUserActivityPeriodHours = 24;           // daily
 static constexpr int kLowDiskNotificationPeriodMS = 1000 * 60 * 1;  // 1 minute
-static constexpr int64_t kNotifyDiskSpaceThreshold = 1 << 30;       // 1GB
 
 static constexpr int kDefaultRandomSeedLength = 64;
 // The default entropy source to seed with random data from the TPM on startup.
