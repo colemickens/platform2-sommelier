@@ -529,7 +529,7 @@ bool Ethernet::ConfigurePPPoEMode(const bool& enable, Error* error) {
   // TODO(crbug.com/1003958) If/when PPPoE is redesigned, this hack will be
   // unnecessary to begin with.
   Error unused_error;
-  service_->Disconnect(&unused_error, nullptr);
+  service_->Disconnect(&unused_error, __func__);
   DeregisterService(service_);
   service_ = service;
   RegisterService(service_);

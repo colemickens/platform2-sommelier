@@ -282,6 +282,7 @@ void Service::AutoConnect() {
 }
 
 void Service::Connect(Error* error, const char* reason) {
+  CHECK(reason);
   if (!connectable()) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed,
@@ -329,6 +330,7 @@ void Service::Connect(Error* error, const char* reason) {
 }
 
 void Service::Disconnect(Error* error, const char* reason) {
+  CHECK(reason);
   if (!IsActive(nullptr)) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kNotConnected,
@@ -356,6 +358,7 @@ void Service::Disconnect(Error* error, const char* reason) {
 void Service::DisconnectWithFailure(ConnectFailure failure,
                                     Error* error,
                                     const char* reason) {
+  CHECK(reason);
   Disconnect(error, reason);
   SetFailure(failure);
 }
