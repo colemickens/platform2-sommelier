@@ -275,6 +275,15 @@ bool Configuration::EnableAccelScanElements() {
   return true;
 }
 
+bool Configuration::EnableCalibration(bool enable) {
+  auto calibration = sensor_->GetChannel("calibration");
+  if (!calibration) {
+    LOG(ERROR) << "cannot find calibration channel";
+    return false;
+  }
+  return calibration->SetEnabled(enable);
+}
+
 bool Configuration::EnableKeyboardAngle() {
   base::FilePath kb_wake_angle;
   if (sensor_->IsSingleSensor()) {
@@ -332,6 +341,10 @@ bool Configuration::ConfigAccelerometer() {
 bool Configuration::ConfigIlluminance() {
   if (!CopyLightCalibrationFromVpd())
     return false;
+
+  // Disable calibration: it can fail if the light sensor does not support
+  // calibration mode.
+  EnableCalibration(false);
 
   LOG(INFO) << "light configuration complete";
   return true;

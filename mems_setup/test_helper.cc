@@ -35,6 +35,7 @@ SensorTestBase::SensorTestBase(const char* name,
       sensor_kind_(kind) {
   mock_context_->AddDevice(mock_device_.get());
   mock_context_->AddDevice(mock_sysfs_trigger_.get());
+  mock_device_->AddChannel(new FakeIioChannel("calibration", false));
 }
 
 void SensorTestBase::SetSingleSensor(const char* location) {

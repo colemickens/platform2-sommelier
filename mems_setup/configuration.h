@@ -42,6 +42,8 @@ class Configuration {
 
   bool EnableKeyboardAngle();
 
+  bool EnableCalibration(bool enable);
+
   Delegate* delegate_;  // non-owned
   SensorKind kind_;
   libmems::IioDevice* sensor_;  // non-owned
