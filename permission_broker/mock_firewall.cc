@@ -9,8 +9,7 @@
 namespace permission_broker {
 
 int MockFirewall::SetRunInMinijailFailCriterion(
-    const std::vector<std::string>& keywords, bool repeat,
-    bool omit_failure) {
+    const std::vector<std::string>& keywords, bool repeat, bool omit_failure) {
   match_criteria_.push_back(Criterion{keywords, repeat, omit_failure, 0});
   return match_criteria_.size() - 1;
 }
@@ -26,15 +25,14 @@ bool MockFirewall::MatchAndUpdate(const std::vector<std::string>& argv) {
     bool match = true;
     // Empty criterion is a catch all -- fail on any RunInMinijail.
     for (const std::string& keyword : criterion.keywords) {
-      match = match &&
-        (std::find(argv.begin(), argv.end(), keyword) != argv.end());
+      match =
+          match && (std::find(argv.begin(), argv.end(), keyword) != argv.end());
     }
     if (match) {
       criterion.match_count++;
       if (!criterion.repeat) {
         match_criteria_.erase(std::remove(match_criteria_.begin(),
-                                          match_criteria_.end(),
-                                          criterion),
+                                          match_criteria_.end(), criterion),
                               match_criteria_.end());
       }
       // If not negating, treat as fail criterion,
@@ -67,6 +65,11 @@ int MockFirewall::RunInMinijail(const std::vector<std::string>& argv) {
   return 0;
 }
 
+// Returns the inverse of a given command. For an insert or append returns a
+// command to delete that rule, for a deletion returns a command to insert it at
+// the start. Assumes that the inverse of -D is always -I and that -I|--insert
+// is used without index arguments. This holds as of 2019-11-20 but if you start
+// using them you'll need to update this method.
 std::vector<std::string> MockFirewall::GetInverseCommand(
     const std::vector<std::string>& argv) {
   std::vector<std::string> inverse;
@@ -76,12 +79,14 @@ std::vector<std::string> MockFirewall::GetInverseCommand(
 
   bool isIpTablesCommand = argv[0] == kIpTablesPath;
   for (const auto& arg : argv) {
-    if (arg == "-A" && isIpTablesCommand)
+    if (isIpTablesCommand && (arg == "-I" || arg == "-A" || arg == "--insert" ||
+                              arg == "--append")) {
       inverse.push_back("-D");
-    else if (arg == "-D" && isIpTablesCommand)
-      inverse.push_back("-A");
-    else
+    } else if (isIpTablesCommand && arg == "-D") {
+      inverse.push_back("-I");
+    } else {
       inverse.push_back(arg);
+    }
   }
   return inverse;
 }
@@ -91,12 +96,23 @@ std::vector<std::string> MockFirewall::GetInverseCommand(
 // ip/iptables, there is a later match command that
 // deletes that same rule/mark.
 bool MockFirewall::CheckCommandsUndone() {
+  return CountActiveCommands() == 0;
+}
+
+// For each command, if it's an insert or an append it checks if there's a
+// corresponding delete later on, then it returns a count of all rules without
+// deletes. Will skip any rule that's not an append or insert e.g. delete
+// without an insert first will return 0 not -1.
+int MockFirewall::CountActiveCommands() {
+  int count = 0;
   for (std::vector<std::vector<std::string>>::iterator it = commands_.begin();
        it != commands_.end(); it++) {
     // For each command that adds a rule, check that its inverse
     // exists later in the log of commands.
     if ((std::find(it->begin(), it->end(), "-A") != it->end()) ||
-        (std::find(it->begin(), it->end(), "add") != it->end())) {
+        (std::find(it->begin(), it->end(), "--append") != it->end()) ||
+        (std::find(it->begin(), it->end(), "-I") != it->end()) ||
+        (std::find(it->begin(), it->end(), "--insert") != it->end())) {
       bool found = false;
       std::vector<std::string> inverse = GetInverseCommand(*it);
       // If GetInverseCommand returns the same command, then it was
@@ -110,10 +126,10 @@ bool MockFirewall::CheckCommandsUndone() {
         }
       }
       if (!found)
-        return false;
+        count++;
     }
   }
-  return true;
+  return count;
 }
 
 }  // namespace permission_broker

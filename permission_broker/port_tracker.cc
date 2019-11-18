@@ -193,7 +193,7 @@ bool PortTracker::AddPortRule(const PortRule& rule, int dbus_fd) {
           firewall_->AddLoopbackLockdownRules(rule.proto, rule.input_dst_port);
       break;
     case kForwardingRule:
-      success = firewall_->DeleteIpv4ForwardRule(
+      success = firewall_->AddIpv4ForwardRule(
           rule.proto, rule.input_dst_port, rule.input_ifname, rule.dst_ip,
           rule.dst_port);
       break;

@@ -310,6 +310,7 @@ TEST_F(PortTrackerTest, ReleaseLoopbackTcpPort_EpollFailure) {
 }
 
 TEST_F(PortTrackerTest, StartPortForwarding_BaseSuccessCase) {
+  SetMockExpectations(&mock_firewall_, true /* success */);
   EXPECT_CALL(port_tracker_, AddLifelineFd(dbus_fd)).WillOnce(Return(5));
   ASSERT_TRUE(port_tracker_.StartTcpPortForwarding(
       tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
@@ -319,6 +320,7 @@ TEST_F(PortTrackerTest, StartPortForwarding_BaseSuccessCase) {
       tcp_port, "eth0", crosvm_addr, tcp_port, dbus_fd));
 
   ASSERT_TRUE(port_tracker_.HasActiveRules());
+  ASSERT_EQ(2, mock_firewall_.CountActiveCommands());
 }
 
 TEST_F(PortTrackerTest, StartPortForwarding_LifelineFdFailure) {
@@ -363,6 +365,7 @@ TEST_F(PortTrackerTest, StartPortForwarding_InputPortValidation) {
   ASSERT_TRUE(port_tracker_.StartUdpPortForwarding(
       tcp_port, "eth0", crosvm_addr, reserved_port, dbus_fd));
   ASSERT_TRUE(port_tracker_.HasActiveRules());
+  ASSERT_EQ(2, mock_firewall_.CountActiveCommands());
 }
 
 TEST_F(PortTrackerTest, StartPortForwarding_InputInterfaceValidation) {
@@ -398,6 +401,7 @@ TEST_F(PortTrackerTest, StartPortForwarding_InputInterfaceValidation) {
       tcp_port, "mlan0", crosvm_addr, tcp_port, dbus_fd));
 
   ASSERT_TRUE(port_tracker_.HasActiveRules());
+  ASSERT_EQ(5, mock_firewall_.CountActiveCommands());
 }
 
 TEST_F(PortTrackerTest, StartPortForwarding_TargetIpAddressValidation) {

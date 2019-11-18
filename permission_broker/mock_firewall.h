@@ -24,6 +24,7 @@ class MockFirewall : public Firewall {
       const std::vector<std::string>& keywords, bool repeat, bool omit_failure);
   int GetRunInMinijailCriterionMatchCount(int id);
   bool CheckCommandsUndone();
+  int CountActiveCommands();
 
   // Check if the current command matches a failure rule,
   // if the failure rule is not a repeat rule, remove it
