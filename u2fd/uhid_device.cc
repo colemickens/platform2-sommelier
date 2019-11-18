@@ -18,11 +18,8 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-#include <brillo/message_loops/message_loop.h>
 
 #include "u2fd/uhid_device.h"
-
-using brillo::MessageLoop;
 
 namespace u2f {
 
@@ -80,12 +77,9 @@ bool UHidDevice::Init(uint32_t hid_version, const std::string& report_desc) {
   }
   created_ = true;
 
-  if (!MessageLoop::current()->WatchFileDescriptor(
-          FROM_HERE,
-          fd_.get(),
-          MessageLoop::WatchMode::kWatchRead,
-          true,
-          base::Bind(&UHidDevice::FdEvent, base::Unretained(this)))) {
+  watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      fd_.get(), base::Bind(&UHidDevice::FdEvent, base::Unretained(this)));
+  if (!watcher_) {
     LOG(ERROR) << "Unable to watch " << kUHidNode << " events";
     return false;
   }

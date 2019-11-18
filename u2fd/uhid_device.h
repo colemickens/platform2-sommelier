@@ -5,8 +5,10 @@
 #ifndef U2FD_UHID_DEVICE_H_
 #define U2FD_UHID_DEVICE_H_
 
+#include <memory>
 #include <string>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 
@@ -54,6 +56,8 @@ class UHidDevice : public HidInterface {
   std::string phys_;
 
   HidInterface::OutputReportCallback on_output_report_;
+
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
 
   DISALLOW_COPY_AND_ASSIGN(UHidDevice);
 };
