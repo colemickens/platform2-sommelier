@@ -816,6 +816,7 @@ NormalStream::uninit(char const* szCallerName) {
   status_t status = NO_ERROR;
   std::string stream_name(szCallerName);
   std::lock_guard<std::mutex> _l(mLock);
+  std::lock_guard<std::mutex> _openlock(mOpenLock);
 
   if (mStreamName.size() == 0) {
     LOGE("Re-uninit:[%s]", szCallerName);
@@ -896,6 +897,8 @@ NormalStream::uninit(char const* szCallerName) {
 MBOOL
 NormalStream::enque(QParams* pParams) {
   LOGI("+");
+  int imgi_w = 0, imgi_h = 0;
+  bool vipi_enqued = false, img3o_enqued = false;
   unsigned int unstarted_node_num = 0;
   status_t status = NO_ERROR;
   IImageBuffer* lsc_buffer = nullptr;
@@ -947,7 +950,15 @@ NormalStream::enque(QParams* pParams) {
             NSImageio::NSIspio::EPortIndex_TUNING) {
           tuning_buffer = it->mvIn[i].mBuffer;
           LOGD("tuning buffer enqued");
+        } else if (it->mvIn[i].mPortID.index ==
+                   NSImageio::NSIspio::EPortIndex_IMGI) {
+          imgi_w = it->mvIn[i].mBuffer->getImgSize().w;
+          imgi_h = it->mvIn[i].mBuffer->getImgSize().h;
+        } else if (it->mvIn[i].mPortID.index ==
+                   NSImageio::NSIspio::EPortIndex_VIPI) {
+          vipi_enqued = true;
         }
+
         // Dynamic Link
         if (mFirstFrame && it == pParams->mvFrameParams.begin()) {
           unstarted_node_num++;
@@ -1021,6 +1032,42 @@ NormalStream::enque(QParams* pParams) {
       }
     }
 
+    //--------------------------------------------------------
+    if (mStreamTag == NSCam::v4l2::ENormalStreamTag_3DNR && mFirstFrame &&
+        it == pParams->mvFrameParams.begin() && vipi_enqued == false) {
+      std::shared_ptr<V4L2StreamNode> node;
+      status = validNode(NSImageio::NSIspio::EPortIndex_VIPI, &node);
+      if (status != NO_ERROR) {
+        LOGE("Fail to validNode, port = %d",
+             NSImageio::NSIspio::EPortIndex_VIPI);
+        return MFALSE;
+      }
+
+      if (!node->isPrepared() && imgi_w > 0 && imgi_h > 0) {
+        MINT32 bufBoundaryInBytes[3] = {0, 0, 0};
+        MUINT32 bufStridesInBytes[3] = {0, 0, 0};
+
+        IImageBufferAllocator::ImgParam imgParam(
+            eImgFmt_YV12, MSize(imgi_w, imgi_h), bufStridesInBytes,
+            bufBoundaryInBytes, 1);
+
+        status = node->setBufFormat(&imgParam);
+        if (status != NO_ERROR) {
+          LOGE("setBufFormat failed, %d", NSImageio::NSIspio::EPortIndex_VIPI);
+          return MFALSE;
+        }
+        status = node->setupBuffers();
+        if (status != NO_ERROR) {
+          LOGE("setupBuffers failed, %d", NSImageio::NSIspio::EPortIndex_VIPI);
+          return MFALSE;
+        }
+        auto search = mPortIdxToFmt.find(NSImageio::NSIspio::EPortIndex_VIPI);
+        if (search != mPortIdxToFmt.end())
+          mPortIdxToFmt.erase(search);
+      }
+    }
+    //-------------------------------------------------------------
+
     // set or clear LSC header and copy LSC data buffer
     if (tuning_buffer) {
       _set_meta_buffer(NSImageio::NSIspio::EPortIndex_IMGCI, tuning_buffer,
@@ -1037,6 +1084,9 @@ NormalStream::enque(QParams* pParams) {
       int p_idx = it->mvOut[i].mPortID.index;
       int p_sel_wdmao = NSImageio::NSIspio::EPortIndex_UNKNOWN;
       int p_sel_wroto = NSImageio::NSIspio::EPortIndex_UNKNOWN;
+
+      if (p_idx == NSImageio::NSIspio::EPortIndex_IMG3O)
+        img3o_enqued = true;
 
       if (p_idx == NSImageio::NSIspio::EPortIndex_WDMAO ||
           p_idx == NSImageio::NSIspio::EPortIndex_WROTO) {
@@ -1194,6 +1244,43 @@ NormalStream::enque(QParams* pParams) {
     }
     LOGD("total un-started all nodes = %d", unstarted_node_num);
 
+    //---------------------------------------------------------------------
+    if (mStreamTag == NSCam::v4l2::ENormalStreamTag_3DNR && mFirstFrame &&
+        it == pParams->mvFrameParams.begin() && img3o_enqued == false) {
+      std::shared_ptr<V4L2StreamNode> node;
+      status = validNode(NSImageio::NSIspio::EPortIndex_IMG3O, &node);
+      if (status != NO_ERROR) {
+        LOGE("Fail to validNode, port = %d",
+             NSImageio::NSIspio::EPortIndex_IMG3O);
+        return MFALSE;
+      }
+
+      if (!node->isPrepared() && imgi_w > 0 && imgi_h > 0) {
+        MINT32 bufBoundaryInBytes[3] = {0, 0, 0};
+        MUINT32 bufStridesInBytes[3] = {0, 0, 0};
+
+        IImageBufferAllocator::ImgParam imgParam(
+            eImgFmt_YV12, MSize(imgi_w, imgi_h), bufStridesInBytes,
+            bufBoundaryInBytes, 1);
+
+        status = node->setBufFormat(&imgParam);
+        if (status != NO_ERROR) {
+          LOGE("setBufFormat failed, %d", NSImageio::NSIspio::EPortIndex_IMG3O);
+          return MFALSE;
+        }
+        status = node->setupBuffers();
+        if (status != NO_ERROR) {
+          LOGE("setupBuffers failed, %d", NSImageio::NSIspio::EPortIndex_IMG3O);
+          return MFALSE;
+        }
+        //---
+        auto search = mPortIdxToFmt.find(NSImageio::NSIspio::EPortIndex_IMG3O);
+        if (search != mPortIdxToFmt.end())
+          mPortIdxToFmt.erase(search);
+      }
+    }
+    //---------------------------------------------------------------------
+
     // remove fake mapping
     if (!mPortIdxToFmt.empty()) {
       LOGD("start to remove fake node here");
@@ -1292,9 +1379,9 @@ NormalStream::enque(QParams* pParams) {
 
           } else {
             LOGE(
-                "Cannot setting::size of mPortIdxToFmt = %d, size of "
+                "[%d]Cannot setting::size of mPortIdxToFmt = %d, size of "
                 "requiredNodes =  %d",
-                mPortIdxToFmt.size(), required_nodes.size());
+                mStreamTag, mPortIdxToFmt.size(), required_nodes.size());
             return MFALSE;
           }
         }
@@ -1323,52 +1410,43 @@ NormalStream::enque(QParams* pParams) {
       }
     }
 
+    //---------------------------------------------------------
+    std::shared_ptr<V4L2StreamNode> node_vipi;
+    status = validNode(NSImageio::NSIspio::EPortIndex_VIPI, &node_vipi);
+    if (status == NO_ERROR) {
+      if (node_vipi->isPrepared())
+        node_vipi->start();
+    }
+    std::shared_ptr<V4L2StreamNode> node_img3o;
+    status = validNode(NSImageio::NSIspio::EPortIndex_IMG3O, &node_img3o);
+    if (status == NO_ERROR) {
+      if (node_img3o->isPrepared())
+        node_img3o->start();
+    }
+    //---------------------------------------------------------------
+
     if (mFirstFrame)
       mFirstFrame = false;
-    // disable links of node
-    // nodes in mAllNodes should be inactive nodes
-    LOGD("Start to disable future-used links----");
-    for (auto it = mAllNodes.begin(); it != mAllNodes.end(); ++it) {
-      bool changed = false;
-      (*it)->setActive(false, &changed);
-      if (changed) {
-        status = mControl->disableLink(mMediaDevice, DYNAMIC_LINK_BYVIDEONAME,
-                                       (*it)->getName());
-        if (status != NO_ERROR)
-          LOGE("mControl->disableLink fail, disable [%s]", (*it)->getName());
-        else
-          LOGI("mControl->disableLink : %s", (*it)->getName());
-      }
-    }
+
     // nodes in mNodes may be active or inactive nodes
     for (auto it = mNodes.begin(); it != mNodes.end(); ++it) {
       bool changed = false;
       std::shared_ptr<V4L2StreamNode> node;
       node = it->second;
       auto idx = active_nodes.find(node->getId());
-      if (idx == active_nodes.end()) {  // not found
-        node->setActive(false, &changed);
-        if (changed) {
-          status = mControl->disableLink(mMediaDevice, DYNAMIC_LINK_BYVIDEONAME,
-                                         node->getName());
-          if (status != NO_ERROR)
-            LOGE("mControl->disableLink fail, disable [%s]", node->getName());
-          else
-            LOGI("mControl->disableLink : %s", node->getName());
-        }
-      } else {  // found
+      if (idx != active_nodes.end()) {
         std::shared_ptr<V4L2Device> device;
         device = std::static_pointer_cast<V4L2Device>(node->getVideoNode());
         active_devices.push_back(device);
         node->setActive(true, &changed);
-        if (changed) {
-          status = mControl->enableLink(mMediaDevice, DYNAMIC_LINK_BYVIDEONAME,
-                                        node->getName());
-          if (status != NO_ERROR)
-            LOGE("mControl->enableLink fail, disable [%s]", node->getName());
-          else
-            LOGI("mControl->enableLink : %s", node->getName());
-        }
+        if (changed)
+          LOGD("[%d] %s State: inactive -> active", mStreamTag,
+               node->getName());
+      } else {
+        node->setActive(false, &changed);
+        if (changed)
+          LOGD("[%d] %s  State: active -> inactive", mStreamTag,
+               node->getName());
       }
     }
     // enque
@@ -1404,23 +1482,26 @@ NormalStream::enque(QParams* pParams) {
         int port_idx = static_cast<int>(all_bufs[i].mPortID.index);
         auto the_node = mFmtKeyToNode.find(port_idx);
         if (the_node != mFmtKeyToNode.end()) {
-          if (the_node->second->enque(all_bufs[i], false, mSubDevice) !=
+          if (the_node->second != all_nodes[i])
+            LOGE("[%d]the_node->second (%s) != all_nodes[i] (%s)", mStreamTag,
+                 the_node->second->getName(), all_nodes[i]->getName());
+          if (the_node->second->enque(all_bufs[i], true, mSubDevice) !=
               NO_ERROR) {
-            LOGE("enque failed @%d, bufs[%d], port=%d,  w=%d,h=%d,fmt=0x%x",
-                 __LINE__, i, all_bufs[i].mPortID.index,
+            LOGE("[%d]enque failed @%d, bufs[%d], port=%d,  w=%d,h=%d,fmt=0x%x",
+                 mStreamTag, __LINE__, i, all_bufs[i].mPortID.index,
                  all_bufs[i].mBuffer->getImgSize().w,
                  all_bufs[i].mBuffer->getImgSize().h,
                  all_bufs[i].mBuffer->getImgFormat());
             return MFALSE;
           }
         } else {
-          LOGE("Cannot find the node from mFmtKeyToNode !!!");
+          LOGE("[%d]Cannot find the node from mFmtKeyToNode!", mStreamTag);
           return MFALSE;
         }
       } else {
-        if (all_nodes[i]->enque(all_bufs[i], false, mSubDevice) != NO_ERROR) {
-          LOGE("enque failed @%d, bufs[%d], port=%d,  w=%d,h=%d,fmt=0x%x",
-               __LINE__, i, all_bufs[i].mPortID.index,
+        if (all_nodes[i]->enque(all_bufs[i], true, mSubDevice) != NO_ERROR) {
+          LOGE("[%d]enque failed @%d, bufs[%d], port=%d,  w=%d,h=%d,fmt=0x%x",
+               mStreamTag, __LINE__, i, all_bufs[i].mPortID.index,
                all_bufs[i].mBuffer->getImgSize().w,
                all_bufs[i].mBuffer->getImgSize().h,
                all_bufs[i].mBuffer->getImgFormat());
@@ -1682,7 +1763,7 @@ status_t NormalStream::notifyPollEvent(PollEventMessage* pollMsg) {
     }
 
     {
-      std::lock_guard<std::mutex> _l(mQueueLock);
+      std::unique_lock<std::mutex> _l(mQueueLock);
       auto it = mFrameQueue.begin();
       for (; it != mFrameQueue.end(); ++it) {
         status_t ret = it->updateFrame(buf.mBuffer);
@@ -1699,7 +1780,9 @@ status_t NormalStream::notifyPollEvent(PollEventMessage* pollMsg) {
             mFrameQueue.erase(it);
             mCondition.notify_one();
           } else {
+            _l.unlock();
             it->mParams.mpfnCallback(&(it->mParams));
+            _l.lock();
             mFrameQueue.erase(it);
           }
         }

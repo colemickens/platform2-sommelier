@@ -81,7 +81,6 @@ NSCam::NSCamFeature::NSFeaturePipe::P2Operator::configNormalStream(
 MERROR
 NSCam::NSCamFeature::NSFeaturePipe::P2Operator::enque(QParams* pEnqueParam,
                                                       const char* userName) {
-  std::lock_guard<std::mutex> _l(mLock);
 
   if (!mpINormalStream) {
     MY_LOGE("normalstream nullptr");
