@@ -99,15 +99,18 @@ void PPPoEService::OnConnect(Error* error) {
 }
 
 void PPPoEService::OnDisconnect(Error* error, const char* reason) {
-  // Since |pppd_| must be valid by the time OnConnect completes successfully
-  // and Disconnect will only trigger OnDisconnect if the Service is active,
-  // we can only reach here by some logic flaw in PPPoEService/Service.
-  CHECK(pppd_) << "OnDisconnect called on active PPPoEService without pppd";
-
-  // If the Disconnect was triggered by OnPPPDied, this will simply be a no-op.
-  // Else OnPPPDied will eventually be triggered and will complete the
-  // disconnection.
-  pppd_->Stop();
+  EthernetService::OnDisconnect(error, reason);
+  if (ppp_device_) {
+    ppp_device_->DropConnection();
+  } else {
+    // If no PPPDevice has been associated with this service then nothing will
+    // drive this service's transition into the idle state.  This must be forced
+    // here to ensure that the service is not left in any intermediate state.
+    SetState(Service::kStateIdle);
+  }
+  ppp_device_ = nullptr;
+  pppd_.reset();
+  manager()->OnInnerDevicesChanged();
 }
 
 bool PPPoEService::Load(StoreInterface* storage) {
@@ -219,36 +222,14 @@ void PPPoEService::OnPPPConnected(const map<string, string>& params) {
 }
 
 void PPPoEService::OnPPPDied(pid_t pid, int exit) {
-  // We can either have an externally-triggered Disconnect which leads
-  // to pppd being terminated, or pppd can terminate for some reason
-  // (e.g., authentication failure) and this callback will have to
-  // start the Service disconnection.
-  if (state() != kStateDisconnecting) {
-    Error unused_error;
-    Disconnect(&unused_error, __func__);
-  }
+  Error unused_error;
+  Disconnect(&unused_error, __func__);
 
   if (authenticating_) {
     SetFailure(Service::kFailurePPPAuth);
-    authenticating_ = false;
-  } else if (!explicitly_disconnected()) {
+  } else {
     SetFailure(PPPDevice::ExitStatusToFailure(exit));
   }
-
-  // If a failure state was not reached from the above block, then we need to
-  // ensure that the state is driven to kStateIdle. Device::DropConnection does
-  // that automatically, so we only need to catch the case where no failure is
-  // set but |ppp_device_| is not yet populated (e.g., an explicit Disconnect
-  // prior to OnPPPConnected).
-  if (ppp_device_) {
-    ppp_device_->DropConnection();
-    ppp_device_ = nullptr;
-  } else if (state() != kStateFailure) {
-    SetState(kStateIdle);
-  }
-
-  pppd_.reset();
-  manager()->OnInnerDevicesChanged();
 }
 
 }  // namespace shill

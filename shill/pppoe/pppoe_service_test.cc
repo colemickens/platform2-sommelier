@@ -29,7 +29,6 @@ using std::map;
 using std::string;
 using testing::_;
 using testing::Mock;
-using testing::NiceMock;
 using testing::Return;
 using testing::StrEq;
 
@@ -71,12 +70,12 @@ class PPPoEServiceTest : public testing::Test {
   int max_failure() { return service_->max_failure_; }
 
   EventDispatcherForTest dispatcher_;
-  NiceMock<MockMetrics> metrics_;
-  NiceMock<MockControl> control_interface_;
+  MockMetrics metrics_;
+  MockControl control_interface_;
   MockProcessManager process_manager_;
-  NiceMock<MockManager> manager_;
+  MockManager manager_;
   scoped_refptr<MockEthernet> ethernet_;
-  NiceMock<MockDeviceInfo> device_info_;
+  MockDeviceInfo device_info_;
 
   scoped_refptr<PPPoEService> service_;
 
@@ -107,7 +106,6 @@ TEST_F(PPPoEServiceTest, AuthenticationFailure) {
   // Last auth failure should lead to the connection failing after pppd
   // terminates itself.
   OnPPPDied(0, 0);
-
   EXPECT_NE(service_->state(), previous_state);
   EXPECT_EQ(service_->state(), Service::kStateFailure);
   EXPECT_EQ(service_->failure(), Service::kFailurePPPAuth);
@@ -198,8 +196,6 @@ TEST_F(PPPoEServiceTest, Disconnect) {
   {
     Error error;
     service_->Disconnect(&error, "in test");
-    // Fake pppd termination.
-    OnPPPDied(0, 0);
     EXPECT_TRUE(error.IsSuccess());
   }
 }
@@ -209,22 +205,6 @@ TEST_F(PPPoEServiceTest, DisconnectDuringAssociation) {
 
   Error error;
   service_->Disconnect(&error, "in test");
-  // Fake pppd termination.
-  OnPPPDied(0, 0);
-  EXPECT_TRUE(error.IsSuccess());
-
-  // A Disconnect that occurred during association but was *not*
-  // user-initiated is a failure.
-  EXPECT_EQ(service_->state(), Service::kStateFailure);
-}
-
-TEST_F(PPPoEServiceTest, UserDisconnectDuringAssociation) {
-  FakeConnectionSuccess();
-
-  Error error;
-  service_->UserInitiatedDisconnect("in test", &error);
-  // Fake pppd termination.
-  OnPPPDied(0, 0);
   EXPECT_TRUE(error.IsSuccess());
 
   EXPECT_EQ(service_->state(), Service::kStateIdle);

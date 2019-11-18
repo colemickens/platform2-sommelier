@@ -78,9 +78,6 @@ class ExternalTask : public RpcTaskDelegate {
                                bool close_nonstd_fds,
                                Error* error);
 
-  // Performs a non-blocking process termination for an active ExternalTask. If
-  // called multiple times without the task being re-started in between calls,
-  // all but the first call will be no-ops.
   virtual void Stop();
 
  private:
