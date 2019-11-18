@@ -789,6 +789,17 @@ bool TPM2UtilityImpl::Sign(int key_handle,
       LOG(WARNING) << "Attempting to sign using RSA PSS padding with no salt. "
                       "This may result in deterministic padding.";
     }
+    // If no Hash algorithm is specified in the signing mechanism, then we'll
+    // have to use the one in the PSS parameters.
+    if (digest_algorithm == DigestAlgorithm::NoDigest) {
+      digest_algorithm = GetDigestAlgorithm(pss_params->hashAlg);
+      if (digest_algorithm == DigestAlgorithm::NoDigest) {
+        // PSS can't accept signing of generic data without hash algorithm
+        LOG(ERROR) << "No digest algorithm specified in PSS Params for "
+                      "CKM_RSA_PKCS_PSS.";
+        return false;
+      }
+    }
   }
 
   trunks::TPM_ALG_ID digest_alg_id =

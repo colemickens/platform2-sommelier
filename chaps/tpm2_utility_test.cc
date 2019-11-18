@@ -691,6 +691,52 @@ TEST_F(TPM2UtilityTest, SignUnrestrictedRsaPssSuccess) {
             1);
 }
 
+TEST_F(TPM2UtilityTest, SignUnrestrictedGenericRsaPssSuccess) {
+  TPM2UtilityImpl utility(factory_.get());
+  int key_handle = 43;
+  std::string input = "01234567890123456789";
+  std::string output;
+  trunks::TPMT_PUBLIC public_data;
+  public_data.type = trunks::TPM_ALG_RSA;
+  public_data.parameters.rsa_detail.exponent = 0x10001;
+  public_data.object_attributes = trunks::kSign | trunks::kDecrypt;
+  public_data.unique.rsa = GetValidRSAPublicKey();
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(public_data), Return(TPM_RC_SUCCESS)));
+  std::string padded_input;
+  EXPECT_CALL(mock_tpm_utility_,
+              AsymmetricDecrypt(key_handle, trunks::TPM_ALG_NULL,
+                                trunks::TPM_ALG_NULL, _, _, _))
+      .WillOnce(DoAll(SaveArg<3>(&padded_input), Return(TPM_RC_SUCCESS)));
+
+  EXPECT_TRUE(utility.Sign(key_handle, CKM_RSA_PKCS_PSS,
+                           GetRSAPSSParam(CKM_SHA_1, CKG_MGF1_SHA1, 20), input,
+                           &output));
+
+  // Check the input is correctly padded with RSA PSS.
+
+  // Create RSA object for use with OpenSSL
+  crypto::ScopedRSA rsa = utility.PublicAreaToScopedRsa(public_data);
+  EXPECT_TRUE(rsa);
+  EXPECT_EQ(RSA_verify_PKCS1_PSS_mgf1(
+                rsa.get(), reinterpret_cast<const uint8_t*>(base::data(input)),
+                EVP_sha1(), EVP_sha1(),
+                reinterpret_cast<const uint8_t*>(base::data(padded_input)), 20),
+            1);
+}
+
+TEST_F(TPM2UtilityTest, SignUnrestrictedGenericRsaPssInvalidHashAlg) {
+  TPM2UtilityImpl utility(factory_.get());
+  int key_handle = 43;
+  std::string input = "01234567890123456789";
+  std::string output;
+
+  // CKM_RC4 is not a valid signature mechanism, and the call should fail.
+  EXPECT_FALSE(utility.Sign(key_handle, CKM_RSA_PKCS_PSS,
+                            GetRSAPSSParam(CKM_RC4, CKG_MGF1_SHA1, 20), input,
+                            &output));
+}
+
 TEST_F(TPM2UtilityTest, SignEccSuccess) {
   TPM2UtilityImpl utility(factory_.get());
   int key_handle = 43;
