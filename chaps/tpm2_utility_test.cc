@@ -657,6 +657,64 @@ TEST_F(TPM2UtilityTest, SignRsaSuccess) {
   EXPECT_TRUE(utility.Sign(key_handle, CKM_SHA1_RSA_PKCS, "", input, &output));
 }
 
+TEST_F(TPM2UtilityTest, SignSignOnlyRsaPssSuccess) {
+  TPM2UtilityImpl utility(factory_.get());
+  int key_handle = 43;
+  std::string input = "01234567890123456789";
+  std::string output;
+  trunks::TPMT_PUBLIC public_data;
+  public_data.type = trunks::TPM_ALG_RSA;
+  public_data.parameters.rsa_detail.exponent = 0x10001;
+  public_data.object_attributes = trunks::kSign;
+  public_data.unique.rsa = GetValidRSAPublicKey();
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(public_data), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, Sign(key_handle, trunks::TPM_ALG_RSAPSS,
+                                      trunks::TPM_ALG_SHA1, input, false, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_TRUE(utility.Sign(key_handle, CKM_SHA1_RSA_PKCS_PSS,
+                           GetRSAPSSParam(CKM_SHA_1, CKG_MGF1_SHA1, 20), input,
+                           &output));
+}
+
+TEST_F(TPM2UtilityTest, SignSignOnlyRsaPssInvalidMGF) {
+  TPM2UtilityImpl utility(factory_.get());
+  int key_handle = 43;
+  std::string input = "01234567890123456789";
+  std::string output;
+  trunks::TPMT_PUBLIC public_data;
+  public_data.type = trunks::TPM_ALG_RSA;
+  public_data.parameters.rsa_detail.exponent = 0x10001;
+  public_data.object_attributes = trunks::kSign;
+  public_data.unique.rsa = GetValidRSAPublicKey();
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(public_data), Return(TPM_RC_SUCCESS)));
+  // Sign only key doesn't support MGF with a hash algorithm that differs from
+  // the signing mechanism.
+  EXPECT_FALSE(utility.Sign(key_handle, CKM_SHA1_RSA_PKCS_PSS,
+                            GetRSAPSSParam(CKM_SHA_1, CKG_MGF1_SHA256, 20),
+                            input, &output));
+}
+
+TEST_F(TPM2UtilityTest, SignSignOnlyRsaPssInvalidSize) {
+  TPM2UtilityImpl utility(factory_.get());
+  int key_handle = 43;
+  std::string input = "0";
+  std::string output;
+  trunks::TPMT_PUBLIC public_data;
+  public_data.type = trunks::TPM_ALG_RSA;
+  public_data.parameters.rsa_detail.exponent = 0x10001;
+  public_data.object_attributes = trunks::kSign;
+  public_data.unique.rsa = GetValidRSAPublicKey();
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(public_data), Return(TPM_RC_SUCCESS)));
+  // Size mismatch between the input data (size 1 byte) and the SHA1 algorithm
+  // (20 bytes).
+  EXPECT_FALSE(utility.Sign(key_handle, CKM_SHA1_RSA_PKCS_PSS,
+                            GetRSAPSSParam(CKM_SHA_1, CKG_MGF1_SHA1, 20), input,
+                            &output));
+}
+
 TEST_F(TPM2UtilityTest, SignUnrestrictedRsaPssSuccess) {
   TPM2UtilityImpl utility(factory_.get());
   int key_handle = 43;

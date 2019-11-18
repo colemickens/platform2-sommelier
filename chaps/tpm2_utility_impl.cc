@@ -907,9 +907,46 @@ bool TPM2UtilityImpl::Sign(int key_handle,
                                            session_->GetDelegate(), signature);
       } else if (GetSigningSchemeForMechanism(signing_mechanism) ==
                  RsaPaddingScheme::RSASSA_PSS) {
-        LOG(ERROR)
-            << "RSA PSS Sign() for sign only TPMv2 Key is not implemented";
-        return false;
+        if (digest_alg_id == trunks::TPM_ALG_NULL) {
+          // If the TPM doesn't support the hash algorithm, then it's going to
+          // fail. RSA PSS doesn't work with TPM_ALG_NULL.
+          LOG(ERROR) << "Unsupported hash combo of mechanism "
+                     << signing_mechanism << " and hash "
+                     << static_cast<int>(digest_algorithm);
+          return false;
+        }
+        int expected_size = EVP_MD_size(GetOpenSSLDigest(digest_algorithm));
+        if (expected_size != input.size()) {
+          LOG(ERROR) << "Size mismatch for RSA PSS Sign() for sign only TPMv2 "
+                        "Key. Expected "
+                     << expected_size << ", actual " << input.size();
+          return false;
+        }
+        if (mgf1_hash != GetOpenSSLDigest(digest_algorithm)) {
+          LOG(ERROR) << "RSA PSS Sign() for sign only TPMv2 Key doesn't "
+                        "support difference in MGF1 hash algorithm and signing "
+                        "hash algorithm, MGF: "
+                     << pss_params->mgf << ", Signing Hash Alg: "
+                     << static_cast<int>(digest_algorithm);
+          return false;
+        }
+        int max_sLen = public_area.unique.rsa.size -
+                       EVP_MD_size(GetOpenSSLDigest(digest_algorithm)) - 2;
+        if (pss_params->sLen != max_sLen) {
+          // Note: The reason why this is not fatal is because most of the time,
+          // sLen is not maximized, but commonly set to the digest size, and we
+          // shouldn't make the common case fail. Also, during verification,
+          // sLen can be recovered, so the problem caused by using a different
+          // sLen is limited.
+          LOG(WARNING) << "TPMv2 only support RSA PSS sLen = " << max_sLen
+                       << " for RSA " << public_area.unique.rsa.size
+                       << "bit key, but sLen = " << pss_params->sLen
+                       << ". Proceed to sign anyway.";
+        }
+        result = trunks_tpm_utility_->Sign(key_handle, trunks::TPM_ALG_RSAPSS,
+                                           digest_alg_id, input,
+                                           false /* don't generate hash */,
+                                           session_->GetDelegate(), signature);
       } else {
         LOG(ERROR) << "Unsupported signing mechanism for tpm2 rsa key "
                    << signing_mechanism;
