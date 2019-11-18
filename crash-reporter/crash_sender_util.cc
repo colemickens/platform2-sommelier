@@ -60,6 +60,9 @@ constexpr char kOsTimestamp[] = "os_millis";
 // removed.
 constexpr size_t kClientIdLength = 32U;
 
+// Buffer size for reading a meta file into memory, in bytes.
+constexpr size_t kMaxMetaFileSize = 1024 * 1024;
+
 // Must match testModeSuccessful in the tast-test chrome_crash_loop.go.
 constexpr char kTestModeSuccessful[] =
     "Test Mode: Logging success and exiting instead of actually uploading";
@@ -581,9 +584,15 @@ Sender::Action Sender::ChooseAction(const base::FilePath& meta_file,
   }
 
   std::string raw_metadata;
-  if (!base::ReadFileToString(meta_file, &raw_metadata)) {
-    PLOG(WARNING) << "Igonoring: metadata file is inaccessible";
-    return kIgnore;
+  if (!base::ReadFileToStringWithMaxSize(meta_file, &raw_metadata,
+                                         kMaxMetaFileSize)) {
+    if (raw_metadata.empty()) {
+      *reason = "Metadata file is inaccessible: " + meta_file.value();
+      return kIgnore;
+    }
+
+    *reason = "Metadata file is unusually large: " + meta_file.value();
+    return kRemove;
   }
 
   if (!ParseMetadata(raw_metadata, &info->metadata)) {

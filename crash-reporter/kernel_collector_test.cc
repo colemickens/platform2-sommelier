@@ -181,6 +181,11 @@ TEST_F(KernelCollectorTest, LoadPreservedDump) {
   ASSERT_TRUE(collector_.LoadParameters());
   ASSERT_FALSE(collector_.LoadPreservedDump(&dump));
   ASSERT_EQ("", dump);
+
+  std::string large(1024 * 1024 + 1, 'x');  // 1MiB + 1 byte.
+  ASSERT_TRUE(test_util::CreateFile(kcrash_file(), large));
+  ASSERT_TRUE(collector_.LoadParameters());
+  ASSERT_FALSE(collector_.LoadPreservedDump(&dump));
 }
 
 TEST_F(KernelCollectorTest, LoadBiosLog) {

@@ -407,6 +407,12 @@ class CrashSenderUtilTest : public testing::Test {
       return false;
     }
 
+    // Create large metadata with the size of 1MiB + 1byte.
+    large_meta_ = crash_directory.Append("large.meta");
+    if (!CreateFile(large_meta_, std::string(1024 * 1024 + 1, 'x'), now)) {
+      return false;
+    }
+
     return true;
   }
 
@@ -460,6 +466,7 @@ class CrashSenderUtilTest : public testing::Test {
   base::FilePath recent_os_meta_;
   base::FilePath recent_os_log_;
   base::FilePath old_os_meta_;
+  base::FilePath large_meta_;
 };
 
 base::FilePath* CrashSenderUtilTest::build_directory_ = nullptr;
@@ -740,6 +747,9 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
   EXPECT_EQ(Sender::kRemove,
             sender.ChooseAction(root_payload_meta_, &reason, &info));
   EXPECT_THAT(reason, HasSubstr("payload path is absolute"));
+
+  EXPECT_EQ(Sender::kRemove, sender.ChooseAction(large_meta_, &reason, &info));
+  EXPECT_THAT(reason, HasSubstr("Metadata file is unusually large"));
 
   ASSERT_TRUE(SetConditions(kUnofficialBuild, kSignInMode, kMetricsEnabled,
                             raw_metrics_lib));

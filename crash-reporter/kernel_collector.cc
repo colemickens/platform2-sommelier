@@ -53,6 +53,11 @@ constexpr char kEventNameWatchdog[] = "Hardware watchdog reset";
 constexpr char kKernelExecName[] = "kernel";
 // Maximum number of records to examine in the kDumpPath.
 constexpr size_t kMaxDumpRecords = 100;
+// Maximum buffer size of pstore records reads. PSTORE_DEFAULT_KMSG_BYTES as set
+// in the kernel is 10KiB, and record_size for RAM Oops/Panic trigger is
+// defaulted at 4KiB with another 4KiB each for console, ftrace, and pmsg logs.
+// Files over this limit might be malformed and are skipped.
+constexpr size_t kMaxRecordSize = 15 * 1024;
 constexpr pid_t kKernelPid = 0;
 constexpr char kKernelSignatureKey[] = "sig";
 // Byte length of maximum human readable portion of a kernel crash signature.
@@ -130,8 +135,14 @@ bool KernelCollector::ReadRecordToString(std::string* contents,
 
   FilePath record_path = GetDumpRecordPath(
       kDumpRecordDmesgName, kDumpDriverRamoopsName, current_record);
-  if (!base::ReadFileToString(record_path, &record)) {
-    PLOG(ERROR) << "Unable to open " << record_path.value();
+  if (!base::ReadFileToStringWithMaxSize(record_path, &record,
+                                         kMaxRecordSize)) {
+    if (record.empty()) {
+      PLOG(ERROR) << "Unable to read " << record_path.value();
+      return false;
+    }
+
+    PLOG(ERROR) << "Record is larger than " << kMaxRecordSize;
     return false;
   }
 
