@@ -586,17 +586,17 @@ void WilcoDtcSupportdGrpcService::GetVpdField(
     case grpc_api::GetVpdFieldRequest::FIELD_MODEL_NAME:
       file_path = root_dir_.Append(kVpdFieldModelNameFilePath);
       break;
-    case grpc_api::GetVpdFieldRequest::FIELD_ASSET_TAG:
+    case grpc_api::GetVpdFieldRequest::FIELD_ASSET_ID:
       file_path = root_dir_.Append(kVpdFieldAssetIdFilePath);
       break;
     case grpc_api::GetVpdFieldRequest::FIELD_SKU_NUMBER:
       file_path = root_dir_.Append(kVpdFieldSkuNumberFilePath);
       break;
-    case grpc_api::GetVpdFieldRequest::FIELD_UUID:
+    case grpc_api::GetVpdFieldRequest::FIELD_UUID_ID:
       file_path = root_dir_.Append(kVpdFieldUuidFilePath);
       break;
     case grpc_api::GetVpdFieldRequest::FIELD_MANUFACTURE_DATE:
-      file_path = root_dir_.Append(kVpdFieldManufacturerDateFilePath);
+      file_path = root_dir_.Append(kVpdFieldMfgDateFilePath);
       break;
     case grpc_api::GetVpdFieldRequest::FIELD_ACTIVATE_DATE:
       file_path = root_dir_.Append(kVpdFieldActivateDateFilePath);

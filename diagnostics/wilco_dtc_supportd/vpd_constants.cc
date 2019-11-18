@@ -23,12 +23,11 @@ const char kVpdFieldSkuNumberFilePath[] = "run/wilco_dtc/vpd_fields/sku_number";
 const char kVpdFieldUuidFilePath[] = "run/wilco_dtc/vpd_fields/uuid_id";
 
 // VPD field manufacturer date file path.
-const char kVpdFieldManufacturerDateFilePath[] =
-    "run/wilco_dtc/vpd_fields/mfg_date";
+const char kVpdFieldMfgDateFilePath[] = "run/wilco_dtc/vpd_fields/mfg_date";
 
 // VPD field activate date file path.
 const char kVpdFieldActivateDateFilePath[] =
-    "run/wilco_dtc/vpd_fields/ActivateData";
+    "run/wilco_dtc/vpd_fields/ActivateDate";
 
 // VPD field system ID file path.
 const char kVpdFieldSystemIdFilePath[] = "run/wilco_dtc/vpd_fields/system_id";

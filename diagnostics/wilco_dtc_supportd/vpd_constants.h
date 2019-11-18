@@ -17,7 +17,7 @@ extern const char kVpdFieldSkuNumberFilePath[];
 
 extern const char kVpdFieldUuidFilePath[];
 
-extern const char kVpdFieldManufacturerDateFilePath[];
+extern const char kVpdFieldMfgDateFilePath[];
 
 extern const char kVpdFieldActivateDateFilePath[];
 
