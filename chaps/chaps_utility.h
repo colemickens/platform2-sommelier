@@ -349,8 +349,11 @@ static inline int i2o_ECPublicKey_nc(EC_KEY* key, unsigned char** buf) {
 // Get the chaps internal digest algorithm type from PKCS#11 mechanism type.
 chaps::DigestAlgorithm GetDigestAlgorithm(CK_MECHANISM_TYPE mechanism);
 
+// Return the OpenSSL Digest associated with the given DigestAlgorithm.
+const EVP_MD* GetOpenSSLDigest(DigestAlgorithm alg);
+
 // Return the OpenSSL Digest associated with the given PKCS#11 Mechanism.
-const EVP_MD* GetOpenSSLDigest(CK_MECHANISM_TYPE mechanism);
+const EVP_MD* GetOpenSSLDigestForMechanism(CK_MECHANISM_TYPE mechanism);
 
 // Return the RSA padding scheme for the given |mechanism|.
 RsaPaddingScheme GetSigningSchemeForMechanism(

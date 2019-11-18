@@ -636,8 +636,9 @@ CK_RV SessionImpl::OperationInit(OperationType operation,
     }
   } else if (operation == kSign || operation == kVerify ||
              operation == kDigest) {
-    // It is valid for GetOpenSSLDigest to return NULL (e.g. CKM_RSA_PKCS).
-    const EVP_MD* digest = GetOpenSSLDigest(mechanism);
+    // It is valid for GetOpenSSLDigestForMechanism to return NULL (e.g.
+    // CKM_RSA_PKCS).
+    const EVP_MD* digest = GetOpenSSLDigestForMechanism(mechanism);
     if (IsHMAC(mechanism)) {
       string key_material = key->GetAttributeString(CKA_VALUE);
       context->hmac_context_.reset(HMAC_CTX_new());

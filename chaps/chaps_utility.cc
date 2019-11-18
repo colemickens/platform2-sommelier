@@ -863,8 +863,8 @@ chaps::DigestAlgorithm GetDigestAlgorithm(CK_MECHANISM_TYPE mechanism) {
   }
 }
 
-const EVP_MD* GetOpenSSLDigest(CK_MECHANISM_TYPE mechanism) {
-  switch (chaps::GetDigestAlgorithm(mechanism)) {
+const EVP_MD* GetOpenSSLDigest(DigestAlgorithm alg) {
+  switch (alg) {
     case chaps::DigestAlgorithm::MD5:
       return EVP_md5();
     case chaps::DigestAlgorithm::SHA1:
@@ -878,6 +878,10 @@ const EVP_MD* GetOpenSSLDigest(CK_MECHANISM_TYPE mechanism) {
     case chaps::DigestAlgorithm::NoDigest:
       return nullptr;
   }
+}
+
+const EVP_MD* GetOpenSSLDigestForMechanism(CK_MECHANISM_TYPE mechanism) {
+  return GetOpenSSLDigest(chaps::GetDigestAlgorithm(mechanism));
 }
 
 RsaPaddingScheme GetSigningSchemeForMechanism(

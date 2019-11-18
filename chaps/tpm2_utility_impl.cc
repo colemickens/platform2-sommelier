@@ -847,7 +847,7 @@ bool TPM2UtilityImpl::Sign(int key_handle,
                 rsa.get(),
                 reinterpret_cast<unsigned char*>(base::data(padded_data)),
                 reinterpret_cast<const unsigned char*>(base::data(input)),
-                GetOpenSSLDigest(signing_mechanism), mgf1_hash,
+                GetOpenSSLDigest(digest_algorithm), mgf1_hash,
                 pss_params->sLen) != 1) {
           LOG(ERROR)
               << "Failed to produce the PSA PSS paddings in TPM2 Sign().";
