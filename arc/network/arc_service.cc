@@ -78,7 +78,6 @@ int GetAndroidRoutingTableId(const std::string& ifname, pid_t pid) {
 bool ShouldEnableMultinet() {
   static const char kLsbReleasePath[] = "/etc/lsb-release";
   static int kMinAndroidSdkVersion = 28;  // P
-  static int kMinChromeMilestone = 76;
 
   brillo::KeyValueStore store;
   if (!store.Load(base::FilePath(kLsbReleasePath))) {
@@ -99,15 +98,6 @@ bool ShouldEnableMultinet() {
   }
   if (ver < kMinAndroidSdkVersion) {
     LOG(INFO) << "ARC multi-networking disabled for Android SDK " << value;
-    return false;
-  }
-  if (!store.GetString("CHROMEOS_RELEASE_CHROME_MILESTONE", &value)) {
-    LOG(ERROR)
-        << "ARC multi-networking disabled - cannot determine Chrome milestone";
-    return false;
-  }
-  if (atoi(value.c_str()) < kMinChromeMilestone) {
-    LOG(INFO) << "ARC multi-networking disabled for Chrome M" << value;
     return false;
   }
   return true;
