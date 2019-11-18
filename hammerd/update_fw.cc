@@ -187,6 +187,18 @@ void FirmwareUpdater::CloseUsb() {
   endpoint_->Close();
 }
 
+bool FmapAreaOutOfBounds(const struct fmap_area* area, size_t len) {
+  size_t start = area->offset;
+  size_t end = area->offset + area->size;
+
+  if (end < start || end > len) {
+    LOG(ERROR) << "FMAP area " << area->name << " beyond ec_image size.";
+    return true;
+  }
+
+  return false;
+}
+
 bool FirmwareUpdater::LoadEcImage(const std::string& ec_image) {
   ec_image_.clear();
   sections_.clear();
@@ -203,7 +215,8 @@ bool FirmwareUpdater::LoadEcImage(const std::string& ec_image) {
   }
 
   fmap* fmap = reinterpret_cast<struct fmap*>(image_ptr + offset);
-  if (offset + sizeof(*fmap) > len) {
+  size_t fmap_end = offset + sizeof(*fmap);
+  if (fmap_end < offset || fmap_end > len) {
     LOG(ERROR) << "FMAP beyond ec_image size.";
     return false;
   }
@@ -211,7 +224,8 @@ bool FirmwareUpdater::LoadEcImage(const std::string& ec_image) {
     LOG(ERROR) << "Mismatch between FMAP size and ec_image size.";
     return false;
   }
-  if (offset + sizeof(*fmap) + (sizeof(fmap_area) * fmap->nareas) > len) {
+  size_t area_size = sizeof(fmap_area) * fmap->nareas;
+  if (fmap_end + area_size < fmap_end || fmap_end + area_size > len) {
     LOG(ERROR) << "FMAP areas beyond ec_image size.";
     return false;
   }
@@ -242,10 +256,8 @@ bool FirmwareUpdater::LoadEcImage(const std::string& ec_image) {
       LOG(ERROR) << "Cannot find FMAP area: " << fmap_name;
       return false;
     }
-    if (fmaparea->offset + fmaparea->size > len) {
-      LOG(ERROR) << "FMAP area " << fmap_name << " beyond ec_image size.";
+    if (FmapAreaOutOfBounds(fmaparea, len))
       return false;
-    }
     section.offset = fmaparea->offset;
     section.size = fmaparea->size;
 
@@ -254,21 +266,20 @@ bool FirmwareUpdater::LoadEcImage(const std::string& ec_image) {
       LOG(ERROR) << "Cannot find FMAP area: " << fmap_fwid_name;
       return false;
     }
+    if (FmapAreaOutOfBounds(fmaparea, len))
+      return false;
     if (fmaparea->size != sizeof(section.version)) {
       LOG(ERROR) << "Invalid fwid size\n";
-      return false;
-    }
-    if (fmaparea->offset + fmaparea->size > len) {
-      LOG(ERROR) << "FMAP area " << fmap_fwid_name << " beyond ec_image size.";
       return false;
     }
     memcpy(section.version, image_ptr + fmaparea->offset, fmaparea->size);
 
     if (fmap_rollback_name &&
         (fmaparea = fmap_->FindArea(fmap, fmap_rollback_name))) {
-      if (fmaparea->offset + fmaparea->size > len) {
-        LOG(ERROR) << "FMAP area " << fmap_rollback_name
-                   << " beyond ec_image size.";
+      if (FmapAreaOutOfBounds(fmaparea, len))
+        return false;
+      if (fmaparea->size != sizeof(section.rollback)) {
+        LOG(ERROR) << "Invalid section rollback size\n";
         return false;
       }
       section.rollback =
@@ -278,12 +289,14 @@ bool FirmwareUpdater::LoadEcImage(const std::string& ec_image) {
     }
 
     if (fmap_key_name && (fmaparea = fmap_->FindArea(fmap, fmap_key_name))) {
-      if (fmaparea->offset + fmaparea->size > len) {
-        LOG(ERROR) << "FMAP area " << fmap_key_name << " beyond ec_image size.";
+      if (FmapAreaOutOfBounds(fmaparea, len))
         return false;
-      }
       auto key = reinterpret_cast<const vb21_packed_key*>(image_ptr +
                                                           fmaparea->offset);
+      if (fmaparea->size != sizeof(struct vb21_packed_key)) {
+        LOG(ERROR) << "Invalid vb21_packed_key size\n";
+        return false;
+      }
       section.key_version = key->key_version;
     } else {
       section.key_version = -1;

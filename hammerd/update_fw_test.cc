@@ -236,6 +236,34 @@ TEST_F(FirmwareUpdaterTest, LoadEcImage_BadROVersion) {
   ASSERT_EQ(fw_updater_->LoadEcImage(ec_image), false);
 }
 
+// Load a fake EC image that we expect to fail
+// - Fake header: 8 bytes
+// - mock fmap: sizeof(fmap) bytes
+TEST_F(FirmwareUpdaterTest, LoadEcImage_OverflowRO) {
+  // Build a fake EC image
+  std::string ec_image("12345678");
+  int64_t mock_offset = ec_image.size();
+  fmap mock_fmap;
+  mock_fmap.nareas = 0;
+  mock_fmap.size = 8 + sizeof(fmap);
+  ec_image.append(reinterpret_cast<char*>(&mock_fmap), sizeof(mock_fmap));
+
+  size_t ec_image_len = ec_image.size();
+
+  const fmap* mock_fmap_ptr = reinterpret_cast<const fmap*>(
+      reinterpret_cast<const uint8_t*>(ec_image.data()) + mock_offset);
+
+  EXPECT_CALL(*fmap_, Find(_, ec_image_len)).WillOnce(Return(mock_offset));
+  // Find RW section that is too large and will overflow.
+  fmap_area ro_section_area;
+  ro_section_area.offset = UINT_MAX - 1;
+  ro_section_area.size = 2;
+  EXPECT_CALL(*fmap_, FindArea(mock_fmap_ptr, "EC_RO"))
+      .WillOnce(Return(&ro_section_area));
+
+  ASSERT_EQ(fw_updater_->LoadEcImage(ec_image), false);
+}
+
 // Returns a helper function that returns |before| or |after| depending on
 // whether a period of time has passed.
 template<typename T>
