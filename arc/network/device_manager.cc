@@ -188,15 +188,16 @@ bool DeviceManager::Add(const std::string& name) {
   LOG(INFO) << "Adding device " << *device;
 
   if (device->options().ipv6_enabled) {
-    if (!datapath_->AddIPv6Forwarding(device->ifname(),
-                                      device->config().host_ifname())) {
-      LOG(ERROR) << "Failed to setup iptables forwarding rule for IPv6 from "
-                 << device->ifname() << " to "
-                 << device->config().host_ifname();
-    }
     if (device->options().find_ipv6_routes_legacy) {
       device->RegisterIPv6SetupHandler(base::Bind(
           &DeviceManager::OnIPv6AddressFound, weak_factory_.GetWeakPtr()));
+    } else {
+      if (!datapath_->AddIPv6Forwarding(device->ifname(),
+                                        device->config().host_ifname())) {
+        LOG(ERROR) << "Failed to setup iptables forwarding rule for IPv6 from "
+                   << device->ifname() << " to "
+                   << device->config().host_ifname();
+      }
     }
   }
   for (auto& h : add_handlers_) {
@@ -214,7 +215,8 @@ bool DeviceManager::Remove(const std::string& name) {
 
   LOG(INFO) << "Removing device " << name;
 
-  if (it->second->options().ipv6_enabled) {
+  if (it->second->options().ipv6_enabled &&
+      !it->second->options().find_ipv6_routes_legacy) {
     datapath_->RemoveIPv6Forwarding(it->second->ifname(),
                                     it->second->config().host_ifname());
   }
