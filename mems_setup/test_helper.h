@@ -29,7 +29,7 @@ class FakeSysfsTrigger : public libmems::fakes::FakeIioDevice {
  public:
   FakeSysfsTrigger(libmems::fakes::FakeIioContext* ctx,
                    libmems::fakes::FakeIioDevice* trigger0)
-      : FakeIioDevice(ctx, "iio_sysfs_trigger", "iio_sysfs_trigger"),
+      : FakeIioDevice(ctx, "iio_sysfs_trigger", -1),
         mock_context_(ctx),
         mock_trigger0_(trigger0) {}
 
@@ -56,7 +56,7 @@ class SensorTestBase : public ::testing::Test {
 
   SensorKind sensor_kind_;
 
-  SensorTestBase(const char* name, const char* id, SensorKind kind);
+  SensorTestBase(const char* name, int id, SensorKind kind);
 
   void SetSingleSensor(const char* location);
   void SetSharedSensor();

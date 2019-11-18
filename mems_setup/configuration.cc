@@ -40,6 +40,8 @@ constexpr int kGyroMaxVpdCalibration = 16384;  // 16dps
 constexpr int kAccelMaxVpdCalibration = 256;   // .250g
 constexpr int kAccelSysfsTriggerId = 0;
 
+constexpr int kSysfsTriggerId = -1;
+
 constexpr std::initializer_list<const char*> kAccelAxes = {
     "x",
     "y",
@@ -171,7 +173,8 @@ bool Configuration::CopyImuCalibationFromVpd(int max_value,
 }
 
 bool Configuration::AddSysfsTrigger(int trigger_id) {
-  auto iio_trig = sensor_->GetContext()->GetDevice("iio_sysfs_trigger");
+  // iio_sysfs_trigger
+  auto iio_trig = sensor_->GetContext()->GetTriggerById(kSysfsTriggerId);
   if (iio_trig == nullptr) {
     LOG(ERROR) << "cannot find iio_trig_sysfs kernel module";
     return false;
@@ -182,24 +185,23 @@ bool Configuration::AddSysfsTrigger(int trigger_id) {
   // first see if the trigger is already there. If not, try to create it, and
   // then try to access it again. Only if the latter access fails then
   // error out.
-  std::string trigger_name = base::StringPrintf("trigger%d", trigger_id);
-  auto trigger = sensor_->GetContext()->GetDevice(trigger_name);
+  auto trigger = sensor_->GetContext()->GetTriggerById(trigger_id);
   if (trigger == nullptr) {
-    LOG(INFO) << trigger_name << " not found; adding";
+    LOG(INFO) << "trigger" << trigger_id << " not found; adding";
     if (!iio_trig->WriteNumberAttribute("add_trigger", trigger_id)) {
-      LOG(WARNING) << "cannot instantiate trigger " << trigger_name;
+      LOG(WARNING) << "cannot instantiate trigger trigger" << trigger_id;
     }
 
     sensor_->GetContext()->Reload();
-    trigger = sensor_->GetContext()->GetDevice(trigger_name);
+    trigger = sensor_->GetContext()->GetTriggerById(trigger_id);
     if (trigger == nullptr) {
-      LOG(ERROR) << "cannot find trigger device " << trigger_name;
+      LOG(ERROR) << "cannot find trigger trigger" << trigger_id;
       return false;
     }
   }
 
   if (!sensor_->SetTrigger(trigger)) {
-    LOG(ERROR) << "cannot set sensor's trigger to " << trigger_name;
+    LOG(ERROR) << "cannot set sensor's trigger to trigger" << trigger_id;
     return false;
   }
 

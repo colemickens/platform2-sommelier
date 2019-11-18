@@ -21,9 +21,12 @@ int main(int argc, char** argv) {
   DEFINE_string(sensor_kind, "",
                 "Kind of sensor being initialized. "
                 "One of anglvel, accel.");
+  DEFINE_int32(device_id, -1,
+               "The IIO device id for the sensor being "
+               "initialized, such as iio:device0.");
   DEFINE_string(device_name, "",
                 "The IIO device path for the sensor being "
-                "initialized, such as iio:device0.");
+                "initialized, such as cros-ec-accel.");
 
   brillo::OpenLog("mems_setup", true /*log_pid*/);
 
@@ -32,13 +35,19 @@ int main(int argc, char** argv) {
 
   brillo::FlagHelper::Init(argc, argv, "Chromium OS MEMS Setup");
 
-  if (FLAGS_sensor_kind.empty() || FLAGS_device_name.empty()) {
+  if (FLAGS_sensor_kind.empty() ||
+      (FLAGS_device_id == -1 && FLAGS_device_name.empty())) {
     LOG(ERROR) << "mems_setup must be called with sensor and type";
     exit(1);
   }
 
-  LOG(INFO) << "Starting mems_setup [name=" << FLAGS_device_name
-            << ", kind=" << FLAGS_sensor_kind << "]";
+  if (FLAGS_device_name.empty()) {
+    LOG(INFO) << "Starting mems_setup [id=" << FLAGS_device_id
+              << ", kind=" << FLAGS_sensor_kind << "]";
+  } else {
+    LOG(INFO) << "Starting mems_setup [name=" << FLAGS_device_name
+              << ", kind=" << FLAGS_sensor_kind << "]";
+  }
 
   mems_setup::SensorKind kind;
   if (auto sk = mems_setup::SensorKindFromString(FLAGS_sensor_kind)) {
@@ -65,10 +74,28 @@ int main(int argc, char** argv) {
 
   std::unique_ptr<libmems::IioContext> context(
       new libmems::IioContextImpl());
-  auto device = context->GetDevice(FLAGS_device_name);
-  if (device == nullptr) {
-    LOG(ERROR) << "device" << FLAGS_device_name << " not found";
-    exit(1);
+
+  libmems::IioDevice* device = nullptr;
+  if (FLAGS_device_id != -1) {
+    device = context->GetDeviceById(FLAGS_device_id);
+
+    if (device == nullptr) {
+      LOG(ERROR) << "device with id: " << FLAGS_device_id << " not found";
+      exit(1);
+    }
+  } else {
+    auto devices = context->GetDevicesByName(FLAGS_device_name);
+    if (devices.size() > 1) {
+      LOG(ERROR) << devices.size() << " possible devices with name "
+                 << FLAGS_device_name << " found";
+      exit(1);
+    }
+    device = devices[0];
+
+    if (device == nullptr) {
+      LOG(ERROR) << "device with name: " << FLAGS_device_name << " not found";
+      exit(1);
+    }
   }
 
   std::unique_ptr<mems_setup::Configuration> config(

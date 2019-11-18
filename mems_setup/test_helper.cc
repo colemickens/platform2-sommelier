@@ -16,26 +16,24 @@ bool FakeSysfsTrigger::WriteNumberAttribute(const std::string& name,
                                             int64_t value) {
   bool ok = this->FakeIioDevice::WriteNumberAttribute(name, value);
   if (ok && name == "add_trigger" && value == 0) {
-    mock_context_->AddDevice(mock_trigger0_);
+    mock_context_->AddTrigger(mock_trigger0_);
   }
   return ok;
 }
 
-SensorTestBase::SensorTestBase(const char* name,
-                               const char* id,
-                               SensorKind kind)
+SensorTestBase::SensorTestBase(const char* name, int id, SensorKind kind)
     : mock_context_(new FakeIioContext),
       mock_delegate_(new FakeDelegate),
       mock_device_(
           std::make_unique<FakeIioDevice>(mock_context_.get(), name, id)),
-      mock_trigger0_(std::make_unique<FakeIioDevice>(
-          mock_context_.get(), "trigger0", "trigger0")),
+      mock_trigger0_(
+          std::make_unique<FakeIioDevice>(mock_context_.get(), "trigger0", 0)),
       mock_sysfs_trigger_(std::make_unique<FakeSysfsTrigger>(
           mock_context_.get(), mock_trigger0_.get())),
       sensor_kind_(kind) {
   mock_context_->AddDevice(mock_device_.get());
-  mock_context_->AddDevice(mock_sysfs_trigger_.get());
   mock_device_->AddChannel(new FakeIioChannel("calibration", false));
+  mock_context_->AddTrigger(mock_sysfs_trigger_.get());
 }
 
 void SensorTestBase::SetSingleSensor(const char* location) {

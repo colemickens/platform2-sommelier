@@ -31,8 +31,7 @@ static gid_t kPowerGroupId = 999;
 class AccelerometerTest : public SensorTestBase {
  public:
   AccelerometerTest()
-      : SensorTestBase(
-            "cros-ec-accel", "iio:device1", SensorKind::ACCELEROMETER) {
+      : SensorTestBase("cros-ec-accel", 1, SensorKind::ACCELEROMETER) {
     mock_delegate_->AddGroup("chronos", kChronosGroupId);
   }
 };
@@ -231,7 +230,7 @@ TEST_F(AccelerometerTest, SharedSensorKbWakeAnglePermissions) {
 TEST_F(AccelerometerTest, OkWithTrigger0Defined) {
   SetSingleSensor(kLidSensorLocation);
 
-  mock_context_->AddDevice(mock_trigger0_.get());
+  mock_context_->AddTrigger(mock_trigger0_.get());
 
   EXPECT_TRUE(GetConfiguration()->Configure());
 }

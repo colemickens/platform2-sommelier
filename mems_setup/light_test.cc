@@ -25,8 +25,7 @@ namespace {
 
 class LightTest : public SensorTestBase {
  public:
-  LightTest()
-      : SensorTestBase("cros-ec-light", "iio:device4", SensorKind::LIGHT) {}
+  LightTest() : SensorTestBase("cros-ec-light", 4, SensorKind::LIGHT) {}
 };
 
 TEST_F(LightTest, PartialVpd) {

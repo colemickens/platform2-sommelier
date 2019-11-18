@@ -29,8 +29,7 @@ namespace {
 
 class GyroscopeTest : public SensorTestBase {
  public:
-  GyroscopeTest()
-      : SensorTestBase("cros-ec-gyro", "iio:device0", SensorKind::GYROSCOPE) {}
+  GyroscopeTest() : SensorTestBase("cros-ec-gyro", 2, SensorKind::GYROSCOPE) {}
 };
 
 TEST_F(GyroscopeTest, MissingVpd) {
