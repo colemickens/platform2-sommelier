@@ -16,7 +16,6 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
-#include <base/sys_info.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/switches/chrome_switches.h>
 #include <crypto/rsa_private_key.h>
@@ -57,20 +56,6 @@ bool IsConsumerPolicy(const em::PolicyFetchResponse& policy) {
   return !poldata.has_request_token() && poldata.has_username();
 }
 
-// Convenience function to get the board name and remove "-signed.." if present.
-// The output is converted to lower-case. Returns "unknown" if
-// CHROMEOS_RELEASE_BOARD is not set.
-// TODO(igorcov): Remove this when similar function appears in libchrome.
-std::string GetStrippedReleaseBoard() {
-  std::string board = base::SysInfo::GetLsbReleaseBoard();
-  const size_t index = board.find("-signed-");
-  if (index != std::string::npos) {
-    board.resize(index);
-  }
-
-  return base::ToLowerASCII(board);
-}
-
 void HandleVpdUpdateCompletion(bool ignore_error,
                                const PolicyService::Completion& completion,
                                bool success) {
@@ -83,17 +68,7 @@ void HandleVpdUpdateCompletion(bool ignore_error,
     return;
   }
 
-  // TODO(igorcov): Remove the exception when crbug.com/653814 is fixed.
-  const std::string board_name = GetStrippedReleaseBoard();
-  if (board_name == "parrot" || board_name == "glimmer") {
-    LOG(ERROR) << "Failed to update VPD, but error ignored for device: "
-               << board_name;
-    completion.Run(brillo::ErrorPtr());
-    return;
-  }
-
-  LOG(ERROR) << "The device failed to update VPD: " << board_name
-             << ", full board name: " << base::SysInfo::GetLsbReleaseBoard();
+  LOG(ERROR) << "Failed to update VPD";
   completion.Run(
       CreateError(dbus_error::kVpdUpdateFailed, "Failed to update VPD"));
 }
