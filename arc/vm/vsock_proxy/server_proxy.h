@@ -8,8 +8,9 @@
 #include <memory>
 
 #include <base/macros.h>
+#include <base/memory/ref_counted.h>
 
-#include "arc/vm/vsock_proxy/proxy_base.h"
+#include "arc/vm/vsock_proxy/proxy_file_system.h"
 #include "arc/vm/vsock_proxy/vsock_proxy.h"
 
 namespace arc {
@@ -17,15 +18,17 @@ namespace arc {
 class ProxyFileSystem;
 
 // ServerProxy sets up the VSockProxy and handles initial socket negotiation.
-class ServerProxy : public VSockProxy::Delegate, public ProxyBase {
+class ServerProxy : public VSockProxy::Delegate,
+                    public ProxyFileSystem::Delegate {
  public:
-  explicit ServerProxy(ProxyFileSystem* proxy_file_system);
+  ServerProxy(scoped_refptr<base::TaskRunner> proxy_file_system_task_runner,
+              const base::FilePath& proxy_file_system_mount_path);
   ~ServerProxy() override;
 
   // Sets up the ServerProxy. Specifically, start listening VSOCK.
   // Then, connect to /run/chrome/arc_bridge.sock, when an initial connection
   // comes to the vsock.
-  bool Initialize() override;
+  bool Initialize();
 
   // VSockProxy::Delegate overrides:
   VSockProxy::Type GetType() const override { return VSockProxy::Type::SERVER; }
@@ -34,10 +37,17 @@ class ServerProxy : public VSockProxy::Delegate, public ProxyBase {
   base::ScopedFD ConvertProtoToFileDescriptor(
       const arc_proxy::FileDescriptor& proto) override;
 
-  VSockProxy* vsock_proxy() { return vsock_proxy_.get(); }
+  // ProxyFileSystem::Delegate overrides:
+  void Pread(int64_t handle,
+             uint64_t count,
+             uint64_t offset,
+             PreadCallback callback) override;
+  void Close(int64_t handle) override;
+  void Fstat(int64_t handle, FstatCallback callback) override;
 
  private:
-  ProxyFileSystem* const proxy_file_system_;
+  scoped_refptr<base::TaskRunner> proxy_file_system_task_runner_;
+  ProxyFileSystem proxy_file_system_;
   std::unique_ptr<VSockProxy> vsock_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(ServerProxy);

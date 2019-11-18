@@ -21,7 +21,6 @@
 #include <base/optional.h>
 #include <base/synchronization/lock.h>
 
-#include "arc/vm/vsock_proxy/proxy_service.h"
 #include "arc/vm/vsock_proxy/vsock_proxy.h"
 
 namespace base {
@@ -53,14 +52,16 @@ class ProxyFileSystem {
     virtual void Fstat(int64_t handle, FstatCallback callback) = 0;
   };
   // |mount_path| is the path to the mount point.
-  ProxyFileSystem(Delegate* delegate, const base::FilePath& mount_path);
+  ProxyFileSystem(Delegate* delegate,
+                  scoped_refptr<base::TaskRunner> delegate_task_runner,
+                  const base::FilePath& mount_path);
   ~ProxyFileSystem();
 
   ProxyFileSystem(const ProxyFileSystem&) = delete;
   ProxyFileSystem& operator=(const ProxyFileSystem&) = delete;
 
   // Initializes this object.
-  bool Init(std::unique_ptr<ProxyService> proxy_service);
+  bool Init();
 
   // Implementation of the fuse operation callbacks.
   int GetAttr(const char* path, struct stat* stat);
@@ -84,13 +85,13 @@ class ProxyFileSystem {
   base::ScopedFD RegisterHandle(int64_t handle);
 
  private:
-  // Helper to operate GetAtt(). Called on the |task_runner_|.
+  // Helper to operate GetAtt(). Called on the |delegate_task_runner_|.
   void GetAttrInternal(base::WaitableEvent* event,
                        int64_t handle,
                        int* return_value,
                        off_t* size);
 
-  // Helper to operate Read(). Called on the |task_runner_|.
+  // Helper to operate Read(). Called on the |delegate_task_runner_|.
   void ReadInternal(base::WaitableEvent* event,
                     int64_t handle,
                     char* buf,
@@ -107,17 +108,10 @@ class ProxyFileSystem {
   base::Optional<State> GetState(int64_t handle);
 
   Delegate* const delegate_;
+  scoped_refptr<base::TaskRunner> delegate_task_runner_;
   const base::FilePath mount_path_;
 
-  // ProxyService serving ServerProxy. Initialized in Init() callback.
-  // Should be touched on the initialization thread, or on |task_runner_|.
-  std::unique_ptr<ProxyService> proxy_service_;
-
   std::unique_ptr<FuseMount> fuse_mount_;
-
-  // TaskRunner to run a task interract with ServerProxy.
-  // Initialized with |proxy_service_|.
-  scoped_refptr<base::TaskRunner> task_runner_;
 
   // Registered |handle|s to its opened/not-yet-opened state.
   // The access to |handle_map_| needs to be guarded by |handle_map_lock_|,

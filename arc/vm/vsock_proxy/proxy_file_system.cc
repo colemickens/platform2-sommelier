@@ -74,15 +74,17 @@ base::Optional<int64_t> ParseHandle(const char* path) {
 
 }  // namespace
 
-ProxyFileSystem::ProxyFileSystem(Delegate* delegate,
-                                 const base::FilePath& mount_path)
-    : delegate_(delegate), mount_path_(mount_path) {}
+ProxyFileSystem::ProxyFileSystem(
+    Delegate* delegate,
+    scoped_refptr<base::TaskRunner> delegate_task_runner,
+    const base::FilePath& mount_path)
+    : delegate_(delegate),
+      delegate_task_runner_(delegate_task_runner),
+      mount_path_(mount_path) {}
 
 ProxyFileSystem::~ProxyFileSystem() = default;
 
-bool ProxyFileSystem::Init(std::unique_ptr<ProxyService> proxy_service) {
-  proxy_service_ = std::move(proxy_service);
-
+bool ProxyFileSystem::Init() {
   const std::string path_str = mount_path_.value();
   const char* fuse_argv[] = {
       "",  // Dummy argv[0].
@@ -113,17 +115,6 @@ bool ProxyFileSystem::Init(std::unique_ptr<ProxyService> proxy_service) {
     return false;
   }
   // TODO(hidehiko): Drop CAPS_SYS_ADMIN with minijail setup.
-  LOG(INFO) << "Starting ServerProxy.";
-
-  // Must succeed, otherwise ServerProxy wouldn't run. Unfortunately,
-  // there's no way to return an error in case of failure, terminate the
-  // process instead.
-  if (!proxy_service_->Start()) {
-    LOG(ERROR) << "Failed to start ServerProxy.";
-    return false;
-  }
-  LOG(INFO) << "ServerProxy has been started successfully.";
-  task_runner_ = proxy_service_->GetTaskRunner();
   return true;
 }
 
@@ -151,7 +142,7 @@ int ProxyFileSystem::GetAttr(const char* path, struct stat* stat) {
   if (state.value() == State::NOT_OPENED) {
     // If the file is not opened yet, this is called from kernel to open the
     // file, which is initiated by the open(2) called in RegisterHandle()
-    // on |task_runner_|.
+    // on |delegate_task_runner_|.
     // Thus, we cannot make a blocking call to retrieve the size of the file,
     // because it causes deadlock. Instead, we just fill '0', and return
     // immediately.
@@ -161,7 +152,7 @@ int ProxyFileSystem::GetAttr(const char* path, struct stat* stat) {
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   int return_value = -EIO;
-  task_runner_->PostTask(
+  delegate_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&ProxyFileSystem::GetAttrInternal, base::Unretained(this),
                      &event, handle.value(), &return_value, &stat->st_size));
@@ -224,7 +215,7 @@ int ProxyFileSystem::Read(const char* path,
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   int return_value = -EIO;
-  task_runner_->PostTask(
+  delegate_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&ProxyFileSystem::ReadInternal, base::Unretained(this),
                      &event, handle.value(), buf, size, off, &return_value));
@@ -269,9 +260,9 @@ int ProxyFileSystem::Release(const char* path, struct fuse_file_info* fi) {
     }
   }
 
-  // |this| outlives of |task_runner_|, so passing raw |this| pointer here is
-  // safe.
-  task_runner_->PostTask(
+  // |this| outlives |delegate_task_runner_|, so passing raw |this| pointer here
+  // is safe.
+  delegate_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce([](ProxyFileSystem* self,
                         int64_t handle) { self->delegate_->Close(handle); },

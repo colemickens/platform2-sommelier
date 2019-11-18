@@ -4,62 +4,14 @@
 
 #include <brillo/syslog_logging.h>
 
-#include <memory>
-
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
+#include <base/threading/thread.h>
 
-#include "arc/vm/vsock_proxy/proxy_file_system.h"
-#include "arc/vm/vsock_proxy/proxy_service.h"
 #include "arc/vm/vsock_proxy/server_proxy.h"
-
-namespace {
-
-class ProxyFileSystemDelegate : public arc::ProxyFileSystem::Delegate {
- public:
-  explicit ProxyFileSystemDelegate(const base::FilePath& mount_path)
-      : file_system_(this, mount_path) {}
-  ~ProxyFileSystemDelegate() override = default;
-  ProxyFileSystemDelegate(const ProxyFileSystemDelegate&) = delete;
-  ProxyFileSystemDelegate& operator=(const ProxyFileSystemDelegate&) = delete;
-
-  int Run() {
-    auto server_proxy = std::make_unique<arc::ServerProxy>(&file_system_);
-    server_proxy_ = server_proxy.get();
-    if (!file_system_.Init(
-            std::make_unique<arc::ProxyService>(std::move(server_proxy)))) {
-      LOG(ERROR) << "Failed to initialize ProxyFileSystem.";
-      return 1;
-    }
-    base::RunLoop().Run();
-    return 0;
-  }
-
-  // ProxyFileSystem::Delegate overrides:
-  void Pread(int64_t handle,
-             uint64_t count,
-             uint64_t offset,
-             PreadCallback callback) override {
-    server_proxy_->vsock_proxy()->Pread(handle, count, offset,
-                                        std::move(callback));
-  }
-  void Close(int64_t handle) override {
-    server_proxy_->vsock_proxy()->Close(handle);
-  }
-  void Fstat(int64_t handle, FstatCallback callback) override {
-    server_proxy_->vsock_proxy()->Fstat(handle, std::move(callback));
-  }
-
- private:
-  arc::ProxyFileSystem file_system_;
-  arc::ServerProxy* server_proxy_ = nullptr;
-};
-
-}  // namespace
 
 int main(int argc, char** argv) {
   // Initialize CommandLine for VLOG before InitLog.
@@ -73,8 +25,22 @@ int main(int argc, char** argv) {
   }
   base::MessageLoopForIO message_loop_;
   base::FileDescriptorWatcher watcher_{&message_loop_};
-  // ProxyService for ServerProxy will be started after FUSE initialization is
-  // done. See also ProxyFileSystem::Init().
-  ProxyFileSystemDelegate file_system_delegate{base::FilePath(argv[1])};
-  return file_system_delegate.Run();
+
+  base::Thread proxy_file_system_thread{"ProxyFileSystem"};
+  base::Thread::Options options;
+  options.message_loop_type = base::MessageLoop::TYPE_IO;
+  if (!proxy_file_system_thread.StartWithOptions(options)) {
+    LOG(ERROR) << "Failed to start ProxyFileSystem thread.";
+    return 1;
+  }
+
+  base::RunLoop run_loop;
+  arc::ServerProxy server_proxy(proxy_file_system_thread.task_runner(),
+                                base::FilePath(argv[1]));
+  if (!server_proxy.Initialize()) {
+    LOG(ERROR) << "Failed to initialize ServerProxy.";
+    return 1;
+  }
+  run_loop.Run();
+  return 0;
 }

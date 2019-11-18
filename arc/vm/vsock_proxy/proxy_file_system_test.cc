@@ -22,24 +22,11 @@
 #include <base/threading/thread.h>
 #include <gtest/gtest.h>
 
-#include "arc/vm/vsock_proxy/proxy_base.h"
-#include "arc/vm/vsock_proxy/proxy_service.h"
-
 namespace arc {
 namespace {
 
 constexpr int64_t kHandle = 123;
 constexpr char kTestData[] = "abcdefghijklmnopqrstuvwxyz";
-
-class FakeProxy : public ProxyBase {
- public:
-  FakeProxy() = default;
-  ~FakeProxy() override = default;
-  FakeProxy(const FakeProxy&) = delete;
-  FakeProxy& operator=(const FakeProxy&) = delete;
-
-  bool Initialize() override { return true; }
-};
 
 class ProxyFileSystemTest : public testing::Test,
                             public ProxyFileSystem::Delegate {
@@ -52,23 +39,21 @@ class ProxyFileSystemTest : public testing::Test,
   void SetUp() override {
     ASSERT_TRUE(mount_dir_.CreateUniqueTempDir());
 
+    ASSERT_TRUE(delegate_thread_.Start());
+
     base::Thread::Options options;
     options.message_loop_type = base::MessageLoop::TYPE_IO;
-    file_system_thread_ = std::make_unique<base::Thread>("Fuse thread");
-    ASSERT_TRUE(file_system_thread_->StartWithOptions(options));
+    ASSERT_TRUE(file_system_thread_.StartWithOptions(options));
 
-    file_system_ =
-        std::make_unique<ProxyFileSystem>(this, mount_dir_.GetPath());
+    file_system_ = std::make_unique<ProxyFileSystem>(
+        this, delegate_thread_.task_runner(), mount_dir_.GetPath());
     bool result = false;
-    file_system_thread_->task_runner()->PostTask(
-        FROM_HERE, base::BindOnce(
-                       [](ProxyFileSystem* file_system, bool* result) {
-                         *result =
-                             file_system->Init(std::make_unique<ProxyService>(
-                                 std::make_unique<FakeProxy>()));
-                       },
+    file_system_thread_.task_runner()->PostTask(
+        FROM_HERE,
+        base::BindOnce([](ProxyFileSystem* file_system,
+                          bool* result) { *result = file_system->Init(); },
                        file_system_.get(), &result));
-    file_system_thread_->FlushForTesting();
+    file_system_thread_.FlushForTesting();
     ASSERT_TRUE(result);
   }
 
@@ -106,7 +91,8 @@ class ProxyFileSystemTest : public testing::Test,
   // Mount point for ProxyFileSystem.
   base::ScopedTempDir mount_dir_;
 
-  std::unique_ptr<base::Thread> file_system_thread_;
+  base::Thread delegate_thread_{"FileSystemDelegate"};
+  base::Thread file_system_thread_{"FileSystem"};
 
   // ProxyFileSystem to be tested.
   std::unique_ptr<ProxyFileSystem> file_system_;
