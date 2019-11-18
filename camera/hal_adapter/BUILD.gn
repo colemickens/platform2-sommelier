@@ -60,8 +60,8 @@ executable("cros_camera_service") {
     "rt",
   ]
   deps = [
+    "//camera/common:libcamera_metrics",
     "//camera/common/libcamera_ipc:libcamera_ipc",
     "//camera/common/libcamera_ipc:libcamera_ipc_mojom",
-    "//camera/common:libcamera_metrics",
   ]
 }
