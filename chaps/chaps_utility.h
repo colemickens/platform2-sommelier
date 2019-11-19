@@ -363,6 +363,16 @@ RsaPaddingScheme GetSigningSchemeForMechanism(
 // identifier.
 const EVP_MD* GetOpenSSLDigestForMGF(const CK_RSA_PKCS_MGF_TYPE mgf);
 
+// This method parse the PKCS#11 mechanism parameters specified in
+// |mechanism_parameter| and interpret it as CK_RSA_PKCS_PSS_PARAMS and check
+// its sanity. Return false on error. Otherwise, return true and set the 3
+// output parameters if the check is successful.
+bool ParseRSAPSSParams(CK_MECHANISM_TYPE signing_mechanism,
+                       const std::string& mechanism_parameter,
+                       const CK_RSA_PKCS_PSS_PARAMS** pss_params_out,
+                       const EVP_MD** mgf1_hash_out,
+                       DigestAlgorithm* digest_algorithm_out);
+
 }  // namespace chaps
 
 #endif  // CHAPS_CHAPS_UTILITY_H_

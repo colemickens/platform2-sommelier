@@ -93,6 +93,17 @@ string bn2bin(const BIGNUM* bn) {
   return bin;
 }
 
+std::string GetRSAPSSParam(CK_MECHANISM_TYPE hashAlg,
+                           CK_RSA_PKCS_MGF_TYPE mgf,
+                           CK_ULONG sLen) {
+  CK_RSA_PKCS_PSS_PARAMS params;
+  params.hashAlg = hashAlg;
+  params.mgf = mgf;
+  params.sLen = sLen;
+  std::string param_bytes(reinterpret_cast<char*>(&params), sizeof(params));
+  return param_bytes;
+}
+
 }  // namespace
 
 namespace chaps {
@@ -567,6 +578,50 @@ TEST_F(TestSession, RsaSign) {
   EXPECT_EQ(CKR_OK, session_->OperationFinal(kSign, &len, &sig2));
   EXPECT_EQ(CKR_OK,
             session_->OperationInit(kVerify, CKM_SHA256_RSA_PKCS, "", pub));
+  EXPECT_EQ(CKR_OK,
+            session_->OperationUpdate(kVerify, in.substr(0, 20), NULL, NULL));
+  EXPECT_EQ(CKR_OK,
+            session_->OperationUpdate(kVerify, in.substr(20, 80), NULL, NULL));
+  EXPECT_EQ(CKR_OK, session_->VerifyFinal(sig2));
+}
+
+// Test RSA PSS sign / verify.
+TEST_F(TestSession, RsaPSSSign) {
+  const Object* pub = NULL;
+  const Object* priv = NULL;
+  GenerateRSAKeyPair(true, 1024, &pub, &priv);
+  // Sign / verify without a built-in hash.
+  EXPECT_EQ(CKR_OK, session_->OperationInit(
+                        kSign, CKM_RSA_PKCS_PSS,
+                        GetRSAPSSParam(CKM_SHA_1, CKG_MGF1_SHA1, 20), priv));
+  string in(20, 'A');
+  int len = 0;
+  string sig;
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
+            session_->OperationSinglePart(kSign, in, &len, &sig));
+  EXPECT_EQ(CKR_OK, session_->OperationSinglePart(kSign, in, &len, &sig));
+  EXPECT_EQ(CKR_OK, session_->OperationInit(
+                        kVerify, CKM_RSA_PKCS_PSS,
+                        GetRSAPSSParam(CKM_SHA_1, CKG_MGF1_SHA1, 20), pub));
+  EXPECT_EQ(CKR_OK, session_->OperationUpdate(kVerify, in, NULL, NULL));
+  EXPECT_EQ(CKR_OK, session_->VerifyFinal(sig));
+
+  // Sign / verify with a built-in SHA-256 hash.
+  in = string(100, 'B');
+  EXPECT_EQ(CKR_OK, session_->OperationInit(
+                        kSign, CKM_SHA256_RSA_PKCS_PSS,
+                        GetRSAPSSParam(CKM_SHA256, CKG_MGF1_SHA256, 20), priv));
+  EXPECT_EQ(CKR_OK,
+            session_->OperationUpdate(kSign, in.substr(0, 50), NULL, NULL));
+  EXPECT_EQ(CKR_OK,
+            session_->OperationUpdate(kSign, in.substr(50, 50), NULL, NULL));
+  string sig2;
+  len = 0;
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL, session_->OperationFinal(kSign, &len, &sig2));
+  EXPECT_EQ(CKR_OK, session_->OperationFinal(kSign, &len, &sig2));
+  EXPECT_EQ(CKR_OK, session_->OperationInit(
+                        kVerify, CKM_SHA256_RSA_PKCS_PSS,
+                        GetRSAPSSParam(CKM_SHA256, CKG_MGF1_SHA256, 20), pub));
   EXPECT_EQ(CKR_OK,
             session_->OperationUpdate(kVerify, in.substr(0, 20), NULL, NULL));
   EXPECT_EQ(CKR_OK,

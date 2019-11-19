@@ -9,6 +9,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/logging.h>
@@ -43,9 +44,10 @@ using std::set;
 using std::string;
 using std::vector;
 
+namespace chaps {
+
 namespace {
 
-using chaps::Object;
 using chaps::OperationType::kDecrypt;
 using chaps::OperationType::kDigest;
 using chaps::OperationType::kEncrypt;
@@ -426,9 +428,191 @@ size_t GetGroupOrderLengthFromEcKey(const crypto::ScopedEC_KEY& key) {
   return BN_num_bytes(order.get());
 }
 
-}  // namespace
+// RSA Sign/Verify Helper
+class RSASignerVerifier {
+ public:
+  // Just a default destructor, nothing more, nothing less.
+  // Note: It's here because this is a base class, and we want to avoid having
+  // non-virtual destructor in base class.
+  virtual ~RSASignerVerifier() = default;
 
-namespace chaps {
+  // Sign |context->data_| with |rsa|.
+  virtual bool Sign(crypto::ScopedRSA rsa,
+                    SessionImpl::OperationContext* context) = 0;
+
+  // Verify |signature| of |digest| against |rsa|.
+  virtual CK_RV Verify(crypto::ScopedRSA rsa,
+                       SessionImpl::OperationContext* context,
+                       const string& digest,
+                       const string& signature) = 0;
+
+  static std::unique_ptr<RSASignerVerifier> GetForMechanism(
+      CK_MECHANISM_TYPE mechanism);
+};
+
+// Sign/Verify helper for PKCS#1 v1.5
+class RSASignerVerifierImplPKCS115 : public RSASignerVerifier {
+ public:
+  virtual ~RSASignerVerifierImplPKCS115() = default;
+
+  bool Sign(crypto::ScopedRSA rsa,
+            SessionImpl::OperationContext* context) final {
+    if (RSA_size(rsa.get()) > kMaxRSAOutputBytes) {
+      LOG(ERROR) << __func__ << ": RSA Key size is too large for PKCS#1 v1.5.";
+      return false;
+    }
+    uint8_t buffer[kMaxRSAOutputBytes];
+    // Emulate RSASSA by performing raw RSA (decrypting) with RSA_PKCS1_PADDING
+    string input = GetDERDigestInfo(context->mechanism_) + context->data_;
+    int length = RSA_private_encrypt(
+        input.length(), ConvertStringToByteBuffer(input.data()), buffer,
+        rsa.get(), RSA_PKCS1_PADDING);  // Adds PKCS #1 type 1 padding.
+    if (length == -1) {
+      LOG(ERROR) << __func__ << ": RSA_private_encrypt failed for PKCS#1 v1.5: "
+                 << GetOpenSSLError();
+      return false;
+    }
+    // Set the signature in context->data_.
+    context->data_ = string(reinterpret_cast<char*>(buffer), length);
+    return true;
+  };
+
+  CK_RV Verify(crypto::ScopedRSA rsa,
+               SessionImpl::OperationContext* context,
+               const string& digest,
+               const string& signature) final {
+    if (RSA_size(rsa.get()) > kMaxRSAOutputBytes) {
+      LOG(ERROR) << __func__ << ": RSA Key size is too large for PKCS#1 v1.5.";
+      return CKR_KEY_SIZE_RANGE;
+    }
+    uint8_t buffer[kMaxRSAOutputBytes];
+
+    int length = RSA_public_decrypt(
+        signature.length(), ConvertStringToByteBuffer(signature.data()), buffer,
+        rsa.get(), RSA_PKCS1_PADDING);  // Strips PKCS #1 type 1 padding.
+    if (length == -1) {
+      LOG(ERROR) << __func__ << ": RSA_public_decrypt failed for PKCS#1 v1.5: "
+                 << GetOpenSSLError();
+      return CKR_SIGNATURE_INVALID;
+    }
+    string signed_data = GetDERDigestInfo(context->mechanism_) + digest;
+    if (static_cast<size_t>(length) != signed_data.length() ||
+        0 != brillo::SecureMemcmp(buffer, signed_data.data(), length)) {
+      return CKR_SIGNATURE_INVALID;
+    }
+    return CKR_OK;
+  };
+};
+
+// Sign/Verify helper for RSA PSS
+class RSASignerVerifierImplPSS : public RSASignerVerifier {
+ public:
+  virtual ~RSASignerVerifierImplPSS() = default;
+
+  bool Sign(crypto::ScopedRSA rsa,
+            SessionImpl::OperationContext* context) final {
+    if (RSA_size(rsa.get()) > kMaxRSAOutputBytes) {
+      LOG(ERROR) << __func__ << ": RSA Key size is too large for RSA PSS.";
+      return false;
+    }
+    uint8_t buffer[kMaxRSAOutputBytes];
+    DigestAlgorithm digest_algorithm = GetDigestAlgorithm(context->mechanism_);
+    // Parse the RSA PSS Parameters.
+    const CK_RSA_PKCS_PSS_PARAMS* pss_params = nullptr;
+    const EVP_MD* mgf1_hash = nullptr;
+    if (!ParseRSAPSSParams(context->mechanism_, context->parameter_,
+                           &pss_params, &mgf1_hash, &digest_algorithm)) {
+      LOG(ERROR) << __func__ << ": Failed to parse RSA PSS parameters.";
+      return false;
+    }
+
+    string padded_data(RSA_size(rsa.get()), 0);
+    if (RSA_padding_add_PKCS1_PSS_mgf1(
+            rsa.get(),
+            reinterpret_cast<unsigned char*>(base::data(padded_data)),
+            reinterpret_cast<const unsigned char*>(base::data(context->data_)),
+            GetOpenSSLDigest(digest_algorithm), mgf1_hash,
+            pss_params->sLen) != 1) {
+      LOG(ERROR) << __func__ << ": Failed to produce the PSA PSS paddings.";
+      return false;
+    }
+    int length = RSA_private_encrypt(
+        padded_data.length(), ConvertStringToByteBuffer(padded_data.data()),
+        buffer, rsa.get(), RSA_NO_PADDING);
+    if (length == -1) {
+      LOG(ERROR) << __func__
+                 << ": RSA_private_encrypt failed: " << GetOpenSSLError();
+      return false;
+    }
+    // Set the signature in context->data_.
+    context->data_ = string(reinterpret_cast<char*>(buffer), length);
+    return true;
+  };
+
+  CK_RV Verify(crypto::ScopedRSA rsa,
+               SessionImpl::OperationContext* context,
+               const string& digest,
+               const string& signature) final {
+    if (RSA_size(rsa.get()) > kMaxRSAOutputBytes) {
+      LOG(ERROR) << __func__ << ": RSA Key size is too large for RSA PSS.";
+      return CKR_KEY_SIZE_RANGE;
+    }
+
+    DigestAlgorithm digest_algorithm = GetDigestAlgorithm(context->mechanism_);
+    uint8_t buffer[kMaxRSAOutputBytes];
+
+    // Parse the RSA PSS Parameters.
+    const CK_RSA_PKCS_PSS_PARAMS* pss_params = nullptr;
+    const EVP_MD* mgf1_hash = nullptr;
+    if (!ParseRSAPSSParams(context->mechanism_, context->parameter_,
+                           &pss_params, &mgf1_hash, &digest_algorithm)) {
+      LOG(ERROR) << __func__ << ": Failed to parse RSA PSS parameters.";
+      return CKR_SIGNATURE_INVALID;
+    }
+
+    int expected_size = EVP_MD_size(GetOpenSSLDigest(digest_algorithm));
+    if (digest.size() != expected_size) {
+      LOG(ERROR) << __func__ << ": Size mismatch with RSAPSS, expected "
+                 << expected_size << ", actual " << digest.size();
+      return CKR_SIGNATURE_INVALID;
+    }
+
+    CK_RV result = CKR_OK;
+    int length = RSA_public_decrypt(signature.length(),
+                                    ConvertStringToByteBuffer(signature.data()),
+                                    buffer, rsa.get(), RSA_NO_PADDING);
+    if (length == -1) {
+      LOG(ERROR) << __func__
+                 << ": RSA_public_decrypt failed: " << GetOpenSSLError();
+      result = CKR_SIGNATURE_INVALID;
+    }
+    if (RSA_verify_PKCS1_PSS_mgf1(
+            rsa.get(), reinterpret_cast<const unsigned char*>(digest.data()),
+            GetOpenSSLDigest(digest_algorithm), mgf1_hash, buffer,
+            pss_params->sLen) != 1) {
+      LOG(ERROR) << __func__ << ": Incorrect PSS padding.";
+      result = CKR_SIGNATURE_INVALID;
+    }
+    return CKR_OK;
+  };
+};
+
+std::unique_ptr<RSASignerVerifier> RSASignerVerifier::GetForMechanism(
+    CK_MECHANISM_TYPE mechanism) {
+  auto scheme = GetSigningSchemeForMechanism(mechanism);
+  switch (scheme) {
+    case RsaPaddingScheme::RSASSA_PKCS1_V1_5:
+      return std::make_unique<RSASignerVerifierImplPKCS115>();
+    case RsaPaddingScheme::RSASSA_PSS:
+      return std::make_unique<RSASignerVerifierImplPSS>();
+    default:
+      LOG(ERROR) << __func__ << ": Invalid mechanism "
+                 << static_cast<int64_t>(mechanism);
+      return nullptr;
+  }
+}
+
+}  // namespace
 
 SessionImpl::SessionImpl(int slot_id,
                          ObjectPool* token_object_pool,
@@ -1576,19 +1760,12 @@ bool SessionImpl::RSASign(OperationContext* context) {
       LOG(ERROR) << "Failed to create RSA key for signing.";
       return false;
     }
-    CHECK(RSA_size(rsa.get()) <= kMaxRSAOutputBytes);
-    uint8_t buffer[kMaxRSAOutputBytes];
-    // Emulate RSASSA by performing raw RSA (decrypting) with RSA_PKCS1_PADDING
-    string input = GetDERDigestInfo(context->mechanism_) + context->data_;
-    int length = RSA_private_encrypt(
-        input.length(), ConvertStringToByteBuffer(input.data()), buffer,
-        rsa.get(),
-        RSA_PKCS1_PADDING);  // Adds PKCS #1 type 1 padding.
-    if (length == -1) {
-      LOG(ERROR) << "RSA_private_encrypt failed: " << GetOpenSSLError();
+    std::unique_ptr<RSASignerVerifier> signer =
+        RSASignerVerifier::GetForMechanism(context->mechanism_);
+    if (!signer)
       return false;
-    }
-    signature = string(reinterpret_cast<char*>(buffer), length);
+
+    return signer->Sign(std::move(rsa), context);
   }
   context->data_ = signature;
   return true;
@@ -1603,23 +1780,14 @@ CK_RV SessionImpl::RSAVerify(OperationContext* context,
   crypto::ScopedRSA rsa = CreateRSAKeyFromObject(context->key_);
   if (!rsa) {
     LOG(ERROR) << "Failed to create RSA key for verification.";
-    return false;
+    return CKR_KEY_HANDLE_INVALID;
   }
-  CHECK(RSA_size(rsa.get()) <= kMaxRSAOutputBytes);
-  uint8_t buffer[kMaxRSAOutputBytes];
-  int length = RSA_public_decrypt(
-      signature.length(), ConvertStringToByteBuffer(signature.data()), buffer,
-      rsa.get(),
-      RSA_PKCS1_PADDING);  // Strips PKCS #1 type 1 padding.
-  if (length == -1) {
-    LOG(ERROR) << "RSA_public_decrypt failed: " << GetOpenSSLError();
-    return CKR_SIGNATURE_INVALID;
-  }
-  string signed_data = GetDERDigestInfo(context->mechanism_) + digest;
-  if (static_cast<size_t>(length) != signed_data.length() ||
-      0 != brillo::SecureMemcmp(buffer, signed_data.data(), length))
-    return CKR_SIGNATURE_INVALID;
-  return CKR_OK;
+  std::unique_ptr<RSASignerVerifier> verifier =
+      RSASignerVerifier::GetForMechanism(context->mechanism_);
+  if (!verifier)
+    return CKR_ARGUMENTS_BAD;
+
+  return verifier->Verify(std::move(rsa), context, digest, signature);
 }
 
 bool SessionImpl::ECCSign(OperationContext* context) {

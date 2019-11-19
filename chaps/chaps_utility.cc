@@ -927,4 +927,43 @@ const EVP_MD* GetOpenSSLDigestForMGF(const CK_RSA_PKCS_MGF_TYPE mgf) {
   }
 }
 
+bool ParseRSAPSSParams(CK_MECHANISM_TYPE signing_mechanism,
+                       const std::string& mechanism_parameter,
+                       const CK_RSA_PKCS_PSS_PARAMS** pss_params_out,
+                       const EVP_MD** mgf1_hash_out,
+                       DigestAlgorithm* digest_algorithm_out) {
+  // Check the parameters
+  if (sizeof(CK_RSA_PKCS_PSS_PARAMS) != mechanism_parameter.size()) {
+    LOG(ERROR) << "Invalid parameter size in ParseRSAPSSParams().";
+    return false;
+  }
+  const CK_RSA_PKCS_PSS_PARAMS* pss_params =
+      reinterpret_cast<const CK_RSA_PKCS_PSS_PARAMS*>(
+          mechanism_parameter.data());
+  *mgf1_hash_out = GetOpenSSLDigestForMGF(pss_params->mgf);
+  if (*mgf1_hash_out == nullptr) {
+    LOG(ERROR) << "Invalid MGF Hash specified for ParseRSAPSSParams().";
+    return false;
+  }
+  if (pss_params->sLen == 0) {
+    LOG(WARNING)
+        << "Attempting to sign using RSA PSS padding with no salt in "
+           "ParseRSAPSSParams(). This may result in deterministic padding.";
+  }
+  // If no Hash algorithm is specified in the signing mechanism, then we'll have
+  // to use the one in the PSS parameters.
+  if (*digest_algorithm_out == DigestAlgorithm::NoDigest) {
+    *digest_algorithm_out = GetDigestAlgorithm(pss_params->hashAlg);
+    if (*digest_algorithm_out == DigestAlgorithm::NoDigest) {
+      // PSS can't accept signing of generic data without hash algorithm
+      LOG(ERROR) << "No digest algorithm specified in PSS Params for "
+                    "CKM_RSA_PKCS_PSS in ParseRSAPSSParams().";
+      return false;
+    }
+  }
+
+  *pss_params_out = pss_params;
+  return true;
+}
+
 }  // namespace chaps

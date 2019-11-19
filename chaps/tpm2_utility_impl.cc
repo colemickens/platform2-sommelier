@@ -774,31 +774,10 @@ bool TPM2UtilityImpl::Sign(int key_handle,
   if (GetSigningSchemeForMechanism(signing_mechanism) ==
       RsaPaddingScheme::RSASSA_PSS) {
     // Check the parameters
-    if (sizeof(CK_RSA_PKCS_PSS_PARAMS) != mechanism_parameter.size()) {
-      LOG(ERROR) << "Invalid parameter size in TPM2 Sign() for RSA PSS.";
+    if (!ParseRSAPSSParams(signing_mechanism, mechanism_parameter, &pss_params,
+                           &mgf1_hash, &digest_algorithm)) {
+      LOG(ERROR) << "Failed to parse RSA PSS parameters in TPM2 Sign().";
       return false;
-    }
-    pss_params = reinterpret_cast<const CK_RSA_PKCS_PSS_PARAMS*>(
-        mechanism_parameter.data());
-    mgf1_hash = GetOpenSSLDigestForMGF(pss_params->mgf);
-    if (mgf1_hash == nullptr) {
-      LOG(ERROR) << "Invalid MGF Hash specified for TPM2 Sign() with RSA PSS.";
-      return false;
-    }
-    if (pss_params->sLen == 0) {
-      LOG(WARNING) << "Attempting to sign using RSA PSS padding with no salt. "
-                      "This may result in deterministic padding.";
-    }
-    // If no Hash algorithm is specified in the signing mechanism, then we'll
-    // have to use the one in the PSS parameters.
-    if (digest_algorithm == DigestAlgorithm::NoDigest) {
-      digest_algorithm = GetDigestAlgorithm(pss_params->hashAlg);
-      if (digest_algorithm == DigestAlgorithm::NoDigest) {
-        // PSS can't accept signing of generic data without hash algorithm
-        LOG(ERROR) << "No digest algorithm specified in PSS Params for "
-                      "CKM_RSA_PKCS_PSS.";
-        return false;
-      }
     }
   }
 
