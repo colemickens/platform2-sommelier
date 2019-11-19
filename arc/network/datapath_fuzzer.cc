@@ -85,7 +85,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     datapath.AddVirtualBridgedInterface(ifname, MacAddressToString(mac),
                                         bridge);
     datapath.RemoveInterface(ifname);
-    datapath.AddTAP(ifname, mac, *subnet_addr.get(), -1);
+    datapath.AddTAP(ifname, &mac, subnet_addr.get(), -1);
     datapath.RemoveTAP(ifname);
   }
 
