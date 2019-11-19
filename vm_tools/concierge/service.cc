@@ -626,10 +626,7 @@ std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
 
 Service::Service(base::Closure quit_closure)
     : network_address_manager_({
-          arc_networkd::AddressManager::Guest::VM_TERMINA,
           arc_networkd::AddressManager::Guest::VM_PLUGIN,
-          arc_networkd::AddressManager::Guest::VM_ARC,
-          arc_networkd::AddressManager::Guest::CONTAINER,
       }),
       next_seneschal_server_port_(kFirstSeneschalServerPort),
       quit_closure_(std::move(quit_closure)),
@@ -1141,17 +1138,6 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   }
 
   // Allocate resources for the VM.
-  arc_networkd::MacAddress mac_address = mac_address_generator_.Generate();
-  std::unique_ptr<arc_networkd::Subnet> subnet =
-      network_address_manager_.AllocateIPv4Subnet(
-          arc_networkd::AddressManager::Guest::VM_TERMINA);
-  if (!subnet) {
-    LOG(ERROR) << "No available subnets; unable to start VM";
-
-    response.set_failure_reason("No available subnets");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
   uint32_t vsock_cid = vsock_cid_pool_.Allocate();
   if (vsock_cid == 0) {
     LOG(ERROR) << "Unable to allocate vsock context id";
@@ -1160,6 +1146,17 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
+
+  std::unique_ptr<patchpanel::Client> network_client =
+      patchpanel::Client::New();
+  if (!network_client) {
+    LOG(ERROR) << "Unable to open networking service client";
+
+    response.set_failure_reason("Unable to open network service client");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
   uint32_t seneschal_server_port = next_seneschal_server_port_++;
   std::unique_ptr<SeneschalServerProxy> server_proxy =
       SeneschalServerProxy::CreateVsockProxy(seneschal_service_proxy_,
@@ -1189,7 +1186,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   };
   auto vm = TerminaVm::Create(
       std::move(kernel), std::move(rootfs), std::move(disks),
-      std::move(mac_address), std::move(subnet), vsock_cid,
+      vsock_cid, std::move(network_client),
       std::move(server_proxy), std::move(runtime_dir), std::move(rootfs_device),
       std::move(stateful_device), features);
   if (!vm) {
@@ -1941,17 +1938,6 @@ bool Service::StartTermina(
   DCHECK(sequence_checker_.CalledOnValidSequence());
   DCHECK(result);
   LOG(INFO) << "Starting lxd";
-
-  // Allocate the subnet for lxd's bridge to use.
-  std::unique_ptr<arc_networkd::Subnet> container_subnet =
-      network_address_manager_.AllocateIPv4Subnet(
-          arc_networkd::AddressManager::Guest::CONTAINER);
-  if (!container_subnet) {
-    LOG(ERROR) << "Could not allocate container subnet";
-    *failure_reason = "could not allocate container subnet";
-    return false;
-  }
-  vm->SetContainerSubnet(std::move(container_subnet));
 
   // Set up a route for the container using the VM as a gateway.
   uint32_t container_gateway_addr = vm->IPv4Address();

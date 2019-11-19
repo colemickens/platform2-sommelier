@@ -66,10 +66,37 @@ constexpr size_t kGuestAddressOffset = 1;
 // The CPU cgroup where all the Termina crosvm processes should belong to.
 constexpr char kTerminaCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/termina";
 
+std::unique_ptr<arc_networkd::Subnet>
+MakeSubnet(const patchpanel::IPv4Subnet& subnet) {
+  return std::make_unique<arc_networkd::Subnet>(subnet.base_addr(),
+                                                subnet.prefix_len(),
+                                                base::Bind(&base::DoNothing));
+}
+
 }  // namespace
 
 TerminaVm::TerminaVm(
-    arc_networkd::MacAddress mac_addr,
+    uint32_t vsock_cid,
+    std::unique_ptr<patchpanel::Client> network_client,
+    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
+    base::FilePath runtime_dir,
+    std::string rootfs_device,
+    std::string stateful_device,
+    VmFeatures features)
+    : vsock_cid_(vsock_cid),
+      network_client_(std::move(network_client)),
+      seneschal_server_proxy_(std::move(seneschal_server_proxy)),
+      features_(features),
+      rootfs_device_(rootfs_device),
+      stateful_device_(stateful_device) {
+  CHECK(base::DirectoryExists(runtime_dir));
+
+  // Take ownership of the runtime directory.
+  CHECK(runtime_dir_.Set(runtime_dir));
+}
+
+// For testing.
+TerminaVm::TerminaVm(
     std::unique_ptr<arc_networkd::Subnet> subnet,
     uint32_t vsock_cid,
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
@@ -77,8 +104,7 @@ TerminaVm::TerminaVm(
     std::string rootfs_device,
     std::string stateful_device,
     VmFeatures features)
-    : mac_addr_(std::move(mac_addr)),
-      subnet_(std::move(subnet)),
+    : subnet_(std::move(subnet)),
       vsock_cid_(vsock_cid),
       seneschal_server_proxy_(std::move(seneschal_server_proxy)),
       features_(features),
@@ -99,16 +125,15 @@ std::unique_ptr<TerminaVm> TerminaVm::Create(
     base::FilePath kernel,
     base::FilePath rootfs,
     std::vector<TerminaVm::Disk> disks,
-    arc_networkd::MacAddress mac_addr,
-    std::unique_ptr<arc_networkd::Subnet> subnet,
     uint32_t vsock_cid,
+    std::unique_ptr<patchpanel::Client> network_client,
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
     base::FilePath runtime_dir,
     std::string rootfs_device,
     std::string stateful_device,
     VmFeatures features) {
   auto vm = base::WrapUnique(new TerminaVm(
-      std::move(mac_addr), std::move(subnet), vsock_cid,
+      vsock_cid, std::move(network_client),
       std::move(seneschal_server_proxy), std::move(runtime_dir),
       std::move(rootfs_device), std::move(stateful_device), features));
 
@@ -126,11 +151,24 @@ std::string TerminaVm::GetVmSocketPath() const {
 bool TerminaVm::Start(base::FilePath kernel,
                       base::FilePath rootfs,
                       std::vector<TerminaVm::Disk> disks) {
-  // Set up the tap device.
+  // Get the network interface.
+  patchpanel::IPv4Subnet container_subnet;
+  if (!network_client_->NotifyTerminaVmStartup(vsock_cid_,
+                                               &network_device_,
+                                               &container_subnet)) {
+    LOG(ERROR) << "No network devices available";
+    return false;
+  }
+  subnet_ = std::move(MakeSubnet(network_device_.ipv4_subnet()));
+  container_subnet_ = std::move(MakeSubnet(container_subnet));
+
+  // Open the tap device.
   base::ScopedFD tap_fd =
-      BuildTapDevice(mac_addr_, GatewayAddress(), Netmask(), true /*vnet_hdr*/);
+      OpenTapDevice(network_device_.ifname(), true /*vnet_hdr*/,
+                    nullptr /*ifname_out*/);
   if (!tap_fd.is_valid()) {
-    LOG(ERROR) << "Unable to build and configure TAP device";
+    LOG(ERROR) << "Unable to open and configure TAP device "
+               << network_device_.ifname();
     return false;
   }
 
@@ -247,6 +285,10 @@ bool TerminaVm::Shutdown() {
     // The process is already gone.
     process_.Release();
     return true;
+  }
+
+  if (!network_client_->NotifyTerminaVmShutdown(vsock_cid_)) {
+    LOG(WARNING) << "Unable to notify networking services";
   }
 
   grpc::ClientContext ctx;
@@ -560,11 +602,6 @@ bool TerminaVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state) {
   return UpdateCpuShares(base::FilePath(kTerminaCpuCgroup), cpu_shares);
 }
 
-void TerminaVm::SetContainerSubnet(
-    std::unique_ptr<arc_networkd::Subnet> subnet) {
-  container_subnet_ = std::move(subnet);
-}
-
 uint32_t TerminaVm::GatewayAddress() const {
   return subnet_->AddressAtOffset(kHostAddressOffset);
 }
@@ -621,7 +658,6 @@ void TerminaVm::set_stub_for_testing(
 }
 
 std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
-    arc_networkd::MacAddress mac_addr,
     std::unique_ptr<arc_networkd::Subnet> subnet,
     uint32_t vsock_cid,
     base::FilePath runtime_dir,
@@ -635,7 +671,7 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
       .audio_capture = false,
   };
   auto vm = base::WrapUnique(
-      new TerminaVm(std::move(mac_addr), std::move(subnet), vsock_cid, nullptr,
+      new TerminaVm(std::move(subnet), vsock_cid, nullptr,
                     std::move(runtime_dir), std::move(rootfs_device),
                     std::move(stateful_device), features));
   vm->set_kernel_version_for_testing(kernel_version);

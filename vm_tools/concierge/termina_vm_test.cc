@@ -385,7 +385,6 @@ void TerminaVmTest::SetUp() {
   // Allocate resources for the VM.
   network_address_manager_.reset(new arc_networkd::AddressManager(
       {arc_networkd::AddressManager::Guest::VM_TERMINA}));
-  arc_networkd::MacAddress mac_addr = mac_address_generator_.Generate();
   uint32_t vsock_cid = vsock_cid_pool_.Allocate();
   std::unique_ptr<arc_networkd::Subnet> subnet =
       network_address_manager_->AllocateIPv4Subnet(
@@ -402,7 +401,7 @@ void TerminaVmTest::SetUp() {
 
   // Create the TerminaVm.
   vm_ = TerminaVm::CreateForTesting(
-      std::move(mac_addr), std::move(subnet), vsock_cid, temp_dir_.GetPath(),
+      std::move(subnet), vsock_cid, temp_dir_.GetPath(),
       std::move(rootfs_device), std::move(stateful_device), kKernelVersion,
       std::move(stub));
   ASSERT_TRUE(vm_);

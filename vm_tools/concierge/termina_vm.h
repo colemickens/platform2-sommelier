@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 
+#include <arc/network/client.h>
 #include <arc/network/mac_address_generator.h>
 #include <arc/network/subnet.h>
 #include <base/files/file_path.h>
@@ -20,6 +21,7 @@
 #include <base/macros.h>
 #include <base/time/time.h>
 #include <brillo/process.h>
+#include <patchpanel/proto_bindings/patchpanel-service.pb.h>
 #include <vm_concierge/proto_bindings/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
@@ -68,9 +70,8 @@ class TerminaVm final : public VmInterface {
       base::FilePath kernel,
       base::FilePath rootfs,
       std::vector<Disk> disks,
-      arc_networkd::MacAddress mac_addr,
-      std::unique_ptr<arc_networkd::Subnet> subnet,
       uint32_t vsock_cid,
+      std::unique_ptr<patchpanel::Client> network_client,
       std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
       base::FilePath runtime_dir,
       std::string rootfs_device,
@@ -107,10 +108,6 @@ class TerminaVm final : public VmInterface {
 
   // Set the guest time to the current time as given by gettimeofday.
   bool SetTime(std::string* failure_reason) override;
-
-  // Sets the container subnet for this VM to |subnet|. This subnet is intended
-  // to be provided to a container runtime as a DHCP pool.
-  void SetContainerSubnet(std::unique_ptr<arc_networkd::Subnet> subnet);
 
   // The pid of the child process.
   pid_t pid() { return process_.pid(); }
@@ -190,7 +187,6 @@ class TerminaVm final : public VmInterface {
   static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state);
 
   static std::unique_ptr<TerminaVm> CreateForTesting(
-      arc_networkd::MacAddress mac_addr,
       std::unique_ptr<arc_networkd::Subnet> subnet,
       uint32_t vsock_cid,
       base::FilePath runtime_dir,
@@ -200,8 +196,16 @@ class TerminaVm final : public VmInterface {
       std::unique_ptr<vm_tools::Maitred::Stub> stub);
 
  private:
-  TerminaVm(arc_networkd::MacAddress mac_addr,
-            std::unique_ptr<arc_networkd::Subnet> subnet,
+  TerminaVm(uint32_t vsock_cid,
+            std::unique_ptr<patchpanel::Client> network_client,
+            std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
+            base::FilePath runtime_dir,
+            std::string rootfs_device,
+            std::string stateful_device,
+            VmFeatures features);
+
+  // Constructor for testing only.
+  TerminaVm(std::unique_ptr<arc_networkd::Subnet> subnet,
             uint32_t vsock_cid,
             std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
             base::FilePath runtime_dir,
@@ -226,9 +230,6 @@ class TerminaVm final : public VmInterface {
   void set_kernel_version_for_testing(std::string kernel_version);
   void set_stub_for_testing(std::unique_ptr<vm_tools::Maitred::Stub> stub);
 
-  // EUI-48 mac address for the VM's network interface.
-  arc_networkd::MacAddress mac_addr_;
-
   // The /30 subnet assigned to the VM.
   std::unique_ptr<arc_networkd::Subnet> subnet_;
 
@@ -237,6 +238,12 @@ class TerminaVm final : public VmInterface {
 
   // Virtual socket context id to be used when communicating with this VM.
   uint32_t vsock_cid_;
+
+  // Termina network device.
+  patchpanel::Device network_device_;
+
+  // DBus client for the networking service.
+  std::unique_ptr<patchpanel::Client> network_client_;
 
   // Proxy to the server providing shared directory access for this VM.
   std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy_;
