@@ -58,16 +58,8 @@ bootreason () {
   esac
 }
 
-if ! mosys -l smbios info bios > ${BIOS_INFO_FILE} 2> /dev/null; then
-  # If a sub-command is not available on a platform, mosys will fail with
-  # a non-zero exit code (EXIT_FAILURE) and print the help menu. For example,
-  # this will happen if a "mosys smbios" sub-command is run on ARM since ARM
-  # platforms do not support SMBIOS. If mosys fails, delete the output file to
-  # avoid placing non-relevant or confusing output in /var/log.
-  echo "version              | $(crossystem fwid)" > ${BIOS_INFO_FILE}
-fi
-
-cat <<END >>${BIOS_INFO_FILE}
+cat <<END >"${BIOS_INFO_FILE}"
+version              | $(crossystem fwid)
 ro bios version      | $(crossystem ro_fwid)
 Boot switch status:
   Recovery button: $(swstate 'recoverysw_boot' 'released' 'pressed')
