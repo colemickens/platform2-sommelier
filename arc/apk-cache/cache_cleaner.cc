@@ -30,7 +30,6 @@ constexpr char kApkExtension[] = ".apk";
 constexpr char kObbExtension[] = ".obb";
 constexpr char kMainObbPrefix[] = "main.";
 constexpr char kPatchObbPrefix[] = "patch.";
-constexpr base::TimeDelta kValidityPeriod = base::TimeDelta::FromDays(30);
 
 namespace {
 

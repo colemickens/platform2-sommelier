@@ -5,8 +5,8 @@
 #ifndef ARC_APK_CACHE_APK_CACHE_DATABASE_H_
 #define ARC_APK_CACHE_APK_CACHE_DATABASE_H_
 
-#include <cstdint>
 #include <memory>
+#include <stdint.h>
 #include <string>
 #include <vector>
 
@@ -31,13 +31,11 @@ namespace apk_cache {
 // in case play store starts pushing packages during cleaning. |source| is used
 // to indicate which component created the session. Sessions have maximum age
 // limits. Expired sessions must be removed. |timestamp| stores creation time of
-// the session. |attributes| is used to store additional info about sessions.
-// |status| is the status code of the session (open, closed, etc.).
+// the session. |status| is the status code of the session (open, closed, etc.).
 struct Session {
   int64_t id;
   std::string source;
   base::Time timestamp;
-  base::Optional<std::string> attributes;
   int32_t status;
 };
 
@@ -67,6 +65,9 @@ struct FileEntry {
   int64_t session_id;
 };
 
+// Escapes string in SQL. Replaces ' with ''.
+std::string EscapeSQLString(const std::string& string_to_escape);
+
 // Provides access to APK cache database.
 class ApkCacheDatabase {
  public:
@@ -90,6 +91,10 @@ class ApkCacheDatabase {
   int Close();
   // Runs SQLite built-in integrity check. Returns true if no error is found.
   bool CheckIntegrity() const;
+  // Returns true if sessions table exists.
+  bool SessionsTableExists() const;
+  // Inserts session into database. Returns |id|. Returns 0 if error occurred.
+  int64_t InsertSession(const Session& session) const;
   // Gets all sessions. Returns nullopt if any error occurs.
   base::Optional<std::vector<Session>> GetSessions() const;
   // Gets all file entries. Returns nullopt if any error occurs.
@@ -99,6 +104,8 @@ class ApkCacheDatabase {
   bool DeleteSession(int64_t session_id) const;
   // Deletes |file_entry| from database. Returns true if no error occurred.
   bool DeleteFileEntry(int64_t file_id) const;
+  // Updates session status. Returns true if successful.
+  bool UpdateSessionStatus(int64_t id, int32_t status) const;
 
  private:
   using SqliteCallback = int (*)(void*, int, char**, char**);
@@ -117,6 +124,9 @@ class ApkCacheDatabase {
   ExecResult ExecSQL(const std::string& sql,
                      SqliteCallback callback,
                      void* data) const;
+  // Executes SQL that deletes rows. Returns number of rows affected. Returns -1
+  // if error occurs.
+  int ExecDeleteSQL(const std::string& sql) const;
 
   base::FilePath db_path_;
   std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db_;

@@ -5,12 +5,13 @@
 #include "arc/apk-cache/apk_cache_database_test_utils.h"
 
 #include <array>
+#include <inttypes.h>
 #include <memory>
-#include <sstream>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/strings/stringprintf.h>
 #include <sqlite3.h>
 
 #include "arc/apk-cache/apk_cache_database.h"
@@ -83,47 +84,69 @@ int ExecSQL(const base::FilePath& db_path,
 
 }  // namespace
 
-int CreateDatabase(const base::FilePath& db_path) {
+int CreateDatabaseForTesting(const base::FilePath& db_path) {
   std::vector<std::string> create_db_sql(kCreateDatabaseSQL.begin(),
                                          kCreateDatabaseSQL.end());
   return ExecSQL(db_path, create_db_sql);
 }
 
-void InsertSession(const base::FilePath& db_path, const Session& session) {
-  std::ostringstream sql;
-  sql << "INSERT INTO sessions (id,source,timestamp,attributes,status) VALUES("
-      << session.id << ",'" << session.source << "',"
-      << session.timestamp.ToJavaTime() << ",";
-  if (session.attributes) {
-    sql << "'" << *(session.attributes) << "'";
-  } else {
-    sql << "null";
-  }
-  sql << "," << session.status << ")";
-  ExecSQL(db_path, {sql.str()});
+bool InsertSessionForTesting(const base::FilePath& db_path,
+                             const Session& session) {
+  const std::string sql = base::StringPrintf(
+      "INSERT INTO sessions (id,source,timestamp,status) VALUES "
+      "(%" PRId64 ", '%s', %" PRId64 ", %" PRId32 ")",
+      session.id, EscapeSQLString(session.source).c_str(),
+      session.timestamp.ToJavaTime(), session.status);
+  return ExecSQL(db_path, {sql}) == SQLITE_OK;
 }
 
-void InsertFileEntry(const base::FilePath& db_path,
-                     const FileEntry& file_entry) {
-  std::ostringstream sql;
-  sql << "INSERT INTO file_entries (id,package_name,version_code,type,"
-         "attributes,size,hash,access_time,priority,session_id) VALUES("
-      << file_entry.id << ",'" << file_entry.package_name << "',"
-      << file_entry.version_code << ",'" << file_entry.type << "',";
+bool InsertFileEntryForTesting(const base::FilePath& db_path,
+                               const FileEntry& file_entry) {
+  std::string attributes_in_sql;
   if (file_entry.attributes) {
-    sql << "'" << *(file_entry.attributes) << "'";
+    attributes_in_sql = base::StringPrintf(
+        "'%s'", EscapeSQLString(*(file_entry.attributes)).c_str());
   } else {
-    sql << "null";
+    attributes_in_sql = "null";
   }
-  sql << "," << file_entry.size << ",";
+
+  std::string hash_in_sql;
   if (file_entry.hash) {
-    sql << "'" << *(file_entry.hash) << "'";
+    hash_in_sql =
+        base::StringPrintf("'%s'", EscapeSQLString(*(file_entry.hash)).c_str());
   } else {
-    sql << "null";
+    hash_in_sql = "null";
   }
-  sql << "," << file_entry.access_time.ToJavaTime() << ","
-      << file_entry.priority << "," << file_entry.session_id << ")";
-  ExecSQL(db_path, {sql.str()});
+
+  std::string sql = base::StringPrintf(
+      "INSERT INTO file_entries (id,package_name,version_code,type,"
+      "attributes,size,hash,access_time,priority,session_id) VALUES"
+      "(%" PRId64 ", '%s', %" PRId64 ", '%s', %s, %" PRId64 ", %s, %" PRId64
+      ", %" PRId32 ", %" PRId64 ")",
+      file_entry.id, EscapeSQLString(file_entry.package_name).c_str(),
+      file_entry.version_code, EscapeSQLString(file_entry.type).c_str(),
+      attributes_in_sql.c_str(), file_entry.size, hash_in_sql.c_str(),
+      file_entry.access_time.ToJavaTime(), file_entry.priority,
+      file_entry.session_id);
+  return ExecSQL(db_path, {sql}) == SQLITE_OK;
+}
+
+bool UpdateSessionTimestampForTesting(const base::FilePath& db_path,
+                                      int64_t id,
+                                      const base::Time& timestamp) {
+  const std::string sql = base::StringPrintf(
+      "UPDATE sessions SET timestamp = %" PRId64 " WHERE id = %" PRId64,
+      timestamp.ToJavaTime(), id);
+  return ExecSQL(db_path, {sql}) == SQLITE_OK;
+}
+
+bool UpdateSessionStatusForTesting(const base::FilePath& db_path,
+                                   int64_t id,
+                                   int32_t status) {
+  const std::string sql = base::StringPrintf(
+      "UPDATE sessions SET status = %" PRId32 " WHERE id = %" PRId64, status,
+      id);
+  return ExecSQL(db_path, {sql}) == SQLITE_OK;
 }
 
 }  // namespace apk_cache

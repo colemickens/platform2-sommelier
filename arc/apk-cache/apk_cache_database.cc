@@ -5,6 +5,7 @@
 #include "arc/apk-cache/apk_cache_database.h"
 
 #include <cstring>
+#include <inttypes.h>
 #include <memory>
 #include <string>
 #include <utility>
@@ -15,6 +16,7 @@
 #include <base/optional.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <sqlite3.h>
 
 namespace apk_cache {
@@ -61,14 +63,11 @@ int GetSessionsCallback(void* data, int count, char** row, char** names) {
   }
   session.timestamp = base::Time::FromJavaTime(timestamp);
 
-  if (row[3])
-    session.attributes = std::string(row[3]);
-
-  if (!row[4]) {
+  if (!row[3]) {
     LOG(ERROR) << "Session.status is null";
     return SQLITE_ERROR;
   }
-  if (!base::StringToInt(row[4], &session.status)) {
+  if (!base::StringToInt(row[3], &session.status)) {
     LOG(ERROR) << "Session.status is not a number";
     return SQLITE_ERROR;
   }
@@ -161,6 +160,12 @@ int GetFileEntriesCallback(void* data, int count, char** row, char** names) {
 
 }  // namespace
 
+std::string EscapeSQLString(const std::string& string_to_escape) {
+  std::string escaped_string = string_to_escape;
+  base::ReplaceSubstringsAfterOffset(&escaped_string, 0, "'", "''");
+  return escaped_string;
+}
+
 ApkCacheDatabase::ApkCacheDatabase(const base::FilePath& db_path)
     : db_path_(db_path), db_(nullptr, nullptr) {}
 
@@ -217,11 +222,30 @@ bool ApkCacheDatabase::CheckIntegrity() const {
   return integrity_result == "ok";
 }
 
+bool ApkCacheDatabase::SessionsTableExists() const {
+  ExecResult result = ExecSQL("SELECT id FROM sessions LIMIT 1");
+  return result.error_msg.find("no such table") == std::string::npos;
+}
+
+int64_t ApkCacheDatabase::InsertSession(const Session& session) const {
+  const std::string sql = base::StringPrintf(
+      "INSERT INTO sessions (source, timestamp, status)"
+      " VALUES ('%s', %" PRId64 ", %d)",
+      EscapeSQLString(session.source).c_str(), session.timestamp.ToJavaTime(),
+      session.status);
+  ExecResult result = ExecSQL(sql);
+  if (result.code != SQLITE_OK) {
+    LOG(ERROR) << "Failed to insert session: (" << result.code << ") "
+               << result.error_msg;
+    return 0;
+  }
+  return sqlite3_last_insert_rowid(db_.get());
+}
+
 base::Optional<std::vector<Session>> ApkCacheDatabase::GetSessions() const {
   std::vector<Session> sessions;
-  ExecResult result =
-      ExecSQL("SELECT id,source,timestamp,attributes,status FROM sessions",
-              GetSessionsCallback, &sessions);
+  ExecResult result = ExecSQL("SELECT id,source,timestamp,status FROM sessions",
+                              GetSessionsCallback, &sessions);
   if (result.code != SQLITE_OK) {
     LOG(ERROR) << "Failed to query: (" << result.code << ") "
                << result.error_msg;
@@ -248,39 +272,45 @@ base::Optional<std::vector<FileEntry>> ApkCacheDatabase::GetFileEntries()
 }
 
 bool ApkCacheDatabase::DeleteSession(int64_t session_id) const {
-  std::string sql =
-      "DELETE FROM sessions WHERE id = " + base::Int64ToString(session_id);
-  ExecResult result = ExecSQL(sql);
-  if (result.code != SQLITE_OK) {
-    LOG(ERROR) << "Failed to delete session " << session_id << ": ("
-               << result.code << ") " << result.error_msg;
-    return false;
-  }
-
-  if (sqlite3_changes(db_.get()) == 0) {
+  const std::string sql = base::StringPrintf(
+      "DELETE FROM sessions WHERE id = %" PRId64, session_id);
+  if (ExecDeleteSQL(sql) != 1) {
     LOG(ERROR) << "Session " << session_id << " does not exist in the database";
     return false;
   }
 
-  return result.code == SQLITE_OK;
+  return true;
 }
 
 bool ApkCacheDatabase::DeleteFileEntry(int64_t file_id) const {
-  std::string sql =
-      "DELETE FROM file_entries WHERE id = " + base::Int64ToString(file_id);
-  ExecResult result = ExecSQL(sql);
-  if (result.code != SQLITE_OK) {
-    LOG(ERROR) << "Failed to delete file entry " << file_id << ": ("
-               << result.code << ") " << result.error_msg;
-    return false;
-  }
-
-  if (sqlite3_changes(db_.get()) == 0) {
+  const std::string sql = base::StringPrintf(
+      "DELETE FROM file_entries WHERE id = %" PRId64, file_id);
+  if (ExecDeleteSQL(sql) != 1) {
     LOG(ERROR) << "File entry " << file_id << " does not exist in the database";
     return false;
   }
 
-  return result.code == SQLITE_OK;
+  return true;
+}
+
+bool ApkCacheDatabase::UpdateSessionStatus(int64_t id, int32_t status) const {
+  const std::string sql = base::StringPrintf(
+      "UPDATE sessions SET status = %" PRId32 " WHERE id = %" PRId64, status,
+      id);
+  ExecResult result = ExecSQL(sql);
+
+  if (result.code != SQLITE_OK) {
+    LOG(ERROR) << "Failed to update session status: (" << result.code << ") "
+               << result.error_msg;
+    return -1;
+  }
+
+  if (sqlite3_changes(db_.get()) != 1) {
+    LOG(ERROR) << "Session " << id << " does not exist";
+    return false;
+  }
+
+  return true;
 }
 
 int ApkCacheDatabase::EnableForeignKey() const {
@@ -311,6 +341,18 @@ ApkCacheDatabase::ExecResult ApkCacheDatabase::ExecSQL(const std::string& sql,
     sqlite3_free(error_msg);
   }
   return {result, error_msg_str};
+}
+
+int ApkCacheDatabase::ExecDeleteSQL(const std::string& sql) const {
+  ExecResult result = ExecSQL(sql);
+
+  if (result.code != SQLITE_OK) {
+    LOG(ERROR) << "Failed to delete: (" << result.code << ") "
+               << result.error_msg;
+    return -1;
+  }
+
+  return sqlite3_changes(db_.get());
 }
 
 }  // namespace apk_cache

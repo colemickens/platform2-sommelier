@@ -5,8 +5,11 @@
 #ifndef ARC_APK_CACHE_APK_CACHE_DATABASE_TEST_UTILS_H_
 #define ARC_APK_CACHE_APK_CACHE_DATABASE_TEST_UTILS_H_
 
+#include <stdint.h>
+
 namespace base {
 class FilePath;
+class Time;
 }  // namespace base
 
 namespace apk_cache {
@@ -17,12 +20,21 @@ struct FileEntry;
 namespace apk_cache {
 
 // Create database and tables for testing.
-int CreateDatabase(const base::FilePath& db_path);
+int CreateDatabaseForTesting(const base::FilePath& db_path);
 // Insert session into database for testing.
-void InsertSession(const base::FilePath& db_path, const Session& session);
+bool InsertSessionForTesting(const base::FilePath& db_path,
+                             const Session& session);
 // Insert file entry into database for testing.
-void InsertFileEntry(const base::FilePath& db_path,
-                     const FileEntry& file_entry);
+bool InsertFileEntryForTesting(const base::FilePath& db_path,
+                               const FileEntry& file_entry);
+// Update session timestamp for testing.
+bool UpdateSessionTimestampForTesting(const base::FilePath& db_path,
+                                      int64_t id,
+                                      const base::Time& timestamp);
+// Update session status for testing.
+bool UpdateSessionStatusForTesting(const base::FilePath& db_path,
+                                   int64_t id,
+                                   int32_t status);
 
 }  // namespace apk_cache
 

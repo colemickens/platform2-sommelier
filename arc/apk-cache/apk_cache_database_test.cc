@@ -28,9 +28,9 @@ constexpr char kTestPackageHash[] = "1234567890abcdef";
 constexpr int32_t kTestPackagePriority = 0;
 
 void CreateTestPackage(const base::FilePath& db_path) {
-  Session session = {1, kTestSessionSource, base::Time::Now(), base::nullopt,
+  Session session = {1, kTestSessionSource, base::Time::Now(),
                      kSessionStatusClosed};
-  InsertSession(db_path, session);
+  InsertSessionForTesting(db_path, session);
   FileEntry file_entry = {1,
                           kTestPackageName,
                           kTestVersionCode,
@@ -41,7 +41,7 @@ void CreateTestPackage(const base::FilePath& db_path) {
                           base::Time::Now(),
                           kTestPackagePriority,
                           1};
-  InsertFileEntry(db_path, file_entry);
+  InsertFileEntryForTesting(db_path, file_entry);
 }
 
 }  // namespace
@@ -64,7 +64,7 @@ class ApkCacheDatabaseTest : public testing::Test {
 // Test create database and check integrity
 TEST_F(ApkCacheDatabaseTest, CreateDatabase) {
   base::FilePath db_path = temp_path().Append(kDatabaseFile);
-  ASSERT_EQ(CreateDatabase(db_path), SQLITE_OK);
+  ASSERT_EQ(CreateDatabaseForTesting(db_path), SQLITE_OK);
   EXPECT_TRUE(base::PathExists(db_path));
 
   ApkCacheDatabase db(db_path);
@@ -77,7 +77,7 @@ TEST_F(ApkCacheDatabaseTest, CreateDatabase) {
 // Test database query
 TEST_F(ApkCacheDatabaseTest, DatabaseQuery) {
   base::FilePath db_path = temp_path().Append(kDatabaseFile);
-  ASSERT_EQ(CreateDatabase(db_path), SQLITE_OK);
+  ASSERT_EQ(CreateDatabaseForTesting(db_path), SQLITE_OK);
   EXPECT_TRUE(base::PathExists(db_path));
   CreateTestPackage(db_path);
 
@@ -92,7 +92,6 @@ TEST_F(ApkCacheDatabaseTest, DatabaseQuery) {
   EXPECT_EQ((*sessions)[0].source, std::string(kTestSessionSource));
   EXPECT_LT((*sessions)[0].timestamp,
             base::Time::Now() + base::TimeDelta::FromSeconds(1));
-  EXPECT_EQ((*sessions)[0].attributes, base::nullopt);
   EXPECT_EQ((*sessions)[0].status, kSessionStatusClosed);
 
   // Query file entries
@@ -116,7 +115,7 @@ TEST_F(ApkCacheDatabaseTest, DatabaseQuery) {
 // Test delete session, related files should also be deleted
 TEST_F(ApkCacheDatabaseTest, DeleteSession) {
   base::FilePath db_path = temp_path().Append(kDatabaseFile);
-  ASSERT_EQ(CreateDatabase(db_path), SQLITE_OK);
+  ASSERT_EQ(CreateDatabaseForTesting(db_path), SQLITE_OK);
   EXPECT_TRUE(base::PathExists(db_path));
   CreateTestPackage(db_path);
 
@@ -147,7 +146,7 @@ TEST_F(ApkCacheDatabaseTest, DeleteSession) {
 // Test delete file entry
 TEST_F(ApkCacheDatabaseTest, DeleteFileEntry) {
   base::FilePath db_path = temp_path().Append(kDatabaseFile);
-  ASSERT_EQ(CreateDatabase(db_path), SQLITE_OK);
+  ASSERT_EQ(CreateDatabaseForTesting(db_path), SQLITE_OK);
   EXPECT_TRUE(base::PathExists(db_path));
   CreateTestPackage(db_path);
 

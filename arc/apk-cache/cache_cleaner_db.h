@@ -7,7 +7,12 @@
 
 #include <array>
 #include <string>
-#include <unordered_set>
+
+#include "arc/apk-cache/apk_cache_database.h"
+
+namespace apk_cache {
+class ApkCacheDatabase;
+}  // namespace apk_cache
 
 namespace base {
 class FilePath;
@@ -23,20 +28,65 @@ extern const char kFilesBase[];
 extern const char kDatabaseFile[];
 
 // Session status for testing.
+extern const int32_t kSessionStatusOpen;
 extern const int32_t kSessionStatusClosed;
 
 // File types for testing.
 extern const char kFileTypeBaseApk[];
 
+// Cache cleaner session source for testing.
+extern const char kCacheCleanerSessionSource[];
+
 // Expose database files to old cache cleaner. Will be removed once old cache
 // cleaner is removed.
 extern const std::array<const char*, 4> kDatabaseFiles;
 
-// Performs cleaning of opaque files organized by database in the APK cache
-// directory. Also deletes invalid entries in the database. The path to the
-// cache directory must be provided as |cache_root| parameter. Returns true if
-// all the intended files and directories were successfully deleted.
-bool CleanOpaqueFiles(const base::FilePath& cache_root);
+// Maximum session age for testing.
+extern const base::TimeDelta kSessionMaxAge;
+
+extern const base::TimeDelta kValidityPeriod;
+
+// Converts file ID to file name.
+std::string GetFileNameById(int64_t id);
+
+// Cleans opaque files organized by APK cache database. Path to the cache
+// directory must be provided as |cache_root| in the constructor.
+class OpaqueFilesCleaner {
+ public:
+  explicit OpaqueFilesCleaner(const base::FilePath& cache_root);
+
+  // Not copyable or movable.
+  OpaqueFilesCleaner(const OpaqueFilesCleaner&) = delete;
+  OpaqueFilesCleaner& operator=(const OpaqueFilesCleaner&) = delete;
+
+  ~OpaqueFilesCleaner();
+
+  // Performs cleaning of opaque files organized by database in the APK cache
+  // directory. Also deletes invalid entries in the database. Returns true if
+  // all the intended files and directories were successfully deleted.
+  bool Clean();
+
+ private:
+  // Deletes all files in cache in case of database corruption.
+  bool DeleteCache() const;
+  // Deletes all files in |files| directory.
+  bool DeleteFiles() const;
+  // Deletes expired sessions and sessions that have a timestamp in the future.
+  // Returns true if successful.
+  bool CleanStaleSessions(const ApkCacheDatabase& db) const;
+  // Checks if any other session is active. Returns true if there is other
+  // session active.
+  bool IsOtherSessionActive(const ApkCacheDatabase& db) const;
+  // Creates a new cache cleaner session with open status. Returns ID. Returns 0
+  // if new session cannot be created.
+  int64_t OpenSession(const ApkCacheDatabase& db) const;
+  // Closes a cache cleaner session. Returns true if successful.
+  bool CloseSession(const ApkCacheDatabase& db, uint64_t id) const;
+
+  base::FilePath cache_root_;
+  base::FilePath db_path_;
+  base::FilePath files_path_;
+};
 
 }  // namespace apk_cache
 

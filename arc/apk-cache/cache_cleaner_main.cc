@@ -42,7 +42,8 @@ int main(int argc, char** argv) {
     LOG(ERROR) << "APK Cache cleaner experienced problem while cleaning.";
     return 1;
   }
-  if (!apk_cache::CleanOpaqueFiles(cache_root)) {
+  apk_cache::OpaqueFilesCleaner cleaner(cache_root);
+  if (!cleaner.Clean()) {
     LOG(ERROR) << "APK Cache cleaner experienced problem while cleaning.";
     return 1;
   }
