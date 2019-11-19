@@ -1939,15 +1939,6 @@ TEST_F(SessionManagerImplTest, StartDeviceWipe_AlreadyLoggedIn) {
   EXPECT_EQ(dbus_error::kSessionExists, error->GetCode());
 }
 
-TEST_F(SessionManagerImplTest, StartDeviceWipe_Enterprise) {
-  EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
-      .WillRepeatedly(Return(InstallAttributesFileData::ENROLLED));
-  brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_->StartDeviceWipe(&error));
-  ASSERT_TRUE(error.get());
-  EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
-}
-
 TEST_F(SessionManagerImplTest, StartRemoteDeviceWipe) {
   ExpectDeviceRestart();
   EXPECT_CALL(*device_policy_service_, ValidateRemoteDeviceWipeCommand(_))
