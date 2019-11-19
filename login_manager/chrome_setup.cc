@@ -56,6 +56,9 @@ const char kDisplayCategoryField[] = "display-type";
 constexpr char kFingerprintPath[] = "/fingerprint";
 constexpr char kFingerprintSensorLocationField[] = "sensor-location";
 
+constexpr char kArcScalePath[] = "/arc";
+constexpr char kArcScaleProperty[] = "scale";
+
 constexpr char kArcBuildPropertiesPath[] = "/arc/build-properties";
 constexpr std::array<const char*, 2> kArcBuildProperties = {"device",
                                                             "product"};
@@ -125,7 +128,8 @@ bool AddWallpaperFlags(
 
 // Adds ARC related flags.
 void AddArcFlags(ChromiumCommandBuilder* builder,
-                 std::set<std::string>* disallowed_params_out) {
+                 std::set<std::string>* disallowed_params_out,
+                 brillo::CrosConfigInterface* cros_config) {
   if (builder->UseFlagIsSet("arc") ||
       (builder->UseFlagIsSet("cheets") && builder->is_test_build())) {
     builder->AddArg("--arc-availability=officially-supported");
@@ -155,6 +159,12 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
   // Devices of tablet form factor will have special app behaviour.
   if (builder->UseFlagIsSet("tablet_form_factor"))
     builder->AddArg("--enable-tablet-form-factor");
+
+  std::string arc_scale;
+  if (cros_config &&
+      cros_config->GetString(kArcScalePath, kArcScaleProperty, &arc_scale)) {
+    builder->AddArg("--arc-scale=" + arc_scale);
+  }
 }
 
 void AddCrostiniFlags(ChromiumCommandBuilder* builder) {
@@ -679,7 +689,7 @@ void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
   CreateDirectories(&builder);
   AddSystemFlags(&builder);
   AddUiFlags(&builder, cros_config);
-  AddArcFlags(&builder, &disallowed_prefixes);
+  AddArcFlags(&builder, &disallowed_prefixes, cros_config);
   AddCrostiniFlags(&builder);
   AddPluginVmFlags(&builder);
   AddEnterpriseFlags(&builder);
