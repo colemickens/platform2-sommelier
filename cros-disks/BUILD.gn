@@ -175,6 +175,7 @@ if (use.test) {
       "sshfs_helper_test.cc",
       "system_mounter_test.cc",
       "udev_device_test.cc",
+      "uri_test.cc",
       "usb_device_info_test.cc",
     ]
     deps = [
