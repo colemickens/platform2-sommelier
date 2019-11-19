@@ -325,6 +325,7 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | build-properties | [build-properties](#build-properties) |  | False |  | False |  |
 | files | array - [files](#files) |  | False |  | True |  |
+| scale | integer |  | False |  | False | The screen density value in dpi that will be used for ARC apps. This value should be from the list of DPIs in android cdd. |
 
 ### build-properties
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
