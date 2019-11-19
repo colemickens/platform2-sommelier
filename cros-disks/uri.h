@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/strings/string_piece.h>
+
 namespace cros_disks {
 
 // Wrapper for string representing URI. By no mean it's a complete
@@ -14,19 +16,31 @@ namespace cros_disks {
 // related utilities.
 class Uri {
  public:
-  Uri(const std::string& scheme, const std::string& path);
+  // Creates an invalid Uri.
+  Uri() = default;
+
+  // Creates a Uri with the given scheme and path.
+  Uri(base::StringPiece scheme, base::StringPiece path);
 
   bool operator==(const Uri& other) const { return value() == other.value(); }
 
+  // Gets the value of this Uri as "<scheme>://<path>", or an empty string if
+  // this Uri is not valid.
   std::string value() const;
+
   const std::string& scheme() const { return scheme_; }
   const std::string& path() const { return path_; }
 
+  // Returns true if the scheme is not empty.
+  bool valid() const { return !scheme_.empty(); }
+
   // Returns true if the given string is URI, i.e. <scheme>://[something].
   // It checks only the scheme part and doesn't verify validity of the path.
-  static bool IsUri(const std::string& s);
+  static bool IsUri(base::StringPiece s) { return Parse(s).valid(); }
 
-  static Uri Parse(const std::string& s);
+  // Parses the given string s as a URI. If s doesn't have a valid scheme, then
+  // a Uri with an empty scheme, ie an invalid Uri, is returned.
+  static Uri Parse(base::StringPiece s);
 
  private:
   std::string scheme_;

@@ -7,38 +7,48 @@
 #include <base/logging.h>
 
 namespace cros_disks {
-
 namespace {
 
-const char kUriDelimiter[] = "://";
+const base::StringPiece kUriDelimiter = "://";
 
 }  // namespace
 
-Uri::Uri(const std::string& scheme, const std::string& path)
+Uri::Uri(const base::StringPiece scheme, const base::StringPiece path)
     : scheme_(scheme), path_(path) {}
 
 std::string Uri::value() const {
-  return scheme_ + kUriDelimiter + path_;
-}
+  std::string s;
 
-bool Uri::IsUri(const std::string& s) {
-  size_t pos = s.find(kUriDelimiter);
-  if (pos == std::string::npos || pos == 0)
-    return false;
-  // RFC 3986, section 3.1
-  if (!isalpha(s[0]))
-    return false;
-  for (auto c : s.substr(0, pos)) {
-    if (!isalnum(c) && c != '-' && c != '+' && c != '.')
-      return false;
+  if (valid()) {
+    s.reserve(scheme_.size() + kUriDelimiter.size() + path_.size());
+    s += scheme_;
+    s.append(kUriDelimiter.data(), kUriDelimiter.size());
+    s += path_;
   }
-  return true;
+
+  return s;
 }
 
-Uri Uri::Parse(const std::string& s) {
-  CHECK(IsUri(s));
-  size_t pos = s.find(kUriDelimiter);
-  return Uri(s.substr(0, pos), s.substr(pos + strlen(kUriDelimiter)));
+Uri Uri::Parse(const base::StringPiece s) {
+  // Look for URI scheme delimiter.
+  const size_t pos = s.find(kUriDelimiter);
+  if (pos == base::StringPiece::npos || pos == 0)
+    return {};
+
+  // Extract scheme part.
+  const base::StringPiece scheme = s.substr(0, pos);
+
+  // Check scheme validity (see RFC 3986, section 3.1).
+  if (!isalpha(scheme[0]))
+    return {};
+
+  for (const char c : scheme.substr(1)) {
+    if (!isalnum(c) && c != '-' && c != '+' && c != '.')
+      return {};
+  }
+
+  // Scheme is deemed valid.
+  return {scheme, s.substr(pos + kUriDelimiter.size())};
 }
 
 }  // namespace cros_disks

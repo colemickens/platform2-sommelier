@@ -65,9 +65,10 @@ MountErrorType FUSEMountManager::DoMount(
     const std::string& mount_path,
     MountOptions* applied_options) {
   CHECK(!mount_path.empty()) << "Invalid mount path argument";
-  CHECK(Uri::IsUri(source)) << "Source argument is not URI";
 
   Uri uri = Uri::Parse(source);
+  CHECK(uri.valid()) << "Source " << quote(source) << " is not a URI";
+
   const FUSEHelper* selected_helper = nullptr;
   for (const auto& helper : helpers_) {
     if (helper->CanMount(uri)) {
@@ -135,10 +136,11 @@ MountErrorType FUSEMountManager::DoUnmount(const std::string& path) {
 }
 
 bool FUSEMountManager::CanMount(const std::string& source) const {
-  if (!Uri::IsUri(source)) {
+  Uri uri = Uri::Parse(source);
+  if (!uri.valid()) {
     return false;
   }
-  Uri uri = Uri::Parse(source);
+
   for (const auto& helper : helpers_) {
     if (helper->CanMount(uri))
       return true;
@@ -148,10 +150,11 @@ bool FUSEMountManager::CanMount(const std::string& source) const {
 
 std::string FUSEMountManager::SuggestMountPath(
     const std::string& source) const {
-  if (!Uri::IsUri(source)) {
+  Uri uri = Uri::Parse(source);
+  if (!uri.valid()) {
     return "";
   }
-  Uri uri = Uri::Parse(source);
+
   for (const auto& helper : helpers_) {
     if (helper->CanMount(uri))
       return base::FilePath(mount_root())
