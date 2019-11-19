@@ -1325,9 +1325,11 @@ bool ClobberState::WipeKeysets() {
       "encrypted.key", "encrypted.needs-finalization",
       "home/.shadow/cryptohome.key", "home/.shadow/salt",
       "home/.shadow/salt.sum"};
+  bool found_file = false;
   for (const std::string& str : key_files) {
     base::FilePath path = stateful_.Append(str);
     if (base::PathExists(path)) {
+      found_file = true;
       if (!SecureErase(path)) {
         LOG(ERROR) << "Securely erasing file failed: " << path.value();
         return false;
@@ -1346,12 +1348,20 @@ bool ClobberState::WipeKeysets() {
     for (base::FilePath file = files.Next(); !file.empty();
          file = files.Next()) {
       if (file.RemoveExtension().BaseName() == base::FilePath("master")) {
+        found_file = true;
         if (!SecureErase(file)) {
           LOG(ERROR) << "Securely erasing file failed: " << file.value();
           return false;
         }
       }
     }
+  }
+
+  // If no files were found, then we can't say whether or not secure erase
+  // works. Assume it doesn't.
+  if (!found_file) {
+    LOG(WARNING) << "No files existed to attempt secure erase";
+    return false;
   }
 
   return DropCaches();
