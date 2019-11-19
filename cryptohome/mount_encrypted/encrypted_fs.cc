@@ -269,7 +269,7 @@ bool EncryptedFs::Purge() {
 }
 
 bool EncryptedFs::CreateSparseBackingFile() {
-  uint64_t fs_bytes_max;
+  int64_t fs_bytes_max;
   struct statvfs stateful_statbuf;
 
   // Calculate the desired size of the new partition.
@@ -277,7 +277,7 @@ bool EncryptedFs::CreateSparseBackingFile() {
     PLOG(ERROR) << stateful_mount_;
     return false;
   }
-  fs_bytes_max = stateful_statbuf.f_blocks;
+  fs_bytes_max = static_cast<int64_t>(stateful_statbuf.f_blocks);
   fs_bytes_max *= kSizePercent;
   fs_bytes_max *= stateful_statbuf.f_frsize;
 

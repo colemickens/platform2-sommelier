@@ -372,7 +372,7 @@ class MockPlatform : public Platform {
   MOCK_METHOD(bool, SendFile, (int, int, off_t, size_t), (override));
   MOCK_METHOD(bool,
               CreateSparseFile,
-              (const base::FilePath&, size_t),
+              (const base::FilePath&, int64_t),
               (override));
   MOCK_METHOD(bool, GetBlkSize, (const base::FilePath&, uint64_t*), (override));
   MOCK_METHOD(base::FilePath, AttachLoop, (const base::FilePath&), (override));

@@ -515,7 +515,7 @@ TEST_F(PlatformTest, SendFile) {
 
 TEST_F(PlatformTest, CreateSparseFile) {
   const base::FilePath sparse_name(GetTempName());
-  size_t file_size = 1024 * 32;
+  int64_t file_size = 1024 * 32;
   EXPECT_TRUE(platform_.CreateSparseFile(sparse_name, file_size));
   base::File sparse_file(sparse_name,
                          base::File::FLAG_OPEN | base::File::FLAG_READ);

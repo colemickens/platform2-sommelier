@@ -754,7 +754,7 @@ bool MountHelper::PrepareEphemeralDevice(
     PLOG(ERROR) << "Can't determine ephemeral cryptohome size";
     return false;
   }
-  const size_t sparse_size = vfs.f_blocks * vfs.f_frsize;
+  const int64_t sparse_size = static_cast<int64_t>(vfs.f_blocks * vfs.f_frsize);
 
   // Create underlying sparse file.
   const FilePath sparse_file = GetEphemeralSparseFile(obfuscated_username);

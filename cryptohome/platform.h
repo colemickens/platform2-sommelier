@@ -798,7 +798,7 @@ class Platform {
   // Parameters
   //   path - The path to the file.
   //   size - The size to which sparse file should be resized.
-  virtual bool CreateSparseFile(const base::FilePath& path, size_t size);
+  virtual bool CreateSparseFile(const base::FilePath& path, int64_t size);
 
   // Get the size of block device in bytes.
   //

@@ -1161,7 +1161,7 @@ bool Platform::SendFile(int fd_to, int fd_from, off_t offset, size_t count) {
   return true;
 }
 
-bool Platform::CreateSparseFile(const base::FilePath& path, size_t size) {
+bool Platform::CreateSparseFile(const base::FilePath& path, int64_t size) {
   base::File file;
   InitializeFile(&file, path,
                  base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
