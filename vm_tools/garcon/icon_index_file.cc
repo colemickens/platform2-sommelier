@@ -45,8 +45,8 @@ const char* const kValidDirectorySuffixes[] = {"apps", "mimetypes"};
 // Max value for any integer in the file. Nothing should be large values outside
 // of any reasonable pixel size/scale/threshold, nor should they be
 // non-positive. This would be higher but we want to ensure squaring this number
-// doesn't violate the 32-bit max.
-constexpr size_t kMaxReasonableValue = 32768;  // 32K
+// and multiplying by 100 doesn't violate the 32-bit max.
+constexpr size_t kMaxReasonableValue = 4096;  // 4K
 bool IsValueReasonable(int x) {
   return x > 0 && x < kMaxReasonableValue;
 }
