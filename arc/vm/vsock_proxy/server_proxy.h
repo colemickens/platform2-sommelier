@@ -22,7 +22,8 @@ class ServerProxy : public VSockProxy::Delegate,
                     public ProxyFileSystem::Delegate {
  public:
   ServerProxy(scoped_refptr<base::TaskRunner> proxy_file_system_task_runner,
-              const base::FilePath& proxy_file_system_mount_path);
+              const base::FilePath& proxy_file_system_mount_path,
+              base::OnceClosure quit_closure);
   ~ServerProxy() override;
 
   // Sets up the ServerProxy. Specifically, start listening VSOCK.
@@ -36,6 +37,7 @@ class ServerProxy : public VSockProxy::Delegate,
                                     arc_proxy::FileDescriptor* proto) override;
   base::ScopedFD ConvertProtoToFileDescriptor(
       const arc_proxy::FileDescriptor& proto) override;
+  void OnStopped() override;
 
   // ProxyFileSystem::Delegate overrides:
   void Pread(int64_t handle,
@@ -48,6 +50,7 @@ class ServerProxy : public VSockProxy::Delegate,
  private:
   scoped_refptr<base::TaskRunner> proxy_file_system_task_runner_;
   ProxyFileSystem proxy_file_system_;
+  base::OnceClosure quit_closure_;
   std::unique_ptr<VSockProxy> vsock_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(ServerProxy);

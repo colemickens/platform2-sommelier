@@ -21,7 +21,7 @@ namespace arc {
 // ClientProxy sets up the VSockProxy and handles initial socket negotiation.
 class ClientProxy : public VSockProxy::Delegate {
  public:
-  ClientProxy();
+  explicit ClientProxy(base::OnceClosure quit_closure);
   ~ClientProxy() override;
 
   // Sets up the ClientProxy. Specifically, wait for VSOCK gets ready,
@@ -35,6 +35,7 @@ class ClientProxy : public VSockProxy::Delegate {
                                     arc_proxy::FileDescriptor* proto) override;
   base::ScopedFD ConvertProtoToFileDescriptor(
       const arc_proxy::FileDescriptor& proto) override;
+  void OnStopped() override;
 
  private:
   // Called when /var/run/chrome/arc_bridge.sock gets ready to read.
@@ -45,6 +46,7 @@ class ClientProxy : public VSockProxy::Delegate {
   // Called when host-side connect(2) is completed.
   void OnConnected(int error_code, int64_t handle);
 
+  base::OnceClosure quit_closure_;
   base::ScopedFD render_node_;
   std::unique_ptr<VSockProxy> vsock_proxy_;
   base::ScopedFD arc_bridge_socket_;

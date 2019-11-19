@@ -65,11 +65,13 @@ base::ScopedFD CreateVSock() {
 
 ServerProxy::ServerProxy(
     scoped_refptr<base::TaskRunner> proxy_file_system_task_runner,
-    const base::FilePath& proxy_file_system_mount_path)
+    const base::FilePath& proxy_file_system_mount_path,
+    base::OnceClosure quit_closure)
     : proxy_file_system_task_runner_(proxy_file_system_task_runner),
       proxy_file_system_(this,
                          base::ThreadTaskRunnerHandle::Get(),
-                         proxy_file_system_mount_path) {}
+                         proxy_file_system_mount_path),
+      quit_closure_(std::move(quit_closure)) {}
 
 ServerProxy::~ServerProxy() = default;
 
@@ -141,6 +143,10 @@ base::ScopedFD ServerProxy::ConvertProtoToFileDescriptor(
       LOG(ERROR) << "Unsupported FD type: " << proto.type();
       return {};
   }
+}
+
+void ServerProxy::OnStopped() {
+  std::move(quit_closure_).Run();
 }
 
 void ServerProxy::Pread(int64_t handle,

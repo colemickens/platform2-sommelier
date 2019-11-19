@@ -36,7 +36,8 @@ int main(int argc, char** argv) {
 
   base::RunLoop run_loop;
   arc::ServerProxy server_proxy(proxy_file_system_thread.task_runner(),
-                                base::FilePath(argv[1]));
+                                base::FilePath(argv[1]),
+                                run_loop.QuitClosure());
   if (!server_proxy.Initialize()) {
     LOG(ERROR) << "Failed to initialize ServerProxy.";
     return 1;

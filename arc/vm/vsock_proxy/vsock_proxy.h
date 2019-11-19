@@ -52,6 +52,9 @@ class VSockProxy {
         int fd, arc_proxy::FileDescriptor* proto) = 0;
     virtual base::ScopedFD ConvertProtoToFileDescriptor(
         const arc_proxy::FileDescriptor& proto) = 0;
+
+    // Called when the vsock proxy has stopped.
+    virtual void OnStopped() = 0;
   };
   VSockProxy(Delegate* delegate, base::ScopedFD vsock);
   ~VSockProxy();
@@ -97,22 +100,28 @@ class VSockProxy {
   // corresponding local file descriptor.
   void OnVSockReadReady();
 
+  // Handles a message sent from the other side's proxy.
+  bool HandleMessage(arc_proxy::VSockMessage* message);
+
+  // Stops this proxy.
+  void Stop();
+
   // Handlers for each command.
   // TODO(crbug.com/842960): Use pass-by-value when protobuf is upreved enough
   // to support rvalues. (At least, 3.5, or maybe 3.6).
-  void OnClose(arc_proxy::Close* close);
-  void OnData(arc_proxy::Data* data);
-  void OnDataInternal(arc_proxy::Data* data);
-  void OnConnectRequest(arc_proxy::ConnectRequest* request);
-  void OnConnectResponse(arc_proxy::ConnectResponse* response);
-  void OnPreadRequest(arc_proxy::PreadRequest* request);
+  bool OnClose(arc_proxy::Close* close);
+  bool OnData(arc_proxy::Data* data);
+  bool OnDataInternal(arc_proxy::Data* data);
+  bool OnConnectRequest(arc_proxy::ConnectRequest* request);
+  bool OnConnectResponse(arc_proxy::ConnectResponse* response);
+  bool OnPreadRequest(arc_proxy::PreadRequest* request);
   void OnPreadRequestInternal(arc_proxy::PreadRequest* request,
                               arc_proxy::PreadResponse* response);
-  void OnPreadResponse(arc_proxy::PreadResponse* response);
-  void OnFstatRequest(arc_proxy::FstatRequest* request);
+  bool OnPreadResponse(arc_proxy::PreadResponse* response);
+  bool OnFstatRequest(arc_proxy::FstatRequest* request);
   void OnFstatRequestInternal(arc_proxy::FstatRequest* request,
                               arc_proxy::FstatResponse* response);
-  void OnFstatResponse(arc_proxy::FstatResponse* response);
+  bool OnFstatResponse(arc_proxy::FstatResponse* response);
 
   // Callback called when local file descriptor gets ready to read.
   // Reads Message from the file descriptor corresponding to the |handle|,

@@ -58,7 +58,9 @@ VSockProxy::VSockProxy(Delegate* delegate, base::ScopedFD vsock)
                                         weak_factory_.GetWeakPtr()));
 }
 
-VSockProxy::~VSockProxy() = default;
+VSockProxy::~VSockProxy() {
+  Stop();
+}
 
 int64_t VSockProxy::RegisterFileDescriptor(
     base::ScopedFD fd,
@@ -101,14 +103,9 @@ void VSockProxy::Connect(const base::FilePath& path, ConnectCallback callback) {
   auto* request = message.mutable_connect_request();
   request->set_cookie(cookie);
   request->set_path(path.value());
-  if (!vsock_.Write(message)) {
-    // Failed to write a message to VSock. Delete everything.
-    fd_map_.clear();
-    vsock_controller_.reset();
-    std::move(callback).Run(ECONNREFUSED, 0 /* invalid */);
-    return;
-  }
   pending_connect_.emplace(cookie, std::move(callback));
+  if (!vsock_.Write(message))
+    Stop();
 }
 
 void VSockProxy::Pread(int64_t handle,
@@ -123,14 +120,9 @@ void VSockProxy::Pread(int64_t handle,
   request->set_handle(handle);
   request->set_count(count);
   request->set_offset(offset);
-  if (!vsock_.Write(message)) {
-    // Failed to write a message to VSock. Delete everything.
-    fd_map_.clear();
-    vsock_controller_.reset();
-    std::move(callback).Run(ECONNREFUSED, 0 /* invalid */);
-    return;
-  }
   pending_pread_.emplace(cookie, std::move(callback));
+  if (!vsock_.Write(message))
+    Stop();
 }
 
 void VSockProxy::Fstat(int64_t handle, FstatCallback callback) {
@@ -140,81 +132,89 @@ void VSockProxy::Fstat(int64_t handle, FstatCallback callback) {
   auto* request = message.mutable_fstat_request();
   request->set_cookie(cookie);
   request->set_handle(handle);
-  if (!vsock_.Write(message)) {
-    // Failed to write a message to VSock. Delete everything.
-    fd_map_.clear();
-    vsock_controller_.reset();
-    std::move(callback).Run(ECONNREFUSED, 0 /* invalid */);
-    return;
-  }
   pending_fstat_.emplace(cookie, std::move(callback));
+  if (!vsock_.Write(message))
+    Stop();
 }
 
 void VSockProxy::Close(int64_t handle) {
   arc_proxy::VSockMessage message;
   message.mutable_close()->set_handle(handle);
-  if (!vsock_.Write(message)) {
-    // Failed to write a message to VSock. Delete everything.
-    fd_map_.clear();
-    vsock_controller_.reset();
-  }
+  if (!vsock_.Write(message))
+    Stop();
 }
 
 void VSockProxy::OnVSockReadReady() {
   arc_proxy::VSockMessage message;
-  if (!vsock_.Read(&message)) {
-    // TODO(hidehiko): Support VSOCK close case.
-    // Failed to read a message from VSock. Delete everything.
-    fd_map_.clear();
-    vsock_controller_.reset();
-    return;
-  }
+  if (!vsock_.Read(&message) || !HandleMessage(&message))
+    Stop();
+}
 
-  switch (message.command_case()) {
+bool VSockProxy::HandleMessage(arc_proxy::VSockMessage* message) {
+  switch (message->command_case()) {
     case arc_proxy::VSockMessage::kClose:
-      OnClose(message.mutable_close());
-      return;
+      return OnClose(message->mutable_close());
     case arc_proxy::VSockMessage::kData:
-      OnData(message.mutable_data());
-      return;
+      return OnData(message->mutable_data());
     case arc_proxy::VSockMessage::kConnectRequest:
-      OnConnectRequest(message.mutable_connect_request());
-      return;
+      return OnConnectRequest(message->mutable_connect_request());
     case arc_proxy::VSockMessage::kConnectResponse:
-      OnConnectResponse(message.mutable_connect_response());
-      return;
+      return OnConnectResponse(message->mutable_connect_response());
     case arc_proxy::VSockMessage::kPreadRequest:
-      OnPreadRequest(message.mutable_pread_request());
-      return;
+      return OnPreadRequest(message->mutable_pread_request());
     case arc_proxy::VSockMessage::kPreadResponse:
-      OnPreadResponse(message.mutable_pread_response());
-      return;
+      return OnPreadResponse(message->mutable_pread_response());
     case arc_proxy::VSockMessage::kFstatRequest:
-      OnFstatRequest(message.mutable_fstat_request());
-      return;
+      return OnFstatRequest(message->mutable_fstat_request());
     case arc_proxy::VSockMessage::kFstatResponse:
-      OnFstatResponse(message.mutable_fstat_response());
-      return;
+      return OnFstatResponse(message->mutable_fstat_response());
     default:
-      LOG(ERROR) << "Unknown message type: " << message.command_case();
+      LOG(ERROR) << "Unknown message type: " << message->command_case();
+      return false;
   }
 }
 
-void VSockProxy::OnClose(arc_proxy::Close* close) {
+void VSockProxy::Stop() {
+  if (!vsock_controller_)  // Do nothing if already stopped.
+    return;
+
+  // Run all pending callbacks.
+  for (auto& x : pending_fstat_) {
+    FstatCallback& callback = x.second;
+    std::move(callback).Run(ECONNREFUSED, 0);
+  }
+  for (auto& x : pending_pread_) {
+    PreadCallback& callback = x.second;
+    std::move(callback).Run(ECONNREFUSED, std::string());
+  }
+  for (auto& x : pending_connect_) {
+    ConnectCallback& callback = x.second;
+    std::move(callback).Run(ECONNREFUSED, 0);
+  }
+  // Clear registered file descriptors.
+  fd_map_.clear();
+  // Stop watching the vsock.
+  vsock_controller_.reset();
+
+  delegate_->OnStopped();
+}
+
+bool VSockProxy::OnClose(arc_proxy::Close* close) {
   LOG(INFO) << "Closing: " << close->handle();
   auto it = fd_map_.find(close->handle());
   if (it == fd_map_.end()) {
     LOG(ERROR) << "Couldn't find handle: handle=" << close->handle();
-    return;
+    return false;
   }
   fd_map_.erase(it);
+  return true;
 }
 
-void VSockProxy::OnData(arc_proxy::Data* data) {
+bool VSockProxy::OnData(arc_proxy::Data* data) {
   auto it = fd_map_.find(data->handle());
   if (it == fd_map_.end()) {
     LOG(ERROR) << "Couldn't find handle: handle=" << data->handle();
-    return;
+    return false;
   }
 
   // First, create file descriptors for the received message.
@@ -227,28 +227,28 @@ void VSockProxy::OnData(arc_proxy::Data* data) {
       case arc_proxy::FileDescriptor::FIFO_READ: {
         auto created = CreatePipe();
         if (!created)
-          return;
+          return false;
         std::tie(remote_fd, local_fd) = std::move(*created);
         break;
       }
       case arc_proxy::FileDescriptor::FIFO_WRITE: {
         auto created = CreatePipe();
         if (!created)
-          return;
+          return false;
         std::tie(local_fd, remote_fd) = std::move(*created);
         break;
       }
       case arc_proxy::FileDescriptor::SOCKET: {
         auto created = CreateSocketPair();
         if (!created)
-          return;
+          return false;
         std::tie(local_fd, remote_fd) = std::move(*created);
         break;
       }
       default: {
         remote_fd = delegate_->ConvertProtoToFileDescriptor(transferred_fd);
         if (!remote_fd.is_valid())
-          return;
+          return false;
       }
     }
 
@@ -265,12 +265,13 @@ void VSockProxy::OnData(arc_proxy::Data* data) {
   // SocketStream::Write() doesn't return error as it's async.
   if (!it->second.stream->Write(std::move(*data->mutable_blob()),
                                 std::move(transferred_fds))) {
-    LOG(ERROR) << "Failed to write to a file descriptor: handle="
-               << data->handle();
+    fd_map_.erase(it);
+    Close(data->handle());
   }
+  return true;
 }
 
-void VSockProxy::OnConnectRequest(arc_proxy::ConnectRequest* request) {
+bool VSockProxy::OnConnectRequest(arc_proxy::ConnectRequest* request) {
   LOG(INFO) << "Connecting to " << request->path();
   arc_proxy::VSockMessage reply;
   auto* response = reply.mutable_connect_response();
@@ -287,38 +288,30 @@ void VSockProxy::OnConnectRequest(arc_proxy::ConnectRequest* request) {
         std::move(result.second), arc_proxy::FileDescriptor::SOCKET,
         0 /* generate handle */));
   }
-
-  if (!vsock_.Write(reply)) {
-    // Failed to write a message to VSock. Delete everything.
-    fd_map_.clear();
-    vsock_controller_.reset();
-  }
+  return vsock_.Write(reply);
 }
 
-void VSockProxy::OnConnectResponse(arc_proxy::ConnectResponse* response) {
+bool VSockProxy::OnConnectResponse(arc_proxy::ConnectResponse* response) {
   auto it = pending_connect_.find(response->cookie());
   if (it == pending_connect_.end()) {
     LOG(ERROR) << "Unexpected connect response: cookie=" << response->cookie();
-    return;
+    return false;
   }
 
   auto callback = std::move(it->second);
   pending_connect_.erase(it);
   std::move(callback).Run(response->error_code(), response->handle());
+  return true;
 }
 
-void VSockProxy::OnPreadRequest(arc_proxy::PreadRequest* request) {
+bool VSockProxy::OnPreadRequest(arc_proxy::PreadRequest* request) {
   arc_proxy::VSockMessage reply;
   auto* response = reply.mutable_pread_response();
   response->set_cookie(request->cookie());
 
   OnPreadRequestInternal(request, response);
 
-  if (!vsock_.Write(reply)) {
-    // Failed to write a message to VSock. Delete everything.
-    fd_map_.clear();
-    vsock_controller_.reset();
-  }
+  return vsock_.Write(reply);
 }
 
 void VSockProxy::OnPreadRequestInternal(arc_proxy::PreadRequest* request,
@@ -337,31 +330,28 @@ void VSockProxy::OnPreadRequestInternal(arc_proxy::PreadRequest* request,
   }
 }
 
-void VSockProxy::OnPreadResponse(arc_proxy::PreadResponse* response) {
+bool VSockProxy::OnPreadResponse(arc_proxy::PreadResponse* response) {
   auto it = pending_pread_.find(response->cookie());
   if (it == pending_pread_.end()) {
     LOG(ERROR) << "Unexpected pread response: cookie=" << response->cookie();
-    return;
+    return false;
   }
 
   auto callback = std::move(it->second);
   pending_pread_.erase(it);
   std::move(callback).Run(response->error_code(),
                           std::move(*response->mutable_blob()));
+  return true;
 }
 
-void VSockProxy::OnFstatRequest(arc_proxy::FstatRequest* request) {
+bool VSockProxy::OnFstatRequest(arc_proxy::FstatRequest* request) {
   arc_proxy::VSockMessage reply;
   auto* response = reply.mutable_fstat_response();
   response->set_cookie(request->cookie());
 
   OnFstatRequestInternal(request, response);
 
-  if (!vsock_.Write(reply)) {
-    // Failed to write a message to VSock. Delete everything.
-    fd_map_.clear();
-    vsock_controller_.reset();
-  }
+  return vsock_.Write(reply);
 }
 
 void VSockProxy::OnFstatRequestInternal(arc_proxy::FstatRequest* request,
@@ -382,16 +372,17 @@ void VSockProxy::OnFstatRequestInternal(arc_proxy::FstatRequest* request,
   }
 }
 
-void VSockProxy::OnFstatResponse(arc_proxy::FstatResponse* response) {
+bool VSockProxy::OnFstatResponse(arc_proxy::FstatResponse* response) {
   auto it = pending_fstat_.find(response->cookie());
   if (it == pending_fstat_.end()) {
     LOG(ERROR) << "Unexpected pread response: cookie=" << response->cookie();
-    return;
+    return false;
   }
 
   auto callback = std::move(it->second);
   pending_fstat_.erase(it);
   std::move(callback).Run(response->error_code(), response->size());
+  return true;
 }
 
 void VSockProxy::OnLocalFileDesciptorReadReady(int64_t handle) {
@@ -429,11 +420,8 @@ void VSockProxy::OnLocalFileDesciptorReadReady(int64_t handle) {
     DCHECK(message.has_data());
     message.mutable_data()->set_handle(handle);
   }
-  if (!vsock_.Write(message)) {
-    // Failed to write a message to VSock. Delete everything.
-    fd_map_.clear();
-    vsock_controller_.reset();
-  }
+  if (!vsock_.Write(message))
+    Stop();
 }
 
 bool VSockProxy::ConvertDataToVSockMessage(std::string blob,

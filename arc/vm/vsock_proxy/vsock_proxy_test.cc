@@ -32,26 +32,14 @@
 namespace arc {
 namespace {
 
-class ServerDelegate : public VSockProxy::Delegate {
+class TestDelegate : public VSockProxy::Delegate {
  public:
-  ~ServerDelegate() override = default;
-  VSockProxy::Type GetType() const override { return VSockProxy::Type::SERVER; }
-  bool ConvertFileDescriptorToProto(int fd,
-                                    arc_proxy::FileDescriptor* proto) override {
-    NOTREACHED();
-    return false;
-  }
-  base::ScopedFD ConvertProtoToFileDescriptor(
-      const arc_proxy::FileDescriptor& proto) override {
-    NOTREACHED();
-    return {};
-  }
-};
+  explicit TestDelegate(VSockProxy::Type type) : type_(type) {}
+  ~TestDelegate() override = default;
 
-class ClientDelegate : public VSockProxy::Delegate {
- public:
-  ~ClientDelegate() override = default;
-  VSockProxy::Type GetType() const override { return VSockProxy::Type::CLIENT; }
+  bool is_stopped() const { return is_stopped_; }
+
+  VSockProxy::Type GetType() const override { return type_; }
   bool ConvertFileDescriptorToProto(int fd,
                                     arc_proxy::FileDescriptor* proto) override {
     NOTREACHED();
@@ -62,6 +50,11 @@ class ClientDelegate : public VSockProxy::Delegate {
     NOTREACHED();
     return {};
   }
+  void OnStopped() override { is_stopped_ = true; }
+
+ private:
+  const VSockProxy::Type type_;
+  bool is_stopped_ = false;
 };
 
 class VSockProxyTest : public testing::Test {
@@ -97,18 +90,24 @@ class VSockProxyTest : public testing::Test {
   VSockProxy* server() { return server_.get(); }
   VSockProxy* client() { return client_.get(); }
 
+  TestDelegate& server_delegate() { return server_delegate_; }
+  TestDelegate& client_delegate() { return client_delegate_; }
+
   int server_fd() const { return server_fd_.get(); }
   int client_fd() const { return client_fd_.get(); }
 
   void ResetServerFD() { server_fd_.reset(); }
   void ResetClientFD() { client_fd_.reset(); }
 
+  void ResetServer() { server_.reset(); }
+  void ResetClient() { client_.reset(); }
+
  private:
   base::MessageLoopForIO message_loop_;
   base::FileDescriptorWatcher watcher_{&message_loop_};
 
-  ServerDelegate server_delegate_;
-  ClientDelegate client_delegate_;
+  TestDelegate server_delegate_{VSockProxy::Type::SERVER};
+  TestDelegate client_delegate_{VSockProxy::Type::CLIENT};
 
   std::unique_ptr<VSockProxy> server_;
   std::unique_ptr<VSockProxy> client_;
@@ -172,6 +171,46 @@ TEST_F(VSockProxyTest, CloseClient) {
   ResetClientFD();
   WaitUntilReadable(server_fd());
   ExpectSocketEof(server_fd());
+}
+
+TEST_F(VSockProxyTest, ResetServer) {
+  ResetServer();
+  EXPECT_TRUE(server_delegate().is_stopped());
+  WaitUntilReadable(client_fd());
+  ExpectSocketEof(client_fd());
+  EXPECT_TRUE(client_delegate().is_stopped());
+}
+
+TEST_F(VSockProxyTest, ResetClient) {
+  ResetClient();
+  EXPECT_TRUE(client_delegate().is_stopped());
+  WaitUntilReadable(server_fd());
+  ExpectSocketEof(server_fd());
+  EXPECT_TRUE(server_delegate().is_stopped());
+}
+
+TEST_F(VSockProxyTest, FileWriteError) {
+  // Register a socket pair to the server.
+  auto server_socket_pair = CreateSocketPair();
+  ASSERT_TRUE(server_socket_pair.has_value());
+  int64_t handle = server()->RegisterFileDescriptor(
+      std::move(server_socket_pair->first), arc_proxy::FileDescriptor::SOCKET,
+      0 /* handle */);
+  auto server_fd = std::move(server_socket_pair->second);
+
+  // Register a read only FD to the client. This will cause a write error.
+  base::ScopedFD null_fd(HANDLE_EINTR(open("/dev/null", O_RDONLY)));
+  ASSERT_TRUE(null_fd.is_valid());
+  client()->RegisterFileDescriptor(
+      std::move(null_fd), arc_proxy::FileDescriptor::FIFO_READ, handle);
+
+  // Try to send data from the server to the client, but it fails because of a
+  // write error in the client.
+  constexpr char kData[] = "abcdefg";
+  ASSERT_TRUE(base::WriteFileDescriptor(server_fd.get(), kData, sizeof(kData)));
+  // Write error on the client results in closing the server socket.
+  WaitUntilReadable(server_fd.get());
+  ExpectSocketEof(server_fd.get());
 }
 
 TEST_F(VSockProxyTest, PassSocketFromServer) {

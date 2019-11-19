@@ -73,7 +73,8 @@ base::ScopedFD ConnectVSock() {
 
 }  // namespace
 
-ClientProxy::ClientProxy() = default;
+ClientProxy::ClientProxy(base::OnceClosure quit_closure)
+    : quit_closure_(std::move(quit_closure)) {}
 
 ClientProxy::~ClientProxy() = default;
 
@@ -130,6 +131,10 @@ base::ScopedFD ClientProxy::ConvertProtoToFileDescriptor(
     const arc_proxy::FileDescriptor& proto) {
   LOG(ERROR) << "Unsupported FD type: " << proto.type();
   return {};
+}
+
+void ClientProxy::OnStopped() {
+  std::move(quit_closure_).Run();
 }
 
 void ClientProxy::OnLocalSocketReadReady() {
