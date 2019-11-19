@@ -26,8 +26,14 @@ class BRILLO_EXPORT Client {
 
   bool NotifyArcStartup(pid_t pid);
   bool NotifyArcShutdown();
+
   std::vector<patchpanel::Device> NotifyArcVmStartup(int cid);
   bool NotifyArcVmShutdown(int cid);
+
+  bool NotifyTerminaVmStartup(int cid,
+                              patchpanel::Device* device,
+                              patchpanel::IPv4Subnet* container_subnet);
+  bool NotifyTerminaVmShutdown(int cid);
 
  private:
   scoped_refptr<dbus::Bus> bus_;

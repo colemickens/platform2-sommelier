@@ -150,4 +150,76 @@ bool Client::NotifyArcVmShutdown(int cid) {
   return true;
 }
 
+bool Client::NotifyTerminaVmStartup(int cid,
+                                    patchpanel::Device* device,
+                                    patchpanel::IPv4Subnet* container_subnet) {
+  dbus::MethodCall method_call(kPatchPanelInterface, kTerminaVmStartupMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  TerminaVmStartupRequest request;
+  request.set_cid(static_cast<uint32_t>(cid));
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode TerminaVmStartupRequest proto";
+    return false;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response = proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to patchpanel service";
+    return false;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  TerminaVmStartupResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response proto";
+    return false;
+  }
+
+  if (!response.has_device()) {
+    LOG(ERROR) << "No device found";
+    return false;
+  }
+  *device = response.device();
+
+  if (response.has_container_subnet()) {
+    *container_subnet = response.container_subnet();
+  } else {
+    LOG(WARNING) << "No container subnet found";
+  }
+
+  return true;
+}
+
+bool Client::NotifyTerminaVmShutdown(int cid) {
+  dbus::MethodCall method_call(kPatchPanelInterface, kTerminaVmShutdownMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  TerminaVmShutdownRequest request;
+  request.set_cid(static_cast<uint32_t>(cid));
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode TerminaVmShutdownRequest proto";
+    return false;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response = proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to patchpanel service";
+    return false;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  TerminaVmShutdownResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response proto";
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace patchpanel
