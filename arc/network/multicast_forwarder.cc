@@ -363,14 +363,14 @@ void MulticastForwarder::TranslateMdnsIp(const struct in_addr& lan_ip,
     }
     if (record.type == net::dns_protocol::kTypeA &&
         record.rdata.size() == ipv4_addr_len) {
-      const char* rr_ip = record.rdata.data();
-      if (guest_ip.s_addr ==
-          reinterpret_cast<const struct in_addr*>(rr_ip)->s_addr) {
+      struct in_addr rr_ip;
+      memcpy(&rr_ip, record.rdata.data(), ipv4_addr_len);
+      if (guest_ip.s_addr == rr_ip.s_addr) {
         // HACK: This is able to calculate the (variable) offset of the IPv4
         // address inside the resource record by assuming that the
         // StringPiece returns a pointer inside the io_buffer.  It works
         // today, but future libchrome changes might break it.
-        size_t ip_offset = rr_ip - resp.io_buffer()->data();
+        size_t ip_offset = record.rdata.data() - resp.io_buffer()->data();
         CHECK(ip_offset <= len - ipv4_addr_len);
         memcpy(&data[ip_offset], &lan_ip.s_addr, ipv4_addr_len);
       }
