@@ -31,10 +31,9 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // Prepare the configuration system for access to the configuration for
   // the model this is running on. This reads the configuration file into
   // memory.
-  // @sku_id: If sku_id is kDefaultSkuId, then the default one normally
-  //     returned by 'mosys platform id' is assigned. Otherwise (if
-  //     sku_id is not kDefaultSkuId), the value here is used to match
-  //     the configuration.
+  // @sku_id: If sku_id is kDefaultSkuId, then the SKU of the device
+  //     will be probed. Otherwise (if sku_id is not kDefaultSkuId),
+  //     the value here is used to match the configuration.
   // @return true if OK, false on error.
   bool Init(const int sku_id = kDefaultSkuId);
 
@@ -48,10 +47,10 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // Prepare the configuration system for testing.
   // This reads in the given configuration file and selects the config
   // based on the supplied identifiers.
-  // @sku_id: SKU ID, normally returned by 'mosys platform sku'.
+  // @sku_id: SKU ID.
   // @json_path: Path to configuration file.
   // @arch: brillo::SystemArchitecture (kX86 or kArm).
-  // @name: Platform name normally returned by 'mosys platform id'.
+  // @name: Platform name.
   // @customization_id: VPD customization ID
   // @return true if OK, false on error.
   bool InitForTest(const int sku_id,
@@ -71,7 +70,7 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
 
  private:
   // Internal init function used by Init and InitForTest.
-  // @sku_id: SKU ID, normally returned by 'mosys platform sku'.
+  // @sku_id: SKU ID.
   // @json_path: Path to configuration file.
   // @arch: brillo::SystemArchitecture (kX86 or kArm).
   // @product_name_file: The file to read product name, or device-tree
