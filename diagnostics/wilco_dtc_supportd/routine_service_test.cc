@@ -12,7 +12,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/wilco_dtc_supportd/fake_wilco_dtc_supportd_routine_factory.h"
+#include "diagnostics/wilco_dtc_supportd/fake_routine_factory.h"
 #include "diagnostics/wilco_dtc_supportd/routine_service.h"
 
 using testing::ElementsAreArray;
@@ -109,7 +109,7 @@ class RoutineServiceTest : public testing::Test {
 
  private:
   base::MessageLoop message_loop_;
-  FakeWilcoDtcSupportdRoutineFactory routine_factory_;
+  FakeRoutineFactory routine_factory_;
   RoutineService service_{&routine_factory_};
 };
 

@@ -14,8 +14,8 @@
 #include <base/macros.h>
 
 #include "diagnostics/routines/diag_routine.h"
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_routine_factory.h"
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_routine_factory_impl.h"
+#include "diagnostics/wilco_dtc_supportd/routine_factory.h"
+#include "diagnostics/wilco_dtc_supportd/routine_factory_impl.h"
 #include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
@@ -37,7 +37,7 @@ class RoutineService final {
                           const std::string& status_message)>;
 
   RoutineService();
-  explicit RoutineService(WilcoDtcSupportdRoutineFactory* routine_factory);
+  explicit RoutineService(RoutineFactory* routine_factory);
   ~RoutineService();
 
   void GetAvailableRoutines(
@@ -53,8 +53,8 @@ class RoutineService final {
       const GetRoutineUpdateRequestToServiceCallback& callback);
 
  private:
-  std::unique_ptr<WilcoDtcSupportdRoutineFactoryImpl> routine_factory_impl_;
-  WilcoDtcSupportdRoutineFactory* routine_factory_;
+  std::unique_ptr<RoutineFactoryImpl> routine_factory_impl_;
+  RoutineFactory* routine_factory_;
   // Map from uuids to instances of diagnostics routines that have
   // been started.
   std::map<int, std::unique_ptr<DiagnosticRoutine>> active_routines_;

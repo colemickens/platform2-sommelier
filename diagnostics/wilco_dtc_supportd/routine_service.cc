@@ -10,12 +10,11 @@
 namespace diagnostics {
 
 RoutineService::RoutineService() {
-  routine_factory_impl_ =
-      std::make_unique<WilcoDtcSupportdRoutineFactoryImpl>();
+  routine_factory_impl_ = std::make_unique<RoutineFactoryImpl>();
   routine_factory_ = routine_factory_impl_.get();
 }
 
-RoutineService::RoutineService(WilcoDtcSupportdRoutineFactory* routine_factory)
+RoutineService::RoutineService(RoutineFactory* routine_factory)
     : routine_factory_(routine_factory) {}
 
 RoutineService::~RoutineService() = default;

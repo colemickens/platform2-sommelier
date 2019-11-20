@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_routine_factory_impl.h"
+#include "diagnostics/wilco_dtc_supportd/routine_factory_impl.h"
 
 #include <base/logging.h>
 
@@ -13,13 +13,10 @@
 
 namespace diagnostics {
 
-WilcoDtcSupportdRoutineFactoryImpl::WilcoDtcSupportdRoutineFactoryImpl() =
-    default;
-WilcoDtcSupportdRoutineFactoryImpl::~WilcoDtcSupportdRoutineFactoryImpl() =
-    default;
+RoutineFactoryImpl::RoutineFactoryImpl() = default;
+RoutineFactoryImpl::~RoutineFactoryImpl() = default;
 
-std::unique_ptr<DiagnosticRoutine>
-WilcoDtcSupportdRoutineFactoryImpl::CreateRoutine(
+std::unique_ptr<DiagnosticRoutine> RoutineFactoryImpl::CreateRoutine(
     const grpc_api::RunRoutineRequest& request) {
   switch (request.routine()) {
     case grpc_api::ROUTINE_BATTERY:

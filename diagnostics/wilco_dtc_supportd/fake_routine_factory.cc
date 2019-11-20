@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/fake_wilco_dtc_supportd_routine_factory.h"
+#include "diagnostics/wilco_dtc_supportd/fake_routine_factory.h"
 
 namespace diagnostics {
 
@@ -26,13 +26,10 @@ class FakeDiagnosticRoutine final : public DiagnosticRoutine {
 };
 }  // namespace
 
-FakeWilcoDtcSupportdRoutineFactory::FakeWilcoDtcSupportdRoutineFactory() =
-    default;
-FakeWilcoDtcSupportdRoutineFactory::~FakeWilcoDtcSupportdRoutineFactory() =
-    default;
+FakeRoutineFactory::FakeRoutineFactory() = default;
+FakeRoutineFactory::~FakeRoutineFactory() = default;
 
-std::unique_ptr<DiagnosticRoutine>
-FakeWilcoDtcSupportdRoutineFactory::CreateRoutine(
+std::unique_ptr<DiagnosticRoutine> FakeRoutineFactory::CreateRoutine(
     const grpc_api::RunRoutineRequest& request) {
   return std::make_unique<FakeDiagnosticRoutine>();
 }
