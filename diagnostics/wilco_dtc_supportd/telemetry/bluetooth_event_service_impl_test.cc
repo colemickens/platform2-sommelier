@@ -64,6 +64,18 @@ std::unique_ptr<BluetoothClient::DeviceProperties> CreateDeviceProperties(
   return properties;
 }
 
+AdapterData CreateAdapterData(const std::string& name,
+                              const std::string& address,
+                              bool powered,
+                              uint32_t connected_devices_count) {
+  AdapterData adapter;
+  adapter.name = name;
+  adapter.address = address;
+  adapter.powered = powered;
+  adapter.connected_devices_count = connected_devices_count;
+  return adapter;
+}
+
 class MockBluetoothEventServiceObserver
     : public BluetoothEventService::Observer {
  public:
@@ -120,16 +132,18 @@ class BluetoothEventServiceImplTest : public ::testing::Test {
 };
 
 TEST_F(BluetoothEventServiceImplTest, AdapterAdded) {
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               0 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         0 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterAdded(
       kAdapterPath1, *CreateAdapterProperties(kAdapterName1, kAdapterMac1,
                                               true /* powered */));
 }
 
 TEST_F(BluetoothEventServiceImplTest, MultipleAdaptersAdded) {
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               0 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         0 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterAdded(
       kAdapterPath1, *CreateAdapterProperties(kAdapterName1, kAdapterMac1,
                                               true /* powered */));
@@ -139,16 +153,18 @@ TEST_F(BluetoothEventServiceImplTest, MultipleAdaptersAdded) {
       kAdapterPath1, *CreateAdapterProperties(kAdapterName1, kAdapterMac1,
                                               true /* powered */));
 
-  ExpectBluetoothDataChanged({{kAdapterName2, kAdapterMac2, false /* powered */,
-                               0 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName2, kAdapterMac2, false /* powered */,
+                         0 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterAdded(
       kAdapterPath1, *CreateAdapterProperties(kAdapterName2, kAdapterMac2,
                                               false /* powered */));
 }
 
 TEST_F(BluetoothEventServiceImplTest, AdapterRemoved) {
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               0 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         0 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterAdded(
       kAdapterPath1, *CreateAdapterProperties(kAdapterName1, kAdapterMac1,
                                               true /* powered */));
@@ -165,22 +181,25 @@ TEST_F(BluetoothEventServiceImplTest, AdapterRemovedBeforeAdded) {
   fake_bluetooth_client_.EmitAdapterRemoved(kAdapterPath1);
   fake_bluetooth_client_.EmitAdapterRemoved(kAdapterPath2);
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               0 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         0 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterAdded(
       kAdapterPath1, *CreateAdapterProperties(kAdapterName1, kAdapterMac1,
                                               true /* powered */));
 }
 
 TEST_F(BluetoothEventServiceImplTest, AdapterPropertyChanged) {
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               0 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         0 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterAdded(
       kAdapterPath1, *CreateAdapterProperties(kAdapterName1, kAdapterMac1,
                                               true /* powered */));
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, false /* powered */,
-                               0 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, false /* powered */,
+                         0 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterPropertyChanged(
       kAdapterPath1, *CreateAdapterProperties(kAdapterName1, kAdapterMac1,
                                               false /* powered */));
@@ -192,14 +211,16 @@ TEST_F(BluetoothEventServiceImplTest, AdapterPropertyChanged) {
 }
 
 TEST_F(BluetoothEventServiceImplTest, AdapterPropertyChangedBeforeAdded) {
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               0 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         0 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterPropertyChanged(
       kAdapterPath1, *CreateAdapterProperties(kAdapterName1, kAdapterMac1,
                                               true /* powered */));
 
-  ExpectBluetoothDataChanged({{kAdapterName2, kAdapterMac2, false /* powered */,
-                               0 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName2, kAdapterMac2, false /* powered */,
+                         0 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterAdded(
       kAdapterPath1, *CreateAdapterProperties(kAdapterName2, kAdapterMac2,
                                               false /* powered */));
@@ -211,8 +232,9 @@ TEST_F(BluetoothEventServiceImplTest, DeviceAdded) {
       kDevicePath1,
       *CreateDeviceProperties(true /* connected */, kAdapterPath1));
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               1 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         1 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterAdded(
       kAdapterPath1, *CreateAdapterProperties(kAdapterName1, kAdapterMac1,
                                               true /* powered */));
@@ -229,8 +251,9 @@ TEST_F(BluetoothEventServiceImplTest, NonConnectedDeviceAdded) {
       kDevicePath1,
       *CreateDeviceProperties(false /* connected */, kAdapterPath1));
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               0 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         0 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterAdded(
       kAdapterPath1, *CreateAdapterProperties(kAdapterName1, kAdapterMac1,
                                               true /* powered */));
@@ -242,14 +265,16 @@ TEST_F(BluetoothEventServiceImplTest, DeviceRemoved) {
       kDevicePath1,
       *CreateDeviceProperties(true /* connected */, kAdapterPath1));
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               1 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         1 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterAdded(
       kAdapterPath1, *CreateAdapterProperties(kAdapterName1, kAdapterMac1,
                                               true /* powered */));
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               0 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         0 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitDeviceRemoved(kDevicePath1);
 
   // Should not invoke BluetoothAdapterDataChanged.
@@ -265,8 +290,9 @@ TEST_F(BluetoothEventServiceImplTest, DeviceRemovedBeforeAdded) {
       kDevicePath1,
       *CreateDeviceProperties(true /* connected */, kAdapterPath1));
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               1 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         1 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterAdded(
       kAdapterPath1, *CreateAdapterProperties(kAdapterName1, kAdapterMac1,
                                               true /* powered */));
@@ -279,8 +305,9 @@ TEST_F(BluetoothEventServiceImplTest, DeviceAddedAndRemovedBeingHomeless) {
       *CreateDeviceProperties(true /* connected */, kAdapterPath1));
   fake_bluetooth_client_.EmitDeviceRemoved(kDevicePath1);
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               0 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         0 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterAdded(
       kAdapterPath1, *CreateAdapterProperties(kAdapterName1, kAdapterMac1,
                                               true /* powered */));
@@ -292,14 +319,16 @@ TEST_F(BluetoothEventServiceImplTest, DevicePropertyChanged) {
       kDevicePath1,
       *CreateDeviceProperties(true /* connected */, kAdapterPath1));
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               1 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         1 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterAdded(
       kAdapterPath1, *CreateAdapterProperties(kAdapterName1, kAdapterMac1,
                                               true /* powered */));
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               0 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         0 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitDevicePropertyChanged(
       kDevicePath1,
       *CreateDeviceProperties(false /* connected */, kAdapterPath1));
@@ -309,8 +338,9 @@ TEST_F(BluetoothEventServiceImplTest, DevicePropertyChanged) {
       kDevicePath1,
       *CreateDeviceProperties(false /* connected */, kAdapterPath1));
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               1 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         1 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitDevicePropertyChanged(
       kDevicePath1,
       *CreateDeviceProperties(true /* connected */, kAdapterPath1));
@@ -327,60 +357,68 @@ TEST_F(BluetoothEventServiceImplTest, DevicePropertyChangedBeforeAdded) {
       kDevicePath1,
       *CreateDeviceProperties(true /* connected */, kAdapterPath1));
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               1 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         1 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterAdded(
       kAdapterPath1, *CreateAdapterProperties(kAdapterName1, kAdapterMac1,
                                               true /* powered */));
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               0 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         0 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitDevicePropertyChanged(
       kDevicePath1,
       *CreateDeviceProperties(false /* connected */, kAdapterPath1));
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               1 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         1 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitDeviceAdded(
       kDevicePath1,
       *CreateDeviceProperties(true /* connected */, kAdapterPath1));
 }
 
 TEST_F(BluetoothEventServiceImplTest, MultipleAdaptersAndDevices) {
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               0 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         0 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterAdded(
       kAdapterPath1, *CreateAdapterProperties(kAdapterName1, kAdapterMac1,
                                               true /* powered */));
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               0 /* connected_devices_count */},
-                              {kAdapterName2, kAdapterMac2, true /* powered */,
-                               0 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         0 /* connected_devices_count */),
+       CreateAdapterData(kAdapterName2, kAdapterMac2, true /* powered */,
+                         0 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterAdded(
       kAdapterPath2, *CreateAdapterProperties(kAdapterName2, kAdapterMac2,
                                               true /* powered */));
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               1 /* connected_devices_count */},
-                              {kAdapterName2, kAdapterMac2, true /* powered */,
-                               0 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         1 /* connected_devices_count */),
+       CreateAdapterData(kAdapterName2, kAdapterMac2, true /* powered */,
+                         0 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitDevicePropertyChanged(
       kDevicePath1,
       *CreateDeviceProperties(true /* connected */, kAdapterPath1));
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               2 /* connected_devices_count */},
-                              {kAdapterName2, kAdapterMac2, true /* powered */,
-                               0 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         2 /* connected_devices_count */),
+       CreateAdapterData(kAdapterName2, kAdapterMac2, true /* powered */,
+                         0 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitDevicePropertyChanged(
       kDevicePath2,
       *CreateDeviceProperties(true /* connected */, kAdapterPath1));
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               2 /* connected_devices_count */},
-                              {kAdapterName2, kAdapterMac2, true /* powered */,
-                               1 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         2 /* connected_devices_count */),
+       CreateAdapterData(kAdapterName2, kAdapterMac2, true /* powered */,
+                         1 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitDevicePropertyChanged(
       kDevicePath3,
       *CreateDeviceProperties(true /* connected */, kAdapterPath2));
@@ -392,8 +430,9 @@ TEST_F(BluetoothEventServiceImplTest, RemoveAdapterWithConnectedDevice) {
       kDevicePath1,
       *CreateDeviceProperties(true /* connected */, kAdapterPath1));
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               1 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         1 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterAdded(
       kAdapterPath1, *CreateAdapterProperties(kAdapterName1, kAdapterMac1,
                                               true /* powered */));
@@ -401,8 +440,9 @@ TEST_F(BluetoothEventServiceImplTest, RemoveAdapterWithConnectedDevice) {
   ExpectBluetoothDataChanged({});
   fake_bluetooth_client_.EmitAdapterRemoved(kAdapterPath1);
 
-  ExpectBluetoothDataChanged({{kAdapterName1, kAdapterMac1, true /* powered */,
-                               0 /* connected_devices_count */}});
+  ExpectBluetoothDataChanged(
+      {CreateAdapterData(kAdapterName1, kAdapterMac1, true /* powered */,
+                         0 /* connected_devices_count */)});
   fake_bluetooth_client_.EmitAdapterAdded(
       kAdapterPath1, *CreateAdapterProperties(kAdapterName1, kAdapterMac1,
                                               true /* powered */));

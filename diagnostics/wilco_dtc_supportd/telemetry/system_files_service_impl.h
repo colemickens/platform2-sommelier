@@ -22,8 +22,8 @@ class SystemFilesServiceImpl final : public SystemFilesService {
   static base::FilePath GetPathForDirectory(Directory location);
   static base::FilePath GetPathForFile(File location);
 
-  SystemFilesServiceImpl() = default;
-  ~SystemFilesServiceImpl() override = default;
+  SystemFilesServiceImpl();
+  ~SystemFilesServiceImpl() override;
 
   // SystemFilesService overrides:
   bool GetFileDump(File location, FileDump* dump) override;

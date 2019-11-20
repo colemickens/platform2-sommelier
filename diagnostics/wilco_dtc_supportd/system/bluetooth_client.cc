@@ -20,6 +20,8 @@ BluetoothClient::AdapterProperties::AdapterProperties(
   RegisterProperty(bluetooth_adapter::kPoweredProperty, &powered);
 }
 
+BluetoothClient::AdapterProperties::~AdapterProperties() = default;
+
 BluetoothClient::DeviceProperties::DeviceProperties(
     dbus::ObjectProxy* object_proxy,
     const dbus::PropertySet::PropertyChangedCallback& callback)
@@ -30,6 +32,12 @@ BluetoothClient::DeviceProperties::DeviceProperties(
   RegisterProperty(bluetooth_device::kConnectedProperty, &connected);
   RegisterProperty(bluetooth_device::kAdapterProperty, &adapter);
 }
+
+BluetoothClient::DeviceProperties::~DeviceProperties() = default;
+
+BluetoothClient::BluetoothClient() = default;
+
+BluetoothClient::~BluetoothClient() = default;
 
 void BluetoothClient::AddObserver(Observer* observer) {
   DCHECK(observer);

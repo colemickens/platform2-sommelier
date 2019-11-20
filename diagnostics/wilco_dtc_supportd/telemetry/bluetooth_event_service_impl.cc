@@ -74,12 +74,14 @@ void BluetoothEventServiceImpl::AdapterChanged(
 
   std::set<dbus::ObjectPath> devices;
 
-  adapters_.insert(
-      {adapter_path,
-       AdapterData{
-           properties.name.value(), properties.address.value(),
-           properties.powered.value(),
-           static_cast<uint32_t>(connected_devices_[adapter_path].size())}});
+  AdapterData adapter;
+  adapter.name = properties.name.value();
+  adapter.address = properties.address.value();
+  adapter.powered = properties.powered.value();
+  adapter.connected_devices_count =
+      static_cast<uint32_t>(connected_devices_[adapter_path].size());
+
+  adapters_.insert({adapter_path, adapter});
 }
 
 void BluetoothEventServiceImpl::DeviceChanged(

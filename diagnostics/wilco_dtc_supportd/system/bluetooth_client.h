@@ -33,7 +33,7 @@ class BluetoothClient {
     AdapterProperties(
         dbus::ObjectProxy* object_proxy,
         const dbus::PropertySet::PropertyChangedCallback& callback);
-    ~AdapterProperties() override = default;
+    ~AdapterProperties() override;
   };
 
   // Structure of properties associated with bluetooth devices.
@@ -53,7 +53,7 @@ class BluetoothClient {
     DeviceProperties(
         dbus::ObjectProxy* object_proxy,
         const dbus::PropertySet::PropertyChangedCallback& callback);
-    ~DeviceProperties() override = default;
+    ~DeviceProperties() override;
   };
 
   // Interface for observing bluetooth adapters and devices changes.
@@ -91,8 +91,8 @@ class BluetoothClient {
                                        const DeviceProperties& properties) = 0;
   };
 
-  BluetoothClient() = default;
-  virtual ~BluetoothClient() = default;
+  BluetoothClient();
+  virtual ~BluetoothClient();
 
   void AddObserver(Observer* observer);
   void RemoveObserver(Observer* observer);

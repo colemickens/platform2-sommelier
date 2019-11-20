@@ -17,7 +17,8 @@ namespace diagnostics {
 class SystemFilesService {
  public:
   struct FileDump {
-    FileDump() = default;
+    FileDump();
+    ~FileDump();
 
     // Absolute path to the file.
     base::FilePath path;

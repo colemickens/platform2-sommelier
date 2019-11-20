@@ -19,6 +19,9 @@ namespace diagnostics {
 class BluetoothEventService {
  public:
   struct AdapterData {
+    AdapterData();
+    ~AdapterData();
+
     std::string name;
     std::string address;
     bool powered = false;
@@ -36,8 +39,8 @@ class BluetoothEventService {
         const std::vector<AdapterData>& adapters) = 0;
   };
 
-  BluetoothEventService() = default;
-  virtual ~BluetoothEventService() = default;
+  BluetoothEventService();
+  virtual ~BluetoothEventService();
 
   void AddObserver(Observer* observer);
   void RemoveObserver(Observer* observer);

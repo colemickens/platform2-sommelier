@@ -902,9 +902,15 @@ MATCHER_P(BluetoothAdaptersEquals, expected_adapters, "") {
 // Test that the method |HandleBluetoothDataChanged()| exposed by wilco_dtc gRPC
 // is called by wilco_dtc support daemon.
 TEST_F(BootstrappedWilcoDtcSupportdCoreTest, HandleBluetoothDataChanged) {
-  const std::vector<BluetoothEventService::AdapterData> kAdapters{
-      {"sarien-laptop", "aa:bb:cc:dd:ee:ff", true, 0},
-      {"usb-bluetooth", "00:11:22:33:44:55", false, 2}};
+  std::vector<BluetoothEventService::AdapterData> adapters(2);
+  adapters[0].name = "sarien-laptop";
+  adapters[0].address = "aa:bb:cc:dd:ee:ff";
+  adapters[0].powered = true;
+  adapters[0].connected_devices_count = 0;
+  adapters[1].name = "usb-bluetooth";
+  adapters[1].address = "00:11:22:33:44:55";
+  adapters[1].powered = false;
+  adapters[1].connected_devices_count = 2;
 
   auto bluetooth_callback =
       [](const base::Closure& callback,
@@ -932,14 +938,14 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, HandleBluetoothDataChanged) {
           &fake_ui_message_receiver_wilco_dtc_bluetooth_grpc_request));
 
   core_delegate()->bluetooth_event_service()->EmitBluetoothAdapterDataChanged(
-      kAdapters);
+      adapters);
 
   run_loop.Run();
 
   EXPECT_THAT(fake_wilco_dtc_bluetooth_grpc_request,
-              BluetoothAdaptersEquals(kAdapters));
+              BluetoothAdaptersEquals(adapters));
   EXPECT_THAT(fake_ui_message_receiver_wilco_dtc_bluetooth_grpc_request,
-              BluetoothAdaptersEquals(kAdapters));
+              BluetoothAdaptersEquals(adapters));
 }
 
 // Fake types to be used to emulate EC events.

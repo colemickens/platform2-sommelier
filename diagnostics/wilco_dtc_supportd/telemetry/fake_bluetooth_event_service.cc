@@ -6,6 +6,10 @@
 
 namespace diagnostics {
 
+FakeBluetoothEventService::FakeBluetoothEventService() = default;
+
+FakeBluetoothEventService::~FakeBluetoothEventService() = default;
+
 void FakeBluetoothEventService::EmitBluetoothAdapterDataChanged(
     const std::vector<BluetoothEventService::AdapterData>& adapters) const {
   for (auto& observer : observers_) {

@@ -64,6 +64,10 @@ base::FilePath SystemFilesServiceImpl::GetPathForDirectory(
   NOTREACHED();
 }
 
+SystemFilesServiceImpl::SystemFilesServiceImpl() = default;
+
+SystemFilesServiceImpl::~SystemFilesServiceImpl() = default;
+
 bool SystemFilesServiceImpl::GetFileDump(File location, FileDump* dump) {
   DCHECK(dump);
 

@@ -8,12 +8,19 @@
 
 namespace diagnostics {
 
+BluetoothEventService::AdapterData::AdapterData() = default;
+BluetoothEventService::AdapterData::~AdapterData() = default;
+
 bool BluetoothEventService::AdapterData::operator==(
     const AdapterData& data) const {
   return name == data.name && address == data.address &&
          powered == data.powered &&
          connected_devices_count == data.connected_devices_count;
 }
+
+BluetoothEventService::BluetoothEventService() = default;
+
+BluetoothEventService::~BluetoothEventService() = default;
 
 void BluetoothEventService::AddObserver(Observer* observer) {
   DCHECK(observer);

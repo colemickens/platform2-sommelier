@@ -15,8 +15,8 @@ namespace diagnostics {
 
 class FakeBluetoothEventService : public BluetoothEventService {
  public:
-  FakeBluetoothEventService() = default;
-  ~FakeBluetoothEventService() override = default;
+  FakeBluetoothEventService();
+  ~FakeBluetoothEventService() override;
 
   void EmitBluetoothAdapterDataChanged(
       const std::vector<BluetoothEventService::AdapterData>& adapters) const;

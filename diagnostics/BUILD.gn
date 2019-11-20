@@ -203,6 +203,7 @@ source_set("libwilco_dtc_supportd") {
     "wilco_dtc_supportd/telemetry/bluetooth_event_service_impl.cc",
     "wilco_dtc_supportd/telemetry/ec_event_service.cc",
     "wilco_dtc_supportd/telemetry/powerd_event_service_impl.cc",
+    "wilco_dtc_supportd/telemetry/system_files_service.cc",
     "wilco_dtc_supportd/telemetry/system_files_service_impl.cc",
     "wilco_dtc_supportd/vpd_constants.cc",
     "wilco_dtc_supportd/wilco_dtc_supportd_core.cc",
