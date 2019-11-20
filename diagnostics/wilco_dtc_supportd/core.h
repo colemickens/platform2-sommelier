@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_CORE_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_CORE_H_
+#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_CORE_H_
+#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_CORE_H_
 
 #include <cstdint>
 #include <memory>
@@ -41,14 +41,14 @@ namespace diagnostics {
 
 // Integrates together all pieces which implement separate IPC services exposed
 // by the wilco_dtc_supportd daemon and IPC clients.
-class WilcoDtcSupportdCore final : public DBusService::Delegate,
-                                   public GrpcService::Delegate,
-                                   public MojoService::Delegate,
-                                   public chromeos::wilco_dtc_supportd::mojom::
-                                       WilcoDtcSupportdServiceFactory,
-                                   public BluetoothEventService::Observer,
-                                   public EcEventService::Observer,
-                                   public PowerdEventService::Observer {
+class Core final : public DBusService::Delegate,
+                   public GrpcService::Delegate,
+                   public MojoService::Delegate,
+                   public chromeos::wilco_dtc_supportd::mojom::
+                       WilcoDtcSupportdServiceFactory,
+                   public BluetoothEventService::Observer,
+                   public EcEventService::Observer,
+                   public PowerdEventService::Observer {
  public:
   class Delegate {
    public:
@@ -113,12 +113,11 @@ class WilcoDtcSupportdCore final : public DBusService::Delegate,
   // making requests to the gRPC interface exposed by the wilco_dtc
   // daemons. Should not contain the URI equal to
   // |ui_message_receiver_wilco_dtc_grpc_uri|.
-  WilcoDtcSupportdCore(
-      const std::vector<std::string>& grpc_service_uris,
-      const std::string& ui_message_receiver_wilco_dtc_grpc_uri,
-      const std::vector<std::string>& wilco_dtc_grpc_uris,
-      Delegate* delegate);
-  ~WilcoDtcSupportdCore() override;
+  Core(const std::vector<std::string>& grpc_service_uris,
+       const std::string& ui_message_receiver_wilco_dtc_grpc_uri,
+       const std::vector<std::string>& wilco_dtc_grpc_uris,
+       Delegate* delegate);
+  ~Core() override;
 
   // Overrides the file system root directory for file operations in tests.
   void set_root_dir_for_testing(const base::FilePath& root_dir) {
@@ -288,9 +287,9 @@ class WilcoDtcSupportdCore final : public DBusService::Delegate,
   // wilco_dtc_supportd daemon.
   RoutineService routine_service_;
 
-  DISALLOW_COPY_AND_ASSIGN(WilcoDtcSupportdCore);
+  DISALLOW_COPY_AND_ASSIGN(Core);
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_CORE_H_
+#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_CORE_H_

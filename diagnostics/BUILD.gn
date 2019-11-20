@@ -167,6 +167,7 @@ source_set("libwilco_dtc_supportd") {
   ]
   all_dependent_configs = [ ":libwilco_dtc_supportd_pkg_deps" ]
   sources = [
+    "wilco_dtc_supportd/core.cc",
     "wilco_dtc_supportd/core_delegate_impl.cc",
     "wilco_dtc_supportd/daemon.cc",
     "wilco_dtc_supportd/dbus_service.cc",
@@ -187,7 +188,6 @@ source_set("libwilco_dtc_supportd") {
     "wilco_dtc_supportd/telemetry/system_files_service.cc",
     "wilco_dtc_supportd/telemetry/system_files_service_impl.cc",
     "wilco_dtc_supportd/vpd_constants.cc",
-    "wilco_dtc_supportd/wilco_dtc_supportd_core.cc",
   ]
 }
 
@@ -367,6 +367,7 @@ if (use.test) {
       "//diagnostics/common:libcommon",
     ]
     sources = [
+      "wilco_dtc_supportd/core_test.cc",
       "wilco_dtc_supportd/dbus_service_test.cc",
       "wilco_dtc_supportd/ec_constants_test.cc",
       "wilco_dtc_supportd/fake_browser.cc",
@@ -393,7 +394,6 @@ if (use.test) {
       "wilco_dtc_supportd/telemetry/fake_system_files_service.cc",
       "wilco_dtc_supportd/telemetry/powerd_event_service_impl_test.cc",
       "wilco_dtc_supportd/telemetry/system_files_service_impl_test.cc",
-      "wilco_dtc_supportd/wilco_dtc_supportd_core_test.cc",
     ]
   }
 

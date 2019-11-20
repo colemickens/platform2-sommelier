@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core.h"
+#include "diagnostics/wilco_dtc_supportd/core.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -35,20 +35,20 @@ using MojomWilcoDtcSupportdWebRequestHttpMethod =
 
 // Converts HTTP method into an appropriate mojom one.
 bool ConvertWebRequestHttpMethodToMojom(
-    WilcoDtcSupportdCore::WebRequestHttpMethod http_method,
+    Core::WebRequestHttpMethod http_method,
     MojomWilcoDtcSupportdWebRequestHttpMethod* mojo_http_method_out) {
   DCHECK(mojo_http_method_out);
   switch (http_method) {
-    case WilcoDtcSupportdCore::WebRequestHttpMethod::kGet:
+    case Core::WebRequestHttpMethod::kGet:
       *mojo_http_method_out = MojomWilcoDtcSupportdWebRequestHttpMethod::kGet;
       return true;
-    case WilcoDtcSupportdCore::WebRequestHttpMethod::kHead:
+    case Core::WebRequestHttpMethod::kHead:
       *mojo_http_method_out = MojomWilcoDtcSupportdWebRequestHttpMethod::kHead;
       return true;
-    case WilcoDtcSupportdCore::WebRequestHttpMethod::kPost:
+    case Core::WebRequestHttpMethod::kPost:
       *mojo_http_method_out = MojomWilcoDtcSupportdWebRequestHttpMethod::kPost;
       return true;
-    case WilcoDtcSupportdCore::WebRequestHttpMethod::kPut:
+    case Core::WebRequestHttpMethod::kPut:
       *mojo_http_method_out = MojomWilcoDtcSupportdWebRequestHttpMethod::kPut;
       return true;
   }
@@ -56,19 +56,18 @@ bool ConvertWebRequestHttpMethodToMojom(
 }
 
 // Convert the result back from mojom status.
-bool ConvertStatusFromMojom(
-    MojomWilcoDtcSupportdWebRequestStatus mojo_status,
-    WilcoDtcSupportdCore::WebRequestStatus* status_out) {
+bool ConvertStatusFromMojom(MojomWilcoDtcSupportdWebRequestStatus mojo_status,
+                            Core::WebRequestStatus* status_out) {
   DCHECK(status_out);
   switch (mojo_status) {
     case MojomWilcoDtcSupportdWebRequestStatus::kOk:
-      *status_out = WilcoDtcSupportdCore::WebRequestStatus::kOk;
+      *status_out = Core::WebRequestStatus::kOk;
       return true;
     case MojomWilcoDtcSupportdWebRequestStatus::kNetworkError:
-      *status_out = WilcoDtcSupportdCore::WebRequestStatus::kNetworkError;
+      *status_out = Core::WebRequestStatus::kNetworkError;
       return true;
     case MojomWilcoDtcSupportdWebRequestStatus::kHttpError:
-      *status_out = WilcoDtcSupportdCore::WebRequestStatus::kHttpError;
+      *status_out = Core::WebRequestStatus::kHttpError;
       return true;
   }
   return false;
@@ -97,11 +96,10 @@ bool ConvertPowerEventToGrpc(
 
 }  // namespace
 
-WilcoDtcSupportdCore::WilcoDtcSupportdCore(
-    const std::vector<std::string>& grpc_service_uris,
-    const std::string& ui_message_receiver_wilco_dtc_grpc_uri,
-    const std::vector<std::string>& wilco_dtc_grpc_uris,
-    Delegate* delegate)
+Core::Core(const std::vector<std::string>& grpc_service_uris,
+           const std::string& ui_message_receiver_wilco_dtc_grpc_uri,
+           const std::vector<std::string>& wilco_dtc_grpc_uris,
+           Delegate* delegate)
     : delegate_(delegate),
       grpc_service_uris_(grpc_service_uris),
       ui_message_receiver_wilco_dtc_grpc_uri_(
@@ -114,7 +112,7 @@ WilcoDtcSupportdCore::WilcoDtcSupportdCore(
   ec_event_service_->AddObserver(this);
 }
 
-WilcoDtcSupportdCore::~WilcoDtcSupportdCore() {
+Core::~Core() {
   if (bluetooth_event_service_) {
     bluetooth_event_service_->RemoveObserver(this);
   }
@@ -124,7 +122,7 @@ WilcoDtcSupportdCore::~WilcoDtcSupportdCore() {
   ec_event_service_->RemoveObserver(this);
 }
 
-bool WilcoDtcSupportdCore::Start() {
+bool Core::Start() {
   // Associate RPCs of the to-be-exposed gRPC interface with methods of
   // |grpc_service_|.
   grpc_server_.RegisterHandler(
@@ -210,7 +208,7 @@ bool WilcoDtcSupportdCore::Start() {
   return true;
 }
 
-void WilcoDtcSupportdCore::ShutDown(const base::Closure& on_shutdown_callback) {
+void Core::ShutDown(const base::Closure& on_shutdown_callback) {
   VLOG(1) << "Tearing down gRPC server, gRPC wilco_dtc clients, "
              "EC event service and D-Bus server";
   const base::Closure barrier_closure =
@@ -225,7 +223,7 @@ void WilcoDtcSupportdCore::ShutDown(const base::Closure& on_shutdown_callback) {
   dbus_object_.reset();
 }
 
-void WilcoDtcSupportdCore::RegisterDBusObjectsAsync(
+void Core::RegisterDBusObjectsAsync(
     const scoped_refptr<dbus::Bus>& bus,
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   DCHECK(bus);
@@ -263,8 +261,8 @@ void WilcoDtcSupportdCore::RegisterDBusObjectsAsync(
   powerd_event_service_->AddObserver(this);
 }
 
-bool WilcoDtcSupportdCore::StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
-                                                   std::string* error_message) {
+bool Core::StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
+                                   std::string* error_message) {
   DCHECK(mojo_pipe_fd.is_valid());
 
   if (mojo_service_bind_attempted_) {
@@ -294,17 +292,16 @@ bool WilcoDtcSupportdCore::StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
     ShutDownDueToMojoError("Mojo bootstrap failed" /* debug_reason */);
     return false;
   }
-  mojo_service_factory_binding_->set_connection_error_handler(base::Bind(
-      &WilcoDtcSupportdCore::ShutDownDueToMojoError, base::Unretained(this),
-      "Mojo connection error" /* debug_reason */));
+  mojo_service_factory_binding_->set_connection_error_handler(
+      base::Bind(&Core::ShutDownDueToMojoError, base::Unretained(this),
+                 "Mojo connection error" /* debug_reason */));
   LOG(INFO) << "Successfully bootstrapped Mojo connection";
   return true;
 }
 
-void WilcoDtcSupportdCore::GetService(
-    MojomWilcoDtcSupportdServiceRequest service,
-    MojomWilcoDtcSupportdClientPtr client,
-    const GetServiceCallback& callback) {
+void Core::GetService(MojomWilcoDtcSupportdServiceRequest service,
+                      MojomWilcoDtcSupportdClientPtr client,
+                      const GetServiceCallback& callback) {
   // Mojo guarantees that these parameters are nun-null (see
   // VALIDATION_ERROR_UNEXPECTED_INVALID_HANDLE).
   DCHECK(service.is_pending());
@@ -328,8 +325,7 @@ void WilcoDtcSupportdCore::GetService(
   callback.Run();
 }
 
-void WilcoDtcSupportdCore::ShutDownDueToMojoError(
-    const std::string& debug_reason) {
+void Core::ShutDownDueToMojoError(const std::string& debug_reason) {
   // Our daemon has to be restarted to be prepared for future Mojo connection
   // bootstraps. We can't do this without a restart since Mojo EDK gives no
   // guarantee to support repeated bootstraps. Therefore tear down and exit from
@@ -340,8 +336,8 @@ void WilcoDtcSupportdCore::ShutDownDueToMojoError(
   delegate_->BeginDaemonShutdown();
 }
 
-void WilcoDtcSupportdCore::SendWilcoDtcMessageToUi(
-    const std::string& json_message, const SendMessageToUiCallback& callback) {
+void Core::SendWilcoDtcMessageToUi(const std::string& json_message,
+                                   const SendMessageToUiCallback& callback) {
   VLOG(1) << "SendWilcoDtcMessageToUi() json_message=" << json_message;
   if (!mojo_service_) {
     LOG(WARNING) << "GetConfigurationDataFromBrowser happens before Mojo "
@@ -352,13 +348,13 @@ void WilcoDtcSupportdCore::SendWilcoDtcMessageToUi(
   mojo_service_->SendWilcoDtcMessageToUi(json_message, callback);
 }
 
-void WilcoDtcSupportdCore::PerformWebRequestToBrowser(
+void Core::PerformWebRequestToBrowser(
     WebRequestHttpMethod http_method,
     const std::string& url,
     const std::vector<std::string>& headers,
     const std::string& request_body,
     const PerformWebRequestToBrowserCallback& callback) {
-  VLOG(1) << "WilcoDtcSupportdCore::PerformWebRequestToBrowser";
+  VLOG(1) << "Core::PerformWebRequestToBrowser";
 
   if (!mojo_service_) {
     LOG(WARNING) << "PerformWebRequestToBrowser happens before Mojo connection "
@@ -394,18 +390,17 @@ void WilcoDtcSupportdCore::PerformWebRequestToBrowser(
           callback));
 }
 
-void WilcoDtcSupportdCore::GetAvailableRoutinesToService(
+void Core::GetAvailableRoutinesToService(
     const GetAvailableRoutinesToServiceCallback& callback) {
   routine_service_.GetAvailableRoutines(callback);
 }
 
-void WilcoDtcSupportdCore::RunRoutineToService(
-    const grpc_api::RunRoutineRequest& request,
-    const RunRoutineToServiceCallback& callback) {
+void Core::RunRoutineToService(const grpc_api::RunRoutineRequest& request,
+                               const RunRoutineToServiceCallback& callback) {
   routine_service_.RunRoutine(request, callback);
 }
 
-void WilcoDtcSupportdCore::GetRoutineUpdateRequestToService(
+void Core::GetRoutineUpdateRequestToService(
     int uuid,
     grpc_api::GetRoutineUpdateRequest::Command command,
     bool include_output,
@@ -413,9 +408,9 @@ void WilcoDtcSupportdCore::GetRoutineUpdateRequestToService(
   routine_service_.GetRoutineUpdate(uuid, command, include_output, callback);
 }
 
-void WilcoDtcSupportdCore::GetConfigurationDataFromBrowser(
+void Core::GetConfigurationDataFromBrowser(
     const GetConfigurationDataFromBrowserCallback& callback) {
-  VLOG(1) << "WilcoDtcSupportdCore::GetConfigurationDataFromBrowser";
+  VLOG(1) << "Core::GetConfigurationDataFromBrowser";
 
   if (!mojo_service_) {
     LOG(WARNING) << "GetConfigurationDataFromBrowser happens before Mojo "
@@ -427,8 +422,8 @@ void WilcoDtcSupportdCore::GetConfigurationDataFromBrowser(
   mojo_service_->GetConfigurationData(callback);
 }
 
-void WilcoDtcSupportdCore::GetDriveSystemData(
-    DriveSystemDataType data_type, const GetDriveSystemDataCallback& callback) {
+void Core::GetDriveSystemData(DriveSystemDataType data_type,
+                              const GetDriveSystemDataCallback& callback) {
   if (!debugd_adapter_) {
     LOG(WARNING) << "DebugdAdapter is not yet ready for incoming requests";
     callback.Run("", false /* success */);
@@ -458,10 +453,10 @@ void WilcoDtcSupportdCore::GetDriveSystemData(
   }
 }
 
-void WilcoDtcSupportdCore::SendGrpcUiMessageToWilcoDtc(
+void Core::SendGrpcUiMessageToWilcoDtc(
     base::StringPiece json_message,
     const SendGrpcUiMessageToWilcoDtcCallback& callback) {
-  VLOG(1) << "WilcoDtcSupportdCore::SendGrpcMessageToWilcoDtc";
+  VLOG(1) << "Core::SendGrpcMessageToWilcoDtc";
 
   if (!ui_message_receiver_wilco_dtc_grpc_client_) {
     VLOG(1) << "The UI message is discarded since the recipient has been shut "
@@ -503,8 +498,8 @@ void WilcoDtcSupportdCore::SendGrpcUiMessageToWilcoDtc(
           callback));
 }
 
-void WilcoDtcSupportdCore::NotifyConfigurationDataChangedToWilcoDtc() {
-  VLOG(1) << "WilcoDtcSupportdCore::NotifyConfigurationDataChanged";
+void Core::NotifyConfigurationDataChangedToWilcoDtc() {
+  VLOG(1) << "Core::NotifyConfigurationDataChanged";
 
   grpc_api::HandleConfigurationDataChangedRequest request;
   for (auto& client : wilco_dtc_grpc_clients_) {
@@ -524,9 +519,9 @@ void WilcoDtcSupportdCore::NotifyConfigurationDataChangedToWilcoDtc() {
   }
 }
 
-void WilcoDtcSupportdCore::BluetoothAdapterDataChanged(
+void Core::BluetoothAdapterDataChanged(
     const std::vector<BluetoothEventService::AdapterData>& adapters) {
-  VLOG(1) << "WilcoDtcSupportdCore::BluetoothAdapterDataChanged";
+  VLOG(1) << "Core::BluetoothAdapterDataChanged";
 
   grpc_api::HandleBluetoothDataChangedRequest request;
   for (const auto& adapter : adapters) {
@@ -567,8 +562,8 @@ void WilcoDtcSupportdCore::BluetoothAdapterDataChanged(
   }
 }
 
-void WilcoDtcSupportdCore::OnPowerdEvent(PowerEventType type) {
-  VLOG(1) << "WilcoDtcSupportdCore::OnPowerdEvent: " << static_cast<int>(type);
+void Core::OnPowerdEvent(PowerEventType type) {
+  VLOG(1) << "Core::OnPowerdEvent: " << static_cast<int>(type);
 
   grpc_api::HandlePowerNotificationRequest::PowerEvent grpc_type;
   if (!ConvertPowerEventToGrpc(type, &grpc_type)) {
@@ -596,9 +591,8 @@ void WilcoDtcSupportdCore::OnPowerdEvent(PowerEventType type) {
   }
 }
 
-void WilcoDtcSupportdCore::OnEcEvent(const EcEvent& ec_event) {
-  VLOG(1) << "WilcoDtcSupportdCore::OnEcEvent: type="
-          << static_cast<int>(ec_event.type)
+void Core::OnEcEvent(const EcEvent& ec_event) {
+  VLOG(1) << "Core::OnEcEvent: type=" << static_cast<int>(ec_event.type)
           << " reason=" << static_cast<int>(ec_event.GetReason());
 
   SendGrpcEcEventToWilcoDtc(ec_event);
@@ -633,8 +627,8 @@ void WilcoDtcSupportdCore::OnEcEvent(const EcEvent& ec_event) {
   }
 }
 
-void WilcoDtcSupportdCore::SendGrpcEcEventToWilcoDtc(const EcEvent& ec_event) {
-  VLOG(1) << "WilcoDtcSupportdCore::SendGrpcEcEventToWilcoDtc";
+void Core::SendGrpcEcEventToWilcoDtc(const EcEvent& ec_event) {
+  VLOG(1) << "Core::SendGrpcEcEventToWilcoDtc";
 
   size_t payload_size = ec_event.PayloadSizeInBytes();
   if (payload_size > sizeof(ec_event.payload)) {
@@ -663,9 +657,8 @@ void WilcoDtcSupportdCore::SendGrpcEcEventToWilcoDtc(const EcEvent& ec_event) {
   }
 }
 
-void WilcoDtcSupportdCore::SendMojoEcEventToBrowser(
-    const MojoEvent& mojo_event) {
-  VLOG(1) << "WilcoDtcSupportdCore::SendMojoEcEventToBrowser";
+void Core::SendMojoEcEventToBrowser(const MojoEvent& mojo_event) {
+  VLOG(1) << "Core::HandleEvent";
 
   if (!mojo_service_) {
     LOG(WARNING) << "SendMojoEcEventToBrowser happens before Mojo connection "

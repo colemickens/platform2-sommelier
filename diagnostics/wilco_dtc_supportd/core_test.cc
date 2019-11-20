@@ -46,6 +46,7 @@
 #include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/common/mojo_utils.h"
 #include "diagnostics/common/protobuf_test_utils.h"
+#include "diagnostics/wilco_dtc_supportd/core.h"
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
 #include "diagnostics/wilco_dtc_supportd/fake_browser.h"
 #include "diagnostics/wilco_dtc_supportd/fake_wilco_dtc.h"
@@ -58,7 +59,6 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/fake_bluetooth_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/fake_ec_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/fake_powerd_event_service.h"
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"
 #include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
 
@@ -106,9 +106,9 @@ base::Callback<void(std::unique_ptr<ValueType>)> MakeAsyncResponseWriter(
       base::Unretained(response), base::Unretained(run_loop));
 }
 
-class FakeWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
+class FakeCoreDelegate : public Core::Delegate {
  public:
-  FakeWilcoDtcSupportdCoreDelegate()
+  FakeCoreDelegate()
       : passed_bluetooth_client_(std::make_unique<FakeBluetoothClient>()),
         passed_debugd_adapter_(
             std::make_unique<StrictMock<MockDebugdAdapter>>()),
@@ -224,25 +224,25 @@ class FakeWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
   FakePowerdEventService* powerd_event_service_;
 };
 
-// Tests for the WilcoDtcSupportdCore class.
-class WilcoDtcSupportdCoreTest : public testing::Test {
+// Tests for the Core class.
+class CoreTest : public testing::Test {
  protected:
-  WilcoDtcSupportdCoreTest() { InitializeMojo(); }
+  CoreTest() { InitializeMojo(); }
 
   void CreateCore(const std::vector<std::string>& grpc_service_uris,
                   const std::string& ui_message_receiver_wilco_dtc_grpc_uri,
                   const std::vector<std::string>& wilco_dtc_grpc_uris) {
-    core_ = std::make_unique<WilcoDtcSupportdCore>(
-        grpc_service_uris, ui_message_receiver_wilco_dtc_grpc_uri,
-        wilco_dtc_grpc_uris, &core_delegate_);
+    core_ = std::make_unique<Core>(grpc_service_uris,
+                                   ui_message_receiver_wilco_dtc_grpc_uri,
+                                   wilco_dtc_grpc_uris, &core_delegate_);
   }
 
-  WilcoDtcSupportdCore* core() {
+  Core* core() {
     DCHECK(core_);
     return core_.get();
   }
 
-  FakeWilcoDtcSupportdCoreDelegate* core_delegate() { return &core_delegate_; }
+  FakeCoreDelegate* core_delegate() { return &core_delegate_; }
 
  private:
   // Initialize the Mojo subsystem.
@@ -250,13 +250,13 @@ class WilcoDtcSupportdCoreTest : public testing::Test {
 
   base::MessageLoop message_loop_;
 
-  StrictMock<FakeWilcoDtcSupportdCoreDelegate> core_delegate_;
+  StrictMock<FakeCoreDelegate> core_delegate_;
 
-  std::unique_ptr<WilcoDtcSupportdCore> core_;
+  std::unique_ptr<Core> core_;
 };
 
 // Test successful shutdown after failed start.
-TEST_F(WilcoDtcSupportdCoreTest, FailedStartAndSuccessfulShutdown) {
+TEST_F(CoreTest, FailedStartAndSuccessfulShutdown) {
   // Invalid gRPC service URI.
   CreateCore({""}, "", {""});
   EXPECT_FALSE(core()->Start());
@@ -266,11 +266,11 @@ TEST_F(WilcoDtcSupportdCoreTest, FailedStartAndSuccessfulShutdown) {
   run_loop.Run();
 }
 
-// Tests for the WilcoDtcSupportdCore class which started successfully.
-class StartedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
+// Tests for the Core class which started successfully.
+class StartedCoreTest : public CoreTest {
  protected:
   void SetUp() override {
-    ASSERT_NO_FATAL_FAILURE(WilcoDtcSupportdCoreTest::SetUp());
+    ASSERT_NO_FATAL_FAILURE(CoreTest::SetUp());
 
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
 
@@ -307,7 +307,7 @@ class StartedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
     core()->ShutDown(run_loop.QuitClosure());
     run_loop.Run();
 
-    WilcoDtcSupportdCoreTest::TearDown();
+    CoreTest::TearDown();
   }
 
   const base::FilePath& temp_dir_path() const {
@@ -430,7 +430,7 @@ class StartedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
   }
 
   // Setups |ec_event_service_fd_| FIFO file descriptor. Must be called only
-  // after |WilcoDtcSupportdCore::Start()| call. Otherwise, it will block
+  // after |Core::Start()| call. Otherwise, it will block
   // thread.
   void SetUpEcEventServiceFifoWriteEnd() {
     ASSERT_FALSE(ec_event_service_fd_.is_valid());
@@ -446,7 +446,7 @@ class StartedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
   base::ScopedTempDir temp_dir_;
 
   // gRPC URI on which the tested "WilcoDtcSupportd" gRPC service (owned by
-  // WilcoDtcSupportdCore) is listening.
+  // Core) is listening.
   std::string wilco_dtc_supportd_grpc_uri_;
   // gRPC URI on which the fake "WilcoDtc" gRPC service (owned by FakeWilcoDtc)
   // is listening, eligible to receive UI messages.
@@ -468,7 +468,7 @@ class StartedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
 
   // Write end of FIFO that emulates EC event file. EC event service
   // operates with read end of FIFO as with usual file.
-  // Must be initialized only after |WilcoDtcSupportdCore::Start()| call.
+  // Must be initialized only after |Core::Start()| call.
   base::ScopedFD ec_event_service_fd_;
 
   // Callback that the tested code exposed as the BootstrapMojoConnection D-Bus
@@ -481,7 +481,7 @@ class StartedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
 
 // Test that the Mojo service gets successfully bootstrapped after the
 // BootstrapMojoConnection D-Bus method is called.
-TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapSuccess) {
+TEST_F(StartedCoreTest, MojoBootstrapSuccess) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
   SetSuccessMockBindMojoService(&fake_mojo_fd_generator);
 
@@ -491,7 +491,7 @@ TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapSuccess) {
 
 // Test failure to bootstrap the Mojo service due to en error returned by
 // BindMojoService() delegate method.
-TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapErrorToBind) {
+TEST_F(StartedCoreTest, MojoBootstrapErrorToBind) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
   EXPECT_CALL(*core_delegate(), BindMojoServiceFactoryImpl(_, _))
       .WillOnce(Return(nullptr));
@@ -507,7 +507,7 @@ TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapErrorToBind) {
 
 // Test that second attempt to bootstrap the Mojo service results in error and
 // the daemon shutdown.
-TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapErrorRepeated) {
+TEST_F(StartedCoreTest, MojoBootstrapErrorRepeated) {
   FakeMojoFdGenerator first_fake_mojo_fd_generator;
   SetSuccessMockBindMojoService(&first_fake_mojo_fd_generator);
 
@@ -526,7 +526,7 @@ TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapErrorRepeated) {
 
 // Test that the daemon gets shut down when the previously bootstrapped Mojo
 // connection aborts.
-TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapSuccessThenAbort) {
+TEST_F(StartedCoreTest, MojoBootstrapSuccessThenAbort) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
   SetSuccessMockBindMojoService(&fake_mojo_fd_generator);
 
@@ -541,14 +541,13 @@ TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapSuccessThenAbort) {
   Mock::VerifyAndClearExpectations(core_delegate());
 }
 
-// Tests for the WilcoDtcSupportdCore class with the already established Mojo
+// Tests for the Core class with the already established Mojo
 // connection to the fake browser and gRPC communication with the fake
 // wilco_dtc.
-class BootstrappedWilcoDtcSupportdCoreTest
-    : public StartedWilcoDtcSupportdCoreTest {
+class BootstrappedCoreTest : public StartedCoreTest {
  protected:
   void SetUp() override {
-    ASSERT_NO_FATAL_FAILURE(StartedWilcoDtcSupportdCoreTest::SetUp());
+    ASSERT_NO_FATAL_FAILURE(StartedCoreTest::SetUp());
 
     FakeMojoFdGenerator fake_mojo_fd_generator;
     SetSuccessMockBindMojoService(&fake_mojo_fd_generator);
@@ -567,7 +566,7 @@ class BootstrappedWilcoDtcSupportdCoreTest
   void TearDown() override {
     fake_wilco_dtc_.reset();
     fake_ui_message_receiver_wilco_dtc_.reset();
-    StartedWilcoDtcSupportdCoreTest::TearDown();
+    StartedCoreTest::TearDown();
   }
 
   FakeWilcoDtc* fake_ui_message_receiver_wilco_dtc() {
@@ -618,7 +617,7 @@ class BootstrappedWilcoDtcSupportdCoreTest
 
 // Test that the UI message receiver wilco_dtc will receive message from
 // browser.
-TEST_F(BootstrappedWilcoDtcSupportdCoreTest, SendGrpcUiMessageToWilcoDtc) {
+TEST_F(BootstrappedCoreTest, SendGrpcUiMessageToWilcoDtc) {
   const std::string json_message = "{\"some_key\": \"some_value\"}";
   const std::string response_json_message = "{\"key\": \"value\"}";
 
@@ -647,8 +646,7 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, SendGrpcUiMessageToWilcoDtc) {
 
 // Test that the UI message receiver wilco_dtc will not receive message from
 // browser if JSON message is invalid.
-TEST_F(BootstrappedWilcoDtcSupportdCoreTest,
-       SendGrpcUiMessageToWilcoDtcInvalidJSON) {
+TEST_F(BootstrappedCoreTest, SendGrpcUiMessageToWilcoDtcInvalidJSON) {
   const std::string json_message = "{'some_key': 'some_value'}";
 
   base::RunLoop run_loop_fake_browser;
@@ -671,8 +669,7 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest,
 
 // Test that the UI message receiver wilco_dtc will receive message from
 // browser.
-TEST_F(BootstrappedWilcoDtcSupportdCoreTest,
-       SendGrpcUiMessageToWilcoDtcInvalidResponseJSON) {
+TEST_F(BootstrappedCoreTest, SendGrpcUiMessageToWilcoDtcInvalidResponseJSON) {
   const std::string json_message = "{\"some_key\": \"some_value\"}";
   const std::string response_json_message = "{'key': 'value'}";
 
@@ -696,7 +693,7 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest,
 
 // Test that wilco_dtc will be notified about configuration changes from
 // browser.
-TEST_F(BootstrappedWilcoDtcSupportdCoreTest, NotifyConfigurationDataChanged) {
+TEST_F(BootstrappedCoreTest, NotifyConfigurationDataChanged) {
   base::RunLoop run_loop;
   const base::Closure barrier_closure =
       BarrierClosure(2, run_loop.QuitClosure());
@@ -711,7 +708,7 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, NotifyConfigurationDataChanged) {
 
 // Test that a message can be sent from wilco_dtc to browser and
 // returns an expected response
-TEST_F(BootstrappedWilcoDtcSupportdCoreTest, SendWilcoDtcMessageToUi) {
+TEST_F(BootstrappedCoreTest, SendWilcoDtcMessageToUi) {
   const std::string kFakeMessageToUi =
       "{\"fake-message\": \"Fake JSON message\"}";
   EXPECT_CALL(*wilco_dtc_supportd_client(),
@@ -736,7 +733,7 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, SendWilcoDtcMessageToUi) {
 
 // Test that the GetProcData() method exposed by the daemon's gRPC server
 // returns a dump of the corresponding file from the disk.
-TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetProcDataGrpcCall) {
+TEST_F(BootstrappedCoreTest, GetProcDataGrpcCall) {
   const std::string kFakeFileContents = "foo";
   const base::FilePath file_path = temp_dir_path().Append("proc/uptime");
   ASSERT_TRUE(WriteFileAndCreateParentDirs(file_path, kFakeFileContents));
@@ -764,7 +761,7 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetProcDataGrpcCall) {
 // Test that the GetEcTelemetry() method exposed by the daemon's gRPC server
 // writes payload to devfs file exposed by the EC driver and reads response
 // using the same file.
-TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetEcTelemetryGrpcCall) {
+TEST_F(BootstrappedCoreTest, GetEcTelemetryGrpcCall) {
   const base::FilePath file_path =
       temp_dir_path().Append(kEcGetTelemetryFilePath);
   const std::string kRequestPayload = "12345";
@@ -793,7 +790,7 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetEcTelemetryGrpcCall) {
 
 // Test that PerformWebRequest() method exposed by the daemon's gRPC returns a
 // Web request response from the browser.
-TEST_F(BootstrappedWilcoDtcSupportdCoreTest, PerformWebRequestToBrowser) {
+TEST_F(BootstrappedCoreTest, PerformWebRequestToBrowser) {
   constexpr char kHttpsUrl[] = "https://www.google.com";
   constexpr int kHttpStatusOk = 200;
 
@@ -822,7 +819,7 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, PerformWebRequestToBrowser) {
 
 // Test that GetConfigurationData() method exposed by the daemon's gRPC returns
 // a response from the browser.
-TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetConfigurationDataFromBrowser) {
+TEST_F(BootstrappedCoreTest, GetConfigurationDataFromBrowser) {
   constexpr char kFakeJsonConfigurationData[] =
       "{\"fake-message\": \"Fake JSON configuration data\"}";
   EXPECT_CALL(*wilco_dtc_supportd_client(), GetConfigurationData(_))
@@ -849,7 +846,7 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetConfigurationDataFromBrowser) {
 
 // Test that GetDriveSystemData() method exposed by the daemon's gRPC returns
 // a response from the debugd.
-TEST_F(BootstrappedWilcoDtcSupportdCoreTest, GetDriveSystemData) {
+TEST_F(BootstrappedCoreTest, GetDriveSystemData) {
   constexpr char kFakeSmartctlData[] = "Fake smartctl data";
   EXPECT_CALL(*core_delegate()->debugd_adapter(), GetSmartAttributes(_))
       .WillOnce(WithArg<0>(
@@ -902,7 +899,7 @@ MATCHER_P(BluetoothAdaptersEquals, expected_adapters, "") {
 
 // Test that the method |HandleBluetoothDataChanged()| exposed by wilco_dtc gRPC
 // is called by wilco_dtc support daemon.
-TEST_F(BootstrappedWilcoDtcSupportdCoreTest, HandleBluetoothDataChanged) {
+TEST_F(BootstrappedCoreTest, HandleBluetoothDataChanged) {
   std::vector<BluetoothEventService::AdapterData> adapters(2);
   adapters[0].name = "sarien-laptop";
   adapters[0].address = "aa:bb:cc:dd:ee:ff";
@@ -955,8 +952,8 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, HandleBluetoothDataChanged) {
 // * |ec_event_reason| - the reason of the EcEvent
 // * |expected_mojo_event| - the expected mojo event passed to the
 // |wilco_dtc_supportd_client| over mojo
-class EcEventServiceBootstrappedWilcoDtcSupportdCoreTest
-    : public BootstrappedWilcoDtcSupportdCoreTest,
+class EcEventServiceBootstrappedCoreTest
+    : public BootstrappedCoreTest,
       public testing::WithParamInterface<
           std::tuple<EcEventReason, base::Optional<MojoEvent>>> {
  protected:
@@ -1022,7 +1019,7 @@ class EcEventServiceBootstrappedWilcoDtcSupportdCoreTest
 // EC events
 // 2. |HandleEvent|, exposed by mojo_client, is called on any EcEvent::Reason
 // values except |kSysNotification| and |kNonSysNotification|.
-TEST_P(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest, SingleEvents) {
+TEST_P(EcEventServiceBootstrappedCoreTest, SingleEvents) {
   if (expected_mojo_event().has_value()) {
     // Set HandleEvent expectations for the triggered mojo events
     EXPECT_CALL(*wilco_dtc_supportd_client(),
@@ -1037,8 +1034,7 @@ TEST_P(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest, SingleEvents) {
 // Test that both methods |HandleEcNotification()| and |HandleEvent()| exposed
 // by wilco_dtc gRPC and mojo_client, respectively, are called multiple times
 // by wilco_dtc support daemon.
-TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
-       TriggerMultipleMojoEvents) {
+TEST_F(EcEventServiceBootstrappedCoreTest, TriggerMultipleMojoEvents) {
   // Set HandleEvent expectations for the triggered mojo events
   EXPECT_CALL(*wilco_dtc_supportd_client(),
               HandleEvent(MojoEvent::kBatteryAuth));
@@ -1062,8 +1058,7 @@ TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
 // allocated data array.
 // TODO(mgawad): move size validation logic inside EcEventService and don't emit
 // events when the size is invalid.
-TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
-       SendGrpcEventToWilcoDtcInvalidSize) {
+TEST_F(EcEventServiceBootstrappedCoreTest, SendGrpcEventToWilcoDtcInvalidSize) {
   const EcEvent& valid_ec_event =
       GetEcEventWithReason(EcEventReason::kNonSysNotification);
   const EcEvent& invalid_ec_event = kEcEventInvalidPayloadSize;
@@ -1078,7 +1073,7 @@ TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
 
 INSTANTIATE_TEST_CASE_P(
     _,
-    EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
+    EcEventServiceBootstrappedCoreTest,
     testing::Values(
         std::make_tuple(
             EcEventReason::kNonWilcoCharger,
@@ -1106,8 +1101,8 @@ INSTANTIATE_TEST_CASE_P(
 // * |power_event| - the power event.
 // * |expected_power_event| - the expected power event passed to fake_wilco_dtc
 //                            over gRPC.
-class PowerdEventServiceBootstrappedWilcoDtcSupportdCoreTest
-    : public BootstrappedWilcoDtcSupportdCoreTest,
+class PowerdEventServiceBootstrappedCoreTest
+    : public BootstrappedCoreTest,
       public testing::WithParamInterface<std::tuple<
           PowerdEventService::Observer::PowerEventType /* power_event */,
           grpc_api::HandlePowerNotificationRequest::
@@ -1141,7 +1136,7 @@ class PowerdEventServiceBootstrappedWilcoDtcSupportdCoreTest
 
 // Test that the method |HandlePowerNotification()| exposed by wilco_dtc gRPC is
 // called by wilco_dtc support daemon.
-TEST_P(PowerdEventServiceBootstrappedWilcoDtcSupportdCoreTest, PowerEvent) {
+TEST_P(PowerdEventServiceBootstrappedCoreTest, PowerEvent) {
   core_delegate()->powerd_event_service()->EmitPowerEvent(power_event());
 
   base::RunLoop run_loop;
@@ -1166,7 +1161,7 @@ TEST_P(PowerdEventServiceBootstrappedWilcoDtcSupportdCoreTest, PowerEvent) {
 
 INSTANTIATE_TEST_CASE_P(
     ,
-    PowerdEventServiceBootstrappedWilcoDtcSupportdCoreTest,
+    PowerdEventServiceBootstrappedCoreTest,
     testing::Values(
         std::make_tuple(PowerdEventService::Observer::PowerEventType::kAcInsert,
                         grpc_api::HandlePowerNotificationRequest::AC_INSERT),

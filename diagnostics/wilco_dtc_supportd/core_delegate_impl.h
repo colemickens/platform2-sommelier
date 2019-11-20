@@ -10,23 +10,23 @@
 #include <base/macros.h>
 #include <brillo/daemons/daemon.h>
 
+#include "diagnostics/wilco_dtc_supportd/core.h"
 #include "diagnostics/wilco_dtc_supportd/system/bluetooth_client.h"
 #include "diagnostics/wilco_dtc_supportd/system/debugd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/system/powerd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/bluetooth_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/ec_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service.h"
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core.h"
 
 namespace diagnostics {
 
-// Production implementation of WilcoDtcSupportdCore's delegate.
-class CoreDelegateImpl final : public WilcoDtcSupportdCore::Delegate {
+// Production implementation of Core's delegate.
+class CoreDelegateImpl final : public Core::Delegate {
  public:
   explicit CoreDelegateImpl(brillo::Daemon* daemon);
   ~CoreDelegateImpl() override;
 
-  // WilcoDtcSupportdCore::Delegate overrides:
+  // Core::Delegate overrides:
   std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>
   BindMojoServiceFactory(
       MojomWilcoDtcSupportdServiceFactory* mojo_service_factory,

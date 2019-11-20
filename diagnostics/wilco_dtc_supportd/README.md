@@ -16,7 +16,7 @@ This daemon uses three IPC mechanisms:
      ^
      |
      v
-    `WilcoDtcSupportdCore`
+    `Core`
      ^
      |
      |   // gRPC-related members:
