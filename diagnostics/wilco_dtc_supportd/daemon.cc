@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_daemon.h"
+#include "diagnostics/wilco_dtc_supportd/daemon.h"
 
 #include <cstdlib>
 
@@ -18,7 +18,7 @@
 
 namespace diagnostics {
 
-WilcoDtcSupportdDaemon::WilcoDtcSupportdDaemon()
+Daemon::Daemon()
     : DBusServiceDaemon(kWilcoDtcSupportdServiceName /* service_name */),
       wilco_dtc_supportd_core_({GetWilcoDtcSupportdGrpcHostVsockUri(),
                                 kWilcoDtcSupportdGrpcDomainSocketUri},
@@ -26,9 +26,9 @@ WilcoDtcSupportdDaemon::WilcoDtcSupportdDaemon()
                                {GetWilcoDtcGrpcHostVsockUri()},
                                &wilco_dtc_supportd_core_delegate_impl_) {}
 
-WilcoDtcSupportdDaemon::~WilcoDtcSupportdDaemon() = default;
+Daemon::~Daemon() = default;
 
-int WilcoDtcSupportdDaemon::OnInit() {
+int Daemon::OnInit() {
   VLOG(0) << "Starting";
   const int exit_code = DBusServiceDaemon::OnInit();
   if (exit_code != EXIT_SUCCESS)
@@ -51,13 +51,13 @@ int WilcoDtcSupportdDaemon::OnInit() {
   return EXIT_SUCCESS;
 }
 
-void WilcoDtcSupportdDaemon::RegisterDBusObjectsAsync(
+void Daemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   DCHECK(bus_);
   wilco_dtc_supportd_core_.RegisterDBusObjectsAsync(bus_, sequencer);
 }
 
-void WilcoDtcSupportdDaemon::OnShutdown(int* error_code) {
+void Daemon::OnShutdown(int* error_code) {
   // Gracefully tear down pieces that require asynchronous shutdown.
   VLOG(1) << "Shutting down";
 

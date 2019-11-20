@@ -5,7 +5,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_daemon.h"
+#include "diagnostics/wilco_dtc_supportd/daemon.h"
 
 int main(int argc, char** argv) {
   brillo::FlagHelper::Init(
@@ -13,5 +13,5 @@ int main(int argc, char** argv) {
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  return diagnostics::WilcoDtcSupportdDaemon().Run();
+  return diagnostics::Daemon().Run();
 }

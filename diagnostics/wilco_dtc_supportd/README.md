@@ -12,7 +12,7 @@ This daemon uses three IPC mechanisms:
 
 ## Class structure
 
-    `WilcoDtcSupportdDaemon`
+    `Daemon`
      ^
      |
      v

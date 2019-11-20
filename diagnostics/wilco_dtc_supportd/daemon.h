@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_DAEMON_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_DAEMON_H_
+#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_DAEMON_H_
+#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_DAEMON_H_
 
 #include <base/macros.h>
 #include <brillo/daemons/dbus_daemon.h>
@@ -14,10 +14,10 @@
 namespace diagnostics {
 
 // Daemon class for the wilco_dtc_supportd daemon.
-class WilcoDtcSupportdDaemon final : public brillo::DBusServiceDaemon {
+class Daemon final : public brillo::DBusServiceDaemon {
  public:
-  WilcoDtcSupportdDaemon();
-  ~WilcoDtcSupportdDaemon() override;
+  Daemon();
+  ~Daemon() override;
 
  private:
   // brillo::DBusServiceDaemon overrides:
@@ -30,9 +30,9 @@ class WilcoDtcSupportdDaemon final : public brillo::DBusServiceDaemon {
       this /* daemon */};
   WilcoDtcSupportdCore wilco_dtc_supportd_core_;
 
-  DISALLOW_COPY_AND_ASSIGN(WilcoDtcSupportdDaemon);
+  DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_DAEMON_H_
+#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_DAEMON_H_
