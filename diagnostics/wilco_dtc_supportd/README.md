@@ -20,10 +20,10 @@ This daemon uses three IPC mechanisms:
      ^
      |
      |   // gRPC-related members:
-     +-> `WilcoDtcSupportdGrpcService`
+     +-> `GrpcService`
      |       (handles incoming gRPC requests)
      +-> `AsyncGrpcServer<grpc_api::WilcoDtcSupportd>`
-     |       (connects `WilcoDtcSupportdGrpcService` with the actual gRPC
+     |       (connects `GrpcService` with the actual gRPC
      |        pipe)
      +-> `AsyncGrpcClient<grpc_api::WilcoDtc>`
      |       (sends outgoing gRPC requests through the actual gRPC pipe)

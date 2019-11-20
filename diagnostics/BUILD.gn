@@ -188,6 +188,7 @@ source_set("libwilco_dtc_supportd") {
   all_dependent_configs = [ ":libwilco_dtc_supportd_pkg_deps" ]
   sources = [
     "wilco_dtc_supportd/ec_constants.cc",
+    "wilco_dtc_supportd/grpc_service.cc",
     "wilco_dtc_supportd/json_utils.cc",
     "wilco_dtc_supportd/mojo_service.cc",
     "wilco_dtc_supportd/routine_factory_impl.cc",
@@ -206,7 +207,6 @@ source_set("libwilco_dtc_supportd") {
     "wilco_dtc_supportd/wilco_dtc_supportd_core_delegate_impl.cc",
     "wilco_dtc_supportd/wilco_dtc_supportd_daemon.cc",
     "wilco_dtc_supportd/wilco_dtc_supportd_dbus_service.cc",
-    "wilco_dtc_supportd/wilco_dtc_supportd_grpc_service.cc",
   ]
 }
 
@@ -422,6 +422,7 @@ if (use.test) {
       "wilco_dtc_supportd/fake_browser.cc",
       "wilco_dtc_supportd/fake_routine_factory.cc",
       "wilco_dtc_supportd/fake_wilco_dtc.cc",
+      "wilco_dtc_supportd/grpc_service_test.cc",
       "wilco_dtc_supportd/mock_mojom_wilco_dtc_supportd_client.cc",
       "wilco_dtc_supportd/mojo_service_test.cc",
       "wilco_dtc_supportd/mojo_test_utils.cc",
@@ -442,7 +443,6 @@ if (use.test) {
       "wilco_dtc_supportd/telemetry/system_files_service_impl_test.cc",
       "wilco_dtc_supportd/wilco_dtc_supportd_core_test.cc",
       "wilco_dtc_supportd/wilco_dtc_supportd_dbus_service_test.cc",
-      "wilco_dtc_supportd/wilco_dtc_supportd_grpc_service_test.cc",
     ]
   }
 

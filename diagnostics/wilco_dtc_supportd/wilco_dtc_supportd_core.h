@@ -22,6 +22,7 @@
 
 #include "diagnostics/grpc_async_adapter/async_grpc_client.h"
 #include "diagnostics/grpc_async_adapter/async_grpc_server.h"
+#include "diagnostics/wilco_dtc_supportd/grpc_service.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_service.h"
 #include "diagnostics/wilco_dtc_supportd/routine_service.h"
 #include "diagnostics/wilco_dtc_supportd/system/bluetooth_client.h"
@@ -31,7 +32,6 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/ec_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_dbus_service.h"
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_grpc_service.h"
 
 #include "mojo/wilco_dtc_supportd.mojom.h"
 #include "wilco_dtc.grpc.pb.h"           // NOLINT(build/include)
@@ -42,7 +42,7 @@ namespace diagnostics {
 // Integrates together all pieces which implement separate IPC services exposed
 // by the wilco_dtc_supportd daemon and IPC clients.
 class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
-                                   public WilcoDtcSupportdGrpcService::Delegate,
+                                   public GrpcService::Delegate,
                                    public MojoService::Delegate,
                                    public chromeos::wilco_dtc_supportd::mojom::
                                        WilcoDtcSupportdServiceFactory,
@@ -230,7 +230,7 @@ class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
   const std::vector<std::string> wilco_dtc_grpc_uris_;
   // Implementation of the gRPC interface exposed by the wilco_dtc_supportd
   // daemon.
-  WilcoDtcSupportdGrpcService grpc_service_{this /* delegate */};
+  GrpcService grpc_service_{this /* delegate */};
   // Connects |grpc_service_| with the gRPC server that listens for incoming
   // requests.
   AsyncGrpcServer<grpc_api::WilcoDtcSupportd::AsyncService> grpc_server_;

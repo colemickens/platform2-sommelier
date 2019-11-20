@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_GRPC_SERVICE_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_GRPC_SERVICE_H_
+#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_GRPC_SERVICE_H_
+#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_GRPC_SERVICE_H_
 
 #include <memory>
 #include <string>
@@ -31,7 +31,7 @@ extern const int kMaxNumberOfHeadersInPerformWebRequestParameter;
 // Implements the "WilcoDtcSupportd" gRPC interface exposed by the
 // wilco_dtc_supportd daemon (see the API definition at
 // grpc/wilco_dtc_supportd.proto)
-class WilcoDtcSupportdGrpcService final {
+class GrpcService final {
  public:
   class Delegate {
    public:
@@ -172,8 +172,8 @@ class WilcoDtcSupportdGrpcService final {
   using GetDriveSystemDataCallback = base::Callback<void(
       std::unique_ptr<grpc_api::GetDriveSystemDataResponse>)>;
 
-  explicit WilcoDtcSupportdGrpcService(Delegate* delegate);
-  ~WilcoDtcSupportdGrpcService();
+  explicit GrpcService(Delegate* delegate);
+  ~GrpcService();
 
   // Overrides the file system root directory for file operations in tests.
   void set_root_dir_for_testing(const base::FilePath& root_dir);
@@ -230,9 +230,9 @@ class WilcoDtcSupportdGrpcService final {
   // The file system root directory. Can be overridden in tests.
   base::FilePath root_dir_{"/"};
 
-  DISALLOW_COPY_AND_ASSIGN(WilcoDtcSupportdGrpcService);
+  DISALLOW_COPY_AND_ASSIGN(GrpcService);
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_GRPC_SERVICE_H_
+#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_GRPC_SERVICE_H_

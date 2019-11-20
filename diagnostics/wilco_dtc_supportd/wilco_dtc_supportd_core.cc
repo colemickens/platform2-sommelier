@@ -129,51 +129,46 @@ bool WilcoDtcSupportdCore::Start() {
   // |grpc_service_|.
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestSendMessageToUi,
-      base::Bind(&WilcoDtcSupportdGrpcService::SendMessageToUi,
+      base::Bind(&GrpcService::SendMessageToUi,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetProcData,
-      base::Bind(&WilcoDtcSupportdGrpcService::GetProcData,
-                 base::Unretained(&grpc_service_)));
+      base::Bind(&GrpcService::GetProcData, base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetSysfsData,
-      base::Bind(&WilcoDtcSupportdGrpcService::GetSysfsData,
-                 base::Unretained(&grpc_service_)));
+      base::Bind(&GrpcService::GetSysfsData, base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetEcTelemetry,
-      base::Bind(&WilcoDtcSupportdGrpcService::GetEcTelemetry,
+      base::Bind(&GrpcService::GetEcTelemetry,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestPerformWebRequest,
-      base::Bind(&WilcoDtcSupportdGrpcService::PerformWebRequest,
+      base::Bind(&GrpcService::PerformWebRequest,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetAvailableRoutines,
-      base::Bind(&WilcoDtcSupportdGrpcService::GetAvailableRoutines,
+      base::Bind(&GrpcService::GetAvailableRoutines,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestRunRoutine,
-      base::Bind(&WilcoDtcSupportdGrpcService::RunRoutine,
-                 base::Unretained(&grpc_service_)));
+      base::Bind(&GrpcService::RunRoutine, base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetRoutineUpdate,
-      base::Bind(&WilcoDtcSupportdGrpcService::GetRoutineUpdate,
+      base::Bind(&GrpcService::GetRoutineUpdate,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetOsVersion,
-      base::Bind(&WilcoDtcSupportdGrpcService::GetOsVersion,
-                 base::Unretained(&grpc_service_)));
+      base::Bind(&GrpcService::GetOsVersion, base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetVpdField,
-      base::Bind(&WilcoDtcSupportdGrpcService::GetVpdField,
-                 base::Unretained(&grpc_service_)));
+      base::Bind(&GrpcService::GetVpdField, base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetConfigurationData,
-      base::Bind(&WilcoDtcSupportdGrpcService::GetConfigurationData,
+      base::Bind(&GrpcService::GetConfigurationData,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtcSupportd::AsyncService::RequestGetDriveSystemData,
-      base::Bind(&WilcoDtcSupportdGrpcService::GetDriveSystemData,
+      base::Bind(&GrpcService::GetDriveSystemData,
                  base::Unretained(&grpc_service_)));
 
   // Start the gRPC server that listens for incoming gRPC requests.
