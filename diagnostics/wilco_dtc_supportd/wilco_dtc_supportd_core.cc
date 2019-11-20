@@ -27,7 +27,7 @@ namespace diagnostics {
 namespace {
 
 using EcEvent = EcEventService::EcEvent;
-using EcEventType = EcEventService::Observer::EcEventType;
+using EcEventReason = EcEventService::EcEvent::Reason;
 using MojomWilcoDtcSupportdWebRequestStatus =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestStatus;
 using MojomWilcoDtcSupportdWebRequestHttpMethod =
@@ -596,37 +596,38 @@ void WilcoDtcSupportdCore::OnPowerdEvent(PowerEventType type) {
   }
 }
 
-void WilcoDtcSupportdCore::OnEcEvent(const EcEvent& ec_event,
-                                     EcEventType type) {
-  VLOG(1) << "WilcoDtcSupportdCore::OnEcEvent: " << static_cast<int>(type);
+void WilcoDtcSupportdCore::OnEcEvent(const EcEvent& ec_event) {
+  VLOG(1) << "WilcoDtcSupportdCore::OnEcEvent: type="
+          << static_cast<int>(ec_event.type)
+          << " reason=" << static_cast<int>(ec_event.GetReason());
 
   SendGrpcEcEventToWilcoDtc(ec_event);
 
-  // Parse EcEventType into a MojoEvent and forward to the delegate.
+  // Parse EcEventReason into a MojoEvent and forward to the delegate.
   // We only will forward certain events. If they aren't relevant, ignore.
-  switch (type) {
-    case EcEventType::kNonWilcoCharger:
+  switch (ec_event.GetReason()) {
+    case EcEventReason::kNonWilcoCharger:
       SendMojoEcEventToBrowser(MojoEvent::kNonWilcoCharger);
       break;
-    case EcEventType::kBatteryAuth:
+    case EcEventReason::kBatteryAuth:
       SendMojoEcEventToBrowser(MojoEvent::kBatteryAuth);
       break;
-    case EcEventType::kDockDisplay:
+    case EcEventReason::kDockDisplay:
       SendMojoEcEventToBrowser(MojoEvent::kDockDisplay);
       break;
-    case EcEventType::kDockThunderbolt:
+    case EcEventReason::kDockThunderbolt:
       SendMojoEcEventToBrowser(MojoEvent::kDockThunderbolt);
       break;
-    case EcEventType::kIncompatibleDock:
+    case EcEventReason::kIncompatibleDock:
       SendMojoEcEventToBrowser(MojoEvent::kIncompatibleDock);
       break;
-    case EcEventType::kDockError:
+    case EcEventReason::kDockError:
       SendMojoEcEventToBrowser(MojoEvent::kDockError);
       break;
-    case EcEventType::kSysNotification:
+    case EcEventReason::kSysNotification:
       VLOG(2) << "Received EC event that doesn't trigger a mojo event";
       break;
-    case EcEventType::kNonSysNotification:
+    case EcEventReason::kNonSysNotification:
       VLOG(2) << "Received a non-system notification EC event";
       break;
   }
@@ -664,11 +665,11 @@ void WilcoDtcSupportdCore::SendGrpcEcEventToWilcoDtc(const EcEvent& ec_event) {
 
 void WilcoDtcSupportdCore::SendMojoEcEventToBrowser(
     const MojoEvent& mojo_event) {
-  VLOG(1) << "WilcoDtcSupportdCore::HandleEvent";
+  VLOG(1) << "WilcoDtcSupportdCore::SendMojoEcEventToBrowser";
 
   if (!mojo_service_) {
-    LOG(WARNING) << "HandleEvent happens before Mojo "
-                 << "connection is established.";
+    LOG(WARNING) << "SendMojoEcEventToBrowser happens before Mojo connection "
+                    "is established.";
     return;
   }
 

@@ -54,6 +54,7 @@
 #include "diagnostics/wilco_dtc_supportd/system/fake_powerd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/system/mock_debugd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/ec_event_service.h"
+#include "diagnostics/wilco_dtc_supportd/telemetry/ec_event_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/fake_bluetooth_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/fake_ec_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/fake_powerd_event_service.h"
@@ -80,7 +81,7 @@ const char kUiMessageReceiverWilcoDtcGrpcUriTemplate[] =
     "unix:%s/test_ui_message_receiver_wilco_dtc_socket";
 
 using EcEvent = EcEventService::EcEvent;
-using EcEventType = EcEventService::Observer::EcEventType;
+using EcEventReason = EcEventService::EcEvent::Reason;
 using MojoEvent = chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
 using MojomWilcoDtcSupportdService =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService;
@@ -948,35 +949,22 @@ TEST_F(BootstrappedWilcoDtcSupportdCoreTest, HandleBluetoothDataChanged) {
               BluetoothAdaptersEquals(adapters));
 }
 
-// Fake types to be used to emulate EC events.
-const uint16_t kFakeEcEventType1 = 0xabcd;
-const uint16_t kFakeEcEventType2 = 0x1234;
-
-// Tests for EC event service.
+// Tests for EcEventService::Observer.
 //
 // This is a parametrized test with the following parameters:
-// * |size_in_words| - the payload size of the EcEvent
-// * |ec_event_type| - the type of the ec event
+// * |ec_event_reason| - the reason of the EcEvent
 // * |expected_mojo_event| - the expected mojo event passed to the
 // |wilco_dtc_supportd_client| over mojo
 class EcEventServiceBootstrappedWilcoDtcSupportdCoreTest
     : public BootstrappedWilcoDtcSupportdCoreTest,
       public testing::WithParamInterface<
-          std::tuple<uint16_t, EcEventType, base::Optional<MojoEvent>>> {
+          std::tuple<EcEventReason, base::Optional<MojoEvent>>> {
  protected:
   // Holds EC event type and payload of |grpc_api::HandleEcNotificationResponse|
   using GrpcEvent = std::pair<uint16_t, std::string>;
 
-  std::string GetPayload(size_t expected_size_in_bytes) const {
-    return std::string(reinterpret_cast<const char*>(kPayload),
-                       expected_size_in_bytes);
-  }
-
-  void EmulateEcEvent(uint16_t size_in_words,
-                      uint16_t type,
-                      EcEventType ec_event_type) {
-    core_delegate()->ec_event_service()->EmitEcEvent(
-        GetEcEvent(size_in_words, type), ec_event_type);
+  void EmulateEcEvent(const EcEvent& ec_event) {
+    core_delegate()->ec_event_service()->EmitEcEvent(ec_event);
   }
 
   void ExpectAllFakeWilcoDtcReceivedEcEvents(
@@ -999,24 +987,20 @@ class EcEventServiceBootstrappedWilcoDtcSupportdCoreTest
     EXPECT_EQ(fake_ui_message_receiver_wilco_dtc_ec_events, expected_ec_events);
   }
 
-  uint16_t size_in_words() const { return std::get<0>(GetParam()); }
+  std::string GetPayload(const EcEvent& ec_event) const {
+    DCHECK_LE(ec_event.size - 1, 6);
+    uint16_t payload[6];
+    memcpy(&payload, &ec_event.payload, (ec_event.size - 1) * sizeof(uint16_t));
+    return ConvertDataInWordsToString(payload, ec_event.size - 1);
+  }
 
-  EcEventType ec_event_type() const { return std::get<1>(GetParam()); }
+  EcEventReason ec_event_reason() const { return std::get<0>(GetParam()); }
 
   base::Optional<MojoEvent> expected_mojo_event() const {
-    return std::get<2>(GetParam());
+    return std::get<1>(GetParam());
   }
 
  private:
-  const uint16_t kData[6]{0x0102, 0x1314, 0x2526, 0x3738, 0x494a, 0x5b5c};
-  // |kData| bytes little endian representation.
-  const uint8_t kPayload[12]{0x02, 0x01, 0x14, 0x13, 0x26, 0x25,
-                             0x38, 0x37, 0x4a, 0x49, 0x5c, 0x5b};
-
-  EcEvent GetEcEvent(uint16_t size_in_words, uint16_t type) const {
-    return EcEvent(size_in_words, static_cast<EcEvent::Type>(type), kData);
-  }
-
   void SetupFakeWilcoDtcEcEventCallback(const base::Closure& callback,
                                         FakeWilcoDtc* fake_wilco_dtc,
                                         std::multiset<GrpcEvent>* events_out) {
@@ -1033,82 +1017,88 @@ class EcEventServiceBootstrappedWilcoDtcSupportdCoreTest
   }
 };
 
-// Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
-// called by wilco_dtc support daemon on EcEvent with valid payload size
-TEST_P(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
-       SendGrpcEventToWilcoDtcValidSize) {
-  EmulateEcEvent(size_in_words(), kFakeEcEventType1,
-                 EcEventType::kNonSysNotification);
-  ExpectAllFakeWilcoDtcReceivedEcEvents(
-      {{kFakeEcEventType1, GetPayload(2 * size_in_words())}});
-}
-
-// Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
-// not called by wilco_dtc support daemon when |ec_event.size| exceeds
-// allocated data array.
-TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
-       SendGrpcEventToWilcoDtcInvalidSize) {
-  EmulateEcEvent(3, kFakeEcEventType1, EcEventType::kNonSysNotification);
-  EmulateEcEvent(7, kFakeEcEventType2, EcEventType::kNonSysNotification);
-  // Expect only EC event with valid size.
-  ExpectAllFakeWilcoDtcReceivedEcEvents({{kFakeEcEventType1, GetPayload(6)}});
-}
-
-// Test that the method |HandleEvent| exposed by mojo_client is called by the
-// wilco_dtc support daemon
-TEST_P(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest, TriggerMojoEvent) {
+// Test that the followings are called by the wilco_dtc support daemon:
+// 1. |HandleEcNotification|, exposed by wilco_dtc gRPC, is called on valid
+// EC events
+// 2. |HandleEvent|, exposed by mojo_client, is called on any EcEvent::Reason
+// values except |kSysNotification| and |kNonSysNotification|.
+TEST_P(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest, SingleEvents) {
   if (expected_mojo_event().has_value()) {
     // Set HandleEvent expectations for the triggered mojo events
     EXPECT_CALL(*wilco_dtc_supportd_client(),
                 HandleEvent(expected_mojo_event().value()));
   }
-  EmulateEcEvent(7, kFakeEcEventType1, ec_event_type());
+  const EcEvent& ec_event = GetEcEventWithReason(ec_event_reason());
+  EmulateEcEvent(ec_event);
+  ExpectAllFakeWilcoDtcReceivedEcEvents(
+      {{ec_event.type, GetPayload(ec_event)}});
 }
 
 // Test that both methods |HandleEcNotification()| and |HandleEvent()| exposed
-// by wilco_dtc gRPC and mojo_client, respectively, are called
-// by wilco_dtc support daemon multiple times.
+// by wilco_dtc gRPC and mojo_client, respectively, are called multiple times
+// by wilco_dtc support daemon.
 TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
        TriggerMultipleMojoEvents) {
   // Set HandleEvent expectations for the triggered mojo events
   EXPECT_CALL(*wilco_dtc_supportd_client(),
-              HandleEvent(MojoEvent::kBatteryAuth))
-      .Times(2);
-  EmulateEcEvent(3, kFakeEcEventType1, EcEventType::kBatteryAuth);
-  EmulateEcEvent(4, kFakeEcEventType2, EcEventType::kBatteryAuth);
+              HandleEvent(MojoEvent::kBatteryAuth));
+  EXPECT_CALL(*wilco_dtc_supportd_client(),
+              HandleEvent(MojoEvent::kDockDisplay));
+
+  const EcEvent& first_ec_event =
+      GetEcEventWithReason(EcEventReason::kBatteryAuth);
+  const EcEvent& second_ec_event =
+      GetEcEventWithReason(EcEventReason::kDockDisplay);
+  EmulateEcEvent(first_ec_event);
+  EmulateEcEvent(second_ec_event);
+
   ExpectAllFakeWilcoDtcReceivedEcEvents(
-      {{kFakeEcEventType1, GetPayload(6)}, {kFakeEcEventType2, GetPayload(8)}});
+      {{first_ec_event.type, GetPayload(first_ec_event)},
+       {second_ec_event.type, GetPayload(second_ec_event)}});
+}
+
+// Test that the method |HandleEcNotification()| exposed by wilco_dtc gRPC is
+// not called by the wilco_dtc support daemon when |ec_event.size| exceeds
+// allocated data array.
+// TODO(mgawad): move size validation logic inside EcEventService and don't emit
+// events when the size is invalid.
+TEST_F(EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
+       SendGrpcEventToWilcoDtcInvalidSize) {
+  const EcEvent& valid_ec_event =
+      GetEcEventWithReason(EcEventReason::kNonSysNotification);
+  const EcEvent& invalid_ec_event = kEcEventInvalidPayloadSize;
+
+  EmulateEcEvent(valid_ec_event);
+  EmulateEcEvent(invalid_ec_event);
+
+  // Expect only EC event with valid payload size.
+  ExpectAllFakeWilcoDtcReceivedEcEvents(
+      {{valid_ec_event.type, GetPayload(valid_ec_event)}});
 }
 
 INSTANTIATE_TEST_CASE_P(
-    AllRealAndSomeAlmostMojoEvents,
+    _,
     EcEventServiceBootstrappedWilcoDtcSupportdCoreTest,
     testing::Values(
         std::make_tuple(
-            0,
-            EcEventType::kNonWilcoCharger,
+            EcEventReason::kNonWilcoCharger,
             base::make_optional<MojoEvent>(MojoEvent::kNonWilcoCharger)),
         std::make_tuple(
-            1,
-            EcEventType::kBatteryAuth,
+            EcEventReason::kBatteryAuth,
             base::make_optional<MojoEvent>(MojoEvent::kBatteryAuth)),
         std::make_tuple(
-            2,
-            EcEventType::kDockDisplay,
+            EcEventReason::kDockDisplay,
             base::make_optional<MojoEvent>(MojoEvent::kDockDisplay)),
         std::make_tuple(
-            3,
-            EcEventType::kDockThunderbolt,
+            EcEventReason::kDockThunderbolt,
             base::make_optional<MojoEvent>(MojoEvent::kDockThunderbolt)),
         std::make_tuple(
-            4,
-            EcEventType::kIncompatibleDock,
+            EcEventReason::kIncompatibleDock,
             base::make_optional<MojoEvent>(MojoEvent::kIncompatibleDock)),
-        std::make_tuple(5,
-                        EcEventType::kDockError,
+        std::make_tuple(EcEventReason::kDockError,
                         base::make_optional<MojoEvent>(MojoEvent::kDockError)),
-        std::make_tuple(6, EcEventType::kNonSysNotification, base::nullopt),
-        std::make_tuple(0, EcEventType::kSysNotification, base::nullopt)));
+        std::make_tuple(EcEventReason::kNonSysNotification, base::nullopt),
+        std::make_tuple(EcEventReason::kSysNotification, base::nullopt)));
 
 // Tests for powerd event service.
 //

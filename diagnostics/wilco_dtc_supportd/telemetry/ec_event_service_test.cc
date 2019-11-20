@@ -6,7 +6,9 @@
 #include <poll.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
 #include <cstdint>
+#include <tuple>
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
@@ -20,6 +22,7 @@
 #include "diagnostics/common/bind_utils.h"
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/ec_event_service.h"
+#include "diagnostics/wilco_dtc_supportd/telemetry/ec_event_test_utils.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"
 
 namespace diagnostics {
@@ -31,12 +34,56 @@ using testing::Invoke;
 using testing::StrictMock;
 
 using EcEvent = EcEventService::EcEvent;
-using EcEventType = EcEventService::Observer::EcEventType;
+using EcEventReason = EcEventService::EcEvent::Reason;
 using MojoEvent = chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
+
+// Tests for EcEvent.
+//
+// This is a parametrized test with the following parameters:
+// * |source_ec_event| - the ec event subject to test.
+// * |expected_event_reason| - the expected reason of the EC event.
+class EcEventTest
+    : public testing::Test,
+      public testing::WithParamInterface<std::tuple<EcEvent, EcEventReason>> {
+ protected:
+  const EcEvent& source_ec_event() const { return std::get<0>(GetParam()); }
+
+  EcEventReason expected_event_reason() const {
+    return std::get<1>(GetParam());
+  }
+};
+
+// Tests that |EcEvent::GetReason| correctly extracts reason from the EC event.
+TEST_P(EcEventTest, GetReason) {
+  EXPECT_EQ(source_ec_event().GetReason(), expected_event_reason());
+}
+
+INSTANTIATE_TEST_CASE_P(
+    _,
+    EcEventTest,
+    testing::Values(
+        std::make_tuple(kEcEventNonWilcoCharger,
+                        EcEventReason::kNonWilcoCharger),
+        std::make_tuple(kEcEventBatteryAuth, EcEventReason::kBatteryAuth),
+        std::make_tuple(kEcEventDockDisplay, EcEventReason::kDockDisplay),
+        std::make_tuple(kEcEventDockThunderbolt,
+                        EcEventReason::kDockThunderbolt),
+        std::make_tuple(kEcEventIncompatibleDock,
+                        EcEventReason::kIncompatibleDock),
+        std::make_tuple(kEcEventDockError, EcEventReason::kDockError),
+        std::make_tuple(kEcEventNonSysNotification,
+                        EcEventReason::kNonSysNotification),
+        std::make_tuple(kEcEventAcAdapterNoFlags,
+                        EcEventReason::kSysNotification),
+        std::make_tuple(kEcEventChargerNoFlags,
+                        EcEventReason::kSysNotification),
+        std::make_tuple(kEcEventUsbCNoFlags, EcEventReason::kSysNotification),
+        std::make_tuple(kEcEventNonWilcoChargerBadSubType,
+                        EcEventReason::kSysNotification)));
 
 class MockEcEventServiceObserver : public EcEventService::Observer {
  public:
-  MOCK_METHOD(void, OnEcEvent, (const EcEvent&, EcEventType), (override));
+  MOCK_METHOD(void, OnEcEvent, (const EcEvent&), (override));
 };
 
 class EcEventServiceTest : public testing::Test {
@@ -78,16 +125,13 @@ class EcEventServiceTest : public testing::Test {
   }
 
   void EmitEcEventAndSetObserverExpectations(
-      const EcEvent& ec_event,
-      EcEventType type,
-      const base::RepeatingClosure& callback) {
+      const EcEvent& ec_event, const base::RepeatingClosure& callback) {
     ASSERT_EQ(write(fifo_write_end_.get(), &ec_event, sizeof(ec_event)),
               sizeof(ec_event));
 
-    EXPECT_CALL(observer_, OnEcEvent(ec_event, type))
-        .WillOnce(Invoke([callback](const EcEvent& ec_event, EcEventType type) {
-          callback.Run();
-        }));
+    EXPECT_CALL(observer_, OnEcEvent(ec_event))
+        .WillOnce(
+            Invoke([callback](const EcEvent& ec_event) { callback.Run(); }));
   }
 
   EcEventService* service() { return &service_; }
@@ -127,7 +171,7 @@ TEST_F(StartedEcEventServiceTest, ReadEvent) {
   const uint16_t data[] = {0xaaaa, 0xbbbb, 0xcccc, 0xdddd, 0xeeee, 0xffff};
   EmitEcEventAndSetObserverExpectations(
       EcEvent(0x8888, static_cast<EcEvent::Type>(0x9999), data),
-      EcEventType::kNonSysNotification, run_loop.QuitClosure());
+      run_loop.QuitClosure());
   run_loop.Run();
 }
 
@@ -137,87 +181,12 @@ TEST_F(StartedEcEventServiceTest, ReadManyEvent) {
       2 /* num_closures */, run_loop.QuitClosure() /* done closure */);
   const uint16_t data1[] = {0xaaaa, 0xbbbb, 0xcccc, 0xdddd, 0xeeee, 0xffff};
   EmitEcEventAndSetObserverExpectations(
-      EcEvent(0x8888, static_cast<EcEvent::Type>(0x9999), data1),
-      EcEventType::kNonSysNotification, callback);
+      EcEvent(0x8888, static_cast<EcEvent::Type>(0x9999), data1), callback);
   const uint16_t data2[] = {0x0000, 0x1111, 0x2222, 0x3333, 0x4444, 0x5555};
   EmitEcEventAndSetObserverExpectations(
-      EcEvent(0x6666, static_cast<EcEvent::Type>(0x7777), data2),
-      EcEventType::kNonSysNotification, callback);
+      EcEvent(0x6666, static_cast<EcEvent::Type>(0x7777), data2), callback);
   run_loop.Run();
 }
-
-struct EcEventToEcEventTypeTestParams {
-  EcEvent source_ec_event;
-  EcEventType expected_event_type;
-};
-
-class ParsedEcEventStartedEcEventServiceTest
-    : public StartedEcEventServiceTest,
-      public testing::WithParamInterface<EcEventToEcEventTypeTestParams> {};
-
-// Tests that OnEventAvailable() correctly parses the EC events into the
-// corresponding EcEventTypes and are received by the |observers_.OnEcEvent()|
-TEST_P(ParsedEcEventStartedEcEventServiceTest, SingleEvents) {
-  EcEventToEcEventTypeTestParams test_params = GetParam();
-  base::RunLoop run_loop;
-  EmitEcEventAndSetObserverExpectations(test_params.source_ec_event,
-                                        test_params.expected_event_type,
-                                        run_loop.QuitClosure());
-  run_loop.Run();
-}
-
-// A meaningless and meaningful EcEvent::Type
-constexpr auto kGarbageType = static_cast<EcEvent::Type>(0xabcd);
-constexpr auto kSystemNotifyType = static_cast<EcEvent::Type>(0x0012);
-
-constexpr uint16_t kEcEventPayloadNonWilcoCharger[]{0x0000, 0x0000, 0x0001,
-                                                    0x0000, 0x0000, 0x0000};
-constexpr uint16_t kEcEventPayloadBatteryAuth[]{0x0003, 0x0000, 0x0001,
-                                                0x0000, 0x0000, 0x0000};
-constexpr uint16_t kEcEventPayloadDockDisplay[]{0x0008, 0x0200, 0x0000, 0x0000};
-constexpr uint16_t kEcEventPayloadDockThunderbolt[]{0x0008, 0x0000, 0x0000,
-                                                    0x0100};
-constexpr uint16_t kEcEventPayloadIncompatibleDock[]{0x0008, 0x0000, 0x0000,
-                                                     0x1000};
-constexpr uint16_t kEcEventPayloadDockError[]{0x0008, 0x0000, 0x0000, 0x8000};
-
-constexpr uint16_t kEcEventPayloadAcAdapterNoFlags[]{0x0000, 0x0000, 0x0000,
-                                                     0x0000, 0x0000, 0x0000};
-constexpr uint16_t kEcEventPayloadChargerNoFlags[]{0x0003, 0x0000, 0x0000,
-                                                   0x0000, 0x0000, 0x0000};
-constexpr uint16_t kEcEventPayloadUsbCNoFlags[]{0x0008, 0x0000, 0x0000, 0x0000};
-
-constexpr uint16_t kEcEventPayloadNonWilcoChargerBadSubType[]{
-    0xffff, 0x0000, 0x0001, 0x0000, 0x0000, 0x0000};
-
-const EcEventToEcEventTypeTestParams kEcEventToMojoEventTestParams[] = {
-    {EcEvent(6, kSystemNotifyType, kEcEventPayloadNonWilcoCharger),
-     EcEventType::kNonWilcoCharger},
-    {EcEvent(6, kSystemNotifyType, kEcEventPayloadBatteryAuth),
-     EcEventType::kBatteryAuth},
-    {EcEvent(4, kSystemNotifyType, kEcEventPayloadDockDisplay),
-     EcEventType::kDockDisplay},
-    {EcEvent(4, kSystemNotifyType, kEcEventPayloadDockThunderbolt),
-     EcEventType::kDockThunderbolt},
-    {EcEvent(4, kSystemNotifyType, kEcEventPayloadIncompatibleDock),
-     EcEventType::kIncompatibleDock},
-    {EcEvent(4, kSystemNotifyType, kEcEventPayloadDockError),
-     EcEventType::kDockError},
-    {EcEvent(6, kGarbageType, kEcEventPayloadNonWilcoCharger),
-     EcEventType::kNonSysNotification},
-    {EcEvent(4, kSystemNotifyType, kEcEventPayloadAcAdapterNoFlags),
-     EcEventType::kSysNotification},
-    {EcEvent(4, kSystemNotifyType, kEcEventPayloadChargerNoFlags),
-     EcEventType::kSysNotification},
-    {EcEvent(4, kSystemNotifyType, kEcEventPayloadUsbCNoFlags),
-     EcEventType::kSysNotification},
-    {EcEvent(6, kSystemNotifyType, kEcEventPayloadNonWilcoChargerBadSubType),
-     EcEventType::kSysNotification},
-};
-
-INSTANTIATE_TEST_CASE_P(AllRealAndSomeAlmostEcEvents,
-                        ParsedEcEventStartedEcEventServiceTest,
-                        testing::ValuesIn(kEcEventToMojoEventTestParams));
 
 }  // namespace
 

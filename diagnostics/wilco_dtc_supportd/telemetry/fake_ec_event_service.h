@@ -16,8 +16,7 @@ class FakeEcEventService : public EcEventService {
   FakeEcEventService();
   ~FakeEcEventService() override;
 
-  void EmitEcEvent(const EcEventService::EcEvent& ec_event,
-                   EcEventService::Observer::EcEventType type) const;
+  void EmitEcEvent(const EcEventService::EcEvent& ec_event) const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FakeEcEventService);

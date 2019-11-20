@@ -385,6 +385,8 @@ if (use.test) {
       "wilco_dtc_supportd/system/powerd_adapter_impl_test.cc",
       "wilco_dtc_supportd/telemetry/bluetooth_event_service_impl_test.cc",
       "wilco_dtc_supportd/telemetry/ec_event_service_test.cc",
+      "wilco_dtc_supportd/telemetry/ec_event_test_utils.cc",
+      "wilco_dtc_supportd/telemetry/ec_event_test_utils_test.cc",
       "wilco_dtc_supportd/telemetry/fake_bluetooth_event_service.cc",
       "wilco_dtc_supportd/telemetry/fake_ec_event_service.cc",
       "wilco_dtc_supportd/telemetry/fake_powerd_event_service.cc",

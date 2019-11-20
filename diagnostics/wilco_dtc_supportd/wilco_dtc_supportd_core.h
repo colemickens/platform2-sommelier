@@ -204,8 +204,7 @@ class WilcoDtcSupportdCore final : public DBusService::Delegate,
       const std::vector<BluetoothEventService::AdapterData>& adapters) override;
 
   // EcEventService::Observer overrides:
-  void OnEcEvent(const EcEventService::EcEvent& ec_event,
-                 EcEventService::Observer::EcEventType type) override;
+  void OnEcEvent(const EcEventService::EcEvent& ec_event) override;
 
   // PowerdEventService::Observer overrides:
   void OnPowerdEvent(PowerEventType type) override;

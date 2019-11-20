@@ -10,6 +10,9 @@
 #include <sys/eventfd.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include <algorithm>
+#include <cstring>
 #include <utility>
 
 #include <base/bind.h>
@@ -21,11 +24,6 @@
 #include "mojo/wilco_dtc_supportd.mojom.h"
 
 namespace diagnostics {
-
-namespace {
-using MojoEvent = chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
-using EcEventType = EcEventService::Observer::EcEventType;
-}  // namespace
 
 namespace internal {
 
@@ -116,6 +114,54 @@ class EcEventMonitoringThreadDelegate final
 };
 
 }  // namespace internal
+
+EcEventService::EcEvent::EcEvent() = default;
+
+EcEventService::EcEvent::EcEvent(uint16_t num_words_in_payload,
+                                 Type type,
+                                 const uint16_t payload[6])
+    : size(num_words_in_payload + 1), type(type), payload{} {
+  memcpy(&this->payload, payload,
+         std::min(sizeof(this->payload),
+                  num_words_in_payload * sizeof(payload[0])));
+}
+
+EcEventService::EcEvent::Reason EcEventService::EcEvent::GetReason() const {
+  if (type != Type::SYSTEM_NOTIFY) {
+    return Reason::kNonSysNotification;
+  }
+
+  const SystemNotifyPayload::SystemNotifyFlags& flags =
+      payload.system_notify.flags;
+  switch (payload.system_notify.sub_type) {
+    case SystemNotifySubType::AC_ADAPTER:
+      if (flags.ac_adapter.cause & AcAdapterFlags::Cause::NON_WILCO_CHARGER) {
+        return Reason::kNonWilcoCharger;
+      }
+      break;
+    case SystemNotifySubType::BATTERY:
+      if (flags.battery.cause & BatteryFlags::Cause::BATTERY_AUTH) {
+        return Reason::kBatteryAuth;
+      }
+      break;
+    case SystemNotifySubType::USB_C:
+      if (flags.usb_c.billboard & UsbCFlags::Billboard::HDMI_USBC_CONFLICT) {
+        return Reason::kDockDisplay;
+      }
+      if (flags.usb_c.dock &
+          UsbCFlags::Dock::THUNDERBOLT_UNSUPPORTED_USING_USBC) {
+        return Reason::kDockThunderbolt;
+      }
+      if (flags.usb_c.dock & UsbCFlags::Dock::INCOMPATIBLE_DOCK) {
+        return Reason::kIncompatibleDock;
+      }
+      if (flags.usb_c.dock & UsbCFlags::Dock::OVERTEMP_ERROR) {
+        return Reason::kDockError;
+      }
+      break;
+  }
+  return Reason::kSysNotification;
+}
 
 size_t EcEventService::EcEvent::PayloadSizeInBytes() const {
   // Guard against the case when |size| == 0.
@@ -210,54 +256,8 @@ void EcEventService::ShutDownMonitoringThread() {
 void EcEventService::OnEventAvailable(const EcEvent& ec_event) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  // Determine the type of the EcEvent.
-  // We only will forward certain events. If they aren't relevant, ignore.
-  if (ec_event.type != EcEvent::Type::SYSTEM_NOTIFY) {
-    NotifyObservers(ec_event, EcEventType::kNonSysNotification);
-    return;
-  }
-
-  const EcEvent::SystemNotifyPayload& payload = ec_event.payload.system_notify;
-  EcEventType type = EcEventType::kSysNotification;
-
-  switch (payload.sub_type) {
-    case EcEvent::SystemNotifySubType::AC_ADAPTER:
-      if (payload.flags.ac_adapter.cause &
-          EcEvent::AcAdapterFlags::Cause::NON_WILCO_CHARGER) {
-        type = EcEventType::kNonWilcoCharger;
-      }
-      break;
-    case EcEvent::SystemNotifySubType::BATTERY:
-      if (payload.flags.battery.cause &
-          EcEvent::BatteryFlags::Cause::BATTERY_AUTH) {
-        type = EcEventType::kBatteryAuth;
-      }
-      break;
-    case EcEvent::SystemNotifySubType::USB_C:
-      if (payload.flags.usb_c.billboard &
-          EcEvent::UsbCFlags::Billboard::HDMI_USBC_CONFLICT) {
-        type = EcEventType::kDockDisplay;
-      }
-      if (payload.flags.usb_c.dock &
-          EcEvent::UsbCFlags::Dock::THUNDERBOLT_UNSUPPORTED_USING_USBC) {
-        type = EcEventType::kDockThunderbolt;
-      }
-      if (payload.flags.usb_c.dock &
-          EcEvent::UsbCFlags::Dock::INCOMPATIBLE_DOCK) {
-        type = EcEventType::kIncompatibleDock;
-      }
-      if (payload.flags.usb_c.dock & EcEvent::UsbCFlags::Dock::OVERTEMP_ERROR) {
-        type = EcEventType::kDockError;
-      }
-      break;
-  }
-  NotifyObservers(ec_event, type);
-}
-
-void EcEventService::NotifyObservers(const EcEvent& ec_event,
-                                     EcEventType type) {
   for (auto& observer : observers_)
-    observer.OnEcEvent(ec_event, type);
+    observer.OnEcEvent(ec_event);
 }
 
 void EcEventService::OnShutdown() {

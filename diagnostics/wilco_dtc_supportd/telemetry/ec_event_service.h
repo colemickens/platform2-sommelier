@@ -5,9 +5,7 @@
 #ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_EC_EVENT_SERVICE_H_
 #define DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_EC_EVENT_SERVICE_H_
 
-#include <algorithm>
 #include <cstdint>
-#include <cstring>
 #include <memory>
 
 #include <base/callback.h>
@@ -32,7 +30,7 @@ class EcEventMonitoringThreadDelegate;
 class EcEventService {
  public:
   // A packet of data sent by the EC when it notices certain events have
-  // occured, such as the battery, AC adapter, or USB-C state changing.
+  // occurred, such as the battery, AC adapter, or USB-C state changing.
   // The format of this packet is a variable length sequence of 16-bit words.
   // Word 0 is the |size| word, representing the number of following
   // words in the struct. Word 1 is the |type| word. The following |size|-1
@@ -44,6 +42,38 @@ class EcEventService {
   // information.
   struct alignas(2) EcEvent {
    public:
+    // Derived value representing the reason/cause of the EC event.
+    //
+    // NOTE: This is a computed value and not sent by the EC.
+    enum Reason {
+      // |SYSTEM_NOTIFY| EC event types:
+      //
+      // When |SystemNotifySubType| is "AC_ADAPTER" and
+      // |AcAdapterFlags::Cause::NON_WILCO_CHARGER| is true.
+      kNonWilcoCharger,
+      // When |SystemNotifySubType| is "BATTERY" and
+      // |BatteryFlags::Cause::BATTERY_AUTH| is true.
+      kBatteryAuth,
+      // When |SystemNotifySubType| is "USB_C" and
+      // |UsbCFlags::Billboard::HDMI_USBC_CONFLICT| is true.
+      kDockDisplay,
+      // When |SystemNotifySubType| is "USB_C" and
+      // |UsbCFlags::Dock|::THUNDERBOLT_UNSUPPORTED_USING_USBC| is true.
+      kDockThunderbolt,
+      // When |SystemNotifySubType| is "USB_C" and
+      // |UsbCFlags::Dock::INCOMPATIBLE_DOCK| is true.
+      kIncompatibleDock,
+      // When |SystemNotifySubType| is "USB_C" and
+      // |UsbCFlags::Dock::OVERTEMP_ERROR| is true.
+      kDockError,
+
+      // |SYSTEM_NOTIFY| EC event type with no appropiate |SystemNotifySubType|
+      // or flags.
+      kSysNotification,
+      // Non |SYSTEM_NOTIFY| EC event type.
+      kNonSysNotification,
+    };
+
     // The |type| member will be one of these.
     enum Type : uint16_t {
       // Interpret |payload| as SystemNotifyPayload.
@@ -118,20 +148,21 @@ class EcEventService {
       } flags;
     };
 
-    EcEvent() = default;
+    EcEvent();
 
-    EcEvent(uint16_t num_words_in_payload, Type type, const uint16_t payload[6])
-        : size(num_words_in_payload + 1), type(type), payload{} {
-      memcpy(&this->payload, payload,
-             std::min(sizeof(this->payload),
-                      num_words_in_payload * sizeof(payload[0])));
-    }
+    EcEvent(uint16_t num_words_in_payload,
+            Type type,
+            const uint16_t payload[6]);
 
     bool operator==(const EcEvent& other) const {
       return memcmp(this, &other, sizeof(*this)) == 0;
     }
 
-    // Translate the |size| member into how many bytes of |payload| are used.
+    // Extracts the EC event's reason from the event's |Type|,
+    // |SystemNotifySubType| and flags.
+    Reason GetReason() const;
+
+    // Translates the |size| member into how many bytes of |payload| are used.
     size_t PayloadSizeInBytes() const;
 
     // |size| is the number of following 16-bit words in the event.
@@ -146,31 +177,10 @@ class EcEventService {
 
   class Observer {
    public:
-    enum class EcEventType {
-      // An unauthorized battery is connected.
-      kBatteryAuth,
-      // Charger is unauthorized, and battery will not charge.
-      kNonWilcoCharger,
-      // Attached dock is incompatible.
-      kIncompatibleDock,
-      // Attached dock presents hardware failures.
-      kDockError,
-      // HDMI and USB Type-C cannot be used for displays at the same time
-      // with the attached dock.
-      kDockDisplay,
-      // Attached dock will operate in USB Type-C compatible mode.
-      kDockThunderbolt,
-
-      // System notification but non relevant events
-      kSysNotification,
-      // Non system notification events
-      kNonSysNotification,
-    };
-
     virtual ~Observer() = default;
 
     // Called when event from EC was received.
-    virtual void OnEcEvent(const EcEvent& ec_event, EcEventType type) = 0;
+    virtual void OnEcEvent(const EcEvent& ec_event) = 0;
   };
 
   EcEventService();
@@ -209,9 +219,6 @@ class EcEventService {
   // This is called on the |message_loop_->task_runner()| when new EC event
   // was received by background monitoring thread.
   void OnEventAvailable(const EcEvent& ec_event);
-
-  // Notify the observers with the parsed event and event type
-  void NotifyObservers(const EcEvent& ec_event, Observer::EcEventType type);
 
   // This is called on the |message_loop_->task_runner()| when the background
   // monitoring thread is shutting down.
