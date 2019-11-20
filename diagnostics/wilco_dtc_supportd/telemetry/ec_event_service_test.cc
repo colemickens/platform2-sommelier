@@ -55,7 +55,7 @@ class EcEventServiceTest : public testing::Test {
     service()->RemoveObserver(&observer_);
     EXPECT_FALSE(service()->HasObserver(&observer_));
     base::RunLoop run_loop;
-    service_.Shutdown(run_loop.QuitClosure());
+    service_.ShutDown(run_loop.QuitClosure());
     run_loop.Run();
   }
 

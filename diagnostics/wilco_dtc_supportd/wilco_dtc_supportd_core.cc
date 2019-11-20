@@ -210,12 +210,12 @@ bool WilcoDtcSupportdCore::Start() {
   return true;
 }
 
-void WilcoDtcSupportdCore::ShutDown(const base::Closure& on_shutdown) {
+void WilcoDtcSupportdCore::ShutDown(const base::Closure& on_shutdown_callback) {
   VLOG(1) << "Tearing down gRPC server, gRPC wilco_dtc clients, "
              "EC event service and D-Bus server";
   const base::Closure barrier_closure =
-      BarrierClosure(wilco_dtc_grpc_clients_.size() + 2, on_shutdown);
-  ec_event_service_->Shutdown(barrier_closure);
+      BarrierClosure(wilco_dtc_grpc_clients_.size() + 2, on_shutdown_callback);
+  ec_event_service_->ShutDown(barrier_closure);
   grpc_server_.Shutdown(barrier_closure);
   for (const auto& client : wilco_dtc_grpc_clients_) {
     client->Shutdown(barrier_closure);

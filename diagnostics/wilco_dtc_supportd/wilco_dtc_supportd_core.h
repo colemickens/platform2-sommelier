@@ -139,8 +139,8 @@ class WilcoDtcSupportdCore final : public DBusService::Delegate,
   // and EC event service. Destroys |dbus_object_| object.
   // This must be used before deleting this instance in case Start() was
   // called and returned success - in that case, the instance must be
-  // destroyed only after |on_shutdown| has been called.
-  void ShutDown(const base::Closure& on_shutdown);
+  // destroyed only after |on_shutdown_callback| has been called.
+  void ShutDown(const base::Closure& on_shutdown_callback);
 
   // Register the D-Bus object that the wilco_dtc_supportd daemon exposes and
   // tie methods exposed by this object with the actual implementation.

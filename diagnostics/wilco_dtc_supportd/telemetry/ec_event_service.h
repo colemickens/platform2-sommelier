@@ -179,8 +179,8 @@ class EcEventService {
   // Starts service.
   bool Start();
 
-  // Shutdowns service.
-  void Shutdown(base::Closure on_shutdown_callback);
+  // Shuts down service.
+  void ShutDown(base::Closure on_shutdown_callback);
 
   // Overrides the file system root directory for file operations in tests.
   void set_root_dir_for_testing(const base::FilePath& root_dir) {
@@ -204,7 +204,7 @@ class EcEventService {
   // shut down. Once the monitoring thread handles this event and gets ready
   // for shutting down, it will reply by scheduling an invocation of
   // OnShutdown() on the foreground thread.
-  void ShutdownMonitoringThread();
+  void ShutDownMonitoringThread();
 
   // This is called on the |message_loop_->task_runner()| when new EC event
   // was received by background monitoring thread.

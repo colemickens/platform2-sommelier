@@ -165,7 +165,7 @@ bool EcEventService::Start() {
   return true;
 }
 
-void EcEventService::Shutdown(base::Closure on_shutdown_callback) {
+void EcEventService::ShutDown(base::Closure on_shutdown_callback) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   DCHECK(on_shutdown_callback_.is_null());
   DCHECK(!on_shutdown_callback.is_null());
@@ -177,7 +177,7 @@ void EcEventService::Shutdown(base::Closure on_shutdown_callback) {
 
   on_shutdown_callback_ = on_shutdown_callback;
 
-  ShutdownMonitoringThread();
+  ShutDownMonitoringThread();
 }
 
 void EcEventService::AddObserver(EcEventService::Observer* observer) {
@@ -195,7 +195,7 @@ bool EcEventService::HasObserver(EcEventService::Observer* observer) {
   return observers_.HasObserver(observer);
 }
 
-void EcEventService::ShutdownMonitoringThread() {
+void EcEventService::ShutDownMonitoringThread() {
   // Due to |eventfd| documentation to invoke |poll()| on |shutdown_fd_| file
   // descriptor we must write any 8-byte value greater than 0 except
   // |0xffffffffffffffff|.
