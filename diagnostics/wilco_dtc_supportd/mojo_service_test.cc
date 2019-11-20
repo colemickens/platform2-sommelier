@@ -21,7 +21,7 @@
 #include <mojo/public/cpp/system/buffer.h>
 
 #include "diagnostics/common/mojo_utils.h"
-#include "diagnostics/wilco_dtc_supportd/mock_mojom_wilco_dtc_supportd_client.h"
+#include "diagnostics/wilco_dtc_supportd/mock_mojo_client.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_service.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_test_utils.h"
 
@@ -83,7 +83,7 @@ class MojoServiceTest : public testing::Test {
   }
 
   MockMojoServiceDelegate* delegate() { return &delegate_; }
-  MockMojomWilcoDtcSupportdClient* mojo_client() { return &mojo_client_; }
+  MockMojoClient* mojo_client() { return &mojo_client_; }
 
   // TODO(lamzin@google.com): Extract the response JSON message and verify its
   // value.
@@ -101,7 +101,7 @@ class MojoServiceTest : public testing::Test {
 
   void SendWilcoDtcMessageToUi(base::StringPiece expected_json_message) {
     base::RunLoop run_loop;
-    // According to the implementation of MockMojomWilcoDtcSupportdClient
+    // According to the implementation of MockMojoClient
     // expected_json_message is equal to json_message returned from callback.
     service_->SendWilcoDtcMessageToUi(
         expected_json_message.as_string(),
@@ -123,7 +123,7 @@ class MojoServiceTest : public testing::Test {
                          MojomWilcoDtcSupportdWebRequestStatus expected_status,
                          int expected_http_status) {
     base::RunLoop run_loop;
-    // According to the implementation of MockMojomWilcoDtcSupportdClient
+    // According to the implementation of MockMojoClient
     // response_body is equal to request_body.
     service_->PerformWebRequest(
         http_method, url, headers, request_body,
@@ -157,7 +157,7 @@ class MojoServiceTest : public testing::Test {
 
  private:
   base::MessageLoop message_loop_;
-  StrictMock<MockMojomWilcoDtcSupportdClient> mojo_client_;
+  StrictMock<MockMojoClient> mojo_client_;
   std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdClient>>
       mojo_client_binding_;
   StrictMock<MockMojoServiceDelegate> delegate_;

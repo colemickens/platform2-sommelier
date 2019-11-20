@@ -607,7 +607,7 @@ class BootstrappedWilcoDtcSupportdCoreTest
         callback);
   }
 
-  MockMojomWilcoDtcSupportdClient* wilco_dtc_supportd_client() {
+  MockMojoClient* wilco_dtc_supportd_client() {
     return fake_browser()->wilco_dtc_supportd_client();
   }
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/mock_mojom_wilco_dtc_supportd_client.h"
+#include "diagnostics/wilco_dtc_supportd/mock_mojo_client.h"
 
 #include <utility>
 
@@ -11,7 +11,7 @@
 
 namespace diagnostics {
 
-void MockMojomWilcoDtcSupportdClient::SendWilcoDtcMessageToUi(
+void MockMojoClient::SendWilcoDtcMessageToUi(
     mojo::ScopedHandle json_message,
     const SendWilcoDtcMessageToUiCallback& callback) {
   std::string json_message_content =
@@ -23,7 +23,7 @@ void MockMojomWilcoDtcSupportdClient::SendWilcoDtcMessageToUi(
   callback.Run(CreateReadOnlySharedMemoryMojoHandle(json_message_content));
 }
 
-void MockMojomWilcoDtcSupportdClient::PerformWebRequest(
+void MockMojoClient::PerformWebRequest(
     MojoWilcoDtcSupportdWebRequestHttpMethod http_method,
     mojo::ScopedHandle url,
     std::vector<mojo::ScopedHandle> headers,

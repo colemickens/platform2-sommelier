@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_MOCK_MOJOM_WILCO_DTC_SUPPORTD_CLIENT_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_MOCK_MOJOM_WILCO_DTC_SUPPORTD_CLIENT_H_
+#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_MOCK_MOJO_CLIENT_H_
+#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_MOCK_MOJO_CLIENT_H_
 
 #include <string>
 #include <vector>
@@ -16,7 +16,7 @@
 
 namespace diagnostics {
 
-class MockMojomWilcoDtcSupportdClient
+class MockMojoClient
     : public chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClient {
  public:
   using MojoWilcoDtcSupportdWebRequestHttpMethod =
@@ -60,4 +60,4 @@ class MockMojomWilcoDtcSupportdClient
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_MOCK_MOJOM_WILCO_DTC_SUPPORTD_CLIENT_H_
+#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_MOCK_MOJO_CLIENT_H_

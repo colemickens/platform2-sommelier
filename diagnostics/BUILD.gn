@@ -373,7 +373,7 @@ if (use.test) {
       "wilco_dtc_supportd/fake_routine_factory.cc",
       "wilco_dtc_supportd/fake_wilco_dtc.cc",
       "wilco_dtc_supportd/grpc_service_test.cc",
-      "wilco_dtc_supportd/mock_mojom_wilco_dtc_supportd_client.cc",
+      "wilco_dtc_supportd/mock_mojo_client.cc",
       "wilco_dtc_supportd/mojo_service_test.cc",
       "wilco_dtc_supportd/mojo_test_utils.cc",
       "wilco_dtc_supportd/routine_service_test.cc",
