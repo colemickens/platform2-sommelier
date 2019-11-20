@@ -409,13 +409,14 @@ void NDProxy::ProxyNDFrame(int target_if, ssize_t frame_len) {
   }
 }
 
-NDProxy::NDProxy() {
-  in_frame_buffer_ = AlignFrameBuffer(in_frame_buffer_extended_);
-  out_frame_buffer_ = AlignFrameBuffer(out_frame_buffer_extended_);
-}
+NDProxy::NDProxy()
+    : in_frame_buffer_(AlignFrameBuffer(in_frame_buffer_extended_)),
+      out_frame_buffer_(AlignFrameBuffer(out_frame_buffer_extended_)) {}
 
 NDProxy::NDProxy(base::ScopedFD control_fd)
-    : msg_dispatcher_(
+    : in_frame_buffer_(AlignFrameBuffer(in_frame_buffer_extended_)),
+      out_frame_buffer_(AlignFrameBuffer(out_frame_buffer_extended_)),
+      msg_dispatcher_(
           std::make_unique<MessageDispatcher>(std::move(control_fd))) {}
 
 NDProxy::~NDProxy() {}

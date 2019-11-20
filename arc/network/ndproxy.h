@@ -111,18 +111,18 @@ class NDProxy : public brillo::Daemon {
   // neighbor entry is not found.
   static bool QueryNeighborTable(const in6_addr* ipv6_addr, uint8_t* mac_addr);
 
-  // Utilize MessageDispatcher to watch control fd
-  std::unique_ptr<MessageDispatcher> msg_dispatcher_;
-  // Data fd and its watcher
-  base::ScopedFD fd_;
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
-
   // Allocate slightly more space and adjust the buffer start location to
   // make sure IP header is 4-bytes aligned.
   uint8_t in_frame_buffer_extended_[IP_MAXPACKET + ETH_HLEN + 4];
   uint8_t out_frame_buffer_extended_[IP_MAXPACKET + ETH_HLEN + 4];
   uint8_t* in_frame_buffer_;
   uint8_t* out_frame_buffer_;
+
+  // Utilize MessageDispatcher to watch control fd
+  std::unique_ptr<MessageDispatcher> msg_dispatcher_;
+  // Data fd and its watcher
+  base::ScopedFD fd_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
 
   interface_mapping if_map_rs_;
   interface_mapping if_map_ra_;
