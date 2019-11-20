@@ -10,8 +10,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/wilco_dtc_supportd/dbus_service.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_test_utils.h"
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_dbus_service.h"
 
 using testing::_;
 using testing::DoAll;
@@ -24,8 +24,7 @@ namespace diagnostics {
 
 namespace {
 
-class MockWilcoDtcSupportdDBusServiceDelegate
-    : public WilcoDtcSupportdDBusService::Delegate {
+class MockDBusServiceDelegate : public DBusService::Delegate {
  public:
   // Delegate overrides:
   bool StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
@@ -38,16 +37,16 @@ class MockWilcoDtcSupportdDBusServiceDelegate
   MOCK_METHOD(bool, StartMojoServiceFactoryImpl, (int, std::string*));
 };
 
-// Tests for the WilcoDtcSupportdDBusService class.
-class WilcoDtcSupportdDBusServiceTest : public testing::Test {
+// Tests for the DBusService class.
+class DBusServiceTest : public testing::Test {
  protected:
-  StrictMock<MockWilcoDtcSupportdDBusServiceDelegate> delegate_;
-  WilcoDtcSupportdDBusService service_{&delegate_};
+  StrictMock<MockDBusServiceDelegate> delegate_;
+  DBusService service_{&delegate_};
 };
 
 // Test that BootstrapMojoConnection() successfully calls into the delegate
 // method when called with a valid file descriptor.
-TEST_F(WilcoDtcSupportdDBusServiceTest, BootstrapMojoConnectionBasic) {
+TEST_F(DBusServiceTest, BootstrapMojoConnectionBasic) {
   const FakeMojoFdGenerator fake_mojo_fd_generator;
 
   EXPECT_CALL(delegate_, StartMojoServiceFactoryImpl(_, _))
@@ -66,7 +65,7 @@ TEST_F(WilcoDtcSupportdDBusServiceTest, BootstrapMojoConnectionBasic) {
 
 // Test that BootstrapMojoConnection() fails when an empty file descriptor is
 // supplied.
-TEST_F(WilcoDtcSupportdDBusServiceTest, BootstrapMojoConnectionInvalidFd) {
+TEST_F(DBusServiceTest, BootstrapMojoConnectionInvalidFd) {
   brillo::ErrorPtr error;
   EXPECT_FALSE(service_.BootstrapMojoConnection(
       &error, base::ScopedFD() /* mojo_pipe_fd */));

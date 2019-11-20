@@ -238,8 +238,7 @@ void WilcoDtcSupportdCore::RegisterDBusObjectsAsync(
   DCHECK(dbus_interface);
   dbus_interface->AddSimpleMethodHandlerWithError(
       kWilcoDtcSupportdBootstrapMojoConnectionMethod,
-      base::Unretained(&dbus_service_),
-      &WilcoDtcSupportdDBusService::BootstrapMojoConnection);
+      base::Unretained(&dbus_service_), &DBusService::BootstrapMojoConnection);
   dbus_object_->RegisterAsync(sequencer->GetHandler(
       "Failed to register D-Bus object" /* descriptive_message */,
       true /* failure_is_fatal */));

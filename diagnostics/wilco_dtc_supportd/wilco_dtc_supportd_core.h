@@ -22,6 +22,7 @@
 
 #include "diagnostics/grpc_async_adapter/async_grpc_client.h"
 #include "diagnostics/grpc_async_adapter/async_grpc_server.h"
+#include "diagnostics/wilco_dtc_supportd/dbus_service.h"
 #include "diagnostics/wilco_dtc_supportd/grpc_service.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_service.h"
 #include "diagnostics/wilco_dtc_supportd/routine_service.h"
@@ -31,7 +32,6 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/bluetooth_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/ec_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service.h"
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_dbus_service.h"
 
 #include "mojo/wilco_dtc_supportd.mojom.h"
 #include "wilco_dtc.grpc.pb.h"           // NOLINT(build/include)
@@ -41,7 +41,7 @@ namespace diagnostics {
 
 // Integrates together all pieces which implement separate IPC services exposed
 // by the wilco_dtc_supportd daemon and IPC clients.
-class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
+class WilcoDtcSupportdCore final : public DBusService::Delegate,
                                    public GrpcService::Delegate,
                                    public MojoService::Delegate,
                                    public chromeos::wilco_dtc_supportd::mojom::
@@ -155,7 +155,7 @@ class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
   using MojomWilcoDtcSupportdServiceRequest =
       chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceRequest;
 
-  // WilcoDtcSupportdDBusService::Delegate overrides:
+  // DBusService::Delegate overrides:
   bool StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
                                std::string* error_message) override;
 
@@ -247,7 +247,7 @@ class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
 
   // Implementation of the D-Bus interface exposed by the wilco_dtc_supportd
   // daemon.
-  WilcoDtcSupportdDBusService dbus_service_{this /* delegate */};
+  DBusService dbus_service_{this /* delegate */};
   // Connects |dbus_service_| with the methods of the D-Bus object exposed by
   // the wilco_dtc_supportd daemon.
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;

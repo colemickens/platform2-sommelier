@@ -35,10 +35,10 @@ This daemon uses three IPC mechanisms:
      |       (connects `MojoService` with the actual Mojo pipe)
      |
      |   // D-Bus-related members:
-     +-> `WilcoDtcSupportdDBusService`
+     +-> `DBusService`
      |       (handles incoming D-Bus requests)
      +-> `brillo::dbus_utils::DBusObject`
-             (connects `WilcoDtcSupportdDBusService` with the actual D-Bus pipe)
+             (connects `DBusService` with the actual D-Bus pipe)
 
 Classes are generally organized such that they don't know about their owners or
 siblings in this graph. Instead, these classes are parameterized with

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_dbus_service.h"
+#include "diagnostics/wilco_dtc_supportd/dbus_service.h"
 
 #include <unistd.h>
 #include <utility>
@@ -15,15 +15,14 @@
 
 namespace diagnostics {
 
-WilcoDtcSupportdDBusService::WilcoDtcSupportdDBusService(Delegate* delegate)
-    : delegate_(delegate) {
+DBusService::DBusService(Delegate* delegate) : delegate_(delegate) {
   DCHECK(delegate_);
 }
 
-WilcoDtcSupportdDBusService::~WilcoDtcSupportdDBusService() = default;
+DBusService::~DBusService() = default;
 
-bool WilcoDtcSupportdDBusService::BootstrapMojoConnection(
-    brillo::ErrorPtr* error, const base::ScopedFD& mojo_fd) {
+bool DBusService::BootstrapMojoConnection(brillo::ErrorPtr* error,
+                                          const base::ScopedFD& mojo_fd) {
   VLOG(0) << "Received BootstrapMojoConnection D-Bus request";
   std::string error_message;
   if (!DoBootstrapMojoConnection(mojo_fd, &error_message)) {
@@ -34,8 +33,8 @@ bool WilcoDtcSupportdDBusService::BootstrapMojoConnection(
   return true;
 }
 
-bool WilcoDtcSupportdDBusService::DoBootstrapMojoConnection(
-    const base::ScopedFD& mojo_fd, std::string* error_message) {
+bool DBusService::DoBootstrapMojoConnection(const base::ScopedFD& mojo_fd,
+                                            std::string* error_message) {
   if (!mojo_fd.is_valid()) {
     LOG(ERROR) << "Invalid Mojo file descriptor";
     *error_message = "Invalid file descriptor";

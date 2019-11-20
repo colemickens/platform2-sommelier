@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_DBUS_SERVICE_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_DBUS_SERVICE_H_
+#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_DBUS_SERVICE_H_
+#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_DBUS_SERVICE_H_
 
 #include <string>
 
@@ -18,7 +18,7 @@ namespace diagnostics {
 // Implements the "org.chromium.WilcoDtcSupportdInterface" D-Bus interface
 // exposed by the wilco_dtc_supportd daemon (see constants for the API methods
 // at src/platform/system_api/dbus/wilco_dtc_supportd/dbus-constants.h).
-class WilcoDtcSupportdDBusService final {
+class DBusService final {
  public:
   class Delegate {
    public:
@@ -37,8 +37,8 @@ class WilcoDtcSupportdDBusService final {
                                          std::string* error_message) = 0;
   };
 
-  explicit WilcoDtcSupportdDBusService(Delegate* delegate);
-  ~WilcoDtcSupportdDBusService();
+  explicit DBusService(Delegate* delegate);
+  ~DBusService();
 
   // Implementation of the "org.chromium.WilcoDtcSupportdInterface" D-Bus
   // interface:
@@ -54,9 +54,9 @@ class WilcoDtcSupportdDBusService final {
   // Unowned. The delegate should outlive this instance.
   Delegate* const delegate_;
 
-  DISALLOW_COPY_AND_ASSIGN(WilcoDtcSupportdDBusService);
+  DISALLOW_COPY_AND_ASSIGN(DBusService);
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_DBUS_SERVICE_H_
+#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_DBUS_SERVICE_H_
