@@ -43,8 +43,8 @@ FakeWilcoDtc::~FakeWilcoDtc() {
   base::RunLoop run_loop;
   const base::Closure barrier_closure =
       BarrierClosure(2, run_loop.QuitClosure());
-  grpc_server_.Shutdown(barrier_closure);
-  wilco_dtc_supportd_grp_client_.Shutdown(barrier_closure);
+  grpc_server_.ShutDown(barrier_closure);
+  wilco_dtc_supportd_grp_client_.ShutDown(barrier_closure);
   run_loop.Run();
 }
 

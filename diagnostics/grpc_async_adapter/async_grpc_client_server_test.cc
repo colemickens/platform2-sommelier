@@ -197,16 +197,16 @@ class AsyncGrpcClientServerTest : public ::testing::Test {
   }
 
   // Create the second AsyncGrpcClient using the same socket, which has to be
-  // shutdown by ShutdownSecondClient.
+  // shutdown by ShutDownSecondClient.
   void CreateSecondClient() {
     client2_ = std::make_unique<AsyncGrpcClient<test_rpcs::ExampleService>>(
         message_loop_.task_runner(), GetDomainSocketAddress());
   }
 
   // Shutdown the second AsyncGrpcClient.
-  void ShutdownSecondClient() {
+  void ShutDownSecondClient() {
     base::RunLoop loop;
-    client2_->Shutdown(loop.QuitClosure());
+    client2_->ShutDown(loop.QuitClosure());
     loop.Run();
     // Explicitly delete client before server to avoid gRPC 1.6.1 "magic" 10
     // seconds hangs to delete grpc::CompletionQueue. It affects HeavyRpcData
@@ -216,16 +216,16 @@ class AsyncGrpcClientServerTest : public ::testing::Test {
   }
 
   void TearDown() override {
-    ShutdownClient();
-    ShutdownServer();
+    ShutDownClient();
+    ShutDownServer();
   }
 
  protected:
-  void ShutdownServer() {
+  void ShutDownServer() {
     if (!server_)
       return;
     base::RunLoop loop;
-    server_->Shutdown(loop.QuitClosure());
+    server_->ShutDown(loop.QuitClosure());
     loop.Run();
     server_.reset();
   }
@@ -249,9 +249,9 @@ class AsyncGrpcClientServerTest : public ::testing::Test {
  private:
   std::string GetDomainSocketAddress() { return "unix:" + tmpfile_.value(); }
 
-  void ShutdownClient() {
+  void ShutDownClient() {
     base::RunLoop loop;
-    client_->Shutdown(loop.QuitClosure());
+    client_->ShutDown(loop.QuitClosure());
     loop.Run();
     // Explicitly delete client before server to avoid gRPC 1.6.1 "magic" 10
     // seconds hangs to delete grpc::CompletionQueue. It affects HeavyRpcData
@@ -349,7 +349,7 @@ TEST_F(AsyncGrpcClientServerTest, OneRpcExplicitCancellation) {
 // Verify that the client gets an error reply.
 // Also implicitly verifies that shutting down the server when there's a pending
 // RPC does not e.g. hang or crash.
-TEST_F(AsyncGrpcClientServerTest, ShutdownWhileRpcIsPending) {
+TEST_F(AsyncGrpcClientServerTest, ShutDownWhileRpcIsPending) {
   RpcReply<test_rpcs::EmptyRpcResponse> rpc_reply;
   test_rpcs::EmptyRpcRequest request;
   client_->CallRpc(&test_rpcs::ExampleService::Stub::AsyncEmptyRpc, request,
@@ -357,7 +357,7 @@ TEST_F(AsyncGrpcClientServerTest, ShutdownWhileRpcIsPending) {
 
   pending_empty_rpcs_.WaitUntilPendingRpcCount(1);
   auto pending_empty_rpc = pending_empty_rpcs_.GetOldestPendingRpc();
-  ShutdownServer();
+  ShutDownServer();
 
   rpc_reply.Wait();
   EXPECT_TRUE(rpc_reply.IsError());
@@ -380,7 +380,7 @@ TEST_F(AsyncGrpcClientServerTest, SendResponseAfterInitiatingShutdown) {
   auto pending_empty_rpc = pending_empty_rpcs_.GetOldestPendingRpc();
 
   base::RunLoop loop;
-  server_->Shutdown(loop.QuitClosure());
+  server_->ShutDown(loop.QuitClosure());
   auto empty_rpc_response = std::make_unique<test_rpcs::EmptyRpcResponse>();
   pending_empty_rpc->handler_done_callback.Run(std::move(empty_rpc_response));
 
@@ -523,7 +523,7 @@ TEST_F(AsyncGrpcClientServerTest, TwoRpcClients) {
     EXPECT_FALSE(rpc_replies[i].IsError());
     EXPECT_EQ(i, rpc_replies[i].response().echoed_int());
   }
-  ShutdownSecondClient();
+  ShutDownSecondClient();
 }
 
 }  // namespace diagnostics

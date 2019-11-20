@@ -47,7 +47,7 @@ bool AsyncGrpcServerBase::Start() {
   return true;
 }
 
-void AsyncGrpcServerBase::Shutdown(const base::Closure& on_shutdown) {
+void AsyncGrpcServerBase::ShutDown(const base::Closure& on_shutdown) {
   CHECK_NE(state_, State::kShutDown);
   // Don't do anything if Start() was not called or it failed.
   if (state_ != State::kStarted || !server_) {

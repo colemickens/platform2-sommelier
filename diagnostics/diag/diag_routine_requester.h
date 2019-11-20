@@ -51,8 +51,8 @@ class DiagRoutineRequester final {
       bool include_output);
 
  private:
-  // Gracefully shut down the DiagAsyncGrpcClientAdapter.
-  void ShutdownClient();
+  // Gracefully shuts down the DiagAsyncGrpcClientAdapter.
+  void ShutDownClient();
 
   // Owned default implementation, used when no DiagAsyncGrpcClientAdapter
   // implementation is provided in the constructor.

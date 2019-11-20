@@ -37,7 +37,7 @@ DiagRoutineRequester::DiagRoutineRequester(DiagAsyncGrpcClientAdapter* client)
     : client_impl_(client) {}
 
 DiagRoutineRequester::~DiagRoutineRequester() {
-  ShutdownClient();
+  ShutDownClient();
 }
 
 void DiagRoutineRequester::Connect(const std::string& target_uri) {
@@ -114,9 +114,9 @@ DiagRoutineRequester::GetRoutineUpdate(
   return response;
 }
 
-void DiagRoutineRequester::ShutdownClient() {
+void DiagRoutineRequester::ShutDownClient() {
   base::RunLoop loop;
-  client_impl_->Shutdown(loop.QuitClosure());
+  client_impl_->ShutDown(loop.QuitClosure());
   loop.Run();
 }
 

@@ -29,9 +29,9 @@ void DiagAsyncGrpcClientAdapterImpl::Connect(const std::string& target_uri) {
   VLOG(0) << "Created gRPC wilco_dtc_supportd client on " << target_uri;
 }
 
-void DiagAsyncGrpcClientAdapterImpl::Shutdown(
-    const base::Closure& on_shutdown) {
-  client_->Shutdown(on_shutdown);
+void DiagAsyncGrpcClientAdapterImpl::ShutDown(
+    const base::Closure& on_shutdown_callback) {
+  client_->ShutDown(on_shutdown_callback);
 }
 
 void DiagAsyncGrpcClientAdapterImpl::GetAvailableRoutines(

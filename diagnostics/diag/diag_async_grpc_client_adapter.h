@@ -29,9 +29,9 @@ class DiagAsyncGrpcClientAdapter {
   // lasts for the lifetime of the DiagAsyncGrpcClientAdapter.
   virtual void Connect(const std::string& target_uri) = 0;
 
-  // Gracefully shutdown the connection to the wilco_dtc_supportd
+  // Gracefully shuts down the connection to the wilco_dtc_supportd
   // daemon.
-  virtual void Shutdown(const base::Closure& on_shutdown) = 0;
+  virtual void ShutDown(const base::Closure& on_shutdown_callback) = 0;
 
   // Retrieve a list of routines that the platform supports.
   virtual void GetAvailableRoutines(

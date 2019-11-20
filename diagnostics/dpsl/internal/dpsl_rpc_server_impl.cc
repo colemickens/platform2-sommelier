@@ -79,7 +79,7 @@ DpslRpcServerImpl::~DpslRpcServerImpl() {
   CHECK(sequence_checker_.CalledOnValidSequence());
 
   base::RunLoop run_loop;
-  async_grpc_server_.Shutdown(run_loop.QuitClosure());
+  async_grpc_server_.ShutDown(run_loop.QuitClosure());
   run_loop.Run();
 }
 

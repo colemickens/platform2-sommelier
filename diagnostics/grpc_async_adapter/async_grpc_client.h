@@ -39,8 +39,8 @@ class AsyncGrpcClientBase {
   virtual ~AsyncGrpcClientBase();
 
   // Shuts down this client. This instance may only be destroyed after
-  // |on_shutdown| has been called.
-  void Shutdown(const base::Closure& on_shutdown);
+  // |on_shutdown_callback| has been called.
+  void ShutDown(const base::Closure& on_shutdown_callback);
 
  protected:
   GrpcCompletionQueueDispatcher* dispatcher() { return &dispatcher_; }

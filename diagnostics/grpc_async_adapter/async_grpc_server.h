@@ -56,7 +56,7 @@ class AsyncGrpcServerBase {
   // optional but allowed (|on_shutdown_| will be called immediately in this
   // case).
   // This function must not be called twice.
-  void Shutdown(const base::Closure& on_shutdown);
+  void ShutDown(const base::Closure& on_shutdown);
 
  protected:
   // Returns the grpc::Service instance this server is exposing.

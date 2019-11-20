@@ -23,7 +23,7 @@ class DiagAsyncGrpcClientAdapterImpl final : public DiagAsyncGrpcClientAdapter {
   ~DiagAsyncGrpcClientAdapterImpl() override;
   bool IsConnected() const override;
   void Connect(const std::string& target_uri) override;
-  void Shutdown(const base::Closure& on_shutdown) override;
+  void ShutDown(const base::Closure& on_shutdown_callback) override;
   void GetAvailableRoutines(
       const grpc_api::GetAvailableRoutinesRequest& request,
       base::Callback<void(

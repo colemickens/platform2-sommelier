@@ -48,7 +48,7 @@ class MockDiagAsyncGrpcClientAdapter : public DiagAsyncGrpcClientAdapter {
   void Connect(const std::string& target_uri) override {}
 
   MOCK_METHOD(bool, IsConnected, (), (const, override));
-  MOCK_METHOD(void, Shutdown, (const base::Closure&), (override));
+  MOCK_METHOD(void, ShutDown, (const base::Closure&), (override));
   MOCK_METHOD(void,
               GetAvailableRoutines,
               (const grpc_api::GetAvailableRoutinesRequest&,
@@ -98,7 +98,7 @@ grpc_api::RunRoutineRequest ConstructRunUrandomRoutineRequest(
 class DiagRoutineRequesterTest : public ::testing::Test {
  protected:
   DiagRoutineRequesterTest() {
-    EXPECT_CALL(mock_adapter_, Shutdown(_))
+    EXPECT_CALL(mock_adapter_, ShutDown(_))
         .WillOnce(Invoke(
             [](const base::Closure& on_shutdown) { on_shutdown.Run(); }));
   }

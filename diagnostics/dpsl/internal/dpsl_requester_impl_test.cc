@@ -367,7 +367,7 @@ class TestDsplMultiRequesterServer {
 
   ~TestDsplMultiRequesterServer() {
     base::RunLoop run_loop;
-    async_grpc_server_.Shutdown(run_loop.QuitClosure());
+    async_grpc_server_.ShutDown(run_loop.QuitClosure());
     run_loop.Run();
   }
 
@@ -545,7 +545,7 @@ class TestDsplRequesterServer {
 
   ~TestDsplRequesterServer() {
     base::RunLoop run_loop;
-    async_grpc_server_.Shutdown(run_loop.QuitClosure());
+    async_grpc_server_.ShutDown(run_loop.QuitClosure());
     run_loop.Run();
   }
 

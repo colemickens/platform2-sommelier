@@ -52,7 +52,7 @@ DpslRequesterImpl::~DpslRequesterImpl() {
   // library destroys DpslRequesterImpl from a task running on the current
   // message loop.
   base::RunLoop run_loop;
-  async_grpc_client_.Shutdown(run_loop.QuitClosure());
+  async_grpc_client_.ShutDown(run_loop.QuitClosure());
   run_loop.Run();
 }
 

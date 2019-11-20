@@ -63,7 +63,7 @@ class AsyncGrpcServerTest : public ::testing::Test {
  private:
   void BlockingShutdownServer() {
     base::RunLoop loop;
-    server_->Shutdown(loop.QuitClosure());
+    server_->ShutDown(loop.QuitClosure());
     loop.Run();
   }
 
@@ -81,7 +81,7 @@ TEST_F(AsyncGrpcServerTest, Basic) {
   EXPECT_TRUE(server()->Start());
 }
 
-// Test that the server may be destroyed without using Shutdown() when the
+// Test that the server may be destroyed without using ShutDown() when the
 // server has not been started.
 TEST_F(AsyncGrpcServerTest, SkippingShutdownWhenNotStarted) {
   CreateServer(MakeGrpcUri(GetTempPath().AppendASCII("testing_socket")));
@@ -97,7 +97,7 @@ TEST_F(AsyncGrpcServerTest, ErrorUnavailablePath) {
   EXPECT_FALSE(server()->Start());
 }
 
-// Test that the server may be destroyed without using Shutdown() when the
+// Test that the server may be destroyed without using ShutDown() when the
 // server startup failed (the failure is the same as in the ErrorUnavailablePath
 // test).
 TEST_F(AsyncGrpcServerTest, ErrorUnavailablePathSkippingShutdown) {

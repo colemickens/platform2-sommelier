@@ -17,8 +17,8 @@ AsyncGrpcClientBase::AsyncGrpcClientBase(
 
 AsyncGrpcClientBase::~AsyncGrpcClientBase() = default;
 
-void AsyncGrpcClientBase::Shutdown(const base::Closure& on_shutdown) {
-  dispatcher_.Shutdown(on_shutdown);
+void AsyncGrpcClientBase::ShutDown(const base::Closure& on_shutdown_callback) {
+  dispatcher_.Shutdown(on_shutdown_callback);
 }
 
 // static

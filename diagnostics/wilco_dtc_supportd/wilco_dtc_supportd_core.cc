@@ -216,9 +216,9 @@ void WilcoDtcSupportdCore::ShutDown(const base::Closure& on_shutdown_callback) {
   const base::Closure barrier_closure =
       BarrierClosure(wilco_dtc_grpc_clients_.size() + 2, on_shutdown_callback);
   ec_event_service_->ShutDown(barrier_closure);
-  grpc_server_.Shutdown(barrier_closure);
+  grpc_server_.ShutDown(barrier_closure);
   for (const auto& client : wilco_dtc_grpc_clients_) {
-    client->Shutdown(barrier_closure);
+    client->ShutDown(barrier_closure);
   }
   ui_message_receiver_wilco_dtc_grpc_client_ = nullptr;
 
