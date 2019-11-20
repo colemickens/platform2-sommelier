@@ -12,20 +12,6 @@
 
 namespace {
 
-// Returns true if the connection state corresponds to a network with full or
-// partial connectivity where layer 3 has been provisioned. This includes all
-// portal states (Portal, RedirectFound, PortalSuspected), the validated state
-// (Online), and intermediary states where portal detection has not started or
-// not been conclusive yet (Ready, NoConnectivity).
-bool IsConnectedState(const std::string& connection_state) {
-  return connection_state == shill::kStateOnline ||
-         connection_state == shill::kStateReady ||
-         connection_state == shill::kStatePortal ||
-         connection_state == shill::kStateNoConnectivity ||
-         connection_state == shill::kStateRedirectFound ||
-         connection_state == shill::kStatePortalSuspected;
-}
-
 std::set<std::string> GetDevices(const brillo::Any& property_value) {
   std::set<std::string> devices;
   for (const auto& path :
@@ -91,14 +77,13 @@ std::string ShillClient::GetDefaultInterface() {
     return "";
   }
 
-  it = service_props.find(shill::kStateProperty);
+  it = service_props.find(shill::kIsConnectedProperty);
   if (it == service_props.end()) {
-    LOG(WARNING) << "Service properties is missing state";
+    LOG(WARNING) << "Service properties is missing \"IsConnected\"";
     return "";
   }
-  std::string state = it->second.TryGet<std::string>();
-  if (!IsConnectedState(state)) {
-    LOG(INFO) << "Ignoring non-connected service in state " << state;
+  if (!it->second.TryGet<bool>()) {
+    LOG(INFO) << "Ignoring non-connected service";
     return "";
   }
 
