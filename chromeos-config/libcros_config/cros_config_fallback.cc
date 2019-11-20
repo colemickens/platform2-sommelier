@@ -29,6 +29,7 @@ struct CommandMapEntry {
 
 constexpr CommandMapEntry kCommandMap[] = {
   {"/firmware", "image-name", "mosys platform model"},
+  {"/", "name", "mosys platform model"},
   {"/", "brand-code", "mosys platform brand"},
   {"/identity", "sku-id", "mosys platform sku"},
   {"/identity", "platform-name", "mosys platform name"}};
