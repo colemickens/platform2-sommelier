@@ -22,6 +22,7 @@
 
 #include "diagnostics/grpc_async_adapter/async_grpc_client.h"
 #include "diagnostics/grpc_async_adapter/async_grpc_server.h"
+#include "diagnostics/wilco_dtc_supportd/routine_service.h"
 #include "diagnostics/wilco_dtc_supportd/system/bluetooth_client.h"
 #include "diagnostics/wilco_dtc_supportd/system/debugd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/system/powerd_adapter.h"
@@ -31,7 +32,6 @@
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_dbus_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_grpc_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_mojo_service.h"
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_routine_service.h"
 
 #include "mojo/wilco_dtc_supportd.mojom.h"
 #include "wilco_dtc.grpc.pb.h"           // NOLINT(build/include)
@@ -287,7 +287,7 @@ class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
 
   // Implementation of the diagnostic routine interface exposed by the
   // wilco_dtc_supportd daemon.
-  WilcoDtcSupportdRoutineService routine_service_;
+  RoutineService routine_service_;
 
   DISALLOW_COPY_AND_ASSIGN(WilcoDtcSupportdCore);
 };

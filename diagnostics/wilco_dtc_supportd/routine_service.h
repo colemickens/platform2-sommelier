@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_ROUTINE_SERVICE_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_ROUTINE_SERVICE_H_
+#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_ROUTINE_SERVICE_H_
+#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_ROUTINE_SERVICE_H_
 
 #include <map>
 #include <memory>
@@ -22,7 +22,7 @@ namespace diagnostics {
 
 // The routine service is responsible for creating and managing diagnostic
 // routines.
-class WilcoDtcSupportdRoutineService final {
+class RoutineService final {
  public:
   using GetAvailableRoutinesToServiceCallback = base::Callback<void(
       const std::vector<grpc_api::DiagnosticRoutine>& routines)>;
@@ -36,10 +36,9 @@ class WilcoDtcSupportdRoutineService final {
                           const std::string& output,
                           const std::string& status_message)>;
 
-  WilcoDtcSupportdRoutineService();
-  explicit WilcoDtcSupportdRoutineService(
-      WilcoDtcSupportdRoutineFactory* routine_factory);
-  ~WilcoDtcSupportdRoutineService();
+  RoutineService();
+  explicit RoutineService(WilcoDtcSupportdRoutineFactory* routine_factory);
+  ~RoutineService();
 
   void GetAvailableRoutines(
       const GetAvailableRoutinesToServiceCallback& callback);
@@ -66,9 +65,9 @@ class WilcoDtcSupportdRoutineService final {
       grpc_api::ROUTINE_BATTERY, grpc_api::ROUTINE_BATTERY_SYSFS,
       grpc_api::ROUTINE_SMARTCTL_CHECK, grpc_api::ROUTINE_URANDOM};
 
-  DISALLOW_COPY_AND_ASSIGN(WilcoDtcSupportdRoutineService);
+  DISALLOW_COPY_AND_ASSIGN(RoutineService);
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_ROUTINE_SERVICE_H_
+#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_ROUTINE_SERVICE_H_

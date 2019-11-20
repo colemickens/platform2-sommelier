@@ -13,7 +13,7 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/wilco_dtc_supportd/fake_wilco_dtc_supportd_routine_factory.h"
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_routine_service.h"
+#include "diagnostics/wilco_dtc_supportd/routine_service.h"
 
 using testing::ElementsAreArray;
 
@@ -61,12 +61,12 @@ void SaveGetRoutineUpdateResponse(
   callback.Run();
 }
 
-// Tests for the WilcoDtcSupportdRoutineService class.
-class WilcoDtcSupportdRoutineServiceTest : public testing::Test {
+// Tests for the RoutineService class.
+class RoutineServiceTest : public testing::Test {
  protected:
-  WilcoDtcSupportdRoutineServiceTest() = default;
+  RoutineServiceTest() = default;
 
-  WilcoDtcSupportdRoutineService* service() { return &service_; }
+  RoutineService* service() { return &service_; }
 
   void SetAvailableRoutines() {
     std::vector<grpc_api::DiagnosticRoutine> routines_to_add;
@@ -110,11 +110,11 @@ class WilcoDtcSupportdRoutineServiceTest : public testing::Test {
  private:
   base::MessageLoop message_loop_;
   FakeWilcoDtcSupportdRoutineFactory routine_factory_;
-  WilcoDtcSupportdRoutineService service_{&routine_factory_};
+  RoutineService service_{&routine_factory_};
 };
 
 // Test that GetAvailableRoutines returns the expected list of routines.
-TEST_F(WilcoDtcSupportdRoutineServiceTest, GetAvailableRoutines) {
+TEST_F(RoutineServiceTest, GetAvailableRoutines) {
   SetAvailableRoutines();
   auto reply = ExecuteGetAvailableRoutines();
   EXPECT_THAT(reply, ElementsAreArray(kAvailableRoutines));
@@ -122,7 +122,7 @@ TEST_F(WilcoDtcSupportdRoutineServiceTest, GetAvailableRoutines) {
 
 // Test that getting the status of a routine that doesn't exist returns an
 // error.
-TEST_F(WilcoDtcSupportdRoutineServiceTest, BadRoutineStatus) {
+TEST_F(RoutineServiceTest, BadRoutineStatus) {
   auto response = ExecuteGetRoutineUpdate(
       0 /* uuid */, grpc_api::GetRoutineUpdateRequest::GET_STATUS,
       false /* include_output */);
@@ -131,13 +131,13 @@ TEST_F(WilcoDtcSupportdRoutineServiceTest, BadRoutineStatus) {
 }
 
 // Test that a routine can be run.
-TEST_F(WilcoDtcSupportdRoutineServiceTest, RunRoutine) {
+TEST_F(RoutineServiceTest, RunRoutine) {
   auto response = ExecuteRunRoutine();
   EXPECT_EQ(response.status(), grpc_api::ROUTINE_STATUS_RUNNING);
 }
 
 // Test that after a routine has started, we can access its data.
-TEST_F(WilcoDtcSupportdRoutineServiceTest, AccessRunningRoutine) {
+TEST_F(RoutineServiceTest, AccessRunningRoutine) {
   auto run_routine_response = ExecuteRunRoutine();
   auto update_response =
       ExecuteGetRoutineUpdate(run_routine_response.uuid(),
@@ -147,7 +147,7 @@ TEST_F(WilcoDtcSupportdRoutineServiceTest, AccessRunningRoutine) {
 }
 
 // Test that after a routine has been removed, we cannot access its data.
-TEST_F(WilcoDtcSupportdRoutineServiceTest, AccessStoppedRoutine) {
+TEST_F(RoutineServiceTest, AccessStoppedRoutine) {
   auto run_routine_response = ExecuteRunRoutine();
   ExecuteGetRoutineUpdate(run_routine_response.uuid(),
                           grpc_api::GetRoutineUpdateRequest::REMOVE,

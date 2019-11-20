@@ -2,38 +2,36 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_routine_service.h"
+#include "diagnostics/wilco_dtc_supportd/routine_service.h"
 
 #include <iterator>
 #include <utility>
 
 namespace diagnostics {
 
-WilcoDtcSupportdRoutineService::WilcoDtcSupportdRoutineService() {
+RoutineService::RoutineService() {
   routine_factory_impl_ =
       std::make_unique<WilcoDtcSupportdRoutineFactoryImpl>();
   routine_factory_ = routine_factory_impl_.get();
 }
 
-WilcoDtcSupportdRoutineService::WilcoDtcSupportdRoutineService(
-    WilcoDtcSupportdRoutineFactory* routine_factory)
+RoutineService::RoutineService(WilcoDtcSupportdRoutineFactory* routine_factory)
     : routine_factory_(routine_factory) {}
 
-WilcoDtcSupportdRoutineService::~WilcoDtcSupportdRoutineService() = default;
+RoutineService::~RoutineService() = default;
 
-void WilcoDtcSupportdRoutineService::GetAvailableRoutines(
+void RoutineService::GetAvailableRoutines(
     const GetAvailableRoutinesToServiceCallback& callback) {
   callback.Run(available_routines_);
 }
 
-void WilcoDtcSupportdRoutineService::SetAvailableRoutinesForTesting(
+void RoutineService::SetAvailableRoutinesForTesting(
     const std::vector<grpc_api::DiagnosticRoutine>& available_routines) {
   available_routines_ = available_routines;
 }
 
-void WilcoDtcSupportdRoutineService::RunRoutine(
-    const grpc_api::RunRoutineRequest& request,
-    const RunRoutineToServiceCallback& callback) {
+void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
+                                const RunRoutineToServiceCallback& callback) {
   auto new_routine = routine_factory_->CreateRoutine(request);
 
   if (!new_routine) {
@@ -50,7 +48,7 @@ void WilcoDtcSupportdRoutineService::RunRoutine(
   callback.Run(uuid, active_routines_[uuid]->GetStatus());
 }
 
-void WilcoDtcSupportdRoutineService::GetRoutineUpdate(
+void RoutineService::GetRoutineUpdate(
     int uuid,
     grpc_api::GetRoutineUpdateRequest::Command command,
     bool include_output,
