@@ -61,12 +61,12 @@ class VISIBILITY_PUBLIC ImageBufferPool : public BufferPool<ImageBufferHandle> {
                                                  MUINT32 height,
                                                  EImageFormat format,
                                                  MUINT32 usage,
-                                                 MBOOL singleBuffer = MTRUE);
+                                                 MBOOL singleBuffer = MFALSE);
   static std::shared_ptr<ImageBufferPool> create(const char* name,
                                                  const MSize& size,
                                                  EImageFormat format,
                                                  MUINT32 usage,
-                                                 MBOOL singleBuffer = MTRUE);
+                                                 MBOOL singleBuffer = MFALSE);
   static MVOID destroy(std::shared_ptr<ImageBufferPool>* pool);
   virtual ~ImageBufferPool();
 

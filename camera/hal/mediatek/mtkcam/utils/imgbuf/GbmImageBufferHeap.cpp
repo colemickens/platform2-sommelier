@@ -17,7 +17,9 @@
 #define LOG_TAG "MtkCam/GrallocHeap"
 //
 #include "BaseImageBufferHeap.h"
+#include <camera_buffer_handle.h>
 #include <cros-camera/camera_buffer_manager.h>
+#include <linux/videodev2.h>
 #include <memory>
 #include <mtkcam/utils/imgbuf/IGbmImageBufferHeap.h>
 #include <vector>
@@ -62,11 +64,7 @@ class GbmImageBufferHeap
   //  Definitions.
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  protected:
-  struct MyBufInfo : public BufInfo {
-    size_t u4Offset;
-    MyBufInfo() : BufInfo(), u4Offset(0) {}
-  };
-  typedef std::vector<std::shared_ptr<MyBufInfo> > MyBufInfoVect_t;
+  typedef std::vector<std::shared_ptr<BufInfo> > MyBufInfoVect_t;
 
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   //  Implementations.
@@ -154,8 +152,8 @@ GbmImageBufferHeap::~GbmImageBufferHeap() {
 MBOOL
 GbmImageBufferHeap::impInit(BufInfoVect_t const& rvBufInfo) {
   bool ret = MFALSE;
-  buffer_handle_t handle;
   uint32_t stride = 0;
+  size_t allocateSize = 0;
   int err;
 
   MY_LOGD("[w,h]=[%d,%d],format=%x", mImgSize.w, mImgSize.h, mImgFormat);
@@ -163,89 +161,79 @@ GbmImageBufferHeap::impInit(BufInfoVect_t const& rvBufInfo) {
   mGbmBufferManager = cros::CameraBufferManager::GetInstance();
   if (mGbmBufferManager == nullptr) {
     MY_LOGE("GetInstance failed!");
+    return false;
   }
+
+  for (int i = 0; i < getPlaneCount(); i++) {
+    allocateSize += helpQueryBufSizeInBytes(i, mBufStridesInBytesToAlloc[i]);
+  }
+  MY_LOGD("allocateSize = %zu", allocateSize);
 
   mvHeapInfo.reserve(getPlaneCount());
   mvBufInfo.reserve(getPlaneCount());
-  for (int i = 0; i < getPlaneCount(); i++) {
-    std::shared_ptr<MyBufInfo> pBufInfo =
-        std::shared_ptr<MyBufInfo>(new MyBufInfo);
-    if (pBufInfo == nullptr) {
-      MY_LOGE("create fail");
-      return false;
-    }
-    mvBufInfo.push_back(pBufInfo);
-    pBufInfo->stridesInBytes = mBufStridesInBytesToAlloc[i];
-    pBufInfo->sizeInBytes =
-        helpQueryBufSizeInBytes(i, mBufStridesInBytesToAlloc[i]);
-    pBufInfo->u4Offset = pBufInfo->sizeInBytes;
-    rvBufInfo[i]->stridesInBytes = pBufInfo->stridesInBytes;
-    rvBufInfo[i]->sizeInBytes = pBufInfo->sizeInBytes;
-    mBufsize += pBufInfo->sizeInBytes;
-  }
 
-  MY_LOGD(" mBufsize = %d", mBufsize);
-  size_t offset = 0;
   for (int i = 0; i < getPlaneCount(); i++) {
-    mvBufInfo[i]->u4Offset = offset;
-    offset += mvBufInfo[i]->sizeInBytes;
+    auto pHeapInfo = std::make_shared<HeapInfo>();
+    mvHeapInfo.push_back(pHeapInfo);
+
+    auto pBufInfo = std::make_shared<BufInfo>();
+    mvBufInfo.push_back(pBufInfo);
   }
 
   if (mImgFormat == eImgFmt_NV12) {
-    // jpeg encode uses buffer handle, so need alloc nv12
-    err = mGbmBufferManager->Allocate(
-        mImgSize.w, mImgSize.h, HAL_PIXEL_FORMAT_YCbCr_420_888,
-        GRALLOC_USAGE_HW_CAMERA_WRITE, cros::GRALLOC, &handle, &stride);
-    // stride get from gbm is not the same with the param, need update it
-    mBufStridesInBytesToAlloc[0] = mGbmBufferManager->GetPlaneStride(handle, 0);
-    mBufStridesInBytesToAlloc[1] = mGbmBufferManager->GetPlaneStride(handle, 1);
-
-    for (int i = 0; i < getPlaneCount(); i++) {
-      std::shared_ptr<MyBufInfo> pBufInfo =
-          std::shared_ptr<MyBufInfo>(new MyBufInfo);
-      if (pBufInfo == nullptr) {
-        MY_LOGE("create fail");
-        return false;
-      }
-      mvBufInfo.push_back(pBufInfo);
-      pBufInfo->stridesInBytes = mBufStridesInBytesToAlloc[i];
-      pBufInfo->sizeInBytes =
-          helpQueryBufSizeInBytes(i, mBufStridesInBytesToAlloc[i]);
-      pBufInfo->u4Offset = pBufInfo->sizeInBytes;
-      rvBufInfo[i]->stridesInBytes = pBufInfo->stridesInBytes;
-      rvBufInfo[i]->sizeInBytes = pBufInfo->sizeInBytes;
-      mBufsize += pBufInfo->sizeInBytes;
-    }
-
-    MY_LOGD("mBufsize = %d", mBufsize);
-    size_t offset = 0;
-    for (int i = 0; i < getPlaneCount(); i++) {
-      mvBufInfo[i]->u4Offset = offset;
-      offset += mvBufInfo[i]->sizeInBytes;
-    }
-  } else {
-    err = mGbmBufferManager->Allocate(mBufsize, 1, HAL_PIXEL_FORMAT_BLOB,
+    uint32_t halformat = HAL_PIXEL_FORMAT_YCbCr_420_888;
+    err = mGbmBufferManager->Allocate(mImgSize.w, mImgSize.h, halformat,
                                       GRALLOC_USAGE_HW_CAMERA_WRITE,
-                                      cros::GRALLOC, &handle, &stride);
-  }
-
-  if (err != 0) {
-    MY_LOGE("Allocate handle failed! %d", ret);
-    goto lbExit;
-  }
-  mpHwBuffer = handle;
-
-  for (MUINT32 i = 0; i < getPlaneCount(); i++) {
-    std::shared_ptr<HeapInfo> pHeapInfo = std::make_shared<HeapInfo>();
-    if (pHeapInfo == nullptr) {
-      MY_LOGE("create fail");
+                                      cros::GRALLOC, &mpHwBuffer, &stride);
+    if (err != 0) {
+      MY_LOGE("Allocate handle failed! %d", ret);
       return false;
     }
-    mvHeapInfo.push_back(pHeapInfo);
-    pHeapInfo->heapID = handle->data[i];
+
+    for (int i = 0; i < getPlaneCount(); i++) {
+      mvHeapInfo[i]->heapID = mpHwBuffer->data[i];
+      mBufStridesInBytesToAlloc[i] =
+          mGbmBufferManager->GetPlaneStride(mpHwBuffer, i);
+      mvBufInfo[i]->stridesInBytes =
+          mGbmBufferManager->GetPlaneStride(mpHwBuffer, i);
+      mvBufInfo[i]->sizeInBytes =
+          mGbmBufferManager->GetPlaneSize(mpHwBuffer, i);
+      mvBufInfo[i]->offsetInBytes =
+          mGbmBufferManager->GetPlaneOffset(mpHwBuffer, i);
+
+      mBufsize += mvBufInfo[i]->sizeInBytes;
+    }
+  } else {
+    err = mGbmBufferManager->Allocate(allocateSize, 1, HAL_PIXEL_FORMAT_BLOB,
+                                      GRALLOC_USAGE_HW_CAMERA_WRITE,
+                                      cros::GRALLOC, &mpHwBuffer, &stride);
+    if (err != 0) {
+      MY_LOGE("Allocate handle failed! %d", ret);
+      return false;
+    }
+
+    off_t offset = 0;
+    for (int i = 0; i < getPlaneCount(); i++) {
+      mvHeapInfo[i]->heapID = mpHwBuffer->data[0];
+      mvBufInfo[i]->stridesInBytes = mBufStridesInBytesToAlloc[i];
+      mvBufInfo[i]->sizeInBytes =
+          helpQueryBufSizeInBytes(i, mBufStridesInBytesToAlloc[i]);
+      mvBufInfo[i]->offsetInBytes = offset;
+      offset += mvBufInfo[i]->sizeInBytes;
+
+      mBufsize += mvBufInfo[i]->sizeInBytes;
+    }
   }
+
+  for (int i = 0; i < getPlaneCount(); i++) {
+    rvBufInfo[i]->stridesInBytes = mvBufInfo[i]->stridesInBytes;
+    rvBufInfo[i]->sizeInBytes = mvBufInfo[i]->sizeInBytes;
+    rvBufInfo[i]->offsetInBytes = mvBufInfo[i]->offsetInBytes;
+  }
+
+  MY_LOGD("mBufsize = %zu", mBufsize);
   ret = MTRUE;
-lbExit:
+
   if (!ret) {
     doDeallocGB();
     mvHeapInfo.clear();
@@ -290,48 +278,65 @@ MBOOL
 GbmImageBufferHeap::impLockBuf(char const* szCallerName,
                                MINT usage,
                                BufInfoVect_t const& rvBufInfo) {
-  MERROR status = OK;
-  void* data = nullptr;
-  struct android_ycbcr ycbcr;
-  int err;
+  int v4l2Fmt = mGbmBufferManager->GetV4L2PixelFormat(mpHwBuffer);
+  uint32_t planeNum = mGbmBufferManager->GetNumPlanes(mpHwBuffer);
+  int ret = 0;
 
-  if (mImgFormat == eImgFmt_NV12) {
-    err =
-        mGbmBufferManager->LockYCbCr(mpHwBuffer, 0, 0, 0, mBufsize, 1, &ycbcr);
-    if (err) {
+  if (planeNum == 1) {
+    void* data = nullptr;
+    ret = (mImgFormat == HAL_PIXEL_FORMAT_BLOB)
+              ? mGbmBufferManager->Lock(mpHwBuffer, 0, 0, 0,
+                                        mImgSize.w * mImgSize.h, 1, &data)
+              : mGbmBufferManager->Lock(mpHwBuffer, 0, 0, 0, mImgSize.w,
+                                        mImgSize.h, &data);
+    if (ret) {
       MY_LOGE("@%s: call Lock fail, mHandle:%p", __FUNCTION__, mpHwBuffer);
+      return MFALSE;
     }
-
-    rvBufInfo[0]->va = (MINTPTR)ycbcr.y;
-    rvBufInfo[1]->va = (MINTPTR)ycbcr.cb;
+    //
+    MINTPTR va = reinterpret_cast<MINTPTR>(data);
+    for (size_t i = 0; i < mvBufInfo.size(); i++) {
+      rvBufInfo[i]->va = va;
+      va += mvBufInfo[i]->sizeInBytes;
+    }
+  } else if (planeNum > 1) {
+    struct android_ycbcr ycbrData;
+    ret = mGbmBufferManager->LockYCbCr(mpHwBuffer, 0, 0, 0, mImgSize.w,
+                                       mImgSize.h, &ycbrData);
+    if (ret) {
+      MY_LOGE("@%s: call LockYCbCr fail, mHandle:%p", __FUNCTION__, mpHwBuffer);
+      return MFALSE;
+    }
+    rvBufInfo[0]->va = reinterpret_cast<MINTPTR>(ycbrData.y);
+    if (planeNum == 2) {
+      switch (v4l2Fmt) {
+        case V4L2_PIX_FMT_NV12:
+        case V4L2_PIX_FMT_NV12M:
+          rvBufInfo[1]->va = reinterpret_cast<MINTPTR>(ycbrData.cb);
+          break;
+        default:
+          MY_LOGE("Unsupported semi-planar format: %s",
+                  FormatToString(v4l2Fmt).c_str());
+      }
+    } else {  // num_planes == 3
+      switch (v4l2Fmt) {
+        case V4L2_PIX_FMT_YVU420:
+        case V4L2_PIX_FMT_YVU420M:
+          rvBufInfo[1]->va = reinterpret_cast<MINTPTR>(ycbrData.cr);
+          rvBufInfo[2]->va = reinterpret_cast<MINTPTR>(ycbrData.cb);
+          break;
+        default:
+          MY_LOGE("Unsupported planar format: %s",
+                  FormatToString(v4l2Fmt).c_str());
+      }
+    }
   } else {
-    err = mGbmBufferManager->Lock(mpHwBuffer, 0, 0, 0, mBufsize, 1, &data);
-    if (err) {
-      MY_LOGE("@%s: call Lock fail, mHandle:%p", __FUNCTION__, mpHwBuffer);
-    }
-
-    uint32_t planeNum = getPlaneCount();
-
-    if (planeNum == 1) {
-      rvBufInfo[0]->va = (MINTPTR)data;
-    } else if (planeNum == 2) {
-      rvBufInfo[0]->va = (MINTPTR)data;
-      rvBufInfo[1]->va = (MINTPTR)data + (MINTPTR)mvBufInfo[1]->u4Offset;
-    } else if (planeNum == 3) {
-      rvBufInfo[0]->va = (MINTPTR)data;
-      rvBufInfo[1]->va = (MINTPTR)data + (MINTPTR)mvBufInfo[1]->u4Offset;
-      rvBufInfo[2]->va = (MINTPTR)data + (MINTPTR)mvBufInfo[2]->u4Offset;
-    } else {
-      MY_LOGE("ERROR @%s: planeNum is 0", __FUNCTION__);
-      return UNKNOWN_ERROR;
-    }
+    MY_LOGE("ERROR @%s: planeNum is 0", __FUNCTION__);
+    return MFALSE;
   }
+
   //
-
-  if (status != OK) {
-    impUnlockBuf(szCallerName, usage, rvBufInfo);
-  }
-  return status == OK;
+  return MTRUE;
 }
 
 /******************************************************************************

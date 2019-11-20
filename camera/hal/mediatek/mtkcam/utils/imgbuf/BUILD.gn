@@ -16,6 +16,7 @@ shared_library("libmtkcam_imgbuf") {
   include_dirs += [
     ".",
     "${mtk_root_path}/mtkcam/custom/common/hal/inc",
+    "../../../../../common",
   ]
   libs += [ "cbm" ]
   deps += [

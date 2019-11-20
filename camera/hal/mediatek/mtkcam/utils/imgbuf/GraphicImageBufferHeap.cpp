@@ -17,7 +17,9 @@
 #define LOG_TAG "MtkCam/GraphicImageBufferHeap"
 //
 #include "BaseImageBufferHeap.h"
+#include <camera_buffer_handle.h>
 #include <cros-camera/camera_buffer_manager.h>
+#include <linux/videodev2.h>
 #include <memory>
 #include <mtkcam/utils/gralloc/IGrallocHelper.h>
 #include <mtkcam/utils/imgbuf/IGraphicImageBufferHeap.h>
@@ -235,15 +237,17 @@ GraphicImageBufferHeap::impInit(BufInfoVect_t const& rvBufInfo) {
   for (int i = 0; i < getPlaneCount(); i++) {
     std::shared_ptr<MyHeapInfo> pHeapInfo = std::make_shared<MyHeapInfo>();
     mvHeapInfo.push_back(pHeapInfo);
-    pHeapInfo->heapID = getBufferHandle()->data[0];
+    pHeapInfo->heapID = getBufferHandle()->data[i];
     //
     std::shared_ptr<BufInfo> pBufInfo = std::make_shared<BufInfo>();
     mvBufInfo.push_back(pBufInfo);
     pBufInfo->stridesInBytes = staticInfo.planes[i].rowStrideInBytes;
     pBufInfo->sizeInBytes = staticInfo.planes[i].sizeInBytes;
+    pBufInfo->offsetInBytes = staticInfo.planes[i].offsetInBytes;
     //
     rvBufInfo[i]->stridesInBytes = pBufInfo->stridesInBytes;
     rvBufInfo[i]->sizeInBytes = pBufInfo->sizeInBytes;
+    rvBufInfo[i]->offsetInBytes = pBufInfo->offsetInBytes;
   }
   //
   return true;
@@ -266,10 +270,10 @@ MBOOL
 GraphicImageBufferHeap::impLockBuf(char const* szCallerName,
                                    int usage,
                                    BufInfoVect_t const& rvBufInfo) {
-  void* vaddr = NULL;
   cros::CameraBufferManager* bufManager =
       cros::CameraBufferManager::GetInstance();
-  uint32_t planeNum = getPlaneCount();
+  int v4l2Fmt = bufManager->GetV4L2PixelFormat(getBufferHandle());
+  uint32_t planeNum = bufManager->GetNumPlanes(getBufferHandle());
   int ret = 0;
 
   if (planeNum == 1) {
@@ -285,7 +289,12 @@ GraphicImageBufferHeap::impLockBuf(char const* szCallerName,
       MY_LOGE("@%s: call Lock fail, mHandle:%p", __FUNCTION__, mpBufferHandle);
       return MFALSE;
     }
-    vaddr = data;
+    //
+    MINTPTR va = reinterpret_cast<MINTPTR>(data);
+    for (size_t i = 0; i < mvBufInfo.size(); i++) {
+      rvBufInfo[i]->va = va;
+      va += mvBufInfo[i]->sizeInBytes;
+    }
   } else if (planeNum > 1) {
     struct android_ycbcr ycbrData;
     ret = bufManager->LockYCbCr(getBufferHandle(), 0, 0, 0, mBufferParams.width,
@@ -295,17 +304,34 @@ GraphicImageBufferHeap::impLockBuf(char const* szCallerName,
               getBufferHandle());
       return MFALSE;
     }
-    vaddr = ycbrData.y;
+    rvBufInfo[0]->va = reinterpret_cast<MINTPTR>(ycbrData.y);
+    if (planeNum == 2) {
+      switch (v4l2Fmt) {
+        case V4L2_PIX_FMT_NV12:
+        case V4L2_PIX_FMT_NV12M:
+          rvBufInfo[1]->va = reinterpret_cast<MINTPTR>(ycbrData.cb);
+          break;
+        default:
+          MY_LOGE("Unsupported semi-planar format: %s",
+                  FormatToString(v4l2Fmt).c_str());
+      }
+    } else {  // num_planes == 3
+      switch (v4l2Fmt) {
+        case V4L2_PIX_FMT_YVU420:
+        case V4L2_PIX_FMT_YVU420M:
+          rvBufInfo[1]->va = reinterpret_cast<MINTPTR>(ycbrData.cr);
+          rvBufInfo[2]->va = reinterpret_cast<MINTPTR>(ycbrData.cb);
+          break;
+        default:
+          MY_LOGE("Unsupported planar format: %s",
+                  FormatToString(v4l2Fmt).c_str());
+      }
+    }
   } else {
     MY_LOGE("ERROR @%s: planeNum is 0", __FUNCTION__);
     return MFALSE;
   }
 
-  MINTPTR va = reinterpret_cast<MINTPTR>(vaddr);
-  for (size_t i = 0; i < planeNum; i++) {
-    rvBufInfo[i]->va = va;
-    va += mvBufInfo[i]->sizeInBytes;
-  }
   //
   return MTRUE;
 }

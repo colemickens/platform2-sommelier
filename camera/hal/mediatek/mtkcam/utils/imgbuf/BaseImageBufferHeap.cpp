@@ -350,6 +350,21 @@ size_t BaseImageBufferHeap::getBufStridesInBytes(size_t index) const {
 }
 
 /******************************************************************************
+ * Buffer Strides in bytes; always legal.
+ ******************************************************************************/
+off_t BaseImageBufferHeap::getBufOffsetInBytes(size_t index) const {
+  if (index >= getPlaneCount()) {
+    MY_LOGE("Bad index(%zu) >= PlaneCount(%zu)", index, getPlaneCount());
+    return 0;
+  }
+  //
+  //
+  std::lock_guard<std::mutex> _l(mLockMtx);
+  //
+  return mvBufInfo[index]->offsetInBytes;
+}
+
+/******************************************************************************
  *
  ******************************************************************************/
 MBOOL

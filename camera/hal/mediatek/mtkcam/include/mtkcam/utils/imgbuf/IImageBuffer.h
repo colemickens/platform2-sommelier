@@ -474,6 +474,7 @@ class IImageBufferHeap {
    * Graphic buffer from grallocImageBufferHeap.
    */
   virtual void* getHWBuffer() = 0;
+
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   //  Buffer Operations.
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -560,6 +561,8 @@ class IImageBufferHeap {
    * Gbm buffer handle from gbmImageBufferHeap.
    */
   virtual buffer_handle_t getBufferHandle() const = 0;
+
+  virtual off_t getBufOffsetInBytes(size_t index) const = 0;
 };
 
 /******************************************************************************

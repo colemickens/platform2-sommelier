@@ -72,15 +72,19 @@ struct FormatInfo {
   std::string shortName;
 };
 
+static bool IS_MULTIPLANAR(uint32_t format) {
+  switch (format) {
+    case V4L2_PIX_FMT_NV12M:
+    case V4L2_PIX_FMT_YVU420M:
+      return true;
+    default:
+      return false;
+  }
+}
+
 static const FormatInfo Format_Mapper[] = {
     {NSCam::eImgFmt_YUY2, V4L2_PIX_FMT_YUYV, "V4L2_PIX_FMT_YUYV", "YUYV"},
-    {NSCam::eImgFmt_YVYU, V4L2_PIX_FMT_YVYU, "V4L2_PIX_FMT_YVYU", "YVYU"},
-    {NSCam::eImgFmt_UYVY, V4L2_PIX_FMT_UYVY, "V4L2_PIX_FMT_UYVY", "UYVY"},
-    {NSCam::eImgFmt_VYUY, V4L2_PIX_FMT_VYUY, "V4L2_PIX_FMT_VYUY", "VYUY"},
-    {NSCam::eImgFmt_NV12, V4L2_PIX_FMT_NV12, "V4L2_PIX_FMT_NV12", "NV12"},
-    {NSCam::eImgFmt_NV21, V4L2_PIX_FMT_NV21, "V4L2_PIX_FMT_NV21", "NV21"},
-    {NSCam::eImgFmt_NV16, V4L2_PIX_FMT_NV16, "V4L2_PIX_FMT_NV16", "NV16"},
-    {NSCam::eImgFmt_NV61, V4L2_PIX_FMT_NV61, "V4L2_PIX_FMT_NV61", "NV61"},
+    {NSCam::eImgFmt_NV12, V4L2_PIX_FMT_NV12M, "V4L2_PIX_FMT_NV12M", "NV12"},
     {NSCam::eImgFmt_YV12, V4L2_PIX_FMT_YVU420, "V4L2_PIX_FMT_YVU420", "YV12"},
     // bayer order expansion
     {NSCam::eImgFmt_BAYER8_BGGR, V4L2_PIX_FMT_MTISP_SBGGR8,
@@ -596,7 +600,7 @@ status_t V4L2StreamNode::setActive(bool active, bool* changed) {
 status_t V4L2StreamNode::enque(BufInfo const& buf,
                                bool lazystartLocked,
                                std::shared_ptr<V4L2Subdevice> sub_device) {
-  LOGI("+");
+  LOGD("+");
   V4L2Buffer* vb = nullptr;
   IImageBuffer* const& b = buf.mBuffer;
   if (b == nullptr) {
@@ -667,18 +671,29 @@ status_t V4L2StreamNode::enque(BufInfo const& buf,
         auto search = mV4L2Buffers.find(jt->Index());
         if (search == mV4L2Buffers.end()) {
           vb = &(*jt);
-          switch (mType) {
-            case V4L2_MEMORY_DMABUF:
-              vb->SetFd(b->getFD(), 0);
-              LOGI("Set Fd %d", vb->Fd(0));
+          LOGD("%s fmt %x %dx%d", mName.c_str(), b->getImgFormat(),
+               b->getImgSize().w, b->getImgSize().h);
+          for (int i = 0; i < b->getPlaneCount(); i++) {
+            if (!IS_MULTIPLANAR(mFormat.PixelFormat()) && i > 0) {
               break;
-            case V4L2_MEMORY_USERPTR:
-              vb->SetUserptr(b->getBufVA(0), 0);
-              LOGI("Set Userptr %u", vb->Userptr(0));
-              break;
-            default:
-              LOGE("wrong buffer type:%d for enque", mType);
-              return -EINVAL;
+            }
+            switch (mType) {
+              case V4L2_MEMORY_DMABUF:
+                vb->SetFd(b->getFD(i), i);
+                LOGD("plane %d Set Fd %d Offset %lld", i, vb->Fd(i),
+                     b->getImageBufferHeap()->getBufOffsetInBytes(i));
+                vb->SetDataOffset(
+                    b->getImageBufferHeap()->getBufOffsetInBytes(i), i);
+                vb->SetLength(mFormat.SizeImage(i) + vb->DataOffset(i), i);
+                break;
+              case V4L2_MEMORY_USERPTR:
+                vb->SetUserptr(b->getBufVA(i), i);
+                LOGI("Set Userptr %u", vb->Userptr(i));
+                break;
+              default:
+                LOGE("wrong buffer type:%d for enque", mType);
+                return -EINVAL;
+            }
           }
           mImageBuffers.insert(std::make_pair(vb->Index(), b));
           mV4L2Buffers.insert(std::make_pair(vb->Index(), vb));
@@ -694,8 +709,8 @@ status_t V4L2StreamNode::enque(BufInfo const& buf,
             LOGE("no available buffer for replacement");
             return -ENOTEMPTY;
           }
-          auto it = mFreeBuffers
-                        .begin();  // pick up first free buffer for replacement
+          // pick up first free buffer for replacement
+          auto it = mFreeBuffers.begin();
           auto search_img = mImageBuffers.find(it->first);
           auto search_v4l2 = mV4L2Buffers.find(it->first);
           if (CC_UNLIKELY((search_img == mImageBuffers.end()) ||
@@ -705,7 +720,17 @@ status_t V4L2StreamNode::enque(BufInfo const& buf,
           }
           LOGD("execute replace buffer flow");
           vb = search_v4l2->second;
-          vb->SetFd(b->getFD(), 0);
+          for (int i = 0; i < b->getPlaneCount(); i++) {
+            if (!IS_MULTIPLANAR(mFormat.PixelFormat()) && i > 0) {
+              break;
+            }
+            LOGD("plane %d Set Fd %d Offset %lld", i, vb->Fd(i),
+                 b->getImageBufferHeap()->getBufOffsetInBytes(i));
+            vb->SetFd(b->getFD(i), i);
+            vb->SetDataOffset(
+                b->getImageBufferHeap()->getBufOffsetInBytes(i), i);
+            vb->SetLength(mFormat.SizeImage(i) + vb->DataOffset(i), i);
+          }
           search_img->second = b;
         } else {
           LOGE("search failed");

@@ -79,6 +79,7 @@ class BaseImageBufferHeap
   virtual MINTPTR getBufVA(size_t index) const;
   virtual size_t getBufSizeInBytes(size_t index) const;
   virtual size_t getBufStridesInBytes(size_t index) const;
+  virtual off_t getBufOffsetInBytes(size_t index) const;
 
   /**
    * Buffer customized size, which means caller specified the buffer size he
@@ -156,14 +157,17 @@ class BaseImageBufferHeap
     MINTPTR va;             // (plane) virtual address
     size_t stridesInBytes;  // (plane) strides in bytes
     size_t sizeInBytes;     // (plane) size in bytes
+    off_t offsetInBytes;    // (plane) offset in bytes
     BufInfo(MINTPTR _pa = 0,
             MINTPTR _va = 0,
             size_t _stridesInBytes = 0,
-            size_t _sizeInBytes = 0)
+            size_t _sizeInBytes = 0,
+            off_t _offsetInBytes = 0)
         : pa(_pa),
           va(_va),
           stridesInBytes(_stridesInBytes),
-          sizeInBytes(_sizeInBytes) {}
+          sizeInBytes(_sizeInBytes),
+          offsetInBytes(_offsetInBytes) {}
   };
   typedef std::vector<std::shared_ptr<BufInfo> > BufInfoVect_t;
 

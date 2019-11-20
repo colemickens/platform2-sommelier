@@ -212,6 +212,7 @@ queryStaticInfo(buffer_handle_t const bh, MyStaticInfo* info) {
 
         plane.rowStrideInBytes = g_cbm->GetPlaneStride(bh, 0);
         plane.sizeInBytes = g_cbm->GetPlaneSize(bh, 0);
+        plane.offsetInBytes = g_cbm->GetPlaneOffset(bh, 0);
         info->allocSize += plane.sizeInBytes;
       }
     } break;
@@ -221,6 +222,7 @@ queryStaticInfo(buffer_handle_t const bh, MyStaticInfo* info) {
         MyStaticInfo::Plane& plane = info->planes.at(0);
         plane.rowStrideInBytes = g_cbm->GetPlaneStride(bh, 0);
         plane.sizeInBytes = g_cbm->GetPlaneSize(bh, 0);
+        plane.offsetInBytes = g_cbm->GetPlaneOffset(bh, 0);
         info->allocSize += plane.sizeInBytes;
       }
     } break;
@@ -231,6 +233,7 @@ queryStaticInfo(buffer_handle_t const bh, MyStaticInfo* info) {
         MyStaticInfo::Plane& plane = info->planes.at(0);
         plane.rowStrideInBytes = g_cbm->GetPlaneStride(bh, 0);
         plane.sizeInBytes = g_cbm->GetPlaneSize(bh, 0);
+        plane.offsetInBytes = g_cbm->GetPlaneOffset(bh, 0);
         info->allocSize += plane.sizeInBytes;
       }
       {
@@ -238,6 +241,7 @@ queryStaticInfo(buffer_handle_t const bh, MyStaticInfo* info) {
         MyStaticInfo::Plane& plane = info->planes.at(1);
         plane.rowStrideInBytes = g_cbm->GetPlaneStride(bh, 1);
         plane.sizeInBytes = g_cbm->GetPlaneSize(bh, 1);
+        plane.offsetInBytes = g_cbm->GetPlaneOffset(bh, 1);
         info->allocSize += plane.sizeInBytes;
       }
     } break;
@@ -248,6 +252,7 @@ queryStaticInfo(buffer_handle_t const bh, MyStaticInfo* info) {
         MyStaticInfo::Plane& plane = info->planes.at(0);
         plane.rowStrideInBytes = g_cbm->GetPlaneStride(bh, 0);
         plane.sizeInBytes = g_cbm->GetPlaneSize(bh, 0);
+        plane.offsetInBytes = g_cbm->GetPlaneOffset(bh, 0);
         info->allocSize += plane.sizeInBytes;
       }
       {
@@ -255,6 +260,7 @@ queryStaticInfo(buffer_handle_t const bh, MyStaticInfo* info) {
         MyStaticInfo::Plane& plane = info->planes.at(1);
         plane.rowStrideInBytes = g_cbm->GetPlaneStride(bh, 1);
         plane.sizeInBytes = g_cbm->GetPlaneSize(bh, 1);
+        plane.offsetInBytes = g_cbm->GetPlaneOffset(bh, 1);
         info->allocSize += plane.sizeInBytes;
       }
       {
@@ -262,6 +268,7 @@ queryStaticInfo(buffer_handle_t const bh, MyStaticInfo* info) {
         MyStaticInfo::Plane& plane = info->planes.at(2);
         plane.rowStrideInBytes = g_cbm->GetPlaneStride(bh, 2);
         plane.sizeInBytes = g_cbm->GetPlaneSize(bh, 2);
+        plane.offsetInBytes = g_cbm->GetPlaneOffset(bh, 2);
         info->allocSize += plane.sizeInBytes;
       }
     } break;
@@ -273,6 +280,7 @@ queryStaticInfo(buffer_handle_t const bh, MyStaticInfo* info) {
         MyStaticInfo::Plane& plane = info->planes.at(0);
         plane.rowStrideInBytes = g_cbm->GetPlaneStride(bh, 0);
         plane.sizeInBytes = g_cbm->GetPlaneSize(bh, 0);
+        plane.offsetInBytes = g_cbm->GetPlaneOffset(bh, 0);
         info->allocSize += plane.sizeInBytes;
       }
     } break;
@@ -284,6 +292,7 @@ queryStaticInfo(buffer_handle_t const bh, MyStaticInfo* info) {
         MyStaticInfo::Plane& plane = info->planes.at(0);
         plane.rowStrideInBytes = info->widthInPixels * 2;
         plane.sizeInBytes = info->widthInPixels * info->heightInPixels * 2;
+        plane.offsetInBytes = g_cbm->GetPlaneOffset(bh, 0);
         info->allocSize += plane.sizeInBytes;
       }
     } break;
@@ -294,6 +303,7 @@ queryStaticInfo(buffer_handle_t const bh, MyStaticInfo* info) {
         MyStaticInfo::Plane& plane = info->planes.at(0);
         plane.rowStrideInBytes = g_cbm->GetPlaneStride(bh, 0);
         plane.sizeInBytes = g_cbm->GetPlaneSize(bh, 0);
+        plane.offsetInBytes = g_cbm->GetPlaneOffset(bh, 0);
         info->allocSize += plane.sizeInBytes;
       }
       {
@@ -301,6 +311,7 @@ queryStaticInfo(buffer_handle_t const bh, MyStaticInfo* info) {
         MyStaticInfo::Plane& plane = info->planes.at(1);
         plane.rowStrideInBytes = g_cbm->GetPlaneStride(bh, 1);
         plane.sizeInBytes = g_cbm->GetPlaneSize(bh, 1);
+        plane.offsetInBytes = g_cbm->GetPlaneOffset(bh, 1);
         info->allocSize += plane.sizeInBytes;
       }
     } break;

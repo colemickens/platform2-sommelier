@@ -582,8 +582,9 @@ MBOOL MDPNode::onRequestProcess(RequestPtr& pRequest) {
           calBytesUsed(pSrcBuffer->getImgSize().w, pSrcBuffer->getImgSize().h,
                        pSrcBuffer->getImgFormat());
       qInbuf_planes[i].length = mV4l2MdpInfo.inBufferInfo.length;
-      qInbuf_planes[i].data_offset = mV4l2MdpInfo.inBufferInfo.data_offset;
-      qInbuf_planes[i].m.fd = pSrcBuffer->getFD();
+      qInbuf_planes[i].data_offset =
+          pSrcBuffer->getImageBufferHeap()->getBufOffsetInBytes(i);
+      qInbuf_planes[i].m.fd = pSrcBuffer->getFD(i);
     }
     mV4l2MdpInfo.mdpInBuffer.m.planes = qInbuf_planes;
     if (xioctl(mV4l2MdpInfo.fd, VIDIOC_QBUF, &mV4l2MdpInfo.mdpInBuffer) < 0) {
@@ -595,8 +596,9 @@ MBOOL MDPNode::onRequestProcess(RequestPtr& pRequest) {
     for (size_t i = 0; i < mV4l2MdpInfo.outBufferInfo.planes_num; i++) {
       qOutbuf_planes[i].bytesused = 0;
       qOutbuf_planes[i].length = mV4l2MdpInfo.outBufferInfo.length;
-      qOutbuf_planes[i].data_offset = mV4l2MdpInfo.outBufferInfo.data_offset;
-      qOutbuf_planes[i].m.fd = pDstBuffer->getFD();
+      qOutbuf_planes[i].data_offset =
+          pDstBuffer->getImageBufferHeap()->getBufOffsetInBytes(i);
+      qOutbuf_planes[i].m.fd = pDstBuffer->getFD(i);
     }
     mV4l2MdpInfo.mdpOutBuffer.m.planes = qOutbuf_planes;
     if (xioctl(mV4l2MdpInfo.fd, VIDIOC_QBUF, &mV4l2MdpInfo.mdpOutBuffer) < 0) {

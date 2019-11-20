@@ -818,14 +818,14 @@ NormalStream::init(char const* szCallerName,
         if (it->first == NSImageio::NSIspio::EPortIndex_VIPI) {
           IImageBufferAllocator::ImgParam imgParam(
               eImgFmt_YV12, MSize(imgi_w, imgi_h), bufStridesInBytes,
-              bufBoundaryInBytes, 1);
+              bufBoundaryInBytes, 3);
           mPortIdxToFmt.insert(std::make_pair(
               NSImageio::NSIspio::EPortIndex_VIPI, std::move(imgParam)));
           // img3o
         } else if (it->first == NSImageio::NSIspio::EPortIndex_IMG3O) {
           IImageBufferAllocator::ImgParam imgParam(
               eImgFmt_YV12, MSize(imgi_w, imgi_h), bufStridesInBytes,
-              bufBoundaryInBytes, 1);
+              bufBoundaryInBytes, 3);
           mPortIdxToFmt.insert(std::make_pair(
               NSImageio::NSIspio::EPortIndex_IMG3O, std::move(imgParam)));
           // other missing types
@@ -1070,7 +1070,7 @@ NormalStream::enque(QParams* pParams) {
         return MFALSE;
       }
       if (!node->isPrepared() && imgi_w > 0 && imgi_h > 0) {
-        _set_format_and_buffers(p_vipi, eImgFmt_YV12, MSize(imgi_w, imgi_h), 1);
+        _set_format_and_buffers(p_vipi, eImgFmt_YV12, MSize(imgi_w, imgi_h), 3);
         auto search = mPortIdxToFmt.find(p_vipi);
         if (search != mPortIdxToFmt.end())
           mPortIdxToFmt.erase(search);
@@ -1263,7 +1263,7 @@ NormalStream::enque(QParams* pParams) {
 
       if (!node->isPrepared() && imgi_w > 0 && imgi_h > 0) {
         _set_format_and_buffers(p_img3o, eImgFmt_YV12, MSize(imgi_w, imgi_h),
-                                1);
+                                3);
         auto search = mPortIdxToFmt.find(p_img3o);
         if (search != mPortIdxToFmt.end())
           mPortIdxToFmt.erase(search);

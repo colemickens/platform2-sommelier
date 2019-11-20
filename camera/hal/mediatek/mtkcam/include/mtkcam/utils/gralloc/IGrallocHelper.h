@@ -72,6 +72,10 @@ struct GrallocStaticInfo {
      * pixels in the image. The row stride is always greater than 0.
      */
     size_t rowStrideInBytes;
+    /**
+     * The offset for this color plane, in bytes.
+     */
+    off_t offsetInBytes;
   };
 
   /**
