@@ -40,9 +40,9 @@ class Manager final : public brillo::DBusDaemon {
   void InitialSetup();
 
   bool StartArc(pid_t pid);
-  void StopArc();
-  bool StartArcVm(int cid);
-  void StopArcVm();
+  void StopArc(pid_t pid);
+  bool StartArcVm(int32_t cid);
+  void StopArcVm(int32_t cid);
 
   // Callback from ProcessReaper to notify Manager that one of the
   // subprocesses died.

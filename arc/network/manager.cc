@@ -145,7 +145,7 @@ bool Manager::OnSignal(const struct signalfd_siginfo& info) {
     // container pid on its own. Later, this is arrive via DBus message.
     StartArc(0 /*pid*/);
   } else {
-    StopArc();
+    StopArc(0 /*pid*/);
   }
 
   // Stay registered.
@@ -174,16 +174,16 @@ bool Manager::StartArc(pid_t pid) {
   return true;
 }
 
-void Manager::StopArc() {
+void Manager::StopArc(pid_t pid) {
   GuestMessage msg;
   msg.set_event(GuestMessage::STOP);
   msg.set_type(GuestMessage::ARC);
   SendGuestMessage(msg);
 
-  arc_svc_->Stop();
+  arc_svc_->Stop(pid);
 }
 
-bool Manager::StartArcVm(int cid) {
+bool Manager::StartArcVm(int32_t cid) {
   if (!arc_svc_->Start(cid))
     return false;
 
@@ -196,13 +196,13 @@ bool Manager::StartArcVm(int cid) {
   return true;
 }
 
-void Manager::StopArcVm() {
+void Manager::StopArcVm(int32_t cid) {
   GuestMessage msg;
   msg.set_event(GuestMessage::STOP);
   msg.set_type(GuestMessage::ARC_VM);
   SendGuestMessage(msg);
 
-  arc_svc_->Stop();
+  arc_svc_->Stop(cid);
 }
 
 std::unique_ptr<dbus::Response> Manager::OnArcStartup(
@@ -250,7 +250,7 @@ std::unique_ptr<dbus::Response> Manager::OnArcShutdown(
     return dbus_response;
   }
 
-  StopArc();
+  StopArc(request.pid());
 
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
@@ -319,7 +319,7 @@ std::unique_ptr<dbus::Response> Manager::OnArcVmShutdown(
     return dbus_response;
   }
 
-  StopArcVm();
+  StopArcVm(request.cid());
 
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;

@@ -67,7 +67,7 @@ class ArcService : public GuestService {
     virtual GuestMessage::GuestType guest() const = 0;
 
     virtual bool Start(int32_t id) = 0;
-    virtual void Stop() = 0;
+    virtual void Stop(int32_t pid) = 0;
     virtual bool IsStarted() const = 0;
     virtual bool OnStartDevice(Device* device) = 0;
     virtual void OnStopDevice(Device* device) = 0;
@@ -88,7 +88,7 @@ class ArcService : public GuestService {
     GuestMessage::GuestType guest() const override;
 
     bool Start(int32_t pid) override;
-    void Stop() override;
+    void Stop(int32_t pid) override;
     bool IsStarted() const override;
     bool OnStartDevice(Device* device) override;
     void OnStopDevice(Device* device) override;
@@ -124,7 +124,7 @@ class ArcService : public GuestService {
     GuestMessage::GuestType guest() const override;
 
     bool Start(int32_t cid) override;
-    void Stop() override;
+    void Stop(int32_t cid) override;
     bool IsStarted() const override;
     bool OnStartDevice(Device* device) override;
     void OnStopDevice(Device* device) override;
@@ -145,16 +145,12 @@ class ArcService : public GuestService {
              bool* is_legacy = nullptr);
   ~ArcService() = default;
 
-  bool Start(int32_t id);
-  void Stop();
+  bool Start(int32_t id) override;
+  void Stop(int32_t id) override;
 
   void OnDeviceAdded(Device* device) override;
   void OnDeviceRemoved(Device* device) override;
   void OnDefaultInterfaceChanged(const std::string& ifname) override;
-
- protected:
-  void OnStart() override;
-  void OnStop() override;
 
  private:
   void StartDevice(Device* device);

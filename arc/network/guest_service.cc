@@ -21,11 +21,12 @@ GuestService::GuestService(GuestMessage::GuestType guest,
                          base::Unretained(this)));
 }
 
-void GuestService::OnStart() {
+bool GuestService::Start(int32_t /*id*/) {
   dev_mgr_->OnGuestStart(guest_);
+  return true;
 }
 
-void GuestService::OnStop() {
+void GuestService::Stop(int32_t /*id*/) {
   dev_mgr_->OnGuestStop(guest_);
 }
 

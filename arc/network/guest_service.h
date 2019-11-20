@@ -24,8 +24,8 @@ class GuestService {
   // |dev_mgr| cannot be null and must outlive this object.
   GuestService(GuestMessage::GuestType guest, DeviceManagerBase* dev_mgr);
 
-  virtual void OnStart();
-  virtual void OnStop();
+  virtual bool Start(int32_t id);
+  virtual void Stop(int32_t id);
 
   virtual void OnDeviceAdded(Device* device) {}
   virtual void OnDeviceRemoved(Device* device) {}

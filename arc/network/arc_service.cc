@@ -204,11 +204,6 @@ bool ArcService::Start(int32_t id) {
   if (!impl_->Start(id))
     return false;
 
-  OnStart();
-  return true;
-}
-
-void ArcService::OnStart() {
   // Start known host devices, any new ones will be setup in the process.
   dev_mgr_->ProcessDevices(
       base::Bind(&ArcService::StartDevice, weak_factory_.GetWeakPtr()));
@@ -231,27 +226,24 @@ void ArcService::OnStart() {
       break;
     default:
       LOG(DFATAL) << "Unexpected guest: " << guest;
-      return;
+      return false;
   }
   dev_mgr_->Add(arc);
 
   // Finally, call the base implementation.
-  GuestService::OnStart();
+  return GuestService::Start(id);
 }
 
-void ArcService::Stop() {
-  OnStop();
-  impl_->Stop();
-}
-
-void ArcService::OnStop() {
+void ArcService::Stop(int32_t id) {
   // Call the base implementation.
-  GuestService::OnStop();
+  GuestService::Stop(id);
 
   // Stop known host devices. Note that this does not teardown any existing
   // devices.
   dev_mgr_->ProcessDevices(
       base::Bind(&ArcService::StopDevice, weak_factory_.GetWeakPtr()));
+
+  impl_->Stop(id);
 }
 
 void ArcService::OnDeviceAdded(Device* device) {
@@ -503,7 +495,7 @@ bool ArcService::ContainerImpl::Start(int32_t pid) {
   return true;
 }
 
-void ArcService::ContainerImpl::Stop() {
+void ArcService::ContainerImpl::Stop(int32_t /*pid*/) {
   rtnl_handler_->RemoveListener(link_listener_.get());
   link_listener_.reset();
   rtnl_handler_.reset();
@@ -800,7 +792,12 @@ bool ArcService::VmImpl::Start(int32_t cid) {
   return true;
 }
 
-void ArcService::VmImpl::Stop() {
+void ArcService::VmImpl::Stop(int32_t cid) {
+  if (cid_ != cid) {
+    LOG(ERROR) << "Mismatched ARCVM CIDs " << cid_ << " != " << cid;
+    return;
+  }
+
   LOG(INFO) << "ARCVM network service stopped {cid: " << cid_ << "}";
   cid_ = kInvalidCID;
 }
