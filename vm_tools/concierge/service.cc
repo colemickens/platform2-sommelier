@@ -2232,6 +2232,43 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
       return dbus_response;
     }
 
+    if (request.disk_size() != 0) {
+      LOG(INFO)
+          << "Disk size specified in request; creating user-chosen-size image";
+      // The xattr value doesn't matter, only its existence.
+      // Store something human-readable for debugging.
+      constexpr char val[] = "1";
+      if (fsetxattr(fd.get(), kDiskImageUserChosenSizeXattr, val, sizeof(val),
+                    XATTR_CREATE) != 0) {
+        PLOG(ERROR) << "Failed to set user_chosen_size xattr";
+        unlink(disk_path.value().c_str());
+        response.set_status(DISK_STATUS_FAILED);
+        response.set_failure_reason("Failed to set user_chosen_size xattr");
+        writer.AppendProtoAsArrayOfBytes(response);
+
+        return dbus_response;
+      }
+
+      LOG(INFO) << "Preallocating user-chosen-size raw disk image";
+      if (fallocate(fd.get(), 0, 0, disk_size) != 0) {
+        PLOG(ERROR) << "Failed to allocate raw disk";
+        unlink(disk_path.value().c_str());
+        response.set_status(DISK_STATUS_FAILED);
+        response.set_failure_reason("Failed to allocate raw disk file");
+        writer.AppendProtoAsArrayOfBytes(response);
+
+        return dbus_response;
+      }
+
+      LOG(INFO) << "Disk image preallocated";
+      response.set_status(DISK_STATUS_CREATED);
+      response.set_disk_path(disk_path.value());
+      writer.AppendProtoAsArrayOfBytes(response);
+
+      return dbus_response;
+    }
+
+    LOG(INFO) << "Creating sparse raw disk image";
     int ret = ftruncate(fd.get(), disk_size);
     if (ret != 0) {
       PLOG(ERROR) << "Failed to truncate raw disk";
