@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_mojo_service.h"
+#include "diagnostics/wilco_dtc_supportd/mojo_service.h"
 
 #include <memory>
 #include <utility>
@@ -16,7 +16,7 @@
 namespace diagnostics {
 
 using SendUiMessageToWilcoDtcCallback =
-    WilcoDtcSupportdMojoService::SendUiMessageToWilcoDtcCallback;
+    MojoService::SendUiMessageToWilcoDtcCallback;
 
 namespace {
 
@@ -35,8 +35,7 @@ void ForwardMojoJsonResponse(
 }
 
 void ForwardMojoSendtoUiResponse(
-    const WilcoDtcSupportdMojoService::MojomSendWilcoDtcMessageToUiCallback&
-        callback,
+    const MojoService::MojomSendWilcoDtcMessageToUiCallback& callback,
     mojo::ScopedHandle response_body_handle) {
   auto shared_memory =
       GetReadOnlySharedMemoryFromMojoHandle(std::move(response_body_handle));
@@ -51,8 +50,8 @@ void ForwardMojoSendtoUiResponse(
 }
 
 void ForwardMojoWebResponse(
-    const WilcoDtcSupportdMojoService::MojomPerformWebRequestCallback& callback,
-    WilcoDtcSupportdMojoService::MojomWilcoDtcSupportdWebRequestStatus status,
+    const MojoService::MojomPerformWebRequestCallback& callback,
+    MojoService::MojomWilcoDtcSupportdWebRequestStatus status,
     int http_status,
     mojo::ScopedHandle response_body_handle) {
   if (!response_body_handle.is_valid()) {
@@ -63,9 +62,9 @@ void ForwardMojoWebResponse(
       GetReadOnlySharedMemoryFromMojoHandle(std::move(response_body_handle));
   if (!shared_memory) {
     LOG(ERROR) << "Failed to read data from mojo handle";
-    callback.Run(WilcoDtcSupportdMojoService::
-                     MojomWilcoDtcSupportdWebRequestStatus::kNetworkError,
-                 0, base::StringPiece());
+    callback.Run(
+        MojoService::MojomWilcoDtcSupportdWebRequestStatus::kNetworkError, 0,
+        base::StringPiece());
     return;
   }
   callback.Run(
@@ -76,7 +75,7 @@ void ForwardMojoWebResponse(
 
 }  // namespace
 
-WilcoDtcSupportdMojoService::WilcoDtcSupportdMojoService(
+MojoService::MojoService(
     Delegate* delegate,
     MojomWilcoDtcSupportdServiceRequest self_interface_request,
     MojomWilcoDtcSupportdClientPtr client_ptr)
@@ -88,9 +87,9 @@ WilcoDtcSupportdMojoService::WilcoDtcSupportdMojoService(
   DCHECK(client_ptr_);
 }
 
-WilcoDtcSupportdMojoService::~WilcoDtcSupportdMojoService() = default;
+MojoService::~MojoService() = default;
 
-void WilcoDtcSupportdMojoService::SendUiMessageToWilcoDtc(
+void MojoService::SendUiMessageToWilcoDtc(
     mojo::ScopedHandle json_message,
     const SendUiMessageToWilcoDtcCallback& callback) {
   std::unique_ptr<base::SharedMemory> shared_memory =
@@ -115,11 +114,11 @@ void WilcoDtcSupportdMojoService::SendUiMessageToWilcoDtc(
       json_message_content, base::Bind(&ForwardMojoJsonResponse, callback));
 }
 
-void WilcoDtcSupportdMojoService::NotifyConfigurationDataChanged() {
+void MojoService::NotifyConfigurationDataChanged() {
   delegate_->NotifyConfigurationDataChangedToWilcoDtc();
 }
 
-void WilcoDtcSupportdMojoService::SendWilcoDtcMessageToUi(
+void MojoService::SendWilcoDtcMessageToUi(
     const std::string& json_message,
     const MojomSendWilcoDtcMessageToUiCallback& callback) {
   VLOG(1) << "SendWilcoDtcMessageToUi json_message=" << json_message;
@@ -136,7 +135,7 @@ void WilcoDtcSupportdMojoService::SendWilcoDtcMessageToUi(
       base::Bind(&ForwardMojoSendtoUiResponse, callback));
 }
 
-void WilcoDtcSupportdMojoService::PerformWebRequest(
+void MojoService::PerformWebRequest(
     MojomWilcoDtcSupportdWebRequestHttpMethod http_method,
     const std::string& url,
     const std::vector<std::string>& headers,
@@ -177,14 +176,14 @@ void WilcoDtcSupportdMojoService::PerformWebRequest(
                                  base::Bind(&ForwardMojoWebResponse, callback));
 }
 
-void WilcoDtcSupportdMojoService::GetConfigurationData(
+void MojoService::GetConfigurationData(
     const MojomGetConfigurationDataCallback& callback) {
   DCHECK(client_ptr_);
   client_ptr_->GetConfigurationData(callback);
 }
 
-void WilcoDtcSupportdMojoService::HandleEvent(
-    const MojomWilcoDtcSupportdEvent event) {
+void MojoService::HandleEvent(const MojomWilcoDtcSupportdEvent event) {
   client_ptr_->HandleEvent(event);
 }
+
 }  // namespace diagnostics

@@ -293,9 +293,8 @@ bool WilcoDtcSupportdCore::StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
   }
 
   mojo_service_bind_attempted_ = true;
-  mojo_service_factory_binding_ =
-      delegate_->BindWilcoDtcSupportdMojoServiceFactory(
-          this /* mojo_service_factory */, std::move(mojo_pipe_fd));
+  mojo_service_factory_binding_ = delegate_->BindMojoServiceFactory(
+      this /* mojo_service_factory */, std::move(mojo_pipe_fd));
   if (!mojo_service_factory_binding_) {
     *error_message = "Failed to bootstrap Mojo";
     ShutDownDueToMojoError("Mojo bootstrap failed" /* debug_reason */);
@@ -325,11 +324,11 @@ void WilcoDtcSupportdCore::GetService(
     mojo_service_.reset();
   }
 
-  // Create an instance of WilcoDtcSupportdMojoService that will handle incoming
+  // Create an instance of MojoService that will handle incoming
   // Mojo calls. Pass |service| to it to fulfill the remote endpoint's request,
   // allowing it to call into |mojo_service_|. Pass also |client| to allow
   // |mojo_service_| to do calls in the opposite direction.
-  mojo_service_ = std::make_unique<WilcoDtcSupportdMojoService>(
+  mojo_service_ = std::make_unique<MojoService>(
       this /* delegate */, std::move(service), std::move(client));
 
   callback.Run();

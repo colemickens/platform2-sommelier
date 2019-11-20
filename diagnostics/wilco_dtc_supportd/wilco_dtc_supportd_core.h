@@ -22,6 +22,7 @@
 
 #include "diagnostics/grpc_async_adapter/async_grpc_client.h"
 #include "diagnostics/grpc_async_adapter/async_grpc_server.h"
+#include "diagnostics/wilco_dtc_supportd/mojo_service.h"
 #include "diagnostics/wilco_dtc_supportd/routine_service.h"
 #include "diagnostics/wilco_dtc_supportd/system/bluetooth_client.h"
 #include "diagnostics/wilco_dtc_supportd/system/debugd_adapter.h"
@@ -31,7 +32,6 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_dbus_service.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_grpc_service.h"
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_mojo_service.h"
 
 #include "mojo/wilco_dtc_supportd.mojom.h"
 #include "wilco_dtc.grpc.pb.h"           // NOLINT(build/include)
@@ -43,7 +43,7 @@ namespace diagnostics {
 // by the wilco_dtc_supportd daemon and IPC clients.
 class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
                                    public WilcoDtcSupportdGrpcService::Delegate,
-                                   public WilcoDtcSupportdMojoService::Delegate,
+                                   public MojoService::Delegate,
                                    public chromeos::wilco_dtc_supportd::mojom::
                                        WilcoDtcSupportdServiceFactory,
                                    public BluetoothEventService::Observer,
@@ -65,7 +65,7 @@ class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
     // lifetime of the daemon, since Mojo EDK gives no guarantee to support
     // repeated initialization with different parent handles.
     virtual std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>
-    BindWilcoDtcSupportdMojoServiceFactory(
+    BindMojoServiceFactory(
         MojomWilcoDtcSupportdServiceFactory* mojo_service_factory,
         base::ScopedFD mojo_pipe_fd) = 0;
 
@@ -187,7 +187,7 @@ class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
   void GetDriveSystemData(DriveSystemDataType data_type,
                           const GetDriveSystemDataCallback& callback) override;
 
-  // WilcoDtcSupportdMojoService::Delegate overrides:
+  // MojoService::Delegate overrides:
   void SendGrpcUiMessageToWilcoDtc(
       base::StringPiece json_message,
       const SendGrpcUiMessageToWilcoDtcCallback& callback) override;
@@ -265,7 +265,7 @@ class WilcoDtcSupportdCore final : public WilcoDtcSupportdDBusService::Delegate,
   // daemon and a proxy that allows sending outgoing Mojo requests.
   //
   // Gets created after the GetService() Mojo method is called.
-  std::unique_ptr<WilcoDtcSupportdMojoService> mojo_service_;
+  std::unique_ptr<MojoService> mojo_service_;
   // Whether binding of the Mojo service was attempted.
   //
   // This flag is needed for detecting repeated Mojo bootstrapping attempts

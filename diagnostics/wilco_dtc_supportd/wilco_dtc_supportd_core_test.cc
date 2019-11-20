@@ -125,14 +125,13 @@ class FakeWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
         powerd_event_service_(passed_powerd_event_service_.get()) {}
 
   std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>
-  BindWilcoDtcSupportdMojoServiceFactory(
+  BindMojoServiceFactory(
       MojomWilcoDtcSupportdServiceFactory* mojo_service_factory,
       base::ScopedFD mojo_pipe_fd) override {
     // Redirect to a separate mockable method to workaround GMock's issues with
     // move-only types.
     return std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>(
-        BindWilcoDtcSupportdMojoServiceFactoryImpl(mojo_service_factory,
-                                                   mojo_pipe_fd.get()));
+        BindMojoServiceFactoryImpl(mojo_service_factory, mojo_pipe_fd.get()));
   }
 
   // Must be called no more than once.
@@ -198,7 +197,7 @@ class FakeWilcoDtcSupportdCoreDelegate : public WilcoDtcSupportdCore::Delegate {
   }
 
   MOCK_METHOD(mojo::Binding<MojomWilcoDtcSupportdServiceFactory>*,
-              BindWilcoDtcSupportdMojoServiceFactoryImpl,
+              BindMojoServiceFactoryImpl,
               (MojomWilcoDtcSupportdServiceFactory*, int));
   MOCK_METHOD(void, BeginDaemonShutdown, (), (override));
 
@@ -325,14 +324,13 @@ class StartedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
     return fake_browser_.get();
   }
 
-  // Set up mock for BindWilcoDtcSupportdMojoServiceFactory() that simulates
+  // Set up mock for BindMojoServiceFactory() that simulates
   // successful Mojo service binding to the given file descriptor. After the
   // mock gets triggered, |mojo_service_factory_interface_ptr_| become
   // initialized to point to the tested Mojo service.
-  void SetSuccessMockBindWilcoDtcSupportdMojoService(
+  void SetSuccessMockBindMojoService(
       FakeMojoFdGenerator* fake_mojo_fd_generator) {
-    EXPECT_CALL(*core_delegate(),
-                BindWilcoDtcSupportdMojoServiceFactoryImpl(_, _))
+    EXPECT_CALL(*core_delegate(), BindMojoServiceFactoryImpl(_, _))
         .WillOnce(Invoke(
             [fake_mojo_fd_generator, this](
                 MojomWilcoDtcSupportdServiceFactory* mojo_service_factory,
@@ -484,18 +482,17 @@ class StartedWilcoDtcSupportdCoreTest : public WilcoDtcSupportdCoreTest {
 // BootstrapMojoConnection D-Bus method is called.
 TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapSuccess) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
-  SetSuccessMockBindWilcoDtcSupportdMojoService(&fake_mojo_fd_generator);
+  SetSuccessMockBindMojoService(&fake_mojo_fd_generator);
 
   BootstrapMojoConnection(&fake_mojo_fd_generator);
   EXPECT_TRUE(*mojo_service_factory_interface_ptr());
 }
 
 // Test failure to bootstrap the Mojo service due to en error returned by
-// BindWilcoDtcSupportdMojoService() delegate method.
+// BindMojoService() delegate method.
 TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapErrorToBind) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
-  EXPECT_CALL(*core_delegate(),
-              BindWilcoDtcSupportdMojoServiceFactoryImpl(_, _))
+  EXPECT_CALL(*core_delegate(), BindMojoServiceFactoryImpl(_, _))
       .WillOnce(Return(nullptr));
   EXPECT_CALL(*core_delegate(), BeginDaemonShutdown());
 
@@ -511,7 +508,7 @@ TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapErrorToBind) {
 // the daemon shutdown.
 TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapErrorRepeated) {
   FakeMojoFdGenerator first_fake_mojo_fd_generator;
-  SetSuccessMockBindWilcoDtcSupportdMojoService(&first_fake_mojo_fd_generator);
+  SetSuccessMockBindMojoService(&first_fake_mojo_fd_generator);
 
   BootstrapMojoConnection(&first_fake_mojo_fd_generator);
   Mock::VerifyAndClearExpectations(core_delegate());
@@ -530,7 +527,7 @@ TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapErrorRepeated) {
 // connection aborts.
 TEST_F(StartedWilcoDtcSupportdCoreTest, MojoBootstrapSuccessThenAbort) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
-  SetSuccessMockBindWilcoDtcSupportdMojoService(&fake_mojo_fd_generator);
+  SetSuccessMockBindMojoService(&fake_mojo_fd_generator);
 
   BootstrapMojoConnection(&fake_mojo_fd_generator);
   Mock::VerifyAndClearExpectations(core_delegate());
@@ -553,7 +550,7 @@ class BootstrappedWilcoDtcSupportdCoreTest
     ASSERT_NO_FATAL_FAILURE(StartedWilcoDtcSupportdCoreTest::SetUp());
 
     FakeMojoFdGenerator fake_mojo_fd_generator;
-    SetSuccessMockBindWilcoDtcSupportdMojoService(&fake_mojo_fd_generator);
+    SetSuccessMockBindMojoService(&fake_mojo_fd_generator);
     BootstrapMojoConnection(&fake_mojo_fd_generator);
 
     ASSERT_TRUE(*mojo_service_factory_interface_ptr());

@@ -35,7 +35,7 @@ WilcoDtcSupportdCoreDelegateImpl::WilcoDtcSupportdCoreDelegateImpl(
 WilcoDtcSupportdCoreDelegateImpl::~WilcoDtcSupportdCoreDelegateImpl() = default;
 
 std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>
-WilcoDtcSupportdCoreDelegateImpl::BindWilcoDtcSupportdMojoServiceFactory(
+WilcoDtcSupportdCoreDelegateImpl::BindMojoServiceFactory(
     MojomWilcoDtcSupportdServiceFactory* mojo_service_factory,
     base::ScopedFD mojo_pipe_fd) {
   DCHECK(mojo_pipe_fd.is_valid());

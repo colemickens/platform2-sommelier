@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_MOJO_SERVICE_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_MOJO_SERVICE_H_
+#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_MOJO_SERVICE_H_
+#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_MOJO_SERVICE_H_
 
 #include <string>
 #include <vector>
@@ -22,7 +22,7 @@ namespace diagnostics {
 // Implements the "WilcoDtcSupportdService" Mojo interface exposed by the
 // wilco_dtc_supportd daemon (see the API definition at
 // mojo/wilco_dtc_supportd.mojom)
-class WilcoDtcSupportdMojoService final
+class MojoService final
     : public chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService {
  public:
   using MojomWilcoDtcSupportdClientPtr =
@@ -77,11 +77,10 @@ class WilcoDtcSupportdMojoService final
   // browser process, and allows the browser to call our methods.
   // |client_ptr| - Mojo interface to the WilcoDtcSupportdServiceClient
   // endpoint. In production, it allows this instance to call browser's methods.
-  WilcoDtcSupportdMojoService(
-      Delegate* delegate,
-      MojomWilcoDtcSupportdServiceRequest self_interface_request,
-      MojomWilcoDtcSupportdClientPtr client_ptr);
-  ~WilcoDtcSupportdMojoService() override;
+  MojoService(Delegate* delegate,
+              MojomWilcoDtcSupportdServiceRequest self_interface_request,
+              MojomWilcoDtcSupportdClientPtr client_ptr);
+  ~MojoService() override;
 
   // chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService overrides:
   void SendUiMessageToWilcoDtc(
@@ -114,9 +113,9 @@ class WilcoDtcSupportdMojoService final
   // In production this interface is implemented in the Chrome browser process.
   MojomWilcoDtcSupportdClientPtr client_ptr_;
 
-  DISALLOW_COPY_AND_ASSIGN(WilcoDtcSupportdMojoService);
+  DISALLOW_COPY_AND_ASSIGN(MojoService);
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_MOJO_SERVICE_H_
+#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_MOJO_SERVICE_H_

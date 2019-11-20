@@ -29,7 +29,7 @@ class WilcoDtcSupportdCoreDelegateImpl final
 
   // WilcoDtcSupportdCore::Delegate overrides:
   std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>
-  BindWilcoDtcSupportdMojoServiceFactory(
+  BindMojoServiceFactory(
       MojomWilcoDtcSupportdServiceFactory* mojo_service_factory,
       base::ScopedFD mojo_pipe_fd) override;
   void BeginDaemonShutdown() override;
