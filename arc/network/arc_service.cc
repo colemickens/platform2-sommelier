@@ -103,6 +103,48 @@ bool ShouldEnableMultinet() {
   return true;
 }
 
+// Load networking modules needed by Android that are not compiled in the
+// kernel. Android does not allow auto-loading of kernel modules.
+void LoadModules(const Datapath& datapath) {
+  static bool done = false;
+  if (done)
+    return;
+
+  // These must succeed.
+  if (datapath.runner().ModprobeAll({
+          // The netfilter modules needed by netd for iptables commands.
+          "ip6table_filter",
+          "ip6t_ipv6header",
+          "ip6t_REJECT",
+          // The xfrm modules needed for Android's ipsec APIs.
+          "xfrm4_mode_transport",
+          "xfrm4_mode_tunnel",
+          "xfrm6_mode_transport",
+          "xfrm6_mode_tunnel",
+          // The ipsec modules for AH and ESP encryption for ipv6.
+          "ah6",
+          "esp6",
+      }) != 0) {
+    LOG(ERROR) << "One or more required kernel modules failed to load."
+               << " Some Android functionality may be broken.";
+  }
+  // Optional modules.
+  if (datapath.runner().ModprobeAll({
+          // This module is not available in kernels < 3.18
+          "nf_reject_ipv6",
+          // These modules are needed for supporting Chrome traffic on Android
+          // VPN which uses Android's NAT feature. Android NAT sets up
+          // iptables
+          // rules that use these conntrack modules for FTP/TFTP.
+          "nf_nat_ftp",
+          "nf_nat_tftp",
+      }) != 0) {
+    LOG(WARNING) << "One or more optional kernel modules failed to load.";
+  }
+
+  done = true;
+}
+
 // TODO(garrick): Remove this workaround ASAP.
 int GetContainerPID() {
   const base::FilePath path("/run/containers/android-run_oci/container.pid");
@@ -156,40 +198,6 @@ ArcService::ArcService(DeviceManagerBase* dev_mgr,
     impl_ = std::make_unique<VmImpl>(dev_mgr, datapath);
   else
     impl_ = std::make_unique<ContainerImpl>(dev_mgr, datapath, guest_);
-
-  // Load networking modules needed by Android that are not compiled in the
-  // kernel. Android does not allow auto-loading of kernel modules.
-
-  // These must succeed.
-  if (datapath_->runner().ModprobeAll({
-          // The netfilter modules needed by netd for iptables commands.
-          "ip6table_filter",
-          "ip6t_ipv6header",
-          "ip6t_REJECT",
-          // The xfrm modules needed for Android's ipsec APIs.
-          "xfrm4_mode_transport",
-          "xfrm4_mode_tunnel",
-          "xfrm6_mode_transport",
-          "xfrm6_mode_tunnel",
-          // The ipsec modules for AH and ESP encryption for ipv6.
-          "ah6",
-          "esp6",
-      }) != 0) {
-    LOG(ERROR) << "One or more required kernel modules failed to load.";
-  }
-
-  // Optional modules.
-  if (datapath_->runner().ModprobeAll({
-          // This module is not available in kernels < 3.18
-          "nf_reject_ipv6",
-          // These modules are needed for supporting Chrome traffic on Android
-          // VPN which uses Android's NAT feature. Android NAT sets up iptables
-          // rules that use these conntrack modules for FTP/TFTP.
-          "nf_nat_ftp",
-          "nf_nat_tftp",
-      }) != 0) {
-    LOG(WARNING) << "One or more optional kernel modules failed to load.";
-  }
 }
 
 bool ArcService::Start(int32_t id) {
@@ -450,10 +458,9 @@ void ArcService::Context::SetTAP(const std::string& tap) {
 ArcService::ContainerImpl::ContainerImpl(DeviceManagerBase* dev_mgr,
                                          Datapath* datapath,
                                          GuestMessage::GuestType guest)
-    : pid_(kInvalidPID),
-      dev_mgr_(dev_mgr),
-      datapath_(datapath),
-      guest_(guest) {}
+    : pid_(kInvalidPID), dev_mgr_(dev_mgr), datapath_(datapath), guest_(guest) {
+  LoadModules(*datapath_);
+}
 
 GuestMessage::GuestType ArcService::ContainerImpl::guest() const {
   return guest_;
