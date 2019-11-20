@@ -458,6 +458,7 @@ Check out the their [docs][1] for more details (especially on minidumps).
 [core_collector]: ./core-collector/
 [crash-boot-collect.conf]: ./init/crash-boot-collect.conf
 [crash_reporter]: ./crash_reporter.cc
+[crash-reporter-early-init.conf]: ./init/crash-reporter-early-init.conf
 [crash_reporter_logs.conf]: ./crash_reporter_logs.conf
 [crash-reporter.conf]: ./init/crash-reporter.conf
 [crash_sender]: ./crash_sender.cc
