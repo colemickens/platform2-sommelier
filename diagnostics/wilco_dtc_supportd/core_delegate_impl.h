@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_CORE_DELEGATE_IMPL_H_
-#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_CORE_DELEGATE_IMPL_H_
+#ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_CORE_DELEGATE_IMPL_H_
+#define DIAGNOSTICS_WILCO_DTC_SUPPORTD_CORE_DELEGATE_IMPL_H_
 
 #include <memory>
 
@@ -21,11 +21,10 @@
 namespace diagnostics {
 
 // Production implementation of WilcoDtcSupportdCore's delegate.
-class WilcoDtcSupportdCoreDelegateImpl final
-    : public WilcoDtcSupportdCore::Delegate {
+class CoreDelegateImpl final : public WilcoDtcSupportdCore::Delegate {
  public:
-  explicit WilcoDtcSupportdCoreDelegateImpl(brillo::Daemon* daemon);
-  ~WilcoDtcSupportdCoreDelegateImpl() override;
+  explicit CoreDelegateImpl(brillo::Daemon* daemon);
+  ~CoreDelegateImpl() override;
 
   // WilcoDtcSupportdCore::Delegate overrides:
   std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>
@@ -49,9 +48,9 @@ class WilcoDtcSupportdCoreDelegateImpl final
   // Unowned. The daemon must outlive this instance.
   brillo::Daemon* const daemon_;
 
-  DISALLOW_COPY_AND_ASSIGN(WilcoDtcSupportdCoreDelegateImpl);
+  DISALLOW_COPY_AND_ASSIGN(CoreDelegateImpl);
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_WILCO_DTC_SUPPORTD_CORE_DELEGATE_IMPL_H_
+#endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_CORE_DELEGATE_IMPL_H_

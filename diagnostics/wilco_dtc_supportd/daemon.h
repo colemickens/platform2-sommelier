@@ -8,8 +8,8 @@
 #include <base/macros.h>
 #include <brillo/daemons/dbus_daemon.h>
 
+#include "diagnostics/wilco_dtc_supportd/core_delegate_impl.h"
 #include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core.h"
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core_delegate_impl.h"
 
 namespace diagnostics {
 
@@ -26,8 +26,7 @@ class Daemon final : public brillo::DBusServiceDaemon {
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
   void OnShutdown(int* error_code) override;
 
-  WilcoDtcSupportdCoreDelegateImpl wilco_dtc_supportd_core_delegate_impl_{
-      this /* daemon */};
+  CoreDelegateImpl wilco_dtc_supportd_core_delegate_impl_{this /* daemon */};
   WilcoDtcSupportdCore wilco_dtc_supportd_core_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);

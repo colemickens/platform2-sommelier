@@ -167,6 +167,7 @@ source_set("libwilco_dtc_supportd") {
   ]
   all_dependent_configs = [ ":libwilco_dtc_supportd_pkg_deps" ]
   sources = [
+    "wilco_dtc_supportd/core_delegate_impl.cc",
     "wilco_dtc_supportd/daemon.cc",
     "wilco_dtc_supportd/dbus_service.cc",
     "wilco_dtc_supportd/ec_constants.cc",
@@ -187,7 +188,6 @@ source_set("libwilco_dtc_supportd") {
     "wilco_dtc_supportd/telemetry/system_files_service_impl.cc",
     "wilco_dtc_supportd/vpd_constants.cc",
     "wilco_dtc_supportd/wilco_dtc_supportd_core.cc",
-    "wilco_dtc_supportd/wilco_dtc_supportd_core_delegate_impl.cc",
   ]
 }
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/wilco_dtc_supportd/wilco_dtc_supportd_core_delegate_impl.h"
+#include "diagnostics/wilco_dtc_supportd/core_delegate_impl.h"
 
 #include <utility>
 
@@ -26,16 +26,14 @@ namespace diagnostics {
 using MojomWilcoDtcSupportdServiceFactory =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdServiceFactory;
 
-WilcoDtcSupportdCoreDelegateImpl::WilcoDtcSupportdCoreDelegateImpl(
-    brillo::Daemon* daemon)
-    : daemon_(daemon) {
+CoreDelegateImpl::CoreDelegateImpl(brillo::Daemon* daemon) : daemon_(daemon) {
   DCHECK(daemon_);
 }
 
-WilcoDtcSupportdCoreDelegateImpl::~WilcoDtcSupportdCoreDelegateImpl() = default;
+CoreDelegateImpl::~CoreDelegateImpl() = default;
 
 std::unique_ptr<mojo::Binding<MojomWilcoDtcSupportdServiceFactory>>
-WilcoDtcSupportdCoreDelegateImpl::BindMojoServiceFactory(
+CoreDelegateImpl::BindMojoServiceFactory(
     MojomWilcoDtcSupportdServiceFactory* mojo_service_factory,
     base::ScopedFD mojo_pipe_fd) {
   DCHECK(mojo_pipe_fd.is_valid());
@@ -55,46 +53,41 @@ WilcoDtcSupportdCoreDelegateImpl::BindMojoServiceFactory(
       mojo_service_factory, std::move(mojo_pipe_handle));
 }
 
-void WilcoDtcSupportdCoreDelegateImpl::BeginDaemonShutdown() {
+void CoreDelegateImpl::BeginDaemonShutdown() {
   daemon_->Quit();
 }
 
-std::unique_ptr<BluetoothClient>
-WilcoDtcSupportdCoreDelegateImpl::CreateBluetoothClient(
+std::unique_ptr<BluetoothClient> CoreDelegateImpl::CreateBluetoothClient(
     const scoped_refptr<dbus::Bus>& bus) {
   DCHECK(bus);
   return std::make_unique<BluetoothClientImpl>(bus);
 }
 
-std::unique_ptr<DebugdAdapter>
-WilcoDtcSupportdCoreDelegateImpl::CreateDebugdAdapter(
+std::unique_ptr<DebugdAdapter> CoreDelegateImpl::CreateDebugdAdapter(
     const scoped_refptr<dbus::Bus>& bus) {
   DCHECK(bus);
   return std::make_unique<DebugdAdapterImpl>(
       std::make_unique<org::chromium::debugdProxy>(bus));
 }
 
-std::unique_ptr<PowerdAdapter>
-WilcoDtcSupportdCoreDelegateImpl::CreatePowerdAdapter(
+std::unique_ptr<PowerdAdapter> CoreDelegateImpl::CreatePowerdAdapter(
     const scoped_refptr<dbus::Bus>& bus) {
   DCHECK(bus);
   return std::make_unique<PowerdAdapterImpl>(bus);
 }
 
 std::unique_ptr<BluetoothEventService>
-WilcoDtcSupportdCoreDelegateImpl::CreateBluetoothEventService(
+CoreDelegateImpl::CreateBluetoothEventService(
     BluetoothClient* bluetooth_client) {
   DCHECK(bluetooth_client);
   return std::make_unique<BluetoothEventServiceImpl>(bluetooth_client);
 }
 
-std::unique_ptr<EcEventService>
-WilcoDtcSupportdCoreDelegateImpl::CreateEcEventService() {
+std::unique_ptr<EcEventService> CoreDelegateImpl::CreateEcEventService() {
   return std::make_unique<EcEventService>();
 }
 
-std::unique_ptr<PowerdEventService>
-WilcoDtcSupportdCoreDelegateImpl::CreatePowerdEventService(
+std::unique_ptr<PowerdEventService> CoreDelegateImpl::CreatePowerdEventService(
     PowerdAdapter* powerd_adapter) {
   DCHECK(powerd_adapter);
   return std::make_unique<PowerdEventServiceImpl>(powerd_adapter);
