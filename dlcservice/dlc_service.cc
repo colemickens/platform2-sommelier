@@ -405,7 +405,9 @@ bool DlcService::HandleStatusResult(const StatusResult& status_result) {
   if (dlc_modules_being_installed_.dlc_module_infos().empty())
     return false;
 
-  if (status_result.current_operation() == Operation::REPORTING_ERROR_EVENT) {
+  Operation update_engine_operation = status_result.current_operation();
+
+  if (update_engine_operation == Operation::REPORTING_ERROR_EVENT) {
     LOG(ERROR) << "Signal from update_engine indicates reporting failure.";
     SendFailedSignalAndCleanup();
     return false;
@@ -426,16 +428,23 @@ bool DlcService::HandleStatusResult(const StatusResult& status_result) {
     return false;
   }
 
-  // When update_engine is still installing, we got a progress update here.
-  if (status_result.current_operation() != Operation::IDLE) {
-    SendOnInstallStatusSignal(utils::CreateInstallStatus(
-        Status::RUNNING, kErrorNone, {}, status_result.progress()));
-    return false;
+  switch (update_engine_operation) {
+    case Operation::IDLE:
+      LOG(INFO)
+          << "Signal from update_engine, proceeding to complete installation.";
+      return true;
+    // Only when update_engine's |Operation::DOWNLOADING| should dlcservice send
+    // a signal out for |InstallStatus| for |Status::RUNNING|. Majority of the
+    // install process for DLC(s) is during |Operation::DOWNLOADING|, this also
+    // means that only a single growth from 0.0 to 1.0 for progress reporting
+    // will happen.
+    case Operation::DOWNLOADING:
+      SendOnInstallStatusSignal(utils::CreateInstallStatus(
+          Status::RUNNING, kErrorNone, {}, status_result.progress()));
+      FALLTHROUGH;
+    default:
+      return false;
   }
-
-  LOG(INFO)
-      << "Signal from update_engine, proceeding to complete installation.";
-  return true;
 }
 
 bool DlcService::CreateDlc(const string& id,

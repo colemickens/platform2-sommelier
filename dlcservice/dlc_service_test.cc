@@ -8,6 +8,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/optional.h>
 #include <base/run_loop.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <brillo/message_loops/message_loop_utils.h>
@@ -59,6 +60,26 @@ DlcModuleList CreateDlcModuleList(const vector<string>& ids,
   }
   return dlc_module_list;
 }
+
+class DlcServiceTestObserver : public DlcService::Observer {
+ public:
+  void SendInstallStatus(const InstallStatus& install_status) override {
+    install_status_.emplace(install_status);
+  }
+
+  bool IsSendInstallStatusCalled() { return install_status_.has_value(); }
+
+  InstallStatus GetInstallStatus() {
+    EXPECT_TRUE(install_status_.has_value())
+        << "SendInstallStatus() was not called.";
+    base::Optional<InstallStatus> tmp;
+    tmp.swap(install_status_);
+    return *tmp;
+  }
+
+ private:
+  base::Optional<InstallStatus> install_status_;
+};
 
 }  // namespace
 
@@ -131,6 +152,9 @@ class DlcServiceTest : public testing::Test {
         move(mock_image_loader_proxy_), move(mock_update_engine_proxy_),
         std::make_unique<BootSlot>(move(mock_boot_device_)), manifest_path_,
         content_path_);
+
+    dlc_service_test_observer_ = std::make_unique<DlcServiceTestObserver>();
+    dlc_service_->AddObserver(dlc_service_test_observer_.get());
   }
 
   void SetUp() override { dlc_service_->LoadDlcModuleImages(); }
@@ -159,6 +183,7 @@ class DlcServiceTest : public testing::Test {
       mock_update_engine_proxy_;
   org::chromium::UpdateEngineInterfaceProxyMock* mock_update_engine_proxy_ptr_;
   std::unique_ptr<DlcService> dlc_service_;
+  std::unique_ptr<DlcServiceTestObserver> dlc_service_test_observer_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DlcServiceTest);
@@ -463,6 +488,23 @@ TEST_F(DlcServiceTest, ReportingFailureCleanupTest) {
     EXPECT_FALSE(base::PathExists(content_path_.Append(dlc_id)));
 }
 
+TEST_F(DlcServiceTest, ReportingFailureSignalTest) {
+  const vector<string>& dlc_ids = {kSecondDlc, kThirdDlc};
+  DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
+
+  EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
+
+  for (const string& dlc_id : dlc_ids)
+    EXPECT_TRUE(base::PathExists(content_path_.Append(dlc_id)));
+
+  StatusResult status_result;
+  status_result.set_current_operation(Operation::REPORTING_ERROR_EVENT);
+  status_result.set_is_install(true);
+  dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+  EXPECT_EQ(dlc_service_test_observer_->GetInstallStatus().status(),
+            Status::FAILED);
+}
+
 TEST_F(DlcServiceTest, ProbableUpdateEngineRestartCleanupTest) {
   const vector<string>& dlc_ids = {kSecondDlc, kThirdDlc};
   DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
@@ -523,6 +565,39 @@ TEST_F(DlcServiceTest, UpdateEngineFailAfterSignalsSafeTest) {
 
   for (const string& dlc_id : dlc_ids)
     EXPECT_FALSE(base::PathExists(content_path_.Append(dlc_id)));
+}
+
+TEST_F(DlcServiceTest, OnStatusUpdateAdvancedSignalDownloadProgressTest) {
+  const vector<string>& dlc_ids = {kSecondDlc, kThirdDlc};
+  DlcModuleList dlc_module_list = CreateDlcModuleList(dlc_ids);
+
+  EXPECT_TRUE(dlc_service_->Install(dlc_module_list, nullptr));
+
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
+      .Times(0);
+
+  StatusResult status_result;
+  status_result.set_is_install(true);
+
+  vector<Operation> install_operation_sequence = {
+      Operation::CHECKING_FOR_UPDATE, Operation::UPDATE_AVAILABLE,
+      Operation::FINALIZING};
+
+  for (const auto& op : install_operation_sequence) {
+    status_result.set_current_operation(op);
+    dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+    EXPECT_FALSE(dlc_service_test_observer_->IsSendInstallStatusCalled());
+  }
+
+  status_result.set_current_operation(Operation::DOWNLOADING);
+  dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+  EXPECT_EQ(dlc_service_test_observer_->GetInstallStatus().status(),
+            Status::RUNNING);
+
+  status_result.set_current_operation(Operation::IDLE);
+  dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+  EXPECT_EQ(dlc_service_test_observer_->GetInstallStatus().status(),
+            Status::COMPLETED);
 }
 
 }  // namespace dlcservice
