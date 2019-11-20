@@ -663,7 +663,7 @@ bool TPMUtilityImpl::Sign(int key_handle,
     return false;
 
   // Tspi_Hash_Sign only do PKCS#1 v1.5, and only the mechanisms below match.
-  if (GetSigningSchemeForMechanism(signing_mechanism) ==
+  if (GetSigningSchemeForMechanism(signing_mechanism) !=
       RsaPaddingScheme::RSASSA_PKCS1_V1_5) {
     LOG(ERROR) << "Unsupported mechanism for tpm1.2 key " << signing_mechanism;
     return false;
