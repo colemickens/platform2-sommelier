@@ -8,17 +8,17 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
-    ":libbrillo-${libbase_ver}",
-    ":libbrillo-glib-${libbase_ver}",
-    ":libbrillo-test-${libbase_ver}",
-    ":libinstallattributes-${libbase_ver}",
-    ":libpolicy-${libbase_ver}",
+    ":libbrillo",
+    ":libbrillo-glib",
+    ":libbrillo-test",
+    ":libinstallattributes",
+    ":libpolicy",
   ]
   if (use.test) {
     deps += [
-      ":libbrillo-${libbase_ver}_tests",
-      ":libinstallattributes-${libbase_ver}_tests",
-      ":libpolicy-${libbase_ver}_tests",
+      ":libbrillo_tests",
+      ":libinstallattributes_tests",
+      ":libpolicy_tests",
     ]
   }
   if (use.fuzzer) {
@@ -44,7 +44,7 @@ config("target_defaults") {
   ]
 }
 
-config("libbrillo-${libbase_ver}_configs") {
+config("libbrillo_configs") {
   include_dirs = [ "../libbrillo" ]
 }
 
@@ -56,7 +56,7 @@ libbrillo_sublibs = [
     # |library_name| is library file name without "lib" prefix. This is needed
     # for composing -l*** flags in libbrillo-${libbasever}.so.
     # (Current version of GN deployed to ChromeOS doesn't have string_replace.)
-    library_name = "brillo-core-${libbase_ver}"
+    library_name = "brillo-core"
     if (use.dbus) {
       all_dependent_pkg_deps = [ "dbus-1" ]
     }
@@ -112,9 +112,9 @@ libbrillo_sublibs = [
   },
 
   {
-    library_name = "brillo-blockdeviceutils-${libbase_ver}"
+    library_name = "brillo-blockdeviceutils"
     deps = [
-      ":libbrillo-core-${libbase_ver}",
+      ":libbrillo-core",
     ]
     sources = [
       "brillo/blkdev_utils/loop_device.cc",
@@ -129,10 +129,10 @@ libbrillo_sublibs = [
   },
 
   {
-    library_name = "brillo-http-${libbase_ver}"
+    library_name = "brillo-http"
     deps = [
-      ":libbrillo-core-${libbase_ver}",
-      ":libbrillo-streams-${libbase_ver}",
+      ":libbrillo-core",
+      ":libbrillo-streams",
     ]
     all_dependent_pkg_deps = [ "libcurl" ]
     sources = [
@@ -150,9 +150,9 @@ libbrillo_sublibs = [
   },
 
   {
-    library_name = "brillo-streams-${libbase_ver}"
+    library_name = "brillo-streams"
     deps = [
-      ":libbrillo-core-${libbase_ver}",
+      ":libbrillo-core",
     ]
     all_dependent_pkg_deps = [ "openssl" ]
     sources = [
@@ -169,7 +169,7 @@ libbrillo_sublibs = [
   },
 
   {
-    library_name = "brillo-cryptohome-${libbase_ver}"
+    library_name = "brillo-cryptohome"
     all_dependent_pkg_deps = [ "openssl" ]
     sources = [
       "brillo/cryptohome.cc",
@@ -177,7 +177,7 @@ libbrillo_sublibs = [
   },
 
   {
-    library_name = "brillo-minijail-${libbase_ver}"
+    library_name = "brillo-minijail"
     all_dependent_pkg_deps = [ "libminijail" ]
     sources = [
       "brillo/minijail/minijail.cc",
@@ -185,7 +185,7 @@ libbrillo_sublibs = [
   },
 
   {
-    library_name = "brillo-protobuf-${libbase_ver}"
+    library_name = "brillo-protobuf"
     all_dependent_pkg_deps = [ "protobuf" ]
     sources = [
       "brillo/proto_file_io.cc",
@@ -196,7 +196,7 @@ libbrillo_sublibs = [
 if (use.udev) {
   libbrillo_sublibs += [
     {
-      library_name = "brillo-udev-${libbase_ver}"
+      library_name = "brillo-udev"
       all_dependent_pkg_deps = [ "libudev" ]
       sources = [
         "brillo/udev/udev.cc",
@@ -238,7 +238,7 @@ foreach(attr, libbrillo_sublibs) {
   }
 }
 
-generate_pkg_config("libbrillo_pc") {
+generate_pkg_config("libbrillo-${libbase_ver}_pc") {
   name = "libbrillo"
   output_name = "libbrillo-${libbase_ver}"
   description = "brillo base library"
@@ -256,19 +256,41 @@ generate_pkg_config("libbrillo_pc") {
     }
   }
   defines = [ "USE_RTTI_FOR_TYPE_TAGS" ]
-  libs = [ "-lbrillo-${libbase_ver}" ]
+  libs = [ "-lbrillo" ]
 }
 
-action("libbrillo-${libbase_ver}") {
+generate_pkg_config("libbrillo_pc") {
+  name = "libbrillo"
+  output_name = "libbrillo"
+  description = "brillo base library"
+  version = libbase_ver
+  requires_private = default_pkg_deps
+  foreach(sublib, libbrillo_sublibs) {
+    if (defined(sublib.pkg_deps)) {
+      requires_private += sublib.pkg_deps
+    }
+    if (defined(sublib.public_pkg_deps)) {
+      requires_private += sublib.public_pkg_deps
+    }
+    if (defined(sublib.all_dependent_pkg_deps)) {
+      requires_private += sublib.all_dependent_pkg_deps
+    }
+  }
+  defines = [ "USE_RTTI_FOR_TYPE_TAGS" ]
+  libs = [ "-lbrillo" ]
+}
+
+action("libbrillo") {
   deps = [
     ":libbrillo_pc",
+    ":libbrillo-${libbase_ver}_pc"
   ]
   foreach(sublib, libbrillo_sublibs) {
     deps += [ ":lib" + sublib.library_name ]
   }
   script = "//common-mk/write_args.py"
   outputs = [
-    "${root_out_dir}/lib/libbrillo-${libbase_ver}.so",
+    "${root_out_dir}/lib/libbrillo.so",
   ]
   args = [ "--output" ] + outputs + [ "--" ] + [
            "GROUP",
@@ -285,16 +307,16 @@ action("libbrillo-${libbase_ver}") {
   ]
 }
 
-libbrillo_test_deps = [ "libbrillo-http-${libbase_ver}" ]
+libbrillo_test_deps = [ "libbrillo-http" ]
 
-generate_pkg_config("libbrillo-test_pc") {
+generate_pkg_config("libbrillo-test-${libbase_ver}_pc") {
   name = "libbrillo-test"
   output_name = "libbrillo-test-${libbase_ver}"
   description = "brillo test library"
   version = libbase_ver
 
   # Because libbrillo-test is static, we have to depend directly on everything.
-  requires = [ "libbrillo-${libbase_ver}" ] + default_pkg_deps
+  requires = [ "libbrillo" ] + default_pkg_deps
   foreach(name, libbrillo_test_deps) {
     foreach(t, libbrillo_sublibs) {
       if ("lib" + t.library_name == name) {
@@ -310,18 +332,45 @@ generate_pkg_config("libbrillo-test_pc") {
       }
     }
   }
-  libs = [ "-lbrillo-test-${libbase_ver}" ]
+  libs = [ "-lbrillo-test" ]
 }
 
-static_library("libbrillo-test-${libbase_ver}") {
+generate_pkg_config("libbrillo-test_pc") {
+  name = "libbrillo-test"
+  output_name = "libbrillo-test"
+  description = "brillo test library"
+  version = libbase_ver
+
+  # Because libbrillo-test is static, we have to depend directly on everything.
+  requires = [ "libbrillo" ] + default_pkg_deps
+  foreach(name, libbrillo_test_deps) {
+    foreach(t, libbrillo_sublibs) {
+      if ("lib" + t.library_name == name) {
+        if (defined(t.pkg_deps)) {
+          requires += t.pkg_deps
+        }
+        if (defined(t.public_pkg_deps)) {
+          requires += t.public_pkg_deps
+        }
+        if (defined(t.all_dependent_pkg_deps)) {
+          requires += t.all_dependent_pkg_deps
+        }
+      }
+    }
+  }
+  libs = [ "-lbrillo-test" ]
+}
+
+static_library("libbrillo-test") {
   configs -= [ "//common-mk:use_thin_archive" ]
   configs += [
     "//common-mk:nouse_thin_archive",
     ":target_defaults",
   ]
   deps = [
-    ":libbrillo-http-${libbase_ver}",
+    ":libbrillo-http",
     ":libbrillo-test_pc",
+    ":libbrillo-test-${libbase_ver}_pc",
   ]
   foreach(name, libbrillo_test_deps) {
     deps += [ ":" + name ]
@@ -339,7 +388,7 @@ static_library("libbrillo-test-${libbase_ver}") {
   }
 }
 
-shared_library("libinstallattributes-${libbase_ver}") {
+shared_library("libinstallattributes") {
   configs += [ ":target_defaults" ]
   deps = [
     ":libinstallattributes-includes",
@@ -351,10 +400,10 @@ shared_library("libinstallattributes-${libbase_ver}") {
   ]
 }
 
-shared_library("libpolicy-${libbase_ver}") {
+shared_library("libpolicy") {
   configs += [ ":target_defaults" ]
   deps = [
-    ":libinstallattributes-${libbase_ver}",
+    ":libinstallattributes",
     ":libpolicy-includes",
     "../common-mk/external_dependencies:policy-protos",
   ]
@@ -383,20 +432,30 @@ if (use.dbus) {
   ]
 }
 
-generate_pkg_config("libbrillo-glib_pc") {
+generate_pkg_config("libbrillo-glib-${libbase_ver}_pc") {
   name = "libbrillo-glib"
   output_name = "libbrillo-glib-${libbase_ver}"
   description = "brillo glib wrapper library"
   version = libbase_ver
   requires_private = libbrillo_glib_pkg_deps
-  libs = [ "-lbrillo-glib-${libbase_ver}" ]
+  libs = [ "-lbrillo-glib" ]
 }
 
-shared_library("libbrillo-glib-${libbase_ver}") {
+generate_pkg_config("libbrillo-glib_pc") {
+  name = "libbrillo-glib"
+  output_name = "libbrillo-glib"
+  description = "brillo glib wrapper library"
+  version = libbase_ver
+  requires_private = libbrillo_glib_pkg_deps
+  libs = [ "-lbrillo-glib" ]
+}
+
+shared_library("libbrillo-glib") {
   configs += [ ":target_defaults" ]
   deps = [
-    ":libbrillo-${libbase_ver}",
+    ":libbrillo",
     ":libbrillo-glib_pc",
+    ":libbrillo-glib-${libbase_ver}_pc",
   ]
   all_dependent_pkg_deps = libbrillo_glib_pkg_deps
   if (use.dbus) {
@@ -412,35 +471,36 @@ shared_library("libbrillo-glib-${libbase_ver}") {
 }
 
 if (use.test) {
-  static_library("libbrillo-${libbase_ver}_static") {
+  static_library("libbrillo_static") {
     configs += [ ":target_defaults" ]
     deps = [
       ":libbrillo_pc",
-      ":libinstallattributes-${libbase_ver}",
-      ":libpolicy-${libbase_ver}",
+      ":libinstallattributes",
+      ":libpolicy",
+      ":libbrillo-${libbase_ver}_pc",
     ]
     foreach(sublib, libbrillo_sublibs) {
       deps += [ ":lib" + sublib.library_name ]
     }
-    public_configs = [ ":libbrillo-${libbase_ver}_configs" ]
+    public_configs = [ ":libbrillo_configs" ]
   }
-  proto_library("libbrillo-${libbase_ver}_tests_proto") {
+  proto_library("libbrillo_tests_proto") {
     proto_in_dir = "brillo/dbus"
     proto_out_dir = "include/brillo/dbus"
     sources = [
       "${proto_in_dir}/test.proto",
     ]
   }
-  executable("libbrillo-${libbase_ver}_tests") {
+  executable("libbrillo_tests") {
     configs += [
       "//common-mk:test",
       ":target_defaults",
     ]
     deps = [
-      ":libbrillo-${libbase_ver}_static",
-      ":libbrillo-${libbase_ver}_tests_proto",
-      ":libbrillo-glib-${libbase_ver}",
-      ":libbrillo-test-${libbase_ver}",
+      ":libbrillo_static",
+      ":libbrillo_tests_proto",
+      ":libbrillo-glib",
+      ":libbrillo-test",
     ]
     pkg_deps = [ "libchrome-test-${libbase_ver}" ]
     cflags = [ "-Wno-format-zero-length" ]
@@ -519,13 +579,13 @@ if (use.test) {
     }
   }
 
-  executable("libinstallattributes-${libbase_ver}_tests") {
+  executable("libinstallattributes_tests") {
     configs += [
       "//common-mk:test",
       ":target_defaults",
     ]
     deps = [
-      ":libinstallattributes-${libbase_ver}",
+      ":libinstallattributes",
       "../common-mk/external_dependencies:install_attributes-proto",
       "../common-mk/testrunner:testrunner",
     ]
@@ -534,14 +594,14 @@ if (use.test) {
     ]
   }
 
-  executable("libpolicy-${libbase_ver}_tests") {
+  executable("libpolicy_tests") {
     configs += [
       "//common-mk:test",
       ":target_defaults",
     ]
     deps = [
-      ":libinstallattributes-${libbase_ver}",
-      ":libpolicy-${libbase_ver}",
+      ":libinstallattributes",
+      ":libpolicy",
       "../common-mk/external_dependencies:install_attributes-proto",
       "../common-mk/external_dependencies:policy-protos",
       "../common-mk/testrunner:testrunner",
@@ -564,12 +624,12 @@ if (use.fuzzer) {
 
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
 
-    pkg_deps = [ "libchrome-${libbase_ver}" ]
+    pkg_deps = [ "libchrome" ]
 
     include_dirs = [ "../libbrillo" ]
 
     deps = [
-      ":libbrillo-core-${libbase_ver}",
+      ":libbrillo-core",
     ]
   }
 
@@ -585,7 +645,7 @@ if (use.fuzzer) {
     include_dirs = [ "../libbrillo" ]
 
     deps = [
-      ":libbrillo-core-${libbase_ver}",
+      ":libbrillo-core",
     ]
   }
 
@@ -601,8 +661,8 @@ if (use.fuzzer) {
     include_dirs = [ "../libbrillo" ]
 
     deps = [
-      ":libbrillo-http-${libbase_ver}",
-      ":libbrillo-streams-${libbase_ver}",
+      ":libbrillo-http",
+      ":libbrillo-streams",
     ]
   }
 }
