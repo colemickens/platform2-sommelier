@@ -1108,7 +1108,7 @@ bool AttestationService::CreateEnrollRequestInternal(ACAType aca_type,
     return false;
   }
   const auto& database_pb = database_->GetProtobuf();
-  if (database_pb.identities().size() < identity) {
+  if (database_pb.identities().size() <= identity) {
     LOG(ERROR) << __func__ << ": Enrollment with "
                << GetACAName(aca_type)
                << " is not possible, identity "
@@ -1391,6 +1391,14 @@ bool AttestationService::CreateKey(const std::string& username,
                                    KeyType key_type,
                                    KeyUsage key_usage,
                                    CertifiedKey* key) {
+  auto database_pb = database_->GetProtobuf();
+  const int identity = kFirstIdentity;
+  if (database_pb.identities().size() <= identity) {
+    LOG(ERROR) << __func__ << ": Cannot create a certificate request, identity "
+               << identity << " does not exist.";
+    return false;
+  }
+
   std::string nonce;
   if (!crypto_utility_->GetRandom(kNonceSize, &nonce)) {
     LOG(ERROR) << __func__ << ": GetRandom(nonce) failed.";
@@ -1401,9 +1409,9 @@ bool AttestationService::CreateKey(const std::string& username,
   std::string public_key_tpm_format;
   std::string key_info;
   std::string proof;
-  auto database_pb = database_->GetProtobuf();
+  const auto& identity_data = database_pb.identities().Get(identity);
   if (!tpm_utility_->CreateCertifiedKey(
-          key_type, key_usage, database_pb.identity_key().identity_key_blob(),
+          key_type, key_usage, identity_data.identity_key().identity_key_blob(),
           nonce, &key_blob, &public_key, &public_key_tpm_format, &key_info,
           &proof)) {
     return false;
@@ -1912,7 +1920,7 @@ bool AttestationService::ActivateAttestationKeyInternal(
     std::string* certificate,
     int* certificate_index) {
   const auto& database_pb = database_->GetProtobuf();
-  if (database_pb.identities().size() < identity) {
+  if (database_pb.identities().size() <= identity) {
     LOG(ERROR) << __func__ << ": Enrollment is not possible, identity "
                << identity << " does not exist.";
     return false;
@@ -2478,7 +2486,7 @@ void AttestationService::CreateCertificateRequestTask(
     const std::shared_ptr<CreateCertificateRequestReply>& result) {
   const int identity = kFirstIdentity;
   auto database_pb = database_->GetProtobuf();
-  if (database_pb.identities().size() < identity) {
+  if (database_pb.identities().size() <= identity) {
     LOG(ERROR) << __func__ << ": Cannot create a certificate request, identity "
                << identity << " does not exist.";
     return;

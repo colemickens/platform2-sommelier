@@ -533,6 +533,11 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
                                       std::string* public_key_tpm_format,
                                       std::string* key_info,
                                       std::string* proof) {
+  if (identity_key_blob.empty()) {
+    LOG(ERROR) << __func__ << ": Unexpected empty identity_key_blob.";
+    return false;
+  }
+
   std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
       trunks_factory_->GetPasswordAuthorization(std::string());
   trunks::TpmUtility::AsymmetricKeyUsage trunks_key_usage =

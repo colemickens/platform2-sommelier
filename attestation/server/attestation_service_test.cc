@@ -1188,6 +1188,9 @@ TEST_P(AttestationServiceTest, ActivateAttestationKeyActivateFailure) {
 }
 
 TEST_P(AttestationServiceTest, CreateCertifiableKeySuccess) {
+  // We need an identity to create a certifiable key.
+  SetUpIdentity(identity_);
+
   // Configure a fake TPM response.
   EXPECT_CALL(
       mock_tpm_utility_,
@@ -1218,6 +1221,9 @@ TEST_P(AttestationServiceTest, CreateCertifiableKeySuccess) {
 }
 
 TEST_P(AttestationServiceTest, CreateCertifiableKeySuccessNoUser) {
+  // We need an identity to create a certifiable key.
+  SetUpIdentity(identity_);
+
   // Configure a fake TPM response.
   EXPECT_CALL(
       mock_tpm_utility_,
@@ -1247,6 +1253,9 @@ TEST_P(AttestationServiceTest, CreateCertifiableKeySuccessNoUser) {
 }
 
 TEST_P(AttestationServiceTest, CreateCertifiableKeyRNGFailure) {
+  // We need an identity to make sure it didn't fail because of that.
+  SetUpIdentity(identity_);
+
   EXPECT_CALL(mock_crypto_utility_, GetRandom(_, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
@@ -1266,7 +1275,28 @@ TEST_P(AttestationServiceTest, CreateCertifiableKeyRNGFailure) {
   Run();
 }
 
+TEST_P(AttestationServiceTest, CreateCertifiableKeyNoIdentityFailure) {
+  // Set expectations on the outputs.
+  auto callback = [](const base::Closure& quit_closure,
+                     const CreateCertifiableKeyReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_public_key());
+    EXPECT_FALSE(reply.has_certify_info());
+    EXPECT_FALSE(reply.has_certify_info_signature());
+    quit_closure.Run();
+  };
+  CreateCertifiableKeyRequest request;
+  request.set_key_label("label");
+  request.set_key_type(KEY_TYPE_RSA);
+  request.set_key_usage(KEY_USAGE_SIGN);
+  service_->CreateCertifiableKey(request, base::Bind(callback, QuitClosure()));
+  Run();
+}
+
 TEST_P(AttestationServiceTest, CreateCertifiableKeyTpmCreateFailure) {
+  // We need an identity to create a certifiable key.
+  SetUpIdentity(identity_);
+
   EXPECT_CALL(mock_tpm_utility_, CreateCertifiedKey(_, _, _, _, _, _, _, _, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
@@ -1287,6 +1317,9 @@ TEST_P(AttestationServiceTest, CreateCertifiableKeyTpmCreateFailure) {
 }
 
 TEST_P(AttestationServiceTest, CreateCertifiableKeyDBFailure) {
+  // We need an identity to make sure it didn't fail because of that.
+  SetUpIdentity(identity_);
+
   EXPECT_CALL(mock_key_store_, Write(_, _, _)).WillRepeatedly(Return(false));
   // Set expectations on the outputs.
   auto callback = [](const base::Closure& quit_closure,
@@ -1307,6 +1340,9 @@ TEST_P(AttestationServiceTest, CreateCertifiableKeyDBFailure) {
 }
 
 TEST_P(AttestationServiceTest, CreateCertifiableKeyDBFailureNoUser) {
+  // We need an identity to make sure it didn't fail because of that.
+  SetUpIdentity(identity_);
+
   EXPECT_CALL(mock_database_, SaveChanges()).WillRepeatedly(Return(false));
   // Set expectations on the outputs.
   auto callback = [](const base::Closure& quit_closure,
