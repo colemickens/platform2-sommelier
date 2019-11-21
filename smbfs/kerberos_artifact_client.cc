@@ -62,10 +62,11 @@ void KerberosArtifactClient::GetUserKerberosFiles(
                                authpolicy::kGetUserKerberosFilesMethod);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(object_guid);
+  // TODO(crbug.com/993857): Switch to BindOnce when libchrome is updated.
   auth_policy_object_proxy_->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
       base::Bind(&KerberosArtifactClient::HandleGetUserKeberosFiles,
-                 weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+                 weak_ptr_factory_.GetWeakPtr(), base::Passed(&callback)));
 }
 
 void KerberosArtifactClient::ConnectToKerberosFilesChangedSignal(
@@ -82,7 +83,7 @@ void KerberosArtifactClient::HandleGetUserKeberosFiles(
   authpolicy::KerberosFiles files_proto;
   authpolicy::ErrorType error(GetErrorAndProto(response, &files_proto));
 
-  callback.Run(error, files_proto);
+  std::move(callback).Run(error, files_proto);
 }
 
 }  // namespace smbfs

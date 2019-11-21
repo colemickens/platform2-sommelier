@@ -8,6 +8,7 @@
 #include <string>
 
 #include <authpolicy/proto_bindings/active_directory_info.pb.h>
+#include <base/callback.h>
 #include <dbus/object_proxy.h>
 
 namespace smbfs {
@@ -15,8 +16,8 @@ namespace smbfs {
 class KerberosArtifactClientInterface {
  public:
   using GetUserKerberosFilesCallback =
-      base::Callback<void(authpolicy::ErrorType error,
-                          const authpolicy::KerberosFiles& kerberos_files)>;
+      base::OnceCallback<void(authpolicy::ErrorType error,
+                              const authpolicy::KerberosFiles& kerberos_files)>;
 
   virtual ~KerberosArtifactClientInterface() = default;
 

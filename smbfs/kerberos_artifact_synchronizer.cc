@@ -45,8 +45,8 @@ void KerberosArtifactSynchronizer::SetupKerberos(
 void KerberosArtifactSynchronizer::GetFiles(SetupKerberosCallback callback) {
   client_->GetUserKerberosFiles(
       object_guid_,
-      base::Bind(&KerberosArtifactSynchronizer::OnGetFilesResponse,
-                 base::Unretained(this), std::move(callback)));
+      base::BindOnce(&KerberosArtifactSynchronizer::OnGetFilesResponse,
+                     base::Unretained(this), std::move(callback)));
 }
 
 void KerberosArtifactSynchronizer::OnGetFilesResponse(
@@ -103,12 +103,13 @@ void KerberosArtifactSynchronizer::WriteFiles(
 
 void KerberosArtifactSynchronizer::ConnectToKerberosFilesChangedSignal(
     SetupKerberosCallback callback) {
+  // TODO(crbug.com/993857): Switch to BindOnce when libchrome is updated.
   client_->ConnectToKerberosFilesChangedSignal(
       base::Bind(&KerberosArtifactSynchronizer::OnKerberosFilesChanged,
                  base::Unretained(this)),
       base::Bind(
           &KerberosArtifactSynchronizer::OnKerberosFilesChangedSignalConnected,
-          base::Unretained(this), std::move(callback)));
+          base::Unretained(this), base::Passed(&callback)));
 }
 
 void KerberosArtifactSynchronizer::OnKerberosFilesChanged(
