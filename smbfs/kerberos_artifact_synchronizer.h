@@ -10,6 +10,7 @@
 
 #include <authpolicy/proto_bindings/active_directory_info.pb.h>
 #include <base/callback.h>
+#include <base/files/file_path.h>
 
 #include "smbfs/kerberos_artifact_client_interface.h"
 
@@ -31,8 +32,8 @@ class KerberosArtifactSynchronizer {
   using SetupKerberosCallback = base::OnceCallback<void(bool setup_success)>;
 
   KerberosArtifactSynchronizer(
-      const std::string& krb5_conf_path,
-      const std::string& krb5_ccache_path,
+      const base::FilePath& krb5_conf_path,
+      const base::FilePath& krb5_ccache_path,
       const std::string& object_guid,
       std::unique_ptr<KerberosArtifactClientInterface> client);
 
@@ -58,7 +59,7 @@ class KerberosArtifactSynchronizer {
   // Writes |kerberos_file| to |path|. First writes into a temporary file
   // and then replaces the existing one. Returns true if the write succeeds,
   // false if it fails. The parent directory of |path| must exist.
-  bool WriteFile(const std::string& path, const std::string& kerberos_file);
+  bool WriteFile(const base::FilePath& path, const std::string& kerberos_file);
 
   // Connects to the 'UserKerberosFilesChanged' D-Bus signal. Called by
   // WriteFiles() on initial setup.
@@ -74,8 +75,8 @@ class KerberosArtifactSynchronizer {
                                              const std::string& signal_name,
                                              bool success);
 
-  const std::string krb5_conf_path_;
-  const std::string krb5_ccache_path_;
+  const base::FilePath krb5_conf_path_;
+  const base::FilePath krb5_ccache_path_;
   const std::string object_guid_;
 
   const std::unique_ptr<KerberosArtifactClientInterface> client_;

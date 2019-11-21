@@ -8,8 +8,7 @@
 #include <memory>
 #include <string>
 
-#include <authpolicy/proto_bindings/active_directory_info.pb.h>
-#include <base/callback.h>
+#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/dbus/dbus_object.h>
 #include <dbus/object_proxy.h>
@@ -36,7 +35,7 @@ class KerberosArtifactClient : public KerberosArtifactClientInterface {
                                  dbus::Response* response);
 
   dbus::ObjectProxy* auth_policy_object_proxy_ = nullptr;
-  base::WeakPtrFactory<KerberosArtifactClient> weak_ptr_factory_;
+  base::WeakPtrFactory<KerberosArtifactClient> weak_ptr_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(KerberosArtifactClient);
 };

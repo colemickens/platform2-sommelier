@@ -5,6 +5,7 @@
 #include <utility>
 
 #include <authpolicy/proto_bindings/active_directory_info.pb.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
@@ -30,20 +31,18 @@ void ExpectSetupFailure(bool success) {
   EXPECT_FALSE(success);
 }
 
-void ExpectFileEqual(const std::string& path,
+void ExpectFileEqual(const base::FilePath& path,
                      const std::string expected_contents) {
-  const base::FilePath file_path(path);
   std::string actual_contents;
-  EXPECT_TRUE(ReadFileToString(file_path, &actual_contents));
+  EXPECT_TRUE(ReadFileToString(path, &actual_contents));
 
   EXPECT_EQ(expected_contents, actual_contents);
 }
 
-void ExpectFileNotEqual(const std::string& path,
+void ExpectFileNotEqual(const base::FilePath& path,
                         const std::string expected_contents) {
-  const base::FilePath file_path(path);
   std::string actual_contents;
-  EXPECT_TRUE(ReadFileToString(file_path, &actual_contents));
+  EXPECT_TRUE(ReadFileToString(path, &actual_contents));
 
   EXPECT_NE(expected_contents, actual_contents);
 }
@@ -66,8 +65,8 @@ class KerberosArtifactSynchronizerTest : public testing::Test {
 
     EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
 
-    krb5_conf_path_ = temp_dir_.GetPath().Append(kKrb5FileName).value();
-    krb5_ccache_path_ = temp_dir_.GetPath().Append(kCCacheFileName).value();
+    krb5_conf_path_ = temp_dir_.GetPath().Append(kKrb5FileName);
+    krb5_ccache_path_ = temp_dir_.GetPath().Append(kCCacheFileName);
 
     synchronizer_ = std::make_unique<KerberosArtifactSynchronizer>(
         krb5_conf_path_, krb5_ccache_path_, kTestUserGuid, std::move(fake_ptr));
@@ -77,8 +76,8 @@ class KerberosArtifactSynchronizerTest : public testing::Test {
 
  protected:
   base::ScopedTempDir temp_dir_;
-  std::string krb5_conf_path_;
-  std::string krb5_ccache_path_;
+  base::FilePath krb5_conf_path_;
+  base::FilePath krb5_ccache_path_;
   FakeKerberosArtifactClient* fake_artifact_client_;
   std::unique_ptr<KerberosArtifactSynchronizer> synchronizer_;
 

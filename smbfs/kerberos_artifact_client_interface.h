@@ -9,6 +9,7 @@
 
 #include <authpolicy/proto_bindings/active_directory_info.pb.h>
 #include <base/callback.h>
+#include <base/macros.h>
 #include <dbus/object_proxy.h>
 
 namespace smbfs {

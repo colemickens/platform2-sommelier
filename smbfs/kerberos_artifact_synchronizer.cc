@@ -7,8 +7,6 @@
 #include <utility>
 
 #include <base/bind.h>
-#include <base/files/file_path.h>
-#include <base/files/important_file_writer.h>
 #include <base/files/file_util.h>
 #include <dbus/authpolicy/dbus-constants.h>
 #include <dbus/message.h>
@@ -16,8 +14,8 @@
 namespace smbfs {
 
 KerberosArtifactSynchronizer::KerberosArtifactSynchronizer(
-    const std::string& krb5_conf_path,
-    const std::string& krb5_ccache_path,
+    const base::FilePath& krb5_conf_path,
+    const base::FilePath& krb5_ccache_path,
     const std::string& object_guid,
     std::unique_ptr<KerberosArtifactClientInterface> client)
     : krb5_conf_path_(krb5_conf_path),
@@ -114,11 +112,10 @@ void KerberosArtifactSynchronizer::OnKerberosFilesChangedSignalConnected(
   std::move(callback).Run(true /* setup_success */);
 }
 
-bool KerberosArtifactSynchronizer::WriteFile(const std::string& path,
+bool KerberosArtifactSynchronizer::WriteFile(const base::FilePath& path,
                                              const std::string& blob) {
-  const base::FilePath file_path(path);
-  if (!base::ImportantFileWriter::WriteFileAtomically(file_path, blob)) {
-    LOG(ERROR) << "Failed to write file " << file_path.value();
+  if (base::WriteFile(path, blob.c_str(), blob.size()) != blob.size()) {
+    LOG(ERROR) << "Failed to write file " << path.value();
     return false;
   }
   return true;

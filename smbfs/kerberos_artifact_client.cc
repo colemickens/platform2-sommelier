@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <authpolicy/proto_bindings/active_directory_info.pb.h>
 #include <dbus/authpolicy/dbus-constants.h>
 #include <dbus/message.h>
 
@@ -49,8 +50,7 @@ authpolicy::ErrorType GetErrorAndProto(
 }  // namespace
 
 KerberosArtifactClient::KerberosArtifactClient(
-    brillo::dbus_utils::DBusObject* dbus_object)
-    : weak_ptr_factory_(this) {
+    brillo::dbus_utils::DBusObject* dbus_object) {
   auth_policy_object_proxy_ = dbus_object->GetBus()->GetObjectProxy(
       authpolicy::kAuthPolicyServiceName,
       dbus::ObjectPath(authpolicy::kAuthPolicyServicePath));
