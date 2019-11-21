@@ -49,7 +49,9 @@ class FakeAddressManager : public AddressManager {
       : AddressManager({
             AddressManager::Guest::ARC,
             AddressManager::Guest::ARC_NET,
+            AddressManager::Guest::CONTAINER,
             AddressManager::Guest::VM_ARC,
+            AddressManager::Guest::VM_TERMINA,
         }) {}
 
   MacAddress GenerateMacAddress() override {
@@ -209,6 +211,19 @@ TEST_F(DeviceManagerTest, MakeDevice_AndroidVm) {
   EXPECT_TRUE(arc0->options().is_android);
   EXPECT_TRUE(arc0->options().use_default_interface);
   EXPECT_TRUE(arc0->options().is_sticky);
+}
+
+TEST_F(DeviceManagerTest, MakeDevice_TerminaVm) {
+  auto mgr = NewManager();
+  auto tvm = mgr->MakeDevice("tvm3");
+  const auto& cfg = tvm->config();
+  EXPECT_EQ(cfg.host_ifname(), "tvm3");
+  EXPECT_EQ(cfg.guest_ifname(), "");
+  EXPECT_EQ(cfg.host_ipv4_addr(), Ipv4Addr(100, 115, 92, 25));
+  EXPECT_EQ(cfg.guest_ipv4_addr(), Ipv4Addr(100, 115, 92, 26));
+  EXPECT_TRUE(cfg.lxd_ipv4_subnet());
+  EXPECT_FALSE(tvm->options().ipv6_enabled);
+  EXPECT_TRUE(tvm->options().is_sticky);
 }
 
 TEST_F(DeviceManagerTest, MakeVpnTunDevice) {

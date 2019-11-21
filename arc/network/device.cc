@@ -19,11 +19,13 @@
 
 namespace arc_networkd {
 
-// These are used to identify which ARC++ data path should be used when setting
-// up the Android device.
+// Special device names used to indicate which ARC guest it represents.
 const char kAndroidDevice[] = "arc0";
 const char kAndroidLegacyDevice[] = "android";
 const char kAndroidVmDevice[] = "arcvm";
+// Prefix used to identify devices created for Termina that hold the configured
+// TAP interface for it VM.
+const char kTerminaVmDevicePrefix[] = "tvm";
 
 namespace {
 constexpr int kMaxRandomAddressTries = 3;
@@ -34,13 +36,15 @@ Device::Config::Config(const std::string& host_ifname,
                        const MacAddress& guest_mac_addr,
                        std::unique_ptr<Subnet> ipv4_subnet,
                        std::unique_ptr<SubnetAddress> host_ipv4_addr,
-                       std::unique_ptr<SubnetAddress> guest_ipv4_addr)
+                       std::unique_ptr<SubnetAddress> guest_ipv4_addr,
+                       std::unique_ptr<Subnet> lxd_ipv4_subnet)
     : host_ifname_(host_ifname),
       guest_ifname_(guest_ifname),
       guest_mac_addr_(guest_mac_addr),
       ipv4_subnet_(std::move(ipv4_subnet)),
       host_ipv4_addr_(std::move(host_ipv4_addr)),
-      guest_ipv4_addr_(std::move(guest_ipv4_addr)) {}
+      guest_ipv4_addr_(std::move(guest_ipv4_addr)),
+      lxd_ipv4_subnet_(std::move(lxd_ipv4_subnet)) {}
 
 void Device::IPv6Config::clear() {
   memset(&addr, 0, sizeof(struct in6_addr));
@@ -92,6 +96,11 @@ bool Device::IsAndroid() const {
 
 bool Device::IsArc() const {
   return guest_ == GuestMessage::ARC;
+}
+
+bool Device::IsCrostini() const {
+  // TODO(garrick): Update as necessary.
+  return guest_ == GuestMessage::TERMINA_VM;
 }
 
 bool Device::UsesDefaultInterface() const {

@@ -114,6 +114,10 @@ uint32_t Subnet::AvailableCount() const {
   return addrs_.size() - 2;
 }
 
+uint32_t Subnet::BaseAddress() const {
+  return base_addr_;
+}
+
 uint32_t Subnet::Netmask() const {
   return htonl((0xffffffffull << (32 - prefix_length_)) & 0xffffffff);
 }

@@ -66,6 +66,7 @@ shared_library("libarcnetwork-util") {
 
 guest_sources = [
   "arc_service.cc",
+  "crostini_service.cc",
   "guest_service.cc",
 ]
 

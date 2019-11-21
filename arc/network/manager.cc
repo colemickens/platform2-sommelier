@@ -107,7 +107,9 @@ Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy,
       addr_mgr_({
           AddressManager::Guest::ARC,
           AddressManager::Guest::ARC_NET,
+          AddressManager::Guest::CONTAINER,
           AddressManager::Guest::VM_ARC,
+          AddressManager::Guest::VM_TERMINA,
       }) {
   runner_ = std::make_unique<MinijailedProcessRunner>();
   datapath_ = std::make_unique<Datapath>(runner_.get());
@@ -159,6 +161,8 @@ void Manager::InitialSetup() {
       {patchpanel::kArcShutdownMethod, &Manager::OnArcShutdown},
       {patchpanel::kArcVmStartupMethod, &Manager::OnArcVmStartup},
       {patchpanel::kArcVmShutdownMethod, &Manager::OnArcVmShutdown},
+      {patchpanel::kTerminaVmStartupMethod, &Manager::OnTerminaVmStartup},
+      {patchpanel::kTerminaVmShutdownMethod, &Manager::OnTerminaVmShutdown},
   };
 
   for (const auto& kv : kServiceMethods) {
@@ -195,6 +199,8 @@ void Manager::InitialSetup() {
       mcast_proxy_.get(), ShouldEnableNDProxy() ? nd_proxy_.get() : nullptr);
 
   arc_svc_ = std::make_unique<ArcService>(device_mgr_.get(), datapath_.get());
+  cros_svc_ =
+      std::make_unique<CrostiniService>(device_mgr_.get(), datapath_.get());
 
   nd_proxy_->Listen();
 }
@@ -250,6 +256,28 @@ void Manager::StopArcVm(int32_t cid) {
   SendGuestMessage(msg);
 
   arc_svc_->Stop(cid);
+}
+
+bool Manager::StartTerminaVm(int32_t cid) {
+  if (!cros_svc_->Start(cid))
+    return false;
+
+  GuestMessage msg;
+  msg.set_event(GuestMessage::START);
+  msg.set_type(GuestMessage::TERMINA_VM);
+  msg.set_arcvm_vsock_cid(cid);
+  SendGuestMessage(msg);
+
+  return true;
+}
+
+void Manager::StopTerminaVm(int32_t cid) {
+  GuestMessage msg;
+  msg.set_event(GuestMessage::STOP);
+  msg.set_type(GuestMessage::TERMINA_VM);
+  SendGuestMessage(msg);
+
+  cros_svc_->Stop(cid);
 }
 
 std::unique_ptr<dbus::Response> Manager::OnArcStartup(
@@ -322,25 +350,26 @@ std::unique_ptr<dbus::Response> Manager::OnArcVmStartup(
     return dbus_response;
   }
 
-  if (StartArcVm(request.cid())) {
-    // Populate the response with the known devices.
-    auto build_resp = [](patchpanel::ArcVmStartupResponse* resp,
-                         Device* device) {
-      auto* ctx = dynamic_cast<ArcService::Context*>(device->context());
-      if (!ctx || ctx->TAP().empty())
-        return;
-
-      const auto& config = device->config();
-      auto* dev = resp->add_devices();
-      dev->set_ifname(ctx->TAP());
-      dev->set_ipv4_addr(config.guest_ipv4_addr());
-    };
-
-    device_mgr_->ProcessDevices(
-        base::Bind(build_resp, base::Unretained(&response)));
-  } else {
+  if (!StartArcVm(request.cid())) {
     LOG(ERROR) << "Failed to start ARCVM network service";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
   }
+
+  // Populate the response with the known devices.
+  auto build_resp = [](patchpanel::ArcVmStartupResponse* resp, Device* device) {
+    auto* ctx = dynamic_cast<ArcService::Context*>(device->context());
+    if (!ctx || ctx->TAP().empty())
+      return;
+
+    const auto& config = device->config();
+    auto* dev = resp->add_devices();
+    dev->set_ifname(ctx->TAP());
+    dev->set_ipv4_addr(config.guest_ipv4_addr());
+  };
+
+  device_mgr_->ProcessDevices(
+      base::Bind(build_resp, base::Unretained(&response)));
 
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
@@ -366,6 +395,92 @@ std::unique_ptr<dbus::Response> Manager::OnArcVmShutdown(
   }
 
   StopArcVm(request.cid());
+
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Manager::OnTerminaVmStartup(
+    dbus::MethodCall* method_call) {
+  LOG(INFO) << "Termina VM starting up";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  patchpanel::TerminaVmStartupRequest request;
+  patchpanel::TerminaVmStartupResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse request";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  const int32_t cid = request.cid();
+  if (!StartTerminaVm(cid)) {
+    LOG(ERROR) << "Failed to start Termina VM network service";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Populate the response with the known devices.
+  auto build_resp = [](int32_t cid, patchpanel::TerminaVmStartupResponse* resp,
+                       Device* device) {
+    auto* ctx = dynamic_cast<CrostiniService::Context*>(device->context());
+    if (!ctx || ctx->TAP().empty() || ctx->CID() != cid)
+      return;
+
+    const auto& config = device->config();
+    auto* dev = resp->mutable_device();
+    dev->set_ifname(ctx->TAP());
+    const auto* subnet = config.ipv4_subnet();
+    if (!subnet) {
+      LOG(ERROR) << "Missing required subnet for " << device->ifname();
+      return;
+    }
+    auto* resp_subnet = dev->mutable_ipv4_subnet();
+    resp_subnet->set_base_addr(subnet->BaseAddress());
+    resp_subnet->set_prefix_len(subnet->PrefixLength());
+    subnet = config.lxd_ipv4_subnet();
+    if (!subnet) {
+      LOG(ERROR) << "Missing required lxd subnet for " << device->ifname();
+      return;
+    }
+    resp_subnet = resp->mutable_container_subnet();
+    resp_subnet->set_base_addr(subnet->BaseAddress());
+    resp_subnet->set_prefix_len(subnet->PrefixLength());
+  };
+
+  device_mgr_->ProcessDevices(
+      base::Bind(build_resp, cid, base::Unretained(&response)));
+
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Manager::OnTerminaVmShutdown(
+    dbus::MethodCall* method_call) {
+  LOG(INFO) << "Termina VM shutting down";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  patchpanel::TerminaVmShutdownRequest request;
+  patchpanel::TerminaVmShutdownResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse request";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  StopTerminaVm(request.cid());
 
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;

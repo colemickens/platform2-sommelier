@@ -18,6 +18,7 @@
 
 #include "arc/network/address_manager.h"
 #include "arc/network/arc_service.h"
+#include "arc/network/crostini_service.h"
 #include "arc/network/device_manager.h"
 #include "arc/network/helper_process.h"
 #include "arc/network/shill_client.h"
@@ -43,6 +44,8 @@ class Manager final : public brillo::DBusDaemon {
   void StopArc(pid_t pid);
   bool StartArcVm(int32_t cid);
   void StopArcVm(int32_t cid);
+  bool StartTerminaVm(int32_t cid);
+  void StopTerminaVm(int32_t cid);
 
   // Callback from ProcessReaper to notify Manager that one of the
   // subprocesses died.
@@ -65,6 +68,14 @@ class Manager final : public brillo::DBusDaemon {
   std::unique_ptr<dbus::Response> OnArcVmShutdown(
       dbus::MethodCall* method_call);
 
+  // Handles DBus notification indicating a Termina VM is booting up.
+  std::unique_ptr<dbus::Response> OnTerminaVmStartup(
+      dbus::MethodCall* method_call);
+
+  // Handles DBus notification indicating a Termina VM is spinning down.
+  std::unique_ptr<dbus::Response> OnTerminaVmShutdown(
+      dbus::MethodCall* method_call);
+
   // Dispatch |msg| to child processes.
   void SendGuestMessage(const GuestMessage& msg);
 
@@ -72,6 +83,7 @@ class Manager final : public brillo::DBusDaemon {
 
   // Guest services.
   std::unique_ptr<ArcService> arc_svc_;
+  std::unique_ptr<CrostiniService> cros_svc_;
 
   // DBus service.
   dbus::ExportedObject* dbus_svc_path_;  // Owned by |bus_|.

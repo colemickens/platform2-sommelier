@@ -29,6 +29,11 @@ bool IsArcDevice(const std::string& ifname) {
                           base::CompareCase::INSENSITIVE_ASCII);
 }
 
+bool IsTerminaDevice(const std::string& ifname) {
+  return base::StartsWith(ifname, kTerminaVmDevicePrefix,
+                          base::CompareCase::INSENSITIVE_ASCII);
+}
+
 bool IsHostVpnInterface(const std::string& ifname) {
   return base::StartsWith(ifname, kVpnInterfaceHostPattern,
                           base::CompareCase::INSENSITIVE_ASCII);
@@ -294,6 +299,7 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
   };
   std::string host_ifname, guest_ifname;
   AddressManager::Guest guest = AddressManager::Guest::ARC;
+  std::unique_ptr<Subnet> lxd_subnet;
 
   if (name == kAndroidLegacyDevice || name == kAndroidVmDevice) {
     if (name == kAndroidVmDevice)
@@ -306,6 +312,17 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
     opts.use_default_interface = true;
     opts.is_android = true;
     opts.is_sticky = true;
+  } else if (IsTerminaDevice(name)) {
+    host_ifname = name;
+    opts.is_sticky = true;
+    guest = AddressManager::Guest::VM_TERMINA;
+    lxd_subnet = std::move(
+        addr_mgr_->AllocateIPv4Subnet(AddressManager::Guest::CONTAINER));
+    if (!lxd_subnet) {
+      LOG(ERROR) << "lxd subnet already in use or unavailable."
+                 << " Cannot make device: " << name;
+      return nullptr;
+    }
   } else {
     if (name == kAndroidDevice) {
       host_ifname = "arcbr0";
@@ -356,11 +373,13 @@ std::unique_ptr<Device> DeviceManager::MakeDevice(
   auto config = std::make_unique<Device::Config>(
       host_ifname, guest_ifname, addr_mgr_->GenerateMacAddress(),
       std::move(ipv4_subnet), std::move(host_ipv4_addr),
-      std::move(guest_ipv4_addr));
+      std::move(guest_ipv4_addr), std::move(lxd_subnet));
 
   // ARC guest is used for any variant (N, P, VM).
   return std::make_unique<Device>(name, std::move(config), opts,
-                                  GuestMessage::ARC);
+                                  guest == AddressManager::Guest::VM_TERMINA
+                                      ? GuestMessage::TERMINA_VM
+                                      : GuestMessage::ARC);
 }
 
 void DeviceManager::OnDefaultInterfaceChanged(const std::string& ifname) {
