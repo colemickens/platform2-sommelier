@@ -11,13 +11,16 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include <vector>
+
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/edk/embedder/pending_process_connection.h>
 #include <mojo/edk/embedder/platform_channel_pair.h>
-#include <mojo/edk/embedder/platform_channel_utils_posix.h>
 #include <mojo/edk/embedder/platform_handle_vector.h>
 #include <mojo/edk/embedder/scoped_platform_handle.h>
+#include <mojo/public/cpp/platform/socket_utils_posix.h>
 
 #include "cros-camera/common.h"
 
@@ -177,32 +180,31 @@ MojoResult CreateMojoChannelToParentByUnixDomainSocket(
     LOGF(WARNING) << "Failed to connect to " << socket_path.value();
     return MOJO_RESULT_INTERNAL;
   }
-  mojo::edk::ScopedPlatformHandle socketHandle(
-      mojo::edk::PlatformHandle(client_socket_fd.release()));
 
   // Set socket to blocking
-  int flags = HANDLE_EINTR(fcntl(socketHandle.get().handle, F_GETFL));
+  int flags = HANDLE_EINTR(fcntl(client_socket_fd.get(), F_GETFL));
   if (flags == -1) {
     PLOGF(ERROR) << "fcntl(F_GETFL) failed:";
     return MOJO_RESULT_INTERNAL;
   }
-  if (HANDLE_EINTR(fcntl(socketHandle.get().handle, F_SETFL,
-                         flags & ~O_NONBLOCK)) == -1) {
+  if (HANDLE_EINTR(
+          fcntl(client_socket_fd.get(), F_SETFL, flags & ~O_NONBLOCK)) == -1) {
     PLOGF(ERROR) << "fcntl(F_SETFL) failed:";
     return MOJO_RESULT_INTERNAL;
   }
 
   const int kTokenSize = 32;
   char token[kTokenSize] = {};
-  std::deque<mojo::edk::PlatformHandle> platformHandles;
-  mojo::edk::PlatformChannelRecvmsg(socketHandle.get(), token, sizeof(token),
-                                    &platformHandles, true);
-  if (platformHandles.size() != 1) {
-    LOGF(ERROR) << "Unexpected number of handles received, expected 1: "
-                << platformHandles.size();
+  std::vector<base::ScopedFD> platformHandles;
+  ssize_t result =
+      mojo::SocketRecvmsg(client_socket_fd.get(), token, sizeof(token),
+                          &platformHandles, true /* block */);
+  if (result != kTokenSize) {
+    LOGF(ERROR) << "Unexpected read size: " << result;
     return MOJO_RESULT_INTERNAL;
   }
-  mojo::edk::ScopedPlatformHandle parent_pipe(platformHandles.back());
+  mojo::edk::ScopedPlatformHandle parent_pipe(
+      mojo::edk::PlatformHandle(platformHandles.back().release()));
   platformHandles.pop_back();
   if (!parent_pipe.is_valid()) {
     LOGF(ERROR) << "Invalid parent pipe";

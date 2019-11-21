@@ -33,7 +33,9 @@ void CameraAlgorithmCallbackOpsImpl::Return(uint32_t req_id,
 mojom::CameraAlgorithmCallbackOpsPtr
 CameraAlgorithmCallbackOpsImpl::CreateInterfacePtr() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  return binding_.CreateInterfacePtrAndBind();
+  mojom::CameraAlgorithmCallbackOpsPtr interface_ptr;
+  binding_.Bind(mojo::MakeRequest(&interface_ptr));
+  return interface_ptr;
 }
 
 }  // namespace cros

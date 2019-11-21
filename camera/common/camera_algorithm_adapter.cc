@@ -26,7 +26,7 @@ CameraAlgorithmAdapter::CameraAlgorithmAdapter()
       ipc_thread_("IPC thread") {}
 
 void CameraAlgorithmAdapter::Run(std::string mojo_token,
-                                 mojo::edk::ScopedPlatformHandle channel_handle,
+                                 base::ScopedFD channel,
                                  const std::string& algo_lib_name) {
   VLOGF_ENTER();
   auto future = cros::Future<void>::Create(&relay_);
@@ -36,7 +36,7 @@ void CameraAlgorithmAdapter::Run(std::string mojo_token,
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE, base::Bind(&CameraAlgorithmAdapter::InitializeOnIpcThread,
                             base::Unretained(this), mojo_token,
-                            base::Passed(&channel_handle), algo_lib_name));
+                            base::Passed(&channel), algo_lib_name));
   future->Wait(-1);
   ipc_thread_.Stop();
   VLOGF_EXIT();
@@ -44,13 +44,14 @@ void CameraAlgorithmAdapter::Run(std::string mojo_token,
 
 void CameraAlgorithmAdapter::InitializeOnIpcThread(
     std::string mojo_token,
-    mojo::edk::ScopedPlatformHandle channel_handle,
+    base::ScopedFD channel,
     const std::string& algo_lib_name) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   VLOGF(1) << "Setting up message pipe";
   mojo::edk::Init();
   mojo::edk::InitIPCSupport(ipc_thread_.task_runner());
-  mojo::edk::SetParentPipeHandle(std::move(channel_handle));
+  mojo::edk::SetParentPipeHandle(std::move(mojo::edk::ScopedPlatformHandle(
+      mojo::edk::PlatformHandle(channel.release()))));
   mojo::ScopedMessagePipeHandle child_pipe =
       mojo::edk::CreateChildMessagePipe(mojo_token);
   mojom::CameraAlgorithmOpsRequest request;

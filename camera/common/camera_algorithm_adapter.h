@@ -9,9 +9,8 @@
 
 #include <string>
 
+#include <base/files/scoped_file.h>
 #include <base/threading/thread.h>
-#include <mojo/edk/embedder/platform_handle.h>
-#include <mojo/edk/embedder/scoped_platform_handle.h>
 
 #include "common/camera_algorithm_ops_impl.h"
 #include "cros-camera/future.h"
@@ -28,12 +27,12 @@ class CameraAlgorithmAdapter {
   // Build up IPC and load the camera algorithm library. This method returns
   // when the IPC connection is lost.
   void Run(std::string mojo_token,
-           mojo::edk::ScopedPlatformHandle channel_handle,
+           base::ScopedFD channel,
            const std::string& algo_lib_name);
 
  private:
   void InitializeOnIpcThread(std::string mojo_token,
-                             mojo::edk::ScopedPlatformHandle channel_handle,
+                             base::ScopedFD channel,
                              const std::string& algo_lib_name);
 
   void DestroyOnIpcThread();

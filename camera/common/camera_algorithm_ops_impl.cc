@@ -10,9 +10,9 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/files/file.h>
 #include <base/logging.h>
-#include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/scoped_platform_handle.h>
+#include <mojo/public/cpp/system/platform_handle.h>
 
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
@@ -91,16 +91,14 @@ void CameraAlgorithmOpsImpl::RegisterBuffer(
   DCHECK(cam_algo_);
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
-  mojo::edk::ScopedPlatformHandle scoped_platform_handle;
-  MojoResult mojo_result = mojo::edk::PassWrappedPlatformHandle(
-      buffer_fd.release().value(), &scoped_platform_handle);
+  base::PlatformFile fd;
+  MojoResult mojo_result = mojo::UnwrapPlatformFile(std::move(buffer_fd), &fd);
   if (mojo_result != MOJO_RESULT_OK) {
     LOGF(ERROR) << "Failed to unwrap handle: " << mojo_result;
     callback.Run(-EBADF);
     return;
   }
-  int32_t result =
-      cam_algo_->register_buffer(scoped_platform_handle.release().handle);
+  int32_t result = cam_algo_->register_buffer(fd);
   callback.Run(result);
   VLOGF_EXIT();
 }

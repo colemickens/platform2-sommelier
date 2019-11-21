@@ -10,6 +10,9 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include <utility>
+#include <vector>
+
 #include <base/at_exit.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -17,7 +20,7 @@
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
-#include <mojo/edk/embedder/platform_channel_utils_posix.h>
+#include <mojo/public/cpp/platform/socket_utils_posix.h>
 
 #include "common/camera_algorithm_adapter.h"
 #include "cros-camera/common.h"
@@ -79,10 +82,9 @@ int main(int argc, char** argv) {
     }
     const size_t kTokenLength = 33;
     char recv_buf[kTokenLength] = {0};
-    std::deque<mojo::edk::PlatformHandle> platform_handles;
-    if (PlatformChannelRecvmsg(mojo::edk::PlatformHandle(connection_fd.get()),
-                               recv_buf, sizeof(recv_buf), &platform_handles,
-                               true) == 0) {
+    std::vector<base::ScopedFD> platform_handles;
+    if (mojo::SocketRecvmsg(connection_fd.get(), recv_buf, sizeof(recv_buf),
+                            &platform_handles, true) == 0) {
       LOGF(ERROR) << "Failed to receive message";
       return EXIT_FAILURE;
     }
@@ -99,8 +101,7 @@ int main(int argc, char** argv) {
     if (pid == 0) {
       cros::CameraAlgorithmAdapter adapter;
       adapter.Run(
-          std::string(recv_buf),
-          mojo::edk::ScopedPlatformHandle(platform_handles.front()),
+          std::string(recv_buf), std::move(platform_handles[0]),
           (FLAGS_type == "vendor") ? "libcam_algo.so" : "libcam_gpu_algo.so");
       exit(0);
     } else if (pid < 0) {
