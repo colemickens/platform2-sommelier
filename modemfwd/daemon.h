@@ -22,19 +22,23 @@
 
 namespace modemfwd {
 
+class Daemon;
+
 class DBusAdaptor : public org::chromium::ModemfwdInterface,
                     public org::chromium::ModemfwdAdaptor {
  public:
-  explicit DBusAdaptor(scoped_refptr<dbus::Bus> bus);
+  explicit DBusAdaptor(scoped_refptr<dbus::Bus> bus, Daemon* daemon);
 
   void RegisterAsync(
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
   // org::chromium::ModemfwdInterface overrides.
   void SetDebugMode(bool debug_mode) override;
+  bool ForceFlash(const std::string& device_id) override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
+  Daemon* daemon_;  // weak
 
   DISALLOW_COPY_AND_ASSIGN(DBusAdaptor);
 };
@@ -49,6 +53,8 @@ class Daemon : public brillo::DBusServiceDaemon {
          const std::string& helper_directory,
          const std::string& firmware_directory);
   ~Daemon() override = default;
+
+  bool ForceFlash(const std::string& device_id);
 
  protected:
   // brillo::Daemon overrides.

@@ -14,6 +14,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <base/unguessable_token.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "modemfwd/modem_helper.h"
@@ -117,6 +118,59 @@ std::unique_ptr<Modem> CreateModem(
 
   return std::make_unique<ModemImpl>(device_id, equipment_id, carrier_id,
                                      helper);
+}
+
+// StubModem acts like a modem with a particular device ID but does not
+// actually talk to a real modem. This allows us to use it for force-
+// flashing.
+class StubModem : public Modem {
+ public:
+  StubModem(const std::string& device_id, ModemHelper* helper)
+      : device_id_(device_id),
+        equipment_id_(base::UnguessableToken().ToString()),
+        helper_(helper) {}
+  ~StubModem() override = default;
+
+  // modemfwd::Modem overrides.
+  std::string GetDeviceId() const override { return device_id_; }
+
+  std::string GetEquipmentId() const override { return equipment_id_; }
+
+  std::string GetCarrierId() const override { return ""; }
+
+  std::string GetMainFirmwareVersion() const override { return ""; }
+
+  std::string GetCarrierFirmwareId() const override { return ""; }
+
+  std::string GetCarrierFirmwareVersion() const override { return ""; }
+
+  bool FlashMainFirmware(const base::FilePath& path_to_fw) override {
+    return helper_->FlashMainFirmware(path_to_fw);
+  }
+
+  bool FlashCarrierFirmware(const base::FilePath& path_to_fw) override {
+    return helper_->FlashCarrierFirmware(path_to_fw);
+  }
+
+ private:
+  std::string device_id_;
+  std::string equipment_id_;
+  ModemHelper* helper_;
+
+  DISALLOW_COPY_AND_ASSIGN(StubModem);
+};
+
+std::unique_ptr<Modem> CreateStubModem(const std::string& device_id,
+                                       ModemHelperDirectory* helper_directory) {
+  // Use the device ID to grab a helper.
+  ModemHelper* helper = helper_directory->GetHelperForDeviceId(device_id);
+  if (!helper) {
+    LOG(INFO) << "No helper found to update modems with ID [" << device_id
+              << "]";
+    return nullptr;
+  }
+
+  return std::make_unique<StubModem>(device_id, helper);
 }
 
 }  // namespace modemfwd

@@ -32,9 +32,12 @@ std::string ToOnOffString(bool b) {
 
 namespace modemfwd {
 
-DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus)
+DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus, Daemon* daemon)
     : org::chromium::ModemfwdAdaptor(this),
-      dbus_object_(nullptr, bus, dbus::ObjectPath(kModemfwdServicePath)) {}
+      dbus_object_(nullptr, bus, dbus::ObjectPath(kModemfwdServicePath)),
+      daemon_(daemon) {
+  DCHECK(daemon);
+}
 
 void DBusAdaptor::RegisterAsync(
     const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
@@ -45,6 +48,10 @@ void DBusAdaptor::RegisterAsync(
 void DBusAdaptor::SetDebugMode(bool debug_mode) {
   g_extra_logging = debug_mode;
   LOG(INFO) << "Debug mode is now " << ToOnOffString(ELOG_IS_ON());
+}
+
+bool DBusAdaptor::ForceFlash(const std::string& device_id) {
+  return daemon_->ForceFlash(device_id);
 }
 
 Daemon::Daemon(const std::string& journal_file,
@@ -143,9 +150,25 @@ void Daemon::OnModemAppeared(
 
 void Daemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
-  dbus_adaptor_.reset(new DBusAdaptor(bus_));
+  dbus_adaptor_.reset(new DBusAdaptor(bus_, this));
   dbus_adaptor_->RegisterAsync(
       sequencer->GetHandler("RegisterAsync() failed", true));
+}
+
+bool Daemon::ForceFlash(const std::string& device_id) {
+  auto stub_modem = CreateStubModem(device_id, helper_directory_.get());
+  if (!stub_modem)
+    return false;
+
+  ELOG(INFO) << "Force-flashing modem with device ID [" << device_id << "]";
+  base::Closure cb = modem_flasher_->TryFlash(stub_modem.get());
+  // We don't know the equipment ID of this modem, and if we're force-flashing
+  // then we probably already have a problem with the modem coming up, so
+  // cleaning up at this point is not a problem. Run the callback now if we
+  // got one.
+  if (!cb.is_null())
+    cb.Run();
+  return !cb.is_null();
 }
 
 }  // namespace modemfwd

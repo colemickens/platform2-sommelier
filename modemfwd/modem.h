@@ -43,6 +43,9 @@ std::unique_ptr<Modem> CreateModem(
     std::unique_ptr<org::chromium::flimflam::DeviceProxy> device,
     ModemHelperDirectory* helper_directory);
 
+std::unique_ptr<Modem> CreateStubModem(const std::string& device_id,
+                                       ModemHelperDirectory* helper_directory);
+
 }  // namespace modemfwd
 
 #endif  // MODEMFWD_MODEM_H_

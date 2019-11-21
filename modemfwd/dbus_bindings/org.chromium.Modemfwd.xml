@@ -12,5 +12,18 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="ForceFlash">
+      <tp:docstring>
+        Act as though a modem with the given device ID appeared and needs
+        flashing.
+      </tp:docstring>
+      <arg name="device_id" type="s" direction="in">
+        Device ID of the modem to attempt to force-flash.
+      </arg>
+      <arg name="success" type="b" direction="out">
+        Whether force-flashing was successful.
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>
